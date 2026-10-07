@@ -337,15 +337,19 @@ src/generated/clientResources/   ← runClientData（assets/…：items 123 + mo
   （不装 Modern UI 时仍沿用原版九宫格贴图）。
 
 
-1. **1.21.1 的 4088 行完整回归探针尚未迁移到 26.1.2**：现在只有迁移期最小探针
-   （`resources/kubejs/26.1.2/server_scripts/astral_probe.js`，7 条子命令）+ 一条冒烟条目。
-   忍者/骇客/电磁炮/法伤口径/牌桌锁 等条目需按 §7.2 已固化的 API 形态逐条补齐。
+1. **26.1.2 回归探针现状（2026-10-07 更正：文件名与规模均已变，勿再引用旧口径）**：本线的完整回归探针是
+   `resources/kubejs/26.1.2/server_scripts/astral_bugfix_probe.js`（992,013 B / 16,608 行，提供 `/astralprobe` 子命令；同目录另有 6 个专项探针，
+   `client_scripts` 另有 `astral_dnum_diag.js` / `astral_wallet_vision.js`）。早期登记的 `resources/kubejs/26.1.2/server_scripts/astral_probe.js`
+   **在本仓任何 `resources/kubejs/<版本>/` 下都不存在**（`mt_assert.ps1:128` / `:525`、`mt_env.ps1:1030`、`Mt.Paths.psm1:128` 里的 astral_probe 指的是
+   已移除的 `run/<版本>/astral_probe.log` 通道，与该脚本无关）。三线探针规模现为 1.21.1 = 968,242 B / 16,278 行、1.20.1 = 962,454 B / 16,212 行、
+   26.1.2 = 992,013 B / 16,608 行 ⇒ **规模已对齐**。
+   忍者/骇客/电磁炮/法伤口径/牌桌锁 等**条目级**覆盖差异仍需逐条核对（规模对齐不等于逐条对等）。
 2. **`opprobe` 的 `level` 读数退化为 `-1`**（`getProfilePermissions(NameAndId)` 在 Rhino 下取不到；
    `has2` 与 `dump` 判据正常，`mt_launch` 只判后者）。属读数残缺，不影响闸门。
 3. 手册（Patchouli UI）打开、立牌技能行为、GUI 屏幕（`CardInventoryScreen`）尚未做视觉/行为取证。
 4. Iron's Spells 'n Spellbooks 集成在 26.1.2 线**整体移除**（2026-10-04 二次清理）——该模组无 26.1.x 构建，按「平台不存在的模组 ⇒ 联动整体移除」口径，`event/IronSpellbooksCompat` 及其伤害键 / tooltip / lang / 手册条目全部删除，无残留。
 5. **二重验证的第二轮（修改后回归）**未跑：本轮完成的是「代码层改动 → 工具链游戏内冒烟」。
-6. `docs/` 为本机目录，本文不会随 git 提交；如需长期保存，请连同主线 `docs/` 一起备份。
+6. **（2026-10-07 更正）** 原记「`docs/` 为本机目录，本文不会随 git 提交」已不成立 —— `docs/` 是纳管目录（`git ls-files -- docs/compat-26.1.2-neoforge.md` 有输出），本文随 git 提交；如需长期保存仍建议连同主线 `docs/` 一起备份。
 
 ---
 
@@ -397,4 +401,13 @@ src/generated/clientResources/   ← runClientData（assets/…：items 123 + mo
 | 语言闸门 | 622/622（`zh_cn` ↔ `en_us`） |
 | 客户端启动 | 窗口 `Minecraft NeoForge* 26.1.2`、`NeoForge 26.1.2.109（6 个模组）`；`Astral Dice mod loaded.`、版本门槛行、资源重载 `mod/astral_dice` |
 | Mixin 应用 | `EntityThunderHitMixin`、`PiglinAiMixin`、`ServerPlayerMixin`、`client.AstralUseItemGuardMixin` 等注入成功 |
+
+## 10. 26.1.2 验收检查项（2026-10-07 增补；源自 §6.4 修复与图形面只读审计）
+
+本节是「改完代码 / 迁移新版本 / 加新渲染物」时逐条对照的 checklist，避免重踩已定案的坑。
+
+1. **文本颜色必须显式 ARGB**：26.1.2 的 `GuiGraphicsExtractor#text(...)` 第一步查 `ARGB.alpha(color)`，**alpha == 0 静默不画、不报错**（1.21.1 / 1.20.1 的 `Font#adjustColor` 兜底「alpha = 0 视为不透明」在本版已移除）。新增或复查任何 `text(...)` 调用时，核查色值来源是否可能为 6 位十六进制常量；本线 `client/TargetSelectionClient` 三常量即写作 `0xFF55FF55` / `0xFFFF5555` / `0xFFFFFF55`。像素判据工具 `tools/verify_targetsel_overlay_color.py`（rc 0 = 达标 / 1 = 不达标 / 2 = 无法定位截图）；用例 `scripts/test/cases/TARGETSEL-OVERLAY-26.1.2.json`（40 steps / 11 asserts）。
+2. **事件订阅的类名存废（编译通过 ≠ 会被派发）**：26.1.2 里**已弃用但类仍存在**的事件不会派发，订阅它等于运行期静默零渲染 —— 实例：钱包控件原订阅 `ContainerScreenEvent.Render.Foreground`，现用法为 `ScreenEvent.Render.Foreground`（`client/gui/StarCoinWalletButtons.java:209-215`，2026-10-07 修复）。验收动作：对新增的 `@SubscribeEvent` 逐条核对 26.1.2 官方事件清单，弃用类一律不许再用。
+3. **自建渲染管线的 sampler 必须 ⊆ 实际绑定集**：管线声明的 sampler 若超出原版 `RenderSetup` 的绑定（`useOverlay` → `Sampler1`、`useLightmap` → `Sampler2`），运行期会扔 `IllegalStateException: Missing sampler Sampler1`。dev 环境跑 `-Dneoforge.disableGlValidation=true`（`neoforge-26.1.2/build.gradle:147`）会**静音**该断言 ⇒ 怀疑自家管线配置错误时，临时注释该行并冷启动复现（详见 `KNOWN-ISSUES.md` KI-D1「2026-10-07 复验」段：该断言是 dev-only，生产环境 `IS_RUNNING_IN_IDE=false` 永不触发，与 Sodium 版本无关）。
+4. **优先用原版渲染设施、保持后端无关**：26.1.2 的渲染点全部走现代 Blaze3D（`SubmitNodeCollector#submitCustomGeometry` / `RenderTypes.*`）；本线自建管线仅剩 `client/RenShieldRenderer.java:148-163`（`astral_dice:pipeline/ren_shield`、`ren_shield_glow`）。验收动作：`opengl` 包 / `GlStateManager` / `RenderSystem.` / `GL11` 在本线保持 **0 命中**（现状已达成 ⇒ 26.2+ 的 Vulkan 后端无需重写）；新增渲染物优先用 `RenderTypes.entitySolid(...)` 一类原版 RenderType。
 
