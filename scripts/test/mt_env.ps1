@@ -90,7 +90,7 @@ $script:KubejsTinyJavaServerVersion = '1.0.0-build.45'
 # ── 26.1.2 渲染栈（Sodium + Iris）与光影（2026-09-17 用户要求：光影兼容性测试）──
 # 来源一律走 **Modrinth Maven**（`https://api.modrinth.com/maven`，本子项目 build.gradle 第 40 行已声明该仓库，
 # 与 Curios 同源），**不使用** CDN/GitHub 直链。Maven 坐标为 `maven.modrinth:<slug>:<version>`：
-#   maven.modrinth:sodium:mc26.1.2-0.9.1-neoforge
+#   maven.modrinth:sodium:mc26.1.2-0.9.2-neoforge
 #   maven.modrinth:iris:1.11.4+26.1-neoforge          ← 硬依赖 Sodium（required），必须同装
 #   maven.modrinth:complementary-unbound:r5.9.3       ← 光影包同样由 Modrinth Maven 提供（已验证 200）
 # 落地方式仍是「下载进 run/26.1.2/mods 与 shaderpacks/」而不是写进 build.gradle 依赖，理由与 KubeJS 相同：
@@ -100,11 +100,11 @@ $script:KubejsTinyJavaServerVersion = '1.0.0-build.45'
 # ⚠️ 这些是纯客户端模组：`mt_env world` 起专用服务器前必须移出（Invoke-MtEnvWorld 已覆盖 sodium/iris），
 #   两段式数据生成前也必须移出。
 $script:RenderMods2612 = @(
-    @{ Name = 'sodium-neoforge-0.9.1+mc26.1.2.jar'
-       Coord = 'maven.modrinth:sodium:mc26.1.2-0.9.1-neoforge'
-       Url  = 'https://api.modrinth.com/maven/maven/modrinth/sodium/mc26.1.2-0.9.1-neoforge/sodium-neoforge-0.9.1+mc26.1.2.jar'
-       Sha1 = 'f369407251bdeb3b91d3e67fbbc133263b0c9078'
-       Size = 1185970 }
+    @{ Name = 'sodium-neoforge-0.9.2+mc26.1.2.jar'
+       Coord = 'maven.modrinth:sodium:mc26.1.2-0.9.2-neoforge'
+       Url  = 'https://api.modrinth.com/maven/maven/modrinth/sodium/mc26.1.2-0.9.2-neoforge/sodium-neoforge-0.9.2+mc26.1.2.jar'
+       Sha1 = 'e03e21bf6553fc517241d59c2c116b8e5cc882f8'
+       Size = 1260562 }
     @{ Name = 'iris-neoforge-1.11.4+mc26.1.2.jar'
        Coord = 'maven.modrinth:iris:1.11.4+26.1-neoforge'
        Url  = 'https://api.modrinth.com/maven/maven/modrinth/iris/1.11.4+26.1-neoforge/iris-neoforge-1.11.4+mc26.1.2.jar'
@@ -1539,7 +1539,7 @@ function Install-MtRenderStack {
 
     .NOTES
         · 来源 = **Modrinth Maven**（`https://api.modrinth.com/maven`，坐标见 $script:RenderMods2612 / $script:ShaderPack2612
-          的 `Coord` 字段，形如 `maven.modrinth:sodium:mc26.1.2-0.9.1-neoforge`）；**不使用** CDN/GitHub 直链。
+          的 `Coord` 字段，形如 `maven.modrinth:sodium:mc26.1.2-0.9.2-neoforge`）；**不使用** CDN/GitHub 直链。
         · mods 落位 `run/<版本>/mods`；光影包落位 `run/<版本>/shaderpacks/`；
         · 缓存在 `temp/probe_mods/<版本>/`（与探针运行时同一缓存目录，便于整体清理）；
         · 命中判据 = 目标文件存在且**尺寸一致**，下载后按固定 sha1 校验，失败硬报 14，不静默降级；
@@ -1554,6 +1554,18 @@ function Install-MtRenderStack {
         更早那条「属上游无解缺陷、与版本无关」的结论**作废**（当时的对照只换了光影包、没换 Sodium 版本）。
         ⇒ 改动 Sodium/Iris/光影包版本后**必须复跑** `SHADER-VISION-26.1.2`；换版本号时注意本函数末尾的
         「旧版本清理」，否则新旧 Sodium 并存会被 FML 判重复模组。
+        ⚠️ **2026-10-07 勘误（口径修正；历史记载保留）**：上面「元凶是 Sodium 0.9.2、降到 0.9.1 后正常」的结论
+        **作废** —— 当日把 `neoforge-26.1.2/build.gradle` 的 `-Dneoforge.disableGlValidation=true` 临时注释
+        （恢复原版 GL 校验）后实测：Sodium **0.9.2 与 0.9.1 同样**在进世界后立刻崩（`crash-2026-10-07_16.33.43-client.txt`
+        / `crash-2026-10-07_16.47.06-client.txt`，栈逐帧相同、帧上 mixin 全归 Iris、本模组帧 0 个）。真正的开关是
+        原版 **dev-only** 断言 `GlRenderPass.VALIDATION = SharedConstants.IS_RUNNING_IN_IDE && !Boolean.getBoolean("neoforge.disableGlValidation")`
+        （`GlRenderPass.java:25`；抛错点 `GlCommandEncoder.java:531`，位于 `:488 if (GlRenderPass.VALIDATION) {` 块内）：
+        校验开 ⇒ 0.9.1 / 0.9.2 都崩，校验关 ⇒ 都不崩；生产环境 `IS_RUNNING_IN_IDE=false` ⇒ **永不触发**
+        （代价 = 缺失 sampler 被静默跳过，实测无可见缺失）。校验关（本仓 dev 默认）下，2026-10-07 全最新环境 +
+        光影开实测：不崩、`TEX` / `DIAG` / `ECON` / `DAMAGE-NUMBER` / `WALLET-GUI` / `TARGETSEL-OVERLAY` 六条用例全
+        PASS、客户端存活 ≥7.5 分钟、`crash-reports` 空、图形无缺失（目标棱柱 ≈18.5k px 照画）⇒ **钉版保持最新
+        Sodium `mc26.1.2-0.9.2-neoforge`**。换渲染栈版本后仍应复跑 `SHADER-VISION-26.1.2` 作回归守卫；
+        完整证据与机制见 `KNOWN-ISSUES.md` KI-D1 的「2026-10-07 复验」段。
     #>
     [CmdletBinding()]
     param([Parameter(Mandatory)][psobject]$Paths)
@@ -1627,7 +1639,7 @@ function Install-MtRenderStack {
         #       与光影不兼容 ⇒ 一进世界就崩、客户端被 emergencySaveAndCrash 终止）：
         #         · `Iris/FATAL: Missing program minecraft:pipeline/gui_text in override list`
         #         · `IllegalStateException: Missing sampler Sampler1`（**移除 ImmediatelyFast 后仍复现**
-        #           ⇒ 元凶不是 ImmediatelyFast；Sodium 亦已降到注释里记的 0.9.1，仍崩 ⇒ 该修复不再复现）
+        #           ⇒ 元凶不是 ImmediatelyFast；Sodium 亦已降到注释里记的 0.9.1，仍崩 ⇒ 该修复不再复现；2026-10-07 定案：开关是 dev-only 的 GlRenderPass.VALIDATION（与 Sodium 版本无关），见 Install-MtRenderStack 的 .NOTES 勘误段）
         #       其表征极易误判：`mt_launch` 报 `MT_LAUNCH: OK (40s) — 已进入世界`，随后客户端
         #       数秒内**静默消失**（无 shutdown 消息、无 crash-reports 之外的下文），用例全报
         #       「26.1.2 客户端未在运行」⇒ 排查时**先看 `SHADERS=` 与本项**，不要误判成宿主回收进程树。
@@ -1727,7 +1739,7 @@ function Invoke-MtEnvMods {
         if ($rc -ne 0) { return $rc }
         # 渲染栈 + 光影（2026-09-17 用户要求：Sodium/Iris 最新版 + Complementary Unbound，用于光影兼容性测试）。
         # 该线此前**不装**渲染模组，理由是「26.1.2 的 Iris 尚无可用的构建」——该理由已过期
-        # （实测 Modrinth 已有 sodium 0.9.1 / iris 1.11.4 的 26.1.2 release 构建；0.9.1 是用户要求的、与整合包一致的版本）。
+        # （实测 Modrinth 已有 sodium 0.9.1 / iris 1.11.4 的 26.1.2 release 构建；2026-10-07 起钉 Sodium mc26.1.2-0.9.2-neoforge（最新）；当日复验证明崩溃开关是 dev-only 的 GlRenderPass.VALIDATION、与 Sodium 版本无关，见 Install-MtRenderStack 的 .NOTES 勘误段）。
         $rc = Install-MtRenderStack -Paths $p
         if ($rc -ne 0) { return $rc }
         # 超平坦世界史莱姆压制（2026-09-17 用户硬性要求，见 $script:SlimeGuard2612 注释）
