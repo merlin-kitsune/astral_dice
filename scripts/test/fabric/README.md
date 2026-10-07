@@ -733,6 +733,51 @@ M2 钉住 fabric 的两条 `hasEffect` 早退判据。期望 `GATE: PASS (22 项
 
 ---
 
+### 7.2.9 本分支（`multi-dev-next`）首跑验证：从零装配到 5/5 用例 PASS（2026-10-07）
+
+**任务前提（先说清「拉入」的含义）**：`multi-dev-next` 与 `multi-main` 的 `scripts/test/fabric/**` **逐字节相同**
+（`git diff --stat multi-dev-next multi-main -- scripts/test/fabric` 无输出）⇒ 内容层面没有任何文件可移植；
+本轮「把主分支的 fabric 测试环境拉进本分支」的实际落地 = **在本 worktree 把运行环境装配起来并实跑一遍**，验证本分支的模组配这套测试台在本机可用。
+
+**装配（本台不自动创建任何前置；全部落在 `fabric-1.20.1/run/{client,server}`，不进仓库）**：
+
+1. `ft_env.ps1 --side both` 首跑 **FAIL(5)**：缺 `eula.txt` / `server.properties` / `config` / `kubejs` / `logs` 五类前置（与脚本预期一致）。
+2. 手工建骨架 `run/server/{config,kubejs/server_scripts,logs}`，写 `eula.txt`（`eula=true`）与最小 `server.properties`。
+3. `ft_env.ps1 --side both --install-embedded` → `APPLY side=server … written=7`：补入 7 个 JiJ 内嵌库
+   （`basic-math-0.6.1.jar`←cloth-config、`mixinextras-fabric-0.2.0-rc.2.jar`←kubejs、`fiber-0.23.0-2.jar`←patchouli、
+   `endec-0.1.8.jar` / `gson-0.1.5.jar` / `netty-0.1.4.jar`←accessories、`puzzlesaccessapi-fabric-20.1.1.jar`←puzzles-lib）。
+4. `ft_env.ps1 --side server --enable-rcon` → `AP_FAB_ENV_RCON: enabled=true port=25575 password_set=true changed=true`（默认口令 `astralft`）。
+5. 复核 `ft_env.ps1 --side both` → `AP_FAB_ENV: OK` / `MT_FAB_ENV: OK — side=both mode=verify 前置齐备`；`--side client` 亦 OK（`missing=none`）。
+
+**构建**：`ft_build.ps1` → `MT_FAB_BUILD: OK — 开包核对通过: models=138 recipes=132 trinkets=15 bountiful=0 embed=starengine_lib-fabric-1.20.1-2.0.0-SNAPSHOT.12.jar`；
+产物 `astral_dice-2.0.0-SNAPSHOT.34+fabric_1.20.1.jar`（1991262 B / 1630 entries）。
+
+**实跑读数（全部真机，日志在 `temp/ft-verify/`）**：
+
+| 环节 | 读数 |
+|---|---|
+| 服务端启动 | `Done (1.695s)!` + `Thread RCON Listener started` / `RCON running on 0.0.0.0:25575` |
+| 模组自检 | `[Astral Dice][Accessories] 槽位准入自检 dice->[dice] stand->[stand] chip->[chip]` |
+| 600 tick 派发 | `[已派发 4 类] FMLCommonSetupEvent=1 LevelTickEvent=1797 RegisterCommandsEvent=1 ServerTickEvent=599` / `[未派发 33 类] …` |
+| `FAB-JAR-ASSETS` | **PASS**（1 断言）|
+| `FAB-BOOT-EMBED` | **PASS**（9 断言）|
+| `FAB-DISPATCH-BASIC` | **PASS**（8 断言；`dispatch_tick ServerTickEvent=599`、`fired=4`、`idle=33`）|
+| `FAB-INJECT-ROUNDTRIP` | **PASS**（3 断言；`AP_FAB_INJECT: OK (channel=rcon side=server cmd=/say FT-INJECT-ROUNDTRIP-OK)`、断言 `\[Rcon\]\s+FT-INJECT-ROUNDTRIP-OK` hits=1）|
+| `FAB-CLIENT-BOOT` | **PASS**（8 断言；客户端事件桥 / Puzzles 事件桥 / 客户端注册桥 / 事件订阅审计 / `Astral Dice client initialized`）|
+| 客户端启动 | `ft_launch.ps1 --side client --nowait --gradle-arg -PtestSodium=false` ⇒ 日志出现 `Sound engine started` |
+| 收停 | `ft_stop --side server` → `AP_FAB_STOP_KILLED: count=0`；`--side client` → `KILLED: count=1 pids=19328`；随后进程扫描残留 0 |
+
+**本轮未跑（如实标注）**：`FAB-CATCHUP-PARITY`（side=server，9 断言）、`FAB-PARTY-BACKENDS`（server，6）、`FAB-Q2Q3-INVARIANTS`（server，6）
+——三者均服务端型，前两次尝试因工具调用超时与控制台占用中断。补验方式 = 按 §7.2.7 / §7.2.8 的跑法重跑，并遵守下面的有界启动纪律。
+
+**有界启动纪律（本轮新增，§7.3/D8 的延伸）**：
+
+1. 不要「前台跑 + 管道捕获」：`ft_launch` 的子进程会继承控制台/管道 ⇒ 调用挂死。
+2. 正确姿势 = `--nowait` + `Start-Process pwsh … -RedirectStandardOutput <f> -RedirectStandardError <f> -PassThru`（**不要** `-NoNewWindow`），随后**另起一次工具调用**轮询就绪。
+3. 本会话的 pwsh 工具有 300s 上限、超时会**杀掉整棵进程树**（实测两次杀掉运行中的服务端、一次杀掉客户端）⇒ 单次调用总时长压到 250s 以内，长等待必须 `WaitForExit(<ms>)` 有界。
+4. 运行目录在 `fabric-1.20.1/run/{client,server}`（Loom `runDir` 相对子项目），**不是**仓库根 `run/<版本>`。
+
+---
 ### 7.3 已修复的测试台缺陷（9 个；每个都附实测证据）
 
 前两个是**阻断级**：只要有它们，`ft_launch` **每一次启动都必然失败**，连带 env/launch 之后的一切

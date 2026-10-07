@@ -503,7 +503,7 @@ if ($MyInvocation.InvocationName -ne '.') {
         if ($latest.Contains('Sodium')) { Write-MtInfo 'SODIUM_LOADED=true' } else { Write-MtWarn 'SODIUM_LOADED=false' }
         if ($latest.Contains('Iris')) { Write-MtInfo 'IRIS_LOADED=true' } else { Write-MtWarn 'IRIS_LOADED=false' }
     } elseif ($Version -eq '26.1.2') {
-        # 26.1.2 dev run 自 2026-09-17 起也带渲染栈（Sodium + Iris + Complementary Unbound 光影，
+        # 26.1.2 dev run 自 2026-09-17 起也带渲染栈（Sodium + Iris + Complementary Reimagined 光影，
         # 见 mt_env 的 Install-MtRenderStack）：既报探针宿主(KubeJS/Rhino)是否装载（本版本测试链的硬前提），
         # 也报渲染栈/光影是否真的加载。
         if ($latest.Contains('KubeJS')) { Write-MtInfo 'KUBEJS_LOADED=true' } else { Write-MtWarn 'KUBEJS_LOADED=false' }
@@ -560,7 +560,7 @@ if ($MyInvocation.InvocationName -ne '.') {
     # 用户硬性要求（2026-09-17）：光影包必须存在且**默认启用**。判据取 Iris/Oculus 的
     # `Using shaderpack: <包名>` 行。⚠️ 该行**出现在进入世界之后**（1.20.1 实测：启动第 12s 先打印
     # 「Shaders are disabled because no valid shaderpack is selected」，进世界后第 36s 才
-    # 「Using shaderpack: ComplementaryUnbound_r5.9.3.zip」）⇒ 必须在本闸门（已进世界）读 latest.log，
+    # 「Using shaderpack: ComplementaryReimagined_r5.9.3.zip」）⇒ 必须在本闸门（已进世界）读 latest.log，
     # 放到启动早期判定必然误报。不做硬失败（与 Sodium/Iris/优化类模组同口径）：缺该行给 WARN，但要看得见。
     if ($Version -ne '26.1.2') {
         if ($latest -imatch '(?i)Using shaderpack:\s*(\S+)') {

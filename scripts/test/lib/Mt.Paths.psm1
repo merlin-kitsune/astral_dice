@@ -48,8 +48,8 @@ $script:RUNS_FILE = Join-Path (Join-Path $script:TEST_DIR 'cases') '.mt_active_r
 # 机器本地配置缺失时的内置默认值（与 mt_paths.py 的 _DEFAULT_PACK_MODS 一致）
 $script:DEFAULT_PACK_MODS = @{
     '1.21.1' = 'D:\.minecraft\versions\狐の航空学 Voxy Edition\mods'
-    '1.20.1' = 'D:\.minecraft\versions\1.20.1 模组测试\mods'
-    '26.1.2' = 'D:\.minecraft\versions\26.1.2 模组测试\mods'
+    '1.20.1' = 'D:\.minecraft\versions\1.20.1-Forge 模组测试\mods'
+    '26.1.2' = 'D:\.minecraft\versions\26.1.2-NeoForge 模组测试\mods'
 }
 
 $script:CONF = Get-MtConf -Path $script:CONF_FILE

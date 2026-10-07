@@ -92,7 +92,7 @@ $script:KubejsTinyJavaServerVersion = '1.0.0-build.45'
 # 与 Curios 同源），**不使用** CDN/GitHub 直链。Maven 坐标为 `maven.modrinth:<slug>:<version>`：
 #   maven.modrinth:sodium:mc26.1.2-0.9.2-neoforge
 #   maven.modrinth:iris:1.11.4+26.1-neoforge          ← 硬依赖 Sodium（required），必须同装
-#   maven.modrinth:complementary-unbound:r5.9.3       ← 光影包同样由 Modrinth Maven 提供（已验证 200）
+#   maven.modrinth:complementary-reimagined:r5.9.3    ← 光影包同样由 Modrinth Maven 提供（已验证 200）（2026-10-07 起由 Unbound 改为 Reimagined；用户裁决）
 # 落地方式仍是「下载进 run/26.1.2/mods 与 shaderpacks/」而不是写进 build.gradle 依赖，理由与 KubeJS 相同：
 #   两段式数据生成（runClientData/runServerData）与 runClient 共用同一 runtimeClasspath，把**纯客户端**模组
 #   写进依赖会让服务端数据生成也装载它们（直接崩）。1.21.1 侧同样是「只放进 run/mods」的约定。
@@ -366,14 +366,15 @@ $script:ConnectorStack2612 = @(
 )
 $script:ConnectorStackPrefixes2612 = @('launchpad-', 'connector-', 'forgified-fabric-api-')
 
-# Complementary Shaders - Unbound（用户指定用于光影兼容性测试）
-# `maven.modrinth:complementary-unbound:r5.9.3`；落位 `run/<版本>/shaderpacks/`，并在 Iris 配置里选中它。
+# Complementary Shaders - Reimagined（用户 2026-10-07 裁决：本仓所有测试环境统一改用 Reimagined r5.9.3，替代此前的 Unbound）
+# `maven.modrinth:complementary-reimagined:r5.9.3`；落位 `run/<版本>/shaderpacks/`，并在 Iris 配置里选中它。
+# ⚠️ 变量名保留 ShaderPack2612，但该规格为所有线（1.21.1 / 1.20.1 / 26.1.2）共用：Install-MtRenderStack 不按版本分支取光影包。
 $script:ShaderPack2612 = @{
-    Name  = 'ComplementaryUnbound_r5.9.3.zip'
-    Coord = 'maven.modrinth:complementary-unbound:r5.9.3'
-    Url   = 'https://api.modrinth.com/maven/maven/modrinth/complementary-unbound/r5.9.3/ComplementaryUnbound_r5.9.3.zip'
-    Sha1  = '2ee08300e1d6f039e63eae8484dddf57b3aaaf67'
-    Size  = 553400
+    Name  = 'ComplementaryReimagined_r5.9.3.zip'
+    Coord = 'maven.modrinth:complementary-reimagined:r5.9.3'
+    Url   = 'https://api.modrinth.com/maven/maven/modrinth/complementary-reimagined/r5.9.3/ComplementaryReimagined_r5.9.3.zip'
+    Sha1  = '838139b54cddb56b2e83cd260d8efd960ac536d6'
+    Size  = 553397
 }
 
 $script:TAG_BYTE = 1
@@ -1538,7 +1539,7 @@ function Install-MtRenderStack {
         `run/<版本>/`，并让 Iris **默认选中并启用**该光影（幂等）。
 
     .NOTES
-        · 来源 = **Modrinth Maven**（`https://api.modrinth.com/maven`，坐标见 $script:RenderMods2612 / $script:ShaderPack2612
+        · 来源 = **Modrinth Maven**（`https://api.modrinth.com/maven`，坐标见 $script:RenderMods2612 / $script:ShaderPack2612（2026-10-07 起光影包 = ComplementaryReimagined_r5.9.3）
           的 `Coord` 字段，形如 `maven.modrinth:sodium:mc26.1.2-0.9.2-neoforge`）；**不使用** CDN/GitHub 直链。
         · mods 落位 `run/<版本>/mods`；光影包落位 `run/<版本>/shaderpacks/`；
         · 缓存在 `temp/probe_mods/<版本>/`（与探针运行时同一缓存目录，便于整体清理）；
@@ -1574,13 +1575,13 @@ function Install-MtRenderStack {
         # 1.20.1 **渲染栈本身可用**（2026-09-17 实测复验）：Embeddium 0.3.31 + Oculus 1.8.0 由
         # `forge-1.20.1/build.gradle` 的 `modImplementation` 提供（MDG 解析期重映射，与 FerriteCore /
         # collective / superflat 同一机制），dev run 实测 `EMBEDDIUM_LOADED=true` / `OCULUS_LOADED=true`
-        # 且进世界后打印 `Using shaderpack: ComplementaryUnbound_r5.9.3.zip`。
+        # 且进世界后打印 `Using shaderpack: ComplementaryReimagined_r5.9.3.zip`。
         # 这里 SKIP 的只是**本函数的「下载渲染模组」一步**（生产 SRG jar 手工放进 run/mods 不会被重映射）。
         # ⚠️ 旧文案曾写「1.20.1 不装渲染栈 ⇒ 光影不可用」——**该说法已作废**（当时的结论来自「手工放
-        # run/mods」那条错路；改走 modImplementation 后光影正常）。光影包与 iris.properties 的写入
-        # 由本函数更早的 `Install-MtRenderStack` 步骤完成，1.20.1 同样生效。
-        Write-MtLine ("MT_MODS: SKIP(下载渲染模组) — {0} 的 Embeddium/Oculus 由 forge-1.20.1/build.gradle 的 modImplementation 提供（生产 SRG jar 必须经 MDG 重映射）；光影包与 iris.properties 已在前面落位，1.20.1 光影**可用**" -f $Paths.version)
-        return 0
+        # run/mods」那条错路；改走 modImplementation 后光影正常）。
+        # 2026-10-07 修正：此前本分支直接 return 0，**并没有**任何地方为 1.20.1 写光影配置
+        Write-MtLine ("MT_MODS: SKIP(下载渲染模组) — {0} 的 Embeddium/Oculus 由 forge-1.20.1/build.gradle 的 modImplementation 提供（生产 SRG jar 必须经 MDG 重映射）；本步只跳过这一项，光影包与加载器配置在下方照常落位" -f $Paths.version)
+        # （实测 run/1.20.1/config/oculus.properties 一直停留在旧包名 ComplementaryUnbound，故改为继续执行步骤 2/3。）
     }
 
     $cache = Join-Path (Join-Path (Get-MtRoot) 'temp\probe_mods') $Paths.version
@@ -1753,7 +1754,7 @@ function Invoke-MtEnvMods {
         # 「为什么不装」，避免后来者以为漏了。
         $rc = Install-MtCarpet -Paths $p
         if ($rc -ne 0) { return $rc }
-        Write-MtLine 'MT_MODS: OK — 26.1.2 dev run：探针运行时 + Sodium/Iris + Complementary Unbound 光影(默认启用) + 超平坦史莱姆压制 + 优化模组(ModernFix/FerriteCore)'
+        Write-MtLine 'MT_MODS: OK — 26.1.2 dev run：探针运行时 + Sodium/Iris + Complementary Reimagined 光影(默认启用) + 超平坦史莱姆压制 + 优化模组(ModernFix/FerriteCore)'
         Write-MtLine 'MT_MODS: 注意 — ImmediatelyFast 在 26.1.2 **故意不装**（与 Iris 开光影互斥，实测 Missing sampler 崩溃；见 $script:PerfMods2612 注释）。Sodium/Iris 为纯客户端模组：`mt_env world` 起专用服务器会自动移出，但**两段式数据生成（runClientData/runServerData）前必须手动移出** run/26.1.2/mods（与探针运行时同规则）'
         [void](Invoke-MtPauseLockEnforce -Paths $p)
     [void](Invoke-MtKeyBindingEnforce -Paths $p)
@@ -1783,7 +1784,12 @@ function Invoke-MtEnvMods {
         # modImplementation 提供（生产 SRG jar 必须经 MDG 重映射），本调用只回显来源并清理历史副本。
         $rc = Install-MtCarpet -Paths $p
         if ($rc -ne 0) { return $rc }
-        Write-MtLine 'MT_MODS: OK — 1.20.1 渲染栈（Embeddium/Oculus）与 FerriteCore 由 build.gradle 的 modImplementation 提供、光影包与光影加载器配置已落位（2026-09-17 实测：EMBEDDIUM_LOADED/OCULUS_LOADED=true + `Using shaderpack: ComplementaryUnbound_r5.9.3.zip`）；生产环境目录已校验'
+        # 光影包 + 光影加载器配置（2026-10-07 补：本分支此前**从不写** Oculus 配置，却回显「已落位」——
+        # 与 Install-MtRenderStack 的 .NOTES 口径不符；实测 run/1.20.1/config/oculus.properties 仍写着旧包名
+        # ComplementaryUnbound。Install-MtRenderStack 对缺规格的版本只补「光影包 + 配置」两件事，正是本条所需）。
+        $rc = Install-MtRenderStack -Paths $p
+        if ($rc -ne 0) { return $rc }
+        Write-MtLine 'MT_MODS: OK — 1.20.1 渲染栈（Embeddium/Oculus）与 FerriteCore 由 build.gradle 的 modImplementation 提供、光影包与光影加载器配置已落位（2026-09-17 实测：EMBEDDIUM_LOADED/OCULUS_LOADED=true + `Using shaderpack: ComplementaryReimagined_r5.9.3.zip`）；生产环境目录已校验'
         [void](Invoke-MtPauseLockEnforce -Paths $p)
     [void](Invoke-MtKeyBindingEnforce -Paths $p)
     [void](Invoke-MtWindowedEnforce -Paths $p)

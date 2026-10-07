@@ -931,7 +931,7 @@ pwsh -NoProfile -File scripts/test/mt_watchdog.ps1 -Version 1.21.1 [-StallSecond
 - 新增用例 3 条：`CRAFT-SMOKE-26.1.2`、`CHIP-RELOG-A-26.1.2`、`CHIP-RELOG-B-26.1.2`（后者为两阶段「重登」流程；`mt.ps1 --phase stop` 是强杀不存档，故准备阶段必须显式 `saveall`）。
 - 修工具链踩坑：「注入命令 + 长命令链」在超时被强杀时会连带杀掉**同一进程树里的游戏客户端**（实测一次），长流程请拆成多次调用、不要把 `stop → launch → case` 串在一条命令里。
 - 探针 `equipslot`/`putInSlot` 为**绕过校验的直接写入**，与真人操作不等价；用它做「跨存档留存」类断言时必须选**校验通过**的物品（筹码 → `curios:chip` 标签内），否则会得到假缺陷。
-- **测试环境渲染栈（26.1.2，按用户裁决全部改走 Modrinth Maven）**：`mt_env.ps1 mods --version 26.1.2` 新增 `Install-MtRenderStack`，从 `https://api.modrinth.com/maven/maven/modrinth/<slug>/<version>/<file>` 拉取并**体积 + SHA1 双校验**（缓存 `temp/probe_mods/26.1.2/`）：**Sodium `mc26.1.2-0.9.2-neoforge`**（2026-10-07 起钉最新版；当日复验证明崩溃开关是 dev-only 的 GL 校验、与 Sodium 版本无关，见文末「附录 A 续 51：光影崩溃归因终版」）、Iris `1.11.4+26.1-neoforge`、光影包 Complementary Shaders - Unbound `r5.9.3`（落到 `run/26.1.2/shaderpacks/`），并写 `run/26.1.2/config/iris.properties`。**`enableShaders=false` 是刻意默认**（测试不需要光影、省性能），**不是因为崩**——**「Sodium 0.9.1 下开光影正常」旧口径已于 2026-10-07 作废** —— 光影开 + GL 校验关（本仓 dev 默认）实测不崩、用例 PASS（见文末「附录 A 续 51：光影崩溃归因终版」）。阶段 L 回显 `SODIUM_LOADED` / `IRIS_LOADED` / `SHADERS=… pack=…` / `SHADERPACK_LOADED=…`（仅启用时才校验 `Using shaderpack:`，关闭时报 `n/a` 而非 WARN）。⚠️ 同批新增**渲染栈旧版本清理**：换了版本号以后 `Install-MtRemoteMod` 只放新文件、不删旧文件，`sodium-*`/`iris-*` 会新旧并存 ⇒ FML 报重复模组拒绝启动；故安装后按前缀 `sodium-`/`iris-` 删除不在本次规格中的 jar（前缀不带通配符，不会误删 `reeses-sodium-options-*`）。
+- **测试环境渲染栈（26.1.2，按用户裁决全部改走 Modrinth Maven）**：`mt_env.ps1 mods --version 26.1.2` 新增 `Install-MtRenderStack`，从 `https://api.modrinth.com/maven/maven/modrinth/<slug>/<version>/<file>` 拉取并**体积 + SHA1 双校验**（缓存 `temp/probe_mods/26.1.2/`）：**Sodium `mc26.1.2-0.9.2-neoforge`**（2026-10-07 起钉最新版；当日复验证明崩溃开关是 dev-only 的 GL 校验、与 Sodium 版本无关，见文末「附录 A 续 51：光影崩溃归因终版」）、Iris `1.11.4+26.1-neoforge`、光影包 Complementary Shaders - Reimagined `r5.9.3`（落到 `run/26.1.2/shaderpacks/`）（2026-10-07 用户裁决，见文末「附录 A 续 52」），并写 `run/26.1.2/config/iris.properties`。**`enableShaders=false` 是刻意默认**（测试不需要光影、省性能），**不是因为崩**——**「Sodium 0.9.1 下开光影正常」旧口径已于 2026-10-07 作废** —— 光影开 + GL 校验关（本仓 dev 默认）实测不崩、用例 PASS（见文末「附录 A 续 51：光影崩溃归因终版」）。阶段 L 回显 `SODIUM_LOADED` / `IRIS_LOADED` / `SHADERS=… pack=…` / `SHADERPACK_LOADED=…`（仅启用时才校验 `Using shaderpack:`，关闭时报 `n/a` 而非 WARN）。⚠️ 同批新增**渲染栈旧版本清理**：换了版本号以后 `Install-MtRemoteMod` 只放新文件、不删旧文件，`sodium-*`/`iris-*` 会新旧并存 ⇒ FML 报重复模组拒绝启动；故安装后按前缀 `sodium-`/`iris-` 删除不在本次规格中的 jar（前缀不带通配符，不会误删 `reeses-sodium-options-*`）。
 - **测试客户端搬到第二显示器并固定窗口尺寸（`--monitor` / `--size`，2026-09-17 用户要求「移到第二显示器，避免干扰观察」＋「窗口大小应控制在 1920x1080」）**：`lib/Mt.Win32.psm1` 新增 `Get-MtMonitors`（WinForms `Screen::AllScreens` → Index/Device/Primary/X/Y/W/H）、`Get-MtClientRect`（客户区=渲染区）与 `Move-MtWindowToMonitor`（**SW_RESTORE → SetWindowPos(居中) → 视参数 SW_MAXIMIZE**；已最大化的窗口直接 `SetWindowPos` 不会跨屏）；`mt_launch.ps1` 进入世界后（注入之前）查找窗口并搬移，默认显示器 **#1**、默认尺寸 **客户区 1920x1080**（`--monitor 0` 不搬移；`--size maximize|keep|<W>x<H>`；越界/单屏静默 `SKIP`）。`MT_WINDOW: OK` 回显「窗口矩形 + 客户区尺寸」，实测 1920x1080 客户区 ⇒ 外框 1936x1119。⚠️ **`--size` 按客户区口径**（外框 1920x1080 只会得到约 1904x1041 渲染区），边框差值由「外框 − 客户区」实测补足。⚠️ `Get-MtMonitors` 必须用 `@(...)` 接收：**不要**在函数里 `return ,$out`，那会把数组包成「一个元素」，`$mons.Count` 恒为 1、`$mons[1]` 取到整个数组（实测踩坑，已修正并有注释留痕）。
 - **就绪标记「先满足、后崩溃」的收口（2026-09-17）**：`mt_launch` 在就绪闸门之后新增一次崩溃报告复查（按 `LastWriteTime` 过滤本次启动之后的报告）。背景：26.1.2 开启光影时客户端在世界渲染首帧崩（`Missing sampler Sampler1`），而 `logged in with entity id` / `Loaded N advancements` **早已写入日志** ⇒ 旧实现会判「已就绪」并继续搬窗口/注入，下游只报出一串与真因无关的「客户端未在运行 / 注入失败」；现在直接 `MT_LAUNCH` 失败并指向具体 crash 文件。
 
@@ -3793,3 +3793,40 @@ brief 内**不喂结论**。结论与处置：
 **收尾**：`neoforge-26.1.2/build.gradle:147` 已还原为默认（校验关）、`run/26.1.2/mods` 回 `sodium-neoforge-0.9.2+mc26.1.2.jar`、`mt_env.ps1 shaders --version 26.1.2 --state off` 把 `enableShaders` 关回、客户端已停。
 - ⚠️ **同期未计入的 FAIL**：`temp/takeover/soak2.log`（16:32:24）内 `MODERNUI-26.1.2 = FAIL`，唯一失败 = assert[10] `[Astral Dice] Modern UI .{0,80}sStrokeColor` 未命中；成因 = 用例前置模组 Modern UI 未装在 `run/26.1.2/mods`（`Get-ChildItem run -Recurse -Filter *ModernUI*` 0 命中），**属环境依赖，不是崩溃或图形缺失**。
 - ⚠️ **crash-reports 现状**：前文「0 个」为 16:24–16:38 两轮读数；16:47 的人为校验恢复实验产出 `run/26.1.2/crash-reports/crash-2026-10-07_16.47.06-client.txt`（39380 B、sha256 273EF245…），现存 1 份。
+
+## 附录 A 续 52. 光影包换 Complementary Reimagined r5.9.3（三线钉版 + 1.20.1 配置写入缺陷修复）+ fabric-1.20.1 测试台首跑验证（2026-10-07）
+
+**动机（用户 2026-10-07 指令）**：① 本分支所有测试环境的光影包一律改为 Complementary Reimagined `r5.9.3`（用户已手动替换 zip，工具链与文档只做登记）；② 把主分支 `multi-main` 的 fabric-1.20.1 测试环境拉入本分支并测试可用性。
+
+**钉版变更**：`scripts/test/mt_env.ps1` 的 `$script:ShaderPack2612`（变量名保留，规格三线共用）五处同步为 `Name='ComplementaryReimagined_r5.9.3.zip'` / `Coord='maven.modrinth:complementary-reimagined:r5.9.3'` / `Url='https://api.modrinth.com/maven/maven/modrinth/complementary-reimagined/r5.9.3/ComplementaryReimagined_r5.9.3.zip'` / `Sha1='838139b54cddb56b2e83cd260d8efd960ac536d6'` / `Size=553397`。
+Modrinth 核验：项目 `complementary-reimagined`、version id `Bqen1mJX`（2026-09-15）、文件 `ComplementaryReimagined_r5.9.3.zip`、size 553397、sha1 `838139b54cddb56b2e83cd260d8efd960ac536d6`、Maven HEAD 200 / length 553397。
+
+**三线配置同步**（`mt_env.ps1 mods --version <V>`）：
+
+| 线 | 首跑 | 修后 | 加载器配置文件 / 最终值 |
+|---|---|---|---|
+| 1.21.1 | OK | OK | `run/1.21.1/config/iris.properties` = `shaderPack=ComplementaryReimagined_r5.9.3.zip` + `enableShaders=true` |
+| 26.1.2 | OK | OK | `run/26.1.2/config/iris.properties` = 同包名 + `enableShaders=false`（刻意默认关）|
+| 1.20.1 | **BLOCKED exit=11** | OK | `run/1.20.1/config/oculus.properties` = 同包名 + `enableShaders=true` |
+
+**BLOCKED 的两个根因（都已修）**：
+
+1. **整合包目录名过时**：`MT_MODS: BLOCKED — 生产环境目录不存在 D:\.minecraft\versions\1.20.1 模组测试\mods`。实测本机目录名为 `1.20.1-Fabric 模组测试` / `1.20.1-Forge 模组测试` / `26.1.2-NeoForge 模组测试`（`build.gradle` 侧 2026-09-29 已改对：`forge-1.20.1/build.gradle:419`、`neoforge-26.1.2/build.gradle:311`、`neoforge-1.21.1/build.gradle:303`）。
+   已改两处：① 纳管默认值 `scripts/test/lib/Mt.Paths.psm1:51-52`；② **git 忽略的机器本地** `scripts/test/mt.conf:14/:16`（`.gitignore:55` 忽略，但它是**有效值来源**，所以报错里显示的才是旧路径）⇒ `D:/.minecraft/versions/1.20.1-Forge 模组测试/mods` 与 `26.1.2-NeoForge 模组测试/mods`。
+   遗留（低优先）：`scripts/devtools/Start-SelfTest.ps1:91` 的用法示例仍写旧路径。
+2. **1.20.1 的光影配置从未被工具链真正写入（工具链谎言）**：原 `Install-MtRenderStack:1574-1585` 对 `$Paths.version -notin '1.21.1','26.1.2'` 直接 `return 0`，其 SKIP 注释还自相矛盾地说「写入由本函数更早的步骤完成」；而 `Invoke-MtEnvMods` 的 1.20.1 分支只校验生产目录 + 装优化模组，却回显「光影加载器配置已落位」⇒ 1.20.1 的 `oculus.properties` 一直是历史残留值。
+   **修法（两处最小面）**：① `mt_env.ps1:1574-1585` 改写 SKIP 文案并**删掉 `return 0`**，让 1.20.1 继续执行步骤 2（光影包下载/sha1 校验/落 `run/<V>/shaderpacks`）与步骤 3（经 `Get-MtIrisConfigFile` 写 `shaderPack=` + `enableShaders`）；② 1.20.1 分支（现 `:1787-1791`）调用 `Install-MtRenderStack -Paths $p` 并按 rc 早退。
+   验证：`mt_env.ps1 mods --version 1.20.1` → exit=0、`MT_MODS: 下载光影包 ComplementaryReimagined_r5.9.3.zip ← maven.modrinth:complementary-reimagined:r5.9.3`、`MT_MODS: OK — …光影加载器已选中该光影（enableShaders=true @ oculus.properties）`；`run/1.20.1/config/oculus.properties` mtime `2026-10-07 17:46:25` 已是新包名。
+
+**残包清理**：删除 3 个旧 Unbound 副本（`run/26.1.2/shaderpacks/`、`temp/probe_mods/1.21.1/`、`temp/probe_mods/26.1.2/`，各 553400 B）⇒ 三条线的 `run/<V>/shaderpacks/` 只剩 `ComplementaryReimagined_r5.9.3.zip`。
+
+**26.1.2 实机验证（换包后首次开光影冷启动）**：`mt_env.ps1 shaders --version 26.1.2 --state on` → `MT_SHADERS: false → on`；`MT_LAUNCH: OK (42s) — 已进入世界（quickplay=testworld）`；`SHADERPACK_LOADED=true` / `FERRITECORE_LOADED=true` / `SLIMEGUARD_LOADED=true` / `COLLECTIVE_LOADED=true`；`MT_SNAPSHOT: OK — latest=110280B debug=900204B`。
+`run/26.1.2/logs/latest.log`：`[0710月2026 17:46:58.913] [Render thread/INFO] [Iris/]: Using shaderpack: ComplementaryReimagined_r5.9.3.zip`、`[0710月2026 17:46:58.569] … Profile: HIGH (+0 options changed by user)`；非致命告警 = `Error while parsing the block ID map entry for block.10104` + `The block minecraft:stone_slab has no property with the name variant, ignoring!`（另有光影包自定义 uniform 的 `CustomUniforms.<init>` / `IrisRenderingPipeline.<init>` 栈，不崩）。
+截图取证：`mt_capture.ps1 capture -Version 26.1.2 -Tag shader-reimagined -Mode f2` → `MT_CAPTURE: OK — 2026-10-07_17.49.55.png`；`System.Drawing` 每 24 px 抽样 = 1920x1080 / avg RGB (147,166,150) / distinctColors=185 ⇒ 世界正常渲染、非黑屏；`run/26.1.2/crash-reports` 计数 0。
+收尾：`mt.ps1 --version 26.1.2 --phase stop` → `MT_CLEANUP_RESULT: OK` / `MT_STOP: OK (1s)`（残留 0）；随后 `mt_env.ps1 shaders --version 26.1.2 --state off` → `MT_SHADERS: true → off`。
+
+**未做（如实标注）**：1.21.1 / 1.20.1 的实机启动验证本轮**未跑**（1.20.1 的配置写入面是本轮新改，建议下次跑一次 `mt.ps1 --version 1.20.1 --phase launch` 看 `SHADERPACK_LOADED`）。
+
+**fabric-1.20.1 测试台**：本分支与 `multi-main` 的 `scripts/test/fabric/**` 逐字节相同 ⇒ 交付物 = 在本 worktree 把环境装配起来并实跑；装配步骤、5 条用例 PASS 读数、有界启动纪律见 `scripts/test/fabric/README.md` §7.2.9。
+
+**同期历史行（保留不改）**：`TESTING-SPEC.md` 内 `:916` / `:918` / `:1019` / `:1034` / `:1036` / `:1037` / `:1111` / `:1390` / `:3781` 仍含旧包名 —— 均为当时的真实读数；本附录即换包后的现行口径。
