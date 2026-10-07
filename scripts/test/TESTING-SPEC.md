@@ -3830,3 +3830,53 @@ Modrinth 核验：项目 `complementary-reimagined`、version id `Bqen1mJX`（20
 **fabric-1.20.1 测试台**：本分支与 `multi-main` 的 `scripts/test/fabric/**` 逐字节相同 ⇒ 交付物 = 在本 worktree 把环境装配起来并实跑；装配步骤、5 条用例 PASS 读数、有界启动纪律见 `scripts/test/fabric/README.md` §7.2.9。
 
 **同期历史行（保留不改）**：`TESTING-SPEC.md` 内 `:916` / `:918` / `:1019` / `:1034` / `:1036` / `:1037` / `:1111` / `:1390` / `:3781` 仍含旧包名 —— 均为当时的真实读数；本附录即换包后的现行口径。
+
+## 附录 A 续 53. 四张伤害效果牌「实机 + 视觉验证」+ 独立代码复核 + fabric 重复注册修复（2026-10-07）
+
+**动机（用户 m01410 原话要点）**：对效果牌重做后的代码执行子代理校验，并进行实机测试和视觉验证（激光效果、板砖砸击、轨道炮轰炸、爆破爆炸效果）。
+
+**口径**：26.1.2 dev run、`guiScale=2`、光影关、窗口 1920x1080（连拍抓客户区 1942x1136）。单轮触发 = `temp/fxrd/phase.ps1 <裸卡 id> <dist> <outDir> [confirmDelay] [frames] [intervalMs]`
+（⚠️ 卡 id 必须**传裸 id**，脚本自己拼 `astral_dice:` 前缀；传全 id 会得到 `astral_dice:astral_dice:...` 而静默空跑）。判据三层 = 服务端 `[TargetSelection] start/confirm ... -> SUCCESS`
++ 客户端 `AP_DNUM:evt=tick` 伤害数字 + 连拍帧像素级证据（PIL 工具 `temp/fxrd/{fxtab,rednew,newtop,top,diff,scan,strip}.py`，本机 python 无 numpy）。
+
+**机读链（四张牌全部 PASS）**：
+
+| 牌 | action / token | confirm | AP_DNUM damage | deg | 静态预测 |
+|---|---|---|---|---|---|
+| 对怪激光（两轮） | monster_laser / 1289474342 | SUCCESS | 3 / 4 | 3.21 | 4 |
+| 对怪板砖 | monster_brick / 1138652485 | SUCCESS | 5 | 13.45 | 6 |
+| 轨道炮 | orbital_strike / 185215700 | SUCCESS | 8 | 2.65 | 8 |
+| 定向爆破 | directional_blast / 1248927220 | SUCCESS | 5 | -29.13 | 5 |
+
+四轮共同点：伤害数字创建时刻 = confirm 后整 10 tick（`DELAY_TICKS`）、`rem` 以 20 tps 递减 ⇒ `launch -> advance -> 命中结算` 时序正确；
+`item/card/{MonsterLaser,MonsterBrick,OrbitalStrike,DirectionalBlast}CardItem.java:60` 各一行 `DamageCardFxScheduler.launch(Kind.XXX, serverLevel, caster, applyTo)`，
+`combat/DamageCardFxScheduler.java:184` 按栈归属 Kind（`MegasSignItem.java:102 -> performOrbitalBombardment(:232)` 是立牌的另一入口）。
+
+**画面证据**：
+
+- **激光**：命中红爆 `(186,26,26)/(172,32,32)`（0xFF2626 被贴图 alpha 压暗的同色相，f22→f25 新增 2971 px，bbox (900,473,1046,746)）+ 白闪 `(254,255,255)` 715 px +
+  绿数字 `(133,225,0)` 族 f25-f28（bbox 965..981 × 602..636 逐帧上浮）；**屏幕上半部无任何新红 ⇒ 竖直尘柱在 8 格距离下不可见**
+  （`drawBeam` 把 84 枚尘撒在 `headY+48`、y 向 spread=48，落入视锥概率约 0.4% ⇒ 属参数/设计问题，非渲染缺陷）。
+- **板砖**：绿数字 f24-f27（bbox 967..981 × 604..632）、命中前 f18-f23 = 0；`deg=13.45` 明显大于激光。
+- **轨道炮**：绿数字 f26-f30（bbox 963..979 × 600..694）；白色 f24 1939 → f27 6561 → f31 7807（END_ROD 34 + TOTEM_OF_UNDYING 18）；
+  f20 基线命中框内有选择器棱柱描边 `(254,86,86)` 5003 px + `(255,85,85)` 500 px、命中后消失；f27 新增 `(174,136,49)` 331 px（BEACON_COLOR 0xFFCF4A 被压暗）。
+- **定向爆破**：绿数字 f25-f30（bbox 951..975 × 598..636）；红族 4564 → 2396 → 4248 起伏且 bbox 左边界 795 → 721（EXPLOSION_EMITTER / 烟 / 火）、白色 7519 → 1442 → 2630。
+
+**独立代码复核（子代理 `review-264-evidence`，报告 `temp/fx-card-audit/REPORT.md`，33956 B / 309 行，只读）**：四张牌代码面功能正确（四线一致、差异 31~43 行全是平台 API/javadoc；
+`SpellDamageRegistry.java:241-295` 四个旧增伤修饰器 `isActive=false` ⇒ 无双计；FX 全由原版粒子 + `Display.BlockDisplay` + 音效构成，零 RenderType / GL 直调）。发现：
+
+- **缺陷 A（已修，本批）**：`fabric-1.20.1/src/main/java/com/merlinkitsune/astral_dice/AstralDiceMod.java:125/:126` 两行逐字节相同的
+  `LoaderBus.INSTANCE.register(DamageCardFxScheduler.class)`；`platform/event/LoaderBus.java` 的 `add()` 无去重、`platform/FabricBridges.java:124-126` 每服务端 tick 只 post 一次
+  ⇒ fabric 上 `process()` **每 tick 跑两遍**、FX 时长与伤害落地时点减半。修法 = 删第 126 行（`registerListeners()` 现 51 条注册类名全部唯一）。独立复核（`code_review`）判 PASS。
+- **缺陷 B（`.23` 独有，`.26/.27` 已修）**：手套按武装周期扩散 + 爆破 AOE 无去重 ⇒ 3~6 格交集目标双重结算。
+- **缺陷 C（未修，登记 KI-G5）**：`combat/DamageCardFxScheduler.java:211-213` 不检查 `spawnBrick` 返回 null 且恒 `return true`、`:403-405` 命中前静默 `return` ⇒ 牌已消耗但无砖/无伤害/无日志。
+- **缺陷 D（未修，登记 KI-G4）**：`event/DamageEffectCardHandler.java:95-101` 对任何 `card_spell` 播通用命中音（注释 :93 的前提已失效）⇒ 四张牌每次命中两声。
+- **KI-G6（未定位观察）**：板砖实测 5（预测 6）、激光 4/3（预测 4）⇒ ±1 偏差疑与 `effectCardDamageBonus` / 骰子态有关（静态预测基于 bonus=0）。
+- **套件缺口**：`scripts/test/cases/` 无任何四张牌行为用例（仅 `STACK-*.json` 各 4 条 `/give`）；建议新增 `FXCARD-{26.1.2,1.21.1,1.20.1}.json` + 负控（`confirm FAIL: target_type_mismatch`）
+  + 「订阅清单无重复」静态门（可捕获缺陷 A）+ KI-G3 的 `block_display` 残留断言。
+
+**工具链教训**：① `mt_inject cmd` 的 ESC 副作用会打开 `PauseScreen`（`AP_WALLET:evt=scr` 连报 7 个不同实例）⇒ 连拍约 f28 之后的帧不可用于分析（FX 窗口本身干净）；
+② 卡 id 传全 id ⇒ 静默空跑；③ 一次 `--tag-suffix` 参数非法会让整轮用例不执行。
+
+**同批落地**：版本四线 `.35 → .36`（两个 CHANGELOG 段头同步 + `#### 伤害与结算` / `#### Damage & Resolution` 新增 fabric 重复注册修复条目）；同批文档 = 本附录 + `KNOWN-ISSUES.md`（新增 KI-G4/G5/G6、§1 计数 25 → 28、变更记录一行）+ 两个 CHANGELOG 各一条「已修复BUG / Bug Fixes」。
+

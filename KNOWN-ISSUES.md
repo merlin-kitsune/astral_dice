@@ -40,6 +40,9 @@
   只登记未改）⇒ 未修/未决 **25 → 26**（G 组 0 → 1）。
 - ⚠️ **2026-10-06**：**KI-F8 已闭环**（四线三语文案已对齐代码稀有度 `bizarre()`，实测守门 `verify_rarity_consistency.py` C1 PASS）⇒ 按 §0 第 4 条已移入 §1.1 索引；未修/未决 **26 → 25**（F 组 8 → 7）。
 
+- ⚠️ **2026-10-07（四张伤害效果牌实机验证 + 代码复核批次）**：修复 **fabric 线重复注册**（`DamageCardFxScheduler` 登记两遍
+  ⇒ FX 时长与伤害落地时点减半，已改，见两个 CHANGELOG 与 `scripts/test/TESTING-SPEC.md` 附录 A 续 53）；同批**新增
+  KI-G4 / KI-G5 / KI-G6**（命中音叠加 / 砖头创建失败静默作废 / 伤害 ±1 偏差）⇒ 未修/未决 **25 → 28**（G 组 1 → 4）。
 ## 1.1 已处理索引（2026-10-01 首次清理）
 
 > **已修好的条目不再留在本清单的正文里**（清理规则见 §0 第 4 条）。本表只留「id + 一句话结论 + 证据落点」；
@@ -711,6 +714,29 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
   或整体改成纯粒子实现；两者都超出本次范围。
 - **建议**：若实机看到残留，用 `/kill @e[type=block_display]` 清理，并按上述两条路线之一修补。
 
+### KI-G4 ＝ 四张伤害效果牌的「通用命中音」被叠加播放（**只登记，未改**，2026-10-07）
+
+- **现象**：`event/DamageEffectCardHandler.java:95-101` 对任何 `card_spell` 伤害源播一条通用命中音；该处注释 :93 的
+  前提（「`card_spell` 唯一来源 = 活体书页」）在四张伤害效果牌重做后已失效 ⇒ 四张牌每次命中会听到**两声**
+  （牌自身 FX 的命中音 + 这条通用音）。
+- **修法建议**：把通用命中音限定到活体书页来源，或改由各 FX 自行播放、此处跳过 `DamageCardFxScheduler` 的四类 Kind。
+- **判据**：命中一次时客户端只应播出一条命中音（音效日志 + 帧对齐核对）。
+
+### KI-G5 ＝ 「对怪板砖」在砖头实体创建失败时整条 FX 静默作废（**只登记，未改**，2026-10-07）
+
+- **现象**：`combat/DamageCardFxScheduler.java:211-213` 不检查 `spawnBrick(level, origin)` 的返回值且恒 `return true`
+  （牌照常消耗、施放音照常播），而 `:403-405` 在 `p.display == null || isRemoved()` 时直接 `return` ⇒
+  **没有砖头、没有伤害、也没有任何日志**。
+- **修法建议**：`spawnBrick` 返回 null 时回落为「瞬时命中结算」或至少打一条 WARN，避免静默吞掉一次用牌。
+- **判据**：人为构造一次创建失败（例如同坐标已有实体 / 被 `/kill`），断言仍能结算伤害或至少留下日志。
+
+### KI-G6 ＝ 四张伤害效果牌实测伤害与静态预测存在 ±1 偏差（**未定位**，2026-10-07）
+
+- **读数**：板砖实测 5（静态预测 6）、激光两轮 4 与 3（预测 4）；轨道炮 8、爆破 5 与预测一致。
+- **嫌疑**：`effectCardDamageBonus` 或骰子态带来的可变增量（静态预测基于 bonus=0）；也可能与目标当刻状态有关，
+  未定位。
+- **建议**：探针把 bonus 与骰子态一并读出（同一次采样），或固定装备态复跑多轮取分布。
+
 ## 11. 变更记录
 
 | 日期 | 变更 |
@@ -765,3 +791,4 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
  两条曾提出的解释（Puzzles 注入不可取消 / 守卫重新施加效果）**均被独立 javap 复核推翻**
  ⇒ 登记为**未定位观察项**（KI-F25②(b)），不得写成「非产品缺陷」。③ 同时修掉**两个测试台缺陷**：`*>>` 捕获 `--phase launch` 会因游戏进程继承管道而**永不返回**（此前「case 阶段卡住」的真因）⇒ README §7.3/D8；`window: case` 的用例末尾再 `snapshot` 会**清空窗口**导致全部 `log` 断言假 FAIL ⇒ README §7.3/D9（`FAB-CATCHUP-PARITY` 同批已修）。④ 探针新增卫生项：`addEffect` 本模组效果后顺手 `EffectTimerGuard.forget`（**仅为无害卫生，非已证实根因**，见 KI-F25⑤）。§1 计数 26 → **25**（KI-G2 闭环 ⇒ G 组 1 → 0；KI-F25② 保留为「未定位观察项」，仍计入 F 组）。 |
 | 2026-10-07 | **KI-D1 复验：崩溃开关 = dev-only `GlRenderPass.VALIDATION`，与 Sodium 版本无关** —— 环境升到最新（Sodium `mc26.1.2-0.9.2-neoforge`）；默认 dev 配置（`-Dneoforge.disableGlValidation=true`）+ 光影开：存活 ≥6 分钟不崩（16:24 轮约 9 分钟、16:38 电池轮 ≥7.5 分钟）、`crash-reports` 为空（该轮；现存 1 份来自 16:47 人为校验恢复实验）、`TEX/DIAG/ECON/DAMAGE-NUMBER/WALLET-GUI-26.1.2` 与 `TARGETSEL-OVERLAY-26.1.2` 全 PASS（同期 `MODERNUI-26.1.2` 因未装 Modern UI 前置模组 FAIL，属环境依赖）、棱柱 ≈18.5k px 与 HUD 文字 720 px 正常 ⇒ 无图形缺失。临时恢复校验后 **0.9.2 与 0.9.1 同样立刻崩**（`crash-2026-10-07_16.33.43`（已被后续 launch 清理删除） / `crash-2026-10-07_16.47.06`，栈逐帧相同、帧上 mixin 全归 Iris、路径内无本模组帧）⇒「0.9.2 元凶 / 0.9.1 修复」口径**作废**，钉版保持 0.9.2。同轮只读审计（`gfx-audit-2612`）确认全部渲染点均走现代 Blaze3D、直接 GL 依赖为 0 ⇒ **无需 Blaze3D 重写**。 |
+| 2026-10-07 | **四张伤害效果牌「实机 + 视觉验证」+ 代码复核 + fabric 重复注册修复**：① 四张牌（对怪激光 / 对怪板砖 / 轨道炮 / 定向爆破）在 26.1.2 dev run 全部跑通机读链（服务端 `[TargetSelection] start/confirm ... -> SUCCESS` + 客户端 `AP_DNUM` 伤害数字 + 连拍帧像素证据），实测伤害 4 / 3（激光两轮）、5（板砖）、8（轨道炮）、5（爆破），数字创建时刻恒为 confirm 后 10 tick；② 独立子代理代码复核（`temp/fx-card-audit/REPORT.md`）判四张牌功能正确，并发现 fabric 线 `AstralDiceMod.java:125/:126` 重复注册 `DamageCardFxScheduler`（`LoaderBus.add` 无去重 + `FabricBridges` 每 tick 单次 post ⇒ `process()` 每 tick 跑两遍）⇒ **已删重复行**（另三条线为注解式注册、无同类问题）；③ 复核另发现两处未修缺陷与一处未定位偏差 ⇒ 新增 **KI-G4**（`DamageEffectCardHandler.java:95-101` 通用命中音叠加 ⇒ 每次命中两声）、**KI-G5**（`DamageCardFxScheduler.java:211-213` 不检查 `spawnBrick` 返回 null + `:403-405` 静默 return ⇒ 牌消耗但无砖无伤害无日志）、**KI-G6**（实测伤害 ±1 偏差未定位）；④ 登记四张牌无行为用例的套件缺口与实机工具链教训（PauseScreen 污染尾部帧、卡 id 必须传裸 id）⇒ §1 计数 25 → 28（G 组 1 → 4）。版本 `.35 → .36`。 |

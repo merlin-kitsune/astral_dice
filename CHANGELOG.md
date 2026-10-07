@@ -4,7 +4,7 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
-## Unreleased (2.0.0-SNAPSHOT.35)
+## Unreleased (2.0.0-SNAPSHOT.36)
 
 ### New Content
 
@@ -226,6 +226,15 @@
 
 #### Damage & Resolution
 
+- **Fixed doubled FX duration for the four damage effect cards on Fabric 1.20.1** (2026-10-07, Fabric line only):
+  the Fabric event-subscriber list registered `DamageCardFxScheduler` **twice in a row**, and the Fabric event bus
+  (`LoaderBus#add`) does not de-duplicate while dispatching that event once per server tick => the scheduler ran
+  **twice per tick**, halving every card's FX duration along with the moment its damage lands (delay 0.5 s -> 0.25 s,
+  beam lifetime 1 s -> 0.5 s, brick speed 3.2 -> 6.4 blocks per tick; the damage values themselves are unchanged).
+  The duplicate line is removed and all 51 registered class names are now unique (the other three lines register
+  their listeners by annotation and never had this duplicate).
+  Criteria: the bus reports exactly 1 listener for this class (2 before the fix), and the four cards FX durations
+  return to their nominal values on a cold start.
 - **Damage number display reworked** (user request 2026-09-26): numbers **no longer follow the target around** -
   the position is fixed at the moment the damage resolves and sent by the server; the existing drift-and-fade
   effect is kept, with an added **±30° random spread** so simultaneous numbers no longer overlap exactly.

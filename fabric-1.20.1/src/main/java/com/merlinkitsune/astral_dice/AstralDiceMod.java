@@ -123,7 +123,6 @@ public class AstralDiceMod implements ModInitializer {
      */
     private static void registerListeners() {
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.combat.DamageCardFxScheduler.class);
-        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.combat.DamageCardFxScheduler.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.combat.DamageNumberAggregator.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.combat.DiceCombatEvents.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.combat.OrbitalBombardmentManager.class);
