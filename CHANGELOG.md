@@ -4,7 +4,7 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
-## Unreleased (2.0.0-SNAPSHOT.48)
+## Unreleased (2.0.0-SNAPSHOT.49)
 
 ### New Content
 
@@ -253,6 +253,15 @@
 
 #### Damage & Resolution
 
+- **Fixed the four damage effect cards occasionally dealing 1 less damage** (2026-10-08): Monster Laser / Monster Brick /
+  Orbital Strike / Directional Blast deal **fixed** damage (4 / 6 / 8 / 5), but they used to be shaved by the vanilla
+  hurt-invulnerability rule - if the target had been hit by a **smaller** amount within the previous 9 ticks
+  (for example 1 point per second of daylight burning), the hit resolved as "this damage minus that smaller damage",
+  so the brick showed 5 and the laser 3. These four cards now follow the same rule as true damage / skill damage:
+  their damage is **no longer affected by the hurt-invulnerability window** and always lands at its listed value;
+  the Living Page and the Huo curse card now also always land their full spell damage. Targets overlapped by both the
+  "electric glove 3-block splash" and the "directional blast 6-block area" in one play are still settled only once
+  (that protection was already changed to explicit bookkeeping and is unrelated to this fix).
 - **Fixed doubled FX duration for the four damage effect cards on Fabric 1.20.1** (2026-10-07, Fabric line only):
   the Fabric event-subscriber list registered `DamageCardFxScheduler` **twice in a row**, and the Fabric event bus
   (`LoaderBus#add`) does not de-duplicate while dispatching that event once per server tick => the scheduler ran

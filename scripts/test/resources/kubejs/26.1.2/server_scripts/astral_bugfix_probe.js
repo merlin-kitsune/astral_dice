@@ -3318,8 +3318,10 @@ function doFenSplashRead(ctx, tag) {
 //  判据(全部在游戏内计算):
 //    · 基础伤害照旧吃护甲:ctrl_arm 的掉血 **明显小于** ctrl_bare(护甲 20/韧性 8 → 约 30%)
 //    · 效果牌那部分穿甲:armored_lift ≈ bare_lift(同一个 +4 加成,重甲靶与无甲靶掉血相同)
-//  说明:`astral_dice:true_damage` 只登记 bypasses_armor(未登记 bypasses_cooldown),
-//   故原版无敌帧的「amount − lastHurt」差额结算会体现在**绝对值**上;两靶同条件 ⇒ 差值可比。
+//  说明(2026-10-08 更正):本节初稿写「`astral_dice:true_damage` 只登记 bypasses_armor(未登记
+//   bypasses_cooldown)」—— 该前提自 2026-09-15 起已不成立(true_damage 已登记 bypasses_cooldown,
+//   见 `AGENTS.md` 真伤穿透无敌帧段),故本节读数不再受原版无敌帧「amount − lastHurt」差额影响;
+//   「两靶同条件 ⇒ 差值可比」的判据本身不变。
 // ════════════════════════════════════════════════════════════════════════════
 var spellState = null;
 

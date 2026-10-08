@@ -38,6 +38,14 @@ public class ModDamageTypes {
      * <p>它同样被登记进 {@code data/minecraft/tags/damage_type/bypasses_armor.json},
      * 因此基础伤害**完全跳过护甲值与盔甲韧性**(与旧实现「效果牌伤害走真伤」的口径等价),
      * 但仍会被保护附魔与抗性提升减免。
+     * <p><b>2026-10-08 增补</b>:本类型**同时登记** {@code data/minecraft/tags/damage_type/bypasses_cooldown.json}
+     * ⇒ 不再受原版受击无敌帧约束。旧口径只登记 {@code bypasses_armor} 的后果:目标若处于
+     * {@code invulnerableTime > 10} 的窗口内、且刚被**更小**的伤害打过(如正午日光燃烧每秒 1 点),原版
+     * {@code LivingEntity#hurtServer} 会走「差额结算」分支只扣 {@code damage - lastHurt} ⇒ 四张伤害效果牌
+     * (对怪激光 / 对怪板砖 / 轨道炮 / 定向爆破)实测伤害比常量少 1(板砖 6 → 5、激光 4 → 3)。同族的另外
+     * 5 个自定义类型早已全部登记该标签 ⇒ 本类型属**遗漏**,不是「单张书页只会命中一次」的取舍;
+     * 同一次用量内「手套 3 格扩散 ∩ 爆破 6 格 AOE」的重复结算由
+     * {@code DiceCombatEvents#runAsCardSplashResolution} + {@code #markCardSplashHit} 显式去重(不依赖标签表)。
      */
     public static final ResourceKey<DamageType> CARD_SPELL = ResourceKey.create(
             Registries.DAMAGE_TYPE,

@@ -231,10 +231,13 @@ public class DiceCombatEvents {
     // 同一次牌的结算里可能存在**两条独立枚举**:电击手套的 3 格扩散(在主目标命中内触发)与
     // 定向爆破自身的 6 格 AOE(combat/DamageCardFxScheduler#resolveBlast)。两者锚点相同
     // (都是那张牌的主目标)、且 3 ⊂ 6 ⇒ 交集必非空 ⇒ 交集目标会被交给 hurt() 两次。
-    // ⚠️ 这**不是**理论问题:此前只是「恰好」没翻倍 —— 手套扩散用 astral_dice:true_damage
+    // ⚠️ 这**不是**理论问题:改造前只是「恰好」没翻倍 —— 手套扩散用 astral_dice:true_damage
     //   (在 minecraft:bypasses_cooldown 里)先落地、并写无敌帧;爆破 AOE 用 astral_dice:card_spell
-    //   (不在该标签里)⇒ 被原版「无敌帧内不更高伤害予以差减」的规则削掉。这条保证依赖
+    //   (当时不在该标签里)⇒ 被原版「无敌帧内不更高伤害予以差减」的规则削掉。这条保证依赖
     //   **标签表内容 + 结算顺序**,任一处变化就会变成真·重复吃 ⇒ 改为**显式登记、先到先得**。
+    //   ⚠️ 2026-10-08:card_spell **已**追加登记进 bypasses_cooldown(为修「伤害效果牌实测 ±1 偏差」,
+    //   见 damage/ModDamageTypes 的 CARD_SPELL javadoc)⇒ 上述「恰好」前提**已不存在**,
+    //   去重从此**完全**由本段显式登记承担(标签层不再提供任何兜底)。
     // 只有「一次用量」期间为集合态(由承载该次用量的牌开启);其余时刻为 null ⇒ 登记恒放行,
     // 行为与改造前完全一致(单枚举的激光/板砖/轨道炮/活体书页不受影响)。
     private static java.util.Set<Entity> cardSplashResolved = null;
