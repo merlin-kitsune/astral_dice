@@ -3478,6 +3478,123 @@ function airbagApplyKill(entity) {
     } catch (e1) { return "ERR:" + exText(e1); }
 }
 
+// ── 2026-10-08 追加:安全气囊「对造成该伤害的施加者反击」实机取证 ──
+// 非亡灵(m02850 规则 2):掠夺者是 illager,非 undead ⇒ 正午不燃烧、不漂血。
+var AIRBAG_COUNTER_MOB = "minecraft:vindicator";
+
+/** 单次怪物近战强制命中(directEntity = 该 mob)。⚠️ 不重试:命中被气囊无效化时血量不降,重试会绕过气囊把玩家打死。 */
+function airbagCounterHit(p, mob) {
+    try { p.invulnerableTime = 0; } catch (e0) { /* 忽略 */ }
+    var tried = [];
+    try { mob.doHurtTarget(p.level, p); return "doHurtTarget2"; } catch (e1) { tried.push(exText(e1)); }
+    try { mob.doHurtTarget(p); return "doHurtTarget"; } catch (e2) { tried.push(exText(e2)); }
+    try { p.damage(1000.0, p.level.damageSources().mobAttack(mob)); return "damage"; } catch (e3) { tried.push(exText(e3)); }
+    try { p.hurt(p.level.damageSources().mobAttack(mob), 1000.0); return "hurt"; } catch (e4) { tried.push(exText(e4)); }
+    return "ERR:" + tried.join(";");
+}
+
+/** 自伤形态(施加者 = 玩家自己):用于验证「自伤不反击」守卫。 */
+function airbagCounterSelfHit(p) {
+    try { p.invulnerableTime = 0; } catch (e0) { /* 忽略 */ }
+    var tried = [];
+    try { p.damage(1000.0, p.level.damageSources().mobAttack(p)); return "damage"; } catch (e1) { tried.push(exText(e1)); }
+    try { p.hurt(p.level.damageSources().mobAttack(p), 1000.0); return "hurt"; } catch (e2) { tried.push(exText(e2)); }
+    return "ERR:" + tried.join(";");
+}
+
+/**
+ * 安全气囊追加能力取证:① 基线 + 装备(骰子 → chip 槽 → 气囊)+ 充能 6 + 冷却归零 + 血量压到 1(必判致命);
+ * ② 单次致命打击;③ 读数(玩家 存活/血量/充能/冷却 + 施加者血量前后差)。
+ *
+ * <p>mode:`mob` = 正例(非亡灵怪近战致命打击 ⇒ 应救下 + 充能 6→0 + 施加者掉血);
+ * `nocharge` = 负控(充能 0 ⇒ 不救、不反击、玩家死亡);
+ * `self` = 边界(施加者即本人 ⇒ 应救下但不反击)。
+ */
+/**
+ * 【2026-10-08 隔离测试】直接调用 `DiceCombatEvents.injectCounterDamage(player, mob)`。
+ *
+ * 气囊轮的读数只给出 `mob_delta=0`,无法区分两件事:
+ *   ① 气囊触发链没走到 `counterAttacker`(施加者解析失败等);
+ *   ② 走到了,但 `computeCounterDamage` 算出 ≤ 0(空手 weaponBase=1.0 + 攻击力修饰器 + 七咒)或
+ *      `attacker.hurt` 被拦。
+ * 本命令跳过气囊,直接注入,并 **持剑 / 空手各打一只同款靶** 做对照(共两个数据点);
+ * 读数为 `dealt1`(持剑)/`dealt2`(空手),另报 `ap`(战斗口径攻击力)与反击链状态。
+ */
+function airbagCounterDirectTest(ctx, tag) {
+    var line = "AP_" + tag + "_DIRECT";
+    var p = ctx.source.getPlayerOrException();
+    var dce = Java.loadClass("com.merlinkitsune.astral_dice.combat.DiceCombatEvents");
+    lpBaseline(ctx, p);
+    var dice = dnumEquipDice(p, CUTTER_DICE_ID);
+    try { p.setHealth(p.getMaxHealth()); } catch (e0) { /* 忽略 */ }
+    var out = "";
+    var sword = lpSetHand(p, "minecraft:iron_sword");
+    var m1 = spawnDummy(p, AIRBAG_COUNTER_MOB, 3);
+    if (m1 != null) { try { m1.setNoAi(true); } catch (e1) { /* 忽略 */ } }
+    var ap0 = cutterApNum(p);
+    var h10 = (m1 == null) ? -1 : rghp(m1);
+    var err1 = "-";
+    if (m1 != null) { try { dce.injectCounterDamage(p, m1); } catch (e2) { err1 = "ex:" + exText(e2); } }
+    var h11 = (m1 == null) ? -1 : rghp(m1);
+    out = out + ":sword_set=" + sword + ":ap=" + ap0 + ":mob1=" + ((m1 == null) ? -1 : m1.getId())
+        + ":h10=" + h10 + ":h11=" + h11 + ":dealt1=" + ((h10 < 0) ? -1 : (h10 - h11)) + ":err1=" + err1;
+    var bare = lpSetHand(p, "");
+    var m2 = spawnDummy(p, AIRBAG_COUNTER_MOB, 5);
+    if (m2 != null) { try { m2.setNoAi(true); } catch (e3) { /* 忽略 */ } }
+    var h20 = (m2 == null) ? -1 : rghp(m2);
+    var err2 = "-";
+    if (m2 != null) { try { dce.injectCounterDamage(p, m2); } catch (e4) { err2 = "ex:" + exText(e4); } }
+    var h21 = (m2 == null) ? -1 : rghp(m2);
+    out = out + ":bare_set=" + bare + ":ap2=" + cutterApNum(p) + ":mob2=" + ((m2 == null) ? -1 : m2.getId())
+        + ":h20=" + h20 + ":h21=" + h21 + ":dealt2=" + ((h20 < 0) ? -1 : (h20 - h21)) + ":err2=" + err2;
+    var chain = "-";
+    try { chain = dce.isInCounterChain(); } catch (e5) { chain = "ex:" + exText(e5); }
+    var ch = "-";
+    try { ch = airbagClasses().Charge.getStacks(p); } catch (e6) { ch = "ex"; }
+    send(ctx, line + ":dice=" + dice + ":chain_after=" + chain + ":charge=" + ch + out);
+    return 1;
+}
+
+
+function doAirbagCounter(ctx, tag, mode) {
+    var m = (mode == null || mode === "") ? "mob" : ("" + mode);
+    var line = "AP_" + tag + "_COUNTER";
+    var p = ctx.source.getPlayerOrException();
+    lpBaseline(ctx, p);
+    var cls = airbagClasses();
+    var item = resolveItem("astral_dice:airbag_chip");
+    if (item == null) { send(ctx, line + ":unknown_item:airbag_chip"); return 0; }
+    try { p.setGameMode(GameTypeClass.SURVIVAL); } catch (e0) { /* 忽略 */ }
+    // 【2026-10-08 修正】chip 槽数由骰子档位决定:`dice` 0★ = 0 槽(`ModItems` DiceTierRegistry),
+    // 旧写法 `dnumEquipDice(p)` 实测 `slot=chip_slot_insufficient:0/1:put=slot_overflow:chip:0`
+    // (气囊从未进槽 ⇒ 三条模式全废)。改用 `diamond_dice`(0★ = 2 槽,与美工刀用例同款)。
+    var dice = dnumEquipDice(p, CUTTER_DICE_ID);
+    var se = ensureChipSlot(p, CHIP_SLOT_MIN);
+    var pe = putInSlot(p, "chip", new ItemStack(item), 0);
+    try { cls.Charge.removeAll(p); } catch (e1) { /* 忽略 */ }
+    if (m !== "nocharge") { try { cls.Charge.addStacks(p, 6); } catch (e2) { /* 忽略 */ } }
+    try { ModAttachments.setAirbagCooldownEnd(p, 0); } catch (e3) { /* 忽略 */ }
+    try { p.setHealth(1.0); } catch (e4) { /* 忽略 */ }
+    var mob = null;
+    if (m !== "self") {
+        mob = spawnDummy(p, AIRBAG_COUNTER_MOB, 3);
+        if (mob == null) { send(ctx, line + ":no_mob:dice=" + dice); return 0; }
+        try { mob.setNoAi(true); } catch (e5) { /* 忽略 */ }
+    }
+    var hp0 = rghp(p);
+    var mobHp0 = (mob == null) ? -1 : rghp(mob);
+    var strike = (m === "self") ? airbagCounterSelfHit(p) : airbagCounterHit(p, mob);
+    var mobHp1 = (mob == null) ? -1 : rghp(mob);
+    send(ctx, line + ":mode=" + m + ":strike=" + strike + ":dice=" + dice
+        + ":slot=" + (se == null ? "ok" : se) + ":put=" + (pe == null ? "ok" : pe)
+        + ":hp0=" + hp0 + ":" + airbagState(p)
+        + ":mob=" + (mob == null ? "none" : mob.getId()) + ":mob_hp0=" + mobHp0
+        + ":mob_hp1=" + mobHp1 + ":mob_delta=" + ((mob == null || mobHp0 < 0) ? -1 : (mobHp0 - mobHp1)));
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+
 function doAirbagPrep(ctx, tag) {
     var p = ctx.source.getPlayerOrException();
     var item = resolveItem("astral_dice:airbag_chip");
@@ -14458,6 +14575,27 @@ ServerEvents.commandRegistry(event => {
                 .then(Commands.argument("tag", StringArg.word())
                     .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
                         return doAirbagReset(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            // ── 2026-10-08 追加:安全气囊「反击施加者」取证(mob / self / nocharge) ──
+            .then(Commands.literal("airbagcounter")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doAirbagCounter(ctx, StringArg.getString(ctx, "tag"), "mob");
+                    }))))
+            .then(Commands.literal("airbagcounterself")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doAirbagCounter(ctx, StringArg.getString(ctx, "tag"), "self");
+                    }))))
+            .then(Commands.literal("airbagcounternocharge")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doAirbagCounter(ctx, StringArg.getString(ctx, "tag"), "nocharge");
+                    }))))
+            .then(Commands.literal("airbagcounterdirect")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return airbagCounterDirectTest(ctx, StringArg.getString(ctx, "tag"));
                     }))))
             // ── 2026-09-15 B2 追加：C1 电击手套轮次归零解除武装 / C4 末影骰保命清 GLOWING ──
             .then(Commands.literal("gloveround")

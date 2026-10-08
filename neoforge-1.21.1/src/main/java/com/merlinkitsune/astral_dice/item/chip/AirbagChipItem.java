@@ -1,12 +1,15 @@
 package com.merlinkitsune.astral_dice.item.chip;
 
+import com.merlinkitsune.astral_dice.combat.DiceCombatEvents;
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.item.ChargeManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import top.theillusivec4.curios.api.CuriosApi;
 
@@ -44,8 +47,13 @@ public class AirbagChipItem extends BaseChipItem {
 
     /**
      * 受到致命伤害时调用:满足条件则消耗 6 点充能、进入 1:00 冷却,返回 true(本次伤害应被无效化)。
+     *
+     * <p>2026-10-08 用户裁决追加能力:无效化成功后,对「造成该次伤害的施加者」反击一次。
+     * 伤害口径与鼠鼠护盾 / 肉弹战车嘲讽 / 摩西破绽闪避的反击完全同源(见
+     * {@link DiceCombatEvents#injectCounterDamage});施加者取伤害源的击杀归属实体,
+     * 自伤(施加者即本人)与无归属来源(例如 {@code /kill} 的 generic_kill)一律不反击。
      */
-    public static boolean tryNegateFatal(Player player) {
+    public static boolean tryNegateFatal(Player player, DamageSource source) {
         if (player == null || player.level().isClientSide()) return false;
         if (!isEquipped(player)) return false;
         if (isOnCooldown(player)) return false;
@@ -61,6 +69,21 @@ public class AirbagChipItem extends BaseChipItem {
         }
         player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
                 SoundEvents.SHIELD_BLOCK, SoundSource.PLAYERS, 1.0F, 0.8F);
+        counterAttacker(player, source);
         return true;
+    }
+
+    /**
+     * 2026-10-08 用户裁决:安全气囊追加能力「对造成该伤害的施加者反击」。
+     *
+     * <p>与既有反击同源(复用 {@link DiceCombatEvents#injectCounterDamage}):伤害 = 手持最高近战武器
+     * 基础伤害 + 骰战攻击力加成链 + 已装备攻击牌随机掷骰;徒手按空手 1 点起算。
+     * 反击链内不会再反击 —— 递归由 {@code DiceCombatEvents} 的 counterDepth 守卫兜住。
+     */
+    private static void counterAttacker(Player player, DamageSource source) {
+        if (source == null) return;
+        if (!(source.getEntity() instanceof LivingEntity attacker)) return;
+        if (attacker == player) return;
+        DiceCombatEvents.injectCounterDamage(player, attacker);
     }
 }

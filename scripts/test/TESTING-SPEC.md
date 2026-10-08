@@ -4015,3 +4015,24 @@ mt.ps1 --version 线 --phase stop 关闭测试实例（gradle 守护进程保留
 - 复核 [P3] 两条与处置：① `BaseEffectCardItem` 的两参重载 javadoc 仍称「保留给『可对他人使用』的既有四张牌」，实际**已无调用者**（加急加快 / 奢华大餐 / 狂暴 走三参 `NON_HOSTILE`，你有我有 已迁四参）⇒ 四线已改写为「历史遗留的便捷重载({@code TargetType.PLAYER} 固定):当前无调用者 …… 保留仅为源码兼容,新牌请直接用四参重载」。② 本批新增文字以「`target_select_radius` 是可配置项」为前提，而该键**不存在** —— 前置库源 `F:/MCProject/starengine_lib_next/common/src/main/java/com/merlinkitsune/starenginelib/component/GameplayConstants.java:86-87` 明写「目标选择器:可指定目标的最大距离(格)。固定常量 16,不写入配置文件」+ `public static final int TARGET_SELECT_RADIUS = 16;`，同文件 `:114-129` 的 `applyConfig(GameplayConfigValues)` 不含该项、`GameplayConfigValues` 无对应字段，四线消费方亦无该键（2026-10-08 核实）⇒ 已把 AGENTS.md 四处（第 15 条 confirm 句与「各牌声明的初始射程」末句、缺省半径 bullet 头与尾）及两份 CHANGELOG 的「配置值 / 改公共配置 / 更大的配置值」措辞改为「前置库固定常量 16（不可配置）」，并写明本次 `confirm` 改动对现有动作**行为等价**、消除的是「将来该值可配置或新增声明 < 16 格的牌时服务端比客户端宽」的隐患。
 - 文档债（未在本批扩大改动范围，登记备查）：`BaseEffectCardItem`（四线 :202-203 / :228-230 / :239-240 / :303 附近）与 `TargetSelectionManager` 类 javadoc 里 2026-09-19/25 既有的「配置统一值 / 配置范围 1..32 / 配置 TARGET_SELECT_RADIUS」措辞同样源自前置库早期 javadoc，实际是固定常量 16；本次只改本批新增/改写的文字。
 - 复核方声明未验证：未编译、未运行（只做静态读 + git）；未核验前置库目标选择器注册表是否会被其它模组注册 < 16 声明半径的动作（跨模组理论边界）。
+
+## 附录 A 续 60. 安全气囊筹码追加「反击施加者」+ `AIRBAG-COUNTER-1.21.1` 用例（2026-10-08）
+
+- 动机（用户 2026-10-08 逐字）：「安全气囊筹码在原有技能上追加能力：“对造成该伤害的施加者反击”」。
+- 四线实现（12 文件 = 4 线 × `item/chip/AirbagChipItem.java` + `event/ChipDamageHandler.java` + `combat/DiceCombatEvents.java`；补丁器 `temp/airbag/patch_product.py` 幂等、MISS=0；四线 `:<线>:classes` 编译通过）：
+  - `AirbagChipItem.tryNegateFatal(Player)` → `tryNegateFatal(Player player, DamageSource source)`；在无效化成功路径（`playSound(...)` 之后、`return true;` 之前）插入 `counterAttacker(player, source);`。
+  - 新增 `private static void counterAttacker(Player player, DamageSource source)`：`source == null` / 施加者不是 `LivingEntity` / 施加者就是玩家本人 ⇒ 直接 return；否则 `DiceCombatEvents.injectCounterDamage(player, attacker)` —— **伤害公式完全复用既有反击口径**（见 `AGENTS.md`「反击伤害注入规范」），未新造数值。
+  - `DiceCombatEvents.injectCounterDamage` 由 `private` 提升为 `public`（供筹码侧复用，注释留痕）；`ChipDamageHandler` 两条路径（受击路径 + 死亡兜底）改传 `event.getSource()`。
+- 实机用例：新增 `scripts/test/cases/AIRBAG-COUNTER-1.21.1.json`（4091 B / 20 steps / 13 asserts / 纯 CRLF；靶用 `minecraft:vindicator` = **非亡灵**，守 m02850 规则 2），`pwsh -File scripts/test/mt.ps1 --version 1.21.1 --phase cases --case ...` ⇒ **`MT_CASE_RESULT: AIRBAG-COUNTER-1.21.1 = PASS`**（33 条 = 20 steps + 13 asserts，0 FAIL）。
+- 逐字读数（1.21.1 dev run，探针 `scripts/test/resources/kubejs/1.21.1/server_scripts/astral_bugfix_probe.js`）：
+  - 正例：`AP_D0_COUNTER:mode=mob:strike=doHurtTarget:dice=ok:slot=ok:put=ok:hp0=1:health=1:alive=1:equipped=1:chip=astral_dice:airbag_chip:charge=0:cd_end=26936:cd_left=1200:gametime=25736:mob=3:mob_hp0=24:mob_hp1=23:mob_delta=1`
+  - 自伤边界：`AP_D1_COUNTER:mode=self:strike=damage:...:alive=1:...:mob_delta=-1`
+  - 负控（无充能）：`AP_D2_COUNTER:mode=nocharge:strike=doHurtTarget:...:health=0:alive=0:...:charge=0:cd_end=0:...:mob_delta=0`
+- 工具链教训（本批实测，均已复现）：
+  1. **1.21.1 dev run 加载的是 `run/1.21.1/mods/<版本>.jar`，不是 `build/classes`**：`run/1.21.1/logs/debug.log` 逐字 `Considering mod file candidate ...\run\1.21.1\mods\astral_dice-2.0.0-SNAPSHOT.44+neoforge_1.21.1.jar` → `Found valid mod file ... versions {2.0.0-SNAPSHOT.44+neoforge_1.21.1}`；`javap -p` 该 jar 显示旧签名（`private static void injectCounterDamage(Player, LivingEntity)`、`tryNegateFatal(Player)`），而 `build/classes`（14:26:16）已是新码 ⇒ 「实机不反击」与 Rhino 报 `has no public instance field or method named "injectCounterDamage"` 都源于此。**改源码后必须重建并覆盖 `run/1.21.1/mods/`（launch 不会自动刷新；1.20.1 线同理但来源必须是 `build/devlibs`）。**
+  2. **chip 槽数量由骰子档位决定**：`astral_dice:dice` 0★ = 0 槽 ⇒ 探针报 `slot=chip_slot_insufficient:0/1` + `put=slot_overflow:chip:0` + `equipped=0`，气囊从未装备；必须装备 `astral_dice:diamond_dice`（0★ = 2 槽）等含 chip 槽的骰子（探针已改用 `CUTTER_DICE_ID`）。
+  3. **kubejs 脚本改动需冷启动才生效**（启动器原话）；热注入只对游戏内命令有效。
+  4. **空手反击基线为 1.0**：`DiceCombatEvents.computeCounterDamage` 里 `highestHeldMeleeBaseDamage` 从 `double best = 1.0;` 起算 ⇒ 正例 `mob_delta=1` 与该基线一致。
+  5. **pwsh 静默失败两种诱因**：命令里出现字面全角引号 U+201C/U+201D 会让整条命令 exit 1 且零输出（改用 `[char]0x201C`）；单条写入命令 ≳2 KB（here-string + `WriteAllText`）同样静默失败（按 ~1 KB 分段并即时核对文件字节数）。
+- 未验证项（声明）：① 26.1.2 / 1.20.1 只做了 `:<线>:classes` 编译与静态核对，**未实机验证**（四线同构源于既有 `injectCounterDamage` 共用口径）② 多人（双客户端）未测 —— 本能力只涉及服务端伤害注入 ③ 探针只改 1.21.1 模板（1.20.1 / 26.1.2 探针按线分叉）。
+- 复核记录（DSH code_review，run e8698197-b1a3-453d-a40b-45831ed14eed，对象 = 本批未提交工作树）：R1 签名/调用点完整性、R2 判定链与伤害源归属、R3 `injectCounterDamage` 可见性变更与递归保护、R5 用例与探针自洽性均 SUPPORTED；R4 部分成立 → 三条 P3 已修：(1) 四线 `AirbagChipItem.java` javadoc 误写「怪力侦探嘲讽」⇒ 改「肉弹战车嘲讽」；(2) 本附录段末缺末尾换行 ⇒ 已补；(3) 英文 CHANGELOG 把枪匠「破绽」写成 Opening ⇒ 改 Broken（与 `en_us.json` 的 `effect.astral_dice.moses_broken` 一致）。

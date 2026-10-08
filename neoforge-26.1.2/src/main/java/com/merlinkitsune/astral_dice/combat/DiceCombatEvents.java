@@ -1817,7 +1817,8 @@ public class DiceCombatEvents {
     // 对当前目标注入一次反击伤害(视为玩家伤害来源,不进入骰战结算/不递归触发)
     // 结构性递归截断:本方法自身拒绝在反击链中再入——即使将来新增调用点忘记加守卫,
     // 反击链也不可能自我递归(而不是"限制递归层数"这类可被绕过的软限制)。
-    private static void injectCounterDamage(Player player, LivingEntity attacker) {
+    // 2026-10-08 起同时被安全气囊筹码复用(见 item/chip/AirbagChipItem#counterAttacker) ⇒ 提升为 public。
+    public static void injectCounterDamage(Player player, LivingEntity attacker) {
         if (isInCounterChain()) return;
         // 整个「反击伤害计算 + 注入」都必须落在反击链内:计算过程本身也会造成伤害——
         // computeCounterDamage → rollCombatDie → CrimsonDiceHandler.rollD6 掷出 1 时会对掷骰者

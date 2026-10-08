@@ -1,0 +1,45 @@
+{
+  "case_id": "AIRBAG-COUNTER-1.21.1",
+  "title": "安全气囊筹码追加能力(2026-10-08 用户裁决)：无效化致命伤成功后对造成该伤害的施加者反击一次",
+  "version": "1.21.1",
+  "target": { "type": "feature", "ref": "airbag-chip-counter" },
+  "on_fail": "keep_game_running",
+  "steps": [
+    { "op": "note", "text": "目的：验证 2026-10-08 用户裁决「安全气囊筹码在原有技能上追加能力：对造成该伤害的施加者反击」。\n\n三条判据：\n① 正例(mode=mob)：玩家 1 HP 挨致命一击 ⇒ 气囊无效化(health=1:alive=1) + 攻击者掉血(mob_delta>=1)。靶用 minecraft:vindicator(非亡灵，守 m02850 规则 2)。\n② 自伤边界(mode=self)：施加者是自己 ⇒ 仍无效化，但不反击(mob_delta=-1 = 无靶)。\n③ 负控(mode=nocharge)：无充能 ⇒ 不无效化、玩家死亡(health=0:alive=0)、攻击者不掉血(mob_delta=0)。\n\n读数全部来自 1.21.1 探针 scripts/test/resources/kubejs/1.21.1/server_scripts/astral_bugfix_probe.js 的 AP_D<n>_COUNTER 行。\n气囊会进 chip 槽的前提：骰子必须提供 chip 槽(dice 0★=0 槽 ⇒ 探针用 diamond_dice)。" },
+    { "op": "inject_command", "command": "/gamemode survival", "no_esc": true },
+    { "op": "wait", "ms": 600 },
+    { "op": "inject_command", "command": "/gamerule doDaylightCycle false", "no_esc": true },
+    { "op": "inject_command", "command": "/time set noon", "no_esc": true },
+    { "op": "inject_command", "command": "/weather clear", "no_esc": true },
+    { "op": "wait", "ms": 300 },
+    { "op": "inject_command", "command": "/kill @e[type=!player,distance=..64]", "no_esc": true },
+    { "op": "wait", "ms": 500 },
+    { "op": "inject_command", "command": "/tp @s ~ ~ ~ 0 0", "no_esc": true },
+    { "op": "wait", "ms": 400 }
+    ,
+    { "op": "note", "text": "【D0】正例(mode=mob)：玩家 1 HP 挨 minecraft:vindicator 的一击 ⇒ 期望 AP_D0_COUNTER 出现 equipped=1:chip=astral_dice:airbag_chip（气囊确实在槽）、alive=1:health=1（无效化成功）、charge=0（充能被消耗）、cd_end=gametime+1200、mob_delta>=1（反击打到施加者）。" },
+    { "op": "inject_command", "command": "/astralprobe airbagcounter D0", "no_esc": true },
+    { "op": "wait", "ms": 1400 },
+    { "op": "note", "text": "【D1】自伤边界(mode=self)：施加者 = 玩家本人 ⇒ 期望 alive=1（仍无效化）但 mob_delta=-1（没有靶，且自伤不反击）。" },
+    { "op": "inject_command", "command": "/astralprobe airbagcounterself D1", "no_esc": true },
+    { "op": "wait", "ms": 1400 },
+    { "op": "note", "text": "【D2】负控(mode=nocharge)：不给充能 ⇒ 期望 alive=0:health=0（不无效化，玩家死亡）且 mob_delta=0（没有反击）。此拍会让玩家死亡，故放最后。" },
+    { "op": "inject_command", "command": "/astralprobe airbagcounternocharge D2", "no_esc": true },
+    { "op": "wait", "ms": 1400 }
+  ],
+  "asserts": [
+    { "type": "mixin" },
+    { "type": "kubejs" },
+    { "type": "crash" },
+    { "type": "log", "source": "latest", "pattern": "AP_D0_COUNTER:mode=mob:.*strike=[a-zA-Z]+:" },
+    { "type": "log", "source": "latest", "pattern": "AP_D0_COUNTER:.*equipped=1:chip=astral_dice:airbag_chip:" },
+    { "type": "log", "source": "latest", "pattern": "AP_D0_COUNTER:.*alive=1:.*charge=0:cd_end=[0-9]+:cd_left=1200:" },
+    { "type": "log", "source": "latest", "pattern": "AP_D0_COUNTER:.*mob_delta=[1-9][0-9]*" },
+    { "type": "log", "source": "latest", "pattern": "AP_D1_COUNTER:mode=self:.*alive=1:.*mob_delta=-1" },
+    { "type": "log", "source": "latest", "pattern": "AP_D2_COUNTER:mode=nocharge:.*alive=0:.*mob_delta=0" },
+    { "type": "log", "source": "latest", "pattern": "AP_D[0-2]_DONE" },
+    { "type": "absent", "source": "latest", "pattern": "chip_slot_insufficient" },
+    { "type": "absent", "source": "latest", "pattern": "AP_[A-Z0-9]+_EX:" },
+    { "type": "absent", "source": "latest", "pattern": "Unknown or incomplete command|未知或不完整的命令" }
+  ]
+}

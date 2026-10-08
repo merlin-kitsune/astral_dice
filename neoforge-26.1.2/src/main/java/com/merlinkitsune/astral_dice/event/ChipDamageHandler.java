@@ -72,7 +72,7 @@ public final class ChipDamageHandler {
         // 故须把待判定伤害换算为"吸收后仍会扣的生命" = damage - getAbsorptionAmount()(下限 0)。
         // 该换算**喂给气囊与磨刀石**(2026-09-24 起磨刀石同口径);1.20.1 侧对应事件本身已在吸收之后,不做换算。
         float damageAfterAbsorption = Math.max(0.0F, damage - player.getAbsorptionAmount());
-        if (damageAfterAbsorption >= player.getHealth() && AirbagChipItem.tryNegateFatal(player)) {
+        if (damageAfterAbsorption >= player.getHealth() && AirbagChipItem.tryNegateFatal(player, event.getSource())) {
             event.setNewDamage(0.0F);
             return;
         }
@@ -133,7 +133,7 @@ public final class ChipDamageHandler {
         if (event.isCanceled()) return;
         // 虚空击杀不可被保命阻止(见 onLivingDamagePre);/kill(generic_kill)维持现状(照旧可救)
         if (event.getSource().is(DamageTypes.FELL_OUT_OF_WORLD)) return;
-        if (!AirbagChipItem.tryNegateFatal(player)) return;
+        if (!AirbagChipItem.tryNegateFatal(player, event.getSource())) return;
 
         event.setCanceled(true);
         player.setHealth(Math.max(1.0F, player.getHealth()));

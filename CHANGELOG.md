@@ -4,7 +4,7 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
-## Unreleased (2.0.0-SNAPSHOT.44)
+## Unreleased (2.0.0-SNAPSHOT.45)
 
 ### New Content
 
@@ -208,6 +208,14 @@
   For **"Directional Blast"** the spread is computed **once, from its primary target only**, and resolved
   independently from the blast's own 6-block area damage — the two no longer trigger each other (no recursive damage).
   **A target that has already taken one spread hit will not take it again**: targets inside the overlap with the blast's own 6-block area are resolved once only (the spread lands first and the blast only fills the outer ring), instead of relying on vanilla's hurt-invulnerability window to cancel the second hit by accident.
+- **The "Airbag" chip gained a follow-up ability** (user ruling, 2026-10-08): once it negates a lethal hit, it now
+  **counters the attacker that dealt that damage** with a single counterattack, on the same damage pipeline as the
+  other counter sources (the Pandaman sign's taunt / the Gunsmith sign's "Broken", i.e.
+  `DiceCombatEvents.injectCounterDamage`): the base damage of the highest melee weapon in hand (bare-handed 1.0)
+  plus the dice-battle attack bonuses and the equipped attack cards' rolls, then the seven-curses reduction, and
+  optionally the "all-out attack" x1.5. Self-inflicted damage and sources with no attributable attacker (e.g.
+  `/kill`'s `generic_kill`) are never countered; the negation itself, the 6-charge cost, the 1:00 cooldown and every
+  other rule are unchanged (both loaders).
 
 #### Platform & Compatibility
 

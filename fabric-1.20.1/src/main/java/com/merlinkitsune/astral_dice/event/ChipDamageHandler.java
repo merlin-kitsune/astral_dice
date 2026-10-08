@@ -68,7 +68,7 @@ public final class ChipDamageHandler {
         // 1.20.1 的 LivingDamageEvent 由 ForgeHooks.onLivingDamage 在
         // forge-1.20.1-47.4.10 LivingEntity#actuallyHurt L1680 派发,晚于 L1669-1670 的吸收结算,
         // 传入的 damage 已是"吸收后仍会扣的生命值"⇒ 直接与生命值比较即为同一口径。
-        if (damage >= player.getHealth() && AirbagChipItem.tryNegateFatal(player)) {
+        if (damage >= player.getHealth() && AirbagChipItem.tryNegateFatal(player, event.getSource())) {
             event.setAmount(0.0F);
             return;
         }
@@ -118,7 +118,7 @@ public final class ChipDamageHandler {
         if (event.isCanceled()) return;
         // 虚空击杀不可被保命阻止(见 onLivingDamage);/kill(generic_kill)维持现状(照旧可救)
         if (event.getSource().is(DamageTypes.FELL_OUT_OF_WORLD)) return;
-        if (!AirbagChipItem.tryNegateFatal(player)) return;
+        if (!AirbagChipItem.tryNegateFatal(player, event.getSource())) return;
 
         event.setCanceled(true);
         player.setHealth(Math.max(1.0F, player.getHealth()));

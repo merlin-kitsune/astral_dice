@@ -1354,8 +1354,9 @@ When extending this workspace:
 - **当前触发源**:
   - 肉弹战车立牌「嘲讽」:被嘲讽目标攻击施加者时触发一次反击伤害。
   - 枪匠立牌「破绽」:带破绽目标攻击枪匠被闪避后,自动触发一次反击伤害。
+  - 安全气囊筹码「无效化」(`item/chip/AirbagChipItem#counterAttacker`,2026-10-08 用户裁决):无效化致命伤成功后,对**造成该次伤害的施加者**反击一次(施加者取 `DamageSource.getEntity()`;自伤与无归属来源(例如 `/kill` 的 `generic_kill`)不反击;伤害口径与上两条完全同源,由 `injectCounterDamage` 统一执行)。
 - **单次伤害公式**:手持(主手+副手)伤害最高的近战武器基础伤害(不含附魔;无近战武器按空手 1.0)+ 骰战攻击力加成链(`DiceCombatModifiers` 攻击修饰器)+ 已装备攻击牌随机掷骰(`ctx.attackCardSum`);**不含 1d6、不自动赐福**。随后对总伤害计算七咒减益(`applyCurseToDicePoints`),并可受「全力攻击」×1.5 修正;肉弹战车立牌装备时若生命未满再附加缺失生命值等值伤害。
-- **注入方式**:以玩家为伤害来源经 `hurt()` 单次结算(目标护甲按原版减伤;击杀计入玩家击杀来源),由 `DiceCombatEvents.injectCounterDamage` 统一执行。
+- **注入方式**:以玩家为伤害来源经 `hurt()` 单次结算(目标护甲按原版减伤;击杀计入玩家击杀来源),由 `DiceCombatEvents.injectCounterDamage` 统一执行(**2026-10-08 起该方法为 `public`** —— 安全气囊筹码与效果牌侧共建共用)。
 - **递归保护**:`DiceCombatEvents.counterDepth` **深度计数**包裹注入伤害结算,`onLivingDamagePre` 顶部以 `if (isInternalAoe() || counterDepth > 0) return;` 统一早退,防止注入伤害再次进入骰战结算/递归触发。⚠️ **2026-10-05**:AOE 窗口的 `aoeProcessing` **布尔**已同批升级为 `aoeDepth` 深度计数 + `beginAoe()/endAoe()`(理由见本节「扩散伤害…递归防护口径」条)。
 
 ## 充能流派规范（Charge System）— 必须遵守
