@@ -4036,3 +4036,13 @@ mt.ps1 --version 线 --phase stop 关闭测试实例（gradle 守护进程保留
   5. **pwsh 静默失败两种诱因**：命令里出现字面全角引号 U+201C/U+201D 会让整条命令 exit 1 且零输出（改用 `[char]0x201C`）；单条写入命令 ≳2 KB（here-string + `WriteAllText`）同样静默失败（按 ~1 KB 分段并即时核对文件字节数）。
 - 未验证项（声明）：① 26.1.2 / 1.20.1 只做了 `:<线>:classes` 编译与静态核对，**未实机验证**（四线同构源于既有 `injectCounterDamage` 共用口径）② 多人（双客户端）未测 —— 本能力只涉及服务端伤害注入 ③ 探针只改 1.21.1 模板（1.20.1 / 26.1.2 探针按线分叉）。
 - 复核记录（DSH code_review，run e8698197-b1a3-453d-a40b-45831ed14eed，对象 = 本批未提交工作树）：R1 签名/调用点完整性、R2 判定链与伤害源归属、R3 `injectCounterDamage` 可见性变更与递归保护、R5 用例与探针自洽性均 SUPPORTED；R4 部分成立 → 三条 P3 已修：(1) 四线 `AirbagChipItem.java` javadoc 误写「怪力侦探嘲讽」⇒ 改「肉弹战车嘲讽」；(2) 本附录段末缺末尾换行 ⇒ 已补；(3) 英文 CHANGELOG 把枪匠「破绽」写成 Opening ⇒ 改 Broken（与 `en_us.json` 的 `effect.astral_dice.moses_broken` 一致）。
+## 附录 A 续 61. 实机验证门槛（须用户点名下指令）+ 每轮实机后清理旧存档（2026-10-08 用户裁决）
+
+- 动机（用户 2026-10-08 逐字）：修改规则：实机验证必须用户在提示词中下达才可进行，agent默认情况下只进行代码功能验证。每轮对话实机验证后清理旧存档。
+- 规则正本 = `AGENTS.md`〈子代理与测试环境硬规则〉**第 5 条**（实机门槛）与**第 3 条新增尾句**（收尾一律 `--purge-saves`）。
+- 落地口径：
+  - 默认（未被点名实机）只做**代码功能验证**：静态取证与逐字对账、`& .\gradlew.bat :<线>:classes`（或四线 `build`）、DSH `code_review`、`scripts/verify/**` 守门脚本、用例 JSON 与文档的 CRLF / 条目一致性核对；**不启动 dev 客户端**（不跑实机、连拍、探针、用例）。
+  - 用户点名实机时，收尾命令 = `pwsh -File scripts/test/mt.ps1 --version <线> --phase stop --purge-saves`；成功判据 = `MT_CLEANUP: 已清理旧存档 <path>` + `MT_CLEANUP_SAVES: PURGED <n>` + `MT_CLEANUP_RESULT: OK` + `MT_STOP: OK`。
+  - `--purge-saves` 实现（`scripts/test/mt_cleanup.ps1:161-200` 与 `:311-321`）：**在进程收停之后**删除 `run/<版本>/` 内本次测试流程的世界目录（`Mt.Paths` 派生的 `client_world` / `server_world`，以及 `<run>/saves` 下含 `level.dat` 的目录，避免误删手工放置文件）；`.mt_keep_alive` 存在时整体 SKIP（保留取证现场）。
+  - 该纪律沿用 2026-09-17 既有先例（`mt_cleanup.ps1:22`「测试任务完成后关闭测试端并清理旧存档数据」）；本次裁决把 `--purge-saves` 从「可选」升为**每轮实机验证收尾的默认动作**。
+- 影响与挂账：本轮起不再主动实机；既有实机欠账（26.1.2 / 1.20.1 安全气囊未实机、规则 2 存量整改 11 用例 + 7 探针仍以 zombie 为靶、`FXCARD-SCALE05-26.1.2.json` 用例与 `AP_FXDISP` 探针、`view_range 2.0F` 评估、板砖 0.5 格红砖外观待目视）继续挂账，等用户点名下指令再补。

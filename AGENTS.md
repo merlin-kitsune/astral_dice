@@ -81,9 +81,12 @@ When extending this workspace:
 3. **测试流程结束后必须关闭测试用游戏实例**：收尾时执行 pwsh -File scripts/test/mt.ps1 --version 线 --phase stop，
    确认 MT_STOP: OK 且无本流程 java 客户端残留（gradle 守护进程保留属正常）；禁止让客户端无人观察地驻留 ——
    它会持续占用 CPU / GPU、污染下一次冷启动前置状态，并让 enableShaders 之类的运行期状态被意外持久化。
+   **收尾一律带 `--purge-saves`**（2026-10-08 用户裁决：每轮实机验证后清理旧存档）：标准收尾命令 = `pwsh -File scripts/test/mt.ps1 --version <线> --phase stop --purge-saves`，成功判据 = `MT_CLEANUP_SAVES: PURGED <n>` + `MT_CLEANUP_RESULT: OK`；`.mt_keep_alive` 存在时只提示、保留取证现场。
 
 4. **二次验证（复核）一律改用 DSH 原生代码审查（code_review），不再派 subagent / teammate**：每次复核 = **一次性独立会话、不复用**；
    调用时把「复核对象（提交或文件范围）+ 背景 + 逐项判据（R1..Rn）+ 输出要求（判定 SUPPORTED / REFUTED / 部分成立 + 逐字证据 文件:行号 + 未验证项 + 最小修法）」**一次性写全**（会话干净，不给它沿用上下文的机会）。代码修改仍按第 1 条（每线一个新 subagent、单任务、用完即弃）；复核不再由 subagent 承担。
+
+5. **实机验证必须由用户在提示词中明确下达**（2026-10-08 用户裁决）：默认情况下 agent 只做**代码功能验证** —— 静态取证与逐字对账、`:<线>:classes` 编译、`code_review`、`scripts/verify/**` 守门脚本、用例 JSON 与文档的一致性/行尾核对；**不得**自行启动 dev 客户端跑实机、连拍、探针或用例。用户明确要求实机时才执行，且收尾按第 3 条带 `--purge-saves`；未实机的欠账如实登记在交付报告里，等用户点名下指令再补。
 
 ## 命令执行规范（Shell）— 必须遵守（2026-09-19 用户裁决）
 
