@@ -23,8 +23,10 @@ public class ModBlocks {
             DeferredRegister.create(ForgeRegistries.BLOCKS, AstralDiceMod.MODID);
 
     public static final RegistryObject<Block> CARD_SHOP = BLOCKS.register("card_shop",
+            // noOcclusion：模型只有 14.5/16 格高，不是满方块 —— 不声明会让贴着本方块的相邻面被错误剔除（出现透视/黑面）
             () -> new CardShopBlock(BlockBehaviour.Properties.of()
                     .mapColor(MapColor.WOOD)
                     .strength(2.5F)
-                    .sound(SoundType.WOOD)));
+                    .sound(SoundType.WOOD)
+                    .noOcclusion()));
 }

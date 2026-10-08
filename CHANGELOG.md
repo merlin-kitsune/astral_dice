@@ -4,7 +4,7 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
-## Unreleased (2.0.0-SNAPSHOT.52)
+## Unreleased (2.0.0-SNAPSHOT.53)
 
 ### New Content
 
@@ -97,6 +97,11 @@
   **if you do not drop it onto the inventory the card simply returns** (no Star Coins are charged); **you cannot start dragging
   while short on Star Coins** (a red hint shows the price); dropping onto an occupied slot asks you to pick another; **only a
   correct drop charges you**. Starlight exchange is still **2:1 with no cooldown**.
+- **The Card Shop block now uses a new Blockbench model** (2026-10-08): the placeholder cube is replaced by a **wooden counter with a
+  glass display window** — dark wood body, light counter top, brass corner fittings and card display slots — standing slightly under
+  one block tall (14.5/16). Its **collision and selection boxes now follow the visible shape** (no longer a full solid cube), the
+  transparent parts render as **cutout**, and the inventory icon uses the same new 3D model.
+
 
 ### Content & Balance
 

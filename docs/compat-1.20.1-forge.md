@@ -163,3 +163,10 @@ datagen:`RecipeOutput` → `Consumer<FinishedRecipe>`(`.save(output::accept)`);`
 5. **`blit`**：本批**无**差异 —— 1.21.1 侧本就用 10 参重载（`blitOffset=0`），1.20.1 同形可编译（§十 第 9 条在本批再次得到验证）。
 6. **`containerTick()`**：两线同形覆写（§十 第 8 条的纠错在本批生效）。
 7. **对等证据**：两线 `CardShopScreen` / `CardShopMenu` 去掉 import 与类 javadoc 后的**行级 LCS diff 各仅 16 行**，全部落在上述平台改写与 javadoc 上。
+
+## 十二、商店方块美术批(2026-10-08)平台差异
+
+1. **块模型 `render_type` 两线都支持**（**推翻**先前「Forge 不支持」的猜测）：NeoForge `client/model/ExtendedBlockModelDeserializer.java:66-69` 与 Forge `net/minecraftforge/client/model/ExtendedBlockModelDeserializer` 都读 `render_type` 并 `setRenderTypeHint`，`SimpleUnbakedGeometry` 建 `RenderTypeGroup`，`NamedRenderTypeManager` 预注册 `cutout`；`ChunkRenderDispatcher.java:633` 按 `BakedModel#getRenderTypes` 分派 ⇒ **JSON 即生效**（1.20.1 侧另支持 `render_type_fast`）。
+2. **1.20.1 保留 `ItemBlockRenderTypes.setRenderLayer(..., RenderType.cutout())`**（`client/ModClientEvents#onClientSetup`）作为**物品层双保险**；1.21.1 侧该 API 已弃用且不需要 ⇒ **不写**。代价：forge 线多 1 条弃用告警。
+3. **交互入口**：1.21.1 = `useWithoutItem(...)`；1.20.1 **无此方法** ⇒ 六参 `use(BlockState, Level, BlockPos, Player, InteractionHand, BlockHitResult)`。
+4. **形状**：两线均为 `Shapes.box(0,0,0,1,14.5/16,1)`（`getShape`/`getCollisionShape` 同值）+ `ModBlocks` 的 `.noOcclusion()`；无 API 差异。

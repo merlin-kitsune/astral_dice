@@ -60,6 +60,12 @@ public class ModClientEvents {
     @SubscribeEvent
     public static void onClientSetup(FMLClientSetupEvent event) {
         event.enqueueWork(() -> {
+            // 卡牌商店模型的贴图含全透明像素（64×64，1030 个 alpha=0）⇒ 必须走 cutout 渲染层。
+            // 该方块已在模型 JSON 里声明 "render_type": "minecraft:cutout" —— 1.20.1 的 Forge 用
+            // net.minecraftforge.client.model.ExtendedBlockModelDeserializer 替换了原版解析器，它同样读取
+            // render_type 并 setRenderTypeHint，最终由 ChunkRenderDispatcher#633 走 BakedModel#getRenderTypes
+            // 取层 ⇒ **无需**（也**不再**）在此登记 ItemBlockRenderTypes（该 API 已弃用且对已声明 render_type
+            // 的模型是 no-op）。若将来模型去掉 render_type，再考虑在此兜底。
             net.minecraft.client.gui.screens.MenuScreens.register(
                     ModMenuTypes.CARD_INVENTORY.get(), CardInventoryScreen::new);
             net.minecraft.client.gui.screens.MenuScreens.register(
