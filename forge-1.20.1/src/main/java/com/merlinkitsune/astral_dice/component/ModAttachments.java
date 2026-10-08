@@ -367,6 +367,33 @@ public class ModAttachments {
         SIGN_ACTIVE_COOLDOWN_END.set(player, value);
     }
 
+    // 卡牌商店「商店大酬宾」窗口的结束时刻(玩家级;0 = 未生效)。本批只留钩子,事件卡系统尚未实装。
+    // 仅服务端使用(开店抽池时读一次),故**不 .sync()、不加入 SYNCED_KEYS**(与 1.21.1 同口径)。
+    public static final AttachedDataKey<Long> SHOP_PROMOTION_UNTIL =
+            register(AttachedDataKey.builder("shop_promotion_until", Codec.LONG, () -> 0L).build());
+
+    public static long getShopPromotionUntil(net.minecraft.world.entity.player.Player player) {
+        return SHOP_PROMOTION_UNTIL.get(player);
+    }
+
+    public static void setShopPromotionUntil(net.minecraft.world.entity.player.Player player, long value) {
+        SHOP_PROMOTION_UNTIL.set(player, value);
+    }
+
+    // 卡牌商店「二级转账」的玩家级冷却结束时刻(gameTime;0 = 无冷却)。
+    // 仅服务端写入与判定,客户端只从菜单 DataSlot 读剩余秒数,
+    // 故**不 .sync()、不加入 SYNCED_KEYS**(与 1.21.1 同口径)。
+    public static final AttachedDataKey<Long> SHOP_TRANSFER_COOLDOWN_END =
+            register(AttachedDataKey.builder("shop_transfer_cooldown_end", Codec.LONG, () -> 0L).build());
+
+    public static long getShopTransferCooldownEnd(net.minecraft.world.entity.player.Player player) {
+        return SHOP_TRANSFER_COOLDOWN_END.get(player);
+    }
+
+    public static void setShopTransferCooldownEnd(net.minecraft.world.entity.player.Player player, long value) {
+        SHOP_TRANSFER_COOLDOWN_END.set(player, value);
+    }
+
     // 立牌主动技能"本次冷却实际使用的最大冷却 tick"(路线 A:所有减免方一律读它作基准,不再各自重算;
     // 0 表示缺失/无冷却,减免方回退旧行为;仅服务端使用,故不 .sync()、不加入 SYNCED_KEYS)。
     // 写入时机(第二批「立牌主动技能三态化」):① 直接起冷却时与 SIGN_ACTIVE_COOLDOWN_END 成对写入;

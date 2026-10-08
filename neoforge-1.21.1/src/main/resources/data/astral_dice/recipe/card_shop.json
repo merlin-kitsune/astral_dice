@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "PPP",
+    "PCP",
+    "PPP"
+  ],
+  "key": {
+    "P": {
+      "tag": "minecraft:planks"
+    },
+    "C": {
+      "item": "astral_dice:star_coin"
+    }
+  },
+  "result": {
+    "id": "astral_dice:card_shop",
+    "count": 1
+  }
+}

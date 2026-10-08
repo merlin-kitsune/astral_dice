@@ -3,6 +3,7 @@ package com.merlinkitsune.astral_dice.client;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.init.ModParticles;
 import com.merlinkitsune.astral_dice.screen.CardInventoryScreen;
+import com.merlinkitsune.astral_dice.screen.CardShopScreen;
 import com.merlinkitsune.astral_dice.screen.ModMenuTypes;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
@@ -34,6 +35,7 @@ public class ModClientEvents {
     @SubscribeEvent
     public static void registerScreens(RegisterMenuScreensEvent event) {
         event.register(ModMenuTypes.CARD_INVENTORY.get(), CardInventoryScreen::new);
+        event.register(ModMenuTypes.CARD_SHOP.get(), CardShopScreen::new);
     }
 
     /**

@@ -19,6 +19,11 @@ public class ModMenuTypes {
     public static final RegistryObject<MenuType<CardInventoryMenu>> CARD_INVENTORY = MENU_TYPES.register("card_inventory",
             () -> new MenuType<>(CardInventoryMenu::new, FeatureFlags.DEFAULT_FLAGS));
 
+    /** 卡牌商店菜单(方块交互与经商立牌主动技能共用;见 shop/CardShopMenu)。 */
+    public static final RegistryObject<MenuType<com.merlinkitsune.astral_dice.shop.CardShopMenu>> CARD_SHOP =
+            MENU_TYPES.register("card_shop",
+                    () -> new MenuType<>(com.merlinkitsune.astral_dice.shop.CardShopMenu::new, FeatureFlags.DEFAULT_FLAGS));
+
     /** 服务端打开卡牌栏(原 OpenCardInventoryPayload 的服务端逻辑;需佩戴骰子)。 */
     public static void openCardInventory(ServerPlayer serverPlayer) {
         var curios = CuriosCompat.getCuriosInventory(serverPlayer);

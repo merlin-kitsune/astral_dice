@@ -44,6 +44,8 @@ public class AstralDiceMod {
         ModEnchantments.ENCHANTMENTS.register(modEventBus);
         ModRecipeSerializers.RECIPE_SERIALIZERS.register(modEventBus);
         ModCreativeTabs.CREATIVE_TABS.register(modEventBus);
+        // 方块注册(1.20.1 Forge 线首个方块:卡牌商店;见 block/ModBlocks)
+        com.merlinkitsune.astral_dice.block.ModBlocks.BLOCKS.register(modEventBus);
         ModMenuTypes.MENU_TYPES.register(modEventBus);
         ModParticles.PARTICLE_TYPES.register(modEventBus);
         // 全局战利品修饰符序列化器:1.20.1 的 Forge 自带注册表里**没有任何内置项**

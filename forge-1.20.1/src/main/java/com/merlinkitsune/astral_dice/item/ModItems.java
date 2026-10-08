@@ -1,10 +1,12 @@
 package com.merlinkitsune.astral_dice.item;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
+import com.merlinkitsune.astral_dice.block.ModBlocks;
 import com.merlinkitsune.astral_dice.component.AppliedStone;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import com.merlinkitsune.starenginelib.item.AstralRarities;
 
+import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Rarity;
@@ -405,6 +407,10 @@ public class ModItems {
             () -> new Item(new Item.Properties()
                     .stacksTo(64)
                     .rarity(AstralRarities.rare())));
+
+    // 卡牌商店方块物品(右键方块开店;1.20.1 无 DeferredBlock,方块物品按 1.20.1 规范用 BlockItem 手工登记)
+    public static final RegistryObject<Item> CARD_SHOP = registerItem("card_shop",
+            () -> new BlockItem(ModBlocks.CARD_SHOP.get(), new Item.Properties()));
 
     public static final RegistryObject<Item> BLANK_SIGN = registerItem("blank_sign",
             () -> new Item(new Item.Properties()

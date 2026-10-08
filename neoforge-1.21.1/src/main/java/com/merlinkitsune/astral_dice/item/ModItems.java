@@ -1,6 +1,8 @@
 package com.merlinkitsune.astral_dice.item;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
+import com.merlinkitsune.astral_dice.block.ModBlocks;
+import net.minecraft.world.item.BlockItem;
 import com.merlinkitsune.astral_dice.component.AppliedStone;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import com.merlinkitsune.starenginelib.item.AstralRarities;
@@ -416,6 +418,9 @@ public class ModItems {
             () -> new ParunanSignItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(AstralRarities.rare())));
+
+    // 卡牌商店方块(物品形态):放置后右键打开「卡牌商店」界面
+    public static final DeferredItem<BlockItem> CARD_SHOP = ITEMS.registerSimpleBlockItem("card_shop", ModBlocks.CARD_SHOP);
 
     public static final DeferredItem<Item> JASMINE_SIGN = registerItem("jasmine_sign",
             () -> new JasmineSignItem(new Item.Properties()

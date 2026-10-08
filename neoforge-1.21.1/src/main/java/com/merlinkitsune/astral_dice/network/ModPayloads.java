@@ -3,6 +3,7 @@ package com.merlinkitsune.astral_dice.network;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.starenginelib.client.ActionBarManager;
 import com.merlinkitsune.astral_dice.client.DamageNumberStore;
+import com.merlinkitsune.astral_dice.client.CardShopClientState;
 import com.merlinkitsune.astral_dice.client.TargetSelectionClient;
 import com.merlinkitsune.astral_dice.client.EnderDieTotemAnimator;
 import net.minecraft.network.chat.Component;
@@ -86,6 +87,19 @@ public class ModPayloads {
                 RenShieldStatePayload.TYPE,
                 RenShieldStatePayload.STREAM_CODEC,
                 RenShieldStatePayload::handle
+        );
+        // 卡牌商店:候选玩家名单 → 客户端(打开/刷新转账视图时重发)
+        registrar.playToClient(
+                CardShopTransferListPayload.TYPE,
+                CardShopTransferListPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() ->
+                        CardShopClientState.setTransferCandidates(payload.names()))
+        );
+        // 卡牌商店:二级转账界面确认(目标索引 + 金额)
+        registrar.playToServer(
+                CardShopTransferPayload.TYPE,
+                CardShopTransferPayload.STREAM_CODEC,
+                CardShopTransferPayload::handle
         );
     }
 }

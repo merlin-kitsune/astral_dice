@@ -131,3 +131,23 @@ datagen:`RecipeOutput` → `Consumer<FinishedRecipe>`(`.save(output::accept)`);`
 3. 附件同步:tooltip 数值(忍者伤害加成/治愈点/星光)、立牌冷却显示。
 4. 卡牌栏菜单(H 键)与骰子升级配方(星级/已装卡继承)。
 5. 神秘遗物联动(核对清单见上);Iron's/KubeJS 为可选前置。
+
+## 十、卡牌商店批(2026-10-08)平台差异
+
+> 本批 = 卡牌商店(方块 + 菜单 + 界面 + 星光兑换 + 玩家间转账)与「经商立牌」主动技能改写;P0 两线
+> (`neoforge-1.21.1` / `forge-1.20.1`)同批落地。下表每一条都经 `:forge-1.20.1:compileJava` 编译期验证
+> (其中第 7/8 条是**本批踩到的编译错误**与**对任务书错误说法的纠正**)。移植到 26.1.2 / fabric 时按此表逐条走。
+
+1. **方块注册**:1.21.1 `DeferredRegister.createBlocks(MODID)` + `DeferredBlock<Block>`(`ModBlocks.CARD_SHOP`) ⇒ 1.20.1 `DeferredRegister.create(ForgeRegistries.BLOCKS, MODID)` + `RegistryObject<Block>`。
+2. **方块交互**:1.21.1 覆写 `useWithoutItem(BlockState, Level, BlockPos, Player, BlockHitResult)` ⇒ 1.20.1 覆写**六参** `use(BlockState, Level, BlockPos, Player, InteractionHand, BlockHitResult)`(1.20.1 无 `useWithoutItem`)。
+3. **方块物品**:1.21.1 走 `DeferredRegister.Items#registerSimpleBlockItem("card_shop", ModBlocks.CARD_SHOP)` ⇒ 1.20.1 `registerItem("card_shop", () -> new BlockItem(ModBlocks.CARD_SHOP.get(), new Item.Properties()))`(显式 `net.minecraft.world.item.BlockItem`)。
+4. **菜单类型**:1.21.1 `Supplier<MenuType<X>>` ⇒ 1.20.1 `RegistryObject<MenuType<X>>`(工厂均 `new MenuType<>(X::new, FeatureFlags.DEFAULT_FLAGS)`)。
+5. **网络**:1.21.1 = `CustomPacketPayload` + `StreamCodec` 独立文件(`network/CardShopTransferListPayload` / `CardShopTransferPayload`)+ `network/ModPayloads` 的 `registrar.playToClient/playToServer`;1.20.1 = `network/ModNetwork` 的 `SimpleChannel.registerMessage` **顺序 id**(本批在**末尾追加 id 12 / 13**,既有 0..11 顺序不变)+ 内嵌 `static class ...Message`。列表编解码 1.21.1 `ByteBufCodecs.STRING_UTF8.apply(ByteBufCodecs.list())` ⇒ 1.20.1 `buf.writeCollection(list, FriendlyByteBuf::writeUtf)` / `buf.readList(FriendlyByteBuf::readUtf)`;处理端 `context.player()` ⇒ `ctx.get().getSender()`;发包 `PacketDistributor.sendToPlayer` ⇒ `ModNetwork.sendToPlayer(ServerPlayer, msg)`;提示条改用 `new ModNetwork.ActionBarMessage(Component, GameplayConstants.ACTIONBAR_DURATION_TICKS)`。
+6. **玩家持久化**:1.21.1 `AttachmentType<Long>` ⇒ 1.20.1 `AttachedDataKey<Long>`(本线 `AttachedDataKey.builder(id, Codec.LONG, () -> 0L).build()`)。本批两个键 `shop_promotion_until` / `shop_transfer_cooldown_end` **两线都不 `.sync()`**、都不进 `SYNCED_KEYS`(客户端只从菜单 DataSlot 读货架状态与冷却)。
+7. **Curios 入口(本批编译错误)**:1.21.1 `CuriosApi.getCuriosInventory(player)` 返回 `Optional`;1.20.1 官方 API 返回 `LazyOptional`(**无 `isEmpty()/get()` 同形用法**) ⇒ 本线一律走库 shim `com.merlinkitsune.starenginelib.item.CuriosCompat#getCuriosInventory`(与 `item/CurioSlotUtil.java` 同口径,返回 `Optional`)。本批 3 处(`CardShopMenu` 的星级 / 团队判定、`ParunanSignItem#isEquipped`)。
+8. **屏幕生命周期(纠正)**:`AbstractContainerScreen#containerTick()` 在 **1.20.1 也存在**(`tick()` 是 `final`,覆写它会编译失败)⇒ 与 1.21.1 同形覆写 `containerTick()`。⚠️ **任务书里「1.20.1 没有 containerTick、要改覆写 tick()」的说法是错的**,以编译期实证为准。
+9. **`GuiGraphics.blit`**:1.21.1 基 9 参(无 blitOffset) ⇒ 1.20.1 10 参 `blit(ResourceLocation, int x, int y, int blitOffset, float u, float v, int w, int h, int texW, int texH)`,本批一律传 `blitOffset = 0`(与 `screen/CardInventoryScreen.java:71` 同款);36×36 卡面仍用 `pose().pushPose()/translate/scale(36/64)` + 64×64 blit 缩放绘制。
+10. **`mouseScrolled`**:1.21.1 四参(含 `horizontalAmount`) ⇒ 1.20.1 **三参** `(double, double, double)`(本批只用纵向增量;与本节第 122 行既有登记一致)。
+11. **`ResourceLocation`**:1.21.1 `ResourceLocation.fromNamespaceAndPath(ns, path)` ⇒ 1.20.1 `new ResourceLocation(ns, path)`(新增 2 条弃用告警,与本线既有 73 条同款)。
+12. **资源目录与配方键**:1.21.1 `data/astral_dice/loot_table/`、`recipe/`、`data/minecraft/tags/block/` ⇒ 1.20.1 **复数** `loot_tables/`、`recipes/`、`tags/blocks/`;配方 `result` 1.21.1 用 `"id"` ⇒ 1.20.1 用 `"item"`。
+13. **本批游戏内手工验证项**(需用户点名下指令) —— ① 合成 `card_shop`(8 木板围 1 星币)并右键开店;② 买 1 张卡:确认「已售出」、星币扣除、余额 HUD 同步;③ 星光兑换按钮(2:1,无冷却);④ 转账(5~20、60 秒冷却沙漏、目标离线自动刷新名单);⑤ 同队有经商立牌玩家时的货架加成(额外 1 张战斗牌 + 每张 10% 降价)与**转账后自己货架强制降价一张**;⑥ 经商立牌主动 = 开店 + 120 秒冷却(佩戴)。

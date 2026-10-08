@@ -418,6 +418,34 @@ public class ModAttachments {
         player.setData(SIGN_ACTIVE_COOLDOWN_END.get(), value);
     }
 
+    // 卡牌商店:大酬宾促销窗口结束时刻(gameTime 绝对值;0/已过期 = 不在促销期)
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> SHOP_PROMOTION_UNTIL =
+            ATTACHMENTS.register("shop_promotion_until", () -> AttachmentType.builder(() -> 0L)
+                    .serialize(Codec.LONG)
+                    .build());
+
+    public static long getShopPromotionUntil(net.minecraft.world.entity.player.Player player) {
+        return player.getData(SHOP_PROMOTION_UNTIL.get());
+    }
+
+    public static void setShopPromotionUntil(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(SHOP_PROMOTION_UNTIL.get(), value);
+    }
+
+    // 卡牌商店:二级转账的玩家级冷却结束时刻(gameTime;60 秒;跨界面/跨商店保留)
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> SHOP_TRANSFER_COOLDOWN_END =
+            ATTACHMENTS.register("shop_transfer_cooldown_end", () -> AttachmentType.builder(() -> 0L)
+                    .serialize(Codec.LONG)
+                    .build());
+
+    public static long getShopTransferCooldownEnd(net.minecraft.world.entity.player.Player player) {
+        return player.getData(SHOP_TRANSFER_COOLDOWN_END.get());
+    }
+
+    public static void setShopTransferCooldownEnd(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(SHOP_TRANSFER_COOLDOWN_END.get(), value);
+    }
+
     // 立牌主动技能"本次冷却实际使用的最大冷却 tick"(路线 A:所有减免方一律读它作基准,不再各自重算;
     // 0 表示缺失/无冷却,减免方回退旧行为;仅服务端使用,无需同步客户端)。
     // 写入时机(第二批「立牌主动技能三态化」):① 直接起冷却时与 SIGN_ACTIVE_COOLDOWN_END 成对写入;

@@ -15,11 +15,11 @@
     忘记同步 provider** 会在 CI/本地立刻暴露，而不是等到实机看见紫黑格子才发现。
 
     检查项（每线独立）：
-      1. `ModItems.java` 里 `registerItem("id", …)` / `register("id", …)` 的全部 id；
+      1. `ModItems.java` 里 `registerItem("id", …)` / `registerSimpleBlockItem("id", …)` / `register("id", …)` 的全部 id；
       2. jar 内 `assets/astral_dice/models/item/<id>.json` 覆盖全部 id（三线都要求）；
       3. jar 内 `assets/astral_dice/items/<id>.json` 覆盖全部 id
          （**仅 26.1.2**：1.21.4+ 的物品模型定义机制，缺失同样表现为无模型）；
-      4. jar 内 `assets/astral_dice/textures/item/<id>.png` 覆盖全部 id
+      4. jar 内 `assets/astral_dice/textures/item/<id>.png`（**方块物品**允许 `textures/block/<id>.png`）覆盖全部 id
          （部分物品共用贴图或有替代渲染时不强制，缺失只报 WARN 不判失败）。
 
     只读，不修改任何工程文件。
@@ -67,7 +67,10 @@ function Get-RegisteredIds([string]$dir) {
     $f = Join-Path $dir (Join-Path 'src/main/java/com/merlinkitsune' (Join-Path $MODID 'item/ModItems.java'))
     if (-not (Test-Path -LiteralPath $f)) { return $null }
     $txt = Get-Content -LiteralPath $f -Raw
-    $m = [regex]::Matches($txt, '(?:registerItem|register)\(\s*"([a-z0-9_]+)"')
+    # ⚠️ 2026-10-08 卡牌商店批:新增「方块物品」注册形态 `registerSimpleBlockItem("id", …)`
+    # (1.21.1 `DeferredRegister.Items` 的专用方法)。原口径只认 registerItem/register ⇒ 方块物品
+    # **整条漏掉**(实测:同一批两条线,1.21.1 报 137 而 1.20.1 报 138 ⇒ 该物品的模型/贴图不在核验范围内)。
+    $m = [regex]::Matches($txt, '(?:registerSimpleBlockItem|registerItem|register)\(\s*"([a-z0-9_]+)"')
     $ids = @()
     foreach ($x in $m) { $ids += $x.Groups[1].Value }
     return ($ids | Sort-Object -Unique)
@@ -111,23 +114,31 @@ function Test-Line([string]$ver) {
         $names = @{}
         foreach ($e in $zip.Entries) { $names[$e.FullName] = $true }
 
+        # Alts = 允许的替代目录(方块物品的贴图在 textures/block/,由方块模型引用;原版与模组皆然)
         $checks = @(
-            @{ Pref = "assets/$MODID/models/item/"; Ext = '.json'; Label = '物品模型'; Fatal = $true },
-            @{ Pref = "assets/$MODID/textures/item/"; Ext = '.png'; Label = '物品贴图'; Fatal = $false }
+            @{ Pref = "assets/$MODID/models/item/"; Ext = '.json'; Label = '物品模型'; Fatal = $true; Alts = @() },
+            @{ Pref = "assets/$MODID/textures/item/"; Ext = '.png'; Label = '物品贴图'; Fatal = $false;
+               Alts = @("assets/$MODID/textures/block/") }
         )
         # 26.1.2 额外要求 1.21.4+ 的物品模型定义
         if ($ver -eq '26.1.2') {
             $checks = @(
-                @{ Pref = "assets/$MODID/models/item/"; Ext = '.json'; Label = '物品模型'; Fatal = $true },
-                @{ Pref = "assets/$MODID/items/"; Ext = '.json'; Label = '物品模型定义(1.21.4+)'; Fatal = $true },
-                @{ Pref = "assets/$MODID/textures/item/"; Ext = '.png'; Label = '物品贴图'; Fatal = $false }
+                @{ Pref = "assets/$MODID/models/item/"; Ext = '.json'; Label = '物品模型'; Fatal = $true; Alts = @() },
+                @{ Pref = "assets/$MODID/items/"; Ext = '.json'; Label = '物品模型定义(1.21.4+)'; Fatal = $true; Alts = @() },
+                @{ Pref = "assets/$MODID/textures/item/"; Ext = '.png'; Label = '物品贴图'; Fatal = $false;
+                   Alts = @("assets/$MODID/textures/block/") }
             )
         }
 
         foreach ($c in $checks) {
             $miss = @()
             foreach ($id in $ids) {
-                if (-not $names.ContainsKey($c.Pref + $id + $c.Ext)) { $miss += $id }
+                if ($names.ContainsKey($c.Pref + $id + $c.Ext)) { continue }
+                $altHit = $false
+                foreach ($alt in @($c.Alts)) {
+                    if ($alt -and $names.ContainsKey($alt + $id + $c.Ext)) { $altHit = $true; break }
+                }
+                if (-not $altHit) { $miss += $id }
             }
             if ($miss.Count -eq 0) {
                 Write-Output ("  [OK]   {0,-24} 覆盖 {1}/{1}" -f $c.Label, @($ids).Count)

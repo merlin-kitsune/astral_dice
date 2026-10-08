@@ -4,7 +4,7 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
-## Unreleased (2.0.0-SNAPSHOT.49)
+## Unreleased (2.0.0-SNAPSHOT.50)
 
 ### New Content
 
@@ -61,6 +61,22 @@
 
 <!-- 新内容在此登记 -->
 
+#### Items, Chips & Trading
+
+- **New block: Card Shop** (2026-10-08): craft it in a 3×3 grid from **8 planks** (any `minecraft:planks`) around
+  **1 Star Coin**; place it and **right-click to open the shop** (nothing consumed, no cooldown). Each time you open
+  it, **3 cards** are stocked (**never two copies of the same card on one shelf**), at a **base price of 3 Star Coins**;
+  **each slot can be bought once per shop session** (it then shows "Sold out" — closing and reopening the shop resets
+  this, there is no permanent purchase limit). If **a teammate wears the "Merchant" sign**, one extra **combat card** is
+  stocked and every card has a **10%** chance to be discounted to **1 Star Coin**; the **"Charge" card only appears when
+  your dice star level is 2 or higher**.
+- **"Starlight Exchange" inside the shop**: exchange **2 Starlight for 1 Star Coin** with **no cooldown** (a message tells
+  you when you are short on Starlight) — this is where the Merchant sign's old "cash out" active moved to.
+- **"Transfer" inside the shop**: send Star Coins to **another online player on the same server**, **5–20 coins** per
+  transfer (fine-tune with the mouse wheel or pick one of four preset amounts), with a **60-second** cooldown after each
+  transfer (the button shows an **hourglass** countdown). If the target goes offline before you confirm, the list is
+  **refreshed automatically** and you are asked to pick again. **A Merchant-sign wearer who completes a transfer** has the
+  **first unsold card** on their own shelf **forced down to 1 Star Coin**.
 ### Content & Balance
 
 #### Damage & Resolution
@@ -171,6 +187,15 @@
   Measured against vanilla (40,000 samples): Sharpness V +42.9% (vanilla +42.9%), Critical +50.1% (vanilla +50.0%),
   Protection IV full set -64.0% (vanilla -64.0%), Resistance II -40.0% (vanilla -40.0%).
 
+#### Signs & Skills
+
+- **The "Merchant" sign's active skill is now "Open Card Shop"** (user ruling, 2026-10-08): the active no longer cashes out
+  Starlight and no longer grants a random one-of-three buff (Saturation / Luck / Hero of the Village); it **opens the Card
+  Shop screen** instead (buying cards, Starlight exchange and transfers all happen there). The active applies nothing by
+  itself, so it no longer enters the "in effect" locked state — it **immediately starts a 120-second player-level
+  cooldown** (while worn; the generic constant applies otherwise; the same cooldown chain as other signs: capped by the
+  charge limit and halved by the "Weird Dice"). **The passive is unchanged**: Starlight +1 every 60 seconds, and a dice
+  blessing grants the first roll ×2 Starlight.
 #### Cards
 
 - **The four damage effect cards (Monster Laser / Monster Brick / Orbital Strike / Directional Blast) were reworked**

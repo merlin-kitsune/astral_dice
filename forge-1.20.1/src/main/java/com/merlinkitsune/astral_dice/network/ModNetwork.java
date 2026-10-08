@@ -63,6 +63,12 @@ public final class ModNetwork {
                 StarCoinBalanceMessage::encode, StarCoinBalanceMessage::decode, StarCoinBalanceMessage::handle);
         CHANNEL.registerMessage(id++, RenShieldStateMessage.class,
                 RenShieldStateMessage::encode, RenShieldStateMessage::decode, RenShieldStateMessage::handle);
+        // 卡牌商店(1.20.1 移植):id 12 = S→C 候选名单、id 13 = C→S 确认转账。
+        // 两条一律**追加在末尾**,不得插进既有 payload 的顺序里(顺序即协议,改序会让旧客户端错包)。
+        CHANNEL.registerMessage(id++, CardShopTransferListMessage.class,
+                CardShopTransferListMessage::encode, CardShopTransferListMessage::decode, CardShopTransferListMessage::handle);
+        CHANNEL.registerMessage(id++, CardShopTransferMessage.class,
+                CardShopTransferMessage::encode, CardShopTransferMessage::decode, CardShopTransferMessage::handle);
     }
 
     // === 发送助手(对应 1.21 PacketDistributor 静态方法) ===
@@ -551,6 +557,79 @@ public final class ModNetwork {
                     ids.add(id);
                 }
                 com.merlinkitsune.astral_dice.combat.RenShieldVisibility.replaceAll(ids);
+            });
+            ctx.get().setPacketHandled(true);
+        }
+    }
+
+    // === 卡牌商店(S→C 候选名单 / C→S 确认转账) ===
+
+    /**
+     * S→C:卡牌商店「二级转账界面」的候选玩家名列表(索引即转账目标索引)。
+     *
+     * <p>编码方式与 1.21.1 的 {@code ByteBufCodecs.STRING_UTF8.apply(ByteBufCodecs.list())} 等价:
+     * {@code FriendlyByteBuf#writeCollection(list, FriendlyByteBuf::writeUtf)} /
+     * {@code readList(FriendlyByteBuf::readUtf)}(= VarInt 数量 + 每项 UTF 字符串)。
+     * 客户端收下后写入 {@code client/CardShopClientState}(刻意不做任何队伍过滤)。
+     */
+    public static class CardShopTransferListMessage {
+        private final List<String> names;
+
+        public CardShopTransferListMessage(List<String> names) {
+            this.names = List.copyOf(names);
+        }
+
+        public static void encode(CardShopTransferListMessage msg, FriendlyByteBuf buf) {
+            buf.writeCollection(msg.names, FriendlyByteBuf::writeUtf);
+        }
+
+        public static CardShopTransferListMessage decode(FriendlyByteBuf buf) {
+            return new CardShopTransferListMessage(buf.readList(FriendlyByteBuf::readUtf));
+        }
+
+        public static void handle(CardShopTransferListMessage msg, Supplier<NetworkEvent.Context> ctx) {
+            ctx.get().enqueueWork(() -> {
+                // 只在接收侧为客户端时落静态态(本包只会由服务端发给单个玩家)
+                if (ctx.get().getDirection().getReceptionSide().isClient()) {
+                    com.merlinkitsune.astral_dice.client.CardShopClientState.setTransferCandidates(msg.names);
+                }
+            });
+            ctx.get().setPacketHandled(true);
+        }
+    }
+
+    /**
+     * C→S:「确认转账」(索引取 {@link CardShopTransferListMessage} 的同序名单)。
+     *
+     * <p>金额只允许 5..20(4 档 5/10/15/20 + 自定义);服务端在
+     * {@code shop/CardShopMenu#handleTransfer} 内二次校验(含菜单归属、60 秒玩家级冷却、目标有效性与余额),
+     * 本包不做任何结算、也不信任客户端传来的数值。
+     */
+    public static class CardShopTransferMessage {
+        private final int targetIndex;
+        private final int amount;
+
+        public CardShopTransferMessage(int targetIndex, int amount) {
+            this.targetIndex = targetIndex;
+            this.amount = amount;
+        }
+
+        public static void encode(CardShopTransferMessage msg, FriendlyByteBuf buf) {
+            buf.writeVarInt(msg.targetIndex);
+            buf.writeVarInt(msg.amount);
+        }
+
+        public static CardShopTransferMessage decode(FriendlyByteBuf buf) {
+            return new CardShopTransferMessage(buf.readVarInt(), buf.readVarInt());
+        }
+
+        public static void handle(CardShopTransferMessage msg, Supplier<NetworkEvent.Context> ctx) {
+            ctx.get().enqueueWork(() -> {
+                ServerPlayer serverPlayer = ctx.get().getSender();
+                if (serverPlayer != null
+                        && serverPlayer.containerMenu instanceof com.merlinkitsune.astral_dice.shop.CardShopMenu menu) {
+                    menu.handleTransfer(serverPlayer, msg.targetIndex, msg.amount);
+                }
             });
             ctx.get().setPacketHandled(true);
         }

@@ -31,6 +31,7 @@ public class ModCreativeTabs {
                 // 材料（最前端）
                 output.accept(ModItems.STAR_COIN.get());
                 output.accept(ModItems.STAR_COIN_BAG.get());
+                output.accept(ModItems.CARD_SHOP.get());
                 output.accept(ModItems.STAR_PLATE.get());
                 output.accept(ModItems.GOLDEN_STAR_PLATE.get());
                 output.accept(ModItems.BLANK_SIGN.get());

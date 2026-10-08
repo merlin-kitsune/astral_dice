@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "astral_dice:block/card_shop"
+    }
+  }
+}

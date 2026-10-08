@@ -92,6 +92,7 @@ public class ModCreativeTabs {
                 // 立牌(按稀有度低→高:稀有→史诗→传奇)
                 // 稀有 RARE
                 output.accept(ModItems.PARUNAN_SIGN.get());
+                output.accept(ModItems.CARD_SHOP.get());
                 output.accept(ModItems.JASMINE_SIGN.get());
                 output.accept(ModItems.MIMI_SIGN.get());
                 output.accept(ModItems.LULU_SIGN.get());
