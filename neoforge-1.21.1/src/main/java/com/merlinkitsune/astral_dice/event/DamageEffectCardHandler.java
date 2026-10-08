@@ -87,9 +87,11 @@ public class DamageEffectCardHandler {
 
         // 活体书页命中音效:**按本次命中的完整伤害分档**，取值与上面的 HUD 跳字完全同源
         // （原始基础伤害 + 法伤加成，取整）⇒ 玩家听到的强弱与看到的数字一致。
-        // 判据是伤害类型本身：astral_dice:card_spell 目前的唯一产出路径就是活体书页命中
-        // （见 damage/ModDamageTypes#cardSpell 与 combat/LivingPageImpact#resolve）。
-        if (source.is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.CARD_SPELL)) {
+        // 判据 = 伤害类型是 astral_dice:card_spell，**且**不是四张伤害效果牌自己的 FX 伤害
+        // （2026-10-07 修复 KI-G4：card_spell 不再只有活体书页一条产出路径 —— 四张牌重做后它们也走
+        //   ModDamageTypes.cardSpell，且各自已播命中音，见 combat/DamageCardFxScheduler）。
+        if (source.is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.CARD_SPELL)
+                && !com.merlinkitsune.astral_dice.combat.DamageCardFxScheduler.isApplyingCardFxDamage()) {
             int dealt = (int) Math.round(event.getNewDamage() + bonus);
             SoundPlayback.playAt(target.level(), target.getX(), target.getY(), target.getZ(),
                     dealt >= LIVING_PAGE_BIG_HIT_THRESHOLD

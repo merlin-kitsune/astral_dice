@@ -1636,7 +1636,8 @@ function Install-MtRenderStack {
         # 3) 光影加载器配置：选中该光影（Iris 的 config/iris.properties；
         #    **1.20.1 是 Oculus，配置文件名不同** ⇒ 一律经 Get-MtIrisConfigFile 取，别写死）
         #    2026-09-17 用户要求「添加光影包并设置默认启用」⇒ **1.21.1 / 1.20.1 默认写 true**。
-        #    ⚠️ **26.1.2 例外：默认写 false**（2026-09-22 三次实测：Iris 在该线上的 GUI 渲染管线
+        #    ⛔ **以下「26.1.2 例外：默认写 false」段已于 2026-10-07 作废（用户裁决移除该默认配置）；
+        #       保留仅为追溯，现行实现见下方 $set 处。**
         #       与光影不兼容 ⇒ 一进世界就崩、客户端被 emergencySaveAndCrash 终止）：
         #         · `Iris/FATAL: Missing program minecraft:pipeline/gui_text in override list`
         #         · `IllegalStateException: Missing sampler Sampler1`（**移除 ImmediatelyFast 后仍复现**
@@ -1644,14 +1645,21 @@ function Install-MtRenderStack {
         #       其表征极易误判：`mt_launch` 报 `MT_LAUNCH: OK (40s) — 已进入世界`，随后客户端
         #       数秒内**静默消失**（无 shutdown 消息、无 crash-reports 之外的下文），用例全报
         #       「26.1.2 客户端未在运行」⇒ 排查时**先看 `SHADERS=` 与本项**，不要误判成宿主回收进程树。
-        #       需要「开光影」做对照时显式 `mt_env.ps1 shaders --version 26.1.2 --state on`。
+        #       2026-10-07 起本线不再强制写 enableShaders —— 开/关由测试自行决定（mt_env.ps1 shaders 或游戏内 K 键）。
         $irisCfg = Get-MtIrisConfigFile -Paths $Paths
         [void](New-Item -ItemType Directory -Force -Path (Split-Path $irisCfg))
         $lines = @()
         if (Test-Path -LiteralPath $irisCfg -PathType Leaf) { $lines = @(Get-Content -LiteralPath $irisCfg) }
-        # 26.1.2 = false（理由见上）；其余线维持用户 2026-09-17 的「默认启用」裁决。
-        $shadersOn = if ($Paths.version -eq '26.1.2') { 'false' } else { 'true' }
-        $set = @{ 'shaderPack' = $sp.Name; 'enableShaders' = $shadersOn }
+        # 2026-10-07 用户裁决：「移除 26.1.2 的 iris 默认配置（允许测试时开启光影）」⇒
+        #   · 1.21.1 / 1.20.1 维持用户 2026-09-17 的「默认启用」裁决 ⇒ 写 true；
+        #   · 26.1.2 不再写 enableShaders —— 只写 shaderPack，保留文件里既有的值
+        #     （游戏内 K 键的持久化结果、或 mt_env.ps1 shaders --version 26.1.2 --state on 的结果），
+        #     不再每次 mt_env mods 把它重置回 false。
+        #   沿革：2026-09-22 曾因「Iris 在该线开光影即崩」而强制写 false；2026-10-07 定案该崩溃的
+        #   开关是 dev-only 的 GlRenderPass.VALIDATION（GlRenderPass.java:25；与 Sodium 版本、与光影包
+        #   都无关）⇒「26.1.2 不能开光影」的口径已作废（详见 KNOWN-ISSUES KI-D1「2026-10-07 复验」段）。
+        $set = @{ 'shaderPack' = $sp.Name }
+        if ($Paths.version -ne '26.1.2') { $set['enableShaders'] = 'true' }
         foreach ($k in $set.Keys) {
             $found = $false
             for ($i = 0; $i -lt $lines.Count; $i++) {
@@ -1662,8 +1670,12 @@ function Install-MtRenderStack {
         Set-Content -LiteralPath $irisCfg -Value $lines -Encoding utf8
 
         $modsText = if ($installed.Count -gt 0) { $installed -join ' / ' } else { '（渲染模组由整合包复制，见 NeoForgeMods）' }
+        $shadersText = '(文件内未设置，由加载器默认 false)'
+        for ($i = 0; $i -lt $lines.Count; $i++) {
+            if ($lines[$i] -match '^\s*enableShaders\s*=\s*(.+?)\s*$') { $shadersText = $Matches[1] }
+        }
         Write-MtLine ("MT_MODS: OK — 渲染栈就位（{0}）＋ 光影 {1}；光影加载器已选中该光影（enableShaders={2} @ {3}）" -f `
-                $modsText, $sp.Name, $shadersOn, (Split-Path -Leaf $irisCfg))
+                $modsText, $sp.Name, $shadersText, (Split-Path -Leaf $irisCfg))
         return 0
     } finally {
         $ProgressPreference = $progressBak
@@ -1677,7 +1689,7 @@ function Invoke-MtEnvShaders {
 
     .NOTES
         为什么需要它（2026-09-17 实测踩坑）：`Install-MtRenderStack` 只在 `mt_env mods` 时把
-        `enableShaders` 写回 false；而**游戏内的光影开关会持久化该键**（Iris 的 K 键
+        `enableShaders` 写回 false（2026-10-07 起仅 1.21.1 / 1.20.1 仍这样写，26.1.2 不再被工具链改写）；而**游戏内的光影开关会持久化该键**（Iris 的 K 键
         `iris.keybind.toggleShaders` 与光影界面 Apply 都会写该配置文件（1.20.1 上 Oculus 写的是 `oculus.properties`））。
         于是一次「光影开启」验证跑完（客户端按 K 打开光影）会把该键留在 `true`，
         **下一次冷启动会在进入世界的第一帧就崩**（launch 阶段报
@@ -1754,7 +1766,7 @@ function Invoke-MtEnvMods {
         # 「为什么不装」，避免后来者以为漏了。
         $rc = Install-MtCarpet -Paths $p
         if ($rc -ne 0) { return $rc }
-        Write-MtLine 'MT_MODS: OK — 26.1.2 dev run：探针运行时 + Sodium/Iris + Complementary Reimagined 光影(默认启用) + 超平坦史莱姆压制 + 优化模组(ModernFix/FerriteCore)'
+        Write-MtLine 'MT_MODS: OK — 26.1.2 dev run：探针运行时 + Sodium/Iris + Complementary Reimagined 光影(2026-10-07 起不再强制开关) + 超平坦史莱姆压制 + 优化模组(ModernFix/FerriteCore)'
         Write-MtLine 'MT_MODS: 注意 — ImmediatelyFast 在 26.1.2 **故意不装**（与 Iris 开光影互斥，实测 Missing sampler 崩溃；见 $script:PerfMods2612 注释）。Sodium/Iris 为纯客户端模组：`mt_env world` 起专用服务器会自动移出，但**两段式数据生成（runClientData/runServerData）前必须手动移出** run/26.1.2/mods（与探针运行时同规则）'
         [void](Invoke-MtPauseLockEnforce -Paths $p)
     [void](Invoke-MtKeyBindingEnforce -Paths $p)

@@ -919,7 +919,7 @@ pwsh -NoProfile -File scripts/test/mt_watchdog.ps1 -Version 1.21.1 [-StallSecond
   ⇒ ~~结论更正：**Sodium 0.9.2 是 26.1.2 上「开光影即崩」的元凶**（0.9.1 正常）~~ **【2026-10-07 作废：崩溃开关是原版 dev-only 断言 `GlRenderPass.VALIDATION`，与被崩的 Sodium 版本无关（0.9.1 / 0.9.2 都崩）；见文末「附录 A 续 51：光影崩溃归因终版」】。**首轮的「上游无解缺陷、与版本无关」判断是在**只换光影包、没换 Sodium 版本**的对照下作出的，属误判，已作废。本用例的价值因此变成**渲染栈版本的回归守卫**：任何 Sodium/Iris 版本变更都必须复跑它。
   ⚠️ 抓图必须带 `crop: true`：游戏窗口在第二显示器，`mt_capture` 不带 crop 时抓的是主显示器整屏，只会拿到桌面（实测一次被误读成「游戏已消失」）。
   - 工具链随之新增三项：① `mt_case` 支持用例级键 `"expect_crash": true` —— 被验证的就是「会不会崩」的用例（客户端必崩、崩=缺陷仍在）在该键下不再被收尾校验改判为 `ERROR`（原先会伪装成工具链故障并消耗一次自动重启预算去重跑），判定完全交给用例断言，且不置位 `.mt_keep_alive`；② `mt_inject` 键表新增 `k`/`o`/`r` 与语义键 `shadertoggle`/`shaderscreen`/`shaderreload`（键位取自安装 jar 字节码：`Iris#onEarlyInitialize` 里 `toggleShaders`=GLFW 75、`shaderPackSelection`=79、`reload`=82）；③ `mt_env.ps1` 新增**离线幂等**子命令 `shaders --state off|on|status`（只改 `config/iris.properties` 的 `enableShaders` 一行，不碰缓存不联网）。
-  - ⚠️ **为什么必须有 ③（实测踩坑）**：游戏内的光影开关会**持久化** `enableShaders=true` ⇒ 跑完光影验证（或手动点过 Apply）后，**下一次冷启动会在进入世界的第一帧崩**（launch 阶段 `MT_LAUNCH: ERROR — 进入世界后立即崩溃`，指向 `crash-reports/crash-2026-09-17_10.49.50-client.txt`），后续任何用例都跑不起来。故光影回归的前置与收尾都应是 `pwsh -File scripts/test/mt_env.ps1 shaders --version 26.1.2 --state off` + 冷启动。
+  - ⚠️ **为什么必须有 ③（实测踩坑）**：游戏内的光影开关会**持久化** `enableShaders=true` ⇒ 跑完光影验证（或手动点过 Apply）后，**下一次冷启动会在进入世界的第一帧崩**（launch 阶段 `MT_LAUNCH: ERROR — 进入世界后立即崩溃`，指向 `crash-reports/crash-2026-09-17_10.49.50-client.txt`），后续任何用例都跑不起来。故光影回归的前置与收尾都应是 `pwsh -File scripts/test/mt_env.ps1 shaders --version 26.1.2 --state off` + 冷启动。⚠️ 2026-10-07 用户裁决「移除 26.1.2 的 iris 默认配置（允许测试时开启光影）」后，该线 `enableShaders` **不再被工具链强制** ⇒ **自己开过光影的测试必须自己用上述命令关回**，否则会污染后续冷启动。
 
 - **筹码重登缺陷定位（源码级 + 实测双证据；只读插桩，不修产品行为）**：clone Curios 源码（GitHub `TheIllusiveC4/Curios`，`26.1.2` 分支 = `8f2f132`/15.0.0，本地 `temp/curios_src`）后确认根因 = `CurioInventory#loadInventoryConfiguration()` 的搬移循环上界取「**数据包原始尺寸**」：`CurioStacksHandler#getSlots()` → `update()` 首行 `if (this.dataLoaded)`，而 `setDataLoaded()` 在方法**末尾**才调用 ⇒ 循环期间读到的是构造函数里的 `stackHandler` 尺寸（= 数据包 base），与 `copyModifiers()` 刚复制来的修饰符无关；本模组 chip 槽 `size:0` ⇒ 上界 0 ⇒ 旧内容全部进 `invalidStacks` → `handleInvalidStacks()` → `ItemHandlerHelper.giveItemToPlayer()`。
   新增**只读插桩** `debug/CurioSlotTrace`（`AP_CURIOTRACE|` 前缀；订阅 `OnDatapackSyncEvent` `HIGHEST`=迁移前 / `LOWEST`=迁移后、`PlayerLoggedInEvent` 与随后 1/2/3/10/20/40 tick、`CurioCanEquipEvent` 仅在迁移窗口内记录；开关 `-Dastral_dice.curioTrace`，默认「开发环境开、生产关」；**只读、不抛异常、不改状态**，关闭时为空操作），并在 `DiceCurioItem#applySlotCount` 增只读打点 `NOTE|applySlotCount`。判据性证据：迁移期间**只出现 `slot=dice` 的 `CAN_EQUIP`，`slot=chip` 一次都没有**（⇒ 不是校验器/标签挡下）＋ `SYNC_AFTER` 的 `chipSlots=4`、`chipStacks` 全空、`invChips=[2:astral_dice:flashlight_chipx1]`、`groundChips=[]`。另发现两条同源事实：① `size_shift` 使登录瞬间筹码栏 4 格（几 tick 后由 `CuriosCommonEvents:613 clearCachedSlotModifiers()` 抹回 2）；② 本模组 `curioTick` 在迁移当拍把目标读成 0 而防御式收缩到 0 → **第二条独立弹出路径**。
@@ -931,7 +931,7 @@ pwsh -NoProfile -File scripts/test/mt_watchdog.ps1 -Version 1.21.1 [-StallSecond
 - 新增用例 3 条：`CRAFT-SMOKE-26.1.2`、`CHIP-RELOG-A-26.1.2`、`CHIP-RELOG-B-26.1.2`（后者为两阶段「重登」流程；`mt.ps1 --phase stop` 是强杀不存档，故准备阶段必须显式 `saveall`）。
 - 修工具链踩坑：「注入命令 + 长命令链」在超时被强杀时会连带杀掉**同一进程树里的游戏客户端**（实测一次），长流程请拆成多次调用、不要把 `stop → launch → case` 串在一条命令里。
 - 探针 `equipslot`/`putInSlot` 为**绕过校验的直接写入**，与真人操作不等价；用它做「跨存档留存」类断言时必须选**校验通过**的物品（筹码 → `curios:chip` 标签内），否则会得到假缺陷。
-- **测试环境渲染栈（26.1.2，按用户裁决全部改走 Modrinth Maven）**：`mt_env.ps1 mods --version 26.1.2` 新增 `Install-MtRenderStack`，从 `https://api.modrinth.com/maven/maven/modrinth/<slug>/<version>/<file>` 拉取并**体积 + SHA1 双校验**（缓存 `temp/probe_mods/26.1.2/`）：**Sodium `mc26.1.2-0.9.2-neoforge`**（2026-10-07 起钉最新版；当日复验证明崩溃开关是 dev-only 的 GL 校验、与 Sodium 版本无关，见文末「附录 A 续 51：光影崩溃归因终版」）、Iris `1.11.4+26.1-neoforge`、光影包 Complementary Shaders - Reimagined `r5.9.3`（落到 `run/26.1.2/shaderpacks/`）（2026-10-07 用户裁决，见文末「附录 A 续 52」），并写 `run/26.1.2/config/iris.properties`。**`enableShaders=false` 是刻意默认**（测试不需要光影、省性能），**不是因为崩**——**「Sodium 0.9.1 下开光影正常」旧口径已于 2026-10-07 作废** —— 光影开 + GL 校验关（本仓 dev 默认）实测不崩、用例 PASS（见文末「附录 A 续 51：光影崩溃归因终版」）。阶段 L 回显 `SODIUM_LOADED` / `IRIS_LOADED` / `SHADERS=… pack=…` / `SHADERPACK_LOADED=…`（仅启用时才校验 `Using shaderpack:`，关闭时报 `n/a` 而非 WARN）。⚠️ 同批新增**渲染栈旧版本清理**：换了版本号以后 `Install-MtRemoteMod` 只放新文件、不删旧文件，`sodium-*`/`iris-*` 会新旧并存 ⇒ FML 报重复模组拒绝启动；故安装后按前缀 `sodium-`/`iris-` 删除不在本次规格中的 jar（前缀不带通配符，不会误删 `reeses-sodium-options-*`）。
+- **测试环境渲染栈（26.1.2，按用户裁决全部改走 Modrinth Maven）**：`mt_env.ps1 mods --version 26.1.2` 新增 `Install-MtRenderStack`，从 `https://api.modrinth.com/maven/maven/modrinth/<slug>/<version>/<file>` 拉取并**体积 + SHA1 双校验**（缓存 `temp/probe_mods/26.1.2/`）：**Sodium `mc26.1.2-0.9.2-neoforge`**（2026-10-07 起钉最新版；当日复验证明崩溃开关是 dev-only 的 GL 校验、与 Sodium 版本无关，见文末「附录 A 续 51：光影崩溃归因终版」）、Iris `1.11.4+26.1-neoforge`、光影包 Complementary Shaders - Reimagined `r5.9.3`（落到 `run/26.1.2/shaderpacks/`）（2026-10-07 用户裁决，见文末「附录 A 续 52」），并写 `run/26.1.2/config/iris.properties`。**2026-10-07 用户裁决：26.1.2 不再由工具链强制 `enableShaders`** —— `Install-MtRenderStack` 对本线只写 `shaderPack`（1.21.1 / 1.20.1 仍写 `true`），开/关由测试自行决定（`mt_env.ps1 shaders --version 26.1.2 --state on|off|status`）；未启用时 `SHADERS=disabled` 是正常状态、不报 WARN。**不是因为崩**——**「Sodium 0.9.1 下开光影正常」旧口径已于 2026-10-07 作废** —— 光影开 + GL 校验关（本仓 dev 默认）实测不崩、用例 PASS（见文末「附录 A 续 51：光影崩溃归因终版」）。阶段 L 回显 `SODIUM_LOADED` / `IRIS_LOADED` / `SHADERS=… pack=…` / `SHADERPACK_LOADED=…`（仅启用时才校验 `Using shaderpack:`，关闭时报 `n/a` 而非 WARN）。⚠️ 同批新增**渲染栈旧版本清理**：换了版本号以后 `Install-MtRemoteMod` 只放新文件、不删旧文件，`sodium-*`/`iris-*` 会新旧并存 ⇒ FML 报重复模组拒绝启动；故安装后按前缀 `sodium-`/`iris-` 删除不在本次规格中的 jar（前缀不带通配符，不会误删 `reeses-sodium-options-*`）。
 - **测试客户端搬到第二显示器并固定窗口尺寸（`--monitor` / `--size`，2026-09-17 用户要求「移到第二显示器，避免干扰观察」＋「窗口大小应控制在 1920x1080」）**：`lib/Mt.Win32.psm1` 新增 `Get-MtMonitors`（WinForms `Screen::AllScreens` → Index/Device/Primary/X/Y/W/H）、`Get-MtClientRect`（客户区=渲染区）与 `Move-MtWindowToMonitor`（**SW_RESTORE → SetWindowPos(居中) → 视参数 SW_MAXIMIZE**；已最大化的窗口直接 `SetWindowPos` 不会跨屏）；`mt_launch.ps1` 进入世界后（注入之前）查找窗口并搬移，默认显示器 **#1**、默认尺寸 **客户区 1920x1080**（`--monitor 0` 不搬移；`--size maximize|keep|<W>x<H>`；越界/单屏静默 `SKIP`）。`MT_WINDOW: OK` 回显「窗口矩形 + 客户区尺寸」，实测 1920x1080 客户区 ⇒ 外框 1936x1119。⚠️ **`--size` 按客户区口径**（外框 1920x1080 只会得到约 1904x1041 渲染区），边框差值由「外框 − 客户区」实测补足。⚠️ `Get-MtMonitors` 必须用 `@(...)` 接收：**不要**在函数里 `return ,$out`，那会把数组包成「一个元素」，`$mons.Count` 恒为 1、`$mons[1]` 取到整个数组（实测踩坑，已修正并有注释留痕）。
 - **就绪标记「先满足、后崩溃」的收口（2026-09-17）**：`mt_launch` 在就绪闸门之后新增一次崩溃报告复查（按 `LastWriteTime` 过滤本次启动之后的报告）。背景：26.1.2 开启光影时客户端在世界渲染首帧崩（`Missing sampler Sampler1`），而 `logged in with entity id` / `Loaded N advancements` **早已写入日志** ⇒ 旧实现会判「已就绪」并继续搬窗口/注入，下游只报出一串与真因无关的「客户端未在运行 / 注入失败」；现在直接 `MT_LAUNCH` 失败并指向具体 crash 文件。
 
@@ -3880,3 +3880,55 @@ Modrinth 核验：项目 `complementary-reimagined`、version id `Bqen1mJX`（20
 
 **同批落地**：版本四线 `.35 → .36`（两个 CHANGELOG 段头同步 + `#### 伤害与结算` / `#### Damage & Resolution` 新增 fabric 重复注册修复条目）；同批文档 = 本附录 + `KNOWN-ISSUES.md`（新增 KI-G4/G5/G6、§1 计数 25 → 28、变更记录一行）+ 两个 CHANGELOG 各一条「已修复BUG / Bug Fixes」。
 
+## 附录 A 续 54. 板砖 FX 重写（四轮修订）+ KI-G4 命中音修复 + 四条线用户可见文案同步 + 0.5 格实机判据（2026-10-08）
+
+**动机（用户裁决链）**：m01640「板砖动画重写 + 命中音两声修复」→ m01934「经过目视，发现板砖效果完全不对：掉落的不是红砖，
+而是砖墙 / 掉落位置明显偏移了，没有在头顶」→ m02224「不是砖墙！不是砖墙！不是砖墙！是红砖！（物品图标）」→
+m02524「红砖看起来太大了，请缩小到约等于僵尸头大小（是生物，不是那个僵尸的头物品）」。
+
+**四轮修订（四线同批，1.21.1 为语义基准）**：
+
+1. **修订 1（重写）**：删除抛物线飞行与拖尾，改为「目标头顶 +6.0 格生成 → 悬停 3 tick 只跟随 x/z → 自由落体
+   （初速 0.30 / 加速 0.22 / 上限 2.40 格/tick）→ 接触帧只摆位（保留 1 tick）→ 下一 tick 结算」。
+2. **修订 2（外观）**：显示实体由 Display.BlockDisplay + Blocks.BRICKS（方块模型，被用户读作「砖墙」）
+   改为 Display.ItemDisplay + Items.BRICK（原版砖物品图标）+ billboard=vertical；item 字段装配按线不同：
+   1.21.1 用 ItemStack.save(registryAccess())（NBT 形态 id/count/components）、26.1.2 用 ItemStack.CODEC.encodeStart(NbtOps.INSTANCE)
+   （id/count）、forge-1.20.1 用 save(new CompoundTag())（id/Count:1b）、fabric-1.20.1 用 ItemStack.CODEC（该线无 build/moddev 反编译源，
+   以 javap 实证键名）。
+3. **修订 3 / fixpivot（落点）**：transformation.translation 三轴归零。原 -0.5*scale 补偿是「方块几何以角点为原点」才需要的；
+   item_display 的模型链自带平移 26.1.2 见 client/resources/model/cuboid/ItemTransform.java:28-29、1.21.1 见 ItemRenderer.java:124
+   ⇒ 换几何类型后补偿必须同步作废，否则反向偏移 1.25 格（曾用帧测量量化：14 格处左偏约 70 px ≈ 1.25 格）。
+4. **修订 4 / scale05（尺寸）**：BRICK_SCALE 2.5F → 0.5F（≈ 成年僵尸头部边长）；restY = 头顶碰撞盒 maxY + 0.5*BRICK_SCALE 随之变小，
+   使砖底面贴住头顶。随后清理四线「大号砖头 / 体积明显大于砖头物品 / 原版砖块贴图」过期措辞（forge 5 行、fabric 3 行），
+   并同步四线玩家可见文案（MonsterBrickCardItem.java:21 注释 + lang/zh_cn.json 与 lang/en_us.json 的 guide 条目与 tooltip，
+   各 3 文件 5 处，中英逐字符替换、残留 0）。
+
+**KI-G4 命中音两声（四线同批已修）**：event/DamageEffectCardHandler.java 只对「非 FX 卡自身造成」的 card_spell 播通用命中音
+（判据 = 调度器两次 hurt 窗口内的 APPLYING_CARD_FX_DAMAGE / isApplyingCardFxDamage()）；活体书页（LivingPageImpact.java:42）与
+火牌（HuoCardItem.java:93）等其它来源照旧，四张伤害效果牌不再叠放两声。
+
+**0.5 格实机判据（26.1.2 冷启动，光影关，非亡灵靶）**：/summon minecraft:pillager ~ ~ ~6（NoAI/Silent/PersistenceRequired、
+max_health 500）→ 持 effect_card_monster_brick → 左键确认 → 逐帧像素判据（temp/fxrd/ 的连拍 + sky05.py）：
+
+- 砖块精灵 **64 px 宽 × 49~51 px 高**、x 区间恒 939..1003（**cx = 971 = 视口中心**）、像素中心 y 95 → 247 → 426 后进入命中粒子爆发；
+- 6 格处标定 **128.8 px/格** ⇒ 64 px = **0.497 格 ≈ 0.5 格**（对照：旧 2.5 格同距离为 305×298 px）；
+- 命中机读 AP_DNUM:evt=tick:t=9110:n=1:items=[6,7CFC00,…] ⇒ 伤害 6 = BRICK_DAMAGE（走的是模组 spawnBrick 真路径，非手工 /summon 替代）。
+
+**工具链教训（本轮实测）**：
+
+1. **砖块像素判据必须只扫天空盒**：整帧的砖色族 / 调色板掩码会被地形（泥土、木料）淹没（n≈13 万~24 万、bbox 全画面）；
+   定型工具 temp/fxrd/sky05.py = 6 色砖调色板 + 容差 22 + 只扫裁剪区 (600,0)-(1300,500)，只打印 n≥60 的帧。
+2. **pwsh 工具包装器**：String.Replace(单字符占位符, [char]34) 会抛「String must be exactly one character long」⇒
+   改用 $q=[char]34 后以 + 拼接含引号的行；单条命令过长 / 多语句整段会**静默失败**（无输出 + exit 1）⇒ 写入命令控制在约 1600 字符内。
+3. **文件写入**：mcp__modmind__modmind_apply_edits 连续返回 Error: fetch failed ⇒ 该 MCP 工具不可用，一律走 pwsh 写文件。
+4. **连拍窗口必须真的在前台**：Graphics.CopyFromScreen 抓的是桌面，窗口不在前台会拍到别的应用；cap_rect.ps1 的「最小化→还原」
+   会让窗口「可见但非活动」⇒ MC 丢弃注入的鼠标按键（点击无效、无 confirm）；现该序列已禁用，且点击进程用 -NoNewWindow 启动。
+5. mt_inject cmd 的 ESC 副作用会打开 PauseScreen ⇒ 连拍尾部帧不可用于分析（只取暂停前帧）。
+
+**三条新硬规则（2026-10-08 用户裁决，正文见 AGENTS.md「## 子代理与测试环境硬规则」）**：① 一个 subagent 只派一个任务、完成即销毁；
+② 测试 / 演示一律使用非亡灵生物（不得用僵尸等 undead，改用 pillager / cow 等）；③ 测试流程结束后必须执行
+mt.ps1 --version 线 --phase stop 关闭测试实例（gradle 守护进程保留属正常）。
+
+**同批落地**：四线版本号 .36 → .37（两份 CHANGELOG 段头同步 + #### 伤害与结算 / #### Damage & Resolution 各新增 2 条：板砖表现重做、
+命中音叠放修复）；文档 = 本附录 + AGENTS.md（新增「子代理与测试环境硬规则」章节、卡片表对怪板砖 FX 口径重写、BRICK_SPEED=3.2 时序作废、
+光影默认关闭行、默认测试端 = 1.21.1）+ KNOWN-ISSUES.md（KI-G3 换 item_display 与 0.5 格口径、KI-G4 已修、KI-G5 已修）。

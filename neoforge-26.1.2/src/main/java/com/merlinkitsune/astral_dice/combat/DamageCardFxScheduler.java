@@ -13,7 +13,7 @@ import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.FloatTag;
 import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.NbtUtils;
+import net.minecraft.nbt.NbtOps;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -51,8 +51,9 @@ import java.util.List;
  * <ul>
  *   <li><b>LASER</b>（对怪激光）：释放后延迟 {@value #DELAY_TICKS} tick（0.5 秒），在目标头顶生成
  *       **红色激光线（视觉无限高）**并射中目标，光束持续 {@value #BEAM_TICKS} tick（1 秒）；</li>
- *   <li><b>BRICK</b>（对怪板砖）：释放后向目标**投掷一块大号砖头**（原版砖块贴图，体积明显大于砖头物品），
- *       飞行速度 {@value #BRICK_SPEED} 格/tick（**快于活体书页的 2.4**），命中后产生碎裂粒子；</li>
+ *   <li><b>BRICK</b>（对怪板砖）：释放后在目标**头顶正上方**生成一块原版红砖（贴图 = 原版砖块，边长
+ *       {@value #BRICK_SCALE} 格 ≈ 僵尸头部大小），悬停 {@value #BRICK_HOVER_TICKS} tick 后沿竖直方向
+ *       加速砸下；砸中头部时播命中音 + 碎裂粒子并结算伤害（**无抛物线飞行、无拖尾**）；</li>
  *   <li><b>ORBITAL</b>（轨道炮）：延迟 0.5 秒后在目标头顶生成**金色信标光束（视觉无限高）**并射中目标，
  *       持续 1 秒，命中时产生发光飞溅粒子；</li>
  *   <li><b>BLAST</b>（定向爆破）：延迟 0.5 秒后在目标处爆开，**对选中目标及其 {@value #BLAST_RADIUS} 格内的
@@ -68,8 +69,8 @@ import java.util.List;
  * 见 {@link SpellDamageRegistry}）。
  *
  * <h2>视觉实现</h2>
- * 光束 / 爆裂 / 拖尾全部用粒子（本模组既有口径：{@link GlowingDustOptions} 全亮发光尘 + 原版粒子），
- * **不用自定义实体**；仅「大号砖头」用原版 {@link Display.BlockDisplay}（砖块贴图 + 放大），
+ * 光束 / 爆裂全部用粒子（本模组既有口径：{@link GlowingDustOptions} 全亮发光尘 + 原版粒子），
+ * **不用自定义实体**；仅「砖头」用原版 {@link Display.ItemDisplay}（红砖物品 + 等比缩放），
  * 经 NBT 装配 —— 因为 {@code Display} 的 setter 在三个 MC 版本里都是 private，走 NBT 可**零 AT/AW**。
  */
 @EventBusSubscriber(modid = AstralDiceMod.MODID)
@@ -79,7 +80,7 @@ public final class DamageCardFxScheduler {
     public enum Kind {
         /** 对怪激光：红色激光线（延迟 0.5s → 光束 1s） */
         LASER,
-        /** 对怪板砖：投掷大号砖头（飞行快于活体书页） */
+        /** 对怪板砖：目标头顶正上方生成砖头（尺寸 ≈ 僵尸头），悬停后竖直砸下 */
         BRICK,
         /** 轨道炮：金色信标光束（延迟 0.5s → 光束 1s） */
         ORBITAL,
@@ -98,8 +99,6 @@ public final class DamageCardFxScheduler {
     public static final int DELAY_TICKS = 10;
     /** 光束持续（tick）= 1 秒。 */
     public static final int BEAM_TICKS = 20;
-    /** 砖头飞行速度（格/tick）。⚠️ 必须**大于**活体书页的 {@code LivingPageFlightScheduler.SPEED_BLOCKS_PER_TICK = 2.4}。 */
-    public static final double BRICK_SPEED = 3.2D;
     /** 定向爆破的波及半径（格），与改造前的 AOE 口径一致。 */
     public static final double BLAST_RADIUS = 6.0D;
 
@@ -107,12 +106,21 @@ public final class DamageCardFxScheduler {
     private static final double BEAM_HEIGHT = 96.0D;
     /** 光束每 tick 粒子数。 */
     private static final int BEAM_PARTICLES = 84;
-    /** 砖头投掷起点：从眼睛沿视线前移（避免贴脸穿模）。 */
-    private static final double BRICK_LAUNCH_OFFSET = 0.8D;
-    /** 砖头体积放大倍数（原版砖块已经远大于「砖头」物品，再放大一档）。 */
-    private static final float BRICK_SCALE = 1.35F;
-    /** 命中判定吸附距离（格）。 */
-    private static final double SNAP_DISTANCE = 0.4D;
+    /** 砖头边长（格）：{@value #BRICK_SCALE} 格 ≈ 僵尸头部尺寸（成年僵尸的头部是 8/16 格立方 ⇒ 边长 0.5 格）。
+     *  2026-10-07 20:47 用户 m02524 裁决「红砖看起来太大了，请缩小到约等于僵尸头大小（是生物，不是那个僵尸的头物品）」。
+     *  ⇒ 旧口径（把砖头放大到包住整只僵尸）作废。 */
+    private static final float BRICK_SCALE = 0.5F;
+    /** 砖头自目标**头顶**上方多高处开始下落（格）。 */
+    private static final double BRICK_DROP_HEIGHT = 6.0D;
+    /** 砸下前的悬停时长（tick）= 3 tick（0.15 秒）：让玩家先看到「头顶上方出现砖头」再砸。
+     *  ⚠️ 修订 1（DESIGN §7）：4 → 3，配合「接触帧保留 1 tick」使 launch → 命中仍为 **10 tick**。 */
+    private static final int BRICK_HOVER_TICKS = 3;
+    /** 下落初速（格/tick）。 */
+    private static final double BRICK_FALL_INITIAL_SPEED = 0.30D;
+    /** 下落加速度（格/tick²）—— 自由落体观感。 */
+    private static final double BRICK_FALL_ACCELERATION = 0.22D;
+    /** 下落速度上限（格/tick）。 */
+    private static final double BRICK_FALL_MAX_SPEED = 2.40D;
     /** 超龄保护：维度卸载等极端情形下丢弃滞留条目。 */
     private static final long MAX_AGE_TICKS = 400L;
 
@@ -125,28 +133,38 @@ public final class DamageCardFxScheduler {
 
     private static final List<Pending> PENDING = new ArrayList<>();
 
+    /**
+     * 「本线程正在结算四张伤害效果牌自己的 FX 伤害」标记（2026-10-07 修复 KI-G4）。
+     * 四张牌命中时各自已播命中音（monster_brick_hit / monster_laser_hit / orbital_strike_hit /
+     * directional_blast_hit），而 event/DamageEffectCardHandler 对任何 astral_dice:card_spell 伤害
+     * 还会再播一次「活体书页命中音」⇒ 每次命中两声。本标记在两个「效果牌伤害落地」入口置位。
+     */
+    private static final ThreadLocal<Boolean> APPLYING_CARD_FX_DAMAGE = ThreadLocal.withInitial(() -> Boolean.FALSE);
+
+    /** 当前伤害是否由四张伤害效果牌自己的 FX 结算发起（见 {@link #APPLYING_CARD_FX_DAMAGE}）。 */
+    public static boolean isApplyingCardFxDamage() {
+        return APPLYING_CARD_FX_DAMAGE.get();
+    }
+
     private static final class Pending {
         private final Kind kind;
         private final ServerLevel level;
         private final ServerPlayer caster;
         private final LivingEntity target;
         private final long startTick;
-        private final int flightTicks;
         private Vec3 pos;
         private int elapsed;
         private boolean hit;
-        private Display.BlockDisplay display;
+        private Display.ItemDisplay display;
         /** 本次这一条 FX 是否为「电击手套已付费」的那一次伤害 ⇒ 只有它的**主目标**命中可扩散(见 markLatestGlovePaid)。 */
         private boolean glovePaid;
 
-        private Pending(Kind kind, ServerLevel level, ServerPlayer caster, LivingEntity target,
-                        Vec3 pos, int flightTicks) {
+        private Pending(Kind kind, ServerLevel level, ServerPlayer caster, LivingEntity target, Vec3 pos) {
             this.kind = kind;
             this.level = level;
             this.caster = caster;
             this.target = target;
             this.pos = pos;
-            this.flightTicks = flightTicks;
             this.startTick = level.getGameTime();
         }
     }
@@ -204,16 +222,15 @@ public final class DamageCardFxScheduler {
                 ModSounds.DAMAGE_EFFECT_CARD_CAST.get());
 
         if (kind == Kind.BRICK) {
-            Vec3 origin = caster.getEyePosition().add(caster.getLookAngle().scale(BRICK_LAUNCH_OFFSET));
-            Pending pending = new Pending(kind, level, caster, target, origin,
-                    (int) Math.max(1L, (long) Math.ceil(origin.distanceTo(target.getBoundingBox().getCenter())
-                            / BRICK_SPEED)));
+            // 2026-10-07 用户裁决：移除抛物线投掷，改为「目标头顶正上方生成砖头 → 竖直砸下」。
+            Vec3 origin = brickDropOrigin(target);
+            Pending pending = new Pending(kind, level, caster, target, origin);
             pending.display = spawnBrick(level, origin);
             PENDING.add(pending);
             return true;
         }
 
-        PENDING.add(new Pending(kind, level, caster, target, target.getBoundingBox().getCenter(), 0));
+        PENDING.add(new Pending(kind, level, caster, target, target.getBoundingBox().getCenter()));
         return true;
     }
 
@@ -382,6 +399,8 @@ public final class DamageCardFxScheduler {
             //    定向爆破自身的 6 格波及**不是**「电击手套付费的那一次主目标命中」⇒ 不二次触发手套扩散
             //    (2026-10-05 用户裁决:手套只从命中的主目标算一次、与爆破自己的 AOE 各自独立结算,避免递归)。
             DiceCombatEvents.beginAoe();
+            final Boolean wasApplyingCardFx = APPLYING_CARD_FX_DAMAGE.get();
+            APPLYING_CARD_FX_DAMAGE.set(Boolean.TRUE);
             try {
                 for (LivingEntity e : nearby) {
                     // 手套 3 格扩散已经结算过的目标,本次 AOE 不再重复结算(先到先得)
@@ -391,78 +410,117 @@ public final class DamageCardFxScheduler {
                 }
             } finally {
                 DiceCombatEvents.endAoe();
+                APPLYING_CARD_FX_DAMAGE.set(wasApplyingCardFx);
             }
         });
     }
 
     // ══════════════════════════════════════════════════════════════════════════
-    //  对怪板砖：投掷大号砖头 → 命中结算
+    //  对怪板砖：头顶上方生成砖头 → 悬停 → 竖直砸下 → 命中结算
     // ══════════════════════════════════════════════════════════════════════════
+
+    /** 板砖落点：目标**头顶**正上方 BRICK_DROP_HEIGHT 格（显示实体中心高度）。 */
+    private static Vec3 brickDropOrigin(LivingEntity target) {
+        return new Vec3(target.getX(), target.getBoundingBox().maxY + BRICK_DROP_HEIGHT, target.getZ());
+    }
 
     private static void advanceBrick(Pending p) {
         if (p.display == null || p.display.isRemoved()) {
-            return;     // 实体被外部移除（/kill 等）⇒ 本次作废
-        }
-        Vec3 dest = p.target.getBoundingBox().getCenter();
-        Vec3 delta = dest.subtract(p.pos);
-        double remaining = delta.length();
-        if (remaining <= SNAP_DISTANCE || p.elapsed >= p.flightTicks) {
-            p.pos = dest;
-            resolveBrickHit(p, dest);
+            // 砖头显示实体不可用（创建失败 / 被外部 /kill 等）：**不静默作废**（KI-G5）——
+            // 直接按「砸在头顶」瞬时结算，保证伤害与时点成立，并留下日志。
+            LOGGER.warn("[Astral Dice] 板砖显示实体不可用，改为瞬时结算本次命中");
+            resolveBrickHit(p, new Vec3(p.target.getX(), p.target.getBoundingBox().maxY, p.target.getZ()));
             return;
         }
-        double step = Math.min(BRICK_SPEED, remaining);
-        Vec3 prev = p.pos;
-        p.pos = p.pos.add(delta.normalize().scale(step));
+        double headY = p.target.getBoundingBox().maxY;
+        double x = p.target.getX();
+        double z = p.target.getZ();
+        // ① 悬停段：砖头停在头顶上方，给玩家一个预警帧（不下落、不产生拖尾）
+        if (p.elapsed < BRICK_HOVER_TICKS) {
+            p.pos = new Vec3(x, p.pos.y, z);
+            p.display.setPos(p.pos.x, p.pos.y, p.pos.z);
+            p.elapsed++;
+            PENDING.add(p);
+            return;
+        }
+        // ② 下落段：竖直加速下砸（横向始终跟随目标 ⇒ 一定砸在头上）；底面贴住头顶即命中
+        double fall = Math.min(BRICK_FALL_MAX_SPEED,
+                BRICK_FALL_INITIAL_SPEED + BRICK_FALL_ACCELERATION * (p.elapsed - BRICK_HOVER_TICKS));
+        double restY = headY + BRICK_SCALE * 0.5D;
+        if (p.pos.y <= restY) {
+            // 上一 tick 已把砖头摆到「底面压在头顶」的接触位：本 tick 才结算 ——
+            // 同 tick 摆位 + 删除会让客户端一帧接触画面都看不到（最后可见帧停在半空）。
+            resolveBrickHit(p, new Vec3(x, headY, z));
+            return;
+        }
+        double nextY = p.pos.y - fall;
+        if (nextY <= restY) {
+            // 接触帧：本 tick 只摆位（底面压在头顶）；音效 / 碎裂 / 伤害留到下一 tick
+            p.pos = new Vec3(x, restY, z);
+            p.display.setPos(p.pos.x, p.pos.y, p.pos.z);
+            p.elapsed++;
+            PENDING.add(p);
+            return;
+        }
+        p.pos = new Vec3(x, nextY, z);
         p.display.setPos(p.pos.x, p.pos.y, p.pos.z);
-        // 翻滚感：绕自身旋转
-        p.display.setYRot(p.display.getYRot() + 46.0F);
-        p.display.setXRot(p.display.getXRot() + 17.0F);
-        emitBrickTrail(p, prev, p.pos);
         p.elapsed++;
         PENDING.add(p);
     }
 
-    private static void emitBrickTrail(Pending p, Vec3 from, Vec3 to) {
-        double length = from.distanceTo(to);
-        int steps = Math.max(1, (int) Math.ceil(length / 0.5D));
-        for (int i = 1; i <= steps; i++) {
-            Vec3 at = from.lerp(to, (double) i / (double) steps);
-            p.level.sendParticles(dust(BRICK_TRAIL_COLOR, 0.45F),
-                    at.x, at.y, at.z, 2, 0.05D, 0.05D, 0.05D, 0.0D);
-        }
-        // 尾随的原版砖头贴图碎片（「贴图为原版样式」的延续）
-        p.level.sendParticles(new ItemParticleOption(ParticleTypes.ITEM, Items.BRICK),
-                to.x, to.y, to.z, 2, 0.06D, 0.06D, 0.06D, 0.01D);
-    }
-
-    private static void resolveBrickHit(Pending p, Vec3 center) {
+    private static void resolveBrickHit(Pending p, Vec3 head) {
         discardDisplay(p);
-        // 「碎裂粒子」：原版砖块碎块 + 砖头贴图碎片 + 尘土
+        // 「碎裂」效果：砖块碎块密集炸开 + 砖头贴图碎片崩飞 + 尘土 + 撞击白烟
+        // （2026-10-07 用户裁决：砸中头顶的**同时**播命中音 + 砖头碎裂效果）
         p.level.sendParticles(new BlockParticleOption(ParticleTypes.BLOCK, Blocks.BRICKS.defaultBlockState()),
-                center.x, center.y, center.z, 42, 0.35D, 0.35D, 0.35D, 0.12D);
+                head.x, head.y + 0.35D, head.z, 72, 0.45D, 0.30D, 0.45D, 0.28D);
         p.level.sendParticles(new ItemParticleOption(ParticleTypes.ITEM, Items.BRICK),
-                center.x, center.y, center.z, 22, 0.3D, 0.3D, 0.3D, 0.12D);
-        p.level.sendParticles(dust(BRICK_TRAIL_COLOR, 0.9F), center.x, center.y, center.z,
-                20, 0.4D, 0.4D, 0.4D, 0.03D);
-        SoundPlayback.playAt(p.level, center.x, center.y, center.z, ModSounds.MONSTER_BRICK_HIT.get());
+                head.x, head.y + 0.35D, head.z, 30, 0.40D, 0.28D, 0.40D, 0.22D);
+        p.level.sendParticles(dust(BRICK_TRAIL_COLOR, 0.9F), head.x, head.y + 0.25D, head.z,
+                26, 0.45D, 0.25D, 0.45D, 0.05D);
+        p.level.sendParticles(ParticleTypes.POOF, head.x, head.y + 0.20D, head.z,
+                10, 0.32D, 0.16D, 0.32D, 0.02D);
+        SoundPlayback.playAt(p.level, head.x, head.y, head.z, ModSounds.MONSTER_BRICK_HIT.get());
         applySpellDamage(p.level, p.caster, p.target, BRICK_DAMAGE, p.glovePaid);
     }
 
     /**
-     * 生成「大号砖头」= 原版 {@link Display.BlockDisplay}（砖块贴图）+ 放大 {@value #BRICK_SCALE} 倍。
+     * 生成砸落用的砖头 = 原版 {@link Display.ItemDisplay}（{@link Items#BRICK 红砖物品}，
+     * 2026-10-07 用户 m01934 目视反馈：{@code block_display} + 砖块方块贴图会被读成「砖墙」），边长
+     * {@value #BRICK_SCALE} 格 ≈ 僵尸头部尺寸（2026-10-07 20:47 用户 m02524 裁决「红砖太大」⇒ 由旧口径缩小）。
      *
      * <p>⚠️ {@code Display} 系列 setter 在 1.20.1 / 1.21.1 / 26.1.2 **都是 private**（只能由 NBT 读取路径调用）
-     * ⇒ 这里用 {@code Entity#load} 从 NBT 装配，**无需任何 AT / AW**。NBT 键名三线一致：
-     * {@code block_state}（{@link Display.BlockDisplay#TAG_BLOCK_STATE}）与 {@code transformation}
+     * ⇒ 这里用 {@code Entity#load} 从 NBT 装配，**无需任何 AT / AW**。本线 NBT 键名：
+     * {@code item}（{@code Display.ItemDisplay.TAG_ITEM} 实测为 private ⇒ 用字面量；ItemStack 的 NBT 形态见
+     * 方法体内实证注释）、{@code billboard} = {@code "vertical"}（{@code BillboardConstraints} 序列化名实测为
+     * {@code "fixed"/"vertical"/"horizontal"/"center"}；扁平砖面始终正对观察者）、{@code transformation}
      * （{@code Transformation.EXTENDED_CODEC}，四个字段都必填）。
+     *
+     * <p>⚠️ 落点（2026-10-07 用户 m01934 目视反馈「掉落位置明显偏移，没有在头顶」；同日受控实机扫描
+     * sweep7.ps1 / sweep8.ps1 定案）：**物品模型由 {@code ItemRenderer} 居中装配**，与方块模型的
+     * 「角点原点」不同 ⇒ 为 {@code block_display} 准备的「{@code -0.5 × 放大倍数}」角点补偿对
+     * {@code item_display} **无必要且有害**（实测给 {@code translation} 加负补偿时红砖完全不渲染、
+     * 保持 0 时清晰可见且水平居中于实体位置）⇒ {@code translation} 保持 {@code [0.0F, 0.0F, 0.0F]}。
+     * 竖直位置由 {@code restY = headY + BRICK_SCALE * 0.5D} 决定：0.5 格精灵竖直跨 ±0.25 格、
+     * **底边正好落在目标头顶**。⚠️ 另外，不完整的 {@code transformation} 复合会被整体静默忽略
+     * （{@code translation} / {@code left_rotation} / {@code scale} / {@code right_rotation} 四字段
+     * 必须全部显式写出）。
      */
-    private static Display.BlockDisplay spawnBrick(ServerLevel level, Vec3 origin) {
+    private static Display.ItemDisplay spawnBrick(ServerLevel level, Vec3 origin) {
         CompoundTag tag = new CompoundTag();
-        tag.putString("id", "minecraft:block_display");
-        tag.put(Display.BlockDisplay.TAG_BLOCK_STATE,
-                NbtUtils.writeBlockState(Blocks.BRICKS.defaultBlockState()));
+        tag.putString("id", "minecraft:item_display");
+        // ItemStack 的 NBT 形态由本线反编译源实证（build/moddev/artifacts/minecraft-patched-26.1.2.109-sources.jar
+        // 内 net/minecraft/world/item/ItemStack.java）：{id:"minecraft:brick", count:1}
+        //   :111-122 MAP_CODEC = Item.CODEC_WITH_BOUND_COMPONENTS.fieldOf("id")
+        //            + ExtraCodecs.intRange(1, 99).fieldOf("count").orElse(1) + 可选 components
+        // ⇒ 直接用 ItemStack.CODEC 编码（等价手写字面量，但不会随版本漂移）
+        tag.put("item", ItemStack.CODEC.encodeStart(NbtOps.INSTANCE, new ItemStack(Items.BRICK)).getOrThrow());
+        // 扁平砖面始终朝向观察者（BillboardConstraints 序列化名实测 "vertical"）
+        tag.putString("billboard", "vertical");
         CompoundTag transformation = new CompoundTag();
+        // 物品模型由 ItemRenderer 居中装配（与方块模型的角点原点不同）⇒ translation 必须保持 0：
+        // 实机扫描 V1-V4（给 translation 加负补偿的四种组合）在 y 480..920 带内 0 个砖块像素，
+        // V5/V6（translation = 0，带/不带 billboard）清晰可见且水平居中于实体位置
         transformation.put("translation", floats(0.0F, 0.0F, 0.0F));
         transformation.put("left_rotation", floats(0.0F, 0.0F, 0.0F, 1.0F));
         transformation.put("scale", floats(BRICK_SCALE, BRICK_SCALE, BRICK_SCALE));
@@ -474,7 +532,7 @@ public final class DamageCardFxScheduler {
         tag.putFloat("view_range", 2.0F);
         // 26.1.2：实体 NBT 已改为 ValueInput/ValueOutput ⇒ 用 loadEntityRecursive(CompoundTag, …) 装配
         Entity loaded = EntityType.loadEntityRecursive(tag, level, EntitySpawnReason.COMMAND, e -> e);
-        if (!(loaded instanceof Display.BlockDisplay display)) {
+        if (!(loaded instanceof Display.ItemDisplay display)) {
             if (loaded != null) loaded.discard();
             return null;
         }
@@ -527,9 +585,12 @@ public final class DamageCardFxScheduler {
             DamageNumberAggregator.tag(target, source, DamageNumberAggregator.Group.SPELL);
             target.hurt(source, (float) Math.max(1, amount));
         };
-        // 两层窗口(均为「保存 / 恢复」式,与外层嵌套安全):
+        // 三层窗口(均为「保存 / 恢复」式,与外层嵌套安全):
         //   beginAoe()/endAoe()      = 波及伤害不进骰战结算(深度计数,配对开窗);
-        //   runAsGloveSplashInstance = 本次命中可由电击手套扩散。
+        //   runAsGloveSplashInstance = 本次命中可由电击手套扩散;
+        //   APPLYING_CARD_FX_DAMAGE  = 这几次 hurt 属于效果牌自己的 FX ⇒ 不叠播活体书页命中音(KI-G4)。
+        final Boolean wasApplyingCardFx = APPLYING_CARD_FX_DAMAGE.get();
+        APPLYING_CARD_FX_DAMAGE.set(Boolean.TRUE);
         DiceCombatEvents.beginAoe();
         try {
             if (gloveSplash) {
@@ -539,6 +600,7 @@ public final class DamageCardFxScheduler {
             }
         } finally {
             DiceCombatEvents.endAoe();
+            APPLYING_CARD_FX_DAMAGE.set(wasApplyingCardFx);
         }
     }
 

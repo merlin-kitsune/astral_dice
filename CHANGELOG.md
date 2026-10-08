@@ -4,7 +4,7 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
-## Unreleased (2.0.0-SNAPSHOT.36)
+## Unreleased (2.0.0-SNAPSHOT.37)
 
 ### New Content
 
@@ -309,6 +309,14 @@
   code §r**, which resets to white: Japanese puts the verb after the value, so that trailing text was drawn
   **white** on the tooltip's own colour — gold / red for the three dice, gray for the effect description. Those
   values now carry that colour, so the text after them keeps it; for ② only `ja_jp` was affected.
+
+- **"Monster Brick" card rework**: it no longer hurls a trailing oversized brick block on a parabolic arc; it now throws a
+  **brick** (the vanilla brick **item** icon, 0.5 blocks across ≈ an adult zombie head) above the target's **head**, hovers for
+  ~3 ticks, then drops **straight down** under gravity and resolves on contact (damage unchanged); the guide book and item
+  tooltip text were updated to match (both languages).
+
+- **Fixed doubled impact sound on damage effect cards**: the impact no longer plays two generic hit sounds at once; hit
+  sounds from other sources (living page, fire card, etc.) are unaffected.
 
 ## 1.3.7-hotfix
 

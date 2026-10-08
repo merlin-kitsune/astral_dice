@@ -702,32 +702,32 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
 - **相关文档**：`AGENTS.md`「治愈流派规范 → 医疗箱筹码」；两份 `CHANGELOG` 的 `1.3.6`；
   `scripts/test/TESTING-SPEC.md` 附录 A 续 44。
 
-### KI-G3 ＝ 「对怪板砖」FX 的 `BlockDisplay` 实体在**非正常关服**时的残留风险（**只登记，未改**）
+### KI-G3 ＝ 「对怪板砖」FX 的 `ItemDisplay` 实体在**非正常关服**时的残留风险（**只登记，未改**；2026-10-07 修订 2/3/4 已同步口径）
 
-- **现象**：`combat/DamageCardFxScheduler` 的「大号砖头」用原版 `Display.BlockDisplay` 承载
-  （原版砖块贴图 + 放大 1.35 倍，经 NBT 装配 ⇒ **无需 AT / AW**，`Display` 的 setter 三线都是 private）。
+- **现象**：`combat/DamageCardFxScheduler` 的「红砖」用原版 `Display.ItemDisplay` 承载
+  （= `minecraft:brick` 物品图标、边长 **0.5 格** ≈ 成年僵尸头部；几何类型由 `block_display` 换为 `item_display`，`translation` 归零 + `billboard="vertical"`，见 `temp/brick-rewrite/DESIGN.md` §8–§10；经 NBT 装配 ⇒ **无需 AT / AW**，`Display` 的 setter 三线都是 private）。
   该实体是**普通实体**、随区块保存 ⇒ 若服务器在砖头飞行的约 0.5 秒窗口内**崩溃 / 强杀**，或正常关服时
   恰在飞行中，重启后世界里会留下一个**静止的浮空砖块**。
 - **已做的缓解**：命中 / 目标失效 / `MAX_AGE_TICKS(400)` / 结算异常**四条路径**都会 `discard()`；
   `view_range=2.0` 且 0.5 秒内即被移除 ⇒ 正常流程不会残留。
 - **为什么只登记未改**：彻底消除需要「启动期扫描并清理带标记实体」（新增事件挂钩 × 四线）
   或整体改成纯粒子实现；两者都超出本次范围。
-- **建议**：若实机看到残留，用 `/kill @e[type=block_display]` 清理，并按上述两条路线之一修补。
+- **建议**：若实机看到残留，用 `/kill @e[type=item_display]` 清理，并按上述两条路线之一修补。
 
-### KI-G4 ＝ 四张伤害效果牌的「通用命中音」被叠加播放（**只登记，未改**，2026-10-07）
+### KI-G4 ＝ 四张伤害效果牌的「通用命中音」被叠加播放（**已修，2026-10-07**）
 
 - **现象**：`event/DamageEffectCardHandler.java:95-101` 对任何 `card_spell` 伤害源播一条通用命中音；该处注释 :93 的
   前提（「`card_spell` 唯一来源 = 活体书页」）在四张伤害效果牌重做后已失效 ⇒ 四张牌每次命中会听到**两声**
   （牌自身 FX 的命中音 + 这条通用音）。
-- **修法建议**：把通用命中音限定到活体书页来源，或改由各 FX 自行播放、此处跳过 `DamageCardFxScheduler` 的四类 Kind。
+- **已落地的修法（四线同批）**：`event/DamageEffectCardHandler` 只对**非** FX 卡自身造成的 `card_spell` 播通用命中音 —— `combat/DamageCardFxScheduler` 在两次 `hurt` 前后把 `APPLYING_CARD_FX_DAMAGE` 置 TRUE，处理处经 `isApplyingCardFxDamage()` 判定后跳过。因此活体书页（`LivingPageImpact.java:42`）与火牌（`HuoCardItem.java:93`）仍播通用命中音，四张伤害效果牌不再叠播。
 - **判据**：命中一次时客户端只应播出一条命中音（音效日志 + 帧对齐核对）。
 
-### KI-G5 ＝ 「对怪板砖」在砖头实体创建失败时整条 FX 静默作废（**只登记，未改**，2026-10-07）
+### KI-G5 ＝ 「对怪板砖」在砖头实体创建失败时整条 FX 静默作废（**已修，2026-10-07**）
 
 - **现象**：`combat/DamageCardFxScheduler.java:211-213` 不检查 `spawnBrick(level, origin)` 的返回值且恒 `return true`
   （牌照常消耗、施放音照常播），而 `:403-405` 在 `p.display == null || isRemoved()` 时直接 `return` ⇒
   **没有砖头、没有伤害、也没有任何日志**。
-- **修法建议**：`spawnBrick` 返回 null 时回落为「瞬时命中结算」或至少打一条 WARN，避免静默吞掉一次用牌。
+- **已落地的修法（四线同批）**：`advanceBrick` 在 `p.display == null || p.display.isRemoved()` 时**不再静默 return** —— 打一条 `LOGGER.warn("[Astral Dice] 板砖显示实体不可用，改为瞬时结算本次命中")` 并按「砸在头顶」位置 `resolveBrickHit(...)` 瞬时结算（26.1.2 现 `:427-434`），保证伤害与时点成立且留下日志。
 - **判据**：人为构造一次创建失败（例如同坐标已有实体 / 被 `/kill`），断言仍能结算伤害或至少留下日志。
 
 ### KI-G6 ＝ 四张伤害效果牌实测伤害与静态预测存在 ±1 偏差（**未定位**，2026-10-07）

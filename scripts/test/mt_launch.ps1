@@ -527,8 +527,8 @@ if ($MyInvocation.InvocationName -ne '.') {
         if (Test-MtModLoaded 'modernfix') { Write-MtInfo 'MODERNFIX_LOADED=true' } else { Write-MtWarn 'MODERNFIX_LOADED=false(优化模组兼容性验证未生效)' }
         if (Test-MtModLoaded 'ferritecore') { Write-MtInfo 'FERRITECORE_LOADED=true' } else { Write-MtWarn 'FERRITECORE_LOADED=false(优化模组兼容性验证未生效)' }
         # 光影状态：以 config/iris.properties 为准（而不是「日志里有没有出现过 shaderpack 字样」）。
-        # 默认 enableShaders=false —— 26.1.2 上启用光影会崩（见 mt_env 的 Install-MtRenderStack 注释），
-        # 故默认不启用是**正常状态**，不该报 WARN；启用时才用日志确认包真的加载成功。
+        # 2026-10-07 用户裁决后，26.1.2 **不再由工具链强制 enableShaders**（见 mt_env 的 Install-MtRenderStack
+        # 注释）⇒ 开/关都可能是测试刻意选择的状态；未启用是**正常状态**，只报 INFO、不报 WARN。
         $irisCfg = Join-Path (Join-Path $p.run_dir 'config') 'iris.properties'
         $irisEnabled = $false
         $irisPack = ''
