@@ -4,7 +4,11 @@ import com.merlinkitsune.astral_dice.combat.PartyRelations;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.economy.StarCoinBalanceSync;
 import com.merlinkitsune.astral_dice.item.ModItems;
+import com.merlinkitsune.astral_dice.item.StarLightManager;
+import com.merlinkitsune.astral_dice.item.chip.AtmChipItem;
+import com.merlinkitsune.astral_dice.item.chip.MemberRecommendationChipItem;
 import com.merlinkitsune.astral_dice.item.dice.DiceCurioItem;
+import com.merlinkitsune.astral_dice.item.sign.ParunanSignItem;
 import com.merlinkitsune.astral_dice.network.ModNetwork;
 import com.merlinkitsune.astral_dice.resource.ResourceConversion;
 import com.merlinkitsune.astral_dice.screen.ModMenuTypes;
@@ -75,6 +79,14 @@ public class CardShopMenu extends AbstractContainerMenu {
     public static final int MIN_TRANSFER = 5;
     public static final int MAX_TRANSFER = 20;
     public static final int TRANSFER_COOLDOWN_SECONDS = 60;
+
+    /** 经商立牌被动第 1 条(2026-10-08):佩戴者每次进入商店获得的星币数 */
+    private static final int PARUNAN_ENTER_COIN = 1;
+    /** 经商立牌被动第 5 条(2026-10-08;用户当日更正 +20% → **+50%**):星光兑换的额外收入比例(下限为 1 枚) */
+    private static final float PARUNAN_EXCHANGE_BONUS_RATE = 0.50F;
+    /** ATM 机筹码(2026-10-08 重写):转账发起者装备时,双方各获得的星光 / 星币 */
+    private static final int ATM_TRANSFER_STARLIGHT = 1;
+    private static final int ATM_TRANSFER_COINS = 2;
 
     /** DataSlot[0..5] = 货架格显示码；DataSlot[6] = 转账剩余冷却秒数 */
 
@@ -152,6 +164,8 @@ public class CardShopMenu extends AbstractContainerMenu {
         boolean teamBonus = teamHasParunan(player);
         long promotionUntil = ModAttachments.getShopPromotionUntil(player);
         boolean promotion = player.level().getGameTime() < promotionUntil;
+        // 会员推荐信筹码(2026-10-08 追加能力,仅装备者本人的商店):所有卡牌价格恒 -1(非随机;与降价叠加,最低 0)
+        int memberReduction = MemberRecommendationChipItem.shopPriceReduction(player);
 
         List<Item> rolled = CardShopCatalog.rollShelf(random, starLevel, teamBonus, promotion);
         shelfSize = rolled.size();
@@ -163,12 +177,23 @@ public class CardShopMenu extends AbstractContainerMenu {
                 // 降价只在「团队内有经商立牌玩家」时才有可能（用户追加口径）
                 boolean discount = teamBonus && CardShopCatalog.rollDiscount(random);
                 discounted[i] = discount;
-                prices[i] = discount ? CardShopCatalog.DISCOUNT_PRICE : CardShopCatalog.BASE_PRICE;
+                prices[i] = priceOf(discount, memberReduction);
             } else {
                 shelfContainer.setItem(i, ItemStack.EMPTY);
                 prices[i] = 0;
             }
         }
+        // 经商立牌被动「传奇商人」第 1 条(2026-10-08 用户裁决,**仅佩戴者本人**):每次进入商店时获得 1 星币
+        if (ParunanSignItem.isEquipped(player)) {
+            ResourceConversion.giveItem(player, new ItemStack(ModItems.STAR_COIN.get(), PARUNAN_ENTER_COIN));
+            actionBar(player, ChatFormatting.GOLD, "msg.astral_dice.card_shop_parunan_enter", PARUNAN_ENTER_COIN);
+        }
+    }
+
+    /** 卡牌最终售价 = 基础价/降价价 − 会员推荐信筹码的恒减(下限 0;两线同口径) */
+    private static int priceOf(boolean discounted, int memberReduction) {
+        int base = discounted ? CardShopCatalog.DISCOUNT_PRICE : CardShopCatalog.BASE_PRICE;
+        return Math.max(0, base - memberReduction);
     }
 
     /** 装备骰子的星级（{@code DiceCurioItem.configStarLevel}：下界之星骰子恒 3，否则 clamp 0..3） */
@@ -241,16 +266,19 @@ public class CardShopMenu extends AbstractContainerMenu {
             return false;
         }
         int price = prices[index];
-        if (price <= 0) {
+        if (price < 0) {
             return false;
         }
-        if (!StarEngineEconomy.isAvailable() || !StarEngineEconomy.hasBalance(buyer, price)) {
-            actionBar(buyer, ChatFormatting.RED, "msg.astral_dice.card_shop_no_coin", price);
-            return true;
-        }
-        if (!StarEngineEconomy.withdraw(buyer, price)) {
-            actionBar(buyer, ChatFormatting.RED, "msg.astral_dice.card_shop_no_coin", price);
-            return true;
+        // 价格可为 0(会员推荐信 −1 与降价叠加;用户 2026-10-08 明确「价格降低至 0」)⇒ 不走经济接口,直接发货
+        if (price > 0) {
+            if (!StarEngineEconomy.isAvailable() || !StarEngineEconomy.hasBalance(buyer, price)) {
+                actionBar(buyer, ChatFormatting.RED, "msg.astral_dice.card_shop_no_coin", price);
+                return true;
+            }
+            if (!StarEngineEconomy.withdraw(buyer, price)) {
+                actionBar(buyer, ChatFormatting.RED, "msg.astral_dice.card_shop_no_coin", price);
+                return true;
+            }
         }
         ItemStack card = shelfContainer.getItem(index).copy();
         shelfContainer.setItem(index, ItemStack.EMPTY);
@@ -270,8 +298,15 @@ public class CardShopMenu extends AbstractContainerMenu {
             actionBar(exchanger, ChatFormatting.RED, "msg.astral_dice.card_shop_no_starlight");
             return;
         }
+        // 经商立牌被动「传奇商人」第 5 条(2026-10-08 用户裁决,**仅佩戴者本人**;当日更正为 +50%):星光兑换额外 +50% 收入。
+        // 取整沿用旧 ATM 的「下限为 1」策略:截断后不足 1 枚时至少 +1(避免小额兑换加成为 0)。
+        int bonus = 0;
+        if (ParunanSignItem.isEquipped(exchanger)) {
+            bonus = Math.max(1, (int) (gained * PARUNAN_EXCHANGE_BONUS_RATE));
+            ResourceConversion.giveItem(exchanger, new ItemStack(ModItems.STAR_COIN.get(), bonus));
+        }
         StarCoinBalanceSync.notifyChanged(exchanger);
-        actionBar(exchanger, ChatFormatting.GOLD, "msg.astral_dice.card_shop_exchange_done", gained);
+        actionBar(exchanger, ChatFormatting.GOLD, "msg.astral_dice.card_shop_exchange_done", gained + bonus);
     }
 
     // ────────────────────────────── 二级转账 ──────────────────────────────
@@ -331,6 +366,13 @@ public class CardShopMenu extends AbstractContainerMenu {
         }
         ModAttachments.setShopTransferCooldownEnd(owner, now + TRANSFER_COOLDOWN_SECONDS * 20L);
         forceDiscountOnOwnShelf();
+        // ATM 机筹码(2026-10-08 重写):**转账发起者**装备时,转账双方各额外获得 1 星光与 2 星币
+        if (AtmChipItem.isEquipped(owner)) {
+            StarLightManager.add(owner, ATM_TRANSFER_STARLIGHT);
+            StarLightManager.add(target, ATM_TRANSFER_STARLIGHT);
+            ResourceConversion.giveItem(owner, new ItemStack(ModItems.STAR_COIN.get(), ATM_TRANSFER_COINS));
+            ResourceConversion.giveItem(target, new ItemStack(ModItems.STAR_COIN.get(), ATM_TRANSFER_COINS));
+        }
         StarCoinBalanceSync.notifyChanged(owner);
         StarCoinBalanceSync.notifyChanged(target);
         actionBar(owner, ChatFormatting.GOLD, "msg.astral_dice.card_shop_transfer_done",
@@ -339,15 +381,20 @@ public class CardShopMenu extends AbstractContainerMenu {
                 owner.getName().getString(), amount);
     }
 
-    /** 经商立牌玩家转账后：自己货架上「顺序第一张」未售出且未降价的牌强制降价（D6） */
+    /**
+     * 经商立牌被动「传奇商人」第 4 条(2026-10-08 用户裁决,**仅佩戴者本人**):佩戴者转账后,
+     * 自己货架上「顺序第一张」未售出且未降价的牌强制降价至 {@link CardShopCatalog#DISCOUNT_PRICE}
+     * (再叠加会员推荐信筹码的恒减 ⇒ 可为 0 星币)。
+     */
     private void forceDiscountOnOwnShelf() {
-        if (!teamHasParunan(player)) {
+        if (!ParunanSignItem.isEquipped(player)) {
             return;
         }
+        int memberReduction = MemberRecommendationChipItem.shopPriceReduction(player);
         for (int i = 0; i < shelfSize; i++) {
             if (!sold[i] && !discounted[i]) {
                 discounted[i] = true;
-                prices[i] = CardShopCatalog.DISCOUNT_PRICE;
+                prices[i] = priceOf(true, memberReduction);
                 return;
             }
         }

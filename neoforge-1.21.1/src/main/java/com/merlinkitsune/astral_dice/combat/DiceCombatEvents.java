@@ -7,7 +7,6 @@ import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import com.merlinkitsune.astral_dice.component.WeaponEnhancement;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.item.RenShieldManager;
-import com.merlinkitsune.astral_dice.item.sign.ParunanSignItem;
 import com.merlinkitsune.astral_dice.item.sign.BaseSignItem;
 import com.merlinkitsune.astral_dice.item.sign.MosesSignItem;
 import com.merlinkitsune.astral_dice.item.sign.PandamanSignItem;
@@ -547,13 +546,8 @@ public class DiceCombatEvents {
             com.merlinkitsune.astral_dice.item.sign.HannaSignItem.onDiceRollResult(player, baseDice);
         }
 
-        // 经商立牌(parunan):触发骰神赐福后立即获得 触发时骰点*2 的星光
-        if (triggeredBlessing && attackerCurios.isPresent()) {
-            var parunanResult = attackerCurios.get().findFirstCurio(s -> s.is(ModItems.PARUNAN_SIGN.get()));
-            if (parunanResult.isPresent()) {
-                ParunanSignItem.gainStarlightOnBlessing(player, baseDice);
-            }
-        }
+        // ⚠️ 2026-10-08 用户裁决「重写经商立牌被动」:原「触发骰神赐福后立即获得 骰点×2 星光」已移除
+        // (被动「传奇商人」改为商店/兑换向的五条内容,见 shop/CardShopMenu 与 AGENTS 立牌技能表)。
 
         // 占星师立牌被动:骰神赐福期间骰点=6 时立即获得 6 星币
         if (!player.level().isClientSide() && baseDice == 6 && attackerCurios.isPresent()) {

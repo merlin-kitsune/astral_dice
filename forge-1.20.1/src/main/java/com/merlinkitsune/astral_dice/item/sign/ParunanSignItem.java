@@ -4,7 +4,6 @@ import com.merlinkitsune.astral_dice.event.WeirdDiceHandler;
 import com.merlinkitsune.astral_dice.item.ChargeManager;
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.astral_dice.item.ModItems;
-import com.merlinkitsune.astral_dice.item.StarLightManager;
 import com.merlinkitsune.astral_dice.shop.CardShopOpener;
 import com.merlinkitsune.starenginelib.component.GameplayConstants;
 import com.merlinkitsune.starenginelib.item.CuriosCompat;
@@ -12,19 +11,17 @@ import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import top.theillusivec4.curios.api.SlotContext;
 
 /**
  * 经商立牌(parunan,史诗)。
  *
- * <h3>被动「星光进项」</h3>
- * 佩戴期间每 {@link GameplayConstants#PARUNAN_PASSIVE_INTERVAL_SECONDS} 秒获得 1 点星光(上限由
- * {@link StarLightManager} 统一管理)。
- *
- * <h3>主动「开设卡牌商店」</h3>
- * 立牌栏按键:为自己打开卡牌商店界面(购买卡牌、星光兑换星币、向其他在线玩家转账星币
- * 全部在界面内完成),不再直接产出随机增益。玩家级冷却 {@value #ACTIVE_COOLDOWN_SECONDS} 秒
+ * <h3>主动「网络购物」</h3>
+ * 右键 / 立牌栏按键:**远程打开卡牌商店**界面(购买卡牌、星光兑换星币、向其他在线玩家转账星币
+ * 全部在界面内完成),本身不施加任何效果、不消耗星光。玩家级冷却 {@value #ACTIVE_COOLDOWN_SECONDS} 秒
  * ——与其余立牌的冷却链同款(充能上限封顶 → 诡异骰子 -50%)。
+ *
+ * <h3>被动「传奇商人」(2026-10-08 用户裁决,整条重写)</h3>
+ * 五条内容**全部结算在** {@link com.merlinkitsune.astral_dice.shop.CardShopMenu}:
  *
  * <p>2026-10-06 用户裁决:经商立牌原主动「星光兑换 + 三选一随机增益」整体迁入卡牌商店——
  * 星光兑换成为商店内的「星光兑换」按钮(2 点星光换 1 星币、**无冷却**),随机增益与
@@ -35,12 +32,24 @@ import top.theillusivec4.curios.api.SlotContext;
  * （{@code LOCK_GATE_EFFECTS} / {@code startActiveLockOnUse} / {@code isGateEffectActive} /
  * {@code beginActiveLock} 调用 / {@code ResourceConversion} / {@code EffectTimerGuard} /
  * {@code ThreadLocalRandom} 等 import 一并移除），改为与 1.21.1 逐字同构的
- * 开店入口 + {@code activeCooldownBaseTicks} 冷却链；被动与
- * {@code gainStarlightOnBlessing} 原样保留。
+ * 开店入口 + {@code activeCooldownBaseTicks} 冷却链。
+ *
+ * <ol>
+ *   <li>每次进入商店时获得 1 星币(**仅佩戴者本人**);</li>
+ *   <li>自身与团队成员的商店中可购买战斗牌数量 +1(**全队光环**);</li>
+ *   <li>自身与团队成员进入商店后,每张牌有 10%% 概率降至 1 星币(**全队光环**);</li>
+ *   <li>转账后使当前商店内第一张未降价卡牌降至 1 星币(**仅佩戴者本人**);</li>
+ *   <li>星光兑换额外获得 50%% 收入(**仅佩戴者本人**;截断后不足 1 枚时至少 +1)。</li>
+ * </ol>
+ *
+ * <p>2026-10-08 用户裁决「重写经商立牌」:主动更名为**网络购物**(远程打开商店,冷却 120 秒不变);
+ * 旧被动(每 60 秒 +1 星光、触发赐福时获得首次骰点 ×2 星光)与 {@code gainStarlightOnBlessing}
+ * **已整条移除**,被动「传奇商人」改为商店/兑换向五条(进入商店 +1 星币、战斗牌 +1、10%% 降价、
+ * 转账强制降价、星光兑换 +50%%),全部结算在 {@link com.merlinkitsune.astral_dice.shop.CardShopMenu}。
  */
 public class ParunanSignItem extends BaseSignItem {
 
-    /** 主动「开设卡牌商店」的玩家级冷却基数(秒)。 */
+    /** 主动「网络购物」的玩家级冷却基数(秒)。 */
     private static final int ACTIVE_COOLDOWN_SECONDS = 120;
 
     public ParunanSignItem(Properties properties) {
@@ -54,16 +63,6 @@ public class ParunanSignItem extends BaseSignItem {
         var curios = CuriosCompat.getCuriosInventory(player);
         return curios.isPresent()
                 && curios.get().findFirstCurio(s -> s.is(ModItems.PARUNAN_SIGN.get())).isPresent();
-    }
-
-    @Override
-    protected void onCurioTick(SlotContext slotContext, ItemStack stack) {
-        if (!(slotContext.entity() instanceof Player player)) return;
-        long gameTime = player.level().getGameTime();
-        if (gameTime % (GameplayConstants.PARUNAN_PASSIVE_INTERVAL_SECONDS * 20L) == 0) {
-            // 被动:每 N 秒星光 +1(上限由 StarLightManager 统一管理)
-            StarLightManager.add(player, 1);
-        }
     }
 
     /**
@@ -95,9 +94,5 @@ public class ParunanSignItem extends BaseSignItem {
         return ticks;
     }
 
-    // 触发骰神赐福后立即获得 骰点*2 星光(上限由 StarLightManager 统一管理)
-    public static void gainStarlightOnBlessing(Player player, int dicePoint) {
-        if (player.level().isClientSide()) return;
-        StarLightManager.add(player, dicePoint * 2);
-    }
 }
+

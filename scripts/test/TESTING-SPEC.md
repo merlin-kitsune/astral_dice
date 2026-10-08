@@ -4118,3 +4118,14 @@ mt.ps1 --version 线 --phase stop 关闭测试实例（gradle 守护进程保留
    - 【P3 **不修、留档**】`stillValid` 恒 `true`：本菜单有**方块右键**与**立牌主动**两个来源，立牌来源没有可判距的方块坐标；服务端二次校验（余额/冷却/目标/限购）已完备 ⇒ 保留语义并补注释说明。
 5. **判据（本轮实跑）**：两线 `:compileJava` 与 `mt_build` 各 `BUILD SUCCESSFUL` / `MT_BUILD: OK`（产物 `astral_dice-2.0.0-SNAPSHOT.50+{neoforge_1.21.1,forge_1.20.1}.jar`）；`tools/check_lang_sync.ps1` 两线各 **866/866/866**；`scripts/verify/verify_crafting_recipe_uniqueness.ps1` `collisions=0`（1.21.1 / 1.20.1 各 93 shaped、27 shapeless）；`scripts/verify/verify_resource_integrity.ps1` 两线 **138/138**；`scripts/audit/tooltip_color_audit.ps1` **PASS**。**未实机**（按《子代理与测试环境硬规则》第 5 条：实机须用户点名下指令）—— 界面交互、DataSlot 同步时序、贴图观感待实机验证。
 6. **版本**：四线 `mod_version` 同批 `.49 → .50`（bump 在 `build` 之前），两份 CHANGELOG 段头同步。
+
+## 附录 A 续 66. 经商立牌 / ATM 机筹码重写 + 会员推荐信筹码追加能力（2026-10-08）—— 六处口径确认 + 一轮复核
+
+> 玩家可见内容见两份 CHANGELOG「未发布（2.0.0-SNAPSHOT.51）」的 `#### 立牌与技能` 与 `#### 物品、筹码与交易`。以下只记工程侧。
+
+1. **用户口径确认（开工前一次性问清，六问全部按推荐项落定）**：①「重写 ATM 机筹码」= **只保留新能力**（移除装备 +1 星光与兑换 +40%）；② 经商被动里「进店 +1 星币 / 兑换加成 / 转账强制降价」= **仅佩戴者本人**（「战斗牌 +1」「10% 降价」才是**全队光环** —— 按用户原文只对这两条写了「自身以及团队成员」）；③ ATM 转账奖励 = **转账发起者装备时触发**，双方各 +1 星光 +2 星币；④ 会员推荐信 -1 = **仅装备者本人的商店**、装备期间恒生效（非随机）；⑤ 新被动**完整替换**旧被动（每 60 秒 +1 星光、赐福首次骰点 ×2 星光一并移除）；⑥ 兑换加成取整沿用「**下限为 1**」策略。**另：用户中途更正兑换加成为 +50%**（原写 +20%），已同步代码常量与三语文案。
+2. **实施面**：P0 两线同批（1.21.1 基准 → 1.20.1 **同一补丁集逐锚点应用**，本轮未派子代理、由主会话直接落两线，逐条打印 `[OK]/[缺锚点]`，最终 **0 缺锚点**）。两线各 10 个改动文件：`shop/CardShopMenu`、`resource/ResourceConversion`、`item/chip/{AtmChipItem,MemberRecommendationChipItem,BaseChipItem}`、`item/sign/ParunanSignItem`、`combat/DiceCombatEvents`、`event/ModTooltipHandler`、三语 lang。
+3. **判据（本轮实跑）**：两线 `:compileJava` / `scripts/test/mt_build.ps1` 各 `BUILD SUCCESSFUL` / `MT_BUILD: OK`；`tools/check_lang_sync.ps1` 两线各 **867/867/867**；`scripts/audit/tooltip_color_audit.ps1` **PASS**；`scripts/verify/verify_resource_integrity.ps1` 两线仍 **138/138**（本批无新增物品）。**未实机**（按《子代理与测试环境硬规则》第 5 条：实机须用户点名下指令）。
+4. **DSH `code_review` 一轮（一次性独立会话）**：R1–R8 全 SUPPORTED、R8 六条反例均查无缺陷；发现 4 处**文档/注释未随代码同步**（1 项 P2 + 3 项 P3），**全部已修**：① 1.21.1 `resource/ResourceConversion` 的注释误写 +20%（用户更正在前、该注释漏改）⇒ 改 +50%；② 1.20.1 `item/chip/AtmChipItem` 的 javadoc 未随重写更新且残留 3 个无引用 import（`SlotContext`/`ResourceConversion`/`StarLightManager`）⇒ 重写文档 + 清 import；③ 1.20.1 `item/sign/ParunanSignItem` 的 javadoc 头部仍写旧被动「星光进项」与旧主动名 ⇒ 与 1.21.1 对齐重写；④ 两线 `item/chip/BaseChipItem` 的 javadoc 示例 `AtmChipItem#onEquip` 因重写而悬空 ⇒ 删除该引用并注明原因。
+5. **本批无新增平台差异**：1.20.1 侧沿用 `docs/compat-1.20.1-forge.md` §十 已登记的 `CuriosCompat` 等既有差异；`StarLightManager.GRANT_BIT_ATM` **常量保留**（P1 两线仍在用），仅 P0 两线不再引用。
+6. **版本**：四线 `mod_version` `.50 → .51`（bump 在 `build` 之前），两份 CHANGELOG 段头同步。

@@ -29,7 +29,7 @@ import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
  * 1. 继承本类,覆写业务钩子(如 `curioTick` / `onChipUnequip`);
  *    「**装备时**」的逻辑直接覆写 `ICurioItem#onEquip`——本类**没有**
  *    `onChipEquip` 这个钩子(旧 javadoc 误引用了一个不存在的方法,已于 2026-10-01 订正);
- *    参考 `MedkitEmergencyChipItem#onEquip` 与 `AtmChipItem#onEquip`。
+ *    参考 `MedkitEmergencyChipItem#onEquip`(⚠️ 2026-10-08:原示例 `AtmChipItem#onEquip` 已随 ATM 机筹码重写而删除)。
  * 2. 战斗/资源加成统一注册到对应修饰器注册表(DiceCombatModifiers / SpellDamageRegistry / EffectCardPeriod),
  *    不要散落硬编码在事件类中。
  */

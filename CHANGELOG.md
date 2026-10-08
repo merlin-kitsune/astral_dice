@@ -4,7 +4,7 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
-## Unreleased (2.0.0-SNAPSHOT.50)
+## Unreleased (2.0.0-SNAPSHOT.51)
 
 ### New Content
 
@@ -77,6 +77,12 @@
   transfer (the button shows an **hourglass** countdown). If the target goes offline before you confirm, the list is
   **refreshed automatically** and you are asked to pick again. **A Merchant-sign wearer who completes a transfer** has the
   **first unsold card** on their own shelf **forced down to 1 Star Coin**.
+- **ATM chip rewritten** (2026-10-08): while equipped, **every Star Coin transfer to another player grants both sides an
+  extra 1 Starlight and 2 Star Coins** (triggered when the transfer initiator has it equipped). ⚠️ The old "+1 Starlight on
+  equip" and "+40% Starlight exchange" abilities have been removed.
+- **Membership Recommendation chip gained a new ability** (2026-10-08): while equipped, **all cards in your own shop cost
+  a permanent 1 Star Coin less** (not random; lost when unequipped) — it **stacks with the Merchant sign's 10% discount down
+  to 0 Star Coins**, so shop cards can be priced at **0 Star Coins** (taken for free, no coins deducted).
 ### Content & Balance
 
 #### Damage & Resolution
@@ -189,13 +195,17 @@
 
 #### Signs & Skills
 
-- **The "Merchant" sign's active skill is now "Open Card Shop"** (user ruling, 2026-10-08): the active no longer cashes out
-  Starlight and no longer grants a random one-of-three buff (Saturation / Luck / Hero of the Village); it **opens the Card
-  Shop screen** instead (buying cards, Starlight exchange and transfers all happen there). The active applies nothing by
-  itself, so it no longer enters the "in effect" locked state — it **immediately starts a 120-second player-level
-  cooldown** (while worn; the generic constant applies otherwise; the same cooldown chain as other signs: capped by the
-  charge limit and halved by the "Weird Dice"). **The passive is unchanged**: Starlight +1 every 60 seconds, and a dice
-  blessing grants the first roll ×2 Starlight.
+- **The "Merchant" sign was rewritten** (user ruling, 2026-10-08) — the active is now **"Online Shopping"**: it **remotely
+  opens the Card Shop** screen (buying cards, Starlight exchange and transfers to other online players all happen there).
+  The active applies nothing by itself, so it no longer enters the "in effect" locked state — it **immediately starts a
+  120-second player-level cooldown** (while worn; the generic constant applies otherwise; the same cooldown chain as other
+  signs: capped by the charge limit and halved by the "Weird Dice"). **The passive "Legendary Merchant" was replaced
+  wholesale** with five effects: ① gain **1 Star Coin each time you enter the shop**; ② **you and your team** get
+  **+1 purchasable combat card** in your shops; ③ **you and your team** see **each card with a 10% chance to drop to
+  1 Star Coin** after entering; ④ after a transfer, the **first undiscounted card in your current shop drops to 1 Star Coin**;
+  ⑤ **Starlight exchange grants 50% extra income** (at least +1 after truncation). ⚠️ **The old passive ("+1 Starlight every
+  60 seconds" and "first dice roll ×2 Starlight on a dice blessing") has been removed**; ①④⑤ apply to the **wearer only**,
+  while ②③ apply to you and your team.
 #### Cards
 
 - **The four damage effect cards (Monster Laser / Monster Brick / Orbital Strike / Directional Blast) were reworked**

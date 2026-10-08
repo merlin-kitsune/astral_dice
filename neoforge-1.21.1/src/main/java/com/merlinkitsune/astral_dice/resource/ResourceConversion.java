@@ -1,7 +1,6 @@
 package com.merlinkitsune.astral_dice.resource;
 
 import com.merlinkitsune.astral_dice.economy.StarCoinCurrency;
-import com.merlinkitsune.astral_dice.item.chip.AtmChipItem;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.StarLightManager;
 import net.minecraft.world.entity.player.Player;
@@ -39,11 +38,8 @@ public final class ResourceConversion {
         int before = StarLightManager.get(player);
         StarLightManager.spend(player, coins * STARLIGHT_PER_COIN);
         int gained = Math.max(0, before - StarLightManager.get(player)) / STARLIGHT_PER_COIN;
-        // ATM机筹码:使用星光兑换星币时,兑换量(星币产出)增加 40%
-        // 百分比加成统一采用「下限为 1」策略:收益率截断后不足 1 时至少 +1(避免小额兑换加成为 0)
-        if (AtmChipItem.isEquipped(player)) {
-            gained += Math.max(1, (int) (gained * 0.4));
-        }
+        // ⚠️ 2026-10-08 用户裁决「重写 ATM 机筹码」:原「兑换量 +40%」已移除(ATM 现为转账奖励筹码);
+        // 星光兑换的加成改由经商立牌被动「传奇商人」第 5 条承担(+50%,结算在 CardShopMenu#tryExchange)。
         if (gained > 0) {
             giveItem(player, new ItemStack(ModItems.STAR_COIN.get(), gained));
         }

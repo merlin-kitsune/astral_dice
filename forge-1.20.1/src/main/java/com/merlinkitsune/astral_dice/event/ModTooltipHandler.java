@@ -635,12 +635,10 @@ public class ModTooltipHandler {
         if (stack.is(ModItems.PARUNAN_SIGN.get())) {
             tooltip.add(Component.empty());
             addSignKeyHint(tooltip);
-            addSignActiveTitle(tooltip, "套现");
+            addSignActiveTitle(tooltip, "网络购物");
             addSignLines(tooltip, "tooltip.astral_dice.sign.parunan_active");
             addSignPassiveTitle(tooltip, "传奇商人");
-            addSignLines(tooltip, "tooltip.astral_dice.sign.parunan_passive",
-                    formatSignTime(GameplayConstants.PARUNAN_PASSIVE_INTERVAL_SECONDS),
-                    GameplayConstants.MAX_STARLIGHT);
+            addSignLines(tooltip, "tooltip.astral_dice.sign.parunan_passive");
             if (event.getEntity() != null) {
                 addSignCounter(tooltip, "tooltip.astral_dice.sign.parunan_starlight",
                         StarLightManager.get(player), StarLightManager.getCap());
