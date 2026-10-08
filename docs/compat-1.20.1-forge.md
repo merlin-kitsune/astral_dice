@@ -151,3 +151,15 @@ datagen:`RecipeOutput` → `Consumer<FinishedRecipe>`(`.save(output::accept)`);`
 11. **`ResourceLocation`**:1.21.1 `ResourceLocation.fromNamespaceAndPath(ns, path)` ⇒ 1.20.1 `new ResourceLocation(ns, path)`(新增 2 条弃用告警,与本线既有 73 条同款)。
 12. **资源目录与配方键**:1.21.1 `data/astral_dice/loot_table/`、`recipe/`、`data/minecraft/tags/block/` ⇒ 1.20.1 **复数** `loot_tables/`、`recipes/`、`tags/blocks/`;配方 `result` 1.21.1 用 `"id"` ⇒ 1.20.1 用 `"item"`。
 13. **本批游戏内手工验证项**(需用户点名下指令) —— ① 合成 `card_shop`(8 木板围 1 星币)并右键开店;② 买 1 张卡:确认「已售出」、星币扣除、余额 HUD 同步;③ 星光兑换按钮(2:1,无冷却);④ 转账(5~20、60 秒冷却沙漏、目标离线自动刷新名单);⑤ 同队有经商立牌玩家时的货架加成(额外 1 张战斗牌 + 每张 10% 降价)与**转账后自己货架强制降价一张**;⑥ 经商立牌主动 = 开店 + 120 秒冷却(佩戴)。
+
+## 十一、卡牌商店 UI v4 批(2026-10-08)平台差异
+
+> 本批 = 商店界面按定稿重排 + 购买改为**拖拽成交** + 中按钮 5 态/沙漏/大酬宾流光/卡名缩放。P0 两线同批。
+
+1. **拖拽购买 C2S**：1.21.1 = 新文件 `network/CardShopBuyPayload.java`（`CustomPacketPayload` + `StreamCodec`）+ `network/ModPayloads` 注册 + `PacketDistributor.sendToServer`；1.20.1 = `network/ModNetwork.java` **末尾追加** `CardShopBuyMessage`（**id 14**，既有 0..13 顺序未动）+ `ModNetwork.sendToServer`。
+2. **`mouseScrolled`**：1.21.1 四参（含 `horizontalAmount`）⇒ 1.20.1 **三参**；本批逻辑只用纵向增量，语义等价。
+3. **`ResourceLocation`**：新代码 2 处 `fromNamespaceAndPath` ⇒ `new ResourceLocation`（新增 2 条同款弃用告警，与本文件第 11 条口径一致）。
+4. **Curios 入口**：本批新写的 2 处调用同样走库 shim `CuriosCompat#getCuriosInventory`（见 §十 第 7 条）。
+5. **`blit`**：本批**无**差异 —— 1.21.1 侧本就用 10 参重载（`blitOffset=0`），1.20.1 同形可编译（§十 第 9 条在本批再次得到验证）。
+6. **`containerTick()`**：两线同形覆写（§十 第 8 条的纠错在本批生效）。
+7. **对等证据**：两线 `CardShopScreen` / `CardShopMenu` 去掉 import 与类 javadoc 后的**行级 LCS diff 各仅 16 行**，全部落在上述平台改写与 javadoc 上。

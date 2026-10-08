@@ -847,8 +847,11 @@
   "astral_dice.guide.entry.golden_shooting_star_chip.1": "路过敌对目标时，使其受到 2 点伤害，并使自身获得 1 层「星光」；若目标为精英怪物或 Boss，则额外对其造成玩家当前「星光」层数的伤害。每 10 秒触发一次；与紫色飞星共享计时器。",
   "gui.astral_dice.card_shop": "卡牌商店",
   "gui.astral_dice.card_shop.cooldown": "冷却 %s 秒",
+  "gui.astral_dice.card_shop.discount": "打折中",
+  "gui.astral_dice.card_shop.drag_hint": "按住卡牌拖到右下物品栏即可购买",
   "gui.astral_dice.card_shop.exchange_hint": "星光兑换：以 2:1 将星光兑换为星币（无冷却）",
   "gui.astral_dice.card_shop.hourglass_hint": "转账冷却沙漏：漏空后可再次转账",
+  "gui.astral_dice.card_shop.price": "售价：%s 星币",
   "gui.astral_dice.card_shop.sold_out": "已售出",
   "gui.astral_dice.card_shop.transfer_amount_hint": "金额（滚轮微调 5~20）",
   "gui.astral_dice.card_shop.transfer_back": "返回",
@@ -866,5 +869,6 @@
   "msg.astral_dice.card_shop_transfer_done": "转账完成：已向 %s 转出 %s 星币",
   "msg.astral_dice.card_shop_transfer_received": "收到来自 %s 的 %s 星币",
   "msg.astral_dice.card_shop_no_starlight": "星光不足：至少需要 2 点可支配星光（银行卡提供的基础星光不可兑换）",
-  "msg.astral_dice.card_shop_parunan_enter": "经商立牌：进入商店获得 1 星币"
+  "msg.astral_dice.card_shop_parunan_enter": "经商立牌：进入商店获得 1 星币",
+  "msg.astral_dice.card_shop_slot_occupied": "该格已被占用"
 }

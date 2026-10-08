@@ -101,5 +101,11 @@ public class ModPayloads {
                 CardShopTransferPayload.STREAM_CODEC,
                 CardShopTransferPayload::handle
         );
+        // 卡牌商店:拖拽购买(货架索引 + 目标物品栏格索引)
+        registrar.playToServer(
+                CardShopBuyPayload.TYPE,
+                CardShopBuyPayload.STREAM_CODEC,
+                CardShopBuyPayload::handle
+        );
     }
 }

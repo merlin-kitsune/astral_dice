@@ -847,8 +847,11 @@
   "astral_dice.guide.entry.golden_shooting_star_chip.1": "Passing by a hostile target deals 2 damage to it and grants you 1 Starlight; if the target is an elite or a boss, it takes additional damage equal to your current Starlight. Triggers once every 10 seconds; shares its timer with the Purple Shooting Star.",
   "gui.astral_dice.card_shop": "Card Shop",
   "gui.astral_dice.card_shop.cooldown": "Cooldown %s s",
+  "gui.astral_dice.card_shop.discount": "On sale",
+  "gui.astral_dice.card_shop.drag_hint": "Hold a card and drag it onto a slot of the inventory at the bottom-right to buy it",
   "gui.astral_dice.card_shop.exchange_hint": "Starlight Exchange: convert Starlight into Star Coins at 2:1 (no cooldown)",
   "gui.astral_dice.card_shop.hourglass_hint": "Transfer cooldown hourglass: available again once empty",
+  "gui.astral_dice.card_shop.price": "Price: %s Star Coins",
   "gui.astral_dice.card_shop.sold_out": "Sold out",
   "gui.astral_dice.card_shop.transfer_amount_hint": "Amount (scroll to fine-tune 5~20)",
   "gui.astral_dice.card_shop.transfer_back": "Back",
@@ -866,5 +869,6 @@
   "msg.astral_dice.card_shop_transfer_done": "Transfer complete: sent %s Star Coins to %s",
   "msg.astral_dice.card_shop_transfer_received": "Received %s Star Coins from %s",
   "msg.astral_dice.card_shop_no_starlight": "Not enough Starlight: at least 2 usable Starlight is needed (Starlight granted by bank cards cannot be exchanged)",
-  "msg.astral_dice.card_shop_parunan_enter": "Merchant Sign: gained 1 Star Coin for entering the shop"
+  "msg.astral_dice.card_shop_parunan_enter": "Merchant Sign: gained 1 Star Coin for entering the shop",
+  "msg.astral_dice.card_shop_slot_occupied": "That slot is occupied"
 }

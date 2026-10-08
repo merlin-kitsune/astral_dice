@@ -846,8 +846,11 @@
   "astral_dice.guide.entry.golden_shooting_star_chip.1": "敵対ターゲットのそばを通過した時、そのターゲットに 2 のダメージを与え、自身は 1 スタックの「スターライト」を獲得；ターゲットがエリートモブまたはボスの場合、追加でプレイヤーの現在の「スターライト」スタック数分のダメージを与える。10 秒毎に 1 回発動；紫の流星とタイマーを共有。",
   "gui.astral_dice.card_shop": "カードショップ",
   "gui.astral_dice.card_shop.cooldown": "クールダウン %s 秒",
+  "gui.astral_dice.card_shop.discount": "セール中",
+  "gui.astral_dice.card_shop.drag_hint": "カードを押したまま右下のインベントリのスロットへドラッグすると購入できます",
   "gui.astral_dice.card_shop.exchange_hint": "スターライト交換：スターライトを 2:1 でスターコインに変換（クールダウンなし）",
   "gui.astral_dice.card_shop.hourglass_hint": "送金クールダウンの砂時計：空になると再び送金できます",
+  "gui.astral_dice.card_shop.price": "価格：%s スターコイン",
   "gui.astral_dice.card_shop.sold_out": "売り切れ",
   "gui.astral_dice.card_shop.transfer_amount_hint": "金額（スクロールで 5～20 に微調整）",
   "gui.astral_dice.card_shop.transfer_back": "戻る",
@@ -865,5 +868,6 @@
   "msg.astral_dice.card_shop_transfer_done": "送金完了：%s に %s スターコインを送りました",
   "msg.astral_dice.card_shop_transfer_received": "%s から %s スターコインを受け取りました",
   "msg.astral_dice.card_shop_no_starlight": "スターライトが足りません：使用可能なスターライトが 2 以上必要です（キャッシュカードが提供する基本スターライトは交換できません）",
-  "msg.astral_dice.card_shop_parunan_enter": "パルナンのスタンド：入店で星貨 1 枚を獲得"
+  "msg.astral_dice.card_shop_parunan_enter": "パルナンのスタンド：入店で星貨 1 枚を獲得",
+  "msg.astral_dice.card_shop_slot_occupied": "そのスロットは使用中です"
 }

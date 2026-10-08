@@ -40,22 +40,29 @@ import java.util.UUID;
  * {@link #SHELF_ITEM_X}/{@link #SHELF_ITEM_Y}）+ 底部右侧 9x4 玩家物品格。
  * 不覆写任何 GUI 常量：屏幕层自持 288x187。
  *
- * <p><b>购买/兑换/转账全部走「菜单按钮」</b>（原版 {@code clickMenuButton}，客户端
- * {@code gameMode.handleInventoryButtonClick}）—— 服务端只在 {@link #clickMenuButton} 内结算，
+ * <p><b>兑换/转账走「菜单按钮」</b>（原版 {@code clickMenuButton}，客户端
+ * {@code gameMode.handleInventoryButtonClick}）；<b>购买走拖拽</b>（2026-10-08 v4：客户端把卡面拖到玩家
+ * 物品格后发 {@code ModNetwork.CardShopBuyMessage}，服务端只在 {@link #handleBuy} 内一次性校验与结算）——
  * 玩家的物品栏操作仍走原版槽位协议，二者不混用。
  *
  * <p><b>限购</b>：每玩家 × 每次打开商店限购 1 次（关掉再开即重置）—— 由 {@link #sold} 本次会话标记实现，
  * 不落盘（用户裁决：非永久限购）。
  *
- * <p><b>C2S 载荷</b>：转账需要「目标索引 + 金额」两个参数，原版按钮包只有一个 int，
- * 故单独走 {@code ModNetwork.CardShopTransferMessage}（其余按钮一律用原版按钮包）。
+ * <p><b>反刷取</b>：货架格 {@link ShelfSlot#mayPickup} 恒 false ⇒ 卡牌**永不**进入原版「光标携带」机制，
+ * 只在 {@link #handleBuy} 扣款成功后由服务端直接写入目标玩家槽；关界面 / 丢出界面都无法白拿。
+ *
+ * <p><b>C2S 载荷</b>：转账需要「目标索引 + 金额」、拖拽购买需要「货架索引 + 目标格索引」，原版按钮包只有
+ * 一个 int，故各自单独走 {@code ModNetwork.CardShopTransferMessage}(id 13) /
+ * {@code ModNetwork.CardShopBuyMessage}(id 14)（其余按钮仍用原版按钮包）。
  *
  * <p><b>1.20.1 Forge 移植差异</b>（其余逻辑与 1.21.1 版逐字相同）：
  * ① 菜单类型取 {@code ModMenuTypes.CARD_SHOP.get()}（1.20.1 是 {@code RegistryObject}，1.21.1 是 {@code Supplier}）；
  * ② S2C 名单与 ActionBar 提示改走本线 {@code ModNetwork.sendToPlayer(ServerPlayer, Object)}
  *    （1.21.1 是 {@code PacketDistributor.sendToPlayer}），载荷类型由 {@code ActionBarPayload} 换成
- *    {@code ModNetwork.ActionBarMessage}；③ 其余（DataSlot/Slot/clickMenuButton/stillValid/quickMoveStack/
- *    Component.translatable/ItemStack#getHoverName/CuriosApi/StarEngineEconomy/ResourceConversion）两线同名同签名。
+ *    {@code ModNetwork.ActionBarMessage}；③ C2S 拖拽购买改走本线 {@code ModNetwork.CardShopBuyMessage}
+ *    （1.21.1 是独立载荷 {@code CardShopBuyPayload}）；④ 其余（DataSlot/Slot/clickMenuButton/stillValid/
+ *    quickMoveStack/Component.translatable/ItemStack#getHoverName/StarEngineEconomy/ResourceConversion）
+ *    两线同名同签名，唯 Curios 入口收敛在库 shim {@code CuriosCompat}。
  */
 public class CardShopMenu extends AbstractContainerMenu {
 
@@ -64,14 +71,19 @@ public class CardShopMenu extends AbstractContainerMenu {
     private static final int HIDDEN_X = -10000;
     private static final int HIDDEN_Y = -10000;
 
-    /** 玩家物品格左上角（= 其中第一格图标的绘制坐标；见 CardShopScreen） */
-    public static final int INVENTORY_X = 115;
-    public static final int INVENTORY_Y = 100;
-    /** 货架格内卡面的绘制坐标（屏幕层用，菜单层只作常量声明） */
-    public static final int SHELF_ITEM_X = 9;
-    public static final int SHELF_ITEM_Y = 30;
+    /**
+     * 玩家物品格第一格（主物品栏第 1 行第 1 列）槽位坐标 = 物品图标与槽位高亮的绘制点。
+     * 2026-10-08 v4 修正：原值 (115,100) 与背景贴图实测内格 (117+18j, 102+18r) 差 2px，改为实测值，
+     * 使「渲染出的物品」正好落在 shop_item_inventory.png 的实测内格里（拖拽落点判定同口径）。
+     */
+    public static final int INVENTORY_X = 117;
+    public static final int INVENTORY_Y = 102;
+    /** 快捷栏（物品格第 4 行）y：实测第 3 行与快捷栏之间有 5px 间隙（138+16 → 160），故单独给常量 */
+    public static final int INVENTORY_HOTBAR_Y = 160;
+    /** 货架格内卡面的绘制坐标（屏幕层用，菜单层只作常量声明；bg 绝对 (10+46i, 31) 的 i=0 即 (10,31)） */
+    public static final int SHELF_ITEM_X = 10;
+    public static final int SHELF_ITEM_Y = 31;
 
-    public static final int BUTTON_BUY_BASE = 0;              // 0..5 = 货架第 i 格（购买）
     public static final int BUTTON_TRANSFER = 16;             // 打开二级转账视图
     public static final int BUTTON_EXCHANGE = 17;             // 星光兑换星币（原经商立牌主动技能）
     public static final int BUTTON_REFRESH_TRANSFER = 18;     // 刷新候选玩家名单
@@ -88,7 +100,7 @@ public class CardShopMenu extends AbstractContainerMenu {
     private static final int ATM_TRANSFER_STARLIGHT = 1;
     private static final int ATM_TRANSFER_COINS = 2;
 
-    /** DataSlot[0..5] = 货架格显示码；DataSlot[6] = 转账剩余冷却秒数 */
+    /** DataSlot[0..5] = 货架格显示码；DataSlot[6] = 转账剩余冷却秒数；DataSlot[7] = 大酬宾窗口是否激活 */
 
     private final Player player;
     private final Inventory playerInventory;
@@ -99,6 +111,8 @@ public class CardShopMenu extends AbstractContainerMenu {
     private int shelfSize = 0;
     /** 客户端读到的冷却剩余秒数（服务端在 {@link #computeTransferCooldownSeconds()} 现算） */
     private int transferCooldownSeconds = 0;
+    /** 客户端读到的「商店大酬宾」窗口状态（决定标题带是否播 8t 流光；服务端 DataSlot[7] 同步） */
+    private boolean promotionActive = false;
     private List<UUID> candidateIds = List.of();
 
     public CardShopMenu(int containerId, Inventory playerInventory) {
@@ -111,10 +125,11 @@ public class CardShopMenu extends AbstractContainerMenu {
             addSlot(new ShelfSlot(shelfContainer, i, HIDDEN_X, HIDDEN_Y));
         }
         // 玩家物品格 9x4：r = 0..2 主物品栏（槽 9..35）、r = 3 快捷栏（槽 0..8）
+        // 添加顺序 = 主物品栏 3 行 → 快捷栏 1 行；物品栏索引 ↔ 菜单槽序号的换算见 {@link #playerSlotOffset(int)}
         for (int row = 0; row < 4; row++) {
             for (int col = 0; col < 9; col++) {
                 int x = INVENTORY_X + col * 18;
-                int y = INVENTORY_Y + row * 18;
+                int y = row == 3 ? INVENTORY_HOTBAR_Y : INVENTORY_Y + row * 18;
                 int index = row == 3 ? col : 9 + row * 9 + col;
                 addSlot(new Slot(playerInventory, index, x, y));
             }
@@ -145,6 +160,19 @@ public class CardShopMenu extends AbstractContainerMenu {
             @Override
             public void set(int value) {
                 transferCooldownSeconds = value;
+            }
+        });
+        // 第 8 个 DataSlot：大酬宾窗口是否激活（2026-10-08 v4 新增——原实现把该布尔留在服务端，
+        // 客户端无从判断 ⇒ 标题带流光会一直在非活动期播放）
+        addDataSlot(new DataSlot() {
+            @Override
+            public int get() {
+                return computePromotionActive();
+            }
+
+            @Override
+            public void set(int value) {
+                promotionActive = value != 0;
             }
         });
 
@@ -239,9 +267,6 @@ public class CardShopMenu extends AbstractContainerMenu {
         if (player != this.player) {
             return false;
         }
-        if (id >= BUTTON_BUY_BASE && id < BUTTON_BUY_BASE + SHELF_SIZE) {
-            return tryBuy(player, id - BUTTON_BUY_BASE);
-        }
         if (id == BUTTON_EXCHANGE) {
             if (player instanceof ServerPlayer serverPlayer) {
                 tryExchange(serverPlayer);
@@ -257,38 +282,74 @@ public class CardShopMenu extends AbstractContainerMenu {
         return false;
     }
 
-    /** 购买货架第 {@code index} 格（价格取本店当前价；限购 1 次/店） */
-    private boolean tryBuy(Player buyer, int index) {
-        if (buyer.level().isClientSide() || index < 0 || index >= SHELF_SIZE) {
-            return false;
+    /**
+     * 拖拽购买落定（服务端权威）：玩家把货架第 {@code shelfIndex} 格的卡拖到**玩家物品栏第
+     * {@code targetSlot} 格**并松手时调用（客户端 {@code ModNetwork.CardShopBuyMessage} → 本方法）。
+     *
+     * <p><b>校验顺序</b>（任一失败即中止，**不消耗任何资源**）：
+     * <ol>
+     *   <li>菜单归属（{@code buyer == this.player}）且非客户端；</li>
+     *   <li>货架索引范围 + 该槽本次开店真的有货（{@code shelfIndex < shelfSize}）且未售出；</li>
+     *   <li>目标格索引范围（0..35）；</li>
+     *   <li>槽内确实还有卡；</li>
+     *   <li>目标格**必须为空**（不堆叠、不替换，避免吞掉玩家原有物品）；</li>
+     *   <li>余额 ≥ 本槽当前价（价格只取服务端 {@link #prices}，**忽略客户端任何数值**）。</li>
+     * </ol>
+     *
+     * <p><b>结算</b>：扣款 → 服务端把卡**直接写入目标格**（{@link Slot#set}，不经原版「光标携带」机制，
+     * 见 {@link ShelfSlot#mayPickup}）→ 清空货架槽并置 {@link #sold}（限购 1 次/店）→ 双端刷新余额 → actionbar 提示。
+     * 重复包 / 并发包由第 2 步的 {@code sold[]} 幂等挡住（同槽只会成功一次）。
+     */
+    public void handleBuy(ServerPlayer buyer, int shelfIndex, int targetSlot) {
+        if (buyer != this.player || buyer.level().isClientSide()) {
+            return;
         }
-        if (index >= shelfSize || sold[index]) {
-            return false;
+        if (shelfIndex < 0 || shelfIndex >= SHELF_SIZE || shelfIndex >= shelfSize || sold[shelfIndex]) {
+            return;
         }
-        int price = prices[index];
+        if (targetSlot < 0 || targetSlot >= 36) {
+            return;
+        }
+        ItemStack card = shelfContainer.getItem(shelfIndex);
+        if (card.isEmpty()) {
+            return;
+        }
+        Slot target = this.slots.get(SHELF_SIZE + playerSlotOffset(targetSlot));
+        if (target.hasItem()) {
+            actionBar(buyer, ChatFormatting.RED, "msg.astral_dice.card_shop_slot_occupied");
+            return;
+        }
+        int price = prices[shelfIndex];
         if (price < 0) {
-            return false;
+            return;
         }
         // 价格可为 0(会员推荐信 −1 与降价叠加;用户 2026-10-08 明确「价格降低至 0」)⇒ 不走经济接口,直接发货
         if (price > 0) {
             if (!StarEngineEconomy.isAvailable() || !StarEngineEconomy.hasBalance(buyer, price)) {
                 actionBar(buyer, ChatFormatting.RED, "msg.astral_dice.card_shop_no_coin", price);
-                return true;
+                return;
             }
             if (!StarEngineEconomy.withdraw(buyer, price)) {
                 actionBar(buyer, ChatFormatting.RED, "msg.astral_dice.card_shop_no_coin", price);
-                return true;
+                return;
             }
         }
-        ItemStack card = shelfContainer.getItem(index).copy();
-        shelfContainer.setItem(index, ItemStack.EMPTY);
-        sold[index] = true;
-        if (!playerInventory.add(card)) {
-            buyer.drop(card, false);
-        }
+        ItemStack bought = card.copy();
+        target.set(bought);
+        target.setChanged();
+        shelfContainer.setItem(shelfIndex, ItemStack.EMPTY);
+        sold[shelfIndex] = true;
         StarCoinBalanceSync.notifyChanged(buyer);
-        actionBar(buyer, ChatFormatting.GOLD, "msg.astral_dice.card_shop_bought", card.getHoverName(), price);
-        return true;
+        actionBar(buyer, ChatFormatting.GOLD, "msg.astral_dice.card_shop_bought", bought.getHoverName(), price);
+    }
+
+    /**
+     * 玩家物品栏索引（0..8 = 快捷栏、9..35 = 主物品栏）→ 本菜单玩家区相对槽序号（0..35）。
+     * 菜单按「主物品栏 3 行 → 快捷栏 1 行」添加槽位 ⇒ 0..26 ↔ 主物品栏、27..35 ↔ 快捷栏；
+     * 屏幕层的拖拽落点判定与 {@code CardShopBuyMessage#targetSlot} 一律用**物品栏索引**口径。
+     */
+    public static int playerSlotOffset(int inventoryIndex) {
+        return inventoryIndex < 9 ? 27 + inventoryIndex : inventoryIndex - 9;
     }
 
     /** 星光兑换星币（原经商立牌主动技能整体迁入；**无冷却**，纯净兑换） */
@@ -436,7 +497,7 @@ public class CardShopMenu extends AbstractContainerMenu {
     /**
      * 恒 true:本菜单有**两个来源**(方块右键 / 经商立牌主动技能),立牌来源没有可判距的方块坐标,
      * 故不设方块型菜单的距离契约;余额/冷却/目标/限购的二次校验全部在
-     * {@link #clickMenuButton} 与 {@link #handleTransfer} 内完成(服务端权威)。
+     * {@link #clickMenuButton}、{@link #handleBuy} 与 {@link #handleTransfer} 内完成(服务端权威)。
      */
     @Override
     public boolean stillValid(Player player) {
@@ -454,6 +515,14 @@ public class CardShopMenu extends AbstractContainerMenu {
             code |= 2;
         }
         return code | ((prices[index] & 0xFF) << 8);
+    }
+
+    /** 大酬宾窗口是否激活（服务端现算，客户端读 DataSlot 同步值） */
+    private int computePromotionActive() {
+        if (player.level().isClientSide()) {
+            return promotionActive ? 1 : 0;
+        }
+        return player.level().getGameTime() < ModAttachments.getShopPromotionUntil(player) ? 1 : 0;
     }
 
     private int computeTransferCooldownSeconds() {
@@ -488,6 +557,11 @@ public class CardShopMenu extends AbstractContainerMenu {
     /** 转账剩余冷却秒数（0 = 就绪；客户端读 DataSlot 同步值） */
     public int transferCooldownSeconds() {
         return transferCooldownSeconds;
+    }
+
+    /** 「商店大酬宾」窗口是否激活（客户端读 DataSlot[7]；标题带 8t 流光仅在此为 true 时播放） */
+    public boolean isPromotionActive() {
+        return promotionActive;
     }
 
     private void actionBar(Player target, ChatFormatting color, String key, Object... args) {

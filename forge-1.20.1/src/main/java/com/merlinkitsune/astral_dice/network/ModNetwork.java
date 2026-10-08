@@ -69,6 +69,10 @@ public final class ModNetwork {
                 CardShopTransferListMessage::encode, CardShopTransferListMessage::decode, CardShopTransferListMessage::handle);
         CHANNEL.registerMessage(id++, CardShopTransferMessage.class,
                 CardShopTransferMessage::encode, CardShopTransferMessage::decode, CardShopTransferMessage::handle);
+        // 拖拽购买(1.20.1 移植):id 14 = C→S「货架索引 + 目标物品格索引」。
+        // 同样**只能追加在末尾**:顺序即协议,插队会让旧客户端错包。
+        CHANNEL.registerMessage(id++, CardShopBuyMessage.class,
+                CardShopBuyMessage::encode, CardShopBuyMessage::decode, CardShopBuyMessage::handle);
     }
 
     // === 发送助手(对应 1.21 PacketDistributor 静态方法) ===
@@ -629,6 +633,46 @@ public final class ModNetwork {
                 if (serverPlayer != null
                         && serverPlayer.containerMenu instanceof com.merlinkitsune.astral_dice.shop.CardShopMenu menu) {
                     menu.handleTransfer(serverPlayer, msg.targetIndex, msg.amount);
+                }
+            });
+            ctx.get().setPacketHandled(true);
+        }
+    }
+
+    /**
+     * C→S:「拖拽购买」(2026-10-08 v4;对应 1.21.1 的独立载荷 {@code network/CardShopBuyPayload})。
+     *
+     * <p>玩家把货架第 {@code shelfIndex} 格的卡面拖到**玩家物品栏第 {@code targetSlot} 格**并松手时发送。
+     * {@code targetSlot} 用**物品栏索引**口径(0..8 = 快捷栏、9..35 = 主物品栏),服务端经
+     * {@code shop/CardShopMenu#playerSlotOffset(int)} 换算成菜单槽序号。
+     *
+     * <p>本包只承载「哪一格拖到哪一格」;价格、限购、目标格占用、余额与扣款一律由服务端
+     * {@code shop/CardShopMenu#handleBuy} 现算并二次校验(**忽略客户端任何数值**)。
+     */
+    public static class CardShopBuyMessage {
+        private final int shelfIndex;
+        private final int targetSlot;
+
+        public CardShopBuyMessage(int shelfIndex, int targetSlot) {
+            this.shelfIndex = shelfIndex;
+            this.targetSlot = targetSlot;
+        }
+
+        public static void encode(CardShopBuyMessage msg, FriendlyByteBuf buf) {
+            buf.writeVarInt(msg.shelfIndex);
+            buf.writeVarInt(msg.targetSlot);
+        }
+
+        public static CardShopBuyMessage decode(FriendlyByteBuf buf) {
+            return new CardShopBuyMessage(buf.readVarInt(), buf.readVarInt());
+        }
+
+        public static void handle(CardShopBuyMessage msg, Supplier<NetworkEvent.Context> ctx) {
+            ctx.get().enqueueWork(() -> {
+                ServerPlayer serverPlayer = ctx.get().getSender();
+                if (serverPlayer != null
+                        && serverPlayer.containerMenu instanceof com.merlinkitsune.astral_dice.shop.CardShopMenu menu) {
+                    menu.handleBuy(serverPlayer, msg.shelfIndex, msg.targetSlot);
                 }
             });
             ctx.get().setPacketHandled(true);

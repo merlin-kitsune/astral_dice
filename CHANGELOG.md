@@ -4,7 +4,7 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
-## Unreleased (2.0.0-SNAPSHOT.51)
+## Unreleased (2.0.0-SNAPSHOT.52)
 
 ### New Content
 
@@ -83,6 +83,21 @@
 - **Membership Recommendation chip gained a new ability** (2026-10-08): while equipped, **all cards in your own shop cost
   a permanent 1 Star Coin less** (not random; lost when unequipped) — it **stacks with the Merchant sign's 10% discount down
   to 0 Star Coins**, so shop cards can be priced at **0 Star Coins** (taken for free, no coins deducted).
+- **Card Shop screen rebuilt from the final design; buying is now drag-and-drop** (2026-10-08): the layout follows the art
+  mock exactly — the title band shows **"Card Shop" centered in the magenta area**, the six card frames are tight and evenly
+  spaced, the **card icon fills the square frame** and the **full card name is shown in the box below** (the font shrinks when
+  needed — **names are never truncated**), and discounted cards are marked in the **bottom-right corner of the icon**. The left
+  button is **Starlight Exchange**, the middle one **opens the transfer view** (**greyed out and unclickable while you have fewer
+  than 5 Star Coins or while the transfer is cooling down**), the hourglass beside it fills **from low to high** with the cooldown
+  and turns into "ready" when it ends; the bottom-left is a **Star Coin balance bar** styled like the one above the player
+  inventory, and the player inventory sits at the bottom-right. During a **"Shop Sale"** window the title band plays an 8-tick
+  light animation (the event itself ships later; the display and syncing are already wired).
+- **Buying is now drag-and-drop** (user ruling, 2026-10-08): **hold a card on the shelf and drag it onto the inventory** at the
+  bottom-right to buy it — the card follows the cursor while dragging and the vacated slot shows the **sold-out** backdrop;
+  **if you do not drop it onto the inventory the card simply returns** (no Star Coins are charged); **you cannot start dragging
+  while short on Star Coins** (a red hint shows the price); dropping onto an occupied slot asks you to pick another; **only a
+  correct drop charges you**. Starlight exchange is still **2:1 with no cooldown**.
+
 ### Content & Balance
 
 #### Damage & Resolution
