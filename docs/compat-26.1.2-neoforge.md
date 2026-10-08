@@ -411,3 +411,11 @@ src/generated/clientResources/   ← runClientData（assets/…：items 123 + mo
 3. **自建渲染管线的 sampler 必须 ⊆ 实际绑定集**：管线声明的 sampler 若超出原版 `RenderSetup` 的绑定（`useOverlay` → `Sampler1`、`useLightmap` → `Sampler2`），运行期会扔 `IllegalStateException: Missing sampler Sampler1`。dev 环境跑 `-Dneoforge.disableGlValidation=true`（`neoforge-26.1.2/build.gradle:147`）会**静音**该断言 ⇒ 怀疑自家管线配置错误时，临时注释该行并冷启动复现（详见 `KNOWN-ISSUES.md` KI-D1「2026-10-07 复验」段：该断言是 dev-only，生产环境 `IS_RUNNING_IN_IDE=false` 永不触发，与 Sodium 版本无关）。
 4. **优先用原版渲染设施、保持后端无关**：26.1.2 的渲染点全部走现代 Blaze3D（`SubmitNodeCollector#submitCustomGeometry` / `RenderTypes.*`）；本线自建管线仅剩 `client/RenShieldRenderer.java:148-163`（`astral_dice:pipeline/ren_shield`、`ren_shield_glow`）。验收动作：`opengl` 包 / `GlStateManager` / `RenderSystem.` / `GL11` 在本线保持 **0 命中**（现状已达成 ⇒ 26.2+ 的 Vulkan 后端无需重写）；新增渲染物优先用 `RenderTypes.entitySolid(...)` 一类原版 RenderType。
 
+
+## 十一、待移植登记：卡牌商店全套 + 卡牌配方移除（2026-10-09，P1）
+
+> P0 两线（`neoforge-1.21.1` / `forge-1.20.1`）已落地；本线（26.1.2）与 `fabric-1.20.1` 按优先级模型**待移植**。**在移植完成前，本线处于「缺整套功能 + 仍保留 22 条卡牌配方」的差异状态**，不得当成 bug 报告。
+
+1. **待移植内容（P0 已落地）**：① 卡牌商店方块与模型（Blockbench `models/cardshop.bbmodel` → `models/block/card_shop.json` + `textures/block/card_shop.png` + `render_type: cutout` + `Shapes.box(0,0,0,1,14.5/16,1)` + `noOcclusion()`）② 商店界面 v4（拖拽购买、`CardShopBuyPayload`、第 8 个 DataSlot「大酬宾」）③ 转账二级面板（搜索/头像余额行/滚动条/金额框/会话锁/冷却顺延，S2C 名单 = UUID+名+余额）④ 工作方块 `PoiType astral_dice:card_shop` + 职业 `astral_dice:card_trader` + 五级交易表 + 「1 绿宝石→1 星币」L3 兑换 + 按玩家过滤（戴绿宝石骰子隐藏该条目）⑤ `CardTradeFilter` 严格排除（`is_exclusive` 标签 ∪ 巅峰 ∪ 奇特）+ fail-loud ⑥ 「购买即获得」漏斗 + 删除两个 `ItemCraftedEvent` 监听器 ⑦ JEI 插件「卡牌商店」类别 ⑧ 三语文案订正（去掉「合成」措辞）。
+2. **本线当前差异（须在移植时一并处理）**：`src/generated/**` 下**仍保留 22 条卡牌配方**（`attack_card_*` 6 + `defense_card_*` 3 + `effect_card_*` 13）与对应解锁成就，`datagen/ModRecipeProvider.java` **仍含对应 170 行**；`mods.toml` 与 `gradle.properties` 的门槛仍各自独立。⇒ 移植时须**同批**删除这些配方（归档件见 `docs/archive/card-recipes-2026-10-09/`）。
+3. **移植注意事项（P0 已踩到的坑）**：26.1.2 的村民交易与 POI API 需**重新取证**（不得照搬 1.21.1 / 1.20.1）；`MerchantOffer` 系列若同样有改价 mixin，仍需「读原始费用字段」的兜底；JEI 在 26.1.2 需按其版本重取 API；`Blockbench` 美术件可直接复用（贴图/模型与平台无关，`render_type` 请在 26.1.2 侧复核是否仍走模型 JSON）。

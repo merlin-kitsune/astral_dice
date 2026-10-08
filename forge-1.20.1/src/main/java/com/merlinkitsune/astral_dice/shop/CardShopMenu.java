@@ -366,6 +366,8 @@ public class CardShopMenu extends AbstractContainerMenu {
         ItemStack bought = card.copy();
         target.set(bought);
         target.setChanged();
+        // 2026-10-09 用户裁决「从商店购买视为获得」：卡牌已写入玩家槽 ⇒ 触发维生素药丸/提尔立牌等「获得」语义
+        com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem.notifyCardObtained(buyer, bought);
         shelfContainer.setItem(shelfIndex, ItemStack.EMPTY);
         sold[shelfIndex] = true;
         StarCoinBalanceSync.notifyChanged(buyer);

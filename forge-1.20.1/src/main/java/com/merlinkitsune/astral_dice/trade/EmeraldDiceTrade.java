@@ -112,6 +112,69 @@ public final class EmeraldDiceTrade {
     }
 
     /**
+     * 这一笔报价是否是「绿宝石 → 星币」兑换。
+     *
+     * <p>1.21.1 用 {@code offer.getBaseCostA()}（那边它**未被 mixin 改写**，只有
+     * getItemCostA/getCostA/satisfiedBy 被换掉）；1.20.1 的费用替换只能覆写 getBaseCostA 本身，
+     * 因此这里改读**原始字段**（见 {@link #rawCostA(MerchantOffer)}）。
+     */
+    public static boolean isEmeraldToStarCoin(MerchantOffer offer) {
+        if (offer == null) return false;
+        if (!offer.getResult().is(ModItems.STAR_COIN.get())) return false;
+        ItemStack cost = rawCostA(offer);
+        return !cost.isEmpty() && cost.is(Items.EMERALD);
+    }
+
+    /**
+     * 取报价的原始费用 A（不受 {@code MerchantOfferMixin} 的取值覆写影响）。
+     *
+     * <p>优先走软接口 {@link MerchantOfferRawAccess}（由 MerchantOfferMixin 注入到 MerchantOffer，零分配）；
+     * 软接口不可用（例如 mixin 被门禁关闭）时退回 NBT 快照 —— 1.20.1 的 createTag() 直接读原字段
+     * （MerchantOffer.java:171 compoundtag.put("buy", this.baseCostA.save(new CompoundTag()));），
+     * 因此兜底路径同样拿得到原值，不会静默退化成错误判据。
+     */
+    public static ItemStack rawCostA(MerchantOffer offer) {
+        if (offer == null) return ItemStack.EMPTY;
+        if (offer instanceof MerchantOfferRawAccess raw) {
+            return raw.astralDice$rawCostA();
+        }
+        return ItemStack.of(offer.createTag().getCompound("buy"));
+    }
+
+    /**
+     * 按交易玩家过滤报价列表：佩戴绿宝石骰子时把「绿宝石 → 星币」兑换条目剔除。
+     *
+     * <p>为什么必须过滤：报价表是**村民级共享**的，而 MerchantOfferMixin 会把该玩家看到的绿宝石费用
+     * 换成星币并打折 —— 兑换条目留着就变成「用星币买星币」，可以凭空刷币。
+     *
+     * <p>返回值语义：null = 不需要过滤（调用方保留原列表，零行为差异）；否则返回一个**只包住原报价实例**
+     * 的新列表（禁止深拷贝 —— 拷贝会脱离 maxUses/demand 的共享状态；深拷贝只由发包时的
+     * ClientboundMerchantOffersPacket 做）。
+     */
+    public static MerchantOffers filteredFor(Player player, MerchantOffers offers) {
+        if (!hasEmeraldDice(player) || offers == null || offers.isEmpty()) return null;
+        boolean hit = false;
+        for (MerchantOffer offer : offers) {
+            if (isEmeraldToStarCoin(offer)) {
+                hit = true;
+                break;
+            }
+        }
+        if (!hit) return null;
+        MerchantOffers filtered = new MerchantOffers();
+        for (MerchantOffer offer : offers) {
+            if (!isEmeraldToStarCoin(offer)) filtered.add(offer);
+        }
+        return filtered;
+    }
+
+    /** 以村民当前交易玩家为口径的过滤（调用方不必自己取 player）。 */
+    public static MerchantOffers filteredFor(Merchant merchant) {
+        if (merchant == null) return null;
+        return filteredFor(merchant.getTradingPlayer(), merchant.getOffers());
+    }
+
+    /**
      * 成交后立即把报价重发给当前交易玩家,使客户端的「职业经验 / 职业等级 / 报价列表」即时刷新。
      *
      * <p>原版只在开界面、补货与升级时重发报价({@code Villager.resendOffersToTradingPlayer}),

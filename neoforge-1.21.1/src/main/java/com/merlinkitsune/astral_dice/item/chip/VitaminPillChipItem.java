@@ -2,25 +2,20 @@ package com.merlinkitsune.astral_dice.item.chip;
 
 import net.minecraft.world.item.ItemStack;
 import top.theillusivec4.curios.api.CuriosApi;
-import com.merlinkitsune.astral_dice.combat.CardRegistry;
-import com.merlinkitsune.astral_dice.item.sign.MimiSignItem;
 import com.merlinkitsune.astral_dice.item.HealingManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
-import com.merlinkitsune.astral_dice.AstralDiceMod;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.minecraft.world.entity.player.Player;
-import net.neoforged.bus.api.SubscribeEvent;
 
 /**
- * 维生素药丸筹码:通过合成或奖励途径获得任意卡牌时,治愈 +1。
+ * 维生素药丸筹码:通过**获得**任意卡牌时,治愈 +1。
  *
- * <p>触发范围包括:直接合成卡牌,以及随机/事件/立牌/筹码/效果牌特定能力发放的卡牌。
- * 发放卡牌的代码统一走 {@link #giveCard} 以便在成功放入背包时触发;
- * 合成由本类自身的 ItemCraftedEvent 监听补充。
+ * <p>触发范围:随机/事件/立牌/筹码/效果牌特定能力等**模组发牌路径**(统一走 {@link #giveCard}),
+ * 以及**购买路径** —— 卡牌商店购买与卡牌交易员成交都经 {@link #notifyCardObtained} 视为「获得」。
  * 拾取地面卡牌不会触发,避免反复丢弃/拾取刷治愈点。
+ *
+ * <p><b>2026-10-09 用户裁决</b>:卡牌合成配方已全部移除 ⇒ 原先的 {@code ItemCraftedEvent} 监听**已删除**
+ * (商店购买视为获得)。若将来有数据包补回卡牌配方,不再有合成触发。
  */
-@EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class VitaminPillChipItem extends BaseChipItem {
     /** 获得每张卡牌时增加的治愈点数 */
     public static final int HEALING_POINTS_PER_CARD = 1;
@@ -33,7 +28,7 @@ public class VitaminPillChipItem extends BaseChipItem {
      * 发放一张卡牌:成功放入背包时触发维生素药丸。
      * 背包满则掉落,但不会在拾取时触发(防止丢弃/拾取刷治愈点)。
      * 注意:此路径不触发看板娘立牌(mimi)被动(奖励/复制/返还等发放不再计星币,
-     * mimi 仅由合成与主动返还两条显式路径触发)。
+     * mimi 仅由主动返还这一条显式路径触发)。
      *
      * <p>本重载等价于 {@code giver = null}(发牌者未知)⇒ 不触发蛟龙立牌(mamushi)被动
      * 「湖沼之王」的觉醒计数。已知发牌者的路径必须走
@@ -94,18 +89,18 @@ public class VitaminPillChipItem extends BaseChipItem {
         HealingManager.add(player, HEALING_POINTS_PER_CARD * amount);
     }
 
-    // 维生素药丸:通过合成卡牌获得时触发(合成战斗牌同时触发看板娘立牌被动)
-    @SubscribeEvent
-    public static void onCardCrafted(PlayerEvent.ItemCraftedEvent event) {
-        Player player = event.getEntity();
-        if (player.level().isClientSide()) return;
-        ItemStack result = event.getCrafting();
-        if (!result.isEmpty()) {
-            VitaminPillChipItem.onCardGained(player, result);
-            // 看板娘立牌被动:合成战斗牌 → +1 星币(仅合成路径,见 giveCard 注释)
-            if (CardRegistry.itemToType(result) != null) {
-                MimiSignItem.onBattleCardGained(player);
-            }
-        }
+    /**
+     * **购买即「获得」**(2026-10-09 用户裁决):卡牌商店购买与卡牌交易员成交时,由调用方在卡牌**已写入玩家背包/槽位后**
+     * 调用本方法 —— 只做「获得」语义的触发(维生素药丸治愈 + 提尔立牌狐光层数),**不再插入物品**、
+     * 也**不触发看板娘立牌被动**(mimi 只按「返还卡牌」计数)。
+     *
+     * <p>注意与 {@link #giveCard} 的分工:后者是「发牌 + 触发」(奖励/随机/事件路径,物品由它插入);
+     * 本方法是「物品已入包 + 只触发」(购买路径,物品由原版成交或商店结算插入)。
+     */
+    public static void notifyCardObtained(Player player, ItemStack card) {
+        if (player == null || player.level().isClientSide()) return;
+        if (card == null || card.isEmpty() || !ModItems.isCardItem(card)) return;
+        onCardGained(player, card.getCount());
+        com.merlinkitsune.astral_dice.item.sign.TeruSignItem.onAttackCardGained(player, card);
     }
 }

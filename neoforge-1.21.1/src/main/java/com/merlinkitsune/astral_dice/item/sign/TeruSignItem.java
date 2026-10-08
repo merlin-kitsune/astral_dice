@@ -421,19 +421,10 @@ public class TeruSignItem extends BaseSignItem {
         return type != null && !CardRegistry.isDefense(type);
     }
 
-    /** 合成攻击牌(ItemCraftedEvent 挂点;与维生素药丸/看板娘同一事件的机制) */
-    @SubscribeEvent
-    public static void onItemCrafted(PlayerEvent.ItemCraftedEvent event) {
-        Player player = event.getEntity();
-        if (player == null || player.level().isClientSide()) return;
-        ItemStack result = event.getCrafting();
-        if (!isAttackCard(result)) return;
-        onAttackCardCount(player, result.getCount());
-    }
 
     /**
-     * 获得攻击牌(唯一发牌漏斗 {@code item/chip/VitaminPillChipItem#giveCard} 的成功入包分支调用;
-     * 覆盖随机发牌/立牌奖励/筹码/事件系统等全部模组发牌路径)。
+     * 获得攻击牌(**两条**入口:①{@code item/chip/VitaminPillChipItem#giveCard} 的成功入包分支 —— 随机发牌/立牌奖励/筹码/事件系统等全部模组发牌路径;
+     * ②{@code VitaminPillChipItem#notifyCardObtained} —— **购买即获得**,由卡牌商店购买与卡牌交易员成交调用)。
      */
     public static void onAttackCardGained(Player actor, ItemStack card) {
         if (actor == null || actor.level().isClientSide()) return;

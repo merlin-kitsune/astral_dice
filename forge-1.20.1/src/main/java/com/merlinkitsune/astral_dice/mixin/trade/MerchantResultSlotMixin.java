@@ -27,6 +27,10 @@ public abstract class MerchantResultSlotMixin {
     @Inject(method = "onTake", at = @At("RETURN"))
     private void astralDice$endSwap(Player player, ItemStack stack, CallbackInfo ci) {
         EmeraldDiceTrade.end();
+        // 2026-10-09 用户裁决「购买视为获得」：卡牌交易员卖出卡牌、原版已把卡放进玩家背包 ⇒ 触发「获得」语义
+        if (player instanceof ServerPlayer && !stack.isEmpty()) {
+            com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem.notifyCardObtained(player, stack);
+        }
         // 原版成交后不重发报价 → 客户端经验条/等级停在旧值;佩戴绿宝石骰子时补一次重发
         if (player instanceof ServerPlayer serverPlayer) {
             EmeraldDiceTrade.resendOffers(serverPlayer, this.merchant);

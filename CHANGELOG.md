@@ -4,7 +4,7 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
-## Unreleased (2.0.0-SNAPSHOT.55)
+## Unreleased (2.0.0-SNAPSHOT.56)
 
 ### New Content
 
@@ -108,6 +108,19 @@
   invalid) plus **5/10/15/20 quick amounts**; the **Confirm** button is only enabled with a valid target, an amount you can afford, and
   no cooldown. **A successful transfer returns you to the shop and blocks further transfers for that shop session**, and the
   **60-second cooldown now starts when you leave the shop** (it still applies if you disconnect, so nobody gets a free transfer).
+- **New villager profession: Card Trader** (2026-10-09): the **Card Shop block is now a job site** — claiming it turns a villager into a
+  **Card Trader** (white shirt, red tie, dark belt with a silver buckle, black suit trousers, leather shoes, a Star Coin badge on the
+  left chest and a leather pouch on the right hip). Trades unlock by villager level: Novice/Apprentice sell **rare** cards (2–6 emeralds),
+  Journeyman/Expert sell **epic**, Expert/Master sell **legendary** cards (up to 20 emeralds), priced by the card's own strength;
+  from **Journeyman** on you can also **exchange 1 emerald for 1 Star Coin**. ⚠️ While wearing the **Emerald Dice** that exchange entry is hidden.
+- **Cards can no longer be crafted — they are traded for** (2026-10-09): **all 22 card crafting recipes were removed**; cards now come from the
+  Card Shop, the Card Trader, dice and signs. **Buying from the shop counts as obtaining** a card (it triggers the Vitamin Pill's healing and the
+  Teru sign's Foxfire stacks). JEI gained a **"Card Shop"** category: every **sellable card** shows the **block thumbnail, a Star Coin and an
+  acquisition note** ("Obtained by trading at the Card Shop"), so looking up a card tells you how to get it.
+- **Wording fixes** (2026-10-09): the Vitamin Pill, Teru sign and Mimi sign descriptions no longer say cards are "crafted"; they now say "obtained".
+- **Strict exclusions**: **exclusive cards** (Living Page, Fate Guidance, Fu/Huo cards, Bite, Dragon Roar) and **Pinnacle/Bizarre-rarity** cards
+  (e.g. Full Power) **never** appear on the Card Shop shelves or in the Card Trader's offers.
+
 
 
 

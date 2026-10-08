@@ -4,9 +4,11 @@ import com.merlinkitsune.astral_dice.item.ModItems;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.trading.ItemCost;
 import net.minecraft.world.item.trading.Merchant;
+import net.minecraft.world.item.trading.MerchantOffer;
 import net.minecraft.world.item.trading.MerchantOffers;
 import top.theillusivec4.curios.api.CuriosApi;
 
@@ -68,6 +70,52 @@ public final class EmeraldDiceTrade {
     /** 20% 折扣(向下取整,至少 1)。 */
     public static int discount(int count) {
         return Math.max(1, (int) Math.floor(count * 0.8));
+    }
+
+    /**
+     * 这一笔报价是否是「绿宝石 → 星币」兑换。
+     *
+     * <p>判据用 {@link MerchantOffer#getBaseCostA()}（**未被本包的 mixin 改写**的原始费用）：
+     * getItemCostA/getCostA/satisfiedBy 都会被 MerchantOfferMixin 换成星币，唯有 getBaseCostA 保持原值。
+     */
+    public static boolean isEmeraldToStarCoin(MerchantOffer offer) {
+        if (offer == null) return false;
+        ItemStack cost = offer.getBaseCostA();
+        if (cost.isEmpty() || !cost.is(Items.EMERALD)) return false;
+        return offer.getResult().is(ModItems.STAR_COIN.get());
+    }
+
+    /**
+     * 按交易玩家过滤报价列表：佩戴绿宝石骰子时把「绿宝石 → 星币」兑换条目剔除。
+     *
+     * <p>为什么必须过滤：报价表是**村民级共享**的，而 MerchantOfferMixin 会把该玩家看到的绿宝石费用
+     * 换成星币并打折 —— 兑换条目留着就变成「用星币买星币」，可以凭空刷币。
+     *
+     * <p>返回值语义：null = 不需要过滤（调用方保留原列表，零行为差异）；否则返回一个**只包住原报价实例**
+     * 的新列表（禁止深拷贝 —— 拷贝会脱离 maxUses/demand 的共享状态；深拷贝只由发包时的
+     * ClientboundMerchantOffersPacket 做）。
+     */
+    public static MerchantOffers filteredFor(Player player, MerchantOffers offers) {
+        if (!hasEmeraldDice(player) || offers == null || offers.isEmpty()) return null;
+        boolean hit = false;
+        for (MerchantOffer offer : offers) {
+            if (isEmeraldToStarCoin(offer)) {
+                hit = true;
+                break;
+            }
+        }
+        if (!hit) return null;
+        MerchantOffers filtered = new MerchantOffers();
+        for (MerchantOffer offer : offers) {
+            if (!isEmeraldToStarCoin(offer)) filtered.add(offer);
+        }
+        return filtered;
+    }
+
+    /** 以村民当前交易玩家为口径的过滤（调用方不必自己取 player）。 */
+    public static MerchantOffers filteredFor(Merchant merchant) {
+        if (merchant == null) return null;
+        return filteredFor(merchant.getTradingPlayer(), merchant.getOffers());
     }
 
     /**

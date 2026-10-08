@@ -48,6 +48,10 @@ public class AstralDiceMod {
         com.merlinkitsune.astral_dice.block.ModBlocks.BLOCKS.register(modEventBus);
         ModMenuTypes.MENU_TYPES.register(modEventBus);
         ModParticles.PARTICLE_TYPES.register(modEventBus);
+        // 卡牌商店 = 村民工作站点(兴趣点) + 新职业「卡牌交易员」;其交易表见 trade/CardTraderTrades,
+        // 村民认领还需要 data/minecraft/tags/point_of_interest_type/acquirable_job_site.json 把本站点并入原版标签
+        com.merlinkitsune.astral_dice.world.ModPoiTypes.POI_TYPES.register(modEventBus);
+        com.merlinkitsune.astral_dice.world.ModVillagerProfessions.PROFESSIONS.register(modEventBus);
         // 全局战利品修饰符序列化器:1.20.1 的 Forge 自带注册表里**没有任何内置项**
         // (没有 forge:add_table),必须由本模组注册 astral_dice:add_table,
         // 否则 data/astral_dice/loot_modifiers/*.json 全部解码失败(详见 loot/AstralLootModifiers)

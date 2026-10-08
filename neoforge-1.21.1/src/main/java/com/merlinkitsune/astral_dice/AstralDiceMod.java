@@ -4,6 +4,8 @@ import com.merlinkitsune.astral_dice.block.ModBlocks;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import com.merlinkitsune.astral_dice.config.ModCommonConfig;
+import com.merlinkitsune.astral_dice.world.ModPoiTypes;
+import com.merlinkitsune.astral_dice.world.ModVillagerProfessions;
 import com.merlinkitsune.starenginelib.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.init.ModCompatibilityCheck;
@@ -43,6 +45,8 @@ public class AstralDiceMod {
         ModAttachments.ATTACHMENTS.register(modEventBus);
         ModParticles.PARTICLE_TYPES.register(modEventBus);
         ModBlocks.BLOCKS.register(modEventBus);
+        ModPoiTypes.POI_TYPES.register(modEventBus);
+        ModVillagerProfessions.PROFESSIONS.register(modEventBus);
         // 配置版本检查:旧版本配置文件先备份,再由 NeoForge 继承旧值写入新配置(仅公共配置;client 配置已移除)
         backupOldConfigIfNeeded("astral_dice-common.toml", ModCommonConfig.CONFIG_VERSION);
         modContainer.registerConfig(ModConfig.Type.COMMON, ModCommonConfig.SPEC);

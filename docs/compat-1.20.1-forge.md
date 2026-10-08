@@ -178,3 +178,16 @@ datagen:`RecipeOutput` → `Consumer<FinishedRecipe>`(`.save(output::accept)`);`
 3. **常规改写**：`ResourceLocation.fromNamespaceAndPath` → `new ResourceLocation`（本批新增 2 条同款弃用告警，见 §十第 11 条）；`PacketDistributor.sendToServer/sendToPlayer` → `ModNetwork.sendToServer/sendToPlayer`；`mouseScrolled` 四参 → **三参**；Curios 走库 shim `CuriosCompat#getCuriosInventory`。
 4. **两线同形、无需改写**（已核实映射）：`EditBox`（构造 + `setBordered/setMaxLength/setHint/setTextColor/setResponder/setValue/setFocused`）、`AbstractSliderButton`（`updateMessage/applyValue/onClick/onDrag/onRelease/renderWidget` + `value/canChangeValue`）、`GuiGraphics.blit` 10 参（`blitOffset=0`）/`fill`/`enableScissor`/`disableScissor`、`AbstractContainerScreen#containerTick()`、`AbstractContainerMenu#removed(Player)`。
 5. **对等证据**：`git diff --no-index --unified=0` 两线 `CardShopScreen.java` 差异 **63 行**、`CardShopMenu.java` 差异全部为 import/javadoc/平台符号 —— **界面逻辑零差异**（含几何常量、marquee、箭头位置、门控、会话锁、冷却顺延）。
+
+## 十四、工作方块/村民职业/交易批(2026-10-09)平台差异
+
+1. **`VillagerProfession` 签名相同**（两线都是 6 参 record：`name / heldJobSite / acquirableJobSite / requestedItems / secondaryPoi / workSound`，1.20.1 `VillagerProfession.java:25` 原文取证）⇒ 逐字对位，无取舍。
+2. **POI 注册表与映射机制不同**：1.20.1 用 `DeferredRegister.create(ForgeRegistries.POI_TYPES, MODID)`（`ForgeRegistries.java:88`；`Registries.POINT_OF_INTEREST_TYPE` 亦存在）；blockstate→POI 映射由 Forge `GameData` 回调（`GameData.java:504-537` 的 `PointOfInterestTypeCallbacks.onAdd`）自动建立，`PoiTypes.registerBlockStates` 是空方法 ⇒ 注册 PoiType 即生效。
+3. **`DeferredRegister#register` 返回类型**：1.21.1 `DeferredHolder<T,T>` → 1.20.1 **`RegistryObject<T>`**（`DeferredRegister.java:175`）。
+4. **交易事件**：载荷同形（`Int2ObjectMap<List<ItemListing>>`），但**总线与触发时机不同** —— 1.20.1 = `MinecraftForge.EVENT_BUS`（`VillagerTradesEvent.java:21`），由 `VillagerTradingManager#loadTrades(ServerAboutToStartEvent)` 触发（开服一次；副作用：**`/reload` 不重发**，已上架交易保留）；1.21.1 = NeoForge 总线 + `TagsUpdatedEvent`（数据包标签加载/`/reload` 时重发）。两线发报时物品标签都已绑定 ⇒ 排除判据口径一致。`ItemListing#getOffer(Entity, RandomSource)` 两线同签名。
+5. **`BasicItemListing`**：包名从 `net.neoforged.neoforge.common` → **`net.minecraftforge.common`**（签名同 5 参）。
+6. ⚠️ **1.20.1 的 `MerchantOffer#getBaseCostA()` 被既有「绿宝石骰子改价」mixin 覆写**（`MerchantOfferMixin` 把绿宝石费用替换成星币），而「戴骰子隐藏兑换条目」的判据**读的就是 getBaseCostA** ⇒ 直接读会把星币当原值、判据失效。对策：新增软接口 **`trade/MerchantOfferRawAccess`**（Mixin 接口注入 `MerchantOffer`，暴露 `astralDice$rawCostA()` 读原始 `baseCostA` 字段）+ `createTag()` 兜底；1.21.1 侧无此问题。
+7. **`Merchant` 包名不同**：1.20.1 = `net.minecraft.world.item.trading.Merchant`（1.21.1 = `net.minecraft.world.entity.npc.Merchant`）⇒ `@Redirect` 描述符必须按本线写。
+8. **无 `MerchantOffer` 复制构造（1.20.1）** ⇒ 村民交易报价用 5 参栈式构造 `new MerchantOffer(ItemStack costA, ItemStack result, int maxUses, int xp, float priceMultiplier)`；`getBaseCostA()` 返回 `ItemStack`（1.21.1 是 `ItemCost`）。
+9. **标签目录**：1.20.1 物品标签是复数 `data/astral_dice/tags/items/`（1.21.1 `tags/item/`）；**POI 标签两线同为** `data/minecraft/tags/point_of_interest_type/`（已双线取证）。
+10. **JEI**：1.20.1 = `jei-1.20.1-forge-15.56.0.205`（`modImplementation`），1.21.1 = `jei-1.21.1-neoforge-19.39.0.372`（`implementation`）⇒ 插件 API 需按 15 版重取（`IRecipeCategory`/`IRecipeRegistration`/`createDrawableIngredient` 等重载可能不同）。

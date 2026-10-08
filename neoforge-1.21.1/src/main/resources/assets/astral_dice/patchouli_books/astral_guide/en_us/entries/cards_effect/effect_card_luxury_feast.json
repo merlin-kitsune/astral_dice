@@ -8,10 +8,7 @@
       "item": "astral_dice:effect_card_luxury_feast",
       "text": "astral_dice.guide.entry.effect_card_luxury_feast.1"
     },
-    {
-      "type": "patchouli:crafting",
-      "recipe": "astral_dice:effect_card_luxury_feast"
-    }
+    { "type": "patchouli:spotlight", "item": "astral_dice:card_shop", "text": "astral_dice.guide.entry.card_obtain" }
   ],
   "sortnum": 6
 }

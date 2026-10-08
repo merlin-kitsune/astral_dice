@@ -8,10 +8,7 @@
       "item": "astral_dice:effect_card_fight_poison_with_poison",
       "text": "astral_dice.guide.entry.effect_card_fight_poison_with_poison.1"
     },
-    {
-      "type": "patchouli:crafting",
-      "recipe": "astral_dice:effect_card_fight_poison_with_poison"
-    }
+    { "type": "patchouli:spotlight", "item": "astral_dice:card_shop", "text": "astral_dice.guide.entry.card_obtain" }
   ],
   "sortnum": 3
 }

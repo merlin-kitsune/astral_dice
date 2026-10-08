@@ -8,10 +8,7 @@
       "item": "astral_dice:attack_card_charge",
       "text": "astral_dice.guide.entry.attack_card_charge.1"
     },
-    {
-      "type": "patchouli:crafting",
-      "recipe": "astral_dice:attack_card_charge"
-    }
+    { "type": "patchouli:spotlight", "item": "astral_dice:card_shop", "text": "astral_dice.guide.entry.card_obtain" }
   ],
   "sortnum": 5
 }

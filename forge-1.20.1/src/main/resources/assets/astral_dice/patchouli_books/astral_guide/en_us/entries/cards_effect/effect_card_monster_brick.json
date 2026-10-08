@@ -8,10 +8,7 @@
       "item": "astral_dice:effect_card_monster_brick",
       "text": "astral_dice.guide.entry.effect_card_monster_brick.1"
     },
-    {
-      "type": "patchouli:crafting",
-      "recipe": "astral_dice:effect_card_monster_brick"
-    }
+    { "type": "patchouli:spotlight", "item": "astral_dice:card_shop", "text": "astral_dice.guide.entry.card_obtain" }
   ],
   "sortnum": 13
 }

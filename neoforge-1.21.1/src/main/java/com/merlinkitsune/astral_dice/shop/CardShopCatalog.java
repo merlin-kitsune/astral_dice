@@ -130,6 +130,32 @@ public final class CardShopCatalog {
         return shelf;
     }
 
+    /** 卡池档位 —— 与池内权重常量一一对应（稀有 6 / 史诗 3 / 传奇 2）。 */
+    public enum Tier { RARE, EPIC, LEGENDARY }
+
+    /** 卡池只读视图（村民交易表复用同一份池子与权重，不另造第二套分级）。 */
+    public static List<PoolEntry> entries() {
+        return POOL;
+    }
+
+    /** 由池内权重反查档位 —— 直接复用商店抽卡的权重口径；权重不是三档常量时返回 null。 */
+    public static Tier tierOf(PoolEntry entry) {
+        if (entry == null) {
+            return null;
+        }
+        return switch (entry.weight()) {
+            case WEIGHT_RARE -> Tier.RARE;
+            case WEIGHT_EPIC -> Tier.EPIC;
+            case WEIGHT_LEGENDARY -> Tier.LEGENDARY;
+            default -> null;
+        };
+    }
+
+    /** 按权重抽一张（不修改传入列表）—— 商店货架与村民交易共用同一套抽卡口径。 */
+    public static PoolEntry pickWeighted(RandomSource random, List<PoolEntry> pool) {
+        return drawWeighted(random, pool);
+    }
+
     private static void drawInto(RandomSource random, List<PoolEntry> pool, List<Item> out) {
         PoolEntry picked = drawWeighted(random, pool);
         if (picked == null) {

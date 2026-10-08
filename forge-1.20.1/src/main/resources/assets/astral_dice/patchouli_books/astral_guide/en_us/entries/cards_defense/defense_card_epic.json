@@ -8,10 +8,7 @@
       "item": "astral_dice:defense_card_epic",
       "text": "astral_dice.guide.entry.defense_card_epic.1"
     },
-    {
-      "type": "patchouli:crafting",
-      "recipe": "astral_dice:defense_card_epic_from_large"
-    }
+    { "type": "patchouli:spotlight", "item": "astral_dice:card_shop", "text": "astral_dice.guide.entry.card_obtain" }
   ],
   "sortnum": 2
 }

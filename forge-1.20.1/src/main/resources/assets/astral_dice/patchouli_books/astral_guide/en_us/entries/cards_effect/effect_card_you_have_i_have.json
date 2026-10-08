@@ -8,10 +8,7 @@
       "item": "astral_dice:effect_card_you_have_i_have",
       "text": "astral_dice.guide.entry.effect_card_you_have_i_have.1"
     },
-    {
-      "type": "patchouli:crafting",
-      "recipe": "astral_dice:effect_card_you_have_i_have"
-    }
+    { "type": "patchouli:spotlight", "item": "astral_dice:card_shop", "text": "astral_dice.guide.entry.card_obtain" }
   ],
   "sortnum": 7
 }

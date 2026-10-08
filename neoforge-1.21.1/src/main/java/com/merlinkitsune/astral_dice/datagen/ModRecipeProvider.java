@@ -37,65 +37,6 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .unlockedBy("has_quartz_block", has(Items.QUARTZ_BLOCK))
                 .save(output);
 
-        // 攻击(中):1 铁剑 + 1 星币
-        ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ModItems.ATTACK_CARD_MEDIUM.get())
-                .requires(Items.IRON_SWORD)
-                .requires(ModItems.STAR_COIN.get())
-                .unlockedBy("has_star_coin", has(ModItems.STAR_COIN.get()))
-                .save(output);
-
-        // 防御(中):1 盾牌 + 1 星币
-        ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ModItems.DEFENSE_CARD_MEDIUM.get())
-                .requires(Items.SHIELD)
-                .requires(ModItems.STAR_COIN.get())
-                .unlockedBy("has_star_coin", has(ModItems.STAR_COIN.get()))
-                .save(output);
-
-        // 暗影突袭:1 铁剑 + 1 星币 + 1 铁锭
-        ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ModItems.ATTACK_CARD_SHADOW_STRIKE.get())
-                .requires(Items.IRON_SWORD)
-                .requires(ModItems.STAR_COIN.get())
-                .requires(Items.IRON_INGOT)
-                .unlockedBy("has_star_coin", has(ModItems.STAR_COIN.get()))
-                .save(output);
-
-        // 名刀嘎呜切:1 钻石 + 3 星币
-        ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ModItems.ATTACK_CARD_MEITO.get())
-                .requires(Items.DIAMOND)
-                .requires(ModItems.STAR_COIN.get(), 3)
-                .unlockedBy("has_star_coin", has(ModItems.STAR_COIN.get()))
-                .save(output);
-
-        // 蓄力:1 红石块 + 3 星盘
-        ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ModItems.ATTACK_CARD_CHARGE.get())
-                .requires(Items.REDSTONE_BLOCK)
-                .requires(ModItems.STAR_PLATE.get(), 3)
-                .unlockedBy("has_star_plate", has(ModItems.STAR_PLATE.get()))
-                .save(output);
-
-        // 岿然不动:1 金锭 + 1 盾牌 + 1 星币
-        ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ModItems.EFFECT_CARD_UNWAVERING.get())
-                .requires(Items.GOLD_INGOT)
-                .requires(Items.SHIELD)
-                .requires(ModItems.STAR_COIN.get())
-                .unlockedBy("has_star_coin", has(ModItems.STAR_COIN.get()))
-                .save(output);
-
-        // 以毒攻毒:1 红色蘑菇 + 1 星盘
-        // 2026-09-23 用户裁决「只保留红蘑菇和星盘」⇒ 移除谜之炖菜与兔子脚(无序配方,材料多重集随之变化)
-        ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ModItems.EFFECT_CARD_FIGHT_POISON_WITH_POISON.get())
-                .requires(Items.RED_MUSHROOM)
-                .requires(ModItems.STAR_PLATE.get())
-                .unlockedBy("has_star_plate", has(ModItems.STAR_PLATE.get()))
-                .save(output);
-
-        // 狂暴:1 火药 + 1 星币
-        ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ModItems.EFFECT_CARD_BERSERK.get())
-                .requires(Items.GUNPOWDER)
-                .requires(ModItems.STAR_COIN.get())
-                .unlockedBy("has_star_coin", has(ModItems.STAR_COIN.get()))
-                .save(output);
-
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.BLANK_SIGN.get())
                 .pattern("SSS")
                 .pattern("SCS")
@@ -265,13 +206,6 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output);
 
-        // 王之力:1 钻石剑 + 1 星币
-        ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ModItems.EFFECT_CARD_KING_POWER.get())
-                .requires(Items.DIAMOND_SWORD)
-                .requires(ModItems.STAR_COIN.get())
-                .unlockedBy("has_star_coin", has(ModItems.STAR_COIN.get()))
-                .save(output);
-
         // 美工刀-初级:上排 铁剑·金苹果·铁剑｜中排 再生试剂·空白筹码·再生试剂｜下排 星盘·星盘·星盘 [史诗·治愈]
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.CUTTER_CHIP.get())
                 .pattern("XLX")
@@ -323,36 +257,6 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('G', ModItems.GOLDEN_STAR_PLATE.get())
                 .unlockedBy("has_purple_shooting_star_chip", has(ModItems.PURPLE_SHOOTING_STAR_CHIP.get()))
                 .save(output);
-
-        ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ModItems.ATTACK_CARD_LARGE.get())
-                .requires(ModItems.ATTACK_CARD_MEDIUM.get())
-                .requires(ModItems.ATTACK_CARD_MEDIUM.get())
-                .requires(ModItems.STAR_COIN.get(), 2)
-                .unlockedBy("has_card_medium", has(ModItems.ATTACK_CARD_MEDIUM.get()))
-                .save(output, ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, "attack_card_large_from_medium"));
-
-        // 攻击(特大):2 攻击(大) + 3 星币
-        ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ModItems.ATTACK_CARD_EPIC.get())
-                .requires(ModItems.ATTACK_CARD_LARGE.get())
-                .requires(ModItems.ATTACK_CARD_LARGE.get())
-                .requires(ModItems.STAR_COIN.get(), 3)
-                .unlockedBy("has_card_large", has(ModItems.ATTACK_CARD_LARGE.get()))
-                .save(output, ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, "attack_card_epic_from_large"));
-
-        ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ModItems.DEFENSE_CARD_LARGE.get())
-                .requires(ModItems.DEFENSE_CARD_MEDIUM.get())
-                .requires(ModItems.DEFENSE_CARD_MEDIUM.get())
-                .requires(ModItems.STAR_COIN.get(), 2)
-                .unlockedBy("has_defense_medium", has(ModItems.DEFENSE_CARD_MEDIUM.get()))
-                .save(output, ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, "defense_card_large_from_medium"));
-
-        // 防御(特大):2 防御(大) + 3 星币
-        ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ModItems.DEFENSE_CARD_EPIC.get())
-                .requires(ModItems.DEFENSE_CARD_LARGE.get())
-                .requires(ModItems.DEFENSE_CARD_LARGE.get())
-                .requires(ModItems.STAR_COIN.get(), 3)
-                .unlockedBy("has_defense_large", has(ModItems.DEFENSE_CARD_LARGE.get()))
-                .save(output, ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, "defense_card_epic_from_large"));
 
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.BLANK_CHIP.get(), 2)
                 .pattern("SBS")
@@ -491,39 +395,6 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
         // 注:黄金骰子/钻石骰子/下界合金骰子使用自定义配方类型 astral_dice:dice_upgrade
         //     (升级时继承骰子 WeaponEnhancement 配置),配方定义在
         //     src/main/resources/data/astral_dice/recipe/(golden_dice.json / diamond_dice.json / netherite_dice.json),此处不生成。
-
-        // === 伤害效果牌 ===
-        // 对怪激光(+4):1 纸 + 1 红石粉 + 1 星币
-        ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ModItems.MONSTER_LASER_CARD.get())
-                .requires(Items.PAPER)
-                .requires(Items.REDSTONE)
-                .requires(ModItems.STAR_COIN.get())
-                .unlockedBy("has_star_coin", has(ModItems.STAR_COIN.get()))
-                .save(output);
-
-        // 对怪板砖(+6):1 纸 + 1 tag=c:bricks + 1 星币
-        ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ModItems.MONSTER_BRICK_CARD.get())
-                .requires(Items.PAPER)
-                .requires(net.minecraft.world.item.crafting.Ingredient.of(BRICKS_TAG))
-                .requires(ModItems.STAR_COIN.get())
-                .unlockedBy("has_bricks", has(BRICKS_TAG))
-                .save(output);
-
-        // 轨道炮(+8):1 纸 + 1 望远镜 + 1 星盘
-        ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ModItems.ORBITAL_STRIKE_CARD.get())
-                .requires(Items.PAPER)
-                .requires(Items.SPYGLASS)
-                .requires(ModItems.STAR_PLATE.get())
-                .unlockedBy("has_star_plate", has(ModItems.STAR_PLATE.get()))
-                .save(output);
-
-        // 定向爆破(+5 AOE):1 望远镜 + 2 TNT + 1 星盘(无序)
-        ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ModItems.DIRECTIONAL_BLAST_CARD.get())
-                .requires(Items.SPYGLASS)
-                .requires(Items.TNT, 2)
-                .requires(ModItems.STAR_PLATE.get())
-                .unlockedBy("has_star_plate", has(ModItems.STAR_PLATE.get()))
-                .save(output);
 
         // === 筹码(均含空白筹码) ===
         // 美工刀-锋利:紫->金(通用升级)
@@ -1172,47 +1043,6 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('B', ModItems.BLANK_CHIP.get())
                 .define('P', ModItems.STAR_PLATE.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
-                .save(output);
-
-        // === 新效果牌(治疗/互动;shape:星币居中,mod 物品在中轴) ===
-        // 巧克力蛋糕:1 可可豆 + 1 鸡蛋 + 1 糖 + 1 星币(无序)
-        ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ModItems.CHOCOLATE_CAKE.get())
-                .requires(Items.COCOA_BEANS)
-                .requires(Items.EGG)
-                .requires(Items.SUGAR)
-                .requires(ModItems.STAR_COIN.get())
-                .unlockedBy("has_star_coin", has(ModItems.STAR_COIN.get()))
-                .save(output);
-
-        // 汉堡:1 面包 + 1 牛排 + 2 星币(无序)
-        ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ModItems.HAMBURGER.get())
-                .requires(Items.BREAD)
-                .requires(Items.COOKED_BEEF)
-                .requires(ModItems.STAR_COIN.get(), 2)
-                .unlockedBy("has_star_coin", has(ModItems.STAR_COIN.get()))
-                .save(output);
-
-        // 奢华大餐:1 金胡萝卜 + 1 闪烁的西瓜片 + 2 星币(无序)
-        ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ModItems.LUXURY_FEAST.get())
-                .requires(Items.GOLDEN_CARROT)
-                .requires(Items.GLISTERING_MELON_SLICE)
-                .requires(ModItems.STAR_COIN.get(), 2)
-                .unlockedBy("has_star_coin", has(ModItems.STAR_COIN.get()))
-                .save(output);
-
-        // 你有我有:2 绿宝石 + 2 星币(无序)
-        ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ModItems.YOU_HAVE_I_HAVE.get())
-                .requires(Items.EMERALD, 2)
-                .requires(ModItems.STAR_COIN.get(), 2)
-                .unlockedBy("has_star_coin", has(ModItems.STAR_COIN.get()))
-                .save(output);
-
-        // 加急加快:1 荧石粉 + 2 下界石英 + 1 星盘(无序)
-        ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ModItems.EXPRESS_DELIVERY.get())
-                .requires(Items.GLOWSTONE_DUST)
-                .requires(Items.QUARTZ, 2)
-                .requires(ModItems.STAR_PLATE.get())
-                .unlockedBy("has_star_plate", has(ModItems.STAR_PLATE.get()))
                 .save(output);
 
         // 大当家立牌:空白立牌 + 钻石骰子 + 红石块×4 + 金块×1 + 黄金星盘×2(有序,空白立牌置中,骰子置中下)
