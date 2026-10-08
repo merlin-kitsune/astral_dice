@@ -93,7 +93,7 @@ public class ModPayloads {
                 CardShopTransferListPayload.TYPE,
                 CardShopTransferListPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(() ->
-                        CardShopClientState.setTransferCandidates(payload.names()))
+                        CardShopClientState.setTransferCandidates(payload.entries()))
         );
         // 卡牌商店:二级转账界面确认(目标索引 + 金额)
         registrar.playToServer(

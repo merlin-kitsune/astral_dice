@@ -860,6 +860,10 @@
   "gui.astral_dice.card_shop.transfer_empty": "No other players online right now",
   "gui.astral_dice.card_shop.transfer_hint": "Transfer: send Star Coins to another online player (5~20, 60 s cooldown)",
   "gui.astral_dice.card_shop.transfer_refresh": "Refresh the online player list",
+  "gui.astral_dice.card_shop.transfer_search_hint": "Search player name",
+  "gui.astral_dice.card_shop.transfer_no_match": "No matching player",
+  "gui.astral_dice.card_shop.transfer_amount_field_hint": "Transfer amount (5~20)",
+  "gui.astral_dice.card_shop.transfer_select_hint": "Select a player to send coins to",
   "block.astral_dice.card_shop": "Card Shop",
   "msg.astral_dice.card_shop_no_coin": "Not enough Star Coins (need %s)",
   "msg.astral_dice.card_shop_bought": "Purchased %s for %s Star Coins",
@@ -870,5 +874,6 @@
   "msg.astral_dice.card_shop_transfer_received": "Received %s Star Coins from %s",
   "msg.astral_dice.card_shop_no_starlight": "Not enough Starlight: at least 2 usable Starlight is needed (Starlight granted by bank cards cannot be exchanged)",
   "msg.astral_dice.card_shop_parunan_enter": "Merchant Sign: gained 1 Star Coin for entering the shop",
-  "msg.astral_dice.card_shop_slot_occupied": "That slot is occupied"
+  "msg.astral_dice.card_shop_slot_occupied": "That slot is occupied",
+  "msg.astral_dice.card_shop_transfer_used": "You already used a transfer in this shop session (the cooldown restarts when you leave)"
 }

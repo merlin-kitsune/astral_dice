@@ -4,7 +4,7 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
-## Unreleased (2.0.0-SNAPSHOT.54)
+## Unreleased (2.0.0-SNAPSHOT.55)
 
 ### New Content
 
@@ -101,6 +101,14 @@
   glass display window** — dark wood body, light counter top, brass corner fittings and card display slots — standing slightly under
   one block tall (14.5/16). Its **collision and selection boxes now follow the visible shape** (no longer a full solid cube), the
   transparent parts render as **cutout**, and the inventory icon uses the same new 3D model.
+- **The Card Shop's transfer screen has been rebuilt** (2026-10-08): it now has a **player name search box** (filters as you type),
+  a **scrolling list** with the vanilla scrollbar feel, and each row shows the **player's head, name and current Star Coin balance**
+  (with a small Star Coin icon). **Click a player** to make them the transfer target (the selected row gets a pink arrow marker and the
+  hovered row a grey highlight); below are the **amount field** (defaults to 5, accepts **5–20**, and snaps back to 5 if the input is
+  invalid) plus **5/10/15/20 quick amounts**; the **Confirm** button is only enabled with a valid target, an amount you can afford, and
+  no cooldown. **A successful transfer returns you to the shop and blocks further transfers for that shop session**, and the
+  **60-second cooldown now starts when you leave the shop** (it still applies if you disconnect, so nobody gets a free transfer).
+
 
 
 ### Content & Balance

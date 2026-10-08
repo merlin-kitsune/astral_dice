@@ -860,6 +860,10 @@
   "gui.astral_dice.card_shop.transfer_empty": "当前没有其他在线玩家",
   "gui.astral_dice.card_shop.transfer_hint": "转账：向其他在线玩家转账星币（5~20，冷却 60 秒）",
   "gui.astral_dice.card_shop.transfer_refresh": "刷新在线玩家名单",
+  "gui.astral_dice.card_shop.transfer_search_hint": "搜索玩家名",
+  "gui.astral_dice.card_shop.transfer_no_match": "没有匹配的玩家",
+  "gui.astral_dice.card_shop.transfer_amount_field_hint": "转账金额（5~20）",
+  "gui.astral_dice.card_shop.transfer_select_hint": "请先选中要转账的玩家",
   "block.astral_dice.card_shop": "卡牌商店",
   "msg.astral_dice.card_shop_no_coin": "星币不足（需要 %s）",
   "msg.astral_dice.card_shop_bought": "已购买 %s，花费 %s 星币",
@@ -870,5 +874,6 @@
   "msg.astral_dice.card_shop_transfer_received": "收到来自 %s 的 %s 星币",
   "msg.astral_dice.card_shop_no_starlight": "星光不足：至少需要 2 点可支配星光（银行卡提供的基础星光不可兑换）",
   "msg.astral_dice.card_shop_parunan_enter": "经商立牌：进入商店获得 1 星币",
-  "msg.astral_dice.card_shop_slot_occupied": "该格已被占用"
+  "msg.astral_dice.card_shop_slot_occupied": "该格已被占用",
+  "msg.astral_dice.card_shop_transfer_used": "本次开店已用过转账（离开商店后重新计算冷却）"
 }

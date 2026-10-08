@@ -1,25 +1,33 @@
 package com.merlinkitsune.astral_dice.client;
 
+import com.merlinkitsune.astral_dice.network.CardShopTransferListPayload;
+
 import java.util.List;
 
 /**
- * 卡牌商店「二级转账界面」的客户端态：候选玩家名列表。
+ * 卡牌商店「二级转账界面」的客户端态：候选玩家名单（UUID + 玩家名 + 星币余额）。
  *
  * <p>**刻意不做任何过滤**（用户 2026-10-08 裁决：转账候选 = 全服在线玩家，不筛选队伍）；
- * 服务端在打开转账视图、点击刷新、以及每次转账落定后重发一次
- * （见 {@code network/CardShopTransferListPayload}）。索引与名单同序，转账时按索引回传。
+ * 服务端在**打开转账视图**、**点击放大镜刷新**、以及**目标玩家已下线（名单失效）**时重发
+ * （见 {@code network/CardShopTransferListPayload}）。⚠️ **转账成功后不会重发** —— 此时界面已退回商店主界面，
+ * 且本店会话已锁定转账（{@code CardShopMenu#isTransferUsedThisSession()}）。
+ *
+ * <p><b>下标口径</b>：{@link #transferCandidates()} 的**完整名单**下标就是转账载荷的目标下标 ——
+ * 界面上的搜索过滤只发生在 {@code CardShopScreen} 内部（过滤后行号 → 完整名单下标 的映射），
+ * **绝不下发过滤后行号**。
  */
 public final class CardShopClientState {
 
-    private static volatile List<String> transferCandidates = List.of();
+    private static volatile List<CardShopTransferListPayload.Entry> transferCandidates = List.of();
 
     private CardShopClientState() {}
 
-    public static void setTransferCandidates(List<String> names) {
-        transferCandidates = List.copyOf(names);
+    public static void setTransferCandidates(List<CardShopTransferListPayload.Entry> entries) {
+        transferCandidates = List.copyOf(entries);
     }
 
-    public static List<String> transferCandidates() {
+    /** 完整候选名单（只读；下标 = 转账载荷的目标下标） */
+    public static List<CardShopTransferListPayload.Entry> transferCandidates() {
         return transferCandidates;
     }
 

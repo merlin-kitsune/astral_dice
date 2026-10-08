@@ -14,6 +14,7 @@ import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.network.simple.SimpleChannel;
 
 import java.util.List;
+import java.util.UUID;
 import java.util.function.Supplier;
 import net.minecraft.world.entity.LivingEntity;
 
@@ -569,33 +570,50 @@ public final class ModNetwork {
     // === 卡牌商店(S→C 候选名单 / C→S 确认转账) ===
 
     /**
-     * S→C:卡牌商店「二级转账界面」的候选玩家名列表(索引即转账目标索引)。
+     * S→C:卡牌商店「二级转账界面」的候选玩家名单(索引即转账目标索引)。
      *
-     * <p>编码方式与 1.21.1 的 {@code ByteBufCodecs.STRING_UTF8.apply(ByteBufCodecs.list())} 等价:
-     * {@code FriendlyByteBuf#writeCollection(list, FriendlyByteBuf::writeUtf)} /
-     * {@code readList(FriendlyByteBuf::readUtf)}(= VarInt 数量 + 每项 UTF 字符串)。
+     * <p>每项 = UUID + 玩家名 + 星币余额(2026-10-08 增补二 §3):UUID 供头像取真实皮肤,
+     * 名字供搜索过滤,余额画在列表右列。
+     *
+     * <p>编码方式与 1.21.1 的
+     * {@code StreamCodec.composite(UUIDUtil.STREAM_CODEC, ..., STRING_UTF8, ..., VAR_LONG, ...)} 逐字节等价:
+     * UUID(16 字节) + UTF 字符串 + VarLong,外层 {@code writeCollection}/{@code readList}
+     * (= VarInt 数量 + 每项)。
      * 客户端收下后写入 {@code client/CardShopClientState}(刻意不做任何队伍过滤)。
      */
     public static class CardShopTransferListMessage {
-        private final List<String> names;
+        /**
+         * 名单条目。对应 1.21.1 的 {@code network/CardShopTransferListPayload.Entry} record;
+         * 1.20.1 无独立载荷类,故内嵌于此消息类(record ⇒ 访问器同名 id()/name()/balance(),
+         * 与 1.21.1 侧调用点逐字一致)。
+         */
+        public record Entry(UUID id, String name, long balance) {
+        }
 
-        public CardShopTransferListMessage(List<String> names) {
-            this.names = List.copyOf(names);
+        private final List<Entry> entries;
+
+        public CardShopTransferListMessage(List<Entry> entries) {
+            this.entries = List.copyOf(entries);
         }
 
         public static void encode(CardShopTransferListMessage msg, FriendlyByteBuf buf) {
-            buf.writeCollection(msg.names, FriendlyByteBuf::writeUtf);
+            buf.writeCollection(msg.entries, (buf1, entry) -> {
+                buf1.writeUUID(entry.id());
+                buf1.writeUtf(entry.name());
+                buf1.writeVarLong(entry.balance());
+            });
         }
 
         public static CardShopTransferListMessage decode(FriendlyByteBuf buf) {
-            return new CardShopTransferListMessage(buf.readList(FriendlyByteBuf::readUtf));
+            return new CardShopTransferListMessage(buf.readList(
+                    buf1 -> new Entry(buf1.readUUID(), buf1.readUtf(), buf1.readVarLong())));
         }
 
         public static void handle(CardShopTransferListMessage msg, Supplier<NetworkEvent.Context> ctx) {
             ctx.get().enqueueWork(() -> {
                 // 只在接收侧为客户端时落静态态(本包只会由服务端发给单个玩家)
                 if (ctx.get().getDirection().getReceptionSide().isClient()) {
-                    com.merlinkitsune.astral_dice.client.CardShopClientState.setTransferCandidates(msg.names);
+                    com.merlinkitsune.astral_dice.client.CardShopClientState.setTransferCandidates(msg.entries);
                 }
             });
             ctx.get().setPacketHandled(true);

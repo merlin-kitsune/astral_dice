@@ -170,3 +170,11 @@ datagen:`RecipeOutput` → `Consumer<FinishedRecipe>`(`.save(output::accept)`);`
 2. **1.20.1 保留 `ItemBlockRenderTypes.setRenderLayer(..., RenderType.cutout())`**（`client/ModClientEvents#onClientSetup`）作为**物品层双保险**；1.21.1 侧该 API 已弃用且不需要 ⇒ **不写**。代价：forge 线多 1 条弃用告警。
 3. **交互入口**：1.21.1 = `useWithoutItem(...)`；1.20.1 **无此方法** ⇒ 六参 `use(BlockState, Level, BlockPos, Player, InteractionHand, BlockHitResult)`。
 4. **形状**：两线均为 `Shapes.box(0,0,0,1,14.5/16,1)`（`getShape`/`getCollisionShape` 同值）+ `ModBlocks` 的 `.noOcclusion()`；无 API 差异。
+
+## 十三、转账二级面板批(2026-10-08)平台差异
+
+1. **头像 API**：1.21.1 用 `Minecraft#getConnection()#getPlayerInfo(uuid)#getSkin()`（`PlayerSkin` record）+ `DefaultPlayerSkin.get(uuid)` + `PlayerFaceRenderer.draw(GuiGraphics, PlayerSkin, int, int, int)`；**1.20.1 没有 `PlayerSkin` record** ⇒ 用 `PlayerInfo#getSkinLocation()`（`ResourceLocation`）+ `DefaultPlayerSkin.getDefaultSkin(uuid)` + `PlayerFaceRenderer.draw(GuiGraphics, ResourceLocation, int, int, int)`（映射表 `:19065 / :26559 / :10542`）。
+2. **载荷载体**：1.21.1 是独立 `CustomPacketPayload`（`CardShopTransferListPayload`，`StreamCodec.composite` + `UUIDUtil.STREAM_CODEC/STRING_UTF8/VAR_LONG`）；1.20.1 复用 `network/ModNetwork.java` 里既有的 **id 12** `CardShopTransferListMessage`，把 `List<String>` 改为 `public record Entry(UUID id, String name, long balance)` 并用 `buf.writeCollection/readList + writeUUID/writeUtf/writeVarLong` 手写编解码（逐字节等价）。**不新增 id**。
+3. **常规改写**：`ResourceLocation.fromNamespaceAndPath` → `new ResourceLocation`（本批新增 2 条同款弃用告警，见 §十第 11 条）；`PacketDistributor.sendToServer/sendToPlayer` → `ModNetwork.sendToServer/sendToPlayer`；`mouseScrolled` 四参 → **三参**；Curios 走库 shim `CuriosCompat#getCuriosInventory`。
+4. **两线同形、无需改写**（已核实映射）：`EditBox`（构造 + `setBordered/setMaxLength/setHint/setTextColor/setResponder/setValue/setFocused`）、`AbstractSliderButton`（`updateMessage/applyValue/onClick/onDrag/onRelease/renderWidget` + `value/canChangeValue`）、`GuiGraphics.blit` 10 参（`blitOffset=0`）/`fill`/`enableScissor`/`disableScissor`、`AbstractContainerScreen#containerTick()`、`AbstractContainerMenu#removed(Player)`。
+5. **对等证据**：`git diff --no-index --unified=0` 两线 `CardShopScreen.java` 差异 **63 行**、`CardShopMenu.java` 差异全部为 import/javadoc/平台符号 —— **界面逻辑零差异**（含几何常量、marquee、箭头位置、门控、会话锁、冷却顺延）。

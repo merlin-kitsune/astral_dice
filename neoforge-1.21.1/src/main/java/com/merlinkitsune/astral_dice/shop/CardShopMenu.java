@@ -92,7 +92,7 @@ public class CardShopMenu extends AbstractContainerMenu {
     private static final int ATM_TRANSFER_STARLIGHT = 1;
     private static final int ATM_TRANSFER_COINS = 2;
 
-    /** DataSlot[0..5] = 货架格显示码；DataSlot[6] = 转账剩余冷却秒数；DataSlot[7] = 大酬宾窗口是否激活 */
+    /** DataSlot[0..5] = 货架格显示码；DataSlot[6] = 转账剩余冷却秒数；DataSlot[7] = 大酬宾窗口是否激活；DataSlot[8] = 本店会话是否已用过转账 */
 
     private final Player player;
     private final Inventory playerInventory;
@@ -106,6 +106,11 @@ public class CardShopMenu extends AbstractContainerMenu {
     /** 客户端读到的「商店大酬宾」窗口状态（决定标题带是否播 8t 流光；服务端 DataSlot[7] 同步） */
     private boolean promotionActive = false;
     private List<UUID> candidateIds = List.of();
+    /**
+     * 本店会话是否已用过转账（服务端真值）。成功转账时置位，DataSlot[8] 同步给客户端 ⇒
+     * 中按钮立刻灰化、二级视图自动退回；出店时按增补二 §5 把冷却顺延为「出店时刻 + 60 秒」。
+     */
+    private boolean transferUsedThisSession = false;
 
     public CardShopMenu(int containerId, Inventory playerInventory) {
         super(ModMenuTypes.CARD_SHOP.get(), containerId);
@@ -165,6 +170,19 @@ public class CardShopMenu extends AbstractContainerMenu {
             @Override
             public void set(int value) {
                 promotionActive = value != 0;
+            }
+        });
+        // 第 9 个 DataSlot：本店会话是否已用过转账（2026-10-08 增补二 §4/§5 新增——客户端靠它
+        // 在成功转账后自动退回主界面，并把中按钮画成不可用态）
+        addDataSlot(new DataSlot() {
+            @Override
+            public int get() {
+                return transferUsedThisSession ? 1 : 0;
+            }
+
+            @Override
+            public void set(int value) {
+                transferUsedThisSession = value != 0;
             }
         });
 
@@ -260,6 +278,15 @@ public class CardShopMenu extends AbstractContainerMenu {
         if (id == BUTTON_EXCHANGE) {
             if (player instanceof ServerPlayer serverPlayer) {
                 tryExchange(serverPlayer);
+            }
+            return true;
+        }
+        if (id == BUTTON_TRANSFER) {
+            // 打开二级转账视图：现算并下发候选名单（UUID + 名 + 余额）。
+            // ⚠️ 旧实现漏了这一支（clickMenuButton 只认 17/18）⇒ 客户端进转账视图后名单恒为空，
+            // 必须靠点搜索框触发 BUTTON_REFRESH_TRANSFER 才有人，本次补齐。
+            if (player instanceof ServerPlayer serverPlayer) {
+                sendTransferCandidates(serverPlayer);
             }
             return true;
         }
@@ -362,22 +389,23 @@ public class CardShopMenu extends AbstractContainerMenu {
 
     // ────────────────────────────── 二级转账 ──────────────────────────────
 
-    /** 重发候选玩家名单（打开转账视图 / 点刷新 / 转账落定后） */
+    /** 重发候选玩家名单（打开转账视图 / 点放大镜刷新 / 目标玩家已下线时；**转账成功后不重发**） */
     public void sendTransferCandidates(ServerPlayer owner) {
         if (owner.getServer() == null) {
             return;
         }
-        List<String> names = new ArrayList<>();
+        List<CardShopTransferListPayload.Entry> entries = new ArrayList<>();
         List<UUID> ids = new ArrayList<>();
         for (ServerPlayer other : owner.getServer().getPlayerList().getPlayers()) {
             if (other == owner) {
                 continue;
             }
-            names.add(other.getName().getString());
+            entries.add(new CardShopTransferListPayload.Entry(other.getUUID(), other.getName().getString(),
+                    StarEngineEconomy.getBalance(other)));
             ids.add(other.getUUID());
         }
         candidateIds = List.copyOf(ids);
-        PacketDistributor.sendToPlayer(owner, new CardShopTransferListPayload(names));
+        PacketDistributor.sendToPlayer(owner, new CardShopTransferListPayload(List.copyOf(entries)));
     }
 
     /**
@@ -388,6 +416,10 @@ public class CardShopMenu extends AbstractContainerMenu {
      */
     public void handleTransfer(ServerPlayer owner, int targetIndex, int amount) {
         if (owner != this.player || owner.level().isClientSide()) {
+            return;
+        }
+        if (transferUsedThisSession) {
+            // 防御性拒绝（2026-10-08 增补二 §4）：本店会话已用过转账 ⇒ 不再受理，与客户端灰化同一口径
             return;
         }
         if (amount < MIN_TRANSFER || amount > MAX_TRANSFER) {
@@ -416,6 +448,8 @@ public class CardShopMenu extends AbstractContainerMenu {
             return;
         }
         ModAttachments.setShopTransferCooldownEnd(owner, now + TRANSFER_COOLDOWN_SECONDS * 20L);
+        // 会话位：店内期间即使 60s 冷却走完也不再放开（增补二 §5）；出店时本方法把冷却顺延
+        this.transferUsedThisSession = true;
         forceDiscountOnOwnShelf();
         // ATM 机筹码(2026-10-08 重写):**转账发起者**装备时,转账双方各额外获得 1 星光与 2 星币
         if (AtmChipItem.isEquipped(owner)) {
@@ -549,9 +583,32 @@ public class CardShopMenu extends AbstractContainerMenu {
         return transferCooldownSeconds;
     }
 
+    /**
+     * 本店会话是否已用过转账（客户端读 DataSlot[8]）：为 true ⇒ 中按钮不可用、二级视图自动退回。
+     * 语义见 2026-10-08 增补二 §4/§5（店内期间由会话位保证不能连续转账）。
+     */
+    public boolean isTransferUsedThisSession() {
+        return transferUsedThisSession;
+    }
+
     /** 「商店大酬宾」窗口是否激活（客户端读 DataSlot[7]；标题带 8t 流光仅在此为 true 时播放） */
     public boolean isPromotionActive() {
         return promotionActive;
+    }
+
+    /**
+     * 菜单关闭（出店）时的收尾：若本店会话用过转账，把冷却截止刻**顺延为「出店时刻 + 60 秒」**
+     * （2026-10-08 增补二 §5 用户终裁）。语义：店内由会话位挡住连续转账，出店后从离开那一刻重新计时；
+     * 掉线/关服导致本方法没跑时，转账时刻写下的冷却依然有效，不会白送一次转账。
+     */
+    @Override
+    public void removed(Player player) {
+        super.removed(player);
+        if (!player.level().isClientSide() && player instanceof ServerPlayer serverPlayer
+                && transferUsedThisSession) {
+            ModAttachments.setShopTransferCooldownEnd(serverPlayer,
+                    serverPlayer.level().getGameTime() + TRANSFER_COOLDOWN_SECONDS * 20L);
+        }
     }
 
     private void actionBar(Player target, ChatFormatting color, String key, Object... args) {

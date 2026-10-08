@@ -859,6 +859,10 @@
   "gui.astral_dice.card_shop.transfer_empty": "現在ほかにオンラインのプレイヤーはいません",
   "gui.astral_dice.card_shop.transfer_hint": "送金：他のオンラインプレイヤーにスターコインを送る（5～20、クールダウン 60 秒）",
   "gui.astral_dice.card_shop.transfer_refresh": "オンラインプレイヤー一覧を更新",
+  "gui.astral_dice.card_shop.transfer_search_hint": "プレイヤー名を検索",
+  "gui.astral_dice.card_shop.transfer_no_match": "一致するプレイヤーがいません",
+  "gui.astral_dice.card_shop.transfer_amount_field_hint": "送金金額（5～20）",
+  "gui.astral_dice.card_shop.transfer_select_hint": "送金先のプレイヤーを選択してください",
   "block.astral_dice.card_shop": "カードショップ",
   "msg.astral_dice.card_shop_no_coin": "スターコインが足りません（必要：%s）",
   "msg.astral_dice.card_shop_bought": "%s を購入しました（%s スターコイン）",
@@ -869,5 +873,6 @@
   "msg.astral_dice.card_shop_transfer_received": "%s から %s スターコインを受け取りました",
   "msg.astral_dice.card_shop_no_starlight": "スターライトが足りません：使用可能なスターライトが 2 以上必要です（キャッシュカードが提供する基本スターライトは交換できません）",
   "msg.astral_dice.card_shop_parunan_enter": "パルナンのスタンド：入店で星貨 1 枚を獲得",
-  "msg.astral_dice.card_shop_slot_occupied": "そのスロットは使用中です"
+  "msg.astral_dice.card_shop_slot_occupied": "そのスロットは使用中です",
+  "msg.astral_dice.card_shop_transfer_used": "この店では既に送金済みです（店を出るとクールダウンが再計算されます）"
 }

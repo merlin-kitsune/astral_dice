@@ -4154,3 +4154,18 @@ mt.ps1 --version 线 --phase stop 关闭测试实例（gradle 守护进程保留
 5. **平台差异**：1.20.1 无 `useWithoutItem` ⇒ 交互入口为六参 `use(...)`；两线形状表达式一致；`models/item/card_shop.json` 仍 `parent` 方块模型（49B），`blockstates/card_shop.json` 仍单 variant（92B），配方/掉落未动。
 6. **判据**：两线 `compileJava` + `jar` `BUILD SUCCESSFUL`；`verify_resource_integrity` 两线 PASS；jar 内抽样 sha1（`models/block/card_shop.json` f613242dc097af04 / 6298B 含 `render_type`、`textures/block/card_shop.png` 6265a4a77d0ac8d4 / 2367B）。
 7. **未实机（欠账）**：透明面/切面观感、14.5/16 碰撞与选中手感、物品栏 3D 图标显示 —— 需一次 runClient 手工确认；本轮按 2026-10-08 裁决只做代码功能验证。
+
+## 附录 A 续 69. 「转账」二级面板：设计、协议、会话锁/冷却与两轮复核（2026-10-08）
+
+> 玩家可见内容见两份 CHANGELOG「未发布（2.0.0-SNAPSHOT.55）」的 `#### 物品、筹码与交易`。以下只记工程侧。
+
+1. **设计定稿**：`temp/t81/UI-TRANSFER-DESIGN.md`（含「★ 增补」「★★ 增补二」两节，记录用户 2026-10-08 的三轮中途裁决：名称 marquee 不缩放 · 箭头指向**玩家名**且用新换的 13×12 原生素材 · 星币标与金额文本顶边对齐 · **取消默认选中** · 转账后回商店并锁会话 · **冷却转账即写 + 出店顺延**）。几何来源：样张 `images/shop/shop_transfer_GUI.png`(126×135) 逐像素实测；预览 `temp/t81/mock/transfer_mock_2x.png`。
+2. **实现要点**：① 搜索/金额 = 原版 `EditBox`（`setBordered(false)`、`setResponder` 即时过滤、金额 `setMaxLength(2)` + 失焦/回车/每次输入三处回落 5）② 滚动条 = `AbstractSliderButton` 子类 `TransferScrollBar`（滑轨贴图 6px ⇒ 控件矩形 12px；`onClick` 区分「抓手柄」与「点轨道翻页 ±TP_ROWS」）③ 三个控件**不进 renderables**，手工 render + 手工鼠标/键盘转发，并在 `keyPressed` 里拦住容器热键（否则 e/1..9/Q 会在输入时触发菜单行为）④ 每行 = `PlayerFaceRenderer`（1.20.1 用 `ResourceLocation` 重载）+ 白名（marquee，`enableScissor/disableScissor` 严格配对）+ 7×7 星币标 + 金色千分位余额 ⑤ 过滤行号 → **完整名单下标**映射（`transferFiltered` / `transferOriginalIndex`），C2S 只发完整下标。
+3. **协议与服务端**：S2C 名单每项 = UUID + 名 + `StarEngineEconomy.getBalance(other)`（1.21.1 `CardShopTransferListPayload.Entry`；1.20.1 `ModNetwork.CardShopTransferListMessage.Entry`，**沿用既有 id 12**）；候选 = 除自己外全部在线玩家。**会话锁**：成功转账时置 `transferUsedThisSession`（同步为**第 9 个 DataSlot**，既有顺序 0..5 货架 / 6 冷却 / 7 大酬宾不变），客户端据此自动退回主界面并禁用中按钮，服务端 `handleTransfer` 亦拒绝重复。**冷却**：成功时**立刻**写 `now + 60s`，菜单关闭（服务端 `removed(Player)`）时**顺延**为「出店时刻 + 60s」⇒ 掉线也不会白送一次转账。**顺带修复**：`clickMenuButton` 原缺 `BUTTON_TRANSFER(16)` 分支 ⇒ 打开面板时名单恒空。
+4. **复核（两轮，均为 DSH `code_review` 一次性独立会话）**：任务B′ 自跑一轮（4 个核查点 SUPPORTED）；主会话在**增补后**再跑一轮 run `7a8548d9-49aa-4315-896a-a88f1bbe91e5`（R1–R11）⇒ **neo 逐条成立**，抓出 4 项并**全部已修**：
+   - **P1** forge 两个 `EditBox` 构造漏加素材原点（`panelX + TP_SEARCH_FIELD_X` 应为 `panelX + TP_SEARCH_X + TP_SEARCH_FIELD_X`）⇒ 金额框落到面板 (6,3) 与搜索框重合、金额数字看不见；**P2** `TP_SEARCH_REFRESH_X` 少算 `TP_SEARCH_X`（68 → 73，否则放大镜热区盖住输入框最后 5px）；都已按 neo 同款修好，两线该三处**逐字一致**（已用 `Select-String` 对比取证）。
+   - **P2** 会话锁生效时 `showTransferDisabledHint` 误报「星币不足」（玩家在店内待到冷却归零、余额也够时）⇒ 改为**三档分诊**（冷却 → 会话已用 → 星币门槛），新增 lang 键 `msg.astral_dice.card_shop_transfer_used`（三语 × 两线）。
+   - **P3** `CardShopClientState` / `CardShopMenu#sendTransferCandidates` 注释称「转账落定后重发名单」，实际只有**目标下线**才重发 ⇒ 注释已更正；neo `CardShopMenu` 类头 DataSlot 清单补上第 9 槽。
+5. **判据（本轮实跑）**：两线 `mt_build` 各 `MT_BUILD: OK`（`.55` 产物 `astral_dice-2.0.0-SNAPSHOT.55+{neoforge_1.21.1,forge_1.20.1}.jar`）；`check_lang_sync` 两线各 **876/876/876**；`verify_resource_integrity` 两线 PASS（138/138）；`tooltip_color_audit` PASS；两线 `compileJava` SUCCESSFUL（forge 仅 2 条 `ResourceLocation(String,String)` 弃用告警，与本批新增相符）。
+6. **未实机（欠账）**：皮肤头像的真实取用（在线/离线）、金额框 IME 行为、滚动条拖拽手感、按下态观感 —— 需一次 runClient 手工确认；按 2026-10-08 裁决默认只做代码功能验证。
+7. **流程教训（值得记住）**：实现者按**设计文档**自绘的 mock **验证不了** Java 实际画在哪 —— 本轮 P1（编辑框少加素材原点）它完全看不出，只有 `code_review` 逐行比对美术 blit 原点才抓到。同类「坐标差一个原点」缺陷只能靠独立复核或实机截图。
