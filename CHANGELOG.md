@@ -4,7 +4,7 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
-## Unreleased (2.0.0-SNAPSHOT.43)
+## Unreleased (2.0.0-SNAPSHOT.44)
 
 ### New Content
 
@@ -187,6 +187,17 @@
   target head before dropping straight down) and shatters on impact; Orbital Strike spawns a **golden beacon beam (infinite height)** above the
   target after a 0.5s delay and strikes it, lasting 1 second with glowing splash particles on hit; Directional Blast
   detonates at the target after a 0.5s delay.
+
+- **Per-card initial lock ranges** (user decision 2026-10-08): each selector action now declares its own
+  **initial lock range** instead of falling back to the library's fixed 16-block default (previously every card
+  except Living Page used it): Monster Laser **32**, Monster Brick **16**, Orbital Strike **24**,
+  Directional Blast **24**, Living Page **32**, Suit Card - Misfortune **32**; **all friendly-targeting
+  utility effect cards are unified at 16** (Berserk, Express Delivery, Luxury Feast, You Have I Have,
+  Suit Card - Fortune). The declared value drives the client aim ray / radius highlight and the server
+  confirmation distance alike, so a card now locks where it looks. The server confirms strictly against the
+  session radius instead of `max(16-block fixed default, session radius)`. Every declared radius is at or
+  above 16, so this is behaviour-identical for all existing actions today; it removes the latent case where
+  the server would have been more permissive than the client, and keeps both ends reading one value.
 
 #### Chips & Resources
 

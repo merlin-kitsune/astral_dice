@@ -18,9 +18,18 @@ public class BerserkCardItem extends BaseEffectCardItem {
     /** 目标选择器动作 id(skill 名与动作注册键共用) */
     public static final String ACTION_ID = "berserk";
 
+    /**
+     * 锁定范围（格）：「狂暴」的初始射程（2026-10-08 用户裁决）。
+     *
+     * <p>该值同时决定客户端准星的射线长度、半径高亮圆与服务端确认允许的最大距离（距离一律
+     * 按三维计算，含垂直高度差）。声明值上限 32 格；玩家侧加成（探天卫星筹码 / 书页射程）经
+     * {@code target/SelectorRangeModifiers} 统一生效。半径契约见 AGENTS.md 第 15 条。
+     */
+    public static final double LOCK_RANGE = 16.0D;
+
     static {
         // 目标 = 非敌对生物(敌对生物不可选) ∪ 自身;允许对自身使用(旧方案的「右键-自身使用」)
-        registerSelectorAction(ACTION_ID, TargetType.NON_HOSTILE, true);
+        registerSelectorAction(ACTION_ID, TargetType.NON_HOSTILE, true, LOCK_RANGE);
     }
 
     public BerserkCardItem(Properties properties) {

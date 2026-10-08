@@ -272,9 +272,10 @@ public final class TargetSelectionManager {
         }
         double distSq = player.distanceToSqr(target);
         // 服务端确认校验按**本会话实际授予的半径**（= 动作声明值夹取后的结果）执行；
-        // 取 max(配置, 会话半径) ⇒ 对既有动作**绝不比改动前更严**（旧写法恒用配置值），
-        // 同时让「活体书页 32 格」在确认这一步不被配置默认值 16 拦下（2026-09-19）。
-        double maxDist = Math.max(GameplayConstants.TARGET_SELECT_RADIUS, session.radius);
+        // 2026-10-08 用户裁决引入小于配置值的声明半径（各牌初始射程 16 / 24 / 32），故此处不再
+        // 取 max(配置, 会话半径)：会话半径即唯一判据 ⇒ 服务端确认与客户端 UX（准星射线 / 半径高亮）
+        // 同源；「活体书页 32 格」等声明值也不会被配置默认值 16 拦下。
+        double maxDist = session.radius;
         if (distSq > maxDist * maxDist) {
             LOGGER.warn("[Astral Dice][TargetSelection] confirm FAIL: target_too_far player={} token={} target={}({}) dist={} max={}",
                     player.getName().getString(), token, targetId, target.getName().getString(),

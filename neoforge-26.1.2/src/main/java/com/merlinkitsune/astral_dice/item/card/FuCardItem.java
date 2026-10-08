@@ -32,12 +32,21 @@ public class FuCardItem extends BaseEffectCardItem {
     /** 目标选择器动作 id(注册表键;也是 actionbar 技能名 {@code msg.astral_dice.target_select.skill.<id>} 的来源) */
     public static final String ACTION_ID = "fu_card";
 
+    /**
+     * 锁定范围（格）：「符卡-福」的初始射程（2026-10-08 用户裁决）。
+     *
+     * <p>该值同时决定客户端准星的射线长度、半径高亮圆与服务端确认允许的最大距离（距离一律
+     * 按三维计算，含垂直高度差）。声明值上限 32 格；玩家侧加成（探天卫星筹码 / 书页射程）经
+     * {@code target/SelectorRangeModifiers} 统一生效。半径契约见 AGENTS.md 第 15 条。
+     */
+    public static final double LOCK_RANGE = 16.0D;
+
     /** 使用后对目标恢复的生命值 */
     public static final int HEAL_AMOUNT = 2;
 
     static {
         // 可选「玩家(不限队伍)或自身」:TargetType.PLAYER 排除选择者自身,自用由 allowSelf 打开
-        registerSelectorAction(ACTION_ID, TargetType.PLAYER, true);
+        registerSelectorAction(ACTION_ID, TargetType.PLAYER, true, LOCK_RANGE);
     }
 
     public FuCardItem(Properties properties) {

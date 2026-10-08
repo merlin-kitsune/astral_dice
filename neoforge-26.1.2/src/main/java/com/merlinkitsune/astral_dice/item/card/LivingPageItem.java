@@ -15,7 +15,7 @@ import net.minecraft.world.level.Level;
 public class LivingPageItem extends BaseEffectCardItem {
     private static final String ACTION_ID = "living_page";
 
-    private static final double LOCK_RANGE = 32.0D;
+    public static final double LOCK_RANGE = 32.0D;
 
     static {
         registerSelectorAction(ACTION_ID, TargetType.CREATURE, false, LOCK_RANGE);

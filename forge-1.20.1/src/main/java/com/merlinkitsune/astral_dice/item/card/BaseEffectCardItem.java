@@ -209,8 +209,9 @@ public abstract class BaseEffectCardItem extends Item {
     /**
      * 目标选择器动作注册入口(由各选择器类效果牌的静态块调用,保证类加载即注册)。
      *
-     * <p>两参重载保留给「可对他人使用」的既有四张牌(加急加快 / 奢华大餐 / 你有我有 / 狂暴):
-     * 目标类型逐字为 {@link TargetType#PLAYER}(排除选择者自身,能否自用由 {@code allowSelf} 决定)。
+     * <p>历史遗留的便捷重载({@code TargetType.PLAYER} 固定):当前**无调用者** —— 加急加快 /
+     * 奢华大餐 / 狂暴 走三参重载(显式 {@code NON_HOSTILE}),你有我有自 2026-10-08 起改走四参重载
+     * 显式声明半径 16 格。保留仅为源码兼容,新牌请直接用四参重载。
      */
     protected static void registerSelectorAction(String actionId, boolean allowSelf) {
         registerSelectorAction(actionId, TargetType.PLAYER, allowSelf);

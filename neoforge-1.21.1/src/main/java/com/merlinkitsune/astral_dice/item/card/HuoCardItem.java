@@ -51,6 +51,15 @@ public class HuoCardItem extends BaseEffectCardItem {
     /** 目标选择器动作 id(注册表键;也是 actionbar 技能名 {@code msg.astral_dice.target_select.skill.<id>} 的来源) */
     public static final String ACTION_ID = "huo_card";
 
+    /**
+     * 锁定范围（格）：「符卡-祸」的初始射程（2026-10-08 用户裁决）。
+     *
+     * <p>该值同时决定客户端准星的射线长度、半径高亮圆与服务端确认允许的最大距离（距离一律
+     * 按三维计算，含垂直高度差）。声明值上限 32 格；玩家侧加成（探天卫星筹码 / 书页射程）经
+     * {@code target/SelectorRangeModifiers} 统一生效。半径契约见 AGENTS.md 第 15 条。
+     */
+    public static final double LOCK_RANGE = 32.0D;
+
     /** 对敌对目标造成的伤害 */
     public static final float DAMAGE = 1.0F;
 
@@ -59,7 +68,7 @@ public class HuoCardItem extends BaseEffectCardItem {
 
     static {
         // 效果牌口径的敌对目标(含非同队玩家):TargetType.CREATURE_OR_RIVAL;不可对自己使用
-        registerSelectorAction(ACTION_ID, TargetType.CREATURE_OR_RIVAL, false);
+        registerSelectorAction(ACTION_ID, TargetType.CREATURE_OR_RIVAL, false, LOCK_RANGE);
     }
 
     public HuoCardItem(Properties properties) {

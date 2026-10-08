@@ -1,5 +1,6 @@
 package com.merlinkitsune.astral_dice.item.card;
 
+import com.merlinkitsune.starenginelib.target.TargetType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -16,9 +17,18 @@ public class YouHaveIHaveCardItem extends BaseEffectCardItem {
     /** 目标选择器动作 id(skill 名与动作注册键共用) */
     public static final String ACTION_ID = "you_have_i_have";
 
+    /**
+     * 锁定范围（格）：「你有我有」的初始射程（2026-10-08 用户裁决）。
+     *
+     * <p>该值同时决定客户端准星的射线长度、半径高亮圆与服务端确认允许的最大距离（距离一律
+     * 按三维计算，含垂直高度差）。声明值上限 32 格；玩家侧加成（探天卫星筹码 / 书页射程）经
+     * {@code target/SelectorRangeModifiers} 统一生效。半径契约见 AGENTS.md 第 15 条。
+     */
+    public static final double LOCK_RANGE = 16.0D;
+
     static {
         // 仅能对其他玩家使用(不可对自身)
-        registerSelectorAction(ACTION_ID, false);
+        registerSelectorAction(ACTION_ID, TargetType.PLAYER, false, LOCK_RANGE);
     }
 
     public YouHaveIHaveCardItem(Properties properties) {
