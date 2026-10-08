@@ -2,6 +2,7 @@ package com.merlinkitsune.astral_dice.init;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.particle.GlowingDustOptions;
+import com.merlinkitsune.astral_dice.particle.LibraryParticleOptions;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.core.particles.ParticleType;
@@ -12,7 +13,7 @@ import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
 /**
- * 本模组自有的粒子类型（目前只有一枚）。
+ * 本模组自有的粒子类型（发光尘 + 像素粒子库）。
  *
  * <h2>为什么需要它</h2>
  * <p>「飞星」拖尾原先直接用原版 {@link DustParticleOptions}（可染色），但原版 dust 粒子**不发光**
@@ -35,6 +36,11 @@ public final class ModParticles {
     public static final DeferredHolder<ParticleType<?>, GlowingDustType> GLOWING_DUST =
             PARTICLE_TYPES.register("glowing_dust", GlowingDustType::new);
 
+    /** 像素粒子库粒子：变体下标见 {@code particle/LibraryVariants}（贴图来自 Iron-Elden-Ring-Particle-library）。 */
+    /** 像素粒子库（{@code astral_dice:particle_library}）：179 种变体，见 {@code particle/LibraryVariants}。 */
+    public static final DeferredHolder<ParticleType<?>, LibraryParticleType> PARTICLE_LIBRARY =
+            PARTICLE_TYPES.register("particle_library", LibraryParticleType::new);
+
     private ModParticles() {
     }
 
@@ -52,6 +58,23 @@ public final class ModParticles {
         @Override
         public StreamCodec<? super RegistryFriendlyByteBuf, DustParticleOptions> streamCodec() {
             return GlowingDustOptions.STREAM_CODEC;
+        }
+    }
+
+    /** {@code astral_dice:particle_library} 的类型对象（选项 = 变体下标 + 缩放 + 颜色）。 */
+    public static final class LibraryParticleType extends ParticleType<LibraryParticleOptions> {
+        private LibraryParticleType() {
+            super(false);
+        }
+
+        @Override
+        public MapCodec<LibraryParticleOptions> codec() {
+            return LibraryParticleOptions.CODEC;
+        }
+
+        @Override
+        public StreamCodec<? super RegistryFriendlyByteBuf, LibraryParticleOptions> streamCodec() {
+            return LibraryParticleOptions.STREAM_CODEC;
         }
     }
 }

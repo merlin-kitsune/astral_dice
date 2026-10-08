@@ -2,6 +2,7 @@ package com.merlinkitsune.astral_dice.init;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.particle.GlowingDustOptions;
+import com.merlinkitsune.astral_dice.particle.LibraryParticleOptions;
 import com.mojang.serialization.Codec;
 import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.core.particles.ParticleType;
@@ -10,7 +11,7 @@ import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.RegistryObject;
 
 /**
- * 本模组自有的粒子类型（目前只有一枚）。
+ * 本模组自有的粒子类型（发光尘 + 像素粒子库）。
  *
  * <h2>为什么需要它</h2>
  * <p>「飞星」拖尾原先直接用原版 {@link DustParticleOptions}（可染色），但原版 dust 粒子**不发光**
@@ -33,6 +34,10 @@ public final class ModParticles {
     public static final RegistryObject<GlowingDustType> GLOWING_DUST =
             PARTICLE_TYPES.register("glowing_dust", GlowingDustType::new);
 
+    /** 像素粒子库（{@code astral_dice:particle_library}）：179 种变体，见 {@code particle/LibraryVariants}。 */
+    public static final RegistryObject<LibraryParticleType> PARTICLE_LIBRARY =
+            PARTICLE_TYPES.register("particle_library", LibraryParticleType::new);
+
     private ModParticles() {
     }
 
@@ -45,6 +50,18 @@ public final class ModParticles {
         @Override
         public Codec<DustParticleOptions> codec() {
             return GlowingDustOptions.CODEC;
+        }
+    }
+
+    /** {@code astral_dice:particle_library} 的类型对象（选项 = 变体下标 + 缩放 + 颜色）。 */
+    public static final class LibraryParticleType extends ParticleType<LibraryParticleOptions> {
+        private LibraryParticleType() {
+            super(false, LibraryParticleOptions.DESERIALIZER);
+        }
+
+        @Override
+        public Codec<LibraryParticleOptions> codec() {
+            return LibraryParticleOptions.CODEC;
         }
     }
 }

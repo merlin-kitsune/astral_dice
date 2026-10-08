@@ -94,3 +94,18 @@ The Fabric port line uses a **different prerequisite set** — the release lines
 ```
 
 - **Hard rule for mod dependency sources**: every third-party mod (front-ends included) may only come from **Curse Maven** (`curse.maven:`) or **Modrinth Maven** (`maven.modrinth:`), enforced at dependency-resolution time by `exclusiveContent` in `build.gradle` and statically gated by `tools/check_mod_sources.ps1` (details in `AGENTS.md`). Third-party mod jars are **never committed** (the `base-mod-*` directory is excluded in `.gitignore`).
+
+## Third-Party Assets
+
+- **Iron Elden Ring Pixel Particle Library** — 179 hand-drawn 32x32 particle sprites by **shuimo0413**
+  ([repository](https://github.com/shuimo0413/Iron-Elden-Ring-Particle-library), MIT license). The sprites ship
+  with **all four platform lines** under `assets/astral_dice/textures/particle/ier/` and are enumerated by the
+  generated `assets/astral_dice/particles/particle_library.json`.
+  - License: [MIT](docs/third-party/Iron-Elden-Ring-Particle-library-LICENSE.txt) — the full license text and the
+    attribution above are kept in the repository.
+  - In game they are exposed as the particle type **`astral_dice:particle_library`**, options `variant` / `scale` / `rgb`:
+    - 1.21.1 / 26.1.2: `/particle astral_dice:particle_library{variant:12,scale:1.5,rgb:16755200}`
+    - 1.20.1 (positional, all three required): `/particle astral_dice:particle_library 12 1.5 16755200`
+  - Regenerate the wiring after adding or removing sprites: `python tools/gen_particle_library.py`
+    (`--check` verifies without writing).
+  - **Convention: when building a new FX, prefer these sprites** over ad-hoc or vanilla particles.

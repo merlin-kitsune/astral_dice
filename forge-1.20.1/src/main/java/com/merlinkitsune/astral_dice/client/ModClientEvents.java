@@ -34,6 +34,7 @@ public class ModClientEvents {
     @SubscribeEvent
     public static void registerParticleProviders(RegisterParticleProvidersEvent event) {
         event.registerSpriteSet(ModParticles.GLOWING_DUST.get(), GlowingDustParticle.Provider::new);
+        event.registerSpriteSet(ModParticles.PARTICLE_LIBRARY.get(), LibraryParticle.Provider::new);
     }
 
     @SubscribeEvent

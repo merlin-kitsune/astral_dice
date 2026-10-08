@@ -4,7 +4,7 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
-## 未发布（2.0.0-SNAPSHOT.40）
+## 未发布（2.0.0-SNAPSHOT.41）
 
 ### 新增内容
 
@@ -44,6 +44,13 @@
   （对怪激光，`laser.wav`）、`monster_brick_hit`（对怪板砖，`brick_hit.wav`）、`orbital_strike_hit`
   （轨道炮，`laser_big.wav`）、`directional_blast_hit`（定向爆破，`blast.wav`）；同时**重写**
   `damage_effect_card_hit`（活体书页命中伤害 **&lt; 8** 与符卡-祸命中共用）。
+
+- **导入「铁-艾尔登法环」像素粒子库**（2026-10-08）：**179 张手工绘制的 32x32 粒子贴图**（作者 **shuimo0413**，
+  [Iron-Elden-Ring-Particle-library](https://github.com/shuimo0413/Iron-Elden-Ring-Particle-library)，MIT 许可）
+  随**四条平台线**一同发布，并作为新的粒子类型 **`astral_dice:particle_library`** 暴露（参数
+  `variant` / `scale` / `rgb`），命令、数据包与本模组自身特效均可使用（1.21.1 / 26.1.2：
+  `/particle astral_dice:particle_library{variant:12,scale:1.5,rgb:16755200}`；1.20.1 位置参数：
+  `/particle astral_dice:particle_library 12 1.5 16755200`）。归属声明见 README，完整 MIT 全文见 `docs/third-party/`。
 
 <!-- 新内容在此登记 -->
 

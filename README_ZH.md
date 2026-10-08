@@ -94,3 +94,16 @@ Fabric 移植线用的是**另一套前置** —— 发布线的 Curios / Mixin 
 ```
 
 - **模组依赖来源有硬规则**：所有第三方模组（含前置/附属模组）只允许经 **Curse Maven**（`curse.maven:`）或 **Modrinth Maven**（`maven.modrinth:`）获取，并由 `build.gradle` 的 `exclusiveContent` 在依赖解析期强制、由 `tools/check_mod_sources.ps1` 静态守门（细则见 `AGENTS.md`「模组依赖添加规则(统一口径)」）。第三方模组 jar **不入库**（`base-mod-*` 目录已在 `.gitignore` 中排除）。
+
+## 第三方资源
+
+- **铁-艾尔登法环像素粒子库** —— 179 张手工绘制的 32x32 粒子贴图，作者 **shuimo0413**
+  （[仓库](https://github.com/shuimo0413/Iron-Elden-Ring-Particle-library)，MIT 许可）。贴图随**四条平台线**
+  一同发布，位于 `assets/astral_dice/textures/particle/ier/`，并由生成的
+  `assets/astral_dice/particles/particle_library.json` 列管。
+  - 许可：[MIT](docs/third-party/Iron-Elden-Ring-Particle-library-LICENSE.txt) —— 完整许可全文与上方归属声明随仓库保存。
+  - 游戏内以粒子类型 **`astral_dice:particle_library`** 暴露，参数为 `variant` / `scale` / `rgb`：
+    - 1.21.1 / 26.1.2：`/particle astral_dice:particle_library{variant:12,scale:1.5,rgb:16755200}`
+    - 1.20.1（位置参数，三项均必填）：`/particle astral_dice:particle_library 12 1.5 16755200`
+  - 增删贴图后重新生成接线：`python tools/gen_particle_library.py`（加 `--check` 只校验不写盘）。
+  - **约定：制作新特效时优先使用本粒子库的贴图**，不要临时另造。

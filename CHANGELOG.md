@@ -4,7 +4,7 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
-## Unreleased (2.0.0-SNAPSHOT.40)
+## Unreleased (2.0.0-SNAPSHOT.41)
 
 ### New Content
 
@@ -50,6 +50,14 @@
   `monster_brick_hit` (Monster Brick, `brick_hit.wav`), `orbital_strike_hit` (Orbital Strike, `laser_big.wav`)
   and `directional_blast_hit` (Directional Blast, `blast.wav`); plus a **rewritten** `damage_effect_card_hit`
   (shared by Living Page hits below **&lt; 8** damage and Suit Card - Misfortune hits).
+
+- **Iron Elden Ring pixel particle library imported** (2026-10-08): **179 hand-drawn 32x32 particle sprites** by
+  **shuimo0413** ([Iron-Elden-Ring-Particle-library](https://github.com/shuimo0413/Iron-Elden-Ring-Particle-library),
+  MIT license) now ship with **all four platform lines** and are exposed as the new particle type
+  **`astral_dice:particle_library`** (options `variant` / `scale` / `rgb`), so commands, datapacks and this mod's own
+  effects can use them (1.21.1 / 26.1.2: `/particle astral_dice:particle_library{variant:12,scale:1.5,rgb:16755200}`;
+  1.20.1 positional: `/particle astral_dice:particle_library 12 1.5 16755200`). The attribution lives in the README and
+  the full MIT text in `docs/third-party/`.
 
 <!-- 新内容在此登记 -->
 
