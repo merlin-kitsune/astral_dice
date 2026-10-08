@@ -3899,7 +3899,7 @@ m02524「红砖看起来太大了，请缩小到约等于僵尸头大小（是�
    item_display 的模型链自带平移 26.1.2 见 client/resources/model/cuboid/ItemTransform.java:28-29、1.21.1 见 ItemRenderer.java:124
    ⇒ 换几何类型后补偿必须同步作废，否则反向偏移 1.25 格（曾用帧测量量化：14 格处左偏约 70 px ≈ 1.25 格）。
 4. **修订 4 / scale05（尺寸）**：BRICK_SCALE 2.5F → 0.5F（≈ 成年僵尸头部边长）；restY = 头顶碰撞盒 maxY + 0.5*BRICK_SCALE 随之变小，
-   使砖底面贴住头顶。随后清理四线「大号砖头 / 体积明显大于砖头物品 / 原版砖块贴图」过期措辞（forge 5 行、fabric 3 行），
+   使砖底面贴住头顶。随后清理四线「大号砖头 / 体积明显大于砖头物品 / 原版砖块贴图」过期措辞（forge 5 行、fabric 3 行；2026-10-08 二审再补 1.21.1 与 26.1.2 各 1 行），
    并同步四线玩家可见文案（MonsterBrickCardItem.java:21 注释 + lang/zh_cn.json 与 lang/en_us.json 的 guide 条目与 tooltip，
    各 3 文件 5 处，中英逐字符替换、残留 0）。
 
@@ -3932,3 +3932,11 @@ mt.ps1 --version 线 --phase stop 关闭测试实例（gradle 守护进程保留
 **同批落地**：四线版本号 .36 → .37（两份 CHANGELOG 段头同步 + #### 伤害与结算 / #### Damage & Resolution 各新增 2 条：板砖表现重做、
 命中音叠放修复）；文档 = 本附录 + AGENTS.md（新增「子代理与测试环境硬规则」章节、卡片表对怪板砖 FX 口径重写、BRICK_SPEED=3.2 时序作废、
 光影默认关闭行、默认测试端 = 1.21.1）+ KNOWN-ISSUES.md（KI-G3 换 item_display 与 0.5 格口径、KI-G4 已修、KI-G5 已修）。
+
+## 附录 A 续 55. 复验机制变更：改用 DSH 原生 code_review（2026-10-08）
+
+**机制（用户裁决）**：二次验证（复核）不再派 subagent / teammate，一律改用 DSH 原生代码审查功能（code_review）；每次复核 = 一次性独立会话、不复用；调用时把「复核对象（提交或文件范围）+ 背景 + 逐项判据（R1..Rn）+ 输出要求（判定 + 逐字证据 文件:行号 + 未验证项 + 最小修法）」一次性写全，保证会话足够干净。代码修改仍按每线一个新 subagent、单任务、用完即弃（规则正本见 AGENTS.md「子代理与测试环境硬规则」第 4 条）。
+
+**首次执行（复核对象 = 提交 19be7f0e）**：R1 四线 spawnBrick 一致性与旧写法残留、R2 落点/运动学与 translation 归零的几何依据、R3 KI-G4 只对非 FX 卡自身造成的 card_spell 播通用命中音、R5 提交卫生（四线 mod_version 同号；26.1.2 三文件已纯 LF、numstat 1/1 与 2/2）均 SUPPORTED；R6 未找到反证（全树无 2.5F / 砖块几何残留；fabric AstralDiceMod.java:125 仅一处 register）。R4 部分成立 ⇒ 三处文案矛盾已在本批修正：① neoforge-1.21.1 类 javadoc「生成一块砖头（原版砖块贴图…）」改「生成一块红砖（原版砖物品图标…）」，并统一 fabric / forge / 26.1.2 三处不准确措辞；② 四线 lang guide 与 MonsterBrickCardItem.java:21 的「飞行速度快于活体书页 / faster than the Living Page」与「头顶生成→悬停→竖直砸落」矛盾 ⇒ 四线 zh/en 与注释同步改写；③ CHANGELOG 未发布段内更早条目续行的「大号砖头（原版砖块贴图…）」/「giant brick (vanilla brick texture, …)」与同段新增条目自相矛盾 ⇒ 按新口径改写（ZH/EN 一一对应，条目数不变）。
+
+**复核方声明的未验证项**：MC 源码侧「物品链路自带居中平移 / item 为空则不渲染」的行为（依据来自本文件与 26.1.2 实机像素+伤害记录，非其实测）；既有用例仍以 zombie 为靶（DEF-CARD / HOSTILE-TARGETS / SIGN-SMOKE 等 11 个 case 与 7 个探针）属既有技术债，已由新规则标为待替换。

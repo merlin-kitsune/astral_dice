@@ -78,6 +78,9 @@ When extending this workspace:
    确认 MT_STOP: OK 且无本流程 java 客户端残留（gradle 守护进程保留属正常）；禁止让客户端无人观察地驻留 ——
    它会持续占用 CPU / GPU、污染下一次冷启动前置状态，并让 enableShaders 之类的运行期状态被意外持久化。
 
+4. **二次验证（复核）一律改用 DSH 原生代码审查（code_review），不再派 subagent / teammate**：每次复核 = **一次性独立会话、不复用**；
+   调用时把「复核对象（提交或文件范围）+ 背景 + 逐项判据（R1..Rn）+ 输出要求（判定 SUPPORTED / REFUTED / 部分成立 + 逐字证据 文件:行号 + 未验证项 + 最小修法）」**一次性写全**（会话干净，不给它沿用上下文的机会）。代码修改仍按第 1 条（每线一个新 subagent、单任务、用完即弃）；复核不再由 subagent 承担。
+
 ## 命令执行规范（Shell）— 必须遵守（2026-09-19 用户裁决）
 
 **一律使用 PowerShell 7（`pwsh`）；禁止使用 Windows PowerShell 5.1。**

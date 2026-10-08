@@ -4,7 +4,7 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
-## Unreleased (2.0.0-SNAPSHOT.37)
+## Unreleased (2.0.0-SNAPSHOT.38)
 
 ### New Content
 
@@ -175,8 +175,8 @@
   "effect card damage boost" + Bookmark); **Directional Blast** additionally deals the **same damage** to other
   targets within 6 blocks; ③ **new FX, and the damage only lands at the FX hit moment** — Monster Laser spawns a
   **red laser line (infinite height)** above the target after a 0.5s delay and strikes it, the beam lasting 1 second;
-  Monster Brick hurls a **giant brick** (vanilla brick texture, far larger than the brick item, flying faster than the
-  Living Page) and shatters on impact; Orbital Strike spawns a **golden beacon beam (infinite height)** above the
+  Monster Brick hurls a **brick** (the vanilla brick item icon, about the size of a zombie head, hovering briefly above the
+  target head before dropping straight down) and shatters on impact; Orbital Strike spawns a **golden beacon beam (infinite height)** above the
   target after a 0.5s delay and strikes it, lasting 1 second with glowing splash particles on hit; Directional Blast
   detonates at the target after a 0.5s delay.
 
