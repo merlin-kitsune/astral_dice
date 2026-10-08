@@ -90,3 +90,8 @@ base-mod-compile-libs/
 
 ### 移植参考源(fabric-1.20.1 第四线,2026-09-29 接入):Fabric/Forge/Trinkets/CCA 等参考仓克隆件,不入库
 ref/
+
+### 用户的美术/Hilo 设计工作区(2026-10-08 用户要求):**不入库** ###
+### 该目录是用户的方块设计工作区(Hilo 工程 sqlite/缩略图/预览图/交接文档/草稿模型),
+### 不属于构建产物;方块美术正本已改为 models/cardshop.bbmodel(见 AGENTS.md 条目 26)。
+Astral Dice/
