@@ -3940,3 +3940,16 @@ mt.ps1 --version 线 --phase stop 关闭测试实例（gradle 守护进程保留
 **首次执行（复核对象 = 提交 19be7f0e）**：R1 四线 spawnBrick 一致性与旧写法残留、R2 落点/运动学与 translation 归零的几何依据、R3 KI-G4 只对非 FX 卡自身造成的 card_spell 播通用命中音、R5 提交卫生（四线 mod_version 同号；26.1.2 三文件已纯 LF、numstat 1/1 与 2/2）均 SUPPORTED；R6 未找到反证（全树无 2.5F / 砖块几何残留；fabric AstralDiceMod.java:125 仅一处 register）。R4 部分成立 ⇒ 三处文案矛盾已在本批修正：① neoforge-1.21.1 类 javadoc「生成一块砖头（原版砖块贴图…）」改「生成一块红砖（原版砖物品图标…）」，并统一 fabric / forge / 26.1.2 三处不准确措辞；② 四线 lang guide 与 MonsterBrickCardItem.java:21 的「飞行速度快于活体书页 / faster than the Living Page」与「头顶生成→悬停→竖直砸落」矛盾 ⇒ 四线 zh/en 与注释同步改写；③ CHANGELOG 未发布段内更早条目续行的「大号砖头（原版砖块贴图…）」/「giant brick (vanilla brick texture, …)」与同段新增条目自相矛盾 ⇒ 按新口径改写（ZH/EN 一一对应，条目数不变）。
 
 **复核方声明的未验证项**：MC 源码侧「物品链路自带居中平移 / item 为空则不渲染」的行为（依据来自本文件与 26.1.2 实机像素+伤害记录，非其实测）；既有用例仍以 zombie 为靶（DEF-CARD / HOSTILE-TARGETS / SIGN-SMOKE 等 11 个 case 与 7 个探针）属既有技术债，已由新规则标为待替换。
+
+## 附录 A 续 56. 二次复核（DSH code_review 第二轮）+ 日语文案与既有口径同步（2026-10-08）
+
+- 复核机制：依 2026-10-08 用户裁决，二次验证一律用 DSH 原生 code_review（一次性独立会话、brief 一次性写全）。本轮 run id = `4b0e6fd7-f573-4991-8c2c-ed65f344cef9`，对象 = 提交 `b618e43d`。
+- 判定：R1（三项 findings 修正完整性）/ R3（AGENTS 规则 4 与续 55 表述）/ R4（版本与提交卫生）SUPPORTED；R2（旧口径残留）与 R5（反证）部分成立，查出 4 条残留。
+- 已处置（本条记录）：
+  1. **P1 日语文案未同步**：四线 `ja_jp.json` 的 guide 与 tooltip 两键仍是旧整句（「巨大なレンガ／バニラのレンガテクスチャ／明らかに大きい／飛翔速度はリビングページより速い」）⇒ 已整串替换为新口径（四线各 2 键、字节各 +39、旧短语残留 0）。⚠️ 门禁缺口：`tools/check_lang_sync.ps1` 只判 key 集合与未转义 `%`，**不判值语义** ⇒ 改口径时 ja_jp 必须人工同步。
+  2. **P2 AGENTS.md 内部冲突**：既有《二次验证规范》正文（原 :34、`### 怎么派`）仍要求「由独立子代理做二次验证」，与新增硬规则 4 冲突 ⇒ 两处各加一行指针（复核执行方改用 `code_review`，本节验收要求不变）。
+  3. **P2 KNOWN-ISSUES KI-G3 表述过期**：「砖头飞行的约 0.5 秒窗口」/「0.5 秒内即被移除」 ⇒ 改为「板砖 FX 存续窗口（悬停 3 tick + 下落，约 0.3 秒）」（该数值后经更正为 10 tick ≈ 0.5 秒，见本节末条）。
+  4. **P3 CHANGELOG 未发布段自相矛盾**：同段仍以「砖头飞行 3.2 格每 tick → 6.4 格每 tick」/「brick speed 3.2 -> 6.4 blocks per tick」记录 fabric 重复注册的症状，而该属性已随板砖重做作废 ⇒ 中英同步删除该子句（保留「光束持续 1 秒 → 0.5 秒」）。
+- 版本号 bump：四线 `mod_version` = `2.0.0-SNAPSHOT.39+<loader>_<MC>`（.38 → .39）；两份 CHANGELOG 段头同步（本轮为文案/文档口径变更，不新增玩家可见条目）。
+- 环境约束（记录在案）：teammate 平台**上限 8 个且无销毁原语** ⇒ 8 个 inactive teammate 仍占名额，`spawn_teammate` 返回 `Error: Team member limit 8 reached`；本轮四线 ja_jp 同步由主会话直接完成（单任务性质、仅 2 个字符串值）。
+- 更正（第三轮 code_review，run `97a9fd95-3c66-4a69-b93f-fb74e1c58395`）：KI-G3 的「板砖 FX 存续窗口」按实现应为 **launch → 命中共 10 tick ≈ 0.5 秒**（悬停 3 tick + 下落 7 tick，其中第 7 tick 为接触帧、命中当 tick discard），前文 0.3 秒系低估、已在 KNOWN-ISSUES.md 改正；本轮其余三项（ja_jp 文案、AGENTS 指针、CHANGELOG 旧症状子句）判定已闭环。

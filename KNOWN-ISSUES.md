@@ -706,10 +706,10 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
 
 - **现象**：`combat/DamageCardFxScheduler` 的「红砖」用原版 `Display.ItemDisplay` 承载
   （= `minecraft:brick` 物品图标、边长 **0.5 格** ≈ 成年僵尸头部；几何类型由 `block_display` 换为 `item_display`，`translation` 归零 + `billboard="vertical"`，见 `temp/brick-rewrite/DESIGN.md` §8–§10；经 NBT 装配 ⇒ **无需 AT / AW**，`Display` 的 setter 三线都是 private）。
-  该实体是**普通实体**、随区块保存 ⇒ 若服务器在砖头飞行的约 0.5 秒窗口内**崩溃 / 强杀**，或正常关服时
-  恰在飞行中，重启后世界里会留下一个**静止的浮空砖块**。
+  该实体是**普通实体**、随区块保存 ⇒ 若服务器在板砖 FX 存续窗口（悬停 3 tick + 下落，launch → 命中共 10 tick，约 0.5 秒）内**崩溃 / 强杀**，或正常关服时
+  恰在板砖 FX 存续中，重启后世界里会留下一个**静止的浮空砖块**。
 - **已做的缓解**：命中 / 目标失效 / `MAX_AGE_TICKS(400)` / 结算异常**四条路径**都会 `discard()`；
-  `view_range=2.0` 且 0.5 秒内即被移除 ⇒ 正常流程不会残留。
+  `view_range=2.0` 且 约 0.5 秒（10 tick）内即被移除 ⇒ 正常流程不会残留。
 - **为什么只登记未改**：彻底消除需要「启动期扫描并清理带标记实体」（新增事件挂钩 × 四线）
   或整体改成纯粒子实现；两者都超出本次范围。
 - **建议**：若实机看到残留，用 `/kill @e[type=item_display]` 清理，并按上述两条路线之一修补。

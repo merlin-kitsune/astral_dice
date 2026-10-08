@@ -4,7 +4,7 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
-## Unreleased (2.0.0-SNAPSHOT.38)
+## Unreleased (2.0.0-SNAPSHOT.39)
 
 ### New Content
 
@@ -230,7 +230,7 @@
   the Fabric event-subscriber list registered `DamageCardFxScheduler` **twice in a row**, and the Fabric event bus
   (`LoaderBus#add`) does not de-duplicate while dispatching that event once per server tick => the scheduler ran
   **twice per tick**, halving every card's FX duration along with the moment its damage lands (delay 0.5 s -> 0.25 s,
-  beam lifetime 1 s -> 0.5 s, brick speed 3.2 -> 6.4 blocks per tick; the damage values themselves are unchanged).
+  beam lifetime 1 s -> 0.5 s; the damage values themselves are unchanged).
   The duplicate line is removed and all 51 registered class names are now unique (the other three lines register
   their listeners by annotation and never had this duplicate).
   Criteria: the bus reports exactly 1 listener for this class (2 before the fix), and the four cards FX durations
