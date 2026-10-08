@@ -27,7 +27,7 @@
 //      两个条件解耦,是「判据没有退化成『只要被激怒就算敌对』」的唯一硬证据;
 //    · 负例③**已驯服**的 `wolf` 走 `isTamedPet` 被排除 ⇒ 0,
 //      而**未驯服**的 `wolf` 经 NeutralMob 通道 ⇒ 1(两条通道的对照);
-//    · 正例对照 `zombie`(Enemy)⇒ 1。
+//    · 正例对照 `pillager`(Enemy)⇒ 1。
 //
 //  平台差异(2026-09-28 三线 merged jar `javap` 实证;此前两格对照因此失效):
 //    | 平台    | `TamableAnimal#setTame`          | 设 owner                              |
@@ -57,7 +57,7 @@
 //
 //  读数(单行,确定性顺序):
 //    AP_<tag>_HT:cls=<ok|ERR:..>:cow=<0|1|ERR>:llama_idle=<..>:llama_tgt=<..>:llama_hurt=<..>
-//                :trader_tgt=<..>:horse_tgt=<..>:wolf=<..>:wolf_tame=<..>:zombie=<..>:villager=<..>
+//                :trader_tgt=<..>:horse_tgt=<..>:wolf=<..>:wolf_tame=<..>:pillager=<..>:villager=<..>
 //                :goat_tgt=<..>:panda_tgt=<..>:llama_owned=<..>:detail=<...>
 //    AP_<tag>_HTD:<id>:tgt=<0|1|err>:hurt=<0|1|err>[:ang=<机制回显>][:isTame=…][:hasOwner=…]
 //    AP_<tag>_HTU:<htPlayerUUID 的候选表回显>
@@ -246,7 +246,7 @@ function htMProbe(ctx, tag) {
  * 主命令:一次跑完整张真值表。
  *
  * 顺序刻意固定(断言依赖):cow → llama_idle → llama_tgt → llama_hurt → trader_tgt →
- *                              horse_tgt → wolf → wolf_tame → zombie → villager → goat → panda → llama_owned
+ *                              horse_tgt → wolf → wolf_tame → pillager → villager → goat → panda → llama_owned
  */
 function htTable(ctx, tag) {
     var p = ctx.source.getPlayerOrException();
@@ -370,12 +370,12 @@ function htTable(ctx, tag) {
         if (e != null) { spawned.push(e); try { e.discard(); } catch (d7) { /* 忽略 */ } }
     } catch (er) { cell("wolf_tame", "ERR:" + htEx(er)); }
 
-    // 9) zombie ⇒ Enemy 通道 ⇒ 1(正对照)
+    // 9) pillager ⇒ Enemy 通道 ⇒ 1(正对照)
     try {
-        e = htSpawn(p, "minecraft:zombie", idx++);
-        cell("zombie", (e == null) ? "ERR:spawn" : htIsHostile(e, tag));
+        e = htSpawn(p, "minecraft:pillager", idx++);
+        cell("pillager", (e == null) ? "ERR:spawn" : htIsHostile(e, tag));
         if (e != null) { spawned.push(e); try { e.discard(); } catch (d8) { /* 忽略 */ } }
-    } catch (er) { cell("zombie", "ERR:" + htEx(er)); }
+    } catch (er) { cell("pillager", "ERR:" + htEx(er)); }
 
     // 10) villager ⇒ 0(负例:既非 Enemy 亦非以上任何一条)
     try {

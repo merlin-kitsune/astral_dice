@@ -44,7 +44,7 @@
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_H1_HT:cls=ok:cow=0:llama_idle=0:llama_tgt=1:llama_hurt=1:trader_tgt=1:[^\\n]*:wolf=1:wolf_tame=0:zombie=1:villager=0:goat_tgt=0:panda_tgt=0:[^\\n]*:detail=spawned=13:killed=13(:|\\n|$)"
+      "pattern": "AP_H1_HT:cls=ok:cow=0:llama_idle=0:llama_tgt=1:llama_hurt=1:trader_tgt=1:[^\\n]*:wolf=1:wolf_tame=0:pillager=1:villager=0:goat_tgt=0:panda_tgt=0:[^\\n]*:detail=spawned=13:killed=13(:|\\n|$)"
     },
     {
       "type": "log",

@@ -2,7 +2,7 @@
 //
 // 背景：无玩家时派发统计会显示 32 类事件 0 次 —— 这既可能是「桥没接」也可能是
 // 「确实没发生」。本探针主动制造交互来区分两者：
-//   1. 生成僵尸 → 施加伤害 ⇒ LivingAttackEvent / LivingHurtEvent / LivingDamageEvent
+//   1. 生成非亡灵靶(掠夺者) → 施加伤害（2026-10-08 m02850 规则 2：亡灵白天会点燃、持续掉血污染读数） ⇒ LivingAttackEvent / LivingHurtEvent / LivingDamageEvent
 //   2. 致命伤害            ⇒ LivingDeathEvent / LivingDropsEvent
 //   3. 施加/移除状态效果    ⇒ MobEffectEvent.Added / Remove
 //
@@ -28,18 +28,18 @@ ServerEvents.tick(function (event) {
   }
 
   try {
-    var zombie = level.createEntity('minecraft:zombie');
-    zombie.setPosition(0, 100, 0);
-    level.addFreshEntity(zombie);
-    console.info('[event-probe] 已生成僵尸');
+    var target = level.createEntity('minecraft:pillager');
+    target.setPosition(0, 100, 0);
+    level.addFreshEntity(target);
+    console.info('[event-probe] 已生成掠夺者');
 
     var src = level.damageSources().generic();
-    zombie.attack(src, 2.0);
+    target.attack(src, 2.0);
     console.info('[event-probe] 已施加 2.0 伤害(期望 Attack/Hurt/Damage)');
 
-    zombie.attack(src, 9999.0);
+    target.attack(src, 9999.0);
     console.info('[event-probe] 已施加致命伤害(期望 Death/Drops)');
-    console.info('[event-probe] 僵尸存活=' + zombie.isAlive());
+    console.info('[event-probe] 掠夺者存活=' + target.isAlive());
   } catch (err) {
     console.error('[event-probe] 伤害/死亡探针异常: ' + err);
   }

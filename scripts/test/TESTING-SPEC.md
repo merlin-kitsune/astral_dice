@@ -4046,3 +4046,27 @@ mt.ps1 --version 线 --phase stop 关闭测试实例（gradle 守护进程保留
   - `--purge-saves` 实现（`scripts/test/mt_cleanup.ps1:161-200` 与 `:311-321`）：**在进程收停之后**删除 `run/<版本>/` 内本次测试流程的世界目录（`Mt.Paths` 派生的 `client_world` / `server_world`，以及 `<run>/saves` 下含 `level.dat` 的目录，避免误删手工放置文件）；`.mt_keep_alive` 存在时整体 SKIP（保留取证现场）。
   - 该纪律沿用 2026-09-17 既有先例（`mt_cleanup.ps1:22`「测试任务完成后关闭测试端并清理旧存档数据」）；本次裁决把 `--purge-saves` 从「可选」升为**每轮实机验证收尾的默认动作**。
 - 影响与挂账：本轮起不再主动实机；既有实机欠账（26.1.2 / 1.20.1 安全气囊未实机、规则 2 存量整改 11 用例 + 7 探针仍以 zombie 为靶、`FXCARD-SCALE05-26.1.2.json` 用例与 `AP_FXDISP` 探针、`view_range 2.0F` 评估、板砖 0.5 格红砖外观待目视）继续挂账，等用户点名下指令再补。
+
+## 附录 A 续 62. 规则 2 存量整改：11 个用例 + 7 处探针靶子由亡灵改为非亡灵（2026-10-08）
+
+- 动机（用户 2026-10-08 逐字）：板砖 0.5 格红砖外观目视确认无误。11 个用例 + 7 个 kubejs 探针改成非亡灵生物
+- 规则正本 = `AGENTS.md`〈子代理与测试环境硬规则〉第 2 条（测试禁用亡灵生物：正午日光会点燃亡灵、持续漂血污染读数）；属**测试工具**改动，按既有口径只记本附录、不入 CHANGELOG。
+- 靶子选型：统一 `minecraft:pillager`（Raider→Monster→Enemy，满足 `TargetSelectionClient.isHostile` 的 `entity instanceof Enemy`；非亡灵 ⇒ 正午不燃烧、不漂血）。
+- 7 个探针文件（三线 `scripts/test/resources/kubejs/{1.20.1,1.21.1,26.1.2}/server_scripts/` 下的 `astral_bugfix_probe.js` 与 `astral_hostile_probe.js`，外加 `scripts/test/fabric/event_bridge_probe.js`）：
+  - `astral_bugfix_probe.js` 每线 7 处替换：`doMeleeBless` 靶、`doSignGate`〈确认合法敌对目标〉靶、`doRenHit` 靶、`doSsSpawn` 缺省 id、`DEFC_MOB_ID`、`doNoDiceMob` 靶，以及电磁炮真伤段的陈旧注释（`真伤靶=僵尸,对照靶=尸壳` ⇒ 蜘蛛/卫道士(vindicator)，与既有代码一致）。
+  - `astral_hostile_probe.js` 每线 7 处：`htSpawn` 类型、正对照 `cell("pillager", …)`、异常分支 cell、四行注释（正例对照说明与汇总示例）。
+  - `scripts/test/fabric/event_bridge_probe.js`（由 `scripts/test/fabric/ft_env.ps1` 的 `--install-probe` 装入 fabric 服务端 run 目录）：桥取证靶 `minecraft:zombie` → `minecraft:pillager`（变量 `zombie` → `target`、日志文案随之改）；它只断言 LivingAttack/Hurt/Damage/Death/Drops 是否派发，无血量断言。
+  - 清场循环 `kill @e[type=minecraft:zombie|skeleton|husk|drowned, distance=..24]` **保留**（作用是删除世界里预先存在的亡灵，**不是**靶），并在其上方补 3 行说明；是否连清场一起去掉已向用户报备。
+- 数字耦合的处置（关键）：既有断言大量引用原版僵尸基线（20 血 / 2 甲 / 3 攻）——
+  - `SS-STAR-{3}.json` 与 `SHERRY-FIX-26.1.2.json` 断言 `max_hp=20[^:]*:armor=2[^:]*:hp=20`；
+  - `ndClassify`（探针 `:16023` 附近）的 `var f1 = Math.min(Math.max(2 - ap / 2, 0.4), 20);` 硬编码护甲 2。
+  故在 4 个靶子生成处（`doRenHit`、`doSsSpawn`、`doDefCardHit`、`doNoDiceMob`）插入 pin 块：`MAX_HEALTH 20.0` + `setHealth(20.0)` + `ARMOR 2.0` + `ATTACK_DAMAGE 3.0`（`try/catch` 包覆，失败由后续读数行体现），**不动任何断言**。
+- 用例侧 18 个 JSON：`DEF-CARD-{3}`（命中来源说明 + 首次骰战受击说明）、`HOSTILE-TARGETS-{3}`（断言 `:zombie=1:` → `:pillager=1:`）、`NODICE-{3}`（4 处说明）、`SS-STAR-{3}`（A/B 段说明）、`SIGN-SMOKE-{3}`（命令靶 +〈24 血〉）、`HUD-JADE-1.21.1`（`/summon minecraft:pillager ~ ~ ~2.5 {NoAI:1b,ArmorItems:…}` + 说明）、`MELEE-BLACKLIST-1.21.1`（收尾 kill 目标）、`SS-PASSWINDOW-26.1.2`（说明文字，靶走 `ssspawn` 缺省值）。
+- 静态验证（本批**未实机**，按续 61 的实机门槛）：`node --check` 七个探针（含 fabric 事件桥探针）全 exit 0；`scripts/test/cases/*.json` 全量 `ConvertFrom-Json` 0 失败；30 个改动文件全为纯 CRLF（cr == lf、无裸 LF）；全树 grep（排除 build/run/temp）亡灵实体字面量只剩上述 3 行清场循环（此前 `scripts/test/fabric/event_bridge_probe.js` 以 zombie 为靶，本批一并换掉）。
+- 工具链教训（本批）：
+  - 含字面全角弯引号（U+201C / U+201D）的 pwsh 命令、或单条 ≳2 KB 的写盘命令会**静默失败**（exit 1、零输出）⇒ 一律改用 Python 脚本（`temp/rules2/*.py`，`io.open(..., newline="")` 保 CRLF）分块写盘并即时核对字节数。
+  - 用 `{{NL}}` 式转义拼占位符会写出非法 JS：必须 `+ n +` 拼接（本次 `pin()` 首版产出了 `}} catch`，已重写）。
+  - Python `print()` 在 GBK 控制台遇 `⇒`/`→` 抛 `UnicodeEncodeError`（补丁已落盘、仅回显崩）⇒ 结果写文件再读。
+  - 散文替换必须先 `Select-String` 取真实行文本：本次两处探针注释因 `×` (U+00D7) / `−` (U+2212) 与 ASCII `*`/`-` 不同、`SIGN-SMOKE` 的 JSON 内引号是 `\"` 而首轮 MISS，由 `temp/rules2/fix_miss.py`、`fix_prose.py` 补齐；`分列僵尸左右` 只在 1.20.1 存在（另两线原文本就未提亡灵），MISS 属预期。
+- 未验证项：三线探针与用例仅做静态校验（语法 / JSON / 行尾 / 残留扫描），**未在实机跑过** —— 按续 61，实机须用户点名下指令。
+- 复核记录（DSH `code_review`，run `8e35312a-2e59-4e37-ac8e-8439a4f9571c`，对象 = 本批未提交工作树，静态只读）：R1（靶子清零）/R2（pin 块语义与位置，`doSsSpawn` 的 pin 确在 `ssMakeElite` 之前）/R3（`instanceof Enemy` 通道、且 `name`/掉落等无判据依赖亡灵）/R4（18 个用例 JSON 只改字符串、名实一致）SUPPORTED；R5 部分成立 ⇒ 按其 4 条发现全部修正：① 附录本段计数与残留面口径（探针 6→7 含 fabric 事件桥探针、用例 17→18 补 `SS-PASSWINDOW-26.1.2`、改动文件 23→30）② 探针注释把对照靶写成「掠夺者」而代码实为 `minecraft:vindicator` ⇒ 改为「卫道士(vindicator)」③ 清场循环上方 3 行注释缩进错位（8 空格）⇒ 归一为 4 空格 ④ fabric 事件桥探针换靶（本轮补做）。复核方未实机（符合续 61）。

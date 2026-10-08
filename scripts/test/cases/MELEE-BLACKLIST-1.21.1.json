@@ -144,7 +144,7 @@
     },
     {
       "op": "inject_command",
-      "command": "/kill @e[type=minecraft:zombie]",
+      "command": "/kill @e[type=minecraft:pillager]",
       "no_esc": true
     },
     {

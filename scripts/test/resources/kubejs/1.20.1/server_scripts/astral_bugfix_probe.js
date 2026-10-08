@@ -654,7 +654,7 @@ function doAttack(ctx, typeId, tag) {
  * 实机取证:近战黑名单（`/astralprobe meleebless <itemId> <tag>`）。
  *
  * 一步完成一次**独立**测量:装骰子 → 清掉骰神赐福 → 把 `<itemId>` 放进主手 →
- * 生成僵尸靶子并**真实近战命中** → 读是否获得骰神赐福。
+ * 生成非亡灵靶(掠夺者)并**真实近战命中** → 读是否获得骰神赐福。
  *
  * ⚠️ 清赐福**必须走 `ModEffectRemoval`**:`ModEffectEvents#onModEffectRemovalPrevented` 以 HIGH
  * 优先级取消玩家身上 `astral_dice:*` 的普通移除 ⇒ 直接 `removeEffect()` 无效、赐福会残留,
@@ -678,7 +678,7 @@ function doMeleeBless(ctx, itemId, tag) {
     var hand = "?";
     try { hand = itemIdOf(p.getMainHandItem()); } catch (e3) { hand = "ERR:" + exText(e3); }
     // 4) 靶子 + 真实近战命中(与真人左键同源:Player#attack)
-    var mob = spawnDummy(p, "minecraft:zombie", 3);
+    var mob = spawnDummy(p, "minecraft:pillager", 3);
     if (mob == null) { send(ctx, "AP_" + tag + "_ERR:spawn_failed"); return 0; }
     var hit = meleeHit(p, mob);
     var bless = "?";
@@ -1624,7 +1624,7 @@ function doSignGate(ctx, tag) {
 
     // ③ 确认合法敌对目标 ⇒ 施效 + 冷却 + 发牌(恢复点)
     BaseSignItemClass.performSkillForCurio(p);
-    var mob = spawnDummy(p, "minecraft:zombie", 3);
+    var mob = spawnDummy(p, "minecraft:pillager", 3);
     var mobId = (mob == null) ? -1 : mob.getId();
     TargetSelectionManagerClass.confirm(p, TargetSelectionManagerClass.sessionTokenForTests(p), mobId);
     var kSession = TargetSelectionManagerClass.isSelecting(p) ? 1 : 0;
@@ -2579,13 +2579,13 @@ function doRailgunFriendly(ctx, tag) {
     var putErr = putInSlot(p, "chip", new ItemStack(chip), 0);
     if (putErr != null) { send(ctx, "AP_" + tag + "_ERR:" + putErr); return 0; }
 
-    // 敌方(僵尸)在正前方 2 格 —— 近战距离,攻击者本人必在同一雷击判定箱内;
-    // 中立(牛)与友方(已驯服狼,主人=玩家)分列僵尸左右各 1.5 格,同样落在箱内。
+    // 敌方(蜘蛛)在正前方 2 格 —— 近战距离,攻击者本人必在同一雷击判定箱内;
+    // 中立(牛)与友方(已驯服狼,主人=玩家)分列靶子左右各 1.5 格,同样落在箱内。
     // 清场(2026-09-14 实测):自然刷新的苦力怕一旦落进雷击箱,会被劈成高压苦力怕并爆炸,
     // 污染所有差值读数(实测 bolt_delta=2、非靶实体凭空掉血),故先清掉附近的苦力怕再摆靶。
     // 环境清场(2026-09-15 补),两处都在**摆靶之前**下发:
     //   ① 苦力怕:落进雷击判定箱会被劈成高压苦力怕并爆炸,污染全部差值读数(原有步骤);
-    //   ② 玩家 24 格内**预先存在**的敌对生物:实测 1.20.1 本轮玩家在落点被僵尸围殴致死
+    //   ② 玩家 24 格内**预先存在**的敌对生物:实测 1.20.1 本轮玩家在落点被亡灵围殴致死
     //      (php 20→0、self=19),整轮读数随之作废。
     // ⚠️ **绝不能**把本探针自己摆的靶类型(北极熊/狼/海龟/村民)列进来:命令在 1.21.1 上是
     //    **延迟到本 tick 末**才执行的(见 runCmd 注释),而靶子是同一 tick 内
@@ -2593,6 +2593,9 @@ function doRailgunFriendly(ctx, tag) {
     //    4 个靶全灭、valive=0:talive=0、bolt_delta=0、充能不消耗)。同类残留的清场改放
     //    doRailgunFriendlyEnd(那里本 tick 不再生成任何实体)。
     runCmd(ctx, "kill @e[type=minecraft:creeper]");
+    // 2026-10-08 m02850 规则 2:本清场只删**世界里预先存在**的亡灵(见上条实测),**不是**
+    // 本探针的靶 —— 本探针靶子一律是非亡灵(掠夺者/蜘蛛/北极熊…),保留本段只为
+    // 防止残留敌对亡灵污染差值读数。
     ["minecraft:zombie", "minecraft:skeleton", "minecraft:husk", "minecraft:drowned"].forEach(function (t) {
         runCmd(ctx, "kill @e[type=" + t + ",distance=..24]");
     });
@@ -2849,8 +2852,8 @@ function doGlmCheck(ctx, tag) {
 //  真伤验证(astral_dice:true_damage)
 //    /astralprobe truedmg <tag>          护甲 20 / 韧性 8 的靶子上,对比本模组真伤
 //                                        与可被护甲减免的 minecraft:mob_attack 的实扣
-//    /astralprobe railtruedmg <tag>      装备电磁炮 + 6 充能,**空手**打一只无甲僵尸,
-//                                        同时让一只重甲尸壳站在雷击判定箱内(不被近战命中)
+//    /astralprobe railtruedmg <tag>      装备电磁炮 + 6 充能,**空手**打一只无甲蜘蛛,
+//                                        同时让一只重甲卫道士(vindicator)站在雷击判定箱内(不被近战命中)
 //    /astralprobe railtruedmgread <tag>  读差值:空手基伤 1 → 雷击真伤全额 ≈5.5;
 //                                        若雷击仍被护甲减免则 ≈1.2
 //  状态改写一律走原版命令入口(/attribute、/damage、/item),避开 Rhino 方法可见性坑;
@@ -2974,7 +2977,7 @@ function doTrueDmg(ctx, tag) {
     var p = ctx.source.getPlayerOrException();
     var weather = "skip";
     try { p.level.setWeatherParameters(6000, 0, false, false); weather = "clear"; } catch (e0) { weather = "err"; }
-    // 两只不同实体类型 → 类型选择器可唯一定位;真伤靶=僵尸,对照靶=尸壳(互不共享无敌帧)
+    // 两只不同实体类型 → 类型选择器可唯一定位;真伤靶=蜘蛛,对照靶=卫道士(vindicator)(互不共享无敌帧)
     var mob = spawnDummy(p, "minecraft:spider", 2);
     if (mob == null) { send(ctx, "AP_" + tag + "_ERR:spawn_failed"); return 0; }
     var ctrl = spawnDummy(p, "minecraft:vindicator", 3);
@@ -3030,7 +3033,7 @@ function doTrueDmg(ctx, tag) {
 
 var rtgState = null;
 
-/** 电磁炮雷击真伤:重甲尸壳只吃雷击(不被近战命中),空手近战基伤固定 1 → 雷击 ≈5.5 */
+/** 电磁炮雷击真伤:重甲卫道士(vindicator)只吃雷击(不被近战命中),空手近战基伤固定 1 → 雷击 ≈5.5 */
 function doRailTrueDmg(ctx, tag) {
     var p = ctx.source.getPlayerOrException();
     var ChargeManagerClass = Java.loadClass("com.merlinkitsune.astral_dice.item.ChargeManager");
@@ -3054,7 +3057,7 @@ function doRailTrueDmg(ctx, tag) {
     var putErr = putInSlot(p, "chip", new ItemStack(chip), 0);
     if (putErr != null) { send(ctx, "AP_" + tag + "_ERR:" + putErr); return 0; }
 
-    // 近战目标:无甲僵尸(它的血量不参与判定);旁观靶:重甲尸壳(只吃雷击,无无敌帧干扰)
+    // 近战目标:无甲蜘蛛(它的血量不参与判定);旁观靶:重甲卫道士(vindicator)(只吃雷击,无无敌帧干扰)
     var target = spawnDummy(p, "minecraft:spider", 2);
     if (target == null) { send(ctx, "AP_" + tag + "_ERR:spawn_failed_target"); return 0; }
     var probe = spawnDummy(p, "minecraft:vindicator", 2);
@@ -4369,8 +4372,17 @@ function doRenHit(ctx, tag) {
     var p = ctx.source.getPlayerOrException();
     try { p.setGameMode(GameTypeClass.SURVIVAL); } catch (e) { /* 忽略 */ }
     try { p.setHealth(p.getMaxHealth()); } catch (e) { /* 忽略 */ }
-    var dummy = spawnDummy(p, "minecraft:zombie", 4.0);
+    var dummy = spawnDummy(p, "minecraft:pillager", 4.0);
     if (dummy == null) { send(ctx, "AP_" + tag + "_ERR:no_dummy"); return 1; }
+    // 2026-10-08 m02850 规则 2:靶子由亡灵改为非亡灵(掠夺者);把原版僵尸的基线
+    // (20 血 / 2 甲 / 3 攻)显式钉住 ⇒ 既有断言与伤害读数完全不变。
+    try {
+        dummy.getAttribute(AttributesClass.MAX_HEALTH).setBaseValue(20.0);
+        dummy.setHealth(20.0);
+        dummy.getAttribute(AttributesClass.ARMOR).setBaseValue(2.0);
+        dummy.getAttribute(AttributesClass.ATTACK_DAMAGE).setBaseValue(3.0);
+    } catch (ePin) { /* 钉不住由后续读数行体现 */ }
+
     try {
         var hp0 = rghp(dummy);
         var before = renState(p);
@@ -4923,7 +4935,7 @@ function doCardSelf(ctx, tag) {
 //   ⚠️ **`type` 参数是 `StringArg.string()`(QUOTABLE_PHRASE),用例里必须加引号**:
 //      `/astralprobe lpprep T "minecraft:spider" 6 0` —— 不加引号时 Brigadier 直接拒收(参数后应为空格),
 //      命令整条不执行、读数行**一条都不会出现**(与 `equipslot` 的 `item` 参数同一坑,见 MIMI-RENAME 用例)。
-//   ⚠️ **靶子选型**:白天地表会点燃僵尸(无 AI 也一样烧,实测 1.4 s 掉 4 血 ⇒ 污染 `dmg` 读数)。
+//   ⚠️ **靶子选型**:亡灵白天被太阳点燃会持续掉血(无 AI 也一样烧,实测 1.4 s 掉 4 血 ⇒ 污染 `dmg` 读数)。
 //      用例统一用 **`minecraft:spider`**(非亡灵、不烧,最大生命 16)并先 `/time set midnight`。
 //      `lpshoot` 另会在确认前把靶子回满血并重取基线,使 `dmg` 只反映本次书页命中。
 //   ⚠️ **背包/方块一律走 API,不要用 `runCmd`**(2026-09-19 实测取证):
@@ -13052,7 +13064,7 @@ function doMamuDie(ctx, tag, keepText) {
 //    /astralprobe sherryread <tag>                 只读:推理时间层数 + 效果镜像
 //    /astralprobe hannaread  <tag>                 只读:人偶制作 / 人偶完成 / 魔女漂浮 / 两条冷却
 //  mode: plain | apoth | apothmini | hp | armor
-//    plain     = 普通僵尸(20 血 2 甲 ⇒ 非精英)
+//    plain     = 普通非亡灵靶(探针钉住 20 血 2 甲 ⇒ 非精英)
 //    apoth     = 写实体持久化 NBT apoth.boss     = 1b(模拟「神化 Boss / Apothic Invader」)
 //    apothmini = 写实体持久化 NBT apoth.miniboss = 1b(模拟「神化精英 / Apothic Elite」)
 //    hp        = 最大生命调到 60(> 40 ⇒ 精英阈值)
@@ -13151,10 +13163,18 @@ function ssMakeElite(ctx, p, mob, mode) {
 /** 生成一只飞星靶子;mode 决定精英化手段。 */
 function doSsSpawn(ctx, tag, mode, entityId) {
     var p = ctx.source.getPlayerOrException();
-    var id = ("" + entityId) === "" ? "minecraft:zombie" : ("" + entityId);
+    var id = ("" + entityId) === "" ? "minecraft:pillager" : ("" + entityId);
     var mob = spawnDummy(p, id, 2.5);
     if (mob == null) { send(ctx, "AP_" + tag + "_ERR:spawn_failed:" + id); return 0; }
     try { mob.addTag(SS_TARGET_TAG); } catch (e1) { /* 标签失败则后续读数找不到靶子 */ }
+    // 2026-10-08 m02850 规则 2:靶子由亡灵改为非亡灵(掠夺者);把原版僵尸的基线
+    // (20 血 / 2 甲 / 3 攻)显式钉住 ⇒ 既有断言与伤害读数完全不变。
+    try {
+        mob.getAttribute(AttributesClass.MAX_HEALTH).setBaseValue(20.0);
+        mob.setHealth(20.0);
+        mob.getAttribute(AttributesClass.ARMOR).setBaseValue(2.0);
+        mob.getAttribute(AttributesClass.ATTACK_DAMAGE).setBaseValue(3.0);
+    } catch (ePin) { /* 钉不住由后续读数行体现 */ }
     var applied = ssMakeElite(ctx, p, mob, mode);
     var elite = -1, maxHp = -1, armor = -1, hp = -1;
     try { elite = EliteTargetsClass.isEliteOrBoss(mob) ? 1 : 0; } catch (e2) { }
@@ -15563,8 +15583,8 @@ ServerEvents.commandRegistry(event => {
 //
 //  命令:
 //    /astralprobe defcardprep <tag>  装骰子 + 写 3 张防御牌(uses 各 2) + 只读产品默认耐久常量
-//    /astralprobe defcardhit  <tag>  生成定点僵尸(空手),以 mobAttack 源对玩家命中一次
-//    /astralprobe defcardend  <tag>  清场(移除僵尸)
+//    /astralprobe defcardhit  <tag>  生成定点非亡灵靶(掠夺者,空手),以 mobAttack 源对玩家命中一次
+//    /astralprobe defcardend  <tag>  清场(移除靶子)
 //
 //  判读(AP_<TAG>_DEFC_*):
 //    PREP{defaults=150/150/150, stones=[…:2:0 ×3], defcost=<used>/<max>, set_ok=1}
@@ -15573,7 +15593,7 @@ ServerEvents.commandRegistry(event => {
 // ════════════════════════════════════════════════════════════════════════════
 var DEFC_TYPES = ["defense_medium", "defense_large", "defense_epic"];
 var DEFC_INIT_USES = 2;
-var DEFC_MOB_ID = "minecraft:zombie";
+var DEFC_MOB_ID = "minecraft:pillager";
 var defcMob = null;
 var defcHits = 0;
 
@@ -15738,7 +15758,16 @@ function doDefCardHit(ctx, tag) {
         try { defcMob = spawnDummy(p, DEFC_MOB_ID, 2); } catch (eS) { defcMob = null; err = err + "|spawn:" + exText(eS); }
     }
     if (defcMob == null) { send(ctx, line + ":no_mob" + err); return 0; }
-    // 空手:`type.create()` 生成的原版僵尸本身无装备 ⇒ 不需要任何摘武器动作,「不依赖武器」天然成立
+    // 2026-10-08 m02850 规则 2:靶子由亡灵改为非亡灵(掠夺者);把原版僵尸的基线
+    // (20 血 / 2 甲 / 3 攻)显式钉住 ⇒ 既有断言与伤害读数完全不变。
+    try {
+        defcMob.getAttribute(AttributesClass.MAX_HEALTH).setBaseValue(20.0);
+        defcMob.setHealth(20.0);
+        defcMob.getAttribute(AttributesClass.ARMOR).setBaseValue(2.0);
+        defcMob.getAttribute(AttributesClass.ATTACK_DAMAGE).setBaseValue(3.0);
+    } catch (ePin) { /* 钉不住由后续读数行体现 */ }
+
+    // 空手:`type.create()` 生成的原版生物本身无装备 ⇒ 不需要任何摘武器动作,「不依赖武器」天然成立
     var before = mamuDiceStones(p);
     var r = defcMobHit(p, defcMob);
     defcHits = defcHits + 1;
@@ -15769,14 +15798,14 @@ function doDefCardEnd(ctx, tag) {
 // 2026-09-26 裁决取证:未装备骰子时仍走骰战模型(双方骰点恒为 0)
 // ----------------------------------------------------------------------------
 // 命令:
-//   /astralprobe nodicemob <tag>   定点僵尸(空手) + 主手铁剑 + 打印基线读数
+//   /astralprobe nodicemob <tag>   定点非亡灵靶(掠夺者,空手) + 主手铁剑 + 打印基线读数
 //   /astralprobe nodicehit <tag>   满冷却连续近战 3 次,逐次打印实际扣血
 //   /astralprobe nodiceend <tag>   清场
 //
 // 反假绿判据(mode 字段直接命名两套口径):
 //   · dice    = 伤害 ≈ 攻击点 ap            ⇒ 走骰战公式(未装骰子仍入骰战)
 //   · vanilla = 伤害 ≈ ap × (1 − f1/25)     ⇒ 被原版护甲减免(旧行为:未装骰子退回原版)
-//   僵尸护甲 2 ⇒ def = floor(0 + 2×0.40 + 0) = 0 ⇒ 骰战伤害 = ap;
+//   靶子护甲 2(探针钉住,等同旧僵尸基线) ⇒ def = floor(0 + 2×0.40 + 0) = 0 ⇒ 骰战伤害 = ap;
 //   原版 f1 = clamp(2 − ap/2, 0.4, 20) ⇒ 伤害 = ap×0.984 ⇒ 两者差 ≈1.6%,足以区分。
 //   ② 未装骰子 ⇒ 生物侧防御骰恒为 0(opposed 不成立)⇒ **三次 mode 均为 dice 且 dmg 恒等**;
 //      若旧口径(生物恒掷 1d6)则三次全同的概率仅 (1/6)² ≈ 2.8%。
@@ -15806,7 +15835,7 @@ function ndAttackPoint(p) {
 
 function ndClassify(dmg, ap) {
     if (!(ap > 0) || !(dmg > 0)) return "?";
-    // 原版对照:僵尸护甲 2 ⇒ f1 = clamp(2 − ap/2, 0.4, 20)
+    // 原版对照:靶子护甲 2(探针钉住) ⇒ f1 = clamp(2 − ap/2, 0.4, 20)
     var f1 = Math.min(Math.max(2 - ap / 2, 0.4), 20);
     var vanilla = ap * (1 - f1 / 25);
     if (Math.abs(dmg - ap) < 0.06) return "dice";
@@ -15821,9 +15850,18 @@ function doNoDiceMob(ctx, tag) {
     ndHits = 0;
     ndPrevDmg = null;
     var mob = null;
-    try { mob = spawnDummy(p, "minecraft:zombie", 3); } catch (e1) { mob = null; }
+    try { mob = spawnDummy(p, "minecraft:pillager", 3); } catch (e1) { mob = null; }
     if (mob == null) { send(ctx, line + ":spawn=0"); return 1; }
     ndMob = mob;
+    // 2026-10-08 m02850 规则 2:靶子由亡灵改为非亡灵(掠夺者);把原版僵尸的基线
+    // (20 血 / 2 甲 / 3 攻)显式钉住 ⇒ 既有断言与伤害读数完全不变。
+    try {
+        mob.getAttribute(AttributesClass.MAX_HEALTH).setBaseValue(20.0);
+        mob.setHealth(20.0);
+        mob.getAttribute(AttributesClass.ARMOR).setBaseValue(2.0);
+        mob.getAttribute(AttributesClass.ATTACK_DAMAGE).setBaseValue(3.0);
+    } catch (ePin) { /* 钉不住由后续读数行体现 */ }
+
     var swErr = "-";
     try {
         var IH = Java.loadClass("net.minecraft.world.InteractionHand");

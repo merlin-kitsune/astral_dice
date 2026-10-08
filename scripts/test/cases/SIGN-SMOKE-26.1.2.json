@@ -88,11 +88,11 @@
     },
     {
       "op": "note",
-      "text": "攻击一只 20 血敌对目标（僵尸）⇒ 期望「侦探出击」计 1 层。"
+      "text": "攻击一只 24 血敌对目标（掠夺者）⇒ 期望「侦探出击」计 1 层。"
     },
     {
       "op": "inject_command",
-      "command": "/astralprobe attack \"minecraft:zombie\" X1",
+      "command": "/astralprobe attack \"minecraft:pillager\" X1",
       "no_esc": true
     },
     {
