@@ -50,6 +50,16 @@
 > ③ **目标选择器仅主手生效**为**定案**（见 §14.11；现状即如此、**本轮零代码改动**）—— **不推翻**任何既有行为，
 > 只是把此前未写进规格的口径固化并给出四条代码证据；**副手不唤起选择器**是该规则的直接推论。
 > 本版即 `v121` / `v120` / `verifier` / `scribe` 共读的**同一版本**（两棵工作树同哈希）。
+> → **`t38`（2026-09-20 用户指令 · 裁决① 整体作废；2026-10-08 回填标注）**：**符卡-祸「禁止丢弃」已整套移除** ——
+> 用户 2026-09-20 指令「整套清空」，产品落点（两线 `item/card/HuoCardItem.java` 的 `#onDroppedByPlayer` /
+> `#onItemToss` + `#refundToContainerSlot` / `canFitInsideContainerItems`、两个 lang 键、tooltip 行、手册半句、注释）
+> 全部删除，**无 mixin**；落点清单与判据见 `AGENTS.md`〈待办交接：fengshui-sign 批〉的 A2 行与 §C。
+> ⇒ **§3.3、§11 跨线能力对照表、§12.1 入口符号表、§14.1 里「裁决①」的全部实现要求一律作废**，原文保留仅作历史；
+> **现行口径 = 符卡-祸可以自由丢弃，也可以放进潜影盒、收纳袋等任意容器**（`CHANGELOG_ZH.md:1430` / `CHANGELOG.md:1786`）。
+> ⚠️ **不受本作废影响的既有口径**：① 裁决① 的「普通容器 = 已登记边界、**放行**」仍然成立且与「禁止丢弃」相互独立
+> （放进普通容器后既不产生周期伤害、也不计入厄运层数，§14.5 Q4 不变）；② 「厄运层数 = 主物品栏 **+ 副手**」（`t33`）；
+> ③ 符卡-福主栏口径（`t36` ② / §14.10）；④ 目标选择器仅主手生效（`t36` ③ / §14.11）；⑤ 战斗爽保留粒子（`t36` ① / §14.12）。
+> ⚠️ 26.1.2 / fabric 两线本批尚未迁移该功能 ⇒ **迁移时不得带上「禁止丢弃」**（`AGENTS.md`:3073）。
 
 ---
 
@@ -280,6 +290,12 @@
 （`SelectorTargets.java:24`）⇒ 不满足「含非同队玩家」。
 
 ### 3.3 符卡-祸「禁止丢弃」的落点与已登记边界（**裁决① 已定**，原文见 §14.1）
+
+> ⛔ **本节已作废（2026-09-20 用户指令「整套清空」；2026-10-08 回填标注）**：符卡-祸现**可以自由丢弃，
+> 也可以放进潜影盒、收纳袋等任意容器** —— 下表两条实现要求（`onDroppedByPlayer` / `canFitInsideContainerItems`）
+> **均已整套移除**，原文保留仅作历史；下表末行的「玩家可见文案建议」亦未采用。
+> **仍然成立的部分**：裁决① 的「**普通容器 = 已登记边界、放行**」口径（见下方 ⚠️ 与 §14.5 Q4）与 `t33` 的
+> 「厄运层数 = 主物品栏 + 副手」计数口径 —— 两者与「禁止丢弃」相互独立。总记录见 §1 的 `t38`。
 
 | 项 | 实现要求（冻结） | 证据 |
 |---|---|---|
@@ -695,6 +711,8 @@ for (Player ally : EventTargetCollector.collectTeamPlayers(triggerer)) {
 | `LivingHealEvent`（**新挂点，仓内既有消费点为空**） | 原版 `LivingEntity.java:1118` 触发 | 本仓 0 命中（递归 grep 空） | 溢出治疗用例；**枚举为空** = 不改变任何既有治疗路径的行为 |
 | `IItemExtension#onDroppedByPlayer` + `canFitInsideContainerItems`（新挂点，**裁决①**） | `net/neoforged/neoforge/common/extensions/IItemExtension.java:89` / 原版 `Item.java:422`（1.20.1：`net/minecraftforge/common/extensions/IForgeItem.java:74` / 原版 `Item.java:452`） | 本仓 0 命中（两处均是全新覆写点） | 「持有期间禁止丢弃」用例（Q 键/拖出 + 潜影盒/收纳袋；普通容器为已登记边界，见 §3.3 / §14.1） |
 
+> ⛔ **本行已作废（2026-09-20）**：`IItemExtension#onDroppedByPlayer` / `canFitInsideContainerItems` 两处覆写**均已整套移除**（符卡-祸现可自由丢弃与收纳）⇒ 本批**不存在**新挂点，对应「持有期间禁止丢弃」用例一并作废。历史原文保留仅作历史，见 §1 的 `t38`。
+
 ### 12.2 本批必含用例集（**完整冒烟**全清单中必须包含的子集；级别见 §12.3 / §14.3）
 
 > 本批已裁决为**完整冒烟**（§14.3）⇒ 下表**不是**「可裁剪的最小集」，而是**全清单必须覆盖的下限**；
@@ -764,11 +782,17 @@ for (Player ally : EventTargetCollector.collectTeamPlayers(triggerer)) {
 
 > 本节是 **t6 的回填结果**：t1 时登记在旧「未冻结/待裁决项」下的各项现已按 captain 裁决收敛。
 > **§14.1–§14.4 = 已裁决 ⇒ 实现、评审、文档一律按此执行**（旧的「请 captain/用户裁决」措辞作废）；
+> ⛔ **例外（2026-09-20 用户指令，2026-10-08 回填）：§14.1 的「实现要求（冻结）」整体作废** —— 符卡-祸「禁止丢弃」已整套移除，
+> 现可自由丢弃与收纳；**§14.1 的「普通容器 = 已登记边界放行」口径仍然成立**（§14.5 Q4 不变）。详见 §1 的 `t38`。
 > **§14.5 = 待验证项（交 verifier 逐条实证，**不得只当命名问题**）**；**§14.6 = 仍属实现方处置的残余项**；
 > **§14.10 = 已裁决结案（`t36`：符卡-福保持主栏口径）**、**§14.11 = 定案（目标选择器仅主手生效）**、
 > **§14.12 = 定案（战斗爽保留粒子）** —— 三条均为**定案**，评审/verifier 按此执行、**不得再当缺陷上报**。
 
 ### 14.1 裁决① 符卡-祸「禁止丢弃」：采纳 (a) —— 拦主动丢弃 + 潜影盒/收纳袋，**普通容器作为已登记边界放行**
+
+> ⛔ **本小节的「实现要求（冻结）」已作废（2026-09-20 用户指令「整套清空」）**：下述两条覆写（`onDroppedByPlayer` /
+> `canFitInsideContainerItems`）与 tooltip 文案建议均**不再实现**，原文保留仅作历史；**「已登记边界（放行）」一条仍然成立**。
+> 现行口径 = 符卡-祸可以自由丢弃，也可以放进潜影盒、收纳袋等任意容器。总记录见 §1 的 `t38`。
 
 - **实现要求（冻结）**：
   1. `Item#onDroppedByPlayer(ItemStack, Player)` 返回 **`false`**（拦 Q 键 / 拖出到世界 / 背包丢弃）——
@@ -1054,6 +1078,9 @@ for (Player ally : EventTargetCollector.collectTeamPlayers(triggerer)) {
 | 全局治疗钩子（溢出治疗唯一挂点） | `net.neoforged.neoforge.event.entity.living.LivingHealEvent`（`LivingEntity.heal` 首行 `EventHooks.onLivingHeal`，`LivingEntity.java:1117-1123`） | `net.minecraftforge.event.entity.living.LivingHealEvent`（`LivingEntity.heal` 首行 `ForgeEventFactory.onLivingHeal`，同形同序） | 同 1.21.1 |
 | 阻止主动丢弃（裁决①） | `IItemExtension#onDroppedByPlayer`（`IItemExtension.java:89`） | `IForgeItem#onDroppedByPlayer`（`IForgeItem.java:74`） | 同 1.21.1 |
 | 容器内物品门槛（裁决①） | 原版 `Item#canFitInsideContainerItems()`（`Item.java:422`；NeoForge 起经 `IItemStackExtension` 消费，`Item.java:417-418` 注） | 原版 `Item#canFitInsideContainerItems()`（`Item.java:452`） | 待核对（该线另有 `assets/<ns>/items/<id>.json` 物品模型硬需求） |
+
+> ⛔ **上两行「阻止主动丢弃 / 容器内物品门槛（裁决①）」已作废（2026-09-20）**：两项实现均已整套移除（符卡-祸现可自由丢弃与收纳）⇒ 跨线能力对照时**不再需要**核对它们；历史原文保留仅作历史，见 §1 的 `t38`。
+
 | 效果注册 id 集 | `effect/ModEffects.java` 的 `EFFECTS.register(` 命中 **34** 处 | 与 1.21.1 逐条镜像 | **32** 处 ⇒ 迁移前必须先核对 id 集（§11 第 2 项） |
 | 数据生成 | 单段 `runData`；物品模型由 `basicItem(...)` 生成到 `src/generated/resources/assets/.../models/item/` | 同 1.21.1（`forge-1.20.1/.../datagen/`），另有 reobf / `pushToDevRun` 产物差异（见 `AGENTS.md`） | **两段式** `runClientData` + `runServerData` + 双输出根（§11 第 4 项） |
 | 目标选择器基础设施 | `target/` 包（5 类）+ 库 `starenginelib/target/`，**两发布线一致** | 同左（`forge-1.20.1/.../target/` 5 类） | 需核对立牌门控分支与选择器 API（§11 第 7 项） |

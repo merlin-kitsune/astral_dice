@@ -3035,12 +3035,19 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --new <注册id>
 | # | 事项 | 状态 | 入口 / 判据 |
 |---|---|---|---|
 | A2 | **移除符卡-祸「禁止丢弃」（含 1.20.1 镜像）** | **✅ 已完成（2026-09-20 用户指令：整套清空）** | 三通道 + 潜影盒/收纳袋限制 + 两个 lang 键 + 手册半句 + tooltip 行 + 注释全部删除；落点与判据见 §C |
-| A5 | 文档同步 | 未做 | 规格 §3.3/§14.1、`TESTING-SPEC.md` 探针/通道描述、两份 CHANGELOG（裁决 C 玩家侧条目 + 弃置移除条目） |
+| A5 | 文档同步 | **✅ 已完成（2026-10-08）** | ① 规格 `docs/features/fengshui-sign-spec.md` 的 §3.3 / §11 跨线能力对照表 / §12.1 入口符号表 / §14 头部 / §14.1 五处加「⛔ 已作废（2026-09-20 用户指令「整套清空」）」标注，§1 修订记录新增 `t38` 条；**历史原文一律保留不删** |
+| | | | ② `TESTING-SPEC.md` 探针/通道描述**早已同步**（`:1536` 整套移除说明 / `:1539` `VER-02`·`VER-04` 标失效 / `:1636` 规格过期警示 / `:1639` 断言已改为「丢弃成功」）⇒ 本批未再改 |
+| | | | ③ 两份 CHANGELOG 的「弃置移除条目」= **无需新增**：1.3.0 节符卡-祸条目（`CHANGELOG_ZH.md:1430` / `CHANGELOG.md:1786`）本批之前就是「该牌可以自由丢弃，也可以放进潜影盒、收纳袋等任意容器（**放进容器后**不再计入厄运与周期伤害）」，且「禁止丢弃」在全仓 CHANGELOG **零命中** ⇒ 玩家从未见过该限制，不构成玩家可见变更 |
+| | | | ④ 「裁决 C 玩家侧条目」= **不适用、不写**（详见下方 B 第 1 条）—— 其 Java 守卫随 2026-09-30「出牌即冷却」裁决整体消失，玩家可见行为已由 `CHANGELOG_ZH.md:665`（1.3.5 节「效果牌冷却重做」）覆盖。工程口径记录见 `scripts/test/TESTING-SPEC.md` 附录 A 续 63 |
 | A6 | 本批提交（**禁止 `git push`**，除用户明确要求） | **✅ 已完成（2026-09-20 用户指令「提交所有更改」）** | 本地 commit 已落地、未 push；⚠️ 本批仍**没有**游戏内证据（探针与用例已全删），重建用例后须按 §13.2 复跑 |
 
-### B. 用户待决（3 项，**不要自行拍板**）
+### B. 用户待决（原 3 项；第 1、2 项已闭环，**现剩第 3 项**）
 
-1. **裁决 C 的纳入清单是否含活体书页**：当前两线实现为 `fuCycle>0 || livingPageCycle>0 ⇒ return`。若只限符卡-福，改 `EffectCardPeriod.tick` 一行判据 + CHANGELOG 收窄。
+1. ~~**裁决 C 的纳入清单是否含活体书页**~~ **已不适用、自动关闭（2026-10-08 复核）** —— 原实现 = `EffectCardPeriod.tick` 的**情形 2「未打满的收尾冷却」**分支内的豁免
+   `if (ModAttachments.getFuCardCycleBonus(player) > 0 || ModAttachments.getLivingPageCycleBonus(player) > 0) return;`（真实符号就是这两个附件读取；引入提交 = `0f6c6fe3` 风水师批）。
+   该「情形 2」分支已随 **2026-09-30 用户裁决「效果牌冷却与效果时长分离 —— 出牌即冷却、每次出牌重置 45 秒」**（提交 `c0d67abc`）**整体删除** ⇒
+   现行 `EffectCardPeriod.tick`（1.21.1 `:501-522`）只余「冷却进行中 / 已到期清理 / 不变量违例修复」三支，**没有可豁免的「情形 2」**，故本项无判据可改。
+   若仍想要「弃打的一轮不自动收尾」，**属新裁决**（须先恢复收尾冷却这一概念），不再是 B 项。
 2. ~~**「禁止丢弃」的移除范围**~~ **已执行（2026-09-20 用户指令）：整套清空（含潜影盒/收纳袋限制）** —— `onDroppedByPlayer` 拒绝、`ItemTossEvent` 兜底退还 + `refundToContainerSlot`、`canFitInsideContainerItems`（1.21.1 ×2 / 1.20.1 ×1）全部删除。本项关闭。
 3. **H5 口径**（重建用例时适用）：若修复后伤害读数仍低于 5，断言基准改「伤害事件额」还是维持「HP 差值」。
 
@@ -3063,8 +3070,10 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --new <注册id>
 - 【2026-09-20 复核（S4）：未复现，登记过期】历史登记「`mt.ps1` 对 `MT_LAUNCH: ` 的大小写敏感判定会把 launch 被挡误落成 rc=2」——当前两树 `mt_launch.ps1` 终态输出均为大写，`mt.ps1:232` 的 marker 可正常匹配 ⇒ 本条不再成立；保留作「登记须复核」样例。
 - ~~`scripts/verify/verify_probe_case_args.ps1`（探针↔用例参数离线校验）~~ —— **2026-09-21 按用户裁决删除**（`git rm`）：输入对象已随测试资产清零、当前无输入可用，不在重建之列；需要时用 `git log --oneline -- scripts/verify/verify_probe_case_args.ps1` 定位删除前的版本取回。
 - 文档内 55 处未来日期（09-25×38 / 09-26×17）待裁决；本批口径已统一为 2026-09-19/20。
-- `neoforge-26.1.2` 侧本批未落地：该批功能与裁决 C 待按 `docs/compat-26.1.2-neoforge.md` 迁移。⚠️ **迁移时不得带上「禁止丢弃」（2026-09-20 已删除）**：即 26.1.2 侧的 `HuoCardItem` 只需 `tick` 镜像 + 周期伤害与选择器发牌路径，**不要**移植 `onDroppedByPlayer` / `onItemToss` / `canFitInsideContainerItems` / `msg.astral_dice.huo_card_no_drop` / `tooltip.astral_dice.huo_card_no_drop`（两线已删，26.1.2 从一开始就不该有）。
-- 用户已知边界（接受、仅记录）：裁决 C 下「弃打的一轮」不再自动收尾（+1 保留到被用掉 / 死亡 / `forceResetRound`）；停滞期间 `onRoundFullyReset` 不触发 ⇒ 忍者立牌主动冷却不起步。
+- `neoforge-26.1.2` 侧本批未落地：该批功能待按 `docs/compat-26.1.2-neoforge.md` 迁移（**裁决 C 已不适用、勿再移植其守卫**，见 §B 第 1 条）。⚠️ **迁移时不得带上「禁止丢弃」（2026-09-20 已删除）**：即 26.1.2 侧的 `HuoCardItem` 只需 `tick` 镜像 + 周期伤害与选择器发牌路径，**不要**移植 `onDroppedByPlayer` / `onItemToss` / `canFitInsideContainerItems` / `msg.astral_dice.huo_card_no_drop` / `tooltip.astral_dice.huo_card_no_drop`（两线已删，26.1.2 从一开始就不该有）。
+- ~~用户已知边界（接受、仅记录）：裁决 C 下「弃打的一轮」不再自动收尾（+1 保留到被用掉 / 死亡 / `forceResetRound`）；停滞期间 `onRoundFullyReset` 不触发 ⇒ 忍者立牌主动冷却不起步。~~
+  **⚠️ 2026-10-08 复核：本条已过期** —— 与 B 第 1 条同源，其守卫随 2026-09-30「出牌即冷却」裁决一并消失。**现行口径** = 出牌即启动/重置 45 秒冷却，
+  冷却到期后由 `EffectCardPeriod.tick` 清理出牌数与全部「每轮一次」加成 ⇒「弃打的一轮」在最后一次出牌后 45 秒自动收尾；`onRoundFullyReset` 亦在同一支正常触发（忍者主动冷却照常起步）。原文保留仅作历史。
 
 ## 待办交接：teru-sign 批（教主立牌 / 降神 · 狐光，2026-09-27）
 
