@@ -4,7 +4,7 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
-## Unreleased (2.0.0-SNAPSHOT.39)
+## Unreleased (2.0.0-SNAPSHOT.40)
 
 ### New Content
 
@@ -64,7 +64,7 @@
   damage** (including splash, area-of-effect and counter-attacks) are always **red**, while **spell damage and
   skill damage** are always **green** (sources that used to get their own colour, such as the Shock Gloves, now
   use green as well). Multiple hits on the same target within the same colour group in one tick are **merged
-  into a single total** instead of overwriting each other.
+  into a single total** instead of overwriting each other. Damage numbers are now **sent only to the player who caused that damage** (user decision 2026-10-08): the server no longer broadcasts them to every client tracking the victim, so other players cannot see the numbers you deal. The recipient is the player attributed by the damage source; when the source carries no player (for example a mob hitting a player) the number goes to the victim if that victim is a player.
 - **Suit Card - Misfortune now deals spell damage** (user decision 2026-10-04): damage to the target changed from
   "true damage" to `astral_dice:card_spell` (the same chain as Living Page) so it runs the full spell modifier chain
   (Ninja Star / Piercing Gun / Mark Spray / Magic Quiver, etc.). ⚠️ The "Misfortune" holding cost — its periodic

@@ -41,19 +41,17 @@ public record DamageNumberPayload(int entityId, int bonusDamage, int color,
     );
 
     /**
-     * 向目标追踪客户端(含目标本人)发送跳数字。
+     * 向造成这次伤害的玩家本人发送跳数字。
      * 全部跳数字发送统一走本方法,避免各调用点重复实现分发规则。
      *
      * <p>⚠️ 唯一调用方是 {@code combat/DamageNumberAggregator} —— 各伤害点不再各自发包,
      * 否则仍会在客户端互相覆盖(见该类的类头)。
      */
-    public static void send(LivingEntity target, int damage, int color, double x, double y, double z) {
+    public static void send(ServerPlayer recipient, LivingEntity target, int damage, int color, double x, double y, double z) {
+        if (recipient == null || target == null) return;
         if (target.level().isClientSide()) return;
         var packet = new DamageNumberPayload(target.getId(), damage, color, (float) x, (float) y, (float) z);
-        PacketDistributor.sendToPlayersTrackingEntity(target, packet);
-        if (target instanceof ServerPlayer serverTarget) {
-            PacketDistributor.sendToPlayer(serverTarget, packet);
-        }
+        PacketDistributor.sendToPlayer(recipient, packet);
     }
 
     @Override

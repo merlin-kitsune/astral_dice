@@ -205,18 +205,16 @@ public final class ModNetwork {
         }
 
         /**
-         * 向目标追踪客户端(含目标本人)发送跳数字。全部跳数字发送统一走本方法。
+         * 向造成这次伤害的玩家本人发送跳数字。全部跳数字发送统一走本方法。
          *
          * <p>⚠️ 唯一调用方是 {@code combat/DamageNumberAggregator} —— 各伤害点不再各自发包,
          * 否则仍会在客户端互相覆盖(见该类的类头)。
          */
-        public static void send(LivingEntity target, int damage, int color, double x, double y, double z) {
+        public static void send(ServerPlayer recipient, LivingEntity target, int damage, int color, double x, double y, double z) {
+            if (recipient == null || target == null) return;
             if (target.level().isClientSide()) return;
             var packet = new DamageNumberMessage(target.getId(), damage, color, (float) x, (float) y, (float) z);
-            sendToPlayersTrackingEntity(target, packet);
-            if (target instanceof net.minecraft.server.level.ServerPlayer serverTarget) {
-                sendToPlayer(serverTarget, packet);
-            }
+            sendToPlayer(recipient, packet);
         }
     }
 

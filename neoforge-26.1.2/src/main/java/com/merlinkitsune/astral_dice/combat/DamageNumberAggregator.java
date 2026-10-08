@@ -8,6 +8,7 @@ import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.damage.ModDamageTypes;
 import com.merlinkitsune.astral_dice.network.DamageNumberPayload;
 
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
@@ -88,8 +89,11 @@ public class DamageNumberAggregator {
 
     /** (entityId, DamageSource 实例身份) → 该次伤害应归入的组别。 */
     private static final Map<Long, Group> TAGS = new HashMap<>();
-    /** (entityId, 组别) → 本 tick 的累计值。 */
-    private static final Map<Long, Accumulator> PENDING = new HashMap<>();
+    /** (entityId, 组别, 收件人) → 本 tick 的累计值；同一目标同一组别按收件人分槽累计。 */
+    private static final Map<PendingKey, Accumulator> PENDING = new HashMap<>();
+
+    private record PendingKey(int entityId, int groupOrdinal, int recipientId) {
+    }
 
     private DamageNumberAggregator() {
     }
@@ -126,12 +130,15 @@ public class DamageNumberAggregator {
         Group group = classify(target, source);
         if (group == null) return;
 
-        Accumulator acc = PENDING.get(accumKey(target.getId(), group));
+        ServerPlayer recipient = resolveRecipient(target, source);
+        if (recipient == null) return;
+        PendingKey pkey = new PendingKey(target.getId(), group.ordinal(), recipient.getId());
+        Accumulator acc = PENDING.get(pkey);
         if (acc == null) {
             // 世界坐标在**首次累计时**冻结:客户端据此锚定,数字不再跟随目标跳动。
             Vec3 anchor = target.getEyePosition().add(0.0, -0.5, 0.0);
-            acc = new Accumulator(target, group, anchor.x, anchor.y, anchor.z);
-            PENDING.put(accumKey(target.getId(), group), acc);
+            acc = new Accumulator(target, recipient, group, anchor.x, anchor.y, anchor.z);
+            PENDING.put(pkey, acc);
         }
         acc.total += finalDamage;
     }
@@ -154,7 +161,25 @@ public class DamageNumberAggregator {
         return null;
     }
 
-    /** 每 server tick 末尾结算:每 (目标, 组别) 只发一条包,取整后为该类型的总值。 */
+    /**
+     * 收件人 = 造成伤害的玩家本人（2026-10-08 裁决：跳数字不再广播）。
+     * <p>顺序：causing - direct - 受击者本人（生物打玩家时至少当事人可见）。
+     */
+    private static ServerPlayer resolveRecipient(LivingEntity target, DamageSource source) {
+        Player p = playerOf(source);
+        if (p instanceof ServerPlayer sp) return sp;
+        if (target instanceof ServerPlayer victim) return victim;
+        return null;
+    }
+
+    /** 伤害源里的玩家：causing 优先，其次 direct（diceDamage 型只有 direct）。 */
+    private static Player playerOf(DamageSource source) {
+        if (source.getEntity() instanceof Player causing) return causing;
+        if (source.getDirectEntity() instanceof Player direct) return direct;
+        return null;
+    }
+
+    /** 每 server tick 末尾结算:每 (目标, 组别) 每个收件人各一条包,取整后为该类型的总值。 */
     private static void flush() {
         TAGS.clear();
         if (PENDING.isEmpty()) return;
@@ -163,7 +188,7 @@ public class DamageNumberAggregator {
         for (Accumulator acc : snapshot) {
             int total = Math.round(acc.total);
             if (total <= 0) continue;
-            DamageNumberPayload.send(acc.target, total, acc.group.color(), acc.x, acc.y, acc.z);
+            DamageNumberPayload.send(acc.recipient, acc.target, total, acc.group.color(), acc.x, acc.y, acc.z);
         }
     }
 
@@ -171,20 +196,18 @@ public class DamageNumberAggregator {
         return ((long) entityId << 32) | (System.identityHashCode(source) & 0xFFFFFFFFL);
     }
 
-    private static long accumKey(int entityId, Group group) {
-        return ((long) entityId << 32) | group.ordinal();
-    }
-
     private static final class Accumulator {
         final LivingEntity target;
+        final ServerPlayer recipient;
         final Group group;
         final double x;
         final double y;
         final double z;
         float total;
 
-        Accumulator(LivingEntity target, Group group, double x, double y, double z) {
+        Accumulator(LivingEntity target, ServerPlayer recipient, Group group, double x, double y, double z) {
             this.target = target;
+            this.recipient = recipient;
             this.group = group;
             this.x = x;
             this.y = y;
