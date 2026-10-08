@@ -5,7 +5,7 @@ Source : https://github.com/shuimo0413/Iron-Elden-Ring-Particle-library
 Author : shuimo0413
 License: MIT -- Copyright (c) 2026 shuimo0413
 
-Bundled content: 179 hand-drawn 32x32 particle sprites, taken verbatim from the upstream `particle/` directory.
+Bundled content: 179 hand-drawn 32x32 particle sprites, taken verbatim from the upstream repository root.
 They ship in this repository under, for each of the four platform lines
 (neoforge-1.21.1, forge-1.20.1, fabric-1.20.1, neoforge-26.1.2):
 

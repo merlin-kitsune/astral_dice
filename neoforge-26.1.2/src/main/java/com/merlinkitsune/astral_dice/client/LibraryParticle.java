@@ -37,6 +37,7 @@ public final class LibraryParticle extends SingleQuadParticle {
         this.setSize(options.scale() * 0.25F, options.scale() * 0.25F);
         this.lifetime = 12 + this.random.nextInt(9);
         this.gravity = 0.0F;
+        this.friction = 0.96F;
     }
 
     @Override
