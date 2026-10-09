@@ -1,0 +1,512 @@
+{
+  "case_id": "SHOP-VIS2-1.21.1",
+  "title": "卡牌商店第二轮取证(村民认领/原版对照/交易索引/骰子过滤)",
+  "version": "1.21.1",
+  "target": {
+    "type": "feature",
+    "ref": "card-shop"
+  },
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "第二轮取证:村民自动认领距离 / 原版对照 / 交易菜单索引 / 骰子过滤"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/tp @s 7.5 -60 3.5",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralvis shop S0 place",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 2500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralvis shop S0 poi",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralvis vil V1 spawn",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 14000
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralvis vil V2 read",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop curioreset CR0V",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralvis api2 A0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralvis shop S0 break",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 20000
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralvis vil V3 read",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 12000
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralvis vil V3B read",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/summon minecraft:villager ~-8 -60 ~ {Tags:[\"vvctl\"]}",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/setblock ~-9 -60 ~ minecraft:lectern",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 14000
+    },
+    {
+      "op": "inject_command",
+      "command": "/execute if entity @e[tag=vvctl,nbt={VillagerData:{profession:\"minecraft:librarian\"}}] run say VCTL_PRE_LIB",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/execute if entity @e[tag=vvctl,nbt={VillagerData:{profession:\"minecraft:none\"}}] run say VCTL_PRE_NONE",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1000
+    },
+    {
+      "op": "inject_command",
+      "command": "/setblock ~-9 -60 ~ minecraft:air",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 20000
+    },
+    {
+      "op": "inject_command",
+      "command": "/execute if entity @e[tag=vvctl,nbt={VillagerData:{profession:\"minecraft:none\"}}] run say VCTL_POST_NONE",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/execute if entity @e[tag=vvctl,nbt={VillagerData:{profession:\"minecraft:librarian\"}}] run say VCTL_POST_LIB",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralvis vil V4 prof 3",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/give @s minecraft:emerald 64",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/give @s minecraft:emerald 64",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralvis dice2 D0 off",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralvis edf E0",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralvis trade T0 prove",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 3000
+    },
+    {
+      "op": "inject_command",
+      "command": "/give @s astral_dice:star_coin 64",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralvis dice2 D1 on",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralvis edf E1",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralvis trade T2 prove",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 3000
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralvis dice2 D2 off",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralvis edf E2",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralvis trade T3 prove",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 2000
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralvis close C1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[type=!player,distance=..64]",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1000
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_V1_VSPAWN:.*:clearAi=ok:noai=0:pos=8,-60,3"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_S0_PLACE:set=1:place=astral_dice:card_shop:pos=9,-60,3"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_S0_POI:existsAt=1:forState=astral_dice:card_shop:held=1:acquirable=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_S0_BREAK:broke=1:air=(minecraft:air|empty)"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_A0_API1:.*vil_getOffers=[0-9]+"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_A0_API3:.*ed_hasDice=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_V3_VREAD:.*alive=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_V4_VPROF:.*api=astral_dice:card_trader"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_T2_TRADECLOSE:how="
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_C1_CLOSE:how="
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_V2_VREAD:api=astral_dice:card_trader:apiLevel=1:.*:noai=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_A0_API1:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_A0_API3:.*ed_filteredFor=.*"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "VCTL_PRE_LIB"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "VCTL_PRE_NONE"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "VCTL_POST_NONE"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "VCTL_POST_LIB"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_V3_VREAD:api=minecraft:none"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_D0_DICE2:want=0:.*:on=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_E0_EDF:diceOn=0:raw=2:filtered=null"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_T0_TRADEOPEN:.*:menu=MerchantMenu"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_T0_TRADEOFFERS:size=2:exch=1:diceOn=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_T0_TRADEIDX:i=0:set=ok:.*aMatch=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_T0_TRADEIDX:i=1:set=ok:.*aMatch=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_T0_TRADEIDX:i=0:set=ok:.*rMatch=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_T0_TRADEIDX:i=1:set=ok:.*rMatch=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_T0_TRADETAKE:i=1:.*same=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_T0_TRADEAFTER:size=2:exch=1:diceOn=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_T0_TRADECLOSE:how="
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_D1_DICE2:want=1:.*:on=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_E1_EDF:diceOn=1:raw=2:filtered=1:filteredExch=0:sameInstance=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_T2_TRADEOPEN:.*:menu=MerchantMenu"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_T2_TRADEOFFERS:size=1:exch=0:diceOn=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_T2_TRADEIDX:i=0:set=ok:wantA=minecraft:emerald:slot0=astral_dice:star_coin:aMatch=0:.*:rMatch=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_T2_TRADEIDX:i=0:set=ok:.*rMatch=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_T2_TRADETAKE:i=0:.*same=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_T2_TRADEAFTER:size=1:exch=0:diceOn=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_D2_DICE2:want=0:.*:on=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_E2_EDF:diceOn=0:raw=2:filtered=null"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=jei:cat=ok:uid=astral_dice:card_shop:recipes=22:excluded=none:"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_(V1|V2|V3|A0|D0|D1|D2|T0|T2|E0|E1|E2|C1)_EX:"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": ":note="
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "(Unknown or incomplete command|Incorrect argument for command|错误的命令参数|未知或不完整|<--\\[此处\\])"
+    },
+    {
+      "type": "absent",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:.*ret=EX:"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "ERROR\\] \\[astral_dice/card_trade"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "ERROR\\] \\[astral_dice/card_trader"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "mixin"
+    },
+    {
+      "type": "crash"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_V3_VREAD:.*noai=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_V4_VOFFERS:level=3:[0-9]+:minecraft:emeraldx1->astral_dice:star_coinx1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_T3_TRADEOFFERS:size=2:exch=1:diceOn=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_T3_TRADEIDX:i=0:.*aMatch=1"
+    }
+  ],
+  "evidence": []
+}

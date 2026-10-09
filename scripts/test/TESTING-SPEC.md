@@ -4205,3 +4205,19 @@ mt.ps1 --version 线 --phase stop 关闭测试实例（gradle 守护进程保留
 4. **修法**：描述符改为 `Lnet/minecraft/world/item/trading/Merchant;getOffers()Lnet/minecraft/world/item/trading/MerchantOffers;`（一行）；同批订正 forge 侧注释与 `docs/compat-1.20.1-forge.md` 的错误说法，并**逐条 javap 复核本批全部 mixin 目标**（`Merchant#getOffers` ✓ / `MerchantMenu#getOffers` **确实存在**（`net.minecraft.world.inventory.MerchantMenu`）✓ / `MerchantOffer#getBaseCostA|getCostA|getCostB|satisfiedBy` ✓ / `ServerPlayer#sendMerchantOffers(int,MerchantOffers,int,int,boolean,boolean)` ✓ / `Slot|MerchantResultSlot#onTake(Player,ItemStack)` ✓）。
 5. **判据**：修复后**实机打开村民交易界面**不再崩（后续实机冒烟用例覆盖：打开菜单、逐级报价、戴/摘绿宝石骰子的条目与索引一致性）。
 6. **流程改进（本轮起）**：凡**新增/改动 mixin 的 `@At`/`@Inject` 目标或描述符**，收尾必须做一次 javap 目标核对，并让实机用例**至少触达该 mixin 目标类被加载的交互路径**（本例 = 打开交易界面）。
+
+## 附录 A 续 73. 卡牌商店全家桶 P0 两线实机冒烟（1.21.1 轮，2026-10-09）
+
+**结论（10 场景，实机，产物 `.58`）**：① 类加载/无异常 PASS ② 工作方块放置+右键开界面+破坏⇒失业 PASS ③ 商店 GUI（含购买结算 9 步）PASS ④ 转账 GUI（真实第二玩家 Bot1：选目标/金额/成交/会话锁/冷却顺延）PASS ⑤ 村民职业与 L1–L5 报价 PASS ⑥ 绿宝石骰子隐藏兑换条目 + **点击索引不错位** PASS ⑦ 严格排除（6 专属 + 巅峰）PASS ⑧ 无卡牌配方 + 购买即获得（治愈/狐光）PASS ⑨ JEI（类别 id、22 条、excluded=none）PASS ⑩ 手册 = 静态证据齐、游戏内目视**未覆盖**（如实登记）。
+
+**关键机器行（原样）**：`AP_S1_PLACE:set=1:place=astral_dice:card_shop:pos=9,-60,3` → `AP_S2_POI:existsAt=1:held=1:acquirable=1` → `AP_V2_VREAD:api=astral_dice:card_trader` → `AP_S3_BREAK:broke=1` → `AP_V3/V4_VREAD:api=minecraft:none`（约 10s 内）；原版对照（讲台/图书管理员）`AP_P4_CTLREAD:api=minecraft:librarian` → `AP_P5_CTLBREAK:before=librarian:after=none`；`AP_BS0_BUYSUM:steps=9:pass=9`；`AP_TX0_TX:target=Bot1:amount=10:bal=200->190:tbal=180->190:used=1:applied=1` + `AP_TX0_TX2:applied=0`（会话锁）；`AP_C0_CLOSE:cdBefore=124589:cdAfter=124763:delta=174` + `AP_RP0_REOPEN:cdLeftSec=57`（冷却按离店顺延）；`AP_RC0_RECIPES:total=1401:hits=0:cardResultRecipes=0`；`AP_OB1/OB2_OBTAIN:heal 0->1->2:teru 0->1`；`AP_CSC:evt=jei:cat=ok:uid=astral_dice:card_shop:recipes=22:excluded=none`；`AP_PO0_POOL:n=22:excludedInPool=none` + 6 条 `AP_PO0_EXCL:sellable=0` + `AP_RO0_ROLL:rolls=200:distinct=22:excludedSeen=none`；`AP_VT1_VTMENU:cls=MerchantMenu:filtered=1:filteredExch=0:rawMinusFiltered=1`（佩戴骰子后兑换条目消失、其余保留）+ `AP_VT1_VTIDX`（点选与结算同一条）。
+
+**本轮定位到的 P0（已修，见续 72）**：1.21.1 交易 mixin 描述符包名写错 ⇒ 开任何村民交易界面崩服；修复后 `.58` 上交易菜单内用例（⑤⑥）全部通过 ⇒ **该 P0 已实机复验**。
+
+**测试台经验（本轮新增，值得固化）**：
+1. **`astral_test_noai.js` 会把所有新生成 Mob 置 `NoAi=true`** ⇒ `/summon` 的村民不认领工作站点；凡需 AI 行为的探针必须在 `addFreshEntity` 之后**显式 `setNoAi(false)`**。
+2. **命令里带物品 id 的参数必须加双引号**（如 `/astralshop equip EQ1 chip "astral_dice:vitamin_pill_chip"`），否则 Brigadier 解析拒绝。
+3. **`mt_assert --window launch` 的起点 = launch 收尾时的字节数** ⇒ launch 窗口内看不到更早的 fail-loud 行；这类断言要 `scope=whole`（`--no-snapshot`）。
+4. **世界存档跨轮保留会污染工作方块类判据**：残留工作方块被村民「就近改认领」⇒ 表现为「破坏后不失业」。凡「工作方块/职业」类用例必须**先清场**（只留被测的那一个工作站点）或冷启动新存档；本轮以专项用例 `SHOP-POI`（v18/v19 两次独立冷启动一致 + 原版图书管理员对照）为准。
+
+**未覆盖/需人工**：真实人手拖拽手势（用例走客户端真实事件链 + 服务端 `handleBuy` 结算）、JEI 页面外观与手册翻页的游戏内目视。
