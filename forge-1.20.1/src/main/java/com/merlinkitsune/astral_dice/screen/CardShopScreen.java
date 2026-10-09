@@ -37,11 +37,14 @@ import java.util.UUID;
  *   <li>标题带 {@code shop_title.png}(274x19) @ (7,3)，品红区内居中显示「卡牌商店」；
  *       大酬宾窗口内改播 {@code shop_title_light_1..3.png}（8 tick/帧循环）；</li>
  *   <li>6 个卡框 {@code shop_card(.select/.soldout).png}(44x61) @ (7+46i, 28)；卡面 38x38 @ 框内 (+3,+3)；
- *       卡名在名称框（实测内区 40×17）内居中且**按需缩放字号保证完整显示**（禁止截断）；折扣角标 17x14 贴卡面右下角；</li>
+ *       卡名在名称框内区（实测填充区 x∈[2,41] / y∈[43,58]，取左右各内缩 1px 的 **38px** 可绘制区）内居中显示；
+ *       超宽改为**左右滚动（marquee）、不缩放不截断**（2026-10-09 用户裁决）；折扣角标 17x14 贴卡面右下角；</li>
  *   <li>左按钮 (11,109) = 星光兑换星币；中按钮 (48,109) = 进入二级转账界面（星币 &lt; 5 或冷却中 ⇒ 灰化）；
  *       沙漏 (86,109) = 转账冷却倒计时；</li>
- *   <li>余额条 {@code shop_coin_bar.png}(96x24) @ (11,145) + {@code shop_coin_icon.png}(12x12) @ (17,151)；
- *       数字锚点/颜色/阴影与玩家物品栏余额栏（{@code StarCoinWalletButtons#drawBalance}）一致；</li>
+ *   <li>余额钱包 {@code shop_wallet.png}(96x24) @ (11,145)（**条内填充透明** ⇒ 与主背景花纹逐像素重叠；
+ *       素材**自带左格星币图标** ink x∈[5,18]/y∈[5,18]，故不再单独画 {@code shop_coin_icon.png}）；
+ *       数字锚点/颜色/阴影与玩家物品栏余额栏（{@code StarCoinWalletButtons#drawBalance}）
+ *       **同口径（条坐标 +90 / +9）**；</li>
  *   <li>物品栏底图 {@code shop_item_inventory.png}(166x80) @ (114,99)，槽位坐标与
  *       {@link CardShopMenu#INVENTORY_X}/{@link CardShopMenu#INVENTORY_Y}/{@link CardShopMenu#INVENTORY_HOTBAR_Y} 同口径。</li>
  * </ul>
@@ -90,13 +93,22 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
     private static final int FACE_X_OFF = 3;
     private static final int FACE_Y_OFF = 3;
     /**
-     * 名称框内区宽 **40**：实测 {@code shop_card.png} 名称框内区 x∈[2,41]（列 1/42 是边框）
-     * ⇒ 允许的最大文本宽度；超出即**缩放字号**（禁止截断，2026-10-08 用户裁决）。
+     * 名称框可绘制区（相对卡框）：实测 {@code shop_card.png} 名称框填充区 x∈[2,41]（列 1/42 是边框内缘暗线），
+     * 左右各内缩 1px ⇒ x∈[3,40] = **38px**（与设计稿「名称框 38x15 @ (3,44)-(40,58)」一致）：
+     * 文本宽 ≤ 38 ⇒ 居中；&gt; 38 ⇒ 左右滚动（**禁止缩放/截断**，2026-10-09 用户裁决）。
      */
-    private static final int NAME_BOX_W = 40;
-    /** 名称水平锚点 = 名称框内区中心：内区 x∈[2,41] ⇒ 中心 21.5，取 22 传入可得到 21.5 的真实居中 */
+    private static final int NAME_BOX_X0 = 3;
+    private static final int NAME_BOX_W = 38;
+    /** 名称框纵向裁剪区（scissor 用）：实测填充行 y∈[43,58] ⇒ 高 16 */
+    private static final int NAME_BOX_Y0 = 43;
+    private static final int NAME_BOX_H = 16;
+    /** 名称水平锚点 = 名称框内区中心：内区中心 21.5，取 22 传入可得到 21.5 的真实居中 */
     private static final int NAME_CENTER_X_OFF = 22;
-    /** 名称绘制顶边：名称框内区 y∈[42,58]（17 行）⇒ 垂直中心 50，MC 行高 9 ⇒ 顶边 50-4 = 46 */
+    /**
+     * 名称绘制顶边：名称框填充行 y∈[43,58]（垂直中心 50.5）；MC 文本墨迹行 = {@code y..y+6}
+     * （{@code SheetGlyphInfo#getTop/getBottom}，ascent=7 / height=8）⇒ 46 时墨迹中心 49，
+     * 比内区中心高 1.5px —— 与①无关，本轮**不动**（记入交付报告「未做到/待确认」）。
+     */
     private static final int NAME_Y_OFF = 46;
     private static final int PROMO_W = 17;
     private static final int PROMO_H = 14;
@@ -115,15 +127,31 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
     private static final int BALANCE_Y = 145;
     private static final int BALANCE_W = 96;
     private static final int BALANCE_H = 24;
-    private static final int BALANCE_ICON_X = 17;
-    private static final int BALANCE_ICON_Y = 151;
-    private static final int BALANCE_ICON_SIZE = 12;
     /**
-     * 余额数字锚点：与玩家物品栏余额栏**同口径**（{@code StarCoinWalletButtons} 的
-     * {@code BALANCE_TEXT_RIGHT = 88} / {@code BALANCE_TEXT_DY = 7}）—— 右对齐 + 白字无阴影。
+     * 余额数字锚点（**条坐标**）：钱包栏 {@code StarCoinWalletButtons#drawBalance} 的文字锚点是「按钮坐标」
+     * {@code BALANCE_TEXT_RIGHT = 88} / {@code BALANCE_TEXT_DY = 7}，而钱包条画在
+     * {@code getX()-BAR_INSET(2), getY()-BAR_INSET(2)} ⇒ 换算到**条坐标** = 右对齐 {@code 88+2=90}、
+     * 顶边 {@code 7+2=9}。2026-10-09 修正：旧值 88/7 把「按钮坐标」直接套进条坐标 ⇒ 数字比钱包口径
+     * 左 2px、上 2px（用户实报「星币余额数字与星币图标没有水平对齐」）。
+     * <p>2026-10-09 二轮：底图换 {@code shop_wallet.png} 后**重新实测**（掩膜模板匹配 + 逐像素 alpha），
+     * 结论＝**两个锚点均保持不变**：
+     * <ul>
+     *   <li>新素材(96x24)可写区（alpha==0）：左格 x∈[3,20]/y∈[3,20]、数字格 x∈[24,92]/y∈[3,20]；
+     *       左格**自带**星币图标，ink x∈[5,18]/y∈[5,18]（14x14，上/下/左/右各留 2px），
+     *       **ink 垂直中心 11.5**（＝条高 24 的中心）⇒ 不再单独绘制 {@code shop_coin_icon.png}；</li>
+     *   <li>水平：锚点 90（条内坐标）⇒ 数字串 advance 右端 90；每枚数字实测 ink 宽 5 / advance 6
+     *       （末位数字 ink 右端 = 90-2 = 88）⇒ 距数字格可写区右界 92 尚余 4px、距内阴影环(93) 5px，
+     *       完全落在可写区内，
+     *       且仍是钱包栏的原生口径（钱包栏同样 +90）；</li>
+     *   <li>垂直：MC 默认字体 '0'..'9' 的字格 ink 行 = 0..6 ⇒ 屏幕墨迹行 = 绘制 y..y+6（7 行，**中心 y+3**）；
+     *       取 {@code BALANCE_TEXT_DY=9} ⇒ 墨迹行 9..15（**中心 12**），与自带图标 ink 中心 11.5 差 0.5px
+     *       —— 8px 字格下的最小粒度。**不取 8 的理由**：钱包栏自身的「文字中心 12 vs 图标中心 11.5」就是
+     *       这 +0.5px，取 9 才与钱包栏**关系完全一致**（取 8 同样差 0.5px，却与钱包栏差 1px）。
+     *       墨迹中心严格相等需 y=8.5，整数锚点在数学上不可达。</li>
+     * </ul>
      */
-    private static final int BALANCE_TEXT_RIGHT = 88;
-    private static final int BALANCE_TEXT_DY = 7;
+    private static final int BALANCE_TEXT_RIGHT = 90;
+    private static final int BALANCE_TEXT_DY = 9;
 
     private static final int GRID_X = 114;
     private static final int GRID_Y = 99;
@@ -258,8 +286,12 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
     private TransferScrollBar transferScrollBar;
     /** 正在由代码回写金额框文本（避免 responder 递归） */
     private boolean syncingAmountBox = false;
-    /** 玩家名 marquee 的共享相位（containerTick 里 +1；所有行共用同一相位，避免各行各自计时） */
-    private int transferNameMarqueeTick = 0;
+    /**
+     * 名称 marquee 的**共享相位**（卡名与转账面板玩家名共用）：{@code containerTick} 里无条件 +1，
+     * 切换视图（{@link #openTransferView()}/{@link #closeTransferView()}）时归零 ⇒ 同一界面内的所有
+     * 滚动共用同一时钟，且每次进入视图都从「停顿」相位起步。
+     */
+    private int nameMarqueeTick = 0;
     /** 确认转账按钮按下反馈剩余 tick（画 shop_transfer_export_push.png） */
     private int transferConfirmPressTicks = 0;
     /** 四档金额按钮按下反馈剩余 tick 与其下标（-1 = 无；画 shop_transfer_button_limit_{i+1}_1.png） */
@@ -330,10 +362,10 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
         if (transferLimitPressTicks > 0) {
             transferLimitPressTicks--;
         }
+        // 名称 marquee 共享相位：主视图（卡名）与二级视图（玩家名）都靠它推进（见 nameMarqueeTick）
+        nameMarqueeTick++;
         if (transferView) {
-            // 二级视图存活期间：推进玩家名 marquee 共享相位；服务端把「本店会话已用过转账」置位后
-            // （DataSlot[8] 同步）自动退回商店主界面（增补二 §4）
-            transferNameMarqueeTick++;
+            // 服务端把「本店会话已用过转账」置位后（DataSlot[8] 同步）自动退回商店主界面（增补二 §4）
             if (this.menu.isTransferUsedThisSession()) {
                 closeTransferView();
             }
@@ -391,15 +423,12 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
         for (int i = 0; i < CardShopMenu.SHELF_SIZE; i++) {
             int x = this.leftPos + FRAME_X0 + FRAME_PITCH * i;
             int y = this.topPos + FRAME_Y;
-            // 已售出 / 正被拖动（卡已离开货架）⇒ 售罄底图，且不叠卡面与名称（UI-DESIGN 3.4）
-            if (this.menu.isSold(i) || i == dragIndex) {
-                blitAbs(guiGraphics, tex("shop_card_soldout.png"), x, y, FRAME_W, FRAME_H);
-                continue;
-            }
             ItemStack stack = this.menu.getSlot(i).getItem();
-            if (stack.isEmpty()) {
-                // 空槽：卡框恒为 6 个，不随上架数量增减（UI-DESIGN 5.1）
-                blitAbs(guiGraphics, tex("shop_card.png"), x, y, FRAME_W, FRAME_H);
+            // **槽内无卡一律用售罄底图**（2026-10-09 用户裁决）：已售出、正被拖动（卡已离开货架）、
+            // 以及本次开店本就空着的槽，底框全部画 shop_card_soldout.png，且不叠卡面与名称；
+            // 有卡才画 shop_card.png（悬停/拖起为 shop_card_select.png）。卡框恒为 6 个，不随上架数量增减。
+            if (this.menu.isSold(i) || i == dragIndex || stack.isEmpty()) {
+                blitAbs(guiGraphics, tex("shop_card_soldout.png"), x, y, FRAME_W, FRAME_H);
                 continue;
             }
             boolean hovered = isHoveringAbs(mouseX, mouseY, x, y, FRAME_W, FRAME_H);
@@ -461,27 +490,32 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
 
 
     /**
-     * 卡名绘制（2026-10-08 用户裁决：**禁止截断**，改为全局缩小字号）：
+     * 卡名绘制（2026-10-09 用户裁决：**禁止缩放字号**，宽度超过名称框即改为**左右滚动**）：
      * <ul>
-       <li>宽度超过 {@link #NAME_BOX_W} ⇒ 按 {@code scale = NAME_BOX_W / 文本宽} 缩放 pose 后绘制，保证完整显示；</li>
-       <li>水平居中于名称框内区中心（{@link #NAME_CENTER_X_OFF}），垂直锚点 {@link #NAME_Y_OFF}；</li>
-       <li>文本样式对齐玩家物品栏余额栏（白字、**无阴影**，见 {@code StarCoinWalletButtons#drawBalance}）。</li>
+       <li>文本宽 ≤ {@link #NAME_BOX_W}(38) ⇒ 水平居中于名称框内区中心（{@link #NAME_CENTER_X_OFF}），不滚动；</li>
+       <li>文本宽 &gt; 38 ⇒ 左对齐到内区左界（{@link #NAME_BOX_X0}），再按 {@link #marqueeOffset(int)} 逐像素
+     *       左移（相位与转账面板玩家名**共用** {@link #nameMarqueeTick}）⇒ 完整可见且**不缩字号**；</li>
+       <li>滚动时用 scissor 裁到名称框内区 [X0, X0+W) × [Y0, Y0+H) ⇒ 文字**不会溢出到卡框边框外**；</li>
+       <li>垂直锚点 {@link #NAME_Y_OFF}；文本样式对齐玩家物品栏余额栏（白字、**无阴影**）。</li>
      * </ul>
+     * <p>scissor 用屏幕绝对坐标，而 {@code frameX}/{@code frameY} 传入时已是绝对坐标（货架与拖拽幽灵都如此）。
      */
     private void drawCardName(GuiGraphics guiGraphics, ItemStack stack, int frameX, int frameY) {
         String name = cardDisplayName(stack);
         int textWidth = this.font.width(name);
-        float scale = textWidth <= NAME_BOX_W ? 1.0F : (float) NAME_BOX_W / (float) textWidth;
-        guiGraphics.pose().pushPose();
-        guiGraphics.pose().translate(frameX + NAME_CENTER_X_OFF, frameY + NAME_Y_OFF, 0.0F);
-        guiGraphics.pose().scale(scale, scale, 1.0F);
-        guiGraphics.drawString(this.font, name, -textWidth / 2, 0, COLOR_WHITE, false);
-        guiGraphics.pose().popPose();
+        int overflow = textWidth - NAME_BOX_W;
+        guiGraphics.enableScissor(frameX + NAME_BOX_X0, frameY + NAME_BOX_Y0,
+                frameX + NAME_BOX_X0 + NAME_BOX_W, frameY + NAME_BOX_Y0 + NAME_BOX_H);
+        int drawX = overflow > 0
+                ? frameX + NAME_BOX_X0 - marqueeOffset(overflow)   // 超宽：左对齐 + 共享相位滚动
+                : frameX + NAME_CENTER_X_OFF - textWidth / 2;      // 不超宽：居中（保持原样）
+        guiGraphics.drawString(this.font, name, drawX, frameY + NAME_Y_OFF, COLOR_WHITE, false);
+        guiGraphics.disableScissor();
     }
 
     /**
      * 卡名文案：优先取可选的商店专用短名 {@code item.<命名空间>.<注册名>.short}（有键才用，当前 lang 未提供）；
-     * **否则直接返回完整名**（禁止截断 —— 2026-10-08 用户裁决；宽度问题由 {@link #drawCardName} 缩放解决）。
+     * **否则直接返回完整名**（禁止截断/缩放 —— 2026-10-09 用户裁决；超宽由 {@link #drawCardName} 左右滚动解决）。
      */
     private String cardDisplayName(ItemStack stack) {
         ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
@@ -498,11 +532,11 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
 
 
     private void renderBalance(GuiGraphics guiGraphics) {
-        blit(guiGraphics, tex("shop_coin_bar.png"), BALANCE_X, BALANCE_Y, BALANCE_W, BALANCE_H);
-        blit(guiGraphics, tex("shop_coin_icon.png"), BALANCE_ICON_X, BALANCE_ICON_Y,
-                BALANCE_ICON_SIZE, BALANCE_ICON_SIZE);
+        // 余额钱包底图（96x24）：2026-10-09 换新素材 shop_wallet.png —— 条内填充透明（与主背景花纹逐像素
+        // 重叠，与旧 shop_coin_bar.png 同口径），且**左格自带星币图标**，故不再单独 blit shop_coin_icon.png
+        blit(guiGraphics, tex("shop_wallet.png"), BALANCE_X, BALANCE_Y, BALANCE_W, BALANCE_H);
         String text = String.valueOf(StarCoinWalletState.balance());
-        // 与玩家物品栏余额栏同口径：右对齐锚点 +88、top +7、白字、无阴影（StarCoinWalletButtons#drawBalance）
+        // 与玩家物品栏余额栏同口径（换算到条坐标）：右对齐锚点 +90、top +9、白字、无阴影（StarCoinWalletButtons#drawBalance）
         guiGraphics.drawString(this.font, text,
                 this.leftPos + BALANCE_X + BALANCE_TEXT_RIGHT - this.font.width(text),
                 this.topPos + BALANCE_Y + BALANCE_TEXT_DY, COLOR_WHITE, false);
@@ -649,7 +683,7 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
      * 名单单行（设计文档「行内布局」）：
      * 皮肤头像 16x16 @ (+6,+1)（脸 (8,8,8,8) + 帽子层 (40,8,8,8) 合成 — 即原版
      * {@link PlayerFaceRenderer#draw}）· 玩家名白色 @ (+24,+0)（宽 42px：**禁止缩小字号**，超宽时左右滚动
-     * marquee，见 {@link #transferNameOffset(int)}）· 星币标 7x7 @ (+24,+9)（{@code star_coin_small.png} 的
+     * marquee，见 {@link #marqueeOffset(int)}）· 星币标 7x7 @ (+24,+9)（{@code star_coin_small.png} 的
      * (3,3) 子区，与余额文本顶边对齐）· 余额金色 @ (+33,+9)（千分位）。
      * 悬停行画半透明灰底 (2,+0)-(78,+18)；选中行画 {@code shop_transfer_select.png}(13x12) @ (+66,+1)
      * ——箭头指向**玩家名那一行**（增补二 §1）。
@@ -670,7 +704,7 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
         // 裁到名称列（面板内 x 24..66）⇒ 文字不会溢出到箭头/金额列，命中区与点击不受影响
         Component name = Component.literal(entry.name());
         int nameWidth = this.font.width(name);
-        int nameOffset = transferNameOffset(Math.max(0, nameWidth - TP_NAME_MAX_W));
+        int nameOffset = marqueeOffset(Math.max(0, nameWidth - TP_NAME_MAX_W));
         guiGraphics.enableScissor(this.leftPos + TP_X + TP_NAME_X, this.topPos + rowY,
                 this.leftPos + TP_X + TP_NAME_X + TP_NAME_MAX_W, this.topPos + rowY + TP_ROW_H);
         guiGraphics.drawString(this.font, name, this.leftPos + TP_X + TP_NAME_X - nameOffset,
@@ -1099,7 +1133,7 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
         // 增补二 §3：进入视图时**不预选任何行**（transferSelectedOriginal = -1 ⇒ 无箭头、确认不可用）
         this.transferSelectedOriginal = -1;
         this.transferScroll = 0;
-        this.transferNameMarqueeTick = 0;
+        this.nameMarqueeTick = 0;
         this.setFocused(null);
         if (this.transferAmountBox != null) {
             this.transferAmountBox.setFocused(false);
@@ -1117,6 +1151,8 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
     /** 返回商店主界面：只切视图（面板内不留任何服务端副作用） */
     private void closeTransferView() {
         this.transferView = false;
+        // 回主视图：marquee 相位归零 ⇒ 卡名从「停顿」相位起步（与进入二级视图同口径）
+        this.nameMarqueeTick = 0;
         blurTransferWidgets();
         updateTransferWidgets();
     }
@@ -1176,18 +1212,19 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
     }
 
     /**
-     * 玩家名 marquee 的横向滚动偏移（增补 §1）：名称列 42px，超宽部分 overflow = 文本宽 - 42。
+     * 名称 marquee 的横向滚动偏移（**卡名与转账面板玩家名共用**）：可绘制宽 W，超宽部分
+     * overflow = 文本宽 - W（卡名 W = {@link #NAME_BOX_W}，玩家名 W = {@link #TP_NAME_MAX_W}）。
      * 轨迹 = 停 {@link #TP_NAME_HOLD_TICKS} tick → 每 {@link #TP_NAME_STEP_TICKS} tick 移 1px 到尾
-     * → 再停同样 tick → 反向移回 → 循环；相位取 {@link #transferNameMarqueeTick}（**所有行共享**，
-     * 各行按自身 overflow 映射，故同时起步、不会各自错乱）。
+     * → 再停同样 tick → 反向移回 → 循环；相位取 {@link #nameMarqueeTick}（**同一界面内所有滚动共享**，
+     * 各自按自身 overflow 映射，故同时起步、不会各自错乱）。
      */
-    private int transferNameOffset(int overflow) {
+    private int marqueeOffset(int overflow) {
         if (overflow <= 0) {
             return 0;
         }
         int travel = overflow * TP_NAME_STEP_TICKS;
         int cycle = 2 * (TP_NAME_HOLD_TICKS + travel);
-        int t = this.transferNameMarqueeTick % cycle;
+        int t = this.nameMarqueeTick % cycle;
         if (t < TP_NAME_HOLD_TICKS) {
             return 0;
         }

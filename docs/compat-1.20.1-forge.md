@@ -191,3 +191,8 @@ datagen:`RecipeOutput` → `Consumer<FinishedRecipe>`(`.save(output::accept)`);`
 8. **无 `MerchantOffer` 复制构造（1.20.1）** ⇒ 村民交易报价用 5 参栈式构造 `new MerchantOffer(ItemStack costA, ItemStack result, int maxUses, int xp, float priceMultiplier)`；`getBaseCostA()` 返回 `ItemStack`（1.21.1 是 `ItemCost`）。
 9. **标签目录**：1.20.1 物品标签是复数 `data/astral_dice/tags/items/`（1.21.1 `tags/item/`）；**POI 标签两线同为** `data/minecraft/tags/point_of_interest_type/`（已双线取证）。
 10. **JEI**：1.20.1 = `jei-1.20.1-forge-15.56.0.205`（`modImplementation`），1.21.1 = `jei-1.21.1-neoforge-19.39.0.372`（`implementation`）⇒ 插件 API 需按 15 版重取（`IRecipeCategory`/`IRecipeRegistration`/`createDrawableIngredient` 等重载可能不同）。
+
+
+### 十四之补充（2026-10-09 商店 GUI 细节修正）
+11. 本次改动**不含任何新平台符号**（纯逻辑/常量/注释）⇒ 两线文本逐字相同；仅保留既有平台写法（`new ResourceLocation`、`ModNetwork.*`、`mouseScrolled` 三参、`getSkinLocation`）。
+12. **素材**：`shop_wallet.png`（96×24，左格自带星币图标）四份副本（`images/shop/` 与两线 `gui/shop/`）sha256 全同；**两线均已删除** `shop_coin_bar.png` / `shop_coin_icon.png`。⚠️ forge 模块的 `build/resources/main/` 因 Gradle 增量特性可能残留旧副本 ⇒ 收尾需 `clean` 该模块重建（jar 内不得出现旧素材）。

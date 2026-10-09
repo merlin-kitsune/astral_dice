@@ -4134,7 +4134,7 @@ mt.ps1 --version 线 --phase stop 关闭测试实例（gradle 守护进程保留
 
 > 玩家可见内容见两份 CHANGELOG「未发布（2.0.0-SNAPSHOT.52）」的 `#### 物品、筹码与交易`。以下只记工程侧。
 
-1. **设计定稿（任务A = 游戏设计师）**：`temp/t80/UI-DESIGN.md`（420+ 行）。全部坐标由「样张 `images/shop/card_shop_inventory.png`(284×183) → 背景 `card_shop_inventory_bg.png`(288×187)，整体偏移 **(+2,+2)**」逐像素实测。关键修正（旧口径 → 实测）：卡框 (5+46i,26) → **(7+46i,28)**（44×61）；卡面 36×36@+4 → **38×38@(+3,+3)**；名称框内区 = **40×17 @ x∈[2,41]/y∈[42,58]**；按钮 32×32 @ (11,109)/(48,109)；沙漏 20×32 @ (86,109)；余额条 96×24 @ (11,145)；物品栏底图 166×80 @ (114,99)、格内 **x=117+18j**。**背景是 16 色纯灰空面板（无任何 UI 元素）** ⇒ 余额条必须从样张整条切：新切 `shop_coin_bar.png`(96×24)+`shop_coin_icon.png`(12×12)；与既有 `star_coin_wallet_bar.png` 实测 **93.6% 同源**（差异 = 金框 vs 灰框）⇒ **不复用**，但文本口径（右对齐 +88、top +7、白字、无阴影）与 `StarCoinWalletButtons#drawBalance` 完全一致。
+1. **设计定稿（任务A = 游戏设计师）**：`temp/t80/UI-DESIGN.md`（420+ 行）。全部坐标由「样张 `images/shop/card_shop_inventory.png`(284×183) → 背景 `card_shop_inventory_bg.png`(288×187)，整体偏移 **(+2,+2)**」逐像素实测。关键修正（旧口径 → 实测）：卡框 (5+46i,26) → **(7+46i,28)**（44×61）；卡面 36×36@+4 → **38×38@(+3,+3)**；名称框内区 = **40×17 @ x∈[2,41]/y∈[42,58]**；按钮 32×32 @ (11,109)/(48,109)；沙漏 20×32 @ (86,109)；余额条 96×24 @ (11,145)；物品栏底图 166×80 @ (114,99)、格内 **x=117+18j**。**背景是 16 色纯灰空面板（无任何 UI 元素）** ⇒ 余额条必须从样张整条切：新切 `shop_wallet.png`(96×24)+`shop_coin_icon.png`(12×12)；与既有 `star_coin_wallet_bar.png` 实测 **93.6% 同源**（差异 = 金框 vs 灰框）⇒ **不复用**，但文本口径（右对齐 +88、top +7、白字、无阴影）与 `StarCoinWalletButtons#drawBalance` 完全一致。
 2. **状态机实测依据**：`transfer_cooling_0..5` 金色像素数 **39/73/91/109/143/215 严格递增** ⇒ 帧号 = 沙漏填充量（`0..4` 冷却、`_5` 可用）；`starlight_exchange` 变体 base=金 / `_1`=灰 / `_push`=金按下 / `_push_1`=灰按下 / **`_push_2`=品红底**（用户裁决 = **佩戴经商立牌者按下** ⇒ 中按钮第 5 态）；`shop_transfer_button.png` 与 `starlight_exchange.png` **逐字节相同**（`aed398c2a10a`，用户 21:17 替换后实测仍未变 ⇒ 已登记待确认）。
 3. **实现（任务B，仅 1.21.1）**：`screen/CardShopScreen` 按定稿重写（卡名**禁止截断**，`scale=min(1,40/文本宽)` 缩放 + 居中 + 白字无阴影；标题带 8 tick/帧流光；第 8 个 DataSlot 同步「大酬宾」布尔）、`shop/CardShopMenu` 新增 `handleBuy(ServerPlayer,int,int)` / `playerSlotOffset(int)` / `isPromotionActive()`、新增 C2S `network/CardShopBuyPayload.java`、`network/ModPayloads` 注册、三语各 +4 键；**删除**旧 `BUTTON_BUY_BASE` / `tryBuy`（取消点击购买，无双购买路径）。
 4. **拖拽购买协议（反刷取）**：客户端 `dragIndex` + 幽灵（拖动时源卡位改画 `shop_card_soldout.png`）；起拖门槛 = 该槽有货未售出且 `StarCoinWalletState.balance() >= priceOf(i)`；松手落点严格限物品栏 16×16 内格且该格为空 ⇒ 发 `(shelfIndex, invIndex)`；服务端 `handleBuy` 六步校验（归属 → 范围/未售 → 目标槽范围 → 货架槽非空 → 目标槽必须为空 → 价格与余额）→ 扣款 → **直接写入目标玩家槽** → `sold[i]=true` → 双端余额刷新 → actionbar。**`ShelfSlot.mayPickup=false` 恒成立** ⇒ 卡牌**从不**经原版光标携带 ⇒ 关界面/丢出界面都拿不到白卡；同槽重复/并发包被 `sold[]` + 槽已空双重幂等挡住；未拖到物品栏 ⇒ 服务端全程无感知 ⇒ 天然「移回」。
@@ -4185,3 +4185,14 @@ mt.ps1 --version 线 --phase stop 关闭测试实例（gradle 守护进程保留
 9. **判据（本轮实跑）**：两线 `.56` 产物 `MT_BUILD: OK`；`verify_resource_integrity` 两线 PASS；`tooltip_color_audit` PASS；配方唯一性 `collisions=0`；两线 `compileJava` SUCCESSFUL；1.21.1 三语 **881** 键（含 4 JEI 键）；forge 补完 JEI 后同数。
 10. **未实机（欠账）**：村民认领 POI 转职、五级交易实际出货、L3 兑换解锁、戴绿宝石骰子时条目隐藏与**点选/结算索引一致**、专属/巅峰/奇特不上架、fail-loud 日志、JEI 类别显示 —— 均需实机确认。
 11. **P1（26.1.2 / fabric）**：整套卡牌商店（方块/UI/拖拽购买/转账面板/职业务/JEI）**尚未移植**，且这两线**仍保留 22 条卡牌配方** ⇒ 已在 `docs/compat-26.1.2-neoforge.md` §十一 登记为待移植项。
+
+## 附录 A 续 71. 商店 GUI 细节修正：空槽 soldout / 余额框换 shop_wallet / 卡名左右滚动（2026-10-09）
+
+> 玩家可见内容见两份 CHANGELOG「未发布（2.0.0-SNAPSHOT.57）」的 `#### 物品、筹码与交易`。
+
+1. **空槽一律 soldout**：`renderShelf` 两支合并为单支 —— `if (menu.isSold(i) || i == dragIndex || stack.isEmpty())` ⇒ 一律画 `shop_card_soldout.png`；有卡仍 `hover ? shop_card_select.png : shop_card.png`；拖动购买时源槽立即售罄的既有行为不变。
+2. **余额框换新素材 `shop_wallet.png`（96×24）**：左格**自带星币图标**（ink x∈[5,18] y∈[5,18]，垂直中心 11.5）⇒ 删除 `shop_coin_icon.png` 的单独绘制与 `BALANCE_ICON_*` 常量，并**删除旧素材** `shop_coin_bar.png` / `shop_coin_icon.png`（两线；改后代码零引用，仅注释保留说明）。定位用**掩膜模板匹配**（只比 882 个不透明像素）在样张里取唯一峰 sample(9,143)，按样张→背景 **(+2,+2)**（该偏移由 `shop_item_inventory.png` sample(112,97)⇒bg(114,99) 独立证实）得 **bg(11,145) 96×24 ⇒ 常量不变**。
+3. **数字与图标对齐**：`BALANCE_TEXT_RIGHT=90 / BALANCE_TEXT_DY=9`（白字无阴影）。MC ascent=7 ⇒ 数字墨迹占绘制 y..y+6（中心 y+3）；图标中心 11.5、数字中心 12 ⇒ **0.5px 在整数锚点下数学上不可消除**，取 9 与玩家物品栏钱包栏的关系（其条坐标 90/9）完全一致。
+4. **卡名左右滚动（禁止缩放/截断）**：`drawCardName` 超宽时左对齐到名称框内区左界并 `marqueeOffset` 滚动（停 20t → 每 2t 走 1px → 触尾停 20t → 反向循环），`enableScissor` 裁在名称框内区 [3,41)×[43,59)；相位 `nameMarqueeTick` **与转账面板玩家名共用**（`containerTick` 无条件 ++，开/关转账视图时清零）。
+5. **判据**：两线 `compileJava` SUCCESSFUL、`verify_resource_integrity` 两线 PASS；构建产物核验 —— 1.21.1 侧 jar 含 `shop_wallet.png`、**不含**两张旧素材；⚠️ forge 侧 `build/resources/main` 曾有增量残留副本，收尾已 clean 该模块重建核实。
+6. **未实机**：以上为素材逐像素实测 + 反编译源码 + `ascii.png` 字体实测；游戏内观感（滚动速度、余额框观感）随本轮实机冒烟一并复测。

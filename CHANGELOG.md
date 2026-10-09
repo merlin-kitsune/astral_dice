@@ -4,7 +4,7 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
-## Unreleased (2.0.0-SNAPSHOT.56)
+## Unreleased (2.0.0-SNAPSHOT.57)
 
 ### New Content
 
@@ -120,6 +120,10 @@
 - **Wording fixes** (2026-10-09): the Vitamin Pill, Teru sign and Mimi sign descriptions no longer say cards are "crafted"; they now say "obtained".
 - **Strict exclusions**: **exclusive cards** (Living Page, Fate Guidance, Fu/Huo cards, Bite, Dragon Roar) and **Pinnacle/Bizarre-rarity** cards
   (e.g. Full Power) **never** appear on the Card Shop shelves or in the Card Trader's offers.
+- **Card Shop UI detail fixes** (2026-10-09): **empty card slots now always show the sold-out style** (no more empty gold frames);
+  the **Star Coin balance frame uses a new asset** (the coin icon is built into its left cell, with the number centred against it); and
+  **overlong card names now scroll left and right** instead of shrinking, so the full name stays readable.
+
 
 
 
