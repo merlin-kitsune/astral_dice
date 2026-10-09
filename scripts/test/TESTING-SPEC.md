@@ -4196,3 +4196,12 @@ mt.ps1 --version 线 --phase stop 关闭测试实例（gradle 守护进程保留
 4. **卡名左右滚动（禁止缩放/截断）**：`drawCardName` 超宽时左对齐到名称框内区左界并 `marqueeOffset` 滚动（停 20t → 每 2t 走 1px → 触尾停 20t → 反向循环），`enableScissor` 裁在名称框内区 [3,41)×[43,59)；相位 `nameMarqueeTick` **与转账面板玩家名共用**（`containerTick` 无条件 ++，开/关转账视图时清零）。
 5. **判据**：两线 `compileJava` SUCCESSFUL、`verify_resource_integrity` 两线 PASS；构建产物核验 —— 1.21.1 侧 jar 含 `shop_wallet.png`、**不含**两张旧素材；⚠️ forge 侧 `build/resources/main` 曾有增量残留副本，收尾已 clean 该模块重建核实。
 6. **未实机**：以上为素材逐像素实测 + 反编译源码 + `ascii.png` 字体实测；游戏内观感（滚动速度、余额框观感）随本轮实机冒烟一并复测。
+
+## 附录 A 续 72. P0 回归：1.21.1 交易 mixin 描述符包名写错 ⇒ 任何村民交易界面一开就崩服（2026-10-09）
+
+1. **现象**：实机（`.57` 产物）打开**任何**村民交易界面即 `Exception in server tick loop`；崩溃报告 177 行，调用链 `Villager.mobInteract → Villager.startTrading → Merchant.openTradingScreen → SimpleMenuProvider.createMenu → MerchantMenu.<init>`；根因 = `InjectionError: Redirector astralDice$filterEmeraldExchange(...) failed injection check, (0/1) succeeded. Scanned 0 target(s). No refMap loaded.`
+2. **根因**：`neoforge-1.21.1/.../mixin/trade/MerchantContainerMixin.java:35` 的 `@At target` 用了 **1.20.1 的包名** `Lnet/minecraft/world/entity/npc/Merchant;getOffers()Lnet/minecraft/world/entity/npc/MerchantOffers;`。1.21.1 根本没有 `world.entity.npc.Merchant`（javap 实测：只有 `net.minecraft.world.item.trading.Merchant#getOffers()`，`MerchantContainer.updateSellItem` 里是 `invokeinterface …/trading/Merchant.getOffers()`）⇒ 目标解析为 0 个，注入失败即崩。
+3. **为什么会漏检（关键教训）**：① **编译与 `build` 都不校验 mixin 目标**（dev 无 refmap，`Scanned 0 target(s)` 只在**目标类被加载**时才出现）⇒ 只有「打开交易界面」这条交互路径能触发；② 错误源头是**文档写错**：`docs/compat-1.20.1-forge.md` 原文断言「1.21.1 = `net.minecraft.world.entity.npc.Merchant`」，实现与复核都被这句话带着走、forge 侧注释还把它当成「设计」抄了一遍。⇒ **包名/描述符的权威来源只能是 javap 实物，不能是文档、注释、记忆**。
+4. **修法**：描述符改为 `Lnet/minecraft/world/item/trading/Merchant;getOffers()Lnet/minecraft/world/item/trading/MerchantOffers;`（一行）；同批订正 forge 侧注释与 `docs/compat-1.20.1-forge.md` 的错误说法，并**逐条 javap 复核本批全部 mixin 目标**（`Merchant#getOffers` ✓ / `MerchantMenu#getOffers` **确实存在**（`net.minecraft.world.inventory.MerchantMenu`）✓ / `MerchantOffer#getBaseCostA|getCostA|getCostB|satisfiedBy` ✓ / `ServerPlayer#sendMerchantOffers(int,MerchantOffers,int,int,boolean,boolean)` ✓ / `Slot|MerchantResultSlot#onTake(Player,ItemStack)` ✓）。
+5. **判据**：修复后**实机打开村民交易界面**不再崩（后续实机冒烟用例覆盖：打开菜单、逐级报价、戴/摘绿宝石骰子的条目与索引一致性）。
+6. **流程改进（本轮起）**：凡**新增/改动 mixin 的 `@At`/`@Inject` 目标或描述符**，收尾必须做一次 javap 目标核对，并让实机用例**至少触达该 mixin 目标类被加载的交互路径**（本例 = 打开交易界面）。

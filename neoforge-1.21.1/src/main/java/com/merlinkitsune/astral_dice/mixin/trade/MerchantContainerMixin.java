@@ -32,7 +32,7 @@ public abstract class MerchantContainerMixin {
 
     /** 同理：结果槽的报价匹配（updateSellItem）也用过滤视图。 */
     @Redirect(method = "updateSellItem", at = @At(value = "INVOKE",
-            target = "Lnet/minecraft/world/entity/npc/Merchant;getOffers()Lnet/minecraft/world/entity/npc/MerchantOffers;"))
+            target = "Lnet/minecraft/world/item/trading/Merchant;getOffers()Lnet/minecraft/world/item/trading/MerchantOffers;"))
     private MerchantOffers astralDice$filterEmeraldExchange(Merchant merchant) {
         MerchantOffers offers = merchant.getOffers();
         MerchantOffers filtered = EmeraldDiceTrade.filteredFor(merchant.getTradingPlayer(), offers);

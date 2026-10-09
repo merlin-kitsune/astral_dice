@@ -36,7 +36,7 @@ public abstract class MerchantContainerMixin {
      * 列表顺序一旦与服务端不同，就会「放对了材料却匹配到另一条报价」。
      *
      * <p>平台差异(对照 1.21.1)：1.21.1 的 @Redirect 描述符写的是
-     * `Lnet/minecraft/world/entity/npc/Merchant;getOffers()Lnet/minecraft/world/entity/npc/MerchantOffers;`，
+     * `Lnet/minecraft/world/item/trading/Merchant;getOffers()Lnet/minecraft/world/item/trading/MerchantOffers;`，
      * 1.20.1 的 Merchant 接口在 `net.minecraft.world.item.trading` 包
      * （Merchant.java:12 `public interface Merchant`，:18 `MerchantOffers getOffers();`），
      * 故描述符必须写成 `Lnet/minecraft/world/item/trading/Merchant;...`。
