@@ -1,0 +1,317 @@
+{
+  "case_id": "SHOP-POI-1.20.1",
+  "title": "场景2专项:工作方块/失业对照实验(残留 POI 清场 + 原版村民基线)",
+  "version": "1.20.1",
+  "target": {
+    "type": "feature",
+    "ref": "card-shop"
+  },
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "场景2专项:清场消除残留 POI 歧义 + AI-on 原版村民(讲台)建立「破坏⇒失业」原版基线"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/tp @s 7.5 -60 3.5",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "note",
+      "text": "1) 世界台账:清掉范围内所有 card_shop,确保后续认领目标唯一"
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[type=!player,distance=..64]",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralvis poi P0 scan",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralvis poi P1 clear",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralvis poi P2 scan",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "note",
+      "text": "2) Mod 村民自发认领(唯一 card_shop)"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralvis shop S1 place",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 2500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralvis shop S2 poi",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralvis vil V1 spawn",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 10000
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralvis vil V2 read",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "note",
+      "text": "3) 原版对照组:AI-on 村民 + 讲台(距商店 9 格,讲台 1 格 ⇒ 认领讲台)"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralvis poi P3 ctlspawn",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 12000
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralvis poi P4 ctlread",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "note",
+      "text": "4) 破坏唯一 card_shop ⇒ 观察 Mod 村民是否失业(台账先证明没有残留 POI)"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralvis shop S3 break",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1000
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralvis poi P7 scan",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 9000
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralvis vil V3 read",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 20000
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralvis vil V4 read",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralvis poi P9 ctlread",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "note",
+      "text": "5) 破坏对照组的讲台 ⇒ 建立原版「破坏工作站点⇒失业」基线"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralvis poi P5 ctlbreak",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 8000
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralvis poi P6 ctlread",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "note",
+      "text": "6) 清场"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralvis vil V5 kill",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralvis poi P8 ctlkill",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[type=!player,distance=..64]",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1000
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_P2_POISCAN:n="
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_P2_POISCAN:.*shop@"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_S2_POI:existsAt=1:forState=astral_dice:card_shop:held=1:acquirable=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_V2_VREAD:api=astral_dice:card_trader:.*:noai=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_P4_CTLREAD:api=minecraft:librarian:.*:lectern=(minecraft:librarian|minecraft:lectern)"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_P7_POISCAN:.*shop@"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_P9_CTLREAD:api=minecraft:librarian:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_V4_VREAD:api=minecraft:none:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_P6_CTLREAD:api=minecraft:none:.*:lectern=none"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_(P[0-9]|S[0-9]|V[0-9])_EX:"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": ":note="
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "(Unknown or incomplete command|Incorrect argument for command|错误的命令参数|未知或不完整|<--\\[此处\\])"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "ERROR\\] \\[astral_dice/card_trade"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "ERROR\\] \\[astral_dice/card_trader"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "mixin"
+    },
+    {
+      "type": "crash"
+    }
+  ],
+  "evidence": []
+}

@@ -4221,3 +4221,21 @@ mt.ps1 --version 线 --phase stop 关闭测试实例（gradle 守护进程保留
 4. **世界存档跨轮保留会污染工作方块类判据**：残留工作方块被村民「就近改认领」⇒ 表现为「破坏后不失业」。凡「工作方块/职业」类用例必须**先清场**（只留被测的那一个工作站点）或冷启动新存档；本轮以专项用例 `SHOP-POI`（v18/v19 两次独立冷启动一致 + 原版图书管理员对照）为准。
 
 **未覆盖/需人工**：真实人手拖拽手势（用例走客户端真实事件链 + 服务端 `handleBuy` 结算）、JEI 页面外观与手册翻页的游戏内目视。
+
+## 附录 A 续 74. 卡牌商店全家桶 P0 两线实机冒烟（forge-1.20.1 轮，2026-10-09）
+
+**结论（10 场景，实机，干净冷启动，产物 `.58`）**：全部 PASS —— `MT_CASE_RESULT: SHOP-VIS2-1.20.1 = PASS (106/0)`、`SHOP-GUI-1.20.1 = PASS (187/0)`、`SHOP-POI-1.20.1 = PASS`、`SHOP-VIS-1.20.1 = PASS`；`MT_ASSERT_KUBEJS/MIXIN/CRASH` 全 PASS，`/NoClassDefFoundError/` 与 `/Exception in server tick loop/` ABSENT；收尾 `MT_CLEANUP_SAVES: PURGED 1` + `MT_CLEANUP_RESULT: OK` + `MT_STOP: OK`。
+
+**重点判据（1.20.1 特有风险已证伪/证实）**：① **「戴骰子隐藏兑换条目」在 1.20.1 真的生效** —— `AP_E1_EDF:diceOn=1:raw=2:filtered=1:filteredExch=0:sameInstance=1`（即 `MerchantOfferRawAccess` 软接口 + `createTag()` 兜底能正确读回被改价 mixin 覆写前的原费用；`raw=2 vs filtered=1` 同时证明过滤生效、且**不是**深拷贝）；② **索引不错位** `AP_T2_TRADEIDX … rMatch=1`、`AP_VT1_VTIDX:effA=star_coin:effN=4:rMatch=1`、`AP_VT1_VTTAKE:same=1`；③ 破坏⇒失业与原版对照同 1.21.1；④ L1–L5 报价与档位 `minp/maxp=2-3/3-6/6-9/9-14/14-19`、**L3 起才有兑换**；⑤ 无卡牌配方（全量 1285 条配方 `cardResultRecipes=0`）+ 购买即获得（治愈 `0→1→2→3`、狐光 `0→1`）；⑥ JEI `uid=astral_dice:card_shop:recipes=22:excluded=none`；⑦ 手册 22/29 卡牌条目为 `patchouli:spotlight→astral_dice:card_shop`、`crafting` 命中 0。
+
+**1.20.1 ↔ 1.21.1 实测差异（探针/测试台口径，均带 1.20.1 反例）**：
+1. **`CuriosApi.getCuriosInventory` 在 1.20.1 返回 `LazyOptional`**（1.21.1 是 `Optional`）⇒ Rhino 里没有 `.get()`，必须 `resolve()`；反例：首跑 `AP_D0_DICE2:set=EX:TypeError: Cannot find function get in object …LazyOptional…` ⇒ 骰子没穿上、后续过滤判据假阴性。
+2. **Rhino 重载歧义**：1.20.1 上 `CardTradeFilter.isSellable(ItemStack|Item)` 报 `InternalError: The choice of Java method … is ambiguous`（1.21.1 无此问题）⇒ 探针调用要显式取一个重载。
+3. **`Java.from(Set)` 在 1.20.1 抛 JS `try/catch` 接不住的 `Throwable`** ⇒ 整条命令以原版 `commands.generic.exception` 结束、**日志无堆栈**（`sp_guard` 也拦不住）；换成迭代器遍历即可全量输出。
+4. **客户端 `""+ItemStack` 在 1.20.1 只给裸名**（无命名空间）⇒ 断言里的 id 必须走 `BuiltInRegistries.ITEM.getKey()`。
+5. **产品侧 `List.copyOf` 单元素 = 包私有 `java.util.ImmutableCollections$List12`** ⇒ 1.20.1 上 Rhino 的 `.get(0)`/`Java.from` 全抛；探针需反射或整表 `toString` 兜底。
+6. **「破坏后失业」的判据细节**：原版 `ResetProfession` 只在 `xp==0 && level<=1` 时触发 ⇒ 探针若先 `setVillagerXp(30)`，破坏工作方块后职业**会保留**（SHOP-POI 用 xp=0 的全新村民 ⇒ `minecraft:none`）；**这不是版本差异**。
+7. **POI 认领需 `path.canReach` + `Occupancy.HAS_SPACE`，失败走 `JitteredLinearRetry` 退避** ⇒ 单次读数可能 >12s 未认领（实测有 60s 未认领与 6s 认领两种），凡认领类断言必须**连读两次**（12s/24s）或改用探针驱动对照。
+8. ⚠️ **测试台缺口（1.20.1，待修）**：`astral_test_noai.js` 的 2-tick 横扫在 1.20.1 **静默空转**（全程 `AP_NOAI:mobs=0:total=0`，而世界里村民就在玩家 1 格内）⇒ 只有 `EntityEvents.spawned` 钩子有效，`mt_launch` 的 `NOAI_ENFORCED` 闸门在 1.20.1 偏弱（**属测试台问题，非产品缺陷**）。
+
+**未覆盖/需人工**：JEI 界面目视（仅 API 抽查）、手册游戏内翻页目视（仅静态 JSON 扫描）、真人鼠标拖拽手势（拖拽为客户端探针合成 payload，`how=directBuyPayload`）、非 `cards_*` 手册条目未逐条扫、26.1.2 / fabric 线不在范围。
