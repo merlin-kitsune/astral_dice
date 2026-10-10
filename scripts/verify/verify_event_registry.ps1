@@ -56,7 +56,8 @@ foreach ($t in @("investigation_stage_1","investigation_stage_2","investigation_
     if (-not (Test-Path $png)) { Write-Host "EVENT_REG: FAIL 缺少阶级图标 textures/gui/event/$t.png"; $fail++ }
 }
 
-$stray = Select-String -Path (Join-Path $src "**/*.java") -Pattern 'event\.astral_dice\.' -ErrorAction SilentlyContinue |
+$stray = Get-ChildItem -Path $src -Recurse -Filter *.java -ErrorAction SilentlyContinue |
+    Select-String -Pattern 'event\.astral_dice\.' -ErrorAction SilentlyContinue |
     Where-Object { $_.Path -notmatch "AstralEventRegistry\.java$" }
 foreach ($s in $stray) { Write-Host ("EVENT_REG: WARN 事件键字面量散落 " + $s.Path.Replace($Root, "") + ":" + $s.LineNumber) }
 

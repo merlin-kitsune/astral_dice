@@ -4254,3 +4254,15 @@ mt.ps1 --version 线 --phase stop 关闭测试实例（gradle 守护进程保留
 6. **mixin 目标/描述符必须 javap 取证**（沿用续 72）：1.21.1 交易 mixin 曾把包名写成 1.20.1 的 `world.entity.npc.Merchant` ⇒ 开任何村民交易界面即崩服；编译与 `build` 都不校验。
 
 **本批新增的测试资产**：`scripts/test/cases/SHOP-{GUI,POI,VIS,VIS2,L,M,N,N2,P,Q,V}-1.21.1.json`（⚠️ Forge 侧目前只有 `SHOP-{GUI,POI,VIS,VIS2}` 四个 1.20.1 版本；`L/M/N/N2/O/OB/P/Q/V` 仅 1.21.1）、`scripts/test/resources/kubejs/1.21.1/{client_scripts/astral_shop_client.js, server_scripts/astral_shop_probe.js, astral_shop_vis.js}`、真光标驱动 `temp/t91/real_cursor.ps1`（Win32 `SetCursorPos+SendInput`）与截图归档脚本。
+
+## 附录 A 续 76. 事件体系重写批（Task 1–9）的判据与两条新教训（2026-10-10）
+
+**批次判据**：两线 `mt_build` `.60` OK；**新增守门** `scripts/verify/verify_event_registry.ps1` ⇒ `EVENT_REG: OK line=<线> events=13 ids=13 icons=ok langs=3`（两线均跑）；`tools/check_lang_sync.ps1` 三语一致（两线各 882 键）；运行时机器行 `AP_EVENT_REG: count=13:pool=12`（含两个临时测试事件时为 `count=15:pool=14`）。
+
+**教训 7（新）：阶级属于「施加者」，不等于「触发者」**。秘密侦探的「调查阶段」由**击杀隐匿调查目标**触发，但阶级进度记在**施加者**（佩戴秘密侦探立牌、施加了隐匿调查的那名玩家）身上。若把阶级读写简单绑在触发者上，会出现「谁杀谁涨阶」的错账 ⇒ 分发器提供 `trigger(triggerer, tierOwner, …)` 重载（默认 `tierOwner == triggerer`），作用域仍以触发者为中心。
+
+**教训 8（新）：临时测试内容必须「可整体删除」**。本批允许插入**一次性事件 + 带计时器事件**各一条用于验证框架（`event/AstralEventTestFixtures.java` + KubeJS 临时探针 + 用例 JSON），因此：① 夹具自带 `static {}` 注册、探针只做一次「玩家登录即自检」，**不新增 tick 钩子、不改动其它文件**，删除时不会留下悬挂引用；② 验证完成后必须**整体删除**并留证据（`git status` 干净 + 相关字符串 grep 命中为 0）；③ 断言全部锚 `AP_EVENT_*` 机器行（`FIRE` / `TIMER` / `TEST` / `UNKNOWN` / `SRC_DENIED`），不依赖界面交互，便于冷启动复跑。
+
+**教训 9（新）：`scope: "launch"` 用在「启动期写下的 log 正断言」上必然 FAIL**。`launch_offsets` 是 **launch 阶段收尾时刻**的字节游标（`mt_launch.ps1` 的 `snapshot --window launch` 位于收尾、紧接着才打 `MT_OK LAUNCH`），读取侧把该值当作**窗口起点** ⇒ `win=launch` 的区间 = [launch 收尾, 现在]，**不含**启动/进世界/玩家登录阶段的行（实测：`AP_EVENT_TEST` 首行在偏移 62591，而窗口起点 131943 ⇒ 必然不可见；同 pattern 换 `--window whole` 立即命中）。正断言请用 **`scope: "whole"`**（launch 开始时硬删 `latest.log`，删不掉即拒绝启动 ⇒ whole = 偏移 0 = 自本次启动起，无前序污染）；`scope: "launch"` 只适合 **`absent` 否定式**断言（窗口更宽只会更严）。
+**计时器判据**：`EventTimerStore.start(p, id, 200)` 后立刻 `start(p, id, 100)`，`remaining` 必须是 **100**（覆盖/重置）而不是 300（叠加）—— 本批以机器行 `AP_EVENT_TEST: timer:first=200:second=100` 固定该判据。
+

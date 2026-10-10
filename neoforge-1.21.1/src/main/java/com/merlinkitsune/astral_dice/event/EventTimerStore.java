@@ -17,6 +17,9 @@ import java.util.UUID;
  * <p>2026-10-10 用户裁决:计时器<b>每事件 × 每玩家独立</b>,重复触发<b>覆盖(重置)</b> ——
  * 因此这里是「玩家 → (事件 id → 到期刻)」两层的覆盖式写入,不做剩余时间叠加。
  *
+ * <p>⚠️ 尚未接线:玩家登出清理未实现(本批无正式事件登记计时器,故当前无实际泄漏)。**一旦有正式事件带上
+ * {@code defaultDurationTicks},必须接一条登出钩子清理该玩家的条目**(或复活 {@code forget(UUID)})。
+ *
  * <p><b>惰性到期检测</b>:不新增 server tick 钩子,任何一次查询({@link #remaining}/{@link #isActive})
  * 发现已过期时,就地移除并打一次机器行 {@code AP_EVENT_TIMER: expired:<id>}。
  */
@@ -78,11 +81,6 @@ public final class EventTimerStore {
         if (perPlayer.isEmpty()) {
             EXPIRY.remove(player.getUUID());
         }
-    }
-
-    /** 玩家离开时清理,避免内存泄漏。 */
-    public static void forget(UUID uuid) {
-        EXPIRY.remove(uuid);
     }
 
     /** 当前登记中的计时器条数(仅诊断/测试用)。 */

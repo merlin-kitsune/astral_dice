@@ -3454,3 +3454,13 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --new <注册id>
 4. **`cd_after` 的口径**：走**真门控链路**（`performSkillForCurio` → confirm）成功施放会**写主动冷却** ⇒ 该相位必须断言 `cd_after=1`（旧锚点段的 `cd_after=0` 是直接 `apply` 的旧口径，照抄必假红）。
 5. **待办（已裁决：本轮不扩范围，登记待办；2026-09-28 用户裁决）**：施工单 §B 末行「`signprep`/`signstate` 的 `stand` 字段改用**通用**判定」未做 —— 它现在仍读 `NardisSignItem.isEquipped`（对 parunan/lulu/jasmine/komachi 恒 0，且 `putInSlot` 之后同 tick 读回为空）⇒ LOCK-OFFLINE 的 `stand=1` 断言继续按「不依赖该字段」处理。**补做时的口径**：改成按槽内物品类型（`SignItem` 基类 / 槽位标签）判定，并连带复核 LOCK-OFFLINE 两线的 `stand` 相关断言（不得只改探针不回跑用例）。
 6. **疑似产品行为（已裁决：登记为待办/限制，本轮收口；2026-09-28 用户裁决 —— 不动产品代码，保留放宽后的断言）**：`terufx` 作用在**真实目标（bot）**上把实例移除后，施法者侧镜像（`caster`/`target`/`cache`）在 **30 tick 内没有收敛**（`AP_X_FX:who=Bot1:removed=1:fx_d_on=0` 之后仍 `caster=0:target=1:cache=4`），与用例注释「真值仍在而实例没了 ⇒ 下一 tick 必然收敛」不符；该相位断言已改为只锚定「命令被正确调用 + 实例确实移除」。**注意：这是「探针用外力移除效果实例」的人造路径，不等于自然结束路径有问题**。⇒ **后续做「镜像/附件同步」专项时一并处理**（届时先加只读读数 + 冷启动两线复跑，先判定是产品缺陷还是 bot 目标特有的测试态差异，再决定是否改产品代码）。详见 `temp/sp_cleanup_report.md` §6.1。
+
+
+31. **事件体系运行规则（2026-10-10 用户裁决；改事件前必读）**：① 事件是**注册项**（`event/AstralEventRegistry`），字段 = id / 三语名称键 `event.astral_dice.<id>.name` / 图标 `textures/gui/event/<id>.png` / 类型（**纯标签，只用于文本染色**：正面绿 §a、中性黄 §e、负面红 §c）/ 是否秘密专属 / 是否入公共池 / 触发器 / 半径 / 效果 / 计时时长。
+② **所有触发必须走 `AstralEventDispatcher.trigger(...)`**（客户端调用即 no-op；未注册 id 记 `AP_EVENT_UNKNOWN` warn 后跳过；来源未被该事件允许时记 `AP_EVENT_SRC_DENIED`）。作用域默认 64 格 ∪ 团队全体（`PartyRelations.collectEventTargets`）。
+③ **阶级闸门**：只有 `secretOnly` 事件有阶级；**只有 `INVESTIGATION_KILL` 来源允许提升**（写 `min(当前+1,4)`），其它任何来源只触发当前阶级。阶级**属于施加者**（秘密侦探本人），故击杀者 ≠ 施加者时要用 `trigger(triggerer, tierOwner, …)` 重载；作用域仍以**触发者**为中心。
+④ **计时器**（`EventTimerStore`）是**每事件 × 每玩家**独立量，重复触发 = **覆盖/重置**；到期用**惰性检测**（首个查询到 0 的调用方打一次 `AP_EVENT_TIMER: expired:<id>`），不新增 tick 钩子。
+⑤ **状态指示器不显示**（用户裁决）—— 不得为事件新增任何 HUD/解释性文本。
+⑥ 大侦探立牌的主动技能已**清空待重做**（原 11 项随机事件删除）；秘密侦探「调查阶段」保留原行为（1200t 隐匿、阶段 II 起调查增益），只换分发入口。
+⑦ 抽事件的两条入口**独立注册**：物品 `astral_dice:event_ticket`（`ITEM_USE`，生存消耗 1）与方块 `astral_dice:event_drawer`（`BLOCK_USE`，可重复）；公共池为空必须安全失败（只 warn，不崩）。
+⑧ 守门：两线 `scripts/verify/verify_event_registry.ps1`（id 唯一 / 三语键齐 / 图标存在 / 调查阶段 4 张阶级图 / 字面量散落 warn）+ `tools/check_lang_sync.ps1`；**临时测试事件（`event/AstralEventTestFixtures.java` 等）只允许短期插入，验证后必须整体删除并留删除证据**。

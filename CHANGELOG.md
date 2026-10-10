@@ -130,6 +130,12 @@
 - **Fixed: repeatedly reopening the shop kept paying out Star Coins** (now once per batch; the next payout requires a new batch).
 - **Card Shop recipe updated**: 3 smooth stone slabs / 3 Star Coins / 3 logs.
 - Added a **"Blocks"** guide category (the Card Shop entry includes its recipe page) and switched the guide cover to **pink**.
+- **Event system rewritten** (2026-10-10): events now carry a unified name, icon, type (positive / neutral / negative — **text colour only**), tier, scope and registrable trigger sources, plus **per-event timers** (re-triggering resets the timer).
+- **12 new events added** (framework and icons first; their effects come later): Red-Heat Warning, Swift Stride, Storm Approaching, Learn from Others, Shop Bonanza, Hand Erasure, World Collapse, Gift from the Sky, Angel Descent, Problem Delivery, Crowded Passage, Battle Frenzy.
+- **The secret detective's "Investigation Stage" now has all four icons** (Stage I / II / III / Revelation, switched by tier); triggering and tier-up rules are unchanged: **only killing a "Concealed Investigation" target advances the tier**; any other trigger uses the current tier.
+- **The great detective's active skill is temporarily disabled**: its former 11 random events (and their messages) were removed pending a rewrite; the sign itself and its passive (3 Star Coins when you trigger an event) are unchanged, and the stale hover list was cleaned up.
+- **Two new ways to draw events**: the **"Event Ticket"** item (draws one random event, consumes one in survival) and the **"Event Drawer"** block (right-click to draw, reusable).
+
 
 
 

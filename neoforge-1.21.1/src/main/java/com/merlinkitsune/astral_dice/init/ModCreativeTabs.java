@@ -189,8 +189,8 @@ public class ModCreativeTabs {
                 // 任务S §4（2026-10-10 用户裁决）：卡牌商店移到**最后**。
                 //   JEI 的物品列表顺序直接取自创造模式物品栏（jei 的 ItemStackListFactory 迭代 CreativeModeTabs.allTabs()
                 //   → buildContents → getDisplayItems），⇒ 这一处同时决定创造页与 JEI 的排序，JEI 侧无需任何代码改动。
-                output.accept(ModItems.CARD_SHOP.get());
-output.accept(ModItems.EVENT_TICKET.get());
+                output.accept(ModItems.EVENT_TICKET.get());
 output.accept(ModItems.EVENT_DRAWER.get());
+output.accept(ModItems.CARD_SHOP.get());
             }).build());
 }

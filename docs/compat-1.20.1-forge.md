@@ -204,3 +204,12 @@ datagen:`RecipeOutput` → `Consumer<FinishedRecipe>`(`.save(output::accept)`);`
 3. **dev 运行取 devlibs**：`run/1.20.1/mods` 的 forge 产物 SHA256 == `forge-1.20.1/build/devlibs/`（未重混淆、Mojmap），≠ `build/libs`（SRG reobf）—— 属既有设计，勿改。
 4. **转账面板素材加大**：两线 `shop_transfer_bg.png` 均 107×183（旧 92×135），`lang/zh_cn.json` 与 `textures/gui/shop/shop_transfer_bg.png` 两线**逐字节一致**；面板原点由 141×183 包围盒派生（`TP_X=73/TP_Y=2`），**探针/调用点坐标必须同源**（1.21.1 曾因沿用旧原点 81/26 导致 4 处点击失配）。
 5. **1.20.1 侧曾漏拷底图**：Forge 端常量已按新材料更新但贴图未同步 ⇒ 底图被拉伸、金框被裁；镜像素材时必须**两线同时**拷 `textures/gui/shop/**`（本批已修）。
+
+
+## 十六、事件体系重写批（2026-10-10）平台差异
+
+1. **事件元数据与分发/计时器全部平台中立**：`event/api/*`、`AstralEventIds`、`AstralEventRegistry`、`AstralEventDispatcher`、`EventTimerStore` 两线同名同构，唯一差异是 `ResourceLocation`：1.20.1 用 `new ResourceLocation(ns, path)`，1.21.1 用 `ResourceLocation.fromNamespaceAndPath(ns, path)`。
+2. **方块交互入口**：1.21.1 用 `protected InteractionResult useWithoutItem(BlockState, Level, BlockPos, Player, BlockHitResult)`；1.20.1 只有六参 `use(BlockState, Level, BlockPos, Player, InteractionHand, BlockHitResult)`（与既有 `CardShopBlock` 同款）。
+3. **注册形态**：1.21.1 用 `DeferredRegister.Items` / `DeferredRegister.Blocks` + `DeferredItem<T>` / `DeferredBlock<T>` + `registerSimpleBlockItem`；1.20.1 用 `DeferredRegister.create(ForgeRegistries.ITEMS/BLOCKS, MODID)` + `RegistryObject<T>`，方块物品必须手工 `new BlockItem(...)` 登记。
+4. **资源目录**：1.20.1 的战利品表在 `data/<ns>/loot_tables/blocks/`（**复数**），1.21.1 在 `data/<ns>/loot_table/blocks/`（单数）；模型 / 方块状态 / 贴图 / lang 路径两线一致。
+5. **订阅注解**：清空大侦探主动技能后该立牌不再有 `@SubscribeEvent` 处理器 ⇒ 两线**各自**移除其订阅注解（1.21.1 是 `@EventBusSubscriber`，1.20.1 是 `@Mod.EventBusSubscriber`）。

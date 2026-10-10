@@ -41,7 +41,11 @@ public final class AstralEventSystem {
     public static void onEventTriggered(Player triggerer, String eventId) {
         if (triggerer.level().isClientSide()) return;
         // 兼容入口(2026-10-10 事件体系重写):非注册表事件且非已知遗留 id ⇒ 记一条警告(不改变既有行为)。
-        if (AstralEventRegistry.get(AstralEventIds.id(eventId)).isEmpty()
+        // ⚠️ 兼容入口的 id 是外部裸字符串:必须用 tryParse 安全解析(非法字符返回 null),
+        //    否则 ResourceLocation 构造会抛 ResourceLocationException(审计 2026-10-10 P3)。
+        net.minecraft.resources.ResourceLocation parsed = net.minecraft.resources.ResourceLocation.tryParse(
+                AstralEventIds.NAMESPACE + ":" + eventId);
+        if ((parsed == null || AstralEventRegistry.get(parsed).isEmpty())
                 && !AstralEventDispatcher.isLegacy(eventId)) {
             org.slf4j.LoggerFactory.getLogger(AstralEventSystem.class).warn("AP_EVENT_UNKNOWN: {}:src=legacy", eventId);
         }
