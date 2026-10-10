@@ -162,7 +162,9 @@ public final class AstralEventRegistry {
                 // (静态标志置 true,玩家条件由 publicPool(Player) 承担;Q6:队内无秘密侦探时该事件永不可能出现)
                 true,
                 Set.of(AstralEventTrigger.INVESTIGATION_KILL, AstralEventTrigger.ITEM_USE,
-                        AstralEventTrigger.BLOCK_USE, AstralEventTrigger.CUSTOM),
+                        AstralEventTrigger.BLOCK_USE, AstralEventTrigger.CUSTOM,
+                        // 2026-10-10 用户需求:大侦探立牌主动技能(事件选择界面)也能触发「调查阶段」
+                        AstralEventTrigger.ACTIVE_SKILL),
                 r,
                 AstralEventEffect.NOOP,
                 1200));   // 用户裁决 2026-10-10：调查阶段**所有阶级**持续 1:00 ⇒ 卡面显示 1:00 计时器
@@ -178,7 +180,9 @@ public final class AstralEventRegistry {
                 polarity,
                 false,
                 true,
-                Set.of(AstralEventTrigger.ITEM_USE, AstralEventTrigger.BLOCK_USE, AstralEventTrigger.CUSTOM),
+                Set.of(AstralEventTrigger.ITEM_USE, AstralEventTrigger.BLOCK_USE, AstralEventTrigger.CUSTOM,
+                        // 2026-10-10 用户需求:大侦探立牌主动技能(事件选择界面)从事件池抽选项并触发
+                        AstralEventTrigger.ACTIVE_SKILL),
                 radius,
                 effect,
                 durationTicks));

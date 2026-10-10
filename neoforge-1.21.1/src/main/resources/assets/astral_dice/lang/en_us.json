@@ -887,5 +887,6 @@
   "effect.astral_dice.storm_approaching": "Storm Approaching",
   "effect.astral_dice.storm_approaching.description": "Hostile mobs +2 attack/defense (2:00)",
   "effect.astral_dice.problem_delivery": "Problem Delivery",
-  "effect.astral_dice.problem_delivery.description": "Poison & Hunger (0:15), no healing for 15s"
+  "effect.astral_dice.problem_delivery.description": "Poison & Hunger (0:15), no healing for 15s",
+  "gui.astral_dice.event_choice.title": "Choose Event"
 }

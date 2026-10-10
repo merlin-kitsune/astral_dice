@@ -4,7 +4,7 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
-## Unreleased (2.0.0-SNAPSHOT.68)
+## Unreleased (2.0.0-SNAPSHOT.69)
 
 ### New Content
 
@@ -2033,6 +2033,9 @@ m
 - **Timed events now register their timer at the same moment the effect resolves**: the timer used to be registered *before* the event card appeared, so it counted down during the card animation (~1.9 s, 38 ticks) and started earlier than the event itself; it now sits inside the delayed resolution block, together with the effect and sounds.
 - **Card trader texture updated**: exported from the Blockbench source `models/cardshop_villager.bbmodel` (modded_entity, 64x64) via Blockbench MCP, replacing `textures/entity/villager/profession/card_trader.png` (577 B profession overlay -> 1743 B full skin; note the new skin has an opaque head, so vanilla villager type skins no longer show through).
 - **Chip shop assets staged (not wired)**: added `models/block/chip_shop.json` + `textures/block/chip_shop.png` + `textures/entity/villager/profession/chip_trader.png` on both lines, exported from `models/chipshop*.bbmodel`; the matching block/entity/recipe/lang wiring is future work and intentionally absent.
+- **Detective signpost active skill reworked into an "event choice" screen**: using the signpost opens a centred panel (layout taken from the reference art) that draws **two random events from the current event pool** (duplicates allowed, any positive/negative/neutral mix; includes "Investigation Stage", which can only be drawn when a **secret detective is on the team**). Hovering a card shows its highlighted base art, clicking selects it and keeps that art; the confirm button has normal / hover / pressed states. The event is only triggered after selecting a card and confirming, and then follows the exact existing flow (event card → 1.4 s animation + 0.5 s → resolution and sound).
+- The screen has a **15 second** limit: on timeout, death or leaving the game/server the **first option is force-triggered** (an already confirmed choice is never overridden). Using the signpost itself plays **no** skill sound - only confirming does; confirming plays the sound **immediately**, waits **1 second**, closes the screen and then enters the event trigger flow.
+
 
 
 

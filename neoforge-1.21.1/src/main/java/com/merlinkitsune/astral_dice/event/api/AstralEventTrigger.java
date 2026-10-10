@@ -7,7 +7,7 @@ package com.merlinkitsune.astral_dice.event.api;
  * 玩家使用「抽事件」物品 / 方块(两者<b>独立注册</b>)、以及预留的自定义来源。
  */
 public enum AstralEventTrigger {
-    /** 立牌主动技能(大侦探主动技能待重做,本轮不注册任何事件到该来源)。 */
+    /** 立牌主动技能(2026-10-10 起已接入:大侦探立牌的「事件选择界面」抽中一个选项后以此来源触发)。 */
     ACTIVE_SKILL,
     /** 击杀「隐匿调查」目标 —— <b>唯一</b>允许提升「调查阶段」事件阶级的来源。 */
     INVESTIGATION_KILL,

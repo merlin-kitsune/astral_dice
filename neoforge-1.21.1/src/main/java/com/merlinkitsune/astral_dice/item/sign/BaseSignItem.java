@@ -151,7 +151,9 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         InteractionResultHolder<ItemStack> result = sign.handleUse(player.level(), player, stack);
         if (result.getResult() != InteractionResult.SUCCESS) return;
         // 主动技能**生效**音效（非选择器类立牌的实际施放）
-        playSkillUseSound(player);
+        // ⚠️ 可被立牌关闭：大侦探立牌的事件选择界面要求「点击使用时不播、只有玩家点了确认才播」
+        //    （2026-10-10 用户裁决；见 FannySignItem#playsSkillUseSoundOnUse 与 EventChoiceManager#confirm）
+        if (sign.playsSkillUseSoundOnUse()) playSkillUseSound(player);
         // 4. 手持风扇-大筹码:使用主动技能后,获得一张随机效果牌(不含专属),并对周围范围内敌对目标施加标记
         FanBigChipItem.applyAfterSignSkill(player);
         FanSmallChipItem.applyAfterSignSkill(player);
@@ -216,13 +218,23 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
      * <p>「生效」两种形态都算：① 选择器类立牌**成功进入目标选择器**（含后续确认）；
      * ② 其余立牌的 {@code handleUse} 返回 SUCCESS。被前置门控拒绝 / 取消 / 未确认的路径不播。
      */
-    protected static void playSkillUseSound(Player player) {
+    public static void playSkillUseSound(Player player) {
         if (player == null) return;
         com.merlinkitsune.astral_dice.audio.SoundPlayback.playAt(player.level(),
                 player.getX(), player.getY(), player.getZ(),
                 com.merlinkitsune.astral_dice.audio.ModSounds.SKILL_USE.get());
     }
 
+    /**
+     * 「点击使用立牌」这一步是否立即播放主动技能**生效**音效（缺省 true）。
+     *
+     * <p>返回 {@code false} 的立牌由自身决定播放时机：大侦探立牌（{@code fanny}）的主动技能会先开出
+     * 「事件选择界面」（15 秒等待期），**点击使用时不播**，只有玩家在界面里点了确认才播
+     * （2026-10-10 用户裁决；见 {@code com.merlinkitsune.astral_dice.event.EventChoiceManager#confirm}）。
+     */
+    protected boolean playsSkillUseSoundOnUse() {
+        return true;
+    }
     protected boolean canBeginSelectorSession(Player player) {
         return true;
     }

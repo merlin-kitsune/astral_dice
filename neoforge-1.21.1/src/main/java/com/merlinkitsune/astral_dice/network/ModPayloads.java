@@ -121,5 +121,23 @@ public class ModPayloads {
                 CardShopDenyPayload.STREAM_CODEC,
                 CardShopDenyPayload::handle
         );
+        // 大侦探立牌主动技能:事件选择界面(服务端下发 2 个候选事件 -> 客户端打开 Screen)
+        registrar.playToClient(
+                EventChoiceStartPayload.TYPE,
+                EventChoiceStartPayload.STREAM_CODEC,
+                EventChoiceStartPayload::handle
+        );
+        // 大侦探立牌主动技能:玩家在界面里点了确认(会话 token + 选中索引)
+        registrar.playToServer(
+                EventChoiceConfirmPayload.TYPE,
+                EventChoiceConfirmPayload.STREAM_CODEC,
+                EventChoiceConfirmPayload::handle
+        );
+        // 大侦探立牌主动技能:服务端权威关闭选择界面(等待 1 秒后)
+        registrar.playToClient(
+                EventChoiceClosePayload.TYPE,
+                EventChoiceClosePayload.STREAM_CODEC,
+                EventChoiceClosePayload::handle
+        );
     }
 }

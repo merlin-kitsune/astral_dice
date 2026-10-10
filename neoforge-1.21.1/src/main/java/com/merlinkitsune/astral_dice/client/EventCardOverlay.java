@@ -31,8 +31,10 @@ public final class EventCardOverlay implements LayeredDraw.Layer {
             ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, "event_card");
     public static final EventCardOverlay LAYER = new EventCardOverlay();
 
-    private static final int FRAME_W = 44;
-    private static final int FRAME_H = 67;
+    /** 事件卡框宽（公开：事件选择界面按同口径命中判定/排布）。 */
+    public static final int FRAME_W = 44;
+    /** 事件卡框高（公开：同上）。 */
+    public static final int FRAME_H = 67;
     private static final int PANE_X = 2;      // 图片格实测（card_frame.png: x=2..41）
     private static final int PANE_Y = 2;      // y=2..40
     private static final int PANE_W = 40;
@@ -134,6 +136,51 @@ public final class EventCardOverlay implements LayeredDraw.Layer {
         g.pose().popPose();
     }
 
+    /**
+     * 把一张事件卡画在**屏幕绝对坐标** (frameX, frameY)（左上角）——供事件选择界面复用。
+     *
+     * <p>与 {@link #drawCard} 逐字同源（同一套「框架图 + 事件图标 + MC 字体文本」口径），
+     * 只去掉「居中 + 缩放 + 淡入淡出」那层变换（选择界面里的卡是静止、不缩放的）。
+     *
+     * @param frameTex 卡框底图：默认 {@code textures/gui/shop/fanny_skill_event.png}；
+     *                 鼠标指向 / 单击选中后传 {@code ..._select.png}（用户需求：指向高亮、单击后底图替换）
+     */
+    public static void drawCardAt(GuiGraphics g, Minecraft mc, ResourceLocation frameTex,
+                                  ResourceLocation eventId, int durationTicks, int tier,
+                                  int frameX, int frameY) {
+        ResourceLocation icon = ResourceLocation.fromNamespaceAndPath(eventId.getNamespace(),
+                "textures/gui/event/" + iconPath(eventId, tier) + ".png");
+        int a = 255;
+        com.mojang.blaze3d.systems.RenderSystem.enableBlend();
+        g.flush();
+        com.mojang.blaze3d.systems.RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
+        g.blit(frameTex, frameX, frameY, 0.0F, 0.0F, FRAME_W, FRAME_H, FRAME_W, FRAME_H);
+        drawFaceCentered(g, icon, frameX, frameY);
+        g.flush();
+        AstralEvent ev = AstralEventRegistry.get(eventId).orElse(null);
+        int color = (ev == null ? 0xFFFFFF : ev.polarity().color().getColor()) | (a << 24);
+        Component name = Component.translatable("event.astral_dice." + eventId.getPath() + ".name");
+        g.drawString(mc.font, name, frameX + FRAME_W / 2 - mc.font.width(name) / 2, frameY + NAME_Y_OFF, color, false);
+        if (durationTicks > 0) {
+            Component timer = Component.literal(formatTicks(durationTicks));
+            g.drawString(mc.font, timer, frameX + FRAME_W / 2 - mc.font.width(timer) / 2, frameY + TIME_Y_OFF, color, false);
+        }
+        com.mojang.blaze3d.systems.RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
+        g.setColor(1.0F, 1.0F, 1.0F, 1.0F);
+    }
+
+    /**
+     * 图标路径（公开版：供事件选择界面在**没有 Card 实例**时复用）：
+     * **阶级 > 0 时取 `<id>_<suffix>`**（「调查阶段」4 张分阶图 `_1/_2/_3/_revelation`），否则取 `<id>`。
+     */
+    public static String iconPath(ResourceLocation eventId, int tier) {
+        String base = eventId.getPath();
+        if (tier > 0) {
+            String suffix = com.merlinkitsune.astral_dice.event.api.AstralEventTier.of(tier).iconSuffix();
+            if (suffix != null && !suffix.isEmpty()) return base + "_" + suffix;
+        }
+        return base;
+    }
     /** 刻 → `m:ss`。 */
     private static String formatTicks(int ticks) {
         int total = Math.max(0, ticks) / 20;
@@ -197,11 +244,6 @@ public final class EventCardOverlay implements LayeredDraw.Layer {
      * 仅图标随阶级切换）。
      */
     private static String iconPath(Card card) {
-        String base = card.eventId().getPath();
-        if (card.tier() > 0) {
-            String suffix = com.merlinkitsune.astral_dice.event.api.AstralEventTier.of(card.tier()).iconSuffix();
-            if (suffix != null && !suffix.isEmpty()) return base + "_" + suffix;
-        }
-        return base;
+        return iconPath(card.eventId(), card.tier());
     }
 }
