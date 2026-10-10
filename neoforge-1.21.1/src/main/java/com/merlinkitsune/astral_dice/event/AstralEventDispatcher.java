@@ -31,7 +31,7 @@ public final class AstralEventDispatcher {
     private static final Logger LOGGER = LoggerFactory.getLogger(AstralEventDispatcher.class);
 
     /** 历史遗留事件 id(不由注册表管理,只走附加效果层 —— 兼容入口用)。 */
-    private static final Set<String> LEGACY_IDS = Set.of("investigation", "fanny_active", "sign_effect");
+    private static final Set<String> LEGACY_IDS = Set.of("investigation", "sign_effect");
 
     private AstralEventDispatcher() {
     }
