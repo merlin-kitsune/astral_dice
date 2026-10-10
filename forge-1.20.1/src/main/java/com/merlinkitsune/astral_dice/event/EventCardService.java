@@ -43,12 +43,12 @@ public final class EventCardService {
 
     /** 弹卡 + 登记 40t 后的结算。 */
     public static void showThenRun(ServerLevel level, List<Player> targets, AstralEvent event,
-                                   Consumer<ServerLevel> action) {
+                                   int tier, Consumer<ServerLevel> action) {
         for (var p : targets) {
             if (p instanceof ServerPlayer sp) {
                 com.merlinkitsune.astral_dice.network.ModNetwork.CHANNEL.send(
                         PacketDistributor.PLAYER.with(() -> sp),
-                        new com.merlinkitsune.astral_dice.network.EventCardMessage(event.id(), event.defaultDurationTicks()));
+                        new com.merlinkitsune.astral_dice.network.EventCardMessage(event.id(), event.defaultDurationTicks(), tier));
                 SoundPlayback.playTo(sp, ModSounds.EVENT_FADE_IN.get());
             }
         }

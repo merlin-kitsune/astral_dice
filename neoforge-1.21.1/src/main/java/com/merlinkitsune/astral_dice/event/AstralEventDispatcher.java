@@ -113,7 +113,7 @@ public final class AstralEventDispatcher {
         final int tierFinal = tier;
         if (triggerer.level() instanceof ServerLevel serverLevel) {
             // 用户裁决 2026-10-10：先弹「事件效果卡」，弹卡开始后 40t（2.0s）才真正执行事件并播放音效。
-            EventCardService.showThenRun(serverLevel, targetsFinal, event, lvl -> {
+            EventCardService.showThenRun(serverLevel, targetsFinal, event, tierFinal, lvl -> {
                 for (Player target : targetsFinal) {
                     event.effect().apply(lvl, bonusFinal, target, event, source, tierFinal);
                 }

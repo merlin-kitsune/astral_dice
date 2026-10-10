@@ -57,12 +57,12 @@ public final class EventCardOverlay implements LayeredDraw.Layer {
     }
 
     /** 收到 S2C 弹卡包（主线程）。 */
-    public static void show(ResourceLocation eventId, int durationTicks) {
+    public static void show(ResourceLocation eventId, int durationTicks, int tier) {
         long startMs = System.currentTimeMillis();
-        CARDS.add(new Card(eventId, durationTicks, startMs));
+        CARDS.add(new Card(eventId, durationTicks, tier, startMs));
     }
 
-    private record Card(ResourceLocation eventId, int durationTicks, long startMs) {
+    private record Card(ResourceLocation eventId, int durationTicks, int tier, long startMs) {
     }
 
     @Override
@@ -97,7 +97,7 @@ public final class EventCardOverlay implements LayeredDraw.Layer {
     private void drawCard(GuiGraphics g, Minecraft mc, Card card, int centerX, int centerY,
                           float scale, float alpha) {
         ResourceLocation icon = ResourceLocation.fromNamespaceAndPath(card.eventId().getNamespace(),
-                "textures/gui/event/" + card.eventId().getPath() + ".png");
+                "textures/gui/event/" + iconPath(card) + ".png");
         g.pose().pushPose();
         // 垂直对齐：FRAME_H 为奇数时 quad 中心天然低 0.5 GUI px（=2 物理 px @guiScale4）⇒ 上移半像素
         float yOff = (FRAME_H % 2 == 0) ? 0.0F : -0.5F;
@@ -190,5 +190,18 @@ public final class EventCardOverlay implements LayeredDraw.Layer {
         } catch (Exception ex) {
             return null;
         }
+    }
+    /**
+     * 图标路径：**阶级 > 0 时取 `<id>_<suffix>`**（「调查阶段」一条事件 4 张分阶图：
+     * `_1 / _2 / _3 / _revelation`），否则取 `<id>`（用户裁决 2026-10-10：它与其他事件触发方式一致，
+     * 仅图标随阶级切换）。
+     */
+    private static String iconPath(Card card) {
+        String base = card.eventId().getPath();
+        if (card.tier() > 0) {
+            String suffix = com.merlinkitsune.astral_dice.event.api.AstralEventTier.of(card.tier()).iconSuffix();
+            if (suffix != null && !suffix.isEmpty()) return base + "_" + suffix;
+        }
+        return base;
     }
 }

@@ -15,8 +15,9 @@ import net.minecraft.resources.ResourceLocation;
  *
  * @param eventId       事件 id（客户端据此取图标 `textures/gui/event/<path>.png` 与语言键 `event.astral_dice.<path>.name`）
  * @param durationTicks 计时器时长（0 = 无计时器 ⇒ 不画第二行）
+ * @param tier          当前事件阶级（>0 时图标取 `<id>_<suffix>`，用于「调查阶段」4 张分阶图）
  */
-public record EventCardPayload(ResourceLocation eventId, int durationTicks) implements CustomPacketPayload {
+public record EventCardPayload(ResourceLocation eventId, int durationTicks, int tier) implements CustomPacketPayload {
     public static final CustomPacketPayload.Type<EventCardPayload> TYPE =
             new CustomPacketPayload.Type<>(
                     ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, "event_card"));
@@ -24,6 +25,7 @@ public record EventCardPayload(ResourceLocation eventId, int durationTicks) impl
     public static final StreamCodec<RegistryFriendlyByteBuf, EventCardPayload> STREAM_CODEC = StreamCodec.composite(
             ResourceLocation.STREAM_CODEC, EventCardPayload::eventId,
             ByteBufCodecs.VAR_INT, EventCardPayload::durationTicks,
+            ByteBufCodecs.VAR_INT, EventCardPayload::tier,
             EventCardPayload::new);
 
     @Override

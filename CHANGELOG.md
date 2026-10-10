@@ -4,7 +4,7 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
-## Unreleased (2.0.0-SNAPSHOT.64)
+## Unreleased (2.0.0-SNAPSHOT.65)
 
 ### New Content
 
@@ -2028,6 +2028,8 @@ m
 - **Event trigger sounds**: Learn From Others (healed side) / Angel Descent -> `event_heal`; Learn From Others (damaged side) / World Collapse -> `event_damage`; Problem Delivery -> `event_poisoning`; Crowded Passage -> `event_transport`; Gift From Sky -> `event_bonus`.
 - **Learn From Others** now heals first and deals the damage **1 second later** (regardless of how many players are affected); **Hand Erasure** now makes the card **vanish outright** (no longer dropped on the ground); **Gift From Sky** deposits its 3 star coins straight into the star coin wallet when that feature is enabled.
 - **Event types corrected**: Red Heat Warning and Gift From Sky are positive, Crowded Passage is neutral, Problem Delivery is negative (card text and indicators now follow); status indicator icons now use the same-named icons under `images/`.
+- **"Investigation Stage" now uses its four tier icons**: the event triggers exactly like any other event (item / block / custom + killing a unit carrying Hidden Investigation), only the **icon follows the current tier** - tiers 1/2/3/4 map to `investigation_stage_1 / _2 / _3 / _revelation` (previously those four textures were never used and the card always showed the old base icon).
+
 
 
 

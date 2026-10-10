@@ -47,7 +47,7 @@ public class ModPayloads {
                 com.merlinkitsune.astral_dice.network.EventCardPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(() ->
                         com.merlinkitsune.astral_dice.client.EventCardOverlay.show(
-                                payload.eventId(), payload.durationTicks()))
+                                payload.eventId(), payload.durationTicks(), payload.tier()))
         );
         registrar.playToServer(
                 SignActivatePayload.TYPE,
