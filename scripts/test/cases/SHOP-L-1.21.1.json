@@ -643,7 +643,7 @@
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_CSC:evt=qm_pre:card=[a-z0-9_]+:[a-z0-9_/]+"   // ⚠️ 行尾冒号陷阱：card id 就是行尾
+      "pattern": "AP_CSC:evt=qm_pre:card=[a-z0-9_]+:[a-z0-9_/]+"
     },
     {
       "type": "log",
@@ -653,7 +653,7 @@
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_CSC:evt=scr:nat_t0:.*sold=100000"
+      "pattern": "AP_CSC:evt=nat_buy_delta:.*:delta=100000"
     },
     {
       "type": "log",

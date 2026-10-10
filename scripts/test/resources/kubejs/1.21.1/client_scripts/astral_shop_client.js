@@ -114,6 +114,7 @@ var csShelf0Id = "?";      // 双击移入前记下的货架0物品 id（买完�
 var csNat = false;         // 782 = 自然 60s 轮询窗口（不做任何 cycleset 干预）
 var csNatGate = 782;
 var csNatSoldCsv = "";     // 782 里 t0 时刻的已售位图（用于比对「未刷架」）
+var csNatBaseSold = "";    // 782 nat_open 那一刻的已售位图基线（增量判据用，避免跨场景残留耦合）
 var csNatFp = "";          // 782 里 t0 时刻的货架指纹（sold+id）——比对「有没有刷架」
 var csNatIds = ["?", "?", "?", "?", "?", "?"];  // 782 里 t0 时刻逐格物品 id（抗「外部购买」干扰的比对基线）
 var csDenyLastRed = -1;    // 780 闪烁相位翻转检测（只在翻转那一拍抓帧）
@@ -1042,6 +1043,7 @@ function csNatCmp(mc, at) {
 function csRunNat(mc, step) {
     if (step === 2) {
         cs("evt=nat_open:" + csState(mc)); csScreen(mc, "nat_open"); csShot(mc, "nat_open", step);
+        csNatBaseSold = csSoldCsv(mc);   // 基线：进本场景那一刻的已售位图（可能带上一场景残留，属正常）
     } else if (step === 6) {
         csCmd(mc, "astralshop cycleset NA0 60", "cyc60", step);    // 只为把周期对齐到整 60s；之后完全靠自然流逝
     } else if (step === 10) {
@@ -1059,6 +1061,12 @@ function csRunNat(mc, step) {
         csNatSoldCsv = csSoldCsv(mc); csNatFp = csShelfFp(mc); csNatIds = csShelfIds(mc);
         csScreen(mc, "nat_t0");                                    // 期望 hour=4 ready=0 sold=100000（剩≈59s）
         cs("evt=nat_t0_sold:sold=" + csNatSoldCsv + ":fp=" + csNatFp);
+        // 增量判据（复核建议）：只断言「相对基线的**新增**已售位 = slot0」，不硬编码 6 位字面量
+        var natDelta = "";
+        for (var ndi = 0; ndi < 6; ndi++) {
+            natDelta += (csNatSoldCsv.charAt(ndi) === "1" && csNatBaseSold.charAt(ndi) !== "1") ? "1" : "0";
+        }
+        cs("evt=nat_buy_delta:base=" + csNatBaseSold + ":cur=" + csNatSoldCsv + ":delta=" + natDelta);
     } else if (step === 400) {
         csScreen(mc, "nat_t20"); cs(csNatCmp(mc, 400));             // 期望 hour=3 same=1（剩≈41s；未到 0 不刷架）
     } else if (step === 800) {
