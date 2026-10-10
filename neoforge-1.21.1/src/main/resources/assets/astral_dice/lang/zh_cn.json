@@ -879,5 +879,7 @@
   "event.astral_dice.problem_delivery.name": "问题外卖",
   "event.astral_dice.crowded_passage.name": "拥挤通道",
   "event.astral_dice.battle_frenzy.name": "战斗爽",
-  "event.astral_dice.investigation_stage.name": "调查阶段"
+  "event.astral_dice.investigation_stage.name": "调查阶段",
+  "item.astral_dice.event_ticket": "抽事件券",
+  "block.astral_dice.event_drawer": "事件抽取机"
 }

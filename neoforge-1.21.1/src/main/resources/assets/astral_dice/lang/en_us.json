@@ -878,5 +878,7 @@
   "event.astral_dice.problem_delivery.name": "Problem Delivery",
   "event.astral_dice.crowded_passage.name": "Crowded Passage",
   "event.astral_dice.battle_frenzy.name": "Battle Frenzy",
-  "event.astral_dice.investigation_stage.name": "Investigation Stage"
+  "event.astral_dice.investigation_stage.name": "Investigation Stage",
+  "item.astral_dice.event_ticket": "Event Ticket",
+  "block.astral_dice.event_drawer": "Event Drawer"
 }
