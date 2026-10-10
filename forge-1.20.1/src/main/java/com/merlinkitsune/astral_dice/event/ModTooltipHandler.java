@@ -1095,7 +1095,6 @@ public class ModTooltipHandler {
             tooltip.add(Component.empty());
             addSignKeyHint(tooltip);
             addSignActiveTitle(tooltip, "麻烦制造者");
-            addSignLines(tooltip, "tooltip.astral_dice.sign.fanny_active");
             addSignPassiveTitle(tooltip, "华点发现");
             addSignLines(tooltip, "tooltip.astral_dice.sign.fanny_passive");
             addSignCooldownRemaining(tooltip, event.getEntity());

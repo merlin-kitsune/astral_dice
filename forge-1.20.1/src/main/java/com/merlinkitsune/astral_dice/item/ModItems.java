@@ -412,6 +412,16 @@ public class ModItems {
     public static final RegistryObject<Item> CARD_SHOP = registerItem("card_shop",
             () -> new BlockItem(ModBlocks.CARD_SHOP.get(), new Item.Properties()));
 
+    /** 抽事件券(2026-10-10 事件体系重写):使用后抽一条事件(ITEM_USE),生存消耗 1 张。 */
+    public static final RegistryObject<Item> EVENT_TICKET = registerItem("event_ticket",
+            () -> new EventDrawItem(new Item.Properties()
+                    .stacksTo(16)
+                    .rarity(Rarity.COMMON)));
+
+    /** 事件抽取机(物品形态,BLOCK_USE)。 */
+    public static final RegistryObject<Item> EVENT_DRAWER = registerItem("event_drawer",
+            () -> new BlockItem(ModBlocks.EVENT_DRAWER.get(), new Item.Properties()));
+
     public static final RegistryObject<Item> BLANK_SIGN = registerItem("blank_sign",
             () -> new Item(new Item.Properties()
                     .stacksTo(64)));

@@ -5,7 +5,9 @@ import com.merlinkitsune.starenginelib.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ConcealmentEffect;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
-import com.merlinkitsune.astral_dice.event.AstralEventSystem;
+import com.merlinkitsune.astral_dice.event.AstralEventDispatcher;
+import com.merlinkitsune.astral_dice.event.AstralEventIds;
+import com.merlinkitsune.astral_dice.event.api.AstralEventTrigger;
 import com.merlinkitsune.starenginelib.event.EventTargetCollector;
 import com.merlinkitsune.astral_dice.network.ModNetwork.ActionBarMessage;
 import net.minecraft.ChatFormatting;
@@ -43,15 +45,15 @@ public final class InvestigationEventUtil {
         if (killer == applier) {
             // 释放者自己击杀隐匿调查目标:不存在其他攻击者,仅触发一次事件且仅自己获得效果
             applyStageEffects(killer, null, stage, markLevel);
-            ModAttachments.setInvestigationStage(applier, Math.min(stage + 1, 4));
-            AstralEventSystem.triggerInvestigationEvent(killer);
+            // 阶级推进改由 AstralEventDispatcher 的阶级闸门负责（仅 INVESTIGATION_KILL，归属施加者）。
+            AstralEventDispatcher.trigger(killer, applier, AstralEventIds.INVESTIGATION_STAGE, AstralEventTrigger.INVESTIGATION_KILL);
             sendInvestigationActionBar(killer);
             return;
         }
         applyStageEffects(killer, applier, stage, markLevel);
         // 推进进度(达到真相揭露阶段后永久保持,仅卸下立牌时清除)
-        ModAttachments.setInvestigationStage(applier, Math.min(stage + 1, 4));
-        AstralEventSystem.triggerInvestigationEvent(killer);
+        // 阶级推进由 AstralEventDispatcher 的阶级闸门执行（仅 INVESTIGATION_KILL 可提升，归属施加者 applier）。
+        AstralEventDispatcher.trigger(killer, applier, AstralEventIds.INVESTIGATION_STAGE, AstralEventTrigger.INVESTIGATION_KILL);
             sendInvestigationActionBar(killer);
     }
 

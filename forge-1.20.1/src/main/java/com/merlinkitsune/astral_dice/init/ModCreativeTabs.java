@@ -189,5 +189,7 @@ public class ModCreativeTabs {
                 // JEI 物品列表顺序取自创造栏（IngredientSorterComparators.getCreativeMenuComparator），
                 // 因此这里一并决定了 JEI 里卡牌商店的位置。
                 output.accept(ModItems.CARD_SHOP.get());
+output.accept(ModItems.EVENT_TICKET.get());
+output.accept(ModItems.EVENT_DRAWER.get());
             }).build());
 }

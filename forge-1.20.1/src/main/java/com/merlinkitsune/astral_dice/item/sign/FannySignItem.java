@@ -1,33 +1,20 @@
 package com.merlinkitsune.astral_dice.item.sign;
-import com.merlinkitsune.astral_dice.network.ModNetwork;
 
-import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
-import com.merlinkitsune.starenginelib.event.SignActiveTriggeredEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.InteractionResultHolder;
-import net.minecraft.world.effect.MobEffectInstance;
-import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import top.theillusivec4.curios.api.SlotContext;
 
-import java.util.List;
-import java.util.concurrent.ThreadLocalRandom;
-import com.merlinkitsune.starenginelib.component.GameplayConstants;
-import com.merlinkitsune.astral_dice.event.AstralEventSystem;
-import com.merlinkitsune.astral_dice.item.ModItems;
-import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
-import com.merlinkitsune.astral_dice.item.card.EffectCardUtil;
-import net.minecraft.ChatFormatting;
-import net.minecraft.network.chat.Component;
-import net.minecraft.server.level.ServerPlayer;
-
-@Mod.EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
+/**
+ * 大侦探立牌。
+ *
+ * <p>2026-10-10 用户裁决:① <b>删除由本立牌注册的全部事件</b>(原 11 项随机事件)——事件改由统一事件体系
+ * 承载({@code com.merlinkitsune.astral_dice.event.AstralEventRegistry});② 主动技能<b>清空(留空)</b>,技能待重做。
+ *
+ * <p>因此本类现在只保留:物品本体、主动技能挂载点({@link #handleUse})、冷却/锁定框架(恒不锁定)。
+ * 删除的内容(留档):生命恢复/力量(0:30)、攻击-特大、随机效果牌+3 星币、滋养+饱和、迅捷、瞬间伤害、
+ * 中毒、饥饿+反胃、凋灵+黑暗、虚弱+挖掘疲劳,以及配套的 actionbar 提示与「抽到事件」广播循环。
+ */
 public class FannySignItem extends BaseSignItem {
     public FannySignItem(Properties properties) {
         super(properties);
@@ -38,149 +25,20 @@ public class FannySignItem extends BaseSignItem {
         if (level.isClientSide) {
             return InteractionResultHolder.success(stack);
         }
-        // 主动:随机获得以下任一效果(固定 11 项,不含"调查阶段"事件)
-        int roll = ThreadLocalRandom.current().nextInt(1, 12);
-        // 2026-10-03 用户裁决:大侦探「抽到的效果」按「队伍 + 64 格」广播
-        // (口径见 PartyRelations#collectEventTargets)——
-        //   触发者有队伍 = 全队 ∪ 64 格内非队友;无队伍 = 全部无队伍玩家 ∪ 64 格内所有玩家。
-        // ⚠️ 锁定(主动技能冷却)仍**只由触发者自己**的施加结果决定,广播给他人不影响冷却判定。
-        long lockEnd = 0L;
-        for (Player target : com.merlinkitsune.astral_dice.combat.PartyRelations.collectEventTargets(
-                player, com.merlinkitsune.astral_dice.event.AstralEventSystem.EVENT_TARGET_RADIUS)) {
-            long applied = applyEventTo(target, roll);
-            if (target == player) {
-                lockEnd = applied;
-            }
-        }
-        // 第二批「三态化」:只登记本次**实际施加成功**的计时器 ⇒ 进入锁定(生效中)态;
-        // 只发物品的分支(3/4,分支内不登记任何效果)与未施加成功时都不锁 ⇒ 由 performSkill 立即起冷却。
-        // 判据用"实际施加结果"而不是回读实例剩余时长:后者会把无关来源的同名效果(如金苹果的生命恢复)算进来
-        if (lockEnd > player.level().getGameTime()) {
-            beginActiveLock(player, "astral_dice:fanny_sign", lockEnd);
-        }
-        sendEventActionBar(player, roll);
-        // 触发统一事件附加效果:大侦探立牌被动(+3 星币)与调查员立牌联动(活体书页)
-        // (带独立事件 ID,避免与调查阶段事件在同 tick 触发时互相串扰去重)
-        com.merlinkitsune.astral_dice.event.AstralEventSystem.onEventTriggered(player, "fanny_active");
+        // 主动技能留空(2026-10-10 用户裁决:技能待重做) —— 不再抽任何事件、不再广播、不再登记门控计时器。
+        // 后续重做时请走 AstralEventDispatcher.trigger(player, <事件 id>, AstralEventTrigger.ACTIVE_SKILL)。
         return InteractionResultHolder.success(stack);
     }
 
-    /**
-     * 把抽到的事件效果施加到**单个目标**上,返回该目标「门控计时器」的到期刻
-     * (0 = 未施加成功,不构成门控计时器)。
-     *
-     * <p>2026-10-03:本方法只负责**施加**;**锁定登记**移到 {@link #handleUse},且只按
-     * **触发者自己**的施加结果登记(广播给其他玩家不影响触发者的主动技能冷却判定)。
-     */
-    private static long applyEventTo(Player player, int roll) {
-        long lockEnd = 0L;
-        switch (roll) {
-            case 1 -> lockEnd = applyTimed(player, MobEffects.REGENERATION, 600); // 生命恢复 0:30
-            case 2 -> lockEnd = applyTimed(player, MobEffects.DAMAGE_BOOST, 600); // 力量 0:30
-            case 3 -> giveItem(player, new ItemStack(ModItems.ATTACK_CARD_EPIC.get())); // 攻击-特大
-            case 4 -> { // 随机效果牌(不含专属)+3星币
-                giveRandomEffectCard(player);
-                giveCoins(player, 3);
-            }
-            case 5 -> { // 滋养 2:00(农夫乐事) + 饱和 0:30
-                giveNourishment(player);
-                lockEnd = applyTimed(player, MobEffects.SATURATION, 600);
-            }
-            case 6 -> lockEnd = applyTimed(player, MobEffects.MOVEMENT_SPEED, 600); // 迅捷 0:30
-            case 7 -> lockEnd = applyTimed(player, MobEffects.HARM, 1); // 瞬间伤害(1 tick,等同不锁)
-            case 8 -> lockEnd = applyTimed(player, MobEffects.POISON, 300); // 中毒 0:15
-            case 9 -> { // 饥饿 0:30 + 反胃 0:07
-                lockEnd = Math.max(applyTimed(player, MobEffects.HUNGER, 600),
-                        applyTimed(player, MobEffects.CONFUSION, 140));
-            }
-            case 10 -> { // 凋灵 0:07 + 黑暗 0:05
-                lockEnd = Math.max(applyTimed(player, MobEffects.WITHER, 140),
-                        applyTimed(player, MobEffects.DARKNESS, 100));
-            }
-            case 11 -> { // 虚弱 0:15 + 挖掘疲劳 0:30
-                lockEnd = Math.max(applyTimed(player, MobEffects.WEAKNESS, 300),
-                        applyTimed(player, MobEffects.DIG_SLOWDOWN, 600));
-            }
-        }
-        return lockEnd;
-    }
-
-    // 施加一个带时长效果(经计时器守卫)并返回其到期刻(0 = 未施加成功,不构成门控计时器)
-    private static long applyTimed(Player player, net.minecraft.world.effect.MobEffect effect, int durationTicks) {
-        boolean applied = EffectTimerGuard.apply(player,
-                new MobEffectInstance(effect, durationTicks, 0, false, true));
-        return applied ? player.level().getGameTime() + durationTicks : 0L;
-    }
-
-    // 11 项随机事件里会施加到自身的带时长效果(3/4 两项只发物品,不在此列):锁定态的门控效果来源。
-    // 门控只用于"提前结束"(效果被外力清除),硬上界由 handleUse 按**实际施加**的时长登记(取自 applyEventTo)
-    private static final java.util.List<net.minecraft.world.effect.MobEffect> LOCK_GATE_EFFECTS =
-            List.of(MobEffects.REGENERATION, MobEffects.DAMAGE_BOOST, MobEffects.MOVEMENT_SPEED,
-                    MobEffects.HARM, MobEffects.POISON, MobEffects.HUNGER, MobEffects.CONFUSION,
-                    MobEffects.WITHER, MobEffects.DARKNESS, MobEffects.WEAKNESS, MobEffects.DIG_SLOWDOWN,
-                    MobEffects.SATURATION);
-
-    // 第二批「三态化」:锁定已在 handleUse 内登记(仅当本次实际施加成功);此处只回答"是否已进入锁定"
+    /** 主动技能不再产生任何可门控效果 ⇒ 不使用锁定态(冷却由基类框架按默认口径推进)。 */
     @Override
     protected boolean startActiveLockOnUse(Player player, long now) {
-        return isSignActiveLocked(player);
-    }
-
-    // 门控效果实例仍在:效果被外力提前移除时锁定提前结束(硬上界不延长)
-    @Override
-    protected boolean isGateEffectActive(Player player) {
-        for (net.minecraft.world.effect.MobEffect effect : LOCK_GATE_EFFECTS) {
-            if (player.hasEffect(effect)) return true;
-        }
         return false;
     }
 
-    // 随机一张功能效果牌(通过随机黑名单排除专属效果牌,如活体书页)
-    private static void giveRandomEffectCard(Player player) {
-        List<ItemStack> pool = EffectCardUtil.getRandomEffectCardPool();
-        if (pool.isEmpty()) return;
-        giveItem(player, pool.get(ThreadLocalRandom.current().nextInt(pool.size())).copy());
-    }
-
-    // 农夫乐事"滋养"效果(仅安装农夫乐事 Mod 时生效)
-    private static void giveNourishment(Player player) {
-        try {
-            var nourishment = BuiltInRegistries.MOB_EFFECT.get(new ResourceLocation("farmersdelight:nourishment"));
-            if (nourishment != null) {
-                EffectTimerGuard.apply(player, new MobEffectInstance(nourishment, 2400, 0, false, true));
-            }
-        } catch (Exception ignored) {
-        }
-    }
-
-    private static void giveCoins(Player player, int count) {
-        giveItem(player, new ItemStack(ModItems.STAR_COIN.get(), count));
-    }
-
-    private static void giveItem(Player player, ItemStack item) {
-        if (ModItems.isCardItem(item)) {
-            VitaminPillChipItem.giveCard(player, item);
-        } else if (!player.getInventory().add(item)) {
-            player.drop(item, false);
-        }
-    }
-    private static void sendEventActionBar(Player player, int roll) {
-        if (player instanceof ServerPlayer sp) {
-            ModNetwork.sendToPlayer(sp,
-                    new ModNetwork.ActionBarMessage(
-                            Component.translatable("msg.astral_dice.fanny_event",
-                                    Component.translatable("msg.astral_dice.fanny_event." + roll))
-                                    .withStyle(ChatFormatting.YELLOW),
-                            GameplayConstants.ACTIONBAR_DURATION_TICKS));
-        }
-    }
-
-    // 大侦探主动自带 ActionBar 反馈(事件提示,依赖随机事件结果,仍在 handleUse 内发送):
-    // 注册到主动技能响应事件,阻止默认提示
-    @SubscribeEvent
-    public static void onSignActiveTriggered(SignActiveTriggeredEvent event) {
-        if (event.getSignStack().is(ModItems.FANNY_SIGN.get())) {
-            event.setHandled();
-        }
+    /** 门控效果:11 项事件已删除 ⇒ 不存在门控效果。 */
+    @Override
+    protected boolean isGateEffectActive(Player player) {
+        return false;
     }
 }
