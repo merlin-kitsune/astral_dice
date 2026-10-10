@@ -4,7 +4,7 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
-## Unreleased (2.0.0-SNAPSHOT.70)
+## Unreleased (2.0.0-SNAPSHOT.71)
 
 ### New Content
 
@@ -2039,6 +2039,8 @@ m
 - **Event card animation and resolution now share a single time source**: `38 ticks to resolve = 28 ticks visible animation (1.4 s) + 10 ticks buffer (0.5 s)`, defined once on the server and derived on the client, with new `AP_EVENT_CARD_CLIENT` machine lines; this also fixes the out-phase progress overshoot that left **text lingering on screen after the card had faded** (per-tick measurement during the card: damage, effects and heal-blocking all stay zero until tick 38, where they apply at once).
 - **The event choice screen header now shows a 15 second countdown** instead of the "Choose Event" text, driven authoritatively by the server (`0:15` -> `0:00`).
 - **The detective signpost skill sound is back to "plays immediately when the skill key is pressed"** (like every other signpost); confirming no longer plays it again.
+- **Every star coin payout in the mod now prefers the wallet**: paths that used to stuff coins straight into the inventory (dropping them on the ground when full) - Haiqing (weak-mark kill reward), Bonnie (mark reward), Hanna, Mimi, Gift From Sky and the detective signpost passive - all go through the central funnel (`ResourceConversion.giveItem` -> wallet credit + balance sync; items only when the wallet is disabled), matching the card shop and bank card behaviour.
+
 
 
 

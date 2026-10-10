@@ -99,9 +99,8 @@ public class HaiqingSignItem extends BaseSignItem {
     public static void grantWeakMarkKillReward(Player applier, Player killer) {
         if (applier == null || applier.level().isClientSide()) return;
         ItemStack coinStack = new ItemStack(ModItems.STAR_COIN.get(), 3);
-        if (!applier.getInventory().add(coinStack)) {
-            applier.drop(coinStack, false);
-        }
+        // 用户裁决 2026-10-11：发币优先入钱包（中央漏斗），钱包关闭才给物品
+        com.merlinkitsune.astral_dice.resource.ResourceConversion.giveItem(applier, coinStack);
         if (killer != null) {
             ItemStack card = new ItemStack(ModItems.FATE_GUIDANCE_CARD.get());
             ExclusiveCardUtil.setOwner(card, killer);

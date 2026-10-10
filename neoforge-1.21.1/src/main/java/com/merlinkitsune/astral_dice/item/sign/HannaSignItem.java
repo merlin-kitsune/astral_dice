@@ -349,9 +349,8 @@ public class HannaSignItem extends BaseSignItem {
     private static void giveCoins(Player player, int count) {
         if (player == null || count <= 0) return;
         ItemStack coins = new ItemStack(ModItems.STAR_COIN.get(), count);
-        if (!player.getInventory().add(coins)) {
-            player.drop(coins, false);
-        }
+        // 用户裁决 2026-10-11：模组内**所有发币优先入钱包**，钱包关闭才给物品（中央漏斗内部即此语义）
+        com.merlinkitsune.astral_dice.resource.ResourceConversion.giveItem(player, coins);
     }
 
     // ══════════════════════════════════════════════════════════════════════════
