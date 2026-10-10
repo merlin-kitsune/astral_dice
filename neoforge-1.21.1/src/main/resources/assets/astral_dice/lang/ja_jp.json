@@ -880,5 +880,11 @@
   "event.astral_dice.investigation_stage.name": "調査段階",
   "item.astral_dice.event_ticket": "イベント券",
   "block.astral_dice.event_drawer": "イベント抽選機",
-  "hud.astral_dice.target_select.tag.undercover": "調査中"
+  "hud.astral_dice.target_select.tag.undercover": "調査中",
+  "effect.astral_dice.red_heat_warning": "熱暴走警告",
+  "effect.astral_dice.red_heat_warning.description": "攻撃力 +5（3:00）",
+  "effect.astral_dice.storm_approaching": "嵐の予兆",
+  "effect.astral_dice.storm_approaching.description": "敵対モブ 攻撃力/防御力 +2（2:00）",
+  "effect.astral_dice.problem_delivery": "問題配達",
+  "effect.astral_dice.problem_delivery.description": "毒と飢餓（0:15）、15 秒間治療不可"
 }

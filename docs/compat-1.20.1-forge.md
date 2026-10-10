@@ -223,3 +223,6 @@ datagen:`RecipeOutput` → `Consumer<FinishedRecipe>`(`.save(output::accept)`);`
 
 
 9. **玩家 tick 事件（事件效果到期检测引入）**：1.21.1 是 `net.neoforged.neoforge.event.tick.PlayerTickEvent.Post`（`event.getEntity()`）；1.20.1 是 `net.minecraftforge.event.TickEvent.PlayerTickEvent`（需判 `event.phase == Phase.END`、用 `event.player`）。`EventEffects#onPlayerTick` 因此两线各一份。
+
+
+10. **刷怪收尾事件（「雷暴将至」夜间刷怪 ×2 引入）**：1.21.1 = `net.neoforged.neoforge.event.entity.living.FinalizeSpawnEvent`（`getEntity()` 返回 `Entity`）；1.20.1 = `net.minecraftforge.event.entity.living.MobSpawnEvent.FinalizeSpawn`（`getEntity()` **返回 `Mob`** ⇒ 不可再写 `instanceof Mob` 模式）。两线共用同一语义：夜间 + 64 格内有带 `storm_approaching` 的玩家 ⇒ 追加一只同类敌对生物。

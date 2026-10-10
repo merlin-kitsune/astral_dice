@@ -94,6 +94,9 @@ public final class EventEffects {
 
     public static void redHeatWarning(ServerLevel level, Player triggerer, Player target, AstralEvent event,
                                       AstralEventTrigger source, int tier) {
+        // 指示器（用户裁决 1/2）：同名图标的自有 MobEffect ⇒ 原版效果 HUD 双端同步显示
+        target.addEffect(new MobEffectInstance(com.merlinkitsune.astral_dice.effect.ModEffects.RED_HEAT_WARNING.get(),
+                3600, 0, false, false, true));
         setAttack(target, ATK_KEY_PREFIX + "red_heat_warning", 5.0D);
         EventTimerStore.start(target, event.id(), 3600, p -> setAttack(p, ATK_KEY_PREFIX + "red_heat_warning", 0));
     }
@@ -110,6 +113,9 @@ public final class EventEffects {
 
     public static void stormApproaching(ServerLevel level, Player triggerer, Player target, AstralEvent event,
                                         AstralEventTrigger source, int tier) {
+        // 指示器（用户裁决 1/2）：雷暴将至也会在效果栏显示同名图标；同时作为「夜间刷怪 ×2」钩子的门禁
+        target.addEffect(new MobEffectInstance(com.merlinkitsune.astral_dice.effect.ModEffects.STORM_APPROACHING.get(),
+                2400, 0, false, false, true));
         RandomCardHandler.giveCardTo(target, RandomCardHandler.CardCategory.ALL);
         AABB box = triggerer.getBoundingBox().inflate(event.radius());
         List<LivingEntity> mobs = new ArrayList<>();
@@ -127,7 +133,7 @@ public final class EventEffects {
                 setMobAttribute(mob, "event_storm_def", Attributes.ARMOR, 0);
             }
         });
-        LOGGER.info("AP_EVENT_EFFECT: storm_approaching:mobs={}:nightSpawnPending=true", mobs.size());
+        LOGGER.info("AP_EVENT_EFFECT: storm_approaching:mobs={}:nightSpawnX2=hook", mobs.size());
     }
 
     // ────────────────────────── 4. 取长补短：血量最低者 +8、最高者 -8（集合层结算） ──────────────────────────
@@ -165,6 +171,35 @@ public final class EventEffects {
         }
     }
 
+    // ────────────────────────── 「雷暴将至」夜间刷怪数量 ×2（用户裁决 3：直接建钩子） ──────────────────────────
+
+    /**
+     * 夜间、且**存在带「雷暴将至」指示器的玩家**时，把敌对生物的自然刷新**再来一只**（数量 ×2）。
+     *
+     * <p>用平台刷怪收尾事件实现（非 mixin）：1.20.1 = {@code MobSpawnEvent.FinalizeSpawn}。
+     */
+    @net.minecraftforge.eventbus.api.SubscribeEvent
+    public static void onFinalizeSpawn(net.minecraftforge.event.entity.living.MobSpawnEvent.FinalizeSpawn event) {
+        // 1.20.1 的 MobSpawnEvent.FinalizeSpawn#getEntity() 已声明为 Mob ⇒ 直接 instanceof Enemy 判定
+        Mob mob = event.getEntity();
+        if (!(mob instanceof Enemy)) return;
+        if (!(mob.level() instanceof ServerLevel level)) return;
+        if (!level.isNight()) return;
+        if (!hasStormWatcherNear(level, mob)) return;
+        net.minecraft.world.entity.Entity copy = mob.getType().create(level);
+        if (copy == null) return;
+        copy.moveTo(mob.getX() + 1.0D, mob.getY(), mob.getZ() + 1.0D, mob.getYRot(), mob.getXRot());
+        level.addFreshEntity(copy);
+        LOGGER.info("AP_EVENT_EFFECT: storm_night_spawn_x2:type={}", mob.getType());
+    }
+
+    /** 附近（64 格内）是否有玩家正处于「雷暴将至」状态。 */
+    private static boolean hasStormWatcherNear(ServerLevel level, LivingEntity mob) {
+        for (Player p : level.getEntitiesOfClass(Player.class, mob.getBoundingBox().inflate(64.0D))) {
+            if (p.hasEffect(com.merlinkitsune.astral_dice.effect.ModEffects.STORM_APPROACHING.get())) return true;
+        }
+        return false;
+    }
     // ────────────────────────── 计时器惰性到期(每 10 tick) ──────────────────────────
 
     /**
@@ -251,8 +286,12 @@ public final class EventEffects {
     public static void problemDelivery(ServerLevel level, Player triggerer, Player target, AstralEvent event,
                                        AstralEventTrigger source, int tier) {
         target.hurt(level.damageSources().generic(), 2.0F);
-        target.addEffect(new MobEffectInstance(MobEffects.POISON, 300, 0, false, true));
-        target.addEffect(new MobEffectInstance(MobEffects.HUNGER, 300, 0, false, true));
+        // 专用指示器（用户裁决 1/2）。注:原生中毒/饥饿以 visible=false 施加 ⇒ **HUD 侧已隐藏**;
+        // 但物品栏「效果」面板走 isVisibleInInventory(默认 true) ⇒ 该面板仍会显示两行,待补客户端 mixin。
+        target.addEffect(new MobEffectInstance(com.merlinkitsune.astral_dice.effect.ModEffects.PROBLEM_DELIVERY.get(),
+                300, 0, false, false, true));
+        target.addEffect(new MobEffectInstance(MobEffects.POISON, 300, 0, false, false));
+        target.addEffect(new MobEffectInstance(MobEffects.HUNGER, 300, 0, false, false));
         setHealBlocked(target, true);
         EventTimerStore.start(target, event.id(), 300, p -> setHealBlocked(p, false));
         LOGGER.info("AP_EVENT_EFFECT: problem_delivery:healBlocked=true:target={}", target.getName().getString());

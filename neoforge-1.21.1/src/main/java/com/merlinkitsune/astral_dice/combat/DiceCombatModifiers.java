@@ -220,6 +220,53 @@ public final class DiceCombatModifiers {
         }
     }
 
+    /**
+     * 施加/覆盖一个**瞬态攻击力加成**（2026-10-10 事件效果「红温警告」引入）。
+     *
+     * <p>与 {@link #setDefenseArmorBonus} 同一口径：效果牌/立牌/事件提供的<b>攻击力点数</b>直接挂到
+     * {@code ATTACK_DAMAGE} 属性（系数 1.0），由 {@link #attackPowerOf} 自动计入本模组的攻击力模型；
+     * 传 {@code attackPoints <= 0} 表示移除。**瞬态**：死亡/重登即丢失（用户裁决 2026-10-10）。
+     *
+     * <p>用 {@code LivingEntity} 形参是为了同时服务敌对生物（「雷暴将至」给范围内怪物 +2 攻击力）。
+     */
+    public static void setAttackPowerBonus(net.minecraft.world.entity.LivingEntity entity, String modifierKey, int attackPoints) {
+        if (entity == null || entity.level().isClientSide()) return;
+        net.minecraft.world.entity.ai.attributes.AttributeInstance attr = entity.getAttribute(Attributes.ATTACK_DAMAGE);
+        if (attr == null) return;
+        ResourceLocation id = ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, modifierKey);
+        double bonus = attackPoints;
+        if (bonus <= 0) {
+            if (attr.getModifier(id) != null) attr.removeModifier(id);
+            return;
+        }
+        var existing = attr.getModifier(id);
+        if (existing == null || existing.amount() != bonus) {
+            attr.removeModifier(id);
+            attr.addTransientModifier(new net.minecraft.world.entity.ai.attributes.AttributeModifier(id, bonus, net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation.ADD_VALUE));
+        }
+    }
+
+    /**
+     * 同 {@link #setDefenseArmorBonus(net.minecraft.world.entity.player.Player, String, int)}，但接受任意生物
+     * （「雷暴将至」给范围内敌对生物 +2 防御力）。
+     */
+    public static void setDefenseArmorBonus(net.minecraft.world.entity.LivingEntity entity, String modifierKey, int defensePoints) {
+        if (entity == null || entity.level().isClientSide()) return;
+        net.minecraft.world.entity.ai.attributes.AttributeInstance attr = entity.getAttribute(Attributes.ARMOR);
+        if (attr == null) return;
+        ResourceLocation id = ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, modifierKey);
+        double armor = defensePoints * 2.0;
+        if (armor <= 0) {
+            if (attr.getModifier(id) != null) attr.removeModifier(id);
+            return;
+        }
+        var existing = attr.getModifier(id);
+        if (existing == null || existing.amount() != armor) {
+            attr.removeModifier(id);
+            attr.addTransientModifier(new net.minecraft.world.entity.ai.attributes.AttributeModifier(id, armor, net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation.ADD_VALUE));
+        }
+    }
+
     // 通用掷骰:1~max(含)(public:供 CardRegistry 等外部使用)
     public static int rollDice(int max) {
         return ThreadLocalRandom.current().nextInt(1, max + 1);

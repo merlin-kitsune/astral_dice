@@ -293,6 +293,15 @@ public class ModEffects {
     public static final RegistryObject<MobEffect> RIN_PAGE_RANGE =
             EFFECTS.register("rin_page_range", RinPageRangeEffect::new);
 
+    public static final RegistryObject<MobEffect> RED_HEAT_WARNING =
+            EFFECTS.register("red_heat_warning", RedHeatWarningEffect::new);
+
+    public static final RegistryObject<MobEffect> STORM_APPROACHING =
+            EFFECTS.register("storm_approaching", StormApproachingEffect::new);
+
+    public static final RegistryObject<MobEffect> PROBLEM_DELIVERY =
+            EFFECTS.register("problem_delivery", ProblemDeliveryEffect::new);
+
     /**
      * 本模组已注册的全部效果的**只读**视图(调试命令 {@code /astralparty cleareffect} 用)。
      *

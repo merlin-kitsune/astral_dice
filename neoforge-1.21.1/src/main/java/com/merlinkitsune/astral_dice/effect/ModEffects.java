@@ -305,5 +305,14 @@ public class ModEffects {
     public static final DeferredHolder<MobEffect, MobEffect> RIN_PAGE_RANGE =
             EFFECTS.register("rin_page_range", RinPageRangeEffect::new);
 
+    public static final DeferredHolder<MobEffect, MobEffect> RED_HEAT_WARNING =
+            EFFECTS.register("red_heat_warning", RedHeatWarningEffect::new);
+
+    public static final DeferredHolder<MobEffect, MobEffect> STORM_APPROACHING =
+            EFFECTS.register("storm_approaching", StormApproachingEffect::new);
+
+    public static final DeferredHolder<MobEffect, MobEffect> PROBLEM_DELIVERY =
+            EFFECTS.register("problem_delivery", ProblemDeliveryEffect::new);
+
     public static final Collection<DeferredHolder<MobEffect, ? extends MobEffect>> ALL = EFFECTS.getEntries();
 }

@@ -4287,3 +4287,9 @@ mt.ps1 --version 线 --phase stop 关闭测试实例（gradle 守护进程保留
 - **教训 17（新）：给方法新增形参却在方法体里没用**，`javac` 不报错 —— 本轮 `publicEvent(id, polarity, radius, durationTicks, effect)` 两个新形参被静默丢弃，12 条事件全部退化成 `NOOP`/时长 0（编译两线全绿）。判据：改签名后 `grep` 方法体内是否真的出现 `effect,` / `durationTicks))`。
 - **教训 18（新）：惰性 API 必须接上周期调用点**。「到期用惰性检测」的前提是**有人周期性调用** `remaining(...)`；本轮 `remaining()` 全仓无调用点 ⇒ 到期回调永不执行（属性增益与治疗封锁会永久残留）。修法：`EventEffects#onPlayerTick` 每 10 tick 遍历 `EventTimerStore.activeEventIds(player)` 调一次 `remaining(...)`。
 - **教训 19（新）：CRLF 锚点必须行尾归一**（同教训 16 的具体踩法）—— 用 `\n` 拼的锚点去替换 CRLF 文件**静默不命中**，本轮白跑两轮编译；跨线脚本一律先行尾归一或按行号 splice。
+
+
+**续 76 补 4（2026-10-10 事件指示器批）**：
+- **教训 20（新）：纯标准库 PNG 处理的两个坑** —— ① PNG 的 **IDAT 可能分多块**，按 type→payload 建 dict 只留最后一块会让 zlib 解压失败（或解出半张图）；必须按顺序拼接全部 IDAT。② 降采样别写 `bytes(<生成器>)`：`bytes(iterable)` 只吃 0–255 的整数序列，像素切片要用 `b"".join(...)`（本轮实测报 `TypeError: bytes object cannot be interpreted as an integer`）。
+- **教训 21（新）：CRLF 锚点静默不命中（再次踩中）** —— 修改 `onFinalizeSpawn` 时用 LF 拼的锚点去 replace CRLF 文件，一轮编译白跑；跨线脚本一律**按行号 splice** 或先行尾归一。
+- **教训 22（新）：刷怪钩子的两线签名差异** —— 1.21.1 `FinalizeSpawnEvent#getEntity()` 返回 `Entity`（需 `instanceof Mob`）；1.20.1 `MobSpawnEvent.FinalizeSpawn#getEntity()` **已声明为 `Mob`**（写 `instanceof Mob mob` 报「模式类型 Mob 是表达式类型 Mob 的子类型」）；另 `mob.getType().create(level)` 返回 `CAP#1`，**必须声明为 `Entity`**。

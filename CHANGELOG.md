@@ -4,7 +4,7 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
-## Unreleased (2.0.0-SNAPSHOT.62)
+## Unreleased (2.0.0-SNAPSHOT.63)
 
 ### New Content
 
@@ -2021,6 +2021,10 @@ a
 m
 "
 .
+- **Event status indicators** (2026-10-10): Red Heat Warning / Storm Approaching / Problem Delivery now show an effect-bar indicator with the same-named icon (consistent with existing effects, synced on both sides); while Problem Delivery is active the vanilla Poison/Hunger icons are replaced by the dedicated indicator.
+- **Storm Approaching**: at night, with an affected player nearby, hostile mobs spawn at double the usual count (implemented with the platform spawn hook).
+- Red Heat Warning attack bonus and Storm Approaching attack/defense bonus now go through the mod combat model (counted in the mod attack/defense values) and stay transient: lost on death or relog.
+
 
 
 

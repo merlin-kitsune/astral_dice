@@ -882,5 +882,11 @@
   "event.astral_dice.investigation_stage.name": "调查阶段",
   "item.astral_dice.event_ticket": "抽事件券",
   "block.astral_dice.event_drawer": "事件抽取机",
-  "hud.astral_dice.target_select.tag.undercover": "已被调查"
+  "hud.astral_dice.target_select.tag.undercover": "已被调查",
+  "effect.astral_dice.red_heat_warning": "红温警告",
+  "effect.astral_dice.red_heat_warning.description": "攻击力 +5，持续 3:00",
+  "effect.astral_dice.storm_approaching": "雷暴将至",
+  "effect.astral_dice.storm_approaching.description": "敌对生物攻击力/防御力 +2（2:00）",
+  "effect.astral_dice.problem_delivery": "问题外卖",
+  "effect.astral_dice.problem_delivery.description": "中毒与饥饿（0:15），15 秒内无法治疗"
 }
