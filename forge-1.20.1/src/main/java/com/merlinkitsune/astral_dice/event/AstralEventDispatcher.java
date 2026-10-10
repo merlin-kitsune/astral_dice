@@ -102,17 +102,19 @@ public final class AstralEventDispatcher {
             targets = PartyRelations.collectEventTargets(triggerer, event.radius());
         }
         // ⑤ 计时器(覆盖式)+ 效果 + 附加效果层
-        if (event.timed()) {
-            for (Player target : targets) {
-                EventTimerStore.start(target, event.id(), event.defaultDurationTicks());
-            }
-        }
         final int tierFinal = tier;
         final Player bonusFinal = bonusTriggerer;
         final java.util.List<Player> targetsFinal = targets;
         if (triggerer.level() instanceof ServerLevel serverLevel) {
             // 用户裁决 2026-10-10：先弹「事件效果卡」，弹卡开始后 40t（2.0s）才真正执行事件并播放音效。
             EventCardService.showThenRun(serverLevel, targetsFinal, event, tierFinal, lvl -> {
+                // 用户裁决 2026-10-10（P3 修复）：计时器与事件效果**同刻**登记 —— 原先在弹卡前登记，
+                // 会让计时器在动画播放期间就开始倒数（比动画结束早 38t），违背「等待动画规则」。
+                if (event.timed()) {
+                    for (Player target : targetsFinal) {
+                        EventTimerStore.start(target, event.id(), event.defaultDurationTicks());
+                    }
+                }
                 for (Player target : targetsFinal) {
                     event.effect().apply(lvl, bonusFinal, target, event, source, tierFinal);
                 }

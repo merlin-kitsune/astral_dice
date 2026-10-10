@@ -4,7 +4,7 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
-## Unreleased (2.0.0-SNAPSHOT.66)
+## Unreleased (2.0.0-SNAPSHOT.67)
 
 ### New Content
 
@@ -2030,6 +2030,8 @@ m
 - **Event types corrected**: Red Heat Warning and Gift From Sky are positive, Crowded Passage is neutral, Problem Delivery is negative (card text and indicators now follow); status indicator icons now use the same-named icons under `images/`.
 - **"Investigation Stage" now uses its four tier icons**: the event triggers exactly like any other event (item / block / custom + killing a unit carrying Hidden Investigation), only the **icon follows the current tier** - tiers 1/2/3/4 map to `investigation_stage_1 / _2 / _3 / _revelation` (previously those four textures were never used and the card always showed the old base icon).
 - **"Investigation Stage" card now shows a 1:00 timer**: every tier of the event lasts 1:00 (1200 ticks), so the card renders `1:00` on its second row (previously the duration was 0 and the timer row was omitted).
+- **Timed events now register their timer at the same moment the effect resolves**: the timer used to be registered *before* the event card appeared, so it counted down during the card animation (~1.9 s, 38 ticks) and started earlier than the event itself; it now sits inside the delayed resolution block, together with the effect and sounds.
+
 
 
 
