@@ -14,7 +14,10 @@ import net.neoforged.neoforge.network.PacketDistributor;
  * <p><b>布局（严格按参考图 images/shop/fanny_skill_preview.png，137x133；参考图本身不入库）</b>：
  * 面板以屏幕中心为原点整体居中，各部件坐标 = 参考图内相对坐标：
  * <ul>
- *   <li>fanny_skill_count（38x16）置于 (46,13)：其中居中显示「选择事件」；</li>
+ *   <li>fanny_skill_count（38x16）置于 (46,13)：其中居中显示**15 秒倒计时** {@code 0:15 → 0:00}
+ *       （2026-10-11 用户裁决：删除原「选择事件」文本；倒计时与
+ *       {@code EventChoiceManager#CHOICE_TIMEOUT_TICKS} **同源** —— 剩余 tick 由服务端权威下发，
+ *       客户端不自行递减）；</li>
  *   <li>fanny_skill_event / fanny_skill_event_select（44x67）分别置于 (15,32) 与 (72,32)；</li>
  *   <li>fanny_skill_confirm（51x22）置于 (41,101)。</li>
  * </ul>
@@ -55,22 +58,33 @@ public class EventChoiceScreen extends Screen {
     private static final ResourceLocation CONFIRM_HIGHLIGHT_TEX = tex("fanny_skill_confirm_highlight.png");
     private static final ResourceLocation CONFIRM_PUSH_TEX = tex("fanny_skill_confirm_push.png");
 
+    /** 仅作 Screen 的 title（无障碍/其它模组读它）；**不再**画在标题条上（标题条改为倒计时）。 */
     private static final Component TITLE = Component.translatable("gui.astral_dice.event_choice.title");
 
     private final int token;
     private final ResourceLocation[] options;
     private final int[] durations;
+    /**
+     * 服务端**权威**剩余 tick（标题条倒计时显示的唯一来源）。
+     *
+     * <p>2026-10-11 用户裁决「以服务端剩余 tick 为准，别各算一套」：客户端**不再**自己按 elapsed 递减，
+     * 而是直接用服务端每秒下发的值渲染（{@code EventChoiceTickPayload}）；两次下发之间保持不变，
+     * 正好是秒级显示的语义。初始值 = 开始包里的 {@code timeoutTicks}
+     * （= {@code EventChoiceManager.CHOICE_TIMEOUT_TICKS} = 300t ⇒ 开局显示 {@code 0:15}）。
+     */
+    private int serverRemainingTicks;
     /** 已选中的选项索引（-1 = 尚未选择）。 */
     private int selectedIndex = -1;
     private boolean confirmPressed;
     private boolean confirmed;
 
     public EventChoiceScreen(int token, ResourceLocation firstEvent, ResourceLocation secondEvent,
-                             int firstDurationTicks, int secondDurationTicks) {
+                             int firstDurationTicks, int secondDurationTicks, int timeoutTicks) {
         super(TITLE);
         this.token = token;
         this.options = new ResourceLocation[] { firstEvent, secondEvent };
         this.durations = new int[] { firstDurationTicks, secondDurationTicks };
+        this.serverRemainingTicks = Math.max(0, timeoutTicks);
     }
 
     /** 会话 token（客户端只在「关闭包 token 一致」时关界面）。 */
@@ -123,10 +137,13 @@ public class EventChoiceScreen extends Screen {
         super.render(guiGraphics, mouseX, mouseY, partialTick);
         int ox = originX();
         int oy = originY();
-        // 1) 标题条 fanny_skill_count：「选择事件」居中
+        // 1) 标题条 fanny_skill_count：**不画原「选择事件」文本**，改为 15 秒倒计时（m:ss，0:15 → 0:00）。
+        //    同源：剩余 tick 由服务端权威下发（EventChoiceTickPayload，每秒一次），客户端**不再**自己递减
+        //    （2026-10-11 用户裁决「以服务端剩余 tick 为准，别各算一套」；到点由服务端 forceFirst 结算并关界面）。
         guiGraphics.blit(TITLE_TEX, ox + TITLE_X, oy + TITLE_Y, 0.0F, 0.0F, TITLE_W, TITLE_H, TITLE_W, TITLE_H);
-        guiGraphics.drawString(this.font, TITLE,
-                ox + TITLE_X + (TITLE_W - this.font.width(TITLE)) / 2,
+        Component countdown = Component.literal(formatCountdown(serverRemainingTicks));
+        guiGraphics.drawString(this.font, countdown,
+                ox + TITLE_X + (TITLE_W - this.font.width(countdown)) / 2,
                 oy + TITLE_Y + (TITLE_H - 8) / 2, 0xFFFFFFFF, false);
         // 2) 两张事件卡（与现有事件卡同口径：框架图 + 事件图标 + MC 字体名称/计时器）
         for (int i = 0; i < 2; i++) {
@@ -142,6 +159,17 @@ public class EventChoiceScreen extends Screen {
             buttonTex = CONFIRM_HIGHLIGHT_TEX;
         }
         guiGraphics.blit(buttonTex, confirmX(), confirmY(), 0.0F, 0.0F, CONFIRM_W, CONFIRM_H, CONFIRM_W, CONFIRM_H);
+    }
+
+    /** 服务端权威倒计时同步（{@code EventChoiceTickPayload}，剩余秒数变化时下发一次）。 */
+    public void setServerRemainingTicks(int remainingTicks) {
+        this.serverRemainingTicks = Math.max(0, remainingTicks);
+    }
+
+    /** 剩余 tick → {@code m:ss}（向上取整：开局先显示 0:15；不足 1 秒显示 0:00，不会出现负数）。 */
+    private static String formatCountdown(int remainingTicks) {
+        int sec = Math.max(0, remainingTicks + 19) / 20;
+        return String.format("%d:%02d", sec / 60, sec % 60);
     }
 
     @Override

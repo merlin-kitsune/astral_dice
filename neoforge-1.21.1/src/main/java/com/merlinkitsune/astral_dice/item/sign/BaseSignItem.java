@@ -151,9 +151,9 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         InteractionResultHolder<ItemStack> result = sign.handleUse(player.level(), player, stack);
         if (result.getResult() != InteractionResult.SUCCESS) return;
         // 主动技能**生效**音效（非选择器类立牌的实际施放）
-        // ⚠️ 可被立牌关闭：大侦探立牌的事件选择界面要求「点击使用时不播、只有玩家点了确认才播」
-        //    （2026-10-10 用户裁决；见 FannySignItem#playsSkillUseSoundOnUse 与 EventChoiceManager#confirm）
-        if (sign.playsSkillUseSoundOnUse()) playSkillUseSound(player);
+        // 2026-10-11 用户裁决：所有立牌统一「按下主动技能键（本方法走到 SUCCESS）即播」，
+        // 不再有「点击使用时不播、等玩家在界面里确认才播」的立牌门控。
+        playSkillUseSound(player);
         // 4. 手持风扇-大筹码:使用主动技能后,获得一张随机效果牌(不含专属),并对周围范围内敌对目标施加标记
         FanBigChipItem.applyAfterSignSkill(player);
         FanSmallChipItem.applyAfterSignSkill(player);
@@ -203,6 +203,23 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         return null;
     }
 
+    /** 主动技能**生效**时的音效（2026-09-27 用户裁决，源素材 {@code skill_use.wav}）。
+     *
+     * <p>「生效」两种形态都算：① 选择器类立牌**成功进入目标选择器**（含后续确认）；
+     * ② 其余立牌的 {@code handleUse} 返回 SUCCESS。被前置门控拒绝 / 取消 / 未确认的路径不播。
+     */
+    public static void playSkillUseSound(Player player) {
+        if (player == null) return;
+        // 机器行：主动技能音效「按下即时播放」的唯一打点（2026-10-11 用户裁决）。
+        // 实机判据：按技能键 ⇒ 本行出现一次；随后在事件选择界面点确认 ⇒ **不再**新增本行。
+        LOGGER.info("AP_SIGN_SOUND: skill_use:player={}:pos={},{},{}",
+                player.getName().getString(),
+                (int) player.getX(), (int) player.getY(), (int) player.getZ());
+        com.merlinkitsune.astral_dice.audio.SoundPlayback.playAt(player.level(),
+                player.getX(), player.getY(), player.getZ(),
+                com.merlinkitsune.astral_dice.audio.ModSounds.SKILL_USE.get());
+    }
+
     /**
      * 「选择器类」立牌开启选择会话前的**前置拒绝**钩子(缺省恒为 {@code true} = 照原流程开会话)。
      *
@@ -213,28 +230,6 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
      * @param player 触发主动技能的玩家(服务端)
      * @return true = 允许开启选择会话(缺省);false = 本次主动被拒绝
      */
-    /** 主动技能**生效**时的音效（2026-09-27 用户裁决，源素材 {@code skill_use.wav}）。
-     *
-     * <p>「生效」两种形态都算：① 选择器类立牌**成功进入目标选择器**（含后续确认）；
-     * ② 其余立牌的 {@code handleUse} 返回 SUCCESS。被前置门控拒绝 / 取消 / 未确认的路径不播。
-     */
-    public static void playSkillUseSound(Player player) {
-        if (player == null) return;
-        com.merlinkitsune.astral_dice.audio.SoundPlayback.playAt(player.level(),
-                player.getX(), player.getY(), player.getZ(),
-                com.merlinkitsune.astral_dice.audio.ModSounds.SKILL_USE.get());
-    }
-
-    /**
-     * 「点击使用立牌」这一步是否立即播放主动技能**生效**音效（缺省 true）。
-     *
-     * <p>返回 {@code false} 的立牌由自身决定播放时机：大侦探立牌（{@code fanny}）的主动技能会先开出
-     * 「事件选择界面」（15 秒等待期），**点击使用时不播**，只有玩家在界面里点了确认才播
-     * （2026-10-10 用户裁决；见 {@code com.merlinkitsune.astral_dice.event.EventChoiceManager#confirm}）。
-     */
-    protected boolean playsSkillUseSoundOnUse() {
-        return true;
-    }
     protected boolean canBeginSelectorSession(Player player) {
         return true;
     }

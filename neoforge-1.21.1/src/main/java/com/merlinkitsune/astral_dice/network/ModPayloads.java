@@ -139,5 +139,11 @@ public class ModPayloads {
                 EventChoiceClosePayload.STREAM_CODEC,
                 EventChoiceClosePayload::handle
         );
+        // 大侦探立牌主动技能:选择界面倒计时同步(服务端权威剩余 tick,剩余秒数变化时下发)
+        registrar.playToClient(
+                EventChoiceTickPayload.TYPE,
+                EventChoiceTickPayload.STREAM_CODEC,
+                EventChoiceTickPayload::handle
+        );
     }
 }

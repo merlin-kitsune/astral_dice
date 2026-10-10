@@ -31,9 +31,18 @@ public final class EventChoiceClientHandler {
 
     /** 打开（或顶替）事件选择界面；重新投递时直接顶替旧界面。 */
     public static void open(int token, ResourceLocation firstEvent, ResourceLocation secondEvent,
-                            int firstDurationTicks, int secondDurationTicks) {
+                            int firstDurationTicks, int secondDurationTicks, int timeoutTicks) {
         Minecraft.getInstance().setScreen(
-                new EventChoiceScreen(token, firstEvent, secondEvent, firstDurationTicks, secondDurationTicks));
+                new EventChoiceScreen(token, firstEvent, secondEvent, firstDurationTicks, secondDurationTicks,
+                        timeoutTicks));
+    }
+
+    /** 服务端权威倒计时同步：仅当当前界面就是同一 token 的选择界面时更新剩余 tick。 */
+    public static void updateCountdown(int token, int remainingTicks) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.screen instanceof EventChoiceScreen screen && screen.token() == token) {
+            screen.setServerRemainingTicks(remainingTicks);
+        }
     }
 
     /** 当前界面是本 token 的选择界面才关闭（避免误关玩家后来打开的其它界面）。 */

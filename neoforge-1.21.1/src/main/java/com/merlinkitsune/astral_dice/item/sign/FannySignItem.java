@@ -40,15 +40,6 @@ public class FannySignItem extends BaseSignItem {
         return InteractionResultHolder.success(stack);
     }
 
-    /**
-     * 点击使用立牌时**不**播主动技能音效（2026-10-10 用户裁决）：大侦探的主动技能先只开选择界面，
-     * 只有玩家在界面里点了确认才播（见 {@code EventChoiceManager#confirm}）。
-     */
-    @Override
-    protected boolean playsSkillUseSoundOnUse() {
-        return false;
-    }
-
     /** 主动技能不再产生任何可门控效果 ⇒ 不使用锁定态(冷却由基类框架按默认口径推进)。 */
     @Override
     protected boolean startActiveLockOnUse(Player player, long now) {

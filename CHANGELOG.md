@@ -4,7 +4,7 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
-## Unreleased (2.0.0-SNAPSHOT.69)
+## Unreleased (2.0.0-SNAPSHOT.70)
 
 ### New Content
 
@@ -2035,6 +2035,11 @@ m
 - **Chip shop assets staged (not wired)**: added `models/block/chip_shop.json` + `textures/block/chip_shop.png` + `textures/entity/villager/profession/chip_trader.png` on both lines, exported from `models/chipshop*.bbmodel`; the matching block/entity/recipe/lang wiring is future work and intentionally absent.
 - **Detective signpost active skill reworked into an "event choice" screen**: using the signpost opens a centred panel (layout taken from the reference art) that draws **two random events from the current event pool** (duplicates allowed, any positive/negative/neutral mix; includes "Investigation Stage", which can only be drawn when a **secret detective is on the team**). Hovering a card shows its highlighted base art, clicking selects it and keeps that art; the confirm button has normal / hover / pressed states. The event is only triggered after selecting a card and confirming, and then follows the exact existing flow (event card → 1.4 s animation + 0.5 s → resolution and sound).
 - The screen has a **15 second** limit: on timeout, death or leaving the game/server the **first option is force-triggered** (an already confirmed choice is never overridden). Using the signpost itself plays **no** skill sound - only confirming does; confirming plays the sound **immediately**, waits **1 second**, closes the screen and then enters the event trigger flow.
+- **Gift From Sky coins now really reach the wallet**: both the event and the signpost passive used to bypass this mod's central "coin income" funnel (`ResourceConversion#giveItem -> StarCoinCurrency#tryAbsorbIntoWallet -> deposit + balance sync`) by calling the ledger directly, so no balance change was ever visible. Everything now goes through the funnel: the event's +3 and the signpost passive's +3 are added **straight to the wallet balance** (measured: 0 -> 6, and 6 -> 9 with the signpost slot cleared; inventory stays empty).
+- **Event card animation and resolution now share a single time source**: `38 ticks to resolve = 28 ticks visible animation (1.4 s) + 10 ticks buffer (0.5 s)`, defined once on the server and derived on the client, with new `AP_EVENT_CARD_CLIENT` machine lines; this also fixes the out-phase progress overshoot that left **text lingering on screen after the card had faded** (per-tick measurement during the card: damage, effects and heal-blocking all stay zero until tick 38, where they apply at once).
+- **The event choice screen header now shows a 15 second countdown** instead of the "Choose Event" text, driven authoritatively by the server (`0:15` -> `0:00`).
+- **The detective signpost skill sound is back to "plays immediately when the skill key is pressed"** (like every other signpost); confirming no longer plays it again.
+
 
 
 

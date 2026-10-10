@@ -3,9 +3,9 @@ package com.merlinkitsune.astral_dice.event;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.event.api.AstralEvent;
 import com.merlinkitsune.astral_dice.event.api.AstralEventTrigger;
-import com.merlinkitsune.astral_dice.item.sign.BaseSignItem;
 import com.merlinkitsune.astral_dice.network.EventChoiceClosePayload;
 import com.merlinkitsune.astral_dice.network.EventChoiceStartPayload;
+import com.merlinkitsune.astral_dice.network.EventChoiceTickPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -31,14 +31,14 @@ import java.util.concurrent.ThreadLocalRandom;
  * <p>流程：立牌主动技能（{@code FannySignItem#handleUse}）→ {@link #start(ServerPlayer)} 从现有事件池
  * {@link AstralEventRegistry#publicPool(Player)} <b>独立抽 2 个选项</b>（允许相同、不做正/负/中性平衡）
  * → 下发 {@link EventChoiceStartPayload} 打开选择界面 → 玩家 15 秒内选一个并点确认
- * → {@link #confirm(ServerPlayer, int, int)}：**立即播主动技能音效** → 等待 1 秒 → 关界面
+ * → {@link #confirm(ServerPlayer, int, int)}：等待 1 秒 → 关界面
  * → 随后进入**既有事件触发流程**（{@link AstralEventDispatcher#trigger} →
  * {@code EventCardService#showThenRun}：弹卡 → 1.4s 动画 + 0.5s → 结算/音效）。
  *
  * <p><b>强制触发第一个选项</b>（不改走确认路径、不播音效）：15 秒超时未选 / 玩家死亡 / 玩家登出。
  *
- * <p>⚠️ 主动技能音效**只在玩家点确认时**播：{@code FannySignItem#playsSkillUseSoundOnUse()} 返回 false，
- * 立牌「点击使用」那一步不播（见 {@link BaseSignItem#playSkillUseSound}）。
+ * <p>⚠️ 主动技能音效**在按下技能键（使用立牌）那一刻就播**（2026-10-11 用户裁决，与其它立牌一致）；
+ * 本类在玩家确认时**不再**补播，避免同一声音叠放。
  */
 @EventBusSubscriber(modid = AstralDiceMod.MODID)
 public final class EventChoiceManager {
@@ -67,6 +67,13 @@ public final class EventChoiceManager {
         final long expireTick;
         /** 已定选项索引：-1 = 未定；>=0 = 已确认/已被强制（此后不再接受新的确认与超时结算）。 */
         int resolving = -1;
+        /**
+         * 最近一次**已下发**给客户端的剩余秒数（-1 = 还没发过）。
+         *
+         * <p>只在「秒数变化」时下发倒计时包（15 秒等待期共约 16 包，而不是每 tick 一包）；
+         * 首次 tick 时 remaining≈299 ⇒ seconds=15，客户端开局即显示 {@code 0:15}。
+         */
+        int syncedSecond = -1;
 
         Session(int token, ResourceLocation firstEvent, ResourceLocation secondEvent, long expireTick) {
             this.token = token;
@@ -101,7 +108,7 @@ public final class EventChoiceManager {
         SESSIONS.put(player.getUUID(), session);
 
         PacketDistributor.sendToPlayer(player, new EventChoiceStartPayload(token, first.id(), second.id(),
-                first.defaultDurationTicks(), second.defaultDurationTicks()));
+                first.defaultDurationTicks(), second.defaultDurationTicks(), CHOICE_TIMEOUT_TICKS));
         LOGGER.info("AP_EVENT_CHOICE: open:{}:opt0={}:opt1={}:expire={}",
                 token, first.id(), second.id(), session.expireTick);
         return true;
@@ -113,8 +120,8 @@ public final class EventChoiceManager {
         if (session == null || session.token != token || session.resolving >= 0) return;
         if (optionIndex < 0 || optionIndex >= OPTION_COUNT) return;
         session.resolving = optionIndex;
-        // ① 立即播主动技能音效（**只有**玩家点了确认才播；点击使用立牌那一步不播）
-        BaseSignItem.playSkillUseSound(player);
+        // ① 主动技能音效**不在此处重复播放**：2026-10-11 用户裁决改回「按技能键（使用立牌）瞬间即播」，
+        //    由 FannySignItem#handleUse 经 BaseSignItem#performSkill 播放；确认时再播会叠一次。
         LOGGER.info("AP_EVENT_CHOICE: confirm:{}:pick={}:event={}", token, optionIndex, session.chosen());
 
         ServerLevel level = player.serverLevel();
@@ -140,13 +147,30 @@ public final class EventChoiceManager {
         AstralEventDispatcher.trigger(serverPlayer, session.firstEvent, AstralEventTrigger.ACTIVE_SKILL);
     }
 
-    /** 15 秒等待期到期 ⇒ 强制第一个选项。 */
+    /**
+     * 15 秒等待期：① 向客户端同步**服务端权威**剩余 tick（倒计时唯一同源）；② 到期强制第一个选项。
+     *
+     * <p>2026-10-11 用户裁决「倒计时必须与 {@link #CHOICE_TIMEOUT_TICKS} 同源（以服务端剩余 tick 为准，
+     * 别各算一套）」：客户端不再自行递减，改由本方法在**剩余秒数变化**时下发
+     * {@link EventChoiceTickPayload}（≤16 包/会话）；这样即使玩家卡顿/掉帧，显示的也是服务端真实剩余秒数。
+     */
     static void tick(Player player) {
         if (player.level().isClientSide()) return;
         Session session = SESSIONS.get(player.getUUID());
         if (session == null || session.resolving >= 0) return;
-        if (player.level().getGameTime() < session.expireTick) return;
-        forceFirst(player, session, "timeout");
+        long remaining = session.expireTick - player.level().getGameTime();
+        if (remaining <= 0L) {
+            forceFirst(player, session, "timeout");
+            return;
+        }
+        if (!(player instanceof ServerPlayer serverPlayer)) return;
+        int seconds = (int) ((remaining + 19L) / 20L);   // 向上取整：开局 299t ⇒ 15s
+        if (seconds == session.syncedSecond) return;
+        session.syncedSecond = seconds;
+        PacketDistributor.sendToPlayer(serverPlayer,
+                new EventChoiceTickPayload(session.token, (int) remaining));
+        LOGGER.info("AP_EVENT_CHOICE: countdown:{}:remaining={}:sec={}",
+                session.token, remaining, seconds);
     }
 
     @SubscribeEvent

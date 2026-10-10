@@ -3,6 +3,7 @@ package com.merlinkitsune.astral_dice.client;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.event.api.AstralEvent;
 import com.merlinkitsune.astral_dice.event.AstralEventRegistry;
+import com.merlinkitsune.astral_dice.event.EventCardService;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -23,8 +24,15 @@ import java.util.List;
  * {@code FACE_SIZE=38 / FACE_X_OFF=3 / FACE_Y_OFF=3} 完全一致；两者**在同一 pose 内**绘制
  * ⇒ 缩放时框与图永不失配。卡名 y=47、计时器 y=56（均在框内），**MC 自带字体**、居中、随卡缩放。
  *
- * <p>动画：单时间源 + 单进度 —— 0–0.5s 进场（scale 0.775→1.0、alpha 0→255）｜0.5–1.0s 展示｜
- * 1.0–2.0s 收起（**scale 1.0→0.8 缩小**、alpha 255→0）｜≥1.5s 移除。
+ * <p>动画：单时间源 + 单进度 —— 进场 0.2s（scale 0.775→1.0、alpha 0→255）｜停留｜收起 0.2s
+ * （**scale 1.0→0.8 缩小**、alpha 255→0）。
+ *
+ * <p><b>与服务端结算刻同源（2026-10-11 修复「还没等展示完就触发 / 没有同步」）</b>：可见窗口
+ * = {@link EventCardService#CARD_ANIM_TICKS} 刻（= 1.4s，本类 {@link #ANIM_MS}），服务端唯一结算点
+ * = {@link EventCardService#DELAY_TICKS} 刻（= 1.9s），两者之间隔着
+ * {@link EventCardService#SETTLE_BUFFER_TICKS} 刻（0.5s）的**静默缓冲** ⇒
+ * 卡在屏幕上（alpha > 0）的整段时间里，服务端**零效果 / 零伤害 / 零事件音效**。
+ * 修复前的写法是「动画写死 1.4s + 服务端 38t 结算」，两套时钟各算一套、无法保证恒等关系。
  */
 public final class EventCardOverlay implements LayeredDraw.Layer {
     public static final ResourceLocation LAYER_ID =
@@ -44,8 +52,23 @@ public final class EventCardOverlay implements LayeredDraw.Layer {
     private static final int NAME_Y_OFF = 45;   // 文字格 y=42..64 内居中
     private static final int TIME_Y_OFF = 54;
     private static final long IN_MS = 200L;    // 进场（用户裁决 2026-10-10：渐入 0.2s）
-    private static final long HOLD_MS = 1000L; // 停留（用户裁决：1.0s）
     private static final long OUT_MS = 200L;   // 收起（用户裁决：渐出 0.2s）
+    /**
+     * **卡片可见窗口** = 服务端 {@link EventCardService#CARD_ANIM_TICKS} 刻 × 50ms = 28t = 1.4s。
+     *
+     * <p>与服务端结算刻同源（都从 {@link EventCardService#DELAY_TICKS} 推导），不再写死数字。
+     */
+    private static final long ANIM_MS = EventCardService.CARD_ANIM_TICKS * 50L;
+    /** 停留 = 可见窗口 - 进场 - 收起（随 {@link #ANIM_MS} 自动推导，不再写死 1.0s）。 */
+    private static final long HOLD_MS = ANIM_MS - IN_MS - OUT_MS;
+    /**
+     * 卡实例的存活上限 = <b>服务端唯一结算点</b> {@link EventCardService#DELAY_TICKS} 刻 × 50ms（1.9s）。
+     *
+     * <p>动画在 {@link #ANIM_MS}（1.4s）就播完（alpha 已归零），这里只是把**已不可见**的实例丢掉；
+     * 之所以留到结算刻才丢，是为了让「卡还在列表里」这件事恰好不超过结算刻 —— 即
+     * {@link EventCardService#SETTLE_BUFFER_TICKS} 刻（0.5s）的静默窗口对玩家与服务端是同一个。
+     */
+    private static final long TOTAL_MS = EventCardService.DELAY_TICKS * 50L;
     /** 收起阶段的**终点缩放**：用户裁决「淡出 = 缩小淡出」（原实现写成放大淡出，方向错了）。 */
     private static final float OUT_END_SCALE = 0.8F;
     private static final ResourceLocation FRAME_TEX =
@@ -62,6 +85,10 @@ public final class EventCardOverlay implements LayeredDraw.Layer {
     public static void show(ResourceLocation eventId, int durationTicks, int tier) {
         long startMs = System.currentTimeMillis();
         CARDS.add(new Card(eventId, durationTicks, tier, startMs));
+        // 机器行（客户端时间轴取证）:与服务端 AP_EVENT_CARD: shown:<id>:exec_at=<tick> 配对，
+        // 用于断言「卡可见窗口（show → hide）严格短于服务端 38t 结算」。
+        LOGGER.info("AP_EVENT_CARD_CLIENT: show:{}:tier={}:anim_ms={}:total_ms={}",
+                eventId, tier, ANIM_MS, TOTAL_MS);
     }
 
     private record Card(ResourceLocation eventId, int durationTicks, int tier, long startMs) {
@@ -73,7 +100,11 @@ public final class EventCardOverlay implements LayeredDraw.Layer {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.options.hideGui) { CARDS.clear(); return; }
         long now = System.currentTimeMillis();
-        CARDS.removeIf(c -> now - c.startMs() >= IN_MS + HOLD_MS + OUT_MS);
+        CARDS.removeIf(c -> {
+            if (now - c.startMs() < TOTAL_MS) return false;
+            LOGGER.info("AP_EVENT_CARD_CLIENT: hide:{}:alive_ms={}", c.eventId(), now - c.startMs());
+            return true;
+        });
         if (CARDS.isEmpty()) return;
         int sw = guiGraphics.guiWidth();
         int sh = guiGraphics.guiHeight();
@@ -88,7 +119,9 @@ public final class EventCardOverlay implements LayeredDraw.Layer {
             } else if (t < IN_MS + HOLD_MS) {
                 scale = 1.0F; alpha = 1.0F;
             } else {
-                float p = (t - IN_MS - HOLD_MS) / (float) OUT_MS;
+                // 收起阶段（t ∈ [IN+HOLD, ANIM_MS]）；此后 p 夹到 1 ⇒ alpha=0、scale=OUT_END_SCALE，
+                // 卡在 [ANIM_MS, TOTAL_MS) 这段缓冲里已经不可见（不夹会让 alpha 变成负数）。
+                float p = Mth.clamp((t - IN_MS - HOLD_MS) / (float) OUT_MS, 0.0F, 1.0F);
                 scale = 1.0F - (1.0F - OUT_END_SCALE) * p;
                 alpha = 1.0F - p;
             }
