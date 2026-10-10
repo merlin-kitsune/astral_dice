@@ -533,7 +533,7 @@
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_CSC:evt=scr:back_to_main:.*:view=0:.*:hour=5:"
+      "pattern": "AP_CSC:evt=scr:back_to_main:.*:view=0:.*:hour=4:"
     },
     {
       "type": "log",
@@ -648,7 +648,7 @@
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_CSC:evt=scr:nat_t0:.*ready=0:hour=5:"
+      "pattern": "AP_CSC:evt=scr:nat_t0:.*ready=0:hour=4:"
     },
     {
       "type": "log",
@@ -658,7 +658,7 @@
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_CSC:evt=scr:nat_t20:.*ready=0:hour=4:"
+      "pattern": "AP_CSC:evt=scr:nat_t20:.*ready=0:hour=3:"
     },
     {
       "type": "log",

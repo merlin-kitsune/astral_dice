@@ -95,3 +95,5 @@ ref/
 ### 该目录是用户的方块设计工作区(Hilo 工程 sqlite/缩略图/预览图/交接文档/草稿模型),
 ### 不属于构建产物;方块美术正本已改为 models/cardshop.bbmodel(见 AGENTS.md 条目 26)。
 Astral Dice/
+# 复核/审计工具留下的日志（不属于仓库内容）
+.review_logs/

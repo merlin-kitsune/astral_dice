@@ -173,8 +173,8 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
 
     // ── 二级转账面板（v4 定稿；坐标为**面板内相对坐标**，面板原点 = (TP_X, TP_Y)） ──
     // 任务O §1.1（2026-10-09 用户裁决「转账界面2倍放大效果太差，回滚」）：2× 放大已**回滚**。
-    //   · TP_SCALE 恒为 1：设计包围盒 126x135 居中 ⇒ TP_X=(288-126)/2=81、TP_Y=(187-135)/2=26，
-    //     与 2× 之前的字面量 TP_X=81 / TP_Y=26 **逐像素一致**（绘制、控件、hit-test 全部回到原尺寸）；
+    //   · TP_SCALE 恒为 1：设计包围盒现为 **141x183**（任务P 换成加大版素材）⇒ 原点 TP_X=(288-141)/2=73、TP_Y=(187-183)/2=2，
+    //     ⚠️ **不是**回滚时的 81/26 —— 凡写「面板内坐标」的调用点与探针都必须基于 73/2（绘制/控件/hit-test 尺寸则确实回到放大前）；
     //   · tpX()/tpY()/tpS()/tpHover() 一套换算**保留**（scale=1 时退化为恒等），全仓仍只有一套坐标口径；
     //   · 面板局部坐标系：pushPose → translate(leftPos+TP_X, topPos+TP_Y) → scale(TP_SCALE=1)，等价于直接平移。
     private static final int TP_SCALE = 1;

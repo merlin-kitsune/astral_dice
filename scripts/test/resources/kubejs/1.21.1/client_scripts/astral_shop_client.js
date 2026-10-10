@@ -817,7 +817,7 @@ function csRunPoll(mc, step) {
         } catch (eQ) { cs("evt=qm_check:ex=" + eQ); }
         csInvDump(mc, "quickmove");
     } else if (step === 88) {
-        csScreen(mc, "cycle_started");                             // 期望 hour=5 ready=0
+        csScreen(mc, "cycle_started");                             // 期望 hour=4 ready=0（周期刚起 ⇒ 60s ⇒ 4 档）
         csShot(mc, "poll_hour5_shot", step);
     } else if (step === 92) {
         csClick(mc, 64, 125, "xfer_btn_cooling", step);            // 轮询进行中 ⇒ 应打不开面板
@@ -826,11 +826,11 @@ function csRunPoll(mc, step) {
     } else if (step === 100) {
         csCmd(mc, "astralshop txtry TH0 Bot1 10", "tx_during_cycle", step);  // 轮询中转账 ⇒ 期望 applied=0
     } else if (step === 112) {
-        csCmd(mc, "astralshop cycleset CY4 42", "cyc42", step);    // 剩 42s ⇒ 沙漏 4（留 §12s 边界余量）
+        csCmd(mc, "astralshop cycleset CY4 55", "cyc55", step);    // 剩 55s ⇒ 沙漏 4（4 档 = 每档 15s）
     } else if (step === 122) {
         csScreen(mc, "hour_expect4");
     } else if (step === 126) {
-        csCmd(mc, "astralshop cycleset CY3 30", "cyc30", step);    // 30s ⇒ 3
+        csCmd(mc, "astralshop cycleset CY3 42", "cyc42", step);    // 42s ⇒ 3（ceil(42/15)=3）
     } else if (step === 136) {
         csScreen(mc, "hour_expect3");
     } else if (step === 140) {
@@ -857,17 +857,17 @@ function csRunPoll(mc, step) {
         csScreen(mc, "xfer_view_open");                            // 期望 view=1
         csShot(mc, "poll_xfer_view", step);
     } else if (step === 276) {
-        csClick(mc, 121, 59, "xfer_row0", step);
+        csClick(mc, 120, 40, "xfer_row0", step);   // 面板原点 (73,2)：行区 y∈[31,49]
     } else if (step === 280) {
-        csClick(mc, 187, 108, "xfer_limit10", step);
+        csClick(mc, 194, 84, "xfer_limit10", step); // 4 档行 r1=[77,92]（LIMITS[1]=10）
     } else if (step === 284) {
-        csClick(mc, 191, 61, "xfer_confirm", step);
+        csClick(mc, 198, 37, "xfer_confirm", step);  // 确认键 y∈[26,48]
     } else if (step === 300) {
         cs("evt=poll_after_xfer:" + csState(mc));                  // 期望 used=1 + cd>0（重新计时）
     } else if (step === 304) {
-        csClick(mc, 183, 34, "back_btn", step);
+        csClick(mc, 190, 13, "back_btn", step);      // 返回键 y∈[5,21]
     } else if (step === 310) {
-        csScreen(mc, "back_to_main");                              // 期望 view=0 hour=5（面板/沙漏一致）
+        csScreen(mc, "back_to_main");                              // 期望 view=0 hour=4（转账后重新计时 ⇒ 60s ⇒ 4 档）
         csShot(mc, "poll_back_hour5", step);
     } else if (step === 314) {
         csShape(mc, "promo_before");                               // 任务V D5：大酬宾前基线（期望 n=3）
@@ -1005,7 +1005,7 @@ function csRunFirst(mc, step) {
     } else if (step === 62) {
         cs("evt=stateD_afterxfer:" + csState(mc));
     } else if (step === 66) {
-        csClick(mc, 183, 34, "back_btn", step);            // 若有面板则退回主视图（主视图点此处无副作用）
+        csClick(mc, 190, 13, "back_btn", step);      // 返回键 y∈[5,21]            // 若有面板则退回主视图（主视图点此处无副作用）
     } else if (step === 70) {
         csClick(mc, 64, 125, "transfer_btn_again", step);  // 会话已用 ⇒ 不应进面板
     } else if (step === 76) {
@@ -1045,7 +1045,7 @@ function csRunNat(mc, step) {
     } else if (step === 6) {
         csCmd(mc, "astralshop cycleset NA0 60", "cyc60", step);    // 只为把周期对齐到整 60s；之后完全靠自然流逝
     } else if (step === 10) {
-        csScreen(mc, "nat_pre");                                   // 期望 hour=5 ready=0（周期刚对齐）
+        csScreen(mc, "nat_pre");                                   // 期望 hour=4 ready=0（周期刚对齐 ⇒ 60s）
     } else if (step === 20) {
         // 先双击买下货架 0（两次按下相距 4t=200ms < 280ms 判定窗口）⇒ sold[0]=1，给「到 0 才刷架」造确定性判据
         csClick(mc, 29, 58, "nat_buy_p1", step);
@@ -1057,10 +1057,10 @@ function csRunNat(mc, step) {
         csRelease(mc, 29, 58, "nat_buy_p2", step);
     } else if (step === 40) {
         csNatSoldCsv = csSoldCsv(mc); csNatFp = csShelfFp(mc); csNatIds = csShelfIds(mc);
-        csScreen(mc, "nat_t0");                                    // 期望 hour=5 ready=0 sold=100000
+        csScreen(mc, "nat_t0");                                    // 期望 hour=4 ready=0 sold=100000（剩≈59s）
         cs("evt=nat_t0_sold:sold=" + csNatSoldCsv + ":fp=" + csNatFp);
     } else if (step === 400) {
-        csScreen(mc, "nat_t20"); cs(csNatCmp(mc, 400));             // 期望 hour=4 same=1（未到 0 不刷架）
+        csScreen(mc, "nat_t20"); cs(csNatCmp(mc, 400));             // 期望 hour=3 same=1（剩≈41s；未到 0 不刷架）
     } else if (step === 800) {
         csScreen(mc, "nat_t40"); cs(csNatCmp(mc, 800));             // 期望 hour=2 same=1
     } else if (step === 1160) {
