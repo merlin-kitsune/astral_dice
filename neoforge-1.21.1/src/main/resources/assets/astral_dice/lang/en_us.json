@@ -878,5 +878,18 @@
   "msg.astral_dice.card_shop_no_starlight": "Not enough Starlight: at least 2 usable Starlight is needed (Starlight granted by bank cards cannot be exchanged)",
   "msg.astral_dice.card_shop_parunan_enter": "Merchant Sign: gained 1 Star Coin for entering the shop",
   "msg.astral_dice.card_shop_slot_occupied": "That slot is occupied",
-  "msg.astral_dice.card_shop_transfer_used": "You already used a transfer in this 60s round (it unlocks when the hourglass runs out)"
+  "msg.astral_dice.card_shop_transfer_used": "You already used a transfer in this 60s round (it unlocks when the hourglass runs out)",
+  "event.astral_dice.red_heat_warning.name": "Red-Heat Warning",
+  "event.astral_dice.swift_stride.name": "Swift Stride",
+  "event.astral_dice.storm_approaching.name": "Storm Approaching",
+  "event.astral_dice.learn_from_others.name": "Learn from Others",
+  "event.astral_dice.shop_bonanza.name": "Shop Bonanza",
+  "event.astral_dice.hand_erasure.name": "Hand Erasure",
+  "event.astral_dice.world_collapse.name": "World Collapse",
+  "event.astral_dice.gift_from_sky.name": "Gift from the Sky",
+  "event.astral_dice.angel_descent.name": "Angel Descent",
+  "event.astral_dice.problem_delivery.name": "Problem Delivery",
+  "event.astral_dice.crowded_passage.name": "Crowded Passage",
+  "event.astral_dice.battle_frenzy.name": "Battle Frenzy",
+  "event.astral_dice.investigation_stage.name": "Investigation Stage"
 }
