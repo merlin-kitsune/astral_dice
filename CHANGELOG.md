@@ -63,10 +63,11 @@
 
 #### Items, Chips & Trading
 
-- **New block: Card Shop** (2026-10-08): craft it in a 3×3 grid from **8 planks** (any `minecraft:planks`) around
-  **1 Star Coin**; place it and **right-click to open the shop** (nothing consumed, no cooldown). Each time you open
-  it, **3 cards** are stocked (**never two copies of the same card on one shelf**), at a **base price of 3 Star Coins**;
-  **each slot can be bought once per shop session** (it then shows "Sold out" — closing and reopening the shop resets
+- **New block: Card Shop** (2026-10-08; recipe and stocking updated in later versions): craft it in a 3×3 grid from
+  **3 smooth stone slabs / 3 Star Coins / 3 logs** (top row slabs, middle row Star Coins, bottom row any logs); place it and
+  **right-click to open the shop** (nothing consumed, no cooldown). **3 cards** are stocked (**never two copies of the same card
+  on one shelf**), at a **base price of 3 Star Coins**; a bought slot shows "Sold out", and **the batch stays until the 60-second
+  cycle reaches zero** (see the "60-second cycle" entry in this version).
   this, there is no permanent purchase limit). If **a teammate wears the "Merchant" sign**, one extra **combat card** is
   stocked and every card has a **10%** chance to be discounted to **1 Star Coin**; the **"Charge" card only appears when
   your dice star level is 2 or higher**.
@@ -104,10 +105,10 @@
 - **The Card Shop's transfer screen has been rebuilt** (2026-10-08): it now has a **player name search box** (filters as you type),
   a **scrolling list** with the vanilla scrollbar feel, and each row shows the **player's head, name and current Star Coin balance**
   (with a small Star Coin icon). **Click a player** to make them the transfer target (the selected row gets a pink arrow marker and the
-  hovered row a grey highlight); below are the **amount field** (defaults to 5, accepts **5–20**, and snaps back to 5 if the input is
+  hovered row a grey highlight); below are the **5/10/15/20 amount buttons** (the manual input field was removed in a later version);
   invalid) plus **5/10/15/20 quick amounts**; the **Confirm** button is only enabled with a valid target, an amount you can afford, and
-  no cooldown. **A successful transfer returns you to the shop and blocks further transfers for that shop session**, and the
-  **60-second cooldown now starts when you leave the shop** (it still applies if you disconnect, so nobody gets a free transfer).
+  no cooldown. **A successful transfer returns you to the shop and blocks further transfers for that cycle**, and the
+  **60-second cooldown is a fixed cycle** shared with the shop restocking (it still applies if you disconnect, so nobody gets a free transfer).
 - **New villager profession: Card Trader** (2026-10-09): the **Card Shop block is now a job site** — claiming it turns a villager into a
   **Card Trader** (white shirt, red tie, dark belt with a silver buckle, black suit trousers, leather shoes, a Star Coin badge on the
   left chest and a leather pouch on the right hip). Trades unlock by villager level: Novice/Apprentice sell **rare** cards (2–6 emeralds),

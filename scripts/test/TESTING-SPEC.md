@@ -4243,7 +4243,7 @@ mt.ps1 --version 线 --phase stop 关闭测试实例（gradle 守护进程保留
 ## 附录 A 续 75. 卡牌商店/转账批（任务 L…V + 配方）的工程记录与六条测试台教训（2026-10-10）
 
 **批次范围**：轮询沙漏重构（单一 60s 周期绑「转账锁 + 刷牌」，4 档倒计时无数字）、补差额牌（U′，不动原牌与计时器、幂等、界面开着时由 ticker 每 10t 复检）、反刷钱（进店返现绑货架批次）、转账页独立化与重排（只重排位置、尺寸不变）、按钮图标化、拖拽改纯客户端 + 原版 16×16 小图标、黑箱文案清理、手册「方块」类别与粉书皮、**卡牌商店配方 TTT/BBB/MMM（两线）**。
-**判据**：两线 `mt_build` `.59` OK；`verify_crafting_recipe_uniqueness` `collisions=0`；资源完整性两线 PASS；`SHOP-V` 81/81、`SHOP-N2` 39/39、`SHOP-Q` 47/47、`SHOP-P` 19/19、**`SHOP-L` 66/66（冷启动 ×2）**；独立只读审计（`0f0484ad`）判 U′ 需求 5/5 符合、0 功能缺陷。
+**判据**：两线 `mt_build` `.59` OK；`verify_crafting_recipe_uniqueness` `collisions=0`；资源完整性两线 PASS；`SHOP-V` 36/36（断言数；原写 81 系 steps+asserts 混记）、`SHOP-N2` 39/39、`SHOP-Q` 23/23（断言数）、`SHOP-P` 19/19、**`SHOP-L` 66/66（冷启动 ×2）**；独立只读审计（`0f0484ad`）判 U′ 需求 5/5 符合、0 功能缺陷。
 
 **六条教训（都已造成过实际返工，必须固化）**：
 1. **复用同一客户端跑第二次用例会假 PASS**：`mt_case` 的断言窗口不排除上一轮留在同一 `client.log` 的行 ⇒ 同一构建下「探针根本没推进」也能判 PASS。**规矩**：每条用例前 `stop --purge-saves → env → launch` 冷启动。
@@ -4253,4 +4253,4 @@ mt.ps1 --version 线 --phase stop 关闭测试实例（gradle 守护进程保留
 5. **case JSON 里不得写 JS 风格注释**：`SHOP-L-1.21.1.json` 曾有一处行尾 `//` 说明，使文件在严格解析器（`python json`）下非法（harness 容忍但工具链不容忍）。**规矩**：提交前对该文件跑一次严格 JSON 解析。
 6. **mixin 目标/描述符必须 javap 取证**（沿用续 72）：1.21.1 交易 mixin 曾把包名写成 1.20.1 的 `world.entity.npc.Merchant` ⇒ 开任何村民交易界面即崩服；编译与 `build` 都不校验。
 
-**本批新增的测试资产**：`scripts/test/cases/SHOP-{GUI,POI,VIS,VIS2,L,M,N,N2,P,Q,V}-1.21.1.json`（及 forge 侧同名 1.20.1 版本）、`scripts/test/resources/kubejs/1.21.1/{client_scripts/astral_shop_client.js, server_scripts/astral_shop_probe.js, astral_shop_vis.js}`、真光标驱动 `temp/t91/real_cursor.ps1`（Win32 `SetCursorPos+SendInput`）与截图归档脚本。
+**本批新增的测试资产**：`scripts/test/cases/SHOP-{GUI,POI,VIS,VIS2,L,M,N,N2,P,Q,V}-1.21.1.json`（⚠️ Forge 侧目前只有 `SHOP-{GUI,POI,VIS,VIS2}` 四个 1.20.1 版本；`L/M/N/N2/O/OB/P/Q/V` 仅 1.21.1）、`scripts/test/resources/kubejs/1.21.1/{client_scripts/astral_shop_client.js, server_scripts/astral_shop_probe.js, astral_shop_vis.js}`、真光标驱动 `temp/t91/real_cursor.ps1`（Win32 `SetCursorPos+SendInput`）与截图归档脚本。

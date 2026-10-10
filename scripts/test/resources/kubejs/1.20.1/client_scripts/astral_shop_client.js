@@ -367,8 +367,9 @@ function csVis(mc) {
     var out = [];
     function t(n, fn) { try { var v = fn(); out.push(n + '=' + ((v === null || v === undefined) ? 'null' : ('' + v).replace(/[\r\n]+/g, ' ').substring(0, 56))); } catch (e) { out.push(n + '=EX:' + ('' + e).substring(0, 56)); } }
     t('mc', function () { return av1(mc); });
-    t('setScreen', function () { mc.setScreen(null); return 'ok'; });
-    t('p_closeCont', function () { mc.player.closeContainer(); return 'ok'; });
+    // 2026-10-10 复核 I-1：这两项原先**无条件改游戏状态**（setScreen(null)/closeContainer），已改为纯读。
+    t('screen', function () { return mc.screen == null ? 'noscreen' : ('' + mc.screen); });
+    t('p_menu', function () { return '' + mc.player.containerMenu; });
     t('p_getInv', function () { return csId(mc.player.getInventory().getItem(0)); });
     t('p_containerMenu', function () { return '' + mc.player.containerMenu; });
     t('gameMode', function () { return mc.gameMode == null ? 'null' : 'ok'; });
@@ -434,6 +435,9 @@ function csRunFirst(mc, step) {
 /** 外来容器屏兜底关闭: 服务端探针若开了村民交易界面而没关, 之后所有注入都会被屏吞掉。
  *  只认 MerchantScreen(绝不能关 ChatScreen —— 聊天注入全靠它)。 */
 function csForeignJanitor(mc) {
+    // ⚠️ 护栏（2026-10-10 独立复核 I-1）：探针**默认惰性** —— 未武装（非 MCP 手动模式）时绝不关任何屏幕。
+    //    本函数历史上被 tick 无条件调用，会替玩家关掉村民交易界面（与 1.21.1 侧 csLive 护栏同义）。
+    if (!csMcpLive(mc)) { return; }
     try {
         var s = mc.screen;
         if (s == null) return;
@@ -449,7 +453,8 @@ ClientEvents.tick(event => {
     try { mc = Mc_CLASS.getInstance(); } catch (e0) { return; }
     if (mc == null || mc.level == null) return;
     var mcpManual = csMcpLive(mc);   // MCP 手动模式（默认关）：开了就只做只读诊断，绝不关屏/跑场景
-    if (!mcpManual) { csForeignJanitor(mc); }
+    // 2026-10-10 复核 I-1：**不再自动关任何屏幕**（探针必须惰性；外来屏只在显式场景步骤里由场景自己收掉）。
+    // if (!mcpManual) { csForeignJanitor(mc); }
     if (csTick === 40) { cs("evt=boot:tick=" + csTick + ":shopCls=" + (ShopScreen_CLASS == null ? "null" : "ok")); }
     if ((csTick === 60 || csTick % 600 === 0) && mc.screen == null) { csVis(mc); }
     if (csTick === 200 || (csTick - csJeiLast) >= 1200) { csJeiLast = csTick; csJei(); }
