@@ -165,7 +165,7 @@ public final class AstralEventRegistry {
                         AstralEventTrigger.BLOCK_USE, AstralEventTrigger.CUSTOM),
                 r,
                 AstralEventEffect.NOOP,
-                0));
+                1200));   // 用户裁决 2026-10-10：调查阶段**所有阶级**持续 1:00 ⇒ 卡面显示 1:00 计时器
     }
 
     /** 公开事件池条目的统一构造(效果空壳、无计时器)。 */
