@@ -4,7 +4,7 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
-## Unreleased (2.0.0-SNAPSHOT.63)
+## Unreleased (2.0.0-SNAPSHOT.64)
 
 ### New Content
 
@@ -2024,6 +2024,11 @@ m
 - **Event status indicators** (2026-10-10): Red Heat Warning / Storm Approaching / Problem Delivery now show an effect-bar indicator with the same-named icon (consistent with existing effects, synced on both sides); while Problem Delivery is active the vanilla Poison/Hunger icons are replaced by the dedicated indicator.
 - **Storm Approaching**: at night, with an affected player nearby, hostile mobs spawn at double the usual count (implemented with the platform spawn hook).
 - Red Heat Warning attack bonus and Storm Approaching attack/defense bonus now go through the mod combat model (counted in the mod attack/defense values) and stay transient: lost on death or relog.
+- **Event effect card** (2026-10-10): triggering an event now pops a card at the **centre of the screen** - 0.2s fade in (with scale up) -> 1.0s hold -> 0.2s **shrink fade out**; the card shows the event artwork (centred by its visible content) with two centred text rows below: the event name (coloured by type: positive green / neutral yellow / negative red) and the timer (hidden when the event has none). `event_fade_in` plays as the card appears, and the event only actually resolves about **1.9 seconds (38 ticks)** later, together with its own trigger sound.
+- **Event trigger sounds**: Learn From Others (healed side) / Angel Descent -> `event_heal`; Learn From Others (damaged side) / World Collapse -> `event_damage`; Problem Delivery -> `event_poisoning`; Crowded Passage -> `event_transport`; Gift From Sky -> `event_bonus`.
+- **Learn From Others** now heals first and deals the damage **1 second later** (regardless of how many players are affected); **Hand Erasure** now makes the card **vanish outright** (no longer dropped on the ground); **Gift From Sky** deposits its 3 star coins straight into the star coin wallet when that feature is enabled.
+- **Event types corrected**: Red Heat Warning and Gift From Sky are positive, Crowded Passage is neutral, Problem Delivery is negative (card text and indicators now follow); status indicator icons now use the same-named icons under `images/`.
+
 
 
 

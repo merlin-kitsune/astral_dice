@@ -6,7 +6,8 @@
 import os, struct, sys, zlib
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-IDS = ["red_heat_warning", "storm_approaching", "problem_delivery"]
+# 指示器图标 = `images/<同名中文>.png`（32×32）**直接拷贝**；不再从 card+event 的 64×64 卡面降采样
+IDS = {"red_heat_warning": "红温警告", "storm_approaching": "雷暴将至", "problem_delivery": "问题外卖"}
 LINES = ["neoforge-1.21.1", "forge-1.20.1"]
 
 
@@ -72,20 +73,16 @@ def main():
     check = "--check" in sys.argv
     bad = 0
     for line in LINES:
-        for eid in IDS:
-            src = os.path.join(ROOT, line, "src/main/resources/assets/astral_dice/textures/gui/event", eid + ".png")
+        for eid, cname in IDS.items():
+            src = os.path.join(ROOT, "images", cname + ".png")
             dst = os.path.join(ROOT, line, "src/main/resources/assets/astral_dice/textures/mob_effect", eid + ".png")
-            w, h, rows = read_png(src)
-            if w % 32 or h % 32:
-                raise SystemExit("源图尺寸不是 32 的整数倍: %s (%dx%d)" % (src, w, h))
-            want = downscale(w, h, rows)
+            data = open(src, "rb").read()
             if check:
-                if not os.path.exists(dst):
-                    print("MISSING", dst); bad += 1; continue
-                if read_png(dst)[2] != want:
-                    print("STALE", dst); bad += 1
+                if not os.path.exists(dst) or open(dst, "rb").read() != data:
+                    print("STALE/MISSING", dst); bad += 1
             else:
-                write_png(dst, 32, want)
+                os.makedirs(os.path.dirname(dst), exist_ok=True)
+                open(dst, "wb").write(data)
                 print("WROTE", os.path.relpath(dst, ROOT))
     if check:
         print("CHECK_RESULT:", "OK" if bad == 0 else "FAIL(%d)" % bad)

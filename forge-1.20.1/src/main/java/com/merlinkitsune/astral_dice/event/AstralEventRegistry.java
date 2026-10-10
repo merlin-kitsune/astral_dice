@@ -137,17 +137,17 @@ public final class AstralEventRegistry {
     private static void registerAll() {
         double r = AstralEventSystem.EVENT_TARGET_RADIUS;
         // 12 个公开事件:本轮只注册元数据 + 触发器,效果一律 NOOP、无计时器。
-        publicEvent(AstralEventIds.RED_HEAT_WARNING, AstralEventPolarity.NEGATIVE, r, 3600, EventEffects::redHeatWarning);
+        publicEvent(AstralEventIds.RED_HEAT_WARNING, AstralEventPolarity.POSITIVE, r, 3600, EventEffects::redHeatWarning);
         publicEvent(AstralEventIds.SWIFT_STRIDE, AstralEventPolarity.POSITIVE, r, 2400, EventEffects::swiftStride);
         publicEvent(AstralEventIds.STORM_APPROACHING, AstralEventPolarity.NEGATIVE, r, 2400, EventEffects::stormApproaching);
         publicEvent(AstralEventIds.LEARN_FROM_OTHERS, AstralEventPolarity.NEUTRAL, r, 0, AstralEventEffect.NOOP);
         publicEvent(AstralEventIds.SHOP_BONANZA, AstralEventPolarity.POSITIVE, r, 6000, EventEffects::shopBonanza);
         publicEvent(AstralEventIds.HAND_ERASURE, AstralEventPolarity.NEGATIVE, r, 0, EventEffects::handErasure);
         publicEvent(AstralEventIds.WORLD_COLLAPSE, AstralEventPolarity.NEGATIVE, r, 0, EventEffects::worldCollapse);
-        publicEvent(AstralEventIds.GIFT_FROM_SKY, AstralEventPolarity.NEUTRAL, r, 0, EventEffects::giftFromSky);
+        publicEvent(AstralEventIds.GIFT_FROM_SKY, AstralEventPolarity.POSITIVE, r, 0, EventEffects::giftFromSky);
         publicEvent(AstralEventIds.ANGEL_DESCENT, AstralEventPolarity.POSITIVE, r, 0, EventEffects::angelDescent);
-        publicEvent(AstralEventIds.PROBLEM_DELIVERY, AstralEventPolarity.NEUTRAL, r, 300, EventEffects::problemDelivery);
-        publicEvent(AstralEventIds.CROWDED_PASSAGE, AstralEventPolarity.NEGATIVE, r, 0, EventEffects::crowdedPassage);
+        publicEvent(AstralEventIds.PROBLEM_DELIVERY, AstralEventPolarity.NEGATIVE, r, 300, EventEffects::problemDelivery);
+        publicEvent(AstralEventIds.CROWDED_PASSAGE, AstralEventPolarity.NEUTRAL, r, 0, EventEffects::crowdedPassage);
         publicEvent(AstralEventIds.BATTLE_FRENZY, AstralEventPolarity.POSITIVE, r, 0, EventEffects::battleFrenzy);
 
         // 秘密侦探专属:阶级事件。2026-10-10 用户裁决 —— 只有击杀「隐匿调查」能提升阶级;

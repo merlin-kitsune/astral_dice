@@ -101,7 +101,16 @@ public final class ModSounds {
     }
 
     /** 统一用可变范围（{@code createVariableRangeEvent}）：音量决定可听半径，与其它模组音效口径一致。 */
-    private static RegistryObject<SoundEvent> register(String id) {
+        // ── 事件音效（2026-10-10 事件效果卡批次；资源 = assets/astral_dice/sounds/<id>.ogg） ──
+    public static final RegistryObject<SoundEvent> EVENT_FADE_IN = register("event_fade_in");
+    public static final RegistryObject<SoundEvent> EVENT_FADE_OUT = register("event_fade_out");
+    public static final RegistryObject<SoundEvent> EVENT_HEAL = register("event_heal");
+    public static final RegistryObject<SoundEvent> EVENT_DAMAGE = register("event_damage");
+    public static final RegistryObject<SoundEvent> EVENT_POISONING = register("event_poisoning");
+    public static final RegistryObject<SoundEvent> EVENT_TRANSPORT = register("event_transport");
+    public static final RegistryObject<SoundEvent> EVENT_BONUS = register("event_bonus");
+    public static final RegistryObject<SoundEvent> EVENT_TICK = register("event_tick");
+private static RegistryObject<SoundEvent> register(String id) {
         return SOUNDS.register(id, () -> SoundEvent.createVariableRangeEvent(
                 new ResourceLocation(AstralDiceMod.MODID, id)));
     }

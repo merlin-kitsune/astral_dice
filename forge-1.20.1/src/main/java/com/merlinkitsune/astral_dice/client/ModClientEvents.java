@@ -40,6 +40,8 @@ public class ModClientEvents {
 
     @SubscribeEvent
     public static void registerGuiOverlays(RegisterGuiOverlaysEvent event) {
+        // 事件效果卡：接在准星之上（瞬时动画，不遮准星本身）
+        event.registerAbove(VanillaGuiOverlay.CROSSHAIR.id(), "event_card", EventCardOverlay.OVERLAY);
         // 1.20.1:registerAbove 的 id 参数是纯 path,Forge 自动拼 modid 前缀
         event.registerAbove(VanillaGuiOverlay.CROSSHAIR.id(),
                 "damage_number", DamageNumberOverlay.INSTANCE);

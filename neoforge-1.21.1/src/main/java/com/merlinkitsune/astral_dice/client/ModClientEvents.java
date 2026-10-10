@@ -65,6 +65,9 @@ public class ModClientEvents {
         //  且排在 Iron's 法术书 mana bar 等「锚 Hunger 再用 rightHeight 往上叠」的 bar 之下。
         event.registerAbove(VanillaGuiLayers.ARMOR_LEVEL, CombatPowerHud.DEFENSE_LAYER_ID, CombatPowerHud.DEFENSE_LAYER);
         event.registerAbove(VanillaGuiLayers.FOOD_LEVEL, CombatPowerHud.ATTACK_LAYER_ID, CombatPowerHud.ATTACK_LAYER);
+
+        // 事件效果卡：接在准星之上（瞬时动画，不遮准星本身）
+        event.registerAbove(VanillaGuiLayers.CROSSHAIR, EventCardOverlay.LAYER_ID, EventCardOverlay.LAYER);
     }
 
     public static class ActionBarOverlay implements LayeredDraw.Layer {

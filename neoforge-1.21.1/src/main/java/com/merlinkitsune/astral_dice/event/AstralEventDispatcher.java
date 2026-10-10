@@ -108,18 +108,23 @@ public final class AstralEventDispatcher {
                 EventTimerStore.start(target, event.id(), event.defaultDurationTicks());
             }
         }
+        final Player bonusFinal = bonusTriggerer;
+        final java.util.List<Player> targetsFinal = targets;
+        final int tierFinal = tier;
         if (triggerer.level() instanceof ServerLevel serverLevel) {
-            for (Player target : targets) {
-                event.effect().apply(serverLevel, bonusTriggerer, target, event, source, tier);
-            }
-        }
-        // 集合层结算（取长补短需要整个受影响集合）
-        EventEffects.afterDispatch(event, targets);
-        AstralEventSystem.applyEventBonus(bonusTriggerer, event.id().toString(), targets);
-        LOGGER.info("AP_EVENT_FIRE: id={}:src={}:tier={}:targets={}", event.id(), source, tier, targets.size());
-        // ⑤ 升阶(用户裁决 R1:在<b>触发之后</b>推进;只有击杀隐匿调查目标可提升,上限 4)
-        if (event.secretOnly() && source == AstralEventTrigger.INVESTIGATION_KILL) {
-            ModAttachments.setInvestigationStage(tierOwner, Math.min(tier + 1, 4));
+            // 用户裁决 2026-10-10：先弹「事件效果卡」，弹卡开始后 40t（2.0s）才真正执行事件并播放音效。
+            EventCardService.showThenRun(serverLevel, targetsFinal, event, lvl -> {
+                for (Player target : targetsFinal) {
+                    event.effect().apply(lvl, bonusFinal, target, event, source, tierFinal);
+                }
+                EventEffects.afterDispatch(event, targetsFinal);
+                AstralEventSystem.applyEventBonus(bonusFinal, event.id().toString(), targetsFinal);
+                EventCardService.playTriggerSounds(targetsFinal, event);
+                LOGGER.info("AP_EVENT_FIRE: id={}:src={}:tier={}:targetsFinal={}", event.id(), source, tierFinal, targetsFinal.size());
+                if (event.secretOnly() && source == AstralEventTrigger.INVESTIGATION_KILL) {
+                    ModAttachments.setInvestigationStage(tierOwner, Math.min(tierFinal + 1, 4));
+                }
+            });
         }
     }
 

@@ -78,6 +78,9 @@ public final class ModNetwork {
         // **只能追加在末尾**:顺序即协议,插队会让旧客户端错包。
         CHANNEL.registerMessage(id++, CardShopDenyMessage.class,
                 CardShopDenyMessage::encode, CardShopDenyMessage::decode, CardShopDenyMessage::handle);
+        // 事件效果卡（S2C，2026-10-10）：与 1.21.1 的 EventCardPayload 同语义；**追加在末尾**（顺序即协议）。
+        CHANNEL.registerMessage(id++, EventCardMessage.class,
+                EventCardMessage::encode, EventCardMessage::decode, EventCardMessage::handle);
     }
 
     // === 发送助手(对应 1.21 PacketDistributor 静态方法) ===

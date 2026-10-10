@@ -41,6 +41,14 @@ public class ModPayloads {
                 (payload, context) -> context.enqueueWork(() ->
                         EnderDieTotemAnimator.play(payload.entityId()))
         );
+        // 事件效果卡（S2C）：客户端弹卡动画；事件结算由服务端在 40t 后执行（见 EventCardService）。
+        registrar.playToClient(
+                com.merlinkitsune.astral_dice.network.EventCardPayload.TYPE,
+                com.merlinkitsune.astral_dice.network.EventCardPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() ->
+                        com.merlinkitsune.astral_dice.client.EventCardOverlay.show(
+                                payload.eventId(), payload.durationTicks()))
+        );
         registrar.playToServer(
                 SignActivatePayload.TYPE,
                 SignActivatePayload.STREAM_CODEC,

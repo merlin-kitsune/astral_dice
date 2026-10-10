@@ -147,12 +147,18 @@ public final class EventEffects {
             if (highest == null || p.getHealth() > highest.getHealth()) highest = p;
         }
         if (lowest == null || highest == null) return;
-        if (group.size() == 1 || lowest == highest) {
-            // 集合只有一人**或并列同一人**(血量完全相同):只按最低结算(+8),不扣血
-            lowest.heal(8.0F);
-        } else {
-            lowest.heal(8.0F);
-            highest.setHealth(Math.max(0.0F, highest.getHealth() - 8.0F));
+        // 用户裁决 2026-10-10：**先治疗、1 秒后再伤害**；无论受影响人数（哪怕只有一人也先 +8 再 −8）。
+        final Player healed = lowest;
+        final Player damaged = highest;
+        healed.heal(8.0F);
+        LOGGER.info("AP_EVENT_EFFECT: learn_from_others:heal={}", healed.getName().getString());
+        if (healed.level() instanceof ServerLevel lvl) {
+            EventCardService.schedule(lvl, 20, l -> {
+                if (damaged.isAlive()) {
+                    damaged.setHealth(Math.max(0.0F, damaged.getHealth() - 8.0F));
+                    LOGGER.info("AP_EVENT_EFFECT: learn_from_others:damage={}", damaged.getName().getString());
+                }
+            });
         }
         LOGGER.info("AP_EVENT_EFFECT: learn_from_others:low={}:high={}", lowest.getName().getString(),
                 (group.size() == 1 || lowest == highest ? "-" : highest.getName().getString()));
@@ -202,6 +208,8 @@ public final class EventEffects {
     @net.neoforged.bus.api.SubscribeEvent
     public static void onPlayerTick(net.neoforged.neoforge.event.tick.PlayerTickEvent.Post event) {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
+        // 事件效果卡：**每 tick** 检查到点结算（不加 10t 门控 ⇒ 消除结算时机漂移）
+        EventCardService.drain(player.serverLevel());
         sweepTimers(player);
     }
 
@@ -243,10 +251,10 @@ public final class EventEffects {
             return;
         }
         int slot = cardSlots.get(target.getRandom().nextInt(cardSlots.size()));
+        // 用户裁决 2026-10-10：抹杀 = 手牌**直接消失**（不再丢到地上）
         ItemStack removed = target.getInventory().removeItemNoUpdate(slot);
         if (!removed.isEmpty()) {
-            target.drop(removed, false);
-            LOGGER.info("AP_EVENT_EFFECT: hand_erasure:dropped={}:target={}", removed.getItem(), target.getName().getString());
+            LOGGER.info("AP_EVENT_EFFECT: hand_erasure:erased={}:target={}", removed.getItem(), target.getName().getString());
         }
     }
 
@@ -262,7 +270,13 @@ public final class EventEffects {
     public static void giftFromSky(ServerLevel level, Player triggerer, Player target, AstralEvent event,
                                    AstralEventTrigger source, int tier) {
         RandomCardHandler.giveCardTo(target, RandomCardHandler.CardCategory.ALL);
-        giveCoins(target, 3);
+        // 用户裁决 2026-10-10：星币**直接进钱包**（钱包功能启用时；账本由前置库 StarEngineEconomy 承载）
+        boolean wallet = com.merlinkitsune.astral_dice.config.ModCommonConfig.ENABLE_STAR_COIN_WALLET.get();
+        if (wallet && com.merlinkitsune.starenginelib.economy.StarEngineEconomy.deposit(target, 3L)) {
+            LOGGER.info("AP_EVENT_EFFECT: gift_from_sky:wallet_plus=3:target={}", target.getName().getString());
+        } else {
+            giveCoins(target, 3);
+        }
     }
 
     // ────────────────────────── 9. 天使降临:4 点治疗 ──────────────────────────
