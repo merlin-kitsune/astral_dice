@@ -44,6 +44,17 @@ public final class AstralEventDispatcher {
      * @param source    触发来源
      */
     public static void trigger(Player triggerer, ResourceLocation eventId, AstralEventTrigger source) {
+        trigger(triggerer, triggerer, eventId, source);
+    }
+
+    /**
+     * 触发一条事件,并指定<b>阶级归属者</b>(默认 = 触发者)。
+     *
+     * <p>用途:秘密侦探的「调查阶段」事件由<b>击杀隐匿调查目标</b>触发,但阶级进度属于<b>施加者</b>
+     * (佩戴秘密侦探立牌、施加了「隐匿调查」的那名玩家) —— 因此触发者与阶级归属者可能不同。
+     * 作用域仍以<b>触发者</b>为中心(沿用既有口径)。
+     */
+    public static void trigger(Player triggerer, Player tierOwner, ResourceLocation eventId, AstralEventTrigger source) {
         // ① 客户端守卫:客户端调用必须 no-op(不崩、不写数据)
         if (triggerer.level().isClientSide()) {
             return;
@@ -62,10 +73,10 @@ public final class AstralEventDispatcher {
         // ③ 阶级闸门:只有击杀「隐匿调查」允许提升;其它来源只读当前阶级
         int tier = 0;
         if (event.secretOnly()) {
-            int current = ModAttachments.getInvestigationStage(triggerer);
+            int current = ModAttachments.getInvestigationStage(tierOwner);
             if (source == AstralEventTrigger.INVESTIGATION_KILL) {
                 current = Math.min(current + 1, 4);
-                ModAttachments.setInvestigationStage(triggerer, current);
+                ModAttachments.setInvestigationStage(tierOwner, current);
             }
             tier = current;
         }
