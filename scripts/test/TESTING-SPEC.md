@@ -4239,3 +4239,18 @@ mt.ps1 --version 线 --phase stop 关闭测试实例（gradle 守护进程保留
 8. ⚠️ **测试台缺口（1.20.1，待修）**：`astral_test_noai.js` 的 2-tick 横扫在 1.20.1 **静默空转**（全程 `AP_NOAI:mobs=0:total=0`，而世界里村民就在玩家 1 格内）⇒ 只有 `EntityEvents.spawned` 钩子有效，`mt_launch` 的 `NOAI_ENFORCED` 闸门在 1.20.1 偏弱（**属测试台问题，非产品缺陷**）。
 
 **未覆盖/需人工**：JEI 界面目视（仅 API 抽查）、手册游戏内翻页目视（仅静态 JSON 扫描）、真人鼠标拖拽手势（拖拽为客户端探针合成 payload，`how=directBuyPayload`）、非 `cards_*` 手册条目未逐条扫、26.1.2 / fabric 线不在范围。
+
+## 附录 A 续 75. 卡牌商店/转账批（任务 L…V + 配方）的工程记录与六条测试台教训（2026-10-10）
+
+**批次范围**：轮询沙漏重构（单一 60s 周期绑「转账锁 + 刷牌」，4 档倒计时无数字）、补差额牌（U′，不动原牌与计时器、幂等、界面开着时由 ticker 每 10t 复检）、反刷钱（进店返现绑货架批次）、转账页独立化与重排（只重排位置、尺寸不变）、按钮图标化、拖拽改纯客户端 + 原版 16×16 小图标、黑箱文案清理、手册「方块」类别与粉书皮、**卡牌商店配方 TTT/BBB/MMM（两线）**。
+**判据**：两线 `mt_build` `.59` OK；`verify_crafting_recipe_uniqueness` `collisions=0`；资源完整性两线 PASS；`SHOP-V` 81/81、`SHOP-N2` 39/39、`SHOP-Q` 47/47、`SHOP-P` 19/19、**`SHOP-L` 66/66（冷启动 ×2）**；独立只读审计（`0f0484ad`）判 U′ 需求 5/5 符合、0 功能缺陷。
+
+**六条教训（都已造成过实际返工，必须固化）**：
+1. **复用同一客户端跑第二次用例会假 PASS**：`mt_case` 的断言窗口不排除上一轮留在同一 `client.log` 的行 ⇒ 同一构建下「探针根本没推进」也能判 PASS。**规矩**：每条用例前 `stop --purge-saves → env → launch` 冷启动。
+2. **测试探针绝不能无条件改变游戏状态**：本批曾有一个「第 60 tick 无条件关闭任何 Screen」的 janitor，而 `mt_env` 会把探针同步进 `run/<线>/kubejs/` ⇒ **玩家手工游玩时商店也被它关掉**（表现为「商店开了几秒自己关」）。**规矩**：探针默认惰性/武装后才动作，且**永不**代玩家关屏/点击/改物品。
+3. **界面素材换尺寸 ⇒ 面板原点变，探针坐标必须随源**：任务P 把底图换成加大版后包围盒 126×135 → 141×183 ⇒ 原点 81/26 → **73/2**；而断言与探针仍按旧原点 ⇒ 点不到确认/返回键、行选中错位、档位点错（表现为 `used=0`、`view=1`）。**规矩**：改布局常量后**同步**扫描所有坐标为「面板内坐标」的调用点与探针，并**订正陈旧注释**（旧注释正是误导源）。
+4. **断言不得硬编码跨场景状态**：`SHOP-L` 曾硬编码已售位图 `100000`，被上一场景 `win_200ms` 的**真实购买**残留污染（且 60s 周期未到 0 ⇒ 不刷架）⇒ 实测 `110000` FAIL；更早还因「转账坐标坏 ⇒ 面板没开 ⇒ 没买成」而**假 PASS**。**规矩**：跨场景判据用**增量/基线对比**（本批新增 `evt=nat_buy_delta:base=…:cur=…:delta=…`）。
+5. **case JSON 里不得写 JS 风格注释**：`SHOP-L-1.21.1.json` 曾有一处行尾 `//` 说明，使文件在严格解析器（`python json`）下非法（harness 容忍但工具链不容忍）。**规矩**：提交前对该文件跑一次严格 JSON 解析。
+6. **mixin 目标/描述符必须 javap 取证**（沿用续 72）：1.21.1 交易 mixin 曾把包名写成 1.20.1 的 `world.entity.npc.Merchant` ⇒ 开任何村民交易界面即崩服；编译与 `build` 都不校验。
+
+**本批新增的测试资产**：`scripts/test/cases/SHOP-{GUI,POI,VIS,VIS2,L,M,N,N2,P,Q,V}-1.21.1.json`（及 forge 侧同名 1.20.1 版本）、`scripts/test/resources/kubejs/1.21.1/{client_scripts/astral_shop_client.js, server_scripts/astral_shop_probe.js, astral_shop_vis.js}`、真光标驱动 `temp/t91/real_cursor.ps1`（Win32 `SetCursorPos+SendInput`）与截图归档脚本。

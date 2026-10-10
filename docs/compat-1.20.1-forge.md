@@ -196,3 +196,11 @@ datagen:`RecipeOutput` → `Consumer<FinishedRecipe>`(`.save(output::accept)`);`
 ### 十四之补充（2026-10-09 商店 GUI 细节修正）
 11. 本次改动**不含任何新平台符号**（纯逻辑/常量/注释）⇒ 两线文本逐字相同；仅保留既有平台写法（`new ResourceLocation`、`ModNetwork.*`、`mouseScrolled` 三参、`getSkinLocation`）。
 12. **素材**：`shop_wallet.png`（96×24，左格自带星币图标）四份副本（`images/shop/` 与两线 `gui/shop/`）sha256 全同；**两线均已删除** `shop_coin_bar.png` / `shop_coin_icon.png`。⚠️ forge 模块的 `build/resources/main/` 因 Gradle 增量特性可能残留旧副本 ⇒ 收尾需 `clean` 该模块重建（jar 内不得出现旧素材）。
+
+## 十五、卡牌商店/转账批(2026-10-09~10)平台差异与对等口径
+
+1. **本批改动零新平台符号**：轮询/补差额牌/反刷钱/转账页/拖拽/文本收敛全部为纯逻辑与坐标，两线文本逐字相同（独立复核抽查 5 项：沙漏 4 档 `hourglassFrameOf`、`CardShopShelf.ensureLengths`、`CardShopCycleTicker` 10t 补差、`CardShopMenu.topUpShelf/topUpIfNeeded`、转账页 `TP_SCALE=1` + `TP_FACE_Y_OFF=0`）。
+2. **配方 JSON 的 schema 差异（合法）**：1.20.1 用 `result.item`、1.21.1 用 `result.id`；1.20.1 目录是 `data/astral_dice/recipes/`（**复数**）。两线 `card_shop.json` 均为 `TTT/BBB/MMM`（T=`minecraft:smooth_stone_slab`、B=`astral_dice:star_coin`、M=`#minecraft:logs`），且**都没有 datagen provider**（全仓 `*.java` 搜 `smooth_stone_slab|minecraft:logs` = 0 命中）⇒ 手写即唯一来源。**教训**：本批曾漏移植 Forge 配方（残留旧 `PPP/PCP/PPP`），表现为手册在 Forge 端渲染出旧配方 ⇒ 凡改配方必须**两线同批**并核验**产物内** JSON。
+3. **dev 运行取 devlibs**：`run/1.20.1/mods` 的 forge 产物 SHA256 == `forge-1.20.1/build/devlibs/`（未重混淆、Mojmap），≠ `build/libs`（SRG reobf）—— 属既有设计，勿改。
+4. **转账面板素材加大**：两线 `shop_transfer_bg.png` 均 107×183（旧 92×135），`lang/zh_cn.json` 与 `textures/gui/shop/shop_transfer_bg.png` 两线**逐字节一致**；面板原点由 141×183 包围盒派生（`TP_X=73/TP_Y=2`），**探针/调用点坐标必须同源**（1.21.1 曾因沿用旧原点 81/26 导致 4 处点击失配）。
+5. **1.20.1 侧曾漏拷底图**：Forge 端常量已按新材料更新但贴图未同步 ⇒ 底图被拉伸、金框被裁；镜像素材时必须**两线同时**拷 `textures/gui/shop/**`（本批已修）。

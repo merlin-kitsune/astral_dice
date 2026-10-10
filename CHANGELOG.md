@@ -123,6 +123,13 @@
 - **Card Shop UI detail fixes** (2026-10-09): **empty card slots now always show the sold-out style** (no more empty gold frames);
   the **Star Coin balance frame uses a new asset** (the coin icon is built into its left cell, with the number centred against it); and
   **overlong card names now scroll left and right** instead of shrinking, so the full name stays readable.
+- **Card Shop UI overhaul** (2026-10-10): buttons are icon-only (**no text drawn on them**; explanations moved to hover tooltips); the **transfer page is fully independent** (the shop page is no longer rendered underneath); the transfer amount is chosen with **4 preset buttons** (the manual input box was removed) and shown in white; the search placeholder is left-aligned, the empty-list notice centred, the back button aligned with the search box, and avatars aligned with their two text lines.
+- **The shop now runs on a 60-second cycle**: **a new batch of cards is drawn only at the exact moment the countdown hits zero**; the hourglass shows **4 stages** (**no digits**); one transfer and one starlight exchange per cycle, unlimited purchases; reopening the shop **no longer rerolls** the cards.
+- **Equipping the Merchant sign or triggering the Shop Bonanza no longer rerolls the whole shelf**: only the **missing bonus slots are filled in** (sign +1 combat card, bonanza +2); existing cards, prices, sold flags and the countdown stay untouched; unequipping the sign does **not** shrink the shelf — changes apply at the next countdown reset.
+- **Fixed: repeatedly reopening the shop kept paying out Star Coins** (now once per batch; the next payout requires a new batch).
+- **Card Shop recipe updated**: 3 smooth stone slabs / 3 Star Coins / 3 logs.
+- Added a **"Blocks"** guide category (the Card Shop entry includes its recipe page) and switched the guide cover to **pink**.
+
 
 
 
@@ -433,6 +440,8 @@
 
 - **Fixed doubled impact sound on damage effect cards**: the impact no longer plays two generic hit sounds at once; hit
   sounds from other sources (living page, fire card, etc.) are unaffected.
+- **Removed texts that exposed internal mechanics** (2026-10-10): the bracketed notes in attack/defence card tooltips, the same notes in the guide, and the "sold out" hover hint; button tooltips now keep only the button name (e.g. "Transfer", "Starlight Exchange").
+
 
 ## 1.3.7-hotfix
 
