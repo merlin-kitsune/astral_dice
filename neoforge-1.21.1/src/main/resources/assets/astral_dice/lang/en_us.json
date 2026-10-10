@@ -880,5 +880,6 @@
   "event.astral_dice.battle_frenzy.name": "Battle Frenzy",
   "event.astral_dice.investigation_stage.name": "Investigation Stage",
   "item.astral_dice.event_ticket": "Event Ticket",
-  "block.astral_dice.event_drawer": "Event Drawer"
+  "block.astral_dice.event_drawer": "Event Drawer",
+  "hud.astral_dice.target_select.tag.undercover": "Under investigation"
 }

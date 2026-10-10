@@ -33,7 +33,7 @@ public class EventDrawBlock extends Block {
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player,
                                               BlockHitResult hitResult) {
         if (!level.isClientSide) {
-            Optional<AstralEvent> drawn = AstralEventRegistry.drawRandom(player.getRandom());
+            Optional<AstralEvent> drawn = AstralEventRegistry.drawRandom(player.getRandom(), player);
             if (drawn.isEmpty()) {
                 LOGGER.warn("AP_EVENT_DRAW: src=BLOCK_USE:empty");
             } else {

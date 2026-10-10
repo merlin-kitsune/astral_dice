@@ -67,6 +67,12 @@ public class BonnieSignItem extends BaseSignItem {
 
             @Override
             public void apply(ServerPlayer player, LivingEntity target) {
+                // 用户裁决(2026-10-10):**已带「隐匿调查」标记的目标不可再被任何人施加**。
+                // 服务端唯一权威闸门;按裁决**不发 ActionBar**,提示只出现在目标选择器里(见 TargetSelectionClient#targetTagKey)。
+                if (target.hasEffect(ModEffects.UNDERCOVER_INVESTIGATION)) {
+                    LOGGER.info("AP_UNDERCOVER_REJECT: already_marked:target={}", target.getDisplayName().getString());
+                    return;
+                }
                 // 施加"隐匿调查"(永久,直到目标死亡/消失),记录施加者(击杀触发调查阶段事件)
                 ModAttachments.setUndercoverSource(target, Optional.of(player.getUUID()));
                 target.addEffect(new MobEffectInstance(ModEffects.UNDERCOVER_INVESTIGATION,

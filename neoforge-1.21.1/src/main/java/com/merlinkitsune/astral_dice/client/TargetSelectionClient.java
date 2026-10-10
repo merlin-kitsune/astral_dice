@@ -195,6 +195,10 @@ public final class TargetSelectionClient {
     public static String targetTagKey(LivingEntity entity) {
         Minecraft mc = Minecraft.getInstance();
         Player selector = mc.player;
+        // 用户裁决(2026-10-10 Q5):已带「隐匿调查」标记的目标在选择器里给出专属提示(不加 ActionBar)
+        if (entity.hasEffect(com.merlinkitsune.astral_dice.effect.ModEffects.UNDERCOVER_INVESTIGATION)) {
+            return "undercover";
+        }
         if (entity instanceof Player) {
             return selector != null && isFriendly(selector, entity) ? "teammate" : "player";
         }

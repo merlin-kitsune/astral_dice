@@ -879,5 +879,6 @@
   "event.astral_dice.battle_frenzy.name": "戦闘最高",
   "event.astral_dice.investigation_stage.name": "調査段階",
   "item.astral_dice.event_ticket": "イベント券",
-  "block.astral_dice.event_drawer": "イベント抽選機"
+  "block.astral_dice.event_drawer": "イベント抽選機",
+  "hud.astral_dice.target_select.tag.undercover": "調査中"
 }

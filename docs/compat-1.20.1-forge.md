@@ -213,3 +213,7 @@ datagen:`RecipeOutput` → `Consumer<FinishedRecipe>`(`.save(output::accept)`);`
 3. **注册形态**：1.21.1 用 `DeferredRegister.Items` / `DeferredRegister.Blocks` + `DeferredItem<T>` / `DeferredBlock<T>` + `registerSimpleBlockItem`；1.20.1 用 `DeferredRegister.create(ForgeRegistries.ITEMS/BLOCKS, MODID)` + `RegistryObject<T>`，方块物品必须手工 `new BlockItem(...)` 登记。
 4. **资源目录**：1.20.1 的战利品表在 `data/<ns>/loot_tables/blocks/`（**复数**），1.21.1 在 `data/<ns>/loot_table/blocks/`（单数）；模型 / 方块状态 / 贴图 / lang 路径两线一致。
 5. **订阅注解**：清空大侦探主动技能后该立牌不再有 `@SubscribeEvent` 处理器 ⇒ 两线**各自**移除其订阅注解（1.21.1 是 `@EventBusSubscriber`，1.20.1 是 `@Mod.EventBusSubscriber`）。
+
+
+6. **Curios 访问器（事件体系补丁新增）**：1.20.1 线统一走平台层 **`com.merlinkitsune.starenginelib.item.CuriosCompat.getCuriosInventory(player)`**（`findFirstCurio` 可用），**不要**用 `top.theillusivec4.curios.api.CuriosApi` —— 直接镜像 1.21.1 的写法会在 1.20.1 编译失败（`找不到符号`）。
+7. **`ModEffects.*` 的取用**：1.20.1 是 `RegistryObject<MobEffect>`，凡传参给 `hasEffect` / `MobEffectInstance` 都必须 `.get()`；`EventDrawBlock` 的交互入口在 1.20.1 是六参 `use(...)`（1.21.1 是 `useWithoutItem(...)`）。

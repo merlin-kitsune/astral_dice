@@ -22,7 +22,8 @@ import java.util.Set;
  * ② 解析注册项(未注册 ⇒ warn 跳过);
  * ③ <b>阶级闸门</b> —— {@code secretOnly} 事件读当前阶级,且<b>只有</b> {@link AstralEventTrigger#INVESTIGATION_KILL}
  *    允许写回 {@code min(当前+1, 4)}(用户 2026-10-10 裁决:其它任何触发方式只能触发当前阶级);
- * ④ 作用域 = {@link PartyRelations#collectEventTargets}(64 格 ∪ 团队全体);
+ * ④ 作用域:秘密侦探专属事件**收窄** —— 击杀且 {@code tier < 4} ⇒ {@code twoPlayers(击杀者, 标记施加者)};
+ *    非击杀来源 ⇒ {@code twoPlayers(原触发者, 抽中的最高阶段侦探)};其余情形(含 {@code tier == 4})⇒
  * ⑤ 计时器(该事件登记了 {@code defaultDurationTicks} 时,对每个目标覆盖式 start)→ 逐目标施加效果 →
  *    收尾走既有「附加效果层」({@link AstralEventSystem#applyEventBonus});
  * 最后打机器行 {@code AP_EVENT_FIRE: …} 供测试断言。
@@ -70,18 +71,36 @@ public final class AstralEventDispatcher {
             LOGGER.warn("AP_EVENT_SRC_DENIED: {}:src={}", eventId, source);
             return;
         }
-        // ③ 阶级闸门:只有击杀「隐匿调查」允许提升;其它来源只读当前阶级
+        // ③ 阶级(2026-10-10 用户裁决 R1:先按<b>当前</b>阶级触发,触发之后再升阶)+ 多侦探仲裁
         int tier = 0;
+        Player bonusTriggerer = triggerer;
+        Player involvedDetective = null;
         if (event.secretOnly()) {
-            int current = ModAttachments.getInvestigationStage(tierOwner);
             if (source == AstralEventTrigger.INVESTIGATION_KILL) {
-                current = Math.min(current + 1, 4);
-                ModAttachments.setInvestigationStage(tierOwner, current);
+                tier = ModAttachments.getInvestigationStage(tierOwner);
+            } else {
+                // 无击杀者的其它来源:取同队阶段最高者;并列则随机抽一个作为触发者(用户裁决 Q1/Q6)
+                Optional<Player> picked = InvestigationArbitration.pickHighestTier(triggerer);
+                if (picked.isEmpty()) {
+                    LOGGER.warn("AP_EVENT_NO_DETECTIVE: {}:src={}", eventId, source);
+                    return;
+                }
+                involvedDetective = picked.get();
+                tier = ModAttachments.getInvestigationStage(involvedDetective);
+                bonusTriggerer = involvedDetective;
             }
-            tier = current;
         }
-        // ④ 作用域:64 格 ∪ 团队全体(口径见 PartyRelations#collectEventTargets)
-        List<Player> targets = PartyRelations.collectEventTargets(triggerer, event.radius());
+        // ④ 作用域:秘密侦探专属事件按用户裁决收窄(真相揭露级别恢复常规 64 格 ∪ 团队)
+        List<Player> targets;
+        if (event.secretOnly() && source == AstralEventTrigger.INVESTIGATION_KILL && tier < 4) {
+            // 击杀路径:除「真相揭露」外,只影响「该标记的施加者」与「击杀者」
+            targets = twoPlayers(triggerer, tierOwner);
+        } else if (event.secretOnly() && source != AstralEventTrigger.INVESTIGATION_KILL) {
+            // 其它来源:影响「原触发者」与「抽中的最高阶段侦探」
+            targets = twoPlayers(triggerer, involvedDetective);
+        } else {
+            targets = PartyRelations.collectEventTargets(triggerer, event.radius());
+        }
         // ⑤ 计时器(覆盖式)+ 效果 + 附加效果层
         if (event.timed()) {
             for (Player target : targets) {
@@ -90,11 +109,15 @@ public final class AstralEventDispatcher {
         }
         if (triggerer.level() instanceof ServerLevel serverLevel) {
             for (Player target : targets) {
-                event.effect().apply(serverLevel, triggerer, target, event, source, tier);
+                event.effect().apply(serverLevel, bonusTriggerer, target, event, source, tier);
             }
         }
-        AstralEventSystem.applyEventBonus(triggerer, event.id().toString(), targets);
+        AstralEventSystem.applyEventBonus(bonusTriggerer, event.id().toString(), targets);
         LOGGER.info("AP_EVENT_FIRE: id={}:src={}:tier={}:targets={}", event.id(), source, tier, targets.size());
+        // ⑤ 升阶(用户裁决 R1:在<b>触发之后</b>推进;只有击杀隐匿调查目标可提升,上限 4)
+        if (event.secretOnly() && source == AstralEventTrigger.INVESTIGATION_KILL) {
+            ModAttachments.setInvestigationStage(tierOwner, Math.min(tier + 1, 4));
+        }
     }
 
     /**
@@ -102,6 +125,14 @@ public final class AstralEventDispatcher {
      */
     public static void trigger(Player triggerer, ResourceLocation eventId) {
         trigger(triggerer, eventId, AstralEventTrigger.CUSTOM);
+    }
+
+    /** 去重后取两名玩家(任一为 null 时只取另一名)。 */
+    private static List<Player> twoPlayers(Player a, Player b) {
+        java.util.LinkedHashSet<Player> set = new java.util.LinkedHashSet<>();
+        if (a != null) set.add(a);
+        if (b != null) set.add(b);
+        return List.copyOf(set);
     }
 
     /** 该 id 是否属于历史遗留(不由注册表管理)。 */

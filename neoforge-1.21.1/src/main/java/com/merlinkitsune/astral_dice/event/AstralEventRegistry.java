@@ -5,6 +5,7 @@ import com.merlinkitsune.astral_dice.event.api.AstralEventEffect;
 import com.merlinkitsune.astral_dice.event.api.AstralEventPolarity;
 import com.merlinkitsune.astral_dice.event.api.AstralEventTrigger;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.util.RandomSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,19 +64,33 @@ public final class AstralEventRegistry {
         return List.copyOf(ORDER);
     }
 
-    /** 公共事件池:非 secretOnly 且 {@code inPublicPool}(可被「抽事件」物品/方块抽到)。 */
+    /**
+     * 公共事件池的**静态口径**:只按 {@code inPublicPool} 过滤(含「只在队内有秘密侦探时才可抽到」的专属事件)。
+     *
+     * <p>⚠️ **真实抽取一律走 {@link #publicPool(Player)}** —— 它在此基础上再套「秘密侦探专属事件要求队内有秘密侦探」
+     * 的玩家条件。本无参重载只用于**启动机器行**:{@code AP_EVENT_REG: count=…:pool=…}(pool = 静态在池条目数)。
+     */
     public static List<AstralEvent> publicPool() {
         ensureInit();
-        return ORDER.stream().filter(e -> e.inPublicPool() && !e.secretOnly()).toList();
+        return ORDER.stream().filter(AstralEvent::inPublicPool).toList();
+    }
+
+    /** 玩家条件版公共池:秘密侦探专属事件要求该玩家团队内存在秘密侦探(用户裁决 Q4/Q6)。 */
+    public static List<AstralEvent> publicPool(Player triggerer) {
+        ensureInit();
+        return ORDER.stream()
+                .filter(e -> e.inPublicPool())
+                .filter(e -> !e.secretOnly() || InvestigationArbitration.teamHasSecretDetective(triggerer))
+                .toList();
     }
 
     /**
-     * 从公共事件池随机抽一条。
+     * 从公共事件池随机抽一条(玩家条件版)。
      *
      * <p>Review Focus 1:池为空时必须<b>安全失败</b>(返回 empty,不抛异常),调用方记 warn 机器行。
      */
-    public static Optional<AstralEvent> drawRandom(RandomSource random) {
-        List<AstralEvent> pool = publicPool();
+    public static Optional<AstralEvent> drawRandom(RandomSource random, Player triggerer) {
+        List<AstralEvent> pool = publicPool(triggerer);
         if (pool.isEmpty()) {
             return Optional.empty();
         }
@@ -136,15 +151,18 @@ public final class AstralEventRegistry {
         publicEvent(AstralEventIds.BATTLE_FRENZY, AstralEventPolarity.POSITIVE, r);
 
         // 秘密侦探专属:阶级事件。2026-10-10 用户裁决 —— 只有击杀「隐匿调查」能提升阶级;
-        // 其它来源只触发当前阶级。本轮 inPublicPool=false(后续按特定条件再入池,届时改此标志)。
+        // 其它来源只触发当前阶级。本轮 inPublicPool=true;额外条件由 publicPool(Player) 承担 —— 队内没有秘密侦探时抽不到它。
         register(new AstralEvent(
                 AstralEventIds.INVESTIGATION_STAGE,
                 "event.astral_dice.investigation_stage.name",
                 AstralEventIds.id("investigation_stage"),
                 AstralEventPolarity.POSITIVE,   // 该事件针对敌对目标 ⇒ 正面(用户 2026-10-10 裁定)
                 true,
-                false,
-                Set.of(AstralEventTrigger.INVESTIGATION_KILL),
+                // 2026-10-10 用户裁决 Q4:调查阶段<b>可以</b>进公共事件池,但附带条件 —— 触发者团队内必须存在秘密侦探
+                // (静态标志置 true,玩家条件由 publicPool(Player) 承担;Q6:队内无秘密侦探时该事件永不可能出现)
+                true,
+                Set.of(AstralEventTrigger.INVESTIGATION_KILL, AstralEventTrigger.ITEM_USE,
+                        AstralEventTrigger.BLOCK_USE, AstralEventTrigger.CUSTOM),
                 r,
                 AstralEventEffect.NOOP,
                 0));

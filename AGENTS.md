@@ -3464,3 +3464,6 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --new <注册id>
 ⑥ 大侦探立牌的主动技能已**清空待重做**（原 11 项随机事件删除）；秘密侦探「调查阶段」保留原行为（1200t 隐匿、阶段 II 起调查增益），只换分发入口。
 ⑦ 抽事件的两条入口**独立注册**：物品 `astral_dice:event_ticket`（`ITEM_USE`，生存消耗 1）与方块 `astral_dice:event_drawer`（`BLOCK_USE`，可重复）；公共池为空必须安全失败（只 warn，不崩）。
 ⑧ 守门：两线 `scripts/verify/verify_event_registry.ps1`（id 唯一 / 三语键齐 / 图标存在 / 调查阶段 4 张阶级图 / 字面量散落 warn）+ `tools/check_lang_sync.ps1`；**临时测试事件（`event/AstralEventTestFixtures.java` 等）只允许短期插入，验证后必须整体删除并留删除证据**。
+
+
+32. **事件体系补丁（2026-10-10 第二次裁决，改「调查阶段」前必读）**：① **先触发当前阶级、触发之后再升阶**（`AstralEventDispatcher` 里升阶写在触发与日志之后；首杀 = 阶级 I）；② **击杀路径作用对象**：`tier < 4` ⇒ **只有 {该标记的施加者, 击杀者}**；`tier == 4（真相揭露）` ⇒ 恢复常规 64 格 ∪ 团队；③ **无击杀者的其它来源**：取同队**阶段最高**的秘密侦探（`InvestigationArbitration.pickHighestTier`），**并列最高 ⇒ 随机抽一名并使其成为该事件的触发者**，作用对象 = {原触发者, 该侦探}（机器行 `AP_EVENT_TIER_PICK` 可追溯）；④ **已带 `UNDERCOVER_INVESTIGATION` 的目标不可再被任何人施加**（服务端闸门 + 选择器标签 `hud.astral_dice.target_select.tag.undercover`，**不发 ActionBar**）；⑤ **池闸门**：`investigation_stage` 静态在池内，但 `publicPool(Player)` 要求**该玩家团队内有秘密侦探**才可能抽到（队内没有时该事件永不出现）；⑥ **阶段效果广播（64 格 ∪ 团队）保持原样** —— 收窄的只是「事件代码」的作用对象。

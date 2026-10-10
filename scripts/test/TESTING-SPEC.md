@@ -4266,3 +4266,13 @@ mt.ps1 --version 线 --phase stop 关闭测试实例（gradle 守护进程保留
 **教训 9（新）：`scope: "launch"` 用在「启动期写下的 log 正断言」上必然 FAIL**。`launch_offsets` 是 **launch 阶段收尾时刻**的字节游标（`mt_launch.ps1` 的 `snapshot --window launch` 位于收尾、紧接着才打 `MT_OK LAUNCH`），读取侧把该值当作**窗口起点** ⇒ `win=launch` 的区间 = [launch 收尾, 现在]，**不含**启动/进世界/玩家登录阶段的行（实测：`AP_EVENT_TEST` 首行在偏移 62591，而窗口起点 131943 ⇒ 必然不可见；同 pattern 换 `--window whole` 立即命中）。正断言请用 **`scope: "whole"`**（launch 开始时硬删 `latest.log`，删不掉即拒绝启动 ⇒ whole = 偏移 0 = 自本次启动起，无前序污染）；`scope: "launch"` 只适合 **`absent` 否定式**断言（窗口更宽只会更严）。
 **计时器判据**：`EventTimerStore.start(p, id, 200)` 后立刻 `start(p, id, 100)`，`remaining` 必须是 **100**（覆盖/重置）而不是 300（叠加）—— 本批以机器行 `AP_EVENT_TEST: timer:first=200:second=100` 固定该判据。
 
+
+
+**续 76 补（2026-10-10 第二次裁决 / 事件体系补丁）**：
+- **池计数口径变更**：`investigation_stage` 进池后，启动机器行由 `AP_EVENT_REG: count=13:pool=12` 变为 **`count=13:pool=13`**（`pool` 是**静态口径**；真实抽取还要过 `publicPool(Player)` 的「队内有秘密侦探」闸门）。三语键由 882 → **883**（新增 `hud.astral_dice.target_select.tag.undercover`）。
+- **教训 10（新）：1.20.1 的 Curios 访问器走平台层 `CuriosCompat`**（`com.merlinkitsune.starenginelib.item.CuriosCompat`），不是 `top.theillusivec4.curios.api.CuriosApi`；镜像 1.21.1 的持牌判定时直接拷 `CuriosApi.getCuriosInventory(...)` 会在 1.20.1 **编译失败**（`找不到符号`）。
+- **教训 11（新）：1.20.1 的 `ModEffects.*` 是 `RegistryObject<MobEffect>`**，塞进 `hasEffect` / `MobEffectInstance` 必须 `.get()`（1.21.1 的 `DeferredHolder` 同形但写法在既有代码里是 `.get()`，镜像时容易漏）。
+- **教训 12（新）：镜像 1.21.1 的方块类会覆盖 1.20.1 的交互签名** —— 1.21.1 用 `useWithoutItem(...)`，1.20.1 只有六参 `use(State,Level,Pos,Player,Hand,HitResult)`；整文件拷贝后必须重新套用平台改写（本批就踩了一次，靠 `mt_build` 拦住）。
+
+- **教训 13（新）：断言不要锚「会随流程变化的初值」**。本轮临时用例把 `begin:stage=1` 写死，而自检本身会把阶段 1→2 ⇒ 复用存档（第二次登录）就会假红；正断言应锚**本次操作前后**的稳定事实（如 `kill:first_tier=1:stage_after=2`），可变初值用 `[0-9]+` 通配。
+- **教训 14（新）：机器行统计口径必须与用例期望一致**。`AP_EVENT_REG: count=13:pool=…` 的 `pool` 曾按「非 secretOnly 且在池 ⇒ 12」，后改为**静态在池口径**（只按 `inPublicPool` ⇒ 13）；口径变更必须同批改机器行注释与用例期望，否则会以「框架不一致」的假象失败（真实抽取走 `publicPool(Player)`，队内有侦探时才含 13）。

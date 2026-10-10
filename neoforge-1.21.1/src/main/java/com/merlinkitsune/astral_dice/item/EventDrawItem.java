@@ -18,7 +18,7 @@ import java.util.Optional;
 /**
  * 抽事件券(2026-10-10 事件体系重写 · 用户需求②「玩家使用抽事件的物品」)。
  *
- * <p>使用后从<b>公共事件池</b>({@link AstralEventRegistry#publicPool()})随机抽一条事件并以
+ * <p>使用后从<b>公共事件池</b>({@link AstralEventRegistry#publicPool(net.minecraft.world.entity.player.Player)})随机抽一条事件并以
  * {@link AstralEventTrigger#ITEM_USE} 触发;池为空时安全失败(只记 warn 机器行,不崩)。
  * 生存模式消耗 1 张,创造模式不消耗。
  */
@@ -33,7 +33,7 @@ public class EventDrawItem extends Item {
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
         if (!level.isClientSide) {
-            Optional<AstralEvent> drawn = AstralEventRegistry.drawRandom(player.getRandom());
+            Optional<AstralEvent> drawn = AstralEventRegistry.drawRandom(player.getRandom(), player);
             if (drawn.isEmpty()) {
                 // Review Focus 1:公共池为空必须安全失败
                 LOGGER.warn("AP_EVENT_DRAW: src=ITEM_USE:empty");
