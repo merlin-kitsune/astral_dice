@@ -35,7 +35,14 @@ public class FannySignItem extends BaseSignItem {
         // 触发流程与既有事件触发流程完全一致：AstralEventDispatcher.trigger(..., ACTIVE_SKILL)
         //   -> EventCardService.showThenRun（弹卡 -> 1.4s 动画 + 0.5s -> 结算/音效）。
         if (player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
-            com.merlinkitsune.astral_dice.event.EventChoiceManager.start(serverPlayer);
+            // 返回值必须**显式**处理（2026-10-11 code_review 非阻塞项）：false = 事件池为空，
+            // 或同玩家已有未结算会话 —— start() 内部已打印 `AP_EVENT_CHOICE: pool_empty` /
+            // `already_open` 告警；本次主动技能空放（不打开选择界面、不触发事件），
+            // 与其它立牌「无可用目标 ⇒ 空放」的口径一致，无需补偿，也不叠加第二次结算。
+            boolean opened = com.merlinkitsune.astral_dice.event.EventChoiceManager.start(serverPlayer);
+            if (!opened) {
+                return InteractionResultHolder.success(stack);
+            }
         }
         return InteractionResultHolder.success(stack);
     }

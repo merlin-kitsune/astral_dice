@@ -7,6 +7,7 @@ import com.merlinkitsune.starenginelib.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.card.LivingPageItem;
 import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
+import com.merlinkitsune.astral_dice.resource.ResourceConversion;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
@@ -128,11 +129,19 @@ public final class AstralEventSystem {
         giveItem(player, new ItemStack(ModItems.STAR_COIN.get(), count));
     }
 
+    /**
+     * 发物品：卡牌走专属入口（{@code VitaminPillChipItem.giveCard}），其余物品（星币/星币袋/活体书页）一律走
+     * 全模组中央漏斗 {@link ResourceConversion#giveItem} —— 钱包开启且「获得即入钱包」打开时，
+     * 星币/星币袋在漏斗内被折算进钱包（不进物品栏）并立刻推一次余额。
+     *
+     * <p>⚠️ 2026-10-11 修复「天降之物没进钱包」：此前本方法直接 {@code getInventory().add(item)}，
+     * 绕开了钱包漏斗 ⇒ 持大侦探立牌的玩家在每次事件触发后都会在物品栏多出 3 枚星币**物品**。
+     */
     private static void giveItem(Player player, ItemStack item) {
         if (ModItems.isCardItem(item)) {
             VitaminPillChipItem.giveCard(player, item);
-        } else if (!player.getInventory().add(item)) {
-            player.drop(item, false);
+        } else {
+            ResourceConversion.giveItem(player, item);
         }
     }
 }

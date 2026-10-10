@@ -81,6 +81,17 @@ public final class ModNetwork {
         // 事件效果卡（S2C，2026-10-10）：与 1.21.1 的 EventCardPayload 同语义；**追加在末尾**（顺序即协议）。
         CHANNEL.registerMessage(id++, EventCardMessage.class,
                 EventCardMessage::encode, EventCardMessage::decode, EventCardMessage::handle);
+        // 大侦探立牌主动技能「事件选择界面」(2026-10-11 移植):id 17 = S→C 打开界面(含 2 选项)、
+        // id 18 = C→S 确认选项、id 19 = S→C 关闭界面、id 20 = S→C 倒计时同步。
+        // 四条一律**追加在末尾**,不得插进既有 payload 的顺序里(顺序即协议,改序会让旧客户端错包)。
+        CHANNEL.registerMessage(id++, EventChoiceStartMessage.class,
+                EventChoiceStartMessage::encode, EventChoiceStartMessage::decode, EventChoiceStartMessage::handle);
+        CHANNEL.registerMessage(id++, EventChoiceConfirmMessage.class,
+                EventChoiceConfirmMessage::encode, EventChoiceConfirmMessage::decode, EventChoiceConfirmMessage::handle);
+        CHANNEL.registerMessage(id++, EventChoiceCloseMessage.class,
+                EventChoiceCloseMessage::encode, EventChoiceCloseMessage::decode, EventChoiceCloseMessage::handle);
+        CHANNEL.registerMessage(id++, EventChoiceTickMessage.class,
+                EventChoiceTickMessage::encode, EventChoiceTickMessage::decode, EventChoiceTickMessage::handle);
     }
 
     // === 发送助手(对应 1.21 PacketDistributor 静态方法) ===

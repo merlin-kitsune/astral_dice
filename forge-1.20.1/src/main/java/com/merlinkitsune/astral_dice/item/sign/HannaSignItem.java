@@ -349,13 +349,12 @@ public class HannaSignItem extends BaseSignItem {
         }).isPresent();
     }
 
-    /** 走既有发币漏斗(物品栏放不下则落地,与枪匠/大侦探的星币发放同款) */
+    /** 走**全模组中央发币漏斗** {@code ResourceConversion#giveItem}:钱包开启且「获得即入钱包」打开时折算进钱包
+     *  (并立即同步余额),否则回退物品栏(满则落地) —— 与枪匠/大侦探的星币发放同款。 */
     private static void giveCoins(Player player, int count) {
         if (player == null || count <= 0) return;
         ItemStack coins = new ItemStack(ModItems.STAR_COIN.get(), count);
-        if (!player.getInventory().add(coins)) {
-            player.drop(coins, false);
-        }
+        com.merlinkitsune.astral_dice.resource.ResourceConversion.giveItem(player, coins);
     }
 
     // ══════════════════════════════════════════════════════════════════════════

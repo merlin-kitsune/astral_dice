@@ -279,13 +279,12 @@ public final class EventEffects {
     public static void giftFromSky(ServerLevel level, Player triggerer, Player target, AstralEvent event,
                                    AstralEventTrigger source, int tier) {
         RandomCardHandler.giveCardTo(target, RandomCardHandler.CardCategory.ALL);
-        // 用户裁决 2026-10-10：星币**直接进钱包**（钱包功能启用时；账本由前置库 StarEngineEconomy 承载）
-        boolean wallet = com.merlinkitsune.astral_dice.config.ModCommonConfig.ENABLE_STAR_COIN_WALLET.get();
-        if (wallet && com.merlinkitsune.starenginelib.economy.StarEngineEconomy.deposit(target, 3L)) {
-            LOGGER.info("AP_EVENT_EFFECT: gift_from_sky:wallet_plus=3:target={}", target.getName().getString());
-        } else {
-            giveCoins(target, 3);
-        }
+        // 2026-10-11 用户裁决：**直接复用本仓「玩家收入星币」的既有代码路径**，不自造钱包分支。
+        // 漏斗链路：ResourceConversion#giveItem → StarCoinCurrency#tryAbsorbIntoWallet
+        //   → StarEngineEconomy#deposit（入账）+ StarCoinBalanceSync#notifyChanged（立即推余额）；
+        // 「获得即入钱包」关闭 / 账本不可用时，漏斗内部自动回退物品栏（满则掉落）。
+        giveCoins(target, 3);
+        LOGGER.info("AP_EVENT_EFFECT: gift_from_sky:plus=3:target={}", target.getName().getString());
     }
 
     // ────────────────────────── 9. 天使降临:4 点治疗 ──────────────────────────
@@ -331,9 +330,18 @@ public final class EventEffects {
 
     // ────────────────────────── 工具 ──────────────────────────
 
+    /**
+     * 发星币：**唯一走全模组中央漏斗** {@link com.merlinkitsune.astral_dice.resource.ResourceConversion#giveItem}
+     * （= 既有「玩家收入星币」路径）。
+     *
+     * <p>漏斗内部：钱包启用且「获得即入钱包」打开 ⇒
+     * {@code tryAbsorbIntoWallet} 折算进钱包（{@code StarEngineEconomy#deposit} 入账 +
+     * {@code StarCoinBalanceSync#notifyChanged} 立即同步余额），物品栏**不**新增星币物品；
+     * 否则回退 {@code getInventory().add}（满则掉落）。禁止各处再直接 {@code getInventory().add}。
+     */
     private static void giveCoins(Player player, int count) {
-        ItemStack coins = new ItemStack(ModItems.STAR_COIN.get(), count);
-        if (!player.getInventory().add(coins)) player.drop(coins, false);
+        com.merlinkitsune.astral_dice.resource.ResourceConversion.giveItem(
+                player, new ItemStack(ModItems.STAR_COIN.get(), count));
     }
 
     /** 治疗失效标记(15 秒;由 {@link #onHeal} 拦截)。 */

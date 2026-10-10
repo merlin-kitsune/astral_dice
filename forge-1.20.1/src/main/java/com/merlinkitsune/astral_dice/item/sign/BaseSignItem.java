@@ -153,6 +153,8 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         InteractionResultHolder<ItemStack> result = sign.handleUse(player.level(), player, stack);
         if (result.getResult() != InteractionResult.SUCCESS) return;
         // 主动技能**生效**音效（非选择器类立牌的实际施放）
+        // 2026-10-11 用户裁决：所有立牌统一「按下主动技能键（本方法走到 SUCCESS）即播」，
+        // 不再有「点击使用时不播、等玩家在界面里确认才播」的立牌门控。
         playSkillUseSound(player);
         // 4. 手持风扇-大筹码:使用主动技能后,获得一张随机效果牌(不含专属),并对周围范围内敌对目标施加标记
         FanBigChipItem.applyAfterSignSkill(player);
@@ -222,8 +224,13 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
      * <p>「生效」两种形态都算：① 选择器类立牌**成功进入目标选择器**（含后续确认）；
      * ② 其余立牌的 {@code handleUse} 返回 SUCCESS。被前置门控拒绝 / 取消 / 未确认的路径不播。
      */
-    protected static void playSkillUseSound(Player player) {
+    public static void playSkillUseSound(Player player) {
         if (player == null) return;
+        // 机器行：主动技能音效「按下即时播放」的唯一打点（2026-10-11 用户裁决）。
+        // 实机判据：按技能键 ⇒ 本行出现一次；随后在事件选择界面点确认 ⇒ **不再**新增本行。
+        LOGGER.info("AP_SIGN_SOUND: skill_use:player={}:pos={},{},{}",
+                player.getName().getString(),
+                (int) player.getX(), (int) player.getY(), (int) player.getZ());
         com.merlinkitsune.astral_dice.audio.SoundPlayback.playAt(player.level(),
                 player.getX(), player.getY(), player.getZ(),
                 com.merlinkitsune.astral_dice.audio.ModSounds.SKILL_USE.get());

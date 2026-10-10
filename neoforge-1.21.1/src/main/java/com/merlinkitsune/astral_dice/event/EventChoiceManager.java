@@ -50,7 +50,7 @@ public final class EventChoiceManager {
     /** 等待期 = 15 秒（用户裁决；**不复用**库里 {@code GameplayConstants.SKILL_WAIT_SECONDS}=30，那是目标选择器的）。 */
     public static final int CHOICE_TIMEOUT_TICKS = 15 * 20;
 
-    /** 确认后「立即播音效 → 等待 1 秒 → 关闭界面 → 再进入事件触发流程」里的那 1 秒（20 ticks）。 */
+    /** 确认后「等待 1 秒 → 关闭界面 → 再进入事件触发流程」里的那 1 秒（20 ticks）。 */
     public static final int CONFIRM_DELAY_TICKS = 20;
 
     private static final Map<UUID, Session> SESSIONS = new ConcurrentHashMap<>();
@@ -90,9 +90,18 @@ public final class EventChoiceManager {
     /**
      * 立牌主动技能入口：抽 2 个事件选项并打开选择界面。
      *
-     * @return true = 已开会话并下发界面；false = 事件池为空（无可用事件，本次主动技能无事可做）
+     * @return true = 已开会话并下发界面；false = 事件池为空，或同玩家已有**未结算**会话
+     *         （后者不重复开会话、不重复结算）
      */
     public static boolean start(ServerPlayer player) {
+        // 闸门（2026-10-11 code_review 非阻塞项）：同玩家**已有未结算会话**时拒绝再次开启。
+        // 否则二次按键会直接覆盖 SESSIONS 里的旧会话（旧会话的倒计时/强制结算从此失联），
+        // 且客户端会连开两个选择界面。返回 false ⇒ 本次主动技能未开会话、不结算。
+        Session existing = SESSIONS.get(player.getUUID());
+        if (existing != null && existing.resolving < 0) {
+            LOGGER.warn("AP_EVENT_CHOICE: already_open:player={}", player.getGameProfile().getName());
+            return false;
+        }
         List<AstralEvent> pool = AstralEventRegistry.publicPool(player);
         if (pool.isEmpty()) {
             LOGGER.warn("AP_EVENT_CHOICE: pool_empty:player={}", player.getGameProfile().getName());
@@ -125,9 +134,11 @@ public final class EventChoiceManager {
         LOGGER.info("AP_EVENT_CHOICE: confirm:{}:pick={}:event={}", token, optionIndex, session.chosen());
 
         ServerLevel level = player.serverLevel();
-        // ② 等待 1 秒 → 关闭界面 → **随后**再进入事件触发流程（用户需求的严格顺序：
-        //    立即播音效 → 等 1 秒 → 关界面 → 触发）。关闭包先发（客户端先关掉界面），
-        //    同一 tick 内紧接着走既有事件触发流程（弹卡 → 1.4s 动画 + 0.5s → 结算/音效）。
+        // ② 确认后的**唯一**顺序（2026-10-11 口径，已不再含「确认时播音效」那一步）：
+        //    等 1 秒 → 关界面 → 触发。主动技能音效已在**按下技能键那一刻**由
+        //    FannySignItem#handleUse → BaseSignItem#performSkill 播出，此处不重复。
+        //    关闭包先发（客户端先关掉界面），同一 tick 内紧接着走既有事件触发流程
+        //    （弹卡 → 1.4s 动画 + 0.5s → 结算/音效）。
         EventCardService.schedule(level, CONFIRM_DELAY_TICKS, lvl -> {
             SESSIONS.remove(player.getUUID(), session);
             PacketDistributor.sendToPlayer(player, new EventChoiceClosePayload(token));

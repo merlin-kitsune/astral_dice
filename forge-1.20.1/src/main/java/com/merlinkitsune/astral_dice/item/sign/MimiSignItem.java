@@ -178,9 +178,8 @@ public class MimiSignItem extends BaseSignItem {
 
     private static void giveStarCoin(Player player) {
         ItemStack coin = new ItemStack(ModItems.STAR_COIN.get());
-        if (!player.getInventory().add(coin)) {
-            player.drop(coin, false);
-        }
+        // 2026-10-11 用户裁决:星币发放统一走中央漏斗 ResourceConversion#giveItem(钱包优先)。
+        com.merlinkitsune.astral_dice.resource.ResourceConversion.giveItem(player, coin);
     }
 
     // 随机筹码:蓝色 60%,紫色 35%,金色 5%

@@ -19,14 +19,23 @@ import java.util.function.Consumer;
 /**
  * 事件效果卡的服务端编排（用户裁决 2026-10-10）。
  *
- * <p>顺序：**先给受影响玩家下发弹卡包（并播放 `event_fade_in`）**，卡动画 1.4s + 0.5s = **1.9s
- * （40t）后**才执行事件本身（效果 + 计时器）**并同刻播放该事件音效**。
+ * <p>顺序：**先给受影响玩家下发弹卡包（并播放 `event_fade_in`）**，卡动画 {@link #CARD_ANIM_TICKS}t
+ * （1.4s）+ {@link #SETTLE_BUFFER_TICKS}t（0.5s）缓冲 = {@link #DELAY_TICKS}t（1.9s）后，才执行事件本身
+ * （效果 + 计时器）**并同刻播放该事件音效**。
+ *
+ * <p><b>不变式（用户 2026-10-11 裁决）</b>：一切事件效果只在 {@link #DELAY_TICKS} 这一个唯一结算点
+ * 一次性施加；弹卡前 / 动画中（{@link #CARD_ANIM_TICKS}t 内）**零副作用**（无伤害、无状态、无事件音效）。
+ * 下面三个常量是这条不变式的**唯一来源** —— 客户端动画时长与结算刻都从它们推导，禁止在任何一侧写死数字。
  */
 public final class EventCardService {
     private static final Logger LOGGER = LoggerFactory.getLogger(EventCardService.class);
 
-    /** 弹卡到结算的延迟（tick）：动画 1.5s 播完后再等 0.5s。 */
-    public static final int DELAY_TICKS = 38;   // = 动画 1.4s（0.2+1.0+0.2）+ 0.5s
+    /** 弹卡 → 结算的延迟（tick）：38t = 1.9s = {@link #CARD_ANIM_TICKS} + {@link #SETTLE_BUFFER_TICKS}。 */
+    public static final int DELAY_TICKS = 38;
+    /** 卡片动画时长（tick）：28t = 1.4s = 进场 0.2s + 停留 1.0s + 收起 0.2s（客户端 EventCardOverlay 按此推导）。 */
+    public static final int CARD_ANIM_TICKS = 28;
+    /** 动画播完 → 结算之间的**静默缓冲**（tick）：10t = 0.5s。这段时间屏幕上已无卡、效果也还没施加。 */
+    public static final int SETTLE_BUFFER_TICKS = DELAY_TICKS - CARD_ANIM_TICKS;
 
     private static final List<Pending> QUEUE = new ArrayList<>();
 
@@ -41,7 +50,7 @@ public final class EventCardService {
         QUEUE.add(new Pending(level, level.getGameTime() + Math.max(1, delayTicks), action));
     }
 
-    /** 弹卡 + 登记 40t 后的结算。 */
+    /** 弹卡 + 登记 {@link #DELAY_TICKS}t 后的结算（唯一结算点）。 */
     public static void showThenRun(ServerLevel level, List<Player> targets, AstralEvent event,
                                    int tier, Consumer<ServerLevel> action) {
         for (var p : targets) {
@@ -56,7 +65,7 @@ public final class EventCardService {
         LOGGER.info("AP_EVENT_CARD: shown:{}:exec_at={}", event.id(), level.getGameTime() + DELAY_TICKS);
     }
 
-    /** 到点执行（由 {@link EventEffects#onPlayerTick} 每 10 tick 调一次）。 */
+    /** 到点执行（由 {@link EventEffects#onPlayerTick} **每 tick** 调一次，见该类注释「消除结算时机漂移」）。 */
     public static void drain(ServerLevel level) {
         if (QUEUE.isEmpty()) return;
         long now = level.getGameTime();

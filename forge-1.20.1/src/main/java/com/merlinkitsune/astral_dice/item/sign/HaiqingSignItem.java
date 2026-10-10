@@ -98,9 +98,8 @@ public class HaiqingSignItem extends BaseSignItem {
     public static void grantWeakMarkKillReward(Player applier, Player killer) {
         if (applier == null || applier.level().isClientSide()) return;
         ItemStack coinStack = new ItemStack(ModItems.STAR_COIN.get(), 3);
-        if (!applier.getInventory().add(coinStack)) {
-            applier.drop(coinStack, false);
-        }
+        // 2026-10-11 用户裁决:全模组发币统一走中央漏斗(钱包开启且「获得即入钱包」打开时折算进钱包)。
+        com.merlinkitsune.astral_dice.resource.ResourceConversion.giveItem(applier, coinStack);
         if (killer != null) {
             ItemStack card = new ItemStack(ModItems.FATE_GUIDANCE_CARD.get());
             ExclusiveCardUtil.setOwner(card, killer);

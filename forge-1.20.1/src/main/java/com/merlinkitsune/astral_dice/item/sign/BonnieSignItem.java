@@ -81,9 +81,8 @@ public class BonnieSignItem extends BaseSignItem {
                 int markLevel = MarkManager.getLevel(target);
                 if (markLevel > 0) {
                     ItemStack coinStack = new ItemStack(ModItems.STAR_COIN.get(), markLevel * 2);
-                    if (!player.getInventory().add(coinStack)) {
-                        player.drop(coinStack, false);
-                    }
+                    // 2026-10-11 用户裁决:全模组发币统一走中央漏斗(钱包开启且「获得即入钱包」打开时折算进钱包)。
+                    com.merlinkitsune.astral_dice.resource.ResourceConversion.giveItem(player, coinStack);
                 }
                 // 主动成功施加:开始玩家级冷却(统一经 signCooldownTicks:含诡异骰子 -50% 与充能递减)
                 ModAttachments.setSignActiveCooldownEnd(player,

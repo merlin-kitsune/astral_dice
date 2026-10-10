@@ -554,9 +554,7 @@ public class DiceCombatEvents {
             var haiqingResult = attackerCurios.get().findFirstCurio(s -> s.is(ModItems.HAIQING_SIGN.get()));
             if (haiqingResult.isPresent()) {
                 ItemStack coinStack = new ItemStack(ModItems.STAR_COIN.get(), 6);
-                if (!player.getInventory().add(coinStack)) {
-                    player.drop(coinStack, false);
-                }
+                com.merlinkitsune.astral_dice.resource.ResourceConversion.giveItem(player, coinStack);
             }
         }
 
@@ -569,9 +567,7 @@ public class DiceCombatEvents {
                 notifyRoll(player, roll);
                 if (roll == 8) {
                     ItemStack coinStack = new ItemStack(ModItems.STAR_COIN.get(), 8);
-                    if (!player.getInventory().add(coinStack)) {
-                        player.drop(coinStack, false);
-                    }
+                    com.merlinkitsune.astral_dice.resource.ResourceConversion.giveItem(player, coinStack);
                 }
                 int starlight = StarLightManager.get(player);
                 int accum = ModAttachments.getEightSidedAccum(player) + roll;
