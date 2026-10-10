@@ -1,0 +1,326 @@
+{
+  "case_id": "SHOP-O-1.21.1",
+  "title": "卡牌商店·任务O §1.1/§1.2/§1.4：转账面板 2× 回滚（scale=1 ⇒ panel=81,26 逐像素回原）、面板无多余文本（逐键白名单）、星光兑换 60 秒冷却（就绪→兑换→冷却中点击客户端早退不发包）、沙漏 4→1→0 就绪保持",
+  "version": "1.21.1",
+  "target": {
+    "type": "feature",
+    "ref": "card-shop"
+  },
+  "on_fail": "continue",
+  "steps": [
+    {
+      "op": "note",
+      "text": "哨兵 788 场景：① 转账面板 2× 回滚全貌（geom 与 calc 双侧 scale=1:panel=81,26）② 面板实际绘制的翻译键白名单（只允许确认键自身文字，禁 cooldown/cooldown_hint）⑤ 星光兑换冷却（cd=0 就绪 → 真实点击兑换 → cd>0 灰态 → 再点 client-side 早退：rej 递增 / 余额与星光不变 / applied=0）⑥ 沙漏 4→1→0 就绪并保持。⑤ 的灰态与按下态由外部 temp/t92/real_cursor_o.ps1 送真实 OS 光标（探针落 evt=o_need_hover_ex 信标后轮询 hoverState 命中 ex=1 再点）。"
+    },
+    {
+      "op": "note",
+      "text": "任务O 788 前置：非亡灵无需求；本场景不买卡，只做静态取证。"
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/tp @s ~ ~ ~ 0 0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "note",
+      "text": "转账面板需要候选行 ⇒ 用 Carpet 招 4 个假玩家（真 ServerPlayer）当候选。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/carpet allowSpawningOfflinePlayers true",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/player Bot1 spawn",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 250
+    },
+    {
+      "op": "inject_command",
+      "command": "/player Bot2 spawn",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 250
+    },
+    {
+      "op": "inject_command",
+      "command": "/player Bot3 spawn",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 250
+    },
+    {
+      "op": "inject_command",
+      "command": "/player Bot4 spawn",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 250
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop reset O",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop star O 20",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop bal O 788",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "note",
+      "text": "开屏并保持（余额 788 既是探针武装带哨兵也是本场景 gate；界面开着时聊天命令会被 GUI 吞掉，场景内改用 connection.sendCommand 改档）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop openkeep O",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1100
+    },
+    {
+      "op": "wait",
+      "ms": 180000
+    },
+    {
+      "op": "screenshot",
+      "tag": "shopO-788-end",
+      "mode": "window",
+      "crop": true
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=open:.*:gate=788:.*:o=1:",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=o_main:geom=scale=1:panel=81,26:.*:calc=scale=1:panel=81,26:",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=o_main:.*:calc=scale=1:panel=81,26:back=183,34:confirm=191,61:",
+      "scope": "case"
+    },
+    {
+      "type": "absent",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=o_main:.*scale=2",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=o_tp_view:view=1:geom=scale=1:panel=81,26:.*:calc=scale=1:panel=81,26:",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=o_tp_text:keys=gui\\.astral_dice\\.card_shop\\.transfer_confirm:view=1",
+      "scope": "case"
+    },
+    {
+      "type": "absent",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=o_tp_text:keys=[^:]*cooldown",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=o_back_done:view=0",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=o_ex_ready:sl=\\[.*spendable=[0-9]+:cd=0:ready=1\\]:cd=0:ready=1:rej=0:.*exchange=starlight_exchange\\.png",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=o_ex_first_done:bal=788->79[0-9]:.*:ready=0",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=o_ex_cdonly:sl=\\[.*spendable=[2-9][0-9]*:cd=[0-9]+:ready=0\\]:cd=[0-9]+:ready=0:rej=0:.*exchange=starlight_exchange_unavailable\\.png",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=o_hover_ex_ok:hover=ex=1",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=o_ex_press:hover=ex=1:.*:exchange=starlight_exchange_unavailable_push\\.png:.*:exReady=0",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=o_ex_reject:rej=0->1:.*:balSame=1:star=\\[get=6:base=0:spendable=6:.*:applied=0:cd=",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=o_hour4:cd=[0-9]+:frame=4:",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=o_hour1:cd=[0-9]+:frame=1:",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=o_hour0:cd=0:frame=0:",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=o_hour0_keep:cd=0:frame=0:ready=1:ticks=7[0-9]",
+      "scope": "case"
+    },
+    {
+      "type": "absent",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=o_to_hover",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=o_end:how=o_end",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=shot:.*:what=o_main:.*:grab=ok",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=shot:.*:what=o_tp_view:.*:grab=ok",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=shot:.*:what=o_ex_ready:.*:grab=ok",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=shot:.*:what=o_ex_push:.*:grab=ok",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=shot:.*:what=o_ex_gray:.*:grab=ok",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=shot:.*:what=o_hour4:.*:grab=ok",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=shot:.*:what=o_hour1:.*:grab=ok",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=shot:.*:what=o_ready:.*:grab=ok",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=shot:.*:what=o_ready_keep:.*:grab=ok",
+      "scope": "case"
+    }
+  ]
+}

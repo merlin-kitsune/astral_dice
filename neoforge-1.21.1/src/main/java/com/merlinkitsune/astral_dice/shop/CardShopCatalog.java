@@ -1,10 +1,13 @@
 package com.merlinkitsune.astral_dice.shop;
 
 import com.merlinkitsune.astral_dice.item.ModItems;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.Item;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.function.Supplier;
 
@@ -128,6 +131,35 @@ public final class CardShopCatalog {
             drawInto(random, combat, shelf);
         }
         return shelf;
+    }
+
+    /**
+     * 追加抽 {@code count} 张（任务U′「补差额牌」专用）：**不重复** —— 既不与 {@code exclude} 里已在货架上的牌
+     * 重复，也不自相重复。
+     *
+     * <p>与 {@link #rollShelf} 的差别：只补「促销格 / 团队加成格」这两段缺口，不重抽基础格 ⇒ 货架上已有的卡牌、
+     * 售价与已售状态全部保留（用户裁决：原本牌不动，只补上牌缺口）。
+     *
+     * @param combatOnly true ⇒ 只从战斗牌里抽（团队立牌那一格的口径，与 {@link #rollShelf} 一致）
+     * @param exclude    货架上已有的卡牌注册名（不得再出现）
+     */
+    public static List<Item> drawAdditional(RandomSource random, int starLevel, boolean combatOnly, int count,
+                                            Collection<ResourceLocation> exclude) {
+        if (count <= 0) {
+            return List.of();
+        }
+        List<PoolEntry> available = availableEntries(starLevel);
+        if (combatOnly) {
+            available.removeIf(entry -> !entry.combat());
+        }
+        if (!exclude.isEmpty()) {
+            available.removeIf(entry -> exclude.contains(BuiltInRegistries.ITEM.getKey(entry.item().get())));
+        }
+        List<Item> out = new ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            drawInto(random, available, out);
+        }
+        return out;
     }
 
     /** 卡池档位 —— 与池内权重常量一一对应（稀有 6 / 史诗 3 / 传奇 2）。 */

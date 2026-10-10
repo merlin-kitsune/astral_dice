@@ -1,10 +1,13 @@
 package com.merlinkitsune.astral_dice.shop;
 
 import com.merlinkitsune.astral_dice.item.ModItems;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.Item;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.function.Supplier;
 
@@ -136,6 +139,31 @@ public final class CardShopCatalog {
 
 
     /** 卡池档位 —— 与池内权重常量一一对应（稀有 6 / 史诗 3 / 传奇 2）。 */
+    /**
+     * 任务U′「补差额牌」用：从池里**另抽** count 张（排除 exclude 里已有的物品）。
+     *
+     * <p>只给 {@code CardShopShelf#topUp} 补促销格 / 团队加成格用 ⇒ 与 {@code rollShelf} 同口径
+     * （星级门槛 + 促销/团队加成），但**不重复已在本架的卡**，且不返回价格（调用方自行算价）。
+     */
+    public static List<Item> drawAdditional(RandomSource random, int starLevel, boolean combatOnly, int count,
+                                            Collection<ResourceLocation> exclude) {
+        if (count <= 0) {
+            return List.of();
+        }
+        List<PoolEntry> available = availableEntries(starLevel);
+        if (combatOnly) {
+            available.removeIf(entry -> !entry.combat());
+        }
+        if (!exclude.isEmpty()) {
+            available.removeIf(entry -> exclude.contains(BuiltInRegistries.ITEM.getKey(entry.item().get())));
+        }
+        List<Item> out = new ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            drawInto(random, available, out);
+        }
+        return out;
+    }
+
     public enum Tier { RARE, EPIC, LEGENDARY }
 
     /** 卡池只读视图（村民交易表复用同一份池子与权重，不另造第二套分级）。 */

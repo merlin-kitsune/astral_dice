@@ -31,7 +31,6 @@ public class ModCreativeTabs {
                 // 材料（最前端）
                 output.accept(ModItems.STAR_COIN.get());
                 output.accept(ModItems.STAR_COIN_BAG.get());
-                output.accept(ModItems.CARD_SHOP.get());
                 output.accept(ModItems.STAR_PLATE.get());
                 output.accept(ModItems.GOLDEN_STAR_PLATE.get());
                 output.accept(ModItems.BLANK_SIGN.get());
@@ -186,5 +185,9 @@ public class ModCreativeTabs {
                 output.accept(ModItems.CURSED_SWORD.get());
                 output.accept(ModItems.REVENGE_HALBERD.get());
                 output.accept(ModItems.PIERCING_GUN.get());
+                // 任务S §4（2026-10-10 用户裁决）：卡牌商店移到本栏**最后**（旧口径「提到最前」已被推翻）。
+                // JEI 物品列表顺序取自创造栏（IngredientSorterComparators.getCreativeMenuComparator），
+                // 因此这里一并决定了 JEI 里卡牌商店的位置。
+                output.accept(ModItems.CARD_SHOP.get());
             }).build());
 }

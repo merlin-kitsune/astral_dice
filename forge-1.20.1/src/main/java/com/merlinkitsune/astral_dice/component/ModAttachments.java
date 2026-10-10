@@ -1,6 +1,7 @@
 package com.merlinkitsune.astral_dice.component;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
+import com.merlinkitsune.astral_dice.shop.CardShopShelf;
 import com.mojang.serialization.Codec;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.server.level.ServerPlayer;
@@ -393,6 +394,13 @@ public class ModAttachments {
     public static void setShopTransferCooldownEnd(net.minecraft.world.entity.player.Player player, long value) {
         SHOP_TRANSFER_COOLDOWN_END.set(player, value);
     }
+
+    // 卡牌商店:货架存档(1.20.1 移植,对应 1.21.1 的 ModAttachments.SHOP_SHELF)。
+    // 改造前货架只活在菜单字段里,开店时无条件重抽 ⇒ 关店再开店就换一批;现在货架落在这里(随玩家存档持久化),
+    // 只有「沙漏归 0」那一刻(服务端 tick: shop/CardShopCycleTicker)或大酬宾事件才会重抽覆写,开店只读(shop/CardShopShelf)。
+    // 仅服务端使用,不同步客户端(客户端照旧靠货架槽位同步读同一批卡) ⇒ 不 .sync()、不加入 SYNCED_KEYS。
+    public static final AttachedDataKey<CardShopShelf> SHOP_SHELF =
+            register(AttachedDataKey.builder("shop_shelf", CardShopShelf.CODEC, () -> CardShopShelf.EMPTY).build());
 
     // 立牌主动技能"本次冷却实际使用的最大冷却 tick"(路线 A:所有减免方一律读它作基准,不再各自重算;
     // 0 表示缺失/无冷却,减免方回退旧行为;仅服务端使用,故不 .sync()、不加入 SYNCED_KEYS)。

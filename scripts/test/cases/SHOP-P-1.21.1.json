@@ -1,0 +1,275 @@
+{
+  "case_id": "SHOP-P-1.21.1",
+  "title": "卡牌商店·任务P：新加大版转账素材按原布局重排（只改位置、尺寸不变）+ 转账视图层级遮挡修复 + 删除金额输入框（4 档按钮定金额、数字白色）+ 折扣角标右下→右上（不再遮挡卡面费用点）",
+  "version": "1.21.1",
+  "target": {
+    "type": "feature",
+    "ref": "card-shop"
+  },
+  "on_fail": "continue",
+  "steps": [
+    {
+      "op": "note",
+      "text": "哨兵 790 场景（KubeJS 客户端阶段机 csRunP）。顺序：主视图基线（promo 角标偏移 + 面板几何）→ 点转账键开面板 → 面板全貌/几何/文本清单/层级探针 → 点 4 档按钮（新坐标 194,69 与 194,114）→ 点旧金额框位置（198,55，应无任何反应）→ 点搜索框（121,13）→ 点候选行 0（120,40）→ 点确认（198,37）→ 转账成功自动退回主视图 ⇒ 经商被动第 4 条必把第一张未降价牌降到 1 星币 ⇒ 折扣角标取证。若转账未成功，兜底：equip 经商立牌 + /astralshop promo 重抽。"
+    },
+    {
+      "op": "note",
+      "text": "不装备经商立牌开屏 ⇒ 没有「进店 +1 星币」干扰，gate 精确等于 790。假玩家只为转账候选存在。"
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/tp @s ~ ~ ~ 0 0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/carpet allowSpawningOfflinePlayers true",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/player Bot1 spawn",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 250
+    },
+    {
+      "op": "inject_command",
+      "command": "/player Bot2 spawn",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 250
+    },
+    {
+      "op": "inject_command",
+      "command": "/player Bot3 spawn",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 250
+    },
+    {
+      "op": "inject_command",
+      "command": "/player Bot4 spawn",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop reset O",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop bal O 790",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "note",
+      "text": "开屏并保持（790 既是探针武装带哨兵也是本场景 gate）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop openkeep O",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1100
+    },
+    {
+      "op": "note",
+      "text": "兜底：开屏后由服务端注入装上经商立牌（开屏瞬间装会触发「进店 +1 星币」把 790 抬成 791，gate 失配）。item 参数是 Brigadier StringArgumentType.string()，必须带引号。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop equip O stand \"astral_dice:parunan_sign\"",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 300
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop curio O",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 300
+    },
+    {
+      "op": "wait",
+      "ms": 90000
+    },
+    {
+      "op": "screenshot",
+      "tag": "shopP-790-end",
+      "mode": "window",
+      "crop": true
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=open:.*:gate=790:.*:p=1:",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=p_main:view=0:main=1:promo=",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=p_tp:view=1:main=0:keys=",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=p_tp:.*:rel=scale=1:panel=73,2:back=190,10:confirm=198,37:limit0=194,69:limit3=194,114:row0=120,40:search=112,13:refresh=165,13:amount=198,55:slide=172,35:bg=107x183",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=p_tp:.*:calc=scale=1:panel=73,2:back=190,10:confirm=198,37:limit0=194,69:limit3=194,114:row0=120,40:search=112,13:refresh=165,13:amount=198,55:slide=172,35:bg=107x183",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=p_limit0:amount=5:focus=",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=p_limit3:amount=20",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=p_amount_click:amount=20:focus=none",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=p_search_click:focus=search:amount=20",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=p_row0:sel=0:focus=",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=p_promo_ok:via=(transfer|promo):",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=p_promo_final:idx=[0-9]+:off=24,3:.*:view=0:main=1",
+      "scope": "case"
+    },
+    {
+      "type": "absent",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=p_promo_final:.*:off=24,27",
+      "scope": "case"
+    },
+    {
+      "type": "absent",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=p_promo_wrongview:view=1",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=shot:.*:what=p_main:.*:grab=ok",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=shot:.*:what=p_tp:.*:amtPx=[1-9][0-9]*:.*:grab=ok",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=shot:.*:what=p_promo:.*:grab=ok",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=p_end:how=",
+      "scope": "case"
+    },
+    {
+      "type": "absent",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=p_promo_fail:",
+      "scope": "case"
+    }
+  ]
+}

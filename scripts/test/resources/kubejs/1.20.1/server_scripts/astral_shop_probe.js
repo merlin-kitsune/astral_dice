@@ -66,6 +66,8 @@ var SP_ModPoiTypes = spTryClass('com.merlinkitsune.astral_dice.world.ModPoiTypes
 var SP_ModProfessions = spTryClass('com.merlinkitsune.astral_dice.world.ModVillagerProfessions');
 var SP_ModItems = spTryClass('com.merlinkitsune.astral_dice.item.ModItems');
 var SP_Catalog = spTryClass('com.merlinkitsune.astral_dice.shop.CardShopCatalog');
+// 2026-10-10 实机修复：1.20.1 侧顶层 var 类别名在命令回调作用域里取不到（ReferenceError: "SP_ShopMenu" is not defined）
+//   ⇒ promo 入口改为**函数内内联解析**：spTryClass('com.merlinkitsune.astral_dice.shop.CardShopMenu').triggerPromotion(...)。
 var SP_Filter = spTryClass('com.merlinkitsune.astral_dice.shop.CardTradeFilter');
 var SP_Opener = spTryClass('com.merlinkitsune.astral_dice.shop.CardShopOpener');
 var SP_DiceTrade = spTryClass('com.merlinkitsune.astral_dice.trade.EmeraldDiceTrade');
@@ -443,6 +445,29 @@ function sp_doOpenKeep(ctx, tag) {
     SP_Opener.open(p);
     sp_send(ctx, 'AP_' + tag + '_OPENKEEP:menu=' + sp_cls(p.containerMenu));
     sp_menuLine(ctx, tag, sp_shopMenuOf(p));
+    return 1;
+}
+
+/** 任务V §1.2 实机取证（2026-10-10 本轮新增）：证明「菜单**已经开着**时也立即补差额牌」。
+ *  · 开菜单那一刻货架 = 当前目标格数（无缺口）⇒ 开店那条 topUpShelf(reason=open) 不补；
+ *  · 随后在**同一个 tick 内**把经商立牌戴上（目标格数只看立牌：teamHasParunan / hasParunan 不要求骰子）
+ *    ⇒ 目标 +1、出现缺口；
+ *  · 应由 CardShopCycleTicker 每 10 tick 的界面复检以 reason=tick 补上（服务端日志 CARD_SHOP_SHELF_TOPUP）。
+ *  只能作为用例的最后一条注入命令（界面开着 ⇒ 后续聊天命令会被 GUI 吞掉）。
+ *  ⚠️ 类别名一律在函数内内联解析（顶层 var 类别名在命令回调作用域取不到，见上方 promo 那条注记）。 */
+function sp_doTickTest(ctx, tag) {
+    var p = sp_p(ctx);
+    SP_Opener.open(p);
+    var menu = sp_shopMenuOf(p);
+    sp_send(ctx, 'AP_' + tag + '_TICKTEST_OPEN:open=' + (menu != null ? 1 : 0) + ':shelf=' + sp_shelfCsvSafe(menu));
+    var before = -1;
+    var after = -1;
+    try { before = spTryClass('com.merlinkitsune.astral_dice.shop.CardShopShelf').targetSize(p); } catch (eT1) { }
+    var eq = sp_setCurio(p, 'stand', 'astral_dice:parunan_sign', 0);
+    try { after = spTryClass('com.merlinkitsune.astral_dice.shop.CardShopShelf').targetSize(p); } catch (eT2) { }
+    sp_send(ctx, 'AP_' + tag + '_TICKTEST:equip=' + (eq == null ? 'ok' : eq)
+        + ':targetBefore=' + before + ':targetAfter=' + after
+        + ':stand=' + sp_id(sp_curioStack(p, 'stand', 0)) + ':cd=' + sp_cd(p));
     return 1;
 }
 
@@ -844,6 +869,44 @@ function sp_doObtain(ctx, tag, idStr) {
     SP_Vitamin.notifyCardObtained(p, st);
     sp_send(ctx, 'AP_' + tag + '_OBTAIN:item=' + idStr + ':heal=' + h0 + '->' + sp_heal(p) + ':teru=' + t0 + '->' + sp_teru(p)
         + ':dice=' + sp_diceOn(p) + ':stand=' + sp_curioStackText(p, 'stand') + ':chip=' + sp_curioStackText(p, 'chip'));
+    return 1;
+}
+
+// ── 大酬宾事件探针（2026-10-10 夜，Forge 端实机验收新增；与 1.21.1 侧同口径）──────
+function sp_shelfNSafe(menu) { if (menu == null) return -1; try { return sp_shelfItems(menu).length; } catch (e) { return -2; } }
+
+function sp_shelfCsvSafe(menu) { if (menu == null) return 'none'; try { return sp_shelfCsv(sp_shelfItems(menu)); } catch (e) { return 'EX'; } }
+
+function sp_soldCsvSafe(menu) {
+    if (menu == null) return 'none';
+    var n = sp_shelfNSafe(menu);
+    if (n < 0) return 'EX';
+    var out = [];
+    try { for (var i = 0; i < n; i++) { out.push(i + ':' + sp_bool(menu.isSold(i))); } } catch (e) { return 'EX'; }
+    return out.join(',');
+}
+
+/** 「商店大酬宾」事件探针：走产品入口 CardShopMenu.triggerPromotion ⇒ 立即**补差额牌**（+2 促销格），
+ *  不重抽、不换批、不动计时器（任务U′ 口径）。机器行字段与 1.21.1 侧 AP_<tag>_PROMO 完全一致。 */
+function sp_doPromo(ctx, tag, windowTicks) {
+    var p = sp_p(ctx);
+    var menu0 = sp_shopMenuOf(p);
+    var sold0 = sp_soldCsvSafe(menu0);
+    var shelf0 = sp_shelfCsvSafe(menu0);
+    var cd0 = (menu0 == null ? -1 : menu0.transferCooldownSeconds());
+    var cdEnd0 = sp_cd(p);
+    var res = 'ok';
+    try { spTryClass('com.merlinkitsune.astral_dice.shop.CardShopMenu').triggerPromotion(p, windowTicks); } catch (e) { res = 'EX:' + sp_exText(e); }
+    var menu = sp_shopMenuOf(p);
+    sp_send(ctx, 'AP_' + tag + '_PROMO:win=' + windowTicks + ':res=' + res
+        + ':promo=' + (menu == null ? -1 : sp_bool(menu.isPromotionActive()))
+        + ':cdBefore=' + cd0 + ':cdSec=' + (menu == null ? -1 : menu.transferCooldownSeconds())
+        + ':cdEndBefore=' + cdEnd0 + ':cdEndAfter=' + sp_cd(p)
+        + ':cdSame=' + ((cd0 === (menu == null ? -1 : menu.transferCooldownSeconds())) ? 1 : 0)
+        + ':shelfNBefore=' + sp_shelfNSafe(menu0) + ':shelfNAfter=' + sp_shelfNSafe(menu)
+        + ':used=' + (menu == null ? -1 : sp_bool(menu.isTransferUsedThisSession()))
+        + ':soldBefore=' + sold0 + ':soldAfter=' + sp_soldCsvSafe(menu)
+        + ':shelfBefore=' + shelf0 + ':shelfAfter=' + sp_shelfCsvSafe(menu));
     return 1;
 }
 
@@ -1574,6 +1637,11 @@ ServerEvents.commandRegistry(event => {
                                 return sp_doEquip(ctx, SP_StringArg.getString(ctx, 'tag'),
                                     SP_StringArg.getString(ctx, 'slot'), SP_StringArg.getString(ctx, 'item'));
                             }))))))
+            .then(Commands.literal('ticktest')
+                .then(Commands.argument('tag', SP_StringArg.word())
+                    .executes(ctx => sp_guard(ctx, SP_StringArg.getString(ctx, 'tag'), function () {
+                        return sp_doTickTest(ctx, SP_StringArg.getString(ctx, 'tag'));
+                    }))))
             .then(Commands.literal('curioreset')
                 .then(Commands.argument('tag', SP_StringArg.word())
                     .executes(ctx => sp_guard(ctx, SP_StringArg.getString(ctx, 'tag'), function () {
@@ -1595,6 +1663,12 @@ ServerEvents.commandRegistry(event => {
                     .executes(ctx => sp_guard(ctx, SP_StringArg.getString(ctx, 'tag'), function () {
                         return sp_doPool(ctx, SP_StringArg.getString(ctx, 'tag'));
                     }))))
+            .then(Commands.literal('promo')
+                .then(Commands.argument('tag', SP_StringArg.word())
+                    .then(Commands.argument('win', SP_IntArg.integer(0, 24000))
+                        .executes(ctx => sp_guard(ctx, SP_StringArg.getString(ctx, 'tag'), function () {
+                            return sp_doPromo(ctx, SP_StringArg.getString(ctx, 'tag'), SP_IntArg.getInteger(ctx, 'win'));
+                        })))))
             .then(Commands.literal('roll')
                 .then(Commands.argument('tag', SP_StringArg.word())
                     .then(Commands.argument('n', SP_IntArg.integer(1, 500))

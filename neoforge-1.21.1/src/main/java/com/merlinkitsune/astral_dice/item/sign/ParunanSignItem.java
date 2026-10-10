@@ -56,13 +56,15 @@ public class ParunanSignItem extends BaseSignItem {
     /**
      * 主动「网络购物」(服务端):打开 {@link com.merlinkitsune.astral_dice.shop.CardShopMenu},
      * 本身不消耗星光、不直接施加效果 ⇒ 不进锁定(生效中)态,{@code performSkill} 立即开始玩家级冷却。
-     * 首次进入商店的「+1 星币」等被动由商店侧结算(见 {@link com.merlinkitsune.astral_dice.shop.CardShopMenu})。
+     * 首次进入商店的「+1 星币」等被动由商店侧结算(见 {@link com.merlinkitsune.astral_dice.shop.CardShopMenu})；
+     * 任务T §3 起**主动技能**这条路必定发 1 星币（方块交互仍为每批至多一次，两者不叠加）。
      */
     protected InteractionResultHolder<ItemStack> handleUse(Level level, Player player, ItemStack stack) {
         if (level.isClientSide) {
             return InteractionResultHolder.success(stack);
         }
-        CardShopOpener.open(player);
+        // 任务T §3：主动技能进店 —— 商店侧必定发 1 星币（不看本批是否已领取）
+        CardShopOpener.open(player, true);
         return InteractionResultHolder.success(stack);
     }
 

@@ -1,0 +1,258 @@
+{
+  "case_id": "SHOP-Q-1.21.1",
+  "title": "卡牌商店·任务Q：转账页完全独立（隐藏商店页/删深灰底/删按钮文字/HUD）+ 主视图按钮 tooltip 只留名字 + 删除已售出 hover + 攻击牌与手册删黑箱注释 + 搜索占位与空名单居中 + 返回键与搜索框对齐 + 卡名下移 + 立牌 tooltip 订正 + 经商进店返现封堵（同批只 1 次）",
+  "version": "1.21.1",
+  "target": {
+    "type": "feature",
+    "ref": "card-shop"
+  },
+  "on_fail": "continue",
+  "steps": [
+    {
+      "op": "note",
+      "text": "哨兵 791 场景（KubeJS 客户端阶段机 csRunQ，余额带 791..891）。阶段 0：主视图基线 + 布局探针 → 真光标悬停星光兑换/转账键（tooltip 只应显示名字）→ 背包内注入攻击牌并悬停（tooltip 不应有攻击力说明）→ 悬停立牌（tooltip 新文案）→ 点转账键（面板应完全独立：iso=bg=0:slotDraw=0:slotSkip>0:ghost=0、keys 只有空名单一条）→ 点返回。阶段 1：装备骰子+立牌后反复「服务端收屏 → 重开」100 轮（要求 14 ①③：只有第 1 轮 +1）。阶段 2：沙漏归 0 换新批后再进店（②：才再 +1）。"
+    },
+    {
+      "op": "note",
+      "text": "不装立牌开屏 ⇒ 首开不触发「进店 +1 星币」，gate 精确等于 791；立牌由探针在阶段 0 内自行注入并装备。不生成假玩家 ⇒ 转账候选列表为空，正好取证「当前没有其他在线玩家」居中。"
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/tp @s ~ ~ ~ 0 0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop reset O",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop bal O 791",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "note",
+      "text": "冷基线：清空 curio 三槽 ⇒ 首开时既无骰子也无立牌（ParunanSignItem.isEquipped 要求「骰子 + 立牌」同时佩戴）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop curioreset O",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "note",
+      "text": "沙漏归 0（就绪态）⇒ 二级视图才可停留（isCycleRunning = gameTime < cooldownEnd，为 true 时 CardShopScreen.containerTick 会把转账页自动关回主视图）；cycleset 0 令 end=now(>0) ⇒ CardShopCycleTicker 立刻重抽一次并把 end 归 0，此后恒惰性（end<=0）⇒ 阶段 1 的 100 轮里货架批次不变（同批返现只能 1 次）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop cycleset O 0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "note",
+      "text": "开屏并保持（791 是本场景 gate；此后 GUI 吞掉 T 键，场景内改用 csCmd 通道发命令）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop openkeep O",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1000
+    },
+    {
+      "op": "wait",
+      "ms": 300000
+    },
+    {
+      "op": "screenshot",
+      "tag": "shopQ-791-end",
+      "mode": "window",
+      "crop": true
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=open:.*:gate=791:.*:q=1:",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=q_main:.*:view=0:main=1:iso=bg=1:slotDraw=[1-9][0-9]*:slotSkip=0:ghost=1:lay=backY=3:backCenterY=11:searchCenterY=11:phX=-1:phW=0:emptyX=-1:emptyW=0:rowL=2:rowR=93:nameY=47:",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=q_main:.*:bal=791",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=q_hover_ok:label=ex:",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=q_hover_ok:label=tp:",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=q_hover_ok:label=atk:",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=q_hover_ok:label=sign:",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=shot:.*:what=q_hover_ex:.*:grab=ok",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=shot:.*:what=q_hover_atk:.*:grab=ok",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=q_tp:view=1:main=0:iso=bg=0:slotDraw=0:slotSkip=[1-9][0-9]*:ghost=0:lay=backY=3:backCenterY=11:searchCenterY=11:phX=48:phW=[1-9][0-9]*:emptyX=47:emptyW=[1-9][0-9]*:rowL=2:rowR=93:nameY=47:",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=q_tp:.*:keys=gui.astral_dice.card_shop.transfer_empty:",
+      "scope": "case"
+    },
+    {
+      "type": "absent",
+      "source": "kubejs_client",
+      "pattern": "evt=q_tp:.*transfer_confirm",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=shot:.*:what=q_tp:.*:grab=ok",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=q_back:view=0:main=1:",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=q_phase1_end:cycles=100:.*:base=791:bal=792:delta=1,1,1,",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=q_newbatch:.*:bal=792",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=q_p2_open1:bal=793:delta=1:",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=q_p2_open2:bal=793:delta=0:",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=q_end:.*:base=791:bal=793:",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "CARD_SHOP_ENTER_REWARD player=Dev granted=1 reason=first_of_batch",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "CARD_SHOP_ENTER_REWARD player=Dev granted=0 reason=already_paid_this_batch",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=q_guide_open:ok=1:",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=shot:.*:what=q_guide:.*:grab=ok:",
+      "scope": "case"
+    }
+  ]
+}

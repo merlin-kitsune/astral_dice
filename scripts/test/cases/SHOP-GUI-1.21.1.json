@@ -765,7 +765,7 @@
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_C0_CLOSE:.*:opened=0:used=1:.*:cdBefore=[0-9]+:cdMid=[1-9][0-9]*:cdAfter=[1-9][0-9]*:.*:deltaMid=[1-9][0-9]*:"
+      "pattern": "AP_C0_CLOSE:.*:opened=0:used=1:.*:cdBefore=[0-9]+:cdMid=[1-9][0-9]*:cdAfter=[1-9][0-9]*:.*:deltaMid=0:"
     },
     {
       "type": "log",

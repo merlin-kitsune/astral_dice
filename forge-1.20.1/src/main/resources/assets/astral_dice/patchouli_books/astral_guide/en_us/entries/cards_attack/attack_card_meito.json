@@ -7,8 +7,7 @@
       "type": "patchouli:spotlight",
       "item": "astral_dice:attack_card_meito",
       "text": "astral_dice.guide.entry.attack_card_meito.1"
-    },
-    { "type": "patchouli:spotlight", "item": "astral_dice:card_shop", "text": "astral_dice.guide.entry.card_obtain" }
+    }
   ],
   "sortnum": 4
 }

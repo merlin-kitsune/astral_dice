@@ -92,7 +92,7 @@ public class ModCreativeTabs {
                 // 立牌(按稀有度低→高:稀有→史诗→传奇)
                 // 稀有 RARE
                 output.accept(ModItems.PARUNAN_SIGN.get());
-                output.accept(ModItems.CARD_SHOP.get());
+                // card_shop 已按任务S §4 移到本栏**最后**（见 displayItems 末尾）——旧的任务N′ §3.1「提到最前」已被用户推翻，此处不再重复列出
                 output.accept(ModItems.JASMINE_SIGN.get());
                 output.accept(ModItems.MIMI_SIGN.get());
                 output.accept(ModItems.LULU_SIGN.get());
@@ -186,5 +186,9 @@ public class ModCreativeTabs {
                 output.accept(ModItems.CURSED_SWORD.get());
                 output.accept(ModItems.REVENGE_HALBERD.get());
                 output.accept(ModItems.PIERCING_GUN.get());
+                // 任务S §4（2026-10-10 用户裁决）：卡牌商店移到**最后**。
+                //   JEI 的物品列表顺序直接取自创造模式物品栏（jei 的 ItemStackListFactory 迭代 CreativeModeTabs.allTabs()
+                //   → buildContents → getDisplayItems），⇒ 这一处同时决定创造页与 JEI 的排序，JEI 侧无需任何代码改动。
+                output.accept(ModItems.CARD_SHOP.get());
             }).build());
 }

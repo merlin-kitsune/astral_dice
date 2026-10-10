@@ -74,7 +74,9 @@ public class ParunanSignItem extends BaseSignItem {
         if (level.isClientSide) {
             return InteractionResultHolder.success(stack);
         }
-        CardShopOpener.open(player);
+        // 任务T §3（2026-10-10 用户裁决）：主动技能进店 ⇒ 商店侧**必定**发 1 星币（不看本批是否已领取），
+        // 与「方块进店每批至多一次」互斥、不叠加。
+        CardShopOpener.open(player, true);
         return InteractionResultHolder.success(stack);
     }
 

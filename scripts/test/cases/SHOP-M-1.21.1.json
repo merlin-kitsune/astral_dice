@@ -1,0 +1,287 @@
+{
+  "case_id": "SHOP-M-1.21.1",
+  "title": "卡牌商店·任务M：真人鼠标拖拽真正可用（跨 tick 真实屏幕事件）/ 沙漏去数字 / 探针护栏（未武装零动作）",
+  "version": "1.21.1",
+  "target": {
+    "type": "feature",
+    "ref": "card-shop"
+  },
+  "on_fail": "continue",
+  "steps": [
+    {
+      "op": "note",
+      "text": "任务M 1.21.1 实机验收。三个场景全部由客户端探针 astral_shop_client.js 按「开店瞬间余额哨兵」选模式：783=跨 tick 真实屏幕事件拖拽（§8）/ 784=沙漏去数字取证（§7）/ 785=几何窗口（给 OS 级真鼠标脚本换算像素坐标，屏保持开着不自关）。拖拽证据一律走 CardShopScreen#mouseClicked/mouseDragged/mouseReleased 真实屏幕事件路径，绝不用合成业务载荷。"
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/tp @s ~ ~ ~ 0 0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1000
+    },
+    {
+      "op": "note",
+      "text": "①-§8 拖拽（哨兵 783）：探针跨 tick 派发 click(卡框0) → drag(中点) → drag(落点) → release(落点)，全程与真人时序一致（修前会被 CardShopScreen#containerTick 的 isLeftPressed 兜底清掉 dragIndex ⇒ 不发购买）"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop bal M0 783",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop cycleset M0 60",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop openkeep M0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 6000
+    },
+    {
+      "op": "screenshot",
+      "tag": "shopM-783-after",
+      "mode": "window",
+      "crop": true
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "note",
+      "text": "②-§7 沙漏去数字（哨兵 784）：cd>0 主视图截图 → 归零进转账面板 → 面板内 cd>0 截图 → 返回主视图再截一次；修前主视图沙漏上有金色秒数、面板确认键下有红色「冷却 N 秒」；另加逐 tick 采样 evt=h_t 判定「面板+cd>0」是否真的被渲染过（见 evt=h_burst 汇总）"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop bal H0 784",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop openkeep H0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 9000
+    },
+    {
+      "op": "screenshot",
+      "tag": "shopM-784-after",
+      "mode": "window",
+      "crop": true
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "note",
+      "text": "③-§1.4 几何窗口（哨兵 785）：屏保持开着，用例到此结束，随后由 temp/t88/real_human_drag.ps1 用 OS 级真实鼠标（SetCursorPos + SendInput）拖拽卡框 → 物品栏，再按真实 ESC 关屏"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop bal G0 785",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop openkeep G0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 4000
+    },
+    {
+      "op": "screenshot",
+      "tag": "shopM-785-open",
+      "mode": "window",
+      "crop": true
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=arm:why=balance_band:783:.*:bal=783"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=open:.*:gate=783:.*:m=1:"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=m_pre:.*:bal=783:.*:cardId=\\S+:.*:dropSlot=\\d+:.*:carried=(null|empty)"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=m_click:.*:what=card0:.*:ret=1:.*:sel=0:"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=m_drag:.*:what=mid:.*:ret=1:"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=m_drag:.*:what=over_drop:.*:ret=1:.*:dragNow=0:"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=scr:m_drag:.*:sel=0:drag=0:"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=m_release:.*:what=drop:.*:ret=1:.*:carried=(null|empty)"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=m_after:.*:cardSold=1:.*:invHasCard=1:.*:carried=(null|empty)"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=scr:m_after:.*:sold=1"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=shot:.*:what=m_sel:.*:grab=ok"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=shot:.*:what=m_drag:.*:grab=ok"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=shot:.*:what=m_drop:.*:grab=ok"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=open:.*:gate=784:.*:h=1:"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=scr:h_main_cd:.*:cd=[1-9]\\d*:"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=scr:h_panel_open:.*:cd=0:.*:view=1:"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=scr:h_panel_cd:.*:cd=[1-9]\\d*:"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=h_burst:ticks=\\d+:seen_view_cd=\\d+:shot=[01]"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=scr:h_main_cd2:.*:cd=[1-9]\\d*:"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=shot:.*:what=h_main_cd:.*:grab=ok"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=shot:.*:what=h_panel_open:.*:grab=ok"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=shot:.*:what=h_cd_aftercyc:.*:grab=ok"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=shot:.*:what=h_main_cd2:.*:grab=ok"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=open:.*:gate=785:.*:g=1:"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=geo:g:gs=\\d+:win=\\d+x\\d+:scr=\\d+x\\d+:gx=\\d+:gy=\\d+:card0rel=\\d+,\\d+:card0abs=\\d+,\\d+:card0px=\\d+,\\d+:dropSlot=\\d+:dropAbs=\\d+,\\d+:dropPx=\\d+,\\d+:"
+    },
+    {
+      "type": "absent",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=humankeep",
+      "scope": "case"
+    },
+    {
+      "type": "absent",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=(deny|poll|nat|hold):",
+      "scope": "case"
+    }
+  ]
+}

@@ -65,6 +65,8 @@ var SP_ModPoiTypes = spTryClass('com.merlinkitsune.astral_dice.world.ModPoiTypes
 var SP_ModProfessions = spTryClass('com.merlinkitsune.astral_dice.world.ModVillagerProfessions');
 var SP_ModItems = spTryClass('com.merlinkitsune.astral_dice.item.ModItems');
 var SP_Catalog = spTryClass('com.merlinkitsune.astral_dice.shop.CardShopCatalog');
+var SP_ShopMenu = spTryClass('com.merlinkitsune.astral_dice.shop.CardShopMenu');
+var SP_Shelf = spTryClass('com.merlinkitsune.astral_dice.shop.CardShopShelf');
 var SP_Filter = spTryClass('com.merlinkitsune.astral_dice.shop.CardTradeFilter');
 var SP_Opener = spTryClass('com.merlinkitsune.astral_dice.shop.CardShopOpener');
 var SP_DiceTrade = spTryClass('com.merlinkitsune.astral_dice.trade.EmeraldDiceTrade');
@@ -258,6 +260,18 @@ function sp_bal(p) {
 function sp_heal(p) { try { return SP_Healing.getPoints(p); } catch (e) { return -1; } }
 function sp_teru(p) { try { return SP_Teru.getLayers(p); } catch (e) { return -1; } }
 function sp_star(p) { try { return SP_ModAttachments.getStarlight(p); } catch (e) { return -1; } }
+/** 大酬宾窗口是否激活（**服务端真值**）。
+ *  ⚠️ 绝不能读 menu.isPromotionActive()：它返回的是 DataSlot[7] 的**客户端缓存字段** promotionActive，
+ *     服务端进程里该字段恒为 false（只有客户端收到同步包时才会被 set）——2026-10-10 任务V 实机实测：
+ *     大酬宾明明已触发（附件货架 3→5 格、补差生效），promo 却恒报 0。服务端取证必须直接比附件真值。 */
+function sp_promoActive(p) {
+    try {
+        var now = sp_tick(p);            // 用既有的 sp_tick（sp_level(p).getLevelData().getGameTime()）；
+        if (now < 0) return -1;          // p.level().getGameTime() 在 KubeJS 里会抛（实测 promo=-1）
+        return (now < SP_ModAttachments.getShopPromotionUntil(p)) ? 1 : 0;
+    } catch (e) { return -1; }
+}
+
 function sp_cd(p) { try { return SP_ModAttachments.getShopTransferCooldownEnd(p); } catch (e) { return -1; } }
 function sp_diceOn(p) { try { return SP_DiceTrade.hasEmeraldDice(p) ? 1 : 0; } catch (e) { return -1; } }
 
@@ -339,7 +353,7 @@ function sp_menuLine(ctx, tag, menu) {
     if (menu == null) { sp_send(ctx, 'AP_' + tag + '_MENU:cls=none'); return; }
     var items = sp_shelfItems(menu);
     var extra = '';
-    try { extra = ':promo=' + sp_bool(menu.isPromotionActive()) + ':cd=' + menu.transferCooldownSeconds() + ':used=' + sp_bool(menu.isTransferUsedThisSession()); } catch (e) { extra = ':extra?'; }
+    try { extra = ':promo=' + sp_promoActive(sp_p(ctx)) + ':cd=' + menu.transferCooldownSeconds() + ':used=' + sp_bool(menu.isTransferUsedThisSession()); } catch (e) { extra = ':extra?'; }
     sp_send(ctx, 'AP_' + tag + '_MENU:cls=CardShopMenu:shelf=' + items.length + ':bal=' + sp_bal(sp_p(ctx)) + extra);
     for (var i = 0; i < items.length; i++) {
         sp_send(ctx, 'AP_' + tag + '_SHELF:' + items[i].idx + ':' + items[i].id + ':' + items[i].price + ':' + items[i].sold + ':' + items[i].disc);
@@ -441,6 +455,26 @@ function sp_doOpenKeep(ctx, tag) {
 }
 
 function sp_doMenu(ctx, tag) {
+    sp_menuLine(ctx, tag, sp_shopMenuOf(sp_p(ctx)));
+    return 1;
+}
+
+/** 任务O §1.3（2026-10-09）：**只收屏、绝不开户**。报告收屏前后的 containerMenu 类名 + tick/cdEnd。
+ *  为什么需要它：第 10 轮实测「客户端 closeContainer 的关闭包没能让服务端 containerMenu 归位」
+ *  ⇒ 关店期间到点换牌的服务端日志仍是 menu=1。要证「关店期间也刷」，必须先自证此刻服务端确实无商店菜单。 */
+function sp_doShut(ctx, tag) {
+    var p = sp_p(ctx);
+    var before = sp_cls(p.containerMenu);
+    var how = 'notOpen';
+    if (before === 'CardShopMenu') { how = sp_closeMenu(p); }
+    sp_send(ctx, 'AP_' + tag + '_SHUT:before=' + before + ':how=' + how + ':after=' + sp_cls(p.containerMenu)
+        + ':now=' + sp_tick(p) + ':cdEnd=' + sp_cd(p));
+    return 1;
+}
+
+/** 任务O §1.3：**只读**菜单状态，绝不自动开店（区别于 menu 命令包着的 sp_guardMenu）
+ *  ⇒ 只有这样才可能观察到 cls=none 这个「服务端确实没开菜单」的硬证据。 */
+function sp_doMenuRaw(ctx, tag) {
     sp_menuLine(ctx, tag, sp_shopMenuOf(sp_p(ctx)));
     return 1;
 }
@@ -797,10 +831,16 @@ function sp_doEquip(ctx, tag, slot, idStr) {
         try { var hh = SP_Curios.getCuriosInventory(p).get().getStacksHandler('chip');
               chipSlots = hh.isPresent() ? hh.get().getStacks().getSlots() : -2; } catch (eH) { }
     }
+    // 任务V 取证：装备/卸下经商立牌**不得**改动 60 秒计时器；且补差必须**同一次调用内**立即发生
+    var cdEnd0 = sp_cd(p);
+    var att0 = sp_shelfAttN(p);
     var err = sp_setCurio(p, slot, idStr, 0);
+    var cdEnd1 = sp_cd(p);
     sp_send(ctx, 'AP_' + tag + '_EQUIP:slot=' + slot + ':want=' + idStr + ':err=' + (err == null ? 'none' : err)
         + ':got=' + sp_curioStackText(p, slot) + ':heal=' + sp_heal(p) + ':teru=' + sp_teru(p)
-        + ':dice=' + sp_curioStackText(p, 'dice') + ':chipSlots=' + chipSlots);
+        + ':dice=' + sp_curioStackText(p, 'dice') + ':chipSlots=' + chipSlots
+        + ':cdEndBefore=' + cdEnd0 + ':cdEndAfter=' + cdEnd1 + ':cdSame=' + ((cdEnd0 === cdEnd1) ? 1 : 0)
+        + ':attBefore=' + att0 + ':attAfter=' + sp_shelfAttN(p));
     return 1;
 }
 
@@ -1355,6 +1395,201 @@ function sp_doRecipes(ctx, tag, idStr) {
     return 1;
 }
 
+// ── 轮询 / 大酬宾 / 转账拒绝（2026-10-09 任务L 新增） ──────────────────────
+
+/** 服务端权威格数（menu 为空 ⇒ -1；异常 ⇒ -2） */
+function sp_shelfN(menu) {
+    if (menu == null) return -1;
+    try { return menu.shelfSize(); } catch (e) { return -2; }
+}
+
+/** 附件里的货架格数（**不依赖界面是否开着** —— 任务V 店外大酬宾取证的关键读数） */
+function sp_shelfAttN(p) { try { return SP_Shelf.get(p).size(); } catch (e) { return -1; } }
+
+/** 已售位 CSV（reroll 证据：到点刷架后 sold 应回到全 0） */
+function sp_soldCsv(menu) {
+    if (menu == null) return 'none';
+    var out = [];
+    var n = 0;
+    try { n = menu.shelfSize(); } catch (e) { n = 0; }
+    for (var i = 0; i < n; i++) { out.push(sp_bool(menu.isSold(i))); }
+    return out.join('');
+}
+
+function sp_shelfCsvSafe(menu) {
+    if (menu == null) return 'none';
+    try { return sp_shelfCsv(sp_shelfItems(menu)); } catch (e) { return 'EX:' + sp_exText(e); }
+}
+
+/** 把「本轮轮询终点」直接写成 now+seconds*20（seconds<=0 ⇒ 立刻就绪）。
+ *  仅探针使用：产品码里没有测试钩子，靠它把 60 秒轮询压到可观测的时间尺度。
+ *  写回后 menu.broadcastChanges() 的边沿检测会照常触发 reroll（running→ready 那一下）。 */
+function sp_doCycleSet(ctx, tag, seconds) {
+    var p = sp_p(ctx);
+    var now = sp_tick(p);
+    var menu0 = sp_shopMenuOf(p);
+    var sold0 = sp_soldCsv(menu0);
+    var shelf0 = sp_shelfCsvSafe(menu0);
+    var res = 'ok';
+    try { SP_ModAttachments.setShopTransferCooldownEnd(p, now + seconds * 20); }
+    catch (e) { res = 'EX:' + sp_exText(e); }
+    var menu = sp_shopMenuOf(p);
+    sp_send(ctx, 'AP_' + tag + '_CYCLESET:sec=' + seconds + ':res=' + res + ':now=' + now + ':cdEnd=' + sp_cd(p)
+        + ':cdSec=' + (menu == null ? -1 : menu.transferCooldownSeconds())
+        + ':used=' + (menu == null ? -1 : sp_bool(menu.isTransferUsedThisSession()))
+        + ':soldBefore=' + sold0 + ':soldAfter=' + sp_soldCsv(menu)
+        + ':shelfBefore=' + shelf0 + ':shelfAfter=' + sp_shelfCsvSafe(menu));
+    return 1;
+}
+
+/** 「商店大酬宾」事件探针（§2.2）：走产品入口 CardShopMenu.triggerPromotion ⇒ 立即**补差额牌**（+2 促销格），不重抽、不换批、不动计时器 */
+function sp_doPromo(ctx, tag, windowTicks) {
+    var p = sp_p(ctx);
+    var menu0 = sp_shopMenuOf(p);
+    var sold0 = sp_soldCsv(menu0);
+    var shelf0 = sp_shelfCsvSafe(menu0);
+    var cd0 = (menu0 == null ? -1 : menu0.transferCooldownSeconds());
+    var att0 = sp_shelfAttN(p);
+    // 任务V 取证：计时器的**绝对终点 tick**（附件真值）—— 大酬宾只补差额牌 ⇒ 前后必须逐 tick 不变
+    var cdEnd0 = sp_cd(p);
+    var res = 'ok';
+    try { SP_ShopMenu.triggerPromotion(p, windowTicks); }
+    catch (e) { res = 'EX:' + sp_exText(e); }
+    var menu = sp_shopMenuOf(p);
+    sp_send(ctx, 'AP_' + tag + '_PROMO:win=' + windowTicks + ':res=' + res
+        + ':promo=' + sp_promoActive(p)
+        + ':cdBefore=' + cd0 + ':cdSec=' + (menu == null ? -1 : menu.transferCooldownSeconds())
+        + ':cdEndBefore=' + cdEnd0 + ':cdEndAfter=' + sp_cd(p)
+        + ':cdSame=' + ((cd0 === (menu == null ? -1 : menu.transferCooldownSeconds())) ? 1 : 0)
+        // shelfN* 用**附件真值**（menu.shelfSize() 与 isPromotionActive 同源：服务端读到的是滞后/空缓存值）
+        + ':shelfNBefore=' + att0 + ':shelfNAfter=' + sp_shelfAttN(p)
+        + ':attBefore=' + att0 + ':attAfter=' + sp_shelfAttN(p)
+        + ':used=' + (menu == null ? -1 : sp_bool(menu.isTransferUsedThisSession()))
+        + ':soldBefore=' + sold0 + ':soldAfter=' + sp_soldCsv(menu)
+        + ':shelfBefore=' + shelf0 + ':shelfAfter=' + sp_shelfCsvSafe(menu));
+    return 1;
+}
+
+/** 转账探针（**不关菜单**）：本轮进行中调用 handleTransfer ⇒ 应被拒（余额差 = 0）。
+ *  与 sp_doTransfer 的区别：后者走 guardMenu（跑完自动收屏），界面开着时不能再用。 */
+function sp_doTxTry(ctx, tag, name, amount) {
+    var p = sp_p(ctx);
+    var menu = sp_shopMenuOf(p);
+    if (menu == null) { sp_send(ctx, 'AP_' + tag + '_TXTRY:no_menu=1'); return 0; }
+    var target = sp_findPlayer(p, name);
+    var cs = sp_candidates(p);
+    var idx = -1;
+    for (var i = 0; i < cs.length; i++) { if (cs[i].name === name) idx = i; }
+    try { menu.sendTransferCandidates(p); } catch (eS) { }
+    var b0 = sp_bal(p); var c0 = (target == null ? -1 : sp_bal(target));
+    var cd0 = menu.transferCooldownSeconds();
+    menu.handleTransfer(p, idx, amount);
+    var b1 = sp_bal(p); var c1 = (target == null ? -1 : sp_bal(target));
+    sp_send(ctx, 'AP_' + tag + '_TXTRY:name=' + name + ':idx=' + idx + ':cand=' + cs.length + ':amount=' + amount
+        + ':bal=' + b0 + '->' + b1 + ':tbal=' + c0 + '->' + c1
+        + ':cdBefore=' + cd0 + ':cdSec=' + menu.transferCooldownSeconds()
+        + ':used=' + sp_bool(menu.isTransferUsedThisSession())
+        + ':applied=' + ((b1 !== b0) ? 1 : 0));
+    return 1;
+}
+
+/** 四张并行列表的长度串 `items/prices/discounted/sold` —— 任务V §1.3-D3/D4 的判据格式 */
+function sp_lengthsOf(shelf) {
+    try {
+        return shelf.items().size() + '/' + shelf.prices().size() + '/' + shelf.discounted().size() + '/' + shelf.sold().size();
+    } catch (e) { return 'EX:' + sp_exText(e); }
+}
+
+/** 任务V 取证：把货架逐格标出「是否战斗牌」（团队加成那一格必须只出战斗牌）。
+ *  界面开着 ⇒ 用 menu 权威读数；否则退回附件 id 列表（combat 判据来自卡池 entries()）。 */
+function sp_doShelfMix(ctx, tag) {
+    var p = sp_p(ctx);
+    var entries = sp_poolEntries();
+    var combatIds = {};
+    for (var i = 0; i < entries.length; i++) { if (entries[i].combat) combatIds[entries[i].id] = 1; }
+    var ids = [];
+    var menu = sp_shopMenuOf(p);
+    if (menu != null) {
+        var items = sp_shelfItems(menu);
+        for (var j = 0; j < items.length; j++) { ids.push(items[j].id); }
+    } else {
+        try {
+            var att = SP_Shelf.get(p);
+            for (var k = 0; k < att.size(); k++) { ids.push('' + att.items().get(k)); }
+        } catch (e0) { }
+    }
+    var flags = [];
+    for (var m = 0; m < ids.length; m++) { flags.push(combatIds[ids[m]] ? 1 : 0); }
+    sp_send(ctx, 'AP_' + tag + '_MIX:n=' + ids.length + ':combat=' + flags.join('') + ':ids=' + ids.join(','));
+    return 1;
+}
+
+/** 任务V §1.3-D3/D4 取证：把货架附件写成「四列表长度不一致」的畸形记录，再逐个调用产品入口
+ *  （ensureLengths / withSold / withDiscounted / topUp），验证不再抛 IndexOutOfBoundsException。
+ *  mode：short（价/降价/已售都比 items 短）| long（都比 items 长）| mix（价长、降价短、已售空）。
+ *  列表元素一律从**真实存档**里复制（保持 Integer/Boolean 类型正确，避免把 Double 塞进 List<Integer>）；
+ *  结束后把附件恢复成空存档，不给后续用例留脏数据。 */
+function sp_doShelfBreak(ctx, tag, mode) {
+    var p = sp_p(ctx);
+    var cur = null;
+    try { cur = SP_Shelf.get(p); } catch (e0) { cur = null; }
+    var n = (cur == null ? 0 : cur.size());
+    if (n <= 0) { sp_send(ctx, 'AP_' + tag + '_BREAK:no_shelf=1'); return 0; }
+    var AL = Java.loadClass('java.util.ArrayList');
+    var items = new AL(cur.items());
+    var prices = new AL(cur.prices());
+    var disc = new AL(cur.discounted());
+    var sold = new AL(cur.sold());
+    var pn = 1; var dn = 0; var sn = 0;
+    if (mode === 'long') { pn = n + 2; dn = n + 2; sn = n + 2; }
+    else if (mode === 'mix') { pn = n + 1; dn = 1; sn = 0; }
+    while (prices.size() > pn) { prices.remove(prices.size() - 1); }
+    while (disc.size() > dn) { disc.remove(disc.size() - 1); }
+    while (sold.size() > sn) { sold.remove(sold.size() - 1); }
+    while (prices.size() < pn && prices.size() > 0) { prices.add(prices.get(0)); }
+    while (disc.size() < dn && disc.size() > 0) { disc.add(disc.get(0)); }
+    while (sold.size() < sn && sold.size() > 0) { sold.add(sold.get(0)); }
+    var res = 'ok';
+    var bad = null;
+    try { bad = new SP_Shelf(items, prices, disc, sold, false); }
+    catch (e1) { res = 'newEX:' + sp_exText(e1); }
+    if (bad != null) { try { SP_Shelf.store(p, bad); } catch (e2) { res = 'storeEX:' + sp_exText(e2); } }
+    var line = 'AP_' + tag + '_BREAK:mode=' + mode + ':n=' + n
+        + ':in=' + prices.size() + '/' + disc.size() + '/' + sold.size() + ':new=' + res;
+    var back = null;
+    try { back = SP_Shelf.get(p); } catch (e3) { back = null; }
+    if (back != null) {
+        line += ':back=' + sp_lengthsOf(back);
+        try { line += ':ens=' + sp_lengthsOf(back.ensureLengths()); } catch (e5) { line += ':ens=EX:' + sp_exText(e5); }
+        try { line += ':ws=' + sp_lengthsOf(back.withSold(0)); } catch (e6) { line += ':ws=EX:' + sp_exText(e6); }
+        try { line += ':wd=' + sp_lengthsOf(back.withDiscounted(0, 1)); } catch (e7) { line += ':wd=EX:' + sp_exText(e7); }
+        try { line += ':tu=' + sp_lengthsOf(SP_Shelf.topUp(p, back)); } catch (e8) { line += ':tu=EX:' + sp_exText(e8); }
+    }
+    // 恢复**原货架**（而不是 EMPTY）：EMPTY 会让后续 VB2/VB3 直接 no_shelf（2026-10-10 实测）
+        try { SP_Shelf.store(p, cur); line += ':restored=' + SP_Shelf.get(p).size(); }
+    catch (e9) { line += ':restore=EX:' + sp_exText(e9); }
+    sp_send(ctx, line);
+    return 1;
+}
+
+/** 玩家 36 格物品栏非空格清单 —— 双击快速移入的服务端权威证据 */
+function sp_doInv(ctx, tag) {
+    var p = sp_p(ctx);
+    var out = [];
+    var n = 0;
+    try {
+        var inv = p.inventory;
+        for (var i = 0; i < 36; i++) {
+            var st = inv.getItem(i);
+            if (st == null || st.isEmpty()) continue;
+            out.push(i + ':' + sp_id(st) + 'x' + st.getCount());
+            n++;
+        }
+    } catch (e) { sp_send(ctx, 'AP_' + tag + '_INV:ex=' + sp_exText(e)); return 0; }
+    sp_send(ctx, 'AP_' + tag + '_INV:n=' + n + ':items=' + out.join(','));
+    return 1;
+}
+
 // ── 命令注册 ──────────────────────────────────────────────────────────────
 ServerEvents.commandRegistry(event => {
     var Commands = event.commands;
@@ -1400,6 +1635,16 @@ ServerEvents.commandRegistry(event => {
                 .then(Commands.argument('tag', SP_StringArg.word())
                     .executes(ctx => sp_guardMenu(ctx, SP_StringArg.getString(ctx, 'tag'), function () {
                         return sp_doMenu(ctx, SP_StringArg.getString(ctx, 'tag'));
+                    }))))
+            .then(Commands.literal('menuraw')
+                .then(Commands.argument('tag', SP_StringArg.word())
+                    .executes(ctx => sp_guard(ctx, SP_StringArg.getString(ctx, 'tag'), function () {
+                        return sp_doMenuRaw(ctx, SP_StringArg.getString(ctx, 'tag'));
+                    }))))
+            .then(Commands.literal('shut')
+                .then(Commands.argument('tag', SP_StringArg.word())
+                    .executes(ctx => sp_guard(ctx, SP_StringArg.getString(ctx, 'tag'), function () {
+                        return sp_doShut(ctx, SP_StringArg.getString(ctx, 'tag'));
                     }))))
             .then(Commands.literal('buy')
                 .then(Commands.argument('tag', SP_StringArg.word())
@@ -1534,6 +1779,43 @@ ServerEvents.commandRegistry(event => {
                 .then(Commands.argument('tag', SP_StringArg.word())
                     .executes(ctx => sp_guard(ctx, SP_StringArg.getString(ctx, 'tag'), function () {
                         return sp_doVClose(ctx, SP_StringArg.getString(ctx, 'tag'));
+                    }))))
+            // ── 2026-10-09 任务L：轮询沙漏 / 大酬宾 / 转账拒绝 / 背包 ──
+            .then(Commands.literal('cycleset')
+                .then(Commands.argument('tag', SP_StringArg.word())
+                    .then(Commands.argument('sec', SP_IntArg.integer(0, 600))
+                        .executes(ctx => sp_guard(ctx, SP_StringArg.getString(ctx, 'tag'), function () {
+                            return sp_doCycleSet(ctx, SP_StringArg.getString(ctx, 'tag'), SP_IntArg.getInteger(ctx, 'sec'));
+                        })))))
+            .then(Commands.literal('promo')
+                .then(Commands.argument('tag', SP_StringArg.word())
+                    .then(Commands.argument('win', SP_IntArg.integer(0, 24000))
+                        .executes(ctx => sp_guard(ctx, SP_StringArg.getString(ctx, 'tag'), function () {
+                            return sp_doPromo(ctx, SP_StringArg.getString(ctx, 'tag'), SP_IntArg.getInteger(ctx, 'win'));
+                        })))))
+            .then(Commands.literal('txtry')
+                .then(Commands.argument('tag', SP_StringArg.word())
+                    .then(Commands.argument('name', SP_StringArg.string())
+                        .then(Commands.argument('amount', SP_IntArg.integer(-10, 1000))
+                            .executes(ctx => sp_guard(ctx, SP_StringArg.getString(ctx, 'tag'), function () {
+                                return sp_doTxTry(ctx, SP_StringArg.getString(ctx, 'tag'),
+                                    SP_StringArg.getString(ctx, 'name'), SP_IntArg.getInteger(ctx, 'amount'));
+                            }))))))
+            .then(Commands.literal('shelfmix')
+                .then(Commands.argument('tag', SP_StringArg.word())
+                    .executes(ctx => sp_guard(ctx, SP_StringArg.getString(ctx, 'tag'), function () {
+                        return sp_doShelfMix(ctx, SP_StringArg.getString(ctx, 'tag'));
+                    }))))
+            .then(Commands.literal('shelfbreak')
+                .then(Commands.argument('tag', SP_StringArg.word())
+                    .then(Commands.argument('mode', SP_StringArg.word())
+                        .executes(ctx => sp_guard(ctx, SP_StringArg.getString(ctx, 'tag'), function () {
+                            return sp_doShelfBreak(ctx, SP_StringArg.getString(ctx, 'tag'), SP_StringArg.getString(ctx, 'mode'));
+                        })))))
+            .then(Commands.literal('inv')
+                .then(Commands.argument('tag', SP_StringArg.word())
+                    .executes(ctx => sp_guard(ctx, SP_StringArg.getString(ctx, 'tag'), function () {
+                        return sp_doInv(ctx, SP_StringArg.getString(ctx, 'tag'));
                     }))))
     );
 })

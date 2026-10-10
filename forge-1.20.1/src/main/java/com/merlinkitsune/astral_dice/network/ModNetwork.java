@@ -74,6 +74,10 @@ public final class ModNetwork {
         // 同样**只能追加在末尾**:顺序即协议,插队会让旧客户端错包。
         CHANNEL.registerMessage(id++, CardShopBuyMessage.class,
                 CardShopBuyMessage::encode, CardShopBuyMessage::decode, CardShopBuyMessage::handle);
+        // 拒绝信号(1.20.1 移植):id 15 = S→C「本次请求被拒 + 原因」。
+        // **只能追加在末尾**:顺序即协议,插队会让旧客户端错包。
+        CHANNEL.registerMessage(id++, CardShopDenyMessage.class,
+                CardShopDenyMessage::encode, CardShopDenyMessage::decode, CardShopDenyMessage::handle);
     }
 
     // === 发送助手(对应 1.21 PacketDistributor 静态方法) ===
@@ -693,6 +697,33 @@ public final class ModNetwork {
                     menu.handleBuy(serverPlayer, msg.shelfIndex, msg.targetSlot);
                 }
             });
+            ctx.get().setPacketHandled(true);
+        }
+    }
+    /**
+     * S→C:「请求被拒」信号(对应 1.21.1 的 {@code network/CardShopDenyPayload})。
+     *
+     * <p>只承载一个原因码({@code CardShopMenu.DENY_NO_COIN} / {@code DENY_INVENTORY_FULL}),
+     * 客户端收到后起 30t 倒计时,把钱包数字红白闪 3 次(服务端权威触发)。
+     */
+    public static class CardShopDenyMessage {
+        private final int reason;
+
+        public CardShopDenyMessage(int reason) {
+            this.reason = reason;
+        }
+
+        public static void encode(CardShopDenyMessage msg, FriendlyByteBuf buf) {
+            buf.writeVarInt(msg.reason);
+        }
+
+        public static CardShopDenyMessage decode(FriendlyByteBuf buf) {
+            return new CardShopDenyMessage(buf.readVarInt());
+        }
+
+        public static void handle(CardShopDenyMessage msg, Supplier<NetworkEvent.Context> ctx) {
+            ctx.get().enqueueWork(() ->
+                    com.merlinkitsune.astral_dice.client.CardShopClientState.notifyDeny(msg.reason));
             ctx.get().setPacketHandled(true);
         }
     }

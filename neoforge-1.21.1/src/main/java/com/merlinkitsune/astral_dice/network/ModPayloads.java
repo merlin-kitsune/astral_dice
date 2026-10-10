@@ -101,11 +101,17 @@ public class ModPayloads {
                 CardShopTransferPayload.STREAM_CODEC,
                 CardShopTransferPayload::handle
         );
-        // 卡牌商店:拖拽购买(货架索引 + 目标物品栏格索引)
+        // 卡牌商店:拖拽购买(货架索引 + 目标物品栏格索引;targetSlot=-1 ⇒ 双击快速移入)
         registrar.playToServer(
                 CardShopBuyPayload.TYPE,
                 CardShopBuyPayload.STREAM_CODEC,
                 CardShopBuyPayload::handle
+        );
+        // 卡牌商店:请求被拒信号(余额不足 / 物品栏已满 ⇒ 客户端钱包数字红白闪 3 次)
+        registrar.playToClient(
+                CardShopDenyPayload.TYPE,
+                CardShopDenyPayload.STREAM_CODEC,
+                CardShopDenyPayload::handle
         );
     }
 }

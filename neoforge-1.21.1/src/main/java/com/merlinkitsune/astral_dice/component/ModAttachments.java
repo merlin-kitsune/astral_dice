@@ -15,6 +15,7 @@ import java.util.Optional;
 import java.util.UUID;
 import com.merlinkitsune.astral_dice.item.HealingManager;
 import com.merlinkitsune.astral_dice.item.sign.FenSignItem;
+import com.merlinkitsune.astral_dice.shop.CardShopShelf;
 
 public class ModAttachments {
     public static final DeferredRegister<AttachmentType<?>> ATTACHMENTS =
@@ -445,6 +446,16 @@ public class ModAttachments {
     public static void setShopTransferCooldownEnd(net.minecraft.world.entity.player.Player player, long value) {
         player.setData(SHOP_TRANSFER_COOLDOWN_END.get(), value);
     }
+
+    // 卡牌商店:货架存档(任务O §1.3,2026-10-09 用户裁决「重新进店不得刷新卡牌」)。改造前货架只活在菜单字段里,
+    // 开店时无条件重抽 ⇒ 关店再开店就换一批;现在货架落在这里(随玩家存档持久化),只有「沙漏归 0」那一刻
+    // (服务端 tick: shop/CardShopCycleTicker)或大酬宾事件才会重抽覆写,开店只读(shop/CardShopShelf)。
+    // 仅服务端使用,不同步客户端(客户端照旧靠货架槽位同步读同一批卡)。
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<CardShopShelf>> SHOP_SHELF =
+            ATTACHMENTS.register("shop_shelf", () -> AttachmentType.builder(() -> CardShopShelf.EMPTY)
+                    .serialize(CardShopShelf.CODEC)
+                    .build());
+
 
     // 立牌主动技能"本次冷却实际使用的最大冷却 tick"(路线 A:所有减免方一律读它作基准,不再各自重算;
     // 0 表示缺失/无冷却,减免方回退旧行为;仅服务端使用,无需同步客户端)。

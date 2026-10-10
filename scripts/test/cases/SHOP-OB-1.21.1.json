@@ -1,0 +1,278 @@
+{
+  "case_id": "SHOP-OB-1.21.1",
+  "title": "卡牌商店·任务O §1.3：换牌唯一时机=沙漏归 0 —— 关店→立刻重开仍是同一批卡（same=1）、店内跨 0 点必换、关店期间跨 0 点也换（服务端 CARD_SHOP_CYCLE menu=0 实证）",
+  "version": "1.21.1",
+  "target": {
+    "type": "feature",
+    "ref": "card-shop"
+  },
+  "on_fail": "continue",
+  "steps": [
+    {
+      "op": "note",
+      "text": "哨兵 789 场景（跨开屏阶段机，探针 csOBP 跨开屏保留）：① 一开店记 ids1/fp1 → 关店 → 立刻重开 ⇒ 逐格 same=1、fpSame=1（重开只读不重抽）② 店内 cycleset 6 跨 0 点 ⇒ 货架必换（changed=1）+ 服务端 CARD_SHOP_CYCLE menu=1 ③ 关店前 cycleset 6 → 关店 8.5s（服务端 ticker 在**无菜单**状态下跨 0 点）→ 重开 ⇒ 新的一批卡（changed=1）+ CARD_SHOP_CYCLE menu=0。"
+    },
+    {
+      "op": "note",
+      "text": "任务O 789 前置：假玩家只为转账候选存在，本场景不点转账/兑换。"
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/tp @s ~ ~ ~ 0 0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "note",
+      "text": "转账面板需要候选行 ⇒ 用 Carpet 招 4 个假玩家（真 ServerPlayer）当候选。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/carpet allowSpawningOfflinePlayers true",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/player Bot1 spawn",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 250
+    },
+    {
+      "op": "inject_command",
+      "command": "/player Bot2 spawn",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 250
+    },
+    {
+      "op": "inject_command",
+      "command": "/player Bot3 spawn",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 250
+    },
+    {
+      "op": "inject_command",
+      "command": "/player Bot4 spawn",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 250
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop reset O",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop star O 6",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop bal O 789",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "note",
+      "text": "开屏并保持（余额 789 既是探针武装带哨兵也是本场景 gate；界面开着时聊天命令会被 GUI 吞掉，场景内改用 connection.sendCommand 改档）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop openkeep O",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1100
+    },
+    {
+      "op": "wait",
+      "ms": 150000
+    },
+    {
+      "op": "screenshot",
+      "tag": "shopOB-789-end",
+      "mode": "window",
+      "crop": true
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=open:.*:gate=789:.*:ob=1:",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=o_b_open1:ids=.*:cd=[0-9]+",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=o_b_close1:how=csCloseBy_",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=o_b_out1:bal=789",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=o_b_open2:ids=.*:same=1:fpSame=1:.*:detailSame=1:",
+      "scope": "case"
+    },
+    {
+      "type": "absent",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=o_b_open2:.*same=0",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=o_b_arm_cycle:ids=.*:used=000000",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=o_b_reroll:before=.*:after=.*:changed=1:.*:detailChanged=1:",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=o_b_close2_pre:ids=",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=o_b_out_done:ticks=170",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=o_b_open3:ids=.*:prev=.*:changed=1:.*:detailChanged=1:",
+      "scope": "case"
+    },
+    {
+      "type": "absent",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=o_b_out_to",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_O_SHUT:before=.*:after=InventoryMenu:now=[0-9]+:cdEnd=",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_O_MENU:cls=none",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "\\[astral_dice\\] CARD_SHOP_CYCLE: reroll player=.* tick=[0-9]+ end=[0-9]+ menu=1",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "\\[astral_dice\\] CARD_SHOP_CYCLE: reroll player=.* tick=[0-9]+ end=[0-9]+ menu=0",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=o_b_end:how=o_b_end",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=shot:.*:what=o_b_open1:.*:grab=ok",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=shot:.*:what=o_b_open2:.*:grab=ok",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=shot:.*:what=o_b_reroll:.*:grab=ok",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=shot:.*:what=o_b_open3:.*:grab=ok",
+      "scope": "case"
+    }
+  ]
+}

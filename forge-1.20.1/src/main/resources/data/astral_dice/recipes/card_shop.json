@@ -2,16 +2,19 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "pattern": [
-    "PPP",
-    "PCP",
-    "PPP"
+    "TTT",
+    "BBB",
+    "MMM"
   ],
   "key": {
-    "P": {
-      "tag": "minecraft:planks"
+    "T": {
+      "item": "minecraft:smooth_stone_slab"
     },
-    "C": {
+    "B": {
       "item": "astral_dice:star_coin"
+    },
+    "M": {
+      "tag": "minecraft:logs"
     }
   },
   "result": {

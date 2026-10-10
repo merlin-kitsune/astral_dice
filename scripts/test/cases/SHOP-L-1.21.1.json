@@ -1,0 +1,719 @@
+{
+  "case_id": "SHOP-L-1.21.1",
+  "title": "卡牌商店·任务L：静置不自动关闭 / 单击选中 / 双击快速移入 / 60s 轮询沙漏 5→1→0 / 大酬宾只补差额牌（不刷架/不换批/沙漏不动）/ 余额不足红白闪 3 次",
+  "version": "1.21.1",
+  "target": {
+    "type": "feature",
+    "ref": "card-shop"
+  },
+  "on_fail": "continue",
+  "steps": [
+    {
+      "op": "note",
+      "text": "任务L 1.21.1 实机验收：卡牌商店「60 秒轮询沙漏 + 双击快速移入 + 余额不足闪烁 + 打开后静置不被强制关闭」。界面场景全部由客户端探针 astral_shop_client.js 驱动（闸门=开店瞬间的余额哨兵：778=静置保持 30s / 781=P0 对照重演 / 779=GUI 主序列 / 780=余额不足闪烁）；用例侧只做环境准备、窗口截图与收尾。"
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/tp @s ~ ~ ~ 0 0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1000
+    },
+    {
+      "op": "note",
+      "text": "基线：清 curio（影响经商立牌降价）/ 清余额星光冷却 / 造第二玩家做转账候选"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop curioreset CR0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop reset R0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/carpet allowSpawningOfflinePlayers true",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/player Bot1 spawn at ~-3 ~ ~1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1800
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear Bot1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop bal BA0 200",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "note",
+      "text": "① 静置保持（哨兵 778）：开店后不做任何操作，界面必须自己留着 ≥20s（客户端 600t=30s 才自关，日志每 40t 落一次心跳）"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop bal OK0 778",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop openkeep KA0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 6000
+    },
+    {
+      "op": "screenshot",
+      "tag": "shopL-hold-06s",
+      "mode": "window",
+      "crop": true
+    },
+    {
+      "op": "wait",
+      "ms": 9000
+    },
+    {
+      "op": "screenshot",
+      "tag": "shopL-hold-15s",
+      "mode": "window",
+      "crop": true
+    },
+    {
+      "op": "wait",
+      "ms": 8000
+    },
+    {
+      "op": "screenshot",
+      "tag": "shopL-hold-24s",
+      "mode": "window",
+      "crop": true
+    },
+    {
+      "op": "wait",
+      "ms": 10000
+    },
+    {
+      "op": "note",
+      "text": "①-对照（哨兵 781）：故意复刻 P0「60t 无条件关屏」⇒ 同格式 AP_SHOPCLOSE 必须出现(证明探针抓得住)，而 778 窗口里绝不出现该行"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop bal OK1 781",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop openkeep KA1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 2500
+    },
+    {
+      "op": "screenshot",
+      "tag": "shopL-p0-alive",
+      "mode": "window",
+      "crop": true
+    },
+    {
+      "op": "wait",
+      "ms": 4500
+    },
+    {
+      "op": "screenshot",
+      "tag": "shopL-p0-closed",
+      "mode": "window",
+      "crop": true
+    },
+    {
+      "op": "wait",
+      "ms": 3000
+    },
+    {
+      "op": "note",
+      "text": "②③④⑤⑧ 主序列（哨兵 779）：单击只选中/空位无效 → 余额不足双击被拒 → 双击快速移入 → 沙漏 5→1→0 与就绪保持 → 轮询中转账被拒 → 就绪后转账面板 → 面板与沙漏一致 → 大酬宾只补差额牌（不刷架/不换批/沙漏不动，任务V D5 订正）→ 双击窗口 500ms/200ms 实测"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop bal OK2 779",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop openkeep KA2",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "screenshot",
+      "tag": "shopL-779-sel",
+      "mode": "window",
+      "crop": true
+    },
+    {
+      "op": "wait",
+      "ms": 6000
+    },
+    {
+      "op": "screenshot",
+      "tag": "shopL-779-hour",
+      "mode": "window",
+      "crop": true
+    },
+    {
+      "op": "wait",
+      "ms": 5000
+    },
+    {
+      "op": "screenshot",
+      "tag": "shopL-779-xfer",
+      "mode": "window",
+      "crop": true
+    },
+    {
+      "op": "wait",
+      "ms": 3000
+    },
+    {
+      "op": "screenshot",
+      "tag": "shopL-779-promo",
+      "mode": "window",
+      "crop": true
+    },
+    {
+      "op": "wait",
+      "ms": 9000
+    },
+    {
+      "op": "note",
+      "text": "⑦ 余额不足闪烁（哨兵 780）：每 2s 重放一次「双击买牌被拒」把 1.5s 的闪烁窗口拉长到 ~11s；测试台连拍窗口截图，客户端探针同 tick 记录红白相位并自截图（含红像素计数）"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop bal OK3 780",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop openkeep KA3",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 2500
+    },
+    {
+      "op": "screenshot",
+      "tag": "shopL-deny-a",
+      "mode": "window",
+      "crop": true
+    },
+    {
+      "op": "wait",
+      "ms": 2200
+    },
+    {
+      "op": "screenshot",
+      "tag": "shopL-deny-b",
+      "mode": "window",
+      "crop": true
+    },
+    {
+      "op": "wait",
+      "ms": 2200
+    },
+    {
+      "op": "screenshot",
+      "tag": "shopL-deny-c",
+      "mode": "window",
+      "crop": true
+    },
+    {
+      "op": "wait",
+      "ms": 2200
+    },
+    {
+      "op": "screenshot",
+      "tag": "shopL-deny-d",
+      "mode": "window",
+      "crop": true
+    },
+    {
+      "op": "wait",
+      "ms": 6000
+    },
+    {
+      "op": "note",
+      "text": "④补 自然 60s 轮询（哨兵 782）：只用一条 cycleset 把周期对齐到整 60s，之后**不再做任何干预**，靠真实时间流逝观察 hour 5→4→2→1→0；同时用「已售位图 sold」证明未到 0 不刷架、到 0 才重 roll，且刷完保持就绪"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop bal OK4 782",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop openkeep KA4",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 20000
+    },
+    {
+      "op": "screenshot",
+      "tag": "shopL-nat-20s",
+      "mode": "window",
+      "crop": true
+    },
+    {
+      "op": "wait",
+      "ms": 25000
+    },
+    {
+      "op": "wait",
+      "ms": 16000
+    },
+    {
+      "op": "screenshot",
+      "tag": "shopL-nat-62s",
+      "mode": "window",
+      "crop": true
+    },
+    {
+      "op": "wait",
+      "ms": 8000
+    },
+    {
+      "op": "note",
+      "text": "收尾：清生物（客户端探针已在各自窗口末尾自关屏）"
+    },
+    {
+      "op": "inject_command",
+      "command": "/player Bot1 kill",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[type=!player,distance=..64]",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=open:.*:gate=778:.*:hold=1:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=hold:opens=1:step=560:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=holdend:opens=1:step=600:how=.*closeContainer"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_SHOPCLOSE:.*reason=screen_cleared_local_container_kept",
+      "scope": "whole"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_SHOPCLOSE:side=client:reason=probe_self_close:caller=csHold:.*:step=60[01]:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_SHOPCLOSE:side=client:reason=p0_reenact_old_janitor:caller=csP0Reenact\\(legacy_janitor\\):.*:step=60:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_SHOPCLOSE:.*reason=probe_self_close:caller=csP0Reenact:.*:step=60:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=click:step=6:what=c0_single:.*:ret=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=scr:after_single_c0:.*:sel=0:drag="
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=click:step=14:what=c4_empty:.*:ret=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=scr:after_empty_c4:.*:sel=0:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=poll_after_quickmove:.*:used=1:cd=[1-9][0-9]*"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=qm_check:card=[a-z0-9_]+:[a-z0-9_/]+:invHas=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=inv:quickmove:n=[1-9][0-9]*"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_IV1_INV:n=[1-9][0-9]*"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=scr:cycle_started:.*:used=1:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=scr:hour_expect4:.*ready=0:hour=4:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=scr:hour_expect3:.*ready=0:hour=3:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=scr:hour_expect2:.*ready=0:hour=2:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=scr:hour_expect1:.*ready=0:hour=1:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=scr:hour_expect0_ready:.*ready=1:hour=0:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=scr:ready_hold_200:.*ready=1:hour=0:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=scr:ready_hold_260:.*ready=1:hour=0:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CY0_CYCLESET:sec=0:res=ok:.*:cdSec=0:.*soldBefore=100:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=poll_rerolled:.*:shelf=\\[0=[^,()]*@[0-9]+[:,]"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=scr:xfer_btn_cooling:.*view=0:.*ready=0:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_TH0_TXTRY:name=Bot1:.*:applied=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=poll_after_xfer:.*:used=1:cd=[1-9][0-9]*"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=scr:back_to_main:.*:view=0:.*:hour=5:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_PR0_PROMO:win=1200:res=ok:.*:cdSec=0:.*soldBefore=000:.*soldAfter=0+"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=scr:promo_active:.*promo=1:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=shape:promo_before:n=3:.*:csv=\\[0=astral_dice:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=shape:promo_after:n=5:prevN=3:same=1:sameHour=1:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_PR1_MENU:cls=CardShopMenu:shelf=5:.*:promo=1:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=poll_promo:.*:shelf=\\[0=[^,()]*@[0-9]+[:,]"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=scr:after_dbl_nocoin:.*denyT=[1-9][0-9]*:.*denyR=0:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=deny:.*:ticks=29:red=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=deny:.*:ticks=25:red=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=deny:.*:ticks=20:red=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=deny:.*:ticks=15:red=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=deny:.*:ticks=10:red=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=deny:.*:ticks=5:red=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=shot:.*what=deny:.*:redPx=[1-9][0-9]*"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=shot:.*what=deny:.*:redPx=0:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=shot:.*what=deny:.*:red=1:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=shot:.*what=deny:.*:redPx=[1-9][0-9]*"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=shot:.*what=deny:.*:grab=ok"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=scr:xfer_view_open:.*view=1:.*ready=1:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=win_500ms:dt=500ms:delta=0:sold1=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=win_200ms:dt=200ms:delta=-[0-9]+:sold1=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=qm_pre:card=[a-z0-9_]+:[a-z0-9_/]+"   // ⚠️ 行尾冒号陷阱：card id 就是行尾
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=scr:nat_t0:.*ready=0:hour=5:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=scr:nat_t0:.*sold=100000"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=scr:nat_t20:.*ready=0:hour=4:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=scr:nat_t40:.*ready=0:hour=2:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=scr:nat_t58:.*ready=0:hour=1:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=nat_cmp:at=400:.*:cleared=0:sameUnsold=1:diff=-:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=nat_cmp:at=800:.*:cleared=0:sameUnsold=1:diff=-:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=nat_cmp:at=1160:.*:cleared=0:sameUnsold=1:diff=-:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=scr:nat_t61:.*ready=1:hour=0:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=scr:nat_t61:.*sold=000000"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=nat_cmp:at=1250:.*:cleared=1:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=scr:nat_hold:.*ready=1:hour=0:"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "mixin",
+      "scope": "launch"
+    },
+    {
+      "type": "crash"
+    }
+  ]
+}

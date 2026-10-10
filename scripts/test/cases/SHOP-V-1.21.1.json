@@ -1,0 +1,403 @@
+{
+  "case_id": "SHOP-V-1.21.1",
+  "title": "卡牌商店·任务V：界面开着时装备/卸下经商立牌立即补差（+1 团队格、不缩架、不动计时器）+ 大酬宾只补差额牌不归零（界面开/关两种）+ 沙漏归 0 才重排 + 畸形存档不 IOOBE",
+  "version": "1.21.1",
+  "target": {
+    "type": "feature",
+    "ref": "card-shop"
+  },
+  "on_fail": "continue",
+  "steps": [
+    {
+      "op": "note",
+      "text": "任务V 1.21.1 实机验收（余额哨兵 775）：① 界面**开着**时装备经商立牌 ⇒ 同一调用内立即 +1 团队格（只出战斗牌），原牌/售价/售罄/计时器全不变；② 界面开着时卸下 ⇒ 不缩架；③ 大酬宾（界面开 / 界面关两种）只补差额牌、冷却不归零；④ 卸下后当前周期不变，等沙漏归 0 才按当时口径重排；⑤ 四列表长度始终一致、畸形存档不抛 IOOBE。界面场景全部由客户端探针 astral_shop_client.js 的 792 阶段机驱动，用例侧只做环境准备、窗口截图与收尾。"
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/tp @s ~ ~ ~ 0 0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1000
+    },
+    {
+      "op": "note",
+      "text": "基线：清 curio（经商立牌会改写团队格与售价）/ 清余额与冷却，再把余额设成哨兵值 775"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop curioreset CR0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop reset V0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop bal V 775",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "note",
+      "text": "开店并保持：openkeep 必须是最后一条**聊天注入**命令（界面开着后 T 键被 GUI 吞掉），之后所有驱动都走客户端探针的 sendCommand"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop openkeep KV0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 3500
+    },
+    {
+      "op": "screenshot",
+      "tag": "shopV-01",
+      "mode": "window",
+      "crop": true
+    },
+    {
+      "op": "wait",
+      "ms": 3500
+    },
+    {
+      "op": "screenshot",
+      "tag": "shopV-02",
+      "mode": "window",
+      "crop": true
+    },
+    {
+      "op": "wait",
+      "ms": 3500
+    },
+    {
+      "op": "screenshot",
+      "tag": "shopV-03",
+      "mode": "window",
+      "crop": true
+    },
+    {
+      "op": "wait",
+      "ms": 3500
+    },
+    {
+      "op": "screenshot",
+      "tag": "shopV-04",
+      "mode": "window",
+      "crop": true
+    },
+    {
+      "op": "wait",
+      "ms": 3500
+    },
+    {
+      "op": "screenshot",
+      "tag": "shopV-05",
+      "mode": "window",
+      "crop": true
+    },
+    {
+      "op": "wait",
+      "ms": 3500
+    },
+    {
+      "op": "screenshot",
+      "tag": "shopV-06",
+      "mode": "window",
+      "crop": true
+    },
+    {
+      "op": "wait",
+      "ms": 3500
+    },
+    {
+      "op": "screenshot",
+      "tag": "shopV-07",
+      "mode": "window",
+      "crop": true
+    },
+    {
+      "op": "wait",
+      "ms": 3500
+    },
+    {
+      "op": "screenshot",
+      "tag": "shopV-08",
+      "mode": "window",
+      "crop": true
+    },
+    {
+      "op": "wait",
+      "ms": 3500
+    },
+    {
+      "op": "screenshot",
+      "tag": "shopV-09",
+      "mode": "window",
+      "crop": true
+    },
+    {
+      "op": "wait",
+      "ms": 3500
+    },
+    {
+      "op": "screenshot",
+      "tag": "shopV-10",
+      "mode": "window",
+      "crop": true
+    },
+    {
+      "op": "wait",
+      "ms": 3500
+    },
+    {
+      "op": "screenshot",
+      "tag": "shopV-11",
+      "mode": "window",
+      "crop": true
+    },
+    {
+      "op": "wait",
+      "ms": 3500
+    },
+    {
+      "op": "screenshot",
+      "tag": "shopV-12",
+      "mode": "window",
+      "crop": true
+    },
+    {
+      "op": "wait",
+      "ms": 12000
+    },
+    {
+      "op": "note",
+      "text": "收尾：清生物（客户端探针已在场景末尾自关屏）"
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[type=!player,distance=..64]",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_V_BAL:want=775:got=775"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=hb:.*bal=775"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_KV0_OPENKEEP:menu=.*CardShopMenu"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=shape:v_open:n=3:.*:ct="
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_VE0_EQUIP:slot=stand:want=astral_dice:parunan_sign:err=none:.*:cdSame=1:attBefore=3:attAfter=[0-9]+"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=shape:v_equip:n=4:prevN=3:same=1:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_VM1_MENU:cls=CardShopMenu:shelf=4:.*:used=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_VM1_MIX:n=4:combat=[01]{3}1:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_VE1_EQUIP:slot=stand:want=none:err=none:.*:cdSame=1:attBefore=4:attAfter=4"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=shape:v_unequip:n=4:prevN=4:same=1:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_VM2_MENU:cls=CardShopMenu:shelf=4:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_VC0_CYCLESET:sec=0:res=ok:.*:cdSec=0:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=shape:v_cycle:n=3:prevN=4:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_VM3_MENU:cls=CardShopMenu:shelf=3:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_VP0_PROMO:win=1200:res=ok:.*:cdEndBefore=[0-9]+:cdEndAfter=[0-9]+:cdSame=1:shelfNBefore=3:shelfNAfter=5:attBefore=3:attAfter=5"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=shape:v_promo_open:n=5:prevN=3:same=1:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_VM4_MENU:cls=CardShopMenu:shelf=5:.*:promo=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_VP1_PROMO:win=20:res=ok:.*:cdSame=1:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_VC1_CYCLESET:sec=0:res=ok:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=shape:v_promo_expired:n=3:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_VM5_MENU:cls=CardShopMenu:shelf=3:.*:promo=0:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=v_out:phase=6:bal="
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_VP2_PROMO:win=1200:res=ok:.*:cdSame=1:shelfNBefore=3:shelfNAfter=5:attBefore=3:attAfter=5"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=shape:v_promo_closed:n=5:prevN=3:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_VM6_MENU:cls=CardShopMenu:shelf=5:.*:promo=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_VB1_BREAK:mode=short:n=5:in=1/0/0:new=ok:.*:ens=5/5/5/5:ws=5/5/5/5:wd=5/5/5/5:.*:restored=5"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_VB2_BREAK:mode=long:n=5:in=7/7/7:new=ok:.*:ens=5/5/5/5:ws=5/5/5/5:wd=5/5/5/5:.*:restored=5"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_VB3_BREAK:mode=mix:n=5:in=6/1/0:new=ok:.*:ens=5/5/5/5:ws=5/5/5/5:wd=5/5/5/5:.*:restored=5"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_VB[123]_BREAK:.*(EX:|newEX|storeEX)",
+      "scope": "whole"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_VC2_CYCLESET:sec=0:res=ok:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=shape:v_after_break:n=[0-9]+:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSC:evt=v_end:opens=2:"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_VE[01]_EQUIP:.*:err=EX",
+      "scope": "whole"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "mixin",
+      "scope": "launch"
+    },
+    {
+      "type": "crash"
+    }
+  ]
+}

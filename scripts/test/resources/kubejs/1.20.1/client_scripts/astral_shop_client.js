@@ -55,6 +55,35 @@ var csOpens = 0;
 var csSlot0Before = "?";
 var csBalBefore = -1;
 
+// ── MCP 手动模式（2026-10-10 夜，用户四步任务里的「MCP 实机测试」专用）──────────────
+// 触发口径：**钱包余额落在 [700,709]**（客户端 WalletState 读得到，无需文件/IO 类：KubeJS 类过滤器
+//   会拒 java.io/java.nio，JsonIO 通道在 1.20.1 不可靠 ⇒ 改用余额带，最直观也最好驱动）。
+// 生效时：本脚本**不再兜底关屏**（janitor 跳过）、不再跑脚本化序列，但保留 open/hold 只读机器行
+//   ⇒ MCP 可以用真实鼠标/键盘驱动界面并截图。
+// ⚠️ 为什么需要：openkeep 开出的界面服务端不会关，本脚本的 janitor 会在 step60(≈3s) 兜底关掉
+//   （实证 2026-10-10 02:23:01 AP_CSC:evt=janitor:opens=1:step=60:how=closeContainer=EX+setScreen），
+//   MCP 根本来不及操作。余额不落在该带内时行为与改动前完全一致（默认关闭，不影响既有用例）。
+var csMcpManual = false, csMcpLogged = 0, csMcpLastBal = -1;
+var CS_MCP_LO = 700, CS_MCP_HI = 709;
+
+/** 每 tick 求值（余额带），状态翻转时各落一行日志（带余额，便于判通道是否生效） */
+function csMcpLive(mc) {
+    var bal = csNum(function () { return WalletState_CLASS.balance(); });
+    csMcpLastBal = bal;
+    csMcpManual = (bal >= CS_MCP_LO && bal <= CS_MCP_HI);
+    if (csMcpManual && csMcpLogged !== 1) { csMcpLogged = 1; cs("evt=mcpmanual:on:tick=" + csTick + ":bal=" + bal); }
+    // MCP 手动模式下每 40t 落一行**客户端实际看到的鼠标位置**（GUI 单位，0..480/0..270）：
+    // 用于判定 MCP 的 move_mouse/click_screen 是否真的被 MC 收到（raw input / 坐标空间问题）。
+    if (csMcpManual && (csTick % 40 === 0)) {
+        var mx = -1, my = -1, sw = -1, sh = -1;
+        try { mx = mc.mouseHandler.xpos(); my = mc.mouseHandler.ypos(); } catch (eM) { }
+        try { sw = mc.getWindow().getGuiScaledWidth(); sh = mc.getWindow().getGuiScaledHeight(); } catch (eW) { }
+        cs("evt=mcpmouse:tick=" + csTick + ":gx=" + Math.round(mx) + ":gy=" + Math.round(my) + ":gw=" + sw + ":gh=" + sh + ":scr=" + (mc.screen == null ? "null" : ("" + mc.screen).substring(0, 60)));
+    }
+    else if (!csMcpManual && csMcpLogged === 1) { csMcpLogged = 0; cs("evt=mcpmanual:off:tick=" + csTick + ":bal=" + bal); }
+    return csMcpManual;
+}
+
 function cs(s) {
     try { console.info("AP_CSC:" + s); } catch (e) { }
 }
@@ -419,7 +448,8 @@ ClientEvents.tick(event => {
     var mc = null;
     try { mc = Mc_CLASS.getInstance(); } catch (e0) { return; }
     if (mc == null || mc.level == null) return;
-    csForeignJanitor(mc);
+    var mcpManual = csMcpLive(mc);   // MCP 手动模式（默认关）：开了就只做只读诊断，绝不关屏/跑场景
+    if (!mcpManual) { csForeignJanitor(mc); }
     if (csTick === 40) { cs("evt=boot:tick=" + csTick + ":shopCls=" + (ShopScreen_CLASS == null ? "null" : "ok")); }
     if ((csTick === 60 || csTick % 600 === 0) && mc.screen == null) { csVis(mc); }
     if (csTick === 200 || (csTick - csJeiLast) >= 1200) { csJeiLast = csTick; csJei(); }
@@ -438,10 +468,10 @@ ClientEvents.tick(event => {
         cs("evt=open:tick=" + csTick + ":opens=" + csOpens + ":gate=" + gbal + ":run=" + (csRun ? 1 : 0) + ":" + csState(mc));
     }
     csStep++;
-    if (csRun) {
+    if (csRun && !mcpManual) {
         csRunFirst(mc, csStep);
         if (csStep === 112) { cs("evt=leaveauto:how=" + csClose(mc)); }
-    } else if (csStep === 60) {
+    } else if (csStep === 60 && !mcpManual) {
         // 屏幕管理员: 非武装的商店界面(服务端已在下单 tick 用关闭包关掉),这里兜底再关一次
         cs("evt=janitor:opens=" + csOpens + ":step=" + csStep + ":how=" + csClose(mc));
     } else if (csStep % 40 === 0) {

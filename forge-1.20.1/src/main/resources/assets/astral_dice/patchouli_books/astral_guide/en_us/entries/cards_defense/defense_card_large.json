@@ -7,8 +7,7 @@
       "type": "patchouli:spotlight",
       "item": "astral_dice:defense_card_large",
       "text": "astral_dice.guide.entry.defense_card_large.1"
-    },
-    { "type": "patchouli:spotlight", "item": "astral_dice:card_shop", "text": "astral_dice.guide.entry.card_obtain" }
+    }
   ],
   "sortnum": 1
 }

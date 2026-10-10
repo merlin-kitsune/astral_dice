@@ -7,8 +7,7 @@
       "type": "patchouli:spotlight",
       "item": "astral_dice:effect_card_berserk",
       "text": "astral_dice.guide.entry.effect_card_berserk.1"
-    },
-    { "type": "patchouli:spotlight", "item": "astral_dice:card_shop", "text": "astral_dice.guide.entry.card_obtain" }
+    }
   ],
   "sortnum": 1
 }

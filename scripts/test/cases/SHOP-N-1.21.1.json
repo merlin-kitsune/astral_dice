@@ -1,0 +1,340 @@
+{
+  "case_id": "SHOP-N-1.21.1",
+  "title": "卡牌商店·任务N：主视图按钮顺序（星光兑换在左/转账在中）/ 转账面板整体 2× 与控件命中 / 返回键无多余 <",
+  "version": "1.21.1",
+  "target": {
+    "type": "feature",
+    "ref": "card-shop"
+  },
+  "on_fail": "continue",
+  "steps": [
+    {
+      "op": "note",
+      "text": "任务N 1.21.1 实机验收（哨兵 786）：① 主视图两个按钮（星光兑换在左 / 转账在中）与贴图是否对得上；② 转账二级面板整体 2× 后面板底图/列表/头像/搜索框/金额框/滚动条/按钮/文字全部按同比例放大且真实控件命中与绘制同一坐标；③ 返回键不再有多余的 < 字符。全部动作 = 客户端探针按真实屏幕事件（mouseClicked/mouseReleased）派发，绝不用合成业务载荷。"
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/tp @s ~ ~ ~ 0 0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1000
+    },
+    {
+      "op": "note",
+      "text": "候选名单需要 >6 人才能让自定义滚动条激活 ⇒ 用 Carpet 招 8 个假玩家（真 ServerPlayer）作为转账候选。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/carpet allowSpawningOfflinePlayers true",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/player Bot1 spawn",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 250
+    },
+    {
+      "op": "inject_command",
+      "command": "/player Bot2 spawn",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 250
+    },
+    {
+      "op": "inject_command",
+      "command": "/player Bot3 spawn",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 250
+    },
+    {
+      "op": "inject_command",
+      "command": "/player Bot4 spawn",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 250
+    },
+    {
+      "op": "inject_command",
+      "command": "/player Bot5 spawn",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 250
+    },
+    {
+      "op": "inject_command",
+      "command": "/player Bot6 spawn",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 250
+    },
+    {
+      "op": "inject_command",
+      "command": "/player Bot7 spawn",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 250
+    },
+    {
+      "op": "inject_command",
+      "command": "/player Bot8 spawn",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 250
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "note",
+      "text": "①a 开店瞬间余额哨兵 786 + 冷却 8s（**必须在开屏前设好**：界面开着时后续注入的聊天命令会被 GUI 吞掉，实测把冷却写在 openkeep 之后无效）：探针在第 2 tick 截主视图（沙漏非零帧 + 中按钮禁用态），随后逐 tick 等冷却自然归零。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop bal N0 786",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop cycleset N0 8",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "note",
+      "text": "①a→①b 开屏（此后界面一直开着，冷却在 8 秒内自然归零；探针每 tick 轮询 cd，归零那一拍截主视图并开始面板时序）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop openkeep N0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1100
+    },
+    {
+      "op": "note",
+      "text": "冷却自然归零 ⇒ 中按钮(转账)变为可用；此后探针按相对 tick 排程：点中按钮进面板 → 面板几何自检 → 选候选行0 → 选第4档金额 → 点搜索框 → 点金额框 → 点滚动条轨道翻页 → 点返回键 → 主视图截图 → 自关。"
+    },
+    {
+      "op": "wait",
+      "ms": 26000
+    },
+    {
+      "op": "screenshot",
+      "tag": "shopN-786-run",
+      "mode": "window",
+      "crop": true
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=open:.*:gate=786:.*:n=1:"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=n_pre:.*:bal=786:tpX=18:tpY=-41:scale=2"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=scr:n_main_cd:.*:cd=[1-9]\\d*:.*:view=0:ready=0:hour=[1-5]:"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=scr:n_left:.*:view=0:"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=n_left:view=0:"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=scr:n_cd0:.*:cd=0:.*:view=0:ready=1:hour=0:"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=scr:n_tp_open:.*:view=1:"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=n_geo:mod=scale=2:panel=18,-41:.*:calc=scale=2:panel=18,-41:back=222,-25:confirm=238,29:limit0=230,93:limit3=230,183:row0=98,25:search=98,-21:refresh=164,-21:amount=238,65:slide=186,15:bg=184x270:agree=1"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=m_click:.*:what=row0:.*:ret=1:"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=n_row:sel=[0-9]+:view=1"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=n_limit:amount=20"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=m_click:.*:what=search_box:.*:ret=1:"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=n_focus:what=search:kind=search"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=m_click:.*:what=amount_box:.*:ret=1:"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=n_focus:what=amount:kind=amount"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=m_click:.*:what=scroll_rail_low:.*:ret=1:"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=m_click:.*:what=back:.*:ret=1:"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=scr:n_back:.*:view=0:"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=n_end:.*:how="
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=shot:.*:what=n_main_cd:.*:grab=ok"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=shot:.*:what=n_main:.*:grab=ok"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=shot:.*:what=n_tp_open:.*:grab=ok"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=shot:.*:what=n_row:.*:grab=ok"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=shot:.*:what=n_limit:.*:grab=ok"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=shot:.*:what=n_focus_search:.*:grab=ok"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=shot:.*:what=n_scroll:.*:grab=ok"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=shot:.*:what=n_back:.*:grab=ok"
+    },
+    {
+      "type": "absent",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=humankeep",
+      "scope": "case"
+    },
+    {
+      "type": "absent",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=(deny|poll|nat|hold):",
+      "scope": "case"
+    },
+    {
+      "type": "absent",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=n_nocd",
+      "scope": "case"
+    }
+  ]
+}

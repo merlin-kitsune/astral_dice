@@ -20,7 +20,43 @@ public final class CardShopClientState {
 
     private static volatile List<CardShopTransferListPayload.Entry> transferCandidates = List.of();
 
+    /** 拒绝信号闪烁总时长（tick）：30t = 5t 一相 × 6 相 = 红白交替 **3 次**（2026-10-09 §4 用户裁决） */
+    public static final int DENY_BLINK_TICKS = 30;
+    /** 拒绝信号剩余 tick（0 = 不闪）；由 {@code CardShopDenyPayload} 置位、屏幕每 tick 递减 */
+    private static volatile int denyTicks = 0;
+    /** 拒绝原因（{@code CardShopMenu.DENY_NO_COIN} / {@code DENY_INVENTORY_FULL}；仅给提示文案用） */
+    private static volatile int denyReason = 0;
+
     private CardShopClientState() {}
+
+    /** 服务端下发「请求被拒」时调用：起 30t 倒计时（每 5t 交替一次红/白 = 共 3 次闪红） */
+    public static void notifyDeny(int reason) {
+        denyReason = reason;
+        denyTicks = DENY_BLINK_TICKS;
+    }
+
+    /** 屏幕每 tick 调用一次；返回剩余 tick（0 = 已结束） */
+    public static int tickDeny() {
+        if (denyTicks > 0) {
+            denyTicks--;
+        }
+        return denyTicks;
+    }
+
+    /** 当前相位是否画成**红色**：t∈[26,30] / [16,20] / [6,10] 三个红相（其余相为白/常规色） */
+    public static boolean denyBlinkRed() {
+        return denyTicks > 0 && ((denyTicks - 1) / 5) % 2 == 1;
+    }
+
+    /** 剩余闪烁 tick（0 = 不闪） */
+    public static int denyTicks() {
+        return denyTicks;
+    }
+
+    /** 拒绝原因（0 = 余额不足、1 = 物品栏已满） */
+    public static int denyReason() {
+        return denyReason;
+    }
 
     public static void setTransferCandidates(List<CardShopTransferListPayload.Entry> entries) {
         transferCandidates = List.copyOf(entries);
@@ -31,8 +67,10 @@ public final class CardShopClientState {
         return transferCandidates;
     }
 
-    /** 关闭界面时清空，避免下次打开闪现上一次的名单 */
+    /** 关闭界面时清空，避免下次打开闪现上一次的名单 / 残留闪烁 */
     public static void clear() {
         transferCandidates = List.of();
+        denyTicks = 0;
+        denyReason = 0;
     }
 }
