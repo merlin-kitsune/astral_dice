@@ -4276,3 +4276,14 @@ mt.ps1 --version 线 --phase stop 关闭测试实例（gradle 守护进程保留
 
 - **教训 13（新）：断言不要锚「会随流程变化的初值」**。本轮临时用例把 `begin:stage=1` 写死，而自检本身会把阶段 1→2 ⇒ 复用存档（第二次登录）就会假红；正断言应锚**本次操作前后**的稳定事实（如 `kill:first_tier=1:stage_after=2`），可变初值用 `[0-9]+` 通配。
 - **教训 14（新）：机器行统计口径必须与用例期望一致**。`AP_EVENT_REG: count=13:pool=…` 的 `pool` 曾按「非 secretOnly 且在池 ⇒ 12」，后改为**静态在池口径**（只按 `inPublicPool` ⇒ 13）；口径变更必须同批改机器行注释与用例期望，否则会以「框架不一致」的假象失败（真实抽取走 `publicPool(Player)`，队内有侦探时才含 13）。
+
+
+**续 76 补 2（2026-10-10 事件效果实装）**：
+- **教训 15（新）：属性修饰符的 1.20.1/1.21.1 三处差异**（写跨线属性增益必踩）——① 修饰符键：1.20.1 = **`UUID`**（建议 `UUID.nameUUIDFromBytes(("astral_dice:"+key).getBytes(UTF_8))` 派生稳定 UUID），1.21.1 = **`ResourceLocation`**；② 金额读取：1.20.1 = **`getAmount()`**，1.21.1 = **`amount()`**；③ 操作常量：1.20.1 = **`AttributeModifier.Operation.ADDITION`**，1.21.1 = **`Operation.ADD_VALUE`**；④ 另外 `LivingEntity#getAttribute(...)` 在 1.20.1 收 **`Attribute`**、1.21.1 收 **`Holder<Attribute>`**。镜像时若只改一半，`javac` 会以「不兼容的类型: ResourceLocation 无法转换为 UUID」「找不到符号」逐条报出（本轮实测 15 → 10 → 4 → 0）。
+- **教训 16（新）：跨行文本替换必须按**行尾归一化**做**。用 `\n` 拼接的锚点字符串去 `String.replace` **行尾为 CRLF** 的源文件会**静默不命中**（本轮就因此白跑一轮编译）。⇒ 跨线脚本一律先把锚点与文件按 `\r\n` 归一再替换，或直接按**行号 splice**。
+
+
+**续 76 补 3（2026-10-10 事件效果 P0/P1 复盘）**：
+- **教训 17（新）：给方法新增形参却在方法体里没用**，`javac` 不报错 —— 本轮 `publicEvent(id, polarity, radius, durationTicks, effect)` 两个新形参被静默丢弃，12 条事件全部退化成 `NOOP`/时长 0（编译两线全绿）。判据：改签名后 `grep` 方法体内是否真的出现 `effect,` / `durationTicks))`。
+- **教训 18（新）：惰性 API 必须接上周期调用点**。「到期用惰性检测」的前提是**有人周期性调用** `remaining(...)`；本轮 `remaining()` 全仓无调用点 ⇒ 到期回调永不执行（属性增益与治疗封锁会永久残留）。修法：`EventEffects#onPlayerTick` 每 10 tick 遍历 `EventTimerStore.activeEventIds(player)` 调一次 `remaining(...)`。
+- **教训 19（新）：CRLF 锚点必须行尾归一**（同教训 16 的具体踩法）—— 用 `\n` 拼的锚点去替换 CRLF 文件**静默不命中**，本轮白跑两轮编译；跨线脚本一律先行尾归一或按行号 splice。

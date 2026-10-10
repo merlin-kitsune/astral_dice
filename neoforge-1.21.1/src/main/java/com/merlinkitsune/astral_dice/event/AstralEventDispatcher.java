@@ -113,6 +113,8 @@ public final class AstralEventDispatcher {
                 event.effect().apply(serverLevel, bonusTriggerer, target, event, source, tier);
             }
         }
+        // 集合层结算（取长补短需要整个受影响集合）
+        EventEffects.afterDispatch(event, targets);
         AstralEventSystem.applyEventBonus(bonusTriggerer, event.id().toString(), targets);
         LOGGER.info("AP_EVENT_FIRE: id={}:src={}:tier={}:targets={}", event.id(), source, tier, targets.size());
         // ⑤ 升阶(用户裁决 R1:在<b>触发之后</b>推进;只有击杀隐匿调查目标可提升,上限 4)

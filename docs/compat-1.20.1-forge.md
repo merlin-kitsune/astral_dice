@@ -217,3 +217,9 @@ datagen:`RecipeOutput` → `Consumer<FinishedRecipe>`(`.save(output::accept)`);`
 
 6. **Curios 访问器（事件体系补丁新增）**：1.20.1 线统一走平台层 **`com.merlinkitsune.starenginelib.item.CuriosCompat.getCuriosInventory(player)`**（`findFirstCurio` 可用），**不要**用 `top.theillusivec4.curios.api.CuriosApi` —— 直接镜像 1.21.1 的写法会在 1.20.1 编译失败（`找不到符号`）。
 7. **`ModEffects.*` 的取用**：1.20.1 是 `RegistryObject<MobEffect>`，凡传参给 `hasEffect` / `MobEffectInstance` 都必须 `.get()`；`EventDrawBlock` 的交互入口在 1.20.1 是六参 `use(...)`（1.21.1 是 `useWithoutItem(...)`）。
+
+
+8. **瞬态属性修饰符（事件效果引入）**：1.20.1 用 `UUID` 键 + `getAmount()` + `Operation.ADDITION` + `getAttribute(Attribute)`；1.21.1 用 `ResourceLocation` 键 + `amount()` + `Operation.ADD_VALUE` + `getAttribute(Holder<Attribute>)`。两线的 `EventEffects#setAttack/setMobAttribute` 因此各有一份平台实现（forge 侧另有 `modifierId(String)` 由 key 派生稳定 UUID）。
+
+
+9. **玩家 tick 事件（事件效果到期检测引入）**：1.21.1 是 `net.neoforged.neoforge.event.tick.PlayerTickEvent.Post`（`event.getEntity()`）；1.20.1 是 `net.minecraftforge.event.TickEvent.PlayerTickEvent`（需判 `event.phase == Phase.END`、用 `event.player`）。`EventEffects#onPlayerTick` 因此两线各一份。
