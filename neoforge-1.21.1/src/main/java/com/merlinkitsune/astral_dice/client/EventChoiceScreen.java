@@ -41,6 +41,8 @@ public class EventChoiceScreen extends Screen {
     private static final int TITLE_Y = 13;
     private static final int TITLE_W = 38;
     private static final int TITLE_H = 16;
+    /** 默认字体字形四边形的高（bitmap provider 的 {@code height:8}；{@code Font#lineHeight} 为 9）。 */
+    private static final int GLYPH_QUAD_H = 8;
 
     private static final int CARD_Y = 32;
     private static final int CARD_FIRST_X = 15;
@@ -141,10 +143,21 @@ public class EventChoiceScreen extends Screen {
         //    同源：剩余 tick 由服务端权威下发（EventChoiceTickPayload，每秒一次），客户端**不再**自己递减
         //    （2026-10-11 用户裁决「以服务端剩余 tick 为准，别各算一套」；到点由服务端 forceFirst 结算并关界面）。
         guiGraphics.blit(TITLE_TEX, ox + TITLE_X, oy + TITLE_Y, 0.0F, 0.0F, TITLE_W, TITLE_H, TITLE_W, TITLE_H);
-        Component countdown = Component.literal(formatCountdown(serverRemainingTicks));
+        // 2026-10-11 微调（用户裁决「顶部时间没完全居中」）：倒计时按**字体 advance 推出的墨迹 bbox** 居中，
+        // 而不是 (条宽 - advance) / 2 的整数除 —— 后者按 advance（含末字符右侧 1px 字距）而非墨迹算，
+        // 且末位小数被整数除截断：实测墨迹中心比标题条中心偏左上各 0.5 GUI px。
+        // 依据（MC 1.21.1 源码，非推测）：
+        //   * BitmapProvider#load 里每个字形的 advance = (int)(0.5 + inkWidth * scale) + 1 ⇒ advance = 墨迹宽 + 1；
+        //   * SheetGlyphInfo#getBearingLeft() 默认 0，BitmapProvider 未覆写 ⇒ 字形四边形左 bearing = 0；
+        //   ⇒ 一行文本的墨迹连续区间 = [x, x + advance - 1)（末字符右侧那 1px 字距不是墨迹）。
+        // 让墨迹覆盖的像素列与标题条覆盖的像素列（TITLE_X .. TITLE_X + TITLE_W - 1）同中心
+        //   ⇒ x = TITLE_X + (TITLE_W + 1 - advance) / 2（比按 advance 居中多 0.5，即半像素量）。
+        // 倒计时只含 0-9 与 ':'，在 ascii.png 里墨迹都自格内第 0 列起（已用位图逐个核对），故墨迹起点 = 绘制起点。
+        String countdown = formatCountdown(serverRemainingTicks);
+        int advance = this.font.width(countdown);
         guiGraphics.drawString(this.font, countdown,
-                ox + TITLE_X + (TITLE_W - this.font.width(countdown)) / 2,
-                oy + TITLE_Y + (TITLE_H - 8) / 2, 0xFFFFFFFF, false);
+                ox + TITLE_X + (TITLE_W + 1 - advance) / 2.0F,
+                oy + TITLE_Y + (TITLE_H + 1 - GLYPH_QUAD_H) / 2.0F, 0xFFFFFFFF, false);
         // 2) 两张事件卡（与现有事件卡同口径：框架图 + 事件图标 + MC 字体名称/计时器）
         for (int i = 0; i < 2; i++) {
             boolean lit = this.selectedIndex == i || this.overCard(i, mouseX, mouseY);
