@@ -51,7 +51,6 @@ public final class EventChoiceManager {
     public static final int CHOICE_TIMEOUT_TICKS = 15 * 20;
 
     /** 确认后「等待 1 秒 → 关闭界面 → 再进入事件触发流程」里的那 1 秒（20 ticks）。 */
-    public static final int CONFIRM_DELAY_TICKS = 20;
 
     private static final Map<UUID, Session> SESSIONS = new ConcurrentHashMap<>();
 
@@ -139,11 +138,11 @@ public final class EventChoiceManager {
         //    FannySignItem#handleUse → BaseSignItem#performSkill 播出，此处不重复。
         //    关闭包先发（客户端先关掉界面），同一 tick 内紧接着走既有事件触发流程
         //    （弹卡 → 1.4s 动画 + 0.5s → 结算/音效）。
-        EventCardService.schedule(level, CONFIRM_DELAY_TICKS, lvl -> {
-            SESSIONS.remove(player.getUUID(), session);
-            PacketDistributor.sendToPlayer(player, new EventChoiceClosePayload(token));
-            AstralEventDispatcher.trigger(player, session.chosen(), AstralEventTrigger.ACTIVE_SKILL);
-        });
+        // 用户裁决 2026-10-11：**移除确认后的 1 秒等待** —— 关界面与事件触发都在本 tick 立即执行；
+        // 主动技能音效只在按下技能键那一刻播（BaseSignItem#performSkill），确认时不再有任何音效。
+        SESSIONS.remove(player.getUUID(), session);
+        PacketDistributor.sendToPlayer(player, new EventChoiceClosePayload(token));
+        AstralEventDispatcher.trigger(player, session.chosen(), AstralEventTrigger.ACTIVE_SKILL);
     }
 
     /** 强制触发第一个选项（超时 / 死亡 / 登出）：不播主动技能音效，直接关界面并走事件触发流程。 */
