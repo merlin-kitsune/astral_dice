@@ -6,17 +6,21 @@
 3. 涉及平台差异时：`docs/compat-1.20.1-forge.md`（forge）或 `docs/compat-26.1.2-neoforge.md`（26.1.2）
 
 ## 基本盘
-- 工作树：`F:\MCProject\astral_dice_multiloader-next`（分支 `multi-dev-next`，HEAD 交接时 `54a6e576`，四线版本 `2.0.0-SNAPSHOT.79`，工作树干净、未 push）
+- 工作树：`F:\MCProject\astral_dice_multiloader-next`（分支 `multi-dev-next`，HEAD 交接时 `d2299def`，四线版本 `2.0.0-SNAPSHOT.84`，工作树干净、未 push）
 - 另一常驻工作树 `F:\MCProject\astral_dice_multiloader`（multi-main，封包态）：**禁止触碰**；收尾核对它必须为空且 HEAD 不变
 - 优先级：**P0 = neoforge-1.21.1 + forge-1.20.1（同批）**；**P1 = neoforge-26.1.2 + fabric-1.20.1（待移植）**
 
 ## 已完成（P0 两线对等）
-13 个事件体系 + 事件效果卡 GUI（0.2s 进 / 1.0s 停 / 0.2s 缩小淡出，弹卡后 38t 结算，触发音效）+ 大侦探立牌主动技能「事件选择界面」（2 选 1、15s 超时/死亡/登出强触发第一项、确认即触发无等待、音效仅按键时播）+ 调查阶段 4 阶分阶图标与 1:00 计时器 + 全模组发币优先入星币钱包 + 手册/tooltip 文案同步（.61 → .79，提交清单见交接文档 §3）
+13 个事件体系 + 事件效果卡 GUI（0.2s 进 / 1.0s 停 / 0.2s 缩小淡出，弹卡后 38t 结算，触发音效）+ 大侦探立牌主动技能「事件选择界面」（2 选 1、15s 超时/死亡/登出强触发第一项、确认即触发无等待、音效仅按键时播）+ 调查阶段 4 阶分阶图标与 1:00 计时器 + 全模组发币优先入星币钱包 + 手册/tooltip 文案同步 + **卡牌商店方块（四态朝向 + 自有碎裂粒子）**（.61 → .83，提交清单见交接文档 §3）
+
+最近一批（.83, `d2299def`）修了两处缺陷并已双线实机 PASS：
+- 事件卡淡出后**文字残留**（根因：原版 `Font#adjustColor` 把 alpha<4 强制弹回不透明）⇒ `EventCardOverlay` 画文字前 `if (a >= 4)`；
+- 卡牌商店方块**放置恒朝北 + 敲碎粒子紫黑** ⇒ 改 `HorizontalDirectionalBlock` 四态 `facing` + 模型补 `particle` 键（另含 1.21.1 必需的 `codec()` 补全）。
 
 ## 立即待办（按用户指令选一个）
-A. **P1 移植**：把上述功能移植到 `neoforge-26.1.2` 与 `fabric-1.20.1`，每条线按流程走：`mt_build` → `scripts/verify/**` 守门 → `code_review` → 实机（需用户下达）。注意：这两线 lang 与 ModTooltipHandler 里仍是旧「麻烦制造者」文案，移植时一并改。
-B. **子代理模型 mimo/kimi 复验**：在**全新会话**里试 `subagent` 选 `mimo-v2.6-pro` / `k3`（旧会话因构造期策略禁用，重启无效）。
-C. 用户指定的其它任务。
+A. **P1 移植**：把 .61~.83 全批移植到 `neoforge-26.1.2` 与 `fabric-1.20.1`（已核：两线**没有** `client/EventCardOverlay.java` 与 `block/CardShopBlock.java` ⇒ 整体新建）。每条线按流程走：`mt_build` → `scripts/verify/**` 守门 → `code_review` → 实机（需用户下达）。移植时必须带上 `a>=4` 文字守卫与四态 `facing`/`particle` 修复；两线 lang 与 ModTooltipHandler 仍是旧「麻烦制造者」文案，一并改。
+B. **筹码商店接线**：`models/block/chip_shop.json` + `textures/block/chip_shop.png` 已就位（仅 P0 两线），方块/实体/物品/配方/语言键尚未加。
+C. 用户指定的其它任务（sound/ 21 个 wav 转 ogg、设计待裁决项等，见交接文档 §5）。
 
 ## 常用命令（务必 pwsh，禁止 5.1）
 ```powershell
@@ -31,7 +35,7 @@ pwsh -NoProfile -File tools/check_lang_sync.ps1 -LangDir neoforge-1.21.1/src/mai
 手动启动游戏（人工自测）：双击 `run/Start-1.21.1.bat`（或 1.20.1 / 26.1.2）——脚本只做启动，无任何前置判断。
 
 ## 必须遵守的几条铁律
-1. **复核一律用 `code_review`**（一次性独立会话，brief 一次写全，禁止把主会话结论当事实喂它）；
+1. **复核优先用 `code_review`**（一次性独立会话，brief 一次写全，禁止把主会话结论当事实喂它）；该工具实例报错/超时 ⇒ 改派**一次性独立子代理**承担，判据规格不变（本仓 .83 批已按此路径完成 R1..R8 复核）；
 2. **实机验证必须由用户明确下达**；靶子非亡灵；收尾 `--purge-saves` + 删探针 + 贴 `git status`；
 3. **每次提交升四线版本 + 两份 CHANGELOG**；默认 `git push` 禁止；
 4. **不改动另一工作树**；写文件用绝对路径；
@@ -39,7 +43,13 @@ pwsh -NoProfile -File tools/check_lang_sync.ps1 -LangDir neoforge-1.21.1/src/mai
 6. **payload 类不得直接引用 net/minecraft/client/**（专服会崩），客户端动作下沉 helper + dist 守卫**；
 7. **批处理脚本空参要用 `if not "%~1"==""` 守卫**；手动启动脚本不要加前置判断。
 
+## 子代理与实机的小抄（踩过的坑）
+- 子代理默认 **DeepSeek**（`provider=deepseek-official` / `model=deepseek-flash`，实测可用）；mimo/kimi 在本 tool 实例被构造期禁用。
+- 一个子代理只做一个任务、用完即弃、brief 自包含；**先验证后下结论**、每条结论附证据、优先找反例、取不到证据写「无法判定」。
+- KubeJS 探针：命令同 tick 不生效（tick 末落地）⇒ 清空用 API 直写，摆位与放置拆两个 tick；Rhino 没有 `setYRot`，转向用 `teleport(...,yaw,pitch)`。
+- 实机收尾判据：`MT_CLEANUP_SAVES: PURGED n` + `MT_CLEANUP_RESULT: OK`；再核 `fml.modFolders` java 进程数 = 0。
+
 ## 交接时的工作树状态
-- HEAD `54a6e576`；`git status --short -uall` **空**；四线 jar 均已构建到 `.79` 并推入各自 `run/<线>/mods`；
+- 生成时基线 HEAD `d2299def`；本文件随 `.84` 提交落地（最新 HEAD 以 `git log -1` 为准）；`git status --short -uall` **空**；四线 jar 已构建到 `.83`（`.84` 为文档提交，不改代码，无需重建）；
 - 测试世界在最后一次实机收尾时已 `--purge-saves` 清理 ⇒ 下次实机先 `--phase env`；
 - 未提交内容：无。

@@ -1,8 +1,9 @@
 # 交接文档 — astral_dice_multiloader-next（开发线 multi-dev-next）
 
-> 生成：2026-10-11 16:45（Asia/Hong_Kong）｜工作树 `F:\MCProject\astral_dice_multiloader-next`
-> 分支 `multi-dev-next`｜HEAD **`54a6e576`**｜四线版本 **`2.0.0-SNAPSHOT.79`**（四条线同号）
+> 生成：2026-10-11 20:20（Asia/Hong_Kong）｜工作树 `F:\MCProject\astral_dice_multiloader-next`
+> 分支 `multi-dev-next`｜生成时基线 HEAD **`d2299def`**（本文件随 `.84` 提交落地；最新值以 `git log -1` 为准）｜四线版本 **`2.0.0-SNAPSHOT.84`**（四条线同号）
 > 工作树状态：**干净**（`git status --short -uall` 空）；**未 push**。
+> 新会话提示词：`docs/handover-new-session-context.md`（可整份复制给新会话）。
 
 ---
 
@@ -11,11 +12,12 @@
 | 项 | 值 |
 |---|---|
 | 优先级模型 | **P0 = neoforge-1.21.1 + forge-1.20.1（同批、优先）**；**P1 = neoforge-26.1.2 + fabric-1.20.1（待移植）** |
-| 功能对等现状 | **P0 两线已对等**（事件体系 + 事件卡 GUI + 事件选择界面 + 发币漏斗 + 手册/tooltip 文案）；**P1 两线未移植** |
+| 功能对等现状 | **P0 两线已对等**（事件体系 + 事件卡 GUI + 事件选择界面 + 发币漏斗 + 手册/tooltip 文案 + 卡牌商店方块）；**P1 两线未移植** —— 已核：`neoforge-26.1.2` 与 `fabric-1.20.1` 目录下**不存在** `client/EventCardOverlay.java` 与 `block/CardShopBlock.java` |
 | 构建 | `pwsh -NoProfile -File scripts/test/mt_build.ps1 --version <线> --timeout 300` ⇒ `MT_BUILD: OK` |
 | 实机 | `mt.ps1 --version <线> --phase env` → `--phase launch`；**收尾 `--phase stop --force --purge-saves`** |
-| 手动启动（人工自测） | 双击 `run/Start-<线>.bat`（6 行：cd → gradlew :<线>:runClient → pause，**无任何前置判断**） |
-| 复核 | **一律 `code_review`**（一次性独立会话；不再派 subagent 做复核） |
+| 手动启动（人工自测） | 双击 `run/Start-<线>.bat`（只启动，**无任何前置判断**） |
+| 复核 | `code_review` **优先**（一次性独立会话）；若该工具实例报错/超时 ⇒ 改派**一次性独立子代理**承担，brief 规格不变（见 §1） |
+| 子代理模型 | 默认 **DeepSeek**（`provider=deepseek-official` / `model=deepseek-flash`，本会话 4 个子代理实测可用）；mimo/kimi 在本 tool 实例被构造期禁用 |
 | 实机验证 | **必须由用户明确下达**；未实机的欠账如实登记 |
 
 ---
@@ -30,7 +32,7 @@
 - 只用 **pwsh 7**；多行/含 if 表达式 ⇒ 落盘 `temp/tNN/*.ps1` 再 `pwsh -NoProfile -File`；调用本仓脚本必须写全 `pwsh -NoProfile -File …`。
 
 **版本与提交**
-- **每次提交升一版**（四线同号）+ 两份 CHANGELOG 段头同步；产物名 `astral_dice-<版本>+<加载器>.jar`。
+- **每次提交升一版**（四线同号）+ 两份 CHANGELOG 段头（`## 未发布（<版本>）` / `## Unreleased (<版本>)`）同步；产物名 `astral_dice-<版本>+<加载器>.jar`。
 - **默认不 git push**；远端操作走代理 `http://127.0.0.1:7897`。文件按 CRLF 维护。
 
 **依赖与联动**
@@ -40,7 +42,7 @@
 
 **测试与验收**
 - 机器守门：`verify_event_registry.ps1` / `verify_resource_integrity.ps1` / `verify_forge_loader_gate.ps1` / `verify_chip_recipes.ps1` / `tools/check_lang_sync.ps1` / `tools/verify_effect_icons.py` / `tools/audit_patchouli_keys.py`。
-- 二次验证 = **`code_review`**：把「复核对象 + 期望不变量 R1..Rn + 逐字证据要求」一次写全；**禁止**把主会话结论当事实喂给它。
+- 二次验证 = `code_review`：把「复核对象 + 期望不变量 R1..Rn + 逐字证据要求」一次写全；**禁止**把主会话结论当事实喂给它。**备用**：工具实例失败时改派一次性子代理，规格同上（本仓 .83 批已按此路径完成 R1..R8 复核）。
 - 实机：用户下达才做；靶子**非亡灵**；收尾带 `--purge-saves`（判据 `MT_CLEANUP_SAVES: PURGED n` + `MT_CLEANUP_RESULT: OK`）+ 删临时探针 + 贴 `git status` 原文。
 - 子代理：**一个子代理只做一个任务**，用完即弃，brief 自包含。
 
@@ -69,6 +71,8 @@ pwsh -NoProfile -File scripts/test/mt_inject.ps1 key --key skill
 pwsh -NoProfile -File scripts/test/mt_inject.ps1 cmd -Command "/astralprobecard red" --version 1.21.1
 ```
 
+> 写探针前必读：KubeJS 命令在**本 handler 同 tick 不生效**（tick 末才落地），详见 §6-11。
+
 ---
 
 ## 3. 已完成进度（按批次，含提交）
@@ -92,8 +96,13 @@ pwsh -NoProfile -File scripts/test/mt_inject.ps1 cmd -Command "/astralprobecard 
 | CHANGELOG 一致性 | .78 | 35958f5f | 删除自相矛盾的旧口径 |
 | tooltip 顺序 | .79 | 78525209 | 主动标题→主动正文→被动标题→被动正文 |
 | 卡面素材更新 | .79 | 54a6e576 | fanny_skill_event / _select 换新素材（两线逐字节一致） |
+| 交接文档 | .80 | b67f017f | 新建交接文档 + 新会话上下文（mimo/kimi 遗留等） |
+| AGENTS 规则 | .81 | 1c937e9c | 开发流程 + 七条铁律入 AGENTS；过时「三线同批」口径归档 |
+| 子代理模型 | .82 | 2b2ba338 | 派发默认 DeepSeek，其它模型仅作备份 |
+| 卡文字残留 / 商店方块 | .83 | d2299def | 事件卡淡出后文字残留 + card_shop 四态朝向与碎裂粒子（含 1.21.1 `codec()` 补全、两份 CHANGELOG 断行无损修复） |
+| 交接刷新 | .84 | 本提交 | 交接文档刷新至 .84 + 交接提示词更新 |
 
-**功能面现状（P0 两线已对等）**：13 个事件 + 弹卡 GUI + 事件选择界面（2 选 1、15s、确认即触发、死亡/登出强触发第一项）+ 调查阶段 4 阶图标与 1:00 计时器 + 全模组发币优先入钱包 + 手册/tooltip 文案同步。
+**功能面现状（P0 两线已对等）**：13 个事件 + 弹卡 GUI（淡出后无文字残留）+ 事件选择界面（2 选 1、15s、确认即触发、死亡/登出强触发第一项）+ 调查阶段 4 阶图标与 1:00 计时器 + 全模组发币优先入钱包 + 手册/tooltip 文案同步 + 卡牌商店方块（四态朝向 + 自有碎裂粒子）。
 
 ---
 
@@ -101,10 +110,13 @@ pwsh -NoProfile -File scripts/test/mt_inject.ps1 cmd -Command "/astralprobecard 
 
 | 判据 | 实测 | 版本 |
 |---|---|---|
-| 事件卡居中 | 卡内容中心 (960.0,542.0) vs 屏幕中心 (960,540)：水平 0、垂直 +2px ⇒ 加 yOff=-0.5 后 **Δ=(0,0)** | .64 |
-| 卡面淡入淡出 | α 实测 0.118→0.622→**1.000**→0.642→0.117（三路反演，噪声底 0.008） | .64 |
-| 结算时机 | exec_at = 弹卡 gt + 38（8/8），墙钟 1999–2002 ms | .64 |
-| event_fade_in | 8/8 弹卡后 1 tick 内 OpenAL 通道 0→1 | .64 |
+| 事件卡居中 | 卡内容中心 (960.0,542.0) vs 屏幕中心 (960,540)：水平 0、垂直 +2px ⇒ 加 yOff=-0.5 后 **Δ=(0,0)** | .64 ⚠ |
+| 卡面淡入淡出 | α 实测 0.118→0.622→**1.000**→0.642→0.117（三路反演，噪声底 0.008） | .64 ⚠ |
+| 结算时机 | exec_at = 弹卡 gt + 38（8/8），墙钟 1999–2002 ms | .64 ⚠ |
+| event_fade_in | 8/8 弹卡后 1 tick 内 OpenAL 通道 0→1 | .64 ⚠ |
+| 事件卡淡出无文字残留 | 缓冲窗与移除后**逐像素等同干净基准**：1.21.1 差 45/43/44/42px（动画期对照 42919px，第二轮 0–3px）；1.20.1 缓冲窗截图（卡实例仍在，比移除早 ~300ms）无任何文字，动画期卡名+计时可见（对照） | .83 |
+| card_shop 四向朝向 | 真实 `item.place` / `useOn` 4/4：facing = 放置者反向（south→north / west→east / north→south / east→west，yaw 0/90/180/270 全中） | .83 |
+| card_shop 碎裂粒子 | sprite = `astral_dice:block/card_shop`（非 `missingno`），13 帧紫黑判据像素 = 0；模型六面同贴图 + 6 elements 双证 ⇒ 无正背面，无需 +180 | .83 |
 | 分阶图标 | tier1/2/3/4 → _1/_2/_3/_revelation **各 100.00%（0 不一致像素）**，次优差 ≥673 px | .65 |
 | 1:00 计时器 | 字模合成 "1:00" 与实测**逐像素 EXACT MATCH**；600 候选唯一命中 | .66 |
 | 事件选择界面 12+4 项 | 四锚点 Δ=0；倒计时 15→1；三态逐帧 diff；侦探门禁 n=13 inv=1 命中 11/60 vs n=12 inv=0 命中 0/100；弹卡 38t 内零副作用；超时/死亡/登出三路 force pick=0；已确认不被覆盖 | .70/.73 |
@@ -114,25 +126,29 @@ pwsh -NoProfile -File scripts/test/mt_inject.ps1 cmd -Command "/astralprobecard 
 | 空放零副作用 | AP_SIGN_SOUND 2→2；卡牌/筹码计数 +0；冷却 cd 0→0；无新 open（仅 already_open 告警） | .74 |
 | 新卡面素材 | 默认态环带 4886/4886 = **100.00%** 匹配 fanny_skill_event；指向/选中 2824/2824 = **100.00%** 匹配 _select | .79 |
 
-> 注意：以上是**过去已完成的验证**；再次改动相关代码/资源后旧证据作废，需重测。
+> ⚠ = 该行来自 .64，而 .83 改动了同一文件 `client/EventCardOverlay.java`（仅新增 a>=4 文字守卫）⇒ 按「改动后旧实机证据作废」纪律，居中 / α / 结算时机三行的数值**尚未在 .83 构建上重测**（.83 实机只复验了「动画期卡面与文字可见」这一对照项）。
+> 以上均为**过去已完成**的验证；再次改动相关代码/资源后同样作废，需重测。
 
 ---
 
 ## 5. 遗留项 / 待办
 
 **A. 待开发（P1）**
-1. **neoforge-26.1.2 + fabric-1.20.1 未移植本批**：事件卡 GUI、事件选择界面（含 4 条网络消息）、调查阶段分阶图标与 1:00 计时器、发币走钱包漏斗、手册/tooltip 文案。两线 lang 与 ModTooltipHandler 里**仍是旧「麻烦制造者」文案**（故意未改）。
-2. **筹码商店素材已就位未接线**：models/block/chip_shop.json + textures/block/chip_shop.png + textures/entity/villager/profession/chip_trader.png（两线），方块/实体/物品/配方/语言键均未加。
+1. **neoforge-26.1.2 + fabric-1.20.1 未移植 .61~.83 全批**：事件卡 GUI、事件选择界面（含 4 条网络消息）、调查阶段分阶图标与 1:00 计时器、发币走钱包漏斗、手册/tooltip 文案、**卡牌商店方块**。已核：两线目录下**根本没有** `client/EventCardOverlay.java` 与 `block/CardShopBlock.java` ⇒ 属**整体新建**而非改；移植时必须一并带上 §6-10 的 `a>=4` 文字守卫（否则重演文字残留）与四态 `facing` + 模型 `particle` 键。两线 lang 与 ModTooltipHandler 里**仍是旧「麻烦制造者」文案**（故意未改）。
+2. **筹码商店素材已就位未接线**：P0 两线有 `models/block/chip_shop.json` + `textures/block/chip_shop.png`（源图 `images/shop/chip_shop_GUI.png`），方块/实体/物品/配方/语言键均未加；P1 两线连素材都还没有。
 
 **B. 设计待裁决**
 3. 「指向高亮」与「单击选中」共用同一张 fanny_skill_event_select（素材族只有两张卡底图）。
 4. 冷却 180s vs 面板超时 15s：正常游玩中「15 秒内二次使用」先被冷却门挡住，到不了 already_open 分支（空放修复正确但路径罕见）。
 5. tier ≤ 0 退回基础图 investigation_stage.png 的分支无实机取证（正常存档不可达，仅源码依据）。
+6. card_shop 顶面道具簇的「正向」在固定机位（方块南侧、与放置者反向）下无法唯一判定是否应朝放置者；.83 实机结论 = 四面同贴图、无正背面、道具簇随 facing 正确旋转 ⇒ 不构成缺陷，如要裁决看 `temp/adfix/m_place2.png` 四张特写。
 
-**C. 环境/工具**
-6. **子代理模型选择（mimo/kimi）在本会话不可用**：配置齐备（cordis.patch.yml 的 subagent-model-selection-settings.enabled=true + allowedModels 含 mimo-v2.6-pro / mimo-v2.6-pro-ultraspeed / k3 / k3-256k；XIAOMI_API_KEY / KIMI_CODING_API_KEY 均在），但本会话 tool 实例在构造期固定禁用（child model selection is disabled for this tool instance），**重启无效** ⇒ 需**全新会话**；模型 API/密钥可用性**尚未验证**。
-7. sound/ 目录约 21 个 wav 未转 ogg。
-8. 第三方渲染注入的深蓝斜体模组名行（如「星之骰戏」）来源未定位（与本模组无关）。
+**C. 环境 / 工具**
+7. **子代理模型**：DeepSeek（`deepseek-official` / `deepseek-flash`）在本会话实测可用（.83 批 4 个子代理全部完成）；mimo/kimi 仍在本 tool 实例被**构造期禁用**（`child model selection is disabled for this tool instance`）⇒ 需**全新会话**或宿主放行后才可复验。
+8. sound/ 目录约 21 个 wav 未转 ogg。
+9. 第三方渲染注入的深蓝斜体模组名行（如「星之骰戏」）来源未定位（与本模组无关）。
+10. 1.20.1 dev 环境里 **Patchouli 手册手持物呈紫黑格**（`server.log hand=1 guide_book`）：纯 dev 贴图观感、与本批改动无关，未处理；线上/实机如也出现再单开任务。
+11. 仓库根**曾**被落未跟踪目录 `%SystemDrive%/ProgramData/Microsoft/Windows/Caches/*.db`（本轮 env→launch 期间由某进程按 cwd 写入未展开字面路径；内容 = Windows 字体缓存；已删除，来源未定位）。⇒ 每次实机收尾若 `git status -uall` 非空，先看是否又是它。
 
 ---
 
@@ -147,7 +163,12 @@ pwsh -NoProfile -File scripts/test/mt_inject.ps1 cmd -Command "/astralprobecard 
 7. **并发代理会互相踩**：同一工作树多会话同时跑实机/改文件会串命令、探针互相覆盖；开工前先 git status + 确认无其它会话。
 8. **增量编译不重打包**：run/<线>/mods 里是上次 build 的 jar；只 compileJava 不 jar 会跑旧代码且不报错。
 9. **payload 类不得直接引用 net/minecraft/client/**（专服 RuntimeDistCleaner 崩）**：客户端动作下沉到 client helper + FMLEnvironment.dist == Dist.CLIENT 守卫。
-10. **时间源唯一化**：动画与结算共用 DELAY_TICKS=38 / CARD_ANIM_TICKS=28 / SETTLE_BUFFER_TICKS=10；进度必须 clamp 到 [0,1]，否则 alpha 变负 ⇒ 卡透明但文字残留。
+10. **时间源唯一化 + alpha 钳制 + 文字守卫**：动画与结算共用 DELAY_TICKS=38 / CARD_ANIM_TICKS=28 / SETTLE_BUFFER_TICKS=10，进度必须 clamp 到 [0,1]。⚠️ **只 clamp 不够**：1.21.1 `Font#adjustColor`（`Font.java:175-177`）/ 1.20.1（`:113-115`）把 alpha<4 的颜色**强制弹回不透明** ⇒ 淡出末段与缓冲窗文字残留（.83 前真实缺陷）。画文字前必须 `if (a >= 4)`，颜色才 `| (a << 24)`。
+11. **KubeJS 探针的 tick 语义**：脚本里发命令（setblock 等）**在本 handler 同 tick 不生效、tick 末才落地** ⇒ 「先清空再放置」会把刚放好的方块擦掉（.83 实机 RUN1/RUN2 假失败的根因）。正解 = 用 Java/KubeJS API **直写** + 把「摆位」与「放置」拆到**两个 tick**。
+12. **Rhino 里没有 Entity#setYRot**（`TypeError: Cannot find function setYRot`）⇒ 转向用 `player.connection.teleport(x,y,z,yaw,pitch)`。
+13. **1.21.1 的 HorizontalDirectionalBlock 把 `codec()` 重声明为抽象** ⇒ 自定义朝向方块必须补 `public static final MapCodec<X> CODEC = simpleCodec(X::new);` + `@Override public codec()`；1.20.1 无此机制（两线不对称，只有编译 1.21.1 才暴露）。
+14. **复核通道的备用路径**：`code_review` 原生工具可能报「原生子 Agent 未完成」或 600s 超时 ⇒ 立即改派**一次性独立子代理**承担（brief 规格不变：目标/路径/不变量 R1..Rn + 逐字证据 + 优先反例 + 取不到证据写「无法判定」）；**不得**因工具失败跳过复核。
+15. **实机期的进程与会话**：客户端可能被外部终止（日志无 shutdown 行、无 crash-report）⇒ 尽量在**同一个程序内**完成 stop→env→launch→取证；收尾核对命令行含 `fml.modFolders=...\<线>\build\classes` 的 java 进程数为 0。
 
 ---
 
@@ -156,19 +177,20 @@ pwsh -NoProfile -File scripts/test/mt_inject.ps1 cmd -Command "/astralprobecard 
 | 主题 | 路径 |
 |---|---|
 | 事件框架 | `<线>/src/main/java/com/merlinkitsune/astral_dice/event/`（AstralEventRegistry / AstralEventDispatcher / EventEffects / EventCardService / EventChoiceManager / ModTooltipHandler） |
-| 事件卡与选择界面（客户端） | `client/EventCardOverlay.java`、`client/EventChoiceScreen.java`、`client/EventChoiceClientHandler.java` |
+| 事件卡与选择界面（客户端） | `client/EventCardOverlay.java`（淡出文字守卫 `a>=4`）、`client/EventChoiceScreen.java`、`client/EventChoiceClientHandler.java` |
+| 卡牌商店方块 | `block/CardShopBlock.java`（HorizontalDirectionalBlock 四态 + CODEC）、`assets/astral_dice/blockstates/card_shop.json`、`models/block/card_shop.json`（含 `particle` 键）、`textures/block/card_shop.png` |
 | 网络 | neo：`network/EventCardPayload.java` + `EventChoice{Start,Confirm,Close,Tick}Payload.java` + `ModPayloads.java`；forge：`EventCardMessage.java` + `EventChoice*Message.java` + `ModNetwork.java` |
 | 立牌 | `item/sign/BaseSignItem.java`、`FannySignItem.java`（大侦探）、`BonnieSignItem.java`（秘密侦探） |
 | 发币漏斗 | `resource/ResourceConversion.java#giveItem` → `economy/StarCoinCurrency#tryAbsorbIntoWallet` |
 | 事件卡素材 | 源 `images/shop/fanny_skill_*.png` → `<线>/src/main/resources/assets/astral_dice/textures/gui/shop/` |
-| 文档 | `AGENTS.md`、`scripts/test/TESTING-SPEC.md`、`docs/compat-1.20.1-forge.md`、`docs/compat-26.1.2-neoforge.md`、本文件 |
+| 文档 | `AGENTS.md`、`scripts/test/TESTING-SPEC.md`、`docs/compat-1.20.1-forge.md`、`docs/compat-26.1.2-neoforge.md`、`docs/handover-new-session-context.md`、本文件 |
 
 ---
 
 ## 8. 新会话建议开工步骤
 
-1. `git -C F:\MCProject\astral_dice_multiloader-next status --short -uall` + `git log --oneline -3`（确认起点 54a6e576、工作树干净）；
-2. 读本文件 + `AGENTS.md` 的「工作树纪律 / 二次验证 / 子代理与测试环境硬规则 / 版本优先级」四节；
+1. `git -C F:\MCProject\astral_dice_multiloader-next status --short -uall` + `git log --oneline -3`（确认基线 `d2299def` 之后的收尾提交、工作树干净）；
+2. 读本文件 + `docs/handover-new-session-context.md` + `AGENTS.md` 的「工作树纪律 / 二次验证 / 子代理与测试环境硬规则 / 版本优先级」四节；
 3. 要动代码：先 `mt_build` 确认基线绿，再改；改后 `mt_build` + 相关 `scripts/verify/**`；
-4. 复核用 `code_review`；实机**先问用户**；
-5. 提交：升四线版本 + 两份 CHANGELOG + `git commit`（**不 push**）。
+4. 复核用 `code_review`（失败即改派一次性子代理）；实机**先问用户**；
+5. 提交：升四线版本 + 两份 CHANGELOG + `git commit`（**不 push**）；收尾核对另一工作树为空且 HEAD 不变。
