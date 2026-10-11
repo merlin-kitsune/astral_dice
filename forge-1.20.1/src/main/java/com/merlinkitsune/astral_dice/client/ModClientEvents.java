@@ -4,6 +4,7 @@ import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.init.ModParticles;
 import com.merlinkitsune.astral_dice.screen.CardInventoryScreen;
 import com.merlinkitsune.astral_dice.screen.CardShopScreen;
+import com.merlinkitsune.astral_dice.screen.ChipShopScreen;
 import com.merlinkitsune.astral_dice.screen.ModMenuTypes;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -72,6 +73,8 @@ public class ModClientEvents {
                     ModMenuTypes.CARD_INVENTORY.get(), CardInventoryScreen::new);
             net.minecraft.client.gui.screens.MenuScreens.register(
                     ModMenuTypes.CARD_SHOP.get(), CardShopScreen::new);
+            net.minecraft.client.gui.screens.MenuScreens.register(
+                    ModMenuTypes.CHIP_SHOP.get(), ChipShopScreen::new);
         });
     }
 

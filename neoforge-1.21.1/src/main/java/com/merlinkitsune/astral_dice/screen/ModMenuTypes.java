@@ -2,6 +2,7 @@ package com.merlinkitsune.astral_dice.screen;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.shop.CardShopMenu;
+import com.merlinkitsune.astral_dice.shop.ChipShopMenu;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.flag.FeatureFlags;
 import net.minecraft.world.inventory.MenuType;
@@ -18,4 +19,7 @@ public class ModMenuTypes {
 
         public static final Supplier<MenuType<CardShopMenu>> CARD_SHOP = MENU_TYPES.register("card_shop",
                         () -> new MenuType<>(CardShopMenu::new, FeatureFlags.DEFAULT_FLAGS));
+
+        public static final Supplier<MenuType<ChipShopMenu>> CHIP_SHOP = MENU_TYPES.register("chip_shop",
+                        () -> new MenuType<>(ChipShopMenu::new, FeatureFlags.DEFAULT_FLAGS));
 }

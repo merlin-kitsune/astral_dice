@@ -24,6 +24,11 @@ public class ModMenuTypes {
             MENU_TYPES.register("card_shop",
                     () -> new MenuType<>(com.merlinkitsune.astral_dice.shop.CardShopMenu::new, FeatureFlags.DEFAULT_FLAGS));
 
+    /** 筹码商店菜单(界面骨架批;见 shop/ChipShopMenu)。 */
+    public static final RegistryObject<MenuType<com.merlinkitsune.astral_dice.shop.ChipShopMenu>> CHIP_SHOP =
+            MENU_TYPES.register("chip_shop",
+                    () -> new MenuType<>(com.merlinkitsune.astral_dice.shop.ChipShopMenu::new, FeatureFlags.DEFAULT_FLAGS));
+
     /** 服务端打开卡牌栏(原 OpenCardInventoryPayload 的服务端逻辑;需佩戴骰子)。 */
     public static void openCardInventory(ServerPlayer serverPlayer) {
         var curios = CuriosCompat.getCuriosInventory(serverPlayer);

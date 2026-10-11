@@ -4293,3 +4293,15 @@ mt.ps1 --version 线 --phase stop 关闭测试实例（gradle 守护进程保留
 - **教训 20（新）：纯标准库 PNG 处理的两个坑** —— ① PNG 的 **IDAT 可能分多块**，按 type→payload 建 dict 只留最后一块会让 zlib 解压失败（或解出半张图）；必须按顺序拼接全部 IDAT。② 降采样别写 `bytes(<生成器>)`：`bytes(iterable)` 只吃 0–255 的整数序列，像素切片要用 `b"".join(...)`（本轮实测报 `TypeError: bytes object cannot be interpreted as an integer`）。
 - **教训 21（新）：CRLF 锚点静默不命中（再次踩中）** —— 修改 `onFinalizeSpawn` 时用 LF 拼的锚点去 replace CRLF 文件，一轮编译白跑；跨线脚本一律**按行号 splice** 或先行尾归一。
 - **教训 22（新）：刷怪钩子的两线签名差异** —— 1.21.1 `FinalizeSpawnEvent#getEntity()` 返回 `Entity`（需 `instanceof Mob`）；1.20.1 `MobSpawnEvent.FinalizeSpawn#getEntity()` **已声明为 `Mob`**（写 `instanceof Mob mob` 报「模式类型 Mob 是表达式类型 Mob 的子类型」）；另 `mob.getType().create(level)` 返回 `CAP#1`，**必须声明为 `Entity`**。
+
+## 附录 A 续 77. 筹码商店界面骨架批（2026-10-11）
+
+**批次判据**：两线 `mt_build`（`.85`）⇒ `MT_BUILD: OK`（neo 3s / forge 8s）；**新增守门** `scripts/verify/verify_chip_shop_ui.ps1` ⇒ `CHIPUI_RESULT: OK`、`CHIPUI_TOTAL_FAIL: 0`（两线各 8 项：素材 13/13 逐字节一致、布局常量 31/31、贴图可达性、交互口径、三语 4 键、菜单注册、36 玩家槽、客户端绑定）；开 jar 核：两线产物各含 3 个新 class + 13 张 `chipshop_*.png`、**不含** `chip_shop_GUI.png`、`.cache` 条目 0；`verify_resource_integrity.ps1` 三线 PASS（140/140/137）。界面为**骨架**，业务逻辑（价格/刷新/扣款/C2S）属后续批次 —— 因此本批进本附录，不进 CHANGELOG。
+
+**教训 23（新）：判据必须先被变异测试反证，否则「grep 字面量」会给出假绿**。本批守门脚本初版有三处判据弱于规范声明：① 只查「贴图名出现在源码里」⇒ 把「常量已登记但从未经 `tex(...)` 用于绘制」误判为通过；② 只数 `onConfirmPressed()` 出现 2 次、不校验调用点 ⇒ 把「调用被挪到筹码格分支」误判为通过；③ 绑定只查全文是否出现 `ChipShopScreen::new` ⇒ 把「绑到 `CARD_SHOP`」误判为通过。加固后四处临时变异全部判红（M2 调用点挪到筹码格分支 / M3 绑定改 `CARD_SHOP` / M4 `qualityTex` 不再返回 `TEX_QUALITY_2` / M5 按钮三元固定回 `TEX_CONFIRM`），还原后源文件 SHA256 与变异前一致、两线恢复 `CHIPUI_RESULT: OK`。⇒ **守门脚本交付前必须做一次「故意改坏 ⇒ 必须判红 ⇒ 还原」的反证**，并把变异清单写进规范。
+
+**教训 24（新）：贴图引用检查要覆盖三条真实路径** —— 字符串常量可能出现在 ① `tex(...)` 直接实参、② 三元表达式实参（`tex(push ? TEX_PUSH : TEX_NORMAL)`）、③ **被 `tex(...)` 调用的字符串返回助手**（`qualityTex(frame)` 内部才 return 具体常量）。只按「标识符是否出现在文件里」或「是否直接是 tex 的实参」都会漏判；正确口径 = 括号配平取出所有 `tex(...)` 实参文本，再把其中出现的「字符串返回助手」方法体一并纳入可达集合。
+
+**教训 25（新）：界面批的观感不必进游戏就能先验一轮** —— 按实现的常量用 Pillow 把素材离线合成 1:1（再放大 3 倍）的整屏图，与设计参考图并排比对，可提前发现「常量写错一格 / 叠放顺序反了 / 面板错位」这类问题；设计参考图必须**排除出 jar**（守门断言 `chip_shop_GUI` 不得出现）。
+
+**教训 26（新）：素材坐标要从素材自身像素反查，不要目测** —— 用「素材 alpha>0 像素在参考图里做全等搜索」定位（本轮唯一命中：物品栏 (56,89)、确认 (45,42)、刷新 (215,42)、品质框 (85/128/171,37)、选中条 (121,67)、条带 (34,6)）。⚠️ 设计参考图可能是**手工拼图**：本轮任何素材叠放组合都无法 100% 复现它（条带区最小失配 1938 px）⇒ 一律**以实现采用的常量表为准**，不以参考图逐像素比对作判据。
