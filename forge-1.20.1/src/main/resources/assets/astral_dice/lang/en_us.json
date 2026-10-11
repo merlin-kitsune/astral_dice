@@ -607,6 +607,7 @@
   "tooltip.astral_dice.sign.bonnie_active": "Choose a hostile target and apply Hidden Investigation to it\nIf the target is marked, gain Star Coins equal to §e×2§7 the Mark layers",
   "tooltip.astral_dice.sign.bonnie_passive": "Attack Power §e+3§7 when attacking a marked target\nKilling a marked hostile with at least §e20§7 health grants a random combat card\nKilling a target with Hidden Investigation triggers the Investigation Phase event\nWhile concealed during the Investigation Phase mobs cannot target you; attacking a mob breaks Concealment and adds damage equal to the target's Mark layers in dice battles",
   "tooltip.astral_dice.sign.cooldown_remaining": "On cooldown: §c%s§c s",
+  "tooltip.astral_dice.sign.fanny_active": "Choose 1 of 2 global events and trigger it",
   "tooltip.astral_dice.sign.fanny_passive": "After triggering an event, gain §e3§7 Star Coins",
   "tooltip.astral_dice.sign.fen_active": "For §91:00§7: attack §e+3§r\nIf you have Recharged Energy: heal §e6§7 HP and gain §9Speed (1:00)§r",
   "tooltip.astral_dice.sign.fen_passive": "While having stacks: attack/defense §e+2§r\nNo Dice Blessing triggered within §91:00§7 → Recharged Energy §e+1§r\nTriggering a Dice Blessing → Recharged Energy §e-1§r\nTriggering a Dice Blessing at §e5§7 layers of Recharged Energy → consume §e2§7 and immediately deal §e88%%§7 of this attack's damage (minimum §e5§7) as true damage to hostiles within §e6§7 blocks of the target\nUsing a healing effect card → Recharged Energy §e+1§r",

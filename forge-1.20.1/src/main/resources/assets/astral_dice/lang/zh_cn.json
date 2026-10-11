@@ -607,6 +607,7 @@
   "tooltip.astral_dice.sign.bonnie_active": "指定一个敌对目标，向其施加「隐匿调查」\n若目标带「标记」，按标记层数 §e×2§7 获得星币",
   "tooltip.astral_dice.sign.bonnie_passive": "攻击带「标记」的目标时攻击力 §e+3§r\n击杀带「标记」且不少于 §e20§7 点生命值的敌对目标后获得一张随机战斗牌\n击杀带「隐匿调查」的目标后触发「调查阶段」事件\n调查阶段隐匿期间不会被生物索敌；攻击怪物会解除隐匿，并在骰战中追加目标「标记」层数的伤害",
   "tooltip.astral_dice.sign.cooldown_remaining": "冷却中：§c%s§c 秒",
+  "tooltip.astral_dice.sign.fanny_active": "在2个全体事件中选择1个全体事件并触发",
   "tooltip.astral_dice.sign.fanny_passive": "自身触发事件后，获得 §e3§7 星币",
   "tooltip.astral_dice.sign.fen_active": "在 §91:00§7 内：攻击力 §e+3§r\n若拥有养精蓄锐：恢复 §e6§7 点生命值并获得 §9迅捷 (1:00)§r",
   "tooltip.astral_dice.sign.fen_passive": "拥有该效果时：攻击力/防御力 §e+2§r\n§91:00§7 内没有触发骰神赐福 → 养精蓄锐 §e+1§7 层\n触发骰神赐福 → 养精蓄锐 §e-1§7 层\n触发骰神赐福且养精蓄锐满 §e5§7 层 → 消耗 §e2§7 层，并立即对目标及其 §e6§7 格范围内的敌对目标造成本次攻击伤害 §e88%%§7（下限 §e5§7 点）的真实伤害\n使用治疗类效果牌 → 养精蓄锐 §e+1§7 层",
