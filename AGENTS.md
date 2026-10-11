@@ -33,7 +33,7 @@ When extending this workspace:
 
 > ⚠️ **2026-10-08 用户裁决：复核执行方已改为 DSH 原生代码审查（`code_review`）** —— 本节的验收要求（独立证据、逐条对账、先取证后结论）仍然有效，但**不再派 subagent 做复核**；规则正本见〈子代理与测试环境硬规则〉第 4 条。
 
-**任何非平凡改动，收尾前必须由一个独立子代理（subagent）做一遍二次验证。** 目的**不是**「再读一遍」，
+**任何非平凡改动，收尾前必须做一遍独立二次验证（2026-10-08 起复核执行方 = `code_review` 一次性独立会话，正本见〈子代理与测试环境硬规则〉第 4 条）。** 目的**不是**「再读一遍」，
 而是用**独立证据**去证伪主会话的结论：主会话的自述（「我已核对」「守门全绿」「已落盘」「已全线对等」）
 **不能作为验收依据** —— 它可能就是幻觉或遗漏，且**自证天然有偏**（复用自己的假设去检查自己的结论）。
 
@@ -81,12 +81,15 @@ When extending this workspace:
 3. **测试流程结束后必须关闭测试用游戏实例**：收尾时执行 pwsh -File scripts/test/mt.ps1 --version 线 --phase stop，
    确认 MT_STOP: OK 且无本流程 java 客户端残留（gradle 守护进程保留属正常）；禁止让客户端无人观察地驻留 ——
    它会持续占用 CPU / GPU、污染下一次冷启动前置状态，并让 enableShaders 之类的运行期状态被意外持久化。
-   **收尾一律带 `--purge-saves`**（2026-10-08 用户裁决：每轮实机验证后清理旧存档）：标准收尾命令 = `pwsh -File scripts/test/mt.ps1 --version <线> --phase stop --purge-saves`，成功判据 = `MT_CLEANUP_SAVES: PURGED <n>` + `MT_CLEANUP_RESULT: OK`；`.mt_keep_alive` 存在时只提示、保留取证现场。
+   **收尾一律带 `--purge-saves`**（2026-10-08 用户裁决：每轮实机验证后清理旧存档）：标准收尾命令 = `pwsh -File scripts/test/mt.ps1 --version <线> --phase stop --purge-saves`，成功判据 = `MT_CLEANUP_SAVES: PURGED <n>` + `MT_CLEANUP_RESULT: OK`；`.mt_keep_alive` 存在时只提示、保留取证现场。收尾同时**删除本轮注入的临时探针**（`run/<线>/kubejs/**` 的一次性测试脚本，以及源码侧 `scripts/test/resources/kubejs/**` 的临时探针），并在交付报告里贴 `git status --short -uall` 原文（2026-10-11 用户交接裁决）。
 
 4. **二次验证（复核）一律改用 DSH 原生代码审查（code_review），不再派 subagent / teammate**：每次复核 = **一次性独立会话、不复用**；
    调用时把「复核对象（提交或文件范围）+ 背景 + 逐项判据（R1..Rn）+ 输出要求（判定 SUPPORTED / REFUTED / 部分成立 + 逐字证据 文件:行号 + 未验证项 + 最小修法）」**一次性写全**（会话干净，不给它沿用上下文的机会）。代码修改仍按第 1 条（每线一个新 subagent、单任务、用完即弃）；复核不再由 subagent 承担。
 
 5. **实机验证必须由用户在提示词中明确下达**（2026-10-08 用户裁决）：默认情况下 agent 只做**代码功能验证** —— 静态取证与逐字对账、`:<线>:classes` 编译、`code_review`、`scripts/verify/**` 守门脚本、用例 JSON 与文档的一致性/行尾核对；**不得**自行启动 dev 客户端跑实机、连拍、探针或用例。用户明确要求实机时才执行，且收尾按第 3 条带 `--purge-saves`；未实机的欠账如实登记在交付报告里，等用户点名下指令再补。
+
+6. **改动后旧实机证据一律作废，先停旧实例再测新构建（2026-10-11 用户交接裁决）**：任何代码 / 资源改动落地后，此前一切实机读数与截图立即失效，不得作为新构建的验收依据；测新构建前必须先 `mt.ps1 --phase stop` 停掉旧实例（禁止在旧实例上叠加新构建 —— `run/<线>/mods` 的 jar 会被旧进程持有且内容是旧代码）。
+7. **开发操作流程（2026-10-11 用户交接裁决）**：新功能先写**开发需求**再交子代理实现（子代理模型 = **DeepSeek V41 Flash**，仍受第 1 条「一个子代理一个任务、用完即弃」约束）→ `code_review` 复核后把问题清单交**新**子代理改进 → **连续 3 次仍改不到位 ⇒ 主 Agent 亲自重写** → 复核无误后由**新子代理或主 Agent** 做功能复验（静态取证 / 编译 / 守门脚本）；**代码与二进制都无法确认是否符合需求时，必须询问用户是否实机测试**（用户明确下达才做，流程 = 编写 → `code_review` → 子代理功能复验 → 实机，收尾按第 3 条）。代码或功能缺陷一律**直接修复**；必须用户决策的问题或难以实现的功能**交用户拍板**，不得擅自取舍。
 
 ## 命令执行规范（Shell）— 必须遵守（2026-09-19 用户裁决）
 
@@ -98,6 +101,8 @@ When extending this workspace:
   2. 单行命令用 `pwsh -NoProfile -Command '…'`。
   3. **禁止**直接用工具默认 shell 跑 PowerShell 代码（尤其上述语法）。
   4. 调用本仓脚本（`scripts/test/*.ps1`、`tools/*.ps1`、`scripts/devtools/*.ps1`、`scripts/maintenance/*.ps1`）**必须**显式写 `pwsh -NoProfile -File …`；文档与交付说明里的示例同样写 `pwsh`。
+   5. **批处理（.bat）空参必须守卫（2026-10-11 用户交接裁决）**：`for %%A in (%*) do (` 在无参时会展开成 `for %%A in () do (` ⇒ 语法错误、窗口闪退；解析参数前一律先 `if not "%~1"==""` 守卫。
+   6. **手动启动脚本只做启动，禁止前置判断（2026-10-11 用户交接裁决）**：`run/Start-<线>.bat`（用户双击自测）= `chcp 65001` → `cd` → `gradlew :<线>:runClient` → `pause` 六行；**禁止**加版本号比对等任何前置判断（曾比对 `gradle.properties` 引脚与 `mods` 内 jar 名 ⇒ 每次升版都 FAIL，用户裁决只保留启动）。
 - **自查**：报错里出现「术语 'if' 不会被识别为 cmdlet / 函数 / 脚本文件」＝ 用了 5.1，按本条改用 pwsh 重跑；发现任何 AGENTS/文档示例写裸 `powershell` 或省略 `pwsh` 前缀的，一并改正。
 
 ## Git 代理规范（Git Proxy）— 必须遵守
@@ -279,7 +284,7 @@ When extending this workspace:
 >    可把它升级为**致命错误**。② 调用 `LoaderBus#dispatchReport()` 核对**没有**关键事件的派发次数为 0
 >    （判据：`ServerTickEvent` 必须为正数）。⚠️ 审计若报「未生效（没扫到任何类）」，**不得**当成通过。见 **KI-F6**。
 
-> 版本号各 git 分支独立（AGENTS.md 自 2026-09-15 起**已纳入版本库**，各分支各自维护一份）：**发布线 `multi-main`**（2026-09-22 由 `multi-1.20.1-1.21.1` 改名；连带项已同批处理：三线 `build.gradle` 的 `packPushBranches → ['multi-main']`、`.github/workflows/build.yml` 的 5 处分支名与触发条件，以及 `.github/workflows/build.yml` 里 checkout 前置库的 `ref:` 钉值）**当前 = `1.3.7-hotfix`**（2026-10-01：承接 1.3.5 的补丁发布——FTB 队友判定后端修复；见下方「发布规范」对 `-hotfix` 打 tag 的说明）（2026-09-22 那次收编后统一升版为 `1.3.0` —— 1.21.1 / 1.20.1 = `1.3.0`，26.1.2 = `1.3.0-beta.1`，按发布规范 tag 解析为裸版本 `1.3.0`；此后逐版递增至 **1.3.5**；2026-10-01 起为 `1.3.5-hotfix`、2026-10-04 起为 **`1.3.7`**、2026-10-05 起为 **`1.3.7-hotfix`**，以矩阵表「当前版本」列与各线 `gradle.properties` 为准。⚠️ 本处曾长期停留在 `1.3.0`、与矩阵表自相矛盾，2026-10-01 二次验证时一并更正）；`multi-dev-next` 当前 = **`2.0.0-SNAPSHOT.29`**（2026-10-06；工作树 `F:\MCProject\astral_dice_multiloader-next`。⚠️ **该线并未停止演进** —— 2026-09-22 曾整体并入发布线 `multi-main`（`7b726617`，收编 160 个提交），但此后 `multi-dev-next` **继续独立开发**（目标选择器改造、四张伤害效果牌重做、fabric 第四条线并入等）；现行口径见下方「## 版本号递增约定（每提交一版）」与「## 版本优先级与跨线移植纪律」）；`neoforge-26.1.2` 子项目当前 = **`1.3.0-beta.1`**（2026-09-17 用户裁决 + **2026-09-19 修订：26.1.2 已纳入主线、三线同步（不再是低优先级线）**；**2026-09-22 用户裁决：三线同批升版，26.1.2 取 `1.3.0-beta.1`** —— 此前 `.13` 时代「与另两线版本号对齐、不再单独加 `-beta`」的口径随之作废；`multi-26.1.2-neoforge` 分支自此只作为合并前历史，不再单独开发）。上表「当前版本」以发布线工作分支 `multi-main` 为准。
+> 版本号各 git 分支独立（AGENTS.md 自 2026-09-15 起**已纳入版本库**，各分支各自维护一份）：**发布线 `multi-main`**（2026-09-22 由 `multi-1.20.1-1.21.1` 改名；连带项已同批处理：三线 `build.gradle` 的 `packPushBranches → ['multi-main']`、`.github/workflows/build.yml` 的 5 处分支名与触发条件，以及 `.github/workflows/build.yml` 里 checkout 前置库的 `ref:` 钉值）**当前 = `1.3.7-hotfix`**（2026-10-01：承接 1.3.5 的补丁发布——FTB 队友判定后端修复；见下方「发布规范」对 `-hotfix` 打 tag 的说明）（2026-09-22 那次收编后统一升版为 `1.3.0` —— 1.21.1 / 1.20.1 = `1.3.0`，26.1.2 = `1.3.0-beta.1`，按发布规范 tag 解析为裸版本 `1.3.0`；此后逐版递增至 **1.3.5**；2026-10-01 起为 `1.3.5-hotfix`、2026-10-04 起为 **`1.3.7`**、2026-10-05 起为 **`1.3.7-hotfix`**，以矩阵表「当前版本」列与各线 `gradle.properties` 为准。⚠️ 本处曾长期停留在 `1.3.0`、与矩阵表自相矛盾，2026-10-01 二次验证时一并更正）；`multi-dev-next` 当前 = **`2.0.0-SNAPSHOT.81`**（2026-10-11；工作树 `F:\MCProject\astral_dice_multiloader-next`。⚠️ **该线并未停止演进** —— 2026-09-22 曾整体并入发布线 `multi-main`（`7b726617`，收编 160 个提交），但此后 `multi-dev-next` **继续独立开发**（目标选择器改造、四张伤害效果牌重做、fabric 第四条线并入等）；现行口径见下方「## 版本号递增约定（每提交一版）」与「## 版本优先级与跨线移植纪律」）；`neoforge-26.1.2` 子项目当前 = **`1.3.0-beta.1`**（2026-09-17 用户裁决 + **2026-09-19 修订：26.1.2 已纳入主线、三线同步（不再是低优先级线）**；**2026-09-22 用户裁决：三线同批升版，26.1.2 取 `1.3.0-beta.1`** —— 此前 `.13` 时代「与另两线版本号对齐、不再单独加 `-beta`」的口径随之作废；`multi-26.1.2-neoforge` 分支自此只作为合并前历史，不再单独开发）。上表「当前版本」以发布线工作分支 `multi-main` 为准。
 > ⚠️ 历史上另有一条 dev 分支 **`wt/2.0.0-vnext`**（连带独立 worktree `C:/Users/xmace/.dsh/worktrees/astral_dice_multiloader-a03b2df2/2.0.0-vnext`）——2026-09-17 用户裁决「移除 wt/2.0.0-vnext 分支，仅保留当前分支」后**已删除**：worktree 与分支一并移除，`git branch -d` 成功即证明其 tip **`d7e4ac8f4f1c31484bf4366caa4e144aec45979f`** 的全部提交都已被 `multi-dev-next` 包含（`multi-dev-next..wt/2.0.0-vnext` 为空）⇒ **未丢失任何提交**；该分支从未推到远端（`origin` 只有 `multi-1.20.1-1.21.1` 与 `multi-dev-next`），故无需远端清理。`multi-26.1.2-neoforge` 作为合并前历史分支**保留**（未在本次裁决范围内）。
 
 > **第三条线(26.1.2)的规则边界(2026-09-19 用户裁决修订 —— 26.1.2 已纳入主线,必须遵守)**:⛔ **2026-10-04 更新:本条「26.1.2 纳入三线同批实施」的口径已作废** —— 现行 **P1 次要优先级**（见下方「## 版本优先级与跨线移植纪律」）;本段其余平台差异说明仍有效。自本裁决起「同步修改」约束**三个版本**(`neoforge-1.21.1` + `forge-1.20.1` + `neoforge-26.1.2`):任何功能/修复/平衡/文案改动一律**三线同批实施**(实施方式见下方「### 子项目修改默认规则」与「### 模组内容更新规则(三线同步)」),26.1.2 **不再**是「发布线完成后再迁移」的低优先级移植线。三条线各自按 `docs/compat-26.1.2-neoforge.md`(26.1.2 相对 1.21.1)、`docs/compat-1.20.1-forge.md`(1.20.1 相对 1.21.1)的差异映射实现,**平台差异必须逐条登记**;三线落地后按 `scripts/test/TESTING-SPEC.md` §13.2 做一致性测试。三子项目的 `mod_version`/`mods.toml` 门槛仍各自独立。⚠️ **第四条线 `fabric-1.20.1` 不参与本条的「三线同批实施」约束** —— 其边界见上一条 ①（由用户按批次单独下达移植任务）。
@@ -713,14 +718,16 @@ When extending this workspace:
 - **同步自检**:改动后按版本号比对两文件的 `- ` 条目数,同版本条目数必须相等(不等即为漏改一侧)。
 
 ### 子项目修改默认规则 — 必须遵守
-- **功能/修复默认同步修改三个版本（2026-09-19 起 26.1.2 纳入主线）**:所有功能、修复、平衡性调整一律在 `neoforge-1.21.1`、`forge-1.20.1`、`neoforge-26.1.2` **同时实施**,三侧保持功能对等。**实施方式**:以 `neoforge-1.21.1` 的实现为**语义基准**,按 `docs/compat-1.20.1-forge.md` / `docs/compat-26.1.2-neoforge.md` 的差异映射在三线各自落地;平台差异逐条登记(不写「看起来一致」的实现)。
-- **实施必须走 subagent(2026-09-19 用户裁决)**:每次代码修改**必须创建 subagent**,**三个版本各一个 subagent 并行实施**(复杂批次再按子系统拆分);同一文件同一时间只能归**一个** subagent 所有(共享文件由主 agent 预先指派 owner,跨文件接口由主 agent 先固定)。详见「### 模组内容更新规则(三线同步)」第 1-2 条。
-- **每次改动完成后自动执行下述收尾(无需用户逐项指示)**:① 同步两个 CHANGELOG 文件 → ② 构建**三个**版本 → ③ **自动部署到整合包**(随 `gradlew build` 触发的 `pushToGame`;**四条线的推送白名单都是 `['multi-main']`——本开发工作树 `multi-dev-next` 与 `wt/*` 一律跳过,需强推时加 `-PdeployToPack`;四条线各推往自己的整合包 `狐の航空学 Voxy Edition` / `1.20.1-Forge 模组测试` / `26.1.2-NeoForge 模组测试` / `1.20.1-Fabric 模组测试` —— ⚠️ **目录名一律以本机 `ls D:/.minecraft/versions/` 实测为准,禁止按命名规则推测**(本类「目录已改名而配置未跟」的缺口已复发多次)**)→ ④ **自动本地提交**。全程**不执行 `git push`**。
-- **单侧改动仅限用户明确要求**:只有当用户明确说“只改 1.21.1 / 先不移植”时,才允许只改一个版本;禁止擅自只改单侧或长期让三版本功能不对等。
+- **功能/修复默认同步修改 P0 两线（2026-10-04 用户裁决；原「三线同批」口径作废）**:所有功能、修复、平衡性调整一律**同批落 `neoforge-1.21.1`(基准线)+ `forge-1.20.1`**,两线保持功能对等;**P1 两线(`neoforge-26.1.2` / `fabric-1.20.1`)待 P0 完成后按「## 版本优先级与跨线移植纪律」分别移植**。**实施方式**:以 `neoforge-1.21.1` 的实现为**语义基准**,按 `docs/compat-1.20.1-forge.md` / `docs/compat-26.1.2-neoforge.md` / `porting/fabric-1.20.1/FABRIC-DIFFS.md` 的差异映射在各线落地;平台差异逐条登记(不写「看起来一致」的实现)。
+- **实施必须走 subagent(2026-09-19 用户裁决)**:每次代码修改**必须创建 subagent**,**本批涉及的每条线各一个 subagent 并行实施**(复杂批次再按子系统拆分);同一文件同一时间只能归**一个** subagent 所有(共享文件由主 agent 预先指派 owner,跨文件接口由主 agent 先固定)。子代理单任务、用完即弃,模型与复核流程见「## 子代理与测试环境硬规则」。
+- **每次改动完成后自动执行下述收尾(无需用户逐项指示)**:① 同步两个 CHANGELOG 文件 → ② 构建**本批涉及的全部线** → ③ **自动部署到整合包**(随 `gradlew build` 触发的 `pushToGame`;**四条线的推送白名单都是 `['multi-main']`——本开发工作树 `multi-dev-next` 与 `wt/*` 一律跳过,需强推时加 `-PdeployToPack`;四条线各推往自己的整合包 `狐の航空学 Voxy Edition` / `1.20.1-Forge 模组测试` / `26.1.2-NeoForge 模组测试` / `1.20.1-Fabric 模组测试` —— ⚠️ **目录名一律以本机 `ls D:/.minecraft/versions/` 实测为准,禁止按命名规则推测**(本类「目录已改名而配置未跟」的缺口已复发多次)**)→ ④ **自动本地提交**。全程**不执行 `git push`**。
+- **单侧改动仅限用户明确要求**:只有当用户明确说“只改 1.21.1 / 先不移植”时,才允许只改一个版本;禁止擅自只改单侧或长期让 **P0 两线**功能不对等（P1 待移植期的阶段性不对等属设计内，按差异清单登记）。
 - 平台差异按各子项目规范实现(1.21.1 / 26.1.2 用数据组件/附件,1.20.1 用 `component/*DataKey` 与 Capability;事件、Curios 注册、Mixin、数据包目录均不同),**不得为了“看起来一致”而破坏目标平台的正确写法**。
-- 用户在任一版本测试时报告的 BUG/需求,默认在**三个版本同步修复**。
+- 用户在任一线测试时报告的 BUG/需求,默认在 **P0 两线同批修复**(P1 两线随移植批次一并带上)。
 
-### 模组内容更新规则(三线同步)— 必须遵守（2026-09-19 用户裁决修订）
+### 模组内容更新规则 — 26.1.2 迁移清单与批次记录（1–22 条为历史存档）— ⛔ 「三线同批」口径已于 2026-10-04 作废,现行见「## 版本优先级与跨线移植纪律」
+
+> ⛔ **作废注记（2026-10-04 用户裁决）**：本节原标题的「三线同批同步实施」口径**已作废**，现行 = **P0（1.21.1 + 1.20.1）同批、P1（26.1.2 + fabric）待移植**，见「## 版本优先级与跨线移植纪律」。下方**第 1–22 条**为 2026-09 三线同批时代的迁移历史存档（第 22 条已闭环）；**第 23 条起为 P0/P1 时代的批次记录，其中 P1 待移植项与条目 29（卡牌商店运行规则）仍是现行依据**；条目 30 已于 2026-10-11 作废（见该条注记）。
 
 自 2026-09-19 用户裁决起，`neoforge-26.1.2` **纳入主线**：三条线（`neoforge-1.21.1` + `forge-1.20.1` + `neoforge-26.1.2`）**同批同步实施**，原「发布线先落地、26.1.2 之后再迁移」的优先顺序**作废**（`neoforge-26.1.2` 不再是低优先级线）。三线同处一个工作目录（26.1.2 已并入主线）。
 
@@ -769,8 +776,8 @@ When extending this workspace:
 28. **卡牌商店=工作方块 + 村民职业「卡牌交易员」+ 卡牌配方移除 + JEI 获取方式（2026-10-09；P0 两线同批）**：① **工作方块**：新增 `world/ModPoiTypes`（`PoiType astral_dice:card_shop` = 卡牌商店方块全部 BlockState，maxTickets=1 / validRange=1）并写进 **`data/minecraft/tags/point_of_interest_type/acquirable_job_site.json`**（`replace:false` 合并且不覆盖 vanilla 13 项；⚠️ 标签必须写在 `data/minecraft/…`，写到 `data/astral_dice/…` 会造出另一个标签 ⇒ 村民永不转职）。② **职业**：`world/ModVillagerProfessions` 注册 `astral_dice:card_trader`（`VillagerProfession.ALL_ACQUIRABLE_JOBS` + 自有 POI 谓词 + 职业覆盖贴图 `textures/entity/villager/profession/card_trader.png`）；显示名键 = **`entity.minecraft.villager.astral_dice.card_trader`**（命名空间段**在中间**，两线同款，源码取证）。③ **交易表**（`trade/CardTraderTrades`，两线都走平台的 `VillagerTradesEvent`）：每级 1 条卡牌报价 + L3 一条固定兑换；权重**直接复用商店池的 6/3/2**、抽卡走 `CardShopCatalog.pickWeighted`；价格 = `minPrice + CardRegistry.maxRoll(卡)` 封顶档上限，档位 = L1 稀有 2–3 / L2 稀有+史诗 3–6 / L3 史诗 6–9 / L4 史诗+传奇 9–14 / L5 传奇 14–20；`maxUses=12`、xp 2/5/10/15/30；**「1 绿宝石 → 1 星币」仅老手(L3)解锁**，`BasicItemListing(...,12,1,0.0F)` 且 **priceMultiplier 必须 0.0F**（否则卖完 demand 累积把 1 抬成 2）。④ **严格排除（单一判据）**：`shop/CardTradeFilter.isSellable` = 非 `astral_dice:is_exclusive` 标签 ∧ 库 `AstralRarities.tierOf` 档位 ∉ {PINNACLE, BIZARRE}；商店池与五级村民池**启动期逐张校验 + `LOGGER.error`（fail-loud 不崩服）**，另有「标签解析出 0 张即 error」防空转。⑤ **戴绿宝石骰子隐藏兑换条目**：村民报价表是**村民级共享**的 ⇒ 必须**按玩家在发包时过滤**，且**三处同口径**（`ServerPlayer#sendMerchantOffers` 的入参、`MerchantMenu#getOffers`、`MerchantContainer.updateSellItem` 的 `Merchant#getOffers`），否则客户端回传的是过滤后下标、会「点 A 成交 B」；过滤只包住**原 MerchantOffer 实例**（不深拷贝）。⚠️ **1.20.1 的 `getBaseCostA()` 被既有改价 mixin 覆写**（1.21.1 没有该问题）⇒ 本线加软接口 `trade/MerchantOfferRawAccess`（Mixin 接口注入）+ `createTag()` 兜底读原字段。⑥ **卡牌配方移除**：22 条卡牌配方（`attack_card_*` 6 + `defense_card_*` 3 + `effect_card_*` 13，与商店 22 张卡同集）**归档到 `docs/archive/card-recipes-2026-10-09/**` 并从两线删除**，`datagen/ModRecipeProvider.java` 对应 **170 行/线**一并删除（否则 `runData` 会重新生成）；非卡牌配方未动（含**以卡牌为材料**的筹码配方）。⑦ **购买即「获得」**：新增 `VitaminPillChipItem#notifyCardObtained(Player,ItemStack)`（只触发获得语义：药丸治愈 + 提尔狐光；**不插物品、不计 mimi**），接入**卡牌商店购买**（`handleBuy` 写入槽位后）与**卡牌交易员成交**（`MerchantResultSlotMixin#onTake` RETURN）；**原先两个 `ItemCraftedEvent` 监听器（药丸 `onCardCrafted`、提尔 `onItemCrafted`）按用户裁决删除**，相关玩家可见文案的「合成」措辞一并订正（三语 × 两线：药丸 tooltip+手册、提尔 tooltip+手册、看板娘手册、AGENTS 对应行）。⑧ **JEI**：新建插件（`compat/jei/`）加自定义类别 **「卡牌商店」**，每张可售卡一条记录（**方块缩略图 + 星币 + 「通过在卡牌商店进行交易获得」**），并把类别挂到商店方块做催化剂（查卡牌=获取方式、查方块=该类别）；卡表取 `CardShopCatalog.entries()` 过滤 `isSellable`。⑨ **判据**：两线 `.56` 产物 `MT_BUILD: OK`、`verify_resource_integrity` 两线 PASS、`tooltip_color_audit` PASS、配方唯一性 `collisions=0`、两线 `compileJava` SUCCESSFUL、1.21.1 三语 **881** 键（含 4 个 JEI 键）/ forge 补完同数。⑩ **未实机**（职业认领/交易表/兑换解锁/隐藏条目/索引一致性需实机确认）；**P1 两线（26.1.2 / fabric）尚未移植整套卡牌商店与职业务，且仍保留卡牌配方** —— 已在 `docs/compat-26.1.2-neoforge.md` 登记待移植。
 
 29. **卡牌商店运行规则（2026-10-10 用户裁决，P0 两线；改商店前必读）**：① **换牌唯一时机 = 沙漏归 0 那一刻**（`CardShopCycleTicker.refreshIfDue`）；重新开店/关闭再开/玩家进出**都不重抽**（货架持久化在**玩家附件** `shop_shelf`，每人一份、彼此独立）。② 沙漏 = **4 档**（60s 切 4 份，`ceil(剩余/15)` 封顶 4，0 = 就绪并保持）且**不显示任何数字**；一轮内**转账 1 次、星光兑换 1 次**，买牌不限次数。③ **装备经商立牌 / 触发大酬宾只补差额牌**（`CardShopShelf.topUp`：先促销 2 格、后团队 1 格，**只增不减、幂等、保留 `enterRewardPaid`**），原牌/售价/已售/**计时器一律不动**；取下立牌或窗口过期**不缩架**，改动留到下次归零重排；补差只有一种判定（开店 / 大酬宾 / 界面开着时 ticker 每 10t 复检）。④ **反刷钱**：**方块交互**进店返现绑定货架批次（`enterRewardPaid`，只有 `roll()` 换批才归 false）⇒ 同一批只发 1 枚；⚠️ **主动技能进店路径当前实现为「必发 1 枚」**（由技能自身 120 秒冷却兜底），**是否也应受「每批一次」约束尚未裁决**（2026-10-10 已向用户提出，未获答复）—— 改这条之前必须先向用户确认。⑤ **界面禁令（用户多次强调）**：按钮上**不得绘制任何文字**，按钮 tooltip **只留按钮名**（「转账」「星光兑换」），**禁止新增任何解释性文本/HUD**；转账页**完全独立**（不渲染商店页），**不得**在面板上加深色遮罩；素材加大后**只重排位置**，文本/头像/控件尺寸与相对布局**不变**。⑥ **黑箱原则**：tooltip 与手册**不得暴露内部机制**（攻击力括号说明等一律删）。⑦ 配方 = `TTT/BBB/MMM`（T=`minecraft:smooth_stone_slab`、B=`astral_dice:star_coin`、M=`#minecraft:logs`），**两线必须逐字一致**（1.20.1 用 `result.item`、1.21.1 用 `result.id` 属平台差异）；手册「方块」类别含 `patchouli:crafting` 配方页。⑧ 收尾判据：`SHOP-V`/`SHOP-L` 等用例**必须冷启动**；实机截图 + 机器行缺一不可。
-30. **协作规则（2026-10-10 用户裁决，硬性）**：**编码一律由主 Agent 亲自完成，不并行下发给子代理**；**只有「代码功能验证」与「测试」两类任务交给子代理**；**子代理校验主 Agent 成果是必须的**（每次非平凡改动后至少一轮独立校验），且**若子代理回报的一致性结论有偏差，主 Agent 必须先自行复查**（复算其证据）再决定修改，不得直接采信、也不得忽略。
-1. **实施方式：代码修改一律走 subagent，三个版本并行（⛔ **2026-10-10 已作废，见条目 30：编码改由主 Agent 亲自执行、不并行下发**）（用户 2026-09-19 裁决，必须遵守）**：① 每次代码修改**必须创建 subagent**；② **三个版本各一个 subagent**（`v121` / `v120` / `v2612`）**并行实施**同一语义改动；③ 批次较大时再在**每条线内**按子系统拆更多 subagent；④ **同一文件同一时间只能有一个 owner**：共享文件（`lang/*.json`、`ModTooltipHandler`、注册表类、探针脚本等）由主 agent 预先指派唯一 owner，其余 subagent 只**报告**自己需要的改动，不得同时写同一文件；⑤ 跨文件接口（新方法签名、新 lang 键、新探针读数格式）由主 agent 在派活前**先固定并写进各 subagent 的任务描述**。
+30. **协作规则（2026-10-10 用户裁决；⛔ 2026-10-11 已作废 —— 现行 = 「## 子代理与测试环境硬规则」第 7 条「开发操作流程」：新功能交子代理实现，编码不再由主 Agent 独占）**：~~编码一律由主 Agent 亲自完成，不并行下发给子代理~~（原文保留仅作追溯）；**只有「代码功能验证」与「测试」两类任务交给子代理**；**子代理校验主 Agent 成果是必须的**（每次非平凡改动后至少一轮独立校验），且**若子代理回报的一致性结论有偏差，主 Agent 必须先自行复查**（复算其证据）再决定修改，不得直接采信、也不得忽略。
+1. **实施方式：代码修改一律走 subagent，三个版本并行（⛔ **2026-10-10 起已作废，现行 = 「## 子代理与测试环境硬规则」第 1/7 条**）（用户 2026-09-19 裁决，必须遵守）**：① 每次代码修改**必须创建 subagent**；② **三个版本各一个 subagent**（`v121` / `v120` / `v2612`）**并行实施**同一语义改动；③ 批次较大时再在**每条线内**按子系统拆更多 subagent；④ **同一文件同一时间只能有一个 owner**：共享文件（`lang/*.json`、`ModTooltipHandler`、注册表类、探针脚本等）由主 agent 预先指派唯一 owner，其余 subagent 只**报告**自己需要的改动，不得同时写同一文件；⑤ 跨文件接口（新方法签名、新 lang 键、新探针读数格式）由主 agent 在派活前**先固定并写进各 subagent 的任务描述**。
 2. **主 agent（队长）的职责（必须遵守）**：① 侦察/定范围、固定接口与文件 ownership、派活；② **构建与冒烟测试一律由主 agent 亲自执行**（`scripts/test` 阶段 P/B/E/L/C/R、`mt_build`、`gradlew build`、`--phase launch`、`--phase cases`、`mt.ps1` 全流程）——**禁止**把这些放进 subagent，以保证改动与测试过程**对用户可见**；③ 汇总报告、解决冲突、跑静态闸门、同步 CHANGELOG、本地提交。构建/冒烟失败时**优先**把错误回报给该文件所属 subagent 修；其已结束或连续两次未修好时主 agent 可接手并在交付说明里记明。
    ⚠️ **2026-09-27 起叠加用户新规**：本条约束的是「谁来跑」，**不改变**「能跑什么」——`mt.ps1` 全流程与阶段 C 的整目录批量此时**已被闸门禁用**（见下方第 5 条与 `TESTING-RULES-OVERVIEW.md` §3.1）。主 agent 亲自执行时同样受闸门约束，须改用「单条用例 + 手动逐条注入」范式；要恢复批量执行需用户显式裁决或临时加 `--allow-auto`。
 3. **平台差异**：按 `docs/compat-26.1.2-neoforge.md`（26.1.2 相对 1.21.1）与 `docs/compat-1.20.1-forge.md`（1.20.1 相对 1.21.1）的差异映射实现，允许并**必须逐条登记**平台差异（如 26.1.2 无 Iron's Spells 联动、`ItemTags.SPEARS` 只在 26.1.2 存在、26.1.2 的 KubeJS 探针 API 形态不同等）。**禁止**用「能启动/跑通了」代替一致性结论。
@@ -809,6 +816,8 @@ When extending this workspace:
 | `item.sign` | 立牌:`BaseSignItem` + 全部立牌 |
 
 规则:新增骰子/卡牌/筹码/立牌类分别放入 `item.dice`/`item.card`/`item.chip`/`item.sign`;跨包引用需显式 import(禁止依赖同包隐式可见性)。
+
+**网络 payload / message 类不得直接引用 `net.minecraft.client.**`（2026-10-11 用户交接裁决）**：专用服务器按 dist 裁剪类（`RuntimeDistCleaner`），payload 一旦被专服加载并触达客户端类型即崩 ⇒ 客户端动作（弹卡 / GUI / 音效）一律下沉到 `client/` 包的 helper 类，payload 本体只在 `FMLEnvironment.dist == Dist.CLIENT`（或平台等价守卫）之内间接触达；判据 = 专服启动冒烟 `Done` 且 `RuntimeDistCleaner` 命中 0 + `javap` 反证 payload 类无客户端类型引用。
 
 ## 物品一览（Item Registry）— 新增/修改前必读
 
@@ -1403,7 +1412,7 @@ When extending this workspace:
 
 ## 目标选择器规范（Target Selector）— **现行口径（以 `multi-dev-next` 实装为准）**
 
-> **沿用与边界**:本节上半部分是历史沿革（`dev-targetselector` 分支已不存在,现存 dev 线**只有** `multi-dev-next`（历史上并存的 `wt/2.0.0-vnext` 已于 2026-09-17 删除,见上方版本号说明）,版本 **`2.0.0-SNAPSHOT.10`**);该分支 mod 内 `target/` 包在现存 dev 线**只剩五个文件:`TargetSelectionManager.java`、`SignSelectionGate.java`、`SelectorTargets.java`、`SelfTargetable.java`、`HoldToSelect.java`**（2026-09-18 t26 按实测清单更正为两个;同日晚 **t46** 再按实测更正为四个 —— `SelectorTargets` 由 `f6f03a3` 引入、`SelfTargetable` 由 `e9fc7b4` 引入、`HoldToSelect` 由 2026-09-25 本批引入,三者均为**移植必带项**,见下方 `### 现行口径` 第 12 条与第 14 条）,`TargetType`/`TargetSelectionAction`/`TargetSelectionRegistry` 已下沉到共享库 `com.merlinkitsune.starenginelib.target`;现存 dev 线另有 `client/TargetSelectionHighlighter`、`client/TargetOutlineCapture`、`network/TargetSelect{Start,Confirm,Cancel}Payload`、`event/TargetSelectionTestCommand`（⛔ **该测试钩子已于 2026-09-22 交付清理在三线一并删除** —— 连同它注册的 `test_echo_*` 演示动作与对应的 3 条 lang 键；`/astral_dice targetselect` 命令随之消失，自动化用例已同步清空）。主线仍无 `target/` 包、仍用「待命」等待器(见「已统一命名的效果/数据」)。
+> **沿用与边界**:本节上半部分是历史沿革（`dev-targetselector` 分支已不存在,现存 dev 线**只有** `multi-dev-next`（历史上并存的 `wt/2.0.0-vnext` 已于 2026-09-17 删除,见上方版本号说明）,版本号随「每提交一版」递增、以四线 `gradle.properties` 为准);该分支 mod 内 `target/` 包在现存 dev 线**只剩五个文件:`TargetSelectionManager.java`、`SignSelectionGate.java`、`SelectorTargets.java`、`SelfTargetable.java`、`HoldToSelect.java`**（2026-09-18 t26 按实测清单更正为两个;同日晚 **t46** 再按实测更正为四个 —— `SelectorTargets` 由 `f6f03a3` 引入、`SelfTargetable` 由 `e9fc7b4` 引入、`HoldToSelect` 由 2026-09-25 本批引入,三者均为**移植必带项**,见下方 `### 现行口径` 第 12 条与第 14 条）,`TargetType`/`TargetSelectionAction`/`TargetSelectionRegistry` 已下沉到共享库 `com.merlinkitsune.starenginelib.target`;现存 dev 线另有 `client/TargetSelectionHighlighter`、`client/TargetOutlineCapture`、`network/TargetSelect{Start,Confirm,Cancel}Payload`、`event/TargetSelectionTestCommand`（⛔ **该测试钩子已于 2026-09-22 交付清理在三线一并删除** —— 连同它注册的 `test_echo_*` 演示动作与对应的 3 条 lang 键；`/astral_dice targetselect` 命令随之消失，自动化用例已同步清空）。主线仍无 `target/` 包、仍用「待命」等待器(见「已统一命名的效果/数据」)。
 >
 > ⚠️ **`target/SignSelectionGate` 属现行口径,移植（`forge-1.20.1` / `neoforge-26.1.2`）时必须一并带上**:它是**五个**「选择器类」立牌（占星师 `haiqing_weak_mark` / 秘密侦探 `bonnie_undercover` / 枪匠 `moses_apply_broken` / 游戏大师 `ren_privilege` / 史莱姆 `lulu_healing_slime`,2026-09-19 追加）的**前置门控登记处** —— 「按下主动键只开会话、不施效」靠它 `arm` 记下待执行动作，确认合法目标后才由 `BaseSignItem.resumeGatedActiveSkill` 恢复原流程；**漏掉它会让这五个立牌退化成「按下即施效」**。两发布线现存实现逐字节对等（`SignSelectionGate.java` 均 2975 字节、内容同构）;移植口径见下方「### 现行口径」第 12 条与「立牌选择器类主动的『前置门控』」小节。
 >
@@ -2285,13 +2294,13 @@ When extending this workspace:
 
 ## 自动化测试流程（Automated Testing）— 必须遵守（子配置）
 
-### ⚠️ 测试资产已全部清零（2026-09-20 用户指令）— 现行状态，先读本节
+### 测试资产清零与重建（2026-09-20 用户指令清零；此后按批次重建，现行有效）
 
 > 用户指令原文：「执行项目与AGENTS自检：清理所有测试项，已进行或未进行的测试项全部作废并删除，删除所有插针和测试项脚本，包括游戏环境中插入的kubejs脚本。保留测试规则，由用户对测试流程和规则进行核验，将完整的测试流程和规则向用户完整展示。」
 
 **已删除（主树 `multi-1.20.1-1.21.1` 与工作树 `multi-dev-next` 两处同步执行）**
 
-- 全部测试条目：`scripts/test/cases/*.json`（含 `.mt_*` 运行态）——**当前在册用例 0 条**；
+- 全部测试条目：`scripts/test/cases/*.json`（含 `.mt_*` 运行态）——清零时在册 0 条（**此后各批次已重建**，现行数量以 `scripts/test/cases/` 实测为准）；
 - 全部探针与测试脚本（源码侧）：`scripts/test/resources/kubejs/<版本>/server_scripts/astral_*.js`；
 - 游戏环境内已注入的副本：`run/<版本>/kubejs/{server_scripts,startup_scripts}/astral_*.js`；
 - 历史测试报告：`scripts/test/reports/<运行id>/`（保留模板 `_template.md`）；
@@ -2299,9 +2308,9 @@ When extending this workspace:
 
 **结论效力**：2026-09-20 之前的一切自动化 / 游戏内测试结论**全部作废**，不得作为验收依据；本文件下文与 `TESTING-SPEC.md` 中出现的用例名、探针命令与读数一律只作历史记录。
 
-**保留（供用户核验）**：测试流程实现与规则文本原样保留；用户核验通过并重新授权后才可重建用例与探针。
+**保留（供用户核验）**：测试流程实现与规则文本原样保留；2026-09-21 起用户已逐批授权重建用例与探针。
 
-**当前可运行性**：用例目录为空 ⇒ `--phase cases` 无可执行条目；探针已删 ⇒ `--phase launch` 预期 ERROR。**重建测试资产前，不得把本流程的任何输出当作验收证据。**
+**可运行性（2026-10-11 订正）**：用例与探针已随各批次重建，`--phase cases` / `--phase launch` 照常可用；本段「清零」仅作废 2026-09-20 之前的测试结论，之后重建资产的实测读数照常有效（改动后旧证据仍按〈子代理与测试环境硬规则〉第 6 条作废）。
 
 **完整展示**：`scripts/test/TESTING-RULES-OVERVIEW.md`（2026-09-20 生成）。
 
@@ -2313,25 +2322,6 @@ When extending this workspace:
 - ⚠️ **冒烟测试结束后直接杀死游戏进程**（2026-09-21 用户裁决）：不得让 runClient 驻留。
   用例**不得**设 `on_fail=keep_game_running`（该值会落 `.mt_keep_alive`，使 `--phase stop` 只提示不执行、
   现场保留成常驻进程）；标准收尾仍是 `mt.ps1 --version <V> --phase stop --purge-saves`。
-### ⚠️ 测试资产已全部清零（2026-09-20 用户指令）— 现行状态，先读本节
-
-> 用户指令原文：「执行项目与AGENTS自检：清理所有测试项，已进行或未进行的测试项全部作废并删除，删除所有插针和测试项脚本，包括游戏环境中插入的kubejs脚本。保留测试规则，由用户对测试流程和规则进行核验，将完整的测试流程和规则向用户完整展示。」
-
-**已删除（主树 `multi-1.20.1-1.21.1` 与工作树 `multi-dev-next` 两处同步执行）**
-
-- 全部测试条目：`scripts/test/cases/*.json`（含 `.mt_*` 运行态）——**当前在册用例 0 条**；
-- 全部探针与测试脚本（源码侧）：`scripts/test/resources/kubejs/<版本>/server_scripts/astral_*.js`；
-- 游戏环境内已注入的副本：`run/<版本>/kubejs/{server_scripts,startup_scripts}/astral_*.js`；
-- 历史测试报告：`scripts/test/reports/<运行id>/`（保留模板 `_template.md`）；
-- 会话期测试证据：`temp/` 下的测试证据目录与日志。删除清单：`temp/cleanup-manifest-20260920-*.txt`。
-
-**结论效力**：2026-09-20 之前的一切自动化 / 游戏内测试结论**全部作废**，不得作为验收依据；本文件下文与 `TESTING-SPEC.md` 中出现的用例名、探针命令与读数一律只作历史记录。
-
-**保留（供用户核验）**：测试流程实现与规则文本原样保留；用户核验通过并重新授权后才可重建用例与探针。
-
-**当前可运行性**：用例目录为空 ⇒ `--phase cases` 无可执行条目；探针已删 ⇒ `--phase launch` 预期 ERROR。**重建测试资产前，不得把本流程的任何输出当作验收证据。**
-
-**完整展示**：`scripts/test/TESTING-RULES-OVERVIEW.md`（2026-09-20 生成）。
 
 针对**三个子项目**（**三线同级、都必须跑**；执行顺序 `neoforge-1.21.1` → `forge-1.20.1` → `neoforge-26.1.2`，逐线出结论）的客户端渲染/输入类功能，以及任意**新增内容**与**用户指定内容**的真实游戏自动化验证。经本流程启动的自动化 `runClient` 属于「编译产物上传规则」第 5 条的**例外**；无流程的手动冒烟仍禁止。
 
