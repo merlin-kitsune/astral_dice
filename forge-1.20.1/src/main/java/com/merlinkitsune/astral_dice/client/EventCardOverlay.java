@@ -134,13 +134,19 @@ public final class EventCardOverlay {
         // 1.21.1/1.20.1 的 GuiGraphics 是**批处理**：shader 颜色在 flush 时生效 ⇒
         // 必须在此处显式 flush，否则卡框/事件图会用后续文字的颜色（= 完全不透明）画出来。
         g.flush();
-        AstralEvent ev = AstralEventRegistry.get(card.eventId()).orElse(null);
-        int color = (ev == null ? 0xFFFFFF : ev.polarity().color().getColor()) | (a << 24);
-        Component name = Component.translatable("event.astral_dice." + card.eventId().getPath() + ".name");
-        g.drawString(mc.font, name, x + FRAME_W / 2 - mc.font.width(name) / 2, y + NAME_Y_OFF, color, false);
-        if (card.durationTicks() > 0) {
-            Component timer = Component.literal(formatTicks(card.durationTicks()));
-            g.drawString(mc.font, timer, x + FRAME_W / 2 - mc.font.width(timer) / 2, y + TIME_Y_OFF, color, false);
+        // BUG1 修复：原版 Font#adjustColor 把 alpha ≤ 3 的颜色强制改回完全不透明
+        //（1.20.1 net/minecraft/client/gui/Font.java:113-115 `(color & -67108864) == 0 ? color | -16777216 : color`）
+        // ⇒ 淡出末段与 [ANIM_MS, TOTAL_MS) 缓冲窗（a=0）内卡面已消失，文字却被拉回全不透明而残留。
+        // a < 4 时文字本就低于 2% 不透明度、视觉不可见，直接跳过名称与计时器绘制（贴图绘制逐字不动）。
+        if (a >= 4) {
+            AstralEvent ev = AstralEventRegistry.get(card.eventId()).orElse(null);
+            int color = (ev == null ? 0xFFFFFF : ev.polarity().color().getColor()) | (a << 24);
+            Component name = Component.translatable("event.astral_dice." + card.eventId().getPath() + ".name");
+            g.drawString(mc.font, name, x + FRAME_W / 2 - mc.font.width(name) / 2, y + NAME_Y_OFF, color, false);
+            if (card.durationTicks() > 0) {
+                Component timer = Component.literal(formatTicks(card.durationTicks()));
+                g.drawString(mc.font, timer, x + FRAME_W / 2 - mc.font.width(timer) / 2, y + TIME_Y_OFF, color, false);
+            }
         }
         com.mojang.blaze3d.systems.RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
         g.setColor(1.0F, 1.0F, 1.0F, 1.0F);

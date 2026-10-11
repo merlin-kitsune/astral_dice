@@ -6,7 +6,8 @@
 		32
 	],
 	"textures": {
-		"1": "astral_dice:block/card_shop"
+		"1": "astral_dice:block/card_shop",
+		"particle": "astral_dice:block/card_shop"
 	},
 	"render_type": "minecraft:cutout",
 	"elements": [

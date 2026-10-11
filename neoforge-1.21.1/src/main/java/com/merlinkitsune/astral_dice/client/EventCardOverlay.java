@@ -156,13 +156,18 @@ public final class EventCardOverlay implements LayeredDraw.Layer {
         // 必须在此处显式 flush，否则卡框/事件图会用后续文字的颜色（= 完全不透明）画出来。
         g.flush();
         // ③ 文字（MC 字体、居中、随卡缩放）——名称按类型染色，计时器同色
-        AstralEvent ev = AstralEventRegistry.get(card.eventId()).orElse(null);
-        int color = (ev == null ? 0xFFFFFF : ev.polarity().color().getColor()) | (a << 24);
-        Component name = Component.translatable("event.astral_dice." + card.eventId().getPath() + ".name");
-        g.drawString(mc.font, name, x + FRAME_W / 2 - mc.font.width(name) / 2, y + NAME_Y_OFF, color, false);
-        if (card.durationTicks() > 0) {
-            Component timer = Component.literal(formatTicks(card.durationTicks()));
-            g.drawString(mc.font, timer, x + FRAME_W / 2 - mc.font.width(timer) / 2, y + TIME_Y_OFF, color, false);
+        // ⚠️ a < 4 时跳过文字：原版 net.minecraft.client.gui.Font#adjustColor 的
+        // `(color & -67108864) == 0` 会把 alpha≤3 的颜色强制改回 0xFF000000（完全不透明），
+        // 导致卡面贴图已淡出、卡名与计时器文字却残留。
+        if (a >= 4) {
+            AstralEvent ev = AstralEventRegistry.get(card.eventId()).orElse(null);
+            int color = (ev == null ? 0xFFFFFF : ev.polarity().color().getColor()) | (a << 24);
+            Component name = Component.translatable("event.astral_dice." + card.eventId().getPath() + ".name");
+            g.drawString(mc.font, name, x + FRAME_W / 2 - mc.font.width(name) / 2, y + NAME_Y_OFF, color, false);
+            if (card.durationTicks() > 0) {
+                Component timer = Component.literal(formatTicks(card.durationTicks()));
+                g.drawString(mc.font, timer, x + FRAME_W / 2 - mc.font.width(timer) / 2, y + TIME_Y_OFF, color, false);
+            }
         }
         com.mojang.blaze3d.systems.RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
         g.setColor(1.0F, 1.0F, 1.0F, 1.0F);

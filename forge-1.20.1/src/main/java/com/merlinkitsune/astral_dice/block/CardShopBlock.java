@@ -2,13 +2,17 @@ package com.merlinkitsune.astral_dice.block;
 
 import com.merlinkitsune.astral_dice.shop.CardShopOpener;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
@@ -25,7 +29,7 @@ import net.minecraft.world.phys.shapes.VoxelShape;
  * 不是满方块 ⇒ 必须覆写形状，并以 {@code noOcclusion()} 注册（见 ModBlocks），
  * 否则台面之上会残留隐形碰撞、相邻面被错误剔除。
  */
-public class CardShopBlock extends Block {
+public class CardShopBlock extends HorizontalDirectionalBlock {
 
     /**
      * 选中与碰撞共用的整盒形状。
@@ -38,6 +42,20 @@ public class CardShopBlock extends Block {
 
     public CardShopBlock(Properties properties) {
         super(properties);
+        // 朝向三件套 ①：显式登记默认朝向 = 北（Direction.Plane.HORIZONTAL 的首值也是 NORTH，此处固定语义）。
+        this.registerDefaultState(this.stateDefinition.any().setValue(FACING, Direction.NORTH));
+    }
+
+    /** 朝向三件套 ②：放置时朝向玩家（水平朝向取反 ⇒ 方块正面面向放置者）。 */
+    @Override
+    public BlockState getStateForPlacement(BlockPlaceContext context) {
+        return this.defaultBlockState().setValue(FACING, context.getHorizontalDirection().getOpposite());
+    }
+
+    /** 朝向三件套 ③：把 FACING（继承自 HorizontalDirectionalBlock）注册进 blockstate 定义。 */
+    @Override
+    protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
+        builder.add(FACING);
     }
 
     /** 选中/描边形状：与外观包围盒一致（1.20.1 里本方法是 public，1.21.1 改成了 protected） */
