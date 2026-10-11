@@ -4,7 +4,7 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
-## Unreleased (2.0.0-SNAPSHOT.78)
+## Unreleased (2.0.0-SNAPSHOT.79)
 
 ### New Content
 
@@ -2041,6 +2041,8 @@ m
 - **The detective signpost skill sound is back to "plays immediately when the skill key is pressed"** (like every other signpost); confirming no longer plays it again.
 - **Every star coin payout in the mod now prefers the wallet**: paths that used to stuff coins straight into the inventory (dropping them on the ground when full) - Haiqing (weak-mark kill reward), Bonnie (mark reward), Hanna, Mimi, Gift From Sky and the detective signpost passive - all go through the central funnel (`ResourceConversion.giveItem` -> wallet credit + balance sync; items only when the wallet is disabled), matching the card shop and bank card behaviour.
 - **Detective signpost: confirming no longer waits 1 second** - the screen closes and the event trigger flow (card -> 1.4 s animation + 0.5 s -> resolution) starts in the very same tick; confirming also plays **no** sound at all, leaving only the single skill sound played when the skill key is pressed.
+- **Detective signpost tooltip ordering fixed**: the "passive skill" title used to be inserted between the active-skill title and its body, so the active description appeared under the passive heading (looking as if it were missing). Now it follows the same layout as every other signpost: active title -> active text -> passive title -> passive text.
+
 
 
 
