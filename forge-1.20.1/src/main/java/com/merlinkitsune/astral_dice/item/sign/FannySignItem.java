@@ -41,7 +41,7 @@ public class FannySignItem extends BaseSignItem {
             // 与其它立牌「无可用目标 ⇒ 空放」的口径一致，无需补偿，也不叠加第二次结算。
             boolean opened = com.merlinkitsune.astral_dice.event.EventChoiceManager.start(serverPlayer);
             if (!opened) {
-                return InteractionResultHolder.success(stack);
+                return InteractionResultHolder.fail(stack);
             }
         }
         return InteractionResultHolder.success(stack);
