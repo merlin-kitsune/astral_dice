@@ -1,7 +1,7 @@
 # 交接文档 — astral_dice_multiloader-next（开发线 multi-dev-next）
 
 > 生成：2026-10-11 20:20（Asia/Hong_Kong）｜工作树 `F:\MCProject\astral_dice_multiloader-next`
-> 分支 `multi-dev-next`｜生成时基线 HEAD **`bb48a206`**（本文件随 `.90` 提交落地；最新值以 `git log -1` 为准）｜四线版本 **`2.0.0-SNAPSHOT.90`**（四条线同号）
+> 分支 `multi-dev-next`｜生成时基线 HEAD **`bb48a206`**（本文件随 `.91` 提交落地；最新值以 `git log -1` 为准）｜四线版本 **`2.0.0-SNAPSHOT.91`**（四条线同号）
 > 工作树状态：仅一项**未跟踪**（`?? docs/chip-shop-logic-plan.md` = 筹码商店逻辑设计稿，待用户点头后随实现同批提交），无其它改动；**未 push**。
 > 新会话提示词：`docs/handover-new-session-context.md`（可整份复制给新会话）。
 

@@ -1,6 +1,6 @@
 # 筹码商店买卖逻辑 · 设计计划表 v2（已按裁决更新 · 待开工确认）
 
-> **状态：仍未开工。** v1 的 Q1–Q12 已由你在 2026-10-12 全部裁决（逐条记录见 §11），本版 = **按裁决改写后的最终方案 + 残余确认项 Q13–Q16**；你点头（或直接改条目）后即进入 §12 的实施步骤。
+> **状态：仍未开工。** v1 的 Q1–Q12 已由你在 2026-10-12 全部裁决（逐条记录见 §11），**Q13–Q16 亦已于 2026-10-12 裁决完毕**（逐条见 §11，无残余项）；本版 = 全部裁决落定后的最终方案，你回「按计划开工」即进入 §12 实施步骤。
 > 实现范围 = 两 P0 线 `neoforge-1.21.1` + `forge-1.20.1`（同批同号）；提交时随实现升版（**当前四线 `.89`**，实现批在其最新号上继续递增；四线同号，两份 CHANGELOG）。
 > 上游文档：`docs/chip-shop-ui-spec.md`（界面骨架，.86 已落地）；本批的模板来源 = 卡牌商店（`shop/CardShopCatalog.java`、`shop/CardShopShelf.java`、`shop/CardShopMenu.java`、`shop/CardShopCycleTicker.java`、`network/CardShopBuyPayload.java`、`client/CardShopClientState.java`）——**架构照抄，只在「候选抽取 / 价格曲线 / 刷新恢复 / 候选落盘 / 方块入口」上新增**。
 > 界面骨架现状（.86，本批不改）：`screen/ChipShopScreen.java`、`client/ChipShopClientState.java`、`shop/ChipShopMenu.java`；绘制坐标与冻结常量一律不动（`docs/chip-shop-ui-spec.md` §3）。
@@ -78,14 +78,14 @@
 | `warp_engine_chip` | 跃迁引擎 | `跃迁引擎.png` | 稀有(quality_1) | 充能 | 强化 | 触发瞬移时，充能 +2 并获得迅捷 (0:10)。计入的传送：末影珍珠、末影骰子不死图腾后的安全瞬移、维度传送门、Waystone（需安装 Waystones）。传送门与 Waystone 触发共享 5:00 冷却；末影 |
 | `adrenaline_high_chip` | 肾上腺素-高效 | `肾上腺素-高效.png` | 传奇(quality_3) | 泛用 | 攻击力 | 肾上腺素-高效：生命值为 50%% 或更低时，攻击力/防御力 +8（吸血鬼立牌「汲取」生效期间视为条件通过）。 |
 | `adrenaline_low_chip` | 肾上腺素-一般 | `肾上腺素-一般.png` | 史诗(quality_2) | 泛用 | 攻击力 | 肾上腺素-一般：生命值为 50%% 或更低时，攻击力/防御力 +3（吸血鬼立牌「汲取」生效期间视为条件通过）。 |
-| `big_backpack_chip` | 大背包 | ⚠ **素材缺失**（Q16 默认：暂用 `textures/item/big_backpack_chip.png`） | 史诗(quality_2) | 泛用 | 强化 | 效果牌出牌数 +1。 |
+| `big_backpack_chip` | 大背包 | `大背包.png`（Q16 已补齐，2026-10-12） | 史诗(quality_2) | 泛用 | 强化 | 效果牌出牌数 +1。 |
 | `bookmark_chip` | 书签 | `书签.png` | 稀有(quality_1) | 泛用 | 攻击力 | 使伤害类效果牌伤害加成 +1。 |
 | `boxing_gloves_high_chip` | 拳击手套-高级 | `拳击手套-高级.png` | 传奇(quality_3) | 泛用 | 攻击力 | 骰神赐福攻击力 +8。 |
 | `boxing_gloves_low_chip` | 拳击手套-初级 | `拳击手套-初级.png` | 稀有(quality_1) | 泛用 | 攻击力 | 骰神赐福攻击力 +2。 |
 | `boxing_gloves_medium_chip` | 拳击手套-中级 | `拳击手套-中级.png` | 史诗(quality_2) | 泛用 | 攻击力 | 骰神赐福攻击力 +4。 |
 | `cursed_sword_chip` | 诅咒之剑 | `诅咒之剑.png` | 稀有(quality_1) | 泛用 | 攻击力 | 装备时始终受到青之诅咒：护甲 -20%%，盔甲韧性 -50%%。 |
 | `magic_tome_chip` | 魔法秘典 | `魔法秘典.png` | 史诗(quality_2) | 泛用 | 辅助 | 每使用 3 张效果牌，复制最后一张使用的效果牌并返回到物品栏。 |
-| `member_recommendation_chip` | 会员推荐信 | `会员推荐信.png` | 稀有(quality_1) | 泛用 | 经济 | 每次触发骰神赐福时，获得一张随机卡牌。装备期间，自己商店内所有卡牌价格 -1 星币（可与经商立牌的降价叠加，最低 0 星币）。 |
+| `member_recommendation_chip` | 会员推荐信 | `会员推荐信.png` | 稀有(quality_1) | 泛用 | 经济 | 每次触发骰神赐福时，获得一张随机卡牌。装备期间，自己商店内所有卡牌价格 -1 星币（可与经商立牌的降价叠加，最低 0 星币）。⚠ 该 −1 **只作用于卡牌商店**，筹码商店不适用（Q13 已裁决）。 |
 | `moto_helmet_high_chip` | 摩托头盔-高级 | `摩托头盔-高级.png` | 传奇(quality_3) | 泛用 | 强化 | 防御力 +6，盔甲韧性 +2。 |
 | `moto_helmet_low_chip` | 摩托头盔-一般 | `摩托头盔-一般.png` | 稀有(quality_1) | 泛用 | 强化 | 防御力 +2。 |
 | `moto_helmet_medium_chip` | 摩托头盔-中级 | `摩托头盔-中级.png` | 史诗(quality_2) | 泛用 | 强化 | 防御力 +4。 |
@@ -105,9 +105,9 @@
 ### §1.1 素材映射实测（2026-10-12 复核你重命名后的目录）
 
 - 目录实况：`images/shop/unbord_chips` 共 **63** 张 png（`images/shop` 下另有 `card+event/` 39 张与商店 UI 素材若干，与本池无关）。
-- **59 枚**筹码与图标**同名精确命中**；`energy_recycler_chip`（名称「能量回收器」）↔ 图标 `能量回收.png`（你说的「能量回收期 → 能量回收」改名结果）⇒ 记为**唯一一条显式别名**，只影响贴图路径，**不改物品名**。
-- ⚠️ **`big_backpack_chip`（大背包）在素材目录里没有任何对应文件**（全目录 63 张筛「背包/bag/backpack」= 0 命中）—— 见残余 Q16。
-- 未被任何筹码使用的素材 **3 张**：`循环往复.png`、`手电筒-爆闪.png`、`摩托头盔-初级.png`（筹码侧只有 `摩托头盔-一般/中级/高级` 三档，且都已有同名图标 ⇒「初级」疑为旧命名残留）。按你「不要弃用素材」的要求：**保留在仓库 `images/`**，但**不复制进 jar**（无对应筹码 ⇒ 引用不到）；若你确认这三张将来会有对应筹码，我再补入。
+- **60 枚**筹码与图标**同名精确命中**（含本次补齐的 `big_backpack_chip` ↔ `大背包.png`）；`energy_recycler_chip`（名称「能量回收器」）↔ 图标 `能量回收.png`（你「能量回收期 → 能量回收」改名结果）⇒ 记为**唯一一条显式别名**，只影响贴图路径，**不改物品名** ⇒ **图标映射 61/61 全覆盖**。
+- ✅ **Q16 已闭环**：`big_backpack_chip`（大背包）的 `大背包.png` 已由你补齐（2026-10-12 复测：63 张内「背包」命中 1 条），**不再使用** `textures/item/big_backpack_chip.png` 兜底。
+- 未被任何筹码使用的素材 **2 张**：`循环往复.png`、`手电筒-爆闪.png`（与你说的一致：除手电筒-爆闪与循环往复外都存在）。按你「不要弃用素材」的要求：**保留在仓库 `images/`**，但**不复制进 jar**（无对应筹码 ⇒ 引用不到）。
 
 ## §2 抽取算法（实现 = `shop/ChipShopRoller.java`）
 
@@ -152,7 +152,7 @@ roll(player, reason):                     # reason = ENTER_FIRST | REFRESH | POS
 | `refreshesLeft` | int | 当前剩余刷新次数（初值 3、上限 5） |
 | `regenAnchor` | long（世界 gameTime） | 刷新恢复锚点：首次消耗刷新后 = now + 36000；每次到点 +1 并顺延（裁决 2） |
 
-- **重抽的唯一三个入口**（R16/R17）：① 附件**无候选**或候选**含已拥有项**时的进店补抽（免费，见 Q15 默认）；② `handleRefresh` 成功（−1 次）；③ 购买成功（R18）。
+- **重抽的唯一三个入口**（R16/R17）：① 附件**无候选**或候选**含已拥有项**时的进店补抽（免费，见 Q15）；② `handleRefresh` 成功（−1 次）；③ 购买成功（R18）。
 - **刷新恢复**：服务端 tick（照抄 `CardShopCycleTicker.onServerTick` 的逐玩家遍历口径）检查 `refreshesLeft < REFRESH_MAX && now >= regenAnchor` ⇒ `+1`、`regenAnchor += 36000`、落盘；**玩家不在店内也照涨**（与卡牌商店沙漏口径一致）。
 - 服务端运行态：`SimpleContainer(3)`（隐藏槽，承载候选 ItemStack 供同步）+ `int[] prices`（每格单价，见 §6）+ 附件读出的 `refreshesLeft`。
 
@@ -182,7 +182,7 @@ roll(player, reason):                     # reason = ENTER_FIRST | REFRESH | POS
 - **价格（裁决 1）**：`price = min(PRICE_MAX, PRICE_INITIAL + PRICE_STEP × purchasedCount) = min(100, 10 + 5 × 已购买次数)`。
   - `purchasedCount` = 该玩家**累计购买次数**，随 `CHIP_SHOP_STATE` **持久化**（跨进店、跨存档）；三格**同价**（价格不再按品质区分 —— v1 的 `PRICE_BY_QUALITY` 作废）。
   - 价格曲线：第 1 次 10 → 第 2 次 15 → … → 第 19 次 100 → 之后恒 100。
-  - `member_recommendation_chip`（会员推荐信）的商店 −1：**暂定保留**（与卡牌商店同口径、可与经商立牌叠加、下限 0）→ 见残余 Q13。
+  - `member_recommendation_chip`（会员推荐信）的商店 −1：**已裁决 = 不适用于筹码商店**（Q13：该 −1 只影响卡牌商店）⇒ 筹码商店**没有任何折扣路径**，价格恒为 `PRICE_INITIAL + PRICE_STEP × purchasedCount`（10 → 上限 100）。
   - 余额权威 = 前置库 `StarEngineEconomy.hasBalance / withdraw`；扣款成功后 `StarCoinBalanceSync.notifyChanged(player)`。
 - **刷新（裁决 2）**：`REFRESH_INITIAL = 3`（首次获得该状态时）、`REFRESH_MAX = 5`。
   - 「**第一次使用刷新后**」才开始恢复：首次成功刷新时若 `regenAnchor == 0` ⇒ `regenAnchor = now + 36000`（30:00）。
@@ -212,7 +212,7 @@ roll(player, reason):                     # reason = ENTER_FIRST | REFRESH | POS
 
 - 扩展 `scripts/verify/verify_chip_shop_ui.ps1`（机器行前缀 `CHIPUI_*`）：
   - 既有 G1–G8（.86 界面骨架：素材/常量/交互/文案/注册/槽位/绑定）；
-  - **G9** 池 = 61 + 图标映射 61/61（含 `energy_recycler_chip → 能量回收` 显式别名；`big_backpack_chip` 按 Q16 结论放行或判红）；
+  - **G9** 池 = 61 + 图标映射 61/61（61/61 全覆盖：60 条同名 + `energy_recycler_chip → 能量回收` 显式别名 + `big_backpack_chip → 大背包`）；
   - **G10** 类别覆盖 5、每枚恰一类、品质码 ⊆ {1,2,3}；
   - **G11** 品质概率表逐字 + 因子随 slot 衰减（slot0 强度 > slot1/2）；
   - **G12** 去重与缺口顺序；**G13** 已拥有过滤 + 两种拒绝进入条件；**G14** 无记录时无类别偏置；**G15** 两处命中都只 `select`；**G16** 红闪常量 = 30t 且无第二购买入口；
@@ -246,7 +246,7 @@ roll(player, reason):                     # reason = ENTER_FIRST | REFRESH | POS
 | Q1 价格 | 初始 **10** 星币，每购买一次 **+5**，上限 **100** | §6（v1 的按品质定价作废） |
 | Q2 刷新 | 初始 **3**；**第一次使用刷新后**每 **30:00 +1**，上限 **5** | §6 |
 | Q3 入口 | `chipshop.bbmodel` 方块（模型资源此前已用 Blockbench MCP 整理） | §7（R19） |
-| Q4 素材 | 已重命名整理；「能量回收期」→「能量回收」；**不要弃用素材**（识别失败所致） | §1.1（实测：60/61 映射 + 3 张未使用 + 1 张缺失） |
+| Q4 素材 | 已重命名整理；「能量回收期」→「能量回收」；**不要弃用素材**（识别失败所致） | §1.1（实测：**61/61 映射**（含 1 别名）+ 2 张未使用；Q16 素材已补齐） |
 | Q5 blank_chip | 材料，不入池 | §1 |
 | Q6 类别 | **采信**，先观察实际执行结果 | §1 表 |
 | Q7 因子 | 用该因子，**不做配置项，但做常量** | §2 常量表 |
@@ -258,10 +258,10 @@ roll(player, reason):                     # reason = ENTER_FIRST | REFRESH | POS
 
 **残余确认（4 项，未阻塞：均给了默认值，你不回复我就按默认实现）**
 
-- **Q13** `member_recommendation_chip`（会员推荐信）在筹码商店是否仍 **−1 星币**（可与经商立牌叠加、下限 0）？**默认：保留**（与卡牌商店同口径）。
-- **Q14** 刷新恢复到点时间用**世界 gameTime** ⇒ 玩家**离线期间照涨**（回来一次性补算，上限 5）。**默认：照涨**；若你要「只在在线时走」我改挂玩家在线 tick。
-- **Q15** 开店时若落盘候选里出现**玩家已拥有**的筹码（在别处获得）⇒ **整组免费重抽**。**默认：重抽**（否则会出现「已拥有」的候选格）。
-- **Q16** `big_backpack_chip`（大背包）**素材目录里没有对应 png**：默认先用模组内既有物品贴图 `assets/astral_dice/textures/item/big_backpack_chip.png` 兜底；你补一张 `大背包.png` 到 `images/shop/unbord_chips` 我就换成正式素材。
+- **Q13 已裁决（2026-10-12）**：会员推荐信的商店 −1 **只影响卡牌商店**，筹码商店**不适用** ⇒ 筹码商店无折扣路径（恒定「初始 10、每次购买 +5、上限 100」）。
+- **Q14 已裁决**：刷新次数恢复用**世界 gameTime**、**离线照涨**（回来一次性补算，上限 5）—— 已确认，无需改动。
+- **Q15 已裁决**：开店时若落盘候选含**玩家已拥有**的筹码（在别处获得）⇒ **直接整组免费重抽** —— 已确认。
+- **Q16 已裁决（素材已补齐）**：`大背包.png` 已入 `images/shop/unbord_chips` ⇒ 用正式素材，取消 `textures/item/big_backpack_chip.png` 兜底。
 
 ## §12 实施步骤（分工：基准线 T1–T6 由主 Agent 亲自编写，forge 移植与功能审查派子代理）
 
@@ -278,4 +278,4 @@ roll(player, reason):                     # reason = ENTER_FIRST | REFRESH | POS
 - 派发纪律（2026-10-12 新流程）：**T1–T6 由主 Agent 亲自编写**（基准线 `neoforge-1.21.1`）→ `code_review` 一次性独立会话复核 → 修完后**派子代理做独立功能审查**（`:<线>:classes` 编译 / 守门脚本 / 与需求逐字对账）→ **确认无误后**才派子代理做 **T7 `forge-1.20.1` 移植** → 移植线再 `code_review` + **另派一个独立子代理**功能审查。子代理单任务、用完即弃（硬规则第 1 条），优先派 DeepSeek；复核/审查发现的问题交**新**子代理改进（连续 3 次不到位 ⇒ 主 Agent 亲自重写）。
 - 收尾：`:<线>:classes` 编译 + 守门 + `verify_resource_integrity` + 两份 CHANGELOG + 四线版本随批递增 + 本地提交（不 push）；实机按第 5 条等你下达。
 
-> 审核方式：直接指出要改的条目（例如「Q13 去掉推荐信 −1」「Q14 改成只在线走」），我改本表后再开工；若无异议，回一句「**按计划开工**」即可 —— 残余 Q13–Q16 不回则按 §11 的默认值实现。
+> 审核方式：Q1–Q16 **已全部裁决并落定在本表**。回一句「**按计划开工**」即按 §12 实施（T1–T6 由主 Agent 亲自编写基准线 → `code_review` → 独立子代理功能审查 → 确认无误后派子代理移植 `forge-1.20.1` → 再 `code_review` + 另一个独立子代理功能审查）。
