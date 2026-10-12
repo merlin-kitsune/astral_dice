@@ -4,6 +4,7 @@
 > **本批提交 `6c81b7fe`**（`feat(chip-shop): land the Chip Shop batch on both P0 lines with in-game PASS (four lines .97)`，192 文件）；**本交接文档随 `.98` 提交落地**（文档提交同样升版，见 §0）
 > 四线版本：`neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1` = **`2.0.0-SNAPSHOT.98`**（同号；以四份 `gradle.properties` 与 `git log -1` 实测为准，勿照抄）
 > 上游常态交接：`docs/handover-2.0.0-dev-next.md`｜新会话提示词（可整份复制）：`docs/handover-new-session-context.md`
+> ⚠️ **环境分界**：本文件所有命令均为 **Windows 侧（pwsh 7）** 口径（含 `F:\` 与 `D:\.minecraft\…` 硬编码路径）；**Linux 侧 Agent 只读参考、不要执行** —— 边界与替代做法见 `docs/handover-new-session-context.md` §0。
 > 本批设计正本：`docs/chip-shop-logic-plan.md`（§1..§12，Q1–Q17 全部裁决落定）；界面正本：`docs/chip-shop-ui-spec.md`；平台差异正本：`docs/compat-1.20.1-forge.md` **§十七**
 
 ---

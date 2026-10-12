@@ -1,10 +1,11 @@
 # 交接文档 — astral_dice_multiloader-next（开发线 multi-dev-next）
 
-> 生成：2026-10-11 20:20；**本次刷新：2026-10-12 22:00（Asia/Hong_Kong）**｜工作树 `F:\MCProject\astral_dice_multiloader-next`
-> 分支 `multi-dev-next`｜刷新前基线 HEAD **`6c81b7fe`**（筹码商店批 `.97`；本文件随 `.98` 提交落地；最新值以 `git log -1` 为准）｜四线版本 **`2.0.0-SNAPSHOT.98`**（四条线同号）
+> 生成：2026-10-11 20:20；**本次刷新：2026-10-12 22:11（Asia/Hong_Kong）**｜工作树 `F:\MCProject\astral_dice_multiloader-next`
+> 分支 `multi-dev-next`｜刷新前基线 HEAD **`e06451c5`**（交接文档批 `.98`；本文件随 `.99` 提交落地；最新值以 `git log -1` 为准）｜四线版本 **`2.0.0-SNAPSHOT.99`**（四条线同号）
 > 工作树状态：除 4 个与本项目无关的未跟踪目录外**干净**（`git status --short -uall` 只剩 `?? %SystemDrive%/ProgramData/Microsoft/Windows/Caches/*.db` 四行，见 §5-C-11）；**未 push**。
 > **本批交接（筹码商店）**：`docs/handover-2.0.0-SNAPSHOT.97-chip-shop.md`（流程 / 语义 / 判据 / 未完成 / 新坑，逐条可复算）—— 建议与本文件一起读。
-> 新会话提示词：`docs/handover-new-session-context.md`（可整份复制给新会话）。
+> 新会话提示词：`docs/handover-new-session-context.md`（可整份复制给新会话；**已改为 Linux 侧口径**）。
+> ⚠️ **环境分界（2026-10-12 新增）**：新会话若在 **Linux** 上运行，其提示词 §0 给出「可用 / 不可用」命令清单（本仓工具链全为 Windows 专用）；**本文件与批次文档仍是 Windows 侧 pwsh 7 口径，Linux 侧只读参考、不要照抄命令**。
 
 ---
 
