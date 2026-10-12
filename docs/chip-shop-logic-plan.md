@@ -1,7 +1,7 @@
 # 筹码商店买卖逻辑 · 设计计划表 v2（已按裁决更新 · 待开工确认）
 
-> **状态：仍未开工。** v1 的 Q1–Q12 已由你在 2026-10-12 全部裁决（逐条记录见 §11），**Q13–Q16 亦已于 2026-10-12 裁决完毕**（逐条见 §11，无残余项）；本版 = 全部裁决落定后的最终方案，你回「按计划开工」即进入 §12 实施步骤。
-> 实现范围 = 两 P0 线 `neoforge-1.21.1` + `forge-1.20.1`（同批同号）；提交时随实现升版（**当前四线 `.89`**，实现批在其最新号上继续递增；四线同号，两份 CHANGELOG）。
+> **状态：设计已定稿冻结，暂不开工**（2026-10-12 用户原话：「不需要画标题，先纪录，暂时不开工」）。Q1–Q17 已**全部裁决完毕**（逐条见 §11，无残余项）；本表为最终方案，**开工令由用户下达**，届时按 §12 实施。
+> 实现范围 = 两 P0 线 `neoforge-1.21.1` + `forge-1.20.1`（同批同号）；提交时随实现升版（四线同号，两份 CHANGELOG；实现批以其时最新号为准继续递增）。
 > 上游文档：`docs/chip-shop-ui-spec.md`（界面骨架，.86 已落地）；本批的模板来源 = 卡牌商店（`shop/CardShopCatalog.java`、`shop/CardShopShelf.java`、`shop/CardShopMenu.java`、`shop/CardShopCycleTicker.java`、`network/CardShopBuyPayload.java`、`client/CardShopClientState.java`）——**架构照抄，只在「候选抽取 / 价格曲线 / 刷新恢复 / 候选落盘 / 方块入口」上新增**。
 > 界面骨架现状（.86，本批不改）：`screen/ChipShopScreen.java`、`client/ChipShopClientState.java`、`shop/ChipShopMenu.java`；绘制坐标与冻结常量一律不动（`docs/chip-shop-ui-spec.md` §3）。
 
@@ -205,7 +205,7 @@ roll(player, reason):                     # reason = ENTER_FIRST | REFRESH | POS
 
 ## §8 文案键（三语同批：zh_cn / en_us / ja_jp）
 
-- 复用（.86 已有）：`gui.astral_dice.chip_shop`（筹码商店，**不绘制**）、`.cost`（花费：%s）、`.refresh_counter`（%s/%s）、`.empty`（无）。
+- 复用（.86 已有）：`gui.astral_dice.chip_shop`（筹码商店，**不绘制** —— 2026-10-12 Q17 裁决；键保留备用）、`.cost`（花费：%s）、`.refresh_counter`（%s/%s）、`.empty`（无）。
 - 新增：`block.astral_dice.chip_shop`（方块名）、`msg.astral_dice.chip_shop_no_coin`（余额不足）、`msg.astral_dice.chip_shop_no_refresh`（刷新次数已用尽）、`msg.astral_dice.chip_shop_bought`（已购买 %s）、`msg.astral_dice.chip_shop_owned_all`（已拥有全部筹码）、`msg.astral_dice.chip_shop_inventory_full`（物品栏已满）。
 
 ## §9 守门与验证
@@ -239,7 +239,7 @@ roll(player, reason):                     # reason = ENTER_FIRST | REFRESH | POS
 
 两线实现的差异**只允许**出现在上表这些点位；其余逻辑逐字相同（便于交叉复核）。
 
-## §11 已裁决记录（Q1–Q12，2026-10-12）与残余确认（Q13–Q16）
+## §11 已裁决记录（Q1–Q17，2026-10-12；无残余项）
 
 | Q | 你的裁决 | 落地位置 |
 |---|---|---|
@@ -255,13 +255,15 @@ roll(player, reason):                     # reason = ENTER_FIRST | REFRESH | POS
 | Q10 物品栏满 | **不含副手**（36 格） | §5 |
 | Q11 已拥有 | **只算 chip 饰品槽**（+ 物品栏 36 格） | §2 算法 |
 | Q12 文案/品质 | 不加标题；**永不出现巅峰/奇特** | §0 R20 |
+| Q17 标题 | **不需要画标题** ⇒ `gui.astral_dice.chip_shop` 键保留但**不绘制**（2026-10-12 追加裁决） | §8 |
 
-**残余确认（4 项，未阻塞：均给了默认值，你不回复我就按默认实现）**
+**逐项裁决记录（Q13–Q17，2026-10-12 全部落定）**
 
 - **Q13 已裁决（2026-10-12）**：会员推荐信的商店 −1 **只影响卡牌商店**，筹码商店**不适用** ⇒ 筹码商店无折扣路径（恒定「初始 10、每次购买 +5、上限 100」）。
 - **Q14 已裁决**：刷新次数恢复用**世界 gameTime**、**离线照涨**（回来一次性补算，上限 5）—— 已确认，无需改动。
 - **Q15 已裁决**：开店时若落盘候选含**玩家已拥有**的筹码（在别处获得）⇒ **直接整组免费重抽** —— 已确认。
 - **Q16 已裁决（素材已补齐）**：`大背包.png` 已入 `images/shop/unbord_chips` ⇒ 用正式素材，取消 `textures/item/big_backpack_chip.png` 兜底。
+- **Q17 已裁决（2026-10-12）**：**不需要画标题** ⇒ 三语 `gui.astral_dice.chip_shop` 键保留（不删除、不影响 key 集一致性），界面**不绘制任何标题文字**（照参考图）。
 
 ## §12 实施步骤（分工：基准线 T1–T6 由主 Agent 亲自编写，forge 移植与功能审查派子代理）
 
@@ -278,4 +280,4 @@ roll(player, reason):                     # reason = ENTER_FIRST | REFRESH | POS
 - 派发纪律（2026-10-12 新流程）：**T1–T6 由主 Agent 亲自编写**（基准线 `neoforge-1.21.1`）→ `code_review` 一次性独立会话复核 → 修完后**派子代理做独立功能审查**（`:<线>:classes` 编译 / 守门脚本 / 与需求逐字对账）→ **确认无误后**才派子代理做 **T7 `forge-1.20.1` 移植** → 移植线再 `code_review` + **另派一个独立子代理**功能审查。子代理单任务、用完即弃（硬规则第 1 条），优先派 DeepSeek；复核/审查发现的问题交**新**子代理改进（连续 3 次不到位 ⇒ 主 Agent 亲自重写）。
 - 收尾：`:<线>:classes` 编译 + 守门 + `verify_resource_integrity` + 两份 CHANGELOG + 四线版本随批递增 + 本地提交（不 push）；实机按第 5 条等你下达。
 
-> 审核方式：Q1–Q16 **已全部裁决并落定在本表**。回一句「**按计划开工**」即按 §12 实施（T1–T6 由主 Agent 亲自编写基准线 → `code_review` → 独立子代理功能审查 → 确认无误后派子代理移植 `forge-1.20.1` → 再 `code_review` + 另一个独立子代理功能审查）。
+> 审核方式：Q1–Q17 **已全部裁决并落定在本表；本表冻结待开工令**（用户 2026-10-12：「暂时不开工」）。开工时按 §12：T1–T6 由主 Agent 亲自编写基准线 → `code_review` → 独立子代理功能审查 → 确认无误后派子代理移植 `forge-1.20.1` → 再 `code_review` + 另一个独立子代理功能审查。
