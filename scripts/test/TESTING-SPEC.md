@@ -2044,7 +2044,7 @@ custom_frames.json 恢复 5 档全写；包内原版稀有/史诗与本模组稀
      —— 它们的 `Ftb.resolve()` **首行**就在外层类上取 `isManagerLoaded`（该访问器在嵌套接口上），
      而后是客户端 `ClientTeamManager#getTeamForPlayer(Player)`（不存在），**两步都在同一个 `try` 内**
      ⇒ 一次 `NoSuchMethodException` 让**整个 FTB 后端**（含服务端路径）失效。
-     只有 fabric 线在 2026-10-01 修对了。**本批未动**（属模组侧代码改动，需三线同批 + `mod_version` bump +
+     只有 fabric 线在 2026-10-01 修对了。**本批未动**（属模组侧代码改动，需按现行 **P0/P1 两级优先模型**落地（P0 两线同批 + P1 后续移植；⛔ 2026-10-12 起原「三线同批」口径已作废）+ `mod_version` bump +
      玩家侧 CHANGELOG，另请裁决）。判据：`grep -c 'FTBTeamsAPI$API' <线>/.../PartyRelations.java` ⇒
      三线 **0**、fabric **3**。
   ③ ⚠️ **技能《mc-prereq-lib-version-contract》§9.6 称「版本区间规则已于 2026-09-25 移除」，
@@ -3937,7 +3937,7 @@ mt.ps1 --version 线 --phase stop 关闭测试实例（gradle 守护进程保留
 
 ## 附录 A 续 55. 复验机制变更：改用 DSH 原生 code_review（2026-10-08）
 
-**机制（用户裁决）**：二次验证（复核）不再派 subagent / teammate，一律改用 DSH 原生代码审查功能（code_review）；每次复核 = 一次性独立会话、不复用；调用时把「复核对象（提交或文件范围）+ 背景 + 逐项判据（R1..Rn）+ 输出要求（判定 + 逐字证据 文件:行号 + 未验证项 + 最小修法）」一次性写全，保证会话足够干净。代码修改仍按**每任务**一个新 subagent、单任务、用完即弃（规则正本见 AGENTS.md「子代理与测试环境硬规则」第 4 条）。
+**机制（用户裁决）**：二次验证（复核）不再派 subagent / teammate，一律改用 DSH 原生代码审查功能（code_review）；每次复核 = 一次性独立会话、不复用；调用时把「复核对象（提交或文件范围）+ 背景 + 逐项判据（R1..Rn）+ 输出要求（判定 + 逐字证据 文件:行号 + 未验证项 + 最小修法）」一次性写全，保证会话足够干净。代码修改仍按**每任务**一个新 subagent、单任务、用完即弃（规则正本见 AGENTS.md「子代理与测试环境硬规则」第 4 条）；⚠️ 执行方以第 7 条为准 —— **P0 基准线 `neoforge-1.21.1` 的实现由主 Agent 亲自编写**，子代理承担功能审查与移植线实现（2026-10-12 起）。
 
 **首次执行（复核对象 = 提交 19be7f0e）**：R1 四线 spawnBrick 一致性与旧写法残留、R2 落点/运动学与 translation 归零的几何依据、R3 KI-G4 只对非 FX 卡自身造成的 card_spell 播通用命中音、R5 提交卫生（四线 mod_version 同号；26.1.2 三文件已纯 LF、numstat 1/1 与 2/2）均 SUPPORTED；R6 未找到反证（全树无 2.5F / 砖块几何残留；fabric AstralDiceMod.java:125 仅一处 register）。R4 部分成立 ⇒ 三处文案矛盾已在本批修正：① neoforge-1.21.1 类 javadoc「生成一块砖头（原版砖块贴图…）」改「生成一块红砖（原版砖物品图标…）」，并统一 fabric / forge / 26.1.2 三处不准确措辞；② 四线 lang guide 与 MonsterBrickCardItem.java:21 的「飞行速度快于活体书页 / faster than the Living Page」与「头顶生成→悬停→竖直砸落」矛盾 ⇒ 四线 zh/en 与注释同步改写；③ CHANGELOG 未发布段内更早条目续行的「大号砖头（原版砖块贴图…）」/「giant brick (vanilla brick texture, …)」与同段新增条目自相矛盾 ⇒ 按新口径改写（ZH/EN 一一对应，条目数不变）。
 
