@@ -167,7 +167,7 @@ return damage * (1.0F - f / 25.0F);
 3. **结算次序**：`DiceBattleResolver` 已定义 `骰战层 → 乘算因子 → 减算减免`。保护/抗性属**乘算因子**，必须落在 `resolve()` 之后、`ChipDamageHandler@LOWEST` 之前。
 4. **HUD / tooltip 同源**：任何进入攻击点/防御点的项，都要在 `DiceCombatModifiers` 的显示口径里有对应处理或明确豁免（否则又出「HUD 一个值、结算另一个值」漂移）。
 5. **伤害跳字**：唯一出口 `DamageNumberAggregator` 不变（本次改动只改数值，不改数据流）。
-6. **改动必须三线同步**（版本坐标见各线 `gradle.properties`）。
+6. **改动按现行 P0/P1 两级模型落地**（P0 两线同批 + P1 待移植；⛔ 原「三线同步」口径已作废，见 `AGENTS.md`〈版本优先级与跨线移植纪律〉）（版本坐标见各线 `gradle.properties`）。
 
 ---
 
