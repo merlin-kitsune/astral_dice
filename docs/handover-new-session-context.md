@@ -6,14 +6,14 @@
 3. 涉及平台差异时：`docs/compat-1.20.1-forge.md`（forge）或 `docs/compat-26.1.2-neoforge.md`（26.1.2）
 
 ## 基本盘
-- 工作树：`F:\MCProject\astral_dice_multiloader-next`（分支 `multi-dev-next`）；**HEAD 与四线版本一律以实测为准**（`git log --oneline -1`、四条 `gradle.properties` 的 `mod_version`）—— 本文档上一版曾写 `d2299def` / `2.0.0-SNAPSHOT.85`，其后已有 `.86` 筹码商店界面骨架与 `.87` 实施分工规范两次提交，现号 `2.0.0-SNAPSHOT.87`；工作树干净、未 push
+- 工作树：`F:\MCProject\astral_dice_multiloader-next`（分支 `multi-dev-next`）；**HEAD 与四线版本一律以实测为准**（`git log --oneline -1`、四条 `gradle.properties` 的 `mod_version`）—— 本文档上一版曾写 `d2299def` / `2.0.0-SNAPSHOT.85`，其后已有 `.86` 筹码商店界面骨架与 `.87` 实施分工规范两次提交，现号 `2.0.0-SNAPSHOT.88`；工作树干净、未 push
 - 另一常驻工作树 `F:\MCProject\astral_dice_multiloader`（multi-main，封包态）：**禁止触碰**；收尾核对它必须为空且 HEAD 不变
 - 优先级：**P0 = neoforge-1.21.1 + forge-1.20.1（同批）**；**P1 = neoforge-26.1.2 + fabric-1.20.1（待移植）**
 
 ## 已完成（P0 两线对等）
 13 个事件体系 + 事件效果卡 GUI（0.2s 进 / 1.0s 停 / 0.2s 缩小淡出，弹卡后 38t 结算，触发音效）+ 大侦探立牌主动技能「事件选择界面」（2 选 1、15s 超时/死亡/登出强触发第一项、确认即触发无等待、音效仅按键时播）+ 调查阶段 4 阶分阶图标与 1:00 计时器 + 全模组发币优先入星币钱包 + 手册/tooltip 文案同步 + **卡牌商店方块（四态朝向 + 自有碎裂粒子）**（.61 → .83，提交清单见交接文档 §3）
 
-最近一批（.83, `d2299def`）修了两处缺陷并已双线实机 PASS：
+最近一批 P0 两线代码（.83, `d2299def`；其后 `.86` 只加筹码商店界面骨架、`.87` 只改规范）修了两处缺陷并已双线实机 PASS：
 - 事件卡淡出后**文字残留**（根因：原版 `Font#adjustColor` 把 alpha<4 强制弹回不透明）⇒ `EventCardOverlay` 画文字前 `if (a >= 4)`；
 - 卡牌商店方块**放置恒朝北 + 敲碎粒子紫黑** ⇒ 改 `HorizontalDirectionalBlock` 四态 `facing` + 模型补 `particle` 键（另含 1.21.1 必需的 `codec()` 补全）。
 
@@ -51,6 +51,6 @@ pwsh -NoProfile -File tools/check_lang_sync.ps1 -LangDir neoforge-1.21.1/src/mai
 - 实机收尾判据：`MT_CLEANUP_SAVES: PURGED n` + `MT_CLEANUP_RESULT: OK`；再核 `fml.modFolders` java 进程数 = 0。
 
 ## 交接时的工作树状态
-- 生成时基线 HEAD `d2299def`；本文件随 `.85` 提交落地（最新 HEAD 以 `git log -1` 为准）；`git status --short -uall` **空**；**P0 两线** jar 已构建到 `.83`（`run/1.21.1/mods`、`run/1.20.1/mods`），**P1 两线尚未移植**（`run/26.1.2/mods` = `.58`、`run/fabric-1.20.1/mods` = `.49`）；`.84`/`.85` 均为文档提交、不改代码 ⇒ 四线都不需要为此重建；
+- 生成时基线 HEAD 以 `git log -1` 实测为准（本行随 `.88` 提交落地）；`git status --short -uall` 仅余未跟踪 `docs/chip-shop-logic-plan.md`（筹码商店逻辑设计稿，待用户点「按计划开工」后随实现同批提交）；**P0 两线** jar 已构建到 `.85`（`run/1.21.1/mods`、`run/1.20.1/mods` 实测），**P1 两线尚未移植**（`run/26.1.2/mods` = `.58`、`run/fabric-1.20.1/mods` = `.49`）；`.84`/`.85`/`.87` 均为文档提交、不改代码，`.86` 只新增尚无开屏入口的筹码商店界面骨架 ⇒ 四线都不需要为此重建；
 - 测试世界在最后一次实机收尾时已 `--purge-saves` 清理 ⇒ 下次实机先 `--phase env`；
 - 未提交内容：无。

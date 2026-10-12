@@ -1,7 +1,7 @@
 # 交接文档 — astral_dice_multiloader-next（开发线 multi-dev-next）
 
 > 生成：2026-10-11 20:20（Asia/Hong_Kong）｜工作树 `F:\MCProject\astral_dice_multiloader-next`
-> 分支 `multi-dev-next`｜生成时基线 HEAD **`d2299def`**（本文件随 `.86` 提交落地；最新值以 `git log -1` 为准）｜四线版本 **`2.0.0-SNAPSHOT.86`**（四条线同号）
+> 分支 `multi-dev-next`｜生成时基线 HEAD **`bb48a206`**（本文件随 `.87` 提交落地；最新值以 `git log -1` 为准）｜四线版本 **`2.0.0-SNAPSHOT.88`**（四条线同号）
 > 工作树状态：**干净**（`git status --short -uall` 空）；**未 push**。
 > 新会话提示词：`docs/handover-new-session-context.md`（可整份复制给新会话）。
 
@@ -194,7 +194,7 @@ pwsh -NoProfile -File scripts/test/mt_inject.ps1 cmd -Command "/astralprobecard 
 
 ## 8. 新会话建议开工步骤
 
-1. `git -C F:\MCProject\astral_dice_multiloader-next status --short -uall` + `git log --oneline -3`（确认基线 `d2299def` 之后的收尾提交、工作树干净）；
+1. `git -C F:\MCProject\astral_dice_multiloader-next status --short -uall` + `git log --oneline -3`（确认基线之后的收尾提交、工作树干净；HEAD 以 `git log --oneline -1` 实测，勿照抄旧哈希）；
 2. 读本文件 + `docs/handover-new-session-context.md` + `AGENTS.md` 的「工作树纪律 / 二次验证 / 子代理与测试环境硬规则 / 版本优先级」四节；
 3. 要动代码：先 `mt_build` 确认基线绿，再改；改后 `mt_build` + 相关 `scripts/verify/**`；
 4. 复核用 `code_review`（失败即改派一次性子代理）；实机**先问用户**；
