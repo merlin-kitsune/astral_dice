@@ -6,7 +6,7 @@
 3. 涉及平台差异时：`docs/compat-1.20.1-forge.md`（forge）或 `docs/compat-26.1.2-neoforge.md`（26.1.2）
 
 ## 基本盘
-- 工作树：`F:\MCProject\astral_dice_multiloader-next`（分支 `multi-dev-next`，HEAD 交接时 `d2299def`，四线版本 `2.0.0-SNAPSHOT.85`，工作树干净、未 push）
+- 工作树：`F:\MCProject\astral_dice_multiloader-next`（分支 `multi-dev-next`）；**HEAD 与四线版本一律以实测为准**（`git log --oneline -1`、四条 `gradle.properties` 的 `mod_version`）—— 本文档上一版曾写 `d2299def` / `2.0.0-SNAPSHOT.85`，其后已有 `.86` 筹码商店界面骨架与 `.87` 实施分工规范两次提交，现号 `2.0.0-SNAPSHOT.87`；工作树干净、未 push
 - 另一常驻工作树 `F:\MCProject\astral_dice_multiloader`（multi-main，封包态）：**禁止触碰**；收尾核对它必须为空且 HEAD 不变
 - 优先级：**P0 = neoforge-1.21.1 + forge-1.20.1（同批）**；**P1 = neoforge-26.1.2 + fabric-1.20.1（待移植）**
 
@@ -35,6 +35,7 @@ pwsh -NoProfile -File tools/check_lang_sync.ps1 -LangDir neoforge-1.21.1/src/mai
 手动启动游戏（人工自测）：双击 `run/Start-1.21.1.bat`（或 1.20.1 / 26.1.2）——脚本只做启动，无任何前置判断。
 
 ## 必须遵守的几条铁律
+0. **实施分工（2026-10-12 用户裁决）**：**P0 基准线 `neoforge-1.21.1` 由主 Agent 亲自编写**（不派实现子代理）→ `code_review` 复核 → **派子代理做独立功能审查**（静态取证 / `:<线>:classes` 编译 / `scripts/verify/**` 守门 / 与需求逐字对账）→ 主 Agent 修完并确认无误后，才派子代理做 `forge-1.20.1` 移植 → 移植线再 `code_review` + **另派一个独立子代理**功能审查；派发优先 DeepSeek（功能实现用 DeepSeek V41 Flash）；
 1. **复核优先用 `code_review`**（一次性独立会话，brief 一次写全，禁止把主会话结论当事实喂它）；该工具实例报错/超时 ⇒ 改派**一次性独立子代理**承担，判据规格不变（本仓 .83 批已按此路径完成 R1..R8 复核）；
 2. **实机验证必须由用户明确下达**；靶子非亡灵；收尾 `--purge-saves` + 删探针 + 贴 `git status`；
 3. **每次提交升四线版本 + 两份 CHANGELOG**；默认 `git push` 禁止；

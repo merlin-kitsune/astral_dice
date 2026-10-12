@@ -17,6 +17,7 @@
 | 实机 | `mt.ps1 --version <线> --phase env` → `--phase launch`；**收尾 `--phase stop --force --purge-saves`** |
 | 手动启动（人工自测） | 双击 `run/Start-<线>.bat`（只启动，**无任何前置判断**） |
 | 复核 | `code_review` **优先**（一次性独立会话）；若该工具实例报错/超时 ⇒ 改派**一次性独立子代理**承担，brief 规格不变（见 §1） |
+| 实施分工 | **P0 基准线 `neoforge-1.21.1` = 主 Agent 亲自编写** → `code_review` 复核 → **独立子代理功能审查** → 确认无误后才派子代理移植 `forge-1.20.1` → 该线再 `code_review` + **另一个独立子代理**功能审查（AGENTS.md 硬规则第 7 条，2026-10-12） |
 | 子代理模型 | 默认 **DeepSeek**（`provider=deepseek-official` / `model=deepseek-flash`，本会话 4 个子代理实测可用）；mimo/kimi 在本 tool 实例被构造期禁用 |
 | 实机验证 | **必须由用户明确下达**；未实机的欠账如实登记 |
 
