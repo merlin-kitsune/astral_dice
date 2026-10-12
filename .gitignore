@@ -97,3 +97,6 @@ ref/
 Astral Dice/
 # 复核/审计工具留下的日志（不属于仓库内容）
 .review_logs/
+
+### Codex 项目技能（本地导入，2026-10-13）—— 不纳入版本库；源留档在 C:\Users\xmace\.dsh\skills ###
+.codex/
