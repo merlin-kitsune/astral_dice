@@ -1,8 +1,9 @@
 # 交接文档 — astral_dice_multiloader-next（开发线 multi-dev-next）
 
-> 生成：2026-10-11 20:20（Asia/Hong_Kong）｜工作树 `F:\MCProject\astral_dice_multiloader-next`
-> 分支 `multi-dev-next`｜生成时基线 HEAD **`bb48a206`**（本文件随 `.96` 提交落地；最新值以 `git log -1` 为准）｜四线版本 **`2.0.0-SNAPSHOT.96`**（四条线同号）
-> 工作树状态：**干净**（`git status --short -uall` 为空；`docs/chip-shop-logic-plan.md` = 筹码商店逻辑设计稿，已于 `.90` 入库，待用户下达开工令后随实现同批提交代码）；**未 push**。
+> 生成：2026-10-11 20:20；**本次刷新：2026-10-12 22:00（Asia/Hong_Kong）**｜工作树 `F:\MCProject\astral_dice_multiloader-next`
+> 分支 `multi-dev-next`｜刷新前基线 HEAD **`6c81b7fe`**（筹码商店批 `.97`；本文件随 `.98` 提交落地；最新值以 `git log -1` 为准）｜四线版本 **`2.0.0-SNAPSHOT.98`**（四条线同号）
+> 工作树状态：除 4 个与本项目无关的未跟踪目录外**干净**（`git status --short -uall` 只剩 `?? %SystemDrive%/ProgramData/Microsoft/Windows/Caches/*.db` 四行，见 §5-C-11）；**未 push**。
+> **本批交接（筹码商店）**：`docs/handover-2.0.0-SNAPSHOT.97-chip-shop.md`（流程 / 语义 / 判据 / 未完成 / 新坑，逐条可复算）—— 建议与本文件一起读。
 > 新会话提示词：`docs/handover-new-session-context.md`（可整份复制给新会话）。
 
 ---
@@ -12,7 +13,9 @@
 | 项 | 值 |
 |---|---|
 | 优先级模型 | **P0 = neoforge-1.21.1 + forge-1.20.1（同批、优先）**；**P1 = neoforge-26.1.2 + fabric-1.20.1（待移植）** |
-| 功能对等现状 | **P0 两线已对等**（事件体系 + 事件卡 GUI + 事件选择界面 + 发币漏斗 + 手册/tooltip 文案 + 卡牌商店方块）；**P1 两线未移植** —— 已核：`neoforge-26.1.2` 与 `fabric-1.20.1` 目录下**不存在** `client/EventCardOverlay.java` 与 `block/CardShopBlock.java` |
+| 功能对等现状 | **P0 两线已对等**（事件体系 + 事件卡 GUI + 事件选择界面 + 发币漏斗 + 手册/tooltip 文案 + 卡牌商店方块 + **筹码商店（`.97`）**）；**P1 两线未移植** —— 已核：`neoforge-26.1.2` 与 `fabric-1.20.1` 目录下**不存在** `client/EventCardOverlay.java`、`block/CardShopBlock.java`、`shop/ChipShopCatalog.java` |
+| 本批交接（筹码商店） | `docs/handover-2.0.0-SNAPSHOT.97-chip-shop.md` |
+| 最近实机结果 | `.97` 批 1.21.1 筹码五条用例 **全 PASS**（`CHIP-LOGIC` / `CHIP-REGEN` / `CHIP-CLIENT-BUY` / `CHIP-CLIENT-REFRESH` / `CHIP-CLIENT-DENY`）；**forge 线无用例、未实机** |
 | 构建 | `pwsh -NoProfile -File scripts/test/mt_build.ps1 --version <线> --timeout 300` ⇒ `MT_BUILD: OK` |
 | 实机 | `mt.ps1 --version <线> --phase env` → `--phase launch`；**收尾 `--phase stop --force --purge-saves`** |
 | 手动启动（人工自测） | 双击 `run/Start-<线>.bat`（只启动，**无任何前置判断**） |
@@ -104,8 +107,13 @@ pwsh -NoProfile -File scripts/test/mt_inject.ps1 cmd -Command "/astralprobecard 
 | 交接刷新 | .84 | 6a0a2efc | 交接文档刷新至 .84 + 交接提示词更新 |
 | 文档复核对账 | .85 | c7cc367b | 按二次验证结论修订：P1 两线 jar 版本写实（.58/.49）、淡出判据改为可复算口径、.64 主题 39t 注记 |
 | 筹码商店界面骨架 | .86 | bb48a206 | 13 张贴图入库 + ChipShopScreen/ChipShopMenu/ChipShopClientState（两线）+ chip_shop 菜单注册与客户端绑定 + 三语 4 键 + docs/chip-shop-ui-spec.md + scripts/verify/verify_chip_shop_ui.ps1（含变异测试反证）；业务逻辑待后续批次 |
+| 实施分工规范 | .87 | b1294bd2 | AGENTS 入「P0 基准线由主 Agent 亲自写 → code_review → 独立子代理功能审查 → 才派 forge 移植」流程 |
+| 规范清残 | .88~.89 | b1c1e2c4 / 24d568ad | 清掉「三线同批」遗留措辞、子代理并行旧口径、交接版本漂移 |
+| 设计稿入库 | .90~.92 | 026ff76f / 6e2c7c81 / 7b7d86b0 | `docs/chip-shop-logic-plan.md` 入库 + Q13–Q16（无折扣 / 离线恢复 / 重抽口径 / 图标供给）与 Q17（不绘标题）裁决落定、计划冻结待开工令 |
+| 复审收尾 | .93~.96 | f7edb0a4 / 583ec48f / 37137548 / 6b87640d | 功能审查与二次验证的收尾修订（悬空章节引用、三线措辞残留、handover 状态诚实化等纯文档） |
+| **筹码商店批** | **.97** | **6c81b7fe** | **两线完整实现**（61 筹码池 + 抽取/刷新/购买/拒绝 + 价格曲线 + 方块与四向朝向 + 界面与品质框 + 三包网络 + 附件落盘 + 61 张图标 + 配方/掉落表 + 三语 7 键）+ 守门 G1..G6·G9..G27 + 变异 37 条 + 5 条实机用例（1.21.1 全 PASS）+ 探针 `c*` 命令族与 770/771/772 场景；192 文件 |
 
-**功能面现状（P0 两线已对等）**：13 个事件 + 弹卡 GUI（淡出后无文字残留）+ 事件选择界面（2 选 1、15s、确认即触发、死亡/登出强触发第一项）+ 调查阶段 4 阶图标与 1:00 计时器 + 全模组发币优先入钱包 + 手册/tooltip 文案同步 + 卡牌商店方块（四态朝向 + 自有碎裂粒子）。
+**功能面现状（P0 两线已对等）**：13 个事件 + 弹卡 GUI（淡出后无文字残留）+ 事件选择界面（2 选 1、15s、确认即触发、死亡/登出强触发第一项）+ 调查阶段 4 阶图标与 1:00 计时器 + 全模组发币优先入钱包 + 手册/tooltip 文案同步 + 卡牌商店方块（四态朝向 + 自有碎裂粒子）+ **筹码商店**（61 枚筹码的抽取/售卖方块，四向朝向、21 步可见行为与拒绝码见 `docs/chip-shop-logic-plan.md` 与 `docs/handover-2.0.0-SNAPSHOT.97-chip-shop.md`）。
 
 ---
 
@@ -134,26 +142,47 @@ pwsh -NoProfile -File scripts/test/mt_inject.ps1 cmd -Command "/astralprobecard 
 > ⚠️ 取证帧 `run/1.21.1/screenshots/af3_b*.png` 与 `temp/t-verify/crops4/*.png` 均**未入库**（`run/` `temp/` 被 .gitignore 排除，属本机留存）⇒ 这些数字只能在保留帧的机器上复算；换机后按现象层（卡在 13t 完全消失、缓冲窗无文字、源码 `if (a >= 4)` 守卫）验收。
 > 以上均为**过去已完成**的验证；再次改动相关代码/资源后同样作废，需重测。
 
+**筹码商店批（`.97`）的实机与静态判据**（明细见 `docs/handover-2.0.0-SNAPSHOT.97-chip-shop.md` §3）：
+
+| 判据 | 实测 | 版本 |
+|---|---|---|
+| 筹码五条用例（1.21.1） | `CHIP-LOGIC`（58 步/34 断言）/ `CHIP-REGEN`（38/11）/ `CHIP-CLIENT-BUY`（19/10）/ `CHIP-CLIENT-REFRESH`（19/10）/ `CHIP-CLIENT-DENY`（19/10）**全部 PASS** | .97 |
+| 筹码静态守门（两线） | `CHIPUI_TOTAL_FAIL: 0` / `CHIPUI_RESULT: OK`（G1..G6 + G9..G21 + G21b 按线分支 + G22 配方撞车 + G23..G27） | .97 |
+| 筹码变异（两线） | `MUT_TOTAL: 37，判红 37` / `MUT_RESULT: OK`（37 条逐条 SHA256 字节还原；harness 侧失败改走 `MUT_HARNESS` + `exit 2`） | .97 |
+| 筹码实机收尾 | `MT_CLEANUP_SAVES: PURGED 1` + `MT_CLEANUP_RESULT: OK` + `MT_STOP: OK (1s)`；报告需 `--phase report --allow-auto`（否则被批量编排闸门拦，退出码 2） | .97 |
+| 图标与池 | 61 张 `textures/gui/chip_shop/chips/*.png` 32×32、与源素材逐字节一致；池 61 条与计划表 §1 逐行一致（稀有 19 / 史诗 24 / 传奇 18） | .97 |
+
+> ⚠️ 上表的读数取自与提交内容一致的产品源码；其后只改过注释/文档/版本号/测试资产 ⇒ 若要求 `.97`/`.98` 产物自身的实机证据需重跑（见批次文档 §4-7）。
+> ⚠️ **forge 线本批没有实机**（探针 `c*` 命令与用例都还没移植到 1.20.1）—— 欠账已登记，不得据此声称两线实机对等。
+
 ---
 
 ## 5. 遗留项 / 待办
 
-**A. 待开发（P1）**
-1. **neoforge-26.1.2 + fabric-1.20.1 未移植 .61~.83 全批**：事件卡 GUI、事件选择界面（含 4 条网络消息）、调查阶段分阶图标与 1:00 计时器、发币走钱包漏斗、手册/tooltip 文案、**卡牌商店方块**。已核：两线目录下**根本没有** `client/EventCardOverlay.java` 与 `block/CardShopBlock.java` ⇒ 属**整体新建**而非改；移植时必须一并带上 §6-10 的 `a>=4` 文字守卫（否则重演文字残留）与四态 `facing` + 模型 `particle` 键。两线 lang 与 ModTooltipHandler 里**仍是旧「麻烦制造者」文案**（故意未改）。
-2. **筹码商店素材已就位未接线**：P0 两线有 `models/block/chip_shop.json` + `textures/block/chip_shop.png`（源图 `images/shop/chip_shop_GUI.png`），方块/实体/物品/配方/语言键均未加；P1 两线连素材都还没有。
+**A. 待开发 / 欠账（按「需要什么才能继续」写；明细见 `docs/handover-2.0.0-SNAPSHOT.97-chip-shop.md` §4）**
+1. **P1 两线移植（工作量最大）**：把 `.61`~`.97` 全批（事件卡 GUI、事件选择界面（含 4 条网络消息）、分阶图标与 1:00 计时器、发币漏斗、手册/tooltip 文案、卡牌商店方块、**筹码商店整批**）移植到 `neoforge-26.1.2` 与 `fabric-1.20.1`。已核：两线目录下**根本没有** `client/EventCardOverlay.java`、`block/CardShopBlock.java`、`shop/ChipShopCatalog.java` ⇒ 属**整体新建**；移植时必须一并带上 §6-10 的 `a>=4` 文字守卫、四态 `facing` + 模型 `particle` 键、筹码屏「条带内相对坐标」口径（批次文档 §6-1）与 §6-9 的变异 harness 说明。两线 lang 与 ModTooltipHandler 里**仍是旧「麻烦制造者」文案**（故意未改）。差异映射：`docs/compat-26.1.2-neoforge.md`、`porting/fabric-1.20.1/FABRIC-DIFFS.md`。
+2. **forge 线实机欠账（本批新增）**：筹码商店在 `forge-1.20.1` 只过了静态判据（编译 + 守门 + 变异），**没有任何实机用例**。补齐需要：① 把服务端探针 `c*` 命令族与客户端 770/771/772 场景移植到 `scripts/test/resources/kubejs/1.20.1/**`（注意 1.20.1 的 `sp_closeMenu`/`SP_ItemStack`/六参 `use(...)` 形态）；② 复制 5 条用例为 `CHIP-*-1.20.1.json`；③ 用户下达后跑 env/launch/case/stop --purge-saves。
+3. **fabric 线产物缺档**：`fabric-1.20.1/build/libs` 最新仍是 `…SNAPSHOT.49+fabric_1.20.1.jar`（2026-10-08 16:55）—— `.50`..`.98` 的 bump 都没重跑该线（`mt_build.ps1` 不认 `fabric-1.20.1`，要走 `scripts/test/fabric/ft_build.ps1`）。是否补跑**需用户裁决**。
+4. **守门 6 条盲区 + F 系补变异（审查建议，未动手）**：① 越线字面只覆盖 `block/ChipShopBlock.java` 且只 2 个字面（`verify_chip_shop_ui.ps1:636`/`:619`）；② G22 不校验 T/M 材料值；③ G23 不校验 DataSlot 下标常量数值；④ G6 只查子串 `chip_shop`；⑤ 无网络包 id 唯一性/顺序/方向判据；⑥ 无跨线值比对。建议补的六条 forge 侧变异：F1 包注册次序位移、F4 附件键名与 `.sync()`、F6 删 `anchor <= 0L ||`、F8 删 `ownsEverything` 分支、F13 `DATA_PRICE` 下标、F14 `HIDDEN_X` 常量。
+5. **P2 待用户裁决（计划表 §11 Q2）**：刷新已达上限时锚点停在过去 ⇒ 花 1 次刷新后被下一 tick **立即补回**（偏「免费」）。最小修法 = 刷新成功后 `anchor = Math.max(anchor, now + REFRESH_REGEN_TICKS)`。实机已用 `cregen CG pend` 取证。
+6. **报告里的历史红标**：`SHOP-M-1.21.1` 与 `DIAG-1.21.1` 的 FAIL 标记残留当前世代（`scripts/test/cases/.mt_run_state.json` 的条目级平面映射、无时间戳）⇒ `--phase report` 总判恒 FAIL（筹码五条本身全 PASS）。处置：重跑这两条或走世代轮转（`scripts/test/mt_report.ps1:246-286`）。
+7. **`.97`/`.98` 产物的实机时点**：五用例读数对应的产品源码与提交一致，其后只改注释/文档/版本号/测试资产 ⇒ 若要求「产物自身的实机证据」需重跑一轮（约 15 分钟）。
 
 **B. 设计待裁决**
-3. 「指向高亮」与「单击选中」共用同一张 fanny_skill_event_select（素材族只有两张卡底图）。
-4. 冷却 180s vs 面板超时 15s：正常游玩中「15 秒内二次使用」先被冷却门挡住，到不了 already_open 分支（空放修复正确但路径罕见）。
-5. tier ≤ 0 退回基础图 investigation_stage.png 的分支无实机取证（正常存档不可达，仅源码依据）。
-6. card_shop 顶面道具簇的「正向」在固定机位（方块南侧、与放置者反向）下无法唯一判定是否应朝放置者；.83 实机结论 = 四面同贴图、无正背面、道具簇随 facing 正确旋转 ⇒ 不构成缺陷，如要裁决看 `temp/adfix/m_place2.png` 四张特写。
+8. 「指向高亮」与「单击选中」共用同一张 fanny_skill_event_select（素材族只有两张卡底图）。
+9. 冷却 180s vs 面板超时 15s：正常游玩中「15 秒内二次使用」先被冷却门挡住，到不了 already_open 分支（空放修复正确但路径罕见）。
+10. tier ≤ 0 退回基础图 investigation_stage.png 的分支无实机取证（正常存档不可达，仅源码依据）。
+11. card_shop 顶面道具簇的「正向」在固定机位（方块南侧、与放置者反向）下无法唯一判定是否应朝放置者；.83 实机结论 = 四面同贴图、无正背面、道具簇随 facing 正确旋转 ⇒ 不构成缺陷，如要裁决看 `temp/adfix/m_place2.png` 四张特写。
+12. **筹码商店刷新锚点的 P2 语义**（见 A-5）：到上限后锚点停在过去 ⇒ 花 1 次被下一 tick 立即补回。
 
 **C. 环境 / 工具**
-7. **子代理模型**：DeepSeek（`deepseek-official` / `deepseek-flash`）在本会话实测可用（.83 批 4 个子代理全部完成）；mimo/kimi 仍在本 tool 实例被**构造期禁用**（`child model selection is disabled for this tool instance`）⇒ 需**全新会话**或宿主放行后才可复验。
-8. sound/ 目录约 21 个 wav 未转 ogg。
-9. 第三方渲染注入的深蓝斜体模组名行（如「星之骰戏」）来源未定位（与本模组无关）。
-10. 1.20.1 dev 环境里 **Patchouli 手册手持物呈紫黑格**（`server.log hand=1 guide_book`）：纯 dev 贴图观感、与本批改动无关，未处理；线上/实机如也出现再单开任务。
-11. 仓库根**曾**被落未跟踪目录 `%SystemDrive%/ProgramData/Microsoft/Windows/Caches/*.db`（本轮 env→launch 期间由某进程按 cwd 写入未展开字面路径；内容 = Windows 字体缓存；已删除，来源未定位）。⇒ 每次实机收尾若 `git status -uall` 非空，先看是否又是它。
+13. **子代理模型**：DeepSeek（`deepseek-official` / `deepseek-flash`）在本会话实测可用（`.83` 批 4 个、筹码批 2 个——移植与功能审查——全部完成）；mimo/kimi 仍在本 tool 实例被**构造期禁用**（`child model selection is disabled for this tool instance`）⇒ 需**全新会话**或宿主放行后才可复验。
+14. `sound/` 目录约 21 个 wav 未转 ogg。
+15. 第三方渲染注入的深蓝斜体模组名行（如「星之骰戏」）来源未定位（与本模组无关）。
+16. 1.20.1 dev 环境里 **Patchouli 手册手持物呈紫黑格**（`server.log hand=1 guide_book`）：纯 dev 贴图观感、与本批改动无关，未处理；线上/实机如也出现再单开任务。
+17. **仓库根 4 个未跟踪垃圾目录（仍在）**：`%SystemDrive%/ProgramData/Microsoft/Windows/Caches/*.db`（字面量 `%SystemDrive%`；某进程按 cwd 写入未展开路径所致，内容 = Windows 字体缓存）。**本轮未删除**（避免在无引用证据时删系统缓存镜像物），因此 dev 树 `git status --short -uall` 恒有这 4 行；提交时**不要用 `git add -A`**，改用显式顶层路径 `git add -A -- AGENTS.md CHANGELOG.md CHANGELOG_ZH.md docs neoforge-1.21.1 forge-1.20.1 neoforge-26.1.2 fabric-1.20.1 scripts`。
+18. **`mt_build.ps1` 不支持 fabric**：`--version fabric-1.20.1` ⇒ `MT_ERROR: 未知版本 fabric-1.20.1（可选：1.21.1 1.20.1 26.1.2）`；fabric 线用 `scripts/test/fabric/ft_build.ps1`。
+19. **测试环境的第三方引脚会漂移**：用户升级整合包后 `mt_env.ps1 mods` 会 `MT_MODS: BLOCKED — 整合包缺少 *modernfix-neoforge*X*`（本批实测 5.27.24 → **5.27.26**）⇒ 同批改 `scripts/test/mt_env.ps1:48` 与 `AGENTS.md` 测试环境表那一行。
 
 ---
 
@@ -174,6 +203,15 @@ pwsh -NoProfile -File scripts/test/mt_inject.ps1 cmd -Command "/astralprobecard 
 13. **1.21.1 的 HorizontalDirectionalBlock 把 `codec()` 重声明为抽象** ⇒ 自定义朝向方块必须补 `public static final MapCodec<X> CODEC = simpleCodec(X::new);` + `@Override public codec()`；1.20.1 无此机制（两线不对称，只有编译 1.21.1 才暴露）。
 14. **复核通道的备用路径**：`code_review` 原生工具可能报「原生子 Agent 未完成」或 600s 超时 ⇒ 立即改派**一次性独立子代理**承担（brief 规格不变：目标/路径/不变量 R1..Rn + 逐字证据 + 优先反例 + 取不到证据写「无法判定」）；**不得**因工具失败跳过复核。
 15. **实机期的进程与会话**：客户端可能被外部终止（日志无 shutdown 行、无 crash-report）⇒ 尽量在**同一个程序内**完成 stop→env→launch→取证；收尾核对命令行含 `fml.modFolders=...\<线>\build\classes` 的 java 进程数为 0。
+16. **筹码屏的命中坐标是「条带内相对」**（`.97` 批实测）：`ChipShopScreen` 的 `CELL_*`/`LABEL_*`/`CONFIRM_*`/`REFRESH_*` 都相对条带，命中走 `isHoveringStrip → stripX/stripY`（再叠加 `STRIP_X=34`/`STRIP_Y=6`）。探针少加偏移时 `mouseClicked` **落空却返回 true**（`ret=1` 是假信号）⇒ 表现为 `sel` 恒 -1、确认键空转、屏不关。正确中心：筹码格 (99,45)/(142,45)/(185,45)、标签框 (…,74)、确认键 (57,54)、刷新键 (227,54)。
+17. **`inject_command` 走聊天通道，容器屏开着会被吞**：筹码屏/卡牌屏开着时注入的命令**不执行也不报错** ⇒ 屏内动作只能由客户端探针用 `csCmd`（`mc.player.connection.sendCommand`，**不带前导斜杠**、GUI 开着也能发）。
+18. **购买成功后服务端同拍关店 ⇒ 屏内的 `step N` 读数永远来不及跑**：`closeContainer()` 是 `handleBuy` 最后一条语句，客户端下一 tick 进关屏分支、场景机复位。正解 = 在**关屏那一拍**补落读数（客户端态是**类级静态**、不随屏销毁），并用 `csCmd` 同拍回读服务端 `AP_<tag>_CST`。
+19. **跨用例/跨轮次状态泄漏**：筹码附件与**世界里的方块**都会留存 ⇒ 用例必须自带 `creset`；`cblock` 的 `set=1` 在二次运行时因方块已在位变 `set=0`，需先 `/setblock ~2 ~ ~ air`（探针用 `player.blockPosition().offset(2,0,0)`，命令侧 `~2 ~ ~` 等价）。
+20. **服务端 `denyReason()` 恒为 `DENY_NONE`**（`player.level().isClientSide() ? clientDenyReason : DENY_NONE`）⇒ 探针在服务端读到的 `deny=` **不是**拒绝证据；三条拒绝也没有服务端日志 ⇒ 判据只能是「状态未变 + 余额未变 + 无购买行」。
+21. **`run_code` 自身有 120s 硬 deadline**：`timeoutMs` 必须传给 `run_code`（只传给内层 `tools.pwsh` 无效）；链式跑多条用例会被拦腰掐断（本批踩过：LOGIC 第 85/90 行被杀）。长任务改后台 job + 轮询。
+22. **`--phase report` 被批量编排闸门禁用**（`MT_AUTO_DISABLED`、退出码 2）⇒ 加 `--allow-auto`；报告总判 FAIL 可能只反映**同世代的历史标记**（`.mt_run_state.json` 无时间戳平面映射）。
+23. **变异 harness 的行尾陷阱（已修）**：脚本内锚点用 LF 拼、forge 线源码是 CRLF ⇒ 多行锚点 `IndexOf = -1`、「变异根本没注入」会被静默当成一条结果。现已按**目标文件自己的行尾**归一化（`ConvertTo-FileEol`）并把 harness 失败与「守门漏判」分桶（`MUT_HARNESS` + `exit 2`）；新增 **M37** 用多行 CRLF 锚点长期守住这条。
+24. **工具调用侧的两个硬性小事**：`tools.list_agents`/`tools.job_list` 等**必须传空对象**（`await tools.list_agents({})`），否则报 `ToolCallError: binding arguments must be lossless JSON`；`tools.edit`/`tools.write` 改**已存在**文件前必须先用 `read` 工具读过（`fs.readFileSync` 不算），否则报 `file has not been read`。
 
 ---
 
@@ -188,14 +226,17 @@ pwsh -NoProfile -File scripts/test/mt_inject.ps1 cmd -Command "/astralprobecard 
 | 立牌 | `item/sign/BaseSignItem.java`、`FannySignItem.java`（大侦探）、`BonnieSignItem.java`（秘密侦探） |
 | 发币漏斗 | `resource/ResourceConversion.java#giveItem` → `economy/StarCoinCurrency#tryAbsorbIntoWallet` |
 | 事件卡素材 | 源 `images/shop/fanny_skill_*.png` → `<线>/src/main/resources/assets/astral_dice/textures/gui/shop/` |
-| 文档 | `AGENTS.md`、`scripts/test/TESTING-SPEC.md`、`docs/compat-1.20.1-forge.md`、`docs/compat-26.1.2-neoforge.md`、`docs/handover-new-session-context.md`、本文件 |
+| **筹码商店（本批）** | `shop/ChipShop{Catalog,Roller,State,Opener,RegenTicker,Menu}.java`、`block/ChipShopBlock.java`、`screen/ChipShopScreen.java`、`client/ChipShopClientState.java`、`network/ChipShop{Buy,Refresh,Deny}Payload.java`；资源 `assets/astral_dice/{blockstates,models/item}/chip_shop.json` + `textures/gui/chip_shop/chips/*.png`（61）+ `data/astral_dice/{recipe\|recipes}/chip_shop.json` + `data/astral_dice/{loot_table\|loot_tables}/blocks/chip_shop.json` |
+| 筹码守门与实机资产 | `scripts/verify/verify_chip_shop_ui.ps1`（G1..G6 + G9..G27）、`scripts/verify/mutate_chip_shop_ui.ps1`（37 条）、`scripts/test/cases/CHIP-*-1.21.1.json`、`scripts/test/resources/kubejs/1.21.1/{server_scripts/astral_shop_probe.js,client_scripts/astral_shop_client.js}` |
+| 筹码设计 / 界面 / 平台差异 | `docs/chip-shop-logic-plan.md`、`docs/chip-shop-ui-spec.md`、`docs/compat-1.20.1-forge.md` §十七 |
+| 文档 | `AGENTS.md`、`scripts/test/TESTING-SPEC.md`、`docs/compat-1.20.1-forge.md`、`docs/compat-26.1.2-neoforge.md`、`docs/handover-new-session-context.md`、**`docs/handover-2.0.0-SNAPSHOT.97-chip-shop.md`（本批）**、本文件 |
 
 ---
 
 ## 8. 新会话建议开工步骤
 
-1. `git -C F:\MCProject\astral_dice_multiloader-next status --short -uall` + `git log --oneline -3`（确认基线之后的收尾提交、工作树干净；HEAD 以 `git log --oneline -1` 实测，勿照抄旧哈希）；
-2. 读本文件 + `docs/handover-new-session-context.md` + `AGENTS.md` 的「工作树纪律 / 二次验证 / 子代理与测试环境硬规则 / 版本优先级」四节；
+1. `git -C F:\MCProject\astral_dice_multiloader-next status --short -uall` + `git log --oneline -3`（确认收尾提交；**HEAD 以 `git log --oneline -1` 实测，勿照抄旧哈希**；`status` 若只剩 4 行 `%SystemDrive%/…db` 即为正常，见 §5-C-17）；
+2. 读本文件 + **`docs/handover-2.0.0-SNAPSHOT.97-chip-shop.md`（最近一批的交接，含流程 / 语义 / 判据 / 未完成 / 新坑）** + `docs/handover-new-session-context.md` + `AGENTS.md` 的「工作树纪律 / 二次验证 / 子代理与测试环境硬规则 / 版本优先级」四节；
 3. 要动代码：先 `mt_build` 确认基线绿，再改；改后 `mt_build` + 相关 `scripts/verify/**`；
 4. 复核用 `code_review`（失败即改派一次性子代理）；实机**先问用户**；
 5. 提交：升四线版本 + 两份 CHANGELOG + `git commit`（**不 push**）；收尾核对另一工作树为空且 HEAD 不变。

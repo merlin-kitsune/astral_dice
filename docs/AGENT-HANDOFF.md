@@ -5,6 +5,7 @@
 > **权威优先级**：仓库 `AGENTS.md`（3325 行，本项目权威规范） > 本文件 > 其余 `docs/`。
 > **凡与本文件冲突，以 `AGENTS.md` 与仓库实际内容为准。**
 > ⚠️ 版本号 / 提交号 / 商店 id 都是**快照**，接手后请用 §9 的命令重新读取，不要直接沿用本文件的数字。
+> 🆕 **最近一批交接（2026-10-12 筹码商店批）**：先读 `docs/handover-2.0.0-SNAPSHOT.97-chip-shop.md`（流程 / 语义 / 判据 / 9 条未完成 / 12 条新坑），再读 `docs/handover-2.0.0-dev-next.md`（常态进度与遗留项）与 `docs/handover-new-session-context.md`（照抄给新会话的提示词）。⚠️ 本文件是 **`multi-main` 发布线**在 2026-10-06 的历史快照；开发线 `multi-dev-next`（工作树 `F:\MCProject\astral_dice_multiloader-next`）以那三份为准。
 
 ---
 
