@@ -6,7 +6,7 @@
 3. 涉及平台差异时：`docs/compat-1.20.1-forge.md`（forge）或 `docs/compat-26.1.2-neoforge.md`（26.1.2）
 
 ## 基本盘
-- 工作树：`F:\MCProject\astral_dice_multiloader-next`（分支 `multi-dev-next`）；**HEAD 与四线版本一律以实测为准**（`git log --oneline -1`、四条 `gradle.properties` 的 `mod_version`）—— 本文档上一版曾写 `d2299def` / `2.0.0-SNAPSHOT.85`，其后已有 `.86` 筹码商店界面骨架与 `.87` 实施分工规范两次提交，现号 `2.0.0-SNAPSHOT.89`；工作树干净、未 push
+- 工作树：`F:\MCProject\astral_dice_multiloader-next`（分支 `multi-dev-next`）；**HEAD 与四线版本一律以实测为准**（`git log --oneline -1`、四条 `gradle.properties` 的 `mod_version`）—— 本文档上一版曾写 `d2299def` / `2.0.0-SNAPSHOT.85`，其后已有 `.86` 筹码商店界面骨架与 `.87` 实施分工规范两次提交，现号 `2.0.0-SNAPSHOT.90`；工作树**仅一项未跟踪**（`?? docs/chip-shop-logic-plan.md`）、未 push
 - 另一常驻工作树 `F:\MCProject\astral_dice_multiloader`（multi-main，封包态）：**禁止触碰**；收尾核对它必须为空且 HEAD 不变
 - 优先级：**P0 = neoforge-1.21.1 + forge-1.20.1（同批）**；**P1 = neoforge-26.1.2 + fabric-1.20.1（待移植）**
 
@@ -51,6 +51,6 @@ pwsh -NoProfile -File tools/check_lang_sync.ps1 -LangDir neoforge-1.21.1/src/mai
 - 实机收尾判据：`MT_CLEANUP_SAVES: PURGED n` + `MT_CLEANUP_RESULT: OK`；再核 `fml.modFolders` java 进程数 = 0。
 
 ## 交接时的工作树状态
-- 生成时基线 HEAD 以 `git log -1` 实测为准（本行随 `.89` 提交落地）；`git status --short -uall` 仅余未跟踪 `docs/chip-shop-logic-plan.md`（筹码商店逻辑设计稿，待用户点「按计划开工」后随实现同批提交）；**P0 两线** jar 已构建到 `.85`（`run/1.21.1/mods`、`run/1.20.1/mods` 实测），**P1 两线尚未移植**（`run/26.1.2/mods` = `.58`、`run/fabric-1.20.1/mods` = `.49`）；`.84`/`.85`/`.87` 均为文档提交、不改代码，`.86` 只新增尚无开屏入口的筹码商店界面骨架 ⇒ 四线都不需要为此重建；
+- 生成时基线 HEAD 以 `git log -1` 实测为准（本行随 `.90` 提交落地）；`git status --short -uall` 仅余未跟踪 `docs/chip-shop-logic-plan.md`（筹码商店逻辑设计稿，待用户点「按计划开工」后随实现同批提交）；**P0 两线** jar 已构建到 `.85`（`run/1.21.1/mods`、`run/1.20.1/mods` 实测），**P1 两线尚未移植**（`run/26.1.2/mods` = `.58`、`run/fabric-1.20.1/mods` = `.49`）；`.84`/`.85`/`.87` 均为文档提交、不改代码，`.86` 只新增尚无开屏入口的筹码商店界面骨架 ⇒ 四线都不需要为此重建；
 - 测试世界在最后一次实机收尾时已 `--purge-saves` 清理 ⇒ 下次实机先 `--phase env`；
-- 未提交内容：无。
+- 未提交内容：仅未跟踪 `docs/chip-shop-logic-plan.md`（筹码商店逻辑设计稿，待用户点「按计划开工」后随实现同批提交）。
