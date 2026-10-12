@@ -20,7 +20,7 @@
 | R9 | 主导流派出现概率更大 | 同 R7（线性加权） | `ChipShopRoller` | 同 G11 |
 | R10 | 第一个购买的筹码不受类别影响；第二个起上一次选取显著影响类别 | 落盘字段 `lastPickCategory`；无记录 ⇒ 类别因子恒 1.0 | `component/ModAttachments.java` + `ChipShopRoller` | G14：无记录时权重表不含类别偏置 |
 | R11 | 三格中只有第一格显著受流派+类别影响，后两格加大随机性 | `SLOT_DECAY` 把 slot1/slot2 的因子压向 1.0 | `ChipShopRoller` | G11：slot0 的因子强度 > slot1/2 |
-| R12 | 下方文本框居中显示名称 | 屏幕层已有标签框（labelY=61，42×15） | .86 已实现 | 离线合成预览 + 实机（需你下达） |
+| R12 | 下方文本框显示名称（短名居中；超宽左右滚动） | 屏幕层已有标签框（labelY=61，42×15）；2026-10-13 超宽改 marquee | .86 已实现 | 离线合成预览 + 实机（需你下达） |
 | R13 | 点筹码格或文本框都选中，绿条移动 | `chipIndexAt` 命中筹码格 + 文本框 → 同一 `select()` | `screen/ChipShopScreen.java` | G15：两处命中都只调 `select`，不发包 |
 | R14 | 最左按钮=购买，下方显示花费；余额不足红色闪烁 | 确认按钮发 `ChipShopBuyPayload`；服务端校验 → 拒绝则 `ChipShopDenyPayload`；**成功后自动关店**（R18） | `network/` + `ChipShopMenu` + `ChipShopClientState` | G16/G20：红闪常量 30t；服务端为唯一权威；购买后菜单关闭 |
 | R15 | 最右按钮=刷新，下方显示剩余次数；为 0 阻止刷新并红色闪烁 | 刷新按钮发 `ChipShopRefreshPayload`；次数为 0 服务端拒绝 | 同上 | G16 + 用例：0 次时刷新不生效 |

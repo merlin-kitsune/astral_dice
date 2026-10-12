@@ -95,15 +95,24 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
     private static final int LABEL_Y = 61;
     private static final int[] LABEL_X = {1, 44, 87, 130, 172};
 
+    /** 筹码名 marquee 起始停顿 tick 数（只作用于 cell1..3 筹码名；2026-10-13 起用） */
+    private static final int CHIP_NAME_HOLD_TICKS = 20;
+    /** 筹码名 marquee 每移 1 px 所需的 tick 数 */
+    private static final int CHIP_NAME_STEP_TICKS = 2;
+    /** 标签框（42 宽）内文本内区左内边距：左右各留 2 px ⇒ 内区起点相对标签框左界 +2 */
+    private static final int CHIP_NAME_INNER_X = 2;
+    /** 标签框内文本内区宽度（42 − 2×2 = 38）；文本宽超过它才触发左右滚动 */
+    private static final int CHIP_NAME_INNER_W = 38;
+
     /**
      * 花费格（cell0）的「星币图标 + 金额数字」组合：图标取 {@code star_coin_small.png}
-     * （13x13 素材）的 (3,3) 起 7x7 子区，与 8px 墨迹同高对齐；图标与数字间隔 1 px。
+     * （13x13 素材）的 (3,3) 起 7x7 子区，与 8px 墨迹同高对齐；图标与数字间隔 2 px。
      */
     private static final int COST_ICON_SIZE = 7;
     private static final int COST_ICON_U = 3;
     private static final int COST_ICON_V = 3;
     private static final int COST_ICON_SRC = 13;
-    private static final int COST_ICON_GAP = 1;
+    private static final int COST_ICON_GAP = 2;
 
     /** 物品栏面板（底纹在贴图内，槽位物品由原版绘制） */
     private static final int PANEL_X = 56;
@@ -159,6 +168,8 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
     private static final int COLOR_EMPTY = 0x808080;
     /** 拒绝红闪的「红」相颜色（计划表 §4：余额不足闪花费文本、次数 0 闪剩余刷新次数文本） */
     private static final int COLOR_DENY = 0xFF5555;
+    /** 选中筹码格（被高亮）下方筹码名的颜色：黑色（2026-10-13；选中标记画在文字下层 ⇒ 黑字更清晰） */
+    private static final int COLOR_SELECTED_NAME = 0x000000;
 
     // ────────────────────────────── 贴图名（规范 §2；一律经 tex(...) 拼成 textures/gui/shop/<名>） ──────────────────────────────
 
@@ -193,6 +204,11 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
     private int buyRequestCount = 0;
     /** 界面生命周期内「刷新按钮」发出的刷新请求数（探针；本批只计数，不发包） */
     private int refreshRequestCount = 0;
+    /**
+     * 筹码名 marquee 相位（只作用于 cell1..3 筹码名）：{@code containerTick} 里无条件 +1，
+     * 与同包 {@code CardShopScreen#nameMarqueeTick} 同形态（每界面一个共享时钟）。
+     */
+    private int chipNameMarqueeTick = 0;
 
     public ChipShopScreen(ChipShopMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title);
@@ -221,10 +237,10 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
         blitStrip(guiGraphics, tex(TEX_STRIP_FRAME_1), 0, 0, STRIP_W, STRIP_H);
         // ④ 品质外框 → ⑤ 筹码物品图标（无筹码则不画，二者共用同一循环以免顺序错位）
         renderOffers(guiGraphics);
-        // ⑥ 三处文本：花费（cell0）/ 筹码名（cell1..3）/ 刷新计数（cell4）
-        renderStripText(guiGraphics);
-        // ⑦ 选中标记（仅所选筹码格）
+        // ⑥ 选中标记（仅所选筹码格；画在筹码名文字**下层** ⇒ 选中格黑字更清晰）
         renderSelection(guiGraphics);
+        // ⑦ 三处文本：花费（cell0）/ 筹码名（cell1..3）/ 刷新计数（cell4）
+        renderStripText(guiGraphics);
         // ⑧ 两个按钮（常态 / hover 或按下 2 tick 内用 *_push）
         renderButtons(guiGraphics, mouseX, mouseY);
         // ⑨ 物品栏面板底纹；槽位物品与悬停高亮由原版在本方法之后绘制（天然叠在面板之上）
@@ -262,7 +278,7 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
     }
 
     /**
-     * ⑥：标签框内容（花费=星币图标+数字 / 筹码名 / 剩余刷新次数）。
+     * ⑦：标签框内容（花费=星币图标+数字 / 筹码名 / 剩余刷新次数）。
      * <p>拒绝红闪（计划表 §4）：余额不足 / 物品栏已满 ⇒ 闪**花费数字**；刷新次数为 0 ⇒ 闪**剩余刷新次数文本**；
      * 相位由 {@link ChipShopClientState#denyBlinkRed()} 给出（30t 内 3 次红/白交替）。
      */
@@ -274,11 +290,7 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
         int refreshColor = red && reason == ChipShopMenu.DENY_NO_REFRESH ? COLOR_DENY : COLOR_TEXT;
         drawCost(guiGraphics, costColor);
         for (int chip = 0; chip < CHIP_COUNT; chip++) {
-            ItemStack stack = ChipShopClientState.offer(chip);
-            drawLabel(guiGraphics, chip + CELL_CHIP_FIRST,
-                    stack.isEmpty() ? Component.translatable("gui.astral_dice.chip_shop.empty")
-                            : stack.getHoverName(),
-                    stack.isEmpty() ? COLOR_EMPTY : COLOR_TEXT);
+            drawChipName(guiGraphics, chip);
         }
         drawLabel(guiGraphics, CELL_REFRESH,
                 Component.translatable("gui.astral_dice.chip_shop.refresh_counter",
@@ -286,7 +298,7 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
                 refreshColor);
     }
 
-    /** ⑦：选中标记 chipshop_select.png（42x15，与标签框同坐标，只画在所选筹码格上） */
+    /** ⑥：选中标记 chipshop_select.png（42x15，与标签框同坐标，只画在所选筹码格上；画在筹码名文字下层） */
     private void renderSelection(GuiGraphics guiGraphics) {
         int chip = ChipShopClientState.selectedIndex();
         if (chip < 0) {
@@ -317,10 +329,73 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
     }
 
     /**
-     * cell0 花费格：**星币图标 + 1px 间隔 + 金额数字**整体居中（不再走带前缀的纯文本）。
+     * cell1..3 筹码名（2026-10-13）：
+     * <ul>
+     *   <li>空候选 ⇒ 维持 {@link #drawLabel} 的「无」灰字居中（不滚）；</li>
+     *   <li>非空且文本宽 ≤ {@link #CHIP_NAME_INNER_W}(38) ⇒ 居中（现状口径，不滚）；</li>
+     *   <li>文本宽 &gt; 38 ⇒ 左对齐到内区左界，再按 {@link #chipNameOffset(int)} 逐像素左右滚动；</li>
+     *   <li>滚动/居中一律 scissor 到标签框内区 [INNER_X, INNER_X+W) × [0, H) ⇒ 文字不溢出到相邻格。</li>
+     * </ul>
+     * <p>颜色/阴影：选中格（{@code chip == selectedIndex}）⇒ {@link #COLOR_SELECTED_NAME} 黑字 + **无阴影**；
+     * 否则 {@link #COLOR_TEXT} 白字 + 阴影（与 {@link #drawLabel} 观感一致）。
+     */
+    private void drawChipName(GuiGraphics guiGraphics, int chip) {
+        int cell = chip + CELL_CHIP_FIRST;
+        int labelX = stripX(LABEL_X[cell]);
+        int labelY = stripY(LABEL_Y);
+        ItemStack stack = ChipShopClientState.offer(chip);
+        if (stack.isEmpty()) {
+            drawLabel(guiGraphics, cell,
+                    Component.translatable("gui.astral_dice.chip_shop.empty"), COLOR_EMPTY);
+            return;
+        }
+        Component name = stack.getHoverName();
+        int w = this.font.width(name);
+        boolean selected = chip == ChipShopClientState.selectedIndex();
+        int color = selected ? COLOR_SELECTED_NAME : COLOR_TEXT;
+        int overflow = w - CHIP_NAME_INNER_W;
+        guiGraphics.enableScissor(labelX + CHIP_NAME_INNER_X, labelY,
+                labelX + CHIP_NAME_INNER_X + CHIP_NAME_INNER_W, labelY + LABEL_H);
+        int drawX = overflow > 0
+                ? labelX + CHIP_NAME_INNER_X - chipNameOffset(overflow)   // 超宽：左对齐 + 相位滚动
+                : labelX + (LABEL_W - w) / 2;                             // 不超宽：居中（现状口径）
+        guiGraphics.drawString(this.font, name, drawX, labelY + LABEL_TEXT_DY, color, !selected);
+        guiGraphics.disableScissor();
+    }
+
+    /**
+     * 筹码名 marquee 的横向滚动偏移：overflow = 文本宽 - {@link #CHIP_NAME_INNER_W}（≤0 ⇒ 0，不滚）。
+     * 轨迹 = 停 {@link #CHIP_NAME_HOLD_TICKS} tick → 每 {@link #CHIP_NAME_STEP_TICKS} tick 移 1px 到尾
+     * → 再停同样 tick → 反向移回 → 循环；相位取 {@link #chipNameMarqueeTick}。
+     * <p>形态逐字照抄同包 {@code CardShopScreen#marqueeOffset(int)}（仅把常量换成本类新常量）。
+     */
+    private int chipNameOffset(int overflow) {
+        if (overflow <= 0) {
+            return 0;
+        }
+        int travel = overflow * CHIP_NAME_STEP_TICKS;
+        int cycle = 2 * (CHIP_NAME_HOLD_TICKS + travel);
+        int t = this.chipNameMarqueeTick % cycle;
+        if (t < CHIP_NAME_HOLD_TICKS) {
+            return 0;
+        }
+        t -= CHIP_NAME_HOLD_TICKS;
+        if (t < travel) {
+            return t / CHIP_NAME_STEP_TICKS;
+        }
+        t -= travel;
+        if (t < CHIP_NAME_HOLD_TICKS) {
+            return overflow;
+        }
+        t -= CHIP_NAME_HOLD_TICKS;
+        return overflow - t / CHIP_NAME_STEP_TICKS;
+    }
+
+    /**
+     * cell0 花费格：**星币图标 + 2px 间隔 + 金额数字**整体居中（不再走带前缀的纯文本）。
      * <p>图标 = {@code star_coin_small.png} 的 (3,3) 起 7x7 子区，y = 标签框顶 + {@link #LABEL_TEXT_DY}
      * （与 8px 墨迹同高）；数字 = {@code gui.astral_dice.chip_shop.cost}（值 {@code "%s"}）渲染 {@link ChipShopClientState#cost()}，保持键有线，红闪色由 {@code color} 给出（图标不参与红闪）。
-     * 组宽 = 7 + 1 + {@code font.width(数字)}，组左 = 标签框左 + (42 − 组宽)/2；scissor 到 42x15 框防溢出。
+     * 组宽 = 7 + 2 + {@code font.width(数字)}，组左 = 标签框左 + (42 − 组宽)/2；scissor 到 42x15 框防溢出。
      */
     private void drawCost(GuiGraphics guiGraphics, int color) {
         int x = stripX(LABEL_X[CELL_CONFIRM]);
@@ -449,6 +524,8 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
         if (this.refreshPressTicks > 0) {
             this.refreshPressTicks--;
         }
+        // 筹码名 marquee 相位：无条件推进（只作用于 cell1..3 筹码名，见 drawChipName/chipNameOffset）
+        this.chipNameMarqueeTick++;
         ChipShopClientState.tick();
     }
 
