@@ -16,6 +16,7 @@ import java.util.UUID;
 import com.merlinkitsune.astral_dice.item.HealingManager;
 import com.merlinkitsune.astral_dice.item.sign.FenSignItem;
 import com.merlinkitsune.astral_dice.shop.CardShopShelf;
+import com.merlinkitsune.astral_dice.shop.ChipShopState;
 
 public class ModAttachments {
     public static final DeferredRegister<AttachmentType<?>> ATTACHMENTS =
@@ -454,6 +455,15 @@ public class ModAttachments {
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<CardShopShelf>> SHOP_SHELF =
             ATTACHMENTS.register("shop_shelf", () -> AttachmentType.builder(() -> CardShopShelf.EMPTY)
                     .serialize(CardShopShelf.CODEC)
+                    .build());
+
+    // 筹码商店:候选与运行态存档(2026-10-12 用户裁决 Q9/R16「未购买退出 ⇒ 候选逐字不变」)。
+    // 与 SHOP_SHELF 完全同型:菜单只读、重抽入口只有三处(shop/ChipShopOpener#ensureOffers 的进店补抽、
+    // ChipShopMenu#handleRefresh、购买成功),服务端 tick(shop/ChipShopRegenTicker)只恢复刷新次数。
+    // 仅服务端使用,不同步客户端(客户端靠菜单隐藏槽位读同一批候选 + DataSlot 读价格/次数/品质码)。
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<ChipShopState>> CHIP_SHOP_STATE =
+            ATTACHMENTS.register("chip_shop_state", () -> AttachmentType.builder(() -> ChipShopState.EMPTY)
+                    .serialize(ChipShopState.CODEC)
                     .build());
 
 

@@ -68,6 +68,26 @@ public final class CurioSlotUtil {
         return false;
     }
 
+    /**
+     * 遍历**指定饰品栏**（仅该 {@code slotId}）的非空槽位并执行动作。
+     *
+     * <p>2026-10-12 新增：筹码商店的「已拥有筹码」与「已装备流派计数」都要读 chip 栏，
+     * 按既有纪律（Curios 入口一律收敛到本类，调用方不直接触碰 Curios API）在此提供遍历入口。
+     */
+    public static void forEachCurioStack(LivingEntity entity, String slotId, java.util.function.Consumer<ItemStack> action) {
+        var curios = CuriosApi.getCuriosInventory(entity);
+        if (curios.isEmpty()) return;
+        var handlerOpt = curios.get().getStacksHandler(slotId);
+        if (handlerOpt.isEmpty()) return;
+        var stacks = handlerOpt.get().getStacks();
+        for (int i = 0; i < stacks.getSlots(); i++) {
+            var s = stacks.getStackInSlot(i);
+            if (!s.isEmpty()) {
+                action.accept(s);
+            }
+        }
+    }
+
     // 下蹲右键自动装备:将手中物品放入指定饰品栏的第一个空槽位(仅服务端执行)
     public static InteractionResultHolder<ItemStack> tryAutoEquip(Player player, ItemStack stack, String slotId) {
         if (player.level().isClientSide()) {

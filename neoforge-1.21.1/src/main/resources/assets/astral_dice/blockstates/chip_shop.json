@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "astral_dice:block/chip_shop"
+    },
+    "facing=east": {
+      "model": "astral_dice:block/chip_shop",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "astral_dice:block/chip_shop",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "astral_dice:block/chip_shop",
+      "y": 270
+    }
+  }
+}

@@ -161,7 +161,7 @@ roll(player, reason):                     # reason = ENTER_FIRST | REFRESH | POS
 - `shop/ChipShopMenu.java` 新增：
   - 隐藏槽 3 个（`HIDDEN_X/Y = -10000`，照抄 `CardShopMenu` 的 `ShelfSlot`；`mayPickup` 恒 false ⇒ 候选永不进入原版「光标携带」机制，杜绝拖拽白拿）；
   - DataSlot：`[0]` 单价花费、`[1]` 剩余刷新、`[2]` 总刷新（= 5 上限）、`[3]` 拒绝原因、`[4..6]` 三格品质码；
-  - 服务端入口：`handleBuy(offerIndex)`、`handleRefresh()`（校验顺序照抄 `CardShopMenu.handleBuy`：菜单归属 → 索引范围 → 该格未购买 → 余额 → 扣款 → **写入物品栏 → 关店 → 重抽**）。
+  - 服务端入口：`handleBuy(offerIndex)`、`handleRefresh()`（校验顺序照抄 `CardShopMenu.handleBuy`：菜单归属 → 索引范围 → 该格未购买 → 余额 → 扣款 → **写入物品栏 → 重抽并落盘 → `closeContainer()`**（2026-10-12 口径修订：关店放在全部落盘与提示之后 —— 同一服务端回调内完成，避免「状态未落盘就把玩家弹出去」）。
 - 网络包（照抄卡牌商店三条）：`network/ChipShopBuyPayload.java`（`record(int offerIndex)`）、`network/ChipShopRefreshPayload.java`、`network/ChipShopDenyPayload.java`（`record(int reason)`，0=余额不足、1=刷新次数为 0、2=物品栏已满）。
 - 客户端：`screen/ChipShopScreen.java` 的 `onConfirmPressed()` / `onRefreshPressed()` 从「只计数 + TODO」改为**发包**；`containerTick` 从菜单同步 `setOffers/setCost/setRefreshes`；`removed()` 清状态（.86 已有）。
 - **红闪**：`client/ChipShopClientState.java` 新增 30t 闪烁（与 `CardShopClientState.DENY_BLINK_TICKS = 30`、`denyBlinkRed() = denyTicks > 0 && ((denyTicks-1)/5) % 2 == 1` 同式）——余额不足闪**花费文本**、次数为 0 闪**N/N 文本**。
@@ -188,7 +188,7 @@ roll(player, reason):                     # reason = ENTER_FIRST | REFRESH | POS
   - 「**第一次使用刷新后**」才开始恢复：首次成功刷新时若 `regenAnchor == 0` ⇒ `regenAnchor = now + 36000`（30:00）。
   - 之后每 `REFRESH_REGEN_TICKS = 36000` tick `+1`（上限 5）；到上限后锚点停止顺延。
   - 次数为 0 时按钮**只红闪、不发包**（服务端同样拒绝）。
-- **购买后（R18）**：写物品栏 → `player.closeContainer()` → `purchasedCount += 1` → `lastPickCategory = 刚购买的类别` → **重抽候选**并落盘 ⇒ 下次开店看到的是新一批。
+- **购买后（R18）**：写物品栏 → `purchasedCount += 1` → `lastPickCategory = 刚购买的类别` → **重抽候选并落盘** → 同步余额 + actionbar → `player.closeContainer()`（2026-10-12 口径修订：关店是这条链的**最后一步**，此前写的是「关店在重抽之前」，实现按本条执行；判据仍为「关店与扣款同分支」= G20/G20b）⇒ 下次开店看到的是新一批。
 
 ## §7 开屏入口（**已裁决：`chipshop.bbmodel` 方块**）
 
@@ -200,7 +200,8 @@ roll(player, reason):                     # reason = ENTER_FIRST | REFRESH | POS
   2. `ModBlocks` 注册 `CHIP_SHOP` + `ModItems` 注册 `BlockItem`（照 `CARD_SHOP` 两行）；
   3. `blockstates/chip_shop.json`（四向 y=0/90/180/270，与 `card_shop` 同式）+ `models/item/chip_shop.json`（parent = `block/chip_shop`）；
   4. 三语 `block.astral_dice.chip_shop`（筹码商店 / Chip Shop / チップショップ）+ 配方 + 掉落表 + 创造栏；
-  5. 交互 = `use`/`useWithoutItem` → `ChipShopOpener.tryOpen(player)`（照抄 `CardShopOpener`，line 1.21.1 vs 1.20.1 签名不同，见 §10）。
+  5. 交互 = `use`/`useWithoutItem` → `ChipShopOpener.open(player)`（照抄 `CardShopOpener`，line 1.21.1 vs 1.20.1 签名不同，见 §10；⚠️ 本文档早先写作 `tryOpen`，实作为 `open`，已按实作更正）。
+  6. **配方**（本批自定，计划表原先未规定）：`crafting_shaped` pattern `["TTT","BSB","MMM"]`，T=`minecraft:smooth_stone_slab`、B=`astral_dice:star_coin`、S=`astral_dice:blank_chip`、M=tag `minecraft:logs`，产出 `astral_dice:chip_shop`×1。⚠️ **不得与 `card_shop` 的 `["TTT","BBB","MMM"]` 同图案同材料** —— 原版 shaped 配方按「第一个匹配」取用，同图案配方会让其中一个方块**静默不可合成**（本批复核 P1，已修），并已加守门 G22 强制唯一性。
 - 「阻止进入」判定（`ChipShopOpener` 前置，不满足则 actionbar 红字且不打开）：① 可用候选 = 0（池中筹码已全拥有）；② 物品栏无空位（**只算 36 格，不含副手** —— 你已确认）。
 
 ## §8 文案键（三语同批：zh_cn / en_us / ja_jp）
@@ -221,7 +222,14 @@ roll(player, reason):                     # reason = ENTER_FIRST | REFRESH | POS
   - **G19（新）** 候选持久化：菜单构造**不调用** `roll`；重抽仅存在于 `handleRefresh` 与购买回调两处（源码调用点断言）；
   - **G20（新）** 购买成功后 `closeContainer()` 调用点存在且与扣款同分支；
   - **G21（新）** 方块接入：`ModBlocks` 注册 + `blockstates/chip_shop.json` 四态 + `models/item/chip_shop.json` + 三语键 + 配方/掉落表齐备。
-- **变异测试（必做，至少 6 处必须判红）**：池去重去掉 / 品质概率表改一位 / 已拥有过滤去掉 / 确认按钮改成双击触发 / 隐藏槽 `mayPickup` 改 true / 价格步长改 1（或上限改 50）。
+  - **G21b/G22..G27（2026-10-12 复核后补强，判据正本仍在本节）**：
+    - **G21b** 方块**朝向语义**（此前只查字符串，方块类去掉 `getStateForPlacement` 也能绿）：`extends HorizontalDirectionalBlock` + `simpleCodec`/`codec()` + 默认朝北 + `getHorizontalDirection().getOpposite()` + `createBlockStateDefinition` 加 `FACING` + `useWithoutItem` 的客户端守卫；
+    - **G22** **shaped 配方唯一性**：扫 `data/astral_dice/recipe/**`（含 `src/generated/resources`）全部 `crafting_shaped`，按「pattern + key 映射」归一化签名，出现重复即判红；并断言 `chip_shop` 产出 = `astral_dice:chip_shop`×1（**不得与 card_shop 同图案同材料** —— 同图案会让其中一个方块静默不可合成）；
+    - **G23** **DataSlot 布局与拒绝码**（§4）：菜单内 `addDataSlot` 顺序 = 单价 → 剩余刷新 → 总刷新（`ChipShopCatalog.REFRESH_MAX`）→ 拒绝原因 → 循环三格品质码（共 7 槽）；`DENY_NONE=-1 / DENY_NO_COIN=0 / DENY_NO_REFRESH=1 / DENY_INVENTORY_FULL=2`，且屏幕侧「花费闪红」只认 0/2、「N/N 闪红」只认 1；
+    - **G24** 星等来源：`starLevel` 体内必须是 `Math.max(0, Math.min(3, CardShopShelf.currentStarLevel(player)))`；
+    - **G25** §6 Q13「无任何折扣路径」与 §8 Q17「标题键保留但不绘制」：`ChipShop*` 源码不得出现 `discount/promotion/MEMBER_RECOMMENDATION`，屏幕不得使用 `gui.astral_dice.chip_shop` 标题键（只能用 `.cost/.refresh_count/.empty`）；
+    - **G26/G27** 语义锚定（治「标识符存在即绿」）：`categoryWeight` 方法体内 `slot <= 0 ⇒ CATEGORY_ALPHA` 的分支顺序、抽取器 `roll` 体内三处 `break`（池空 / 无档 / 无候选）与 `picked.add → pool.remove` 顺序、`chipIndexAt` 体内**必须同时**有筹码格与标签框两次 `isHoveringStrip` 且返 `chip`、`handleBuy`/`handleRefresh` 方法体内各恰 1 处 `roll(`、`.closeContainer();` 必须落在 `handleBuy` 方法体内且位于扣款之后、价格公式锚定**含右括号**（防 `* count * 2)` 混过）。
+- **变异测试（必做；2026-10-12 起为 **24 条**（脚本正本 = `scripts/verify/mutate_chip_shop_ui.ps1`，条目名 M1..M24），全部必须判红）**：池去重去掉 / 品质概率表改一位 / 已拥有过滤去掉 / 确认按钮改成双击触发 / 出现第二购买入口（`mouseClicked` 末尾也调确认）/ 隐藏槽 `mayPickup` 改 true / 价格步长改 1 / 价格上限改 50 / 刷新恢复 36000 改 18000 / 刷新上限钳制改 `Math.max` / `hasNoRoom` 的 `isEmpty()` 取反 / `chip >= 0` 改 `> 0` / 确认守卫削成 `chip < 0` / 仅 en_us 多加一个无关键 / Java 悬空键 / 两枚筹码图标互换字节 / **配方撞车回归（`BSB`→`BBB`）** / 关店挪出 `handleBuy` / 标签框命中删掉 / 方块朝向去掉 `getOpposite()` / 拒绝码重复（`DENY_NO_REFRESH` 1→2）/ 星等来源写死 3 / 注入折扣常量 / 概率表行序对调。
 - 用例与规范：`scripts/test/cases/**` 增筹码商店用例；把 §2/§6 的冻结常数写进 `docs/chip-shop-ui-spec.md` 或新建 `docs/chip-shop-logic-spec.md`。
 - **实机**：按 AGENTS「子代理与测试环境硬规则」第 5 条，**需你明确下达**才跑；本批默认只做静态取证 + `:<线>:classes` 编译 + 守门 + `code_review` 复核。
 
@@ -271,10 +279,10 @@ roll(player, reason):                     # reason = ENTER_FIRST | REFRESH | POS
 |---|---|---|---|
 | T1 | `ChipShopCatalog`（池 / 品质 / 流派 / 类别 / 图标映射 / 全部冻结常量）+ `ChipShopRoller`（抽取算法） | `neoforge-1.21.1/**/shop/ChipShopCatalog.java`、`.../shop/ChipShopRoller.java` | 无 |
 | T2 | `ChipShopState` 附件（Codec）+ 刷新恢复 ticker（照 `CardShopCycleTicker`）+ `ModAttachments` 注册 | `.../shop/ChipShopState.java`、`.../shop/ChipShopRegenTicker.java`、`.../component/ModAttachments.java` | T1 |
-| T3 | 服务端菜单逻辑：隐藏槽 / DataSlot / `handleBuy`（扣款→入包→关店→重抽→`lastPickCategory`）/ `handleRefresh` | `.../shop/ChipShopMenu.java` | T1, T2 |
+| T3 | 服务端菜单逻辑：隐藏槽 / DataSlot / `handleBuy`（扣款→入包→`purchasedCount`+类别→重抽落盘→同步→actionbar→**关店**）/ `handleRefresh` | `.../shop/ChipShopMenu.java` | T1, T2 |
 | T4 | 网络三包 + 客户端接线（发包 / 同步 / 30t 红闪） | `.../network/ChipShop*.java`、`.../client/ChipShopClientState.java`、`.../screen/ChipShopScreen.java` | T3 |
 | T5 | 方块入口 `chip_shop`（Block+注册+blockstate+item model+lang+配方+掉落+创造栏+Opener） | `.../block/ChipShopBlock.java`、`.../block/ModBlocks.java`、`.../item/ModItems.java`、`.../shop/ChipShopOpener.java`、`.../resources/assets/**`、`.../resources/data/**` | T1 |
-| T6 | 素材入库（60 张 → `textures/gui/chip_shop/chips/`）、守门 G9–G21 + 变异测试、三语文案、用例/规范文档 | `assets/astral_dice/textures/gui/chip_shop/chips/**`、`scripts/verify/verify_chip_shop_ui.ps1`、`resources/**/lang/*.json`、`scripts/test/**`、`docs/**` | T1–T5 |
+| T6 | 素材入库（61 张 → `textures/gui/chip_shop/chips/`）、守门 G9–G27 + 变异测试（24 条）、三语文案、用例/规范文档 | `assets/astral_dice/textures/gui/chip_shop/chips/**`、`scripts/verify/verify_chip_shop_ui.ps1`、`resources/**/lang/*.json`、`scripts/test/**`、`docs/**` | T1–T5 |
 | T7 | `forge-1.20.1` 同批移植（逐文件，按 §10 差异改写） | `forge-1.20.1/**` 对应路径 | T1–T6 |
 
 - 派发纪律（2026-10-12 新流程）：**T1–T6 由主 Agent 亲自编写**（基准线 `neoforge-1.21.1`）→ `code_review` 一次性独立会话复核 → 修完后**派子代理做独立功能审查**（`:<线>:classes` 编译 / 守门脚本 / 与需求逐字对账）→ **确认无误后**才派子代理做 **T7 `forge-1.20.1` 移植** → 移植线再 `code_review` + **另派一个独立子代理**功能审查。子代理单任务、用完即弃（硬规则第 1 条），优先派 DeepSeek；复核/审查发现的问题交**新**子代理改进（连续 3 次不到位 ⇒ 主 Agent 亲自重写）。

@@ -7,6 +7,7 @@ import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import com.merlinkitsune.starenginelib.item.AstralRarities;
 
 import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Rarity;
@@ -411,6 +412,9 @@ public class ModItems {
     // 卡牌商店方块物品(右键方块开店;1.20.1 无 DeferredBlock,方块物品按 1.20.1 规范用 BlockItem 手工登记)
     public static final RegistryObject<Item> CARD_SHOP = registerItem("card_shop",
             () -> new BlockItem(ModBlocks.CARD_SHOP.get(), new Item.Properties()));
+
+    // 筹码商店方块物品(右键方块开店;与卡牌商店同款,走本类自建的 registerSimpleBlockItem 入口)
+    public static final RegistryObject<Item> CHIP_SHOP = registerSimpleBlockItem("chip_shop", ModBlocks.CHIP_SHOP);
 
     /** 抽事件券(2026-10-10 事件体系重写):使用后抽一条事件(ITEM_USE),生存消耗 1 张。 */
     public static final RegistryObject<Item> EVENT_TICKET = registerItem("event_ticket",
@@ -1047,6 +1051,14 @@ public class ModItems {
 
     public static <T extends Item> RegistryObject<T> registerItem(String name, Supplier<T> itemSupplier) {
         return ITEMS.register(name, itemSupplier);
+    }
+
+    /**
+     * 方块物品登记:1.21.1 的 NeoForge 有 {@code ITEMS.registerSimpleBlockItem},1.20.1 **没有** ⇒ 自建同款入口,
+     * 让两线的 {@code ModItems} 在「方块物品」这一段保持同一形状(调用点逐字同形,便于跨线对账)。
+     */
+    public static RegistryObject<Item> registerSimpleBlockItem(String name, RegistryObject<Block> block) {
+        return registerItem(name, () -> new BlockItem(block.get(), new Item.Properties()));
     }
 
     // 判断物品栈是否为任意卡牌(战斗牌 + 效果牌;含专属牌)

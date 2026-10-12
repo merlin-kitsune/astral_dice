@@ -92,6 +92,14 @@ public final class ModNetwork {
                 EventChoiceCloseMessage::encode, EventChoiceCloseMessage::decode, EventChoiceCloseMessage::handle);
         CHANNEL.registerMessage(id++, EventChoiceTickMessage.class,
                 EventChoiceTickMessage::encode, EventChoiceTickMessage::decode, EventChoiceTickMessage::handle);
+        // 筹码商店(1.20.1 移植):id 21 = C→S 购买第 N 个候选、id 22 = C→S 刷新候选、id 23 = S→C 拒绝信号。
+        // 三条一律**追加在末尾**,不得插进既有 payload 的顺序里(顺序即协议,改序会让旧客户端错包)。
+        CHANNEL.registerMessage(id++, ChipShopBuyPayload.class,
+                ChipShopBuyPayload::encode, ChipShopBuyPayload::decode, ChipShopBuyPayload::handle);
+        CHANNEL.registerMessage(id++, ChipShopRefreshPayload.class,
+                ChipShopRefreshPayload::encode, ChipShopRefreshPayload::decode, ChipShopRefreshPayload::handle);
+        CHANNEL.registerMessage(id++, ChipShopDenyPayload.class,
+                ChipShopDenyPayload::encode, ChipShopDenyPayload::decode, ChipShopDenyPayload::handle);
     }
 
     // === 发送助手(对应 1.21 PacketDistributor 静态方法) ===

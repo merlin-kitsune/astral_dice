@@ -45,7 +45,7 @@ Initialize-MtConsole
 $script:NeoForgeMods = @(
     @{ Pattern = '*sodium-neoforge*0.8.13*.jar'; Target = 'sodium-neoforge-0.8.13+mc1.21.1.jar' }
     @{ Pattern = '*iris-neoforge*1.8.14*.jar'; Target = 'iris-neoforge-1.8.14-beta.1+mc1.21.1.jar' }
-    @{ Pattern = '*modernfix-neoforge*5.27.24*.jar'; Target = 'modernfix-neoforge-5.27.24+mc1.21.1.jar' }
+    @{ Pattern = '*modernfix-neoforge*5.27.26*.jar'; Target = 'modernfix-neoforge-5.27.26+mc1.21.1.jar' }
 )
 
 # ── 1.21.1 探针宿主（KubeJS + Rhino + Architectury API）──────────────────────

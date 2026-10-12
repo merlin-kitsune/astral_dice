@@ -1,30 +1,58 @@
 package com.merlinkitsune.astral_dice.shop;
 
+import com.merlinkitsune.astral_dice.economy.StarCoinBalanceSync;
+import com.merlinkitsune.astral_dice.network.ActionBarPayload;
+import com.merlinkitsune.astral_dice.network.ChipShopDenyPayload;
 import com.merlinkitsune.astral_dice.screen.ModMenuTypes;
+import com.merlinkitsune.starenginelib.component.GameplayConstants;
+import com.merlinkitsune.starenginelib.economy.StarEngineEconomy;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.DataSlot;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
+import net.neoforged.neoforge.network.PacketDistributor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.List;
 
 /**
- * 筹码商店菜单（本批 = **界面骨架**：只有玩家物品栏，没有任何商店逻辑槽；判据正本
- * {@code docs/chip-shop-ui-spec.md}）。
+ * 筹码商店菜单（**逻辑批已完整实现** = 服务端结算正本，界面骨架见 {@code docs/chip-shop-ui-spec.md}，
+ * 买卖逻辑判据正本 = {@code docs/chip-shop-logic-plan.md}）。
  *
- * <p><b>槽位构成</b>：仅玩家物品栏 36 格 —— 主栏 9x3（物品栏槽 9..35）+ 快捷栏 9x1（槽 0..8）。
- * 没有货架槽、没有 DataSlot、没有任何服务端逻辑（购买/刷新的载荷与结算属于逻辑批，见规范 §9）。
+ * <p><b>槽位构成</b>：先 3 个**隐藏候选槽**（{@link #HIDDEN_X}/{@link #HIDDEN_Y}，{@link OfferSlot}），
+ * 再玩家物品栏 36 格 —— 主栏 9x3（物品栏槽 9..35）+ 快捷栏 9x1（槽 0..8）。
+ * 玩家的槽位相对序号口径见 {@link #playerSlotOffset(int)}（0..26 = 主栏、27..35 = 快捷栏），
+ * 绝对槽序号 = {@link #OFFER_SLOTS} + 相对序号。
  *
- * <p><b>坐标口径</b>（规范 §3 末条）：界面侧面板格网原点 = (61, 94)、格距 18、快捷栏行 y = 152；
- * 「槽内物品图标内缩 1 px」⇒ 本类的槽位坐标 = 格网起点 **+1 px**（主栏 (62 + 18i, 95 + 18j)、
- * 快捷栏 (62 + 18i, 153)）。原版 {@code Slot} 的 x/y 同时是**物品绘制点**与**命中判定点**，
- * 故内缩位移放在槽位坐标里一次做对，屏幕层不再逐格修正。界面侧的同一套数字见
- * {@code ChipShopScreen.SLOT_X0 / SLOT_Y0 / SLOT_PITCH / SLOT_COLS / SLOT_ROWS / HOTBAR_Y}。
+ * <p><b>坐标口径</b>（界面规范 §3 末条）：界面侧面板格网原点 = (61, 94)、格距 18、快捷栏行 y = 152；
+ * 「槽内物品图标内缩 1 px」⇒ 本类的槽位坐标 = 格网起点 **+1 px**。原版 {@code Slot} 的 x/y 同时是
+ * **物品绘制点**与**命中判定点**，故内缩位移放在槽位坐标里一次做对，屏幕层不再逐格修正。
  *
- * <p><b>为什么 36 条槽位构造是逐条字面量</b>：守门脚本
- * {@code scripts/verify/verify_chip_shop_ui.ps1}（G6）按字面统计槽位数（应恰为 36），
- * 循环写法会让这条判据失去意义 —— 保持逐条可核对，改动时也不容易静默多/少一格。
+ * <p><b>为什么 36 条玩家槽构造是逐条字面量</b>：守门脚本 {@code scripts/verify/verify_chip_shop_ui.ps1}
+ * （G6）按字面统计槽位数（应恰为 36），循环写法会让这条判据失去意义 —— 保持逐条可核对。
+ *
+ * <p><b>反刷取</b>（计划表 §5）：候选槽 {@link OfferSlot#mayPickup} 恒 false ⇒ 候选**永不**进入原版
+ * 「光标携带」机制（拖拽 / 双击都拿不走）；购买**唯一**入口是
+ * {@link com.merlinkitsune.astral_dice.network.ChipShopBuyPayload} → {@link #handleBuy}，
+ * 客户端界面里只有「点确认按钮」一条路径能发这个包。
+ *
+ * <p><b>服务端权威</b>：价格、刷新次数、余额、落点一律在服务端现算（{@link ChipShopState} 附件 + 库经济），
+ * 客户端只读 DataSlot 的同步值做显示；任何校验失败都回 {@link ChipShopDenyPayload} 让界面红闪。
+ *
+ * <p><b>响应包口径</b>：{@link #handleBuy} / {@link #handleRefresh} 都从**附件现读**状态（不复用菜单字段），
+ * 因此重复包 / 并发包天然幂等（次数已耗尽 ⇒ 拒绝；槽已空 ⇒ 无候选 ⇒ 直接返回）。
  */
 public class ChipShopMenu extends AbstractContainerMenu {
+
+    /** 隐藏候选槽数量（= 条带里的三个筹码格） */
+    public static final int OFFER_SLOTS = ChipShopCatalog.OFFER_COUNT;
 
     /** 玩家槽总数（9x3 主栏 + 9x1 快捷栏） */
     public static final int PLAYER_SLOT_COUNT = 36;
@@ -38,15 +66,61 @@ public class ChipShopMenu extends AbstractContainerMenu {
     public static final int GRID_PITCH = 18;
     /** 快捷栏行的格网 y（与主栏第 3 行之间留 4 px 间隙：94 + 2*18 = 130，快捷栏 152） */
     public static final int HOTBAR_GRID_Y = 152;
-    /** 槽内物品内缩（规范 §3：16x16 物品在 18x18 格内居中 ⇒ 每边 1 px） */
+    /** 槽内物品内缩（界面规范 §3：16x16 物品在 18x18 格内居中 ⇒ 每边 1 px） */
     public static final int ITEM_INSET = 1;
 
-    /** 2 参构造 = {@link ModMenuTypes#CHIP_SHOP} 的工厂入口（客户端实例无任何服务端状态可初始化） */
+    /** 候选槽的隐藏坐标（不参与绘制；候选图标由屏幕层按条带坐标 blit） */
+    private static final int HIDDEN_X = -10000;
+    private static final int HIDDEN_Y = -10000;
+
+    /** DataSlot[0] = 单价花费（三格同价） */
+    public static final int DATA_PRICE = 0;
+    /** DataSlot[1] = 剩余刷新次数 */
+    public static final int DATA_REFRESH_LEFT = 1;
+    /** DataSlot[2] = 刷新次数上限（= {@value ChipShopCatalog#REFRESH_MAX}） */
+    public static final int DATA_REFRESH_TOTAL = 2;
+    /** DataSlot[3] = 最近一次拒绝原因（{@link #DENY_NONE} = 无） */
+    public static final int DATA_DENY = 3;
+    /** DataSlot[4..6] = 三格品质码（1/2/3；空槽 0） */
+    public static final int DATA_TIER_FIRST = 4;
+    /** DataSlot 总数（3 格品质码 ⇒ 4 + 3） */
+    public static final int DATA_SLOT_COUNT = DATA_TIER_FIRST + OFFER_SLOTS;
+
+    /** {@code ChipShopDenyPayload#reason}：无（初始态 / 未被拒） */
+    public static final int DENY_NONE = -1;
+    /** {@code ChipShopDenyPayload#reason}：余额不足（⇒ 客户端红闪**花费文本**） */
+    public static final int DENY_NO_COIN = 0;
+    /** {@code ChipShopDenyPayload#reason}：刷新次数为 0（⇒ 客户端红闪 **N/N 文本**） */
+    public static final int DENY_NO_REFRESH = 1;
+    /** {@code ChipShopDenyPayload#reason}：物品栏已满（⇒ 客户端红闪**花费文本**） */
+    public static final int DENY_INVENTORY_FULL = 2;
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(ChipShopMenu.class);
+
+    private final Player player;
+    private final Inventory playerInventory;
+    /** 隐藏候选容器（内容 = 附件候选的投影，靠原版槽位同步送到客户端） */
+    private final SimpleContainer offerContainer = new SimpleContainer(OFFER_SLOTS);
+
+    // ── 客户端镜像（服务端在 DataSlot#get 现算；客户端只读 set 同步下来的值）──
+    private int clientPrice = ChipShopCatalog.PRICE_INITIAL;
+    private int clientRefreshesLeft = ChipShopCatalog.REFRESH_INITIAL;
+    private int clientTotalRefreshes = ChipShopCatalog.REFRESH_MAX;
+    private int clientDenyReason = DENY_NONE;
+    private final int[] clientTiers = new int[OFFER_SLOTS];
+
+    /** 2 参构造 = {@link ModMenuTypes#CHIP_SHOP} 的工厂入口；服务端在此**只读**载入附件（不掷骰） */
     public ChipShopMenu(int containerId, Inventory playerInventory) {
         super(ModMenuTypes.CHIP_SHOP.get(), containerId);
+        this.player = playerInventory.player;
+        this.playerInventory = playerInventory;
+
+        // ── 隐藏候选槽 3 个（先加：槽序号 0..2）──
+        for (int i = 0; i < OFFER_SLOTS; i++) {
+            addSlot(new OfferSlot(offerContainer, i, HIDDEN_X, HIDDEN_Y));
+        }
 
         // ── 主栏 9x3（物品栏槽 9..35）：格网 (61 + 18i, 94 + 18j) + 1 px 内缩 ──
-        // 第 0 行（物品栏槽 9..17）
         addSlot(new Slot(playerInventory, 9, GRID_X + ITEM_INSET, GRID_Y + ITEM_INSET));
         addSlot(new Slot(playerInventory, 10, GRID_X + GRID_PITCH + ITEM_INSET, GRID_Y + ITEM_INSET));
         addSlot(new Slot(playerInventory, 11, GRID_X + 2 * GRID_PITCH + ITEM_INSET, GRID_Y + ITEM_INSET));
@@ -110,17 +184,262 @@ public class ChipShopMenu extends AbstractContainerMenu {
                 HOTBAR_GRID_Y + ITEM_INSET));
         addSlot(new Slot(playerInventory, 8, GRID_X + 8 * GRID_PITCH + ITEM_INSET,
                 HOTBAR_GRID_Y + ITEM_INSET));
+
+        // ── 同步：DataSlot[0..6]（价格 / 剩余刷新 / 刷新上限 / 拒绝原因 / 三格品质码）──
+        addDataSlot(new DataSlot() {
+            @Override
+            public int get() {
+                return player.level().isClientSide() ? clientPrice : ChipShopState.get(player).price();
+            }
+
+            @Override
+            public void set(int value) {
+                clientPrice = value;
+            }
+        });
+        addDataSlot(new DataSlot() {
+            @Override
+            public int get() {
+                return player.level().isClientSide() ? clientRefreshesLeft
+                        : ChipShopState.get(player).refreshesLeft();
+            }
+
+            @Override
+            public void set(int value) {
+                clientRefreshesLeft = value;
+            }
+        });
+        addDataSlot(new DataSlot() {
+            @Override
+            public int get() {
+                return ChipShopCatalog.REFRESH_MAX;
+            }
+
+            @Override
+            public void set(int value) {
+                clientTotalRefreshes = value;
+            }
+        });
+        addDataSlot(new DataSlot() {
+            @Override
+            public int get() {
+                return clientDenyReason;
+            }
+
+            @Override
+            public void set(int value) {
+                clientDenyReason = value;
+            }
+        });
+        for (int i = 0; i < OFFER_SLOTS; i++) {
+            final int index = i;
+            addDataSlot(new DataSlot() {
+                @Override
+                public int get() {
+                    return player.level().isClientSide() ? clientTiers[index]
+                            : ChipShopState.get(player).offerTier(index);
+                }
+
+                @Override
+                public void set(int value) {
+                    clientTiers[index] = value;
+                }
+            });
+        }
+
+        if (!player.level().isClientSide()) {
+            // 只读载入附件（**不掷骰**：重抽入口只有三处，见类头 / 计划表 §3）
+            applyState(ChipShopState.get(player));
+            if (player instanceof ServerPlayer serverPlayer) {
+                StarCoinBalanceSync.forceResend(serverPlayer);
+            }
+        }
+    }
+
+    /**
+     * 把附件状态投影到本菜单视图（**只读**：不掷骰、不改存档）：候选写入隐藏容器，
+     * 价格 / 刷新次数 / 品质码由 DataSlot 现算（服务端）或同步值（客户端）读出。
+     */
+    private void applyState(ChipShopState state) {
+        List<ChipShopCatalog.Entry> entries = state.entries();
+        for (int i = 0; i < OFFER_SLOTS; i++) {
+            offerContainer.setItem(i, i < entries.size() ? entries.get(i).stack() : ItemStack.EMPTY);
+        }
+    }
+
+    // ────────────────────────────── 客户端只读接口（屏幕层用） ──────────────────────────────
+
+    /** 单价（三格同价） */
+    public int price() {
+        return player.level().isClientSide() ? clientPrice : ChipShopState.get(player).price();
+    }
+
+    /** 剩余刷新次数 */
+    public int remainingRefreshes() {
+        return player.level().isClientSide() ? clientRefreshesLeft : ChipShopState.get(player).refreshesLeft();
+    }
+
+    /** 刷新次数上限（界面显示「剩余/总」用） */
+    public int totalRefreshes() {
+        return ChipShopCatalog.REFRESH_MAX;
+    }
+
+    /** 最近一次拒绝原因（{@link #DENY_NONE} = 无） */
+    public int denyReason() {
+        return player.level().isClientSide() ? clientDenyReason : DENY_NONE;
+    }
+
+    /** 第 index 格候选（越界 / 空槽 ⇒ 空栈；客户端读隐藏槽的同步内容） */
+    public ItemStack offerStack(int index) {
+        if (index < 0 || index >= OFFER_SLOTS) {
+            return ItemStack.EMPTY;
+        }
+        return offerContainer.getItem(index);
+    }
+
+    /** 第 index 格品质码（服务端由候选现算、客户端读 DataSlot[4..6]；空槽 ⇒ 0） */
+    public int offerTier(int index) {
+        if (index < 0 || index >= OFFER_SLOTS) {
+            return 0;
+        }
+        return player.level().isClientSide() ? clientTiers[index] : ChipShopState.get(player).offerTier(index);
+    }
+
+    /** 机器行 / 取证用：当前候选摘要（同一批任意次读到相同值） */
+    public String offersKey() {
+        return ChipShopState.get(player).offersKey();
+    }
+
+    // ────────────────────────────── 服务端结算 ──────────────────────────────
+
+    /**
+     * 购买（唯一入口，来自 {@code ChipShopBuyPayload}）。
+     *
+     * <p><b>校验顺序</b>（照抄 {@code CardShopMenu#handleBuy} 的口径，服务端为唯一权威）：
+     * 菜单归属 → 索引范围 → 该格有候选 → 余额 → 物品栏有空位 → 扣款 → 写物品栏 →
+     * **落在盘上的新状态（+1 次购买 / 记录类别 / 重抽候选）** → 关店。
+     *
+     * <p><b>R18</b>：购买后**自动关店**（{@link Player#closeContainer()}），筹码直接进第一个空物品栏格
+     * （不含副手 —— 用户裁决 Q10）。
+     */
+    public void handleBuy(ServerPlayer buyer, int offerIndex) {
+        if (buyer != this.player || buyer.level().isClientSide()) {
+            return;
+        }
+        if (offerIndex < 0 || offerIndex >= OFFER_SLOTS) {
+            return;
+        }
+        ChipShopState state = ChipShopState.get(buyer);
+        ItemStack chip = offerContainer.getItem(offerIndex);
+        if (chip.isEmpty() || offerIndex >= state.offers().size()) {
+            return; // 该格无候选（越界包 / 重复包 / 已重抽）⇒ 静默拒绝
+        }
+        int price = state.price();
+        if (!StarEngineEconomy.isAvailable() || !StarEngineEconomy.hasBalance(buyer, price)) {
+            deny(buyer, DENY_NO_COIN, "msg.astral_dice.chip_shop_no_coin", price);
+            return;
+        }
+        int targetSlot = findEmptyInventorySlot();
+        if (targetSlot < 0) {
+            deny(buyer, DENY_INVENTORY_FULL, "msg.astral_dice.chip_shop_inventory_full");
+            return;
+        }
+        if (!StarEngineEconomy.withdraw(buyer, price)) {
+            deny(buyer, DENY_NO_COIN, "msg.astral_dice.chip_shop_no_coin", price);
+            return;
+        }
+        ItemStack bought = chip.copy();
+        Slot target = this.slots.get(OFFER_SLOTS + playerSlotOffset(targetSlot));
+        target.set(bought);
+        target.setChanged();
+
+        // 落盘：购买次数 +1、记录本次类别（下次抽取的类别偏置来源），并**重抽候选**
+        ChipShopState next = state.withPurchased(ChipShopCatalog.categoryOf(bought).orElse(null));
+        next = next.withOffers(ChipShopRoller.roll(buyer, next.lastCategory().orElse(null)));
+        ChipShopState.store(buyer, next);
+        applyState(next);
+        StarCoinBalanceSync.notifyChanged(buyer);
+        actionBar(buyer, ChatFormatting.GOLD, "msg.astral_dice.chip_shop_bought", bought.getHoverName());
+        LOGGER.info("[astral_dice] CHIP_SHOP_BUY player={} offer={} chip={} price={} purchased={} refreshes={}"
+                        + " offers={} target={}",
+                buyer.getName().getString(), offerIndex, bought.getItem(), price, next.purchasedCount(),
+                next.refreshesLeft(), next.offersKey(), targetSlot);
+        // R18：购买成功后自动关店（关店后玩家看到的是重抽后的新一批，下次进店一致）
+        buyer.closeContainer();
+    }
+
+    /**
+     * 刷新候选（唯一入口，来自 {@code ChipShopRefreshPayload}）：次数 −1 并重抽，候选与次数一起落盘。
+     *
+     * <p><b>锚点</b>（用户裁决 2）：**第一次成功刷新**时若锚点还是 0 ⇒ 记 {@code now + 36000}，
+     * 之后由 {@link ChipShopRegenTicker} 每 36000 tick +1（上限 {@value ChipShopCatalog#REFRESH_MAX}）。
+     * 次数为 0 时**静默拒绝 + 红闪**（客户端同样不发包，这里是服务端兜底）。
+     */
+    public void handleRefresh(ServerPlayer buyer) {
+        if (buyer != this.player || buyer.level().isClientSide()) {
+            return;
+        }
+        ChipShopState state = ChipShopState.get(buyer);
+        if (state.refreshesLeft() <= 0) {
+            deny(buyer, DENY_NO_REFRESH, "msg.astral_dice.chip_shop_no_refresh");
+            return;
+        }
+        long now = buyer.level().getGameTime();
+        long anchor = state.regenAnchor() == 0L ? now + ChipShopCatalog.REFRESH_REGEN_TICKS : state.regenAnchor();
+        ChipShopState next = state.withRefreshes(state.refreshesLeft() - 1, anchor);
+        next = next.withOffers(ChipShopRoller.roll(buyer, next.lastCategory().orElse(null)));
+        ChipShopState.store(buyer, next);
+        applyState(next);
+        LOGGER.info("[astral_dice] CHIP_SHOP_REFRESH player={} refreshes={}/{} anchor={} offers={}",
+                buyer.getName().getString(), next.refreshesLeft(), ChipShopCatalog.REFRESH_MAX, next.regenAnchor(),
+                next.offersKey());
+    }
+
+    /** 第一个空的玩家物品栏格（0..8 快捷栏 / 9..35 主物品栏；不含副手）；无空格 ⇒ -1 */
+    private int findEmptyInventorySlot() {
+        for (int i = 0; i < PLAYER_SLOT_COUNT; i++) {
+            if (playerInventory.getItem(i).isEmpty()) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    /** 拒绝信号：actionbar 红字 + S2C 拒绝包（客户端据此红闪 30t；服务端为唯一权威） */
+    private void deny(ServerPlayer target, int reason, String key, Object... args) {
+        this.clientDenyReason = reason;
+        if (key != null) {
+            actionBar(target, ChatFormatting.RED, key, args);
+        }
+        PacketDistributor.sendToPlayer(target, new ChipShopDenyPayload(reason));
+    }
+
+    private void actionBar(Player target, ChatFormatting color, String key, Object... args) {
+        if (!(target instanceof ServerPlayer serverPlayer)) {
+            return;
+        }
+        PacketDistributor.sendToPlayer(serverPlayer, new ActionBarPayload(
+                Component.translatable(key, args).withStyle(color),
+                GameplayConstants.ACTIONBAR_DURATION_TICKS));
+    }
+
+    /**
+     * 玩家物品栏索引（0..8 = 快捷栏、9..35 = 主物品栏）→ 本菜单玩家区**相对**槽序号（0..35）。
+     * 菜单按「主物品栏 3 行 → 快捷栏 1 行」添加槽位 ⇒ 0..26 ↔ 主物品栏、27..35 ↔ 快捷栏；
+     * 绝对槽序号 = {@link #OFFER_SLOTS} + 本方法的返回值。
+     */
+    public static int playerSlotOffset(int inventoryIndex) {
+        return inventoryIndex < 9 ? 27 + inventoryIndex : inventoryIndex - 9;
     }
 
     // ────────────────────────────── 菜单基类实现 ──────────────────────────────
 
     /**
-     * Shift-click：只有玩家物品栏 36 格 ⇒ 主栏（0..26）与快捷栏（27..35）对倒，
-     * 与 {@code CardShopMenu#quickMoveStack} 的玩家区口径一致（主栏在前、快捷栏在后）。
+     * Shift-click：候选槽（0..2）一律不参与；玩家 36 格 ⇒ 主栏（相对 0..26）与快捷栏（相对 27..35）对倒。
      */
     @Override
     public ItemStack quickMoveStack(Player player, int index) {
-        if (index < 0 || index >= slots.size()) {
+        if (index < OFFER_SLOTS || index >= slots.size()) {
             return ItemStack.EMPTY;
         }
         Slot slot = slots.get(index);
@@ -129,10 +448,11 @@ public class ChipShopMenu extends AbstractContainerMenu {
         }
         ItemStack stack = slot.getItem();
         ItemStack copy = stack.copy();
-        boolean fromHotbar = index >= MAIN_SIZE;
+        int relative = index - OFFER_SLOTS;
+        boolean fromHotbar = relative >= MAIN_SIZE;
         boolean moved = fromHotbar
-                ? moveItemStackTo(stack, 0, MAIN_SIZE, false)
-                : moveItemStackTo(stack, MAIN_SIZE, PLAYER_SLOT_COUNT, false);
+                ? moveItemStackTo(stack, OFFER_SLOTS, OFFER_SLOTS + MAIN_SIZE, false)
+                : moveItemStackTo(stack, OFFER_SLOTS + MAIN_SIZE, OFFER_SLOTS + PLAYER_SLOT_COUNT, false);
         if (!moved) {
             return ItemStack.EMPTY;
         }
@@ -145,11 +465,34 @@ public class ChipShopMenu extends AbstractContainerMenu {
     }
 
     /**
-     * 恒 true：本菜单**没有可判距的方块来源**（开屏入口待逻辑批决定，规范 §9），
-     * 故不设方块型菜单的距离契约；购买/刷新的二次校验将来在服务端回调里做（服务端权威）。
+     * 恒 true：本菜单没有可判距的方块来源（入口方块由 {@link ChipShopOpener} 负责校验），
+     * 故不设方块型菜单的距离契约；购买 / 刷新的二次校验一律在服务端回调里做（服务端权威）。
      */
     @Override
     public boolean stillValid(Player player) {
         return true;
+    }
+
+    /** 候选槽：只读展示（不可拿取、不可放置、单格 1 枚）—— 拖拽 / 双击都拿不走候选（计划表 §5） */
+    private static class OfferSlot extends Slot {
+
+        OfferSlot(SimpleContainer container, int index, int x, int y) {
+            super(container, index, x, y);
+        }
+
+        @Override
+        public boolean mayPlace(ItemStack stack) {
+            return false;
+        }
+
+        @Override
+        public boolean mayPickup(Player player) {
+            return false;
+        }
+
+        @Override
+        public int getMaxStackSize() {
+            return 1;
+        }
     }
 }

@@ -4,7 +4,7 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
-## Unreleased (2.0.0-SNAPSHOT.96)
+## Unreleased (2.0.0-SNAPSHOT.97)
 
 ### New Content
 
@@ -71,6 +71,24 @@
   this, there is no permanent purchase limit). If **a teammate wears the "Merchant" sign**, one extra **combat card** is
   stocked and every card has a **10%** chance to be discounted to **1 Star Coin**; the **"Charge" card only appears when
   your dice star level is 2 or higher**.
+- **New block: Chip Shop — a complete draw-and-sell system for the 61 chips** (2026-10-12; lands on the two P0 lines `neoforge-1.21.1` and `forge-1.20.1`; `neoforge-26.1.2` and `fabric-1.20.1` follow in a later batch):
+  craft it in a 3×3 grid from **3 smooth stone slabs / Star Coin–Blank Chip–Star Coin / 3 logs** (top row slabs, middle row a Star Coin with a Blank Chip between, bottom row any logs — a **different pattern from the Card Shop**); place it and
+  **right-click to open the shop** (nothing consumed, no cooldown). The shop offers **3 chip slots** drawn by weight from
+  **the chips you do not own yet** (**never a duplicate in one batch**), each slot showing **that chip's own icon**, and all three slots share **one price**.
+  The price starts at **10 Star Coins** and goes **+5 for every chip that player has bought**, capped at **100**
+  (refreshing or reopening the shop never resets it). Rarity is weighted by your **dice star level**:
+  **0–1★ = rare 60% / epic 37% / legendary 3%**, **2★ = 40% / 45% / 15%**, **3★ = 25% / 50% / 25%**;
+  **chips of the same school you already wear** make that school more likely (**+60% each**), and the
+  **category of the chip you bought last** is weighted **×2 in the first slot** (decaying to **×1.25** in the second and third).
+  A purchase goes **straight into your inventory** (a free slot is required) and **closes the shop screen**; an insufficient
+  balance, no refreshes left and a full inventory all **flash red in the UI** (the balance case flashes the **cost text**,
+  the refresh case the **N/N text**).
+  **Refreshes**: **3** at first, up to **5**; the timer starts **after you use your first refresh** and then refills
+  **1 every 30 minutes** (**it keeps ticking while you are not in the shop**); at zero the refresh button
+  **only flashes red and sends nothing**.
+  You **cannot open the shop** when you **already own every chip** or have **no free inventory slot** (a message explains which).
+  ⚠️ **The Chip Shop has no discount path at all** (the Membership Recommendation chip only cheapens the Card Shop), and its screen **draws no title text**.
+
 - **"Starlight Exchange" inside the shop**: exchange **2 Starlight for 1 Star Coin** with **no cooldown** (a message tells
   you when you are short on Starlight) — this is where the Merchant sign's old "cash out" active moved to.
 - **"Transfer" inside the shop**: send Star Coins to **another online player on the same server**, **5–20 coins** per

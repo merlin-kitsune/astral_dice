@@ -145,5 +145,23 @@ public class ModPayloads {
                 EventChoiceTickPayload.STREAM_CODEC,
                 EventChoiceTickPayload::handle
         );
+        // 筹码商店:点确认按钮(候选格索引 0..2;服务端二次校验后扣款发货 —— 唯一购买入口)
+        registrar.playToServer(
+                ChipShopBuyPayload.TYPE,
+                ChipShopBuyPayload.STREAM_CODEC,
+                ChipShopBuyPayload::handle
+        );
+        // 筹码商店:点刷新按钮(消耗 1 次重抽;次数为 0 时服务端兜底拒绝)
+        registrar.playToServer(
+                ChipShopRefreshPayload.TYPE,
+                ChipShopRefreshPayload.STREAM_CODEC,
+                ChipShopRefreshPayload::handle
+        );
+        // 筹码商店:拒绝信号(服务端权威;客户端据 reason 红闪花费文本或 N/N 文本)
+        registrar.playToClient(
+                ChipShopDenyPayload.TYPE,
+                ChipShopDenyPayload.STREAM_CODEC,
+                ChipShopDenyPayload::handle
+        );
     }
 }

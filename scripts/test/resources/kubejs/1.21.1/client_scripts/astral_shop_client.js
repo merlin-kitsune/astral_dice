@@ -74,6 +74,11 @@ try { JeiInternal_CLASS = Java.loadClass("mezz.jei.common.Internal"); } catch (e
 try { JeiCategory_CLASS = Java.loadClass("com.merlinkitsune.astral_dice.compat.jei.CardShopCategory"); } catch (eJ2) { }
 var ShopMenu_CLASS = null;
 try { ShopMenu_CLASS = Java.loadClass("com.merlinkitsune.astral_dice.shop.CardShopMenu"); } catch (eS1) { }
+// 任务 CHIP（2026-10-12）：筹码商店屏与客户端态（可选类，取不到时筹码场景自动不生效，不影响既有场景）
+var ChipShopScreen_CLASS = null;
+var ChipShopClientState_CLASS = null;
+try { ChipShopScreen_CLASS = Java.loadClass("com.merlinkitsune.astral_dice.screen.ChipShopScreen"); } catch (eChipS) { }
+try { ChipShopClientState_CLASS = Java.loadClass("com.merlinkitsune.astral_dice.client.ChipShopClientState"); } catch (eChipC) { }
 var Screenshot_CLASS = null;
 var NativeImage_CLASS = null;
 try { Screenshot_CLASS = Java.loadClass("net.minecraft.client.Screenshot"); } catch (eSc) { }
@@ -106,6 +111,16 @@ var csDeny = false;
 var csDenyGate = 780;
 var csP0 = false;
 var csP0Gate = 781;
+// 任务 CHIP（2026-10-12）筹码商店三场景：770 购买 / 771 刷新+次数0红闪 / 772 物品栏满拒绝
+var csChipGate = 770;
+var csChipRefreshGate = 771;
+var csChipDenyGate = 772;
+var csChip = false;         // 本次开屏是筹码商店屏
+var csChipBuy = false;
+var csChipRefresh = false;
+var csChipDeny = false;
+var csChipTag = "";         // 本次筹码场景的服务端探针标签（CB/CR/CD），供关屏那一拍回读服务端状态
+var csChipAfterLogged = false; // 购买场景的「确认后读数」是否已落（成功购买会让服务端在同一拍关店 ⇒ step45 常来不及跑，由关屏分支补落）
 var csCloseBy = "";        // 主动自关时标记调用方（关屏归因用）
 var csShotSeq = 0;         // 自截图序号
 var csDenyRearms = 0;      // 780 里重放拒绝的次数
@@ -2930,6 +2945,87 @@ function csRunVOut(mc) {
     }
 }
 
+// ══════════════════ 任务 CHIP（2026-10-12）：筹码商店客户端场景 770 / 771 / 772 ══════════════════
+//  背景：筹码商店（ChipShopScreen / ChipShopClientState / ChipShopMenu）与卡牌商店**不同屏不同态**，
+//  故独立成一套；哨兵只用 770/771/772（避开既有 775/777..792 与 Q 带 [791,891]）。
+//  坐标口径：GUI 相对坐标（csClick 内部加 getGuiLeft/getGuiTop）。⚠️ 2026-10-12 首跑实测修正：
+//    ChipShopScreen 的 CELL_/LABEL_/CONFIRM_/REFRESH_ 常量是**条带内相对**坐标，命中判定走
+//    isHoveringStrip → stripX/stripY（再叠加 STRIP_X=34 / STRIP_Y=6 与 leftPos/topPos）
+//    ⇒ 探针必须把 STRIP 偏移一并算进去，否则点不中（首跑 sel 恒 -1、确认键空转）：
+//    确认键中心 (34+CONFIRM_X 11+12, 6+CONFIRM_Y 36+12) = (57,54)、刷新键中心 (34+181+12, 54) = (227,54)、
+//    筹码格 i 中心 (34+CELL_X[i+1]+20, 6+CELL_H 78/2) = (99,45)/(142,45)/(185,45)、
+//    标签框 i 中心 (34+LABEL_X[i+1]+21, 6+LABEL_Y 61+7) = (99,74)/(142,74)/(185,74)。
+
+/** 当前屏是不是筹码商店屏（类取不到时恒 0） */
+function csChipScreen(mc) {
+    try {
+        if (mc.screen == null || ChipShopScreen_CLASS == null) { return 0; }
+        return (mc.screen instanceof ChipShopScreen_CLASS) ? 1 : 0;
+    } catch (e) { return -1; }
+}
+
+/** 筹码屏客户端态单行（全部走 ChipShopClientState 的公开只读接口） */
+function csChipState(mc) {
+    var sel = csNum(function () { return ChipShopClientState_CLASS.selectedIndex(); });
+    var cost = csNum(function () { return ChipShopClientState_CLASS.cost(); });
+    var rl = csNum(function () { return ChipShopClientState_CLASS.remainingRefreshes(); });
+    var rt = csNum(function () { return ChipShopClientState_CLASS.totalRefreshes(); });
+    var deny = csNum(function () { return ChipShopClientState_CLASS.denyReason(); });
+    var ticks = csNum(function () { return ChipShopClientState_CLASS.denyTicks(); });
+    var red = -1;
+    try { red = ChipShopClientState_CLASS.denyBlinkRed() ? 1 : 0; } catch (eR) { red = -1; }
+    var offers = "";
+    try {
+        var n = ChipShopClientState_CLASS.offerCount();
+        for (var i = 0; i < n; i++) {
+            var st = ChipShopClientState_CLASS.offer(i);
+            var oid = (st == null || st.isEmpty()) ? "-" : csId(st);
+            var q = csNum(function () { return ChipShopClientState_CLASS.qualityCode(i); });
+            offers += (i > 0 ? "," : "") + i + "=" + oid + "@t" + q;
+        }
+    } catch (eO) { offers = "<ex>"; }
+    var scr = (mc.screen == null) ? "null" : csClsName(mc.screen);
+    return "sel=" + sel + ":cost=" + cost + ":refreshes=" + rl + "/" + rt + ":deny=" + deny
+        + ":dticks=" + ticks + ":red=" + red + ":offers=[" + offers + "]:scr=" + scr;
+}
+
+/** 770 = 筹码购买：选 0 号格 → 点确认键 → 服务端扣款发货并关店（关店后由 not-in-shop 分支落 evt=closed） */
+function csRunChipBuy(mc, step) {
+    if (step === 1) { cs("evt=chip_buy:open:bal=" + csN2Bal() + ":" + csChipState(mc)); return; }
+    if (step === 20) { csClick(mc, 99, 45, "chip_cell0", step); return; }
+    if (step === 25) { cs("evt=chip_buy:selected:" + csChipState(mc)); return; }
+    if (step === 40) { csClick(mc, 57, 54, "chip_confirm", step); return; }
+    if (step === 45) { csChipAfterLogged = true; cs("evt=chip_buy:after_confirm:" + csChipState(mc)); return; }
+    if (step === 200) { cs("evt=chip_buy:still_open:" + csChipState(mc)); return; }
+    return;
+}
+
+/** 771 = 刷新：次数 1 → 点刷新键（真发包，服务端 1→0）→ 再点一次（次数 0 ⇒ 只红闪、不发包） */
+function csRunChipRefresh(mc, step) {
+    if (step === 1) { cs("evt=chip_ref:open:bal=" + csN2Bal() + ":" + csChipState(mc)); return; }
+    if (step === 20) { csClick(mc, 227, 54, "chip_refresh", step); return; }
+    if (step === 30) { cs("evt=chip_ref:after_refresh:" + csChipState(mc)); return; }
+    if (step === 40) { csClick(mc, 227, 54, "chip_refresh_zero", step); return; }
+    if (step >= 43 && step <= 85 && step % 3 === 0) { cs("evt=chip_ref:blink:step=" + step + ":" + csChipState(mc)); return; }
+    if (step === 100) { cs("evt=chip_ref:end:" + csChipState(mc)); csCloseBy_(mc, "csRunChipRefresh"); return; }
+    return;
+}
+
+/** 772 = 物品栏满拒绝：屏内先由客户端发 `astralshop cinv CHIPD fill` 填满 36 格（GUI 开着时 T 键被吞，只能走 csCmd），
+ *  再选 0 号格 → 点确认 → 服务端 findEmptyInventorySlot<0 ⇒ DENY_INVENTORY_FULL(2) 经 S2C 包回客户端（红闪 30t、不扣款、不重抽）。
+ *  ⚠️ 不能「先填满物品栏再开屏」：ChipShopOpener.open 自己就会以 inventory_full 拒绝开店，屏根本不会出现。 */
+function csRunChipDeny(mc, step) {
+    if (step === 1) { cs("evt=chip_deny:open:bal=" + csN2Bal() + ":" + csChipState(mc)); return; }
+    if (step === 8) { csCmd(mc, 'astralshop cinv CHIPD fill', "chip_deny_fill", step); return; }
+    if (step === 20) { csClick(mc, 99, 45, "chip_cell0", step); return; }
+    if (step === 25) { cs("evt=chip_deny:selected:" + csChipState(mc)); return; }
+    if (step === 40) { csClick(mc, 57, 54, "chip_confirm_full", step); return; }
+    if (step === 45) { cs("evt=chip_deny:after_confirm:" + csChipState(mc)); return; }
+    if (step >= 48 && step <= 90 && step % 3 === 0) { cs("evt=chip_deny:blink:step=" + step + ":" + csChipState(mc)); return; }
+    if (step === 110) { cs("evt=chip_deny:end:" + csChipState(mc)); csCloseBy_(mc, "csRunChipDeny"); return; }
+    return;
+}
+
 ClientEvents.tick(event => {
     csTick++;
     var mc = null;
@@ -2967,11 +3063,21 @@ ClientEvents.tick(event => {
     csObs(mc);                                  // 只读手势观察器（真人鼠标事件的可见后果）
     var inShop = 0;
     try { inShop = (mc.screen != null && (mc.screen instanceof ShopScreen_CLASS)) ? 1 : 0; } catch (e1) { inShop = -1; }
-    if (inShop !== 1) {
+    // 任务 CHIP（2026-10-12）：筹码商店屏也算「在店内」（否则筹码屏一开就被当关屏、场景机立刻被复位）
+    var inChip = csChipScreen(mc);
+    if (inShop !== 1 && inChip !== 1) {
         if (csArmed) {
             // §1 取证：商店屏消失时判因（本地清屏 vs 容器被关），落规定格式机器行 AP_SHOPCLOSE
+            // 任务 CHIP（2026-10-12 首跑修）：关屏那一拍用**客户端命令通道**（csCmd → connection.sendCommand，
+            //   GUI 开着也能发）回读服务端权威状态 —— 用例尾部的 `inject_command` 走聊天通道，屏还开着时会被吞
+            //   （首跑实测：`/astralshop cstate CB` 注入后**零** AP_CB_CST ⇒ 断言 26/27 必红）。这里补一条确定性回读。
+            if (csChip && csChipTag !== "") { csCmd(mc, "astralshop cstate " + csChipTag, "chip_postclose_cstate", csStep); }
+            // 2026-10-12 二次修：购买成功后服务端**同拍关店** ⇒ step45 的 after_confirm 常来不及落（首跑后重跑实测 24 号断言红）。
+            //  客户端态（ChipShopClientState）是**类级静态**、不随屏销毁 ⇒ 在关屏这一拍补落同一条机器行，语义同为「确认之后的客户端读数」。
+            if (csChipBuy && !csChipAfterLogged && csStep >= 40) { csChipAfterLogged = true; cs("evt=chip_buy:after_confirm:" + csChipState(mc)); }
             csArmed = false; csRun = false; csPoll = false; csDeny = false; csP0 = false; csHold = false; csNat = false;
             csM = false; csH = false; csG = false; csN = false; csN2 = false; csP = false;
+            csChipBuy = false; csChipRefresh = false; csChipDeny = false; csChip = false;
             csDenyLastRed = -1; csDenyShots = 0;
             if (csOB) { csOBOut = true; csOBOutc = 0; }   // 任务O 789：进入「关店期间」子阶段（csOB 本身**不清**，阶段机跨开屏保留）
             if (csQ) { csQOut = true; csQOutc = 0; }       // 任务Q 791：同构（csQ / csQP 同样跨开屏保留）
@@ -3007,6 +3113,13 @@ ClientEvents.tick(event => {
         // 任务V 792：本场景余额全程 920（避开 csQ 的 [791,891] 带、也不触发立牌返现）⇒ 等值匹配即可
         csV = (csOpenBal === csVGate);
         csVT = 0; csVOut = false;
+        // 任务 CHIP：筹码屏上的三个哨兵（卡牌屏永不匹配；等值匹配即可，筹码商店不产生余额增量）
+        csChipBuy = (inChip === 1 && csOpenBal === csChipGate);
+        csChipRefresh = (inChip === 1 && csOpenBal === csChipRefreshGate);
+        csChipDeny = (inChip === 1 && csOpenBal === csChipDenyGate);
+        csChip = (csChipBuy || csChipRefresh || csChipDeny);
+        csChipTag = csChipBuy ? "CB" : (csChipRefresh ? "CR" : (csChipDeny ? "CD" : ""));
+        csChipAfterLogged = false;
         if (csV) { csVOpens++; }
         if (csQ && (csQP >= 100 || !csQStarted)) { csQStarted = true; csQP = 0; csQS = 0; csQP2 = 0; csQCycles = 0; csQOpens = 0; csQDeltaSeq = ""; csQBalBase = -1; }
         if (csQ) { csQOpens++; }
@@ -3024,7 +3137,7 @@ ClientEvents.tick(event => {
             + ":m=" + (csM ? 1 : 0) + ":h=" + (csH ? 1 : 0) + ":g=" + (csG ? 1 : 0)
             + ":n=" + (csN ? 1 : 0) + ":n2=" + (csN2 ? 1 : 0)
             + ":o=" + (csO ? 1 : 0) + ":ob=" + (csOB ? 1 : 0) + ":p=" + (csP ? 1 : 0)
-            + ":q=" + (csQ ? 1 : 0) + ":" + csState(mc));
+            + ":q=" + (csQ ? 1 : 0) + ":chip=" + (csChip ? 1 : 0) + ":" + (csChip ? csChipState(mc) : csState(mc)));
     }
     csStep++;
     if (csRun) {
@@ -3061,6 +3174,12 @@ ClientEvents.tick(event => {
         csRunQ(mc, csStep);
     } else if (csV) {                       // 任务V 792
         csRunV(mc, csStep);
+    } else if (csChipBuy) {                 // 任务 CHIP 770
+        csRunChipBuy(mc, csStep);
+    } else if (csChipRefresh) {             // 任务 CHIP 771
+        csRunChipRefresh(mc, csStep);
+    } else if (csChipDeny) {                // 任务 CHIP 772
+        csRunChipDeny(mc, csStep);
     } else if (csHold) {
         // 静置保持(哨兵 778): 本模式**不**做 60t 兜底关屏, 用于验收「打开商店后静置不会自己关」
         if (csStep === 600) { cs("evt=holdend:opens=" + csOpens + ":step=" + csStep + ":how=" + csCloseBy_(mc, "csHold")); }

@@ -2,6 +2,7 @@ package com.merlinkitsune.astral_dice.component;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.shop.CardShopShelf;
+import com.merlinkitsune.astral_dice.shop.ChipShopState;
 import com.mojang.serialization.Codec;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.server.level.ServerPlayer;
@@ -401,6 +402,13 @@ public class ModAttachments {
     // 仅服务端使用,不同步客户端(客户端照旧靠货架槽位同步读同一批卡) ⇒ 不 .sync()、不加入 SYNCED_KEYS。
     public static final AttachedDataKey<CardShopShelf> SHOP_SHELF =
             register(AttachedDataKey.builder("shop_shelf", CardShopShelf.CODEC, () -> CardShopShelf.EMPTY).build());
+
+    // 筹码商店:候选存档(2026-10-12 移植,对应 1.21.1 的 ModAttachments.CHIP_SHOP_STATE)。
+    // 与 SHOP_SHELF 完全同型:菜单只读、重抽入口只有三处(shop/ChipShopOpener#ensureOffers 的进店补抽、
+    // ChipShopMenu#handleRefresh、购买成功),服务端 tick(shop/ChipShopRegenTicker)只恢复刷新次数。
+    // 仅服务端使用,不同步客户端(客户端靠菜单隐藏槽位读同一批候选 + DataSlot 读价格/次数/品质码) ⇒ 不 .sync()、不加入 SYNCED_KEYS。
+    public static final AttachedDataKey<ChipShopState> CHIP_SHOP_STATE =
+            register(AttachedDataKey.builder("chip_shop_state", ChipShopState.CODEC, () -> ChipShopState.EMPTY).build());
 
     // 立牌主动技能"本次冷却实际使用的最大冷却 tick"(路线 A:所有减免方一律读它作基准,不再各自重算;
     // 0 表示缺失/无冷却,减免方回退旧行为;仅服务端使用,故不 .sync()、不加入 SYNCED_KEYS)。

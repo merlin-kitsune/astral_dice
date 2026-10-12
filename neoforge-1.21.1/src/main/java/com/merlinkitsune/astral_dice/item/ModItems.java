@@ -422,6 +422,9 @@ public class ModItems {
     // 卡牌商店方块(物品形态):放置后右键打开「卡牌商店」界面
     public static final DeferredItem<BlockItem> CARD_SHOP = ITEMS.registerSimpleBlockItem("card_shop", ModBlocks.CARD_SHOP);
 
+    // 筹码商店方块(物品形态):放置后右键打开「筹码商店」界面
+    public static final DeferredItem<BlockItem> CHIP_SHOP = ITEMS.registerSimpleBlockItem("chip_shop", ModBlocks.CHIP_SHOP);
+
     /** 抽事件券(2026-10-10 事件体系重写):使用后从公共事件池抽一条事件(触发器 ITEM_USE),生存模式消耗 1 张。 */
     public static final DeferredItem<Item> EVENT_TICKET = registerItem("event_ticket",
             () -> new EventDrawItem(new Item.Properties()

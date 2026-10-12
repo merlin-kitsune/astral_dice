@@ -192,5 +192,6 @@ public class ModCreativeTabs {
                 output.accept(ModItems.EVENT_TICKET.get());
 output.accept(ModItems.EVENT_DRAWER.get());
 output.accept(ModItems.CARD_SHOP.get());
+output.accept(ModItems.CHIP_SHOP.get());
             }).build());
 }

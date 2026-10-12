@@ -7,15 +7,17 @@ import net.minecraft.world.item.ItemStack;
 import java.util.Arrays;
 
 /**
- * 筹码商店的**客户端态占位**（本批只做界面骨架，业务逻辑待用户后续下达；判据正本
+ * 筹码商店的客户端态镜像（**逻辑批已完整接通**：候选/价格/刷新次数/品质码/拒绝红闪；判据正本
  * {@code docs/chip-shop-ui-spec.md} §6）。
  *
  * <p>与 {@link CardShopClientState} 同款：全静态、无实例、由屏幕类在**构造**与 **removed()** 两处
  * {@link #clear()}，并由 {@code ChipShopScreen#containerTick} 每 tick 调一次 {@link #tick()}。
  *
- * <p><b>本批没有任何数据来源</b>：{@link #setOffers}/{@link #setCost}/{@link #setRefreshes} 三个 setter
- * 目前的调用方**只有屏幕类自己的构造路径**（保持初值），逻辑批要接的是「服务端权威 → S2C 包 → 这三个 setter」
- * （见规范 §9 的输入清单：价格与折扣、刷新次数的来源与上限、是否限购、失败提示）。
+ * <p><b>数据来源（逻辑批已接通）</b>：{@link #setOffers}/{@link #setCost}/{@link #setRefreshes}/
+ * {@link #setQualityCodes} 的唯一调用方是 {@code ChipShopScreen#containerTick}，它每 tick 从
+ * {@code ChipShopMenu} 的**隐藏候选槽同步内容 + DataSlot 同步值**读出（服务端权威 → 原版菜单同步 →
+ * 客户端镜像，**没有**为数量类读数新增 S2C 包）。失败提示走 S2C
+ * {@code ChipShopDenyPayload} → {@link #notifyDeny(int)}（起 30t 红闪倒计时）。
  *
  * <p><b>品质 → 品质外框序号</b>：{@link #qualityFrameIndexOf(ItemStack)} 的返回值直接拼进贴图名
  * （1 ⇒ {@code chipshop_quality_1.png}、2 ⇒ {@code _2}、3 ⇒ {@code _3}；{@code 0} ⇒ 不画外框）。
@@ -45,6 +47,17 @@ public final class ChipShopClientState {
     private static int totalRefreshes = 0;
     private static int selectedIndex = -1;
     private static int ticks = 0;
+    /** 三格品质码（服务端 DataSlot[4..6] 同步值；1/2/3 = rare/epic/legendary、0 = 空槽） */
+    private static int[] qualityCodes = new int[OFFER_COUNT];
+
+    /** 拒绝红闪总时长（tick）：3 次「红 5t / 白 5t」交替（与卡牌商店 {@code DENY_BLINK_TICKS} 同口径） */
+    public static final int DENY_BLINK_TICKS = 30;
+    /** 拒绝原因：无（初值 / 未被拒） */
+    public static final int DENY_NONE = -1;
+    /** 红闪剩余 tick（0 = 不在闪） */
+    private static int denyTicks = 0;
+    /** 最近一次拒绝原因（{@link #DENY_NONE} = 无） */
+    private static int denyReason = DENY_NONE;
 
     private ChipShopClientState() {}
 
@@ -58,11 +71,15 @@ public final class ChipShopClientState {
         totalRefreshes = 0;
         selectedIndex = -1;
         ticks = 0;
+        qualityCodes = new int[OFFER_COUNT];
+        denyTicks = 0;
+        denyReason = DENY_NONE;
     }
 
-    /** 屏幕每 tick 调用一次（本批只累加存活 tick 数；逻辑批可在此做超时/动画） */
+    /** 屏幕每 tick 调用一次：累加存活 tick 数 + 推进拒绝红闪倒计时 */
     public static void tick() {
         ticks++;
+        tickDeny();
     }
 
     // ────────────────────────────── 写入（逻辑批的接入点） ──────────────────────────────
@@ -175,6 +192,65 @@ public final class ChipShopClientState {
         }
         // LEGENDARY / PINNACLE / BIZARRE / null（非本模组档位）
         return QUALITY_FRAME_FALLBACK;
+    }
+
+    // ────────────────────────────── 品质码（服务端同步值） ──────────────────────────────
+
+    /**
+     * 载入三格品质码（服务端 {@code ChipShopMenu} 的 DataSlot[4..6]）。
+     * 长度不足按 0（空槽）补，越界的值夹到 0..3。
+     */
+    public static void setQualityCodes(int[] codes) {
+        int[] copy = new int[OFFER_COUNT];
+        if (codes != null) {
+            int n = Math.min(codes.length, OFFER_COUNT);
+            for (int i = 0; i < n; i++) {
+                copy[i] = Math.max(0, Math.min(3, codes[i]));
+            }
+        }
+        qualityCodes = copy;
+    }
+
+    /** 第 index 格品质码（0 = 空槽；越界同 0） */
+    public static int qualityCode(int index) {
+        return index >= 0 && index < OFFER_COUNT ? qualityCodes[index] : 0;
+    }
+
+    // ────────────────────────────── 拒绝红闪（S2C ChipShopDenyPayload） ──────────────────────────────
+
+    /**
+     * 服务端拒绝了本次请求（余额不足 / 刷新次数为 0 / 物品栏已满）⇒ 起一段 {@value #DENY_BLINK_TICKS} tick 的红闪。
+     *
+     * <p>闪哪一处由 {@code ChipShopScreen} 按 {@link #denyReason()} 决定：余额不足与物品栏已满闪**花费文本**、
+     * 刷新次数为 0 闪 **N/N 文本**（计划表 §4）。
+     */
+    public static void notifyDeny(int reason) {
+        denyReason = reason;
+        denyTicks = DENY_BLINK_TICKS;
+    }
+
+    private static void tickDeny() {
+        if (denyTicks > 0) {
+            denyTicks--;
+        }
+    }
+
+    /** 红闪剩余 tick（0 = 不在闪） */
+    public static int denyTicks() {
+        return denyTicks;
+    }
+
+    /** 最近一次拒绝原因（{@link #DENY_NONE} = 无） */
+    public static int denyReason() {
+        return denyReason;
+    }
+
+    /**
+     * 本 tick 是否应画成**红字**：剩余 tick 内每 5t 一相、奇数相为红（3 次红/白交替）。
+     * 与卡牌商店 {@code CardShopClientState#denyBlinkRed()} 的相位算法逐字一致。
+     */
+    public static boolean denyBlinkRed() {
+        return denyTicks > 0 && ((denyTicks - 1) / 5) % 2 == 1;
     }
 
     private static ItemStack[] emptyOffers() {

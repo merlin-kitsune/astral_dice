@@ -1,0 +1,443 @@
+{
+  "case_id": "CHIP-LOGIC-1.21.1",
+  "title": "筹码商店·服务端逻辑全量实机取证（池/候选/价格曲线/刷新锚点/购买/三种拒绝/边界序列/方块接入）",
+  "version": "1.21.1",
+  "target": {
+    "type": "feature",
+    "ref": "chip-shop"
+  },
+  "on_fail": "continue",
+  "steps": [
+    {
+      "op": "note",
+      "text": "筹码商店（chip-shop）服务端逻辑全量实机取证。判据正本 = docs/chip-shop-logic-plan.md §1..§12 + scripts/verify/verify_chip_shop_ui.ps1 G9..G27。\n\n通道：全部机器行走服务端探针 `AP_CL_<CMD>:...`（ctx.source.sendFailure ⇒ 以 [CHAT] 行落客户端 latest.log ⇒ source=\"latest\"）。\n客户端探针全程**不武装**（余额 1000 ∉ [770,799]）⇒ 本用例只判服务端。\n\n⚠️ 命令注入纪律：筹码屏开着时注入的聊天命令会被 GUI 吞掉 ⇒ 本用例**只用** copen / cstable / cbuy / crefresh（它们经 cp_guardMenu 由服务端自开自关，不留屏），**不用** copenkeep。\n⚠️ 断言能力：mt_assert 的 log 断言只判「命中 ≥1」，故每条判据都设计成单行可判（模式里带唯一取值，例如 refreshes=4/5 只可能来自 due 模式的那次读数）。\n\n覆盖：池 61 与三档分布 / 进店前 needsReroll / 价格曲线 0→10·1→15·18→100·30→100 与菜单同值 / 开屏数值与三格品质码 / 关店重开候选恒定 / 刷新 3→2 + 首次消耗才起算锚点 / 真购买（扣款 1000→990、物品栏 +1、purchased+1、候选重抽、关店）/ 索引 -1 与 3 不扣款 / 物品栏满开店被拒（36/36 不动）/ 空物品栏负控开店成功 / 边界序列 cseq 五段 / 方块朝向与右键接入。\n⚠️ cblock 前先插一步 /setblock ~2 ~ ~ air 清位：探针 sp_doChipBlock 用 p.blockPosition().offset(2,0,0) 放置，同一世界里二次跑会因方块已在位而 set=0（跨用例/跨轮次残留）⇒ 先清位以保住 set=1 这条真判据。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/tp @s ~ ~ ~ 0 0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop curioreset CL",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop creset CL",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop bal CL 1000",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop cpool CL",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop cstate CL",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop cprice CL 0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop copen CL",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop cstable CL",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop crefresh CL",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1000
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop cprice CL 1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop cprice CL 18",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop cprice CL 30",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop cprice CL 0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop cbuy CL 0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop cbuy CL -1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop cbuy CL 3",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop cstate CL",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop cinv CL fill",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop cdeny CL",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1000
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop cinv CL clear",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop cdeny CL",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1000
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop cprice CL 0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop cseq CL",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1800
+    },
+    {
+      "op": "inject_command",
+      "command": "/setblock ~2 ~ ~ air",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop cblock CL",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "screenshot",
+      "tag": "chip-logic-1.21.1",
+      "mode": "f2"
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CL_CPOOL:pool=61:tiers=19/24/18:avail=61:owned=0:all=0:star=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CL_CST:offers=-:last=-:purchased=0:refreshes=3/5:anchor=0:price=10:key=-"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CL_CST2:need=1:init=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CL_CPRICE:n=0:formula=10:state=10:menu=-1:offersKeep=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CL_CPRICE:n=1:formula=15:state=15"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CL_CPRICE:n=18:formula=100:state=100"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CL_CPRICE:n=30:formula=100:state=100"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CL_COPEN:menu=ChipShopMenu:bal=1000"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CL_CMENU:price=10:refreshes=3/5:deny=-1:cells=0:astral_dice:[a-z0-9_]+:t[123],1:astral_dice:[a-z0-9_]+:t[123],2:astral_dice:[a-z0-9_]+:t[123]"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CL_CST:offers=[a-z0-9_]+\\+[a-z0-9_]+\\+[a-z0-9_]+:last=-:purchased=0:refreshes=3/5:anchor=0:price=10"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CL_CSTABLE:key1=[^:]*:key2=[^:]*:same=1:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": ":refreshes=3\\|3:need=0\\|0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CL_CREFRESH:ex=-:refreshes=3->2:anchor=0->[0-9]{4,}:after=3[0-9]{4}t"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CL_CMENU:price=10:refreshes=2/5:deny=-1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CL_CBUY:idx=0:ex=-:bal=1000->990:inv=1/36:menu=InventoryMenu:deny=-1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CL_CBUYINV:delta=0:empty>astral_dice:[a-z0-9_]+_chip"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CL_CBUYOFF:before=[a-z0-9_]+\\+[a-z0-9_]+\\+[a-z0-9_]+:after=[a-z0-9_]+\\+[a-z0-9_]+\\+[a-z0-9_]+"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CL_CST:offers=[a-z0-9_]+\\+[a-z0-9_]+\\+[a-z0-9_]+:last=[A-Z]+:purchased=1:refreshes=2/5:anchor=[0-9]+:price=15"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CL_CBUY:idx=-1:ex=-:bal=990->990"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CL_CBUY:idx=3:ex=-:bal=990->990"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CL_CINV:mode=fill:changed=[0-9]+:inv=36/36"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CL_CDENY:before=InventoryMenu:after=InventoryMenu:inv=36/36:all=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CL_CINV:mode=clear:changed=[0-9]+:inv=0/36"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CL_CDENY:before=InventoryMenu:after=ChipShopMenu:inv=0/36:all=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CL_CSEQ0:bal=1000:inv=0/36:purchased=0:refreshes=2:offers=[a-z0-9_]+"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CL_CSEQ1:poor:ex=-:menu=ChipShopMenu:bal=0:inv=0/36:purchased=0->0:offers=same"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CL_CSEQ23:bal=1000:inv=0/36:purchased=0->0:offers=same"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CL_CSEQ4:ex=-:bal=1000->990:invDelta=0:empty>astral_dice:[a-z0-9_]+_chip:purchased=0->1:refreshes=2->2:offers=[^:]*:menu=InventoryMenu:lastCat=[A-Z]+"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CL_CSEQ5:price=15:purchased=1:refreshes=2/5:owned=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CL_CSEQ5OWN:0:astral_dice:[a-z0-9_]+_chip:owned=0,1:astral_dice:[a-z0-9_]+_chip:owned=0,2:astral_dice:[a-z0-9_]+_chip:owned=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CL_CBLOCK:set=1:pos=[-0-9]+,[-0-9]+,[-0-9]+:facing=north:item=astral_dice:chip_shop"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CL_CUSE:res=[^:]*:menu=ChipShopMenu"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CL_CCLOSE:by=block"
+    },
+    {
+      "type": "crash"
+    }
+  ]
+}

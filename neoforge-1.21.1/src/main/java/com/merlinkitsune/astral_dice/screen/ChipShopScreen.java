@@ -2,6 +2,9 @@ package com.merlinkitsune.astral_dice.screen;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.client.ChipShopClientState;
+import com.merlinkitsune.astral_dice.network.ChipShopBuyPayload;
+import com.merlinkitsune.astral_dice.network.ChipShopRefreshPayload;
+import com.merlinkitsune.astral_dice.shop.ChipShopCatalog;
 import com.merlinkitsune.astral_dice.shop.ChipShopMenu;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
@@ -9,9 +12,10 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
+import net.neoforged.neoforge.network.PacketDistributor;
 
 /**
- * 筹码商店界面（本批 = **仅界面骨架 + 素材接线**；判据正本
+ * 筹码商店界面（**界面骨架批 + 逻辑批已合流**：图标 blit / 品质外框 / 确认与刷新发包 / 拒绝红闪；判据正本
  * {@code docs/chip-shop-ui-spec.md}，机器判据 {@code scripts/verify/verify_chip_shop_ui.ps1}）。
  *
  * <p><b>整屏 284x183</b>，全部坐标为 GUI 内绝对像素；条带内的素材坐标另用「条带内相对坐标」
@@ -35,8 +39,16 @@ import net.minecraft.world.item.ItemStack;
  *       （物品栏槽位照常可点）。</li>
  * </ul>
  *
- * <p><b>本批不发包、不联网</b>：两个按钮回调只做计数 + TODO（见
- * {@code onConfirmPressed}/{@code onRefreshPressed} 的注释），网络与结算属逻辑批（规范 §9）。
+ * <p><b>两个按钮的职责（逻辑批）</b>：确认按钮 → 发 C2S {@link ChipShopBuyPayload}（**全类唯一的购买请求出口**）；
+ * 刷新按钮 → 次数为 0 时**只红闪、不发包**，否则发 C2S {@link ChipShopRefreshPayload}。两者都只表达「意图」，
+ * 价格 / 余额 / 扣款 / 发货一律由服务端 {@link ChipShopMenu} 结算（服务端权威）。
+ *
+ * <p><b>读数来源（每 tick 同步）</b>：候选与数量类读数全部经 {@link #containerTick()} 从菜单（隐藏候选槽 + DataSlot）
+ * 抄进 {@link ChipShopClientState}；失败提示走 S2C {@code ChipShopDenyPayload} → {@link ChipShopClientState#notifyDeny}。
+ * 本类**不持有**任何业务状态（两个 {@code *PressTicks} 只是按下态动画，两个 {@code *RequestCount} 只是只读探针）。
+ *
+ * <p><b>筹码图标 = 商店专用素材</b>：候选格画的是 {@link ChipShopCatalog.Entry#iconLocation()}
+ * （32x32 的商店图标，按 id 入库），**不是**筹码的物品贴图（两者逐字节不同，见逻辑计划 §7 取证件）。
  */
 public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
 
@@ -71,6 +83,8 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
     /** 筹码物品图标 16x16，在 28x28 外框内每边内缩 6 px（28 = 16 + 2x6 ⇒ 正好居中） */
     private static final int CHIP_ICON_SIZE = 16;
     private static final int CHIP_ICON_OFF = 6;
+    /** 商店筹码图标的**源**尺寸（32x32 素材缩到 {@link #CHIP_ICON_SIZE} 画；逐张实测确认） */
+    private static final int CHIP_ICON_SRC_SIZE = 32;
 
     /** 条带内标签框 42x15（五格各一个） */
     private static final int LABEL_W = 42;
@@ -130,6 +144,8 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
 
     private static final int COLOR_TEXT = 0xFFFFFF;
     private static final int COLOR_EMPTY = 0x808080;
+    /** 拒绝红闪的「红」相颜色（计划表 §4：余额不足闪花费文本、次数 0 闪 N/N 文本） */
+    private static final int COLOR_DENY = 0xFF5555;
 
     // ────────────────────────────── 贴图名（规范 §2；一律经 tex(...) 拼成 textures/gui/shop/<名>） ──────────────────────────────
 
@@ -210,25 +226,42 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
             if (stack.isEmpty()) {
                 continue;
             }
-            int frame = ChipShopClientState.qualityFrameIndexOf(stack);
+            // 品质外框：优先用服务端同步的品质码（DataSlot[4..6]）；码未到（0）时退回按稀有度现算
+            int frame = ChipShopClientState.qualityCode(chip);
+            if (frame <= 0) {
+                frame = ChipShopClientState.qualityFrameIndexOf(stack);
+            }
             if (frame != ChipShopClientState.QUALITY_FRAME_NONE) {
                 blitStrip(guiGraphics, tex(qualityTex(frame)),
                         QUALITY_X[chip], QUALITY_Y, QUALITY_SIZE, QUALITY_SIZE);
             }
-            // 图标区裁到 16x16：物品模型自带外溢（3D 模型 / 数量角标）不得越过内缩区
+            // 筹码图标 = 商店专用 32x32 素材，缩到 16x16 画在内缩区中心（非物品模型，故无需 scissor）
+            ChipShopCatalog.Entry entry = ChipShopCatalog.byStack(stack).orElse(null);
+            if (entry == null) {
+                continue;
+            }
             int iconX = stripX(QUALITY_X[chip] + CHIP_ICON_OFF);
             int iconY = stripY(QUALITY_Y + CHIP_ICON_OFF);
-            guiGraphics.enableScissor(iconX, iconY, iconX + CHIP_ICON_SIZE, iconY + CHIP_ICON_SIZE);
-            guiGraphics.renderItem(stack, iconX, iconY);
-            guiGraphics.disableScissor();
+            guiGraphics.blit(entry.iconLocation(), iconX, iconY, CHIP_ICON_SIZE, CHIP_ICON_SIZE,
+                    0.0F, 0.0F, CHIP_ICON_SRC_SIZE, CHIP_ICON_SRC_SIZE,
+                    CHIP_ICON_SRC_SIZE, CHIP_ICON_SRC_SIZE);
         }
     }
 
-    /** ⑥：标签框文本（花费 / 筹码名 / 刷新计数） */
+    /**
+     * ⑥：标签框文本（花费 / 筹码名 / 刷新计数）。
+     * <p>拒绝红闪（计划表 §4）：余额不足 / 物品栏已满 ⇒ 闪**花费文本**；刷新次数为 0 ⇒ 闪 **N/N 文本**；
+     * 相位由 {@link ChipShopClientState#denyBlinkRed()} 给出（30t 内 3 次红/白交替）。
+     */
     private void renderStripText(GuiGraphics guiGraphics) {
+        boolean red = ChipShopClientState.denyBlinkRed();
+        int reason = ChipShopClientState.denyReason();
+        int costColor = red && (reason == ChipShopMenu.DENY_NO_COIN || reason == ChipShopMenu.DENY_INVENTORY_FULL)
+                ? COLOR_DENY : COLOR_TEXT;
+        int refreshColor = red && reason == ChipShopMenu.DENY_NO_REFRESH ? COLOR_DENY : COLOR_TEXT;
         drawLabel(guiGraphics, CELL_CONFIRM,
                 Component.translatable("gui.astral_dice.chip_shop.cost", ChipShopClientState.cost()),
-                COLOR_TEXT);
+                costColor);
         for (int chip = 0; chip < CHIP_COUNT; chip++) {
             ItemStack stack = ChipShopClientState.offer(chip);
             drawLabel(guiGraphics, chip + CELL_CHIP_FIRST,
@@ -239,7 +272,7 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
         drawLabel(guiGraphics, CELL_REFRESH,
                 Component.translatable("gui.astral_dice.chip_shop.refresh_counter",
                         ChipShopClientState.remainingRefreshes(), ChipShopClientState.totalRefreshes()),
-                COLOR_TEXT);
+                refreshColor);
     }
 
     /** ⑦：选中标记 chipshop_select.png（42x15，与标签框同坐标，只画在所选筹码格上） */
@@ -315,8 +348,11 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
     }
 
     /**
-     * 确认按钮（条带 cell0）点击回调 —— **本批只计数 + TODO：不联网、不发包**（规范 §5 / §9）。
-     * <p>未选中任何筹码位、或所选筹码位为空 ⇒ 直接返回，不产生请求（规范 §5 第 5 条）。
+     * 确认按钮（条带 cell0）点击回调 —— 发 C2S {@link ChipShopBuyPayload}（**全类唯一的购买出口**）。
+     *
+     * <p>未选中任何筹码位、或所选筹码位为空 ⇒ 直接返回，不发包（规范 §5 第 5 条）。
+     * 余额 / 库存 / 价格一律不在这里判定 —— 服务端 {@code ChipShopMenu#handleBuy} 二次校验，
+     * 失败时回 {@code ChipShopDenyPayload} 让花费文本红闪。
      */
     private void onConfirmPressed() {
         int chip = ChipShopClientState.selectedIndex();
@@ -324,28 +360,58 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
             return;
         }
         this.buyRequestCount++;
-        // TODO(逻辑批)：在此发 C2S 购买包（选中筹码位 + 服务端权威校验余额/扣款/发货，见规范 §9 输入清单）
+        PacketDistributor.sendToServer(new ChipShopBuyPayload(chip));
     }
 
-    /** 刷新按钮（条带 cell4）点击回调 —— 本批只计数 + TODO：不联网、不发包。 */
+    /**
+     * 刷新按钮（条带 cell4）点击回调 —— 发 C2S {@link ChipShopRefreshPayload}。
+     *
+     * <p>剩余次数为 0 时**只起本地红闪、不发包**（计划表 §6：服务端同样拒绝，这里省一个往返；
+     * 客户端读数来自服务端 DataSlot，不存在「本地偏大」的窗口）。
+     */
     private void onRefreshPressed() {
+        if (ChipShopClientState.remainingRefreshes() <= 0) {
+            ChipShopClientState.notifyDeny(ChipShopMenu.DENY_NO_REFRESH);
+            return;
+        }
         this.refreshRequestCount++;
-        // TODO(逻辑批)：在此发 C2S 刷新请求（刷新次数的来源与上限见规范 §9 输入清单）
+        PacketDistributor.sendToServer(new ChipShopRefreshPayload());
     }
 
-    /** 筹码格命中（返回筹码位序号 0..2；非筹码格返回 -1）—— cell0/cell4 是按钮格，不在此列 */
+    /**
+     * 筹码格命中（返回筹码位序号 0..2；非筹码格返回 -1）—— cell0/cell4 是按钮格，不在此列。
+     *
+     * <p>命中面 = **筹码格（40x78 整列）∪ 该格下方的标签框（42x15 @ y=61）**（计划表 §5）：
+     * 玩家点名字那一行同样是「选中」，与点格子等价。两处命中都**只** {@code select()}，不产生任何请求。
+     */
     private int chipIndexAt(int mouseX, int mouseY) {
         for (int chip = 0; chip < CHIP_COUNT; chip++) {
-            if (isHoveringStrip(mouseX, mouseY, CELL_X[chip + CELL_CHIP_FIRST], CELL_Y, CELL_W, CELL_H)) {
+            int cell = chip + CELL_CHIP_FIRST;
+            if (isHoveringStrip(mouseX, mouseY, CELL_X[cell], CELL_Y, CELL_W, CELL_H)
+                    || isHoveringStrip(mouseX, mouseY, LABEL_X[cell], LABEL_Y, LABEL_W, LABEL_H)) {
                 return chip;
             }
         }
         return -1;
     }
 
+    /**
+     * 每 tick：把菜单（= 服务端同步过来的隐藏候选槽 + DataSlot）抄进 {@link ChipShopClientState}，
+     * 再推进按下态动画与存活计数。
+     *
+     * <p>⚠️ 拒绝红闪**不在这里**从 DataSlot[3] 同步：{@code ChipShopDenyPayload} 才是触发源 ——
+     * 若每 tick 都重设，相位永远停在第一相、看起来根本不闪。
+     */
     @Override
     public void containerTick() {
         super.containerTick();
+        ChipShopMenu menu = this.getMenu();
+        ChipShopClientState.setOffers(new ItemStack[]{
+                menu.offerStack(0), menu.offerStack(1), menu.offerStack(2)});
+        ChipShopClientState.setQualityCodes(new int[]{
+                menu.offerTier(0), menu.offerTier(1), menu.offerTier(2)});
+        ChipShopClientState.setCost(menu.price());
+        ChipShopClientState.setRefreshes(menu.remainingRefreshes(), menu.totalRefreshes());
         if (this.confirmPressTicks > 0) {
             this.confirmPressTicks--;
         }
@@ -413,7 +479,24 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
                 + ":offers=" + ChipShopClientState.offerCount();
     }
 
-    /** 探针：界面生命周期内确认按钮发出的购买请求数（本批只有「已选中且非空」的点击才 +1） */
+    /**
+     * 探针（只读）：逻辑批读数串 ——
+     * {@code cost=<n>:refreshes=<n>/<n>:tiers=<a,b,c>:deny=<n>:red=<true|false>:buy=<n>:refresh=<n>}。
+     * <p>{@code red} = 当前是否处于红闪的「红」相；{@code buy}/{@code refresh} = 本界面生命周期内实际**发出**的包数。
+     */
+    public String chipShopLogicProbe() {
+        return "cost=" + ChipShopClientState.cost()
+                + ":refreshes=" + ChipShopClientState.remainingRefreshes()
+                + "/" + ChipShopClientState.totalRefreshes()
+                + ":tiers=" + ChipShopClientState.qualityCode(0) + "," + ChipShopClientState.qualityCode(1)
+                + "," + ChipShopClientState.qualityCode(2)
+                + ":deny=" + ChipShopClientState.denyReason()
+                + ":red=" + ChipShopClientState.denyBlinkRed()
+                + ":buy=" + this.buyRequestCount
+                + ":refresh=" + this.refreshRequestCount;
+    }
+
+    /** 探针：界面生命周期内确认按钮发出的购买请求数（只有「已选中且非空」的点击才 +1 并发包） */
     public int buyRequestCount() {
         return this.buyRequestCount;
     }

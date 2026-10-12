@@ -69,6 +69,32 @@ public final class CurioSlotUtil {
         return false;
     }
 
+    /**
+     * 遍历**指定饰品栏**（仅该 {@code slotId}）的非空槽位并执行动作（按槽序号升序）。
+     *
+     * <p>2026-10-12 新增（筹码商店移植）：筹码商店的「已拥有筹码」与「已装备流派计数」都要读筹码栏
+     * （{@code ChipShopRoller} 的 {@code CHIP_SLOT_ID = "chip"}），按既有纪律（Curios 入口一律收敛到本类、
+     * 调用方不直接触碰 Curios API）在此提供遍历入口。
+     *
+     * <p><b>平台差异（forge-1.20.1 / Curios 5.x）</b>：拿 handler 的路子照抄本类既有写法
+     * （{@code CuriosCompat.getCuriosInventory(entity)} → {@code getStacksHandler(slotId)} →
+     * {@code getStacks().getStackInSlot(i)}，与 {@link #tryAutoEquip} 同一路径）；1.21.1 蓝本（Curios 9.x）
+     * 只差获取入口（{@code CuriosApi.getCuriosInventory(entity)}），遍历语义逐行一致（只走指定 slotId、跳过空栈、升序）。
+     */
+    public static void forEachCurioStack(LivingEntity entity, String slotId, java.util.function.Consumer<ItemStack> action) {
+        var curios = CuriosCompat.getCuriosInventory(entity);
+        if (curios.isEmpty()) return;
+        var handlerOpt = curios.get().getStacksHandler(slotId);
+        if (handlerOpt.isEmpty()) return;
+        var stacks = handlerOpt.get().getStacks();
+        for (int i = 0; i < stacks.getSlots(); i++) {
+            var s = stacks.getStackInSlot(i);
+            if (!s.isEmpty()) {
+                action.accept(s);
+            }
+        }
+    }
+
     // 下蹲右键自动装备:将手中物品放入指定饰品栏的第一个空槽位(仅服务端执行)
     public static InteractionResultHolder<ItemStack> tryAutoEquip(Player player, ItemStack stack, String slotId) {
         if (player.level().isClientSide()) {

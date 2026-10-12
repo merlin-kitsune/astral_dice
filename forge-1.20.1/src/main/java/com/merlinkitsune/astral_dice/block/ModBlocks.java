@@ -30,6 +30,15 @@ public class ModBlocks {
                     .sound(SoundType.WOOD)
                     .noOcclusion()));
 
+    /** 筹码商店方块(2026-10-12 移植):放置后右键打开「筹码商店」界面。 */
+    public static final RegistryObject<Block> CHIP_SHOP = BLOCKS.register("chip_shop",
+            // 与卡牌商店同款:模型高过一格,声明 noOcclusion 免得贴着本方块的相邻面被错误剔除
+            () -> new ChipShopBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.WOOD)
+                    .strength(2.5F)
+                    .sound(SoundType.WOOD)
+                    .noOcclusion()));
+
     /** 事件抽取机(2026-10-10 事件体系重写):右键从公共事件池抽一条事件(BLOCK_USE)。 */
     public static final RegistryObject<Block> EVENT_DRAWER = BLOCKS.register("event_drawer",
             () -> new EventDrawBlock(BlockBehaviour.Properties.of()

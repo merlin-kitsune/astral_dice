@@ -1,0 +1,150 @@
+package com.merlinkitsune.astral_dice.shop;
+
+import com.merlinkitsune.astral_dice.component.ModAttachments;
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * 筹码商店的**玩家级存档**（判据正本 = {@code docs/chip-shop-logic-plan.md} §3）。
+ *
+ * <p><b>为什么要落盘</b>（用户裁决 Q9/R16）：菜单随界面关闭而销毁 —— 若候选只活在菜单字段里，
+ * 「没买就退出再进店」就会换一批，而用户要求**未购买退出时候选逐字不变**。因此候选与全部
+ * 运行态一律存进玩家附件 {@link ModAttachments#CHIP_SHOP_STATE}（随玩家存档持久化），
+ * 菜单构造只做**只读载入**。
+ *
+ * <p><b>字段</b>：
+ * <ul>
+ *   <li>{@code offers} = 当前候选筹码 id 列表（长度 0..{@value ChipShopCatalog#OFFER_COUNT}）；
+ *       <b>缺口只会出现在尾部</b>（抽不满时先缺第 3 格、再缺第 2 格）⇒ 尾部缺失即空槽，
+ *       不需要额外的「空槽标记」；</li>
+ *   <li>{@code lastPickCategory} = 上次**购买**筹码的类别（R10；空 ⇒ 无类别偏置）；</li>
+ *   <li>{@code purchasedCount} = 累计购买次数 ⇒ 价格 {@link ChipShopCatalog#priceOf(int)}（永久持久化）；</li>
+ *   <li>{@code refreshesLeft} = 剩余刷新次数（初值 {@value ChipShopCatalog#REFRESH_INITIAL}、
+ *       上限 {@value ChipShopCatalog#REFRESH_MAX}）；</li>
+ *   <li>{@code regenAnchor} = 刷新恢复锚点（世界 gameTime）；<b>0 = 从未刷新过</b>（此时不恢复）。</li>
+ * </ul>
+ *
+ * <p><b>重抽的唯一三个入口</b>（R16/R17/G19）：① {@link ChipShopOpener#ensureOffers} 的进店补抽
+ * （仅在「无候选」或「候选含已拥有项」时，免费）；② {@link ChipShopMenu#handleRefresh}；
+ * ③ 购买成功分支。其余任何路径都**不得**掷骰。
+ *
+ * <p><b>Codec 容错</b>：全部字段 {@code optionalFieldOf} —— 旧存档 / 裁剪线缺少某个键时按默认值读入，
+ * 不抛异常（与 {@link CardShopShelf} 同口径）。
+ */
+public record ChipShopState(List<String> offers, Optional<String> lastPickCategory, int purchasedCount,
+                            int refreshesLeft, long regenAnchor) {
+
+    /** 全新状态：无候选、无上次类别、0 次购买、{@value ChipShopCatalog#REFRESH_INITIAL} 次刷新、无锚点 */
+    public static final ChipShopState EMPTY = new ChipShopState(
+            List.of(), Optional.empty(), 0, ChipShopCatalog.REFRESH_INITIAL, 0L);
+
+    public static final Codec<ChipShopState> CODEC = RecordCodecBuilder.create(instance -> instance.group(
+            Codec.STRING.listOf().optionalFieldOf("offers", List.of()).forGetter(ChipShopState::offers),
+            Codec.STRING.optionalFieldOf("last_pick").forGetter(ChipShopState::lastPickCategory),
+            Codec.INT.optionalFieldOf("purchased", 0).forGetter(ChipShopState::purchasedCount),
+            Codec.INT.optionalFieldOf("refreshes", ChipShopCatalog.REFRESH_INITIAL)
+                    .forGetter(ChipShopState::refreshesLeft),
+            Codec.LONG.optionalFieldOf("regen_anchor", 0L).forGetter(ChipShopState::regenAnchor)
+    ).apply(instance, ChipShopState::new));
+
+    /** 玩家存档读取（客户端读到的是一份「服务端同步值」——本模组不使用附件 sync，客户端不读它） */
+    public static ChipShopState get(Player player) {
+        return player.getData(ModAttachments.CHIP_SHOP_STATE.get());
+    }
+
+    public static void store(Player player, ChipShopState state) {
+        player.setData(ModAttachments.CHIP_SHOP_STATE.get(), state);
+    }
+
+    /** 候选（解析成池内条目；未知 id 会被跳过 —— 对应「换过版本 / 条目被移除」的旧存档） */
+    public List<ChipShopCatalog.Entry> entries() {
+        List<ChipShopCatalog.Entry> list = new ArrayList<>(offers.size());
+        for (String id : offers) {
+            ChipShopCatalog.byId(id).ifPresent(list::add);
+        }
+        return list;
+    }
+
+    public Optional<ChipShopCatalog.Category> lastCategory() {
+        return lastPickCategory.flatMap(ChipShopCatalog.Category::byKey);
+    }
+
+    /** 当前单价（三格同价；无任何折扣路径 —— Q13） */
+    public int price() {
+        return ChipShopCatalog.priceOf(purchasedCount);
+    }
+
+    /** 第 index 格候选（越界 / 空槽 ⇒ 空栈） */
+    public ItemStack offerStack(int index) {
+        List<ChipShopCatalog.Entry> list = entries();
+        return index >= 0 && index < list.size() ? list.get(index).stack() : ItemStack.EMPTY;
+    }
+
+    /** 第 index 格的品质码（1/2/3；空槽 ⇒ 0） */
+    public int offerTier(int index) {
+        List<ChipShopCatalog.Entry> list = entries();
+        return index >= 0 && index < list.size() ? list.get(index).tier() : 0;
+    }
+
+    /** 是否已抽过（有候选 ⇒ 已抽过；空列表 ⇒ 首次使用 / 已清空） */
+    public boolean initialized() {
+        return !offers.isEmpty();
+    }
+
+    /**
+     * 是否需要在开店时**免费补抽**（Q15 + G19 的唯一判定）：
+     * ① 从未抽过 / 候选为空；② 候选里含**已拥有**筹码（含「收藏后又买到同款」的场景）；
+     * ③ 候选引用了未知筹码 id（旧存档 / 条目被移除）。
+     *
+     * <p>⚠️ 只按「候选本身」判断，**不因池不够造成的尾部空槽重抽** —— 否则池少时每次进店都会重掷，
+     * 与「未购买退出候选不变」冲突。
+     */
+    public boolean needsReroll(Player player) {
+        List<ChipShopCatalog.Entry> list = entries();
+        if (list.isEmpty()) {
+            return true;
+        }
+        if (list.size() != offers.size()) {
+            return true;
+        }
+        for (ChipShopCatalog.Entry entry : list) {
+            if (ChipShopRoller.isOwned(player, entry)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** 用新掷出的候选替换当前候选（长度可变：池不够时尾部留空） */
+    public ChipShopState withOffers(List<ChipShopCatalog.Entry> picked) {
+        List<String> ids = new ArrayList<>(picked.size());
+        for (ChipShopCatalog.Entry entry : picked) {
+            ids.add(entry.id());
+        }
+        return new ChipShopState(List.copyOf(ids), lastPickCategory, purchasedCount, refreshesLeft, regenAnchor);
+    }
+
+    /** 购买成功：累计次数 +1、记录本次类别（R18）；候选由调用方紧接着重抽 */
+    public ChipShopState withPurchased(ChipShopCatalog.Category category) {
+        return new ChipShopState(offers,
+                category == null ? lastPickCategory : Optional.of(category.key()),
+                purchasedCount + 1, refreshesLeft, regenAnchor);
+    }
+
+    /** 刷新次数与锚点（首次成功刷新时由调用方把 0 锚点写成 now + REFRESH_REGEN_TICKS） */
+    public ChipShopState withRefreshes(int left, long anchor) {
+        return new ChipShopState(offers, lastPickCategory, purchasedCount,
+                Math.max(0, Math.min(ChipShopCatalog.REFRESH_MAX, left)), anchor);
+    }
+
+    /** 机器行 / 取证用：候选的稳定摘要（同一批任意次读到相同值） */
+    public String offersKey() {
+        return offers.isEmpty() ? "-" : String.join("+", offers);
+    }
+}
