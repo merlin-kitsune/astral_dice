@@ -73,7 +73,7 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --phase stop --force 
 手动启动游戏（人工自测，Windows 侧）：双击 `run/Start-1.21.1.bat`（或 1.20.1 / 26.1.2）——脚本只做启动，无任何前置判断。
 
 ## 必须遵守的几条铁律
-0. **实施分工（2026-10-12 用户裁决）**：**P0 基准线 `neoforge-1.21.1` 由主 Agent 亲自编写** → `code_review` 复核 → **派子代理做独立功能审查**（静态取证 / 编译 / `scripts/verify/**` 守门 / 与需求逐字对账）→ 主 Agent 修完确认无误后才派子代理做 `forge-1.20.1` 移植 → 移植线再 `code_review` + **另派一个独立子代理**功能审查；派发优先 DeepSeek（功能实现用 DeepSeek V41 Flash）；一个子代理只做一个任务、用完即弃；
+0. **实施分工（2026-10-12 用户裁决，同日二次裁决修订：写代码一律派 Subagent）**：**P0 基准线 `neoforge-1.21.1` 派子代理编写**（主 Agent 只负责规划 / 派活 / 验收 / 提交，不亲自编写任何代码）→ `code_review` 复核 → **派子代理做独立功能审查**（静态取证 / 编译 / `scripts/verify/**` 守门 / 与需求逐字对账）→ 主 Agent 逐条回应、派新子代理修完确认无误后才派子代理做 `forge-1.20.1` 移植 → 移植线再 `code_review` + **另派一个独立子代理**功能审查；派发优先 DeepSeek（功能实现用 DeepSeek V41 Flash）；一个子代理只做一个任务、用完即弃；
 1. **复核优先用 `code_review`**（一次性独立会话，brief 一次写全，禁止把主会话结论当事实喂它）；该工具实例报错/超时 ⇒ 改派**一次性独立子代理**，判据规格不变；
 2. **实机验证必须由用户明确下达**；靶子非亡灵；收尾 `--purge-saves`（判据 `MT_CLEANUP_SAVES: PURGED n` + `MT_CLEANUP_RESULT: OK`）+ 删临时探针 + 贴 `git status`（以上均为 Windows 侧动作）；
 3. **每次提交升四线版本 + 两份 CHANGELOG 段头**（只改 `<N>`；bump 在 build 之前；一次提交 = 一个版本号）；**默认禁止 `git push`**；

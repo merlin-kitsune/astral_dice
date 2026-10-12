@@ -1,7 +1,7 @@
 # 交接文档 — astral_dice_multiloader-next（开发线 multi-dev-next）
 
 > 生成：2026-10-11 20:20；**本次刷新：2026-10-12 22:11（Asia/Hong_Kong）**｜工作树 `F:\MCProject\astral_dice_multiloader-next`
-> 分支 `multi-dev-next`｜刷新前基线 HEAD **`e06451c5`**（交接文档批 `.98`；本文件随 `.99` 提交落地；最新值以 `git log -1` 为准）｜四线版本 **`2.0.0-SNAPSHOT.99`**（四条线同号）
+> 分支 `multi-dev-next`｜刷新前基线 HEAD **`e06451c5`**（交接文档批 `.98`；本文件主体随 `.99` 提交落地、§0「实施分工」行于 `.100` 修订（写代码一律派 Subagent）；最新值以 `git log -1` 为准）｜四线版本 **`2.0.0-SNAPSHOT.100`**（四条线同号）
 > 工作树状态：除 4 个与本项目无关的未跟踪目录外**干净**（`git status --short -uall` 只剩 `?? %SystemDrive%/ProgramData/Microsoft/Windows/Caches/*.db` 四行，见 §5-C-11）；**未 push**。
 > **本批交接（筹码商店）**：`docs/handover-2.0.0-SNAPSHOT.97-chip-shop.md`（流程 / 语义 / 判据 / 未完成 / 新坑，逐条可复算）—— 建议与本文件一起读。
 > 新会话提示词：`docs/handover-new-session-context.md`（可整份复制给新会话；**已改为 Linux 侧口径**）。
@@ -21,7 +21,7 @@
 | 实机 | `mt.ps1 --version <线> --phase env` → `--phase launch`；**收尾 `--phase stop --force --purge-saves`** |
 | 手动启动（人工自测） | 双击 `run/Start-<线>.bat`（只启动，**无任何前置判断**） |
 | 复核 | `code_review` **优先**（一次性独立会话）；若该工具实例报错/超时 ⇒ 改派**一次性独立子代理**承担，brief 规格不变（见 §1） |
-| 实施分工 | **P0 基准线 `neoforge-1.21.1` = 主 Agent 亲自编写** → `code_review` 复核 → **独立子代理功能审查** → 确认无误后才派子代理移植 `forge-1.20.1` → 该线再 `code_review` + **另一个独立子代理**功能审查（AGENTS.md 硬规则第 7 条，2026-10-12） |
+| 实施分工 | **P0 基准线 `neoforge-1.21.1` = 派子代理编写**（2026-10-12 二次裁决：主 Agent 不亲自写代码）→ `code_review` 复核 → **独立子代理功能审查** → 确认无误后才派子代理移植 `forge-1.20.1` → 该线再 `code_review` + **另一个独立子代理**功能审查（AGENTS.md 硬规则第 7 条，2026-10-12） |
 | 子代理模型 | 默认 **DeepSeek**（`provider=deepseek-official` / `model=deepseek-flash`，本会话 4 个子代理实测可用）；mimo/kimi 在本 tool 实例被构造期禁用 |
 | 实机验证 | **必须由用户明确下达**；未实机的欠账如实登记 |
 
