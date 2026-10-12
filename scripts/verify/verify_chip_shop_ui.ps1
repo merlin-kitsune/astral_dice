@@ -92,7 +92,7 @@ $layoutTokens = @(
     'CELL_X = {3, 45, 88, 131, 174}',
     'BUTTON_SIZE = 24', 'CONFIRM_X = 11', 'CONFIRM_Y = 36', 'REFRESH_X = 181', 'REFRESH_Y = 36',
     'QUALITY_SIZE = 28', 'QUALITY_X = {51, 94, 137}', 'QUALITY_Y = 31',
-    'CHIP_ICON_SIZE = 16', 'CHIP_ICON_OFF = 6',
+    'CHIP_ICON_SIZE = 24', 'CHIP_ICON_OFF = 2',
     'LABEL_W = 42', 'LABEL_H = 15', 'LABEL_Y = 61', 'LABEL_X = {1, 44, 87, 130, 172}',
     'PANEL_X = 56', 'PANEL_Y = 89', 'PANEL_W = 172', 'PANEL_H = 86',
     'SLOT_X0 = 61', 'SLOT_Y0 = 94', 'SLOT_PITCH = 18', 'SLOT_COLS = 9', 'SLOT_ROWS = 3', 'HOTBAR_Y = 152'

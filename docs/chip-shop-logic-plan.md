@@ -164,7 +164,7 @@ roll(player, reason):                     # reason = ENTER_FIRST | REFRESH | POS
   - 服务端入口：`handleBuy(offerIndex)`、`handleRefresh()`（校验顺序照抄 `CardShopMenu.handleBuy`：菜单归属 → 索引范围 → 该格未购买 → 余额 → 扣款 → **写入物品栏 → 重抽并落盘 → `closeContainer()`**（2026-10-12 口径修订：关店放在全部落盘与提示之后 —— 同一服务端回调内完成，避免「状态未落盘就把玩家弹出去」）。
 - 网络包（照抄卡牌商店三条）：`network/ChipShopBuyPayload.java`（`record(int offerIndex)`）、`network/ChipShopRefreshPayload.java`、`network/ChipShopDenyPayload.java`（`record(int reason)`，0=余额不足、1=刷新次数为 0、2=物品栏已满）。
 - 客户端：`screen/ChipShopScreen.java` 的 `onConfirmPressed()` / `onRefreshPressed()` 从「只计数 + TODO」改为**发包**；`containerTick` 从菜单同步 `setOffers/setCost/setRefreshes`；`removed()` 清状态（.86 已有）。
-- **红闪**：`client/ChipShopClientState.java` 新增 30t 闪烁（与 `CardShopClientState.DENY_BLINK_TICKS = 30`、`denyBlinkRed() = denyTicks > 0 && ((denyTicks-1)/5) % 2 == 1` 同式）——余额不足闪**花费文本**、次数为 0 闪**N/N 文本**。
+- **红闪**：`client/ChipShopClientState.java` 新增 30t 闪烁（与 `CardShopClientState.DENY_BLINK_TICKS = 30`、`denyBlinkRed() = denyTicks > 0 && ((denyTicks-1)/5) % 2 == 1` 同式）——余额不足闪**花费数字**、次数为 0 闪**剩余刷新次数文本**。
 
 ## §5 交互与防绕过（R13–R15）
 
@@ -206,7 +206,7 @@ roll(player, reason):                     # reason = ENTER_FIRST | REFRESH | POS
 
 ## §8 文案键（三语同批：zh_cn / en_us / ja_jp）
 
-- 复用（.86 已有）：`gui.astral_dice.chip_shop`（筹码商店，**不绘制** —— 2026-10-12 Q17 裁决；键保留备用）、`.cost`（花费：%s）、`.refresh_counter`（%s/%s）、`.empty`（无）。
+- 复用（.86 已有）：`gui.astral_dice.chip_shop`（筹码商店，**不绘制** —— 2026-10-12 Q17 裁决；键保留备用）、`.cost`（%s，界面画星币图标+数字）、`.refresh_counter`（%s，只显示剩余刷新次数）、`.empty`（无）。
 - 新增：`block.astral_dice.chip_shop`（方块名）、`msg.astral_dice.chip_shop_no_coin`（余额不足）、`msg.astral_dice.chip_shop_no_refresh`（刷新次数已用尽）、`msg.astral_dice.chip_shop_bought`（已购买 %s）、`msg.astral_dice.chip_shop_owned_all`（已拥有全部筹码）、`msg.astral_dice.chip_shop_inventory_full`（物品栏已满）。
 
 ## §9 守门与验证
@@ -225,7 +225,7 @@ roll(player, reason):                     # reason = ENTER_FIRST | REFRESH | POS
   - **G21b/G22..G27（2026-10-12 复核后补强，判据正本仍在本节）**：
     - **G21b** 方块**朝向语义**（此前只查字符串，方块类去掉 `getStateForPlacement` 也能绿）：`extends HorizontalDirectionalBlock` + `simpleCodec`/`codec()` + 默认朝北 + `getHorizontalDirection().getOpposite()` + `createBlockStateDefinition` 加 `FACING` + `useWithoutItem` 的客户端守卫；
     - **G22** **shaped 配方唯一性**：扫 `data/astral_dice/recipe/**`（含 `src/generated/resources`）全部 `crafting_shaped`，按「pattern + key 映射」归一化签名，出现重复即判红；并断言 `chip_shop` 产出 = `astral_dice:chip_shop`×1（**不得与 card_shop 同图案同材料** —— 同图案会让其中一个方块静默不可合成）；
-    - **G23** **DataSlot 布局与拒绝码**（§4）：菜单内 `addDataSlot` 顺序 = 单价 → 剩余刷新 → 总刷新（`ChipShopCatalog.REFRESH_MAX`）→ 拒绝原因 → 循环三格品质码（共 7 槽）；`DENY_NONE=-1 / DENY_NO_COIN=0 / DENY_NO_REFRESH=1 / DENY_INVENTORY_FULL=2`，且屏幕侧「花费闪红」只认 0/2、「N/N 闪红」只认 1；
+    - **G23** **DataSlot 布局与拒绝码**（§4）：菜单内 `addDataSlot` 顺序 = 单价 → 剩余刷新 → 总刷新（`ChipShopCatalog.REFRESH_MAX`）→ 拒绝原因 → 循环三格品质码（共 7 槽）；`DENY_NONE=-1 / DENY_NO_COIN=0 / DENY_NO_REFRESH=1 / DENY_INVENTORY_FULL=2`，且屏幕侧「花费闪红」只认 0/2、「刷新次数闪红」只认 1；
     - **G24** 星等来源：`starLevel` 体内必须是 `Math.max(0, Math.min(3, CardShopShelf.currentStarLevel(player)))`；
     - **G25** §6 Q13「无任何折扣路径」与 §8 Q17「标题键保留但不绘制」：`ChipShop*` 源码不得出现 `discount/promotion/MEMBER_RECOMMENDATION`，屏幕不得使用 `gui.astral_dice.chip_shop` 标题键（只能用 `.cost/.refresh_count/.empty`）；
     - **G26/G27** 语义锚定（治「标识符存在即绿」）：`categoryWeight` 方法体内 `slot <= 0 ⇒ CATEGORY_ALPHA` 的分支顺序、抽取器 `roll` 体内三处 `break`（池空 / 无档 / 无候选）与 `picked.add → pool.remove` 顺序、`chipIndexAt` 体内**必须同时**有筹码格与标签框两次 `isHoveringStrip` 且返 `chip`、`handleBuy`/`handleRefresh` 方法体内各恰 1 处 `roll(`、`.closeContainer();` 必须落在 `handleBuy` 方法体内且位于扣款之后、价格公式锚定**含右括号**（防 `* count * 2)` 混过）。

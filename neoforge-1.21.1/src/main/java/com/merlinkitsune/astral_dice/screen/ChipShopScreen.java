@@ -80,9 +80,9 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
     private static final int[] QUALITY_X = {51, 94, 137};
     private static final int QUALITY_Y = 31;
 
-    /** 筹码物品图标 16x16，在 28x28 外框内每边内缩 6 px（28 = 16 + 2x6 ⇒ 正好居中） */
-    private static final int CHIP_ICON_SIZE = 16;
-    private static final int CHIP_ICON_OFF = 6;
+    /** 筹码物品图标 24x24，在 28x28 外框内每边内缩 2 px（28 = 24 + 2x2 ⇒ 正好居中） */
+    private static final int CHIP_ICON_SIZE = 24;
+    private static final int CHIP_ICON_OFF = 2;
     /** 商店筹码图标的**源**尺寸（32x32 素材缩到 {@link #CHIP_ICON_SIZE} 画；逐张实测确认） */
     private static final int CHIP_ICON_SRC_SIZE = 32;
 
@@ -91,6 +91,16 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
     private static final int LABEL_H = 15;
     private static final int LABEL_Y = 61;
     private static final int[] LABEL_X = {1, 44, 87, 130, 172};
+
+    /**
+     * 花费格（cell0）的「星币图标 + 金额数字」组合：图标取 {@code star_coin_small.png}
+     * （13x13 素材）的 (3,3) 起 7x7 子区，与 8px 墨迹同高对齐；图标与数字间隔 1 px。
+     */
+    private static final int COST_ICON_SIZE = 7;
+    private static final int COST_ICON_U = 3;
+    private static final int COST_ICON_V = 3;
+    private static final int COST_ICON_SRC = 13;
+    private static final int COST_ICON_GAP = 1;
 
     /** 物品栏面板（底纹在贴图内，槽位物品由原版绘制） */
     private static final int PANEL_X = 56;
@@ -144,7 +154,7 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
 
     private static final int COLOR_TEXT = 0xFFFFFF;
     private static final int COLOR_EMPTY = 0x808080;
-    /** 拒绝红闪的「红」相颜色（计划表 §4：余额不足闪花费文本、次数 0 闪 N/N 文本） */
+    /** 拒绝红闪的「红」相颜色（计划表 §4：余额不足闪花费文本、次数 0 闪剩余刷新次数文本） */
     private static final int COLOR_DENY = 0xFF5555;
 
     // ────────────────────────────── 贴图名（规范 §2；一律经 tex(...) 拼成 textures/gui/shop/<名>） ──────────────────────────────
@@ -219,7 +229,7 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
         // ⑩ tooltip 由原版 AbstractContainerScreen#render 收尾绘制（本批无自定义 tooltip 内容）
     }
 
-    /** ④ + ⑤：三个筹码位的品质外框与 16x16 物品图标（空筹码位两者都不画） */
+    /** ④ + ⑤：三个筹码位的品质外框与 24x24 物品图标（空筹码位两者都不画） */
     private void renderOffers(GuiGraphics guiGraphics) {
         for (int chip = 0; chip < CHIP_COUNT; chip++) {
             ItemStack stack = ChipShopClientState.offer(chip);
@@ -235,7 +245,7 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
                 blitStrip(guiGraphics, tex(qualityTex(frame)),
                         QUALITY_X[chip], QUALITY_Y, QUALITY_SIZE, QUALITY_SIZE);
             }
-            // 筹码图标 = 商店专用 32x32 素材，缩到 16x16 画在内缩区中心（非物品模型，故无需 scissor）
+            // 筹码图标 = 商店专用 32x32 素材，缩到 24x24 画在内缩区中心（非物品模型，故无需 scissor）
             ChipShopCatalog.Entry entry = ChipShopCatalog.byStack(stack).orElse(null);
             if (entry == null) {
                 continue;
@@ -249,8 +259,8 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
     }
 
     /**
-     * ⑥：标签框文本（花费 / 筹码名 / 刷新计数）。
-     * <p>拒绝红闪（计划表 §4）：余额不足 / 物品栏已满 ⇒ 闪**花费文本**；刷新次数为 0 ⇒ 闪 **N/N 文本**；
+     * ⑥：标签框内容（花费=星币图标+数字 / 筹码名 / 剩余刷新次数）。
+     * <p>拒绝红闪（计划表 §4）：余额不足 / 物品栏已满 ⇒ 闪**花费数字**；刷新次数为 0 ⇒ 闪**剩余刷新次数文本**；
      * 相位由 {@link ChipShopClientState#denyBlinkRed()} 给出（30t 内 3 次红/白交替）。
      */
     private void renderStripText(GuiGraphics guiGraphics) {
@@ -259,9 +269,7 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
         int costColor = red && (reason == ChipShopMenu.DENY_NO_COIN || reason == ChipShopMenu.DENY_INVENTORY_FULL)
                 ? COLOR_DENY : COLOR_TEXT;
         int refreshColor = red && reason == ChipShopMenu.DENY_NO_REFRESH ? COLOR_DENY : COLOR_TEXT;
-        drawLabel(guiGraphics, CELL_CONFIRM,
-                Component.translatable("gui.astral_dice.chip_shop.cost", ChipShopClientState.cost()),
-                costColor);
+        drawCost(guiGraphics, costColor);
         for (int chip = 0; chip < CHIP_COUNT; chip++) {
             ItemStack stack = ChipShopClientState.offer(chip);
             drawLabel(guiGraphics, chip + CELL_CHIP_FIRST,
@@ -271,7 +279,7 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
         }
         drawLabel(guiGraphics, CELL_REFRESH,
                 Component.translatable("gui.astral_dice.chip_shop.refresh_counter",
-                        ChipShopClientState.remainingRefreshes(), ChipShopClientState.totalRefreshes()),
+                        ChipShopClientState.remainingRefreshes()),
                 refreshColor);
     }
 
@@ -302,6 +310,26 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
         int y = stripY(LABEL_Y);
         guiGraphics.enableScissor(x, y, x + LABEL_W, y + LABEL_H);
         guiGraphics.drawCenteredString(this.font, text, x + LABEL_W / 2, y + LABEL_TEXT_DY, color);
+        guiGraphics.disableScissor();
+    }
+
+    /**
+     * cell0 花费格：**星币图标 + 1px 间隔 + 金额数字**整体居中（不再走带前缀的纯文本）。
+     * <p>图标 = {@code star_coin_small.png} 的 (3,3) 起 7x7 子区，y = 标签框顶 + {@link #LABEL_TEXT_DY}
+     * （与 8px 墨迹同高）；数字 = {@code gui.astral_dice.chip_shop.cost}（值 {@code "%s"}）渲染 {@link ChipShopClientState#cost()}，保持键有线，红闪色由 {@code color} 给出（图标不参与红闪）。
+     * 组宽 = 7 + 1 + {@code font.width(数字)}，组左 = 标签框左 + (42 − 组宽)/2；scissor 到 42x15 框防溢出。
+     */
+    private void drawCost(GuiGraphics guiGraphics, int color) {
+        int x = stripX(LABEL_X[CELL_CONFIRM]);
+        int y = stripY(LABEL_Y);
+        Component amount = Component.translatable("gui.astral_dice.chip_shop.cost", ChipShopClientState.cost());
+        int groupW = COST_ICON_SIZE + COST_ICON_GAP + this.font.width(amount);
+        int groupX = x + (LABEL_W - groupW) / 2;
+        guiGraphics.enableScissor(x, y, x + LABEL_W, y + LABEL_H);
+        blitSubAbs(guiGraphics, tex("star_coin_small.png"), groupX, y + LABEL_TEXT_DY,
+                COST_ICON_U, COST_ICON_V, COST_ICON_SIZE, COST_ICON_SIZE, COST_ICON_SRC);
+        guiGraphics.drawString(this.font, amount, groupX + COST_ICON_SIZE + COST_ICON_GAP,
+                y + LABEL_TEXT_DY, color, true);
         guiGraphics.disableScissor();
     }
 
@@ -456,6 +484,15 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
     /** 条带内相对坐标绘制整幅贴图 */
     private void blitStrip(GuiGraphics guiGraphics, ResourceLocation texture, int x, int y, int w, int h) {
         blit(guiGraphics, texture, STRIP_X + x, STRIP_Y + y, w, h);
+    }
+
+    /**
+     * 贴图子区绘制的**屏幕绝对坐标**版本（{@code u/v/w/h} + 源图边长 {@code src}；不加 leftPos/topPos）——
+     * 供已换算到绝对屏幕坐标的标签框内绘制使用（先例：同包 {@code CardShopScreen#blitSubAbs}）。
+     */
+    private static void blitSubAbs(GuiGraphics guiGraphics, ResourceLocation texture, int x, int y,
+            int u, int v, int w, int h, int src) {
+        guiGraphics.blit(texture, x, y, 0, (float) u, (float) v, w, h, src, src);
     }
 
     // ────────────────────────────── 只读探针（规范 §7；一律只读，绝不改状态） ──────────────────────────────

@@ -4,7 +4,7 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
-## Unreleased (2.0.0-SNAPSHOT.100)
+## Unreleased (2.0.0-SNAPSHOT.101)
 
 ### New Content
 
@@ -88,6 +88,7 @@
   **only flashes red and sends nothing**.
   You **cannot open the shop** when you **already own every chip** or have **no free inventory slot** (a message explains which).
   ⚠️ **The Chip Shop has no discount path at all** (the Membership Recommendation chip only cheapens the Card Shop), and its screen **draws no title text**.
+- **Chip Shop screen adjustments** (2026-10-13, both P0 lines): the cost readout is now a **small star-coin icon followed by the amount** (the text prefix is gone); the refresh counter shows only the **remaining** refreshes (the total is no longer drawn); offer chip icons are enlarged to **24x24**, exactly filling the quality frame's inner area without covering its border.
 
 - **"Starlight Exchange" inside the shop**: exchange **2 Starlight for 1 Star Coin** with **no cooldown** (a message tells
   you when you are short on Starlight) — this is where the Merchant sign's old "cash out" active moved to.

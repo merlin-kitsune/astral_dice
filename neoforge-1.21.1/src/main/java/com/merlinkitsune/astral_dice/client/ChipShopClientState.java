@@ -105,7 +105,7 @@ public final class ChipShopClientState {
     }
 
     /**
-     * 刷新次数读数（刷新按钮下方框内显示 {@code 剩余/总}）。
+     * 刷新次数读数（刷新按钮下方框内只显示 {@code 剩余} 次数；总次数不再显示）。
      * 两者都夹到 &ge; 0；{@code total &gt; 0} 时再把 {@code remaining} 夹到 &le; total，
      * 避免画出 {@code 7/5} 这种越界读数（{@code total == 0} = 总数未知，此时只保证非负）。
      */

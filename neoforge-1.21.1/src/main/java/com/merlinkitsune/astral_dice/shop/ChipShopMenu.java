@@ -279,7 +279,7 @@ public class ChipShopMenu extends AbstractContainerMenu {
         return player.level().isClientSide() ? clientRefreshesLeft : ChipShopState.get(player).refreshesLeft();
     }
 
-    /** 刷新次数上限（界面显示「剩余/总」用） */
+    /** 刷新次数上限（界面不再显示；仅作恢复逻辑的上限口径） */
     public int totalRefreshes() {
         return ChipShopCatalog.REFRESH_MAX;
     }
