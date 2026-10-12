@@ -1,8 +1,8 @@
 # 交接文档 — astral_dice_multiloader-next（开发线 multi-dev-next）
 
 > 生成：2026-10-11 20:20（Asia/Hong_Kong）｜工作树 `F:\MCProject\astral_dice_multiloader-next`
-> 分支 `multi-dev-next`｜生成时基线 HEAD **`bb48a206`**（本文件随 `.87` 提交落地；最新值以 `git log -1` 为准）｜四线版本 **`2.0.0-SNAPSHOT.88`**（四条线同号）
-> 工作树状态：**干净**（`git status --short -uall` 空）；**未 push**。
+> 分支 `multi-dev-next`｜生成时基线 HEAD **`bb48a206`**（本文件随 `.89` 提交落地；最新值以 `git log -1` 为准）｜四线版本 **`2.0.0-SNAPSHOT.89`**（四条线同号）
+> 工作树状态：仅一项**未跟踪**（`?? docs/chip-shop-logic-plan.md` = 筹码商店逻辑设计稿，待用户点头后随实现同批提交），无其它改动；**未 push**。
 > 新会话提示词：`docs/handover-new-session-context.md`（可整份复制给新会话）。
 
 ---
@@ -103,7 +103,7 @@ pwsh -NoProfile -File scripts/test/mt_inject.ps1 cmd -Command "/astralprobecard 
 | 卡文字残留 / 商店方块 | .83 | d2299def | 事件卡淡出后文字残留 + card_shop 四态朝向与碎裂粒子（含 1.21.1 `codec()` 补全、两份 CHANGELOG 断行无损修复） |
 | 交接刷新 | .84 | 6a0a2efc | 交接文档刷新至 .84 + 交接提示词更新 |
 | 文档复核对账 | .85 | c7cc367b | 按二次验证结论修订：P1 两线 jar 版本写实（.58/.49）、淡出判据改为可复算口径、.64 主题 39t 注记 |
-| 筹码商店界面骨架 | .86 | 本提交 | 13 张贴图入库 + ChipShopScreen/ChipShopMenu/ChipShopClientState（两线）+ chip_shop 菜单注册与客户端绑定 + 三语 4 键 + docs/chip-shop-ui-spec.md + scripts/verify/verify_chip_shop_ui.ps1（含变异测试反证）；业务逻辑待后续批次 |
+| 筹码商店界面骨架 | .86 | bb48a206 | 13 张贴图入库 + ChipShopScreen/ChipShopMenu/ChipShopClientState（两线）+ chip_shop 菜单注册与客户端绑定 + 三语 4 键 + docs/chip-shop-ui-spec.md + scripts/verify/verify_chip_shop_ui.ps1（含变异测试反证）；业务逻辑待后续批次 |
 
 **功能面现状（P0 两线已对等）**：13 个事件 + 弹卡 GUI（淡出后无文字残留）+ 事件选择界面（2 选 1、15s、确认即触发、死亡/登出强触发第一项）+ 调查阶段 4 阶图标与 1:00 计时器 + 全模组发币优先入钱包 + 手册/tooltip 文案同步 + 卡牌商店方块（四态朝向 + 自有碎裂粒子）。
 
