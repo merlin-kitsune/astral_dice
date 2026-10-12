@@ -24,9 +24,10 @@
   - `grep -rn` / `sed` / `find` / `file`（读源码、核字面量、查行尾）
   - `python3 tools/*.py`：**跨平台**静态闸门，例如 `verify_party_api.py`、`audit_patchouli_keys.py`、`verify_effect_icons.py`、`verify_fabric_assets.py`、`verify_selector_key_ownership.py`、`audit_mixin_injection.py`（参数以各自 `--help` 为准）
   - `unzip -l` / `jar tf` / `javap -p`（开产物核验签名与常量，需 JDK）
-  - **`./gradlew <task>`**：**CI 已在 Linux 上实证**（`.github/workflows/build.yml:106` = `./gradlew publishToMavenLocal`、`:127` = `./gradlew build`，同一文件 `:30` = `runs-on: ubuntu-latest`）⇒ 编译 / 构建在 Linux 可行；但 `pushToGame` 这类部署任务会落空（见下）⇒ 构建判据 = 日志 `BUILD SUCCESSFUL` + `build/libs` 产物时间戳，**「build 成功 ≠ 已部署」**。
+  - ⚠️ **`./gradlew <task>`：2026-10-13 起默认禁用、回退 Windows 侧**（原因与数据见下方「WSL 构建回退」条）。CI 在 Linux 上实证过（`build.yml:106/:127`），本机 WSL 也能跑通但速度不可接受；仓内保留 `scripts/test/mt_build.sh`（60s 窗口看护）作为将来恢复时的入口。部署任务 `pushToGame` 写死 Windows 路径，WSL 侧永远不可用。
 - ❌ **Linux 侧不可用（Windows 专属）**：`scripts/test/mt.ps1`（测试台 `env/launch/case/report/stop`）、`scripts/test/mt_build.ps1`、`scripts/verify/*.ps1`（守门 + 变异）、`scripts/test/fabric/ft_*.ps1`、`run/Start-*.bat`、以及**整合包部署**（各线 `build.gradle` 的 `pushToGame`/`pushToDevRun` 写死 `D:\.minecraft\versions\…`）。
-- `./gradlew :<线>:build` 在 Linux 上的可行性**有 CI 旁证**（`build.yml:127`，ubuntu-latest 跑全量 `build`），但**本机 Linux 侧未实测**（Java 17 / 21 / 25 三条线各不同；部署任务必然落空）⇒ 真要构建先**单线小样**验证。
+- **WSL 构建回退（2026-10-13 用户裁决）**：默认构建一律改回 **WSL 互操作调 Windows `pwsh.exe` 跑 `scripts/test/mt_build.ps1`**（`/mnt/c/Program Files/PowerShell/7/pwsh.exe`，cwd 自动映射 `F:\`；命令前缀需补 `$env:PATHEXT='.COM;.EXE;.BAT;.CMD'` —— interop 会话 PATHEXT 只有 `.CPL`，脚本内嵌套 `pwsh` 会失名）。回退原因（实测数据）：① 仓库在 DrvFs（`/mnt/f`，9p）上，Gradle 每次全树 stat/hash 付 9p 税 —— 对 `neoforge-1.21.1` 的 335 个 java 源文件 find+stat：9p **1.65s** vs ext4 **0.006s（≈275×）**，且第二次**无缓存改善**（1.649s）；写 200 小文件 0.58s vs 0.006s（≈100×）；② 冷 `~/.gradle` 的一次性管线被放大：1.21.1 `:classes` 首跑 **9m22s**（热身后 4s），forge LegacyForge 冷管线连吃 3×570s 超时仍未完成（mergetool 单步 271s），每次超时重启还重复昂贵的配置阶段；③ 「产完不退」驻留是本仓**已知 bug（Windows 同样存在**，mt_build 系列守护脚本即为此设），非 WSL 特有。环境已备（若将来恢复）：JDK 17/21/25 @ `/usr/lib/jvm/java-*-openjdk-amd64`、`~/.gradle/gradle.properties` 已配 `127.0.0.1:7897` 代理、`~/.m2` 已备 starengine_lib `2.0.0-SNAPSHOT.12` 四线工件、`scripts/test/mt_build.sh` 已在仓。
+- **github-cli（2026-10-13）**：WSL 内已装**原生** `gh 2.102.0`（`~/.local/bin/gh`，`~/.profile` 已含该 PATH）；⛔ **禁止把 Windows 版 gh.exe 带进 WSL**（会导致 codex 无法启动）；token 以 **`GH_TOKEN` 环境变量**提供（**待用户给值**；gh 走 API 时需另加 `HTTPS_PROXY=http://127.0.0.1:7897`）。
 - 🔁 **需要上面那些 Windows 专属判据（守门 / 变异 / 用例 / 实机 / 收停）时**：把「命令 + 判据字符串 + 期望输出」写清楚，交**用户或 Windows 侧**执行并回传输出，再下结论。**没有真实输出，禁止声称「守门全绿 / 用例 PASS / 已构建 / 已部署」**；读数一律标明来源（谁跑的、哪台机器、什么命令）。
 - **行尾**：本树 LF / CRLF 混存（`neoforge-1.21.1` 的 Java 与 `docs/handover-*` 是 LF；`forge-1.20.1` 的 Java、`scripts/test/resources/kubejs/1.21.1/*.js`、`docs/compat-1.20.1-forge.md`、`AGENTS.md` 是 CRLF）。**禁止全仓转换行尾**（会污染 diff 与逐字节判据）；核对用 `git ls-files --eol -- <路径>`。
 
@@ -91,7 +92,7 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --phase stop --force 
 - 筹码屏命中坐标是「条带内相对」+ `(STRIP_X=34, STRIP_Y=6)`；探针少加偏移会「点击落空但返回 true」。
 - `tools.list_agents`/`tools.job_list` 必须传空对象；`tools.edit`/`tools.write` 改已存在文件前必须先用 `read` 工具读过。
 - 实机收尾判据（Windows 侧）：`MT_CLEANUP_SAVES: PURGED n` + `MT_CLEANUP_RESULT: OK`；再核 `fml.modFolders` java 进程数 = 0。
-- **Linux 侧另有一条**：除 CI 里的 `tools/check_lang_sync.ps1`（lang 键集闸门）与裸 `./gradlew <task>` 外，本仓**没有** bash/POSIX 侧的测试入口 —— 探针、用例、变异、守门 `scripts/verify/*.ps1`、收停全部依赖 Windows 测试台；在 Linux 上要「证明」某事，只能用**源码 / 产物 / git / CI 日志**四类实物证据。
+- **Linux 侧另有一条**：除 CI 里的 `tools/check_lang_sync.ps1`（lang 键集闸门）外，本仓 bash/POSIX 侧入口只有 `scripts/test/mt_build.sh`（构建看护，默认停用见 §0）—— 探针、用例、变异、守门 `scripts/verify/*.ps1`、收停仍全部依赖 Windows 测试台（经 WSL 互操作执行）；在 Linux 上要「证明」某事，只能用**源码 / 产物 / git / CI 日志**四类实物证据。
 
 ## 交接时的工作树状态
 - 生成时基线：**以 `git log -1` 实测为准**（本文件随 **`.99`** 提交落地；前一批为交接文档批 `.98` = `e06451c5`，再前为筹码商店批 `.97` = `6c81b7fe`，192 文件）；`git status --short -uall` = **仅 4 行** `?? %SystemDrive%/…db`（Windows 侧特有垃圾）；

@@ -5,7 +5,7 @@
 > 工作树状态：除 4 个与本项目无关的未跟踪目录外**干净**（`git status --short -uall` 只剩 `?? %SystemDrive%/ProgramData/Microsoft/Windows/Caches/*.db` 四行，见 §5-C-11）；**未 push**。
 > **本批交接（筹码商店）**：`docs/handover-2.0.0-SNAPSHOT.97-chip-shop.md`（流程 / 语义 / 判据 / 未完成 / 新坑，逐条可复算）—— 建议与本文件一起读。
 > 新会话提示词：`docs/handover-new-session-context.md`（可整份复制给新会话；**已改为 Linux 侧口径**）。
-> ⚠️ **环境分界（2026-10-12 新增）**：新会话若在 **Linux** 上运行，其提示词 §0 给出「可用 / 不可用」命令清单（本仓工具链全为 Windows 专用）；**本文件与批次文档仍是 Windows 侧 pwsh 7 口径，Linux 侧只读参考、不要照抄命令**。
+> ⚠️ **环境分界（2026-10-12 新增；2026-10-13 修订：WSL 本机 gradlew 实测过慢已回退 —— 构建默认经 WSL 互操作调 Windows `pwsh.exe` 跑 `mt_build.ps1`，数据与原因见 `docs/handover-new-session-context.md` §0「WSL 构建回退」）**：新会话若在 **Linux** 上运行，其提示词 §0 给出「可用 / 不可用」命令清单（本仓工具链全为 Windows 专用）；**本文件与批次文档仍是 Windows 侧 pwsh 7 口径，Linux 侧只读参考、不要照抄命令**。
 
 ---
 
