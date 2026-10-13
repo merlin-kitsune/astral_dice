@@ -18,6 +18,8 @@ import net.neoforged.neoforge.registries.DeferredRegister;
  * {@code POTENTIAL_JOB_SITE} 判据），因此本模组另外提供了
  * {@code data/minecraft/tags/point_of_interest_type/acquirable_job_site.json} 把
  * {@code astral_dice:card_shop} 并入该标签 —— 少了这一步村民永不转职成「卡牌交易员」。
+ *
+ * <p>筹码商店（{@code astral_dice:chip_shop}）同为工作站点，供「筹码商人」职业认领，注册口径完全一致。
  */
 public final class ModPoiTypes {
 
@@ -32,6 +34,16 @@ public final class ModPoiTypes {
     /** 卡牌商店工作站点（1 张票券 / 1 格搜索半径，与原版工作站点同一取值）。 */
     public static final DeferredHolder<PoiType, PoiType> CARD_SHOP = POI_TYPES.register("card_shop",
             () -> new PoiType(ImmutableSet.copyOf(ModBlocks.CARD_SHOP.get().getStateDefinition().getPossibleStates()),
+                    1, 1));
+
+    /** 工作站点 id（职业的 heldJobSite 谓词按它判定）—— 必须与标签文件里的 id 一致。 */
+    public static final ResourceKey<PoiType> CHIP_SHOP_KEY =
+            ResourceKey.create(Registries.POINT_OF_INTEREST_TYPE,
+                    ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, "chip_shop"));
+
+    /** 筹码商店工作站点（1 张票券 / 1 格搜索半径，与卡牌商店同一取值）。 */
+    public static final DeferredHolder<PoiType, PoiType> CHIP_SHOP = POI_TYPES.register("chip_shop",
+            () -> new PoiType(ImmutableSet.copyOf(ModBlocks.CHIP_SHOP.get().getStateDefinition().getPossibleStates()),
                     1, 1));
 
     private ModPoiTypes() {

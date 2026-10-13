@@ -263,6 +263,7 @@
   "effect.astral_dice.weak_mark": "虚弱の刻印",
   "enchantment.astral_dice.curse_marker": "青の呪い",
   "entity.minecraft.villager.astral_dice.card_trader": "カードトレーダー",
+  "entity.minecraft.villager.astral_dice.chip_trader": "チップトレーダー",
   "gui.astral_dice.attack_cost": "攻撃 Cost: %s / %s",
   "gui.astral_dice.card_inventory": "カード欄",
   "gui.astral_dice.card_inventory.locked": "ダイス神の加護中はカードを調整できません",

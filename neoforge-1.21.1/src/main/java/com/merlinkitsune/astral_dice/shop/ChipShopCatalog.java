@@ -3,6 +3,7 @@ package com.merlinkitsune.astral_dice.shop;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -46,6 +47,11 @@ public final class ChipShopCatalog {
     public static final int TIER_RARE = 1;
     public static final int TIER_EPIC = 2;
     public static final int TIER_LEGENDARY = 3;
+
+    /** 村民交易用稀有度权重（与卡牌交易员一致：稀有 6 / 史诗 3 / 传奇 2）。 */
+    public static final int WEIGHT_RARE = 6;
+    public static final int WEIGHT_EPIC = 3;
+    public static final int WEIGHT_LEGENDARY = 2;
 
     /** 品质概率表，下标 = 骰子星阶 0..3★（0★ 与 1★ 同表）；三档 = 稀有 / 史诗 / 传奇 */
     public static final double[][] QUALITY_PROB = {
@@ -296,5 +302,44 @@ public final class ChipShopCatalog {
             return CATEGORY_ALPHA;
         }
         return (CATEGORY_ALPHA - 1.0) * SLOT_DECAY + 1.0;
+    }
+
+    /** 池只读视图（村民交易表复用同一份池子）。 */
+    public static List<Entry> entries() {
+        return POOL;
+    }
+
+    /** 按品质码反查档位（1/2/3；异常返回 -1）。 */
+    public static int tierOf(Entry entry) {
+        return entry == null ? -1 : entry.tier();
+    }
+
+    /** 品质码 → 村民交易权重。 */
+    public static int weightOf(int tier) {
+        return switch (tier) {
+            case TIER_RARE -> WEIGHT_RARE;
+            case TIER_EPIC -> WEIGHT_EPIC;
+            case TIER_LEGENDARY -> WEIGHT_LEGENDARY;
+            default -> 0;
+        };
+    }
+
+    /** 按品质权重抽一枚（不修改传入列表；池空返回 null）—— 村民交易与商店共用同一权重口径。 */
+    public static Entry pickWeighted(RandomSource random, List<Entry> pool) {
+        if (pool.isEmpty()) {
+            return null;
+        }
+        int total = 0;
+        for (Entry entry : pool) {
+            total += weightOf(entry.tier());
+        }
+        int roll = random.nextInt(total);
+        for (Entry entry : pool) {
+            roll -= weightOf(entry.tier());
+            if (roll < 0) {
+                return entry;
+            }
+        }
+        return pool.get(pool.size() - 1);
     }
 }

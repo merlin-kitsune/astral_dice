@@ -264,6 +264,7 @@
   "effect.astral_dice.weak_mark": "Weak Mark",
   "enchantment.astral_dice.curse_marker": "Blue Curse",
   "entity.minecraft.villager.astral_dice.card_trader": "Card Trader",
+  "entity.minecraft.villager.astral_dice.chip_trader": "Chip Trader",
   "gui.astral_dice.attack_cost": "Attack Cost: %s / %s",
   "gui.astral_dice.card_inventory": "Card Inventory",
   "gui.astral_dice.card_inventory.locked": "Cannot change cards during Dice Blessing",

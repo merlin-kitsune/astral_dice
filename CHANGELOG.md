@@ -4,9 +4,11 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
-## Unreleased (2.0.0-SNAPSHOT.112)
+## Unreleased (2.0.0-SNAPSHOT.113)
 
 ### New Content
+
+- **New "Chip Trader" villager profession**: the Chip Shop is now a **job site** that villagers can claim to become Chip Traders, selling chips (quality tied to level: L1 rare / L2 rare+epic / L3 epic / L4 epic+legendary / L5 legendary, weights 6/3/2), with an "1 Emerald → 1 Star Coin" exchange unlocked at Journeyman (auto-hidden when the Emerald Dice is equipped) — same mechanics as the Card Trader.
 
 #### Platform & Compatibility
 

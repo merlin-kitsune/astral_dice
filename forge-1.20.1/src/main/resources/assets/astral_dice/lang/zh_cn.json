@@ -264,6 +264,7 @@
   "effect.astral_dice.weak_mark": "虚弱印记",
   "enchantment.astral_dice.curse_marker": "青之诅咒",
   "entity.minecraft.villager.astral_dice.card_trader": "卡牌交易员",
+  "entity.minecraft.villager.astral_dice.chip_trader": "筹码商人",
   "gui.astral_dice.attack_cost": "攻击 Cost: %s / %s",
   "gui.astral_dice.card_inventory": "卡牌栏",
   "gui.astral_dice.card_inventory.locked": "骰神赐福期间无法调整卡牌",
