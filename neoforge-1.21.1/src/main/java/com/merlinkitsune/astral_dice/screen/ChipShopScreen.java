@@ -155,7 +155,7 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
     private static final int CELL_Y = 0;
     private static final int CELL_H = STRIP_H;
 
-    /** 按下态贴图保持 tick 数（规范 §4 第 8 步：hover 或**按下 2 tick 内**用 *_push） */
+    /** 按下态贴图保持 tick 数（规范 §4 第 8 步：**按下后 PRESS_TICKS tick 内**用 *_push；2026-10-13 用户裁决：悬停不再切换 push 贴图） */
     private static final int PRESS_TICKS = 2;
 
     /** 标签框内文本的纵向内缩：框高 15、MC 墨迹行高 8 ⇒ +4 使墨迹（4..11）中心落在框中心 7.5 */
@@ -167,6 +167,11 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
     private static final int COLOR_DENY = 0xFF5555;
     /** 选中筹码格（被高亮）下方筹码名的颜色：黑色（2026-10-13；选中标记画在文字下层 ⇒ 黑字更清晰） */
     private static final int COLOR_SELECTED_NAME = 0x000000;
+    /**
+     * 悬停筹码图标的灰色半透明覆盖层（与 {@code CardShopScreen.COLOR_ROW_HOVER} 同值 0x66AAAAAA、
+     * 即 (170,170,170,α≈0x66)；2026-10-13 新增，对齐卡牌商店 / 转账界面的悬停指示）。
+     */
+    private static final int COLOR_HOVER_OVERLAY = 0x66AAAAAA;
 
     // ────────────────────────────── 贴图名（规范 §2；一律经 tex(...) 拼成 textures/gui/shop/<名>） ──────────────────────────────
 
@@ -234,11 +239,13 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
         blitStrip(guiGraphics, tex(TEX_STRIP_FRAME_1), 0, 0, STRIP_W, STRIP_H);
         // ④ 品质外框 → ⑤ 筹码物品图标（无筹码则不画，二者共用同一循环以免顺序错位）
         renderOffers(guiGraphics);
+        // ⑤b 悬停格图标的灰色覆盖层（压在图标上、被 ⑥ 选中标记与 ⑦ 文字压在它上面；2026-10-13 新增）
+        renderHoverOverlay(guiGraphics, mouseX, mouseY);
         // ⑥ 选中标记（仅所选筹码格；画在筹码名文字**下层** ⇒ 选中格黑字更清晰）
         renderSelection(guiGraphics);
         // ⑦ 三处文本：花费（cell0）/ 筹码名（cell1..3）/ 刷新计数（cell4）
         renderStripText(guiGraphics);
-        // ⑧ 两个按钮（常态 / hover 或按下 2 tick 内用 *_push）
+        // ⑧ 两个按钮（常态 / 按下后 PRESS_TICKS tick 内用 *_push；2026-10-13 用户裁决：悬停不再切换）
         renderButtons(guiGraphics, mouseX, mouseY);
         // ⑨ 物品栏面板底纹；槽位物品与悬停高亮由原版在本方法之后绘制（天然叠在面板之上）
         blit(guiGraphics, tex(TEX_INVENTORY), PANEL_X, PANEL_Y, PANEL_W, PANEL_H);
@@ -275,6 +282,35 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
     }
 
     /**
+     * ⑤b：悬停筹码图标的灰色半透明覆盖层（2026-10-13 新增，对齐卡牌商店 / 转账界面的悬停指示）。
+     *
+     * <p>范围 = 悬停格的 **24x24 图标区**（iconX/iconY 计算与 {@link #renderOffers} 完全一致）；
+     * 空格不画（{@link ChipShopClientState#offer(int)} 返回 empty ⇒ 直接返回）；
+     * **目录外早退**（offer 非空但 {@link ChipShopCatalog#byStack} 为空 ⇒ {@link #renderOffers} 同样不画图标）
+     * ⇒ 覆盖层也不画（2026-10-13：对齐 renderOffers 的目录外早退，覆盖层不画无图标格）。
+     *
+     * <p>命中口径 = {@link #chipIndexAt(int, int)}（筹码格（40x78 整列）∪ 该格标签框）—— 与点击选中**有意一致**：
+     * 光标落在标签框上时该格图标也亮灰，因为标签框同样是「该筹码格」的选中面（规范 §5）。
+     */
+    private void renderHoverOverlay(GuiGraphics guiGraphics, int mouseX, int mouseY) {
+        int chip = chipIndexAt(mouseX, mouseY);
+        if (chip < 0) {
+            return;
+        }
+        ItemStack stack = ChipShopClientState.offer(chip);
+        if (stack.isEmpty()) {
+            return;
+        }
+        if (ChipShopCatalog.byStack(stack).isEmpty()) {
+            return;
+        }
+        // 灰色覆盖层画在该格 24x24 图标区上（与 renderOffers 同坐标；压在图标上、被 ⑥/⑦ 压在它上面）
+        int iconX = stripX(QUALITY_X[chip] + CHIP_ICON_OFF);
+        int iconY = stripY(QUALITY_Y + CHIP_ICON_OFF);
+        guiGraphics.fill(iconX, iconY, iconX + CHIP_ICON_SIZE, iconY + CHIP_ICON_SIZE, COLOR_HOVER_OVERLAY);
+    }
+
+    /**
      * ⑦：标签框内容（花费=星币图标+数字 / 筹码名 / 剩余刷新次数）。
      * <p>拒绝红闪（计划表 §4）：余额不足 / 物品栏已满 ⇒ 闪**花费数字**；刷新次数为 0 ⇒ 闪**剩余刷新次数文本**；
      * 相位由 {@link ChipShopClientState#denyBlinkRed()} 给出（30t 内 3 次红/白交替）。
@@ -304,14 +340,17 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
         blitStrip(guiGraphics, tex(TEX_SELECT), LABEL_X[chip + CELL_CHIP_FIRST], LABEL_Y, LABEL_W, LABEL_H);
     }
 
-    /** ⑧：两个按钮（hover 或按下反馈期内换成 *_push） */
+    /**
+     * ⑧：两个按钮（**按下后 PRESS_TICKS tick 内**换成 *_push；2026-10-13 用户裁决：悬停不再切换 push 贴图）。
+     *
+     * <p>⚠️ mouseX/mouseY 参数保留原因：与 {@link #renderBg} 的绘制入口签名保持一致（绘制与命中同形），
+     * 且后续若要加 hover 反馈（如高亮描边）可直接复用；本方法当前不使用这两个参数（javac 不报未使用参数错误）。
+     */
     private void renderButtons(GuiGraphics guiGraphics, int mouseX, int mouseY) {
-        boolean confirmPush = this.confirmPressTicks > 0
-                || isHoveringStrip(mouseX, mouseY, CONFIRM_X, CONFIRM_Y, BUTTON_SIZE, BUTTON_SIZE);
+        boolean confirmPush = this.confirmPressTicks > 0;
         blitStrip(guiGraphics, tex(confirmPush ? TEX_CONFIRM_PUSH : TEX_CONFIRM),
                 CONFIRM_X, CONFIRM_Y, BUTTON_SIZE, BUTTON_SIZE);
-        boolean refreshPush = this.refreshPressTicks > 0
-                || isHoveringStrip(mouseX, mouseY, REFRESH_X, REFRESH_Y, BUTTON_SIZE, BUTTON_SIZE);
+        boolean refreshPush = this.refreshPressTicks > 0;
         blitStrip(guiGraphics, tex(refreshPush ? TEX_REFRESH_PUSH : TEX_REFRESH),
                 REFRESH_X, REFRESH_Y, BUTTON_SIZE, BUTTON_SIZE);
     }

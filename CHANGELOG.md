@@ -4,7 +4,7 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
-## Unreleased (2.0.0-SNAPSHOT.105)
+## Unreleased (2.0.0-SNAPSHOT.106)
 
 ### New Content
 
@@ -510,6 +510,7 @@
 
 #### Input & UI
 
+- **Chip shop UI interaction fixes (2026-10-13)**: the Confirm / Refresh buttons' pressed ("push") texture now only appears briefly **after a click**, and no longer switches on mouse hover; hovering a chip icon now overlays a **grey translucent highlight** on the icon (matching the hover indication in the card shop and player transfer screens).
 - **Fixed event card text lingering after fade-out**: once the event card finished its shrink-and-fade animation, its name and timer text stayed on screen for about half a second longer; the text now fades out together with the card.
 
 #### Items, Chips & Trading
