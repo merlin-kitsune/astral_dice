@@ -4,7 +4,7 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
-## Unreleased (2.0.0-SNAPSHOT.109)
+## Unreleased (2.0.0-SNAPSHOT.110)
 
 ### New Content
 
@@ -516,6 +516,7 @@
 #### Items, Chips & Trading
 
 - **Fixed the chip shop block rendering as a purple-black missing model**: its Blockbench-exported model used a 30° rotation, which vanilla rejects, so the whole model failed to load; the two elements now use a legal 22.5° tilt and the block renders correctly in the world and in inventory (the card shop was unaffected).
+- **Fixed the chip shop block facing away from the player when placed**: its screen side was modeled on the opposite face compared to the card shop, so placed blocks always showed the back; the orientation mapping is corrected and the screen now faces the placing player in all four directions.
 - **Fixed the Card Shop block not facing the player when placed**: it always faced north regardless of where the player looked; it now faces the player who placed it.
 - **Fixed the Card Shop block's break particles showing the purple-black missing texture**: they now use the block's own texture.
 

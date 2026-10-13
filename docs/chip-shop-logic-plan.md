@@ -198,7 +198,7 @@ roll(player, reason):                     # reason = ENTER_FIRST | REFRESH | POS
 - 实现（照抄 `block/CardShopBlock.java`，含 1.21.1 特有的 `codec()` 覆写与 `HorizontalDirectionalBlock` 四向、1.20.1 无 `codec()`）：
   1. `block/ChipShopBlock.java`：`extends HorizontalDirectionalBlock`，`FACING` 四向 + `getStateForPlacement` 用 `context.getHorizontalDirection().getOpposite()`（与卡牌商店同口径，保证朝向面向放置者）；
   2. `ModBlocks` 注册 `CHIP_SHOP` + `ModItems` 注册 `BlockItem`（照 `CARD_SHOP` 两行）；
-  3. `blockstates/chip_shop.json`（四向 y=0/90/180/270，与 `card_shop` 同式）+ `models/item/chip_shop.json`（parent = `block/chip_shop`）；
+  3. `blockstates/chip_shop.json`（四向 y = north:180/east:270/south:∅/west:90——本模型屏幕造在 +Z 侧，故在 `card_shop` 基准上统一 +180°，使放置后屏幕朝玩家；2026-10-13 修正）+ `models/item/chip_shop.json`（parent = `block/chip_shop`）；
   4. 三语 `block.astral_dice.chip_shop`（筹码商店 / Chip Shop / チップショップ）+ 配方 + 掉落表 + 创造栏；
   5. 交互 = `use`/`useWithoutItem` → `ChipShopOpener.open(player)`（照抄 `CardShopOpener`，line 1.21.1 vs 1.20.1 签名不同，见 §10；⚠️ 本文档早先写作 `tryOpen`，实作为 `open`，已按实作更正）。
   6. **配方**（本批自定，计划表原先未规定）：`crafting_shaped` pattern `["TTT","BSB","MMM"]`，T=`minecraft:smooth_stone_slab`、B=`astral_dice:star_coin`、S=`astral_dice:blank_chip`、M=tag `minecraft:logs`，产出 `astral_dice:chip_shop`×1。⚠️ **不得与 `card_shop` 的 `["TTT","BBB","MMM"]` 同图案同材料** —— 原版 shaped 配方按「第一个匹配」取用，同图案配方会让其中一个方块**静默不可合成**（本批复核 P1，已修），并已加守门 G22 强制唯一性。
