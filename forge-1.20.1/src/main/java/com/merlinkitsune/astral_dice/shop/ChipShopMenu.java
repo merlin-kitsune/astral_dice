@@ -98,6 +98,9 @@ public class ChipShopMenu extends AbstractContainerMenu {
     /** {@code ChipShopDenyPayload#reason}：物品栏已满（⇒ 客户端红闪**花费文本**） */
     public static final int DENY_INVENTORY_FULL = 2;
 
+    /** 购买后的**禁止使用**冷却时长：6000 ticks = 5:00（需求 4） */
+    private static final long BUY_COOLDOWN_TICKS = 6000L;
+
     private static final Logger LOGGER = LoggerFactory.getLogger(ChipShopMenu.class);
 
     private final Player player;
@@ -359,14 +362,16 @@ public class ChipShopMenu extends AbstractContainerMenu {
         // 落盘：购买次数 +1、记录本次类别（下次抽取的类别偏置来源），并**重抽候选**
         ChipShopState next = state.withPurchased(ChipShopCatalog.categoryOf(bought).orElse(null));
         next = next.withOffers(ChipShopRoller.roll(buyer, next.lastCategory().orElse(null)));
+        // 需求 4：购买成功后进入 5:00 冷却（世界 gameTime 现算），冷却期内禁止再开店
+        next = next.withCooldown(buyer.level().getGameTime() + BUY_COOLDOWN_TICKS);
         ChipShopState.store(buyer, next);
         applyState(next);
         StarCoinBalanceSync.notifyChanged(buyer);
         actionBar(buyer, ChatFormatting.GOLD, "msg.astral_dice.chip_shop_bought", bought.getHoverName());
         LOGGER.info("[astral_dice] CHIP_SHOP_BUY player={} offer={} chip={} price={} purchased={} refreshes={}"
-                        + " offers={} target={}",
+                        + " offers={} target={} cooldownUntil={}",
                 buyer.getName().getString(), offerIndex, bought.getItem(), price, next.purchasedCount(),
-                next.refreshesLeft(), next.offersKey(), targetSlot);
+                next.refreshesLeft(), next.offersKey(), targetSlot, next.cooldownUntil());
         // R18：购买成功后自动关店（关店后玩家看到的是重抽后的新一批，下次进店一致）
         buyer.closeContainer();
     }

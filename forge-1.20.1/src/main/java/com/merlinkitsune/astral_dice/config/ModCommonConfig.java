@@ -25,9 +25,10 @@ import net.minecraftforge.common.ForgeConfigSpec;
  * v6 用于「新增 `modernui_tooltip_frame_compat`(Modern UI 提示框边框兼容层开关)—— 2026-10-04 用户裁决:
  * Modern UI 开启『现代提示框』时会自行绘制整个提示框并取消原版渲染(⇒ 本模组 `RenderTooltipEvent.Color` 永不派发),
  * 本模组按稀有度写入的边框色被整体丢弃,故新增本开关(**仅客户端渲染项,不影响服务端玩法**)。」。
+ * v7 用于「新增 `enable_chip_recipes`(筹码合成配方总开关,默认 false —— 关闭时 61 枚筹码无法通过合成获得)」。
  */
 public final class ModCommonConfig {
-    public static final int CONFIG_VERSION = 6;
+    public static final int CONFIG_VERSION = 7;
 
     public static final ForgeConfigSpec SPEC;
 
@@ -41,6 +42,17 @@ public final class ModCommonConfig {
      * 系统属性 {@code -Dastral_dice.modernUITooltipCompat=false} 优先级更高,可绕过本配置整体停用。
      */
     public static final ForgeConfigSpec.BooleanValue MODERNUI_TOOLTIP_FRAME_COMPAT;
+
+    /**
+     * 筹码合成配方总开关(**服务端玩法项**,默认 false)。
+     *
+     * <p>关闭(false)时:61 枚筹码的合成配方整体不加载(条件见 recipe.condition.ChipRecipesEnabledCondition),
+     * 且 4 种仅用于筹码合成的材料(再生试剂 / 导电丝 / 星币尘 / 标记涂料)不在创造模式物品栏显示;
+     * 空白筹码(blank_chip)与星盘 / 黄金星盘 / 星币仍照常可见、可合成。
+     *
+     * <p>⚠️ 本项**不进** {@link #snapshot()}:库 {@code GameplayConfigValues} 无对应字段,不得改动库契约。
+     */
+    public static final ForgeConfigSpec.BooleanValue ENABLE_CHIP_RECIPES;
     public static final ForgeConfigSpec.BooleanValue EVENT_APPLY_MC_TEAM;
     public static final ForgeConfigSpec.BooleanValue EVENT_APPLY_FTB_TEAM;
     public static final ForgeConfigSpec.BooleanValue EVENT_APPLY_OPAC;
@@ -93,6 +105,10 @@ public final class ModCommonConfig {
                         "false = 不介入,本模组物品在 Modern UI 下沿用其自身的边框配色;",
                         "多个第三方提示框模组同时存在时,本项只对 Modern UI 生效")
                 .define("modernui_tooltip_frame_compat", true);
+
+        // 筹码合成配方总开关(默认 false;关闭时 61 枚筹码无法通过合成获得 —— 权威默认值见 ChipShopCatalog#CHIP_RECIPES_DEFAULT)。
+        ENABLE_CHIP_RECIPES = builder.comment("是否启用筹码合成配方(默认：false；关闭时 61 枚筹码无法通过合成获得)")
+                .define("enable_chip_recipes", false);
 
         builder.push("event_system").comment("=== 事件系统 ===");
         EVENT_APPLY_MC_TEAM = builder.comment("事件是否作用于 Minecraft 同队玩家")

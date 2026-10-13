@@ -14,8 +14,9 @@ import org.slf4j.LoggerFactory;
 /**
  * 筹码商店开店入口（判据正本 = {@code docs/chip-shop-logic-plan.md} §3「进店补抽」与 §5「开店前置」）。
  *
- * <p><b>开店前置**两项**拒绝</b>（R6，用户裁决）：① 池已**全拥有**（没有可卖的筹码）；
- * ② 物品栏 36 格（不含副手）**已满**（买了也放不下）。两者都只在 actionbar 给红字、**不开店**。
+ * <p><b>开店前置**三项**拒绝</b>（R6，用户裁决）：① 池已**全拥有**（没有可卖的筹码）；
+ * ② 物品栏 36 格（不含副手）**已满**（买了也放不下）；③ **购买冷却中**（需求 4：上次购买后 5:00 内禁止使用）。
+ * 三者都只在 actionbar 给红字、**不开店**。
  *
  * <p><b>进店补抽</b>（唯一入口）：仅当 {@link ChipShopState#needsReroll(Player)} 为真
  * （从未抽过 / 候选含已拥有 / 候选引用了未知 id）才掷一批并落盘。**免费**、且**与界面开关无关地幂等** ——
@@ -45,6 +46,10 @@ public final class ChipShopOpener {
         }
         if (hasNoRoom(player)) {
             deny(player, "inventory_full", "msg.astral_dice.chip_shop_inventory_full");
+            return;
+        }
+        if (ChipShopState.get(player).inCooldown(player.level().getGameTime())) {
+            deny(player, "cooldown", "msg.astral_dice.chip_shop_cooldown");
             return;
         }
         ensureOffers(player);

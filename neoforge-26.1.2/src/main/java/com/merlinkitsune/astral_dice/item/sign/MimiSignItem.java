@@ -30,7 +30,7 @@ import net.neoforged.bus.api.SubscribeEvent;
  * <p>被动:
  * - 合成或返还卡牌时,每获得一张战斗牌,增加 1 星币;
  * - 装备时,筹码栏位 +1;
- * - 每次主动技能返还累计 25 张战斗牌后,获得 1 个随机筹码
+ * - 每次主动技能返还累计 100 张战斗牌后,获得 1 个随机筹码
  *   (蓝色 60%,紫色 35%,金色 5%;筹码池**由物品注册表派生**,见 {@link #chipPool(Rarity)} 的说明)。
  *   ⚠️ **一次主动技能至多产出 1 个** —— 一次返还再多张也只发 1 个,超出阈值的份额保留到下次
  *   (2026-10-01 用户裁决:玩家持大量卡牌时一次连发多个筹码过于超模)。
@@ -43,7 +43,7 @@ public class MimiSignItem extends BaseSignItem {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MimiSignItem.class);
     /** 主动返还战斗牌累计阈值(达到后获得随机筹码) */
-    public static final int RETURNED_CARD_THRESHOLD = 25;
+    public static final int RETURNED_CARD_THRESHOLD = 100;
     /** 随机筹码概率 */
     private static final double BLUE_CHANCE = 0.60;
     private static final double PURPLE_CHANCE = 0.35;

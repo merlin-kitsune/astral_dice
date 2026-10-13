@@ -2,6 +2,7 @@ package com.merlinkitsune.astral_dice.init;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.item.ModItems;
+import com.merlinkitsune.astral_dice.config.ModCommonConfig;
 
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
@@ -35,10 +36,13 @@ public class ModCreativeTabs {
                 output.accept(ModItems.GOLDEN_STAR_PLATE.get());
                 output.accept(ModItems.BLANK_SIGN.get());
                 output.accept(ModItems.BLANK_CHIP.get());
-                output.accept(ModItems.REGENERATION_REAGENT.get());
-                output.accept(ModItems.CONDUCTIVE_WIRE.get());
-                output.accept(ModItems.STAR_COIN_DUST.get());
-                output.accept(ModItems.MARK_PAINT.get());
+                // 筹码配方关闭时:这 4 种仅用于筹码合成的材料不在创造栏显示(空白筹码 / 星盘等常显)。
+                if (ModCommonConfig.ENABLE_CHIP_RECIPES.get()) {
+                    output.accept(ModItems.REGENERATION_REAGENT.get());
+                    output.accept(ModItems.CONDUCTIVE_WIRE.get());
+                    output.accept(ModItems.STAR_COIN_DUST.get());
+                    output.accept(ModItems.MARK_PAINT.get());
+                }
                 // 骰子
                 output.accept(ModItems.DICE.get());
                 output.accept(ModItems.GOLDEN_DICE.get());

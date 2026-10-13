@@ -28,6 +28,8 @@ import java.util.Optional;
  *   <li>{@code refreshesLeft} = 剩余刷新次数（初值 {@value ChipShopCatalog#REFRESH_INITIAL}、
  *       上限 {@value ChipShopCatalog#REFRESH_MAX}）；</li>
  *   <li>{@code regenAnchor} = 刷新恢复锚点（世界 gameTime）；<b>0 = 从未刷新过</b>（此时不恢复）。</li>
+ *   <li>{@code cooldownUntil} = 购买后的**禁止使用**截止时刻（世界 gameTime）；<b>0 = 无冷却</b>；</li>
+ *   <li>{@code lastBlankInsertAt} = 最近一次**空白筹码投入**的时刻（世界 gameTime）；<b>0 = 从未投入</b>。</li>
  * </ul>
  *
  * <p><b>重抽的唯一三个入口</b>（R16/R17/G19）：① {@link ChipShopOpener#ensureOffers} 的进店补抽
@@ -42,11 +44,11 @@ import java.util.Optional;
  * {@code ModAttachments.CHIP_SHOP_STATE.get(player)} / {@code .set(player, state)}）。
  */
 public record ChipShopState(List<String> offers, Optional<String> lastPickCategory, int purchasedCount,
-                            int refreshesLeft, long regenAnchor) {
+                            int refreshesLeft, long regenAnchor, long cooldownUntil, long lastBlankInsertAt) {
 
     /** 全新状态：无候选、无上次类别、0 次购买、{@value ChipShopCatalog#REFRESH_INITIAL} 次刷新、无锚点 */
     public static final ChipShopState EMPTY = new ChipShopState(
-            List.of(), Optional.empty(), 0, ChipShopCatalog.REFRESH_INITIAL, 0L);
+            List.of(), Optional.empty(), 0, ChipShopCatalog.REFRESH_INITIAL, 0L, 0L, 0L);
 
     public static final Codec<ChipShopState> CODEC = RecordCodecBuilder.create(instance -> instance.group(
             Codec.STRING.listOf().optionalFieldOf("offers", List.of()).forGetter(ChipShopState::offers),
@@ -54,7 +56,9 @@ public record ChipShopState(List<String> offers, Optional<String> lastPickCatego
             Codec.INT.optionalFieldOf("purchased", 0).forGetter(ChipShopState::purchasedCount),
             Codec.INT.optionalFieldOf("refreshes", ChipShopCatalog.REFRESH_INITIAL)
                     .forGetter(ChipShopState::refreshesLeft),
-            Codec.LONG.optionalFieldOf("regen_anchor", 0L).forGetter(ChipShopState::regenAnchor)
+            Codec.LONG.optionalFieldOf("regen_anchor", 0L).forGetter(ChipShopState::regenAnchor),
+            Codec.LONG.optionalFieldOf("cooldown_until", 0L).forGetter(ChipShopState::cooldownUntil),
+            Codec.LONG.optionalFieldOf("last_blank_insert", 0L).forGetter(ChipShopState::lastBlankInsertAt)
     ).apply(instance, ChipShopState::new));
 
     /** 玩家存档读取（客户端读到的是一份「服务端同步值」——本模组不使用附件 sync，客户端不读它） */
@@ -131,20 +135,49 @@ public record ChipShopState(List<String> offers, Optional<String> lastPickCatego
         for (ChipShopCatalog.Entry entry : picked) {
             ids.add(entry.id());
         }
-        return new ChipShopState(List.copyOf(ids), lastPickCategory, purchasedCount, refreshesLeft, regenAnchor);
+        return new ChipShopState(List.copyOf(ids), lastPickCategory, purchasedCount, refreshesLeft, regenAnchor,
+                cooldownUntil, lastBlankInsertAt);
     }
 
     /** 购买成功：累计次数 +1、记录本次类别（R18）；候选由调用方紧接着重抽 */
     public ChipShopState withPurchased(ChipShopCatalog.Category category) {
         return new ChipShopState(offers,
                 category == null ? lastPickCategory : Optional.of(category.key()),
-                purchasedCount + 1, refreshesLeft, regenAnchor);
+                purchasedCount + 1, refreshesLeft, regenAnchor, cooldownUntil, lastBlankInsertAt);
     }
 
     /** 刷新次数与锚点（首次成功刷新时由调用方把 0 锚点写成 now + REFRESH_REGEN_TICKS） */
     public ChipShopState withRefreshes(int left, long anchor) {
         return new ChipShopState(offers, lastPickCategory, purchasedCount,
-                Math.max(0, Math.min(ChipShopCatalog.REFRESH_MAX, left)), anchor);
+                Math.max(0, Math.min(ChipShopCatalog.REFRESH_MAX, left)), anchor, cooldownUntil, lastBlankInsertAt);
+    }
+
+    /**
+     * 写购买冷却截止时刻（世界 gameTime；<b>0 = 无冷却</b>）。
+     *
+     * <p>购买成功后由 {@link ChipShopMenu#handleBuy} 置为 {@code now + BUY_COOLDOWN_TICKS}（5:00）——
+     * 冷却期内 {@link ChipShopOpener#open} 直接拒绝开店（需求 4）。
+     */
+    public ChipShopState withCooldown(long until) {
+        return new ChipShopState(offers, lastPickCategory, purchasedCount, refreshesLeft, regenAnchor, until,
+                lastBlankInsertAt);
+    }
+
+    /** 是否处于购买冷却中（{@code now} = 当前世界 gameTime；{@code cooldownUntil == 0} ⇒ 永不冷却） */
+    public boolean inCooldown(long now) {
+        return cooldownUntil > now;
+    }
+
+    /**
+     * 投入一枚空白筹码（需求 5）：记录投入时刻、刷新次数 +1（封顶 {@value ChipShopCatalog#REFRESH_MAX}）、
+     * 并**清零购买冷却**（投入即可立刻再用）。
+     *
+     * <p>⚠️ 本方法**不**重抽候选（重抽入口只有三处，见类头）——它只发一张「重抽券」，
+     * 由玩家在界面里自行用；调用方负责扣减手持物与校验投入冷却。
+     */
+    public ChipShopState withBlankInsert(long now, int newRefreshes, long cooldownUntil) {
+        return new ChipShopState(offers, lastPickCategory, purchasedCount,
+                Math.max(0, Math.min(ChipShopCatalog.REFRESH_MAX, newRefreshes)), regenAnchor, cooldownUntil, now);
     }
 
     /** 机器行 / 取证用：候选的稳定摘要（同一批任意次读到相同值） */

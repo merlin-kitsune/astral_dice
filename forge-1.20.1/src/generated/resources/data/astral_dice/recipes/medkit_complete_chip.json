@@ -1,6 +1,11 @@
 {
   "type": "minecraft:crafting_shaped",
   "category": "misc",
+  "conditions": [
+    {
+      "type": "astral_dice:chip_recipes_enabled"
+    }
+  ],
   "key": {
     "D": {
       "item": "minecraft:diamond"

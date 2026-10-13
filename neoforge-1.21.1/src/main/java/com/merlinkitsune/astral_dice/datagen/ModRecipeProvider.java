@@ -2,6 +2,7 @@ package com.merlinkitsune.astral_dice.datagen;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.item.ModItems;
+import com.merlinkitsune.astral_dice.recipe.condition.ChipRecipesEnabledCondition;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.data.PackOutput;
 import net.minecraft.data.recipes.RecipeCategory;
@@ -217,7 +218,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('B', ModItems.BLANK_CHIP.get())
                 .define('P', ModItems.STAR_PLATE.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 手电筒-强光:上排 红石灯·黄色染色玻璃·红石灯｜中排 星币尘·空白筹码·星币尘｜下排 星盘·星盘·星盘 [史诗·星光]
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.FLASHLIGHT_CHIP.get())
@@ -230,7 +231,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('B', ModItems.BLANK_CHIP.get())
                 .define('P', ModItems.STAR_PLATE.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 紫色飞星(史诗/星光流派):第三行 = 星盘,第二行中 = 空白筹码,两侧 = 星币尘,第一行 = 紫水晶碎片
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.PURPLE_SHOOTING_STAR_CHIP.get())
@@ -242,7 +243,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('B', ModItems.BLANK_CHIP.get())
                 .define('P', ModItems.STAR_PLATE.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 金色飞星(传奇/星光流派):**进阶筹码** —— 走紫->金「通用升级」模板 RDR/DTD/GGG
         // (红石粉 / 钻石 / 上一等级 = 紫色飞星 / 黄金星盘),不再复用紫色飞星的基础图案。
@@ -256,7 +257,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('T', ModItems.PURPLE_SHOOTING_STAR_CHIP.get())
                 .define('G', ModItems.GOLDEN_STAR_PLATE.get())
                 .unlockedBy("has_purple_shooting_star_chip", has(ModItems.PURPLE_SHOOTING_STAR_CHIP.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.BLANK_CHIP.get(), 2)
                 .pattern("SBS")
@@ -279,7 +280,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('B', ModItems.BLANK_CHIP.get())
                 .define('P', ModItems.STAR_PLATE.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 鹰眼瞄具:紫->金(通用升级)
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.EAGLE_SCOPE_CHIP.get())
@@ -291,7 +292,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('D', Items.DIAMOND)
                 .define('G', ModItems.GOLDEN_STAR_PLATE.get())
                 .unlockedBy("has_scope_chip", has(ModItems.SCOPE_CHIP.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 医疗箱-紧急治疗:上排 粘液球·粘液球·粘液球｜中排 再生试剂·空白筹码·再生试剂｜下排 星币·星币·星币 [稀有·治愈]
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.MEDKIT_EMERGENCY_CHIP.get())
@@ -303,7 +304,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('B', ModItems.BLANK_CHIP.get())
                 .define('C', ModItems.STAR_COIN.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 医疗箱-完备:紫->金(通用升级)
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.MEDKIT_COMPLETE_CHIP.get())
@@ -315,7 +316,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('D', Items.DIAMOND)
                 .define('G', ModItems.GOLDEN_STAR_PLATE.get())
                 .unlockedBy("has_medkit_emergency", has(ModItems.MEDKIT_EMERGENCY_CHIP.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 维生素药丸:上排 发酵蛛眼·发酵蛛眼·发酵蛛眼｜中排 再生试剂·空白筹码·再生试剂｜下排 星盘·星盘·星盘 [史诗·治愈]
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.VITAMIN_PILL_CHIP.get())
@@ -327,7 +328,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('B', ModItems.BLANK_CHIP.get())
                 .define('P', ModItems.STAR_PLATE.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 标靶:上排 标靶·标靶·标靶｜中排 标记涂料·空白筹码·标记涂料｜下排 星币·星币·星币 [稀有·标记]
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.TARGET_CHIP.get())
@@ -339,7 +340,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('B', ModItems.BLANK_CHIP.get())
                 .define('C', ModItems.STAR_COIN.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 黄金星盘:配方 ①「星盘×1 + 下界之星×1」无序(2026-09-30 用户指定新增)。
         // 沿革:当日稍早曾删去「星盘 + 下界之星×2」——**数量不同,与本次的 ×1 版并非同一配方**;同日按用户口径以 ×1 加入本条 ⇒ 当前两条并存。
@@ -370,7 +371,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('B', ModItems.BLANK_CHIP.get())
                 .define('C', ModItems.STAR_COIN.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 袋装星币:9 枚星币打包成 1 袋
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.STAR_COIN_BAG.get())
@@ -407,7 +408,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('D', Items.DIAMOND)
                 .define('G', ModItems.GOLDEN_STAR_PLATE.get())
                 .unlockedBy("has_cutter_chip", has(ModItems.CUTTER_CHIP.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 标记喷罐:上排 下界疣·青金石·下界疣｜中排 标记涂料·空白筹码·标记涂料｜下排 星币·星币·星币 [稀有·标记]
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.MARKER_SPRAYER_CHIP.get())
@@ -420,7 +421,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('B', ModItems.BLANK_CHIP.get())
                 .define('C', ModItems.STAR_COIN.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 魔法秘典:上排 书与笔·末影之眼·书与笔｜中排 附魔瓶·空白筹码·附魔瓶｜下排 星盘·星盘·星盘 [史诗·无流派]
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.MAGIC_TOME_CHIP.get())
@@ -433,7 +434,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('B', ModItems.BLANK_CHIP.get())
                 .define('P', ModItems.STAR_PLATE.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 大背包:上排 皮革·皮革·皮革｜中排 铁锭·空白筹码·铁锭｜下排 星盘·星盘·星盘 [史诗·无流派]
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.BIG_BACKPACK_CHIP.get())
@@ -445,7 +446,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('B', ModItems.BLANK_CHIP.get())
                 .define('P', ModItems.STAR_PLATE.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 忍术飞镖:上排 下界合金锭·红石块·下界合金锭｜中排 标记涂料·空白筹码·标记涂料｜下排 黄金星盘·黄金星盘·黄金星盘 [传奇·标记]
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.NINJA_STAR_CHIP.get())
@@ -458,7 +459,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('B', ModItems.BLANK_CHIP.get())
                 .define('G', ModItems.GOLDEN_STAR_PLATE.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 手持风扇-小:上排 羽毛·竹子·羽毛｜中排 标记涂料·空白筹码·标记涂料｜下排 星币·星币·星币 [稀有·标记]
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.HAND_FAN_SMALL_CHIP.get())
@@ -471,7 +472,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('B', ModItems.BLANK_CHIP.get())
                 .define('C', ModItems.STAR_COIN.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 手持风扇-大:通用蓝->紫升级配方(手持风扇-小 + 青金石 + 金锭 + 星盘)
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.HAND_FAN_BIG_CHIP.get())
@@ -483,7 +484,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('T', ModItems.HAND_FAN_SMALL_CHIP.get())
                 .define('P', ModItems.STAR_PLATE.get())
                 .unlockedBy("has_hand_fan_small", has(ModItems.HAND_FAN_SMALL_CHIP.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // === 新筹码(全部为 shape:空白筹码居中,mod 物品在中轴,原版材料在四角) ===
         // ATM机:上排 金锭·金锭·金锭｜中排 星币尘·空白筹码·星币尘｜下排 星币·星币·星币 [稀有·星光]
@@ -496,7 +497,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('B', ModItems.BLANK_CHIP.get())
                 .define('C', ModItems.STAR_COIN.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 银行卡-余额少:上排 金锭·金块·金锭｜中排 星币尘·空白筹码·星币尘｜下排 星币·星币·星币 [稀有·星光]
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.BANK_CARD_LOW.get())
@@ -509,7 +510,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('B', ModItems.BLANK_CHIP.get())
                 .define('C', ModItems.STAR_COIN.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 银行卡-余额多:蓝->紫(通用升级:青金石/金锭/星盘)
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.BANK_CARD_HIGH.get())
@@ -521,7 +522,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('G', Items.GOLD_INGOT)
                 .define('P', ModItems.STAR_PLATE.get())
                 .unlockedBy("has_bank_card_low", has(ModItems.BANK_CARD_LOW.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 银行卡-用不完:紫->金(通用升级:红石/钻石/黄金星盘)
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.BANK_CARD_UNLIMITED.get())
@@ -533,7 +534,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('D', Items.DIAMOND)
                 .define('G', ModItems.GOLDEN_STAR_PLATE.get())
                 .unlockedBy("has_bank_card_high", has(ModItems.BANK_CARD_HIGH.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 拳击手套-初级:中央空白筹码 + 中轴星币 + 铁锭/皮革四角
         // 拳击手套-初级:3 星币 + 3 白色羊毛 + 2 皮革,空白筹码居中
@@ -546,7 +547,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('B', ModItems.BLANK_CHIP.get())
                 .define('C', ModItems.STAR_COIN.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 拳击手套-中级:蓝->紫(通用升级)
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.BOXING_GLOVES_MEDIUM.get())
@@ -558,7 +559,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('G', Items.GOLD_INGOT)
                 .define('P', ModItems.STAR_PLATE.get())
                 .unlockedBy("has_boxing_gloves_low", has(ModItems.BOXING_GLOVES_LOW.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 拳击手套-高级:紫->金(通用升级)
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.BOXING_GLOVES_HIGH.get())
@@ -570,7 +571,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('D', Items.DIAMOND)
                 .define('G', ModItems.GOLDEN_STAR_PLATE.get())
                 .unlockedBy("has_boxing_gloves_medium", has(ModItems.BOXING_GLOVES_MEDIUM.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 速度轮滑-初级:中央空白筹码 + 中轴星币 + 皮革/铁锭四角
         // 速度轮滑:3 星币 + 1 皮革靴子 + 2 冰 + 2 铁锭,空白筹码居中
@@ -584,7 +585,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('B', ModItems.BLANK_CHIP.get())
                 .define('C', ModItems.STAR_COIN.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 速度轮滑-中级:蓝->紫(通用升级)
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.SPEED_SKATES_MEDIUM.get())
@@ -596,7 +597,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('G', Items.GOLD_INGOT)
                 .define('P', ModItems.STAR_PLATE.get())
                 .unlockedBy("has_speed_skates_low", has(ModItems.SPEED_SKATES_LOW.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 速度轮滑-高级:紫->金(通用升级)
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.SPEED_SKATES_HIGH.get())
@@ -608,7 +609,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('D', Items.DIAMOND)
                 .define('G', ModItems.GOLDEN_STAR_PLATE.get())
                 .unlockedBy("has_speed_skates_medium", has(ModItems.SPEED_SKATES_MEDIUM.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 摩托头盔-一般:中央空白筹码 + 中轴星币 + 铁锭/皮革
         // 摩托头盔-一般:3 星币 + 2 玻璃板 + 1 皮革头盔 + 2 铁锭,空白筹码居中
@@ -622,7 +623,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('B', ModItems.BLANK_CHIP.get())
                 .define('C', ModItems.STAR_COIN.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 摩托头盔-中级:蓝->紫(通用升级)
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.MOTO_HELMET_MEDIUM.get())
@@ -634,7 +635,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('G', Items.GOLD_INGOT)
                 .define('P', ModItems.STAR_PLATE.get())
                 .unlockedBy("has_moto_helmet_low", has(ModItems.MOTO_HELMET_LOW.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 摩托头盔-高级:紫->金(通用升级)
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.MOTO_HELMET_HIGH.get())
@@ -646,7 +647,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('D', Items.DIAMOND)
                 .define('G', ModItems.GOLDEN_STAR_PLATE.get())
                 .unlockedBy("has_moto_helmet_medium", has(ModItems.MOTO_HELMET_MEDIUM.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 夹心饼干-一般:中央空白筹码 + 中轴星币 + 面包/糖四角
         // 夹心饼干-一般:3 星币 + 2 曲奇 + 鸡蛋 + 2 奶桶,空白筹码居中
@@ -660,7 +661,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('B', ModItems.BLANK_CHIP.get())
                 .define('C', ModItems.STAR_COIN.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 夹心饼干-可口:蓝->紫(通用升级)
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.SANDWICH_MEDIUM.get())
@@ -672,7 +673,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('G', Items.GOLD_INGOT)
                 .define('P', ModItems.STAR_PLATE.get())
                 .unlockedBy("has_sandwich_low", has(ModItems.SANDWICH_LOW.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 夹心饼干-美味:紫->金(通用升级)
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.SANDWICH_HIGH.get())
@@ -684,7 +685,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('D', Items.DIAMOND)
                 .define('G', ModItems.GOLDEN_STAR_PLATE.get())
                 .unlockedBy("has_sandwich_medium", has(ModItems.SANDWICH_MEDIUM.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 魔法箭袋:上排 光灵箭·光灵箭·光灵箭｜中排 标记涂料·空白筹码·标记涂料｜下排 星盘·星盘·星盘 [史诗·标记]
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.MAGIC_QUIVER.get())
@@ -697,7 +698,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('B', ModItems.BLANK_CHIP.get())
                 .define('P', ModItems.STAR_PLATE.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 缓冲盾牌:上排 钻石·盾牌·钻石｜中排 再生试剂·空白筹码·再生试剂｜下排 星币·星币·星币 [稀有·治愈]
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.BUFFER_SHIELD.get())
@@ -710,7 +711,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('B', ModItems.BLANK_CHIP.get())
                 .define('C', ModItems.STAR_COIN.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 星币锤:上排 星币袋·重锤·星币袋｜中排 星币尘·空白筹码·星币尘｜下排 黄金星盘·黄金星盘·黄金星盘 [传奇·星光]
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.STAR_COIN_HAMMER.get())
@@ -723,7 +724,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('B', ModItems.BLANK_CHIP.get())
                 .define('G', ModItems.GOLDEN_STAR_PLATE.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 诅咒之剑:金剑上排 + 哭泣黑曜石中轴 + 灵魂营火两侧 + 空白筹码居中 + 星币下排
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.CURSED_SWORD.get())
@@ -736,7 +737,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('C', ModItems.BLANK_CHIP.get())
                 .define('B', ModItems.STAR_COIN.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 复仇之戟:凋灵骷髅头上排 + 钻石剑中轴 + 空白筹码居中 + 星盘下排
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.REVENGE_HALBERD.get())
@@ -748,7 +749,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('C', ModItems.BLANK_CHIP.get())
                 .define('P', ModItems.STAR_PLATE.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 贯穿之铳:下界合金锭上排 + 潮涌核心/紫水晶碎片中轴 + 空白筹码居中 + 黄金星盘下排
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.PIERCING_GUN.get())
@@ -761,7 +762,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('C', ModItems.BLANK_CHIP.get())
                 .define('P', ModItems.GOLDEN_STAR_PLATE.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 可口糖果:上排 糖·曲奇·糖｜中排 再生试剂·空白筹码·再生试剂｜下排 星盘·星盘·星盘 [史诗·治愈]
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.CANDY_CHIP.get())
@@ -774,7 +775,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('B', ModItems.BLANK_CHIP.get())
                 .define('P', ModItems.STAR_PLATE.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 友情徽章:上排 治疗药水·附魔金苹果·治疗药水｜中排 再生试剂·空白筹码·再生试剂｜下排 星盘·星盘·星盘 [史诗·治愈]
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.FRIENDSHIP_BADGE.get())
@@ -790,7 +791,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('B', ModItems.BLANK_CHIP.get())
                 .define('P', ModItems.STAR_PLATE.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 探天卫星:红石块上排 + 轨道炮/空白筹码中轴 + 黄金星盘下排
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.SATELLITE_CHIP.get())
@@ -802,7 +803,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('C', ModItems.BLANK_CHIP.get())
                 .define('P', ModItems.GOLDEN_STAR_PLATE.get())
                 .unlockedBy("has_orbital_strike", has(ModItems.ORBITAL_STRIKE_CARD.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 肾上腺素-一般:再生药水 + 末影珍珠 + 灵魂沙 + 空白筹码 + 星盘(史诗)
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.ADRENALINE_LOW.get())
@@ -818,7 +819,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('C', ModItems.BLANK_CHIP.get())
                 .define('P', ModItems.STAR_PLATE.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 肾上腺素-高效:紫→金升级配方 RZR/ZOZ/PPP
         // (R=红石粉,Z=钻石,O=史诗品质筹码(本例肾上腺素-一般),P=黄金星盘;遵循通用紫-金配方)
@@ -831,7 +832,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('O', ModItems.ADRENALINE_LOW.get())
                 .define('P', ModItems.GOLDEN_STAR_PLATE.get())
                 .unlockedBy("has_adrenaline_low", has(ModItems.ADRENALINE_LOW.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // === 充能流派筹码(1.2.0):图案按各筹码图标视觉判读,末行为基底材料行 ===
         // 跃迁引擎:末影珍珠外圈 + 导电线材中轴(居中空白筹码) + 星币下排
@@ -844,7 +845,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('C', ModItems.BLANK_CHIP.get())
                 .define('B', ModItems.STAR_COIN.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 能量回收器:燧石/活塞外圈 + 导电线材中轴(居中空白筹码) + 星币下排
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.ENERGY_RECYCLER.get())
@@ -857,7 +858,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('C', ModItems.BLANK_CHIP.get())
                 .define('B', ModItems.STAR_COIN.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 电流剑:红石/钻石剑外圈 + 导电线材中轴(居中空白筹码) + 星币下排
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.ELECTRIC_SWORD.get())
@@ -870,7 +871,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('C', ModItems.BLANK_CHIP.get())
                 .define('B', ModItems.STAR_COIN.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 高级外设:红石火把/红石比较器外圈 + 导电线材中轴(居中空白筹码) + 星盘下排(紫)
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.ADVANCED_PERIPHERALS.get())
@@ -883,7 +884,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('C', ModItems.BLANK_CHIP.get())
                 .define('P', ModItems.STAR_PLATE.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 永动机:金块/下界合金锭外圈 + 导电线材中轴(居中空白筹码) + 黄金星盘下排(金)
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.PERPETUAL_MOTION.get())
@@ -896,7 +897,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('C', ModItems.BLANK_CHIP.get())
                 .define('G', ModItems.GOLDEN_STAR_PLATE.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 电流核心:红石比较器外圈 + 避雷针中轴 / 导电线材外圈 + 空白筹码居中 / 星盘下排(紫)
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.CURRENT_CORE_CHIP.get())
@@ -909,7 +910,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('C', ModItems.BLANK_CHIP.get())
                 .define('P', ModItems.STAR_PLATE.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // === 1.2.0 补齐的筹码配方(按规则生成:品质底行 + 第二行中间空白筹码 + 流派材料) ===
         // --- 充能类 ---
@@ -924,7 +925,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('B', ModItems.BLANK_CHIP.get())
                 .define('P', ModItems.STAR_PLATE.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 安全气囊:上排 皮革·白色羊毛·皮革｜中排 导电线材·空白筹码·导电线材｜下排 星盘·星盘·星盘 [史诗·充能]
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.AIRBAG_CHIP.get())
@@ -937,7 +938,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('B', ModItems.BLANK_CHIP.get())
                 .define('P', ModItems.STAR_PLATE.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 电磁炮:上排 红石块·末地水晶·红石块｜中排 导电线材·空白筹码·导电线材｜下排 黄金星盘·黄金星盘·黄金星盘 [传奇·充能]
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.RAILGUN_CHIP.get())
@@ -950,7 +951,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('B', ModItems.BLANK_CHIP.get())
                 .define('G', ModItems.GOLDEN_STAR_PLATE.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 原初核心:上排 下界合金锭·龙息·下界合金锭｜中排 导电线材·空白筹码·导电线材｜下排 黄金星盘·黄金星盘·黄金星盘 [传奇·充能]
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.PRIMORDIAL_CORE_CHIP.get())
@@ -963,7 +964,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('B', ModItems.BLANK_CHIP.get())
                 .define('G', ModItems.GOLDEN_STAR_PLATE.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // --- 治愈类 ---
         // 大碗炖肉:上排 碗·牛排·碗｜中排 再生试剂·空白筹码·再生试剂｜下排 黄金星盘·黄金星盘·黄金星盘 [传奇·治愈]
@@ -977,7 +978,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('B', ModItems.BLANK_CHIP.get())
                 .define('G', ModItems.GOLDEN_STAR_PLATE.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // --- 无流派类 ---
         // 书签:上排 纸·皮革·纸｜中排 线·空白筹码·线｜下排 星币·星币·星币 [稀有·无流派]
@@ -991,7 +992,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('B', ModItems.BLANK_CHIP.get())
                 .define('C', ModItems.STAR_COIN.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 会员推荐信:上排 纸·书·纸｜中排 羽毛·空白筹码·羽毛｜下排 星币·星币·星币 [稀有·无流派]
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.MEMBER_RECOMMENDATION_CHIP.get())
@@ -1004,7 +1005,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('B', ModItems.BLANK_CHIP.get())
                 .define('C', ModItems.STAR_COIN.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 小猪存钱罐:上排 金锭·生猪排·金锭｜中排 红砖·空白筹码·红砖｜下排 星币·星币·星币 [稀有·无流派]
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.PIGGY_BANK_CHIP.get())
@@ -1017,7 +1018,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('B', ModItems.BLANK_CHIP.get())
                 .define('C', ModItems.STAR_COIN.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 智能手表:上排 金锭·时钟·金锭｜中排 红石粉·空白筹码·红石粉｜下排 星盘·星盘·星盘 [史诗·无流派]
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.SMART_WATCH_CHIP.get())
@@ -1030,7 +1031,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('B', ModItems.BLANK_CHIP.get())
                 .define('P', ModItems.STAR_PLATE.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 磨刀石:上排 下界合金锭·砂轮·下界合金锭｜中排 燧石·空白筹码·燧石｜下排 星盘·星盘·星盘 [史诗·无流派]
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.WHETSTONE_CHIP.get())
@@ -1043,7 +1044,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('B', ModItems.BLANK_CHIP.get())
                 .define('P', ModItems.STAR_PLATE.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
-                .save(output);
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 大当家立牌:空白立牌 + 钻石骰子 + 红石块×4 + 金块×1 + 黄金星盘×2(有序,空白立牌置中,骰子置中下)
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.FEN_SIGN.get())

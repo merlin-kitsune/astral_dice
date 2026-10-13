@@ -12,6 +12,7 @@ import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.network.ModNetwork;
 import com.merlinkitsune.astral_dice.network.VersionGate;
 import com.merlinkitsune.astral_dice.recipe.ModRecipeSerializers;
+import com.merlinkitsune.astral_dice.recipe.condition.ChipRecipesEnabledCondition;
 import com.merlinkitsune.astral_dice.screen.ModMenuTypes;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.eventbus.api.IEventBus;
@@ -43,6 +44,8 @@ public class AstralDiceMod {
         com.merlinkitsune.astral_dice.audio.ModSounds.SOUNDS.register(modEventBus);
         ModEnchantments.ENCHANTMENTS.register(modEventBus);
         ModRecipeSerializers.RECIPE_SERIALIZERS.register(modEventBus);
+        // 条件序列化器(ChipRecipesEnabledCondition)不是注册表项,必须在此同步注册(详见该类 javadoc)。
+        ChipRecipesEnabledCondition.register();
         ModCreativeTabs.CREATIVE_TABS.register(modEventBus);
         // 方块注册(1.20.1 Forge 线首个方块:卡牌商店;见 block/ModBlocks)
         com.merlinkitsune.astral_dice.block.ModBlocks.BLOCKS.register(modEventBus);

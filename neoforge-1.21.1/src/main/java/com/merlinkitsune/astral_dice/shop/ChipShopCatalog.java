@@ -43,6 +43,12 @@ public final class ChipShopCatalog {
     /** 货位数（条带 cell1..cell3） */
     public static final int OFFER_COUNT = 3;
 
+    /**
+     * 筹码合成总开关的**权威默认值**(与 {@code config.ModCommonConfig#ENABLE_CHIP_RECIPES} 对应:
+     * 该配置项以此为默认定义 —— 关闭时 61 枚筹码无法通过合成获得)。
+     */
+    public static final boolean CHIP_RECIPES_DEFAULT = false;
+
     /** 品质码：稀有 / 史诗 / 传奇（= 品质外框 quality_1/2/3 的序号） */
     public static final int TIER_RARE = 1;
     public static final int TIER_EPIC = 2;

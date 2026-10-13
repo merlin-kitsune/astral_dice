@@ -1,5 +1,10 @@
 {
   "parent": "minecraft:recipes/root",
+  "conditions": [
+    {
+      "type": "astral_dice:chip_recipes_enabled"
+    }
+  ],
   "criteria": {
     "has_boxing_gloves_medium": {
       "conditions": {
