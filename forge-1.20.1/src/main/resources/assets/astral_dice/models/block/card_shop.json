@@ -7,7 +7,7 @@
 	],
 	"textures": {
 		"1": "astral_dice:block/card_shop",
-		"particle": "astral_dice:block/card_shop"
+		"particle": "astral_dice:block/card_shop_particle"
 	},
 	"render_type": "minecraft:cutout",
 	"elements": [

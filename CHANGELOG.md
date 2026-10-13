@@ -4,7 +4,7 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
-## Unreleased (2.0.0-SNAPSHOT.110)
+## Unreleased (2.0.0-SNAPSHOT.111)
 
 ### New Content
 
@@ -201,6 +201,8 @@
 
 
 ### Content & Balance
+
+- **Card Shop and Chip Shop break particles now use their main materials**: fragments released when breaking these blocks no longer mix in the register, screen and other colors — the Card Shop shows only wood and white marble, and the Chip Shop only black stone and gold.
 
 #### Damage & Resolution
 

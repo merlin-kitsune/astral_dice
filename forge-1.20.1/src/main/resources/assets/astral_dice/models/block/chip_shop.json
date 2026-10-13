@@ -7,7 +7,7 @@
 	],
 	"textures": {
 		"0": "astral_dice:block/chip_shop",
-		"particle": "astral_dice:block/chip_shop"
+		"particle": "astral_dice:block/chip_shop_particle"
 	},
 	"render_type": "minecraft:cutout",
 	"elements": [
