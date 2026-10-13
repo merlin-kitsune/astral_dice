@@ -2,22 +2,22 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "pattern": [
-    "TTT",
-    "BSB",
-    "MMM"
+    "GPG",
+    "HKH",
+    "HHH"
   ],
   "key": {
-    "T": {
-      "item": "minecraft:smooth_stone_slab"
+    "G": {
+      "item": "minecraft:gold_ingot"
     },
-    "B": {
-      "item": "astral_dice:star_coin"
+    "P": {
+      "item": "astral_dice:star_plate"
     },
-    "S": {
+    "H": {
+      "item": "minecraft:polished_blackstone_bricks"
+    },
+    "K": {
       "item": "astral_dice:blank_chip"
-    },
-    "M": {
-      "tag": "minecraft:logs"
     }
   },
   "result": {
