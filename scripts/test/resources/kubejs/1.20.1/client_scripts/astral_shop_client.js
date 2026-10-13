@@ -23,6 +23,17 @@
 //    · 确认键          = (191,61)         相对 (81+94+16, 26+24+11)
 // ════════════════════════════════════════════════════════════════════════════
 
+// ════════════════════════════════════════════════════════════════════════════
+//  【任务 CHIP 移植（2026-10-13，自 1.21.1 蓝本 astral_shop_client.js 筹码段）】
+//   筹码商店（ChipShopScreen / ChipShopClientState / ChipShopMenu）与卡牌商店**不同屏不同态**，
+//   故独立成一套；三个**余额哨兵** 770 / 771 / 772（与既有 777 及 MCP 手动带 [700,709] 互不重叠）：
+//     · 770 = 筹码购买（选 0 号格 → 确认键 → 服务端扣款发货并关店）
+//     · 771 = 刷新（次数 1→0）+ 次数 0 红闪（第二次点刷新键只红闪、不发包）
+//     · 772 = 物品栏满拒绝（先由客户端发 `astralshop cinv CHIPD fill` 填满 36 格 → 选格 → 确认）
+//   坐标口径（绝对坐标 = getGuiLeft()/getGuiTop() + **已含 STRIP 偏移 (34,6) 的** GUI 相对值）：
+//     确认键 (57,54) / 刷新键 (227,54) / 筹码格 i (99/142/185, 45)（与 1.21.1 蓝本逐值一致）。
+//   客户端只驱动界面 mouseClicked（购买/刷新包由 ChipShopScreen 内部自发），不引用任何网络类。
+// ════════════════════════════════════════════════════════════════════════════
 var Mc_CLASS = Java.loadClass("net.minecraft.client.Minecraft");
 var ShopScreen_CLASS = Java.loadClass("com.merlinkitsune.astral_dice.screen.CardShopScreen");
 var ClientState_CLASS = Java.loadClass("com.merlinkitsune.astral_dice.client.CardShopClientState");
@@ -43,6 +54,12 @@ try { JeiInternal_CLASS = Java.loadClass("mezz.jei.common.Internal"); } catch (e
 try { JeiCategory_CLASS = Java.loadClass("com.merlinkitsune.astral_dice.compat.jei.CardShopCategory"); } catch (eJ2) { }
 var ShopMenu_CLASS = null;
 try { ShopMenu_CLASS = Java.loadClass("com.merlinkitsune.astral_dice.shop.CardShopMenu"); } catch (eS1) { }
+// 任务 CHIP 移植（2026-10-13，自 1.21.1 蓝本 astral_shop_client.js 77-81 行同口径）：
+//   筹码商店屏与客户端态（可选类，取不到时筹码场景自动不生效，不影响既有场景）
+var ChipShopScreen_CLASS = null;
+var ChipShopClientState_CLASS = null;
+try { ChipShopScreen_CLASS = Java.loadClass("com.merlinkitsune.astral_dice.screen.ChipShopScreen"); } catch (eChipS) { }
+try { ChipShopClientState_CLASS = Java.loadClass("com.merlinkitsune.astral_dice.client.ChipShopClientState"); } catch (eChipC) { }
 var csLastDst = -1;
 
 var csTick = 0;
@@ -54,6 +71,18 @@ var csStep = 0;
 var csOpens = 0;
 var csSlot0Before = "?";
 var csBalBefore = -1;
+
+// 任务 CHIP 移植（2026-10-13，自 1.21.1 蓝本 114-123 行）：筹码商店三场景
+//   770 = 筹码购买 / 771 = 刷新+次数 0 红闪 / 772 = 物品栏满拒绝
+//   （与既有 csGate=777 及 MCP 手动带 [700,709] 互不重叠）
+var csChipGate = 770;
+var csChipRefreshGate = 771;
+var csChipDenyGate = 772;
+var csChip = false;             // 本次开屏是筹码商店屏
+var csChipBuy = false;
+var csChipRefresh = false;
+var csChipDeny = false;
+var csChipAfterLogged = false;  // 购买场景的「确认后读数」是否已落（购买成功时服务端同一拍关店 ⇒ step45 常来不及跑，由关屏分支补落）
 
 // ── MCP 手动模式（2026-10-10 夜，用户四步任务里的「MCP 实机测试」专用）──────────────
 // 触发口径：**钱包余额落在 [700,709]**（客户端 WalletState 读得到，无需文件/IO 类：KubeJS 类过滤器
@@ -447,6 +476,113 @@ function csForeignJanitor(mc) {
     } catch (e) { cs("evt=foreign:ex=" + e); }
 }
 
+// ══════════════════ 任务 CHIP 移植（2026-10-13，自 1.21.1 蓝本 astral_shop_client.js 筹码段）══════════════════
+//  背景：筹码商店（ChipShopScreen / ChipShopClientState / ChipShopMenu）与卡牌商店**不同屏不同态**，
+//  故独立成一套；哨兵只用 770/771/772（避开既有 777 与 MCP 手动带 [700,709]）。
+//  坐标口径（⚠️ 与卡牌屏同源，但筹码屏多一层「条带 STRIP 偏移」）：
+//    ChipShopScreen 的 CELL_/LABEL_/CONFIRM_/REFRESH_ 常量是**条带内相对**坐标，命中判定走
+//    isHoveringStrip → stripX/stripY（再叠加 STRIP_X=34 / STRIP_Y=6 与 leftPos/topPos）
+//    ⇒ 探针必须把 STRIP 偏移一并算进去，否则点不中（1.21.1 首跑实测：sel 恒 -1、确认键空转但返回 true）。
+//    换算依据（forge 版 ChipShopScreen 常量与 1.21.1 **逐值相同**，已开包取证：
+//      STRIP_X=34 / STRIP_Y=6 / CELL_X={3,45,88,131,174} / CELL_W=40 / CELL_H=STRIP_H=78 / CELL_Y=0 /
+//      CONFIRM_X=11 / CONFIRM_Y=36 / REFRESH_X=181 / REFRESH_Y=36 / BUTTON_SIZE=24）：
+//      确认键中心 = (STRIP_X 34 + CONFIRM_X 11 + 12, STRIP_Y 6 + CONFIRM_Y 36 + 12) = (57,54)
+//      刷新键中心 = (34 + REFRESH_X 181 + 12, 6 + 36 + 12)                          = (227,54)
+//      筹码格 i 中心 = (34 + CELL_X[i+1] + CELL_W/2 20, 6 + CELL_Y 0 + CELL_H/2 39)  = (99,45)/(142,45)/(185,45)
+//    ⚠️ 传给 csClick 的就是**已含 STRIP 偏移的 GUI 相对值**（如 99,45），csClick 内部再加 getGuiLeft/getGuiTop
+//      ⇒ 落到 absolute = leftPos+99, topPos+45，命中 isHoveringStrip(CELL_X[1],0,40,78) 的绝对框。**勿重复加偏移**。
+//  客户端只驱动界面 mouseClicked（购买/刷新包由 ChipShopScreen#onConfirmPressed / #onRefreshPressed 内部自发），
+//    不引用任何网络类（1.20.1 无 NeoForge PacketDistributor，且本场景根本不需要）。
+
+/** 类名：Rhino 里 `obj.getClass()` 不可用（TypeError: Cannot find function getClass）⇒ 用 toString 的 "全类名@hash" 解析（自 1.21.1 蓝本原样移植） */
+function csClsName(o) {
+    try {
+        if (o == null) { return "null"; }
+        var s = "" + o;
+        var m = /([A-Za-z_$][A-Za-z0-9_$.]*)@[0-9a-fA-F]+/.exec(s);
+        if (m != null) { var full = m[1]; return full.substring(full.lastIndexOf(".") + 1); }
+        return s.substring(0, 60);
+    } catch (e) { return "?"; }
+}
+
+/** 客户端侧发命令（GUI 开着时 T 键被吞，只能用这条通道；⚠️ 不要带前导斜杠）。自 1.21.1 蓝本原样移植 */
+function csCmd(mc, cmd, what, step) {
+    var ret = "?";
+    try { mc.player.connection.sendCommand(cmd); ret = "sent"; }
+    catch (e) { ret = "EX:" + ("" + e).substring(0, 90); }
+    cs("evt=cmd:step=" + step + ":what=" + what + ":cmd=" + cmd + ":ret=" + ret);
+}
+
+/** 当前屏是不是筹码商店屏（类取不到时恒 0） */
+function csChipScreen(mc) {
+    try {
+        if (mc.screen == null || ChipShopScreen_CLASS == null) { return 0; }
+        return (mc.screen instanceof ChipShopScreen_CLASS) ? 1 : 0;
+    } catch (e) { return -1; }
+}
+
+/** 筹码屏客户端态单行（全部走 ChipShopClientState 的公开只读接口；键序与 1.21.1 蓝本逐字节一致） */
+function csChipState(mc) {
+    var sel = csNum(function () { return ChipShopClientState_CLASS.selectedIndex(); });
+    var cost = csNum(function () { return ChipShopClientState_CLASS.cost(); });
+    var rl = csNum(function () { return ChipShopClientState_CLASS.remainingRefreshes(); });
+    var rt = csNum(function () { return ChipShopClientState_CLASS.totalRefreshes(); });
+    var deny = csNum(function () { return ChipShopClientState_CLASS.denyReason(); });
+    var ticks = csNum(function () { return ChipShopClientState_CLASS.denyTicks(); });
+    var red = -1;
+    try { red = ChipShopClientState_CLASS.denyBlinkRed() ? 1 : 0; } catch (eR) { red = -1; }
+    var offers = "";
+    try {
+        var n = ChipShopClientState_CLASS.offerCount();
+        for (var i = 0; i < n; i++) {
+            var st = ChipShopClientState_CLASS.offer(i);
+            var oid = (st == null || st.isEmpty()) ? "-" : csId(st);
+            var q = csNum(function () { return ChipShopClientState_CLASS.qualityCode(i); });
+            offers += (i > 0 ? "," : "") + i + "=" + oid + "@t" + q;
+        }
+    } catch (eO) { offers = "<ex>"; }
+    var scr = (mc.screen == null) ? "null" : csClsName(mc.screen);
+    return "sel=" + sel + ":cost=" + cost + ":refreshes=" + rl + "/" + rt + ":deny=" + deny
+        + ":dticks=" + ticks + ":red=" + red + ":offers=[" + offers + "]:scr=" + scr;
+}
+
+/** 770 = 筹码购买：选 0 号格 → 点确认键 → 服务端扣款发货并关店（关店后由 not-in-shop 分支落 evt=closed） */
+function csRunChipBuy(mc, step) {
+    if (step === 1) { cs("evt=chip_buy:open:bal=" + csNum(function () { return WalletState_CLASS.balance(); }) + ":" + csChipState(mc)); return; }
+    if (step === 20) { csClick(mc, 99, 45, "chip_cell0", step); return; }
+    if (step === 25) { cs("evt=chip_buy:selected:" + csChipState(mc)); return; }
+    if (step === 40) { csClick(mc, 57, 54, "chip_confirm", step); return; }
+    if (step === 45) { csChipAfterLogged = true; cs("evt=chip_buy:after_confirm:" + csChipState(mc)); return; }
+    if (step === 200) { cs("evt=chip_buy:still_open:" + csChipState(mc)); return; }
+    return;
+}
+
+/** 771 = 刷新：次数 1 → 点刷新键（真发包，服务端 1→0）→ 再点一次（次数 0 ⇒ 只红闪、不发包） */
+function csRunChipRefresh(mc, step) {
+    if (step === 1) { cs("evt=chip_ref:open:bal=" + csNum(function () { return WalletState_CLASS.balance(); }) + ":" + csChipState(mc)); return; }
+    if (step === 20) { csClick(mc, 227, 54, "chip_refresh", step); return; }
+    if (step === 30) { cs("evt=chip_ref:after_refresh:" + csChipState(mc)); return; }
+    if (step === 40) { csClick(mc, 227, 54, "chip_refresh_zero", step); return; }
+    if (step >= 43 && step <= 85 && step % 3 === 0) { cs("evt=chip_ref:blink:step=" + step + ":" + csChipState(mc)); return; }
+    if (step === 100) { cs("evt=chip_ref:end:" + csChipState(mc)); csClose(mc); return; }
+    return;
+}
+
+/** 772 = 物品栏满拒绝：屏内先由客户端发 `astralshop cinv CHIPD fill` 填满 36 格（GUI 开着时 T 键被吞，只能走 csCmd），
+ *  再选 0 号格 → 点确认 → 服务端 findEmptyInventorySlot<0 ⇒ DENY_INVENTORY_FULL(2) 经 S2C 包回客户端（红闪 30t、不扣款、不重抽）。
+ *  ⚠️ 不能「先填满物品栏再开屏」：ChipShopOpener.open 自己就会以 inventory_full 拒绝开店，屏根本不会出现。 */
+function csRunChipDeny(mc, step) {
+    if (step === 1) { cs("evt=chip_deny:open:bal=" + csNum(function () { return WalletState_CLASS.balance(); }) + ":" + csChipState(mc)); return; }
+    if (step === 8) { csCmd(mc, 'astralshop cinv CHIPD fill', "chip_deny_fill", step); return; }
+    if (step === 20) { csClick(mc, 99, 45, "chip_cell0", step); return; }
+    if (step === 25) { cs("evt=chip_deny:selected:" + csChipState(mc)); return; }
+    if (step === 40) { csClick(mc, 57, 54, "chip_confirm_full", step); return; }
+    if (step === 45) { cs("evt=chip_deny:after_confirm:" + csChipState(mc)); return; }
+    if (step >= 48 && step <= 90 && step % 3 === 0) { cs("evt=chip_deny:blink:step=" + step + ":" + csChipState(mc)); return; }
+    if (step === 110) { cs("evt=chip_deny:end:" + csChipState(mc)); csClose(mc); return; }
+    return;
+}
+
 ClientEvents.tick(event => {
     csTick++;
     var mc = null;
@@ -460,8 +596,17 @@ ClientEvents.tick(event => {
     if (csTick === 200 || (csTick - csJeiLast) >= 1200) { csJeiLast = csTick; csJei(); }
     var inShop = 0;
     try { inShop = (mc.screen != null && (mc.screen instanceof ShopScreen_CLASS)) ? 1 : 0; } catch (e1) { inShop = -1; }
-    if (inShop !== 1) {
-        if (csArmed) { csArmed = false; csRun = false; cs("evt=closed:tick=" + csTick + ":step=" + csStep + ":opens=" + csOpens); }
+    // 任务 CHIP 移植（2026-10-13）：筹码商店屏也算「在店内」（否则筹码屏一开就被当关屏、场景机立刻被复位）
+    var inChip = csChipScreen(mc);
+    if (inShop !== 1 && inChip !== 1) {
+        if (csArmed) {
+            // 任务 CHIP 移植：购买成功时服务端**同一拍关店** ⇒ step45 的 after_confirm 常来不及落；
+            // 客户端态（ChipShopClientState）是类级静态、不随屏销毁 ⇒ 在关屏这一拍补落同一条机器行。
+            if (csChipBuy && !csChipAfterLogged && csStep >= 40) { csChipAfterLogged = true; cs("evt=chip_buy:after_confirm:" + csChipState(mc)); }
+            csArmed = false; csRun = false;
+            csChipBuy = false; csChipRefresh = false; csChipDeny = false; csChip = false;
+            cs("evt=closed:tick=" + csTick + ":step=" + csStep + ":opens=" + csOpens);
+        }
         return;
     }
     if (!csArmed) {
@@ -470,10 +615,22 @@ ClientEvents.tick(event => {
         csStep = 0;
         var gbal = csNum(function () { return WalletState_CLASS.balance(); });
         csRun = (gbal === csGate);
-        cs("evt=open:tick=" + csTick + ":opens=" + csOpens + ":gate=" + gbal + ":run=" + (csRun ? 1 : 0) + ":" + csState(mc));
+        // 任务 CHIP 移植（2026-10-13）：筹码屏上的三个哨兵（卡牌屏永不匹配；等值匹配即可，筹码商店不产生余额增量）
+        csChipBuy = (inChip === 1 && gbal === csChipGate);
+        csChipRefresh = (inChip === 1 && gbal === csChipRefreshGate);
+        csChipDeny = (inChip === 1 && gbal === csChipDenyGate);
+        csChip = (csChipBuy || csChipRefresh || csChipDeny);
+        csChipAfterLogged = false;
+        cs("evt=open:tick=" + csTick + ":opens=" + csOpens + ":gate=" + gbal + ":run=" + (csRun ? 1 : 0)
+            + ":chip=" + (csChip ? 1 : 0) + ":" + (csChip ? csChipState(mc) : csState(mc)));
     }
     csStep++;
-    if (csRun && !mcpManual) {
+    if (csChip) {
+        // 任务 CHIP 移植（2026-10-13）：筹码三场景（与卡牌 csRun / janitor / hold 分支互斥）
+        if (csChipBuy) { csRunChipBuy(mc, csStep); }
+        else if (csChipRefresh) { csRunChipRefresh(mc, csStep); }
+        else if (csChipDeny) { csRunChipDeny(mc, csStep); }
+    } else if (csRun && !mcpManual) {
         csRunFirst(mc, csStep);
         if (csStep === 112) { cs("evt=leaveauto:how=" + csClose(mc)); }
     } else if (csStep === 60 && !mcpManual) {

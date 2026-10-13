@@ -1,0 +1,147 @@
+{
+  "case_id": "CHIP-CLIENT-REFRESH-1.20.1",
+  "title": "筹码商店·客户端真发包刷新（哨兵 771）：1→0 并首次起算锚点，第二次点击只红闪不发包",
+  "version": "1.20.1",
+  "target": {
+    "type": "feature",
+    "ref": "chip-shop"
+  },
+  "on_fail": "continue",
+  "steps": [
+    {
+      "op": "note",
+      "text": "筹码商店·客户端真发包刷新（哨兵 771）。判据正本 = 计划表 §6「次数为 0 时按钮只红闪、不发包；服务端同样拒绝」+ §4「红闪 30t」。\n\n链路：cregen CR zero 先把次数摆成 1 / 锚点 0 ⇒ /astralshop bal CR 771 武装 ⇒ copenkeep 开屏（gate=771）⇒\n  step20 点刷新键中心 (227,54) ⇒ **真发 ChipShopRefreshPayload** ⇒ 服务端 1→0 且**首次消耗才起算锚点**（anchor=now+36000）⇒ step30 客户端读数 refreshes=0/5 ⇒\n  step40 再点一次 ⇒ 客户端此时 remainingRefreshes()==0 ⇒ 只 notifyDeny(DENY_NO_REFRESH) 红闪、**不发第二个包** ⇒ step43..85 每 3t 落一条 blink 行 ⇒ step100 自关屏。\n\n⚠️ 真发包与本地拒绝在客户端都表现为 deny=1 + 红闪 ⇒「第二次没发包」这个事实**无法**由读数区分，由静态守门 G16/G19 承担；本用例判据 = 客户端 refreshes=0/5 与红闪 + 事后服务端读数 refreshes=0/5 且锚点已置。\n⚠️ 开屏后注入命令会被吞 ⇒ 服务端读数在客户端流程跑完（≈100t）之后再注入。\n⚠️ 平台差异（forge-1.20.1）：刷新包走本线既有 Forge 网络通道（SimpleChannel 承载 ChipShopRefreshPayload，替代 1.21.1 的 NeoForge PacketDistributor）；机器行 AP_CSC:* 与 server 侧 AP_CR_* 键名/格式逐字一致。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/tp @s ~ ~ ~ 0 0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop curioreset CR",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop creset CR",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop cregen CR zero",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop bal CR 771",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop copenkeep CR",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 13000
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop cstate CR",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=open:.*:gate=771:.*:chip=1:"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=click:step=20:what=chip_refresh:"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=chip_ref:after_refresh:.*:refreshes=0/5:"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=click:step=40:what=chip_refresh_zero:"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=chip_ref:blink:step=[0-9]+:.*:deny=1:"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=chip_ref:blink:step=[0-9]+:.*:red=1:"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=chip_ref:end:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CR_CREGEN:mode=zero:refreshes=1/5:anchor=0:delta=-[0-9]+:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CR_CST:offers=[a-z0-9_]+\\+[a-z0-9_]+\\+[a-z0-9_]+:last=-:purchased=0:refreshes=0/5:anchor=[1-9][0-9]{4,}:price=10"
+    },
+    {
+      "type": "crash"
+    }
+  ]
+}

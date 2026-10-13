@@ -1,0 +1,147 @@
+{
+  "case_id": "CHIP-CLIENT-DENY-1.20.1",
+  "title": "筹码商店·物品栏满拒绝（哨兵 772）：屏内填满 36 格后点确认 ⇒ deny=2 红闪、不扣款不重抽",
+  "version": "1.20.1",
+  "target": {
+    "type": "feature",
+    "ref": "chip-shop"
+  },
+  "on_fail": "continue",
+  "steps": [
+    {
+      "op": "note",
+      "text": "筹码商店·客户端确认时物品栏满 ⇒ DENY_INVENTORY_FULL(2) 红闪、不扣款、不重抽（哨兵 772）。判据正本 = 计划表 §4 拒绝码 2 + 校验序（余额 → 找空位 → 扣款 → 写物品栏）+ §6。\n\n⚠️ 关键设计约束（实测教训）：**不能**「先填满物品栏再开屏」—— ChipShopOpener.open 自己就会以 inventory_full 拒绝开店，屏根本不会出现；而「菜单已开 + 物品栏满」也无法用 /astralshop 的守卫命令造（守卫开店同样被拒）。\n⇒ 必须由**客户端在屏内**发命令填满物品栏：本场景 step8 用 csCmd（mc.player.connection.sendCommand，GUI 开着时唯一可用的命令通道）发 `astralshop cinv CHIPD fill`，再 step20 选格、step40 点确认。\n\n链路：cprice CD 0 归一化 → bal CD 772 武装 → copenkeep 开屏（gate=772）⇒ step8 填满 36 格（服务端落 AP_CHIPD_CINV:inv=36/36）⇒ step40 点确认 ⇒ 服务端 handleBuy 在「找空位」这一步失败 ⇒ 不扣款、不重抽、发 ChipShopDenyPayload(2) ⇒ 客户端 deny=2 + 红闪 30t ⇒ step110 自关屏。\n\n判据：客户端 after_confirm 读数 deny=2 + 红闪；服务端事后读数余额仍 772、purchased 仍 0、候选与次数未变（offers/last/refreshes/anchor/price 全部同开屏前）。\n⚠️ 平台差异（forge-1.20.1）：拒绝提示经 ModNetwork.sendToPlayer + ModNetwork.ActionBarMessage（替代 1.21.1 的 NeoForge 包通道 PacketDistributor + ActionBarPayload）；拒绝码语义与机器行逐字一致。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/tp @s ~ ~ ~ 0 0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop curioreset CD",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop creset CD",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop cprice CD 0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop bal CD 772",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop copenkeep CD",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 14000
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop cstate CD",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=open:.*:gate=772:.*:chip=1:"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=cmd:step=8:what=chip_deny_fill:cmd=astralshop cinv CHIPD fill:ret=sent"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=chip_deny:selected:sel=0:"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=chip_deny:after_confirm:.*:deny=2:"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=chip_deny:blink:step=[0-9]+:.*:red=1:"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=chip_deny:end:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CHIPD_CINV:mode=fill:changed=[0-9]+:inv=36/36"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CD_CST:offers=[a-z0-9_]+\\+[a-z0-9_]+\\+[a-z0-9_]+:last=-:purchased=0:refreshes=3/5:anchor=0:price=10"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CD_CST2:[^:]*:[^:]*:[^:]*:bal=772:inv=36/36"
+    },
+    {
+      "type": "crash"
+    }
+  ]
+}

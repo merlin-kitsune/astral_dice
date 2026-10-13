@@ -34,6 +34,22 @@
 //    /astralshop vtrade <tag> <level>             开真实交易界面 → 过滤后索引对齐 + 真实成交
 //    /astralshop vclose <tag>                     关交易界面 + 移除探针村民
 //
+//  ── 筹码商店(2026-10-13 批,移植自 1.21.1,前缀 c*)────────────────────────────────────────
+//    /astralshop cblock <tag>                     在脚边放 astral_dice:chip_shop → 真实右键开店
+//    /astralshop cpool <tag>                      池 61 / 各档计数 / 已拥有 / ownsEverything / 星等
+//    /astralshop cstate <tag>                     附件原文(offers/last/purchased/refreshes/anchor)
+//    /astralshop copen <tag>                      直接 ChipShopOpener.open(玩家),读完即关屏
+//    /astralshop copenkeep <tag>                  同上但**留屏**(给客户端探针驱动真点击)
+//    /astralshop cmenu <tag>                      当前 ChipShopMenu 读数(价格/次数/拒绝码/三格)
+//    /astralshop cbuy <tag> <index>               服务端 handleBuy(与客户端确认按钮同入口)
+//    /astralshop crefresh <tag>                   服务端 handleRefresh(与刷新按钮同入口)
+//    /astralshop cprice <tag> <n>                 置 purchasedCount=n → 公式值/态值/菜单值
+//    /astralshop cregen <tag> <due|max|zero|first|pend>  摆刷新锚点形态,等 ticker 自己跑
+//    /astralshop cinv <tag> <fill|clear>          物品栏 36 格填满/清空
+//    /astralshop cdeny <tag>                      物品栏满时开店 ⇒ 期望无菜单 + OPEN_DENIED
+//    /astralshop cstable <tag>                    关店重开候选恒定(needsReroll 为假)
+//    /astralshop cseq <tag>                       边界序列(余额不足/越界×2/成功/重进核对)
+//
 //  ── 实现约束(与 astral_bugfix_probe.js 同口径)────────────────────────────
 //   1) 命令注册必须在 ServerEvents.commandRegistry 回调内;执行体为顶层命名函数;
 //      函数内一律 var(避免 KubeJS 严格模式歧义)。
@@ -77,6 +93,13 @@ var SP_Healing = spTryClass('com.merlinkitsune.astral_dice.item.HealingManager')
 var SP_Teru = spTryClass('com.merlinkitsune.astral_dice.item.sign.TeruSignItem');
 var SP_DiceCurio = spTryClass('com.merlinkitsune.astral_dice.item.dice.DiceCurioItem');
 var SP_Vitamin = spTryClass('com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem');
+// 筹码商店(2026-10-13 移植自 1.21.1)
+var SP_ChipCatalog = spTryClass('com.merlinkitsune.astral_dice.shop.ChipShopCatalog');
+var SP_ChipRoller = spTryClass('com.merlinkitsune.astral_dice.shop.ChipShopRoller');
+var SP_ChipState = spTryClass('com.merlinkitsune.astral_dice.shop.ChipShopState');
+var SP_ChipOpener = spTryClass('com.merlinkitsune.astral_dice.shop.ChipShopOpener');
+var SP_ChipMenu = spTryClass('com.merlinkitsune.astral_dice.shop.ChipShopMenu');
+var SP_Optional = spTryClass('java.util.Optional');
 var SP_RandomSource = spTryClass('net.minecraft.util.RandomSource');
 
 /** 探针村民的自定义名(便于 /kill @e[name=...] 清场) */
@@ -149,6 +172,35 @@ function sp_guardMenu(ctx, tag, fn) {
                 sp_send(ctx, 'AP_' + tag + '_MENULEASE:opened=1:closed=1');
             } catch (e2) {
                 sp_send(ctx, 'AP_' + tag + '_MENULEASE:opened=1:close_ex=' + sp_exText(e2));
+            }
+        }
+    }
+}
+
+/** 筹码商店版 sp_guardMenu：单独注入的聊天命令在界面开着时送不到（T 键被 GUI 吞掉，实测教训），
+ *  而 cmenu / cbuy / crefresh 需要服务端手里有 ChipShopMenu ⇒ 由服务端自己开店、跑完同 tick 关掉。
+ *  ⚠️ 不能复用 sp_guardMenu：它先用 SP_Opener（卡牌商店）开店、且只认 CardShopMenu（sp_shopMenuOf）。
+ *  ⚠️ 只有**取不到菜单**时才由本函数开店；已开着（如 cblock 的右键路径）则原样跑，跑完不关。 */
+function cp_guardMenu(ctx, tag, fn) {
+    var p = sp_p(ctx);
+    var opened = 0;
+    if (cp_menuOf(p) == null) {
+        try {
+            SP_ChipOpener.open(p);
+            opened = (cp_menuOf(p) == null) ? 0 : 1;
+        } catch (e) {
+            sp_send(ctx, 'AP_' + tag + '_CPMENULEASE:open_ex=' + sp_exText(e));
+        }
+    }
+    try {
+        return sp_guard(ctx, tag, fn);
+    } finally {
+        if (opened) {
+            try {
+                sp_closeMenu(p);
+                sp_send(ctx, 'AP_' + tag + '_CPMENULEASE:opened=1:closed=1');
+            } catch (e2) {
+                sp_send(ctx, 'AP_' + tag + '_CPMENULEASE:opened=1:close_ex=' + sp_exText(e2));
             }
         }
     }
@@ -1499,6 +1551,442 @@ function sp_doRecipes(ctx, tag, idStr) {
     return 1;
 }
 
+// ══ 筹码商店（Chip Shop）—— 2026-10-13 移植自 1.21.1 ═══════════════════════════════
+// 本批落地的第 2 座商店。全部驱动真代码路径：BlockState#use → ChipShopOpener.open
+// → ChipShopMenu.handleBuy / handleRefresh → ChipShopState 附件原文。
+// 机器行前缀 AP_<tag>_C*；购买与刷新另有产品侧自带行 CHIP_SHOP_BUY / CHIP_SHOP_REFRESH。
+// ⚠️ 三种拒绝（余额不足 / 次数为 0 / 物品栏满）**只有 actionbar + S2C 包、没有服务端日志**
+//    ⇒ 拒绝的判据是「状态未变 + 无 CHIP_SHOP_BUY 行」，不是某条 deny 日志行。
+
+function cp_menuOf(p) {
+    var m = null;
+    try { m = p.containerMenu; } catch (e) { return null; }
+    if (m == null) return null;
+    if (sp_cls(m) !== 'ChipShopMenu') return null;
+    return m;
+}
+
+function cp_state(p) {
+    try { return SP_ChipState.get(p); } catch (e) { return null; }
+}
+
+/** offers 列表 → 'a+b+c'（空列表 → '-'） */
+function cp_offersCsv(s) {
+    if (s == null) return '?';
+    var raw = null;
+    try { raw = s.offers(); } catch (e) { return '?'; }
+    var n = sp_len(raw);
+    if (n <= 0) return '-';
+    var out = [];
+    for (var i = 0; i < n; i++) { var v = sp_at(raw, i); out.push(v == null ? '_' : '' + v); }
+    return out.join('+');
+}
+
+function cp_lastCat(s) {
+    try {
+        var o = s.lastCategory();
+        return (o != null && o.isPresent()) ? '' + o.get() : '-';
+    } catch (e) { return '?'; }
+}
+
+/** 附件原文一条行（offers / last / purchased / refreshes / anchor / price / key） */
+function cp_stateLine(ctx, tag, s) {
+    if (s == null) { sp_send(ctx, 'AP_' + tag + '_CST:ex=state-null'); return; }
+    sp_send(ctx, 'AP_' + tag + '_CST:offers=' + cp_offersCsv(s) + ':last=' + cp_lastCat(s)
+        + ':purchased=' + s.purchasedCount() + ':refreshes=' + s.refreshesLeft() + '/' + SP_ChipCatalog.REFRESH_MAX
+        + ':anchor=' + s.regenAnchor() + ':price=' + s.price() + ':key=' + s.offersKey());
+}
+
+/** 菜单读数一条行（价格 / 次数 / 拒绝码 / 三格 id+tier / 候选键） */
+function cp_menuLine(ctx, tag, menu) {
+    if (menu == null) { sp_send(ctx, 'AP_' + tag + '_CMENU:null=1'); return; }
+    var cells = [];
+    for (var i = 0; i < 3; i++) {
+        var id = '?'; var tier = -99;
+        try { id = sp_id(menu.offerStack(i)); } catch (e) { id = '<ex>'; }
+        try { tier = menu.offerTier(i); } catch (e2) { tier = -98; }
+        cells.push(i + ':' + id + ':t' + tier);
+    }
+    var price = -1; var rl = -1; var rt = -1; var key = '?'; var deny = -99;
+    try { price = menu.price(); } catch (e3) { price = -2; }
+    try { rl = menu.remainingRefreshes(); } catch (e4) { rl = -2; }
+    try { rt = menu.totalRefreshes(); } catch (e5) { rt = -2; }
+    try { key = menu.offersKey(); } catch (e6) { key = '<ex>'; }
+    try { deny = menu.denyReason(); } catch (e7) { deny = -3; }
+    sp_send(ctx, 'AP_' + tag + '_CMENU:price=' + price + ':refreshes=' + rl + '/' + rt
+        + ':deny=' + deny + ':cells=' + cells.join(',') + ':key=' + key);
+}
+
+/** 物品栏 36 格 id 快照（0..8 快捷栏 / 9..35 主物品栏，不含副手） */
+function cp_invIds(p) {
+    var out = [];
+    try {
+        var inv = p.inventory;
+        for (var i = 0; i < 36; i++) { out.push(sp_id(inv.getItem(i))); }
+    } catch (e) { out.push('<?>'); }
+    return out;
+}
+
+function cp_invCount(p) {
+    var ids = cp_invIds(p); var n = 0;
+    for (var i = 0; i < ids.length; i++) { if (!sp_isEmptyId(ids[i])) { n++; } }
+    return n;
+}
+
+function cp_invDelta(before, after) {
+    var out = [];
+    for (var i = 0; i < before.length && i < after.length; i++) {
+        if (before[i] !== after[i]) { out.push(i + ':' + before[i] + '>' + after[i]); }
+    }
+    return out.length ? out.join(',') : '-';
+}
+
+/** 保留候选与次数、只改 purchasedCount 的新态（价格曲线用；record 规范构造器） */
+function cp_stateWith(s, purchased) {
+    try { return new SP_ChipState(s.offers(), s.lastCategory(), purchased, s.refreshesLeft(), s.regenAnchor()); }
+    catch (e) {
+        var cur = s;
+        for (var i = s.purchasedCount(); i < purchased; i++) { cur = cur.withPurchased(null); }
+        return cur;
+    }
+}
+
+function sp_doChipBlock(ctx, tag) {
+    var p = sp_p(ctx);
+    var lvl = sp_level(p);
+    var pos = p.blockPosition().offset(2, 0, 0);
+    var block = SP_ModBlocks.CHIP_SHOP.get();
+    var ok = lvl.setBlockAndUpdate(pos, block.defaultBlockState());
+    var facing = '?';
+    try {
+        var prop = block.getStateDefinition().getProperty('facing');
+        facing = (prop == null) ? 'null' : ('' + lvl.getBlockState(pos).getValue(prop));
+    } catch (e0) { facing = 'ex:' + sp_exText(e0); }
+    var drop = sp_id(new SP_ItemStack(lvl.getBlockState(pos).getBlock().asItem()));
+    sp_send(ctx, 'AP_' + tag + '_CBLOCK:set=' + (ok ? 1 : 0) + ':pos=' + pos.getX() + ',' + pos.getY() + ',' + pos.getZ()
+        + ':facing=' + facing + ':item=' + drop);
+    // 真实右键（与 card_shop 探针同法：1.20.1 无 useWithoutItem ⇒ BlockState#use(Level, Player, InteractionHand, BlockHitResult)）
+    var res = 'n/a';
+    try {
+        var bs = lvl.getBlockState(pos);
+        var hit = new SP_BlockHitResult(new SP_Vec3(pos.getX() + 0.5, pos.getY() + 0.9, pos.getZ() + 0.5), SP_Direction.UP, pos, false);
+        var r = bs.use(lvl, p, SP_Hand.MAIN_HAND, hit);
+        res = '' + r;
+    } catch (e1) { res = 'EX:' + sp_exText(e1); }
+    sp_send(ctx, 'AP_' + tag + '_CUSE:res=' + res + ':menu=' + sp_cls(p.containerMenu));
+    cp_menuLine(ctx, tag, cp_menuOf(p));
+    cp_stateLine(ctx, tag, cp_state(p));
+    // 界面开着时后续注入的聊天命令会被 GUI 吞掉（SHOP-GUI 首跑教训）⇒ 立刻关掉
+    try { sp_closeMenu(p); } catch (e2) { }
+    sp_send(ctx, 'AP_' + tag + '_CCLOSE:by=block');
+    return 1;
+}
+
+function sp_doChipPool(ctx, tag) {
+    var p = sp_p(ctx);
+    var pool = SP_ChipCatalog.POOL;
+    var n = sp_len(pool);
+    var t1 = 0; var t2 = 0; var t3 = 0;
+    var head = [];
+    for (var i = 0; i < n; i++) {
+        var e = sp_at(pool, i);
+        var t = e.tier();
+        if (t === 1) { t1++; } else if (t === 2) { t2++; } else if (t === 3) { t3++; }
+        if (i < 3) { head.push(e.id() + '/t' + t); }
+    }
+    var avail = -1; var owned = -1; var all = -1; var star = -1;
+    try { avail = sp_len(SP_ChipRoller.availablePool(p)); } catch (e2) { avail = -2; }
+    try { owned = sp_len(SP_ChipRoller.ownedChipItems(p)); } catch (e3) { owned = -2; }
+    try { all = SP_ChipRoller.ownsEverything(p) ? 1 : 0; } catch (e4) { all = -1; }
+    try { star = SP_ChipRoller.starLevel(p); } catch (e5) { star = -2; }
+    sp_send(ctx, 'AP_' + tag + '_CPOOL:pool=' + n + ':tiers=' + t1 + '/' + t2 + '/' + t3
+        + ':avail=' + avail + ':owned=' + owned + ':all=' + all + ':star=' + star + ':head=' + head.join('+'));
+    return 1;
+}
+
+function sp_doChipState(ctx, tag) {
+    var p = sp_p(ctx);
+    var s = cp_state(p);
+    cp_stateLine(ctx, tag, s);
+    var need = -1;
+    try { need = s.needsReroll(p) ? 1 : 0; } catch (e) { need = -2; }
+    sp_send(ctx, 'AP_' + tag + '_CST2:need=' + need + ':init=' + (s != null && s.initialized() ? 1 : 0)
+        + ':menu=' + sp_cls(p.containerMenu) + ':bal=' + sp_bal(p) + ':inv=' + cp_invCount(p) + '/36');
+    return 1;
+}
+
+function sp_doChipOpen(ctx, tag, keep) {
+    var p = sp_p(ctx);
+    SP_ChipOpener.open(p);
+    sp_send(ctx, 'AP_' + tag + '_COPEN:menu=' + sp_cls(p.containerMenu) + ':bal=' + sp_bal(p));
+    cp_menuLine(ctx, tag, cp_menuOf(p));
+    cp_stateLine(ctx, tag, cp_state(p));
+    if (!keep) {
+        try { sp_closeMenu(p); } catch (e) { }
+        sp_send(ctx, 'AP_' + tag + '_CCLOSE:by=open');
+    }
+    return 1;
+}
+
+function sp_doChipOpen0(ctx, tag) { return sp_doChipOpen(ctx, tag, false); }
+function sp_doChipOpen1(ctx, tag) { return sp_doChipOpen(ctx, tag, true); }
+
+function sp_doChipMenu(ctx, tag) {
+    var p = sp_p(ctx);
+    sp_send(ctx, 'AP_' + tag + '_CMENUCHK:cls=' + sp_cls(p.containerMenu));
+    cp_menuLine(ctx, tag, cp_menuOf(p));
+    cp_stateLine(ctx, tag, cp_state(p));
+    return 1;
+}
+
+/** 真买一格：状态 / 余额 / 物品栏差集 全量前后对比（成功时产品侧另打 CHIP_SHOP_BUY） */
+function sp_doChipBuy(ctx, tag, idx) {
+    var p = sp_p(ctx);
+    var m = cp_menuOf(p);
+    if (m == null) { sp_send(ctx, 'AP_' + tag + '_CBUY:menu=null'); return 0; }
+    var s0 = cp_state(p);
+    var bal0 = sp_bal(p); var ids0 = cp_invIds(p);
+    var ex = '-';
+    try { m.handleBuy(p, idx); } catch (e) { ex = 'EX:' + sp_exText(e); }
+    var bal1 = sp_bal(p); var ids1 = cp_invIds(p);
+    sp_send(ctx, 'AP_' + tag + '_CBUY:idx=' + idx + ':ex=' + ex + ':bal=' + bal0 + '->' + bal1
+        + ':inv=' + cp_invCount(p) + '/36:menu=' + sp_cls(p.containerMenu) + ':deny=' + m.denyReason());
+    sp_send(ctx, 'AP_' + tag + '_CBUYINV:delta=' + cp_invDelta(ids0, ids1));
+    sp_send(ctx, 'AP_' + tag + '_CBUYOFF:before=' + cp_offersCsv(s0) + ':after=' + cp_offersCsv(cp_state(p)));
+    cp_stateLine(ctx, tag, cp_state(p));
+    cp_menuLine(ctx, tag, cp_menuOf(p));
+    return 1;
+}
+
+/** 真刷新：次数 / 锚点（含「锚点 − now」= 距下次恢复的 tick 数）/ 候选 前后对比 */
+function sp_doChipRefresh(ctx, tag) {
+    var p = sp_p(ctx);
+    var m = cp_menuOf(p);
+    if (m == null) { sp_send(ctx, 'AP_' + tag + '_CREFRESH:menu=null'); return 0; }
+    var s0 = cp_state(p);
+    var ex = '-';
+    try { m.handleRefresh(p); } catch (e) { ex = 'EX:' + sp_exText(e); }
+    var s1 = cp_state(p);
+    sp_send(ctx, 'AP_' + tag + '_CREFRESH:ex=' + ex
+        + ':refreshes=' + s0.refreshesLeft() + '->' + s1.refreshesLeft()
+        + ':anchor=' + s0.regenAnchor() + '->' + s1.regenAnchor()
+        + ':after=' + (s1.regenAnchor() - sp_tick(p)) + 't'
+        + ':offers=' + cp_offersCsv(s0) + '->' + cp_offersCsv(s1)
+        + ':deny=' + m.denyReason());
+    cp_menuLine(ctx, tag, cp_menuOf(p));
+    return 1;
+}
+
+/** 价格曲线：把 purchasedCount 设成 n（候选与次数原样保留），读公式值 / 态值 / 菜单值 */
+function sp_doChipPrice(ctx, tag, n) {
+    var p = sp_p(ctx);
+    var s = cp_state(p);
+    if (s == null) { sp_send(ctx, 'AP_' + tag + '_CPRICE:ex=state-null'); return 0; }
+    var cur = cp_stateWith(s, n);
+    SP_ChipState.store(p, cur);
+    var formula = -1;
+    try { formula = SP_ChipCatalog.priceOf(n); } catch (e) { formula = -2; }
+    var menuPrice = -1;
+    var m = cp_menuOf(p);
+    if (m != null) { try { menuPrice = m.price(); } catch (e2) { menuPrice = -2; } }
+    sp_send(ctx, 'AP_' + tag + '_CPRICE:n=' + n + ':formula=' + formula + ':state=' + cur.price()
+        + ':menu=' + menuPrice + ':offersKeep=' + (cp_offersCsv(cur) === cp_offersCsv(s) ? 1 : 0));
+    return 1;
+}
+
+/** 归一化：把筹码商店附件重置为**全新初始态**（EMPTY）—— 跨用例状态泄漏的清理口 */
+function sp_doChipReset(ctx, tag) {
+    var p = sp_p(ctx);
+    var via = '?'; var st = null;
+    try { st = SP_ChipState.EMPTY; via = 'EMPTY'; } catch (e0) { st = null; }
+    if (st == null) {
+        try {
+            var AL = Java.loadClass('java.util.ArrayList');
+            st = new SP_ChipState(new AL(), SP_Optional.empty(), 0, SP_ChipCatalog.REFRESH_INITIAL, 0);
+            via = 'new';
+        } catch (e1) { st = null; }
+    }
+    if (st == null) { sp_send(ctx, 'AP_' + tag + '_CRESET:ex=unavailable:via=none'); return 0; }
+    var ex = '-';
+    try { SP_ChipState.store(p, st); } catch (e2) { ex = 'EX:' + sp_exText(e2); }
+    if (ex !== '-') { sp_send(ctx, 'AP_' + tag + '_CRESET:ex=' + ex + ':via=' + via); return 0; }
+    var back = cp_state(p);
+    sp_send(ctx, 'AP_' + tag + '_CRESET:ex=-:via=' + via
+        + ':offers=' + cp_offersCsv(back) + ':last=' + cp_lastCat(back)
+        + ':purchased=' + back.purchasedCount() + ':refreshes=' + back.refreshesLeft() + '/' + SP_ChipCatalog.REFRESH_MAX
+        + ':anchor=' + back.regenAnchor() + ':price=' + back.price());
+    return 1;
+}
+
+/** 刷新恢复前置：把附件摆成指定形态，等 ticker 自己跑（配合 wait + cstate 读数） */
+function sp_doChipRegen(ctx, tag, mode) {
+    var p = sp_p(ctx);
+    var s = cp_state(p);
+    if (s == null) { sp_send(ctx, 'AP_' + tag + '_CREGEN:ex=state-null'); return 0; }
+    var now = sp_tick(p);
+    var max = SP_ChipCatalog.REFRESH_MAX;
+    var regen = SP_ChipCatalog.REFRESH_REGEN_TICKS;
+    var next = null; var expect = '';
+    if (mode === 'due') {
+        next = new SP_ChipState(s.offers(), s.lastCategory(), s.purchasedCount(), Math.min(s.refreshesLeft(), max - 1), now - 1);
+        expect = 'tick+1（refreshes+1、anchor=' + (now - 1 + regen) + '）';
+    } else if (mode === 'max') {
+        next = new SP_ChipState(s.offers(), s.lastCategory(), s.purchasedCount(), max, now - 1);
+        expect = 'NO-regen（已到上限 ⇒ 锚点不顺延，仍为 ' + (now - 1) + '）';
+    } else if (mode === 'zero') {
+        next = new SP_ChipState(s.offers(), s.lastCategory(), s.purchasedCount(), 1, 0);
+        expect = 'NO-regen（从未刷新过 ⇒ anchor=0 不恢复）';
+    } else if (mode === 'first') {
+        next = new SP_ChipState(s.offers(), s.lastCategory(), s.purchasedCount(), SP_ChipCatalog.REFRESH_INITIAL, 0);
+        expect = 'crefresh 成功后 anchor=now+' + regen + '（首次消耗才起算）';
+    } else if (mode === 'pend') {
+        next = new SP_ChipState(s.offers(), s.lastCategory(), s.purchasedCount(), max, now - 600);
+        expect = 'crefresh 花 1 次（→' + (max - 1) + '）后下一 tick 立即补回 ' + max + '（已知 P2 口径，待用户裁决）';
+    } else {
+        sp_send(ctx, 'AP_' + tag + '_CREGEN:bad-mode=' + mode);
+        return 0;
+    }
+    SP_ChipState.store(p, next);
+    sp_send(ctx, 'AP_' + tag + '_CREGEN:mode=' + mode + ':refreshes=' + next.refreshesLeft() + '/' + max
+        + ':anchor=' + next.regenAnchor() + ':delta=' + (next.regenAnchor() - now) + ':now=' + now + ':expect=' + expect);
+    return 1;
+}
+
+/** 物品栏填满 / 清空（36 格，不含副手）—— 造「物品栏满」拒绝与腾空位 */
+function sp_doChipInv(ctx, tag, mode) {
+    var p = sp_p(ctx);
+    var inv = p.inventory;
+    var n = 0;
+    if (mode === 'fill') {
+        for (var i = 0; i < 36; i++) {
+            var cur = inv.getItem(i);
+            if (cur == null || cur.isEmpty()) { inv.setItem(i, new SP_ItemStack(SP_Items.STONE)); n++; }
+        }
+    } else if (mode === 'clear') {
+        var air = new SP_ItemStack(SP_Items.AIR);
+        for (var j = 0; j < 36; j++) {
+            var c2 = inv.getItem(j);
+            if (c2 != null && !c2.isEmpty()) { inv.setItem(j, air); n++; }
+        }
+    } else {
+        sp_send(ctx, 'AP_' + tag + '_CINV:bad-mode=' + mode);
+        return 0;
+    }
+    sp_send(ctx, 'AP_' + tag + '_CINV:mode=' + mode + ':changed=' + n + ':inv=' + cp_invCount(p) + '/36');
+    return 1;
+}
+
+/** 物品栏满时开店 ⇒ 期望「无菜单 + CHIP_SHOP_OPEN_DENIED reason=inventory_full」 */
+function sp_doChipDeny(ctx, tag) {
+    var p = sp_p(ctx);
+    var before = sp_cls(p.containerMenu);
+    var all = -1;
+    try { all = SP_ChipRoller.ownsEverything(p) ? 1 : 0; } catch (e0) { all = -1; }
+    SP_ChipOpener.open(p);
+    sp_send(ctx, 'AP_' + tag + '_CDENY:before=' + before + ':after=' + sp_cls(p.containerMenu)
+        + ':inv=' + cp_invCount(p) + '/36:all=' + all);
+    cp_stateLine(ctx, tag, cp_state(p));
+    try { sp_closeMenu(p); } catch (e) { }
+    return 1;
+}
+
+/** 关店重开候选恒定（未拥有时 needsReroll 为假 ⇒ 不重抽） */
+function sp_doChipStable(ctx, tag) {
+    var p = sp_p(ctx);
+    try { sp_closeMenu(p); } catch (e0) { }
+    SP_ChipOpener.open(p);
+    var m1 = cp_menuOf(p);
+    var s1 = cp_state(p);
+    var key1 = m1 == null ? '?' : m1.offersKey();
+    try { sp_closeMenu(p); } catch (e1) { }
+    SP_ChipOpener.open(p);
+    var m2 = cp_menuOf(p);
+    var s2 = cp_state(p);
+    var key2 = m2 == null ? '?' : m2.offersKey();
+    sp_send(ctx, 'AP_' + tag + '_CSTABLE:key1=' + key1 + ':key2=' + key2 + ':same=' + (key1 === key2 ? 1 : 0)
+        + ':offers=' + cp_offersCsv(s1) + '|' + cp_offersCsv(s2)
+        + ':refreshes=' + s1.refreshesLeft() + '|' + s2.refreshesLeft()
+        + ':need=' + (s1.needsReroll(p) ? 1 : 0) + '|' + (s2.needsReroll(p) ? 1 : 0));
+    try { sp_closeMenu(p); } catch (e2) { }
+    return 1;
+}
+
+/** 边界序列：余额不足 / 索引越界 ×2 / 成功购买 / 关店重进核对 */
+function sp_doChipSeq(ctx, tag) {
+    var p = sp_p(ctx);
+    var max = SP_ChipCatalog.REFRESH_MAX;
+    try { sp_closeMenu(p); } catch (e00) { }
+
+    // ⓪ 基线
+    sp_setBal(p, 1000);
+    var s0 = cp_state(p);
+    sp_send(ctx, 'AP_' + tag + '_CSEQ0:bal=' + sp_bal(p) + ':inv=' + cp_invCount(p) + '/36'
+        + ':purchased=' + s0.purchasedCount() + ':refreshes=' + s0.refreshesLeft() + ':offers=' + cp_offersCsv(s0));
+
+    // ① 余额不足：开店 → 买 0 号格 ⇒ 拒绝（余额 / 物品栏 / purchasedCount / offers 全不动）
+    sp_setBal(p, 0);
+    SP_ChipOpener.open(p);
+    var m1 = cp_menuOf(p);
+    if (m1 == null) { sp_send(ctx, 'AP_' + tag + '_CSEQ1:menu=null'); return 0; }
+    var s1a = cp_state(p);
+    var ex1 = '-';
+    try { m1.handleBuy(p, 0); } catch (e1) { ex1 = 'EX:' + sp_exText(e1); }
+    var s1b = cp_state(p);
+    sp_send(ctx, 'AP_' + tag + '_CSEQ1:poor:ex=' + ex1 + ':menu=' + sp_cls(p.containerMenu) + ':bal=' + sp_bal(p)
+        + ':inv=' + cp_invCount(p) + '/36:purchased=' + s1a.purchasedCount() + '->' + s1b.purchasedCount()
+        + ':offers=' + (cp_offersCsv(s1a) === cp_offersCsv(s1b) ? 'same' : 'CHANGED')
+        + ':deny=' + m1.denyReason());
+
+    // ②③ 索引越界（−1 / 3）：静默拒绝，状态不变
+    sp_setBal(p, 1000);
+    var s2a = cp_state(p);
+    try { m1.handleBuy(p, -1); } catch (e2) { }
+    try { m1.handleBuy(p, 3); } catch (e3) { }
+    var s2b = cp_state(p);
+    sp_send(ctx, 'AP_' + tag + '_CSEQ23:bal=' + sp_bal(p) + ':inv=' + cp_invCount(p) + '/36'
+        + ':purchased=' + s2a.purchasedCount() + '->' + s2b.purchasedCount()
+        + ':offers=' + (cp_offersCsv(s2a) === cp_offersCsv(s2b) ? 'same' : 'CHANGED'));
+
+    // ④ 成功购买：余额 −price、物品栏 +1 枚筹码、purchasedCount +1、offers 重抽、refreshes 不变、关店
+    var preBal = sp_bal(p); var preIds = cp_invIds(p); var sPre = cp_state(p);
+    var ex4 = '-';
+    try { m1.handleBuy(p, 0); } catch (e4) { ex4 = 'EX:' + sp_exText(e4); }
+    var sPost = cp_state(p);
+    sp_send(ctx, 'AP_' + tag + '_CSEQ4:ex=' + ex4 + ':bal=' + preBal + '->' + sp_bal(p)
+        + ':invDelta=' + cp_invDelta(preIds, cp_invIds(p))
+        + ':purchased=' + sPre.purchasedCount() + '->' + sPost.purchasedCount()
+        + ':refreshes=' + sPre.refreshesLeft() + '->' + sPost.refreshesLeft()
+        + ':offers=' + cp_offersCsv(sPre) + '->' + cp_offersCsv(sPost)
+        + ':menu=' + sp_cls(p.containerMenu) + ':lastCat=' + cp_lastCat(sPost));
+
+    // ⑤ 关店重进：价格 = 上次 + 5、次数不变、三格候选全为未拥有
+    SP_ChipOpener.open(p);
+    var m5 = cp_menuOf(p);
+    var s5 = cp_state(p);
+    cp_menuLine(ctx, tag, m5);
+    sp_send(ctx, 'AP_' + tag + '_CSEQ5:price=' + (m5 == null ? -1 : m5.price()) + ':purchased=' + s5.purchasedCount()
+        + ':refreshes=' + s5.refreshesLeft() + '/' + max + ':owned=' + sp_len(SP_ChipRoller.ownedChipItems(p)));
+    var flags = [];
+    for (var i = 0; i < 3; i++) {
+        var st = null;
+        try { st = (m5 == null) ? null : m5.offerStack(i); } catch (e5) { st = null; }
+        var sid = sp_id(st);
+        if (sp_isEmptyId(sid)) { flags.push(i + ':empty'); continue; }
+        var ent = null;
+        try {
+            var opt = SP_ChipCatalog.byStack(st);
+            ent = (opt != null && opt.isPresent()) ? opt.get() : null;
+        } catch (e6) { ent = null; }
+        if (ent == null) { flags.push(i + ':' + sid + ':byStack=null'); continue; }
+        var owned = -2;
+        try { owned = SP_ChipRoller.isOwned(p, ent) ? 1 : 0; } catch (e7) { owned = -3; }
+        flags.push(i + ':' + sid + ':owned=' + owned);
+    }
+    sp_send(ctx, 'AP_' + tag + '_CSEQ5OWN:' + flags.join(','));
+    try { sp_closeMenu(p); } catch (e8) { }
+    return 1;
+}
+
 // ── 命令注册 ──────────────────────────────────────────────────────────────
 ServerEvents.commandRegistry(event => {
     var Commands = event.commands;
@@ -1696,6 +2184,85 @@ ServerEvents.commandRegistry(event => {
                 .then(Commands.argument('tag', SP_StringArg.word())
                     .executes(ctx => sp_guard(ctx, SP_StringArg.getString(ctx, 'tag'), function () {
                         return sp_doVClose(ctx, SP_StringArg.getString(ctx, 'tag'));
+                    }))))
+            .then(Commands.literal('cblock')
+                .then(Commands.argument('tag', SP_StringArg.word())
+                    .executes(ctx => sp_guard(ctx, SP_StringArg.getString(ctx, 'tag'), function () {
+                        return sp_doChipBlock(ctx, SP_StringArg.getString(ctx, 'tag'));
+                    }))))
+            .then(Commands.literal('cpool')
+                .then(Commands.argument('tag', SP_StringArg.word())
+                    .executes(ctx => sp_guard(ctx, SP_StringArg.getString(ctx, 'tag'), function () {
+                        return sp_doChipPool(ctx, SP_StringArg.getString(ctx, 'tag'));
+                    }))))
+            .then(Commands.literal('cstate')
+                .then(Commands.argument('tag', SP_StringArg.word())
+                    .executes(ctx => sp_guard(ctx, SP_StringArg.getString(ctx, 'tag'), function () {
+                        return sp_doChipState(ctx, SP_StringArg.getString(ctx, 'tag'));
+                    }))))
+            .then(Commands.literal('copen')
+                .then(Commands.argument('tag', SP_StringArg.word())
+                    .executes(ctx => sp_guard(ctx, SP_StringArg.getString(ctx, 'tag'), function () {
+                        return sp_doChipOpen0(ctx, SP_StringArg.getString(ctx, 'tag'));
+                    }))))
+            .then(Commands.literal('copenkeep')
+                .then(Commands.argument('tag', SP_StringArg.word())
+                    .executes(ctx => sp_guard(ctx, SP_StringArg.getString(ctx, 'tag'), function () {
+                        return sp_doChipOpen1(ctx, SP_StringArg.getString(ctx, 'tag'));
+                    }))))
+            .then(Commands.literal('cmenu')
+                .then(Commands.argument('tag', SP_StringArg.word())
+                    .executes(ctx => cp_guardMenu(ctx, SP_StringArg.getString(ctx, 'tag'), function () {
+                        return sp_doChipMenu(ctx, SP_StringArg.getString(ctx, 'tag'));
+                    }))))
+            .then(Commands.literal('crefresh')
+                .then(Commands.argument('tag', SP_StringArg.word())
+                    .executes(ctx => cp_guardMenu(ctx, SP_StringArg.getString(ctx, 'tag'), function () {
+                        return sp_doChipRefresh(ctx, SP_StringArg.getString(ctx, 'tag'));
+                    }))))
+            .then(Commands.literal('cdeny')
+                .then(Commands.argument('tag', SP_StringArg.word())
+                    .executes(ctx => sp_guard(ctx, SP_StringArg.getString(ctx, 'tag'), function () {
+                        return sp_doChipDeny(ctx, SP_StringArg.getString(ctx, 'tag'));
+                    }))))
+            .then(Commands.literal('cstable')
+                .then(Commands.argument('tag', SP_StringArg.word())
+                    .executes(ctx => sp_guard(ctx, SP_StringArg.getString(ctx, 'tag'), function () {
+                        return sp_doChipStable(ctx, SP_StringArg.getString(ctx, 'tag'));
+                    }))))
+            .then(Commands.literal('cseq')
+                .then(Commands.argument('tag', SP_StringArg.word())
+                    .executes(ctx => sp_guard(ctx, SP_StringArg.getString(ctx, 'tag'), function () {
+                        return sp_doChipSeq(ctx, SP_StringArg.getString(ctx, 'tag'));
+                    }))))
+            .then(Commands.literal('cregen')
+                .then(Commands.argument('tag', SP_StringArg.word())
+                    .then(Commands.argument('mode', SP_StringArg.word())
+                        .executes(ctx => sp_guard(ctx, SP_StringArg.getString(ctx, 'tag'), function () {
+                            return sp_doChipRegen(ctx, SP_StringArg.getString(ctx, 'tag'), SP_StringArg.getString(ctx, 'mode'));
+                        })))))
+            .then(Commands.literal('cinv')
+                .then(Commands.argument('tag', SP_StringArg.word())
+                    .then(Commands.argument('mode', SP_StringArg.word())
+                        .executes(ctx => sp_guard(ctx, SP_StringArg.getString(ctx, 'tag'), function () {
+                            return sp_doChipInv(ctx, SP_StringArg.getString(ctx, 'tag'), SP_StringArg.getString(ctx, 'mode'));
+                        })))))
+            .then(Commands.literal('cbuy')
+                .then(Commands.argument('tag', SP_StringArg.word())
+                    .then(Commands.argument('index', SP_IntArg.integer(-1, 3))
+                        .executes(ctx => cp_guardMenu(ctx, SP_StringArg.getString(ctx, 'tag'), function () {
+                            return sp_doChipBuy(ctx, SP_StringArg.getString(ctx, 'tag'), SP_IntArg.getInteger(ctx, 'index'));
+                        })))))
+            .then(Commands.literal('cprice')
+                .then(Commands.argument('tag', SP_StringArg.word())
+                    .then(Commands.argument('n', SP_IntArg.integer(0, 4096))
+                        .executes(ctx => sp_guard(ctx, SP_StringArg.getString(ctx, 'tag'), function () {
+                            return sp_doChipPrice(ctx, SP_StringArg.getString(ctx, 'tag'), SP_IntArg.getInteger(ctx, 'n'));
+                        })))))
+            .then(Commands.literal('creset')
+                .then(Commands.argument('tag', SP_StringArg.word())
+                    .executes(ctx => sp_guard(ctx, SP_StringArg.getString(ctx, 'tag'), function () {
+                        return sp_doChipReset(ctx, SP_StringArg.getString(ctx, 'tag'));
                     }))))
     );
 })
