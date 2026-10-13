@@ -1732,7 +1732,7 @@ function cp_invDelta(before, after) {
 
 /** 保留候选与次数、只改 purchasedCount 的新态（价格曲线用；record 规范构造器） */
 function cp_stateWith(s, purchased) {
-    try { return new SP_ChipState(s.offers(), s.lastCategory(), purchased, s.refreshesLeft(), s.regenAnchor()); }
+    try { return new SP_ChipState(s.offers(), s.lastPickCategory(), purchased, s.refreshesLeft(), s.regenAnchor()); }
     catch (e) {
         var cur = s;
         for (var i = s.purchasedCount(); i < purchased; i++) { cur = cur.withPurchased(null); }
@@ -1915,19 +1915,19 @@ function sp_doChipRegen(ctx, tag, mode) {
     var regen = SP_ChipCatalog.REFRESH_REGEN_TICKS;
     var next = null; var expect = '';
     if (mode === 'due') {
-        next = new SP_ChipState(s.offers(), s.lastCategory(), s.purchasedCount(), Math.min(s.refreshesLeft(), max - 1), now - 1);
+        next = new SP_ChipState(s.offers(), s.lastPickCategory(), s.purchasedCount(), Math.min(s.refreshesLeft(), max - 1), now - 1);
         expect = 'tick+1（refreshes+1、anchor=' + (now - 1 + regen) + '）';
     } else if (mode === 'max') {
-        next = new SP_ChipState(s.offers(), s.lastCategory(), s.purchasedCount(), max, now - 1);
+        next = new SP_ChipState(s.offers(), s.lastPickCategory(), s.purchasedCount(), max, now - 1);
         expect = 'NO-regen（已到上限 ⇒ 锚点不顺延，仍为 ' + (now - 1) + '）';
     } else if (mode === 'zero') {
-        next = new SP_ChipState(s.offers(), s.lastCategory(), s.purchasedCount(), 1, 0);
+        next = new SP_ChipState(s.offers(), s.lastPickCategory(), s.purchasedCount(), 1, 0);
         expect = 'NO-regen（从未刷新过 ⇒ anchor=0 不恢复）';
     } else if (mode === 'first') {
-        next = new SP_ChipState(s.offers(), s.lastCategory(), s.purchasedCount(), SP_ChipCatalog.REFRESH_INITIAL, 0);
+        next = new SP_ChipState(s.offers(), s.lastPickCategory(), s.purchasedCount(), SP_ChipCatalog.REFRESH_INITIAL, 0);
         expect = 'crefresh 成功后 anchor=now+' + regen + '（首次消耗才起算）';
     } else if (mode === 'pend') {
-        next = new SP_ChipState(s.offers(), s.lastCategory(), s.purchasedCount(), max, now - 600);
+        next = new SP_ChipState(s.offers(), s.lastPickCategory(), s.purchasedCount(), max, now - 600);
         expect = 'crefresh 花 1 次（→' + (max - 1) + '）后下一 tick 立即补回 ' + max + '（已知 P2 口径，待用户裁决）';
     } else {
         sp_send(ctx, 'AP_' + tag + '_CREGEN:bad-mode=' + mode);
