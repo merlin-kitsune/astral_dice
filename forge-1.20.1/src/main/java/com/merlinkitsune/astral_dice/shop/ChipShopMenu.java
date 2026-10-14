@@ -42,7 +42,7 @@ import java.util.List;
  * {@link com.merlinkitsune.astral_dice.network.ChipShopBuyPayload} → {@link #handleBuy}，
  * 客户端界面里只有「点确认按钮」一条路径能发这个包。
  *
- * <p><b>服务端权威</b>：价格、刷新次数、余额、落点一律在服务端现算（{@link ChipShopState} 附件 + 库经济），
+ * <p><b>服务端权威</b>：价格、刷新次数、余额、落点（先物品栏、装不下则掉落在玩家身边）一律在服务端现算（{@link ChipShopState} 附件 + 库经济），
  * 客户端只读 DataSlot 的同步值做显示；任何校验失败都回 {@link ChipShopDenyPayload} 让界面红闪。
  *
  * <p><b>响应包口径</b>：{@link #handleBuy} / {@link #handleRefresh} 都从**附件现读**状态（不复用菜单字段），
@@ -95,7 +95,13 @@ public class ChipShopMenu extends AbstractContainerMenu {
     public static final int DENY_NO_COIN = 0;
     /** {@code ChipShopDenyPayload#reason}：刷新次数为 0（⇒ 客户端红闪 **N/N 文本**） */
     public static final int DENY_NO_REFRESH = 1;
-    /** {@code ChipShopDenyPayload#reason}：物品栏已满（⇒ 客户端红闪**花费文本**） */
+    /**
+     * {@code ChipShopDenyPayload#reason}：物品栏已满（⇒ 客户端红闪**花费文本**）。
+     * <p>⚠️ 2026-10-14（需求 2）：**购买路径不再使用本码** —— 满包购买改为「照常成交 + 装不下的筹码掉落
+     * 在玩家身边」，故 {@link #handleBuy} 不会再下发本码。常量保留是因为：① 屏幕侧「花费文本」仍按 0/2
+     * 两码判定（与 {@link #DENY_NO_COIN} 同相，守门 G23 按字面校验）；② 开店入口的「物品栏已满」拒绝
+     * 是 {@code ChipShopOpener#hasNoRoom} 的**独立**分支，不经过本码。
+     */
     public static final int DENY_INVENTORY_FULL = 2;
 
     /** 购买后的**禁止使用**冷却时长：6000 ticks = 5:00（需求 4） */
@@ -322,11 +328,15 @@ public class ChipShopMenu extends AbstractContainerMenu {
      * 购买（唯一入口，来自 {@code ChipShopBuyPayload}）。
      *
      * <p><b>校验顺序</b>（照抄 {@code CardShopMenu#handleBuy} 的口径，服务端为唯一权威）：
-     * 菜单归属 → 索引范围 → 该格有候选 → 余额 → 物品栏有空位 → 扣款 → 写物品栏 →
+     * 菜单归属 → 索引范围 → 该格有候选 → 余额 → 扣款 → 发货（**先灌物品栏、装不下的剩余部分掉落在玩家身边**）→
      * **落在盘上的新状态（+1 次购买 / 记录类别 / 重抽候选）** → 关店。
      *
-     * <p><b>R18</b>：购买后**自动关店**（{@link Player#closeContainer()}），筹码直接进第一个空物品栏格
-     * （不含副手 —— 用户裁决 Q10）。
+     * <p><b>需求 2（2026-10-14）</b>：物品栏装不下时**不再拒绝**（{@link #DENY_INVENTORY_FULL} 不再是购买路径的结果）——
+     * 扣款、价格 +5（下次单价由购买次数现算）、购买次数 +1、重抽候选与关店一律照常，装不下的筹码用
+     * {@code player.drop(...)} 弹到玩家身边。
+     *
+     * <p><b>R18</b>：购买后**自动关店**（{@link Player#closeContainer()}），筹码优先直接进物品栏
+     * （不含副手 —— 用户裁决 Q10）；装不下时落在地上。
      */
     public void handleBuy(ServerPlayer buyer, int offerIndex) {
         if (buyer != this.player || buyer.level().isClientSide()) {
@@ -345,33 +355,37 @@ public class ChipShopMenu extends AbstractContainerMenu {
             deny(buyer, DENY_NO_COIN, "msg.astral_dice.chip_shop_no_coin", price);
             return;
         }
-        int targetSlot = findEmptyInventorySlot();
-        if (targetSlot < 0) {
-            deny(buyer, DENY_INVENTORY_FULL, "msg.astral_dice.chip_shop_inventory_full");
-            return;
-        }
         if (!StarEngineEconomy.withdraw(buyer, price)) {
             deny(buyer, DENY_NO_COIN, "msg.astral_dice.chip_shop_no_coin", price);
             return;
         }
         ItemStack bought = chip.copy();
-        Slot target = this.slots.get(OFFER_SLOTS + playerSlotOffset(targetSlot));
-        target.set(bought);
-        target.setChanged();
+        // 需求 2（2026-10-14）：物品栏放不下**不再拒绝** —— 先灌物品栏（原版 add 会先把同 id 的未满栈补满、
+        //   再找空格），`add` 取走装得下的部分 ⇒ 之后 `bought` 里剩下的正是**要掉落**的数量，弹到玩家身边。
+        if (!playerInventory.add(bought)) {
+            buyer.drop(bought, false);
+        }
+        boolean dropped = !bought.isEmpty();
 
         // 落盘：购买次数 +1、记录本次类别（下次抽取的类别偏置来源），并**重抽候选**
-        ChipShopState next = state.withPurchased(ChipShopCatalog.categoryOf(bought).orElse(null));
+        // ⚠️ 类别取 `chip`（未被 add 消耗）而非 `bought`：`add` 成功时 `bought` 已 setCount(0) ⇒ isEmpty，
+        //   而 ChipShopCatalog.byStack 对空栈返 empty ⇒ 用 bought 会**丢掉**这次购买的类别记录。
+        ChipShopState next = state.withPurchased(ChipShopCatalog.categoryOf(chip).orElse(null));
         next = next.withOffers(ChipShopRoller.roll(buyer, next.lastCategory().orElse(null)));
         // 需求 4：购买成功后进入 5:00 冷却（世界 gameTime 现算），冷却期内禁止再开店
         next = next.withCooldown(buyer.level().getGameTime() + BUY_COOLDOWN_TICKS);
         ChipShopState.store(buyer, next);
         applyState(next);
         StarCoinBalanceSync.notifyChanged(buyer);
-        actionBar(buyer, ChatFormatting.GOLD, "msg.astral_dice.chip_shop_bought", bought.getHoverName());
+        actionBar(buyer, ChatFormatting.GOLD, "msg.astral_dice.chip_shop_bought", chip.getHoverName());
+        if (dropped) {
+            // 需求 2：满包成交时补一条提示（同一时刻**后发** ⇒ 覆盖「已购买」成为玩家可见的 actionbar）
+            actionBar(buyer, ChatFormatting.YELLOW, "msg.astral_dice.chip_shop_chip_dropped");
+        }
         LOGGER.info("[astral_dice] CHIP_SHOP_BUY player={} offer={} chip={} price={} purchased={} refreshes={}"
-                        + " offers={} target={} cooldownUntil={}",
-                buyer.getName().getString(), offerIndex, bought.getItem(), price, next.purchasedCount(),
-                next.refreshesLeft(), next.offersKey(), targetSlot, next.cooldownUntil());
+                        + " offers={} dropped={} cooldownUntil={}",
+                buyer.getName().getString(), offerIndex, chip.getItem(), price, next.purchasedCount(),
+                next.refreshesLeft(), next.offersKey(), dropped, next.cooldownUntil());
         // R18：购买成功后自动关店（关店后玩家看到的是重抽后的新一批，下次进店一致）
         buyer.closeContainer();
     }
@@ -401,16 +415,6 @@ public class ChipShopMenu extends AbstractContainerMenu {
         LOGGER.info("[astral_dice] CHIP_SHOP_REFRESH player={} refreshes={}/{} anchor={} offers={}",
                 buyer.getName().getString(), next.refreshesLeft(), ChipShopCatalog.REFRESH_MAX, next.regenAnchor(),
                 next.offersKey());
-    }
-
-    /** 第一个空的玩家物品栏格（0..8 快捷栏 / 9..35 主物品栏；不含副手）；无空格 ⇒ -1 */
-    private int findEmptyInventorySlot() {
-        for (int i = 0; i < PLAYER_SLOT_COUNT; i++) {
-            if (playerInventory.getItem(i).isEmpty()) {
-                return i;
-            }
-        }
-        return -1;
     }
 
     /** 拒绝信号：actionbar 红字 + S2C 拒绝包（客户端据此红闪 30t；服务端为唯一权威） */

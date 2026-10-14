@@ -420,7 +420,7 @@ public class ModItems {
                     .rarity(AstralRarities.rare())));
 
     // 卡牌商店方块(物品形态):放置后右键打开「卡牌商店」界面。
-    // ⚠️ 2026-10-14:三个商店方块(卡牌商店 / 筹码商店 / 事件抽奖盒)一律**不可堆叠** ⇒ 改用带属性的
+    // ⚠️ 2026-10-14:三个商店方块(卡牌商店 / 筹码商店 / 抽奖盒)一律**不可堆叠** ⇒ 改用带属性的
     //    ITEMS.register + new BlockItem(…, new Item.Properties().stacksTo(1))(统一改用 ITEMS.register + new BlockItem 以保证两线调用点同形)。
     public static final DeferredItem<BlockItem> CARD_SHOP = ITEMS.register("card_shop",
             () -> new BlockItem(ModBlocks.CARD_SHOP.get(), new Item.Properties().stacksTo(1)));
@@ -429,13 +429,13 @@ public class ModItems {
     public static final DeferredItem<BlockItem> CHIP_SHOP = ITEMS.register("chip_shop",
             () -> new BlockItem(ModBlocks.CHIP_SHOP.get(), new Item.Properties().stacksTo(1)));
 
-    /** 事件抽奖牌(2026-10-10 事件体系重写):使用后从公共事件池抽一条事件(触发器 ITEM_USE),生存模式消耗 1 张。 */
+    /** 奇怪的问号(2026-10-10 事件体系重写):使用后从公共事件池抽一条事件(触发器 ITEM_USE),生存模式消耗 1 张。 */
     public static final DeferredItem<Item> EVENT_TICKET = registerItem("event_ticket",
             () -> new EventDrawItem(new Item.Properties()
                     .stacksTo(16)
                     .rarity(Rarity.COMMON)));
 
-    /** 事件抽奖盒(物品形态):放置后右键花 5 星币购买一张事件抽奖牌(2026-10-14 起为售卖机,不再直接抽事件)。 */
+    /** 抽奖盒(物品形态):放置后右键花 5 星币购买一张奇怪的问号(2026-10-14 起为售卖机,不再直接抽事件)。 */
     public static final DeferredItem<BlockItem> EVENT_DRAWER = ITEMS.register("event_drawer",
             () -> new BlockItem(ModBlocks.EVENT_DRAWER.get(), new Item.Properties().stacksTo(1)));
 

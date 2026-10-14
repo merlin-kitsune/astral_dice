@@ -8,7 +8,7 @@ import net.minecraft.world.level.material.MapColor;
 import net.neoforged.neoforge.registries.DeferredBlock;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
-/** 方块注册（卡牌商店 / 筹码商店 / 事件抽取机） */
+/** 方块注册（卡牌商店 / 筹码商店 / 抽奖盒） */
 public class ModBlocks {
 
     public static final DeferredRegister.Blocks BLOCKS = DeferredRegister.createBlocks(AstralDiceMod.MODID);
@@ -30,7 +30,7 @@ public class ModBlocks {
                     .sound(SoundType.WOOD)
                     .noOcclusion()));
 
-    /** 事件抽取机(2026-10-10 事件体系重写):右键从公共事件池抽一条事件(独立注册,触发器 BLOCK_USE)。 */
+    /** 抽奖盒(2026-10-10 事件体系重写):右键从公共事件池抽一条事件(独立注册,触发器 BLOCK_USE)。 */
     public static final DeferredBlock<Block> EVENT_DRAWER = BLOCKS.register("event_drawer",
             () -> new EventDrawBlock(BlockBehaviour.Properties.of()
                     .mapColor(MapColor.METAL)

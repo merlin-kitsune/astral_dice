@@ -222,10 +222,12 @@ public final class ChipShopClientState {
     // ────────────────────────────── 拒绝红闪（S2C ChipShopDenyPayload） ──────────────────────────────
 
     /**
-     * 服务端拒绝了本次请求（余额不足 / 刷新次数为 0 / 物品栏已满）⇒ 起一段 {@value #DENY_BLINK_TICKS} tick 的红闪。
+     * 服务端拒绝了本次请求（余额不足 / 刷新次数为 0）⇒ 起一段 {@value #DENY_BLINK_TICKS} tick 的红闪。
      *
-     * <p>闪哪一处由 {@code ChipShopScreen} 按 {@link #denyReason()} 决定：余额不足与物品栏已满闪**花费文本**、
+     * <p>闪哪一处由 {@code ChipShopScreen} 按 {@link #denyReason()} 决定：余额不足闪**花费文本**、
      * 刷新次数为 0 闪 **N/N 文本**（计划表 §4）。
+     * ⚠️ 2026-10-14（需求 2）：码 2（物品栏已满）**不再是购买路径的结果**（满包改为照常成交 + 装不下的筹码
+     * 掉落）⇒ 本方法实际只会收到 0 / 1；屏幕侧的花费文本仍按 0/2 两码判定（码 2 为保留码，守门 G23 按字面校验）。
      */
     public static void notifyDeny(int reason) {
         denyReason = reason;

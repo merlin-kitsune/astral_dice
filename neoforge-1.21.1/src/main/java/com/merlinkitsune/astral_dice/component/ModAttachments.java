@@ -119,7 +119,7 @@ public class ModAttachments {
         player.setData(LULU_LAST_HURT_TICK.get(), value);
     }
 
-    // 事件抽奖盒(event_drawer):上次购买后的冷却结束时刻(level.getGameTime() + 6000,即 5:00;
+    // 抽奖盒(event_drawer):上次购买后的冷却结束时刻(level.getGameTime() + 6000,即 5:00;
     // now < until 表示冷却中,0 = 无冷却)。判定在服务端,随 .sync 下发供客户端预检/显示。
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> EVENT_DRAWER_COOLDOWN_UNTIL =
             ATTACHMENTS.register("event_drawer_cooldown_until", () -> AttachmentType.builder(() -> 0L)

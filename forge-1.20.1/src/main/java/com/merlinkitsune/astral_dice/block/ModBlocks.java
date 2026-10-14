@@ -39,7 +39,7 @@ public class ModBlocks {
                     .sound(SoundType.WOOD)
                     .noOcclusion()));
 
-    /** 事件抽取机(2026-10-10 事件体系重写):右键从公共事件池抽一条事件(BLOCK_USE)。 */
+    /** 抽奖盒(2026-10-10 事件体系重写):右键从公共事件池抽一条事件(BLOCK_USE)。 */
     public static final RegistryObject<Block> EVENT_DRAWER = BLOCKS.register("event_drawer",
             () -> new EventDrawBlock(BlockBehaviour.Properties.of()
                     .mapColor(MapColor.METAL)

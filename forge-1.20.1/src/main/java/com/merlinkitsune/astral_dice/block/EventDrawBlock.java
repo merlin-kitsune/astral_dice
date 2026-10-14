@@ -21,10 +21,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * 事件抽奖盒(2026-10-10 事件体系重写 · 用户需求②「玩家使用抽事件的方块(独立注册)」)。
+ * 抽奖盒(2026-10-10 事件体系重写 · 用户需求②「玩家使用抽事件的方块(独立注册)」)。
  *
  * <p><b>2026-10-14 改动注记</b>:原行为(右键从公共事件池随机抽一条事件并以 {@code BLOCK_USE} 触发器免费触发)
- * <b>已废弃</b>,改为<b>售卖机</b> —— 右键花 {@value #PRICE_STAR_COINS} 星币购买 1 张事件抽奖牌
+ * <b>已废弃</b>,改为<b>售卖机</b> —— 右键花 {@value #PRICE_STAR_COINS} 星币购买 1 张奇怪的问号
  * ({@code event_ticket}),每 {@value #COOLDOWN_TICKS} ticks(5:00)限购一次;余额不足或冷却中 ⇒
  * ActionBar 红字拒绝、不给物品。
  *

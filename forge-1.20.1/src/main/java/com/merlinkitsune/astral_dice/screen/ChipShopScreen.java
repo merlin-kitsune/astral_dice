@@ -24,7 +24,8 @@ import net.minecraft.world.item.ItemStack;
  * <p><b>绘制顺序（规范 §4 的 10 步，逐步号对应代码）</b>：本类把 ①..⑨ 全部落在 {@link #renderBg}
  * 里 —— 原版 {@code AbstractContainerScreen#render} 的次序恰好是
  * {@code renderBg → 槽位循环（含悬停高亮与物品）→ renderLabels → tooltip}，
- * 所以「⑨ 面板底图 → 槽位物品/高亮」与「⑩ tooltip 最后」天然成立，**无需覆写 {@code render}**；
+ * 所以「⑨ 面板底图 → 槽位物品/高亮」与「⑩ tooltip 最后」天然成立；筹码格（隐藏候选槽，坐标 -10000）
+ * 原版不会弹 tooltip ⇒ 本类仅覆写 {@code render} 在最后补画筹码格 tooltip（需求 1，见 {@link #renderChipTooltips}）；
  * 条带（y 6..84）与面板（y 89..175）在纵向完全不重叠 ⇒ ⑧ 按钮不会被 ⑨ 的槽位绘制干扰。
  * 标题/物品栏标签的原版绘制已由构造器挪到屏幕外。
  *
@@ -233,6 +234,41 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
 
     // ────────────────────────────── 绘制（规范 §4） ──────────────────────────────
 
+    /**
+     * 覆写 {@code render} 的唯一目的 = 在原版整屏绘制**之后**补画筹码格 tooltip（需求 1）。
+     * {@code super.render} 会依次走 背景 → {@link #renderBg}（①..⑨）→ 槽位物品/悬停高亮 → 标签 →
+     * 容器槽位 tooltip；筹码格是**隐藏候选槽**（坐标 -10000）⇒ 原版不会为它们弹 tooltip，
+     * 故这里在最后对**悬中的筹码格**调 {@code GuiGraphics#renderTooltip(Font, ItemStack, int, int)}。
+     */
+    @Override
+    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+        super.render(guiGraphics, mouseX, mouseY, partialTick);
+        renderChipTooltips(guiGraphics, mouseX, mouseY);
+    }
+
+    /**
+     * 需求 1：鼠标指向三个售卖格的筹码图标时，显示该筹码物品的**标准物品 tooltip**
+     * （名称 / 品质色 / 全部 tooltip 行，等价于对 {@link ItemStack} 调 {@code renderTooltip}）。
+     *
+     * <p>命中面 = {@link #chipIndexAt(int, int)}（筹码格 40x78 整列 ∪ 该格标签框）—— 与灰色悬停覆盖层
+     * {@link #renderHoverOverlay} **同源**（光标落在哪一格，覆盖层与 tooltip 就出现在哪一格）；
+     * 空格 / 目录外（无图标可画，与覆盖层早退同口径）⇒ 不弹。
+     */
+    private void renderChipTooltips(GuiGraphics guiGraphics, int mouseX, int mouseY) {
+        int chip = chipIndexAt(mouseX, mouseY);
+        if (chip < 0) {
+            return;
+        }
+        ItemStack stack = ChipShopClientState.offer(chip);
+        if (stack.isEmpty()) {
+            return;
+        }
+        if (ChipShopCatalog.byStack(stack).isEmpty()) {
+            return;
+        }
+        guiGraphics.renderTooltip(this.font, stack, mouseX, mouseY);
+    }
+
     @Override
     protected void renderBg(GuiGraphics guiGraphics, float partialTick, int mouseX, int mouseY) {
         // ① 背景
@@ -252,7 +288,7 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
         renderButtons(guiGraphics, mouseX, mouseY);
         // ⑨ 物品栏面板底纹；槽位物品与悬停高亮由原版在本方法之后绘制（天然叠在面板之上）
         blit(guiGraphics, tex(TEX_INVENTORY), PANEL_X, PANEL_Y, PANEL_W, PANEL_H);
-        // ⑩ tooltip 由原版 AbstractContainerScreen#render 收尾绘制（本批无自定义 tooltip 内容）
+        // ⑩ 容器槽位 tooltip 由原版 AbstractContainerScreen#render 收尾绘制；筹码格 tooltip 由本类覆写的 render 补画
     }
 
     /** ④ + ⑤：三个筹码位的品质外框与 24x24 物品图标（空筹码位两者都不画） */
@@ -315,7 +351,9 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
 
     /**
      * ⑦：标签框内容（花费=星币图标+数字 / 筹码名 / 剩余刷新次数）。
-     * <p>拒绝红闪（计划表 §4）：余额不足 / 物品栏已满 ⇒ 闪**花费数字**；刷新次数为 0 ⇒ 闪**剩余刷新次数文本**；
+     * <p>拒绝红闪（计划表 §4）：余额不足 ⇒ 闪**花费数字**；刷新次数为 0 ⇒ 闪**剩余刷新次数文本**；
+     * ⚠️ 2026-10-14（需求 2）：花费文本仍按 0/2 两码判定 —— 码 2（物品栏已满）为**保留码**，购买路径
+     * 已不再下发（满包改为照常成交 + 装不下的筹码掉落），保留字面是为守门 G23 与本类同相口径。
      * 相位由 {@link ChipShopClientState#denyBlinkRed()} 给出（30t 内 3 次红/白交替）。
      */
     private void renderStripText(GuiGraphics guiGraphics) {

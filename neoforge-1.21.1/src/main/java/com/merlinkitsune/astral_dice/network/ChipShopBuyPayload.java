@@ -14,7 +14,8 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
  * C2S：筹码商店「点确认按钮购买」——玩家点了条带最左的确认按钮，购买第 {@code offerIndex} 格候选。
  *
  * <p><b>只是意图，不是结算</b>：价格 / 余额 / 候选 / 落点一律以服务端为准，服务端在
- * {@link ChipShopMenu#handleBuy} 内二次校验（该格仍有候选 + 余额足够 + 物品栏有空位）后才扣款发货。
+ * {@link ChipShopMenu#handleBuy} 内二次校验（该格仍有候选 + 余额足够）后才扣款发货 —— 发货**先灌物品栏、
+ * 装不下的剩余部分掉落在玩家身边**（需求 2；物品栏是否放得下不再是拒绝理由）。
  * 客户端界面里**只有**确认按钮那一个分支会发这个包（拖拽 / 双击都没有通路，见计划表 §5）。
  *
  * @param offerIndex 候选格索引 0..{@link ChipShopMenu#OFFER_SLOTS}-1（条带中间三个筹码格）
