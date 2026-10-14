@@ -1987,6 +1987,316 @@ function sp_doChipSeq(ctx, tag) {
     return 1;
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+//  CHIP-ECON 批(2026-10-14,筹码经济调整)取证 —— 机器行前缀 AP_<tag>_C*
+//    ① crecipes   配方总开关:astral_dice:*_chip 配方条数 + ENABLE_CHIP_RECIPES 值
+//    ② cblank     空白筹码投入:同 tick 投两次 ⇒ ①成功(刷新+1、清购买冷却) ②撞 2:00 冷却被拒且不消耗
+//    ③ ccardstack 卡牌物品 maxStackSize 是否全为 16
+//    ④ cmimi      看板娘立牌阈值常量 + 「累计返还战斗牌」计数器(99 ⇒ 不发;再 +2 ⇒ 发 1 个、余 1)
+//    ⑤ cloot      战利品注入:埋藏宝藏 100% 必出空白筹码 / 地牢箱 200 次抽样(1%)
+//  纪律:① 不改产品代码,副作用仅限测试存档;② 每个入口 sp_guard + try/catch,异常落机器行;
+//        ③ 需要的 MC 类一律函数内 ce_cls() 解析(1.20.1 顶层类别名在命令回调作用域不可靠)。
+//        ④ 判空一律用真值性(if (!x) / if (x)):本运行时 ResourceKey / ResourceLocation / ItemStack
+//           都实现 SpecialEquality,与 null 比较会走 specialEquals(ResourceKey 的 specialEquals 首句
+//           即 requireNonNull ⇒ 直接 NPE);字符串 / 数字之间的 ===/!== 不受影响。
+// ════════════════════════════════════════════════════════════════════════════
+
+/** 函数内惰性解析 Java 类(失败 ⇒ null) */
+function ce_cls(n) { try { return spTryClass(n); } catch (e) { return null; } }
+
+/** 主手 InteractionHand(两版同名) */
+function ce_handMain() { try { return ce_cls('net.minecraft.world.InteractionHand').MAIN_HAND; } catch (e) { return null; } }
+
+/** ResourceLocation 兜底构造(1.21.1 = parse;1.20.1 = new) */
+function ce_rl(full) {
+    var RL = ce_cls('net.minecraft.resources.ResourceLocation');
+    if (!RL) return null;
+    try { var a = RL.parse(full); if (a) return a; } catch (e0) { }
+    try { return new RL(full); } catch (e1) { }
+    return null;
+}
+
+/** ResourceKey<LootTable> 构造(1.21.1 走它;失败 ⇒ null) */
+function ce_lootKey(tableId) {
+    try {
+        var rl = ce_rl(tableId);
+        if (!rl) return null; // 真值性判空:ResourceLocation 是 SpecialEquality,禁止与 null 比较
+        return ce_cls('net.minecraft.resources.ResourceKey')
+            .create(ce_cls('net.minecraft.core.registries.Registries').LOOT_TABLE, rl);
+    } catch (e) { return null; }
+}
+
+/** 给方块实体设战利品表:① 1.21.1 =(ResourceKey<LootTable>,long);② 1.20.1 =(ResourceLocation,long) */
+function ce_setLootTable(be, tableId, seed) {
+    try {
+        // 不写 key !== null:本运行时 ResourceKey 实现了 SpecialEquality,与 null 比较会走
+        // specialEquals ⇒ requireNonNull 抛 NPE(2026-10-14 实机栈)。失败/重载不适用改用异常分流。
+        var key = ce_lootKey(tableId);
+        be.setLootTable(key, seed);
+        return 'key';
+    } catch (e0) { }
+    var rl = ce_rl(tableId);
+    be.setLootTable(rl, seed);
+    return 'rl';
+}
+
+/** RecipeHolder id 兼容取值(1.21.1 = id();1.20.1 亦可能是 getId()) */
+function ce_recipeId(h) {
+    try { var a = h.id(); if (a) return '' + a; } catch (e0) { }
+    try { var b = h.getId(); if (b) return '' + b; } catch (e1) { }
+    return '';
+}
+
+/** 物品 id 是否「筹码」口径(astral_dice 命名空间 + `_chip` 结尾) */
+function ce_isChipId(id) {
+    if (id === null) return false;
+    if (id.indexOf('astral_dice:') !== 0) return false;
+    return id.substring(id.length - 5) === '_chip';
+}
+
+/** 物品栏 36 格中筹码总枚数(astral_dice:*_chip;blank_chip 不计) */
+function ce_chipInvCount(p) {
+    var n = 0;
+    try {
+        var inv = p.inventory;
+        for (var i = 0; i < 36; i++) {
+            var st = inv.getItem(i);
+            if (!st) continue; // 真值性判空(ItemStack 是 SpecialEquality)
+            if (st.isEmpty()) continue;
+            var id = sp_id(st);
+            if (ce_isChipId(id) && id !== 'astral_dice:blank_chip') { n += st.getCount(); }
+        }
+    } catch (e) { return -1; }
+    return n;
+}
+
+/** 清空物品栏 36 格(不含副手) */
+function ce_clearInv(p) {
+    var n = 0;
+    try {
+        var inv = p.inventory;
+        var air = new SP_ItemStack(SP_Items.AIR);
+        for (var i = 0; i < 36; i++) {
+            var cur = inv.getItem(i);
+            if (cur && !cur.isEmpty()) { inv.setItem(i, air); n++; }
+        }
+    } catch (e) { return -1; }
+    return n;
+}
+
+/** ① /astralshop crecipes <tag> ⇒ AP_<tag>_CRECIPES:chips=<n>:config=<0|1>:ex=<…>
+ *  n = recipeManager 中 namespace==astral_dice 且 path 以 `_chip` 结尾的配方条数 */
+function sp_doEconRecipes(ctx, tag) {
+    var p = sp_p(ctx);
+    var lvl = sp_level(p);
+    var chips = -1; var ex = '-';
+    try {
+        var holders = lvl.getRecipeManager().getRecipes();
+        var it = holders.iterator();
+        var n = 0;
+        while (it.hasNext()) {
+            var rid = ce_recipeId(it.next());
+            if (rid.indexOf('astral_dice:') !== 0) continue;
+            if (rid.substring(rid.length - 5) !== '_chip') continue;
+            n++;
+        }
+        chips = n;
+    } catch (e0) { ex = sp_exText(e0); }
+    var cfg = -1;
+    try {
+        var MCC = ce_cls('com.merlinkitsune.astral_dice.config.ModCommonConfig');
+        cfg = MCC.ENABLE_CHIP_RECIPES.get() ? 1 : 0;
+    } catch (e1) { cfg = -2; }
+    sp_send(ctx, 'AP_' + tag + '_CRECIPES:chips=' + chips + ':config=' + cfg + ':ex=' + ex);
+    return 1;
+}
+
+/** ② /astralshop cblank <tag> —— 空白筹码投入(同 tick 两次)
+ *  期望:res1/res2 均为 sidedSuccess(false);refreshes +1(只一次);blankAt 0 -> 非 0;hand=1;verdict=PASS */
+function sp_doEconBlank(ctx, tag) {
+    var p = sp_p(ctx);
+    var lvl = sp_level(p);
+    var pos = p.blockPosition().offset(2, 0, 0);
+    var ModBlocks = ce_cls('com.merlinkitsune.astral_dice.block.ModBlocks');
+    var ModItems = ce_cls('com.merlinkitsune.astral_dice.item.ModItems');
+    if (!ModBlocks || !ModItems) { sp_send(ctx, 'AP_' + tag + '_CBLANK:ex=no_class'); return 0; }
+    // 确保脚边 chip_shop 方块在位(没有就放;已在位则不覆盖 —— 跨用例残留不影响本取证)
+    var placed = 0;
+    try {
+        var want = ModBlocks.CHIP_SHOP.get();
+        // 方块身份改用注册名比较(两端 Java 对象 `!==` 会走 Rhino specialEquals / 非 JS 对象警告通道)
+        var RegB = ce_cls('net.minecraft.core.registries.BuiltInRegistries');
+        var wantId = ''; var curId = '';
+        try { wantId = '' + RegB.BLOCK.getKey(want); } catch (eW) { wantId = ''; }
+        try { curId = '' + RegB.BLOCK.getKey(lvl.getBlockState(pos).getBlock()); } catch (eC) { curId = ''; }
+        if (!wantId || curId !== wantId) { lvl.setBlockAndUpdate(pos, want.defaultBlockState()); placed = 1; }
+    } catch (e0) { sp_send(ctx, 'AP_' + tag + '_CBLANK:ex=place:' + sp_exText(e0)); return 0; }
+    // 主手持 2 枚空白筹码
+    try { p.setItemInHand(ce_handMain(), new SP_ItemStack(ModItems.BLANK_CHIP.get(), 2)); }
+    catch (e1) { sp_send(ctx, 'AP_' + tag + '_CBLANK:ex=hand:' + sp_exText(e1)); return 0; }
+    var s0 = cp_state(p);
+    var r0 = s0 ? s0.refreshesLeft() : -1;
+    var b0 = s0 ? s0.lastBlankInsertAt() : -1;
+    var r1 = 'n/a'; var r2 = 'n/a'; var exU = '-';
+    try {
+        var bs = lvl.getBlockState(pos);
+        var hit = new SP_BlockHitResult(new SP_Vec3(pos.getX() + 0.5, pos.getY() + 0.9, pos.getZ() + 0.5),
+            SP_Direction.UP, pos, false);
+        r1 = '' + ce_useBlank(bs, p, lvl, hit);
+        r2 = '' + ce_useBlank(bs, p, lvl, hit);
+    } catch (e2) { exU = sp_exText(e2); }
+    var s1 = cp_state(p);
+    var rf = s1 ? s1.refreshesLeft() : -1;
+    var bf = s1 ? s1.lastBlankInsertAt() : -1;
+    var hand = -1;
+    try { hand = p.getItemInHand(ce_handMain()).getCount(); } catch (e3) { hand = -2; }
+    var ok = (r0 >= 0 && rf === r0 + 1 && b0 === 0 && bf !== 0 && hand === 1 && exU === '-') ? 'PASS' : 'FAIL';
+    sp_send(ctx, 'AP_' + tag + '_CBLANK:res1=' + r1 + ':res2=' + r2 + ':hand=' + hand
+        + ':refreshes=' + r0 + '->' + rf + ':blankAt=' + b0 + '->' + bf
+        + ':placed=' + placed + ':verdict=' + ok + ':ex=' + exU);
+    return 1;
+}
+
+/** ③ /astralshop ccardstack <tag> ⇒ AP_<tag>_CCARDS:cards=<n>:all16=<0|1>:bad=<ids|->:via=…:n=…
+ *  遍历模组物品注册项 → isCardItem 过滤 → maxStackSize 必须全为 16 */
+function sp_doEconCards(ctx, tag) {
+    var ModItems = ce_cls('com.merlinkitsune.astral_dice.item.ModItems');
+    var Reg = ce_cls('net.minecraft.core.registries.BuiltInRegistries');
+    var items = [];
+    var via = 'none';
+    // ① DeferredRegister.getEntries()(NeoForge DeferredRegister.Items / Forge DeferredRegister 均有)
+    try {
+        if (ModItems) {
+            var ents = ModItems.ITEMS.getEntries();
+            var it = ents.iterator();
+            while (it.hasNext()) {
+                var item = null;
+                try { item = it.next().get(); } catch (eG) { item = null; }
+                if (item) items.push(item);
+            }
+            if (items.length > 0) via = 'entries';
+        }
+    } catch (e0) { items = []; }
+    // ② 兜底:遍历物品注册表(仅 astral_dice 命名空间)
+    if (items.length === 0 && Reg) {
+        try {
+            var it2 = Reg.ITEM.iterator();
+            while (it2.hasNext()) {
+                var item2 = it2.next();
+                var id2 = '';
+                try { id2 = '' + Reg.ITEM.getKey(item2); } catch (eK) { id2 = ''; }
+                if (id2.indexOf('astral_dice:') === 0) items.push(item2);
+            }
+            via = 'registry';
+        } catch (e1) { }
+    }
+    var cards = 0; var bad = [];
+    try {
+        for (var i = 0; i < items.length; i++) {
+            var st = new SP_ItemStack(items[i]);
+            if (!ModItems.isCardItem(st)) continue;
+            cards++;
+            var mx = -1;
+            try { mx = st.getMaxStackSize(); } catch (eM) { mx = -1; }
+            if (mx !== 16) bad.push(sp_itemIdOf(items[i]) + '/x' + mx);
+        }
+    } catch (e2) { bad.push('ex:' + sp_exText(e2)); }
+    sp_send(ctx, 'AP_' + tag + '_CCARDS:cards=' + cards + ':all16=' + (bad.length === 0 ? 1 : 0)
+        + ':bad=' + (bad.length === 0 ? '-' : bad.join(',')) + ':via=' + via + ':n=' + items.length);
+    return 1;
+}
+
+/** ④ /astralshop cmimi <tag> —— 阈值常量 + 「累计返还战斗牌」计数器行为
+ *  期望:threshold=100;a 段回归 99 张不发(chips=0:counter=99);b 段再 +2 ⇒ 发 1 个、余 1(chips=1:counter=1) */
+function sp_doEconMimi(ctx, tag) {
+    var p = sp_p(ctx);
+    var mimi = ce_cls('com.merlinkitsune.astral_dice.item.sign.MimiSignItem');
+    var att = ce_cls('com.merlinkitsune.astral_dice.component.ModAttachments');
+    var th = -1;
+    try { th = mimi.RETURNED_CARD_THRESHOLD; } catch (e0) { th = -1; }
+    sp_send(ctx, 'AP_' + tag + '_CMIMI:threshold=' + th);
+    if (!mimi || !att) { sp_send(ctx, 'AP_' + tag + '_CMIMI:equip=FAIL:dice=-:stand=-:is=-3'); return 0; }
+    // 装备:骰子(dice 槽)+ 看板娘立牌(stand 槽) —— isEquipped 要求两者齐备
+    var eD = sp_setCurio(p, 'dice', 'astral_dice:emerald_dice', 0);
+    var eS = sp_setCurio(p, 'stand', 'astral_dice:mimi_sign', 0);
+    var eq = -1;
+    try { eq = mimi.isEquipped(p) ? 1 : 0; } catch (e1) { eq = -2; }
+    if (eq !== 1) {
+        sp_send(ctx, 'AP_' + tag + '_CMIMI:equip=FAIL:dice=' + (eD ? eD : 'ok')
+            + ':stand=' + (eS ? eS : 'ok') + ':is=' + eq);
+        return 0;
+    }
+    var cleared = ce_clearInv(p);
+    var z = '-';
+    try { att.setMimiReturnedCardCount(p, 0); } catch (e2) { z = sp_exText(e2); }
+    var exA = '-';
+    try { mimi.onBattleCardsReturned(p, 99); } catch (e3) { exA = sp_exText(e3); }
+    var cA = -1;
+    try { cA = att.getMimiReturnedCardCount(p); } catch (e4) { cA = -2; }
+    sp_send(ctx, 'AP_' + tag + '_CMIMI:a:chips=' + ce_chipInvCount(p) + ':counter=' + cA
+        + ':cleared=' + cleared + ':zero=' + z + ':ex=' + exA);
+    var exB = '-';
+    try { mimi.onBattleCardsReturned(p, 2); } catch (e5) { exB = sp_exText(e5); }
+    var cB = -1;
+    try { cB = att.getMimiReturnedCardCount(p); } catch (e6) { cB = -2; }
+    sp_send(ctx, 'AP_' + tag + '_CMIMI:b:chips=' + ce_chipInvCount(p) + ':counter=' + cB + ':ex=' + exB);
+    return 1;
+}
+
+/** 战利品表单次实验:放箱子 → 设表+种子 → 开箱 → 查目标 id → 清箱挖箱;返回 1=命中 / 0=未命中 */
+function ce_lootTrial(lvl, p, pos, chestBlock, tableId, seed, wantId, info) {
+    lvl.setBlockAndUpdate(pos, chestBlock.defaultBlockState());
+    var be = null;
+    try { be = lvl.getBlockEntity(pos); } catch (e0) { be = null; }
+    if (!be) { info.via = 'no_be'; return 0; }
+    info.via = ce_setLootTable(be, tableId, seed);
+    try { be.unpackLootTable(p); }
+    catch (e1) { try { be.unpackLootTable(null); } catch (e2) { info.via = info.via + '+unpackEX:' + sp_exText(e2); } }
+    var size = 27;
+    try { size = be.getContainerSize(); } catch (e3) { size = 27; }
+    var out = 0;
+    for (var i = 0; i < size; i++) {
+        var st = null;
+        try { st = be.getItem(i); } catch (e4) { st = null; }
+        if (!st) continue; // 真值性判空(ItemStack 是 SpecialEquality)
+        if (st.isEmpty()) continue;
+        if (sp_id(st) === wantId) { out = 1; break; }
+    }
+    try { be.clearContent(); } catch (e5) { }
+    try { lvl.setBlockAndUpdate(pos, ce_cls('net.minecraft.world.level.block.Blocks').AIR.defaultBlockState()); } catch (e6) { }
+    return out;
+}
+
+/** ⑤ /astralshop cloot <tag> —— 战利品注入定性/定量取证(箱子放在脚边 offset(2,0,2)) */
+function sp_doEconLoot(ctx, tag) {
+    var p = sp_p(ctx);
+    var lvl = sp_level(p);
+    var Blocks = ce_cls('net.minecraft.world.level.block.Blocks');
+    if (!Blocks) { sp_send(ctx, 'AP_' + tag + '_CLOOT:ex=no_class'); return 0; }
+    var pos = p.blockPosition().offset(2, 0, 2);
+    var chest = Blocks.CHEST;
+    // ① 埋藏的宝藏:空白筹码 100% 必出
+    var has = -1; var ex1 = '-'; var i1 = { via: '-' };
+    try { has = ce_lootTrial(lvl, p, pos, chest, 'minecraft:chests/buried_treasure', 20261014, 'astral_dice:blank_chip', i1); }
+    catch (e0) { ex1 = sp_exText(e0); }
+    sp_send(ctx, 'AP_' + tag + '_CLOOT:treasure:has=' + has + ':via=' + i1.via + ':ex=' + ex1);
+    // ② 地牢箱 200 次(每次换种子):1% 期望 ≈2 ⇒ n<=10 判 PASS
+    var n = 0; var fails = 0; var TRIALS = 200; var i2 = { via: '-' };
+    for (var i = 0; i < TRIALS; i++) {
+        try {
+            if (ce_lootTrial(lvl, p, pos, chest, 'minecraft:chests/simple_dungeon', 910000 + i * 7919, 'astral_dice:blank_chip', i2) === 1) n++;
+        } catch (e1) { fails++; }
+    }
+    sp_send(ctx, 'AP_' + tag + '_CLOOT:dungeon:n=' + n + ':verdict=' + (n <= 10 ? 'PASS' : 'FAIL')
+        + ':trials=' + TRIALS + ':fails=' + fails + ':via=' + i2.via);
+    return 1;
+}
+
+/** 版本口径(1.20.1):BlockState#use(level, player, hand, hit) */
+function ce_useBlank(bs, p, lvl, hit) {
+    return bs.use(lvl, p, ce_handMain(), hit);
+}
+
 // ── 命令注册 ──────────────────────────────────────────────────────────────
 ServerEvents.commandRegistry(event => {
     var Commands = event.commands;
@@ -2263,6 +2573,32 @@ ServerEvents.commandRegistry(event => {
                 .then(Commands.argument('tag', SP_StringArg.word())
                     .executes(ctx => sp_guard(ctx, SP_StringArg.getString(ctx, 'tag'), function () {
                         return sp_doChipReset(ctx, SP_StringArg.getString(ctx, 'tag'));
+                    }))))
+            // ── 2026-10-14 CHIP-ECON 批(筹码经济调整) ──
+            .then(Commands.literal('crecipes')
+                .then(Commands.argument('tag', SP_StringArg.word())
+                    .executes(ctx => sp_guard(ctx, SP_StringArg.getString(ctx, 'tag'), function () {
+                        return sp_doEconRecipes(ctx, SP_StringArg.getString(ctx, 'tag'));
+                    }))))
+            .then(Commands.literal('cblank')
+                .then(Commands.argument('tag', SP_StringArg.word())
+                    .executes(ctx => sp_guard(ctx, SP_StringArg.getString(ctx, 'tag'), function () {
+                        return sp_doEconBlank(ctx, SP_StringArg.getString(ctx, 'tag'));
+                    }))))
+            .then(Commands.literal('ccardstack')
+                .then(Commands.argument('tag', SP_StringArg.word())
+                    .executes(ctx => sp_guard(ctx, SP_StringArg.getString(ctx, 'tag'), function () {
+                        return sp_doEconCards(ctx, SP_StringArg.getString(ctx, 'tag'));
+                    }))))
+            .then(Commands.literal('cmimi')
+                .then(Commands.argument('tag', SP_StringArg.word())
+                    .executes(ctx => sp_guard(ctx, SP_StringArg.getString(ctx, 'tag'), function () {
+                        return sp_doEconMimi(ctx, SP_StringArg.getString(ctx, 'tag'));
+                    }))))
+            .then(Commands.literal('cloot')
+                .then(Commands.argument('tag', SP_StringArg.word())
+                    .executes(ctx => sp_guard(ctx, SP_StringArg.getString(ctx, 'tag'), function () {
+                        return sp_doEconLoot(ctx, SP_StringArg.getString(ctx, 'tag'));
                     }))))
     );
 })

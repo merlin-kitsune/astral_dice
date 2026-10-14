@@ -4,7 +4,7 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
-## Unreleased (2.0.0-SNAPSHOT.114)
+## Unreleased (2.0.0-SNAPSHOT.115)
 
 ### New Content
 
@@ -204,7 +204,7 @@
 
 ### Content & Balance
 
-- **Chip economy adjustments**: ① new `enable_chip_recipes` master toggle (default **off**, config option); when off, the four chip-crafting materials (Regeneration Reagent / Conductive Wire / Star Coin Dust / Mark Paint) are hidden from the creative tab (Blank Chip stays visible). ② Blank Chip loot chance 3% → 1% (buried treasure stays 100%). ③ the Chip Shop enters a 5:00 cooldown after a purchase; right-clicking it with a Blank Chip during cooldown inserts the chip — instantly clearing the cooldown and granting +1 re-roll, limited to once per 2:00. ④ card stack size 64 → 16. ⑤ Kanban-girl sign passive "card swap" threshold 25 → 100.
+- **Chip economy adjustments**: ① new `enable_chip_recipes` master toggle (default **off**, config option); when off, the four chip-crafting materials (Regeneration Reagent / Conductive Wire / Star Coin Dust / Mark Paint) are hidden from the creative tab (Blank Chip stays visible). ② Blank Chip loot chance 3% → 1% (buried treasure stays 100%). ③ the Chip Shop enters a 5:00 cooldown after a purchase; right-clicking it with a Blank Chip during cooldown inserts the chip — instantly clearing the cooldown and granting +1 re-roll, limited to once per 2:00. ④ card stack size 64 → 16 (combat cards included — the hardcoded 64 left in `CardItem`'s full-durability stack override was caught by in-game verification and fixed). ⑤ Kanban-girl sign passive "card swap" threshold 25 → 100.
 
 - **Chip Shop crafting recipe updated**: now `Gold Ingot · Star Plate · Gold Ingot / Polished Blackstone Bricks · Blank Chip · Polished Blackstone Bricks / Polished Blackstone Bricks ×3` (shaped 3×3).
 

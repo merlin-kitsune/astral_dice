@@ -14,12 +14,12 @@ public class CardItem extends Item {
         this.cardType = cardType;
     }
 
-    // 未消耗耐久(满耐久)的战斗牌可堆叠 64 个;已消耗耐久后单独存放(单张)
+    // 未消耗耐久(满耐久)的战斗牌可堆叠 16 个;已消耗耐久后单独存放(单张)
     @Override
     public int getMaxStackSize(ItemStack stack) {
         int max = AppliedStone.defaultUses(cardType);
         int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), max);
-        return uses >= max ? 64 : 1;
+        return uses >= max ? 16 : 1;
     }
 
     @Override

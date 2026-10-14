@@ -583,6 +583,58 @@ function csRunChipDeny(mc, step) {
     return;
 }
 
+// ══ CHIP-ECON 批(2026-10-14):创造模式物品栏 CTAB 取证(每次启动至多一次) ══════════
+//  目的:验证 `enable_chip_recipes` 总开关对创造栏 4 种筹码材料(再生试剂 / 导电丝 / 星币尘 /
+//        标记涂料)的显示守卫(ModCreativeTabs#displayItems)—— 关闭时这 4 种**不得**出现在 dice_tab。
+//  读数:AP_CSC:CTAB:mats=<n>/4:regen=<0|1>:wire=<0|1>:dust=<0|1>:paint=<0|1>:n=<显示条目数>
+//        (n 是创造栏条目总数:用来区分「4 种材料缺失」与「创造栏根本没构建」——后者 n=0)
+//  纪律:未武装 ⇒ 本段一行都不落(与脚本头「护栏」同口径);csCtabDone 粘滞 ⇒ 每次启动至多一次。
+var csCtabDone = false;      // 本次启动是否已取证
+var csCtabAtTick = -1;       // 首次观测到「已武装且在世界内」的 tick
+var CtabReg_CLASS = null;
+try { CtabReg_CLASS = Java.loadClass("net.minecraft.core.registries.BuiltInRegistries"); } catch (eCtabR) { CtabReg_CLASS = null; }
+
+/** 物品栈 → 注册表 id(优先注册表键;失败退回 csId 的 toString 解析) */
+function csCtabId(st) {
+    try {
+        if (st == null || st.isEmpty()) { return ""; }
+        var k = CtabReg_CLASS.ITEM.getKey(st.getItem());
+        return (k == null) ? "" : ("" + k);
+    } catch (e) { return csId(st); }
+}
+
+/** 创造栏 astral_dice:dice_tab 的 4 种材料存在性 */
+function csCtabProbe(mc) {
+    try {
+        if (CtabReg_CLASS == null) { cs("CTAB:err=no_registry"); return; }
+        var RL = null;
+        try { RL = Java.loadClass("net.minecraft.resources.ResourceLocation"); } catch (eRL0) { }
+        if (RL == null) { cs("CTAB:err=no_rl_cls"); return; }
+        var rl = null;
+        try { rl = RL.fromNamespaceAndPath("astral_dice", "dice_tab"); } catch (eRL1) { }
+        if (rl == null) { try { rl = new RL("astral_dice", "dice_tab"); } catch (eRL2) { } }
+        if (rl == null) { cs("CTAB:err=no_rl"); return; }
+        var tab = null;
+        try { tab = CtabReg_CLASS.CREATIVE_MODE_TAB.get(rl); } catch (eTab) { tab = null; }
+        if (tab == null) { cs("CTAB:err=no_tab"); return; }
+        var items = tab.getDisplayItems();
+        var n = 0;
+        try { n = items.size(); } catch (eSz) { n = -1; }
+        var want = ["astral_dice:regeneration_reagent", "astral_dice:conductive_wire",
+                    "astral_dice:star_coin_dust", "astral_dice:mark_paint"];
+        var hit = [0, 0, 0, 0];
+        var it = items.iterator();
+        while (it.hasNext()) {
+            var id = csCtabId(it.next());
+            if (id === "") { continue; }
+            for (var i = 0; i < 4; i++) { if (id === want[i]) { hit[i] = 1; } }
+        }
+        cs("CTAB:mats=" + (hit[0] + hit[1] + hit[2] + hit[3]) + "/4:regen=" + hit[0] + ":wire=" + hit[1]
+            + ":dust=" + hit[2] + ":paint=" + hit[3] + ":n=" + n);
+    } catch (e) { cs("CTAB:err=" + ("" + e).substring(0, 200)); }
+}
+
+var CS_CTAB_LO = 770, CS_CTAB_HI = 799;   // CHIP-ECON:创造栏 CTAB 取证的武装哨兵带
 ClientEvents.tick(event => {
     csTick++;
     var mc = null;
@@ -594,6 +646,17 @@ ClientEvents.tick(event => {
     if (csTick === 40) { cs("evt=boot:tick=" + csTick + ":shopCls=" + (ShopScreen_CLASS == null ? "null" : "ok")); }
     if ((csTick === 60 || csTick % 600 === 0) && mc.screen == null) { csVis(mc); }
     if (csTick === 200 || (csTick - csJeiLast) >= 1200) { csJeiLast = csTick; csJei(); }
+    // ── CHIP-ECON(2026-10-14):余额哨兵带 [770,799] 武装 ⇒ +30t 落一次创造栏 CTAB 读数(每次启动至多一次) ──
+    //  与既有口径不冲突:777 闸门只在「商店屏已开」时生效;MCP 手动带是 [700,709]。
+    if (!csCtabDone && mc.player != null) {
+        try {
+            var cCtabBal = csNum(function () { return WalletState_CLASS.balance(); });
+            if (cCtabBal >= CS_CTAB_LO && cCtabBal <= CS_CTAB_HI) {
+                if (csCtabAtTick < 0) { csCtabAtTick = csTick; }
+                else if (csTick - csCtabAtTick >= 30) { csCtabDone = true; csCtabProbe(mc); }
+            }
+        } catch (eCtabT) { csCtabDone = true; try { cs("CTAB:err=" + ("" + eCtabT).substring(0, 200)); } catch (eCtabT2) { } }
+    }
     var inShop = 0;
     try { inShop = (mc.screen != null && (mc.screen instanceof ShopScreen_CLASS)) ? 1 : 0; } catch (e1) { inShop = -1; }
     // 任务 CHIP 移植（2026-10-13）：筹码商店屏也算「在店内」（否则筹码屏一开就被当关屏、场景机立刻被复位）
