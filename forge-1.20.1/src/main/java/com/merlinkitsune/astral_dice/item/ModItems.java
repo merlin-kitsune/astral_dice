@@ -410,21 +410,24 @@ public class ModItems {
                     .rarity(AstralRarities.rare())));
 
     // 卡牌商店方块物品(右键方块开店;1.20.1 无 DeferredBlock,方块物品按 1.20.1 规范用 BlockItem 手工登记)
+    // ⚠️ 2026-10-14:三个商店方块(卡牌商店 / 筹码商店 / 事件抽奖盒)一律**不可堆叠** ⇒ 全部改用
+    //    registerItem + new BlockItem(…, new Item.Properties().stacksTo(1))(registerSimpleBlockItem 不接受属性)。
     public static final RegistryObject<Item> CARD_SHOP = registerItem("card_shop",
-            () -> new BlockItem(ModBlocks.CARD_SHOP.get(), new Item.Properties()));
+            () -> new BlockItem(ModBlocks.CARD_SHOP.get(), new Item.Properties().stacksTo(1)));
 
-    // 筹码商店方块物品(右键方块开店;与卡牌商店同款,走本类自建的 registerSimpleBlockItem 入口)
-    public static final RegistryObject<Item> CHIP_SHOP = registerSimpleBlockItem("chip_shop", ModBlocks.CHIP_SHOP);
+    // 筹码商店方块物品(右键方块开店;与卡牌商店同款)
+    public static final RegistryObject<Item> CHIP_SHOP = registerItem("chip_shop",
+            () -> new BlockItem(ModBlocks.CHIP_SHOP.get(), new Item.Properties().stacksTo(1)));
 
-    /** 抽事件券(2026-10-10 事件体系重写):使用后抽一条事件(ITEM_USE),生存消耗 1 张。 */
+    /** 事件抽奖牌(2026-10-10 事件体系重写):使用后抽一条事件(ITEM_USE),生存消耗 1 张。 */
     public static final RegistryObject<Item> EVENT_TICKET = registerItem("event_ticket",
             () -> new EventDrawItem(new Item.Properties()
                     .stacksTo(16)
                     .rarity(Rarity.COMMON)));
 
-    /** 事件抽取机(物品形态,BLOCK_USE)。 */
+    /** 事件抽奖盒(物品形态):放置后右键花 5 星币购买一张事件抽奖牌(2026-10-14 起为售卖机,不再直接抽事件)。 */
     public static final RegistryObject<Item> EVENT_DRAWER = registerItem("event_drawer",
-            () -> new BlockItem(ModBlocks.EVENT_DRAWER.get(), new Item.Properties()));
+            () -> new BlockItem(ModBlocks.EVENT_DRAWER.get(), new Item.Properties().stacksTo(1)));
 
     public static final RegistryObject<Item> BLANK_SIGN = registerItem("blank_sign",
             () -> new Item(new Item.Properties()
@@ -1056,6 +1059,8 @@ public class ModItems {
     /**
      * 方块物品登记:1.21.1 的 NeoForge 有 {@code ITEMS.registerSimpleBlockItem},1.20.1 **没有** ⇒ 自建同款入口,
      * 让两线的 {@code ModItems} 在「方块物品」这一段保持同一形状(调用点逐字同形,便于跨线对账)。
+     * ⚠️ 2026-10-14:本入口不接受 {@code Item.Properties} ⇒ 三个商店方块(需 {@code stacksTo(1)})已改为
+     * 直接 {@code registerItem} + {@code new BlockItem(...)};本入口保留(公开方法,仍可被无属性方块物品复用)。
      */
     public static RegistryObject<Item> registerSimpleBlockItem(String name, RegistryObject<Block> block) {
         return registerItem(name, () -> new BlockItem(block.get(), new Item.Properties()));

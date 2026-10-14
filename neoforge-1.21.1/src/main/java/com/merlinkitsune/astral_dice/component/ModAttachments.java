@@ -119,6 +119,22 @@ public class ModAttachments {
         player.setData(LULU_LAST_HURT_TICK.get(), value);
     }
 
+    // 事件抽奖盒(event_drawer):上次购买后的冷却结束时刻(level.getGameTime() + 6000,即 5:00;
+    // now < until 表示冷却中,0 = 无冷却)。判定在服务端,随 .sync 下发供客户端预检/显示。
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> EVENT_DRAWER_COOLDOWN_UNTIL =
+            ATTACHMENTS.register("event_drawer_cooldown_until", () -> AttachmentType.builder(() -> 0L)
+                    .serialize(Codec.LONG)
+                    .sync(ByteBufCodecs.VAR_LONG)
+                    .build());
+
+    public static long getEventDrawerCooldownUntil(net.minecraft.world.entity.player.Player player) {
+        return player.getData(EVENT_DRAWER_COOLDOWN_UNTIL.get());
+    }
+
+    public static void setEventDrawerCooldownUntil(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(EVENT_DRAWER_COOLDOWN_UNTIL.get(), value);
+    }
+
     // 治愈点数(玩家级共享资源的单一数值池):由医疗箱(赐福触发时加点)/史莱姆立牌被动/主动/
     // 缓冲盾牌等获取,由 HealingManager 统一管理。治愈体系已无独立计时器:
     // 触发骰神赐福时按当前治愈点×2 回血,赐福结束时治愈点减半(向下取整)。
