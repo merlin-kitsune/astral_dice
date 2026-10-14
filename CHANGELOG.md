@@ -4,7 +4,7 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
-## Unreleased (2.0.0-SNAPSHOT.116)
+## Unreleased (2.0.0-SNAPSHOT.118)
 
 ### New Content
 
@@ -92,6 +92,7 @@
   ⚠️ **The Chip Shop has no discount path at all** (the Membership Recommendation chip only cheapens the Card Shop), and its screen **draws no title text**.
 - **Chip Shop screen adjustments** (2026-10-13, both P0 lines): the cost readout is now a **small star-coin icon followed by the amount** (the text prefix is gone); the refresh counter shows only the **remaining** refreshes (the total is no longer drawn); offer chip icons are enlarged to **24x24**, exactly filling the quality frame's inner area without covering its border.
 - **Chip Shop screen, follow-up tweaks** (2026-10-13, both P0 lines): over-long chip names now **scroll horizontally** (one-second pauses at both ends, no shrinking or truncation); the gap between the star-coin icon and the amount is **1px wider**; the **selected** offer's name is drawn in **black** (the selection highlight now sits **underneath** the text) for better readability.
+- **Hover tooltip for the Chip Shop candidates** (2026-10-13, both P0 lines): pointing at any candidate chip (**either the chip cell or the label box below it** counts as a hit) shows the chip's name and description in a vanilla-style tooltip that disappears on move-away; it neither selects the chip nor affects the purchase flow.
 
 - **"Starlight Exchange" inside the shop**: exchange **2 Starlight for 1 Star Coin** with **no cooldown** (a message tells
   you when you are short on Starlight) — this is where the Merchant sign's old "cash out" active moved to.
@@ -210,6 +211,9 @@
 - **Chip Shop crafting recipe updated**: now `Gold Ingot · Star Plate · Gold Ingot / Polished Blackstone Bricks · Blank Chip · Polished Blackstone Bricks / Polished Blackstone Bricks ×3` (shaped 3×3).
 
 - **Card Shop and Chip Shop break particles now use their main materials**: fragments released when breaking these blocks no longer mix in the register, screen and other colors — the Card Shop shows only wood and white marble, and the Chip Shop only black stone and gold.
+- **Chip Shop full-inventory purchases now go through instead of being refused** (2026-10-13, both P0 lines): with **no free slot** in the 36 inventory slots the purchase is no longer rejected - the charge, the +1 purchase count, the candidate re-roll and the shop closing all proceed as usual, the chip that does not fit is **dropped at the player's feet**, and an extra "inventory full, chip dropped on the ground" message is shown. ⚠️ **Creative mode follows the vanilla default**: with a full inventory the new chip is **swallowed** by vanilla `add` (no drop, no message); only **non-Creative players (incl. Spectator)** see the drop.
+- **"Event Lottery Box" renamed to "Lottery Box" with a new texture** (2026-10-13, both P0 lines): the block is now called **Lottery Box** and uses the new `event_drawer.png` texture (source: `models/eventblock.bbmodel`); the vending-machine mechanics (5 Star Coins, once per 5:00) are unchanged.
+- **"Event Lottery Card" renamed to "Strange Question Mark" with a new icon** (2026-10-13, both P0 lines): the item is now called **Strange Question Mark** and uses a new icon; using it still draws one random event from the pool (consumes 1 in Survival).
 
 #### Damage & Resolution
 
@@ -489,6 +493,7 @@
   (`TargetSelectionHighlighter`) only reads the RGB components and is unaffected.
   Criteria: with a selection session active and the crosshair on a mob, the HUD screenshot shows text
   pixels matching those color values at that position (zero such pixels in the same scene before the fix).
+- **Aligned the Forge 1.20.1 `AP_EVENT_FIRE` machine-line key** (2026-10-13, 1.20.1 only): this line's event dispatch log wrote the last field as `targets=`, which did not match the 1.21.1 blueprint / NeoForge lines and the test contract (`targetsFinal=`) - so the 1.20.1 event cases could not match that line. It now reads `targetsFinal=`, making both lines byte-identical (no player-visible change).
 
 #### Text & Handbook
 

@@ -27,7 +27,7 @@ import java.util.List;
  *
  * <p><b>槽位构成</b>：先 3 个**隐藏候选槽**（{@link #HIDDEN_X}/{@link #HIDDEN_Y}，{@link OfferSlot}），
  * 再玩家物品栏 36 格 —— 主栏 9x3（物品栏槽 9..35）+ 快捷栏 9x1（槽 0..8）。
- * 玩家的槽位相对序号口径见 {@link #playerSlotOffset(int)}（0..26 = 主栏、27..35 = 快捷栏），
+ * 玩家槽位的相对序号（0..26 = 主栏、27..35 = 快捷栏）由菜单的添加顺序决定，
  * 绝对槽序号 = {@link #OFFER_SLOTS} + 相对序号。
  *
  * <p><b>坐标口径</b>（界面规范 §3 末条）：界面侧面板格网原点 = (61, 94)、格距 18、快捷栏行 y = 152；
@@ -335,12 +335,13 @@ public class ChipShopMenu extends AbstractContainerMenu {
      * 扣款、价格 +5（下次单价由购买次数现算）、购买次数 +1、重抽候选与关店一律照常，装不下的筹码用
      * {@code player.drop(...)} 弹到玩家身边。
      *
-     * <p><b>满包判定的口径（2026-10-14 修复）</b>：先逐格自判主物品栏（{@code items}，36 格）**有无空格**，
-     * 有空位才调 {@code Inventory#add} 并信任其落位，无空位则直接 {@code drop} —— 因为**创造模式**下
-     * {@code add} 找不到空位时会把整个栈 {@code setCount(0)} 后返回 {@code true}
+     * <p><b>满包判定的口径（2026-10-14 裁决）</b>：**生存 / 冒险模式**先逐格自判主物品栏（{@code items}，36 格）
+     * **有无空格**，有空位才调 {@code Inventory#add} 并信任其落位，无空位则整枚 {@code player.drop(...)} 到玩家身边；
+     * **创造模式遵循原版默认规则**（{@code buyer.getAbilities().instabuild} 为真 ⇒ 直接调 {@code Inventory#add}）：
+     * 原版 {@code add} 在找不到空位时会走 {@code stack.setCount(0); return true;} 分支把整栈**吞掉**
      * （1.21.1 {@code Inventory#add} 的 {@code hasInfiniteMaterials()} 分支 / 1.20.1 的 {@code abilities.instabuild} 分支），
-     * 若按返回值判定就会让筹码**凭空消失**（不掉落、无提示）。⇒ **创造模式满包与生存模式满包行为一致：都掉落**；
-     * 有空位时绝不掉落。
+     * 这正是创造模式应有的语义。⇒ **创造满包：被吞、不掉落、无提示**（{@code dropped=false}）；
+     * **生存满包：掉落 + 提示**（{@code dropped=true}）；有空位时两模式都绝不掉落。
      *
      * <p><b>R18</b>：购买后**自动关店**（{@link Player#closeContainer()}），筹码优先直接进物品栏
      * （不含副手 —— 用户裁决 Q10）；装不下时落在地上。
@@ -367,24 +368,34 @@ public class ChipShopMenu extends AbstractContainerMenu {
             return;
         }
         ItemStack bought = chip.copy();
-        // 需求 2（2026-10-14）：物品栏放不下**不再拒绝** —— 先自判主物品栏有无空格，有空位走原版 `add`
-        //   （它先把同 id 的未满栈补满、再找空格），无空位则整枚 `drop` 到玩家身边。
-        // ⚠️ **不能**用 `add` 的返回值判空位：创造模式（1.21.1 `hasInfiniteMaterials()` / 1.20.1 `abilities.instabuild`）
-        //   下 `add` 在**找不到空位**时走 `stack.setCount(0); return true;` 分支 ⇒ 筹码被静默吞掉
-        //   （不掉落、无提示）。筹码一律 `stacksTo(1)` ⇒「存在空格」等价于「装得下」。
-        boolean hasRoom = false;
-        for (ItemStack slotStack : playerInventory.items) {
-            if (slotStack.isEmpty()) {
-                hasRoom = true;
-                break;
+        // 需求 2（2026-10-14）：物品栏放不下**不再拒绝**。**创造模式遵循原版默认规则**（用户裁决）：
+        //   直接走原版 `add` —— `instabuild` 下找不到空位时它走 `stack.setCount(0); return true;` 把整栈**吞掉**
+        //   （不掉落、无提示），这正是创造模式应有的语义 ⇒ 创造模式**不**做自判、**不**掉落。
+        //   **生存 / 冒险模式**：先自判主物品栏有无空格（原版 `add` 会先把同 id 的未满栈补满、再找空格），
+        //   有空位走 `add`，无空位则整枚 `drop` 到玩家身边。
+        // ⚠️ 生存模式**不能**用 `add` 的返回值判空位（创造模式的吞栈分支恒返回 `true`）；筹码一律 `stacksTo(1)`
+        //   ⇒「存在空格」等价于「装得下」。
+        boolean dropped;
+        if (buyer.getAbilities().instabuild) {
+            // 创造模式：原版默认语义（满包时被吞 ⇒ 不掉落、不发提示）
+            playerInventory.add(bought);
+            dropped = false;
+        } else {
+            boolean hasRoom = false;
+            for (ItemStack slotStack : playerInventory.items) {
+                if (slotStack.isEmpty()) {
+                    hasRoom = true;
+                    break;
+                }
+            }
+            if (hasRoom) {
+                playerInventory.add(bought);
+                dropped = false;
+            } else {
+                buyer.drop(bought, false);
+                dropped = true;
             }
         }
-        if (hasRoom) {
-            playerInventory.add(bought);
-        } else {
-            buyer.drop(bought, false);
-        }
-        boolean dropped = !bought.isEmpty();
 
         // 落盘：购买次数 +1、记录本次类别（下次抽取的类别偏置来源），并**重抽候选**
         // ⚠️ 类别取 `chip`（未被 add 消耗）而非 `bought`：`add` 成功时 `bought` 已 setCount(0) ⇒ isEmpty，
@@ -452,15 +463,6 @@ public class ChipShopMenu extends AbstractContainerMenu {
         ModNetwork.sendToPlayer(serverPlayer, new ModNetwork.ActionBarMessage(
                 Component.translatable(key, args).withStyle(color),
                 GameplayConstants.ACTIONBAR_DURATION_TICKS));
-    }
-
-    /**
-     * 玩家物品栏索引（0..8 = 快捷栏、9..35 = 主物品栏）→ 本菜单玩家区**相对**槽序号（0..35）。
-     * 菜单按「主物品栏 3 行 → 快捷栏 1 行」添加槽位 ⇒ 0..26 ↔ 主物品栏、27..35 ↔ 快捷栏；
-     * 绝对槽序号 = {@link #OFFER_SLOTS} + 本方法的返回值。
-     */
-    public static int playerSlotOffset(int inventoryIndex) {
-        return inventoryIndex < 9 ? 27 + inventoryIndex : inventoryIndex - 9;
     }
 
     // ────────────────────────────── 菜单基类实现 ──────────────────────────────

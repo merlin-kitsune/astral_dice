@@ -162,7 +162,7 @@ roll(player, reason):                     # reason = ENTER_FIRST | REFRESH | POS
   - 隐藏槽 3 个（`HIDDEN_X/Y = -10000`，照抄 `CardShopMenu` 的 `ShelfSlot`；`mayPickup` 恒 false ⇒ 候选永不进入原版「光标携带」机制，杜绝拖拽白拿）；
   - DataSlot：`[0]` 单价花费、`[1]` 剩余刷新、`[2]` 总刷新（= 5 上限）、`[3]` 拒绝原因、`[4..6]` 三格品质码；
   - 服务端入口：`handleBuy(offerIndex)`、`handleRefresh()`（校验顺序照抄 `CardShopMenu.handleBuy`：菜单归属 → 索引范围 → 该格未购买 → 余额 → 扣款 → **写入物品栏 → 重抽并落盘 → `closeContainer()`**（2026-10-12 口径修订：关店放在全部落盘与提示之后 —— 同一服务端回调内完成，避免「状态未落盘就把玩家弹出去」）。
-- 网络包（照抄卡牌商店三条）：`network/ChipShopBuyPayload.java`（`record(int offerIndex)`）、`network/ChipShopRefreshPayload.java`、`network/ChipShopDenyPayload.java`（`record(int reason)`，0=余额不足、1=刷新次数为 0、2=物品栏已满）。
+- 网络包（照抄卡牌商店三条）：`network/ChipShopBuyPayload.java`（`record(int offerIndex)`）、`network/ChipShopRefreshPayload.java`、`network/ChipShopDenyPayload.java`（`record(int reason)`，0=余额不足、1=刷新次数为 0、2=**保留码**（物品栏已满，购买路径不再下发））。
 - 客户端：`screen/ChipShopScreen.java` 的 `onConfirmPressed()` / `onRefreshPressed()` 从「只计数 + TODO」改为**发包**；`containerTick` 从菜单同步 `setOffers/setCost/setRefreshes`；`removed()` 清状态（.86 已有）。
 - **红闪**：`client/ChipShopClientState.java` 新增 30t 闪烁（与 `CardShopClientState.DENY_BLINK_TICKS = 30`、`denyBlinkRed() = denyTicks > 0 && ((denyTicks-1)/5) % 2 == 1` 同式）——余额不足闪**花费数字**、次数为 0 闪**剩余刷新次数文本**。
 
@@ -175,7 +175,7 @@ roll(player, reason):                     # reason = ENTER_FIRST | REFRESH | POS
 | 点筹码格或文本框都选中 | `chipIndexAt` 扩到「筹码格 ∪ 标签框」（labelY=61，42×15），两者都只调 `select()` |
 | 绿条移动 | .86 已实现（画在对应标签框内） |
 | 余额不足 / 次数为 0 | 服务端拒绝 + `ChipShopDenyPayload` → 客户端红闪；**服务端是唯一权威**（客户端余额只用于显示） |
-| 购买落点 | 服务端写入第一个空物品栏格（`findEmptyInventorySlot`，照抄卡牌商店 `QUICK_MOVE_SLOT` 分支）；**不含副手**（你已确认） |
+| 购买落点 | 服务端先自判 36 格**有无空位**：有空位 `add`；无空位且**非创造** → `drop` 弹到玩家身边；**创造模式遵循原版默认**（满包被吞、不掉落）——**不含副手**（你已确认） |
 
 ## §6 价格与刷新次数（**已按裁决改写**）
 
@@ -207,7 +207,7 @@ roll(player, reason):                     # reason = ENTER_FIRST | REFRESH | POS
 ## §8 文案键（三语同批：zh_cn / en_us / ja_jp）
 
 - 复用（.86 已有）：`gui.astral_dice.chip_shop`（筹码商店，**不绘制** —— 2026-10-12 Q17 裁决；键保留备用）、`.cost`（%s，界面画星币图标+数字）、`.refresh_counter`（%s，只显示剩余刷新次数）、`.empty`（无）。
-- 新增：`block.astral_dice.chip_shop`（方块名）、`msg.astral_dice.chip_shop_no_coin`（余额不足）、`msg.astral_dice.chip_shop_no_refresh`（刷新次数已用尽）、`msg.astral_dice.chip_shop_bought`（已购买 %s）、`msg.astral_dice.chip_shop_owned_all`（已拥有全部筹码）、`msg.astral_dice.chip_shop_inventory_full`（物品栏已满）。
+- 新增：`block.astral_dice.chip_shop`（方块名）、`msg.astral_dice.chip_shop_no_coin`（余额不足）、`msg.astral_dice.chip_shop_no_refresh`（刷新次数已用尽）、`msg.astral_dice.chip_shop_bought`（已购买 %s）、`msg.astral_dice.chip_shop_owned_all`（已拥有全部筹码）、`msg.astral_dice.chip_shop_inventory_full`（物品栏已满）、`msg.astral_dice.chip_shop_chip_dropped`（物品栏已满，筹码已掉落在地上 —— 生存满包成交时**后发**的掉落提示）。
 
 ## §9 守门与验证
 

@@ -591,10 +591,15 @@ function csRunChipRefresh(mc, step) {
  *   ⇒ 服务端**照常成交**（扣款 + purchasedCount+1 + 重抽候选 + 关店），装不下的筹码由 `player.drop`
  *   弹到玩家身边；产品行 `CHIP_SHOP_BUY … dropped=true`；关屏那一拍补读服务端状态 + `edrop` 落点清单。
  * （旧口径「满包 ⇒ DENY_INVENTORY_FULL(2) 拒绝」自 .117 起作废；码 2 为**保留码**，见 ChipShopMenu 注记。）
- *  ⚠️ 不能「先填满物品栏再开屏」：ChipShopOpener.open 自己就会以 inventory_full 拒绝开店，屏根本不会出现。 */
+ *  ⚠️ 不能「先填满物品栏再开屏」：ChipShopOpener.open 自己就会以 inventory_full 拒绝开店，屏根本不会出现。
+ *  ⚠️ .118+ 模式口径（用户裁决）：满包**掉落**只在**生存 / 冒险模式**成立 —— 创造模式按原版 `add` 的
+ *    `instabuild` 分支把筹码**吞掉**（不掉落、无提示、`dropped=false`）。故本场景在**填满（step 8）之后、
+ *    点确认（step 40）之前**（step 12）切到生存模式，且 `gamemode survival` **必须走**本通道
+ *    （`csCmd` → `connection.sendCommand`）—— 用例的 `inject_command` 是聊天注入，商店屏开着时会被 GUI 吞掉。 */
 function csRunChipDrop(mc, step) {
     if (step === 1) { cs("evt=chip_drop:open:bal=" + csNum(function () { return WalletState_CLASS.balance(); }) + ":" + csChipState(mc)); return; }
     if (step === 8) { csCmd(mc, 'astralshop cinv CD fill', "chip_drop_fill", step); return; }
+    if (step === 12) { csCmd(mc, 'gamemode survival', "chip_drop_gm_survival", step); return; }
     if (step === 20) { csClick(mc, 99, 45, "chip_cell0", step); return; }
     if (step === 25) { cs("evt=chip_drop:selected:" + csChipState(mc)); return; }
     if (step === 40) { csClick(mc, 57, 54, "chip_confirm_full", step); return; }
