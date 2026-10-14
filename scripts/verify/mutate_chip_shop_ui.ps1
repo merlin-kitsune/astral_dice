@@ -17,6 +17,8 @@
 
 ⚠️ 多行锚点：脚本内 `$nl` 恒为 LF，而 forge 线源码/资源多为 CRLF ⇒ 锚点与替换串在比对前按
 **目标文件自己的行尾**归一化（ConvertTo-FileEol）；不归一化时多行锚点会静默匹配不到（实测踩中过）。
+⚠️ 2026-10-14：M17 的锚点随 G22 判据刷新同步更新 —— .112 起 chip_shop 配方为 `GPG/HKH/HHH`（`blank_chip` 由 S 位移到 K 位），
+   旧的 `"BSB"` 锚点已不复存在（会以 MUT_HARNESS 报「未找到变异锚点」）。
 #>
 [CmdletBinding()]
 param(
@@ -49,6 +51,50 @@ function ConvertTo-FileEol([string]$s, [string]$eol) {
 }
 
 $nl = [string][char]10
+
+# M17 锚点（多行；here-string 逐字书写 pattern + key 整块，行尾由 ConvertTo-FileEol 按目标文件归一化）：
+#   现状 = chip_shop 的 `GPG/HKH/HHH` + key{G,P,H,K}；变异 = 换成 card_shop 的 `TTT/BBB/MMM` + key{T,B,M}
+#   ⇒ 两文件「图案 + 材料」签名全同 ⇒ 必被 G22 撞车组判红（原版单行锚点 `"BSB"` 自 .112 起已失效）。
+$m17Find = @'
+  "pattern": [
+    "GPG",
+    "HKH",
+    "HHH"
+  ],
+  "key": {
+    "G": {
+      "item": "minecraft:gold_ingot"
+    },
+    "P": {
+      "item": "astral_dice:star_plate"
+    },
+    "H": {
+      "item": "minecraft:polished_blackstone_bricks"
+    },
+    "K": {
+      "item": "astral_dice:blank_chip"
+    }
+  },
+'@
+$m17Repl = @'
+  "pattern": [
+    "TTT",
+    "BBB",
+    "MMM"
+  ],
+  "key": {
+    "T": {
+      "item": "minecraft:smooth_stone_slab"
+    },
+    "B": {
+      "item": "astral_dice:star_coin"
+    },
+    "M": {
+      "tag": "minecraft:logs"
+    }
+  },
+'@
+
 $mutations = @(
     @{ name = 'M1 池去重被取消（pool.remove 注释掉）'; file = "$java/shop/ChipShopRoller.java"
        find = 'pool.remove(chosen);'; repl = '// pool.remove(chosen);'; expect = '去重/缺口' },
@@ -82,8 +128,8 @@ $mutations = @(
     @{ name = 'M15 Java 侧语言键写错（悬空键：no_refresh → no_refresh_x）'; file = "$java/shop/ChipShopMenu.java"
        find = 'msg.astral_dice.chip_shop_no_refresh'; repl = 'msg.astral_dice.chip_shop_no_refresh_x'; expect = '悬空语言键' },
     # ---- 2026-10-12 功能审查「守门过松」清单 → G21b/G22..G27 补强后追加的变异（证明新判据真的会红） ----
-    @{ name = 'M17 配方撞车回归（chip_shop 中排 BSB → BBB，与 card_shop 同图案同材料）'; file = "$root/neoforge-1.21.1/src/main/resources/data/astral_dice/recipe/chip_shop.json"
-       find = '"BSB"'; repl = '"BBB"'; expect = 'shaped 配方撞车' },
+    @{ name = 'M17 配方撞车回归（chip_shop 改成与 card_shop 同图案同材料 TTT/BBB/MMM）'; file = "$root/neoforge-1.21.1/src/main/resources/data/astral_dice/recipe/chip_shop.json"
+       find = $m17Find; repl = $m17Repl; expect = 'shaped 配方撞车' },
     @{ name = 'M18 关店被挪出 handleBuy（挪到同类新方法里）'; file = "$java/shop/ChipShopMenu.java"
        find = '        buyer.closeContainer();' + $nl + '    }'; repl = '    }' + $nl + $nl + '    private void mutatedClose(ServerPlayer buyer) { buyer.closeContainer(); }'; expect = '.closeContainer(); 必须落在 handleBuy 方法体内' },
     @{ name = 'M19 标签框命中被删掉（chipIndexAt 只剩筹码格）'; file = "$java/screen/ChipShopScreen.java"

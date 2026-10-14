@@ -1556,6 +1556,8 @@ function sp_doRecipes(ctx, tag, idStr) {
 // → ChipShopMenu.handleBuy / handleRefresh → ChipShopState 附件原文。
 // 机器行前缀 AP_<tag>_C*；购买与刷新另有产品侧自带行 CHIP_SHOP_BUY / CHIP_SHOP_REFRESH。
 // ⚠️ 三种拒绝（余额不足 / 次数为 0 / 物品栏满）**只有 actionbar + S2C 包、没有服务端日志**
+// ⚠️ ChipShopState 自 `.114` 起为 **7 分量** record（+cooldownUntil / +lastBlankInsertAt）
+//    ⇒ 探针**不得**直调构造器（Rhino 会 InternalError: constructor not found），一律 `EMPTY` / `with*` 派生。
 //    ⇒ 拒绝的判据是「状态未变 + 无 CHIP_SHOP_BUY 行」，不是某条 deny 日志行。
 
 function cp_menuOf(p) {
@@ -1641,14 +1643,24 @@ function cp_invDelta(before, after) {
     return out.length ? out.join(',') : '-';
 }
 
-/** 保留候选与次数、只改 purchasedCount 的新态（价格曲线用；record 规范构造器） */
+/**
+ * 保留候选与次数、只改 purchasedCount 的新态（价格曲线用）。
+ *
+ * ⚠️ ChipShopState 自 `.114` 起为 **7 分量** record（offers / lastPickCategory / purchasedCount /
+ * refreshesLeft / regenAnchor / cooldownUntil / lastBlankInsertAt）⇒ **5 参构造器已不存在**，
+ * Rhino 直调旧写法会抛 `InternalError: constructor not found`（原 5 参直调写法即此坑）⇒ 只用产品侧公开的
+ * `with*` 派生：`EMPTY` ⇒ `withOffers(s.entries())`（复刻候选 ⇒ `offersKeep=1`；未知 id 按产品
+ * `entries()` 口径丢弃 —— 用例里的候选均来自真实掷骰，无未知 id）
+ * ⇒ `withRefreshes(s.refreshesLeft(), s.regenAnchor())`（复刻次数 / 锚点）
+ * ⇒ 逐次 `withPurchased(null)` 累加到 n。
+ * ⚠️ `withPurchased` 只能 +1 ⇒ **n 小于当前次数**（用例里的 `cprice 30` ⇒ `cprice 0` 回落）靠
+ * 「从 EMPTY 重建」实现。未复刻 lastPickCategory / cooldownUntil / lastBlankInsertAt（置空 / 0；
+ * 与 `.114` 前的 5 分量口径一致）；本用例断言面（formula / state / menu / offersKeep）不含这三项。
+ */
 function cp_stateWith(s, purchased) {
-    try { return new SP_ChipState(s.offers(), s.lastPickCategory(), purchased, s.refreshesLeft(), s.regenAnchor()); }
-    catch (e) {
-        var cur = s;
-        for (var i = s.purchasedCount(); i < purchased; i++) { cur = cur.withPurchased(null); }
-        return cur;
-    }
+    var cur = SP_ChipState.EMPTY.withOffers(s.entries()).withRefreshes(s.refreshesLeft(), s.regenAnchor());
+    for (var i = 0; i < purchased; i++) { cur = cur.withPurchased(null); }
+    return cur;
 }
 
 function sp_doChipBlock(ctx, tag) {
@@ -1798,14 +1810,9 @@ function sp_doChipPrice(ctx, tag, n) {
 function sp_doChipReset(ctx, tag) {
     var p = sp_p(ctx);
     var via = '?'; var st = null;
+    // ⚠️ 全新态只能取类上的 EMPTY 常量：ChipShopState 自 `.114` 起为 7 分量 record，
+    //    5 参构造器已不存在（原兜底直调构造器会抛 InternalError ⇒ 已删）。
     try { st = SP_ChipState.EMPTY; via = 'EMPTY'; } catch (e0) { st = null; }
-    if (st == null) {
-        try {
-            var AL = Java.loadClass('java.util.ArrayList');
-            st = new SP_ChipState(new AL(), SP_Optional.empty(), 0, SP_ChipCatalog.REFRESH_INITIAL, 0);
-            via = 'new';
-        } catch (e1) { st = null; }
-    }
     if (st == null) { sp_send(ctx, 'AP_' + tag + '_CRESET:ex=unavailable:via=none'); return 0; }
     var ex = '-';
     try { SP_ChipState.store(p, st); } catch (e2) { ex = 'EX:' + sp_exText(e2); }
@@ -1828,19 +1835,19 @@ function sp_doChipRegen(ctx, tag, mode) {
     var regen = SP_ChipCatalog.REFRESH_REGEN_TICKS;
     var next = null; var expect = '';
     if (mode === 'due') {
-        next = new SP_ChipState(s.offers(), s.lastPickCategory(), s.purchasedCount(), Math.min(s.refreshesLeft(), max - 1), now - 1);
+        next = s.withRefreshes(Math.min(s.refreshesLeft(), max - 1), now - 1);
         expect = 'tick+1（refreshes+1、anchor=' + (now - 1 + regen) + '）';
     } else if (mode === 'max') {
-        next = new SP_ChipState(s.offers(), s.lastPickCategory(), s.purchasedCount(), max, now - 1);
+        next = s.withRefreshes(max, now - 1);
         expect = 'NO-regen（已到上限 ⇒ 锚点不顺延，仍为 ' + (now - 1) + '）';
     } else if (mode === 'zero') {
-        next = new SP_ChipState(s.offers(), s.lastPickCategory(), s.purchasedCount(), 1, 0);
+        next = s.withRefreshes(1, 0);
         expect = 'NO-regen（从未刷新过 ⇒ anchor=0 不恢复）';
     } else if (mode === 'first') {
-        next = new SP_ChipState(s.offers(), s.lastPickCategory(), s.purchasedCount(), SP_ChipCatalog.REFRESH_INITIAL, 0);
+        next = s.withRefreshes(SP_ChipCatalog.REFRESH_INITIAL, 0);
         expect = 'crefresh 成功后 anchor=now+' + regen + '（首次消耗才起算）';
     } else if (mode === 'pend') {
-        next = new SP_ChipState(s.offers(), s.lastPickCategory(), s.purchasedCount(), max, now - 600);
+        next = s.withRefreshes(max, now - 600);
         expect = 'crefresh 花 1 次（→' + (max - 1) + '）后下一 tick 立即补回 ' + max + '（已知 P2 口径，待用户裁决）';
     } else {
         sp_send(ctx, 'AP_' + tag + '_CREGEN:bad-mode=' + mode);

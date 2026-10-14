@@ -11,6 +11,10 @@
         （越线字面 / shaped 配方撞车 / DataSlot 与拒绝码 / 星等来源 / 无折扣 / handleBuy 关店 / 命中面 / 概率表行序 / 价格公式）。
       **两线均已落地**（forge-1.20.1 的 T7 移植已完成，2026-10-12）⇒ 两线跑本脚本都应全绿，
       任一条 FAIL 即为回归（「forge 默认必然 FAIL 的 RED 侧」口径已作废）。
+      **2026-10-14 判据刷新（3 处，均已取证为「判据字面过期」而非产品回归）**：
+        ① G21 ModItems：改「整条注册语句锚定」（兼容两线各异的注册入口），不再写死 1.21.1 的 registerSimpleBlockItem 字面；
+        ② G21b neo 侧越线字面：收窄为「1.20.1 形态的六参 use 声明头」（原字面会被本线合法的七参 useItemOn 续行误命中）；
+        ③ G22 chip_shop 配方：改判 pattern GPG/HKH/HHH + key K = astral_dice:blank_chip（.112 起 blank_chip 由 S 位移到 K 位）。
 #>
 [CmdletBinding()]
 param(
@@ -562,7 +566,19 @@ foreach ($key in $targets) {
     elseif ((Code-Src $blockPath).IndexOf('ChipShopOpener.open(player)') -lt 0) { Fail ($line + ': ChipShopBlock 未接 ChipShopOpener.open') }
     $modBlocksSrc = Code-Src (Join-Path $javaDir 'block/ModBlocks.java')
     if ($modBlocksSrc.IndexOf('register("chip_shop"') -lt 0 -or $modBlocksSrc.IndexOf('new ChipShopBlock(') -lt 0) { Fail ($line + ': ModBlocks 未注册 chip_shop') }
-    if ((Code-Src (Join-Path $javaDir 'item/ModItems.java')).IndexOf('registerSimpleBlockItem("chip_shop", ModBlocks.CHIP_SHOP)') -lt 0) { Fail ($line + ': ModItems 未登记 chip_shop BlockItem') }
+    # G21c ModItems：登记**写法**两线本就不同 —— 1.21.1 = ITEMS.register("chip_shop", …DeferredItem)、1.20.1 = registerItem("chip_shop", …RegistryObject)。
+    # 旧判据写死 1.21.1 的 registerSimpleBlockItem 字面 ⇒ .116「三商店方块 stacksTo(1)」改写注册入口后两线**双双误报**（2026-10-14 取证：非产品回归）。
+    # 新判据 = 锚定**整条注册语句**（字段名 + 注册入口 + "chip_shop" + 语句体），再在语句体内要求 BlockItem 形态 + ModBlocks.CHIP_SHOP：
+    #   未登记 / 登记成普通 Item / 引用错方块 ⇒ 三种漏登记仍判红（反向能力不丢）。
+    $miSrc = Code-Src (Join-Path $javaDir 'item/ModItems.java')
+    $miReg = [regex]::Match($miSrc, 'CHIP_SHOP\s*=\s*(?<fn>[\w.]*register\w*)\s*\(\s*"chip_shop"\s*,(?<b>.*?);', 'Singleline')
+    if (-not $miReg.Success) { Fail ($line + ': ModItems 未登记 chip_shop BlockItem') }
+    else {
+        $miFn = $miReg.Groups['fn'].Value; $miBody = $miReg.Groups['b'].Value
+        # 「BlockItem 形态」= 直接 new BlockItem(...)，或用自建入口 registerSimpleBlockItem(名, ModBlocks.X)（其方法体就是 new BlockItem(block.get(), …)）
+        if (-not ($miBody.IndexOf('new BlockItem(') -ge 0 -or $miFn.EndsWith('registerSimpleBlockItem'))) { Fail ($line + ': ModItems 的 chip_shop 未按 BlockItem 登记（方块物品形态缺失）') }
+        elseif ($miBody.IndexOf('ModBlocks.CHIP_SHOP') -lt 0) { Fail ($line + ': ModItems 的 chip_shop BlockItem 未引用 ModBlocks.CHIP_SHOP') }
+    }
     if ((Code-Src (Join-Path $javaDir 'init/ModCreativeTabs.java')).IndexOf('ModItems.CHIP_SHOP.get()') -lt 0) { Fail ($line + ': 创造栏未收录筹码商店') }
     $resDir = Join-Path $lineDir 'src/main/resources'
     $dataDir = Join-Path $resDir 'data/astral_dice'
@@ -632,13 +648,17 @@ foreach ($key in $targets) {
             $bflavor = '六参 use / 无 codec 体系'
             $bneed += 'public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player,'
             $bneed += 'InteractionHand hand, BlockHitResult hitResult)'
-            # 反向判据：移植线**不得**出现 1.21.1 专有字面（含为蒙守门而造的台账常量）
-            $bforbid = @('simpleCodec(ChipShopBlock::new)', 'MapCodec<ChipShopBlock>')
+            # 反向判据：移植线**不得**出现 1.21.1 专有字面（含为蒙守门而造的台账常量）；
+            # 2026-10-14 对称补强：连 1.21.1 的两个交互入口标识符一并禁（1.20.1 的 Block 无 useItemOn / ItemInteractionResult，出现即越线）。
+            $bforbid = @('simpleCodec(ChipShopBlock::new)', 'MapCodec<ChipShopBlock>', 'useItemOn(', 'ItemInteractionResult')
         } else {
             $bflavor = 'codec 覆写 / useWithoutItem 覆写点'
             $bneed += 'simpleCodec(ChipShopBlock::new)'
             $bneed += 'protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hitResult)'
-            $bforbid = @('InteractionHand hand, BlockHitResult hitResult)')
+            # 2026-10-14 收窄：原字面 `InteractionHand hand, BlockHitResult hitResult)` 会被本线**合法**的七参
+            # useItemOn(…, Player player, InteractionHand hand, BlockHitResult hitResult) 续行（ChipShopBlock.java:115）误命中 ⇒ 改为只锚
+            # **1.20.1 形态的六参 use 声明头**（本线不应有的旧签名）；拿台账常量蒙守门照样命中（判据读去注释源码）。
+            $bforbid = @('InteractionResult use(BlockState state, Level level, BlockPos pos, Player player,')
         }
         $bmiss = @($bneed | Where-Object { $bsrc.IndexOf($_) -lt 0 })
         if ($bmiss.Count -gt 0) { Fail ($line + ': ChipShopBlock 朝向/交互语义缺失 ' + ($bmiss -join ' | ')) }
@@ -678,7 +698,18 @@ foreach ($key in $targets) {
     $chipRc = Read-Src (Join-Path $recipeDir 'chip_shop.json')
     if ($chipRc -ne '') {
         if ($chipRc.IndexOf($recipeResult) -lt 0 -or $chipRc.IndexOf('"count": 1') -lt 0) { Fail ($line + ': chip_shop 配方产出应为 astral_dice:chip_shop ×1') }
-        if ($chipRc.IndexOf('"S"') -lt 0 -or $chipRc.IndexOf('astral_dice:blank_chip') -lt 0) { Fail ($line + ': chip_shop 配方须含 S=astral_dice:blank_chip（与 card_shop 的 BBB 中排区分）') }
+        # 2026-10-14：.112 起 chip_shop 配方改为 pattern GPG/HKH/HHH（blank_chip 由 **S** 位移到 **K** 位）⇒ 旧判据要求字面 "S" 变成误报。
+        # 新判据 = 解析 JSON 后逐字锚定「图案 GPG/HKH/HHH」+「key K = astral_dice:blank_chip」；
+        # 「与 card_shop 的 BBB 中排不撞车」由上方 G22 撞车组（图案 + 材料全同签名）继续守，两组互补、不互相替代。
+        $chipJson = $null
+        try { $chipJson = $chipRc | ConvertFrom-Json } catch { $chipJson = $null }
+        if ($null -eq $chipJson) { Fail ($line + ': chip_shop 配方 JSON 解析失败') }
+        else {
+            $chipPat = ((@($chipJson.pattern)) -join '/')
+            $chipK = [string]$chipJson.key.K.item
+            if ($chipPat -ne 'GPG/HKH/HHH') { Fail ($line + ': chip_shop 配方图案应为 GPG/HKH/HHH（与 card_shop 的 BBB 中排区分），实测 ' + $chipPat) }
+            if ($chipK -ne 'astral_dice:blank_chip') { Fail ($line + ': chip_shop 配方 key K 应为 astral_dice:blank_chip，实测「' + $chipK + '」') }
+        }
     }
     Write-Out ('CHIPUI_G22: shaped 配方 ' + $shaped + ' 条，同图案同材料重复组 ' + $dupGroups.Count)
 
