@@ -121,7 +121,7 @@ public final class AstralEventDispatcher {
                 EventEffects.afterDispatch(event, targetsFinal);
                 AstralEventSystem.applyEventBonus(bonusFinal, event.id().toString(), targetsFinal);
                 EventCardService.playTriggerSounds(targetsFinal, event);
-                LOGGER.info("AP_EVENT_FIRE: id={}:src={}:tier={}:targets={}", event.id(), source, tierFinal, targetsFinal.size());
+                LOGGER.info("AP_EVENT_FIRE: id={}:src={}:tier={}:targetsFinal={}", event.id(), source, tierFinal, targetsFinal.size());
                 if (event.secretOnly() && source == AstralEventTrigger.INVESTIGATION_KILL) {
                     ModAttachments.setInvestigationStage(tierOwner, Math.min(tierFinal + 1, 4));
                 }

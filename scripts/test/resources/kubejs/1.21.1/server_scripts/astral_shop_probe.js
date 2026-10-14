@@ -2386,6 +2386,294 @@ function ce_useBlank(bs, p, lvl, hit) {
 }
 
 // ── 命令注册 ──────────────────────────────────────────────────────────────
+
+// ══ 事件抽奖盒 / 奇怪的问号（2026-10-14 .116/.117 批）══════════════════════════
+//  取证口径：① 本段探针机器行 AP_<tag>_EV*；② 产品侧行（都在 logs/latest.log）——
+//    · AP_EVENT_DRAWER: player=<n>:buy=ok:bal=A->B        （购买成功）
+//    · AP_EVENT_DRAWER: player=<n>:denied=cooldown:remain=N（冷却中拒绝）
+//    · AP_EVENT_DRAWER: player=<n>:denied=insufficient:bal=N（余额不足拒绝）
+//    · AP_EVENT_DRAW: src=ITEM_USE:id=<id>                 （奇怪的问号抽到的事件）
+//    · AP_EVENT_FIRE: id=<id>:src=ITEM_USE:tier=0:targetsFinal=<n>（事件真正生效；弹卡后 40t）
+//  ⚠️ 三种拒绝**只有 actionbar + 产品行**，没有 S2C 之外的通道 ⇒ 判据 = 状态未变 + 产品拒绝行。
+//  行差（与 cblock 同口径）：1.21.1 = BlockState#useWithoutItem(Level,Player,BlockHitResult)；
+//                            1.20.1  = BlockState#use(Level,Player,InteractionHand,BlockHitResult)。
+//  ⚠️ 类名一律**在函数内 spTryClass 解析**（不引顶层 var 别名）：1.20.1 侧顶层 var 别名在命令回调里
+//     曾取不到（ReferenceError，见 sp_doPromo 注记），内联解析是已验证的写法。
+//  ⚠️ 冷却记在玩家附件里（跨 launch 保留）⇒ 用例开头必须 `evcd <tag> zero` 先清冷却。
+//  ⚠️ 副作用边界：evblock/evuse 只放方块与右键；estack 会清空物品栏（用例须在 /clear 之后调用）。
+
+/** 上一次 evblock 放的抽奖盒位置（evuse 用；顶层 var 跨命令保留，与 sp_lastVillager 同口径） */
+var ev_lastPos = null;
+
+/** 物品栏 36 格内 astral_dice:event_ticket 的总张数（不含副手） */
+function ev_tickets(p) {
+    var n = 0;
+    try {
+        var inv = p.getInventory();
+        for (var i = 0; i < 36; i++) {
+            var st = inv.getItem(i);
+            if (st == null || st.isEmpty()) { continue; }
+            if (sp_id(st) === 'astral_dice:event_ticket') { n += st.getCount(); }
+        }
+    } catch (e) { return -1; }
+    return n;
+}
+
+/** 抽奖盒冷却附件（-1 = 取不到） */
+function ev_cd(p) {
+    var M = spTryClass('com.merlinkitsune.astral_dice.component.ModAttachments');
+    if (M == null) { return -1; }
+    try { return M.getEventDrawerCooldownUntil(p); } catch (e) { return -1; }
+}
+
+/** 物品栏 36 格非空清单（'i:id xN' 逗号连接；空 → 'none'） */
+function ev_invList(p) {
+    var out = [];
+    try {
+        var inv = p.getInventory();
+        for (var i = 0; i < 36; i++) {
+            var st = inv.getItem(i);
+            if (st == null || st.isEmpty()) { continue; }
+            out.push(i + ':' + sp_id(st) + 'x' + st.getCount());
+        }
+    } catch (e) { return '<ex>'; }
+    return out.length ? out.join(',') : 'none';
+}
+
+/** 物品栏 36 格清空（返回清除格数） */
+function ev_clearInv(p) {
+    var n = 0;
+    try {
+        var inv = p.getInventory();
+        for (var i = 0; i < 36; i++) {
+            var st = inv.getItem(i);
+            if (st != null && !st.isEmpty()) { inv.setItem(i, new SP_ItemStack(SP_Items.AIR)); n++; }
+        }
+    } catch (e) { return -1; }
+    return n;
+}
+
+/** 脚边 12 格内的 ItemEntity 清单（'id xN'） */
+function ev_drops(p) {
+    var out = [];
+    try {
+        var IE = spTryClass('net.minecraft.world.entity.item.ItemEntity');
+        var AABB = spTryClass('net.minecraft.world.phys.AABB');
+        var list = sp_level(p).getEntitiesOfClass(IE, AABB.ofSize(p.position(), 12.0, 12.0, 12.0));
+        for (var i = 0; i < sp_len(list); i++) {
+            var e = sp_at(list, i);
+            var st = e.getItem();
+            out.push(sp_id(st) + 'x' + st.getCount());
+        }
+    } catch (e0) { return ['<err:' + sp_exText(e0) + '>']; }
+    return out;
+}
+
+/** 公共事件池快照：玩家条件版（publicPool(Player)）+ 静态版（publicPool()） */
+function ev_pool(p) {
+    var out = { ids: [], n: -1, hasStage: -1, statN: -1, statStage: -1, err: '-' };
+    try {
+        var R = spTryClass('com.merlinkitsune.astral_dice.event.AstralEventRegistry');
+        if (R == null) { out.err = 'no_registry'; return out; }
+        var list = R.publicPool(p);
+        out.n = sp_len(list);
+        for (var i = 0; i < out.n; i++) { out.ids.push('' + sp_at(list, i).id()); }
+        out.hasStage = 0;
+        for (var j = 0; j < out.ids.length; j++) {
+            if (out.ids[j] === 'astral_dice:investigation_stage') { out.hasStage = 1; }
+        }
+        var stat = R.publicPool();
+        out.statN = sp_len(stat);
+        out.statStage = 0;
+        for (var k = 0; k < out.statN; k++) {
+            if (('' + sp_at(stat, k).id()) === 'astral_dice:investigation_stage') { out.statStage = 1; }
+        }
+    } catch (e) { out.err = sp_exText(e); }
+    return out;
+}
+
+/** ① /astralshop evblock <tag> —— 脚边 +X2 放 astral_dice:event_drawer；读方块/物品的 key 与显示名 */
+function ev_doBlock(ctx, tag) {
+    var p = sp_p(ctx);
+    var lvl = sp_level(p);
+    var MB = spTryClass('com.merlinkitsune.astral_dice.block.ModBlocks');
+    var MI = spTryClass('com.merlinkitsune.astral_dice.item.ModItems');
+    if (MB == null || MI == null) { sp_send(ctx, 'AP_' + tag + '_EVBLOCK:ex=no_class'); return 0; }
+    var pos = p.blockPosition().offset(2, 0, 0);
+    var ok = 0;
+    try { ok = lvl.setBlockAndUpdate(pos, MB.EVENT_DRAWER.get().defaultBlockState()) ? 1 : 0; }
+    catch (e) { sp_send(ctx, 'AP_' + tag + '_EVBLOCK:ex=' + sp_exText(e)); return 0; }
+    ev_lastPos = pos;
+    var bid = sp_id(new SP_ItemStack(lvl.getBlockState(pos).getBlock().asItem()));
+    var bkey = '?'; var bname = '?'; var ikey = '?'; var iname = '?';
+    try {
+        var bi = MB.EVENT_DRAWER.get().asItem();
+        bkey = '' + bi.getDescriptionId();
+        bname = '' + new SP_ItemStack(bi).getHoverName().getString();
+    } catch (e1) { bkey = 'EX:' + sp_exText(e1); }
+    try {
+        var ii = MI.EVENT_TICKET.get();
+        ikey = '' + ii.getDescriptionId();
+        iname = '' + new SP_ItemStack(ii).getHoverName().getString();
+    } catch (e2) { ikey = 'EX:' + sp_exText(e2); }
+    sp_send(ctx, 'AP_' + tag + '_EVBLOCK:set=' + ok + ':pos=' + pos.getX() + ',' + pos.getY() + ',' + pos.getZ()
+        + ':block=' + bid + ':bal=' + sp_bal(p) + ':tickets=' + ev_tickets(p) + ':cd=' + ev_cd(p) + ':now=' + sp_tick(p));
+    sp_send(ctx, 'AP_' + tag + '_EVKEY:blockKey=' + bkey + ':itemKey=' + ikey
+        + ':blockName=' + bname + ':itemName=' + iname);
+    return 1;
+}
+
+/** ② /astralshop evuse <tag> —— 真实右键抽奖盒（与玩家右键同入口）→ 余额/票据/冷却前后差 + 剩余冷却 */
+function ev_doUse(ctx, tag) {
+    var p = sp_p(ctx);
+    var lvl = sp_level(p);
+    var pos = ev_lastPos;
+    if (pos == null) { pos = p.blockPosition().offset(2, 0, 0); }
+    var b0 = sp_bal(p); var t0 = ev_tickets(p); var c0 = ev_cd(p); var now0 = sp_tick(p);
+    var res = 'n/a';
+    try {
+        var st = lvl.getBlockState(pos);
+        var hit = new SP_BlockHitResult(new SP_Vec3(pos.getX() + 0.5, pos.getY() + 0.9, pos.getZ() + 0.5), SP_Direction.UP, pos, false);
+        res = '' + st.useWithoutItem(lvl, p, hit);
+    } catch (e1) { res = 'EX:' + sp_exText(e1); }
+    var c1 = ev_cd(p); var now1 = sp_tick(p);
+    sp_send(ctx, 'AP_' + tag + '_EVUSE:pos=' + pos.getX() + ',' + pos.getY() + ',' + pos.getZ()
+        + ':res=' + res + ':bal=' + b0 + '->' + sp_bal(p)
+        + ':tickets=' + t0 + '->' + ev_tickets(p)
+        + ':cd=' + c0 + '->' + c1 + ':delta=' + (c1 - now0) + ':remain=' + (c1 - now1) + ':now=' + now1);
+    return 1;
+}
+
+/** ③ /astralshop evcd <tag> <read|zero> —— 冷却附件读 / 清零（跨 launch 保留 ⇒ 用例开头必清） */
+function ev_doCd(ctx, tag, mode) {
+    var p = sp_p(ctx);
+    var M = spTryClass('com.merlinkitsune.astral_dice.component.ModAttachments');
+    var before = -1; var ex = '-';
+    try { before = M.getEventDrawerCooldownUntil(p); } catch (e0) { ex = 'get:' + sp_exText(e0); }
+    if (mode === 'zero') {
+        try { M.setEventDrawerCooldownUntil(p, 0); } catch (e1) { ex = 'set:' + sp_exText(e1); }
+    } else if (mode !== 'read') {
+        sp_send(ctx, 'AP_' + tag + '_EVCD:bad-mode=' + mode); return 0;
+    }
+    var after = -1;
+    try { after = M.getEventDrawerCooldownUntil(p); } catch (e2) { ex = 'get2:' + sp_exText(e2); }
+    var now = sp_tick(p);
+    sp_send(ctx, 'AP_' + tag + '_EVCD:mode=' + mode + ':ex=' + ex + ':cd=' + before + '->' + after
+        + ':remain=' + (after - now) + ':now=' + now + ':bal=' + sp_bal(p) + ':tickets=' + ev_tickets(p));
+    return 1;
+}
+
+/** ④ /astralshop evticket <tag> —— 主手放 1 张奇怪的问号 → ItemStack#use（= 服务端 useItem 同一入口）
+ *      → 读数：手牌 1→0（生存消耗 / 创造不消耗）+ 事件池快照（无秘密侦探 12 条、有则 13 条） */
+function ev_doTicket(ctx, tag) {
+    var p = sp_p(ctx);
+    var lvl = sp_level(p);
+    var MI = spTryClass('com.merlinkitsune.astral_dice.item.ModItems');
+    var Hand = spTryClass('net.minecraft.world.InteractionHand');
+    if (MI == null || Hand == null) { sp_send(ctx, 'AP_' + tag + '_EVTICKET:ex=no_class'); return 0; }
+    var hand = Hand.MAIN_HAND;
+    var put = '-';
+    try { p.setItemInHand(hand, new SP_ItemStack(MI.EVENT_TICKET.get())); put = 'ok'; }
+    catch (e0) { put = 'EX:' + sp_exText(e0); }
+    var stack = null;
+    try { stack = p.getItemInHand(hand); } catch (e1) { }
+    var before = (stack == null) ? -1 : stack.getCount();
+    var pool = ev_pool(p);
+    var res = 'n/a'; var ex = '-';
+    try { res = '' + stack.use(lvl, p, hand); } catch (e2) { ex = sp_exText(e2); }
+    var after = -1; var handId = '?';
+    try { var h2 = p.getItemInHand(hand); handId = sp_id(h2); after = h2.getCount(); } catch (e3) { }
+    sp_send(ctx, 'AP_' + tag + '_EVTICKET:put=' + put + ':ex=' + ex + ':res=' + res
+        + ':hand=' + handId + ':before=' + before + ':after=' + after
+        + ':pool=' + pool.n + ':hasStage=' + pool.hasStage + ':static=' + pool.statN + ':staticStage=' + pool.statStage
+        + ':ids=' + pool.ids.join('|') + ':poolErr=' + pool.err);
+    return 1;
+}
+
+/** ⑤ /astralshop evpool <tag> —— 秘密侦探闸门（三步同命令内、自还原）：
+ *      无立牌 ⇒ pool=12/hasStage=0；stand 槽佩 astral_dice:bonnie_sign ⇒ pool=13/hasStage=1；
+ *      随后**还原 stand 槽原内容**（避免污染卡牌商店的经商立牌加成）；静态池恒 13/含 survey 事件 */
+function ev_doPool(ctx, tag) {
+    var p = sp_p(ctx);
+    var before = sp_curioStackText(p, 'stand');
+    var off = ev_pool(p);
+    var e1 = sp_setCurio(p, 'stand', 'astral_dice:bonnie_sign', 0);
+    var on = ev_pool(p);
+    var restore = (before === 'empty' || before === '<no_slot>') ? 'none' : before;
+    var e2 = sp_setCurio(p, 'stand', restore, 0);
+    var back = ev_pool(p);
+    sp_send(ctx, 'AP_' + tag + '_EPOOL:mode=none:secret=0:pool=' + off.n + ':hasStage=' + off.hasStage
+        + ':static=' + off.statN + ':staticStage=' + off.statStage + ':err=' + off.err + ':ids=' + off.ids.join('|'));
+    sp_send(ctx, 'AP_' + tag + '_EPOOL:mode=sign:setErr=' + (e1 == null ? 'none' : e1)
+        + ':secret=1:pool=' + on.n + ':hasStage=' + on.hasStage + ':ids=' + on.ids.join('|'));
+    sp_send(ctx, 'AP_' + tag + '_EPOOL:restoreErr=' + (e2 == null ? 'none' : e2) + ':stand=' + sp_curioStackText(p, 'stand')
+        + ':pool=' + back.n + ':hasStage=' + back.hasStage);
+    return 1;
+}
+
+/** ⑥ /astralshop estack <tag> —— 三商店方块 stacksTo(1) + 奇怪的问号 stacksTo(16) 的**端到端**判据：
+ *      清空 36 格 → **逐个** add N 次（每次一个单件栈）→ 逐格读数（stacksTo(1) ⇒ N 格各 1；stacksTo(16) ⇒ 16+4 两格）。
+ *      ⚠️ 必须**逐个单件** add：实机现象——单次 add N 件（N>1）在 1.20.1 与 1.21.1 读数不一致
+ *         （1.20.1 下 8 件落进**同一格**）；逐件 add 则每次只提交 1 件，两线口径必然统一。
+ *      ⚠️ 会清空物品栏（用例须在 /clear @s 之后调用）。 */
+function ev_doStacks(ctx, tag) {
+    var p = sp_p(ctx);
+    var MB = spTryClass('com.merlinkitsune.astral_dice.block.ModBlocks');
+    var MI = spTryClass('com.merlinkitsune.astral_dice.item.ModItems');
+    if (MB == null || MI == null) { sp_send(ctx, 'AP_' + tag + '_ESTACK:ex=no_class'); return 0; }
+    var rows = [
+        ['card_shop', MB.CARD_SHOP.get().asItem(), 8],
+        ['chip_shop', MB.CHIP_SHOP.get().asItem(), 8],
+        ['event_drawer', MB.EVENT_DRAWER.get().asItem(), 8],
+        ['event_ticket', MI.EVENT_TICKET.get(), 20]
+    ];
+    for (var i = 0; i < rows.length; i++) {
+        ev_clearInv(p);
+        var max = -1;
+        try { max = new SP_ItemStack(rows[i][1]).getMaxStackSize(); } catch (e0) { max = -2; }
+        var want = rows[i][2];
+        var addRet = 1;
+        var remain = 0;
+        for (var k = 0; k < want; k++) {
+            var one = new SP_ItemStack(rows[i][1], 1);
+            try {
+                if (!p.getInventory().add(one)) { addRet = 0; }
+            } catch (e1) { addRet = -2; break; }
+            remain += one.getCount();
+        }
+        var slots = 0;
+        try {
+            var inv2 = p.getInventory();
+            for (var s = 0; s < 36; s++) {
+                var cur = inv2.getItem(s);
+                if (cur != null && !cur.isEmpty()) { slots++; }
+            }
+        } catch (e2) { slots = -1; }
+        sp_send(ctx, 'AP_' + tag + '_ESTACK:id=' + rows[i][0] + ':want=' + want + ':max=' + max
+            + ':slots=' + slots + ':addRet=' + addRet + ':remain=' + remain + ':inv=' + ev_invList(p));
+    }
+    ev_clearInv(p);
+    sp_send(ctx, 'AP_' + tag + '_ESTACK:done=1:inv=' + ev_invList(p));
+    return 1;
+}
+
+/** ⑦ /astralshop edrop <tag> —— 满包购买落点取证：物品栏（不得含筹码）+ 脚边 ItemEntity 清单 */
+function ev_doDrop(ctx, tag) {
+    var p = sp_p(ctx);
+    var inv = ev_invList(p);
+    var chips = 0;
+    if (inv !== 'none' && inv !== '<ex>') {
+        var parts = inv.split(',');
+        for (var i = 0; i < parts.length; i++) {
+            if (/astral_dice:[a-z0-9_]*_chipx/.test(parts[i])) { chips++; }
+        }
+    }
+    var drops = ev_drops(p);
+    sp_send(ctx, 'AP_' + tag + '_EDROP:chips=' + chips + ':ndrops=' + drops.length
+        + ':drops=' + drops.join(',') + ':inv=' + inv + ':bal=' + sp_bal(p) + ':tickets=' + ev_tickets(p));
+    return 1;
+}
+
 ServerEvents.commandRegistry(event => {
     var Commands = event.commands;
     event.register(
@@ -2717,5 +3005,43 @@ ServerEvents.commandRegistry(event => {
                     .executes(ctx => sp_guard(ctx, SP_StringArg.getString(ctx, 'tag'), function () {
                         return sp_doEconLoot(ctx, SP_StringArg.getString(ctx, 'tag'));
                     }))))
+            // ── 2026-10-14 .116/.117 批(抽奖盒售卖机 / 奇怪的问号 / 满包落点) ──
+            .then(Commands.literal('evblock')
+                .then(Commands.argument('tag', SP_StringArg.word())
+                    .executes(ctx => sp_guard(ctx, SP_StringArg.getString(ctx, 'tag'), function () {
+                        return ev_doBlock(ctx, SP_StringArg.getString(ctx, 'tag'));
+                    }))))
+            .then(Commands.literal('evuse')
+                .then(Commands.argument('tag', SP_StringArg.word())
+                    .executes(ctx => sp_guard(ctx, SP_StringArg.getString(ctx, 'tag'), function () {
+                        return ev_doUse(ctx, SP_StringArg.getString(ctx, 'tag'));
+                    }))))
+            .then(Commands.literal('evcd')
+                .then(Commands.argument('tag', SP_StringArg.word())
+                    .then(Commands.argument('mode', SP_StringArg.word())
+                        .executes(ctx => sp_guard(ctx, SP_StringArg.getString(ctx, 'tag'), function () {
+                            return ev_doCd(ctx, SP_StringArg.getString(ctx, 'tag'), SP_StringArg.getString(ctx, 'mode'));
+                        })))))
+            .then(Commands.literal('evticket')
+                .then(Commands.argument('tag', SP_StringArg.word())
+                    .executes(ctx => sp_guard(ctx, SP_StringArg.getString(ctx, 'tag'), function () {
+                        return ev_doTicket(ctx, SP_StringArg.getString(ctx, 'tag'));
+                    }))))
+            .then(Commands.literal('evpool')
+                .then(Commands.argument('tag', SP_StringArg.word())
+                    .executes(ctx => sp_guard(ctx, SP_StringArg.getString(ctx, 'tag'), function () {
+                        return ev_doPool(ctx, SP_StringArg.getString(ctx, 'tag'));
+                    }))))
+            .then(Commands.literal('estack')
+                .then(Commands.argument('tag', SP_StringArg.word())
+                    .executes(ctx => sp_guard(ctx, SP_StringArg.getString(ctx, 'tag'), function () {
+                        return ev_doStacks(ctx, SP_StringArg.getString(ctx, 'tag'));
+                    }))))
+            .then(Commands.literal('edrop')
+                .then(Commands.argument('tag', SP_StringArg.word())
+                    .executes(ctx => sp_guard(ctx, SP_StringArg.getString(ctx, 'tag'), function () {
+                        return ev_doDrop(ctx, SP_StringArg.getString(ctx, 'tag'));
+                    }))))
+
     );
 })

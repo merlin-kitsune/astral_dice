@@ -79,6 +79,9 @@ var ChipShopScreen_CLASS = null;
 var ChipShopClientState_CLASS = null;
 try { ChipShopScreen_CLASS = Java.loadClass("com.merlinkitsune.astral_dice.screen.ChipShopScreen"); } catch (eChipS) { }
 try { ChipShopClientState_CLASS = Java.loadClass("com.merlinkitsune.astral_dice.client.ChipShopClientState"); } catch (eChipC) { }
+// .117 批（2026-10-14）：悬停 tooltip 的链路判据要问 ChipShopCatalog.byStack（与屏幕 renderChipTooltips 同源）
+var ChipShopCatalog_CLASS = null;
+try { ChipShopCatalog_CLASS = Java.loadClass("com.merlinkitsune.astral_dice.shop.ChipShopCatalog"); } catch (eChipK) { }
 var Screenshot_CLASS = null;
 var NativeImage_CLASS = null;
 try { Screenshot_CLASS = Java.loadClass("net.minecraft.client.Screenshot"); } catch (eSc) { }
@@ -114,13 +117,19 @@ var csP0Gate = 781;
 // 任务 CHIP（2026-10-12）筹码商店三场景：770 购买 / 771 刷新+次数0红闪 / 772 物品栏满拒绝
 var csChipGate = 770;
 var csChipRefreshGate = 771;
-var csChipDenyGate = 772;
+var csChipDropGate = 772;   // .117 重定义：满包购买 = 照常成交 + 掉落（不再是拒绝）
+var csChipTipGate = 773;    // .117 新增：筹码格悬停 tooltip 取证
 var csChip = false;         // 本次开屏是筹码商店屏
 var csChipBuy = false;
 var csChipRefresh = false;
-var csChipDeny = false;
-var csChipTag = "";         // 本次筹码场景的服务端探针标签（CB/CR/CD），供关屏那一拍回读服务端状态
+var csChipDrop = false;
+var csChipTip = false;
+var csChipTag = "";         // 本次筹码场景的服务端探针标签（CB/CR/CD/CT），供关屏那一拍回读服务端状态
 var csChipAfterLogged = false; // 购买场景的「确认后读数」是否已落（成功购买会让服务端在同一拍关店 ⇒ step45 常来不及跑，由关屏分支补落）
+var csChipTipImgA = null;   // 773：悬停前的基线帧（NativeImage；比对完即 close）
+var csChipTipInj = "none";  // 773：光标注入结果（ok / EX:…）
+var csChipTipChain = "?";   // 773：确定性链路结论
+var csChipTipPx = "?";      // 773：像素比对结论（changed/render）
 var csCloseBy = "";        // 主动自关时标记调用方（关屏归因用）
 var csShotSeq = 0;         // 自截图序号
 var csDenyRearms = 0;      // 780 里重放拒绝的次数
@@ -2946,6 +2955,9 @@ function csRunVOut(mc) {
 }
 
 // ══════════════════ 任务 CHIP（2026-10-12）：筹码商店客户端场景 770 / 771 / 772 ══════════════════
+//  【.117 批（2026-10-14）】772 由「满包拒绝」重定义为「满包购买 ⇒ 照常成交 + 装不下的筹码掉落」；
+//    新增 773 = 筹码格悬停 tooltip 取证（见下方 .117 段）。旧断言 deny=2 / 红闪的用例已随之作废（改由
+//    cases/CHIPUI2-DROP-* 承担）。
 //  背景：筹码商店（ChipShopScreen / ChipShopClientState / ChipShopMenu）与卡牌商店**不同屏不同态**，
 //  故独立成一套；哨兵只用 770/771/772（避开既有 775/777..792 与 Q 带 [791,891]）。
 //  坐标口径：GUI 相对坐标（csClick 内部加 getGuiLeft/getGuiTop）。⚠️ 2026-10-12 首跑实测修正：
@@ -3011,18 +3023,163 @@ function csRunChipRefresh(mc, step) {
     return;
 }
 
-/** 772 = 物品栏满拒绝：屏内先由客户端发 `astralshop cinv CHIPD fill` 填满 36 格（GUI 开着时 T 键被吞，只能走 csCmd），
- *  再选 0 号格 → 点确认 → 服务端 findEmptyInventorySlot<0 ⇒ DENY_INVENTORY_FULL(2) 经 S2C 包回客户端（红闪 30t、不扣款、不重抽）。
+/**
+ * 772（.117 起重定义）= 满包购买：屏内先用客户端命令通道填满 36 格 → 选 0 号格 → 点确认
+ *   ⇒ 服务端**照常成交**（扣款 + purchasedCount+1 + 重抽候选 + 关店），装不下的筹码由 `player.drop`
+ *   弹到玩家身边；产品行 `CHIP_SHOP_BUY … dropped=true`；关屏那一拍补读服务端状态 + `edrop` 落点清单。
+ * （旧口径「满包 ⇒ DENY_INVENTORY_FULL(2) 拒绝」自 .117 起作废；码 2 为**保留码**，见 ChipShopMenu 注记。）
  *  ⚠️ 不能「先填满物品栏再开屏」：ChipShopOpener.open 自己就会以 inventory_full 拒绝开店，屏根本不会出现。 */
-function csRunChipDeny(mc, step) {
-    if (step === 1) { cs("evt=chip_deny:open:bal=" + csN2Bal() + ":" + csChipState(mc)); return; }
-    if (step === 8) { csCmd(mc, 'astralshop cinv CHIPD fill', "chip_deny_fill", step); return; }
+function csRunChipDrop(mc, step) {
+    if (step === 1) { cs("evt=chip_drop:open:bal=" + csN2Bal() + ":" + csChipState(mc)); return; }
+    if (step === 8) { csCmd(mc, 'astralshop cinv CD fill', "chip_drop_fill", step); return; }
     if (step === 20) { csClick(mc, 99, 45, "chip_cell0", step); return; }
-    if (step === 25) { cs("evt=chip_deny:selected:" + csChipState(mc)); return; }
+    if (step === 25) { cs("evt=chip_drop:selected:" + csChipState(mc)); return; }
     if (step === 40) { csClick(mc, 57, 54, "chip_confirm_full", step); return; }
-    if (step === 45) { cs("evt=chip_deny:after_confirm:" + csChipState(mc)); return; }
-    if (step >= 48 && step <= 90 && step % 3 === 0) { cs("evt=chip_deny:blink:step=" + step + ":" + csChipState(mc)); return; }
-    if (step === 110) { cs("evt=chip_deny:end:" + csChipState(mc)); csCloseBy_(mc, "csRunChipDeny"); return; }
+    if (step === 45) { csChipAfterLogged = true; cs("evt=chip_drop:after_confirm:" + csChipState(mc)); return; }
+    if (step === 200) { cs("evt=chip_drop:still_open:" + csChipState(mc)); return; }
+    return;
+}
+
+// ══ .117 批（2026-10-14）：筹码格悬停 tooltip（773）/ 满包购买掉落（772 重定义）═════════════
+//  773 的判据分两层：
+//   ① **确定性链路**（必过）：三格候选非空 + ChipShopCatalog.byStack 认识该筹码 + 在 0 号格中心 (99,45)
+//      点击能命中 0 号格 —— tooltip 的命中函数 chipIndexAt 与点击路径**是同一个**（ChipShopScreen 源码
+//      renderChipTooltips / mouseClicked 都走它），故「点击命中 0 号格」即「悬停命中 0 号格」。
+//   ② **渲染层**（尽力而为）：GameRenderer 把 mouseHandler.xpos()/ypos() 换算成 GUI 坐标后喂给
+//      Screen#render ⇒ 用 GLFW.glfwSetCursorPos 把真光标移到 0 号格中心，再对「悬停前 / 悬停后」两帧
+//      做逐像素比对（采样区 = 光标右侧的 tooltip 框）。render=1 才算「确实画了 tooltip」；注入不可用
+//      （org.lwjgl 被类过滤器拒绝 / 取不到窗口句柄）或取不到帧 ⇒ render=-1/0 = **无法判定**（不得当通过）。
+//    ⚠️ 原版 tooltip 默认定位 = (鼠标+12, 鼠标-12)，只在右侧放不下时左翻 ⇒ 采样区按右侧取；若某筹码的
+//      tooltip 特别宽而左翻，render 会误报 0（复核以自截图 PNG / case 截图为准）。
+//  ⚠️ 本场景**绝不点确认键**（不会购买）；step300 主动关屏 —— 否则后续用例的聊天注入会被 GUI 吞掉。
+var CS_TIP_CELL_X = [99, 142, 185];   // 条带内相对：CELL_X[chip+1] + 20（宽 40 的中心）
+var CS_TIP_CELL_Y = 45;               // STRIP_Y 6 + CELL_H 78 / 2
+
+function csTipEx(e, n) { try { return ("" + e).substring(0, (n === undefined ? 120 : n)); } catch (e2) { return "?"; } }
+
+/** 几何/坐标口径一行（含屏幕自带的公开只读布局探针） */
+function csTipLayout(mc) {
+    var gx = csNum(function () { return mc.screen.getGuiLeft(); });
+    var gy = csNum(function () { return mc.screen.getGuiTop(); });
+    var gs = csNum(function () { return mc.getWindow().getGuiScale(); });
+    var w = csNum(function () { return mc.getWindow().getScreenWidth(); });
+    var h = csNum(function () { return mc.getWindow().getScreenHeight(); });
+    var lay = "?";
+    try { lay = "" + mc.screen.chipShopLayoutProbe(); } catch (eL) { lay = "EX:" + csTipEx(eL, 70); }
+    return "gx=" + gx + ":gy=" + gy + ":gs=" + gs + ":win=" + w + "x" + h
+        + ":cell0=" + CS_TIP_CELL_X[0] + "," + CS_TIP_CELL_Y + ":layout=" + lay;
+}
+
+/** ① 确定性链路：候选非空 + byStack 认识 + (99,45) 点击命中 0 号格 */
+function csTipChain(mc) {
+    var offers = csNum(function () { return ChipShopClientState_CLASS.offerCount(); });
+    var known = -1;
+    try {
+        known = ChipShopCatalog_CLASS.byStack(ChipShopClientState_CLASS.offer(0)).isPresent() ? 1 : 0;
+    } catch (eK) { known = -1; }
+    var gx = csNum(function () { return mc.screen.getGuiLeft(); });
+    var gy = csNum(function () { return mc.screen.getGuiTop(); });
+    var click = "?";
+    try { click = mc.screen.mouseClicked(gx + CS_TIP_CELL_X[0], gy + CS_TIP_CELL_Y, 0) ? 1 : 0; }
+    catch (eC) { click = "EX:" + csTipEx(eC, 50); }
+    var sel = csNum(function () { return ChipShopClientState_CLASS.selectedIndex(); });
+    var chain = (offers >= 1 && known === 1 && sel === 0) ? 1 : 0;
+    var line = "evt=chip_tip:chain=" + chain + ":offers=" + offers + ":catalog=" + known + ":click=" + click + ":sel=" + sel;
+    csChipTipChain = "chain=" + chain + ":offers=" + offers + ":catalog=" + known + ":sel=" + sel;
+    return line;
+}
+
+/** ②a 用 GLFW 把真光标移到目标 GUI 坐标（tooltip 的鼠标坐标来自 GameRenderer 的换算，见文件头） */
+function csTipCursor(mc, atChip) {
+    var gx = csNum(function () { return mc.screen.getGuiLeft(); });
+    var gy = csNum(function () { return mc.screen.getGuiTop(); });
+    var gs = csNum(function () { return mc.getWindow().getGuiScale(); });
+    var tx = atChip ? (gx + CS_TIP_CELL_X[0]) : (gx + 2);
+    var ty = atChip ? (gy + CS_TIP_CELL_Y) : (gy + 2);
+    var wx = Math.round(tx * gs);
+    var wy = Math.round(ty * gs);
+    var inj = "-";
+    try {
+        mc.mouseHandler.releaseMouse();                  // 屏开着时本就是 un-grabbed；幂等
+        var GLFW = Java.loadClass("org.lwjgl.glfw.GLFW");
+        GLFW.glfwSetCursorPos(mc.getWindow().getWindow(), wx, wy);
+        inj = "ok";
+    } catch (e) { inj = "EX:" + csTipEx(e, 90); }
+    csChipTipInj = inj;
+    var gotX = csNum(function () { return Math.round(mc.mouseHandler.xpos()); });
+    var gotY = csNum(function () { return Math.round(mc.mouseHandler.ypos()); });
+    var grab = csNum(function () { return mc.mouseHandler.isMouseGrabbed() ? 1 : 0; });
+    cs("evt=chip_tip:cursor=" + (atChip ? "chip0" : "base") + ":want=" + wx + "," + wy
+        + ":got=" + gotX + "," + gotY + ":grab=" + grab + ":inj=" + inj);
+}
+
+/** ②b 抓当前帧 → NativeImage（取不到返回 null） */
+function csTipGrab(mc) {
+    try {
+        if (Screenshot_CLASS == null) { return null; }
+        return Screenshot_CLASS.takeScreenshot(mc.getMainRenderTarget());
+    } catch (e) { cs("evt=chip_tip:grab_ex=" + csTipEx(e)); return null; }
+}
+
+/** ②c 悬停后帧 vs 基线帧：采样区逐像素比对（步长 2 采样，阈值 24/通道） */
+function csTipDiff(mc) {
+    var imgB = csTipGrab(mc);
+    var changed = -1; var sampled = 0; var render = -1;
+    var gx = csNum(function () { return mc.screen.getGuiLeft(); });
+    var gy = csNum(function () { return mc.screen.getGuiTop(); });
+    var gs = csNum(function () { return mc.getWindow().getGuiScale(); });
+    // 采样区 = 光标所在条带的**整条带 + 两侧**（tooltip 默认在光标右上 (,+12/-12)，放不下时左翻）
+    var x0 = gx - 30; var y0 = gy + 2; var x1 = gx + 250; var y1 = gy + 95;
+    if (csChipTipImgA != null && imgB != null) {
+        try {
+            var px0 = Math.max(0, Math.round(x0 * gs)); var py0 = Math.max(0, Math.round(y0 * gs));
+            var px1 = Math.min(imgB.getWidth(), Math.round(x1 * gs)); var py1 = Math.min(imgB.getHeight(), Math.round(y1 * gs));
+            var c = 0; var n = 0;
+            for (var y = py0; y < py1; y += 3) {
+                for (var x = px0; x < px1; x += 3) {
+                    var a = csChipTipImgA.getPixelRGBA(x, y);
+                    var b = imgB.getPixelRGBA(x, y);
+                    var dr = Math.abs((a & 255) - (b & 255));
+                    var dg = Math.abs(((a >> 8) & 255) - ((b >> 8) & 255));
+                    var db = Math.abs(((a >> 16) & 255) - ((b >> 16) & 255));
+                    if (dr > 24 || dg > 24 || db > 24) { c++; }
+                    n++;
+                }
+            }
+            changed = c; sampled = n;
+            render = (c >= 200) ? 1 : 0;
+        } catch (eP) { cs("evt=chip_tip:px_ex=" + csTipEx(eP)); }
+    }
+    try { if (imgB != null) { imgB.close(); } } catch (e2) { }
+    try { if (csChipTipImgA != null) { csChipTipImgA.close(); } } catch (e3) { }
+    csChipTipImgA = null;
+    csChipTipPx = "changed=" + changed + ":render=" + render;
+    cs("evt=chip_tip:px:changed=" + changed + ":sampled=" + sampled + ":render=" + render
+        + ":rect=" + x0 + "," + y0 + "," + x1 + "," + y1 + ":gs=" + gs);
+}
+
+/** ②d 自截图落盘（Screenshot.grab → run/<版本>/screenshots/；与 csShot 同通道，但不做卡牌商店专属像素统计） */
+function csTipShot(mc) {
+    var grab = "-";
+    try {
+        if (Screenshot_CLASS == null) { grab = "clsnull"; }
+        else { Screenshot_CLASS.grab(mc.gameDirectory, mc.getMainRenderTarget(), function (c) { }); grab = "ok"; }
+    } catch (e) { grab = "EX:" + csTipEx(e, 90); }
+    cs("evt=chip_tip:shot:grab=" + grab);
+}
+
+/** 773 场景主序列 */
+function csRunChipTip(mc, step) {
+    if (step === 1) { cs("evt=chip_tip:open:bal=" + csN2Bal() + ":" + csChipState(mc)); return; }
+    if (step === 5) { cs("evt=chip_tip:layout:" + csTipLayout(mc)); return; }
+    if (step === 8) { cs(csTipChain(mc)); return; }
+    if (step === 10) { csTipCursor(mc, false); return; }      // 基线位（GUI 左上角，不在任何筹码格上）
+    if (step === 12) { csChipTipImgA = csTipGrab(mc); cs("evt=chip_tip:grab=base:ok=" + (csChipTipImgA == null ? 0 : 1)); return; }
+    if (step === 14) { csTipCursor(mc, true); return; }       // 悬停 0 号格中心
+    if (step === 16) { csTipDiff(mc); return; }
+    if (step === 20) { cs("evt=chip_tip:summary:" + csChipTipChain + ":inj=" + csChipTipInj + ":px=" + csChipTipPx + ":" + csChipState(mc)); return; }
+    if (step === 22) { csTipShot(mc); return; }              // 自截图落盘（人可看的证据；不登记进 mt 截图表）
+    if (step === 300) { cs("evt=chip_tip:end:" + csChipState(mc)); csCloseBy_(mc, "csRunChipTip"); return; }
     return;
 }
 
@@ -3130,12 +3287,16 @@ ClientEvents.tick(event => {
             //   GUI 开着也能发）回读服务端权威状态 —— 用例尾部的 `inject_command` 走聊天通道，屏还开着时会被吞
             //   （首跑实测：`/astralshop cstate CB` 注入后**零** AP_CB_CST ⇒ 断言 26/27 必红）。这里补一条确定性回读。
             if (csChip && csChipTag !== "") { csCmd(mc, "astralshop cstate " + csChipTag, "chip_postclose_cstate", csStep); }
+            // .117：满包购买场景关屏那一刻补一条落点取证（脚边 ItemEntity + 物品栏清单）
+            if (csChipDrop && csChipTag !== "") { csCmd(mc, "astralshop edrop " + csChipTag, "chip_drop_edrop", csStep); }
+            // .117：满包购买成功后服务端**同拍关店** ⇒ step45 的 after_confirm 常来不及落（与 770 同病）
+            if (csChipDrop && !csChipAfterLogged && csStep >= 40) { csChipAfterLogged = true; cs("evt=chip_drop:after_confirm:" + csChipState(mc)); }
             // 2026-10-12 二次修：购买成功后服务端**同拍关店** ⇒ step45 的 after_confirm 常来不及落（首跑后重跑实测 24 号断言红）。
             //  客户端态（ChipShopClientState）是**类级静态**、不随屏销毁 ⇒ 在关屏这一拍补落同一条机器行，语义同为「确认之后的客户端读数」。
             if (csChipBuy && !csChipAfterLogged && csStep >= 40) { csChipAfterLogged = true; cs("evt=chip_buy:after_confirm:" + csChipState(mc)); }
             csArmed = false; csRun = false; csPoll = false; csDeny = false; csP0 = false; csHold = false; csNat = false;
             csM = false; csH = false; csG = false; csN = false; csN2 = false; csP = false;
-            csChipBuy = false; csChipRefresh = false; csChipDeny = false; csChip = false;
+            csChipBuy = false; csChipRefresh = false; csChipDrop = false; csChipTip = false; csChip = false;
             csDenyLastRed = -1; csDenyShots = 0;
             if (csOB) { csOBOut = true; csOBOutc = 0; }   // 任务O 789：进入「关店期间」子阶段（csOB 本身**不清**，阶段机跨开屏保留）
             if (csQ) { csQOut = true; csQOutc = 0; }       // 任务Q 791：同构（csQ / csQP 同样跨开屏保留）
@@ -3174,9 +3335,10 @@ ClientEvents.tick(event => {
         // 任务 CHIP：筹码屏上的三个哨兵（卡牌屏永不匹配；等值匹配即可，筹码商店不产生余额增量）
         csChipBuy = (inChip === 1 && csOpenBal === csChipGate);
         csChipRefresh = (inChip === 1 && csOpenBal === csChipRefreshGate);
-        csChipDeny = (inChip === 1 && csOpenBal === csChipDenyGate);
-        csChip = (csChipBuy || csChipRefresh || csChipDeny);
-        csChipTag = csChipBuy ? "CB" : (csChipRefresh ? "CR" : (csChipDeny ? "CD" : ""));
+        csChipDrop = (inChip === 1 && csOpenBal === csChipDropGate);
+        csChipTip = (inChip === 1 && csOpenBal === csChipTipGate);
+        csChip = (csChipBuy || csChipRefresh || csChipDrop || csChipTip);
+        csChipTag = csChipBuy ? "CB" : (csChipRefresh ? "CR" : (csChipDrop ? "CD" : (csChipTip ? "CT" : "")));
         csChipAfterLogged = false;
         if (csV) { csVOpens++; }
         if (csQ && (csQP >= 100 || !csQStarted)) { csQStarted = true; csQP = 0; csQS = 0; csQP2 = 0; csQCycles = 0; csQOpens = 0; csQDeltaSeq = ""; csQBalBase = -1; }
@@ -3236,8 +3398,10 @@ ClientEvents.tick(event => {
         csRunChipBuy(mc, csStep);
     } else if (csChipRefresh) {             // 任务 CHIP 771
         csRunChipRefresh(mc, csStep);
-    } else if (csChipDeny) {                // 任务 CHIP 772
-        csRunChipDeny(mc, csStep);
+    } else if (csChipDrop) {                // 任务 CHIP 772（.117 重定义 = 满包成交 + 掉落）
+        csRunChipDrop(mc, csStep);
+    } else if (csChipTip) {                 // .117 773 = 悬停 tooltip 取证
+        csRunChipTip(mc, csStep);
     } else if (csHold) {
         // 静置保持(哨兵 778): 本模式**不**做 60t 兜底关屏, 用于验收「打开商店后静置不会自己关」
         if (csStep === 600) { cs("evt=holdend:opens=" + csOpens + ":step=" + csStep + ":how=" + csCloseBy_(mc, "csHold")); }

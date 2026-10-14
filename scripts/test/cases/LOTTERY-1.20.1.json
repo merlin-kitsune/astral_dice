@@ -1,0 +1,311 @@
+{
+  "case_id": "LOTTERY-1.20.1",
+  "title": "抽奖盒售卖机 + 奇怪的问号（.116/.117 欠账）：5 星币购买/冷却拒绝/余额不足拒绝/用票抽公共事件/三商店 stacksTo(1)/秘密侦探池闸门",
+  "version": "1.20.1",
+  "target": {
+    "type": "feature",
+    "ref": "event-drawer-lottery"
+  },
+  "on_fail": "continue",
+  "steps": [
+    {
+      "op": "note",
+      "text": "抽奖盒（.116 改售卖机 + .117 更名「抽奖盒」与换新贴图）+ 奇怪的问号（原「事件抽奖牌」）实机取证。两线（Forge 1.20.1）同用例、断言逐字相同。\n\n判据正本（源码，两线同构）:\n· block/EventDrawBlock.java —— PRICE_STAR_COINS=5 / COOLDOWN_TICKS=6000（5:00）；三条 ActionBar 键 msg.astral_dice.event_drawer_{{cooldown,no_coin,bought}}；机器行 `AP_EVENT_DRAWER: player=…:buy=ok:bal=A->B` / `…:denied=cooldown:remain=N` / `…:denied=insufficient:bal=N`。\n· item/EventDrawItem.java —— 右键使用 ⇒ AstralEventRegistry.drawRandom ⇒ `AP_EVENT_DRAW: src=ITEM_USE:id=<id>`；生存模式消耗 1 张（创造不消耗）。\n· event/AstralEventRegistry.java —— publicPool(Player)：**无秘密侦探 12 条**；investigation_stage（秘密侦探专属）要求队内存在秘密侦探（InvestigationArbitration.teamHasSecretDetective = 同队有人佩戴 astral_dice:bonnie_sign）。\n· event/AstralEventDispatcher.java —— `AP_EVENT_FIRE: id=…:src=ITEM_USE:tier=0:targetsFinal=n`（弹卡后 40t 才生效）。\n· item/ModItems.java —— card_shop / chip_shop / event_drawer 一律 `stacksTo(1)`；event_ticket `stacksTo(16)`。\n\n步骤地图:evblock（脚边放方块 + 读 key/name）→ estack（堆叠端到端）→ evuse ×4（购买 → 冷却拒绝 → 余额 4 → 余额 0）→ evpool（秘密侦探池闸门，同命令内自还原）→ evticket（生存模式用票抽事件）。\n\n⚠️ 冷却记在玩家附件里、**跨 launch 保留** ⇒ 用例开头必须 `evcd zero` 清零（否则首跑撞冷却、第一条断言必红）。\n⚠️ evticket 必须在**生存**模式跑：创造模式 instabuild=true ⇒ 不消耗，`before=1:after=0` 判据不成立。\n⚠️ 事件是随机 1/12 ⇒ 可断言的只有「抽到的 id ∈ 12 条公共池」（正则枚举 12 个 id + 负向前瞻，避免前缀误配）；**单次抽中 investigation_stage 属概率事件，本用例不做断言**（改由 evpool 的确定性判据证明池闸门）。若需要「佩立牌后确实能抽到调查阶段」，属概率统计，登记为**无法判定**（需专门的多轮抽样用例）。\n⚠️ 抽到的事件会施加真效果（world_collapse 4 点伤害 / problem_delivery 2 点伤害+中毒+饥饿 / gift_from_sky +3 星币 / storm_approaching 给牌 …）⇒ evticket 放在**最后**，其后不再做任何数值断言。\n⚠️ A6（名称显示）只做**静态**核对：探针读两件物品的 `getDescriptionId()` = block.astral_dice.event_drawer / item.astral_dice.event_ticket（本用例断言这两个 key），lang 值（抽奖盒 / 奇怪的问号）由静态 grep 核对，**不**由实机断言（服务端语言恒 en_us，客户端渲染名不可读）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/tp @s ~ ~ ~ 0 0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop curioreset LT",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop evcd LT zero",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop evblock LT",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop estack LT",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop bal LT 5",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop evuse LT",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1300
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop evuse LT",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1300
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop evcd LT zero",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop bal LT 4",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop evuse LT",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1300
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop bal LT 0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop evuse LT",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1300
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop evpool LT",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1600
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode survival",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop evticket LT",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 3000
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop evcd LT read",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop curioreset LT",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_LT_EVBLOCK:set=1:pos=-?[0-9]+,-?[0-9]+,-?[0-9]+:block=astral_dice:event_drawer:.*:cd=0:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_LT_EVKEY:blockKey=block\\.astral_dice\\.event_drawer:itemKey=item\\.astral_dice\\.event_ticket:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_LT_ESTACK:id=card_shop:want=8:max=1:slots=8:addRet=1:remain=0:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_LT_ESTACK:id=chip_shop:want=8:max=1:slots=8:addRet=1:remain=0:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_LT_ESTACK:id=event_drawer:want=8:max=1:slots=8:addRet=1:remain=0:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_LT_ESTACK:id=event_ticket:want=20:max=16:slots=2:addRet=1:remain=0:inv=0:astral_dice:event_ticketx16"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_LT_ESTACK:done=1:inv=none"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_LT_EVUSE:pos=-?[0-9]+,-?[0-9]+,-?[0-9]+:res=[^:]*:bal=5->0:tickets=0->1:cd=0->[0-9]+:delta=(6000|5999):remain=(6000|5999):"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_EVENT_DRAWER: player=\\S+:buy=ok:bal=5->0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_LT_EVUSE:.*:bal=0->0:tickets=1->1:cd=[0-9]+->[0-9]+:delta=59[0-9][0-9]:remain=59[0-9][0-9]:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_EVENT_DRAWER: player=\\S+:denied=cooldown:remain=[1-9][0-9]*"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_LT_EVUSE:.*:bal=4->4:tickets=1->1:cd=0->0:delta=-[0-9]+:remain=-[0-9]+:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_EVENT_DRAWER: player=\\S+:denied=insufficient:bal=4"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_LT_EVUSE:.*:bal=0->0:tickets=1->1:cd=0->0:delta=-[0-9]+:remain=-[0-9]+:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_EVENT_DRAWER: player=\\S+:denied=insufficient:bal=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_LT_EPOOL:mode=none:secret=0:pool=12:hasStage=0:static=13:staticStage=1:err=-:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_LT_EPOOL:mode=sign:setErr=none:secret=1:pool=13:hasStage=1:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_LT_EPOOL:restoreErr=none:.*:pool=12:hasStage=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_LT_EVTICKET:put=ok:ex=-:.*:before=1:after=0:pool=12:hasStage=0:static=13:staticStage=1:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_EVENT_DRAW: src=ITEM_USE:id=astral_dice:(red_heat_warning|swift_stride|storm_approaching|learn_from_others|shop_bonanza|hand_erasure|world_collapse|gift_from_sky|angel_descent|problem_delivery|crowded_passage|battle_frenzy)(?![a-z0-9_])"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_EVENT_FIRE: id=astral_dice:[a-z_]+:src=ITEM_USE:tier=0:targetsFinal=[0-9]+"
+    },
+    {
+      "type": "crash"
+    }
+  ]
+}

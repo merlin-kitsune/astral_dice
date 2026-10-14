@@ -335,6 +335,13 @@ public class ChipShopMenu extends AbstractContainerMenu {
      * 扣款、价格 +5（下次单价由购买次数现算）、购买次数 +1、重抽候选与关店一律照常，装不下的筹码用
      * {@code player.drop(...)} 弹到玩家身边。
      *
+     * <p><b>满包判定的口径（2026-10-14 修复）</b>：先逐格自判主物品栏（{@code items}，36 格）**有无空格**，
+     * 有空位才调 {@code Inventory#add} 并信任其落位，无空位则直接 {@code drop} —— 因为**创造模式**下
+     * {@code add} 找不到空位时会把整个栈 {@code setCount(0)} 后返回 {@code true}
+     * （1.21.1 {@code Inventory#add} 的 {@code hasInfiniteMaterials()} 分支 / 1.20.1 的 {@code abilities.instabuild} 分支），
+     * 若按返回值判定就会让筹码**凭空消失**（不掉落、无提示）。⇒ **创造模式满包与生存模式满包行为一致：都掉落**；
+     * 有空位时绝不掉落。
+     *
      * <p><b>R18</b>：购买后**自动关店**（{@link Player#closeContainer()}），筹码优先直接进物品栏
      * （不含副手 —— 用户裁决 Q10）；装不下时落在地上。
      */
@@ -360,9 +367,21 @@ public class ChipShopMenu extends AbstractContainerMenu {
             return;
         }
         ItemStack bought = chip.copy();
-        // 需求 2（2026-10-14）：物品栏放不下**不再拒绝** —— 先灌物品栏（原版 add 会先把同 id 的未满栈补满、
-        //   再找空格），`add` 取走装得下的部分 ⇒ 之后 `bought` 里剩下的正是**要掉落**的数量，弹到玩家身边。
-        if (!playerInventory.add(bought)) {
+        // 需求 2（2026-10-14）：物品栏放不下**不再拒绝** —— 先自判主物品栏有无空格，有空位走原版 `add`
+        //   （它先把同 id 的未满栈补满、再找空格），无空位则整枚 `drop` 到玩家身边。
+        // ⚠️ **不能**用 `add` 的返回值判空位：创造模式（1.21.1 `hasInfiniteMaterials()` / 1.20.1 `abilities.instabuild`）
+        //   下 `add` 在**找不到空位**时走 `stack.setCount(0); return true;` 分支 ⇒ 筹码被静默吞掉
+        //   （不掉落、无提示）。筹码一律 `stacksTo(1)` ⇒「存在空格」等价于「装得下」。
+        boolean hasRoom = false;
+        for (ItemStack slotStack : playerInventory.items) {
+            if (slotStack.isEmpty()) {
+                hasRoom = true;
+                break;
+            }
+        }
+        if (hasRoom) {
+            playerInventory.add(bought);
+        } else {
             buyer.drop(bought, false);
         }
         boolean dropped = !bought.isEmpty();

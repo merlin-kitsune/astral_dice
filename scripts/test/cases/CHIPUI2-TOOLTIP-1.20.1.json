@@ -1,0 +1,166 @@
+{
+  "case_id": "CHIPUI2-TOOLTIP-1.20.1",
+  "title": "筹码商店·筹码格悬停 Tooltip（哨兵 773）：链路 chain=1（候选非空 + byStack 认得 + 点击命中同格）+ 渲染 render=1（GLFW 真光标 + 悬停前后两帧像素比对）+ 截图/vision 第二通道",
+  "version": "1.20.1",
+  "target": {
+    "type": "feature",
+    "ref": "chip-shop-tooltip"
+  },
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "筹码商店·筹码格悬停 Tooltip（.117 需求 1；哨兵 773）。两线（Forge 1.20.1）同用例、断言逐字相同。\n\n判据正本:screen/ChipShopScreen.java 覆写 render ⇒ renderChipTooltips(GuiGraphics,mouseX,mouseY)，命中面 = chipIndexAt(mouseX,mouseY)（**与 mouseClicked 同一个函数**）∪ 前置条件（该格候选非空 + ChipShopCatalog.byStack 认得它）；client/ChipShopClientState.java 提供 offer(i)/qualityCode(i) 只读读数。\n\n链路（客户端探针 773，source=kubejs_client）:\n· evt=chip_tip:open:…:gate=773…chip=1 ⇒ 屏幕被正确识别为筹码商店屏且哨兵命中。\n· evt=chip_tip:chain=1 ⇒ ①offerCount≥1 ②byStack(offer(0)) 认识该筹码 ③在 0 号格中心 (99,45)（条带内相对 + STRIP(34,6)）点击命中 0 号格（sel=0）—— ③即「悬停命中同一个格子」的**同一性证据**（两处走同一个 chipIndexAt）。\n· 渲染层:GameRenderer 把 mouseHandler.xpos()/ypos() 换算成 GUI 坐标喂给 Screen#render ⇒ 探针用 GLFW.glfwSetCursorPos 把真光标移到 0 号格中心，再对「悬停前基准帧 / 悬停后帧」逐像素比对（采样区 = 光标所在条带 + 两侧，步长 3、阈值 24/通道）：evt=chip_tip:px:…:render=1。\n· 探针另落一张自截图（evt=chip_tip:shot:grab=ok → run/<版本>/screenshots/），本用例再走 case 截图 + vision 断言作为**第二通道**。\n\n⚠️ 环境依赖（若红，先读这两条）:\n· `:inj=ok` 要求 org.lwjgl.glfw.GLFW 未被 KubeJS 类过滤器拒绝且能取到窗口句柄。若为 `inj=EX:…` ⇒ **光标注入通道不可用**，本用例渲染层判据**无法判定**（不是产品缺陷）；此时以 case 截图 / 自截图 PNG 人工复核为准。\n· `:render=1`（changed≥200）依赖 tooltip 落在采样区内。原版 tooltip 默认定位 = (光标+12, 光标−12)，右侧放不下时左翻；采样区已覆盖光标两侧各 30/250 GUI px。若仍 render=0 而截图里能看到提示框 ⇒ 采样区/窗口缩放口径问题，**重新复跑**后按「无法判定」登记。\n⚠️ 本场景**绝不点确认键**（不会购买）；场景自己在 step300（≈15s）关屏 —— 用例的 case 截图必须落在那之前（本用例 wait 6000 后截图，约 8s），随后 wait 12000 等关屏，再注入 cstate 回读。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/tp @s ~ ~ ~ 0 0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop curioreset CT",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop creset CT",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop cprice CT 0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop cinv CT clear",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop bal CT 773",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop copenkeep CT",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 6000
+    },
+    {
+      "op": "screenshot",
+      "tag": "chip-tip-01",
+      "mode": "f2"
+    },
+    {
+      "op": "wait",
+      "ms": 12000
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop cstate CT",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=open:.*:gate=773:.*:chip=1:"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=chip_tip:layout:gx=-?[0-9]+:gy=-?[0-9]+:gs=[0-9]+:win=[0-9]+x[0-9]+:cell0=99,45:layout=cells=3,45,88,131,174:"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=chip_tip:chain=1:offers=[1-3]:catalog=1:click=1:sel=0"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=chip_tip:cursor=chip0:want=[0-9]+,[0-9]+:got=[0-9]+,[0-9]+:grab=0:inj=ok"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=chip_tip:px:changed=[0-9]+:sampled=[0-9]+:render=1:"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=chip_tip:summary:chain=1:.*:inj=ok:px=changed=[0-9]+:render=1:"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=chip_tip:shot:grab=ok"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_CSC:evt=chip_tip:end:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CT_CST:offers=[a-z0-9_]+\\+[a-z0-9_]+\\+[a-z0-9_]+:last=-:purchased=0:refreshes=3/5:anchor=0:price=10"
+    },
+    {
+      "type": "vision",
+      "image": "chip-tip-01",
+      "question": "这是筹码商店界面（条带上有三个筹码图标）。鼠标光标停在最左边那个筹码图标上时，界面里是否出现了该筹码的**物品提示框（tooltip：深色半透明圆角框 + 物品名文字）**？请只回答：看到了 / 没看到，并指出提示框出现的大致位置。"
+    },
+    {
+      "type": "crash"
+    }
+  ]
+}
