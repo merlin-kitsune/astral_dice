@@ -54,6 +54,11 @@ public class DiceCombatContext {
     public boolean padmanDefBypass;
     /** 防御方(目标玩家)是否佩戴玻璃骰子(防御牌点数始终取最大值;由防御结算流程写入) */
     public boolean targetCardsMax;
+    /**
+     * 鹰眼瞄具:本次攻击**命中前**目标已有的标记层数(由瞄具攻击修饰器在 {@code MarkManager.apply}
+     * **之前**写入;0 = 无加成)。加伤本身走额外加伤通道(见 {@code DiceCombatModifiers} 的同件修饰器)。
+     */
+    public int eagleScopeMarkLevel;
 
     public DiceCombatContext(Player attacker, LivingEntity target, LivingDamageEvent.Pre event,
                              int baseDice, ItemStack diceStack, WeaponEnhancement enhancement,

@@ -357,7 +357,7 @@ public final class SpellDamageRegistry {
                 }
             }
         });
-        // 魔法箭袋:**使用过伤害效果牌**并对**已有标记**目标造成法伤 → 施加一层标记并返还第一张使用的效果牌。
+        // 魔法箭袋:**使用过伤害效果牌**并对**已有标记**目标造成法伤 → 施加一层标记并返还**本次使用**的那张效果牌。
         // 2026-09-24 用户裁决(第二版):取消「活体书页命中必定触发」的例外 —— 必须先用过一张伤害效果牌
         // (活体书页本身即计入该集合),且追踪只统计伤害效果牌;冷却 30 秒。
         registerModifier(new SpellDamageModifier() {
@@ -368,7 +368,7 @@ public final class SpellDamageRegistry {
                     return false;
                 }
                 if (MarkManager.getLevel(ctx.target) <= 0) return false;
-                // 本方法只在法伤链内求值(isSpellDamage 已筛过作用域)⇒ 只需判「已记录第一张伤害效果牌」
+                // 本方法只在法伤链内求值(isSpellDamage 已筛过作用域)⇒ 只需判「已记录本次使用的伤害效果牌」
                 return ModAttachments.getMagicQuiverTracking(ctx.attacker);
             }
 

@@ -93,7 +93,7 @@ public abstract class BaseEffectCardItem extends Item {
     /**
      * 该效果牌是否属于「**伤害效果牌**」(对怪激光 / 对怪板砖 / 轨道炮 / 定向爆破 / 活体书页)。
      *
-     * <p><b>单一事实源</b>:电击手套(充能武装法伤扩散)与魔法箭袋(「第一张使用的效果牌」追踪)
+     * <p><b>单一事实源</b>:电击手套(充能武装法伤扩散)与魔法箭袋(「本次使用的效果牌」追踪)
      * 共用本判定 —— 任一处都不得自建清单。活体书页**计入**(它是一次命中法伤的打击牌)。
      */
     public static boolean isDamageEffectCard(ItemStack cardStack) {
@@ -530,7 +530,7 @@ public abstract class BaseEffectCardItem extends Item {
         // 复制计数钩子(忍者立牌/魔法秘典):全部效果牌均参与,无排除项
         KomachiSignItem.onEffectCardUsed(player, cardTypeId());
         MagicTomeChipItem.onEffectCardUsed(player, cardTypeId());
-        // 魔法箭袋:仅**伤害效果牌**(含活体书页)参与「第一张使用的效果牌」追踪
+        // 魔法箭袋:仅**伤害效果牌**(含活体书页)参与「本次使用的效果牌」追踪
         MagicQuiverChipItem.onEffectCardUsed(player, cardTypeId(), stack);
         // 小猪存钱罐筹码:每使用 2 张效果牌获得 3 星币(独立计数)
         PiggyBankChipItem.onEffectCardUsed(player);

@@ -16,12 +16,16 @@ import com.merlinkitsune.astral_dice.combat.PartyRelations;
 
 /**
  * 银行卡-用不完筹码:装备时获得 3 点星光(一次性);
- * 每次骰神赐福效果结束后,使自身及友方玩家(团队内成员;未加入任何队伍时为全服在线玩家)获得 3 星币
+ * 每次骰神赐福效果结束后,使自身及友方玩家获得 3 星币 —— 友方 = 已加入队伍时为同队在线玩家
+ * (不限半径);未加入任何队伍时为**自身 32 格内**的玩家(自身恒在列,2026-10-15 用户裁决)。
  * (由 {@link #onBlessingEnd} 在赐福结束时调用)。
  */
 public class BankCardUnlimitedChipItem extends BaseChipItem {
     /** 赐福结束后发放的星币数量 */
     public static final int REWARD_COINS = 3;
+
+    /** 未加入任何队伍时,「自身及友方玩家」的判定半径(格;2026-10-15 用户裁决) */
+    public static final double ALLY_RANGE = 32.0;
 
     public BankCardUnlimitedChipItem(Properties properties) {
         super(properties);
@@ -58,17 +62,32 @@ public class BankCardUnlimitedChipItem extends BaseChipItem {
 
     /**
      * 骰神赐福结束时调用:使自身及友方玩家获得 3 星币。
-     * 友方 = 已加入队伍时同队在线玩家(MC/FTB/OPAC);未加入任何队伍时 = 全服在线玩家。
+     * 友方 = 已加入队伍时同队在线玩家(MC/FTB/OPAC,**不限半径**);未加入任何队伍时 =
+     * **自身 {@link #ALLY_RANGE} 格内**的所有玩家(自身恒在列)。
      * 死亡清场时(玩家已死亡)不发放。
+     *
+     * <p>⚠️ 2026-10-15 用户裁决:无队伍一侧的范围由「全服在线玩家」收紧为「自身 32 格内」
+     * ⇒ **不再依赖** {@code PartyRelations.collectTeamPlayers} 的「未组队 ⇒ 全服在线玩家」
+     * 兜底(该兜底是 FTB/OPAC 反射失效时的放大器,见 PartyRelations 类头);同队一侧口径不变。
      */
     public static void onBlessingEnd(Player player) {
         if (player.level().isClientSide()) return;
         if (!isEquipped(player)) return;
         if (player.isDeadOrDying()) return;
         if (!(player.level() instanceof ServerLevel serverLevel)) return;
-        java.util.List<Player> allies = PartyRelations.collectTeamPlayers(player);
+        boolean hasTeam = PartyRelations.hasTeam(player);
+        java.util.List<Player> allies = hasTeam
+                ? PartyRelations.collectTeamPlayers(player)
+                : java.util.List.of();
+        double rangeSqr = ALLY_RANGE * ALLY_RANGE;
         for (ServerPlayer sp : serverLevel.players()) {
-            if (sp == player || allies.contains(sp)) {
+            if (sp == player) { // 自身恒在列
+                giveCoins(sp);
+                continue;
+            }
+            if (hasTeam) {
+                if (allies.contains(sp)) giveCoins(sp);
+            } else if (sp.distanceToSqr(player) <= rangeSqr) {
                 giveCoins(sp);
             }
         }

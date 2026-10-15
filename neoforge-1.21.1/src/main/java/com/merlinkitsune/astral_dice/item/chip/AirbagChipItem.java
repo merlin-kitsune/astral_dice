@@ -12,18 +12,30 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import top.theillusivec4.curios.api.CuriosApi;
+import com.merlinkitsune.astral_dice.AstralDiceMod;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
 
 /**
- * 安全气囊筹码:受到致命伤害时,消耗 6 点充能使本次伤害无效。技能冷却时间 1:00。
- *
- * <p>触发判定与结算由事件类在最终伤害阶段执行(见 ChipDamageHandler),
- * 本类只负责条件判定与资源/冷却变更。
+ * 安全气囊筹码:
+ * <ul>
+ *   <li><b>保命</b>:受到致命伤害时,消耗 6 点充能使本次伤害无效(冷却 1:00);
+ *       触发判定与结算由 {@code ChipDamageHandler} 在最终伤害阶段执行,本类只负责条件判定与资源/冷却变更;</li>
+ *   <li><b>受击充能</b>(2026-10-15 用户裁决追加能力):**受到伤害时充能 +1**(冷却 15 秒)。
+ *       与保命冷却**完全独立**(两个附件键各记各的),故保命不可用时受击照样攒充能。</li>
+ * </ul>
  */
+@EventBusSubscriber(modid = AstralDiceMod.MODID)
 public class AirbagChipItem extends BaseChipItem {
     /** 每次触发消耗的充能层数 */
     public static final int CHARGE_COST = 6;
     /** 触发冷却(1:00) */
     public static final int COOLDOWN_TICKS = 20 * 60;
+    /** 受击充能:每次受到伤害获得的充能层数(2026-10-15 用户裁决) */
+    public static final int HIT_CHARGE_GAIN = 1;
+    /** 受击充能冷却(15 秒;与保命冷却 {@link #COOLDOWN_TICKS} 各自独立,互不干扰) */
+    public static final int HIT_CHARGE_COOLDOWN_TICKS = 20 * 15;
 
     public AirbagChipItem(Properties properties) {
         super(properties);
@@ -85,5 +97,27 @@ public class AirbagChipItem extends BaseChipItem {
         if (!(source.getEntity() instanceof LivingEntity attacker)) return;
         if (attacker == player) return;
         DiceCombatEvents.injectCounterDamage(player, attacker);
+    }
+
+    /**
+     * 受击充能(2026-10-15 用户裁决追加能力):**受到伤害时充能 +1**,冷却 15 秒。
+     *
+     * <p>挂点 = {@code LivingDamageEvent.Pre}(伤害已确认、尚未扣血;任意伤害来源都算,含环境伤害与
+     * 自伤 —— 文案即「受到伤害时」,刻意不做敌对/来源收紧),与保命无效化的 {@code ChipDamageHandler}
+     * (同事件 @LOWEST)**互不干扰**:本方法只读事件、不改写伤害,冷却也记在独立附件
+     * {@code airbag_hit_charge_cooldown_end} 上。
+     * <p>⚠️ 若这一击随后被气囊自己无效化(消耗 6 充能),本次 +1 照常发放 —— 两条能力各自结算,
+     * 净变化为 -5 充能 + 两个冷却各自起算。
+     */
+    @SubscribeEvent
+    public static void onIncomingDamage(LivingDamageEvent.Pre event) {
+        if (!(event.getEntity() instanceof Player player)) return;
+        if (player.level().isClientSide()) return;
+        if (event.getNewDamage() <= 0.0F) return;
+        if (!isEquipped(player)) return;
+        long now = player.level().getGameTime();
+        if (now < ModAttachments.getAirbagHitChargeCooldownEnd(player)) return;
+        ModAttachments.setAirbagHitChargeCooldownEnd(player, now + HIT_CHARGE_COOLDOWN_TICKS);
+        ChargeManager.addStacks(player, HIT_CHARGE_GAIN);
     }
 }

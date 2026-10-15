@@ -687,7 +687,7 @@ public class DiceCombatEvents {
                     // 对骰成立后双方各掷 1d6,但**不**因此触发骰神赐福。
                     // 特殊骰子掷骰(防御方:诡异骰子低点数偏置,绯红骰子高点数偏置)
                     defenseBaseDice = rollCombatDie(targetPlayer);
-                    // 感测装置筹码:目标每 4 层标记 ⇒ **其**战斗骰点 -1(最多 -4,下限 0)。
+                    // 感测装置筹码:目标每 3 层标记 ⇒ **其**战斗骰点 -1(最多 -4,下限 0)。
                     // 只扣目标方骰点,不影响攻击方(见 SensorChipItem#reduceTargetDice)。
                     defenseBaseDice = com.merlinkitsune.astral_dice.item.chip.SensorChipItem
                             .reduceTargetDice(player, targetPlayer, defenseBaseDice);
@@ -710,7 +710,7 @@ public class DiceCombatEvents {
             } else {
                 defenseBaseDice = ThreadLocalRandom.current().nextInt(1, 7);
             }
-            // 感测装置筹码:目标每 4 层标记 ⇒ **其**战斗骰点 -1(最多 -4,下限 0;攻击方骰点不受影响)
+            // 感测装置筹码:目标每 3 层标记 ⇒ **其**战斗骰点 -1(最多 -4,下限 0;攻击方骰点不受影响)
             defenseBaseDice = com.merlinkitsune.astral_dice.item.chip.SensorChipItem
                     .reduceTargetDice(player, target, defenseBaseDice);
         }

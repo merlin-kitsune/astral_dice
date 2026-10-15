@@ -93,9 +93,9 @@
   **The crafting recipes for all five are not implemented yet** (`ModRecipeProvider` and the recipe resources are untouched in this batch, so `verify_chip_recipes` / `verify_chip_acquisition` reporting a missing recipe for them is expected; suggested recipes are in the last five rows of `docs/chip-recipe-plan.md`):
   - **Flashlight - Burst** (Legendary / Starlight) - attacking a **hostile** target this player has never attacked grants +1 Starlight (deduplication is **per player × target**, so different wearers each earn their own credit; capped at 256 tracked targets, after which nothing more is granted); every 2 layers of Starlight grant +1 Attack Damage.
   - **Fortune Stick** (Epic / Starlight) - during Dice Blessing, the first **monster** kill makes the wearer and friendly players within 16 blocks gain 1-7 Starlight each (once per Blessing cycle).
-  - **Reagent - Abyss** (Epic / Healing) - on equip, +2 healing layers (-2 on unequip); triggering healing grants damage absorption (yellow hearts) equal to effective healing × 2.
+  - **Reagent - Abyss** (Epic / Healing) - on equip, +2 healing layers (-2 on unequip); triggering healing grants damage absorption (yellow hearts) equal to effective healing × 2; triggering a Dice Blessing and each 1:00 healing settlement now each grant **+2** healing layers (same arrangement as the Medkits).
   - **Infinite Grid** (Epic / Charge) - effect card play count +1; each time charge is gained, other friendly players within 8 blocks each gain +1 charge.
-  - **Sensor Device** (Epic / Mark) - every 4 Mark layers on an attacked target lower that target's combat dice by 1 (up to -4); a successful dodge applies 1 Mark layer to the attacker.
+  - **Sensor Device** (Epic / Mark) - every 3 Mark layers on an attacked target lower that target's combat dice by 1 (up to -4); a successful dodge applies 1 Mark layer to the attacker.
   ⚠️ **The Chip Shop has no discount path at all** (the Membership Recommendation chip only cheapens the Card Shop), and its screen **draws no title text**.
 - **Chip Shop screen adjustments** (2026-10-13, both P0 lines): the cost readout is now a **small star-coin icon followed by the amount** (the text prefix is gone); the refresh counter shows only the **remaining** refreshes (the total is no longer drawn); offer chip icons are enlarged to **24x24**, exactly filling the quality frame's inner area without covering its border.
 - **Chip Shop screen, follow-up tweaks** (2026-10-13, both P0 lines): over-long chip names now **scroll horizontally** (one-second pauses at both ends, no shrinking or truncation); the gap between the star-coin icon and the amount is **1px wider**; the **selected** offer's name is drawn in **black** (the selection highlight now sits **underneath** the text) for better readability.
@@ -388,6 +388,19 @@
   optionally the "all-out attack" x1.5. Self-inflicted damage and sources with no attributable attacker (e.g.
   `/kill`'s `generic_kill`) are never countered; the negation itself, the 6-charge cost, the 1:00 cooldown and every
   other rule are unchanged (both loaders).
+  **The same batch adds one more ability (user ruling, 2026-10-15): taking damage grants +1 charge (15-second cooldown)** —
+  it hooks the damage event (any source, including environmental damage and self-inflicted hits) and keeps its cooldown in a
+  **separate attachment**, so the two cooldowns run **independently and never block each other** (charge still accrues while the
+  saving cooldown is running, and a hit the Airbag itself negates still grants the charge).
+- **Behaviour / number adjustments to 7 existing chips** (user ruling, 2026-10-15; this batch lands on `neoforge-1.21.1`, while `forge-1.20.1`, `neoforge-26.1.2` and `fabric-1.20.1` follow in a later batch):
+  - **Bank Card - Unlimited** - with no team, the payout after a Dice Blessing is now limited to players **within 32 blocks** of the wearer (the wearer is always included); with a team it is still every online teammate, with no range limit.
+  - **Big Bowl Stew** - with no team, the target set is now explicitly **every player within 16 blocks** (the check goes through the shared team-relation entry point and no longer relies on the "no team ⇒ every online player" fallback); with a team it is still teammates only, filtered by the same 16 blocks.
+  - **Magic Quiver** - the returned card is now **the one used this time** instead of **the first one used** (every use overwrites the record; nothing is recorded while on cooldown); the 30-second cooldown is unchanged.
+  - **Eagle Scope** - the bonus against a marked target moves from **attack power** to **extra attack damage** (2 per Mark layer, resolved as a separate damage instance, same approach as Flashlight - Burst); both the bonus value and "applies 1 Mark layer on hit" are unchanged.
+  - **Warp Engine** - the shared cooldown for dimension portals / Waystones goes **5:00 → 3:00**; ender pearls and the Ender Die's warp still have no cooldown.
+  - **Perpetual Motion** - the top-up on a Dice Blessing trigger goes **6 → 8** (tops up to 8 when below 8); new: **-50% vanilla melee attack cooldown while equipped** (implemented as ×2 attack speed).
+  - **Bookmark** - damage bonus for damage effect cards **+1 → +2**.
+  - (**Reagent - Abyss** / **Sensor Device** / **Airbag** adjustments are folded into their own entries in this version.)
 
 #### Platform & Compatibility
 

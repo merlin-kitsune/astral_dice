@@ -19,7 +19,9 @@ import top.theillusivec4.curios.api.SlotContext;
  * 试剂-深渊筹码(史诗 / 治愈)。
  *
  * <ul>
- *   <li><b>装备时治愈层数 +2</b>,卸下 -2(「卸除即扣除」);</li>
+ *   <li><b>装备时治愈层数 +2</b>,卸下 -2(「卸除即扣除」);
+ *       <b>触发骰神赐福时 / 每 1:00 治愈结算时各 +2</b>(2026-10-15 用户裁决,与医疗箱同口径
+ *       —— 由 {@link HealingManager#addChipPoints} 在两条结算入口统一追加);</li>
  *   <li><b>触发治愈回血时</b>:获得「有效治疗量 × {@value #ABSORPTION_RATIO}」的伤害吸收(黄心);
  *       有效治疗量 &lt; 1 时至少给 {@value #MIN_ABSORPTION}(= 1 颗黄心)。</li>
  * </ul>
@@ -57,6 +59,13 @@ import top.theillusivec4.curios.api.SlotContext;
 public class AbyssReagentChipItem extends BaseChipItem {
     /** 装备时提供的治愈层数(卸下按名义值扣回)。 */
     public static final int EQUIP_POINTS = 2;
+
+    /**
+     * 触发骰神赐福 / 每 1:00 治愈结算时各追加的治愈层数(2026-10-15 用户裁决:与医疗箱同口径)。
+     * 由 {@link HealingManager#addChipPoints} 在 {@code onBlessingTriggered} 与 {@code onTimerEnded}
+     * 两条入口统一追加(加点时机与医疗箱的 {@code MEDKIT_*_POINTS} 完全一致)。
+     */
+    public static final int BOON_POINTS = 2;
 
     /** 触发治愈回血时:伤害吸收 = 有效治疗量 × 该系数。 */
     public static final float ABSORPTION_RATIO = 2.0F;

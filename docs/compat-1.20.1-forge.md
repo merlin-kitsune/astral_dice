@@ -32,7 +32,7 @@ Gradle wrapper 保持 9.2.1(legacyforge 支持);`mods.toml` 依赖 forge `[47,)`
 
 | 1.21 NeoForge | 1.20.1 Forge | 备注 |
 |---|---|---|
-| `LivingDamageEvent.Pre`(6 处) | `LivingHurtEvent` | `getContainer().setNewDamage(x)` → `setAmount(x)`;`getNewDamage()` → `getAmount()`;伤害管线均为"护甲结算前",骰战结算逻辑不变 |
+| `LivingDamageEvent.Pre`(6 处；2026-10-15 安全气囊受击充能追加 1 处,该处改挂 `LivingHurtEvent` 的语义偏差见 AirbagChipItem javadoc) | `LivingHurtEvent` | `getContainer().setNewDamage(x)` → `setAmount(x)`;`getNewDamage()` → `getAmount()`;伤害管线均为"护甲结算前",骰战结算逻辑不变 |
 | `LivingIncomingDamageEvent` | `LivingAttackEvent`(HIGHEST 记原始值)+ `LivingHurtEvent`(LOWEST 算倍率) | 七咒倍率捕获:`original` 由 AttackEvent 存瞬态附件 `curse_original_amount`,还原 1.21 original/current 语义 |
 | `PlayerTickEvent.Pre/Post` | `TickEvent.PlayerTickEvent` + phase 守卫 | START=Pre、END=Post |
 | `ClientTickEvent.Post` | `TickEvent.ClientTickEvent`(END) | KeyBindingSetup.ClientEvents |

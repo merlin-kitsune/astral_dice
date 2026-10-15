@@ -53,7 +53,7 @@ public class ElectricGloveChipItem extends BaseChipItem {
 
     /**
      * 该效果牌是否属于「伤害效果牌」——委托 {@link BaseEffectCardItem#isDamageEffectCard}
-     * (单一事实源:魔法箭袋的「第一张效果牌」追踪用同一判定)。
+     * (单一事实源:魔法箭袋的「本次使用的效果牌」追踪用同一判定)。
      */
     public static boolean isDamageEffectCard(ItemStack cardStack) {
         return BaseEffectCardItem.isDamageEffectCard(cardStack);

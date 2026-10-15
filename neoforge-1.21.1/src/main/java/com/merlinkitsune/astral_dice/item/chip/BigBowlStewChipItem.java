@@ -1,7 +1,6 @@
 package com.merlinkitsune.astral_dice.item.chip;
 
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
-import com.merlinkitsune.starenginelib.event.EventTargetCollector;
 import com.merlinkitsune.astral_dice.item.HealingManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import net.minecraft.server.level.ServerLevel;
@@ -16,8 +15,8 @@ import com.merlinkitsune.astral_dice.combat.PartyRelations;
  *
  * <p>友方判定:
  * <ul>
- *   <li>玩家:自身 + 队友(已加入队伍时 = 同队在线玩家;未加入任何队伍时 = 全服在线玩家,经
- *       {@link EventTargetCollector#collectTeamPlayers}),且距离不超过 {@link #RANGE} 格;
+ *   <li>玩家:自身 + 友方(已加入队伍时 = 同队在线玩家;未加入任何队伍时 = **{@link #RANGE} 格内的
+ *       所有玩家**,2026-10-15 用户裁决口径固化),且距离不超过 {@link #RANGE} 格;
  *       玩家获得治愈点数并回血。</li>
  *   <li>非玩家友方(治愈点数是玩家级资源,生物只回血):仅「已驯服且主人为自己或同队玩家」的宠物与坐骑
  *       (排除野生坐骑与他人宠物),以及无归属的被动生物(猪/炽足兽)。</li>
@@ -50,6 +49,9 @@ public class BigBowlStewChipItem extends BaseChipItem {
      * {@link #HEALING_POINTS} 层治愈、恢复 {@link #HEAL_AMOUNT} 点生命值。
      *
      * <p>2026-09-28 用户裁决:移除对**友方生物**的治疗(生物不在作用范围内)。
+     * <p>2026-10-15 用户裁决:未加入任何队伍时的目标集合 = **{@link #RANGE} 格内所有玩家**
+     * (不再经 {@code PartyRelations.collectTeamPlayers} 的「未组队 ⇒ 全服在线玩家」兜底);
+     * 已加入队伍时 = 同队在线玩家(口径不变,同样按 {@link #RANGE} 过滤)。
      */
     public static void onBlessingEnd(Player player) {
         if (player.level().isClientSide()) return;
@@ -58,11 +60,19 @@ public class BigBowlStewChipItem extends BaseChipItem {
         if (!(player.level() instanceof ServerLevel serverLevel)) return;
 
         double rangeSqr = RANGE * RANGE;
-        java.util.List<Player> allies = PartyRelations.collectTeamPlayers(player);
+        // 2026-10-15 用户裁决:无队伍一侧 = 自身 16 格内**所有**玩家(不再经 collectTeamPlayers 的
+        // 「未组队 ⇒ 全服在线玩家」兜底 —— 该兜底只在 FTB/OPAC 反射失效时被放大成全服,见
+        // PartyRelations 类头);有队伍一侧 = 同队在线玩家(口径不变,同样按 16 格过滤)。
+        boolean hasTeam = PartyRelations.hasTeam(player);
+        java.util.List<Player> allies = hasTeam
+                ? PartyRelations.collectTeamPlayers(player)
+                : java.util.List.of();
         for (ServerPlayer sp : serverLevel.players()) {
             // 自身无条件在列(用户口径:「使自身和 16 格范围内所有友方玩家」)
-            if (sp != player && !allies.contains(sp)) continue;
-            if (sp.distanceToSqr(player) > rangeSqr) continue;
+            if (sp != player) {
+                if (hasTeam && !allies.contains(sp)) continue;
+                if (sp.distanceToSqr(player) > rangeSqr) continue;
+            }
             HealingManager.add(sp, HEALING_POINTS);
             sp.heal(HEAL_AMOUNT);
         }

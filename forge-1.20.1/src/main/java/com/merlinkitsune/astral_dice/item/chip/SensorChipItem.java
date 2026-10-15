@@ -21,8 +21,8 @@ import com.merlinkitsune.starenginelib.item.CuriosCompat;
  * </ul>
  */
 public class SensorChipItem extends BaseChipItem {
-    /** 每多少层标记 ⇒ 目标战斗骰点 -1。 */
-    public static final int MARK_PER_DICE_MALUS = 4;
+    /** 每多少层标记 ⇒ 目标战斗骰点 -1(2026-10-15 用户裁决:4 → 3)。 */
+    public static final int MARK_PER_DICE_MALUS = 3;
 
     /** 目标战斗骰点扣减上限。 */
     public static final int MAX_DICE_MALUS = 4;

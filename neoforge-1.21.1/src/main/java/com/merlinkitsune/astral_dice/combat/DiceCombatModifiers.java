@@ -14,6 +14,7 @@ import com.merlinkitsune.astral_dice.item.chip.ElectricSwordChipItem;
 import com.merlinkitsune.astral_dice.item.chip.AdvancedPeripheralsChipItem;
 import com.merlinkitsune.astral_dice.item.chip.CutterChipItem;
 import com.merlinkitsune.astral_dice.item.chip.CutterBladeChipItem;
+import com.merlinkitsune.astral_dice.item.chip.EagleScopeChipItem;
 import com.merlinkitsune.astral_dice.item.sign.FenSignItem;
 import com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem;
 import com.merlinkitsune.astral_dice.item.sign.MosesSignItem;
@@ -399,11 +400,13 @@ public final class DiceCombatModifiers {
             return healing * copies;
         });
 
-        // === 内置:普通瞄具/鹰眼瞄具(攻击力+2;骰神赐福期间攻击时施加 1 层标记 / 按标记层数×2 加攻击力) ===
+        // === 内置:普通瞄具/鹰眼瞄具(攻击力+2;骰神赐福期间攻击时施加 1 层标记) ===
         // ⚠️ 2026-09-24 用户裁决:「瞄具类攻击实际上受**骰神赐福门控** —— 不按骰神赐福模式攻击目标
-        //   (近战类)则不应该触发」⇒ 标记与鹰眼的 ×2 都要求 `DICE_BLESSING` 生效;
+        //   (近战类)则不应该触发」⇒ 标记与鹰眼的加成都要求 `DICE_BLESSING` 生效;
         //   普通瞄具的固定 +2 仍**无条件**(与 tooltip 同源:「攻击力 +2。骰神赐福期间攻击时对目标施加 1 层标记」)。
         //   旧实现只判「是否佩戴」⇒ 未处于赐福期间也会施加标记/加成,与文案不符,本次补齐门控。
+        // ⚠️ 2026-10-15 用户裁决:**鹰眼瞄具的加成已从本修饰器移出**(攻击力通道 → 额外加伤通道,
+        //   见下方同件筹码的专属块)—— 本处只负责「施加 1 层标记」与「记录命中前的标记层数」。
         registerAttackModifier((ctx, ap) -> {
             if (ctx.attacker.level().isClientSide()) return ap;
             boolean blessed = ctx.attacker.hasEffect(ModEffects.DICE_BLESSING);
@@ -413,12 +416,27 @@ public final class DiceCombatModifiers {
             }
             if (hasCurio(ctx.attacker, ModItems.EAGLE_SCOPE_CHIP.get())) {
                 if (blessed) {
-                    int markLevel = MarkManager.getLevel(ctx.target);
-                    ap += markLevel * 2;
+                    // 2026-10-15:加伤不再进攻击力 —— 这里只记录**命中前**的层数(必须在下方
+                    // MarkManager.apply 之前读,否则会读到本次新施加的那 1 层),供额外加伤修饰器消费。
+                    ctx.eagleScopeMarkLevel = MarkManager.getLevel(ctx.target);
                     if (ctx.event != null) MarkManager.apply(ctx.target);
                 }
             }
             return ap;
+        });
+
+        // === 额外加伤:鹰眼瞄具(对带标记目标 + 标记层数 ×2 点攻击伤害) ===
+        // 2026-10-15 用户裁决:原「本次战斗 ap += 标记层数×2」走的是**攻击力**通道(会被暴击 ×1.5
+        // 放大、并参与骰战「攻击点 − 防御点」的差值结算),现改为与手电筒-爆闪同款的**额外加伤**
+        // 独立结算(`astral_dice:extra_damage` 单次伤害实例,命中落地后施加)。
+        // 数值口径不变:层数取**命中前**的层数(由上方瞄具攻击修饰器在 MarkManager.apply 之前写入 ctx)。
+        // ⚠️ 附带结果(如实登记):该加伤自此**不进反击伤害** —— injectCounterDamage 只汇总攻击修饰器,
+        //    不消费额外加伤(与手电筒-爆闪/强光/美工刀等既有额外加伤一致)。
+        registerExtraDamageModifier(ctx -> {
+            if (ctx.attacker.level().isClientSide()) return 0;
+            if (ctx.eagleScopeMarkLevel <= 0) return 0;
+            if (!hasCurio(ctx.attacker, ModItems.EAGLE_SCOPE_CHIP.get())) return 0;
+            return ctx.eagleScopeMarkLevel * EagleScopeChipItem.DAMAGE_PER_MARK;
         });
 
         // === 内置:标靶(攻击力+1) ===

@@ -5090,7 +5090,7 @@ function lpReadout(p, d, dmg) {
         + ":credit=" + lpCredit(p) + ":plays=" + lpPlays(p)
         + ":max=" + lpMaxPlays(p) + ":blocked=" + lpBlocked(p)
         // cards = 主背包内**活体书页**张数(2026-09-19 追加)：效果牌确认时会消耗手牌,
-        // 而「魔法箭袋」触发会**返还**第一张使用的效果牌 ⇒ 用它可以判定返还确实到手
+        // 而「魔法箭袋」触发会**返还****本次使用的那张**效果牌 ⇒ 用它可以判定返还确实到手
         // (无箭袋/未触发时读数恒为 0,触发后为 1)。
         + ":cards=" + lpCardCount(p)
         + ":flight=" + lpFlight(p)

@@ -16,9 +16,10 @@ import top.theillusivec4.curios.api.CuriosApi;
  * <p><b>治愈计时器(2026-09-30 用户裁决起与骰神赐福彻底解绑)</b>:由独立的 1:00 计时器驱动
  * ({@link #HEALING_TIMER_SECONDS} 秒一轮):
  * <ul>
- *   <li><b>触发</b>(骰神赐福触发,不再是唯一入口) → 先追加医疗箱筹码的治愈点(紧急 +1、完备 +3,受上限),
+ *   <li><b>触发</b>(骰神赐福触发,不再是唯一入口) → 先追加筹码的治愈点(医疗箱紧急 +1 / 完备 +3、
+ *       试剂-深渊 +2,受上限),
  *       再按 当前治愈点 ×2 回血(回血在点数结算之后),并启动/重置计时器;</li>
- *   <li><b>每 1:00 结算</b> → 治愈点减半(向下取整) → <b>再</b>追加医疗箱点数 → 结算后点数 &gt; 0
+ *   <li><b>每 1:00 结算</b> → 治愈点减半(向下取整) → <b>再</b>追加医疗箱 / 试剂-深渊点数 → 结算后点数 &gt; 0
  *       则按 点数 ×2 回血并重起计时器;点数归 0 则计时器清零,{@link #updateEffect} 随之移除效果。</li>
  * </ul>
  * 例:4 点 + 完备医疗箱(3 点) ⇒ 减半 2 → +3 = 5 ⇒ 回血 10 点 ⇒ 开始下一轮 1:00 计时。
@@ -234,7 +235,7 @@ public final class HealingManager {
 
     /**
      * 触发骰神赐福时调用(治愈体系的**触发点之一**,不再是唯一触发点):
-     * 1. 先追加所有筹码提供的治愈点(医疗箱);
+     * 1. 先追加所有筹码提供的治愈点(医疗箱 / 试剂-深渊,见 {@link #addChipPoints});
      * 2. 再按当前治愈点 ×2 回血;
      * 3. 启动/重置 {@link #HEALING_TIMER_SECONDS} 治愈计时器。
      */
@@ -249,7 +250,7 @@ public final class HealingManager {
     /**
      * 治愈计时器到期(每 {@link #HEALING_TIMER_SECONDS} 一次,**与骰神赐福无关**):
      * 1. 治愈点减半(向下取整);
-     * 2. 追加医疗箱筹码点数(**在减半之后、回血之前** —— 2026-09-30 用户裁决的顺序);
+     * 2. 追加医疗箱 / 试剂-深渊筹码点数(**在减半之后、回血之前** —— 2026-09-30 用户裁决的顺序);
      * 3. 结算后点数 > 0 ⇒ 按 点数 ×2 回血并重起计时器;点数归 0 ⇒ 计时器清零,
      *    {@link #updateEffect} 随即移除「治愈」效果。
      */
@@ -288,9 +289,22 @@ public final class HealingManager {
                 player.level().getGameTime() + (long) HEALING_TIMER_SECONDS * 20L);
     }
 
-    /** 追加所有筹码提供的初始治愈点(仅在触发治愈效果条件时调用) */
+    /** 追加所有筹码提供的初始治愈点(医疗箱 / 试剂-深渊;仅在触发治愈效果条件时调用) */
     private static void addChipPoints(Player player) {
         addMedkitPoints(player);
+        addAbyssReagentPoints(player);
+    }
+
+    /**
+     * 装备的试剂-深渊在**触发骰神赐福**与**每 1:00 治愈结算**两条入口各 +2 治愈点
+     * (2026-10-15 用户裁决「与医疗箱同口径」;加点时机与 {@link #addMedkitPoints} 完全一致,
+     * 受 {@link #HEALING_POINT_CAP} 上限约束)。
+     * <p>⚠️ 卸下时的 -2 仍走 {@code spend(2)} 的**名义值**口径(不做按账本回撤),与医疗箱不同 ——
+     * 见 {@code AbyssReagentChipItem} 类头的取舍说明。
+     */
+    private static void addAbyssReagentPoints(Player player) {
+        if (!com.merlinkitsune.astral_dice.item.chip.AbyssReagentChipItem.isEquipped(player)) return;
+        add(player, com.merlinkitsune.astral_dice.item.chip.AbyssReagentChipItem.BOON_POINTS);
     }
 
     /** 装备的医疗箱筹码触发赐福加点(紧急 +1、完备 +3,可叠加,受上限) */

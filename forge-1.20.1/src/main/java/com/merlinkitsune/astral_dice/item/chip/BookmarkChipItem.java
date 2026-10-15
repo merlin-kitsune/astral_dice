@@ -13,8 +13,8 @@ import net.minecraft.world.entity.player.Player;
  * 激光/板砖/轨道炮/定向爆破/活体书页的法伤,并用于 tooltip 显示,保证计算与显示一致。
  */
 public class BookmarkChipItem extends BaseChipItem {
-    /** 伤害效果牌伤害加成(固定 +1) */
-    public static final int DAMAGE_BONUS = 1;
+    /** 伤害效果牌伤害加成(固定 +2;2026-10-15 用户裁决:+1 → +2) */
+    public static final int DAMAGE_BONUS = 2;
 
     public BookmarkChipItem(Properties properties) {
         super(properties);

@@ -27,8 +27,8 @@ import net.minecraftforge.fml.common.Mod;
  *   <li>Waystone 传送(通过 WaystoneWarpCompat 可选接入,避免跨维度时双重计数)。</li>
  * </ul>
  *
- * <p>传送门与 Waystone 触发共享 5:00 冷却:通过任意一种方式获得充能后,
- * 5 分钟内不能再通过传送门或 Waystone 触发;末影珍珠与末影骰子瞬移不受此冷却限制。
+ * <p>传送门与 Waystone 触发共享 3:00 冷却(2026-10-15 用户裁决:5:00 → 3:00):通过任意一种
+ * 方式获得充能后,3 分钟内不能再通过传送门或 Waystone 触发;末影珍珠与末影骰子瞬移不受此冷却限制。
  */
 @Mod.EventBusSubscriber(modid = AstralDiceMod.MODID)
 public class WarpEngineChipItem extends BaseChipItem {
@@ -36,8 +36,8 @@ public class WarpEngineChipItem extends BaseChipItem {
     public static final int STACK_GAIN = 2;
     /** 迅捷持续时间(0:10) */
     public static final int SPEED_DURATION_TICKS = 200;
-    /** 传送门/Waystone 触发的共享冷却时长(5:00) */
-    public static final int PORTAL_WAYSTONE_COOLDOWN_TICKS = 20 * 60 * 5;
+    /** 传送门/Waystone 触发的共享冷却时长(3:00;2026-10-15 用户裁决:5:00 → 3:00) */
+    public static final int PORTAL_WAYSTONE_COOLDOWN_TICKS = 20 * 60 * 3;
 
     public WarpEngineChipItem(Properties properties) {
         super(properties);
@@ -58,7 +58,7 @@ public class WarpEngineChipItem extends BaseChipItem {
         grantTeleportReward(player);
     }
 
-    /** 传送门/Waystone 专属结算:共享 5:00 冷却 */
+    /** 传送门/Waystone 专属结算:共享 3:00 冷却 */
     public static void onPortalOrWaystoneTeleport(Player player) {
         if (player == null || player.level().isClientSide()) return;
         if (!isEquipped(player)) return;

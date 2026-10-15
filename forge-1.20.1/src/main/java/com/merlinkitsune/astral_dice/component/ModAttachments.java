@@ -669,12 +669,14 @@ public class ModAttachments {
 
     // === 新筹码附件(魔法箭袋/缓冲盾牌/星币锤) ===
 
-    // 魔法箭袋筹码:是否已记录"第一张使用的效果牌"(一次触发周期内)
+    // 魔法箭袋筹码:是否已记录"本次使用的效果牌"(一次触发周期内)
     public static final AttachedDataKey<Boolean> MAGIC_QUIVER_TRACKING =
             register(AttachedDataKey.builder("magic_quiver_tracking", Codec.BOOL, () -> false).build());
 
-    // 魔法箭袋筹码:记录的第一张使用的效果牌类型(king_power/berserk/unwavering)
-    public static final AttachedDataKey<String> MAGIC_QUIVER_FIRST_CARD =
+    // 魔法箭袋筹码:记录的**本次使用**的效果牌类型(living_page/railgun/... 由 cardTypeId 给出)
+    // ⚠️ 附件注册 id 仍为历史名 `magic_quiver_first_card`(2026-10-15 语义由「第一张」改为
+    //    「本次使用的那张」,刻意**不改 key** 以保留既有存档中的值)。
+    public static final AttachedDataKey<String> MAGIC_QUIVER_LAST_CARD =
             register(AttachedDataKey.builder("magic_quiver_first_card", Codec.STRING, () -> "").build());
 
     // 魔法箭袋筹码:触发冷却结束时刻(1 分钟;0 表示无冷却)
@@ -778,12 +780,12 @@ public class ModAttachments {
         MAGIC_QUIVER_TRACKING.set(player, value);
     }
 
-    public static String getMagicQuiverFirstCard(net.minecraft.world.entity.player.Player player) {
-        return MAGIC_QUIVER_FIRST_CARD.get(player);
+    public static String getMagicQuiverLastCard(net.minecraft.world.entity.player.Player player) {
+        return MAGIC_QUIVER_LAST_CARD.get(player);
     }
 
-    public static void setMagicQuiverFirstCard(net.minecraft.world.entity.player.Player player, String value) {
-        MAGIC_QUIVER_FIRST_CARD.set(player, value);
+    public static void setMagicQuiverLastCard(net.minecraft.world.entity.player.Player player, String value) {
+        MAGIC_QUIVER_LAST_CARD.set(player, value);
     }
 
     public static long getMagicQuiverCooldownEnd(net.minecraft.world.entity.player.Player player) {
@@ -1058,6 +1060,16 @@ public class ModAttachments {
             register(AttachedDataKey.builder("airbag_cooldown_end", Codec.LONG, () -> 0L).sync().build());
 
     /**
+     * 安全气囊:**受击充能**冷却结束时刻(15 秒;0 表示无冷却;2026-10-15 用户裁决追加能力)。
+     *
+     * <p>⚠️ 与「保命无效化」的 {@link #AIRBAG_COOLDOWN_END}(1:00)**完全独立**:两条能力各自计时,
+     * 互不干扰(保命冷却中照样能靠受击攒充能,反之亦然)。仅服务端使用,不 {@code .sync()}、
+     * 不进 {@code SYNCED_KEYS}。
+     */
+    public static final AttachedDataKey<Long> AIRBAG_HIT_CHARGE_COOLDOWN_END =
+            register(AttachedDataKey.builder("airbag_hit_charge_cooldown_end", Codec.LONG, () -> 0L).build());
+
+    /**
      * 磨刀石「保留 1 血」（不可被一次伤害击倒）的**触发冷却结束时刻**（1:00；0 表示无冷却）。
      *
      * <p>2026-09-24 用户裁决：该保命能力此前**无冷却**，而它的生效条件与安全气囊的「致命伤害」完全
@@ -1115,6 +1127,14 @@ public class ModAttachments {
 
     public static void setAirbagCooldownEnd(net.minecraft.world.entity.player.Player player, long value) {
         AIRBAG_COOLDOWN_END.set(player, Math.max(0, value));
+    }
+
+    public static long getAirbagHitChargeCooldownEnd(net.minecraft.world.entity.player.Player player) {
+        return AIRBAG_HIT_CHARGE_COOLDOWN_END.get(player);
+    }
+
+    public static void setAirbagHitChargeCooldownEnd(net.minecraft.world.entity.player.Player player, long value) {
+        AIRBAG_HIT_CHARGE_COOLDOWN_END.set(player, Math.max(0, value));
     }
 
     public static long getWhetstoneGuardCooldownEnd(net.minecraft.world.entity.player.Player player) {

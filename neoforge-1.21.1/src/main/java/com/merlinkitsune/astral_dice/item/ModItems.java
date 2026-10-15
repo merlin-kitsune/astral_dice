@@ -702,7 +702,7 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(AstralRarities.legendary()), AdrenalineChipItem.BONUS_HIGH));
 
-    // 魔法箭袋:使用过效果牌并对带标记目标造成法伤 → 施加标记并返还第一张使用的效果牌(每分钟一次)
+    // 魔法箭袋:使用过伤害效果牌并对带标记目标造成法伤 → 施加标记并返还**本次使用的那张**效果牌(每 30 秒一次)
     public static final DeferredItem<Item> MAGIC_QUIVER = registerItem("magic_quiver_chip",
             () -> new MagicQuiverChipItem(new Item.Properties()
                     .stacksTo(1)
@@ -892,7 +892,7 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(AstralRarities.epic())));
 
-    // 感测装置(史诗/标记):攻击的目标每 4 层标记使其战斗骰点 -1(最多 -4);闪避成功后给攻击者 1 层标记。
+    // 感测装置(史诗/标记):攻击的目标每 3 层标记使其战斗骰点 -1(最多 -4);闪避成功后给攻击者 1 层标记。
     public static final DeferredItem<Item> SENSOR_CHIP = registerItem("sensor_chip",
             () -> new SensorChipItem(new Item.Properties()
                     .stacksTo(1)
