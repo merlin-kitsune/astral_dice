@@ -1,0 +1,13 @@
+{
+  "name": "entity.minecraft.villager.astral_dice.card_trader",
+  "category": "astral_dice:blocks",
+  "icon": "minecraft:villager_spawn_egg",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "minecraft:villager_spawn_egg",
+      "text": "astral_dice.guide.entry.card_trader.1"
+    }
+  ],
+  "sortnum": 3
+}

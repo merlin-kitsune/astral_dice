@@ -1,0 +1,13 @@
+{
+  "name": "block.astral_dice.event_drawer",
+  "category": "astral_dice:blocks",
+  "icon": "astral_dice:event_drawer",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:event_drawer",
+      "text": "astral_dice.guide.entry.event_drawer.1"
+    }
+  ],
+  "sortnum": 2
+}
