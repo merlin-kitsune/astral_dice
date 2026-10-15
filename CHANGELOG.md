@@ -392,13 +392,18 @@
   it hooks the damage event (any source, including environmental damage and self-inflicted hits) and keeps its cooldown in a
   **separate attachment**, so the two cooldowns run **independently and never block each other** (charge still accrues while the
   saving cooldown is running, and a hit the Airbag itself negates still grants the charge).
-- **Behaviour / number adjustments to 7 existing chips** (user ruling, 2026-10-15; this batch lands on `neoforge-1.21.1`, while `forge-1.20.1`, `neoforge-26.1.2` and `fabric-1.20.1` follow in a later batch):
+- **Behaviour / number adjustments to 7 existing chips** (user ruling, 2026-10-15; this batch has landed on **both P0 lines** (`neoforge-1.21.1` and `forge-1.20.1`), while `neoforge-26.1.2` and `fabric-1.20.1` follow in a later batch):
   - **Bank Card - Unlimited** - with no team, the payout after a Dice Blessing is now limited to players **within 32 blocks** of the wearer (the wearer is always included); with a team it is still every online teammate, with no range limit.
   - **Big Bowl Stew** - with no team, the target set is now explicitly **every player within 16 blocks** (the check goes through the shared team-relation entry point and no longer relies on the "no team ⇒ every online player" fallback); with a team it is still teammates only, filtered by the same 16 blocks.
   - **Magic Quiver** - the returned card is now **the one used this time** instead of **the first one used** (every use overwrites the record; nothing is recorded while on cooldown); the 30-second cooldown is unchanged.
   - **Eagle Scope** - the bonus against a marked target moves from **attack power** to **extra attack damage** (2 per Mark layer, resolved as a separate damage instance, same approach as Flashlight - Burst); both the bonus value and "applies 1 Mark layer on hit" are unchanged.
   - **Warp Engine** - the shared cooldown for dimension portals / Waystones goes **5:00 → 3:00**; ender pearls and the Ender Die's warp still have no cooldown.
-  - **Perpetual Motion** - the top-up on a Dice Blessing trigger goes **6 → 8** (tops up to 8 when below 8); new: **-50% vanilla melee attack cooldown while equipped** (implemented as ×2 attack speed).
+  - **Perpetual Motion** - the top-up on a Dice Blessing trigger goes **6 → 8** (tops up to 8 when below 8); new: **-50% vanilla melee attack cooldown while equipped** (implemented as ×2 attack speed);
+    **a side effect is fixed in the same batch**: the dice battle scales attack power by the vanilla charge coefficient, and
+    doubling attack speed makes `cd` larger at the **same real clicking rhythm**, so rapid hits had their dice-battle attack power
+    inflated as a side effect; the dice battle now **excludes this chip's attack-speed contribution**, so you only swing faster
+    without raising dice-battle attack power (swing speed still doubles; with or without the chip, the same charging rhythm yields
+    an identical dice-battle attack-power coefficient).
   - **Bookmark** - damage bonus for damage effect cards **+1 → +2**.
   - (**Reagent - Abyss** / **Sensor Device** / **Airbag** adjustments are folded into their own entries in this version.)
 
@@ -523,10 +528,11 @@
   goes through `tt(...)` (same pattern as Living Page); ② after the four cards lost their damage boost, the
   "Ranged and Magic Damage Boost" summary is always 0 ⇒ the line is now hidden when there is no bonus.
 - **Three damage effect cards' tooltip durations now use the time colour, and the Japanese tooltips no longer
-  reset their line colour after a value** (2026-10-06, all four lines): ① on **Directional Blast / Monster Laser /
-  Orbital Strike**, the "0.5s until detonation" text was drawn in the **value colour (yellow §e)** — the tooltip
-  colour rules reserve yellow for values and **blue §9** for durations — so it is now blue in all three
-  languages; ② in **Japanese**, the tooltips of **Crimson Dice (high roll) / Obsidian Dice (explosion) / Weird
+  reset their line colour after a value** (2026-10-06, all four lines): ① on **Directional Blast**, the "0.5s until
+  detonation" text was drawn in the **value colour (yellow §e)** — the tooltip colour rules reserve yellow for values
+  and **blue §9** for durations — so it is now blue in all three languages (the same line on Monster Laser /
+  Orbital Strike was dropped entirely by the 2026-10-15 description trim, see "Three damage effect cards'
+  descriptions trimmed" below); ② in **Japanese**, the tooltips of **Crimson Dice (high roll) / Obsidian Dice (explosion) / Weird
   Dice (low roll)** and the **"Fight Poison with Poison"** effect description ended their value with a **reset
   code §r**, which resets to white: Japanese puts the verb after the value, so that trailing text was drawn
   **white** on the tooltip's own colour — gold / red for the three dice, gray for the effect description. Those
@@ -540,6 +546,21 @@
 - **Fixed doubled impact sound on damage effect cards**: the impact no longer plays two generic hit sounds at once; hit
   sounds from other sources (living page, fire card, etc.) are unaffected.
 - **Removed texts that exposed internal mechanics** (2026-10-10): the bracketed notes in attack/defence card tooltips, the same notes in the guide, and the "sold out" hover hint; button tooltips now keep only the button name (e.g. "Transfer", "Starlight Exchange").
+- **Three damage effect cards' descriptions trimmed to "how to use it + spell damage"** (user ruling, 2026-10-15, all three
+  languages): the item tooltips of Monster Laser / Monster Brick / Orbital Strike no longer mention the delay in seconds, the
+  laser colour, the beam duration or the thrown prop - they keep only "aim at a hostile target: deals X spell damage". Those
+  details remain fully documented in the guide book (the guide is the detailed reference). Directional Blast keeps its
+  "6 blocks" radius information and is unchanged.
+- **"Reagent - Abyss" description loses its bracketed notes** (2026-10-15, all three languages): the item tooltip and guide
+  entry drop the "(lose 2 on unequip)", "(yellow hearts)" and "at least 2 points when effective healing is below 1" notes and
+  keep only the main body - +2 healing layers on equip, and damage absorption equal to effective healing x2 when healing
+  triggers (mechanics and numbers are unchanged; only the extra notes are gone).
+- **New "Combat System Changes" guide entry** (2026-10-15): the guide's first chapter (Getting Started) gains a page that
+  summarises this dev line's combat changes for players - the dice-battle damage chain (critical hits apply to the base segment
+  only; weapon enchantments, dice rolls and cards are never multiplied by it; the defender's Protection and Resistance reduce
+  the final damage proportionally), attack speed no longer affecting dice-battle attack power, the extra damage channel, the
+  four systems (Starlight / Healing / Marks / Charge), the dodge and counterattack rules, and the damage number colours
+  (red = attack power and extra damage, green = spell and skill damage). All three languages.
 
 
 #### Input & UI

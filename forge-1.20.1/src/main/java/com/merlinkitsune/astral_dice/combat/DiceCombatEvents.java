@@ -33,6 +33,8 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -606,8 +608,12 @@ public class DiceCombatEvents {
         //   if (crit) f *= 1.5                                       ← ★ 只乘基础段
         //   f += f1                                                  ← 附魔加伤加在暴击之后
         // 骰战逐段照搬:基础段吃冷却与暴击;附魔加伤两者都不吃;骰点与卡牌作为**其后**的加项,同样不吃暴击。
+        // ⚠️ 2026-10-15 修复(永动机攻速副作用):上面这个 f2 取自 diceBattleAttackStrengthScale(player),
+        //    已**扣除「永动机」筹码的攻击速度贡献** —— 该筹码的攻速 ×2 只应让挥击更快,不得抬高
+        //    「同一真实蓄力节奏」下的骰战攻击力。本段的 f2 同时供暴击判定与附魔增量缩放使用
+        //    (与原版「同一个 f2 驱动三处」同构)。
         double rawAttackDamage = player.getAttributeValue(Attributes.ATTACK_DAMAGE);
-        float attackCooldown = player.getAttackStrengthScale(0.5F);
+        float attackCooldown = diceBattleAttackStrengthScale(player);
         double attackPower = rawAttackDamage * (0.2 + attackCooldown * attackCooldown * 0.8);
         for (var modifier : com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.attackModifiers()) {
             attackPower = modifier.apply(ctx, attackPower);
@@ -1112,6 +1118,71 @@ public class DiceCombatEvents {
     }
 
     /**
+     * 上述临时抵消修饰器的 id(仅在单次求值内存在,取值后立即移除)。
+     * 1.20.1 的属性修饰器以 UUID 标识;此处的取值按固定字符串派生,
+     * 独立于任何真实筹码,避免与玩家属性上既有修饰器撞 id
+     * (撞 id 会让 {@code addTransientModifier} 抛
+     * {@code IllegalArgumentException: Modifier is already applied on this attribute!})。
+     */
+    private static final UUID COOLDOWN_PROBE_ID = UUID.nameUUIDFromBytes(
+            "astral_dice:dice_battle_cooldown_probe".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+
+    /**
+     * 骰战攻击冷却系数所用的 {@code getAttackStrengthScale(0.5F)} —— **已扣除「永动机」筹码的攻击速度贡献**。
+     *
+     * <p><b>为什么需要它(2026-10-15 修复的副作用)</b>:永动机以 {@code ATTACK_SPEED} 的
+     * {@code MULTIPLY_TOTAL = 1.0}(属性终值 ×2)实现「原版近战攻击冷却 -50%」。原版蓄力系数
+     * {@code 0.2 + f2²·0.8} 只应反映**蓄力程度**,而攻速 ×2 会让**同一真实点击节奏**下的 f2 变大
+     * ⇒ 骰战基础段被这条修饰器顺带抬高(不只是挥得更快)。本方法把该修饰器的贡献临时扣除,
+     * 用**等价于「未装备永动机」的攻击速度**去求同一个原版公式 ⇒ 骰战系数只随真实蓄力时长变化。
+     *
+     * <p><b>为什么不按比例换算({@code f2 × AS'/AS})</b>:原版
+     * {@code getCurrentItemAttackStrengthDelay() = 20 / 攻击速度}(1.20.1 {@code Player.java:2004-2005})、
+     * {@code getAttackStrengthScale} 对 {@code (ticker + 0.5) / delay} 取 clamp(同文件 2011-2012),
+     * 而 {@code attackStrengthTicker} 在 {@code Player#tick} 里**无上限自增**、只在 {@code attack()}
+     * 末尾清零(同文件 275 / 1274;1.21.1 同构)⇒ 一旦 f2 被 clamp 到 1
+     * (很常见:真实点击间隔 ≥ 芯片冷却时长),ticker 信息已丢失,比例换算法只能给出
+     * 「等效值下限 0.5」的错误结果(等价于把永动机变成纯负收益)。故这里改为**在真实属性实例上
+     * 临时叠加一个抵消修饰器**({@code MULTIPLY_TOTAL = 1/(1+a) − 1}),让原版公式自己算出
+     * 精确等价值,再用 {@code finally} 立刻移除、不留残留。
+     *
+     * <p>未装备永动机(属性实例上没有这条修饰器)时直接返回原版取值,零副作用。
+     *
+     * @return 扣除永动机攻击速度贡献后的 {@code getAttackStrengthScale(0.5F)};该值同时供
+     *         {@link #isVanillaCriticalHit} 与附魔加伤缩放使用(与原版「同一个 f2 驱动三处」同构)
+     */
+    private static float diceBattleAttackStrengthScale(Player player) {
+        AttributeInstance speed = player.getAttribute(Attributes.ATTACK_SPEED);
+        if (speed == null) {
+            return player.getAttackStrengthScale(0.5F);
+        }
+        AttributeModifier chipModifier = speed.getModifier(PerpetualMotionChipItem.attackSpeedModifierId());
+        if (chipModifier == null) {
+            return player.getAttackStrengthScale(0.5F);
+        }
+        // 抵消项:把「本修饰器带来的 ×2」再乘回 1/2 ⇒ 属性终值 × (1 + counter) = 未装备永动机时的终值
+        double factor = 1.0D + chipModifier.getAmount();
+        if (factor <= 0.0D) {
+            return player.getAttackStrengthScale(0.5F);
+        }
+        double counter = 1.0D / factor - 1.0D;
+        if (counter == 0.0D) {
+            return player.getAttackStrengthScale(0.5F);
+        }
+        if (speed.getModifier(COOLDOWN_PROBE_ID) != null) {
+            speed.removeModifier(COOLDOWN_PROBE_ID);
+        }
+        speed.addTransientModifier(new AttributeModifier(COOLDOWN_PROBE_ID,
+                "astral_dice:dice_battle_cooldown_probe", counter,
+                AttributeModifier.Operation.MULTIPLY_TOTAL));
+        try {
+            return player.getAttackStrengthScale(0.5F);
+        } finally {
+            speed.removeModifier(COOLDOWN_PROBE_ID);
+        }
+    }
+
+    /**
      * 原版暴击判定（逐条照搬 {@code Player#attack}，2026-09-26 裁决②）。
      *
      * <pre>
@@ -1125,7 +1196,9 @@ public class DiceCombatEvents {
      * 派发它会让同一次攻击出现两条独立的暴击判定链（重复派发）。第三方若需修改骰战暴击，
      * 应走 {@code registerDiceCombatFactor} 通道。
      *
-     * @param attackCooldown 已取好的 {@code getAttackStrengthScale(0.5F)}（原版用同一个值判 {@code flag}）
+     * @param attackCooldown 已取好的 {@code getAttackStrengthScale(0.5F)}（原版用同一个值判 {@code flag}）;
+     *                       骰战内取的是 {@link #diceBattleAttackStrengthScale(Player)}——
+     *                       已扣除永动机筹码的攻击速度贡献（2026-10-15）
      */
     private static boolean isVanillaCriticalHit(Player attacker, Entity target, float attackCooldown) {
         return attackCooldown > 0.9F

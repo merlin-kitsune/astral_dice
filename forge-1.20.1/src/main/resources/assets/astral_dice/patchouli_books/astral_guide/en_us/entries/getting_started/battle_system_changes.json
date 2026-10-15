@@ -1,0 +1,32 @@
+{
+  "name": "astral_dice.guide.entry.battle_system_changes.name",
+  "category": "astral_dice:getting_started",
+  "icon": "astral_dice:dice",
+  "pages": [
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.battle_system_changes.1"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.battle_system_changes.2"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.battle_system_changes.3"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.battle_system_changes.4"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.battle_system_changes.5"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.battle_system_changes.6"
+    }
+  ],
+  "sortnum": 5
+}

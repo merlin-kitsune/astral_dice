@@ -45,6 +45,18 @@ public class PerpetualMotionChipItem extends BaseChipItem {
     }
 
     /**
+     * 本筹码攻击速度修饰器的 id(经 BaseChipItem 的静态派生入口取得,与实例版逐字节同源)。
+     * <p>用途:骰战计算攻击冷却系数时"临时扣除本筹码的攻击速度贡献"(见
+     * {@code combat.DiceCombatEvents#diceBattleAttackStrengthScale})—— 先按本 id 从 {@code ATTACK_SPEED}
+     * 属性实例里取出这条修饰器,再叠加一个抵消项求原版蓄力系数。
+     * <p>⚠️ 必须**延迟求值**:本类在 {@code ModItems} 注册那一刻被实例化,那时物品还没进注册表
+     * ⇒ 写成静态常量会拿到空 key。
+     */
+    public static java.util.UUID attackSpeedModifierId() {
+        return BaseChipItem.attributeModifierId(ModItems.PERPETUAL_MOTION.get(), "attack_speed");
+    }
+
+    /**
      * 装备期间:攻击速度 +100%(= ×2)⇒ 原版近战攻击冷却时长 -50%。
      * <p>静态加成(不随充能层数变化)⇒ 用 Curios 的 {@code getAttributeModifiers} 即可,
      * 无需照「能量回收器」那样每 tick 维护瞬态修饰器。修饰器 id 由物品注册名派生
@@ -55,7 +67,7 @@ public class PerpetualMotionChipItem extends BaseChipItem {
             SlotContext slotContext, java.util.UUID id, ItemStack stack) {
         Multimap<Attribute, AttributeModifier> map = HashMultimap.create();
         map.put(Attributes.ATTACK_SPEED,
-                new AttributeModifier(attributeModifierId("attack_speed"), "attack_speed",
+                new AttributeModifier(attackSpeedModifierId(), "attack_speed",
                         ATTACK_SPEED_MULTIPLIER, AttributeModifier.Operation.MULTIPLY_TOTAL));
         return map;
     }
