@@ -21,7 +21,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * 村民职业「筹码商人」（{@code astral_dice:chip_trader}）的交易表 —— **镜像卡牌交易员**
- * （{@code trade/CardTraderTrades}），只把商品从卡牌换成筹码（{@link ChipShopCatalog#entries()} 的 61 枚池）。
+ * （{@code trade/CardTraderTrades}），只把商品从卡牌换成筹码（{@link ChipShopCatalog#entries()} 的 66 枚池）。
  *
  * <p>落表（用户批准口径，价格为绿宝石）：
  * <pre>

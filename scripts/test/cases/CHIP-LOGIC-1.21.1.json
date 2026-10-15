@@ -10,7 +10,7 @@
   "steps": [
     {
       "op": "note",
-      "text": "筹码商店（chip-shop）服务端逻辑全量实机取证。判据正本 = docs/chip-shop-logic-plan.md §1..§12 + scripts/verify/verify_chip_shop_ui.ps1 G9..G27。\n\n通道：全部机器行走服务端探针 `AP_CL_<CMD>:...`（ctx.source.sendFailure ⇒ 以 [CHAT] 行落客户端 latest.log ⇒ source=\"latest\"）。\n客户端探针全程**不武装**（余额 1000 ∉ [770,799]）⇒ 本用例只判服务端。\n\n⚠️ 命令注入纪律：筹码屏开着时注入的聊天命令会被 GUI 吞掉 ⇒ 本用例**只用** copen / cstable / cbuy / crefresh（它们经 cp_guardMenu 由服务端自开自关，不留屏），**不用** copenkeep。\n⚠️ 断言能力：mt_assert 的 log 断言只判「命中 ≥1」，故每条判据都设计成单行可判（模式里带唯一取值，例如 refreshes=4/5 只可能来自 due 模式的那次读数）。\n\n覆盖：池 61 与三档分布 / 进店前 needsReroll / 价格曲线 0→10·1→15·18→100·30→100 与菜单同值 / 开屏数值与三格品质码 / 关店重开候选恒定 / 刷新 3→2 + 首次消耗才起算锚点 / 真购买（扣款 1000→990、物品栏 +1、purchased+1、候选重抽、关店）/ 索引 -1 与 3 不扣款 / 物品栏满开店被拒（36/36 不动）/ 空物品栏负控开店成功 / 边界序列 cseq 五段 / 方块朝向与右键接入。\n⚠️ cblock 前先插一步 /setblock ~2 ~ ~ air 清位：探针 sp_doChipBlock 用 p.blockPosition().offset(2,0,0) 放置，同一世界里二次跑会因方块已在位而 set=0（跨用例/跨轮次残留）⇒ 先清位以保住 set=1 这条真判据。"
+      "text": "筹码商店（chip-shop）服务端逻辑全量实机取证。判据正本 = docs/chip-shop-logic-plan.md §1..§12 + scripts/verify/verify_chip_shop_ui.ps1 G9..G27。\n\n通道：全部机器行走服务端探针 `AP_CL_<CMD>:...`（ctx.source.sendFailure ⇒ 以 [CHAT] 行落客户端 latest.log ⇒ source=\"latest\"）。\n客户端探针全程**不武装**（余额 1000 ∉ [770,799]）⇒ 本用例只判服务端。\n\n⚠️ 命令注入纪律：筹码屏开着时注入的聊天命令会被 GUI 吞掉 ⇒ 本用例**只用** copen / cstable / cbuy / crefresh（它们经 cp_guardMenu 由服务端自开自关，不留屏），**不用** copenkeep。\n⚠️ 断言能力：mt_assert 的 log 断言只判「命中 ≥1」，故每条判据都设计成单行可判（模式里带唯一取值，例如 refreshes=4/5 只可能来自 due 模式的那次读数）。\n\n覆盖：池 66 与三档分布 / 进店前 needsReroll / 价格曲线 0→10·1→15·18→100·30→100 与菜单同值 / 开屏数值与三格品质码 / 关店重开候选恒定 / 刷新 3→2 + 首次消耗才起算锚点 / 真购买（扣款 1000→990、物品栏 +1、purchased+1、候选重抽、关店）/ 索引 -1 与 3 不扣款 / 物品栏满开店被拒（36/36 不动）/ 空物品栏负控开店成功 / 边界序列 cseq 五段 / 方块朝向与右键接入。\n⚠️ cblock 前先插一步 /setblock ~2 ~ ~ air 清位：探针 sp_doChipBlock 用 p.blockPosition().offset(2,0,0) 放置，同一世界里二次跑会因方块已在位而 set=0（跨用例/跨轮次残留）⇒ 先清位以保住 set=1 这条真判据。"
     },
     {
       "op": "inject_command",
@@ -274,7 +274,7 @@
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_CL_CPOOL:pool=61:tiers=19/24/18:avail=61:owned=0:all=0:star=0"
+      "pattern": "AP_CL_CPOOL:pool=66:tiers=19/28/19:avail=66:owned=0:all=0:star=0"
     },
     {
       "type": "log",

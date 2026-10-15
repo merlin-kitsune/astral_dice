@@ -440,6 +440,15 @@ public final class DiceCombatModifiers {
             return StarLightManager.get(ctx.attacker) / 4;
         });
 
+        // === 额外加伤:手电筒-爆闪(每 2 层星光 +1 点) ===
+        // ⚠️ 装备判定走 FlashlightBurstChipItem#isEquipped(含 hasDiceEquipped 总闸门,与同族
+        //    FlashlightChipItem 的 isEquipped 同款)。这是本件与上方「手电筒-强光」在本注册表里的
+        //    唯一差异 —— 强光先例只判 hasCurio;本件的星光加伤同样要求玩家佩戴骰子。
+        registerExtraDamageModifier(ctx -> {
+            if (ctx.attacker.level().isClientSide()) return 0;
+            return com.merlinkitsune.astral_dice.item.chip.FlashlightBurstChipItem.extraDamage(ctx.attacker);
+        });
+
         // === 内置:电流剑(每 4 点充能 +1 攻击力) ===
         registerAttackModifier((ctx, ap) -> {
             if (ctx.attacker.level().isClientSide()) return ap;

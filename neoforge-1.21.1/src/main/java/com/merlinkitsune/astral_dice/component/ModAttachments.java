@@ -389,6 +389,65 @@ public class ModAttachments {
         entity.setData(MOSES_DODGE_COUNTER_REWARDED.get(), value);
     }
 
+    // 手电筒-爆闪筹码:**该玩家**已发放过星光的**目标 UUID 集**(逗号分隔;**玩家级**附件)。
+    // 判重粒度 = **玩家 × 目标**:同一目标对不同佩戴者各可发放一次(旧口径的**目标实体级**附件
+    // 已随本次改动删除 —— 它让目标被**任何**玩家首次攻击后即置位,后出手的佩戴者拿不到)。
+    // 写法沿用同族的玩家级字符串集口径(见 {@link #FLASHLIGHT_GRANTED_TARGETS} / {@link #SHERRY_REASONING_TARGETS});
+    // 读写方 = FlashlightBurstChipItem#onAttack,记录上限见该类 MAX_TRACKED_TARGETS(满则不再发放)。
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<String>> FLASHLIGHT_BURST_TARGETS =
+            ATTACHMENTS.register("flashlight_burst_targets", () -> AttachmentType.builder(() -> "")
+                    .serialize(Codec.STRING)
+                    .build());
+
+    public static String getFlashlightBurstTargets(net.minecraft.world.entity.player.Player player) {
+        return player.getData(FLASHLIGHT_BURST_TARGETS.get());
+    }
+
+    public static void setFlashlightBurstTargets(net.minecraft.world.entity.player.Player player, String value) {
+        player.setData(FLASHLIGHT_BURST_TARGETS.get(), value == null ? "" : value);
+    }
+
+    // 财运签筹码:当前骰神赐福周期是否已发放过(玩家级,每个赐福周期一次)。
+    // 由 DiceCombatEvents 在**骰神赐福新周期开始处**复位(与 cursed_sword_blessing_triggered 同批同处复位),
+    // 由 FortuneStickChipItem#onHostileKill 置位(照 CursedSwordChipItem 的「每赐福周期一次」先例)。
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Boolean>> FORTUNE_STICK_BLESSING_CLAIMED =
+            ATTACHMENTS.register("fortune_stick_blessing_claimed", () -> AttachmentType.builder(() -> false)
+                    .serialize(Codec.BOOL)
+                    .build());
+
+    public static boolean isFortuneStickBlessingClaimed(net.minecraft.world.entity.player.Player player) {
+        return player.getData(FORTUNE_STICK_BLESSING_CLAIMED.get());
+    }
+
+    public static void setFortuneStickBlessingClaimed(net.minecraft.world.entity.player.Player player, boolean value) {
+        player.setData(FORTUNE_STICK_BLESSING_CLAIMED.get(), value);
+    }
+
+    // 试剂-深渊筹码:「装备时 +2 治愈点」的装备会话闸门(玩家级,持久化)。
+    // ⚠️ 为什么必须持久化:Curios 只持久化 stacks、**不持久化 previousStacks** ⇒ 登录 / 重生 / 切维度后
+    //    首 tick 的 prevStack 恒为空栈而槽里有物品,Curios 把这判成一次装备变化并**重放 onEquip**
+    //    (与医疗箱 GRANT_BIT / StarLightManager GRANT_BIT 同一根因)⇒ "空槽守卫"挡不住,会重复加分。
+    // 申领 = 真的新装上;释放 = 卸下 / 死亡(死亡时 HealingManager.clear 已把治愈点清零,
+    // 重生后由 Curios 重放 onEquip 重新发放,故这里释放即可)。
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Boolean>> ABYSS_REAGENT_GRANTED =
+            ATTACHMENTS.register("abyss_reagent_granted", () -> AttachmentType.builder(() -> false)
+                    .serialize(Codec.BOOL)
+                    .build());
+
+    /** 申领装备闸门:未申领过则置位并返回 true,已申领过(重复 onEquip / Curios 重放)返回 false。 */
+    public static boolean claimAbyssReagentGrant(net.minecraft.world.entity.player.Player player) {
+        if (player.getData(ABYSS_REAGENT_GRANTED.get())) return false;
+        player.setData(ABYSS_REAGENT_GRANTED.get(), true);
+        return true;
+    }
+
+    /** 释放装备闸门(卸下 / 死亡时调用,与 {@link #claimAbyssReagentGrant} 配对)。 */
+    public static void releaseAbyssReagentGrant(net.minecraft.world.entity.player.Player player) {
+        if (player.getData(ABYSS_REAGENT_GRANTED.get())) {
+            player.setData(ABYSS_REAGENT_GRANTED.get(), false);
+        }
+    }
+
     public static Optional<UUID> getUndercoverSource(net.minecraft.world.entity.LivingEntity entity) {
         return entity.getData(UNDERCOVER_SOURCE.get());
     }

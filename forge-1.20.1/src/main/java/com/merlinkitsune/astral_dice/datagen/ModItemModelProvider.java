@@ -150,5 +150,10 @@ public class ModItemModelProvider extends ItemModelProvider {
         basicItem(ModItems.WHETSTONE_CHIP.get());
         basicItem(ModItems.PURPLE_SHOOTING_STAR_CHIP.get());
         basicItem(ModItems.GOLDEN_SHOOTING_STAR_CHIP.get());
+        basicItem(ModItems.FLASHLIGHT_BURST_CHIP.get());
+        basicItem(ModItems.FORTUNE_STICK_CHIP.get());
+        basicItem(ModItems.ABYSS_REAGENT_CHIP.get());
+        basicItem(ModItems.INFINITE_GRID_CHIP.get());
+        basicItem(ModItems.SENSOR_CHIP.get());
     }
 }

@@ -1209,6 +1209,56 @@
 				"max": 1
 			},
 			"unitWorth": 10000
+		},
+		"flashlight_burst_chip": {
+			"type": "item",
+			"rarity": "LEGENDARY",
+			"content": "astral_dice:flashlight_burst_chip",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 10000
+		},
+		"fortune_stick_chip": {
+			"type": "item",
+			"rarity": "EPIC",
+			"content": "astral_dice:fortune_stick_chip",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 4200
+		},
+		"abyss_reagent_chip": {
+			"type": "item",
+			"rarity": "EPIC",
+			"content": "astral_dice:abyss_reagent_chip",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 4400
+		},
+		"infinite_grid_chip": {
+			"type": "item",
+			"rarity": "EPIC",
+			"content": "astral_dice:infinite_grid_chip",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 4200
+		},
+		"sensor_chip": {
+			"type": "item",
+			"rarity": "EPIC",
+			"content": "astral_dice:sensor_chip",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 4200
 		}
 	}
 }

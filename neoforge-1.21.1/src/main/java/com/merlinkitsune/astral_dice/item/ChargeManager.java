@@ -36,9 +36,9 @@ public final class ChargeManager {
      * <p>判定用**类**而不是 {@code ModItems} 的静态实例 —— 后者在静态字段里 {@code .get()}
      * 会有「注册未完成就被类加载」的顺序风险(DeferredItem/RegistryObject 未绑定)。
      *
-     * <p>⚠️ 名单与筹码 tooltip 调用 {@code addChargeCounter} 的那批**同源**(共 10 枚):
+     * <p>⚠️ 名单与筹码 tooltip 调用 {@code addChargeCounter} 的那批**同源**(共 11 枚):
      * 飞行引擎 / 能量回收器 / 电流剑 / 高级外设 / 永动机 / 电流核心 / 电击手套 / 安全气囊 /
-     * 电磁炮 / 原初核心。**新增充能类筹码时必须在此登记**,否则「未装备筹码 ⇒ 隐藏充能图标」
+     * 电磁炮 / 原初核心 / 无限电网。**新增充能类筹码时必须在此登记**,否则「未装备筹码 ⇒ 隐藏充能图标」
      * 的判定会漏(该筹码的持有者会看不到图标)。
      */
     private static boolean isChargeChipItem(net.minecraft.world.item.Item item) {
@@ -51,7 +51,8 @@ public final class ChargeManager {
                 || item instanceof com.merlinkitsune.astral_dice.item.chip.ElectricGloveChipItem
                 || item instanceof com.merlinkitsune.astral_dice.item.chip.AirbagChipItem
                 || item instanceof com.merlinkitsune.astral_dice.item.chip.RailgunChipItem
-                || item instanceof com.merlinkitsune.astral_dice.item.chip.PrimordialCoreChipItem;
+                || item instanceof com.merlinkitsune.astral_dice.item.chip.PrimordialCoreChipItem
+                || item instanceof com.merlinkitsune.astral_dice.item.chip.InfiniteGridChipItem;
     }
 
     /**
@@ -70,9 +71,24 @@ public final class ChargeManager {
         return ChargeEffect.getStacks(player);
     }
 
-    /** 增加充能层数,返回增加后的层数 */
+    /**
+     * 增加充能层数,返回增加后的层数。
+     *
+     * <p>层数**实际增加**时统一在此挂钩「获得充能」回调
+     * ({@link com.merlinkitsune.astral_dice.item.chip.InfiniteGridChipItem#onChargeGained}):
+     * 佩戴「无限电网」筹码的玩家按本次实际增加量向周围友方玩家广播充能。
+     * ⚠️ 与 {@link #consume} 挂钩 {@link EmpowerManager#onChargeConsumed} 的手法对称;
+     * 只在**实际层数增加**(gained ≥ 1)时触发 —— 已到上限(或客户端侧)时 gained 为 0,不触发;
+     * **一次调用只发放一次**(一次加 N 层也只广播一次)。
+     */
     public static int addStacks(Player player, int stacks) {
-        return ChargeEffect.addStacks(player, stacks);
+        int before = ChargeEffect.getStacks(player);
+        int total = ChargeEffect.addStacks(player, stacks);
+        int gained = total - before;
+        if (gained > 0) {
+            com.merlinkitsune.astral_dice.item.chip.InfiniteGridChipItem.onChargeGained(player, gained);
+        }
+        return total;
     }
 
     /** 减少 1 层 */

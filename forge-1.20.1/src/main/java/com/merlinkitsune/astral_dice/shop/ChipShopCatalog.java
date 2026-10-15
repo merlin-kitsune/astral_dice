@@ -17,8 +17,8 @@ import java.util.Optional;
 /**
  * 筹码商店的**静态池与全部冻结常量**（判据正本 = {@code docs/chip-shop-logic-plan.md} §1 / §2）。
  *
- * <p><b>池 = 61 枚</b>：{@code ModItems} 中除 {@code blank_chip}（合成材料，不入池、也不参与「已拥有」判定）
- * 之外的**全部** {@code *_chip} 物品；品质分布 稀有 19 / 史诗 24 / 传奇 18（已与 {@code ModItems} 的
+ * <p><b>池 = 66 枚</b>：{@code ModItems} 中除 {@code blank_chip}（合成材料，不入池、也不参与「已拥有」判定）
+ * 之外的**全部** {@code *_chip} 物品；品质分布 稀有 19 / 史诗 28 / 传奇 19（已与 {@code ModItems} 的
  * {@code AstralRarities} 逐条交叉核对一致）。品质码 1/2/3 与 {@code ChipShopClientState#qualityFrameIndexOf}
  * 的 {@code quality_1/2/3} 贴图一一对应，**永不出现普通 / 巅峰 / 奇特**（R20）。
  *
@@ -51,7 +51,7 @@ public final class ChipShopCatalog {
 
     /**
      * 筹码合成总开关的**权威默认值**(与 {@code config.ModCommonConfig#ENABLE_CHIP_RECIPES} 对应:
-     * 该配置项以此为默认定义 —— 关闭时 61 枚筹码无法通过合成获得)。
+     * 该配置项以此为默认定义 —— 关闭时 66 枚筹码无法通过合成获得)。
      */
     public static final boolean CHIP_RECIPES_DEFAULT = false;
 
@@ -180,17 +180,20 @@ public final class ChipShopCatalog {
         }
     }
 
-    /** 61 枚池（顺序 = 计划表 §1 的顺序；与 ModItems / 手册三方 61/61 吻合） */
+    /** 66 枚池（顺序 = 计划表 §1 的顺序；与 ModItems / 手册三方 66/66 吻合） */
     public static final List<Entry> POOL = List.of(
             e("atm_chip", TIER_RARE, School.STARLIGHT, Category.ECONOMY),
             e("bank_card_high_chip", TIER_EPIC, School.STARLIGHT, Category.ECONOMY),
             e("bank_card_low_chip", TIER_RARE, School.STARLIGHT, Category.ECONOMY),
             e("bank_card_unlimited_chip", TIER_LEGENDARY, School.STARLIGHT, Category.ECONOMY),
             e("eight_sided_dice_chip", TIER_RARE, School.STARLIGHT, Category.ECONOMY),
+            e("flashlight_burst_chip", TIER_LEGENDARY, School.STARLIGHT, Category.ATTACK),
             e("flashlight_chip", TIER_EPIC, School.STARLIGHT, Category.ATTACK),
+            e("fortune_stick_chip", TIER_EPIC, School.STARLIGHT, Category.ATTACK),
             e("golden_shooting_star_chip", TIER_LEGENDARY, School.STARLIGHT, Category.ATTACK),
             e("purple_shooting_star_chip", TIER_EPIC, School.STARLIGHT, Category.ATTACK),
             e("star_coin_hammer_chip", TIER_LEGENDARY, School.STARLIGHT, Category.ATTACK),
+            e("abyss_reagent_chip", TIER_EPIC, School.HEALING, Category.HEAL),
             e("big_bowl_stew_chip", TIER_LEGENDARY, School.HEALING, Category.HEAL),
             e("buffer_shield_chip", TIER_RARE, School.HEALING, Category.HEAL),
             e("candy_chip", TIER_EPIC, School.HEALING, Category.HEAL),
@@ -207,6 +210,7 @@ public final class ChipShopCatalog {
             e("marker_sprayer_chip", TIER_RARE, School.MARK, Category.SUPPORT),
             e("ninja_star_chip", TIER_LEGENDARY, School.MARK, Category.ATTACK),
             e("scope_chip", TIER_EPIC, School.MARK, Category.ATTACK),
+            e("sensor_chip", TIER_EPIC, School.MARK, Category.SUPPORT),
             e("target_chip", TIER_RARE, School.MARK, Category.ATTACK),
             e("advanced_peripherals_chip", TIER_EPIC, School.CHARGE, Category.ATTACK),
             e("airbag_chip", TIER_EPIC, School.CHARGE, Category.SUPPORT),
@@ -214,6 +218,7 @@ public final class ChipShopCatalog {
             e("electric_glove_chip", TIER_EPIC, School.CHARGE, Category.ATTACK),
             e("electric_sword_chip", TIER_RARE, School.CHARGE, Category.ATTACK),
             e("energy_recycler_chip", TIER_RARE, School.CHARGE, Category.REINFORCE),
+            e("infinite_grid_chip", TIER_EPIC, School.CHARGE, Category.REINFORCE),
             e("perpetual_motion_chip", TIER_LEGENDARY, School.CHARGE, Category.REINFORCE),
             e("primordial_core_chip", TIER_LEGENDARY, School.CHARGE, Category.REINFORCE),
             e("railgun_chip", TIER_LEGENDARY, School.CHARGE, Category.ATTACK),

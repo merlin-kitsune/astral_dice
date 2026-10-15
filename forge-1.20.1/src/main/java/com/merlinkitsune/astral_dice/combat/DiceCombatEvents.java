@@ -324,6 +324,13 @@ public class DiceCombatEvents {
         }
         if (target == player) return;
 
+        // 手电筒-爆闪筹码:攻击「该玩家未攻击过的目标（玩家×目标判重）」⇒ +1 星光
+        //(去重载体 = **该玩家自己的**玩家级附件 flashlight_burst_targets,记录满 256 后不再发放;目标须为敌对)。
+        // 位置:在「骰神赐福 / 近战武器」闸门**之前** ⇒ 不要求触发赐福、不要求主手持近战武器;
+        // 但上方 `directEntity instanceof Player` 闸门已保证"这一击的直接来源就是该玩家本人"
+        //(箭矢等弹射物的 directEntity 是弹射物 ⇒ 不计)。
+        com.merlinkitsune.astral_dice.item.chip.FlashlightBurstChipItem.onAttack(player, target);
+
         // 电磁炮筹码:对敌对目标发起攻击时消耗 6 层充能,延迟 1 秒对目标 3 格内敌对目标降下雷击。
         // ⚠️ **触发限「该玩家本人的近战武器攻击」**（2026-10-01 用户裁决）：判据见
         //    {@link #isPlayerMeleeAttack} —— 排除任意非近战 / 非玩家自身的攻击、荆棘与其它反伤
@@ -383,6 +390,8 @@ public class DiceCombatEvents {
             ModAttachments.setDefenseCardConsumedThisBlessing(player, false);
             // 新赐福周期:重置诅咒之剑“本次赐福已触发”标记
             ModAttachments.setCursedSwordBlessingTriggered(player, false);
+            // 新赐福周期:重置财运签“本次赐福已触发”标记(与诅咒之剑同批同处复位,每赐福周期一次)
+            ModAttachments.setFortuneStickBlessingClaimed(player, false);
             // 玩家对玩家:若被攻击方也佩戴骰子,则同时触发其骰神赐福(双方都拥有骰子时)
             if (target instanceof Player targetPlayer) {
                 var targetCurios = CuriosCompat.getCuriosInventory(targetPlayer);
@@ -394,6 +403,7 @@ public class DiceCombatEvents {
                                 GameplayConstants.DICE_BLESSING_DURATION_TICKS, 0, false, false, true));
                         ModAttachments.setDefenseCardConsumedThisBlessing(targetPlayer, false);
                         ModAttachments.setCursedSwordBlessingTriggered(targetPlayer, false);
+                        ModAttachments.setFortuneStickBlessingClaimed(targetPlayer, false);
                     }
                 }
             }
@@ -677,6 +687,10 @@ public class DiceCombatEvents {
                     // 对骰成立后双方各掷 1d6,但**不**因此触发骰神赐福。
                     // 特殊骰子掷骰(防御方:诡异骰子低点数偏置,绯红骰子高点数偏置)
                     defenseBaseDice = rollCombatDie(targetPlayer);
+                    // 感测装置筹码:目标每 4 层标记 ⇒ **其**战斗骰点 -1(最多 -4,下限 0)。
+                    // 只扣目标方骰点,不影响攻击方(见 SensorChipItem#reduceTargetDice)。
+                    defenseBaseDice = com.merlinkitsune.astral_dice.item.chip.SensorChipItem
+                            .reduceTargetDice(player, targetPlayer, defenseBaseDice);
                     // 防御卡掷骰由注册表防御修饰器执行(读 ctx.targetEnhancement,写 ctx.defenseCardSum)
                     ItemStack targetDice = targetDiceResult.get().stack();
                     WeaponEnhancement targetEnh = ModDataComponents.WEAPON_ENHANCEMENT.get(targetDice);
@@ -696,6 +710,9 @@ public class DiceCombatEvents {
             } else {
                 defenseBaseDice = ThreadLocalRandom.current().nextInt(1, 7);
             }
+            // 感测装置筹码:目标每 4 层标记 ⇒ **其**战斗骰点 -1(最多 -4,下限 0;攻击方骰点不受影响)
+            defenseBaseDice = com.merlinkitsune.astral_dice.item.chip.SensorChipItem
+                    .reduceTargetDice(player, target, defenseBaseDice);
         }
 
         double finalDmg;
@@ -1703,6 +1720,12 @@ public class DiceCombatEvents {
         if (!target.level().isClientSide() && target instanceof Player player) {
             BaseSignItem.invokeHurtHooks(player, event.getSource(), event.getAmount());
             com.merlinkitsune.astral_dice.item.chip.BufferShieldChipItem.onHurt(player, event.getSource(), event.getAmount());
+            // 感测装置筹码:闪避成功 ⇒ 攻击者获得 1 层标记。本方法是**全部闪避来源**的统一取消入口
+            // (枪匠破绽 / 肾上腺素闪避 / 魔女漂浮闪避)⇒ 挂在此处即全覆盖;
+            // 守卫 isInCounterChain:反击链中的伤害不参与(与破绽闪避 / 嘲讽反击 / 鼠鼠反击同一递归截断)。
+            if (!isInCounterChain()) {
+                com.merlinkitsune.astral_dice.item.chip.SensorChipItem.onDodgeSuccess(player, event.getSource());
+            }
         }
     }
 

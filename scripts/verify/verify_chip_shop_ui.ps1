@@ -309,7 +309,7 @@ foreach ($key in $targets) {
     $src = Code-Src $screenPath
     $ms = Code-Src $menuPath
 
-    # ---- G9 池 61 条 + 图标 61/61（与计划表 §1 逐行对账 + 素材逐字节一致 + 32x32） ----
+    # ---- G9 池 66 条 + 图标 66/66（与计划表 §1 逐行对账 + 素材逐字节一致 + 32x32） ----
     $planPath = Join-Path $root 'docs/chip-shop-logic-plan.md'
     $planIconDir = Join-Path $root 'images/shop/unbord_chips'
     $planRows = @()
@@ -334,8 +334,8 @@ foreach ($key in $targets) {
     foreach ($cm in [regex]::Matches($catSrc, 'e\("([a-z0-9_]+)",\s*TIER_([A-Z]+),\s*School\.([A-Z]+),\s*Category\.([A-Z]+)\)')) {
         $catRows += [pscustomobject]@{ id = $cm.Groups[1].Value; tier = $cm.Groups[2].Value; school = $cm.Groups[3].Value; cat = $cm.Groups[4].Value }
     }
-    if ($planRows.Count -ne 61) { Fail ($line + ': 计划表 §1 筹码行应为 61，实测 ' + $planRows.Count) }
-    if ($catRows.Count -ne 61) { Fail ($line + ': ChipShopCatalog 池条目应为 61，实测 ' + $catRows.Count) }
+    if ($planRows.Count -ne 66) { Fail ($line + ': 计划表 §1 筹码行应为 66，实测 ' + $planRows.Count) }
+    if ($catRows.Count -ne 66) { Fail ($line + ': ChipShopCatalog 池条目应为 66，实测 ' + $catRows.Count) }
     # 计划表品质列写中文（稀有/史诗/传奇）；池里是 TIER_RARE/EPIC/LEGENDARY 三档码 —— 两套映射都归到数字码
     $qualityMap = @{ '稀有' = 1; '史诗' = 2; '传奇' = 3 }
     $tierCodeMap = @{ 'RARE' = 1; 'EPIC' = 2; 'LEGENDARY' = 3 }
@@ -364,7 +364,7 @@ foreach ($key in $targets) {
         Fail ($line + ': 缺少筹码图标目录 textures/gui/chip_shop/chips')
     } else {
         $iconFiles = @(Get-ChildItem -LiteralPath $chipTexDir -Filter '*.png' -File)
-        if ($iconFiles.Count -ne 61) { Fail ($line + ': 筹码图标应为 61 张，实测 ' + $iconFiles.Count) }
+        if ($iconFiles.Count -ne 66) { Fail ($line + ': 筹码图标应为 66 张，实测 ' + $iconFiles.Count) }
         $planIds = @($planRows | ForEach-Object { $_.id })
         $extra = @($iconFiles | Where-Object { $planIds -notcontains $_.BaseName })
         if ($extra.Count -gt 0) { Fail ($line + ': 图标目录含计划表外文件 ' + (($extra | ForEach-Object { $_.Name }) -join ' | ')) }
@@ -382,7 +382,7 @@ foreach ($key in $targets) {
         }
         if ($iconBad.Count -gt 0) { Fail ($line + ': 筹码图标不合格 ' + ($iconBad -join ' | ')) }
     }
-    Write-Out ('CHIPUI_G9: 池 ' + $catRows.Count + ' 条（逐行一致 ' + $cmp + '/' + $planRows.Count + '）；图标 ' + $iconOk + '/61 逐字节一致 + 32x32')
+    Write-Out ('CHIPUI_G9: 池 ' + $catRows.Count + ' 条（逐行一致 ' + $cmp + '/' + $planRows.Count + '）；图标 ' + $iconOk + '/66 逐字节一致 + 32x32')
 
     # ---- G10 类别 5 覆盖 / 每枚恰一类 / 品质码 ⊆ {1,2,3} ----
     $catBody = [regex]::Match($catSrc, 'enum Category\s*\{(?<b>.*?)\n    \}', 'Singleline')
@@ -393,7 +393,7 @@ foreach ($key in $targets) {
     if ($usedCats.Count -ne 5) { Fail ($line + ': 池覆盖类别应为 5 个，实测 ' + $usedCats.Count + '（' + ($usedCats -join ',') + '）') }
     $nCatRef = ([regex]::Matches($catSrc, 'Category\.[A-Z]')).Count
     $nSchoolRef = ([regex]::Matches($catSrc, 'School\.[A-Z]')).Count
-    if ($nCatRef -ne 61 -or $nSchoolRef -ne 61) { Fail ($line + ': 池内 School./Category. 引用应各 61 次（每枚恰一类一流派），实测 ' + $nSchoolRef + '/' + $nCatRef) }
+    if ($nCatRef -ne 66 -or $nSchoolRef -ne 66) { Fail ($line + ': 池内 School./Category. 引用应各 66 次（每枚恰一类一流派），实测 ' + $nSchoolRef + '/' + $nCatRef) }
     foreach ($tc in @(@('TIER_RARE', 1), @('TIER_EPIC', 2), @('TIER_LEGENDARY', 3))) {
         if ($catSrc -notmatch ([regex]::Escape($tc[0]) + '\s*=\s*' + $tc[1] + '\s*;')) { Fail ($line + ': 品质码常量不符 ' + $tc[0] + ' = ' + $tc[1]) }
     }

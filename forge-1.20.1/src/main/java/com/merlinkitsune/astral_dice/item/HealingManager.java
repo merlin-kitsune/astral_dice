@@ -266,11 +266,23 @@ public final class HealingManager {
         updateEffect(player);
     }
 
-    /** 按当前治愈点×2 回血,并启动/重置 30 秒治愈计时器 */
+    /**
+     * 按当前治愈点×2 回血,并启动/重置 30 秒治愈计时器。
+     *
+     * <p>回血同时向「试剂-深渊」筹码通知**有效治疗量**(本批在该方法内开的唯一通知点):
+     * 有效治疗量 = min(请求量 total×2, 最大生命 − 当前生命),口径照 {@code ZhaoSignItem#onLivingHeal}
+     * —— 必须在 {@link Player#heal} **之前**求值(heal 会写入生命值)。
+     * 该筹码据此发放「有效治疗量 ×2」的伤害吸收(黄心),见
+     * {@code AbyssReagentChipItem#onHealingTriggered}。
+     */
     private static void triggerHealing(Player player) {
         int total = getPoints(player);
         if (total > 0) {
-            player.heal(total * 2);
+            float requested = total * 2;
+            float missing = Math.max(0.0F, player.getMaxHealth() - player.getHealth());
+            float effective = Math.min(requested, missing);
+            player.heal(requested);
+            com.merlinkitsune.astral_dice.item.chip.AbyssReagentChipItem.onHealingTriggered(player, effective);
         }
         ModAttachments.setHealingTimerEnd(player,
                 player.level().getGameTime() + (long) HEALING_TIMER_SECONDS * 20L);

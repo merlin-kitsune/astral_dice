@@ -18,6 +18,11 @@ import net.minecraftforge.registries.DeferredRegister;
 import java.util.function.Supplier;
 import com.merlinkitsune.astral_dice.item.chip.StarCoinHammerChipItem;
 import com.merlinkitsune.astral_dice.item.chip.ShootingStarChipItem;
+import com.merlinkitsune.astral_dice.item.chip.FlashlightBurstChipItem;
+import com.merlinkitsune.astral_dice.item.chip.FortuneStickChipItem;
+import com.merlinkitsune.astral_dice.item.chip.AbyssReagentChipItem;
+import com.merlinkitsune.astral_dice.item.chip.InfiniteGridChipItem;
+import com.merlinkitsune.astral_dice.item.chip.SensorChipItem;
 import com.merlinkitsune.astral_dice.item.chip.EagleScopeChipItem;
 import com.merlinkitsune.astral_dice.item.chip.MagicTomeChipItem;
 import com.merlinkitsune.astral_dice.item.chip.BufferShieldChipItem;
@@ -859,6 +864,38 @@ public class ModItems {
             () -> new ShootingStarChipItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(AstralRarities.legendary())));
+
+    // 手电筒-爆闪(传奇/星光):攻击「该玩家未攻击过的目标(玩家×目标判重)」⇒ +1 星光(玩家级附件,上限 256,满则停发;目标须敌对);
+    // 每 2 层星光 +1 点攻击伤害(额外加伤通道)。
+    public static final RegistryObject<Item> FLASHLIGHT_BURST_CHIP = registerItem("flashlight_burst_chip",
+            () -> new FlashlightBurstChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.legendary())));
+
+    // 财运签(史诗/星光):骰神赐福期间击杀第一只怪物 ⇒ 自身 + 16 格内友方各随机获得 1~7 点星光
+    // (每赐福周期一次;星光越多越容易抽到小号)。
+    public static final RegistryObject<Item> FORTUNE_STICK_CHIP = registerItem("fortune_stick_chip",
+            () -> new FortuneStickChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.epic())));
+
+    // 试剂-深渊(史诗/治愈):装备时治愈层数 +2(卸下 -2);触发治愈回血时获得「有效治疗量 ×2」的伤害吸收。
+    public static final RegistryObject<Item> ABYSS_REAGENT_CHIP = registerItem("abyss_reagent_chip",
+            () -> new AbyssReagentChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.epic())));
+
+    // 无限电网(史诗/充能):效果牌出牌数 +1;每次获得充能时使周围 8 格内其他友方玩家各 +1 充能。
+    public static final RegistryObject<Item> INFINITE_GRID_CHIP = registerItem("infinite_grid_chip",
+            () -> new InfiniteGridChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.epic())));
+
+    // 感测装置(史诗/标记):攻击的目标每 4 层标记使其战斗骰点 -1(最多 -4);闪避成功后给攻击者 1 层标记。
+    public static final RegistryObject<Item> SENSOR_CHIP = registerItem("sensor_chip",
+            () -> new SensorChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.epic())));
 
     public static final RegistryObject<Item> PADMAN_SIGN = registerItem("padman_sign",
             () -> new PadmanSignItem(new Item.Properties()

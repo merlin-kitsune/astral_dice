@@ -1,0 +1,13 @@
+{
+  "name": "item.astral_dice.fortune_stick_chip",
+  "category": "astral_dice:chips_starlight",
+  "icon": "astral_dice:fortune_stick_chip",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:fortune_stick_chip",
+      "text": "astral_dice.guide.entry.fortune_stick_chip.1"
+    }
+  ],
+  "sortnum": 10
+}

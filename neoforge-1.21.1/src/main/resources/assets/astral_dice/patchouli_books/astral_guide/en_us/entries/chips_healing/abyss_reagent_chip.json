@@ -1,0 +1,13 @@
+{
+  "name": "item.astral_dice.abyss_reagent_chip",
+  "category": "astral_dice:chips_healing",
+  "icon": "astral_dice:abyss_reagent_chip",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:abyss_reagent_chip",
+      "text": "astral_dice.guide.entry.abyss_reagent_chip.1"
+    }
+  ],
+  "sortnum": 9
+}

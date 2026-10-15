@@ -125,6 +125,8 @@ public class ModCreativeTabs {
                 // 筹码
                 // === 星光类 ===
                 output.accept(ModItems.FLASHLIGHT_CHIP.get());
+                output.accept(ModItems.FLASHLIGHT_BURST_CHIP.get());
+                output.accept(ModItems.FORTUNE_STICK_CHIP.get());
                 output.accept(ModItems.EIGHT_SIDED_DICE.get());
                 output.accept(ModItems.ATM.get());
                 output.accept(ModItems.BANK_CARD_LOW.get());
@@ -137,6 +139,7 @@ public class ModCreativeTabs {
                 output.accept(ModItems.MEDKIT_EMERGENCY_CHIP.get());
                 output.accept(ModItems.MEDKIT_COMPLETE_CHIP.get());
                 output.accept(ModItems.VITAMIN_PILL_CHIP.get());
+                output.accept(ModItems.ABYSS_REAGENT_CHIP.get());
                 output.accept(ModItems.CUTTER_CHIP.get());
                 output.accept(ModItems.CUTTER_BLADE_CHIP.get());
                 output.accept(ModItems.BUFFER_SHIELD.get());
@@ -149,6 +152,7 @@ public class ModCreativeTabs {
                 output.accept(ModItems.TARGET_CHIP.get());
                 output.accept(ModItems.MARKER_SPRAYER_CHIP.get());
                 output.accept(ModItems.NINJA_STAR_CHIP.get());
+                output.accept(ModItems.SENSOR_CHIP.get());
                 output.accept(ModItems.HAND_FAN_SMALL_CHIP.get());
                 output.accept(ModItems.HAND_FAN_BIG_CHIP.get());
                 output.accept(ModItems.MAGIC_QUIVER.get());
@@ -156,6 +160,7 @@ public class ModCreativeTabs {
                 output.accept(ModItems.WARP_ENGINE_CHIP.get());
                 output.accept(ModItems.ENERGY_RECYCLER.get());
                 output.accept(ModItems.ELECTRIC_SWORD.get());
+                output.accept(ModItems.INFINITE_GRID_CHIP.get());
                 output.accept(ModItems.ADVANCED_PERIPHERALS.get());
                 output.accept(ModItems.CURRENT_CORE_CHIP.get());
                 output.accept(ModItems.ELECTRIC_GLOVE_CHIP.get());

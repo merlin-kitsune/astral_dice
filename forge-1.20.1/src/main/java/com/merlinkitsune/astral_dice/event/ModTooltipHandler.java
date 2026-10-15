@@ -725,6 +725,51 @@ public class ModTooltipHandler {
                         StarLightManager.get(player), StarLightManager.getCap());
             }
         }
+        // 手电筒-爆闪(传奇/星光):文案 + 星光计数(与手电筒-强光同款计数器)
+        // ⚠️ 平台差异(1.20.1):{@code ItemTooltipEvent#getEntity()} 的返回类型**已是 Player**
+        //    (1.21 是 LivingEntity)⇒ 这里的 instanceof 模式变量会报
+        //    「模式类型 Player 是表达式类型 Player 的子类型」,故改用本区块既有的方法级 player。
+        if (stack.is(ModItems.FLASHLIGHT_BURST_CHIP.get())) {
+            tooltip.add(Component.empty());
+            tooltip.add(Component.translatable("tooltip.astral_dice.chip.flashlight_burst")
+                    .withStyle(ChatFormatting.GRAY));
+            if (player != null) {
+                addSignCounter(tooltip, "tooltip.astral_dice.chip.starlight",
+                        StarLightManager.get(player), StarLightManager.getCap());
+            }
+        }
+        // 财运签(史诗/星光):文案 + 星光计数
+        if (stack.is(ModItems.FORTUNE_STICK_CHIP.get())) {
+            tooltip.add(Component.empty());
+            tooltip.add(Component.translatable("tooltip.astral_dice.chip.fortune_stick")
+                    .withStyle(ChatFormatting.GRAY));
+            if (player != null) {
+                addSignCounter(tooltip, "tooltip.astral_dice.chip.starlight",
+                        StarLightManager.get(player), StarLightManager.getCap());
+            }
+        }
+        // 试剂-深渊(史诗/治愈):文案 + 治愈层数计数
+        if (stack.is(ModItems.ABYSS_REAGENT_CHIP.get())) {
+            tooltip.add(Component.empty());
+            tooltip.add(Component.translatable("tooltip.astral_dice.chip.abyss_reagent")
+                    .withStyle(ChatFormatting.GRAY));
+            if (player != null) {
+                addHealingPointsCounter(tooltip, player);
+            }
+        }
+        // 无限电网(史诗/充能):文案 + 充能计数(充能类筹码统一追加,无例外)
+        if (stack.is(ModItems.INFINITE_GRID_CHIP.get())) {
+            tooltip.add(Component.empty());
+            tooltip.add(Component.translatable("tooltip.astral_dice.chip.infinite_grid")
+                    .withStyle(ChatFormatting.GRAY));
+            addChargeCounter(tooltip, event.getEntity());
+        }
+        // 感测装置(史诗/标记):文案(标记类无计数器)
+        if (stack.is(ModItems.SENSOR_CHIP.get())) {
+            tooltip.add(Component.empty());
+            tooltip.add(Component.translatable("tooltip.astral_dice.chip.sensor")
+                    .withStyle(ChatFormatting.GRAY));
+        }
         // 紫色飞星 / 金色飞星:功能描述 + 星光层数 + 共享冷却剩余(计时器不建效果,只在 tooltip 显示)
         if (stack.is(ModItems.PURPLE_SHOOTING_STAR_CHIP.get())) {
             tooltip.add(Component.empty());

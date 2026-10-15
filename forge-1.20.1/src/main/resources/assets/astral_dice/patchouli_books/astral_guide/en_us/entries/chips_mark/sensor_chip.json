@@ -1,0 +1,13 @@
+{
+  "name": "item.astral_dice.sensor_chip",
+  "category": "astral_dice:chips_mark",
+  "icon": "astral_dice:sensor_chip",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:sensor_chip",
+      "text": "astral_dice.guide.entry.sensor_chip.1"
+    }
+  ],
+  "sortnum": 8
+}

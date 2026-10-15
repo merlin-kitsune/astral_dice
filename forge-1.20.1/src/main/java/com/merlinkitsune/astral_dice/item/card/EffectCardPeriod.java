@@ -190,6 +190,7 @@ public final class EffectCardPeriod {
         // 固定来源:大背包 +1、忍术飞镖 +1(不卸载持续提供)
         registerFixedSource(p -> hasCurio(p, ModItems.BIG_BACKPACK_CHIP.get()));
         registerFixedSource(p -> hasCurio(p, ModItems.NINJA_STAR_CHIP.get()));
+        registerFixedSource(p -> hasCurio(p, ModItems.INFINITE_GRID_CHIP.get()));
         // 临时来源(仅当前出牌周期有效,周期归零时清除):
         // 活体书页已改为"每次使用累计 +1"的本周期计数(见 getMaxAllowed 的 LIVING_PAGE_CYCLE_BONUS),
         // 不再注册为"效果存在即 +1"的开关式临时来源(否则会与累计计数重复计算);
