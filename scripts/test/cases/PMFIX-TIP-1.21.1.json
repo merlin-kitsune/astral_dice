@@ -1,0 +1,294 @@
+{
+  "case_id": "PMFIX-TIP-1.21.1",
+  "title": "文案（.123）：三张伤害效果牌 tooltip 精简为单句 / 试剂-深渊 tooltip+图鉴去括注 / 图鉴新条目 battle_system_changes 可打开",
+  "version": "1.21.1",
+  "target": {
+    "type": "feature",
+    "ref": "tooltip-trim-and-guide-entry"
+  },
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "目的：验证 .123 批（2026-10-15）三处文案改动（客户端实机读数）：\nB. **三张伤害效果牌的物品提示精简为「使用方式 + 法术伤害点数」**：对怪激光 / 对怪板砖 / 轨道炮\n   只保留「瞄准敌对目标使用，对其造成 X 点法术伤害」，不再写延迟秒数 / 激光线颜色 / 光束持续时间 /\n   投掷物外观（这些细节仍在本模组图鉴条目里）；\nC. **试剂-深渊（`astral_dice:abyss_reagent_chip`）的物品提示与图鉴条目去掉括注**：\n   不再写「（卸下时 -2）」「（黄心）」「有效治疗量不足 1 时至少获得 2 点」，只留主干；\nD. **图鉴第一章（基本介绍）新增条目「战斗系统改动」**（`astral_dice:getting_started/battle_system_changes`）：\n   服务端用 Patchouli API `openBookEntry` 打开该条目 ⇒ 截图即「条目存在且打得开」的实证。\n\n取数法（客户端探针 `scripts/test/resources/kubejs/<版本>/client_scripts/astral_pmfix_client.js`，只读）：\n· 每 40 tick 把 4 件物品的**完整 tooltip 行**（含 § 染色码）与 3 条图鉴 lang 键写进\n  `logs/kubejs/client.log`；集成服务端（dev 单机）里这一行**同时**落 `run/<版本>/logs/latest.log`\n  ⇒ 断言一律走 `latest` 通道（`kubejs_client` 通道在本轮首跑里窗口偏移取到 0B、断言读空，\n  同一内容在 latest 通道可稳定命中）；\n· tooltip 走**真实事件链**：`ItemStack#getTooltipLines(...)` 会派发 `ItemTooltipEvent`\n  （取源：实物 jar 字节扫描 —— NeoForge 补丁在 `ItemStack` 里调 `EventHooks.onItemTooltip`；\n   Forge 侧常量池含 `ForgeEventFactory.onItemTooltip` 的四参描述符）⇒ 模组的 `ModTooltipHandler`\n   追加的行原样可见；客户端语言 zh_cn（options.txt `lang:zh_cn`）；\n· 每条断言都按**整行**锚定（`…|strip=<全文>$`）⇒ 旧文案（更长、含「延迟 0.5 秒」等）不会误命中。\n\n⚠️ 前置清饰品槽：卡牌提示里的数值 = 基础值 + `SpellDamageRegistry.effectCardDamageBonus(观看者)`\n（忍者立牌 / 书签筹码），残留会给数字加成 ⇒ 先 `/astralprobe pmfix clean` 让它恒为 0（4/6/8）。\n⚠️ 图鉴截图为 `mode=window`（窗口级抓取，即时，不依赖按键注入）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamerule doDaylightCycle false",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/time set noon",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/weather clear",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[type=!player,distance=..64]",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/tp @s ~ ~ ~ 0 0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe pmfix clean V0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "note",
+      "text": "【B/C】等两拍客户端心跳（每 40 tick 一次 dump）⇒ 4 件物品的 tooltip 行 + 3 条图鉴 lang 键成批落盘。"
+    },
+    {
+      "op": "wait",
+      "ms": 6000
+    },
+    {
+      "op": "note",
+      "text": "【D-1】打开图鉴第一章的新条目「战斗系统改动」（服务端 `PatchouliAPI#openBookEntry` ⇒ 客户端开书到该条目）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe pmfix guide G1 astral_dice:getting_started/battle_system_changes",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 3500
+    },
+    {
+      "op": "screenshot",
+      "tag": "pmfix-guide-battle-1.21.1",
+      "mode": "window"
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "note",
+      "text": "关书（Esc），再打开试剂-深渊的图鉴条目（C 的手册侧证据）。"
+    },
+    {
+      "op": "inject_key",
+      "key": "escape",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe pmfix guide G2 astral_dice:chips_healing/abyss_reagent_chip",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 3500
+    },
+    {
+      "op": "screenshot",
+      "tag": "pmfix-guide-abyss-1.21.1",
+      "mode": "window"
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_key",
+      "key": "escape",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "note",
+      "text": "收尾：清怪物与背包。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[type=!player,distance=..64]",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_PMFIX\\|tip\\|laser\\|id=astral_dice:effect_card_monster_laser\\|n=[0-9]+"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_PMFIX\\|tip\\|brick\\|id=astral_dice:effect_card_monster_brick\\|n=[0-9]+"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_PMFIX\\|tip\\|orbital\\|id=astral_dice:effect_card_orbital_strike\\|n=[0-9]+"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_PMFIX\\|tip\\|abyss\\|id=astral_dice:abyss_reagent_chip\\|n=[0-9]+"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_PMFIX\\|tip\\|laser\\|i=[0-9]+\\|strip=瞄准敌对目标使用，对其造成 4 点法术伤害\\|END"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_PMFIX\\|tip\\|brick\\|i=[0-9]+\\|strip=瞄准敌对目标使用，对其造成 6 点法术伤害\\|END"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_PMFIX\\|tip\\|orbital\\|i=[0-9]+\\|strip=瞄准敌对目标使用，对其造成 8 点法术伤害\\|END"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_PMFIX\\|tip\\|abyss\\|i=[0-9]+\\|strip=装备时治愈层数 \\+2。触发治愈回血时：获得「有效治疗量 × 2」的伤害吸收\\|END"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_PMFIX\\|lang\\|astral_dice\\.guide\\.entry\\.battle_system_changes\\.name\\|strip=战斗系统改动\\|END"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_PMFIX\\|lang\\|astral_dice\\.guide\\.entry\\.battle_system_changes\\.1\\|strip=2\\.0\\.0 开发线对战斗结算做了一轮系统化对齐。"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_PMFIX\\|lang\\|astral_dice\\.guide\\.entry\\.abyss_reagent_chip\\.1\\|strip=装备时治愈层数 \\+2；触发治愈回血时，获得「有效治疗量 ×2」的伤害吸收。\\|END"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_PMFIX\\|tip\\|(laser|orbital)\\|i=[0-9]+\\|strip=.*(延迟|红色激光|金色信标|光束)"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_PMFIX\\|tip\\|brick\\|i=[0-9]+\\|strip=.*(投掷|红砖)"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_PMFIX\\|tip\\|abyss\\|i=[0-9]+\\|strip=.*(卸下|黄心|不足)"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_PMFIX\\|lang\\|astral_dice\\.guide\\.entry\\.abyss_reagent_chip\\.1\\|strip=.*(卸下|黄心|不足)"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_PMFIX\\|.*ERR"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_G1_GUIDE:book=astral_dice:astral_guide:entry=astral_dice:getting_started/battle_system_changes:open=ok"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_G2_GUIDE:book=astral_dice:astral_guide:entry=astral_dice:chips_healing/abyss_reagent_chip:open=ok"
+    },
+    {
+      "type": "vision",
+      "image": "pmfix-guide-battle-1.21.1",
+      "question": "这是《恋的规则书》(Patchouli 图鉴)的界面。请回答：①画面里是否是一本打开的书(有书页背景)？②书页上的条目标题是否是「战斗系统改动」？③正文是否包含与「骰战伤害链 / 暴击 / 攻击速度」相关的说明文字？请逐条回答，并原文引用你看到的标题文字。"
+    },
+    {
+      "type": "vision",
+      "image": "pmfix-guide-abyss-1.21.1",
+      "question": "这是《恋的规则书》的界面。请回答：①画面里是否是打开的书页？②条目是否与「试剂-深渊」有关（图鉴条目名/图标）？③正文里是否出现「卸下」「黄心」「有效治疗量不足」这些括注字样？请逐条回答，并原文引用你看到的正文文字。"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_[A-Z0-9]+_(ERR|EX):"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "Unknown or incomplete command"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "mixin"
+    },
+    {
+      "type": "crash"
+    }
+  ],
+  "evidence": []
+}

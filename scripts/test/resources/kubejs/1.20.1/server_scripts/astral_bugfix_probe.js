@@ -14436,6 +14436,36 @@ ServerEvents.commandRegistry(event => {
                     .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
                         return doGuidebook(ctx, StringArg.getString(ctx, "tag"));
                     }))))
+
+            // ── .123 批（2026-10-15）：永动机攻速副作用 / 骰神赐福充能补足 / 手册条目打开 ──
+            .then(Commands.literal("pmfix")
+                .then(Commands.literal("as")
+                    .then(Commands.argument("tag", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doPmfixAs(ctx, StringArg.getString(ctx, "tag"));
+                        }))))
+                .then(Commands.literal("ap")
+                    .then(Commands.argument("tag", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doPmfixAp(ctx, StringArg.getString(ctx, "tag"));
+                        }))))
+                .then(Commands.literal("charge")
+                    .then(Commands.argument("tag", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doPmfixCharge(ctx, StringArg.getString(ctx, "tag"));
+                        }))))
+                .then(Commands.literal("clean")
+                    .then(Commands.argument("tag", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doPmfixClean(ctx, StringArg.getString(ctx, "tag"));
+                        }))))
+                .then(Commands.literal("guide")
+                    .then(Commands.argument("tag", StringArg.word())
+                        .then(Commands.argument("entry", StringArg.greedyString())
+                            .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                return doPmfixGuide(ctx, StringArg.getString(ctx, "tag"),
+                                    StringArg.getString(ctx, "entry"));
+                            }))))))
             // ── 2026-09-17(t18 门控收口)：选择器立牌「前置门控」门控 / 取消 / 确认三态读数 ──
             .then(Commands.literal("sggate")
                 .then(Commands.argument("tag", StringArg.word())
@@ -16247,6 +16277,513 @@ function doChestLoot(ctx, tag, dx, dy, dz, tableId) {
     }
 
     send(ctx, "AP_" + tag + "_CHESTLOOT:set=" + tableId + ":loot=" + loot);
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  .123 批（2026-10-15）实机取证：永动机筹码攻速副作用修复 / 骰神赐福充能补足 / 手册条目打开
+//
+//  命令（读数一律 AP_<tag>_ 前缀；经 chat → 客户端 ChatComponent → run/<版本>/logs/latest.log）：
+//    /astralprobe pmfix as     <tag>               只读：攻速属性终值 + 本筹码的攻速修饰器是否在实例上
+//    /astralprobe pmfix ap     <tag>               四臂骰战攻击力测量（同 ticker；有/无筹码；半蓄力/满蓄力）
+//    /astralprobe pmfix charge <tag>               骰神赐福触发时的充能补足（负控 / 正控 / 不溢出）
+//    /astralprobe pmfix guide  <tag> <entryId>     用 Patchouli API 把书翻到指定条目（服务端发，客户端开书）
+//    /astralprobe pmfix clean  <tag>               测试脚手架：清空 dice / chip / stand 三类饰品槽
+//
+//  【为什么这样量骰战攻击力】攻击力基础段 = 属性攻击力 ×(0.2 + f2²·0.8)（f2 = getAttackStrengthScale(0.5F)、
+//    delay = 20 / 攻速）。永动机把攻速 ×2 ⇒ 同一真实蓄力节奏下 f2 变大 ⇒ 修复前骰战攻击力被顺带抬高。
+//    本命令用**同一 ticker** 比较「有筹码 / 无筹码」两臂的**实扣血量**：
+//      · 目标 = 无 AI 的 `minecraft:pillager`（**非亡灵**，m02850 规则 2），ARMOR / ARMOR_TOUGHNESS 基值钉 0
+//        ⇒ 骰战防御力 = 0；
+//      · 攻击方**卸下骰子**（筹码槽由产品保留：DiceCurioItem#setSlotCount 的 forceRemove=false 分支把目标
+//        抬到「最靠后的非空槽位 + 1」）⇒ 双方骰点恒 0（DiceCombatEvents：diceStack == null ⇒ baseDice = 0
+//        且 defenseBaseDice = 0）⇒ 实扣 = 骰战攻击力本身，无骰点随机、无护甲减免；
+//      · **同 ticker 的做法（2026-10-15 实测修正）**：Curios 的属性修饰器**滞后一拍**才随槽位内容变化
+//        （首版把「写槽」与「读数/出手」放同一 tick ⇒ 读到上一臂的筹码状态，读数与臂号对不上）。
+//        现在每臂拆两拍：`apply`（写筹码槽 + ticker 归零）→ 数 n 个 tick → `wait` 到点才读数出手；
+//        四臂结构完全相同 ⇒ ticker 相同。半蓄力臂取 n=6（铁剑 delay = 20/1.6 = 12.5 tick ⇒
+//        f2 = 6.5/12.5 = 0.52；而「含筹码攻速」的 delay = 6.25 ⇒ f2 = 1.04 钳到 1.0 ⇒ 修复前会明显偏高）。
+//      · 每臂读数带 `as` / `mod`：证明筹码确实在该槽、其攻速修饰器确实在属性实例上（防「两臂都无筹码」假绿）。
+// ════════════════════════════════════════════════════════════════════════════
+
+/** 提供筹码槽的骰子（0★ 骰子无筹码槽） */
+var PMFIX_DICE_ID = "astral_dice:diamond_dice";
+/** 被测筹码：永动机（攻击速度 +100% = 属性终值 ×2） */
+var PMFIX_CHIP_ID = "astral_dice:perpetual_motion_chip";
+/** 固定武器：铁剑 ⇒ 属性攻击力 = 1(基础) + 5(剑) = 6；攻击速度 = 4(基础) − 2.4(剑) = 1.6 */
+var PMFIX_WEAPON_ID = "minecraft:iron_sword";
+/** 固定靶：劫掠者（敌对 ⇒ isBlessingTarget 恒真；**非亡灵**，m02850 规则 2） */
+var PMFIX_TARGET_ID = "minecraft:pillager";
+
+/**
+ * 平台判定：本模组 1.20.1 线跑在 **Forge**（`net.minecraftforge.registries.ForgeRegistries` 存在），
+ * 1.21.1 线跑在 NeoForge（该类不存在）。用途：`MobEffectInstance` 的构造器形态不同 ——
+ * 1.20.1 吃 `MobEffect`（须 `RegistryObject#get()`），1.21.1 吃 `Holder<MobEffect>`（直接用）。
+ * ⚠️ 不得用「先试错形态、失败再换」的写法：KubeJS 的「JS→Java 参数转换失败」异常**不会**被脚本
+ *    try/catch 接住（它会一路冒到 ServerEvents.tick 外层 ⇒ 每 tick 一条 ERROR 且状态机卡死）
+ *    —— 2026-10-15 实机实测踩中。
+ */
+var PMFIX_FORGE_CACHE = null;
+
+/**
+ * 平台判定（延迟判定 + 缓存）：1.20.1 线 = Forge ⇒ `MobEffectInstance` 吃 `MobEffect`（须 `RegistryObject#get()`）、
+ * `hasEffect` 同样吃 `MobEffect`；1.21.1 线 = NeoForge ⇒ 两处都吃 `Holder<MobEffect>`（直接用 `ModEffects.X`）。
+ *
+ * <p>⚠️ 判据用**产品自己的公开入口** `PerpetualMotionChipItem.attackSpeedModifierId()` 的取值形态
+ * （1.20.1 返回 UUID、1.21.1 返回 ResourceLocation —— 两者 `toString` 一个带 `:` 一个不带），
+ * **不调用任何会抛的 Java 方法**：
+ *   ① 类存在性判定（`Java.loadClass("net.minecraftforge.registries.ForgeRegistries")`）**在加载期取不到**
+ *      （实测 ⇒ 误判为 NeoForge ⇒ 走错构造器 ⇒ KubeJS 的「JS→Java 参数转换」异常每 tick 刷屏且状态机卡死）；
+ *   ② 「先试错形态、失败再换」同样不行 —— 那个转换异常**不会**被脚本 try/catch 接住。
+ */
+function pmfixForgeMode() {
+    if (PMFIX_FORGE_CACHE === null) {
+        var f = false;
+        try {
+            var PM = Java.loadClass("com.merlinkitsune.astral_dice.item.chip.PerpetualMotionChipItem");
+            var idText = "" + PM.attackSpeedModifierId();
+            f = (idText.indexOf(":") < 0);   // UUID(1.20.1) 不含冒号；ResourceLocation(1.21.1) 含冒号
+        } catch (e0) { f = false; }
+        PMFIX_FORGE_CACHE = f;
+    }
+    return PMFIX_FORGE_CACHE;
+}
+
+/** 破绽效果的**平台正确取值**：1.21.1 = Holder 本身 / 1.20.1 = `.get()` */
+function pmfixMosesFx() {
+    return pmfixForgeMode() ? ModEffects.MOSES_BROKEN.get() : ModEffects.MOSES_BROKEN;
+}
+
+/** 浮点读数归一（去掉 2.4000000953674316 这类尾巴） */
+function pmfixNum(v) {
+    if (typeof v !== "number" || !isFinite(v)) return v;
+    return Math.round(v * 1000) / 1000;
+}
+
+/**
+ * 攻速属性终值 + 永动机筹码的 ATTACK_SPEED 修饰器读数（只读）。
+ * 修饰器 id 走**产品自己的公开入口** `PerpetualMotionChipItem.attackSpeedModifierId()`
+ * （静态版，与产品骰战取值处逐字节同源）—— 探针不得另抄一份 id 拼装规则。
+ */
+function pmfixSpeedText(p) {
+    var Attrs = Java.loadClass("net.minecraft.world.entity.ai.attributes.Attributes");
+    var as = "?";
+    try { as = "" + pmfixNum(p.getAttributeValue(Attrs.ATTACK_SPEED) - 0); } catch (e0) { as = "ERR:" + exText(e0); }
+    var mod = "none", id = "-", nmod = "?";
+    try {
+        var PM = Java.loadClass("com.merlinkitsune.astral_dice.item.chip.PerpetualMotionChipItem");
+        var rid = PM.attackSpeedModifierId();
+        id = "" + rid;
+        var inst = p.getAttribute(Attrs.ATTACK_SPEED);
+        try { nmod = inst.getModifiers().size() - 0; } catch (eN) { nmod = "?"; }
+        var m = (inst == null) ? null : inst.getModifier(rid);
+        if (m != null) {
+            // 1.21.1 的 AttributeModifier 是 record(amount())；1.20.1 是 getAmount() —— 两者都容错
+            try { mod = "" + pmfixNum(m.amount() - 0); }
+            catch (e1) { try { mod = "" + pmfixNum(m.getAmount() - 0); } catch (e2) { mod = "?"; } }
+        }
+    } catch (e3) { mod = "ERR:" + exText(e3); }
+    return { as: as, mod: mod, id: id, nmod: nmod };
+}
+
+/** 与上同，返回 ":as=..:mod=..:mod_id=.." 拼串（读数行用） */
+function pmfixSpeedStr(p) {
+    var r = pmfixSpeedText(p);
+    return ":as=" + r.as + ":mod=" + r.mod + ":nmod=" + r.nmod + ":mod_id=" + r.id;
+}
+
+/**
+ * 生成一只**无甲 + 破绽**靶：ARMOR / ARMOR_TOUGHNESS 基值钉 0（⇒ 骰战防御力 = 0），并挂上枪匠
+ * 「破绽」`astral_dice:moses_broken`。
+ *
+ * <p>为什么必须挂破绽：攻击方**必须**佩戴骰子（筹码槽只在佩戴骰子时存在 —— 产品的
+ * `chipSlotsFor` 在无骰子时目标为 0），而佩戴骰子时防御方会自行掷 1d6（`defenseBaseDice`）
+ * ⇒ 不挂破绽的靶会让实扣带上 1~6 的随机减免、跨臂不可比。破绽把防御方骰点钉为 0。
+ */
+function pmfixArmorlessTarget(p) {
+    var mob = spawnDummy(p, PMFIX_TARGET_ID, 3);
+    if (mob == null) return null;
+    try {
+        var Attrs = Java.loadClass("net.minecraft.world.entity.ai.attributes.Attributes");
+        var a = mob.getAttribute(Attrs.ARMOR);
+        if (a != null) a.setBaseValue(0.0);
+        var t = mob.getAttribute(Attrs.ARMOR_TOUGHNESS);
+        if (t != null) t.setBaseValue(0.0);
+    } catch (e0) { /* 由读数体现 */ }
+    try {
+        var MEI = Java.loadClass("net.minecraft.world.effect.MobEffectInstance");
+        // 形态由 PMFIX_FORGE 决定（见文件头说明：不得用「试错」写法）
+        mob.addEffect(new MEI(pmfixMosesFx(), 1200, 0, false, false, false));
+    } catch (e1) { /* 由读数体现 */ }
+    return mob;
+}
+
+/** 一臂（读数与出手同拍；调用方保证「写筹码槽」发生在上一拍 ⇒ 修饰器已同步） */
+function pmfixArm(p, withChip) {
+    var r = { chip: withChip ? 1 : 0, slot: "ok", as: "-", mod: "none", nmod: "?", raw: "-",
+              f2v: "-", delay: "-", timp: "-", tarmor: "-", dmg: "-", api: "-", err: "",
+              bless: -1, tbroken: -1, fate: -1, dice: "-" };
+    var sp = pmfixSpeedText(p);
+    r.as = sp.as; r.mod = sp.mod; r.nmod = sp.nmod;
+    try {
+        var Attrs = Java.loadClass("net.minecraft.world.entity.ai.attributes.Attributes");
+        r.raw = pmfixNum(p.getAttributeValue(Attrs.ATTACK_DAMAGE) - 0);
+    } catch (e1) { r.raw = "ERR:" + exText(e1); }
+    // 原版蓄力系数（**含**筹码的攻速贡献；修复后产品用的不是它 —— 正是本用例要区分的两件事）
+    try { r.f2v = pmfixNum(p.getAttackStrengthScale(0.5) - 0); } catch (e2) { r.f2v = "ERR:" + exText(e2); }
+    // 该臂攻击速度对应的原版 delay = 20 / 攻速；未钳满时由 f2 反推 ticker（钳满时信息已丢失 ⇒ 记 -1）
+    try {
+        var delay = 20.0 / (r.as - 0);
+        r.delay = pmfixNum(delay);
+        r.timp = ((r.f2v - 0) < 0.999) ? pmfixNum((r.f2v - 0) * delay - 0.5) : -1;
+    } catch (e3) { r.delay = "?"; r.timp = "?"; }
+    try { r.bless = p.hasEffect(teruBlessing()) ? 1 : 0; } catch (eB) { r.bless = -2; }
+    try { r.fate = (ModAttachments.getFateActiveUntil(p) > nowTick(p)) ? 1 : 0; } catch (eF) { r.fate = -2; }
+    try { r.dice = diceSlotItemId(p); } catch (eD) { r.dice = "?"; }
+    var mob = pmfixArmorlessTarget(p);
+    if (mob == null) { r.err = "spawn_failed"; return r; }
+    try { r.tarmor = pmfixNum(mob.getArmorValue() - 0); } catch (e4) { r.tarmor = "?"; }
+    try { r.tbroken = mob.hasEffect(pmfixMosesFx()) ? 1 : 0; } catch (e5) { r.tbroken = -2; }
+    try {
+        var hit = meleeHit(p, mob);
+        r.api = "" + hit.api;
+        r.dmg = pmfixNum(hit.dealt);
+    } catch (e5) { r.err = "melee:" + exText(e5); }
+    try { mob.discard(); } catch (e6) { /* 忽略 */ }
+    return r;
+}
+
+/** 全部测量结束后的一条判定行（比较都在探针侧算好 ⇒ 用例只需断 1/0，原始值同列可见） */
+function pmfixCmp(pend) {
+    var tag = pend.tag, R = pend.res;
+    function byName(nm) {
+        for (var i = 0; i < R.length; i++) { if (R[i] != null && R[i].name === nm) return R[i]; }
+        return null;
+    }
+    function dv(nm) { var r = byName(nm); return (r != null && typeof r.dmg === "number") ? r.dmg : NaN; }
+    var A = dv("A"), B = dv("B"), C = dv("C"), D = dv("D");
+    var aR = byName("A"), bR = byName("B");
+    var raw = (aR != null && typeof aR.raw === "number") ? aR.raw : -1;
+    var f2a = (aR != null && typeof aR.f2v === "number") ? aR.f2v : -1;
+    var as_a = (aR != null) ? aR.as : "-";
+    var as_b = (bR != null) ? bR.as : "-";
+    // 无筹码臂的期望值 = 属性攻击力 ×(0.2 + 0.8·f2²)；修复生效时筹码臂的期望值与它**相同**
+    // 骰点常数：命运的指引 ⇒ 攻击方骰点恒 6；未戴七咒戒 ⇒ applyCurseToDicePoints 原样返回 ⇒ +6。
+    // 防御方骰点由靶身上的枪匠「破绽」钉为 0（见 pmfixArmorlessTarget）。
+    var DBONUS = 6;
+    var exp_ab = (raw > 0 && f2a >= 0) ? pmfixNum(raw * (0.2 + 0.8 * f2a * f2a) + DBONUS) : -1;
+    // 满蓄力（n=20 ⇒ f2 钳到 1.0）的期望值 = 属性攻击力 + 骰点
+    var exp_cd = (raw > 0) ? pmfixNum(raw + DBONUS) : -1;
+    // 由筹码臂实扣**反推**的产品实际系数：实扣/raw = 0.2 + 0.8·f2² ⇒ f2 = sqrt((实扣/raw − 0.2)/0.8)
+    var f2b_eff = (raw > 0 && B === B && ((B - DBONUS) / raw) >= 0.2)
+        ? pmfixNum(Math.sqrt(((B - DBONUS) / raw - 0.2) / 0.8)) : -1;
+    // 「同一真实蓄力节奏」的直接证据：由两臂独立读数反推的 ticker 应一致（钳满时记 -1 不参与判定）
+    var delayA = ((as_a - 0) > 0) ? 20.0 / (as_a - 0) : -1;
+    var tA = (f2a >= 0 && delayA > 0 && f2a < 0.999) ? pmfixNum(f2a * delayA - 0.5) : -1;
+    var tB = (f2b_eff >= 0 && delayA > 0 && f2b_eff < 0.999) ? pmfixNum(f2b_eff * delayA - 0.5) : -1;
+    function near(x, y, tol) { return (x === x && y === y && Math.abs(x - y) <= tol) ? 1 : 0; }
+    var eq_ab = near(A, B, 0.02);        // 核心：同 ticker 下 有筹码 == 无筹码
+    var eq_cd = near(C, D, 0.02);        // 满蓄力下 有筹码 == 无筹码
+    var b_ok = near(B, exp_ab, 0.05);    // 筹码臂 == 无筹码臂的**绝对**期望（钉住系数算式本身）
+    var cd_ok = near(C, exp_cd, 0.05);
+    var gt_ca = (A === A && C === C && (C - A) >= 1.0) ? 1 : 0;   // 灵敏度：本读数确实随蓄力系数变化
+    var f2_ok = near(f2b_eff, f2a, 0.05);                          // 反推系数 == 无筹码臂系数
+    var dist_bc = (B === B && C === C && Math.abs(C - B) >= 1.0) ? 1 : 0;  // 修复前 B 会钳到满值(=C)
+    var tk_ok = ((tA >= 0 && tB >= 0) ? near(tA, tB, 0.2) : 1);    // 两臂 ticker 一致（钳满臂不参与）
+    // 筹码是否真的只在筹码臂生效：无筹码臂必须**恰好是基础攻速**、筹码臂恰好 ×2
+    var as_ok = ((("" + as_a) !== "-") && near(as_b - 0, (as_a - 0) * 2, 0.001)
+                 && ("" + (aR != null ? aR.mod : "?")) === "none"
+                 && ("" + (bR != null ? bR.mod : "?")) === "1") ? 1 : 0;
+    var pre_ok = 1;
+    for (var i = 0; i < R.length; i++) {
+        if (R[i] == null || R[i].bless !== 1 || R[i].fate !== 1 || R[i].tbroken !== 1) pre_ok = 0;
+    }
+    var ok = (pre_ok === 1 && eq_ab === 1 && eq_cd === 1 && b_ok === 1 && cd_ok === 1 && gt_ca === 1
+              && f2_ok === 1 && dist_bc === 1 && tk_ok === 1 && as_ok === 1) ? 1 : 0;
+    return "AP_" + tag + "_CMP:A=" + A + ":B=" + B + ":C=" + C + ":D=" + D
+        + ":raw=" + raw + ":f2a=" + f2a + ":f2b_eff=" + f2b_eff
+        + ":tA=" + tA + ":tB=" + tB
+        + ":dbonus=" + DBONUS + ":exp_ab=" + exp_ab + ":exp_cd=" + exp_cd
+        + ":eq_ab=" + eq_ab + ":eq_cd=" + eq_cd + ":b_ok=" + b_ok + ":cd_ok=" + cd_ok
+        + ":gt_ca=" + gt_ca + ":f2_ok=" + f2_ok + ":dist_bc=" + dist_bc + ":tk_ok=" + tk_ok
+        + ":as_a=" + as_a + ":as_b=" + as_b + ":as_ok=" + as_ok + ":pre_ok=" + pre_ok + ":ok=" + ok;
+}
+
+/** 四臂测量状态（由下面的 ServerEvents.tick 消费；跨 tick 才拿得到确定的蓄力 ticker） */
+var pmfixPend = null;
+
+ServerEvents.tick(event => {
+    var pend = pmfixPend;
+    if (pend == null) return;
+    var p = pend.player;
+    try {
+        if (pend.phase === "settle") {
+            // 第 2 拍：写槽/装备已稳定（含主手武器属性刷新）⇒ 触发一次骰神赐福（骰战闸门；骰子必须佩戴）
+            // 并清掉充能，然后报一次基线。
+            var blessHit = "none";
+            try {
+                var mob0 = pmfixArmorlessTarget(p);
+                if (mob0 != null) {
+                    var h0 = meleeHit(p, mob0);
+                    blessHit = "" + h0.api;
+                    try { mob0.discard(); } catch (eD0) { /* 忽略 */ }
+                }
+            } catch (eB0) { blessHit = "ERR:" + exText(eB0); }
+            try {
+                var ChargeS = Java.loadClass("com.merlinkitsune.astral_dice.item.ChargeManager");
+                ChargeS.removeAll(p);
+            } catch (eC0) { /* 充能不进骰战攻击力 */ }
+            var sp = pmfixSpeedText(p);
+            var rawS = "?";
+            try {
+                var AttrsS = Java.loadClass("net.minecraft.world.entity.ai.attributes.Attributes");
+                rawS = "" + pmfixNum(p.getAttributeValue(AttrsS.ATTACK_DAMAGE) - 0);
+            } catch (eS) { rawS = "ERR:" + exText(eS); }
+            var blS = -1, ftS = -1;
+            try { blS = p.hasEffect(teruBlessing()) ? 1 : 0; } catch (eB1) { blS = -2; }
+            try { ftS = (ModAttachments.getFateActiveUntil(p) > nowTick(p)) ? 1 : 0; } catch (eF1) { ftS = -2; }
+            emitTo(p, "AP_" + pend.tag + "_READY:raw=" + rawS + ":as=" + sp.as + ":mod=" + sp.mod + ":nmod=" + sp.nmod
+                + ":mod_id=" + sp.id + ":bless=" + blS + ":fate=" + ftS + ":bless_hit=" + blessHit
+                + ":dice=" + diceSlotItemId(p)
+                + ":chipslots=" + chipSlotCount(p) + ":" + chipStateText(p));
+            pend.phase = "apply";
+            pend.arm = 0;
+            pend.elapsed = 0;
+            return;
+        }
+        if (pend.phase === "apply") {
+            // 每臂第 1 拍：只写筹码槽（Curios 的属性修饰器滞后一拍 ⇒ 读数/出手必须放到下一拍之后）
+            var arm0 = pend.arms[pend.arm];
+            var se = "ok";
+            try {
+                var stack = arm0.chip ? new ItemStack(resolveItem(PMFIX_CHIP_ID)) : ItemStack.EMPTY;
+                var e = putInSlot(p, "chip", stack, 0);
+                se = (e == null) ? "ok" : ("" + e);
+            } catch (e0) { se = "ERR:" + exText(e0); }
+            pend.slotState = se;
+            try { p.resetAttackStrengthTicker(); } catch (e1) { pend.slotState = pend.slotState + "|resetERR:" + exText(e1); }
+            pend.phase = "wait";
+            pend.elapsed = 0;
+            return;
+        }
+        // phase = "wait"
+        pend.elapsed = pend.elapsed + 1;
+        var arm = pend.arms[pend.arm];
+        if (pend.elapsed < arm.n) return;
+        var r = pmfixArm(p, arm.chip);
+        r.slot = pend.slotState;
+        r.name = arm.name;
+        pend.res.push(r);
+        emitTo(p, "AP_" + pend.tag + "_ARM" + pend.arm + ":arm=" + arm.name
+            + ":n=" + arm.n + ":chip=" + r.chip + ":slot=" + r.slot
+            + ":as=" + r.as + ":mod=" + r.mod + ":nmod=" + (r.nmod === undefined ? "-" : r.nmod)
+            + ":raw=" + r.raw + ":f2v=" + r.f2v
+            + ":delay=" + r.delay + ":timp=" + r.timp + ":tarmor=" + r.tarmor
+            + ":dmg=" + r.dmg + ":api=" + r.api
+            + ":dice=" + r.dice + ":bless=" + r.bless + ":fate=" + r.fate + ":tbroken=" + r.tbroken
+            + (r.err === "" ? "" : ":err=" + r.err));
+        pend.arm = pend.arm + 1;
+        if (pend.arm >= pend.arms.length) {
+            emitTo(p, pmfixCmp(pend));
+            pmfixPend = null;
+        } else {
+            pend.phase = "apply";
+            pend.elapsed = 0;
+        }
+    } catch (e) {
+        try { emitTo(p, "AP_" + pend.tag + "_EX:" + exText(e)); } catch (e2) { /* 忽略 */ }
+        pmfixPend = null;
+    }
+});
+
+/** `/astralprobe pmfix as <tag>` —— 只读：攻速属性终值 + 修饰器归属 + 筹码栏状态 */
+function doPmfixAs(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    send(ctx, "AP_" + tag + "_AS" + pmfixSpeedStr(p)
+        + ":chipslots=" + chipSlotCount(p) + ":" + chipStateText(p));
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+/** `/astralprobe pmfix clean <tag>` —— 测试脚手架：清空 dice / chip / stand 三类饰品槽 */
+function doPmfixClean(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var cs = chipSlotCount(p);
+    var n = (cs > 0) ? cs : 1;
+    for (var i = 0; i < n; i++) { try { putInSlot(p, "chip", ItemStack.EMPTY, i); } catch (e0) { /* 忽略 */ } }
+    try { putInSlot(p, "dice", ItemStack.EMPTY, 0); } catch (e1) { /* 忽略 */ }
+    try { putInSlot(p, "stand", ItemStack.EMPTY, 0); } catch (e2) { /* 忽略 */ }
+    send(ctx, "AP_" + tag + "_CLEAN" + pmfixSpeedStr(p)
+        + ":chipslots_before=" + cs + ":chipslots_after=" + chipSlotCount(p)
+        + ":" + chipStateText(p));
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+/**
+ * `/astralprobe pmfix ap <tag>` —— 四臂骰战攻击力测量（见本段文件头）。
+ * 命令体内只做「装骰子（提供筹码槽）→ 装筹码 → 主手铁剑」；卸骰子与四臂测量交给 tick 状态机
+ * （每臂 apply → 数 n 拍 → 读数出手，四臂结构相同 ⇒ ticker 相同）。
+ */
+function doPmfixAp(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    if (pmfixPend != null) { send(ctx, "AP_" + tag + "_ERR:busy"); return 0; }
+    var dice = resolveItem(PMFIX_DICE_ID);
+    var chip = resolveItem(PMFIX_CHIP_ID);
+    if (dice == null) { send(ctx, "AP_" + tag + "_ERR:unknown_dice:" + PMFIX_DICE_ID); return 0; }
+    if (chip == null) { send(ctx, "AP_" + tag + "_ERR:unknown_chip:" + PMFIX_CHIP_ID); return 0; }
+    // ⚠️ 本命令**不写筹码槽**（既不装、也不清）：Curios 的属性修饰器随槽位内容变化**有滞后**，
+    //    而「清掉遗留筹码」会留下滞后残留的攻速修饰器 ⇒ 无筹码臂被污染。按「无筹码臂在前、筹码只装不清」
+    //    的顺序组织臂序即可完全不依赖「摘除能摘掉修饰器」这条路径。前置状态只读上报（chip_pre=）。
+    try { putInSlot(p, "stand", ItemStack.EMPTY, 0); } catch (e1) { /* 忽略 */ }
+    var chipPre = "empty";
+    try {
+        var h0 = curioHandler(p, "chip");
+        if (h0 != null && h0.getStacks().getSlots() > 0) chipPre = itemIdOf(h0.getStacks().getStackInSlot(0));
+    } catch (e0) { chipPre = "<err>"; }
+    var se = putInSlot(p, "dice", new ItemStack(dice), 0);
+    if (se != null) { send(ctx, "AP_" + tag + "_ERR:dice_slot:" + se); return 0; }
+    var ce = ensureChipSlot(p, CHIP_SLOT_MIN);
+    if (ce != null) { send(ctx, "AP_" + tag + "_ERR:" + ce); return 0; }
+    runCmd(ctx, "item replace entity @s weapon.mainhand with " + PMFIX_WEAPON_ID);
+    try {
+        var Charge = Java.loadClass("com.merlinkitsune.astral_dice.item.ChargeManager");
+        Charge.removeAll(p);
+    } catch (e2) { /* 充能本身不进骰战攻击力(DiceCombatModifiers 不读它)，此处只为确定性 */ }
+    // 骰点确定性：命运指引 ⇒ 攻击方骰点恒 6（产品 FateGuidanceCardItem#isFateGuidanceActive 的附件）
+    var fateOk = "ok";
+    try { ModAttachments.setFateActiveUntil(p, nowTick(p) + 6000); }
+    catch (eF) { fateOk = "ERR:" + exText(eF); }
+    send(ctx, "AP_" + tag + "_SETUP:weapon=" + PMFIX_WEAPON_ID + ":target=" + PMFIX_TARGET_ID
+        + ":dice=" + PMFIX_DICE_ID + ":chip_pre=" + chipPre + ":chipslots=" + chipSlotCount(p)
+        + ":fate_set=" + fateOk);
+    pmfixPend = { player: p, tag: tag, phase: "settle", arm: 0, elapsed: 0, slotState: "ok",
+        // ⚠️ 顺序：**两个无筹码臂在前**（筹码在本命令里从未装过 ⇒ 不依赖「摘掉筹码能摘掉修饰器」这条
+        //    路径 —— 实测 Curios 的属性修饰器随槽位内容变化有滞后，摘除方向不作前提），随后才装筹码。
+        arms: [ { chip: false, n: 6, name: "A" }, { chip: false, n: 20, name: "C" },
+                { chip: true, n: 6, name: "B" }, { chip: true, n: 20, name: "D" } ],
+        res: [] };
+    send(ctx, "AP_" + tag + "_ARMSTART:arms=4:order=A,C,B,D:n=6,20,6,20");
+    return 1;
+}
+
+/**
+ * `/astralprobe pmfix charge <tag>` —— 骰神赐福触发时的「充能补足至 8」三臂读数。
+ *   臂 1（负控）：不装筹码 + 赐福被清 ⇒ 触发赐福后充能保持 3（补足是筹码的能力）；
+ *   臂 2（正控）：装永动机 ⇒ 3 → 8；
+ *   臂 3（不溢出）：装永动机 + 已有 10 ⇒ 保持 10（`current >= CHARGE_TARGET` 早退）。
+ */
+function doPmfixCharge(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    if (pmfixChargePend != null) { send(ctx, "AP_" + tag + "_ERR:busy"); return 0; }
+    var dice = resolveItem(PMFIX_DICE_ID);
+    var chip = resolveItem(PMFIX_CHIP_ID);
+    if (dice == null || chip == null) { send(ctx, "AP_" + tag + "_ERR:unknown_item"); return 0; }
+    try { putInSlot(p, "stand", ItemStack.EMPTY, 0); } catch (e1) { /* 忽略 */ }
+    var se = putInSlot(p, "dice", new ItemStack(dice), 0);
+    if (se != null) { send(ctx, "AP_" + tag + "_ERR:dice_slot:" + se); return 0; }
+    var ce = ensureChipSlot(p, CHIP_SLOT_MIN);
+    if (ce != null) { send(ctx, "AP_" + tag + "_ERR:" + ce); return 0; }
+    runCmd(ctx, "item replace entity @s weapon.mainhand with " + PMFIX_WEAPON_ID);
+    // ⚠️ 每臂拆两拍（2026-10-15 实测修正）：产品的效果移除通道 `ModEffectRemoval` **不是同步生效**的
+    //    （同拍「清赐福 + 立刻出手」时，出手那一刻赐福仍在 ⇒ 赐福触发被跳过、反而走成带随机防御骰的骰战）
+    //    ⇒ 必须**上一拍清赐福、下一拍才出手**。
+    pmfixChargePend = { player: p, tag: tag, arm: 0, phase: "prep", hits: 0,
+        arms: [ { chip: false, start: 3, nm: "nochip" }, { chip: true, start: 3, nm: "chip" },
+                { chip: true, start: 10, nm: "over" } ], res: [] };
+    send(ctx, "AP_" + tag + "_CHARGE_START:arms=3:nochip=3,chip=3,over=10");
+    return 1;
+}
+
+/** 充能补足三臂的 tick 状态机（见 doPmfixCharge 的「拆两拍」说明） */
+var pmfixChargePend = null;
+
+ServerEvents.tick(event => {
+    var pend = pmfixChargePend;
+    if (pend == null) return;
+    var p = pend.player;
+    try {
+        var arm = pend.arms[pend.arm];
+        if (pend.phase === "prep") {
+            var slotErr = putInSlot(p, "chip", arm.chip ? new ItemStack(resolveItem(PMFIX_CHIP_ID)) : ItemStack.EMPTY, 0);
+            try { ModEffectRemoval.remove(p, teruBlessing()); } catch (e0) { /* 忽略 */ }
+            var Charge = Java.loadClass("com.merlinkitsune.astral_dice.item.ChargeManager");
+            Charge.removeAll(p);
+            if (arm.start > 0) Charge.addStacks(p, arm.start);
+            pend.before = Charge.getStacks(p) - 0;
+            pend.blBefore = -1;
+            try { pend.blBefore = p.hasEffect(teruBlessing()) ? 1 : 0; } catch (e1) { pend.blBefore = -2; }
+            pend.slot = (slotErr == null ? "ok" : "" + slotErr);
+            pend.phase = "hit";
+            return;
+        }
+        // phase = "hit"
+        var mob = spawnDummy(p, PMFIX_TARGET_ID, 3);
+        var hit = "spawn_failed";
+        if (mob != null) {
+            try { var h = meleeHit(p, mob); hit = h.api + ":" + h.dealt; }
+            catch (e2) { hit = "ERR:" + exText(e2); }
+            try { mob.discard(); } catch (e3) { /* 忽略 */ }
+        }
+        var Charge2 = Java.loadClass("com.merlinkitsune.astral_dice.item.ChargeManager");
+        var after = Charge2.getStacks(p) - 0;
+        var bl = -1;
+        try { bl = p.hasEffect(teruBlessing()) ? 1 : 0; } catch (e4) { bl = -2; }
+        pend.res.push({ nm: arm.nm, before: pend.before, after: after, blBefore: pend.blBefore,
+                        bless: bl, hit: hit, slot: pend.slot });
+        pend.arm = pend.arm + 1;
+        if (pend.arm >= pend.arms.length) {
+            var a = null, b = null, c = null;
+            for (var i = 0; i < pend.res.length; i++) {
+                if (pend.res[i].nm === "nochip") a = pend.res[i];
+                else if (pend.res[i].nm === "chip") b = pend.res[i];
+                else if (pend.res[i].nm === "over") c = pend.res[i];
+            }
+            var nochip_ok = ((a.before === 3 && a.after === 3) && a.bless === 1 && a.blBefore === 0) ? 1 : 0;
+            var chip_ok = ((b.before === 3 && b.after === 8) && b.bless === 1 && b.blBefore === 0) ? 1 : 0;
+            var over_ok = ((c.before === 10 && c.after === 10) && c.bless === 1 && c.blBefore === 0) ? 1 : 0;
+            emitTo(p, "AP_" + pend.tag + "_CHARGE:nochip=" + a.before + ">" + a.after
+                + ":chip=" + b.before + ">" + b.after
+                + ":over=" + c.before + ">" + c.after
+                + ":bless_nochip=" + a.bless + ":bless_chip=" + b.bless + ":bless_over=" + c.bless
+                + ":bl_before=" + a.blBefore + "," + b.blBefore + "," + c.blBefore
+                + ":hit_nochip=" + a.hit + ":hit_chip=" + b.hit + ":hit_over=" + c.hit
+                + ":slot_nochip=" + a.slot + ":slot_chip=" + b.slot + ":slot_over=" + c.slot
+                + ":nochip_ok=" + nochip_ok + ":chip_ok=" + chip_ok + ":over_ok=" + over_ok
+                + ":ok=" + ((nochip_ok === 1 && chip_ok === 1 && over_ok === 1) ? 1 : 0));
+            pmfixChargePend = null;
+        } else {
+            pend.phase = "prep";
+        }
+    } catch (e) {
+        try { emitTo(p, "AP_" + pend.tag + "_EX:" + exText(e)); } catch (e5) { /* 忽略 */ }
+        pmfixChargePend = null;
+    }
+});
+
+/**
+ * `/astralprobe pmfix guide <tag> <entryId>` —— 用 Patchouli API 把《恋的规则书》翻到指定条目。
+ *
+ * <p>判据取向：**服务端发起、客户端开书**（`PatchouliAPI#openBookEntry(ServerPlayer, ResourceLocation,
+ * ResourceLocation, int)` 的发包路径）⇒ 截图即「该条目真的存在且打得开」的实证；条目不存在时
+ * Patchouli 会落到「缺页」页，截图可直接看到。读数行给该 API 调用本身的成败。
+ *
+ * <p>⚠️ 签名取源（实物）：jar = `patchouli-1.21.1-93-neoforge.jar`（1.20.1 侧为
+ * `patchouli-1.20.1-85-forge.jar`），`vazkii/patchouli/api/PatchouliAPI$IPatchouliAPI.class`
+ * 的常量池含四个方法名 openBookGUI / openBookEntry / getOpenBookGui / getBookStack；
+ * 四参描述符 = `(Lnet/minecraft/server/level/ServerPlayer;Lnet/minecraft/resources/ResourceLocation;
+ * Lnet/minecraft/resources/ResourceLocation;I)V`（两线逐字节相同）⇒ 即 openBookEntry。
+ */
+function doPmfixGuide(ctx, tag, entryId) {
+    var p = ctx.source.getPlayerOrException();
+    var out = "?";
+    try {
+        var API = Java.loadClass("vazkii.patchouli.api.PatchouliAPI");
+        API.get().openBookEntry(p, RSRC.ns("astral_dice:astral_guide"), RSRC.ns(entryId), 0);
+        out = "ok";
+    } catch (e0) { out = "ERR:" + exText(e0); }
+    send(ctx, "AP_" + tag + "_GUIDE:book=astral_dice:astral_guide:entry=" + entryId + ":open=" + out);
     send(ctx, "AP_" + tag + "_DONE");
     return 1;
 }

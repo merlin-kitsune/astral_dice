@@ -1,0 +1,309 @@
+{
+  "case_id": "PMFIX-CHIP-1.20.1",
+  "title": "永动机筹码（.123）：①装备后攻击速度属性 4→8（=×2）②骰战蓄力系数已排除本筹码攻速贡献（同 ticker 有/无筹码实扣一致、仍随蓄力变化）③骰神赐福触发时充能不足 8 补至 8（不溢出）",
+  "version": "1.20.1",
+  "target": {
+    "type": "feature",
+    "ref": "perpetual-motion-chip-attack-speed"
+  },
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "目的：验证 .123 批（2026-10-15）**永动机筹码**（`astral_dice:perpetual_motion_chip`）三条口径。\n① **装备后攻击速度属性 4 → 8**（= ×2；产品以 ATTACK_SPEED 的 ADD_MULTIPLIED_TOTAL = 1.0 实现\n   「原版近战冷却 -50%」，见 `item/chip/PerpetualMotionChipItem#getAttributeModifiers`）；\n② **修复核心**：骰战基础段 = 属性攻击力 ×(0.2 + f2²·0.8)（f2 = getAttackStrengthScale(0.5F)、\n   delay = 20 / 攻击速度）。攻速 ×2 ⇒ **同一真实蓄力节奏**下 f2 变大 ⇒ 修复前连点时骰战攻击力被抬高。\n   修复后骰战取值时**排除本筹码的攻速贡献**（`combat/DiceCombatEvents#diceBattleAttackStrengthScale`：\n   按修饰器 id 取出本筹码那条、临时叠加 1/(1+a)−1 的抵消项求 f2，再移除）；\n③ 触发骰神赐福时充能**不足 8 补至 8**（.122 的 6→8 档，本批复核；已达标不溢出）。\n\n测量法（探针 `/astralprobe pmfix ap`，四臂）——**同一 ticker**、同一武器、同一目标：\n· 主手铁剑 ⇒ 属性攻击力 raw = 1(基础)+5(剑) = 6、攻击速度 = 4−2.4 = 1.6 ⇒ delay = 20/1.6 = 12.5 tick；\n· 靶 = 无 AI 的 `minecraft:pillager`（**非亡灵**，m02850 规则 2），ARMOR / ARMOR_TOUGHNESS 基值钉 0\n  ⇒ 骰战防御力 = 0；\n· **骰点确定性（必须，见下）**：筹码槽**只在佩戴骰子时存在**（产品 `chipSlotsFor`：无骰子 ⇒ 0 槽）\n  ⇒ 测量期间骰子必须一直佩戴；而佩戴骰子时骰战会掷骰 ⇒ 用两条产品自身口径把骰点钉死：\n    **攻击方** = 命运的指引（`FateGuidanceCardItem#isFateGuidanceActive`，骰点恒 6；未戴七咒戒 ⇒\n    骰点加成 = 6）；**防御方** = 靶身上的枪匠「破绽」`astral_dice:moses_broken`（`defenseBaseDice = 0`）。\n  每条臂读数都带 `dice= / bless= / fate= / tbroken=1` 作为这三条前提的自证（`pre_ok=1` 是它们的合成闸门）；\n  靶的 ARMOR / ARMOR_TOUGHNESS 基值钉 0 ⇒ 骰战防御力 = 0 ⇒ 实扣 = 骰战攻击力 + 6（骰点）；\n· 臂序 **A(无筹码,6tick) → C(无筹码,20tick) → B(筹码,6tick) → D(筹码,20tick)**：两个无筹码臂在**筹码从未装过**\n  的状态下测量（筹码只在 B 臂开始前装入、此后不再摘除）；\n· 每臂两拍：`apply`（写筹码槽 + ticker 归零）→ 数 n 个 tick → 到点才读数出手（四臂结构相同 ⇒ ticker 相同）；\n  半蓄力臂 n=6 ⇒ 无筹码侧 f2 = (6+0.5)/12.5 = 0.52、筹码侧**原版** f2 = (6+0.5)/6.25 = 1.04（钳到 1.0）\n  ⇒ 修复前筹码臂会明显偏高。\n\n⚠️ **工具链注意（实测，2026-10-15）**：Curios 的属性修饰器随槽位内容变化**滞后**，且「把筹码从槽里清掉」\n   在本环境**不会**摘掉它的 ATTACK_SPEED 修饰器（实测：清槽后连续 4.6 s 读到的 `mod` 仍为 1）\n   ⇒ 任何依赖「先装后摘」的臂序都会被污染。本用例据此把两个无筹码臂放在**筹码从未装过**的相位，\n   并在层内用 `as_a=1.6 / as_b=3.2` 作防假绿锚（无筹码臂若被残留修饰器污染 ⇒ as 翻倍 ⇒ 直接红）。\n\n判据落点（`AP_<TAG>_` 机器行，落 chat → latest.log）：\n· A①：`AP_A1_AS:as=4:mod=none:nmod=0`（无筹码基线）→ `AP_A3_AS:as=8:mod=1:nmod=1`（装备后）+ 原版 `/attribute` 副通道；\n· A②：`AP_B0_CMP:…:eq_ab=1:eq_cd=1:b_ok=1:cd_ok=1:gt_ca=1:f2_ok=1:dist_bc=1:tk_ok=1:as_ok=1:ok=1`\n  （原始实扣 A/B/C/D 与期望值同列可见；`tA`/`tB` = 两臂独立反推的 ticker，必须相同；\n   `gt_ca`/`dist_bc` 是「读数确实随蓄力系数变化」的灵敏度控制 —— 修复缺失时 B 会钳到满值 = C，这两条会红）；\n· A③：`AP_C1_CHARGE:nochip=3>3:chip=3>8:over=10>10:…:ok=1`（负控 / 正控 / 不溢出）。\n\n⚠️ 本用例只写测试脚手架（饰品槽内容、主手、靶的属性基值），不动产品代码。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode survival",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamerule naturalRegeneration false",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamerule doDaylightCycle false",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/time set noon",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/weather clear",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[type=!player,distance=..64]",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/tp @s ~ ~ ~ 0 0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "note",
+      "text": "【A①-1】负控基线（**筹码在本次会话里从未装过**）：清空饰品槽 + 空手 ⇒ 攻速属性 = 玩家基础 4、无筹码修饰器。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe pmfix clean A0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 2000
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe pmfix as A1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 2000
+    },
+    {
+      "op": "note",
+      "text": "【A②】四臂骰战攻击力测量（约 (1+6)+(1+20)+(1+6)+(1+20) ≈ 58 tick ≈ 3 s）。\n期望（raw = 6、靶无甲、双方骰点恒 0、ticker = 6）：A = B = 6×(0.2+0.8·0.52²) ≈ 2.5；C = D = 6×1.0 = 6。\n臂序保证两个无筹码臂在「筹码从未装过」的相位 ⇒ 不依赖摘除路径。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe pmfix ap B0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 12000
+    },
+    {
+      "op": "screenshot",
+      "tag": "pmfix-ap-1.20.1",
+      "mode": "window"
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "note",
+      "text": "【A①-2】此时 ap 已把筹码装进槽（B/D 臂）且卸掉了骰子 ⇒ 清空主手后读攻速应 = **8**（= 基础 4 ×2）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe pmfix as A3",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 2000
+    },
+    {
+      "op": "note",
+      "text": "【A①-3】原版副通道：`/attribute` 的权威输出（客户端 zh_cn ⇒ 中文 + 数值），与探针读数互证。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/attribute @s minecraft:generic.attack_speed get",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1800
+    },
+    {
+      "op": "screenshot",
+      "tag": "pmfix-as-1.20.1",
+      "mode": "window"
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "note",
+      "text": "【A③】骰神赐福触发时的充能补足三臂：负控（无筹码 3→3）/ 正控（有筹码 3→8）/ 不溢出（有筹码 10→10）。\n⚠️ 清赐福走 `ModEffectRemoval`（产品会取消 astral_dice:* 的普通移除 ⇒ 直接 removeEffect 会让赐福残留、\n下一次攻击不再触发 ⇒ 假阴性）。本命令只断充能读数，不依赖攻速修饰器状态。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe pmfix charge C1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 7000
+    },
+    {
+      "op": "note",
+      "text": "收尾：清饰品槽/怪物/背包，避免污染后续用例。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe pmfix clean C9",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[type=!player,distance=..64]",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_A0_CLEAN:.*:items=\\[\\]:dice=empty"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_A1_AS:as=4:mod=none:nmod=0:mod_id=(astral_dice:chip_perpetual_motion_chip_attack_speed|[0-9a-fA-F-]{36}):chipslots=[0-9]+:.*:items=\\[\\]:dice=empty"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_B0_SETUP:weapon=minecraft:iron_sword:target=minecraft:pillager:dice=astral_dice:diamond_dice:chip_pre=empty:chipslots=[0-9]+:fate_set=ok"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_B0_ARMSTART:arms=4:order=A,C,B,D:n=6,20,6,20"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_B0_READY:raw=6:as=1\\.6:mod=none:nmod=1:mod_id=(astral_dice:chip_perpetual_motion_chip_attack_speed|[0-9a-fA-F-]{36}):bless=1:fate=1:bless_hit=player_attack:dice=astral_dice:diamond_dice:chipslots=[0-9]+:.*:items=\\[\\]"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_B0_ARM0:arm=A:n=6:chip=0:slot=ok:as=1\\.6:mod=none:nmod=1:raw=6:f2v=0\\.[0-9]+:delay=12\\.5:timp=[0-9.]+:tarmor=0:dmg=[0-9.]+:api=player_attack:dice=astral_dice:diamond_dice:bless=1:fate=1:tbroken=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_B0_ARM1:arm=C:n=20:chip=0:slot=ok:as=1\\.6:mod=none:nmod=1:raw=6:f2v=1:delay=12\\.5:timp=-1:tarmor=0:dmg=[0-9.]+:api=player_attack:dice=astral_dice:diamond_dice:bless=1:fate=1:tbroken=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_B0_ARM2:arm=B:n=6:chip=1:slot=ok:as=3\\.2:mod=1:nmod=2:raw=6:f2v=1:delay=6\\.25:timp=-1:tarmor=0:dmg=[0-9.]+:api=player_attack:dice=astral_dice:diamond_dice:bless=1:fate=1:tbroken=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_B0_ARM3:arm=D:n=20:chip=1:slot=ok:as=3\\.2:mod=1:nmod=2:raw=6:f2v=1:delay=6\\.25:timp=-1:tarmor=0:dmg=[0-9.]+:api=player_attack:dice=astral_dice:diamond_dice:bless=1:fate=1:tbroken=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_B0_CMP:A=[0-9.]+:B=[0-9.]+:C=[0-9.]+:D=[0-9.]+:raw=6:f2a=[0-9.]+:f2b_eff=[0-9.]+:tA=[0-9.]+:tB=[0-9.]+:dbonus=6:exp_ab=[0-9.]+:exp_cd=12:eq_ab=1:eq_cd=1:b_ok=1:cd_ok=1:gt_ca=1:f2_ok=1:dist_bc=1:tk_ok=1:as_a=1\\.6:as_b=3\\.2:as_ok=1:pre_ok=1:ok=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_A3_AS:as=8:mod=1:nmod=1:mod_id=(astral_dice:chip_perpetual_motion_chip_attack_speed|[0-9a-fA-F-]{36}):chipslots=[0-9]+:.*:items=\\[0:astral_dice:perpetual_motion_chipx1\\]:dice=astral_dice:diamond_dice"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "属性攻击速度的值为8(\\.0+)?"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_C1_CHARGE:nochip=3>3:chip=3>8:over=10>10:bless_nochip=1:bless_chip=1:bless_over=1:.*:nochip_ok=1:chip_ok=1:over_ok=1:ok=1"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_[A-Z0-9]+_(ERR|EX):"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_[A-Z0-9]+_ARM[0-9]+:[^\\n]*:err="
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "no_melee_api|spawn_failed|slot_overflow"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "Unknown or incomplete command|未知或不完整的命令"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "mixin"
+    },
+    {
+      "type": "crash"
+    }
+  ],
+  "evidence": []
+}
