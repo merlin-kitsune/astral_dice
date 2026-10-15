@@ -4,7 +4,7 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
-## Unreleased (2.0.0-SNAPSHOT.120)
+## Unreleased (2.0.0-SNAPSHOT.125)
 
 ### New Content
 
@@ -89,12 +89,12 @@
   **1 every 30 minutes** (**it keeps ticking while you are not in the shop**); at zero the refresh button
   **only flashes red and sends nothing**.
   You **cannot open the shop** when you **already own every chip** or have **no free inventory slot** (a message explains which).
-- **Five new chips: Flashlight - Burst / Fortune Stick / Reagent - Abyss / Infinite Grid / Sensor Device** (2026-10-15; this batch lands on the two P0 lines `neoforge-1.21.1` and `forge-1.20.1` — `neoforge-26.1.2` and `fabric-1.20.1` follow in a later batch, so both P0 lines' chip pools grow **61 → 66** (Rare 19 / Epic 28 / Legendary 19)):
+- **Five new chips: Flashlight - Burst / Fortune Stick / Reagent - Abyss / Wireless Transmission Pole / Sensor Device** (2026-10-15; this batch lands on the two P0 lines `neoforge-1.21.1` and `forge-1.20.1` — `neoforge-26.1.2` and `fabric-1.20.1` follow in a later batch, so both P0 lines' chip pools grow **61 → 66** (Rare 19 / Epic 28 / Legendary 19)):
   **The crafting recipes for all five are not implemented yet** (`ModRecipeProvider` and the recipe resources are untouched in this batch, so `verify_chip_recipes` / `verify_chip_acquisition` reporting a missing recipe for them is expected; suggested recipes are in the last five rows of `docs/chip-recipe-plan.md`):
   - **Flashlight - Burst** (Legendary / Starlight) - attacking a **hostile** target this player has never attacked grants +1 Starlight (deduplication is **per player × target**, so different wearers each earn their own credit; capped at 256 tracked targets, after which nothing more is granted); every 2 layers of Starlight grant +1 Attack Damage.
   - **Fortune Stick** (Epic / Starlight) - during Dice Blessing, the first **monster** kill makes the wearer and friendly players within 16 blocks gain 1-7 Starlight each (once per Blessing cycle).
   - **Reagent - Abyss** (Epic / Healing) - on equip, +2 healing layers (-2 on unequip); triggering healing grants damage absorption (yellow hearts) equal to effective healing × 2; triggering a Dice Blessing and each 1:00 healing settlement now each grant **+2** healing layers (same arrangement as the Medkits).
-  - **Infinite Grid** (Epic / Charge) - effect card play count +1; each time charge is gained, other friendly players within 8 blocks each gain +1 charge.
+  - **Wireless Transmission Pole** (Epic / Charge) - effect card play count +1; each time charge is gained, other friendly players within 8 blocks each gain +1 charge.
   - **Sensor Device** (Epic / Mark) - every 3 Mark layers on an attacked target lower that target's combat dice by 1 (up to -4); a successful dodge applies 1 Mark layer to the attacker.
   ⚠️ **The Chip Shop has no discount path at all** (the Membership Recommendation chip only cheapens the Card Shop), and its screen **draws no title text**.
 - **Chip Shop screen adjustments** (2026-10-13, both P0 lines): the cost readout is now a **small star-coin icon followed by the amount** (the text prefix is gone); the refresh counter shows only the **remaining** refreshes (the total is no longer drawn); offer chip icons are enlarged to **24x24**, exactly filling the quality frame's inner area without covering its border.

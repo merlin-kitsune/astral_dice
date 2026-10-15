@@ -779,7 +779,7 @@ public class ModTooltipHandler {
                 addHealingPointsCounter(tooltip, p);
             }
         }
-        // 无限电网(史诗/充能):文案 + 充能计数(充能类筹码统一追加,无例外)
+        // 无线输电杆(史诗/充能):文案 + 充能计数(充能类筹码统一追加,无例外)
         if (stack.is(ModItems.INFINITE_GRID_CHIP.get())) {
             tooltip.add(Component.empty());
             tooltip.add(Component.translatable("tooltip.astral_dice.chip.infinite_grid")

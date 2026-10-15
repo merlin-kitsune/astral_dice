@@ -886,7 +886,7 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(AstralRarities.epic())));
 
-    // 无限电网(史诗/充能):效果牌出牌数 +1;每次获得充能时使周围 8 格内其他友方玩家各 +1 充能。
+    // 无线输电杆(史诗/充能):效果牌出牌数 +1;每次获得充能时使周围 8 格内其他友方玩家各 +1 充能。
     public static final DeferredItem<Item> INFINITE_GRID_CHIP = registerItem("infinite_grid_chip",
             () -> new InfiniteGridChipItem(new Item.Properties()
                     .stacksTo(1)

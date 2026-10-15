@@ -13,7 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 无限电网筹码(史诗 / 充能)。
+ * 无线输电杆筹码(史诗 / 充能)。
  *
  * <ul>
  *   <li>效果牌出牌数 +1(固定来源,注册于 {@code EffectCardPeriod} 的固定出牌数来源,
