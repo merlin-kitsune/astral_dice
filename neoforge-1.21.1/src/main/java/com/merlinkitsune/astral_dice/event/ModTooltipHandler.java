@@ -1480,6 +1480,55 @@ public class ModTooltipHandler {
             }
             addSignCooldownRemaining(tooltip, sherryViewer);
         }
+        // 超天酱立牌(kangel):主动「网络天使」(瞬时,非选择器类:立即获得 min(1 + 粉丝数, 10) 星币;
+        // 粉丝数 ≥ 3 ⇒ 生命值恢复全满;粉丝数 ≥ 9 ⇒ 友方玩家各得 3 星币)
+        // + 被动「小天使请安」(佩戴者近战命中 / 受敌对攻击 ⇒ 该目标被施加「粉丝」,该目标攻击佩戴者时伤害 -1)
+        // + 备注「一心同体」(同队有地雷女时,该地雷女玩家的两条施加入口同样成立)。
+        // 计数器读**已同步附件** KANGEL_FAN_COUNT(客户端 tooltip 不发起 Curios 调用);
+        // 块末尾必须调 addSignCooldownRemaining。
+        if (stack.is(ModItems.KANGEL_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "网络天使");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.kangel_active");
+            addSignPassiveTitle(tooltip, "小天使请安");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.kangel_passive");
+            // 备注「一心同体」:与「地雷女立牌」联动,置于备注区(紫色,无标题)
+            tooltip.add(Component.empty());
+            addSignNoteLines(tooltip, "tooltip.astral_dice.sign.kangel_note");
+            Player kangelViewer = event.getEntity() instanceof Player kp ? kp : null;
+            if (kangelViewer != null) {
+                // 常驻进度计数器(0 也显示「粉丝数：0 / 10」,与 ame 的「爱」计数器口径统一)
+                addSignCounter(tooltip, "tooltip.astral_dice.sign.kangel_fans",
+                        ModAttachments.getKangelFanCount(kangelViewer),
+                        com.merlinkitsune.astral_dice.item.sign.KangelSignItem.MAX_FANS);
+            }
+            addSignCooldownRemaining(tooltip, kangelViewer);
+        }
+        // 地雷女立牌(ame):主动「感情过量摄入」(瞬时:立即恢复 爱层数x2 生命值 + 移速 +20% 持续 1:00;
+        // 时间结束后扣除 4 层「爱」并使上限 +1,最高 32)
+        // + 被动「无法承受的爱」(初始 6 点防御力;受到伤害获得 1 层「爱」,每 30 秒最多 1 层;
+        // 初始上限 4 层,装备时初始 2 层;每层爱攻击力 +1、防御力 -1(最低 0),爱 > 4 时最大生命 +(爱 - 4))
+        // + 备注「一心同体」(同队有超天酱时,该超天酱玩家获 6 点防御;她受敌对伤害 ⇒ 队内每个地雷女各 +1 爱)。
+        // 计数器读**已同步附件** AME_LOVE_LAYERS / AME_LOVE_CAP;块末尾必须调 addSignCooldownRemaining。
+        if (stack.is(ModItems.AME_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "感情过量摄入");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.ame_active");
+            addSignPassiveTitle(tooltip, "无法承受的爱");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.ame_passive");
+            // 备注「一心同体」:与「超天酱立牌」联动,置于备注区(紫色,无标题)
+            tooltip.add(Component.empty());
+            addSignNoteLines(tooltip, "tooltip.astral_dice.sign.ame_note");
+            Player ameViewer = event.getEntity() instanceof Player ap ? ap : null;
+            if (ameViewer != null) {
+                addSignCounter(tooltip, "tooltip.astral_dice.sign.ame_love_layers",
+                        ModAttachments.getAmeLoveLayers(ameViewer),
+                        com.merlinkitsune.astral_dice.item.sign.AmeSignItem.getLoveCap(ameViewer));
+            }
+            addSignCooldownRemaining(tooltip, ameViewer);
+        }
         if (stack.is(ModItems.NARDIS_SIGN.get())) {
             tooltip.add(Component.empty());
             addSignKeyHint(tooltip);

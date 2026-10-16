@@ -754,6 +754,19 @@ public final class DiceCombatModifiers {
             return ap + com.merlinkitsune.astral_dice.item.sign.SherrySignItem.getLayers(ctx.attacker);
         });
 
+        // === 内置:地雷女立牌(ame)被动「无法承受的爱」—— 每层「爱」攻击力 +1(2026-10-16) ===
+        // 层数真值在附件(跨死亡保留),这里以**实时谓词**读取、不落地任何状态 ⇒ 层数变化立即体现,
+        // 卸下立牌(clearSignData 归零)后即刻失效。与「推理时间」同款写法。
+        // ⚠️ 防御力(-1/层,最低 0)与「爱 > 4 时最大生命 +(爱 - 4)」都是**瞬态属性修饰器**,
+        //    由 AmeSignItem#onCurioTick 节流重挂,不在骰战修饰器内(照 setDefenseArmorBonus 的既有规范)。
+        registerAttackModifier((ctx, ap) -> {
+            if (ctx.attacker.level().isClientSide()) return ap;
+            // 2026-10-16 收口:每层「爱」的攻击加成**只在佩戴地雷女立牌时生效** ⇒
+            // 先过纯槽位闸门(层数跨死亡保留,未重新佩戴的玩家不得吃加成)。
+            if (!com.merlinkitsune.astral_dice.item.sign.AmeSignItem.wearsSign(ctx.attacker)) return ap;
+            return ap + com.merlinkitsune.astral_dice.item.sign.AmeSignItem.getLove(ctx.attacker);
+        });
+
         // === 内置:防御卡掷骰(收集结果写入上下文;目标无骰子时 targetEnhancement 为 null,结果 0)。
         // 防御力规范:骰战防御修饰器仅保留战斗防御牌(区间变动);效果牌/立牌/筹码的防御力
         // 统一折算为真实护甲(1 防御力 = 2 护甲值),由各自 tick 经 setDefenseArmorBonus 挂到 ARMOR 属性,

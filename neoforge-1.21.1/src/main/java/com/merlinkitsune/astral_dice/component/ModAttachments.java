@@ -2003,4 +2003,117 @@ public class ModAttachments {
     public static void setMegasResupplyNextTick(net.minecraft.world.entity.player.Player player, long value) {
         player.setData(MEGAS_RESUPPLY_NEXT_TICK.get(), Math.max(0L, value));
     }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  超天酱立牌(kangel)+ 地雷女立牌(ame)（2026-10-16 冻结规格）
+    // ══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * 超天酱立牌(kangel)被动「小天使请安」的**粉丝数真值**(0..10,上限见
+     * {@code KangelSignItem#MAX_FANS})。
+     *
+     * <p><b>必须带 {@code .copyOnDeath()}</b>:用户要求「粉丝数永久有效,且死亡后不会清空。
+     * 即使目标被击杀,其拥有的粉丝数一样保留」(玩家拆卸立牌后重置为 0)。目标被击杀**不**减少计数
+     * (计数只随「新目标首次登记」增长)。
+     *
+     * <p><b>需 {@code .sync()}</b>:客户端 tooltip 的计数器行读它(与 sherry 推理时间「读已同步效果」
+     * 的口径不同 —— 本立牌同时把粉丝数镜像成 {@code kangel_fan} 效果图标,但**计数器行**取附件真值,
+     * 由 {@code ModTooltipHandler} 在客户端直接读)。
+     */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> KANGEL_FAN_COUNT =
+            ATTACHMENTS.register("kangel_fan_count", () -> AttachmentType.builder(() -> 0)
+                    .serialize(Codec.INT)
+                    .copyOnDeath()
+                    .sync(ByteBufCodecs.INT)
+                    .build());
+
+    public static int getKangelFanCount(net.minecraft.world.entity.player.Player player) {
+        return player.getData(KANGEL_FAN_COUNT.get());
+    }
+
+    public static void setKangelFanCount(net.minecraft.world.entity.player.Player player, int value) {
+        player.setData(KANGEL_FAN_COUNT.get(), Math.max(0, value));
+    }
+
+    /**
+     * **已登记目标 UUID 集**(逗号分隔) —— 「每个目标对每个超天酱玩家只计 1 个粉丝」的唯一判据。
+     *
+     * <p>写法与寿命都沿用 {@link #SHERRY_REASONING_TARGETS} 的字符串集口径(超
+     * {@code KangelSignItem#MAX_TRACKED_TARGETS} 按最旧淘汰);**卸下立牌即清空**。
+     * <b>跨死亡保留</b>(用户原话「粉丝数永久有效,且死亡后不会清空」⇒ 与计数同寿命)。
+     * 不 {@code .sync()}:仅服务端判定,客户端不读。
+     */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<String>> KANGEL_FAN_TARGETS =
+            ATTACHMENTS.register("kangel_fan_targets", () -> AttachmentType.builder(() -> "")
+                    .serialize(Codec.STRING)
+                    .copyOnDeath()
+                    .build());
+
+    public static String getKangelFanTargets(net.minecraft.world.entity.player.Player player) {
+        return player.getData(KANGEL_FAN_TARGETS.get());
+    }
+
+    public static void setKangelFanTargets(net.minecraft.world.entity.player.Player player, String value) {
+        player.setData(KANGEL_FAN_TARGETS.get(), value == null ? "" : value);
+    }
+
+    /**
+     * 地雷女立牌(ame)「爱」**层数真值**(0..上限)。**跨死亡保留**(用户原话「爱层数死亡后不会清空」);
+     * **卸下清零**(见 {@code AmeSignItem#clearSignData})。层数的 HUD 显示走
+     * {@code effect/AmeLoveEffect} 的镜像效果(层数 = {@code amplifier + 1},无限时长)。
+     * <b>需 {@code .sync()}</b>:客户端 tooltip 的「爱：当前/上限」计数器行读它。
+     */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> AME_LOVE_LAYERS =
+            ATTACHMENTS.register("ame_love_layers", () -> AttachmentType.builder(() -> 0)
+                    .serialize(Codec.INT)
+                    .copyOnDeath()
+                    .sync(ByteBufCodecs.INT)
+                    .build());
+
+    public static int getAmeLoveLayers(net.minecraft.world.entity.player.Player player) {
+        return player.getData(AME_LOVE_LAYERS.get());
+    }
+
+    public static void setAmeLoveLayers(net.minecraft.world.entity.player.Player player, int value) {
+        player.setData(AME_LOVE_LAYERS.get(), Math.max(0, value));
+    }
+
+    /**
+     * 地雷女立牌(ame)「爱」的**层数上限**(默认 {@code AmeSignItem#AME_LOVE_CAP_DEFAULT} = 4;
+     * 主动「感情过量摄入」自然到期后 +1,最高 {@code AmeSignItem#AME_LOVE_CAP_MAX} = 32)。
+     * **跨死亡保留**;**卸下清零**回默认值。需 {@code .sync()}(同 {@link #AME_LOVE_LAYERS} 的计数器行)。
+     */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> AME_LOVE_CAP =
+            ATTACHMENTS.register("ame_love_cap", () -> AttachmentType.builder(() -> 4)
+                    .serialize(Codec.INT)
+                    .copyOnDeath()
+                    .sync(ByteBufCodecs.INT)
+                    .build());
+
+    public static int getAmeLoveCap(net.minecraft.world.entity.player.Player player) {
+        return player.getData(AME_LOVE_CAP.get());
+    }
+
+    public static void setAmeLoveCap(net.minecraft.world.entity.player.Player player, int value) {
+        player.setData(AME_LOVE_CAP.get(), Math.max(1, value));
+    }
+
+    /**
+     * 地雷女立牌(ame)「爱」获得闸门的**下次可获层刻**(绝对 gameTime;0 = 无闸门)。
+     * 每 {@code AmeSignItem#LOVE_GAIN_INTERVAL_TICKS}(= 30 秒)最多 1 层,
+     * **该闸门同时约束一心同体供给方送入的层数**。不跨死亡(重生后闸门归零 ⇒ 立刻可再获 1 层);
+     * 不 {@code .sync()}(仅服务端判定,客户端不读)。
+     */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> AME_LOVE_GAIN_CD_END =
+            ATTACHMENTS.register("ame_love_gain_cd_end", () -> AttachmentType.builder(() -> 0L)
+                    .serialize(Codec.LONG)
+                    .build());
+
+    public static long getAmeLoveGainCdEnd(net.minecraft.world.entity.player.Player player) {
+        return player.getData(AME_LOVE_GAIN_CD_END.get());
+    }
+
+    public static void setAmeLoveGainCdEnd(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(AME_LOVE_GAIN_CD_END.get(), Math.max(0L, value));
+    }
 }

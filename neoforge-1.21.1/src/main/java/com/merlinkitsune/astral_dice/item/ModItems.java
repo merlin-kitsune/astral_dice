@@ -1067,6 +1067,28 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(AstralRarities.bizarre())));
 
+    // 超天酱立牌(命名:kangel,奇特):主动「网络天使」(立即获得 min(1 + 粉丝数, 10) 星币;
+    // 粉丝数 ≥ 3 ⇒ 生命值恢复全满;粉丝数 ≥ 9 ⇒ 友方玩家各得 3 星币 —— 有队伍发全队,
+    // 无队伍发自身 64 格内其他玩家) + 被动「小天使请安」(佩戴者近战命中 / 受敌对攻击 ⇒ 该目标被施加
+    // 「粉丝」,该目标攻击佩戴者时伤害 −1;粉丝数上限 10、每目标每人只计 1 次、跨死亡保留、卸下清零)
+    // + 备注「一心同体」(同队有地雷女时,该地雷女玩家的两条施加入口同样成立)。
+    // 奇特品质 = ASTRAL_DICE_BIZARRE;配方 = 黄金星盘×2 + 音符盒 + 白色羊毛×2 + 红石灯×2 + 空白立牌 + 紫晶骰子。
+    public static final DeferredItem<Item> KANGEL_SIGN = registerItem("kangel_sign",
+            () -> new com.merlinkitsune.astral_dice.item.sign.KangelSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.bizarre())));
+
+    // 地雷女立牌(命名:ame,奇特):主动「感情过量摄入」(立即恢复 爱层数×2 生命值 + 移速 +20% 持续 1:00;
+    // 自然到期扣除 4 层「爱」并使上限 +1,最高 32) + 被动「无法承受的爱」(初始 6 点防御力;
+    // 受到伤害获得 1 层「爱」,每 30 秒最多 1 层;初始上限 4 层,装备时初始 2 层;
+    // 每层爱攻击力 +1、防御力 −1(最低 0),爱 > 4 时最大生命 +(爱 − 4);跨死亡保留、卸下清零)
+    // + 备注「一心同体」(同队有超天酱时,该超天酱玩家获 6 点防御;她受敌对伤害 ⇒ 队内每个地雷女各 +1 爱)。
+    // 奇特品质 = ASTRAL_DICE_BIZARRE;配方 = 黄金星盘×2 + 黑色羊毛 + 蜘蛛网×2 + 墨囊×2 + 空白立牌 + 紫晶骰子。
+    public static final DeferredItem<Item> AME_SIGN = registerItem("ame_sign",
+            () -> new com.merlinkitsune.astral_dice.item.sign.AmeSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.bizarre())));
+
     // 机械师立牌(命名:megas,传奇):被动「物资补充」(手牌<6 张时每 1:00 自动获得 1 张随机卡牌)
     // + 主动「轨道轰炸」(指定 1 个敌对目标,消耗物品栏全部手牌,对目标及其周围 12 格范围轰炸;
     // 每 2 张卡 +1 次轰炸(上限 10 次),单次命中随机 1 怪 +2 点基础伤害 + 每张战斗牌费用×2;

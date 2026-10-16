@@ -4,10 +4,13 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
-## Unreleased (2.0.0-SNAPSHOT.125)
+## Unreleased (2.0.0-SNAPSHOT.128)
 
 ### New Content
 
+- **Two new Bizarre-quality signs: "KAngel Sign" and "Ame Sign"** (both crafted at the Amethyst Dice + Golden Star Plate x2 tier):
+  - **KAngel Sign**: active "Network Angel" instantly grants (1 + fans) Star Coins (up to 10; at 3+ fans also fully heals you, at 9+ fans every friendly player gains 3 Star Coins — your whole team when teamed, or players within 64 blocks otherwise); passive "Little Angel's Greeting" marks targets you attack or that attack you as "Fans" (permanent), and Fans deal -1 damage when attacking you; note "One Body, One Soul": while a teammate wears the Ame Sign, this passive also applies to her (her fan-making feeds your count). Fan count caps at 10, persists through death, and resets when the sign is unequipped.
+  - **Ame Sign**: active "Emotional Overdose" instantly heals Love stacks x2 HP and grants +20% movement speed for 1:00; when it expires, lose 4 Love stacks and the Love cap increases by 1 (up to 32); passive "Unbearable Love": base 6 Defense, +1 Love stack per hostile hit taken (at most 1 per 30s, starting at 2 stacks when equipped, initial cap 4); each Love stack grants +1 attack and -1 defense (floored at 0), and each stack beyond 4 grants +1 max health; note "One Body, One Soul": while a teammate wears the KAngel Sign, she gains 6 base Defense, and whenever she takes damage every Ame wearer on the team gains +1 Love. Love persists through death and resets when the sign is unequipped.
 - **New "Chip Trader" villager profession**: the Chip Shop is now a **job site** that villagers can claim to become Chip Traders, selling chips (quality tied to level: L1 rare / L2 rare+epic / L3 epic / L4 epic+legendary / L5 legendary, weights 6/3/2), with an "1 Emerald → 1 Star Coin" exchange unlocked at Journeyman (auto-hidden when the Emerald Dice is equipped) — same mechanics as the Card Trader.
 
 #### Platform & Compatibility

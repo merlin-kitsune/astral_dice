@@ -101,7 +101,18 @@ public class AstralData implements INBTSerializable<CompoundTag> {
                         // (1.21.1 侧是同名键的 .copyOnDeath())。与 MAMUSHI_AWAKENING 同构:死亡时筹码从饰品槽
                         // 掉出会先经 BaseChipItem#onUnequip → CursedSwordChipItem#onChipUnequip 清零,
                         // 故除本白名单外还需要 DeathPreservedBonuses 的对应槽位(两层缺一不可)。
-                        ModAttachments.CURSED_SWORD_BONUS.name()
+                        ModAttachments.CURSED_SWORD_BONUS.name(),
+                        // 2026-10-16 超天酱立牌(kangel):粉丝数需求为「永久有效,死亡后不会清空」
+                        // (1.21.1 侧是同名键的 .copyOnDeath())。与 MAMUSHI_AWAKENING 同构:死亡时立牌
+                        // 从饰品槽掉出会先经 onUnequip → clearSignData 清零,故除本白名单外还需要
+                        // DeathPreservedBonuses 的对应槽位(两层缺一不可)。
+                        // 已登记目标集同为 copyOnDeath 键(与计数同寿命,否则重生后同一目标会被重复计数)。
+                        ModAttachments.KANGEL_FAN_COUNT.name(),
+                        ModAttachments.KANGEL_FAN_TARGETS.name(),
+                        // 2026-10-16 地雷女立牌(ame):「爱」层数与层数上限需求为「爱层数死亡后不会清空」
+                        // (1.21.1 侧是同名键的 .copyOnDeath());卸下立牌才清零/回默认 ⇒ 同样两层齐备。
+                        ModAttachments.AME_LOVE_LAYERS.name(),
+                        ModAttachments.AME_LOVE_CAP.name()
                 };
                 event.getEntity().getCapability(ModCapabilities.ASTRAL_DATA).ifPresent(newData -> {
                     CompoundTag src = oldData.persistentStore();

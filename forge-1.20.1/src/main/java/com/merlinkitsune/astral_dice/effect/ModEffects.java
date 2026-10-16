@@ -302,6 +302,49 @@ public class ModEffects {
     public static final RegistryObject<MobEffect> PROBLEM_DELIVERY =
             EFFECTS.register("problem_delivery", ProblemDeliveryEffect::new);
 
+
+    // ── 超天酱立牌(kangel)+ 地雷女立牌(ame)(2026-10-16 冻结规格)──────────────────────
+
+    /**
+     * 「粉丝」(超天酱立牌 kangel 被动「小天使请安」):施加在**目标**身上的无限时长标记效果,
+     * 同时**复用**为佩戴者自身的粉丝数指示器(**等级 = 粉丝数**,即 {@code amplifier = 粉丝数 − 1})。
+     *
+     * <p>本效果不提供任何属性修饰符、不产生周期反噬;「该目标攻击佩戴者时伤害 −1」的判定落在
+     * {@code event/ChipDamageHandler} 的固定点数减法段(读效果是否仍在目标身上)。
+     * 粉丝计数真值在附件 {@code ModAttachments#KANGEL_FAN_COUNT}(上限 10、跨死亡保留、卸下清零)。
+     * <b>无限时长</b>({@code MobEffectInstance.INFINITE_DURATION} ⇒ 目标死亡自然消失,不登记计时守卫)。
+     * HARMFUL 配色(裁决 #5);图标 = {@code images/粉丝.png}。
+     *
+     * <p>⚠️ 1.20.1 是 {@code RegistryObject} ⇒ 全部引用处必须 {@code .get()}。
+     */
+    public static final RegistryObject<MobEffect> KANGEL_FAN =
+            EFFECTS.register("kangel_fan", KangelFanEffect::new);
+
+    /**
+     * 「爱」(地雷女立牌 ame 被动「无法承受的爱」):**层数镜像效果**(层数 = {@code amplifier + 1});
+     * 真值在附件 {@code ModAttachments#AME_LOVE_LAYERS}(上限 {@code AME_LOVE_CAP} 默认 4、最高 32);
+     * 每层:骰战攻击力 +1、防御力 −1(最低 0)、爱 &gt; 4 时最大生命 + (爱 − 4)。
+     * <b>无限时长、不走衰减链</b>(与「推理时间」{@link SherryReasoningEffect} 的唯一差异:
+     * 本资源只有「受击 +1」「主动自然到期 −4」两条明写路径,无「随时间掉层」语义)。
+     * BENEFICIAL 配色(裁决 #5);图标 = {@code images/爱.png}。
+     *
+     * <p>⚠️ 1.20.1 是 {@code RegistryObject} ⇒ 全部引用处必须 {@code .get()}。
+     */
+    public static final RegistryObject<MobEffect> AME_LOVE =
+            EFFECTS.register("ame_love", AmeLoveEffect::new);
+
+    /**
+     * 「感情过量摄入」(地雷女立牌 ame 主动):**有限时长 1:00(1200 tick)**,移速 +20%
+     * ({@code MULTIPLY_TOTAL},固定值、非按层;裁决 #1,1.21.1 侧为 {@code ADD_MULTIPLIED_TOTAL});
+     * **到期结算(爱 −4、上限 +1,最高 32)** 仅由 {@code MobEffectEvent.Expired}(自然到期)触发,
+     * 奶/命令清除不派发该事件 ⇒ 不结算。
+     * 图标 = 立牌本体图({@code textures/mob_effect/ame_overdose.png},逐字节复制,照 hanna_float 先例)。
+     *
+     * <p>⚠️ 1.20.1 是 {@code RegistryObject} ⇒ 全部引用处必须 {@code .get()}。
+     */
+    public static final RegistryObject<MobEffect> AME_OVERDOSE =
+            EFFECTS.register("ame_overdose", AmeOverdoseEffect::new);
+
     /**
      * 本模组已注册的全部效果的**只读**视图(调试命令 {@code /astralparty cleareffect} 用)。
      *

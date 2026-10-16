@@ -1335,6 +1335,42 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('G', ModItems.GOLDEN_STAR_PLATE.get())
                 .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output::accept);
+        // 超天酱立牌(kangel,奇特):GNG/WEW/ADA
+        // (G=黄金星盘×2、N=音符盒、W=白色羊毛×2、A=红石灯×2、E=空白立牌、D=紫晶骰子;
+        //  空白立牌置中、骰子固定中下)
+        // 2026-10-16 冻结规格(用户指定):「GNG/WEW/ADA」—— G=黄金星盘×2、N=音符盒、
+        // W=白色羊毛×2、A=红石灯×2、E=空白立牌、D=紫晶骰子。
+        // 与 sherry(PBP/AEA/IDI)、hanna(GQG/LEL/TDT)同档(黄金星盘 + 紫晶骰子),填充材料互不相同 ⇒
+        // 网格与材料多重集全局唯一(守门:scripts/verify/verify_crafting_recipe_uniqueness.ps1)。
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.KANGEL_SIGN.get())
+                .pattern("GNG")
+                .pattern("WEW")
+                .pattern("ADA")
+                .define('E', ModItems.BLANK_SIGN.get())
+                .define('G', ModItems.GOLDEN_STAR_PLATE.get())
+                .define('N', Items.NOTE_BLOCK)
+                .define('W', Items.WHITE_WOOL)
+                .define('A', Items.REDSTONE_LAMP)
+                .define('D', ModItems.AMETHYST_DICE.get())
+                .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
+                .save(output::accept);
+
+        // 地雷女立牌(ame,奇特):GKG/WEW/CDC
+        // (G=黄金星盘×2、K=黑色羊毛、W=蜘蛛网×2、C=墨囊×2、E=空白立牌、D=紫晶骰子;
+        //  空白立牌置中、骰子固定中下)
+        // 2026-10-16 冻结规格(用户指定):「GKG/WEW/CDC」。
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.AME_SIGN.get())
+                .pattern("GKG")
+                .pattern("WEW")
+                .pattern("CDC")
+                .define('E', ModItems.BLANK_SIGN.get())
+                .define('G', ModItems.GOLDEN_STAR_PLATE.get())
+                .define('K', Items.BLACK_WOOL)
+                .define('W', Items.COBWEB)
+                .define('C', Items.INK_SAC)
+                .define('D', ModItems.AMETHYST_DICE.get())
+                .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
+                .save(output::accept);
         // 符卡-福 / 符卡-祸:**无配方**(专属牌,仅由风水师立牌的被动「福祸相倚」与主动「白泽赐福」
         // 及「心意相连」发放,与活体书页/命运的指引等专属牌同一口径:不进随机池、不进合成表)。
     }

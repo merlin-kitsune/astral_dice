@@ -121,6 +121,8 @@ public class ModCreativeTabs {
                 output.accept(ModItems.MEGAS_SIGN.get());
                 output.accept(ModItems.SHERRY_SIGN.get());
                 output.accept(ModItems.HANNA_SIGN.get());
+                output.accept(ModItems.KANGEL_SIGN.get());
+                output.accept(ModItems.AME_SIGN.get());
                 // 筹码
                 // === 星光类 ===
                 output.accept(ModItems.FLASHLIGHT_CHIP.get());

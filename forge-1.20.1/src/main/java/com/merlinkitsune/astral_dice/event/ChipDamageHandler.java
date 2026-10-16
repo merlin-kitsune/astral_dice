@@ -103,6 +103,22 @@ public final class ChipDamageHandler {
                 event.setAmount(capped);
             }
         }
+
+        // 超天酱立牌(kangel)被动「小天使请安」+ 地雷女立牌(ame)备注「一心同体」(2026-10-16):
+        // 带「粉丝」(kangel_fan)的目标攻击**超天酱立牌佩戴者本人**,或与其一心同体的
+        // **地雷女佩戴者**(且其队内确实存在超天酱佩戴者)时,造成的伤害 -1。
+        // 与上面 sherry 的段落**同一口径**:固定点数减法、与磨刀石同阶段(LOWEST = 最终伤害阶段)、
+        // `Math.max(0, …)` **允许扣到 0**、**不可减免**伤害类型(CARD_COST / UNREDUCIBLE_DAMAGE)
+        // 一律跳过(「不可削减」段已在上面算好 unreducible);刻意**不**附带"不可致死保护"。
+        // 判据口径(2026-10-16 收窄,实现在 KangelSignItem#wearsFanPassive):其余普通队友**不**享有本被动。
+        if (!unreducible && com.merlinkitsune.astral_dice.item.sign.KangelSignItem
+                .fanMitigationActive(player, event.getSource())) {
+            float current = event.getAmount();
+            float capped = Math.max(0.0F, current - 1.0F);
+            if (capped != current) {
+                event.setAmount(capped);
+            }
+        }
     }
 
     /**
