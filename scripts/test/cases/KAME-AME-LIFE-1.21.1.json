@@ -1,0 +1,545 @@
+{
+  "case_id": "KAME-AME-LIFE-1.21.1",
+  "title": "地雷女立牌(.128)「无法承受的爱」+「感情过量摄入」:装备置 2 层、受敌对攻击 +1 与 30s 一层闸门、每层攻+1/防-1(最低 0)、爱>4 每层 +1 最大生命、主动回血=爱x2 与移速 +20% 1:00 与锁定、卸下清零不结算、跨死亡保留",
+  "version": "1.21.1",
+  "target": {
+    "type": "feature",
+    "ref": "features/kangel-ame-sign-spec.md#3.4,3.5"
+  },
+  "steps": [
+    {
+      "op": "note",
+      "text": "数值口径(防御力 = 4 + 护甲 x 0.30;立牌防御力点数 x2 = 真实护甲):爱 0/2/4/6/10 => 护甲 12/8/4/0/0、防御 7/6/5/4/4、攻击 1+爱、最大生命 20/20/20/22/26。闸门:受伤 +1 层后 30 秒内再受伤不再 +1(附件 ame_love_gain_cd_end);主动的锁定态随 ame_overdose 存续。死亡保留:世界已开 doImmediateRespawn => /kill 后自动重生,爱层数/上限应保留。  ⚠️ 「装备立牌时置 2 层」这一条由**真实槽位跃迁**(空槽 -> 立牌)驱动,本用例改为显式 `set love 2` 保证可重复性;该行为的实机证据见更早的注入序列:AP_X0_ST:Dev:...:love=2:cap=4(2026-10-16 21:50:58)与 AP_V0_ST(21:53:50),均在 latest.log 同文件内。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode survival @a",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamerule naturalRegeneration false",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 300
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamerule doImmediateRespawn true",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 300
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamerule keepInventory true",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 300
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamerule doDaylightCycle false",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/time set noon",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/weather clear",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[type=!player,distance=..96]",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/player bota spawn",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 450
+    },
+    {
+      "op": "inject_command",
+      "command": "/team add red",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/tp @s 0 -60 0 0 0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/tp bota 1 -60 -1 0 0",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear bota",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame mobsreset",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame resetfans Dev",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame resetfans bota",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame resetfans botb",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame resetfans botc",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame resetfans botd",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame resetfans bote",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame set love 0 Dev",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame set cap 4 Dev",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/team join red bota",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/team join red Dev",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame equip stand \"astral_dice:ame_sign\" Dev",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame equip dice \"astral_dice:diamond_dice\" Dev",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame set love 2 Dev",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame state D0 Dev",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame set love 0 Dev",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame state D1 Dev",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame set love 4 Dev",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame state D2 Dev",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame set cap 32 Dev",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame set love 6 Dev",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame state D3 Dev",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame set love 10 Dev",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame state D4 Dev",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame set cap 8 Dev",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame set love 0 Dev",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame set clearcd Dev",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame smob M1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame set hp 20 Dev",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame dmghit 1 Dev 10 D5",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1100
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame state D5 Dev",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame set hp 20 Dev",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame dmghit 1 Dev 10 D6",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1100
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame state D6 Dev",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame set signcd 0 Dev",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame set love 6 Dev",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame set hp 5 Dev",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame skill Dev",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1300
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame state D7 Dev",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe dumpstate DMPK",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame equip stand - Dev",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame state D8 Dev",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame equip stand \"astral_dice:ame_sign\" Dev",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame set love 3 Dev",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame state D9 Dev",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill Dev",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 4000
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame state DA Dev",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "(?i)AP_D0_ST:Dev.*:love=2:cap=4.*:arm=8:modL=8.*:atk=3.*:def=6.*:loveE=amp=1;dur=-1;icon=1;vis=0:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "(?i)AP_D1_ST:Dev.*:love=0:.*hp=[0-9.]+/20.*:arm=12:modL=12.*:atk=1.*:def=7:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "(?i)AP_D2_ST:Dev.*:love=4:.*hp=[0-9.]+/20.*:arm=4:modL=4.*:atk=5.*:def=5:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "(?i)AP_D3_ST:Dev.*:love=6:cap=32:.*hp=[0-9.]+/22.*:arm=0:modL=none.*:atk=7.*:def=4:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "(?i)AP_D4_ST:Dev.*:love=10:.*hp=[0-9.]+/26.*:atk=11:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "(?i)AP_D5_DMG:who=Dev:slot=[0-9]+:api=damage:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "(?i)AP_D5_ST:Dev.*:love=1:cap=8.*:cdend=[1-9][0-9]*:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "(?i)AP_D6_ST:Dev.*:love=1:cap=8.*:cdend=[1-9][0-9]*:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "(?i)AP_D7_ST:Dev.*:love=6.*:hp=17/22.*:ovdE=amp=0;dur=1[0-9]{3};icon=1;vis=1.*:lock=1:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "(?i)APDUMP\\|SIGN\\|sign_active_lock_sign=astral_dice:ame_sign"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "(?i)AP_D8_ST:Dev.*:love=0:cap=4.*:arm=0:modL=none.*:loveE=none.*:ovdE=none.*:lock=0:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "(?i)AP_D9_ST:Dev.*:love=3:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "(?i)AP_DA_ST:Dev.*:sign=astral_dice:ame_sign:.*:love=3:.*:arm=6:modL=6:"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "(?i)AP_[A-Z0-9]+_EX:"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "(?i)=ERR:"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "(?i)Unknown or incomplete command|未知或不完整的命令"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    }
+  ],
+  "evidence": []
+}

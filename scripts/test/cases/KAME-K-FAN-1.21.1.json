@@ -1,0 +1,488 @@
+{
+  "case_id": "KAME-K-FAN-1.21.1",
+  "title": "超天酱立牌(.128)被动「小天使请安」:近战命中与被敌对攻击两条入口都上「粉丝」、同一目标只计 1 次、队内每个超天酱各 +1、上限 10、指示器等级=计数且无限时长",
+  "version": "1.21.1",
+  "target": {
+    "type": "feature",
+    "ref": "features/kangel-ame-sign-spec.md#3.2"
+  },
+  "steps": [
+    {
+      "op": "note",
+      "text": "(1) 佩戴者近战命中敌方 => 目标 kangel_fan(amp=0,dur=-1)+ 计数 +1;(2) 同一目标再打 => 计数不变(去重,ftg 不变);(3) 换第二只 => +1;(4) 被敌对攻击(掠夺者 dmghit)=> 攻击者上「粉丝」且计数 +1;(5) 计数写满 10 后不再增长且指示器 amp=9;(6) 队内第二个超天酱佩戴者(botc)同步 +1(每目标每人一次)。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode survival @a",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamerule naturalRegeneration false",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 300
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamerule doImmediateRespawn true",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 300
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamerule keepInventory true",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 300
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamerule doDaylightCycle false",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/time set noon",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/weather clear",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[type=!player,distance=..96]",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/player bota spawn",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 450
+    },
+    {
+      "op": "inject_command",
+      "command": "/player botc spawn",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 450
+    },
+    {
+      "op": "inject_command",
+      "command": "/player botd spawn",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 450
+    },
+    {
+      "op": "inject_command",
+      "command": "/team add red",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/tp @s 0 -60 0 0 0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/tp bota 1 -60 -1 0 0",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/tp botc 2 -60 -2 0 0",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/tp botd 3 -60 -3 0 0",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear bota",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear botc",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear botd",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame mobsreset",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame resetfans Dev",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame resetfans bota",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame resetfans botb",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame resetfans botc",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame resetfans botd",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame resetfans bote",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/team join red Dev",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/team join red bota",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/team join red botc",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame equip stand \"astral_dice:kangel_sign\" Dev",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame equip dice \"astral_dice:diamond_dice\" Dev",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame equip stand \"astral_dice:kangel_sign\" botc",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame set fans 0 Dev",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame set fans 0 botc",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame state B0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame smob M1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame hit Dev 1 B1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame state B1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame hit Dev 1 B2",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame state B2",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame smob M2",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame hit Dev 2 B3",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame state B3",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame smob M3",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame set hp 20 Dev",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame dmghit 3 Dev 10 B4",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1100
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame state B4",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame set fans 10 Dev",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame smob M4",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame set hp 20 Dev",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame dmghit 4 Dev 10 B5",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1100
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame state B5",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "(?i)AP_B0_ST:Dev.*:fans=0:ftg=0:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "(?i)AP_B0_ST:botc.*:fans=0:ftg=0:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "(?i)AP_B1_HIT:who=Dev:slot=[0-9]+:api=player_attack.*:fan=amp=0;dur=-1:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "(?i)AP_B1_ST:Dev.*:fans=1:ftg=1.*:fanE=amp=0;dur=-1;icon=1;vis=0:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "(?i)AP_B1_ST:botc.*:fans=1:ftg=1:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "(?i)AP_B2_ST:Dev.*:fans=1:ftg=1:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "(?i)AP_B3_ST:Dev.*:fans=2:ftg=2:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "(?i)AP_B3_ST:botc.*:fans=2:ftg=2:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "(?i)AP_B4_DMG:who=Dev.*:mobfan=amp=0:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "(?i)AP_B4_ST:Dev.*:fans=3:ftg=3:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "(?i)AP_B4_ST:botc.*:fans=3:ftg=3:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "(?i)AP_B5_ST:Dev.*:fans=10.*:fanE=amp=9;dur=-1;icon=1;vis=0:"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "(?i)AP_[A-Z0-9]+_EX:"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "(?i)=ERR:"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "(?i)Unknown or incomplete command|未知或不完整的命令"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    }
+  ],
+  "evidence": []
+}
