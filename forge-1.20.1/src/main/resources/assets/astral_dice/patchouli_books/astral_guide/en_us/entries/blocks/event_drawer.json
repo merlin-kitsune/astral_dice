@@ -7,6 +7,10 @@
       "type": "patchouli:spotlight",
       "item": "astral_dice:event_drawer",
       "text": "astral_dice.guide.entry.event_drawer.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:event_drawer"
     }
   ],
   "sortnum": 2

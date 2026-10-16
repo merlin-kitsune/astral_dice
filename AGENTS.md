@@ -2129,7 +2129,7 @@ When extending this workspace:
 
 ### 校验
 - 新增物品后对照 `entries/` 目录逐一核对:每个注册物品都有条目、条目内 icon/text 键无拼写错误、crafting 页引用的配方文件存在。
-- **已知待补(2026-10-15 审计结论,登记现状、本批未修)**:`entries/blocks/` 现只有 `card_shop.json`,而 `block/ModBlocks` 已注册 **3** 个方块 ⇒ **`chip_shop`(筹码商店)与 `event_drawer`(抽奖盒)缺条目**;物品侧仅 **`event_ticket`(奇怪的问号,事件牌)** 缺条目(其余 **142** 个 `item.*` 均有手册条目);村民职业 `卡牌交易员` / `筹码商人`(`entity.minecraft.villager.astral_dice.*`)亦无条目。补条目时按本节的目录映射与分页键办理,并三语同步(2026-10-15 审计脚本口径:按 `item.astral_dice.*` 逐个反查 `astral_dice.guide.entry.<id>` 与 `entries/**/<id>.json`)。
+- **已知待补(2026-10-15 审计结论,登记现状、本批未修)**:`entries/blocks/` 现只有 `card_shop.json`,而 `block/ModBlocks` 已注册 **3** 个方块 ⇒ **`chip_shop`(筹码商店)与 `event_drawer`(抽奖盒)缺条目**;物品侧仅 **`event_ticket`(奇怪的问号,事件牌)** 缺条目(其余 **142** 个 `item.*` 均有手册条目);村民职业 `卡牌交易员` / `筹码商人`(`entity.minecraft.villager.astral_dice.*`)亦无条目。补条目时按本节的目录映射与分页键办理,并三语同步(2026-10-15 审计脚本口径:按 `item.astral_dice.*` 逐个反查 `astral_dice.guide.entry.<id>` 与 `entries/**/<id>.json`)。 ⚠️ **2026-10-15 同日更新**:上述 5 条(筹码商店 / 抽奖盒 / 两村民职业 / 奇怪的问号)条目已在**两条 P0 线**落地(`.126`;26.1.2 / fabric 待移植),本节「缺条目」结论**已过时**;抽奖盒的合成配方落地后,该条目已同步补 `patchouli:crafting` 页(见 CHANGELOG 未发布小节)。
 - 手册文件是纯数据包 JSON(不参与 datagen),直接写 `src/main/resources/data/...` 即可,无需重新运行 runData。
 
 ## 神秘遗物(+) 联动适配（Enigmatic Legacy Link）— 必读（2026-09-30 成文）

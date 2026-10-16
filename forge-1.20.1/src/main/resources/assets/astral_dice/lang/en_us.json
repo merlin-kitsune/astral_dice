@@ -78,7 +78,7 @@
   "astral_dice.guide.entry.defense_card_medium.1": "Defense Card (Medium): grants 1~3 defense power in dice battles.",
   "astral_dice.guide.entry.diamond_dice.1": "Diamond die. A higher tier that unlocks more chip slots; card slots follow the star level only (identical across tiers at the same star).",
   "astral_dice.guide.entry.emerald_dice.1": "Emerald die. Same tier as the diamond die and upgradeable from it; while equipped, villager trades use Star Coins instead of Emeralds with a 20%% discount.",
-  "astral_dice.guide.entry.event_drawer.1": "Right-click to buy 1 Strange Question Mark for 5 Star Coins, limited to one purchase per 5:00 per player; too few Star Coins or an active cooldown is refused in red. The current version has no crafting recipe (creative inventory only).",
+  "astral_dice.guide.entry.event_drawer.1": "Right-click to buy 1 Strange Question Mark for 5 Star Coins, limited to one purchase per 5:00 per player; too few Star Coins or an active cooldown is refused in red. Crafting recipe: 4 Star Plates and 4 Star Coins around 1 Diamond Dice (shaped 3×3).",
   "astral_dice.guide.entry.event_ticket.1": "Right-click to draw one random event from the public event pool; consumes 1 in Survival, none in Creative (stacks to 16). Bought from the Lottery Box for 5 Star Coins.",
   "astral_dice.guide.entry.obsidian_dice.1": "Obsidian die. Same tier as the diamond die and upgradeable from it; while equipped you gain 3 base defense and take 50%% less explosion damage.",
   "astral_dice.guide.entry.weird_dice.1": "Weird die. Same tier as the diamond die and upgradeable from it; sign active-skill cooldowns are halved, but your combat die is more likely to roll low (1-3).",
