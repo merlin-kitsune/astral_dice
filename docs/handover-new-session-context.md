@@ -99,3 +99,5 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --phase stop --force 
 - **三条线**（P0 两线 + P1 的 `neoforge-26.1.2`）产物**以 `ls <线>/build/libs` 实测为准**（**本机现为 `.99`**：本批由 Windows 侧 `mt_build` 构建三条线，`MT_BUILD: OK` 3s / 5s / 3s ⇒ `neoforge-1.21.1/build/libs`、`forge-1.20.1/build/libs`、`neoforge-26.1.2/build/libs`）；**fabric 线产物停在 `.49`**；**P1 两线尚未移植筹码商店与事件卡 GUI 等**；
 - 测试世界在最后一次实机收尾时已 `--purge-saves` 清理 ⇒ 下次实机先 `--phase env`；
 - 未提交内容：**无**（除那 4 行垃圾）。
+
+> **最新交接条目（2026-10-17）**：`docs/agent/AGENTS-full.md` 的「## 待办交接」区**第 36 条**「立牌批验证闭环 + 选卡界面 + Jade 倒计时（2026-10-17）」—— 定位：`grep -n '立牌批验证闭环' docs/agent/AGENTS-full.md`。含本批提交链、实机闭环证据、**两项实机欠账**（选卡界面 / Jade 倒计时，均须用户下达）与 P1 两线移植搁置项。
