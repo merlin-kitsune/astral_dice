@@ -1,0 +1,150 @@
+{
+  "case_id": "JADE-CHIP-1.21.1",
+  "title": "Jade §5-2/§5-4（筹码店）：无冷却无该行；设 5:00 购买冷却 → 出现「可进入倒计时 M:SS」并递减；清零后立即消失",
+  "version": "1.21.1",
+  "target": {
+    "type": "feature",
+    "ref": "jade-shop-cooldown"
+  },
+  "steps": [
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/tp @s ~ ~ ~ 0 30",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralcc cd clear 0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/setblock ~ ~ ~2 astral_dice:chip_shop",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1800
+    },
+    {
+      "op": "screenshot",
+      "tag": "jade-chip-nocd",
+      "mode": "f2"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralcc cd chip 300",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralcc cdsample 10",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "screenshot",
+      "tag": "jade-chip-cd-t1",
+      "mode": "f2"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralcc diag",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 3000
+    },
+    {
+      "op": "screenshot",
+      "tag": "jade-chip-cd-t2",
+      "mode": "f2"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralcc cd chip 0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1800
+    },
+    {
+      "op": "screenshot",
+      "tag": "jade-chip-cleared",
+      "mode": "f2"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralcc diag",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/setblock ~ ~ ~2 air",
+      "no_esc": true
+    }
+  ],
+  "asserts": [
+    {
+      "type": "mixin"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CC:CDSET:kind=chip:secs=300"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CC:CDDIAG:now=\\d+:card=-?\\d+:chip=\\d{3,4}:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CC:CDS:t=\\d+:now=\\d+:card=-?\\d+:chip=\\d{3,4}:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CC:CDSET:kind=chip:secs=0"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_CC:(CDSET_ERR|DIAG_ERR|SAMPLE_ERR|CDS_ERR)"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_CC:LOADFAIL"
+    }
+  ]
+}

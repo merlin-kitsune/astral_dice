@@ -1,0 +1,168 @@
+{
+  "case_id": "JADE-CARD-1.21.1",
+  "title": "Jade §5-1/§5-4（卡牌店）：无冷却无该行；触发 60s 补货冷却 → 悬浮框出现「补货倒计时 M:SS」且逐秒递减；到 0 后该行消失",
+  "version": "1.21.1",
+  "target": {
+    "type": "feature",
+    "ref": "jade-shop-cooldown"
+  },
+  "steps": [
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/tp @s ~ ~ ~ 0 30",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralcc cd clear 0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/setblock ~ ~ ~2 astral_dice:card_shop",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1800
+    },
+    {
+      "op": "screenshot",
+      "tag": "jade-card-nocd",
+      "mode": "f2"
+    },
+    {
+      "op": "note",
+      "text": "↑ 无冷却（D4）：悬浮框不得出现倒计时行。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralcc cd card 60",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralcc cdsample 12",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "screenshot",
+      "tag": "jade-card-cd-t1",
+      "mode": "f2"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralcc diag",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 3000
+    },
+    {
+      "op": "screenshot",
+      "tag": "jade-card-cd-t2",
+      "mode": "f2"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralcc diag",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralcc cd card 3",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 4500
+    },
+    {
+      "op": "screenshot",
+      "tag": "jade-card-expired",
+      "mode": "f2"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralcc diag",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/setblock ~ ~ ~2 air",
+      "no_esc": true
+    }
+  ],
+  "asserts": [
+    {
+      "type": "mixin"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CC:CDSET:kind=card:secs=60"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CC:CDDIAG:now=\\d+:card=[1-9][0-9]{1,4}:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CC:CDS:t=\\d+:now=\\d+:card=[1-9][0-9]{1,4}:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CC:CDSET:kind=card:secs=3"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CC:CDDIAG:now=\\d+:card=[1-9][0-9]{1,4}:"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_CC:(CDSET_ERR|DIAG_ERR|SAMPLE_ERR|CDS_ERR)"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_CC:LOADFAIL"
+    }
+  ]
+}

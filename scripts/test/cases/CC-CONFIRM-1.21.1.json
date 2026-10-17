@@ -1,0 +1,121 @@
+{
+  "case_id": "CC-CONFIRM-1.21.1",
+  "title": "选卡界面 §9-5：放满 3 张 → 按钮出现；点击 → 界面关闭、各消耗 1 张、回调拿到 3 个 ItemStack（生存模式：创造下 consume 受无限材料保护，不扣物）",
+  "version": "1.21.1",
+  "target": {
+    "type": "feature",
+    "ref": "card-choice-screen"
+  },
+  "steps": [
+    {
+      "op": "note",
+      "text": "选卡界面实机（spec §9）。界面本批未接任何技能 ⇒ 由临时探针 /astralcc open 按产品公开 API CardChoiceManager.start 打开；卡牌移动走客户端屏幕事件 → 原版点击包 → 服务端菜单的真实链路。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode survival",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/item replace entity @s hotbar.0 with astral_dice:attack_card_medium 1",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/item replace entity @s hotbar.1 with astral_dice:attack_card_large 1",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/item replace entity @s hotbar.2 with astral_dice:attack_card_epic 1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralcc open 3 combat confirm",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 7000
+    }
+  ],
+  "asserts": [
+    {
+      "type": "mixin"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "INV_DUMP:inv=\\{\\}"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "step=62:phase=three_of_three:.*:complete=1:filled=3:c0=astral_dice:attack_card_medium:c1=astral_dice:attack_card_large:c2=astral_dice:attack_card_epic"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CARD_CHOICE: confirm:\\d+:player=.*:slots=3:type=COMBAT:picked=3"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CC:HANDLER:token=\\d+:n=3:items=\\[astral_dice:attack_card_mediumx1,astral_dice:attack_card_largex1,astral_dice:attack_card_epicx1\\]"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "SCREEN:closed"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_CARD_CHOICE: abandon:"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_CC:(OPEN_EX|OPEN_ERR|HANDLER_ERR|STATE_ERR|CDSET_ERR|DIAG_ERR|SAMPLE_ERR|CDS_ERR)"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_CCC:RUN_EX:"
+    }
+  ]
+}

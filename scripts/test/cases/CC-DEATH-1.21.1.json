@@ -1,0 +1,137 @@
+{
+  "case_id": "CC-DEATH-1.21.1",
+  "title": "选卡界面 §9-8：开界面放 2 张后死亡 → 卡牌掉在死亡点、界面关闭、无回调；重生后立刻再次 start 必须成功",
+  "version": "1.21.1",
+  "target": {
+    "type": "feature",
+    "ref": "card-choice-screen"
+  },
+  "steps": [
+    {
+      "op": "note",
+      "text": "选卡界面实机（spec §9）。界面本批未接任何技能 ⇒ 由临时探针 /astralcc open 按产品公开 API CardChoiceManager.start 打开；卡牌移动走客户端屏幕事件 → 原版点击包 → 服务端菜单的真实链路。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamerule doImmediateRespawn true",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamerule keepInventory true",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/item replace entity @s hotbar.0 with astral_dice:attack_card_medium 1",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/item replace entity @s hotbar.1 with astral_dice:attack_card_large 1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralcc open 3 combat death",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 16000
+    }
+  ],
+  "asserts": [
+    {
+      "type": "mixin"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CC:DROPS:n=2\\{[^}]*astral_dice:attack_card_medium@d="
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CC:DROPS:n=2\\{[^}]*astral_dice:attack_card_large@d="
+    },
+    {
+      "type": "crash"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "step=48:phase=two_cards_before_death:.*:filled=2"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "DEATH:after20:.*:hp=20"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "step=40:phase=reopened:slots=3:type=0:complete=0:filled=0:c0=empty:c1=empty:c2=empty:carried=empty:inv=\\{\\}"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CARD_CHOICE: death_cleanup:\\d+:player="
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CARD_CHOICE: abandon:\\d+:player=.*:consumed=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "SCREEN:open:token=\\d+:n=\\d+:seq=death"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_CARD_CHOICE: reject:reason=already_open"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_CC:HANDLER:"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_CC:(OPEN_EX|OPEN_ERR|HANDLER_ERR|STATE_ERR|CDSET_ERR|DIAG_ERR|SAMPLE_ERR|CDS_ERR)"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_CCC:RUN_EX:"
+    }
+  ]
+}

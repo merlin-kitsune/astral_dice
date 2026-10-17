@@ -1,0 +1,110 @@
+{
+  "case_id": "CC-ESC-1.21.1",
+  "title": "选卡界面 §9-6：放 2 张后按真 Esc → 界面关闭、2 张全部回物品栏、无回调（consumed=0）",
+  "version": "1.21.1",
+  "target": {
+    "type": "feature",
+    "ref": "card-choice-screen"
+  },
+  "steps": [
+    {
+      "op": "note",
+      "text": "选卡界面实机（spec §9）。界面本批未接任何技能 ⇒ 由临时探针 /astralcc open 按产品公开 API CardChoiceManager.start 打开；卡牌移动走客户端屏幕事件 → 原版点击包 → 服务端菜单的真实链路。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/item replace entity @s hotbar.0 with astral_dice:attack_card_medium 1",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/item replace entity @s hotbar.1 with astral_dice:attack_card_large 1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralcc open 3 combat esc",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 5000
+    },
+    {
+      "op": "inject_key",
+      "key": "escape"
+    },
+    {
+      "op": "wait",
+      "ms": 2500
+    }
+  ],
+  "asserts": [
+    {
+      "type": "mixin"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "step=50:phase=two_of_three:.*:complete=0:filled=2"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CARD_CHOICE: abandon:\\d+:player=.*:consumed=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AFTER_CLOSE:inv=\\{0:astral_dice:attack_card_mediumx1,1:astral_dice:attack_card_largex1"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_CARD_CHOICE: confirm"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_CC:HANDLER:"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_CC:(OPEN_EX|OPEN_ERR|HANDLER_ERR|STATE_ERR|CDSET_ERR|DIAG_ERR|SAMPLE_ERR|CDS_ERR)"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_CCC:RUN_EX:"
+    }
+  ]
+}

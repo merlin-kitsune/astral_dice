@@ -1,0 +1,97 @@
+{
+  "case_id": "CC-INCOMPLETE-1.21.1",
+  "title": "选卡界面 §9-4：只放 1/3 时确认按钮不渲染，点击该区域无任何反应（界面保持、零包）",
+  "version": "1.21.1",
+  "target": {
+    "type": "feature",
+    "ref": "card-choice-screen"
+  },
+  "steps": [
+    {
+      "op": "note",
+      "text": "选卡界面实机（spec §9）。界面本批未接任何技能 ⇒ 由临时探针 /astralcc open 按产品公开 API CardChoiceManager.start 打开；卡牌移动走客户端屏幕事件 → 原版点击包 → 服务端菜单的真实链路。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/item replace entity @s hotbar.0 with astral_dice:attack_card_medium 1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralcc open 3 combat incomplete",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 7000
+    }
+  ],
+  "asserts": [
+    {
+      "type": "mixin"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "step=44:phase=one_of_three:.*:complete=0:filled=1:c0=astral_dice:attack_card_medium"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "evt=click:step=50:what=confirm_area_press"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "step=60:phase=after_confirm_click:.*:complete=0:filled=1:c0=astral_dice:attack_card_medium"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "SCREEN:closed"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_CARD_CHOICE: confirm"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_CC:(OPEN_EX|OPEN_ERR|HANDLER_ERR|STATE_ERR|CDSET_ERR|DIAG_ERR|SAMPLE_ERR|CDS_ERR)"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_CCC:RUN_EX:"
+    }
+  ]
+}

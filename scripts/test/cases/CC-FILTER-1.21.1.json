@@ -1,0 +1,107 @@
+{
+  "case_id": "CC-FILTER-1.21.1",
+  "title": "选卡界面 §9-3：战斗牌会话里双击/拖入效果牌 → 均被拒绝（原地还原、不消耗）",
+  "version": "1.21.1",
+  "target": {
+    "type": "feature",
+    "ref": "card-choice-screen"
+  },
+  "steps": [
+    {
+      "op": "note",
+      "text": "选卡界面实机（spec §9）。界面本批未接任何技能 ⇒ 由临时探针 /astralcc open 按产品公开 API CardChoiceManager.start 打开；卡牌移动走客户端屏幕事件 → 原版点击包 → 服务端菜单的真实链路。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/item replace entity @s hotbar.0 with astral_dice:attack_card_medium 1",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/item replace entity @s hotbar.1 with astral_dice:effect_card_berserk 1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralcc open 3 combat filter",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 8000
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "step=44:phase=after_drag_effect:.*:complete=0:filled=0:c0=empty:c1=empty:c2=empty"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "step=62:phase=after_return:.*:inv=\\{[^}]*4:astral_dice:effect_card_berserkx1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "step=86:phase=after_dbl_effect:.*:complete=0:filled=0:c0=empty:c1=empty:c2=empty"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "INV_DUMP:inv=\\{[^}]*1:astral_dice:effect_card_berserkx1"
+    },
+    {
+      "type": "mixin"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "SCREEN:closed"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_CARD_CHOICE: confirm:"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_CC:(OPEN_EX|OPEN_ERR|HANDLER_ERR|STATE_ERR|CDSET_ERR|DIAG_ERR|SAMPLE_ERR|CDS_ERR)"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_CCC:RUN_EX:"
+    }
+  ]
+}
