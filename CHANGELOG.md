@@ -47,6 +47,12 @@
   icon and value** in the entity info overlay show this mod's **Defense** instead (full / half / empty icons
   matching the vanilla shapes; mobs keep their vanilla armor value - only players use this mod's numbers).
 
+- **Shop blocks now show a Jade cooldown countdown** (user request 2026-10-17): with Jade installed, looking at the
+  **Card Shop** appends a "Restock in M:SS" line to the overlay, while the **Chip Shop / Lottery Box** append
+  "Available in M:SS". The line is shown **only while cooling down** (remaining > 0) and disappears once the
+  cooldown ends; seconds are rounded up and the time value is blue. **Without Jade nothing changes** (no extra
+  dependency is required).
+
 #### Sound Effects
 
 - **Five new custom sound effects, one rewritten** (2026-10-04): the four damage effect cards now use

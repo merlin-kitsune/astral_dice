@@ -450,10 +450,11 @@ public class ModAttachments {
     }
 
     // 卡牌商店「二级转账」的玩家级冷却结束时刻(gameTime;0 = 无冷却)。
-    // 仅服务端写入与判定,客户端只从菜单 DataSlot 读剩余秒数,
-    // 故**不 .sync()、不加入 SYNCED_KEYS**(与 1.21.1 同口径)。
+    // 服务端写入与判定;客户端除菜单 DataSlot 外,还要在 **Jade 悬浮框**显示「补货倒计时」
+    // (方块无 BlockEntity ⇒ 1.20.1 的 Jade 不收服务端数据,只能读同步值)⇒ 本条 **.sync()**
+    // 并进 SYNCED_KEYS(登录/重生/切维度时补发快照)。只同步一个 long,开销可忽略。
     public static final AttachedDataKey<Long> SHOP_TRANSFER_COOLDOWN_END =
-            register(AttachedDataKey.builder("shop_transfer_cooldown_end", Codec.LONG, () -> 0L).build());
+            register(AttachedDataKey.builder("shop_transfer_cooldown_end", Codec.LONG, () -> 0L).sync().build());
 
     public static long getShopTransferCooldownEnd(net.minecraft.world.entity.player.Player player) {
         return SHOP_TRANSFER_COOLDOWN_END.get(player);
@@ -473,9 +474,13 @@ public class ModAttachments {
     // 筹码商店:候选存档(2026-10-12 移植,对应 1.21.1 的 ModAttachments.CHIP_SHOP_STATE)。
     // 与 SHOP_SHELF 完全同型:菜单只读、重抽入口只有三处(shop/ChipShopOpener#ensureOffers 的进店补抽、
     // ChipShopMenu#handleRefresh、购买成功),服务端 tick(shop/ChipShopRegenTicker)只恢复刷新次数。
-    // 仅服务端使用,不同步客户端(客户端靠菜单隐藏槽位读同一批候选 + DataSlot 读价格/次数/品质码) ⇒ 不 .sync()、不加入 SYNCED_KEYS。
+    // 客户端菜单靠隐藏槽位读同一批候选 + DataSlot 读价格/次数/品质码;另需在 **Jade 悬浮框**显示
+    // 「可进入倒计时」——方块无 BlockEntity ⇒ 1.20.1 的 Jade 不收服务端数据,只能读同步值,
+    // 故本条 **.sync()** 并进 SYNCED_KEYS(整条记录含 3 个候选 id,体积很小)。
+    // 注意:客户端只读其中的 {@code cooldownUntil},其余字段在客户端没有消费方。
     public static final AttachedDataKey<ChipShopState> CHIP_SHOP_STATE =
-            register(AttachedDataKey.builder("chip_shop_state", ChipShopState.CODEC, () -> ChipShopState.EMPTY).build());
+            register(AttachedDataKey.builder("chip_shop_state", ChipShopState.CODEC, () -> ChipShopState.EMPTY)
+                    .sync().build());
 
     // 立牌主动技能"本次冷却实际使用的最大冷却 tick"(路线 A:所有减免方一律读它作基准,不再各自重算;
     // 0 表示缺失/无冷却,减免方回退旧行为;仅服务端使用,故不 .sync()、不加入 SYNCED_KEYS)。
@@ -1403,6 +1408,11 @@ public class ModAttachments {
             SYNCED_KEYS.add(KANGEL_FAN_COUNT);
             SYNCED_KEYS.add(AME_LOVE_LAYERS);
             SYNCED_KEYS.add(AME_LOVE_CAP);
+            // 商店冷却 / 抽奖盒冷却(Jade 悬浮框倒计时):方块无 BlockEntity ⇒ 1.20.1 的 Jade
+            // 只能读同步值,故这三个键必须进登录快照(否则重登后冷却中也不显示该行)。
+            SYNCED_KEYS.add(SHOP_TRANSFER_COOLDOWN_END);
+            SYNCED_KEYS.add(CHIP_SHOP_STATE);
+            SYNCED_KEYS.add(EVENT_DRAWER_COOLDOWN_UNTIL);
         }
         return SYNCED_KEYS;
     }

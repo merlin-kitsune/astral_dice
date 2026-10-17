@@ -965,5 +965,7 @@
   "effect.astral_dice.storm_approaching.description": "敌对生物攻击力/防御力 +2（2:00）",
   "effect.astral_dice.problem_delivery": "问题外卖",
   "effect.astral_dice.problem_delivery.description": "中毒与饥饿（0:15），15 秒内无法治疗",
-  "gui.astral_dice.event_choice.title": "选择事件"
+  "gui.astral_dice.event_choice.title": "选择事件",
+  "jade.astral_dice.restock_countdown": "补货倒计时 §9%s§7",
+  "jade.astral_dice.enter_countdown": "可进入倒计时 §9%s§7"
 }
