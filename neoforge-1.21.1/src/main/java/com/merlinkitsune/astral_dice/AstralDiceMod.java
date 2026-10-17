@@ -8,6 +8,7 @@ import com.merlinkitsune.astral_dice.world.ModPoiTypes;
 import com.merlinkitsune.astral_dice.world.ModVillagerProfessions;
 import com.merlinkitsune.starenginelib.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
+import com.merlinkitsune.astral_dice.entity.ModEntityTypes;
 import com.merlinkitsune.astral_dice.init.ModCompatibilityCheck;
 import com.merlinkitsune.astral_dice.init.ModCreativeTabs;
 import com.merlinkitsune.astral_dice.init.ModParticles;
@@ -47,6 +48,9 @@ public class AstralDiceMod {
         ModBlocks.BLOCKS.register(modEventBus);
         ModPoiTypes.POI_TYPES.register(modEventBus);
         ModVillagerProfessions.PROFESSIONS.register(modEventBus);
+        // 自有实体(2026-10-17「路障」):实体类型由 ModEntityTypes 注册,属性由 event/ModEntityEvents
+        // 在 EntityAttributeCreationEvent 里补(1.21.1 唯一入口,漏注册会在实体创建时直接抛异常)
+        ModEntityTypes.ENTITY_TYPES.register(modEventBus);
         // 配置版本检查:旧版本配置文件先备份,再由 NeoForge 继承旧值写入新配置(仅公共配置;client 配置已移除)
         backupOldConfigIfNeeded("astral_dice-common.toml", ModCommonConfig.CONFIG_VERSION);
         modContainer.registerConfig(ModConfig.Type.COMMON, ModCommonConfig.SPEC);

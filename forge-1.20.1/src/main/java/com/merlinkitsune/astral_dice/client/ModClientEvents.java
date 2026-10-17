@@ -1,6 +1,7 @@
 package com.merlinkitsune.astral_dice.client;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
+import com.merlinkitsune.astral_dice.entity.ModEntityTypes;
 import com.merlinkitsune.astral_dice.init.ModParticles;
 import com.merlinkitsune.astral_dice.screen.CardInventoryScreen;
 import com.merlinkitsune.astral_dice.screen.CardChoiceScreen;
@@ -13,6 +14,7 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.client.event.EntityRenderersEvent;
 import net.minecraftforge.client.event.RegisterGuiOverlaysEvent;
 import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
 import net.minecraftforge.client.event.RegisterParticleProvidersEvent;
@@ -59,6 +61,25 @@ public class ModClientEvents {
                 "defense_bar", CombatPowerHud.DEFENSE_OVERLAY);
         event.registerAbove(VanillaGuiOverlay.FOOD_LEVEL.id(),
                 "attack_bar", CombatPowerHud.ATTACK_OVERLAY);
+    }
+
+    /**
+     * 自有实体渲染器注册（2026-10-17「路障」引入的首个实体；2026-10-17 移植到本线）。
+     *
+     * <p>1.20.1 的平台差异：事件类仍是 {@code net.minecraftforge.client.event.EntityRenderersEvent}，
+     * 但本线订阅者是 {@code @Mod.EventBusSubscriber(…, value = Dist.CLIENT, bus = Bus.MOD)} ——
+     * 专用服务端整体不加载本类，因此这里引用纯客户端的 {@link BarricadeRenderer} 是安全的
+     * （与 registerGuiOverlays / onClientSetup 同一条纪律）。
+     */
+    @SubscribeEvent
+    public static void registerEntityRenderers(EntityRenderersEvent.RegisterRenderers event) {
+        event.registerEntityRenderer(ModEntityTypes.BARRICADE.get(), BarricadeRenderer::new);
+    }
+
+    /** 模型层定义：`astral_dice:barricade#main` ⇒ {@link BarricadeModel#createBodyLayer()}。 */
+    @SubscribeEvent
+    public static void registerLayerDefinitions(EntityRenderersEvent.RegisterLayerDefinitions event) {
+        event.registerLayerDefinition(BarricadeModel.LAYER_LOCATION, BarricadeModel::createBodyLayer);
     }
 
     @SubscribeEvent

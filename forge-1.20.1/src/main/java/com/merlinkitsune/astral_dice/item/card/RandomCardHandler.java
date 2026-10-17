@@ -155,7 +155,8 @@ public final class RandomCardHandler {
                 ModItems.HAMBURGER.get(),
                 ModItems.LUXURY_FEAST.get(),
                 ModItems.YOU_HAVE_I_HAVE.get(),
-                ModItems.EXPRESS_DELIVERY.get());
+                ModItems.EXPRESS_DELIVERY.get(),
+                ModItems.EFFECT_CARD_BARRICADE.get());
     }
 
     /**

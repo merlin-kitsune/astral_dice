@@ -25,6 +25,7 @@ import com.merlinkitsune.astral_dice.item.chip.EagleScopeChipItem;
 import com.merlinkitsune.astral_dice.item.chip.MagicTomeChipItem;
 import com.merlinkitsune.astral_dice.item.chip.BufferShieldChipItem;
 import com.merlinkitsune.astral_dice.item.chip.EightSidedDiceChipItem;
+import com.merlinkitsune.astral_dice.item.card.BarricadeCardItem;
 import com.merlinkitsune.astral_dice.item.card.UnwaveringCardItem;
 import com.merlinkitsune.astral_dice.item.card.FightPoisonWithPoisonCardItem;
 import com.merlinkitsune.astral_dice.item.dice.DiceCurioItem;
@@ -358,6 +359,13 @@ public class ModItems {
                     .stacksTo(16)
                     .rarity(AstralRarities.rare())
                     .component(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("defense_epic")), "defense_epic"));
+
+    // 路障(效果牌,2026-10-17):在视线命中的方块面上放一座路障(30 点耐久 / 6 格拉仇恨 / 栅栏级挡路)。
+    // 实现形态 = 可见实体(entity/BarricadeEntity) + 隐形碰撞方块(block/BarricadeBlock)。品质:稀有
+    public static final DeferredItem<Item> EFFECT_CARD_BARRICADE = registerItem("effect_card_barricade",
+            () -> new BarricadeCardItem(new Item.Properties()
+                    .stacksTo(16)
+                    .rarity(AstralRarities.rare())));
 
     public static final DeferredItem<Item> EFFECT_CARD_KING_POWER = registerItem("effect_card_king_power",
             () -> new EffectCardItem(new Item.Properties()

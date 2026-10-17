@@ -601,6 +601,15 @@ public class ModTooltipHandler {
             addEffectCardPlayCountTooltip(tooltip, player);
             tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown", effectCardCooldownSeconds(player)).withStyle(ChatFormatting.RED));
         }
+        if (stack.is(ModItems.EFFECT_CARD_BARRICADE.get())) {
+            // 2026-10-17 路障(2026-10-17 移植到本线):第一行 = 用法(右键方块面),第二行 = 耐久 / 挡路 / 拉仇恨三件事;
+            // 行内数值一律 §e(非时间数值着黄,见 AGENTS「tooltip 文案唯一基准」)
+            addCardLines(tooltip, "tooltip.astral_dice.card.barricade");
+            addEffectCardPlayCountTooltip(tooltip, player);
+            tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown",
+                            effectCardCooldownSeconds(player))
+                    .withStyle(ChatFormatting.RED));
+        }
         if (stack.is(ModItems.BLANK_SIGN.get())) {
             tooltip.add(Component.empty());
             tooltip.add(Component.translatable("tooltip.astral_dice.material.blank_sign")

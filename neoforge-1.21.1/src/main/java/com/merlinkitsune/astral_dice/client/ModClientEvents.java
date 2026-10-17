@@ -1,6 +1,7 @@
 package com.merlinkitsune.astral_dice.client;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
+import com.merlinkitsune.astral_dice.entity.ModEntityTypes;
 import com.merlinkitsune.astral_dice.init.ModParticles;
 import com.merlinkitsune.astral_dice.screen.CardInventoryScreen;
 import com.merlinkitsune.astral_dice.screen.CardChoiceScreen;
@@ -17,6 +18,7 @@ import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
@@ -40,6 +42,23 @@ public class ModClientEvents {
         event.register(ModMenuTypes.CARD_SHOP.get(), CardShopScreen::new);
         event.register(ModMenuTypes.CHIP_SHOP.get(), ChipShopScreen::new);
         event.register(ModMenuTypes.CARD_CHOICE.get(), CardChoiceScreen::new);
+    }
+
+    /**
+     * 自有实体渲染器注册（2026-10-17「路障」引入的首个实体）。
+     *
+     * <p>本类带 `@EventBusSubscriber(Dist.CLIENT)` ⇒ 专用服务端整体不加载，
+     * 因此这里引用纯客户端的 {@link BarricadeRenderer} 是安全的（与 registerScreens 同一条纪律）。
+     */
+    @SubscribeEvent
+    public static void registerEntityRenderers(EntityRenderersEvent.RegisterRenderers event) {
+        event.registerEntityRenderer(ModEntityTypes.BARRICADE.get(), BarricadeRenderer::new);
+    }
+
+    /** 模型层定义：`astral_dice:barricade#main` ⇒ {@link BarricadeModel#createBodyLayer()}。 */
+    @SubscribeEvent
+    public static void registerLayerDefinitions(EntityRenderersEvent.RegisterLayerDefinitions event) {
+        event.registerLayerDefinition(BarricadeModel.LAYER_LOCATION, BarricadeModel::createBodyLayer);
     }
 
     /**

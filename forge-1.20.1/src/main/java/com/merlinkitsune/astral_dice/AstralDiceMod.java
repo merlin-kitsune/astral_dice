@@ -4,6 +4,7 @@ import com.merlinkitsune.astral_dice.config.ModCommonConfig;
 import com.merlinkitsune.starenginelib.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.effect.ModEnchantments;
+import com.merlinkitsune.astral_dice.entity.ModEntityTypes;
 import com.merlinkitsune.astral_dice.init.ModCompatibilityCheck;
 import com.merlinkitsune.astral_dice.init.MixinRuntimeGate;
 import com.merlinkitsune.astral_dice.init.ModCreativeTabs;
@@ -55,6 +56,10 @@ public class AstralDiceMod {
         // 村民认领还需要 data/minecraft/tags/point_of_interest_type/acquirable_job_site.json 把本站点并入原版标签
         com.merlinkitsune.astral_dice.world.ModPoiTypes.POI_TYPES.register(modEventBus);
         com.merlinkitsune.astral_dice.world.ModVillagerProfessions.PROFESSIONS.register(modEventBus);
+        // 自有实体(2026-10-17「路障」,2026-10-17 移植到本线):实体类型由 ModEntityTypes 注册,属性由
+        // event/ModEntityEvents 在 EntityAttributeCreationEvent 里补(1.20.1 Forge 的唯一入口,漏注册会在
+        // 实体创建时直接抛异常 ⇒ 生成即崩)
+        ModEntityTypes.ENTITY_TYPES.register(modEventBus);
         // 全局战利品修饰符序列化器:1.20.1 的 Forge 自带注册表里**没有任何内置项**
         // (没有 forge:add_table),必须由本模组注册 astral_dice:add_table,
         // 否则 data/astral_dice/loot_modifiers/*.json 全部解码失败(详见 loot/AstralLootModifiers)
