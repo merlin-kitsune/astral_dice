@@ -9,7 +9,7 @@
   "steps": [
     {
       "op": "note",
-      "text": "(1) 佩戴者近战命中敌方 => 目标 kangel_fan(amp=0,dur=-1)+ 计数 +1;(2) 同一目标再打 => 计数不变(去重,ftg 不变);(3) 换第二只 => +1;(4) 被敌对攻击(掠夺者 dmghit)=> 攻击者上「粉丝」且计数 +1;(5) 计数写满 10 后不再增长且指示器 amp=9;(6) 队内第二个超天酱佩戴者(botc)同步 +1(每目标每人一次)。"
+      "text": "(0) 拆 id 回归:佩戴者自己身上 fanE(指示器)有值而 markE(目标标记)为空;(1) 佩戴者近战命中敌方 => 目标 kangel_fan(amp=0,dur=-1)+ 计数 +1;(2) 同一目标再打 => 计数不变(去重,ftg 不变);(3) 换第二只 => +1;(4) 被敌对攻击(掠夺者 dmghit)=> 攻击者上「粉丝」且计数 +1;(5) 计数写满 10 后不再增长且指示器 amp=9;(6) 队内第二个超天酱佩戴者(botc)同步 +1(每目标每人一次)。"
     },
     {
       "op": "inject_command",
@@ -421,6 +421,11 @@
       "type": "log",
       "source": "latest",
       "pattern": "(?i)AP_B1_ST:Dev.*:fans=1:ftg=1.*:fanE=amp=0;dur=-1;icon=1;vis=0:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "(?i)AP_B1_ST:Dev.*:fanE=amp=0;dur=-1;icon=1;vis=0:markE=none:"
     },
     {
       "type": "log",

@@ -830,6 +830,8 @@
   "item.astral_dice.ame_sign": "Ame Sign",
   "effect.astral_dice.kangel_fan": "Fan",
   "effect.astral_dice.kangel_fan.description": "Deals §e-1§7 damage when attacking a KAngel Sign wearer",
+  "effect.astral_dice.kangel_fan_indicator": "Fan Count",
+  "effect.astral_dice.kangel_fan_indicator.description": "Shown while wearing the KAngel Sign: level equals your current fan count",
   "effect.astral_dice.ame_love": "Love",
   "effect.astral_dice.ame_love.description": "Each stack grants §e+1§7 attack power and §e-1§7 defense; above §e4§7 stacks each stack grants §e+1§7 max health",
   "effect.astral_dice.ame_overdose": "Emotional Overdose",

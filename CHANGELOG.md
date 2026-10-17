@@ -447,6 +447,17 @@
 
 #### Damage & Resolution
 
+- **Fixed two PvP misreads on the KAngel Sign: the "Fan" mark and the wearer's indicator shared one status** (2026-10-17): the wearer's
+  fan-count indicator and the "Fan" mark applied to targets used to be **the same status**, so ① when two KAngel Sign wearers fought each
+  other, the attacker's own indicator was read as "she is a Fan" - **incorrectly shaving 1 damage** off her hits; ② when a KAngel Sign wearer
+  who had been marked as a Fan by someone else had her fan count change, the indicator refresh (remove then re-apply) **wiped the mark**
+  the other player had given her. The two are now separate statuses: **"Fan" means the target mark only** (the sole check for "is a Fan" and
+  for the -1 damage), while a new **"Fan Count" indicator** only shows the wearer's own fan count (level = fan count, icon = the original
+  Fan icon with a gold outline); unequipping the sign now clears only your own indicator and no longer touches marks given by others.
+  Fan counting, persistence through death, the reset on unequip, Two Hearts as One and the -1 value itself are all unchanged.
+  Criteria: two KAngel Sign wearers hitting each other no longer have their damage reduced by 1; a marked KAngel wearer keeps her mark
+  after her fan count changes.
+
 - **Fixed the Ame Sign's "Emotional Overdose" settling several times when it expires naturally** (2026-10-17): the expiry should
   remove **4** Love stacks and raise the Love cap by **1** exactly once, but it settled once in each of three consecutive game
   ticks (Love 8 -> 4 -> 0 and cap 20 -> 21 -> 22 -> 23 - 8 extra stacks lost and 2 extra cap points gained). Cause: settling also

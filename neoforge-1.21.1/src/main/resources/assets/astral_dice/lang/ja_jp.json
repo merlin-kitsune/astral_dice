@@ -829,6 +829,8 @@
   "item.astral_dice.ame_sign": "地雷女のスタンド",
   "effect.astral_dice.kangel_fan": "ファン",
   "effect.astral_dice.kangel_fan.description": "超天酱のスタンド装備者を攻撃する時、与えるダメージ §e-1§7",
+  "effect.astral_dice.kangel_fan_indicator": "ファン数",
+  "effect.astral_dice.kangel_fan_indicator.description": "超天酱のスタンド装備中に表示：レベル＝現在のファン数",
   "effect.astral_dice.ame_love": "愛",
   "effect.astral_dice.ame_love.description": "1 スタックにつき攻撃力 §e+1§7、防御力 §e-1§7；愛が §e4§7 スタックを超えると、超過分 1 スタックにつき最大体力 §e+1§7",
   "effect.astral_dice.ame_overdose": "感情過剰摂取",

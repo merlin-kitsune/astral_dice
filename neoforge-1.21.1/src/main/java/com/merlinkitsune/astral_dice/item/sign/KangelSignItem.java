@@ -5,14 +5,12 @@ import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
 import com.merlinkitsune.astral_dice.combat.PartyRelations;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.KangelFanEffect;
-import com.merlinkitsune.astral_dice.effect.ModEffects;
+import com.merlinkitsune.astral_dice.effect.KangelFanIndicatorEffect;
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.astral_dice.item.ModItems;
-import com.merlinkitsune.starenginelib.event.ModEffectRemoval;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.damagesource.DamageSource;
-import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -40,6 +38,11 @@ import java.util.List;
  * 佩戴者(及一心同体的地雷女队友)**近战直接命中**目标、或**受到敌对攻击** ⇒ 该目标被施加
  * 「粉丝」({@link KangelFanEffect})标记;该标记的目标攻击佩戴者时造成的伤害 −1
  * ({@code event/ChipDamageHandler} 的固定点数减法段,允许扣到 0,不可减免伤害类型除外)。
+ *
+ * <p><b>两个效果 id(2026-10-17 拆分)</b>:目标标记 = {@code kangel_fan}(**战斗判据的唯一真值**);
+ * 佩戴者的计数指示器 = {@code kangel_fan_indicator}(**只做 HUD 展示**,等级 = 粉丝数,
+ * 见 {@link KangelFanIndicatorEffect})。二者绝不混用 —— 混用时超天酱互殴会把攻击方的指示器
+ * 当成「她是粉丝」误判 −1,且被标记者的计数镜像会清掉别人给她的标记。
  *
  * <p><b>计数</b>:粉丝数 = 玩家级附件 {@code ModAttachments#KANGEL_FAN_COUNT},上限
  * {@value #MAX_FANS};**每个目标对每个超天酱佩戴者只计 1 次**(已登记目标 UUID 集
@@ -99,7 +102,7 @@ public class KangelSignItem extends BaseSignItem {
         if (holder == null || holder.level().isClientSide()) return;
         int clamped = Math.max(0, Math.min(MAX_FANS, value));
         ModAttachments.setKangelFanCount(holder, clamped);
-        KangelFanEffect.mirrorCount(holder, clamped);
+        KangelFanIndicatorEffect.mirrorCount(holder, clamped);
     }
 
     /** 粉丝数增减(夹逼;同时刷新 HUD 指示器) */
@@ -219,10 +222,8 @@ public class KangelSignItem extends BaseSignItem {
     public static void applyFanTo(Player applier, LivingEntity victim, boolean markEffect) {
         if (applier == null || victim == null) return;
         if (applier.level().isClientSide()) return;
-        if (markEffect && !victim.hasEffect(ModEffects.KANGEL_FAN)) {
-            victim.addEffect(new MobEffectInstance(ModEffects.KANGEL_FAN,
-                    KangelFanEffect.DURATION_TICKS, 0, false, false, true));
-        }
+        // 目标标记走 kangel_fan(= 「是否粉丝」的唯一真值);佩戴者的计数指示器是另一个 id,不在此处施加
+        if (markEffect) KangelFanEffect.applyMark(victim);
         for (Player wearer : wearersFor(applier)) {
             if (getFanCount(wearer) >= MAX_FANS) continue;
             if (markFanTarget(wearer, victim)) addFans(wearer, 1);
@@ -366,8 +367,8 @@ public class KangelSignItem extends BaseSignItem {
         if (player.level().isClientSide()) return;
         // 指示器每 tick 校正(死亡重生后效果实例被清空,而粉丝数附件(带 copyOnDeath)仍在)
         int fans = getFanCount(player);
-        if (KangelFanEffect.getCount(player) != fans) {
-            KangelFanEffect.mirrorCount(player, fans);
+        if (KangelFanIndicatorEffect.getCount(player) != fans) {
+            KangelFanIndicatorEffect.mirrorCount(player, fans);
         }
         // 「一心同体」防御的自维护(节流 20t):队内存在地雷女佩戴者 ⇒ 自挂 6 点基础防御,否则幂等移除
         // (瞬态属性修饰器不跨死亡/重登 ⇒ 按队伍真值重挂,自带重生/登录/换队伍自愈)
@@ -383,7 +384,8 @@ public class KangelSignItem extends BaseSignItem {
         super.clearSignData(player, stack);
         ModAttachments.setKangelFanCount(player, 0);
         clearFanTargets(player);
-        ModEffectRemoval.remove(player, ModEffects.KANGEL_FAN);
+        // 只移除**指示器** —— 玩家身上的「粉丝」目标标记是别人给的,不随她自己卸牌消失
+        KangelFanIndicatorEffect.clear(player);
         // 「一心同体」防御随佩戴结束一并撤销(key 归属本立牌;0 = 移除,幂等)
         DiceCombatModifiers.setDefenseArmorBonus(player, KANGEL_LINK_DEFENSE_KEY, 0);
     }

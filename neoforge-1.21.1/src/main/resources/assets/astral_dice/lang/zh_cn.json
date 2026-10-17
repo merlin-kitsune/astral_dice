@@ -831,6 +831,8 @@
   "item.astral_dice.ame_sign": "地雷女立牌",
   "effect.astral_dice.kangel_fan": "粉丝",
   "effect.astral_dice.kangel_fan.description": "攻击超天酱立牌佩戴者时造成的伤害 §e-1§7",
+  "effect.astral_dice.kangel_fan_indicator": "粉丝数",
+  "effect.astral_dice.kangel_fan_indicator.description": "佩戴超天酱立牌时显示：等级 = 当前粉丝数",
   "effect.astral_dice.ame_love": "爱",
   "effect.astral_dice.ame_love.description": "每层攻击力 §e+1§7、防御力 §e-1§7；爱超过 §e4§7 层时，每层使最大生命值 §e+1§7",
   "effect.astral_dice.ame_overdose": "感情过量摄入",

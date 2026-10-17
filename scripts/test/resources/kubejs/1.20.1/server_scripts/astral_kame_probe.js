@@ -177,7 +177,10 @@ function kStateLineBody(p, tag, t) {
     out += ":def=" + kRd(function () { return kDcm().defensePowerOf(p); }, "ERR");
     // 1.20.1: ModEffects 的字段是 RegistryObject ⇒ 必须 .get() 取 Holder(否则 Rhino 强转失败,
     // 异常会穿透 JS try/catch 直接中止整个命令 ⇒ `state` 曾静默无输出,见 2026-10-17 实测)
-    out += ":fanE=" + kFxText(p, fx.KANGEL_FAN.get());
+    // fanE = 佩戴者的计数指示器(kangel_fan_indicator,等级 = 粉丝数);
+    // markE = 目标标记(kangel_fan,2026-10-17 拆 id) —— 两者**不是**同一个效果,读数必须分开
+    out += ":fanE=" + kFxText(p, fx.KANGEL_FAN_INDICATOR.get());
+    out += ":markE=" + kFxText(p, fx.KANGEL_FAN.get());
     out += ":loveE=" + kFxText(p, fx.AME_LOVE.get());
     out += ":ovdE=" + kFxText(p, fx.AME_OVERDOSE.get());
     out += ":lock=" + kRd(function () { return kBase().isSignActiveLocked(p) ? 1 : 0; }, "ERR");

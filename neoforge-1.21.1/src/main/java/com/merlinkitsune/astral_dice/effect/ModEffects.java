@@ -318,17 +318,33 @@ public class ModEffects {
     // ── 超天酱立牌(kangel)+ 地雷女立牌(ame)（2026-10-16 冻结规格）──────────────────────
 
     /**
-     * 「粉丝」(超天酱立牌 kangel 被动「小天使请安」):施加在**目标**身上的无限时长标记效果,
-     * 同时**复用**为佩戴者自身的粉丝数指示器(**等级 = 粉丝数**,即 {@code amplifier = 粉丝数 − 1})。
+     * 「粉丝」(超天酱立牌 kangel 被动「小天使请安」):施加在**目标**身上的无限时长**标记**效果
+     * (2026-10-17 起**只**承担这一种语义;佩戴者的计数指示器已拆到
+     * {@link #KANGEL_FAN_INDICATOR})。
      *
      * <p>本效果不提供任何属性修饰符、不产生周期反噬;「该目标攻击佩戴者时伤害 −1」的判定落在
-     * {@code event/ChipDamageHandler} 的固定点数减法段(读效果是否仍在目标身上)。
-     * 粉丝计数真值在附件 {@code ModAttachments#KANGEL_FAN_COUNT}(上限 10、跨死亡保留、卸下清零)。
+     * {@code event/ChipDamageHandler} 的固定点数减法段(读效果是否仍在**攻击者**身上 ——
+     * 这是「是否粉丝」的唯一真值)。粉丝计数真值在附件 {@code ModAttachments#KANGEL_FAN_COUNT}
+     * (上限 10、跨死亡保留、卸下清零)。
      * <b>无限时长</b>({@code MobEffectInstance.INFINITE_DURATION} ⇒ 目标死亡自然消失,不登记计时守卫)。
      * HARMFUL 配色(裁决 #5);图标 = {@code images/粉丝.png}。
      */
     public static final DeferredHolder<MobEffect, MobEffect> KANGEL_FAN =
             EFFECTS.register("kangel_fan", KangelFanEffect::new);
+
+    /**
+     * 「粉丝数」(超天酱立牌 kangel 佩戴者的**计数指示器**;2026-10-17 由 {@link #KANGEL_FAN} 拆出):
+     * {@code amplifier = 粉丝数 − 1}(**等级 = 粉丝数**)、无限时长、无属性修饰符、无粒子。
+     *
+     * <p>**不参与任何战斗判据** —— 只对佩戴者自己的 HUD 生效。拆 id 原因:两个超天酱互殴时,
+     * 攻击方的指示器曾被 {@code hasEffect(kangel_fan)} 当成「她是粉丝」⇒ 误判 −1;
+     * 被标记成粉丝的超天酱也会被自己的计数镜像清掉标记。施加点在
+     * {@code item/sign/KangelSignItem}({@link KangelFanIndicatorEffect#mirrorCount})。
+     * BENEFICIAL 配色;图标 = {@code images/粉丝.png} 加金色描边的视觉变体
+     * ({@code tools/gen_kangel_fan_indicator_texture.py} 生成)。
+     */
+    public static final DeferredHolder<MobEffect, MobEffect> KANGEL_FAN_INDICATOR =
+            EFFECTS.register("kangel_fan_indicator", KangelFanIndicatorEffect::new);
 
     /**
      * 「爱」(地雷女立牌 ame 被动「无法承受的爱」):**层数镜像效果**(层数 = {@code amplifier + 1});

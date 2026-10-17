@@ -1,6 +1,6 @@
 {
   "case_id": "KAME-CLIENT-1.21.1",
-  "title": "超天酱/地雷女指示器的客户端侧读数(.128):kangel_fan 等级=粉丝数、ame_love 等级=爱层数、ame_overdose 有计时;均为客户端实际持有的那份实例(HUD 渲染源)+ 截图",
+  "title": "超天酱/地雷女指示器的客户端侧读数(.128):kangel_fan_indicator 等级=粉丝数、ame_love 等级=爱层数、ame_overdose 有计时;均为客户端实际持有的那份实例(HUD 渲染源)+ 截图",
   "version": "1.21.1",
   "target": {
     "type": "feature",
@@ -466,7 +466,7 @@
     {
       "type": "log",
       "source": "kubejs_client",
-      "pattern": "(?i)AP_KAMEC:evt=chg:.*astral_dice.kangel_fan:9:-1:1:0"
+      "pattern": "(?i)AP_KAMEC:evt=chg:.*astral_dice.kangel_fan_indicator:9:-1:1:0"
     },
     {
       "type": "log",

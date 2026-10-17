@@ -168,7 +168,10 @@ function kStateLine(p, tag) {
     out += ":atk=" + kRd(function () { return kDcm().attackPowerOf(p); }, "ERR");
     out += ":atkd=" + kRd(function () { return kDcm().attackPowerDisplayOf(p); }, "ERR");
     out += ":def=" + kRd(function () { return kDcm().defensePowerOf(p); }, "ERR");
-    out += ":fanE=" + kFxText(p, fx.KANGEL_FAN);
+    // fanE = 佩戴者的计数指示器(kangel_fan_indicator,等级 = 粉丝数);
+    // markE = 目标标记(kangel_fan,2026-10-17 拆 id) —— 两者**不是**同一个效果,读数必须分开
+    out += ":fanE=" + kFxText(p, fx.KANGEL_FAN_INDICATOR);
+    out += ":markE=" + kFxText(p, fx.KANGEL_FAN);
     out += ":loveE=" + kFxText(p, fx.AME_LOVE);
     out += ":ovdE=" + kFxText(p, fx.AME_OVERDOSE);
     out += ":lock=" + kRd(function () { return kBase().isSignActiveLocked(p) ? 1 : 0; }, "ERR");
