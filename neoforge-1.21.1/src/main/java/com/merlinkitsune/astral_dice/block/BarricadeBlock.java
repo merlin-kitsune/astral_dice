@@ -70,4 +70,29 @@ public class BarricadeBlock extends Block {
     public PathType getBlockPathType(BlockState state, BlockGetter level, BlockPos pos, Mob mob) {
         return PathType.WALKABLE;
     }
+
+    /**
+     * 飞行物命中本方块 ⇒ 转成对路障实体的一次「固定 -1」伤害（2026-10-18 实机修复）。
+     *
+     * <p>背景：路障实体本体站在 1.5 格碰撞方块里，箭/弩弹会先打中方块而到不了实体
+     * （实机：掠夺者锁定目标并射击，但耐久 30 一直不降）⇒ 在方块层接住并转发给实体。
+     * 伤害来源用 {@code thrown(projectile, owner)}，与实体自己的 {@code hurt} 同一个入口；
+     * 无主飞行物（发射器）不转发（与「只有生物来源才扣耐久」口径一致）。
+     */
+    @Override
+    public void onProjectileHit(net.minecraft.world.level.Level level, BlockState state,
+                                net.minecraft.world.phys.BlockHitResult hit,
+                                net.minecraft.world.entity.projectile.Projectile projectile) {
+        if (level.isClientSide) return;
+        net.minecraft.world.entity.Entity owner = projectile.getOwner();
+        if (!(owner instanceof net.minecraft.world.entity.LivingEntity)) return;
+        net.minecraft.world.phys.AABB area = new net.minecraft.world.phys.AABB(hit.getBlockPos()).inflate(0.75D);
+        for (com.merlinkitsune.astral_dice.entity.BarricadeEntity bar
+                : level.getEntitiesOfClass(com.merlinkitsune.astral_dice.entity.BarricadeEntity.class, area)) {
+            if (bar.isAlive() && !bar.isRemoved()) {
+                bar.hurt(level.damageSources().thrown(projectile, owner), 1.0F);
+                break;
+            }
+        }
+    }
 }

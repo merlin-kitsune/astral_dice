@@ -176,6 +176,20 @@ public class BarricadeEntity extends LivingEntity {
     public void tick() {
         super.tick();
         if (this.level().isClientSide) return;
+        // 钉死在本方块中心：任何外力（爆炸 / 活塞 / 位移效果）把实体推离碰撞方块后
+        // 下一 tick 立刻拉回，避免「视觉与碰撞脱节」（2026-10-18 实机：苦力怕爆炸把位置
+        // 推到 y=105.75，方块仍在 y=96）。
+        if (this.collisionPos != null) {
+            double cx = this.collisionPos.getX() + 0.5D;
+            double cy = this.collisionPos.getY();
+            double cz = this.collisionPos.getZ() + 0.5D;
+            if (Math.abs(this.getX() - cx) > 1.0E-3D
+                    || Math.abs(this.getY() - cy) > 1.0E-3D
+                    || Math.abs(this.getZ() - cz) > 1.0E-3D) {
+                this.setPos(cx, cy, cz);
+                this.setDeltaMovement(0.0D, 0.0D, 0.0D);
+            }
+        }
 
         if (this.needsBlockCheck) {
             this.needsBlockCheck = false;
@@ -270,6 +284,17 @@ public class BarricadeEntity extends LivingEntity {
     public boolean isPushable() {
         return false;
     }
+
+    /**
+     * 钉在地上：不吃爆炸 / 活塞 / 水流等一切外力推移（2026-10-18 实机：苦力怕爆炸把路障从
+     * y=96 推到 y=105.75，而碰撞方块还在原地 ⇒ 视觉与碰撞脱节）。实体的位移只允许由
+     * 「放置」与「方块校验自毁」两条路径决定。
+     */
+    @Override
+    public void push(double x, double y, double z) {
+        // 故意空实现
+    }
+
 
     /** 路障不是战利品也不是经验来源（用户需求未要求掉落）。 */
     @Override

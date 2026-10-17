@@ -44,7 +44,7 @@
 |---|---|
 | 基类 | `extends LivingEntity`（**不**用 Mob AI） |
 | 属性 | `MAX_HEALTH = 30`，由 `event/ModEntityEvents` 的 `EntityAttributeCreationEvent#put` 注册（`LivingEntity.createLivingAttributes().add(Attributes.MAX_HEALTH, 30.0)`） |
-| 物理 | `noPhysics = true`、`setNoGravity(true)`、`isPushable() = false` |
+| 物理 | `noPhysics = true`、`setNoGravity(true)`、`isPushable() = false`；`push(...)` 空实现 + 每 tick 把位置钉回碰撞方块中心（爆炸/活塞/位移效果都无法把它推离方块；实机：苦力怕爆炸曾把它从 y=96 推到 y=105.75） |
 | 尺寸 / 视点 | 实体类型 `sized(1.2F, 2.0F)`：视点 = 0.85×2.0 = **1.7 > 碰撞方块顶 1.5**。2026-10-18 实机取证：实体本体站在 1.5 格高的碰撞方块内时，怪物 `hasLineOfSight` 的射线终点落在方块内部被挡住 ⇒ `MeleeAttackGoal` 永不触发（卫道士走到 0.8 格、`reach=true` 却 12 秒 0 次 `hurt`）；把视点抬到方块顶以上后 LOS 恢复、卫道士每秒命中一次（30→16，−14/12s）。 |
 | 受伤 | 覆写 `hurt(DamageSource, float)`（仅服务端）：仅接受 `source.getEntity() instanceof LivingEntity`（怪物 / 玩家 / 其发射物都算）；**无视伤害值、每次固定 -1**（`setHealth(getHealth() - 1)`；不写 `invulnerableTime`、不依赖无敌帧），扣到 0 调 `die` |
 | 受击反馈 | `markHurt()` + `level().broadcastDamageEvent(this, source)`（客户端 `handleDamageEvent` 置 `hurtTime = hurtDuration = 10` 并播受击音；服务端不再重复 `playSound`） |
@@ -60,6 +60,7 @@
 - 碰撞箱 `Shapes.box(0, 0, 0, 1, 1.5, 1)`（栅栏高度 ⇒ 跳不过去）；
 - `getRenderShape` = `RenderShape.INVISIBLE`；`noOcclusion()`、`isViewBlocking→false`、`isSuffocating→false`、`isRedstoneConductor→false`、`noLootTable()`、`strength(-1.0F, 3600000.0F)`（不可破坏）、`sound(SoundType.WOOD)`；
 - **寻路层放行 + 物理层挡路**：`isPathfindable()` 返回 **true**、`getBlockPathType()` 返回 **WALKABLE**（neo `PathType.WALKABLE` / forge `BlockPathTypes.WALKABLE`）。2026-10-18 实机取证：旧口径 `isPathfindable=false` 会让怪物的 `PathNavigation` 规划不到「路障所占格」⇒ 只站远处盯目标、不靠近也不攻击；放行后卫道士会走到 0.8 格贴身处，被 1.5 格碰撞箱挡住（**依旧越不过去**）并在近战距离攻击路障。
+- **投射物转发**：`onProjectileHit` 把命中本方块的箭/弹转发给路障实体（`hurt(damageSources().thrown(projectile, owner), 1)`，无主投射物不转发）。实机：掠夺者的弩弹会被 1.5 格碰撞箱先挡住、到不了实体 ⇒ 在方块层接住并同样扣 1 点。
 - 资产：`blockstates/barricade_collision.json` → `astral_dice:block/barricade_collision`，模型 `{"textures":{"particle":"minecraft:block/oak_planks"},"elements":[]}`（避免 Missing model 日志）。
 
 > ⚠️ **视觉高 ≈0.83 格 vs 碰撞 1.5 格**：需求优先「像栅栏一样挡路」（栅栏 = 1.5），而 bbmodel 实物只有 14 像素高（倾斜后 ≈0.83 格）⇒ 板顶以上约 0.67 格是隐形墙。这是**有意取舍**（保挡路、不拉伸美术）；若要改成「碰撞 1.0 + 可跳过」或「缩放模型填满 1.5」，属玩法决策。
@@ -175,3 +176,20 @@
 - forge-1.20.1 线未实机（实体/方块代码与 neo 逐行等价，仅平台 API 差异已在编译期验证）；
 - 远程怪（骷髅/掠夺者）与爆炸伤害未单独测试；
 - 耐久归零后的「清方块 + 解除仇恨」路径未跑到（本轮只打到 16）。
+
+### 11.3 第二轮（2026-10-18 01:0x，覆盖 forge 线与剩余项）
+
+| 项 | neo 1.21.1 | forge 1.20.1 |
+|---|---|---|
+| 放置 + 碰撞箱 | 落点正确、`shapeY=1.50` | 落点正确、`shapeY=1.50` |
+| 近战 AI 攻击 | 卫道士 30→16（12s/14 次） | 卫道士 30→16（12s/14 次） |
+| 6 格外对照 | 不锁定、hp 30 | 不造成伤害、hp 30 |
+| 精英对照（maxHealth=50） | `target=none`、hp 30 | 不造成伤害、hp 30 |
+| 死亡清理 | bar=none、方块已删、3 只怪 `target=none` | bar=none、方块已删、3 只怪 `target=none` |
+| 远程伤害 | 女巫药水 30→27 | 女巫药水 30→26 |
+| 爆炸伤害 + 不被推开 | 苦力怕 30→29，位置不变 | 苦力怕 26→24，位置不变 |
+| 玩家跳越 | 静态：碰撞箱 1.5 格 > 原版跳跃高度 1.2522 ⇒ 跳不过（逐帧手感未复测） | 同左 |
+
+**本轮实机暴露并已修复的 2 个新缺陷**：
+1. **弩弹/箭被碰撞方块先挡住**（掠夺者锁定并射击，耐久不降）⇒ 在 `BarricadeBlock#onProjectileHit` 里把命中本方块、有主投射物的伤害转发给路障实体（同样每次 −1；无主投射物不转发）。
+2. **爆炸把实体推离方块**（苦力怕把路障从 y=96 推到 y=105.75，方块还在原地）⇒ `push(...)` 空实现 + 每 tick 位置钉回碰撞方块中心。
