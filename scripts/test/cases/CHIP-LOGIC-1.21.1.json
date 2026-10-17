@@ -158,15 +158,6 @@
     },
     {
       "op": "inject_command",
-      "command": "/astralshop cbuy CL 0",
-      "no_esc": true
-    },
-    {
-      "op": "wait",
-      "ms": 1200
-    },
-    {
-      "op": "inject_command",
       "command": "/astralshop cbuy CL -1",
       "no_esc": true
     },
@@ -177,15 +168,6 @@
     {
       "op": "inject_command",
       "command": "/astralshop cbuy CL 3",
-      "no_esc": true
-    },
-    {
-      "op": "wait",
-      "ms": 900
-    },
-    {
-      "op": "inject_command",
-      "command": "/astralshop cstate CL",
       "no_esc": true
     },
     {
@@ -230,6 +212,37 @@
     },
     {
       "op": "inject_command",
+      "command": "/astralshop cbuy CL 0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop cstate CL",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "note",
+      "text": "cseq 前置：清空物品栏 —— cseq 段断言 inv=0/36 且 CSEQ4 的 invDelta=0；真购买会把 1 枚筹码留在物品栏，不清空会让 CSEQ0/4/5 与 CSEQ5OWN 全部读偏（实测 inv=1/36、invDelta=1、owned=2、owned 逐项为 empty）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop cinv CL clear",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
       "command": "/astralshop cprice CL 0",
       "no_esc": true
     },
@@ -245,6 +258,15 @@
     {
       "op": "wait",
       "ms": 1800
+    },
+    {
+      "op": "note",
+      "text": "⚠️ cblock 前必须 creset 清冷却：真购买（/astralshop cbuy CL 0）成功后产品会进入 5:00 购买冷却并关店（计划 §5 需求 4）；冷却期内走 cblock 真实右键开店会被拒绝，日志证据为 CHIP_SHOP_OPEN_DENIED reason=cooldown（AP_CL_CBUY:menu=null / AP_CL_CUSE:res=CONSUME:menu=InventoryMenu）。⇒ 在 /setblock ~2 ~ ~ air 清位之前先 /astralshop creset CL 清掉冷却（creset 之后的等待复用 /setblock 后的 wait 600），再放置方块 + 右键。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop creset CL",
+      "no_esc": true
     },
     {
       "op": "inject_command",
@@ -364,12 +386,12 @@
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_CL_CBUY:idx=-1:ex=-:bal=990->990"
+      "pattern": "AP_CL_CBUY:idx=-1:ex=-:bal=1000->1000"
     },
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_CL_CBUY:idx=3:ex=-:bal=990->990"
+      "pattern": "AP_CL_CBUY:idx=3:ex=-:bal=1000->1000"
     },
     {
       "type": "log",

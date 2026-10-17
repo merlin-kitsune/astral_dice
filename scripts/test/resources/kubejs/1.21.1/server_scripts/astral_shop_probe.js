@@ -2055,6 +2055,9 @@ function sp_doChipSeq(ctx, tag) {
         + ':menu=' + sp_cls(p.containerMenu) + ':lastCat=' + cp_lastCat(sPost));
 
     // ⑤ 关店重进：价格 = 上次 + 5、次数不变、三格候选全为未拥有
+    //   ⚠️ 购买会进入 5:00 购买冷却（计划 §5 需求 4）⇒ 直接重开会 CHIP_SHOP_OPEN_DENIED reason=cooldown；
+    //      这里只清冷却（withCooldown(0)），保留 purchased / refreshes / price，才符合「重进」语义。
+    try { SP_ChipState.store(p, cp_state(p).withCooldown(0)); } catch (e5c) { }
     SP_ChipOpener.open(p);
     var m5 = cp_menuOf(p);
     var s5 = cp_state(p);
