@@ -51,12 +51,12 @@ pwsh -NoProfile -File scripts/devtools/Test-MtSyntax.ps1
 - ⛔ **不再支持从 WSL/Linux 驱动本工具链**（2026-10-17 晚收敛）：`scripts/test/mt_build.sh` 已删除；`/mnt/...`、`wslpath`、`cmd.exe` 中转等写法一律不要再引入。
 - 历史环境事实（2026-10-13～17 的 WSL 驱动阶段，**只作知识、不要据此施工**）：① `/mnt/f`（9p）上 Gradle 全树 stat/hash 慢 ≈275×（`neoforge-1.21.1` 335 个源文件 find+stat：9p 1.65s vs ext4 0.006s），`:classes` 冷跑 9m22s、forge 冷管线连吃 3×570s 超时；② 从 WSL interop 直接起的 `pwsh.exe` 里 `& <exe>` 会静默不执行子进程（`$LASTEXITCODE` 不被创建），曾把 `mt_launch` 的 doImmediateRespawn 闸门误报成 `MT_LAUNCH: ERROR`（D4-5）；③ WSL 默认不透传 Windows PATH（`pwsh.exe` 需全路径）。
 - 为②留下的 `lib/Mt.Proc.psm1 → Invoke-MtChildProcess`（`Start-Process -NoNewWindow -PassThru` + `Process.ExitCode` + `-TimeoutSec` / `-Capture`）**保留**，作为工具链统一的子进程原语：Windows 原生下同样更稳（退出码不经 `$LASTEXITCODE`、支持超时强杀），`mt_launch` / `mt_stop` / `mt_loadergate` 继续用它。
-- 行尾：本树 LF / CRLF 混存（`neoforge-1.21.1` 的 Java 与 `docs/handover-*` 是 LF；`forge-1.20.1` 的 Java、`scripts/test/resources/kubejs/1.21.1/*.js`、`docs/compat-1.20.1-forge.md`、`AGENTS.md` 是 CRLF）。**禁止全仓转换行尾**；核对 `git ls-files --eol -- <路径>`。
+- 行尾：本树 LF / CRLF **逐文件混存**，不要按目录猜 —— 一律以 `git ls-files --eol -- <路径>` 实测为准（2026-10-17 实测：`neoforge-1.21.1/src/main/java/**/*.java` = crlf 315 / lf 41 / mixed 2；`AGENTS.md` = LF；`docs/handover-1.3.0.md` = w/crlf；`docs/handover-new-session-context.md` = LF；`mt_build.ps1` 为 w/crlf，属 `core.autocrlf=true` 的正常检出）。**禁止全仓转换行尾**；改文件前先核对，避免整文件行尾翻转污染 diff。
 
 ## 基本盘
 
 - 工作树：`F:\MCProject\astral_dice_multiloader-next`（分支 `multi-dev-next`）；**HEAD 与四线版本一律以实测为准**——第 37 条交接基线 `61968fc5`（第 36 条 `f7ee13e0` → 首测 `96352433` → 修复 `71e38e43` → Jade 开关 `2cb56b13` → mt 工具链 `b05ce817` → WSL pwsh 健壮性 `95b29313` → 交接 `61968fc5`）；四线 `mod_version` = **`2.0.0-SNAPSHOT.128+<后缀>`**；
-- 工作树状态：除 **4 行** `?? %SystemDrive%/ProgramData/Microsoft/Windows/Caches/*.db`（与本项目无关的路径解析垃圾，勿提交、勿用 `git add -A`）与 **2 行** `?? models/*.bbmodel`（归属未定，见第 37 条）外**干净**；**未 push**（`git status -sb` = `ahead 323` 量级，推送须用户明确要求且走代理 `http://127.0.0.1:7897`）；
+- 工作树状态：除 **4 行** `?? %SystemDrive%/ProgramData/Microsoft/Windows/Caches/*.db`（与本项目无关的路径解析垃圾，勿提交、勿用 `git add -A`）与 **2 行** `?? models/*.bbmodel`（归属未定，见第 37 条）外**干净**；**未 push**（`git status -sb` 的 `ahead N` 随提交递增，以实测为准；推送须用户明确要求且走代理 `http://127.0.0.1:7897`）；
 - 优先级：**P0 = neoforge-1.21.1 + forge-1.20.1（同批）**；**P1 = neoforge-26.1.2 + fabric-1.20.1（待移植）**。
 
 ## 已完成（P0 两线对等）
