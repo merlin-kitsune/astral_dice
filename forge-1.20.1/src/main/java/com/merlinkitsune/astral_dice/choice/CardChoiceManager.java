@@ -105,17 +105,31 @@ public final class CardChoiceManager {
         Session session = new Session(token, slotCount, type, handler);
         SESSIONS.put(player.getUUID(), session);
 
-        NetworkHooks.openScreen(player, new SimpleMenuProvider(
-                        (containerId, inventory, p) -> new CardChoiceMenu(containerId, inventory, token, slotCount, type),
-                        Component.translatable(type.titleKey(slotCount))),
-                buf -> {
-                    buf.writeVarInt(token);
-                    buf.writeVarInt(slotCount);
-                    buf.writeVarInt(type.ordinal());
-                });
+        try {
+            NetworkHooks.openScreen(player, new SimpleMenuProvider(
+                            (containerId, inventory, p) -> new CardChoiceMenu(containerId, inventory, token, slotCount, type),
+                            Component.translatable(type.titleKey(slotCount))),
+                    buf -> {
+                        buf.writeVarInt(token);
+                        buf.writeVarInt(slotCount);
+                        buf.writeVarInt(type.ordinal());
+                    });
+        } catch (RuntimeException exception) {
+            // 打开途中抛异常（createMenu 构造失败 / extra data 编码失败等）：会话已入 map，
+            // 不清理就会让该玩家此后**恒**被判 already_open ⇒ 必须回滚会话并返回失败。
+            session.resolved = true;
+            SESSIONS.remove(player.getUUID(), session);
+            LOGGER.warn("AP_CARD_CHOICE: reject:reason=open_failed:player={}:token={}",
+                    player.getGameProfile().getName(), token, exception);
+            return false;
+        }
         // 1.20.1 的 NetworkHooks#openScreen 返回 void（1.21.1 的 ServerPlayer#openMenu 返回 OptionalInt），
         // 无法直接读到「是否成功打开」⇒ 改为打开后回读 player.containerMenu：不是本 token 的
-        // CardChoiceMenu 即视为失败（观众模式 createMenu 返回 null 时 openScreen 会静默不发包）。
+        // CardChoiceMenu 即视为失败。**观众（spectator）不在此列**：provider 恒非 null
+        //（{@code SimpleMenuProvider} 的 lambda 直接 new，不存在 createMenu 返回 null 的分支），
+        // 观众同样能打开界面、回读到本 token 的菜单；其点击是**服务端丢弃**
+        //（{@code ServerGamePacketListenerImpl#handleContainerClick} 对 spectator 只 sendAllDataToRemote）⇒
+        // 界面会停住到玩家手动关闭，见 docs/features/card-choice-screen-spec.md §6 / §8。
         if (!(player.containerMenu instanceof CardChoiceMenu menu) || menu.token() != token) {
             SESSIONS.remove(player.getUUID(), session);
             session.resolved = true;
@@ -201,8 +215,10 @@ public final class CardChoiceManager {
      * （卡牌落在死亡点）并顺带 {@code abandon} 清会话；随后再按 UUID 兜底移除一次。
      * 与掉线兜底 {@link #onPlayerLogout} 互不冲突：先到者清会话，后到者读到 null 直接返回。
      *
-     * <p>⚠️ 1.20.1 的 {@code Player#die} 与 {@code LivingEntity#die} 各派发一次本事件（同一次死亡会到两次），
-     * 本方法必须幂等 —— 第二次进来时会话已不在 map 里，直接返回。
+     * <p>⚠️ 派发次数：1.20.1 的 {@code ServerPlayer#die} **不调 {@code super.die}**（整段死亡处理内联在
+     * {@code ServerPlayer} 自己的 {@code die} 里），Forge 的 patch 只在该方法头部注入一次
+     * {@code ForgeHooks.onLivingDeath} ⇒ 玩家死亡只会派发**一次**本事件。
+     * 本方法仍保持幂等（重复进来时会话已不在 map 里，直接返回），以防上游事件口径变化。
      *
      * <p>优先级 {@link EventPriority#LOWEST}：排在「保命 / 复活」类监听之后，事件被取消时完全不动。
      */

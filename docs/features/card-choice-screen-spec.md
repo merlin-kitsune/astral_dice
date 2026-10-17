@@ -111,6 +111,9 @@ CardChoiceManager.registerHandler(player, myToken, picked -> { ... });
    松手落空/类型不符/槽已占用 ⇒ 再发一次 `PICKUP` 放回原槽。这样不需要自绘幽灵，也不会出现
    「屏幕显示有卡、服务端其实没搬」的状态。落空还原、失焦/左键未抬起清理（`containerTick`）均已实现。
    落点命中同样走 `slotOrChoiceAt`：卡框是隐藏坐标，必须回落到 `choiceSlotAt` 的屏幕自绘命中区。
+   **落点是物品栏格时先做发包前预判**：该格已被**不同物品**占用（或同种但已满叠 / `mayPlace` 为假）⇒
+   **不发**放置包，直接走还原分支；否则原版 `AbstractContainerMenu#doClick` 的 `PICKUP` 会落到交换分支，
+   让两件物品换位（违反 §7「已占用 ⇒ 原路还原」）。判据见 `CardChoiceScreen#canAcceptCarried`。
 4. **双击窗口 280ms 由屏幕层翻译成原版 `ClickType.QUICK_MOVE`**。1.21.1 的原生双击语义是
    `PICKUP_ALL`（把同类物品收进光标），不能直接复用；因此第一次按下只记录相位、不交给原版，
    280ms 内同一槽再次按下才发 `QUICK_MOVE`。单击因此**只选中不拿起**（与商店手势一致），
@@ -131,6 +134,12 @@ CardChoiceManager.registerHandler(player, myToken, picked -> { ... });
 | `renderSlot` 覆写 | `protected`，可跳过隐藏槽 | **`private`**，不可覆写 ⇒ 隐藏槽物品由原版画在 -10000（与商店同口径，无副作用） |
 | `ResourceLocation` 构造 | `fromNamespaceAndPath` | `new ResourceLocation` |
 
+> **观众（spectator）打开——两线行为相同，不是端口差异**：provider（`SimpleMenuProvider` 的 lambda）
+> **恒非 null**，不存在「`createMenu` 返回 null ⇒ 打开失败」的分支 ⇒ 观众**能**打开界面；
+> 但其点击包被服务端丢弃（`ServerGamePacketListenerImpl#handleContainerClick`：`if (this.player.isSpectator())`
+> 只执行 `containerMenu.sendAllDataToRemote()`，1.21.1 为 L1705、1.20.1 为 L1594，不进入 `clicked`），
+> 故界面会**停住到玩家手动关闭**（不崩溃、不消耗卡）。详见 §8 已知边界。
+
 ## 7. 服务端权威与安全
 
 - 所选卡牌**不由客户端上报**：卡牌在打开期间已被原版点击/`quickMoveStack` 真实移入菜单的后备容器，
@@ -146,6 +155,13 @@ CardChoiceManager.registerHandler(player, myToken, picked -> { ... });
 - 不移植 `neoforge-26.1.2` / `fabric-1.20.1`。
 - 不加超时强制选择。
 - 不新绘任何贴图（全部复用 `textures/gui/shop/` 既有素材）。
+
+### 8.1 已知边界（不修，仅登记）
+
+- **观众（spectator）打开会卡住到手动关闭**：界面能正常打开（provider 恒非 null，`openMenu` 不会失败），
+  但玩家点击被服务端丢弃（见 §6 末注），因此**放不进卡、也点不到确认按钮**，只能按 Esc 手动关闭；
+  关闭时卡槽为空、`abandon` 清户会话，**零消耗、零回调**。后续若要挡住，可在 `CardChoiceManager#start`
+  入口按 `player.isSpectator()` 直接返回失败（本批未做，避免改变现有调用方语义）。
 
 ## 9. 实机验证建议（需用户明确下达）
 
@@ -172,9 +188,23 @@ CardChoiceManager.registerHandler(player, myToken, picked -> { ... });
 | 级别 | 问题 | 修法 | 落点 |
 |---|---|---|---|
 | P1 | 卡框不可交互：虚拟卡槽坐标 `HIDDEN_X/Y = -10000`，`mouseClicked` / `finishDrag` 只经 `slotAt()` 命中 ⇒ 拖动放入 / 双击取回 / 拖回物品栏全是死代码 | 新增 `slotOrChoiceAt()`：`slotAt()` 落空时回落 `choiceSlotAt()`（屏幕自绘卡框命中区）取 `menu.getSlot(i)`；`mouseClicked` 与 `finishDrag` 两个入口改用之 | `screen/CardChoiceScreen.java`（两线） |
-| P2 | 死亡不退牌 + 会话残留：`PlayerList#respawn` 直接替换 `ServerPlayer`，旧菜单 `removed()` 不被调用 | `CardChoiceManager` 订阅 `LivingDeathEvent`（`EventPriority.LOWEST` + `isCanceled()` 守卫）：`closeContainer()` 走 `removed()` 的死亡掉落分支，再按 UUID 兜底清会话。`removed()` 的掉落判据由 `!isAlive()` 改为 `isDeadOrDying() \|\| !isAlive()`（`isAlive()` 是 `!isRemoved()`，死亡事件期间仍为 true），光标携带物同口径掉落 | `choice/CardChoiceManager.java`、`screen/CardChoiceMenu.java`（两线） |
+| P2 | 死亡不退牌 + 会话残留：`PlayerList#respawn` 直接替换 `ServerPlayer`，旧菜单 `removed()` 不被调用 | `CardChoiceManager` 订阅 `LivingDeathEvent`（`EventPriority.LOWEST` + `isCanceled()` 守卫）：`closeContainer()` 走 `removed()` 的死亡掉落分支，再按 UUID 兜底清会话。`removed()` 的掉落判据由 `!isAlive()` 改为 `isDeadOrDying() \|\| !isAlive()`（后者已被证明冗余：`LivingEntity#isAlive()` = `!isRemoved() && getHealth() > 0`，死亡瞬间即为 false ⇒ 第三轮已简化为 `!isAlive()`，见 §11），光标携带物同口径掉落 | `choice/CardChoiceManager.java`、`screen/CardChoiceMenu.java`（两线） |
 | P3 | 1.20.1 `start()` 恒返回 true | `NetworkHooks#openScreen` 无返回值 ⇒ 打开后回读 `player.containerMenu`，不是本 token 的 `CardChoiceMenu` 即回滚会话并打 `reject:reason=open_failed`（对齐 1.21.1 的 `opened.isEmpty()`） | `choice/CardChoiceManager.java`（forge 线） |
 
 **死代码处置**：本次修复**未新增死代码**，也未删除既有分支 —— `slotAt()` 仍负责 36 格物品栏命中，
 `choiceSlotAt()` 由「仅 tooltip」扩展为「tooltip + 输入命中」；NeoForge 的 `renderSlot` / `renderSlotHighlight`
 覆写仍然必要（跳过隐藏坐标卡槽的原版渲染），保留。
+
+## 11. 第三轮小修登记（2026-10-17）
+
+| 级别 | 问题 | 修法 | 落点 |
+|---|---|---|---|
+| 中 | 卡牌拖到「已被**不同物品**占用的物品栏格」时屏幕层无条件发 `PICKUP`，原版 `AbstractContainerMenu#doClick` 走**交换**分支 ⇒ 卡与该格物品换位，违反 §7「已占用 ⇒ 原路还原」 | 新增 `canAcceptCarried(Slot)` 发包前预判：目标格为空、或同种且未满叠（且 `mayPlace`）才发放置包；否则**不发包**，直接走还原分支（对 `dragOrigin` 再发一次 `PICKUP`） | `screen/CardChoiceScreen.java`（两线：`finishDrag` + 新方法） |
+| 低 | `CardChoiceMenu#removed` 的注释把 `LivingEntity#isAlive()` 说成 `!isRemoved()`（「死亡事件期间仍为 true」）—— **错误**：它实际是 `!isRemoved() && getHealth() > 0`，死亡瞬间（生命已置 0、实体尚未被 respawn 替换）**已为 false**；据此保留的 `isDeadOrDying()`（等价于 `getHealth() <= 0`）是冗余判据 | **二选一取「简化」**：掉落判据改为 `!player.isAlive() \|\| hasDisconnected()`，注释改成上述正确表述；光标携带物那段注释同步更正为「父类按 `isAlive() && !hasDisconnected()` 分流」 | `screen/CardChoiceMenu.java`（两线） |
+| 低 | forge `CardChoiceManager` 注释称「1.20.1 的 `Player#die` 与 `LivingEntity#die` 各派发一次（同一次死亡会到两次）」—— **错误**：1.20.1 的 `ServerPlayer#die` **不调** `super.die`（整段死亡处理内联），Forge 只在该方法头部注入一次 `ForgeHooks.onLivingDeath` ⇒ 只派发**一次** | 注释改为「一次派发」；幂等判断保留作为防御 | `choice/CardChoiceManager.java`（forge 线） |
+| 低 | `start()` 里 `openMenu` / `NetworkHooks#openScreen` 未包异常：`createMenu` 构造或 extra data 编码抛异常时会话已入 map 且无人清理 ⇒ 该玩家此后**恒**被判 `already_open` | 两线均包 `try/catch (RuntimeException)`：`session.resolved = true` + `SESSIONS.remove` + `WARN reject:reason=open_failed` + `return false` | `choice/CardChoiceManager.java`（两线） |
+| 文档 | §6 端口差异表把「观众模式 `createMenu` 返回 null ⇒ 打开失败」当成事实 —— **不成立**（`SimpleMenuProvider` 的 provider 恒非 null） | 改为实际口径：观众**可打开**，但服务端丢弃其点击（`ServerGamePacketListenerImpl#handleContainerClick` 对 spectator 只 `sendAllDataToRemote()`，1.21.1 L1705 / 1.20.1 L1594）；§8.1 登记「观众打开会卡住到手动关闭」 | 本文件 §6 / §8.1 |
+
+**静态核对（`canAcceptCarried` 三分支）**：占用**不同物品** ⇒ `isSameItemSame*` 为假 ⇒ 不可接收 ⇒ 不发包 ⇒ 原路还原；
+占用**同种可叠**（`existing.getCount() < slot.getMaxStackSize(existing)`）⇒ 可接收 ⇒ 原版 `safeInsert` 合并、余量留光标；
+**空槽** ⇒ 可接收 ⇒ `safeInsert` 放入。三支均不会触发交换分支。

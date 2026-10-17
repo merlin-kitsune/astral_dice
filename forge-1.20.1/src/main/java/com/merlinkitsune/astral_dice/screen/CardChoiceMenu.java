@@ -179,10 +179,11 @@ public class CardChoiceMenu extends AbstractContainerMenu {
         if (!player.level().isClientSide() && !closed) {
             closed = true;
             // 死亡 / 已断线一律**直接掉落**（避免写进不会再保存的背包）。
-            // ⚠️ 不能只看 isAlive()：原版 {@code Entity#isAlive()} = {@code !isRemoved()}，死亡事件期间
-            //    仍为 true（{@code PlayerList#respawn} 换实体之前不会 removed）⇒ 必须在死亡瞬间用
-            //    isDeadOrDying() 判定，否则卡牌会写进旧玩家的背包并随旧实体一起消失。
-            boolean dying = player.isDeadOrDying() || !player.isAlive()
+            // 判据口径（1.21.1 / 1.20.1 一致）：{@code LivingEntity#isAlive()} 覆写为
+            //   {@code !isRemoved() && getHealth() > 0} ⇒ 死亡瞬间（生命已被置 0、实体尚未被 respawn 替换）
+            //   它**就是 false**，所以只看 isAlive() 就够；{@code isDeadOrDying()} 只等价于
+            //   {@code getHealth() <= 0}，被 {@code !isAlive()} 完全覆盖，属于冗余判据，已去掉。
+            boolean dying = !player.isAlive()
                     || (player instanceof ServerPlayer serverPlayer && serverPlayer.hasDisconnected());
             // 余量（含「已确认但原栈还有多张」与「未确认的全部选择」）一律退回物品栏
             for (int i = 0; i < slotCount; i++) {
@@ -197,7 +198,9 @@ public class CardChoiceMenu extends AbstractContainerMenu {
                     cardContainer.setItem(i, ItemStack.EMPTY);
                 }
             }
-            // 光标上拖着的卡同理：父类 removed 只按 isAlive() 判定，会把它塞回（不会再保存的）背包
+            // 光标携带物与卡槽余量同口径：父类 {@code AbstractContainerMenu#removed} 在
+            // {@code player.isAlive() && !hasDisconnected()} 时塞回背包、否则掉落；这里提前按**同一判据**
+            // 处理并清空光标，使两者走完全相同的分支。
             if (dying) {
                 ItemStack carried = getCarried();
                 if (!carried.isEmpty()) {

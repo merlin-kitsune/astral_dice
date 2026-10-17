@@ -470,6 +470,15 @@
   spot** and clearing the session, without touching the logout fallback; ③ the 1.20.1 open path used to always report success
   — it now re-reads the open menu after opening and rolls back with a `reject:reason=open_failed` log on failure (matching 1.21.1).
 
+- **Fixed the card-choice screen swapping with an occupied inventory slot and open failures leaving a stuck session** (2026-10-17, third small-fix round):
+  ① dragging a card back onto an inventory slot **already holding a different item** made the vanilla click fall through to the
+  swap branch, trading the two stacks; the screen now pre-checks the target slot and only sends the placement click for an
+  **empty slot** or a **same-item slot with room**, otherwise it sends nothing and the card **returns to where it came from**
+  without being lost; ② opening the screen is now wrapped in a failure backstop: if building the menu or encoding the extra data
+  throws, the session is cleared and `reject:reason=open_failed` is logged, so the player is no longer permanently treated as
+  "already open"; ③ corrected two factually wrong comments (`isAlive()`'s real definition, and 1.20.1 dispatching the death
+  event only once) plus the spectator notes in the design document.
+
 #### Damage & Resolution
 
 - **Fixed two PvP misreads on the KAngel Sign: the "Fan" mark and the wearer's indicator shared one status** (2026-10-17): the wearer's

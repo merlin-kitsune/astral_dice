@@ -404,8 +404,11 @@ public class CardChoiceScreen extends AbstractContainerScreen<CardChoiceMenu> {
                     this.slotClicked(target, target.index, 0, ClickType.PICKUP);
                     placed = target.hasItem();
                 }
-            } else {
-                // 拖回物品栏：按原版规则落格（可合并），携带数减少即视为成功
+            } else if (canAcceptCarried(target)) {
+                // 拖回物品栏：**发包前**先预判目标格能否安全接收。被不同物品占用时原版
+                // {@code PICKUP} 会落到「交换」分支把两件物品换位，违反 spec §7「已占用 ⇒ 原路还原」
+                // ⇒ 不发包，直接走下方还原分支（落点为空槽 / 同种可叠时仍按原版合并）。
+                // 携带数减少即视为成功；余量留在光标上由原版处理。
                 int before = this.menu.getCarried().getCount();
                 this.slotClicked(target, target.index, 0, ClickType.PICKUP);
                 placed = this.menu.getCarried().getCount() < before;
@@ -420,6 +423,31 @@ public class CardChoiceScreen extends AbstractContainerScreen<CardChoiceMenu> {
             }
         }
         resetGesture();
+    }
+
+    /**
+     * 物品栏槽能否**安全接收**光标上的卡（发 {@code PICKUP} 前的预判，spec §7「已占用 ⇒ 原路还原」）。
+     *
+     * <p>原版 {@code AbstractContainerMenu#doClick} 的 {@code PICKUP} 分支里：
+     * <ul>
+     *   <li>槽为空 ⇒ {@code safeInsert} 放入（不会换位）；</li>
+     *   <li>槽内**同种且仍有余量** ⇒ {@code safeInsert} 合并（不会换位）；</li>
+     *   <li>槽内是**不同物品**（且携带数不超过格子上限）⇒ 走到末尾的**交换**分支，
+     *       两件物品直接换位 —— 这正是要避免的情形。</li>
+     * </ul>
+     * 因此「不同物品」与「同种已满叠 / 不可放置」一律判为不可接收，交给调用方原路还原。
+     */
+    private boolean canAcceptCarried(Slot slot) {
+        ItemStack carried = this.menu.getCarried();
+        if (carried.isEmpty() || !slot.mayPlace(carried)) {
+            return false;
+        }
+        if (!slot.hasItem()) {
+            return true;
+        }
+        ItemStack existing = slot.getItem();
+        return ItemStack.isSameItemSameTags(existing, carried)
+                && existing.getCount() < slot.getMaxStackSize(existing);
     }
 
     /** 事件丢失 / 失焦：把携带物放回原槽并清状态。 */

@@ -18,6 +18,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Map;
+import java.util.OptionalInt;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
@@ -117,16 +118,28 @@ public final class CardChoiceManager {
         Session session = new Session(token, slotCount, type, handler);
         SESSIONS.put(player.getUUID(), session);
 
-        var opened = player.openMenu(new SimpleMenuProvider(
-                        (containerId, inventory, p) -> new CardChoiceMenu(containerId, inventory, token, slotCount, type),
-                        Component.translatable(type.titleKey(slotCount))),
-                buf -> {
-                    buf.writeVarInt(token);
-                    buf.writeVarInt(slotCount);
-                    buf.writeVarInt(type.ordinal());
-                });
+        OptionalInt opened;
+        try {
+            opened = player.openMenu(new SimpleMenuProvider(
+                    (containerId, inventory, p) -> new CardChoiceMenu(containerId, inventory, token, slotCount, type),
+                    Component.translatable(type.titleKey(slotCount))),
+                    buf -> {
+                        buf.writeVarInt(token);
+                        buf.writeVarInt(slotCount);
+                        buf.writeVarInt(type.ordinal());
+                    });
+        } catch (RuntimeException exception) {
+            // 打开途中抛异常（createMenu 构造失败 / extra data 编码失败等）：会话已入 map，
+            // 不清理就会让该玩家此后**恒**被判 already_open ⇒ 必须回滚会话并返回失败。
+            session.resolved = true;
+            SESSIONS.remove(player.getUUID(), session);
+            LOGGER.warn("AP_CARD_CHOICE: reject:reason=open_failed:player={}:token={}",
+                    player.getGameProfile().getName(), token, exception);
+            return false;
+        }
         if (opened.isEmpty()) {
             SESSIONS.remove(player.getUUID(), session);
+            session.resolved = true;
             LOGGER.warn("AP_CARD_CHOICE: reject:reason=open_failed:player={}:token={}",
                     player.getGameProfile().getName(), token);
             return false;
