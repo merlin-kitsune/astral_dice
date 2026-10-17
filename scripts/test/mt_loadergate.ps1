@@ -503,8 +503,8 @@ public class LoaderGateProbe {
     $javac = Join-Path $script:JavaHome 'bin\javac.exe'
     $java = Join-Path $script:JavaHome 'bin\java.exe'
     $cp = "$mavenJar;$lang3Jar;$work"
-    # ⚠️ 不能写 `& $javac …`：从 WSL 起的 pwsh 里 `& <exe>` 会静默不执行子进程、`$LASTEXITCODE`
-    #    不被创建 ⇒ 编译闸门会把「根本没编译」误判成 compile_failed（2026-10-17，见 Mt.Proc.psm1）。
+    # 子进程统一走 Invoke-MtChildProcess（Process.ExitCode + 超时强杀，不读 `$LASTEXITCODE`）：
+    #    编译闸门若拿不到真实退出码，会把「根本没编译」误判成 compile_failed（见 Mt.Proc.psm1）。
     $compileR = Invoke-MtChildProcess -FilePath $javac -TimeoutSec 300 -Capture -Quiet -ArgumentList @(
         '-encoding', 'UTF-8', '-cp', $mavenJar, '-d', $work, $srcFile)
     $compileText = ($compileR.StdOut + $compileR.StdErr).Trim()

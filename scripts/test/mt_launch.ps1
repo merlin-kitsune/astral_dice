@@ -220,8 +220,8 @@ function Invoke-MtLaunchOpPreflight {
         $injectArgs = @('-NoProfile', '-File', (Join-Path $TestDir 'mt_inject.ps1'), 'cmd',
             '--command', '/astralprobe opprobe', '--version', $Version)
         if ($attempt -eq 1) { $injectArgs += '-NoEsc' }
-        # ⚠️ 不能写 `& $PsExe @injectArgs`：从 WSL 起的 pwsh 里 `& <exe>` 会静默不执行子进程、
-        #    且 `$LASTEXITCODE` 根本不会被创建（详见 Mt.Proc.psm1 → Invoke-MtChildProcess）。
+        # 子进程统一走 Invoke-MtChildProcess（Windows 原生：Start-Process -NoNewWindow -PassThru +
+        #    Process.ExitCode + 超时强杀；不依赖 `$LASTEXITCODE`，见 Mt.Proc.psm1 该函数说明）。
         $injectR = Invoke-MtChildProcess -FilePath $PsExe -ArgumentList $injectArgs -TimeoutSec 120
         $rcs += $injectR.ExitCode
         $pollUntil = (Get-Date).AddSeconds(4)
@@ -822,7 +822,7 @@ if ($MyInvocation.InvocationName -ne '.') {
     }
 
     # KubeJS 脚本健康（进入世界后第一步）
-    # 走 Invoke-MtChildProcess（不用 `&`，退出码取 Process.ExitCode）：见 Mt.Proc.psm1 的实测说明。
+    # 走 Invoke-MtChildProcess（不用 `&`，退出码取 Process.ExitCode）：见 Mt.Proc.psm1 的说明。
     $kubejsR = Invoke-MtChildProcess -FilePath $psExe -TimeoutSec 120 -ArgumentList @(
         '-NoProfile', '-File', (Join-Path $testDir 'mt_assert.ps1'), 'kubejs', '--version', $Version)
     if ($kubejsR.ExitCode -ne 0) { Write-MtWarn 'KubeJS server.log 非 0 errors' }
@@ -907,10 +907,8 @@ if ($MyInvocation.InvocationName -ne '.') {
         $immCmd = "/gamerule $immRule true"
         $immRc = @()
         foreach ($immAttempt in 1..2) {
-            # ⚠️ P3/D4-5（2026-10-17 实测）：从 WSL 起的 pwsh 里 `& $psExe …` 会**静默不执行**子进程，
-            #    于是 `$LASTEXITCODE` 为 $null、注入一次都没发生，而本闸门把「日志里没有回显」判成
-            #    ERROR —— 实操中规则其实早已生效（同一状态被上一轮注入过），闸门却拒绝继续。
-            #    改为 Invoke-MtChildProcess（Start-Process + Process.ExitCode），两条启动方式都可靠。
+            # P3/D4-5（2026-10-17）：本闸门以**日志回显**自证，注入子进程的退出码必须可靠 —— 统一走
+            #    Invoke-MtChildProcess（Start-Process + Process.ExitCode + 超时），不读 `$LASTEXITCODE`。
             $immR = Invoke-MtChildProcess -FilePath $psExe -TimeoutSec 120 -ArgumentList @(
                 '-NoProfile', '-File', (Join-Path $testDir 'mt_inject.ps1'),
                 'cmd', '--command', $immCmd, '--version', $Version)

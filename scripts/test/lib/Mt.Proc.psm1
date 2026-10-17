@@ -188,19 +188,16 @@ function Invoke-MtChildProcess {
         `-Capture` 时连 stdout/stderr 一并取回。
 
     .DESCRIPTION
-        为什么**不能**写 `& $psExe -NoProfile -File …`（2026-10-17 实测，WSL 驱动 Windows 工具链）：
-          从 WSL 直接起的 `pwsh.exe` 里，调用运算符 `& <exe>` 会**静默不执行**子进程 ——
-          既没有任何 stdout，也拿不到退出码（`$LASTEXITCODE` 变量根本不会被创建）。取证（WSL bash）：
-              $o = & C:\Windows\System32\where.exe cmd.exe
-              ⇒ rc=[] out=[] isset=False
-              & C:\Windows\System32\cmd.exe /c 'echo x> 文件'
-              ⇒ rc=[] 且文件根本没生成（子进程确实没起来）
-              （已排除 cwd/UNC 与 stdin/stdout 重定向因素：进程 cwd 设成 C:\… 同样失败）
-          后果：`mt_launch` 的 doImmediateRespawn 硬闸门把 `$null -ne 0` 判成「注入失败」⇒
-          规则明明已生效却报 `MT_LAUNCH: ERROR`（D4-5）。
-        同一台机器上 `Start-Process -NoNewWindow -PassThru` 在「WSL 直接启动」与「有控制台的父进程」
-        两种形态下都实测正常（见 temp/d45 自测报告），故本函数统一走 Start-Process：
-        **不用** `&`，也**不读** `$LASTEXITCODE`。
+        本函数是**工具链统一的子进程原语**：一律走
+        `Start-Process -NoNewWindow -PassThru`，退出码取 `Process.ExitCode`；**不用** `&`，
+        也**不读** `$LASTEXITCODE`（`&` 在 null / 超时 / 被包装的调用形态下不可靠），
+        需要限时用 `-TimeoutSec` 强杀整棵进程树。
+
+        历史（2026-10-17 实测一次，只作知识，**不再支持**该驱动方式）：从 WSL 直接起的
+        `pwsh.exe` 里，`& <exe>` 会**静默不执行**子进程（无 stdout、`$LASTEXITCODE` 不被创建），
+        当时 `mt_launch` 的 doImmediateRespawn 硬闸门因此把「注入没发生」误报成 `MT_LAUNCH: ERROR`
+        （D4-5）。2026-10-17 晚工具链已收敛回 **Windows 原生**（`mt_build.sh` 已删除），
+        本函数保留是因为上面的退出码 / 超时语义本身就比 `&` 稳。
 
         两种模式：
           · 默认 —— **不重定向**，子进程继承调用方控制台句柄 ⇒ 与原生 `&` 走同一组句柄（输出内容/顺序/码页

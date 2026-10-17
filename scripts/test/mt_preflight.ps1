@@ -474,8 +474,8 @@ function Test-MtPreflightModSources {
     if (-not (Test-Path -LiteralPath $gate -PathType Leaf)) {
         return , @($false, "缺少 $gate")
     }
-    # ⚠️ 不能按名字写 'pwsh'（假设它在 PATH 里）：从 WSL 起的会话 PATH 里没有 pwsh/pwsh.exe，
-    #    而 Windows 侧也可能是全路径启动的绿色版/Store 版。取**本进程自身**的可执行文件路径最稳
+    # ⚠️ 不能按名字写 'pwsh'（假设它在 PATH 里）：也可能是全路径启动的绿色版/Store 版。
+    #    取**本进程自身**的可执行文件路径最稳
     #    （与 mt_launch / mt_stop / mt_case 的 `$psExe = (Get-Process -Id $PID).Path` 同一口径）。
     $selfPwsh = (Get-Process -Id $PID).Path
     $r = Invoke-MtProcessFull -FilePath $selfPwsh `

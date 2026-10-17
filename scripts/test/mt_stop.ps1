@@ -43,8 +43,8 @@
     不会象「取回字符串再重新编码」那样被改写。
 
     2026-10-17：改用 lib 的 `Invoke-MtChildProcess`（内部 Start-Process -NoNewWindow、
-    **不重定向**）—— 上面「继承句柄」的口径不变，只是不再用 `& $psExe`：从 WSL 起的 pwsh 里
-    `& <exe>` 会静默不执行子进程且 `$LASTEXITCODE` 为 $null（详见 Mt.Proc.psm1 该函数说明）。
+    **不重定向**）—— 上面「继承句柄」的口径不变；退出码取 `Process.ExitCode`，
+    不依赖 `$LASTEXITCODE`（详见 Mt.Proc.psm1 该函数说明）。
 #>
 
 $ErrorActionPreference = 'Stop'

@@ -69,9 +69,8 @@ Initialize-MtConsole
 #    首次被调用时解析，若等到函数内才 Add-Type，解析时机可能早于程序集加载而报错。
 Add-Type -AssemblyName System.Drawing
 
-# ⚠️ 不能把 'pwsh' 当兜底名字：从 WSL 起的会话 PATH 里没有 pwsh/pwsh.exe（Windows PATH 未透传），
-#    而 Windows 侧 pwsh 也可能不在 PATH（绿色版 / 全路径启动）。探测顺序：
-#      $PSHOME\pwsh.exe → PATH 里的 pwsh → %ProgramFiles%\PowerShell\7\pwsh.exe → 'pwsh'（最后兜底）
+# ⚠️ 不能把 'pwsh' 当兜底名字：pwsh 可能不在 PATH（绿色版 / 全路径启动 / 父进程精简过 PATH）。
+#    探测顺序：$PSHOME\pwsh.exe → PATH 里的 pwsh → %ProgramFiles%\PowerShell\7\pwsh.exe → 'pwsh'（最后兜底）
 $script:MtPwshExe = Join-Path $PSHOME 'pwsh.exe'
 if (-not (Test-Path -LiteralPath $script:MtPwshExe)) {
     $pwshCmd = Get-Command pwsh -ErrorAction SilentlyContinue

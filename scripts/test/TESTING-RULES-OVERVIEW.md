@@ -23,13 +23,15 @@
 **测试前清场（强制）**：冷启动进入世界后由 `mt_launch` 自动连发两次 `/kill @e[type=!player,distance=..128]`（`MT_PRECLEAN: OK`）；`--no-preclean` 仅限特殊取证。
 **禁用生物 AI（强制硬闸门）**：`astral_test_noai.js` 每 2 tick 强制玩家 128 格内 Mob `setNoAi(true)`；进入世界 30 秒内必须读到 `AP_NOAI:` 且 `mobs == noai`，否则 `MT_LAUNCH: ERROR`（对照实验可 `MT_ALLOW_MOB_AI=1`）。**禁止**用 `doMobSpawning false` 代替（会把史莱姆压制闸门变成假证）。
 
-### 2.1 从 WSL 驱动工具链（2026-10-17 实测，三条硬事实）
+### 2.1 工具链运行环境（Windows 原生，唯一支持；2026-10-17 晚收敛）
 
 | 事项 | 结论 |
 |---|---|
-| `pwsh` 不在 WSL PATH | WSL 默认**不透传** Windows PATH ⇒ 一律写全路径：`'C:\Program Files\PowerShell\7\pwsh.exe' -NoProfile -File <脚本>`。**禁止**用 Linux 侧 `pwsh` 跑本仓脚本（工具链 Windows-only，依赖 `Add-Type`/`user32`） |
-| 脚本内部调子进程 | 从 WSL 直接起的 pwsh 里，调用运算符 `& <exe>` 会**静默不执行**子进程、`$LASTEXITCODE` 根本不被创建 ⇒ 统一走 `Invoke-MtChildProcess`（`lib/Mt.Proc.psm1`：`Start-Process -NoNewWindow -PassThru` + `Process.ExitCode`）。`mt_launch` 的 `doImmediateRespawn` 闸门曾因此误报 `MT_LAUNCH: ERROR`（规则实际已生效，D4-5） |
-| git hook | `.git/hooks/{post-commit,post-checkout,post-merge,post-rewrite}`（所有 worktree 共用）按 `PATH pwsh` → `PATH pwsh.exe` → `/mnt/c/Program Files/PowerShell/7/pwsh.exe` 顺序探测；全找不到**静默 `exit 0`**，从不让提交失败或刷屏 |
+| 入口 | 本机 Windows 的 pwsh 7：`pwsh -NoProfile -File <脚本>`。脚本依赖 `Add-Type` / `user32` / `taskkill` 与 Windows 路径（部署目标 `D:\.minecraft\versions\…`）⇒ **禁止**用 Linux 侧 `pwsh` 跑本仓脚本 |
+| 构建 | `scripts/test/mt_build.ps1` 是**唯一**构建入口（60s 窗口看护 + 日志/产物双判据 + 重试）；WSL 期临时件 `scripts/test/mt_build.sh` **已删除** |
+| 脚本内部调子进程 | 统一走 `Invoke-MtChildProcess`（`lib/Mt.Proc.psm1`：`Start-Process -NoNewWindow -PassThru` + `Process.ExitCode`，可选 `-TimeoutSec` 强杀与 `-Capture`）；不读 `$LASTEXITCODE` |
+| ~~从 WSL 驱动~~ | **不再支持**。历史三条事实（2026-10-13～17，只作知识）：① `/mnt/f`（9p）上 Gradle 慢 ≈275×，`:classes` 冷跑 9m22s、forge 冷管线连吃 3×570s 超时；② WSL interop 起的 pwsh 里 `& <exe>` **静默不执行**子进程（`$LASTEXITCODE` 不创建），曾把 `doImmediateRespawn` 闸门误报成 `MT_LAUNCH: ERROR`（D4-5）；③ WSL 默认不透传 Windows PATH |
+| git hook | 共享 `.git/hooks/{post-commit,post-checkout,post-merge,post-rewrite}` 按 `PATH pwsh` → `PATH pwsh.exe` → `/mnt/c/Program Files/PowerShell/7/pwsh.exe` 探测；Windows 侧命中第一条；全找不到**静默 `exit 0`**，从不让提交失败或刷屏 |
 
 ## 3. 唯一入口与阶段
 
