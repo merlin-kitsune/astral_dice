@@ -101,3 +101,4 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --phase stop --force 
 - 未提交内容：**无**（除那 4 行垃圾）。
 
 > **最新交接条目（2026-10-17）**：`docs/agent/AGENTS-full.md` 的「## 待办交接」区**第 36 条**「立牌批验证闭环 + 选卡界面 + Jade 倒计时（2026-10-17）」—— 定位：`grep -n '立牌批验证闭环' docs/agent/AGENTS-full.md`。含本批提交链、实机闭环证据、**两项实机欠账**（选卡界面 / Jade 倒计时，均须用户下达）与 P1 两线移植搁置项。
+> **最新交接条目（2026-10-17 晚）**：`docs/agent/AGENTS-full.md` 的「## 待办交接」区**第 37 条**「选卡界面+Jade 双线实机验证闭环与 4 项修复（2026-10-17 晚）」—— 定位：`grep -n '选卡界面+Jade 双线实机验证闭环' docs/agent/AGENTS-full.md`。含双线首测报告（neo / forge 两份）、`71e38e43` / `2cb56b13` / `b05ce817` 三项修复、双线回归 PASS、**5 项待用户裁决**与 WSL 驱动工具链新知（`Invoke-MtChildProcess` / git hook）。
