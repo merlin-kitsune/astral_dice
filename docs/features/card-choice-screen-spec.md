@@ -170,7 +170,10 @@ CardChoiceManager.registerHandler(player, myToken, picked -> { ... });
 
 1. **双击放入**：物品栏战斗牌双击一次 → 卡槽出现 1 张；再次双击卡槽 → 回到物品栏。
 2. **拖回**：按住物品栏卡牌移动 ≥4px → 卡牌跟手；松手在空卡槽 → 放入；松手在空白处 → 回到原槽（不丢失）。
-3. **类型过滤**：用效果牌拖到「战斗牌」会话的卡槽 → 拒绝（原地还原）；双击效果牌 → 不进入卡槽。
+3. **类型过滤**：用效果牌（会话要求战斗牌）尝试进卡 → **按下即原地不动**：不进入拖动、不发任何点击包、
+   双击也不会 `QUICK_MOVE`。三个入口都要验：
+   ① 左键单击 / 双击；② 右键；③ 创意模式「拾取方块」键（默认中键 `ClickType.CLONE`，改绑到其他鼠标键同样生效）。
+   同一格换成石头等普通物品时，上述三种按下仍按原版处理；光标上已有携带物时右键仍是原版「放一个」。
 4. **未满无按钮**：只放 1/3 时确认按钮**不渲染**，点击该区域无任何反应。
 5. **放满确认**：放满 3 张 → 按钮出现；点击 → 界面关闭、卡牌各消耗 1 张、回调拿到的 3 个 `ItemStack`
    与所选一致（服务端日志 `AP_CARD_CHOICE: confirm:...:picked=3`）。
@@ -208,3 +211,11 @@ CardChoiceManager.registerHandler(player, myToken, picked -> { ... });
 **静态核对（`canAcceptCarried` 三分支）**：占用**不同物品** ⇒ `isSameItemSame*` 为假 ⇒ 不可接收 ⇒ 不发包 ⇒ 原路还原；
 占用**同种可叠**（`existing.getCount() < slot.getMaxStackSize(existing)`）⇒ 可接收 ⇒ 原版 `safeInsert` 合并、余量留光标；
 **空槽** ⇒ 可接收 ⇒ `safeInsert` 放入。三支均不会触发交换分支。
+
+## 12. 第四轮小修登记（2026-10-17）
+
+| 级别 | 问题 | 修法 | 落点 |
+|---|---|---|---|
+| 中 | 类型过滤只覆盖左键按下：`mouseClicked` 开头 `button != 0 ⇒ super`，导致**右键**（空光标 ⇒ 原版 `PICKUP` 拿半栈）与**创意模式「拾取」键**（`CLONE` 把整栈复制到光标）仍能把类型不符的卡拿到光标上（评审 R1 部分成立） | 拒绝判定扩展到 `button == 0/1` 与创意模式 `keyPickItem`（新 `isPickItemClick`：`keyPickItem.matchesMouse(button)` + 创意判定 —— 1.21.1 `player.hasInfiniteMaterials()`、1.20.1 `player.getAbilities().instabuild`，与两线 `doClick` 的 `CLONE` 分支同源）；命中即吞、不发包、不进入拖动。右键 / 中键只吞「按下」，**不置** `pressIntercepted`（该标志只由 `mouseReleased` 的 `button == 0` 分支消费，否则会误吞下一次左键抬起）；手势分支（Shift / 双击 / 拖动）保持**仅左键** | `screen/CardChoiceScreen.java`（两线） |
+| 低 | `quickMoveStack` 的「物品栏 → 卡槽」分支已自带 `return EMPTY`，而 `moved` / `copy` 两个变量只服务另一分支却声明在最外层 ⇒ 新分支里是未使用变量 | 调整顺序：先处理 `index >= slotCount` 并直接返回，再在「卡槽 → 物品栏」分支内声明 `copy` 并直接 `if (!moveItemStackTo(...))`，删除 `moved`；行为不变 | `screen/CardChoiceMenu.java`（两线） |
+| 文档 | §9-3 原口径「拖到卡槽再拒绝 / 原地还原」与实现不一致：类型不符的卡在**按下**时就被吞掉，根本进不了拖动 | §9-3 改写为「三种按下入口均原地不动」；本表登记 | 本文件 §9-3 / §12 |

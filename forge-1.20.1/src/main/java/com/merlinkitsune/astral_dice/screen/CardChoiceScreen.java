@@ -1,6 +1,7 @@
 package com.merlinkitsune.astral_dice.screen;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
+import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.network.CardChoiceConfirmMessage;
 import com.merlinkitsune.astral_dice.network.ModNetwork;
 import net.minecraft.Util;
@@ -34,6 +35,10 @@ import java.util.Map;
  *   <li><b>拖动</b>：位移超过 {@value #DRAG_THRESHOLD}px 才升格，升格时才真正向服务端发
  *       {@code PICKUP} 把卡拿到光标上（跟手幽灵 = 原版携带物）；松手落点为空卡槽 ⇒ 放入，
  *       落空 / 类型不符 / 槽已占用 ⇒ 原路还原（再发一次 PICKUP 放回原槽）；</li>
+ *   <li><b>类型过滤</b>：物品栏里**类型不符的卡**按下时（左键 / 右键 / 创意模式拾取键 = 原版
+ *       {@code PICKUP} 与 {@code CLONE} 三条「拿到光标上」的路径）一律不交给原版 ⇒
+ *       牌**原地不动**（= spec §9-3「原地不动」，不进入拖动），双击也不会发 QUICK_MOVE；
+ *       非卡物品、以及光标已有携带物时的正常放置仍走原版；</li>
  *   <li><b>清理</b>：左键已抬起却没收 {@code mouseReleased} / 窗口失焦 ⇒ 取消拖拽并把携带物放回原槽
  *       （{@link #containerTick()}）。</li>
  * </ul>
@@ -267,12 +272,19 @@ public class CardChoiceScreen extends AbstractContainerScreen<CardChoiceMenu> {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (button != 0) {
+        // 右键（button == 1）与创意模式「拾取」（默认中键、可改绑）= 原版另外两条「把物品拿到光标上」的路径：
+        //   1.20.1 AbstractContainerScreen#mouseClicked：空光标 + button 0/1 ⇒ PICKUP；
+        //   空光标 + keyPickItem ⇒ ClickType.CLONE（创意判定在服务端 doClick：getAbilities().instabuild）。
+        // 两条都要过与左键同一套类型过滤，否则类型不符的卡仍会被拿到光标上。
+        boolean pickItemClick = isPickItemClick(button);
+        if (button != 0 && button != 1 && !pickItemClick) {
             return super.mouseClicked(mouseX, mouseY, button);
         }
-        leftDragHeld = true;
-        // 确认按钮优先（仅放满后存在）
-        if (this.menu.isComplete()
+        if (button == 0) {
+            leftDragHeld = true;
+        }
+        // 确认按钮优先（仅放满后存在；只有左键响应）
+        if (button == 0 && this.menu.isComplete()
                 && isHovering(CONFIRM_X, CONFIRM_Y, CONFIRM_W, CONFIRM_H, mouseX, mouseY)) {
             ModNetwork.sendToServer(new CardChoiceConfirmMessage(this.menu.token()));
             resetGesture();
@@ -283,6 +295,30 @@ public class CardChoiceScreen extends AbstractContainerScreen<CardChoiceMenu> {
         }
         // 卡框是隐藏坐标（HIDDEN_X/Y = -10000）⇒ 原版命中不到，必须回落到屏幕自绘的卡框命中区
         Slot slot = slotOrChoiceAt(mouseX, mouseY);
+        // 类型过滤拒绝（spec §9-3「原地不动」）：物品栏里**类型不符的卡**按下时不要交给原版 ——
+        // 原版的 PICKUP（左键 / 右键）与 CLONE（创意模式拾取键）都会把牌拿到光标上
+        // （实测 neo 线点击路径、forge 线拖动路径），
+        // 拒绝入槽后牌就停在光标上而不是回到原槽。
+        // 口径：吞掉这次按下（左键连随后的抬起一起吞），牌**原地不动**，不发任何点击包、也不进入拖动；
+        //      双击同样被吞 ⇒ 不会发 QUICK_MOVE、不会进错槽、不会复制、不会丢失。
+        //      只针对「卡牌」，石头 / 钻石等普通物品仍交给原版，保留常规物品栏操作；
+        //      空光标是三条路径的共同前提（光标有携带物时右键是「放一个」，必须放行）。
+        if (slot != null && this.menu.getCarried().isEmpty()
+                && slot.index >= this.menu.slotCount()
+                && !this.menu.type().matches(slot.getItem())
+                && ModItems.isCardItem(slot.getItem())) {
+            resetGesture();
+            lastClickSlot = -1;
+            lastClickMillis = 0L;
+            // 只有左键的按下由 mouseReleased 的 button == 0 分支吞并；右键 / 中键不发包即可，
+            // 在此置 true 会残留到下一次左键抬起、误吞一次正常 release。
+            pressIntercepted = button == 0;
+            return true;
+        }
+        // 右键 / 中键未命中类型过滤 ⇒ 原样交给原版（不触碰左键的双击 / 拖拽状态）
+        if (button != 0) {
+            return super.mouseClicked(mouseX, mouseY, button);
+        }
         if (slot != null && this.menu.getCarried().isEmpty() && canStartGesture(slot)) {
             // Shift+点击 = 原版 QUICK_MOVE（与双击同一条服务端路径）
             if (hasShiftDown()) {
@@ -323,6 +359,20 @@ public class CardChoiceScreen extends AbstractContainerScreen<CardChoiceMenu> {
         lastClickMillis = 0L;
         pressIntercepted = false;
         return super.mouseClicked(mouseX, mouseY, button);
+    }
+
+    /**
+     * 本次按下是否会被原版当成「创意模式拾取」（{@code ClickType.CLONE}，默认中键、可在按键设置里改绑）。
+     *
+     * <p>1.20.1 的判定在 {@code AbstractContainerScreen#mouseClicked}（{@code keyPickItem} 命中鼠标键）
+     * + 服务端 {@code AbstractContainerMenu#doClick}（{@code player.getAbilities().instabuild}）；
+     * 这里两半一起判，保证「只有原版真会发 CLONE 的按下」才走本屏幕的过滤分支，非创意模式不受影响。
+     */
+    private boolean isPickItemClick(int button) {
+        return this.minecraft != null
+                && this.minecraft.player != null
+                && this.minecraft.player.getAbilities().instabuild
+                && this.minecraft.options.keyPickItem.matchesMouse(button);
     }
 
     @Override
@@ -400,6 +450,9 @@ public class CardChoiceScreen extends AbstractContainerScreen<CardChoiceMenu> {
         boolean placed = false;
         if (pickedUp && !this.menu.getCarried().isEmpty() && target != null && canSendClicks()) {
             if (target.index < this.menu.slotCount()) {
+                // 卡槽：只在「空槽 + 类型匹配」时发包（spec §9-3 拒绝类型不符）。
+                // 类型不符的牌正常根本到不了光标上 —— 见 mouseClicked 的拒绝分支；此处保留判据作为防御，
+                // 保证任何来源的携带物都不会进错槽。
                 if (!target.hasItem() && this.menu.type().matches(this.menu.getCarried())) {
                     this.slotClicked(target, target.index, 0, ClickType.PICKUP);
                     placed = target.hasItem();
@@ -414,13 +467,9 @@ public class CardChoiceScreen extends AbstractContainerScreen<CardChoiceMenu> {
                 placed = this.menu.getCarried().getCount() < before;
             }
         }
-        // 目标没收下（或落空）⇒ 放回原槽；已放下则不再动，余量留在光标上由原版处理
-        if (!placed && pickedUp && !this.menu.getCarried().isEmpty()
-                && dragOrigin >= 0 && dragOrigin < this.menu.slots.size() && canSendClicks()) {
-            Slot origin = this.menu.slots.get(dragOrigin);
-            if (origin != null && !origin.hasItem()) {
-                this.slotClicked(origin, origin.index, 0, ClickType.PICKUP);
-            }
+        // 目标没收下（落空 / 类型不符 / 已占用）⇒ 放回原槽；已放下则不再动，余量留在光标上由原版处理
+        if (!placed) {
+            returnCarriedToOrigin();
         }
         resetGesture();
     }
@@ -452,14 +501,32 @@ public class CardChoiceScreen extends AbstractContainerScreen<CardChoiceMenu> {
 
     /** 事件丢失 / 失焦：把携带物放回原槽并清状态。 */
     private void cancelDrag() {
-        if (pickedUp && !this.menu.getCarried().isEmpty()
-                && dragOrigin >= 0 && dragOrigin < this.menu.slots.size() && canSendClicks()) {
-            Slot origin = this.menu.slots.get(dragOrigin);
-            if (origin != null && !origin.hasItem()) {
-                this.slotClicked(origin, origin.index, 0, ClickType.PICKUP);
-            }
-        }
+        returnCarriedToOrigin();
         resetGesture();
+    }
+
+    /**
+     * 把光标上的卡原路放回 {@link #dragOrigin}（spec §5 第 3 条「落空 / 类型不符 / 已占用 ⇒ 原路还原」）。
+     *
+     * <p><b>边界口径</b>：
+     * <ul>
+     *   <li>原槽为空（正常情形 —— 升格时的 {@code PICKUP} 取走的是**整栈**，原槽必空）⇒ 发包放回；</li>
+     *   <li>原槽已被占用 / 索引失效（理论上不会发生）⇒ **不发包**：发到被不同物品占用的格子会走原版
+     *       {@code AbstractContainerMenu#doClick} 的交换分支（两件物品换位），发到卡槽则可能进错槽 ⇒
+     *       保留在光标上由玩家自行放下 —— 不丢物品、不复制、不进错槽。</li>
+     * </ul>
+     */
+    private void returnCarriedToOrigin() {
+        if (!pickedUp || this.menu.getCarried().isEmpty() || !canSendClicks()) {
+            return;
+        }
+        if (dragOrigin < 0 || dragOrigin >= this.menu.slots.size()) {
+            return;
+        }
+        Slot origin = this.menu.slots.get(dragOrigin);
+        if (origin != null && !origin.hasItem()) {
+            this.slotClicked(origin, origin.index, 0, ClickType.PICKUP);
+        }
     }
 
     private void resetGesture() {

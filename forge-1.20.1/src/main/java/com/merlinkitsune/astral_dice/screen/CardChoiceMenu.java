@@ -28,6 +28,8 @@ import java.util.List;
  * <p><b>移动规则</b>：{@link #quickMoveStack} 双向（物品栏卡牌 → 第一个可放置的空卡槽；
  * 卡槽 → 物品栏）。屏幕层把「双击」翻译成原版 {@code ClickType.QUICK_MOVE}，
  * 因此本方法同时承担双击与 Shift+点击两条入口。
+ * <p><b>数量口径</b>（spec §9-1「双击一次 → 卡槽出现 1 张」）：物品栏 → 卡槽方向**一次只搬 1 张**；
+ * 卡槽每格上限 1 张，重复双击/Shift+点击才会继续填下一格。
  *
  * <p><b>权威性</b>：卡牌由 {@code quickMoveStack}/原版点击**真实移入**本菜单的后备容器（服务端持有），
  * 确认时只对容器内的栈逐张消耗 1 张，余量随 {@link #removed} 退回物品栏 ⇒ 客户端无法凭空造牌。
@@ -143,21 +145,34 @@ public class CardChoiceMenu extends AbstractContainerMenu {
             return ItemStack.EMPTY;
         }
         ItemStack stack = slot.getItem();
-        ItemStack copy = stack.copy();
         int playerStart = slotCount;
         int playerEnd = slotCount + 36;
-        boolean moved;
-        if (index < slotCount) {
-            // 卡槽 → 物品栏
-            moved = moveItemStackTo(stack, playerStart, playerEnd, true);
-        } else {
+        if (index >= slotCount) {
             // 物品栏 → 卡槽（类型不符由 ChoiceCardSlot#mayPlace 拒绝）
             if (!type.matches(stack)) {
                 return ItemStack.EMPTY;
             }
-            moved = moveItemStackTo(stack, 0, slotCount, false);
+            // spec §9-1「双击一次 → 卡槽出现 1 张」：卡槽每格上限 1 张，若直接把**整栈**交给
+            // {@code moveItemStackTo}，它会按槽位顺序一次填满所有空卡槽（forge 线实测 put_filled=3）⇒
+            // 这里只搬 1 张到第一个可放置的空卡槽，余量留在原槽；重复双击/Shift+点击才会继续填下一格。
+            ItemStack one = stack.copyWithCount(1);
+            if (!moveItemStackTo(one, 0, slotCount, false)) {
+                return ItemStack.EMPTY;
+            }
+            stack.shrink(1);
+            if (stack.isEmpty()) {
+                slot.setByPlayer(ItemStack.EMPTY);
+            } else {
+                slot.setChanged();
+            }
+            // ⚠️ 必须返回 EMPTY，不能返回余量的副本：原版 {@code AbstractContainerMenu#doClick} 的
+            // QUICK_MOVE 分支是「while (返回值非空 && 与原槽物品同类) 再调一次 quickMoveStack」——
+            // 返回 copy 会把余量继续搬进后面的空卡槽，等于回到「一次双击填满」的旧行为。
+            return ItemStack.EMPTY;
         }
-        if (!moved) {
+        // 卡槽 → 物品栏
+        ItemStack copy = stack.copy();
+        if (!moveItemStackTo(stack, playerStart, playerEnd, true)) {
             return ItemStack.EMPTY;
         }
         if (stack.isEmpty()) {
