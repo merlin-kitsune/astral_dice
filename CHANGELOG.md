@@ -458,6 +458,18 @@
 
 ### Bug Fixes
 
+#### UI & Interaction
+
+- **Fixed the card choice screen's unclickable card frames, cards lost on death, and leftover sessions** (2026-10-17 review P1/P2/P3):
+  ① the virtual card slots live at the hidden coordinate `-10000`, while the screen's press detection and drop target only
+  tested vanilla slot coordinates, so **the card frames could never be clicked** and drag-to-place / drop-to-revert /
+  double-click-to-retrieve / drag-back-to-inventory were all dead code; hits now check inventory slots first and fall back
+  to the screen-drawn frame area, making all four interactions reachable; ② on death the player entity is replaced outright,
+  so the old menu was never closed, losing the cards in its slots and leaving an unresolved session behind (further opens
+  were always rejected as "already open"); the screen is now closed at the moment of death, **dropping the cards at the death
+  spot** and clearing the session, without touching the logout fallback; ③ the 1.20.1 open path used to always report success
+  — it now re-reads the open menu after opening and rolls back with a `reject:reason=open_failed` log on failure (matching 1.21.1).
+
 #### Damage & Resolution
 
 - **Fixed two PvP misreads on the KAngel Sign: the "Fan" mark and the wearer's indicator shared one status** (2026-10-17): the wearer's

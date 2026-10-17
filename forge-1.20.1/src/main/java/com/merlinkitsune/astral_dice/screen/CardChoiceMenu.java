@@ -178,18 +178,31 @@ public class CardChoiceMenu extends AbstractContainerMenu {
     public void removed(Player player) {
         if (!player.level().isClientSide() && !closed) {
             closed = true;
+            // 死亡 / 已断线一律**直接掉落**（避免写进不会再保存的背包）。
+            // ⚠️ 不能只看 isAlive()：原版 {@code Entity#isAlive()} = {@code !isRemoved()}，死亡事件期间
+            //    仍为 true（{@code PlayerList#respawn} 换实体之前不会 removed）⇒ 必须在死亡瞬间用
+            //    isDeadOrDying() 判定，否则卡牌会写进旧玩家的背包并随旧实体一起消失。
+            boolean dying = player.isDeadOrDying() || !player.isAlive()
+                    || (player instanceof ServerPlayer serverPlayer && serverPlayer.hasDisconnected());
             // 余量（含「已确认但原栈还有多张」与「未确认的全部选择」）一律退回物品栏
             for (int i = 0; i < slotCount; i++) {
                 ItemStack stack = cardContainer.getItem(i);
                 if (!stack.isEmpty()) {
                     // 与 AbstractContainerMenu#removed 同口径：死亡 / 已断线时掉落，避免写进不会再保存的背包
-                    if (!player.isAlive()
-                            || (player instanceof ServerPlayer serverPlayer && serverPlayer.hasDisconnected())) {
+                    if (dying) {
                         player.drop(stack, false);
                     } else {
                         player.getInventory().placeItemBackInInventory(stack);
                     }
                     cardContainer.setItem(i, ItemStack.EMPTY);
+                }
+            }
+            // 光标上拖着的卡同理：父类 removed 只按 isAlive() 判定，会把它塞回（不会再保存的）背包
+            if (dying) {
+                ItemStack carried = getCarried();
+                if (!carried.isEmpty()) {
+                    player.drop(carried, false);
+                    setCarried(ItemStack.EMPTY);
                 }
             }
             if (!confirmed && player instanceof ServerPlayer serverPlayer) {

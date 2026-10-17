@@ -59,7 +59,11 @@
             └─ S2C: 原版 ClientboundOpenScreenPacket + extra data
                     (token:VarInt, slotCount:VarInt, type.ordinal():VarInt)
                     ⇒ 客户端 IContainerFactory 构造同一布局的 CardChoiceMenu
-玩家：双击 / 拖拽 / Shift+点击  ←→  服务端 quickMoveStack（卡牌真实移入菜单容器）
+玩家手势（三条入口，均由屏幕层翻译成原版点击包，卡牌真实移入菜单容器）
+  ├─ 双击 / Shift+点击  → ClickType.QUICK_MOVE → 服务端 quickMoveStack（双向搬牌）
+  ├─ 拖动升格（位移 ≥4px）→ ClickType.PICKUP（拿到光标）→ 松手落点再发 PICKUP（放入 / 原路还原）
+  └─ 命中判定：物品栏走原版槽位坐标；**卡框是隐藏坐标（-10000），原版命中不到**
+        ⇒ slotOrChoiceAt：先 slotAt()，落空再 choiceSlotAt() 取索引，回落 menu.getSlot(i)
 玩家点确认（仅放满）
   └─ C2S CardChoiceConfirm(token)
        └─ CardChoiceManager.confirm
@@ -106,6 +110,7 @@ CardChoiceManager.registerHandler(player, myToken, picked -> { ... });
 3. **拖拽的「跟手幽灵」= 原版光标携带物**。升格（位移 ≥ 4px）时才向服务端发 `PICKUP`，把卡真正拿到光标上；
    松手落空/类型不符/槽已占用 ⇒ 再发一次 `PICKUP` 放回原槽。这样不需要自绘幽灵，也不会出现
    「屏幕显示有卡、服务端其实没搬」的状态。落空还原、失焦/左键未抬起清理（`containerTick`）均已实现。
+   落点命中同样走 `slotOrChoiceAt`：卡框是隐藏坐标，必须回落到 `choiceSlotAt` 的屏幕自绘命中区。
 4. **双击窗口 280ms 由屏幕层翻译成原版 `ClickType.QUICK_MOVE`**。1.21.1 的原生双击语义是
    `PICKUP_ALL`（把同类物品收进光标），不能直接复用；因此第一次按下只记录相位、不交给原版，
    280ms 内同一槽再次按下才发 `QUICK_MOVE`。单击因此**只选中不拿起**（与商店手势一致），
@@ -117,6 +122,7 @@ CardChoiceManager.registerHandler(player, myToken, picked -> { ... });
 |---|---|---|
 | MenuType 注册 | `IMenuTypeExtension.create(CardChoiceMenu::new)` | `IForgeMenuType.create(CardChoiceMenu::new)` |
 | 打开菜单（带 extra data） | `ServerPlayer#openMenu(provider, buf -> …)` → `OptionalInt` | `NetworkHooks#openScreen(player, provider, buf -> …)` |
+| 打开失败判定 | `opened.isEmpty()` ⇒ 回滚会话 + `reject:reason=open_failed` | `openScreen` 返回 void ⇒ 打开后回读 `player.containerMenu instanceof CardChoiceMenu && token 一致`，不一致即回滚 + 同一条日志 |
 | 网络载体 | `CustomPacketPayload` + `StreamCodec`，`ModPayloads` 注册 | `SimpleChannel` 消息类，`ModNetwork#register()` **末尾追加 id 24/25** |
 | 发 C2S | `PacketDistributor.sendToServer` | `ModNetwork.sendToServer` |
 | 发 S2C | `PacketDistributor.sendToPlayer` | `ModNetwork.sendToPlayer` |
@@ -154,5 +160,21 @@ CardChoiceManager.registerHandler(player, myToken, picked -> { ... });
    与所选一致（服务端日志 `AP_CARD_CHOICE: confirm:...:picked=3`）。
 6. **Esc 零消耗**：放 2 张后按 Esc → 界面关闭、2 张全部回到物品栏、无回调
    （服务端日志 `AP_CARD_CHOICE: abandon:...:consumed=0`）。
+7. **拖动取回**：从卡框把卡拖回物品栏空格 → 卡牌落格；拖到已占用 / 类型不符的格子 → 原路还原、不丢失。
+8. **开着界面死亡**（P2）：放 1–2 张后让玩家死亡 → 界面关闭、卡牌**掉在死亡点**（可拾回）、无回调；
+   服务端日志应出现 `AP_CARD_CHOICE: death_cleanup:<token>` 与 `abandon:...:consumed=0`。
+   重生后立刻再次 `CardChoiceManager.start(...)` **必须成功**（不出现 `reject:reason=already_open`）。
 
 > 收尾按 AGENTS：`pwsh -File scripts/test/mt.ps1 --version <线> --phase stop --purge-saves`。
+
+## 10. 审查修复登记（2026-10-17，提交 `c4ed57cc` 之后）
+
+| 级别 | 问题 | 修法 | 落点 |
+|---|---|---|---|
+| P1 | 卡框不可交互：虚拟卡槽坐标 `HIDDEN_X/Y = -10000`，`mouseClicked` / `finishDrag` 只经 `slotAt()` 命中 ⇒ 拖动放入 / 双击取回 / 拖回物品栏全是死代码 | 新增 `slotOrChoiceAt()`：`slotAt()` 落空时回落 `choiceSlotAt()`（屏幕自绘卡框命中区）取 `menu.getSlot(i)`；`mouseClicked` 与 `finishDrag` 两个入口改用之 | `screen/CardChoiceScreen.java`（两线） |
+| P2 | 死亡不退牌 + 会话残留：`PlayerList#respawn` 直接替换 `ServerPlayer`，旧菜单 `removed()` 不被调用 | `CardChoiceManager` 订阅 `LivingDeathEvent`（`EventPriority.LOWEST` + `isCanceled()` 守卫）：`closeContainer()` 走 `removed()` 的死亡掉落分支，再按 UUID 兜底清会话。`removed()` 的掉落判据由 `!isAlive()` 改为 `isDeadOrDying() \|\| !isAlive()`（`isAlive()` 是 `!isRemoved()`，死亡事件期间仍为 true），光标携带物同口径掉落 | `choice/CardChoiceManager.java`、`screen/CardChoiceMenu.java`（两线） |
+| P3 | 1.20.1 `start()` 恒返回 true | `NetworkHooks#openScreen` 无返回值 ⇒ 打开后回读 `player.containerMenu`，不是本 token 的 `CardChoiceMenu` 即回滚会话并打 `reject:reason=open_failed`（对齐 1.21.1 的 `opened.isEmpty()`） | `choice/CardChoiceManager.java`（forge 线） |
+
+**死代码处置**：本次修复**未新增死代码**，也未删除既有分支 —— `slotAt()` 仍负责 36 格物品栏命中，
+`choiceSlotAt()` 由「仅 tooltip」扩展为「tooltip + 输入命中」；NeoForge 的 `renderSlot` / `renderSlotHighlight`
+覆写仍然必要（跳过隐藏坐标卡槽的原版渲染），保留。

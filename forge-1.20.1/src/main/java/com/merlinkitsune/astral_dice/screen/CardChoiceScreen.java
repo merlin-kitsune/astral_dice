@@ -281,7 +281,8 @@ public class CardChoiceScreen extends AbstractContainerScreen<CardChoiceMenu> {
             pressIntercepted = true;
             return true;
         }
-        Slot slot = slotAt(mouseX, mouseY);
+        // 卡框是隐藏坐标（HIDDEN_X/Y = -10000）⇒ 原版命中不到，必须回落到屏幕自绘的卡框命中区
+        Slot slot = slotOrChoiceAt(mouseX, mouseY);
         if (slot != null && this.menu.getCarried().isEmpty() && canStartGesture(slot)) {
             // Shift+点击 = 原版 QUICK_MOVE（与双击同一条服务端路径）
             if (hasShiftDown()) {
@@ -395,7 +396,7 @@ public class CardChoiceScreen extends AbstractContainerScreen<CardChoiceMenu> {
 
     /** 松手：落在空卡槽 ⇒ 放入；其余（落空 / 占用 / 类型不符）⇒ 原路还原。 */
     private void finishDrag(double mouseX, double mouseY) {
-        Slot target = slotAt(mouseX, mouseY);
+        Slot target = slotOrChoiceAt(mouseX, mouseY);
         boolean placed = false;
         if (pickedUp && !this.menu.getCarried().isEmpty() && target != null && canSendClicks()) {
             if (target.index < this.menu.slotCount()) {
@@ -470,6 +471,22 @@ public class CardChoiceScreen extends AbstractContainerScreen<CardChoiceMenu> {
             }
         }
         return -1;
+    }
+
+    /**
+     * 槽位命中：先按原版槽位坐标找（物品栏），找不到再回落到屏幕自绘的卡框。
+     *
+     * <p>虚拟卡槽坐标是 {@link CardChoiceMenu#HIDDEN_X}/{@link CardChoiceMenu#HIDDEN_Y}（-10000），
+     * {@link Slot#isActive()} 虽为 true，但 {@code slotAt} 按原版槽位坐标命中永远打不中 ⇒
+     * 卡框上的单击 / 双击 / 拖动升格 / 拖动落点全靠这条回落（卡槽先 addSlot，索引 0..slotCount-1）。
+     */
+    private Slot slotOrChoiceAt(double mouseX, double mouseY) {
+        Slot slot = slotAt(mouseX, mouseY);
+        if (slot != null) {
+            return slot;
+        }
+        int ci = choiceSlotAt(mouseX, mouseY);
+        return ci >= 0 ? this.menu.getSlot(ci) : null;
     }
 
     /** 会话 token（客户端只在关闭包 token 一致时关界面）。 */

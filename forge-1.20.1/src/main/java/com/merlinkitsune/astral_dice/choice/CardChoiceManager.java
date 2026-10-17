@@ -8,7 +8,9 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.world.item.ItemStack;
+import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
+import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.network.NetworkHooks;
@@ -111,6 +113,17 @@ public final class CardChoiceManager {
                     buf.writeVarInt(slotCount);
                     buf.writeVarInt(type.ordinal());
                 });
+        // 1.20.1 的 NetworkHooks#openScreen 返回 void（1.21.1 的 ServerPlayer#openMenu 返回 OptionalInt），
+        // 无法直接读到「是否成功打开」⇒ 改为打开后回读 player.containerMenu：不是本 token 的
+        // CardChoiceMenu 即视为失败（观众模式 createMenu 返回 null 时 openScreen 会静默不发包）。
+        if (!(player.containerMenu instanceof CardChoiceMenu menu) || menu.token() != token) {
+            SESSIONS.remove(player.getUUID(), session);
+            session.resolved = true;
+            LOGGER.warn("AP_CARD_CHOICE: reject:reason=open_failed:player={}:token={}:menu={}",
+                    player.getGameProfile().getName(), token,
+                    player.containerMenu == null ? "null" : player.containerMenu.getClass().getSimpleName());
+            return false;
+        }
         LOGGER.info("AP_CARD_CHOICE: open:{}:player={}:slots={}:type={}",
                 token, player.getGameProfile().getName(), slotCount, type);
         return true;
@@ -177,6 +190,42 @@ public final class CardChoiceManager {
         SESSIONS.remove(player.getUUID(), session);
         LOGGER.info("AP_CARD_CHOICE: abandon:{}:player={}:consumed=0", token,
                 player.getGameProfile().getName());
+    }
+
+    /**
+     * 死亡兜底（2026-10-17，审查 P2）：{@code PlayerList#respawn} 直接替换 {@link ServerPlayer}，
+     * 旧菜单的 {@code removed()} **不会被调用** ⇒ 卡槽内卡牌丢失、本 map 残留同 UUID 的未结算会话
+     * （重生后 {@link #start} 恒返回 already_open）。
+     *
+     * <p>死亡瞬间主动 {@code closeContainer()}：走 {@link CardChoiceMenu#removed} 的**死亡掉落**分支
+     * （卡牌落在死亡点）并顺带 {@code abandon} 清会话；随后再按 UUID 兜底移除一次。
+     * 与掉线兜底 {@link #onPlayerLogout} 互不冲突：先到者清会话，后到者读到 null 直接返回。
+     *
+     * <p>⚠️ 1.20.1 的 {@code Player#die} 与 {@code LivingEntity#die} 各派发一次本事件（同一次死亡会到两次），
+     * 本方法必须幂等 —— 第二次进来时会话已不在 map 里，直接返回。
+     *
+     * <p>优先级 {@link EventPriority#LOWEST}：排在「保命 / 复活」类监听之后，事件被取消时完全不动。
+     */
+    @SubscribeEvent(priority = EventPriority.LOWEST)
+    public static void onPlayerDeath(LivingDeathEvent event) {
+        if (event.isCanceled()) {
+            return;
+        }
+        if (!(event.getEntity() instanceof ServerPlayer player)) {
+            return;
+        }
+        Session session = SESSIONS.get(player.getUUID());
+        if (session == null) {
+            return;
+        }
+        LOGGER.info("AP_CARD_CHOICE: death_cleanup:{}:player={}", session.token,
+                player.getGameProfile().getName());
+        if (player.containerMenu instanceof CardChoiceMenu menu && menu.token() == session.token) {
+            // 先关菜单：removed() 里 dying=true ⇒ 卡牌直接掉在死亡点，并 abandon 清会话
+            player.closeContainer();
+        }
+        SESSIONS.remove(player.getUUID(), session);
+        session.resolved = true;
     }
 
     /** 掉线兜底。 */
