@@ -197,7 +197,18 @@ dependencies {
     // Jade(方块/实体信息 HUD;2026-09-19 用户要求「所有测试环境增加 jei 和 jade 模组,用于用户侧物品和效果检查」):
     // 测试环境用,不进发货产物。Modrinth Maven 的 version id eYz2YBGT = `Jade-1.21.1-NeoForge-15.10.6.jar`
     // (726853 B),与本线整合包内现有 `[玉 🔍] Jade-1.21.1-NeoForge-15.10.6.jar` **同版**,避免 dev run 与整合包行为不一致。
-    implementation "maven.modrinth:jade:eYz2YBGT"
+    // ── dev 排除开关(2026-10-17,D3)────────────────────────────────────────
+    // 编译期**始终**需要 Jade API:compat/jade/** 直接 import snownee.jade.*,mixin 也引用
+    // Jade 的类 ⇒ 只把 **运行时**件做成可关。故拆成两条同坐标声明:
+    //   compileOnly  —— 永远在 compileClasspath(保证 `:neoforge-1.21.1:classes` 可编译);
+    //   runtimeOnly  —— 默认加入运行时类路径;`-PtestJade=false` 时**不声明** ⇒ dev 运行时不含 Jade。
+    // 命名沿用本仓既有 `-Ptest<Mod>=false` 惯例(fabric-1.20.1 的 `-PtestSodium=false` 等)。
+    // 只影响 dev 依赖解析:不写 mods.toml、不写 jarJar,因此不影响发货产物。
+    // (Jade 缺席安全性:插件类无静态引用、mixin 配置 `required:false`,不会阻断启动。)
+    compileOnly "maven.modrinth:jade:eYz2YBGT"
+    if (!(project.hasProperty('testJade') && !project.property('testJade').toBoolean())) {
+        runtimeOnly "maven.modrinth:jade:eYz2YBGT"
+    }
     // Mixin:NeoForge 运行时自带 Mixin,编译期仅需注解类;NeoForge 编译/运行同为 Mojmap,无需 refmap。
     // （2026-09-18 t23 清理:此处下方原有一个**重复**的 `dependencies { compileOnly 'org.spongepowered:mixin:0.8.5' }`
     //   块,其注释还引用着已删除的 `KeyboardHandlerMixin`(目标选择器键盘拦截 Mixin,t10 已删)。
