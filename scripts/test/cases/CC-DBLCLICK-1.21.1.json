@@ -1,6 +1,6 @@
 {
   "case_id": "CC-DBLCLICK-1.21.1",
-  "title": "选卡界面 §9-1：双击物品栏战斗牌放入卡槽 1/3；再次双击卡槽取回物品栏",
+  "title": "选卡界面 §9-1：5 张同种牌栈双击 → 恰好 1 张进卡槽、余量留原槽（不整栈填满）；再次双击填第 2 格；双击卡槽取回",
   "version": "1.21.1",
   "target": {
     "type": "feature",
@@ -9,7 +9,7 @@
   "steps": [
     {
       "op": "note",
-      "text": "选卡界面实机（spec §9）。界面本批未接任何技能 ⇒ 由临时探针 /astralcc open 按产品公开 API CardChoiceManager.start 打开；卡牌移动走客户端屏幕事件 → 原版点击包 → 服务端菜单的真实链路。"
+      "text": "上轮本用例只有 1 张牌，掩盖了「双击整栈填满卡槽」缺陷；本轮用 5 张同种牌栈复测 spec §9-1『双击一次 → 卡槽出现 1 张』。"
     },
     {
       "op": "inject_command",
@@ -31,12 +31,7 @@
     },
     {
       "op": "inject_command",
-      "command": "/item replace entity @s hotbar.0 with astral_dice:attack_card_medium 1",
-      "no_esc": true
-    },
-    {
-      "op": "inject_command",
-      "command": "/item replace entity @s hotbar.1 with astral_dice:attack_card_large 1",
+      "command": "/item replace entity @s hotbar.0 with astral_dice:attack_card_medium 5",
       "no_esc": true
     },
     {
@@ -50,7 +45,7 @@
     },
     {
       "op": "wait",
-      "ms": 6000
+      "ms": 8000
     }
   ],
   "asserts": [
@@ -71,22 +66,37 @@
     {
       "type": "log",
       "source": "latest",
-      "pattern": "SCREEN:open:token=\\d+:n=\\d+:seq=dblclick"
+      "pattern": "SCREEN:open:token=\\d+:seq=dblclick"
     },
     {
       "type": "log",
       "source": "latest",
-      "pattern": "step=42:phase=after_dbl_in:.*:complete=0:filled=1:c0=astral_dice:attack_card_medium:c1=empty:c2=empty:carried=empty"
+      "pattern": "step=42:phase=after_dbl1:.*:complete=0:filled=1:c0=astral_dice:attack_card_medium:c1=empty:c2=empty:carried=empty:inv=\\{0:astral_dice:attack_card_mediumx4\\}"
     },
     {
       "type": "log",
       "source": "latest",
-      "pattern": "step=70:phase=after_dbl_back:.*:c0=empty:c1=empty:c2=empty:carried=empty:inv=\\{[^}]*8:astral_dice:attack_card_mediumx1"
+      "pattern": "step=70:phase=after_dbl2:.*:filled=2:c0=astral_dice:attack_card_medium:c1=astral_dice:attack_card_medium:c2=empty:carried=empty:inv=\\{0:astral_dice:attack_card_mediumx3\\}"
     },
     {
       "type": "log",
       "source": "latest",
-      "pattern": "SCREEN:closed"
+      "pattern": "step=96:phase=after_dbl_back:.*:filled=1:c0=empty:c1=astral_dice:attack_card_medium:c2=empty:carried=empty:inv=\\{0:astral_dice:attack_card_mediumx4\\}"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "SCREEN:closed:.*:inv=\\{0:astral_dice:attack_card_mediumx5\\}"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "INV_DUMP:inv=\\{0:astral_dice:attack_card_mediumx5\\}"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "filled=3"
     },
     {
       "type": "absent",
@@ -106,7 +116,7 @@
     {
       "type": "absent",
       "source": "latest",
-      "pattern": "AP_CCC:RUN_EX:"
+      "pattern": "AP_CCR:RUN_EX:"
     }
   ]
 }

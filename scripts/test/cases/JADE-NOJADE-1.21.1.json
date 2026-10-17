@@ -1,0 +1,50 @@
+{
+  "case_id": "JADE-NOJADE-1.21.1",
+  "title": "未安装 Jade（-PtestJade=false 启动）后的运行期冒烟：服务端命令链可用、无 crash / KubeJS 错误 / Mixin 失败",
+  "version": "1.21.1",
+  "target": {
+    "type": "feature",
+    "ref": "jade-compat-absence"
+  },
+  "steps": [
+    {
+      "op": "note",
+      "text": "前置：用 `gradlew.bat :neoforge-1.21.1:runClient -PtestJade=false -Pquickplay=testworld` 直接起 dev 客户端（mt 工具链不透传 -P，见 docs/reports/card-choice-jade-2026-10-17-2.0.0-SNAPSHOT.128.md §9-D4）。本用例只做**启动之后**的运行期冒烟；「Mod List 无 jade」「无 Found valid mod file jade-*」属启动期行，落在用例断言窗口之外，由报告 §9.6 的启动日志逐条给出。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe opprobe",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 3000
+    }
+  ],
+  "asserts": [
+    {
+      "type": "mixin"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_OP_PERM:has2=1:level=4"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "Error loading class: snownee/jade"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "Mixin apply failed|InvalidInjectionException|MixinTransformerError"
+    }
+  ]
+}

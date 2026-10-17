@@ -1,0 +1,86 @@
+{
+  "case_id": "CC-DBLCLICK-1.20.1",
+  "title": "选卡界面 §9-1：4 张同种牌双击 → 恰好 1 张进卡槽、余量留原槽（回归 put_filled=3）；双击卡槽取回",
+  "version": "1.20.1",
+  "target": {
+    "type": "feature",
+    "ref": "card-choice-screen"
+  },
+  "steps": [
+    {
+      "op": "note",
+      "text": "token 2200 场景：hotbar0 战斗牌(中)x4，hotbar1 战斗牌(大)x2；两次双击均由客户端探针在同一 tick 内连发 click/rel/click/rel（<280ms 窗口）。关键判据 = 一次双击只搬 1 张（CardChoiceMenu#quickMoveStack 只 moveItemStackTo(copyWithCount(1))）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralcc2 prep dbl",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralcc2 open 3 combat 2200",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 16000
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralcc2 close",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CC2C:t=\\d+:phase=after_dbl1:.*:c0=astral_dice:attack_card_mediumx1:c1=empty:c2=empty:car=empty:.*:s30=astral_dice:attack_card_mediumx3"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CC2C:t=\\d+:phase=after_dbl2:.*:c0=astral_dice:attack_card_mediumx1:c1=astral_dice:attack_card_mediumx1:c2=empty:.*:s30=astral_dice:attack_card_mediumx2"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CC2C:t=\\d+:phase=after_take:.*:c0=empty:.*:s30=astral_dice:attack_card_mediumx3"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CC2C:t=\\d+:phase=after_dbl_large:.*:c0=astral_dice:attack_card_largex1:.*:s31=astral_dice:attack_card_largex1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CC2C:.*phase=done_dbl"
+    },
+    { "type": "mixin" },
+    { "type": "kubejs" },
+    { "type": "crash" },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_CARD_CHOICE: confirm:"
+    }
+  ]
+}

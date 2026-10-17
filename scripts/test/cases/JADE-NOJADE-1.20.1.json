@@ -1,0 +1,51 @@
+{
+  "case_id": "JADE-NOJADE-1.20.1",
+  "title": "Jade §5-5：未安装 Jade（-PtestJade=false）时本线客户端正常启动进世界、日志无 Jade 相关报错",
+  "version": "1.20.1",
+  "target": {
+    "type": "feature",
+    "ref": "jade-shop-cooldown"
+  },
+  "steps": [
+    {
+      "op": "note",
+      "text": "本用例的「不装 Jade」在**启动参数**层：pwsh -File scripts/test/mt_launch.ps1 --version 1.20.1 的 gradle 侧改由 cmd/gradlew.bat 直起 :forge-1.20.1:runClient -PtestJade=false；mt_launch 不支持透传 -P，故该轮用 gradlew 直起（记录见报告 §回归验证 J5）。进入世界后再跑本用例的断言。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralcc2 state nojade",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "Total time to load game and open world was"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CC2:nojade:"
+    },
+    { "type": "mixin" },
+    { "type": "kubejs" },
+    { "type": "crash" },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "snownee\\.jade|snownee/jade",
+      "scope": "whole"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "NoClassDefFoundError: snownee",
+      "scope": "whole"
+    }
+  ]
+}

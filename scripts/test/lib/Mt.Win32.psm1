@@ -920,7 +920,13 @@ function Find-MtMinecraftWindow {
         # `run/<版本>/logs/latest.log`，用例的 MT_ASSERT_LOG 会判 FAIL ——
         # 该回退不可能把错误的客户端变成「看起来通过」。
         $titleHit = @($cands | Where-Object { (Get-MtWindowTitle -Hwnd $_.Hwnd).Contains($Version) })
-        if ($cands.Count -eq 1 -and $titleHit.Count -eq 1) { return [long]$titleHit[0].Hwnd }
+        # 2026-10-17 回归轮修订（双线并行）：旧判据额外要求**全局候选只有 1 个**，于是另一条线
+        # 的客户端同时在跑时（标题分别为 `Minecraft NeoForge* 1.21.1` / `Minecraft* Forge 1.20.1`）
+        # 本版本窗口明明唯一可辨，却仍返回 0 ⇒ 本线所有 inject_command 全 ERROR
+        # （实测 `MT_INJECT: ERROR — 未能唯一确定本版本 Minecraft 窗口（存在多个候选客户端）`）。
+        # 新判据：**按标题里的版本号**做唯一性判定 —— 只看「标题含本版本号」的候选是否恰好 1 个；
+        # 与「不猜」红线一致（同一版本出现 2 个窗口时仍返回 0）。
+        if ($titleHit.Count -eq 1) { return [long]$titleHit[0].Hwnd }
 
         return [long]0   # 有客户端，但都不是本版本的 dev 进程
     }

@@ -20,7 +20,8 @@
     全版本收停，保留 Gradle 守护（构建热态）
 
 .PARAMETER Force
-    忽略失败取证标记（.mt_keep_alive）强制收停
+    忽略并清除**全部**失败取证标记（按线的 `.mt_keep_alive-<版本>`，以及兼容旧的无后缀
+    `.mt_keep_alive`）强制收停
 
 .PARAMETER PurgeSaves
     收停后**清理测试存档**（旧存档数据，2026-09-17 用户规则「测试任务完成后关闭测试端、

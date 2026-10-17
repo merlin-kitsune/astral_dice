@@ -28,11 +28,14 @@
     迁移前源文件 scripts/test/mt.sh（该原件已在 92fbeaf「工具链收敛为纯 pwsh」删除，取回：`git show 92fbeaf^:scripts/test/mt.sh`）。
 
     退出清理（避免进程泄漏）:
-      全流程会在退出前自动收停本流程进程与 Gradle 守护（正常结束 / 失败 / Ctrl-C
-      三条路径都覆盖），实现见 mt_cleanup.ps1。单阶段模式**默认不清理**，因为
+      多版本全流程（不带 --version）会在退出前自动收停全部本流程进程与 Gradle 守护
+      （正常结束 / 失败 / Ctrl-C 三条路径都覆盖），实现见 mt_cleanup.ps1。
+      `--version <V>` 单线全流程只收停**本线**并**保留** Gradle 守护（守护不归属单版本，
+      停掉会破坏其它线的构建热态）。单阶段模式**默认不清理**，因为
       launch → cases 是分步进行的，需要让客户端在两步之间保持运行；如需强制，
       加 --cleanup-on-exit，或用 --no-cleanup-on-exit 关闭全流程的自动清理。
-      若条目失败且 on_fail=keep_game_running，会落 .mt_keep_alive 标记，
+      若条目失败且 on_fail=keep_game_running，会落按线隔离的 `.mt_keep_alive-<版本>` 标记
+      （兼容旧的无后缀 `.mt_keep_alive`，它对所有线生效），
       此时自动清理只提示不杀进程，保留现场供取证（取证完用 --phase stop --force）。
 
     **测试任务收尾（2026-09-17 用户规则，必须遵守）**：测试任务完成后要**关闭测试端并清理
@@ -41,7 +44,8 @@
       · 分步执行（`--phase launch` / `--phase cases` 等）：最后一次读数后**必须**执行
         `pwsh -File scripts/test/mt.ps1 --version <V> --phase stop --purge-saves`；
       · `--phase stop` 默认**不**清存档（重登类用例 CHIP-RELOG 要跨 stop 保留存档），
-        只有显式 `--purge-saves` 才清；`.mt_keep_alive` 存在时两者都只提示、保留现场。
+        只有显式 `--purge-saves` 才清；`.mt_keep_alive-<版本>`（或兼容的无后缀旧标记）
+        存在时两者都只提示、保留现场。
 
     子进程启动方式（B6 ⑥ 修订）: **一律不用 `Start-Process -Wait`**。它等的是**整棵进程
     树**（本机最小复现：子进程 0.4s 退出、父进程 12.4s 才返回 = 孙进程 ping 的时长），而
@@ -55,7 +59,8 @@
     客户端作为后代留下，必须让启动方**立即返回**（详见 docs/batch3/B1-in-game-results.md ①）。
 
     超时与「不允许长时间等待」（B6 ⑥；2026-09-16 用户裁决后**收紧为严格预算**）:
-      · **每一类子进程都有硬上限**：preflight 120s / build 300s / env 240s / launch 180s /
+      · **每一类子进程都有硬上限**：preflight 120s / build 300s / env 240s /
+        launch **联动预算**（锁等待 + 就绪预算 + 余量，默认 600+180+120=900s）/
         report 90s / stop 150s / cleanup 180s（表见 `$script:PhaseBudgets`）；
         cases 阶段**自适应**：单条 = 单条硬上限 + 90s，全目录 = 90s × 用例数 + 90s
         （固定值要么误杀 17 条全量跑、要么等于不限，故按用例数推导）。
@@ -113,6 +118,8 @@ $script:PhaseBudgets = [ordered]@{
     gen       = 120
     build     = 300
     env       = 240
+    # launch 的实际预算 = 锁等待 + 就绪预算 + 余量（见 Get-MtLaunchBudget）；
+    # 这里的 180 只是「就绪预算基线」，不再直接作为整个 launch 阶段的硬上限。
     launch    = 180
     cases     = 300
     report    = 90
@@ -127,12 +134,20 @@ function Get-MtPhaseBudget {
     <#
     .SYNOPSIS
         取某阶段的硬超时（秒）；`MT_<阶段>_TIMEOUT_SEC` 可覆写。
+
+    .NOTES
+        2026-10-17 返工（预算冲突）：launch 不再用固定 180s。并行启动时 mt_launch 可能先在
+        全机启动锁上排队（默认最多 600s），之后才进入 180s 就绪等待 —— 固定 180s 会让
+        mt.ps1 在**正常排队**期间误报 `CHILD: TIMEOUT`。现在默认值 = 锁等待 + 就绪 + 余量，
+        三个分量与 mt_launch 读同一来源（Mt.Proc 的 Get-MtLaunchBudget）。
+        `MT_LAUNCH_TIMEOUT_SEC` 仍可显式覆写（运维要缩短时限时的逃生口）。
     #>
     [CmdletBinding()]
     param([Parameter(Mandatory)][AllowEmptyString()][string]$PhaseName)
 
     $v = $script:ChildTimeoutSec
     if ($PhaseName -and $script:PhaseBudgets.Contains($PhaseName)) { $v = [int]$script:PhaseBudgets[$PhaseName] }
+    if ($PhaseName -eq 'launch') { $v = [int](Get-MtLaunchBudget).TotalSec }
     if ($PhaseName) {
         $envName = 'MT_' + (($PhaseName -replace '[^A-Za-z0-9]', '_').ToUpperInvariant()) + '_TIMEOUT_SEC'
         $raw = [Environment]::GetEnvironmentVariable($envName)
@@ -348,9 +363,11 @@ function Invoke-MtAutoCleanup {
 
     .NOTES
         幂等：靠 $script:MtCleanupDone 保证「正常路径显式调用 + finally 兜底」只真正跑一次。
+        D4-2（2026-10-17）：`-Versions` 非空时把收停/清档**限定到本线**（mt_cleanup 的
+        `--version` 语义），否则单版本全流程退出会把另一条线正在跑的客户端一起杀掉。
     #>
     [CmdletBinding()]
-    param()
+    param([string[]]$Versions = @())
 
     if ($script:MtCleanupDone -eq 1) { return 0 }
     $script:MtCleanupDone = 1
@@ -360,6 +377,9 @@ function Invoke-MtAutoCleanup {
     Start-MtPhase 'cleanup (auto)'
 
     $argv = @('-NoProfile', '-File', (Join-Path $script:TestDir 'mt_cleanup.ps1'), 'run', '--quiet', '--purge-saves')
+    foreach ($cv in @($Versions)) {
+        if ($cv) { $argv += @('--version', [string]$cv) }
+    }
     $r = Invoke-MtProcessFull -FilePath $script:PsExe -ArgumentList $argv -TimeoutSec (Get-MtPhaseBudget 'cleanup')
 
     foreach ($ln in (Get-MtCleanupDisplayLines -Text $r.StdOut)) { Write-MtLine $ln }
@@ -423,8 +443,19 @@ function Invoke-MtRunPhase {
         # A1（B2）：launch **必须**脱离执行，否则 -Wait 会等整棵进程树（客户端）
         # 直到它退出才返回 ⇒ 全流程与「分步 --phase launch」都拿不到活客户端。
         # 2026-09-16：再加「日志零增长即 STALL」的判定 —— 进程活着不等于有进展。
+        # 2026-10-17 返工（预算冲突）：launch 预算联动「锁等待 + 就绪 + 余量」，
+        # 否则并行启动排队（最多 600s）会被固定 180s 误杀成 TIMEOUT。
+        $launchBudget = Get-MtLaunchBudget
+        $launchBudgetSec = Get-MtPhaseBudget 'launch'
+        Write-MtInfo ("LAUNCH_BUDGET: {0}s = 锁等待 {1}s + 就绪 {2}s + 余量 {3}s（实际硬上限 {4}s）" -f `
+                $launchBudget.TotalSec, $launchBudget.LockSec, $launchBudget.ReadySec,
+                $launchBudget.MarginSec, $launchBudgetSec)
+        if ($launchBudgetSec -lt ($launchBudget.LockSec + $launchBudget.ReadySec)) {
+            Write-MtWarn ("LAUNCH_BUDGET: MT_LAUNCH_TIMEOUT_SEC={0}s 小于「锁等待+就绪」{1}s —— 排队时可能误报 TIMEOUT" -f `
+                    $launchBudgetSec, ($launchBudget.LockSec + $launchBudget.ReadySec))
+        }
         return (Invoke-MtChild -Script 'mt_launch.ps1' -ScriptArgs @('--version', $PhaseVersion) -Detached `
-                -TimeoutSec (Get-MtPhaseBudget 'launch') -NoProgressSec $script:LaunchNoProgressSec)
+                -TimeoutSec $launchBudgetSec -NoProgressSec $script:LaunchNoProgressSec)
     }
     if ($PhaseName -eq 'cases') {
         # cases 阶段是**预算自适应**的：单条 = 单条硬上限 + 90s 余量；全目录 = 90s × 用例数 + 90s。
@@ -566,6 +597,9 @@ if ($CleanupMode -ne '') { $script:MtDoCleanup = [int]$CleanupMode }
 $overall = $MT_EXIT_PASS
 $gateOpen = $true
 $runId = Get-MtActiveRunId
+# D4-2：退出清理的收停/清档范围 —— 单版本运行只动本线；多线顺序全流程（无 --version）
+# 保持旧行为（全部版本 + 停 Gradle 守护，见 mt_cleanup 的 hasVersions 分支）。
+$cleanupVersions = if ($Version) { @($Version) } else { @() }
 
 try {
     # ── 需要生成条目时先交给子技能 ──────────────────────────────────────
@@ -681,10 +715,15 @@ try {
 
     Start-MtPhase 'preflight'
     [void](Set-MtProgress -Phase 'preflight' -Version ($flowVersions -join ','))
-    $rc = Invoke-MtChild -Script 'mt_preflight.ps1' -ScriptArgs @('--all') -TimeoutSec (Get-MtPhaseBudget 'preflight')
+    # D4-2（2026-10-17）：**只检查本次真正要跑的线**。旧实现无条件 `--all` ⇒
+    # `mt.ps1 --version 1.20.1` 也会去扫 1.21.1 的遗留进程并自动收停，两条线无法并行
+    # （实测双线排队约 1 小时）。多线顺序全流程（无 --version）仍用 --all。
+    $preflightArgs = if ($Version) { @('--version', $Version) } else { @('--all') }
+    $rc = Invoke-MtChild -Script 'mt_preflight.ps1' -ScriptArgs $preflightArgs -TimeoutSec (Get-MtPhaseBudget 'preflight')
     if ($rc -ne 0) {
         Write-MtErrLine 'MT_RUN: ABORT（前置失败）'
-        Write-MtErrLine '提示: 如需清理前置检查发现的残留进程，执行 pwsh -File scripts/test/mt.ps1 --phase stop'
+        $stopHint = if ($Version) { "--version $Version --phase stop" } else { '--phase stop' }
+        Write-MtErrLine ("提示: 如需清理前置检查发现的残留进程，执行 pwsh -File scripts/test/mt.ps1 $stopHint")
         exit $MT_EXIT_PREFLIGHT
     }
     foreach ($pv in $flowVersions) {
@@ -788,9 +827,9 @@ try {
     }
 
     # 退出清理走在这里（早于最终判定行），finally 只是兜底（Ctrl-C / 异常退出）
-    [void](Invoke-MtAutoCleanup)
+    [void](Invoke-MtAutoCleanup -Versions $cleanupVersions)
 } finally {
-    [void](Invoke-MtAutoCleanup)
+    [void](Invoke-MtAutoCleanup -Versions $cleanupVersions)
 }
 
 Write-MtLine ''

@@ -136,8 +136,10 @@ $script:EscSensitiveSessionCmds = @('targetselect')
 $script:NoEscField = 'no_esc'
 $script:EscSensitiveFlag = 'esc_sensitive'
 
-# 失败取证标记：存在时，流程退出清理不杀游戏客户端（见 run_case 与 mt_cleanup.ps1）
-$script:KeepAlive = Join-Path $script:CasesDir '.mt_keep_alive'
+# 失败取证标记：存在时，流程退出清理不杀游戏客户端（见 run_case 与 mt_cleanup.ps1）。
+# D4-2（2026-10-17）：标记按**线**分文件（`.mt_keep_alive-<版本>`）—— 两条线并行时，
+# 一条线的失败现场不得让另一条线的 `--phase stop` 也被 SKIP。
+$script:KeepAlivePrefix = '.mt_keep_alive-'
 
 # ── 「疑似用户手动终止」判定（2026-09-19 用户规则）────────────────────────────
 # 规则：**该版本本次运行确实启动过**、客户端进程在运行期消失、**无新崩溃报告**、且
@@ -1577,11 +1579,12 @@ function Invoke-MtCaseRun {
     # 同样例外：`expect_crash` —— 现场就是「客户端已崩」，没有可保留的运行态，
     # 置位只会让后续 `--phase stop` 静默跳过清理，徒增一次 `--force`。
     if (@('FAIL', 'ERROR') -contains $worst -and (-not $expectCrash) -and (Get-MtMapValue -Map $case -Key 'on_fail') -eq 'keep_game_running') {
-        $dir = [System.IO.Path]::GetDirectoryName($script:KeepAlive)
+        $keepAlivePath = Join-Path $script:CasesDir ($script:KeepAlivePrefix + $Version)
+        $dir = [System.IO.Path]::GetDirectoryName($keepAlivePath)
         if (-not (Test-Path -LiteralPath $dir)) { [void](New-Item -ItemType Directory -Force -Path $dir) }
         $stamp = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss', [cultureinfo]::InvariantCulture)
-        [System.IO.File]::WriteAllText($script:KeepAlive, ("{0} ({1}) @ {2}`n" -f $caseId, $worst, $stamp), $script:TAG_UTF8)
-        Write-MtLine ("MT_KEEP_ALIVE: 已置位（{0} 失败，退出时保留游戏现场） —— 取证完成后执行 pwsh -File scripts/test/mt.ps1 --phase stop 收停" -f $caseId)
+        [System.IO.File]::WriteAllText($keepAlivePath, ("{0} ({1}) @ {2}`n" -f $caseId, $worst, $stamp), $script:TAG_UTF8)
+        Write-MtLine ("MT_KEEP_ALIVE: 已置位（{0} 失败，退出时保留游戏现场） —— 取证完成后执行 pwsh -File scripts/test/mt.ps1 --version {1} --phase stop 收停" -f $caseId, $Version)
     }
 
     return (New-MtPair $worst $timeline)

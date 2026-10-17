@@ -980,10 +980,408 @@ function Get-MtClientStatus {
         LatestCrashTime = $(if ($crashes.Count -gt 0) { $crashes[-1].LastWriteTime } else { [datetime]::MinValue })
     }
 }
+
+# ══ 全机启动锁（D4-2，2026-10-17）══════════════════════════════════════════
+# 背景：两条线的测试会话要能**并行**，但**并发启动客户端**会命中 glfw.dll 原生崩溃
+# （实测证据 run/1.20.1/hs_err_pid3796.log：EXCEPTION_ACCESS_VIOLATION at glfw.dll+0xf8ab，
+#  Render thread → RenderSystem.limitDisplayFPS）。因此把「整局独占」改为
+#  「按线隔离（preflight 只扫本线）+ **仅启动阶段**全机串行（本组函数）」。
+#
+# 锁文件刻意放在**用户临时目录**而不是仓库内：它必须跨 worktree / 跨数据线生效
+# （同一台机器上 F:\...\astral_dice_multiloader 与 ...-next 是两棵工作树）。
+# 锁内容 = 属主 pid + 进程启动时间 + 随机 token + 版本 + 获取时间。
+#   ① 属主进程已消失 ⇒ 陈旧，自动清理；
+#   ② pid 活着但启动时间对不上（PID 复用）⇒ 陈旧；
+#   ③ 锁龄超过 StaleSec（默认 900s；启动锁只覆盖「冷启动→进入世界」，预算 180s）⇒ 陈旧；
+#   ④ 文件存在但读不出来（属主正在写，句柄独占）⇒ **不立即删**，只有超过 30s 宽限才当损坏锁清理。
+function Get-MtLaunchLockPath {
+    <#
+    .SYNOPSIS
+        全机启动锁的路径（用户临时目录下的固定文件名，跨 worktree 共享）。
+    #>
+    [CmdletBinding()]
+    param([string]$Name = 'astral-dice-mt-launch.lock')
+
+    return (Join-Path ([System.IO.Path]::GetTempPath()) $Name)
+}
+
+function Read-MtLaunchLockInfo {
+    <#
+    .SYNOPSIS
+        读取锁内容；不存在 / 正被属主独占写入 / 损坏时返回 $null。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$Path)
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $null }
+    try {
+        $raw = Get-Content -LiteralPath $Path -Raw -Encoding UTF8 -ErrorAction Stop
+        if (-not $raw) { return $null }
+        # ⚠️ 必须用逗号包装：直接 `return (hashtable)` 会被 PowerShell 的管道**枚举**成
+        #    一串 DictionaryEntry（调用方拿到数组，`$Info['pid']` 恒为 $null ⇒ 所有锁都被误判为陈旧，
+        #    互斥直接失效）。实测踩过：子进程能在父进程持锁时拿到锁。
+        return , ($raw | ConvertFrom-Json -AsHashtable)
+    } catch {
+        return $null
+    }
+}
+
+function Get-MtLaunchLockTimeoutSec {
+    <#
+    .SYNOPSIS
+        等锁上限（秒）：`MT_LAUNCH_LOCK_TIMEOUT_SEC` 覆写，默认 600。
+
+    .NOTES
+        2026-10-17 返工（预算冲突）：这个默认值**不是**孤立的 —— mt.ps1 的 launch 阶段
+        硬超时按「锁等待 + 就绪预算 + 余量」联动计算（见 Get-MtLaunchBudget），
+        两边必须读同一个来源，否则并行启动排队时会先被 launch 阶段总预算误杀成 TIMEOUT。
+    #>
+    [CmdletBinding()]
+    param([int]$Default = 600)
+
+    $v = $Default
+    $raw = [Environment]::GetEnvironmentVariable('MT_LAUNCH_LOCK_TIMEOUT_SEC')
+    if ($raw) {
+        $parsed = 0
+        if ([int]::TryParse($raw, [ref]$parsed) -and $parsed -gt 0) { $v = $parsed }
+    }
+    return $v
+}
+
+function Get-MtLaunchReadyBudgetSec {
+    <#
+    .SYNOPSIS
+        「进入世界」就绪预算（秒）：`MT_LAUNCH_READY_TIMEOUT_SEC`（≥30）覆写，默认 180。
+    #>
+    [CmdletBinding()]
+    param([int]$Default = 180)
+
+    $v = $Default
+    $raw = [Environment]::GetEnvironmentVariable('MT_LAUNCH_READY_TIMEOUT_SEC')
+    if ($raw) {
+        $parsed = 0
+        if ([int]::TryParse($raw, [ref]$parsed) -and $parsed -ge 30) { $v = $parsed }
+    }
+    return $v
+}
+
+function Get-MtLaunchEffectiveStaleSec {
+    <#
+    .SYNOPSIS
+        启动锁的**有效**陈旧阈值 = max(StaleSec, 就绪预算 + 60)。
+
+    .NOTES
+        2026-10-17 返工（锁龄边界）：锁覆盖「spawn → 进入世界 + 崩溃复检」。若调用方把
+        `MT_LAUNCH_LOCK_STALE_SEC` 调得很小（或未来把就绪预算调大），属主正在**正常等待
+        世界**时会被别人误判为陈旧并抢锁 —— 于是同一台机器上出现两个并发启动（glfw 崩溃的
+        根因）。因此有效阈值必须至少覆盖「就绪预算 + 60s 余量」。
+    #>
+    [CmdletBinding()]
+    param(
+        [int]$StaleSec = 900,
+        [int]$ReadyBudgetSec = 0
+    )
+
+    if ($ReadyBudgetSec -le 0) { $ReadyBudgetSec = Get-MtLaunchReadyBudgetSec }
+    return [int][Math]::Max($StaleSec, ($ReadyBudgetSec + 60))
+}
+
+function Get-MtLaunchBudget {
+    <#
+    .SYNOPSIS
+        launch 阶段的联动预算：锁等待 + 就绪预算 + 余量（默认 120s）。
+
+    .OUTPUTS
+        PSCustomObject：LockSec / ReadySec / MarginSec / TotalSec。
+    #>
+    [CmdletBinding()]
+    param(
+        [int]$LockSec = 0,
+        [int]$ReadySec = 0,
+        [int]$MarginSec = 120
+    )
+
+    if ($LockSec -le 0) { $LockSec = Get-MtLaunchLockTimeoutSec }
+    if ($ReadySec -le 0) { $ReadySec = Get-MtLaunchReadyBudgetSec }
+    return [pscustomobject]@{
+        LockSec   = $LockSec
+        ReadySec  = $ReadySec
+        MarginSec = $MarginSec
+        TotalSec  = ($LockSec + $ReadySec + $MarginSec)
+    }
+}
+
+function Test-MtLaunchLockStale {
+    <#
+    .SYNOPSIS
+        锁是否陈旧（可安全清理）。$Info 为 $null 时按「读不出内容」处理：只看锁龄宽限。
+    #>
+    [CmdletBinding()]
+    param(
+        [AllowNull()]$Info,
+        [Parameter(Mandatory)][string]$Path,
+        [int]$StaleSec = 900,
+        [int]$ReadyBudgetSec = 0,
+        [int]$UnreadableGraceSec = 30
+    )
+
+    $ageSec = $null
+    try {
+        $ageSec = ((Get-Date) - (Get-Item -LiteralPath $Path -ErrorAction Stop).LastWriteTime).TotalSeconds
+    } catch {
+        $ageSec = $null
+    }
+
+    if ($null -eq $Info) {
+        # 读不到内容：可能是属主刚 CreateNew 还没写完（FileShare.None）。只按宽限判损坏。
+        return ($null -ne $ageSec -and $ageSec -gt $UnreadableGraceSec)
+    }
+
+    $ownerPid = 0
+    try { $ownerPid = [int]$Info['pid'] } catch { $ownerPid = 0 }
+    if ($ownerPid -le 0) { return $true }
+
+    $proc = Get-Process -Id $ownerPid -ErrorAction SilentlyContinue
+    if ($null -eq $proc) { return $true }
+
+    # PID 复用防护：锁里记录的启动时间与当前同 PID 进程的启动时间不一致 ⇒ 不是同一进程。
+    # ⚠️ 存 **Unix 秒**而不是 ISO 字符串：PowerShell 7.5+ 的 ConvertFrom-Json 会把形如日期的
+    #    字符串自动转成 DateTime（并丢掉 Kind/时区）⇒ 实测 8 小时偏移，所有活锁都被误判为陈旧。
+    try {
+        if ($Info.Contains('pid_start_unix')) {
+            $recUnix = [long]$Info['pid_start_unix']
+            $liveUnix = [long]([DateTimeOffset]$proc.StartTime).ToUnixTimeSeconds()
+            if ($recUnix -gt 0 -and [Math]::Abs($liveUnix - $recUnix) -gt 5) { return $true }
+        }
+    } catch { }
+
+    # 有效阈值必须覆盖「属主正常等待进入世界」的时长，见 Get-MtLaunchEffectiveStaleSec。
+    $effectiveStale = Get-MtLaunchEffectiveStaleSec -StaleSec $StaleSec -ReadyBudgetSec $ReadyBudgetSec
+    if ($null -ne $ageSec -and $ageSec -gt $effectiveStale) { return $true }
+    return $false
+}
+
+function Remove-MtLaunchLockAtomic {
+    <#
+    .SYNOPSIS
+        原子化删除锁文件：先 rename 抢占，再按 token 复核，最后删临时名。
+
+    .DESCRIPTION
+        2026-10-17 返工（Exit 的 TOCTOU）：旧实现「读 token → 比对 → Remove-Item」之间，
+        属主可能恰好释放锁、另一条线立刻建了新锁 ⇒ 我们删掉的是**别人的新锁**。
+        现在把「抢占」与「删除」分开：
+          ① `File.Move(<lock>, <lock>.<随机>.<mode>.tmp)` 是单个文件系统操作，竞争时只有一个成功；
+          ② 对**已改名**的文件复核 token（改名后不会再被替换，复核是权威的）；
+          ③ token 不符 ⇒ 尽力改回原名并放弃删除（绝不误删他人锁）；
+          ④ rename 失败 ⇒ 直接放弃并返回失败（交给调用方告警/等下次陈旧清理）。
+        残留的 `*.tmp` **不是锁路径**，不会造成死锁；失败时 Detail 里带完整路径便于取证。
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$Path,
+        [AllowNull()][string]$ExpectedToken,
+        [string]$Mode = 'release'
+    )
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        return [pscustomobject]@{ Removed = $false; Detail = 'missing' }
+    }
+
+    $tag = ($Mode -replace '[^A-Za-z0-9_-]', '_')
+    $tmp = ('{0}.{1}.{2}.tmp' -f $Path, [guid]::NewGuid().ToString('N'), $tag)
+    try {
+        [System.IO.File]::Move($Path, $tmp)
+    } catch {
+        return [pscustomobject]@{ Removed = $false; Detail = ('rename-failed: ' + $_.Exception.Message) }
+    }
+
+    if ($null -ne $ExpectedToken) {
+        $moved = Read-MtLaunchLockInfo -Path $tmp
+        $tok = ''
+        if ($null -ne $moved) {
+            try { $tok = [string]$moved['token'] } catch { $tok = '' }
+        }
+        if ($tok -ne $ExpectedToken) {
+            $restored = $false
+            try {
+                [System.IO.File]::Move($tmp, $Path)
+                $restored = $true
+            } catch {
+                $restored = $false
+            }
+            $where = if ($restored) { '已还原原路径' } else { "还原失败，残留 $tmp" }
+            return [pscustomobject]@{
+                Removed = $false
+                Detail  = ("token-mismatch（锁已被他人接管；$where）")
+            }
+        }
+    }
+
+    try {
+        Remove-Item -LiteralPath $tmp -Force -ErrorAction Stop
+        return [pscustomobject]@{ Removed = $true; Detail = ('removed:' + $Mode) }
+    } catch {
+        return [pscustomobject]@{
+            Removed = $false
+            Detail  = ('remove-failed（已改名残留 ' + $tmp + '）: ' + $_.Exception.Message)
+        }
+    }
+}
+
+function Clear-MtStaleLaunchLock {
+    <#
+    .SYNOPSIS
+        清理陈旧启动锁（只读诊断 + 安全删除）。返回 {Removed, Existed, Detail}。
+    #>
+    [CmdletBinding()]
+    param(
+        [string]$Path = '',
+        [int]$StaleSec = 900,
+        [int]$ReadyBudgetSec = 0
+    )
+
+    if (-not $Path) { $Path = Get-MtLaunchLockPath }
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        return [pscustomobject]@{ Removed = $false; Existed = $false; Detail = 'no-lock' }
+    }
+    $info = Read-MtLaunchLockInfo -Path $Path
+    if (Test-MtLaunchLockStale -Info $info -Path $Path -StaleSec $StaleSec -ReadyBudgetSec $ReadyBudgetSec) {
+        # 用同一套原子化手法：先改名抢占，再复核 token（读不到 token 的损坏锁不做 token 校验）。
+        $expect = $null
+        if ($null -ne $info) {
+            try { $expect = [string]$info['token'] } catch { $expect = $null }
+        }
+        $res = Remove-MtLaunchLockAtomic -Path $Path -ExpectedToken $expect -Mode 'stale'
+        if ($res.Removed) {
+            return [pscustomobject]@{ Removed = $true; Existed = $true; Detail = 'stale-removed' }
+        }
+        return [pscustomobject]@{ Removed = $false; Existed = $true; Detail = ('stale-remove-failed: ' + $res.Detail) }
+    }
+    $owner = '?'
+    try { if ($null -ne $info -and $info.Contains('pid')) { $owner = [string]$info['pid'] } } catch { }
+    return [pscustomobject]@{ Removed = $false; Existed = $true; Detail = "held-by-pid=$owner" }
+}
+
+function Enter-MtLaunchLock {
+    <#
+    .SYNOPSIS
+        获取全机启动锁（阻塞等待，超时返回 Acquired=$false）。
+
+    .PARAMETER Version
+        仅用于日志/锁内容标注（哪条线在启动）。
+    .PARAMETER TimeoutSec
+        最长等待秒数（默认 600）。另一条线一次冷启动约 40–90s，600s 足以覆盖排队。
+    .PARAMETER StaleSec
+        锁龄超过该秒数即视为泄漏（默认 900；启动锁只覆盖「冷启动→进入世界」）。
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$Version,
+        [int]$TimeoutSec = 600,
+        [int]$StaleSec = 900,
+        [int]$ReadyBudgetSec = 0,
+        [string]$Path = ''
+    )
+
+    if (-not $Path) { $Path = Get-MtLaunchLockPath }
+    $token = [guid]::NewGuid().ToString('N')
+    $t0 = Get-Date
+    $deadline = $t0.AddSeconds([Math]::Max(1, $TimeoutSec))
+    $lastNote = $t0
+    $enc = [System.Text.UTF8Encoding]::new($false)
+
+    while ((Get-Date) -lt $deadline) {
+        $fs = $null
+        try {
+            $fs = [System.IO.File]::Open($Path, [System.IO.FileMode]::CreateNew,
+                [System.IO.FileAccess]::Write, [System.IO.FileShare]::None)
+            $startUnix = 0
+            try { $startUnix = [long]([DateTimeOffset](Get-Process -Id $PID).StartTime).ToUnixTimeSeconds() } catch { $startUnix = 0 }
+            $info = [ordered]@{
+                pid            = [int]$PID
+                pid_start_unix = $startUnix
+                token          = $token
+                version        = $Version
+                host           = [string]$env:COMPUTERNAME
+                acquired_utc   = (Get-Date).ToUniversalTime().ToString('o', [cultureinfo]::InvariantCulture)
+            }
+            $bytes = $enc.GetBytes((ConvertTo-Json -InputObject $info -Compress))
+            $fs.Write($bytes, 0, $bytes.Length)
+            $fs.Flush()
+            $waited = [int]((Get-Date) - $t0).TotalSeconds
+            return [pscustomobject]@{
+                Acquired = $true; Token = $token; Path = $Path; WaitedSec = $waited; Detail = 'acquired'
+            }
+        } catch {
+            $info = Read-MtLaunchLockInfo -Path $Path
+            if (Test-MtLaunchLockStale -Info $info -Path $Path -StaleSec $StaleSec -ReadyBudgetSec $ReadyBudgetSec) {
+                $expect = $null
+                if ($null -ne $info) {
+                    try { $expect = [string]$info['token'] } catch { $expect = $null }
+                }
+                $res = Remove-MtLaunchLockAtomic -Path $Path -ExpectedToken $expect -Mode 'stale'
+                if (-not $res.Removed -and $res.Detail -ne 'missing') {
+                    Write-MtWarn ("LAUNCH_LOCK: 清理陈旧锁失败（未删除）— " + $res.Detail)
+                }
+            } elseif (((Get-Date) - $lastNote).TotalSeconds -ge 15) {
+                $lastNote = Get-Date
+                $owner = '?'
+                try {
+                    if ($null -ne $info) {
+                        $owner = ("version={0} pid={1}" -f [string]$info['version'], [string]$info['pid'])
+                    }
+                } catch { }
+                Write-MtInfo ("LAUNCH_LOCK: waiting — held by {0}，已等 {1}s（上限 {2}s）" -f `
+                        $owner, [int]((Get-Date) - $t0).TotalSeconds, $TimeoutSec)
+            }
+        } finally {
+            if ($null -ne $fs) { $fs.Dispose() }
+        }
+        Start-Sleep -Milliseconds 700
+    }
+
+    $info = Read-MtLaunchLockInfo -Path $Path
+    $owner = 'unknown'
+    try {
+        if ($null -ne $info) { $owner = ("version={0} pid={1}" -f [string]$info['version'], [string]$info['pid']) }
+    } catch { }
+    return [pscustomobject]@{
+        Acquired = $false; Token = ''; Path = $Path; WaitedSec = [int]((Get-Date) - $t0).TotalSeconds
+        Detail   = ("timeout after {0}s（held by {1}）" -f $TimeoutSec, $owner)
+    }
+}
+
+function Exit-MtLaunchLock {
+    <#
+    .SYNOPSIS
+        释放启动锁（只删**本进程 token** 对应的锁，绝不删别人的锁）。
+
+    .NOTES
+        2026-10-17 返工（TOCTOU）：改为「先 rename 抢占 → 在已改名文件上复核 token → 删除」，
+        见 Remove-MtLaunchLockAtomic。rename 失败则放弃释放并告警（锁会由下一次陈旧检查兜底）。
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$Token,
+        [string]$Path = ''
+    )
+
+    if (-not $Path) { $Path = Get-MtLaunchLockPath }
+    $res = Remove-MtLaunchLockAtomic -Path $Path -ExpectedToken $Token -Mode 'release'
+    if (-not $res.Removed -and $res.Detail -ne 'missing') {
+        Write-MtWarn ("LAUNCH_LOCK: 释放未生效（未删除锁文件）— " + $res.Detail)
+    }
+    return [bool]$res.Removed
+}
+
 Export-ModuleMember -Function @(
     'ConvertFrom-MtBytes', 'Invoke-MtProcess', 'Invoke-MtProcessFull',
     'Stop-MtProcessTree', 'Get-JavaProcesses', 'Get-GradleDaemonProcesses',
     'Read-MtSharedText', 'Read-MtLogWithRotation', 'Get-MtRotatedLatestLogs',
     'Get-MtLogAnchor', 'Read-MtLogWindow', 'ConvertTo-MtStartArgs', 'Start-MtProcessToFile',
-    'Stop-MtVersionProcesses', 'Get-MtClientStatus', 'Test-MtClientProcess', 'Test-MtPipelineProcess'
+    'Stop-MtVersionProcesses', 'Get-MtClientStatus', 'Test-MtClientProcess', 'Test-MtPipelineProcess',
+    'Get-MtLaunchLockPath', 'Read-MtLaunchLockInfo', 'Test-MtLaunchLockStale',
+    'Clear-MtStaleLaunchLock', 'Enter-MtLaunchLock', 'Exit-MtLaunchLock',
+    'Get-MtLaunchLockTimeoutSec', 'Get-MtLaunchReadyBudgetSec',
+    'Get-MtLaunchEffectiveStaleSec', 'Get-MtLaunchBudget'
 )

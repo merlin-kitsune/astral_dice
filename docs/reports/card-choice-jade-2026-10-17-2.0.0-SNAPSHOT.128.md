@@ -364,3 +364,249 @@ done
 # 3) 收尾
 pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --phase stop --purge-saves
 ```
+
+---
+
+## 9. 回归验证（2026-10-17 第二轮：CC-FILTER 新口径 / CC-DBLCLICK 多牌栈 / 右键 / 无 Jade）
+
+- 被测线：`neoforge-1.21.1`（MC 1.21.1 / NeoForge 21.1.235 / Java 21）
+- 工作树：`/mnt/f/MCProject/astral_dice_multiloader-next`（分支 `multi-dev-next`，HEAD `96352433` + 本批未提交修复）
+- 版本：`2.0.0-SNAPSHOT.128`；产物 `astral_dice-2.0.0-SNAPSHOT.128+neoforge_1.21.1.jar`
+  （`sha256 = 44f16811d4dafe52396da4fcd47e9557ba25edcc15975250e3488edb2d7c93af`，`build/libs` 与 `run/1.21.1/mods` 逐字相同）
+- 证据目录：`temp/ccregress-20261017/`（用例输出 `case-*.log`、启动日志 `temp/mt_detached/mt_launch_20261017-20*.log`、无 Jade 日志 `logs-nojade/`）
+
+### 9.0 结论速览
+
+| # | 用例 | 判定 | 关键证据（`temp/ccregress-20261017/`） |
+|---|---|---|---|
+| 1 | **CC-FILTER**（左键按下 / 双击：原地不动、不进拖动、光标无携带物） | **PASS（25 步全 PASS / 15 条断言）** | `case-CC-FILTER-c.log`：`step=24 ... carried=empty`、`step=30/56 ... filled=0 ... carried=empty`、`absent evt=drag` |
+| 2 | **CC-RIGHTCLICK**（右键 / 创意拾取键不拿牌；有携带物时右键放一个） | **PASS（27 步全 PASS / 17 条断言）** | `case-CC-RIGHTCLICK-f.log`：`btn=1 ret=1 carried=empty`、`btn=2 ... carried=empty`、`diamond_pick carried=minecraft:diamondx5`、`after_merge ... 4:minecraft:diamondx5` |
+| 3 | **CC-DBLCLICK**（5 张同种牌栈双击 → 恰好 1 张入槽） | **PASS（24 步全 PASS / 15 条断言）** | `case-CC-DBLCLICK-f.log`：`step=42 ... filled=1 ... x4`、`step=70 ... filled=2 ... x3`、`step=96 ... c1=medium ... x4`、关屏 `x5` |
+| 4 | **CC-OCCUPIED**（§9-7 合法卡拖到已占用格 → 原路还原） | **PASS（20 步全 PASS / 9 条断言）** | `case-CC-OCCUPIED-c.log`：`step=74 ... c0=...medium ... carried=empty ... 5:minecraft:diamondx1` + `absent 5:astral_dice:attack_card_mediumx1` |
+| 5 | **J5 未装 Jade 启动** | **PASS** | `logs-nojade/latest.log`：Mod List 块 0 处 jade（27 行），对照组同位置为 `Jade 15.10.6+neoforge (jade)`；`0 ERROR/FATAL`、`0 crash-reports`、`logged in with entity id` 命中 |
+
+> 本轮无产品崩溃（`crash-reports` 0）、无 Mixin 失败、`kubejs/server.log` 0 errors。测试靶子：本轮未生成任何生物（无亡灵靶问题）。
+
+### 9.1 构建与部署
+
+```
+$ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --phase build
+MT_INFO: [尝试 1/3] gradlew :neoforge-1.21.1:build (超时 60s)
+MT_BUILD: OK (2s) — 产物已更新：astral_dice-2.0.0-SNAPSHOT.128+neoforge_1.21.1.jar
+
+$ sha256sum neoforge-1.21.1/build/libs/astral_dice-2.0.0-SNAPSHOT.128+neoforge_1.21.1.jar \
+            run/1.21.1/mods/astral_dice-2.0.0-SNAPSHOT.128+neoforge_1.21.1.jar
+44f16811d4dafe52396da4fcd47e9557ba25edcc15975250e3488edb2d7c93af  .../build/libs/...
+44f16811d4dafe52396da4fcd47e9557ba25edcc15975250e3488edb2d7c93af  .../run/1.21.1/mods/...
+```
+
+`--phase env`：`MT_KUBEJS: OK`（探针同步）、`MT_MODS: OK`、`MT_PAUSE_LOCK: on`、`MT_WINDOWED: on`、`MT_WORLD: OK`（世界重建）。
+jar 时间戳 `2026-10-17 20:01`，晚于本批 `screen/*.java` / `build.gradle` 改动。
+
+### 9.2 启动与「F：preflight-op 首次注入即成功」实机验证
+
+本轮三次「干净启动」（全部：preflight 首次注入即 OK + PRECLEAN 自证 + 无需重注）：
+
+```
+# 201404 —— 服务 CC-OCCUPIED / CC-FILTER
+MT_INFO: MT_TIMING: world-ready=43s（预算 180s）
+MT_INFO: PREFLIGHT_OP_READY: chat-line
+MT_INFO: PREFLIGHT_OP: hasPermissions(2)=1 level=4 src=cmdsource+profile required=2
+MT_INFO: PREFLIGHT_OP: OK — has2=1 level=4 src=cmdsource+profile dump=rc=undefined
+MT_INFO: PRECLEAN: OK — /kill @e[type=!player,distance=..128] ×2
+MT_INFO: PRECLEAN_EVIDENCE: zh:killed=30
+MT_LAUNCH: OK (1m02s) — 已进入世界（quickplay=testworld）
+
+# 202041 —— 服务 CC-RIGHTCLICK / CC-DBLCLICK
+MT_INFO: MT_TIMING: world-ready=44s（预算 180s）
+MT_INFO: PREFLIGHT_OP_READY: chat-line
+MT_INFO: PREFLIGHT_OP: OK — has2=1 level=4 src=cmdsource+profile dump=rc=undefined
+MT_INFO: PRECLEAN: OK — /kill @e[type=!player,distance=..128] ×2
+MT_INFO: PRECLEAN_EVIDENCE: zh:killed=8
+MT_LAUNCH: OK (59s) — 已进入世界（quickplay=testworld）
+```
+（`mt_launch_20261017-201224.log` 同为 `MT_LAUNCH: OK (40s)`、`PREFLIGHT_OP: OK`、`PRECLEAN_EVIDENCE: zh:killed=12`。）
+
+- **F 判定：首次注入即成功（注入尝试次数 = 1，零重注）**。判据：`PREFLIGHT_OP_READY: chat-line` 之后紧跟 `PREFLIGHT_OP: OK`，
+  且当日**全部** `mt_launch` 日志中 `PREFLIGHT_OP_RETRY` 行数为 **0**（`grep -h PREFLIGHT_OP_RETRY temp/mt_detached/mt_launch_20261017-*.log | wc -l` → `0`）。
+  对比上轮 §5-D2「4/4 失败 + 手工重注」——D4-1 的「等聊天就绪 + 注入后回读 + 重试」在本轮实机成立。
+- ⚠️ 另两次启动（`mt_launch_20261017-200317` / `-200808`）在 **preflight-op 之后的** PRECLEAN / `doImmediateRespawn` 注入上失败
+  （`PRECLEAN: WARN — 注入返回码 /`、`未确认「doImmediateRespawn=true」`）⇒ 启动闸门记 ERROR（客户端本身健康、已进世界）。
+  为取得后续用例证据，本轮后续启动统一带 `MT_ALLOW_NO_IMMEDIATE_RESPAWN=1`（**本批无用例涉及死亡**；该开关只跳过该硬闸门，不降低其它前置）。
+  该差异已登记为工具链问题 §9.8-D4-5。
+- 启动同时记录：`SODIUM_LOADED/IRIS_LOADED/SHADERS=enabled/SLIMEGUARD/COLLECTIVE/CARPET=true`、`NOAI_ENFORCED=true`。
+
+### 9.3 CC-FILTER（新口径，PASS）
+
+用例：`scripts/test/cases/CC-FILTER-1.21.1.json`（战斗中会话 + 效果牌；左键按下 / 双击）。
+
+```
+AP_CCR:evt=click:step=24:btn=0:what=effect_left_press:rel=34,185:ret=1:carried=emptyx0
+AP_CCR:step=30:phase=after_left_press:...:complete=0:filled=0:c0=empty:c1=empty:c2=empty:carried=empty:inv={0:...mediumx1,1:astral_dice:effect_card_berserkx1}
+AP_CCR:step=56:phase=after_dbl:...:complete=0:filled=0:c0=empty:c1=empty:c2=empty:carried=empty:inv={...1:astral_dice:effect_card_berserkx1}
+AP_CCR:INV_DUMP:inv={0:...mediumx1,1:astral_dice:effect_card_berserkx1}
+```
+
+- ① 左键按下：屏幕返回 `ret=1` 且**光标仍为空** ⇒ 按下即被吞、未发包；
+- 「不进入拖动」：`absent AP_CCR:evt=drag:` PASS（本次会话零 `mouseDragged` 记录）；
+- ② 双击（两次按下间隔 4t=200ms）：`filled` 恒 0、光标恒空 ⇒ 未走 `QUICK_MOVE`；
+- 关屏后背包仍各 1 张（效果牌回到原槽 1）⇒ 不丢失、不复制；
+- `absent AP_CARD_CHOICE: confirm:|reject:`、`absent AP_CC(R) 异常行` 均 PASS。
+
+### 9.4 CC-RIGHTCLICK（新口径，PASS）
+
+用例：`scripts/test/cases/CC-RIGHTCLICK-1.21.1.json`（效果牌在 hotbar.1、钻石 ×5 在 hotbar.3）。
+
+```
+AP_CCR:evt=click:step=24:btn=1:what=effect_right_press:rel=34,185:ret=1:carried=emptyx0
+AP_CCR:step=30:phase=after_right_press:...:filled=0:c0=empty:c1=empty:c2=empty:carried=empty:inv={...1:effect_card_berserkx1,3:minecraft:diamondx5}
+AP_CCR:evt=click:step=34:btn=2:what=effect_middle_press:rel=34,185:ret=1:carried=emptyx0
+AP_CCR:step=40:phase=after_middle_press:...:filled=0:c0=empty:c1=empty:c2=empty:carried=empty
+AP_CCR:evt=click:step=46:btn=0:what=diamond_pick:rel=70,185:ret=1:carried=minecraft:diamondx5
+AP_CCR:step=64:phase=after_place_two:...:carried=minecraft:diamond:inv={1:astral_dice:effect_card_berserkx1,4:minecraft:diamondx2}
+AP_CCR:step=78:phase=after_merge:...:carried=empty:inv={1:...berserkx1,4:minecraft:diamondx5}
+```
+
+- ① **右键按下**（btn=1）：`ret=1` + `carried=empty` ⇒ 不再出现「半栈上光标」（上轮 R1 的漏洞路径已封）；
+- 创意模式**拾取键**（btn=2 = `keyPickItem` / `CLONE` 路径）：同样 `carried=empty`；
+- ③ **有携带物时右键「放一个」**：拿起钻石 5 张后右键空格两次 ⇒ 目标格 `diamondx2`、光标剩 3（下一步日志 `carried=minecraft:diamondx3` 佐证），
+  再左键并回 ⇒ 该格 `diamondx5`、光标清空 ⇒ 非卡物品操作未被误伤；
+- 类型不符的效果牌始终留在原槽（`1:effect_card_berserkx1`），卡槽恒空。
+
+### 9.5 CC-DBLCLICK（多牌栈，PASS）
+
+用例：`scripts/test/cases/CC-DBLCLICK-1.21.1.json`（hotbar.0 = `attack_card_medium ×5`）。
+
+```
+AP_CCR:step=42:phase=after_dbl1:...:filled=1:c0=astral_dice:attack_card_medium:c1=empty:c2=empty:carried=empty:inv={0:astral_dice:attack_card_mediumx4}
+AP_CCR:step=70:phase=after_dbl2:...:filled=2:c0=...medium:c1=...medium:c2=empty:carried=empty:inv={0:astral_dice:attack_card_mediumx3}
+AP_CCR:step=96:phase=after_dbl_back:...:filled=1:c0=empty:c1=astral_dice:attack_card_medium:c2=empty:carried=empty:inv={0:astral_dice:attack_card_mediumx4}
+AP_CCR:SCREEN:closed:...:inv={0:astral_dice:attack_card_mediumx5}
+AP_CCR:INV_DUMP:inv={0:astral_dice:attack_card_mediumx5}
+```
+
+- **双击一次只搬 1 张**：5 → 4 留原槽（`x4`），第 1 格 1 张；**未出现整栈填满**（`absent filled=3` PASS）；
+- 第二次双击填第 2 格（`x3` + 两格各 1）；
+- 双击卡槽取回：卡槽 1 张回背包（`c0=empty`、`c1=medium`、背包 `x4`）；
+- 关屏：卡槽余量退回背包 ⇒ 总数守恒 `x5`（无丢失/复制）。
+
+### 9.6 CC-OCCUPIED（§9-7 复测，PASS）
+
+用例：`scripts/test/cases/CC-OCCUPIED-1.21.1.json`（hotbar.5 = 钻石 ×1 作占用格）。
+
+```
+AP_CCR:step=44:phase=card_in_slot:...:c0=astral_dice:attack_card_medium
+AP_CCR:step=74:phase=after_occupied_drop:...:c0=astral_dice:attack_card_medium:c1=empty:c2=empty:carried=empty:inv={...5:minecraft:diamondx1}
+```
+
+断言（`case-CC-OCCUPIED-c.log` 第 15–17 条）另含 `absent 5:astral_dice:attack_card_mediumx1`（确认没有换位）
+⇒ `canAcceptCarried` 预判分支生效、未被本批其它改动误伤。
+
+### 9.7 J5：未安装 Jade 启动（PASS）
+
+**启动方式**（mt 工具链不透传 `-P`，直接起 dev 客户端）：
+
+```
+gradlew.bat :neoforge-1.21.1:runClient -PtestJade=false -Pquickplay=testworld --console=plain
+```
+
+**静态依赖对照**（`temp/ccregress-20261017/deps-*.txt`）：
+
+```
+$ gradlew :neoforge-1.21.1:dependencies --configuration runtimeClasspath -PtestJade=false | grep -c jade
+0
+$ gradlew :neoforge-1.21.1:dependencies --configuration runtimeClasspath | grep -i jade
+\--- maven.modrinth:jade:eYz2YBGT
+```
+
+**运行期（`temp/ccregress-20261017/logs-nojade/latest.log`）**：
+
+```
+[20:28:34] ModDiscoverer:  Mod List:
+        Architectury 13.0.11 ... Astral Dice 2.0.0-SNAPSHOT.128+neoforge_1.21.1 ... Sodium 0.8.13 ...
+        （27 行，grep -ci jade = 0；对照组同位置为 `Jade 15.10.6+neoforge (jade)`）
+[20:28:47.259] [Render thread/INFO] [minecraft.advancements.AdvancementTree]: Loaded 1437 advancements
+[20:28:48.398] [Server thread/INFO] [minecraft.server.players.PlayerList]: Dev[local:E:3b7dff2d] logged in with entity id 8 at (3.5, -60.0, -1.5)   ← 正常进入世界
+logged in with entity id：1 次
+```
+
+- **mod list 无 jade**：Mod List 块 27 行、`grep -ci jade` = **0**；对照（默认依赖）同块含 `Jade 15.10.6+neoforge (jade)`；
+- **日志无 Jade 相关报错**：`ERROR|FATAL` = **0**、`crash-reports` = **0**；KubeJS `server.log` 0 errors；
+- 仅有的 jade 相关行是**预期 WARN**（`astral_dice.jade.mixins.json` 为 `"required": false`，缺目标类时跳过）：
+  ```
+  [main/WARN] [mixin/]: Error loading class: snownee/jade/addon/vanilla/EntityHealthAndArmorProvider (ClassNotFoundException)
+  [main/WARN] [mixin/]: @Mixin target snownee.jade.addon.vanilla.EntityHealthAndArmorProvider was not found astral_dice.jade.mixins.json:ArmorValueProviderMixin
+  [main/WARN] [mixin/]: Error loading class: snownee/jade/overlay/DisplayHelper (ClassNotFoundException)
+  [main/WARN] [mixin/]: @Mixin target snownee.jade.overlay.DisplayHelper was not found astral_dice.jade.mixins.json:DisplayHelperArmorIconMixin
+  ```
+  另有 `jade (version 15.10.6+neoforge -> MISSING)` 一行，属模组可选依赖提示，不是异常。
+- 新增用例 `scripts/test/cases/JADE-NOJADE-1.21.1.json`（`MT_VALIDATE: OK`）：**启动之后**的运行期冒烟（`/astralprobe opprobe` 可用 + 无 crash/KubeJS/Mixin 失败）。
+  ⚠️ 其断言窗口自用例起算，**看不到启动期的 Mod List 行** ⇒ 「mod list 无 jade」以本节的启动日志为权威证据（该用例的 note 已写明）。
+- ⚠️ 本轮试过用客户端 KubeJS 探针读 `ModList#isLoaded("jade")`，被 KubeJS 类过滤器拒绝
+  （`InternalError: Failed to load Java class 'net.neoforged.fml.ModList': Class is not allowed by class filter`），
+  故运行期读数改用 NeoForge 自己的 Mod List 输出；探针已随收尾删除（`temp/ccregress-20261017/probe-backup/`）。
+
+### 9.8 工具链发现（本轮实测，非产品缺陷）
+
+#### D4-3（已修，测试工具链）：双线并行时 `Find-MtMinecraftWindow -Version` 无法确定本线窗口
+
+- 现象：另一条线（`forge-1.20.1`）客户端同时在跑时，本线**全部** `inject_command` 报
+  `MT_INJECT: ERROR — 未能唯一确定本版本 Minecraft 窗口（存在多个候选客户端）`（`case-CC-FILTER-a.log`）。
+- 根因：本线 dev 客户端的 java 命令行是 DevLaunch 短形式（实测 `net.caffeinemc.sodium / net.minecraft.client.main.Main /`，不含子项目名/run 目录），
+  只能走「标题含版本号的唯一候选」回退；旧代码额外要求**全局候选数 == 1** ⇒ 双线必然返回 0。
+- 修法（`scripts/test/lib/Mt.Win32.psm1`，仅测试工具链）：回退判据改为**按标题里的版本号**做唯一性判定（`$titleHit.Count -eq 1` 即接受；同版本出现 2 个窗口仍返回 0，不猜）。
+- 验证：`Find-MtMinecraftWindow -Version 1.21.1` → `1245682`（修前 `0`）；窗口枚举原样两份：`Minecraft NeoForge* 1.21.1` / `Minecraft* Forge 1.20.1`。
+  **该改动未提交，需评审。**
+
+#### D4-4（未修，环境/工具链）：两条线的 dev 客户端**不能共存**——同时运行时互相以 glfw.dll 原生崩溃退出
+
+- 本轮实测崩溃对（`EXCEPTION_ACCESS_VIOLATION ... glfw.dll+0x101ab`，Render thread `Minecraft.runTick`）：
+  `run/1.21.1/hs_err_pid{8820,20236,40132,8240}.log` 与 `run/1.20.1/hs_err_pid{38676,9180,23884,15540}.log` 的时间戳**同步**
+  （20:06 / 20:11 / 20:13 / 20:18），两侧同刻死亡。
+- 影响：`LAUNCH_LOCK` 只覆盖「spawn → 进世界」；**已进世界的客户端仍会被另一条线的启动杀死**，用例阶段随之 `USER_TERMINATED`。
+  本轮因此出现 **7 次** `USER_TERMINATED`（b 批 4 次 / d 批 2 次 / e 批 1 次，`case-*-{b,d,e}.log`），
+  最终在**双方都不在启动**的窗口内一次性跑完 4 条用例。
+- 结论：并行测试的物理约束比 AGENTS 现行「短时启动锁」更强，建议后续把「启动锁」升级为**会话级互斥**或分机执行（待裁决，本轮未改）。
+
+#### D4-5（未修，工具链）：从 WSL 起 `pwsh.exe` 时，`& <exe>` 子进程的 stdout / 退出码丢失
+
+- 现象：`mt_launch` 里 `& $psExe ...` 的 `$LASTEXITCODE` 为 `$null`（日志显示 `注入返回码 /`），
+  且从 WSL 直接 `& pwsh -File …` 完全拿不到子进程输出（最小复现：`temp/ccregress-20261017/probe_lastrc.ps1` → `lastrc=[] type=null`，连 `cmd.exe /c exit 9` 也读不到）。
+  经 `cmd.exe`/`.bat` + **文件重定向**启动时恢复正常（`launch_nogamerule.bat`）。
+- 影响：WSL 环境下 `--phase launch` 的 PRECLEAN / `doImmediateRespawn` 闸门会误报失败（命令实际可能已送达）；
+  preflight-op 闸门因改为「回读日志」不受影响（本轮 0 次重试）。
+- 应对（本轮做法）：所有 mt 调用改为 `cmd.exe /c <bat> > <文件>` 形态；**未改产品/工具链代码**。
+
+### 9.9 收尾
+
+```
+$ pwsh -NoProfile -File scripts/test/mt_cleanup.ps1 run --version 1.21.1 --purge-saves
+MT_CLEANUP: 指定了 --version，保留 Gradle 守护进程
+MT_CLEANUP_SAVES: PURGED 0
+MT_CLEANUP: 已收停 0 个本流程进程（范围：1.21.1）
+MT_CLEANUP_RESULT: OK
+```
+
+- `run/1.21.1/saves/` 实测为空（`ls | wc -l` = 0；`PURGED 0` 是因为前一条 `--phase stop --purge-saves` 已清过）。
+- **无 1.21.1 客户端残留**（`Get-CimInstance ... | match 'net.minecraft.client.main.Main|devlaunch'` 为空）；Gradle 守护进程按规则保留。
+- 临时探针已从两侧删除：`scripts/test/resources/kubejs/1.21.1/{server_scripts,client_scripts}/astral_ccr_*.js`、`astral_jade_probe.js`
+  与 `run/1.21.1/kubejs/**` 同名副本，备份见 `temp/ccregress-20261017/probe-backup/`。
+- 日志快照：`temp/ccregress-20261017/latest-before-nojade.log` = CC-RIGHTCLICK / CC-DBLCLICK 那一代（49 行 `AP_CCR:*`，
+  含 `step=42/64/96`、两条 `INV_DUMP`）；`temp/ccregress-20261017/logs-nojade/latest.log` = 无 Jade 那一代。
+  CC-FILTER / CC-OCCUPIED 的原始行未单独留存（下一次 `mt_launch` 会删除 `latest.log`），
+  其逐字证据见各自 `case-CC-FILTER-c.log` / `case-CC-OCCUPIED-c.log` 的 `MT_ASSERT_LOG` 命中片段。
+
+### 9.10 证据索引（`temp/`，不入库）
+
+| 路径 | 内容 |
+|---|---|
+| `temp/ccregress-20261017/case-CC-FILTER-c.log` | CC-FILTER 25 条断言全文（PASS） |
+| `temp/ccregress-20261017/case-CC-RIGHTCLICK-f.log` | CC-RIGHTCLICK 27 条断言全文（PASS） |
+| `temp/ccregress-20261017/case-CC-DBLCLICK-f.log` | CC-DBLCLICK 24 条断言全文（PASS，5 张牌栈） |
+| `temp/ccregress-20261017/case-CC-OCCUPIED-c.log` | CC-OCCUPIED 断言全文（PASS） |
+| `temp/ccregress-20261017/case-CC-*-{a,b,d,e}.log` | 崩溃/窗口冲突导致的 `USER_TERMINATED` 现场（D4-3 / D4-4 证据） |
+| `temp/ccregress-20261017/logs-nojade/{latest,debug}.log` | 无 Jade 启动的完整日志（Mod List / 世界进入 / mixin WARN） |
+| `temp/ccregress-20261017/deps-{nojade,jade}.txt` | `runtimeClasspath` 依赖对照（0 处 vs `maven.modrinth:jade:eYz2YBGT`） |
+| `temp/ccregress-20261017/launch_nogamerule.bat` / `launch3.log` | 带 `MT_ALLOW_NO_IMMEDIATE_RESPAWN=1` 的启动封装与输出 |
+| `temp/ccregress-20261017/build.log` / `env2.log` / `final-stop.log` | 构建 / 环境 / 收尾 |
+| `temp/ccregress-20261017/probe-backup/` | 三支临时探针原始副本（复跑时放回 + `mt_env.ps1 kubejs` + 冷启动） |

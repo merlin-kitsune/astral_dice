@@ -40,7 +40,9 @@ $script:ExitPreflight = 10
 # 本流程在任何分支上都可运行;这里保留一份「发布线分支」清单,只用于回显与告警标注,
 # **不参与任何判定**(判定恒为放行,见 Get-MtPreflightBranch)。
 $script:ReleaseLineBranches = @('multi-1.20.1-1.21.1')
-$script:KeepAlive = Join-Path (Join-Path (Get-MtTestDir) 'cases') '.mt_keep_alive'
+# 失败取证标记：D4-2（2026-10-17）起按**线**分文件（`.mt_keep_alive-<版本>`），
+# 旧的无后缀文件仍被识别（兼容历史现场），但它无法区分版本 ⇒ 对所有线都生效。
+$script:KeepAliveLegacy = Join-Path (Join-Path (Get-MtTestDir) 'cases') '.mt_keep_alive'
 $script:KLID_EN_US = '00000409'
 
 # ── 分支（信息性：回显 + 告警，不拦停）────────────────────────────────────
@@ -97,35 +99,143 @@ function Test-MtPreflightIme {
 }
 
 # ── 遗留进程 ──────────────────────────────────────────────────────────────
-function Get-MtOwnProcessMarkers {
+function Get-MtPreflightKeepAlivePath {
     <#
     .SYNOPSIS
-        本流程进程的命令行特征（判据与 mt_env kill / mt_cleanup 共用同一来源）。
+        某条线的失败取证标记路径（与 mt_case / mt_cleanup 同一命名）。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$Version)
+
+    return (Join-Path (Join-Path (Get-MtTestDir) 'cases') ('.mt_keep_alive-' + $Version))
+}
+
+function Get-MtPreflightKeepAliveReason {
+    <#
+    .SYNOPSIS
+        读取本线失败取证标记（优先分线文件，其次兼容旧的无后缀文件）；无标记返回 $null。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$Version)
+
+    foreach ($p in @((Get-MtPreflightKeepAlivePath -Version $Version), $script:KeepAliveLegacy)) {
+        if (-not (Test-Path -LiteralPath $p -PathType Leaf)) { continue }
+        $why = '（未记录原因）'
+        try {
+            $t = (Get-Content -LiteralPath $p -Raw -Encoding UTF8).Trim()
+            if ($t) { $why = $t }
+        } catch { $why = '（读取标记失败）' }
+        return ("$p ：$why")
+    }
+    return $null
+}
+
+function Get-MtPreflightPreview {
+    <#
+    .SYNOPSIS
+        命令行预览（160 字符，避免把整条 gradle 命令行灌进失败详情）。
+    #>
+    [CmdletBinding()]
+    param([AllowEmptyString()][string]$Text)
+
+    if (-not $Text) { return '' }
+    if ($Text.Length -le 160) { return $Text }
+    return $Text.Substring(0, 160)
+}
+
+function Get-MtPreflightProcessTable {
+    <#
+    .SYNOPSIS
+        本次前置检查使用的进程表（Pid + CommandLine）。
+
+    .NOTES
+        **无游戏自测钩子**：设置 `MT_PREFLIGHT_TEST_PROCS`（JSON 数组，元素
+        `{"pid":1234,"command_line":"..."}`）时**替换**真实进程表，用于在不起游戏/不真跑构建的
+        前提下验证「本线构建包装器存在 ⇒ FAIL」「不存在 ⇒ OK」两个分支。生产环境不设置该变量。
+        设置但 JSON 非法时告警并回退真实扫描（绝不让测试钩子静默改变生产判定）。
     #>
     [CmdletBinding()]
     param()
 
-    $marks = @()
-    foreach ($v in @(Get-MtVersions)) {
-        $marks += @(Get-MtProcessMarkers -Paths (Get-MtPaths -Version $v))
+    $raw = $env:MT_PREFLIGHT_TEST_PROCS
+    if ($null -ne $raw -and $raw.Trim() -ne '') {
+        try {
+            $out = @()
+            foreach ($f in @($raw | ConvertFrom-Json)) {
+                $cmd = ''
+                if ($null -ne $f.PSObject.Properties['command_line']) { $cmd = [string]$f.command_line }
+                elseif ($null -ne $f.PSObject.Properties['cmdline']) { $cmd = [string]$f.cmdline }
+                $out += [pscustomobject]@{ Pid = [int]$f.pid; CommandLine = $cmd }
+            }
+            return $out
+        } catch {
+            Write-MtWarn ("MT_PREFLIGHT_TEST_PROCS 解析失败（回退真实进程扫描）：" + $_.Exception.Message)
+        }
     }
-    return , $marks
+
+    return @(Get-JavaProcesses | ForEach-Object {
+            [pscustomobject]@{ Pid = [int]$_.Pid; CommandLine = [string]$_.CommandLine }
+        })
+}
+
+function Get-MtPreflightGradleWrapperProcs {
+    <#
+    .SYNOPSIS
+        本线「正在进行的 Gradle 包装器」进程：命令行含 `gradle-wrapper.jar` 且含
+        `:<当前子项目>:`。返回 {Pid, CommandLine}。
+
+    .NOTES
+        2026-10-17 返工（恢复构建守卫，只读版）：
+          · 旧 guard 是「发现任何 gradle 进程即 FAIL」—— 两条线并行时会因为**另一条线**的
+            正常构建而互相阻塞，已删除；
+          · 新 guard 只看**本线子项目选择器**（`:neoforge-1.21.1:` / `:forge-1.20.1:` …），
+            因此另一条线的构建不再误伤；
+          · **build 与 run 家族一律 FAIL**（`mt_build` 的 `:sub:build`、`mt_launch`/`mt_env` 的
+            `:sub:runClient` / `:sub:runServer` 都算）⇒ **只报告不杀**：正在跑的构建被收停会毁
+            产物，正在跑的 run 包装器也不该由前置检查擅自杀掉（要停请显式 `--phase stop`）；
+          · 只有 `gradle-wrapper.jar` + 本线选择器才算；Gradle 守护（无 wrapper jar）不阻塞。
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][psobject]$Paths,
+        [object[]]$Processes
+    )
+
+    if ($null -eq $Processes) { $Processes = @(Get-MtPreflightProcessTable) }
+    $selector = ':' + [string]$Paths.subproject + ':'
+    $out = @()
+    foreach ($p in @($Processes)) {
+        $cmd = [string]$p.CommandLine
+        if (-not $cmd.Contains('gradle-wrapper.jar')) { continue }
+        if (-not $cmd.Contains($selector)) { continue }
+        $out += [pscustomobject]@{ Pid = [int]$p.Pid; CommandLine = $cmd }
+    }
+    return $out
 }
 
 function Get-MtPreflightLeftoverScan {
     <#
     .SYNOPSIS
-        扫描 java 进程：本流程的（命中标记）与其它 Minecraft 客户端。返回 @(ours, others)。
+        扫描 java 进程：本线的（客户端/服务端/run 包装器）与其它 Minecraft 客户端。
+        返回 @(ours, others)。
+
+    .NOTES
+        成员判定统一走 Mt.Proc 的 `Test-MtPipelineProcess`（= 窗口标题含本版本号 **或**
+        命令行带本版本证据），与 mt_cleanup 的收停判据同一来源。**不能**只用命令行 marker：
+        1.20.1 DevLaunch 的 `Win32_Process.CommandLine` 可能只剩一个类名（真实参数在 args 文件里），
+        那样会让本线遗留客户端既检不出也杀不掉。
     #>
     [CmdletBinding()]
-    param([Parameter(Mandatory)][string[]]$Marks)
+    param(
+        [Parameter(Mandatory)][psobject]$Paths,
+        [object[]]$Processes
+    )
 
+    if ($null -eq $Processes) { $Processes = @(Get-MtPreflightProcessTable) }
     $ours = @(); $others = @()
-    foreach ($p in Get-JavaProcesses) {
+    foreach ($p in @($Processes)) {
         $cmd = [string]$p.CommandLine
-        $hit = $false
-        foreach ($m in $Marks) { if ($m -and $cmd.Contains([string]$m)) { $hit = $true; break } }
-        if ($hit) { $ours += [int]$p.Pid }
+        if (Test-MtPipelineProcess -Paths $Paths -ProcessId ([int]$p.Pid) -CommandLine $cmd) { $ours += [int]$p.Pid }
         elseif ($cmd.ToLowerInvariant().Contains('minecraft')) { $others += [int]$p.Pid }
     }
     return , @($ours, $others)
@@ -134,72 +244,74 @@ function Get-MtPreflightLeftoverScan {
 function Test-MtPreflightLeftover {
     <#
     .SYNOPSIS
-        遗留进程检查：本流程自己的进程**先自动清理**，清不掉才硬阻塞。返回 @(bool, detail)。
+        遗留进程检查（**按线隔离**）：只扫本版本的进程，**先自动清理**，
+        清不掉才硬阻塞。返回 @(bool, detail)。
 
     .NOTES
-        刻意区分两类进程 —— 早前的实现把两者混为一谈，会在用户只是开着自己的整合包客户端
-        时误报阻塞：
-          本流程遗留（dev 客户端 / Gradle 任务）→ **自动收停**，否则独占 runClient 的前提
-            不成立，且注入可能落到旧进程上；
-          其它 Minecraft 客户端（用户自己开的整合包）→ 仅提示，不阻塞：注入通道已按版本
-            锁定窗口（见 mt_inject 的窗口查找），不会投错；只提示显存/焦点占用。
+        2026-10-17（D4-2）口径：**独占粒度从「整机」改为「按线」**。两条线可以并行跑会话，
+        真正的物理约束只有「客户端**启动**不能并发」（glfw.dll 原生崩溃）—— 那由 mt_launch 的
+        全机短时启动锁负责，不在本阶段。
+          本线遗留（dev 客户端 / Gradle 任务）→ **只收停本线**，否则同一 run 目录/日志会被争用；
+          其它线客户端（或用户自己开的整合包）→ 仅提示，不阻塞（各线 run 目录、日志与窗口
+            标题均按版本隔离，注入通道也按版本锁定窗口）。
 
         为什么在这里兜底：退出路径在 Windows 上并不可靠（任务管理器强杀、控制台直接关窗
         都不经过任何钩子），只靠退出钩子就等于把「进程泄漏」交给运气。因此再加一道**下次
         启动时生效**的兜底：检出的本流程遗留直接收停，让泄漏最多影响一次运行的干净度。
 
-        唯一例外：`.mt_keep_alive` 取证标记存在时**不自动清理**（那是失败时故意留的现场），
-        改为 FAIL 并提示用 `--phase stop --force` 显式释放。
+        唯一例外：本线的 `.mt_keep_alive-<版本>`（或兼容的无后缀 `.mt_keep_alive`）存在时
+        **不自动清理**（那是失败时故意留的现场），改为 FAIL 并提示用 `--phase stop --force` 释放。
+
+        2026-10-17 返工（只读构建守卫）：先查**本线 `:sub:` 选择器**的 Gradle 包装器进程
+        （build 与 run 家族都算）⇒ 直接 FAIL，**只报告不杀**（构建中途收停会毁产物）。
+        **不**恢复「任意 gradle 进程都阻塞」的旧口径：其它线 / Gradle 守护 / 无 wrapper 的 java
+        进程都不受影响。
     #>
     [CmdletBinding()]
-    param()
+    param([Parameter(Mandatory)][string]$Version)
 
-    $marks = Get-MtOwnProcessMarkers
-    $scan = Get-MtPreflightLeftoverScan -Marks $marks
+    $p = Get-MtPaths -Version $Version
+    $procs = @(Get-MtPreflightProcessTable)
+    $blocking = @(Get-MtPreflightGradleWrapperProcs -Paths $p -Processes $procs)
+    if ($blocking.Count -gt 0) {
+        $pidsText = (($blocking | ForEach-Object { $_.Pid }) -join ', ')
+        $cmdText = (($blocking | Select-Object -First 2 | ForEach-Object { Get-MtPreflightPreview $_.CommandLine }) -join ' | ')
+        return , @($false, ("本线（$Version）有正在进行的 Gradle 包装器进程 PID=$pidsText（$cmdText）—— " +
+                    '本线 build/run 包装器在跑，**只报告不杀**；等它结束，或先执行 ' +
+                    "pwsh -File scripts/test/mt.ps1 --version $Version --phase stop 收停本线测试进程"))
+    }
+    $scan = Get-MtPreflightLeftoverScan -Paths $p -Processes $procs
     $ours = @($scan[0]); $others = @($scan[1])
 
-    $gradlePids = @()
-    try {
-        $gradlePids = @(Get-Process -Name gradle -ErrorAction SilentlyContinue | ForEach-Object { [int]$_.Id })
-    } catch { $gradlePids = @() }
-
     if ($ours.Count -gt 0) {
-        if (Test-Path -LiteralPath $script:KeepAlive -PathType Leaf) {
-            $why = '（未记录原因）'
-            try {
-                $t = (Get-Content -LiteralPath $script:KeepAlive -Raw -Encoding UTF8).Trim()
-                if ($t) { $why = $t }
-            } catch { $why = '（读取标记失败）' }
-            return , @($false, ("本流程遗留 PID=$($ours -join ',')，但存在失败取证标记（$why）——按设计保留现场；" +
-                        '取证完成后执行 pwsh -File scripts/test/mt.ps1 --phase stop --force'))
+        $reason = Get-MtPreflightKeepAliveReason -Version $Version
+        if ($reason) {
+            return , @($false, ("本线遗留 PID=$($ours -join ',')，但存在失败取证标记（$reason）——按设计保留现场；" +
+                        "取证完成后执行 pwsh -File scripts/test/mt.ps1 --version $Version --phase stop --force"))
         }
 
         $stale = @($ours)
-        Write-MtLine "  [ .. ] 遗留进程: 检出 $($stale.Count) 个本流程遗留进程（PID=$($stale -join ',')），自动收停中…"
-        # 与 python 的 `import mt_cleanup; mt_cleanup.run_cleanup(quiet=True)` 等价：点源同一份实现
+        Write-MtLine "  [ .. ] 遗留进程($Version): 检出 $($stale.Count) 个本线遗留进程（PID=$($stale -join ',')），自动收停中…"
+        # 与 python 的 `import mt_cleanup; mt_cleanup.run_cleanup(quiet=True)` 等价：点源同一份实现。
+        # ⚠️ 必须带 -Versions @($Version)：无版本参数会收停**全部线**，破坏并行隔离。
         . (Join-Path $PSScriptRoot 'mt_cleanup.ps1')
-        [void](Invoke-MtRunCleanup -Quiet $true)
+        [void](Invoke-MtRunCleanup -Versions @($Version) -Quiet $true)
 
-        $scan2 = Get-MtPreflightLeftoverScan -Marks $marks
+        $scan2 = Get-MtPreflightLeftoverScan -Paths $p
         $ours = @($scan2[0]); $others = @($scan2[1])
         if ($ours.Count -gt 0) {
-            return , @($false, ("自动收停后仍有本流程遗留 PID=$($ours -join ',')，" +
-                        '请手工执行 pwsh -File scripts/test/mt.ps1 --phase stop 并检查权限'))
+            return , @($false, ("自动收停后仍有本线遗留 PID=$($ours -join ',')，" +
+                        "请手工执行 pwsh -File scripts/test/mt.ps1 --version $Version --phase stop 并检查权限"))
         }
-        return , @($true, ("已自动收停 $($stale.Count) 个本流程遗留进程（PID=$($stale -join ',')）——" +
+        return , @($true, ("已自动收停 $($stale.Count) 个本线遗留进程（PID=$($stale -join ',')）——" +
                     '退出钩子失效时的兜底，不影响本次结论'))
     }
 
-    if ($gradlePids.Count -gt 0) {
-        return , @($false, ("存在 gradle 包装器进程 PID=$($gradlePids -join ',')，" +
-                    '请先 pwsh -File scripts/test/mt.ps1 --phase stop'))
-    }
-
     if ($others.Count -gt 0) {
-        return , @($true, ("无本流程遗留；另有 $($others.Count) 个其它 Minecraft 客户端在运行" +
-                    "（PID=$($others -join ',')）——不阻塞，仅占用显存"))
+        return , @($true, ("无本线（$Version）遗留；另有 $($others.Count) 个其它 Minecraft 客户端在运行" +
+                    "（PID=$($others -join ',')）——按线隔离放行，仅占用显存"))
     }
-    return , @($true, '无遗留进程')
+    return , @($true, "无本线（$Version）遗留进程")
 }
 
 # ── MCP 二进制 ────────────────────────────────────────────────────────────
@@ -382,7 +494,6 @@ function Invoke-MtPreflightAll {
     $checks = [System.Collections.Generic.List[object]]::new()
     $checks.Add([pscustomobject]@{ Name = '分支'; Pair = (Get-MtPreflightBranch -Root $root) })
     $checks.Add([pscustomobject]@{ Name = '输入法'; Pair = (Test-MtPreflightIme) })
-    $checks.Add([pscustomobject]@{ Name = '遗留进程'; Pair = (Test-MtPreflightLeftover) })
     $checks.Add([pscustomobject]@{ Name = 'MCP 二进制'; Pair = (Test-MtPreflightMcpBinary) })
     $checks.Add([pscustomobject]@{ Name = '模组来源'; Pair = (Test-MtPreflightModSources -Root $root) })
     # 注意两点（PowerShell 的两个坑，都踩过）：
@@ -395,6 +506,8 @@ function Invoke-MtPreflightAll {
     $gradlewPair = @($gradlewExists, $gradlewDetail)
     $checks.Add([pscustomobject]@{ Name = 'Gradle 包装器'; Pair = $gradlewPair })
     foreach ($v in $Versions) {
+        # D4-2：遗留进程检查**按线**执行（只扫/只收停本版本），两条线因此可并行。
+        $checks.Add([pscustomobject]@{ Name = "遗留进程 $v"; Pair = (Test-MtPreflightLeftover -Version $v) })
         $checks.Add([pscustomobject]@{ Name = "兼容栈 $v"; Pair = (Test-MtPreflightCompatStack -Version $v) })
         $checks.Add([pscustomobject]@{ Name = "run 可写 $v"; Pair = (Test-MtPreflightWritable -Version $v) })
         $checks.Add([pscustomobject]@{ Name = "前置库配对 $v"; Pair = (Test-MtPreflightLibPairing -Version $v) })

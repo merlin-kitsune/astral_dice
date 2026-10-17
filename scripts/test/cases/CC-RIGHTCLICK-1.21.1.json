@@ -1,0 +1,137 @@
+{
+  "case_id": "CC-RIGHTCLICK-1.21.1",
+  "title": "选卡界面 §9-3（2026-10-17 新口径）：类型不符的卡右键按下 / 创意拾取键 → 原地不动（无半栈光标）；有携带物时右键「放一个」与非卡物品操作正常",
+  "version": "1.21.1",
+  "target": {
+    "type": "feature",
+    "ref": "card-choice-screen"
+  },
+  "steps": [
+    {
+      "op": "note",
+      "text": "评审 R1 的右键/CLONE 漏洞回归：战斗牌会话 + 效果牌，右键按下不得把半栈拿到光标；携带 5 钻石时右键空格仍按原版放 1 个。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/item replace entity @s hotbar.1 with astral_dice:effect_card_berserk 1",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/item replace entity @s hotbar.3 with minecraft:diamond 5",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralcc open 3 combat rightclick",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 9000
+    }
+  ],
+  "asserts": [
+    {
+      "type": "mixin"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CC:OPEN:token=\\d+:ok=1:slots=3:type=combat:seq=rightclick:has_session=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "evt=click:step=24:btn=1:what=effect_right_press:rel=34,185:ret=1:carried=empty"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "step=30:phase=after_right_press:.*:filled=0:c0=empty:c1=empty:c2=empty:carried=empty:inv=\\{[^}]*1:astral_dice:effect_card_berserkx1,[^}]*3:minecraft:diamondx5"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "evt=click:step=34:btn=2:what=effect_middle_press:rel=34,185:ret=1:carried=empty"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "step=40:phase=after_middle_press:.*:filled=0:c0=empty:c1=empty:c2=empty:carried=empty"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "evt=click:step=46:btn=0:what=diamond_pick:rel=70,185:ret=1:carried=minecraft:diamondx5"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "step=64:phase=after_place_two:.*:carried=minecraft:diamond:inv=\\{1:astral_dice:effect_card_berserkx1,4:minecraft:diamondx2\\}"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "step=78:phase=after_merge:.*:carried=empty:inv=\\{[^}]*4:minecraft:diamondx5"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "INV_DUMP:inv=\\{[^}]*1:astral_dice:effect_card_berserkx1,[^}]*4:minecraft:diamondx5"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "SCREEN:closed"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_CARD_CHOICE: confirm:"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_CARD_CHOICE: reject:"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_CC:(OPEN_EX|OPEN_ERR|HANDLER_ERR|STATE_ERR|CDSET_ERR|DIAG_ERR|SAMPLE_ERR|CDS_ERR)"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_CCR:RUN_EX:"
+    }
+  ]
+}

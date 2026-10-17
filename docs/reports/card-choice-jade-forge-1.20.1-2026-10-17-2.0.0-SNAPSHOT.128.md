@@ -317,3 +317,140 @@ MT_CLEANUP_RESULT: OK
 > `docs/reports/card-choice-jade-2026-10-17-2.0.0-SNAPSHOT.128.md` 与 11 个 `*-1.21.1.json` 属**并行的 1.21.1 代理**产出，本线未触碰；
 > `docs/reports/card-choice-jade-forge-1.20.1-2026-10-17-2.0.0-SNAPSHOT.128.md` 即本报告（未提交）。
 > 本线自身的探针/用例文件**已全部删除**，上表无 `astral_ccj_*` 残留。
+
+---
+
+## 回归验证（2026-10-17 第二轮 · §9-1 / §9-3 新口径 + D1 / D2 修复）
+
+- **工作区**：`multi-dev-next` HEAD `96352433` + **未提交修复**（两线 `screen/CardChoiceScreen.java` / `CardChoiceMenu.java`、`forge-1.20.1/build.gradle` 的 `-PtestJade` 运行时开关、`scripts/test/**` 返工）
+- **实机时段**：构建 20:02:32；有效读数 20:27:08–20:27:42（此前多次冷启动被 GLFW 原生崩溃打断，见 R5）
+- **证据目录（不入库）**：`temp/cc-forge-regress-20261017/`
+  - `latest.log` = 20:26:22 冷启动后的完整日志（含 FILTER `token=2101` 与 DBLCLICK `token=2200` 两轮，服务端 `AP_CC2S:` + 客户端 `AP_CC2C:` 按 `gt=` 对齐）
+  - `runclient_nojade.log` = J5「未装 Jade」单独一轮的控制台全文
+  - `kubejs_server.log` / `kubejs_client.log` / `runclient_launch_last.log`
+- **方法**：探针 `/astralcc2 open|prep|state|close`（走产品公开 API `CardChoiceManager.start` 与 `Inventory#setItem`），客户端探针按 token 逐 tick 调用 `CardChoiceScreen#mouseClicked / mouseDragged / mouseReleased / keyPressed(256)`（与真人输入同一条公开入口）；服务端每 tick 落整菜单快照。探针已按收尾规则从 `scripts/test/resources/kubejs/1.20.1/**` 与 `run/1.20.1/kubejs/**` **两侧删除**。
+
+### R0 结论摘要
+
+| # | 用例（spec 条目） | 判定 | 关键证据（`latest.log` 行号） |
+|---|---|---|---|
+| R1 | CC-FILTER ①左键按下 + 拖 12px：原地不动、不进拖动、不发包 | **PASS** | L1167 `after_left_drag ... car=empty ... s31=effectx3` |
+| R2 | CC-FILTER ②双击：不发 `QUICK_MOVE`（卡槽仍全空） | **PASS** | L1186 `after_dbl_effect ... filled=0:c0/c1/c2=empty` |
+| R3 | CC-FILTER ③右键（空光标）：不拿半栈 | **PASS** | L1193 `after_rclick_effect ... car=empty:s31=effectx3` |
+| R4 | CC-FILTER 附加：创意模式「拾取」键（中键）不 `CLONE` | **PASS** | L1202 `after_mclick_effect ... car=empty` |
+| R5 | CC-FILTER ③非卡物品正常操作 + 光标有携带物时右键「放 1 张」 | **PASS** | L1266/1281/1297/1344/1361/1377 |
+| R6 | §9-7 合法卡拖到已占用（石头）格 → 原路还原 | **PASS**（未误伤） | L1219/1257 `occ_drag_elevated` → `occ_restore ... car=empty:s30=x4:s32=stonex8` |
+| R7 | CC-DBLCLICK 4 张同种牌双击 → **恰好 1 张**进卡槽、余量留原槽（D1 修复） | **PASS** | L1880 `after_dbl1 ... c0=mediumx1:s30=mediumx3` |
+| R8 | CC-DBLCLICK 再次双击 → 第 2 格；双击卡槽取回 1 张 | **PASS** | L1900 `after_dbl2 ... c1=x1:s30=x2`；L1920 `after_take ... c0=empty:s30=x3` |
+| R9 | CC-DBLCLICK 2 张栈双击 → 1 进槽 / 1 留槽 | **PASS** | L1970 `after_dbl_large ... c0=largex1:s31=largex1` |
+| R10 | J5 未装 Jade（`-PtestJade=false`）正常启动进世界 | **PASS**（2 条预期 WARN，见 R3 段） | `runclient_nojade.log` L1402 世界就绪；L679-682/L1065/L1068 |
+
+**上一轮的 D1（`put_filled=3`）与 D2（类型不符拖动松手后牌留在光标）在本轮均已不可复现**；D1 由 `quickMoveStack` 的 `copyWithCount(1)` 修复，D2 在新口径下根本走不到（类型不符的卡在按下时即被吞，拖不起来），且 `finishDrag` 的 `returnCarriedToOrigin()` 保留为防御。
+
+### R1 / R5 · CC-FILTER（token 2101，`latest.log`）
+
+```
+1167 AP_CC2C:t=7967:phase=after_left_drag:...:filled=0:...:car=empty:...:s30=attack_card_mediumx4:s31=effect_card_berserkx3:s32=minecraft:stonex8
+1186 AP_CC2C:t=7977:phase=after_dbl_effect:...:filled=0:...:c0=empty:c1=empty:c2=empty:car=empty
+1193 AP_CC2C:t=7981:phase=after_rclick_effect:...:car=empty:...:s31=astral_dice:effect_card_berserkx3
+1202 AP_CC2C:t=7985:phase=after_mclick_effect:...:car=empty:...:s31=astral_dice:effect_card_berserkx3
+1219 AP_CC2C:t=7998:phase=occ_drag_elevated:...:car=astral_dice:attack_card_mediumx4:s30=empty
+1257 AP_CC2C:t=8005:phase=occ_restore:...:car=empty:s30=astral_dice:attack_card_mediumx4:...:s32=minecraft:stonex8
+1266 AP_CC2C:t=8009:phase=after_stone_left:...:car=minecraft:stonex8:...:s32=empty
+1281 AP_CC2C:t=8021:phase=after_stone_putback:...:car=empty:...:s32=minecraft:stonex8
+1297 AP_CC2C:t=8033:phase=after_stone_rclick:...:car=minecraft:stonex4:...:s32=minecraft:stonex4
+1344 AP_CC2C:t=8044:phase=after_stone_merge:...:car=empty:...:s32=minecraft:stonex8
+1361 AP_CC2C:t=8057:phase=after_combat_rclick:...:car=astral_dice:attack_card_mediumx2:s30=astral_dice:attack_card_mediumx2
+1377 AP_CC2C:t=8069:phase=after_rclick_place_one:...:car=astral_dice:attack_card_mediumx1:s30=astral_dice:attack_card_mediumx3
+1423 AP_CC2C:t=8080:phase=after_rclick_mismatch_carried:...:car=astral_dice:effect_card_berserkx3:...:s31=astral_dice:attack_card_mediumx1
+1439 AP_CC2C:t=8092:phase=after_park_carried:...:car=empty:...:s3=astral_dice:effect_card_berserkx3
+1445 AP_CARD_CHOICE: abandon:2101:player=Dev:consumed=0
+```
+
+- **① 左键**：按下 → `mouseDragged(+12px)` → 松手，三步之间 `car` 始终 `empty`、`filled=0`、效果牌仍 x3 ⇒ **不拿牌、不进拖动、不发包**。
+- **② 双击**：同 tick 内 `click/rel/click/rel`（<280ms）后 `filled=0`、三格全空 ⇒ 未发 `QUICK_MOVE`。
+- **③ 右键（空光标）**：`car=empty`、效果牌仍 x3 ⇒ 未被原版 `PICKUP` 拿走半栈。
+- **中键（创意拾取）**：`car=empty` ⇒ 未 `CLONE`（该分支要求 `instabuild`，本轮为创造模式，判据有效）。
+- **非卡物品**：石头左键整栈 8 → 再左键放回；右键取半 4 → 左键合并回 8 ⇒ 原版语义未受影响。
+- **光标有携带物时右键**：右键战斗牌取半（x4→x2 / 光标 x2）→ 右键**同种**放 1 张（槽 x3 / 光标 x1）⇒ §9-3「放一个」成立；再右键**异种**效果牌 ⇒ `car=effectx3 / s31=attackx1`，即**原版交换**（`AbstractContainerMenu#doClick` L438-444 对「`mayPlace` 为真 + 异种 + carried.count ≤ 槽上限」**无 button 判定**）⇒ 证明过滤只拦「空光标」，未误吞携带物路径。
+- **§9-7**：合法卡拖到被石头占用的格子，松手后 `car=empty`、`s30=x4`、`s32=stonex8`（未交换、未丢失）⇒ 新加的「按下即吞」未误伤还原分支。
+- 服务端同刻快照一致（例：`AP_CC2S:gt=8583:...:c0=attack_card_mediumx1:...:s30=attack_card_mediumx3`，`latest.log` L1877）。
+
+### R2 · CC-DBLCLICK（token 2200，`latest.log`）
+
+```
+1880 AP_CC2C:t=8585:phase=after_dbl1:...:filled=1:...:c0=attack_card_mediumx1:c1=empty:c2=empty:...:s30=attack_card_mediumx3
+1900 AP_CC2C:t=8599:phase=after_dbl2:...:filled=2:...:c0=x1:c1=x1:c2=empty:...:s30=attack_card_mediumx2
+1920 AP_CC2C:t=8612:phase=after_take:...:filled=1:...:c0=empty:c1=x1:...:s30=attack_card_mediumx3
+1970 AP_CC2C:t=8624:phase=after_dbl_large:...:c0=attack_card_largex1:...:s31=attack_card_largex1
+1973 AP_CARD_CHOICE: abandon:2200:player=Dev:consumed=0
+```
+
+- 4 张栈双击 → **只搬 1 张**（`s30 4→3`），卡槽 `c0=1`；重复双击 → `c1=1`、`s30=2`；双击卡框 0 → 退回 1 张（`c0=empty`、`s30=3`）⇒ D1（`put_filled=3`）**已修复**，总数量守恒（4）。
+- 2 张栈双击 → `c0=largex1`、`s31=largex1` ⇒ 「余量留原槽」同样成立。
+
+### R3 · J5 未装 Jade（`temp/cc-forge-regress-20261017/runclient_nojade.log`）
+
+启动方式（`mt_launch` 不支持透传 `-P`，按任务书用 gradlew 直起）：
+
+```
+gradlew.bat :forge-1.20.1:runClient -PtestJade=false -Pquickplay=testworld --console=plain
+```
+
+| 检查项 | 结果 | 证据 |
+|---|---|---|
+| 正常进世界 | **PASS** | L1402 `Total time to load game and open world was 20.501984 seconds` |
+| mod 列表无 Jade | **PASS** | `grep -c "Found mod file.*[Jj]ade"` = **0**（debug 侧仅 `astral_dice-...jar` / `forge-...jar` / `transmog-mod.jar` 等） |
+| 日志无 Jade 相关 **ERROR** | **PASS** | 唯一 ERROR 是既有的 `Embeddium-MixinTaintDetector` 提示（每轮都有，与 Jade 无关） |
+| 预期 WARN（`required:false` 的直接后果） | 2 条 | L679-682 `@Mixin target snownee/jade/... was not found astral_dice.jade.mixins.json` |
+| 世界存档引用了 Jade 数据包 | 1 条 WARN | L1065 `jade (version 11.13.3+forge -> MISSING)`、L1068 `Missing data pack mod:jade` —— 来自**既有 testworld**（建世界时装着 Jade），非产品报错 |
+
+> 结论：`-PtestJade=false` 下客户端正常进世界、Jade 的 jar 完全不在运行期类路径；两条 mixin WARN 正是 `astral_dice.jade.mixins.json` 声明 `required:false` 的设计效果，不是缺陷。上轮 D5「无法构造缺席环境」已由本轮的构建开关消除。
+
+### R4 · preflight-op 首次注入行为（D4-1 实机验证）
+
+| 冷启动（`temp/mt_detached/`） | 结果 | 注入尝试次数 |
+|---|---|---|
+| `mt_launch_20261017-200419.log` | `PREFLIGHT_OP: OK` | **1**（无 `PREFLIGHT_OP_RETRY`） |
+| `mt_launch_20261017-200706.log` | `PREFLIGHT_OP: OK` | **1** |
+| `mt_launch_20261017-201111.log` | `ERROR` | 3（`.err` L3-L5：`注入返回码 ` / `/` / `//`） |
+| `mt_launch_20261017-201301.log` | 未到 preflight（GLFW 崩溃） | — |
+| `mt_launch_20261017-201349.log` | `PREFLIGHT_OP: OK` | **1** |
+| `mt_launch_20261017-201451.log` | `PREFLIGHT_OP: OK` | **1** |
+| `mt_launch_20261017-201657.log` | `PREFLIGHT_OP: OK` | **1** |
+| `mt_launch_20261017-201846.log` | `PREFLIGHT_OP: OK` | **1** |
+| `mt_launch_20261017-202036.log` | `PREFLIGHT_OP: OK` | **1** |
+| `mt_launch_20261017-202311.log` | `PREFLIGHT_OP: OK` | **1** |
+| `mt_launch_20261017-202622.log` | `PREFLIGHT_OP: OK` | **1** |
+
+- **本线 11 次冷启动：10 次进入 preflight-op，其中 9 次首次注入即成功**（无需手工重注）；未再出现 D4-1 描述的「T 键被吞 / 文本合并成 `t/astralprobe opprobe/astralprobe opprobe`」形态。余 1 次在 preflight 之前即被 GLFW 崩溃打断（见 R5）。
+- 唯一 1 次 ERROR 的真实形态是**子进程未执行**：`$LASTEXITCODE` 为空（`注入返回码 /`），游戏侧没有对应聊天行；重试 3 次同样为空 ⇒ 属**测试工具链**（嵌套 `& pwsh -File ...`）问题，不是探针/产品缺陷，也不是 D4-1 的原症状。
+
+### R5 · 阻塞项与工具链取证（只登记，未改动产品代码）
+
+1. **GLFW 原生崩溃（环境阻塞项）**：本轮共 7 份 `run/1.20.1/hs_err_pid*.log`（20:11:56 / 20:13:16 / 20:14:27 / 20:15:45 / 20:18:02 / 20:19:58 / 20:21:07），签名全部一致：
+   ```
+   EXCEPTION_ACCESS_VIOLATION ... Problematic frame: C [glfw.dll+0xf8ab]
+   Java frames: ... com.mojang.blaze3d.platform.Window.updateDisplay()V → RenderSystem.flipFrame
+   ```
+   触发时机与**另一条线（1.21.1）客户端冷启动**高度重合（例：本线 20:21:07 崩溃，1.21.1 的 `Total time to load game` = 20:21:24；20:06:34 两线客户端同秒消失）。`-P` 无关、关光影（`mt_env shaders --state off`）也不消除 ⇒ 判定为**本机双 GL 客户端并存的驱动级问题**，不是本模组缺陷。可用窗口 = 对方客户端不在启动/关闭的时段（本轮 20:23–20:27 的读数即在该窗口取得）。
+2. **`doImmediateRespawn` 硬闸门假 ERROR**：`mt_launch.ps1` 的闸门在两次注入后仅 `600ms` 就读日志；实测原版回显在第 2 条注入后 **~2.4s** 才落盘（20:15:31 注入 → 20:15:34 `[CHAT] 已将游戏规则doImmediateRespawn设为true`）⇒ 20:14:51 那次虽然规则**已生效**，闸门仍判 `MT_LAUNCH: ERROR`（`注入返回码 /`）。同批 `$LASTEXITCODE` 为空也是同一嵌套进程问题的表象。
+3. **影响**：`--phase launch` 因此多数轮次返回 `rc=2`，但客户端实际已进入世界；本轮改为「launch 后手工确认 gamerule + prep/open」继续执行，所有读数均建立在真实世界里（`Total time to load game` 已出现、`AP_NOAI` 心跳正常、服务端/客户端快照一致）。
+
+### R6 · 交付物与收尾
+
+- **新增用例（`MT_VALIDATE: OK` ×4）**：
+  - `scripts/test/cases/CC-FILTER-1.20.1.json`（新口径：三键原地不动 + §9-7）
+  - `scripts/test/cases/CC-DBLCLICK-1.20.1.json`（双击恰好 1 张）
+  - `scripts/test/cases/CC-RIGHTCLICK-1.20.1.json`（右键口径专项：吞空光标 / 放行携带物 / 非卡物品）
+  - `scripts/test/cases/JADE-NOJADE-1.20.1.json`（`-PtestJade=false` 启动）
+- **临时探针已删除（两侧）**：`scripts/test/resources/kubejs/1.20.1/{server_scripts/astral_cc2_probe.js,client_scripts/astral_cc2_client.js}`、`run/1.20.1/kubejs/{server_scripts,client_scripts}/astral_cc2_*.js`、`temp/cc2_*.ps1`。
+- **收停 + 清档**：
+  ```
+  MT_CLEANUP: 指定了 --version，保留 Gradle 守护进程
+  MT_CLEANUP_SAVES: PURGED 0
+  MT_CLEANUP: 已收停 0 个本流程进程（范围：1.20.1）
+  MT_CLEANUP_RESULT: OK
+  ```
+  （前一条 `mt.ps1 --version 1.20.1 --phase stop --purge-saves` 已完成清档；`run/1.20.1/saves` 现为空，本线 java 客户端残留 = 0。）
+- 未执行 `git commit` / `git push`。

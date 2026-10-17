@@ -1,0 +1,86 @@
+{
+  "case_id": "CC-RIGHTCLICK-1.20.1",
+  "title": "选卡界面 §9-3 右键口径：空光标右键类型不符的卡被吞；光标有携带物时右键回到原版（同种放 1 张 / 异种交换）；非卡物品左右键均不受影响",
+  "version": "1.20.1",
+  "target": {
+    "type": "feature",
+    "ref": "card-choice-screen"
+  },
+  "steps": [
+    {
+      "op": "note",
+      "text": "token 2101 复用 FILTER 场景（同一份客户端探针序列）。原版 1.20.1 AbstractContainerMenu#doClick L438-444：mayPlace 为真 + 异种 + carried.count ≤ 槽上限 ⇒ 交换（无 button 判定）⇒ 「光标有携带物时右键异种卡」的期望是交换，不是原地不动。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralcc2 prep filter",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralcc2 open 3 combat 2101",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 16000
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralcc2 close",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CC2C:t=\\d+:phase=after_rclick_effect:.*:car=empty:.*:s31=astral_dice:effect_card_berserkx3"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CC2C:t=\\d+:phase=after_stone_left:.*:car=minecraft:stonex8"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CC2C:t=\\d+:phase=after_stone_rclick:.*:car=minecraft:stonex4:.*:s32=minecraft:stonex4"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CC2C:t=\\d+:phase=after_combat_rclick:.*:car=astral_dice:attack_card_mediumx2:.*:s30=astral_dice:attack_card_mediumx2"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CC2C:t=\\d+:phase=after_rclick_place_one:.*:car=astral_dice:attack_card_mediumx1:.*:s30=astral_dice:attack_card_mediumx3"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CC2C:t=\\d+:phase=after_rclick_mismatch_carried:.*:car=astral_dice:effect_card_berserkx3:.*:s31=astral_dice:attack_card_mediumx[12]"
+    },
+    { "type": "mixin" },
+    { "type": "kubejs" },
+    { "type": "crash" }
+  ]
+}

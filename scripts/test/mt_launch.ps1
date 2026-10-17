@@ -27,6 +27,19 @@
 
     有意的文案偏差：世界缺失时的提示原为 `mt.sh --phase env`，此处指向 `mt.ps1`。
 
+    **并行与防撞（D4-2，2026-10-17）**：独占粒度改为「**按线隔离 + 仅启动阶段全机串行**」。
+      · 本线已有客户端 ⇒ BLOCKED；**其它线**客户端在跑 ⇒ 只 INFO 放行（各线 run 目录/日志/
+        窗口标题均按版本隔离）。旧口径「全机任何客户端在跑就拒绝」已废除（双线排队可达 1 小时）。
+      · 客户端**启动**由全机短时锁串行化（`Enter-MtLaunchLock`，锁文件在用户临时目录，
+        跨 worktree 共享）：从 spawn 前持有到「进入世界 + post-ready 崩溃复检」后释放。
+        根因证据：run/1.20.1/hs_err_pid3796.log（glfw.dll+0xf8ab，并发启动触发）。
+      · 新增环境变量（**不改任何现有命令行参数语义**）：
+          `MT_LAUNCH_LOCK_TIMEOUT_SEC`（默认 600，等另一条线启动的上限）
+          `MT_LAUNCH_LOCK_STALE_SEC`（默认 900，锁龄超过即视为泄漏并清理；
+             **有效阈值 = max(该值, 就绪预算 + 60)**，避免属主正常等待世界时被抢锁）
+          `MT_PREFLIGHT_OP_READY_TIMEOUT_SEC`（默认 8，等聊天栏/世界就绪的上限）
+          `MT_LAUNCH_READY_TIMEOUT_SEC`（默认 180，进入世界的就绪预算；≥30 才生效）
+
     **测试前清场（2026-09-15 用户裁决后强制；规则全文见 AGENTS.md「测试前清场」）**：
     进入世界后自动注入 `/kill @e[type=!player,distance=..128]`（连发两次，注入通道偶发
     丢失见 TESTING-SPEC §10-17），清掉残留靶 / 散落物 / 常驻敌对生物 —— 它们会污染
@@ -147,8 +160,15 @@ function Invoke-MtLaunchOpPreflight {
         红线：**不得**为让测试通过而降低 `requires` 门槛 / 加测试专用开关 / 绕过 OP 走客户端
         旁路（审计 §4.6 / §5.4 红线 4、8）。前置拿不到时的正确做法是把环境修好，或按本节记 BLOCKED。
 
-        注入两次（与 preclean 同口径）：注入通道偶发丢失；只发一次若丢了会得到"没有读数"的空跑，
-        这里会把它记成 ERROR 而**不是**静默通过。
+        D4-1（2026-10-17）：刚进入世界时的注入存在**启动期竞态** —— 实测 4/4 失败（T 键被吞，
+        文本回显成 `…tralprobe opprobe/astralprobe opprobe`），手工重注即成功。故本闸门：
+          ① 先等「聊天就绪」标记（本次会话的 `[CHAT]` 行或 /kill 清场反馈；**不认**进世界行 ——
+             失败场景正是「进世界行已写、聊天栏还接不住输入」）；
+          ② 每次注入后**回读** latest.log 中新增的 `AP_OP_PERM`（以注入前条数为基线），
+             不再把「命令发出去了」当作「命令执行了」；
+          ③ 未读到就重试（默认 3 次 / 总 20s 上限）；首次尝试带 `-NoEsc`（pause-lock 生效时
+             不做 Esc→Tab→Enter，避免刚进世界时搅乱界面），重试保留归一化以清掉残留聊天栏。
+        只有**全部尝试都读不到新读数**才记 ERROR（工具链故障），绝不静默通过。
     #>
     [CmdletBinding()]
     param(
@@ -163,26 +183,73 @@ function Invoke-MtLaunchOpPreflight {
         return [pscustomobject]@{ Code = 'OK'; Detail = 'skipped (MT_ASSETS_ABSENT=1)' }
     }
 
+    # ① 聊天/世界就绪门（最多等 8s，可用 MT_PREFLIGHT_OP_READY_TIMEOUT_SEC 调整）
+    $readyBudget = 8
+    if ($env:MT_PREFLIGHT_OP_READY_TIMEOUT_SEC) {
+        $rbo = 0
+        if ([int]::TryParse($env:MT_PREFLIGHT_OP_READY_TIMEOUT_SEC, [ref]$rbo) -and $rbo -ge 0) { $readyBudget = $rbo }
+    }
+    $readyDeadline = (Get-Date).AddSeconds($readyBudget)
+    $readyEv = ''
+    while ((Get-Date) -lt $readyDeadline) {
+        $tReady = ''
+        try { $tReady = Read-MtSharedText -Path $Paths.latest_log } catch { $tReady = '' }
+        if ($tReady.Contains('[CHAT]')) { $readyEv = 'chat-line'; break }
+        if ($tReady -match '杀死了\d+个实体|未找到实体|Killed \d+ entities|No entity was found') { $readyEv = 'preclean-feedback'; break }
+        # ⚠️ 刻意**不**把「进世界行」当作聊天就绪：实测失败场景正是「刚进世界」时 T 键被吞
+        #    （world-ready 早已写入日志，但聊天栏还接不住输入）。这里只认聊天/命令回显证据；
+        #    等不到就按超时放行，交给下面的「注入后回读 + 重试」兜底。
+        Start-Sleep -Milliseconds 400
+    }
+    if ($readyEv) {
+        Write-MtInfo ("PREFLIGHT_OP_READY: {0}" -f $readyEv)
+    } else {
+        Write-MtWarn ("PREFLIGHT_OP_READY: 未在 {0}s 内看到聊天/世界就绪标记 —— 仍将注入并回读（可能触发重试）" -f $readyBudget)
+    }
+
+    # ② 注入 + 回读验证 + 重试（3 次 / 总 20s 上限）
+    $opPattern = 'AP_OP_PERM:has2=(-?\d+):level=(-?\d+):src=([^:\s]+):dump=([^\s]*)'
+    $baseline = 0
+    try { $baseline = ([regex]::Matches((Read-MtSharedText -Path $Paths.latest_log), $opPattern)).Count } catch { $baseline = 0 }
     $rcs = @()
-    for ($attempt = 1; $attempt -le 2; $attempt++) {
-        & $PsExe -NoProfile -File (Join-Path $TestDir 'mt_inject.ps1') cmd `
-            --command '/astralprobe opprobe' --version $Version
+    $m = $null
+    $attemptsMax = 3
+    $overallDeadline = (Get-Date).AddSeconds(20)
+    for ($attempt = 1; $attempt -le $attemptsMax; $attempt++) {
+        if ((Get-Date) -ge $overallDeadline) { break }
+        $injectArgs = @('-NoProfile', '-File', (Join-Path $TestDir 'mt_inject.ps1'), 'cmd',
+            '--command', '/astralprobe opprobe', '--version', $Version)
+        if ($attempt -eq 1) { $injectArgs += '-NoEsc' }
+        & $PsExe @injectArgs
         $rcs += $LASTEXITCODE
-        Start-Sleep -Milliseconds 800
+        $pollUntil = (Get-Date).AddSeconds(4)
+        while ((Get-Date) -lt $pollUntil) {
+            $tPoll = ''
+            try { $tPoll = Read-MtSharedText -Path $Paths.latest_log } catch { $tPoll = '' }
+            $ms = [regex]::Matches($tPoll, $opPattern)
+            if ($ms.Count -gt $baseline) { $m = $ms[$ms.Count - 1]; break }
+            Start-Sleep -Milliseconds 350
+        }
+        if ($null -ne $m) { break }
+        if ($attempt -lt $attemptsMax) {
+            Write-MtWarn ("PREFLIGHT_OP_RETRY: 第 {0}/{1} 次注入未读到新的 AP_OP_PERM（注入返回码 {2}），900ms 后重试" -f `
+                    $attempt, $attemptsMax, ($rcs -join '/'))
+            Start-Sleep -Milliseconds 900
+        }
     }
 
     $text = ''
     try { $text = Read-MtSharedText -Path $Paths.latest_log } catch { $text = '' }
 
-    $m = [regex]::Match($text, 'AP_OP_PERM:has2=(-?\d+):level=(-?\d+):src=([^:\s]+):dump=([^\s]*)')
-    if (-not $m.Success) {
+    if ($null -eq $m) {
         return [pscustomobject]@{
             Code   = 'ERROR'
             # ⚠️ 2026-10-02：`-f` 的优先级低于 `+`，原写法 `'A' + 'B' -f $x` 只把格式串解析到
             #    第二段 ⇒ `{0}` 永不替换、日志里恒显示字面 `{0}`（本机实测：排障时读不到注入返回码）。
             #    整串必须显式加括号。
-            Detail = (('未取到 AP_OP_PERM 读数（注入返回码 {0}）—— 探针未加载 / KubeJS 脚本未生效 / ' +
-                '`/astralprobe opprobe` 不存在，属工具链故障而非产品缺陷') -f ($rcs -join '/'))
+            Detail = (('注入并回读 {0} 次后仍未取到新的 AP_OP_PERM 读数（注入返回码 {1}）—— 探针未加载 / ' +
+                'KubeJS 脚本未生效 / `/astralprobe opprobe` 不存在，属工具链故障而非产品缺陷') -f `
+                    $rcs.Count, ($rcs -join '/'))
         }
     }
 
@@ -260,26 +327,37 @@ if ($MyInvocation.InvocationName -ne '.') {
         exit $MT_EXIT_BLOCKED
     }
 
-    # ── 防撞预检（2026-09-15 实测后的硬性口径）─────────────────────────────────
-    # ① 全机存在**任何** Minecraft 客户端（不分版本）即拒绝启动：跨版本/他人客户端
-    #    同时开着会让本阶段的「等待日志出现」直接读到**别人写的** latest.log，
-    #    而窗口/注入目标也会撞车（实测：01:17 那次启动就是这样误判成 OK 的）。
-    $existing = @(Get-JavaProcesses | Where-Object {
-            $c = [string]$_.CommandLine
-            $t = ''
-            try { $t = [string](Get-Process -Id $_.Pid -ErrorAction SilentlyContinue).MainWindowTitle } catch { $t = '' }
-            # ⚠️ 1.20.1 的 DevLaunch 客户端命令行**不含** net.minecraft.client.main.Main
-            #    （走 cpw.mods.bootstraplauncher.BootstrapLauncher），只认 Main 会漏检 →
-            #    跨版本撞车照旧发生。这里同时认两种入口 + 「MC 客户端窗口标题」。
-            # ⚠️ 2026-09-16：MC 26.1.2（NeoForge 26.1.2.x）的客户端入口是
-            #    net.neoforged.fml.startup.Client，漏了它同样会漏检 26.1.2 客户端。
-            ($c.Contains('net.minecraft.client.main.Main') -or $c.Contains('bootstraplauncher') -or
-             $c.Contains('net.neoforged.fml.startup.Client'))
-        })
-    if ($existing.Count -gt 0) {
-        $pidsText = ($existing | ForEach-Object { $_.Pid }) -join ', '
-        Write-MtBlocked 'launch' ("全机已存在 Minecraft 客户端进程(PID=$pidsText)，拒绝启动以免读到他人日志/抢占注入目标；先收停：pwsh -File scripts/test/mt.ps1 --phase stop --force")
+    # ── 防撞预检（2026-10-17 修订：**按线隔离** + 仅启动阶段全机串行）────────────
+    # 旧口径「全机任何 MC 客户端在跑就拒绝」把两条线强行串成整局独占（双线排队可达 1 小时）；
+    # 而真正的物理约束只有一条：**并发启动客户端**会命中 glfw.dll 原生崩溃
+    # （run/1.20.1/hs_err_pid3796.log：EXCEPTION_ACCESS_VIOLATION at glfw.dll+0xf8ab，
+    #  Render thread → RenderSystem.limitDisplayFPS）。新口径：
+    #   ① **本线**已有客户端 ⇒ 仍 BLOCKED（同一 run 目录/latest.log 不能被两个客户端争用）；
+    #   ② **其它线**客户端 ⇒ 只 INFO 放行（各线 run 目录、日志与窗口标题均按版本隔离）；
+    #   ③ 客户端**启动**本身由 Enter-MtLaunchLock 做全机短时串行（见下方 spawn 处）。
+    $sameLine = @()
+    $otherLines = @()
+    foreach ($c in @(Get-JavaProcesses)) {
+        $cCmd = [string]$c.CommandLine
+        # 本线判定交给 Test-MtClientProcess（窗口标题含本版本号 **或** 命令行带本版本证据）；
+        # ⚠️ 不能先用命令行入口过滤：1.20.1 DevLaunch 的 `Win32_Process.CommandLine` 可能只剩
+        # 一个类名（真实参数在 args 文件里），标题路径是同等严格的第二判据。
+        if (Test-MtClientProcess -Paths $p -ProcessId ([int]$c.Pid) -CommandLine $cCmd) {
+            $sameLine += $c
+        } elseif ($cCmd.Contains('net.minecraft.client.main.Main') -or $cCmd.Contains('bootstraplauncher') -or
+            $cCmd.Contains('net.neoforged.fml.startup.Client')) {
+            # 其它线/用户自己的客户端：只 INFO 放行。
+            $otherLines += $c
+        }
+    }
+    if ($sameLine.Count -gt 0) {
+        $pidsText = ($sameLine | ForEach-Object { $_.Pid }) -join ', '
+        Write-MtBlocked 'launch' ("本线（$Version）已存在 Minecraft 客户端进程(PID=$pidsText)，拒绝重复启动以免争用同一 run 目录/latest.log；先收停：pwsh -File scripts/test/mt.ps1 --version $Version --phase stop --force")
         exit $MT_EXIT_BLOCKED
+    }
+    if ($otherLines.Count -gt 0) {
+        $pidsText = ($otherLines | ForEach-Object { $_.Pid }) -join ', '
+        Write-MtInfo ("LAUNCH_COLLISION: 其它线客户端在运行（PID=$pidsText）—— 按线隔离放行；本线启动将等待全机启动锁")
     }
 
     # ② latest.log 存在却删不掉 ⇒ 一定有别的进程正在写它（句柄被占）→ 硬失败。
@@ -345,28 +423,54 @@ if ($MyInvocation.InvocationName -ne '.') {
     [void](Set-MtPauseOnLostFocus -Paths $p -Enabled $false)
     Write-MtInfo 'PAUSE_LOCK: on — 失焦不再打开 ESC 暂停菜单（pauseOnLostFocus=false，已在本次冷启动前写入）'
 
-    $started = $null
+    # ── 全机启动锁（D4-2，2026-10-17）：只覆盖「spawn → 进入世界 + 崩溃复检」这一段 ────────
+    # 为什么需要：两条线可以各跑各的会话，但**同时启动客户端**会命中 glfw.dll 原生崩溃
+    # （run/1.20.1/hs_err_pid3796.log：EXCEPTION_ACCESS_VIOLATION at glfw.dll+0xf8ab）。
+    # 锁在「进入世界」之后立即释放（即"短时启动锁"），不覆盖后续用例阶段。
+    # 新增的可调环境变量（不改任何现有命令行参数语义）：
+    #   MT_LAUNCH_LOCK_TIMEOUT_SEC —— 等锁上限，默认 600s；
+    #   MT_LAUNCH_LOCK_STALE_SEC   —— 锁龄超过该值即视为泄漏并清理，默认 900s；
+    #                                 有效阈值 = max(该值, 就绪预算 + 60)。
+    #   MT_LAUNCH_READY_TIMEOUT_SEC —— 进入世界就绪预算，默认 180s（≥30 才生效）。
+    # 就绪预算在**取锁之前**求值：它同时参与有效陈旧阈值，否则属主正常等世界时会被误判陈旧。
+    $readyBudget = Get-MtLaunchReadyBudgetSec
+    $lockTimeoutSec = Get-MtLaunchLockTimeoutSec
+    $lockStaleSec = 900
+    if ($env:MT_LAUNCH_LOCK_STALE_SEC) {
+        $ls = 0
+        if ([int]::TryParse($env:MT_LAUNCH_LOCK_STALE_SEC, [ref]$ls) -and $ls -gt 0) { $lockStaleSec = $ls }
+    }
+    $effectiveStaleSec = Get-MtLaunchEffectiveStaleSec -StaleSec $lockStaleSec -ReadyBudgetSec $readyBudget
+    Write-MtInfo ("LAUNCH_LOCK: stale-threshold={0}s（max(MT_LAUNCH_LOCK_STALE_SEC={1}s, ready {2}s + 60s)；lock-timeout={3}s）" -f `
+            $effectiveStaleSec, $lockStaleSec, $readyBudget, $lockTimeoutSec)
+    $staleLock = Clear-MtStaleLaunchLock -StaleSec $lockStaleSec -ReadyBudgetSec $readyBudget
+    if ($staleLock.Removed) { Write-MtInfo 'LAUNCH_LOCK: 已清理陈旧锁（属主进程已退出或锁龄超限）' }
+    $launchLock = Enter-MtLaunchLock -Version $Version -TimeoutSec $lockTimeoutSec `
+        -StaleSec $lockStaleSec -ReadyBudgetSec $readyBudget
+    if (-not $launchLock.Acquired) {
+        Write-MtBlocked 'launch' ("未取得全机启动锁（{0}）—— 另一条线正在启动客户端；可稍后重试或调大 MT_LAUNCH_LOCK_TIMEOUT_SEC" -f $launchLock.Detail)
+        exit $MT_EXIT_BLOCKED
+    }
+    Write-MtInfo ("LAUNCH_LOCK: acquired（等待 {0}s；path={1}）" -f $launchLock.WaitedSec, $launchLock.Path)
+
     try {
-        $started = Start-MtProcessToFile -FilePath 'cmd.exe' `
-            -ArgumentList @('/c', $gradlew, $p.task_client, "-Pquickplay=$world", '--console=plain') `
-            -LogPath $launchLog -WorkingDirectory $root -MergeStderr
-    } catch {
         $started = $null
-    }
-    if ($null -eq $started) {
-        Write-MtError 'launch' "无法启动 runClient（$gradlew）"
-        exit $MT_EXIT_ERROR
-    }
+        try {
+            $started = Start-MtProcessToFile -FilePath 'cmd.exe' `
+                -ArgumentList @('/c', $gradlew, $p.task_client, "-Pquickplay=$world", '--console=plain') `
+                -LogPath $launchLog -WorkingDirectory $root -MergeStderr
+        } catch {
+            $started = $null
+        }
+        if ($null -eq $started) {
+            Write-MtError 'launch' "无法启动 runClient（$gradlew）"
+            exit $MT_EXIT_ERROR
+        }
 
     # 基础等待：2026-09-17 用户裁决「严格控制游戏进程捕获时长」⇒ **取消固定 30s 空等**，
     # 改为立即开始 3s 轮询（读日志是纯文件读，成本可忽略），硬上限仍 180s。
     # 为什么可以这样改：固定 30s 的唯一目的是「等 ModernFix 的 `Total time to load…` 行有机会出现」，
     # 而轮询本身就等价且更快 —— 实测就绪用时 47s，其中整整 30s 是这段空等。
-    $readyBudget = 180
-    if ($env:MT_LAUNCH_READY_TIMEOUT_SEC) {
-        $rb = 0
-        if ([int]::TryParse($env:MT_LAUNCH_READY_TIMEOUT_SEC, [ref]$rb) -and $rb -ge 30) { $readyBudget = $rb }
-    }
     Write-MtInfo ("READY_WAIT: budget={0}s（轮询间隔 3s；不再有固定空等）" -f $readyBudget)
 
     $deadline = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds() + $readyBudget
@@ -437,9 +541,17 @@ if ($MyInvocation.InvocationName -ne '.') {
         $postCrashes = @(Get-ChildItem -LiteralPath $p.crash_dir -File -Filter '*.txt' |
             Where-Object { $_.LastWriteTime -gt $launchStartedAt })
     }
-    if ($postCrashes.Count -gt 0) {
-        Write-MtError 'launch' ("进入世界后立即崩溃，见 crash-reports/{0}" -f $postCrashes[0].Name)
-        exit $MT_EXIT_ERROR
+        if ($postCrashes.Count -gt 0) {
+            Write-MtError 'launch' ("进入世界后立即崩溃，见 crash-reports/{0}" -f $postCrashes[0].Name)
+            exit $MT_EXIT_ERROR
+        }
+    } finally {
+        # 锁必须覆盖到「进入世界 + post-ready 崩溃复检」；任何 exit / 异常路径都在这里释放。
+        if (Exit-MtLaunchLock -Token $launchLock.Token) {
+            Write-MtInfo 'LAUNCH_LOCK: released（启动阶段结束）'
+        } else {
+            Write-MtWarn 'LAUNCH_LOCK: release 未生效（锁已被接管或已丢失）'
+        }
     }
 
     # ── 窗口搬移规则已**全局移除**（2026-09-17 用户裁决：「全局移除移动游戏窗口到第二屏幕的规则」）──

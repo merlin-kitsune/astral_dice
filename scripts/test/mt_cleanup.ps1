@@ -15,9 +15,11 @@
       2. **Gradle 守护进程** —— 用 `gradlew --stop` 优雅停止（而非 taskkill /IM gradle.exe，
          后者会连用户其它项目的 Gradle 一起杀）。--keep-daemon 可跳过以保留构建缓存热态。
 
-    与失败取证的配合：条目 `on_fail=keep_game_running` 失败时会落 `.mt_keep_alive` 标记。
-    该标记存在时本模块**不杀客户端也不停守护进程**（守护进程可能是客户端的父进程），
-    只打印提示 —— 否则「自动清理」会在失败瞬间销毁现场，让取证变得不可能。
+    与失败取证的配合：条目 `on_fail=keep_game_running` 失败时会落按线隔离的
+    `.mt_keep_alive-<版本>` 标记（旧的无后缀 `.mt_keep_alive` 仍被识别，但它无法区分版本 ⇒
+    对所有线生效）。该标记存在时本模块**不杀客户端也不停守护进程**（守护进程可能是客户端的
+    父进程），只打印提示 —— 否则「自动清理」会在失败瞬间销毁现场，让取证变得不可能。
+    带 `--force` 时清除**所有**匹配的取证标记（分线文件 + 兼容旧文件），不再只删第一个。
 
     存档清理（`--purge-saves`，2026-09-17 用户规则「测试任务完成后关闭测试端并清理旧存档数据，
     避免游戏进程长时间驻留」）：
@@ -26,7 +28,8 @@
       · 只动 `run/<版本>/` 内的世界目录，绝不碰 `run` 之外、也不碰种子包 resources/testworld-seed-*.zip；
       · 删完即「下次必须先 `mt_env world` 重建世界」—— 与全局规则「每次开新的自动化测试都必须
         重建世界，不接受复用上一轮存档」一致，留着旧存档反而会掩盖「忘了重建」；
-      · `.mt_keep_alive` 存在时整个清理（含本步骤）一律 SKIP，先取证再 `--force`。
+      · `.mt_keep_alive-<版本>`（或兼容旧的无后缀 `.mt_keep_alive`）存在时整个清理
+        （含本步骤）一律 SKIP，先取证再 `--force`。
       · ⚠️ **两阶段/重登类用例（`CHIP-RELOG` 系列）不得用它**：那类流程必须 `saveall` → stop（**保留存档**）→ launch 读回，
         故 `--phase stop` 默认**不**清理存档，只有显式 `--purge-saves` 或全流程退出清理才清。
 
@@ -76,7 +79,10 @@ Import-Module (Join-Path $script:LibDir 'Mt.Proc.psm1')
 
 Initialize-MtConsole
 
-$script:KeepAlive = Join-Path (Join-Path (Get-MtTestDir) 'cases') '.mt_keep_alive'
+# D4-2（2026-10-17）：失败取证标记按**线**分文件（`.mt_keep_alive-<版本>`），
+# 否则 1.21.1 留现场会让 1.20.1 的 `--phase stop --version 1.20.1` 也被 SKIP（两条线无法并行）。
+# 旧的无后缀文件仍被识别（兼容历史现场），但它无法区分版本 ⇒ 对所有线生效。
+$script:KeepAliveLegacy = Join-Path (Join-Path (Get-MtTestDir) 'cases') '.mt_keep_alive'
 
 # ══ 进程归属 ══════════════════════════════════════════════════════════════
 function Get-MtPipelineProcs {
@@ -131,18 +137,64 @@ function Get-MtDaemonProcs {
     return $out
 }
 
-function Get-MtKeepAliveReason {
+function Get-MtKeepAlivePath {
+    <#
+    .SYNOPSIS
+        某条线的失败取证标记路径（与 mt_case / mt_preflight 同一命名）。
+    #>
     [CmdletBinding()]
-    param()
+    param([Parameter(Mandatory)][string]$Version)
 
-    if (-not (Test-Path -LiteralPath $script:KeepAlive -PathType Leaf)) { return $null }
-    try {
-        $t = (Get-Content -LiteralPath $script:KeepAlive -Raw -Encoding UTF8).Trim()
-        if ($t) { return $t }
-        return '（未记录原因）'
-    } catch {
-        return '（读取标记失败）'
+    return (Join-Path (Join-Path (Get-MtTestDir) 'cases') ('.mt_keep_alive-' + $Version))
+}
+
+function Get-MtKeepAlivePaths {
+    <#
+    .SYNOPSIS
+        指定范围（缺省=全部版本）内**所有存在**的失败取证标记路径（分线文件 + 兼容旧文件）。
+
+    .NOTES
+        2026-10-17 返工（`--force` 清全部本线标记）：旧实现 `Get-MtKeepAliveReason` 只返回
+        第一个匹配 ⇒ `--force` 只删了一个，其余标记继续让后续收停 SKIP。
+    #>
+    [CmdletBinding()]
+    param([string[]]$Versions)
+
+    $targets = if ($null -ne $Versions -and $Versions.Count -gt 0) { @($Versions) } else { @(Get-MtVersions) }
+    $paths = @()
+    foreach ($v in $targets) { $paths += (Get-MtKeepAlivePath -Version $v) }
+    $paths += $script:KeepAliveLegacy
+
+    $out = @()
+    foreach ($p in @($paths | Select-Object -Unique)) {
+        if (Test-Path -LiteralPath $p -PathType Leaf) { $out += $p }
     }
+    return $out
+}
+
+function Get-MtKeepAliveReason {
+    <#
+    .SYNOPSIS
+        读取指定版本的失败取证标记；返回 {Path, Reason} 或 $null。
+
+    .NOTES
+        Versions 为空 ⇒ 扫描全部版本（`mt_cleanup.ps1 status` 用）。
+        优先分线文件；再兼容旧的无后缀全局文件（对任何版本都生效）。
+    #>
+    [CmdletBinding()]
+    param([string[]]$Versions)
+
+    foreach ($p in @(Get-MtKeepAlivePaths -Versions $Versions)) {
+        $why = '（未记录原因）'
+        try {
+            $t = (Get-Content -LiteralPath $p -Raw -Encoding UTF8).Trim()
+            if ($t) { $why = $t }
+        } catch {
+            $why = '（读取标记失败）'
+        }
+        return [pscustomobject]@{ Path = $p; Reason = $why }
+    }
+    return $null
 }
 
 function Get-MtPreview {
@@ -230,7 +282,7 @@ function Invoke-MtCleanupStatus {
     }
 
     $reason = Get-MtKeepAliveReason
-    if ($reason) { Write-MtLine ''; Write-MtLine "取证标记存在（退出清理会保留现场）：$reason" }
+    if ($reason) { Write-MtLine ''; Write-MtLine "取证标记存在（退出清理会保留现场）：$($reason.Reason)" }
 
     $clean = ($ppl.Count -eq 0 -and $dps.Count -eq 0)
     Write-MtLine ''
@@ -261,17 +313,18 @@ function Invoke-MtRunCleanup {
     )
 
     $hasVersions = ($null -ne $Versions -and $Versions.Count -gt 0)
+    $targets = if ($hasVersions) { @($Versions) } else { @(Get-MtVersions) }
 
-    $reason = Get-MtKeepAliveReason
+    # D4-2：取证标记按线判定 —— 1.21.1 的现场不应阻塞 1.20.1 的收停。
+    $reason = Get-MtKeepAliveReason -Versions $targets
     if ($reason -and -not $Force) {
-        Write-MtLine "MT_CLEANUP: SKIP — 失败取证标记存在，保留游戏现场（$reason）"
-        Write-MtLine "           取证完成后执行：pwsh -File scripts/test/mt.ps1 --phase stop --force"
+        Write-MtLine "MT_CLEANUP: SKIP — 失败取证标记存在，保留游戏现场（$($reason.Reason)）"
+        Write-MtLine "           取证完成后执行：pwsh -File scripts/test/mt.ps1 --version <版本> --phase stop --force"
         Write-MtLine 'MT_CLEANUP_RESULT: SKIP'
         return 0
     }
 
     $killed = 0
-    $targets = if ($hasVersions) { @($Versions) } else { @(Get-MtVersions) }
     foreach ($v in $targets) {
         $killed += [int](Stop-MtVersionProcesses -Paths (Get-MtPaths -Version $v) -Quiet)
     }
@@ -301,15 +354,25 @@ function Invoke-MtRunCleanup {
         }
     }
 
-    if ($reason -and $Force) {
-        try {
-            Remove-Item -LiteralPath $script:KeepAlive -Force -ErrorAction Stop
-            Write-MtLine 'MT_CLEANUP: 已按 --force 清除失败取证标记'
-        } catch { }
+    if ($Force) {
+        # 2026-10-17 返工：Force 必须清掉**全部**本线标记（分线文件 + 兼容旧文件）。
+        $cleared = 0
+        foreach ($mp in @(Get-MtKeepAlivePaths -Versions $targets)) {
+            try {
+                Remove-Item -LiteralPath $mp -Force -ErrorAction Stop
+                $cleared++
+                Write-MtLine "MT_CLEANUP: 已按 --force 清除失败取证标记 $mp"
+            } catch {
+                Write-MtWarn ("MT_CLEANUP: 无法清除失败取证标记 $mp — " + $_.Exception.Message)
+            }
+        }
+        if ($cleared -eq 0 -and $reason) {
+            Write-MtWarn 'MT_CLEANUP: 按 --force 未能清除失败取证标记（见上方告警）'
+        }
     }
 
     # 存档清理必须**在进程收停之后**（世界文件被客户端句柄占用时删不干净）。
-    # 只删 run/<版本>/ 内的世界目录；`.mt_keep_alive` 存在时已在上面整个 SKIP。
+    # 只删 run/<版本>/ 内的世界目录；`.mt_keep_alive-<版本>` 存在时已在上面整个 SKIP。
     if ($PurgeSaves) {
         $gone = @(Remove-MtSaveData -Versions $targets)
         if (-not $Quiet) {

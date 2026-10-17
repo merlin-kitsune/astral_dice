@@ -1,6 +1,6 @@
 {
   "case_id": "CC-FILTER-1.21.1",
-  "title": "选卡界面 §9-3：战斗牌会话里双击/拖入效果牌 → 均被拒绝（原地还原、不消耗）",
+  "title": "选卡界面 §9-3（2026-10-17 新口径）：战斗牌会话里效果牌左键按下/双击 → 原地不动、不进拖动、光标无携带物、卡槽不变",
   "version": "1.21.1",
   "target": {
     "type": "feature",
@@ -9,7 +9,7 @@
   "steps": [
     {
       "op": "note",
-      "text": "选卡界面实机（spec §9）。界面本批未接任何技能 ⇒ 由临时探针 /astralcc open 按产品公开 API CardChoiceManager.start 打开；卡牌移动走客户端屏幕事件 → 原版点击包 → 服务端菜单的真实链路。"
+      "text": "选卡界面实机（spec §9-3 新口径）。界面由临时探针 /astralcc open 按产品公开 API CardChoiceManager.start 打开；屏内动作由客户端探针调用屏幕公开事件入口（mouseClicked/mouseReleased），卡牌移动仍走原版点击包 → 服务端菜单的真实链路。"
     },
     {
       "op": "inject_command",
@@ -55,26 +55,6 @@
   ],
   "asserts": [
     {
-      "type": "log",
-      "source": "latest",
-      "pattern": "step=44:phase=after_drag_effect:.*:complete=0:filled=0:c0=empty:c1=empty:c2=empty"
-    },
-    {
-      "type": "log",
-      "source": "latest",
-      "pattern": "step=62:phase=after_return:.*:inv=\\{[^}]*4:astral_dice:effect_card_berserkx1"
-    },
-    {
-      "type": "log",
-      "source": "latest",
-      "pattern": "step=86:phase=after_dbl_effect:.*:complete=0:filled=0:c0=empty:c1=empty:c2=empty"
-    },
-    {
-      "type": "log",
-      "source": "latest",
-      "pattern": "INV_DUMP:inv=\\{[^}]*1:astral_dice:effect_card_berserkx1"
-    },
-    {
       "type": "mixin"
     },
     {
@@ -86,7 +66,42 @@
     {
       "type": "log",
       "source": "latest",
+      "pattern": "AP_CC:OPEN:token=\\d+:ok=1:slots=3:type=combat:seq=filter:has_session=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "SCREEN:open:token=\\d+:seq=filter"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "evt=click:step=24:btn=0:what=effect_left_press:rel=34,185:ret=1:carried=empty"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "step=30:phase=after_left_press:.*:complete=0:filled=0:c0=empty:c1=empty:c2=empty:carried=empty:inv=\\{[^}]*1:astral_dice:effect_card_berserkx1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "step=56:phase=after_dbl:.*:complete=0:filled=0:c0=empty:c1=empty:c2=empty:carried=empty:inv=\\{[^}]*1:astral_dice:effect_card_berserkx1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "INV_DUMP:inv=\\{[^}]*1:astral_dice:effect_card_berserkx1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
       "pattern": "SCREEN:closed"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_CCR:evt=drag:"
     },
     {
       "type": "absent",
@@ -96,12 +111,17 @@
     {
       "type": "absent",
       "source": "latest",
+      "pattern": "AP_CARD_CHOICE: reject:"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
       "pattern": "AP_CC:(OPEN_EX|OPEN_ERR|HANDLER_ERR|STATE_ERR|CDSET_ERR|DIAG_ERR|SAMPLE_ERR|CDS_ERR)"
     },
     {
       "type": "absent",
       "source": "latest",
-      "pattern": "AP_CCC:RUN_EX:"
+      "pattern": "AP_CCR:RUN_EX:"
     }
   ]
 }

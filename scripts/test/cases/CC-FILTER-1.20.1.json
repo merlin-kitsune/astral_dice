@@ -1,0 +1,111 @@
+{
+  "case_id": "CC-FILTER-1.20.1",
+  "title": "选卡界面 §9-3（2026-10-17 新口径）：类型不符的卡三键按下即原地不动，双击不发 QUICK_MOVE；合法卡拖到占用格仍原路还原",
+  "version": "1.20.1",
+  "target": {
+    "type": "feature",
+    "ref": "card-choice-screen"
+  },
+  "steps": [
+    {
+      "op": "note",
+      "text": "界面由临时探针 /astralcc2 open 走产品公开 API CardChoiceManager.start 打开；客户端探针 astral_cc2_client.js 按 token 2101 逐 tick 调 CardChoiceScreen#mouseClicked/mouseDragged/mouseReleased（真实输入入口；2100–2109 走同一 FILTER 序列）。背包由 /astralcc2 prep filter 一次备好：hotbar0 战斗牌x4 / hotbar1 效果牌x3 / hotbar2 石头x8。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralcc2 prep filter",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralcc2 open 3 combat 2101",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 16000
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralcc2 close",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CC2C:t=\\d+:phase=base:.*:s30=astral_dice:attack_card_mediumx4:s31=astral_dice:effect_card_berserkx3:s32=minecraft:stonex8"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CC2C:t=\\d+:phase=after_left_drag:.*:c0=empty:c1=empty:c2=empty:car=empty:.*:s31=astral_dice:effect_card_berserkx3"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CC2C:t=\\d+:phase=after_dbl_effect:.*:filled=0:.*:car=empty:.*:s31=astral_dice:effect_card_berserkx3"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CC2C:t=\\d+:phase=after_rclick_effect:.*:car=empty:.*:s31=astral_dice:effect_card_berserkx3"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CC2C:t=\\d+:phase=after_mclick_effect:.*:car=empty:.*:s31=astral_dice:effect_card_berserkx3"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CC2C:t=\\d+:phase=occ_restore:.*:car=empty:.*:s30=astral_dice:attack_card_mediumx4:.*:s32=minecraft:stonex8"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CC2C:t=\\d+:phase=after_stone_left:.*:car=minecraft:stonex8"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CC2C:t=\\d+:phase=after_rclick_place_one:.*:car=astral_dice:attack_card_mediumx1:.*:s30=astral_dice:attack_card_mediumx3"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CC2C:t=\\d+:phase=after_rclick_mismatch_carried:.*:car=astral_dice:effect_card_berserkx3"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CC2C:.*phase=done_filter"
+    },
+    { "type": "mixin" },
+    { "type": "kubejs" },
+    { "type": "crash" },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_CARD_CHOICE: confirm:"
+    }
+  ]
+}
