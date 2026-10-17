@@ -32,5 +32,12 @@ public final class ModEntityEvents {
                 LivingEntity.createLivingAttributes()
                         .add(Attributes.MAX_HEALTH, 30.0D)
                         .build());
+
+        // 强化拒止(2026-10-18):100 点耐久(用户需求「强化拒止拥有100点耐久」)。
+        // 耐久直接由 getHealth() 承载,扣到 <= 0 时自毁(见 entity/RepulsionEntity#consumeDurability)
+        event.put(ModEntityTypes.REPULSION.get(),
+                LivingEntity.createLivingAttributes()
+                        .add(Attributes.MAX_HEALTH, 100.0D)
+                        .build());
     }
 }

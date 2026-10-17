@@ -45,7 +45,7 @@ public class ModClientEvents {
     }
 
     /**
-     * 自有实体渲染器注册（2026-10-17「路障」引入的首个实体）。
+     * 自有实体渲染器注册（2026-10-17「路障」引入首个实体；2026-10-18 追加「强化拒止」）。
      *
      * <p>本类带 `@EventBusSubscriber(Dist.CLIENT)` ⇒ 专用服务端整体不加载，
      * 因此这里引用纯客户端的 {@link BarricadeRenderer} 是安全的（与 registerScreens 同一条纪律）。
@@ -53,12 +53,14 @@ public class ModClientEvents {
     @SubscribeEvent
     public static void registerEntityRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerEntityRenderer(ModEntityTypes.BARRICADE.get(), BarricadeRenderer::new);
+        event.registerEntityRenderer(ModEntityTypes.REPULSION.get(), RepulsionRenderer::new);
     }
 
     /** 模型层定义：`astral_dice:barricade#main` ⇒ {@link BarricadeModel#createBodyLayer()}。 */
     @SubscribeEvent
     public static void registerLayerDefinitions(EntityRenderersEvent.RegisterLayerDefinitions event) {
         event.registerLayerDefinition(BarricadeModel.LAYER_LOCATION, BarricadeModel::createBodyLayer);
+        event.registerLayerDefinition(RepulsionModel.LAYER_LOCATION, RepulsionModel::createBodyLayer);
     }
 
     /**

@@ -610,6 +610,18 @@ public class ModTooltipHandler {
                             effectCardCooldownSeconds(player))
                     .withStyle(ChatFormatting.RED));
         }
+        if (stack.is(ModItems.EFFECT_CARD_REPULSION.get())) {
+            // 2026-10-18 强化拒止(专属效果牌;2026-10-18 移植到本线):第一行 = 用法(右键方块面),
+            // 第二 = 吸附 + 缓慢/虚弱,第三 = 耐久规则;行内数值着 §e(非时间数值)、时间着 §9
+            // (见 AGENTS「tooltip 文案唯一基准」)。专属行照本线 fate_guidance 段(DARK_PURPLE)。
+            addCardLines(tooltip, "tooltip.astral_dice.card.repulsion");
+            addEffectCardPlayCountTooltip(tooltip, player);
+            tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown",
+                            effectCardCooldownSeconds(player))
+                    .withStyle(ChatFormatting.RED));
+            tooltip.add(Component.translatable("tooltip.astral_dice.card.exclusive_owner")
+                    .withStyle(ChatFormatting.DARK_PURPLE));
+        }
         if (stack.is(ModItems.BLANK_SIGN.get())) {
             tooltip.add(Component.empty());
             tooltip.add(Component.translatable("tooltip.astral_dice.material.blank_sign")

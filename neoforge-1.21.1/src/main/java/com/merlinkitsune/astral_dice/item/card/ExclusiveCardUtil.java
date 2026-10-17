@@ -32,7 +32,9 @@ public final class ExclusiveCardUtil {
         return stack.is(ModItems.LIVING_PAGE.get()) || stack.is(ModItems.FATE_GUIDANCE_CARD.get())
                 || stack.is(ModItems.FU_CARD.get()) || stack.is(ModItems.HUO_CARD.get())
                 // 蛟龙立牌专属战斗牌(2026-09-27):撕咬 / 龙之咆哮
-                || stack.is(ModItems.ATTACK_CARD_BITE.get()) || stack.is(ModItems.ATTACK_CARD_DRAGON_ROAR.get());
+                || stack.is(ModItems.ATTACK_CARD_BITE.get()) || stack.is(ModItems.ATTACK_CARD_DRAGON_ROAR.get())
+                // 怪力乱神立牌专属效果牌(2026-10-18):强化拒止
+                || stack.is(ModItems.EFFECT_CARD_REPULSION.get());
     }
 
     // 无所有者时绑定为当前使用者

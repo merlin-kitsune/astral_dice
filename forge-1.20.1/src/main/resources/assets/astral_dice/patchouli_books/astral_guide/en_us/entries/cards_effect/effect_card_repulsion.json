@@ -1,0 +1,21 @@
+{
+  "name": "item.astral_dice.effect_card_repulsion",
+  "category": "astral_dice:cards_effect",
+  "icon": "astral_dice:effect_card_repulsion",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:effect_card_repulsion",
+      "text": "astral_dice.guide.entry.effect_card_repulsion.1"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.effect_card_repulsion.2"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.effect_card_repulsion.3"
+    }
+  ],
+  "sortnum": 18
+}

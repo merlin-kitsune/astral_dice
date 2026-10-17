@@ -24,7 +24,7 @@ public final class ModTags {
         }
 
         /**
-         * 专属牌（6 张，见 data/astral_dice/tags/item/is_exclusive.json）。
+         * 专属牌（7 张，见 data/astral_dice/tags/item/is_exclusive.json）。
          *
          * <p>商店货架与村民交易一律不得出现专属牌 —— 判据见
          * {@link com.merlinkitsune.astral_dice.shop.CardTradeFilter#isSellable(net.minecraft.world.item.ItemStack)}。

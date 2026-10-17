@@ -28,6 +28,7 @@ import com.merlinkitsune.astral_dice.item.chip.MagicTomeChipItem;
 import com.merlinkitsune.astral_dice.item.chip.BufferShieldChipItem;
 import com.merlinkitsune.astral_dice.item.chip.EightSidedDiceChipItem;
 import com.merlinkitsune.astral_dice.item.card.BarricadeCardItem;
+import com.merlinkitsune.astral_dice.item.card.RepulsionCardItem;
 import com.merlinkitsune.astral_dice.item.card.UnwaveringCardItem;
 import com.merlinkitsune.astral_dice.item.card.FightPoisonWithPoisonCardItem;
 import com.merlinkitsune.astral_dice.item.dice.DiceCurioItem;
@@ -387,6 +388,14 @@ public class ModItems {
             () -> new BarricadeCardItem(new Item.Properties()
                     .stacksTo(16)
                     .rarity(AstralRarities.rare())));
+
+    // 强化拒止(专属效果牌,2026-10-18;2026-10-18 移植到本线):在视线命中的方块面上放置一个实体
+    // 「强化拒止」(100 点耐久 / 8 格吸附 / 持续 缓慢+虚弱 / 每 10 秒按吸附目标数扣耐久 <=5 /
+    // 不吸引仇恨 / 免疫伤害)。品质:史诗(用户需求);专属牌:不进随机池、无配方、不进赏金池、仅获得者可用
+    public static final RegistryObject<Item> EFFECT_CARD_REPULSION = registerItem("effect_card_repulsion",
+            () -> new RepulsionCardItem(new Item.Properties()
+                    .stacksTo(16)
+                    .rarity(AstralRarities.epic())));
 
     // 对怪激光(伤害效果牌):远程和魔法伤害 +4。品质:青(蓝)
     public static final RegistryObject<Item> MONSTER_LASER_CARD = registerItem("effect_card_monster_laser",

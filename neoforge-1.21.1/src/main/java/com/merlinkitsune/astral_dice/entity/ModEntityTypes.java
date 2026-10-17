@@ -8,7 +8,7 @@ import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
 /**
- * 实体类型注册（2026-10-17 新牌「路障」引入的首个自有实体）。
+ * 实体类型注册（2026-10-17 新牌「路障」引入的首个自有实体；2026-10-18「强化拒止」为第二个）。
  *
  * <p>本仓此前**没有任何自有实体**，因此这里同时确立两条范式：
  * <ul>
@@ -36,6 +36,20 @@ public final class ModEntityTypes {
                     .sized(1.2F, 2.0F)
                     .clientTrackingRange(8)
                     .build("barricade"));
+
+    /**
+     * 强化拒止（2026-10-18 新效果牌「强化拒止」，属「怪力乱神」立牌；该立牌会在后续添加）。
+     *
+     * <p>尺寸 {@code sized(1.6F, 2.4F)}：bbmodel 的菱形头对角线约 1.06 格宽、整体高约 2.47 格
+     * （模型略高于实体盒，属可见取舍）；{@code clientTrackingRange(10)} 覆盖 8 格吸附半径，
+     * 保证半径内的玩家与怪物都能收到实体。
+     */
+    public static final DeferredHolder<EntityType<?>, EntityType<RepulsionEntity>> REPULSION =
+            ENTITY_TYPES.register("repulsion", () -> EntityType.Builder
+                    .of(RepulsionEntity::new, MobCategory.MISC)
+                    .sized(1.6F, 2.4F)
+                    .clientTrackingRange(10)
+                    .build("repulsion"));
 
     private ModEntityTypes() {
     }

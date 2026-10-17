@@ -64,7 +64,8 @@ public class ModClientEvents {
     }
 
     /**
-     * 自有实体渲染器注册（2026-10-17「路障」引入的首个实体；2026-10-17 移植到本线）。
+     * 自有实体渲染器注册（2026-10-17「路障」引入首个实体；2026-10-17 移植到本线；
+     * 2026-10-18 追加「强化拒止」）。
      *
      * <p>1.20.1 的平台差异：事件类仍是 {@code net.minecraftforge.client.event.EntityRenderersEvent}，
      * 但本线订阅者是 {@code @Mod.EventBusSubscriber(…, value = Dist.CLIENT, bus = Bus.MOD)} ——
@@ -74,12 +75,14 @@ public class ModClientEvents {
     @SubscribeEvent
     public static void registerEntityRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerEntityRenderer(ModEntityTypes.BARRICADE.get(), BarricadeRenderer::new);
+        event.registerEntityRenderer(ModEntityTypes.REPULSION.get(), RepulsionRenderer::new);
     }
 
     /** 模型层定义：`astral_dice:barricade#main` ⇒ {@link BarricadeModel#createBodyLayer()}。 */
     @SubscribeEvent
     public static void registerLayerDefinitions(EntityRenderersEvent.RegisterLayerDefinitions event) {
         event.registerLayerDefinition(BarricadeModel.LAYER_LOCATION, BarricadeModel::createBodyLayer);
+        event.registerLayerDefinition(RepulsionModel.LAYER_LOCATION, RepulsionModel::createBodyLayer);
     }
 
     @SubscribeEvent

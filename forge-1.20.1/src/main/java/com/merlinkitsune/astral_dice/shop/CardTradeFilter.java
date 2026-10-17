@@ -15,7 +15,7 @@ import org.slf4j.LoggerFactory;
  *
  * <p>被排除的三类：
  * <ul>
- *   <li>专属牌 —— 数据标签 {@code astral_dice:is_exclusive}（6 张）；</li>
+ *   <li>专属牌 —— 数据标签 {@code astral_dice:is_exclusive}（7 张）；</li>
  *   <li>巅峰 pinnacle（全力攻击、下界之星骰子等）；</li>
  *   <li>奇特 bizarre（专属牌基本都是）。</li>
  * </ul>

@@ -121,6 +121,7 @@ public abstract class BaseEffectCardItem extends Item {
             case "orbital_strike" -> new ItemStack(ModItems.ORBITAL_STRIKE_CARD.get());
             case "directional_blast" -> new ItemStack(ModItems.DIRECTIONAL_BLAST_CARD.get());
             case "barricade" -> new ItemStack(ModItems.EFFECT_CARD_BARRICADE.get());
+            case "repulsion" -> new ItemStack(ModItems.EFFECT_CARD_REPULSION.get());
             case "chocolate_cake" -> new ItemStack(ModItems.CHOCOLATE_CAKE.get());
             case "hamburger" -> new ItemStack(ModItems.HAMBURGER.get());
             case "luxury_feast" -> new ItemStack(ModItems.LUXURY_FEAST.get());

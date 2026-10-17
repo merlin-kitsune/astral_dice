@@ -22,7 +22,7 @@ import com.merlinkitsune.astral_dice.combat.PartyRelations;
  * - 卡牌类别:{@link CardCategory#ALL}(全部)/ {@link CardCategory#BATTLE}(仅战斗牌:攻击+防御)/
  *   {@link CardCategory#EFFECT}(仅效果牌:功能+伤害)。
  * - 专属牌强制排除:通过 {@link #registerExclusiveCard} 注册的卡牌不会出现在任何随机池中
- *   (当前:活体书页、命运的指引、符卡-福/祸、蛟龙立牌的两张专属战斗牌撕咬/龙之咆哮)。
+ *   (当前:活体书页、命运的指引、符卡-福/祸、蛟龙立牌的两张专属战斗牌撕咬/龙之咆哮、强化拒止)。
  * - 发放逻辑:统一走 {@link #giveCards},作用域(范围/团队/发放人数/是否含自己)由
  *   {@link GiveoutScope} 描述;后续角色/卡牌能力(如蛟龙立牌赠卡)复用本类。
  */
@@ -117,6 +117,8 @@ public final class RandomCardHandler {
         // 蛟龙立牌(mamushi)的两张专属战斗牌:同样绑定获得者(仅获得者可装备),且不入任何随机池
         registerExclusiveCard(ModItems.ATTACK_CARD_BITE);        // 撕咬
         registerExclusiveCard(ModItems.ATTACK_CARD_DRAGON_ROAR); // 龙之咆哮
+        // 怪力乱神立牌专属效果牌(2026-10-18;2026-10-18 移植到本线):只能由该立牌(后续添加)发放,不进任何随机池
+        registerExclusiveCard(ModItems.EFFECT_CARD_REPULSION); // 强化拒止
     }
 
     // === 卡牌池 ===

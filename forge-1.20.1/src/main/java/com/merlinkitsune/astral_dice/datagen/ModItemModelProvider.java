@@ -43,6 +43,7 @@ public class ModItemModelProvider extends ItemModelProvider {
         basicItem(ModItems.EFFECT_CARD_UNWAVERING.get());
         basicItem(ModItems.EFFECT_CARD_FIGHT_POISON_WITH_POISON.get());
         basicItem(ModItems.EFFECT_CARD_BARRICADE.get());
+        basicItem(ModItems.EFFECT_CARD_REPULSION.get());
         basicItem(ModItems.BLANK_SIGN.get());
         basicItem(ModItems.PARUNAN_SIGN.get());
         basicItem(ModItems.JASMINE_SIGN.get());
