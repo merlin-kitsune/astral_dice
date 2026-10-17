@@ -1,5 +1,6 @@
 package com.merlinkitsune.astral_dice.item.sign;
 
+import com.google.common.collect.MapMaker;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
 import com.merlinkitsune.astral_dice.combat.PartyRelations;
@@ -23,6 +24,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import com.merlinkitsune.starenginelib.item.CuriosCompat;
+import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.living.LivingDamageEvent;
 import net.minecraftforge.event.entity.living.MobEffectEvent;
 import net.minecraftforge.eventbus.api.EventPriority;
@@ -31,6 +33,7 @@ import top.theillusivec4.curios.api.SlotContext;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 地雷女立牌(ame,奇特)。
@@ -42,6 +45,8 @@ import java.util.List;
  * 到期后进入冷却(无空档)。**仅自然到期**({@link MobEffectEvent.Expired})触发结算:
  * 爱 −{@value #EXPIRE_COST}(下限 0)、爱上限 +1(最高 {@value #AME_LOVE_CAP_MAX});
  * 奶/命令清除不派发 Expired 事件 ⇒ **不触发结算**(卸下立牌走 {@code clearSignData} 显式移除,同样不结算)。
+ * 结算**延到同一 tick 的服务端 tick 末尾**执行且按实例幂等(一次自然到期恰好一次),
+ * 原因见 {@link #onOverdoseExpired}。
  *
  * <h3>被动「无法承受的爱」</h3>
  * 佩戴期间基础防御 {@value #BASE_DEFENSE} 点(经 {@code setDefenseArmorBonus} ×2.0 折真实护甲);
@@ -276,17 +281,46 @@ public class AmeSignItem extends BaseSignItem {
     }
 
     /**
+     * 已结算过的「感情过量摄入」实例:弱引用 + **身份比较**({@code MapMaker().weakKeys()})。
+     * 用途 = 一次自然到期只结算一次,见 {@link #onOverdoseExpired}。
+     */
+    private static final Map<MobEffectInstance, Boolean> SETTLED_OVERDOSE =
+            new MapMaker().weakKeys().makeMap();
+
+    /** 待结算的自然到期(只存玩家):延到同一 tick 的服务端 tick 末尾执行,见 {@link #onOverdoseExpired} */
+    private record PendingOverdoseExpiry(Player player) {
+    }
+
+    private static final List<PendingOverdoseExpiry> PENDING_OVERDOSE_EXPIRY = new ArrayList<>();
+
+    /**
      * 「感情过量摄入」**自然到期**结算(规格 §3.4):爱 −{@value #EXPIRE_COST}(下限 0)、
      * 爱上限 +1(最高 {@value #AME_LOVE_CAP_MAX})。
      *
-     * <p>只在本事件派发时结算 —— 该事件由 {@code LivingEntity#tickEffects} 在效果剩余时长归零时派发
+     * <p>只在本事件派发时**登记** —— 该事件由 {@code LivingEntity#tickEffects} 在效果剩余时长归零时派发
      * (见 {@code EffectTimerGuard} 的强制到期路径);奶 / {@code /effect clear} / 卸下立牌都走
      * {@code removeEffect},**不派发**本事件 ⇒ 如规格所要求「奶/命令清除不触发该结算」。
+     *
+     * <p><b>⚠️ 为什么必须延到同一 tick 的服务端 tick 末尾再改数据</b>:{@code MobEffectEvent.Expired}
+     * 在 {@code LivingEntity#tickEffects} 的 {@code iterator.remove()} <b>之前</b>发出 —— 此刻若
+     * 新增/移除任何效果(本结算里的「爱」层数镜像 {@code AmeLoveEffect.mirror} 必然 remove+add),
+     * 就会结构性修改正在被遍历的 {@code activeEffects} ⇒ {@code iterator.remove()} 抛
+     * {@code ConcurrentModificationException},而原版把它 {@code catch (ConcurrentModificationException) {}}
+     * **静默吞掉** ⇒ **该到期实例本拍不被移除**,其 duration 已为 0 ⇒ 下一拍 {@code Expired}
+     * <b>再发一次</b> ⇒ 结算被逐拍重放(2026-10-16 实机两线复现:爱 8→4→0、上限 20→21→22→23,
+     * 恰好 3 次;层数归 0 后镜像不再改 map,第三拍才真正移除)。范式同 {@code MarkManager#onMarkExpired}
+     * 与 {@code DiceCombatEvents#onPassiveStackExpired}(1.20.1 的 {@code Expired} 不可取消,故只能
+     * 走「下一 tick 补写」这一条两版本通用路径)。
+     *
+     * <p><b>幂等</b>:即使事件因其它监听者改动效果表而重复派发,同一个 {@link MobEffectInstance}
+     * 也只会在 {@link #SETTLED_OVERDOSE} 里登记一次 ⇒ 一次自然到期**恰好结算一次**。键用
+     * **弱引用 + 身份比较**({@code MapMaker().weakKeys()}),不会因为两个参数相同的实例
+     * (到期时 duration 都为 0)被 {@code MobEffectInstance#equals} 判等而误吞下一次真实结算。
      *
      * <p><b>不可</b>用 {@code player.getEffect(AME_OVERDOSE) != null} 作「是否本玩家当前那一份」的判据:
      * NeoForge 21.1.235 的 {@code LivingEntity#tickEffects} 在派发本事件**之后**才从 activeEffects
      * 移除实例 ⇒ 事件处理期间 {@code getEffect} 必非 null,该判据会把结算整段跳过(2026-10-16 修复 A1)。
-     * 「卸下立牌不结算」仍由下面的 {@link #wearsSign} 拦截覆盖。
+     * 「卸下立牌不结算」仍由 {@link #wearsSign} 拦截覆盖(登记与执行各判一次)。
      */
     @SubscribeEvent
     public static void onOverdoseExpired(MobEffectEvent.Expired event) {
@@ -297,10 +331,29 @@ public class AmeSignItem extends BaseSignItem {
         if (instance.getEffect() != ModEffects.AME_OVERDOSE.get()) return;
         // 未佩戴立牌时不结算(卸下立牌已由 clearSignData 清理,不应再扣层)
         if (!wearsSign(player)) return;
-        setLove(player, getLove(player) - EXPIRE_COST);
-        ModAttachments.setAmeLoveCap(player, Math.min(AME_LOVE_CAP_MAX, getLoveCap(player) + 1));
-        AmeLoveEffect.mirror(player, getLove(player));
-        sendSignActionBar(player, "msg.astral_dice.ame_overdose_expire", getLove(player));
+        // 幂等:同一到期实例只登记一次(重复派发 / 取消后重放都不再结算)
+        if (SETTLED_OVERDOSE.put(instance, Boolean.TRUE) != null) return;
+        PENDING_OVERDOSE_EXPIRY.add(new PendingOverdoseExpiry(player));
+    }
+
+    /** 服务端 tick 末尾统一结算排队中的「感情过量摄入」自然到期(见 {@link #onOverdoseExpired})。 */
+    @SubscribeEvent
+    public static void onServerTick(TickEvent.ServerTickEvent event) {
+        if (event.phase != TickEvent.Phase.END) return;
+        if (PENDING_OVERDOSE_EXPIRY.isEmpty()) return;
+        List<PendingOverdoseExpiry> pending = new ArrayList<>(PENDING_OVERDOSE_EXPIRY);
+        PENDING_OVERDOSE_EXPIRY.clear();
+        for (PendingOverdoseExpiry expiry : pending) {
+            Player player = expiry.player();
+            if (player == null || player.isRemoved() || !player.isAlive()) continue;
+            if (player.level().isClientSide()) continue;
+            // 同一 tick 内卸下立牌 / 清场 ⇒ 不结算(维持「卸下清零不结算」口径)
+            if (!wearsSign(player)) continue;
+            setLove(player, getLove(player) - EXPIRE_COST);
+            ModAttachments.setAmeLoveCap(player, Math.min(AME_LOVE_CAP_MAX, getLoveCap(player) + 1));
+            AmeLoveEffect.mirror(player, getLove(player));
+            sendSignActionBar(player, "msg.astral_dice.ame_overdose_expire", getLove(player));
+        }
     }
 
     // ══════════════════════════════════════════════════════════════════════════

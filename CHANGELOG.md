@@ -447,6 +447,17 @@
 
 #### Damage & Resolution
 
+- **Fixed the Ame Sign's "Emotional Overdose" settling several times when it expires naturally** (2026-10-17): the expiry should
+  remove **4** Love stacks and raise the Love cap by **1** exactly once, but it settled once in each of three consecutive game
+  ticks (Love 8 -> 4 -> 0 and cap 20 -> 21 -> 22 -> 23 - 8 extra stacks lost and 2 extra cap points gained). Cause: settling also
+  refreshes the Love stack display, and that refresh removes and re-applies the Love effect - right while the player's effect list
+  is being iterated for removal, so that tick's removal was skipped and silently ignored by the game, leaving the already-expired
+  "Emotional Overdose" to expire again on the next tick until the stack count stopped changing. The settlement is now **queued and
+  applied at the end of the same tick, in the server tick's closing phase**, and de-duplicated per expiry - however many times the
+  expiry is dispatched, one natural expiry now settles **exactly once**. Milk / command removal / unequipping the sign still do
+  **not** settle, and everything else (per-stack attack and defense, max health, the instant heal and speed bonus, persistence
+  through death, the 30-second on-hit stack) is unchanged. Criteria: cast it, wait for expiry and read exactly one
+  "Love -4, cap +1".
 - **Fixed the four damage effect cards occasionally dealing 1 less damage** (2026-10-08): Monster Laser / Monster Brick /
   Orbital Strike / Directional Blast deal **fixed** damage (4 / 6 / 8 / 5), but they used to be shaved by the vanilla
   hurt-invulnerability rule - if the target had been hit by a **smaller** amount within the previous 9 ticks
