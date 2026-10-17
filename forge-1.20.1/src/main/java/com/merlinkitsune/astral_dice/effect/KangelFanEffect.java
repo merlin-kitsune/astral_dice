@@ -25,8 +25,8 @@ import net.minecraft.world.entity.LivingEntity;
  * (读取本效果是否仍在**攻击者**身上,而非读任何附件)。
  *
  * <p>配色:{@link MobEffectCategory#HARMFUL}(对目标而言是负面标记;裁决 #5)。
- * 图标 = {@code images/粉丝.png}(实装路径 {@code textures/mob_effect/kangel_fan.png},
- * 逐字节复制)。
+ * 图标 = {@code images/粉丝.png} 加金色描边的视觉变体(实装路径
+ * {@code textures/mob_effect/kangel_fan.png},由 {@code tools/gen_kangel_fan_indicator_texture.py} 确定性生成)。
  *
  * <p><b>平台差异(1.20.1 Forge 移植版,逐字同形)</b>:本文件除 {@code ModEffects.KANGEL_FAN} 是
  * {@code RegistryObject} ⇒ 引用处一律加 {@code .get()}(1.21.1 为 {@code DeferredHolder}),

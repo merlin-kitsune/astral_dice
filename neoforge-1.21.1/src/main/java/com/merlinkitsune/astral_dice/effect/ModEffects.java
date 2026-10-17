@@ -327,7 +327,8 @@ public class ModEffects {
      * 这是「是否粉丝」的唯一真值)。粉丝计数真值在附件 {@code ModAttachments#KANGEL_FAN_COUNT}
      * (上限 10、跨死亡保留、卸下清零)。
      * <b>无限时长</b>({@code MobEffectInstance.INFINITE_DURATION} ⇒ 目标死亡自然消失,不登记计时守卫)。
-     * HARMFUL 配色(裁决 #5);图标 = {@code images/粉丝.png}。
+     * HARMFUL 配色(裁决 #5);图标 = {@code images/粉丝.png} 加金色描边的视觉变体
+     * ({@code tools/gen_kangel_fan_indicator_texture.py} 生成;金色描边用来区分「目标标记」与佩戴者指示器)。
      */
     public static final DeferredHolder<MobEffect, MobEffect> KANGEL_FAN =
             EFFECTS.register("kangel_fan", KangelFanEffect::new);
@@ -340,8 +341,8 @@ public class ModEffects {
      * 攻击方的指示器曾被 {@code hasEffect(kangel_fan)} 当成「她是粉丝」⇒ 误判 −1;
      * 被标记成粉丝的超天酱也会被自己的计数镜像清掉标记。施加点在
      * {@code item/sign/KangelSignItem}({@link KangelFanIndicatorEffect#mirrorCount})。
-     * BENEFICIAL 配色;图标 = {@code images/粉丝.png} 加金色描边的视觉变体
-     * ({@code tools/gen_kangel_fan_indicator_texture.py} 生成)。
+     * BENEFICIAL 配色;图标 = {@code images/粉丝.png} 原版逐字节复制(金色描边版归目标标记
+     * {@link #KANGEL_FAN};本图标由 {@code tools/gen_kangel_fan_indicator_texture.py} 复制)。
      */
     public static final DeferredHolder<MobEffect, MobEffect> KANGEL_FAN_INDICATOR =
             EFFECTS.register("kangel_fan_indicator", KangelFanIndicatorEffect::new);

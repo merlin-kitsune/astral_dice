@@ -25,8 +25,8 @@ import net.minecraft.world.entity.LivingEntity;
  * (读取本效果是否仍在**攻击者**身上,而非读任何附件)。
  *
  * <p>配色:{@link MobEffectCategory#HARMFUL}(对目标而言是负面标记;裁决 #5)。
- * 图标 = {@code images/粉丝.png}(实装路径 {@code textures/mob_effect/kangel_fan.png},
- * 逐字节复制)。
+ * 图标 = {@code images/粉丝.png} 加金色描边的视觉变体(实装路径
+ * {@code textures/mob_effect/kangel_fan.png},由 {@code tools/gen_kangel_fan_indicator_texture.py} 确定性生成)。
  */
 public class KangelFanEffect extends MobEffect {
     /** 无限时长(标记不随时间衰减;目标死亡自然消失) */

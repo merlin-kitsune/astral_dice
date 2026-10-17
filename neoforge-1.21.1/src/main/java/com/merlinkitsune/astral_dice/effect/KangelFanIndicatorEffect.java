@@ -31,8 +31,8 @@ import net.minecraft.world.entity.player.Player;
  * <p>无属性修饰符、无周期反噬;无限时长({@link MobEffectInstance#INFINITE_DURATION}),
  * 计数不随时间衰减,只在粉丝数变化时按「先移除再施加」刷新(照 {@code SherryReasoningEffect} 的镜像口径)。
  * 配色:{@link MobEffectCategory#BENEFICIAL}(对佩戴者而言是展示性状态)。
- * 图标 = {@code textures/mob_effect/kangel_fan_indicator.png}(= {@code images/粉丝.png} 加金色描边的
- * 视觉变体,由 {@code tools/gen_kangel_fan_indicator_texture.py} 确定性生成)。
+ * 图标 = {@code textures/mob_effect/kangel_fan_indicator.png}(= {@code images/粉丝.png} 原版
+ * 逐字节复制;金色描边版归目标标记 {@link KangelFanEffect})。
  */
 public class KangelFanIndicatorEffect extends MobEffect {
     /** 无限时长(计数镜像常驻,随粉丝数变化/卸下立牌刷新) */

@@ -1,28 +1,35 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""生成「粉丝数」效果指示器图标（`kangel_fan_indicator`）。
+"""生成超天酱立牌的两张效果图标（`kangel_fan` / `kangel_fan_indicator`）。
 
 ## 为什么要有这个脚本
 
 超天酱立牌的目标标记（`kangel_fan`）与佩戴者的**计数指示器**在 2026-10-17 被拆成两个注册 id
 （拆前同 id 导致超天酱互殴误判 -1、被标记者被自己的镜像清掉标记）。
 两者若用**同一张**图标，玩家在 HUD 上仍分不清「我是被标了粉丝」还是「我的粉丝数显示」
-—— 故指示器图标 = `images/粉丝.png` 的**视觉变体**：把角色轮廓最外 2 像素描成金色
-（原图是 2× 放大的像素画 ⇒ 2 像素 = 稿纸上的 1 个逻辑像素；保留原图配色与五官，形状不动）。
+—— 故图标分两种：**目标标记** = `images/粉丝.png` 的**金色描边变体**（把角色轮廓最外 2 像素描成金色，
+原图是 2× 放大的像素画 ⇒ 2 像素 = 稿纸上的 1 个逻辑像素；保留原图配色与五官，形状不动）；
+**佩戴者指示器** = `images/粉丝.png` 的**逐字节复制**（原版图标）。
+
+⚠️ 归属在 2026-10-17 由用户裁决**对调**（此前是「指示器 = 金色描边、标记 = 原图」）：
+金色描边版归**目标标记** `kangel_fan.png`，指示器 `kangel_fan_indicator.png` 用回原版。
 
 ## 产物（P0 两线各一份，逐字节相同）
 
+    neoforge-1.21.1/src/main/resources/assets/astral_dice/textures/mob_effect/kangel_fan.png
+    forge-1.20.1/src/main/resources/assets/astral_dice/textures/mob_effect/kangel_fan.png
     neoforge-1.21.1/src/main/resources/assets/astral_dice/textures/mob_effect/kangel_fan_indicator.png
     forge-1.20.1/src/main/resources/assets/astral_dice/textures/mob_effect/kangel_fan_indicator.png
 
-⚠️ P1 两线（26.1.2 / fabric）尚未注册本效果，故不产出（照 `kangel_fan.png` 的先例）。
+⚠️ P1 两线（26.1.2 / fabric）尚未注册这两个效果，故不产出。
 
 ## 用法
 
     python tools/gen_kangel_fan_indicator_texture.py            # 写入 P0 两线
     python tools/gen_kangel_fan_indicator_texture.py --check    # 只校验（幂等，rc=1 = 需重生成）
 
-判据：`--check` 退出码 0 = 两线贴图与生成器结果逐字节一致。
+判据：`--check` 退出码 0 = 两线贴图与生成器结果逐字节一致，且四张图的**像素载荷 SHA1**
+等于 `EXPECTED_SHA1`；指示器还额外断言与 `images/粉丝.png` **文件字节完全一致**（单一来源）。
 实现只用标准库（zlib/struct）—— 与 `tools/gen_event_indicator_textures.py` 同口径，不依赖 PIL。
 """
 
@@ -30,6 +37,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import shutil
 import struct
 import sys
 import zlib
@@ -59,12 +67,28 @@ _astral_heal_stdio()
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SOURCE = os.path.join(ROOT, "images", "粉丝.png")
-OUTPUTS = (
+
+# 金色描边版 ⇒ 目标标记 `kangel_fan`（打在粉丝身上）
+GOLD_BASENAME = "kangel_fan.png"
+GOLD_OUTPUTS = (
     os.path.join("neoforge-1.21.1", "src", "main", "resources",
-                 "assets", "astral_dice", "textures", "mob_effect", "kangel_fan_indicator.png"),
+                 "assets", "astral_dice", "textures", "mob_effect", GOLD_BASENAME),
     os.path.join("forge-1.20.1", "src", "main", "resources",
-                 "assets", "astral_dice", "textures", "mob_effect", "kangel_fan_indicator.png"),
+                 "assets", "astral_dice", "textures", "mob_effect", GOLD_BASENAME),
 )
+# 原版逐字节复制 ⇒ 佩戴者指示器 `kangel_fan_indicator`
+COPY_BASENAME = "kangel_fan_indicator.png"
+COPY_OUTPUTS = (
+    os.path.join("neoforge-1.21.1", "src", "main", "resources",
+                 "assets", "astral_dice", "textures", "mob_effect", COPY_BASENAME),
+    os.path.join("forge-1.20.1", "src", "main", "resources",
+                 "assets", "astral_dice", "textures", "mob_effect", COPY_BASENAME),
+)
+# 期望的**像素载荷** SHA1（width×height×4 字节 RGBA 行拼接；与 PNG 编码参数无关）
+EXPECTED_SHA1 = {
+    GOLD_BASENAME: "88eeb0c46bae574aba74d1e04cac07b44cef7826",
+    COPY_BASENAME: "cf01cb4e2afc0ffe2f5805f3221732c179076a34",
+}
 # 金色描边（与 32×32 原图的紫色描边、粉色主体都能区分开）；厚度 = 2 像素（= 原稿 1 个逻辑像素）
 GOLD = (255, 205, 60, 255)
 RING_TEXELS = 2
@@ -141,7 +165,7 @@ def write_png(path: str, w: int, h: int, rows) -> None:
         f.write(data)
 
 
-def build():
+def build_gold():
     """原图（32×32）+ 金色轮廓描边（最外 RING_TEXELS 圈不透明像素改金）。"""
     w, h, rows = read_png(SOURCE)
     if (w, h) != (32, 32):
@@ -175,32 +199,73 @@ def build():
     return w, h, [bytes(r) for r in out]
 
 
+def payload_sha1(rows) -> str:
+    return hashlib.sha1(b"".join(rows)).hexdigest()
+
+
+def _check_one(rel: str, name: str, w: int, h: int, rows) -> bool:
+    path = os.path.join(ROOT, rel)
+    if not os.path.isfile(path):
+        print("MISSING " + rel)
+        return False
+    cw, ch, crows = read_png(path)
+    same = (cw, ch) == (w, h) and b"".join(crows) == b"".join(rows)
+    digest = payload_sha1(crows) if (cw, ch) == (w, h) else "n/a"
+    digest_ok = digest == EXPECTED_SHA1[name]
+    ok = same and digest_ok
+    print("%s %s (%s sha1=%s%s)"
+          % ("OK      " if ok else "STALE   ", rel, name, digest,
+             "" if digest_ok else ", expected " + EXPECTED_SHA1[name]))
+    if name == COPY_BASENAME and ok:
+        with open(path, "rb") as f:
+            same_bytes = f.read() == _source_bytes()
+        print(("OK      " if same_bytes else "STALE   ")
+              + rel + " (byte-copy of images/粉丝.png)")
+        ok = same_bytes
+    return ok
+
+
+def _source_bytes() -> bytes:
+    with open(SOURCE, "rb") as f:
+        return f.read()
+
+
 def main() -> int:
     check = "--check" in sys.argv
-    w, h, rows = build()
-    payload = b"".join(rows)
-    digest = hashlib.sha1(payload).hexdigest()
+    gw, gh, grows = build_gold()
+    ow, oh, orows = read_png(SOURCE)
+    gold_digest = payload_sha1(grows)
+    copy_digest = payload_sha1(orows)
+
+    # 生成器自检：结果必须与钉住的期望值一致（防止源图/描边算法被悄悄改动）
+    if gold_digest != EXPECTED_SHA1[GOLD_BASENAME]:
+        raise SystemExit("生成的 %s 像素 SHA1 漂移: %s != %s"
+                         % (GOLD_BASENAME, gold_digest, EXPECTED_SHA1[GOLD_BASENAME]))
+    if copy_digest != EXPECTED_SHA1[COPY_BASENAME]:
+        raise SystemExit("源图像素 SHA1 漂移: %s != %s"
+                         % (copy_digest, EXPECTED_SHA1[COPY_BASENAME]))
 
     if check:
         ok = True
-        for rel in OUTPUTS:
-            path = os.path.join(ROOT, rel)
-            if not os.path.isfile(path):
-                print("MISSING " + rel)
-                ok = False
-                continue
-            cw, ch, crows = read_png(path)
-            same = (cw, ch) == (w, h) and b"".join(crows) == payload
-            print(("OK      " if same else "STALE   ") + rel)
-            if not same:
-                ok = False
-        print("EXPECTED_SHA1 " + digest)
+        for rel in GOLD_OUTPUTS:
+            ok = _check_one(rel, GOLD_BASENAME, gw, gh, grows) and ok
+        for rel in COPY_OUTPUTS:
+            ok = _check_one(rel, COPY_BASENAME, ow, oh, orows) and ok
+        print("EXPECTED_SHA1 %s=%s %s=%s"
+              % (GOLD_BASENAME, EXPECTED_SHA1[GOLD_BASENAME],
+                 COPY_BASENAME, EXPECTED_SHA1[COPY_BASENAME]))
         return 0 if ok else 1
 
-    for rel in OUTPUTS:
-        write_png(os.path.join(ROOT, rel), w, h, rows)
+    for rel in GOLD_OUTPUTS:
+        write_png(os.path.join(ROOT, rel), gw, gh, grows)
         print("WROTE " + rel)
-    print("SHA1 " + digest)
+    for rel in COPY_OUTPUTS:
+        path = os.path.join(ROOT, rel)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        shutil.copyfile(SOURCE, path)
+        print("COPIED " + rel)
+    print("SHA1 %s=%s %s=%s"
+          % (GOLD_BASENAME, gold_digest, COPY_BASENAME, copy_digest))
     return 0
 
 

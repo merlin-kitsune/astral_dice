@@ -453,10 +453,18 @@
   who had been marked as a Fan by someone else had her fan count change, the indicator refresh (remove then re-apply) **wiped the mark**
   the other player had given her. The two are now separate statuses: **"Fan" means the target mark only** (the sole check for "is a Fan" and
   for the -1 damage), while a new **"Fan Count" indicator** only shows the wearer's own fan count (level = fan count, icon = the original
-  Fan icon with a gold outline); unequipping the sign now clears only your own indicator and no longer touches marks given by others.
+  Fan icon; the gold-outlined variant belongs to the Fan mark - see the icon-attribution swap below); unequipping the sign now clears only
+  your own indicator and no longer touches marks given by others.
   Fan counting, persistence through death, the reset on unequip, Two Hearts as One and the -1 value itself are all unchanged.
   Criteria: two KAngel Sign wearers hitting each other no longer have their damage reduced by 1; a marked KAngel wearer keeps her mark
   after her fan count changes.
+
+- **Swapped the icon attribution of the KAngel Sign's two effect icons** (2026-10-17): the gold-outlined variant now belongs to the
+  **target mark** `kangel_fan` (applied to Fans), while the wearer's own **"Fan Count" indicator** `kangel_fan_indicator` uses the
+  **original** `images/粉丝.png` (a byte-for-byte copy). Effect ids, registration, language keys and all behaviour are unchanged - only the
+  icon visuals swapped. Previously the indicator carried the gold outline and the target mark used the plain icon, which read backwards
+  against "I have been marked as a Fan" versus "this is my own fan count". Both icons are still produced deterministically by
+  `tools/gen_kangel_fan_indicator_texture.py` (`--check` idempotent), byte-identical across the two P0 lines.
 
 - **Fixed the Ame Sign's "Emotional Overdose" settling several times when it expires naturally** (2026-10-17): the expiry should
   remove **4** Love stacks and raise the Love cap by **1** exactly once, but it settled once in each of three consecutive game

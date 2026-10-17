@@ -9,7 +9,7 @@
   "steps": [
     {
       "op": "note",
-      "text": "HUD 效果图标/罗马数字等级由**客户端**从同步过来的 MobEffectInstance 渲染 ⇒ 判据取客户端侧:\n客户端探针 `astral_kame_client.js` 在效果集变化时把「id:amp:dur:icon:vis」写成 `AP_KAMEC:` 行(落 logs/kubejs/client.log);\n同时截图供视觉核对图标(粉丝.png / 爱.png)。"
+      "text": "HUD 效果图标/罗马数字等级由**客户端**从同步过来的 MobEffectInstance 渲染 ⇒ 判据取客户端侧:\n客户端探针 `astral_kame_client.js` 在效果集变化时把「id:amp:dur:icon:vis」写成 `AP_KAMEC:` 行(落 logs/kubejs/client.log);\n同时截图供视觉核对图标(佩戴者指示器 = 原版 粉丝.png、目标标记 = 金色描边版、爱 = 爱.png)。"
     },
     {
       "op": "inject_command",
