@@ -967,5 +967,11 @@
   "effect.astral_dice.problem_delivery.description": "中毒与饥饿（0:15），15 秒内无法治疗",
   "gui.astral_dice.event_choice.title": "选择事件",
   "jade.astral_dice.restock_countdown": "补货倒计时 §9%s§7",
-  "jade.astral_dice.enter_countdown": "可进入倒计时 §9%s§7"
+  "jade.astral_dice.enter_countdown": "可进入倒计时 §9%s§7",
+  "gui.astral_dice.card_choice.title_single_combat": "选择一张战斗牌",
+  "gui.astral_dice.card_choice.title_single_effect": "选择一张效果牌",
+  "gui.astral_dice.card_choice.title_single_any": "选择一张卡牌",
+  "gui.astral_dice.card_choice.title_triple_combat": "选择三张战斗牌",
+  "gui.astral_dice.card_choice.title_triple_effect": "选择三张效果牌",
+  "gui.astral_dice.card_choice.title_triple_any": "选择三张卡牌"
 }

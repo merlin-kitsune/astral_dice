@@ -100,6 +100,12 @@ public final class ModNetwork {
                 ChipShopRefreshPayload::encode, ChipShopRefreshPayload::decode, ChipShopRefreshPayload::handle);
         CHANNEL.registerMessage(id++, ChipShopDenyPayload.class,
                 ChipShopDenyPayload::encode, ChipShopDenyPayload::decode, ChipShopDenyPayload::handle);
+        // 通用选卡界面(2026-10-17):id 24 = C→S 确认(只带会话 token)、id 25 = S→C token 作用域关闭。
+        // 同样**只能追加在末尾**:顺序即协议,插队会让旧客户端错包。
+        CHANNEL.registerMessage(id++, CardChoiceConfirmMessage.class,
+                CardChoiceConfirmMessage::encode, CardChoiceConfirmMessage::decode, CardChoiceConfirmMessage::handle);
+        CHANNEL.registerMessage(id++, CardChoiceCloseMessage.class,
+                CardChoiceCloseMessage::encode, CardChoiceCloseMessage::decode, CardChoiceCloseMessage::handle);
     }
 
     // === 发送助手(对应 1.21 PacketDistributor 静态方法) ===

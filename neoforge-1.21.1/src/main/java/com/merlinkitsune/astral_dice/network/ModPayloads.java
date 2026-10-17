@@ -54,6 +54,18 @@ public class ModPayloads {
                 SignActivatePayload.STREAM_CODEC,
                 SignActivatePayload::handle
         );
+        // 通用选卡界面（2026-10-17）:C2S 确认（只带会话 token）
+        registrar.playToServer(
+                CardChoiceConfirmPayload.TYPE,
+                CardChoiceConfirmPayload.STREAM_CODEC,
+                CardChoiceConfirmPayload::handle
+        );
+        // 通用选卡界面（2026-10-17）:S2C token 作用域关闭
+        registrar.playToClient(
+                CardChoiceClosePayload.TYPE,
+                CardChoiceClosePayload.STREAM_CODEC,
+                CardChoiceClosePayload::handle
+        );
         registrar.playToServer(
                 OpenCardInventoryPayload.TYPE,
                 OpenCardInventoryPayload.STREAM_CODEC,

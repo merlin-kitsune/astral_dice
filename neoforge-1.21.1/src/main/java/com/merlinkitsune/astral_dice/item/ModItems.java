@@ -1123,4 +1123,14 @@ public class ModItems {
     public static boolean isCardItem(ItemStack stack) {
         return stack.is(COMBAT_CARDS_TAG) || stack.is(EFFECT_CARDS_TAG);
     }
+
+    /** 是否战斗牌（选卡界面 COMBAT 口径，2026-10-17）。 */
+    public static boolean isCombatCard(ItemStack stack) {
+        return stack.is(COMBAT_CARDS_TAG);
+    }
+
+    /** 是否效果牌（选卡界面 EFFECT 口径，2026-10-17）。 */
+    public static boolean isEffectCard(ItemStack stack) {
+        return stack.is(EFFECT_CARDS_TAG);
+    }
 }

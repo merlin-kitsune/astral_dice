@@ -966,5 +966,11 @@
   "effect.astral_dice.problem_delivery.description": "Poison & Hunger (0:15), no healing for 15s",
   "gui.astral_dice.event_choice.title": "Choose Event",
   "jade.astral_dice.restock_countdown": "Restock in §9%s§7",
-  "jade.astral_dice.enter_countdown": "Available in §9%s§7"
+  "jade.astral_dice.enter_countdown": "Available in §9%s§7",
+  "gui.astral_dice.card_choice.title_single_combat": "Choose a Combat Card",
+  "gui.astral_dice.card_choice.title_single_effect": "Choose an Effect Card",
+  "gui.astral_dice.card_choice.title_single_any": "Choose a Card",
+  "gui.astral_dice.card_choice.title_triple_combat": "Choose Three Combat Cards",
+  "gui.astral_dice.card_choice.title_triple_effect": "Choose Three Effect Cards",
+  "gui.astral_dice.card_choice.title_triple_any": "Choose Three Cards"
 }

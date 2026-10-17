@@ -965,5 +965,11 @@
   "effect.astral_dice.problem_delivery.description": "毒と飢餓（0:15）、15 秒間治療不可",
   "gui.astral_dice.event_choice.title": "イベントを選択",
   "jade.astral_dice.restock_countdown": "補充まで §9%s§7",
-  "jade.astral_dice.enter_countdown": "利用可能まで §9%s§7"
+  "jade.astral_dice.enter_countdown": "利用可能まで §9%s§7",
+  "gui.astral_dice.card_choice.title_single_combat": "戦闘カードを1枚選択",
+  "gui.astral_dice.card_choice.title_single_effect": "効果カードを1枚選択",
+  "gui.astral_dice.card_choice.title_single_any": "カードを1枚選択",
+  "gui.astral_dice.card_choice.title_triple_combat": "戦闘カードを3枚選択",
+  "gui.astral_dice.card_choice.title_triple_effect": "効果カードを3枚選択",
+  "gui.astral_dice.card_choice.title_triple_any": "カードを3枚選択"
 }

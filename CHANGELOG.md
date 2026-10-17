@@ -53,6 +53,13 @@
   cooldown ends; seconds are rounded up and the time value is blue. **Without Jade nothing changes** (no extra
   dependency is required).
 
+- **New shared "card choice screen" component** (2026-10-17): a server-side menu plus a client screen where the
+  caller picks the slot count (1 or 3) and the allowed card type (combat / effect / any). Players double-click or
+  drag cards from their inventory into the card slots, and the **confirm button appears only once every slot is
+  filled**. On confirm the server authoritatively validates and consumes the chosen cards (one per slot) and hands
+  the result back to the caller; pressing **Esc** or closing the screen **consumes nothing and applies nothing**.
+  **This batch ships the component and its integration API only - no skill is wired to it yet.**
+
 #### Sound Effects
 
 - **Five new custom sound effects, one rewritten** (2026-10-04): the four damage effect cards now use
