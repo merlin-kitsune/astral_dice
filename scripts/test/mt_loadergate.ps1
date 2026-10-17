@@ -45,6 +45,7 @@ $ErrorActionPreference = 'Stop'
 $script:LibDir = Join-Path $PSScriptRoot 'lib'
 Import-Module (Join-Path $script:LibDir 'Mt.Phase.psm1')
 Import-Module (Join-Path $script:LibDir 'Mt.Paths.psm1')
+Import-Module (Join-Path $script:LibDir 'Mt.Proc.psm1')
 
 Initialize-MtConsole
 
@@ -502,25 +503,31 @@ public class LoaderGateProbe {
     $javac = Join-Path $script:JavaHome 'bin\javac.exe'
     $java = Join-Path $script:JavaHome 'bin\java.exe'
     $cp = "$mavenJar;$lang3Jar;$work"
-    $compile = & $javac -encoding UTF-8 -cp $mavenJar -d $work $srcFile 2>&1
-    $compileText = ($compile | Out-String).Trim()
-    Add-Lg ("AP_LG_COMPILE:javac={0}:rc={1}:out={2}" -f $javac, $LASTEXITCODE, (($compileText -replace '[\r\n]+', ' ')))
-    if ($LASTEXITCODE -ne 0) {
+    # ⚠️ 不能写 `& $javac …`：从 WSL 起的 pwsh 里 `& <exe>` 会静默不执行子进程、`$LASTEXITCODE`
+    #    不被创建 ⇒ 编译闸门会把「根本没编译」误判成 compile_failed（2026-10-17，见 Mt.Proc.psm1）。
+    $compileR = Invoke-MtChildProcess -FilePath $javac -TimeoutSec 300 -Capture -Quiet -ArgumentList @(
+        '-encoding', 'UTF-8', '-cp', $mavenJar, '-d', $work, $srcFile)
+    $compileText = ($compileR.StdOut + $compileR.StdErr).Trim()
+    Add-Lg ("AP_LG_COMPILE:javac={0}:rc={1}:out={2}" -f $javac, $compileR.ExitCode, (($compileText -replace '[\r\n]+', ' ')))
+    if ($compileR.ExitCode -ne 0) {
         Add-Lg 'AP_LG_VERDICT:compile_failed=1'
         $fail += 'compile_failed'
     } else {
         Write-MtLine 'MT_LG_STEP:5/6 运行判定器(旧区间 BUG 复现 / 新区间门槛 / Mixin Booster 区间)'
         if ($mbRangeDeclared -and $mbArtifactVersion) {
-            $out = & $java -cp $cp LoaderGateProbe $mbRangeDeclared $mbArtifactVersion 2>&1
+            $probeR = Invoke-MtChildProcess -FilePath $java -TimeoutSec 300 -Capture -Quiet -ArgumentList @(
+                '-cp', $cp, 'LoaderGateProbe', $mbRangeDeclared, $mbArtifactVersion)
         } else {
-            $out = & $java -cp $cp LoaderGateProbe 2>&1
+            $probeR = Invoke-MtChildProcess -FilePath $java -TimeoutSec 300 -Capture -Quiet -ArgumentList @(
+                '-cp', $cp, 'LoaderGateProbe')
             Add-Lg ("AP_LG_MB_RANGE:skipped=1:range={0}:artifact={1}:gate_ok=0" -f $mbRangeDeclared, $mbArtifactVersion)
         }
+        $out = @(($probeR.StdOut + $probeR.StdErr) -split "`r?`n")
         foreach ($ln in @($out)) {
             $s = ([string]$ln).Trim()
             if ($s) { Add-Lg $s }
         }
-        if ($LASTEXITCODE -ne 0) { $fail += "probe_rc=$LASTEXITCODE" }
+        if ($probeR.ExitCode -ne 0) { $fail += "probe_rc=$($probeR.ExitCode)" }
 
         Write-MtLine 'MT_LG_STEP:6/6 汇总依赖排序阶段结论'
         $oldLine = @($script:Readings | Where-Object { $_ -like 'AP_LG_OLD:*' }) -join ''

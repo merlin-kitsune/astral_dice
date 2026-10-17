@@ -220,8 +220,10 @@ function Invoke-MtLaunchOpPreflight {
         $injectArgs = @('-NoProfile', '-File', (Join-Path $TestDir 'mt_inject.ps1'), 'cmd',
             '--command', '/astralprobe opprobe', '--version', $Version)
         if ($attempt -eq 1) { $injectArgs += '-NoEsc' }
-        & $PsExe @injectArgs
-        $rcs += $LASTEXITCODE
+        # ⚠️ 不能写 `& $PsExe @injectArgs`：从 WSL 起的 pwsh 里 `& <exe>` 会静默不执行子进程、
+        #    且 `$LASTEXITCODE` 根本不会被创建（详见 Mt.Proc.psm1 → Invoke-MtChildProcess）。
+        $injectR = Invoke-MtChildProcess -FilePath $PsExe -ArgumentList $injectArgs -TimeoutSec 120
+        $rcs += $injectR.ExitCode
         $pollUntil = (Get-Date).AddSeconds(4)
         while ((Get-Date) -lt $pollUntil) {
             $tPoll = ''
@@ -820,8 +822,10 @@ if ($MyInvocation.InvocationName -ne '.') {
     }
 
     # KubeJS 脚本健康（进入世界后第一步）
-    & $psExe -NoProfile -File (Join-Path $testDir 'mt_assert.ps1') kubejs --version $Version
-    if ($LASTEXITCODE -ne 0) { Write-MtWarn 'KubeJS server.log 非 0 errors' }
+    # 走 Invoke-MtChildProcess（不用 `&`，退出码取 Process.ExitCode）：见 Mt.Proc.psm1 的实测说明。
+    $kubejsR = Invoke-MtChildProcess -FilePath $psExe -TimeoutSec 120 -ArgumentList @(
+        '-NoProfile', '-File', (Join-Path $testDir 'mt_assert.ps1'), 'kubejs', '--version', $Version)
+    if ($kubejsR.ExitCode -ne 0) { Write-MtWarn 'KubeJS server.log 非 0 errors' }
 
     # ── B6 ④：cases 阶段的前置闸门（只读 OP 断言 + /astralparty dump 可用性）──────────────
     # 前置不足 ⇒ BLOCKED；探针/dump 不可用 ⇒ ERROR。两者都在用例之前收口，绝不静默降级。
@@ -850,8 +854,10 @@ if ($MyInvocation.InvocationName -ne '.') {
         $precleanCmd = '/kill @e[type=!player,distance=..128]'
         $precleanRc = @()
         foreach ($precleanAttempt in 1..2) {
-            & $psExe -NoProfile -File (Join-Path $testDir 'mt_inject.ps1') cmd --command $precleanCmd --version $Version
-            $precleanRc += $LASTEXITCODE
+            $precleanR = Invoke-MtChildProcess -FilePath $psExe -TimeoutSec 120 -ArgumentList @(
+                '-NoProfile', '-File', (Join-Path $testDir 'mt_inject.ps1'),
+                'cmd', '--command', $precleanCmd, '--version', $Version)
+            $precleanRc += $precleanR.ExitCode
             Start-Sleep -Milliseconds 600
         }
         if (@($precleanRc | Where-Object { $_ -ne 0 }).Count -eq 0) {
@@ -901,8 +907,14 @@ if ($MyInvocation.InvocationName -ne '.') {
         $immCmd = "/gamerule $immRule true"
         $immRc = @()
         foreach ($immAttempt in 1..2) {
-            & $psExe -NoProfile -File (Join-Path $testDir 'mt_inject.ps1') cmd --command $immCmd --version $Version
-            $immRc += $LASTEXITCODE
+            # ⚠️ P3/D4-5（2026-10-17 实测）：从 WSL 起的 pwsh 里 `& $psExe …` 会**静默不执行**子进程，
+            #    于是 `$LASTEXITCODE` 为 $null、注入一次都没发生，而本闸门把「日志里没有回显」判成
+            #    ERROR —— 实操中规则其实早已生效（同一状态被上一轮注入过），闸门却拒绝继续。
+            #    改为 Invoke-MtChildProcess（Start-Process + Process.ExitCode），两条启动方式都可靠。
+            $immR = Invoke-MtChildProcess -FilePath $psExe -TimeoutSec 120 -ArgumentList @(
+                '-NoProfile', '-File', (Join-Path $testDir 'mt_inject.ps1'),
+                'cmd', '--command', $immCmd, '--version', $Version)
+            $immRc += $immR.ExitCode
             Start-Sleep -Milliseconds 600
         }
         $immEv = 'not-found'
@@ -964,8 +976,10 @@ if ($MyInvocation.InvocationName -ne '.') {
     # B7：这里必须显式写 `--window launch` —— 它将同一组偏移**冻结**成 `launch_offsets`，
     # 供 `mixin` 断言与 `mt_report` 的整轮摘要读取；此后每条用例的 `--window case` 只改写
     # `offsets`，不会冲掉这份 launch 基线。
-    & $psExe -NoProfile -File (Join-Path $testDir 'mt_assert.ps1') snapshot --window launch --version $Version
-    if ($LASTEXITCODE -ne 0) { Write-MtWarn 'SNAPSHOT: 基线写入失败（用例断言可能落在陈旧偏移上）' }
+    $snapshotR = Invoke-MtChildProcess -FilePath $psExe -TimeoutSec 120 -ArgumentList @(
+        '-NoProfile', '-File', (Join-Path $testDir 'mt_assert.ps1'),
+        'snapshot', '--window', 'launch', '--version', $Version)
+    if ($snapshotR.ExitCode -ne 0) { Write-MtWarn 'SNAPSHOT: 基线写入失败（用例断言可能落在陈旧偏移上）' }
 
     Write-MtOk 'LAUNCH' "已进入世界（quickplay=$world）"
     exit $MT_EXIT_PASS

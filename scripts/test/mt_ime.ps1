@@ -238,7 +238,17 @@ function Invoke-MtImeSelfTest {
 
     $myLangidBefore = Get-MtLangIdOfThread -ThreadId (Get-MtCurrentThreadId)
 
+    # ⚠️ 同 mt_capture.ps1：WSL 下 PATH 里没有 pwsh/pwsh.exe ⇒ 不能把 'pwsh' 当兜底名字。
+    #    探测顺序：$PSHOME\pwsh.exe → PATH 里的 pwsh → %ProgramFiles%\PowerShell\7\pwsh.exe → 'pwsh'。
     $pwshExe = Join-Path $PSHOME 'pwsh.exe'
+    if (-not (Test-Path -LiteralPath $pwshExe)) {
+        $pwshCmd = Get-Command pwsh -ErrorAction SilentlyContinue
+        if ($null -ne $pwshCmd) { $pwshExe = $pwshCmd.Source }
+    }
+    if (-not (Test-Path -LiteralPath $pwshExe)) {
+        $pwshCand = Join-Path $env:ProgramFiles 'PowerShell\7\pwsh.exe'
+        if (Test-Path -LiteralPath $pwshCand) { $pwshExe = $pwshCand }
+    }
     if (-not (Test-Path -LiteralPath $pwshExe)) { $pwshExe = 'pwsh' }
     $psi = [System.Diagnostics.ProcessStartInfo]::new()
     $psi.FileName = $pwshExe

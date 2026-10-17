@@ -158,6 +158,133 @@ function Stop-MtProcessTree {
     }
 }
 
+function ConvertFrom-MtChildBytes {
+    <#
+    .SYNOPSIS
+        解码子进程落盘的 stdout/stderr 字节（严格 UTF-8 → 父控制台码页 → 容错 UTF-8）。
+
+    .NOTES
+        为什么要「猜」：子进程的 `[Console]::OutputEncoding` 取自它启动时所在控制台的码页 ——
+        本机默认 936(GBK)；但父脚本若已 `Initialize-MtConsole`（UTF-8）且子进程附着同一控制台，
+        子进程就会写 UTF-8。GBK 中文几乎必然不是合法 UTF-8 ⇒ 用严格 UTF-8 试解、失败回落父码页，
+        两条实测路径都能还原正确文本。只用于**诊断文本**，不参与任何断言判据。
+    #>
+    [CmdletBinding()]
+    param([byte[]]$Bytes)
+
+    if ($null -eq $Bytes -or $Bytes.Length -eq 0) { return '' }
+    try {
+        $strict = [System.Text.UTF8Encoding]::new($false, $true)
+        return $strict.GetString($Bytes)
+    } catch { }
+    try { return [Console]::OutputEncoding.GetString($Bytes) } catch { }
+    return ([System.Text.UTF8Encoding]::new($false, $false)).GetString($Bytes)
+}
+
+function Invoke-MtChildProcess {
+    <#
+    .SYNOPSIS
+        以子进程方式运行一个外部命令（通常是「本机 pwsh 跑某个子脚本」），**稳健地**拿退出码；
+        `-Capture` 时连 stdout/stderr 一并取回。
+
+    .DESCRIPTION
+        为什么**不能**写 `& $psExe -NoProfile -File …`（2026-10-17 实测，WSL 驱动 Windows 工具链）：
+          从 WSL 直接起的 `pwsh.exe` 里，调用运算符 `& <exe>` 会**静默不执行**子进程 ——
+          既没有任何 stdout，也拿不到退出码（`$LASTEXITCODE` 变量根本不会被创建）。取证（WSL bash）：
+              $o = & C:\Windows\System32\where.exe cmd.exe
+              ⇒ rc=[] out=[] isset=False
+              & C:\Windows\System32\cmd.exe /c 'echo x> 文件'
+              ⇒ rc=[] 且文件根本没生成（子进程确实没起来）
+              （已排除 cwd/UNC 与 stdin/stdout 重定向因素：进程 cwd 设成 C:\… 同样失败）
+          后果：`mt_launch` 的 doImmediateRespawn 硬闸门把 `$null -ne 0` 判成「注入失败」⇒
+          规则明明已生效却报 `MT_LAUNCH: ERROR`（D4-5）。
+        同一台机器上 `Start-Process -NoNewWindow -PassThru` 在「WSL 直接启动」与「有控制台的父进程」
+        两种形态下都实测正常（见 temp/d45 自测报告），故本函数统一走 Start-Process：
+        **不用** `&`，也**不读** `$LASTEXITCODE`。
+
+        两种模式：
+          · 默认 —— **不重定向**，子进程继承调用方控制台句柄 ⇒ 与原生 `&` 走同一组句柄（输出内容/顺序/码页
+            不变），只是退出码改从 `Process.ExitCode` 取（Windows 原生运行行为不变）。
+          · `-Capture` —— 两条流落到临时文件再回读（`-NoNewWindow` 让子进程仍附着父控制台，
+            码页与原生调用一致），按 `ConvertFrom-MtChildBytes` 解码后**按原文回显**（`-Quiet` 可关），
+            同时把文本回传给调用方。用完即删临时文件。
+
+    .PARAMETER TimeoutSec
+        0（默认）= 不限时（与旧 `&` 语义一致）；>0 时超时强杀整棵进程树并置 `TimedOut=$true`。
+
+    .OUTPUTS
+        PSCustomObject：ExitCode（int）、StdOut / StdErr（string；非 -Capture 时为空串）、TimedOut（bool）。
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$FilePath,
+        [string[]]$ArgumentList = @(),
+        [string]$WorkingDirectory = '',
+        [double]$TimeoutSec = 0,
+        [switch]$Capture,
+        [switch]$Quiet
+    )
+
+    $sp = @{
+        FilePath     = $FilePath
+        ArgumentList = (ConvertTo-MtStartArgs -ArgumentList $ArgumentList)
+        PassThru     = $true
+        NoNewWindow  = $true
+    }
+    if ($WorkingDirectory) { $sp['WorkingDirectory'] = $WorkingDirectory }
+
+    $outFile = ''
+    $errFile = ''
+    if ($Capture) {
+        $stamp = [guid]::NewGuid().ToString('N').Substring(0, 10)
+        $outFile = Join-Path ([System.IO.Path]::GetTempPath()) "mt_child_${stamp}.out"
+        $errFile = Join-Path ([System.IO.Path]::GetTempPath()) "mt_child_${stamp}.err"
+        $sp['RedirectStandardOutput'] = $outFile
+        $sp['RedirectStandardError'] = $errFile
+    }
+
+    $proc = Start-Process @sp
+
+    $timedOut = $false
+    $code = 1
+    try {
+        if ($TimeoutSec -gt 0) {
+            $ms = [int][Math]::Max(1, [Math]::Round($TimeoutSec * 1000))
+            if (-not $proc.WaitForExit($ms)) {
+                $timedOut = $true
+                try { Stop-MtProcessTree -Process $proc } catch { }
+                try { [void]$proc.WaitForExit(30000) } catch { }
+            }
+        } else {
+            $proc.WaitForExit()
+        }
+        try { $code = [int]$proc.ExitCode } catch { $code = 1 }
+    } finally {
+        # 先释放句柄（它会持有重定向文件），再回读 —— 与 Ft.Common 的实测结论一致
+        try { $proc.Dispose() } catch { }
+    }
+
+    $stdout = ''
+    $stderr = ''
+    if ($Capture) {
+        $stdout = ConvertFrom-MtChildBytes (Read-MtLogBytesShared -Path $outFile)
+        $stderr = ConvertFrom-MtChildBytes (Read-MtLogBytesShared -Path $errFile)
+        if (-not $Quiet) {
+            try { [Console]::Out.Write($stdout); [Console]::Out.Flush() } catch { }
+            try { [Console]::Error.Write($stderr); [Console]::Error.Flush() } catch { }
+        }
+        Remove-Item -LiteralPath $outFile -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $errFile -Force -ErrorAction SilentlyContinue
+    }
+
+    return [pscustomobject]@{
+        ExitCode = $code
+        StdOut   = $stdout
+        StdErr   = $stderr
+        TimedOut = $timedOut
+    }
+}
+
 function Get-JavaProcesses {
     <#
     .SYNOPSIS
@@ -1376,7 +1503,8 @@ function Exit-MtLaunchLock {
 
 Export-ModuleMember -Function @(
     'ConvertFrom-MtBytes', 'Invoke-MtProcess', 'Invoke-MtProcessFull',
-    'Stop-MtProcessTree', 'Get-JavaProcesses', 'Get-GradleDaemonProcesses',
+    'Stop-MtProcessTree', 'ConvertFrom-MtChildBytes', 'Invoke-MtChildProcess',
+    'Get-JavaProcesses', 'Get-GradleDaemonProcesses',
     'Read-MtSharedText', 'Read-MtLogWithRotation', 'Get-MtRotatedLatestLogs',
     'Get-MtLogAnchor', 'Read-MtLogWindow', 'ConvertTo-MtStartArgs', 'Start-MtProcessToFile',
     'Stop-MtVersionProcesses', 'Get-MtClientStatus', 'Test-MtClientProcess', 'Test-MtPipelineProcess',

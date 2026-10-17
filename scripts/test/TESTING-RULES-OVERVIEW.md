@@ -23,6 +23,14 @@
 **测试前清场（强制）**：冷启动进入世界后由 `mt_launch` 自动连发两次 `/kill @e[type=!player,distance=..128]`（`MT_PRECLEAN: OK`）；`--no-preclean` 仅限特殊取证。
 **禁用生物 AI（强制硬闸门）**：`astral_test_noai.js` 每 2 tick 强制玩家 128 格内 Mob `setNoAi(true)`；进入世界 30 秒内必须读到 `AP_NOAI:` 且 `mobs == noai`，否则 `MT_LAUNCH: ERROR`（对照实验可 `MT_ALLOW_MOB_AI=1`）。**禁止**用 `doMobSpawning false` 代替（会把史莱姆压制闸门变成假证）。
 
+### 2.1 从 WSL 驱动工具链（2026-10-17 实测，三条硬事实）
+
+| 事项 | 结论 |
+|---|---|
+| `pwsh` 不在 WSL PATH | WSL 默认**不透传** Windows PATH ⇒ 一律写全路径：`'C:\Program Files\PowerShell\7\pwsh.exe' -NoProfile -File <脚本>`。**禁止**用 Linux 侧 `pwsh` 跑本仓脚本（工具链 Windows-only，依赖 `Add-Type`/`user32`） |
+| 脚本内部调子进程 | 从 WSL 直接起的 pwsh 里，调用运算符 `& <exe>` 会**静默不执行**子进程、`$LASTEXITCODE` 根本不被创建 ⇒ 统一走 `Invoke-MtChildProcess`（`lib/Mt.Proc.psm1`：`Start-Process -NoNewWindow -PassThru` + `Process.ExitCode`）。`mt_launch` 的 `doImmediateRespawn` 闸门曾因此误报 `MT_LAUNCH: ERROR`（规则实际已生效，D4-5） |
+| git hook | `.git/hooks/{post-commit,post-checkout,post-merge,post-rewrite}`（所有 worktree 共用）按 `PATH pwsh` → `PATH pwsh.exe` → `/mnt/c/Program Files/PowerShell/7/pwsh.exe` 顺序探测；全找不到**静默 `exit 0`**，从不让提交失败或刷屏 |
+
 ## 3. 唯一入口与阶段
 
 ### 3.1 🚫 现行规则：禁用批量编排，改为纯手动下达命令（2026-09-27 用户裁决）

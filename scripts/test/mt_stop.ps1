@@ -41,6 +41,10 @@
     子进程走 `pwsh -File mt_cleanup.ps1`：**不捕获输出**、直接继承控制台句柄，
     这样 mt_cleanup 的机器可读结论行（MT_CLEANUP_RESULT:）以原始字节透传，
     不会象「取回字符串再重新编码」那样被改写。
+
+    2026-10-17：改用 lib 的 `Invoke-MtChildProcess`（内部 Start-Process -NoNewWindow、
+    **不重定向**）—— 上面「继承句柄」的口径不变，只是不再用 `& $psExe`：从 WSL 起的 pwsh 里
+    `& <exe>` 会静默不执行子进程且 `$LASTEXITCODE` 为 $null（详见 Mt.Proc.psm1 该函数说明）。
 #>
 
 $ErrorActionPreference = 'Stop'
@@ -48,6 +52,7 @@ $ErrorActionPreference = 'Stop'
 $script:LibDir = Join-Path $PSScriptRoot 'lib'
 Import-Module (Join-Path $script:LibDir 'Mt.Phase.psm1')
 Import-Module (Join-Path $script:LibDir 'Mt.Paths.psm1')
+Import-Module (Join-Path $script:LibDir 'Mt.Proc.psm1')
 
 Initialize-MtConsole
 
@@ -94,8 +99,9 @@ Start-MtPhase 'stop'
 
 # 当前 pwsh 可执行文件（用 $PSHOME 拼接在 Store/绿色版下可能错位，取自身进程路径更稳）
 $psExe = (Get-Process -Id $PID).Path
-& $psExe -NoProfile -File (Join-Path $PSScriptRoot 'mt_cleanup.ps1') @cleanupArgs
-$rc = $LASTEXITCODE
+$stopR = Invoke-MtChildProcess -FilePath $psExe -ArgumentList (@(
+        '-NoProfile', '-File', (Join-Path $PSScriptRoot 'mt_cleanup.ps1')) + $cleanupArgs)
+$rc = $stopR.ExitCode
 
 if ($rc -eq 0) {
     Write-MtOk 'STOP' '收停完成，无本流程残留进程'
