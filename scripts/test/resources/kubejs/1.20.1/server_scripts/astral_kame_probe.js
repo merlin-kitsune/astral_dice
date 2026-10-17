@@ -175,9 +175,11 @@ function kStateLineBody(p, tag, t) {
     out += ":atk=" + kRd(function () { return kDcm().attackPowerOf(p); }, "ERR");
     out += ":atkd=" + kRd(function () { return kDcm().attackPowerDisplayOf(p); }, "ERR");
     out += ":def=" + kRd(function () { return kDcm().defensePowerOf(p); }, "ERR");
-    out += ":fanE=" + kFxText(p, fx.KANGEL_FAN);
-    out += ":loveE=" + kFxText(p, fx.AME_LOVE);
-    out += ":ovdE=" + kFxText(p, fx.AME_OVERDOSE);
+    // 1.20.1: ModEffects 的字段是 RegistryObject ⇒ 必须 .get() 取 Holder(否则 Rhino 强转失败,
+    // 异常会穿透 JS try/catch 直接中止整个命令 ⇒ `state` 曾静默无输出,见 2026-10-17 实测)
+    out += ":fanE=" + kFxText(p, fx.KANGEL_FAN.get());
+    out += ":loveE=" + kFxText(p, fx.AME_LOVE.get());
+    out += ":ovdE=" + kFxText(p, fx.AME_OVERDOSE.get());
     out += ":lock=" + kRd(function () { return kBase().isSignActiveLocked(p) ? 1 : 0; }, "ERR");
     out += ":sco=" + kRd(function () { return kAtt().getSignActiveCooldownEnd(p); }, "ERR");
     out += ":spd=" + kRd(function () { var A2 = kAttrs(); return p.getAttributeValue(A2.MOVEMENT_SPEED); }, "ERR");
