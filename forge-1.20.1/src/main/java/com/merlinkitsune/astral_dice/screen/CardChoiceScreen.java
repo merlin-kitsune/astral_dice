@@ -406,7 +406,7 @@ public class CardChoiceScreen extends AbstractContainerScreen<CardChoiceMenu> {
                 }
             } else if (canAcceptCarried(target)) {
                 // 拖回物品栏：**发包前**先预判目标格能否安全接收。被不同物品占用时原版
-                // {@code PICKUP} 会落到「交换」分支把两件物品换位，违反 spec §7「已占用 ⇒ 原路还原」
+                // {@code PICKUP} 会落到「交换」分支把两件物品换位，违反 spec §5 第 3 条「已占用 ⇒ 原路还原」
                 // ⇒ 不发包，直接走下方还原分支（落点为空槽 / 同种可叠时仍按原版合并）。
                 // 携带数减少即视为成功；余量留在光标上由原版处理。
                 int before = this.menu.getCarried().getCount();
@@ -426,7 +426,7 @@ public class CardChoiceScreen extends AbstractContainerScreen<CardChoiceMenu> {
     }
 
     /**
-     * 物品栏槽能否**安全接收**光标上的卡（发 {@code PICKUP} 前的预判，spec §7「已占用 ⇒ 原路还原」）。
+     * 物品栏槽能否**安全接收**光标上的卡（发 {@code PICKUP} 前的预判，spec §5 第 3 条「已占用 ⇒ 原路还原」）。
      *
      * <p>原版 {@code AbstractContainerMenu#doClick} 的 {@code PICKUP} 分支里：
      * <ul>
