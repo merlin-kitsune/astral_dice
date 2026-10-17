@@ -45,6 +45,7 @@
 | 基类 | `extends LivingEntity`（**不**用 Mob AI） |
 | 属性 | `MAX_HEALTH = 30`，由 `event/ModEntityEvents` 的 `EntityAttributeCreationEvent#put` 注册（`LivingEntity.createLivingAttributes().add(Attributes.MAX_HEALTH, 30.0)`） |
 | 物理 | `noPhysics = true`、`setNoGravity(true)`、`isPushable() = false` |
+| 尺寸 / 视点 | 实体类型 `sized(1.2F, 2.0F)`：视点 = 0.85×2.0 = **1.7 > 碰撞方块顶 1.5**。2026-10-18 实机取证：实体本体站在 1.5 格高的碰撞方块内时，怪物 `hasLineOfSight` 的射线终点落在方块内部被挡住 ⇒ `MeleeAttackGoal` 永不触发（卫道士走到 0.8 格、`reach=true` 却 12 秒 0 次 `hurt`）；把视点抬到方块顶以上后 LOS 恢复、卫道士每秒命中一次（30→16，−14/12s）。 |
 | 受伤 | 覆写 `hurt(DamageSource, float)`（仅服务端）：仅接受 `source.getEntity() instanceof LivingEntity`（怪物 / 玩家 / 其发射物都算）；**无视伤害值、每次固定 -1**（`setHealth(getHealth() - 1)`；不写 `invulnerableTime`、不依赖无敌帧），扣到 0 调 `die` |
 | 受击反馈 | `markHurt()` + `level().broadcastDamageEvent(this, source)`（客户端 `handleDamageEvent` 置 `hurtTime = hurtDuration = 10` 并播受击音；服务端不再重复 `playSound`） |
 | 仇恨守门 | `event/BarricadeAggroHandler`（游戏总线 `LivingChangeTargetEvent`）：怪物想从路障改投别人时，只要旧目标仍是 6 格内存活路障且自己是敌对非精英，就把「即将设置的新目标」改回路障；初次拉仇恨仍归 `pullAggro` |
@@ -57,7 +58,8 @@
 ## 4. 碰撞方块：`block/BarricadeBlock`
 
 - 碰撞箱 `Shapes.box(0, 0, 0, 1, 1.5, 1)`（栅栏高度 ⇒ 跳不过去）；
-- `getRenderShape` = `RenderShape.INVISIBLE`；`noOcclusion()`、`isViewBlocking→false`、`isSuffocating→false`、`isRedstoneConductor→false`、`isPathfindable→false`（怪物寻路绕行 / 被挡在门外）、`noLootTable()`、`strength(-1.0F, 3600000.0F)`（不可破坏）、`sound(SoundType.WOOD)`；
+- `getRenderShape` = `RenderShape.INVISIBLE`；`noOcclusion()`、`isViewBlocking→false`、`isSuffocating→false`、`isRedstoneConductor→false`、`noLootTable()`、`strength(-1.0F, 3600000.0F)`（不可破坏）、`sound(SoundType.WOOD)`；
+- **寻路层放行 + 物理层挡路**：`isPathfindable()` 返回 **true**、`getBlockPathType()` 返回 **WALKABLE**（neo `PathType.WALKABLE` / forge `BlockPathTypes.WALKABLE`）。2026-10-18 实机取证：旧口径 `isPathfindable=false` 会让怪物的 `PathNavigation` 规划不到「路障所占格」⇒ 只站远处盯目标、不靠近也不攻击；放行后卫道士会走到 0.8 格贴身处，被 1.5 格碰撞箱挡住（**依旧越不过去**）并在近战距离攻击路障。
 - 资产：`blockstates/barricade_collision.json` → `astral_dice:block/barricade_collision`，模型 `{"textures":{"particle":"minecraft:block/oak_planks"},"elements":[]}`（避免 Missing model 日志）。
 
 > ⚠️ **视觉高 ≈0.83 格 vs 碰撞 1.5 格**：需求优先「像栅栏一样挡路」（栅栏 = 1.5），而 bbmodel 实物只有 14 像素高（倾斜后 ≈0.83 格）⇒ 板顶以上约 0.67 格是隐形墙。这是**有意取舍**（保挡路、不拉伸美术）；若要改成「碰撞 1.0 + 可跳过」或「缩放模型填满 1.5」，属玩法决策。
@@ -67,7 +69,7 @@
 | 文件 | 作用 |
 |---|---|
 | `entity/BarricadeEntity.java` | 路障实体（耐久 / 拉仇恨 / 清理 / 方块校验） |
-| `entity/ModEntityTypes.java` | `DeferredRegister<EntityType<?>>`，`sized(1.2F, 1.0F)`、`clientTrackingRange(8)` |
+| `entity/ModEntityTypes.java` | 实体类型注册（neo `DeferredRegister<EntityType<?>>` / forge 同构），`sized(1.2F, 2.0F)`、`clientTrackingRange(8)` |
 | `event/ModEntityEvents.java` | `EntityAttributeCreationEvent` 注册 30 点最大生命 |
 | `block/BarricadeBlock.java` | 隐形碰撞方块 |
 | `block/ModBlocks.java` | 追加 `BARRICADE_COLLISION` 注册 |
@@ -145,7 +147,31 @@
 
 1. **实体渲染朝向 / 两块板的夹角方向**：模型已按 bbmodel 的**几何**落地（含 §6 的 Y 翻转与旋转取反），但「取反后的倾角是否符合美术预期」属视觉问题，静态无法判定。
    若实机看到两块板朝外张成「V」形（而非向内成「Λ」），把 A/B 的 \`xRot\` 同时取反即可；若整块板吊在半空 / 陷进地面，先查 \`PartPose\` 的 y 基准（地面 = 24）。
-2. **挡路手感**：碰撞方块高 1.5 格、`isPathfindable=false`，实际能否如栅栏一样「跳不过、绕得开」需实机。
-3. **仇恨是否被 AI 覆盖**：每 4 tick 重设 `setTarget`，但怪物自带的 `TargetGoal` 可能在同一 tick 内改回（尤其被玩家攻击后），需实机确认仇恨稳定性；同时 `isPathfindable=false` 可能让近战怪无法寻路到实体而只「看着」，这也是实机判定项。
+2. **挡路手感**：碰撞方块高 1.5 格、寻路层放行/物理层挡路；**实机已验证**怪会走到 0.8 格贴身处（见 §11），「跳不过」仍属手感项（建议玩家视角复测一次）。
+3. **仇恨稳定性**：每 4 tick 重设 `setTarget` + `BarricadeAggroHandler` 守改投；**实机已验证**卫道士在 12 秒内持续锁定并攻击（14 次命中，§11）。
 4. **怪物攻击能否命中实体**：实体 AABB（1.2×1.0）与碰撞方块同格，怪站在邻格时应够得着（近战 reach ≈ 2 格），但需实机确认。
 5. `/kill` 等**无实体来源**的伤害被 `hurt` 设计性忽略（只有生物来源才扣耐久），故管理员清场需用 `/setblock` 清碰撞方块（方块被清后实体 100 tick 内自毁）。
+
+## 11. 实机验证记录（2026-10-18，用户明确下达「走实机测试，需要验证生物ai会不会主动攻击路障」）
+
+> 环境：`neoforge-1.21.1` dev 客户端（测试世界超平坦，平台 y=95），`MT_ALLOW_MOB_AI=1` 且**临时移除** `astral_test_noai.js` 硬闸门（测试后已恢复）。靶子 = **卫道士（非亡灵）**。
+
+| 项 | 结果 |
+|---|---|
+| 真实卡牌 use 放置 | `InteractionResultHolder` 成功、卡片 1（创造模式不扣，原版语义）、路障 hp=30/30 |
+| 6 格内锁定 | 卫道士 `target=astral_dice:barricade`，从 4.00 格走到 **0.80 格**（`reach=true`） |
+| 主动攻击 | 12 秒内 **14 次** `BARRICADE_HURT msg=mob entity=Vindicator`，耐久 **30 → 16**（每次固定 −1） |
+| 6 格外对照 | 12.5 格外的卫道士不锁定路障、路障 hp 保持 30 |
+| 精英对照 | `maxHealth=50` 的卫道士（命中 `EliteTargets` 的「血量>40」口径）`target=none`、路障 hp 保持 30 |
+
+### 11.1 实机暴露并已修复的 2 个缺陷
+
+1. **旧 `isPathfindable=false` ⇒ 怪物不靠近**：`PathNavigation` 规划不到「路障所占格」，卫道士只站 4 格外盯目标（12 秒距离恒为 4.00）。修复 = 寻路层放行（`isPathfindable=true` + `getBlockPathType=WALKABLE`），物理仍被 1.5 格碰撞箱挡住 ⇒ 走到 0.8 格贴脸攻击。
+2. **旧实体视点 0.85 落在 1.5 格碰撞方块内 ⇒ 怪物 LOS 被挡、永不攻击**：修复前 12 秒 **0 次** `hurt`（`reach=true` 也不打）。修复 = 实体类型 `sized(1.2F, 2.0F)`（视点 1.7 > 方块顶 1.5），LOS 从方块顶掠过；代价是命中箱比模型（0.83 格）高，属可见取舍。
+
+### 11.2 未覆盖 / 待复测（如实登记）
+
+- 玩家视角的「跳不过 / 绕得开」手感未做逐帧复测；
+- forge-1.20.1 线未实机（实体/方块代码与 neo 逐行等价，仅平台 API 差异已在编译期验证）；
+- 远程怪（骷髅/掠夺者）与爆炸伤害未单独测试；
+- 耐久归零后的「清方块 + 解除仇恨」路径未跑到（本轮只打到 16）。

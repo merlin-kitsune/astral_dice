@@ -68,6 +68,7 @@ import java.util.List;
  */
 public class BarricadeEntity extends LivingEntity {
 
+
     /** 每次被生物命中固定扣掉的耐久（无视伤害数值，用户需求「被怪物攻击会降低一点」）。 */
     public static final float DAMAGE_PER_HIT = 1.0F;
 
@@ -110,6 +111,7 @@ public class BarricadeEntity extends LivingEntity {
     public HumanoidArm getMainArm() {
         return HumanoidArm.RIGHT;
     }
+
 
     // ── 装备槽（{@link LivingEntity} 的三个抽象方法）：路障没有装备 ─────────────────
 

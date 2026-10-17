@@ -38,7 +38,7 @@ public final class ModEntityTypes {
     public static final RegistryObject<EntityType<BarricadeEntity>> BARRICADE =
             ENTITY_TYPES.register("barricade", () -> EntityType.Builder
                     .of(BarricadeEntity::new, MobCategory.MISC)
-                    .sized(1.2F, 1.0F)
+                    .sized(1.2F, 2.0F)
                     .clientTrackingRange(8)
                     .build("barricade"));
 

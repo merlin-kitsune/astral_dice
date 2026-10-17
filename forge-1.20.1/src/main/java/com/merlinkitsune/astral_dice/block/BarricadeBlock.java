@@ -5,6 +5,8 @@ import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.level.pathfinder.BlockPathTypes;
 import net.minecraft.world.level.pathfinder.PathComputationType;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
@@ -64,10 +66,21 @@ public class BarricadeBlock extends Block {
         return RenderShape.INVISIBLE;
     }
 
-    /** 不参与寻路：怪物把这一格当成墙，于是绕行 / 停在门外，而不是「穿过去」。 */
+    /**
+     * 寻路层「可走」+ 物理层仍挡路（2026-10-18 实机：旧口径 {@code isPathfindable=false} 会让
+     * 怪物的 {@code PathNavigation} 规划不到「路障所占格」⇒ 只站远处盯目标、不靠近也不攻击）。
+     * 现在规划层放行、碰撞箱照旧 1.5 格：怪物会走到贴脸处被挡住并进入近战距离攻击路障，
+     * 同时**依旧越不过去**（碰撞箱不放行）。
+     */
     @Override
     public boolean isPathfindable(BlockState state, BlockGetter level, BlockPos pos,
                                   PathComputationType pathComputationType) {
-        return false;
+        return true;
+    }
+
+    /** 显式声明该格对寻路为可走（双保险，避免不同版本 WalkNodeEvaluator 的取值路径差异）。 */
+    @Override
+    public BlockPathTypes getBlockPathType(BlockState state, BlockGetter level, BlockPos pos, Mob mob) {
+        return BlockPathTypes.WALKABLE;
     }
 }
