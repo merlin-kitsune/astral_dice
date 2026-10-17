@@ -1,0 +1,761 @@
+{
+  "case_id": "KAME-TEAM-1.20.1",
+  "title": "1.20.1 一心同体复核(非 bot 前缀假人):collectTeamPlayers 可见、双向供给/计数、Dev 仅 6 防御",
+  "version": "1.20.1",
+  "target": {
+    "type": "feature",
+    "ref": "features/kangel-ame-sign-spec.md#3.3"
+  },
+  "steps": [
+    {
+      "op": "note",
+      "text": "1.20.1 一心同体复核(非 bot 前缀假人 Fake1/Fake2):Dev 戴 kangel+骰、Fake1/Fake2 戴 ame+骰并同队 red。判据:collectTeamPlayers 可见(tm>=1)、kangel 受伤喂全队 ame +1 爱、ame 受伤队内 kangel +1 粉丝、Dev 仅 6 防御且不攒爱。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode survival @a",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 350
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamerule naturalRegeneration false",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 350
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamerule doImmediateRespawn true",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 350
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamerule keepInventory true",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 350
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamerule doDaylightCycle false",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 350
+    },
+    {
+      "op": "inject_command",
+      "command": "/time set noon",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 350
+    },
+    {
+      "op": "inject_command",
+      "command": "/weather clear",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 350
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[type=!player,distance=..96]",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 250
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[type=!player,distance=..96]",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/carpet allowSpawningOfflinePlayers true",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/player Fake1 spawn",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "wait",
+      "ms": 650
+    },
+    {
+      "op": "inject_command",
+      "command": "/player Fake2 spawn",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "wait",
+      "ms": 650
+    },
+    {
+      "op": "inject_command",
+      "command": "/player Fake4 spawn",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "wait",
+      "ms": 650
+    },
+    {
+      "op": "inject_command",
+      "command": "/tp @s 0 -60 0 0 0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/tp Fake1 2 -60 0 0 0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 250
+    },
+    {
+      "op": "inject_command",
+      "command": "/tp Fake2 4 -60 0 0 0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 250
+    },
+    {
+      "op": "inject_command",
+      "command": "/tp Fake4 6 -60 0 0 0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 250
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 350
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear Fake1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 350
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear Fake2",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 350
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear Fake4",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 350
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame mobsreset",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 350
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame resetfans Dev",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralpvp clearfx CF Dev",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 250
+    },
+    {
+      "op": "wait",
+      "ms": 200
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame resetfans Fake1",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralpvp clearfx CF Fake1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 250
+    },
+    {
+      "op": "wait",
+      "ms": 200
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame resetfans Fake2",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralpvp clearfx CF Fake2",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 250
+    },
+    {
+      "op": "wait",
+      "ms": 200
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame resetfans Fake4",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralpvp clearfx CF Fake4",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 250
+    },
+    {
+      "op": "wait",
+      "ms": 200
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralpvp leaveteam LT Dev",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 300
+    },
+    {
+      "op": "wait",
+      "ms": 300
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame equip dice \"-\" Dev",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 300
+    },
+    {
+      "op": "inject_command",
+      "command": "/team add red",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 300
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralpvp jointeam JT red Dev",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "wait",
+      "ms": 250
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralpvp jointeam JT red Fake1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "wait",
+      "ms": 250
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralpvp jointeam JT red Fake2",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "wait",
+      "ms": 250
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame equip stand \"-\" Dev",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 250
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame equip stand \"-\" Fake1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 250
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame equip stand \"-\" Fake2",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 250
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame equip stand \"-\" Fake4",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 250
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame equip stand \"astral_dice:kangel_sign\" Dev",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 450
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame equip dice \"astral_dice:diamond_dice\" Dev",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 450
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame equip stand \"astral_dice:ame_sign\" Fake1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 450
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame equip dice \"astral_dice:diamond_dice\" Fake1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 450
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame equip stand \"astral_dice:ame_sign\" Fake2",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 450
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame equip dice \"astral_dice:diamond_dice\" Fake2",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 450
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame set love 0 Fake1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 350
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame set cap 4 Fake1",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame set cdend 0 Fake1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 250
+    },
+    {
+      "op": "wait",
+      "ms": 350
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame set love 0 Fake2",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 350
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame set cap 4 Fake2",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame set cdend 0 Fake2",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 250
+    },
+    {
+      "op": "wait",
+      "ms": 2000
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame state T0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame smob M1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame dmghit 1 Dev 5 D1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1100
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame state D1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame smob M2",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame dmghit 2 Fake1 5 D2",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1100
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame state D2",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame dmghit 1 Fake1 5 D3",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1100
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralkame dmghit 2 Fake1 5 D4",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1100
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralpvp mark MK Fake4",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralpvp mit MIT1 Fake1 Fake4",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralpvp mit MIT2 Fake2 Fake4",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralpvp mit MIT3 Dev Fake4",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralpvp mit MIT4 Fake4 Fake4",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "(?i)AP_JT_TEAM:who=Fake2:.*:joined=red"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "(?i)AP_JT_TEAM:who=Fake1:.*:joined=red"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "(?i)AP_T0_ST:Dev:.*:team=y:tm=2:.*:love=0:.*:arm=12:.*:fanE=none:markE=none:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "(?i)AP_T0_ST:Dev:.*:modK=12:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "(?i)AP_T0_ST:Fake1:.*:tm=2:.*:love=0:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "(?i)AP_T0_ST:Fake2:.*:tm=2:.*:love=0:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "(?i)AP_D1_ST:Fake1:.*:love=1:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "(?i)AP_D1_ST:Fake2:.*:love=1:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "(?i)AP_D1_ST:Dev:.*:love=0:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "(?i)AP_D2_ST:Dev:.*:fans=2:ftg=2:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "(?i)AP_D1_ST:Dev:.*:fans=1:ftg=1:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "(?i)AP_D3_DMG:who=Fake1:.*:mobfan=amp=0:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "(?i)AP_MK_MARK:who=Fake4:mark=amp=0;dur=-1;"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "(?i)AP_MIT1_MIT:who=Fake1:attacker=Fake4:active=1:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "(?i)AP_MIT2_MIT:who=Fake2:attacker=Fake4:active=1:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "(?i)AP_MIT3_MIT:who=Dev:attacker=Fake4:active=1:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "(?i)AP_MIT4_MIT:who=Fake4:attacker=Fake4:active=0:"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "(?i)AP_[A-Z0-9]+_EX:"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "(?i)=ERR:"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "(?i)Unknown or incomplete command|未知或不完整的命令"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    }
+  ]
+}
