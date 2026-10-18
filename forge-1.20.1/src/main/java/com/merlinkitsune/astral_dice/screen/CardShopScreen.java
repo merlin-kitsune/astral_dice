@@ -2,7 +2,9 @@ package com.merlinkitsune.astral_dice.screen;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.client.CardShopClientState;
+import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.StarLightManager;
+import com.merlinkitsune.astral_dice.item.sign.LinglingSignManager;
 import com.merlinkitsune.astral_dice.item.sign.ParunanSignItem;
 import com.merlinkitsune.astral_dice.network.ModNetwork;
 import com.merlinkitsune.astral_dice.resource.ResourceConversion;
@@ -655,6 +657,7 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
             return;
         }
         ItemStack stack = this.menu.getSlot(dragIndex).getItem();
+        stack = displayStack(stack);
         if (stack.isEmpty()) {
             return;
         }
@@ -667,8 +670,21 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
         guiGraphics.pose().popPose();
     }
 
+    /**
+     * 「怪力乱神」佩戴时，货架上的路障**视觉上**显示为强化拒止（真实购买落地的仍是路障，转换由服务端 {@code CardShopMenu} 负责）。
+     * <p>纯客户端只读：{@link LinglingSignManager#isEquipped} 只读 Curios **双端同步**缓存（同本类 {@code ParunanSignItem.isEquipped}
+     * 的既有先例），不写任何状态、不伪造物品 ⇒ 拖拽 / 购买 / 扣费的既有链路完全不变。
+     */
+    private ItemStack displayStack(ItemStack stack) {
+        if (stack == null || stack.isEmpty() || !stack.is(ModItems.EFFECT_CARD_BARRICADE.get())) return stack;
+        if (this.minecraft == null || this.minecraft.player == null) return stack;
+        if (!LinglingSignManager.isEquipped(this.minecraft.player)) return stack;
+        return LinglingSignManager.displayAsRepulsion(stack);
+    }
+
     /** 卡面图标：astral_dice:textures/gui/shop/card/(物品注册名).png（64x64 整体等比缩放到 38x38） */
     private void drawCardFace(GuiGraphics guiGraphics, ItemStack stack, int x, int y) {
+        stack = displayStack(stack);
         ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
         ResourceLocation face = new ResourceLocation(id.getNamespace(),
                 "textures/gui/shop/card/" + id.getPath() + ".png");
@@ -704,6 +720,7 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
      * <p>scissor 用屏幕绝对坐标，而 {@code frameX}/{@code frameY} 传入时已是绝对坐标（货架与拖拽幽灵都如此）。
      */
     private void drawCardName(GuiGraphics guiGraphics, ItemStack stack, int frameX, int frameY) {
+        stack = displayStack(stack);
         String name = cardDisplayName(stack);
         int textWidth = this.font.width(name);
         int overflow = textWidth - NAME_BOX_W;
@@ -1301,6 +1318,7 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
                 if (!stack.isEmpty()) {
                     // 原有物品信息全保留，另补「折扣 / 售价 / 拖拽购买」三行
                     // （完整卡名 = 物品名，不受名称框截断影响）
+                    stack = displayStack(stack);
                     List<Component> lines = new ArrayList<>(this.getTooltipFromContainerItem(stack));
                     boolean discounted = this.menu.isDiscounted(i);
                     if (discounted) {

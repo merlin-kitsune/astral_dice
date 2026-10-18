@@ -132,6 +132,15 @@ public final class LinglingSignManager {
         return barricade;
     }
 
+    /**
+     * 纯显示用：一张路障 ⇒ 等张数、<b>未绑定 owner</b> 的强化拒止（不写附件、不查服务端、不改任何状态；客户端安全）。
+     * <p>与 {@link #toRepulsion} 的区别：后者 {@code createCopyFor} 绑定 owner，只给服务端真实发放 / 转换用。
+     */
+    public static ItemStack displayAsRepulsion(ItemStack barricade) {
+        if (barricade == null || barricade.isEmpty()) return ItemStack.EMPTY;
+        return new ItemStack(ModItems.EFFECT_CARD_REPULSION.get(), barricade.getCount());
+    }
+
     /** 该 stack 是否是需要被换掉的路障。 */
     public static boolean isBarricade(ItemStack stack) {
         return stack != null && !stack.isEmpty() && stack.is(ModItems.EFFECT_CARD_BARRICADE.get());

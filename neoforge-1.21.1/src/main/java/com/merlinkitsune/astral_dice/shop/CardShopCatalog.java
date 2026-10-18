@@ -14,9 +14,9 @@ import java.util.function.Supplier;
 /**
  * 卡牌商店的货架抽池与定价口径（2026-10-04 v3 计划，用户批准）。
  *
- * <p><b>抽池</b>：22 张已实装卡牌，权重按稀有度逐张加权、**不重复抽**（同一货架不会出现两张同名卡）：
+ * <p><b>抽池</b>：23 张已实装卡牌，权重按稀有度逐张加权、**不重复抽**（同一货架不会出现两张同名卡）：
  * rare = {@value #WEIGHT_RARE} / epic = {@value #WEIGHT_EPIC} / legendary = {@value #WEIGHT_LEGENDARY}
- * ⇒ 单格边际概率 ≈ 稀有 72.7% / 史诗 21.2% / 传奇 6.1%。
+ * ⇒ 单格边际概率 ≈ 稀有 74.3% / 史诗 20.0% / 传奇 5.7%。
  *
  * <p><b>星级门槛</b>（用户 2026-10-04 m00635 原话「其中『蓄力』卡牌必须在玩家骰子星级为 2 级后才能出现」）：
  * {@code attack_card_charge} 的 {@link PoolEntry#minStarLevel()} = {@value #CHARGE_MIN_STAR_LEVEL}，
@@ -61,7 +61,7 @@ public final class CardShopCatalog {
     public record PoolEntry(Supplier<? extends Item> item, int weight, boolean combat, int minStarLevel) {}
 
     private static final List<PoolEntry> POOL = List.of(
-            // ── 稀有（rare，权重 6）× 12 ─────────────────────────────────────
+            // ── 稀有（rare，权重 6）× 13 ─────────────────────────────────────
             new PoolEntry(ModItems.ATTACK_CARD_MEDIUM::get, WEIGHT_RARE, true, 0),
             new PoolEntry(ModItems.ATTACK_CARD_LARGE::get, WEIGHT_RARE, true, 0),
             new PoolEntry(ModItems.ATTACK_CARD_EPIC::get, WEIGHT_RARE, true, 0),
@@ -74,6 +74,7 @@ public final class CardShopCatalog {
             new PoolEntry(ModItems.MONSTER_LASER_CARD::get, WEIGHT_RARE, false, 0),
             new PoolEntry(ModItems.CHOCOLATE_CAKE::get, WEIGHT_RARE, false, 0),
             new PoolEntry(ModItems.YOU_HAVE_I_HAVE::get, WEIGHT_RARE, false, 0),
+            new PoolEntry(ModItems.EFFECT_CARD_BARRICADE::get, WEIGHT_RARE, false, 0),
             // ── 史诗（epic，权重 3）× 7 ──────────────────────────────────────
             new PoolEntry(ModItems.ATTACK_CARD_MEITO::get, WEIGHT_EPIC, true, 0),
             new PoolEntry(ModItems.EFFECT_CARD_KING_POWER::get, WEIGHT_EPIC, false, 0),
