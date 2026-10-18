@@ -33,12 +33,12 @@ import net.minecraft.resources.ResourceLocation;
  * <ul>
  *   <li>位置：{@code y_mc = 24 − y_bb} ⇒ 枢轴 y 由 bbmodel 的 {@code origin} 换算
  *       （A：24−0 = 24；B：24−22.5 = 1.5）；</li>
- *   <li>cube 本地坐标 y 取負（bbmodel 的 {@code 0..2} 变 {@code -2..0}、
- *       {@code 0..12} 变 {@code -12..0}）；</li>
- *   <li>旋转：**Y 轴被翻转 ⇒ 绕 Z 的角度要取反**。推导（局部坐标已按 y 取反，记
- *       {@code M = diag(1,-1)}）：{@code M·R(θ) = R(−θ)·M} ⇒ bbmodel 的 +90° / +45°
- *       在模型里写 **−90° / −45°**。数值自检：blade 的角点 (24,−2) 经 R(−90°) 得 (−2,−24)
- *       ⇒ 枢轴 y=24 减 24 = **0 = 模型最高处**，即刀刃从地面向上立起（若符号写反会钻进地下）。</li>
+ *   <li>cube 本地坐标 y 取負（bbmodel 的 {@code 0..2} 变 {@code -2..0}；head 经上述 90° 修正后取 {@code 0..12}，顶点集合不变）；</li>
+ *   <li>旋转：**绕 Z 的角度不能只按「取反」推导**。局部坐标已按 y 取反（记 {@code M = diag(1,-1)}：
+ *       {@code M·R(θ) = R(−θ)·M}）只能保证**轮廓**正确（正/背面软件渲染 IoU = 1.000 / 0.991）；
+ *       贴图朝向还要叠加 {@code LivingEntityRenderer} 渲染期的 {@code scale(-1,-1,1)}
+ *       （= 绕 Z 转 180°，det = +1，**不是镜像**）⇒ 旧写法 blade −90° 恰好正确，而 head 的 −45°
+ *       会让牌面图案相对 bbmodel **整体歪 90°**（2026-10-18 实机复现），正确值是 **−135°**。</li>
  * </ul>
  *
  * <p><b>UV（与作者一致）</b>：MC 的盒子 UV 布局为
@@ -70,12 +70,13 @@ import net.minecraft.resources.ResourceLocation;
  *       同线先例：{@code client/BarricadeModel} 用同一写法。</li>
  * </ul>
  *
- * <p><b>⚠️ 未实机验证</b>：
+ * <p><b>实机核对（2026-10-18，neoforge-1.21.1 dev 客户端）</b>：
  * <ul>
- *   <li>{@code LivingEntityRenderer} 会施加 {@code scale(-1,-1,1)} ⇒ 模型在 X 上被镜像；
- *       本几何在 X 方向近似对称（刀刃只占 2 px 宽、菱形头本身对称），故不影响造型，
- *       但面向北 / 南的贴图会有水平镜像（静态无法判定观感）；</li>
- *   <li>Z 旋转符号按上式推导，未在游戏内目视核对。</li>
+ *   <li>轮廓 / 尺寸 / 位置与 bbmodel 一致（正、背面软件渲染 IoU = 1.000 / 0.991）；</li>
+ *   <li>首版 head 用 −45° 时**牌面图案相对 bbmodel 歪 90°**（实机截图可见），按每个可见面的
+ *       uv→屏幕 仿射轴角比对改为 −135° 后，正/背面轴角差均为 0 ⇒ 牌面与 Blockbench 一致；</li>
+ *   <li>Z 旋转只改贴图朝向、不动轮廓的原因：12×12 正方形绕自身中心转 90° 映射到自身，
+ *       故 {@code addBox} 的 y 偏移同步由 −12 改 0，8 个顶点与旧实现**逐点相同**。</li>
  * </ul>
  */
 public class RepulsionModel extends EntityModel<RepulsionEntity> {
@@ -84,11 +85,11 @@ public class RepulsionModel extends EntityModel<RepulsionEntity> {
     public static final ModelLayerLocation LAYER_LOCATION = new ModelLayerLocation(
             new ResourceLocation(AstralDiceMod.MODID, "repulsion"), "main");
 
-    /** bbmodel 的 +90°（绕 Z）在 Y 翻转后取反。 */
+    /** bbmodel 的 +90°（绕 Z）⇒ 模型侧 −90°（该角度取值恰好与「取反」一致，见类注释）。 */
     private static final float BLADE_TWIST = (float) Math.toRadians(90.0D);
 
-    /** bbmodel 的 +45°（绕 Z）在 Y 翻转后取反。 */
-    private static final float HEAD_TWIST = (float) Math.toRadians(45.0D);
+    /** bbmodel 的 +45°（绕 Z）⇒ 模型侧 −135°（比「取反」多 90°，用于把牌面贴图摆正）。 */
+    private static final float HEAD_TWIST = (float) Math.toRadians(135.0D);
 
     private final ModelPart root;
 
@@ -98,10 +99,10 @@ public class RepulsionModel extends EntityModel<RepulsionEntity> {
     }
 
     /**
-     * 几何定义：一根 24×2×1 的刀刃（绕 Z −90° ⇒ 竖直立起）+ 一个 12×12×2 的菱形头（绕 Z −45°）。
+     * 几何定义：一根 24×2×1 的刀刃（绕 Z −90° ⇒ 竖直立起）+ 一个 12×12×2 的菱形头（绕 Z −135°）。
      *
      * <p>blade：pose 枢轴 {@code (1, 24, -0.5)}、绕 Z −90°、cube {@code (0,-2,0)} 尺寸 {@code (24,2,1)}、UV {@code (0,0)}；
-     * head：pose 枢轴 {@code (0, 1.5, -1)}、绕 Z −45°、cube {@code (0,-12,0)} 尺寸 {@code (12,12,2)}、UV {@code (0,3)}。
+     * head：pose 枢轴 {@code (0, 1.5, -1)}、绕 Z −135°、cube {@code (0,0,0)} 尺寸 {@code (12,12,2)}、UV {@code (0,3)}。
      */
     public static LayerDefinition createBodyLayer() {
         MeshDefinition mesh = new MeshDefinition();
@@ -114,7 +115,7 @@ public class RepulsionModel extends EntityModel<RepulsionEntity> {
 
         root.addOrReplaceChild("head",
                 CubeListBuilder.create().texOffs(0, 3)
-                        .addBox(0.0F, -12.0F, 0.0F, 12.0F, 12.0F, 2.0F),
+                        .addBox(0.0F, 0.0F, 0.0F, 12.0F, 12.0F, 2.0F),
                 PartPose.offsetAndRotation(0.0F, 1.5F, -1.0F, 0.0F, 0.0F, -HEAD_TWIST));
 
         return LayerDefinition.create(mesh, 64, 64);
