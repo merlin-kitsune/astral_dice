@@ -114,7 +114,7 @@
 | 清理半径 | 8 格（死亡时解除仇恨） |
 | 动作栏 | `msg.astral_dice.effect_card_barricade_invalid`（红，仅「需要可依附的实心面」）/ `..._placed`（绿） |
 | 手册 | `astral_dice.guide.entry.effect_card_barricade.1..3`（章内 sortnum 17，章末） |
-| 物品 tooltip | `tooltip.astral_dice.card.barricade`（三语；两行：用法 + 耐久/挡路/拉仇恨，行内数值着 `§e`，与既有效果牌同款 `addCardLines` + 出牌数/冷却行） |
+| 物品 tooltip | `tooltip.astral_dice.card.barricade`（三语；三行：用法 / 挡路 + 拉仇恨 / **耐久（末行）**，行内数值着 `§e`；与既有效果牌同款 `addCardLines` + 出牌数/冷却行 ⇒ 耐久行紧贴在「出牌数」之上。2026-10-18 用户裁决：耐久描述从第 2 行移到描述末行） |
 
 ## 8. 判据（静态可验证项）
 

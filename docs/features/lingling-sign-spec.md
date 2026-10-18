@@ -131,3 +131,7 @@ pwsh -NoProfile -File scripts/verify/verify_event_registry.ps1
 
 - **实机测试**：按 AGENTS 第 5 条，未经用户明确下达不得启动 dev 客户端；交付报告登记未实机项。
 - 渲染相关（强化拒止吸附视觉）不属于本立牌范围。
+
+## 10. 变更记录
+
+- **2026-10-18 晚（tooltip 文案）**：用户原话「将怪力乱神立牌和强化拒止tooltip中分号改为换行；怪力乱神tooltip注释部分移除充能上限描述（这是充能体系的全局规则，没必要重复描述）」+「路障和强化拒止耐久度描述向下移（放在描述最后，在出牌数上面）」。落地（三语 × P0 两线共 6 个 lang 文件、键集不变 1001 键）：`tooltip.astral_dice.sign.lingling_active` 拆 2 行、`_passive` 拆 3 行、`_note` 拆 2 行且删除「充能上限为 §e20§7 层；」（合计上限 20 是本立牌**独立加成层**的规则，记在本文件 §4.6 与 `GameplayConstants.CHARGE_MAX_STACKS`，tooltip 不再重复）。判据：`tools/check_lang_sync.ps1` OK、`scripts/audit/tooltip_color_audit.ps1` 64 处（与基线同数、无一条命中 lingling 键）。
