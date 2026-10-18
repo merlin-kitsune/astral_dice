@@ -56,7 +56,7 @@ pwsh -NoProfile -File scripts/devtools/Test-MtSyntax.ps1
 
 ## 基本盘
 
-- 工作树：`F:\MCProject\astral_dice_multiloader-next`（分支 `multi-dev-next`）；**HEAD 与四线版本一律以实测为准**——最近交接基线 `3c90e653`（第 38 条 `61968fc5` ← 第 37 条 `f7ee13e0` ← 首测 `96352433` ← 修复 `71e38e43` ← Jade 开关 `2cb56b13` ← mt 工具链 `b05ce817` ← WSL pwsh 健壮性 `95b29313`）；四线 `mod_version` = **`2.0.0-SNAPSHOT.132+<后缀>`**；
+- 工作树：`F:\MCProject\astral_dice_multiloader-next`（分支 `multi-dev-next`）；**HEAD 与四线版本一律以实测为准**——最近交接基线 `bcae58f9`（**= `.132` 交接文档刷新提交自身**，2026-10-18；其前 `3c90e653` ← 第 38 条 `61968fc5` ← 第 37 条 `f7ee13e0` ← 首测 `96352433` ← 修复 `71e38e43` ← Jade 开关 `2cb56b13` ← mt 工具链 `b05ce817` ← WSL pwsh 健壮性 `95b29313`）；四线 `mod_version` = **`2.0.0-SNAPSHOT.132+<后缀>`**；
 - 工作树状态：除 **2 行** `?? models/*.bbmodel`（用户 Blockbench 资产，勿用 `git add -A`）外**干净**；`%SystemDrive%` 那 4 行缓存目录**已于 2026-10-18 销账**（`git status --short -uall` 实测已不再出现）；**未 push**（`git status -sb` 的 `ahead N` 随提交递增，以实测为准；推送须用户明确要求且走代理 `http://127.0.0.1:7897`）；
 - 优先级：**P0 = neoforge-1.21.1 + forge-1.20.1（同批）**；**P1 = neoforge-26.1.2 + fabric-1.20.1（待移植）**。
 
@@ -70,7 +70,7 @@ A. **P1 移植**：把 `.61`~`.97` 全批（事件卡 GUI、事件选择界面�
 B. **forge 线实机欠账**：筹码商店在 1.20.1 只过了静态判据；补齐要 ① 把服务端探针 `c*` 命令族与客户端 770/771/772 场景移植到 `scripts/test/resources/kubejs/1.20.1/**`（注意 1.20.1 的 `sp_closeMenu`/`SP_ItemStack`/六参 `use(...)` 形态）② 复制 5 条用例为 `CHIP-*-1.20.1.json` ③ 用户下达后跑 env/launch/case/stop --purge-saves。
 C. **待用户裁决的历史欠账**（详见第 37 条 ⑤）：两线 dev 客户端**运行期共存**仍互撞 `glfw.dll`（是否升级为会话级互斥或分机）；Shift+点击现在也一次只搬 1 张是否符合预期；键盘改绑的拾取键未拦截（代码推论）；`mt_loadergate` 既有 FAIL（`mixinbooster` 三段 `mandatory` 口径与设计冲突，改动前就存在）；`--phase report` 历史红标（`SHOP-M-1.21.1` / `DIAG-1.21.1`）；fabric 线产物停在 `.49`。
 D. 用户指定的其它任务（`sound/` 21 个 wav 转 ogg、设计待裁决项等，见常态交接文档 §5）。
-E. **`.132` 收尾欠账**（明细见常态交接 §5-D）：① lingling 冷却**实测 180 s（`cd=3600`）vs 规格 120 s** ⇒ REFUTED 规格漂移，**待用户裁决改规格还是改代码**；② `scripts/test/cases/LINGLING-1.21.1.json` 与 `textures/entity/repulsion.png` 的 `code_review` 覆盖缺失（`MODEL_INVALID_JSON` / 二进制 `blocked`）⇒ 需换一次性独立子代理补复核；③ forge 线 lingling **无用例**（`LINGLING-1.20.1.json` 未建、实机零证据）；④ `scripts/test/cases/` 229 条 legacy 用例未迁 `eval_js`。
+E. **`.132` 收尾欠账**（明细见常态交接 §5-D）：① lingling 冷却**实测 180 s（`cd=3600`）vs 规格 120 s** ⇒ REFUTED 规格漂移，**待用户裁决改规格还是改代码**；② **`code_review` 覆盖：2026-10-18 补跑已闭环** —— 两个 `client/RepulsionModel.java` + `scripts/test/cases/LINGLING-1.21.1.json` 均 `completed` / 0 findings（首跑 job `b766f2a0-2273-4fbd-9bc4-e58e6deacb8e` 用例 `MODEL_INVALID_JSON`，重试 job `24e1c33b-4441-43e7-89b7-a0c4b3198e15` 完成、其余 4 文件走缓存 `excluded`）；**唯一缺口 = 两张二进制 `textures/entity/repulsion.png`**（`blocked`：`The encoded data was not valid for encoding utf-8`）⇒ 已用「双线同 sha256 + `rot90(newNorth,3)==south` 逐像素断言 + 实机 `FRONT vs BACK` IoU 1.000」三重核对替代，无需再补通道；③ forge 线 lingling **无用例**（`LINGLING-1.20.1.json` 未建、实机零证据）；④ `scripts/test/cases/` 229 条 legacy 用例未迁 `eval_js`。
 
 ## 必须遵守的几条铁律
 
@@ -83,6 +83,7 @@ E. **`.132` 收尾欠账**（明细见常态交接 §5-D）：① lingling 冷�
 6. **payload 类不得直接引用 `net/minecraft/client/**`**（专服会崩），客户端动作下沉 helper + dist 守卫；
 7. **工具链纪律（Windows 原生）**：只在本机 Windows 跑 pwsh 7 工具链；**禁止**把它搬到 WSL/Linux 转译或模拟后当判据，也禁止用 Linux 侧 `pwsh` 跑本仓脚本（依赖 `Add-Type` / `user32` / `taskkill` 与 Windows 路径）。确需 Linux 侧只读取证时，仅用 `git` / `grep` / `python3 tools/*.py`（跨平台闸门），并如实标明读数来源（谁跑的、哪台机器、什么命令）；**不得**用实测口吻描述未在本机跑过的东西；
 8. **批处理脚本空参要用 `if not "%~1"==""` 守卫**；手动启动脚本不要加前置判断（Windows 侧存档规则）。
+9. **一份文档同一时刻只能有一个写者**（`.132` 实测：两队员并发改同一 handover 文档 ⇒ 重复段，已合并去重；事故与预防见第 39 条 ⑤ 与常态交接 §6-29）：派活时在共享任务 `write_scopes` 显式声明写域、写前先看 `git diff`。
 
 ## 子代理与实机的小抄（踩过的坑）
 
@@ -96,7 +97,7 @@ E. **`.132` 收尾欠账**（明细见常态交接 §5-D）：① lingling 冷�
 
 ## 交接时的工作树状态
 
-- 生成时基线：**以 `git log -1` 实测为准**（本文件随 2026-10-18 晚「`.132` 交接文档刷新」提交落地；刷新前基线 **`3c90e653`** / 四线 **`2.0.0-SNAPSHOT.132`**；上一基线 `61968fc5`）；`git status --short -uall` = **2 行** `?? models/*.bbmodel`（用户资产、非本批改动）；`%SystemDrive%` 那 4 行缓存目录已销账、不再出现在 status 输出；
+- 生成时基线：**以 `git log -1` 实测为准**（本文件随 2026-10-18 晚「`.132` 交接文档刷新」提交落地；该提交自身 = **`bcae58f9`**；其前基线 **`3c90e653`** / 四线 **`2.0.0-SNAPSHOT.132`**；上一基线 `61968fc5`）；`git status --short -uall` = **2 行** `?? models/*.bbmodel`（用户资产、非本批改动）；`%SystemDrive%` 那 4 行缓存目录已销账、不再出现在 status 输出；
 - **三条线**（P0 两线 + P1 的 `neoforge-26.1.2`）产物**以 `ls <线>/build/libs` 实测为准**（现为 `.132`：P0 两线与 `neoforge-26.1.2` 均有 `…SNAPSHOT.132+<后缀>.jar`；`.132` 批未重跑产品构建时沿用既有产物）；**fabric 线产物停在 `.49`**；**P1 两线尚未移植**（筹码商店 / 事件卡 GUI / 立牌批 / 选卡界面 / Jade 倒计时）；
 - 测试世界在最后一次实机收尾时已 `--purge-saves` 清理 ⇒ 下次实机先 `--phase env`；
 - 未提交内容：**无**（只有 2 个用户资产未跟踪：`models/路障 - Converted.bbmodel`、`models/强化拒止 - Converted.bbmodel`；`%SystemDrive%` 缓存目录已于 2026-10-18 清除）。

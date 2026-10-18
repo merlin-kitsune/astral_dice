@@ -1,7 +1,7 @@
 # 交接文档 — astral_dice_multiloader-next（开发线 multi-dev-next）
 
-> 生成：2026-10-11 20:20；**本次刷新：2026-10-18 17:30（Asia/Hong_Kong）**｜工作树 `F:\MCProject\astral_dice_multiloader-next`
-> 分支 `multi-dev-next`｜刷新前基线 HEAD **`3c90e653`**（本文件上一版基线 `e06451c5` = 交接文档批 `.98`；`.99` 起依次有 `.100` 实施分工、`.102` 复核分级⑨、`.103`–`.131` 各批（明细见 `docs/agent/AGENTS-full.md`「待办交接」第 20–39 条）、`.132` = **AutoJS 求值通道 / lingling 用例 / 强化拒止牌面** 三批；最新值一律以 `git log -1` 为准）｜四线版本 **`2.0.0-SNAPSHOT.132`**（四条线同号）
+> 生成：2026-10-11 20:20；**本次刷新：2026-10-18 17:36（Asia/Hong_Kong，= 本机 `new Date()` 实测 GMT+0800；复核补跑 + 第三次崩溃后第二轮补写）**｜工作树 `F:\MCProject\astral_dice_multiloader-next`
+> 分支 `multi-dev-next`｜刷新前基线 HEAD **`bcae58f9`**（**= 本交接文档批自身**，`.132` 交接刷新提交，2026-10-18；其前 `3c90e653` = lingling 用例判据修正；上一版基线 `e06451c5` = 交接文档批 `.98`；`.99` 起依次有 `.100` 实施分工、`.102` 复核分级⑨、`.103`–`.131` 各批（明细见 `docs/agent/AGENTS-full.md`「待办交接」第 20–39 条）、`.132` = **AutoJS 求值通道 / lingling 用例 / 强化拒止牌面** 三批；最新值一律以 `git log -1` 为准）｜四线版本 **`2.0.0-SNAPSHOT.132`**（四条线同号）
 > 工作树状态：**干净**（`git status --short -uall` 只剩两行用户资产 `?? models/路障 - Converted.bbmodel`、`?? models/强化拒止 - Converted.bbmodel`；§5-C-11 的 `%SystemDrive%` 缓存目录已于 2026-10-18 清除）；**未 push**。
 > **本批交接（.132 三批）**：正本是 `docs/agent/AGENTS-full.md` 末尾「待办交接」**第 39 条**（AutoJS 求值语义 + 测试台闸门 + LINGLING 用例 + 强化拒止牌面 + 本批坑 + 遗留），§3/§4/§6 有对应展开。
 > 历史详案：`docs/handover-2.0.0-SNAPSHOT.97-chip-shop.md`（筹码商店，流程 / 语义 / 判据 / 未完成 / 新坑，逐条可复算）。
@@ -123,6 +123,7 @@ pwsh -NoProfile -File scripts/test/mt_inject.ps1 cmd -Command "/astralprobecard 
 | 强化拒止牌面 | .132 | f3aca047 / d8d48431 / ba05258b / 0f99ba12 / c00b13fc | 五轮收敛：贴图换 bbmodel 原图 → UV 相对 bbmodel 歪 90° → 图案翻转 180° + 立牌类不显示名条 → 北面 UV 复用反面矩形（失败）→ **北块 := 南块逆时针 90°**（两线，判据 OVERALL: PASS） |
 | lingling 用例判据 | .132 | 3c90e653 | d_damage 改用 ArmorStand 承伤，规避骰战伤害覆写造成的攻击强度缩放污染（1.21.1 22 断言 PASS） |
 | 商店货架 / 文案 | .132 | 0014e4e0 / f62f12c1 / 20e82a12 | 货架补「路障」+ 佩戴怪力乱神时显示「强化拒止」；路障/强化拒止/怪力乱神 tooltip 精简排版（双线三语）；规格键数订正（1001 键 / 3·5 行） |
+| 交接文档刷新 | .132 | bcae58f9 | `.132` 批交接刷新（正本 = AGENTS-full 第 39 条 + 本文件 §3/§4/§6 展开）：补记 `code_review` 补跑闭环、并发写事故、第三次 DSH 崩溃（4 files / +102 −22） |
 | **筹码商店批** | **.97** | **6c81b7fe** | **两线完整实现**（61 筹码池 + 抽取/刷新/购买/拒绝 + 价格曲线 + 方块与四向朝向 + 界面与品质框 + 三包网络 + 附件落盘 + 61 张图标 + 配方/掉落表 + 三语 7 键）+ 守门 G1..G6·G9..G27 + 变异 37 条 + 5 条实机用例（1.21.1 全 PASS）+ 探针 `c*` 命令族与 770/771/772 场景；192 文件 |
 
 **功能面现状（P0 两线已对等）**：13 个事件 + 弹卡 GUI（淡出后无文字残留）+ 事件选择界面（2 选 1、15s、确认即触发、死亡/登出强触发第一项）+ 调查阶段 4 阶图标与 1:00 计时器 + 全模组发币优先入钱包 + 手册/tooltip 文案同步 + 卡牌商店方块（四态朝向 + 自有碎裂粒子）+ **筹码商店**（61 枚筹码的抽取/售卖方块，四向朝向、21 步可见行为与拒绝码见 `docs/chip-shop-logic-plan.md` 与 `docs/handover-2.0.0-SNAPSHOT.97-chip-shop.md`）。
@@ -219,7 +220,7 @@ pwsh -NoProfile -File scripts/test/mt_inject.ps1 cmd -Command "/astralprobecard 
 22. **P1 两线未移植（`.132` 新增内容）**：怪力乱神（lingling）立牌、强化拒止贴图/UV 修正都只在 P0 两线；`neoforge-26.1.2` 与 `fabric-1.20.1` 未移植。
 23. **冷却读数口径陷阱（`.132` 新登记）**：`ModAttachments.getSignActiveCooldownEnd(p)` 是**绝对 tick**（种在世界时钟上），而 `mcp().getTickCount()` 随服务器重启归零 ⇒ 用例必须先 `--phase env` 重建世界再读；否则实测 `cd=15600`（差 12000t）会假 FAIL。
 24. **交接文档惯性滞后**：本文件与 `docs/handover-new-session-context.md` 在 `.98`→`.132` 期间长期没跟版（§3 只到 `.97`、索引末行停在 L3488 导致 `verify-split.py` check#3 长期 FAIL）⇒ 已按 `AGENTS.md`〈契约 · C. 交接文档用法〉补齐；后续每批收班必须刷新，见该节「交班义务」。
-25. **`code_review` 覆盖不完整（`.132`，如实登记）**：两个 `client/RepulsionModel.java` 复核 `completed` / 0 findings；但 `scripts/test/cases/LINGLING-1.21.1.json` 连续两轮 `MODEL_INVALID_JSON`（`Model response is not complete JSON … envelope=plain, shape=non-json-leading`）、`textures/entity/repulsion.png` 一律 `blocked`（非 UTF-8）⇒ **用例 JSON 与贴图没有第三方复核证据**，现由主会话实测替代（用例：实机 PASS 22 断言；贴图：两线 sha256 一致 + 像素判据 PASS）。要补须换复核通道（一次性独立子代理）。
+25. **`code_review` 覆盖（`.132`，2026-10-18 **补跑订正**）**：✅ **3 个文本件全部完成复核、共 0 findings** —— 两个 `client/RepulsionModel.java` + `scripts/test/cases/LINGLING-1.21.1.json`。证据：首跑 job `b766f2a0-2273-4fbd-9bc4-e58e6deacb8e` = 两线 RepulsionModel `completed` / 0 findings，但用例 JSON `failed` `MODEL_INVALID_JSON`（`Model response is not complete JSON … envelope=plain, shape=non-json-leading`）、两张 `textures/entity/repulsion.png` `blocked`；重试 job `24e1c33b-4441-43e7-89b7-a0c4b3198e15` = **同一份 JSON `completed` / 0 findings**（其余 4 个文件走缓存复用 = `excluded`）。**唯一缺口 = 二进制贴图无法 `code_review`**（`blocked`，理由 `The encoded data was not valid for encoding utf-8`）⇒ 已用**三重核对**替代：① 两线同 sha256 `B59C576BD944F226D8B1C9BB51F984BD42477530660EAEA944E4FD0252088EBE`；② `rot90(newNorth,3)==south` 逐像素断言（构造层面可复算）；③ 实机 `FRONT vs BACK` IoU **1.000**。结论：文本件有第三方复核证据、贴图只有哈希/像素/实机证据，**不再需要换通道补复核**。
 26. **既存搁置（非本批引入，仍有效）**：① `scripts/test/cases/` 下 229 条 legacy 用例未迁 `eval_js`（统计与迁移方式见 `docs/features/autojs-legacy-debt.md`）；② `neoforge-26.1.2` / `fabric-1.20.1` 的 AutoJS 实机**一次都没跑过**（含 `AUTOJS-SMOKE`，见 §5-22）；③ lingling 冷却 **实测 180 s（`cd=3600` tick）vs 规格 120 s** 属 **REFUTED 规格漂移**（§4 L177）—— 本批**未改任何一边**，待用户裁决「改规格」还是「改代码」。
 
 
@@ -255,6 +256,8 @@ pwsh -NoProfile -File scripts/test/mt_inject.ps1 cmd -Command "/astralprobecard 
 26. **牌面视觉判据的两个陷阱（`.132`）**：① 天空 + 云 + 地平线雾霾会让「最大连通域」把牌面与背景连成一片（blob 20 万 px）⇒ 必须在牌后放 **`minecraft:red_concrete` 纯色墙**、夜间先 `time set 4000` + `doDaylightCycle false`、并确认 `mc.screen === null`（曾有 Patchouli 书 GUI 把牌面完整遮住，blob 只剩 392px）；② 菱形的「四极值点 → 正方形角」反算带 **90° 象限自由度**，绝对映射会整体偏 90°，只有**正面 vs 背面**这类相对量可靠（早期「南面=r180」口径即由此作废）。
 27. **`/kill` 杀不掉 RepulsionEntity**：`LivingEntity.kill()` 走 `hurt()`，而 `RepulsionEntity.hurt()` 恒返 false ⇒ 只能用 Java 侧 `e.discard()`；且该实体 `noPhysics = true`，召唤必须带 `{NoGravity:1b}`，否则脚下无方块会一路下落。
 28. **`run_code` 大 cell 的 worker-exit**：单个 cell 里既跑较长 `pwsh`（gradlew / mt.ps1 / verify-split）又要后续工具调用，极易 `worker-exit: kernel helper did not answer utilization sampling before its deadline`；**崩溃 cell 里的 `tools.edit` 可能根本没落地** ⇒ 必须回读确认。长命令一律 `run_in_background: true` 起 job 再 `job_output` 收。
+29. **一份文档同一时刻只能有一个写者（`.132` 实测事故）**：`docs-harness` 与 `autojs-eval-fix` 曾**同时**改 `docs/handover-2.0.0-dev-next.md` 与 `docs/handover-new-session-context.md` ⇒ 「已完成」行的 `.132` 段与第 39 条条目各出现重复段。处置 = 用「索引切片拼接」合并去重（保留信息量更大的措辞）+ 提交前以**一份完整 `git diff`** 复核；预防 = 派活时在共享任务 `write_scopes` 显式声明写域、开工前先 `git diff` 看有没有别人刚写的痕迹。
+30. **第三次 DSH 崩溃（2026-10-18，零数据丢失；Lead 记录时点 18:0x，本机实测 17:35 GMT+0800 ⇒ 绝对时点以 PTC 日志为准）**：PTC 报 `warning[PTC-R002] Restored the durable head and skipped 48 unreconstructable historical cell(s)` 并回滚到 `bcae58f9`；因当轮工作**已先本地提交**，产物零丢失，受影响的只有会话历史 cell。教训 = **阶段成果及时本地提交**；崩后先 `git log -1` + `git status` 确认落盘范围，再补未落地的编辑（崩溃 cell 里的 `tools.edit` 可能根本没执行，见 §6-28）。
 
 
 ---
