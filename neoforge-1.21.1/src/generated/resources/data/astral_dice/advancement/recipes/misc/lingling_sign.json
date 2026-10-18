@@ -1,0 +1,32 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_conductive_wire": {
+      "conditions": {
+        "items": [
+          {
+            "items": "astral_dice:conductive_wire"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_the_recipe": {
+      "conditions": {
+        "recipe": "astral_dice:lingling_sign"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    }
+  },
+  "requirements": [
+    [
+      "has_the_recipe",
+      "has_conductive_wire"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "astral_dice:lingling_sign"
+    ]
+  }
+}

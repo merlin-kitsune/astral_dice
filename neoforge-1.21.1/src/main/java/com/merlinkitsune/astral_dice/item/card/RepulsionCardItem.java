@@ -134,6 +134,8 @@ public class RepulsionCardItem extends BaseEffectCardItem {
         repulsion.moveTo(target.getX() + 0.5D, target.getY(), target.getZ() + 0.5D, yaw, 0.0F);
         repulsion.setYHeadRot(yaw);
         repulsion.yBodyRot = yaw;
+        // §4.6 前置：记录放置者（怪力乱神立牌的额外充能层只统计「自己放置的」力场）；随实体 NBT 落盘
+        if (user != null) repulsion.setOwnerUUID(user.getUUID());
         // 没有碰撞方块 ⇒ 落实体失败（区块拒绝 / 实体上限等）时无需回滚任何方块
         if (!level.addFreshEntity(repulsion)) return;
 

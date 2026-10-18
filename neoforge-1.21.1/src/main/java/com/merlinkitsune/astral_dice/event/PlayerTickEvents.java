@@ -102,6 +102,18 @@ public class PlayerTickEvents {
         // 两条被动各有独立的 1:00 冷却 ⇒ 冷却内只读两个 long 即早退,每 tick 调用安全;
         // 放在 % 20 早退**之前**,避免"擦身而过只停留几拍"被 20 tick 采样漏掉。
         if (!diceGated) com.merlinkitsune.astral_dice.item.sign.HannaSignItem.tickPassing(player);
+        // 怪力乱神立牌(lingling)「拦截者」(§4.4 手持转换 / §4.6 额外充能层 / §5 数值刷新):
+        // 佩戴时每 10t 一次 LinglingSignManager.tickPassive;失去佩戴时只做「有残留在身上」的清理
+        // (零开销:修饰符 / 额外层 / buff 都不在 ⇒ 三个只读判断即退)。
+        // **不放在 diceGated 里**:骰子被摘掉不会派发任何事件,而清场必须仍然发生。
+        if (player.tickCount % 10 == 0) {
+            if (com.merlinkitsune.astral_dice.item.sign.LinglingSignManager.isEquipped(player)) {
+                com.merlinkitsune.astral_dice.item.sign.LinglingSignManager.tickPassive(player);
+            } else if (com.merlinkitsune.astral_dice.item.sign.LinglingSignManager.hasSurge(player)
+                    || com.merlinkitsune.astral_dice.item.sign.LinglingSignManager.bonusCharge(player) != 0) {
+                com.merlinkitsune.astral_dice.item.sign.LinglingSignManager.clearAll(player);
+            }
+        }
         if (player.tickCount % 20 != 0) return;
         // 「历史常驻写法」残留归一(2026-10-04):把旧版本写入存档、仍是 Integer.MAX_VALUE
         // 递减产物的本模组常驻效果改写为原版无限时长(-1),使其在界面显示 ∞。

@@ -492,6 +492,12 @@ public class CardShopMenu extends AbstractContainerMenu {
             }
         }
         ItemStack bought = card.copy();
+        // 怪力乱神立牌(lingling)「拦截者」(§4.3):佩戴时从商店买到的「路障」⇒ 写入等张数「强化拒止」。
+        // 购买不触发拾取事件(§4.2 覆盖不到),故必须在这里单独转换;数量保持不丢。
+        if (bought.is(ModItems.EFFECT_CARD_BARRICADE.get())
+                && com.merlinkitsune.astral_dice.item.sign.LinglingSignManager.isEquipped(buyer)) {
+            bought = com.merlinkitsune.astral_dice.item.sign.LinglingSignManager.toRepulsion(bought, buyer);
+        }
         target.set(bought);
         target.setChanged();
         // 2026-10-09 用户裁决「从商店购买视为获得」：卡牌已写入玩家槽 ⇒ 触发维生素药丸/提尔立牌等「获得」语义

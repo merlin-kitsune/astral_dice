@@ -1603,6 +1603,27 @@ public class ModTooltipHandler {
             Player megasViewer = event.getEntity() instanceof Player mp ? mp : null;
             addSignCooldownRemaining(tooltip, megasViewer);
         }
+        // 怪力乱神立牌(lingling):主动「能量突击」(瞬时:立即获得 1 张「强化拒止」+ 施加「能量突击」效果
+        // 1:00,期间每 10t 按**有效充能层数**(真实充能 + 吸附目标数,夹上限)刷新攻击力 / 移速修饰符)
+        // + 被动「拦截者」(首次装备发 2 张「强化拒止」;拾取 / 购买 / 手持的「路障」⇒「强化拒止」;
+        // 「强化拒止」吸附的目标数作为额外充能层;攻击被吸附目标 +5 伤害,不分归属)
+        // + 备注「路障回流」(充能上限 20 层;手持「路障」自动转换、丢出的「强化拒止」落地变回「路障」)。
+        // 本立牌**无玩家级动态计数器**(有效层数已在主动动作栏播报,不重复进 tooltip),故只出
+        // 「按键提示 + 主动技能名/描述 + 被动技能名/描述 + 备注区 + 冷却行」五段;块末尾必须调 addSignCooldownRemaining。
+        if (stack.is(ModItems.LINGLING_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "能量突击");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.lingling_active");
+            addSignPassiveTitle(tooltip, "拦截者");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.lingling_passive");
+            // 备注区(浅紫 §d、无标题、无列表符号):补充口径统一放这里,按 spec §6.6 用 addSignNoteLines
+            tooltip.add(Component.empty());
+            addSignNoteLines(tooltip, "tooltip.astral_dice.sign.lingling_note");
+            // 独立变量名(同 megasViewer):避免与其它块的模式变量重名
+            Player linglingViewer = event.getEntity() instanceof Player llp ? llp : null;
+            addSignCooldownRemaining(tooltip, linglingViewer);
+        }
         // 符卡-福 / 符卡-祸(风水师立牌专属效果牌);键名 = 规格 §2.6 冻结值
         // (tooltip.astral_dice.fu_card / tooltip.astral_dice.huo_card)
         if (stack.is(ModItems.FU_CARD.get())) {

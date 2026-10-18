@@ -1116,6 +1116,16 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(AstralRarities.legendary())));
 
+    // 怪力乱神立牌(命名:lingling,史诗):被动「拦截者」(首次装备发 2 张强化拒止;拾取/购买/手持的路障
+    // 自动转为强化拒止;自己放置的强化拒止吸附的目标数 = 额外充能层,与真实充能合计上限 20;
+    // 攻击被吸附目标 +5) + 主动「能量突击」(立即获得 1 张强化拒止;充能层数转攻击力/移速加成,
+    // 持续 1:00,冷却 2:00)。
+    // 史诗品质 = AstralRarities.epic();配方(用户指定):PDP/DRD/PTP,P=星盘 D=导电线材 R=红石块 T=钻石骰子。
+    public static final DeferredItem<Item> LINGLING_SIGN = registerItem("lingling_sign",
+            () -> new com.merlinkitsune.astral_dice.item.sign.LinglingSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.epic())));
+
     // 符卡-福(专属功能效果牌,风水师立牌专属):出牌数 +1;对玩家(不限队伍)或自身使用 ⇒ 恢复 2 点生命值。
     // 专属绑定:获得即绑定获得者(ModDataComponents.OWNER_UUID),他人无法使用。
     // 品质:**稀有**(ASTRAL_DICE_RARE;用户 2026-09-21 裁决,原为传奇 UNCOMMON)。

@@ -2116,4 +2116,44 @@ public class ModAttachments {
     public static void setAmeLoveGainCdEnd(net.minecraft.world.entity.player.Player player, long value) {
         player.setData(AME_LOVE_GAIN_CD_END.get(), Math.max(0L, value));
     }
+
+    /**
+     * 怪力乱神立牌(lingling)「拦截者」的**首次装备发放标记**(§4.1):
+     * {@code true} = 该玩家已享受过一次「首次装备发 2 张强化拒止」。
+     * 不 {@code .sync()}(仅服务端判定);**必须 {@code copyOnDeath}**(§4.1「一生一次」跨死亡保留)。
+     * **不得**改用 {@code StarLightManager.claimEquipGrant} —— 那条链卸下会 release ⇒ 可刷。
+     */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Boolean>> LINGLING_GRANTED =
+            ATTACHMENTS.register("lingling_granted", () -> AttachmentType.builder(() -> false)
+                    .serialize(Codec.BOOL)
+                    .copyOnDeath()
+                    .build());
+
+    public static boolean isLinglingGranted(net.minecraft.world.entity.player.Player player) {
+        return player.getData(LINGLING_GRANTED.get());
+    }
+
+    public static void setLinglingGranted(net.minecraft.world.entity.player.Player player, boolean value) {
+        player.setData(LINGLING_GRANTED.get(), value);
+    }
+
+    /**
+     * 怪力乱神立牌(lingling)的**额外充能层**(§4.6):等于「自己放置的强化拒止正在吸附的有效目标数」。
+     * 独立加成层,**不写进 {@code ChargeEffect}**(用户裁决);跨死亡保留({@code copyOnDeath})。
+     * 每 10t 由 {@code LinglingSignManager#recomputeBonusCharge} 重算;失去佩戴时归零。
+     * 不 {@code .sync()}(仅服务端用于属性/伤害判定,客户端不读)。
+     */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> LINGLING_BONUS_CHARGE =
+            ATTACHMENTS.register("lingling_bonus_charge", () -> AttachmentType.builder(() -> 0)
+                    .serialize(Codec.INT)
+                    .copyOnDeath()
+                    .build());
+
+    public static int getLinglingBonusCharge(net.minecraft.world.entity.player.Player player) {
+        return player.getData(LINGLING_BONUS_CHARGE.get());
+    }
+
+    public static void setLinglingBonusCharge(net.minecraft.world.entity.player.Player player, int value) {
+        player.setData(LINGLING_BONUS_CHARGE.get(), Math.max(0, value));
+    }
 }

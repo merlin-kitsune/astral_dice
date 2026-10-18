@@ -182,9 +182,16 @@ public class RepulsionEntity extends LivingEntity {
     /** NBT 键：被吸附目标（long[]，每目标 2 个 long）。 */
     private static final String TAG_TARGETS = "RepulsionTargets";
 
+    /** NBT 键：放置者 UUID（{@code long[2]}；§4.6 只把「自己放置的」强化拒止计入额外充能层）。 */
+    private static final String TAG_OWNER = "RepulsionOwner";
+
     /** 被吸附目标（服务端权威）。⚠️ 落盘的是 UUID 集合；{@code ServerLevel#getEntity} 在未加载 /
      * 跨维度时返回 null ⇒ 该目标会被剪枝（**不保证跨卸载保留**）。 */
     private final Set<UUID> trackedTargets = new HashSet<>();
+
+    /** 放置者 UUID（§4.6：只有 owner 本人的额外充能层才计入本力场吸附的目标）。
+     * 未登记（旧存档 / 非召唤点创建）⇒ {@code null} ⇒ 不计入任何人的额外充能层。 */
+    private UUID ownerUUID;
 
     public RepulsionEntity(EntityType<? extends RepulsionEntity> entityType, Level level) {
         super(entityType, level);
@@ -231,6 +238,10 @@ public class RepulsionEntity extends LivingEntity {
             ids[i++] = id.getLeastSignificantBits();
         }
         tag.putLongArray(TAG_TARGETS, ids);
+        if (this.ownerUUID != null) {
+            tag.putLongArray(TAG_OWNER, new long[] {
+                    this.ownerUUID.getMostSignificantBits(), this.ownerUUID.getLeastSignificantBits() });
+        }
     }
 
     @Override
@@ -241,6 +252,8 @@ public class RepulsionEntity extends LivingEntity {
         for (int i = 0; i + 1 < ids.length; i += 2) {
             this.trackedTargets.add(new UUID(ids[i], ids[i + 1]));
         }
+        long[] owner = tag.getLongArray(TAG_OWNER);
+        this.ownerUUID = owner.length >= 2 ? new UUID(owner[0], owner[1]) : null;
     }
 
     // ── 对外查询：是否正在吸附某个目标 ─────────────────────────────────────────
@@ -254,6 +267,29 @@ public class RepulsionEntity extends LivingEntity {
      */
     public boolean isTracking(UUID targetId) {
         return targetId != null && this.trackedTargets.contains(targetId);
+    }
+
+    /**
+     * 放置者 UUID（{@code null} = 未登记 ⇒ §4.6 下不计入任何人的额外充能层）。
+     */
+    public UUID getOwnerUUID() {
+        return this.ownerUUID;
+    }
+
+    /**
+     * 写入放置者 —— 只在召唤点（{@code RepulsionCardItem#applyEffect}）成功入世前调用一次；
+     * 随后随实体 NBT 落盘，见 {@link #addAdditionalSaveData}。
+     */
+    public void setOwnerUUID(UUID ownerUUID) {
+        this.ownerUUID = ownerUUID;
+    }
+
+    /**
+     * 被吸附目标的**只读快照**（供 {@code LinglingSignManager} 统计「自己放置的力场吸附了几个目标」；
+     * 事件/统计层不能读私有集合，故开这个单一入口 —— 与 {@link #isTracking} 同一设计理由）。
+     */
+    public java.util.Set<UUID> getTrackedTargets() {
+        return java.util.Collections.unmodifiableSet(this.trackedTargets);
     }
 
     // ── 每 tick：剪枝 + 钳制（不施力） ─────────────────────────────────────────

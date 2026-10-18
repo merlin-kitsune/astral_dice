@@ -101,6 +101,7 @@ public class ModItemModelProvider extends ItemModelProvider {
         basicItem(ModItems.KANGEL_SIGN.get());
         basicItem(ModItems.AME_SIGN.get());
         basicItem(ModItems.MEGAS_SIGN.get());
+        basicItem(ModItems.LINGLING_SIGN.get());
         basicItem(ModItems.FU_CARD.get());
         basicItem(ModItems.HUO_CARD.get());
         // 蛟龙立牌(mamushi)专属战斗牌(2026-09-27)

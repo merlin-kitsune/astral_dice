@@ -367,5 +367,15 @@ public class ModEffects {
     public static final DeferredHolder<MobEffect, MobEffect> AME_OVERDOSE =
             EFFECTS.register("ame_overdose", AmeOverdoseEffect::new);
 
+    /**
+     * 「能量突击」(怪力乱神立牌 lingling 主动,§5):**有限时长 1:00(1200 tick)**,标记型效果。
+     * **本效果不带任何原版属性修饰符** —— 攻击力(ADD_VALUE + 有效充能层)与移速
+     * (ADD_MULTIPLIED_TOTAL + 有效充能/100)由 {@code LinglingSignManager#refreshActiveModifiers}
+     * 每 10~20t 用固定 id 的 AttributeModifier 实时写到玩家属性上,故 buff 结束 / 卸下必须由
+     * 同一条链把 modifier 摘干净。图标与语言 = T2 资源批次。
+     */
+    public static final DeferredHolder<MobEffect, MobEffect> LINGLING_SURGE =
+            EFFECTS.register("lingling_surge", LinglingSurgeEffect::new);
+
     public static final Collection<DeferredHolder<MobEffect, ? extends MobEffect>> ALL = EFFECTS.getEntries();
 }

@@ -1,6 +1,6 @@
 {
   "case_id": "CHIP-ECON-OFF-1.21.1",
-  "title": "筹码经济调整·配置关闭(enable_chip_recipes=false):买后冷却拒绝开店 / 空白筹码投入 / 卡牌堆叠 16 / 看板娘阈值 / 战利品注入 / 创造栏隐藏材料",
+  "title": "筹码经济调整·配置关闭(enable_chip_recipes=false):买后冷却拒绝开店 / 空白筹码投入 / 卡牌堆叠 16 / 看板娘阈值 / 战利品注入 / 创造栏 4 材料始终可见(已解绑总开关)",
   "version": "1.21.1",
   "target": {
     "type": "feature",
@@ -10,7 +10,7 @@
   "steps": [
     {
       "op": "note",
-      "text": "筹码经济调整批(CHIP-ECON,已提交 2.0.0-SNAPSHOT.114)·配置关闭侧(enable_chip_recipes=false)。\n\n前提:run/<ver>/config/astral_dice-common.toml 的 enable_chip_recipes 为默认 false(无需改动),实例为本批构建。\n\n通道:服务端机器行走 /astralshop 探针(AP_<tag>_*,tag=EC)⇒ 经 ctx.source.sendFailure 以 [CHAT] 行落客户端 latest.log ⇒ source=\"latest\";产品侧自带行 CHIP_SHOP_OPEN_DENIED / CHIP_SHOP_BLANK_INSERT / CHIP_SHOP_BLANK_DENIED 走 LOGGER.info,同在 latest.log。创造栏读数走客户端探针 AP_CSC:CTAB:… ⇒ logs/kubejs/client.log ⇒ source=\"kubejs_client\"。\n\n覆盖:①买后 5:00 内开店被拒(本批新行为,CHIP_SHOP_OPEN_DENIED reason=cooldown)②空白筹码投入成功(刷新+1、清购买冷却)+ 2:00 内重复投入被拒且不消耗③astral_dice:*_chip 配方条数=0(config=0)④卡牌物品 maxStackSize 全为 16(当前应有 29 张卡牌:combat_cards 12 + effect_cards 17;断言里只要求 cards>=1,不写死 29 以免将来加卡即红) ⑤看板娘阈值 100 + 累计返还战斗牌计数器(99 不发 / 再 +2 发 1 个余 1)⑥战利品注入:埋藏宝藏 100% 必出空白筹码 + 地牢箱 200 次抽样 1%(n<=10 判 PASS)⑦创造栏 dice_tab 内 4 种筹码材料被总开关隐藏(mats=0/4)。\n\n⚠️ 顺序前提(必须遵守):\n(a) 本用例第 4 步断言「买后冷却拒绝开店」——若同一世界/同一次启动里先跑过任何会买筹码的用例(CHIP-LOGIC / CHIP-CLIENT-*),copen 可能已被冷却拒绝、或冷却/计数状态本就残留 ⇒ 本用例必须是该世界、该次启动里**第一个**跑筹码购买的用例;env 阶段已保证世界为新建。\n(b) 客户端 CTAB 读数「每次启动至多一次」(csCtabDone 粘滞)⇒ 本用例必须是一次启动里**第一个**把余额设进 [770,799] 的用例;若该次启动里已有别的用例武装过客户端探针,CTAB 行不会再落 ⇒ 该断言必红(属顺序问题,不是功能缺陷)。\n(c) 设了哨兵余额 770 之后**绝不再开店**:武装态下打开筹码屏会触发 770 场景的自动点击。\n\n标签口径说明:本用例 tag 用 EC ⇒ 机器行前缀是 AP_EC_*(不是 AP_CL_*;AP_CL_ 是 CHIP-LOGIC 那批的 tag)。\n断言能力:mt_assert 的 log 断言只判命中 ≥1,故每条判据都设计成单行可判(模式里带唯一取值)。"
+      "text": "筹码经济调整批(CHIP-ECON,已提交 2.0.0-SNAPSHOT.114)·配置关闭侧(enable_chip_recipes=false)。\n\n前提:run/<ver>/config/astral_dice-common.toml 的 enable_chip_recipes 为默认 false(无需改动),实例为本批构建。\n\n通道:服务端机器行走 /astralshop 探针(AP_<tag>_*,tag=EC)⇒ 经 ctx.source.sendFailure 以 [CHAT] 行落客户端 latest.log ⇒ source=\"latest\";产品侧自带行 CHIP_SHOP_OPEN_DENIED / CHIP_SHOP_BLANK_INSERT / CHIP_SHOP_BLANK_DENIED 走 LOGGER.info,同在 latest.log。创造栏读数走客户端探针 AP_CSC:CTAB:… ⇒ logs/kubejs/client.log ⇒ source=\"kubejs_client\"。\n\n覆盖:①买后 5:00 内开店被拒(本批新行为,CHIP_SHOP_OPEN_DENIED reason=cooldown)②空白筹码投入成功(刷新+1、清购买冷却)+ 2:00 内重复投入被拒且不消耗③astral_dice:*_chip 配方条数=0(config=0)④卡牌物品 maxStackSize 全为 16(当前应有 29 张卡牌:combat_cards 12 + effect_cards 17;断言里只要求 cards>=1,不写死 29 以免将来加卡即红) ⑤看板娘阈值 100 + 累计返还战斗牌计数器(99 不发 / 再 +2 发 1 个余 1)⑥战利品注入:埋藏宝藏 100% 必出空白筹码 + 地牢箱 200 次抽样 1%(n<=10 判 PASS)⑦创造栏 dice_tab 内 4 种筹码材料(再生试剂/导电丝/星币尘/标记涂料)已解绑筹码配方总开关、`enable_chip_recipes=false` 下仍全部出现(mats=4/4;怪力乱神立牌 spec §7,2026-10-18 起:材料不再受该开关影响)。\n\n⚠️ 顺序前提(必须遵守):\n(a) 本用例第 4 步断言「买后冷却拒绝开店」——若同一世界/同一次启动里先跑过任何会买筹码的用例(CHIP-LOGIC / CHIP-CLIENT-*),copen 可能已被冷却拒绝、或冷却/计数状态本就残留 ⇒ 本用例必须是该世界、该次启动里**第一个**跑筹码购买的用例;env 阶段已保证世界为新建。\n(b) 客户端 CTAB 读数「每次启动至多一次」(csCtabDone 粘滞)⇒ 本用例必须是一次启动里**第一个**把余额设进 [770,799] 的用例;若该次启动里已有别的用例武装过客户端探针,CTAB 行不会再落 ⇒ 该断言必红(属顺序问题,不是功能缺陷)。\n(c) 设了哨兵余额 770 之后**绝不再开店**:武装态下打开筹码屏会触发 770 场景的自动点击。\n\n标签口径说明:本用例 tag 用 EC ⇒ 机器行前缀是 AP_EC_*(不是 AP_CL_*;AP_CL_ 是 CHIP-LOGIC 那批的 tag)。\n断言能力:mt_assert 的 log 断言只判命中 ≥1,故每条判据都设计成单行可判(模式里带唯一取值)。"
     },
     {
       "op": "inject_command",
@@ -240,7 +240,7 @@
     {
       "type": "log",
       "source": "kubejs_client",
-      "pattern": "AP_CSC:CTAB:mats=0/4:regen=0:wire=0:dust=0:paint=0:n=[1-9][0-9]*"
+      "pattern": "AP_CSC:CTAB:mats=4/4:regen=1:wire=1:dust=1:paint=1:n=[1-9][0-9]*"
     },
     {
       "type": "crash"
