@@ -21,8 +21,8 @@ MT_PACK_MODS_FORGE="D:/.minecraft/versions/1.20.1 模组测试/mods"
 #    （2026-09-17 修正：旧值 `26.1.2-NeoForge_26.1.2.109` 在本机并不存在）
 MT_PACK_MODS_NEOFORGE_26_1_2="D:/.minecraft/versions/26.1.2 模组测试/mods"
 
-# 本地 MCP 二进制（前置检查用）
-MT_MCP_BIN="C:/Users/<你的用户名>/.local/bin/computer-control-mcp.exe"
+# 桌面驱动（截图 / 点击 / 键盘 / 窗口激活）已改由 DSH 的 dsh-computer-use 插件承担（2026-10-18 用户裁决）。
+# 旧的 MT_MCP_BIN（computer-control-mcp）已退役：工具链不再读取该键，前置检查也不再校验它。
 
 # AutoJS（脚本上下文 MCP 宿主）端点 —— 实机测试的 eval 证据通道
 # 见 docs/features/autojs-test-harness-spec.md；端口由游戏目录的 config/autojs.json 决定（默认 25585），

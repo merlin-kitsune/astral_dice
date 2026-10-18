@@ -1050,7 +1050,7 @@ namespace Mt
         }
 
         // 按**扫描码**发送真实按键（2026-09-13 实测：只给虚拟键时游戏不响应，
-        // GLFW/游戏侧按键识别依赖扫描码；computer-control MCP 亦按扫描码发送）。
+        // GLFW/游戏侧按键识别依赖扫描码；computer-control MCP 与 DSH `dsh-computer-use` 插件亦按扫描码发送）。
         public static bool KeyScan(int scan, bool up, bool extended)
         {
             INPUT input = new INPUT();

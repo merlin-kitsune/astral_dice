@@ -314,28 +314,6 @@ function Test-MtPreflightLeftover {
     return , @($true, "无本线（$Version）遗留进程")
 }
 
-# ── MCP 二进制 ────────────────────────────────────────────────────────────
-function Test-MtPreflightMcpBinary {
-    <#
-    .SYNOPSIS
-        注入通道所用的本地 MCP 二进制（computer-control-mcp）存在。返回 @(bool, detail)。
-    #>
-    [CmdletBinding()]
-    param()
-
-    $conf = Get-MtConf
-    $exe = ''
-    if ($null -ne $conf -and $conf.ContainsKey('MT_MCP_BIN')) { $exe = [string]$conf['MT_MCP_BIN'] }
-    if (-not $exe) { return , @($true, '未配置 MT_MCP_BIN（跳过）') }
-
-    # pathlib 在 Windows 上会把 '/' 归一成 '\'；报错文案要复刻这一点
-    $shown = $exe -replace '/', '\'
-    if (-not (Test-Path -LiteralPath $exe -PathType Leaf)) {
-        return , @($false, "MCP 二进制缺失：$shown")
-    }
-    return , @($true, [System.IO.Path]::GetFileName($exe))
-}
-
 # ── AutoJS（脚本上下文 MCP 宿主）─────────────────────────────────────────
 function Get-MtAutoJsProvenanceHashes {
     <#
@@ -608,7 +586,6 @@ function Invoke-MtPreflightAll {
     $checks = [System.Collections.Generic.List[object]]::new()
     $checks.Add([pscustomobject]@{ Name = '分支'; Pair = (Get-MtPreflightBranch -Root $root) })
     $checks.Add([pscustomobject]@{ Name = '输入法'; Pair = (Test-MtPreflightIme) })
-    $checks.Add([pscustomobject]@{ Name = 'MCP 二进制'; Pair = (Test-MtPreflightMcpBinary) })
     # AutoJS 通道（2026-10-17 批次）：State 可为 WARN —— 见 Test-MtPreflightAutoJs 的 .NOTES
     $autoJsState = Test-MtPreflightAutoJs -Root $root
     $checks.Add([pscustomobject]@{ Name = 'AutoJS 通道'; State = [string]$autoJsState.State; Detail = [string]$autoJsState.Detail })

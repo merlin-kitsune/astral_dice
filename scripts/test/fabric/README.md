@@ -932,7 +932,7 @@ M2 钉住 fabric 的两条 `hasEffect` 早退判据。期望 `GATE: PASS (22 项
 
 1. **客户端 GUI 键鼠注入未覆盖**：生产线的 `mt_inject.ps1`（Win32 `PostMessage` + en-US 键盘布局 + 窗口线程
    输入法切换）未移植；本台的注入只面向**服务端命令**，且只有 RCON 一条通道。客户端的
-   渲染 / 输入类缺陷本台**抓不到**（本轮实测也印证了这一点：`computer_control` 的按键到 MC 极不稳定）。
+   渲染 / 输入类缺陷本台**抓不到**（本轮实测也印证了这一点：桌面工具（现 DSH `dsh-computer-use` 插件；当时为 computer_control）的按键到 MC 极不稳定）。
 2. **客户端派发统计未断言**：`ft_dispatchreport.ps1 --side client` 已实现读取，但**拿不到数据** ——
    原因是平台事实而非本台缺陷：`事件派发统计` 的打印点是 FabricBridges 的「开局 600 tick」
    （服务端 tick 回调）与「关服」；客户端只有**进入世界**（内置服务端跑起来）才会出现该块，

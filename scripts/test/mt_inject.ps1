@@ -730,7 +730,7 @@ function Invoke-MtInjectCmdCommand {
     # 2026-09-13 更正：「按 `/` 键会把游戏顶进暂停菜单」属**误判**——真实原因是入口把
     # `$script:Transport` 覆盖成空串，使 escNormalize 恒为真、每次注入先发一次真实 Esc
     # （完整推演见下方参数解析段的注释）。那条 `/` 观测是在「Esc 已经打开菜单」的前提下取得的，
-    # 归因错了。sendinput 通道本来就不按 `/` 键，而是走与 computer-control MCP 同款的
+    # 归因错了。sendinput 通道本来就不按 `/` 键，而是走与桌面工具（computer-control MCP，2026-10-18 起改为 DSH `dsh-computer-use` 插件）同款的
     # 「按 T 开聊天 → 输入含前导 `/` 的全文 → 回车」。
     #
     # ── 状态归一化：Esc → Tab → Enter（2026-09-13 实机逐一验证，必须遵守）────────

@@ -26,7 +26,7 @@
 1. **AutoJS 成为主通道**：判据从「读 `AP_*` 日志行」改成「`eval_js` 返回结构 + MCP 状态」，日志断言降级为旁证（`mixin/kubejs/crash` 保留，报告标注「日志通道」）。
 2. **新 PowerShell 模块 `scripts/test/lib/Mt.AutoJs.psm1`**：MCP 客户端（initialize → tools/call，处理 JSON 与 SSE 两种响应、session id）、端点探活、`eval_js`/`status`/`kubejs_log`/`reload_scripts` 四个包装、错误归一（`ok=false` / `isError` / 超时 → 明确错误对象，不静默）。
 3. **ENV 装配**：按线把 AutoJS jar（+ rhino 视需要）落进 `run/<ver>/mods`（1.21.1 / 26.1.2）或经 `build.gradle`（1.20.1 / fabric，路线见 §6）；幂等（SHA256）+ 同族前缀清理 + 报告登记来源。
-4. **PREFLIGHT**：新增静态项（jar 已就位 + `MT_AUTOJS_ENDPOINT` 已配置 + `config/autojs.json` 存在性）；**不改**既有 `Test-MtPreflightMcpBinary`。
+4. **PREFLIGHT**：新增静态项（jar 已就位 + `MT_AUTOJS_ENDPOINT` 已配置 + `config/autojs.json` 存在性）；**不改**既有前置检查项（注：当时保留的 `Test-MtPreflightMcpBinary` 已于 2026-10-18 随 `computer-control-mcp` 退役一并删除）。
 5. **LAUNCH**：世界就绪后新增硬闸门 `Test-MtAutoJsEndpoint`（TCP + initialize + `status`），逃生阀 `MT_ALLOW_NO_AUTOJS=1`；闸门文案与既有五道一致（`MT_LAUNCH: ERROR — …`）。
 6. **CASE 原语与断言**：原语表新增 `eval_js` / `await_state`（**封闭表**，未知 op 立刻 ERROR）；断言类型新增 `eval`（结构化比较）与 `state`（引用前一步 `save_as`）；`scope` 与窗口语义对返回值型断言改为「按 case/save_as 过滤」，日志型断言保持原窗口机制。
 7. **样板用例**：迁移 1~2 条代表用例（首选 `CHIP-ECON-OFF-1.21.1` 的 AutoJS 版 + 一条战斗类），放在 `scripts/test/cases/` 并打 `"channel":"autojs"`；其余 220 条**保留**并登记为 legacy（`"channel":"kubejs"` 默认或省略），文档写明欠账。
