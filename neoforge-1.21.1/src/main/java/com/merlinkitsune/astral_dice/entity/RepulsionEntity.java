@@ -14,6 +14,9 @@ import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.NeutralMob;
+import net.minecraft.world.entity.TamableAnimal;
+import net.minecraft.world.entity.monster.Creeper;
 import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
@@ -44,11 +47,12 @@ import java.util.UUID;
  * <p><b>三层节拍</b>：
  * <ol>
  *   <li><b>每 tick</b>（{@link #tickTrackedTargets()}）：维护「被吸附目标」集合 ——
- *       死亡 / 移除 / 距离 &gt; 32 格的目标剪掉；3D 距离 &gt; 8 格的目标**按 3D 方向拉回
- *       7.5 格处**并清零速度（「无法逃离影响范围」，见 {@link #clampInside(Mob)}）。
- *       本层**不再施加拉力**；</li>
+ *       死亡 / 移除 / 距离 &gt; 32 格 / **失去吸附资格**（{@link #isAttachable(Mob)}）的目标剪掉；
+ *       3D 距离 &gt; 8 格的目标**按 3D 方向拉回 7.5 格处**并清零速度（「无法逃离影响范围」，
+ *       见 {@link #clampInside(Mob)}）。本层**不再施加拉力**；</li>
  *   <li><b>每 20 tick（1 秒）</b>（{@link #scanAndApplyEffects()} ＋ {@link #pullTrackedTargets()}）：
- *       先扫描 {@code Mob} 里 {@code instanceof Enemy}、存活、{@code distanceToSqr <= 64} 的目标，
+ *       先扫描 8 格内**有吸附资格**、存活、{@code distanceToSqr <= 64} 的目标（资格 = 敌对生物 /
+ *       中立生物 + 当前有仇恨目标或被激怒 + 非已驯服宠物，见〈吸附资格〉），
  *       加入集合并施加 缓慢 (0:10) / 虚弱 (0:10)（{@code amplifier = 0}）；随后对 8 格内被吸附目标
  *       施加**一次**向心冲量（{@code 归一化水平方向 × PULL_STRENGTH}，保留 y）——
  *       用户原文「会以1秒为频率……逐渐缓慢拉扯」，**每秒一跳、不是每 tick**；</li>
@@ -56,6 +60,39 @@ import java.util.UUID;
  *       {@code -= min(当前 8 格内被吸附目标数, 5)}；扣到 &lt;= 0 ⇒ 碎裂粒子 + 玻璃破碎音 +
  *       {@link #discard()}。</li>
  * </ol>
+ *
+ * <p><b>吸附资格（2026-10-18 用户追加规则）</b>：候选 = <b>敌对生物</b>（{@code instanceof Enemy}）
+ * <b>或</b> <b>中立生物</b>（{@code instanceof NeutralMob}）；且<b>必须有仇恨 / 激怒状态</b>
+ * （{@code mob.getTarget() != null} 或 中立生物 {@code NeutralMob#isAngry()}）；且<b>不是已驯服的宠物</b>
+ * （{@code TamableAnimal#isTame()}，即狼 / 猫 / 鹦鹉）。⇒「没有仇恨目标的敌对生物」（未激怒的末影人、
+ * 无目标游荡的僵尸）与玩家宠物**都不会**被新增吸附。判据落在 {@link #isAttachable(Mob)}。
+ * <ul>
+ *   <li>⚠️ 这是**有意的口径收窄**（用户原话「排除没有仇恨目标的敌对（如末影人）」），**不**调用模组
+ *       统一入口 {@code starengine_lib} 的 {@code HostileTargets}：统一入口对中立生物一律放行且不看
+ *       anger，与本需求相反。同类收窄的既有先例 = {@code combat/ShootingStarManager#isStarTarget}
+ *       （飞星只认已激怒的中立生物）。<b>不得</b>以「敌对判定必须走统一入口」为由把本判据改宽。</li>
+ *   <li>资格在**扫描时**（每 20 tick，决定「是否新增吸附」）与**每 tick 剪枝**（决定「是否继续吸附」）
+ *       两处都判定 ⇒ <b>平静即释放</b>：被激怒而吸附的中立生物一旦平静、以及失去仇恨目标的敌对生物，
+ *       会在**下一个 tick** 被移出集合 —— 不再施加 缓慢 / 虚弱、不再被拉扯 / 钳制，也不再计入耐久消耗；
+ *       已施加的 缓慢 / 虚弱 按原时长自然结束（**不主动清除**）。</li>
+ * </ul>
+ *
+ * <p><b>苦力怕（2026-10-18 用户追加规则）</b>：被吸附的 {@code Creeper} **不允许自爆**，两条路径叠加：
+ * <ol>
+ *   <li><b>自然膨胀</b>（{@link #suppressTrackedCreeperFuses()}，**每 tick**）：被吸附集合内的苦力怕
+ *       {@code getSwellDir() > 0} ⇒ {@code setSwellDir(-1)}。原版 {@code Creeper#tick} 是
+ *       {@code swell += swellDir}（先读方向、再累加、之后才跑 AI），写入 -1 后下一次累加变成 -1，
+ *       两种 tick 顺序下 swell 要么回落到 0、要么停在当前值 ⇒ 涨不到引爆阈值；</li>
+ *   <li><b>打火石点燃</b>（{@code event/RepulsionCreeperGuard}，订阅 {@code ExplosionEvent.Start}）：
+ *       {@code isIgnited()} 会让 {@code Creeper#tick} **每 tick 无条件** {@code setSwellDir(1)}（且在读值
+ *       之前）⇒ 第 1 条压不住，引信仍会烧到底。故必须再叠「爆炸开始事件」取消：命中即
+ *       {@code setCanceled(true)} + {@code setSwellDir(-1)} + {@code FIRE_EXTINGUISH}。
+ *       取消点在 {@code Level#explode} 的 {@code explosion.explode()} 之前 ⇒ 不炸方块、不造成伤害、
+ *       无爆炸粒子 / 音效；但 {@code explodeCreeper()} 里 {@code dead = true} 与随后的 {@code discard()}
+ *       仍会执行 ⇒ 表现是苦力怕**无声消失**（既定代价，见该类 javadoc）。</li>
+ * </ol>
+ * 只对**被吸附**的苦力怕生效（事件层用 {@link #isTracking(UUID)} 判定）；TNT、其他爆炸、未被吸附的
+ * 苦力怕一律不受影响。
  *
  * <p><b>拉力机制（实证，订正此前「0.06 会被 aiStep 覆盖 ⇒ 拉力弱于预期」的错误说法）</b>：
  * <ul>
@@ -93,6 +130,11 @@ import java.util.UUID;
  *       拉回后 3D 距离 7.5 ≤ 8，**不会**再每 tick 反复瞬移；但击退 / 寻路仍可能在两 tick 之间
  *       把它推出 8 格（下一 tick 会再次拉回，属预期抖动）；</li>
  *   <li>模型朝向 / 贴图面序（见 {@code client/RepulsionModel} 的说明）。</li>
+ *   <li>苦力怕「禁止自爆」：逻辑按两线源码推演（{@code Creeper#tick} 的 {@code swell += swellDir}
+ *       与 {@code Level#explode} 里 {@code explosion.explode()} 的先后），未实机；尤其「打火石点燃
+ *       路径」取消爆炸后苦力怕会**无声消失**（{@code dead = true} 先于 explode 设置）的观感需实机确认；</li>
+ *   <li>吸附资格：未激怒的末影人 / 无目标僵尸应当**不被**吸附，驯服狼 / 猫应当**不被**吸附 ——
+ *       判据按源码写死（{@code NeutralMob#isAngry()} / {@code TamableAnimal#isTame()}），未实机核对。</li>
  * </ul>
  *
  * <p><b>已登记风险</b>：{@code hurt} 恒 false ⇒ 若被**第三方 goal** 选为目标，该 goal 会永远
@@ -201,6 +243,19 @@ public class RepulsionEntity extends LivingEntity {
         }
     }
 
+    // ── 对外查询：是否正在吸附某个目标 ─────────────────────────────────────────
+
+    /**
+     * 某个目标是否正在被本实体吸附（**只读查询**）。供 {@code event/RepulsionCreeperGuard} 判定
+     * 「这颗苦力怕的爆炸该不该被取消」—— 事件层不能去读私有集合，故开这个单一入口。
+     *
+     * <p>服务端权威：集合只在服务端被读写（{@link #tick()} 首行即分流客户端），客户端调用只会读到
+     * 空集合 / NBT 同步来的旧值；爆炸开始事件本身也只在服务端发出，故实际只会在服务端被调用。
+     */
+    public boolean isTracking(UUID targetId) {
+        return targetId != null && this.trackedTargets.contains(targetId);
+    }
+
     // ── 每 tick：剪枝 + 钳制（不施力） ─────────────────────────────────────────
 
     @Override
@@ -211,6 +266,8 @@ public class RepulsionEntity extends LivingEntity {
 
         // 剪枝 + 越界钳制：每 tick 做（「目标无法逃离影响范围」需要即时生效）
         this.tickTrackedTargets();
+        // 苦力怕引信压制：每 tick 做（自然膨胀路径；打火石点燃路径由 ExplosionEvent.Start 兜底）
+        this.suppressTrackedCreeperFuses();
         if (this.tickCount % SCAN_INTERVAL == 0) {
             // 每秒一次：先刷新吸附集合与 缓慢 / 虚弱，再对界内目标施加**一次**向心冲量
             this.scanAndApplyEffects();
@@ -222,7 +279,15 @@ public class RepulsionEntity extends LivingEntity {
     }
 
     /**
-     * 维护被吸附目标集合：剪枝（死亡 / 移除 / &gt; 32 格）＋ 越界钳制。
+     * 维护被吸附目标集合：剪枝（死亡 / 移除 / &gt; 32 格 / 失去吸附资格）＋ 越界钳制。
+     *
+     * <p><b>平静即释放（2026-10-18 用户追加规则）</b>：对仍存在且存活的 {@link Mob} 追加同一条
+     * {@link #isAttachable(Mob)} 判定 ⇒ 被激怒而吸附的中立生物一旦平静、以及失去仇恨目标的敌对生物
+     * 在**下一个 tick** 被移出集合（不再施加 缓慢 / 虚弱、不再被拉扯 / 钳制、不再计入耐久消耗）。
+     * 已施加的 缓慢 / 虚弱 按原时长自然结束，本方法**不主动清除**。
+     *
+     * <p>判定顺序固定为「alive / removed → &gt; 32 格 → isAttachable → 越界钳制」：32 格是「跑太远就
+     * 彻底不管」的清理阈值，先于资格判定；钳制只对仍具备吸附资格的目标生效。
      *
      * <p>⚠️ 这里**不再**施加向心拉力 —— 拉力已改为每秒一次（{@link #pullTrackedTargets()}），
      * 本方法只做每 tick 都必须生效的清理与钳制。
@@ -243,9 +308,41 @@ public class RepulsionEntity extends LivingEntity {
                 it.remove();
                 continue;
             }
+            if (!this.isAttachable(mob)) {
+                // 平静即释放（2026-10-18 用户追加规则）：不再施加 缓慢 / 虚弱、不再拉扯 / 钳制、不计耐久
+                it.remove();
+                continue;
+            }
             if (distanceSqr > AFFECT_RADIUS * AFFECT_RADIUS) {
                 // 越界 ⇒ 按 3D 方向拉回 7.5 格处（用户需求「目标无法逃离强化拒止影响范围」）
                 this.clampInside(mob);
+            }
+        }
+    }
+
+    /**
+     * 苦力怕引信压制（2026-10-18 用户追加规则）：被吸附集合内的苦力怕**不允许自爆**。
+     *
+     * <p>每 tick 对集合内每颗 {@code Creeper} 做 {@code if (getSwellDir() > 0) setSwellDir(-1)}：
+     * 原版 {@code Creeper#tick} 是 {@code swell += swellDir}（<b>先读方向、再累加</b>，之后才跑 AI），
+     * 写入 -1 后下一次累加变成 -1；AI 的 {@code CreeperSwellGoal} 即使在本 tick 之后又把方向写成 1，
+     * 下一 tick 仍会被这里改回 -1 ⇒ 两种 tick 顺序下 swell 分别是「逐 tick 回落到 0」与「停在当前值」，
+     * 都涨不到引爆阈值（{@code maxSwell}）。
+     *
+     * <p>⚠️ 只压得住**自然膨胀**：打火石 / 火焰点燃时 {@code isIgnited()} 为真，原版 {@code Creeper#tick}
+     * 会**每 tick 无条件** {@code setSwellDir(1)}（而且在读值之前），单靠本方法必然被覆盖 ⇒ 引信照样烧到
+     * 引爆。那条路径由 {@code event/RepulsionCreeperGuard} 取消 {@code ExplosionEvent.Start} 兜底
+     * （见类 javadoc〈苦力怕〉）。
+     *
+     * <p>只遍历已吸附集合（不改动它，无需拷贝）：剪枝已在 {@link #tickTrackedTargets()} 完成；
+     * 跨维度 / 区块未加载时 {@code getEntity} 返回 null ⇒ 跳过。
+     */
+    private void suppressTrackedCreeperFuses() {
+        if (!(this.level() instanceof ServerLevel serverLevel)) return;
+        for (UUID id : this.trackedTargets) {
+            if (!(serverLevel.getEntity(id) instanceof Creeper creeper) || creeper.isRemoved()) continue;
+            if (creeper.getSwellDir() > 0) {
+                creeper.setSwellDir(-1);
             }
         }
     }
@@ -311,16 +408,49 @@ public class RepulsionEntity extends LivingEntity {
     // ── 每秒：扫描 + 施加 缓慢 / 虚弱 + 一次向心冲量 ───────────────────────────
 
     /**
-     * 半径 8 格（球形）内的敌对目标：加入被吸附集合并持续施加 缓慢 / 虚弱。
+     * 吸附资格（2026-10-18 用户追加规则；口径与缘由见类 javadoc〈吸附资格〉）。
      *
-     * <p>只认 {@code Mob} 且 {@code instanceof Enemy}（= 本模组「敌对目标」口径里的敌对生物那一半；
-     * 中立生物与玩家**不吸附**，因为用户需求写的是「敌对目标」）。刻意**不**排除精英 / Boss ——
-     * 需求未要求排除，且本牌不拉仇恨，不会把 Boss 的仇恨从玩家身上抢走。
+     * <ol>
+     *   <li>已驯服的玩家宠物一律跳过（{@code TamableAnimal#isTame()} ⇒ 狼 / 猫 / 鹦鹉）；</li>
+     *   <li>候选类型 = 敌对生物（{@code Enemy}）**或** 中立生物（{@code NeutralMob}），其余一律跳过
+     *       （两者可同时实现：末影人 / 僵尸猪灵 / 猪灵 等）；</li>
+     *   <li>必须处于仇恨 / 激怒状态：{@code mob.getTarget() != null}，或中立生物 {@code NeutralMob#isAngry()}。</li>
+     * </ol>
+     *
+     * <p>⚠️ 本判据**有意**比模组统一入口 {@code HostileTargets} 更窄（用户原话「排除没有仇恨目标的敌对
+     * （如末影人）」）：统一入口对中立生物一律放行、且不看 anger，本牌则要求「有仇恨目标 / 被激怒」。
+     * 先例 = {@code combat/ShootingStarManager#isStarTarget}（飞星同样只认已激怒的中立生物）。
+     * 勿以「敌对判定必须走统一入口」为由改回宽口径。
+     */
+    private static boolean isAttachable(Mob mob) {
+        // ① 玩家宠物除外（狼 / 猫 / 鹦鹉）：避免把玩家自己的宠物拉走
+        if (mob instanceof TamableAnimal tameable && tameable.isTame()) {
+            return false;
+        }
+        // ② 候选类型：敌对生物 或 中立生物（Enemy 与 NeutralMob 可同时实现，如末影人 / 僵尸猪灵）
+        boolean enemy = mob instanceof Enemy;
+        boolean neutral = mob instanceof NeutralMob;
+        if (!enemy && !neutral) {
+            return false;
+        }
+        // ③ 必须有仇恨 / 激怒状态：无仇恨目标的敌对生物（未激怒的末影人、无目标游荡的僵尸）不吸附
+        if (mob.getTarget() != null) {
+            return true;
+        }
+        return mob instanceof NeutralMob neutralMob && neutralMob.isAngry();
+    }
+
+    /**
+     * 半径 8 格（球形）内**有吸附资格**的目标：加入被吸附集合并持续施加 缓慢 / 虚弱。
+     *
+     * <p>资格判据 = {@link #isAttachable(Mob)}（2026-10-18 用户追加规则：敌对生物 / 中立生物 ＋ 当前
+     * 有仇恨目标或被激怒 ＋ 非已驯服宠物；口径与缘由见类 javadoc〈吸附资格〉）。
+     * 刻意**不**排除精英 / Boss —— 需求未要求排除，且本牌不拉仇恨，不会把 Boss 的仇恨从玩家身上抢走。
      */
     private void scanAndApplyEffects() {
         AABB area = this.getBoundingBox().inflate(AFFECT_RADIUS);
         for (Mob mob : this.level().getEntitiesOfClass(Mob.class, area)) {
-            if (!(mob instanceof Enemy)) continue;
+            if (!isAttachable(mob)) continue;
             if (!mob.isAlive() || mob.isRemoved()) continue;
             if (mob.distanceToSqr(this) > AFFECT_RADIUS * AFFECT_RADIUS) continue;
             this.trackedTargets.add(mob.getUUID());
