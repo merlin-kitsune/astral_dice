@@ -124,6 +124,31 @@ $script:RenderModsByVersion = @{
     '26.1.2' = $script:RenderMods2612
 }
 
+# ── AutoJS（脚本上下文 MCP 宿主模组）──────────────────────────────────────
+# 上游**不发布 jar**（见 docs/features/autojs-test-harness-spec.md §1），构建产物已 vendor 进仓库：
+#   scripts/test/resources/mods/autojs/AutoJS-<target>-1.0.0.jar
+#   来源/提交/SHA256/字节数见同目录 PROVENANCE.md
+# 只有**生产映射（mojmap）**的 neo 两条线能直接手投放；forge(1.20.1 生产 jar 为 SRG) 与
+# fabric(intermediary) 必须经 build.gradle 的 modImplementation 在构建期重映射 ⇒ 留空键 + 待接入。
+# ⚠️ 两线的 rhino 是 KubeJS 的硬前置，**不得**进清理前缀（只清 autojs-）。
+$script:AutoJsModsByVersion = @{
+    '1.21.1' = @(
+        [pscustomobject]@{
+            Target = 'neoforge-1.21.1'
+            File   = 'AutoJS-neoforge-1.21.1-1.0.0.jar'
+        }
+    )
+    '26.1.2' = @(
+        [pscustomobject]@{
+            Target = 'neoforge-26.1'
+            File   = 'AutoJS-neoforge-26.1-1.0.0.jar'
+        }
+    )
+    # 待接入（SRG/intermediary，需 build.gradle 路线）：见 docs/features/autojs-test-harness-spec.md §6
+    '1.20.1'        = @()
+    'fabric-1.20.1' = @()
+}
+
 # ── 优化类模组（2026-09-17 用户要求：进一步验证优化类模组的兼容性）──────────────
 # 来源同样走 **Modrinth Maven**（与渲染栈/史莱姆压制同规则）：
 #   maven.modrinth:immediatelyfast:adbrNJLm （1.15.3+26.1-neoforge，`environment=client_only`）
@@ -1324,6 +1349,247 @@ function Install-MtProbeHost {
     return 0
 }
 
+# ── AutoJS：jar 内 mods.toml 读取 / 版本区间判定 / 投放 ────────────────────
+function Get-MtJarTomlText {
+    <#
+    .SYNOPSIS
+        读 jar 内 META-INF/neoforge.mods.toml（回退 META-INF/mods.toml）原文；读不到返回空串。
+
+    .NOTES
+        只用 System.IO.Compression 读单个文本成员：Expand-Archive 要求 .zip 扩展名且会解整包，
+        而这里要的只是「AutoJS 要求的 rhino 区间」这一行 —— 该区间**必须从 jar 里读**，
+        硬编码会在上游改区间后静默放过不满足的前置。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$JarPath)
+
+    if (-not (Test-Path -LiteralPath $JarPath -PathType Leaf)) { return '' }
+    $zip = $null
+    try {
+        Add-Type -AssemblyName System.IO.Compression.FileSystem -ErrorAction Stop
+        $zip = [System.IO.Compression.ZipFile]::OpenRead($JarPath)
+        foreach ($name in @('META-INF/neoforge.mods.toml', 'META-INF/mods.toml')) {
+            $entry = $zip.Entries | Where-Object { $_.FullName -eq $name } | Select-Object -First 1
+            if ($null -eq $entry) { continue }
+            $sr = [System.IO.StreamReader]::new($entry.Open())
+            try { return $sr.ReadToEnd() } finally { $sr.Dispose() }
+        }
+        return ''
+    } catch {
+        return ''
+    } finally {
+        if ($null -ne $zip) { $zip.Dispose() }
+    }
+}
+
+function Get-MtTomlModVersion {
+    <#
+    .SYNOPSIS
+        取 mods.toml 里 [[mods]] 块的 version（该 jar 自己的 mod 版本）。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][AllowEmptyString()][string]$Toml)
+
+    $inMods = $false
+    foreach ($line in ($Toml -split '\r?\n')) {
+        if ($line -match '^\s*\[\[') {
+            $inMods = ($line -match '^\s*\[\[mods\]\]')
+            continue
+        }
+        if ($inMods -and $line -match '^\s*version\s*=\s*"([^"]*)"') { return $Matches[1] }
+    }
+    return ''
+}
+
+function Get-MtTomlDepRange {
+    <#
+    .SYNOPSIS
+        取 mods.toml 里某个依赖的 versionRange（如 rhino 的 [2101,)）；读不到返回空串。
+    #>
+    [CmdletBinding()]
+    param([AllowEmptyString()][string]$Toml = '', [Parameter(Mandatory)][string]$DepModId)
+
+    $cur = ''
+    foreach ($line in ($Toml -split '\r?\n')) {
+        if ($line -match '^\s*\[\[') { $cur = ''; continue }
+        if ($line -match '^\s*modId\s*=\s*"([^"]*)"') { $cur = $Matches[1]; continue }
+        if ($line -match '^\s*versionRange\s*=\s*"([^"]*)"') {
+            if ($cur -eq $DepModId) { return $Matches[1] }
+        }
+    }
+    return ''
+}
+
+function ConvertTo-MtVersionParts {
+    <#
+    .SYNOPSIS
+        把版本串拆成数值段（'2101.2.8-build.91' → 2101,2,8,0,91），供比较用。
+    #>
+    [CmdletBinding()]
+    param([AllowEmptyString()][string]$Version)
+
+    $parts = @()
+    foreach ($tok in (($Version -split '[.\-_+]') | Where-Object { $_ -ne '' })) {
+        $m = [regex]::Match($tok, '^\d+')
+        if ($m.Success) { $parts += [int64]$m.Value } else { $parts += [int64]0 }
+    }
+    return , $parts
+}
+
+function Compare-MtVersionStrings {
+    <#
+    .SYNOPSIS
+        比较两个版本串：返回 -1 / 0 / 1（逐段数值比较，短的一侧补 0）。
+    #>
+    [CmdletBinding()]
+    param([AllowEmptyString()][string]$Left, [AllowEmptyString()][string]$Right)
+
+    $a = ConvertTo-MtVersionParts -Version $Left
+    $b = ConvertTo-MtVersionParts -Version $Right
+    $n = [math]::Max($a.Count, $b.Count)
+    for ($i = 0; $i -lt $n; $i++) {
+        $x = if ($i -lt $a.Count) { $a[$i] } else { [int64]0 }
+        $y = if ($i -lt $b.Count) { $b[$i] } else { [int64]0 }
+        if ($x -lt $y) { return -1 }
+        if ($x -gt $y) { return 1 }
+    }
+    return 0
+}
+
+function Test-MtVersionInRange {
+    <#
+    .SYNOPSIS
+        判断版本是否落在 Maven 风格区间里（[a,b) / (a,b] / [a,b] / [a,) …）；空区间视为通过。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$Version, [AllowEmptyString()][string]$Range = '')
+
+    $r = $Range.Trim()
+    if (-not $r) { return $true }
+    if ($r -match '^([\[\(])\s*([^,\]\)]*)\s*,\s*([^\]\)]*)\s*([\]\)])$') {
+        $loOpen = $Matches[1]
+        $lo = $Matches[2].Trim()
+        $hi = $Matches[3].Trim()
+        $hiClose = $Matches[4]
+        if ($lo) {
+            $c = Compare-MtVersionStrings -Left $Version -Right $lo
+            if ($c -lt 0) { return $false }
+            if ($c -eq 0 -and $loOpen -eq '(') { return $false }
+        }
+        if ($hi) {
+            $c = Compare-MtVersionStrings -Left $Version -Right $hi
+            if ($c -gt 0) { return $false }
+            if ($c -eq 0 -and $hiClose -eq ')') { return $false }
+        }
+        return $true
+    }
+    if ($r -match '^([\[\(])\s*([^,\]\)]+)\s*([\]\)])$') {
+        return ((Compare-MtVersionStrings -Left $Version -Right $Matches[2].Trim()) -eq 0)
+    }
+    return $true
+}
+
+function Install-MtAutoJs {
+    <#
+    .SYNOPSIS
+        把 vendor 的 AutoJS jar 投放到 run/<版本>/mods（幂等），并复核该线的 rhino 前置。
+
+    .DESCRIPTION
+        1. 按 $script:AutoJsModsByVersion 取该线的规格；空键 = 本批未接入（SRG/intermediary 线）。
+        2. 同 SHA256 ⇒ 跳过；不同/缺失 ⇒ 覆盖（vendor jar 是仓库内的权威副本）。
+        3. 同族旧版本清理：前缀**只有** autojs-（加 rhino- 会把 KubeJS 的硬前置清掉）。
+        4. 校验 run/<版本>/mods 里**恰好一个** rhino，且其版本满足 AutoJS 在自身 mods.toml 里
+           声明的区间（区间与实装版本都从 jar 读，不硬编码）。
+
+    .OUTPUTS
+        0 = 通过（或本批未接入而跳过）；11 = BLOCKED（缺 jar / rhino 缺失或重复 / 版本不满足）。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)]$Paths)
+
+    $version = [string]$Paths.version
+    $specs = @()
+    if ($script:AutoJsModsByVersion.ContainsKey($version)) { $specs = @($script:AutoJsModsByVersion[$version]) }
+    if ($specs.Count -eq 0) {
+        Write-MtLine ('MT_ENV_AUTOJS: 跳过 — {0} 线未接入 AutoJS（待接入（SRG/intermediary，需 build.gradle 路线））' -f $version)
+        return 0
+    }
+
+    $vendorDir = Join-Path (Join-Path (Get-MtTestDir) 'resources') 'mods/autojs'
+    $installed = @()
+    $newCount = 0
+    $skipCount = 0
+    $missing = @()
+
+    foreach ($spec in $specs) {
+        $src = Join-Path $vendorDir $spec.File
+        if (-not (Test-Path -LiteralPath $src -PathType Leaf)) { $missing += $spec.File; continue }
+        $dst = Join-Path $Paths.mods_dir $spec.File
+        $same = $false
+        if (Test-Path -LiteralPath $dst -PathType Leaf) {
+            $srcHash = (Get-FileHash -LiteralPath $src -Algorithm SHA256).Hash
+            $dstHash = (Get-FileHash -LiteralPath $dst -Algorithm SHA256).Hash
+            $same = ($srcHash -eq $dstHash)
+        }
+        if ($same) {
+            $skipCount++
+        } else {
+            Copy-Item -LiteralPath $src -Destination $dst -Force
+            $newCount++
+        }
+        $installed += $spec.File
+    }
+
+    if ($missing.Count -gt 0) {
+        Write-MtLine ('MT_ENV_AUTOJS: BLOCKED — 仓库内缺少 vendor jar：{0}（应位于 scripts/test/resources/mods/autojs/，来源见 PROVENANCE.md）' -f ($missing -join ', '))
+        return 11
+    }
+
+    # 同族旧版本清理：前缀只给 autojs-（**不要**加 rhino- —— 两线的 rhino 是 KubeJS 的硬前置）
+    foreach ($f in @(Get-ChildItem -LiteralPath $Paths.mods_dir -File -Filter '*.jar')) {
+        if ($f.Name -notlike 'autojs-*') { continue }
+        if ($installed -contains $f.Name) { continue }
+        Remove-Item -LiteralPath $f.FullName -Force -ErrorAction SilentlyContinue
+        Write-MtLine ('MT_MODS: 清理旧版本 AutoJS {0}' -f $f.Name)
+    }
+
+    # rhino 复核：必须是**恰好一个**，且满足 AutoJS 在自身 mods.toml 里声明的区间
+    $rhinoJars = @(Get-ChildItem -LiteralPath $Paths.mods_dir -File -Filter '*.jar' |
+            Where-Object { $_.Name -like 'rhino-*' -or $_.Name -like 'rhino_*' } | Sort-Object Name)
+    if ($rhinoJars.Count -eq 0) {
+        Write-MtLine ('MT_ENV_AUTOJS: BLOCKED — run/{0}/mods 内没有 rhino（AutoJS 的 required 前置；两条线本来各有一个，缺失说明被误清/误移）' -f $version)
+        return 11
+    }
+    if ($rhinoJars.Count -gt 1) {
+        Write-MtLine ('MT_ENV_AUTOJS: BLOCKED — run/{0}/mods 内 rhino 有 {1} 个（{2}）⇒ FML 会以 Duplicate mods 拒绝启动；只保留一个' -f $version, $rhinoJars.Count, (($rhinoJars | ForEach-Object { $_.Name }) -join ', '))
+        return 11
+    }
+
+    $autoJsJar = Join-Path $Paths.mods_dir $installed[0]
+    $needRange = Get-MtTomlDepRange -Toml (Get-MtJarTomlText -JarPath $autoJsJar) -DepModId 'rhino'
+    $rhinoJar = $rhinoJars[0]
+    $rhinoVer = Get-MtTomlModVersion -Toml (Get-MtJarTomlText -JarPath $rhinoJar.FullName)
+    if (-not $rhinoVer) {
+        # 兜底：文件名 rhino-<version>.jar
+        $m = [regex]::Match($rhinoJar.Name, '^rhino[-_](.+?)(?:\.jar)?$')
+        if ($m.Success) { $rhinoVer = $m.Groups[1].Value }
+    }
+    $rangeShown = if ($needRange) { $needRange } else { '（未读到区间）' }
+
+    if (-not $needRange) {
+        Write-MtLine ('MT_ENV_AUTOJS: 注意 — 未能从 {0} 的 mods.toml 读出 rhino 需求区间，跳过版本校验（实装 rhino {1}）' -f $installed[0], $rhinoVer)
+    } elseif (-not $rhinoVer) {
+        Write-MtLine ('MT_ENV_AUTOJS: BLOCKED — 读不出 rhino 版本（{0}），无法确认满足 AutoJS 需求 {1}' -f $rhinoJar.Name, $needRange)
+        return 11
+    } elseif (-not (Test-MtVersionInRange -Version $rhinoVer -Range $needRange)) {
+        Write-MtLine ('MT_ENV_AUTOJS: BLOCKED — rhino 版本不满足 {0} 线 AutoJS 的需求（AutoJS 要求 {1}，实装 {2}；区间读自 {3} 的 mods.toml）' -f $version, $needRange, $rhinoVer, $installed[0])
+        return 11
+    }
+
+    Write-MtLine ('MT_ENV_AUTOJS: OK — 已投放 {0}/{1} 个（跳过已存在 {2}；{3}；rhino {4} 满足 {5}）' -f $newCount, $specs.Count, $skipCount, ($installed -join ' / '), $rhinoVer, $rangeShown)
+    return 0
+}
+
 function Install-MtPerfMods {
     <#
     .SYNOPSIS
@@ -1766,6 +2032,9 @@ function Invoke-MtEnvMods {
         # 「为什么不装」，避免后来者以为漏了。
         $rc = Install-MtCarpet -Paths $p
         if ($rc -ne 0) { return $rc }
+        # AutoJS（脚本上下文 MCP 宿主）：把「靠日志猜」的取证通道换成 eval_js（见 docs/features/autojs-test-harness-spec.md）。
+        $rc = Install-MtAutoJs -Paths $p
+        if ($rc -ne 0) { return $rc }
         Write-MtLine 'MT_MODS: OK — 26.1.2 dev run：探针运行时 + Sodium/Iris + Complementary Reimagined 光影(2026-10-07 起不再强制开关) + 超平坦史莱姆压制 + 优化模组(ModernFix/FerriteCore)'
         Write-MtLine 'MT_MODS: 注意 — ImmediatelyFast 在 26.1.2 **故意不装**（与 Iris 开光影互斥，实测 Missing sampler 崩溃；见 $script:PerfMods2612 注释）。Sodium/Iris 为纯客户端模组：`mt_env world` 起专用服务器会自动移出，但**两段式数据生成（runClientData/runServerData）前必须手动移出** run/26.1.2/mods（与探针运行时同规则）'
         [void](Invoke-MtPauseLockEnforce -Paths $p)
@@ -1800,6 +2069,9 @@ function Invoke-MtEnvMods {
         # 与 Install-MtRenderStack 的 .NOTES 口径不符；实测 run/1.20.1/config/oculus.properties 仍写着旧包名
         # ComplementaryUnbound。Install-MtRenderStack 对缺规格的版本只补「光影包 + 配置」两件事，正是本条所需）。
         $rc = Install-MtRenderStack -Paths $p
+        if ($rc -ne 0) { return $rc }
+        # AutoJS：本线生产 jar 为 SRG，不能手投放 ⇒ 本批走「跳过」并留一行可见说明（待接入）。
+        $rc = Install-MtAutoJs -Paths $p
         if ($rc -ne 0) { return $rc }
         Write-MtLine 'MT_MODS: OK — 1.20.1 渲染栈（Embeddium/Oculus）与 FerriteCore 由 build.gradle 的 modImplementation 提供、光影包与光影加载器配置已落位（2026-09-17 实测：EMBEDDIUM_LOADED/OCULUS_LOADED=true + `Using shaderpack: ComplementaryReimagined_r5.9.3.zip`）；生产环境目录已校验'
         [void](Invoke-MtPauseLockEnforce -Paths $p)
@@ -1852,6 +2124,10 @@ function Invoke-MtEnvMods {
     # 光影包 + Iris 默认启用（2026-09-17 用户要求「游戏环境缺少光影包，添加光影包并设置默认启用」）。
     # 1.21.1 的 Sodium/Iris 由上面的整合包复制提供，本调用只补「光影包 + 光影加载器配置（iris.properties / 1.20.1 为 oculus.properties）」。
     $rc = Install-MtRenderStack -Paths $p
+    if ($rc -ne 0) { return $rc }
+    # AutoJS（脚本上下文 MCP 宿主，2026-10-17 批次）：放在渲染栈之后 —— 它不依赖其它安装步骤，
+    # 但必须早于 launch（MCP 端点只在 AutoJS 已进 mods 时才存在）。
+    $rc = Install-MtAutoJs -Paths $p
     if ($rc -ne 0) { return $rc }
     Write-MtLine 'MT_MODS: 提示 — ImmediatelyFast 为纯客户端：`mt_env world` 起专用服务器会自动移出；FerriteCore 两侧皆可，保留'
     [void](Invoke-MtPauseLockEnforce -Paths $p)

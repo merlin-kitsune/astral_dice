@@ -336,6 +336,116 @@ function Test-MtPreflightMcpBinary {
     return , @($true, [System.IO.Path]::GetFileName($exe))
 }
 
+# ── AutoJS（脚本上下文 MCP 宿主）─────────────────────────────────────────
+function Get-MtAutoJsProvenanceHashes {
+    <#
+    .SYNOPSIS
+        从 autojs/PROVENANCE.md 解析「jar 文件名 → SHA256」（只认 64 位十六进制）。
+
+    .NOTES
+        PROVENANCE 是**追加式**的（其它投放步骤各写各的小节），所以这里不假设表格列序：
+        只要同一行里出现 文件名 + 64 位哈希就收下。解析不到就返回空表 —— 由调用方判 FAIL，
+        不在这里编造「看起来对」的哈希。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$Path)
+
+    $map = @{}
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $map }
+    foreach ($line in @(Get-Content -LiteralPath $Path -Encoding utf8)) {
+        $m = [regex]::Match($line, '([A-Za-z0-9._-]+\.jar).*?(?<![0-9a-fA-F])([0-9a-fA-F]{64})(?![0-9a-fA-F])')
+        if ($m.Success) { $map[$m.Groups[1].Value] = $m.Groups[2].Value.ToUpperInvariant() }
+    }
+    return $map
+}
+
+function Test-MtPreflightAutoJs {
+    <#
+    .SYNOPSIS
+        静态检查 AutoJS 通道的三件事：vendor jar 在位且哈希对得上 PROVENANCE、端点已配置、
+        以及该线的 run/<版本>/mods 是否已投放（缺 ⇒ WARN，不阻塞）。
+
+    .OUTPUTS
+        @{ State = 'OK'|'WARN'|'FAIL'; Detail = <摘要> }（同时打印 MT_PREFLIGHT_AUTOJS 机器行）。
+
+    .NOTES
+        · 只做**静态**检查，不连网、不连端口 —— 端点是否真活着由 launch 阶段的就绪闸门判。
+        · 第三条是 WARN 而非 FAIL：jar 只在冷启动前才必须落位（`mt_env mods` 会投），
+          前置阶段就 FAIL 会把「还没装」和「真的坏了」混为一谈。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$Root)
+
+    $lines_out = [System.Collections.Generic.List[string]]::new()
+    $issues = @()
+    $warns = @()
+
+    # 1) vendor jar + SHA256（对 PROVENANCE）
+    $vendorDir = Join-Path (Join-Path (Get-MtTestDir) 'resources') 'mods/autojs'
+    $provPath = Join-Path $vendorDir 'PROVENANCE.md'
+    $provMap = Get-MtAutoJsProvenanceHashes -Path $provPath
+    $wanted = @(
+        [pscustomobject]@{ Version = '1.21.1'; File = 'AutoJS-neoforge-1.21.1-1.0.0.jar' },
+        [pscustomobject]@{ Version = '26.1.2'; File = 'AutoJS-neoforge-26.1-1.0.0.jar' }
+    )
+    $vendorOk = 0
+    foreach ($spec in $wanted) {
+        $jar = Join-Path $vendorDir $spec.File
+        if (-not (Test-Path -LiteralPath $jar -PathType Leaf)) {
+            $issues += ('vendor jar 缺失：“{0}”' -f $spec.File)
+            continue
+        }
+        if (-not $provMap.ContainsKey($spec.File)) {
+            $issues += ('PROVENANCE 未登记 “{0}”（无法复核哈希）' -f $spec.File)
+            continue
+        }
+        $real = (Get-FileHash -LiteralPath $jar -Algorithm SHA256).Hash.ToUpperInvariant()
+        if ($real -ne $provMap[$spec.File]) {
+            $issues += ('{0} 哈希不符（实际 {1}，PROVENANCE {2}）' -f $spec.File, $real.Substring(0, 16), $provMap[$spec.File].Substring(0, 16))
+            continue
+        }
+        $vendorOk++
+    }
+
+    # 2) 端点配置
+    $conf = Get-MtConf
+    $endpoint = ''
+    if ($null -ne $conf -and $conf.ContainsKey('MT_AUTOJS_ENDPOINT')) { $endpoint = ([string]$conf['MT_AUTOJS_ENDPOINT']).Trim() }
+    if (-not $endpoint) {
+        $issues += 'mt.conf 未配置 MT_AUTOJS_ENDPOINT'
+    } else {
+        $okUrl = $false
+        try {
+            $u = [System.Uri]::new($endpoint)
+            $okUrl = ($u.IsAbsoluteUri -and ($u.Scheme -eq 'http' -or $u.Scheme -eq 'https') -and $u.Host)
+        } catch {
+            $okUrl = $false
+        }
+        if (-not $okUrl) { $issues += ('MT_AUTOJS_ENDPOINT 不是合法 http(s) URL：{0}' -f $endpoint) }
+    }
+
+    # 3) 该线 run/<版本>/mods 是否已投放（WARN，不阻塞）
+    foreach ($spec in $wanted) {
+        $p = Get-MtPaths -Version $spec.Version
+        $present = @(Get-ChildItem -LiteralPath $p.mods_dir -File -Filter 'AutoJS-*.jar' -ErrorAction SilentlyContinue)
+        if ($present.Count -eq 0) {
+            $warns += ('{0} 的 mods 里还没有 autojs jar（冷启动前执行 pwsh -File scripts/test/mt_env.ps1 mods --version {0}）' -f $spec.Version)
+        } elseif ($present.Count -gt 1) {
+            $issues += ('{0} 的 mods 里有 {1} 个 autojs jar（同族多份 ⇒ FML Duplicate mods）：{2}' -f $spec.Version, $present.Count, (($present | ForEach-Object { $_.Name }) -join ', '))
+        }
+    }
+
+    $state = 'OK'
+    if ($issues.Count -gt 0) { $state = 'FAIL' } elseif ($warns.Count -gt 0) { $state = 'WARN' }
+
+    $detail = ('端点 {0}；vendor {1}/{2} 校验通过' -f $(if ($endpoint) { $endpoint } else { '(未配置)' }), $vendorOk, $wanted.Count)
+    if ($issues.Count -gt 0) { $detail += '；' + ($issues -join '；') }
+    if ($warns.Count -gt 0) { $detail += '；' + ($warns -join '；') }
+
+    Write-MtLine ('MT_PREFLIGHT_AUTOJS: {0} — {1}' -f $state, $detail)
+    return @{ State = $state; Detail = $detail }
+}
+
 # ── 兼容栈 / 可写性 ───────────────────────────────────────────────────────
 function Test-MtPreflightCompatStack {
     <#
@@ -499,6 +609,9 @@ function Invoke-MtPreflightAll {
     $checks.Add([pscustomobject]@{ Name = '分支'; Pair = (Get-MtPreflightBranch -Root $root) })
     $checks.Add([pscustomobject]@{ Name = '输入法'; Pair = (Test-MtPreflightIme) })
     $checks.Add([pscustomobject]@{ Name = 'MCP 二进制'; Pair = (Test-MtPreflightMcpBinary) })
+    # AutoJS 通道（2026-10-17 批次）：State 可为 WARN —— 见 Test-MtPreflightAutoJs 的 .NOTES
+    $autoJsState = Test-MtPreflightAutoJs -Root $root
+    $checks.Add([pscustomobject]@{ Name = 'AutoJS 通道'; State = [string]$autoJsState.State; Detail = [string]$autoJsState.Detail })
     $checks.Add([pscustomobject]@{ Name = '模组来源'; Pair = (Test-MtPreflightModSources -Root $root) })
     # 注意两点（PowerShell 的两个坑，都踩过）：
     #   1. 哈希表字面量里不能直接写 `Pair = , @(…)` —— 解析器报「参数列表中缺少参数」；
@@ -518,12 +631,26 @@ function Invoke-MtPreflightAll {
     }
 
     $failed = @()
+    $warned = @()
     foreach ($c in $checks) {
-        $ok = [bool]$c.Pair[0]
-        $detail = [string]$c.Pair[1]
-        $mark = if ($ok) { 'OK  ' } else { 'FAIL' }
-        Write-MtLine "  [$mark] $($c.Name): $detail"
-        if (-not $ok) { $failed += "$($c.Name)（$detail）" }
+        # 两类条目并存：老的 @{Name;Pair} 与新的 @{Name;State;Detail}（WARN 只能由后者表达）
+        $hasState = ($null -ne $c.PSObject.Properties['State'])
+        if ($hasState) {
+            $mark = [string]$c.State
+            if ($mark -notin @('OK', 'WARN', 'FAIL')) { $mark = 'FAIL' }
+            $detail = [string]$c.Detail
+            $ok = ($mark -eq 'OK')
+            $warn = ($mark -eq 'WARN')
+        } else {
+            $ok = [bool]$c.Pair[0]
+            $detail = [string]$c.Pair[1]
+            $mark = if ($ok) { 'OK  ' } else { 'FAIL' }
+            $warn = $false
+        }
+        $markDisp = if ($ok) { 'OK  ' } else { $mark }
+        Write-MtLine "  [$markDisp] $($c.Name): $detail"
+        if ($warn) { $warned += "$($c.Name)（$detail）" }
+        elseif (-not $ok) { $failed += "$($c.Name)（$detail）" }
     }
 
     if ($failed.Count -gt 0) {
@@ -533,6 +660,9 @@ function Invoke-MtPreflightAll {
         return $script:ExitPreflight
     }
     Write-MtLine ''
+    if ($warned.Count -gt 0) {
+        Write-MtLine ("MT_PREFLIGHT: WARN — {0} 项为提示（不阻塞）：{1}" -f $warned.Count, ($warned -join '; '))
+    }
     Write-MtLine "MT_PREFLIGHT: OK — $($checks.Count) 项全部满足（$($Versions -join ', ')）"
     return 0
 }

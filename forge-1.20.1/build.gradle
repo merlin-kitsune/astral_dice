@@ -379,6 +379,17 @@ dependencies {
     // 加载完成日志,供 mt_launch.sh(scripts/test/,bash+python 测试流程)判定启动/加载世界完成(整合包为 5.27.83,dev 用 Modrinth 最新 1.20.1 版)。
     modImplementation "maven.modrinth:modernfix:OvpPdk44"
 
+    // AutoJS 实机测试库（仅 dev 运行期；CI/普通构建不解析）
+    // 坐标由 scripts/test/tools/publish_autojs_maven.ps1 发布到 mavenLocal（本文件 :29 的 mavenLocal()）。
+    // 条件守卫：默认关闭 => 没有该本地产物时普通构建 / CI 完全不解析它，不会因缺件失败。
+    // 必须 modRuntimeOnly（不写成 modImplementation）：本模组代码不引用 AutoJS，
+    //    只为实机 MCP 端点提供运行时模组；也不 jarJar。
+    // 1.20.1 生产 jar 是 SRG 字节码 => 必须走 mod* 配置交给 MDG 在解析期做 SRG->named；
+    //    直接投放到 run/1.20.1/mods 会 `NoSuchMethodError`（SRG 名如 m_137583_() 在 named 运行期不存在）。
+    if (providers.gradleProperty('autojsTestMod').orNull == '1') {
+        modRuntimeOnly 'cc.sighs.autojs:AutoJS-forge-1.20.1:1.0.0'
+    }
+
 }
 // AutoForge: end mod addon dependencies
 

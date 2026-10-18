@@ -24,6 +24,15 @@ MT_PACK_MODS_NEOFORGE_26_1_2="D:/.minecraft/versions/26.1.2 模组测试/mods"
 # 本地 MCP 二进制（前置检查用）
 MT_MCP_BIN="C:/Users/<你的用户名>/.local/bin/computer-control-mcp.exe"
 
+# AutoJS（脚本上下文 MCP 宿主）端点 —— 实机测试的 eval 证据通道
+# 见 docs/features/autojs-test-harness-spec.md；端口由游戏目录的 config/autojs.json 决定（默认 25585），
+# 换端口只改这里，脚本不硬编码。缺省时模块内置同样的默认值。
+MT_AUTOJS_ENDPOINT="http://127.0.0.1:25585/mcp"
+# 单次 MCP 调用超时（毫秒）
+MT_AUTOJS_TIMEOUT_MS="15000"
+# config/autojs.json 的 token 非空时填这里（非空则请求自动加 Authorization: Bearer）
+MT_AUTOJS_TOKEN=""
+
 # 注入所需键盘布局：由 mt_ime 在注入前自动切到目标窗口线程，
 # 不再需要用户手动切换输入法。唯一的机器前提是：系统已安装「英语(美国)」键盘
 # （KLID 00000409），由前置检查 mt_preflight 的「输入法」一项校验。

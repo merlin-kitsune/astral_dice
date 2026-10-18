@@ -947,6 +947,145 @@ if ($MyInvocation.InvocationName -ne '.') {
         }
         Write-MtInfo ("IMMEDIATE_RESPAWN=true — {0}（{1} ×2）" -f $immEv, $immCmd)
     }
+    # ── AutoJS 就绪闸门（2026-10-18；需求书 §3 通道契约）────────────────────────
+    # 位置：紧随 immediate_respawn 闸门之后、快照基线（A2/B2）之前 ——
+    #   ① **必须在快照之前**：快照要把 endpoint / protocolVersion / status 摘要一起冻结
+    #      （mt_assert.ps1 的 snapshot 从 cases/.mt_autojs.json 的版本段抄进 .mt_snapshot.json）；
+    #   ② **只能在「已进世界」之后**：status 报的是运行期的 sides / 脚本根，主菜单阶段无意义。
+    # ⚠️ 与任务书「immediate_respawn 之后、清场之前」的偏差：本文件的清场（PRECLEAN）在
+    #    immediate_respawn **之前**执行（既有顺序，见上方 PRECLEAN 段）。闸门顺序以「既有
+    #    闸门的顺序与语义一概不变」为准，故新闸门落在 immediate_respawn 之后。
+    # 启用条件：run/<ver>/mods 里存在 autojs*.jar。**没装只 WARN 不阻断** —— legacy 用例
+    #   还要能在没装 AutoJS 的线上跑（这是本改造的兼容底线）。
+    # 失败语义：端点没起 = ERROR(2)，不是 BLOCKED(11)：这是**启动期**闸门，启动方自己就是
+    #   唯一能补救的人（确认 jar 在 mods 里再重试）；BLOCKED 语义留给断言期（用例里判）。
+    function Get-MtLaunchAutoJsField {
+        param($Map, [string]$Key, $Default = $null)
+        if ($null -eq $Map) { return $Default }
+        if ($Map -is [System.Collections.IDictionary]) {
+            foreach ($k in $Map.Keys) { if ([string]$k -eq $Key) { return $Map[$k] } }
+            return $Default
+        }
+        $prop = $Map.PSObject.Properties[$Key]
+        if ($null -ne $prop) { return $prop.Value }
+        return $Default
+    }
+
+    $autoJsJars = @()
+    $modsDir = ''
+    if ($null -ne $p) { $modsDir = [string]$p.mods_dir }
+    if ($modsDir -and (Test-Path -LiteralPath $modsDir -PathType Container)) {
+        $autoJsJars = @(Get-ChildItem -LiteralPath $modsDir -File -Filter 'autojs*.jar' -ErrorAction SilentlyContinue |
+            ForEach-Object { $_.Name } | Sort-Object)
+    }
+    if (@($autoJsJars).Count -eq 0) {
+        Write-MtWarn ('未检测到 autojs（{0} 下无 autojs*.jar）—— 跳过 AutoJS 就绪闸门；channel=kubejs 的用例照常可跑' -f $modsDir)
+    } else {
+        Write-MtInfo ('AUTOJS_MOD=detected — {0}' -f (@($autoJsJars) -join ','))
+
+        $ajTimeout = 15000
+        $ajRaw = [string]$env:MT_AUTOJS_TIMEOUT_MS
+        $ajParsed = 0
+        if ($ajRaw -and [int]::TryParse($ajRaw, [ref]$ajParsed) -and $ajParsed -gt 0) { $ajTimeout = $ajParsed }
+
+        $ajUrl = 'http://127.0.0.1:25585/mcp'
+        try {
+            $ajConf = Get-MtConf
+            if ($ajConf -is [System.Collections.IDictionary]) {
+                $ajConfUrl = [string](Get-MtLaunchAutoJsField -Map $ajConf -Key 'MT_AUTOJS_ENDPOINT' -Default '')
+                if ($ajConfUrl) { $ajUrl = $ajConfUrl }
+            }
+        } catch { }
+
+        $ajReady = $false
+        $ajModuleErr = ''
+        if (Get-Command Test-MtAutoJsEndpoint -ErrorAction SilentlyContinue) {
+            $ajReady = $true
+        } else {
+            $ajMod = Join-Path (Join-Path $testDir 'lib') 'Mt.AutoJs.psm1'
+            if (-not (Test-Path -LiteralPath $ajMod -PathType Leaf)) {
+                $ajModuleErr = 'scripts/test/lib/Mt.AutoJs.psm1 不存在'
+            } else {
+                try { Import-Module $ajMod -Force -ErrorAction Stop; $ajReady = $true }
+                catch { $ajModuleErr = ('Mt.AutoJs.psm1 导入失败：' + $_.Exception.Message) }
+            }
+        }
+
+        $ajOk = $false
+        $ajReason = ''
+        $ajStatus = $null
+        if (-not $ajReady) {
+            $ajReason = $ajModuleErr
+        } else {
+            try {
+                $ajProbe = Test-MtAutoJsEndpoint -EndpointUrl $ajUrl -TimeoutMs $ajTimeout
+                $ajOk = [bool](Get-MtLaunchAutoJsField -Map $ajProbe -Key 'Ok' -Default $false)
+                $ajReason = [string](Get-MtLaunchAutoJsField -Map $ajProbe -Key 'Reason' -Default '')
+                $ajStatus = Get-MtLaunchAutoJsField -Map $ajProbe -Key 'Status'
+            } catch {
+                $ajReason = ('Test-MtAutoJsEndpoint 抛异常：' + $_.Exception.Message)
+            }
+        }
+        if (-not $ajReason) { $ajReason = '未知原因' }
+
+        # protocolVersion 优先取 status 的回包（服务端自报），其次工具结果顶层，最后 unknown。
+        $ajStatusValue = Get-MtLaunchAutoJsField -Map $ajStatus -Key 'Value'
+        $ajProto = 'unknown'
+        foreach ($ajCand in @($ajStatusValue, $ajStatus)) {
+            foreach ($ajKey in @('protocolVersion', 'protocol_version', 'protocol')) {
+                $ajVal = Get-MtLaunchAutoJsField -Map $ajCand -Key $ajKey
+                if ($ajVal -and $ajProto -eq 'unknown') { $ajProto = [string]$ajVal }
+            }
+            if ($ajProto -ne 'unknown') { break }
+        }
+
+        if (-not $ajOk) {
+            if ($env:MT_ALLOW_NO_AUTOJS -eq '1') {
+                Write-MtWarn ('AutoJS 端点未就绪（{0}）—— 已按 MT_ALLOW_NO_AUTOJS=1 放行；channel=autojs 的用例将 BLOCKED' -f $ajReason)
+            } else {
+                Write-MtErrLine ('MT_LAUNCH: ERROR — AutoJS 端点未就绪（{0}）；先确认 run/{1}/mods 里有 autojs jar 再重试' -f $ajReason, $Version)
+                exit $MT_EXIT_ERROR
+            }
+        } else {
+            Write-MtLine ('MT_LAUNCH: OK — AutoJS 端点已就绪（{0}，protocolVersion={1}）' -f $ajUrl, $ajProto)
+        }
+
+        # 启动快照的 AutoJS 字段：写进 cases/.mt_autojs.json 的版本段（mt_case 会往里挂 cases，
+        # mt_assert snapshot 会把它抄进 .mt_snapshot.json，mt_report 只读这份结构化记录）。
+        $ajRecordFile = Join-Path (Join-Path $testDir 'cases') '.mt_autojs.json'
+        $ajDoc = $null
+        try {
+            if (Test-Path -LiteralPath $ajRecordFile -PathType Leaf) {
+                $ajText = [System.IO.File]::ReadAllText($ajRecordFile, [System.Text.UTF8Encoding]::new($false, $false))
+                $ajDoc = $ajText | ConvertFrom-Json -AsHashtable -ErrorAction Stop
+            }
+        } catch { $ajDoc = $null }
+        if (-not ($ajDoc -is [System.Collections.IDictionary])) { $ajDoc = [ordered]@{} }
+        if (-not ($ajDoc.Contains('versions')) -or -not ($ajDoc['versions'] -is [System.Collections.IDictionary])) {
+            $ajDoc['versions'] = [ordered]@{}
+        }
+        $ajCases = [ordered]@{}
+        if ($ajDoc['versions'].Contains($Version)) {
+            $ajOld = $ajDoc['versions'][$Version]
+            $ajOldCases = Get-MtLaunchAutoJsField -Map $ajOld -Key 'cases'
+            if ($ajOldCases -is [System.Collections.IDictionary]) { $ajCases = $ajOldCases }
+        }
+        $ajDoc['versions'][$Version] = [ordered]@{
+            endpoint         = $ajUrl
+            protocol_version = $ajProto
+            ok               = $ajOk
+            reason           = $(if ($ajOk) { '' } else { $ajReason })
+            ts               = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() / 1000.0
+            status           = $ajStatusValue
+            cases            = $ajCases
+        }
+        try {
+            [System.IO.File]::WriteAllText($ajRecordFile, (ConvertTo-MtJson -InputObject $ajDoc), [System.Text.UTF8Encoding]::new($false, $false))
+            Write-MtInfo ('AUTOJS_SNAPSHOT: written — {0}（versions.{1}）' -f $ajRecordFile, $Version)
+        } catch {
+            Write-MtWarn ('AutoJS 快照写入失败（{0}）：{1}' -f $ajRecordFile, $_.Exception.Message)
+        }
+    }
 
     # ── A2（B2）：单阶段 launch 也必须建立快照基线 ─────────────────────────────
     # 背景（B1 实测，docs/batch3/B1-in-game-results.md ⑥-2）：此前**只有全流程**在

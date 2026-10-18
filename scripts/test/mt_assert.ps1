@@ -132,6 +132,16 @@ $script:LogSources = [ordered]@{ 'latest' = 'latest_log'; 'debug' = 'debug_log';
 
 $script:TAG_UTF8 = [System.Text.UTF8Encoding]::new($false, $false)
 
+# ── AutoJS 通道（2026-10-18；需求书 §3/§4）─────────────────────────────────
+# eval / state 断言的证据不由日志产生，而是「谁来求值」：本文件只做**比较**，值由调用方
+# （mt_case.ps1 的 eval_js / 内联 code）给出；也可以在这里用内联 --code 自己求值。
+# 结构化记录文件与 mt_case.ps1 同路径（跨脚本契约）：mt_report 只读它，绝不重跑游戏。
+$script:AutoJsRecordFile = Join-Path (Join-Path (Get-MtTestDir) 'cases') '.mt_autojs.json'
+$script:AutoJsDefaultEndpoint = 'http://127.0.0.1:25585/mcp'
+# expect 操作符集合（单键对象即操作符；其它单键对象按「嵌套期望」逐键递归）。
+$script:ExpectOperators = @('min', 'max', 'gte', 'lte', 'regex', 'set', 'contains')
+$script:ExpectEchoMax = 400
+
 # ── 快照 ──────────────────────────────────────────────────────────────────
 function Get-MtSnapshot {
     <#
@@ -506,6 +516,28 @@ function Invoke-MtAssertSnapshot {
         $launchWarn = 'WARN — 无 launch 基线（--phase cases 单步路线 / 快照早于 B7），launch 窗口退化为当前起点'
     }
 
+    # ── AutoJS 通道快照（2026-10-18）─────────────────────────────────────────
+    # 端点 / protocolVersion / status 摘要来自 cases/.mt_autojs.json 的版本段
+    # （mt_launch.ps1 的「AutoJS 就绪闸门」写入；用例期 eval 记录也挂在同一文件）。
+    # 这是**新增键**：既有字段（offsets / anchors / window / ts / crash_baseline …）含义不动。
+    # 没有记录时沿用同 run 的上一份，再没有就是 $null（legacy / 未装 autojs 的线）。
+    $autoJsSnap = $null
+    try {
+        if (Test-Path -LiteralPath $script:AutoJsRecordFile -PathType Leaf) {
+            $recText = [System.IO.File]::ReadAllText($script:AutoJsRecordFile, $script:TAG_UTF8)
+            $recObj = ConvertFrom-MtAssertJsonText -Text $recText
+            if ($recObj.Ok -and ($recObj.Value -is [System.Collections.IDictionary])) {
+                $vs = Get-MtAssertField -Map $recObj.Value -Key 'versions'
+                if (($vs -is [System.Collections.IDictionary]) -and (Test-MtAssertHasKey -Map $vs -Key $Version)) {
+                    $autoJsSnap = Get-MtAssertField -Map $vs -Key $Version
+                }
+            }
+        }
+    } catch { $autoJsSnap = $null }
+    if (($null -eq $autoJsSnap) -and ($null -ne $prev) -and ($prev -is [System.Collections.IDictionary]) -and (Test-MtAssertHasKey -Map $prev -Key 'autojs')) {
+        $autoJsSnap = Get-MtAssertField -Map $prev -Key 'autojs'
+    }
+
     $entry = [ordered]@{
         offsets        = $offsets
         launch_offsets = $launchOffsets
@@ -515,6 +547,7 @@ function Invoke-MtAssertSnapshot {
         ts             = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() / 1000.0
         crash_baseline = @($crashNames)
         mixin_errors   = @()
+        autojs         = $autoJsSnap
     }
     $snap['versions'][$Version] = $entry
 
@@ -728,6 +761,519 @@ function Invoke-MtAssertMixin {
     return 0
 }
 
+# ── AutoJS 通道：expect 比较引擎（2026-10-18；需求书 §4/§5）═════════════════
+# 设计边界：
+#   ① 本引擎**不认识**日志/通道，只做「期望 vs 实际」的纯函数比较 ⇒ 可离线单测。
+#   ② 期望里出现的键必须全部命中；期望里没有的键不参与判定，但要在证据里回显（Extras）。
+#   ③ 判据不足（缺 expect）与判定不符（FAIL）必须分开：前者是**用例写错**（ERROR），
+#      后者才是**被测行为不符**（FAIL）—— 混在一起会把工具链故障显示成产品缺陷。
+#   ④ 端点不可用一律 BLOCKED(11)，不是 FAIL。
+
+function Get-MtAssertField {
+    <#
+    .SYNOPSIS
+        从 Hashtable / OrderedDictionary / PSCustomObject 取字段（缺键返回 Default）。
+    .NOTES
+        键名比较用字符串比较（JSON 反序列化在 PS7 下给 Hashtable，-AsHashtable 时键是 string；
+        但用例内的手写对象可能是 PSCustomObject，两种都要能吃）。
+    #>
+    [CmdletBinding()]
+    param($Map, [Parameter(Mandatory)][string]$Key, $Default = $null)
+
+    if ($null -eq $Map) { return $Default }
+    if ($Map -is [System.Collections.IDictionary]) {
+        foreach ($k in $Map.Keys) { if ([string]::Equals([string]$k, $Key, [System.StringComparison]::Ordinal)) { return $Map[$k] } }
+        return $Default
+    }
+    $prop = $Map.PSObject.Properties[$Key]
+    if ($null -ne $prop) { return $prop.Value }
+    return $Default
+}
+
+function Test-MtAssertHasKey {
+    [CmdletBinding()]
+    param($Map, [Parameter(Mandatory)][string]$Key)
+
+    if ($null -eq $Map) { return $false }
+    if ($Map -is [System.Collections.IDictionary]) {
+        foreach ($k in $Map.Keys) { if ([string]::Equals([string]$k, $Key, [System.StringComparison]::Ordinal)) { return $true } }
+        return $false
+    }
+    return ($null -ne $Map.PSObject.Properties[$Key])
+}
+
+function ConvertTo-MtAssertPlain {
+    <#
+    .SYNOPSIS
+        把任意 JSON 反序列化结果归一成 [ordered] / object[] / 标量（比较引擎的唯一输入形态）。
+    #>
+    [CmdletBinding()]
+    param($Value)
+
+    if ($null -eq $Value) { return $null }
+    if ($Value -is [System.Collections.IDictionary]) {
+        $d = [ordered]@{}
+        foreach ($k in @($Value.Keys)) { $d[[string]$k] = ConvertTo-MtAssertPlain -Value $Value[$k] }
+        return $d
+    }
+    if ($Value -is [string] -or $Value -is [ValueType]) { return $Value }
+    if ($Value -is [System.Collections.IEnumerable]) {
+        $list = New-Object System.Collections.ArrayList
+        foreach ($item in $Value) { [void]$list.Add((ConvertTo-MtAssertPlain -Value $item)) }
+        return , $list.ToArray()
+    }
+    $d = [ordered]@{}
+    foreach ($prop in $Value.PSObject.Properties) { $d[$prop.Name] = ConvertTo-MtAssertPlain -Value $prop.Value }
+    return $d
+}
+
+function ConvertTo-MtAssertJson {
+    <#
+    .SYNOPSIS
+        compact JSON 回显（Max>0 时超长截断；给证据行用，避免刷屏）。
+    #>
+    [CmdletBinding()]
+    param($Value, [int]$Max = 0)
+
+    $plain = ConvertTo-MtAssertPlain -Value $Value
+    $json = ConvertTo-Json -InputObject $plain -Depth 20 -Compress
+    if ($null -eq $json) { $json = 'null' }
+    $json = [string]$json
+    if ($Max -gt 0 -and $json.Length -gt $Max) {
+        $len = $json.Length
+        return ($json.Substring(0, $Max) + ('...（截断，原长 {0}）' -f $len))
+    }
+    return $json
+}
+
+function Format-MtExpectValue {
+    [CmdletBinding()]
+    param($Value)
+
+    if ($null -eq $Value) { return 'null' }
+    return (ConvertTo-MtAssertJson -Value $Value -Max $script:ExpectEchoMax)
+}
+
+function Get-MtExpectKind {
+    <#
+    .SYNOPSIS
+        期望/实际值的形态：object / array / scalar。
+    #>
+    [CmdletBinding()]
+    param($Expected)
+
+    if ($null -eq $Expected) { return 'scalar' }
+    if ($Expected -is [System.Collections.IDictionary]) { return 'object' }
+    if ($Expected -is [string] -or $Expected -is [ValueType]) { return 'scalar' }
+    if ($Expected -is [System.Collections.IEnumerable]) { return 'array' }
+    return 'object'
+}
+
+function ConvertTo-MtExpectNumber {
+    <#
+    .SYNOPSIS
+        数值归一（数值类型直取；数值字符串按不变文化解析；其它返回 $null）。
+    #>
+    [CmdletBinding()]
+    param($Value)
+
+    if ($null -eq $Value) { return $null }
+    if ($Value -is [bool]) { return $null }
+    if ($Value -is [double] -or $Value -is [single] -or $Value -is [decimal] -or
+        $Value -is [int] -or $Value -is [long] -or $Value -is [int16] -or $Value -is [byte] -or
+        $Value -is [uint32] -or $Value -is [uint64] -or $Value -is [int64]) {
+        return [double]$Value
+    }
+    if ($Value -is [string]) {
+        $d = 0.0
+        if ([double]::TryParse($Value, [System.Globalization.NumberStyles]::Any, [System.Globalization.CultureInfo]::InvariantCulture, [ref]$d)) { return $d }
+    }
+    return $null
+}
+
+function Test-MtExpectScalarEqual {
+    <#
+    .SYNOPSIS
+        标量相等：布尔/数字/字符串归一后比较；字符串不区分大小写。
+    .NOTES
+        数字用相对容差 1e-9 比较（JSON 里 1 与 1.0 必须视为相等，而 double 直比会受解析影响）。
+    #>
+    [CmdletBinding()]
+    param($Expected, $Actual)
+
+    if ($null -eq $Expected) { return ($null -eq $Actual) }
+    if ($Expected -is [bool]) {
+        if ($Actual -is [bool]) { return ($Expected -eq $Actual) }
+        $n = ConvertTo-MtExpectNumber -Value $Actual
+        if ($null -ne $n) { return ($Expected -eq ($n -ne 0)) }
+        if ($Actual -is [string]) {
+            $s = $Actual.Trim()
+            if ([string]::Equals($s, 'true', [System.StringComparison]::OrdinalIgnoreCase)) { return $Expected }
+            if ([string]::Equals($s, 'false', [System.StringComparison]::OrdinalIgnoreCase)) { return (-not $Expected) }
+        }
+        return $false
+    }
+    $en = ConvertTo-MtExpectNumber -Value $Expected
+    if ($null -ne $en) {
+        $an = ConvertTo-MtExpectNumber -Value $Actual
+        if ($null -eq $an) { return $false }
+        $tol = 1e-9 * [Math]::Max(1.0, [Math]::Abs($en))
+        return ([Math]::Abs($en - $an) -le $tol)
+    }
+    $aText = ''
+    if ($Actual -is [bool]) { if ($Actual) { $aText = 'true' } else { $aText = 'false' } }
+    elseif ($null -eq $Actual) { $aText = '' }
+    elseif ($Actual -is [string]) { $aText = $Actual }
+    elseif ($Actual -is [System.Collections.IDictionary]) { $aText = (Format-MtExpectValue -Value $Actual) }
+    elseif ((Get-MtExpectKind -Expected $Actual) -eq 'array') { $aText = (Format-MtExpectValue -Value $Actual) }
+    else { $aText = [string]$Actual }
+    return [string]::Equals([string]$Expected, $aText, [System.StringComparison]::OrdinalIgnoreCase)
+}
+
+function Test-MtExpectOperator {
+    <#
+    .SYNOPSIS
+        操作符判据：min / max / gte / lte / regex / set / contains。返回失配串数组（空 = 命中）。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$Name, $Operand, $Actual, [Parameter(Mandatory)][string]$Path)
+
+    $out = @()
+    $opText = ('{' + $Name + ':' + (Format-MtExpectValue -Value $Operand) + '}')
+    $mismatch = { param($Kind) '路径 {0} 期望 {1} 实际 {2}（{3}）' -f $Path, $opText, (Format-MtExpectValue -Value $Actual), $Kind }
+
+    if ($Name -eq 'min' -or $Name -eq 'max' -or $Name -eq 'gte' -or $Name -eq 'lte') {
+        $need = ConvertTo-MtExpectNumber -Value $Operand
+        if ($null -eq $need) { return @((& $mismatch ('判据不合法：{0} 需要数字' -f $Name))) }
+        $have = ConvertTo-MtExpectNumber -Value $Actual
+        if ($null -eq $have) { return @((& $mismatch '非数值')) }
+        $ok = $false
+        if ($Name -eq 'min' -or $Name -eq 'gte') { $ok = ($have -ge $need) } else { $ok = ($have -le $need) }
+        if (-not $ok) { $out += (& $mismatch '数值越界') }
+        return $out
+    }
+    if ($Name -eq 'regex') {
+        if (-not ($Operand -is [string])) { return @((& $mismatch '判据不合法：regex 需要字符串')) }
+        $subject = ''
+        if ($Actual -is [string]) { $subject = $Actual }
+        elseif ($null -eq $Actual) { $subject = '' }
+        elseif ((Get-MtExpectKind -Expected $Actual) -eq 'scalar' -and -not ($Actual -is [bool])) { $subject = [string]$Actual }
+        else { return @((& $mismatch '类型不符：regex 只能作用于字符串')) }
+        $rx = $null
+        try { $rx = [regex]::new([string]$Operand) } catch { return @((& $mismatch ('判据不合法：正则非法 ' + $_.Exception.Message))) }
+        if (-not $rx.IsMatch($subject)) { $out += (& $mismatch '正则不匹配') }
+        return $out
+    }
+    # set / contains 都要操作数是数组
+    if (-not (($Operand -is [System.Collections.IEnumerable]) -and -not ($Operand -is [string]) -and -not ($Operand -is [System.Collections.IDictionary]))) {
+        return @((& $mismatch ('判据不合法：{0} 需要数组' -f $Name)))
+    }
+    if (-not (($Actual -is [System.Collections.IEnumerable]) -and -not ($Actual -is [string]) -and -not ($Actual -is [System.Collections.IDictionary]))) {
+        return @((& $mismatch '类型不符：需要数组'))
+    }
+    # 注意：ConvertTo-MtAssertPlain 对数组走「return , $arr」（防递归展开）。
+    # 因此不能写 @(函数调用)：那会得到「装着整个数组的单元素数组」，集合判据会整片假失败。
+    # 必须先落到变量再 @()。
+    $wantRaw = ConvertTo-MtAssertPlain -Value $Operand
+    $want = @($wantRaw)
+    $haveRaw = ConvertTo-MtAssertPlain -Value $Actual
+    $haveItems = @($haveRaw)
+    if ($Name -eq 'set') {
+        if ($want.Count -ne $haveItems.Count) {
+            $out += (& $mismatch ('集合元素数不符（期望 {0} 实际 {1}）' -f $want.Count, $haveItems.Count))
+        }
+        $pool = New-Object System.Collections.ArrayList
+        foreach ($h in $haveItems) { [void]$pool.Add($h) }
+        foreach ($w in $want) {
+            $hit = -1
+            for ($i = 0; $i -lt $pool.Count; $i++) {
+                if (Test-MtExpectScalarEqual -Expected $w -Actual $pool[$i]) { $hit = $i; break }
+            }
+            if ($hit -ge 0) { [void]$pool.RemoveAt($hit) }
+            else { $out += (& $mismatch ('集合缺元素 ' + (Format-MtExpectValue -Value $w))) }
+        }
+        return $out
+    }
+    foreach ($w in $want) {
+        $found = $false
+        foreach ($h in $haveItems) {
+            if (Test-MtExpectScalarEqual -Expected $w -Actual $h) { $found = $true; break }
+        }
+        if (-not $found) { $out += (& $mismatch ('缺少子集元素 ' + (Format-MtExpectValue -Value $w))) }
+    }
+    return $out
+}
+
+function Test-MtExpectNode {
+    <#
+    .SYNOPSIS
+        逐键递归比较；返回失配串数组（空 = 命中）。报文固定三段：路径 + 期望 + 实际。
+    #>
+    [CmdletBinding()]
+    param($Expected, $Actual, [string]$Path = '<root>', [bool]$Present = $true)
+
+    $out = @()
+    if (-not $Present) {
+        return @(('路径 {0} 期望 {1} 实际 <缺失>（缺失键）' -f $Path, (Format-MtExpectValue -Value $Expected)))
+    }
+    $kind = Get-MtExpectKind -Expected $Expected
+    if ($kind -eq 'object') {
+        $keys = @($Expected.Keys)
+        if ($keys.Count -eq 1 -and ($script:ExpectOperators -contains [string]$keys[0])) {
+            $opName = [string]$keys[0]
+            return (Test-MtExpectOperator -Name $opName -Operand $Expected[$keys[0]] -Actual $Actual -Path $Path)
+        }
+        $actualKind = Get-MtExpectKind -Expected $Actual
+        if ($actualKind -ne 'object') {
+            return @(('路径 {0} 期望 <对象> 实际 {1}（类型不符）' -f $Path, (Format-MtExpectValue -Value $Actual)))
+        }
+        foreach ($k in $keys) {
+            $kName = [string]$k
+            $subPath = $Path
+            if ($Path -eq '<root>') { $subPath = $kName } else { $subPath = $Path + '.' + $kName }
+            if (Test-MtAssertHasKey -Map $Actual -Key $kName) {
+                $out += @(Test-MtExpectNode -Expected $Expected[$k] -Actual (Get-MtAssertField -Map $Actual -Key $kName) -Path $subPath -Present $true)
+            } else {
+                $out += @(Test-MtExpectNode -Expected $Expected[$k] -Actual $null -Path $subPath -Present $false)
+            }
+        }
+        return $out
+    }
+    if ($kind -eq 'array') {
+        $actualKind = Get-MtExpectKind -Expected $Actual
+        if ($actualKind -ne 'array') {
+            return @(('路径 {0} 期望 <数组> 实际 {1}（类型不符）' -f $Path, (Format-MtExpectValue -Value $Actual)))
+        }
+        $wantItems = @($Expected)
+        $haveItems = @($Actual)
+        if ($wantItems.Count -ne $haveItems.Count) {
+            $out += ('路径 {0} 期望 {1} 实际 {2}（长度不符）' -f $Path, (Format-MtExpectValue -Value $wantItems), (Format-MtExpectValue -Value $haveItems))
+        }
+        $n = [Math]::Min($wantItems.Count, $haveItems.Count)
+        for ($i = 0; $i -lt $n; $i++) {
+            $out += @(Test-MtExpectNode -Expected $wantItems[$i] -Actual $haveItems[$i] -Path ($Path + '[' + $i + ']') -Present $true)
+        }
+        return $out
+    }
+    if (-not (Test-MtExpectScalarEqual -Expected $Expected -Actual $Actual)) {
+        $out += ('路径 {0} 期望 {1} 实际 {2}（标量不等）' -f $Path, (Format-MtExpectValue -Value $Expected), (Format-MtExpectValue -Value $Actual))
+    }
+    return $out
+}
+
+function Get-MtExpectExtras {
+    <#
+    .SYNOPSIS
+        收集「实际里有、期望里没写」的键路径（不参与判定，只回显证据）。
+    #>
+    [CmdletBinding()]
+    param($Expected, $Actual, [string]$Path = '<root>')
+
+    $out = @()
+    if ((Get-MtExpectKind -Expected $Expected) -ne 'object') { return $out }
+    $keys = @($Expected.Keys)
+    if ($keys.Count -eq 1 -and ($script:ExpectOperators -contains [string]$keys[0])) { return $out }
+    if ((Get-MtExpectKind -Expected $Actual) -ne 'object') { return $out }
+    foreach ($k in @($Actual.Keys)) {
+        $kName = [string]$k
+        $subPath = $Path
+        if ($Path -eq '<root>') { $subPath = $kName } else { $subPath = $Path + '.' + $kName }
+        if (-not (Test-MtAssertHasKey -Map $Expected -Key $kName)) { $out += $subPath; continue }
+        $out += @(Get-MtExpectExtras -Expected (Get-MtAssertField -Map $Expected -Key $kName) -Actual (Get-MtAssertField -Map $Actual -Key $kName) -Path $subPath)
+    }
+    return $out
+}
+
+function Test-MtExpectMatch {
+    <#
+    .SYNOPSIS
+        expect 引擎入口：@{ Ok; Mismatches; Extras }。
+    #>
+    [CmdletBinding()]
+    param($Expected, $Actual)
+
+    $plainExp = ConvertTo-MtAssertPlain -Value $Expected
+    $plainAct = ConvertTo-MtAssertPlain -Value $Actual
+    $mism = @(Test-MtExpectNode -Expected $plainExp -Actual $plainAct -Path '<root>' -Present $true)
+    $extra = @(Get-MtExpectExtras -Expected $plainExp -Actual $plainAct -Path '<root>')
+    return @{ Ok = ($mism.Count -eq 0); Mismatches = $mism; Extras = $extra }
+}
+
+function ConvertFrom-MtAssertJsonText {
+    <#
+    .SYNOPSIS
+        解析 JSON 文本 → @{ Ok; Value; Err }（不抛异常；用于 --value-json / --expect）。
+    #>
+    [CmdletBinding()]
+    param([AllowEmptyString()][string]$Text)
+
+    try {
+        $v = $Text | ConvertFrom-Json -AsHashtable -ErrorAction Stop
+        return @{ Ok = $true; Value = $v; Err = '' }
+    } catch {
+        return @{ Ok = $false; Value = $null; Err = $_.Exception.Message }
+    }
+}
+
+function Import-MtAssertAutoJsModule {
+    <#
+    .SYNOPSIS
+        按契约导入 Mt.AutoJs.psm1（缺失/失败返回 $false，不抛）。
+    .NOTES
+        先看会话里是否**已经**有 Invoke-MtAutoJsEval：离线自测时 temp/t2 的桩模块会先导入，
+        此时不能再 —— 也不该 —— 去 Import-Module 真实模块把它顶掉。
+    #>
+    [CmdletBinding()]
+    param()
+
+    if ($null -ne $script:AssertAutoJsModuleReady) { return [bool]$script:AssertAutoJsModuleReady }
+    $script:AssertAutoJsModuleReady = $false
+    if (Get-Command Invoke-MtAutoJsEval -ErrorAction SilentlyContinue) {
+        $script:AssertAutoJsModuleReady = $true
+        return $true
+    }
+    $mod = Join-Path $script:LibDir 'Mt.AutoJs.psm1'
+    if (-not (Test-Path -LiteralPath $mod -PathType Leaf)) { return $false }
+    try { Import-Module $mod -Force -ErrorAction Stop; $script:AssertAutoJsModuleReady = $true } catch { $script:AssertAutoJsModuleReady = $false }
+    return [bool]$script:AssertAutoJsModuleReady
+}
+
+function Test-MtAssertAutoJsEndpoint {
+    <#
+    .SYNOPSIS
+        AutoJS 端点可用性：@{ Ok; Reason; Status; Url }（端点没起 = BLOCKED 的依据）。
+    #>
+    [CmdletBinding()]
+    param([int]$TimeoutMs = 0)
+
+    if ($TimeoutMs -le 0) {
+        $TimeoutMs = 15000
+        $raw = [string]$env:MT_AUTOJS_TIMEOUT_MS
+        $n = 0
+        if ($raw -and [int]::TryParse($raw, [ref]$n) -and $n -gt 0) { $TimeoutMs = $n }
+    }
+    if (-not (Import-MtAssertAutoJsModule)) {
+        return @{ Ok = $false; Reason = 'AutoJS 模块不可用（scripts/test/lib/Mt.AutoJs.psm1 缺失或导入失败）'; Status = $null; Url = '' }
+    }
+    $url = $script:AutoJsDefaultEndpoint
+    try {
+        $conf = Get-MtConf
+        if ($conf -is [System.Collections.IDictionary] -and (Test-MtAssertHasKey -Map $conf -Key 'MT_AUTOJS_ENDPOINT')) {
+            $cand = [string](Get-MtAssertField -Map $conf -Key 'MT_AUTOJS_ENDPOINT')
+            if ($cand) { $url = $cand }
+        }
+    } catch { }
+    $res = $null
+    try { $res = Test-MtAutoJsEndpoint -EndpointUrl $url -TimeoutMs $TimeoutMs } catch {
+        return @{ Ok = $false; Reason = ('Test-MtAutoJsEndpoint 抛异常：' + $_.Exception.Message); Status = $null; Url = $url }
+    }
+    $ok = [bool](Get-MtAssertField -Map $res -Key 'Ok' -Default $false)
+    $reason = [string](Get-MtAssertField -Map $res -Key 'Reason' -Default '')
+    if (-not $ok -and -not $reason) { $reason = '未知原因' }
+    return @{ Ok = $ok; Reason = $reason; Status = (Get-MtAssertField -Map $res -Key 'Status') ; Url = $url }
+}
+
+function Invoke-MtAssertEval {
+    <#
+    .SYNOPSIS
+        eval / state 断言：取到值 → 用 expect 引擎判定 → 打 MT_ASSERT_EVAL / MT_ASSERT_STATE 结论行。
+    .NOTES
+        退出码语义与既有断言一致：0=PASS，1=FAIL（判据不符），2=ERROR（用例/判据写错），11=BLOCKED（端点不可用）。
+        state 在缺 expect 时的语义 = **只打印证据**（PASS + 「无判据」标注），绝不假装判定过。
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$Version,
+        [string]$Kind = 'eval',
+        [string]$ValueJson = '',
+        [string]$FromFile = '',
+        [string]$Code = '',
+        [string]$Side = 'auto',
+        [string]$ExpectJson = '',
+        [string]$Label = ''
+    )
+
+    if (@('eval', 'state') -notcontains $Kind) { $Kind = 'eval' }
+    $tag = 'MT_ASSERT_' + $Kind.ToUpperInvariant()
+    $lab = ''
+    if ($Label) { $lab = '（' + $Label + '）' }
+
+    $value = $null
+    $haveValue = $false
+    if ($FromFile) {
+        if (-not (Test-Path -LiteralPath $FromFile -PathType Leaf)) {
+            Write-MtErrLine ($tag + ': ERROR — 值文件不存在：' + $FromFile)
+            return 2
+        }
+        $text = [System.IO.File]::ReadAllText($FromFile, $script:TAG_UTF8)
+        $parsed = ConvertFrom-MtAssertJsonText -Text $text
+        if (-not $parsed.Ok) {
+            Write-MtErrLine ($tag + ': ERROR — 值文件 JSON 不合法：' + $parsed.Err)
+            return 2
+        }
+        $value = $parsed.Value
+        $haveValue = $true
+    } elseif ($ValueJson) {
+        $parsed = ConvertFrom-MtAssertJsonText -Text $ValueJson
+        if (-not $parsed.Ok) {
+            Write-MtErrLine ($tag + ': ERROR — --value-json 不合法：' + $parsed.Err)
+            return 2
+        }
+        $value = $parsed.Value
+        $haveValue = $true
+    } elseif ($Code) {
+        $ep = Test-MtAssertAutoJsEndpoint
+        if (-not $ep.Ok) {
+            Write-MtLine ($tag + ': BLOCKED — AutoJS 端点不可用（' + $ep.Reason + '）=> 求值不可用，判定 BLOCKED（不是 FAIL）' + $lab)
+            return 11
+        }
+        $sideArg = $Side
+        if (-not $sideArg) { $sideArg = 'auto' }
+        $r = $null
+        try { $r = Invoke-MtAutoJsEval -Code $Code -Side $sideArg } catch {
+            Write-MtErrLine ($tag + ': ERROR — 调用 Invoke-MtAutoJsEval 抛异常：' + $_.Exception.Message)
+            return 2
+        }
+        if (-not [bool](Get-MtAssertField -Map $r -Key 'Ok' -Default $false)) {
+            $err = [string](Get-MtAssertField -Map $r -Key 'Error' -Default '')
+            if (-not $err) { $err = '脚本抛错（无 error 文本）' }
+            Write-MtLine ($tag + ': FAIL — 内联 code 求值失败：' + $err + $lab)
+            return 1
+        }
+        $value = ConvertTo-MtAssertPlain -Value (Get-MtAssertField -Map $r -Key 'Value')
+        $haveValue = $true
+    }
+    if (-not $haveValue) {
+        Write-MtErrLine ($tag + ': ERROR — 需要 --value-json / --from-file / --code 之一（没有可判定的值）')
+        return 2
+    }
+
+    $evidence = ConvertTo-MtAssertJson -Value $value -Max $script:ExpectEchoMax
+    if (-not $ExpectJson) {
+        if ($Kind -eq 'state') {
+            Write-MtLine ($tag + ': PASS — 证据 ' + $evidence + '（无判据）' + $lab)
+            return 0
+        }
+        Write-MtErrLine ($tag + ': ERROR — eval 断言缺少 expect（判据缺失不等于通过）')
+        return 2
+    }
+    $exp = ConvertFrom-MtAssertJsonText -Text $ExpectJson
+    if (-not $exp.Ok) {
+        Write-MtErrLine ($tag + ': ERROR — expect JSON 不合法：' + $exp.Err)
+        return 2
+    }
+    $m = Test-MtExpectMatch -Expected $exp.Value -Actual $value
+    if (-not $m.Ok) {
+        $text = @($m.Mismatches) -join ' | '
+        Write-MtLine ($tag + ': FAIL — ' + $text + '（实际值 ' + $evidence + '）' + $lab)
+        return 1
+    }
+    $extraText = ''
+    if (@($m.Extras).Count -gt 0) { $extraText = '；期望未覆盖的键已回显：' + (@($m.Extras) -join ', ') }
+    Write-MtLine ($tag + ': PASS — 期望 ' + (ConvertTo-MtAssertJson -Value $exp.Value -Max $script:ExpectEchoMax) + ' 实际 ' + $evidence + $extraText + $lab)
+    return 0
+}
+
 # ── 入口 ══════════════════════════════════════════════════════════════════
 if ($MyInvocation.InvocationName -ne '.') {
 
@@ -736,6 +1282,13 @@ if ($MyInvocation.InvocationName -ne '.') {
     $PatternText = ''
     $Source = 'latest'
     $Window = ''            # '' = 按子命令取默认（log/absent=case，mixin=launch）
+    # ── AutoJS 通道（eval / state）专用参数 ─────────────────────────────────
+    $ValueJson = ''         # 调用方已求好的值（JSON 文本）
+    $FromFile = ''          # 同上，但值太大时走临时文件（避免命令行长度限制）
+    $Code = ''              # 内联 JS：本进程自己求值（端点不可用 => BLOCKED）
+    $Side = 'auto'
+    $ExpectJson = ''        # 判据（JSON 文本）；state 允许为空 = 只打印证据
+    $AssertLabel = ''
 
     $i = 0
     while ($i -lt $args.Count) {
@@ -761,13 +1314,35 @@ if ($MyInvocation.InvocationName -ne '.') {
             $Window = 'case'; $i++
         } elseif ($key -eq 'no-snapshot') {
             $Window = 'whole'; $i++
+        } elseif ($key -eq 'value-json') {
+            if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --value-json 的值'; exit $MT_EXIT_ERROR }
+            $ValueJson = [string]$args[$i + 1]; $i += 2
+        } elseif ($key -eq 'from-file') {
+            if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --from-file 的值'; exit $MT_EXIT_ERROR }
+            $FromFile = [string]$args[$i + 1]; $i += 2
+        } elseif ($key -eq 'code') {
+            if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --code 的值'; exit $MT_EXIT_ERROR }
+            $Code = [string]$args[$i + 1]; $i += 2
+        } elseif ($key -eq 'side') {
+            if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --side 的值'; exit $MT_EXIT_ERROR }
+            $Side = ([string]$args[$i + 1]).ToLowerInvariant(); $i += 2
+        } elseif ($key -eq 'expect') {
+            if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --expect 的值'; exit $MT_EXIT_ERROR }
+            $ExpectJson = [string]$args[$i + 1]; $i += 2
+        } elseif ($key -eq 'label') {
+            if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --label 的值'; exit $MT_EXIT_ERROR }
+            $AssertLabel = [string]$args[$i + 1]; $i += 2
         } else {
             Write-MtErrorLine "未知参数 $tok"; exit $MT_EXIT_ERROR
         }
     }
 
-    if ($Cmd -notin @('snapshot', 'log', 'absent', 'crash', 'kubejs', 'mixin')) {
-        Write-MtErrorLine '必须指定子命令 snapshot / log / absent / crash / kubejs / mixin'
+    if ($Cmd -notin @('snapshot', 'log', 'absent', 'crash', 'kubejs', 'mixin', 'eval', 'state')) {
+        Write-MtErrorLine '必须指定子命令 snapshot / log / absent / crash / kubejs / mixin / eval / state'
+        exit $MT_EXIT_ERROR
+    }
+    if (($Cmd -eq 'eval' -or $Cmd -eq 'state') -and (@('auto', 'server', 'client') -notcontains $Side)) {
+        Write-MtErrorLine "--side 只接受 auto / server / client（收到 $Side）"
         exit $MT_EXIT_ERROR
     }
     if (-not $Version) { Write-MtErrorLine '必须指定 --version'; exit $MT_EXIT_ERROR }
@@ -790,6 +1365,8 @@ if ($MyInvocation.InvocationName -ne '.') {
         'crash' { exit (Invoke-MtAssertCrash -Version $Version) }
         'kubejs' { exit (Invoke-MtAssertKubejs -Version $Version) }
         'mixin' { exit (Invoke-MtAssertMixin -Version $Version -Window $(if ($Window) { $Window } else { 'launch' })) }
+        'eval' { exit (Invoke-MtAssertEval -Version $Version -Kind 'eval' -ValueJson $ValueJson -FromFile $FromFile -Code $Code -Side $Side -ExpectJson $ExpectJson -Label $AssertLabel) }
+        'state' { exit (Invoke-MtAssertEval -Version $Version -Kind 'state' -ValueJson $ValueJson -FromFile $FromFile -Code $Code -Side $Side -ExpectJson $ExpectJson -Label $AssertLabel) }
     }
     exit $MT_EXIT_ERROR
 }

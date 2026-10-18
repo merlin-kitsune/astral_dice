@@ -119,10 +119,41 @@ $script:Primitives = [ordered]@{
     'kubejs_reload'  = @()
     'wait'           = @('ms')
     'screenshot'     = @('tag', 'mode', 'crop')
-    'assert'         = @('type', 'pattern', 'source', 'image', 'question')
+    # 2026-10-18：断言 type=eval|state 走 AutoJS 通道，故 assert 原语增列
+    # from（前序 eval_js 的 save_as）/ code / side（内联求值）/ expect（判据）。
+    'assert'         = @('type', 'pattern', 'source', 'image', 'question', 'from', 'code', 'side', 'expect')
+    # ── AutoJS 通道原语（channel=autojs；仍**封闭**：非法字段立刻 ERROR）──────────────
+    # eval_js    ：求值一次。code 与 script **二选一**；args 注入为 JS 里的 args 变量；
+    #              save_as 存进用例作用域（跨步骤共享），供断言 type=eval|state 的 from 引用；
+    #              expect 可选 = 内联断言（与断言 type=eval 同一比较引擎）。
+    # await_state：轮询求值直到返回真值（true / 非零 / 非空串 / 对象 ok:true），超时 ⇒ 该步 FAIL。
+    # mcp_status ：取 Get-MtAutoJsStatus（端点未起 ⇒ BLOCKED），结果存 save_as。
+    'eval_js'        = @('side', 'code', 'script', 'args', 'save_as', 'timeout_ms', 'expect')
+    'await_state'    = @('side', 'code', 'script', 'args', 'timeout_ms', 'interval_ms')
+    'mcp_status'     = @('timeout_ms', 'save_as')
     'note'           = @('text')
 }
-$script:AssertTypes = @('log', 'absent', 'crash', 'kubejs', 'mixin', 'vision')
+$script:AssertTypes = @('log', 'absent', 'crash', 'kubejs', 'mixin', 'vision', 'eval', 'state')
+
+# ── AutoJS 通道（2026-10-18；需求书 docs/features/autojs-test-harness-spec.md §3/§4）──────
+# `channel` 是**用例级**开关，缺省 = `kubejs`（legacy 用例与改造前逐字节一致）。只有
+# `channel=autojs` 的用例才允许 eval_js / await_state / mcp_status 与断言 type=eval|state；
+# 反过来在 autojs 用例里 `kubejs_reload` 属**已退役原语**（需求书 §5）。
+$script:CaseChannels = @('autojs', 'kubejs')
+$script:CaseChannel = 'kubejs'                  # 当前用例的通道（Invoke-MtCaseRun 设置）
+$script:CaseScope = @{}                         # 当前用例的 save_as 作用域（跨步骤共享）
+$script:AutoJsSides = @('auto', 'server', 'client')
+$script:AutoJsStepTimeoutMs = 15000             # eval_js / await_state 的 timeout_ms 缺省
+$script:AutoJsAwaitIntervalMs = 250             # await_state 的 interval_ms 缺省
+$script:AutoJsValueEchoMax = 400                # 步骤行回显的 Value 紧凑 JSON 上限
+$script:AutoJsDefaultEndpoint = 'http://127.0.0.1:25585/mcp'
+# 结构化记录（**跨脚本契约**，与 .mt_snapshot.json 同级）：mt_launch 写端点 / status，
+# mt_case 写逐条 eval 结果，mt_assert（快照摘要）与 mt_report（报告小节）读出 ——
+# 报告侧**不重跑游戏**，只读这份文件。
+$script:AutoJsRecordFile = Join-Path $script:CasesDir '.mt_autojs.json'
+$script:AutoJsCaseEvals = @()                   # 本用例的 eval / assert 记录（报告用）
+$script:AutoJsCaseDirty = $false
+$script:AutoJsModuleReady = $null               # $null = 未探测；$true/$false = 已探测结果
 
 # ── 会话期 Esc 保护（2026-09-18 t18；口径见 TESTING-SPEC.md）──────────────────
 # 背景（实测）：目标选择会话激活期间 **Esc = 取消选择**。而 `inject_command` 只要没声明
@@ -373,6 +404,788 @@ function Get-MtIoErrorText {
 }
 
 # ── 校验 ──────────────────────────────────────────────────────────────────
+# ── AutoJS 通道工具（2026-10-18；契约见 docs/features/autojs-test-harness-spec.md §3/§4）──
+# 契约（只按契约调用，传输层不在本文件实现）：
+#   Test-MtAutoJsEndpoint [-EndpointUrl <url>] [-TimeoutMs <ms>] [-PollMs <ms>]
+#       -> @{ Ok = $true/$false; Reason = '<为什么失败>'; Status = <status 返回对象> }（不抛异常）
+#   Invoke-MtAutoJsEval -Code <js> [-Side auto|server|client] [-TimeoutMs <ms>]
+#       -> @{ Ok; Value; Type; Diagnostics; ElapsedMs; Error; Stack }
+#   Get-MtAutoJsStatus / Get-MtAutoJsKubejsLog -Side -Kind -Limit / Invoke-MtAutoJsReload -Side
+#   / Reset-MtAutoJsSession
+#
+# 失败语义（需求书 §3，必须逐条落到分支上）：
+#   端点不可用           => BLOCKED（11）—— 测试链故障，不是「被测修复无效」
+#   脚本抛错 / 断言不符  => FAIL
+#   用例 / JSON 结构非法 => ERROR（2）
+# 归因入口是 Test-MtAutoJsEndpointDown：「eval 返回 Ok=$false」不能直接判端点死活，
+# 脚本自己 throw 也是 Ok=$false —— 必须先探测端点，才能把 FAIL 与 BLOCKED 分开。
+function Get-MtAutoJsField {
+    <#
+    .SYNOPSIS
+        从 Mt.AutoJs 的返回对象里取一个键（IDictionary 与 PSCustomObject 都吃）。
+
+    .NOTES
+        契约写的是 hashtable，但实现方完全可能直接把 ConvertFrom-Json 的产物
+        （PSCustomObject）返回。两套取法散在十几个调用点里，漏一处就是「永远取到默认值」
+        的静默降级（例如 Ok 永远为 $false => 全部误判 BLOCKED），故收敛到这一个入口。
+    #>
+    [CmdletBinding()]
+    param(
+        [AllowNull()]$Map,
+        [Parameter(Mandatory)][string]$Key,
+        [AllowNull()]$Default = $null
+    )
+
+    if ($null -eq $Map) { return $Default }
+    if ($Map -is [System.Collections.IDictionary]) {
+        if ($Map.Contains($Key)) { return $Map[$Key] }
+        return $Default
+    }
+    $prop = $Map.PSObject.Properties[$Key]
+    if ($null -ne $prop) { return $prop.Value }
+    return $Default
+}
+
+function Get-MtAutoJsResultValue {
+    <#
+    .SYNOPSIS
+        eval_js 结果的「可断言值」：优先 ValueParsed，回退 Value。
+
+    .NOTES
+        AutoJS 对非标量只回字符串（"type":"string"）⇒ -Mode Json 包裹后 Value 是 JSON 文本、
+        ValueParsed 才是结构；state 断言要按结构路径匹配就只能走 ValueParsed。
+        标量 / 非 JSON 文本没有 ValueParsed，回退 Value 保持原语义。
+    #>
+    [CmdletBinding()]
+    param([AllowNull()]$Result)
+
+    $parsed = Get-MtAutoJsField -Map $Result -Key 'ValueParsed'
+    if ($null -ne $parsed) { return (ConvertTo-MtAutoJsPlain -Value $parsed) }
+    return (ConvertTo-MtAutoJsPlain -Value (Get-MtAutoJsField -Map $Result -Key 'Value'))
+}
+
+function ConvertTo-MtAutoJsPlain {
+    <#
+    .SYNOPSIS
+        把任意取到的值递归归一成可 JSON 化的纯数据（ordered / array / 标量）。
+
+    .NOTES
+        ConvertTo-Json 对 PSCustomObject 与 Hashtable 的深嵌套行为不一致；先归一，
+        保证「写进 .mt_autojs.json 的值」与「回显在步骤行的值」是同一份数据。
+    #>
+    [CmdletBinding()]
+    param([AllowNull()]$Value)
+
+    if ($null -eq $Value) { return $null }
+    if ($Value -is [string] -or $Value -is [bool]) { return $Value }
+    if ($Value -is [int] -or $Value -is [long] -or $Value -is [double] -or
+        $Value -is [decimal] -or $Value -is [single]) { return $Value }
+    if ($Value -is [System.Collections.IDictionary]) {
+        $out = [ordered]@{}
+        foreach ($k in @($Value.Keys)) { $out[[string]$k] = (ConvertTo-MtAutoJsPlain -Value $Value[$k]) }
+        return $out
+    }
+    if ($Value -is [System.Collections.IEnumerable]) {
+        $list = @()
+        foreach ($item in $Value) { $list += , (ConvertTo-MtAutoJsPlain -Value $item) }
+        return , $list
+    }
+    $props = @($Value.PSObject.Properties | Where-Object { $_.MemberType -eq 'NoteProperty' -or $_.MemberType -eq 'Property' })
+    if ($props.Count -gt 0) {
+        $out = [ordered]@{}
+        foreach ($p in $props) { $out[$p.Name] = (ConvertTo-MtAutoJsPlain -Value $p.Value) }
+        return $out
+    }
+    return [string]$Value
+}
+
+function ConvertTo-MtCompactJson {
+    <#
+    .SYNOPSIS
+        单行紧凑 JSON（步骤行 / 记录文件 / 断言命令行都用它），可按字符数截断。
+    #>
+    [CmdletBinding()]
+    param([AllowNull()]$Value, [int]$Max = 0)
+
+    $plain = ConvertTo-MtAutoJsPlain -Value $Value
+    $text = $null
+    try { $text = (ConvertTo-Json -InputObject $plain -Depth 20 -Compress) } catch { $text = $null }
+    if ($null -eq $text) { $text = 'null' }
+    if ($Max -gt 0 -and $text.Length -gt $Max) {
+        return ($text.Substring(0, $Max) + '...（截断，原长 ' + $text.Length + '）')
+    }
+    return $text
+}
+
+function Get-MtAutoJsTruthy {
+    <#
+    .SYNOPSIS
+        await_state 的真值判定（需求书 §4）：true / 非零 / 非空字符串 / 对象里 ok:true。
+
+    .NOTES
+        与 python 的 if x 不完全一致（对象只认 ok 键），所以不能复用 Test-MtTruthyValue
+        —— 那边「非空对象为真」，而这里 {ok:false, ...} 必须是假（否则 await_state 会在
+        「脚本跑通但条件未满足」时立刻放行）。
+    #>
+    [CmdletBinding()]
+    param([AllowNull()]$Value)
+
+    if ($null -eq $Value) { return $false }
+    if ($Value -is [bool]) { return [bool]$Value }
+    if ($Value -is [int] -or $Value -is [long] -or $Value -is [double] -or
+        $Value -is [decimal] -or $Value -is [single]) { return ([double]$Value -ne 0) }
+    if ($Value -is [string]) {
+        # ⚠️ 不能「非空即真」：-Mode Bool 的回包把布尔写成字符串（"value":"true"/"false"），
+        # 按长度判会让字符串 "false" 直接通过 await_state。这里按字面量判。
+        $s = ([string]$Value).Trim()
+        if (-not $s) { return $false }
+        if ([string]::Equals($s, 'false', [System.StringComparison]::OrdinalIgnoreCase)) { return $false }
+        if ([string]::Equals($s, 'true', [System.StringComparison]::OrdinalIgnoreCase)) { return $true }
+        return $true
+    }
+    if ($Value -is [System.Collections.IDictionary]) {
+        if ($Value.Contains('ok')) { return (Get-MtAutoJsTruthy -Value $Value['ok']) }
+        foreach ($k in @($Value.Keys)) { if (Get-MtAutoJsTruthy -Value $Value[$k]) { return $true } }
+        return $false
+    }
+    $oka = $Value.PSObject.Properties['ok']
+    if ($null -ne $oka) { return (Get-MtAutoJsTruthy -Value $oka.Value) }
+    if ($Value -is [System.Collections.IEnumerable]) {
+        foreach ($item in $Value) { if (Get-MtAutoJsTruthy -Value $item) { return $true } }
+        return $false
+    }
+    return $true
+}
+
+function Import-MtAutoJsModule {
+    <#
+    .SYNOPSIS
+        载入 scripts/test/lib/Mt.AutoJs.psm1（只载一次），返回 $true/$false。
+
+    .NOTES
+        ① 先看函数在不在：离线自测用 temp/t2 的同名桩模块 Import-Module 覆盖真实模块，
+           若这里无条件再导入真实文件，桩就被顶掉（反之亦然）。所以「已存在
+           Invoke-MtAutoJsEval」即视为可用，绝不重复导入。
+        ② 不抛异常：模块缺失时返回 $false，由调用方翻成 BLOCKED（测试链故障 != 用例失败）。
+    #>
+    [CmdletBinding()]
+    param()
+
+    if ($null -ne $script:AutoJsModuleReady) { return [bool]$script:AutoJsModuleReady }
+
+    if (Get-Command -Name 'Invoke-MtAutoJsEval' -ErrorAction SilentlyContinue) {
+        $script:AutoJsModuleReady = $true
+        return $true
+    }
+    $modPath = Join-Path $script:LibDir 'Mt.AutoJs.psm1'
+    if (-not (Test-Path -LiteralPath $modPath -PathType Leaf)) {
+        $script:AutoJsModuleReady = $false
+        return $false
+    }
+    try {
+        Import-Module -Name $modPath -Force -ErrorAction Stop
+    } catch {
+        $script:AutoJsModuleReady = $false
+        return $false
+    }
+    $ok = [bool](Get-Command -Name 'Invoke-MtAutoJsEval' -ErrorAction SilentlyContinue)
+    $script:AutoJsModuleReady = $ok
+    return $ok
+}
+
+function Get-MtAutoJsEndpointUrl {
+    <#
+    .SYNOPSIS
+        端点 URL：mt.conf 的 MT_AUTOJS_ENDPOINT（缺键 => 契约默认值）。
+    #>
+    [CmdletBinding()]
+    param()
+
+    $url = ''
+    try {
+        $conf = Get-MtConf
+        if ($null -ne $conf -and $conf.ContainsKey('MT_AUTOJS_ENDPOINT')) {
+            $url = [string]$conf['MT_AUTOJS_ENDPOINT']
+        }
+    } catch {
+        $url = ''
+    }
+    if (-not $url) { $url = $script:AutoJsDefaultEndpoint }
+    return $url
+}
+
+function Get-MtAutoJsScriptRoot {
+    <#
+    .SYNOPSIS
+        用例 script 字段的相对根：scripts/test/resources/autojs/<version>/。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][AllowEmptyString()][string]$Version)
+
+    return (Join-Path (Join-Path (Join-Path $script:TestDir 'resources') 'autojs') $Version)
+}
+
+function Resolve-MtAutoJsCode {
+    <#
+    .SYNOPSIS
+        把步骤的 code / script / args 组装成真正发给 AutoJS 的 JS 源码。
+
+    .NOTES
+        args 按需求书 §4「注入为 JS 里的 args 变量」：eval_js 前置一行 var args = <json>;
+        await_state / eval_js / 内联断言 code 都走 IIFE 形参（AutoJS 只认最后一个表达式，见 -AsExpression）——都不改调用方
+        代码的缩进与作用域语义。
+        script 必须是相对 autojs/<version>/ 的路径：允许绝对路径或 .. 等于把用例变成
+        任意文件读取器（用例是数据，不是代码）。
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][AllowNull()]$Step,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$Version,
+        [switch]$AsExpression
+    )
+
+    $code = [string](Get-MtMapValue -Map $Step -Key 'code' -Default '')
+    $scriptRel = [string](Get-MtMapValue -Map $Step -Key 'script' -Default '')
+    if ($code -and $scriptRel) {
+        return @{ Ok = $false; Code = ''; Err = '不能同时给 code 与 script（二选一）' }
+    }
+    if (-not $code -and -not $scriptRel) {
+        return @{ Ok = $false; Code = ''; Err = '必须给 code 或 script' }
+    }
+    if ($scriptRel) {
+        if ([System.IO.Path]::IsPathRooted($scriptRel) -or $scriptRel.Contains('..')) {
+            return @{ Ok = $false; Code = ''; Err = ("script 必须是相对 scripts/test/resources/autojs/{0}/ 的路径（收到 '{1}'）" -f $Version, $scriptRel) }
+        }
+        $full = Join-Path (Get-MtAutoJsScriptRoot -Version $Version) $scriptRel
+        if (-not (Test-Path -LiteralPath $full -PathType Leaf)) {
+            return @{ Ok = $false; Code = ''; Err = ("脚本不存在：{0}" -f $full) }
+        }
+        try {
+            $code = [System.IO.File]::ReadAllText($full, $script:TAG_UTF8)
+        } catch {
+            return @{ Ok = $false; Code = ''; Err = ("无法读取脚本 {0}：{1}" -f $full, $_.Exception.Message) }
+        }
+    }
+    $argsObj = Get-MtMapValue -Map $Step -Key 'args'
+    $argsJson = 'null'
+    if ($null -ne $argsObj) { $argsJson = ConvertTo-MtCompactJson -Value $argsObj }
+    if ($AsExpression) {
+        # 表达式形态：AutoJS 侧被求值的就是这个 IIFE 的返回值（await_state 需要真假值）
+        return @{ Ok = $true; Code = ("(function(args){{ return ({0}); }})({1})" -f $code.Trim(), $argsJson); Err = '' }
+    }
+    return @{ Ok = $true; Code = (("var args = {1};" + [char]10 + "{0}") -f $code, $argsJson); Err = '' }
+}
+
+function Test-MtAutoJsEndpointDown {
+    <#
+    .SYNOPSIS
+        端点归因探针：eval 返回 Ok=$false 时，判断是「端点没起」（=> BLOCKED）还是
+        「脚本自己抛错」（=> FAIL）。
+
+    .OUTPUTS
+        $null = 端点可用（失败属于脚本 / 断言）；否则返回失败原因文本（调用方据此给 BLOCKED）。
+    #>
+    [CmdletBinding()]
+    param([int]$TimeoutMs = 2000)
+
+    try {
+        $ep = Test-MtAutoJsEndpoint -EndpointUrl (Get-MtAutoJsEndpointUrl) -TimeoutMs $TimeoutMs -PollMs 250
+    } catch {
+        return ("Test-MtAutoJsEndpoint 抛异常：{0}" -f $_.Exception.Message)
+    }
+    $ok = [bool](Get-MtAutoJsField -Map $ep -Key 'Ok' -Default $false)
+    if ($ok) { return $null }
+    $reason = [string](Get-MtAutoJsField -Map $ep -Key 'Reason' -Default '未知原因')
+    if (-not $reason) { $reason = '未知原因' }
+    return $reason
+}
+
+function Get-MtAutoJsRunId {
+    [CmdletBinding()]
+    param()
+    try { return [string](Get-MtActiveRunId) } catch { return '' }
+}
+
+function Get-MtAutoJsDoc {
+    <#
+    .SYNOPSIS
+        读 cases/.mt_autojs.json（缺失 / 损坏 => 空文档，绝不抛）。
+    #>
+    [CmdletBinding()]
+    param()
+
+    $empty = [ordered]@{ run_id = (Get-MtAutoJsRunId); versions = [ordered]@{} }
+    if (-not (Test-Path -LiteralPath $script:AutoJsRecordFile -PathType Leaf)) { return $empty }
+    try {
+        $txt = [System.IO.File]::ReadAllText($script:AutoJsRecordFile, $script:TAG_UTF8)
+        if (-not $txt.Trim()) { return $empty }
+        $obj = $txt | ConvertFrom-Json -AsHashtable -ErrorAction Stop
+    } catch {
+        return $empty
+    }
+    if ($null -eq $obj) { return $empty }
+    if (-not $obj.Contains('versions') -or $null -eq $obj['versions']) { $obj['versions'] = [ordered]@{} }
+    if (-not $obj.Contains('run_id') -or -not $obj['run_id']) { $obj['run_id'] = (Get-MtAutoJsRunId) }
+    return $obj
+}
+
+function Save-MtAutoJsDoc {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)]$Doc)
+
+    $dir = [System.IO.Path]::GetDirectoryName($script:AutoJsRecordFile)
+    if ($dir -and -not (Test-Path -LiteralPath $dir)) { [void](New-Item -ItemType Directory -Force -Path $dir) }
+    [System.IO.File]::WriteAllText($script:AutoJsRecordFile, (ConvertTo-MtJson -InputObject $Doc), $script:TAG_UTF8)
+}
+
+function Get-MtAutoJsVersionRec {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)]$Doc, [Parameter(Mandatory)][string]$Version)
+
+    $vers = $Doc['versions']
+    if ($null -eq $vers) { $vers = [ordered]@{}; $Doc['versions'] = $vers }
+    if (-not $vers.Contains($Version)) { $vers[$Version] = [ordered]@{} }
+    return $vers[$Version]
+}
+
+function Add-MtAutoJsCaseStep {
+    <#
+    .SYNOPSIS
+        记一条 eval / assert 记录（报告只读记录，不重跑游戏）。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][System.Collections.IDictionary]$Entry)
+
+    $script:AutoJsCaseEvals = @($script:AutoJsCaseEvals) + @($Entry)
+    $script:AutoJsCaseDirty = $true
+}
+
+function Save-MtAutoJsCaseRecord {
+    <#
+    .SYNOPSIS
+        把本用例的 eval 记录 flush 进 cases/.mt_autojs.json 的对应版本段。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$Version, [Parameter(Mandatory)][string]$CaseId)
+
+    $doc = Get-MtAutoJsDoc
+    $vrec = Get-MtAutoJsVersionRec -Doc $doc -Version $Version
+    if (-not $vrec.Contains('cases') -or $null -eq $vrec['cases']) { $vrec['cases'] = [ordered]@{} }
+    $evals = @($script:AutoJsCaseEvals)
+    $stepCount = 0
+    $stepFailed = 0
+    foreach ($ev in $evals) {
+        $opText = [string](Get-MtMapValue -Map $ev -Key 'op' -Default '')
+        if ($opText -ne 'eval_js') { continue }
+        $stepCount++
+        $outText = [string](Get-MtMapValue -Map $ev -Key 'outcome' -Default '')
+        if ($outText -ne 'PASS') { $stepFailed++ }
+    }
+    $vrec['cases'][$CaseId] = [ordered]@{
+        channel     = $script:CaseChannel
+        eval_steps  = $stepCount
+        eval_failed = $stepFailed
+        ts          = ([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() / 1000.0)
+        evals       = $evals
+    }
+    Save-MtAutoJsDoc -Doc $doc
+    $script:AutoJsCaseDirty = $false
+}
+
+function Invoke-MtCaseExpectMatch {
+    <#
+    .SYNOPSIS
+        用一个值去跑 expect 判据，返回 (结果, 说明) 二元组。
+
+    .NOTES
+        比较引擎的唯一实现在 mt_assert.ps1（断言结论行 MT_ASSERT_EVAL/STATE 也由它打印）。
+        用例侧再写一份必然与其漂移，所以这里走子进程调 mt_assert.ps1 eval|state。
+        值以 --value-json 传；超过 8000 字符改落临时文件（Windows 命令行长度上限）。
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][psobject]$Paths,
+        [AllowNull()]$Value,
+        [AllowNull()]$Expect,
+        [string]$Type = 'eval',
+        [string]$Label = ''
+    )
+
+    $cmd = 'eval'
+    if ($Type -eq 'state') { $cmd = 'state' }
+    $argv = @($cmd, '--version', [string]$Paths.version)
+    if ($null -ne $Expect) { $argv += @('--expect', (ConvertTo-MtCompactJson -Value $Expect)) }
+    if ($Label) { $argv += @('--label', $Label) }
+
+    $valueJson = ConvertTo-MtCompactJson -Value $Value
+    $tmp = ''
+    if ($valueJson.Length -gt 8000) {
+        $tmp = Join-Path $script:CasesDir '.mt_autojs_value.json'
+        [System.IO.File]::WriteAllText($tmp, $valueJson, $script:TAG_UTF8)
+        $argv += @('--from-file', $tmp)
+    } else {
+        $argv += @('--value-json', $valueJson)
+    }
+
+    $r = $null
+    try {
+        $r = Invoke-MtCaseChild -Script 'mt_assert.ps1' -ScriptArgs $argv
+    } finally {
+        if ($tmp -and (Test-Path -LiteralPath $tmp -PathType Leaf)) {
+            Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue
+        }
+    }
+    if ($null -eq $r) { return (New-MtPair 'ERROR' '断言子进程没有返回结果') }
+    if ($r.ExitCode -eq 11) {
+        return (New-MtPair 'BLOCKED' (Get-MtTail -Text ([string]$r.StdErr) -FromTextMode))
+    }
+    return (Get-MtVerdict -ExitCode $r.ExitCode -Result $r)
+}
+
+function Invoke-MtCaseAutoJsEval {
+    <#
+    .SYNOPSIS
+        eval_js 原语：求值一次，按 save_as 存进用例作用域。
+
+    .NOTES
+        步骤行回显 side / elapsedMs / Value（紧凑 JSON，超过 400 字符截断）。
+        save_as 先落作用域（哪怕失败）：后续断言据此拿到「前序结果不可用 => BLOCKED」，
+        而不是把「引用了一个失败的步骤」误判成断言不符（FAIL）。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][psobject]$Paths, [Parameter(Mandatory)][AllowNull()]$Step)
+
+    $side = [string](Get-MtMapValue -Map $Step -Key 'side' -Default 'auto')
+    if (-not $side) { $side = 'auto' }
+    $timeoutMs = [int](Get-MtMapValue -Map $Step -Key 'timeout_ms' -Default $script:AutoJsStepTimeoutMs)
+    if ($timeoutMs -le 0) { $timeoutMs = $script:AutoJsStepTimeoutMs }
+    $saveAs = [string](Get-MtMapValue -Map $Step -Key 'save_as' -Default '')
+
+    # -AsExpression + -Mode Json 是配套的（需求书 §3）：AutoJS 只认「最后一个表达式」，且只要
+    # 非标量就回字符串 => 必须包成 IIFE 表达式再由模块 JSON.stringify，否则拿到的是 [object Object]。
+    $resolved = Resolve-MtAutoJsCode -Step $Step -Version ([string]$Paths.version) -AsExpression
+    if (-not $resolved.Ok) {
+        $errText = [string]$resolved.Err
+        Add-MtAutoJsCaseStep -Entry ([ordered]@{ op = 'eval_js'; side = $side; save_as = $saveAs; outcome = 'ERROR'; detail = $errText })
+        return (New-MtPair 'ERROR' $errText)
+    }
+    if (-not (Import-MtAutoJsModule)) {
+        $msg = 'AutoJS 模块不可用（scripts/test/lib/Mt.AutoJs.psm1 缺失或导入失败）=> 端点状态未知'
+        Add-MtAutoJsCaseStep -Entry ([ordered]@{ op = 'eval_js'; side = $side; save_as = $saveAs; outcome = 'BLOCKED'; detail = $msg })
+        return (New-MtPair 'BLOCKED' $msg)
+    }
+
+    $r = $null
+    try {
+        $r = Invoke-MtAutoJsEval -Code ([string]$resolved.Code) -Side $side -TimeoutMs $timeoutMs -Mode Json
+    } catch {
+        $msg = ("调用 Invoke-MtAutoJsEval 抛异常：{0}" -f $_.Exception.Message)
+        Add-MtAutoJsCaseStep -Entry ([ordered]@{ op = 'eval_js'; side = $side; save_as = $saveAs; outcome = 'ERROR'; detail = $msg })
+        return (New-MtPair 'ERROR' $msg)
+    }
+    if ($null -eq $r) {
+        $msg = 'Invoke-MtAutoJsEval 没有返回结果'
+        Add-MtAutoJsCaseStep -Entry ([ordered]@{ op = 'eval_js'; side = $side; save_as = $saveAs; outcome = 'ERROR'; detail = $msg })
+        return (New-MtPair 'ERROR' $msg)
+    }
+
+    $ok = [bool](Get-MtAutoJsField -Map $r -Key 'Ok' -Default $false)
+    # 优先 ValueParsed：-Mode Json 后 Value 是 JSON 文本，state 断言要拿结构而不是一串字符。
+    $value = Get-MtAutoJsResultValue -Result $r
+    $elapsedMs = [int](Get-MtAutoJsField -Map $r -Key 'ElapsedMs' -Default 0)
+    $valueType = [string](Get-MtAutoJsField -Map $r -Key 'Type' -Default '')
+    $errText = [string](Get-MtAutoJsField -Map $r -Key 'Error' -Default '')
+    $valueJson = ConvertTo-MtCompactJson -Value $value -Max $script:AutoJsValueEchoMax
+    $echo = ("side={0} elapsedMs={1} value={2}" -f $side, $elapsedMs, $valueJson)
+
+    if ($saveAs) {
+        $script:CaseScope[$saveAs] = [ordered]@{
+            ok         = $ok
+            value      = $value
+            type       = $valueType
+            side       = $side
+            elapsed_ms = $elapsedMs
+            op         = 'eval_js'
+            error      = $errText
+        }
+    }
+
+    if (-not $ok) {
+        $detail = $echo
+        if ($errText) { $detail = $detail + ' error=' + $errText }
+        $down = Test-MtAutoJsEndpointDown -TimeoutMs ([Math]::Min(3000, $timeoutMs))
+        if ($null -ne $down) {
+            $msg = ("AutoJS 端点不可用（{0}）=> 本步 BLOCKED（不是 FAIL）：{1}" -f $down, $detail)
+            Add-MtAutoJsCaseStep -Entry ([ordered]@{ op = 'eval_js'; side = $side; save_as = $saveAs; outcome = 'BLOCKED'; detail = $msg })
+            return (New-MtPair 'BLOCKED' $msg)
+        }
+        $msg = ("eval_js 脚本失败：{0}" -f $detail)
+        Add-MtAutoJsCaseStep -Entry ([ordered]@{ op = 'eval_js'; side = $side; save_as = $saveAs; outcome = 'FAIL'; detail = $msg })
+        return (New-MtPair 'FAIL' $msg)
+    }
+
+    $expect = Get-MtMapValue -Map $Step -Key 'expect'
+    if ($null -ne $expect) {
+        $label = 'eval_js'
+        if ($saveAs) { $label = ('save_as=' + $saveAs) }
+        $pair = Invoke-MtCaseExpectMatch -Paths $Paths -Value $value -Expect $expect -Type 'eval' -Label $label
+        $outcome = [string]$pair[0]
+        $detail = ($echo + '；内联 expect => ' + [string]$pair[1])
+        Add-MtAutoJsCaseStep -Entry ([ordered]@{
+            op         = 'eval_js'
+            side       = $side
+            save_as    = $saveAs
+            type       = $valueType
+            elapsed_ms = $elapsedMs
+            value      = $valueJson
+            expect     = (ConvertTo-MtCompactJson -Value $expect)
+            outcome    = $outcome
+            detail     = $detail
+        })
+        return (New-MtPair $outcome $detail)
+    }
+
+    if ($saveAs) { $echo = $echo + (' saved=' + $saveAs) }
+    Add-MtAutoJsCaseStep -Entry ([ordered]@{
+        op         = 'eval_js'
+        side       = $side
+        save_as    = $saveAs
+        type       = $valueType
+        elapsed_ms = $elapsedMs
+        value      = $valueJson
+        outcome    = 'PASS'
+        detail     = $echo
+    })
+    return (New-MtPair 'PASS' $echo)
+}
+
+function Invoke-MtCaseAutoJsAwait {
+    <#
+    .SYNOPSIS
+        await_state 原语：轮询求值直到返回真值；超时 => 该步 FAIL 且报文含最后一次返回值。
+
+    .NOTES
+        真值口径（需求书 §3）：-Mode Bool 让 AutoJS 直接回布尔（!!() 折过的那个），这里的判定就用它本人；
+        **不能**靠「返回字符串非空」判真 —— AutoJS 可能把布尔写成 "value":"false" 的字符串，那会被误判成真值。
+        ⇒ code 必须求值成布尔表达式；返回对象 {ok:...} 的旧写法在 !!() 下恒为真，故不再支持（真值口径见 Get-MtAutoJsTruthy 的字符串字面量分支）。
+        轮询期间若端点掉线（Ok=$false 且端点探测失败）=> BLOCKED，不继续空转到 timeout —— 否则一次客户端崩溃要白等 15 s。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][psobject]$Paths, [Parameter(Mandatory)][AllowNull()]$Step)
+
+    $side = [string](Get-MtMapValue -Map $Step -Key 'side' -Default 'auto')
+    if (-not $side) { $side = 'auto' }
+    $timeoutMs = [int](Get-MtMapValue -Map $Step -Key 'timeout_ms' -Default $script:AutoJsStepTimeoutMs)
+    if ($timeoutMs -le 0) { $timeoutMs = $script:AutoJsStepTimeoutMs }
+    $intervalMs = [int](Get-MtMapValue -Map $Step -Key 'interval_ms' -Default $script:AutoJsAwaitIntervalMs)
+    if ($intervalMs -le 0) { $intervalMs = $script:AutoJsAwaitIntervalMs }
+
+    $resolved = Resolve-MtAutoJsCode -Step $Step -Version ([string]$Paths.version) -AsExpression
+    if (-not $resolved.Ok) {
+        $errText = [string]$resolved.Err
+        Add-MtAutoJsCaseStep -Entry ([ordered]@{ op = 'await_state'; side = $side; outcome = 'ERROR'; detail = $errText })
+        return (New-MtPair 'ERROR' $errText)
+    }
+    if (-not (Import-MtAutoJsModule)) {
+        $msg = 'AutoJS 模块不可用（scripts/test/lib/Mt.AutoJs.psm1 缺失或导入失败）=> 端点状态未知'
+        Add-MtAutoJsCaseStep -Entry ([ordered]@{ op = 'await_state'; side = $side; outcome = 'BLOCKED'; detail = $msg })
+        return (New-MtPair 'BLOCKED' $msg)
+    }
+
+    $deadlineMs = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() + $timeoutMs
+    $tries = 0
+    $lastValueJson = '<未求值>'
+    while ($true) {
+        $tries++
+        $r = $null
+        try {
+            $r = Invoke-MtAutoJsEval -Code ([string]$resolved.Code) -Side $side -TimeoutMs ([Math]::Max(1000, $timeoutMs)) -Mode Bool
+        } catch {
+            $msg = ("调用 Invoke-MtAutoJsEval 抛异常：{0}" -f $_.Exception.Message)
+            Add-MtAutoJsCaseStep -Entry ([ordered]@{ op = 'await_state'; side = $side; tries = $tries; outcome = 'ERROR'; detail = $msg })
+            return (New-MtPair 'ERROR' $msg)
+        }
+        $ok = $false
+        if ($null -ne $r) { $ok = [bool](Get-MtAutoJsField -Map $r -Key 'Ok' -Default $false) }
+        if ($ok) {
+            # 真值口径（需求书 §3）：AutoJS 侧已经用 !!() 折成布尔，这里就用它**本人**的真值 —— 但回包把它
+            # 写成 "type":"boolean" + "value":"true"（字符串），所以必须走 Get-MtAutoJsTruthy 的字符串
+            # 字面量分支（"false" ⇒ 假），**不能**用「非空即真」，否则字符串 "false" 会被判成真值。
+            $rawValue = Get-MtAutoJsField -Map $r -Key 'Value'
+            # 回显统一成真布尔：线上是字符串 "true"/"false"，直接回显会写成 value="true"，看着像字符串失败
+            $echoValue = $rawValue
+            if ($rawValue -is [string]) {
+                $echoText = ([string]$rawValue).Trim()
+                if ([string]::Equals($echoText, 'true', [System.StringComparison]::OrdinalIgnoreCase)) { $echoValue = $true }
+                elseif ([string]::Equals($echoText, 'false', [System.StringComparison]::OrdinalIgnoreCase)) { $echoValue = $false }
+            }
+            $lastValueJson = ConvertTo-MtCompactJson -Value (ConvertTo-MtAutoJsPlain -Value $echoValue) -Max $script:AutoJsValueEchoMax
+            if (Get-MtAutoJsTruthy -Value $rawValue) {
+                $detail = ("side={0} tries={1} intervalMs={2} value={3}" -f $side, $tries, $intervalMs, $lastValueJson)
+                Add-MtAutoJsCaseStep -Entry ([ordered]@{ op = 'await_state'; side = $side; tries = $tries; outcome = 'PASS'; detail = $detail })
+                return (New-MtPair 'PASS' $detail)
+            }
+        } else {
+            $lastErr = [string](Get-MtAutoJsField -Map $r -Key 'Error' -Default '')
+            $down = Test-MtAutoJsEndpointDown -TimeoutMs 2000
+            if ($null -ne $down) {
+                $msg = ("AutoJS 端点不可用（{0}）=> await_state BLOCKED（不是 FAIL）" -f $down)
+                Add-MtAutoJsCaseStep -Entry ([ordered]@{ op = 'await_state'; side = $side; tries = $tries; outcome = 'BLOCKED'; detail = $msg })
+                return (New-MtPair 'BLOCKED' $msg)
+            }
+            $msg = ("await_state 求值失败：side={0} tries={1} error={2}" -f $side, $tries, $lastErr)
+            Add-MtAutoJsCaseStep -Entry ([ordered]@{ op = 'await_state'; side = $side; tries = $tries; outcome = 'FAIL'; detail = $msg })
+            return (New-MtPair 'FAIL' $msg)
+        }
+        $nowMs = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
+        if ($nowMs -ge $deadlineMs) {
+            $detail = ("side={0} tries={1} intervalMs={2} 等待 {3} ms 仍未取到真值；最后一次返回值={4}" -f $side, $tries, $intervalMs, $timeoutMs, $lastValueJson)
+            Add-MtAutoJsCaseStep -Entry ([ordered]@{ op = 'await_state'; side = $side; tries = $tries; outcome = 'FAIL'; detail = $detail })
+            return (New-MtPair 'FAIL' $detail)
+        }
+        if ($script:CaseDeadline -gt 0 -and ([DateTimeOffset]::UtcNow.ToUnixTimeSeconds() -ge $script:CaseDeadline)) {
+            $detail = ("await_state 撞上用例硬超时（最后一次返回值={0}）" -f $lastValueJson)
+            Add-MtAutoJsCaseStep -Entry ([ordered]@{ op = 'await_state'; side = $side; tries = $tries; outcome = 'FAIL'; detail = $detail })
+            return (New-MtPair 'FAIL' $detail)
+        }
+        $sleepMs = [int][Math]::Min($intervalMs, [Math]::Max(0, $deadlineMs - $nowMs))
+        if ($sleepMs -gt 0) { Start-Sleep -Milliseconds $sleepMs }
+    }
+}
+
+function Invoke-MtCaseAutoJsStatus {
+    <#
+    .SYNOPSIS
+        mcp_status 原语：取 Get-MtAutoJsStatus（端点未起 => BLOCKED），结果存 save_as。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][AllowNull()]$Step)
+
+    $timeoutMs = [int](Get-MtMapValue -Map $Step -Key 'timeout_ms' -Default $script:AutoJsStepTimeoutMs)
+    if ($timeoutMs -le 0) { $timeoutMs = $script:AutoJsStepTimeoutMs }
+    $saveAs = [string](Get-MtMapValue -Map $Step -Key 'save_as' -Default '')
+
+    if (-not (Import-MtAutoJsModule)) {
+        $msg = 'AutoJS 模块不可用（scripts/test/lib/Mt.AutoJs.psm1 缺失或导入失败）=> 端点状态未知'
+        Add-MtAutoJsCaseStep -Entry ([ordered]@{ op = 'mcp_status'; save_as = $saveAs; outcome = 'BLOCKED'; detail = $msg })
+        return (New-MtPair 'BLOCKED' $msg)
+    }
+    $endpointUrl = Get-MtAutoJsEndpointUrl
+    $ep = $null
+    try {
+        $ep = Test-MtAutoJsEndpoint -EndpointUrl $endpointUrl -TimeoutMs $timeoutMs -PollMs 250
+    } catch {
+        $msg = ("调用 Test-MtAutoJsEndpoint 抛异常：{0}" -f $_.Exception.Message)
+        Add-MtAutoJsCaseStep -Entry ([ordered]@{ op = 'mcp_status'; save_as = $saveAs; outcome = 'ERROR'; detail = $msg })
+        return (New-MtPair 'ERROR' $msg)
+    }
+    if (-not [bool](Get-MtAutoJsField -Map $ep -Key 'Ok' -Default $false)) {
+        $reason = [string](Get-MtAutoJsField -Map $ep -Key 'Reason' -Default '未知原因')
+        $msg = ("AutoJS 端点不可用（{0}）=> mcp_status BLOCKED（不是 FAIL）" -f $reason)
+        Add-MtAutoJsCaseStep -Entry ([ordered]@{ op = 'mcp_status'; save_as = $saveAs; outcome = 'BLOCKED'; detail = $msg })
+        return (New-MtPair 'BLOCKED' $msg)
+    }
+    $status = $null
+    try {
+        $status = Get-MtAutoJsStatus
+    } catch {
+        $msg = ("调用 Get-MtAutoJsStatus 抛异常：{0}" -f $_.Exception.Message)
+        Add-MtAutoJsCaseStep -Entry ([ordered]@{ op = 'mcp_status'; save_as = $saveAs; outcome = 'ERROR'; detail = $msg })
+        return (New-MtPair 'ERROR' $msg)
+    }
+    $plain = ConvertTo-MtAutoJsPlain -Value $status
+    if ($saveAs) {
+        $script:CaseScope[$saveAs] = [ordered]@{
+            ok = $true; value = $plain; type = 'status'; side = 'auto'; elapsed_ms = 0; op = 'mcp_status'; error = ''
+        }
+    }
+    $detail = ('endpoint=' + $endpointUrl + ' status=' + (ConvertTo-MtCompactJson -Value $plain -Max $script:AutoJsValueEchoMax))
+    if ($saveAs) { $detail = $detail + (' saved=' + $saveAs) }
+    Add-MtAutoJsCaseStep -Entry ([ordered]@{ op = 'mcp_status'; save_as = $saveAs; outcome = 'PASS'; detail = $detail })
+    return (New-MtPair 'PASS' $detail)
+}
+
+function Test-MtAutoJsIdentifier {
+    <#
+    .SYNOPSIS
+        save_as / from 必须是合法 JS 标识符（它会被当作变量名引用）。
+    #>
+    [CmdletBinding()]
+    param([AllowNull()]$Name)
+
+    if ($null -eq $Name) { return $false }
+    $text = [string]$Name
+    if (-not $text) { return $false }
+    return ($text -match '^[A-Za-z_$][A-Za-z0-9_$]*$')
+}
+
+function Test-MtAutoJsStepFields {
+    <#
+    .SYNOPSIS
+        校验 AutoJS 原语（eval_js / await_state / mcp_status）的字段取值。
+
+    .OUTPUTS
+        （可能为空的）错误消息数组 —— 与 Test-MtCaseValid 的其它错误统一收集。
+    #>
+    [CmdletBinding()]
+    param([AllowNull()]$Step, [int]$Index = 0, [string]$Op = '')
+
+    $errs = @()
+    if ($null -eq $Step) { return , $errs }
+
+    $sideVal = Get-MtMapValue -Map $Step -Key 'side'
+    if ($null -ne $sideVal -and ([string]$sideVal) -ne '') {
+        $sideText = [string]$sideVal
+        if ($script:AutoJsSides -notcontains $sideText) {
+            $errs += ("步骤 {0}: side 非法：'{1}'（只接受 {2}）" -f $Index, $sideText, ($script:AutoJsSides -join ' / '))
+        }
+    }
+
+    foreach ($numKey in @('timeout_ms', 'interval_ms')) {
+        $numVal = Get-MtMapValue -Map $Step -Key $numKey
+        if ($null -eq $numVal) { continue }
+        $numText = [string]$numVal
+        if ($numText -notmatch '^[0-9]+$') {
+            $errs += ("步骤 {0}: {1} 必须是正整数（收到 '{2}'）" -f $Index, $numKey, $numText)
+        } elseif ([long]$numText -le 0) {
+            $errs += ("步骤 {0}: {1} 必须大于 0（收到 '{2}'）" -f $Index, $numKey, $numText)
+        }
+    }
+
+    if ($Op -eq 'eval_js' -or $Op -eq 'await_state') {
+        $codeVal = [string](Get-MtMapValue -Map $Step -Key 'code' -Default '')
+        $scriptVal = [string](Get-MtMapValue -Map $Step -Key 'script' -Default '')
+        if ($codeVal -and $scriptVal) {
+            $errs += ("步骤 {0}: 不能同时给 code 与 script（二选一）" -f $Index)
+        } elseif (-not $codeVal -and -not $scriptVal) {
+            $errs += ("步骤 {0}: 必须给 code 或 script（{1}）" -f $Index, $Op)
+        } elseif ($scriptVal) {
+            if ([System.IO.Path]::IsPathRooted($scriptVal) -or $scriptVal.Contains('..')) {
+                $errs += ("步骤 {0}: script 必须是相对 scripts/test/resources/autojs/<version>/ 的路径（收到 '{1}'）" -f $Index, $scriptVal)
+            }
+        }
+        $argsVal = Get-MtMapValue -Map $Step -Key 'args'
+        if ($null -ne $argsVal -and -not ($argsVal -is [System.Collections.IDictionary])) {
+            $errs += ("步骤 {0}: args 必须是对象（键值表）" -f $Index)
+        }
+        if ($Op -eq 'eval_js') {
+            $expectVal = Get-MtMapValue -Map $Step -Key 'expect'
+            if ($null -ne $expectVal -and -not ($expectVal -is [System.Collections.IDictionary])) {
+                $errs += ("步骤 {0}: eval_js 的 expect 必须是对象（判据）" -f $Index)
+            }
+        }
+    }
+
+    $saveVal = Get-MtMapValue -Map $Step -Key 'save_as'
+    if ($null -ne $saveVal -and ([string]$saveVal) -ne '') {
+        if (-not (Test-MtAutoJsIdentifier -Name ([string]$saveVal))) {
+            $errs += ("步骤 {0}: save_as 必须是合法标识符（收到 '{1}'）" -f $Index, [string]$saveVal)
+        }
+    }
+
+    return , $errs
+}
+
 function Test-MtCaseValid {
     <#
     .SYNOPSIS
@@ -392,6 +1205,19 @@ function Test-MtCaseValid {
             $errs += "缺少必填字段 $key"
         }
     }
+
+    # ── 通道（2026-10-18；需求书 §4）：channel 缺省 = kubejs，只有 autojs 才放开新原语 ──
+    # legacy 用例必须继续可用：缺键、空串都按 kubejs 处理，且不引入任何新告警。
+    $chanRaw = Get-MtMapValue -Map $Case -Key 'channel'
+    $chanName = 'kubejs'
+    if ($null -ne $chanRaw -and ([string]$chanRaw) -ne '') {
+        $chanName = [string]$chanRaw
+        if ($script:CaseChannels -notcontains $chanName) {
+            $errs += ("用例 channel 非法：'{0}'（只接受 {1}）" -f $chanName, ($script:CaseChannels -join ' / '))
+            $chanName = 'kubejs'
+        }
+    }
+    $isAutoJs = ($chanName -eq 'autojs')
 
     $version = Get-MtMapValue -Map $Case -Key 'version'
     # 版本白名单的唯一事实来源 = Mt.Paths.psm1 的 $script:VERSIONS
@@ -433,6 +1259,41 @@ function Test-MtCaseValid {
         if ($unknown.Count -gt 0) {
             $errs += ("步骤 {0}: '{1}' 含非法字段 {2}" -f $i, $opText, (ConvertTo-MtPySortedListRepr -Items $unknown))
         }
+        # ── 通道与原语的匹配（2026-10-18）─────────────────────────────────────────
+        # 退役原语与通道绑定都必须在**校验期**拦下：执行期才报就等于「跑到一半才发现用例写错」，
+        # 而 mt_case 的执行期结论会被报告记为被测失败（FAIL），语义完全错位。
+        if ($opText -eq 'kubejs_reload' -and $isAutoJs) {
+            $errs += ("步骤 {0}: 'kubejs_reload' 已退役原语（需求书 §5；channel=autojs 下改用 eval_js / await_state）" -f $i)
+        }
+        if (@('eval_js', 'await_state', 'mcp_status') -contains $opText) {
+            if (-not $isAutoJs) {
+                $errs += ("步骤 {0}: '{1}' 要求用例 channel=autojs（当前 {2}）" -f $i, $opText, $chanName)
+            }
+            foreach ($subErr in @(Test-MtAutoJsStepFields -Step $step -Index $i -Op $opText)) {
+                if ($subErr) { $errs += [string]$subErr }
+            }
+            if ($opText -eq 'mcp_status' -and -not (Test-MtTruthyValue (Get-MtMapValue -Map $step -Key 'save_as'))) {
+                $errs += ("步骤 {0}: mcp_status 必须给 save_as（否则 status 无从引用）" -f $i)
+            }
+        }
+        if ($opText -eq 'assert') {
+            $inlineType = [string](Get-MtMapValue -Map $step -Key 'type' -Default '')
+            if ($inlineType -eq 'eval' -or $inlineType -eq 'state') {
+                if (-not $isAutoJs) {
+                    $errs += ("步骤 {0}: '{1}' 断言要求用例 channel=autojs（当前 {2}）" -f $i, $inlineType, $chanName)
+                }
+                $inFrom = [string](Get-MtMapValue -Map $step -Key 'from' -Default '')
+                $inCode = [string](Get-MtMapValue -Map $step -Key 'code' -Default '')
+                if ($inFrom -and $inCode) {
+                    $errs += ("步骤 {0}: from 与 code 二选一（不能同时给）" -f $i)
+                } elseif (-not $inFrom -and -not $inCode) {
+                    $errs += ("步骤 {0}: 需要 from（前序 eval_js 的 save_as）或内联 code" -f $i)
+                }
+                if ($inlineType -eq 'eval' -and $null -eq (Get-MtMapValue -Map $step -Key 'expect')) {
+                    $errs += ("步骤 {0}: eval 断言缺少 expect" -f $i)
+                }
+            }
+        }
     }
 
     # ── 会话期 Esc 保护（结构校验阶段；判据与理由见文件头 $script:EscSensitiveSessionCmds）──
@@ -473,6 +1334,29 @@ function Test-MtCaseValid {
         }
         if ($at -eq 'log' -and -not (Test-MtTruthyValue (Get-MtMapValue -Map $a -Key 'pattern'))) {
             $errs += ("断言 {0}: log 断言缺少 pattern" -f $i)
+        }
+        # ── AutoJS 通道断言（2026-10-18）───────────────────────────────────────────
+        if ($at -eq 'eval' -or $at -eq 'state') {
+            if (-not $isAutoJs) {
+                $errs += ("断言 {0}: '{1}' 类型要求用例 channel=autojs（当前 {2}）" -f $i, $at, $chanName)
+            }
+            $fromVal = [string](Get-MtMapValue -Map $a -Key 'from' -Default '')
+            $assertCode = [string](Get-MtMapValue -Map $a -Key 'code' -Default '')
+            if ($fromVal -and $assertCode) {
+                $errs += ("断言 {0}: from 与 code 二选一（不能同时给）" -f $i)
+            } elseif (-not $fromVal -and -not $assertCode) {
+                $errs += ("断言 {0}: 需要 from（前序 eval_js 的 save_as）或内联 code" -f $i)
+            }
+            if ($fromVal -and -not (Test-MtAutoJsIdentifier -Name $fromVal)) {
+                $errs += ("断言 {0}: from 必须是合法标识符（收到 '{1}'）" -f $i, $fromVal)
+            }
+            if ($at -eq 'eval' -and $null -eq (Get-MtMapValue -Map $a -Key 'expect')) {
+                $errs += ("断言 {0}: eval 断言缺少 expect" -f $i)
+            }
+            $aSide = Get-MtMapValue -Map $a -Key 'side'
+            if ($null -ne $aSide -and ([string]$aSide) -ne '' -and ($script:AutoJsSides -notcontains [string]$aSide)) {
+                $errs += ("断言 {0}: side 非法：'{1}'（只接受 {2}）" -f $i, [string]$aSide, ($script:AutoJsSides -join ' / '))
+            }
         }
         # B7：窗口作用域白名单。缺省 = case（自本用例起）；写错必须在校验阶段拦下，
         # 不能在执行期静默落回默认窗口（那会把"写错 scope"伪装成"窗口没生效"）。
@@ -625,6 +1509,80 @@ function Invoke-MtCaseAssert {
         # 默认窗口 = launch（见 mt_assert.ps1 的 Invoke-MtAssertMixin：跟随 case 窗口会退化成恒真）
         $r = Invoke-MtCaseChild -Script 'mt_assert.ps1' -ScriptArgs (@('mixin', '--version', $Paths.version) + $winArgs)
         return (Get-MtVerdict -ExitCode $r.ExitCode -Result $r)
+    }
+    if ($t -eq 'eval' -or $t -eq 'state') {
+        # ── AutoJS 通道断言（2026-10-18；需求书 §4）─────────────────────────────
+        # 值来自两处：from（前序 eval_js 的 save_as）或内联 code+side。判定与结论行一律
+        # 由 mt_assert.ps1 的同一套 expect 引擎出，这里只负责取到值、并把「取不到」的
+        # 原因分档：前序步骤没成功 => BLOCKED（不是 FAIL），引用写错 => ERROR。
+        if ($script:CaseChannel -ne 'autojs') {
+            return (New-MtPair 'ERROR' ("{0} 断言要求用例 channel=autojs（当前 {1}）" -f $t, $script:CaseChannel))
+        }
+        $from = [string](Get-MtMapValue -Map $Assert -Key 'from' -Default '')
+        $inlineCode = [string](Get-MtMapValue -Map $Assert -Key 'code' -Default '')
+        if ($from -and $inlineCode) {
+            return (New-MtPair 'ERROR' ("{0} 断言的 from 与 code 二选一（不能同时给）" -f $t))
+        }
+        $value = $null
+        $aSide = 'auto'
+        if ($from) {
+            if (-not $script:CaseScope.ContainsKey($from)) {
+                return (New-MtPair 'ERROR' ("{0} 断言的 from='{1}' 没有对应的前序 eval_js save_as（检查步骤顺序 / save_as 拼写）" -f $t, $from))
+            }
+            $saved = $script:CaseScope[$from]
+            if (-not [bool]$saved.ok) {
+                $why = [string]$saved.error
+                if (-not $why) { $why = '端点不可用 / 结果不可用' }
+                return (New-MtPair 'BLOCKED' ("{0} 断言引用的前序 eval_js '{1}' 未成功（{2}）=> BLOCKED（不是 FAIL）" -f $t, $from, $why))
+            }
+            $value = $saved.value
+        } elseif ($inlineCode) {
+            $aSide = [string](Get-MtMapValue -Map $Assert -Key 'side' -Default 'auto')
+            if (-not $aSide) { $aSide = 'auto' }
+            if (-not (Import-MtAutoJsModule)) {
+                return (New-MtPair 'BLOCKED' 'AutoJS 模块不可用（scripts/test/lib/Mt.AutoJs.psm1 缺失或导入失败）=> 端点状态未知')
+            }
+            # 内联 code 与 eval_js 同口径：包成 IIFE 表达式 + -Mode Json（AutoJS 只认最后一个表达式，
+            # 而且非标量只回字符串 => 不包就拿不到结构、还会撞 invalid return）。
+            $inlineResolved = Resolve-MtAutoJsCode -Step @{ code = $inlineCode } -Version ([string]$Paths.version) -AsExpression
+            if (-not $inlineResolved.Ok) {
+                return (New-MtPair 'ERROR' ([string]$inlineResolved.Err))
+            }
+            $r = $null
+            try {
+                $r = Invoke-MtAutoJsEval -Code ([string]$inlineResolved.Code) -Side $aSide -TimeoutMs $script:AutoJsStepTimeoutMs -Mode Json
+            } catch {
+                return (New-MtPair 'ERROR' ("调用 Invoke-MtAutoJsEval 抛异常：{0}" -f $_.Exception.Message))
+            }
+            if (-not [bool](Get-MtAutoJsField -Map $r -Key 'Ok' -Default $false)) {
+                $errText = [string](Get-MtAutoJsField -Map $r -Key 'Error' -Default '')
+                $down = Test-MtAutoJsEndpointDown
+                if ($null -ne $down) {
+                    return (New-MtPair 'BLOCKED' ("AutoJS 端点不可用（{0}）=> {1} 断言 BLOCKED（不是 FAIL）" -f $down, $t))
+                }
+                return (New-MtPair 'FAIL' ("{0} 内联 code 求值失败：{1}" -f $t, $errText))
+            }
+            $value = Get-MtAutoJsResultValue -Result $r
+        } else {
+            return (New-MtPair 'ERROR' ("{0} 断言需要 from（前序 eval_js 的 save_as）或内联 code" -f $t))
+        }
+        $expectVal = Get-MtMapValue -Map $Assert -Key 'expect'
+        if ($t -eq 'eval' -and $null -eq $expectVal) {
+            return (New-MtPair 'ERROR' 'eval 断言缺少 expect')
+        }
+        $assertLabel = 'inline-code'
+        if ($from) { $assertLabel = ('from=' + $from) }
+        $pair = Invoke-MtCaseExpectMatch -Paths $Paths -Value $value -Expect $expectVal -Type $t -Label $assertLabel
+        Add-MtAutoJsCaseStep -Entry ([ordered]@{
+            op         = ('assert:' + $t)
+            side       = $aSide
+            save_as    = $from
+            value      = (ConvertTo-MtCompactJson -Value $value -Max $script:AutoJsValueEchoMax)
+            expect     = (ConvertTo-MtCompactJson -Value $expectVal)
+            outcome    = [string]$pair[0]
+            detail     = [string]$pair[1]
+        })
+        return $pair
     }
     if ($t -eq 'vision') {
         # image 可以是「截图文件名」,也可以是截图 op 登记过的 **tag** —— 用例普遍写 tag,
@@ -783,6 +1741,18 @@ function Invoke-MtCaseOp {
             $text = ConvertTo-MtPyText $Step['text']
         }
         return (New-MtPair 'NOTE' $text)
+    }
+
+    # ── AutoJS 通道原语（2026-10-18；需求书 §4）──────────────────────────────
+    # 执行期不再重复校验通道（校验期已拦）；这里只保证「原语 -> 实现」一一对应。
+    if ($op -eq 'eval_js') {
+        return (Invoke-MtCaseAutoJsEval -Paths $Paths -Step $Step)
+    }
+    if ($op -eq 'await_state') {
+        return (Invoke-MtCaseAutoJsAwait -Paths $Paths -Step $Step)
+    }
+    if ($op -eq 'mcp_status') {
+        return (Invoke-MtCaseAutoJsStatus -Step $Step)
     }
 
     return (New-MtPair 'ERROR' "未知原语 $op")
@@ -1327,6 +2297,24 @@ function Invoke-MtCaseRun {
         return (New-MtPair 'SKIP' @())
     }
 
+    # ── 通道初始化（2026-10-18；需求书 §4 `channel`）─────────────────────────
+    # ① 缺省 kubejs ⇒ 全部既有用例与既有原语行为完全不变（legacy 兼容是硬要求）。
+    # ② 用例作用域**每用例重建**：`save_as` 只在本用例内有效，跨用例引用在校验期查不到
+    #    ⇒ 这里不做任何跨用例继承，以免「上一条用例喂饱下一条」的假 PASS。
+    # ③ 只用 Write-MtLine 回显（stdout 主标记流），不新增退出码。
+    $script:CaseChannel = 'kubejs'
+    $chanRaw = Get-MtMapValue -Map $case -Key 'channel' -Default ''
+    if ($null -ne $chanRaw) {
+        $chanText = ([string]$chanRaw).Trim()
+        if ($chanText) { $script:CaseChannel = $chanText.ToLowerInvariant() }
+    }
+    $script:CaseScope = @{}
+    $script:AutoJsCaseEvals = @()
+    $script:AutoJsCaseDirty = $false
+    if ($script:CaseChannel -eq 'autojs') {
+        Write-MtLine ("CASE_CHANNEL: {0} channel=autojs（eval 通道，端点 {1}）" -f $caseId, (Get-MtAutoJsEndpointUrl))
+    }
+
     $p = Get-MtPaths -Version $Version
     Write-MtLine ''
     Write-MtLine ("--- MT_CASE: {0} — {1} ---" -f $caseId, (Get-MtMapValue -Map $case -Key 'title'))
@@ -1479,6 +2467,12 @@ function Invoke-MtCaseRun {
             $pair = Invoke-MtCaseOp -Paths $p -Step $step -RunId $RunId
             $outcome = [string]$pair[0]
             $detail = [string]$pair[1]
+            # AutoJS 通道：本步若登记了新的 eval 记录 ⇒ 立刻落盘（用例崩/被杀也不丢证据，
+            # mt_report 只读这份结构化 JSON，绝不重跑游戏）。legacy 用例恒为 $false，零开销。
+            if ($script:AutoJsCaseDirty) {
+                Save-MtAutoJsCaseRecord -Version $Version -CaseId $caseId
+                $script:AutoJsCaseDirty = $false
+            }
             $secs = [Math]::Round((([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() / 1000.0) - $t0), 1)
             $timeline += [ordered]@{
                 i       = $i

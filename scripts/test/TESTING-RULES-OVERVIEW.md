@@ -178,3 +178,15 @@ Gradle 守护不退出（60s 看门狗 + 双重验证）；`fileHashes.lock` 占
 ## 14. 现行状态（2026-09-20）
 
 全部用例（`cases/*.json`）、全部探针（`resources/kubejs/**/astral_*.js` 及 run 内注入副本）、历史报告与 temp 证据**已删除作废**；流程实现（`mt*.ps1`、`lib/`、`devtools/`）与本文/`TESTING-SPEC.md` 规则**保留待核验**。在用户核验并重新授权前：`--phase cases` 无条目可跑、探针类闸门不可用，**不得**把本流程任何输出当验收证据；重建时的口径变化（若有）应先更新 `TESTING-SPEC.md` 再落用例。
+
+## 15. AutoJS 实机通道规则（2026-10-18 新增）
+
+> 技术细节（端点契约、用例 schema、逐行落点）见 `TESTING-SPEC.md` §7A；legacy 用例的迁移欠账与统计见 `docs/features/autojs-legacy-debt.md`。本节只定**规则**。
+
+1. **新用例优先 `channel=autojs`。** 新条目一律先按 eval 通道写（`mcp_status` → `eval_js` / `await_state` → `state` 断言）；只有 `7A.8` 列出的三类事实（mixin / crash / 禁 AI 审计）才允许留在 `channel=kubejs`。注意缺省仍是 `kubejs` —— **别依赖缺省**，新用例显式写 `"channel": "autojs"`。
+2. **端点没起一律 BLOCKED（11），不 FAIL。** `MT_ASSERT_EVAL/STATE`、`mcp_status`、`await_state` 都按此归一：环境问题不许判成功能缺陷。启动期是**另一条语义**：端点没就绪 ⇒ `MT_LAUNCH: ERROR` + 退出码 2；逃生阀 `MT_ALLOW_NO_AUTOJS=1` 只把闸门降为 WARN，此时 `channel=autojs` 的用例全部 BLOCKED（`mt_launch.ps1:1042-1051`）。
+3. **禁用 eval 替代 mixin / crash / 禁 AI 三类日志断言。** 这三类事实发生在脚本加载之前或进程级（mixin apply、进程崩溃、产品 `LOGGER` 行），JVM 里没有可求值句柄，端点崩溃后也不再可达；改写成 eval 只会得到「用例恒绿」的假证据。同理，`type:vision` 的截图断言继续保留。
+4. **eval 必须 `side` 明确。** 改世界状态、读权威数据用 `server`；读界面 / HUD / FPS / 输入驱动用 `client`；`auto`（服务端优先）只在确实两侧等价时用 —— 拿 `auto` 图省事会让「究竟测了哪一侧」不可判。
+5. **产物与证据必须落 `.mt_autojs.json`，报告只读不重跑。** launch 写 `versions.<线>`（endpoint / protocolVersion / status），case 写逐条 eval 记录；`mt_report.ps1` 只读这份记录（`L661-L665` 已写明），**手工编辑它当证据 = 伪造证据**。
+6. **1.20.1 / fabric-1.20.1 不得手放 jar 进 `run/*/mods`。** 那两条线的产物是 SRG / intermediary，直接投放会 `NoSuchMethodError` / 类错位；必须走 `-PautojsTestMod=1` 条件化的 `modRuntimeOnly`（`forge-1.20.1/build.gradle:382-391`、`fabric-1.20.1/build.gradle:182-190`），坐标由 `scripts/test/tools/publish_autojs_maven.ps1` 发布到 mavenLocal，来源门禁例外登记在 `tools/check_mod_sources.ps1:79-81`。
+7. **附则：同族 jar 只能一份，清理前缀只有 `autojs-`。** ENV 阶段按该前缀清旧版本（`mt_env.ps1:1548-1554`）；`rhino` 是 KubeJS 的硬前置，必须**恰好一个**且满足 AutoJS jar 自身 `mods.toml` 的 `versionRange`，否则 `MT_ENV_AUTOJS: BLOCKED`（`L1556-L1587`）。**不要手动删 rhino**，也不要把它加进 `autojs-` 清理前缀。

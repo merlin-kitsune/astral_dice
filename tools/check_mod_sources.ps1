@@ -73,7 +73,12 @@ $script:LibraryGroups = @(
 #     2026-09-17：原两条例外（`mezz.jei` / `dev.architectury`）已按用户裁决迁到 **Curse Maven**，
 #     故当前**无例外**。此处保留机制（空表）：将来若必须临时使用官方 maven 的模组依赖，
 #     在此登记键名 + 理由，脚本每轮都会把它打印成 [EXC] 行，不允许静默存在。
-$script:ModExceptions = @{}
+#     2026-10-18：登记 `cc.sighs.autojs` —— AutoJS 实机测试库**只发布到 mavenLocal**（本地产物，
+#     无 Curse/Modrinth 发布件），无法用 curse.maven: / maven.modrinth: 坐标表达。
+#     由 scripts/test/tools/publish_autojs_maven.ps1 发布（jar + 手写最小 pom.xml 到 mavenLocal）。
+$script:ModExceptions = @{
+    'cc.sighs.autojs' = 'AutoJS 实机测试库：本地 mavenLocal 分发，无 Curse/Modrinth 发布（GPL-3.0）'
+}
 
 # R3：可能残留本地模组 jar 的目录（只回显，不删）
 $script:LocalJarDirs = @('base-mod-libs', 'base-mod-compile-libs')

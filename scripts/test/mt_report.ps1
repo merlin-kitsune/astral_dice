@@ -519,6 +519,24 @@ function Get-MtNoAiAudit {
     return , @($beats, $forced, $errs, $bad)
 }
 
+function Get-MtReportField {
+    <#
+    .SYNOPSIS
+        读 Hashtable / PSCustomObject 字段（缺键返回 Default）；给 AutoJS 记录读取用。
+    #>
+    [CmdletBinding()]
+    param($Map, [Parameter(Mandatory)][string]$Key, $Default = $null)
+
+    if ($null -eq $Map) { return $Default }
+    if ($Map -is [System.Collections.IDictionary]) {
+        foreach ($k in $Map.Keys) { if ([string]$k -eq $Key) { return $Map[$k] } }
+        return $Default
+    }
+    $prop = $Map.PSObject.Properties[$Key]
+    if ($null -ne $prop) { return $prop.Value }
+    return $Default
+}
+
 function Invoke-MtReportCollect {
     [CmdletBinding()]
     param([Parameter(Mandatory)][string]$Version, [string]$Verdict = '')
@@ -640,12 +658,96 @@ function Invoke-MtReportCollect {
         $lines += '| （无） | — |'
     }
 
-    $lines += @('', '## 关键日志标记', '',
+    # ── AutoJS 通道（eval 通道证据；2026-10-18 需求书 §4/§6）────────────────────
+    # 数据源 = cases/.mt_autojs.json：mt_launch 的就绪闸门写「端点 / protocolVersion / status」，
+    # mt_case 的 eval_js 步写「逐条用例的 eval 记录」。**这里只读不重跑游戏** ——
+    # 报告必须能在游戏早已关闭之后补出来。
+    $ajFile = Join-Path (Join-Path $script:TestDir 'cases') '.mt_autojs.json'
+    $ajDoc = $null
+    if (Test-Path -LiteralPath $ajFile -PathType Leaf) {
+        try {
+            $ajText = [System.IO.File]::ReadAllText($ajFile, $script:TAG_UTF8)
+            $ajDoc = $ajText | ConvertFrom-Json -AsHashtable -ErrorAction Stop
+        } catch { $ajDoc = $null }
+    }
+    $ajVer = $null
+    $ajCases = $null
+    if (($ajDoc -is [System.Collections.IDictionary]) -and $ajDoc.Contains('versions')) {
+        $ajVersions = $ajDoc['versions']
+        if (($ajVersions -is [System.Collections.IDictionary]) -and $ajVersions.Contains($Version)) {
+            $ajVer = $ajVersions[$Version]
+            $ajCases = Get-MtReportField -Map $ajVer -Key 'cases'
+        }
+    }
+
+    $lines += @('', '## AutoJS 通道（eval 通道证据）', '')
+    if ($null -eq $ajVer) {
+        $lines += '- 本轮无 AutoJS 记录（未装 autojs / 端点未就绪 / 没有 channel=autojs 的用例）'
+        if (Test-Path -LiteralPath $ajFile -PathType Leaf) {
+            $lines += "- 记录文件存在但没有本版本段：$ajFile"
+        }
+    } else {
+        $ajUrl = [string](Get-MtReportField -Map $ajVer -Key 'endpoint' -Default '')
+        $ajProto = [string](Get-MtReportField -Map $ajVer -Key 'protocol_version' -Default '')
+        $ajOk = [bool](Get-MtReportField -Map $ajVer -Key 'ok' -Default $false)
+        $ajReason = [string](Get-MtReportField -Map $ajVer -Key 'reason' -Default '')
+        $ajStatus = Get-MtReportField -Map $ajVer -Key 'status'
+        if (-not $ajUrl) { $ajUrl = '（未记录）' }
+        if (-not $ajProto) { $ajProto = 'unknown' }
+        $ajReadyText = 'OK'
+        if (-not $ajOk) {
+            $ajReadyText = 'FAILED'
+            if ($ajReason) { $ajReadyText = 'FAILED — ' + $ajReason }
+        }
+        $ajStatusText = '（未记录）'
+        if ($null -ne $ajStatus) {
+            $ajStatusText = [string](ConvertTo-Json -InputObject $ajStatus -Depth 20 -Compress)
+            if ($ajStatusText.Length -gt 400) { $ajStatusText = $ajStatusText.Substring(0, 400) + '…（截断）' }
+        }
+        $lines += "- **端点**: $ajUrl"
+        $lines += "- **protocolVersion**: $ajProto"
+        $lines += "- **就绪**: $ajReadyText"
+        $lines += "- **status 摘要**: $ajStatusText"
+
+        $ajEvalSteps = 0
+        $ajEvalFailed = 0
+        $ajRows = @()
+        if ($ajCases -is [System.Collections.IDictionary]) {
+            foreach ($cid in @($ajCases.Keys | Sort-Object)) {
+                $crec = $ajCases[$cid]
+                $cChan = [string](Get-MtReportField -Map $crec -Key 'channel' -Default '')
+                $cSteps = [int](Get-MtReportField -Map $crec -Key 'eval_steps' -Default 0)
+                $cFail = [int](Get-MtReportField -Map $crec -Key 'eval_failed' -Default 0)
+                $ajEvalSteps += $cSteps
+                $ajEvalFailed += $cFail
+                $cEvals = @(Get-MtReportField -Map $crec -Key 'evals' -Default @())
+                $cLast = '—'
+                if ($cEvals.Count -gt 0) {
+                    $lastRec = $cEvals[$cEvals.Count - 1]
+                    $lastOutcome = [string](Get-MtReportField -Map $lastRec -Key 'outcome' -Default '')
+                    $lastDetail = [string](Get-MtReportField -Map $lastRec -Key 'detail' -Default '')
+                    if ($lastDetail.Length -gt 160) { $lastDetail = $lastDetail.Substring(0, 160) + '…' }
+                    $cLast = $lastOutcome
+                    if ($lastDetail) { $cLast = $cLast + ' — ' + $lastDetail }
+                }
+                $ajRows += "| $cid | $cChan | $cSteps | $cFail | $cLast |"
+            }
+        }
+        $lines += "- **本批 eval_js 步数 / 失败数**: $ajEvalSteps / $ajEvalFailed"
+        $lines += ''
+        if ($ajRows.Count -gt 0) {
+            $lines += @('| 用例 | 通道 | eval 步数 | 失败 | 最后一条 eval 结果 |', '|---|---|---|---|---|')
+            $lines += $ajRows
+        } else {
+            $lines += '- （本批没有 channel=autojs 的用例记录）'
+        }
+    }
+    $lines += @('', '## 关键日志标记（日志通道证据）', '',
         "（区间：$([System.IO.Path]::GetFileName($p.debug_log))@${offset}B 之后，即本次运行新增部分；窗口 $markerWindow）", '', '```')
     $lines += if ($markers.Count -gt 0) { $markers } else { @('（无）') }
     $lines += @('```', '')
     if ($markerNote) { $lines += @("- **窗口锚定**: $markerNote", '') }
-    $lines += @('## 崩溃 / 异常', '')
+    $lines += @('## 崩溃 / 异常（日志通道证据）', '')
     if ($newCrashes.Count -gt 0) {
         $lines += "- **本次新增崩溃报告 $($newCrashes.Count) 个**：$($newCrashes -join ', ')"
     } else {
@@ -656,7 +758,7 @@ function Invoke-MtReportCollect {
     }
     $lines += "- kubejs server.log: $(if (Test-Path -LiteralPath $p.kubejs_log -PathType Leaf) { '存在' } else { '缺失' })"
 
-    $lines += @('', '## 生物 AI 禁用审计（测试环境硬性要求）', '')
+    $lines += @('', '## 生物 AI 禁用审计（测试环境硬性要求；日志通道证据）', '')
     if ($noaiBeats.Count -eq 0) {
         $lines += '- ❌ **未读到任何 `AP_NOAI:` 心跳** —— 脚本未同步 / 未生效（`mt_launch` 的进入世界闸门本应已拦下）'
     } else {

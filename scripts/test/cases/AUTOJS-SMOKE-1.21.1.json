@@ -1,0 +1,79 @@
+{
+  "case_id": "AUTOJS-SMOKE-1.21.1",
+  "title": "AutoJS 通道样板:服务端注册表自省(物品/效果/配方计数) + 客户端求值 + await_state 就绪判定",
+  "version": "1.21.1",
+  "channel": "autojs",
+  "target": {
+    "type": "feature",
+    "ref": "autojs-harness"
+  },
+  "on_fail": "continue",
+  "steps": [
+    {
+      "op": "note",
+      "text": "AutoJS 主通道样板用例(需求书 docs/features/autojs-test-harness-spec.md §4)。\n\n与 legacy 用例的本质差别:判据不再靠「日志里命中某行」,而是**直接从运行的 JVM 里取状态**。\n- side=server 求值直接读注册表/配方管理器(legacy 只能靠 /astralshop 探针把事实打印进 latest.log)\n- side=client 求值直接读客户端对象(legacy 只能靠 KubeJS client_scripts 写 logs/kubejs/client.log)\n- await_state 轮询直到条件成立,不再靠固定 wait{ms} 睡大觉。\n\n本用例同时是**通道自检**:如果 AutoJS 端点/协议/模块链路有任何一环不通,它会以 BLOCKED 而非 FAIL 报出。\n\n⚠️ code 一律写成 **IIFE 表达式**(function(){...})():AutoJS 只求值「最后一个表达式」,顶层 return 会抛 invalid return;非标量返回值也只有包成表达式才能被通道 JSON.stringify 成结构。"
+    },
+    {
+      "op": "mcp_status",
+      "save_as": "st",
+      "timeout_ms": 15000
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "save_as": "reg",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var Reg = Java.loadClass('net.minecraft.core.registries.BuiltInRegistries');\n  var RL = Java.loadClass('net.minecraft.resources.ResourceLocation');\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var server = SH.getCurrentServer();\n  if (server === null) { return { ok: false, reason: 'no-server' }; }\n  var chips = 0;\n  var it = server.getRecipeManager().getRecipes().iterator();\n  while (it.hasNext()) { var h = it.next(); if (String(h.id().getPath()).endsWith('_chip')) { chips++; } }\n  return {\n    ok: true,\n    item_lingling: Reg.ITEM.containsKey(RL.parse('astral_dice:lingling_sign')),\n    effect_surge: Reg.MOB_EFFECT.containsKey(RL.parse('astral_dice:lingling_surge')),\n    chips: chips,\n    players: server.getPlayerList().getPlayerCount()\n  };\n})()"
+    },
+    {
+      "op": "eval_js",
+      "side": "client",
+      "save_as": "cli",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var MC = Java.loadClass('net.minecraft.client.Minecraft');\n  var mc = MC.getInstance();\n  return { ok: true, fps: mc.getFps(), in_world: mc.level !== null, has_screen: mc.screen !== null };\n})()"
+    },
+    {
+      "op": "await_state",
+      "side": "server",
+      "timeout_ms": 60000,
+      "interval_ms": 500,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  return (s !== null) && (s.getPlayerList().getPlayerCount() > 0);\n})()"
+    },
+    {
+      "op": "note",
+      "text": "断言全部走 eval/state:取值来自前序 eval_js 的 save_as(reg/cli),expect 支持标量/min/max/gte/lte/regex/set/contains 与嵌套逐键递归。\n\nmcp_status 的 save_as(st) 存的是模块归一化后的对象,键名是**大写开头**(Ok/Payload/...),所以 expect 必须写 Ok 而不是 ok(mt_assert 的键比较是 Ordinal、区分大小写)。"
+    }
+  ],
+  "asserts": [
+    {
+      "type": "state",
+      "from": "st",
+      "expect": {
+        "Ok": true
+      }
+    },
+    {
+      "type": "state",
+      "from": "reg",
+      "expect": {
+        "ok": true,
+        "item_lingling": true,
+        "effect_surge": true,
+        "chips": {
+          "gte": 0
+        }
+      }
+    },
+    {
+      "type": "state",
+      "from": "cli",
+      "expect": {
+        "ok": true,
+        "in_world": true,
+        "fps": {
+          "gte": 1
+        }
+      }
+    }
+  ]
+}

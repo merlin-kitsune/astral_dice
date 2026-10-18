@@ -226,6 +226,159 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --phase <p> --version <v>
 ⚠️ **`log` 与 `absent` 都遵循该字段**：`absent` 的旧语义是「整文件不得出现」，收窄后**只检测本用例窗口内不得出现**——因此**凡「文本不是本用例产生」的反向断言（尤其启动/数据包解码期文本）必须显式写 `scope: whole`**（`LOOT-MODIFIER-1.20.1` 的 `Could not decode GlobalLootModifier` 即此类，已补标），否则会**静默丢掉启动期覆盖**。非法 `scope` 在 `mt_case.ps1 validate` 阶段被拦下，不在执行期静默落回默认。`mixin` **固定读 launch 窗口**（跟随 case 会退化成「窗口内无 Mixin 失败」= 恒真）。日志源不在快照偏移表内时（如离线用例的 `loadergate.log`；表内只有 `latest.log`/`debug.log`/`server.log`/`astral_probe.log`）偏移恒为 0 = 整文件，`scope` 对其无影响。
 **失败取证**：`on_fail=keep_game_running` 会落 `.mt_keep_alive`；此时**退出清理不杀客户端也不停守护**（保留现场），取证后执行 `mt.ps1 --phase stop --force`。
 
+## 7A. AutoJS 通道（运行时求值通道，2026-10-18 新增）
+
+> 权威规格 = `docs/features/autojs-test-harness-spec.md`（需求书；本节的「为什么」全部引自它）。本节只记录**已落地**的实现与用法，每条判据都标「文件:行号」便于逐字对账；legacy 用例的迁移欠账见 `docs/features/autojs-legacy-debt.md`；「什么时候必须用哪条通道」的规则见 `TESTING-RULES-OVERVIEW.md` §15。
+
+### 7A.1 判据口径的变化：从「日志里命中某行」到「从 JVM 取状态」
+
+| 维度 | legacy 通道（`channel=kubejs`，缺省） | AutoJS 通道（`channel=autojs`） |
+|---|---|---|
+| 读数链条 | 冷启动注入 `resources/kubejs/<ver>/**` → `run/<ver>/kubejs/**` → 探针在脚本加载期打印 `[CHAT] AP_*` 行（`logs/latest.log`）或写 `logs/kubejs/client.log` → 正则匹配 | 端点探活 → `tools/call eval_js` → 在**服务端主线程**／**客户端渲染线程**求值 → 直接拿回返回值 |
+| 判据强度 | 正则命中即 PASS；断言字段面只有 `type/source/pattern/scope`，**没有次数与阈值字段** | 标量相等 / `min` / `max` / `gte` / `lte` / `regex` / `set`（顺序无关）/ `contains` / 嵌套对象逐键递归 |
+| 故障可分辨性 | 「没命中」无法区分「功能没生效」与「探针没跑到／日志没落盘」 | 端点不可用 ⇒ BLOCKED（环境问题），判据不符 ⇒ FAIL（功能缺陷），一眼可分 |
+| 适用事实 | 加载器 / mixin / 崩溃 / 产品自己的 `LOGGER` 行 | 注册表、配方表、世界状态、客户端对象（`Minecraft.getInstance()` / FPS / screen / level） |
+| 时序 | 必须冷启动 + 探针在脚本加载期打印 | 端点起来后任意时刻求值；`await_state` 轮询到条件成立（不再靠固定 `wait` 睡大觉） |
+
+### 7A.2 端点与协议契约
+
+| 项 | 契约 |
+|---|---|
+| 端点 | `http://127.0.0.1:25585/mcp`（AutoJS 默认 bind `127.0.0.1`；游戏侧配置 `config/autojs.json` 的 `enabled/bindAddress/port/token/unrestricted/evalTimeoutMs`） |
+| 传输 | Streamable HTTP + JSON-RPC 2.0；**无服务端 SSE**（`GET /mcp` → 405）⇒ 客户端两种响应形式都必须会读 |
+| 探活 | 三步：TCP 连通 → `initialize` → `tools/call status`（`mt_launch.ps1:1021-1027` 就是这样判的） |
+| 会话 | 服务端无状态；`initialize` 回 `Mcp-Session-Id` 与 `protocolVersion`，后者**原样回填**到 `notifications/initialized` |
+| 工具面 | 只有 4 个：`status` / `eval_js{code,side,timeout_ms}` / `kubejs_log{side,kind,limit}` / `reload_scripts{side,timeout_ms}`；`side` ∈ `auto / server / client` |
+| 返回形状 | `{ok,side,elapsedMs,type,value,diagnostics}`，失败另带 `error` / `stack`；**`diagnostics` 必须看**（KubeJS 会把注册类调用的拒绝吞掉，只在这里回显） |
+| 端口覆盖序 | `-Dautojs.port=` > 环境变量 `AUTOJS_PORT` > `config/autojs.json` |
+| 依赖 | rhino 必装（KubeJS 的硬前置）；KubeJS 可选（没装时走 AutoJS 自带 Rhino 作用域） |
+| 许可证 | GPL-3.0；上游不发布 jar ⇒ 本仓自建并 vendor 到 `scripts/test/resources/mods/autojs/`（来源账本 `PROVENANCE.md`） |
+
+客户端模块 `scripts/test/lib/Mt.AutoJs.psm1`（838 行，CRLF；行数以 2026-10-18 13:30 +08 取证为准）的实现要点：
+
+- 头注释 `L2-L37`：POST `<endpoint>`；无服务端 SSE；`Accept` 同时声明 `application/json` 与 `text/event-stream`；握手 = `initialize` → `notifications/initialized` → `tools/call`；`result.content[].text` 是**JSON 字符串**；SSE 形响应按 `data:` 行取**最后一条** JSON-RPC 消息。
+- 常量 `L45-L49`：`DefaultEndpointUrl='http://127.0.0.1:25585/mcp'`、`DefaultTimeoutMs=15000`、`DefaultPollMs=500`、`ProtocolVersion='2025-06-18'`、`ClientName='mt-autojs-client'`。
+- 凭据：`MT_AUTOJS_TOKEN` 非空时请求自动加 `Authorization: Bearer <token>`（`Get-MtAutoJsAuthHeaders`，`L121-L135`）。
+- 错误归一（`L20-L27`）：`isError` / `ok=false` ⇒ 返回 `@{Ok=$false;Error;Stack;Diagnostics}`；传输层失败同形，但 `Error` 里写明失败阶段（`initialize` / `notifications/initialized` / `tools/call <name>`）与 HTTP 状态码。**端点没起来 ≠ 断言失败** ⇒ 调用方记 BLOCKED(11)。
+- `4xx` 自动重握手一次（`Invoke-MtAutoJsTool` 的重试循环，`L717-L743`）：会话失效时 `Reset-MtAutoJsSession` 后重试，并打 `MT_AUTOJS: 会话失效（tools/call <name> → HTTP <code>），重新握手后重试一次`；`5xx` 与传输层错误**不重试**。
+- 导出 9 个（`Export-ModuleMember`，`L833-L837`）：`Test-MtAutoJsEndpoint` / `Invoke-MtAutoJsTool` / `Invoke-MtAutoJsEval` / `Get-MtAutoJsStatus` / `Get-MtAutoJsKubejsLog` / `Invoke-MtAutoJsReload` / `Reset-MtAutoJsSession` + `Get-MtAutoJsEndpointUrl` / `Get-MtAutoJsTimeoutMs`（后两个给自测与多实例用）。
+- 输出纪律（`L29-L31`）：模块内不用 `Write-Output` / `Write-Host`，统一走 `Write-MtAutoJsLine`（显式 LF），避免污染管道返回值。
+
+端点与超时三个配置键已入 `scripts/test/mt.conf.example`（`mt.conf` 本身 gitignored）：`MT_AUTOJS_ENDPOINT`（`L30`）、`MT_AUTOJS_TIMEOUT_MS`（`L32`，缺省 15000）、`MT_AUTOJS_TOKEN`（`L34`，缺省空）。
+
+### 7A.3 五个阶段的接线（含机器行）
+
+| 阶段 | 落点 | 行为 | 机器行 |
+|---|---|---|---|
+| `P` 静态前置 | `mt_preflight.ps1` `Test-MtPreflightAutoJs`（`L362-447`） | 只查**文件**：① vendor jar 在位且 SHA256 与 `PROVENANCE.md` 一致（`L387-L390` 只核 1.21.1 与 26.1.2 两件）② `MT_AUTOJS_ENDPOINT` 已配置且是合法 `http(s)` URL ③ 该线 `run/<ver>/mods` 是否已投放（**缺 ⇒ WARN 不阻塞**，`L432`；同族 >1 个 ⇒ FAIL `L434`） | `MT_PREFLIGHT_AUTOJS: OK / WARN / FAIL — <detail>`（`L445`） |
+| `E` 环境装配 | `mt_env.ps1` `$script:AutoJsModsByVersion`（`L134-L150`）+ `Install-MtAutoJs`（`L1492-L1591`） | 1.21.1 / 26.1.2 按规格投放 vendor jar；**1.20.1 与 fabric-1.20.1 规格为空**（`L148-L149`）⇒ 走 build.gradle 路线（见 7A.7）。同族旧版本清理前缀**只有** `autojs-`（`L1548-L1554`）；rhino 必须恰好一个且满足 AutoJS jar 自身 `mods.toml` 的 `versionRange`（`L1556-L1587`） | `MT_ENV_AUTOJS: OK` / `MT_ENV_AUTOJS: BLOCKED` / `MT_ENV_AUTOJS: 跳过`（未接入线，`L1513-L1516`） |
+| `L` 启动闸门 | `mt_launch.ps1` `L950-L1088`（紧随 `immediate_respawn` 闸门 `L945-L948` 之后、快照基线 `L1090` 之前） | 判据 = `run/<ver>/mods` 下存在 `autojs*.jar`（`L974-L982`）；没有 ⇒ WARN 跳过、legacy 用例照跑；有 ⇒ 探活 + 取 `protocolVersion`，未就绪默认 `MT_LAUNCH: ERROR` + **退出码 2**（`L1042-L1051`），逃生阀 `MT_ALLOW_NO_AUTOJS=1` 改为 WARN 放行 | `MT_LAUNCH: OK — AutoJS 端点已就绪（<url>，protocolVersion=<v>）` / `MT_LAUNCH: ERROR — AutoJS 端点未就绪（<reason>）…` / `AUTOJS_SNAPSHOT: written — <file>（versions.<ver>）` |
+| `C` 用例执行 | `mt_case.ps1`（原语表 `L110-L135`） | 三个新原语 `eval_js` / `await_state` / `mcp_status`；`channel` 缺省 `kubejs`（`L138-L149`，非法值报「用例 channel 非法」，见 `Test-MtCaseValid` 的通道段）；`kubejs_reload` 在 `channel=autojs` 下**退役**（`Test-MtCaseValid` 的退役原语分支） | `CASE_CHANNEL: <caseId> channel=autojs（eval 通道，端点 <url>）`（`Invoke-MtCaseRun` 开头的通道回显） |
+| `R` 断言/报告 | `mt_assert.ps1` `Invoke-MtAssertEval`（`L1176` 起）+ `mt_report.ps1` `L661-L665`/`L683` | 断言侧只做**比较**：值可来自 `--value-json` / `--from-file` / `--code`（内联自己求值）；报告侧**只读** `cases/.mt_autojs.json`，不重跑游戏 | `MT_ASSERT_EVAL: PASS / FAIL / BLOCKED` / `MT_ASSERT_STATE: PASS / BLOCKED`（`L1268/L1273`）；报告小节标题「## AutoJS 通道（eval 通道证据）」`L683` |
+
+阶段顺序上的一个**已知偏差**（实现里写明了）：闸门在 `immediate_respawn` 之后、清场之前，而本文件的 `PRECLEAN` 在 `immediate_respawn` 之前 —— 闸门顺序以既有语义不变为准（`mt_launch.ps1:955-957`）。
+
+⚠️ 本节的 `文件:行号` 以 **2026-10-18 13:30 +08** 的取证为准；`mt_case.ps1` 在本批落地期间被并发编辑、行号已多次漂移（`Mt.AutoJs.psm1` 亦同），故本节对 `mt_case.ps1` 的引用一律给**函数名 / 机器行原文**，只对稳定的文件给行号；跨批次引用请按函数名检索。
+
+### 7A.4 用例 schema 增量
+
+顶层：
+
+```json
+{
+  "case_id": "AUTOJS-SMOKE-1.21.1",
+  "version": "1.21.1",
+  "channel": "autojs",
+  "steps": [ ... ],
+  "asserts": [ ... ]
+}
+```
+
+- `channel`：`"autojs"` 或 `"kubejs"`，**缺省 `kubejs`**（向后兼容，`mt_case.ps1:138-149`）。它不是注释，结构校验会按它限制原语与断言类型（原语侧与断言侧都在 `Test-MtCaseValid` 内：步骤循环的「要求用例 channel=autojs」+ `asserts` 循环的同类校验）。
+- 步骤原语（**仍是封闭表**，非法字段立即 ERROR）：
+
+| 原语 | 字段 | 语义 |
+|---|---|---|
+| `eval_js` | `side`, `code` 或 `script`, `args`, `save_as`, `timeout_ms`, `expect`（可选内联判据） | 求值一次并保存返回值；`code`/`script` 二选一；`args` 注入为 JS 里的 `args` 变量（`Resolve-MtAutoJsCode`）；`save_as` 是**跨步骤共享**的命名槽 |
+| `await_state` | `side`, `code` 或 `script`, `args`, `timeout_ms`, `interval_ms` | 轮询求值直到条件为真；真值判定见 `Get-MtAutoJsTruthy`（`true` / 非零 / 非空串 / 对象 `ok:true`；**`{ok:false,…}` 必须是假**） |
+| `mcp_status` | `timeout_ms`, `save_as`（必填，见 `Test-MtCaseValid` 的「mcp_status 必须给 save_as」） | 取端点 `status` 结果存档，样板用例用它做通道自检 |
+
+- 断言：`assert` 原语新增字段 `from` / `code` / `side` / `expect`（`L124`）；断言类型表新增 `eval` / `state`（`L136`）。`type=eval` 必须给 `from`（引用某个 `save_as`）或内联 `code`（`Test-MtCaseValid` 内两处「需要 from…或内联 code」），**禁止「返回非空即 PASS」**。
+- `expect` 比较引擎（`mt_assert.ps1`）：
+
+| 判据形态 | 语义 | 位置 |
+|---|---|---|
+| 标量（含 `true`/`false`/字符串） | 相等判定 | `Test-MtExpectScalarEqual` `L894-L931`（经 `Test-MtExpectNode` `L1058` 调用） |
+| `{min:…}` / `{max:…}` / `{gte:…}` / `{lte:…}` | 数值区间 | `L945-L953` |
+| `{regex:"…"}` | 只接受字符串；非法正则报「判据不合法：正则非法 …」 | `L955-L965` |
+| `{set:[…]}` / `{contains:[…]}` | 元素数相等 + **顺序无关**逐元素消去（缺元素报「集合缺元素 <v>」） | `L967-L1005` |
+| 嵌套对象 | 逐键递归；**缺失键 = FAIL**（「路径 <p> 期望 <v> 实际 <缺失>（缺失键）」） | `L1017` / `Test-MtExpectMatch` `L1098-L1099` |
+| 期望未覆盖的多余键 | **只回显不判定**（`Extras`） | `L1098-L1099` |
+
+- 缺 `expect` 的两种语义要分清：`state` ⇒ PASS 但注明「（无判据）」只打印证据；`eval` ⇒ **ERROR 2**（「eval 断言缺少 expect（判据缺失不等于通过）」）。
+- `script` 字段的相对根是 `scripts/test/resources/autojs/<ver>/` —— **该目录当前尚未建立**，所以样板用例一律用内联 `code`。
+
+### 7A.5 样板用例解读：`scripts/test/cases/AUTOJS-SMOKE-1.21.1.json`（79 行）
+
+步骤链（`steps`）：
+
+1. `note` —— 说明与 legacy 的本质差别：判据直接取 JVM 状态；端点/协议/模块任一环不通 ⇒ BLOCKED 而非 FAIL。
+2. `mcp_status{save_as:"st",timeout_ms:15000}` —— 通道自检第一步。
+3. `eval_js{side:"server",save_as:"reg",timeout_ms:20000}` —— 用 `Java.loadClass` 取 `net.minecraft.core.registries.BuiltInRegistries` / `ResourceLocation` / `net.neoforged.neoforge.server.ServerLifecycleHooks`；返回 `{ok, item_lingling: Reg.ITEM.containsKey(RL.parse('astral_dice:lingling_sign')), effect_surge: Reg.MOB_EFFECT.containsKey(RL.parse('astral_dice:lingling_surge')), chips, players}`，其中 `chips` = 遍历 `server.getRecipeManager().getRecipes()` 数 `id.getPath()` 以 `_chip` 结尾的配方条数。
+4. `eval_js{side:"client",save_as:"cli"}` —— 取 `net.minecraft.client.Minecraft.getInstance()`，返回 `{ok, fps: mc.getFps(), in_world: mc.level !== null, has_screen: mc.screen !== null}`。
+5. `await_state{side:"server",timeout_ms:60000,interval_ms:500}` —— 判 `server !== null && getPlayerList().getPlayerCount() > 0`，把「玩家已上线」从固定睡眠换成条件轮询。
+6. `note` —— 提示断言全走 `eval`/`state`。
+
+断言（`asserts`，三条全 `type:"state"`）：
+
+| from | expect | 含义 |
+|---|---|---|
+| `st` | `{Ok:true}` | 端点 `status` 说活着（键名**大写开头**：`mcp_status` 存的是模块归一化后的对象，不是工具返回的 `{ok}` 原样） |
+| `reg` | `{ok:true, item_lingling:true, effect_surge:true, chips:{gte:0}}` | 注册表里确有物品与效果，配方表可枚举 |
+| `cli` | `{ok:true, in_world:true, fps:{gte:1}}` | 客户端已进世界且在出帧 |
+
+为什么它是「通道自检」：三条断言的取值全部来自 AutoJS 求值；任何一环（mods 里没 jar / 端点没起 / `protocolVersion` 不通 / 模块加载失败）都会让用例以 **BLOCKED** 结束，而不是给出「功能坏了」的假结论。另外 `st` 的判据键是大写 `Ok` —— 写成 `{ok:true}` 会因**缺失键**直接 FAIL，这正好演示了「缺失键 = FAIL」这条规则。
+
+### 7A.6 失败 / 阻塞语义（判错等于白跑）
+
+| 情形 | 结论 | 依据 |
+|---|---|---|
+| 端点没起、协议不通、`Mt.AutoJs.psm1` 缺失/导入失败 | **BLOCKED（11）** —— 环境问题，不是功能缺陷 | `mt_case.ps1` 的「=> `await_state` BLOCKED」「=> `mcp_status` BLOCKED」（含模块缺失分支）「=> 本步 BLOCKED」三条分支；`mt_assert.ps1:1176` 起（`MT_ASSERT_<KIND>: BLOCKED — AutoJS 端点不可用……`） |
+| 判据不符（返回值不满足 `expect`） | **FAIL（1）** —— 功能缺陷 | `mt_assert.ps1:1268` 的 `MT_ASSERT_…: FAIL — <mismatches>`；`mt_case.ps1` 的 `eval_js 脚本失败：…` 分支 |
+| 脚本抛错（JS 异常 / 求值报错） | **FAIL（1）** | 同上；错误文本随记录落进 `.mt_autojs.json` |
+| 用例结构非法（字段不在封闭表、`channel` 非法、`eval` 断言缺 `from`/`code`、`mcp_status` 缺 `save_as`） | **ERROR（2）** / INVALID | `mt_case.ps1` 的 `Test-MtCaseValid` 全函数（通道 / 原语字段 / 断言三类校验都在这里） |
+| 前序步骤本身 BLOCKED，导致断言无值可比 | **BLOCKED**，不是 FAIL | `mt_case.ps1` 的断言求值分支（「… 未成功（<why>）=> BLOCKED（不是 FAIL）」） |
+| 启动期端点没就绪（还没到断言） | **`MT_LAUNCH: ERROR` + 退出码 2** | `mt_launch.ps1:1042-1051`；`L960-L961` 注明「启动期用 ERROR(2) 而非 BLOCKED(11)，BLOCKED 留给断言期」 |
+| 期望里没写到的多余键 | 不判定，只回显 | `mt_assert.ps1:1098-1099` |
+
+### 7A.7 1.20.1 与 fabric-1.20.1 的特殊路线
+
+这两条线的 AutoJS 生产产物分别是 **SRG** 与 **intermediary** 字节码，**不能**手放进 `run/<ver>/mods`（SRG 名如 `m_137583_()` 在 named 运行期不存在 ⇒ `NoSuchMethodError`；Fabric 侧会类错位）。所以：
+
+- `forge-1.20.1/build.gradle:382-391`：`if (providers.gradleProperty('autojsTestMod').orNull == '1')` 之下 `modRuntimeOnly 'cc.sighs.autojs:AutoJS-forge-1.20.1:1.0.0'` —— 由 MDG 在解析期做 SRG→named；本模组代码不引用 AutoJS，故只能 `modRuntimeOnly`、也不 `jarJar`。
+- `fabric-1.20.1/build.gradle:182-190`：同一守卫 + `modRuntimeOnly 'cc.sighs.autojs:AutoJS-fabric-1.20.1:1.0.0'` —— Loom 1.14.10 的 `mod*` 配置对带 `fabric.mod.json` 的依赖做 intermediary→named；AutoJS 产物 `manifest` 里的 `Fabric-Loom-Version=1.10.5` 低于本仓 1.14.10，不触发 built-with-newer-Loom 门禁。
+- 坐标来源：`scripts/test/tools/publish_autojs_maven.ps1` 把两个产物按 Maven 布局发布到 mavenLocal（`<m2>/cc/sighs/autojs/<artifactId>/1.0.0/<artifactId>-1.0.0.{jar,pom}`，jar + 手写最小 `pom.xml`；`groupId=cc.sighs.autojs`），机器行 `MT_AUTOJS_MAVEN: OK / SKIP / FAIL / PROVENANCE` + 汇总行 `MT_AUTOJS_MAVEN_RESULT`（脚本 `L30-L34`）。
+- 来源门禁例外：`tools/check_mod_sources.ps1:79-81` 的 `$script:ModExceptions` 登记 `'cc.sighs.autojs'`（AutoJS 只发 mavenLocal、无 Curse/Modrinth 件 —— 门禁只认 `curse.maven:`/`maven.modrinth:`，表达不了）。
+- 因此这两条线的 `AutoJsModsByVersion` 为空（`mt_env.ps1:148-149`），`MT_ENV_AUTOJS` 打「跳过」，投放由 Gradle 负责；**不要**为了让断言跑起来而手工往 `run/mods` 里拷 jar。
+- vendor 目录里四件 jar 都在（`AutoJS-neoforge-1.21.1-1.0.0.jar` / `AutoJS-neoforge-26.1-1.0.0.jar` / `AutoJS-forge-1.20.1-1.0.0.jar` / `AutoJS-fabric-1.20.1-1.0.0.jar`），后两件**只供 publish 脚本**，不进 `run/mods`。
+
+### 7A.8 与 legacy 通道的取舍原则
+
+**默认规则：新用例优先 `channel=autojs`**；下面这些事实**仍然必须**用日志通道读，不得改成 eval：
+
+1. **mixin 断言**（`type:mixin`）：事实发生在类变换期，JVM 里没有可求值的句柄；失败常常是 `Attach error` 直接崩进程 —— 崩了以后端点也没了，「用 eval 读 mixin 结果」是自欺。
+2. **crash 断言**（`type:crash`）：崩溃 / 非正常退出 / 崩溃报告只存在于文件层；AutoJS 端点随进程一起死。
+3. **禁 AI 审计的四层保证**：审计对象是「产品里不存在 AI 调用路径」这类由产品自己 `LOGGER` 打印的日志行；**产品 `LOGGER` 行只能读日志**（它不在任何可求值对象里）。
+4. （自然延伸）`vision` 断言（截图 + 语义问题）目前没有 JVM 等价物，保留。
+
+反过来，**同一用例可以混用两条通道**：`channel=autojs` 的用例里照样允许保留 `log/absent/crash/mixin` 断言作为旁证 —— 但主判据必须是 `eval/state`，别让旁证替主判据背书。
+
+### 7A.9 证据落盘与报告
+
+- 唯一证据文件：`scripts/test/cases/.mt_autojs.json`（跨脚本契约，`mt_case.ps1:150-153`）。写入方：`mt_launch.ps1:1053-1087`（`versions.<线> = {endpoint, protocol_version, ok, reason, ts, status, cases}`，UTF8 无 BOM）与 `mt_case.ps1`（逐条 eval 记录）；读取方：`mt_assert.ps1`（快照摘要）与 `mt_report.ps1`（报告小节，`L661-L665` 注明**只读不重跑游戏**）。
+- 报告小节固定位置在「## AutoJS 通道（eval 通道证据）」（`mt_report.ps1:683`），内容含端点、`protocolVersion`（`L708`）、就绪状态、`status` 摘要、本批 `eval_js` 步数与失败数（`L736`）、逐用例表；本轮没有任何 AutoJS 记录时打「- 本轮无 AutoJS 记录（未装 autojs / 端点未就绪 / 没有 channel=autojs 的用例）」（`L685`）。
+- 机器行速查：`MT_ENV_AUTOJS` / `MT_PREFLIGHT_AUTOJS` / `MT_LAUNCH` / `AUTOJS_SNAPSHOT` / `CASE_CHANNEL` / `MT_ASSERT_EVAL` / `MT_ASSERT_STATE` / `MT_AUTOJS_MAVEN`。**手工编辑 `.mt_autojs.json` 当证据 = 伪造证据。**
+
 ---
 
 ## 8. 回归套件清单（1.2.0）
