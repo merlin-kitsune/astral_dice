@@ -122,7 +122,7 @@
 |---|---|
 | 两线编译 | `pwsh -NoProfile -File scripts/test/mt_build.ps1 --version 1.21.1|1.20.1 --timeout 300` ⇒ `MT_BUILD: OK` |
 | 模型 / 贴图不缺 | `pwsh -NoProfile -File scripts/verify/verify_resource_integrity.ps1` ⇒ PASS（两线各 149/149） |
-| 三语键集一致 | `pwsh -NoProfile -File tools/check_lang_sync.ps1 -LangDir <线>/src/main/resources/assets/astral_dice/lang`（两线各 983/983/983） |
+| 三语键集一致 | `pwsh -NoProfile -File tools/check_lang_sync.ps1 -LangDir <线>/src/main/resources/assets/astral_dice/lang`（两线各 1001/1001/1001） |
 | 手册无悬空键 | `python tools/audit_patchouli_keys.py` |
 | 档位词与 `.rarity()` 一致 | `python tools/verify_rarity_consistency.py` |
 | 赏金池 | `pwsh -NoProfile -File scripts/verify/verify_bountiful_pools.ps1`（P0 两线条目一致 + 价值平衡 PASS；26.1.2 因 P1 未移植出现 `effect_card_barricade` 缺失红项，属预期） |

@@ -602,7 +602,7 @@ public class ModTooltipHandler {
             tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown", effectCardCooldownSeconds(player)).withStyle(ChatFormatting.RED));
         }
         if (stack.is(ModItems.EFFECT_CARD_BARRICADE.get())) {
-            // 2026-10-17 路障(2026-10-17 移植到本线):第一行 = 用法(右键方块面),第二行 = 耐久 / 挡路 / 拉仇恨三件事;
+            // 2026-10-17 路障(2026-10-17 移植到本线):三行 = 用法(右键方块面) / 挡路 + 拉仇恨 / 耐久(末行);
             // 行内数值一律 §e(非时间数值着黄,见 AGENTS「tooltip 文案唯一基准」)
             addCardLines(tooltip, "tooltip.astral_dice.card.barricade");
             addEffectCardPlayCountTooltip(tooltip, player);
@@ -611,8 +611,8 @@ public class ModTooltipHandler {
                     .withStyle(ChatFormatting.RED));
         }
         if (stack.is(ModItems.EFFECT_CARD_REPULSION.get())) {
-            // 2026-10-18 强化拒止(专属效果牌;2026-10-18 移植到本线):第一行 = 用法(右键方块面),
-            // 第二 = 吸附 + 缓慢/虚弱,第三 = 耐久规则;行内数值着 §e(非时间数值)、时间着 §9
+            // 2026-10-18 强化拒止(专属效果牌;2026-10-18 移植到本线):五行 = 用法(右键方块面) / 吸附 + 缓慢·虚弱 / 苦力怕不能自爆 / 不拉仇恨·免疫 / 耐久(末行);
+            // 行内数值着 §e(非时间数值)、时间着 §9
             // (见 AGENTS「tooltip 文案唯一基准」)。专属行照本线 fate_guidance 段(DARK_PURPLE)。
             addCardLines(tooltip, "tooltip.astral_dice.card.repulsion");
             addEffectCardPlayCountTooltip(tooltip, player);
