@@ -54,9 +54,9 @@ import net.minecraft.resources.ResourceLocation;
  *       详见 {@code docs/features/repulsion-card-spec.md} §1.1。</li>
  * </ul>
  *
- * <p><b>贴图</b>：bbmodel 的 {@code textures[0].source} 是 128×128 PNG，而它的 UV 画布是 64×64
- * （{@code uv_width/uv_height} = 64）⇒ 按 2:1 最近邻降采样成 64×64 写入
- * {@code textures/entity/repulsion.png}，使 UV 网格与像素一一对应。
+ * <p><b>贴图</b>：bbmodel 的 {@code textures[0].source} 是 128×128 PNG，UV 画布 64×64
+ * （{@code uv_width/uv_height} = 64）⇒ 运行时直接用这张 128×128 原图写
+ * {@code textures/entity/repulsion.png}（同一 UV 矩形 ⇒ 两倍纹素密度，见文末）；但北面块 (4,10)-(28,34) 已替换为「南面块旋转 90° 顺时针」，两个面因而显示同一张正立图案。
  *
  * <p><b>1.20.1 平台差异</b>（相对 neoforge-1.21.1 蓝本，均按本线源码核实）：
  * <ul>
@@ -73,10 +73,12 @@ import net.minecraft.resources.ResourceLocation;
  * <p><b>实机核对（2026-10-18，neoforge-1.21.1 dev 客户端）</b>：
  * <ul>
  *   <li>轮廓 / 尺寸 / 位置与 bbmodel 一致（正、背面软件渲染 IoU = 1.000 / 0.991）；</li>
- *   <li>首版 head 用 −45° 时**牌面图案相对 bbmodel 歪 90°**（实机截图可见），按每个可见面的
- *       uv→屏幕 仿射轴角比对改为 −135° 后，正/背面轴角差均为 0 ⇒ 牌面与 Blockbench 一致；</li>
+ *   <li>首版 head 用 −45°（bbmodel +45° 取反）时**牌面图案相对 bbmodel 歪 90°**（实机截图可见）；改为 −135° 后轮廓完全不变 ——
+ *       但「−135° 已与 bbmodel 对齐」这个结论**在二轮被用户判定「颠倒」推翻**（当时的软件渲染器绕 pivot 转了绝对坐标、屏幕 x 符号也错，图本身不可信）。</li>
  *   <li>Z 旋转只改贴图朝向、不动轮廓的原因：12×12 正方形绕自身中心转 90° 映射到自身，
  *       故 {@code addBox} 的 y 偏移同步由 −12 改 0，8 个顶点与旧实现**逐点相同**。</li>
+ *   <li><b>二轮定量（2026-10-18，用户截图）</b>：把实机牌面按菱形四角反算回贴图网格、再与两个面的矩形做三分类匹配 ⇒ 实机牌面 == 北面块旋转 90°（一致率 1.000），相对 Blockbench 正视外观**差 180°**。
+ *       ⇒ 几何完全不动（θ 仍 −135°），只把运行时贴图的**北面 UV 块**换成「南面块旋转 90° 顺时针」：两面同图案、正立。</li>
  *   <li><b>贴图密度（128 贴图 + 64 UV 画布）</b>：MC 的 UV 归一化基准是 {@code LayerDefinition.create(mesh, texW, texH)}
  *       声明的 64，而不是 PNG 的像素尺寸；因此把 {@code repulsion.png} 换成 bbmodel 内嵌的 128×128 原图后，
  *       同一 UV 矩形采到的是**两倍纹素密度**的同一区域（{@code (2,5)..(14,17)} 由 12×12 纹素变成 24×24），
@@ -93,7 +95,7 @@ public class RepulsionModel extends EntityModel<RepulsionEntity> {
     /** bbmodel 的 +90°（绕 Z）⇒ 模型侧 −90°（该角度取值恰好与「取反」一致，见类注释）。 */
     private static final float BLADE_TWIST = (float) Math.toRadians(90.0D);
 
-    /** bbmodel 的 +45°（绕 Z）⇒ 模型侧 −135°（比「取反」多 90°，用于把牌面贴图摆正）。 */
+    /** bbmodel 的 +45°（绕 Z）⇒ 模型侧 −135°（比「取反」多 90°：叠加渲染期 scale(-1,-1,1) 后北面贴图才与 bbmodel 同向）。 */
     private static final float HEAD_TWIST = (float) Math.toRadians(135.0D);
 
     private final ModelPart root;

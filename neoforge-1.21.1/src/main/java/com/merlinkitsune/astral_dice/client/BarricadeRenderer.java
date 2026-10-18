@@ -28,4 +28,16 @@ public class BarricadeRenderer extends LivingEntityRenderer<BarricadeEntity, Bar
     public ResourceLocation getTextureLocation(BarricadeEntity entity) {
         return TEXTURE;
     }
+
+    /**
+     * 不显示头顶名条（2026-10-18）：本实体不走 {@code MobRenderer}，而是直接继承
+     * {@link LivingEntityRenderer}；它的 {@code shouldShowName} 只判「距离 + 不在载具里」，
+     * <b>不查 {@code customName}</b> —— 原版那条「只有自定义名才画名条」的门禁写在
+     * {@code MobRenderer#shouldShowName} 里。所以不覆写的话，立牌类实体头顶会一直画出
+     * 实体名（形如「强化拒止」）。路障 / 强化拒止都不是生物，一律不显示名条。
+     */
+    @Override
+    protected boolean shouldShowName(BarricadeEntity entity) {
+        return false;
+    }
 }
