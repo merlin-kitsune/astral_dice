@@ -12,81 +12,90 @@
       "text": "拆双 id PvP 回归。① 同队互殴(Dev 戴 kangel 有指示器、Fake1 戴 kangel、Fake3 无立牌):Dev 打 Fake1 与 Fake3 打 Fake1 的伤害必须相同(指示器不得误判 -1);② 敌对真粉丝:Fake2 打 Dev 后被 Dev 受击被动真实挂上 markE;③ seq 同态两击(第 2 击前给攻击方真标记)cut=100,证明 ChipDamageHandler -1 仍在;④ 计数镜像不清 mark;⑤ 卸下保留他人 mark;⑥ 死亡保留+重生重建指示器。"
     },
     {
-      "op": "inject_command",
-      "command": "/gamemode survival @a",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/gamemode survival @a\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 350
     },
     {
-      "op": "inject_command",
-      "command": "/gamerule naturalRegeneration false",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/gamerule naturalRegeneration false\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 350
     },
     {
-      "op": "inject_command",
-      "command": "/gamerule doImmediateRespawn true",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/gamerule doImmediateRespawn true\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 350
     },
     {
-      "op": "inject_command",
-      "command": "/gamerule keepInventory true",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/gamerule keepInventory true\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 350
     },
     {
-      "op": "inject_command",
-      "command": "/gamerule doDaylightCycle false",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/gamerule doDaylightCycle false\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 350
     },
     {
-      "op": "inject_command",
-      "command": "/time set noon",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/time set noon\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 350
     },
     {
-      "op": "inject_command",
-      "command": "/weather clear",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/weather clear\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 350
     },
     {
-      "op": "inject_command",
-      "command": "/kill @e[type=!player,distance=..96]",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/kill @e[type=!player,distance=..96]\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 250
     },
     {
-      "op": "inject_command",
-      "command": "/kill @e[type=!player,distance=..96]",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/kill @e[type=!player,distance=..96]\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
@@ -97,158 +106,176 @@
       "ms": 800
     },
     {
-      "op": "inject_command",
-      "command": "/carpet allowSpawningOfflinePlayers true",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/carpet allowSpawningOfflinePlayers true\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 400
     },
     {
-      "op": "inject_command",
-      "command": "/player Fake1 spawn",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/player Fake1 spawn\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 650
     },
     {
-      "op": "inject_command",
-      "command": "/player Fake2 spawn",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/player Fake2 spawn\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 650
     },
     {
-      "op": "inject_command",
-      "command": "/player Fake3 spawn",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/player Fake3 spawn\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 650
     },
     {
-      "op": "inject_command",
-      "command": "/player Fake4 spawn",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/player Fake4 spawn\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 650
     },
     {
-      "op": "inject_command",
-      "command": "/tp @s 0 -60 0 0 0",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/tp @s 0 -60 0 0 0\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 400
     },
     {
-      "op": "inject_command",
-      "command": "/tp Fake1 2 -60 0 0 0",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/tp Fake1 2 -60 0 0 0\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 250
     },
     {
-      "op": "inject_command",
-      "command": "/tp Fake2 4 -60 0 0 0",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/tp Fake2 4 -60 0 0 0\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 250
     },
     {
-      "op": "inject_command",
-      "command": "/tp Fake3 6 -60 0 0 0",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/tp Fake3 6 -60 0 0 0\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 250
     },
     {
-      "op": "inject_command",
-      "command": "/tp Fake4 8 -60 0 0 0",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/tp Fake4 8 -60 0 0 0\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 250
     },
     {
-      "op": "inject_command",
-      "command": "/clear @s",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/clear @s\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 350
     },
     {
-      "op": "inject_command",
-      "command": "/clear Fake1",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/clear Fake1\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 350
     },
     {
-      "op": "inject_command",
-      "command": "/clear Fake2",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/clear Fake2\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 350
     },
     {
-      "op": "inject_command",
-      "command": "/clear Fake3",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/clear Fake3\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 350
     },
     {
-      "op": "inject_command",
-      "command": "/clear Fake4",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/clear Fake4\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 350
     },
     {
-      "op": "inject_command",
-      "command": "/astralkame mobsreset",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralkame mobsreset\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 350
     },
     {
-      "op": "inject_command",
-      "command": "/astralkame resetfans Dev",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralkame resetfans Dev\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
-      "op": "inject_command",
-      "command": "/astralpvp clearfx CF Dev",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralpvp clearfx CF Dev\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
@@ -259,32 +286,16 @@
       "ms": 200
     },
     {
-      "op": "inject_command",
-      "command": "/astralkame resetfans Fake1",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralkame resetfans Fake1\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
-      "op": "inject_command",
-      "command": "/astralpvp clearfx CF Fake1",
-      "no_esc": true
-    },
-    {
-      "op": "wait",
-      "ms": 250
-    },
-    {
-      "op": "wait",
-      "ms": 200
-    },
-    {
-      "op": "inject_command",
-      "command": "/astralkame resetfans Fake2",
-      "no_esc": true
-    },
-    {
-      "op": "inject_command",
-      "command": "/astralpvp clearfx CF Fake2",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralpvp clearfx CF Fake1\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
@@ -295,32 +306,16 @@
       "ms": 200
     },
     {
-      "op": "inject_command",
-      "command": "/astralkame resetfans Fake3",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralkame resetfans Fake2\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
-      "op": "inject_command",
-      "command": "/astralpvp clearfx CF Fake3",
-      "no_esc": true
-    },
-    {
-      "op": "wait",
-      "ms": 250
-    },
-    {
-      "op": "wait",
-      "ms": 200
-    },
-    {
-      "op": "inject_command",
-      "command": "/astralkame resetfans Fake4",
-      "no_esc": true
-    },
-    {
-      "op": "inject_command",
-      "command": "/astralpvp clearfx CF Fake4",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralpvp clearfx CF Fake2\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
@@ -331,9 +326,50 @@
       "ms": 200
     },
     {
-      "op": "inject_command",
-      "command": "/team leave Dev",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralkame resetfans Fake3\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralpvp clearfx CF Fake3\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+    },
+    {
+      "op": "wait",
+      "ms": 250
+    },
+    {
+      "op": "wait",
+      "ms": 200
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralkame resetfans Fake4\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralpvp clearfx CF Fake4\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+    },
+    {
+      "op": "wait",
+      "ms": 250
+    },
+    {
+      "op": "wait",
+      "ms": 200
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/team leave Dev\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
@@ -344,63 +380,70 @@
       "ms": 300
     },
     {
-      "op": "inject_command",
-      "command": "/astralkame equip dice \"-\" Dev",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralkame equip dice \\\"-\\\" Dev\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 300
     },
     {
-      "op": "inject_command",
-      "command": "/astralkame equip dice \"-\" Fake1",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralkame equip dice \\\"-\\\" Fake1\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 200
     },
     {
-      "op": "inject_command",
-      "command": "/astralkame equip dice \"-\" Fake2",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralkame equip dice \\\"-\\\" Fake2\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 200
     },
     {
-      "op": "inject_command",
-      "command": "/astralkame equip dice \"-\" Fake3",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralkame equip dice \\\"-\\\" Fake3\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 200
     },
     {
-      "op": "inject_command",
-      "command": "/astralkame equip dice \"-\" Fake4",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralkame equip dice \\\"-\\\" Fake4\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 200
     },
     {
-      "op": "inject_command",
-      "command": "/team add blue",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/team add blue\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 300
     },
     {
-      "op": "inject_command",
-      "command": "/team join blue Dev",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/team join blue Dev\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
@@ -411,9 +454,10 @@
       "ms": 250
     },
     {
-      "op": "inject_command",
-      "command": "/team join blue Fake1",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/team join blue Fake1\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
@@ -424,9 +468,10 @@
       "ms": 250
     },
     {
-      "op": "inject_command",
-      "command": "/team join blue Fake3",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/team join blue Fake3\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
@@ -437,330 +482,367 @@
       "ms": 250
     },
     {
-      "op": "inject_command",
-      "command": "/astralkame equip stand \"astral_dice:kangel_sign\" Dev",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralkame equip stand \\\"astral_dice:kangel_sign\\\" Dev\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 450
     },
     {
-      "op": "inject_command",
-      "command": "/astralkame set fans 1 Dev",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralkame set fans 1 Dev\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 250
     },
     {
-      "op": "inject_command",
-      "command": "/astralkame equip stand \"astral_dice:kangel_sign\" Fake1",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralkame equip stand \\\"astral_dice:kangel_sign\\\" Fake1\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 450
     },
     {
-      "op": "inject_command",
-      "command": "/astralkame set fans 1 Fake1",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralkame set fans 1 Fake1\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 250
     },
     {
-      "op": "inject_command",
-      "command": "/astralkame equip stand \"astral_dice:kangel_sign\" Fake2",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralkame equip stand \\\"astral_dice:kangel_sign\\\" Fake2\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 450
     },
     {
-      "op": "inject_command",
-      "command": "/astralkame set fans 1 Fake2",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralkame set fans 1 Fake2\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 250
     },
     {
-      "op": "inject_command",
-      "command": "/astralkame equip stand \"astral_dice:kangel_sign\" Fake4",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralkame equip stand \\\"astral_dice:kangel_sign\\\" Fake4\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 450
     },
     {
-      "op": "inject_command",
-      "command": "/astralkame set fans 1 Fake4",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralkame set fans 1 Fake4\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 250
     },
     {
-      "op": "inject_command",
-      "command": "/item replace entity Dev weapon.mainhand with minecraft:netherite_sword",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/item replace entity Dev weapon.mainhand with minecraft:netherite_sword\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 300
     },
     {
-      "op": "inject_command",
-      "command": "/item replace entity Fake1 weapon.mainhand with minecraft:netherite_sword",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/item replace entity Fake1 weapon.mainhand with minecraft:netherite_sword\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 300
     },
     {
-      "op": "inject_command",
-      "command": "/item replace entity Fake2 weapon.mainhand with minecraft:netherite_sword",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/item replace entity Fake2 weapon.mainhand with minecraft:netherite_sword\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 300
     },
     {
-      "op": "inject_command",
-      "command": "/item replace entity Fake3 weapon.mainhand with minecraft:netherite_sword",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/item replace entity Fake3 weapon.mainhand with minecraft:netherite_sword\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 300
     },
     {
-      "op": "inject_command",
-      "command": "/item replace entity Fake4 weapon.mainhand with minecraft:netherite_sword",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/item replace entity Fake4 weapon.mainhand with minecraft:netherite_sword\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 300
     },
     {
-      "op": "inject_command",
-      "command": "/astralkame state S0",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralkame state S0\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 700
     },
     {
-      "op": "inject_command",
-      "command": "/astralpvp pair B1 Fake3 Dev Fake1",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralpvp pair B1 Fake3 Dev Fake1\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 800
     },
     {
-      "op": "inject_command",
-      "command": "/astralkame state B1",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralkame state B1\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 600
     },
     {
-      "op": "inject_command",
-      "command": "/astralpvp pvp E1 Fake2 Dev",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralpvp pvp E1 Fake2 Dev\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 700
     },
     {
-      "op": "inject_command",
-      "command": "/astralkame state E1",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralkame state E1\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 600
     },
     {
-      "op": "inject_command",
-      "command": "/astralpvp pvp E2 Dev Fake2",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralpvp pvp E2 Dev Fake2\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 700
     },
     {
-      "op": "inject_command",
-      "command": "/astralkame state E2",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralkame state E2\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 600
     },
     {
-      "op": "inject_command",
-      "command": "/astralpvp seq Q1 Fake1 Dev",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralpvp seq Q1 Fake1 Dev\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 800
     },
     {
-      "op": "inject_command",
-      "command": "/astralkame state Q1",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralkame state Q1\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 500
     },
     {
-      "op": "inject_command",
-      "command": "/astralpvp mark M2 Fake2",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralpvp mark M2 Fake2\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 450
     },
     {
-      "op": "inject_command",
-      "command": "/astralkame state M2a",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralkame state M2a\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 500
     },
     {
-      "op": "inject_command",
-      "command": "/astralkame set fans 2 Fake2",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralkame set fans 2 Fake2\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 900
     },
     {
-      "op": "inject_command",
-      "command": "/astralkame state M2b",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralkame state M2b\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 600
     },
     {
-      "op": "inject_command",
-      "command": "/astralkame equip stand \"-\" Fake2",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralkame equip stand \\\"-\\\" Fake2\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 900
     },
     {
-      "op": "inject_command",
-      "command": "/astralkame state U1",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralkame state U1\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 600
     },
     {
-      "op": "inject_command",
-      "command": "/astralkame equip dice \"astral_dice:diamond_dice\" Dev",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralkame equip dice \\\"astral_dice:diamond_dice\\\" Dev\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 1200
     },
     {
-      "op": "inject_command",
-      "command": "/astralkame set fans 5 Dev",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralkame set fans 5 Dev\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 700
     },
     {
-      "op": "inject_command",
-      "command": "/astralpvp mark MK Fake3",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralpvp mark MK Fake3\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 450
     },
     {
-      "op": "inject_command",
-      "command": "/astralpvp mit MIT1 Fake1 Fake3",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralpvp mit MIT1 Fake1 Fake3\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 400
     },
     {
-      "op": "inject_command",
-      "command": "/astralpvp mit MIT2 Dev Fake3",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralpvp mit MIT2 Dev Fake3\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 400
     },
     {
-      "op": "inject_command",
-      "command": "/astralpvp mit MIT3 Fake3 Fake3",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralpvp mit MIT3 Fake3 Fake3\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 400
     },
     {
-      "op": "inject_command",
-      "command": "/astralkame state F0",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralkame state F0\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 2500
     },
     {
-      "op": "inject_command",
-      "command": "/astralkame state F1",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralkame state F1\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 700
     }
   ],
+  "channel": "autojs",
   "asserts": [
     {
       "type": "log",
@@ -873,5 +955,10 @@
     {
       "type": "crash"
     }
-  ]
+  ],
+  "migration": {
+    "from": "legacy-kubejs",
+    "at": "2026-10-18",
+    "tool": "scripts/test/convert_cases_autojs.py"
+  }
 }

@@ -13,251 +13,285 @@
       "text": "第二轮取证:村民自动认领距离 / 原版对照 / 交易菜单索引 / 骰子过滤;破坏⇒失业口径:探针村民经 api2 设 Xp=30 ⇒ 原版 ResetProfession(Villager.java 调用点 ai/behavior/ResetProfession.java:19-22 要求 Xp==0 且 level<=1)不触发 ⇒ V3 读回预期仍为 card_trader;真正失业由 SHOP-POI(全新村民)+本用例讲台原版对照(探针驱动 P3/P4/P5/P6)覆盖 ｜ 原版对照口径:冷启动世界里探针村民认领讲台可能需 >12s(实测:12s 读时 vpos 已站上讲台但职业仍为 none、约 20s 时已认领)⇒ P4 连读两次(12s/24s)并取已认领的那一条。"
     },
     {
-      "op": "inject_command",
-      "command": "/gamemode creative",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/gamemode creative\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
-      "op": "inject_command",
-      "command": "/clear",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/clear\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
-      "op": "inject_command",
-      "command": "/tp @s 7.5 -60 3.5",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/tp @s 7.5 -60 3.5\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 800
     },
     {
-      "op": "inject_command",
-      "command": "/astralvis shop S0 place",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralvis shop S0 place\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 2500
     },
     {
-      "op": "inject_command",
-      "command": "/astralvis shop S0 poi",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralvis shop S0 poi\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
-      "op": "inject_command",
-      "command": "/astralvis vil V1 spawn",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralvis vil V1 spawn\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 14000
     },
     {
-      "op": "inject_command",
-      "command": "/astralvis vil V2 read",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralvis vil V2 read\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
-      "op": "inject_command",
-      "command": "/astralshop curioreset CR0V",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralshop curioreset CR0V\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 500
     },
     {
-      "op": "inject_command",
-      "command": "/astralvis api2 A0",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralvis api2 A0\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 1500
     },
     {
-      "op": "inject_command",
-      "command": "/astralvis shop S0 break",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralvis shop S0 break\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 20000
     },
     {
-      "op": "inject_command",
-      "command": "/astralvis vil V3 read",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralvis vil V3 read\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 12000
     },
     {
-      "op": "inject_command",
-      "command": "/astralvis vil V3B read",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralvis vil V3B read\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "note",
       "text": "原版工作方块对照(AI-on 原版村民 + 讲台):改走探针驱动 /astralvis poi P3/P4/P5/P6 —— 取证:冷启动世界里 /summon 创建的村民(NoAI 清 0)在 60s 内始终未认领 1 格外的讲台(原 VCTL_* 断言),而同位置探针 Java 侧创建的原版村民 12s 内即认领;机制取证见 temp/t85/diag_vctl.json"
     },
     {
-      "op": "inject_command",
-      "command": "/astralvis poi P3 ctlspawn",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralvis poi P3 ctlspawn\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 12000
     },
     {
-      "op": "inject_command",
-      "command": "/astralvis poi P4 ctlread",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralvis poi P4 ctlread\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 12000
     },
     {
-      "op": "inject_command",
-      "command": "/astralvis poi P4 ctlread",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralvis poi P4 ctlread\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 500
     },
     {
-      "op": "inject_command",
-      "command": "/astralvis poi P5 ctlbreak",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralvis poi P5 ctlbreak\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 8000
     },
     {
-      "op": "inject_command",
-      "command": "/astralvis poi P6 ctlread",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralvis poi P6 ctlread\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 500
     },
     {
-      "op": "inject_command",
-      "command": "/astralvis poi P8 ctlkill",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralvis poi P8 ctlkill\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 500
     },
     {
-      "op": "inject_command",
-      "command": "/astralvis vil V4 prof 3",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralvis vil V4 prof 3\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
-      "op": "inject_command",
-      "command": "/give @s minecraft:emerald 64",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/give @s minecraft:emerald 64\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
-      "op": "inject_command",
-      "command": "/give @s minecraft:emerald 64",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/give @s minecraft:emerald 64\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 1500
     },
     {
-      "op": "inject_command",
-      "command": "/astralvis dice2 D0 off",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralvis dice2 D0 off\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
-      "op": "inject_command",
-      "command": "/astralvis edf E0",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralvis edf E0\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
-      "op": "inject_command",
-      "command": "/astralvis trade T0 prove",
-      "no_esc": true
-    },
-    {
-      "op": "wait",
-      "ms": 3000
-    },
-    {
-      "op": "inject_command",
-      "command": "/give @s astral_dice:star_coin 64",
-      "no_esc": true
-    },
-    {
-      "op": "inject_command",
-      "command": "/astralvis dice2 D1 on",
-      "no_esc": true
-    },
-    {
-      "op": "inject_command",
-      "command": "/astralvis edf E1",
-      "no_esc": true
-    },
-    {
-      "op": "inject_command",
-      "command": "/astralvis trade T2 prove",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralvis trade T0 prove\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 3000
     },
     {
-      "op": "inject_command",
-      "command": "/astralvis dice2 D2 off",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/give @s astral_dice:star_coin 64\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
-      "op": "inject_command",
-      "command": "/astralvis edf E2",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralvis dice2 D1 on\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
-      "op": "inject_command",
-      "command": "/astralvis trade T3 prove",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralvis edf E1\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralvis trade T2 prove\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+    },
+    {
+      "op": "wait",
+      "ms": 3000
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralvis dice2 D2 off\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralvis edf E2\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralvis trade T3 prove\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 2000
     },
     {
-      "op": "inject_command",
-      "command": "/astralvis close C1",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralvis close C1\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 800
     },
     {
-      "op": "inject_command",
-      "command": "/kill @e[type=!player,distance=..64]",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/kill @e[type=!player,distance=..64]\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 1000
     }
   ],
+  "channel": "autojs",
   "asserts": [
     {
       "type": "log",
@@ -524,5 +558,10 @@
       "pattern": "AP_T3_TRADEIDX:i=0:.*aMatch=1"
     }
   ],
-  "evidence": []
+  "evidence": [],
+  "migration": {
+    "from": "legacy-kubejs",
+    "at": "2026-10-18",
+    "tool": "scripts/test/convert_cases_autojs.py"
+  }
 }

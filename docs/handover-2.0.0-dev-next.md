@@ -1,13 +1,13 @@
 # 交接文档 — astral_dice_multiloader-next（开发线 multi-dev-next）
 
-> 生成：2026-10-11 20:20；**本次刷新：2026-10-18 17:36（Asia/Hong_Kong，= 本机 `new Date()` 实测 GMT+0800；复核补跑 + 第三次崩溃后第二轮补写）**｜工作树 `F:\MCProject\astral_dice_multiloader-next`
+> 生成：2026-10-11 20:20；**本次刷新：2026-10-18 18:5x（Asia/Hong_Kong；**WSL 迁移 + AutoJS 测试台重建批**）**｜工作树 `F:\MCProject\astral_dice_multiloader-next`
 > 分支 `multi-dev-next`｜刷新前基线 HEAD **`bcae58f9`**（**= 本交接文档批自身**，`.132` 交接刷新提交，2026-10-18；其前 `3c90e653` = lingling 用例判据修正；上一版基线 `e06451c5` = 交接文档批 `.98`；`.99` 起依次有 `.100` 实施分工、`.102` 复核分级⑨、`.103`–`.131` 各批（明细见 `docs/agent/AGENTS-full.md`「待办交接」第 20–39 条）、`.132` = **AutoJS 求值通道 / lingling 用例 / 强化拒止牌面** 三批；最新值一律以 `git log -1` 为准）｜四线版本 **`2.0.0-SNAPSHOT.132`**（四条线同号）
 > 工作树状态：**干净**（`git status --short -uall` 只剩两行用户资产 `?? models/路障 - Converted.bbmodel`、`?? models/强化拒止 - Converted.bbmodel`；§5-C-11 的 `%SystemDrive%` 缓存目录已于 2026-10-18 清除）；**未 push**。
-> **本批交接（.132 三批）**：正本是 `docs/agent/AGENTS-full.md` 末尾「待办交接」**第 39 条**（AutoJS 求值语义 + 测试台闸门 + LINGLING 用例 + 强化拒止牌面 + 本批坑 + 遗留），§3/§4/§6 有对应展开。
+> **本批交接（WSL 迁移 + AutoJS 测试台）**：正本是 `docs/agent/AGENTS-full.md` 末尾「待办交接」**第 40 条**（口径 / 证据 / 欠账 / 收尾路径）；上一批 `.132` 三批见**第 39 条**。（AutoJS 求值语义 + 测试台闸门 + LINGLING 用例 + 强化拒止牌面 + 本批坑 + 遗留），§3/§4/§6 有对应展开。
 > 历史详案：`docs/handover-2.0.0-SNAPSHOT.97-chip-shop.md`（筹码商店，流程 / 语义 / 判据 / 未完成 / 新坑，逐条可复算）。
 > **交接文档用法（接手顺序 / 交班义务）见 `AGENTS.md`〈代理协作契约 · C. 交接文档用法〉**，接手时先按那里的顺序实读一遍，别信本文里的数字。
-> 新会话提示词：`docs/handover-new-session-context.md`（可整份复制给新会话；**Windows 侧口径**，2026-10-17 晚随「工具链回 Windows 原生」重写）。
-> ⚠️ **环境口径（2026-10-17 晚收敛）**：工具链 = 纯 pwsh 7、**Windows 原生**（`scripts/test/mt_build.ps1` 是唯一构建入口，`scripts/test/mt_build.sh` 已删除）；**不再支持从 WSL/Linux 驱动**（根因与数据见 `docs/handover-new-session-context.md` §0.2，仅作知识）。
+> 新会话提示词：`docs/handover-new-session-context.md`（可整份复制给新会话；**WSL + AutoJS 口径**，2026-10-18 重写）。
+> ⚠️ **环境口径（2026-10-18 收敛，**取代 10-17 的 Windows 原生口径**）**：唯一施工副本 = `~/work/astral_dice_multiloader-next`（WSL ext4）；测试入口 = `scripts/test/mt.sh`（bash + python3 + AutoJS 求值通道）；`/mnt/f/...` 收尾前只读，回写用 `scripts/dev/sync-back.sh`，提交/push 在 Windows 侧 `cmd.exe`。说明正本 `docs/wsl-autojs-toolchain.md`。
 
 ---
 
@@ -21,6 +21,9 @@
 | 最近实机结果（`.132`） | 1.21.1：**`MT_CASE_RESULT: LINGLING-1.21.1 = PASS`**（42 step / 22 assert）；强化拒止牌面 **FRONT vs BACK best=id IoU 1.000 / OVERALL: PASS**；`AUTOJS-SMOKE-1.21.1 = PASS`；**forge 线无用例、未实机** |
 | 更早实机结果（`.97`） | 1.21.1 筹码五条用例 **全 PASS**（`CHIP-LOGIC` / `CHIP-REGEN` / `CHIP-CLIENT-BUY` / `CHIP-CLIENT-REFRESH` / `CHIP-CLIENT-DENY`） |
 | AutoJS 求值通道 | eval_js **只求最后一个表达式**（顶层 `return` ⇒ `EvaluatorException: invalid return`）；非标量必须 `JSON.stringify(...)` 包裹（否则 `"[object Object]"`）；布尔用 `!!(...)`，`-Mode Bool` 回来是**字符串** `"true"`/`"false"` ⇒ 只能比字面量 |
+| **测试台（现行）** | `scripts/test/mt.sh --version <线> --phase preflight\|build\|env\|launch\|case\|report\|stop`（WSL，bash+python3+AutoJS）；旧 pwsh 游戏流程脚本已 `git rm` |
+| **AutoJS 覆盖** | 用例 `231/231` 为 `channel=autojs`，legacy 驱动原语残留 **0**（`mt_case.py validate` 0 错） |
+| **WSL 实机（1.21.1）** | `MT_LAUNCH: OK` 87s；`AUTOJS-SMOKE` / `LINGLING`(22 断言) / `JADE-NOJADE` / `CHIP-LOGIC` / `HOSTILE-TARGETS` PASS |
 | 构建 | `pwsh -NoProfile -File scripts/test/mt_build.ps1 --version <线> --timeout 300` ⇒ `MT_BUILD: OK` |
 | 实机 | `mt.ps1 --version <线> --phase env` → `--phase launch`；**收尾 `--phase stop --force --purge-saves`** |
 | 手动启动（人工自测） | 双击 `run/Start-<线>.bat`（只启动，**无任何前置判断**） |
@@ -226,6 +229,16 @@ pwsh -NoProfile -File scripts/test/mt_inject.ps1 cmd -Command "/astralprobecard 
 
 ---
 
+**C. WSL / AutoJS 批遗留（2026-10-18，正本 = AGENTS-full 第 40 条 ⑥）**
+12. **GUI 状态机类用例未语义化**：`CC-*`（选卡界面 8 条）、`BOT-2P`、`AIRBAG-COUNTER` 等依赖「开界面→放牌→确认→拖拽」的用例，机械迁移只替到
+    `KeyMapping.click` / `Screen.mouseClicked(屏幕中心)`，无法推进真实界面状态 ⇒ 仍 FAIL。补法 = 在 client 侧用求值调用 `CardChoiceManager` / `Screen` 的等价入口，
+    逐条重写并用 `await_state` 等界面就绪，**不得**退回键鼠。
+13. **`vision` 断言 9 条（7 文件）**：WSL 无截图语义通道 ⇒ 运行时记 **BLOCKED**。补法 = 改成结构化读数（槽位 / `screen` 类名 / 实体列表 / FPS），
+    或保留为「无法测度」并在报告点明。
+14. **三线未验证**：`forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1` 的 AutoJS 端到端**未跑**（1.20.1/26.1.2 的命令源类名已按 NeoForge/Forge 分开生成，
+    fabric 仍无 ServerLifecycleHooks 等价物 ⇒ 该线用例会在 30 个 `blocked-26.1.2` 之外的 12 条 fabric 上 BLOCKED）。
+15. **`mt.conf` 不在版本库**：WSL 侧已回落内置默认（端点 25585 / 15s）。整合包 mods 目录键（`MT_PACK_MODS_*`）只在推送整合包时用，WSL 下不消费。
+
 ## 6. 已知坑与教训
 
 1. **批处理空参陷阱**：`for %%A in (%*) do (` 在无参数时展开成 `for %%A in () do (` ⇒ 语法错误、窗口闪退。必须用 `if not "%~1"==""` 守卫。
@@ -293,3 +306,11 @@ pwsh -NoProfile -File scripts/test/mt_inject.ps1 cmd -Command "/astralprobecard 
 3. 要动代码：先 `mt_build` 确认基线绿，再改；改后 `mt_build` + 相关 `scripts/verify/**`；
 4. 复核用 `code_review`（失败即改派一次性子代理）；实机**先问用户**；
 5. 提交：升四线版本 + 两份 CHANGELOG + `git commit`（**不 push**）；收尾核对另一工作树为空且 HEAD 不变。
+
+**6-27 WSL 迁移批的新坑（2026-10-18）**
+- **探针命令必须用玩家命令源**：`/astralprobe …` 走 `source.sendFailure` 回显 → 聊天 → `latest.log`。用 `s.createCommandSourceStack()` 或
+  `.withSuppressedOutput()` 会让 `AP_*` 行**凭空消失**（实测 0 行 vs 1 行）。
+- **日志断言必须带窗口偏移**：不带偏移时 `absent` 会命中上一轮同名错误串（`HOSTILE-TARGETS` 假 FAIL，补窗口后 PASS）。
+- **`kubejs` 断言不许裸 `error`**：KubeJS 每轮都打印 `Loaded 11/11 … with 0 errors and 0 warnings`，裸正则恒假 FAIL。
+- **`performPrefixedCommand` 返回 void**（Rhino 侧 `undefined`）⇒ 不能靠返回值判命令是否成功，必须读状态或日志。
+- **WSL 启动前世界必须存在**：`--quickPlaySingleplayer testworld` 对不存在的世界不会自动创建（会停在主菜单），本次从 `run/1.20.1` 复制同名世界并由 1.21.1 自动升级。

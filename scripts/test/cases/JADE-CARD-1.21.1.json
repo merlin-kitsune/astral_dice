@@ -8,117 +8,109 @@
   },
   "steps": [
     {
-      "op": "inject_command",
-      "command": "/gamemode creative",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/gamemode creative\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 600
     },
     {
-      "op": "inject_command",
-      "command": "/tp @s ~ ~ ~ 0 30",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/tp @s ~ ~ ~ 0 30\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 600
     },
     {
-      "op": "inject_command",
-      "command": "/astralcc cd clear 0",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralcc cd clear 0\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 600
     },
     {
-      "op": "inject_command",
-      "command": "/setblock ~ ~ ~2 astral_dice:card_shop",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/setblock ~ ~ ~2 astral_dice:card_shop\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 1800
     },
     {
-      "op": "screenshot",
-      "tag": "jade-card-nocd",
-      "mode": "f2"
-    },
-    {
       "op": "note",
       "text": "↑ 无冷却（D4）：悬浮框不得出现倒计时行。"
     },
     {
-      "op": "inject_command",
-      "command": "/astralcc cd card 60",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralcc cd card 60\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
-      "op": "inject_command",
-      "command": "/astralcc cdsample 12",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralcc cdsample 12\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 1500
     },
     {
-      "op": "screenshot",
-      "tag": "jade-card-cd-t1",
-      "mode": "f2"
-    },
-    {
-      "op": "inject_command",
-      "command": "/astralcc diag",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralcc diag\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 3000
     },
     {
-      "op": "screenshot",
-      "tag": "jade-card-cd-t2",
-      "mode": "f2"
-    },
-    {
-      "op": "inject_command",
-      "command": "/astralcc diag",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralcc diag\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 600
     },
     {
-      "op": "inject_command",
-      "command": "/astralcc cd card 3",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralcc cd card 3\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 4500
     },
     {
-      "op": "screenshot",
-      "tag": "jade-card-expired",
-      "mode": "f2"
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralcc diag\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
-      "op": "inject_command",
-      "command": "/astralcc diag",
-      "no_esc": true
-    },
-    {
-      "op": "inject_command",
-      "command": "/setblock ~ ~ ~2 air",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/setblock ~ ~ ~2 air\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     }
   ],
+  "channel": "autojs",
   "asserts": [
     {
       "type": "mixin"
@@ -164,5 +156,10 @@
       "source": "latest",
       "pattern": "AP_CC:LOADFAIL"
     }
-  ]
+  ],
+  "migration": {
+    "from": "legacy-kubejs",
+    "at": "2026-10-18",
+    "tool": "scripts/test/convert_cases_autojs.py"
+  }
 }

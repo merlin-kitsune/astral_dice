@@ -17,9 +17,10 @@
       "text": "B1 第 1 步必须是纯只读 `signstate`：重登之后、任何驱动之前,读数应仍是**重登前**的锁定态 ——   `sign=[astral_dice:parunan_sign]`、`lock=1`、`lock_end>0`、`grace_end=0`、`last_seen>0`(陈值,尚未被刷新)。"
     },
     {
-      "op": "inject_command",
-      "command": "/astralprobe signstate RB1",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralprobe signstate RB1\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
@@ -30,9 +31,10 @@
       "text": "B2 **主判据**（2026-09-28 修正）：原写法 `signlag RB2 0 nowrite`（不写基准、纯自然拍）**测不出补偿** —— 探针自己的说明就写着 `nowrite` 的 `gap ∈ {0,1}`（真实 tick 相位会立刻把 `last_seen` 刷成 now），而重登后到本用例开跑之间 `mt_launch` 的就绪/闸门/清场已过掉大量 tick ⇒ 实测 `gap=0:lock_end_delta=0`（不是缺陷，是前提不成立）。改成 **L 组已证的写基准形态** `signlag RB2 6000`：把 `last_seen` 写到 `now−6000` 再驱动一拍 ⇒ 期望 `mode=once:ticks=6000:wrote>0:gap>0`、**`lock_end_delta>0` 且 `delta_eq_gap=1`**（上界位移**恰好**等于 gap）、`seen_refreshed=1`（基准被刷新成 now）、`lock_before=1:lock_after=1`（仍在锁定）、`cd_before=0:cd_after=0:cd_unchanged=1`（未迁移到冷却）。   ⚠️ 若读到 `lock_after=0` + `cd_after>0`，那是**缺陷判据命中**（修前行为）。"
     },
     {
-      "op": "inject_command",
-      "command": "/astralprobe signlag RB2 6000",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralprobe signlag RB2 6000\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
@@ -43,9 +45,10 @@
       "text": "B3 幂等复核:紧接再驱动一拍,真实 tick 已把基准刷新 ⇒ 不得再补偿(`delta_eq_gap=0`、上界不动、仍锁定)。"
     },
     {
-      "op": "inject_command",
-      "command": "/astralprobe signlag RB3 0 nowrite",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralprobe signlag RB3 0 nowrite\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
@@ -56,15 +59,17 @@
       "text": "B4 收尾:`signreset RB9` 归零(含第 6 个键),避免锁定态跨用例残留。"
     },
     {
-      "op": "inject_command",
-      "command": "/astralprobe signreset RB9",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralprobe signreset RB9\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 800
     }
   ],
+  "channel": "autojs",
   "asserts": [
     {
       "type": "log",
@@ -123,5 +128,10 @@
       "type": "crash"
     }
   ],
-  "evidence": []
+  "evidence": [],
+  "migration": {
+    "from": "legacy-kubejs",
+    "at": "2026-10-18",
+    "tool": "scripts/test/convert_cases_autojs.py"
+  }
 }

@@ -13,27 +13,30 @@
       "text": "目的：**常驻效果时长残留归一**的实机判定（2026-10-04 用户实报「充能效果指示器在 Forge 端计时显示仍为超长数值，而非无限符号」）。\n\n背景：1.3.4 起本模组常驻效果一律改用原版真·无限时长（`INFINITE_DURATION` = `-1`，界面显示 ∞），但那次**只改了施加点** —— 旧存档里已存在的实例仍是 `Integer.MAX_VALUE` 的递减产物（实测整合包存档 `astral_dice:charge Duration=2147482289` ⇒ 面板显示 `29826:08:34`）。而 `EffectTimerGuard.record()` 对 `>= INFINITE_THRESHOLD`(=MAX/2) 的值直接跳过登记 ⇒ **永远不会被校正**。\n修法：三线 `PlayerTickEvents#normalizeLegacyInfiniteDurations` 每 20 tick 一次，把**本模组**效果里 `duration >= MAX_VALUE/2` 的实例改写为 `-1`（只改时长，层数/粒子/图标位保留）。\n\n本用例用探针 `setlegacydur S1 astral_dice:charge` **直接施加** 1200000000 tick 的\n超长时长（≥ 1073741823 阈值；⚠️ 不能用原版 `/effect give` —— 其 `seconds` 上界仅 1000000，\n×20 = 20000000 tick 远低于阈值）⇒ 等 ≥ 20 tick 的归一窗口后，读到的 `inf` 必须为 1（`dur == -1`）。\n\n判据四段：\n  N0 基线：清效果后该效果不存在（`present=0`）—— 排除「读到上一次残留」；\n  N1 **主判据**：超长时长必须被归一为 `dur=-1:inf=1`，且层数 `amp=5` 原样保留；\n  N2 **负对照（防误伤）**：合法有限时长 `astral_dice:weakness_reveal`（60 秒 = 1200 tick，远低于阈值）**不得**被改写 ⇒ `inf=0` 且 `dur` 仍是 4 位数的递减值；\n  NZ 收尾清效果。\n\n⚠️ 归一在 `tickCount % 20 == 0` 之后执行 ⇒ 等待窗口取 1600 ms（> 20 tick）留足余量。"
     },
     {
-      "op": "inject_command",
-      "command": "/gamemode creative",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/gamemode creative\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 700
     },
     {
-      "op": "inject_command",
-      "command": "/effect clear @s",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/effect clear @s\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 800
     },
     {
-      "op": "inject_command",
-      "command": "/astralprobe effectdur N0 astral_dice:charge",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralprobe effectdur N0 astral_dice:charge\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
@@ -48,18 +51,20 @@
       "ms": 600
     },
     {
-      "op": "inject_command",
-      "command": "/astralprobe setlegacydur S1 astral_dice:charge",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralprobe setlegacydur S1 astral_dice:charge\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 1600
     },
     {
-      "op": "inject_command",
-      "command": "/astralprobe effectdur N1 astral_dice:charge",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralprobe effectdur N1 astral_dice:charge\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
@@ -70,18 +75,20 @@
       "text": "② 负对照：合法有限时长（弱点识破 1200 tick）**不得**被归一。"
     },
     {
-      "op": "inject_command",
-      "command": "/effect give @s astral_dice:weakness_reveal 60 0 true",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/effect give @s astral_dice:weakness_reveal 60 0 true\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 1600
     },
     {
-      "op": "inject_command",
-      "command": "/astralprobe effectdur N2 astral_dice:weakness_reveal",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralprobe effectdur N2 astral_dice:weakness_reveal\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
@@ -92,15 +99,17 @@
       "text": "③ 收尾：清空全部效果。"
     },
     {
-      "op": "inject_command",
-      "command": "/effect clear @s",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/effect clear @s\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 600
     }
   ],
+  "channel": "autojs",
   "asserts": [
     {
       "type": "log",
@@ -149,5 +158,10 @@
       "type": "crash"
     }
   ],
-  "evidence": []
+  "evidence": [],
+  "migration": {
+    "from": "legacy-kubejs",
+    "at": "2026-10-18",
+    "tool": "scripts/test/convert_cases_autojs.py"
+  }
 }

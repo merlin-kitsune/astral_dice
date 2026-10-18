@@ -17,9 +17,10 @@
       "text": "相位 SD：普通战利品箱（simple_dungeon，1000 掷）⇒ 四个池齐全；玻璃 2%、空白 3%、星币 5%。"
     },
     {
-      "op": "inject_command",
-      "command": "/astralprobe lootprobe SD \"minecraft:chests/simple_dungeon\" 1000",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralprobe lootprobe SD \\\"minecraft:chests/simple_dungeon\\\" 1000\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
@@ -30,9 +31,10 @@
       "text": "相位 EC：末地城（end_city_treasure，1000 掷）⇒ 玻璃骰子 5%（高于普通箱 2%，单变量对照）。"
     },
     {
-      "op": "inject_command",
-      "command": "/astralprobe lootprobe EC \"minecraft:chests/end_city_treasure\" 1000",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralprobe lootprobe EC \\\"minecraft:chests/end_city_treasure\\\" 1000\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
@@ -43,9 +45,10 @@
       "text": "相位 BT：埋藏的宝藏（500 掷）⇒ 空白筹码 **必须正好等于掷数**（100% 必出）。"
     },
     {
-      "op": "inject_command",
-      "command": "/astralprobe lootprobe BT \"minecraft:chests/buried_treasure\" 500",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralprobe lootprobe BT \\\"minecraft:chests/buried_treasure\\\" 500\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
@@ -56,9 +59,10 @@
       "text": "相位 NEG（负对照）：minecraft:blocks/dirt 不是 chests/ 表 ⇒ pools=none、四计数全 0、empty=0。"
     },
     {
-      "op": "inject_command",
-      "command": "/astralprobe lootprobe NEG \"minecraft:blocks/dirt\" 500",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralprobe lootprobe NEG \\\"minecraft:blocks/dirt\\\" 500\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
@@ -69,24 +73,27 @@
       "text": "相位 SELF（确定性红线，与概率无关）：模组自有的 GLM 表 `astral_dice:chests/star_plate` 其路径同样以 `chests/` 开头 ⇒ 会被 `LootInjectionHandler` 的前缀判据命中、被注入一整套 astral 池；而 GLM `star_plate_all_chests` 是**无条件**（100%）把它挂到 57 张原版箱子表上 ⇒ 等于每开一个箱子都额外多滚一整套，使有效概率≈翻倍。\n\n**正确期望**：模组自有表上 `pools=none`。此断言失败即代表「GLM 自挂表被二次注入」这一泄漏存在。"
     },
     {
-      "op": "inject_command",
-      "command": "/astralprobe lootprobe SELF \"astral_dice:chests/star_plate\" 1",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralprobe lootprobe SELF \\\"astral_dice:chests/star_plate\\\" 1\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 3000
     },
     {
-      "op": "inject_command",
-      "command": "/astralprobe lootprobe SELFG \"astral_dice:chests/golden_star_plate\" 1",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralprobe lootprobe SELFG \\\"astral_dice:chests/golden_star_plate\\\" 1\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 3000
     }
   ],
+  "channel": "autojs",
   "asserts": [
     {
       "type": "log",
@@ -145,5 +152,10 @@
       "type": "crash"
     }
   ],
-  "evidence": []
+  "evidence": [],
+  "migration": {
+    "from": "legacy-kubejs",
+    "at": "2026-10-18",
+    "tool": "scripts/test/convert_cases_autojs.py"
+  }
 }

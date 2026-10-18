@@ -1,58 +1,47 @@
 # 新会话交接上下文（复制以下全文给新会话）
 
-你是 astral_dice_multiloader-next 开发线的执行代理。⚠️ **本提示词是 Windows 侧口径**（PowerShell 7 / `F:\` 路径 / 本仓工具链为 Windows 专用）：仓库、工具链、dev 游戏实例都在**本机 Windows** 上，直接从 Windows 会话驱动即可，**不要**再从 WSL/Linux 中转（历史结论见 §0.2，仅作知识）。
+你是 astral_dice_multiloader-next 开发线的执行代理。⚠️ **本提示词是 WSL + AutoJS 口径（2026-10-18 起，取代 10-17 的 Windows 原生口径）**：唯一施工副本在 WSL ext4（`~/work/astral_dice_multiloader-next`），构建/实机/用例都在 WSL 内；`/mnt/f/...` 收尾前只读，回写与 push 在 Windows 侧 `cmd.exe`。说明正本 `docs/wsl-autojs-toolchain.md`。
 
 先读这四份（顺序即优先级）：
 1. `docs/handover-2.0.0-dev-next.md`（常态交接：规范/进度/测试结果/遗留项/坑）
-2. `docs/agent/AGENTS-full.md`「## 待办交接」**第 39 条**（**最近一批正本** `.132`：AutoJS 求值语义 / 测试台闸门 / LINGLING 用例 / 强化拒止牌面 / 本批坑 / 遗留）；历史详案 `docs/handover-2.0.0-SNAPSHOT.97-chip-shop.md`（筹码商店批，逐条可复算）
+2. `docs/agent/AGENTS-full.md`「## 待办交接」**第 40 条**（**最近一批正本**：WSL 迁移 + AutoJS 测试台重建 —— 新入口/迁移映射/实机证据/欠账）；上一批 `.132` 见第 39 条；历史详案 `docs/handover-2.0.0-SNAPSHOT.97-chip-shop.md`（筹码商店批，逐条可复算）
 3. `AGENTS.md` 的四节：工作树与路径纪律、二次验证规范、子代理与测试环境硬规则、版本优先级与跨线移植纪律
 4. 涉及平台差异时：`docs/compat-1.20.1-forge.md`（forge）或 `docs/compat-26.1.2-neoforge.md`（26.1.2）
 
 > **交接文档用法（接手顺序 / 交班义务）见 `AGENTS.md`〈代理协作契约 · C. 交接文档用法〉—— 接手先按那里的顺序实读，不信本文数字。**
-> 最新交接条目：`docs/agent/AGENTS-full.md` 的「## 待办交接」区 **第 39 条**（`.132`：AutoJS 求值通道 / lingling 用例 / 强化拒止牌面）；再往前 **第 37 条**（2026-10-17 晚：选卡界面 + Jade 双线实机验证闭环与 4 项修复）与 **第 38 条**（2026-10-17 深夜：工具链回 Windows 原生）—— 定位：`grep -n '选卡界面+Jade 双线实机验证闭环\|工具链回 Windows 原生' docs/agent/AGENTS-full.md`。
+> 最新交接条目：`docs/agent/AGENTS-full.md` 的「## 待办交接」区 **第 40 条**（WSL 迁移 + AutoJS 测试台重建）；上一批 **第 39 条**（`.132`：AutoJS 求值通道 / lingling 用例 / 强化拒止牌面）；再往前 **第 37 条**（2026-10-17 晚：选卡界面 + Jade 双线实机验证闭环与 4 项修复）与 **第 38 条**（2026-10-17 深夜：工具链回 Windows 原生）—— 定位：`grep -n '选卡界面+Jade 双线实机验证闭环\|工具链回 Windows 原生' docs/agent/AGENTS-full.md`。
 
-## 0. 环境（Windows 原生，唯一支持）
+## 0. 环境（WSL ext4 + AutoJS，唯一支持）
 
 ### 0.1 位置与自证
 
-- 仓库本体：`F:\MCProject\astral_dice_multiloader-next`（分支 `multi-dev-next`）。
+- **施工副本（唯一写面）**：`~/work/astral_dice_multiloader-next`（WSL ext4，原生 `.git`，分支 `multi-dev-next`）。
+- 源目录（收尾前只读）：`/mnt/f/MCProject/astral_dice_multiloader-next`。
 - 另一常驻工作树 `F:\MCProject\astral_dice_multiloader`（`multi-main`，封包态）：**禁止触碰**；收尾核它 `git -C <主线> status --short --untracked-files=all` 为 0 行且 HEAD 不变。
-- 开工第一条命令（pwsh 7）自证位置与版本：
-  ```powershell
-  git -C F:\MCProject\astral_dice_multiloader-next rev-parse --abbrev-ref HEAD
-  git -C F:\MCProject\astral_dice_multiloader-next log --oneline -1
-  git -C F:\MCProject\astral_dice_multiloader-next status --short -uall
+- 开工第一条命令（bash）自证位置与版本：
+  ```bash
+  cd ~/work/astral_dice_multiloader-next
+  git rev-parse --abbrev-ref HEAD && git log --oneline -1 && git status --short -uall
   ```
 - HEAD 与四线版本**一律以实测为准**（`git log --oneline -1`；四条 `gradle.properties` 的 `mod_version`）。
 
-### 0.2 工具链（纯 pwsh 7，Windows 专用）
+### 0.2 工具链（WSL bash + python3 + AutoJS）
 
-全部在本机 Windows 直接跑（脚本硬编码 Windows 路径与进程管理：`taskkill`、`Start-Process -WindowStyle Hidden`、各线 `build.gradle` 的 `pushToGame` 目标 `D:\.minecraft\versions\…`）：
-
-```powershell
-# 构建（唯一入口；阶段 B）
-pwsh -NoProfile -File scripts/test/mt_build.ps1 --version 1.21.1 --timeout 300
-# 测试台（阶段 P / E / L / C / R）
-pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --phase env
-pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --phase launch
-pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --phase cases --case cases/<CASE>.json
-pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --phase report --allow-auto
-pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --phase stop --force --purge-saves
-# 守门（机器判据）
-pwsh -NoProfile -File scripts/verify/verify_chip_shop_ui.ps1
-pwsh -NoProfile -File tools/check_lang_sync.ps1 -LangDir neoforge-1.21.1/src/main/resources/assets/astral_dice/lang
-# 跨平台 python 静止闸门
-python tools/verify_effect_icons.py ; python tools/audit_patchouli_keys.py
-# 工具链语法门（改脚本后必跑；判据 = 解析失败 0 个）
-pwsh -NoProfile -File scripts/devtools/Test-MtSyntax.ps1
+```bash
+cd ~/work/astral_dice_multiloader-next
+scripts/test/mt.sh --version 1.21.1 --phase preflight
+scripts/test/mt.sh --version 1.21.1 --phase build          # :neoforge-1.21.1:jar → run/1.21.1/mods
+scripts/test/mt.sh --version 1.21.1 --phase env
+scripts/test/mt.sh --version 1.21.1 --phase launch         # 脱离式 runClient + AutoJS 闸门
+scripts/test/mt.sh --version 1.21.1 --phase case --case scripts/test/cases/<CASE>.json
+scripts/test/mt.sh --version 1.21.1 --phase report
+scripts/test/mt.sh --version 1.21.1 --phase stop --purge-saves
 ```
 
-- 手动启动（人工自测）：双击 `run\Start-1.21.1.bat`（或 1.20.1 / 26.1.2）—— 脚本只做启动，无任何前置判断。
-- fabric 线不走 `mt_build.ps1`（不认该线）：用 `scripts/test/fabric/ft_build.ps1`。
-- ⛔ **不再支持从 WSL/Linux 驱动本工具链**（2026-10-17 晚收敛）：`scripts/test/mt_build.sh` 已删除；`/mnt/...`、`wslpath`、`cmd.exe` 中转等写法一律不要再引入。
-- 历史环境事实（2026-10-13～17 的 WSL 驱动阶段，**只作知识、不要据此施工**）：① `/mnt/f`（9p）上 Gradle 全树 stat/hash 慢 ≈275×（`neoforge-1.21.1` 335 个源文件 find+stat：9p 1.65s vs ext4 0.006s），`:classes` 冷跑 9m22s、forge 冷管线连吃 3×570s 超时；② 从 WSL interop 直接起的 `pwsh.exe` 里 `& <exe>` 会静默不执行子进程（`$LASTEXITCODE` 不被创建），曾把 `mt_launch` 的 doImmediateRespawn 闸门误报成 `MT_LAUNCH: ERROR`（D4-5）；③ WSL 默认不透传 Windows PATH（`pwsh.exe` 需全路径）。
-- 为②留下的 `lib/Mt.Proc.psm1 → Invoke-MtChildProcess`（`Start-Process -NoNewWindow -PassThru` + `Process.ExitCode` + `-TimeoutSec` / `-Capture`）**保留**，作为工具链统一的子进程原语：Windows 原生下同样更稳（退出码不经 `$LASTEXITCODE`、支持超时强杀），`mt_launch` / `mt_stop` / `mt_loadergate` 继续用它。
-- 行尾：本树 LF / CRLF **逐文件混存**，不要按目录猜 —— 一律以 `git ls-files --eol -- <路径>` 实测为准（2026-10-17 实测：`neoforge-1.21.1/src/main/java/**/*.java` = crlf 315 / lf 41 / mixed 2；`AGENTS.md` = LF；`docs/handover-1.3.0.md` = w/crlf；`docs/handover-new-session-context.md` = LF；`mt_build.ps1` 为 w/crlf，属 `core.autocrlf=true` 的正常检出）。**禁止全仓转换行尾**；改文件前先核对，避免整文件行尾翻转污染 diff。
+- 通道：AutoJS MCP（`eval_js` / `await_state` / `status` / `kubejs_log`），端点 `http://127.0.0.1:25585/mcp`。
+- **没有**键鼠注入 / 窗口焦点 / 截图识别；旧 pwsh 游戏流程脚本已 `git rm`（39 个，可从 git 历史取回）。
+- 静态守门仍可用：`scripts/verify/*.ps1`（WSL 自带 pwsh 7）、`tools/*.py`、`./gradlew :<线>:classes`。
+- 收尾：`bash scripts/dev/sync-back.sh`（dry-run）→ `--apply` → Windows `cmd.exe /c "git add <逐路径> && git commit"` →（用户放行）push。
 
 ## 基本盘
 
@@ -105,4 +94,4 @@ E. **`.132` 收尾欠账**（明细见常态交接 §5-D）：① lingling 冷�
 > **最新交接条目（2026-10-17）**：`docs/agent/AGENTS-full.md`「## 待办交接」**第 36 条**「立牌批验证闭环 + 选卡界面 + Jade 倒计时」—— `grep -n '立牌批验证闭环' docs/agent/AGENTS-full.md`。
 > **最新交接条目（2026-10-17 晚）**：**第 37 条**「选卡界面+Jade 双线实机验证闭环与 4 项修复」—— `grep -n '选卡界面+Jade 双线实机验证闭环' docs/agent/AGENTS-full.md`。
 > **最新交接条目（2026-10-17 深夜）**：**第 38 条**「工具链回 Windows 原生」—— `grep -n '工具链回 Windows 原生' docs/agent/AGENTS-full.md`。
-> **最新交接条目（2026-10-18，即本批正本）**：**第 39 条**「AutoJS 求值通道语义 + 怪力乱神用例 + 强化拒止牌面收正」—— `grep -n 'AutoJS 求值通道语义' docs/agent/AGENTS-full.md`。；交接文档用法见 `AGENTS.md`〈代理协作契约 · C〉。
+> **最新交接条目（2026-10-18，即本批正本）**：**第 40 条**「WSL 迁移 + AutoJS 测试台重建」—— `grep -n 'WSL 迁移 + AutoJS 测试台重建' docs/agent/AGENTS-full.md`；上一批 **第 39 条**「AutoJS 求值通道语义 + 怪力乱神用例 + 强化拒止牌面收正」—— `grep -n 'AutoJS 求值通道语义' docs/agent/AGENTS-full.md`。交接文档用法见 `AGENTS.md`〈代理协作契约 · C〉。

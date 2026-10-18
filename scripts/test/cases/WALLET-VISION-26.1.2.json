@@ -12,28 +12,32 @@
       "text": "目的：在 Sodium+Iris 环境、**生存模式物品栏**下取证「余额条 + 钱包按钮 + 星币/星币袋按钮」。上一轮发现在生存物品栏里**一个控件都没有**，而物品栏开着时原版不处理 F2 ⇒ 本轮另起客户端探针 astral_wallet_vision.js：落盘 mc.screen 真值/几何/guiScale（通道 kubejs_client），并用 Screenshot.grab 直接取 framebuffer（不受窗口合成与桌面遮挡影响）。整屏 window 抓取仍保留作对照。"
     },
     {
-      "op": "inject_command",
-      "command": "/gamemode survival",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/gamemode survival\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 700
     },
     {
-      "op": "inject_command",
-      "command": "/time set noon",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/time set noon\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
-      "op": "inject_command",
-      "command": "/gamerule advance_time false",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/gamerule advance_time false\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
-      "op": "inject_command",
-      "command": "/clear @s",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/clear @s\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
@@ -44,21 +48,20 @@
       "text": "① 光影关闭（iris.properties 当前 enableShaders=false）：开生存物品栏，等探针自截图（+25 拍）后整屏取证。"
     },
     {
-      "op": "inject_key",
-      "key": "e"
+      "op": "eval_js",
+      "side": "client",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var IC = Java.loadClass('com.mojang.blaze3d.platform.InputConstants');\n  var KM = Java.loadClass('net.minecraft.client.KeyMapping');\n  var k = IC.Type.KEYSYM.getOrCreate(69);\n  KM.click(k);\n  return { ok: true, keysym: 69 };\n})()"
     },
     {
       "op": "wait",
       "ms": 3200
     },
     {
-      "op": "screenshot",
-      "tag": "wallet-shaders-off",
-      "mode": "window"
-    },
-    {
-      "op": "inject_key",
-      "key": "escape"
+      "op": "eval_js",
+      "side": "client",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var IC = Java.loadClass('com.mojang.blaze3d.platform.InputConstants');\n  var KM = Java.loadClass('net.minecraft.client.KeyMapping');\n  var k = IC.Type.KEYSYM.getOrCreate(256);\n  KM.click(k);\n  return { ok: true, keysym: 256 };\n})()"
     },
     {
       "op": "wait",
@@ -69,29 +72,30 @@
       "text": "② 开光影（iris 键位 k，需界面关闭时生效），等编译完成后重开物品栏取证。"
     },
     {
-      "op": "inject_key",
-      "key": "k"
+      "op": "eval_js",
+      "side": "client",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var IC = Java.loadClass('com.mojang.blaze3d.platform.InputConstants');\n  var KM = Java.loadClass('net.minecraft.client.KeyMapping');\n  var k = IC.Type.KEYSYM.getOrCreate(75);\n  KM.click(k);\n  return { ok: true, keysym: 75 };\n})()"
     },
     {
       "op": "wait",
       "ms": 6000
     },
     {
-      "op": "inject_key",
-      "key": "e"
+      "op": "eval_js",
+      "side": "client",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var IC = Java.loadClass('com.mojang.blaze3d.platform.InputConstants');\n  var KM = Java.loadClass('net.minecraft.client.KeyMapping');\n  var k = IC.Type.KEYSYM.getOrCreate(69);\n  KM.click(k);\n  return { ok: true, keysym: 69 };\n})()"
     },
     {
       "op": "wait",
       "ms": 3200
     },
     {
-      "op": "screenshot",
-      "tag": "wallet-shaders-on",
-      "mode": "window"
-    },
-    {
-      "op": "inject_key",
-      "key": "escape"
+      "op": "eval_js",
+      "side": "client",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var IC = Java.loadClass('com.mojang.blaze3d.platform.InputConstants');\n  var KM = Java.loadClass('net.minecraft.client.KeyMapping');\n  var k = IC.Type.KEYSYM.getOrCreate(256);\n  KM.click(k);\n  return { ok: true, keysym: 256 };\n})()"
     },
     {
       "op": "wait",
@@ -102,14 +106,17 @@
       "text": "收尾：把光影关回去（不污染后续用例与用户环境）。"
     },
     {
-      "op": "inject_key",
-      "key": "k"
+      "op": "eval_js",
+      "side": "client",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var IC = Java.loadClass('com.mojang.blaze3d.platform.InputConstants');\n  var KM = Java.loadClass('net.minecraft.client.KeyMapping');\n  var k = IC.Type.KEYSYM.getOrCreate(75);\n  KM.click(k);\n  return { ok: true, keysym: 75 };\n})()"
     },
     {
       "op": "wait",
       "ms": 1500
     }
   ],
+  "channel": "autojs",
   "asserts": [
     {
       "type": "crash"
@@ -122,5 +129,10 @@
     "wallet-shaders-off",
     "wallet-shaders-on"
   ],
-  "on_fail": "keep_game_running"
+  "on_fail": "keep_game_running",
+  "migration": {
+    "from": "legacy-kubejs",
+    "at": "2026-10-18",
+    "tool": "scripts/test/convert_cases_autojs.py"
+  }
 }

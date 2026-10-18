@@ -13,64 +13,72 @@
       "text": "目的：验证 .123 批（2026-10-15）三处文案改动（客户端实机读数）：\nB. **三张伤害效果牌的物品提示精简为「使用方式 + 法术伤害点数」**：对怪激光 / 对怪板砖 / 轨道炮\n   只保留「瞄准敌对目标使用，对其造成 X 点法术伤害」，不再写延迟秒数 / 激光线颜色 / 光束持续时间 /\n   投掷物外观（这些细节仍在本模组图鉴条目里）；\nC. **试剂-深渊（`astral_dice:abyss_reagent_chip`）的物品提示与图鉴条目去掉括注**：\n   不再写「（卸下时 -2）」「（黄心）」「有效治疗量不足 1 时至少获得 2 点」，只留主干；\nD. **图鉴第一章（基本介绍）新增条目「战斗系统改动」**（`astral_dice:getting_started/battle_system_changes`）：\n   服务端用 Patchouli API `openBookEntry` 打开该条目 ⇒ 截图即「条目存在且打得开」的实证。\n\n取数法（客户端探针 `scripts/test/resources/kubejs/<版本>/client_scripts/astral_pmfix_client.js`，只读）：\n· 每 40 tick 把 4 件物品的**完整 tooltip 行**（含 § 染色码）与 3 条图鉴 lang 键写进\n  `logs/kubejs/client.log`；集成服务端（dev 单机）里这一行**同时**落 `run/<版本>/logs/latest.log`\n  ⇒ 断言一律走 `latest` 通道（`kubejs_client` 通道在本轮首跑里窗口偏移取到 0B、断言读空，\n  同一内容在 latest 通道可稳定命中）；\n· tooltip 走**真实事件链**：`ItemStack#getTooltipLines(...)` 会派发 `ItemTooltipEvent`\n  （取源：实物 jar 字节扫描 —— NeoForge 补丁在 `ItemStack` 里调 `EventHooks.onItemTooltip`；\n   Forge 侧常量池含 `ForgeEventFactory.onItemTooltip` 的四参描述符）⇒ 模组的 `ModTooltipHandler`\n   追加的行原样可见；客户端语言 zh_cn（options.txt `lang:zh_cn`）；\n· 每条断言都按**整行**锚定（`…|strip=<全文>$`）⇒ 旧文案（更长、含「延迟 0.5 秒」等）不会误命中。\n\n⚠️ 前置清饰品槽：卡牌提示里的数值 = 基础值 + `SpellDamageRegistry.effectCardDamageBonus(观看者)`\n（忍者立牌 / 书签筹码），残留会给数字加成 ⇒ 先 `/astralprobe pmfix clean` 让它恒为 0（4/6/8）。\n⚠️ 图鉴截图为 `mode=window`（窗口级抓取，即时，不依赖按键注入）。"
     },
     {
-      "op": "inject_command",
-      "command": "/gamemode creative",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/gamemode creative\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 800
     },
     {
-      "op": "inject_command",
-      "command": "/gamerule doDaylightCycle false",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/gamerule doDaylightCycle false\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
-      "op": "inject_command",
-      "command": "/time set noon",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/time set noon\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
-      "op": "inject_command",
-      "command": "/weather clear",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/weather clear\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 600
     },
     {
-      "op": "inject_command",
-      "command": "/kill @e[type=!player,distance=..64]",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/kill @e[type=!player,distance=..64]\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 700
     },
     {
-      "op": "inject_command",
-      "command": "/tp @s ~ ~ ~ 0 0",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/tp @s ~ ~ ~ 0 0\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 600
     },
     {
-      "op": "inject_command",
-      "command": "/clear @s",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/clear @s\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 600
     },
     {
-      "op": "inject_command",
-      "command": "/astralprobe pmfix clean V0",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralprobe pmfix clean V0\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
@@ -89,18 +97,14 @@
       "text": "【D-1】打开图鉴第一章的新条目「战斗系统改动」（服务端 `PatchouliAPI#openBookEntry` ⇒ 客户端开书到该条目）。"
     },
     {
-      "op": "inject_command",
-      "command": "/astralprobe pmfix guide G1 astral_dice:getting_started/battle_system_changes",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralprobe pmfix guide G1 astral_dice:getting_started/battle_system_changes\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 3500
-    },
-    {
-      "op": "screenshot",
-      "tag": "pmfix-guide-battle-1.21.1",
-      "mode": "window"
     },
     {
       "op": "wait",
@@ -111,36 +115,34 @@
       "text": "关书（Esc），再打开试剂-深渊的图鉴条目（C 的手册侧证据）。"
     },
     {
-      "op": "inject_key",
-      "key": "escape",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "client",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var IC = Java.loadClass('com.mojang.blaze3d.platform.InputConstants');\n  var KM = Java.loadClass('net.minecraft.client.KeyMapping');\n  var k = IC.Type.KEYSYM.getOrCreate(256);\n  KM.click(k);\n  return { ok: true, keysym: 256 };\n})()"
     },
     {
       "op": "wait",
       "ms": 900
     },
     {
-      "op": "inject_command",
-      "command": "/astralprobe pmfix guide G2 astral_dice:chips_healing/abyss_reagent_chip",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralprobe pmfix guide G2 astral_dice:chips_healing/abyss_reagent_chip\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 3500
     },
     {
-      "op": "screenshot",
-      "tag": "pmfix-guide-abyss-1.21.1",
-      "mode": "window"
-    },
-    {
       "op": "wait",
       "ms": 500
     },
     {
-      "op": "inject_key",
-      "key": "escape",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "client",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var IC = Java.loadClass('com.mojang.blaze3d.platform.InputConstants');\n  var KM = Java.loadClass('net.minecraft.client.KeyMapping');\n  var k = IC.Type.KEYSYM.getOrCreate(256);\n  KM.click(k);\n  return { ok: true, keysym: 256 };\n})()"
     },
     {
       "op": "wait",
@@ -151,24 +153,27 @@
       "text": "收尾：清怪物与背包。"
     },
     {
-      "op": "inject_command",
-      "command": "/kill @e[type=!player,distance=..64]",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/kill @e[type=!player,distance=..64]\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 700
     },
     {
-      "op": "inject_command",
-      "command": "/clear @s",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/clear @s\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 700
     }
   ],
+  "channel": "autojs",
   "asserts": [
     {
       "type": "log",
@@ -290,5 +295,10 @@
       "type": "crash"
     }
   ],
-  "evidence": []
+  "evidence": [],
+  "migration": {
+    "from": "legacy-kubejs",
+    "at": "2026-10-18",
+    "tool": "scripts/test/convert_cases_autojs.py"
+  }
 }

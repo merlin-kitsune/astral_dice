@@ -17,27 +17,30 @@
       "ms": 800
     },
     {
-      "op": "inject_command",
-      "command": "/gamemode creative",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/gamemode creative\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 500
     },
     {
-      "op": "inject_command",
-      "command": "/clear @s",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/clear @s\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 500
     },
     {
-      "op": "inject_command",
-      "command": "/tp @s ~ ~ ~ 0 0",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/tp @s ~ ~ ~ 0 0\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
@@ -48,27 +51,30 @@
       "text": "基线：清 curio（经商立牌会改写团队格与售价）/ 清余额与冷却，再把余额设成哨兵值 775"
     },
     {
-      "op": "inject_command",
-      "command": "/astralshop curioreset CR0",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralshop curioreset CR0\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 600
     },
     {
-      "op": "inject_command",
-      "command": "/astralshop reset V0",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralshop reset V0\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 900
     },
     {
-      "op": "inject_command",
-      "command": "/astralshop bal V 775",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralshop bal V 775\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
@@ -79,129 +85,58 @@
       "text": "开店并保持：openkeep 必须是最后一条**聊天注入**命令（界面开着后 T 键被 GUI 吞掉），之后所有驱动都走客户端探针的 sendCommand"
     },
     {
-      "op": "inject_command",
-      "command": "/astralshop openkeep KV0",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralshop openkeep KV0\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 3500
     },
     {
-      "op": "screenshot",
-      "tag": "shopV-01",
-      "mode": "window",
-      "crop": true
+      "op": "wait",
+      "ms": 3500
     },
     {
       "op": "wait",
       "ms": 3500
     },
     {
-      "op": "screenshot",
-      "tag": "shopV-02",
-      "mode": "window",
-      "crop": true
+      "op": "wait",
+      "ms": 3500
     },
     {
       "op": "wait",
       "ms": 3500
     },
     {
-      "op": "screenshot",
-      "tag": "shopV-03",
-      "mode": "window",
-      "crop": true
+      "op": "wait",
+      "ms": 3500
     },
     {
       "op": "wait",
       "ms": 3500
     },
     {
-      "op": "screenshot",
-      "tag": "shopV-04",
-      "mode": "window",
-      "crop": true
+      "op": "wait",
+      "ms": 3500
     },
     {
       "op": "wait",
       "ms": 3500
     },
     {
-      "op": "screenshot",
-      "tag": "shopV-05",
-      "mode": "window",
-      "crop": true
+      "op": "wait",
+      "ms": 3500
     },
     {
       "op": "wait",
       "ms": 3500
     },
     {
-      "op": "screenshot",
-      "tag": "shopV-06",
-      "mode": "window",
-      "crop": true
-    },
-    {
       "op": "wait",
       "ms": 3500
-    },
-    {
-      "op": "screenshot",
-      "tag": "shopV-07",
-      "mode": "window",
-      "crop": true
-    },
-    {
-      "op": "wait",
-      "ms": 3500
-    },
-    {
-      "op": "screenshot",
-      "tag": "shopV-08",
-      "mode": "window",
-      "crop": true
-    },
-    {
-      "op": "wait",
-      "ms": 3500
-    },
-    {
-      "op": "screenshot",
-      "tag": "shopV-09",
-      "mode": "window",
-      "crop": true
-    },
-    {
-      "op": "wait",
-      "ms": 3500
-    },
-    {
-      "op": "screenshot",
-      "tag": "shopV-10",
-      "mode": "window",
-      "crop": true
-    },
-    {
-      "op": "wait",
-      "ms": 3500
-    },
-    {
-      "op": "screenshot",
-      "tag": "shopV-11",
-      "mode": "window",
-      "crop": true
-    },
-    {
-      "op": "wait",
-      "ms": 3500
-    },
-    {
-      "op": "screenshot",
-      "tag": "shopV-12",
-      "mode": "window",
-      "crop": true
     },
     {
       "op": "wait",
@@ -212,15 +147,17 @@
       "text": "收尾：清生物（客户端探针已在场景末尾自关屏）"
     },
     {
-      "op": "inject_command",
-      "command": "/kill @e[type=!player,distance=..64]",
-      "no_esc": true
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/kill @e[type=!player,distance=..64]\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
     },
     {
       "op": "wait",
       "ms": 900
     }
   ],
+  "channel": "autojs",
   "asserts": [
     {
       "type": "log",
@@ -399,5 +336,10 @@
     {
       "type": "crash"
     }
-  ]
+  ],
+  "migration": {
+    "from": "legacy-kubejs",
+    "at": "2026-10-18",
+    "tool": "scripts/test/convert_cases_autojs.py"
+  }
 }

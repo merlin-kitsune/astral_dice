@@ -100,3 +100,10 @@ Astral Dice/
 
 ### Codex 项目技能（本地导入，2026-10-13）—— 不纳入版本库；源留档在 C:\Users\xmace\.dsh\skills ###
 .codex/
+
+# WSL/AutoJS 测试台运行时产物（2026-10-18）
+scripts/test/cases/.mt_results/
+scripts/test/cases/.mt_*.json
+run/*/mt_launch.log
+run/*/.mt_launch.pid
+temp/

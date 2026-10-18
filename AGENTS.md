@@ -73,6 +73,29 @@
 5. 未实机的欠账、REFUTED 的规格差异（例：lingling 冷却 3600t=180s vs 规格 120s）、无法测度的判据（例：牌面「厚度边」在两面同图案后无像素差异）**如实登记**，禁止静默删；
 6. 交接文档属**非代码改动** ⇒ 按第 7 条⑨a 只做 `code_review`，免子代理功能复验。
 
+### D. WSL 工具链 + AutoJS 测试台 —— 现行唯一口径（2026-10-18 用户裁决）
+
+**取代**下文「命令执行规范（Shell）」「自动化测试流程」中一切「Windows 原生 pwsh + 模拟键鼠 / 窗口焦点 / 截图识别」的口径；
+与旧口径冲突时**以本节为准**（历史记录章节除外，那些只作史料）。
+
+1. **施工位置**：唯一施工副本 = `~/work/astral_dice_multiloader-next`（WSL ext4，原生 `.git`，分支 `multi-dev-next`）。
+   `/mnt/f/MCProject/astral_dice_multiloader-next` 在收尾前**只读**，禁止双向同步 / 镜像回填。
+   （`/mnt/f` 走 9p，`neoforge-1.21.1:classes` 冷跑 9m22s；同一构建在 ext4 上 **32s**。）
+2. **入口**：`scripts/test/mt.sh --version <线> --phase preflight|build|env|launch|case|report|stop`；
+   阶段实现 `scripts/test/lib/{mt_common.sh,mt_autojs.py,mt_case.py}`；说明正本 `docs/wsl-autojs-toolchain.md`。
+   旧 `scripts/test/**/*.ps1`、`lib/Mt.*.psm1`、`scripts/test/fabric/*.ps1` 已于本批**删除**（可从 git 历史取回），
+   禁止再新增 pwsh 游戏流程脚本。
+3. **测试通道唯一 = AutoJS**（`eval_js` / `await_state` / `status` / `kubejs_log`）；用例 `channel` 必须显式 `autojs`。
+   废除原语 `inject_command` / `inject_key` / `inject_mouse` / `screenshot` / `kubejs_reload` 出现即校验 ERROR。
+   **键鼠注入、窗口焦点、AWT/User32、截图比对一律禁止**（含"临时用一下"）。
+4. **实机**：WSL 内 `./gradlew :<线>:runClient -Pquickplay=<世界>`（由 `--phase launch` 驱动），
+   就绪闸门 = AutoJS `status` + client `mc.player !== null`；收尾 `--phase stop --purge-saves`。
+5. **构建/静态守门**保持可用：`./gradlew :<线>:classes|jar`、`scripts/verify/*.ps1`（WSL 自带 pwsh 7 可跑）、`tools/*.py`。
+   pwsh 只允许用于**静态分析/守门**，不得用于游戏内动作。
+6. **收尾**：`bash scripts/dev/sync-back.sh --apply` 回写 Windows 工作树（排除 `build/ run/ .gradle/ models/*.bbmodel`）；
+   提交与 `git push` **只在 Windows 侧**用 `cmd.exe /c` 执行（push 走代理 `127.0.0.1:7897`，默认不推，用户放行才推）。
+7. **复核**：二次验证仍用 Codex 原生 `code_review`（一次性独立会话）；功能审查按第 7 条派一次性子代理。
+
 <!-- END 代理协作契约（2026-10-16 用户裁决） -->
 
 > **本文件已拆分（2026-10-16 用户裁决：AGENTS.md 只保留「每次必读」红线 + 索引，原文不丢）**
@@ -228,7 +251,7 @@ When extending this workspace:
 | L2198–L2308 | Mixin 注入规范 · 编译产物上传规则（新版本发布 / CurseForge / Modrinth） | 写 mixin、发布前 |
 | L2309–L2909 | 自动化测试流程（资产重建 / 变更分级 / 测试顺序 / 清场与收尾 / 工具链 / 阶段 P·B·E·L·C·R / 截图识别 / MCP / 超时看门狗） | 任何游戏内测试前（**必读**） |
 | L2910–L3046 | NeoForge 上游 BUG 补丁（neoforge_fixes）· 「敌对目标」判定规范 · `/astralparty` 管理员调试命令 | 上游 bug / 敌对判定 / 调试命令前 |
-| L3047–L3498 | 版本历史与发布记录 · 待办交接各批（fengshui / teru / 新立牌批 / Carpet / 双人测试流程 / 遗留项 / 立牌批验证闭环 + 选卡界面 + Jade 倒计时 + 工具链回 Windows 原生 + AutoJS 求值通道 / lingling 用例 / 强化拒止牌面） | 续做历史批次时 |
+| L3047–L3522 | 版本历史与发布记录 · 待办交接各批（… + 强化拒止牌面 / **WSL 迁移 + AutoJS 测试台重建**） | 续做历史批次时 |
 
 **维护约定**
 1. 新增「每次必读」的红线 ⇒ 直接写进上面的红线区（并同步到 `docs/agent/AGENTS-full.md` 的对应章节，保持两边一致）。

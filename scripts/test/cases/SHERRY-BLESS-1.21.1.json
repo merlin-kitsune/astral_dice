@@ -15,57 +15,232 @@
       "op": "note",
       "text": "前置：生存 + 清背包 + 锁午夜；`signprep` 清 stand 槽并装怪力侦探立牌。`stand=` 只查 nardis 恒为 0，装配判据看 `signslot`。"
     },
-    {"op": "inject_command", "command": "/gamemode survival", "no_esc": true},
-    {"op": "wait", "ms": 600},
-    {"op": "inject_command", "command": "/clear @s", "no_esc": true},
-    {"op": "wait", "ms": 400},
-    {"op": "inject_command", "command": "/time set midnight", "no_esc": true},
-    {"op": "wait", "ms": 400},
-    {"op": "inject_command", "command": "/gamerule doDaylightCycle false", "no_esc": true},
-    {"op": "wait", "ms": 400},
-    {"op": "inject_command", "command": "/kill @e[type=!player,distance=..32]", "no_esc": true},
-    {"op": "wait", "ms": 400},
-
-    {"op": "inject_command", "command": "/astralprobe signprep S0 \"astral_dice:sherry_sign\"", "no_esc": true},
-    {"op": "wait", "ms": 900},
-    {"op": "inject_command", "command": "/astralprobe signslot S0", "no_esc": true},
-    {"op": "wait", "ms": 400},
-    {"op": "inject_command", "command": "/astralprobe sherryread S0", "no_esc": true},
-    {"op": "wait", "ms": 400},
-
-    {"op": "note", "text": "钉成 3 层（探针入口直接写层数，免去打多只怪的注入开销）。"},
-    {"op": "inject_command", "command": "/astralprobe sherryset S1 3", "no_esc": true},
-    {"op": "wait", "ms": 600},
-
-    {"op": "note", "text": "起 200 tick 采样，随后施加 1 秒赐福。期望：赐福到期那一刻 3 → **2**，且此后恒为 2。"},
-    {"op": "inject_command", "command": "/astralprobe sherrywatch W0 200", "no_esc": true},
-    {"op": "inject_command", "command": "/effect give @s astral_dice:dice_blessing 1 0", "no_esc": true},
-    {"op": "wait", "ms": 8000},
-
-    {"op": "inject_command", "command": "/astralprobe sherryread R1", "no_esc": true},
-    {"op": "wait", "ms": 2500},
-    {"op": "inject_command", "command": "/astralprobe sherryread R2", "no_esc": true},
-    {"op": "wait", "ms": 400},
-
-    {"op": "note", "text": "收尾：清靶子与背包。"},
-    {"op": "inject_command", "command": "/kill @e[type=!player,distance=..32]", "no_esc": true},
-    {"op": "wait", "ms": 500},
-    {"op": "inject_command", "command": "/clear @s", "no_esc": true},
-    {"op": "wait", "ms": 400}
+    {
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/gamemode survival\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/clear @s\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/time set midnight\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/gamerule doDaylightCycle false\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/kill @e[type=!player,distance=..32]\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralprobe signprep S0 \\\"astral_dice:sherry_sign\\\"\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralprobe signslot S0\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralprobe sherryread S0\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "note",
+      "text": "钉成 3 层（探针入口直接写层数，免去打多只怪的注入开销）。"
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralprobe sherryset S1 3\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "note",
+      "text": "起 200 tick 采样，随后施加 1 秒赐福。期望：赐福到期那一刻 3 → **2**，且此后恒为 2。"
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralprobe sherrywatch W0 200\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/effect give @s astral_dice:dice_blessing 1 0\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+    },
+    {
+      "op": "wait",
+      "ms": 8000
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralprobe sherryread R1\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+    },
+    {
+      "op": "wait",
+      "ms": 2500
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralprobe sherryread R2\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "note",
+      "text": "收尾：清靶子与背包。"
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/kill @e[type=!player,distance=..32]\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/clear @s\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    }
   ],
+  "channel": "autojs",
   "asserts": [
-    {"type": "log", "source": "latest", "pattern": "AP_S0_SIGNPREP:sign=astral_dice:sherry_sign:sign_err=:"},
-    {"type": "log", "source": "latest", "pattern": "AP_S0_SIGNSLOT:slot=astral_dice:sherry_sign:slots=[0-9]+:used=1"},
-    {"type": "log", "source": "latest", "pattern": "AP_S0_SHERRY:layers=0:mirror=0"},
-    {"type": "log", "source": "latest", "pattern": "AP_S1_SHERRYSET:n=3:l=3:"},
-    {"type": "log", "source": "latest", "pattern": "AP_W0_WATCH:ticks=200:l=3"},
-    {"type": "log", "source": "latest", "pattern": "AP_W0_W:1:t=[0-9]+:b=0:ba=-1:d=-1:re=-1:l=3:m=3"},
-    {"type": "log", "source": "latest", "pattern": "AP_R1_SHERRY:layers=2:"},
-    {"type": "log", "source": "latest", "pattern": "AP_R2_SHERRY:layers=2:"},
-    {"type": "absent", "source": "latest", "pattern": "AP_[A-Z0-9]+_ERR"},
-    {"type": "absent", "source": "latest", "pattern": ":err="},
-    {"type": "absent", "source": "latest", "pattern": "未知或不完整的命令|Unknown or incomplete command|Incorrect argument"},
-    {"type": "kubejs"},
-    {"type": "crash"}
-  ]
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_S0_SIGNPREP:sign=astral_dice:sherry_sign:sign_err=:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_S0_SIGNSLOT:slot=astral_dice:sherry_sign:slots=[0-9]+:used=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_S0_SHERRY:layers=0:mirror=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_S1_SHERRYSET:n=3:l=3:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_W0_WATCH:ticks=200:l=3"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_W0_W:1:t=[0-9]+:b=0:ba=-1:d=-1:re=-1:l=3:m=3"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_R1_SHERRY:layers=2:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_R2_SHERRY:layers=2:"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_[A-Z0-9]+_ERR"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": ":err="
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "未知或不完整的命令|Unknown or incomplete command|Incorrect argument"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    }
+  ],
+  "migration": {
+    "from": "legacy-kubejs",
+    "at": "2026-10-18",
+    "tool": "scripts/test/convert_cases_autojs.py"
+  }
 }

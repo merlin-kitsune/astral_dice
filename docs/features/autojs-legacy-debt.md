@@ -1,5 +1,14 @@
 # AutoJS 通道迁移欠账（legacy 用例 → eval 通道）
 
+> ⛔ **2026-10-18 更新（本文件正文为迁移前快照，数字以本节为准）**：229 条 legacy 用例已由
+> `scripts/test/convert_cases_autojs.py` 机械化迁移，`channel=autojs` 覆盖率 **231/231**，
+> legacy 驱动原语（`inject_command/inject_key/inject_mouse/screenshot/kubejs_reload`）残留 **0**
+> （`python3 scripts/test/lib/mt_case.py validate` ⇒ `files=231 errors=0`）。
+> 通道口径与实机证据见 `docs/wsl-autojs-toolchain.md`；工具链已改为 WSL + bash/python（旧 pwsh 游戏流程脚本已删除）。
+> **仍未完成**：GUI 状态机类用例（`CC-*` / `BOT-2P` 等）的语义级改写、`vision` 断言（9 条，WSL 下 BLOCKED）、
+> 1.20.1/26.1.2/fabric 三线的 AutoJS 端到端验证。
+
+
 > 登记对象：`scripts/test/cases/**/*.json` 里**尚未**迁到 AutoJS 通道的用例。
 > 权威规格：`docs/features/autojs-test-harness-spec.md`（§2 目标态 / §8 欠账）；通道规则：`TESTING-RULES-OVERVIEW.md` §15；技术细节与逐行落点：`TESTING-SPEC.md` §7A。
 > 数字时点：**2026-10-18**（AutoJS 通道落地当天，实测；复算命令见 §8）。
