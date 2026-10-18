@@ -47,6 +47,32 @@
 ⚠️ **已知缺陷（2026-10-16 实测 3 次）**：`spawn_agent(fork_turns="none")` 的 brief **投递不到子代理**
 （子代理只收到环境上下文，会反问「请把 brief 发给我」）。应对：优先用默认 `fork_turns`；
 子代理回报「没收到任务」时**最多重试 1 次**，仍失败则**如实上报用户**，禁止在主会话反复重派（每轮 ≈18 万 tokens）。
+### C. 交接文档用法 —— 接手 / 交班都按这条走（2026-10-18 用户裁决）
+
+**四层事实源，别搞混**：
+
+| 文件 | 角色 | 能不能当现状 |
+|---|---|---|
+| `docs/handover-2.0.0-dev-next.md` | **开发线滚动交接正本**（§0 速览 / §3 批次表 / §4 实机读数 / §5 遗留 / §6 坑 / §7 路径） | 是，但**每次交班必须刷新** |
+| `docs/handover-new-session-context.md` | 可整份贴给新会话的**寒暄提示词**（环境 / 先读哪几份 / 基本盘 / 立即待办） | 是，同步刷新 |
+| `docs/agent/AGENTS-full.md` 末尾「待办交接各批」 | **逐批历史条目**（第 N 条 = 一批的完整事实 + 判据 + 坑） | 是，只追加不改旧条 |
+| `docs/handover-<版本>-<主题>.md` | 单批详案（如 .97 筹码批） | 是，属该批详证 |
+| ⛔ `docs/AGENT-HANDOFF.md` | multi-main @9825cf1e 的**历史快照**（工程拓扑/CI/发布链） | **不是**，只作背景，禁止据此下现状结论 |
+
+**接手（新会话）顺序 —— 一律实读，不信文档里的数字**：
+1. `git -C <工作树绝对路径> status --short -uall` + `git log -1 --oneline`（分支 / HEAD / 未提交改动）；
+2. 四线 `gradle.properties` 的 `mod_version`（文档里的 .1xx 只是快照，可能已落后）；
+3. 读正本 `docs/handover-2.0.0-dev-next.md` 的 §0 / §5，再按 §7 取路径；
+4. 要某批细节 ⇒ 用主题名在 `docs/agent/AGENTS-full.md` 检索「待办交接」第 N 条（标题 + 行号总表见 `docs/agent/AGENTS-TOC.md`）。
+
+**交班义务（收班前必须做完，缺一即不算交付）**：
+1. 刷新正本 `docs/handover-2.0.0-dev-next.md`：header 快照（日期 / 分支 / HEAD / mod_version / 工作树残留）+ §0 速览 + §3 追加批次行 + §4 追加实机机器行原文 + §5 追加或销账遗留项 + §6 追加新坑 + §7 补关键路径；
+2. 在 `docs/agent/AGENTS-full.md` 末尾「待办交接各批」**追加**一条（新条目，禁止改写旧条目）；
+3. 同步 `AGENTS.md` 索引最后一行（尾部行号 = AGENTS-full 的行数），并跑 `python docs/agent/verify-split.py`，**四项全 [OK]** 才算过；
+4. 同步刷新 `docs/handover-new-session-context.md` 的基本盘 / 已完成 / 立即待办；
+5. 未实机的欠账、REFUTED 的规格差异（例：lingling 冷却 3600t=180s vs 规格 120s）、无法测度的判据（例：牌面「厚度边」在两面同图案后无像素差异）**如实登记**，禁止静默删；
+6. 交接文档属**非代码改动** ⇒ 按第 7 条⑨a 只做 `code_review`，免子代理功能复验。
+
 <!-- END 代理协作契约（2026-10-16 用户裁决） -->
 
 > **本文件已拆分（2026-10-16 用户裁决：AGENTS.md 只保留「每次必读」红线 + 索引，原文不丢）**
@@ -202,7 +228,7 @@ When extending this workspace:
 | L2198–L2308 | Mixin 注入规范 · 编译产物上传规则（新版本发布 / CurseForge / Modrinth） | 写 mixin、发布前 |
 | L2309–L2909 | 自动化测试流程（资产重建 / 变更分级 / 测试顺序 / 清场与收尾 / 工具链 / 阶段 P·B·E·L·C·R / 截图识别 / MCP / 超时看门狗） | 任何游戏内测试前（**必读**） |
 | L2910–L3046 | NeoForge 上游 BUG 补丁（neoforge_fixes）· 「敌对目标」判定规范 · `/astralparty` 管理员调试命令 | 上游 bug / 敌对判定 / 调试命令前 |
-| L3047–L3488 | 版本历史与发布记录 · 待办交接各批（fengshui / teru / 新立牌批 / Carpet / 双人测试流程 / 遗留项 / 立牌批验证闭环 + 选卡界面 + Jade 倒计时） | 续做历史批次时 |
+| L3047–L3497 | 版本历史与发布记录 · 待办交接各批（fengshui / teru / 新立牌批 / Carpet / 双人测试流程 / 遗留项 / 立牌批验证闭环 + 选卡界面 + Jade 倒计时 + 工具链回 Windows 原生 + AutoJS 求值通道 / lingling 用例 / 强化拒止牌面） | 续做历史批次时 |
 
 **维护约定**
 1. 新增「每次必读」的红线 ⇒ 直接写进上面的红线区（并同步到 `docs/agent/AGENTS-full.md` 的对应章节，保持两边一致）。

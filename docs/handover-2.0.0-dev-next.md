@@ -1,9 +1,11 @@
 # 交接文档 — astral_dice_multiloader-next（开发线 multi-dev-next）
 
-> 生成：2026-10-11 20:20；**本次刷新：2026-10-12 22:11（Asia/Hong_Kong）**｜工作树 `F:\MCProject\astral_dice_multiloader-next`
-> 分支 `multi-dev-next`｜刷新前基线 HEAD **`e06451c5`**（交接文档批 `.98`；本文件主体随 `.99` 提交落地、§0「实施分工」行于 `.100` 修订、复核分级⑨于 `.102` 增设；最新值以 `git log -1` 为准）｜四线版本 **`2.0.0-SNAPSHOT.102`**（四条线同号）
-> 工作树状态：除 4 个与本项目无关的未跟踪目录外**干净**（`git status --short -uall` 只剩 `?? %SystemDrive%/ProgramData/Microsoft/Windows/Caches/*.db` 四行，见 §5-C-11）；**未 push**。
-> **本批交接（筹码商店）**：`docs/handover-2.0.0-SNAPSHOT.97-chip-shop.md`（流程 / 语义 / 判据 / 未完成 / 新坑，逐条可复算）—— 建议与本文件一起读。
+> 生成：2026-10-11 20:20；**本次刷新：2026-10-18 17:30（Asia/Hong_Kong）**｜工作树 `F:\MCProject\astral_dice_multiloader-next`
+> 分支 `multi-dev-next`｜刷新前基线 HEAD **`3c90e653`**（本文件上一版基线 `e06451c5` = 交接文档批 `.98`；`.99` 起依次有 `.100` 实施分工、`.102` 复核分级⑨、`.103`–`.131` 各批（明细见 `docs/agent/AGENTS-full.md`「待办交接」第 20–39 条）、`.132` = **AutoJS 求值通道 / lingling 用例 / 强化拒止牌面** 三批；最新值一律以 `git log -1` 为准）｜四线版本 **`2.0.0-SNAPSHOT.132`**（四条线同号）
+> 工作树状态：**干净**（`git status --short -uall` 只剩两行用户资产 `?? models/路障 - Converted.bbmodel`、`?? models/强化拒止 - Converted.bbmodel`；§5-C-11 的 `%SystemDrive%` 缓存目录已于 2026-10-18 清除）；**未 push**。
+> **本批交接（.132 三批）**：正本是 `docs/agent/AGENTS-full.md` 末尾「待办交接」**第 39 条**（AutoJS 求值语义 + 测试台闸门 + LINGLING 用例 + 强化拒止牌面 + 本批坑 + 遗留），§3/§4/§6 有对应展开。
+> 历史详案：`docs/handover-2.0.0-SNAPSHOT.97-chip-shop.md`（筹码商店，流程 / 语义 / 判据 / 未完成 / 新坑，逐条可复算）。
+> **交接文档用法（接手顺序 / 交班义务）见 `AGENTS.md`〈代理协作契约 · C. 交接文档用法〉**，接手时先按那里的顺序实读一遍，别信本文里的数字。
 > 新会话提示词：`docs/handover-new-session-context.md`（可整份复制给新会话；**Windows 侧口径**，2026-10-17 晚随「工具链回 Windows 原生」重写）。
 > ⚠️ **环境口径（2026-10-17 晚收敛）**：工具链 = 纯 pwsh 7、**Windows 原生**（`scripts/test/mt_build.ps1` 是唯一构建入口，`scripts/test/mt_build.sh` 已删除）；**不再支持从 WSL/Linux 驱动**（根因与数据见 `docs/handover-new-session-context.md` §0.2，仅作知识）。
 
@@ -15,8 +17,10 @@
 |---|---|
 | 优先级模型 | **P0 = neoforge-1.21.1 + forge-1.20.1（同批、优先）**；**P1 = neoforge-26.1.2 + fabric-1.20.1（待移植）** |
 | 功能对等现状 | **P0 两线已对等**（事件体系 + 事件卡 GUI + 事件选择界面 + 发币漏斗 + 手册/tooltip 文案 + 卡牌商店方块 + **筹码商店（`.97`）**）；**P1 两线未移植** —— 已核：`neoforge-26.1.2` 与 `fabric-1.20.1` 目录下**不存在** `client/EventCardOverlay.java`、`block/CardShopBlock.java`、`shop/ChipShopCatalog.java` |
-| 本批交接（筹码商店） | `docs/handover-2.0.0-SNAPSHOT.97-chip-shop.md` |
-| 最近实机结果 | `.97` 批 1.21.1 筹码五条用例 **全 PASS**（`CHIP-LOGIC` / `CHIP-REGEN` / `CHIP-CLIENT-BUY` / `CHIP-CLIENT-REFRESH` / `CHIP-CLIENT-DENY`）；**forge 线无用例、未实机** |
+| 本批交接（`.132` 三批） | `docs/agent/AGENTS-full.md` 末尾「待办交接」**第 39 条**（AutoJS 求值语义 / 测试台闸门 / LINGLING 用例 / 强化拒止牌面 / 本批坑 / 遗留） |
+| 最近实机结果（`.132`） | 1.21.1：**`MT_CASE_RESULT: LINGLING-1.21.1 = PASS`**（42 step / 22 assert）；强化拒止牌面 **FRONT vs BACK best=id IoU 1.000 / OVERALL: PASS**；`AUTOJS-SMOKE-1.21.1 = PASS`；**forge 线无用例、未实机** |
+| 更早实机结果（`.97`） | 1.21.1 筹码五条用例 **全 PASS**（`CHIP-LOGIC` / `CHIP-REGEN` / `CHIP-CLIENT-BUY` / `CHIP-CLIENT-REFRESH` / `CHIP-CLIENT-DENY`） |
+| AutoJS 求值通道 | eval_js **只求最后一个表达式**（顶层 `return` ⇒ `EvaluatorException: invalid return`）；非标量必须 `JSON.stringify(...)` 包裹（否则 `"[object Object]"`）；布尔用 `!!(...)`，`-Mode Bool` 回来是**字符串** `"true"`/`"false"` ⇒ 只能比字面量 |
 | 构建 | `pwsh -NoProfile -File scripts/test/mt_build.ps1 --version <线> --timeout 300` ⇒ `MT_BUILD: OK` |
 | 实机 | `mt.ps1 --version <线> --phase env` → `--phase launch`；**收尾 `--phase stop --force --purge-saves`** |
 | 手动启动（人工自测） | 双击 `run/Start-<线>.bat`（只启动，**无任何前置判断**） |
@@ -112,6 +116,13 @@ pwsh -NoProfile -File scripts/test/mt_inject.ps1 cmd -Command "/astralprobecard 
 | 规范清残 | .88~.89 | b1c1e2c4 / 24d568ad | 清掉「三线同批」遗留措辞、子代理并行旧口径、交接版本漂移 |
 | 设计稿入库 | .90~.92 | 026ff76f / 6e2c7c81 / 7b7d86b0 | `docs/chip-shop-logic-plan.md` 入库 + Q13–Q16（无折扣 / 离线恢复 / 重抽口径 / 图标供给）与 Q17（不绘标题）裁决落定、计划冻结待开工令 |
 | 复审收尾 | .93~.96 | f7edb0a4 / 583ec48f / 37137548 / 6b87640d | 功能审查与二次验证的收尾修订（悬空章节引用、三线措辞残留、handover 状态诚实化等纯文档） |
+| 中间批次 | .98~.131 | — | 明细见 `docs/agent/AGENTS-full.md`「待办交接」**第 20–38 条**（本文件自 .98 起不再逐条复制批次行） |
+| repulsion 吸附口径 | .132 | 3d3555ea | 吸附口径收窄（有仇恨的敌对 / 被激怒中立，平静即释放）+ 苦力怕自爆拦截（P0 两线） |
+| 怪力乱神（lingling） | .132 | 6cf9f6e0 / 298a4c3a | 新增史诗立牌「怪力乱神」（拦截者被动 + 能量突击主动，neo 线 4 材料创造栏解绑）→ forge-1.20.1 全量移植 + 实机用例 + 冷却口径订正 |
+| AutoJS 求值通道 | .132 | e066f7db / 02cfa6c0 | 实机测试台接入 AutoJS 运行时求值（MCP 主通道，KubeJS 降为 legacy）+ 桌面驱动改走 DSH dsh-computer-use（移除 computer-control-mcp 键鼠逻辑）；求值语义坑见 §6-25 |
+| 强化拒止牌面 | .132 | f3aca047 / d8d48431 / ba05258b / 0f99ba12 / c00b13fc | 五轮收敛：贴图换 bbmodel 原图 → UV 相对 bbmodel 歪 90° → 图案翻转 180° + 立牌类不显示名条 → 北面 UV 复用反面矩形（失败）→ **北块 := 南块逆时针 90°**（两线，判据 OVERALL: PASS） |
+| lingling 用例判据 | .132 | 3c90e653 | d_damage 改用 ArmorStand 承伤，规避骰战伤害覆写造成的攻击强度缩放污染（1.21.1 22 断言 PASS） |
+| 商店货架 / 文案 | .132 | 0014e4e0 / f62f12c1 / 20e82a12 | 货架补「路障」+ 佩戴怪力乱神时显示「强化拒止」；路障/强化拒止/怪力乱神 tooltip 精简排版（双线三语）；规格键数订正（1001 键 / 3·5 行） |
 | **筹码商店批** | **.97** | **6c81b7fe** | **两线完整实现**（61 筹码池 + 抽取/刷新/购买/拒绝 + 价格曲线 + 方块与四向朝向 + 界面与品质框 + 三包网络 + 附件落盘 + 61 张图标 + 配方/掉落表 + 三语 7 键）+ 守门 G1..G6·G9..G27 + 变异 37 条 + 5 条实机用例（1.21.1 全 PASS）+ 探针 `c*` 命令族与 770/771/772 场景；192 文件 |
 
 **功能面现状（P0 两线已对等）**：13 个事件 + 弹卡 GUI（淡出后无文字残留）+ 事件选择界面（2 选 1、15s、确认即触发、死亡/登出强触发第一项）+ 调查阶段 4 阶图标与 1:00 计时器 + 全模组发币优先入钱包 + 手册/tooltip 文案同步 + 卡牌商店方块（四态朝向 + 自有碎裂粒子）+ **筹码商店**（61 枚筹码的抽取/售卖方块，四向朝向、21 步可见行为与拒绝码见 `docs/chip-shop-logic-plan.md` 与 `docs/handover-2.0.0-SNAPSHOT.97-chip-shop.md`）。
@@ -156,6 +167,23 @@ pwsh -NoProfile -File scripts/test/mt_inject.ps1 cmd -Command "/astralprobecard 
 > ⚠️ 上表的读数取自与提交内容一致的产品源码；其后只改过注释/文档/版本号/测试资产 ⇒ 若要求 `.97`/`.98` 产物自身的实机证据需重跑（见批次文档 §4-7）。
 > ⚠️ **forge 线本批没有实机**（探针 `c*` 命令与用例都还没移植到 1.20.1）—— 欠账已登记，不得据此声称两线实机对等。
 
+**`.132` 三批（AutoJS 通道 / LINGLING 用例 / 强化拒止牌面）的实机判据**：
+
+| 判据 | 实测（机器行原文） | 版本 |
+|---|---|---|
+| AutoJS 求值通道 | `MT_CASES_SUMMARY: AUTOJS-SMOKE-1.21.1=PASS`（负例反证：`await_state` 收到字符串 `"false"` 曾瞬时假通过，修后等 9 次重试才 FAIL） | .132 |
+| LINGLING-1.21.1 用例 | `MT_CASE_RESULT: LINGLING-1.21.1 = PASS` + `MT_CASES_SUMMARY: LINGLING-1.21.1=PASS`（42 step / 22 assert，exit 0） | .132 |
+| lingling 读数样本 | a_grant `{"eq":true,"granted":true,"rep":2,"bar":0}`；c_read `{"own":5,"bonus":5,"eff":5,"stacks":0,"foreign":1}`；c_cap_read `{"own":23,"bonus":23,"eff":20,"max":20}`；d_damage `{"gg_tracked":10,"gg_control":5,"gg_diff":5,"pa_tracked":6,"pa_control":6,"pa_diff":0}`；e_trigger `{"rep_delta":1,"atk":6,"spd":105,"hasSurge":true,"dur":1200,"cd":3600,"eff":5}`；g_tab `{"chips_enabled":false,"lingling":1,"total":152}` | .132 |
+| 冷却口径 | `cd=3600` tick = **180 s**，而规格写 120 s ⇒ **REFUTED（口径不一致，未改代码，登记待裁决）** | .132 |
+| 强化拒止牌面 | `temp/t74_cmp.py`：`[front] blob_px=13557` / `[back] blob_px=13557` 同 quad；`FRONT vs BACK best=id 1.000  2nd=r180 0.824`；末行 **`OVERALL: PASS (criterion: FRONT==BACK as id >=0.98)`** | .132 |
+| 贴图哈希 | 两线 `textures/entity/repulsion.png` = **B59C576BD944F226D8B1C9BB51F984BD42477530660EAEA944E4FD0252088EBE**（改前 `DDD9E97C…4A9E`；中间失败版 `DADF0537…CE4F`） | .132 |
+| 无头顶名条 | `client/RepulsionRenderer.shouldShowName` 恒 `false`；截图里屏幕上方那块「强化拒止 100/100 / Astral Dice」是 Jade/HUD 框，不是名条 | .132 |
+| 编译 | `:neoforge-1.21.1:classes :forge-1.20.1:classes` ⇒ `BUILD SUCCESSFUL`（84 条既有 deprecation 警告） | .132 |
+| 收尾 | `MT_CLEANUP_SAVES: PURGED` + `MT_CLEANUP_RESULT: OK` + `MT_STOP: OK` | .132 |
+
+> ⚠️ 强化拒止「两面图案一致」**已判 PASS**，但「牌面厚度边在相反两侧」这一条**无法用像素定量确认**（两面同图案后两帧 bbox 平均差 1.6/765）⇒ 仅以「同机位修前测得 r180、修后测得 id 1.000」作为两面确实不同的替代证据，详见 §6-26。
+> ⚠️ 上述截图存于 `run/1.21.1/screenshots/`（被 .gitignore 排除，属本机留存），判据脚本在 `temp/`；两者均未入库 ⇒ 复算需重跑同机位。
+
 ---
 
 ## 5. 遗留项 / 待办
@@ -181,9 +209,19 @@ pwsh -NoProfile -File scripts/test/mt_inject.ps1 cmd -Command "/astralprobecard 
 14. `sound/` 目录约 21 个 wav 未转 ogg。
 15. 第三方渲染注入的深蓝斜体模组名行（如「星之骰戏」）来源未定位（与本模组无关）。
 16. 1.20.1 dev 环境里 **Patchouli 手册手持物呈紫黑格**（`server.log hand=1 guide_book`）：纯 dev 贴图观感、与本批改动无关，未处理；线上/实机如也出现再单开任务。
-17. **仓库根 4 个未跟踪垃圾目录（仍在）**：`%SystemDrive%/ProgramData/Microsoft/Windows/Caches/*.db`（字面量 `%SystemDrive%`；某进程按 cwd 写入未展开路径所致，内容 = Windows 字体缓存）。**本轮未删除**（避免在无引用证据时删系统缓存镜像物），因此 dev 树 `git status --short -uall` 恒有这 4 行；提交时**不要用 `git add -A`**，改用显式顶层路径 `git add -A -- AGENTS.md CHANGELOG.md CHANGELOG_ZH.md docs neoforge-1.21.1 forge-1.20.1 neoforge-26.1.2 fabric-1.20.1 scripts`。
+17. **仓库根 4 个未跟踪垃圾目录（2026-10-18 已销账：实测已不存在，见 §8-1）**：`%SystemDrive%/ProgramData/Microsoft/Windows/Caches/*.db`（字面量 `%SystemDrive%`；某进程按 cwd 写入未展开路径所致，内容 = Windows 字体缓存）。当轮**未删除**（避免在无引用证据时删系统缓存镜像物）；**2026-10-18 复核：该 4 行已不存在**，`git status --short -uall` 现只剩 `models/*.bbmodel` 两行用户资产。历史口径保留如下 —— 提交时**不要用 `git add -A`**，改用显式顶层路径 `git add -A -- AGENTS.md CHANGELOG.md CHANGELOG_ZH.md docs neoforge-1.21.1 forge-1.20.1 neoforge-26.1.2 fabric-1.20.1 scripts`。
 18. **`mt_build.ps1` 不支持 fabric**：`--version fabric-1.20.1` ⇒ `MT_ERROR: 未知版本 fabric-1.20.1（可选：1.21.1 1.20.1 26.1.2）`；fabric 线用 `scripts/test/fabric/ft_build.ps1`。
 19. **测试环境的第三方引脚会漂移**：用户升级整合包后 `mt_env.ps1 mods` 会 `MT_MODS: BLOCKED — 整合包缺少 *modernfix-neoforge*X*`（本批实测 5.27.24 → **5.27.26**）⇒ 同批改 `scripts/test/mt_env.ps1:48` 与 `AGENTS.md` 测试环境表那一行。
+**D. `.132` 批新增欠账（如实登记，禁删；判据明细见 §4 的 `.132` 判据表）**
+
+20. **强化拒止「厚度边在相反两侧」不可测度（`.132` 新登记）**：两面图案改为逐像素同一律后，正/背两帧牌面 bbox 平均像素差仅 **1.6/765**、列差 2.7 vs 2.3（无翻转），像素法判不出「两面不同」。现行替代证据 = 同机位在修前测得 r180、修后测得 id 1.000 ⇒ 两个机位确实对着不同的面且改动只落在北块。要更强的证据须从侧视角（约 30°）拍厚度边，**未做**。
+21. **forge 线无用例（`.132` 新登记）**：`LINGLING-1.21.1` / `AUTOJS-SMOKE-1.21.1` 只在 1.21.1 实机跑过；`forge-1.20.1` 仅过 `:forge-1.20.1:classes` 编译 + 贴图同哈希 ⇒ **实机零证据**。
+22. **P1 两线未移植（`.132` 新增内容）**：怪力乱神（lingling）立牌、强化拒止贴图/UV 修正都只在 P0 两线；`neoforge-26.1.2` 与 `fabric-1.20.1` 未移植。
+23. **冷却读数口径陷阱（`.132` 新登记）**：`ModAttachments.getSignActiveCooldownEnd(p)` 是**绝对 tick**（种在世界时钟上），而 `mcp().getTickCount()` 随服务器重启归零 ⇒ 用例必须先 `--phase env` 重建世界再读；否则实测 `cd=15600`（差 12000t）会假 FAIL。
+24. **交接文档惯性滞后**：本文件与 `docs/handover-new-session-context.md` 在 `.98`→`.132` 期间长期没跟版（§3 只到 `.97`、索引末行停在 L3488 导致 `verify-split.py` check#3 长期 FAIL）⇒ 已按 `AGENTS.md`〈契约 · C. 交接文档用法〉补齐；后续每批收班必须刷新，见该节「交班义务」。
+25. **`code_review` 覆盖不完整（`.132`，如实登记）**：两个 `client/RepulsionModel.java` 复核 `completed` / 0 findings；但 `scripts/test/cases/LINGLING-1.21.1.json` 连续两轮 `MODEL_INVALID_JSON`（`Model response is not complete JSON … envelope=plain, shape=non-json-leading`）、`textures/entity/repulsion.png` 一律 `blocked`（非 UTF-8）⇒ **用例 JSON 与贴图没有第三方复核证据**，现由主会话实测替代（用例：实机 PASS 22 断言；贴图：两线 sha256 一致 + 像素判据 PASS）。要补须换复核通道（一次性独立子代理）。
+26. **既存搁置（非本批引入，仍有效）**：① `scripts/test/cases/` 下 229 条 legacy 用例未迁 `eval_js`（统计与迁移方式见 `docs/features/autojs-legacy-debt.md`）；② `neoforge-26.1.2` / `fabric-1.20.1` 的 AutoJS 实机**一次都没跑过**（含 `AUTOJS-SMOKE`，见 §5-22）；③ lingling 冷却 **实测 180 s（`cd=3600` tick）vs 规格 120 s** 属 **REFUTED 规格漂移**（§4 L177）—— 本批**未改任何一边**，待用户裁决「改规格」还是「改代码」。
+
 
 ---
 
@@ -213,6 +251,11 @@ pwsh -NoProfile -File scripts/test/mt_inject.ps1 cmd -Command "/astralprobecard 
 22. **`--phase report` 被批量编排闸门禁用**（`MT_AUTO_DISABLED`、退出码 2）⇒ 加 `--allow-auto`；报告总判 FAIL 可能只反映**同世代的历史标记**（`.mt_run_state.json` 无时间戳平面映射）。
 23. **变异 harness 的行尾陷阱（已修）**：脚本内锚点用 LF 拼、forge 线源码是 CRLF ⇒ 多行锚点 `IndexOf = -1`、「变异根本没注入」会被静默当成一条结果。现已按**目标文件自己的行尾**归一化（`ConvertTo-FileEol`）并把 harness 失败与「守门漏判」分桶（`MUT_HARNESS` + `exit 2`）；新增 **M37** 用多行 CRLF 锚点长期守住这条。
 24. **工具调用侧的两个硬性小事**：`tools.list_agents`/`tools.job_list` 等**必须传空对象**（`await tools.list_agents({})`），否则报 `ToolCallError: binding arguments must be lossless JSON`；`tools.edit`/`tools.write` 改**已存在**文件前必须先用 `read` 工具读过（`fs.readFileSync` 不算），否则报 `file has not been read`。
+25. **AutoJS 求值语义（`.132` 实测，写任何 `eval_js` 前必读）**：① `eval_js` **只求最后一个表达式**，顶层 `return` ⇒ `EvaluatorException: invalid return (autojs-eval#N)`、`syntax error` 同理 ⇒ 片段必须是 IIFE 表达式；② 非标量返回值被序列化成字符串 `"[object Object]"`，要拿结构必须自己 `JSON.stringify((function(){…; return {…};})())`（测试台 `-Mode Json` 已代包，用例里**不要**再自己 stringify）；③ 布尔必须 `!!(…)`，且 `-Mode Bool` 回来的 `value` 是**字符串** `"true"`/`"false"` ⇒ 判真只能比字面量（曾把字符串 `"false"` 当 true 造成瞬时假通过）。
+26. **牌面视觉判据的两个陷阱（`.132`）**：① 天空 + 云 + 地平线雾霾会让「最大连通域」把牌面与背景连成一片（blob 20 万 px）⇒ 必须在牌后放 **`minecraft:red_concrete` 纯色墙**、夜间先 `time set 4000` + `doDaylightCycle false`、并确认 `mc.screen === null`（曾有 Patchouli 书 GUI 把牌面完整遮住，blob 只剩 392px）；② 菱形的「四极值点 → 正方形角」反算带 **90° 象限自由度**，绝对映射会整体偏 90°，只有**正面 vs 背面**这类相对量可靠（早期「南面=r180」口径即由此作废）。
+27. **`/kill` 杀不掉 RepulsionEntity**：`LivingEntity.kill()` 走 `hurt()`，而 `RepulsionEntity.hurt()` 恒返 false ⇒ 只能用 Java 侧 `e.discard()`；且该实体 `noPhysics = true`，召唤必须带 `{NoGravity:1b}`，否则脚下无方块会一路下落。
+28. **`run_code` 大 cell 的 worker-exit**：单个 cell 里既跑较长 `pwsh`（gradlew / mt.ps1 / verify-split）又要后续工具调用，极易 `worker-exit: kernel helper did not answer utilization sampling before its deadline`；**崩溃 cell 里的 `tools.edit` 可能根本没落地** ⇒ 必须回读确认。长命令一律 `run_in_background: true` 起 job 再 `job_output` 收。
+
 
 ---
 
@@ -227,17 +270,23 @@ pwsh -NoProfile -File scripts/test/mt_inject.ps1 cmd -Command "/astralprobecard 
 | 立牌 | `item/sign/BaseSignItem.java`、`FannySignItem.java`（大侦探）、`BonnieSignItem.java`（秘密侦探） |
 | 发币漏斗 | `resource/ResourceConversion.java#giveItem` → `economy/StarCoinCurrency#tryAbsorbIntoWallet` |
 | 事件卡素材 | 源 `images/shop/fanny_skill_*.png` → `<线>/src/main/resources/assets/astral_dice/textures/gui/shop/` |
-| **筹码商店（本批）** | `shop/ChipShop{Catalog,Roller,State,Opener,RegenTicker,Menu}.java`、`block/ChipShopBlock.java`、`screen/ChipShopScreen.java`、`client/ChipShopClientState.java`、`network/ChipShop{Buy,Refresh,Deny}Payload.java`；资源 `assets/astral_dice/{blockstates,models/item}/chip_shop.json` + `textures/gui/chip_shop/chips/*.png`（61）+ `data/astral_dice/{recipe\|recipes}/chip_shop.json` + `data/astral_dice/{loot_table\|loot_tables}/blocks/chip_shop.json` |
+| **筹码商店（`.97` 批）** | `shop/ChipShop{Catalog,Roller,State,Opener,RegenTicker,Menu}.java`、`block/ChipShopBlock.java`、`screen/ChipShopScreen.java`、`client/ChipShopClientState.java`、`network/ChipShop{Buy,Refresh,Deny}Payload.java`；资源 `assets/astral_dice/{blockstates,models/item}/chip_shop.json` + `textures/gui/chip_shop/chips/*.png`（61）+ `data/astral_dice/{recipe\|recipes}/chip_shop.json` + `data/astral_dice/{loot_table\|loot_tables}/blocks/chip_shop.json` |
 | 筹码守门与实机资产 | `scripts/verify/verify_chip_shop_ui.ps1`（G1..G6 + G9..G27）、`scripts/verify/mutate_chip_shop_ui.ps1`（37 条）、`scripts/test/cases/CHIP-*-1.21.1.json`、`scripts/test/resources/kubejs/1.21.1/{server_scripts/astral_shop_probe.js,client_scripts/astral_shop_client.js}` |
 | 筹码设计 / 界面 / 平台差异 | `docs/chip-shop-logic-plan.md`、`docs/chip-shop-ui-spec.md`、`docs/compat-1.20.1-forge.md` §十七 |
-| 文档 | `AGENTS.md`、`scripts/test/TESTING-SPEC.md`、`docs/compat-1.20.1-forge.md`、`docs/compat-26.1.2-neoforge.md`、`docs/handover-new-session-context.md`、**`docs/handover-2.0.0-SNAPSHOT.97-chip-shop.md`（本批）**、本文件 |
+| 文档 | `AGENTS.md`、`scripts/test/TESTING-SPEC.md`、`docs/compat-1.20.1-forge.md`、`docs/compat-26.1.2-neoforge.md`、`docs/handover-new-session-context.md`、**`docs/handover-2.0.0-SNAPSHOT.97-chip-shop.md`（历史详案，`.97` 批）**、本文件 |
+| **AutoJS 求值通道 / 用例（`.132`）** | `scripts/test/lib/Mt.AutoJs.psm1`（`Invoke-MtAutoJsEval -Mode Raw\|Json\|Bool` + `ValueParsed`）、`scripts/test/mt_case.ps1`（`eval_js` 走 Json / `await_state` 走 Bool）、`scripts/test/cases/AUTOJS-SMOKE-1.21.1.json`、`scripts/test/cases/LINGLING-1.21.1.json` |
+| **怪力乱神（lingling）** | `item/sign/LinglingSignItem.java`、`sign/LinglingSignManager.java`、`effect/ModEffects.LINGLING_SURGE`、`client/Lingling*`、`scripts/test/cases/LINGLING-1.21.1.json` |
+| **强化拒止牌面（`.132`）** | `<线>/src/main/resources/assets/astral_dice/textures/entity/repulsion.png`（北块 = 南块逆时针 90°）、`client/RepulsionModel.java`（注释含 UV 口径）、`client/RepulsionRenderer.java`（`shouldShowName` 恒 false）、`entity/RepulsionEntity.java` |
+| **`.132` 实测取证资产（未入库，重跑前先看是否已被清理）** | `temp/t74_cmp.py`（牌面正/背 IoU 对比：`best=id` / `2nd=r180`，判据 `FRONT==BACK as id >=0.98`）、`run/1.21.1/screenshots/2026-10-18_17.11.15.png`（正面帧）/`2026-10-18_17.12.01.png`（背面帧）、`docs/features/lingling-sign-spec.md`（冷却规格 120 s，与实测 180 s 不一致 ⇒ §5-D-26） |
+
 
 ---
 
 ## 8. 新会话建议开工步骤
 
-1. `git -C F:\MCProject\astral_dice_multiloader-next status --short -uall` + `git log --oneline -3`（确认收尾提交；**HEAD 以 `git log --oneline -1` 实测，勿照抄旧哈希**；`status` 若只剩 4 行 `%SystemDrive%/…db` 即为正常，见 §5-C-17）；
-2. 读本文件 + **`docs/handover-2.0.0-SNAPSHOT.97-chip-shop.md`（最近一批的交接，含流程 / 语义 / 判据 / 未完成 / 新坑）** + `docs/handover-new-session-context.md` + `AGENTS.md` 的「工作树纪律 / 二次验证 / 子代理与测试环境硬规则 / 版本优先级」四节；
+1. `git -C F:\MCProject\astral_dice_multiloader-next status --short -uall` + `git log --oneline -3`（确认收尾提交；**HEAD 以 `git log --oneline -1` 实测，勿照抄旧哈希**；`status` 正常应只剩 `models/*.bbmodel` 两行用户资产 —— `%SystemDrive%` 缓存目录已于 2026-10-18 销账，见 §5-C-17；若交接文档本身有未提交改动，先 `git diff` 看清再接手）；
+   ⇒ **权威顺序见 `AGENTS.md`〈代理协作契约 · C. 交接文档用法〉**：git status → git log -1 → 四线 `mod_version` → 读正本；**文档里的一切数字都是快照，必须实读**。
+2. 读本文件 + **`docs/agent/AGENTS-full.md`「待办交接」第 39 条（`.132` 三批正本：AutoJS 求值语义 / 测试台闸门 / LINGLING 用例 / 强化拒止牌面）** + `docs/handover-2.0.0-SNAPSHOT.97-chip-shop.md`（历史详案） + `docs/handover-new-session-context.md`。
 3. 要动代码：先 `mt_build` 确认基线绿，再改；改后 `mt_build` + 相关 `scripts/verify/**`；
 4. 复核用 `code_review`（失败即改派一次性子代理）；实机**先问用户**；
 5. 提交：升四线版本 + 两份 CHANGELOG + `git commit`（**不 push**）；收尾核对另一工作树为空且 HEAD 不变。
