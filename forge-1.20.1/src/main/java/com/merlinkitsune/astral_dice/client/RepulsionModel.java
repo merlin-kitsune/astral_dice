@@ -18,7 +18,7 @@ import net.minecraft.resources.ResourceLocation;
  * 强化拒止实体模型（几何来源：仓库根 {@code models/强化拒止 - Converted.bbmodel}，2026-10-18；
  * 2026-10-18 移植到 forge-1.20.1）。
  *
- * <p><b>几何（bbmodel 原文）</b>：两个 cube，贴图 64×64。
+ * <p><b>几何（bbmodel 原文）</b>：两个 cube，贴图 128×128（UV 画布 64，见文末「贴图密度」）。
  * <ul>
  *   <li>cube A（blade）：{@code from (1,0,-0.5) → to (25,2,0.5)}、{@code origin (1,0,-0.5)}、
  *       {@code rotation (0,0,90)}、box UV 北面 {@code 1,1..25,3} ⇒ {@code texOffs(0,0)}；</li>
@@ -77,6 +77,11 @@ import net.minecraft.resources.ResourceLocation;
  *       uv→屏幕 仿射轴角比对改为 −135° 后，正/背面轴角差均为 0 ⇒ 牌面与 Blockbench 一致；</li>
  *   <li>Z 旋转只改贴图朝向、不动轮廓的原因：12×12 正方形绕自身中心转 90° 映射到自身，
  *       故 {@code addBox} 的 y 偏移同步由 −12 改 0，8 个顶点与旧实现**逐点相同**。</li>
+ *   <li><b>贴图密度（128 贴图 + 64 UV 画布）</b>：MC 的 UV 归一化基准是 {@code LayerDefinition.create(mesh, texW, texH)}
+ *       声明的 64，而不是 PNG 的像素尺寸；因此把 {@code repulsion.png} 换成 bbmodel 内嵌的 128×128 原图后，
+ *       同一 UV 矩形采到的是**两倍纹素密度**的同一区域（{@code (2,5)..(14,17)} 由 12×12 纹素变成 24×24），
+ *       布局与形状完全不变、无需改 {@code texOffs}/{@code texW}。若把 {@code texW} 也改成 128，
+ *       盒式 UV 的 {@code u+d / u+d+w} 递推仍按**方块尺寸**（12/12/2）算，矩形会缩到中间半幅而错位。</li>
  * </ul>
  */
 public class RepulsionModel extends EntityModel<RepulsionEntity> {
