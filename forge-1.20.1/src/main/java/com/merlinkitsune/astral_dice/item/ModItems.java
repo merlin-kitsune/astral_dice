@@ -1103,6 +1103,18 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(AstralRarities.bizarre())));
 
+    // 怪力乱神立牌(命名:lingling,史诗):主动「能量突击」(立即得 1 张强化拒止 + 当前充能层数转化为
+    // 攻击力与移动速度,每层 +1 攻击力 / +1% 移速,持续 1:00;冷却 2:00)
+    // + 被动「拦截者」(首次装备赠 2 张强化拒止,一生一次;拾取/购买/手持路障自动转强化拒止;
+    // 丢出强化拒止落地变回路障;强化拒止吸附目标数 → 额外充能层(独立、不被筹码消耗、合计上限 20);
+    // 攻击被吸附目标 +5 伤害)。
+    // 史诗品质 = ASTRAL_DICE_EPIC;配方 = 星盘×6 + 导电线材×2 + 红石块 + 钻石骰子(规格 §3 明写的
+    // 「例外于 AGENTS-full.md:1088 立牌配方统一用奇特」条目)。
+    public static final RegistryObject<Item> LINGLING_SIGN = registerItem("lingling_sign",
+            () -> new com.merlinkitsune.astral_dice.item.sign.LinglingSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.epic())));
+
     // 机械师立牌(命名:megas,传奇):被动「物资补充」(手牌<6 张时每 1:00 自动获得 1 张随机卡牌)
     // + 主动「轨道轰炸」(指定 1 个敌对目标,消耗物品栏全部手牌,对目标及其周围 12 格范围轰炸;
     // 每 2 张卡 +1 次轰炸(上限 10 次),单次命中随机 1 怪 +2 点基础伤害 + 每张战斗牌费用×2;

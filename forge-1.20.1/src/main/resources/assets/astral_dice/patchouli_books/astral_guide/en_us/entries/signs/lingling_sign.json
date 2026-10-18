@@ -1,0 +1,25 @@
+{
+  "name": "item.astral_dice.lingling_sign",
+  "category": "astral_dice:signs",
+  "icon": "astral_dice:lingling_sign",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:lingling_sign",
+      "text": "astral_dice.guide.entry.lingling_sign.1"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.lingling_sign.2"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.lingling_sign.3"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:lingling_sign"
+    }
+  ],
+  "sortnum": 26
+}

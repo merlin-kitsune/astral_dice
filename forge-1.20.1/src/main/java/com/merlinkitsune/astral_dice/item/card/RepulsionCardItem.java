@@ -148,6 +148,9 @@ public class RepulsionCardItem extends BaseEffectCardItem {
         repulsion.moveTo(target.getX() + 0.5D, target.getY(), target.getZ() + 0.5D, yaw, 0.0F);
         repulsion.setYHeadRot(yaw);
         repulsion.yBodyRot = yaw;
+        // 放置者（2026-10-18 随怪力乱神立牌 lingling 新增）：必须**入世前**写入，否则首 tick
+        // 落盘 / 立牌统计都会读到 null。1.21.1 侧在同一位置写 ownerUUID，语义逐位一致。
+        repulsion.setOwnerUUID(user.getUUID());
         // 没有碰撞方块 ⇒ 落实体失败（区块拒绝 / 实体上限等）时无需回滚任何方块
         if (!level.addFreshEntity(repulsion)) return;
 

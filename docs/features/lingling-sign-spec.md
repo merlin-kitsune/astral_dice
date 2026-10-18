@@ -1,6 +1,6 @@
 # 怪力乱神立牌（Lingling Sign）实现规格
 
-> 状态：设计已裁决（2026-10-18），待实现。P0 两线：`neoforge-1.21.1` + `forge-1.20.1`。
+> 状态：设计已裁决并已实现（2026-10-18）。P0 两线：`neoforge-1.21.1`（已交付）+ `forge-1.20.1`（已移植完成，无遗留待办）。
 > 需求来源：用户 2026-10-18 11:13 指令（逐字见 §1）。取证依据：`temp/recon_report.txt`（旧会话只读取证报告）。
 
 ## 1. 用户需求（逐字）
@@ -75,7 +75,7 @@ P T P
 
 ### 4.7 攻击被吸附目标 +5 伤害（任意强化拒止，不分归属）
 - 触发面：**玩家本人（佩戴 lingling）对目标造成的任意伤害**（近战/远程/法术都算），目标被**任意** RepulsionEntity 吸附即可（`getEntitiesOfClass(RepulsionEntity.class, target.getBoundingBox().inflate(16))` + `isTracking(target.getUUID())`，先例 `event/RepulsionCreeperGuard.java:88-95`）。
-- neo：`LivingDamageEvent.Pre`，`EventPriority.LOWEST`（先于护甲/吸收折减）；forge：`LivingDamageEvent`（吸收/护甲后，用 `setAmount`）。先例 `event/ChipDamageHandler.java:48-135`。
+- neo：`LivingDamageEvent.Pre`，`EventPriority.LOWEST`（护甲后、吸收前；`event.setNewDamage(event.getNewDamage() + 5)` **就在同一次伤害上加固定值**）。forge：**`LivingHurtEvent`**（1.20.1 无 `LivingDamageEvent.Pre`，而 `LivingDamageEvent` 派发在吸收/黄心之后 ⇒ `LivingHurtEvent` 才是「护甲后、吸收前」的等价通道，先例 `event/RenShieldManager.java:399-408`），同样 `event.setAmount(event.getAmount() + 5)`。**不嵌套新伤害、不清 i-frame、不绕过护甲**（照 `event/ChipDamageHandler.java:48-123` 先例）。
 - **防递归**：必须排除 `ModDamageTypes.extraDamage` 来源（骰战额外伤害通道会再次触发 LivingDamageEvent）。
 - 只对「玩家为伤害来源」生效（`source.getEntity()` 是玩家且佩戴 lingling）；宠物/荆棘不算。
 
@@ -89,7 +89,7 @@ P T P
   - 攻击力：`Attributes.ATTACK_DAMAGE` **ADD_VALUE** `+effectiveCharge`（先例 `event/EventEffects.java:57`、`item/NetherStarDiceItem.java:82`）。
   - 移动速度：`Attributes.MOVEMENT_SPEED` **ADD_MULTIPLIED_TOTAL**（1.21.1）/ **MULTIPLY_TOTAL**（1.20.1），`+effectiveCharge / 100.0`（5 层 = +5%）。
   - 每 10～20t 重算并更新同一 modifier（固定 id：1.21.1 `ResourceLocation`，1.20.1 `UUID`）；buff 结束/移除立牌时**必须移除** modifier（防止残留）。
-- 冷却：**120 秒**，走 `ChargeManager.signCooldownTicks(player, GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS)` 既有减免链（与其他立牌一致）；时长 1200t 是与冷却无关的两层。
+- 冷却：**沿用全局立牌主动冷却**——基准 = `GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS`（配置项 `SIGN_ACTIVE_COOLDOWN_SECONDS`，默认 **180 秒 / 3600t**，见 starengine_lib 同名常量），再走 `ChargeManager.signCooldownTicks(player, …)` 既有减免链（诡异骰子 −50% / 充能 −20%）。本立牌**不覆写基准**（与 moses 的自定 120 秒基准不同）。时长 1200t 与冷却是互不影响的两层。（2026-10-18 实机实测 `cd=3600` / `dur=1200`；原稿误写 120 秒，已按实测订正。）
 - 允许在 buff 期间再次触发（覆盖时长与数值，不叠加 modifier）。
 
 ## 6. 资源与数据清单（两线各一份）
@@ -124,6 +124,8 @@ pwsh -NoProfile -File scripts/verify/verify_crafting_recipe_uniqueness.ps1
 pwsh -NoProfile -File scripts/verify/verify_event_registry.ps1
 ```
 外加 `./gradlew :neoforge-1.21.1:classes`（及 forge 线）编译通过；`verify_effect_icons.py` 四线通过。
+
+> 状态（2026-10-18）：`forge-1.20.1` 移植完成 —— `lingling_surge` 已落地（效果数 1.20.1 = 61，两 P0 线 id 集合一致）。守门实测（本机）：`verify_resource_integrity.ps1` PASS、`check_lang_sync.ps1` OK、`verify_effect_icons.py` PASS（forge 61/61）、`verify_rarity_consistency.py` PASS、`audit_patchouli_keys.py` 悬空 0、`verify_crafting_recipe_uniqueness.ps1` collisions=0、`verify_event_registry.ps1` OK。两项**既有**偏差与本立牌无关、不在本批范围（均已实测对照 HEAD 基线）：① `verify_bountiful_pools.ps1` 6 项致命偏差（HEAD 基线 7 项，本批消灭了 2 条 lingling 相关项）—— 余项全部来自 1.20.1 独有的 `card_shop`/`chip_shop`/`event_drawer` 与 P1 线 26.1.2 尚未移植的 10 个条目（含 `ame_sign`/`kangel_sign`）；P0 两线的 `astral_rews.json` 已逐字节一致（md5 `c86d449c…`）。② `audit/tooltip_color_audit.ps1` 64 处违规（HEAD 基线同为 64，且无一条命中 lingling 键）。**本规格无「forge 待移植」遗留待办**。
 
 ## 9. 不做 / 待用户
 

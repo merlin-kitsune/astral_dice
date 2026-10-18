@@ -55,8 +55,8 @@ public class LinglingSignItem extends BaseSignItem {
     }
 
     /**
-     * §5 主动冷却：120 s，走 {@code ChargeManager.signCooldownTicks} 既有充能减免链
-     * （{@link GameplayConstants#SIGN_ACTIVE_COOLDOWN_TICKS} 就是 120 s 的配置基准）。
+     * §5 主动冷却：不覆写基准 ⇒ 沿用**全局立牌主动冷却** {@link GameplayConstants#SIGN_ACTIVE_COOLDOWN_TICKS}（默认 180 s = 3600t），再走 {@code ChargeManager.signCooldownTicks} 既有充能减免链
+     * （配置项 {@code SIGN_ACTIVE_COOLDOWN_SECONDS}，默认 180 秒；原稿误写 120 秒，已按 2026-10-18 实机实测订正）。
      * 冷却与 buff 时长（1200t）是两层，互不影响；buff 期间允许再次触发。
      */
     @Override

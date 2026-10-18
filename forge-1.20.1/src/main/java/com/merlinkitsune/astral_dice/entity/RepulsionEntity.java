@@ -24,6 +24,7 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -209,6 +210,19 @@ public class RepulsionEntity extends LivingEntity {
      * 跨维度时返回 null ⇒ 该目标会被剪枝（**不保证跨卸载保留**）。 */
     private final Set<UUID> trackedTargets = new HashSet<>();
 
+    /** NBT 键：放置者 UUID（long[2]；2026-10-18 随怪力乱神立牌 lingling 被动新增，规格 §4.6）。 */
+    private static final String TAG_OWNER = "RepulsionOwner";
+
+    /**
+     * 放置者（**持久化**）。1.21.1 侧 {@code RepulsionEntity} 本来就有 {@code ownerUUID}
+     * （{@code item/card/RepulsionCardItem#applyEffect} 放置时写入），1.20.1 侧此前**没有** ——
+     * 怪力乱神立牌被动要求「只算自己放置的拒止吸附了多少目标」与「攻击被吸附目标 +5」，
+     * 无 owner 无从判定，故本次补齐（语义与 1.21.1 逐位一致）。
+     *
+     * <p>null = 旧存档 / 命令生成 / 无主的拒止 —— 两处被动都**不计入**（宁可少算，不误算他人）。
+     */
+    private UUID ownerUUID;
+
     public RepulsionEntity(EntityType<? extends RepulsionEntity> entityType, Level level) {
         super(entityType, level);
         // 强化拒止是「钉在地上的装置」：不参与物理、不受重力、不会被生物 / 爆炸 / 水流推动
@@ -254,6 +268,10 @@ public class RepulsionEntity extends LivingEntity {
             ids[i++] = id.getLeastSignificantBits();
         }
         tag.putLongArray(TAG_TARGETS, ids);
+        if (this.ownerUUID != null) {
+            tag.putLongArray(TAG_OWNER, new long[] {this.ownerUUID.getMostSignificantBits(),
+                    this.ownerUUID.getLeastSignificantBits()});
+        }
     }
 
     @Override
@@ -264,6 +282,8 @@ public class RepulsionEntity extends LivingEntity {
         for (int i = 0; i + 1 < ids.length; i += 2) {
             this.trackedTargets.add(new UUID(ids[i], ids[i + 1]));
         }
+        long[] owner = tag.getLongArray(TAG_OWNER);
+        this.ownerUUID = owner.length >= 2 ? new UUID(owner[0], owner[1]) : null;
     }
 
     // ── 对外查询：是否正在吸附某个目标 ─────────────────────────────────────────
@@ -277,6 +297,27 @@ public class RepulsionEntity extends LivingEntity {
      */
     public boolean isTracking(UUID targetId) {
         return targetId != null && this.trackedTargets.contains(targetId);
+    }
+
+    /** 放置者 UUID（可能为 null = 旧存档 / 无主）。§4.6「只算自己放置的」判据入口。 */
+    @javax.annotation.Nullable
+    public UUID getOwnerUUID() {
+        return this.ownerUUID;
+    }
+
+    /** 放置时写入放置者（仅服务端；见 {@code RepulsionCardItem#applyEffect}）。 */
+    public void setOwnerUUID(UUID ownerUUID) {
+        this.ownerUUID = ownerUUID;
+    }
+
+    /**
+     * 被吸附目标的**只读**快照视图（§4.6 由立牌按「自己放置的」逐个统计用）。
+     *
+     * <p>返回的是**活视图的不可变包装**（与 1.21.1 侧 {@code getTrackedTargets()} 同口径）；
+     * 调用方需要迭代时自行防御性复制，本实体在 tick 中会修改底层集合。
+     */
+    public Set<UUID> getTrackedTargets() {
+        return Collections.unmodifiableSet(this.trackedTargets);
     }
 
     // ── 每 tick：剪枝 + 钳制（不施力） ─────────────────────────────────────────

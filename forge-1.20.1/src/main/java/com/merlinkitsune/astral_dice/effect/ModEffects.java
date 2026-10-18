@@ -365,6 +365,17 @@ public class ModEffects {
             EFFECTS.register("ame_overdose", AmeOverdoseEffect::new);
 
     /**
+     * 「能量突击」(怪力乱神立牌 lingling 主动):**有限时长 1:00(1200 tick)**,
+     * 每层充能攻击力 +1、移动速度 +1%(实时按有效充能层重算,故本效果类不挂任何属性修饰器 ——
+     * 加成型修饰器由 {@code item.sign.LinglingSignManager#refreshActiveModifiers} 每 10t 重挂)。
+     * 图标 = 立牌本体图({@code textures/mob_effect/lingling_surge.png},自 1.21.1 侧逐字节复制)。
+     *
+     * <p>⚠️ 1.20.1 是 {@code RegistryObject} ⇒ 全部引用处必须 {@code .get()}。
+     */
+    public static final RegistryObject<MobEffect> LINGLING_SURGE =
+            EFFECTS.register("lingling_surge", com.merlinkitsune.astral_dice.effect.LinglingSurgeEffect::new);
+
+    /**
      * 本模组已注册的全部效果的**只读**视图(调试命令 {@code /astralparty cleareffect} 用)。
      *
      * <p>直接派生自 {@link #EFFECTS} 的注册条目视图——Forge 的 {@code getEntries()} 返回

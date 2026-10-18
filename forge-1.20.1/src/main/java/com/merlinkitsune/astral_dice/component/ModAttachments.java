@@ -436,6 +436,34 @@ public class ModAttachments {
         SIGN_ACTIVE_COOLDOWN_END.set(player, value);
     }
 
+    // 怪力乱神立牌(lingling)被动「拦截者」:首次装备赠 2 张强化拒止的**一生一次**标记(玩家级;
+    // 跨死亡保留、卸下不清 —— 刻意不走基类 claimEquipGrant(那条通道卸下即释放 ⇒ 卸下再装能刷牌)。
+    // 1.21.1 侧是同名键的 .copyOnDeath();本线无 DataAttachmentType ⇒ 用玩家 NBT 键 + AstralData 白名单。
+    public static final AttachedDataKey<Boolean> LINGLING_GRANTED =
+            register(AttachedDataKey.builder("lingling_granted", Codec.BOOL, () -> false).build());
+
+    public static boolean isLinglingGranted(net.minecraft.world.entity.player.Player player) {
+        return LINGLING_GRANTED.get(player);
+    }
+
+    public static void setLinglingGranted(net.minecraft.world.entity.player.Player player, boolean value) {
+        LINGLING_GRANTED.set(player, value);
+    }
+
+    // 怪力乱神立牌(lingling)被动「拦截者」的**额外充能层**(独立加成:不写进 ChargeEffect、不被其它筹码消耗;
+    // 每 10t 由吸附目标数重算,与基础层合计封顶 CHARGE_MAX_STACKS = 20)。
+    // 1.21.1 侧是同名键的 .copyOnDeath();本线卸下/死亡由 LinglingSignManager#clearAll 归零。
+    public static final AttachedDataKey<Integer> LINGLING_BONUS_CHARGE =
+            register(AttachedDataKey.builder("lingling_bonus_charge", Codec.INT, () -> 0).build());
+
+    public static int getLinglingBonusCharge(net.minecraft.world.entity.player.Player player) {
+        return LINGLING_BONUS_CHARGE.get(player);
+    }
+
+    public static void setLinglingBonusCharge(net.minecraft.world.entity.player.Player player, int value) {
+        LINGLING_BONUS_CHARGE.set(player, Math.max(0, value));
+    }
+
     // 卡牌商店「商店大酬宾」窗口的结束时刻(玩家级;0 = 未生效)。本批只留钩子,事件卡系统尚未实装。
     // 仅服务端使用(开店抽池时读一次),故**不 .sync()、不加入 SYNCED_KEYS**(与 1.21.1 同口径)。
     public static final AttachedDataKey<Long> SHOP_PROMOTION_UNTIL =

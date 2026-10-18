@@ -1371,6 +1371,23 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('D', ModItems.AMETHYST_DICE.get())
                 .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output::accept);
+
+        // 怪力乱神立牌(lingling,史诗):PDP/DRD/PTP
+        // (P=星盘×6、D=导电线材×2、R=红石块、T=钻石骰子;空白立牌不用,规格 §3 明写)
+        // 2026-10-18 冻结规格(spec §3,与 1.21.1 侧 data/astral_dice/recipe/lingling_sign.json 逐字对齐):
+        // 「PDP/DRD/PTP」。注意这是**刻意例外**于 AGENTS-full.md:1088「立牌配方统一 空白立牌 + 紫晶骰子」
+        // 的条目(规格 §3 已声明);材料多重集与其它立牌互不相同 ⇒ 守门
+        // scripts/verify/verify_crafting_recipe_uniqueness.ps1 通过。
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.LINGLING_SIGN.get())
+                .pattern("PDP")
+                .pattern("DRD")
+                .pattern("PTP")
+                .define('P', ModItems.STAR_PLATE.get())
+                .define('D', ModItems.CONDUCTIVE_WIRE.get())
+                .define('R', Items.REDSTONE_BLOCK)
+                .define('T', ModItems.DIAMOND_DICE.get())
+                .unlockedBy("has_conductive_wire", has(ModItems.CONDUCTIVE_WIRE.get()))
+                .save(output::accept);
         // 符卡-福 / 符卡-祸:**无配方**(专属牌,仅由风水师立牌的被动「福祸相倚」与主动「白泽赐福」
         // 及「心意相连」发放,与活体书页/命运的指引等专属牌同一口径:不进随机池、不进合成表)。
     }

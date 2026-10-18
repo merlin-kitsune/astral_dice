@@ -489,6 +489,12 @@ public class CardShopMenu extends AbstractContainerMenu {
             }
         }
         ItemStack bought = card.copy();
+        // 2026-10-18 怪力乱神立牌(lingling)§4.3:佩戴者从商店买到的**路障**同样转成强化拒止
+        // (与「拾取路障自动转」同口径;放在写入玩家槽之前,保证入包时已是强化拒止)。
+        if (com.merlinkitsune.astral_dice.item.sign.LinglingSignManager.isEquipped(buyer)
+                && com.merlinkitsune.astral_dice.item.sign.LinglingSignManager.isBarricade(bought)) {
+            bought = com.merlinkitsune.astral_dice.item.sign.LinglingSignManager.toRepulsion(bought, buyer);
+        }
         target.set(bought);
         target.setChanged();
         // 2026-10-09 用户裁决「从商店购买视为获得」：卡牌已写入玩家槽 ⇒ 触发维生素药丸/提尔立牌等「获得」语义

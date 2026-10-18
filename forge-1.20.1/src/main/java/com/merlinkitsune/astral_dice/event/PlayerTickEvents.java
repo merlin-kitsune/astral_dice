@@ -108,6 +108,11 @@ public class PlayerTickEvents {
         // 两条被动各有独立的 1:00 冷却 ⇒ 冷却内只读两个 long 即早退,每 tick 调用安全;
         // 放在 % 20 早退**之前**,避免"擦身而过只停留几拍"被 20 tick 采样漏掉。
         if (!diceGated) com.merlinkitsune.astral_dice.item.sign.HannaSignItem.tickPassing(player);
+        // 怪力乱神立牌(lingling)被动:每 10t 一次(§4.4 手持路障转换节流 / §4.6 额外充能层重算 /
+        // §5 实时修饰器刷新)。放在 % 20 早退**之前**;方法本身幂等(Forge 每 tick 发两次本事件)。
+        if (!diceGated && player.tickCount % 10 == 0) {
+            com.merlinkitsune.astral_dice.item.sign.LinglingSignManager.tickPassive(player);
+        }
         if (player.tickCount % 20 != 0) return;
         // 「历史常驻写法」残留归一(2026-10-04):把旧版本写入存档、仍是 Integer.MAX_VALUE
         // 递减产物的本模组常驻效果改写为原版无限时长(-1),使其在界面显示 ∞。
