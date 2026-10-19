@@ -59,6 +59,9 @@
 //    /astralprobe guidebook <tag>                     只读:given(首登守卫附件)+ 背包内手册总本数
 //    ── 2026-09-25 追加(KI-5:电击手套 3 格 AOE 伤害基准的双版本对等)──
 //    /astralprobe glovebase <tag>                     生产同路读取 AOE 基准 + 护甲前/后客观对照
+//    /astralprobe linglingread|linglinggrant|linglingcharge|linglingpickup|linglingdrop|linglingreset
+//                                                    怪力乱神立牌(2026-10-20):只读快照 / 发牌 / 设充能 /
+//                                                    模拟拾取转强化拒止 / 模拟丢出回路障 / 归零
 //
 //  ── 实现约束 ─────────────────────────────────────────────────────────────
 //   1. 命令注册必须在 ServerEvents.commandRegistry 回调内;执行体提取为顶层命名函数;
@@ -14162,6 +14165,253 @@ function doMegasClear(ctx, tag) {
     return 1;
 }
 
+
+// ════════════════════════════════════════════════════════════════════════════
+//  怪力乱神立牌 lingling —— 2026-10-20 新增 6 条子命令
+//    动因:`scripts/test/cases/LINGLING-1.20.1.json` 里 6 类语义(B 拾取 / C 额外充能 /
+//    D 吸附目标 +5 / F 丢出回退 / G 创造栏 / A 首次装备发牌标记)此前只能写 note 说
+//    「无对应探针」⇒ 本段把它们变成可断言读数。
+//    规格:docs/features/lingling-sign-spec.md §4.1 / §4.2 / §4.5 / §4.6 / §5
+//    产品事实(类/方法名,两线同名):
+//      · `item.sign.LinglingSignManager`：isEquipped / toRepulsion / toBarricade / isBarricade /
+//        isRepulsion / convertBarricadesInInventory / effectiveCharge / hasSurge / clearAll
+//      · `event.LinglingSignEvents#onItemPickup / onItemToss`(拾取前 / 入世前替换)
+//      · `component.ModAttachments#isLinglingGranted / setLinglingGranted /
+//        getLinglingBonusCharge / setLinglingBonusCharge / getSignActiveCooldownEnd`
+//    纪律:只读 / 只动**内存**状态(玩家背包、附件、充能层、属性修饰器),**不写盘**;
+//          不往世界投放实体 —— ItemEntity 只在内存里构造、读完立刻 discard。
+//    读数(一律一行,`AP_` 前缀供 mt 用例 type=log 匹配):
+//      AP_LINGLING:<tag>:granted=..:layers=..:charge=..:bonus_charge=..:cd=..:atk=..:spd=..
+//                        :surge=..:hand=..:car=..
+//      AP_LINGLING_GRANT:<tag>:id=..:n=..:ok=..:car=..
+//      AP_LINGLING_CHARGE:<tag>:charge=..
+//      AP_LINGLING_PICKUP:<tag>:item=..:converted=..:car=..:rep=..:bar=..:picked=..:via=..
+//      AP_LINGLING_DROP:<tag>:item=..:reverted=..:out=..:via=..
+//      AP_LINGLING_RESET:<tag>:ok=1:granted=..:charge=..:bonus=..
+//    失败一律 `AP_<子命令名大写>_ERR:<tag>:<msg>`(与既有探针错误约定一致;
+//    ⚠️ 刻意**不含** `:err=`,本仓用例的 `absent :err=` 断言不得被这里的正常路径触发)。
+// ════════════════════════════════════════════════════════════════════════════
+
+/** lingling 相关类(调用期解析:任一缺失只让**该条命令**落 ERR,不拖垮整份脚本) */
+function linglingCls() {
+    return {
+        Mgr: Java.loadClass("com.merlinkitsune.astral_dice.item.sign.LinglingSignManager"),
+        Ev: Java.loadClass("com.merlinkitsune.astral_dice.event.LinglingSignEvents"),
+        Charge: Java.loadClass("com.merlinkitsune.astral_dice.item.ChargeManager")
+    };
+}
+
+/** 背包(含副手,`getContainerSize()` 覆盖主包 + 副手/护甲)内某 id 的总张数;-1 = 读取异常 */
+function lpInvCountId(p, id) {
+    var n = 0;
+    try {
+        var inv = p.getInventory();
+        for (var i = 0; i < inv.getContainerSize(); i++) {
+            var st = inv.getItem(i);
+            if (st == null || st.isEmpty()) continue;
+            if (itemIdOf(st) === id) n += st.getCount() - 0;
+        }
+    } catch (e) { return -1; }
+    return n;
+}
+
+/** 快捷栏**选中格**的 `<id>x<count>`(car= 字段;空槽 ⇒ `emptyx0`) */
+function lpCarText(p) {
+    var sel = 0;
+    try { sel = p.getInventory().selected - 0; } catch (e0) { sel = 0; }
+    var st = null;
+    try { st = p.getInventory().getItem(sel); } catch (e1) { st = null; }
+    if (st == null || st.isEmpty()) return "emptyx0";
+    return itemIdOf(st) + "x" + (st.getCount() - 0);
+}
+
+/**
+ * `/astralprobe linglingread <tag>` —— 只读快照(A 组发牌标记 / C 组层数 / D 组属性 / E 组效果)。
+ * `layers` = **有效充能层数** = 基础 + 额外(合计封顶 `GameplayConstants.CHARGE_MAX_STACKS`)——
+ * 即 §5「充能层数 → 攻击力 / 移速」真正用的那个数(lingling 没有狐光概念,勿与 teru 的 layers 混读)。
+ */
+function doLinglingRead(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var C = linglingCls();
+    var granted = "?";
+    try { granted = ModAttachments.isLinglingGranted(p) ? "true" : "false"; } catch (e0) { granted = "?"; }
+    var charge = -1;
+    try { charge = C.Charge.getStacks(p) - 0; } catch (e1) { charge = -1; }
+    var bonus = -1;
+    try { bonus = ModAttachments.getLinglingBonusCharge(p) - 0; } catch (e2) { bonus = -1; }
+    var layers = -1;
+    try { layers = C.Mgr.effectiveCharge(p) - 0; } catch (e3) { layers = -1; }
+    var cd = -1;
+    try { cd = ModAttachments.getSignActiveCooldownEnd(p) - nowTick(p); } catch (e4) { cd = -1; }
+    var atk = -1, spd = -1;
+    try {
+        var Attrs = Java.loadClass("net.minecraft.world.entity.ai.attributes.Attributes");
+        atk = Math.round(p.getAttributeValue(Attrs.ATTACK_DAMAGE) * 100) / 100;
+        spd = Math.round(p.getAttributeValue(Attrs.MOVEMENT_SPEED) * 10000) / 10000;
+    } catch (e5) { atk = -1; spd = -1; }
+    var surge = -1;
+    try { surge = C.Mgr.hasSurge(p) ? 1 : 0; } catch (e6) { surge = -1; }
+    var hand = "?", car = "?";
+    try { hand = itemIdOf(p.getMainHandItem()); } catch (e7) { hand = "?"; }
+    try { car = lpCarText(p); } catch (e8) { car = "?"; }
+    send(ctx, "AP_LINGLING:" + tag + ":granted=" + granted + ":layers=" + layers + ":charge=" + charge
+        + ":bonus_charge=" + bonus + ":cd=" + cd + ":atk=" + atk + ":spd=" + spd + ":surge=" + surge
+        + ":hand=" + hand + ":car=" + car);
+    return 1;
+}
+
+/** `/astralprobe linglinggrant <tag> <cardId> <n>` —— 给玩家 n 张指定卡牌(与产品赠牌同一入包入口) */
+function doLinglingGrant(ctx, tag, cardId, n) {
+    var p = ctx.source.getPlayerOrException();
+    var item = resolveItem(cardId);
+    if (item == null) { send(ctx, "AP_LINGLINGGRANT_ERR:" + tag + ":unknown_item:" + cardId); return 0; }
+    var cnt = n - 0;
+    var ok = 0;
+    try { ok = p.getInventory().add(new ItemStack(item, cnt)) ? 1 : 0; }
+    catch (e0) { send(ctx, "AP_LINGLINGGRANT_ERR:" + tag + ":" + exText(e0)); return 0; }
+    send(ctx, "AP_LINGLING_GRANT:" + tag + ":id=" + cardId + ":n=" + cnt + ":ok=" + ok
+        + ":car=" + lpCarText(p));
+    return 1;
+}
+
+/** `/astralprobe linglingcharge <tag> <n>` —— 直接设置**基础**充能层数(与 chargeset 同一入口) */
+function doLinglingCharge(ctx, tag, n) {
+    var p = ctx.source.getPlayerOrException();
+    var C = linglingCls();
+    var v = n - 0;
+    try {
+        C.Charge.removeAll(p);
+        if (v > 0) C.Charge.addStacks(p, v);
+    } catch (e0) { send(ctx, "AP_LINGLINGCHARGE_ERR:" + tag + ":" + exText(e0)); return 0; }
+    var got = -1;
+    try { got = C.Charge.getStacks(p) - 0; } catch (e1) { got = -1; }
+    send(ctx, "AP_LINGLING_CHARGE:" + tag + ":charge=" + got);
+    return 1;
+}
+
+/**
+ * `/astralprobe linglingpickup <tag> <itemId>` —— 模拟「拾取路障」。
+ *
+ * 三步走(跨两线语义差异的对齐方案,规格 §4.2):
+ *   ① 派发**拾取前**事件(1.20.1 `EntityItemPickupEvent` 语义:把掉落物本身换成强化拒止);
+ *   ② 真实入包:首选 `ItemEntity#playerTouch`(原版拾取同一入口),不可用则等价走 `Inventory#add`
+ *      —— 入包的永远是「事件/回调处理**之后**的那张牌」,故转换与否由产品代码决定;
+ *   ③ 再派发一次(1.21.1 `ItemEntityPickupEvent.Post` 语义:扫背包把路障换成强化拒止;幂等)。
+ * 判据 `converted=1` ⇔ 背包里强化拒止**多了**且路障**没多**(数量守恒 ⇒ 不是复制)。
+ */
+function doLinglingPickup(ctx, tag, itemId) {
+    var p = ctx.source.getPlayerOrException();
+    var item = resolveItem(itemId);
+    if (item == null) { send(ctx, "AP_LINGLINGPICKUP_ERR:" + tag + ":unknown_item:" + itemId); return 0; }
+    var C = linglingCls();
+    var REP = "astral_dice:effect_card_repulsion";
+    var BAR = "astral_dice:effect_card_barricade";
+    var repBefore = lpInvCountId(p, REP);
+    var barBefore = lpInvCountId(p, BAR);
+    var stack = new ItemStack(item, 1);
+    var ent = null;
+    try { ent = new ItemEntityClass(p.level, p.getX(), p.getY() + 0.4, p.getZ(), stack); }
+    catch (e0) { send(ctx, "AP_LINGLINGPICKUP_ERR:" + tag + ":item_entity:" + exText(e0)); return 0; }
+    // 构造器自带 10t pickupDelay;真实 method 名是 setPickUpDelay(大写 U)——旧代码写 setPickupDelay 才报「不可见」
+    try { ent.setPickUpDelay(0); } catch (e1) { /* 忽略:下面还有等价路径兜底 */ }
+    var via = "event";
+    try { C.Ev.onItemPickup(linglingPickupEv(p, ent, stack)); }
+    catch (e2) { via = "fallback"; linglingPickupFallback(p, ent, C); }
+    var picked = 0;
+    try { ent.playerTouch(p); } catch (e3) { /* 忽略 */ }
+    var left = null;
+    try { left = ent.getItem(); } catch (e4) { left = null; }
+    if (left != null && !left.isEmpty()) {
+        try {
+            if (p.getInventory().add(left)) { picked = 1; try { ent.setItem(ItemStack.EMPTY); } catch (e5) { /* 忽略 */ } }
+        } catch (e6) { picked = -1; }
+    } else { picked = 1; }
+    try { C.Ev.onItemPickup(linglingPickupEv(p, ent, stack)); }
+    catch (e7) { linglingPickupFallback(p, ent, C); }
+    var repAfter = lpInvCountId(p, REP);
+    var barAfter = lpInvCountId(p, BAR);
+    var converted = (repAfter > repBefore && barAfter === barBefore) ? 1 : 0;
+    try { ent.discard(); } catch (e8) { /* 忽略 */ }
+    send(ctx, "AP_LINGLING_PICKUP:" + tag + ":item=" + itemId + ":converted=" + converted
+        + ":car=" + lpCarText(p) + ":rep=" + repAfter + ":bar=" + barAfter
+        + ":picked=" + picked + ":via=" + via);
+    return 1;
+}
+
+/** 拾取事件的等价兜底:事件类不可构造/不可调用时,直接走同一套转换方法(仍受 isEquipped 门控) */
+function linglingPickupFallback(p, ent, C) {
+    try {
+        if (!C.Mgr.isEquipped(p)) return;
+        var st = null;
+        try { st = ent.getItem(); } catch (e0) { st = null; }
+        if (st != null && C.Mgr.isBarricade(st)) ent.setItem(C.Mgr.toRepulsion(st.copy(), p));
+        C.Mgr.convertBarricadesInInventory(p);
+    } catch (e1) { /* 由最终读数体现 */ }
+}
+
+/**
+ * `/astralprobe linglingdrop <tag> <itemId>` —— 模拟「丢出强化拒止 → 掉落物变回路障」(规格 §4.5)。
+ * 入世前替换:构造 ItemEntity → 派发 `ItemTossEvent` 的同一处理 → 读实体最终内容。
+ */
+function doLinglingDrop(ctx, tag, itemId) {
+    var p = ctx.source.getPlayerOrException();
+    var item = resolveItem(itemId);
+    if (item == null) { send(ctx, "AP_LINGLINGDROP_ERR:" + tag + ":unknown_item:" + itemId); return 0; }
+    var C = linglingCls();
+    var stack = new ItemStack(item, 1);
+    var ent = null;
+    try { ent = new ItemEntityClass(p.level, p.getX(), p.getY() + 0.4, p.getZ(), stack); }
+    catch (e0) { send(ctx, "AP_LINGLINGDROP_ERR:" + tag + ":item_entity:" + exText(e0)); return 0; }
+    var via = "event";
+    try { C.Ev.onItemToss(linglingTossEv(ent, p)); }
+    catch (e1) {
+        via = "fallback";
+        try {
+            if (C.Mgr.isEquipped(p) && C.Mgr.isRepulsion(stack)) ent.setItem(C.Mgr.toBarricade(stack));
+        } catch (e2) { /* 由最终读数体现 */ }
+    }
+    var out = "?";
+    try { out = itemIdOf(ent.getItem()); } catch (e3) { out = "?"; }
+    var reverted = (out === "astral_dice:effect_card_barricade") ? 1 : 0;
+    try { ent.discard(); } catch (e4) { /* 忽略 */ }
+    send(ctx, "AP_LINGLING_DROP:" + tag + ":item=" + itemId + ":reverted=" + reverted
+        + ":out=" + out + ":via=" + via);
+    return 1;
+}
+
+/**
+ * `/astralprobe linglingreset <tag>` —— 把「首次装备发牌」标记 + 额外充能 + 能量突击 + 基础充能全部归零
+ * (便于同存档重复跑 A 组;产品语义「一生一次」本身不变,这里只是把前置状态还原)。
+ */
+function doLinglingReset(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var C = linglingCls();
+    try { ModAttachments.setLinglingGranted(p, false); }
+    catch (e0) { send(ctx, "AP_LINGLINGRESET_ERR:" + tag + ":granted:" + exText(e0)); return 0; }
+    try { C.Mgr.clearAll(p); }
+    catch (e1) { send(ctx, "AP_LINGLINGRESET_ERR:" + tag + ":clearAll:" + exText(e1)); return 0; }
+    try { ModAttachments.setLinglingBonusCharge(p, 0); } catch (e2) { /* 由读数体现 */ }
+    try { C.Charge.removeAll(p); } catch (e3) { /* 由读数体现 */ }
+    var g = "?", b = -1, c = -1;
+    try { g = ModAttachments.isLinglingGranted(p) ? 1 : 0; } catch (e4) { g = "?"; }
+    try { b = ModAttachments.getLinglingBonusCharge(p) - 0; } catch (e5) { b = -1; }
+    try { c = C.Charge.getStacks(p) - 0; } catch (e6) { c = -1; }
+    send(ctx, "AP_LINGLING_RESET:" + tag + ":ok=1:granted=" + g + ":charge=" + c + ":bonus=" + b);
+    return 1;
+}
+
+/** 拾取后事件(1.21.1 NeoForge:`ItemEntityPickupEvent.Post(Player, ItemEntity, ItemStack)`) */
+function linglingPickupEv(p, ent, stack) {
+    var Cls = Java.loadClass("net.neoforged.neoforge.event.entity.player.ItemEntityPickupEvent$Post");
+    return new Cls(p, ent, stack);
+}
+
+/** 入世前事件(`ItemTossEvent(ItemEntity, Player)`,两线同签名) */
+function linglingTossEv(ent, p) {
+    var Cls = Java.loadClass("net.neoforged.neoforge.event.entity.item.ItemTossEvent");
+    return new Cls(ent, p);
+}
+
 ServerEvents.commandRegistry(event => {
     var Commands = event.commands;
     event.register(
@@ -15815,6 +16065,49 @@ ServerEvents.commandRegistry(event => {
                                             IntegerArg.getInteger(ctx, "dz"),
                                             StringArg.getString(ctx, "table"));
                                     }))))))))
+            // ── 怪力乱神立牌 lingling(2026-10-20 新增):B/C/D/F/G 从「无对应探针」转为可断言 ──
+            //    函数体见文件末尾「怪力乱神立牌 lingling —— 6 条子命令」段(头注含读数与判据)。
+            //    ⚠️ id 参数一律 `StringArg.string()`(含冒号 ⇒ 用例侧必须带引号)。
+            .then(Commands.literal("linglingread")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doLinglingRead(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("linglinggrant")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("cardId", StringArg.string())
+                        .then(Commands.argument("n", IntegerArg.integer(0, 64))
+                            .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                return doLinglingGrant(ctx, StringArg.getString(ctx, "tag"),
+                                    StringArg.getString(ctx, "cardId"), IntegerArg.getInteger(ctx, "n"));
+                            }))))))
+            .then(Commands.literal("linglingcharge")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("n", IntegerArg.integer(0, 20))
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doLinglingCharge(ctx, StringArg.getString(ctx, "tag"),
+                                IntegerArg.getInteger(ctx, "n"));
+                        })))))
+            .then(Commands.literal("linglingpickup")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("itemId", StringArg.string())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doLinglingPickup(ctx, StringArg.getString(ctx, "tag"),
+                                StringArg.getString(ctx, "itemId"));
+                        })))))
+            .then(Commands.literal("linglingdrop")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("itemId", StringArg.string())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doLinglingDrop(ctx, StringArg.getString(ctx, "tag"),
+                                StringArg.getString(ctx, "itemId"));
+                        })))))
+            .then(Commands.literal("linglingreset")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doLinglingReset(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+
     );
 });
 

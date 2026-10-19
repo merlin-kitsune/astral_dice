@@ -1,8 +1,8 @@
 {
   "case_id": "LINGLING-1.20.1",
-  "title": "怪力乱神立牌 lingling 实机用例:首次装备发牌/路障转化/额外充能层/对吸附目标伤害+5/主动技能/丢出变路障/创造栏材料解绑",
+  "title": "怪力乱神立牌 lingling(1.20.1, kubejs 通道)：首次装备发 2 张强化拒止且一生一次 / 主动技能 +1 张牌 + 1200t 能量突击 + 主动冷却 3600t 且冷却中二次触发被拒 / 手持路障自动转强化拒止 / 拾取转强化拒止(B) / 额外充能层读数(C) / 丢出回路障(F) / 仅 D(吸附加成)与 G 的创造栏成员仍 BLOCK",
   "version": "1.20.1",
-  "channel": "autojs",
+  "channel": "kubejs",
   "target": {
     "type": "feature",
     "ref": "lingling-sign"
@@ -11,482 +11,630 @@
   "steps": [
     {
       "op": "note",
-      "text": "怪力乱神立牌 lingling 的 1.21.1 实机用例（AutoJS 主通道，判据直接读运行中的服务端 JVM，不靠日志命中）。\n\n分组：A 首次装备发 2 张强化拒止且一生一次 / B 拾取路障转强化拒止 / C 额外充能层=自己力场吸附的唯一目标数、合计充能钳到 20、别人的力场不计入 / D 对吸附目标伤害 +5（对照组差值判据）/ E 主动技能：+1 张牌、ATTACK_DAMAGE +N、MOVEMENT_SPEED +N%、1200t buff、冷却拒绝二次触发 / F 手持路障自动转 + 丢出强化拒止掉落变路障 / G enable_chip_recipes=false 时 4 种筹码材料仍在创造栏。\n\n⚠️ 所有 code 都是 IIFE 表达式：AutoJS 只求值最后一个表达式，顶层 return 会抛 invalid return；harness 统一用 -Mode Json 包成 JSON.stringify，所以 code 里不要再自己 stringify。\n⚠️ 力场吸附扫描周期 20t，新召唤的生物必须用 await_state / wait 等一轮扫描，不能在同一 eval 里睡（端点 evalTimeoutMs=5000）。"
-    },
-    {
-      "op": "mcp_status",
-      "save_as": "st",
-      "timeout_ms": 15000
+      "text": "目的：怪力乱神立牌 lingling 的 1.20.1 实机判定（**kubejs 通道**；判据一律 = `/astralprobe` 打在 `logs/latest.log` 的 `AP_*` 行，`source=latest`）。\n\n背景：本用例原为 `channel=autojs`，但 AutoJS 在 forge **dev** 不可用（dev 是 named 映射、发布 jar 是 SRG ⇒ `NoSuchMethodError`，上游无 release/PR 可修）⇒ 按用户裁决回退 kubejs 通道。\n\n⚠️ 探针现状（2026-10-20 更新）：`scripts/test/resources/kubejs/{1.20.1,1.21.1}/server_scripts/astral_bugfix_probe.js` 已新增 **6 条 lingling 子命令** —— `linglingread`（只读快照：granted / layers / charge / bonus_charge / cd / atk / spd / surge / hand / car）、`linglinggrant`（发牌）、`linglingcharge`（设基础充能层）、`linglingpickup`（模拟拾取）、`linglingdrop`（模拟丢出）、`linglingreset`（首次装备标记 + 层数 + 充能归零）。⇒ 原「B / C / F-丢出 / G」的「无对应探针」已销账；**仅 D（对吸附目标 +5）仍 BLOCK**（无构造 `RepulsionEntity` / 写 `tracked_targets` 的入口）。26.1.2 线探针**尚未**同步这 6 条命令（本批只做 P0 两线）。\n\n⚠️ 前置：A 组的「首次装备发 2 张」依赖 `lingling_granted=false` —— 现在由 `linglingreset` 显式归零（不再要求全新存档）；收尾仍按惯例 `--purge-saves`。\n⚠️ 立牌被动的所有分支（赠牌 / 手持路障转换 / 层数刷新）都由 `PlayerTickEvents` **每 10t** 驱动 ⇒ 装牌、放路障后必须 `wait >= 1400ms` 再读，不能同一 tick 内读。"
     },
     {
       "op": "note",
-      "text": "A1 前置清场：创造模式 + 清空物品栏 + 复位 attachment（lingling_granted / lingling_bonus_charge / 主动冷却）+ 装备骰子（hasDiceEquipped 是立牌全部被动的总闸门）+ 卸下立牌。"
+      "text": "A 组：首次装备发 2 张强化拒止 + 一生一次 + 卸下不回收。\n映射：`a_reset` → `linglingreset`（把 `lingling_granted` / 额外充能 / 能量突击 / 基础充能全部归零，令本组可重复跑）；`a_prep` → `signreset` + `/clear @s` + `equipslot dice`（骰子是立牌全部被动的总闸门）；`a_equip` → `signprep \"astral_dice:lingling_sign\"`（内部 = 清 stand 槽 + 复位出牌周期/冷却 + 装牌）；`a_read` → `linglingread`（断言 `granted=false → true` 的翻转）；`a_grant` → `cardstack`（`ModItems.isCardItem` = 战斗牌∪效果牌 tag，`effect_card_repulsion/barricade` 都在 `data/astral_dice/tags/items/effect_cards.json` 里 ⇒ 张数可直读）；`a_unequip` → `signreset` + `signslot`（`slot=none:used=0` 证卸下）；`a_reequip` → 再 `signprep` 后张数必须仍为 2（不重复发）。\n`a_linglinggrant` + `a_read_car` → 验证新探针「发牌 + `hand`/`car` 读数」链路：`/item replace entity @s weapon.mainhand` 写**选中格**（玩家 `weapon.mainhand` = 快捷栏 selected 槽），故 `hand` 与 `car` 必定同源同值 ⇒ 断言确定、不依赖客户端上报的 selected。"
     },
     {
-      "op": "eval_js",
-      "side": "server",
-      "save_as": "a_prep",
-      "timeout_ms": 20000,
-      "code": "(function(){function mcp(){var SH=Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');return SH.getCurrentServer();}\nfunction pl(){return mcp().getPlayerList().getPlayers().get(0);}\nfunction reg(){return Java.loadClass('net.minecraft.core.registries.BuiltInRegistries');}\nfunction rl(){return Java.loadClass('net.minecraft.resources.ResourceLocation');}\nfunction itemOf(id){return reg().ITEM.get(rl().parse(id));}\nfunction stackOf(id,n){var IS=Java.loadClass('net.minecraft.world.item.ItemStack');return new IS(itemOf(id),n);}\nfunction cnt(p,id){var n=0;var list=p.getInventory().items;for(var i=0;i<list.size();i++){var st=list.get(i);if(!st.isEmpty()&&String(reg().ITEM.getKey(st.getItem()))===id)n+=st.getCount();}var off=p.getInventory().offhand;for(var j=0;j<off.size();j++){var so=off.get(j);if(!so.isEmpty()&&String(reg().ITEM.getKey(so.getItem()))===id)n+=so.getCount();}return n;}\nfunction cur(p){var C=Java.loadClass('top.theillusivec4.curios.api.CuriosApi');return C.getCuriosInventory(p).get();}\nfunction stand(p){return cur(p).getStacksHandler('stand').get().getStacks();}\nfunction purge(p,r){var lvl=p.level;var names=['net.minecraft.world.entity.monster.Pillager','net.minecraft.world.entity.animal.Cow','com.merlinkitsune.astral_dice.entity.RepulsionEntity','net.minecraft.world.entity.item.ItemEntity'];var n=0;for(var k=0;k<names.length;k++){var l=lvl.getEntitiesOfClass(Java.loadClass(names[k]),p.getBoundingBox().inflate(r));for(var i=0;i<l.size();i++){l.get(i).discard();n++;}}return n;}\nvar LSM=Java.loadClass('com.merlinkitsune.astral_dice.item.sign.LinglingSignManager');\nvar MA=Java.loadClass('com.merlinkitsune.astral_dice.component.ModAttachments');\nvar CM=Java.loadClass('com.merlinkitsune.astral_dice.item.ChargeManager');\nvar CS=Java.loadClass('com.merlinkitsune.astral_dice.item.CurioSlotUtil');\nvar MT=Java.loadClass('com.merlinkitsune.astral_dice.entity.ModEntityTypes');\nvar ET=Java.loadClass('net.minecraft.world.entity.EntityType');\nvar Pillager=Java.loadClass('net.minecraft.world.entity.monster.Pillager');\nvar RepulsionEntity=Java.loadClass('com.merlinkitsune.astral_dice.entity.RepulsionEntity');\nvar ItemEntity=Java.loadClass('net.minecraft.world.entity.item.ItemEntity');\nvar GameType=Java.loadClass('net.minecraft.world.level.GameType');\nvar Attributes=Java.loadClass('net.minecraft.world.entity.ai.attributes.Attributes');\nvar BSI=Java.loadClass('com.merlinkitsune.astral_dice.item.sign.BaseSignItem');\nvar ME=Java.loadClass('com.merlinkitsune.astral_dice.effect.ModEffects');\nvar HC=Java.loadClass('net.minecraft.world.InteractionHand');\nvar SIGN='astral_dice:lingling_sign';\nvar REP='astral_dice:effect_card_repulsion';\nvar BAR='astral_dice:effect_card_barricade';\nvar p=pl();\n\nvar purged=purge(p,64);\np.setGameMode(GameType.CREATIVE);\np.getInventory().clearContent();\nMA.setLinglingGranted(p,false);\nMA.setLinglingBonusCharge(p,0);\nMA.setSignActiveCooldownEnd(p,0);\nMA.setSignActiveMaxCooldown(p,0);\nLSM.clearAll(p);\ncur(p).getStacksHandler('dice').get().getStacks().setStackInSlot(0,stackOf('astral_dice:dice',1));\nvar IS=Java.loadClass('net.minecraft.world.item.ItemStack');\nstand(p).setStackInSlot(0,IS.EMPTY);\nreturn {ok:true,granted:MA.isLinglingGranted(p),hasDice:CS.hasDiceEquipped(p),eq:LSM.isEquipped(p),rep:cnt(p,REP),bar:cnt(p,BAR),purged:purged};\n})()"
-    },
-    {
-      "op": "eval_js",
-      "side": "server",
-      "save_as": "a_equip",
-      "timeout_ms": 20000,
-      "code": "(function(){function mcp(){var SH=Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');return SH.getCurrentServer();}\nfunction pl(){return mcp().getPlayerList().getPlayers().get(0);}\nfunction reg(){return Java.loadClass('net.minecraft.core.registries.BuiltInRegistries');}\nfunction rl(){return Java.loadClass('net.minecraft.resources.ResourceLocation');}\nfunction itemOf(id){return reg().ITEM.get(rl().parse(id));}\nfunction stackOf(id,n){var IS=Java.loadClass('net.minecraft.world.item.ItemStack');return new IS(itemOf(id),n);}\nfunction cnt(p,id){var n=0;var list=p.getInventory().items;for(var i=0;i<list.size();i++){var st=list.get(i);if(!st.isEmpty()&&String(reg().ITEM.getKey(st.getItem()))===id)n+=st.getCount();}var off=p.getInventory().offhand;for(var j=0;j<off.size();j++){var so=off.get(j);if(!so.isEmpty()&&String(reg().ITEM.getKey(so.getItem()))===id)n+=so.getCount();}return n;}\nfunction cur(p){var C=Java.loadClass('top.theillusivec4.curios.api.CuriosApi');return C.getCuriosInventory(p).get();}\nfunction stand(p){return cur(p).getStacksHandler('stand').get().getStacks();}\nfunction purge(p,r){var lvl=p.level;var names=['net.minecraft.world.entity.monster.Pillager','net.minecraft.world.entity.animal.Cow','com.merlinkitsune.astral_dice.entity.RepulsionEntity','net.minecraft.world.entity.item.ItemEntity'];var n=0;for(var k=0;k<names.length;k++){var l=lvl.getEntitiesOfClass(Java.loadClass(names[k]),p.getBoundingBox().inflate(r));for(var i=0;i<l.size();i++){l.get(i).discard();n++;}}return n;}\nvar LSM=Java.loadClass('com.merlinkitsune.astral_dice.item.sign.LinglingSignManager');\nvar MA=Java.loadClass('com.merlinkitsune.astral_dice.component.ModAttachments');\nvar CM=Java.loadClass('com.merlinkitsune.astral_dice.item.ChargeManager');\nvar CS=Java.loadClass('com.merlinkitsune.astral_dice.item.CurioSlotUtil');\nvar MT=Java.loadClass('com.merlinkitsune.astral_dice.entity.ModEntityTypes');\nvar ET=Java.loadClass('net.minecraft.world.entity.EntityType');\nvar Pillager=Java.loadClass('net.minecraft.world.entity.monster.Pillager');\nvar RepulsionEntity=Java.loadClass('com.merlinkitsune.astral_dice.entity.RepulsionEntity');\nvar ItemEntity=Java.loadClass('net.minecraft.world.entity.item.ItemEntity');\nvar GameType=Java.loadClass('net.minecraft.world.level.GameType');\nvar Attributes=Java.loadClass('net.minecraft.world.entity.ai.attributes.Attributes');\nvar BSI=Java.loadClass('com.merlinkitsune.astral_dice.item.sign.BaseSignItem');\nvar ME=Java.loadClass('com.merlinkitsune.astral_dice.effect.ModEffects');\nvar HC=Java.loadClass('net.minecraft.world.InteractionHand');\nvar SIGN='astral_dice:lingling_sign';\nvar REP='astral_dice:effect_card_repulsion';\nvar BAR='astral_dice:effect_card_barricade';\nvar p=pl();\n\nstand(p).setStackInSlot(0,stackOf(SIGN,1));\nreturn {eq:LSM.isEquipped(p),hasDice:CS.hasDiceEquipped(p)};\n})()"
-    },
-    {
-      "op": "await_state",
-      "side": "server",
-      "timeout_ms": 15000,
-      "interval_ms": 250,
-      "code": "(function(){function mcp(){var SH=Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');return SH.getCurrentServer();}\nfunction pl(){return mcp().getPlayerList().getPlayers().get(0);}\nfunction reg(){return Java.loadClass('net.minecraft.core.registries.BuiltInRegistries');}\nfunction rl(){return Java.loadClass('net.minecraft.resources.ResourceLocation');}\nfunction itemOf(id){return reg().ITEM.get(rl().parse(id));}\nfunction stackOf(id,n){var IS=Java.loadClass('net.minecraft.world.item.ItemStack');return new IS(itemOf(id),n);}\nfunction cnt(p,id){var n=0;var list=p.getInventory().items;for(var i=0;i<list.size();i++){var st=list.get(i);if(!st.isEmpty()&&String(reg().ITEM.getKey(st.getItem()))===id)n+=st.getCount();}var off=p.getInventory().offhand;for(var j=0;j<off.size();j++){var so=off.get(j);if(!so.isEmpty()&&String(reg().ITEM.getKey(so.getItem()))===id)n+=so.getCount();}return n;}\nfunction cur(p){var C=Java.loadClass('top.theillusivec4.curios.api.CuriosApi');return C.getCuriosInventory(p).get();}\nfunction stand(p){return cur(p).getStacksHandler('stand').get().getStacks();}\nfunction purge(p,r){var lvl=p.level;var names=['net.minecraft.world.entity.monster.Pillager','net.minecraft.world.entity.animal.Cow','com.merlinkitsune.astral_dice.entity.RepulsionEntity','net.minecraft.world.entity.item.ItemEntity'];var n=0;for(var k=0;k<names.length;k++){var l=lvl.getEntitiesOfClass(Java.loadClass(names[k]),p.getBoundingBox().inflate(r));for(var i=0;i<l.size();i++){l.get(i).discard();n++;}}return n;}\nvar LSM=Java.loadClass('com.merlinkitsune.astral_dice.item.sign.LinglingSignManager');\nvar MA=Java.loadClass('com.merlinkitsune.astral_dice.component.ModAttachments');\nvar CM=Java.loadClass('com.merlinkitsune.astral_dice.item.ChargeManager');\nvar CS=Java.loadClass('com.merlinkitsune.astral_dice.item.CurioSlotUtil');\nvar MT=Java.loadClass('com.merlinkitsune.astral_dice.entity.ModEntityTypes');\nvar ET=Java.loadClass('net.minecraft.world.entity.EntityType');\nvar Pillager=Java.loadClass('net.minecraft.world.entity.monster.Pillager');\nvar RepulsionEntity=Java.loadClass('com.merlinkitsune.astral_dice.entity.RepulsionEntity');\nvar ItemEntity=Java.loadClass('net.minecraft.world.entity.item.ItemEntity');\nvar GameType=Java.loadClass('net.minecraft.world.level.GameType');\nvar Attributes=Java.loadClass('net.minecraft.world.entity.ai.attributes.Attributes');\nvar BSI=Java.loadClass('com.merlinkitsune.astral_dice.item.sign.BaseSignItem');\nvar ME=Java.loadClass('com.merlinkitsune.astral_dice.effect.ModEffects');\nvar HC=Java.loadClass('net.minecraft.world.InteractionHand');\nvar SIGN='astral_dice:lingling_sign';\nvar REP='astral_dice:effect_card_repulsion';\nvar BAR='astral_dice:effect_card_barricade';\nvar p=pl();\n\nreturn LSM.isEquipped(p) && MA.isLinglingGranted(p) && cnt(p,REP)>=2;\n})()"
-    },
-    {
-      "op": "eval_js",
-      "side": "server",
-      "save_as": "a_grant",
-      "timeout_ms": 20000,
-      "code": "(function(){function mcp(){var SH=Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');return SH.getCurrentServer();}\nfunction pl(){return mcp().getPlayerList().getPlayers().get(0);}\nfunction reg(){return Java.loadClass('net.minecraft.core.registries.BuiltInRegistries');}\nfunction rl(){return Java.loadClass('net.minecraft.resources.ResourceLocation');}\nfunction itemOf(id){return reg().ITEM.get(rl().parse(id));}\nfunction stackOf(id,n){var IS=Java.loadClass('net.minecraft.world.item.ItemStack');return new IS(itemOf(id),n);}\nfunction cnt(p,id){var n=0;var list=p.getInventory().items;for(var i=0;i<list.size();i++){var st=list.get(i);if(!st.isEmpty()&&String(reg().ITEM.getKey(st.getItem()))===id)n+=st.getCount();}var off=p.getInventory().offhand;for(var j=0;j<off.size();j++){var so=off.get(j);if(!so.isEmpty()&&String(reg().ITEM.getKey(so.getItem()))===id)n+=so.getCount();}return n;}\nfunction cur(p){var C=Java.loadClass('top.theillusivec4.curios.api.CuriosApi');return C.getCuriosInventory(p).get();}\nfunction stand(p){return cur(p).getStacksHandler('stand').get().getStacks();}\nfunction purge(p,r){var lvl=p.level;var names=['net.minecraft.world.entity.monster.Pillager','net.minecraft.world.entity.animal.Cow','com.merlinkitsune.astral_dice.entity.RepulsionEntity','net.minecraft.world.entity.item.ItemEntity'];var n=0;for(var k=0;k<names.length;k++){var l=lvl.getEntitiesOfClass(Java.loadClass(names[k]),p.getBoundingBox().inflate(r));for(var i=0;i<l.size();i++){l.get(i).discard();n++;}}return n;}\nvar LSM=Java.loadClass('com.merlinkitsune.astral_dice.item.sign.LinglingSignManager');\nvar MA=Java.loadClass('com.merlinkitsune.astral_dice.component.ModAttachments');\nvar CM=Java.loadClass('com.merlinkitsune.astral_dice.item.ChargeManager');\nvar CS=Java.loadClass('com.merlinkitsune.astral_dice.item.CurioSlotUtil');\nvar MT=Java.loadClass('com.merlinkitsune.astral_dice.entity.ModEntityTypes');\nvar ET=Java.loadClass('net.minecraft.world.entity.EntityType');\nvar Pillager=Java.loadClass('net.minecraft.world.entity.monster.Pillager');\nvar RepulsionEntity=Java.loadClass('com.merlinkitsune.astral_dice.entity.RepulsionEntity');\nvar ItemEntity=Java.loadClass('net.minecraft.world.entity.item.ItemEntity');\nvar GameType=Java.loadClass('net.minecraft.world.level.GameType');\nvar Attributes=Java.loadClass('net.minecraft.world.entity.ai.attributes.Attributes');\nvar BSI=Java.loadClass('com.merlinkitsune.astral_dice.item.sign.BaseSignItem');\nvar ME=Java.loadClass('com.merlinkitsune.astral_dice.effect.ModEffects');\nvar HC=Java.loadClass('net.minecraft.world.InteractionHand');\nvar SIGN='astral_dice:lingling_sign';\nvar REP='astral_dice:effect_card_repulsion';\nvar BAR='astral_dice:effect_card_barricade';\nvar p=pl();\n\nreturn {eq:LSM.isEquipped(p),granted:MA.isLinglingGranted(p),rep:cnt(p,REP),bar:cnt(p,BAR)};\n})()"
-    },
-    {
-      "op": "eval_js",
-      "side": "server",
-      "save_as": "a_unequip",
-      "timeout_ms": 20000,
-      "code": "(function(){function mcp(){var SH=Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');return SH.getCurrentServer();}\nfunction pl(){return mcp().getPlayerList().getPlayers().get(0);}\nfunction reg(){return Java.loadClass('net.minecraft.core.registries.BuiltInRegistries');}\nfunction rl(){return Java.loadClass('net.minecraft.resources.ResourceLocation');}\nfunction itemOf(id){return reg().ITEM.get(rl().parse(id));}\nfunction stackOf(id,n){var IS=Java.loadClass('net.minecraft.world.item.ItemStack');return new IS(itemOf(id),n);}\nfunction cnt(p,id){var n=0;var list=p.getInventory().items;for(var i=0;i<list.size();i++){var st=list.get(i);if(!st.isEmpty()&&String(reg().ITEM.getKey(st.getItem()))===id)n+=st.getCount();}var off=p.getInventory().offhand;for(var j=0;j<off.size();j++){var so=off.get(j);if(!so.isEmpty()&&String(reg().ITEM.getKey(so.getItem()))===id)n+=so.getCount();}return n;}\nfunction cur(p){var C=Java.loadClass('top.theillusivec4.curios.api.CuriosApi');return C.getCuriosInventory(p).get();}\nfunction stand(p){return cur(p).getStacksHandler('stand').get().getStacks();}\nfunction purge(p,r){var lvl=p.level;var names=['net.minecraft.world.entity.monster.Pillager','net.minecraft.world.entity.animal.Cow','com.merlinkitsune.astral_dice.entity.RepulsionEntity','net.minecraft.world.entity.item.ItemEntity'];var n=0;for(var k=0;k<names.length;k++){var l=lvl.getEntitiesOfClass(Java.loadClass(names[k]),p.getBoundingBox().inflate(r));for(var i=0;i<l.size();i++){l.get(i).discard();n++;}}return n;}\nvar LSM=Java.loadClass('com.merlinkitsune.astral_dice.item.sign.LinglingSignManager');\nvar MA=Java.loadClass('com.merlinkitsune.astral_dice.component.ModAttachments');\nvar CM=Java.loadClass('com.merlinkitsune.astral_dice.item.ChargeManager');\nvar CS=Java.loadClass('com.merlinkitsune.astral_dice.item.CurioSlotUtil');\nvar MT=Java.loadClass('com.merlinkitsune.astral_dice.entity.ModEntityTypes');\nvar ET=Java.loadClass('net.minecraft.world.entity.EntityType');\nvar Pillager=Java.loadClass('net.minecraft.world.entity.monster.Pillager');\nvar RepulsionEntity=Java.loadClass('com.merlinkitsune.astral_dice.entity.RepulsionEntity');\nvar ItemEntity=Java.loadClass('net.minecraft.world.entity.item.ItemEntity');\nvar GameType=Java.loadClass('net.minecraft.world.level.GameType');\nvar Attributes=Java.loadClass('net.minecraft.world.entity.ai.attributes.Attributes');\nvar BSI=Java.loadClass('com.merlinkitsune.astral_dice.item.sign.BaseSignItem');\nvar ME=Java.loadClass('com.merlinkitsune.astral_dice.effect.ModEffects');\nvar HC=Java.loadClass('net.minecraft.world.InteractionHand');\nvar SIGN='astral_dice:lingling_sign';\nvar REP='astral_dice:effect_card_repulsion';\nvar BAR='astral_dice:effect_card_barricade';\nvar p=pl();\n\nvar IS=Java.loadClass('net.minecraft.world.item.ItemStack');\nstand(p).setStackInSlot(0,IS.EMPTY);\nreturn {eq:LSM.isEquipped(p),rep:cnt(p,REP),granted:MA.isLinglingGranted(p)};\n})()"
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
     },
     {
       "op": "wait",
-      "ms": 800
+      "ms": 600
     },
     {
-      "op": "eval_js",
-      "side": "server",
-      "save_as": "a_reequip",
-      "timeout_ms": 20000,
-      "code": "(function(){function mcp(){var SH=Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');return SH.getCurrentServer();}\nfunction pl(){return mcp().getPlayerList().getPlayers().get(0);}\nfunction reg(){return Java.loadClass('net.minecraft.core.registries.BuiltInRegistries');}\nfunction rl(){return Java.loadClass('net.minecraft.resources.ResourceLocation');}\nfunction itemOf(id){return reg().ITEM.get(rl().parse(id));}\nfunction stackOf(id,n){var IS=Java.loadClass('net.minecraft.world.item.ItemStack');return new IS(itemOf(id),n);}\nfunction cnt(p,id){var n=0;var list=p.getInventory().items;for(var i=0;i<list.size();i++){var st=list.get(i);if(!st.isEmpty()&&String(reg().ITEM.getKey(st.getItem()))===id)n+=st.getCount();}var off=p.getInventory().offhand;for(var j=0;j<off.size();j++){var so=off.get(j);if(!so.isEmpty()&&String(reg().ITEM.getKey(so.getItem()))===id)n+=so.getCount();}return n;}\nfunction cur(p){var C=Java.loadClass('top.theillusivec4.curios.api.CuriosApi');return C.getCuriosInventory(p).get();}\nfunction stand(p){return cur(p).getStacksHandler('stand').get().getStacks();}\nfunction purge(p,r){var lvl=p.level;var names=['net.minecraft.world.entity.monster.Pillager','net.minecraft.world.entity.animal.Cow','com.merlinkitsune.astral_dice.entity.RepulsionEntity','net.minecraft.world.entity.item.ItemEntity'];var n=0;for(var k=0;k<names.length;k++){var l=lvl.getEntitiesOfClass(Java.loadClass(names[k]),p.getBoundingBox().inflate(r));for(var i=0;i<l.size();i++){l.get(i).discard();n++;}}return n;}\nvar LSM=Java.loadClass('com.merlinkitsune.astral_dice.item.sign.LinglingSignManager');\nvar MA=Java.loadClass('com.merlinkitsune.astral_dice.component.ModAttachments');\nvar CM=Java.loadClass('com.merlinkitsune.astral_dice.item.ChargeManager');\nvar CS=Java.loadClass('com.merlinkitsune.astral_dice.item.CurioSlotUtil');\nvar MT=Java.loadClass('com.merlinkitsune.astral_dice.entity.ModEntityTypes');\nvar ET=Java.loadClass('net.minecraft.world.entity.EntityType');\nvar Pillager=Java.loadClass('net.minecraft.world.entity.monster.Pillager');\nvar RepulsionEntity=Java.loadClass('com.merlinkitsune.astral_dice.entity.RepulsionEntity');\nvar ItemEntity=Java.loadClass('net.minecraft.world.entity.item.ItemEntity');\nvar GameType=Java.loadClass('net.minecraft.world.level.GameType');\nvar Attributes=Java.loadClass('net.minecraft.world.entity.ai.attributes.Attributes');\nvar BSI=Java.loadClass('com.merlinkitsune.astral_dice.item.sign.BaseSignItem');\nvar ME=Java.loadClass('com.merlinkitsune.astral_dice.effect.ModEffects');\nvar HC=Java.loadClass('net.minecraft.world.InteractionHand');\nvar SIGN='astral_dice:lingling_sign';\nvar REP='astral_dice:effect_card_repulsion';\nvar BAR='astral_dice:effect_card_barricade';\nvar p=pl();\n\nstand(p).setStackInSlot(0,stackOf(SIGN,1));\nreturn {eq:LSM.isEquipped(p),rep:cnt(p,REP)};\n})()"
-    },
-    {
-      "op": "wait",
-      "ms": 1500
-    },
-    {
-      "op": "eval_js",
-      "side": "server",
-      "save_as": "a_noregrant",
-      "timeout_ms": 20000,
-      "code": "(function(){function mcp(){var SH=Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');return SH.getCurrentServer();}\nfunction pl(){return mcp().getPlayerList().getPlayers().get(0);}\nfunction reg(){return Java.loadClass('net.minecraft.core.registries.BuiltInRegistries');}\nfunction rl(){return Java.loadClass('net.minecraft.resources.ResourceLocation');}\nfunction itemOf(id){return reg().ITEM.get(rl().parse(id));}\nfunction stackOf(id,n){var IS=Java.loadClass('net.minecraft.world.item.ItemStack');return new IS(itemOf(id),n);}\nfunction cnt(p,id){var n=0;var list=p.getInventory().items;for(var i=0;i<list.size();i++){var st=list.get(i);if(!st.isEmpty()&&String(reg().ITEM.getKey(st.getItem()))===id)n+=st.getCount();}var off=p.getInventory().offhand;for(var j=0;j<off.size();j++){var so=off.get(j);if(!so.isEmpty()&&String(reg().ITEM.getKey(so.getItem()))===id)n+=so.getCount();}return n;}\nfunction cur(p){var C=Java.loadClass('top.theillusivec4.curios.api.CuriosApi');return C.getCuriosInventory(p).get();}\nfunction stand(p){return cur(p).getStacksHandler('stand').get().getStacks();}\nfunction purge(p,r){var lvl=p.level;var names=['net.minecraft.world.entity.monster.Pillager','net.minecraft.world.entity.animal.Cow','com.merlinkitsune.astral_dice.entity.RepulsionEntity','net.minecraft.world.entity.item.ItemEntity'];var n=0;for(var k=0;k<names.length;k++){var l=lvl.getEntitiesOfClass(Java.loadClass(names[k]),p.getBoundingBox().inflate(r));for(var i=0;i<l.size();i++){l.get(i).discard();n++;}}return n;}\nvar LSM=Java.loadClass('com.merlinkitsune.astral_dice.item.sign.LinglingSignManager');\nvar MA=Java.loadClass('com.merlinkitsune.astral_dice.component.ModAttachments');\nvar CM=Java.loadClass('com.merlinkitsune.astral_dice.item.ChargeManager');\nvar CS=Java.loadClass('com.merlinkitsune.astral_dice.item.CurioSlotUtil');\nvar MT=Java.loadClass('com.merlinkitsune.astral_dice.entity.ModEntityTypes');\nvar ET=Java.loadClass('net.minecraft.world.entity.EntityType');\nvar Pillager=Java.loadClass('net.minecraft.world.entity.monster.Pillager');\nvar RepulsionEntity=Java.loadClass('com.merlinkitsune.astral_dice.entity.RepulsionEntity');\nvar ItemEntity=Java.loadClass('net.minecraft.world.entity.item.ItemEntity');\nvar GameType=Java.loadClass('net.minecraft.world.level.GameType');\nvar Attributes=Java.loadClass('net.minecraft.world.entity.ai.attributes.Attributes');\nvar BSI=Java.loadClass('com.merlinkitsune.astral_dice.item.sign.BaseSignItem');\nvar ME=Java.loadClass('com.merlinkitsune.astral_dice.effect.ModEffects');\nvar HC=Java.loadClass('net.minecraft.world.InteractionHand');\nvar SIGN='astral_dice:lingling_sign';\nvar REP='astral_dice:effect_card_repulsion';\nvar BAR='astral_dice:effect_card_barricade';\nvar p=pl();\n\nreturn {eq:LSM.isEquipped(p),granted:MA.isLinglingGranted(p),rep:cnt(p,REP),bar:cnt(p,BAR)};\n})()"
-    },
-    {
-      "op": "note",
-      "text": "B 拾取路障：服务端直接造一个路障 ItemEntity 并让玩家拾取（走 ItemEntityPickupEvent.Post，实测创造模式也会触发），判据是「强化拒止 +1、路障 0、实体被消化」。"
-    },
-    {
-      "op": "eval_js",
-      "side": "server",
-      "save_as": "b_clear",
-      "timeout_ms": 20000,
-      "code": "(function(){function mcp(){var SH=Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');return SH.getCurrentServer();}\nfunction pl(){return mcp().getPlayerList().getPlayers().get(0);}\nfunction reg(){return Java.loadClass('net.minecraft.core.registries.BuiltInRegistries');}\nfunction rl(){return Java.loadClass('net.minecraft.resources.ResourceLocation');}\nfunction itemOf(id){return reg().ITEM.get(rl().parse(id));}\nfunction stackOf(id,n){var IS=Java.loadClass('net.minecraft.world.item.ItemStack');return new IS(itemOf(id),n);}\nfunction cnt(p,id){var n=0;var list=p.getInventory().items;for(var i=0;i<list.size();i++){var st=list.get(i);if(!st.isEmpty()&&String(reg().ITEM.getKey(st.getItem()))===id)n+=st.getCount();}var off=p.getInventory().offhand;for(var j=0;j<off.size();j++){var so=off.get(j);if(!so.isEmpty()&&String(reg().ITEM.getKey(so.getItem()))===id)n+=so.getCount();}return n;}\nfunction cur(p){var C=Java.loadClass('top.theillusivec4.curios.api.CuriosApi');return C.getCuriosInventory(p).get();}\nfunction stand(p){return cur(p).getStacksHandler('stand').get().getStacks();}\nfunction purge(p,r){var lvl=p.level;var names=['net.minecraft.world.entity.monster.Pillager','net.minecraft.world.entity.animal.Cow','com.merlinkitsune.astral_dice.entity.RepulsionEntity','net.minecraft.world.entity.item.ItemEntity'];var n=0;for(var k=0;k<names.length;k++){var l=lvl.getEntitiesOfClass(Java.loadClass(names[k]),p.getBoundingBox().inflate(r));for(var i=0;i<l.size();i++){l.get(i).discard();n++;}}return n;}\nvar LSM=Java.loadClass('com.merlinkitsune.astral_dice.item.sign.LinglingSignManager');\nvar MA=Java.loadClass('com.merlinkitsune.astral_dice.component.ModAttachments');\nvar CM=Java.loadClass('com.merlinkitsune.astral_dice.item.ChargeManager');\nvar CS=Java.loadClass('com.merlinkitsune.astral_dice.item.CurioSlotUtil');\nvar MT=Java.loadClass('com.merlinkitsune.astral_dice.entity.ModEntityTypes');\nvar ET=Java.loadClass('net.minecraft.world.entity.EntityType');\nvar Pillager=Java.loadClass('net.minecraft.world.entity.monster.Pillager');\nvar RepulsionEntity=Java.loadClass('com.merlinkitsune.astral_dice.entity.RepulsionEntity');\nvar ItemEntity=Java.loadClass('net.minecraft.world.entity.item.ItemEntity');\nvar GameType=Java.loadClass('net.minecraft.world.level.GameType');\nvar Attributes=Java.loadClass('net.minecraft.world.entity.ai.attributes.Attributes');\nvar BSI=Java.loadClass('com.merlinkitsune.astral_dice.item.sign.BaseSignItem');\nvar ME=Java.loadClass('com.merlinkitsune.astral_dice.effect.ModEffects');\nvar HC=Java.loadClass('net.minecraft.world.InteractionHand');\nvar SIGN='astral_dice:lingling_sign';\nvar REP='astral_dice:effect_card_repulsion';\nvar BAR='astral_dice:effect_card_barricade';\nvar p=pl();\n\np.getInventory().clearContent();\nreturn {rep:cnt(p,REP),bar:cnt(p,BAR)};\n})()"
-    },
-    {
-      "op": "eval_js",
-      "side": "server",
-      "save_as": "b_pickup",
-      "timeout_ms": 20000,
-      "code": "(function(){function mcp(){var SH=Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');return SH.getCurrentServer();}\nfunction pl(){return mcp().getPlayerList().getPlayers().get(0);}\nfunction reg(){return Java.loadClass('net.minecraft.core.registries.BuiltInRegistries');}\nfunction rl(){return Java.loadClass('net.minecraft.resources.ResourceLocation');}\nfunction itemOf(id){return reg().ITEM.get(rl().parse(id));}\nfunction stackOf(id,n){var IS=Java.loadClass('net.minecraft.world.item.ItemStack');return new IS(itemOf(id),n);}\nfunction cnt(p,id){var n=0;var list=p.getInventory().items;for(var i=0;i<list.size();i++){var st=list.get(i);if(!st.isEmpty()&&String(reg().ITEM.getKey(st.getItem()))===id)n+=st.getCount();}var off=p.getInventory().offhand;for(var j=0;j<off.size();j++){var so=off.get(j);if(!so.isEmpty()&&String(reg().ITEM.getKey(so.getItem()))===id)n+=so.getCount();}return n;}\nfunction cur(p){var C=Java.loadClass('top.theillusivec4.curios.api.CuriosApi');return C.getCuriosInventory(p).get();}\nfunction stand(p){return cur(p).getStacksHandler('stand').get().getStacks();}\nfunction purge(p,r){var lvl=p.level;var names=['net.minecraft.world.entity.monster.Pillager','net.minecraft.world.entity.animal.Cow','com.merlinkitsune.astral_dice.entity.RepulsionEntity','net.minecraft.world.entity.item.ItemEntity'];var n=0;for(var k=0;k<names.length;k++){var l=lvl.getEntitiesOfClass(Java.loadClass(names[k]),p.getBoundingBox().inflate(r));for(var i=0;i<l.size();i++){l.get(i).discard();n++;}}return n;}\nvar LSM=Java.loadClass('com.merlinkitsune.astral_dice.item.sign.LinglingSignManager');\nvar MA=Java.loadClass('com.merlinkitsune.astral_dice.component.ModAttachments');\nvar CM=Java.loadClass('com.merlinkitsune.astral_dice.item.ChargeManager');\nvar CS=Java.loadClass('com.merlinkitsune.astral_dice.item.CurioSlotUtil');\nvar MT=Java.loadClass('com.merlinkitsune.astral_dice.entity.ModEntityTypes');\nvar ET=Java.loadClass('net.minecraft.world.entity.EntityType');\nvar Pillager=Java.loadClass('net.minecraft.world.entity.monster.Pillager');\nvar RepulsionEntity=Java.loadClass('com.merlinkitsune.astral_dice.entity.RepulsionEntity');\nvar ItemEntity=Java.loadClass('net.minecraft.world.entity.item.ItemEntity');\nvar GameType=Java.loadClass('net.minecraft.world.level.GameType');\nvar Attributes=Java.loadClass('net.minecraft.world.entity.ai.attributes.Attributes');\nvar BSI=Java.loadClass('com.merlinkitsune.astral_dice.item.sign.BaseSignItem');\nvar ME=Java.loadClass('com.merlinkitsune.astral_dice.effect.ModEffects');\nvar HC=Java.loadClass('net.minecraft.world.InteractionHand');\nvar SIGN='astral_dice:lingling_sign';\nvar REP='astral_dice:effect_card_repulsion';\nvar BAR='astral_dice:effect_card_barricade';\nvar p=pl();\n\nvar lvl=p.level;\nvar ent=new ItemEntity(lvl,p.getX(),p.getY(),p.getZ(),stackOf(BAR,1));\nlvl.addFreshEntity(ent);\nent.playerTouch(p);\nreturn {rep:cnt(p,REP),bar:cnt(p,BAR),picked:!(ent.isAlive())};\n})()"
-    },
-    {
-      "op": "note",
-      "text": "C 额外充能层：自放 1 个强化拒止力场 + 5 只 pillager（力场 isAttachable 只收 Enemy/NeutralMob 且必须有攻击目标，所以必须 setTarget(player)；牛/村民这类普通 Mob 永不吸附）+ 1 个别人（owner=随机 UUID）的力场 + 1 只瞄准牛的 pillager。别人力场吸附的那只不得计入。"
-    },
-    {
-      "op": "eval_js",
-      "side": "server",
-      "save_as": "c_setup",
-      "timeout_ms": 20000,
-      "code": "(function(){function mcp(){var SH=Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');return SH.getCurrentServer();}\nfunction pl(){return mcp().getPlayerList().getPlayers().get(0);}\nfunction reg(){return Java.loadClass('net.minecraft.core.registries.BuiltInRegistries');}\nfunction rl(){return Java.loadClass('net.minecraft.resources.ResourceLocation');}\nfunction itemOf(id){return reg().ITEM.get(rl().parse(id));}\nfunction stackOf(id,n){var IS=Java.loadClass('net.minecraft.world.item.ItemStack');return new IS(itemOf(id),n);}\nfunction cnt(p,id){var n=0;var list=p.getInventory().items;for(var i=0;i<list.size();i++){var st=list.get(i);if(!st.isEmpty()&&String(reg().ITEM.getKey(st.getItem()))===id)n+=st.getCount();}var off=p.getInventory().offhand;for(var j=0;j<off.size();j++){var so=off.get(j);if(!so.isEmpty()&&String(reg().ITEM.getKey(so.getItem()))===id)n+=so.getCount();}return n;}\nfunction cur(p){var C=Java.loadClass('top.theillusivec4.curios.api.CuriosApi');return C.getCuriosInventory(p).get();}\nfunction stand(p){return cur(p).getStacksHandler('stand').get().getStacks();}\nfunction purge(p,r){var lvl=p.level;var names=['net.minecraft.world.entity.monster.Pillager','net.minecraft.world.entity.animal.Cow','com.merlinkitsune.astral_dice.entity.RepulsionEntity','net.minecraft.world.entity.item.ItemEntity'];var n=0;for(var k=0;k<names.length;k++){var l=lvl.getEntitiesOfClass(Java.loadClass(names[k]),p.getBoundingBox().inflate(r));for(var i=0;i<l.size();i++){l.get(i).discard();n++;}}return n;}\nvar LSM=Java.loadClass('com.merlinkitsune.astral_dice.item.sign.LinglingSignManager');\nvar MA=Java.loadClass('com.merlinkitsune.astral_dice.component.ModAttachments');\nvar CM=Java.loadClass('com.merlinkitsune.astral_dice.item.ChargeManager');\nvar CS=Java.loadClass('com.merlinkitsune.astral_dice.item.CurioSlotUtil');\nvar MT=Java.loadClass('com.merlinkitsune.astral_dice.entity.ModEntityTypes');\nvar ET=Java.loadClass('net.minecraft.world.entity.EntityType');\nvar Pillager=Java.loadClass('net.minecraft.world.entity.monster.Pillager');\nvar RepulsionEntity=Java.loadClass('com.merlinkitsune.astral_dice.entity.RepulsionEntity');\nvar ItemEntity=Java.loadClass('net.minecraft.world.entity.item.ItemEntity');\nvar GameType=Java.loadClass('net.minecraft.world.level.GameType');\nvar Attributes=Java.loadClass('net.minecraft.world.entity.ai.attributes.Attributes');\nvar BSI=Java.loadClass('com.merlinkitsune.astral_dice.item.sign.BaseSignItem');\nvar ME=Java.loadClass('com.merlinkitsune.astral_dice.effect.ModEffects');\nvar HC=Java.loadClass('net.minecraft.world.InteractionHand');\nvar SIGN='astral_dice:lingling_sign';\nvar REP='astral_dice:effect_card_repulsion';\nvar BAR='astral_dice:effect_card_barricade';\nvar p=pl();\n\nvar lvl=p.level;\npurge(p,64);\nvar f=MT.REPULSION.get().create(lvl);\nf.setPos(p.getX()+3,p.getY(),p.getZ());\nf.setOwnerUUID(p.uuid);\nlvl.addFreshEntity(f);\nfor(var i=0;i<5;i++){var m=new Pillager(ET.PILLAGER,lvl);var a=i*1.2566;m.setPos(p.getX()+3+Math.cos(a)*2.5,p.getY(),p.getZ()+Math.sin(a)*2.5);lvl.addFreshEntity(m);m.setTarget(p);m.setNoAi(true);}\nvar cow=ET.COW.create(lvl);cow.setPos(p.getX()-8,p.getY(),p.getZ());lvl.addFreshEntity(cow);\nvar g=MT.REPULSION.get().create(lvl);g.setPos(p.getX()-8,p.getY(),p.getZ());g.setOwnerUUID(new (Java.loadClass('java.util.UUID'))(1234,5678));lvl.addFreshEntity(g);\nvar m2=new Pillager(ET.PILLAGER,lvl);m2.setPos(p.getX()-7,p.getY(),p.getZ());lvl.addFreshEntity(m2);m2.setTarget(cow);m2.setNoAi(true);\nreturn {ok:true,field:f.getId(),foreign:g.getId()};\n})()"
-    },
-    {
-      "op": "await_state",
-      "side": "server",
-      "timeout_ms": 30000,
-      "interval_ms": 400,
-      "code": "(function(){function mcp(){var SH=Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');return SH.getCurrentServer();}\nfunction pl(){return mcp().getPlayerList().getPlayers().get(0);}\nfunction reg(){return Java.loadClass('net.minecraft.core.registries.BuiltInRegistries');}\nfunction rl(){return Java.loadClass('net.minecraft.resources.ResourceLocation');}\nfunction itemOf(id){return reg().ITEM.get(rl().parse(id));}\nfunction stackOf(id,n){var IS=Java.loadClass('net.minecraft.world.item.ItemStack');return new IS(itemOf(id),n);}\nfunction cnt(p,id){var n=0;var list=p.getInventory().items;for(var i=0;i<list.size();i++){var st=list.get(i);if(!st.isEmpty()&&String(reg().ITEM.getKey(st.getItem()))===id)n+=st.getCount();}var off=p.getInventory().offhand;for(var j=0;j<off.size();j++){var so=off.get(j);if(!so.isEmpty()&&String(reg().ITEM.getKey(so.getItem()))===id)n+=so.getCount();}return n;}\nfunction cur(p){var C=Java.loadClass('top.theillusivec4.curios.api.CuriosApi');return C.getCuriosInventory(p).get();}\nfunction stand(p){return cur(p).getStacksHandler('stand').get().getStacks();}\nfunction purge(p,r){var lvl=p.level;var names=['net.minecraft.world.entity.monster.Pillager','net.minecraft.world.entity.animal.Cow','com.merlinkitsune.astral_dice.entity.RepulsionEntity','net.minecraft.world.entity.item.ItemEntity'];var n=0;for(var k=0;k<names.length;k++){var l=lvl.getEntitiesOfClass(Java.loadClass(names[k]),p.getBoundingBox().inflate(r));for(var i=0;i<l.size();i++){l.get(i).discard();n++;}}return n;}\nvar LSM=Java.loadClass('com.merlinkitsune.astral_dice.item.sign.LinglingSignManager');\nvar MA=Java.loadClass('com.merlinkitsune.astral_dice.component.ModAttachments');\nvar CM=Java.loadClass('com.merlinkitsune.astral_dice.item.ChargeManager');\nvar CS=Java.loadClass('com.merlinkitsune.astral_dice.item.CurioSlotUtil');\nvar MT=Java.loadClass('com.merlinkitsune.astral_dice.entity.ModEntityTypes');\nvar ET=Java.loadClass('net.minecraft.world.entity.EntityType');\nvar Pillager=Java.loadClass('net.minecraft.world.entity.monster.Pillager');\nvar RepulsionEntity=Java.loadClass('com.merlinkitsune.astral_dice.entity.RepulsionEntity');\nvar ItemEntity=Java.loadClass('net.minecraft.world.entity.item.ItemEntity');\nvar GameType=Java.loadClass('net.minecraft.world.level.GameType');\nvar Attributes=Java.loadClass('net.minecraft.world.entity.ai.attributes.Attributes');\nvar BSI=Java.loadClass('com.merlinkitsune.astral_dice.item.sign.BaseSignItem');\nvar ME=Java.loadClass('com.merlinkitsune.astral_dice.effect.ModEffects');\nvar HC=Java.loadClass('net.minecraft.world.InteractionHand');\nvar SIGN='astral_dice:lingling_sign';\nvar REP='astral_dice:effect_card_repulsion';\nvar BAR='astral_dice:effect_card_barricade';\nvar p=pl();\n\nvar own=LSM.countTrackedByOwnedFields(p);\nvar bonus=MA.getLinglingBonusCharge(p);\nreturn LSM.isEquipped(p) && own===5 && bonus===5;\n})()"
-    },
-    {
-      "op": "eval_js",
-      "side": "server",
-      "save_as": "c_read",
-      "timeout_ms": 20000,
-      "code": "(function(){function mcp(){var SH=Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');return SH.getCurrentServer();}\nfunction pl(){return mcp().getPlayerList().getPlayers().get(0);}\nfunction reg(){return Java.loadClass('net.minecraft.core.registries.BuiltInRegistries');}\nfunction rl(){return Java.loadClass('net.minecraft.resources.ResourceLocation');}\nfunction itemOf(id){return reg().ITEM.get(rl().parse(id));}\nfunction stackOf(id,n){var IS=Java.loadClass('net.minecraft.world.item.ItemStack');return new IS(itemOf(id),n);}\nfunction cnt(p,id){var n=0;var list=p.getInventory().items;for(var i=0;i<list.size();i++){var st=list.get(i);if(!st.isEmpty()&&String(reg().ITEM.getKey(st.getItem()))===id)n+=st.getCount();}var off=p.getInventory().offhand;for(var j=0;j<off.size();j++){var so=off.get(j);if(!so.isEmpty()&&String(reg().ITEM.getKey(so.getItem()))===id)n+=so.getCount();}return n;}\nfunction cur(p){var C=Java.loadClass('top.theillusivec4.curios.api.CuriosApi');return C.getCuriosInventory(p).get();}\nfunction stand(p){return cur(p).getStacksHandler('stand').get().getStacks();}\nfunction purge(p,r){var lvl=p.level;var names=['net.minecraft.world.entity.monster.Pillager','net.minecraft.world.entity.animal.Cow','com.merlinkitsune.astral_dice.entity.RepulsionEntity','net.minecraft.world.entity.item.ItemEntity'];var n=0;for(var k=0;k<names.length;k++){var l=lvl.getEntitiesOfClass(Java.loadClass(names[k]),p.getBoundingBox().inflate(r));for(var i=0;i<l.size();i++){l.get(i).discard();n++;}}return n;}\nvar LSM=Java.loadClass('com.merlinkitsune.astral_dice.item.sign.LinglingSignManager');\nvar MA=Java.loadClass('com.merlinkitsune.astral_dice.component.ModAttachments');\nvar CM=Java.loadClass('com.merlinkitsune.astral_dice.item.ChargeManager');\nvar CS=Java.loadClass('com.merlinkitsune.astral_dice.item.CurioSlotUtil');\nvar MT=Java.loadClass('com.merlinkitsune.astral_dice.entity.ModEntityTypes');\nvar ET=Java.loadClass('net.minecraft.world.entity.EntityType');\nvar Pillager=Java.loadClass('net.minecraft.world.entity.monster.Pillager');\nvar RepulsionEntity=Java.loadClass('com.merlinkitsune.astral_dice.entity.RepulsionEntity');\nvar ItemEntity=Java.loadClass('net.minecraft.world.entity.item.ItemEntity');\nvar GameType=Java.loadClass('net.minecraft.world.level.GameType');\nvar Attributes=Java.loadClass('net.minecraft.world.entity.ai.attributes.Attributes');\nvar BSI=Java.loadClass('com.merlinkitsune.astral_dice.item.sign.BaseSignItem');\nvar ME=Java.loadClass('com.merlinkitsune.astral_dice.effect.ModEffects');\nvar HC=Java.loadClass('net.minecraft.world.InteractionHand');\nvar SIGN='astral_dice:lingling_sign';\nvar REP='astral_dice:effect_card_repulsion';\nvar BAR='astral_dice:effect_card_barricade';\nvar p=pl();\n\nvar lvl=p.level;\nvar mine=String(p.uuid);var foreign=0;\nvar list=lvl.getEntitiesOfClass(RepulsionEntity,p.getBoundingBox().inflate(64));\nfor(var i=0;i<list.size();i++){var f=list.get(i);if(String(f.getOwnerUUID())!==mine)foreign+=f.getTrackedTargets().size();}\nreturn {own:LSM.countTrackedByOwnedFields(p),bonus:MA.getLinglingBonusCharge(p),eff:LSM.effectiveCharge(p),stacks:CM.getStacks(p),foreign:foreign};\n})()"
-    },
-    {
-      "op": "eval_js",
-      "side": "server",
-      "save_as": "c_cap_setup",
-      "timeout_ms": 20000,
-      "code": "(function(){function mcp(){var SH=Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');return SH.getCurrentServer();}\nfunction pl(){return mcp().getPlayerList().getPlayers().get(0);}\nfunction reg(){return Java.loadClass('net.minecraft.core.registries.BuiltInRegistries');}\nfunction rl(){return Java.loadClass('net.minecraft.resources.ResourceLocation');}\nfunction itemOf(id){return reg().ITEM.get(rl().parse(id));}\nfunction stackOf(id,n){var IS=Java.loadClass('net.minecraft.world.item.ItemStack');return new IS(itemOf(id),n);}\nfunction cnt(p,id){var n=0;var list=p.getInventory().items;for(var i=0;i<list.size();i++){var st=list.get(i);if(!st.isEmpty()&&String(reg().ITEM.getKey(st.getItem()))===id)n+=st.getCount();}var off=p.getInventory().offhand;for(var j=0;j<off.size();j++){var so=off.get(j);if(!so.isEmpty()&&String(reg().ITEM.getKey(so.getItem()))===id)n+=so.getCount();}return n;}\nfunction cur(p){var C=Java.loadClass('top.theillusivec4.curios.api.CuriosApi');return C.getCuriosInventory(p).get();}\nfunction stand(p){return cur(p).getStacksHandler('stand').get().getStacks();}\nfunction purge(p,r){var lvl=p.level;var names=['net.minecraft.world.entity.monster.Pillager','net.minecraft.world.entity.animal.Cow','com.merlinkitsune.astral_dice.entity.RepulsionEntity','net.minecraft.world.entity.item.ItemEntity'];var n=0;for(var k=0;k<names.length;k++){var l=lvl.getEntitiesOfClass(Java.loadClass(names[k]),p.getBoundingBox().inflate(r));for(var i=0;i<l.size();i++){l.get(i).discard();n++;}}return n;}\nvar LSM=Java.loadClass('com.merlinkitsune.astral_dice.item.sign.LinglingSignManager');\nvar MA=Java.loadClass('com.merlinkitsune.astral_dice.component.ModAttachments');\nvar CM=Java.loadClass('com.merlinkitsune.astral_dice.item.ChargeManager');\nvar CS=Java.loadClass('com.merlinkitsune.astral_dice.item.CurioSlotUtil');\nvar MT=Java.loadClass('com.merlinkitsune.astral_dice.entity.ModEntityTypes');\nvar ET=Java.loadClass('net.minecraft.world.entity.EntityType');\nvar Pillager=Java.loadClass('net.minecraft.world.entity.monster.Pillager');\nvar RepulsionEntity=Java.loadClass('com.merlinkitsune.astral_dice.entity.RepulsionEntity');\nvar ItemEntity=Java.loadClass('net.minecraft.world.entity.item.ItemEntity');\nvar GameType=Java.loadClass('net.minecraft.world.level.GameType');\nvar Attributes=Java.loadClass('net.minecraft.world.entity.ai.attributes.Attributes');\nvar BSI=Java.loadClass('com.merlinkitsune.astral_dice.item.sign.BaseSignItem');\nvar ME=Java.loadClass('com.merlinkitsune.astral_dice.effect.ModEffects');\nvar HC=Java.loadClass('net.minecraft.world.InteractionHand');\nvar SIGN='astral_dice:lingling_sign';\nvar REP='astral_dice:effect_card_repulsion';\nvar BAR='astral_dice:effect_card_barricade';\nvar p=pl();\n\nvar lvl=p.level;\nfor(var i=0;i<18;i++){var m=new Pillager(ET.PILLAGER,lvl);var a=i*0.35;m.setPos(p.getX()+3+Math.cos(a)*3,p.getY(),p.getZ()+Math.sin(a)*3);lvl.addFreshEntity(m);m.setTarget(p);m.setNoAi(true);}\nreturn {ok:true};\n})()"
-    },
-    {
-      "op": "await_state",
-      "side": "server",
-      "timeout_ms": 30000,
-      "interval_ms": 400,
-      "code": "(function(){function mcp(){var SH=Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');return SH.getCurrentServer();}\nfunction pl(){return mcp().getPlayerList().getPlayers().get(0);}\nfunction reg(){return Java.loadClass('net.minecraft.core.registries.BuiltInRegistries');}\nfunction rl(){return Java.loadClass('net.minecraft.resources.ResourceLocation');}\nfunction itemOf(id){return reg().ITEM.get(rl().parse(id));}\nfunction stackOf(id,n){var IS=Java.loadClass('net.minecraft.world.item.ItemStack');return new IS(itemOf(id),n);}\nfunction cnt(p,id){var n=0;var list=p.getInventory().items;for(var i=0;i<list.size();i++){var st=list.get(i);if(!st.isEmpty()&&String(reg().ITEM.getKey(st.getItem()))===id)n+=st.getCount();}var off=p.getInventory().offhand;for(var j=0;j<off.size();j++){var so=off.get(j);if(!so.isEmpty()&&String(reg().ITEM.getKey(so.getItem()))===id)n+=so.getCount();}return n;}\nfunction cur(p){var C=Java.loadClass('top.theillusivec4.curios.api.CuriosApi');return C.getCuriosInventory(p).get();}\nfunction stand(p){return cur(p).getStacksHandler('stand').get().getStacks();}\nfunction purge(p,r){var lvl=p.level;var names=['net.minecraft.world.entity.monster.Pillager','net.minecraft.world.entity.animal.Cow','com.merlinkitsune.astral_dice.entity.RepulsionEntity','net.minecraft.world.entity.item.ItemEntity'];var n=0;for(var k=0;k<names.length;k++){var l=lvl.getEntitiesOfClass(Java.loadClass(names[k]),p.getBoundingBox().inflate(r));for(var i=0;i<l.size();i++){l.get(i).discard();n++;}}return n;}\nvar LSM=Java.loadClass('com.merlinkitsune.astral_dice.item.sign.LinglingSignManager');\nvar MA=Java.loadClass('com.merlinkitsune.astral_dice.component.ModAttachments');\nvar CM=Java.loadClass('com.merlinkitsune.astral_dice.item.ChargeManager');\nvar CS=Java.loadClass('com.merlinkitsune.astral_dice.item.CurioSlotUtil');\nvar MT=Java.loadClass('com.merlinkitsune.astral_dice.entity.ModEntityTypes');\nvar ET=Java.loadClass('net.minecraft.world.entity.EntityType');\nvar Pillager=Java.loadClass('net.minecraft.world.entity.monster.Pillager');\nvar RepulsionEntity=Java.loadClass('com.merlinkitsune.astral_dice.entity.RepulsionEntity');\nvar ItemEntity=Java.loadClass('net.minecraft.world.entity.item.ItemEntity');\nvar GameType=Java.loadClass('net.minecraft.world.level.GameType');\nvar Attributes=Java.loadClass('net.minecraft.world.entity.ai.attributes.Attributes');\nvar BSI=Java.loadClass('com.merlinkitsune.astral_dice.item.sign.BaseSignItem');\nvar ME=Java.loadClass('com.merlinkitsune.astral_dice.effect.ModEffects');\nvar HC=Java.loadClass('net.minecraft.world.InteractionHand');\nvar SIGN='astral_dice:lingling_sign';\nvar REP='astral_dice:effect_card_repulsion';\nvar BAR='astral_dice:effect_card_barricade';\nvar p=pl();\n\nvar own=LSM.countTrackedByOwnedFields(p);\nvar bonus=MA.getLinglingBonusCharge(p);\nreturn own>=23 && bonus>=23;\n})()"
-    },
-    {
-      "op": "eval_js",
-      "side": "server",
-      "save_as": "c_cap_read",
-      "timeout_ms": 20000,
-      "code": "(function(){function mcp(){var SH=Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');return SH.getCurrentServer();}\nfunction pl(){return mcp().getPlayerList().getPlayers().get(0);}\nfunction reg(){return Java.loadClass('net.minecraft.core.registries.BuiltInRegistries');}\nfunction rl(){return Java.loadClass('net.minecraft.resources.ResourceLocation');}\nfunction itemOf(id){return reg().ITEM.get(rl().parse(id));}\nfunction stackOf(id,n){var IS=Java.loadClass('net.minecraft.world.item.ItemStack');return new IS(itemOf(id),n);}\nfunction cnt(p,id){var n=0;var list=p.getInventory().items;for(var i=0;i<list.size();i++){var st=list.get(i);if(!st.isEmpty()&&String(reg().ITEM.getKey(st.getItem()))===id)n+=st.getCount();}var off=p.getInventory().offhand;for(var j=0;j<off.size();j++){var so=off.get(j);if(!so.isEmpty()&&String(reg().ITEM.getKey(so.getItem()))===id)n+=so.getCount();}return n;}\nfunction cur(p){var C=Java.loadClass('top.theillusivec4.curios.api.CuriosApi');return C.getCuriosInventory(p).get();}\nfunction stand(p){return cur(p).getStacksHandler('stand').get().getStacks();}\nfunction purge(p,r){var lvl=p.level;var names=['net.minecraft.world.entity.monster.Pillager','net.minecraft.world.entity.animal.Cow','com.merlinkitsune.astral_dice.entity.RepulsionEntity','net.minecraft.world.entity.item.ItemEntity'];var n=0;for(var k=0;k<names.length;k++){var l=lvl.getEntitiesOfClass(Java.loadClass(names[k]),p.getBoundingBox().inflate(r));for(var i=0;i<l.size();i++){l.get(i).discard();n++;}}return n;}\nvar LSM=Java.loadClass('com.merlinkitsune.astral_dice.item.sign.LinglingSignManager');\nvar MA=Java.loadClass('com.merlinkitsune.astral_dice.component.ModAttachments');\nvar CM=Java.loadClass('com.merlinkitsune.astral_dice.item.ChargeManager');\nvar CS=Java.loadClass('com.merlinkitsune.astral_dice.item.CurioSlotUtil');\nvar MT=Java.loadClass('com.merlinkitsune.astral_dice.entity.ModEntityTypes');\nvar ET=Java.loadClass('net.minecraft.world.entity.EntityType');\nvar Pillager=Java.loadClass('net.minecraft.world.entity.monster.Pillager');\nvar RepulsionEntity=Java.loadClass('com.merlinkitsune.astral_dice.entity.RepulsionEntity');\nvar ItemEntity=Java.loadClass('net.minecraft.world.entity.item.ItemEntity');\nvar GameType=Java.loadClass('net.minecraft.world.level.GameType');\nvar Attributes=Java.loadClass('net.minecraft.world.entity.ai.attributes.Attributes');\nvar BSI=Java.loadClass('com.merlinkitsune.astral_dice.item.sign.BaseSignItem');\nvar ME=Java.loadClass('com.merlinkitsune.astral_dice.effect.ModEffects');\nvar HC=Java.loadClass('net.minecraft.world.InteractionHand');\nvar SIGN='astral_dice:lingling_sign';\nvar REP='astral_dice:effect_card_repulsion';\nvar BAR='astral_dice:effect_card_barricade';\nvar p=pl();\n\nvar G=Java.loadClass('com.merlinkitsune.starengine.component.GameplayConstants');\nreturn {own:LSM.countTrackedByOwnedFields(p),bonus:MA.getLinglingBonusCharge(p),eff:LSM.effectiveCharge(p),max:G.CHARGE_MAX_STACKS};\n})()"
-    },
-    {
-      "op": "note",
-      "text": "D 伤害 +5：基伤必须稳定 ⇒ 用 `/damage … by <ArmorStand> from @p`（直接来源是非玩家实体、归属者是玩家），而不是 `by @p`。\n根因（源码取证）：`DiceCombatEvents.java:315` `if (!(directEntity instanceof Player player)) return;` —— directEntity 是玩家才进骰战；`:773` `finalDmg = DiceBattleResolver.resolve(attackPower, defensePower)`（下限 1 点）、`:814` `event.setNewDamage((float) finalDmg)` 覆盖式写入 ⇒ `/damage … by @p` 的 amount 5 会被改写成 1~2（走玩家 ATTACK_DAMAGE 属性，lingling 主动把 ATTACK_DAMAGE 压到 1），实测 tracked_drop 6 / control_drop 1~2 随机。\n1.21.1 的 `/damage` 语法是 `[by <entity> [from <cause>]]`（`from` 不能单独出现，实测 `…generic from @p` 报 `错误的命令参数 at position 55`）⇒ 用 `by @e[type=ArmorStand] from @p`：directEntity=ArmorStand（非 Player ⇒ 骰战在 :315 早退，基伤保持 5）、causingEntity=@p（`LinglingSignEvents.java:89` 用 `source.getEntity()` ⇒ 仍会 +5）⇒ 被吸附目标恒 10、对照恒 5，gg_diff 恒 5。\n吸附资格（`RepulsionEntity.java:461 isAttachable`）要求 mob 是 Enemy/NeutralMob **且 `getTarget()!=null`（或被激怒）**，且由 `scanAndApplyEffects`（每 SCAN_INTERVAL tick 一次、半径 AFFECT_RADIUS=8）写入 `trackedTargets` ⇒ 用例必须给每个 pillager `setTarget(p)`，并在读数前 await 到 `isTrackedByAny` 为真（`LinglingSignManager.java:240`）。\nplayer_attack 那一对（pa_*）仍然记录不判，用于证明真实近战链路的骰战覆写行为。"
-    },
-    {
-      "op": "eval_js",
-      "side": "server",
-      "save_as": "d_setup",
-      "timeout_ms": 20000,
-      "code": "(function(){function mcp(){var SH=Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');return SH.getCurrentServer();}\nfunction pl(){return mcp().getPlayerList().getPlayers().get(0);}\nfunction reg(){return Java.loadClass('net.minecraft.core.registries.BuiltInRegistries');}\nfunction rl(){return Java.loadClass('net.minecraft.resources.ResourceLocation');}\nfunction itemOf(id){return reg().ITEM.get(rl().parse(id));}\nfunction stackOf(id,n){var IS=Java.loadClass('net.minecraft.world.item.ItemStack');return new IS(itemOf(id),n);}\nfunction cnt(p,id){var n=0;var list=p.getInventory().items;for(var i=0;i<list.size();i++){var st=list.get(i);if(!st.isEmpty()&&String(reg().ITEM.getKey(st.getItem()))===id)n+=st.getCount();}var off=p.getInventory().offhand;for(var j=0;j<off.size();j++){var so=off.get(j);if(!so.isEmpty()&&String(reg().ITEM.getKey(so.getItem()))===id)n+=so.getCount();}return n;}\nfunction cur(p){var C=Java.loadClass('top.theillusivec4.curios.api.CuriosApi');return C.getCuriosInventory(p).get();}\nfunction stand(p){return cur(p).getStacksHandler('stand').get().getStacks();}\nfunction purge(p,r){var lvl=p.level;var names=['net.minecraft.world.entity.monster.Pillager','net.minecraft.world.entity.animal.Cow','com.merlinkitsune.astral_dice.entity.RepulsionEntity','net.minecraft.world.entity.item.ItemEntity'];var n=0;for(var k=0;k<names.length;k++){var l=lvl.getEntitiesOfClass(Java.loadClass(names[k]),p.getBoundingBox().inflate(r));for(var i=0;i<l.size();i++){l.get(i).discard();n++;}}return n;}\nvar LSM=Java.loadClass('com.merlinkitsune.astral_dice.item.sign.LinglingSignManager');\nvar MA=Java.loadClass('com.merlinkitsune.astral_dice.component.ModAttachments');\nvar CM=Java.loadClass('com.merlinkitsune.astral_dice.item.ChargeManager');\nvar CS=Java.loadClass('com.merlinkitsune.astral_dice.item.CurioSlotUtil');\nvar MT=Java.loadClass('com.merlinkitsune.astral_dice.entity.ModEntityTypes');\nvar ET=Java.loadClass('net.minecraft.world.entity.EntityType');\nvar Pillager=Java.loadClass('net.minecraft.world.entity.monster.Pillager');\nvar RepulsionEntity=Java.loadClass('com.merlinkitsune.astral_dice.entity.RepulsionEntity');\nvar ItemEntity=Java.loadClass('net.minecraft.world.entity.item.ItemEntity');\nvar GameType=Java.loadClass('net.minecraft.world.level.GameType');\nvar Attributes=Java.loadClass('net.minecraft.world.entity.ai.attributes.Attributes');\nvar BSI=Java.loadClass('com.merlinkitsune.astral_dice.item.sign.BaseSignItem');\nvar ME=Java.loadClass('com.merlinkitsune.astral_dice.effect.ModEffects');\nvar HC=Java.loadClass('net.minecraft.world.InteractionHand');\nvar SIGN='astral_dice:lingling_sign';\nvar REP='astral_dice:effect_card_repulsion';\nvar BAR='astral_dice:effect_card_barricade';\nvar ArmorStand=Java.loadClass('net.minecraft.world.entity.decoration.ArmorStand');\nvar p=pl();\n\nvar lvl=p.level;\npurge(p,64);\nvar f=MT.REPULSION.get().create(lvl);\nf.setPos(p.getX()+3,p.getY(),p.getZ());\nf.setOwnerUUID(p.uuid);\nlvl.addFreshEntity(f);\nvar dt=new Pillager(ET.PILLAGER,lvl);dt.setPos(p.getX()+4,p.getY(),p.getZ());lvl.addFreshEntity(dt);dt.setTarget(p);dt.setNoAi(true);dt.addTag('lingling_dt');\nvar dc=new Pillager(ET.PILLAGER,lvl);dc.setPos(p.getX()+40,p.getY(),p.getZ());lvl.addFreshEntity(dc);dc.setNoAi(true);dc.addTag('lingling_dc');\nvar gt=new Pillager(ET.PILLAGER,lvl);gt.setPos(p.getX()+5,p.getY(),p.getZ());lvl.addFreshEntity(gt);gt.setTarget(p);gt.setNoAi(true);gt.addTag('lingling_gt');\nvar gc=new Pillager(ET.PILLAGER,lvl);gc.setPos(p.getX()+40.5,p.getY(),p.getZ());lvl.addFreshEntity(gc);gc.setTarget(p);gc.setNoAi(true);gc.addTag('lingling_gc');\nvar atk=new ArmorStand(ET.ARMOR_STAND,lvl);atk.setPos(p.getX(),p.getY(),p.getZ());lvl.addFreshEntity(atk);atk.addTag('lingling_atk');\nreturn {ok:true};\n})()"
-    },
-    {
-      "op": "await_state",
-      "side": "server",
-      "timeout_ms": 30000,
-      "interval_ms": 400,
-      "code": "(function(){function mcp(){var SH=Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');return SH.getCurrentServer();}\nfunction pl(){return mcp().getPlayerList().getPlayers().get(0);}\nfunction reg(){return Java.loadClass('net.minecraft.core.registries.BuiltInRegistries');}\nfunction rl(){return Java.loadClass('net.minecraft.resources.ResourceLocation');}\nfunction itemOf(id){return reg().ITEM.get(rl().parse(id));}\nfunction stackOf(id,n){var IS=Java.loadClass('net.minecraft.world.item.ItemStack');return new IS(itemOf(id),n);}\nfunction cnt(p,id){var n=0;var list=p.getInventory().items;for(var i=0;i<list.size();i++){var st=list.get(i);if(!st.isEmpty()&&String(reg().ITEM.getKey(st.getItem()))===id)n+=st.getCount();}var off=p.getInventory().offhand;for(var j=0;j<off.size();j++){var so=off.get(j);if(!so.isEmpty()&&String(reg().ITEM.getKey(so.getItem()))===id)n+=so.getCount();}return n;}\nfunction cur(p){var C=Java.loadClass('top.theillusivec4.curios.api.CuriosApi');return C.getCuriosInventory(p).get();}\nfunction stand(p){return cur(p).getStacksHandler('stand').get().getStacks();}\nfunction purge(p,r){var lvl=p.level;var names=['net.minecraft.world.entity.monster.Pillager','net.minecraft.world.entity.animal.Cow','com.merlinkitsune.astral_dice.entity.RepulsionEntity','net.minecraft.world.entity.item.ItemEntity'];var n=0;for(var k=0;k<names.length;k++){var l=lvl.getEntitiesOfClass(Java.loadClass(names[k]),p.getBoundingBox().inflate(r));for(var i=0;i<l.size();i++){l.get(i).discard();n++;}}return n;}\nvar LSM=Java.loadClass('com.merlinkitsune.astral_dice.item.sign.LinglingSignManager');\nvar MA=Java.loadClass('com.merlinkitsune.astral_dice.component.ModAttachments');\nvar CM=Java.loadClass('com.merlinkitsune.astral_dice.item.ChargeManager');\nvar CS=Java.loadClass('com.merlinkitsune.astral_dice.item.CurioSlotUtil');\nvar MT=Java.loadClass('com.merlinkitsune.astral_dice.entity.ModEntityTypes');\nvar ET=Java.loadClass('net.minecraft.world.entity.EntityType');\nvar Pillager=Java.loadClass('net.minecraft.world.entity.monster.Pillager');\nvar RepulsionEntity=Java.loadClass('com.merlinkitsune.astral_dice.entity.RepulsionEntity');\nvar ItemEntity=Java.loadClass('net.minecraft.world.entity.item.ItemEntity');\nvar GameType=Java.loadClass('net.minecraft.world.level.GameType');\nvar Attributes=Java.loadClass('net.minecraft.world.entity.ai.attributes.Attributes');\nvar BSI=Java.loadClass('com.merlinkitsune.astral_dice.item.sign.BaseSignItem');\nvar ME=Java.loadClass('com.merlinkitsune.astral_dice.effect.ModEffects');\nvar HC=Java.loadClass('net.minecraft.world.InteractionHand');\nvar SIGN='astral_dice:lingling_sign';\nvar REP='astral_dice:effect_card_repulsion';\nvar BAR='astral_dice:effect_card_barricade';\nvar p=pl();\n\nvar lvl=p.level;\nvar list=lvl.getEntitiesOfClass(Pillager,p.getBoundingBox().inflate(64));\nvar dt=null;var dc=null;var gt=null;var gc=null;\nfor(var i=0;i<list.size();i++){var m=list.get(i);if(m.getTags().contains('lingling_dt'))dt=m;if(m.getTags().contains('lingling_dc'))dc=m;if(m.getTags().contains('lingling_gt'))gt=m;if(m.getTags().contains('lingling_gc'))gc=m;}\nif(dt===null||dc===null||gt===null||gc===null){return false;}\nreturn LSM.isTrackedByAny(dt) && LSM.isTrackedByAny(gt) && !LSM.isTrackedByAny(dc) && !LSM.isTrackedByAny(gc);\n})()"
-    },
-    {
-      "op": "eval_js",
-      "side": "server",
-      "save_as": "d_damage",
-      "timeout_ms": 20000,
-      "code": "(function(){function mcp(){var SH=Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');return SH.getCurrentServer();}\nfunction pl(){return mcp().getPlayerList().getPlayers().get(0);}\nfunction reg(){return Java.loadClass('net.minecraft.core.registries.BuiltInRegistries');}\nfunction rl(){return Java.loadClass('net.minecraft.resources.ResourceLocation');}\nfunction itemOf(id){return reg().ITEM.get(rl().parse(id));}\nfunction stackOf(id,n){var IS=Java.loadClass('net.minecraft.world.item.ItemStack');return new IS(itemOf(id),n);}\nfunction cnt(p,id){var n=0;var list=p.getInventory().items;for(var i=0;i<list.size();i++){var st=list.get(i);if(!st.isEmpty()&&String(reg().ITEM.getKey(st.getItem()))===id)n+=st.getCount();}var off=p.getInventory().offhand;for(var j=0;j<off.size();j++){var so=off.get(j);if(!so.isEmpty()&&String(reg().ITEM.getKey(so.getItem()))===id)n+=so.getCount();}return n;}\nfunction cur(p){var C=Java.loadClass('top.theillusivec4.curios.api.CuriosApi');return C.getCuriosInventory(p).get();}\nfunction stand(p){return cur(p).getStacksHandler('stand').get().getStacks();}\nfunction purge(p,r){var lvl=p.level;var names=['net.minecraft.world.entity.monster.Pillager','net.minecraft.world.entity.animal.Cow','com.merlinkitsune.astral_dice.entity.RepulsionEntity','net.minecraft.world.entity.item.ItemEntity'];var n=0;for(var k=0;k<names.length;k++){var l=lvl.getEntitiesOfClass(Java.loadClass(names[k]),p.getBoundingBox().inflate(r));for(var i=0;i<l.size();i++){l.get(i).discard();n++;}}return n;}\nvar LSM=Java.loadClass('com.merlinkitsune.astral_dice.item.sign.LinglingSignManager');\nvar MA=Java.loadClass('com.merlinkitsune.astral_dice.component.ModAttachments');\nvar CM=Java.loadClass('com.merlinkitsune.astral_dice.item.ChargeManager');\nvar CS=Java.loadClass('com.merlinkitsune.astral_dice.item.CurioSlotUtil');\nvar MT=Java.loadClass('com.merlinkitsune.astral_dice.entity.ModEntityTypes');\nvar ET=Java.loadClass('net.minecraft.world.entity.EntityType');\nvar Pillager=Java.loadClass('net.minecraft.world.entity.monster.Pillager');\nvar RepulsionEntity=Java.loadClass('com.merlinkitsune.astral_dice.entity.RepulsionEntity');\nvar ItemEntity=Java.loadClass('net.minecraft.world.entity.item.ItemEntity');\nvar GameType=Java.loadClass('net.minecraft.world.level.GameType');\nvar Attributes=Java.loadClass('net.minecraft.world.entity.ai.attributes.Attributes');\nvar BSI=Java.loadClass('com.merlinkitsune.astral_dice.item.sign.BaseSignItem');\nvar ME=Java.loadClass('com.merlinkitsune.astral_dice.effect.ModEffects');\nvar HC=Java.loadClass('net.minecraft.world.InteractionHand');\nvar SIGN='astral_dice:lingling_sign';\nvar REP='astral_dice:effect_card_repulsion';\nvar BAR='astral_dice:effect_card_barricade';\nvar p=pl();\n\nvar lvl=p.level;\nvar list=lvl.getEntitiesOfClass(Pillager,p.getBoundingBox().inflate(64));\nvar dt=null;var dc=null;var gt=null;var gc=null;\nfor(var i=0;i<list.size();i++){var m=list.get(i);if(m.getTags().contains('lingling_dt'))dt=m;if(m.getTags().contains('lingling_dc'))dc=m;if(m.getTags().contains('lingling_gt'))gt=m;if(m.getTags().contains('lingling_gc'))gc=m;}\n// 归一化双方状态:满血 + 清无敌帧/受伤帧,排除上一轮遗留与坠落/环境伤害对读数的污染\ndt.setHealth(dt.getMaxHealth());dt.invulnerableTime=0;dt.hurtTime=0;\ndc.setHealth(dc.getMaxHealth());dc.invulnerableTime=0;dc.hurtTime=0;\ngt.setHealth(gt.getMaxHealth());gt.invulnerableTime=0;gt.hurtTime=0;\ngc.setHealth(gc.getMaxHealth());gc.invulnerableTime=0;gc.hurtTime=0;\nvar tracked0=dt.getHealth();var control0=dc.getHealth();\nvar gt0=gt.getHealth();var gc0=gc.getHealth();\nvar s=mcp();var disp=s.getCommands().getDispatcher();\nfunction fire(cmd){try{disp.execute(cmd,s.createCommandSourceStack());return 'ok';}catch(err){return 'ERR:'+String(err).slice(0,120);}}\nvar err1=fire('damage @e[tag=lingling_gt,limit=1] 5 minecraft:generic by @e[tag=lingling_atk,limit=1] from @p');\nvar err2=fire('damage @e[tag=lingling_gc,limit=1] 5 minecraft:generic by @e[tag=lingling_atk,limit=1] from @p');\nvar err3=fire('damage @e[tag=lingling_dt,limit=1] 5 minecraft:player_attack by @p');\nvar err4=fire('damage @e[tag=lingling_dc,limit=1] 5 minecraft:player_attack by @p');\nvar tracked=Math.round(gt0-gt.getHealth());var control=Math.round(gc0-gc.getHealth());\nvar pa_tracked=Math.round(tracked0-dt.getHealth());var pa_control=Math.round(control0-dc.getHealth());\nreturn {gg_tracked:tracked,gg_control:control,gg_diff:tracked-control,gt_tracked:LSM.isTrackedByAny(gt),gc_tracked:LSM.isTrackedByAny(gc),tracked_now:LSM.isTrackedByAny(dt),control_now:LSM.isTrackedByAny(dc),pa_tracked:pa_tracked,pa_control:pa_control,pa_diff:pa_tracked-pa_control,equipped:LSM.isEquipped(p),err1:err1,err2:err2,err3:err3,err4:err4};\n})()"
-    },
-    {
-      "op": "note",
-      "text": "E 主动技能：入口是立牌主动键的真实链路 BaseSignItem.performSkillForCurio(player)（读 stand 槽第 0 格 → performSkill → handleUse），不是右键。5 层时 ATTACK_DAMAGE 1→6、MOVEMENT_SPEED 0.1→0.105（+5%）、lingling_surge 1200t、冷却 = SIGN_ACTIVE_COOLDOWN_TICKS（实测 3600t=180s，⚠️ 与 spec 写的 120s 不一致，断言直接钉常量）。冷却期内二次触发必须被拒。"
-    },
-    {
-      "op": "eval_js",
-      "side": "server",
-      "save_as": "e_setup",
-      "timeout_ms": 20000,
-      "code": "(function(){function mcp(){var SH=Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');return SH.getCurrentServer();}\nfunction pl(){return mcp().getPlayerList().getPlayers().get(0);}\nfunction reg(){return Java.loadClass('net.minecraft.core.registries.BuiltInRegistries');}\nfunction rl(){return Java.loadClass('net.minecraft.resources.ResourceLocation');}\nfunction itemOf(id){return reg().ITEM.get(rl().parse(id));}\nfunction stackOf(id,n){var IS=Java.loadClass('net.minecraft.world.item.ItemStack');return new IS(itemOf(id),n);}\nfunction cnt(p,id){var n=0;var list=p.getInventory().items;for(var i=0;i<list.size();i++){var st=list.get(i);if(!st.isEmpty()&&String(reg().ITEM.getKey(st.getItem()))===id)n+=st.getCount();}var off=p.getInventory().offhand;for(var j=0;j<off.size();j++){var so=off.get(j);if(!so.isEmpty()&&String(reg().ITEM.getKey(so.getItem()))===id)n+=so.getCount();}return n;}\nfunction cur(p){var C=Java.loadClass('top.theillusivec4.curios.api.CuriosApi');return C.getCuriosInventory(p).get();}\nfunction stand(p){return cur(p).getStacksHandler('stand').get().getStacks();}\nfunction purge(p,r){var lvl=p.level;var names=['net.minecraft.world.entity.monster.Pillager','net.minecraft.world.entity.animal.Cow','com.merlinkitsune.astral_dice.entity.RepulsionEntity','net.minecraft.world.entity.item.ItemEntity'];var n=0;for(var k=0;k<names.length;k++){var l=lvl.getEntitiesOfClass(Java.loadClass(names[k]),p.getBoundingBox().inflate(r));for(var i=0;i<l.size();i++){l.get(i).discard();n++;}}return n;}\nvar LSM=Java.loadClass('com.merlinkitsune.astral_dice.item.sign.LinglingSignManager');\nvar MA=Java.loadClass('com.merlinkitsune.astral_dice.component.ModAttachments');\nvar CM=Java.loadClass('com.merlinkitsune.astral_dice.item.ChargeManager');\nvar CS=Java.loadClass('com.merlinkitsune.astral_dice.item.CurioSlotUtil');\nvar MT=Java.loadClass('com.merlinkitsune.astral_dice.entity.ModEntityTypes');\nvar ET=Java.loadClass('net.minecraft.world.entity.EntityType');\nvar Pillager=Java.loadClass('net.minecraft.world.entity.monster.Pillager');\nvar RepulsionEntity=Java.loadClass('com.merlinkitsune.astral_dice.entity.RepulsionEntity');\nvar ItemEntity=Java.loadClass('net.minecraft.world.entity.item.ItemEntity');\nvar GameType=Java.loadClass('net.minecraft.world.level.GameType');\nvar Attributes=Java.loadClass('net.minecraft.world.entity.ai.attributes.Attributes');\nvar BSI=Java.loadClass('com.merlinkitsune.astral_dice.item.sign.BaseSignItem');\nvar ME=Java.loadClass('com.merlinkitsune.astral_dice.effect.ModEffects');\nvar HC=Java.loadClass('net.minecraft.world.InteractionHand');\nvar SIGN='astral_dice:lingling_sign';\nvar REP='astral_dice:effect_card_repulsion';\nvar BAR='astral_dice:effect_card_barricade';\nvar p=pl();\n\nvar lvl=p.level;\npurge(p,64);\np.getInventory().clearContent();\nLSM.clearAll(p);\nMA.setSignActiveCooldownEnd(p,0);\nMA.setSignActiveMaxCooldown(p,0);\nvar f=MT.REPULSION.get().create(lvl);\nf.setPos(p.getX()+3,p.getY(),p.getZ());\nf.setOwnerUUID(p.uuid);\nlvl.addFreshEntity(f);\nfor(var i=0;i<5;i++){var m=new Pillager(ET.PILLAGER,lvl);var a=i*1.2566;m.setPos(p.getX()+3+Math.cos(a)*2.5,p.getY(),p.getZ()+Math.sin(a)*2.5);lvl.addFreshEntity(m);m.setTarget(p);m.setNoAi(true);}\nreturn {eq:LSM.isEquipped(p),rep:cnt(p,REP)};\n})()"
-    },
-    {
-      "op": "await_state",
-      "side": "server",
-      "timeout_ms": 30000,
-      "interval_ms": 400,
-      "code": "(function(){function mcp(){var SH=Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');return SH.getCurrentServer();}\nfunction pl(){return mcp().getPlayerList().getPlayers().get(0);}\nfunction reg(){return Java.loadClass('net.minecraft.core.registries.BuiltInRegistries');}\nfunction rl(){return Java.loadClass('net.minecraft.resources.ResourceLocation');}\nfunction itemOf(id){return reg().ITEM.get(rl().parse(id));}\nfunction stackOf(id,n){var IS=Java.loadClass('net.minecraft.world.item.ItemStack');return new IS(itemOf(id),n);}\nfunction cnt(p,id){var n=0;var list=p.getInventory().items;for(var i=0;i<list.size();i++){var st=list.get(i);if(!st.isEmpty()&&String(reg().ITEM.getKey(st.getItem()))===id)n+=st.getCount();}var off=p.getInventory().offhand;for(var j=0;j<off.size();j++){var so=off.get(j);if(!so.isEmpty()&&String(reg().ITEM.getKey(so.getItem()))===id)n+=so.getCount();}return n;}\nfunction cur(p){var C=Java.loadClass('top.theillusivec4.curios.api.CuriosApi');return C.getCuriosInventory(p).get();}\nfunction stand(p){return cur(p).getStacksHandler('stand').get().getStacks();}\nfunction purge(p,r){var lvl=p.level;var names=['net.minecraft.world.entity.monster.Pillager','net.minecraft.world.entity.animal.Cow','com.merlinkitsune.astral_dice.entity.RepulsionEntity','net.minecraft.world.entity.item.ItemEntity'];var n=0;for(var k=0;k<names.length;k++){var l=lvl.getEntitiesOfClass(Java.loadClass(names[k]),p.getBoundingBox().inflate(r));for(var i=0;i<l.size();i++){l.get(i).discard();n++;}}return n;}\nvar LSM=Java.loadClass('com.merlinkitsune.astral_dice.item.sign.LinglingSignManager');\nvar MA=Java.loadClass('com.merlinkitsune.astral_dice.component.ModAttachments');\nvar CM=Java.loadClass('com.merlinkitsune.astral_dice.item.ChargeManager');\nvar CS=Java.loadClass('com.merlinkitsune.astral_dice.item.CurioSlotUtil');\nvar MT=Java.loadClass('com.merlinkitsune.astral_dice.entity.ModEntityTypes');\nvar ET=Java.loadClass('net.minecraft.world.entity.EntityType');\nvar Pillager=Java.loadClass('net.minecraft.world.entity.monster.Pillager');\nvar RepulsionEntity=Java.loadClass('com.merlinkitsune.astral_dice.entity.RepulsionEntity');\nvar ItemEntity=Java.loadClass('net.minecraft.world.entity.item.ItemEntity');\nvar GameType=Java.loadClass('net.minecraft.world.level.GameType');\nvar Attributes=Java.loadClass('net.minecraft.world.entity.ai.attributes.Attributes');\nvar BSI=Java.loadClass('com.merlinkitsune.astral_dice.item.sign.BaseSignItem');\nvar ME=Java.loadClass('com.merlinkitsune.astral_dice.effect.ModEffects');\nvar HC=Java.loadClass('net.minecraft.world.InteractionHand');\nvar SIGN='astral_dice:lingling_sign';\nvar REP='astral_dice:effect_card_repulsion';\nvar BAR='astral_dice:effect_card_barricade';\nvar p=pl();\n\nreturn LSM.countTrackedByOwnedFields(p)>=5 && LSM.effectiveCharge(p)===5 && CM.getStacks(p)===0;\n})()"
-    },
-    {
-      "op": "eval_js",
-      "side": "server",
-      "save_as": "e_pre",
-      "timeout_ms": 20000,
-      "code": "(function(){function mcp(){var SH=Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');return SH.getCurrentServer();}\nfunction pl(){return mcp().getPlayerList().getPlayers().get(0);}\nfunction reg(){return Java.loadClass('net.minecraft.core.registries.BuiltInRegistries');}\nfunction rl(){return Java.loadClass('net.minecraft.resources.ResourceLocation');}\nfunction itemOf(id){return reg().ITEM.get(rl().parse(id));}\nfunction stackOf(id,n){var IS=Java.loadClass('net.minecraft.world.item.ItemStack');return new IS(itemOf(id),n);}\nfunction cnt(p,id){var n=0;var list=p.getInventory().items;for(var i=0;i<list.size();i++){var st=list.get(i);if(!st.isEmpty()&&String(reg().ITEM.getKey(st.getItem()))===id)n+=st.getCount();}var off=p.getInventory().offhand;for(var j=0;j<off.size();j++){var so=off.get(j);if(!so.isEmpty()&&String(reg().ITEM.getKey(so.getItem()))===id)n+=so.getCount();}return n;}\nfunction cur(p){var C=Java.loadClass('top.theillusivec4.curios.api.CuriosApi');return C.getCuriosInventory(p).get();}\nfunction stand(p){return cur(p).getStacksHandler('stand').get().getStacks();}\nfunction purge(p,r){var lvl=p.level;var names=['net.minecraft.world.entity.monster.Pillager','net.minecraft.world.entity.animal.Cow','com.merlinkitsune.astral_dice.entity.RepulsionEntity','net.minecraft.world.entity.item.ItemEntity'];var n=0;for(var k=0;k<names.length;k++){var l=lvl.getEntitiesOfClass(Java.loadClass(names[k]),p.getBoundingBox().inflate(r));for(var i=0;i<l.size();i++){l.get(i).discard();n++;}}return n;}\nvar LSM=Java.loadClass('com.merlinkitsune.astral_dice.item.sign.LinglingSignManager');\nvar MA=Java.loadClass('com.merlinkitsune.astral_dice.component.ModAttachments');\nvar CM=Java.loadClass('com.merlinkitsune.astral_dice.item.ChargeManager');\nvar CS=Java.loadClass('com.merlinkitsune.astral_dice.item.CurioSlotUtil');\nvar MT=Java.loadClass('com.merlinkitsune.astral_dice.entity.ModEntityTypes');\nvar ET=Java.loadClass('net.minecraft.world.entity.EntityType');\nvar Pillager=Java.loadClass('net.minecraft.world.entity.monster.Pillager');\nvar RepulsionEntity=Java.loadClass('com.merlinkitsune.astral_dice.entity.RepulsionEntity');\nvar ItemEntity=Java.loadClass('net.minecraft.world.entity.item.ItemEntity');\nvar GameType=Java.loadClass('net.minecraft.world.level.GameType');\nvar Attributes=Java.loadClass('net.minecraft.world.entity.ai.attributes.Attributes');\nvar BSI=Java.loadClass('com.merlinkitsune.astral_dice.item.sign.BaseSignItem');\nvar ME=Java.loadClass('com.merlinkitsune.astral_dice.effect.ModEffects');\nvar HC=Java.loadClass('net.minecraft.world.InteractionHand');\nvar SIGN='astral_dice:lingling_sign';\nvar REP='astral_dice:effect_card_repulsion';\nvar BAR='astral_dice:effect_card_barricade';\nvar p=pl();\n\nreturn {bonus:MA.getLinglingBonusCharge(p),eff:LSM.effectiveCharge(p),stacks:CM.getStacks(p),atk:p.getAttributeValue(Attributes.ATTACK_DAMAGE),spd:Math.round(p.getAttributeValue(Attributes.MOVEMENT_SPEED)*1000),rep:cnt(p,REP),cd:MA.getSignActiveCooldownEnd(p),hasSurge:LSM.hasSurge(p)};\n})()"
-    },
-    {
-      "op": "eval_js",
-      "side": "server",
-      "save_as": "e_trigger",
-      "timeout_ms": 20000,
-      "code": "(function(){function mcp(){var SH=Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');return SH.getCurrentServer();}\nfunction pl(){return mcp().getPlayerList().getPlayers().get(0);}\nfunction reg(){return Java.loadClass('net.minecraft.core.registries.BuiltInRegistries');}\nfunction rl(){return Java.loadClass('net.minecraft.resources.ResourceLocation');}\nfunction itemOf(id){return reg().ITEM.get(rl().parse(id));}\nfunction stackOf(id,n){var IS=Java.loadClass('net.minecraft.world.item.ItemStack');return new IS(itemOf(id),n);}\nfunction cnt(p,id){var n=0;var list=p.getInventory().items;for(var i=0;i<list.size();i++){var st=list.get(i);if(!st.isEmpty()&&String(reg().ITEM.getKey(st.getItem()))===id)n+=st.getCount();}var off=p.getInventory().offhand;for(var j=0;j<off.size();j++){var so=off.get(j);if(!so.isEmpty()&&String(reg().ITEM.getKey(so.getItem()))===id)n+=so.getCount();}return n;}\nfunction cur(p){var C=Java.loadClass('top.theillusivec4.curios.api.CuriosApi');return C.getCuriosInventory(p).get();}\nfunction stand(p){return cur(p).getStacksHandler('stand').get().getStacks();}\nfunction purge(p,r){var lvl=p.level;var names=['net.minecraft.world.entity.monster.Pillager','net.minecraft.world.entity.animal.Cow','com.merlinkitsune.astral_dice.entity.RepulsionEntity','net.minecraft.world.entity.item.ItemEntity'];var n=0;for(var k=0;k<names.length;k++){var l=lvl.getEntitiesOfClass(Java.loadClass(names[k]),p.getBoundingBox().inflate(r));for(var i=0;i<l.size();i++){l.get(i).discard();n++;}}return n;}\nvar LSM=Java.loadClass('com.merlinkitsune.astral_dice.item.sign.LinglingSignManager');\nvar MA=Java.loadClass('com.merlinkitsune.astral_dice.component.ModAttachments');\nvar CM=Java.loadClass('com.merlinkitsune.astral_dice.item.ChargeManager');\nvar CS=Java.loadClass('com.merlinkitsune.astral_dice.item.CurioSlotUtil');\nvar MT=Java.loadClass('com.merlinkitsune.astral_dice.entity.ModEntityTypes');\nvar ET=Java.loadClass('net.minecraft.world.entity.EntityType');\nvar Pillager=Java.loadClass('net.minecraft.world.entity.monster.Pillager');\nvar RepulsionEntity=Java.loadClass('com.merlinkitsune.astral_dice.entity.RepulsionEntity');\nvar ItemEntity=Java.loadClass('net.minecraft.world.entity.item.ItemEntity');\nvar GameType=Java.loadClass('net.minecraft.world.level.GameType');\nvar Attributes=Java.loadClass('net.minecraft.world.entity.ai.attributes.Attributes');\nvar BSI=Java.loadClass('com.merlinkitsune.astral_dice.item.sign.BaseSignItem');\nvar ME=Java.loadClass('com.merlinkitsune.astral_dice.effect.ModEffects');\nvar HC=Java.loadClass('net.minecraft.world.InteractionHand');\nvar SIGN='astral_dice:lingling_sign';\nvar REP='astral_dice:effect_card_repulsion';\nvar BAR='astral_dice:effect_card_barricade';\nvar p=pl();\n\nvar rep0=cnt(p,REP);\nvar t0=mcp().getTickCount();\nBSI.performSkillForCurio(p);\nvar e=p.getEffect(ME.LINGLING_SURGE.get());\nreturn {rep_delta:cnt(p,REP)-rep0,atk:p.getAttributeValue(Attributes.ATTACK_DAMAGE),spd:Math.round(p.getAttributeValue(Attributes.MOVEMENT_SPEED)*1000),hasSurge:LSM.hasSurge(p),dur:e?e.getDuration():-1,cd:MA.getSignActiveCooldownEnd(p)-t0,eff:LSM.effectiveCharge(p)};\n})()"
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
     },
     {
       "op": "wait",
-      "ms": 1200
+      "ms": 500
     },
     {
-      "op": "eval_js",
-      "side": "server",
-      "save_as": "e_retrigger",
-      "timeout_ms": 20000,
-      "code": "(function(){function mcp(){var SH=Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');return SH.getCurrentServer();}\nfunction pl(){return mcp().getPlayerList().getPlayers().get(0);}\nfunction reg(){return Java.loadClass('net.minecraft.core.registries.BuiltInRegistries');}\nfunction rl(){return Java.loadClass('net.minecraft.resources.ResourceLocation');}\nfunction itemOf(id){return reg().ITEM.get(rl().parse(id));}\nfunction stackOf(id,n){var IS=Java.loadClass('net.minecraft.world.item.ItemStack');return new IS(itemOf(id),n);}\nfunction cnt(p,id){var n=0;var list=p.getInventory().items;for(var i=0;i<list.size();i++){var st=list.get(i);if(!st.isEmpty()&&String(reg().ITEM.getKey(st.getItem()))===id)n+=st.getCount();}var off=p.getInventory().offhand;for(var j=0;j<off.size();j++){var so=off.get(j);if(!so.isEmpty()&&String(reg().ITEM.getKey(so.getItem()))===id)n+=so.getCount();}return n;}\nfunction cur(p){var C=Java.loadClass('top.theillusivec4.curios.api.CuriosApi');return C.getCuriosInventory(p).get();}\nfunction stand(p){return cur(p).getStacksHandler('stand').get().getStacks();}\nfunction purge(p,r){var lvl=p.level;var names=['net.minecraft.world.entity.monster.Pillager','net.minecraft.world.entity.animal.Cow','com.merlinkitsune.astral_dice.entity.RepulsionEntity','net.minecraft.world.entity.item.ItemEntity'];var n=0;for(var k=0;k<names.length;k++){var l=lvl.getEntitiesOfClass(Java.loadClass(names[k]),p.getBoundingBox().inflate(r));for(var i=0;i<l.size();i++){l.get(i).discard();n++;}}return n;}\nvar LSM=Java.loadClass('com.merlinkitsune.astral_dice.item.sign.LinglingSignManager');\nvar MA=Java.loadClass('com.merlinkitsune.astral_dice.component.ModAttachments');\nvar CM=Java.loadClass('com.merlinkitsune.astral_dice.item.ChargeManager');\nvar CS=Java.loadClass('com.merlinkitsune.astral_dice.item.CurioSlotUtil');\nvar MT=Java.loadClass('com.merlinkitsune.astral_dice.entity.ModEntityTypes');\nvar ET=Java.loadClass('net.minecraft.world.entity.EntityType');\nvar Pillager=Java.loadClass('net.minecraft.world.entity.monster.Pillager');\nvar RepulsionEntity=Java.loadClass('com.merlinkitsune.astral_dice.entity.RepulsionEntity');\nvar ItemEntity=Java.loadClass('net.minecraft.world.entity.item.ItemEntity');\nvar GameType=Java.loadClass('net.minecraft.world.level.GameType');\nvar Attributes=Java.loadClass('net.minecraft.world.entity.ai.attributes.Attributes');\nvar BSI=Java.loadClass('com.merlinkitsune.astral_dice.item.sign.BaseSignItem');\nvar ME=Java.loadClass('com.merlinkitsune.astral_dice.effect.ModEffects');\nvar HC=Java.loadClass('net.minecraft.world.InteractionHand');\nvar SIGN='astral_dice:lingling_sign';\nvar REP='astral_dice:effect_card_repulsion';\nvar BAR='astral_dice:effect_card_barricade';\nvar p=pl();\n\nvar r0=cnt(p,REP);var c0=MA.getSignActiveCooldownEnd(p);var a0=p.getAttributeValue(Attributes.ATTACK_DAMAGE);\nBSI.performSkillForCurio(p);\nreturn {rep_same:cnt(p,REP)===r0,cd_same:MA.getSignActiveCooldownEnd(p)===c0,atk_same:p.getAttributeValue(Attributes.ATTACK_DAMAGE)===a0,hasSurge:LSM.hasSurge(p)};\n})()"
+      "op": "inject_command",
+      "command": "/astralprobe linglingreset A_RESET",
+      "no_esc": true
     },
     {
-      "op": "note",
-      "text": "F 手持路障自动转强化拒止（被动 curioTick 每 10t 一次）；丢出强化拒止 → 掉落实体变路障（ItemTossEvent，事件不取消）。丢出走真实 Player#drop 路径。"
+      "op": "wait",
+      "ms": 600
     },
     {
-      "op": "eval_js",
-      "side": "server",
-      "save_as": "f_hold",
-      "timeout_ms": 20000,
-      "code": "(function(){function mcp(){var SH=Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');return SH.getCurrentServer();}\nfunction pl(){return mcp().getPlayerList().getPlayers().get(0);}\nfunction reg(){return Java.loadClass('net.minecraft.core.registries.BuiltInRegistries');}\nfunction rl(){return Java.loadClass('net.minecraft.resources.ResourceLocation');}\nfunction itemOf(id){return reg().ITEM.get(rl().parse(id));}\nfunction stackOf(id,n){var IS=Java.loadClass('net.minecraft.world.item.ItemStack');return new IS(itemOf(id),n);}\nfunction cnt(p,id){var n=0;var list=p.getInventory().items;for(var i=0;i<list.size();i++){var st=list.get(i);if(!st.isEmpty()&&String(reg().ITEM.getKey(st.getItem()))===id)n+=st.getCount();}var off=p.getInventory().offhand;for(var j=0;j<off.size();j++){var so=off.get(j);if(!so.isEmpty()&&String(reg().ITEM.getKey(so.getItem()))===id)n+=so.getCount();}return n;}\nfunction cur(p){var C=Java.loadClass('top.theillusivec4.curios.api.CuriosApi');return C.getCuriosInventory(p).get();}\nfunction stand(p){return cur(p).getStacksHandler('stand').get().getStacks();}\nfunction purge(p,r){var lvl=p.level;var names=['net.minecraft.world.entity.monster.Pillager','net.minecraft.world.entity.animal.Cow','com.merlinkitsune.astral_dice.entity.RepulsionEntity','net.minecraft.world.entity.item.ItemEntity'];var n=0;for(var k=0;k<names.length;k++){var l=lvl.getEntitiesOfClass(Java.loadClass(names[k]),p.getBoundingBox().inflate(r));for(var i=0;i<l.size();i++){l.get(i).discard();n++;}}return n;}\nvar LSM=Java.loadClass('com.merlinkitsune.astral_dice.item.sign.LinglingSignManager');\nvar MA=Java.loadClass('com.merlinkitsune.astral_dice.component.ModAttachments');\nvar CM=Java.loadClass('com.merlinkitsune.astral_dice.item.ChargeManager');\nvar CS=Java.loadClass('com.merlinkitsune.astral_dice.item.CurioSlotUtil');\nvar MT=Java.loadClass('com.merlinkitsune.astral_dice.entity.ModEntityTypes');\nvar ET=Java.loadClass('net.minecraft.world.entity.EntityType');\nvar Pillager=Java.loadClass('net.minecraft.world.entity.monster.Pillager');\nvar RepulsionEntity=Java.loadClass('com.merlinkitsune.astral_dice.entity.RepulsionEntity');\nvar ItemEntity=Java.loadClass('net.minecraft.world.entity.item.ItemEntity');\nvar GameType=Java.loadClass('net.minecraft.world.level.GameType');\nvar Attributes=Java.loadClass('net.minecraft.world.entity.ai.attributes.Attributes');\nvar BSI=Java.loadClass('com.merlinkitsune.astral_dice.item.sign.BaseSignItem');\nvar ME=Java.loadClass('com.merlinkitsune.astral_dice.effect.ModEffects');\nvar HC=Java.loadClass('net.minecraft.world.InteractionHand');\nvar SIGN='astral_dice:lingling_sign';\nvar REP='astral_dice:effect_card_repulsion';\nvar BAR='astral_dice:effect_card_barricade';\nvar p=pl();\n\np.getInventory().clearContent();\np.setItemInHand(HC.MAIN_HAND,stackOf(BAR,1));\nreturn {hand:String(reg().ITEM.getKey(p.getMainHandItem().getItem())),bar:cnt(p,BAR)};\n})()"
+      "op": "inject_command",
+      "command": "/astralprobe signreset A_PREP",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe equipslot dice \"astral_dice:dice\" A_DICE",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe signprep A_EQUIP \"astral_dice:lingling_sign\"",
+      "no_esc": true
     },
     {
       "op": "wait",
       "ms": 1400
     },
     {
-      "op": "eval_js",
-      "side": "server",
-      "save_as": "f_convert",
-      "timeout_ms": 20000,
-      "code": "(function(){function mcp(){var SH=Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');return SH.getCurrentServer();}\nfunction pl(){return mcp().getPlayerList().getPlayers().get(0);}\nfunction reg(){return Java.loadClass('net.minecraft.core.registries.BuiltInRegistries');}\nfunction rl(){return Java.loadClass('net.minecraft.resources.ResourceLocation');}\nfunction itemOf(id){return reg().ITEM.get(rl().parse(id));}\nfunction stackOf(id,n){var IS=Java.loadClass('net.minecraft.world.item.ItemStack');return new IS(itemOf(id),n);}\nfunction cnt(p,id){var n=0;var list=p.getInventory().items;for(var i=0;i<list.size();i++){var st=list.get(i);if(!st.isEmpty()&&String(reg().ITEM.getKey(st.getItem()))===id)n+=st.getCount();}var off=p.getInventory().offhand;for(var j=0;j<off.size();j++){var so=off.get(j);if(!so.isEmpty()&&String(reg().ITEM.getKey(so.getItem()))===id)n+=so.getCount();}return n;}\nfunction cur(p){var C=Java.loadClass('top.theillusivec4.curios.api.CuriosApi');return C.getCuriosInventory(p).get();}\nfunction stand(p){return cur(p).getStacksHandler('stand').get().getStacks();}\nfunction purge(p,r){var lvl=p.level;var names=['net.minecraft.world.entity.monster.Pillager','net.minecraft.world.entity.animal.Cow','com.merlinkitsune.astral_dice.entity.RepulsionEntity','net.minecraft.world.entity.item.ItemEntity'];var n=0;for(var k=0;k<names.length;k++){var l=lvl.getEntitiesOfClass(Java.loadClass(names[k]),p.getBoundingBox().inflate(r));for(var i=0;i<l.size();i++){l.get(i).discard();n++;}}return n;}\nvar LSM=Java.loadClass('com.merlinkitsune.astral_dice.item.sign.LinglingSignManager');\nvar MA=Java.loadClass('com.merlinkitsune.astral_dice.component.ModAttachments');\nvar CM=Java.loadClass('com.merlinkitsune.astral_dice.item.ChargeManager');\nvar CS=Java.loadClass('com.merlinkitsune.astral_dice.item.CurioSlotUtil');\nvar MT=Java.loadClass('com.merlinkitsune.astral_dice.entity.ModEntityTypes');\nvar ET=Java.loadClass('net.minecraft.world.entity.EntityType');\nvar Pillager=Java.loadClass('net.minecraft.world.entity.monster.Pillager');\nvar RepulsionEntity=Java.loadClass('com.merlinkitsune.astral_dice.entity.RepulsionEntity');\nvar ItemEntity=Java.loadClass('net.minecraft.world.entity.item.ItemEntity');\nvar GameType=Java.loadClass('net.minecraft.world.level.GameType');\nvar Attributes=Java.loadClass('net.minecraft.world.entity.ai.attributes.Attributes');\nvar BSI=Java.loadClass('com.merlinkitsune.astral_dice.item.sign.BaseSignItem');\nvar ME=Java.loadClass('com.merlinkitsune.astral_dice.effect.ModEffects');\nvar HC=Java.loadClass('net.minecraft.world.InteractionHand');\nvar SIGN='astral_dice:lingling_sign';\nvar REP='astral_dice:effect_card_repulsion';\nvar BAR='astral_dice:effect_card_barricade';\nvar p=pl();\n\nreturn {hand:String(reg().ITEM.getKey(p.getMainHandItem().getItem())),bar:cnt(p,BAR),rep:cnt(p,REP)};\n})()"
+      "op": "inject_command",
+      "command": "/astralprobe linglingread A_READ",
+      "no_esc": true
     },
     {
-      "op": "eval_js",
-      "side": "server",
-      "save_as": "f_drop",
-      "timeout_ms": 20000,
-      "code": "(function(){function mcp(){var SH=Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');return SH.getCurrentServer();}\nfunction pl(){return mcp().getPlayerList().getPlayers().get(0);}\nfunction reg(){return Java.loadClass('net.minecraft.core.registries.BuiltInRegistries');}\nfunction rl(){return Java.loadClass('net.minecraft.resources.ResourceLocation');}\nfunction itemOf(id){return reg().ITEM.get(rl().parse(id));}\nfunction stackOf(id,n){var IS=Java.loadClass('net.minecraft.world.item.ItemStack');return new IS(itemOf(id),n);}\nfunction cnt(p,id){var n=0;var list=p.getInventory().items;for(var i=0;i<list.size();i++){var st=list.get(i);if(!st.isEmpty()&&String(reg().ITEM.getKey(st.getItem()))===id)n+=st.getCount();}var off=p.getInventory().offhand;for(var j=0;j<off.size();j++){var so=off.get(j);if(!so.isEmpty()&&String(reg().ITEM.getKey(so.getItem()))===id)n+=so.getCount();}return n;}\nfunction cur(p){var C=Java.loadClass('top.theillusivec4.curios.api.CuriosApi');return C.getCuriosInventory(p).get();}\nfunction stand(p){return cur(p).getStacksHandler('stand').get().getStacks();}\nfunction purge(p,r){var lvl=p.level;var names=['net.minecraft.world.entity.monster.Pillager','net.minecraft.world.entity.animal.Cow','com.merlinkitsune.astral_dice.entity.RepulsionEntity','net.minecraft.world.entity.item.ItemEntity'];var n=0;for(var k=0;k<names.length;k++){var l=lvl.getEntitiesOfClass(Java.loadClass(names[k]),p.getBoundingBox().inflate(r));for(var i=0;i<l.size();i++){l.get(i).discard();n++;}}return n;}\nvar LSM=Java.loadClass('com.merlinkitsune.astral_dice.item.sign.LinglingSignManager');\nvar MA=Java.loadClass('com.merlinkitsune.astral_dice.component.ModAttachments');\nvar CM=Java.loadClass('com.merlinkitsune.astral_dice.item.ChargeManager');\nvar CS=Java.loadClass('com.merlinkitsune.astral_dice.item.CurioSlotUtil');\nvar MT=Java.loadClass('com.merlinkitsune.astral_dice.entity.ModEntityTypes');\nvar ET=Java.loadClass('net.minecraft.world.entity.EntityType');\nvar Pillager=Java.loadClass('net.minecraft.world.entity.monster.Pillager');\nvar RepulsionEntity=Java.loadClass('com.merlinkitsune.astral_dice.entity.RepulsionEntity');\nvar ItemEntity=Java.loadClass('net.minecraft.world.entity.item.ItemEntity');\nvar GameType=Java.loadClass('net.minecraft.world.level.GameType');\nvar Attributes=Java.loadClass('net.minecraft.world.entity.ai.attributes.Attributes');\nvar BSI=Java.loadClass('com.merlinkitsune.astral_dice.item.sign.BaseSignItem');\nvar ME=Java.loadClass('com.merlinkitsune.astral_dice.effect.ModEffects');\nvar HC=Java.loadClass('net.minecraft.world.InteractionHand');\nvar SIGN='astral_dice:lingling_sign';\nvar REP='astral_dice:effect_card_repulsion';\nvar BAR='astral_dice:effect_card_barricade';\nvar p=pl();\n\nvar lvl=p.level;\nvar old=lvl.getEntitiesOfClass(ItemEntity,p.getBoundingBox().inflate(8));\nfor(var i=0;i<old.size();i++){old.get(i).discard();}\np.setItemInHand(HC.MAIN_HAND,stackOf(REP,1));\nvar dropped=p.drop(false);\nvar items=lvl.getEntitiesOfClass(ItemEntity,p.getBoundingBox().inflate(8));\nvar barricade=0;var rep=0;\nfor(var j=0;j<items.size();j++){var id=String(reg().ITEM.getKey(items.get(j).getItem().getItem()));if(id===BAR)barricade++;else if(id===REP)rep++;}\nreturn {dropped:dropped,hand:String(reg().ITEM.getKey(p.getMainHandItem().getItem())),barricade:barricade,rep:rep};\n})()"
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe signslot A_SLOT",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe cardstack A_GRANT astral_dice:effect_card_repulsion",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe cardstack A_GRANT_BAR astral_dice:effect_card_barricade",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe signreset A_UNEQ",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe signslot A_UNEQ_SLOT",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe cardstack A_UNEQ_REP astral_dice:effect_card_repulsion",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe signprep A_REEQ \"astral_dice:lingling_sign\"",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe cardstack A_NOREGRANT astral_dice:effect_card_repulsion",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe linglinggrant A_G1 \"astral_dice:effect_card_repulsion\" 3",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/item replace entity @s weapon.mainhand with astral_dice:effect_card_repulsion 2",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe linglingread A_READ_G1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
     },
     {
       "op": "note",
-      "text": "G 创造栏解绑：ENABLE_CHIP_RECIPES=false（当前配置实测就是 false）时，4 种筹码材料必须仍在 dice 页；怪力乱神立牌也必须在。List.get(i) 在 Rhino 里会抛 ClassCastException（Double→ItemStack），必须用 iterator()。"
+      "text": "E 组：主动技能「能量突击」—— +1 张强化拒止 / 1200t 效果 / 主动冷却 3600t / 冷却中二次触发被拒。\n映射：`e_setup` → `signprep E_PRE`；`e_pre` → `chargeset E_CHARGE 0`（`AP_E_CHARGE_CD:stacks=0:has=0:weird=0:signBase=3600:sign=3600`，⚠️ 有充能层时 `ChargeManager.capByCharge` 会把立牌冷却封顶到 `CHARGE_SIGN_COOLDOWN_CAP_SECONDS=160s=3200t`，故必须先钉住 stacks=0 才能钉 3600）；`e_trigger` → `signcast E_CAST`（= `BaseSignItem.performSkillForCurio` 的同一服务端入口）+ `effectdur E_SURGE` + `cardstack E_REP1`；`e_retrigger` → 先 `signstate E_MARK mark` 记下冷却基准，再 `signcast E_CAST2`，再 `signstate E_RECHECK`（`cd_vs_mark=0` ⇒ 第二次按下**没有**改写 `sign_active_cooldown_end`，即被拒）。\n产品事实（LinglingSignItem）：`handleUse` 发 1 张强化拒止 + `EffectTimerGuard.apply(lingling_surge, LinglingSurgeEffect.DURATION_TICKS=1200, amp=0)`；`startActiveLockOnUse` 未覆写 ⇒ 缺省 false ⇒ 不进锁定态、当场写 `sign_active_cooldown_end = now + WeirdDiceHandler.signCooldownTicks`（无充能、无诡异骰子 ⇒ 3600t）。\n✅ 组内属性读数已可判：`linglingread` 现在打 `atk`（`ATTACK_DAMAGE` 终值）/ `spd`（`MOVEMENT_SPEED` 终值）/ `surge`（是否处于 `lingling_surge`）——即时层数 ×1 攻 / ×1% 移速的**绝对值**仍由 C 组（`linglingcharge` 后 `linglingread`）覆盖。"
     },
     {
-      "op": "eval_js",
-      "side": "server",
-      "save_as": "g_tab",
-      "timeout_ms": 20000,
-      "code": "(function(){function mcp(){var SH=Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');return SH.getCurrentServer();}\nfunction pl(){return mcp().getPlayerList().getPlayers().get(0);}\nfunction reg(){return Java.loadClass('net.minecraft.core.registries.BuiltInRegistries');}\nfunction rl(){return Java.loadClass('net.minecraft.resources.ResourceLocation');}\nfunction itemOf(id){return reg().ITEM.get(rl().parse(id));}\nfunction stackOf(id,n){var IS=Java.loadClass('net.minecraft.world.item.ItemStack');return new IS(itemOf(id),n);}\nfunction cnt(p,id){var n=0;var list=p.getInventory().items;for(var i=0;i<list.size();i++){var st=list.get(i);if(!st.isEmpty()&&String(reg().ITEM.getKey(st.getItem()))===id)n+=st.getCount();}var off=p.getInventory().offhand;for(var j=0;j<off.size();j++){var so=off.get(j);if(!so.isEmpty()&&String(reg().ITEM.getKey(so.getItem()))===id)n+=so.getCount();}return n;}\nfunction cur(p){var C=Java.loadClass('top.theillusivec4.curios.api.CuriosApi');return C.getCuriosInventory(p).get();}\nfunction stand(p){return cur(p).getStacksHandler('stand').get().getStacks();}\nfunction purge(p,r){var lvl=p.level;var names=['net.minecraft.world.entity.monster.Pillager','net.minecraft.world.entity.animal.Cow','com.merlinkitsune.astral_dice.entity.RepulsionEntity','net.minecraft.world.entity.item.ItemEntity'];var n=0;for(var k=0;k<names.length;k++){var l=lvl.getEntitiesOfClass(Java.loadClass(names[k]),p.getBoundingBox().inflate(r));for(var i=0;i<l.size();i++){l.get(i).discard();n++;}}return n;}\nvar LSM=Java.loadClass('com.merlinkitsune.astral_dice.item.sign.LinglingSignManager');\nvar MA=Java.loadClass('com.merlinkitsune.astral_dice.component.ModAttachments');\nvar CM=Java.loadClass('com.merlinkitsune.astral_dice.item.ChargeManager');\nvar CS=Java.loadClass('com.merlinkitsune.astral_dice.item.CurioSlotUtil');\nvar MT=Java.loadClass('com.merlinkitsune.astral_dice.entity.ModEntityTypes');\nvar ET=Java.loadClass('net.minecraft.world.entity.EntityType');\nvar Pillager=Java.loadClass('net.minecraft.world.entity.monster.Pillager');\nvar RepulsionEntity=Java.loadClass('com.merlinkitsune.astral_dice.entity.RepulsionEntity');\nvar ItemEntity=Java.loadClass('net.minecraft.world.entity.item.ItemEntity');\nvar GameType=Java.loadClass('net.minecraft.world.level.GameType');\nvar Attributes=Java.loadClass('net.minecraft.world.entity.ai.attributes.Attributes');\nvar BSI=Java.loadClass('com.merlinkitsune.astral_dice.item.sign.BaseSignItem');\nvar ME=Java.loadClass('com.merlinkitsune.astral_dice.effect.ModEffects');\nvar HC=Java.loadClass('net.minecraft.world.InteractionHand');\nvar SIGN='astral_dice:lingling_sign';\nvar REP='astral_dice:effect_card_repulsion';\nvar BAR='astral_dice:effect_card_barricade';\nvar p=pl();\n\nvar MCT=Java.loadClass('com.merlinkitsune.astral_dice.init.ModCreativeTabs');\nvar CFG=Java.loadClass('com.merlinkitsune.astral_dice.config.ModCommonConfig');\nvar want={regeneration_reagent:false,conductive_wire:false,star_coin_dust:false,mark_paint:false};\nvar it=MCT.DICE_TAB.get().getDisplayItems().iterator();\nvar total=0;var lingling=0;\nwhile(it.hasNext()){var st=it.next();total++;var id=String(reg().ITEM.getKey(st.getItem()));\nif(id==='astral_dice:regeneration_reagent')want.regeneration_reagent=true;\nelse if(id==='astral_dice:conductive_wire')want.conductive_wire=true;\nelse if(id==='astral_dice:star_coin_dust')want.star_coin_dust=true;\nelse if(id==='astral_dice:mark_paint')want.mark_paint=true;\nelse if(id==='astral_dice:lingling_sign')lingling++;}\nreturn {chips_enabled:CFG.ENABLE_CHIP_RECIPES.get(),mats:want,lingling:lingling,total:total};\n})()"
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe signprep E_PRE \"astral_dice:lingling_sign\"",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe chargeset E_CHARGE 0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe cardstack E_REP0 astral_dice:effect_card_repulsion",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe signcast E_CAST",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe effectdur E_SURGE astral_dice:lingling_surge",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe cardstack E_REP1 astral_dice:effect_card_repulsion",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe signstate E_MARK mark",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe signcast E_CAST2",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe signstate E_RECHECK",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
     },
     {
       "op": "note",
-      "text": "断言：全部走 state（值来自前序 eval_js 的 save_as，harness 用 ValueParsed 结构比对，支持标量/min/max/gte/lte/regex/set/contains 与嵌套递归）。mcp_status 的键是大写开头（Ok）。"
+      "text": "B 组（2026-10-20 由 BLOCK 转为可断言）：拾取路障 → 强化拒止。\n产品口径：`event/LinglingSignEvents#onItemPickup` —— 1.20.1 用 `EntityItemPickupEvent`（拾取**之前**派发，把**掉落物本身**换成等量强化拒止）；1.21.1 用 `ItemEntityPickupEvent.Post`（拾取**之后**扫背包转换）。\n映射：`b_pick` → `/astralprobe linglingpickup B_PICK \"astral_dice:effect_card_barricade\"`。该命令在**内存里**构造一个 `ItemEntity`（不 `addFreshEntity`、读完即 `discard`）：① 派发拾取前事件 → ② 真实入包（`ItemEntity#playerTouch`，不可用则等价走 `Inventory#add`）→ ③ 再派发一次（覆盖 1.21.1 的「拾取后」语义，幂等）。\n判据：`converted=1` ⇔ 背包内强化拒止**多了**且路障**没多**（数量守恒 ⇒ 转换而非复制）。前置 `/clear @s` 让 delta 干净。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe linglingpickup B_PICK \"astral_dice:effect_card_barricade\"",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
     },
     {
       "op": "note",
-      "text": "判定口径提醒：E 的冷却实测 3600t（180s），与规格文档写的 120s 不符 —— 本条在报告里按 REFUTED 登记，用例断言钉的是 GameplayConstants 的共享常量语义（3600），不迁就文档。"
+      "text": "C 组（2026-10-20 由 BLOCK 转为可断言）：额外充能层 `bonus_charge` = 自己放置的强化拒止当前吸附的唯一目标数；有效层 `layers` = 基础 + 额外（合计封顶 `CHARGE_MAX_STACKS=20`）。\n映射：`c_charge` → `/astralprobe linglingcharge C_CH 7`（与既有 `chargeset` 同一入口 `ChargeManager.removeAll + addStacks`）；`c_read` → `linglingread` 读回 `layers / charge / bonus_charge`。\n判据：`charge=7`（基础）、`bonus_charge=0`（本用例不造力场 ⇒ 无吸附目标）、`layers=7`（无额外层时等于基础）。\n⚠️ 仍 BLOCK 的子语义：`bonus_charge > 0` 与「合计封顶 20」需真实吸附目标 ⇒ 无 `RepulsionEntity` 构造入口，登记不测（`bonus_charge` 字段本身已可读，一旦有其它用例造出力场即可复用）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe linglingcharge C_CH 7",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe linglingread C_READ",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "note",
+      "text": "❌ 仍 BLOCK（原 D 组：攻击被吸附目标 +5 伤害）。\n产品口径：`LinglingSignEvents#onLivingHurt`（1.20.1，LOWEST）判据 = 佩戴者本人造成的**任意**伤害 + 目标被**任意**归属的强化拒止吸附（`LinglingSignManager.isTrackedByAny`）⇒ `amount + 5`。\n为何仍测不了：`attack <type> <tag>` 能造普通靶（`AP_<tag>_MELEE:<api>:dealt=N`），`linglingread` 也能读 `atk`，但**造不出「被自己力场吸附的目标」**（无 `RepulsionEntity` 生成 / 无 `tracked_targets` 写入入口）⇒ 只能测「无吸附目标时不加成」，不覆盖被测语义，属假绿 ⇒ **不设断言**，仅登记。"
+    },
+    {
+      "op": "note",
+      "text": "F 组：手持路障自动转强化拒止（被动 `tickPassive` → `convertHeldBarricades`，每 10t 一次）+ **丢出强化拒止 → 掉落实体变回路障**（§4.5）。\n映射：`f_hold` → `/item replace entity @s weapon.mainhand with astral_dice:effect_card_barricade 1`（**主手**写牌，避开「selected 由客户端上报」的错位）+ `cardstack F_PRE`（先把强化拒止清零，令后续读数不依赖 E 组残留）；`f_convert` → `wait 1400` 后 `cardstack F_HAND_REP`（应为 1）+ `cardstack F_HAND_BAR`（应为 0，守恒）。\n`f_drop`（2026-10-20 由 BLOCK 转为可断言）→ `/astralprobe linglingdrop F_DROP \"astral_dice:effect_card_repulsion\"`：在内存里构造 `ItemEntity` → 派发 `ItemTossEvent` 的同一处理（`entity.setItem(toBarricade(...))`，入世前替换）→ 读实体最终内容；判据 `reverted=1:out=astral_dice:effect_card_barricade`。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s astral_dice:effect_card_repulsion 0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe cardstack F_PRE astral_dice:effect_card_repulsion",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/item replace entity @s weapon.mainhand with astral_dice:effect_card_barricade 1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1400
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe cardstack F_HAND_REP astral_dice:effect_card_repulsion",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe cardstack F_HAND_BAR astral_dice:effect_card_barricade",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe linglingdrop F_DROP \"astral_dice:effect_card_repulsion\"",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "note",
+      "text": "G 组（**部分覆盖**，原为 BLOCK）：`ENABLE_CHIP_RECIPES=false` 时 4 种筹码材料仍在创造栏 dice 页、立牌也在。\n现状：探针仍无「转储创造栏 display items」的入口（原 autojs 版靠 `ModCreativeTabs.DICE_TAB.get().getDisplayItems()` 直读）⇒ 创造页**成员集合**本身不可判。\n替代（局限明显）：`linglingread` 的 `hand=` / `car=` 只能证明「立牌/卡牌在**玩家槽位**里可解析、id 正确」，**不能**证明它们出现在创造栏 dice 页 ⇒ 本组只作 id 解析与槽位读数的保底核对，创造栏成员断言仍登记为未覆盖。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe linglingread G_READ",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "note",
+      "text": "Z 收尾：把 stand 槽与主动锁定/冷却状态归零并清背包，避免污染下一条用例（`--purge-saves` 之外的进程内残留）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe signreset Z_CLEAN",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe linglingreset Z_RESET",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
     }
   ],
   "asserts": [
     {
-      "type": "state",
-      "from": "st",
-      "expect": {
-        "Ok": true
-      }
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_A_PREP_SIGNRESET:.*ls_wrote=0:ls_after=0:.*:sign=\\[\\]:lock=0:lock_end=0:grace_end=0:cd_end=0:"
     },
     {
-      "type": "state",
-      "from": "a_prep",
-      "expect": {
-        "ok": true,
-        "granted": false,
-        "hasDice": true,
-        "eq": false,
-        "rep": 0,
-        "bar": 0
-      }
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_LINGLING_RESET:A_RESET:ok=1:granted=0:charge=0:bonus=0"
     },
     {
-      "type": "state",
-      "from": "a_equip",
-      "expect": {
-        "eq": true,
-        "hasDice": true
-      }
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_A_DICE_EQUIP:dice:astral_dice:dice"
     },
     {
-      "type": "state",
-      "from": "a_grant",
-      "expect": {
-        "eq": true,
-        "granted": true,
-        "rep": 2,
-        "bar": 0
-      }
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_A_EQUIP_SIGNPREP:sign=astral_dice:lingling_sign:sign_err=:.*ls_wrote=0:ls_after=0:"
     },
     {
-      "type": "state",
-      "from": "a_unequip",
-      "expect": {
-        "eq": false,
-        "granted": true,
-        "rep": 2
-      }
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_LINGLING:A_READ:granted=true:layers=[0-9]+:charge=0:bonus_charge=[0-9]+:cd=-?[0-9]+:atk=-?[0-9.]+:spd=-?[0-9.]+:surge=[01]:hand=[a-z_:]*:car=[a-z_:]*x[0-9]+"
     },
     {
-      "type": "state",
-      "from": "a_reequip",
-      "expect": {
-        "eq": true,
-        "rep": 2
-      }
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_A_SLOT_SIGNSLOT:slot=astral_dice:lingling_sign:.*:used=1:"
     },
     {
-      "type": "state",
-      "from": "a_noregrant",
-      "expect": {
-        "eq": true,
-        "granted": true,
-        "rep": 2,
-        "bar": 0
-      }
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_A_GRANT_CARDSTACK:inv_slots=[1-9][0-9]*:inv_total=2:.*:filter=astral_dice:effect_card_repulsion:"
     },
     {
-      "type": "state",
-      "from": "b_clear",
-      "expect": {
-        "rep": 0,
-        "bar": 0
-      }
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_A_GRANT_BAR_CARDSTACK:.*:inv_total=0:.*:filter=astral_dice:effect_card_barricade:"
     },
     {
-      "type": "state",
-      "from": "b_pickup",
-      "expect": {
-        "rep": 1,
-        "bar": 0,
-        "picked": true
-      }
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_A_UNEQ_SLOT_SIGNSLOT:slot=none:.*:used=0:"
     },
     {
-      "type": "state",
-      "from": "c_setup",
-      "expect": {
-        "ok": true
-      }
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_A_UNEQ_REP_CARDSTACK:.*:inv_total=2:.*:filter=astral_dice:effect_card_repulsion:"
     },
     {
-      "type": "state",
-      "from": "c_read",
-      "expect": {
-        "own": 5,
-        "bonus": 5,
-        "eff": 5,
-        "stacks": 0,
-        "foreign": 1
-      }
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_A_NOREGRANT_CARDSTACK:.*:inv_total=2:.*:filter=astral_dice:effect_card_repulsion:"
     },
     {
-      "type": "state",
-      "from": "c_cap_read",
-      "expect": {
-        "own": {
-          "gte": 23
-        },
-        "bonus": {
-          "gte": 23
-        },
-        "eff": 20,
-        "max": 20
-      }
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_LINGLING_GRANT:A_G1:id=astral_dice:effect_card_repulsion:n=3:ok=1:"
     },
     {
-      "type": "state",
-      "from": "d_setup",
-      "expect": {
-        "ok": true
-      }
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_LINGLING:A_READ_G1:.*:hand=astral_dice:effect_card_repulsion:car=astral_dice:effect_card_repulsionx2"
     },
     {
-      "type": "state",
-      "from": "d_damage",
-      "expect": {
-        "gg_tracked": 10,
-        "gg_control": 5,
-        "gg_diff": 5,
-        "gt_tracked": true,
-        "gc_tracked": false,
-        "tracked_now": true,
-        "control_now": false,
-        "equipped": true,
-        "err1": "ok",
-        "err2": "ok",
-        "err3": "ok",
-        "err4": "ok"
-      }
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_E_PRE_SIGNPREP:sign=astral_dice:lingling_sign:sign_err=:.*:cd_end=0:"
     },
     {
-      "type": "state",
-      "from": "e_setup",
-      "expect": {
-        "eq": true,
-        "rep": 0
-      }
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_E_CHARGE_CD:stacks=0:has=0:weird=0:signBase=3600:sign=3600:"
     },
     {
-      "type": "state",
-      "from": "e_pre",
-      "expect": {
-        "bonus": 5,
-        "eff": 5,
-        "stacks": 0,
-        "atk": 1,
-        "spd": 100,
-        "rep": 0,
-        "cd": 0,
-        "hasSurge": false
-      }
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_E_REP0_CARDSTACK:.*:inv_total=0:.*:filter=astral_dice:effect_card_repulsion:"
     },
     {
-      "type": "state",
-      "from": "e_trigger",
-      "expect": {
-        "rep_delta": 1,
-        "atk": 6,
-        "spd": 105,
-        "hasSurge": true,
-        "dur": 1200,
-        "cd": 3600,
-        "eff": 5
-      }
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_E_CAST_SIGNCAST:.*:cd_before=0:.*:cd_after=[1-9][0-9]+:cd_started=1:.*:max_cd=3600:"
     },
     {
-      "type": "state",
-      "from": "e_retrigger",
-      "expect": {
-        "rep_same": true,
-        "cd_same": true,
-        "atk_same": true,
-        "hasSurge": true
-      }
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_E_SURGE_EFFECTDUR:fx=astral_dice:lingling_surge:present=1:dur=1[0-2][0-9][0-9]:inf=0:amp=0"
     },
     {
-      "type": "state",
-      "from": "f_hold",
-      "expect": {
-        "hand": "astral_dice:effect_card_barricade",
-        "bar": 1
-      }
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_E_REP1_CARDSTACK:.*:inv_total=1:.*:filter=astral_dice:effect_card_repulsion:"
     },
     {
-      "type": "state",
-      "from": "f_convert",
-      "expect": {
-        "hand": "astral_dice:effect_card_repulsion",
-        "bar": 0,
-        "rep": 1
-      }
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_E_MARK_SIGNSTATE:mark=1:"
     },
     {
-      "type": "state",
-      "from": "f_drop",
-      "expect": {
-        "dropped": true,
-        "hand": "minecraft:air",
-        "barricade": 1,
-        "rep": 0
-      }
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_E_CAST2_SIGNCAST:.*:cd_before=[1-9][0-9]+:"
     },
     {
-      "type": "state",
-      "from": "g_tab",
-      "expect": {
-        "chips_enabled": false,
-        "mats": {
-          "regeneration_reagent": true,
-          "conductive_wire": true,
-          "star_coin_dust": true,
-          "mark_paint": true
-        },
-        "lingling": 1,
-        "total": {
-          "gte": 100
-        }
-      }
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_E_RECHECK_SIGNSTATE:mark=0:lock_end_vs_mark=-?[0-9]+:grace_end_vs_mark=-?[0-9]+:cd_vs_mark=0:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_LINGLING_PICKUP:B_PICK:item=astral_dice:effect_card_barricade:converted=1:car=[a-z_:]*x[0-9]+:rep=[0-9]+:bar=0:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_LINGLING_CHARGE:C_CH:charge=7"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_LINGLING:C_READ:.*:layers=7:charge=7:bonus_charge=0:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_F_PRE_CARDSTACK:inv_slots=[0-9]+:inv_total=[0-9]+:.*:filter=astral_dice:effect_card_repulsion:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_F_HAND_REP_CARDSTACK:.*:inv_total=[0-9]+:.*:filter=astral_dice:effect_card_repulsion:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_F_HAND_BAR_CARDSTACK:.*:inv_total=0:.*:filter=astral_dice:effect_card_barricade:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_LINGLING_DROP:F_DROP:item=astral_dice:effect_card_repulsion:reverted=1:out=astral_dice:effect_card_barricade:via=[a-z]+"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_LINGLING:G_READ:.*:hand=[a-z_:]*:car=[a-z_:]*x[0-9]+"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_Z_CLEAN_SIGNRESET:.*:sign=\\[\\]:lock=0:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_LINGLING_RESET:Z_RESET:ok=1:granted=0:charge=0:bonus=0"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_[A-Z0-9]+_ERR"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_[A-Z0-9]+_EX:"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": ":err=[^-]"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "Unknown or incomplete command|Incorrect argument for command|Expected whitespace to end one argument|Unknown command|Expected literal|Unclosed quoted string|Expected quote to start a string|<--\\[|错误的命令参数"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "redeclared|redeclaration of var"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "ls_api=none"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "ls_api=:"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
     }
-  ]
+  ],
+  "evidence": []
 }
