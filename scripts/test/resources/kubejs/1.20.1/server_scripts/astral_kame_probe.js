@@ -51,8 +51,8 @@ function kBase() { return kLoad("com.merlinkitsune.astral_dice.item.sign.BaseSig
 function kAtt() { return kLoad("com.merlinkitsune.astral_dice.component.ModAttachments"); }
 function kFx() { return kLoad("com.merlinkitsune.astral_dice.effect.ModEffects"); }
 function kDcm() { return kLoad("com.merlinkitsune.astral_dice.combat.DiceCombatModifiers"); }
-function kParty() { return kLoad("com.merlinkitsune.astral_dice.combat.PartyRelations"); }
-function kEcon() { return kLoad("com.merlinkitsune.starenginelib.economy.StarEngineEconomy"); }
+function kParty() { return kLoad("com.merlinkitsune.starengine.combat.PartyRelations"); }
+function kEcon() { return kLoad("com.merlinkitsune.starengine.economy.StarEngineEconomy"); }
 function kAttrs() { return kLoad("net.minecraft.world.entity.ai.attributes.Attributes"); }
 
 function kSend(ctx, text) {

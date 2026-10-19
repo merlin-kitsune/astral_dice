@@ -1,14 +1,14 @@
 package com.merlinkitsune.astral_dice.item;
 
 
-import com.merlinkitsune.starenginelib.component.GameplayConstants;
+import com.merlinkitsune.starengine.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ConcealmentEffect;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.event.AstralEventDispatcher;
 import com.merlinkitsune.astral_dice.event.AstralEventIds;
 import com.merlinkitsune.astral_dice.event.api.AstralEventTrigger;
-import com.merlinkitsune.starenginelib.event.EventTargetCollector;
+import com.merlinkitsune.starengine.event.EventTargetCollector;
 import com.merlinkitsune.astral_dice.network.ModNetwork.ActionBarMessage;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -26,7 +26,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-import com.merlinkitsune.astral_dice.combat.PartyRelations;
+import com.merlinkitsune.starengine.combat.PartyRelations;
 /**
  * "调查阶段"事件核心逻辑。
  * 阶段:调查阶段 I / II / III / 真相揭露。仅由击杀"隐匿调查"目标触发(大侦探立牌的 11 项随机事件不包含该事件)。

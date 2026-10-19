@@ -1,6 +1,6 @@
 package com.merlinkitsune.astral_dice.event;
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
-import com.merlinkitsune.starenginelib.item.CuriosCompat;
+import com.merlinkitsune.starengine.item.CuriosCompat;
 
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.item.ChargeManager;
@@ -26,7 +26,8 @@ import com.merlinkitsune.astral_dice.item.chip.RevengeHalberdChipItem;
 import com.merlinkitsune.astral_dice.item.chip.FlashlightChipItem;
 import com.merlinkitsune.astral_dice.item.StarLightManager;
 
-import com.merlinkitsune.starenginelib.event.ModEffectRemoval;
+import com.merlinkitsune.starengine.event.EffectTimerGuard;
+import com.merlinkitsune.starengine.event.ModEffectRemoval;
 @Mod.EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class PlayerTickEvents {
     @SubscribeEvent

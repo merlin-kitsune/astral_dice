@@ -3,16 +3,16 @@ package com.merlinkitsune.astral_dice.item.sign;
 
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
-import com.merlinkitsune.starenginelib.combat.HostileTargets;
+import com.merlinkitsune.starengine.combat.HostileTargets;
 import com.merlinkitsune.astral_dice.combat.SherryThrowManager;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.SherryReasoningEffect;
 import com.merlinkitsune.astral_dice.event.WeirdDiceHandler;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.chip.CurrentCoreChipItem;
-import com.merlinkitsune.starenginelib.component.GameplayConstants;
+import com.merlinkitsune.starengine.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.item.ChargeManager;
-import com.merlinkitsune.starenginelib.event.EventTargetCollector;
+import com.merlinkitsune.starengine.event.EventTargetCollector;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -32,7 +32,7 @@ import top.theillusivec4.curios.api.CuriosApi;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import com.merlinkitsune.astral_dice.combat.PartyRelations;
+import com.merlinkitsune.starengine.combat.PartyRelations;
 
 /**
  * 怪力侦探立牌(sherry,史诗)。
@@ -152,12 +152,7 @@ public class SherrySignItem extends BaseSignItem {
 
     /** 玩家是否佩戴怪力侦探立牌 */
     public static boolean isEquipped(Player player) {
-        // 总闸门(骰子装备和卸除调整):未佩戴骰子 ⇒ 本件功能一律不生效(数值保留)
-        if (!CurioSlotUtil.hasDiceEquipped(player)) return false;
-        if (player == null) return false;
-        var curios = CuriosApi.getCuriosInventory(player);
-        return curios.isPresent()
-                && curios.get().findFirstCurio(s -> s.is(ModItems.SHERRY_SIGN.get())).isPresent();
+        return SignEquipCheck.isEquipped(player, ModItems.SHERRY_SIGN.get());
     }
 
     @Override

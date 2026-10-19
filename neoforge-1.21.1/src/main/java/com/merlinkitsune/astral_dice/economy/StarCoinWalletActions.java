@@ -98,6 +98,6 @@ public final class StarCoinWalletActions {
         net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(player,
                 new com.merlinkitsune.astral_dice.network.ActionBarPayload(
                         message.withStyle(net.minecraft.ChatFormatting.YELLOW),
-                        com.merlinkitsune.starenginelib.component.GameplayConstants.ACTIONBAR_DURATION_TICKS));
+                        com.merlinkitsune.starengine.component.GameplayConstants.ACTIONBAR_DURATION_TICKS));
     }
 }

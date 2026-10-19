@@ -42,7 +42,7 @@ function rrTryLoad(name) {
 var RR_Mc = rrTryLoad("net.minecraft.client.Minecraft");
 var RR_Style = rrTryLoad("net.minecraft.network.chat.Style");
 var RR_BIR = rrTryLoad("net.minecraft.core.registries.BuiltInRegistries");
-var RR_Lib = rrTryLoad("com.merlinkitsune.starenginelib.item.Rarity");
+var RR_Lib = rrTryLoad("com.merlinkitsune.starengine.item.Rarity");
 
 if (rrLoadErrors.length > 0) {
     rrLog("evt=loaderr:count=" + rrLoadErrors.length +":" + rrLoadErrors.join(" | "));

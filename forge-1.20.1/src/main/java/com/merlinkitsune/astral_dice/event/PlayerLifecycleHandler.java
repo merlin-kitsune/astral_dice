@@ -1,7 +1,7 @@
 package com.merlinkitsune.astral_dice.event;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
-import com.merlinkitsune.starenginelib.component.GameplayConstants;
+import com.merlinkitsune.starengine.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
@@ -24,7 +24,8 @@ import vazkii.patchouli.common.item.ItemModBook;
 import com.merlinkitsune.astral_dice.item.card.EffectCardPeriod;
 import com.merlinkitsune.astral_dice.item.card.TemporaryCardUtil;
 
-import com.merlinkitsune.starenginelib.event.ModEffectRemoval;
+import com.merlinkitsune.starengine.event.EffectTimerGuard;
+import com.merlinkitsune.starengine.event.ModEffectRemoval;
 @Mod.EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class PlayerLifecycleHandler {
     // 玩家死亡:移除全部治愈(清零点数并结束"治愈"效果)与骰神赐福效果,防止死亡残留
@@ -64,7 +65,7 @@ public class PlayerLifecycleHandler {
         // 魔法秘典计数器、骰咒倍率同样无需在此清理:它们都是附件且不在死亡复制集合内。
         // 效果牌伤害加成(忍者立牌 KomachiDamageBonus/调查员立牌 RinPages)死亡保留,不清除
         // 护法立牌:死亡时丢失全部"剑气"层数(死亡时刻即清除装备中的立牌数据,不受 KeepInventory 影响)
-        com.merlinkitsune.starenginelib.item.CuriosCompat.getCuriosInventory(player).ifPresent(handler -> {
+        com.merlinkitsune.starengine.item.CuriosCompat.getCuriosInventory(player).ifPresent(handler -> {
             var misaki = handler.findFirstCurio(
                     s -> s.is(com.merlinkitsune.astral_dice.item.ModItems.MISAKI_SIGN.get()));
             if (misaki.isPresent()) {
@@ -130,6 +131,19 @@ public class PlayerLifecycleHandler {
         if (player == null || player.level().isClientSide()) return;
         ChargeManager.restoreAfterDeath(player);
         com.merlinkitsune.astral_dice.component.DeathPreservedBonuses.restoreAfterDeath(player);
+    }
+
+    // 立牌玩家级状态迁移(2026-10-19 B2):旧 10 个 sign_* 附件键 → sign_state 复合键。
+    // 优先级 HIGHEST:其余登录处理器(白泽赐福 / 降神 / 治愈 / 冷却相关)可能读立牌冷却,
+    // 迁移必须在它们之前落盘。幂等由 ModAttachments#migrateSignStateFromLegacy 保证
+    // (sign_state 非默认即早退,重复登录不会用旧值覆盖新值)。
+    @SubscribeEvent(priority = EventPriority.HIGHEST)
+    public static void onPlayerLoggedInMigrateSignState(
+            net.minecraftforge.event.entity.player.PlayerEvent.PlayerLoggedInEvent event) {
+        Player player = event.getEntity();
+        if (player == null) return;
+        if (player.level().isClientSide()) return;
+        ModAttachments.migrateSignStateFromLegacy(player);
     }
 
     // 玩家退出/重新登录:清除骰神赐福效果(防止退出后重进仍保留战斗状态)

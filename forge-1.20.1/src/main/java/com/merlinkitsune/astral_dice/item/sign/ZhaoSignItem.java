@@ -12,13 +12,13 @@ import com.merlinkitsune.astral_dice.item.card.FuCardItem;
 import com.merlinkitsune.astral_dice.item.card.HuoCardItem;
 import com.merlinkitsune.astral_dice.item.chip.CurrentCoreChipItem;
 import com.merlinkitsune.astral_dice.network.ModNetwork;
-import com.merlinkitsune.astral_dice.target.SelfTargetable;
-import com.merlinkitsune.starenginelib.component.GameplayConstants;
-import com.merlinkitsune.starenginelib.event.EventTargetCollector;
-import com.merlinkitsune.starenginelib.item.CuriosCompat;
-import com.merlinkitsune.starenginelib.target.TargetSelectionAction;
-import com.merlinkitsune.starenginelib.target.TargetSelectionRegistry;
-import com.merlinkitsune.starenginelib.target.TargetType;
+import com.merlinkitsune.starengine.target.SelfTargetable;
+import com.merlinkitsune.starengine.component.GameplayConstants;
+import com.merlinkitsune.starengine.event.EventTargetCollector;
+import com.merlinkitsune.starengine.item.CuriosCompat;
+import com.merlinkitsune.starengine.target.TargetSelectionAction;
+import com.merlinkitsune.starengine.target.TargetSelectionRegistry;
+import com.merlinkitsune.starengine.target.TargetType;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -35,7 +35,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
-import com.merlinkitsune.astral_dice.combat.PartyRelations;
+import com.merlinkitsune.starengine.combat.PartyRelations;
 
 /**
  * 风水师立牌(全局命名 {@code zhao};传奇品质)。
@@ -100,7 +100,7 @@ import com.merlinkitsune.astral_dice.combat.PartyRelations;
  * 主动效果图标复用同一张图({@code textures/mob_effect/zhao_blessing.png})。
  */
 @Mod.EventBusSubscriber(modid = AstralDiceMod.MODID)
-public class ZhaoSignItem extends BaseSignItem {
+public class ZhaoSignItem extends BaseSignItem implements SignHooks.DiceJudgmentRoll {
     private static final Logger LOGGER = LoggerFactory.getLogger(ZhaoSignItem.class);
 
     /** 主动技能的动作 id(注册表键;也是 actionbar 技能名 {@code msg.astral_dice.target_select.skill.<id>} 的来源) */
@@ -194,12 +194,7 @@ public class ZhaoSignItem extends BaseSignItem {
 
     /** 玩家是否佩戴风水师立牌(被动"福祸相倚"/"完美帮手"/"心意相连"的佩戴判定) */
     public static boolean isEquipped(Player player) {
-        // 总闸门(骰子装备和卸除调整):未佩戴骰子 ⇒ 本件功能一律不生效(数值保留)
-        if (!CurioSlotUtil.hasDiceEquipped(player)) return false;
-        if (player == null) return false;
-        var curios = CuriosCompat.getCuriosInventory(player);
-        return curios.isPresent()
-                && curios.get().findFirstCurio(s -> s.is(ModItems.ZHAO_SIGN.get())).isPresent();
+        return SignEquipCheck.isEquipped(player, ModItems.ZHAO_SIGN.get());
     }
 
     // ══════════════════════════════════════════════════════════════════════════
@@ -438,6 +433,13 @@ public class ZhaoSignItem extends BaseSignItem {
             return "fu";
         }
         return null;
+    }
+
+    // === B1 注册式钩子分发入口（实例转发；静态方法保留以兼容 KubeJS 探针等外部直调） ===
+
+    @Override
+    public String handleDiceRollResult(Player player, int dice) {
+        return onDiceRollResult(player, dice);
     }
 
     private static void notifyDiceGift(Player player, String langKey) {

@@ -2,7 +2,7 @@ package com.merlinkitsune.astral_dice.economy;
 
 import com.merlinkitsune.astral_dice.config.ModCommonConfig;
 import com.merlinkitsune.astral_dice.item.ModItems;
-import com.merlinkitsune.starenginelib.economy.StarEngineEconomy;
+import com.merlinkitsune.starengine.economy.StarEngineEconomy;
 
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Inventory;
@@ -13,7 +13,7 @@ import net.minecraft.world.item.ItemStack;
 /**
  * 星币面额与「货币物品 ↔ 钱包余额」的折算入口（消费方侧）。
  *
- * <p><b>分层</b>：钱包**余额**由前置库 starengine_lib 的 {@link StarEngineEconomy} 承载
+ * <p><b>分层</b>：钱包**余额**由前置库 starengine 的 {@link StarEngineEconomy} 承载
  * （玩家持久化数据、不受死亡掉落影响）；「星币是物品、面额是多少、物品栏怎么折算」属本模组的
  * 货币语义，留在本类 —— 与库「不持物品概念」的分工一致。
  *

@@ -1,6 +1,6 @@
 package com.merlinkitsune.astral_dice.shop;
 
-import com.merlinkitsune.astral_dice.combat.PartyRelations;
+import com.merlinkitsune.starengine.combat.PartyRelations;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.chip.MemberRecommendationChipItem;
@@ -15,7 +15,7 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import com.merlinkitsune.starenginelib.item.CuriosCompat;
+import com.merlinkitsune.starengine.item.CuriosCompat;
 
 import java.util.ArrayList;
 import java.util.List;

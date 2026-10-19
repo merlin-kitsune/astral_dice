@@ -13,46 +13,41 @@
       "text": "筹码商店·客户端真发包购买（哨兵 770）。判据正本 = 计划表 §5「唯一购买入口 = mouseClicked 确认分支，不注册 mouseDragged」+ §6「扣款写物品栏 → 重抽 → closeContainer」+ §4 拒绝码。\n\n链路：/astralshop bal CB 770 ⇒ 客户端余额落在武装带 [770,799] ⇒ 客户端探针武装；/astralshop copenkeep CB 让**服务端**开店 ⇒ 客户端 ChipShopScreen 真开屏，开屏那一拍的 gate=770 命中 770 场景 ⇒\n  step20 直接对屏对象调 mouseClicked(筹码格 0 中心 99,45（GUI 相对 = 条带内相对 + STRIP 偏移 (34,6)；旧值 65,39 是少加偏移的错值）) → step25 落选中读数 → step40 点确认键中心 (57,54) ⇒ **真发 ChipShopBuyPayload** ⇒ 服务端 handleBuy：扣款 770→760、写入物品栏第一个空位、purchasedCount+1、重抽候选、closeContainer 关店。\n\n⚠️ 开屏后会吞掉注入的聊天命令（T 键被 GUI 吞）⇒ 开屏后的服务端读数只能等客户端流程跑完（≈45t + 关店）再注入。\n⚠️ 2026-10-12 修：权威服务端读数由**客户端探针在关屏那一拍**用 connection.sendCommand 发出（不经过聊天通道，GUI 开着也能发），用例尾部那条 cstate 注入只作二次确认。\n⚠️ 「关店」是服务端 closeContainer 的结果 ⇒ 客户端 tick 的关屏分支落 evt=closed；若购买失败，屏会一直开着并落 evt=chip_buy:still_open ⇒ 本用例用 absent 断言把这条钉死。\n⚠️ 客户端机器行在 logs/kubejs/client.log ⇒ source=\"kubejs_client\"；服务端探针行在 latest.log ⇒ source=\"latest\"。\n⚠️ 平台差异（forge-1.20.1）：购买包走本线既有 Forge 网络通道（SimpleChannel 承载 ChipShopBuyPayload，替代 1.21.1 的 NeoForge PacketDistributor）；客户端探针机器行 AP_CSC:* 的键名/格式与 1.21.1 逐字一致。"
     },
     {
-      "op": "eval_js",
-      "side": "server",
-      "timeout_ms": 20000,
-      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/gamemode creative\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
     },
     {
       "op": "wait",
       "ms": 800
     },
     {
-      "op": "eval_js",
-      "side": "server",
-      "timeout_ms": 20000,
-      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/clear @s\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
     },
     {
       "op": "wait",
       "ms": 800
     },
     {
-      "op": "eval_js",
-      "side": "server",
-      "timeout_ms": 20000,
-      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/tp @s ~ ~ ~ 0 0\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+      "op": "inject_command",
+      "command": "/tp @s ~ ~ ~ 0 0",
+      "no_esc": true
     },
     {
       "op": "wait",
       "ms": 800
     },
     {
-      "op": "eval_js",
-      "side": "server",
-      "timeout_ms": 20000,
-      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralshop curioreset CB\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+      "op": "inject_command",
+      "command": "/astralshop curioreset CB",
+      "no_esc": true
     },
     {
-      "op": "eval_js",
-      "side": "server",
-      "timeout_ms": 20000,
-      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralshop creset CB\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+      "op": "inject_command",
+      "command": "/astralshop creset CB",
+      "no_esc": true
     },
     {
       "op": "wait",
@@ -63,47 +58,42 @@
       "ms": 800
     },
     {
-      "op": "eval_js",
-      "side": "server",
-      "timeout_ms": 20000,
-      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralshop cprice CB 0\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+      "op": "inject_command",
+      "command": "/astralshop cprice CB 0",
+      "no_esc": true
     },
     {
       "op": "wait",
       "ms": 900
     },
     {
-      "op": "eval_js",
-      "side": "server",
-      "timeout_ms": 20000,
-      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralshop bal CB 770\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+      "op": "inject_command",
+      "command": "/astralshop bal CB 770",
+      "no_esc": true
     },
     {
       "op": "wait",
       "ms": 1600
     },
     {
-      "op": "eval_js",
-      "side": "server",
-      "timeout_ms": 20000,
-      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralshop copenkeep CB\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+      "op": "inject_command",
+      "command": "/astralshop copenkeep CB",
+      "no_esc": true
     },
     {
       "op": "wait",
       "ms": 12000
     },
     {
-      "op": "eval_js",
-      "side": "server",
-      "timeout_ms": 20000,
-      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralshop cstate CB\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+      "op": "inject_command",
+      "command": "/astralshop cstate CB",
+      "no_esc": true
     },
     {
       "op": "wait",
       "ms": 900
     }
   ],
-  "channel": "autojs",
   "asserts": [
     {
       "type": "log",
@@ -153,10 +143,5 @@
     {
       "type": "crash"
     }
-  ],
-  "migration": {
-    "from": "legacy-kubejs",
-    "at": "2026-10-18",
-    "tool": "scripts/test/convert_cases_autojs.py"
-  }
+  ]
 }

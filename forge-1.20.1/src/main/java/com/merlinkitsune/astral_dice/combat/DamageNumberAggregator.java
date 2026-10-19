@@ -24,7 +24,7 @@ import net.minecraftforge.fml.common.Mod;
  *
  * <h2>它解决什么问题</h2>
  * 改造前,跳数字由 8 处调用点各自 {@code ModNetwork.DamageNumberMessage.send(...)} 发送,而客户端一侧
- * (库 {@code starenginelib} 的 {@code ClientDamageNumbers})是按 <b>entityId 单键</b>存储、
+ * (库 {@code starengine} 的 {@code ClientDamageNumbers})是按 <b>entityId 单键</b>存储、
  * <b>后到覆盖先到</b>:
  * <ul>
  *   <li>一次骰战命中会先发「主伤害」、再发「额外加伤」⇒ 前者被后者覆盖,玩家只看到一段;</li>

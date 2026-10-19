@@ -2,7 +2,7 @@ package com.merlinkitsune.astral_dice.item.sign;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
-import com.merlinkitsune.astral_dice.combat.PartyRelations;
+import com.merlinkitsune.starengine.combat.PartyRelations;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.KangelFanEffect;
 import com.merlinkitsune.astral_dice.effect.KangelFanIndicatorEffect;
@@ -15,7 +15,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import com.merlinkitsune.starenginelib.item.CuriosCompat;
+import com.merlinkitsune.starengine.item.CuriosCompat;
 import net.minecraftforge.event.entity.living.LivingDamageEvent;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -155,11 +155,7 @@ public class KangelSignItem extends BaseSignItem {
 
     /** 玩家是否佩戴超天酱立牌(功能闸门:需已佩戴骰子) */
     public static boolean isEquipped(Player player) {
-        if (player == null) return false;
-        if (!CurioSlotUtil.hasDiceEquipped(player)) return false;
-        var curios = CuriosCompat.getCuriosInventory(player);
-        return curios.isPresent()
-                && curios.get().findFirstCurio(s -> s.is(ModItems.KANGEL_SIGN.get())).isPresent();
+        return SignEquipCheck.isEquipped(player, ModItems.KANGEL_SIGN.get());
     }
 
     /** 该玩家是否装着超天酱立牌(**纯**槽位判定,不带骰子闸门;照 sherry/hanna 的 wearsSign 口径,供跨玩家判定) */

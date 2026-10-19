@@ -1,7 +1,7 @@
 package com.merlinkitsune.astral_dice.item.sign;
 
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
-import com.merlinkitsune.starenginelib.component.GameplayConstants;
+import com.merlinkitsune.starengine.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import net.minecraft.world.InteractionResultHolder;
@@ -9,12 +9,13 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import top.theillusivec4.curios.api.SlotContext;
-import com.merlinkitsune.starenginelib.item.CuriosCompat;
+import com.merlinkitsune.starengine.item.CuriosCompat;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.card.LivingPageItem;
 import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
 import net.minecraft.world.effect.MobEffectInstance;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
+import com.merlinkitsune.starengine.event.EffectTimerGuard;
 import com.merlinkitsune.astral_dice.effect.RinPageRangeEffect;
 
 public class RinSignItem extends BaseSignItem {
@@ -35,10 +36,7 @@ public class RinSignItem extends BaseSignItem {
      * 判定入口统一在 {@code SpellDamageRegistry},禁止在别处直接读原附件值做加成或显示加成。
      */
     public static boolean isEquipped(Player player) {
-        // 总闸门(骰子装备和卸除调整):未佩戴骰子 ⇒ 本件功能一律不生效(数值保留)
-        if (!CurioSlotUtil.hasDiceEquipped(player)) return false;
-        var curios = CuriosCompat.getCuriosInventory(player);
-        return curios.isPresent() && curios.get().findFirstCurio(s -> s.is(ModItems.RIN_SIGN.get())).isPresent();
+        return SignEquipCheck.isEquipped(player, ModItems.RIN_SIGN.get());
     }
 
     @Override
@@ -53,7 +51,7 @@ public class RinSignItem extends BaseSignItem {
             VitaminPillChipItem.giveCard(player, LivingPageItem.createFor(player));
         }
         // 追加(2026-10-03 用户裁决):主动追加「书页射程」—— 活体书页使用射程 +50%,持续 2:00
-        player.addEffect(new MobEffectInstance(ModEffects.RIN_PAGE_RANGE.get(),
+        EffectTimerGuard.apply(player, new MobEffectInstance(ModEffects.RIN_PAGE_RANGE.get(),
                 RinPageRangeEffect.DURATION_TICKS, 0, false, false, true));
         return InteractionResultHolder.success(stack);
     }

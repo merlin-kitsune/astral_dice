@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.deepseek_sign",
+  "category": "astral_dice:signs",
+  "icon": "astral_dice:deepseek_sign",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:deepseek_sign",
+      "text": "astral_dice.guide.entry.deepseek_sign.1"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.deepseek_sign.2"
+    }
+  ],
+  "sortnum": 44
+}

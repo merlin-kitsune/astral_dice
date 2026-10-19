@@ -1,15 +1,15 @@
 package com.merlinkitsune.astral_dice.config;
 
-import com.merlinkitsune.starenginelib.component.GameplayConfigValues;
+import com.merlinkitsune.starengine.component.GameplayConfigValues;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
 /**
  * 公共配置:仅保留少量仍允许玩家调整的选项。
- * 其余玩法数值已固定为库 {@code com.merlinkitsune.starenginelib.component.GameplayConstants}
+ * 其余玩法数值已固定为库 {@code com.merlinkitsune.starengine.component.GameplayConstants}
  * 的常量,不再写入配置文件。
  *
  * <p>配置文件的读写与配置 GUI 全部留在本模组:NeoForge 的 {@link ModConfigSpec} 与 Forge 的
- * {@code ForgeConfigSpec} 不通用,无法下沉到共享库 starengine_lib;库只提供平台无关的值快照
+ * {@code ForgeConfigSpec} 不通用,无法下沉到共享库 starengine;库只提供平台无关的值快照
  * seam —— 本类把当前值打成 {@link GameplayConfigValues}(见 {@link #snapshot()}),
  * 由 {@code AstralDiceMod} 在配置加载完成后推给
  * {@code GameplayConstants.applyConfig(GameplayConfigValues)}。
@@ -122,7 +122,7 @@ public final class ModCommonConfig {
 
         // === 星币钱包 ===
         // 面额口径固定为「1 星币 = 1、1 星币袋 = 9」(常量在 item/StarCoinCurrency,不开放配置)。
-        // 余额本体由前置库 starengine_lib 的 economy 账本承载(玩家持久化数据,不受死亡掉落影响)。
+        // 余额本体由前置库 starengine 的 economy 账本承载(玩家持久化数据,不受死亡掉落影响)。
         builder.push("star_coin_wallet").comment("=== 星币钱包 ===");
         ENABLE_STAR_COIN_WALLET = builder.comment("是否启用星币钱包(默认：true)",
                         "false = 物品栏不出现钱包按钮,星币/星币袋维持普通物品行为(与改动前一致);",

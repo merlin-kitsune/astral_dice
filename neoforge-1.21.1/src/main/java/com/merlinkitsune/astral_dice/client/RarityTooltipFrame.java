@@ -2,8 +2,8 @@
 package com.merlinkitsune.astral_dice.client;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
-import com.merlinkitsune.starenginelib.item.AstralRarities;
-import com.merlinkitsune.starenginelib.item.Rarity;
+import com.merlinkitsune.starengine.item.AstralRarities;
+import com.merlinkitsune.starengine.item.Rarity;
 import net.minecraft.Util;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.api.distmarker.Dist;
@@ -30,7 +30,7 @@ import net.neoforged.neoforge.client.event.RenderTooltipEvent;
  *   <li>与本模组无关的物品 `oritech:adamant_block`，提示框边框实测为**纯色 `#FFC24B`**
  *       —— 正是本模组**传奇档的档位色**，且「整圈纯色」正是本类的绘制风格（原版是紫蓝渐变）；</li>
  *   <li>全包 **491 个 jar 递归展开（含 JarJar 内嵌）**扫描 `0x00FFC24B`：命中的类**只有本模组内嵌的
- *       `com/merlinkitsune/starenginelib/item/Rarity.class`** ⇒ 这个颜色只可能来自我们；</li>
+ *       `com/merlinkitsune/starengine/item/Rarity.class`** ⇒ 这个颜色只可能来自我们；</li>
  *   <li>本模组物品（`astral_dice:ren_sign`，史诗）名字已是正确的淡紫、边框却是金色 ⇒ 同为残留。</li>
  * </ol>
  * 即：**我们上一次写下的边框色被某个第三方缓存，并施加到下一个「没人设色」的 tooltip 上**。

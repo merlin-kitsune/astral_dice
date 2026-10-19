@@ -8,11 +8,11 @@ import com.merlinkitsune.astral_dice.item.RenShieldManager;
 import com.merlinkitsune.astral_dice.item.card.RandomCardHandler;
 import com.merlinkitsune.astral_dice.item.chip.CurrentCoreChipItem;
 import com.merlinkitsune.astral_dice.network.ActionBarPayload;
-import com.merlinkitsune.astral_dice.target.SelfTargetable;
-import com.merlinkitsune.starenginelib.component.GameplayConstants;
-import com.merlinkitsune.starenginelib.target.TargetSelectionAction;
-import com.merlinkitsune.starenginelib.target.TargetSelectionRegistry;
-import com.merlinkitsune.starenginelib.target.TargetType;
+import com.merlinkitsune.starengine.target.SelfTargetable;
+import com.merlinkitsune.starengine.component.GameplayConstants;
+import com.merlinkitsune.starengine.target.TargetSelectionAction;
+import com.merlinkitsune.starengine.target.TargetSelectionRegistry;
+import com.merlinkitsune.starengine.target.TargetType;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -134,11 +134,6 @@ public class RenSignItem extends BaseSignItem {
 
     /** 玩家是否佩戴游戏大师立牌(被动「鼠鼠救我」的佩戴判定) */
     public static boolean isEquipped(Player player) {
-        // 总闸门(骰子装备和卸除调整):未佩戴骰子 ⇒ 本件功能一律不生效(数值保留)
-        if (!CurioSlotUtil.hasDiceEquipped(player)) return false;
-        if (player == null) return false;
-        var curios = CuriosApi.getCuriosInventory(player);
-        return curios.isPresent()
-                && curios.get().findFirstCurio(s -> s.is(ModItems.REN_SIGN.get())).isPresent();
+        return SignEquipCheck.isEquipped(player, ModItems.REN_SIGN.get());
     }
 }

@@ -13,46 +13,41 @@
       "text": "筹码经济调整批(CHIP-ECON)·配置开启侧(enable_chip_recipes=true)。\n\n前提(手工完成，按顺序三步；仓库根 = F:\\MCProject\\astral_dice_multiloader-next)：\n① 改配置：本用例线 1.20.1 的配置文件 = `run/1.20.1/config/astral_dice-common.toml`，把其中第 15 行的 `enable_chip_recipes = false` 改为 `enable_chip_recipes = true`；另一条线 1.21.1 的配置文件 = `run/1.21.1/config/astral_dice-common.toml`（同批跑该线的 ON 用例时改那一条；两份文件均已实测存在，当前默认值都是 false）。\n② 必须重启客户端：配置只在**启动时**读取 ⇒ 改完要**完全关闭并重启**实例（创造栏由**客户端**构建、读的是本机配置 ⇒ 客户端也必须重启；dev 里客户端与服务端共用 run/<ver>/config）。\n③ 跑完收口：本用例结束后把两条线的 `enable_chip_recipes` 都改回 `false` 并再次重启（ON 只是本轮实机取证的临时状态，不属于默认口径；留着 true 会让后续用例与默认发布口径失真）。\n\n判据：①astral_dice:*_chip 配方 61 条全部加载(chips=61:config=1)②创造栏 dice_tab 内 4 种材料(再生试剂/导电丝/星币尘/标记涂料)全部出现(mats=4/4)。(说明:本线(forge 1.20.1)的这 4 种材料仍在筹码配方总开关之内,开启侧本就可见 ⇒ 此处 mats=4/4 与该开关无关;1.21.1 侧已按 spec §7 解绑总开关,其关闭侧 CHIP-ECON-OFF-1.21.1 同样读 mats=4/4。⚠️ 待 forge 移植解绑后,本用例的开关差异将只剩①的 chips 条数。)\n\n⚠️ CTAB 读数每次启动至多一次 + 需要余额落在 [770,799] 武装带 ⇒ 本用例须在**刚重启的新实例**里第一个跑(或至少是该次启动里第一个武装客户端探针的用例)。\n标签口径：本用例 tag 用 EO ⇒ 机器行前缀是 AP_EO_*(不是 AP_CL_*)。"
     },
     {
-      "op": "eval_js",
-      "side": "server",
-      "timeout_ms": 20000,
-      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/gamemode creative\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
     },
     {
       "op": "wait",
       "ms": 800
     },
     {
-      "op": "eval_js",
-      "side": "server",
-      "timeout_ms": 20000,
-      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/clear @s\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
     },
     {
       "op": "wait",
       "ms": 800
     },
     {
-      "op": "eval_js",
-      "side": "server",
-      "timeout_ms": 20000,
-      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/tp @s ~ ~ ~ 0 0\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+      "op": "inject_command",
+      "command": "/tp @s ~ ~ ~ 0 0",
+      "no_esc": true
     },
     {
       "op": "wait",
       "ms": 800
     },
     {
-      "op": "eval_js",
-      "side": "server",
-      "timeout_ms": 20000,
-      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralshop curioreset EO\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+      "op": "inject_command",
+      "command": "/astralshop curioreset EO",
+      "no_esc": true
     },
     {
-      "op": "eval_js",
-      "side": "server",
-      "timeout_ms": 20000,
-      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralshop creset EO\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+      "op": "inject_command",
+      "command": "/astralshop creset EO",
+      "no_esc": true
     },
     {
       "op": "wait",
@@ -63,20 +58,18 @@
       "ms": 800
     },
     {
-      "op": "eval_js",
-      "side": "server",
-      "timeout_ms": 20000,
-      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralshop crecipes EO\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+      "op": "inject_command",
+      "command": "/astralshop crecipes EO",
+      "no_esc": true
     },
     {
       "op": "wait",
       "ms": 1200
     },
     {
-      "op": "eval_js",
-      "side": "server",
-      "timeout_ms": 20000,
-      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralshop bal EO 771\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+      "op": "inject_command",
+      "command": "/astralshop bal EO 771",
+      "no_esc": true
     },
     {
       "op": "note",
@@ -87,7 +80,6 @@
       "ms": 6000
     }
   ],
-  "channel": "autojs",
   "asserts": [
     {
       "type": "log",
@@ -102,10 +94,5 @@
     {
       "type": "crash"
     }
-  ],
-  "migration": {
-    "from": "legacy-kubejs",
-    "at": "2026-10-18",
-    "tool": "scripts/test/convert_cases_autojs.py"
-  }
+  ]
 }

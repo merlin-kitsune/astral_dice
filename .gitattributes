@@ -4,3 +4,8 @@
 src/generated/**/.cache/* text eol=lf
 src/generated/**/*.json text eol=lf
 gradlew text eol=lf
+# WSL 唯一测试入口 / 工具链：Windows 侧 core.autocrlf=true 会把检出的脚本写成 CRLF，
+# 导致 bash 报 `$'\r': command not found`。这些后缀强制 LF。
+*.sh   text eol=lf
+*.py   text eol=lf
+*.conf text eol=lf

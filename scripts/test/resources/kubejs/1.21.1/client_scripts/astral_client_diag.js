@@ -63,8 +63,8 @@ var CDIAG_ENABLE = false;
 var Mc_CLASS = Java.loadClass("net.minecraft.client.Minecraft");
 var Component_CLASS = Java.loadClass("net.minecraft.network.chat.Component");
 var TSC_CLASS = Java.loadClass("com.merlinkitsune.astral_dice.client.TargetSelectionClient");
-var ABM_CLASS = Java.loadClass("com.merlinkitsune.starenginelib.client.ActionBarManager");
-var GPC_CLASS = Java.loadClass("com.merlinkitsune.starenginelib.component.GameplayConstants");
+var ABM_CLASS = Java.loadClass("com.merlinkitsune.starengine.client.ActionBarManager");
+var GPC_CLASS = Java.loadClass("com.merlinkitsune.starengine.component.GameplayConstants");
 var SHOT_CLASS = Java.loadClass("net.minecraft.client.Screenshot");
 
 var CDIAG_HEARTBEAT_TICKS = 100;   // 5 秒一条心跳（证「探针活着」，同时给 gameTime 一个时间轴）

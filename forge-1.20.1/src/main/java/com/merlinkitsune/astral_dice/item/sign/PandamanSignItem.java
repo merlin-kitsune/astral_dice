@@ -1,11 +1,12 @@
 package com.merlinkitsune.astral_dice.item.sign;
 
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
-import com.merlinkitsune.starenginelib.combat.HostileTargets;
+import com.merlinkitsune.starengine.combat.HostileTargets;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
-import com.merlinkitsune.starenginelib.item.CuriosCompat;
+import com.merlinkitsune.starengine.event.EffectTimerGuard;
+import com.merlinkitsune.starengine.item.CuriosCompat;
 import com.merlinkitsune.astral_dice.item.HealingManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.chip.FriendshipBadgeChipItem;
@@ -32,7 +33,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
-import com.merlinkitsune.astral_dice.combat.PartyRelations;
+import com.merlinkitsune.starengine.combat.PartyRelations;
 
 /**
  * 肉弹战车立牌(命名:pandaman,稀有)。
@@ -108,7 +109,7 @@ public class PandamanSignItem extends BaseSignItem {
                 // 故此处显式排除玩家并保留单参判定(玩家不是"嘲讽目标"的语义域)
                 e -> HostileTargets.isHostile(e) && !(e instanceof Player) && e.isAlive());
         for (LivingEntity target : nearby) {
-            target.addEffect(new MobEffectInstance(ModEffects.PANDAMAN_TAUNT.get(),
+            EffectTimerGuard.apply(target, new MobEffectInstance(ModEffects.PANDAMAN_TAUNT.get(),
                     TAUNT_DURATION_TICKS, 0, false, true));
             ModAttachments.setPandamanTauntSource(target, Optional.of(player.getUUID()));
             if (target instanceof Mob mob) {
@@ -120,7 +121,7 @@ public class PandamanSignItem extends BaseSignItem {
 
     // 主动技能 ActionBar 反馈
     @SubscribeEvent
-    public static void onSignActiveTriggered(com.merlinkitsune.starenginelib.event.SignActiveTriggeredEvent event) {
+    public static void onSignActiveTriggered(com.merlinkitsune.starengine.event.SignActiveTriggeredEvent event) {
         if (event.getSignStack().is(ModItems.PANDAMAN_SIGN.get())) {
             sendSignActionBar(event.getPlayer(), "msg.astral_dice.pandaman_active_used");
             event.setHandled();
@@ -139,12 +140,7 @@ public class PandamanSignItem extends BaseSignItem {
 
     // 玩家是否佩戴肉弹战车立牌
     public static boolean isEquipped(Player player) {
-        // 总闸门(骰子装备和卸除调整):未佩戴骰子 ⇒ 本件功能一律不生效(数值保留)
-        if (!CurioSlotUtil.hasDiceEquipped(player)) return false;
-        if (player == null) return false;
-        var curios = CuriosCompat.getCuriosInventory(player);
-        return curios.isPresent()
-                && curios.get().findFirstCurio(s -> s.is(ModItems.PANDAMAN_SIGN.get())).isPresent();
+        return SignEquipCheck.isEquipped(player, ModItems.PANDAMAN_SIGN.get());
     }
 
     // 使用汉堡/巧克力蛋糕后触发被动
@@ -192,21 +188,8 @@ public class PandamanSignItem extends BaseSignItem {
     // 刷新 MAX_HEALTH 瞬态修饰器:数值为当前累计加成,0 时移除
     public static void refreshMaxHealthBonus(Player player) {
         if (player == null || player.level().isClientSide()) return;
-        AttributeInstance attr = player.getAttribute(Attributes.MAX_HEALTH);
-        if (attr == null) return;
-        int bonus = ModAttachments.getPandamanMaxHealthBonus(player);
-        UUID id = UUID.nameUUIDFromBytes(
-                (AstralDiceMod.MODID + ":" + MAX_HEALTH_MODIFIER_KEY).getBytes(java.nio.charset.StandardCharsets.UTF_8));
-        AttributeModifier existing = attr.getModifier(id);
-        if (bonus <= 0) {
-            if (existing != null) attr.removeModifier(id);
-            return;
-        }
-        if (existing == null || existing.getAmount() != bonus) {
-            attr.removeModifier(id);
-            attr.addTransientModifier(new AttributeModifier(id,
-                    "astral_dice:" + MAX_HEALTH_MODIFIER_KEY, bonus,
-                    AttributeModifier.Operation.ADDITION));
-        }
+        SignAttributeUtil.apply(player, Attributes.MAX_HEALTH, MAX_HEALTH_MODIFIER_KEY,
+                ModAttachments.getPandamanMaxHealthBonus(player),
+                AttributeModifier.Operation.ADDITION);
     }
 }

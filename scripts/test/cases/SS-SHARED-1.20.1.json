@@ -16,36 +16,32 @@
       "text": "前置：装钻石骰子（2+ chip 槽，需同时装两枚）；星光置 0；`ssclear` 复位。"
     },
     {
-      "op": "eval_js",
-      "side": "server",
-      "timeout_ms": 20000,
-      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/gamemode survival\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+      "op": "inject_command",
+      "command": "/gamemode survival",
+      "no_esc": true
     },
     {
       "op": "wait",
       "ms": 600
     },
     {
-      "op": "eval_js",
-      "side": "server",
-      "timeout_ms": 20000,
-      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/clear @s\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
     },
     {
-      "op": "eval_js",
-      "side": "server",
-      "timeout_ms": 20000,
-      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/time set midnight\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+      "op": "inject_command",
+      "command": "/time set midnight",
+      "no_esc": true
     },
     {
       "op": "wait",
       "ms": 300
     },
     {
-      "op": "eval_js",
-      "side": "server",
-      "timeout_ms": 20000,
-      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/gamerule doDaylightCycle false\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+      "op": "inject_command",
+      "command": "/gamerule doDaylightCycle false",
+      "no_esc": true
     },
     {
       "op": "wait",
@@ -56,70 +52,63 @@
       "ms": 500
     },
     {
-      "op": "eval_js",
-      "side": "server",
-      "timeout_ms": 20000,
-      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralprobe ssclear S2\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+      "op": "inject_command",
+      "command": "/astralprobe ssclear S2",
+      "no_esc": true
     },
     {
       "op": "wait",
       "ms": 400
     },
     {
-      "op": "eval_js",
-      "side": "server",
-      "timeout_ms": 20000,
-      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralprobe equipslot dice \\\"astral_dice:diamond_dice\\\" S2\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+      "op": "inject_command",
+      "command": "/astralprobe equipslot dice \"astral_dice:diamond_dice\" S2",
+      "no_esc": true
     },
     {
       "op": "wait",
       "ms": 500
     },
     {
-      "op": "eval_js",
-      "side": "server",
-      "timeout_ms": 20000,
-      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralprobe equipslot chip \\\"astral_dice:purple_shooting_star_chip\\\" S2\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+      "op": "inject_command",
+      "command": "/astralprobe equipslot chip \"astral_dice:purple_shooting_star_chip\" S2",
+      "no_esc": true
     },
     {
       "op": "wait",
       "ms": 300
     },
     {
-      "op": "eval_js",
-      "side": "server",
-      "timeout_ms": 20000,
-      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralprobe slotput S2 chip 1 \\\"astral_dice:golden_shooting_star_chip\\\"\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+      "op": "inject_command",
+      "command": "/astralprobe slotput S2 chip 1 \"astral_dice:golden_shooting_star_chip\"",
+      "no_esc": true
     },
     {
       "op": "wait",
       "ms": 400
     },
     {
-      "op": "eval_js",
-      "side": "server",
-      "timeout_ms": 20000,
-      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralprobe signprep S2 \\\"astral_dice:sherry_sign\\\" 0\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+      "op": "inject_command",
+      "command": "/astralprobe signprep S2 \"astral_dice:sherry_sign\" 0",
+      "no_esc": true
     },
     {
       "op": "wait",
       "ms": 500
     },
     {
-      "op": "eval_js",
-      "side": "server",
-      "timeout_ms": 20000,
-      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralprobe ssspawn S2 plain\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+      "op": "inject_command",
+      "command": "/astralprobe ssspawn S2 plain",
+      "no_esc": true
     },
     {
       "op": "wait",
       "ms": 500
     },
     {
-      "op": "eval_js",
-      "side": "server",
-      "timeout_ms": 20000,
-      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralprobe ssread S2\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+      "op": "inject_command",
+      "command": "/astralprobe ssread S2",
+      "no_esc": true
     },
     {
       "op": "wait",
@@ -130,10 +119,9 @@
       "text": "触发一次：两个 Pending 应同时入队（紫 t=0→10、金 t=20→30；0.5 秒落地、间隔 0.5 秒）。"
     },
     {
-      "op": "eval_js",
-      "side": "server",
-      "timeout_ms": 20000,
-      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralprobe ssfire S2\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+      "op": "inject_command",
+      "command": "/astralprobe ssfire S2",
+      "no_esc": true
     },
     {
       "op": "wait",
@@ -144,10 +132,9 @@
       "text": "t≈0.25s：粒子仍在飞行 → 靶子应**还是满血**（证明伤害在落地后才结算）。"
     },
     {
-      "op": "eval_js",
-      "side": "server",
-      "timeout_ms": 20000,
-      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralprobe ssread S2\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+      "op": "inject_command",
+      "command": "/astralprobe ssread S2",
+      "no_esc": true
     },
     {
       "op": "wait",
@@ -158,10 +145,9 @@
       "text": "t≈1.0s：紫色已落地（-1），金色仍在飞行 → 靶子 19、星光 1。"
     },
     {
-      "op": "eval_js",
-      "side": "server",
-      "timeout_ms": 20000,
-      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralprobe ssread S2\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+      "op": "inject_command",
+      "command": "/astralprobe ssread S2",
+      "no_esc": true
     },
     {
       "op": "wait",
@@ -172,10 +158,9 @@
       "text": "t≈2.6s：金色已落地（-2）→ 靶子 17、星光 2（一次触发累计 +2 ⇒ 共享计时器）。"
     },
     {
-      "op": "eval_js",
-      "side": "server",
-      "timeout_ms": 20000,
-      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralprobe ssread S2\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+      "op": "inject_command",
+      "command": "/astralprobe ssread S2",
+      "no_esc": true
     },
     {
       "op": "wait",
@@ -190,37 +175,33 @@
       "ms": 3000
     },
     {
-      "op": "eval_js",
-      "side": "server",
-      "timeout_ms": 20000,
-      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralprobe ssread S2\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+      "op": "inject_command",
+      "command": "/astralprobe ssread S2",
+      "no_esc": true
     },
     {
       "op": "wait",
       "ms": 400
     },
     {
-      "op": "eval_js",
-      "side": "server",
-      "timeout_ms": 20000,
-      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralprobe ssclear S2\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+      "op": "inject_command",
+      "command": "/astralprobe ssclear S2",
+      "no_esc": true
     },
     {
       "op": "wait",
       "ms": 400
     },
     {
-      "op": "eval_js",
-      "side": "server",
-      "timeout_ms": 20000,
-      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/clear @s\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
     },
     {
       "op": "wait",
       "ms": 400
     }
   ],
-  "channel": "autojs",
   "asserts": [
     {
       "type": "log",
@@ -273,10 +254,5 @@
     {
       "type": "crash"
     }
-  ],
-  "migration": {
-    "from": "legacy-kubejs",
-    "at": "2026-10-18",
-    "tool": "scripts/test/convert_cases_autojs.py"
-  }
+  ]
 }

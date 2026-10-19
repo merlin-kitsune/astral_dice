@@ -78,7 +78,7 @@ var CuriosApi = Java.loadClass("top.theillusivec4.curios.api.CuriosApi");
 var ModAttachments = Java.loadClass("com.merlinkitsune.astral_dice.component.ModAttachments");
 var ModEffects = Java.loadClass("com.merlinkitsune.astral_dice.effect.ModEffects");
 var ModEffectRemoval = Java.loadClass(// 2026-09-17 前置库下沉:本模组效果移除通道已迁到 StarEngine Lib(消费方副本已删),故改引用库包名。
-"com.merlinkitsune.starenginelib.event.ModEffectRemoval");
+"com.merlinkitsune.starengine.event.ModEffectRemoval");
 var EmpowerManager = Java.loadClass("com.merlinkitsune.astral_dice.item.EmpowerManager");
 // 魔法箭袋(2026-09-19 验证「箭袋 × 活体书页」)：只读读取其佩戴/追踪/冷却/记录牌
 var MagicQuiverChipItemClass = Java.loadClass("com.merlinkitsune.astral_dice.item.chip.MagicQuiverChipItem");
@@ -1301,7 +1301,7 @@ function doAnvilClose(ctx, tag) {
 // ════════════════════════════════════════════════════════════════════════════
 
 var GameplayConstantsClass = Java.loadClass(// 2026-09-17 前置库下沉:共享常量已迁到 StarEngine Lib(消费方副本已删),故改引用库包名。
-"com.merlinkitsune.starenginelib.component.GameplayConstants");
+"com.merlinkitsune.starengine.component.GameplayConstants");
 var EffectCardPeriodClass = Java.loadClass("com.merlinkitsune.astral_dice.item.card.EffectCardPeriod");
 var BaseSignItemClass = Java.loadClass("com.merlinkitsune.astral_dice.item.sign.BaseSignItem");
 var NancyLuSignItemClass = Java.loadClass("com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem");
@@ -1542,7 +1542,7 @@ function doKomachiRepeat(ctx, tag) {
 var MOSES_SIGN_ID = "astral_dice:moses_sign";
 var HAND_FAN_BIG_CHIP_ID = "astral_dice:hand_fan_big_chip";
 var TargetSelectionManagerClass = Java.loadClass("com.merlinkitsune.astral_dice.target.TargetSelectionManager");
-var SignSelectionGateClass = Java.loadClass("com.merlinkitsune.starenginelib.target.SignSelectionGate");
+var SignSelectionGateClass = Java.loadClass("com.merlinkitsune.starengine.target.SignSelectionGate");
 var EffectCardUtilClass = Java.loadClass("com.merlinkitsune.astral_dice.item.card.EffectCardUtil");
 
 // ⚠️ 池对象**必须先复制成 java.util.ArrayList** 再做任何成员调用（2026-09-18 t27 修复 T14-F1）：
@@ -4475,7 +4475,7 @@ function doRenActive(ctx, tag) {
  */
 var LULU_SIGN_ID = "astral_dice:lulu_sign";
 var LULU_ACTION_ID = "lulu_healing_slime";
-var TargetSelectionRegistryClass = Java.loadClass("com.merlinkitsune.starenginelib.target.TargetSelectionRegistry");
+var TargetSelectionRegistryClass = Java.loadClass("com.merlinkitsune.starengine.target.TargetSelectionRegistry");
 
 /** 治愈点数(读不到报 -1,便于用例区分「0 点」与「读失败」) */
 function luluHealPoints(p) { try { return HealingManagerClass.getPoints(p); } catch (e) { return -1; } }
@@ -5350,7 +5350,7 @@ function doChargeCd(ctx, tag) {
     var p = ctx.source.getPlayerOrException();
     var Charge = Java.loadClass("com.merlinkitsune.astral_dice.item.ChargeManager");
     var Weird = Java.loadClass("com.merlinkitsune.astral_dice.event.WeirdDiceHandler");
-    var GC = Java.loadClass("com.merlinkitsune.starenginelib.component.GameplayConstants");
+    var GC = Java.loadClass("com.merlinkitsune.starengine.component.GameplayConstants");
     var now = nowTick(p);
     var cardBase = GC.EFFECT_CARD_COOLDOWN_SECONDS * 20;
     var cardEnd = ModAttachments.getEffectCardCooldownEnd(p);
@@ -5546,8 +5546,8 @@ var TeruDiceCombatModifiersClass = teruLoadCls("com.merlinkitsune.astral_dice.co
 var TeruCardInventoryMenuClass = teruLoadCls("com.merlinkitsune.astral_dice.screen.CardInventoryMenu");
 var TeruClosePacketClass = teruLoadCls("net.minecraft.network.protocol.game.ClientboundContainerClosePacket");
 var TeruVitaminPillChipItemClass = teruLoadCls("com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem");
-var TeruSelectionRegistryClass = teruLoadCls("com.merlinkitsune.starenginelib.target.TargetSelectionRegistry");
-var TeruTargetTypeClass = teruLoadCls("com.merlinkitsune.starenginelib.target.TargetType");
+var TeruSelectionRegistryClass = teruLoadCls("com.merlinkitsune.starengine.target.TargetSelectionRegistry");
+var TeruTargetTypeClass = teruLoadCls("com.merlinkitsune.starengine.target.TargetType");
 var OptionalClass = Java.loadClass("java.util.Optional");
 
 var DESC_TERU_DESCENT = "effect.astral_dice.teru_descent";
@@ -13075,7 +13075,7 @@ function doMamuDie(ctx, tag, keepText) {
 var EliteTargetsClass = Java.loadClass("com.merlinkitsune.astral_dice.combat.EliteTargets");
 var ShootingStarManagerClass = Java.loadClass("com.merlinkitsune.astral_dice.combat.ShootingStarManager");
 var StarLightManagerClass = Java.loadClass("com.merlinkitsune.astral_dice.item.StarLightManager");
-var BossEntityUtilClass = Java.loadClass("com.merlinkitsune.starenginelib.item.BossEntityUtil");
+var BossEntityUtilClass = Java.loadClass("com.merlinkitsune.starengine.item.BossEntityUtil");
 var AttributesClass = Java.loadClass("net.minecraft.world.entity.ai.attributes.Attributes");
 
 var SS_TARGET_TAG = "astral_ss_target";

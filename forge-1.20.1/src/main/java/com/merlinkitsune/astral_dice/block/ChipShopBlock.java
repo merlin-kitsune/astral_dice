@@ -4,7 +4,7 @@ import com.merlinkitsune.astral_dice.shop.ChipShopOpener;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.network.ModNetwork;
 import com.merlinkitsune.astral_dice.shop.ChipShopState;
-import com.merlinkitsune.starenginelib.component.GameplayConstants;
+import com.merlinkitsune.starengine.component.GameplayConstants;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;

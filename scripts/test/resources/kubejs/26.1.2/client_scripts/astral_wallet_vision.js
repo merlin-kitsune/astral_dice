@@ -35,7 +35,7 @@ var AbsScreen_CLASS = Java.loadClass("net.minecraft.client.gui.screens.inventory
 var InvScreen_CLASS = Java.loadClass("net.minecraft.client.gui.screens.inventory.InventoryScreen");
 var CreativeScreen_CLASS = Java.loadClass("net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen");
 var Currency_CLASS = Java.loadClass("com.merlinkitsune.astral_dice.economy.StarCoinCurrency");
-var WalletState_CLASS = Java.loadClass("com.merlinkitsune.starenginelib.economy.StarCoinWalletState");
+var WalletState_CLASS = Java.loadClass("com.merlinkitsune.starengine.economy.StarCoinWalletState");
 
 var wtTick = 0;
 var wtLastScr = "__init__";

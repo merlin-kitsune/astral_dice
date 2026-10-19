@@ -1,8 +1,10 @@
 package com.merlinkitsune.astral_dice.target;
+import com.merlinkitsune.starengine.target.SelfTargetable;
+import com.merlinkitsune.starengine.target.HoldToSelect;
 
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
-import com.merlinkitsune.starenginelib.component.GameplayConstants;
+import com.merlinkitsune.starengine.component.GameplayConstants;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -22,11 +24,11 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 
-import com.merlinkitsune.starenginelib.target.TargetSelectionAction;
-import com.merlinkitsune.starenginelib.target.TargetSelectionRegistry;
-import com.merlinkitsune.starenginelib.target.TargetType;
-import com.merlinkitsune.starenginelib.target.SelectorTargets;
-import com.merlinkitsune.starenginelib.target.SignSelectionGate;
+import com.merlinkitsune.starengine.target.TargetSelectionAction;
+import com.merlinkitsune.starengine.target.TargetSelectionRegistry;
+import com.merlinkitsune.starengine.target.TargetType;
+import com.merlinkitsune.starengine.target.SelectorTargets;
+import com.merlinkitsune.starengine.target.SignSelectionGate;
 /**
  * 目标选择器服务端管理器（权威）。
  *
@@ -277,7 +279,7 @@ public final class TargetSelectionManager {
         LOGGER.debug("[Astral Dice][TargetSelection] confirm token={} target={}({}) dist={} action={} -> SUCCESS",
                 token, targetId, target.getName().getString(), Math.sqrt(distSq), session.actionId);
         // 通用「已确认」提示**必须**在施效之前发出(2026-09-25 F8 修复):客户端 actionbar 只有一格
-        // (starenginelib 的 ActionBarManager 为单槽位,show() 直接覆盖),同一 tick 内**后发者覆盖先发者**;
+        // (starengine 的 ActionBarManager 为单槽位,show() 直接覆盖),同一 tick 内**后发者覆盖先发者**;
         // 而各动作的专属提示(bonnie_undercover_applied / haiqing_weak_mark_applied / ren_privilege_applied 等)
         // 都在 apply 里发出 ⇒ 只有让通用提示先发,玩家才看得到专属提示;无专属提示的动作照旧显示通用提示。
         notifyActionBar(player, "msg.astral_dice.target_select.applied", ChatFormatting.YELLOW, target.getDisplayName());

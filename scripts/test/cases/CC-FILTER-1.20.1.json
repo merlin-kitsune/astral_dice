@@ -12,47 +12,42 @@
       "text": "界面由临时探针 /astralcc2 open 走产品公开 API CardChoiceManager.start 打开；客户端探针 astral_cc2_client.js 按 token 2101 逐 tick 调 CardChoiceScreen#mouseClicked/mouseDragged/mouseReleased（真实输入入口；2100–2109 走同一 FILTER 序列）。背包由 /astralcc2 prep filter 一次备好：hotbar0 战斗牌x4 / hotbar1 效果牌x3 / hotbar2 石头x8。"
     },
     {
-      "op": "eval_js",
-      "side": "server",
-      "timeout_ms": 20000,
-      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/gamemode creative\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
     },
     {
       "op": "wait",
       "ms": 900
     },
     {
-      "op": "eval_js",
-      "side": "server",
-      "timeout_ms": 20000,
-      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralcc2 prep filter\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+      "op": "inject_command",
+      "command": "/astralcc2 prep filter",
+      "no_esc": true
     },
     {
       "op": "wait",
       "ms": 900
     },
     {
-      "op": "eval_js",
-      "side": "server",
-      "timeout_ms": 20000,
-      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralcc2 open 3 combat 2101\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+      "op": "inject_command",
+      "command": "/astralcc2 open 3 combat 2101",
+      "no_esc": true
     },
     {
       "op": "wait",
       "ms": 16000
     },
     {
-      "op": "eval_js",
-      "side": "server",
-      "timeout_ms": 20000,
-      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralcc2 close\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+      "op": "inject_command",
+      "command": "/astralcc2 close",
+      "no_esc": true
     },
     {
       "op": "wait",
       "ms": 800
     }
   ],
-  "channel": "autojs",
   "asserts": [
     {
       "type": "log",
@@ -104,24 +99,13 @@
       "source": "latest",
       "pattern": "AP_CC2C:.*phase=done_filter"
     },
-    {
-      "type": "mixin"
-    },
-    {
-      "type": "kubejs"
-    },
-    {
-      "type": "crash"
-    },
+    { "type": "mixin" },
+    { "type": "kubejs" },
+    { "type": "crash" },
     {
       "type": "absent",
       "source": "latest",
       "pattern": "AP_CARD_CHOICE: confirm:"
     }
-  ],
-  "migration": {
-    "from": "legacy-kubejs",
-    "at": "2026-10-18",
-    "tool": "scripts/test/convert_cases_autojs.py"
-  }
+  ]
 }

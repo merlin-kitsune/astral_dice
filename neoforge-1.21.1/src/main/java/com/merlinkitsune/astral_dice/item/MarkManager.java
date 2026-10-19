@@ -1,6 +1,6 @@
 package com.merlinkitsune.astral_dice.item;
 
-import com.merlinkitsune.starenginelib.component.GameplayConstants;
+import com.merlinkitsune.starengine.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -45,7 +45,7 @@ public final class MarkManager {
         var existing = target.getEffect(ModEffects.MARKED);
         int level = existing != null ? Math.min(existing.getAmplifier() + 1, GameplayConstants.MAX_MARKER - 1) : 0;
         target.addEffect(new MobEffectInstance(ModEffects.MARKED, durationTicks, level, false, true));
-        com.merlinkitsune.astral_dice.event.EffectTimerGuard.apply(target,
+        com.merlinkitsune.starengine.event.EffectTimerGuard.apply(target,
                 new MobEffectInstance(net.minecraft.world.effect.MobEffects.GLOWING, durationTicks, 0, false, false));
         return level + 1;
     }
@@ -78,7 +78,7 @@ public final class MarkManager {
         if (effect.getAmplifier() > 0) {
             PENDING_DECAY.add(new PendingDecay(entity, effect.getAmplifier() - 1));
             // 同步刷新伴随的"高亮",与标记保持同一寿命(showIcon=false 不显示 HUD 效果标识器)
-            com.merlinkitsune.astral_dice.event.EffectTimerGuard.apply(entity,
+            com.merlinkitsune.starengine.event.EffectTimerGuard.apply(entity,
                     new MobEffectInstance(net.minecraft.world.effect.MobEffects.GLOWING, MARK_DURATION_TICKS, 0, false, false));
         } else {
             // 标记层数归零:同时移除伴随的"高亮"效果(兜底;正常情况下发光随标记自然结束)

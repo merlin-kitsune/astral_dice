@@ -1,7 +1,7 @@
 package com.merlinkitsune.astral_dice.screen;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
-import com.merlinkitsune.starenginelib.item.CuriosCompat;
+import com.merlinkitsune.starengine.item.CuriosCompat;
 import com.merlinkitsune.astral_dice.item.dice.DiceCurioItem;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
@@ -45,7 +45,7 @@ public class ModMenuTypes {
             com.merlinkitsune.astral_dice.network.ModNetwork.sendToPlayer(serverPlayer,
                     new com.merlinkitsune.astral_dice.network.ModNetwork.ActionBarMessage(
                             Component.translatable("msg.astral_dice.no_dice_equipped").withStyle(net.minecraft.ChatFormatting.RED),
-                            com.merlinkitsune.starenginelib.component.GameplayConstants.ACTIONBAR_DURATION_TICKS));
+                            com.merlinkitsune.starengine.component.GameplayConstants.ACTIONBAR_DURATION_TICKS));
             return;
         }
         serverPlayer.openMenu(new SimpleMenuProvider(

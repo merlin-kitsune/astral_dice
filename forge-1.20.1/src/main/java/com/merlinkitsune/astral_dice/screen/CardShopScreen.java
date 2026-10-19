@@ -9,7 +9,7 @@ import com.merlinkitsune.astral_dice.item.sign.ParunanSignItem;
 import com.merlinkitsune.astral_dice.network.ModNetwork;
 import com.merlinkitsune.astral_dice.resource.ResourceConversion;
 import com.merlinkitsune.astral_dice.shop.CardShopMenu;
-import com.merlinkitsune.starenginelib.economy.StarCoinWalletState;
+import com.merlinkitsune.starengine.economy.StarCoinWalletState;
 import net.minecraft.ChatFormatting;
 import net.minecraft.Util;
 import net.minecraft.client.gui.GuiGraphics;

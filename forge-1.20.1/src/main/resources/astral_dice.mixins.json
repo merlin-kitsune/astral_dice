@@ -24,7 +24,9 @@
     "client.AstralUseItemGuardMixin",
     "client.LocalPlayerDropGuardMixin",
     "client.EffectRenderingInventoryScreenMixin",
-    "client.GuiMixin"
+    "client.GuiMixin",
+    "client.SignTranslucencyMixin",
+    "client.EntityRendererInvoker"
   ],
   "injectors": {
     "defaultRequire": 1

@@ -2,7 +2,7 @@ package com.merlinkitsune.astral_dice.item.card;
 
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
-import com.merlinkitsune.starenginelib.target.TargetType;
+import com.merlinkitsune.starengine.target.TargetType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;

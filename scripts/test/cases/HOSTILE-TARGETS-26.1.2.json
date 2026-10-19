@@ -10,40 +10,36 @@
   "steps": [
     {
       "op": "note",
-      "text": "目的：把「敌对目标唯一入口」`starengine_lib` 的 `combat/HostileTargets#isHostile(Entity)` 的**实机真值表**固化为断言（2026-09-28 用户需求「检查是否存在遗漏问题」）。\n\n口径（2026-09-27 用户裁决扩展的第 3 条通道）：\n  敌对目标 = 敌对生物(Enemy) ∪ 中立生物(宠物除外) ∪ **会被激怒的可驯服动物(宠物除外)** ∪ 消费方额外声明的实体。\n  第 3 条覆盖「可驯服、被打会还击，却没实现 NeutralMob」的动物 —— 原版唯一实例 = 羊驼 / 行商羊驼。\n  判据 = `Mob` ∧ `OwnableEntity#getOwner()==null` ∧ 非已驯服 TamableAnimal ∧ (`getTarget()!=null` ∨ `getLastHurtByMob()!=null`)。\n\n**反假绿设计（本用例的核心价值）**：\n  ① `llama_idle=0` —— 未被激怒的羊驼必须**不**算敌对 ⇒ 证明「会被激怒」这道门槛真的在判，\n     而不是「只要是 OwnableEntity 就算敌对」；\n  ② `goat_tgt=0` / `panda_tgt=0` —— 山羊/熊猫**已被激怒**但不可驯服 ⇒ 必须**不**算敌对。\n     这两格把「会被激怒」与「可驯服(OwnableEntity)」两个条件**解耦**，是「判据没有退化成\n     『只要被激怒就算敌对』」的唯一硬证据（若退化，这两格会变 1 而立刻暴露）；\n  ③ `wolf=1` 与 `wolf_tame=0` 成对 —— 同一种生物「未驯服 ⇒ 敌对 / 已驯服 ⇒ 非敌对」，\n     证明第 2 条通道（中立生物）的「宠物除外」真的在判；\n  ④ `llama_owned:hasOwner=1` 且该格 = 0 —— 证明第 3 条通道自己的「有主人 ⇒ 排除」也在判\n     （它与 ③ 是**两套不同判据**：`TamableAnimal#isTame()` vs `OwnableEntity#getOwner()!=null`）。\n\n⚠️ 探针会 spawn 13 个实体并在结束前全部 discard（`detail=spawned=13:killed=13` 即证据）。\n⚠️ `horse_tgt=1` 是**信息性**项（马科同被第 3 条连带纳入，属设计备注而非缺陷），故不入断言。\n⚠️ 平台差异由探针内部吸收：`setTame` 两参优先/单参兜底（1.20.1 只有单参）⇒ 明细用 `ang=T[12]` 宽容匹配；`setOwner(LivingEntity)` 故明细用 `ang=O`（1.20.1/1.21.1 是 `setOwnerUUID` ⇒ `ang=U`）。\n⚠️ **26.1.2 专属**：`mob.setTarget(p)` 调用**不抛错**却**读回为空**（实测确定性、非时序：连跑两次 HT3/HT4 均 `tgt=0`）⇒ 明细用 `tgt=[01]`；断言对象仍是 `hurt=1`（证明已激怒）+ 汇总行 `goat_tgt=0:panda_tgt=0`（证明判据未退化）。副作用：26.1.2 上判据的 `getTarget()!=null` 那条臂**未被本探针覆盖**（已知缺口，见当日日志 §10）。"
+      "text": "目的：把「敌对目标唯一入口」`starengine` 的 `combat/HostileTargets#isHostile(Entity)` 的**实机真值表**固化为断言（2026-09-28 用户需求「检查是否存在遗漏问题」）。\n\n口径（2026-09-27 用户裁决扩展的第 3 条通道）：\n  敌对目标 = 敌对生物(Enemy) ∪ 中立生物(宠物除外) ∪ **会被激怒的可驯服动物(宠物除外)** ∪ 消费方额外声明的实体。\n  第 3 条覆盖「可驯服、被打会还击，却没实现 NeutralMob」的动物 —— 原版唯一实例 = 羊驼 / 行商羊驼。\n  判据 = `Mob` ∧ `OwnableEntity#getOwner()==null` ∧ 非已驯服 TamableAnimal ∧ (`getTarget()!=null` ∨ `getLastHurtByMob()!=null`)。\n\n**反假绿设计（本用例的核心价值）**：\n  ① `llama_idle=0` —— 未被激怒的羊驼必须**不**算敌对 ⇒ 证明「会被激怒」这道门槛真的在判，\n     而不是「只要是 OwnableEntity 就算敌对」；\n  ② `goat_tgt=0` / `panda_tgt=0` —— 山羊/熊猫**已被激怒**但不可驯服 ⇒ 必须**不**算敌对。\n     这两格把「会被激怒」与「可驯服(OwnableEntity)」两个条件**解耦**，是「判据没有退化成\n     『只要被激怒就算敌对』」的唯一硬证据（若退化，这两格会变 1 而立刻暴露）；\n  ③ `wolf=1` 与 `wolf_tame=0` 成对 —— 同一种生物「未驯服 ⇒ 敌对 / 已驯服 ⇒ 非敌对」，\n     证明第 2 条通道（中立生物）的「宠物除外」真的在判；\n  ④ `llama_owned:hasOwner=1` 且该格 = 0 —— 证明第 3 条通道自己的「有主人 ⇒ 排除」也在判\n     （它与 ③ 是**两套不同判据**：`TamableAnimal#isTame()` vs `OwnableEntity#getOwner()!=null`）。\n\n⚠️ 探针会 spawn 13 个实体并在结束前全部 discard（`detail=spawned=13:killed=13` 即证据）。\n⚠️ `horse_tgt=1` 是**信息性**项（马科同被第 3 条连带纳入，属设计备注而非缺陷），故不入断言。\n⚠️ 平台差异由探针内部吸收：`setTame` 两参优先/单参兜底（1.20.1 只有单参）⇒ 明细用 `ang=T[12]` 宽容匹配；`setOwner(LivingEntity)` 故明细用 `ang=O`（1.20.1/1.21.1 是 `setOwnerUUID` ⇒ `ang=U`）。\n⚠️ **26.1.2 专属**：`mob.setTarget(p)` 调用**不抛错**却**读回为空**（实测确定性、非时序：连跑两次 HT3/HT4 均 `tgt=0`）⇒ 明细用 `tgt=[01]`；断言对象仍是 `hurt=1`（证明已激怒）+ 汇总行 `goat_tgt=0:panda_tgt=0`（证明判据未退化）。副作用：26.1.2 上判据的 `getTarget()!=null` 那条臂**未被本探针覆盖**（已知缺口，见当日日志 §10）。"
     },
     {
-      "op": "eval_js",
-      "side": "server",
-      "timeout_ms": 20000,
-      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/gamemode creative\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
     },
     {
       "op": "wait",
       "ms": 600
     },
     {
-      "op": "eval_js",
-      "side": "server",
-      "timeout_ms": 20000,
-      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/kill @e[type=!player,distance=..32]\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+      "op": "inject_command",
+      "command": "/kill @e[type=!player,distance=..32]",
+      "no_esc": true
     },
     {
       "op": "wait",
       "ms": 400
     },
     {
-      "op": "eval_js",
-      "side": "server",
-      "timeout_ms": 20000,
-      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralhostile tbl H1\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+      "op": "inject_command",
+      "command": "/astralhostile tbl H1",
+      "no_esc": true
     },
     {
       "op": "wait",
       "ms": 3000
     }
   ],
-  "channel": "autojs",
   "asserts": [
     {
       "type": "log",
@@ -106,10 +102,5 @@
     {
       "type": "crash"
     }
-  ],
-  "migration": {
-    "from": "legacy-kubejs",
-    "at": "2026-10-18",
-    "tool": "scripts/test/convert_cases_autojs.py"
-  }
+  ]
 }

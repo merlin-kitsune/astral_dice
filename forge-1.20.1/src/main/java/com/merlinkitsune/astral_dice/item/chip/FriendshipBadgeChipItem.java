@@ -1,6 +1,6 @@
 package com.merlinkitsune.astral_dice.item.chip;
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
-import com.merlinkitsune.starenginelib.item.CuriosCompat;
+import com.merlinkitsune.starengine.item.CuriosCompat;
 
 import com.merlinkitsune.astral_dice.item.HealingManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
@@ -17,7 +17,7 @@ import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.entity.AreaEffectCloud;
 import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
-import com.merlinkitsune.astral_dice.combat.PartyRelations;
+import com.merlinkitsune.starengine.combat.PartyRelations;
 
 /**
  * 友情徽章筹码:对友方玩家施加任意治疗效果时,使双方各获得 2 点治愈。

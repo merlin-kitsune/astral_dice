@@ -23,8 +23,8 @@ StarEngine-Lib 源码迁移(默认干跑,--apply 才落盘)
   effect/HealingEffect 等      → (已放行, 其 HealingManager 引用仅存在于 javadoc)
 
 用法:
-  python tools/migrate_to_starengine_lib.py            # 干跑
-  python tools/migrate_to_starengine_lib.py --apply    # 落盘
+  python tools/migrate_to_starengine.py            # 干跑
+  python tools/migrate_to_starengine.py --apply    # 落盘
 """
 import re
 import shutil
@@ -59,7 +59,7 @@ PKG = 'com/merlinkitsune/astral_dice'
 NEO_PKG = ROOT / 'neoforge-1.21.1' / 'src' / 'main' / 'java' / PKG
 FORGE_PKG = ROOT / 'forge-1.20.1' / 'src' / 'main' / 'java' / PKG
 
-LIB = Path('F:/MCProject/starengine_lib_next')
+LIB = Path('F:/MCProject/starengine_next')
 LIB_NEW_PKG = 'com/merlinkitsune/starengine'
 LIB_COMMON = LIB / 'common' / 'src' / 'main' / 'java' / LIB_NEW_PKG
 LIB_NEO = LIB / 'neoforge-1.21.1' / 'src' / 'main' / 'java' / LIB_NEW_PKG
@@ -176,7 +176,7 @@ import net.neoforged.fml.common.Mod;
  */
 @Mod(StarEngineLib.MODID)
 public final class StarEngineLib {
-    public static final String MODID = "starengine_lib";
+    public static final String MODID = "starengine";
 
     public StarEngineLib() {
     }
@@ -197,7 +197,7 @@ import net.minecraftforge.fml.common.Mod;
  */
 @Mod(StarEngineLib.MODID)
 public final class StarEngineLib {
-    public static final String MODID = "starengine_lib";
+    public static final String MODID = "starengine";
 
     public StarEngineLib() {
     }

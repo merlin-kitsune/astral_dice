@@ -1,6 +1,6 @@
 package com.merlinkitsune.astral_dice.item.chip;
 
-import com.merlinkitsune.starenginelib.combat.HostileTargets;
+import com.merlinkitsune.starengine.combat.HostileTargets;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -9,12 +9,12 @@ import net.minecraft.world.phys.AABB;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 import com.merlinkitsune.astral_dice.item.sign.BaseSignItem;
-import com.merlinkitsune.starenginelib.component.GameplayConstants;
+import com.merlinkitsune.starengine.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.item.MarkManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
 import com.merlinkitsune.astral_dice.item.card.EffectCardUtil;
-import com.merlinkitsune.astral_dice.combat.PartyRelations;
+import com.merlinkitsune.starengine.combat.PartyRelations;
 
 /**
  * 手持风扇-大筹码:使用(立牌)主动技能后,获得一张随机效果牌(不包括专属牌),
@@ -41,7 +41,7 @@ public class FanBigChipItem extends BaseChipItem {
         }
 
         // 对周围 HAND_FAN_BIG_RANGE 格范围内所有敌对目标施加一层标记
-        AABB aabb = player.getBoundingBox().inflate(com.merlinkitsune.starenginelib.component.GameplayConstants.HAND_FAN_BIG_RANGE);
+        AABB aabb = player.getBoundingBox().inflate(com.merlinkitsune.starengine.component.GameplayConstants.HAND_FAN_BIG_RANGE);
         List<LivingEntity> nearby = player.level().getEntitiesOfClass(LivingEntity.class, aabb,
                 e -> PartyRelations.isHostileTo(player, e) && e.isAlive());
         for (LivingEntity entity : nearby) {

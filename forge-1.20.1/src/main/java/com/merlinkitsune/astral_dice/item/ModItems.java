@@ -4,7 +4,7 @@ import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.block.ModBlocks;
 import com.merlinkitsune.astral_dice.component.AppliedStone;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
-import com.merlinkitsune.starenginelib.item.AstralRarities;
+import com.merlinkitsune.starengine.item.AstralRarities;
 
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.level.block.Block;
@@ -127,7 +127,7 @@ public class ModItems {
                     AstralDiceMod.MODID, "effect_cards"));
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // 本模组稀有度标准(2026-09-25 起改为**自有 5 档**;等级/常量名/颜色码的权威在前置库 starengine_lib):
+    // 本模组稀有度标准(2026-09-25 起改为**自有 5 档**;等级/常量名/颜色码的权威在前置库 starengine):
     //   白 = 普通   → 原版 Rarity.COMMON(本模组**唯一**保留的原版档,直接写 Rarity.COMMON)
     //   水蓝 #55FFFF = 稀有 → AstralRarities.rare()      扩展常量 ASTRAL_DICE_RARE
     //   粉紫 #FF55FF = 史诗 → AstralRarities.epic()      扩展常量 ASTRAL_DICE_EPIC
@@ -1114,6 +1114,20 @@ public class ModItems {
             () -> new com.merlinkitsune.astral_dice.item.sign.LinglingSignItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(AstralRarities.epic())));
+
+    // ── 2026-10-19 新批 4 个立牌 ──
+    public static final RegistryObject<Item> JILL_SIGN = registerItem("jill_sign",
+            () -> new com.merlinkitsune.astral_dice.item.sign.JillSignItem(new Item.Properties()
+                    .stacksTo(1).rarity(com.merlinkitsune.starengine.item.AstralRarities.bizarre())));
+    public static final RegistryObject<Item> DOROTHY_SIGN = registerItem("dorothy_sign",
+            () -> new com.merlinkitsune.astral_dice.item.sign.DorothySignItem(new Item.Properties()
+                    .stacksTo(1).rarity(com.merlinkitsune.starengine.item.AstralRarities.bizarre())));
+    public static final RegistryObject<Item> ALANA_SIGN = registerItem("alana_sign",
+            () -> new com.merlinkitsune.astral_dice.item.sign.AlanaSignItem(new Item.Properties()
+                    .stacksTo(1).rarity(com.merlinkitsune.starengine.item.AstralRarities.rare())));
+    public static final RegistryObject<Item> DEEPSEEK_SIGN = registerItem("deepseek_sign",
+            () -> new com.merlinkitsune.astral_dice.item.sign.DeepseekSignItem(new Item.Properties()
+                    .stacksTo(1).rarity(com.merlinkitsune.starengine.item.AstralRarities.bizarre())));
 
     // 机械师立牌(命名:megas,传奇):被动「物资补充」(手牌<6 张时每 1:00 自动获得 1 张随机卡牌)
     // + 主动「轨道轰炸」(指定 1 个敌对目标,消耗物品栏全部手牌,对目标及其周围 12 格范围轰炸;

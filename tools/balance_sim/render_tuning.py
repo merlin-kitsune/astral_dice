@@ -396,14 +396,14 @@ def build(js: Dict) -> Tuple[str, str]:
     # ---------- 7 落地清单 ----------
     A("""<h2>7. 实际代码改动清单（本次落地）</h2>""")
     A(table(["文件", "改动"], [
-        ["<code>starengine_lib/.../combat/VanillaMitigation.java</code>（新建）",
+        ["<code>starengine/.../combat/VanillaMitigation.java</code>（新建）",
          "保护 / 抗性的纯算术复刻，供三线复用（原方案 §4 已给出完整代码）"],
-        ["<code>starengine_lib/.../combat/CombatFormula.java</code>",
+        ["<code>starengine/.../combat/CombatFormula.java</code>",
          "<code>play_base</code> 4.0 / <code>play_armor_coef</code> 0.30 / <code>play_tough_coef</code> 0.85 / "
          "<code>mob_armor_coef</code> 0.40 / <code>mob_tough_coef</code> 1.0"],
-        ["<code>starengine_lib/.../combat/TargetBattleStats.java</code>",
+        ["<code>starengine/.../combat/TargetBattleStats.java</code>",
          "<code>baseAttack</code> 敌对 5 → 4（中立同步 −1）；<code>mobDefenseInt</code> 起始 2 → 0"],
-        ["<code>starengine_lib/.../combat/DiceBattleResolver.java</code>",
+        ["<code>starengine/.../combat/DiceBattleResolver.java</code>",
          "<b>（裁决⑥）</b>下限改为 <code>max(raw, 1, 攻击点 × 0.15)</code> 相对下限"],
         ["三线 <code>DiceCombatEvents.java</code>（各一份，不得互抄）",
          "路径①：附魔（<code>EnchantmentHelper.modifyDamage</code>）+ 冷却（基础段 <code>0.2+s²·0.8</code> / "
@@ -411,7 +411,7 @@ def build(js: Dict) -> Tuple[str, str]:
          "两路径：受击方保护/抗性乘算因子"],
         ["三线 <code>DiceCombatModifiers.java</code>",
          "显示口径纳入附魔加伤（裁决④）；冷却与暴击保持不进"],
-        ["三线 <code>gradle.properties</code>", "<code>starengine_lib_version</code> → <code>2.0.0-SNAPSHOT.2</code>（库 + 模组均 bump）"],
+        ["三线 <code>gradle.properties</code>", "<code>starengine_version</code> → <code>2.0.0-SNAPSHOT.2</code>（库 + 模组均 bump）"],
         ["库 + 模组 CHANGELOG（双语）", "记录机制调整（resolve 下限）与数值调整（基数 / 斜率）两组条目"],
     ]))
 

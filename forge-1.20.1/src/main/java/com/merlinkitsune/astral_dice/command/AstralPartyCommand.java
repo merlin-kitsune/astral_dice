@@ -3,7 +3,7 @@ package com.merlinkitsune.astral_dice.command;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
-import com.merlinkitsune.starenginelib.event.ModEffectRemoval;
+import com.merlinkitsune.starengine.event.ModEffectRemoval;
 import com.merlinkitsune.astral_dice.item.card.EffectCardPeriod;
 import com.merlinkitsune.astral_dice.item.sign.BaseSignItem;
 import com.mojang.brigadier.Command;
@@ -55,8 +55,8 @@ import java.util.Optional;
  *       {@code APDUMP|<组>|<键>=<值>} 行(见 {@link #DUMP_PREFIX});**不改变任何状态**。</li>
  *   <li>{@code /astralparty finishsigncooldown [目标]} —— 立即<b>结束立牌主动技能的玩家级冷却</b>
  *       (把 {@code sign_active_cooldown_end} 写成当前时刻)。**只结束冷却计时**:不碰锁定(生效中)态
- *       {@code sign_active_lock_*},不碰 {@code sign_active_max_cooldown},也不碰蛟龙立牌(mamushi)的
- *       强制冷却硬闸门 {@code mamushi_forced_cooldown_until};**不带任何数值参数**(见文末「能力边界」红线②)。</li>
+ *       {@code sign_active_lock_*},不碰 {@code sign_active_max_cooldown}(蛟龙立牌 mamushi 的 60s
+ *       生效期即锁定态 {@code sign_active_lock_*},同样不碰);**不带任何数值参数**(见文末「能力边界」红线②)。</li>
  * </ul>
  *
  * <p><b>dump 的输出约定(核心是「格式稳定」,不是给人看)</b>:① 每行固定前缀 {@code APDUMP|},
@@ -309,10 +309,8 @@ public final class AstralPartyCommand {
      *   <li><b>{@code sign_active_max_cooldown}</b> 不动:它是「本次冷却实际使用的基准」,锁定态下
      *       还**尚未**被用于那次"还没开始的冷却"(冷却开始那一刻按 {@code max(0, 基准 − 减免池)} 起算)。
      *       若一并清零,等于把玩家**冻结期结束后本该开始的冷却**也一起取消 —— 那属于「动冻结期」,越界。</li>
-     *   <li><b>蛟龙立牌(mamushi)的强制冷却硬闸门</b> {@code mamushi_forced_cooldown_until} 不动:它在
-     *       冷却判定侧的优先级**高于**本键({@code performSkill} 第 1 步无条件早退,连电流核心的
-     *       "消耗充能立即完成冷却"都不允许触发),属「不受任何减免的硬闸门」,与"冷却计时"不是同一个东西。
-     *       若需一并解除另开子命令,不在本条范围内。</li>
+     *   <li><b>蛟龙立牌(mamushi)的 60s 生效期</b> = 锁定态 {@code sign_active_lock_*}(见第 1 条),本命令
+     *       同样不碰;生效期结束才起默认冷却,与"冷却计时"不是同一个东西。</li>
      * </ol>
      *
      * <p>同样**不**碰:待命等待器 {@code sign_ready_*}(现已无写入方)、出牌锁(那是

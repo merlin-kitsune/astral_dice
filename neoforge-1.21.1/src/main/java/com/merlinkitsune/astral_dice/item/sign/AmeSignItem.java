@@ -3,15 +3,15 @@ package com.merlinkitsune.astral_dice.item.sign;
 import com.google.common.collect.MapMaker;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
-import com.merlinkitsune.astral_dice.combat.PartyRelations;
+import com.merlinkitsune.starengine.combat.PartyRelations;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.AmeLoveEffect;
 import com.merlinkitsune.astral_dice.effect.AmeOverdoseEffect;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
-import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
+import com.merlinkitsune.starengine.event.EffectTimerGuard;
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.astral_dice.item.ModItems;
-import com.merlinkitsune.starenginelib.event.ModEffectRemoval;
+import com.merlinkitsune.starengine.event.ModEffectRemoval;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.damagesource.DamageSource;
@@ -153,11 +153,7 @@ public class AmeSignItem extends BaseSignItem {
 
     /** 玩家是否佩戴地雷女立牌(功能闸门:需已佩戴骰子) */
     public static boolean isEquipped(Player player) {
-        if (player == null) return false;
-        if (!CurioSlotUtil.hasDiceEquipped(player)) return false;
-        var curios = CuriosApi.getCuriosInventory(player);
-        return curios.isPresent()
-                && curios.get().findFirstCurio(s -> s.is(ModItems.AME_SIGN.get())).isPresent();
+        return SignEquipCheck.isEquipped(player, ModItems.AME_SIGN.get());
     }
 
     /** 该玩家是否装着地雷女立牌(**纯**槽位判定,不带骰子闸门;照 sherry/hanna 的 wearsSign 口径,供跨玩家判定) */
@@ -193,18 +189,8 @@ public class AmeSignItem extends BaseSignItem {
 
     /** 施加/覆盖最大生命加成(≤ 0 ⇒ 移除);与 {@code setDefenseArmorBonus} 同一口径(仅数值变化时写) */
     private static void setMaxHealthBonus(Player player, int bonus) {
-        AttributeInstance attr = player.getAttribute(Attributes.MAX_HEALTH);
-        if (attr == null) return;
-        ResourceLocation id = ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, MAX_HEALTH_KEY);
-        var existing = attr.getModifier(id);
-        if (bonus <= 0) {
-            if (existing != null) attr.removeModifier(id);
-            return;
-        }
-        if (existing == null || existing.amount() != bonus) {
-            attr.removeModifier(id);
-            attr.addTransientModifier(new AttributeModifier(id, bonus, AttributeModifier.Operation.ADD_VALUE));
-        }
+        SignAttributeUtil.apply(player, Attributes.MAX_HEALTH, MAX_HEALTH_KEY, bonus,
+                AttributeModifier.Operation.ADD_VALUE);
     }
 
     /** 移除本立牌施加的全部瞬态修饰器(卸下立牌 / 层数归零) */

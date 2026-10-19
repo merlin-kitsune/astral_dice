@@ -95,36 +95,39 @@ public class ModCreativeTabs {
                 output.accept(ModItems.ORBITAL_STRIKE_CARD.get());
                 output.accept(ModItems.DIRECTIONAL_BLAST_CARD.get());
                 output.accept(ModItems.LIVING_PAGE.get());
-                // 立牌(按稀有度低→高:稀有→史诗→传奇)
-                // 稀有 RARE
-                output.accept(ModItems.PARUNAN_SIGN.get());
-                output.accept(ModItems.JASMINE_SIGN.get());
+                // 立牌(按 Astral Party Wiki「Characters」页面角色顺序排列;deepseek 为本模组原创角色,排末尾)
                 output.accept(ModItems.MIMI_SIGN.get());
-                output.accept(ModItems.LULU_SIGN.get());
-                output.accept(ModItems.PADMAN_SIGN.get());
-                output.accept(ModItems.PANDAMAN_SIGN.get());
-                output.accept(ModItems.NARDIS_SIGN.get());
-                // 史诗 EPIC
-                output.accept(ModItems.KOMACHI_SIGN.get());
+                output.accept(ModItems.PARUNAN_SIGN.get());
                 output.accept(ModItems.FANNY_SIGN.get());
-                output.accept(ModItems.HAIQING_SIGN.get());
+                output.accept(ModItems.ALANA_SIGN.get());
+                output.accept(ModItems.KOMACHI_SIGN.get());
+                output.accept(ModItems.PADMAN_SIGN.get());
                 output.accept(ModItems.PAPARA_SIGN.get());
-                output.accept(ModItems.NANCY_LU_SIGN.get());
-                output.accept(ModItems.MOSES_SIGN.get());
                 output.accept(ModItems.REN_SIGN.get());
-                // 传奇 UNCOMMON
-                output.accept(ModItems.MISAKI_SIGN.get());
-                output.accept(ModItems.RIN_SIGN.get());
-                output.accept(ModItems.BONNIE_SIGN.get());
+                output.accept(ModItems.PANDAMAN_SIGN.get());
+                output.accept(ModItems.LULU_SIGN.get());
                 output.accept(ModItems.FEN_SIGN.get());
-                output.accept(ModItems.ZHAO_SIGN.get());
-                output.accept(ModItems.TERU_SIGN.get());
-                output.accept(ModItems.MAMUSHI_SIGN.get());
+                output.accept(ModItems.HAIQING_SIGN.get());
+                output.accept(ModItems.MISAKI_SIGN.get());
+                output.accept(ModItems.NARDIS_SIGN.get());
+                output.accept(ModItems.JASMINE_SIGN.get());
+                output.accept(ModItems.NANCY_LU_SIGN.get());
                 output.accept(ModItems.MEGAS_SIGN.get());
-                output.accept(ModItems.SHERRY_SIGN.get());
-                output.accept(ModItems.HANNA_SIGN.get());
+                output.accept(ModItems.ZHAO_SIGN.get());
+                output.accept(ModItems.RIN_SIGN.get());
+                output.accept(ModItems.TERU_SIGN.get());
+                output.accept(ModItems.MOSES_SIGN.get());
+                output.accept(ModItems.MAMUSHI_SIGN.get());
+                output.accept(ModItems.BONNIE_SIGN.get());
+                output.accept(ModItems.LINGLING_SIGN.get());
                 output.accept(ModItems.KANGEL_SIGN.get());
                 output.accept(ModItems.AME_SIGN.get());
+                output.accept(ModItems.JILL_SIGN.get());
+                output.accept(ModItems.DOROTHY_SIGN.get());
+                output.accept(ModItems.HANNA_SIGN.get());
+                output.accept(ModItems.SHERRY_SIGN.get());
+                // deepseek 未在 Wiki「Characters」页面出现(本模组原创),排在末尾
+                output.accept(ModItems.DEEPSEEK_SIGN.get());
                 // 筹码
                 // === 星光类 ===
                 output.accept(ModItems.FLASHLIGHT_CHIP.get());

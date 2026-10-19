@@ -137,22 +137,22 @@ def check_c1(line_dir, verbose):
 
 def check_c2(verbose):
     """库侧反射契约：只核对**消费方当前 pin 的库版本**（历史版本天然缺新目标，不该误报）。"""
-    m2 = os.path.expanduser("~/.m2/repository/com/merlinkitsune/starenginelib")
+    m2 = os.path.expanduser("~/.m2/repository/com/merlinkitsune/starengine")
     if not os.path.isdir(m2):
         return ["C2 找不到本地 maven 库目录（无法判定；先 publishToMavenLocal）"], False
     pins = {}
     for line in LINES:
         p = os.path.join(ROOT, line, "gradle.properties")
         if os.path.isfile(p):
-            m = re.search(r'^starengine_lib_version\s*=\s*(\S+)', read(p), re.M)
+            m = re.search(r'^starengine_version\s*=\s*(\S+)', read(p), re.M)
             if m:
                 pins[line] = m.group(1)
     if not pins:
-        return ["C2 读不到各线 starengine_lib_version（无法判定）"], False
+        return ["C2 读不到各线 starengine_version（无法判定）"], False
 
     jars = []
     for line, ver in sorted(pins.items()):
-        art = "starengine_lib-" + line
+        art = "starengine-" + line
         p = os.path.join(m2, art, ver, f"{art}-{ver}.jar")
         if not os.path.isfile(p):
             return [f"C2 本地 maven 缺 {art}-{ver}.jar（先 publishToMavenLocal）"], False
@@ -167,7 +167,7 @@ def check_c2(verbose):
     for line, ver, jar in jars:
         z = zipfile.ZipFile(jar)
         for cls, toks in REQUIRED.items():
-            name = f"com/merlinkitsune/starenginelib/event/{cls}"
+            name = f"com/merlinkitsune/starengine/event/{cls}"
             if name not in z.namelist():
                 fails.append(f"C2 {line}/{ver}: 库 jar 缺 {name}")
                 continue

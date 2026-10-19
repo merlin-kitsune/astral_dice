@@ -13,47 +13,42 @@
       "text": "目的：证实 26.1.2 线的 Modern UI 兼容层**真的能探测并启用**（而不是只编译通过）。\n\n背景：该线此前登记为「平台无该机制 ⇒ 平台差异，不做兼容层」。2026-10-04 更正并落地\n`client/ModernUITooltipCompat`（对接 Modern UI 自身的 `TooltipRenderer#sStrokeColor`）。\n**前置条件（必须）**：`run/26.1.2/mods/` 内需有 `ModernUI-NeoForge-26.1.2-3.13.0.5-universal.jar`\n（Modrinth `modern-ui`，sha1 1432b7e3…）—— 未装时本用例的『已启用』断言必然失败。\n\n触发机制：本兼容层是**懒探测** —— 探测在第一次 `RenderTooltipEvent.Pre`（即第一次渲染工具提示）\n时执行 ⇒ 本用例用「创造模式 + 打开物品栏 + 中心左键」制造一次悬停/光标持物，从而渲染 tooltip。\n\n判据（全部锚定 latest.log，ASCII 片段）：\n  ① 必须出现 `Modern UI … sStrokeColor`（探测成功那条 info，含两个 ASCII 锚点）；\n  ② 不得出现 `Modern UI … 未启用`（探测失败 / 接口不匹配那条 warn）；\n  ③ 不得有 crash / kubejs 错误。"
     },
     {
-      "op": "eval_js",
-      "side": "server",
-      "timeout_ms": 20000,
-      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/gamemode creative\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
     },
     {
       "op": "wait",
       "ms": 800
     },
     {
-      "op": "eval_js",
-      "side": "client",
-      "timeout_ms": 20000,
-      "code": "(function(){\n  var IC = Java.loadClass('com.mojang.blaze3d.platform.InputConstants');\n  var KM = Java.loadClass('net.minecraft.client.KeyMapping');\n  var k = IC.Type.KEYSYM.getOrCreate(69);\n  KM.click(k);\n  return { ok: true, keysym: 69 };\n})()"
+      "op": "inject_key",
+      "key": "e",
+      "no_esc": true
     },
     {
       "op": "wait",
       "ms": 1000
     },
     {
-      "op": "eval_js",
-      "side": "client",
-      "timeout_ms": 20000,
-      "code": "(function(){\n  var MC = Java.loadClass('net.minecraft.client.Minecraft');\n  var mc = MC.getInstance();\n  if (mc.screen === null) { return { ok: false, reason: 'no-screen' }; }\n  var w = mc.getWindow().getGuiScaledWidth();\n  var h = mc.getWindow().getGuiScaledHeight();\n  var consumed = mc.screen.mouseClicked(w / 2, h / 2, 0);\n  return { ok: true, button: 0, consumed: !!consumed };\n})()"
+      "op": "inject_mouse",
+      "button": "left",
+      "no_esc": true
     },
     {
       "op": "wait",
       "ms": 1000
     },
     {
-      "op": "eval_js",
-      "side": "client",
-      "timeout_ms": 20000,
-      "code": "(function(){\n  var MC = Java.loadClass('net.minecraft.client.Minecraft');\n  var mc = MC.getInstance();\n  if (mc.screen === null) { return { ok: false, reason: 'no-screen' }; }\n  var w = mc.getWindow().getGuiScaledWidth();\n  var h = mc.getWindow().getGuiScaledHeight();\n  var consumed = mc.screen.mouseClicked(w / 2, h / 2, 0);\n  return { ok: true, button: 0, consumed: !!consumed };\n})()"
+      "op": "inject_mouse",
+      "button": "left",
+      "no_esc": true
     },
     {
       "op": "wait",
       "ms": 1000
     }
   ],
-  "channel": "autojs",
   "asserts": [
     {
       "type": "log",
@@ -87,10 +82,5 @@
       "type": "crash"
     }
   ],
-  "evidence": [],
-  "migration": {
-    "from": "legacy-kubejs",
-    "at": "2026-10-18",
-    "tool": "scripts/test/convert_cases_autojs.py"
-  }
+  "evidence": []
 }

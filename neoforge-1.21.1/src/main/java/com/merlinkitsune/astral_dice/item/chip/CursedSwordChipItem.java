@@ -1,11 +1,11 @@
 package com.merlinkitsune.astral_dice.item.chip;
 
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
-import com.merlinkitsune.starenginelib.component.GameplayConstants;
-import com.merlinkitsune.starenginelib.combat.HostileTargets;
+import com.merlinkitsune.starengine.component.GameplayConstants;
+import com.merlinkitsune.starengine.combat.HostileTargets;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
-import com.merlinkitsune.starenginelib.event.ModEffectRemoval;
+import com.merlinkitsune.starengine.event.ModEffectRemoval;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
@@ -22,7 +22,7 @@ import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.minecraft.world.entity.LivingEntity;
-import com.merlinkitsune.astral_dice.combat.PartyRelations;
+import com.merlinkitsune.starengine.combat.PartyRelations;
 
 /**
  * 诅咒之剑筹码:装备时始终受到"青之诅咒"影响。

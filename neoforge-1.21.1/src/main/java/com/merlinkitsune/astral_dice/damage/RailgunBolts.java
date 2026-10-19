@@ -1,6 +1,6 @@
 package com.merlinkitsune.astral_dice.damage;
 
-import com.merlinkitsune.starenginelib.combat.HostileTargets;
+import com.merlinkitsune.starengine.combat.HostileTargets;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LightningBolt;
 import net.minecraft.world.entity.OwnableEntity;
@@ -8,7 +8,7 @@ import net.minecraft.world.entity.OwnableEntity;
 import java.util.Collections;
 import java.util.Set;
 import java.util.WeakHashMap;
-import com.merlinkitsune.astral_dice.combat.PartyRelations;
+import com.merlinkitsune.starengine.combat.PartyRelations;
 
 /**
  * 电磁炮雷击的识别标记:记录**由本模组电磁炮降下的闪电实体**,供

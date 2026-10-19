@@ -6,8 +6,8 @@ import java.lang.reflect.Field;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.config.ModCommonConfig;
-import com.merlinkitsune.starenginelib.item.AstralRarities;
-import com.merlinkitsune.starenginelib.item.Rarity;
+import com.merlinkitsune.starengine.item.AstralRarities;
+import com.merlinkitsune.starengine.item.Rarity;
 
 import net.minecraft.Util;
 import net.minecraft.world.item.ItemStack;

@@ -1,10 +1,10 @@
 package com.merlinkitsune.astral_dice.item.sign;
 
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
-import com.merlinkitsune.starenginelib.component.GameplayConstants;
+import com.merlinkitsune.starengine.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
-import com.merlinkitsune.starenginelib.event.ModEffectRemoval;
+import com.merlinkitsune.starengine.event.ModEffectRemoval;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -63,10 +63,7 @@ public class KomachiSignItem extends BaseSignItem {
      * 判定入口统一在 {@code SpellDamageRegistry},禁止在别处直接读原附件值做加成或显示加成。
      */
     public static boolean isEquipped(Player player) {
-        // 总闸门(骰子装备和卸除调整):未佩戴骰子 ⇒ 本件功能一律不生效(数值保留)
-        if (!CurioSlotUtil.hasDiceEquipped(player)) return false;
-        var curios = CuriosApi.getCuriosInventory(player);
-        return curios.isPresent() && curios.get().findFirstCurio(s -> s.is(ModItems.KOMACHI_SIGN.get())).isPresent();
+        return SignEquipCheck.isEquipped(player, ModItems.KOMACHI_SIGN.get());
     }
 
     @Override
@@ -104,7 +101,7 @@ public class KomachiSignItem extends BaseSignItem {
 
     // 主动技能 ActionBar:出牌数+1 与剩余出牌数(注册到主动技能响应事件)
     @SubscribeEvent
-    public static void onSignActiveTriggered(com.merlinkitsune.starenginelib.event.SignActiveTriggeredEvent event) {
+    public static void onSignActiveTriggered(com.merlinkitsune.starengine.event.SignActiveTriggeredEvent event) {
         if (event.getSignStack().is(ModItems.KOMACHI_SIGN.get())) {
             Player player = event.getPlayer();
             int remaining = Math.max(0,

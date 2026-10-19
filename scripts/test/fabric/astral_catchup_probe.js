@@ -78,7 +78,7 @@
   var SelectorRangeModifiers = Java.loadClass("com.merlinkitsune.astral_dice.target.SelectorRangeModifiers");
   var ConcealmentEffect = Java.loadClass("com.merlinkitsune.astral_dice.effect.ConcealmentEffect");
   var PlayerTickEvents = Java.loadClass("com.merlinkitsune.astral_dice.event.PlayerTickEvents");
-  var ModEffectRemoval = Java.loadClass("com.merlinkitsune.starenginelib.event.ModEffectRemoval");
+  var ModEffectRemoval = Java.loadClass("com.merlinkitsune.starengine.event.ModEffectRemoval");
   var EffectTimerGuard = Java.loadClass("com.merlinkitsune.astral_dice.event.EffectTimerGuard");
 
   // ── Q2 / Q3 验证专用（2026-10-04）────────────────────────────────────────

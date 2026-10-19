@@ -2,6 +2,7 @@ package com.merlinkitsune.astral_dice.network;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import java.io.InputStream;
+import java.util.Locale;
 import java.util.Properties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -9,11 +10,16 @@ import org.slf4j.LoggerFactory;
 /**
  * 版本互通门槛(Version Gate)——长期规则,详见 AGENTS.md「版本互通门槛(Version Gate)」。
  *
- * <p>规则:只有 <b>major.minor(二号位)相同</b>的客户端与服务端才允许互联。</p>
+ * <p>规则(2026-10-19 口径):</p>
  * <ul>
- *   <li>{@code 1.2.x} ↔ {@code 1.2.y}:放行;</li>
- *   <li>{@code 1.1.x} ↔ {@code 1.2.0}:拒绝。</li>
+ *   <li><b>正式版</b>(版本串不含 {@code SNAPSHOT}):只有 <b>major.minor(二号位)相同</b>才互联
+ *       —— {@code 1.2.x} ↔ {@code 1.2.y} 放行,{@code 1.1.x} ↔ {@code 1.2.0} 拒绝;</li>
+ *   <li><b>快照版</b>(任一端版本串含 {@code SNAPSHOT}):必须<b>两端都是 SNAPSHOT 且完整版本串相同</b>
+ *       才放行 —— 快照与任何其它构建(正式版、另一个快照)一律不互通。</li>
  * </ul>
+ * <p>互通号因此有两态:正式版取 {@code major.minor}(如 {@code 1.2});快照取
+ * {@code SNAPSHOT:<完整版本串>}(如 {@code SNAPSHOT:2.0.0-SNAPSHOT.132+neoforge_1.21.1})。
+ * 快照互通号自带加载器后缀,故同一 mod 的两条加载器线之间互不相通(二进制不同,符合预期)。</p>
  *
  * <p>判据自动派生(禁止硬编码 "1.2"):构建期由 {@code build.gradle} 的
  * {@code generateModMetadata} 任务把 {@code gradle.properties} 的 {@code mod_version}
@@ -39,18 +45,21 @@ public final class VersionGate {
 
     /** 本地完整版本号,如 {@code 1.2.0+neoforge_1.21.1}。 */
     private static final String FULL_VERSION = resolveFullVersion();
-    /** 网络互通号(major.minor),如 {@code 1.2}。 */
-    private static final String INTEROP_VERSION = majorMinor(FULL_VERSION);
+    /** 快照互通号前缀:含 SNAPSHOT 的构建用完整版本串作互通号,不会与正式版或别的快照混淆。 */
+    private static final String SNAPSHOT_PREFIX = "SNAPSHOT:";
+    /** 网络互通号:正式版 {@code major.minor}(如 {@code 1.2});快照 {@code SNAPSHOT:<完整版本串>}。 */
+    private static final String INTEROP_VERSION = interopNumberOf(FULL_VERSION);
 
     static {
         LOGGER.info("[Astral Dice] 版本互通门槛(Version Gate):mod_version={} → 网络互通号={};"
-                + "仅二号位(major.minor)相同才允许客户端与服务端互联。", FULL_VERSION, INTEROP_VERSION);
+                + "正式版按二号位(major.minor)互通,含 SNAPSHOT 的构建只与完整版本串相同的快照互通。",
+                FULL_VERSION, INTEROP_VERSION);
     }
 
     private VersionGate() {
     }
 
-    /** 网络互通号(major.minor)。同值才允许互联。 */
+    /** 网络互通号(正式版 {@code major.minor};快照 {@code SNAPSHOT:<完整版本串>})。同值才允许互联。 */
     public static String interopVersion() {
         return INTEROP_VERSION;
     }
@@ -60,9 +69,42 @@ public final class VersionGate {
         return FULL_VERSION;
     }
 
-    /** 远端版本号(互通号或完整版本号均可)是否与本端同属一个 major.minor。 */
+    /**
+     * 远端版本号(互通号或完整版本号均可)是否与本端互通。
+     *
+     * <p>正式版比 {@code major.minor};任一端含 {@code SNAPSHOT} 时,两端必须都是 SNAPSHOT 且
+     * 完整版本串相同(即互通号 {@code SNAPSHOT:<完整版本串>} 相等)。</p>
+     */
     public static boolean accepts(String remoteVersion) {
-        return remoteVersion != null && INTEROP_VERSION.equals(majorMinor(remoteVersion));
+        if (remoteVersion == null) {
+            return false;
+        }
+        if (isSnapshot(FULL_VERSION) || isSnapshot(remoteVersion)) {
+            return interopNumberOf(FULL_VERSION).equals(interopNumberOf(remoteVersion));
+        }
+        return INTEROP_VERSION.equals(majorMinor(remoteVersion));
+    }
+
+    /** 版本串是否含 {@code SNAPSHOT}(大小写不敏感)。 */
+    private static boolean isSnapshot(String version) {
+        return version != null && version.toUpperCase(Locale.ROOT).contains("SNAPSHOT");
+    }
+
+    /**
+     * 取互通号:正式版 → {@code major.minor};含 {@code SNAPSHOT} → {@code SNAPSHOT:<完整版本串>}。
+     *
+     * <p><b>幂等</b>:入参若已是 {@code SNAPSHOT:} 开头的互通号则原样(仅规范化前缀大小写)返回 ——
+     * 握手时远端送来的是对方互通号而非完整版本号,不幂等就会把前缀叠两次而<b>永远判不等</b>。</p>
+     */
+    private static String interopNumberOf(String version) {
+        if (version == null) {
+            return "";
+        }
+        String trimmed = version.trim();
+        if (trimmed.regionMatches(true, 0, SNAPSHOT_PREFIX, 0, SNAPSHOT_PREFIX.length())) {
+            return SNAPSHOT_PREFIX + trimmed.substring(SNAPSHOT_PREFIX.length());
+        }
+        return isSnapshot(trimmed) ? SNAPSHOT_PREFIX + trimmed : majorMinor(trimmed);
     }
 
     /**

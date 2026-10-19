@@ -8,10 +8,10 @@ import com.merlinkitsune.astral_dice.effect.HannaDollCompleteEffect;
 import com.merlinkitsune.astral_dice.effect.HannaDollCraftEffect;
 import com.merlinkitsune.astral_dice.effect.HannaFloatEffect;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
-import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
+import com.merlinkitsune.starengine.event.EffectTimerGuard;
 import com.merlinkitsune.astral_dice.item.ModItems;
-import com.merlinkitsune.starenginelib.event.ModEffectRemoval;
-import com.merlinkitsune.starenginelib.item.CuriosCompat;
+import com.merlinkitsune.starengine.event.ModEffectRemoval;
+import com.merlinkitsune.starengine.item.CuriosCompat;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.damagesource.DamageSource;
@@ -30,7 +30,7 @@ import net.minecraftforge.eventbus.api.EventPriority;
 import top.theillusivec4.curios.api.SlotContext;
 
 import java.util.List;
-import com.merlinkitsune.astral_dice.combat.PartyRelations;
+import com.merlinkitsune.starengine.combat.PartyRelations;
 
 /**
  * 人偶师立牌(hanna,稀有)1.20.1 Forge 移植版。
@@ -69,7 +69,7 @@ import com.merlinkitsune.astral_dice.combat.PartyRelations;
  * <p><b>层数真值在附件</b>,效果实例只是 HUD 镜像;**不跨死亡保留**(技能原文未声明)。
  */
 @net.minecraftforge.fml.common.Mod.EventBusSubscriber(modid = AstralDiceMod.MODID)
-public class HannaSignItem extends BaseSignItem {
+public class HannaSignItem extends BaseSignItem implements SignHooks.DiceRollResult {
 
     /** 立牌注册 id */
     public static final String SIGN_ID = AstralDiceMod.MODID + ":hanna_sign";
@@ -168,12 +168,7 @@ public class HannaSignItem extends BaseSignItem {
 
     /** 玩家是否佩戴人偶师立牌 */
     public static boolean isEquipped(Player player) {
-        // 总闸门(骰子装备和卸除调整):未佩戴骰子 ⇒ 本件功能一律不生效(数值保留)
-        if (!CurioSlotUtil.hasDiceEquipped(player)) return false;
-        if (player == null) return false;
-        var curios = CuriosCompat.getCuriosInventory(player);
-        return curios.isPresent()
-                && curios.get().findFirstCurio(s -> s.is(ModItems.HANNA_SIGN.get())).isPresent();
+        return SignEquipCheck.isEquipped(player, ModItems.HANNA_SIGN.get());
     }
 
     @Override
@@ -233,6 +228,13 @@ public class HannaSignItem extends BaseSignItem {
         if (!tryUseFantasyCooldown(player)) return;
         giveCoins(player, COIN_ON_SIX);
         sendSignActionBar(player, "msg.astral_dice.hanna_dice_coin", COIN_ON_SIX);
+    }
+
+    // === B1 注册式钩子分发入口（实例转发；静态方法保留兼容外部直调） ===
+
+    @Override
+    public void handleDiceRollResult(Player player, int dice) {
+        onDiceRollResult(player, dice);
     }
 
     // ══════════════════════════════════════════════════════════════════════════

@@ -7,11 +7,11 @@
 由 scripts/test/tools/publish_autojs_maven.ps1 写入（本地 mavenLocal 分发；**不是** Curse/Modrinth 发布件）。
 
 - `cc.sighs.autojs:AutoJS-forge-1.20.1:1.0.0`
-  - jar: `scripts/test/resources/mods/autojs/AutoJS-forge-1.20.1-1.0.0.jar`（SHA256 `e6e6df6bc60b317b0292ee9f8a591e08aa7bfd49aa156347e748fe6413e0803a`）
+  - jar: `scripts/test/resources/mods/autojs/AutoJS-forge-1.20.1-1.0.0.jar`（SHA256 `3fc90d40204d87aae097016a99cce3eb0f9a497a62c2f4113bd3e15dd3680987`）
   - 构建来源: `temp/AutoJS-src/targets/forge-1.20.1/build/libs/AutoJS-forge-1.20.1-1.0.0.jar`
   - 装载方式: ModDevGradle legacyforge: modRuntimeOnly 解析期 SRG->named
 - `cc.sighs.autojs:AutoJS-fabric-1.20.1:1.0.0`
-  - jar: `scripts/test/resources/mods/autojs/AutoJS-fabric-1.20.1-1.0.0.jar`（SHA256 `0dc8c3a834591dc4a210d4b4c18d09a0405ff3df0752dc0e2b8bf6154f95fcde`）
+  - jar: `scripts/test/resources/mods/autojs/AutoJS-fabric-1.20.1-1.0.0.jar`（SHA256 `66fc361f4a030bc43bf152d29cbc24ca0860bb8d86d46ee71127fc83c661cda6`）
   - 构建来源: `temp/AutoJS-src/targets/fabric-1.20.1/build/libs/AutoJS-fabric-1.20.1-1.0.0.jar`
   - 装载方式: Fabric Loom: modRuntimeOnly 解析期 intermediary->named
 

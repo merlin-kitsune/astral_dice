@@ -1,7 +1,7 @@
 package com.merlinkitsune.astral_dice.item.chip;
 
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
-import com.merlinkitsune.starenginelib.combat.HostileTargets;
+import com.merlinkitsune.starengine.combat.HostileTargets;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.event.RailgunStrikeScheduler;
 import com.merlinkitsune.astral_dice.item.ChargeManager;
@@ -17,7 +17,7 @@ import net.minecraft.world.phys.Vec3;
 import top.theillusivec4.curios.api.CuriosApi;
 
 import java.util.List;
-import com.merlinkitsune.astral_dice.combat.PartyRelations;
+import com.merlinkitsune.starengine.combat.PartyRelations;
 
 /**
  * 电磁炮筹码:

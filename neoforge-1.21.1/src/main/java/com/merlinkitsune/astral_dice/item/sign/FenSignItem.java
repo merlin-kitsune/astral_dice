@@ -1,7 +1,7 @@
 package com.merlinkitsune.astral_dice.item.sign;
 
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
-import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
+import com.merlinkitsune.starengine.event.EffectTimerGuard;
 
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
@@ -34,7 +34,7 @@ import com.merlinkitsune.astral_dice.item.StarLightManager;
  * <p>主动"战斗爽"(1:00):攻击力 +3;若拥有养精蓄锐则恢复 6 点血量并获得迅捷 1:00。
  * <p>旧的"主动消耗 2 层 → 下次骰神赐福期间持续扩散"已移除:溅射改为**被动触发 + 单次生效**。
  */
-public class FenSignItem extends BaseSignItem {
+public class FenSignItem extends BaseSignItem implements SignHooks.SplashBlessingTrigger, SignHooks.SplashCost {
     private static final org.slf4j.Logger LOGGER = org.slf4j.LoggerFactory.getLogger(FenSignItem.class);
 
     /** 养精蓄锐上限 */
@@ -88,7 +88,7 @@ public class FenSignItem extends BaseSignItem {
         // 只管粒子"就把它当遗留 bug 改掉(对照:同方法里「养精蓄锐 → 迅捷」那一处按裁决已改
         // visible=false —— 两处口径不同是**有意**的)。
         // 正向锁定:两条线用例 ZHAO-SIGN-{1.21.1,1.20.1} 的 FS1 断言把 `frenzy_visible=1` 写成期望值。
-        player.addEffect(new MobEffectInstance(ModEffects.FEN_FRENZY,
+        EffectTimerGuard.apply(player, new MobEffectInstance(ModEffects.FEN_FRENZY,
                 FRENZY_DURATION_TICKS, 0, false, true, true));
 
         int stacks = ModAttachments.getFenRecharge(player);
@@ -131,11 +131,7 @@ public class FenSignItem extends BaseSignItem {
 
     // 玩家是否佩戴大当家立牌
     public static boolean isEquipped(Player player) {
-        // 总闸门(骰子装备和卸除调整):未佩戴骰子 ⇒ 本件功能一律不生效(数值保留)
-        if (!CurioSlotUtil.hasDiceEquipped(player)) return false;
-        if (player == null) return false;
-        var curios = CuriosApi.getCuriosInventory(player);
-        return curios.isPresent() && curios.get().findFirstCurio(s -> s.is(ModItems.FEN_SIGN.get())).isPresent();
+        return SignEquipCheck.isEquipped(player, ModItems.FEN_SIGN.get());
     }
 
     // 使用治疗类效果牌时调用(佩戴立牌且未满上限时):养精蓄锐 +1 层
@@ -212,6 +208,18 @@ public class FenSignItem extends BaseSignItem {
         ModAttachments.setFenRecharge(player, Math.max(0, stacks - SPLASH_COST));
     }
 
+    // === B1 注册式钩子分发入口（实例方法转发；静态方法保留以兼容 KubeJS 探针等外部直调） ===
+
+    @Override
+    public boolean handleBlessingTriggered(Player player) {
+        return onBlessingTriggered(player);
+    }
+
+    @Override
+    public void handleSplashCost(Player player) {
+        consumeSplashCost(player);
+    }
+
     /**
      * 每 20 tick 驱动(PlayerTickEvents.onPlayerTick):1 分钟内没有触发骰神赐福 → 养精蓄锐 +1 层。
      * 计时起点:装备立牌时(onEquip)或首次 tick 惰性初始化。
@@ -228,7 +236,7 @@ public class FenSignItem extends BaseSignItem {
             return;
         }
         if (!isEquipped(player)) return;
-        if (now - last < 1200) return;
+        if (now - last < FRENZY_DURATION_TICKS) return;
         if (ModAttachments.getFenRecharge(player) >= MAX_RECHARGE) return;
         ModAttachments.setFenRecharge(player, ModAttachments.getFenRecharge(player) + 1);
         // 重新计时

@@ -28,7 +28,7 @@ import com.mojang.math.Axis;
 import org.joml.Matrix4f;
 import org.joml.Vector4f;
 
-import com.merlinkitsune.starenginelib.client.ActionBarManager;
+import com.merlinkitsune.starengine.client.ActionBarManager;
 @Mod.EventBusSubscriber(modid = AstralDiceMod.MODID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
 public class ModClientEvents {
 

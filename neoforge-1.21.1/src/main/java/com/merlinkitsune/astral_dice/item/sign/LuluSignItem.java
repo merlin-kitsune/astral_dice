@@ -1,18 +1,18 @@
 package com.merlinkitsune.astral_dice.item.sign;
 
-import com.merlinkitsune.starenginelib.combat.HostileTargets;
+import com.merlinkitsune.starengine.combat.HostileTargets;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
-import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
+import com.merlinkitsune.starengine.event.EffectTimerGuard;
 import com.merlinkitsune.astral_dice.event.WeirdDiceHandler;
 import com.merlinkitsune.astral_dice.item.HealingManager;
 import com.merlinkitsune.astral_dice.item.chip.CurrentCoreChipItem;
 import com.merlinkitsune.astral_dice.item.chip.FriendshipBadgeChipItem;
 import com.merlinkitsune.astral_dice.network.ActionBarPayload;
-import com.merlinkitsune.astral_dice.target.SelfTargetable;
-import com.merlinkitsune.starenginelib.component.GameplayConstants;
-import com.merlinkitsune.starenginelib.target.TargetSelectionAction;
-import com.merlinkitsune.starenginelib.target.TargetSelectionRegistry;
-import com.merlinkitsune.starenginelib.target.TargetType;
+import com.merlinkitsune.starengine.target.SelfTargetable;
+import com.merlinkitsune.starengine.component.GameplayConstants;
+import com.merlinkitsune.starengine.target.TargetSelectionAction;
+import com.merlinkitsune.starengine.target.TargetSelectionRegistry;
+import com.merlinkitsune.starengine.target.TargetType;
 import net.minecraft.ChatFormatting;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.network.chat.Component;
@@ -27,7 +27,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
-import com.merlinkitsune.astral_dice.combat.PartyRelations;
+import com.merlinkitsune.starengine.combat.PartyRelations;
 
 /**
  * 史莱姆立牌。
@@ -64,6 +64,12 @@ public class LuluSignItem extends BaseSignItem {
     /** 缓慢时长(60 秒;与旧行为同值,不引入新常量) */
     private static final int SLOWDOWN_TICKS = 1200;
 
+    /** 受击被动冷却(1 秒 = 20 tick;防止被围攻时治愈点数暴涨) */
+    private static final int HURT_COOLDOWN_TICKS = 20;
+
+    /** 主动技能冷却减免(10 秒 = 200 tick;绝对量,与最大冷却无关) */
+    private static final long COOLDOWN_REDUCTION_TICKS = 200L;
+
     /**
      * 主动「治愈粘液」:选任意玩家(或右键对自身)⇒ 主体治愈施加到该目标,两项范围能力以该目标为中心。
      *
@@ -95,7 +101,7 @@ public class LuluSignItem extends BaseSignItem {
                 // 友情徽章:治疗者对**友方玩家**施加治疗时双方各 +2 治愈(自疗不触发,钩子内部自判)
                 FriendshipBadgeChipItem.onHealApplied(player, receiver);
             }
-            target.addEffect(new MobEffectInstance(MobEffects.HEAL, 1, 0, false, true));
+            EffectTimerGuard.apply(target, new MobEffectInstance(MobEffects.HEAL, 1, 0, false, true));
 
             // ── 2. 范围能力(2026-09-28 起仅剩「敌对生物缓慢」):以**被指向的目标**为中心 ──────
             // 目标自身已吃到主体效果,故与旧实现排除施放者同构,这里排除目标本身。
@@ -156,7 +162,7 @@ public class LuluSignItem extends BaseSignItem {
     @Override
     protected void onHurt(Player player, DamageSource source, float amount) {
         long nowTick = player.level().getGameTime();
-        if (nowTick - com.merlinkitsune.astral_dice.component.ModAttachments.getLuluLastHurtTick(player) < 20) {
+        if (nowTick - com.merlinkitsune.astral_dice.component.ModAttachments.getLuluLastHurtTick(player) < HURT_COOLDOWN_TICKS) {
             return;
         }
         com.merlinkitsune.astral_dice.component.ModAttachments.setLuluLastHurtTick(player, nowTick);
@@ -166,10 +172,10 @@ public class LuluSignItem extends BaseSignItem {
         // 由锁定结束起冷却时一次性抵扣(不在这里改任何冷却数值)
         long cdEnd = com.merlinkitsune.astral_dice.component.ModAttachments.getSignActiveCooldownEnd(player);
         if (BaseSignItem.isSignActiveLocked(player)) {
-            com.merlinkitsune.astral_dice.component.ModAttachments.addSignActiveReductionPool(player, 200L);
+            com.merlinkitsune.astral_dice.component.ModAttachments.addSignActiveReductionPool(player, COOLDOWN_REDUCTION_TICKS);
         } else if (cdEnd > nowTick) {
             com.merlinkitsune.astral_dice.component.ModAttachments.setSignActiveCooldownEnd(player,
-                    Math.max(nowTick, cdEnd - 200));
+                    Math.max(nowTick, cdEnd - COOLDOWN_REDUCTION_TICKS));
         }
         // 治愈点 +1(上限为玩家最大生命值的一半,即 ♥ 数)
         HealingManager.add(player, 1);

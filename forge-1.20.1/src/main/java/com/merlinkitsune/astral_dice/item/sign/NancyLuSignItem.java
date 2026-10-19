@@ -1,10 +1,10 @@
 package com.merlinkitsune.astral_dice.item.sign;
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
-import com.merlinkitsune.starenginelib.item.CuriosCompat;
-import com.merlinkitsune.starenginelib.combat.HostileTargets;
+import com.merlinkitsune.starengine.item.CuriosCompat;
+import com.merlinkitsune.starengine.combat.HostileTargets;
 
-import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
-import com.merlinkitsune.starenginelib.event.ModEffectRemoval;
+import com.merlinkitsune.starengine.event.EffectTimerGuard;
+import com.merlinkitsune.starengine.event.ModEffectRemoval;
 
 import com.merlinkitsune.astral_dice.combat.CardRegistry;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
@@ -34,7 +34,7 @@ import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.projectile.ThrownEnderpearl;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.eventbus.api.EventPriority;
-import com.merlinkitsune.astral_dice.combat.PartyRelations;
+import com.merlinkitsune.starengine.combat.PartyRelations;
 
 /**
  * 骇客立牌(命名:nancy_lu)。
@@ -51,7 +51,7 @@ import com.merlinkitsune.astral_dice.combat.PartyRelations;
  *   主物品栏无战斗牌可消耗时同样获得保底 +2。
  */
 @Mod.EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
-public class NancyLuSignItem extends BaseSignItem {
+public class NancyLuSignItem extends BaseSignItem implements SignHooks.BlessingEnded {
     public static final int PASSIVE_NONE = 0;
     public static final int PASSIVE_ATTACK = 1;
     public static final int PASSIVE_DEFENSE = 2;
@@ -176,13 +176,13 @@ public class NancyLuSignItem extends BaseSignItem {
         }
         ModAttachments.setNancyLuActiveBonus(player, bonus);
         ModAttachments.setNancyLuActiveBonusUntil(player, now + ACTIVE_DURATION_TICKS);
-        player.addEffect(new MobEffectInstance(ModEffects.NANCY_LU_HACK.get(),
+        EffectTimerGuard.apply(player, new MobEffectInstance(ModEffects.NANCY_LU_HACK.get(),
                 ACTIVE_DURATION_TICKS, 0, false, true, true));
     }
 
     // 主动技能 ActionBar:完全隐身提示(注册到主动技能响应事件)
     @SubscribeEvent
-    public static void onSignActiveTriggered(com.merlinkitsune.starenginelib.event.SignActiveTriggeredEvent event) {
+    public static void onSignActiveTriggered(com.merlinkitsune.starengine.event.SignActiveTriggeredEvent event) {
         if (event.getSignStack().is(ModItems.NANCY_LU_SIGN.get())) {
             sendSignActionBar(event.getPlayer(), "msg.astral_dice.nancy_lu_active", HIDDEN_DURATION_TICKS / 20);
             event.setHandled();
@@ -192,11 +192,7 @@ public class NancyLuSignItem extends BaseSignItem {
     // === 被动 ===
 
     public static boolean isEquipped(Player player) {
-        // 总闸门(骰子装备和卸除调整):未佩戴骰子 ⇒ 本件功能一律不生效(数值保留)
-        if (!CurioSlotUtil.hasDiceEquipped(player)) return false;
-        if (player == null) return false;
-        var curios = CuriosCompat.getCuriosInventory(player);
-        return curios.isPresent() && curios.get().findFirstCurio(s -> s.is(ModItems.NANCY_LU_SIGN.get())).isPresent();
+        return SignEquipCheck.isEquipped(player, ModItems.NANCY_LU_SIGN.get());
     }
 
     // 是否处于完全隐身(绝对无法被生物索敌)状态
@@ -255,6 +251,13 @@ public class NancyLuSignItem extends BaseSignItem {
             ModAttachments.setNancyLuPassiveType(player, PASSIVE_ATTACK);
             RandomCardHandler.giveCardTo(player, RandomCardHandler.CardCategory.BATTLE);
         }
+    }
+
+    // === B1 注册式钩子分发入口（实例转发；静态方法保留兼容外部直调） ===
+
+    @Override
+    public void handleDiceBlessingEnded(Player player) {
+        onDiceBlessingEnded(player);
     }
 
     // === 主动辅助 ===

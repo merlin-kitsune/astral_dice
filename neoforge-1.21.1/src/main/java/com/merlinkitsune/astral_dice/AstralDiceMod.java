@@ -3,10 +3,12 @@ package com.merlinkitsune.astral_dice;
 import com.merlinkitsune.astral_dice.block.ModBlocks;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
+import com.merlinkitsune.astral_dice.component.SignTimerSourceAdapter;
 import com.merlinkitsune.astral_dice.config.ModCommonConfig;
 import com.merlinkitsune.astral_dice.world.ModPoiTypes;
 import com.merlinkitsune.astral_dice.world.ModVillagerProfessions;
-import com.merlinkitsune.starenginelib.component.GameplayConstants;
+import com.merlinkitsune.starengine.component.GameplayConstants;
+import com.merlinkitsune.starengine.event.EffectTimerGuard;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.entity.ModEntityTypes;
 import com.merlinkitsune.astral_dice.init.ModCompatibilityCheck;
@@ -44,6 +46,10 @@ public class AstralDiceMod {
         ModCreativeTabs.CREATIVE_TABS.register(modEventBus);
         ModMenuTypes.MENU_TYPES.register(modEventBus);
         ModAttachments.ATTACHMENTS.register(modEventBus);
+        // 计时器守卫的存储 seam:库版 EffectTimerGuard 不持有 AttachmentType,计时表由本模组提供。
+        // 必须在**任何效果施加之前**注入(构造器 = CONSTRUCT,早于 CONFIG_LOAD / COMMON_SETUP),
+        // 否则守卫会用库内的退化实现(恒空表 ⇒ 不校正时长),且不报错、极难发现。
+        EffectTimerGuard.setTimerSource(new SignTimerSourceAdapter());
         ModParticles.PARTICLE_TYPES.register(modEventBus);
         ModBlocks.BLOCKS.register(modEventBus);
         ModPoiTypes.POI_TYPES.register(modEventBus);
@@ -151,7 +157,7 @@ public class AstralDiceMod {
             //    (GameplayConstants.applyConfig),此前的读数只是默认值,不是真实生效值。
             //    三个后端全是反射,契约不符时会静默退回原版计分板 —— 这条机器行让
             //    「装了 FTB Teams / OPAC 却没生效」在日志里一眼可断言(2026-10-01 新增)。
-            com.merlinkitsune.astral_dice.combat.PartyRelations.reportBackends();
+            com.merlinkitsune.starengine.combat.PartyRelations.reportBackends();
             // 卡牌类型注册表初始化(战斗牌定义集中管理)
             com.merlinkitsune.astral_dice.combat.CardRegistry.init();
             LOGGER.info("Astral Dice mod loaded.");

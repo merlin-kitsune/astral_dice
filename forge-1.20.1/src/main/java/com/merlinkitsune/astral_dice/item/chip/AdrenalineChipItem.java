@@ -1,7 +1,7 @@
 package com.merlinkitsune.astral_dice.item.chip;
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
-import com.merlinkitsune.starenginelib.item.CuriosCompat;
-import com.merlinkitsune.starenginelib.combat.HostileTargets;
+import com.merlinkitsune.starengine.item.CuriosCompat;
+import com.merlinkitsune.starengine.combat.HostileTargets;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.item.ModItems;
@@ -15,7 +15,7 @@ import top.theillusivec4.curios.api.CuriosApi;
 import top.theillusivec4.curios.api.SlotContext;
 
 import java.util.concurrent.ThreadLocalRandom;
-import com.merlinkitsune.astral_dice.combat.PartyRelations;
+import com.merlinkitsune.starengine.combat.PartyRelations;
 
 /**
  * 肾上腺素筹码(一般/高效):生命值为 50% 或更低时,攻击力/防御力 +3/+8。
@@ -114,7 +114,7 @@ public class AdrenalineChipItem extends BaseChipItem {
         if (tryDodge()) {
             com.merlinkitsune.astral_dice.combat.DiceCombatEvents.applyDodgeCancel(event);
             // 枪匠立牌:任意来源的闪避都会尝试获得 1 层弱点识破(2026-10-02 起:每次都给)
-            com.merlinkitsune.astral_dice.item.sign.MosesSignItem.onDodgeCounter(player, attacker);
+            com.merlinkitsune.astral_dice.item.sign.SignHookDispatcher.fireDodgeCounter(player, attacker);
         }
     }
 }

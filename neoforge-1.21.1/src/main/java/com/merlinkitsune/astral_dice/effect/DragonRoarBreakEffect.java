@@ -16,10 +16,13 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
  * curve 入参为 amplifier(本效果恒为 0,D8:重复命中只刷新时长、不叠层 ⇒ 恒 {@code -8.0})。
  * 直接改真实护甲值 ⇒ 原版伤害与骰战防御力同时正确生效,不存在双重计算。
  *
- * <p>时长常量 {@code ROAR_DEBUFF_TICKS}(1200 = 1:00)定义在施加方
- * {@code item/sign/MamushiSignItem}(规格 §1 常量表),本类只承载属性修饰器。
+ * <p>时长常量 {@link #DURATION_TICKS}(1200 = 1:00)定义在本类,施加方
+ * {@code item/sign/MamushiSignItem} 的 {@code ROAR_DEBUFF_TICKS} 直接引用本常量(规格 §1 常量表)。
  */
 public class DragonRoarBreakEffect extends MobEffect {
+    /** 效果时长:1:00 = 1200 tick(规格 §1 效果表 {@code ROAR_DEBUFF_TICKS};两线同值) */
+    public static final int DURATION_TICKS = 1200;
+
     /**
      * 护甲变化量:1 防御 = 2 护甲 ⇒ {@code -8} 护甲 = 减 4 点防御(规格 §1 / D3)。
      * 施加方 {@code MamushiSignItem#ROAR_ARMOR_DELTA} 直接引用本常量,保证单一真值。

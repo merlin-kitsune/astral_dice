@@ -1,6 +1,6 @@
 package com.merlinkitsune.astral_dice.item.sign;
 
-import com.merlinkitsune.starenginelib.component.GameplayConstants;
+import com.merlinkitsune.starengine.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -12,6 +12,7 @@ import com.merlinkitsune.astral_dice.AstralDiceMod;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
+import com.merlinkitsune.starengine.event.EffectTimerGuard;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.bus.api.EventPriority;
 
@@ -32,7 +33,7 @@ public class PaparaSignItem extends BaseSignItem {
             return InteractionResultHolder.success(stack);
         }
         // 主动:获得"汲取"效果 3:00(visible=true 使效果图标在 HUD 正常显示)
-        player.addEffect(new MobEffectInstance(ModEffects.PAPARA_BITE, 3600, 0, false, true, true));
+        EffectTimerGuard.apply(player, new MobEffectInstance(ModEffects.PAPARA_BITE, 3600, 0, false, true, true));
         return InteractionResultHolder.success(stack);
     }
 

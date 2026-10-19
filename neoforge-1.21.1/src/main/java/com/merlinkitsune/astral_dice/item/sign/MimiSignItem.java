@@ -5,8 +5,8 @@ import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.card.RandomCardHandler;
 import com.merlinkitsune.astral_dice.item.chip.BaseChipItem;
-import com.merlinkitsune.starenginelib.item.AstralRarities;
-import com.merlinkitsune.starenginelib.item.Rarity;
+import com.merlinkitsune.starengine.item.AstralRarities;
+import com.merlinkitsune.starengine.item.Rarity;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.entity.player.Player;
@@ -108,7 +108,7 @@ public class MimiSignItem extends BaseSignItem {
 
     // 主动技能 ActionBar 注册:自带提示已在 handleUse 内发送,仅阻止默认提示
     @SubscribeEvent
-    public static void onSignActiveTriggered(com.merlinkitsune.starenginelib.event.SignActiveTriggeredEvent event) {
+    public static void onSignActiveTriggered(com.merlinkitsune.starengine.event.SignActiveTriggeredEvent event) {
         if (event.getSignStack().is(ModItems.MIMI_SIGN.get())) {
             event.setHandled();
         }
@@ -116,11 +116,7 @@ public class MimiSignItem extends BaseSignItem {
 
     // 玩家是否佩戴看板娘立牌
     public static boolean isEquipped(Player player) {
-        // 总闸门(骰子装备和卸除调整):未佩戴骰子 ⇒ 本件功能一律不生效(数值保留)
-        if (!CurioSlotUtil.hasDiceEquipped(player)) return false;
-        if (player == null) return false;
-        var curios = CuriosApi.getCuriosInventory(player);
-        return curios.isPresent() && curios.get().findFirstCurio(s -> s.is(ModItems.MIMI_SIGN.get())).isPresent();
+        return SignEquipCheck.isEquipped(player, ModItems.MIMI_SIGN.get());
     }
 
     // 被动:每获得一张战斗牌时调用(合成或主动返还;与维生素药丸相同触发机制,不包含拾取/奖励/复制)

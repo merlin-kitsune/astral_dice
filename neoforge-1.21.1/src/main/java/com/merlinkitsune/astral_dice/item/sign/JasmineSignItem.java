@@ -1,9 +1,9 @@
 package com.merlinkitsune.astral_dice.item.sign;
 
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
-import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
+import com.merlinkitsune.starengine.event.EffectTimerGuard;
 
-import com.merlinkitsune.starenginelib.component.GameplayConstants;
+import com.merlinkitsune.starengine.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.item.ChargeManager;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
@@ -27,6 +27,9 @@ import java.util.concurrent.ThreadLocalRandom;
 public class JasmineSignItem extends BaseSignItem {
     // 被动:每移动 300 米触发一次增益
     private static final float DISTANCE_THRESHOLD = 300f;
+
+    /** 主动技能「清扫」与随机附加效果(抗性提升/力量)的统一时长(2 分钟) */
+    private static final int DURATION_TICKS = 2400;
 
     private static final Map<UUID, Vec3> lastPosMap = new HashMap<>();
     private static final Map<UUID, Float> walkAccumMap = new HashMap<>();
@@ -61,12 +64,12 @@ public class JasmineSignItem extends BaseSignItem {
     protected InteractionResultHolder<ItemStack> handleUse(Level level, Player player, ItemStack stack) {
         if (!level.isClientSide) {
             // 主动:获得"清扫"效果 2 分钟(迅捷 + 护甲 -30%)
-            player.addEffect(new MobEffectInstance(ModEffects.JASMINE_SWEEP, 2400, 0, false, false, true));
+            EffectTimerGuard.apply(player, new MobEffectInstance(ModEffects.JASMINE_SWEEP, DURATION_TICKS, 0, false, false, true));
             // 随机获得以下任一效果(时长与主动技能同步 2 分钟)
             if (ThreadLocalRandom.current().nextBoolean()) {
-                EffectTimerGuard.apply(player, new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, 2400, 0, false, true)); // 抗性提升 2 分钟
+                EffectTimerGuard.apply(player, new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, DURATION_TICKS, 0, false, true)); // 抗性提升 2 分钟
             } else {
-                EffectTimerGuard.apply(player, new MobEffectInstance(MobEffects.DAMAGE_BOOST, 2400, 0, false, true)); // 力量 2 分钟
+                EffectTimerGuard.apply(player, new MobEffectInstance(MobEffects.DAMAGE_BOOST, DURATION_TICKS, 0, false, true)); // 力量 2 分钟
             }
         }
         return InteractionResultHolder.success(stack);
@@ -91,11 +94,7 @@ public class JasmineSignItem extends BaseSignItem {
 
     // 玩家是否佩戴扫地机立牌
     public static boolean isEquipped(Player player) {
-        // 总闸门(骰子装备和卸除调整):未佩戴骰子 ⇒ 本件功能一律不生效(数值保留)
-        if (!CurioSlotUtil.hasDiceEquipped(player)) return false;
-        if (player == null) return false;
-        var curios = CuriosApi.getCuriosInventory(player);
-        return curios.isPresent() && curios.get().findFirstCurio(s -> s.is(ModItems.JASMINE_SIGN.get())).isPresent();
+        return SignEquipCheck.isEquipped(player, ModItems.JASMINE_SIGN.get());
     }
 
     // 使用「加急加快」效果牌后调用:立牌主动技能冷却立即减少最大冷却的 50%

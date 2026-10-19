@@ -1,5 +1,6 @@
 # 交接文档 — astral_dice_multiloader-next（开发线 multi-dev-next）
 
+> **本轮新增欠账登记（2026-10-19）**：5 个「欠账角色立牌」已登记入 §5（垃圾桶/Z3000、摩托车手/Luka、少主/A.L.、小猎手/InkShadow、魔渊幼体/Sykes），详见下方「5.x 欠账角色立牌」。
 > 生成：2026-10-11 20:20；**本次刷新：2026-10-18 18:5x（Asia/Hong_Kong；**WSL 迁移 + AutoJS 测试台重建批**）**｜工作树 `F:\MCProject\astral_dice_multiloader-next`
 > 分支 `multi-dev-next`｜刷新前基线 HEAD **`bcae58f9`**（**= 本交接文档批自身**，`.132` 交接刷新提交，2026-10-18；其前 `3c90e653` = lingling 用例判据修正；上一版基线 `e06451c5` = 交接文档批 `.98`；`.99` 起依次有 `.100` 实施分工、`.102` 复核分级⑨、`.103`–`.131` 各批（明细见 `docs/agent/AGENTS-full.md`「待办交接」第 20–39 条）、`.132` = **AutoJS 求值通道 / lingling 用例 / 强化拒止牌面** 三批；最新值一律以 `git log -1` 为准）｜四线版本 **`2.0.0-SNAPSHOT.132`**（四条线同号）
 > 工作树状态：**干净**（`git status --short -uall` 只剩两行用户资产 `?? models/路障 - Converted.bbmodel`、`?? models/强化拒止 - Converted.bbmodel`；§5-C-11 的 `%SystemDrive%` 缓存目录已于 2026-10-18 清除）；**未 push**。
@@ -10,6 +11,29 @@
 > ⚠️ **环境口径（2026-10-18 收敛，**取代 10-17 的 Windows 原生口径**）**：唯一施工副本 = `~/work/astral_dice_multiloader-next`（WSL ext4）；测试入口 = `scripts/test/mt.sh`（bash + python3 + AutoJS 求值通道）；`/mnt/f/...` 收尾前只读，回写用 `scripts/dev/sync-back.sh`，提交/push 在 Windows 侧 `cmd.exe`。说明正本 `docs/wsl-autojs-toolchain.md`。
 
 ---
+
+
+## 下沉到 StarEngine 的判定规则 —— 必须遵守（2026-10-19 用户裁决）
+
+1. **不包含饰品 API**：Curios / Trinkets / Accessories 相关的一切（栏位校验、自动装备、平台 shim）**不下沉**。
+   ⇒ `item/CurioSlotUtil` **明确排除**。
+2. **不下沉与筹码流派 / 体系相关的类**：充能、治愈、星光、反击、标记等流派资源管理**不下沉**。
+   ⇒ `item/ChargeManager`、`item/HealingManager`、`item/StarLightManager` 等**明确排除**。
+3. **第三方 API 的注册放 starengine，只下沉「关键联动 / 调用」部分**：
+   第三方库（FTB Teams、OpenPAC、Apotheosis、Bountiful 等）的探测与调用封装属可下沉项；
+   注册本身在 starengine 内完成，主模组只留业务语义。
+
+**按此规则修订后的下沉候选（2026-10-19）**
+
+| 类 | 判定 | 依据 |
+|---|---|---|
+| `combat/PartyRelations` | 候选 | 规则 3：FTB Teams / OpenPAC 反射联动，且与库 `EventTargetCollector` 重复实现 |
+| `combat/EliteTargets` | 候选 | 规则 3：Apotheosis 精英/Boss 口径 + `c:bosses` 标签 |
+| `target/HoldToSelect` | 候选（最安全） | 零依赖纯接口 |
+| `target/SelfTargetable` | 候选（须与 `TargetSelectionManager` 同批） | 目标选择扩展点 |
+| `event/EffectTimerGuard` | 候选（需把计时表抽 seam） | 通用计时，非筹码体系 |
+| ~~`item/CurioSlotUtil`~~ | **排除** | 规则 1（饰品 API） |
+| ~~`item/ChargeManager`~~ | **排除** | 规则 2（筹码流派体系） |
 
 ## 0. 一页速览
 
@@ -239,6 +263,19 @@ pwsh -NoProfile -File scripts/test/mt_inject.ps1 cmd -Command "/astralprobecard 
     fabric 仍无 ServerLifecycleHooks 等价物 ⇒ 该线用例会在 30 个 `blocked-26.1.2` 之外的 12 条 fabric 上 BLOCKED）。
 15. **`mt.conf` 不在版本库**：WSL 侧已回落内置默认（端点 25585 / 15s）。整合包 mods 目录键（`MT_PACK_MODS_*`）只在推送整合包时用，WSL 下不消费。
 
+## 5.x 欠账角色立牌（2026-10-19 登记）
+
+> 5 个 Astral Party 角色在**四线**均无立牌实现（无 `item/sign/*SignItem.java`、无 `ModItems` 注册、无贴图），本轮只登记欠账、未写任何代码/资源。来源 = Astral Party Wiki「Characters」顺序位置（本地取证 `temp/ref/astralparty/bili_characters.json` + 各 `page_*.json` 的 `编号`）。
+
+| wiki 名 | 建议 id | 状态 | 来源（Wiki Characters 顺序位置） |
+|---|---|---|---|
+| 垃圾桶 / Z3000 | z3000 | 未实现（无代码无资源） | 编号 109（`bili_characters.json` 第 32 位） |
+| 摩托车手 / Luka | luka | 未实现（无代码无资源） | 编号 119（第 30 位；wiki 称号=午夜闪光，传记称「午夜飙车党」） |
+| 少主 / A.L. | a_l | 未实现（无代码无资源） | 编号 118（第 1 位；wiki 称号=暗区少主） |
+| 小猎手 / InkShadow | ink_shadow | 未实现（无代码无资源） | 编号 111（第 21 位；wiki 中文名=墨影） |
+| 魔渊幼体 / Sykes | sykes | 未实现（无代码无资源） | 编号 129（第 28 位；wiki 中文名=赛克斯） |
+
+> 下批做立牌时的接续顺序按 Wiki 角色编号升序：**Z3000(109) → InkShadow(111) → A.L.(118) → Luka(119) → Sykes(129)**。⚠️ 开工前须按 `docs/agent/AGENTS-full.md`〈立牌命名规范〉复核 id 契约（`a_l` 含下划线、`ink_shadow`/`sykes`/`z3000` 的最终形态以该规范为准），并核对 Luka 的「摩托车手」与 wiki 称号「午夜闪光」是否需统一口径。
 ## 6. 已知坑与教训
 
 1. **批处理空参陷阱**：`for %%A in (%*) do (` 在无参数时展开成 `for %%A in () do (` ⇒ 语法错误、窗口闪退。必须用 `if not "%~1"==""` 守卫。

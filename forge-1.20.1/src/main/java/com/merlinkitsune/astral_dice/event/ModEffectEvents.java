@@ -10,7 +10,8 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.event.entity.living.MobEffectEvent;
 
-import com.merlinkitsune.starenginelib.event.ModEffectRemoval;
+import com.merlinkitsune.starengine.event.EffectTimerGuard;
+import com.merlinkitsune.starengine.event.ModEffectRemoval;
 @Mod.EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class ModEffectEvents {
     @SubscribeEvent(priority = EventPriority.HIGH)

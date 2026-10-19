@@ -25,9 +25,9 @@
         --jar neoforge-26.1.2/build/libs/astral_dice-1.3.7-beta.2+neoforge_26.1.2.jar \\
         --jar fabric-1.20.1/build/libs/astral_dice-1.3.7-alpha.2+fabric_1.20.1.jar
 
-    # 前置库产物（文件名前缀 starengine_lib- ⇒ **自动路由到库项目**，无需额外参数）
+    # 前置库产物（文件名前缀 starengine- ⇒ **自动路由到库项目**，无需额外参数）
     python tools/modrinth_upload.py \\
-        --jar ../starengine_lib_next/neoforge-1.21.1/build/libs/starengine_lib-neoforge-1.21.1-2.0.0-SNAPSHOT.10.jar
+        --jar ../starengine_next/neoforge-1.21.1/build/libs/starengine-neoforge-1.21.1-2.0.0-SNAPSHOT.10.jar
 
     # 看某项目上已有的版本号（幂等核对 / 发布后复查）
     python tools/modrinth_upload.py --list --project-id 5xDtrJ8X
@@ -118,11 +118,11 @@ DEP_TYPES = ("required", "optional", "incompatible", "embedded")
 
 # 主模组产物：astral_dice-<版本>+<加载器>_<MC版本>.jar
 MAIN_RE = re.compile(r"^astral_dice-(?P<ver>[^+]+)\+(?P<loader>[a-z]+)_(?P<mc>.+)\.jar$")
-# 前置库产物：starengine_lib-<加载器>-<MC版本>-<版本>.jar
+# 前置库产物：starengine-<加载器>-<MC版本>-<版本>.jar
 #   ⚠️ MC 版本段用 `\d+(?:\.\d+)+`（数字点号）而不是 `.+?`：后者在
-#   `starengine_lib-neoforge-26.1.2-1.0.7.jar` 上会与版本段争抢，把 MC 切成 `26.1`、版本切成 `2-1.0.7`。
+#   `starengine-neoforge-26.1.2-1.0.7.jar` 上会与版本段争抢，把 MC 切成 `26.1`、版本切成 `2-1.0.7`。
 LIB_RE = re.compile(
-    r"^starengine_lib-(?P<loader>neoforge|forge|fabric)-(?P<mc>\d+(?:\.\d+)+)-(?P<ver>\d[^/]*)\.jar$")
+    r"^starengine-(?P<loader>neoforge|forge|fabric)-(?P<mc>\d+(?:\.\d+)+)-(?P<ver>\d[^/]*)\.jar$")
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 CACHE_DIR = REPO_ROOT / ".modrinth"
@@ -295,7 +295,7 @@ def parse_jar(jar):
     for bad in ("-sources", "-javadoc", "-dev"):
         if stem.endswith(bad):
             raise SystemExit(f"[ERR] {jar.name} 是构建的附加产物（{bad}.jar），不是可分发的模组本体，"
-                             "请只传主产物（astral_dice-*/*.jar 或 starengine_lib-*-*.jar 本体）")
+                             "请只传主产物（astral_dice-*/*.jar 或 starengine-*-*.jar 本体）")
 
     m = MAIN_RE.match(jar.name)
     if m:
@@ -306,7 +306,7 @@ def parse_jar(jar):
     raise SystemExit(
         f"[ERR] 无法从文件名解析产物身份：{jar.name}\n"
         "      主模组应形如 astral_dice-<版本>+<加载器>_<MC版本>.jar；\n"
-        "      前置库应形如 starengine_lib-<加载器>-<MC版本>-<版本>.jar")
+        "      前置库应形如 starengine-<加载器>-<MC版本>-<版本>.jar")
 
 
 def infer_version_type(ver):
@@ -446,7 +446,7 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--jar", action="append", metavar="PATH",
                     help="要上传的 jar（可重复；相对路径按当前目录解析）。"
-                         "astral_dice-* ⇒ 主项目，starengine_lib-* ⇒ 库项目（自动路由）")
+                         "astral_dice-* ⇒ 主项目，starengine-* ⇒ 库项目（自动路由）")
     ap.add_argument("--project-id", default=None,
                     help=f"覆盖主项目 id（默认取 {BINDING_FILE} 的 projectId，兜底 {DEFAULT_PROJECT_ID}）")
     ap.add_argument("--lib-project-id", default=None, help=f"覆盖库项目 id（默认取 {BINDING_FILE} 的 lib.projectId）")

@@ -1285,6 +1285,33 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
         // 故不再有同档伙伴)。
         // 本配方六个填料的格位与全部其它立牌均不复用,网格全局唯一
         // (守门:scripts/verify/verify_crafting_recipe_uniqueness.ps1)。
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.JILL_SIGN.get())
+                .pattern("PVP").pattern("GEG").pattern("WDW")
+                .define('P', ModItems.GOLDEN_STAR_PLATE.get())
+                .define('V', net.minecraft.world.item.Items.GLASS_BOTTLE)
+                .define('G', net.minecraft.world.item.Items.SUGAR)
+                .define('W', net.minecraft.world.item.Items.WHEAT)
+                .define('E', ModItems.BLANK_SIGN.get())
+                .define('D', ModItems.AMETHYST_DICE.get())
+                .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get())).save(output);
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.DOROTHY_SIGN.get())
+                .pattern("PHP").pattern("LEL").pattern("TDT")
+                .define('P', ModItems.GOLDEN_STAR_PLATE.get())
+                .define('H', net.minecraft.world.item.Items.HONEY_BOTTLE)
+                .define('L', net.minecraft.world.item.Items.POTION)
+                .define('T', net.minecraft.world.item.Items.BREAD)
+                .define('E', ModItems.BLANK_SIGN.get())
+                .define('D', ModItems.AMETHYST_DICE.get())
+                .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get())).save(output);
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.ALANA_SIGN.get())
+                .pattern("SBS").pattern("CEC").pattern("IDI")
+                .define('S', net.minecraft.world.item.Items.STONE_BRICKS)
+                .define('B', net.minecraft.world.item.Items.BOOK)
+                .define('C', net.minecraft.world.item.Items.CANDLE)
+                .define('I', net.minecraft.world.item.Items.IRON_BLOCK)
+                .define('E', ModItems.BLANK_SIGN.get())
+                .define('D', ModItems.GOLDEN_DICE.get())
+                .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get())).save(output);
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.SHERRY_SIGN.get())
                 .pattern("PBP")
                 .pattern("AEA")

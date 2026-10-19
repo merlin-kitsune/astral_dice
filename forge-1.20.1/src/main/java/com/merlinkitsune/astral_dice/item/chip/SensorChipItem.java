@@ -6,7 +6,7 @@ import com.merlinkitsune.astral_dice.item.ModItems;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
-import com.merlinkitsune.starenginelib.item.CuriosCompat;
+import com.merlinkitsune.starengine.item.CuriosCompat;
 
 /**
  * 感测装置筹码(史诗 / 标记)。

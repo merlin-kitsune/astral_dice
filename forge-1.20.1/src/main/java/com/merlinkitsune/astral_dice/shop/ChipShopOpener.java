@@ -1,7 +1,7 @@
 package com.merlinkitsune.astral_dice.shop;
 
 import com.merlinkitsune.astral_dice.network.ModNetwork;
-import com.merlinkitsune.starenginelib.component.GameplayConstants;
+import com.merlinkitsune.starengine.component.GameplayConstants;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;

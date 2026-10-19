@@ -1,6 +1,56 @@
 # Agent Instructions
 
 <!-- BEGIN 代理协作契约（2026-10-16 用户裁决）— 如需挪位，整块剪切到别处即可 -->
+
+## ⛔ 回滚裁决（2026-10-18 用户裁决，优先级高于本文件其余测试/环境条款）
+
+**背景**：WSL 内运行 Minecraft 客户端存在严重性能问题，实机读数与截图不可信；2026-10-18 的 WSL + AutoJS 测试台与其全部实机结果（含 1.21.1 / 1.20.1 双版本）**一律作废**。
+
+1. **测试台唯一口径 = PowerShell 7**。所有测试脚本都是 `.ps1`，一律 `pwsh -NoProfile -File <绝对路径>` 执行；
+   **禁止** `bash`、`.sh`、`bash mt.sh`、以及任何 WSL 侧测试入口。`.sh` 测试脚本已从仓库清除，不得再引入。
+2. **实机测试只在 Windows 跑**。禁止在 WSL 内启动 Minecraft 客户端做验证（性能/渲染不可靠）。
+   WSL 只承担**编译**：`./gradlew :<线>:classes|jar`。
+3. **产物投放**：WSL 编译出的 jar 一律复制到原项目目录的测试环境
+   `F:\MCProject\astral_dice_multiloader-next\run\<1.21.1|1.20.1|26.1.2|fabric-1.20.1>\mods`，
+   再在 Windows 侧启动客户端验证；**不得**在 WSL 的副本里建 `run/` 做测试。
+4. **原项目目录的一切 git 操作必须经 `cmd.exe`**：
+   `cmd.exe /c "git -C F:\MCProject\astral_dice_multiloader-next <子命令>"`。
+   **禁止**在 WSL 里对 `/mnt/f/...` 直接跑 `git` —— 该目录是 worktree，`.git` 文件里的
+   `gitdir: F:/MCProject/...` 是 Windows 路径，WSL git 必报 `fatal: not a git repository`；
+   也不要指望 `git --git-dir=` 绕过（对象库同样在 Windows 侧）。
+5. **工作副本口径**：原作者目录 `F:\MCProject\astral_dice_multiloader-next` 是唯一事实源与提交源；
+   WSL 副本（`~/work/astral_dice_multiloader-next`）只作编译缓存，**不回写**、不作为 git 事实源。
+
+6. **测试收尾必须自动关闭游戏进程（2026-10-18 用户裁决）**：任何测试轮次（单条 / 全量 / 中断 / 失败）结束后，
+   必须执行 `pwsh -NoProfile -File scripts\test\mt.ps1 --version <线> --phase stop --force`，并在交付报告里贴出
+   `MT_STOP: OK` 原文 + 「无本流程 java 客户端残留」的核对结果（`Get-Process java` 计数）。
+   **禁止**让 Minecraft 客户端无人观察地驻留 —— 它会持续占用 CPU/GPU，并污染下一轮冷启动的前置状态。
+   唯一例外：用例 `on_fail=keep_game_running` 落了 `.mt_keep_alive-<版本>` 的取证现场，
+   此时在报告里说明保留原因与路径，取证完成后立即 `--phase stop --force`。
+
+
+## 下沉到 StarEngine 的判定规则 —— 必须遵守（2026-10-19 用户裁决）
+
+1. **不包含饰品 API**：Curios / Trinkets / Accessories 相关的一切（栏位校验、自动装备、平台 shim）**不下沉**。
+   ⇒ `item/CurioSlotUtil` **明确排除**。
+2. **不下沉与筹码流派 / 体系相关的类**：充能、治愈、星光、反击、标记等流派资源管理**不下沉**。
+   ⇒ `item/ChargeManager`、`item/HealingManager`、`item/StarLightManager` 等**明确排除**。
+3. **第三方 API 的注册放 starengine，只下沉「关键联动 / 调用」部分**：
+   第三方库（FTB Teams、OpenPAC、Apotheosis、Bountiful 等）的探测与调用封装属可下沉项；
+   注册本身在 starengine 内完成，主模组只留业务语义。
+
+**按此规则修订后的下沉候选（2026-10-19）**
+
+| 类 | 判定 | 依据 |
+|---|---|---|
+| `combat/PartyRelations` | 候选 | 规则 3：FTB Teams / OpenPAC 反射联动，且与库 `EventTargetCollector` 重复实现 |
+| `combat/EliteTargets` | 候选 | 规则 3：Apotheosis 精英/Boss 口径 + `c:bosses` 标签 |
+| `target/HoldToSelect` | 候选（最安全） | 零依赖纯接口 |
+| `target/SelfTargetable` | 候选（须与 `TargetSelectionManager` 同批） | 目标选择扩展点 |
+| `event/EffectTimerGuard` | 候选（需把计时表抽 seam） | 通用计时，非筹码体系 |
+| ~~`item/CurioSlotUtil`~~ | **排除** | 规则 1（饰品 API） |
+| ~~`item/ChargeManager`~~ | **排除** | 规则 2（筹码流派体系） |
+
 ## ⛔ 代理协作契约 —— A 方案 + 子代理职业指定（必须遵守，2026-10-16 用户裁决）
 
 > 本节与下文「## 子代理与测试环境硬规则」第 1 / 4 / 7 条**并用**；任何冲突处取**更严格**的一方。
@@ -72,29 +122,6 @@
 4. 同步刷新 `docs/handover-new-session-context.md` 的基本盘 / 已完成 / 立即待办；
 5. 未实机的欠账、REFUTED 的规格差异（例：lingling 冷却 3600t=180s vs 规格 120s）、无法测度的判据（例：牌面「厚度边」在两面同图案后无像素差异）**如实登记**，禁止静默删；
 6. 交接文档属**非代码改动** ⇒ 按第 7 条⑨a 只做 `code_review`，免子代理功能复验。
-
-### D. WSL 工具链 + AutoJS 测试台 —— 现行唯一口径（2026-10-18 用户裁决）
-
-**取代**下文「命令执行规范（Shell）」「自动化测试流程」中一切「Windows 原生 pwsh + 模拟键鼠 / 窗口焦点 / 截图识别」的口径；
-与旧口径冲突时**以本节为准**（历史记录章节除外，那些只作史料）。
-
-1. **施工位置**：唯一施工副本 = `~/work/astral_dice_multiloader-next`（WSL ext4，原生 `.git`，分支 `multi-dev-next`）。
-   `/mnt/f/MCProject/astral_dice_multiloader-next` 在收尾前**只读**，禁止双向同步 / 镜像回填。
-   （`/mnt/f` 走 9p，`neoforge-1.21.1:classes` 冷跑 9m22s；同一构建在 ext4 上 **32s**。）
-2. **入口**：`scripts/test/mt.sh --version <线> --phase preflight|build|env|launch|case|report|stop`；
-   阶段实现 `scripts/test/lib/{mt_common.sh,mt_autojs.py,mt_case.py}`；说明正本 `docs/wsl-autojs-toolchain.md`。
-   旧 `scripts/test/**/*.ps1`、`lib/Mt.*.psm1`、`scripts/test/fabric/*.ps1` 已于本批**删除**（可从 git 历史取回），
-   禁止再新增 pwsh 游戏流程脚本。
-3. **测试通道唯一 = AutoJS**（`eval_js` / `await_state` / `status` / `kubejs_log`）；用例 `channel` 必须显式 `autojs`。
-   废除原语 `inject_command` / `inject_key` / `inject_mouse` / `screenshot` / `kubejs_reload` 出现即校验 ERROR。
-   **键鼠注入、窗口焦点、AWT/User32、截图比对一律禁止**（含"临时用一下"）。
-4. **实机**：WSL 内 `./gradlew :<线>:runClient -Pquickplay=<世界>`（由 `--phase launch` 驱动），
-   就绪闸门 = AutoJS `status` + client `mc.player !== null`；收尾 `--phase stop --purge-saves`。
-5. **构建/静态守门**保持可用：`./gradlew :<线>:classes|jar`、`scripts/verify/*.ps1`（WSL 自带 pwsh 7 可跑）、`tools/*.py`。
-   pwsh 只允许用于**静态分析/守门**，不得用于游戏内动作。
-6. **收尾**：`bash scripts/dev/sync-back.sh --apply` 回写 Windows 工作树（排除 `build/ run/ .gradle/ models/*.bbmodel`）；
-   提交与 `git push` **只在 Windows 侧**用 `cmd.exe /c` 执行（push 走代理 `127.0.0.1:7897`，默认不推，用户放行才推）。
-7. **复核**：二次验证仍用 Codex 原生 `code_review`（一次性独立会话）；功能审查按第 7 条派一次性子代理。
 
 <!-- END 代理协作契约（2026-10-16 用户裁决） -->
 
@@ -251,7 +278,7 @@ When extending this workspace:
 | L2198–L2308 | Mixin 注入规范 · 编译产物上传规则（新版本发布 / CurseForge / Modrinth） | 写 mixin、发布前 |
 | L2309–L2909 | 自动化测试流程（资产重建 / 变更分级 / 测试顺序 / 清场与收尾 / 工具链 / 阶段 P·B·E·L·C·R / 截图识别 / MCP / 超时看门狗） | 任何游戏内测试前（**必读**） |
 | L2910–L3046 | NeoForge 上游 BUG 补丁（neoforge_fixes）· 「敌对目标」判定规范 · `/astralparty` 管理员调试命令 | 上游 bug / 敌对判定 / 调试命令前 |
-| L3047–L3522 | 版本历史与发布记录 · 待办交接各批（… + 强化拒止牌面 / **WSL 迁移 + AutoJS 测试台重建**） | 续做历史批次时 |
+| L3047–L3501 | 版本历史与发布记录 · 待办交接各批（fengshui / teru / 新立牌批 / Carpet / 双人测试流程 / 遗留项 / 立牌批验证闭环 + 选卡界面 + Jade 倒计时 + 工具链回 Windows 原生 + AutoJS 求值通道 / lingling 用例 / 强化拒止牌面 / 欠账角色立牌） | 续做历史批次时 |
 
 **维护约定**
 1. 新增「每次必读」的红线 ⇒ 直接写进上面的红线区（并同步到 `docs/agent/AGENTS-full.md` 的对应章节，保持两边一致）。

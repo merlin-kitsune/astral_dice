@@ -1,8 +1,8 @@
 package com.merlinkitsune.astral_dice.event;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
-import com.merlinkitsune.astral_dice.combat.EliteTargets;
 import com.merlinkitsune.astral_dice.entity.BarricadeEntity;
+import com.merlinkitsune.starengine.combat.EliteTargets;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.monster.Enemy;

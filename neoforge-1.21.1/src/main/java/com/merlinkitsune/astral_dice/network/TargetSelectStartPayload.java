@@ -11,10 +11,10 @@ import net.minecraft.resources.ResourceLocation;
  * 客户端据 {@code targetType}/{@code radius}/{@code durationTicks} 进入选择模式
  * （准星过滤、射线距离、HUD 提示），token 用于确认/取消回传校验；
  * {@code allowSelf} = 本次会话是否允许对自身使用（消费方接口
- * {@code com.merlinkitsune.astral_dice.target.SelfTargetable#allowSelf()} 的取值，
+ * {@code com.merlinkitsune.starengine.target.SelfTargetable#allowSelf()} 的取值，
  * 当前 {@code ren_privilege} 与三张可自用效果牌动作（express_delivery / luxury_feast / berserk）为 true，其余动作 false），客户端据此选择 actionbar 口径与右键行为；
  * {@code holdToSelect} = 本会话由**主手手持物品**驱动且**没有倒计时**（消费方接口
- * {@code com.merlinkitsune.astral_dice.target.HoldToSelect} 的取值，当前 = 四张效果牌动作）——
+ * {@code com.merlinkitsune.starengine.target.HoldToSelect} 的取值，当前 = 四张效果牌动作）——
  * 为真时 {@code durationTicks} 恒为 0，客户端不显示「（剩余 N 秒）」、提示口径改为「移出手持退出选择」，
  * 并在物品离开主手时自行退出选择模式。
  */

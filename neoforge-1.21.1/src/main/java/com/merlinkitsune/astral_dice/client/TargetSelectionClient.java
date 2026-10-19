@@ -3,9 +3,9 @@ package com.merlinkitsune.astral_dice.client;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.network.TargetSelectCancelPayload;
 import com.merlinkitsune.astral_dice.network.TargetSelectConfirmPayload;
-import com.merlinkitsune.starenginelib.target.SelectorTargets;
-import com.merlinkitsune.starenginelib.client.ActionBarManager;
-import com.merlinkitsune.starenginelib.target.TargetType;
+import com.merlinkitsune.starengine.target.SelectorTargets;
+import com.merlinkitsune.starengine.client.ActionBarManager;
+import com.merlinkitsune.starengine.target.TargetType;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.ChatScreen;
@@ -35,7 +35,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
-import com.merlinkitsune.astral_dice.combat.PartyRelations;
+import com.merlinkitsune.starengine.combat.PartyRelations;
 
 /**
  * 目标选择器客户端状态机（第一人称 UX，**Create 强力胶式按键语义**）。

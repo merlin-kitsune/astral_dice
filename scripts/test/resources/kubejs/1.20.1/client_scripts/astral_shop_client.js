@@ -40,7 +40,7 @@
 var Mc_CLASS = Java.loadClass("net.minecraft.client.Minecraft");
 var ShopScreen_CLASS = Java.loadClass("com.merlinkitsune.astral_dice.screen.CardShopScreen");
 var ClientState_CLASS = Java.loadClass("com.merlinkitsune.astral_dice.client.CardShopClientState");
-var WalletState_CLASS = Java.loadClass("com.merlinkitsune.starenginelib.economy.StarCoinWalletState");
+var WalletState_CLASS = Java.loadClass("com.merlinkitsune.starengine.economy.StarCoinWalletState");
 var ItemStack_CLASS = Java.loadClass("net.minecraft.world.item.ItemStack");
 var Reg_CLASS = null;
 try { Reg_CLASS = Java.loadClass("net.minecraft.core.registries.BuiltInRegistries"); } catch (eR0) { Reg_CLASS = null; }

@@ -1,7 +1,7 @@
 package com.merlinkitsune.astral_dice.item.card;
 
-import com.merlinkitsune.starenginelib.target.TargetType;
-import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
+import com.merlinkitsune.starengine.target.TargetType;
+import com.merlinkitsune.starengine.event.EffectTimerGuard;
 
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;

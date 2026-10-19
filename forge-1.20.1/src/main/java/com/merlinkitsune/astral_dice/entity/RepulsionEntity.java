@@ -70,7 +70,7 @@ import java.util.UUID;
  * 无目标游荡的僵尸）与玩家宠物**都不会**被新增吸附。判据落在 {@link #isAttachable(Mob)}。
  * <ul>
  *   <li>⚠️ 这是**有意的口径收窄**（用户原话「排除没有仇恨目标的敌对（如末影人）」），**不**调用模组
- *       统一入口 {@code starengine_lib} 的 {@code HostileTargets}：统一入口对中立生物一律放行且不看
+ *       统一入口 {@code starengine} 的 {@code HostileTargets}：统一入口对中立生物一律放行且不看
  *       anger，与本需求相反。同类收窄的既有先例 = {@code combat/ShootingStarManager#isStarTarget}
  *       （飞星只认已激怒的中立生物）。<b>不得</b>以「敌对判定必须走统一入口」为由把本判据改宽。</li>
  *   <li>资格在**扫描时**（每 20 tick，决定「是否新增吸附」）与**每 tick 剪枝**（决定「是否继续吸附」）

@@ -299,7 +299,7 @@ function doSources(ctx, playerName, tag) {
     var trk = "off";
     if (trkOn === "1") {
         try {
-            var TC = Java.loadClass("com.merlinkitsune.starenginelib.item.TrinketsCompat");
+            var TC = Java.loadClass("com.merlinkitsune.starengine.item.TrinketsCompat");
             trk = "" + TC.getCuriosMap(p).size();
         } catch (e1) { trk = "err:" + exText(e1).substring(0, 140); }
     }

@@ -15,7 +15,7 @@ import net.minecraft.world.level.Level;
  * 并点确认(或超时/死亡/登出强制第一个)后,经 {@code AstralEventDispatcher#trigger(..., ACTIVE_SKILL)}
  * 进入既有事件触发流程(弹卡 → 结算/音效)。
  *
- * <p>因此本类现在只保留:物品本体、主动技能挂载点({@link #handleUse})、冷却/锁定框架(恒不锁定)。
+ * <p>因此本类现在只保留:物品本体、主动技能挂载点({@link #handleUse})。
  * 删除的内容(留档):生命恢复/力量(0:30)、攻击-特大、随机效果牌+3 星币、滋养+饱和、迅捷、瞬间伤害、
  * 中毒、饥饿+反胃、凋灵+黑暗、虚弱+挖掘疲劳,以及配套的 actionbar 提示与「抽到事件」广播循环。
  */
@@ -45,17 +45,5 @@ public class FannySignItem extends BaseSignItem {
             }
         }
         return InteractionResultHolder.success(stack);
-    }
-
-    /** 主动技能不再产生任何可门控效果 ⇒ 不使用锁定态(冷却由基类框架按默认口径推进)。 */
-    @Override
-    protected boolean startActiveLockOnUse(Player player, long now) {
-        return false;
-    }
-
-    /** 门控效果:11 项事件已删除 ⇒ 不存在门控效果。 */
-    @Override
-    protected boolean isGateEffectActive(Player player) {
-        return false;
     }
 }

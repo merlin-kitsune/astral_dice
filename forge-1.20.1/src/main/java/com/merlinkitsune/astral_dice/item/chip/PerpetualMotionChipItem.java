@@ -7,7 +7,7 @@ import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import com.merlinkitsune.astral_dice.item.ChargeManager;
-import com.merlinkitsune.starenginelib.item.CuriosCompat;
+import com.merlinkitsune.starengine.item.CuriosCompat;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import net.minecraft.world.entity.player.Player;
 import top.theillusivec4.curios.api.SlotContext;

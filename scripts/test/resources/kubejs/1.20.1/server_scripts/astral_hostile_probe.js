@@ -7,7 +7,7 @@
 //    · 本探针**只碰一个纯函数**(前置库 `combat.HostileTargets#isHostile(Entity)`),
 //      不依赖骰战/赐福/Curios 任何玩法状态,可以独立演进。
 //
-//  被测对象(前置库 starengine_lib,2026-09-27 新增的第 3 条通道):
+//  被测对象(前置库 starengine,2026-09-27 新增的第 3 条通道):
 //    敌对目标 = 敌对生物(Enemy) ∪ 中立生物(宠物除外) ∪ **会被激怒的可驯服动物(宠物除外)**
 //             ∪ 消费方额外声明的实体
 //    第 3 条覆盖「可驯服、被打会还击,却没实现 NeutralMob」的动物 ——
@@ -105,7 +105,7 @@ function htGuard(ctx, tag, fn) {
 
 /** 唯一被测入口。返回 0 / 1 / "ERR:..." —— 异常绝不吞掉 */
 function htIsHostile(entity, tag) {
-    var HT = htLoad("com.merlinkitsune.starenginelib.combat.HostileTargets");
+    var HT = htLoad("com.merlinkitsune.starengine.combat.HostileTargets");
     if (HT === null) return "ERR:HT_class_not_found";
     try { return HT.isHostile(entity) ? 1 : 0; } catch (e) { return "ERR:" + htEx(e); }
 }
@@ -269,7 +269,7 @@ function htTable(ctx, tag) {
     }
 
     // 0) 类可达性(最先:类加载失败时后续全部 ERR,一眼可辨)
-    var HT = htLoad("com.merlinkitsune.starenginelib.combat.HostileTargets");
+    var HT = htLoad("com.merlinkitsune.starengine.combat.HostileTargets");
     cell("cls", (HT === null) ? "ERR:not_found" : "ok");
 
     // 1) cow —— Mob 但不是 OwnableEntity ⇒ 负例

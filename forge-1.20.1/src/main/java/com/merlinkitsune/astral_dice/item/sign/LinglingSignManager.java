@@ -14,9 +14,9 @@ import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.card.BaseEffectCardItem;
 import com.merlinkitsune.astral_dice.item.card.RepulsionCardItem;
-import com.merlinkitsune.starenginelib.component.GameplayConstants;
-import com.merlinkitsune.starenginelib.event.ModEffectRemoval;
-import com.merlinkitsune.starenginelib.item.CuriosCompat;
+import com.merlinkitsune.starengine.component.GameplayConstants;
+import com.merlinkitsune.starengine.event.ModEffectRemoval;
+import com.merlinkitsune.starengine.item.CuriosCompat;
 
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionHand;
@@ -88,10 +88,7 @@ public final class LinglingSignManager {
      * 是否佩戴本立牌:Curios「stand」槽内存在 + 骰子闸门开启(与 AmeSignItem / RenSignItem 同款口径)。
      */
     public static boolean isEquipped(Player player) {
-        if (player == null) return false;
-        if (!CurioSlotUtil.hasDiceEquipped(player)) return false;
-        var curios = CuriosCompat.getCuriosInventory(player);
-        return curios.isPresent() && curios.get().findFirstCurio(s -> s.is(ModItems.LINGLING_SIGN.get())).isPresent();
+        return SignEquipCheck.isEquipped(player, ModItems.LINGLING_SIGN.get());
     }
 
     // ── 强化拒止 / 路障互转 ────────────────────────────────────────────────────
@@ -263,17 +260,17 @@ public final class LinglingSignManager {
             return;
         }
         int charge = effectiveCharge(player);
-        applyModifier(player, Attributes.ATTACK_DAMAGE, MODIFIER_ATTACK, charge,
+        SignAttributeUtil.apply(player, Attributes.ATTACK_DAMAGE, MODIFIER_ATTACK, charge,
                 AttributeModifier.Operation.ADDITION);
-        applyModifier(player, Attributes.MOVEMENT_SPEED, MODIFIER_SPEED, charge / 100.0D,
+        SignAttributeUtil.apply(player, Attributes.MOVEMENT_SPEED, MODIFIER_SPEED, charge / 100.0D,
                 AttributeModifier.Operation.MULTIPLY_TOTAL);
     }
 
     /** 摘掉本立牌挂上的全部属性修饰器 */
     public static void clearModifiers(Player player) {
         if (player == null) return;
-        removeModifier(player, Attributes.ATTACK_DAMAGE, MODIFIER_ATTACK);
-        removeModifier(player, Attributes.MOVEMENT_SPEED, MODIFIER_SPEED);
+        SignAttributeUtil.remove(player, Attributes.ATTACK_DAMAGE, MODIFIER_ATTACK);
+        SignAttributeUtil.remove(player, Attributes.MOVEMENT_SPEED, MODIFIER_SPEED);
     }
 
     /** 卸下 / 死亡:层数归零 + 摘净修饰器 + 移除效果 */
@@ -284,33 +281,4 @@ public final class LinglingSignManager {
         ModEffectRemoval.remove(player, ModEffects.LINGLING_SURGE.get());
     }
 
-    // ── 修饰器工具 ────────────────────────────────────────────────────────────
-
-    private static UUID modifierId(String key) {
-        return UUID.nameUUIDFromBytes((AstralDiceMod.MODID + ":" + key).getBytes(StandardCharsets.UTF_8));
-    }
-
-    private static void applyModifier(Player player, Attribute attribute, String key, double amount,
-            AttributeModifier.Operation operation) {
-        AttributeInstance instance = player.getAttribute(attribute);
-        if (instance == null) return;
-        UUID id = modifierId(key);
-        AttributeModifier existing = instance.getModifier(id);
-        if (amount <= 0.0D) {
-            if (existing != null) instance.removeModifier(id);
-            return;
-        }
-        if (existing == null || existing.getAmount() != amount || existing.getOperation() != operation) {
-            instance.removeModifier(id);
-            instance.addTransientModifier(
-                    new AttributeModifier(id, AstralDiceMod.MODID + ":" + key, amount, operation));
-        }
-    }
-
-    private static void removeModifier(Player player, Attribute attribute, String key) {
-        AttributeInstance instance = player.getAttribute(attribute);
-        if (instance == null) return;
-        UUID id = modifierId(key);
-        if (instance.getModifier(id) != null) instance.removeModifier(id);
-    }
 }

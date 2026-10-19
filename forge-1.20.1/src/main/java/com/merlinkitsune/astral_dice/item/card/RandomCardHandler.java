@@ -1,6 +1,6 @@
 package com.merlinkitsune.astral_dice.item.card;
 
-import com.merlinkitsune.starenginelib.event.EventTargetCollector;
+import com.merlinkitsune.starengine.event.EventTargetCollector;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
@@ -13,7 +13,7 @@ import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
-import com.merlinkitsune.astral_dice.combat.PartyRelations;
+import com.merlinkitsune.starengine.combat.PartyRelations;
 
 /**
  * 随机卡牌处理类:随机卡牌的类型筛选、专属牌强制排除与向其他玩家发放的统一逻辑。

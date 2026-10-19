@@ -5,7 +5,7 @@ import com.merlinkitsune.astral_dice.item.ChargeManager;
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.shop.CardShopOpener;
-import com.merlinkitsune.starenginelib.component.GameplayConstants;
+import com.merlinkitsune.starengine.component.GameplayConstants;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -47,10 +47,7 @@ public class ParunanSignItem extends BaseSignItem {
 
     /** 玩家是否佩戴经商立牌(未佩戴骰子 ⇒ 本件被动/主动一律不生效,数值保留)。 */
     public static boolean isEquipped(Player player) {
-        if (player == null || !CurioSlotUtil.hasDiceEquipped(player)) return false;
-        var curios = CuriosApi.getCuriosInventory(player);
-        return curios.isPresent()
-                && curios.get().findFirstCurio(s -> s.is(ModItems.PARUNAN_SIGN.get())).isPresent();
+        return SignEquipCheck.isEquipped(player, ModItems.PARUNAN_SIGN.get());
     }
 
     /**

@@ -2,19 +2,19 @@ package com.merlinkitsune.astral_dice.item.sign;
 
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
-import com.merlinkitsune.starenginelib.component.GameplayConstants;
+import com.merlinkitsune.starengine.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
-import com.merlinkitsune.starenginelib.effect.MosesBrokenEffect;
+import com.merlinkitsune.starengine.effect.MosesBrokenEffect;
 import com.merlinkitsune.astral_dice.effect.WeaknessRevealEffect;
 import com.merlinkitsune.astral_dice.event.WeirdDiceHandler;
 import com.merlinkitsune.astral_dice.item.ChargeManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.chip.CurrentCoreChipItem;
-import com.merlinkitsune.starenginelib.target.TargetSelectionAction;
+import com.merlinkitsune.starengine.target.TargetSelectionAction;
 import com.merlinkitsune.astral_dice.target.TargetSelectionManager;
-import com.merlinkitsune.starenginelib.target.TargetSelectionRegistry;
-import com.merlinkitsune.starenginelib.target.TargetType;
+import com.merlinkitsune.starengine.target.TargetSelectionRegistry;
+import com.merlinkitsune.starengine.target.TargetType;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.LivingEntity;
@@ -43,7 +43,8 @@ import top.theillusivec4.curios.api.SlotContext;
 // 故**不得**标注 @EventBusSubscriber —— NeoForge 21.1 对「无 @SubscribeEvent 方法的订阅者类」直接抛
 // IllegalArgumentException(class ... has no @SubscribeEvent methods, but register was called anyway),
 // 进而 Failed to register automatic subscribers 让模组构造失败(2026-09-17 实测崩线)。
-public class MosesSignItem extends BaseSignItem {
+public class MosesSignItem extends BaseSignItem
+        implements SignHooks.BrokenTargetAttack, SignHooks.DodgeCounter {
     private static final Logger LOGGER = LoggerFactory.getLogger(MosesSignItem.class);
 
     /** 主动冷却基础秒数(被动:120 秒) */
@@ -119,12 +120,7 @@ public class MosesSignItem extends BaseSignItem {
 
     // 玩家是否佩戴枪匠立牌
     public static boolean isEquipped(Player player) {
-        // 总闸门(骰子装备和卸除调整):未佩戴骰子 ⇒ 本件功能一律不生效(数值保留)
-        if (!CurioSlotUtil.hasDiceEquipped(player)) return false;
-        if (player == null) return false;
-        var curios = CuriosApi.getCuriosInventory(player);
-        return curios.isPresent()
-                && curios.get().findFirstCurio(s -> s.is(ModItems.MOSES_SIGN.get())).isPresent();
+        return SignEquipCheck.isEquipped(player, ModItems.MOSES_SIGN.get());
     }
 
     /**
@@ -176,6 +172,16 @@ public class MosesSignItem extends BaseSignItem {
         WeaknessRevealEffect.addStacks(player, 1);
     }
 
+    // === B1 注册式钩子分发入口（实例转发；静态方法保留兼容外部直调） ===
+    // 原直调前的 `isEquipped(player) && target.hasEffect(MOSES_BROKEN)` 闸门原样保留在此。
+
+    @Override
+    public void handleAttackBrokenTarget(Player player, LivingEntity target) {
+        if (player == null || player.level().isClientSide()) return;
+        if (!isEquipped(player)) return;
+        onAttackBrokenTarget(player, target);
+    }
+
     /**
      * 触发闪避/反击(任意来源):**每次各获得 1 层**弱点识破(2026-10-02 用户裁决)。
      * <p>与 {@link #onAttackBrokenTarget} 同口径:不再受「每目标每段破绽只 +1 层」限制,
@@ -185,6 +191,11 @@ public class MosesSignItem extends BaseSignItem {
         if (player == null || target == null || player.level().isClientSide()) return;
         if (!isEquipped(player)) return;
         WeaknessRevealEffect.addStacks(player, 1);
+    }
+
+    @Override
+    public void handleDodgeCounter(Player player, LivingEntity target) {
+        onDodgeCounter(player, target);
     }
 
 }

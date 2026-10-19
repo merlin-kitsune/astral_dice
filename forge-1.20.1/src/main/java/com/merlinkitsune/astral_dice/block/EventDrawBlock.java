@@ -3,8 +3,8 @@ package com.merlinkitsune.astral_dice.block;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.network.ModNetwork;
-import com.merlinkitsune.starenginelib.component.GameplayConstants;
-import com.merlinkitsune.starenginelib.economy.StarEngineEconomy;
+import com.merlinkitsune.starengine.component.GameplayConstants;
+import com.merlinkitsune.starengine.economy.StarEngineEconomy;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -39,6 +39,15 @@ public class EventDrawBlock extends Block {
 
     /** 购买冷却时长:6000 ticks = 5:00。 */
     private static final long COOLDOWN_TICKS = 6000L;
+
+    /**
+     * 购买单价的只读访问器（星币）。
+     *
+     * <p>Jade 的花费行与右键扣费共用此常量，避免两处各写一个数字导致显示与实际扣费漂移。
+     */
+    public static int priceStarCoins() {
+        return PRICE_STAR_COINS;
+    }
 
     public EventDrawBlock(Properties properties) {
         super(properties);

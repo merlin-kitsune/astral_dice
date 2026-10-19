@@ -1,7 +1,7 @@
 package com.merlinkitsune.astral_dice.item.sign;
 
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
-import com.merlinkitsune.starenginelib.component.GameplayConstants;
+import com.merlinkitsune.starengine.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.combat.CardRegistry;
 import com.merlinkitsune.astral_dice.combat.OrbitalBombardmentManager;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
@@ -10,10 +10,10 @@ import com.merlinkitsune.astral_dice.item.ChargeManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.card.RandomCardHandler;
 import com.merlinkitsune.astral_dice.item.chip.CurrentCoreChipItem;
-import com.merlinkitsune.starenginelib.target.TargetSelectionAction;
+import com.merlinkitsune.starengine.target.TargetSelectionAction;
 import com.merlinkitsune.astral_dice.target.TargetSelectionManager;
-import com.merlinkitsune.starenginelib.target.TargetSelectionRegistry;
-import com.merlinkitsune.starenginelib.target.TargetType;
+import com.merlinkitsune.starengine.target.TargetSelectionRegistry;
+import com.merlinkitsune.starengine.target.TargetType;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
@@ -52,8 +52,8 @@ import java.util.List;
 public class MegasSignItem extends BaseSignItem {
     private static final Logger LOGGER = LoggerFactory.getLogger(MegasSignItem.class);
 
-    /** 主动冷却基础秒数。 */
-    public static final int ACTIVE_COOLDOWN_SECONDS = 120;
+    /** 主动冷却基础秒数（180 秒，与全局立牌主动冷却一致；机械师不在 120 秒名单内）。 */
+    public static final int ACTIVE_COOLDOWN_SECONDS = 180;
 
     /** 被动「物资补充」的发放间隔 tick = 1:00。 */
     public static final int RESUPPLY_INTERVAL_TICKS = 1200;
@@ -160,16 +160,11 @@ public class MegasSignItem extends BaseSignItem {
 
     /** 玩家是否佩戴机械师立牌。 */
     public static boolean isEquipped(Player player) {
-        // 总闸门(骰子装备和卸除调整):未佩戴骰子 ⇒ 本件功能一律不生效(数值保留)
-        if (!CurioSlotUtil.hasDiceEquipped(player)) return false;
-        if (player == null) return false;
-        var curios = CuriosApi.getCuriosInventory(player);
-        return curios.isPresent()
-                && curios.get().findFirstCurio(s -> s.is(ModItems.MEGAS_SIGN.get())).isPresent();
+        return SignEquipCheck.isEquipped(player, ModItems.MEGAS_SIGN.get());
     }
 
     /**
-     * 立牌主动冷却 tick：佩戴时基础 120 秒（与枪匠/怪力侦探同款链：先按充能上限封顶，再按诡异骰子减半）。
+     * 立牌主动冷却 tick：佩戴时基础 180 秒（与全局立牌主动冷却一致；先按充能上限封顶，再按诡异骰子减半）。
      */
     public static int signCooldownTicks(Player player) {
         int ticks = isEquipped(player)

@@ -341,8 +341,8 @@ pwsh -NoProfile -File scripts/test/fabric/ft_prod.ps1 `
 
 **同一对 jar，只差库版本**：
 ```
-修复前：astral_dice 1.3.2+fabric_1.20.1         \-- starengine_lib 1.0.7          → 崩
-修复后：astral_dice 1.3.2-alpha.1+fabric_1.20.1 \-- starengine_lib 1.0.5-alpha.1  → PASS（23 s 到主菜单）
+修复前：astral_dice 1.3.2+fabric_1.20.1         \-- starengine 1.0.7          → 崩
+修复后：astral_dice 1.3.2-alpha.1+fabric_1.20.1 \-- starengine 1.0.5-alpha.1  → PASS（23 s 到主菜单）
 ```
 
 ⚠️ **它测什么、不测什么**：只判「**能不能起来**」（入口点 + 到主菜单），**不管玩法**（那仍归 dev 侧用例）。
@@ -749,7 +749,7 @@ M2 钉住 fabric 的两条 `hasEffect` 早退判据。期望 `GATE: PASS (22 项
 4. `ft_env.ps1 --side server --enable-rcon` → `AP_FAB_ENV_RCON: enabled=true port=25575 password_set=true changed=true`（默认口令 `astralft`）。
 5. 复核 `ft_env.ps1 --side both` → `AP_FAB_ENV: OK` / `MT_FAB_ENV: OK — side=both mode=verify 前置齐备`；`--side client` 亦 OK（`missing=none`）。
 
-**构建**：`ft_build.ps1` → `MT_FAB_BUILD: OK — 开包核对通过: models=138 recipes=132 trinkets=15 bountiful=0 embed=starengine_lib-fabric-1.20.1-2.0.0-SNAPSHOT.12.jar`；
+**构建**：`ft_build.ps1` → `MT_FAB_BUILD: OK — 开包核对通过: models=138 recipes=132 trinkets=15 bountiful=0 embed=starengine-fabric-1.20.1-2.0.0-SNAPSHOT.12.jar`；
 产物 `astral_dice-2.0.0-SNAPSHOT.34+fabric_1.20.1.jar`（1991262 B / 1630 entries）。
 
 **实跑读数（全部真机，日志在 `temp/ft-verify/`）**：
@@ -990,7 +990,7 @@ M2 钉住 fabric 的两条 `hasEffect` 早退判据。期望 `GATE: PASS (22 项
 | 客户端 run 的必需参数 `-PtestSodium=false` | `fabric-1.20.1/build.gradle` 的 client run 段（工程既有测试开关）；不带则 Sodium 因 LWJGL 版本不符在启动期硬失败 |
 | RCON 键存在 | 实测 `run/server/server.properties`（`rcon.port=25575` / `enable-rcon` / `rcon.password`）；`ft_env --enable-rcon` 写入后**重启**生效 |
 | `/say` 经 RCON 的控制台回声（可断言锚点） | 实测 `[18:19:30] [Server thread/INFO] (Minecraft) [Not Secure] [Rcon] ft-inject-ok` |
-| 日志实测样例（派发报告 / 内嵌库） | `run/server/logs/latest.log`（`- starengine_lib 1.0.7`、`[已派发 10 类] … ServerTickEvent=599`） |
+| 日志实测样例（派发报告 / 内嵌库） | `run/server/logs/latest.log`（`- starengine 1.0.7`、`[已派发 10 类] … ServerTickEvent=599`） |
 
 ---
 

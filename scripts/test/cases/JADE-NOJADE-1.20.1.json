@@ -12,17 +12,15 @@
       "text": "本用例的「不装 Jade」在**启动参数**层：pwsh -File scripts/test/mt_launch.ps1 --version 1.20.1 的 gradle 侧改由 cmd/gradlew.bat 直起 :forge-1.20.1:runClient -PtestJade=false；mt_launch 不支持透传 -P，故该轮用 gradlew 直起（记录见报告 §回归验证 J5）。进入世界后再跑本用例的断言。"
     },
     {
-      "op": "eval_js",
-      "side": "server",
-      "timeout_ms": 20000,
-      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralcc2 state nojade\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+      "op": "inject_command",
+      "command": "/astralcc2 state nojade",
+      "no_esc": true
     },
     {
       "op": "wait",
       "ms": 1500
     }
   ],
-  "channel": "autojs",
   "asserts": [
     {
       "type": "log",
@@ -34,15 +32,9 @@
       "source": "latest",
       "pattern": "AP_CC2:nojade:"
     },
-    {
-      "type": "mixin"
-    },
-    {
-      "type": "kubejs"
-    },
-    {
-      "type": "crash"
-    },
+    { "type": "mixin" },
+    { "type": "kubejs" },
+    { "type": "crash" },
     {
       "type": "absent",
       "source": "latest",
@@ -55,10 +47,5 @@
       "pattern": "NoClassDefFoundError: snownee",
       "scope": "whole"
     }
-  ],
-  "migration": {
-    "from": "legacy-kubejs",
-    "at": "2026-10-18",
-    "tool": "scripts/test/convert_cases_autojs.py"
-  }
+  ]
 }

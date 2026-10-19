@@ -60,12 +60,14 @@ $script:LibraryGroups = @(
     'com.google.code.gson'   # mixin 注解处理器依赖
     'com.google.guava'       # mixin 注解处理器依赖
     'org.ow2.asm'            # mixin 注解处理器依赖
-    # 本家前置库 StarEngine Lib(com.merlinkitsune.starenginelib):三线共享类的下沉目标,
-    # **只发布到 mavenLocal**(无远程 maven),消费方坐标形如
-    # `${starengine_lib_group}:starengine_lib-<平台>:${starengine_lib_version}`(见各 build.gradle)。
+    # 本家前置库 StarEngine:三线共享类的下沉目标,**只发布到 mavenLocal**(无远程 maven)。
+    # 2026-10-19 起库改名 StarEngine ⇒ 两条 P0 线用新坐标
+    # `${starengine_group}:starengine-<平台>:${starengine_version}`(group = com.merlinkitsune.starengine);
+    # 26.1.2 / fabric 两线尚未改名,仍用旧坐标 ⇒ 新旧两组都登记。
     # 它是**库而不是模组**(不注册任何注册表条目:物品/效果/附件/数据组件/能力全留在本模组),
     # 故按「库」白名单放行,不受「模组必须来自 Curse/Modrinth Maven」约束。
-    'com.merlinkitsune.starenginelib'
+    'com.merlinkitsune.starengine'
+    'com.merlinkitsune.starengine'
 )
 
 # R2：已知例外（**官方 maven 提供的模组依赖**）。每次运行都回显；是否迁移到 Curse/Modrinth Maven
@@ -152,8 +154,8 @@ function Get-DependencyCoordinate {
     if (-not $m.Success) { return @('none', '') }
     $coord = $m.Groups[1].Value.Trim()
     # Gradle 属性占位符(${group} / ${version})按该子项目的 gradle.properties 还原:
-    # 本家前置库的坐标正是 `${starengine_lib_group}:starengine_lib-<平台>:${starengine_lib_version}`,
-    # 不还原的话坐标首段是字面量 `${starengine_lib_group}`,$LibraryGroups 白名单永远匹配不上。
+    # 本家前置库的坐标正是 `${starengine_group}:starengine-<平台>:${starengine_version}`,
+    # 不还原的话坐标首段是字面量 `${starengine_group}`,$LibraryGroups 白名单永远匹配不上。
     if ($coord -match '\$\{') { $coord = Expand-GradlePlaceholders -Coord $coord -Props $Props }
     if ($coord -like 'curse.maven:*') { return @('curse', $coord) }
     if ($coord -like 'maven.modrinth:*') { return @('modrinth', $coord) }

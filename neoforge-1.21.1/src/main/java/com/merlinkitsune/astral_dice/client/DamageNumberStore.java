@@ -7,7 +7,7 @@ import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
- * 客户端伤害数字存储(替代库 {@code starenginelib} 的 {@code ClientDamageNumbers})。
+ * 客户端伤害数字存储(替代库 {@code starengine} 的 {@code ClientDamageNumbers})。
  *
  * <h2>为什么不再直接用库那一份</h2>
  * 库的 {@code ClientDamageNumbers} 是 {@code Map<Integer, FloatingNumber>} —— <b>按 entityId 单键</b>、

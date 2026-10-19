@@ -284,7 +284,7 @@ public final class ModNetwork {
 
         public static void handle(ActionBarMessage msg, Supplier<NetworkEvent.Context> ctx) {
             ctx.get().enqueueWork(() ->
-                    com.merlinkitsune.starenginelib.client.ActionBarManager.show(msg.message, msg.durationTicks));
+                    com.merlinkitsune.starengine.client.ActionBarManager.show(msg.message, msg.durationTicks));
             ctx.get().setPacketHandled(true);
         }
     }
@@ -342,13 +342,13 @@ public final class ModNetwork {
         private final String actionId;
         /**
          * 本次会话是否允许对自身使用(消费方接口
-         * com.merlinkitsune.astral_dice.target.SelfTargetable#allowSelf() 的取值;
+         * com.merlinkitsune.starengine.target.SelfTargetable#allowSelf() 的取值;
          * 当前 {@code ren_privilege} 与三张可自用效果牌动作（express_delivery / luxury_feast / berserk）为 true，其余动作 false)。
          */
         private final boolean allowSelf;
         /**
          * 本会话是否由「主手手持物品」驱动且**没有倒计时**（消费方接口
-         * com.merlinkitsune.astral_dice.target.HoldToSelect 的取值，当前 = 四张效果牌动作
+         * com.merlinkitsune.starengine.target.HoldToSelect 的取值，当前 = 四张效果牌动作
          * express_delivery / luxury_feast / you_have_i_have / berserk）。
          *
          * <p>为真时 {@code durationTicks} 恒为 0：客户端不显示「（剩余 N 秒）」、提示口径改为
@@ -540,7 +540,7 @@ public final class ModNetwork {
 
         public static void handle(StarCoinBalanceMessage msg, Supplier<NetworkEvent.Context> ctx) {
             ctx.get().enqueueWork(() ->
-                    com.merlinkitsune.starenginelib.economy.StarCoinWalletState.setBalance(msg.balance));
+                    com.merlinkitsune.starengine.economy.StarCoinWalletState.setBalance(msg.balance));
             ctx.get().setPacketHandled(true);
         }
     }

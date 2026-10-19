@@ -50,6 +50,10 @@ PRIMITIVES = {
 }
 ASSERT_TYPES = ("log", "absent", "crash", "kubejs", "mixin", "vision", "eval", "state")
 SIDES = ("auto", "server", "client")
+# 结构化判据口径（D4）：只有「从运行中的 JVM 取状态并与 expect 比对」才算判据。
+# vision 不算（WSL 无截图语义通道），固定 wait 不算，mcp_status 不算（只是通道探活）。
+JUDGMENT_OPS = ("eval_js", "await_state")
+JUDGMENT_ASSERT_TYPES = ("eval", "state", "log", "absent", "crash", "kubejs", "mixin")
 
 
 class Blocked(Exception):
@@ -158,6 +162,23 @@ def latest_crash_stamp(run_dir: str):
 
 # ── 验证 ──────────────────────────────────────────────────────────────────
 def validate_case(doc: dict, path: str) -> list[str]:
+    return validate_case_strict(doc, path, require_judgment=False)
+
+
+def has_judgment(doc: dict) -> tuple[bool, str]:
+    """返回 (是否有明确判据, 判据种类)。判据必须是结构化状态/日志断言，vision 与 wait 不算。"""
+    for s in doc.get("steps", []) or []:
+        if s.get("op") in JUDGMENT_OPS and s.get("expect") is not None:
+            return True, f"{s.get('op')}+expect"
+        if s.get("op") == "assert" and s.get("type") in JUDGMENT_ASSERT_TYPES:
+            return True, f"step.assert.{s.get('type')}"
+    for a in doc.get("asserts", []) or []:
+        if a.get("type") in JUDGMENT_ASSERT_TYPES:
+            return True, f"asserts.{a.get('type')}"
+    return False, ""
+
+
+def validate_case_strict(doc: dict, path: str, require_judgment: bool = False) -> list[str]:
     errs = []
     for key in ("case_id", "title", "version", "steps"):
         if key not in doc:
@@ -196,6 +217,14 @@ def validate_case(doc: dict, path: str) -> list[str]:
             errs.append(f"{path}: asserts[{j}] state 缺 from")
         if t == "log" and "pattern" not in a:
             errs.append(f"{path}: asserts[{j}] log 缺 pattern")
+    if require_judgment:
+        has, kind = has_judgment(doc)
+        if not has:
+            vision_only = any(s.get("op") == "assert" and s.get("type") == "vision"
+                              for s in doc.get("steps", []) or [])
+            errs.append(f"{path}: 无明确判据（channel=autojs 要求至少 1 条带 expect 的 "
+                        f"eval_js/await_state 或结构化 assert"
+                        + ("；现有判据只有 vision 截图断言，须改为结构化状态" if vision_only else "") + "）")
     return errs
 
 
@@ -440,6 +469,12 @@ def main() -> int:
     v = sub.add_parser("validate")
     v.add_argument("--cases-dir", default="scripts/test/cases")
     v.add_argument("--version", default=None)
+    v.add_argument("--require-judgment", action="store_true",
+                   help="缺少明确判据（带 expect 的 eval_js/await_state 或结构化 assert）即报错")
+    au = sub.add_parser("audit")
+    au.add_argument("--cases-dir", default="scripts/test/cases")
+    au.add_argument("--version", default=None)
+    au.add_argument("--list", action="store_true")
     r = sub.add_parser("run")
     r.add_argument("--case", default=None)
     r.add_argument("--cases-dir", default="scripts/test/cases")
@@ -451,8 +486,37 @@ def main() -> int:
     a = ap.parse_args()
 
     files = load_cases(a)
+    if a.cmd == "audit":
+        rows = []
+        for f in files:
+            try:
+                doc = json.load(open(f, encoding="utf-8"))
+            except json.JSONDecodeError as exc:
+                rows.append((f, "BROKEN", f"JSON 解析失败 {exc}"))
+                continue
+            if not isinstance(doc, dict) or "steps" not in doc:
+                rows.append((f, "SKIP", "非用例文件"))
+                continue
+            has, kind = has_judgment(doc)
+            steps = doc.get("steps", []) or []
+            vision = sum(1 for s in steps if s.get("op") == "assert" and s.get("type") == "vision")
+            waits = sum(1 for s in steps if s.get("op") == "wait")
+            evals = sum(1 for s in steps if s.get("op") in JUDGMENT_OPS)
+            rows.append((doc.get("case_id", f), "JUDGED" if has else "NO-JUDGMENT",
+                         f"evals={evals} waits={waits} vision={vision} {kind}".strip()))
+        if a.list:
+            for cid, st, det in rows:
+                print(f"MT_JUDGMENT_ITEM: {st} {cid} — {det}")
+        judged = sum(1 for r in rows if r[1] == "JUDGED")
+        usable = sum(1 for r in rows if r[1] in ("JUDGED", "NO-JUDGMENT"))
+        vision_files = sum(1 for r in rows if "vision=" in r[2] and not r[2].split("vision=")[1].startswith("0"))
+        waits_total = sum(int(r[2].split("waits=")[1].split()[0]) for r in rows if "waits=" in r[2])
+        print(f"MT_JUDGMENT: files={usable} with_judgment={judged} without={usable - judged} "
+              f"vision_files={vision_files} fixed_wait_steps={waits_total}")
+        return 0 if judged == usable else 1
     if a.cmd == "validate":
         bad = 0
+        judged = 0
         for f in files:
             try:
                 doc = json.load(open(f, encoding="utf-8"))
@@ -460,11 +524,14 @@ def main() -> int:
                 print(f"MT_CASE_VALIDATE: ERROR {f} — JSON 解析失败 {exc}")
                 bad += 1
                 continue
-            errs = validate_case(doc, f)
+            errs = validate_case_strict(doc, f, require_judgment=getattr(a, "require_judgment", False))
             if errs:
                 bad += 1
                 for e in errs:
                     print("MT_CASE_VALIDATE: ERROR " + e)
+            if isinstance(doc, dict) and "steps" in doc and has_judgment(doc)[0]:
+                judged += 1
+        print(f"MT_JUDGMENT: with_judgment={judged} without={max(0, len(files) - judged)}")
         print(f"MT_CASE_VALIDATE: files={len(files)} errors={bad}")
         return 0 if bad == 0 else 2
 

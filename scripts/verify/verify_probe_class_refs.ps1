@@ -5,7 +5,7 @@
 .DESCRIPTION
     **为什么需要这道门（2026-09-22 实测事故）**：1.20.1 / 1.21.1 两线的探针写的是
     `Java.loadClass("com.merlinkitsune.astral_dice.target.SignSelectionGate")`，而该类早已随
-    「平台无关能力下沉」搬到了前置库（`com.merlinkitsune.starenginelib.target.SignSelectionGate`）。
+    「平台无关能力下沉」搬到了前置库（`com.merlinkitsune.starengine.target.SignSelectionGate`）。
     后果是**连锁的、且很容易误判**：
       · KubeJS 在加载脚本时抛 `EvaluatorException: Failed to load Java class … Class could not be found!`
         ⇒ `logs/kubejs/server.log` 出现 ERROR；
@@ -17,16 +17,16 @@
     判据：对每个 `Java.loadClass("X.Y.Z")`，要求 `X/Y/Z.class`（或其内嵌类形式 `X/Y/Z$Inner.class`）
     出现在下面四处之一：
       1. 本模组构建产物 `build/libs/astral_dice-*.jar`（**取最新一份** —— build/libs 常残留历史版本）；
-      2. `run/<版本>/mods/*.jar` 全量（Curios / Patchouli / KubeJS / Rhino / starengine_lib 都在这）；
+      2. `run/<版本>/mods/*.jar` 全量（Curios / Patchouli / KubeJS / Rhino / starengine 都在这）；
       3. `build/moddev/artifacts` 的 merged jar（MC 本体 + 加载器）。
       4. 上述任意外层 jar 里 **JarJar 内嵌 jar**（`META-INF/jarjar/*.jar`）的全部条目 —— 见下条。
     另外补入 `build.gradle` 里 `maven.modrinth:<slug>:<ver>` 形式的依赖（从 gradle 缓存取 jar）——
     这些第三方模组由 `modImplementation` 在 **dev 运行期**注入 classpath，**不落 `run/mods`**，
     不补这一步会把 `CuriosApi` 之类全判成缺失（实测过）。
 
-    ⚠️ **为什么第 4 处必须有（2026-09-27 修复，此前 17 处假红）**：本模组把前置库 starengine_lib
-    以 JarJar 形式**内嵌**进产物（`META-INF/jarjar/starengine_lib-<平台>-<版本>.jar`）⇒
-    `com.merlinkitsune.starenginelib.*` 那批类**既不在外层 jar 的条目里、也不落 `run/<版本>/mods`**
+    ⚠️ **为什么第 4 处必须有（2026-09-27 修复，此前 17 处假红）**：本模组把前置库 starengine
+    以 JarJar 形式**内嵌**进产物（`META-INF/jarjar/starengine-<平台>-<版本>.jar`）⇒
+    `com.merlinkitsune.starengine.*` 那批类**既不在外层 jar 的条目里、也不落 `run/<版本>/mods`**
     （FML 到启动时才把内嵌 jar 解出来挂 classpath）。不展开就会把 `GameplayConstants` /
     `StarCoinWalletState` / `BossEntityUtil` / `SignSelectionGate` / `TargetSelectionRegistry`
     整批判成「不在运行时 classpath」——而它们实际都在，属**脚本盲区**而非真缺陷。
@@ -57,7 +57,7 @@
     实测：2026-09-22 修 1.20.1 / 1.21.1 两处 `SignSelectionGate` 旧包名后，本脚本从
     `FAIL（2 处）` 转为 `PASS`。
     实测：2026-09-27 补「JarJar 内嵌 jar 展开」后，`verify_probe_class_refs` 的 17 处
-    `com.merlinkitsune.starenginelib.*` 假红清零（此前它把内嵌库整个当不存在）。
+    `com.merlinkitsune.starengine.*` 假红清零（此前它把内嵌库整个当不存在）。
 #>
 [CmdletBinding()]
 param(
@@ -132,7 +132,7 @@ function Add-NestedJarEntries {
         递归展开一个 zip 流里的 JarJar 内嵌 jar，把它们的条目并入 $script:Entries。
 
     .NOTES
-        ⚠️ 本模组把 starengine_lib 内嵌成 `META-INF/jarjar/<name>.jar` ⇒ 那批类既不在外层 jar
+        ⚠️ 本模组把 starengine 内嵌成 `META-INF/jarjar/<name>.jar` ⇒ 那批类既不在外层 jar
         的条目里、也不落 `run/<版本>/mods`。不展开 ⇒ 整库的类被误判为缺失（2026-09-27 实测 17 处）。
         本函数**不输出任何管道值**（全部 `[void]` / `Dispose()` 均为 void），避免污染调用方的布尔返回。
     #>
@@ -354,7 +354,7 @@ function Test-ProbeLine {
             $files.Count, $checked, $bad.Count)
     foreach ($b in $bad) {
         Write-Output ('     x {0,-40} {1}' -f $b.File, $b.Class)
-        Write-Output '       ^ 该类不在运行时 classpath。若它已被下沉到 starengine_lib，须改写为 com.merlinkitsune.starenginelib.*'
+        Write-Output '       ^ 该类不在运行时 classpath。若它已被下沉到 starengine，须改写为 com.merlinkitsune.starengine.*'
         [void]$script:BadRefs.Add($b)
     }
     Write-Output ''

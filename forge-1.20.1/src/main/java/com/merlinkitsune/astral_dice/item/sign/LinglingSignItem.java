@@ -3,10 +3,8 @@ package com.merlinkitsune.astral_dice.item.sign;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.effect.LinglingSurgeEffect;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
-import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
-import com.merlinkitsune.astral_dice.item.ChargeManager;
+import com.merlinkitsune.starengine.event.EffectTimerGuard;
 import com.merlinkitsune.astral_dice.item.ModItems;
-import com.merlinkitsune.starenginelib.component.GameplayConstants;
 
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -27,9 +25,8 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
  * <ul>
  *   <li>① 订阅者注解是 {@code @Mod.EventBusSubscriber}(1.21.1 是 {@code @EventBusSubscriber});</li>
  *   <li>② {@code ModEffects.LINGLING_SURGE} 是 {@code RegistryObject} ⇒ {@code .get()};</li>
- *   <li>③ 冷却走 {@code ChargeManager.signCooldownTicks}(与蓝本同一表达式;基础值
- *       {@link GameplayConstants#SIGN_ACTIVE_COOLDOWN_TICKS}(默认 180 秒 = 3600t),再按充能封顶 —— 本条链
- *       与 1.21.1 侧 {@code ChargeManager} 语义逐位相同,只有基类默认实现才额外掺「诡异骰子 −50%」)。</li>
+ *   <li>③ 冷却**不覆写基准** ⇒ 走基类默认口径 {@code WeirdDiceHandler.signCooldownTicks}
+ *       (默认 180 秒 = 3600t,含充能封顶 + 诡异骰子 −50%),与默认立牌同一条代码路径。</li>
  * </ul>
  *
  * <p>主动技能由「立牌主动键」触发({@code BaseSignItem#performSkill}),不是右键 —— 右键(潜行)只自动装备。
@@ -60,12 +57,6 @@ public class LinglingSignItem extends BaseSignItem {
         return InteractionResultHolder.success(stack);
     }
 
-    /** 冷却:120 秒基础值,经充能封顶(照 JasmineSignItem / 蓝本同款链) */
-    @Override
-    protected int activeCooldownBaseTicks(Player player) {
-        return (int) ChargeManager.signCooldownTicks(player, GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS);
-    }
-
     /** 卸下 / 死亡:额外层归零 + 摘净修饰器 + 移除「能量突击」 */
     @Override
     protected void clearSignData(Player player, ItemStack stack) {
@@ -78,7 +69,7 @@ public class LinglingSignItem extends BaseSignItem {
      * (与蓝本 {@code event.setHandled()} 同口径,照 NancyLuSignItem 先例)。
      */
     @SubscribeEvent
-    public static void onSignActiveTriggered(com.merlinkitsune.starenginelib.event.SignActiveTriggeredEvent event) {
+    public static void onSignActiveTriggered(com.merlinkitsune.starengine.event.SignActiveTriggeredEvent event) {
         if (event.getSignStack().is(ModItems.LINGLING_SIGN.get())) {
             event.setHandled();
         }

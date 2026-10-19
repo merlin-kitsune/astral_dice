@@ -1,11 +1,9 @@
 package com.merlinkitsune.astral_dice.item.sign;
 
-import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
+import com.merlinkitsune.starengine.event.EffectTimerGuard;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.effect.LinglingSurgeEffect;
 import com.merlinkitsune.astral_dice.item.ModItems;
-import com.merlinkitsune.starenginelib.component.GameplayConstants;
-
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.player.Player;
@@ -24,8 +22,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
  * {@code performSkill} → 本类 {@link #handleUse}），**不走右键**。
  *
  * <p>被动「拦截者」的其余逻辑在 {@link LinglingSignManager} + {@code event.LinglingSignEvents}；
- * 本类只提供立牌自己的三个钩子：{@link #handleUse}、{@link #activeCooldownBaseTicks}
- * （充能减免链）、{@link #clearSignData}（卸下清理）。**佩戴态的 10t 主动刷新统一由
+ * 本类只提供立牌自己的两个钩子：{@link #handleUse}、{@link #clearSignData}（卸下清理）。**佩戴态的 10t 主动刷新统一由
  * {@code event.PlayerTickEvents} 驱动**（那里同时覆盖「骰子被摘掉」的清场路径，
  * 而 {@code onCurioTick} 在骰子闸门之上、够不到该路径）。
  */
@@ -54,17 +51,6 @@ public class LinglingSignItem extends BaseSignItem {
         return InteractionResultHolder.success(stack);
     }
 
-    /**
-     * §5 主动冷却：不覆写基准 ⇒ 沿用**全局立牌主动冷却** {@link GameplayConstants#SIGN_ACTIVE_COOLDOWN_TICKS}（默认 180 s = 3600t），再走 {@code ChargeManager.signCooldownTicks} 既有充能减免链
-     * （配置项 {@code SIGN_ACTIVE_COOLDOWN_SECONDS}，默认 180 秒；原稿误写 120 秒，已按 2026-10-18 实机实测订正）。
-     * 冷却与 buff 时长（1200t）是两层，互不影响；buff 期间允许再次触发。
-     */
-    @Override
-    protected int activeCooldownBaseTicks(Player player) {
-        int ticks = GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS;
-        return (int) com.merlinkitsune.astral_dice.item.ChargeManager.signCooldownTicks(player, ticks);
-    }
-
     @Override
     protected void clearSignData(Player player, ItemStack stack) {
         super.clearSignData(player, stack);
@@ -74,7 +60,7 @@ public class LinglingSignItem extends BaseSignItem {
 
     // 主动技能 ActionBar 注册：自带提示已在 handleUse 内发送，仅阻止默认提示
     @SubscribeEvent
-    public static void onSignActiveTriggered(com.merlinkitsune.starenginelib.event.SignActiveTriggeredEvent event) {
+    public static void onSignActiveTriggered(com.merlinkitsune.starengine.event.SignActiveTriggeredEvent event) {
         if (event.getSignStack().is(ModItems.LINGLING_SIGN.get())) {
             event.setHandled();
         }

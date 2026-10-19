@@ -1,0 +1,33 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "D": {
+      "item": "astral_dice:amethyst_dice"
+    },
+    "E": {
+      "item": "astral_dice:blank_sign"
+    },
+    "H": {
+      "item": "minecraft:honey_bottle"
+    },
+    "L": {
+      "item": "minecraft:potion"
+    },
+    "P": {
+      "item": "astral_dice:golden_star_plate"
+    },
+    "T": {
+      "item": "minecraft:bread"
+    }
+  },
+  "pattern": [
+    "PHP",
+    "LEL",
+    "TDT"
+  ],
+  "result": {
+    "item": "astral_dice:dorothy_sign"
+  },
+  "show_notification": true
+}

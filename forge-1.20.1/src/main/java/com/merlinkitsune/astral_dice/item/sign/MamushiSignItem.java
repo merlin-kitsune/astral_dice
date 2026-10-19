@@ -5,12 +5,12 @@ import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.DragonRoarBreakEffect;
 import com.merlinkitsune.astral_dice.effect.MamushiDragonEffect;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
-import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
+import com.merlinkitsune.starengine.event.EffectTimerGuard;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.card.DragonCardUtil;
 import com.merlinkitsune.astral_dice.item.card.RandomCardHandler;
-import com.merlinkitsune.starenginelib.event.EventTargetCollector;
-import com.merlinkitsune.starenginelib.item.CuriosCompat;
+import com.merlinkitsune.starengine.event.EventTargetCollector;
+import com.merlinkitsune.starengine.item.CuriosCompat;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -30,7 +30,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import com.merlinkitsune.astral_dice.combat.PartyRelations;
+import com.merlinkitsune.starengine.combat.PartyRelations;
 
 /**
  * 蛟龙立牌(mamushi,传奇 {@code ASTRAL_DICE_LEGENDARY})。
@@ -64,18 +64,17 @@ import com.merlinkitsune.astral_dice.combat.PartyRelations;
  * ④此后主动技给自己发的是龙之咆哮。可见载体 = {@link ModEffects#MAMUSHI_DRAGON}(常驻效果,图标 = 立牌贴图)。
  *
  * <h2>主动「连锁反应」(规格 §2.4)</h2>
- * <b>非选择器类</b>:只覆写 {@link #handleUse}(首行客户端早退),**不覆写**
- * {@code selectorActionId} / {@code startActiveLockOnUse}(裁决 D5:不起锁定态)。
+ * <b>非选择器类</b>:覆写 {@link #handleUse}(首行客户端早退)与 {@link #startActiveLockOnUse}
+ * (进入锁定态),**不覆写** {@code selectorActionId}。
  * <ol>
  *   <li>发放前判定一次真龙形态(裁决 D6);</li>
  *   <li>先给自己 1 张({@code dragon ? 龙之咆哮 : 撕咬}),走专属发放形状
  *       ({@code ExclusiveCardUtil.setOwner} + 发牌漏斗,giver 透传);</li>
  *   <li>再对收集到的目标各发 1 张随机牌;目标**当前没有任何本模组卡牌**时额外再发 1 张(裁决 D1);</li>
  *   <li>无任何合格目标仍算成功(自身那张照发、照常进冷却);</li>
- *   <li>强制冷却 {@link #ACTIVE_FORCED_COOLDOWN_TICKS}(1:00),**不可被任何减免绕过**:
- *       {@code BaseSignItem#forcedActiveCooldownTicks()} + {@code #forcedCooldownUntil(Player)}
- *       两个钩子覆写,并由 {@link com.merlinkitsune.astral_dice.item.chip.CurrentCoreChipItem}
- *       拒绝电流核心的"立即完成冷却"。</li>
+ *   <li>锁定(生效中)态 {@link #ACTIVE_LOCK_TICKS}(1:00):锁定期间按键无效(提示「主动技能生效中」),
+ *       电流核心筹码不可绕过;**锁定结束不追加冷却**({@link #skipCooldownAfterLock} 返回 true
+ *       ⇒ 锁定跑完即可再次释放,等价旧「强制冷却 1:00、不可减免」;框架同上)。</li>
  * </ol>
  *
  * <h2>撕咬 / 龙之咆哮(规格 §2.6 / §2.7)</h2>
@@ -92,7 +91,7 @@ import com.merlinkitsune.astral_dice.combat.PartyRelations;
  *
  * <h2>卸下(规格 §2.5)</h2>
  * {@link #clearSignData}:觉醒归零、撕咬锁存清除、移除 {@code mamushi_dragon} 效果、清静态批次表;
- * **不清** {@code sign_active_cooldown_end} / {@code mamushi_forced_cooldown_until}
+ * **不清** {@code sign_active_cooldown_end} / 锁定态 {@code sign_active_lock_*}
  * (冷却为玩家级,既有口径不随装卸重置)。
  *
  * <h2>1.20.1 平台适配(相对 1.21.1 的镜像改写)</h2>
@@ -111,7 +110,9 @@ import com.merlinkitsune.astral_dice.combat.PartyRelations;
  *       见 {@link #collectActiveTargets} —— 工厂本体仍保留为通用 API,勿删。</li>
  * </ul>
  */
-public class MamushiSignItem extends BaseSignItem {
+// 主动停机 = 锁定 60s,锁定结束无额外冷却(等价旧「强制冷却 1:00,不可减免」)
+public class MamushiSignItem extends BaseSignItem
+        implements SignHooks.BiteBlessingTrigger, SignHooks.BlessingEnded, SignHooks.DragonRoar {
 
     // ══════════════════════════════════════════════════════════════════════════
     //  常量(规格 §1 冻结:两线同名同值)
@@ -132,8 +133,8 @@ public class MamushiSignItem extends BaseSignItem {
     public static final double ACTIVE_RANGE = 12.0;
     /** 安全上限(人数) */
     public static final int ACTIVE_MAX_TARGETS = 32;
-    /** 强制冷却 1:00(不可被任何减免绕过) */
-    public static final int ACTIVE_FORCED_COOLDOWN_TICKS = 1200;
+    /** 主动「连锁反应」的锁定(生效中)时长(1:00;锁定结束即再次可用,无额外冷却) */
+    public static final int ACTIVE_LOCK_TICKS = 1200;
 
     /** 撕咬:费用 */
     public static final int BITE_COST = 2;
@@ -174,7 +175,7 @@ public class MamushiSignItem extends BaseSignItem {
     private static final Map<UUID, Batch> BATCHES = new ConcurrentHashMap<>();
 
     /** 批次过期时长(tick):比它更旧的条目会被惰性清理 —— 只是防止静态表无界增长,不参与任何判定 */
-    private static final long BATCH_STALE_TICKS = 200L;
+    private static final long MAMUSHI_BATCH_EXPIRE_TICKS = 200L;
 
     public MamushiSignItem(Properties properties) {
         super(properties);
@@ -189,12 +190,6 @@ public class MamushiSignItem extends BaseSignItem {
         // 客户端早退(照 NardisSignItem#handleUse):真正的判定与发牌一律服务端权威
         if (level.isClientSide) {
             return InteractionResultHolder.success(stack);
-        }
-        // 强制冷却硬闸门(不可被任何减免绕过):写在这里而不是只依赖 performSkill 的入账 ——
-        // 手持右键/二次调用等任何到达本方法的路径都会被同一判据挡住(幂等,只提示一次)。
-        if (isForcedCooldownActive(player)) {
-            notifyForcedCooldown(player);
-            return InteractionResultHolder.fail(stack);
         }
         // D6:真龙形态在**发放开始前判定一次**(本次发放过程中因给牌涨到 8 层不改变本次目标集)
         boolean dragon = isDragonForm(player);
@@ -213,9 +208,6 @@ public class MamushiSignItem extends BaseSignItem {
                 RandomCardHandler.giveCardTo(player, target, RandomCardHandler.CardCategory.ALL);
             }
         }
-        // ③ 释放当刻写强制冷却硬闸门(now + 1:00);**不写** sign_active_cooldown_end ——
-        //    那笔由 performSkill 第 ⑧ 步按 forcedActiveCooldownTicks() 入账,避免事后覆盖既有机制。
-        ModAttachments.setMamushiForcedCooldownUntil(player, level.getGameTime() + ACTIVE_FORCED_COOLDOWN_TICKS);
         return InteractionResultHolder.success(stack);
     }
 
@@ -262,35 +254,31 @@ public class MamushiSignItem extends BaseSignItem {
     }
 
     // ══════════════════════════════════════════════════════════════════════════
-    //  强制冷却(规格 §3.4;BaseSignItem 的两个钩子 + 手动路径兜底)
+    //  主动锁定(生效中)态(复用通用 beginActiveLock 机制)
     // ══════════════════════════════════════════════════════════════════════════
 
-    /** 强制冷却 1:00(0 = 无强制;本立牌恒为 1200,不经过诡异骰子的减免) */
+    /**
+     * 本次主动触发成功时进入锁定(生效中)态(硬上界 = {@link #ACTIVE_LOCK_TICKS},1:00):
+     * 锁定期间按键无效(提示「主动技能生效中」),电流核心筹码无法绕过;
+     * 锁定结束**不起冷却**(见 {@link #skipCooldownAfterLock}):60s 一到即可再次释放,无额外空档。
+     */
     @Override
-    protected int forcedActiveCooldownTicks() {
-        return ACTIVE_FORCED_COOLDOWN_TICKS;
+    protected boolean startActiveLockOnUse(Player player, long now) {
+        beginActiveLock(player, SIGN_ID, now + ACTIVE_LOCK_TICKS);
+        return true;
     }
 
-    /** 强制冷却硬闸门的绝对到期刻(0 = 未设) */
+    /**
+     * 主动停机 = 锁定 60s,锁定结束**无额外冷却**(等价旧「强制冷却 1:00,不可减免」)。
+     *
+     * <p>规格 §3.4 的旧表述是「1200t 强制冷却」,现以锁定态表达同一可观察行为:锁定期间
+     * {@code BaseSignItem#performSkill} 第 0 步先判 {@code isSignActiveLocked} ⇒ 按键无效(提示
+     * 「主动技能生效中」),电流核心筹码与任何减免都无法介入;锁定跑完即可再次释放,
+     * 不再额外挂基础冷却(FX1 回归修复)。
+     */
     @Override
-    protected long forcedCooldownUntil(Player player) {
-        return getForcedCooldownUntil(player);
-    }
-
-    /** 当前是否被强制冷却挡住(供 {@code CurrentCoreChipItem} 与探针复用) */
-    public static boolean isForcedCooldownActive(Player player) {
-        if (player == null) return false;
-        long until = getForcedCooldownUntil(player);
-        return until > 0 && player.level().getGameTime() < until;
-    }
-
-    /** 强制冷却到期刻(附件读值;0 = 未设) */
-    public static long getForcedCooldownUntil(Player player) {
-        return ModAttachments.getMamushiForcedCooldownUntil(player);
-    }
-
-    private static void notifyForcedCooldown(Player player) {
-        sendSignActionBarColored(player, net.minecraft.ChatFormatting.RED, "msg.astral_dice.mamushi_cooldown_locked");
+    protected boolean skipCooldownAfterLock() {
+        return true;
     }
 
     // ══════════════════════════════════════════════════════════════════════════
@@ -299,12 +287,7 @@ public class MamushiSignItem extends BaseSignItem {
 
     /** 佩戴本立牌(stand 饰品槽) */
     public static boolean isEquipped(Player player) {
-        // 总闸门(骰子装备和卸除调整):未佩戴骰子 ⇒ 本件功能一律不生效(数值保留)
-        if (!CurioSlotUtil.hasDiceEquipped(player)) return false;
-        if (player == null) return false;
-        var curios = CuriosCompat.getCuriosInventory(player);
-        return curios.isPresent()
-                && curios.get().findFirstCurio(s -> s.is(ModItems.MAMUSHI_SIGN.get())).isPresent();
+        return SignEquipCheck.isEquipped(player, ModItems.MAMUSHI_SIGN.get());
     }
 
     /** 真龙形态(锁存态):佩戴立牌 **且** 觉醒 ≥ {@link #AWAKEN_MAX} */
@@ -404,7 +387,7 @@ public class MamushiSignItem extends BaseSignItem {
         Iterator<Map.Entry<UUID, Batch>> it = BATCHES.entrySet().iterator();
         while (it.hasNext()) {
             Map.Entry<UUID, Batch> e = it.next();
-            if (now - e.getValue().tick > BATCH_STALE_TICKS) it.remove();
+            if (now - e.getValue().tick > MAMUSHI_BATCH_EXPIRE_TICKS) it.remove();
         }
     }
 
@@ -482,16 +465,36 @@ public class MamushiSignItem extends BaseSignItem {
      * <p>D8:重复命中只刷新时长(不叠层)—— 两条效果都以 {@code amplifier = 0} 施加,原版
      * {@code MobEffectInstance#update} 对同放大器实例只取较长时长;
      * {@link DragonRoarBreakEffect} 另把修饰器取值固定为 −8,双重保证"层数不会放大减甲"。
-     * 六参构造:关粒子、留图标。缓慢是原版效果,按仓库既有写法经
-     * {@link EffectTimerGuard#apply} 施加以纳入"严格 20 t/s"守卫;破防是本模组效果,
-     * 由 {@code MobEffectEvent.Added} 自动登记计时。
+     * 六参构造:关粒子、留图标。两效果均经
+     * {@link EffectTimerGuard#apply} 施加以纳入"严格 20 t/s"守卫(破防首加由
+     * {@code MobEffectEvent.Added} 自动登记,apply 负责重复命中刷新时长时补记)。
      */
     public static void applyRoarDebuff(LivingEntity victim) {
         if (victim == null || victim.level().isClientSide()) return;
         EffectTimerGuard.apply(victim, new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN,
                 ROAR_DEBUFF_TICKS, ROAR_SLOW_AMPLIFIER, false, false, true));
-        victim.addEffect(new MobEffectInstance(ModEffects.DRAGON_ROAR_BREAK.get(),
+        EffectTimerGuard.apply(victim, new MobEffectInstance(ModEffects.DRAGON_ROAR_BREAK.get(),
                 ROAR_DEBUFF_TICKS, 0, false, false, true));
+    }
+
+    // === B1 注册式钩子分发入口（实例转发；静态方法保留兼容外部直调） ===
+
+    @Override
+    public void handleDiceBlessingTriggered(Player player) {
+        onDiceBlessingTriggered(player);
+    }
+
+    @Override
+    public void handleDiceBlessingEnded(Player player) {
+        onDiceBlessingEnded(player);
+    }
+
+    /** 龙之咆哮：原直调前的「攻击方骰子卡牌栏装备了 dragon_roar」闸门原样保留在此。 */
+    @Override
+    public void handleDragonRoar(Player attacker, LivingEntity victim) {
+        if (attacker == null || attacker.level().isClientSide()) return;
+        if (countEquippedType(attacker, DragonCardUtil.TYPE_DRAGON_ROAR) <= 0) return;
+        applyRoarDebuff(victim);
     }
 
     /** 玩家骰子卡牌栏里指定类型的装配张数(规格 §3.2;委托 {@link DragonCardUtil}) */
@@ -557,7 +560,7 @@ public class MamushiSignItem extends BaseSignItem {
      * 卸下立牌(只在"玩家有意卸除"时到达,见 {@code BaseSignItem#onUnequip} +
      * {@code CurioSlotUtil.isIntentionalUnequip}):觉醒归零、撕咬锁存清除、移除真龙形态效果、清批次表。
      *
-     * <p>**不清**玩家级冷却({@code sign_active_cooldown_end} / {@code mamushi_forced_cooldown_until})
+     * <p>**不清**玩家级冷却({@code sign_active_cooldown_end} / 锁定态 {@code sign_active_lock_*})
      * —— 冷却为玩家级,既有口径不随装卸重置(规格 §2.5)。
      */
     @Override

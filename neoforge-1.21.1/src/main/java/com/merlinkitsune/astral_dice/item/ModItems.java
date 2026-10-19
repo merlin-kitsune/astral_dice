@@ -5,7 +5,7 @@ import com.merlinkitsune.astral_dice.block.ModBlocks;
 import net.minecraft.world.item.BlockItem;
 import com.merlinkitsune.astral_dice.component.AppliedStone;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
-import com.merlinkitsune.starenginelib.item.AstralRarities;
+import com.merlinkitsune.starengine.item.AstralRarities;
 
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -125,7 +125,7 @@ public class ModItems {
                     AstralDiceMod.MODID, "effect_cards"));
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // 本模组稀有度标准(2026-09-25 起改为**自有 5 档**;等级/常量名/颜色码的权威在前置库 starengine_lib):
+    // 本模组稀有度标准(2026-09-25 起改为**自有 5 档**;等级/常量名/颜色码的权威在前置库 starengine):
     //   白 = 普通   → 原版 Rarity.COMMON(本模组**唯一**保留的原版档,直接写 Rarity.COMMON)
     //   水蓝 #55FFFF = 稀有 → AstralRarities.rare()      扩展常量 ASTRAL_DICE_RARE
     //   粉紫 #FF55FF = 史诗 → AstralRarities.epic()      扩展常量 ASTRAL_DICE_EPIC
@@ -1125,6 +1125,31 @@ public class ModItems {
             () -> new com.merlinkitsune.astral_dice.item.sign.LinglingSignItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(AstralRarities.epic())));
+
+    // ── 本批 4 个新立牌（2026-10-18）──
+    // 调酒师立牌(jill,奇特):被动「改变生活」/ 主动「调制人生」(选目标 + 选 3 张牌调制)
+    public static final DeferredItem<Item> JILL_SIGN = registerItem("jill_sign",
+            () -> new com.merlinkitsune.astral_dice.item.sign.JillSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.bizarre())));
+
+    // 多萝西立牌(dorothy,奇特):被动「交际花」(温暖层数)/ 主动「真正的我」(传送 + 友方光环)
+    public static final DeferredItem<Item> DOROTHY_SIGN = registerItem("dorothy_sign",
+            () -> new com.merlinkitsune.astral_dice.item.sign.DorothySignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.bizarre())));
+
+    // 修女立牌(alana,稀有):被动「鼓起勇气」/ 主动「铁处女」(30 秒免疫 + 半透明)
+    public static final DeferredItem<Item> ALANA_SIGN = registerItem("alana_sign",
+            () -> new com.merlinkitsune.astral_dice.item.sign.AlanaSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.rare())));
+
+    // 大肥鱼立牌(deepseek,奇特,仅创造获得):被动「摸鱼中」/ 主动「大口干饭」
+    public static final DeferredItem<Item> DEEPSEEK_SIGN = registerItem("deepseek_sign",
+            () -> new com.merlinkitsune.astral_dice.item.sign.DeepseekSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.bizarre())));
 
     // 符卡-福(专属功能效果牌,风水师立牌专属):出牌数 +1;对玩家(不限队伍)或自身使用 ⇒ 恢复 2 点生命值。
     // 专属绑定:获得即绑定获得者(ModDataComponents.OWNER_UUID),他人无法使用。

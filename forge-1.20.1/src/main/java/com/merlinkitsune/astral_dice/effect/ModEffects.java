@@ -7,24 +7,24 @@ import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraftforge.registries.RegistryObject;
 import net.minecraftforge.registries.DeferredRegister;
 
-import com.merlinkitsune.starenginelib.effect.BerserkEffect;
-import com.merlinkitsune.starenginelib.effect.CounterEffect;
-import com.merlinkitsune.starenginelib.effect.CutterReadyEffect;
-import com.merlinkitsune.starenginelib.effect.DiceBlessingEffect;
-import com.merlinkitsune.starenginelib.effect.FateGuidanceEffect;
-import com.merlinkitsune.starenginelib.effect.HealingEffect;
-import com.merlinkitsune.starenginelib.effect.InvestigationBonusEffect;
-import com.merlinkitsune.starenginelib.effect.KingPowerEffect;
-import com.merlinkitsune.starenginelib.effect.LivingPageEffect;
-import com.merlinkitsune.starenginelib.effect.MarkedEffect;
-import com.merlinkitsune.starenginelib.effect.MisakiBurstEffect;
-import com.merlinkitsune.starenginelib.effect.MosesBrokenEffect;
-import com.merlinkitsune.starenginelib.effect.NancyLuHackEffect;
-import com.merlinkitsune.starenginelib.effect.PandamanTauntEffect;
-import com.merlinkitsune.starenginelib.effect.PaparaBiteEffect;
-import com.merlinkitsune.starenginelib.effect.RevengeHalberdEffect;
-import com.merlinkitsune.starenginelib.effect.UndercoverInvestigationEffect;
-import com.merlinkitsune.starenginelib.effect.WeakMarkEffect;
+import com.merlinkitsune.starengine.effect.BerserkEffect;
+import com.merlinkitsune.starengine.effect.CounterEffect;
+import com.merlinkitsune.starengine.effect.CutterReadyEffect;
+import com.merlinkitsune.starengine.effect.DiceBlessingEffect;
+import com.merlinkitsune.starengine.effect.FateGuidanceEffect;
+import com.merlinkitsune.starengine.effect.HealingEffect;
+import com.merlinkitsune.starengine.effect.InvestigationBonusEffect;
+import com.merlinkitsune.starengine.effect.KingPowerEffect;
+import com.merlinkitsune.starengine.effect.LivingPageEffect;
+import com.merlinkitsune.starengine.effect.MarkedEffect;
+import com.merlinkitsune.starengine.effect.MisakiBurstEffect;
+import com.merlinkitsune.starengine.effect.MosesBrokenEffect;
+import com.merlinkitsune.starengine.effect.NancyLuHackEffect;
+import com.merlinkitsune.starengine.effect.PandamanTauntEffect;
+import com.merlinkitsune.starengine.effect.PaparaBiteEffect;
+import com.merlinkitsune.starengine.effect.RevengeHalberdEffect;
+import com.merlinkitsune.starengine.effect.UndercoverInvestigationEffect;
+import com.merlinkitsune.starengine.effect.WeakMarkEffect;
 import java.util.Collection;
 
 public class ModEffects {
@@ -42,6 +42,16 @@ public class ModEffects {
 
     public static final RegistryObject<MobEffect> MARKED =
             EFFECTS.register("marked", MarkedEffect::new);
+
+    // ── 2026-10-19 新批 4 个立牌的状态指示器 ──
+    public static final RegistryObject<MobEffect> JILL_MIXED =
+            EFFECTS.register("jill_mixed", com.merlinkitsune.astral_dice.effect.JillMixedEffect::new);
+    public static final RegistryObject<MobEffect> DOROTHY_WARMTH =
+            EFFECTS.register("dorothy_warmth", com.merlinkitsune.astral_dice.effect.DorothyWarmthEffect::new);
+    public static final RegistryObject<MobEffect> ALANA_IRON_MAIDEN =
+            EFFECTS.register("alana_iron_maiden", com.merlinkitsune.astral_dice.effect.AlanaIronMaidenEffect::new);
+    public static final RegistryObject<MobEffect> DEEPSEEK_FISHING =
+            EFFECTS.register("deepseek_fishing", com.merlinkitsune.astral_dice.effect.DeepseekFishingEffect::new);
 
     public static final RegistryObject<MobEffect> DICE_BLESSING =
             EFFECTS.register("dice_blessing", DiceBlessingEffect::new);

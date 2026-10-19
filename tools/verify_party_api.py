@@ -76,12 +76,14 @@ def _astral_heal_stdio() -> None:  # pragma: no cover - 环境适配
 _astral_heal_stdio()
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# 2026-10-19：PartyRelations 已下沉到前置库 StarEngine（包 com.merlinkitsune.starengine.combat），
+# 主模组不再有该源文件 ⇒ 闸门改读库工作树（可用 STARENGINE_LIB_ROOT 覆盖）。
+STARENGINE_LIB_ROOT = os.environ.get("STARENGINE_LIB_ROOT", "/mnt/f/mcproject/starengine_lib_next")
 PARTY_REL = os.path.join(
-    "src", "main", "java",
-    "com", "merlinkitsune", "astral_dice", "combat", "PartyRelations.java",
+    "common", "src", "main", "java",
+    "com", "merlinkitsune", "starengine", "combat", "PartyRelations.java",
 )
-# 默认线（单独调用不改参数时看主生产线）。
-PARTY = os.path.join(REPO, "neoforge-1.21.1", PARTY_REL)
+PARTY = os.path.join(STARENGINE_LIB_ROOT, PARTY_REL)
 
 # 三条线 → 各后端**允许的产物文件名模式**。
 # ⚠️ 必须是**显式登记**、且不允许「找不到就退回按加载器通配」的模糊回退 ——
@@ -305,7 +307,7 @@ def show(cls: str) -> str:
 
 def check_line(line: str, javap: str, jars_dir: str, pre_fix: bool, dump: bool):
     """校验一条线。返回 (pass, fail, skip)。"""
-    src_path = os.path.join(REPO, line, PARTY_REL)
+    src_path = PARTY
     if pre_fix:
         cand = os.path.join(REPO, "temp", "party_verify",
                             "PartyRelations.prefix.%s.java" % line)

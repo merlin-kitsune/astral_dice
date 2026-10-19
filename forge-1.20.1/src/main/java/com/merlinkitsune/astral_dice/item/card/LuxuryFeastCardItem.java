@@ -6,10 +6,10 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
-import com.merlinkitsune.starenginelib.event.EventTargetCollector;
-import com.merlinkitsune.starenginelib.target.TargetType;
+import com.merlinkitsune.starengine.event.EventTargetCollector;
+import com.merlinkitsune.starengine.target.TargetType;
 import com.merlinkitsune.astral_dice.item.chip.FriendshipBadgeChipItem;
-import com.merlinkitsune.astral_dice.combat.PartyRelations;
+import com.merlinkitsune.starengine.combat.PartyRelations;
 
 /**
  * 奢华大餐(治疗效果牌):**目标选择器类(手持即选择)** —— 主手手持本牌即自动进入目标选择模式(移出手持立即退出),瞄准非敌对生物后左键确认,

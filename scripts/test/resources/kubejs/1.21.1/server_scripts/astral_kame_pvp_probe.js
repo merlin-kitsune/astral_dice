@@ -10,7 +10,7 @@ var KPTString = Java.loadClass("com.mojang.brigadier.arguments.StringArgumentTyp
 var KPTFx = Java.loadClass("com.merlinkitsune.astral_dice.effect.ModEffects");
 var KPTMark = Java.loadClass("com.merlinkitsune.astral_dice.effect.KangelFanEffect");
 var KPTSign = Java.loadClass("com.merlinkitsune.astral_dice.item.sign.KangelSignItem");
-var KPRemoval = Java.loadClass("com.merlinkitsune.starenginelib.event.ModEffectRemoval");
+var KPRemoval = Java.loadClass("com.merlinkitsune.starengine.event.ModEffectRemoval");
 
 function kptSend(ctx, text) {
     try { ctx.source.sendFailure(KPTComponent.literal(text)); } catch (e) { /* ignore */ }

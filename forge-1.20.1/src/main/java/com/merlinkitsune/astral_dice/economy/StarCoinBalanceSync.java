@@ -1,7 +1,7 @@
 package com.merlinkitsune.astral_dice.economy;
 
 import com.merlinkitsune.astral_dice.network.ModNetwork;
-import com.merlinkitsune.starenginelib.economy.StarEngineEconomy;
+import com.merlinkitsune.starengine.economy.StarEngineEconomy;
 
 import net.minecraft.server.level.ServerPlayer;
 

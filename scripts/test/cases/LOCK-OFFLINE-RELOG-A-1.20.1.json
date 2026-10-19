@@ -13,50 +13,45 @@
       "text": "A 相：构造 parunan 锁定态 → 两条通道读 last_seen（须 > 0）→ 显式存档，交由 B 相跨重登复核。"
     },
     {
-      "op": "eval_js",
-      "side": "server",
-      "timeout_ms": 20000,
-      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/gamemode survival\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+      "op": "inject_command",
+      "command": "/gamemode survival",
+      "no_esc": true
     },
     {
       "op": "wait",
       "ms": 600
     },
     {
-      "op": "eval_js",
-      "side": "server",
-      "timeout_ms": 20000,
-      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/clear @s\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
     },
     {
       "op": "wait",
       "ms": 500
     },
     {
-      "op": "eval_js",
-      "side": "server",
-      "timeout_ms": 20000,
-      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralprobe signreset RA0\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+      "op": "inject_command",
+      "command": "/astralprobe signreset RA0",
+      "no_esc": true
     },
     {
       "op": "wait",
       "ms": 800
     },
     {
-      "op": "eval_js",
-      "side": "server",
-      "timeout_ms": 20000,
-      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralprobe signprep RA1 \\\"astral_dice:parunan_sign\\\" 10\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+      "op": "inject_command",
+      "command": "/astralprobe signprep RA1 \"astral_dice:parunan_sign\" 10",
+      "no_esc": true
     },
     {
       "op": "wait",
       "ms": 900
     },
     {
-      "op": "eval_js",
-      "side": "server",
-      "timeout_ms": 20000,
-      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralprobe signcast RA2\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+      "op": "inject_command",
+      "command": "/astralprobe signcast RA2",
+      "no_esc": true
     },
     {
       "op": "wait",
@@ -67,10 +62,9 @@
       "text": "读通道①(探针只读):`signstate RA3 mark` —— 锁定中且 `last_seen > 0`(等于 beginActiveLock 落笔的那一拍)。"
     },
     {
-      "op": "eval_js",
-      "side": "server",
-      "timeout_ms": 20000,
-      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralprobe signstate RA3 mark\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+      "op": "inject_command",
+      "command": "/astralprobe signstate RA3 mark",
+      "no_esc": true
     },
     {
       "op": "wait",
@@ -81,10 +75,9 @@
       "text": "读通道②(产品诊断面):`dumpstate RA4` = `/astralparty dump` —— 断言 SIGN 分组含 `sign_active_lock_last_seen` 且非 0。"
     },
     {
-      "op": "eval_js",
-      "side": "server",
-      "timeout_ms": 20000,
-      "code": "(function(){\n  var SH = Java.loadClass('net.minecraftforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralprobe dumpstate RA4\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+      "op": "inject_command",
+      "command": "/astralprobe dumpstate RA4",
+      "no_esc": true
     },
     {
       "op": "wait",
@@ -95,20 +88,16 @@
       "text": "显式存档:`--phase stop` 是**强杀不存档**,故必须在 A 相末尾自己触发一次原版存盘(B 相才能读回同一份玩家数据)。\n⚠️ **2026-09-21 实测:不得再用 `/save-all flush`** —— 该命令经聊天注入时**前导斜杠会被吃掉**,变成一条聊天消息(原始日志原文 `[CHAT] save-all flush<--[此处]`),命令**从未执行**,玩家数据文件不落盘(宿主机核对:`saves/testworld/playerdata/<uuid>.dat` 的 mtime 不变;1.20.1 连测 3/3 复现;而 `/say a-b`、`/time set day` 同一通道正常执行 ⇒ 与通道/语言无关,是该命令串被改写)。\n改用**原版暂停存盘**:`Esc` 打开暂停菜单会触发 `Saving and pausing game...` + 逐维度 `Saving chunks…` 并**真正写盘**(实测 `playerdata/<uuid>.dat` 当场被重写,字节数随之变化),再按一次 `Esc` 回到游戏。断言用原版**日志行** `Saving chunks for level 'ServerLevel[testworld]'/minecraft:overworld` 作存盘证据(日志行是英文、两线一致,不受语言影响)。"
     },
     {
-      "op": "eval_js",
-      "side": "client",
-      "timeout_ms": 20000,
-      "code": "(function(){\n  var IC = Java.loadClass('com.mojang.blaze3d.platform.InputConstants');\n  var KM = Java.loadClass('net.minecraft.client.KeyMapping');\n  var k = IC.Type.KEYSYM.getOrCreate(256);\n  KM.click(k);\n  return { ok: true, keysym: 256 };\n})()"
+      "op": "inject_key",
+      "key": "escape"
     },
     {
       "op": "wait",
       "ms": 1500
     },
     {
-      "op": "eval_js",
-      "side": "client",
-      "timeout_ms": 20000,
-      "code": "(function(){\n  var IC = Java.loadClass('com.mojang.blaze3d.platform.InputConstants');\n  var KM = Java.loadClass('net.minecraft.client.KeyMapping');\n  var k = IC.Type.KEYSYM.getOrCreate(256);\n  KM.click(k);\n  return { ok: true, keysym: 256 };\n})()"
+      "op": "inject_key",
+      "key": "escape"
     },
     {
       "op": "wait",
@@ -119,7 +108,6 @@
       "text": "A 相结束时**刻意保持锁定态**(不调 signreset):B 相要读回它。"
     }
   ],
-  "channel": "autojs",
   "asserts": [
     {
       "type": "log",
@@ -203,10 +191,5 @@
       "type": "crash"
     }
   ],
-  "evidence": [],
-  "migration": {
-    "from": "legacy-kubejs",
-    "at": "2026-10-18",
-    "tool": "scripts/test/convert_cases_autojs.py"
-  }
+  "evidence": []
 }

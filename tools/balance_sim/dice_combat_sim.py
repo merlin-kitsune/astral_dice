@@ -12,7 +12,7 @@
 
 公式唯一事实源（本脚本逐条对齐，不得凭记忆改动）
 ------------------------------------------------
-- 库共享公式：F:/MCProject/starengine_lib_next/common/src/main/java/com/merlinkitsune/starenginelib/combat/
+- 库共享公式：F:/MCProject/starengine_next/common/src/main/java/com/merlinkitsune/starengine/combat/
     CombatFormula.playerDefense / mobDefenseInt
     TargetBattleStats.baseAttack / baseDefense
     DiceBattleResolver.resolve                          (max(1, atk - def))
@@ -126,7 +126,7 @@ CARDS: Dict[str, Tuple[str, int]] = {
 # ⚠️⚠️ 已过期（2026-09-26 标注，本版未改）—— 下面的库侧常量仍停在**重标定前**的旧模型：
 #   护甲项写死「统一除数 2」、PLAYER_BASE_DEFENSE 2.0 / PLAYER_TOUGHNESS_COEF 1.4 /
 #   MOB_TOUGHNESS_COEF 1.125、BASE_ATTACK 敌对 5 / 中立 4、BASE_DEFENSE 敌对 2。
-#   库 starengine_lib 自 2.0.0-SNAPSHOT.2 起已改为（并**删除**了 ARMOR_DIVISOR）：
+#   库 starengine 自 2.0.0-SNAPSHOT.2 起已改为（并**删除**了 ARMOR_DIVISOR）：
 #     playerDefense  = 4 + 护甲×0.30 + 0.85×韧性
 #     mobDefenseInt  = 0 + 护甲×0.40 + 1.0×韧性   （两侧均无 20 上限，护甲取属性终值）
 #     BASE_ATTACK: 敌对 4 / 中立 3 / 被动 0 / 友好 0 ; BASE_DEFENSE: 全 0

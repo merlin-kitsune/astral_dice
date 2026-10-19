@@ -12,17 +12,15 @@
       "text": "前置：用 `gradlew.bat :neoforge-1.21.1:runClient -PtestJade=false -Pquickplay=testworld` 直接起 dev 客户端（mt 工具链不透传 -P，见 docs/reports/card-choice-jade-2026-10-17-2.0.0-SNAPSHOT.128.md §9-D4）。本用例只做**启动之后**的运行期冒烟；「Mod List 无 jade」「无 Found valid mod file jade-*」属启动期行，落在用例断言窗口之外，由报告 §9.6 的启动日志逐条给出。"
     },
     {
-      "op": "eval_js",
-      "side": "server",
-      "timeout_ms": 20000,
-      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var pl = s.getPlayerList().getPlayers();\n  var src = (pl.size() > 0) ? pl.get(0).createCommandSourceStack() : s.createCommandSourceStack();\n  var cmd = \"/astralprobe opprobe\";\n  s.getCommands().performPrefixedCommand(src, cmd);\n  return { ok: true, cmd: cmd };\n})()"
+      "op": "inject_command",
+      "command": "/astralprobe opprobe",
+      "no_esc": true
     },
     {
       "op": "wait",
       "ms": 3000
     }
   ],
-  "channel": "autojs",
   "asserts": [
     {
       "type": "mixin"
@@ -48,10 +46,5 @@
       "source": "latest",
       "pattern": "Mixin apply failed|InvalidInjectionException|MixinTransformerError"
     }
-  ],
-  "migration": {
-    "from": "legacy-kubejs",
-    "at": "2026-10-18",
-    "tool": "scripts/test/convert_cases_autojs.py"
-  }
+  ]
 }

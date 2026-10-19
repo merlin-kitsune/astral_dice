@@ -1,8 +1,4 @@
 # astral_dice 自动化测试规范（TESTING SPEC）
-
-> ⛔ **本文件为历史口径（2026-10-18 起作废）**：现行测试入口是 `scripts/test/mt.sh`（WSL + bash/python + AutoJS 求值通道），
-> 键鼠注入 / 窗口焦点 / 截图识别已废除。冲突处以 `docs/wsl-autojs-toolchain.md` 为准；本文件仅作历史参考，禁止据此施工。
-
 ## ⚠️ 测试资产已全部清零（2026-09-20 用户指令）— 现行状态，先读本节
 
 > 用户指令原文：「执行项目与AGENTS自检：清理所有测试项，已进行或未进行的测试项全部作废并删除，删除所有插针和测试项脚本，包括游戏环境中插入的kubejs脚本。保留测试规则，由用户对测试流程和规则进行核验，将完整的测试流程和规则向用户完整展示。」
@@ -49,7 +45,7 @@
 |---|---|---|---|
 | **非核心** | `scripts/**`、`tools/**`（工具链 / 脚本）；`**/lang/*.json`、tooltip 文案与帕秋莉手册内容（`**/patchouli_books/**`）；`*.md` 与 `docs/**`；代码注释 / javadoc；测试夹具 `scripts/test/resources/**`、`scripts/test/cases/**` | 受影响子项目 `gradlew build` + 相关静态闸门（`scripts/devtools/Test-MtSyntax.ps1`；改过 lang 必跑 `tools/check_lang_sync.ps1`）+ 自动本地提交 | 阶段 L（`--phase launch`）/ 阶段 C（`--phase cases`）/ `mt.ps1` 全流程 |
 | **核心（默认 → 定向最小冒烟）** | 玩法逻辑与数值；网络与协议；存档/同步；注册表与数据组件；mixin；客户端渲染与输入；**数据包内容 `src/main/resources/data/**`**（配方 / 伤害类型 / 标签 / 战利品 / 进度）；`build.gradle` 的行为性改动 | ① 构建；② **只跑与该改动直接相关的用例**（映射与举证见下方第 7 条）；③ 启动后必须通过 `mt_launch` 固有硬闸门（noai / 史莱姆压制 / preflight），不得跳过 | **与改动无直接关系的模块用例**（本批取消并登记；确需者按第 8 条登记为推迟） |
-| **完整冒烟（例外：仅在用户明确要求时执行）** | **执行条件：仅在用户明确要求时执行**；命中 ①②③⑤ 时先向用户申请，不得自行开跑 ⇒ ① 发版 / Release 批次；② 跨模块公共路径（共享库 `starengine_lib`、注册表与数据组件结构、网络协议、存档/读档结构、全局伤害结算出入口）；③ 门槛类规则自身改动（版本互通、加载器门槛、mixin 目标串、依赖区间）；④ 用户显式要求；⑤ 26.1.2 迁移 / 三线一致性验收批次 | 构建 + 本规范全流程（阶段 L + 阶段 C **全清单**，三线各一遍） | — |
+| **完整冒烟（例外：仅在用户明确要求时执行）** | **执行条件：仅在用户明确要求时执行**；命中 ①②③⑤ 时先向用户申请，不得自行开跑 ⇒ ① 发版 / Release 批次；② 跨模块公共路径（共享库 `starengine`、注册表与数据组件结构、网络协议、存档/读档结构、全局伤害结算出入口）；③ 门槛类规则自身改动（版本互通、加载器门槛、mixin 目标串、依赖区间）；④ 用户显式要求；⑤ 26.1.2 迁移 / 三线一致性验收批次 | 构建 + 本规范全流程（阶段 L + 阶段 C **全清单**，三线各一遍） | — |
 
 **判定与边界**：
 
@@ -917,8 +913,8 @@ pwsh -NoProfile -File scripts/test/mt_watchdog.ps1 -Version 1.21.1 [-StallSecond
 
 - 工程:**需求与裁决**：用户裁决「现在玩家拥有充能时，主动技能最大冷却时间为 160 秒，效果牌最大冷却时间为 20 秒；全域修改，不影响当前正在进行的倒计时，只影响基础值；需要清除遗留代码」。三点经确认后取：① **A 把基础值封顶**（立牌 180→160 秒、效果牌 30→20 秒；封顶之后再叠加其它减免 ⇒ 诡异骰子 -50% 照旧、枪匠「精密技巧」的 120 秒基础值低于上限故不受影响）；② **A 连共享库常量一起删并升版**；③ **A 只同步与被改行为直接相关的文案**（手册充能页 + `ChargeManager` javadoc + CHANGELOG；电流核心的「剩余冷却 ÷ 180 秒」档位除数属**未充能**最大冷却、行为未变，故不动）。
 - 工程:**旧口径与遗留代码（删除对象）**：原实现 = 常量 `GameplayConstants.CHARGE_COOLDOWN_REDUCTION = 0.2` + 入口 `ChargeManager.cooldownTicks(player, baseTicks)`（有充能 ⇒ 冷却 ×0.8，向上取整）。换算后原实际值：立牌 144 秒、效果牌 24 秒、诡异骰子 72 秒、枪匠 96 秒。该常量**定义在共享库**，全仓只有本模组三条线引用它。
-- 工程:**共享库 `starengine_lib`（`.10` → `.11`）**：删除 `CHARGE_COOLDOWN_REDUCTION`，新增 `CHARGE_SIGN_COOLDOWN_CAP_SECONDS = 160` 与 `CHARGE_EFFECT_CARD_COOLDOWN_CAP_SECONDS = 20`；三个子项目 `lib_version`/`mod_version` 同号升版，并在 `neoforge-1.21.1/gradle.properties` 的版本文档块补 `.11` 条目（另两侧各留一行指引）。`gradlew publishToMavenLocal` = **BUILD SUCCESSFUL (4s)**；产物复核 = `~/.m2/.../starengine_lib-{forge-1.20.1,neoforge-1.21.1,neoforge-26.1.2}/1.0.0-SNAPSHOT.11/*.jar` 内 `GameplayConstants.class` 均含两个新常量名、**不含**旧常量名（三者均 2727 字节）。**属源码不兼容变更**：常量被删后消费方必须同步改，因此必须 bump 库版本（否则消费方继续解析 mavenLocal 里带旧常量的 jar）。
-- 工程:**模组三条线同步（1.21.1 / 1.20.1 / 26.1.2）**：26.1.2 属「库 API 删除强制同步」，不是功能迁移（该线充能冷却代码与发布线同源、逐字相同）。改动：`ChargeManager` 删 `cooldownTicks(...)`，新增 `signCooldownTicks` / `effectCardCooldownTicks` / 私有 `capByCharge`（`Math.min(baseTicks, capSeconds * 20L)`；无充能或基础值 ≤1 tick 时原样返回）；`WeirdDiceHandler.signCooldownTicks` 与 `MosesSignItem.signCooldownTicks` 改为**先封顶、再按诡异骰子减半**；`EffectCardPeriod`（「打满上限起冷却」与「未打满收尾起冷却」两处）与 `ModTooltipHandler.effectCardCooldownSeconds`（tooltip 显示实际值）改用效果牌入口；`JasmineSignItem` 的「基准记录缺失」兜底基线也改走同一封顶口径（`sign_active_max_cooldown` 记录缺失时才用到）。三条线 `gradle.properties` 的 `starengine_lib_version(_range)` → `1.0.0-SNAPSHOT.11`。**「不影响正在进行的倒计时」是结构性成立的**：冷却只在**开始那一刻**经这些方法取值，`sign_active_max_cooldown` 亦在起冷却时写定；本次不触碰任何既有到期时刻（用例以 `cardEndSame=1` 机器断言）。
+- 工程:**共享库 `starengine`（`.10` → `.11`）**：删除 `CHARGE_COOLDOWN_REDUCTION`，新增 `CHARGE_SIGN_COOLDOWN_CAP_SECONDS = 160` 与 `CHARGE_EFFECT_CARD_COOLDOWN_CAP_SECONDS = 20`；三个子项目 `lib_version`/`mod_version` 同号升版，并在 `neoforge-1.21.1/gradle.properties` 的版本文档块补 `.11` 条目（另两侧各留一行指引）。`gradlew publishToMavenLocal` = **BUILD SUCCESSFUL (4s)**；产物复核 = `~/.m2/.../starengine-{forge-1.20.1,neoforge-1.21.1,neoforge-26.1.2}/1.0.0-SNAPSHOT.11/*.jar` 内 `GameplayConstants.class` 均含两个新常量名、**不含**旧常量名（三者均 2727 字节）。**属源码不兼容变更**：常量被删后消费方必须同步改，因此必须 bump 库版本（否则消费方继续解析 mavenLocal 里带旧常量的 jar）。
+- 工程:**模组三条线同步（1.21.1 / 1.20.1 / 26.1.2）**：26.1.2 属「库 API 删除强制同步」，不是功能迁移（该线充能冷却代码与发布线同源、逐字相同）。改动：`ChargeManager` 删 `cooldownTicks(...)`，新增 `signCooldownTicks` / `effectCardCooldownTicks` / 私有 `capByCharge`（`Math.min(baseTicks, capSeconds * 20L)`；无充能或基础值 ≤1 tick 时原样返回）；`WeirdDiceHandler.signCooldownTicks` 与 `MosesSignItem.signCooldownTicks` 改为**先封顶、再按诡异骰子减半**；`EffectCardPeriod`（「打满上限起冷却」与「未打满收尾起冷却」两处）与 `ModTooltipHandler.effectCardCooldownSeconds`（tooltip 显示实际值）改用效果牌入口；`JasmineSignItem` 的「基准记录缺失」兜底基线也改走同一封顶口径（`sign_active_max_cooldown` 记录缺失时才用到）。三条线 `gradle.properties` 的 `starengine_version(_range)` → `1.0.0-SNAPSHOT.11`。**「不影响正在进行的倒计时」是结构性成立的**：冷却只在**开始那一刻**经这些方法取值，`sign_active_max_cooldown` 亦在起冷却时写定；本次不触碰任何既有到期时刻（用例以 `cardEndSame=1` 机器断言）。
 - 工程:**文案（3 线 × 中英 = 6 份）**：`astral_dice.guide.entry.playstyles.5`（手册「充能」页）由「拥有充能，立牌主动与效果牌冷却即 -20%」改写为「立牌主动冷却至多 160 秒、效果牌冷却至多 20 秒（把基础值封顶，诡异骰子等其它减免照常生效）」；`AGENTS.md` 充能流派规范同批改写 5 处（固定流派效果条目、「冷却接入点」、冷却基准记录、效果牌冷却显示、手册充能页要求），旧常量/旧入口在文档里只以「已删除」形式各留 1 处引用。lang 键数不变（两发布线 676 / 26.1.2 651），`check_lang_sync.ps1` 三线零告警。
 - 工程:**探针与用例**：三份探针各新增 `chargeset <tag> <n>`（设/清充能后打印同一读数）与 `chargecd <tag>`（只读），读数行 `AP_<tag>_CD:stacks=..:has=..:weird=..:signBase=..:sign=..:card=..:capSign=..:capCard=..:signEnd=..:signMax=..:cardEnd=..:cardEndSame=..:cardRemain=..`；`capSign/capCard` 直读共享库常量（不把口径写死在用例里），`cardEndSame` 由探针记住上一次 `cardEnd`、本次相同时给 1 —— 用来机器断言「进行中的倒计时未被改动」。新增用例 `CHARGE-COOLDOWN-{1.21.1,1.20.1,26.1.2}.json`（发布线 28 步 / 14 断言；26.1.2 线 13 步 / 8 断言——该线未移植效果牌选择器批次、无 `cardprep`/`cardself`，故只核对封顶读数与常量）。**踩坑登记（首跑单点 FAIL 的原因）**：`cardprep` 的 `_PREP` 行读的是**命令生效前**的状态（手里还是规则书）⇒ 断言必须落在其后独立调用的 `_READ` 上（`AP_CC5_READ:hand=astral_dice:effect_card_express_delivery`），已在用例内注明。
 - 工程:**实机结果（三条线各自全流程 preflight → build → env → launch → 用例 → report）**：`CHARGE-COOLDOWN-1.21.1` = **PASS**（41 PASS / 0 FAIL、`MT_CASE_RESULT: … = PASS`、`MT_VERSION_VERDICT: 1.21.1 = PASS`、`MT_PIPELINE_EXIT=0`）；`CHARGE-COOLDOWN-1.20.1` = **PASS**（41 PASS / 0 FAIL、同三条判据）；`CHARGE-COOLDOWN-26.1.2` = **PASS**（20 PASS / 0 FAIL、`MT_VERSION_VERDICT: 26.1.2 = PASS`、`MT_PIPELINE_EXIT=0`）。决定性读数（1.21.1 `latest.log`，`source=latest`）：`AP_CC0_CD:stacks=0:has=0:signBase=3600:sign=3600:card=600:capSign=160:capCard=20`（无充能 = 180/30 秒）→ `AP_CC1_CD:stacks=5:has=1:sign=3200:card=400`（有充能 = 160/20 秒）→ `AP_CC3_CD:weird=1:sign=1600:card=400`（诡异骰子先封顶再减半 = 80 秒）→ 无充能出牌后 `AP_CC6_CD:card=600:cardEnd=1915:cardRemain=520` → **给充能** `AP_CC7_CD:has=1:card=400:cardEnd=1915:cardEndSame=1`（新口径 20 秒生效，但**进行中的倒计时仍是 1915**）→ `AP_CC8_CD:cardEnd=1915:cardEndSame=1`。1.20.1 同构（`cardEnd=1929` 全程不变）。
@@ -1002,7 +998,7 @@ pwsh -NoProfile -File scripts/test/mt_watchdog.ps1 -Version 1.21.1 [-StallSecond
 - 工程:**顺带登记（本轮未改，留给工具链后续任务）**：`mt_inject.ps1` 的 `Send-MtInjectMouseCenter` 在 `-Shift` 时，**shift 按下**走 `Send-MtInjectKeyDown`（sendinput ⇒ 真实 `SendInput`），而**shift 抬起**走 `Send-MtInjectMessage` ⇒ `PostMessage(WM_KEYUP)`（`:287-291` 与 `:179`）—— 两条通路的投递方式不一致（真实按下 / 消息抬键），是「注入 shift+右键后客户端退到标题画面」现象的**待查疑点**（t16 取证时两次复现，隔离实验证明与本模组改动无关）。本轮**不修**（不在 t18 的修复范围，且改注入通路会影响所有 shift 类用例），只登记并与 key/mouse 的 `ESC_SKIP` 回显一起留待专项处理。
 **2026-09-18：筹码栏「装备骰子偶发不增加」修复交付到发布线 + 版本号升位（`1.2.1-hotfix` / `1.2.1-beta.2`）**
 
-- **范围与来源**：本次修复先在开发线 `multi-dev-next` 落地并完成游戏内验证（1.21.1 / 1.20.1 各 **54 PASS / 0 FAIL**，26.1.2 的 `CHIP-EQUIP`、`PORTED-PROBE-SMOKE`、`CHIP-RELOG-A/B` 全 PASS；用例、探针改动与判据全文记在开发线工作区的 `TESTING-SPEC.md` 附录 A 与 `AGENTS.md` 的「骰子槽位与配置规范」）。随后把**仅该修复**移植到发布线 `multi-1.20.1-1.21.1`，共 **5 个文件**：3 个 `item/dice/DiceCurioItem.java`（1.21.1 / 1.20.1 / 26.1.2）+ 2 个 `event/PlayerLifecycleHandler.java`（各新增 3 个对账钩子：`PlayerLoggedInEvent`、`OnDatapackSyncEvent`(LOWEST)、`PlayerEvent.Clone`(LOWEST)）。移植时**刻意不带**开发线独有的其它差异（`starenginelib` 包引用、额外的 effect 移除行等），发布线其余内容保持原样。
+- **范围与来源**：本次修复先在开发线 `multi-dev-next` 落地并完成游戏内验证（1.21.1 / 1.20.1 各 **54 PASS / 0 FAIL**，26.1.2 的 `CHIP-EQUIP`、`PORTED-PROBE-SMOKE`、`CHIP-RELOG-A/B` 全 PASS；用例、探针改动与判据全文记在开发线工作区的 `TESTING-SPEC.md` 附录 A 与 `AGENTS.md` 的「骰子槽位与配置规范」）。随后把**仅该修复**移植到发布线 `multi-1.20.1-1.21.1`，共 **5 个文件**：3 个 `item/dice/DiceCurioItem.java`（1.21.1 / 1.20.1 / 26.1.2）+ 2 个 `event/PlayerLifecycleHandler.java`（各新增 3 个对账钩子：`PlayerLoggedInEvent`、`OnDatapackSyncEvent`(LOWEST)、`PlayerEvent.Clone`(LOWEST)）。移植时**刻意不带**开发线独有的其它差异（`starengine` 包引用、额外的 effect 移除行等），发布线其余内容保持原样。
 - **版本号**：`1.2.1+neoforge_1.21.1` → **`1.2.1-hotfix+neoforge_1.21.1`**；`1.2.1+forge_1.20.1` → **`1.2.1-hotfix+forge_1.20.1`**；`1.2.1-beta+neoforge_26.1.2` → **`1.2.1-beta.2+neoforge_26.1.2`**。
 - **Tag / Release 口径（重要）**：CI 的剥离规则是「先剥 `+后缀`，再剥第一个 `-` 之后的一切」（`BASE=${VERSION%%+*}; BASE=${BASE%%-*}`）⇒ `1.2.1-hotfix` 解析出的 tag 是**裸 `1.2.1`**，而该 tag 已存在 ⇒ 本次推送**不新建 tag、不新建 Release**，而是走 `gh release edit` + `gh release upload --clobber` **刷新同一个 1.2.1 Release**（三个附件一并替换、正文取自 `release/1.2.1/`）。
 - **构建与产物核验（三线各跑 `scripts/test/mt_build.ps1 --version <V> --timeout 60 --retries 3`，三条全部 `MT_BUILD: OK`）**：
@@ -1138,11 +1134,11 @@ pwsh -NoProfile -File scripts/test/mt_watchdog.ps1 -Version 1.21.1 [-StallSecond
 - 工程:**用户裁决(2026-09-17)** —— 原话「**该分支内所有内容均不推送整合包(严格),只推送到游戏测试目录。除非用户另行规定。**」。三项口径:① **严格不推整合包**：`multi-dev-next` 上 `pushToGame` 在**执行期**判定当前分支不在白名单即 `return`，只打印 `pushToGame: skipped — 分支 '…' 不在整合包推送白名单 …`，整合包目录不被写入、旧 jar 也不被删；② **只推游戏测试目录**：仓库根 `run/<版本>/mods`（`pushToDevRun`）与仓库根 `build/libs`（`pushToRootBuild`）**保留**、随 `build` 照常触发、不受分支限制；③ **需要时由用户另行规定**：仅用户显式要求时才出包（`-PdeployToPack` / `-PpackPush` 手动强推，或把分支加入 `packPushBranches` 白名单）。**本轮零构建代码改动**：三条线现状已满足该裁决，`build.gradle` / 守卫条件 / `-P` 语义 / 整合包与 `run/*/mods` 内容一律未动。
 - 工程:**代码 ↔ 文档矛盾（发现与修正）**。`AGENTS.md`「编译产物上传规则」原第 1 条称 `-PdeployToPack` **不再被任何任务读取**（源码中仅存注释），与代码不符 —— 三条线 `build.gradle` 均有 `def forcePackPush = project.hasProperty('deployToPack') || project.hasProperty('packPush')`（`neoforge-1.21.1/build.gradle:295`、`forge-1.20.1/build.gradle:333`、`neoforge-26.1.2/build.gradle:277`），并在 `pushToGame` 的 `doLast` 里以 `if (!forcePackPush) { … }` 包裹分支白名单判定（`:335` / `:381` / `:314`）⇒ 该参数**确实被读取**，作用正是**跳过白名单手动强推**。现**以代码为准**改写该条（参数保留、作用=跳过白名单强推、强推时同时触发「库 jar 成对自检」告警），并在同段表格的「pushToGame 触发条件」列与「发送到整合包」引用块补分支白名单口径（仅发布线 `multi-1.20.1-1.21.1` 自动推送，其它分支含 `multi-dev-next` 严格跳过）；「编译产物上传规则」段内新增裁决原文 + 三项口径的引用块，另同步「子项目修改默认规则」的自动收尾条与「新版本发布流程」第 4 条。
 - 工程:**证据来源**（本轮**不跑 Gradle**，避免与验证任务争用守护进程，直接引用已落盘日志）。t12 提交 **`19d7471`** 的三线构建日志（报告 `temp/t12-26.1.2-migration-report.md` §1/§5；原始日志 `temp/merge-t2/t12-verify-build-2612.log`、`t12-verify-build-others.log`、`t12-build-stage4.log`）：三条线的 `pushToGame` **各打印一行 `pushToGame: skipped — 分支 'multi-dev-next' 不在整合包推送白名单 [multi-1.20.1-1.21.1] 内;如需强制推送请加 -PdeployToPack`**；同期真正写入的是另两个任务 —— `pushToDevRun: pushed astral_dice-….jar -> F:\MCProject\astral_dice_multiloader-next\run\<版本>\mods`（即 `pushed … -> run/<版本>/mods`）与 `pushToRootBuild: pushed … -> …\build\libs`；三个整合包 `mods` 目录内 jar 的**时间戳未被刷新**（26.1.2 仍为 2026-09-17 19:36:39.179），与「严格不推整合包」一致。
-- 工程:`KNOWN-ISSUES.md` 的 **KI-M5①**（整合包 `mods` 内无 `starengine_lib-*.jar`）按本裁决补**限域说明**：该风险**在 `multi-dev-next` 上不会触发**（此分支严格不推整合包），仅当**发布线**推送整合包时才需「库 jar 与本模组 jar 成对推送」。
+- 工程:`KNOWN-ISSUES.md` 的 **KI-M5①**（整合包 `mods` 内无 `starengine-*.jar`）按本裁决补**限域说明**：该风险**在 `multi-dev-next` 上不会触发**（此分支严格不推整合包），仅当**发布线**推送整合包时才需「库 jar 与本模组 jar 成对推送」。
 
 **2026-09-17：选择器立牌主动技能「前置门控」（t15）＋ 玩家侧文案同步**
 
-- 工程:**改动范围 = `neoforge-1.21.1` + `forge-1.20.1` 两个发布线子项目**(26.1.2 无目标选择器、未改动;未动共享库 `starengine_lib`、未 bump 库版本、未改 CI 引用、未改整合包推送守卫)。目的:把三个「目标选择器类」立牌(占星师 `haiqing_weak_mark` / 秘密侦探 `bonnie_undercover` / 枪匠 `moses_apply_broken`)的主动技能改为**前置门控** —— 按下主动键只开启选择会话,发牌 / 主动响应提示 / 冷却·锁定 / 电流核心充能 / 技能效果全部推迟到确认合法目标之后;取消 / 超时 / 会话被替换 / 登出 / 死亡一律等同「未使用」。
+- 工程:**改动范围 = `neoforge-1.21.1` + `forge-1.20.1` 两个发布线子项目**(26.1.2 无目标选择器、未改动;未动共享库 `starengine`、未 bump 库版本、未改 CI 引用、未改整合包推送守卫)。目的:把三个「目标选择器类」立牌(占星师 `haiqing_weak_mark` / 秘密侦探 `bonnie_undercover` / 枪匠 `moses_apply_broken`)的主动技能改为**前置门控** —— 按下主动键只开启选择会话,发牌 / 主动响应提示 / 冷却·锁定 / 电流核心充能 / 技能效果全部推迟到确认合法目标之后;取消 / 超时 / 会话被替换 / 登出 / 死亡一律等同「未使用」。
 - 工程:**实现点位(两线同构)** —— ① `item/sign/BaseSignItem`:新增 `protected String selectorActionId()`(缺省 `null` = 非选择器类,原流程逐字不变)与「第 2.5 步」门控分支(位于第 2 步 `isSelecting` 守卫**之后**、第 3 步 `handleUse` **之前**;`TargetSelectionManager.start` 成功才 `SignSelectionGate.arm`),并新增确认恢复点 `public static void resumeGatedActiveSkill(Player, String)`(取走待执行记录 → 风扇筹码发牌 → 抛 `SignActiveTriggeredEvent` → 无处理器时发默认提示);② 新增 `target/SignSelectionGate`(record `Pending(String actionId, ItemStack stack)` + `ConcurrentHashMap`;`arm` / `isArmed` / `take`(原子取走,`actionId` 不匹配即丢弃,避免跨会话误触发) / `clear`),两条线该文件**逐字节相同**(sha256 `1fb67db7b9130e33…`);③ `target/TargetSelectionManager` 接线:**8 处 `SignSelectionGate.clear`**(测试清理 / 会话被替换 / 确认时已过期 / 确认时动作缺失 / 取消 / tick 超时 / 登出 / 死亡)+ 确认成功后 **1 处** `resumeGatedActiveSkill`(在 `action.apply` **之后**、`target_select.applied` 提示之前 —— 成功路径**不得**提前 clear,否则恢复点退化为空操作);④ 三个立牌各覆写 `selectorActionId()` 返回自己的 action id(`TargetSelectionAction#apply` 已负责写入玩家级冷却与电流核心充能,恢复点不重复写)。**窗口时长**一律读 `GameplayConstants.SKILL_WAIT_SECONDS`(会话 `expireTick = gameTime + SKILL_WAIT_SECONDS * 20L`);本轮新增的 **Java 源码与注释**里**不出现**写死的窗口数字(判据 `git diff -- '*.java' | Select-String '^\+.*\b30\b'` **0 命中**;玩家侧 CHANGELOG 与本附录中出现的 `30 秒` 属文档叙述与旧文案引用,不受该判据约束)。`handleUse` 仍是唯一入口的旁证:`use()` 对立牌恒返回 fail、三个立牌 `handleUse` 体内只有 `start(serverPlayer, "<actionId>")` 一句 ⇒ 门控分支直接调 `start` 与旧路径等价,无第三处入口。
 - 工程:**枪匠「请选择目标」提示改挂会话开始**(行为一致性的必要修正):该提示原先由 `MosesSignItem#onSignActiveTriggered`(订阅 `SignActiveTriggeredEvent`)发送,而该事件在门控后**只在确认成功后**抛出 ⇒ 会在「破绽」已施加之后再要求玩家「请选择敌对目标」,同时按键那一刻反而没有任何提示。现改为:注册动作新增 `onStarted(ServerPlayer)` 覆写 → `sendReadyPrompt(player)`(恢复「进入选择模式瞬间提示」的原意),并删除该事件处理器(连带删除不再使用的 `SubscribeEvent` import;类上的 `@EventBusSubscriber` 注解保留)。判据:产物 jar 内 `MosesSignItem$1.class` 含 `onStarted`、`MosesSignItem.class` **不含** `onSignActiveTriggered`(两线实测一致)。
 - 工程:**玩家侧文案同步(手持风扇手册正文)**:两条手册条目(`astral_dice.guide.entry.hand_fan_{big,small}_chip.1`,中英 × 双线 = **8 处**)原写「需指定目标的立牌在按下进入 30 秒待命时即触发」/“(for target-waiting signs this triggers the moment you press the key to enter the 30-second standby)”,与门控后的实际行为相反 ⇒ 改为「需指定目标的立牌改为确认目标后才触发」/“(for target-waiting signs this only triggers after the target is confirmed)”。**lang 键集合零变化** ⇒ `tools/check_lang_sync.ps1` 结论不变(两条发布线各 619/619;26.1.2 622/622 未触碰);立牌自身的 tooltip/手册(「激活后进入目标选择模式……确认后向其施加……取消或超时不消耗冷却」)门控后**仍然逐字成立**,未改。
@@ -1206,7 +1202,7 @@ pwsh -NoProfile -File scripts/test/mt_watchdog.ps1 -Version 1.21.1 [-StallSecond
 
 - 工程:**HUD 口径**（用户裁决）：中央 HUD 仍只画**一行**，组成 = `hud.astral_dice.target_select.target`（`目标：%s（%s 格）`，**参数个数不变**）+ 字面量 `" · "` + `hud.astral_dice.target_select.tag.<后缀>`，整行仍用 `TargetSelectionClient.highlightColor` 的颜色绘制；后缀由新增只读访问器 `TargetSelectionClient.targetTagKey(LivingEntity)` 推导 —— 玩家按 `isFriendly`（同队）分 `teammate`/`player`，其余生物按「自己拥有的（`OwnableEntity#getOwnerUUID()` 等于选择者）→ `pet`、`isHostile` → `hostile`、其余 → `neutral`」。**无有效目标时不画**（`currentTarget == null` 直接 return，与改前一致）；`TargetSelectOverlay` 在两线的注册点（`ModClientEvents` 的 `registerGuiLayers` / `registerGuiOverlays`，id `target_select`）**改动前就在**，本轮未注销、未改注册方式。
 - 工程:**actionbar 四态稳态提示**（用户裁决）：`TargetSelectionClient.refreshActionBarPrompt` 复写的稳态分支由旧的单一 `msg.astral_dice.target_select.active` 改为 `steadyPrompt()` 四态判定 —— ① `currentTarget != null` → 绿 `prompt.valid`；② 否则 `rejectedTarget != null` → 红 `prompt.rejected`（参数 = 会话 `TargetType` 枚举名对应的 `valid_target.<枚举名>`，`translatableWithFallback` 的 fallback = 枚举名）；③ 否则 → 白 `prompt.no_target_self`（`allowSelf()` 真）/ `prompt.no_target`（假），参数 = 技能名（`skill.<actionId>`，fallback = actionId 本身，故 `test_echo_*` 不显示裸键）。四态末尾**统一**追加黄色 `msg.astral_dice.target_select.time`（`§e` 语义，`Component.empty().append(main).append(time)` 保证两段各自上色）。**剩余秒数** = 新增只读访问器 `TargetSelectionClient.remainingSeconds()` = `ceil((expireTick - level.getGameTime()) / 20)`、最小 0，与超时判据 `tick()` 的 `gameTime >= expireTick` **同源**。瞬态 `showPrompt`（`transientPrompt`/`transientPromptUntil` 的 40 tick 窗口）机制**原样保留**且仍优先于稳态提示。**删除**了 `updateRaycastTarget` 里对 `msg.astral_dice.target_select.rejected` 的瞬态 `showPrompt(...)`（新口径下「对准错误目标」是稳态红字，留着会与新文案来回跳）；旧键 `msg.astral_dice.target_select.rejected` 与 `…active` 的 lang 条目**保留不删**，只是代码不再调用。
-- 工程:**「允许对自身使用」管线（消费方侧，前置库 `F:\MCProject\starengine_lib` 零改动、未 bump 版本）**：① 两线各新增 `target/SelfTargetable.java`（`default boolean allowSelf() { return false; }`，两条线该文件除类 javadoc 里对 payload 类名的平台指涉外**逐字节等价**）；② `TargetSelectionManager.start` 计算 `boolean allowSelf = action instanceof SelfTargetable st && st.allowSelf();`，写入 `Session.allowSelf`（供将来服务端校验自身目标）并随下行包下发；③ 网络：1.21.1 的 `network/TargetSelectStartPayload`（record）追加 `boolean allowSelf` 字段（`ByteBufCodecs.BOOL`）、`ModPayloads` 处理器透传；1.20.1 的 `ModNetwork.TargetSelectStartMessage` 追加同名字段（`buf.writeBoolean`/`readBoolean`）并在处理器里透传；④ 客户端 `start(...)` 增参并保存，新增 `allowSelf()`；`useOnSelfBySecondaryClick()` 在 `allowSelf()` 为真时发 `TargetSelectConfirmPayload(token, mc.player.getId())`（1.20.1 为 `ModNetwork.TargetSelectConfirmMessage`）并 `deactivate()`，为假时**行为与改前逐字相同**（弹 `self_unsupported`、会话保留、不提交）。**当前无任何动作实现 `SelfTargetable`** ⇒ 全部现有会话 `allowSelf=false`，玩家可见行为不变（`test_echo_*`、三个立牌动作均未实现）。**未放宽** `TargetType.matches`（仍排除选择者自身）⇒ 将来真正启用需同时改前置库的目标类型校验，该约束写进了 `SelfTargetable` 的 javadoc。
+- 工程:**「允许对自身使用」管线（消费方侧，前置库 `F:\MCProject\starengine` 零改动、未 bump 版本）**：① 两线各新增 `target/SelfTargetable.java`（`default boolean allowSelf() { return false; }`，两条线该文件除类 javadoc 里对 payload 类名的平台指涉外**逐字节等价**）；② `TargetSelectionManager.start` 计算 `boolean allowSelf = action instanceof SelfTargetable st && st.allowSelf();`，写入 `Session.allowSelf`（供将来服务端校验自身目标）并随下行包下发；③ 网络：1.21.1 的 `network/TargetSelectStartPayload`（record）追加 `boolean allowSelf` 字段（`ByteBufCodecs.BOOL`）、`ModPayloads` 处理器透传；1.20.1 的 `ModNetwork.TargetSelectStartMessage` 追加同名字段（`buf.writeBoolean`/`readBoolean`）并在处理器里透传；④ 客户端 `start(...)` 增参并保存，新增 `allowSelf()`；`useOnSelfBySecondaryClick()` 在 `allowSelf()` 为真时发 `TargetSelectConfirmPayload(token, mc.player.getId())`（1.20.1 为 `ModNetwork.TargetSelectConfirmMessage`）并 `deactivate()`，为假时**行为与改前逐字相同**（弹 `self_unsupported`、会话保留、不提交）。**当前无任何动作实现 `SelfTargetable`** ⇒ 全部现有会话 `allowSelf=false`，玩家可见行为不变（`test_echo_*`、三个立牌动作均未实现）。**未放宽** `TargetType.matches`（仍排除选择者自身）⇒ 将来真正启用需同时改前置库的目标类型校验，该约束写进了 `SelfTargetable` 的 javadoc。
 - 工程:**lang**：两线 `zh_cn.json` / `en_us.json` 各新增 **17** 个键（5 个 HUD 类型标签 + 4 个四态 prompt + 3 个技能名 + 1 个时间 + 4 个有效目标名），四条 lang 文件改动后均为 **647** 键且 `tools/check_lang_sync.ps1` 三线全绿、零结构标记 WARN。
 - 工程:**工具链同步**：`cases/SELECTOR-KEYS-1.21.1.json` 的「证据口径」note 里「默认常驻提示→…active」一句改写为四态键名映射（**只改叙述文本，16 条断言与 58 个步骤一字未动**，用例语义不变）；1.20.1 侧该用例本就没有这处映射文本，故未改。四态逻辑本身**未新增**自动化用例（本轮无游戏内验证，见 `temp/t38/t38-report.md` 的自证边界一节）。
 
@@ -1249,7 +1245,7 @@ pwsh -NoProfile -File scripts/test/mt_watchdog.ps1 -Version 1.21.1 [-StallSecond
 - 工程:**B2b = 形态缺陷修复（必须做）**：B1+B2 只落门控与 `selectorActionId()`、**未注册三个动作** ⇒ 门控 `start()` 返 false 直接 return、旧 `handleUse` 亦不可达 ⇒ 三立牌主动**不可用**（按 J 只报 `no_valid_action`）。修法 = 从 1.21.1 基准逐字移植三处 `TargetSelectionRegistry.register(new TargetSelectionAction(){…})`（`bonnie_undercover` / `haiqing_weak_mark` / `moses_apply_broken`），**0 处平台改写**；唯一编译障碍是「基准本有、26.1.2 被删的类级成员」（三类的 private `LOGGER` + slf4j import、`MosesSignItem` 的 `CurrentCoreChipItem` import），按基准补回、**零语义改写**。自证：注册 id 集合与 `selectorActionId()` 返回值**双向差集为空**；`--rerun-tasks` 8/8 executed。
 - 工程:**B3 外框捕获（用户裁决「第一项 = mixin 方案」）**：`mixin/client/LivingEntityOutlineCaptureMixin` 注入 `LivingEntityRenderer#submit(...)` 内**唯一**的 `PoseStack.popPose()V`（`require=1, expect=1`；`javap` 实测全类 popPose = 1 次、偏移 338；**描述符必须写全**，因同类存在桥方法 `submit(EntityRenderState,…)`）。实体身份 = `OutlineCaptureRenderStateModifier`（`@EventBusSubscriber(value=Dist.CLIENT)` + `RegisterRenderStateModifiersEvent`，**Guava `TypeToken` 重载**——实测 raw `Class` 重载编不过）写入 `EntityRenderState` 自定义槽。`client/TargetOutlineCapture` 与 1.21.1 语义等价（`collision.minmax(measured)`、`IdentityHashMap`、`clearIfIdle`、20/80/64 常量、未渲染退化碰撞盒）；坐标 = 探针 + `camera.position()`。`astral_dice.mixins.json` 的 `client` 数组 3→4 项、`required:true`、`defaultRequire:1` ⇒ 注入点 0/≥2 处**加载期硬失败**，无静默退化路径。
 - 工程:**B4 棱柱边框 —— 推翻 t42 的渲染阶段建议（实测）**：t42 建议的 `RenderLevelStageEvent.AfterOpaqueFeatures` + `bufferSource()` 立即绘制**是错的**；`javap -c LevelRenderer` 实测帧序 = `SubmitCustomGeometryEvent`（偏移 309/324）→ `renderSolidFeatures`（334/346）→ `endBatch`（351）→ **之后**才是 `AfterOpaqueFeatures`（366/380）⇒ 在后者写顶点逆着原版帧图。实际采用 `SubmitCustomGeometryEvent` + `OrderedSubmitNodeCollector#submitCustomGeometry(PoseStack, RenderType, CustomGeometryRenderer)`。另两处修正：原版**已有** `RenderTypes.entitySolid(Identifier)`（不必自建 `Util.memoize`）；`LightTexture` 由 `LightCoordsUtil.FULL_BRIGHT = 15728880` 取代。语义自证：7 个几何/判定方法归一化后与 1.21.1 **逐字相同**（`borderBox` 299 / `colorOf` 96 / `emitBoxSides` 776 / `emitPrismBorder` 731 / `emitQuad` 509 / `emitVertices` 321 / `isPresent` 128 字符），`putVertex` 唯一差异 = 光照常量（长度差 3）；`blank.png` 两侧同 135 B / SHA256 `987c7d19…`。⚠️ 报告清单漏列新增辅助方法 `submitPrismBorder`（实质被 D2「提交方式」覆盖，非代码缺陷）。
-- 工程:**B5 中置 HUD + 提示层**：`client/TargetSelectOverlay implements net.neoforged.neoforge.client.gui.GuiLayer`（26.1.2 **无** `LayeredDraw`），`render(GuiGraphicsExtractor, DeltaTracker)`，文字走 `GuiGraphicsExtractor.text(Font, Component, int, int, int, boolean)` ↔ 1.21.1 `drawString`；**actionbar 层 26.1.2 早已存在**（`ModClientEvents$ActionBarOverlay`，id `action_bar`，调 starenginelib 的 `ActionBarManager`，库侧签名已是 26.1.2 形态、零改动）⇒ B1+B2 的「零渲染」遗留**只有中置 HUD**。另发现 `Entity#distanceTo` 在 26.1.2 返回 **float**（1.21.1 为 double），`Math.round` 重载随之改变但取整结果逐位相同，源码无需改。
+- 工程:**B5 中置 HUD + 提示层**：`client/TargetSelectOverlay implements net.neoforged.neoforge.client.gui.GuiLayer`（26.1.2 **无** `LayeredDraw`），`render(GuiGraphicsExtractor, DeltaTracker)`，文字走 `GuiGraphicsExtractor.text(Font, Component, int, int, int, boolean)` ↔ 1.21.1 `drawString`；**actionbar 层 26.1.2 早已存在**（`ModClientEvents$ActionBarOverlay`，id `action_bar`，调 starengine 的 `ActionBarManager`，库侧签名已是 26.1.2 形态、零改动）⇒ B1+B2 的「零渲染」遗留**只有中置 HUD**。另发现 `Entity#distanceTo` 在 26.1.2 返回 **float**（1.21.1 为 double），`Math.round` 重载随之改变但取整结果逐位相同，源码无需改。
 - 工程:**F1 守卫三线逐字同形**：`if (mc.options.hideGui && mc.screen == null) return;` —— 1.21.1 `TargetSelectOverlay:46` / `ModClientEvents:49`、1.20.1 `:45` / `:57`、26.1.2 `:73` / `:51`。26.1.2 侧机理与 1.21.1 同源（原版层被 `guiVisible`/`survivalVisible` 包裹，**模组层经 `GuiLayerManager#add` 加入、不包裹**）；1.20.1 侧该守卫是**逐例 no-op**（其原版门槛本就是 `!hideGui || screen != null`），1.21.1/26.1.2 侧是**承重**的。
 - 工程:**lang 三线对等**：`check_lang_sync.ps1 -LangDir <绝对路径>` → 1.21.1 650/650、1.20.1 650/650、26.1.2 **651/651** 全 OK。选择器键 1.21.1/1.20.1 = 31、26.1.2 = 29；`26.1.2 \ 发布线 = ∅`，反向**恰好只剩 2 个死键**（`msg.…target_select.active` / `.rejected`，三线源码引用数均为 0）；交集 29 键取值逐字相同。**既有、非本轮**的非选择器键差异 2 条：① `key.categories.astral_dice` → `key.category.astral_dice.main`（1.21.4+ `KeyMapping.Category` 键格式变化）；② `effect.astral_dice.{bonnie,haiqing,moses}_ready` 26.1.2 独有（属「旧待命提示机制对齐」批次）。
 - 工程:**26.1.2 线间差异登记（既有、非本轮引入）**：`-next` 的 1.21.1 侧旧 `sign_ready` 机制**已清理**（`DiceCombatEvents` 0 命中、`PlayerTickEvents:117` 只剩注释），26.1.2 仍是活代码（`PlayerTickEvents:118` 调 `tickSignReadyTimeout`；`DiceCombatEvents:239/256/283` 读 `getSignReadyType`；三立牌写 `READY_TYPE`；`MosesSignItem` 仍带 `@EventBusSubscriber` + `onSignActiveTriggered`；三个 `effect.*_ready` 效果与键在册）。门控使那三处写入不可达 ⇒ 命中释放成**永假分支**，可观察行为与 1.21.1 收敛，剩余差异 = 死代码 + 孤儿键 + 一条被同 tick `applied` 覆盖的多余提示。
@@ -1380,13 +1376,13 @@ pwsh -NoProfile -File scripts/test/mt_watchdog.ps1 -Version 1.21.1 [-StallSecond
 
 **2026-09-19（续）：`run/` 下手工启动脚本不可用 —— 库 jar 配对漂移 + Start-SelfTest 的 UP-TO-DATE 误判**
 
-- 工程:**现象**：`run/Start-{1.20.1,1.21.1,26.1.2}.bat -DryRun` 三条一律 `[FAIL] 库 jar 名与本线 starengine_lib_version 不一致`（实际 `…-1.0.0-SNAPSHOT.10.jar`、期望 `…-SNAPSHOT.11.jar`）⇒ 双击无法进入游戏。
-- 工程:**根因（两处叠加）**：① 共享库 `starengine_lib` 由 `.10` 升到 `.11` 后，`run/<版本>/mods` 里仍是旧的 `.10` 库 jar（三个 bat 的前置检查按**文件名**与 `gradle.properties` 的 `starengine_lib_version` 做字符串比对，因此拒绝启动）；② bat 提示的唯一修复入口 `scripts/devtools/Start-SelfTest.ps1` **自己也被挡住** —— 它的「产物时间戳双验证」要求 jar 时间戳晚于本次构建开始，而**只改注释/文档**时类字节不变、Gradle 判定 `Task :<子项目>:jar UP-TO-DATE` 不重写 jar ⇒ 合法的 UP-TO-DATE 被误判为「可能未真正重建」，于是成对部署永远执行不到，环境永远停在旧库 jar 上（自锁）。
+- 工程:**现象**：`run/Start-{1.20.1,1.21.1,26.1.2}.bat -DryRun` 三条一律 `[FAIL] 库 jar 名与本线 starengine_version 不一致`（实际 `…-1.0.0-SNAPSHOT.10.jar`、期望 `…-SNAPSHOT.11.jar`）⇒ 双击无法进入游戏。
+- 工程:**根因（两处叠加）**：① 共享库 `starengine` 由 `.10` 升到 `.11` 后，`run/<版本>/mods` 里仍是旧的 `.10` 库 jar（三个 bat 的前置检查按**文件名**与 `gradle.properties` 的 `starengine_version` 做字符串比对，因此拒绝启动）；② bat 提示的唯一修复入口 `scripts/devtools/Start-SelfTest.ps1` **自己也被挡住** —— 它的「产物时间戳双验证」要求 jar 时间戳晚于本次构建开始，而**只改注释/文档**时类字节不变、Gradle 判定 `Task :<子项目>:jar UP-TO-DATE` 不重写 jar ⇒ 合法的 UP-TO-DATE 被误判为「可能未真正重建」，于是成对部署永远执行不到，环境永远停在旧库 jar 上（自锁）。
 - 工程:**修正 ①（入库）`scripts/devtools/Start-SelfTest.ps1`**：时间戳闸门改为**双判据** —— 时间戳新 **或** 构建日志里出现 `<gradlePath>:jar UP-TO-DATE`（Gradle 的判定基于**输出内容哈希快照**，强于时间戳：UP-TO-DATE 即「该文件就是本次输入的产物」）。两者都不满足才 Fail，失败文案同时给出日志路径与 `clean` 指引。
-- 工程:**修正 ②（入库）`scripts/test/mt_preflight.ps1` 新增「前置库配对 <版本>」检查**（现共 15 项）：与 `Start-*.bat` **同口径** —— `run/<版本>/mods` 内 `starengine_lib-*.jar` 必须**恰 1 份**且文件名以 `-<starengine_lib_version>.jar` 结尾；**缺 jar 放行**（dev 运行的库由 Gradle `implementation` 放进 runtimeClasspath，`run/mods` 那份只为人手启动路径自足）；不一致即 FAIL（exit 10）并直接给出 `Start-SelfTest.ps1 -Version <版本>` 修复命令。补这道闸门的理由：本次实测环境处于「**人手启动被拒、自动化照跑**」的不一致状态，工具链此前对该漂移零感知。
+- 工程:**修正 ②（入库）`scripts/test/mt_preflight.ps1` 新增「前置库配对 <版本>」检查**（现共 15 项）：与 `Start-*.bat` **同口径** —— `run/<版本>/mods` 内 `starengine-*.jar` 必须**恰 1 份**且文件名以 `-<starengine_version>.jar` 结尾；**缺 jar 放行**（dev 运行的库由 Gradle `implementation` 放进 runtimeClasspath，`run/mods` 那份只为人手启动路径自足）；不一致即 FAIL（exit 10）并直接给出 `Start-SelfTest.ps1 -Version <版本>` 修复命令。补这道闸门的理由：本次实测环境处于「**人手启动被拒、自动化照跑**」的不一致状态，工具链此前对该漂移零感知。
 - 工程:**修正 ③（`run/` 已被 `.gitignore` 忽略、不入库）三个 `Start-*.bat`**：ⓐ 失败提示里的修复命令由**仓库根相对路径**（双击用户无法照抄执行）改为绝对路径 `pwsh -NoProfile -File "%~dp0..\scripts\devtools\Start-SelfTest.ps1" -Version <版本>`；ⓑ「期望本 bat 位于 `<repo>\run\<版本>\` 下」更正为 `<repo>\run\`（脚本本来就用 `%~dp0..` 反推仓库根，原提示与实际路径推导自相矛盾）。⚠️ 这两个文件不在版本库内，**换机器/清空 `run/` 后需按本条重做**。
-- 工程:**验证（本轮实跑）**：三条线成对部署 `Start-SelfTest.ps1 -Version {1.21.1,1.20.1}` + `-Version 26.1.2 -SkipBuild` 全部 `OK`（`temp/t33/selftest2-<版本>.log`），`run/<版本>/mods` 现为 `astral_dice-<mod_version>.jar` + `starengine_lib-<artifact>-1.0.0-SNAPSHOT.11.jar`；三个 bat `-DryRun` 均 **exit 0** 且打印「mods 成对且版本一致」；`mt_preflight.ps1 --all` = **15 项全部 OK**；新闸门**负向测试**：把 1.21.1 的库 jar 暂改名为 `…-SNAPSHOT.9.jar` ⇒ 该检查 `[FAIL]` 且整体 `MT_PREFLIGHT: FAIL`（exit 10，含修复命令），改回后恢复 OK（环境已还原）。bat 的引号改写用 `run\` 下的临时微测试确认 `set "FIXCMD=… "%~dp0..\…" …"` 在 `if ( … echo %FIXCMD% )` 块内正确展开，并用打印出的命令实跑 `-DryRun`（仓库根解析正确）；`scripts/devtools/Test-MtSyntax.ps1` = 38 个文件 0 解析失败。补做一次**真机启动烟测**（`--phase env` → `--phase launch`）：`MT_LAUNCH: OK (42s)`（已进入世界），`latest.log` 加载 `StarEngine Lib 1.0.0-SNAPSHOT.11+neoforge_1.21.1`、`UniqueModListBuilder` 只选出 `.11`，`NoSuchFieldError`/`NoSuchMethodError`/缺前置依赖各 0 条；随后 `--phase stop --purge-saves` 收停并清档（`temp/t33/{launch2-after-fix-1.21.1,stop-after-fix}.log`、`temp/mt_detached/mt_launch_20260919-132058.log`）。
-- 工程:**澄清（不影响既有结论）**：旧的 `.10` 库 jar **并未污染**任何读数 —— 1.20.1 `debug.log` 的 `UniqueModListBuilder` 记录 `Found 3 mods for first modid starengine_lib, selecting most recent based on version data` → `Selected file …SNAPSHOT.11.jar`；1.21.1 `latest.log` 同样为 `StarEngine Lib 1.0.0-SNAPSHOT.11+neoforge_1.21.1`。即 FML 按版本取**最新**，Gradle runtimeClasspath 的 `.11` 实际生效；本批活体书页两线验证结论不变。
+- 工程:**验证（本轮实跑）**：三条线成对部署 `Start-SelfTest.ps1 -Version {1.21.1,1.20.1}` + `-Version 26.1.2 -SkipBuild` 全部 `OK`（`temp/t33/selftest2-<版本>.log`），`run/<版本>/mods` 现为 `astral_dice-<mod_version>.jar` + `starengine-<artifact>-1.0.0-SNAPSHOT.11.jar`；三个 bat `-DryRun` 均 **exit 0** 且打印「mods 成对且版本一致」；`mt_preflight.ps1 --all` = **15 项全部 OK**；新闸门**负向测试**：把 1.21.1 的库 jar 暂改名为 `…-SNAPSHOT.9.jar` ⇒ 该检查 `[FAIL]` 且整体 `MT_PREFLIGHT: FAIL`（exit 10，含修复命令），改回后恢复 OK（环境已还原）。bat 的引号改写用 `run\` 下的临时微测试确认 `set "FIXCMD=… "%~dp0..\…" …"` 在 `if ( … echo %FIXCMD% )` 块内正确展开，并用打印出的命令实跑 `-DryRun`（仓库根解析正确）；`scripts/devtools/Test-MtSyntax.ps1` = 38 个文件 0 解析失败。补做一次**真机启动烟测**（`--phase env` → `--phase launch`）：`MT_LAUNCH: OK (42s)`（已进入世界），`latest.log` 加载 `StarEngine Lib 1.0.0-SNAPSHOT.11+neoforge_1.21.1`、`UniqueModListBuilder` 只选出 `.11`，`NoSuchFieldError`/`NoSuchMethodError`/缺前置依赖各 0 条；随后 `--phase stop --purge-saves` 收停并清档（`temp/t33/{launch2-after-fix-1.21.1,stop-after-fix}.log`、`temp/mt_detached/mt_launch_20260919-132058.log`）。
+- 工程:**澄清（不影响既有结论）**：旧的 `.10` 库 jar **并未污染**任何读数 —— 1.20.1 `debug.log` 的 `UniqueModListBuilder` 记录 `Found 3 mods for first modid starengine, selecting most recent based on version data` → `Selected file …SNAPSHOT.11.jar`；1.21.1 `latest.log` 同样为 `StarEngine Lib 1.0.0-SNAPSHOT.11+neoforge_1.21.1`。即 FML 按版本取**最新**，Gradle runtimeClasspath 的 `.11` 实际生效；本批活体书页两线验证结论不变。
 
 **2026-09-19（续 2）：测试规则修改 —— 非核心功能修改免冒烟（变更分级与验证口径）**
 
@@ -1651,9 +1647,9 @@ pwsh -NoProfile -File scripts/test/mt_watchdog.ps1 -Version 1.21.1 [-StallSecond
   3. **本轮交付的三条最终判据**：① **功能对等** —— 除上表三个已定性例外，**三线共享用例读数逐条相等**，且 26.1.2 的 18 条用例覆盖发布线的全部玩家可见特性（选择器 / 立牌（含 ren）/ 活体书页 / 筹码 / 雷击 / 手册）；② **结构对等** —— `src/main/java` 两侧各 **207** 个文件、缺口 6 : 6 全部有平台依据，资源缺口 4 : 1 同样（续 20 第 ⑤ 条）；③ **口径对等** —— 两份 CHANGELOG 20 : 20 逐类对应、零改动（续 20 第 ④ 条），`AGENTS.md` / `KNOWN-ISSUES.md` / 本附录按实测就地更正（含 1 条新登记的未决项：`mobGriefing=false` 无执行方，续 21）。
 
 - 工程:**续 23（2026-09-19 深夜）法伤模块「枪弹屏蔽」改为常量+配置控制（用户需求，跨仓：库 + 两条发布线）+ 一条被本次 bump 暴露的既有配置版本号缺陷**。
-  1. **需求与一次关键澄清**：用户要求「把法伤模块中屏蔽枪弹类伤害由硬编码禁用，改为常量控制（默认为 false），并加入配置文件」。先做只读侦察后发现**代码现状与描述不符**：`SpellDamageRegistry.isSpellDamage()` 首行是 `if (isFirearmDamage(source)) return false;` —— 该屏蔽是**无条件生效**（既非「硬编码禁用」，也没有任何配置/常量在管它；全仓 grep「屏蔽/暂时禁用/硬编码」在法伤模块内 0 命中）。因此「默认 false」在字面上会**翻转默认行为**（枪弹类弹丸默认可享法伤加成）。经与用户确认：常量名定为 **`allow_firearm_damage`**、默认 **`false`** = **默认仍屏蔽枪弹伤害**（与历史行为逐字等价），`true` 才放开；落点按用户选择走**前置库 `GameplayConstants` + 配置缝**（库仓库 `F:\MCProject\starengine_lib`，独立 git 仓库）。
+  1. **需求与一次关键澄清**：用户要求「把法伤模块中屏蔽枪弹类伤害由硬编码禁用，改为常量控制（默认为 false），并加入配置文件」。先做只读侦察后发现**代码现状与描述不符**：`SpellDamageRegistry.isSpellDamage()` 首行是 `if (isFirearmDamage(source)) return false;` —— 该屏蔽是**无条件生效**（既非「硬编码禁用」，也没有任何配置/常量在管它；全仓 grep「屏蔽/暂时禁用/硬编码」在法伤模块内 0 命中）。因此「默认 false」在字面上会**翻转默认行为**（枪弹类弹丸默认可享法伤加成）。经与用户确认：常量名定为 **`allow_firearm_damage`**、默认 **`false`** = **默认仍屏蔽枪弹伤害**（与历史行为逐字等价），`true` 才放开；落点按用户选择走**前置库 `GameplayConstants` + 配置缝**（库仓库 `F:\MCProject\starengine`，独立 git 仓库）。
   2. **库侧**（commit `281094c`，7 文件：两个 common 类 + 三个 `gradle.properties` + 两份库 CHANGELOG）：`GameplayConfigValues` record **末尾追加第 7 分量** `boolean allowFirearmDamage`（该 record 的 javadoc 明确「字段即契约，消费方按位置构造」⇒ 只能追加）；`GameplayConstants` 新增 **`public static boolean ALLOW_FIREARM_DAMAGE = false;`**（非 final），并在 `applyConfig(...)` 内写入 `ALLOW_FIREARM_DAMAGE = config.allowFirearmDamage();`；三个平台 `gradle.properties` 的 `lib_version`/`mod_version` 统一 `.11 → .12`。**主代理已核对库源码三处齐全**（字段声明 / record 第 7 分量 / `applyConfig` 赋值），并确认 HEAD 与工作区一致。
-  3. **消费侧**（两条发布线各 3 个文件，改动**逐行对称**，唯一差别是配置 API 类型 `ModConfigSpec.BooleanValue` ↔ `ForgeConfigSpec.BooleanValue`）：`config/ModCommonConfig` 新增 `allow_firearm_damage`（键名/默认 `false`/注释三行）+ `CONFIG_VERSION` **2 → 3** + `snapshot()` 末尾追加第 7 实参 `ALLOW_FIREARM_DAMAGE.get()`；`combat/SpellDamageRegistry.isSpellDamage()` 改为 `if (!GameplayConstants.ALLOW_FIREARM_DAMAGE && isFirearmDamage(source)) return false;`（`isFirearmDamage` 实现**零改动**，仅 javadoc 更新）；`starengine_lib_version` 与 `starengine_lib_version_range` 同时提到 `1.0.0-SNAPSHOT.12`（**下限必须收紧** —— `.11` 的库里没有该字段，运行期会 `NoSuchFieldError`）。`neoforge-26.1.2` **零改动**（用户已冻结该线）。
+  3. **消费侧**（两条发布线各 3 个文件，改动**逐行对称**，唯一差别是配置 API 类型 `ModConfigSpec.BooleanValue` ↔ `ForgeConfigSpec.BooleanValue`）：`config/ModCommonConfig` 新增 `allow_firearm_damage`（键名/默认 `false`/注释三行）+ `CONFIG_VERSION` **2 → 3** + `snapshot()` 末尾追加第 7 实参 `ALLOW_FIREARM_DAMAGE.get()`；`combat/SpellDamageRegistry.isSpellDamage()` 改为 `if (!GameplayConstants.ALLOW_FIREARM_DAMAGE && isFirearmDamage(source)) return false;`（`isFirearmDamage` 实现**零改动**，仅 javadoc 更新）；`starengine_version` 与 `starengine_version_range` 同时提到 `1.0.0-SNAPSHOT.12`（**下限必须收紧** —— `.11` 的库里没有该字段，运行期会 `NoSuchFieldError`）。`neoforge-26.1.2` **零改动**（用户已冻结该线）。
   4. **主代理执行的发布/构建/产物级取证**：库 `publishToMavenLocal` = **BUILD SUCCESSFUL in 4s**（24 tasks），mavenLocal 三个 `.12` jar 就位（`neoforge-1.21.1` 31522 B / `forge-1.20.1` 36234 B / `neoforge-26.1.2` 31493 B，均为本次时刻）；`javap` 确认 jar 内确有 `public static boolean ALLOW_FIREARM_DAMAGE;` 与 `GameplayConfigValues.allowFirearmDamage()`；两条发布线 `mt_build` 均 **`MT_BUILD: OK`**；**字节码级取证** —— 两条线产物 jar 的 `SpellDamageRegistry.isSpellDamage` 都是 `getstatic GameplayConstants.ALLOW_FIREARM_DAMAGE:Z` → `invokestatic isFirearmDamage(DamageSource)Z` 的顺序，证明字段确实取自库、调用点确实进了发货字节码（不是「改了源码没编译」）。
   5. **默认支（false）运行期回归**（`temp/t75/run-line-config-smoke.ps1`，停→构建→建世界→启动→配置核对→用例→停服）：**1.21.1** 启动后 `run/1.21.1/config/astral_dice-common.toml` **新增** `allow_firearm_damage = false`（三行说明注释 + 键值），法伤相关 7 条用例**全绿且与本次改动前同名用例读数逐条相同** —— `SPELL-TRUE-DAMAGE` 17/17、`RAILGUN-AOE-SCOPE` 28/28、`RAILGUN-PET-EXCLUDE` 23/23、`RAILGUN-OVERRIDE-CLASS` 20/20、`HOSTILE-TARGET-NEUTRAL` 23/23、`LIVING-PAGE` 199/199、`CARD-SELECTOR` 129/129；1.20.1 同脚本结果见第 9 条。⇒ 「默认 false 与历史行为等价」从推理升级为实测支持。
   6. **⚠️ 被本次 bump 暴露的既有缺陷（本轮只登记、未修）**：`config_version` **不会**被更新到当前 `CONFIG_VERSION`。定义处是 `.define("config_version", CONFIG_VERSION)`，但对「文件里已显式存在且合法」的值，NeoForge **不做纠正**（也没有任何代码把当前版本写回文件）⇒ 文件长期停在旧值：**实测 `CONFIG_VERSION = 3` 而 live 与 `.bak` 都是 `config_version = 2`**。两个后果：① `backupOldConfigIfNeeded` 的判据 `fileVersion < currentVersion` **每次启动都成立** ⇒ 备份每启动被覆盖一次，**不是**一次性的「升级前快照」；② 本次实测 `.bak` 与 live **逐字节相同**（SHA256 前缀 `678E306FBE7F5F2E`，各 1250 B）且**含新键** ⇒ 想用它回滚到升级前会拿到已经迁移过的文件。日志留痕：`[Astral Dice] 配置 astral_dice-common.toml 版本过旧(v2 < v3),已备份至 …`（20:55:43，`modloading-worker-0`）。⛔ **未取证的因果**：`.bak` 为何是「已迁移」的内容（候选解释：`--phase env` 的 `runServer` 早已加载并重写过该文件；或本次 JVM 内配置加载早于 mod 构造器里的备份调用）—— 本轮**只登记实测到的三条**（marker 不更新 / 每次启动都触发备份 / `.bak` 与 live 相同），不把候选因果写成结论。**建议处置（待用户裁决）**：配置加载成功后把当前 `CONFIG_VERSION` 写回文件（让门槛变成一次性），或改用独立标记文件。**本轮不改的理由**：属既有配置版本号约定，改动面（两线 + 可能影响旧配置继承语义）与验证面均超出本次需求。
@@ -1663,7 +1659,7 @@ pwsh -NoProfile -File scripts/test/mt_watchdog.ps1 -Version 1.21.1 [-StallSecond
 
 - 工程:**续 24（2026-09-19 深夜）测试口径新增「定向最小冒烟」规则（用户要求：减少非首要测试项目）**。
   1. **用户要求与落点**：原话「增加规则，减少非首要测试项目，将代码变更不直接影响的模块测试推迟或取消，仅执行最小测试」。落在两处正表 + 一处工具：`AGENTS.md`「变更分级与验证口径」（**权威**：正表三级 + 边界第 7–10 条）、`TESTING-SPEC.md` §1.1（镜像，含表与边界）、`scripts/test/mt_scope.ps1`（回显文案与 `.DESCRIPTION`）。
-  2. **新分级（三档）**：**非核心**（现有白名单，免冒烟——不变）/ **核心（默认 → 定向最小冒烟）**：只跑与该改动**直接触及模块**相对应的用例，无关模块本批**取消**并登记；启动后仍须通过 `mt_launch` 固有硬闸门（noai / 史莱姆压制 / preflight）/ **完整冒烟（例外，命中即跑全清单）**：① 发版 / Release 批次；② 跨模块公共路径（共享库 `starengine_lib`、注册表与数据组件结构、网络协议、存档/读档结构、全局伤害结算出入口）；③ 门槛类规则自身改动（版本互通、加载器门槛、mixin 目标串、依赖区间）；④ 用户显式要求；⑤ 26.1.2 迁移 / 三线一致性验收批次。
+  2. **新分级（三档）**：**非核心**（现有白名单，免冒烟——不变）/ **核心（默认 → 定向最小冒烟）**：只跑与该改动**直接触及模块**相对应的用例，无关模块本批**取消**并登记；启动后仍须通过 `mt_launch` 固有硬闸门（noai / 史莱姆压制 / preflight）/ **完整冒烟（例外，命中即跑全清单）**：① 发版 / Release 批次；② 跨模块公共路径（共享库 `starengine`、注册表与数据组件结构、网络协议、存档/读档结构、全局伤害结算出入口）；③ 门槛类规则自身改动（版本互通、加载器门槛、mixin 目标串、依赖区间）；④ 用户显式要求；⑤ 26.1.2 迁移 / 三线一致性验收批次。
   3. **四条护栏（防止「最小」退化成「免测」）**：**第 7 条 举证责任** —— 要把某模块排除在最小集外，必须给出「改动入口符号 → 全仓调用点/消费点**双侧枚举** → 用例映射」，枚举为空或全在同一模块内才允许只跑该模块用例，**禁止**「大概不影响」「以前也没坏」；**第 8 条 取消 vs 推迟** —— 默认取消并记「按最小测试规则未运行 ×N（与改动无关）」，**不计入遗留项**，仅即将发版/下一批会触及/用户点名时才登记为推迟并写触发条件；**第 9 条 最小集 ≠ 免验证** —— `gradlew build` + §9 静态闸门 + 启动期硬闸门照旧，触及共享库或跨模块公共路径直接按完整冒烟；**第 10 条 二重验证不缩减** —— 第一轮「独立代码验证」照旧完整，只有第二轮游戏内验证按最小集。
   4. **把先例写进规则**：`allow_firearm_damage` 那一批（续 23）作为「怎么举证 + 怎么定最小集」的模板 —— `SpellDamageRegistry.isSpellDamage()` 在两条发布线**各只有 2 个消费点**（`DamageEffectCardHandler` / `SatelliteChipItem`）⇒ 最小集取覆盖这两条路径与相邻结算的 7 条用例，其余取消。
   5. **本批自身的分级与执行（规则自证）**：本批只改 `AGENTS.md` / `TESTING-SPEC.md` / `scripts/test/mt_scope.ps1` ⇒ `mt_scope.ps1` 判定 **非核心（3/3 路径）** ⇒ 按新规则**免冒烟**，只跑 `Test-MtSyntax.ps1`（**39 文件 / 解析失败 0**）。工具的两个分支都实测过：核心分支回显「定向最小冒烟 + SKIP + ESCALATE（五种升级情形）」，非核心分支回显不变。⇒ 规则与工具同批生效、无歧义。
@@ -1870,7 +1866,7 @@ pwsh -NoProfile -File scripts/test/mt_watchdog.ps1 -Version 1.21.1 [-StallSecond
   9. **日期口径提醒（本批新发现，未擅自批量改写）**：本条目按**机器时钟**写 **2026-09-21**（依据：崩溃报告文件名 `crash-2026-09-21_15.12.05`、`git log --date=iso` 全部为 2026-09-21、`Get-Date` = 2026-09-21）。⚠️ 本附录及其它文档此前若干条目写作「2026-09-26 / 27 / 28」（如本小节上一条、`AGENTS.md` 蛟龙段），与提交时间**不符**（疑为系统性日期漂移）。本批**未改动**那些历史日期，仅在此登记；**2026-09-21 用户裁决：先放着、只保留本登记，不批量改写历史条目**（后续若统一校正，判据一律取 `git log --date=iso` 的真实提交时间）。
 
 - 工程:**锁版 1.3.0：两份 CHANGELOG 的 `### 工程` / `### Engineering` 小节移入本附录（2026-09-22；原文逐字保留）**：按「更新日志约定」第 4 条（两份 CHANGELOG 是**玩家侧**文档，工程 / 工具 / CI / 脚本 / 文档口径类条目**一律不进 CHANGELOG**），本次锁版把该小节整体移出 —— 中英两侧同步删除（`CHANGELOG_ZH.md` 的 `### 工程`、`CHANGELOG.md` 的 `### Engineering`），玩家侧条目数与顺序不变。原文如下（仅整体缩进 2 空格）：
-  - **把五项「两侧逐字节一致」的判定逻辑下沉到前置库 `starengine_lib`，库版本 `1.0.0-SNAPSHOT.14 → .15`**：`combat.HostileTargets`（敌对目标判定的唯一入口，口径 = 敌对生物 ∪ 已被激怒的中立生物 ∪ 「非同队伍且曾主动攻击过观察者的玩家」）、`combat.PlayerHostilityTracker`（受害者 → 攻击者 UUID 的内存记录表）、`target.SelectorTargets`（把「敌对」族并到 `HostileTargets` 上，修补 `TargetType#matches` 只做裸 `instanceof Enemy`、漏掉被激怒的狼/铁傀儡/北极熊/蜜蜂的缺陷）、`target.SignSelectionGate`（立牌主动技能前置门控的待执行记录）、`economy.StarCoinWalletState`（钱包余额条的显示缓存）。这五个类此前在两条发布线上**逐字节相同**，属典型的「本该在库里」。**玩法行为零变化** —— 判定口径、门控生命周期与显示数值逐字照搬，仅换了存放位置。
+  - **把五项「两侧逐字节一致」的判定逻辑下沉到前置库 `starengine`，库版本 `1.0.0-SNAPSHOT.14 → .15`**：`combat.HostileTargets`（敌对目标判定的唯一入口，口径 = 敌对生物 ∪ 已被激怒的中立生物 ∪ 「非同队伍且曾主动攻击过观察者的玩家」）、`combat.PlayerHostilityTracker`（受害者 → 攻击者 UUID 的内存记录表）、`target.SelectorTargets`（把「敌对」族并到 `HostileTargets` 上，修补 `TargetType#matches` 只做裸 `instanceof Enemy`、漏掉被激怒的狼/铁傀儡/北极熊/蜜蜂的缺陷）、`target.SignSelectionGate`（立牌主动技能前置门控的待执行记录）、`economy.StarCoinWalletState`（钱包余额条的显示缓存）。这五个类此前在两条发布线上**逐字节相同**，属典型的「本该在库里」。**玩法行为零变化** —— 判定口径、门控生命周期与显示数值逐字照搬，仅换了存放位置。
     - ⚠️ **库内不注册任何事件**（库的既有红线），故 `PlayerHostilityTracker` 的四个平台挂点（记进攻 / 死亡清 / 死亡重生克隆清 / 登出清）留在本模组，新增 `combat.PlayerHostilityTrackerEvents` 负责把平台事件翻译成库的 `recordAttack` / `forget` 调用；另一处依赖 `DiceCombatEvents` 的「内部伤害窗口」（溅射 / AOE 与反击注入不计为主动攻击）改为库侧 seam `InternalDamageWindows`，由 `DiceCombatEvents` 在类初始化时注入两条判定。该 seam **未注入时一律返回 false**（安全方向：漏判只多记一条敌对立场的记录，误判会让真实攻击不被记入）。
     - 消费方需 `--refresh-dependencies`（库版本号不以 `-SNAPSHOT` 结尾，Gradle 不当作 changing module）。**26.1.2 线当时未接入**（钉版照旧）；该线已于本版本（`2.0.0-SNAPSHOT.13`）随「26.1.2 完整移植」一并接入。
 
@@ -1890,7 +1886,7 @@ pwsh -NoProfile -File scripts/test/mt_watchdog.ps1 -Version 1.21.1 [-StallSecond
 
 **改动**：4 个自有档（稀有/史诗/传奇/巅峰）经 `enumextensions.json`（NeoForge 两线）+ `Rarity.create`/`IExtensibleEnum`（Forge）
 扩展进原版 `Rarity`；`ModItems` 的调用语法由 `.rarity(Rarity.X)` 变为 `.rarity(AstralRarities.z())`。
-等级/颜色权威在前置库 `starengine_lib`（`item/Rarity` + 三平台 `item/AstralRarities`），库版本 `1.0.3 → 1.0.4`。
+等级/颜色权威在前置库 `starengine`（`item/Rarity` + 三平台 `item/AstralRarities`），库版本 `1.0.3 → 1.0.4`。
 
 **判据（本批实测）**：
 1. **运行时生效**的证据 = 探针 `AP_REG_REG` 行的 `rarity=` 读数变成新常量名（`ASTRAL_DICE_LEGENDARY` 等）；
@@ -2081,7 +2077,7 @@ custom_frames.json 恢复 5 档全写；包内原版稀有/史诗与本模组稀
     `pushToGame` ×4（含 `1.20.1-Fabric 模组测试` ⇒ **新白名单已生效**）。
   - **开 jar 取证**：四 jar 的 class 主版本分别 65 / 61 / 69 / **61**；元数据分别为 `neoforge.mods.toml`（×2）、
     `mods.toml`（reobf/SRG）、根 `fabric.mod.json`；fabric 内嵌件 =
-    `META-INF/jars/starengine_lib-fabric-1.20.1-1.0.5-alpha.1.jar`；`fabric.mod.json` 的
+    `META-INF/jars/starengine-fabric-1.20.1-1.0.5-alpha.1.jar`；`fabric.mod.json` 的
     `depends` / `recommends` / entrypoints / accessWidener 逐条正确。
   - **静态闸门**：`audit_actionbar` / `audit_mixin_injection`（硬违规 0）/ `audit_patchouli_keys`（悬空 0）/
     `verify_fabric_assets`（8/8）/ `tooltip_color_audit` / `check_lang_sync` ×4（830/830/830 ×3 + **832**）/
@@ -2131,7 +2127,7 @@ custom_frames.json 恢复 5 档全写；包内原版稀有/史诗与本模组稀
 
 ## 附录 A 续 35. 前置库 1.0.6 / 1.0.5-alpha.2 —— `EventTargetCollector` 的 FTB Teams / OPAC 反射修复接线（2026-10-01）
 
-- **需求**（用户原话）：「starengine_lib fabric 侧需要修补此前 FTB Teams 和 OPAC 反射不存在的问题，
+- **需求**（用户原话）：「starengine fabric 侧需要修补此前 FTB Teams 和 OPAC 反射不存在的问题，
   根据主模组已有更改进行修复」。
 - **根因**（库侧，四平台共用 `common` 代码）：`event/EventTargetCollector` 的两个第三方后端
   **反射目标根本不存在**，而最外层 `catch (Exception ignored)` 把失败全部吞掉
@@ -2157,7 +2153,7 @@ custom_frames.json 恢复 5 档全写；包内原版稀有/史诗与本模组稀
   ⚠️ **fabric 侧不复用 `1.0.6`** —— 该子项目的 `1.0.6/1.0.7/1.0.8` 已被 2026-09-29 裁决明确为
   「本地临时构建、不作为对外号」（mavenLocal 里这三个目录仍在，复用即同号覆盖陷阱）。
   ⚠️ 改动落在**四平台共用 `common`** ⇒ 四个 artifact 必须同批换号（否则三平台留在 1.0.5 就是同号覆盖）。
-- **消费方接线**：四线 `gradle.properties` 的 `starengine_lib_version` 与 `_version_range`
+- **消费方接线**：四线 `gradle.properties` 的 `starengine_version` 与 `_version_range`
   同批更新（`[1.0.6,2.0)` / `>=1.0.5-alpha.2 <2.0`）+ `.github/workflows/build.yml` 的库 `ref` 钉值
   改 `006e8241`（库分支 `fabric-1.20.1` 新 HEAD）。**未改任何模组源码 ⇒ 四线 `mod_version` 不动**。
 - **验证读数（全部实测）**：
@@ -2169,11 +2165,11 @@ custom_frames.json 恢复 5 档全写；包内原版稀有/史诗与本模组稀
   - 消费方四线 `gradlew build` **BUILD SUCCESSFUL（121s）**；`pushToGame` ×4 真实命中。
   - **内嵌件三重取证**：① 内嵌件与 mavenLocal 生产件 **md5 逐字节一致**（四线各一）；
     ② forge 生产件 SRG 成员名 **76 处**（>0 = 生产/重混淆件，非 dev Mojmap 件）；
-    ③ 内嵌前置自检行逐线打印 `starengine_lib-<平台>-1.0.6.jar (version=1.0.6, range=[1.0.6,2.0))`、
-    fabric 走 `META-INF/jars/starengine_lib-fabric-1.20.1-1.0.5-alpha.2.jar`，
-    且 `fabric.mod.json` 的 `starengine_lib` 依赖更新为 `>=1.0.5-alpha.2 <2.0`。
+    ③ 内嵌前置自检行逐线打印 `starengine-<平台>-1.0.6.jar (version=1.0.6, range=[1.0.6,2.0))`、
+    fabric 走 `META-INF/jars/starengine-fabric-1.20.1-1.0.5-alpha.2.jar`，
+    且 `fabric.mod.json` 的 `starengine` 依赖更新为 `>=1.0.5-alpha.2 <2.0`。
   - **生产映射冒烟（本仓规定：凡改库必跑）**：`ft_prod.ps1` 在真实整合包实例启动一次 ⇒
-    包内加载 `starengine_lib 1.0.5-alpha.2`、日志出现 `Sound engine started`、
+    包内加载 `starengine 1.0.5-alpha.2`、日志出现 `Sound engine started`、
     `crash-reports/` **无新增**、无残留 java 进程 ⇒ **PASS**。
   - **静态闸门**：`check_lang_sync` ×4、`check_mod_sources`、`verify_chip_recipes`、
     `verify_bountiful_pools`、`verify_crafting_recipe_uniqueness`、`verify_resource_integrity`、
@@ -2206,7 +2202,7 @@ custom_frames.json 恢复 5 档全写；包内原版稀有/史诗与本模组稀
      三线 **0**、fabric **3**。
   ③ ⚠️ **技能《mc-prereq-lib-version-contract》§9.6 称「版本区间规则已于 2026-09-25 移除」，
      但本仓三线 `gradle.properties` 与 `mods.toml` / `jarJar { strictly }` **仍在使用**
-     `starengine_lib_version_range`** —— 文档与现状不符。本批按「区间仍生效」处理（下界随引脚同步收紧到
+     `starengine_version_range`** —— 文档与现状不符。本批按「区间仍生效」处理（下界随引脚同步收紧到
      `[1.0.6,2.0)`），是否需要按 §9.6 整体拆除**另请裁决**。
   ⇒ **2026-10-01 已裁决：不拆** —— 反过来把技能 §9.6 整体删除（该节记载与现状相反，区间机制**仍在生效**），并新增续 36 记录本批的「双量同批维护」口径。
   ④ ⚠️ **OPAC 的盟友队伍未并入成员收集**：库只收「自己 party 的在线成员」，
@@ -2218,7 +2214,7 @@ custom_frames.json 恢复 5 档全写；包内原版稀有/史诗与本模组稀
 
 ## 附录 A 续 36. 1.3.5-hotfix —— 三线 FTB 后端修复 + 库 fabric 换号 + CI 放行 `-hotfix`（2026-10-01）
 
-- **需求**（用户原话）：「执行以下操作：1. 主线版本更新为 1.3.5-hotfix，fabric 版本 starengine_lib 大版本号同步为
+- **需求**（用户原话）：「执行以下操作：1. 主线版本更新为 1.3.5-hotfix，fabric 版本 starengine 大版本号同步为
   1.0.6（保留 -alpha.1 后缀，顺便清理 mavenLocal 中废弃的 1.0.6-1.0.8）；2. FTB 后端问题全面排查并修复；
   3. 测试环境补装 ftb team 和 opac 模组，执行实机冒烟；4. 技能《mc-prereq-lib-version-contract》§9.6 整体移除。
   以上完成之后，本地提交，不要 push。」
@@ -2226,11 +2222,11 @@ custom_frames.json 恢复 5 档全写；包内原版稀有/史诗与本模组稀
   26.1.2 = `1.3.5-beta.2`（同 1.2.1-hotfix 那轮的先例：发布线用 `-hotfix`、迁移线用 `-beta.N`）；② **修 CI 的预发布守卫**
   让 `-hotfix` 放行（只跳 `-alpha/-beta/-rc/-pre/-snapshot`）。
 - **版本号与库**：库 `fabric-1.20.1` 子项目 `1.0.5-alpha.2` → **`1.0.6-alpha.1`**（用户裁决：大版本号与三平台同步为
-  `1.0.6`、保留 `-alpha.N`）；三平台保持 `1.0.6`。消费方 fabric 线的 `starengine_lib_version` / `_version_range`
+  `1.0.6`、保留 `-alpha.N`）；三平台保持 `1.0.6`。消费方 fabric 线的 `starengine_version` / `_version_range`
   同步；`.github/workflows/build.yml` 的库 `ref` 跟到 `d9380241`。⚠️ 库那次换号**不动字节码**（内容 = 上一批的
   FTB / OPAC 反射修复）。
-- **mavenLocal 清理**：`starengine_lib-fabric-1.20.1/{1.0.6,1.0.7,1.0.8}` 三个**作废裸号**目录**移入**
-  `temp/m2-quarantine/starengine_lib-fabric-1.20.1/`（用 `shutil.move` 而非 `rm` —— 可回滚，且规避沙箱对批量删除的拦截）。
+- **mavenLocal 清理**：`starengine-fabric-1.20.1/{1.0.6,1.0.7,1.0.8}` 三个**作废裸号**目录**移入**
+  `temp/m2-quarantine/starengine-fabric-1.20.1/`（用 `shutil.move` 而非 `rm` —— 可回滚，且规避沙箱对批量删除的拦截）。
 - **CI 守卫订正（静默失效类）**：`Create Git tag` 步骤原有「`mod_version` 含 `-` 即静默跳过」的守卫，它把 `-hotfix`
   这类**补丁发布**也一并挡掉 ⇒ 「版本号已改成 hotfix，却不打 tag、不刷新 Release，且**没有任何报错**」
   （`1.3.2-hotfix` 那轮实际就是这种状态，而 `forge/gradle.properties` 的注释却声称它打到了 tag `1.2.1` —— 已一并订正）。
@@ -2264,12 +2260,12 @@ custom_frames.json 恢复 5 档全写；包内原版稀有/史诗与本模组稀
   **Gradle 守护进程**，非游戏）。⇒ 1.3.5 里「第三方队伍模组属装上即生效、**尚未实机验证**」的保留说明**自本次撤回**。
   ⚠️ 仍未做**双人行为级**验证（组队后互相攻击是否真的免伤）—— 单进程覆盖不到，故本次证据是**接入层**的。
 - **技能**：`mc-prereq-lib-version-contract` 的 **§9.6「版本限制规则已移除」整体删除**（用户裁决）——
-  该节与仓库现状相反（消费方**四线仍在用** `starengine_lib_version_range`，含 `mods.toml` 的 `versionRange` 与
+  该节与仓库现状相反（消费方**四线仍在用** `starengine_version_range`，含 `mods.toml` 的 `versionRange` 与
   `build.gradle` 的 `jarJar { version { strictly …; prefer … } }`）。对该节的十余处引用一并改写为
   **「双量（引脚 + 区间）同批维护」**口径；§2③ 重写为「四线接线（两个量）」并列出区间的**四个落点**；
   §10.7 改写为唯一权威口径（含「**技能记载 ≠ 仓库现状**」纪律与实跑 grep 判据）。
 - **验证读数（全部实跑）**：库 `build publishToMavenLocal` **EXIT=0（14 s）** +
-  `~/.m2/.../starengine_lib-fabric-1.20.1-1.0.6-alpha.1.{jar,pom}` 出现；消费方四线 `build`
+  `~/.m2/.../starengine-fabric-1.20.1-1.0.6-alpha.1.{jar,pom}` 出现；消费方四线 `build`
   **BUILD SUCCESSFUL（17 s）**，`pushToRootBuild` / `pushToDevRun` / `pushToGame` **各 ×4** 全部真实命中；
   四产物名 = `1.3.5-hotfix+neoforge_1.21.1` / `1.3.5-hotfix+forge_1.20.1` / `1.3.5-beta.2+neoforge_26.1.2` /
   `1.3.5-alpha.1+fabric_1.20.1`。
@@ -2443,7 +2439,7 @@ CF 文件按 id 独立、同名不去重不覆盖 ⇒ 后台不删就会看到�
 
 ## 附录 A 续 39. 前置库不再对外分发任何 jar（源码-only）+ 消费方 README 接线（2026-10-01）
 
-- **需求**（用户原话）：「同步 push StarEngine Lib 并更新 readme 和 changelog。starengine_lib 不再上传
+- **需求**（用户原话）：「同步 push StarEngine Lib 并更新 readme 和 changelog。starengine 不再上传
   任何 jar，只保留 source code，已有的也需要全部删除（避免误下）」。
 - **动机**（与库侧 `pushToPack` 那条同源，见续 34）：本库自 2026-09-24 起由消费方 `astral_dice` 以
   **JarJar 内嵌**携带；FML 的 JarInJar 选择器按 **modId** 去重 ⇒ 玩家/整合包作者若另下了一份独立库
@@ -2453,7 +2449,7 @@ CF 文件按 id 独立、同名不去重不覆盖 ⇒ 后台不删就会看到�
 
 ### 已执行的存量清理（不可逆动作，先取证再动）
 
-- **远端 `starengine_lib-jars` artifacts：12 个全部删除**。`DELETE /repos/{owner}/{repo}/actions/artifacts/{id}`
+- **远端 `starengine-jars` artifacts：12 个全部删除**。`DELETE /repos/{owner}/{repo}/actions/artifacts/{id}`
   —— 先删 **1 个**验证写权限（HTTP **204**、复查 12 → 11），再删剩余 11（全 204），最后复查
   `total_count = **0**`。令牌取自 git 的凭据助手（与 push 同一份，**未回显**）。
   ⚠️ 这 12 个是**唯一真实存在的 jar 分发口** —— 它们是 `main`/PR 推送时 `upload-artifact` 的产物，
@@ -2504,7 +2500,7 @@ CF 文件按 id 独立、同名不去重不覆盖 ⇒ 后台不删就会看到�
 - 「Download」小节的前置行同步补「库仓只提供源码（不提供 jar 下载）」。
 - 代码 / `gradle.properties` / CI 的库 `ref` 钉值：**一律未动** —— 本次库侧只改 CI 与文档，
   `lib_version`（`main` 1.0.5 / `fabric-1.20.1` 1.0.6 / `next` 2.0.0-SNAPSHOT.5）与**产出的 jar
-  字节码无关** ⇒ 消费方 pin（`starengine_lib_version`）与 CI `ref` 无需跟。
+  字节码无关** ⇒ 消费方 pin（`starengine_version`）与 CI `ref` 无需跟。
 
 ### 验证读数（全部实测）
 
@@ -2538,7 +2534,7 @@ CF 文件按 id 独立、同名不去重不覆盖 ⇒ 后台不删就会看到�
   `24 actionable tasks: 8 executed, 16 up-to-date`）。两次都 `compileJava` **UP-TO-DATE** —— 这两个
   提交都未改源码。mavenLocal 三平台 `2.0.0-SNAPSHOT.5` 与 `2.0.0-SNAPSHOT.6` 均已生成，
   开包核对 `mods.toml` 版本 = `2.0.0-SNAPSHOT.<5|6>+<平台>` ✓。
-- 客户端不需要任何同步改动：仍按 `starengine_lib_version` 硬 pin + JarJar 内嵌。
+- 客户端不需要任何同步改动：仍按 `starengine_version` 硬 pin + JarJar 内嵌。
 
 ### 本轮踩到的坑（登记，避免重犯）
 
@@ -2679,7 +2675,7 @@ CF 文件按 id 独立、同名不去重不覆盖 ⇒ 后台不删就会看到�
 - 触发口径与两个 Release 步骤**近似**（发布线 `multi-main` push 或 `refs/tags/*`）；**刻意不设**
   `steps.tag.outputs.tag != ''` 守卫，因为预发布线（`-beta.x` / `-alpha.x`）同样要同步。
 - 缺 `MODRINTH_TOKEN` secret 时只 `::warning::` 并 `exit 0`（不影响构建与 GitHub Release）。
-- 库产物取自 `.ci/starengine_lib/*/build/libs`（同 job 的 `Publish to mavenLocal` 已构建），
+- 库产物取自 `.ci/starengine/*/build/libs`（同 job 的 `Publish to mavenLocal` 已构建），
   并显式过滤 `-sources.jar`/`-javadoc.jar`；fabric 主产物缺席时降级为 warning（旧 tag 的树里没有该子项目），
   三条生产线缺席仍是硬错误。
 
@@ -2732,7 +2728,7 @@ CF 文件按 id 独立、同名不去重不覆盖 ⇒ 后台不删就会看到�
 
 1. **色值归属**：对 `D://.minecraft//versions//狐の航空学 Voxy Edition\mods` 下 **491 个 jar 递归展开（含 JarJar 内嵌 jar）**
    扫描 4 字节模式 `00 FF C2 4B`（int 16760395 = `#FFC24B`）：作为**提示框边框色**的命中**只有本模组内嵌的
-   `com/merlinkitsune/starenginelib/item/Rarity.class`**（另有 `ysm` 的 native dll 里一处巧合字节，与 tooltip 无关）。
+   `com/merlinkitsune/starengine/item/Rarity.class`**（另有 `ysm` 的 native dll 里一处巧合字节，与 tooltip 无关）。
 2. **原版绘制确实使用事件值**：`neoforge-21.1.235-sources.jar` 的 `GuiGraphics.java:1516` 取
    `ClientHooks.onRenderTooltipColor(...)` 的返回值，**`:1517`** 把 `colorEvent.getBorderStart()/getBorderEnd()`
    直接传给 `TooltipRenderUtil.renderTooltipBackground(...)` ⇒ **我们写进事件的颜色一定送达绘制**。
@@ -2920,7 +2916,7 @@ KI-G1 的 **61 / 41 / 缺 20（6·8·6）** 与流派分组（充能 10 / 无流
    - 61 个注册筹码**全部**继承 `item/chip/BaseChipItem`（`javap`/源码核对，四线同构）；
    - `blank_chip`（空白筹码）是**普通 `Item`** ⇒ 天然不进池 —— 与旧清单口径一致（旧清单里也没有它）；
    - 也不依赖命名约定：`eight_sided_dice_chip`、`atm_chip`、`bank_card_low_chip` 这类**id 各异的筹码同样覆盖**。
-2. **档位判据 = 库的 `AstralRarities.tierOf(stack.getRarity())`**（`com.merlinkitsune.starenginelib.item`）：
+2. **档位判据 = 库的 `AstralRarities.tierOf(stack.getRarity())`**（`com.merlinkitsune.starengine.item`）：
    筹码注册时写的是 `.rarity(AstralRarities.rare()/epic()/legendary())`，`tierOf` 正是「原版 `Rarity` 常量 → 本模组档位」的**唯一官方入口**（消费方不得自己写 `==` 链）⇒ 分桶与注册侧**同源**，不会漂移。
 3. **不新增手写清单**：这正是本条缺陷的成因。派生后 **加筹码不用改本文件**。
 
@@ -3202,14 +3198,14 @@ KI-G1 的 **61 / 41 / 缺 20（6·8·6）** 与流派分组（充能 10 / 无流
 - 该上限取自**前置库**常量 `component/GameplayConstants#CURSED_SWORD_BONUS_MAX`（`public static int`，
   **不读配置文件** —— `applyConfig` 不写它）⇒ 改值只能改库 ⇒ 按 `mc-prereq-lib-version-contract` §2
   必须 **bump 库版本 + `publishToMavenLocal`**（改的是整型常量的 `<clinit>` 字节码，非纯注释，不能免 bump）。
-- 库仓权威分支 = **`fabric-1.20.1`**（工作树 `F://MCProject//starengine_lib_fabric`；一个 ref 同供四条线）。
+- 库仓权威分支 = **`fabric-1.20.1`**（工作树 `F://MCProject//starengine_fabric`；一个 ref 同供四条线）。
   该分支上三平台 = `1.0.6`、fabric 子项目 = `1.0.6-alpha.1`，与消费方四线 pin 完全对应。
 - 新号：三平台 `1.0.6` → **`1.0.7`**；fabric 子项目 `1.0.6-alpha.1` → **`1.0.6-alpha.2`**
   （两条线**各自独立递增**；fabric 的历史**裸**号 `1.0.6/1.0.7/1.0.8` 已按 2026-09-29 裁决作废，**不复用**）。
-  发布前已确认 mavenLocal 中 `starengine_lib-{neoforge-1.21.1,forge-1.20.1,neoforge-26.1.2}/1.0.7`
-  与 `starengine_lib-fabric-1.20.1/1.0.6-alpha.2` **目录均不存在**（非同号覆盖）。
+  发布前已确认 mavenLocal 中 `starengine-{neoforge-1.21.1,forge-1.20.1,neoforge-26.1.2}/1.0.7`
+  与 `starengine-fabric-1.20.1/1.0.6-alpha.2` **目录均不存在**（非同号覆盖）。
 - 库提交 = **`e99cb80`**（**尚未 push**）⇒ 消费方 CI 的 `ref:` 钉此 SHA，**push 顺序必须先库后消费方**。
-> ⚠️ **2026-10-03 状态更新**：本段是**当时的操作快照**。库的 `fabric-1.20.1` 分支与 `starengine_lib_fabric` 工作树**均已删除**（内容并入 `next`）；开发线的库工作树现为 `F://MCProject//starengine_lib_next`（分支 `next`），库版本已演进到 **`2.0.0-SNAPSHOT.10`**。「库仓权威分支」的**现行口径**见 `AGENTS.md` 的前置库契约段（主树 = `main`、开发线 = `next`）。
+> ⚠️ **2026-10-03 状态更新**：本段是**当时的操作快照**。库的 `fabric-1.20.1` 分支与 `starengine_fabric` 工作树**均已删除**（内容并入 `next`）；开发线的库工作树现为 `F://MCProject//starengine_next`（分支 `next`），库版本已演进到 **`2.0.0-SNAPSHOT.10`**。「库仓权威分支」的**现行口径**见 `AGENTS.md` 的前置库契约段（主树 = `main`、开发线 = `next`）。
   （该提交由 `9640af7` **amend** 而来：仅追加两份库 CHANGELOG 的「定性说明」段 —— 把本版定性为
   「玩家可感的平衡数值、按『不改变契约的行为修正』走补丁位」，并挂上库 `1.0.3` 的「玩法口径特例」先例；
   **字节码与版本号完全未变**。保持「一个版本号 = 一个提交」。）
@@ -3221,7 +3217,7 @@ KI-G1 的 **61 / 41 / 缺 20（6·8·6）** 与流派分组（充能 10 / 无流
 | 库源码 | `common/.../component/GameplayConstants.java`（`16` → `32`，javadoc 补沿革） |
 | 库版本 | 四平台 `gradle.properties` 的 `lib_version` / `mod_version`（三平台 + fabric 子项目） |
 | 库 CHANGELOG | 中英各新增一节 `## 1.0.7 / 1.0.6-alpha.2` |
-| 消费方引脚 | **四线** `gradle.properties` 的 `starengine_lib_version` + `_version_range`（四个落点同批：properties / `mods.toml` 模板 / `build.gradle` 的 `jarJar{strictly,prefer}` / `generateModMetadata` 映射表） |
+| 消费方引脚 | **四线** `gradle.properties` 的 `starengine_version` + `_version_range`（四个落点同批：properties / `mods.toml` 模板 / `build.gradle` 的 `jarJar{strictly,prefer}` / `generateModMetadata` 映射表） |
 | 消费方 CI | `.github/workflows/build.yml` 的库 `ref:` → `9640af7`（含「尚未 push」的如实注记） |
 | 消费方文案 | 手册三语（四线 × 3 = 12 处）写死的 `+16` → `+32`；tooltip 走 `%s` 占位符，随常量自动跟随 |
 | 消费方文档 | `AGENTS.md`（fabric ⑧ 段 + 契约第 3/4/5/6 条）、`README{,_ZH}.md`、两份 CHANGELOG、4 份玩家日志 |
@@ -3232,8 +3228,8 @@ KI-G1 的 **61 / 41 / 缺 20（6·8·6）** 与流派分组（充能 10 / 无流
 - 消费方四线 `build` 成功（BUILD SUCCESSFUL）+ `pushToGame` **4 次**；四个整合包 jar 同批时间戳。
 - 四线产物内嵌件：`artifactVersion` = `1.0.7`（三线）/ `1.0.6-alpha.2`（fabric），`range` = `[1.0.7,2.0)`；
   **内嵌件 md5 == mavenLocal 生产件**（三线逐字节相同）；把内嵌件解出来再 `javap` ⇒ 亦为 `bipush 32`。
-- `mods.toml` / `neoforge.mods.toml` 的 `starengine_lib` `versionRange` = `[1.0.7,2.0)`；
-  `fabric.mod.json` 的 `depends.starengine_lib` = `>=1.0.6-alpha.2 <2.0`。
+- `mods.toml` / `neoforge.mods.toml` 的 `starengine` `versionRange` = `[1.0.7,2.0)`；
+  `fabric.mod.json` 的 `depends.starengine` = `>=1.0.6-alpha.2 <2.0`。
 - 四线 jar 内三语手册文案均为 `+32`。
 - 全量守门 16/16 `exit=0`；4 份玩家日志过 `check_player_changelog.py`（PASS）。
 
@@ -3852,7 +3848,7 @@ brief 内**不喂结论**。结论与处置：
     `Minecraft.gui` 亦为 public（1.21.1 `:288`、26.1.2 `:304`）。
   - `forge-1.20.1-47.4.10-sources.jar` 的 `Gui#renderOverlayMessage` 是**固定** `translate(screenWidth/2, screenHeight-68)`，
     且 `renderSelectedItemName(guiGraphics)` 走单参重载（`yShift = 0`）⇒ **原版 1.20.1 根本没有这套机制**。
-- 库 `starengine_lib`：`client/ActionBarManager` 在 `neoforge-1.21.1` / `neoforge-26.1.2` 改为读
+- 库 `starengine`：`client/ActionBarManager` 在 `neoforge-1.21.1` / `neoforge-26.1.2` 改为读
   `mc.gui.leftHeight` / `mc.gui.rightHeight` 并复刻上式；`forge-1.20.1` / `fabric-1.20.1` 保持
   `guiHeight - 68` 并就地注明「平台差异」。四平台 `1.0.11` → **`1.0.12`**（库提交 `4c65323`）。
 - 修前症状：`max(lh, rh) > 59`（黄心 ≥ 3 行，或「护甲 + 黄心」等组合）时原版物品名上抬、本模组文本不动 ⇒ 压盖。
@@ -3861,7 +3857,7 @@ brief 内**不喂结论**。结论与处置：
 - **库**：`gradlew build publishToMavenLocal` **BUILD SUCCESSFUL**（16s）；m2 四平台 `1.0.12` 就位；
   字节码核对 `client/ActionBarManager.class`：neo 两线**含** `leftHeight`/`rightHeight` 访问，
   1.20.1 两线**不含**（保持固定常量）。
-- **消费方**：四线 `gradlew build` 见下方读数；四线 `starengine_lib_version` / `_version_range` 与
+- **消费方**：四线 `gradlew build` 见下方读数；四线 `starengine_version` / `_version_range` 与
   CI 的库 `ref`（`4c653231750830824535d5debcfb36f9457278bb`）同批同步。
 - **新增守门** `tools/verify_selector_key_ownership.py`（K1 按键分支不得引用 `TargetSelectionClient`；
   K2 全仓不得再有 `logPrompt("j", …)` / `cancel("key")` 调用（⚠️ 判据于 2026-10-05 由「扫 DEBUG 字面串」改为「扫**调用形态**」—— 前者是**永真**检查，由独立复核抓出并修正）；K3 hold 四键 × 四线三语不得含按键名 `J`）⇒ `GATE: PASS`；
@@ -3915,7 +3911,7 @@ brief 内**不喂结论**。结论与处置：
    `run/26.1.2/logs/latest.log` 有 `InDevFolderLocator … Got mod coordinates astral_dice%%…build/classes/java/main…` 与
    `UniqueModListBuilder: Found 2 mod files for modid astral_dice, selecting main as it is the most recent based on version data`
    （选版本号更高者）。⇒ **A/B 换 jar 无效**，正确做法 = 改源 → `gradlew :neoforge-26.1.2:classes` → 冷启动客户端；改完必须还原并重建。
-   （同一机制下 `starengine_lib` 由 jarJar 内嵌 jar 提供，`run/mods` 里的旧副本被遮蔽 —— 实测 `.12` 胜 `.7`。）
+   （同一机制下 `starengine` 由 jarJar 内嵌 jar 提供，`run/mods` 里的旧副本被遮蔽 —— 实测 `.12` 胜 `.7`。）
 2. **目标选择客户端会话只在自身到期（30s）或 Esc / 打开暂停界面时结束**：服务端 `/astralprobe megascast … cancel` 只清服务端会话，
    **不产生客户端取消事件**（实测 DEBUG：`16:07:32 start token=…` → `16:08:02 cancel (expired) token=…` → `overlay inactive`）
    ⇒ 不能用它当「同场景负控」；有效负控 = 等 33s 到期，或换构建。
@@ -4155,7 +4151,7 @@ mt.ps1 --version 线 --phase stop 关闭测试实例（gradle 守护进程保留
 - 口径：所谓「射程」= 目标选择器的**声明锁定半径**（四参重载 `BaseEffectCardItem#registerSelectorAction(String, TargetType, boolean, double radius)`，2026-09-19 新增）。声明值随 `TargetSelectStartPayload` 下发客户端，同时决定**客户端准星射线长度 / 半径高亮 / 服务端确认距离**三处口径；`TargetSelectionManager#start` 仍按契约夹取（`Math.max(1.0, Math.min(action.radius(), MAX_SELECT_RADIUS = 32.0D))` ⇒ `SelectorRangeModifiers.apply(player, actionId, …)` ⇒ 上限 `MAX_ENHANCED_RADIUS = 64.0D`）。
 - 落地值（四线同构；每张牌在自己类里新增 `public static final double LOCK_RANGE = <n>;` 并把注册改四参）：
   - 伤害牌：`MonsterLaserCardItem`（对怪激光）= **32**、`MonsterBrickCardItem`（对怪板砖）= **16**、`OrbitalStrikeCardItem`（轨道炮）= **24**、`DirectionalBlastCardItem`（定向爆破）= **24**、`LivingPageItem`（活体书页）= **32**（原 `private static final` ⇒ 改 `public`，值不变）、`HuoCardItem`（符卡-祸）= **32**；
-  - **友方功能类统一 16**：`BerserkCardItem`（狂暴）、`ExpressDeliveryCardItem`（加急加快）、`LuxuryFeastCardItem`（奢华大餐；⚠️ 与本类既有 `RANGE = 6.0`「治疗扩散半径」不是同一概念）、`YouHaveIHaveCardItem`（你有我有 —— 原为两参重载，改 `TargetType.PLAYER, false, LOCK_RANGE` 并新增首条 `import com.merlinkitsune.starenginelib.target.TargetType;`）、`FuCardItem`（符卡-福）。
+  - **友方功能类统一 16**：`BerserkCardItem`（狂暴）、`ExpressDeliveryCardItem`（加急加快）、`LuxuryFeastCardItem`（奢华大餐；⚠️ 与本类既有 `RANGE = 6.0`「治疗扩散半径」不是同一概念）、`YouHaveIHaveCardItem`（你有我有 —— 原为两参重载，改 `TargetType.PLAYER, false, LOCK_RANGE` 并新增首条 `import com.merlinkitsune.starengine.target.TargetType;`）、`FuCardItem`（符卡-福）。
 - `confirm` 同步修正（`AGENTS.md:1484` 早已登记的「遗留不一致」）：四线 `target/TargetSelectionManager` 的 `double maxDist = Math.max(GameplayConstants.TARGET_SELECT_RADIUS, session.radius);` → `        double maxDist = session.radius;`（1.21.1 `:261`、forge `:257`、fabric `:256`、26.1.2 `:278`），并改写其上 3 行注释。理由：声明**小于**配置缺省值（16 格）的动作出现后，旧写法会让**服务端比客户端宽**（客户端 UX 按小半径、服务端按 `max(配置, 会话)` 放行）；改为只按会话半径后两端同源。对未声明半径的动作行为等价（其 `session.radius` 本就 = 配置值夹取后的结果，配置范围 1..32）。
 - 实施：一次性补丁器 `temp/range/patch_ranges.py`（幂等 —— 已含 `LOCK_RANGE` 即 `skip-already`；`--check` 只打印不改盘）：在 `ACTION_ID` 行后插入常量（javadoc + 声明）、注册行改四参、`YouHaveIHaveCardItem` 加 import 与 `TargetType.PLAYER`、四线 confirm 段替换。实跑 **40 张卡 + 4 处 import + 4 处 confirm**，输出 `all ok / no MISS`；改动量 = **48 files / +428 −56**（提交前工作树，含 4 处 confirm 与 4 处 import）。
 - 编译：`& .\gradlew.bat :neoforge-1.21.1:classes :neoforge-26.1.2:classes :forge-1.20.1:classes :fabric-1.20.1:classes` ⇒ `BUILD SUCCESSFUL in 8s`（`temp/range/build1.log`）；复跑 1.21.1 + 26.1.2 ⇒ `BUILD SUCCESSFUL in 1s`（`temp/range/build2.log`）。
@@ -4171,7 +4167,7 @@ mt.ps1 --version 线 --phase stop 关闭测试实例（gradle 守护进程保留
 - 实机排查教训（工具链，均为静默失败类）：① 模组的 `LOGGER.debug` 目标选择行**不在** `run/1.21.1/logs/latest.log`，只在 `run/1.21.1/logs/debug.log`（Forge debug appender）—— 首次 grep latest.log 全空曾误判「会话未启动」；② 注入命令拼接时数字前多一个空格（`^ ^ ^ 12`）会让 Brigadier 判无效、`/summon` **静默失败**（错误只进玩家聊天栏，`latest.log`/`debug.log` 均无痕）=> 连续四轮确认全是 `no valid target`；`^` 坐标必须紧跟数字；③ `/tp <实体> ^ ^ ^<d>` 不改变位置（`^` 只在 `/summon` 一类源位置解析上可靠）；④ F2 截图对拍（有/无实体两张，`ImageChops.difference >= 40` + 逐行变化直方图）是排除「实体在视野内却选不中」的快速手段。
 - 未验证 / 边界：实机半径读数目前**只做了 1.21.1 线**（逐牌 11 张）；`forge-1.20.1` / `fabric-1.20.1` / `neoforge-26.1.2` 本批只做编译 + 静态核对（同一补丁器、四线 `grep LOCK_RANGE` 一致）。`SelectorRangeModifiers` 的 +50% 加成对声明 24/32 的牌能否越过 32（只受 `MAX_ENHANCED_RADIUS = 64` 限制）未实机取证；独立复核结论见下条。
 - 独立复核（DSH `code_review`，run `0499968f-5e7a-4808-9975-5ead60e9f530`，对象 = 本批**未提交工作树**，纯静态只读、未编译未实机）：总评「补丁整体可用」—— R1（11 张牌四线取值/注册逐行同构，无残留两参/三参注册，`LivingPageItem` 仅 private→public 且值未变，`YouHaveIHaveCardItem` 已迁四参并补 import）、R2（四线 confirm 均只按 `session.radius`，与服务端下发客户端的同一变量同源）、R5（56 个改动项全为 ` M`、无新增/删除/误删、无 jar/日志/截图泄漏、混合行尾 0）判定 SUPPORTED；R3 未发现实质回归（声明半径的动作只有 11 张牌 16/24/32 与未改动的 `MegasSignItem.SELECTOR_RADIUS = 32.0D`，其余立牌不覆写 `radius()` ⇒ 走缺省 16 ⇒ **无任何动作声明 < 16**，且 `SelectorRangeModifiers` 只放大 ⇒ `max()` → `session.radius` 不改变任何现有动作的确认距离）；R6 未找到反证。
-- 复核 [P3] 两条与处置：① `BaseEffectCardItem` 的两参重载 javadoc 仍称「保留给『可对他人使用』的既有四张牌」，实际**已无调用者**（加急加快 / 奢华大餐 / 狂暴 走三参 `NON_HOSTILE`，你有我有 已迁四参）⇒ 四线已改写为「历史遗留的便捷重载({@code TargetType.PLAYER} 固定):当前无调用者 …… 保留仅为源码兼容,新牌请直接用四参重载」。② 本批新增文字以「`target_select_radius` 是可配置项」为前提，而该键**不存在** —— 前置库源 `F:/MCProject/starengine_lib_next/common/src/main/java/com/merlinkitsune/starenginelib/component/GameplayConstants.java:86-87` 明写「目标选择器:可指定目标的最大距离(格)。固定常量 16,不写入配置文件」+ `public static final int TARGET_SELECT_RADIUS = 16;`，同文件 `:114-129` 的 `applyConfig(GameplayConfigValues)` 不含该项、`GameplayConfigValues` 无对应字段，四线消费方亦无该键（2026-10-08 核实）⇒ 已把 AGENTS.md 四处（第 15 条 confirm 句与「各牌声明的初始射程」末句、缺省半径 bullet 头与尾）及两份 CHANGELOG 的「配置值 / 改公共配置 / 更大的配置值」措辞改为「前置库固定常量 16（不可配置）」，并写明本次 `confirm` 改动对现有动作**行为等价**、消除的是「将来该值可配置或新增声明 < 16 格的牌时服务端比客户端宽」的隐患。
+- 复核 [P3] 两条与处置：① `BaseEffectCardItem` 的两参重载 javadoc 仍称「保留给『可对他人使用』的既有四张牌」，实际**已无调用者**（加急加快 / 奢华大餐 / 狂暴 走三参 `NON_HOSTILE`，你有我有 已迁四参）⇒ 四线已改写为「历史遗留的便捷重载({@code TargetType.PLAYER} 固定):当前无调用者 …… 保留仅为源码兼容,新牌请直接用四参重载」。② 本批新增文字以「`target_select_radius` 是可配置项」为前提，而该键**不存在** —— 前置库源 `F:/MCProject/starengine_next/common/src/main/java/com/merlinkitsune/starengine/component/GameplayConstants.java:86-87` 明写「目标选择器:可指定目标的最大距离(格)。固定常量 16,不写入配置文件」+ `public static final int TARGET_SELECT_RADIUS = 16;`，同文件 `:114-129` 的 `applyConfig(GameplayConfigValues)` 不含该项、`GameplayConfigValues` 无对应字段，四线消费方亦无该键（2026-10-08 核实）⇒ 已把 AGENTS.md 四处（第 15 条 confirm 句与「各牌声明的初始射程」末句、缺省半径 bullet 头与尾）及两份 CHANGELOG 的「配置值 / 改公共配置 / 更大的配置值」措辞改为「前置库固定常量 16（不可配置）」，并写明本次 `confirm` 改动对现有动作**行为等价**、消除的是「将来该值可配置或新增声明 < 16 格的牌时服务端比客户端宽」的隐患。
 - 文档债（未在本批扩大改动范围，登记备查）：`BaseEffectCardItem`（四线 :202-203 / :228-230 / :239-240 / :303 附近）与 `TargetSelectionManager` 类 javadoc 里 2026-09-19/25 既有的「配置统一值 / 配置范围 1..32 / 配置 TARGET_SELECT_RADIUS」措辞同样源自前置库早期 javadoc，实际是固定常量 16；本次只改本批新增/改写的文字。
 - 复核方声明未验证：未编译、未运行（只做静态读 + git）；未核验前置库目标选择器注册表是否会被其它模组注册 < 16 声明半径的动作（跨模组理论边界）。
 
@@ -4429,7 +4425,7 @@ mt.ps1 --version 线 --phase stop 关闭测试实例（gradle 守护进程保留
 
 **续 76 补（2026-10-10 第二次裁决 / 事件体系补丁）**：
 - **池计数口径变更**：`investigation_stage` 进池后，启动机器行由 `AP_EVENT_REG: count=13:pool=12` 变为 **`count=13:pool=13`**（`pool` 是**静态口径**；真实抽取还要过 `publicPool(Player)` 的「队内有秘密侦探」闸门）。三语键由 882 → **883**（新增 `hud.astral_dice.target_select.tag.undercover`）。
-- **教训 10（新）：1.20.1 的 Curios 访问器走平台层 `CuriosCompat`**（`com.merlinkitsune.starenginelib.item.CuriosCompat`），不是 `top.theillusivec4.curios.api.CuriosApi`；镜像 1.21.1 的持牌判定时直接拷 `CuriosApi.getCuriosInventory(...)` 会在 1.20.1 **编译失败**（`找不到符号`）。
+- **教训 10（新）：1.20.1 的 Curios 访问器走平台层 `CuriosCompat`**（`com.merlinkitsune.starengine.item.CuriosCompat`），不是 `top.theillusivec4.curios.api.CuriosApi`；镜像 1.21.1 的持牌判定时直接拷 `CuriosApi.getCuriosInventory(...)` 会在 1.20.1 **编译失败**（`找不到符号`）。
 - **教训 11（新）：1.20.1 的 `ModEffects.*` 是 `RegistryObject<MobEffect>`**，塞进 `hasEffect` / `MobEffectInstance` 必须 `.get()`（1.21.1 的 `DeferredHolder` 同形但写法在既有代码里是 `.get()`，镜像时容易漏）。
 - **教训 12（新）：镜像 1.21.1 的方块类会覆盖 1.20.1 的交互签名** —— 1.21.1 用 `useWithoutItem(...)`，1.20.1 只有六参 `use(State,Level,Pos,Player,Hand,HitResult)`；整文件拷贝后必须重新套用平台改写（本批就踩了一次，靠 `mt_build` 拦住）。
 

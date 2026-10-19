@@ -14,8 +14,8 @@ import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.card.BaseEffectCardItem;
 import com.merlinkitsune.astral_dice.item.card.RepulsionCardItem;
-import com.merlinkitsune.starenginelib.component.GameplayConstants;
-import com.merlinkitsune.starenginelib.event.ModEffectRemoval;
+import com.merlinkitsune.starengine.component.GameplayConstants;
+import com.merlinkitsune.starengine.event.ModEffectRemoval;
 
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
@@ -82,11 +82,7 @@ public final class LinglingSignManager {
      * （与 {@code AmeSignItem#isEquipped} 同一口径 —— 本仓「未佩戴骰子 ⇒ 立牌功能一律不生效」）。
      */
     public static boolean isEquipped(Player player) {
-        if (player == null) return false;
-        if (!CurioSlotUtil.hasDiceEquipped(player)) return false;
-        var curios = CuriosApi.getCuriosInventory(player);
-        return curios.isPresent()
-                && curios.get().findFirstCurio(s -> s.is(ModItems.LINGLING_SIGN.get())).isPresent();
+        return SignEquipCheck.isEquipped(player, ModItems.LINGLING_SIGN.get());
     }
 
     /** 发 {@code count} 张强化拒止（背包满则掉在脚下，同 §4.1 口径）；返回实际发放张数。 */
@@ -312,17 +308,17 @@ public final class LinglingSignManager {
             return;
         }
         int charge = effectiveCharge(player);
-        applyModifier(player, Attributes.ATTACK_DAMAGE, MODIFIER_ATTACK, charge,
+        SignAttributeUtil.apply(player, Attributes.ATTACK_DAMAGE, MODIFIER_ATTACK, charge,
                 AttributeModifier.Operation.ADD_VALUE);
-        applyModifier(player, Attributes.MOVEMENT_SPEED, MODIFIER_SPEED, charge / 100.0D,
+        SignAttributeUtil.apply(player, Attributes.MOVEMENT_SPEED, MODIFIER_SPEED, charge / 100.0D,
                 AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
     }
 
     /** 摘掉 buff 用的全部修饰符（buff 结束 / 卸下 / 死亡都必须走到这里）。 */
     public static void clearModifiers(Player player) {
         if (player == null) return;
-        removeModifier(player, Attributes.ATTACK_DAMAGE, MODIFIER_ATTACK);
-        removeModifier(player, Attributes.MOVEMENT_SPEED, MODIFIER_SPEED);
+        SignAttributeUtil.remove(player, Attributes.ATTACK_DAMAGE, MODIFIER_ATTACK);
+        SignAttributeUtil.remove(player, Attributes.MOVEMENT_SPEED, MODIFIER_SPEED);
     }
 
     /** 卸下 / 失去佩戴时的完整清理：额外层归零 + 摘修饰符 + 摘 buff。 */
@@ -333,34 +329,4 @@ public final class LinglingSignManager {
         ModEffectRemoval.remove(player, ModEffects.LINGLING_SURGE);
     }
 
-    // ── 属性修饰符底层（口径同 event/EventEffects） ──────────────────────────
-
-    private static ResourceLocation modifierId(String key) {
-        return ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, key);
-    }
-
-    private static void applyModifier(Player player, net.minecraft.core.Holder<
-            net.minecraft.world.entity.ai.attributes.Attribute> attribute, String key,
-            double amount, AttributeModifier.Operation operation) {
-        AttributeInstance attr = player.getAttribute(attribute);
-        if (attr == null) return;
-        ResourceLocation id = modifierId(key);
-        AttributeModifier existing = attr.getModifier(id);
-        if (amount <= 0.0D) {
-            if (existing != null) attr.removeModifier(id);
-            return;
-        }
-        if (existing == null || existing.amount() != amount || existing.operation() != operation) {
-            attr.removeModifier(id);
-            attr.addTransientModifier(new AttributeModifier(id, amount, operation));
-        }
-    }
-
-    private static void removeModifier(Player player, net.minecraft.core.Holder<
-            net.minecraft.world.entity.ai.attributes.Attribute> attribute, String key) {
-        AttributeInstance attr = player.getAttribute(attribute);
-        if (attr == null) return;
-        ResourceLocation id = modifierId(key);
-        if (attr.getModifier(id) != null) attr.removeModifier(id);
-    }
 }

@@ -6,6 +6,7 @@ import com.merlinkitsune.astral_dice.damage.ModDamageTypes;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.StarLightManager;
 import com.merlinkitsune.astral_dice.particle.GlowingDustOptions;
+import com.merlinkitsune.starengine.combat.EliteTargets;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -27,7 +28,8 @@ import top.theillusivec4.curios.api.CuriosApi;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import com.merlinkitsune.starenginelib.combat.HostileTargets;
+import com.merlinkitsune.starengine.combat.HostileTargets;
+import com.merlinkitsune.starengine.combat.PartyRelations;
 
 /**
  * 「飞星」筹码（紫色飞星 / 金色飞星）的**唯一执行器**：触发检测、粒子下落编排、命中结算。

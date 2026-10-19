@@ -1,6 +1,6 @@
 package com.merlinkitsune.astral_dice.item.chip;
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
-import com.merlinkitsune.starenginelib.item.CuriosCompat;
+import com.merlinkitsune.starengine.item.CuriosCompat;
 
 import net.minecraft.world.entity.player.Player;
 import com.merlinkitsune.astral_dice.item.ModItems;
@@ -14,7 +14,7 @@ import com.merlinkitsune.astral_dice.item.ModItems;
  * 故本类不再有 {@code onEquip}/{@code onChipUnequip} 账本钩子;交换加成改由经商立牌被动承担。
  *
  * <p><b>1.20.1 Forge 平台差异</b>:本线 Curios 入口走库 shim
- * {@link com.merlinkitsune.starenginelib.item.CuriosCompat#getCuriosInventory}
+ * {@link com.merlinkitsune.starengine.item.CuriosCompat#getCuriosInventory}
  * (官方 {@code CuriosApi} 在本线返回 {@code LazyOptional},无 {@code isEmpty()/get()} 同形用法)。
  */
 public class AtmChipItem extends BaseChipItem {

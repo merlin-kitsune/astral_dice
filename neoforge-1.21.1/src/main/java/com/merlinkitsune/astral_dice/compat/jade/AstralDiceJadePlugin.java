@@ -45,5 +45,6 @@ public final class AstralDiceJadePlugin implements IWailaPlugin {
         registration.registerBlockComponent(ShopCooldownClientProvider.INSTANCE, CardShopBlock.class);
         registration.registerBlockComponent(ShopCooldownClientProvider.INSTANCE, ChipShopBlock.class);
         registration.registerBlockComponent(ShopCooldownClientProvider.INSTANCE, EventDrawBlock.class);
+        registration.registerBlockComponent(EventDrawerCostProvider.INSTANCE, EventDrawBlock.class);
     }
 }

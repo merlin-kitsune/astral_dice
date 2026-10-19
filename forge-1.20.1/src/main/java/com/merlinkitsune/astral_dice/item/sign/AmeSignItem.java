@@ -3,15 +3,15 @@ package com.merlinkitsune.astral_dice.item.sign;
 import com.google.common.collect.MapMaker;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
-import com.merlinkitsune.astral_dice.combat.PartyRelations;
+import com.merlinkitsune.starengine.combat.PartyRelations;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.AmeLoveEffect;
 import com.merlinkitsune.astral_dice.effect.AmeOverdoseEffect;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
-import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
+import com.merlinkitsune.starengine.event.EffectTimerGuard;
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.astral_dice.item.ModItems;
-import com.merlinkitsune.starenginelib.event.ModEffectRemoval;
+import com.merlinkitsune.starengine.event.ModEffectRemoval;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.damagesource.DamageSource;
@@ -23,7 +23,7 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import com.merlinkitsune.starenginelib.item.CuriosCompat;
+import com.merlinkitsune.starengine.item.CuriosCompat;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.living.LivingDamageEvent;
 import net.minecraftforge.event.entity.living.MobEffectEvent;
@@ -170,11 +170,7 @@ public class AmeSignItem extends BaseSignItem {
 
     /** 玩家是否佩戴地雷女立牌(功能闸门:需已佩戴骰子) */
     public static boolean isEquipped(Player player) {
-        if (player == null) return false;
-        if (!CurioSlotUtil.hasDiceEquipped(player)) return false;
-        var curios = CuriosCompat.getCuriosInventory(player);
-        return curios.isPresent()
-                && curios.get().findFirstCurio(s -> s.is(ModItems.AME_SIGN.get())).isPresent();
+        return SignEquipCheck.isEquipped(player, ModItems.AME_SIGN.get());
     }
 
     /** 该玩家是否装着地雷女立牌(**纯**槽位判定,不带骰子闸门;照 sherry/hanna 的 wearsSign 口径,供跨玩家判定) */
@@ -219,20 +215,8 @@ public class AmeSignItem extends BaseSignItem {
      */
     private static void setMaxHealthBonus(Player player, int bonus) {
         if (player == null || player.level().isClientSide()) return;
-        AttributeInstance attr = player.getAttribute(Attributes.MAX_HEALTH);
-        if (attr == null) return;
-        java.util.UUID id = java.util.UUID.nameUUIDFromBytes(
-                (AstralDiceMod.MODID + ":" + MAX_HEALTH_KEY).getBytes(java.nio.charset.StandardCharsets.UTF_8));
-        AttributeModifier existing = attr.getModifier(id);
-        if (bonus <= 0) {
-            if (existing != null) attr.removeModifier(id);
-            return;
-        }
-        if (existing == null || existing.getAmount() != bonus) {
-            attr.removeModifier(id);
-            attr.addTransientModifier(new AttributeModifier(id, "astral_dice:" + MAX_HEALTH_KEY, bonus,
-                    AttributeModifier.Operation.ADDITION));
-        }
+        SignAttributeUtil.apply(player, Attributes.MAX_HEALTH, MAX_HEALTH_KEY, bonus,
+                AttributeModifier.Operation.ADDITION);
     }
 
     /** 移除本立牌施加的全部瞬态修饰器(卸下立牌 / 层数归零) */

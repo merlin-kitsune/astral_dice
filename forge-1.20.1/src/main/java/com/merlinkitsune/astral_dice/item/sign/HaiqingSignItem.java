@@ -1,18 +1,18 @@
 package com.merlinkitsune.astral_dice.item.sign;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
-import com.merlinkitsune.starenginelib.component.GameplayConstants;
+import com.merlinkitsune.starengine.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
-import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
+import com.merlinkitsune.starengine.event.EffectTimerGuard;
 import com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
 import com.merlinkitsune.astral_dice.network.ModNetwork;
-import com.merlinkitsune.starenginelib.target.TargetSelectionAction;
+import com.merlinkitsune.starengine.target.TargetSelectionAction;
 import com.merlinkitsune.astral_dice.target.TargetSelectionManager;
-import com.merlinkitsune.starenginelib.target.TargetSelectionRegistry;
-import com.merlinkitsune.starenginelib.target.TargetType;
+import com.merlinkitsune.starengine.target.TargetSelectionRegistry;
+import com.merlinkitsune.starengine.target.TargetType;
 import com.merlinkitsune.astral_dice.event.WeirdDiceHandler;
 import com.merlinkitsune.astral_dice.item.chip.CurrentCoreChipItem;
 
@@ -64,7 +64,7 @@ public class HaiqingSignItem extends BaseSignItem {
             public void apply(ServerPlayer player, LivingEntity target) {
                 // 施加"虚弱印记"5:00 + 虚弱效果,记录释放者(击杀后仅释放者获得奖励)
                 ModAttachments.setWeakMarkSource(target, Optional.of(player.getUUID()));
-                target.addEffect(new MobEffectInstance(ModEffects.WEAK_MARK.get(), 6000, 0, false, true));
+                EffectTimerGuard.apply(target, new MobEffectInstance(ModEffects.WEAK_MARK.get(), 6000, 0, false, true));
                 EffectTimerGuard.apply(target, new MobEffectInstance(MobEffects.WEAKNESS, 6000, 0, false, true));
                 // 主动成功施加:开始玩家级冷却(统一经 signCooldownTicks:含诡异骰子 -50% 与充能递减)
                 ModAttachments.setSignActiveCooldownEnd(player,
