@@ -83,6 +83,13 @@ legacyForge {
         client {
             client()
 
+            // 2026-10-20 H1 修复：dev 下显式声明两份 mixin 配置，避免 jade 配置未加载导致
+            // 「Jade 护甲值→防御力」替换静默失效（mods.toml 在 dev run 不被读取）。
+            jvmArgument '-Dmixin.config=astral_dice.mixins.json'
+            jvmArgument '-Dmixin.config=astral_dice.jade.mixins.json'
+            // 取证用：把转换后的类导出到 run/.mixin.out，便于核对注入是否真的落地
+            jvmArgument '-Dmixin.debug.export=true'
+
             // 自动化测试:gradlew runClient -Pquickplay=<世界名> 直接进入指定单机世界
             if (project.hasProperty('quickplay')) {
                 programArgument '--quickPlaySingleplayer'

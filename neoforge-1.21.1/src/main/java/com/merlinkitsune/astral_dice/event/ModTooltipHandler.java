@@ -1624,6 +1624,54 @@ public class ModTooltipHandler {
             Player linglingViewer = event.getEntity() instanceof Player llp ? llp : null;
             addSignCooldownRemaining(tooltip, linglingViewer);
         }
+        // 调酒师立牌(jill):主动「调制人生」(选目标玩家 + 选 3 张卡牌调制,按放置顺序依次对目标施加
+        // 效果,随后消耗卡牌并重新获得 3 张随机卡牌) + 被动「改变生活」(三张牌全部同类型 ⇒ 自身与
+        // 目标获得 迅捷 II 1:00,否则各得 3 星币)。本立牌**无玩家级动态计数器** ⇒ 只出「按键提示 +
+        // 主动技能名/描述 + 被动技能名/描述 + 冷却行」四段,块末尾必须调 addSignCooldownRemaining。
+        if (stack.is(ModItems.JILL_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "调制人生");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.jill_active");
+            addSignPassiveTitle(tooltip, "改变生活");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.jill_passive");
+            addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player jp ? jp : null);
+        }
+        // 多萝西立牌(dorothy):主动「真正的我」(传送到目标身边安全落点;1:00 内经过友方玩家使双方
+        // +1 攻击力,每 10 秒一次、每人一次;【温暖】满 5 层时消耗全部层数换取「当前防御力」点攻击力
+        // 1:00) + 被动「交际花」(恢复生命值时按效果等级获得【温暖】,每层防御力 +1;路过友方玩家时
+        // 双方恢复 2 点生命)。【温暖】层数已在效果栏展示,不重复进 tooltip。
+        if (stack.is(ModItems.DOROTHY_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "真正的我");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.dorothy_active");
+            addSignPassiveTitle(tooltip, "交际花");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.dorothy_passive");
+            addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player jp ? jp : null);
+        }
+        // 修女立牌(alana):主动「铁处女」(0:30 内免疫一切伤害与负面效果) + 被动「鼓起勇气」
+        // (每次骰神赐福 +5 攻击力;期间单次受击 >10 点立即移除全部加成;赐福结束始终移除)。
+        if (stack.is(ModItems.ALANA_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "铁处女");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.alana_active");
+            addSignPassiveTitle(tooltip, "鼓起勇气");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.alana_passive");
+            addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player jp ? jp : null);
+        }
+        // 大肥鱼立牌(deepseek,仅创造获得):主动「大口干饭」(立即 +100 星币,并随机获得 1 个立牌
+        // 或筹码) + 被动「摸鱼中」(10 秒位置不变 ⇒ 免伤/免负面/不被怪物索敌,移动即清除)。
+        if (stack.is(ModItems.DEEPSEEK_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "大口干饭");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.deepseek_active");
+            addSignPassiveTitle(tooltip, "摸鱼中");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.deepseek_passive");
+            addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player jp ? jp : null);
+        }
         // 符卡-福 / 符卡-祸(风水师立牌专属效果牌);键名 = 规格 §2.6 冻结值
         // (tooltip.astral_dice.fu_card / tooltip.astral_dice.huo_card)
         if (stack.is(ModItems.FU_CARD.get())) {

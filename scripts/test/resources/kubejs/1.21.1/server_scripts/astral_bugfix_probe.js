@@ -7908,7 +7908,7 @@ var NardisInventoryClass = teruLoadCls("net.minecraft.world.entity.player.Invent
 var NardisSimpleContainerClass = teruLoadCls("net.minecraft.world.SimpleContainer");
 var NardiHandClass = teruLoadCls("net.minecraft.world.InteractionHand");
 /** 效果时长守卫(与产品 `NardisSignItem#handleUse` 同一入口);读不到时退回裸 `player.addEffect` */
-var NardiEffectTimerGuardClass = teruLoadCls("com.merlinkitsune.astral_dice.event.EffectTimerGuard");
+var NardiEffectTimerGuardClass = teruLoadCls("com.merlinkitsune.starengine.event.EffectTimerGuard");
 /**
  * `DataComponentPatch` / `DataComponentPatch.Builder` —— **写组件的唯一可用通道**。
  *
@@ -13180,7 +13180,7 @@ function doMamuDie(ctx, tag, keepText) {
 //    hp        = 最大生命调到 60(> 40 ⇒ 精英阈值)
 //    armor     = 护甲调到 25(> 20 ⇒ 精英阈值)
 // ══════════════════════════════════════════════════════════════════════════════
-var EliteTargetsClass = Java.loadClass("com.merlinkitsune.astral_dice.combat.EliteTargets");
+var EliteTargetsClass = Java.loadClass("com.merlinkitsune.starengine.combat.EliteTargets");
 var ShootingStarManagerClass = Java.loadClass("com.merlinkitsune.astral_dice.combat.ShootingStarManager");
 var StarLightManagerClass = Java.loadClass("com.merlinkitsune.astral_dice.item.StarLightManager");
 var BossEntityUtilClass = Java.loadClass("com.merlinkitsune.starengine.item.BossEntityUtil");

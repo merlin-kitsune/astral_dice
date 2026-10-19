@@ -1579,6 +1579,75 @@ public class ModTooltipHandler {
             // (neo 1.21.1/26.1.2 返回 Entity 故需 instanceof)；本线既有立牌分支均直接传入。
             addSignCooldownRemaining(tooltip, event.getEntity());
         }
+        // 怪力乱神立牌(lingling):主动「能量突击」(瞬时:立即获得 1 张「强化拒止」+ 施加「能量突击」效果
+        // 1:00,期间每 10t 按**有效充能层数**(真实充能 + 吸附目标数,夹上限)刷新攻击力 / 移速修饰符)
+        // + 被动「拦截者」(首次装备发 2 张「强化拒止」;拾取 / 购买 / 手持的「路障」⇒「强化拒止」;
+        // 「强化拒止」吸附的目标数作为额外充能层;攻击被吸附目标 +5 伤害,不分归属)
+        // + 备注「路障回流」(充能上限 20 层;手持「路障」自动转换、丢出的「强化拒止」落地变回「路障」)。
+        // 本立牌**无玩家级动态计数器**(有效层数已在主动动作栏播报,不重复进 tooltip),故只出
+        // 「按键提示 + 主动技能名/描述 + 被动技能名/描述 + 备注区 + 冷却行」五段;块末尾必须调 addSignCooldownRemaining。
+        if (stack.is(ModItems.LINGLING_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "能量突击");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.lingling_active");
+            addSignPassiveTitle(tooltip, "拦截者");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.lingling_passive");
+            // 备注区(浅紫 §d、无标题、无列表符号):补充口径统一放这里,按 spec §6.6 用 addSignNoteLines
+            tooltip.add(Component.empty());
+            addSignNoteLines(tooltip, "tooltip.astral_dice.sign.lingling_note");
+            // 平台差异：forge 1.20.1 的 ItemTooltipEvent#getEntity() 静态类型已是 Player
+            // (neo 1.21.1/26.1.2 返回 Entity 故需 instanceof)；本线既有立牌分支均直接传入。
+            addSignCooldownRemaining(tooltip, event.getEntity());
+        }
+        // 调酒师立牌(jill):主动「调制人生」(选目标玩家 + 选 3 张卡牌调制,按放置顺序依次对目标施加
+        // 效果,随后消耗卡牌并重新获得 3 张随机卡牌) + 被动「改变生活」(三张牌全部同类型 ⇒ 自身与
+        // 目标获得 迅捷 II 1:00,否则各得 3 星币)。本立牌**无玩家级动态计数器** ⇒ 只出「按键提示 +
+        // 主动技能名/描述 + 被动技能名/描述 + 冷却行」四段,块末尾必须调 addSignCooldownRemaining。
+        if (stack.is(ModItems.JILL_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "调制人生");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.jill_active");
+            addSignPassiveTitle(tooltip, "改变生活");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.jill_passive");
+            addSignCooldownRemaining(tooltip, event.getEntity());
+        }
+        // 多萝西立牌(dorothy):主动「真正的我」(传送到目标身边安全落点;1:00 内经过友方玩家使双方
+        // +1 攻击力,每 10 秒一次、每人一次;【温暖】满 5 层时消耗全部层数换取「当前防御力」点攻击力
+        // 1:00) + 被动「交际花」(恢复生命值时按效果等级获得【温暖】,每层防御力 +1;路过友方玩家时
+        // 双方恢复 2 点生命)。【温暖】层数已在效果栏展示,不重复进 tooltip。
+        if (stack.is(ModItems.DOROTHY_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "真正的我");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.dorothy_active");
+            addSignPassiveTitle(tooltip, "交际花");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.dorothy_passive");
+            addSignCooldownRemaining(tooltip, event.getEntity());
+        }
+        // 修女立牌(alana):主动「铁处女」(0:30 内免疫一切伤害与负面效果) + 被动「鼓起勇气」
+        // (每次骰神赐福 +5 攻击力;期间单次受击 >10 点立即移除全部加成;赐福结束始终移除)。
+        if (stack.is(ModItems.ALANA_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "铁处女");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.alana_active");
+            addSignPassiveTitle(tooltip, "鼓起勇气");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.alana_passive");
+            addSignCooldownRemaining(tooltip, event.getEntity());
+        }
+        // 大肥鱼立牌(deepseek,仅创造获得):主动「大口干饭」(立即 +100 星币,并随机获得 1 个立牌
+        // 或筹码) + 被动「摸鱼中」(10 秒位置不变 ⇒ 免伤/免负面/不被怪物索敌,移动即清除)。
+        if (stack.is(ModItems.DEEPSEEK_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "大口干饭");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.deepseek_active");
+            addSignPassiveTitle(tooltip, "摸鱼中");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.deepseek_passive");
+            addSignCooldownRemaining(tooltip, event.getEntity());
+        }
         // 蛟龙立牌(mamushi)专属战斗牌:撕咬(费用 2 / 耐久 1 / 定值 +3)与
         // 龙之咆哮(费用 3 / 耐久 5 / 定值 +3;命中施加 缓慢 III 1:00 + 破防 1:00)。
         // 费用行 = 既有战斗牌的既有写法;描述行走规格 §4 冻结键 tooltip.astral_dice.card.bite / .dragon_roar

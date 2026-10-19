@@ -505,7 +505,10 @@ if ($MyInvocation.InvocationName -ne '.') {
             if ($Version -eq '26.1.2') {
                 $ready = $latest.Contains('logged in with entity id') -and ($latest -match 'Loaded \d+ advancements')
             } else {
-                $ready = $latest.Contains('Total time to load game and open world was')
+                # 2026-10-19：部分构建不再打印 'Total time to load game and open world was'
+                # ⇒ 追加与 26.1.2 同口径的备用判据（服务端已把玩家放进世界 + 客户端已收世界数据）
+                $ready = $latest.Contains('Total time to load game and open world was') -or
+                         ($latest.Contains('logged in with entity id') -and ($latest -match 'Loaded \d+ advancements'))
             }
         }
         if ($ready) { $entered = $true; break }
