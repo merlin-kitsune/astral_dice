@@ -238,6 +238,8 @@
 
 ### Content & Balance
 
+- **Player starting defense is now 2 (1 shield) instead of 4.** Combat attack power still starts at 1, derived from the vanilla attack damage attribute.
+
 - **The weird die no longer shortens sign cooldowns.** It keeps its low-roll weighting (1-3 at 75% instead of 50%) and the 5 healing points at the end of an active skill.
 
 - **Chip economy adjustments**: ① new `enable_chip_recipes` master toggle (default **off**, config option); when off, the four chip-crafting materials (Regeneration Reagent / Conductive Wire / Star Coin Dust / Mark Paint) are hidden from the creative tab (Blank Chip stays visible). ② Blank Chip loot chance 3% → 1% (buried treasure stays 100%). ③ the Chip Shop enters a 5:00 cooldown after a purchase; right-clicking it with a Blank Chip during cooldown inserts the chip — instantly clearing the cooldown and granting +1 re-roll, limited to once per 2:00. ④ card stack size 64 → 16 (combat cards included — the hardcoded 64 left in `CardItem`'s full-durability stack override was caught by in-game verification and fixed). ⑤ Kanban-girl sign passive "card swap" threshold 25 → 100.

@@ -743,7 +743,7 @@ public class DiceCombatEvents {
                 // · 护甲 20 硬上限**两侧一律移除**;
                 // · 护甲取**属性终值**(getArmorValue()) ⇒ 状态效果与第三方模组(如七咒之戒)修饰
                 //   完毕后的真实值先参与换算,本模组**不再二次换算**(最大模组兼容性);
-                // · 玩家:4 + 护甲×0.30 + 0.85×韧性;
+                // · 玩家:2 + 护甲×0.30 + 0.85×韧性;
                 // · 生物:初始值(敌对 0 / 中立 0 / 被动 0 / 友好 0) + 护甲×0.40 + 1.0×韧性,最终取整。
                 //   ↑ 两式均取自库 CombatFormula,本模组不再内联系数(2.0.0-SNAPSHOT.2 起)。
                 double effectiveArmor = Math.max(0, target.getArmorValue() + modifierDefense * 2.0);
@@ -761,7 +761,7 @@ public class DiceCombatEvents {
             }
 
             // 上班族立牌:攻击骰为 6 时无视目标防御力——按本模组「目标防御力」口径
-            // (与贯穿之铳同一公式:4 + 护甲×0.30 + 0.85×韧性;护甲已包含由防御力折算而来的部分)
+            // (与贯穿之铳同一公式:2 + 护甲×0.30 + 0.85×韧性;护甲已包含由防御力折算而来的部分)
             // 整项不计入防御,但保留目标的防御骰与防御牌加成。
             if (ctx.padmanDefBypass && !skipDefense) {
                 defensePower = defenseBaseDice + ctx.defenseCardSum;

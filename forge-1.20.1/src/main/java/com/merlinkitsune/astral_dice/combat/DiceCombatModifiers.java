@@ -200,7 +200,7 @@ public final class DiceCombatModifiers {
      * 数值 ≤ 0 时移除修饰器(护甲属性下限 0,负防御自然失效)。
      *
      * <p>⚠️ <b>折算系数口径提示(待裁决,本版未改)</b>:2.0 是旧防御公式「2 + 护甲÷2」的遗留 ——
-     * 当时 2 点护甲恰等于 1 点防御力。现公式已改为「4 + 护甲×0.30 + 0.85×韧性」,
+     * 当时 2 点护甲恰等于 1 点防御力。现公式已改为「2 + 护甲×0.30 + 0.85×韧性」,
      * 2 点护甲只兑现 0.6 点防御力 ⇒ 传入的 {@code defensePoints} 实际只落地 <b>60%</b>。
      * 是否把系数改为「1 ÷ 玩家护甲系数(0.30)≈ 3.333」由用户裁决。
      */
@@ -981,7 +981,7 @@ public final class DiceCombatModifiers {
         return ids;
     }
 
-    /** 防御力基础值(4 + 护甲×0.30 + 0.85×韧性,取自库 CombatFormula);{@link #getDisplayDefenseRange} 与 {@link #defensePowerOf} 共用 */
+    /** 防御力基础值(2 + 护甲×0.30 + 0.85×韧性,取自库 CombatFormula);{@link #getDisplayDefenseRange} 与 {@link #defensePowerOf} 共用 */
     private static double defensePowerBase(Player player, WeaponEnhancement enhancement) {
         if (enhancement == null) enhancement = WeaponEnhancement.EMPTY;
         DiceCombatContext ctx = new DiceCombatContext(
