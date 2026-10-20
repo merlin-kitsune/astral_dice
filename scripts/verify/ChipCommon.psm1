@@ -371,7 +371,7 @@ function parse_file {
     param([string]$Path)
     $src = Read-PyTextRaw $Path
     $out = New-PyMap
-    $RE = 'ShapedRecipeBuilder\.shaped\(RecipeCategory\.MISC,\s*ModItems\.(\w+)\.get\(\)(?:,\s*\d+)?\)(.*?)\.save\(output[^;]*\);'
+    $RE = 'ShapedRecipeBuilder\.shaped\(RecipeCategory\.MISC,\s*ModItems\.(\w+)\.get\(\)(?:,\s*\d+)?\)(.*?)\.save\([\w.]+[^;]*\);'
     foreach ($m in [regex]::Matches($src, $RE, [System.Text.RegularExpressions.RegexOptions]::Singleline)) {
         $const = $m.Groups[1].Value
         $body = $m.Groups[2].Value
