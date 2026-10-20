@@ -1,21 +1,23 @@
 <#
 .SYNOPSIS
-  dev 工作树（multi-dev-next）自测启用脚本：构建 → 部署（dev 目标成对推「本模组 jar + 独立库 jar」；prod 目标只推本模组 jar，库已 JarJar 内嵌）→ 可选启动 dev 客户端。
+  dev 工作树（multi-dev-next）自测启用脚本：构建 → 部署（dev 目标成对推「本模组 jar + 独立库 jar」；prod 目标按该线是否仍 JarJar 内嵌决定：P0 两线成对、26.1.2 仅本模组 jar）→ 可选启动 dev 客户端。
 
 .DESCRIPTION
   一条命令完成「用户自行测试」所需的三件事：
     1) 构建所选平台（默认 1.21.1）；
     2) 部署到目标 mods 目录（部署前先删除目标目录内旧的 astral_dice-*.jar 与
-       starengine-*.jar，先删后拷）。**两种目标的契约不同（2026-09-24 起库已 JarJar 内嵌）**：
+       starengine-*.jar，先删后拷）。**部署契约按「该线产物是否仍 JarJar 内嵌库」区分（2026-10-20 新口径）**：
          · **dev 目标**（`run/<版本>/mods` 等）⇒ **成对**部署「本模组 jar + starengine 库 jar」，
            两者各恰一份且版本一致；**缺库 jar 或版本不匹配时报错停下**并给出解决指引 ——
            人手启动（`run/Start-<版本>.bat`）只认 mods 目录，缺库会得到 FML
            「Missing or unsupported mandatory dependencies / Currently, starengine is not installed」。
-         · **prod 目标**（整合包等外部实例）⇒ **只部署本模组 jar**，目标内**不得**再放独立库 jar：
-           库已内嵌在产物里（`META-INF/jarjar/metadata.json` + `starengine-<平台>-<版本>.jar`），
-           FML 的 JarInJar 选择器按 modId 去重时会**优先采用顶层那份独立 jar**、丢弃内嵌副本
-           （只打一条 WARN）⇒ 版本错位即静默用错库。故 prod 的硬断言是「目标内
-           `starengine-*.jar` 恰 **0** 份」。
+         · **prod 目标**（整合包等外部实例）⇒ 分两种：
+           ‑ 库为**独立前置**的线（P0：`neoforge-1.21.1` / `forge-1.20.1`，`build.gradle` 已删 `jarJar`）
+             **必须成对部署**，硬断言是「目标内 `starengine-*.jar` 恰 **1** 份」且文件名与
+             `gradle.properties` 的 `starengine_version` 一致（缺库 ⇒ FML「Currently, starengine is not installed」）；
+           ‑ 仍保留 `jarJar(...)` 的线（26.1.2）**仍只部署本模组 jar**：库内嵌在产物里
+             （`META-INF/jarjar/`），独立 jar 会被 FML 的 JarInJar 选择器按 modId 优先采用、盖掉内嵌副本
+             ⇒ 其 prod 硬断言仍是「`starengine-*.jar` 恰 **0** 份」。
     3) 可选启动 dev 客户端（-Launch，缺省关闭）。
 
   ⚠️ 仓库根用 $PSScriptRoot 解析，**不依赖当前工作目录**（本仓有「相对路径落到另一个工作树」的
@@ -29,8 +31,8 @@
        `<libRepo>\forge-1.20.1\build\devlibs\starengine-forge-1.20.1-<ver>.jar`
        （需该文件存在；不存在即报错并给出重建指引），本模组 jar 也**只**取 `<line>\build\devlibs`
        —— 缺失即 Fail，**不**回退 `build\libs` 的 reobf 产物（那正是上面会崩的组合）。
-     · 对**外部/生产目标**（`-TargetDir` 指向整合包等）则用生产形态：本模组取 `<line>\build\libs`；
-       **不再单独部署库 jar**（库已 JarJar 内嵌；独立 jar 反而会被 FML 优先采用，见上面第 2) 条）。
+     · 对**外部/生产目标**（`-TargetDir` 指向整合包等）则用生产形态：本模组取 `<line>\build\libs`，
+       库取 `mavenLocal` 的 reobf 产物；库已取消内嵌的线（P0）**必须**把库 jar 与本模组 jar 一起部署。
      · 形态闸门对**本模组 jar 与库 jar 对称**：dev 目标两者都必须是 dev/Mojmap；prod 目标 + forge 线
        两者都必须是 reobf/SRG（断言失败即 Fail，并指出正确来源目录）。
      · dev/prod 判定（缺省 `-TargetKind auto`）：①显式 `-TargetKind dev|prod` 优先；②目标目录在
@@ -45,20 +47,21 @@
      **版本一致**的同名 mod，FML 的 `UniqueModListBuilder` 会按 modId 去重（mods 目录优先），
      因此不会重复加载；反之**版本不一致**就会出现两份不同版本、行为不可预期 —— 这正是脚本
      先删后拷、并强制校验版本一致的原因。
-     ⚠️ 自 2026-09-24 起本模组把库 **JarJar 内嵌**进产物（`META-INF/jarjar/`）⇒ 上面这套
-     「再往 mods 放一份」**只对 dev 目标成立**；prod 目标内放独立库 jar 会被 FML 优先采用、
-     盖掉内嵌副本，故 prod 只推本模组 jar（断言「库 jar 恰 0 份」）。
+     ⚠️ 2026-10-20 起 P0 两线（neoforge-1.21.1 / forge-1.20.1）已把库改为**独立前置**（`build.gradle`
+     删掉 `jarJar`，产物不再含 `META-INF/jarjar/`）⇒ prod 目标也**必须**放一份与 `starengine_version`
+     匹配的库 jar，故 prod 断言反转为「库 jar 恰 1 份」。26.1.2 仍保留 `jarJar(...)` ⇒ 其 prod 契约仍是
+     「库 jar 恰 0 份」；脚本按该线 build.gradle 是否存在 `jarJar(` 自动判定，不硬编码版本。
 
 .PARAMETER Version
   平台：1.21.1（缺省） / 1.20.1 / 26.1.2。
 
 .PARAMETER TargetDir
   目标 mods 目录（绝对路径）。缺省 `<repo>\run\<Version>\mods`。
-  指向 `<repo>\run\` 以外（如某个整合包实例）时按 `-TargetKind` 的判定改用**生产形态** jar，并**不再部署独立库 jar**（库已内嵌，见文件头第 2) 条）。
+  指向 `<repo>\run\` 以外（如某个整合包实例）时按 `-TargetKind` 的判定改用**生产形态** jar；库为独立前置的线（P0）会成对部署库 jar，仍内嵌的线（26.1.2）不部署（见文件头第 2) 条）。
 
 .PARAMETER TargetKind
   目标形态：`auto`（缺省，按目标目录推断）/ `dev` / `prod`。决定 jar **形态选择**（dev/Mojmap ↔
-  reobf/SRG）**与部署契约**（dev ⇒ 成对推本模组 jar + 独立库 jar；prod ⇒ 只推本模组 jar，库走内嵌）。
+  reobf/SRG）**与部署契约**（dev ⇒ 成对推本模组 jar + 独立库 jar；prod ⇒ 库为独立前置的线成对、仍内嵌的线只推本模组 jar）。
   不改变 `-TargetDir` 的语义；显式传入时优先于目录推断（用于仓库外的 dev 形态测试目录）。
 
 .PARAMETER SkipBuild
@@ -348,10 +351,16 @@ $libJarM2 = Join-Path $M2RepoRoot "$($line.Artifact)\$libVersion\$($line.Artifac
 $libJar = if ($form -eq 'dev' -and $line.Kind -eq 'forge') { $libJarDev } else { $libJarM2 }
 $libJarForm = if ($form -eq 'dev' -and $line.Kind -eq 'forge') { 'dev（库仓 devlibs）' } else { '生产/常规（mavenLocal）' }
 
-# 独立库 jar 是否随本次部署落地 = **仅 dev 目标**（2026-09-24 起库由 JarJar 内嵌进本模组产物）。
-# prod 目标若再放一份独立库 jar，FML 的 JarInJar 选择器会按 modId 去重并优先采用顶层那份、
-# 丢弃内嵌副本（只打一条 WARN）⇒ 版本错位时静默用错库。故 prod 的断言是「库 jar 恰 0 份」。
-$deployLibJar = [bool]$isDevTarget
+# 独立库 jar 是否随本次部署落地：dev 目标恒需要；prod 目标取决于该线产物是否仍 JarJar 内嵌。
+# P0 两线（neoforge-1.21.1 / forge-1.20.1）已删 build.gradle 的 jarJar ⇒ prod 也必须成对部署独立库 jar；
+# 26.1.2 仍保留 jarJar(...) ⇒ prod 由产物内嵌承载，独立 jar 会被 FML 优先采用并盖掉内嵌副本。
+# 判定不硬编码版本：直接看该线 build.gradle 里有没有非注释的 `jarJar(` 声明。
+$buildGradlePath = Join-Path $RepoRoot "$sub\build.gradle"
+$embedsLibJar = $false
+if (Test-Path -LiteralPath $buildGradlePath) {
+    $embedsLibJar = [bool]([regex]::IsMatch([System.IO.File]::ReadAllText($buildGradlePath), '(?m)^\s*jarJar\s*\('))
+}
+$deployLibJar = $isDevTarget -or (-not $embedsLibJar)
 
 # ---------------------------------------------------------------------------
 # 2. 打印计划
@@ -364,9 +373,9 @@ Write-Info "目标 mods 目录                  : $TargetDir"
 Write-Info "目标形态                        : $form（dev ⇒ dev/Mojmap 形态 jar；prod ⇒ 生产 reobf 形态 jar）｜判定依据：$kindReason（可用 -TargetKind dev|prod 覆盖）"
 Write-Info "本模组 mod_version              : $modVersion"
 Write-Info "库坐标                          : $($props['starengine_group']):$($line.Artifact):$libVersion"
-Write-Info "独立库 jar 部署                 : $(if ($deployLibJar) { "是（dev 目标必需）· 形态来源 $libJarForm" } else { '否（prod 目标：库已内嵌进本模组产物，放独立 jar 会盖掉内嵌副本）' })"
+Write-Info "独立库 jar 部署                 : $(if ($deployLibJar) { "是（库为独立前置，必须成对）· 形态来源 $libJarForm" } else { "否（该线产物仍 JarJar 内嵌：$sub\build.gradle 有 jarJar 声明）" })"
 Write-Info "本模组 jar                      : $(if ($modJar) { $modJar } else { "<未找到: $($modJarCandidates -join ' | ')>" })"
-Write-Info "配套库 jar                      : $(if (-not $deployLibJar) { '<不部署（prod）>' } elseif (Test-Path -LiteralPath $libJar) { $libJar } else { "<缺失: $libJar>" })"
+Write-Info "配套库 jar                      : $(if (-not $deployLibJar) { '<不部署（该线产物仍内嵌）>' } elseif (Test-Path -LiteralPath $libJar) { $libJar } else { "<缺失: $libJar>" })"
 Write-Info "构建                            : $(if ($SkipBuild) { '跳过（-SkipBuild）' } else { "会执行 $($line.GradlePath):build（后台 + ${BuildTimeoutSec}s 看门狗）" })"
 Write-Info "启动客户端                      : $(if ($Launch) { '【人工测试路径】会后台启动 runClient' } else { '否（缺省不启动；-Launch 为人工路径，代理不得自动调用）' })"
 $cleanupDesc = if ($CleanOldJars) { "会移动到 $RepoRoot" + '\temp\old-jars-<时间戳>\' } else { '否（-CleanOldJars 才执行）' }
@@ -381,7 +390,7 @@ if ($DryRun) {
     Write-Info "2) $(if ($deployLibJar) { '成对部署到' } else { '部署（仅本模组 jar）到' })：$TargetDir"
     Write-Info "   · 先删除：astral_dice-*.jar、starengine-*.jar"
     Write-Info "   · 再拷贝：$(Split-Path -Leaf $modJarCandidates[0])"
-    Write-Info "   · 再拷贝：$(if ($deployLibJar) { Split-Path -Leaf $libJar } else { '(不拷贝库 jar：库已内嵌)' })"
+    Write-Info "   · 再拷贝：$(if ($deployLibJar) { Split-Path -Leaf $libJar } else { '(不拷贝库 jar：该线产物仍内嵌)' })"
     Write-Info "3) $(if ($CleanOldJars) { '清理旧版 jar -> temp\old-jars-<时间戳>\' } else { '(不清理旧版 jar)' })"
     Write-Info "4) $(if ($Launch) { '后台启动 dev 客户端（人工路径）' } else { '(不启动客户端)' })"
     $dryQuarantine = Join-Path $RepoRoot 'temp\old-jars-<时间戳>'
@@ -483,9 +492,9 @@ if (-not $SkipBuild) {
 Write-Info "$buildLog"
 
 # ---------------------------------------------------------------------------
-# 5. 部署（核心）：dev 目标 = 成对（本模组 jar + 独立库 jar）；prod 目标 = 仅本模组 jar
+# 5. 部署（核心）：库为独立前置的目标 = 成对（本模组 jar + 独立库 jar）；仍内嵌的线 prod = 仅本模组 jar
 # ---------------------------------------------------------------------------
-Write-Step "$(if ($deployLibJar) { '成对部署（本模组 jar + 库 jar）' } else { '部署（仅本模组 jar；库已 JarJar 内嵌）' })"
+Write-Step "$(if ($deployLibJar) { '成对部署（本模组 jar + 库 jar）' } else { '部署（仅本模组 jar；该线产物仍 JarJar 内嵌）' })"
 
 # 双验证（2）：产物时间戳（-SkipBuild 时只校验存在性）
 $modJar = $modJarCandidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
@@ -536,23 +545,32 @@ if ($form -eq 'prod' -and $line.Kind -eq 'forge' -and $modForm.Form -ne 'reobf/s
     )
 }
 
-# 独立库 jar 只在 **dev 目标** 下校验与部署；prod 目标改由「内嵌」承载（见文件头第 2) 条）。
+# 独立库 jar 在需要独立前置的目标（dev 恒需要；prod 仅限已取消内嵌的线）下校验与部署；
+# 仍内嵌的线（26.1.2）prod 由产物承载（见文件头第 2) 条）。
 if ($deployLibJar) {
     if (-not (Test-Path -LiteralPath $libJar)) {
         Fail "配套库 jar 不存在：$libJar" @(
             "dev 目标（人手启动路径）只认 mods 目录：缺库会被 FML 拒绝（Currently, starengine is not installed）",
             "1.21.1/26.1.2：在库仓库执行 `./gradlew publishToMavenLocal`（或指定版本）后重试",
             "1.20.1 dev 目标需要库仓库的 dev jar：cd $LibRepoPath && ./gradlew :forge-1.20.1:build（产出 build\devlibs\starengine-forge-1.20.1-$libVersion.jar）",
+            "1.20.1 prod 目标（整合包等）用 mavenLocal 的 reobf 产物：cd $LibRepoPath && ./gradlew publishToMavenLocal",
             "库版本必须与 $sub\gradle.properties 的 starengine_version=$libVersion 一致",
-            '（若本次目标是整合包等外部实例，请用 -TargetKind prod：库已内嵌进本模组产物，不再单独部署库 jar）'
+            '（P0 两线已取消 JarJar 内嵌：prod 目标同样必须放独立库 jar；仍保留 jarJar 的线（26.1.2）由产物承载）'
         )
     }
     $libForm = Get-JarForm $libJar
     Write-Info "库 jar 形态：$($libForm.Form)（SRG 命中 $($libForm.Hits)）"
-    if ($line.Kind -eq 'forge' -and $libForm.Form -ne 'dev/mojmap') {
+    if ($line.Kind -eq 'forge' -and $form -eq 'dev' -and $libForm.Form -ne 'dev/mojmap') {
         Fail "dev 目标(1.20.1)下库 jar 不是 dev/Mojmap 形态：$libJar" @(
             'SRG 形态的库 jar 放进 dev run 会以 NoSuchFieldError 崩',
             "请用库仓库 devlibs 的 dev jar（重新执行库的 :forge-1.20.1:build）"
+        )
+    }
+    if ($line.Kind -eq 'forge' -and $form -eq 'prod' -and $libForm.Form -ne 'reobf/srg') {
+        Fail "prod 目标(1.20.1)下库 jar 不是 reobf/SRG 形态：$libJar" @(
+            '外部实例/整合包必须放发货形态（reobf/SRG）的库 jar；dev/Mojmap 形态会被 Forge 以 SRG 名解析不到而报错',
+            "正确来源：$M2RepoRoot\$($line.Artifact)\$libVersion\$($line.Artifact)-$libVersion.jar（先 cd $LibRepoPath && ./gradlew publishToMavenLocal）",
+            '需要 dev 形态请在 run 目录（或 -TargetKind dev）下测试'
         )
     }
 }
@@ -563,8 +581,9 @@ if ([System.IO.Path]::GetFileName($modJar) -ne $modJarName) {
 }
 if ($deployLibJar) {
     $libJarName = [System.IO.Path]::GetFileName($libJar)
-    if ($libJarName -notlike "*$libVersion.jar") {
-        Fail "库 jar 版本与 starengine_version=$libVersion 不一致：$libJarName" @('先同步消费方 gradle.properties 或重发库 jar')
+    $expectedLibName = "$($line.Artifact)-$libVersion.jar"
+    if ($libJarName -ne $expectedLibName) {
+        Fail "库 jar 名与 starengine_version=$libVersion 不一致（期望 $expectedLibName）：$libJarName" @('先同步消费方 gradle.properties 或重发库 jar')
     }
 }
 
@@ -581,22 +600,28 @@ if ($deployLibJar) {
     Write-Ok "已拷贝：$libJarName"
 }
 
-# 部署后校验：本模组 jar 恰 1 份；库 jar 在 dev 目标恰 1 份、在 prod 目标恰 0 份（库已内嵌）
+# 部署后校验：本模组 jar 恰 1 份；库 jar 在「需要独立前置」的目标恰 1 份、仍内嵌的线 prod 恰 0 份
 $after = Get-ChildItem -LiteralPath $TargetDir -File -Filter '*.jar'
 $mods = @($after | Where-Object { $_.Name -like 'astral_dice-*.jar' })
 $libs = @($after | Where-Object { $_.Name -like 'starengine-*.jar' })
 $wantLibs = if ($deployLibJar) { 1 } else { 0 }
 if ($mods.Count -ne 1 -or $libs.Count -ne $wantLibs) {
-    $expect = if ($deployLibJar) { '各恰一份' } else { 'astral_dice 恰 1 份、starengine 恰 0 份（库已 JarJar 内嵌，独立 jar 会盖掉内嵌副本）' }
+    $expect = if ($deployLibJar) { '各恰一份' } else { 'astral_dice 恰 1 份、starengine 恰 0 份（该线产物仍 JarJar 内嵌，独立 jar 会盖掉内嵌副本）' }
     Fail "部署后目标目录内 astral_dice-*.jar=$($mods.Count) 份、starengine-*.jar=$($libs.Count) 份（应：$expect）" @(
         "目录：$TargetDir",
-        'prod 目标（整合包等）库由内嵌承载；dev 目标（run 目录 / Start-<版本>.bat）仍须成对部署'
+        '库为独立前置的线（P0）prod 目标也必须成对部署；仍内嵌的线（26.1.2）prod 由产物承载；dev 目标（run 目录 / Start-<版本>.bat）恒须成对'
+    )
+}
+if ($deployLibJar -and $libs.Count -eq 1 -and $libs[0].Name -ne $libJarName) {
+    Fail "部署后库 jar 名与 starengine_version=$libVersion 不一致：$($libs[0].Name)（期望 $libJarName）" @(
+        "目录：$TargetDir",
+        '先删后拷应已清掉旧库；若仍不符，检查库 jar 来源与 starengine_version'
     )
 }
 if ($deployLibJar) {
-    Write-Ok "成对校验：$($mods[0].Name) + $($libs[0].Name)（sha256 前 12 位 $((Get-Sha256 $mods[0].FullName).Substring(0,12)) / $((Get-Sha256 $libs[0].FullName).Substring(0,12))）"
+    Write-Ok "成对校验：$($mods[0].Name) + $($libs[0].Name)（库为独立前置；sha256 前 12 位 $((Get-Sha256 $mods[0].FullName).Substring(0,12)) / $((Get-Sha256 $libs[0].FullName).Substring(0,12))）"
 } else {
-    Write-Ok "内嵌校验：$($mods[0].Name) 单独部署（库经 META-INF/jarjar/ 内嵌；sha256 前 12 位 $((Get-Sha256 $mods[0].FullName).Substring(0,12))）"
+    Write-Ok "内嵌校验：$($mods[0].Name) 单独部署（该线产物仍经 META-INF/jarjar/ 内嵌库；sha256 前 12 位 $((Get-Sha256 $mods[0].FullName).Substring(0,12))）"
 }
 
 # ---------------------------------------------------------------------------
@@ -621,5 +646,5 @@ if ($Launch) {
 }
 
 Write-Host ''
-Write-Ok "完成：$Version 已构建并部署到 $TargetDir（$(if ($deployLibJar) { 'dev：本模组 jar + 独立库 jar 成对' } else { 'prod：仅本模组 jar，库已 JarJar 内嵌' })）"
+Write-Ok "完成：$Version 已构建并部署到 $TargetDir（$(if ($deployLibJar) { '本模组 jar + 独立库 jar 成对（库为独立前置）' } else { '仅本模组 jar（该线产物仍 JarJar 内嵌）' })）"
 Write-Info '用户在游戏内自测时请确认：日志里 starengine 与 astral_dice 都已加载，且无 "Missing or unsupported mandatory dependencies"。'

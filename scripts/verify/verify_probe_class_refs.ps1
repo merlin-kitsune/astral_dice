@@ -15,24 +15,29 @@
     这类「类被搬走、探针没跟」的漂移，靠人眼审 14k 行脚本不可行，必须机器拦。
 
     判据：对每个 `Java.loadClass("X.Y.Z")`，要求 `X/Y/Z.class`（或其内嵌类形式 `X/Y/Z$Inner.class`）
-    出现在下面四处之一：
+    出现在下面五处之一：
       1. 本模组构建产物 `build/libs/astral_dice-*.jar`（**取最新一份** —— build/libs 常残留历史版本）；
       2. `run/<版本>/mods/*.jar` 全量（Curios / Patchouli / KubeJS / Rhino / starengine 都在这）；
       3. `build/moddev/artifacts` 的 merged jar（MC 本体 + 加载器）。
-      4. 上述任意外层 jar 里 **JarJar 内嵌 jar**（`META-INF/jarjar/*.jar`）的全部条目 —— 见下条。
+      4. 上述任意外层 jar 里 **JarJar 内嵌 jar**（`META-INF/jarjar/*.jar`）的全部条目 —— 见下条；
+      5. `mavenLocal` 的 StarEngine 库 jar（`~/.m2/.../starengine-<平台>/<starengine_version>/*.jar`）——
+         P0 两线已取消 JarJar 内嵌，dev 的库类只在 mavenLocal / Gradle 缓存里。
     另外补入 `build.gradle` 里 `maven.modrinth:<slug>:<ver>` 形式的依赖（从 gradle 缓存取 jar）——
     这些第三方模组由 `modImplementation` 在 **dev 运行期**注入 classpath，**不落 `run/mods`**，
     不补这一步会把 `CuriosApi` 之类全判成缺失（实测过）。
 
-    ⚠️ **为什么第 4 处必须有（2026-09-27 修复，此前 17 处假红）**：本模组把前置库 starengine
-    以 JarJar 形式**内嵌**进产物（`META-INF/jarjar/starengine-<平台>-<版本>.jar`）⇒
-    `com.merlinkitsune.starengine.*` 那批类**既不在外层 jar 的条目里、也不落 `run/<版本>/mods`**
-    （FML 到启动时才把内嵌 jar 解出来挂 classpath）。不展开就会把 `GameplayConstants` /
-    `StarCoinWalletState` / `BossEntityUtil` / `SignSelectionGate` / `TargetSelectionRegistry`
-    整批判成「不在运行时 classpath」——而它们实际都在，属**脚本盲区**而非真缺陷。
+    ⚠️ **为什么第 4/5 处必须有（2026-10-20 新口径，此前 17 处假红）**：前置库 starengine 的承载方式
+    按线不同 —— 26.1.2 仍以 JarJar 形式**内嵌**进产物（`META-INF/jarjar/`，第 4 处展开）；
+    P0 两线（neoforge-1.21.1 / forge-1.20.1）已改为**独立前置**（`build.gradle` 的 `jarJar` 已删），
+    库类**既不在外层 jar 的条目里、也不一定落 `run/<版本>/mods`**（dev 由 Gradle 从 `mavenLocal`
+    解析进 runtimeClasspath；run/mods 那份要靠 Start-SelfTest 成对投放）。只看 1–4 就会把
+    `GameplayConstants` / `StarCoinWalletState` / `BossEntityUtil` / `SignSelectionGate` /
+    `TargetSelectionRegistry` 整批判成「不在运行时 classpath」——而它们实际都在，属**脚本盲区**而非真缺陷。
+    第 5 处从 mavenLocal 取与 `gradle.properties:starengine_version` **完全同名**的库 jar：
+    依次尝试 `$HOME/.m2` / `%USERPROFILE%\.m2`（Windows）与 `/mnt/c/Users/<user>/.m2`（WSL）。
     递归深度上限 `$script:MaxJarDepth`（防自引用内嵌导致的无限递归）。
 
-    已登记的豁免（运行期一定存在，但不在上面三处）：
+    已登记的豁免（运行期一定存在，但不在上面 1–5 的收集范围）：
       · JDK 自带：`java.` / `javax.` / `jdk.` / `sun.` / `com.sun.` / `org.w3c.` / `org.xml.`；
       · `com.mojang.brigadier.` / `com.mojang.authlib.` / `com.mojang.blaze3d.` /
         `com.mojang.datafixers.` / `com.mojang.serialization.` —— 由加载器在运行期提供，
@@ -58,6 +63,7 @@
     `FAIL（2 处）` 转为 `PASS`。
     实测：2026-09-27 补「JarJar 内嵌 jar 展开」后，`verify_probe_class_refs` 的 17 处
     `com.merlinkitsune.starengine.*` 假红清零（此前它把内嵌库整个当不存在）。
+    实测：2026-10-20 P0 两线取消内嵌后，补「mavenLocal 库 jar」收集，避免上述 17 处假红回归。
 #>
 [CmdletBinding()]
 param(
@@ -74,16 +80,19 @@ Add-Type -AssemblyName System.IO.Compression.FileSystem -ErrorAction SilentlyCon
 $script:Lines = [ordered]@{
     '1.21.1' = @{
         Proj      = 'neoforge-1.21.1'
+        LibArtifact = 'starengine-neoforge-1.21.1'
         ModsDir   = 'run/1.21.1/mods'
         Artifacts = 'neoforge-1.21.1/build/moddev/artifacts/neoforge-21.1.235*.jar'
     }
     '1.20.1' = @{
         Proj      = 'forge-1.20.1'
+        LibArtifact = 'starengine-forge-1.20.1'
         ModsDir   = 'run/1.20.1/mods'
         Artifacts = 'forge-1.20.1/build/moddev/artifacts/forge-1.20.1-*.jar'
     }
     '26.1.2' = @{
         Proj      = 'neoforge-26.1.2'
+        LibArtifact = 'starengine-neoforge-26.1.2'
         ModsDir   = 'run/26.1.2/mods'
         Artifacts = 'neoforge-26.1.2/build/moddev/artifacts/minecraft-patched-*.jar'
     }
@@ -253,6 +262,92 @@ function Get-GradleModJars {
     return @{ Jars = $jars.ToArray(); Unresolved = $unresolved.ToArray() }
 }
 
+function Get-GradleProperty {
+    <#
+    .SYNOPSIS
+        从 gradle.properties 读一个键（缺文件 / 缺键返回 $null）。
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$Path,
+        [Parameter(Mandatory)][string]$Key
+    )
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $null }
+    $text = [System.IO.File]::ReadAllText((Resolve-Path -LiteralPath $Path).Path)
+    $m = [regex]::Match($text, '(?m)^\s*' + [regex]::Escape($Key) + '\s*=\s*(.+?)\s*$')
+    if (-not $m.Success) { return $null }
+    return $m.Groups[1].Value.Trim()
+}
+
+function Get-M2RepositoryRoots {
+    <#
+    .SYNOPSIS
+        mavenLocal 仓库根候选：Windows（$HOME / %USERPROFILE% / C:\Users\<user>）与 WSL（/mnt/c/Users/<user>）。
+
+    .NOTES
+        只做路径规范化与去重；是否存在由调用方判断（便于在输出里给出「已尝试」清单）。
+    #>
+    [CmdletBinding()]
+    [OutputType([string[]])]
+    param()
+
+    $cands = New-Object 'System.Collections.Generic.List[string]'
+    if ($HOME) { [void]$cands.Add((Join-Path $HOME '.m2/repository')) }
+    if ($env:USERPROFILE) { [void]$cands.Add((Join-Path $env:USERPROFILE '.m2/repository')) }
+    # 用户名的两个来源都试（Windows: USERNAME；WSL: USER 可能是 Linux 用户名）⇒ 各自补一条 Windows 家目录候选
+    $unames = New-Object 'System.Collections.Generic.List[string]'
+    if ($env:USERNAME) { [void]$unames.Add($env:USERNAME) }
+    if ($env:USER -and $env:USER -ne $env:USERNAME) { [void]$unames.Add($env:USER) }
+    foreach ($uname in $unames) {
+        # PowerShell 7：$IsLinux 恒可用；5.1 下先由版本号短路，避免引用未定义变量
+        if ($PSVersionTable.PSVersion.Major -ge 6 -and $IsLinux) {
+            [void]$cands.Add("/mnt/c/Users/$uname/.m2/repository")
+        } else {
+            [void]$cands.Add("C:\Users\$uname\.m2\repository")
+        }
+    }
+
+    $roots = New-Object 'System.Collections.Generic.List[string]'
+    foreach ($c in $cands) {
+        if ([string]::IsNullOrWhiteSpace($c)) { continue }
+        try { $full = [System.IO.Path]::GetFullPath($c) } catch { continue }
+        if (-not $roots.Contains($full)) { [void]$roots.Add($full) }
+    }
+    return $roots.ToArray()
+}
+
+function Get-MavenLocalLibJar {
+    <#
+    .SYNOPSIS
+        按 `gradle.properties:starengine_version` 在 mavenLocal 找该线的 StarEngine 库 jar。
+
+    .NOTES
+        P0 两线已取消 JarJar 内嵌 ⇒ 库类只能从 mavenLocal / Gradle 缓存进 classpath。
+        文件名与 starengine_version **完全一致**（不做通配），避免拿到历史版本。
+        返回单对象 hashtable（避免数组展平）：@{ Jar = <路径或 $null>; Version = <版本或 $null>; Tried = @(<尝试过的路径>) }。
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$Proj,
+        [Parameter(Mandatory)][string]$Artifact
+    )
+
+    $ver = Get-GradleProperty -Path (Join-Path $Proj 'gradle.properties') -Key 'starengine_version'
+    $tried = New-Object 'System.Collections.Generic.List[string]'
+    if (-not $ver) { return @{ Jar = $null; Version = $null; Tried = $tried.ToArray() } }
+
+    $rel = [System.IO.Path]::Combine('com', 'merlinkitsune', 'starengine', $Artifact, $ver, "$Artifact-$ver.jar")
+    foreach ($root in (Get-M2RepositoryRoots)) {
+        $p = [System.IO.Path]::Combine($root, $rel)
+        [void]$tried.Add($p)
+        if (Test-Path -LiteralPath $p -PathType Leaf) {
+            return @{ Jar = $p; Version = $ver; Tried = $tried.ToArray() }
+        }
+    }
+    return @{ Jar = $null; Version = $ver; Tried = $tried.ToArray() }
+}
+
 function Get-ClassVariants {
     <#
     .SYNOPSIS
@@ -302,9 +397,19 @@ function Test-ProbeLine {
     foreach ($j in $modsJars) { [void]$jars.Add($j.FullName) }
     $dep = Get-GradleModJars -Proj $proj
     foreach ($j in $dep.Jars) { [void]$jars.Add($j) }
+    # 第 5 处：mavenLocal 的 StarEngine 库 jar（P0 两线取消内嵌后，dev 的库类只在这里）
+    $libInfo = Get-MavenLocalLibJar -Proj $proj -Artifact $cfg.LibArtifact
+    if ($libInfo.Jar) { [void]$jars.Add($libInfo.Jar) }
 
-    Write-Output ('## {0}   classpath jar = {1} 个（run/mods {2} + gradle 依赖 {3}）' -f `
-            $Ver, $jars.Count, $modsJars.Count, @($dep.Jars).Count)
+    Write-Output ('## {0}   classpath jar = {1} 个（run/mods {2} + gradle 依赖 {3} + mavenLocal 库 {4}）' -f `
+            $Ver, $jars.Count, $modsJars.Count, @($dep.Jars).Count, $(if ($libInfo.Jar) { 1 } else { 0 }))
+    if ($libInfo.Jar) {
+        Write-Output ('   + 库 jar 来自 mavenLocal：{0}' -f $libInfo.Jar)
+    } else {
+        $libWhy = if ($libInfo.Version) { "starengine_version=$($libInfo.Version)" } else { 'gradle.properties 无 starengine_version' }
+        Write-Output ('   ! mavenLocal 未找到库 jar（{0}）：com.merlinkitsune.starengine.* 可能误报；请安装到 mavenLocal 或把库 jar 放进 run/<版本>/mods' -f $libWhy)
+        foreach ($t in $libInfo.Tried) { Write-Output ('     - 已尝试：{0}' -f $t) }
+    }
     if (-not $modJar) {
         Write-Output ('   ! 未找到构建产物（{0}/build/libs）—— 该线的模组类判据会大面积误报，先跑构建' -f $cfg.Proj)
     }
