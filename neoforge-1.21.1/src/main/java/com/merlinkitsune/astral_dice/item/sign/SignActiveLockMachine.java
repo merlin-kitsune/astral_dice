@@ -110,6 +110,9 @@ public final class SignActiveLockMachine {
         // 解锁即清零离线补偿基准:下一次锁定由 beginActiveLock 重新落笔,避免"本次锁定结束刻"被
         // 之后某次 tick 当成离线起点算出巨大 gap(冷却是墙钟语义,不参与补偿,故此处一并归零)。
         ModAttachments.setSignActiveLockLastSeen(player, 0L);
+        // 诡异骰子(2026-10-20):主动技能**结束**(锁定态寿终 = 技能效果真正到期)⇒ 获得 5 点治愈。
+        // 此时冷却刚入账,但结算口径是「生效期结束」而不是「冷却开始」——本方法是锁定态唯一出口。
+        com.merlinkitsune.astral_dice.event.WeirdDiceHandler.onSignActiveEnded(player);
     }
 
     /**

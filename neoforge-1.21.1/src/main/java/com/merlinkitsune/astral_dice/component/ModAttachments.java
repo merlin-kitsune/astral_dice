@@ -2183,7 +2183,9 @@ public class ModAttachments {
     }
 
     /**
-     * 怪力乱神立牌(lingling)的**额外充能层**(§4.6):等于「自己放置的强化拒止正在吸附的有效目标数」。
+     * 怪力乱神立牌(lingling)的**额外充能层**(§4.6):等于「自己放置的每座强化拒止各自**控制过的
+     * 不同目标数**之和,单座封顶 5」(2026-10-20 用户裁决;同一目标重复吸附不重复计数,
+     * 目标阵亡不再扣层)。
      * 独立加成层,**不写进 {@code ChargeEffect}**(用户裁决);跨死亡保留({@code copyOnDeath})。
      * 每 10t 由 {@code LinglingSignManager#recomputeBonusCharge} 重算;失去佩戴时归零。
      * 不 {@code .sync()}(仅服务端用于属性/伤害判定,客户端不读)。

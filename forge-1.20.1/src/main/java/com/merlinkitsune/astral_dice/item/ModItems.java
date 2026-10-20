@@ -113,6 +113,7 @@ import com.merlinkitsune.astral_dice.item.chip.AirbagChipItem;
 import com.merlinkitsune.astral_dice.item.chip.RailgunChipItem;
 import com.merlinkitsune.astral_dice.item.chip.PrimordialCoreChipItem;
 import com.merlinkitsune.astral_dice.item.chip.WhetstoneChipItem;
+import com.merlinkitsune.astral_dice.item.chip.ExtraBatteryChipItem;
 import com.merlinkitsune.astral_dice.item.chip.NinjaStarChipItem;
 import com.merlinkitsune.astral_dice.item.chip.FlashlightChipItem;
 
@@ -867,6 +868,12 @@ public class ModItems {
     // 磨刀石:生命值为 50% 或更低时攻击力 +4、受到伤害 -2;生命值 >1 时受到的伤害不超过剩余生命值(史诗)
     public static final RegistryObject<Item> WHETSTONE_CHIP = registerItem("whetstone_chip",
             () -> new WhetstoneChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.epic())));
+
+    // 额外电池(史诗/无流派):装备时立牌主动技能冷却时间 -50%(纯查询加减成,卸下即失效)
+    public static final RegistryObject<Item> EXTRA_BATTERY_CHIP = registerItem("extra_battery_chip",
+            () -> new ExtraBatteryChipItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(AstralRarities.epic())));
 

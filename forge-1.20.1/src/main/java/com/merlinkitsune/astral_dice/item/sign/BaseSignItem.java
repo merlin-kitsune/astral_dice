@@ -180,7 +180,8 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
             int signCooldownTicks = forced > 0
                     ? forced
                     : sign.activeCooldownBaseTicks(player);
-            if (sign.startActiveLockOnUse(player, now)) {
+            boolean enteredLock = sign.startActiveLockOnUse(player, now);
+            if (enteredLock) {
                 // ★ 本主动施加了"带时长效果/自身计时器"⇒ 进入锁定(生效中)态。
                 //   锁定期间**不写** sign_active_cooldown_end:冷却要等锁定结束才起(第 13 条:无空档);
                 //   但先把本次冷却基准写进 sign_active_max_cooldown,供锁定期间各减免方读它并累加进减免池。
@@ -192,6 +193,12 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
             }
             // 电流核心筹码:主动技能实际生效时充能 +1(进入锁定时同样计一次;与是否立即起冷却无关)
             com.merlinkitsune.astral_dice.item.chip.CurrentCoreChipItem.onActiveSkillUsed(player);
+            // 诡异骰子(2026-10-20):主动技能**结束** ⇒ 获得 5 点治愈。
+            // 瞬时型立牌没有生效期 ⇒ 结束与施放完成同一刻;有生效期的立牌(enteredLock)
+            // 由 SignActiveLockMachine#endLockAndStartCooldown 在锁定寿终时结算,两条互斥。
+            if (!enteredLock) {
+                com.merlinkitsune.astral_dice.event.WeirdDiceHandler.onSignActiveEnded(player);
+            }
         }
     }
 
@@ -265,6 +272,11 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         com.merlinkitsune.starengine.event.SignActiveTriggeredEvent triggered =
                 new com.merlinkitsune.starengine.event.SignActiveTriggeredEvent(player, stack);
         net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(triggered);
+        // 诡异骰子(2026-10-20):目标选择器类立牌的主动在 apply 执行完毕后即「结束」⇒ 结算 5 点治愈。
+        // 若该次施放同时进入了锁定(生效中)态,则改由 SignActiveLockMachine 在锁定寿终时结算,此处跳过。
+        if (getSignActiveLockSignId(player).isEmpty()) {
+            com.merlinkitsune.astral_dice.event.WeirdDiceHandler.onSignActiveEnded(player);
+        }
     }
 
     // 立牌主动技能反馈统一发送入口(黄色;供立牌类注册的 SignActiveTriggeredEvent 处理器与 handleUse 调用)

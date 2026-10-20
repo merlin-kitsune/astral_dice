@@ -1,8 +1,6 @@
 package com.merlinkitsune.astral_dice.item.sign;
 
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
@@ -18,7 +16,6 @@ import com.merlinkitsune.starengine.component.GameplayConstants;
 import com.merlinkitsune.starengine.event.ModEffectRemoval;
 
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
@@ -42,7 +39,9 @@ import top.theillusivec4.curios.api.CuriosApi;
  *       手持（{@code PlayerTickEvents}）三个入口全部收敛到本类的 {@link #toRepulsion}。</li>
  *   <li><b>额外充能层</b> —— {@code lingling_bonus_charge} attachment 记的**独立加成层**（不写进
  *       {@code ChargeEffect}）；{@link #effectiveCharge} 把「真实充能 + 额外层」夹在
- *       {@link GameplayConstants#CHARGE_MAX_STACKS} 之内。</li>
+ *       {@link GameplayConstants#CHARGE_MAX_STACKS} 之内。层数口径（2026-10-20 用户裁决）：
+ *       **每控制一个新目标 +1**，**单座强化拒止最多提供 5 点**，同一目标重复吸附不重复计数，
+ *       目标阵亡不再扣层（见 {@link #bonusChargeFromOwnedFields}）。</li>
  *   <li><b>能量突击数值</b> —— buff 期间每 {@value #REFRESH_INTERVAL_TICKS} tick 用固定
  *       {@link ResourceLocation} 重刷同两个修饰符（攻击力 {@code ADD_VALUE +有效充能}、
  *       移速 {@code ADD_MULTIPLIED_TOTAL +有效充能/100}），因此重复触发只覆盖数值、不叠加。</li>
@@ -200,31 +199,29 @@ public final class LinglingSignManager {
     // ══════════════════════════════════════════════════════════════════════
 
     /**
-     * 统计「**自己放置的**强化拒止正在吸附的有效目标数」（去重）。
+     * 汇总「**自己放置的**强化拒止」提供的额外充能层数（用户裁决 2026-10-20）。
      *
-     * <p>三重口径（§4.6）：① 只算 {@code ownerUUID} 是自己的力场；② 目标必须仍在该力场的
-     * {@code trackedTargets} 里（{@link RepulsionEntity#isTracking}）；③ 该 UUID 必须仍能在本
-     * 维度取回实体且存活 —— 目标脱离力场或死亡，下一轮自然少算（下次 tick 就减层）。
+     * <p>口径（取代旧的「当前仍在吸附的目标数」与「击杀后 -1」）：
+     * <ul>
+     *   <li>只算 {@code ownerUUID} 是自己的力场；</li>
+     *   <li>每座力场按**它控制过的不同目标数**各计 1 层，单座封顶
+     *       {@link RepulsionEntity#MAX_CHARGE_STACKS}（= 5）—— 上限按**每个强化拒止实体**
+     *       各 5 点，不是全局 5 点；</li>
+     *   <li>同一目标重复吸附不重复计数（去重由力场自身的 {@code controlledTargets} 承担）；
+     *       目标阵亡 / 脱离**不再**扣层（旧「击杀 -1」已废弃）。</li>
+     * </ul>
+     *
+     * <p>多座相加后的总上限由 {@link #effectiveCharge} 夹在
+     * {@link GameplayConstants#CHARGE_MAX_STACKS}（20）之内。
      */
-    public static int countTrackedByOwnedFields(Player player) {
+    public static int bonusChargeFromOwnedFields(Player player) {
         if (player == null || player.level().isClientSide()) return 0;
         AABB area = player.getBoundingBox().inflate(BONUS_SCAN_RADIUS);
-        List<RepulsionEntity> fields = player.level().getEntitiesOfClass(RepulsionEntity.class, area);
-        if (fields.isEmpty()) return 0;
-        Set<UUID> counted = new HashSet<>();
         int total = 0;
-        for (RepulsionEntity field : fields) {
+        for (RepulsionEntity field : player.level().getEntitiesOfClass(RepulsionEntity.class, area)) {
             UUID owner = field.getOwnerUUID();
             if (owner == null || !owner.equals(player.getUUID())) continue;
-            for (UUID targetId : new HashSet<>(field.getTrackedTargets())) {
-                if (!counted.add(targetId)) continue;
-                if (!field.isTracking(targetId)) continue;
-                if (player.level() instanceof ServerLevel serverLevel
-                        && serverLevel.getEntity(targetId) instanceof LivingEntity living
-                        && living.isAlive()) {
-                    total++;
-                }
-            }
+            total += field.chargeStacks();
         }
         return total;
     }
@@ -246,7 +243,7 @@ public final class LinglingSignManager {
     /** 重算并写回 {@code lingling_bonus_charge}（佩戴时每 {@value #REFRESH_INTERVAL_TICKS} tick 调一次）。 */
     public static int recomputeBonusCharge(Player player) {
         if (player == null || player.level().isClientSide()) return 0;
-        int bonus = countTrackedByOwnedFields(player);
+        int bonus = bonusChargeFromOwnedFields(player);
         if (bonus != ModAttachments.getLinglingBonusCharge(player)) {
             ModAttachments.setLinglingBonusCharge(player, bonus);
         }

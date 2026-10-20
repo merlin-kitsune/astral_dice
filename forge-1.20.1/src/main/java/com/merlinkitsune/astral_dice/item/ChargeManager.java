@@ -122,9 +122,17 @@ public final class ChargeManager {
      * <p>2026-09-25 改口径:取代旧的「有充能即 -20%」比例减免。封顶只作用于**基础值**,
      * 之后由调用方继续叠加其它减免(诡异骰子 -50%、枪匠「精密技巧」的 120 秒基础值等);
      * 基础值本就低于上限时保持原值。**已在进行的倒计时不受影响** —— 本方法只在开始冷却时取值。
+     *
+     * <p>2026-10-20 追加:本方法末尾再乘一次「额外电池筹码」的 -50%(纯查询,未佩戴时原样返回),
+     * 因此它是「基础值 → 充能封顶 → 额外电池 -50% → 调用方的诡异骰子 -50%」这条链的中段。
      */
     public static long signCooldownTicks(Player player, long baseTicks) {
-        return capByCharge(player, baseTicks, GameplayConstants.CHARGE_SIGN_COOLDOWN_CAP_SECONDS);
+        long capped = capByCharge(player, baseTicks, GameplayConstants.CHARGE_SIGN_COOLDOWN_CAP_SECONDS);
+        // 额外电池筹码(史诗/无流派,2026-10-20):立牌主动冷却 -50%。
+        // 纯查询 ⇒ 卸下 / 失效后下一次开冷却自动恢复原值;已入账的倒计时不受影响。
+        // 与诡异骰子(-50%)正交叠加:本处在「充能封顶之后」折一次,调用方再按骰子折一次。
+        return com.merlinkitsune.astral_dice.item.chip.ExtraBatteryChipItem
+                .applyCooldownReduction(player, capped);
     }
 
     /** 效果牌公共冷却 tick:拥有充能时把**基础值**封顶为 30 秒(2026-09-30 用户裁决,20 → 30;

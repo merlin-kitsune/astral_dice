@@ -119,7 +119,8 @@ import java.util.UUID;
  *
  * <p><b>持久化</b>：被吸附目标集合以 {@code Set<UUID>} 存字段，NBT 落盘为
  * {@code long[]}（每目标 2 个 long = most/least significant bits，避免依赖
- * {@code NbtUtils} 的 UUID 包装类型）。
+ * {@code NbtUtils} 的 UUID 包装类型）。另有「曾控制过的目标」集合（充能层计数口径，
+ * 最多 {@link #MAX_CHARGE_STACKS} 个）也落盘为 {@code long[]}（2026-10-20 新增）。
  * ⚠️ 落盘的只是 UUID 集合：{@link ServerLevel#getEntity(UUID)} 在**区块未加载 / 跨维度**时返回
  * {@code null} ⇒ 该目标会被剪枝（**不保证跨卸载保留**；卸载再加载后要等下一次 8 格扫描才会
  * 重新吸附，期间不施加 缓慢 / 虚弱、也不计耐久）。
@@ -214,6 +215,24 @@ public class RepulsionEntity extends LivingEntity {
     private static final String TAG_OWNER = "RepulsionOwner";
 
     /**
+     * 单个强化拒止可提供的充能层上限（用户裁决 2026-10-20：按**每个力场**各 5 点，
+     * <b>不是</b>全局 5 点 ⇒ 多座力场各自封顶后相加）。
+     */
+    public static final int MAX_CHARGE_STACKS = 5;
+
+    /** NBT 键：曾<b>控制过</b>的目标（充能计数口径；{@code long[]}，每目标 2 个 long）。 */
+    private static final String TAG_CONTROLLED = "RepulsionControlledTargets";
+
+    /**
+     * 曾<b>控制过</b>的目标 UUID（2026-10-20 用户裁决：每控制一个**新**目标 +1 层充能，
+     * 同一目标重复吸附不重复计数；旧的「目标被击杀后 -1」已废弃）。
+     *
+     * <p>只保留前 {@link #MAX_CHARGE_STACKS} 个：计数已封顶，再多也换算不出层数 ⇒ 集合与 NBT
+     * 大小有界（不会随力场存在时间无限增长）。
+     */
+    private final Set<UUID> controlledTargets = new HashSet<>();
+
+    /**
      * 放置者（**持久化**）。1.21.1 侧 {@code RepulsionEntity} 本来就有 {@code ownerUUID}
      * （{@code item/card/RepulsionCardItem#applyEffect} 放置时写入），1.20.1 侧此前**没有** ——
      * 怪力乱神立牌被动要求「只算自己放置的拒止吸附了多少目标」与「攻击被吸附目标 +5」，
@@ -268,6 +287,13 @@ public class RepulsionEntity extends LivingEntity {
             ids[i++] = id.getLeastSignificantBits();
         }
         tag.putLongArray(TAG_TARGETS, ids);
+        long[] controlled = new long[this.controlledTargets.size() * 2];
+        int ci = 0;
+        for (UUID id : this.controlledTargets) {
+            controlled[ci++] = id.getMostSignificantBits();
+            controlled[ci++] = id.getLeastSignificantBits();
+        }
+        tag.putLongArray(TAG_CONTROLLED, controlled);
         if (this.ownerUUID != null) {
             tag.putLongArray(TAG_OWNER, new long[] {this.ownerUUID.getMostSignificantBits(),
                     this.ownerUUID.getLeastSignificantBits()});
@@ -281,6 +307,11 @@ public class RepulsionEntity extends LivingEntity {
         long[] ids = tag.getLongArray(TAG_TARGETS);
         for (int i = 0; i + 1 < ids.length; i += 2) {
             this.trackedTargets.add(new UUID(ids[i], ids[i + 1]));
+        }
+        this.controlledTargets.clear();
+        long[] controlled = tag.getLongArray(TAG_CONTROLLED);
+        for (int i = 0; i + 1 < controlled.length; i += 2) {
+            this.noteControlled(new UUID(controlled[i], controlled[i + 1]));
         }
         long[] owner = tag.getLongArray(TAG_OWNER);
         this.ownerUUID = owner.length >= 2 ? new UUID(owner[0], owner[1]) : null;
@@ -318,6 +349,26 @@ public class RepulsionEntity extends LivingEntity {
      */
     public Set<UUID> getTrackedTargets() {
         return Collections.unmodifiableSet(this.trackedTargets);
+    }
+
+    /**
+     * 本力场提供的充能层数（只读）= {@code min(5, 曾控制过的不同目标数)}。
+     *
+     * <p>供 {@code LinglingSignManager#recomputeBonusCharge} 按「自己放置的力场」汇总；
+     * 单座封顶 {@link #MAX_CHARGE_STACKS}，多座相加后再由有效充能层的总上限夹一次。
+     */
+    public int chargeStacks() {
+        return Math.min(MAX_CHARGE_STACKS, this.controlledTargets.size());
+    }
+
+    /**
+     * 记录「本力场控制了一个新目标」：同一 UUID 只存一次；存满 {@link #MAX_CHARGE_STACKS} 后
+     * 不再写入（计数已封顶 ⇒ 集合与 NBT 有界）。
+     */
+    private void noteControlled(UUID targetId) {
+        if (targetId == null) return;
+        if (this.controlledTargets.size() >= MAX_CHARGE_STACKS) return;
+        this.controlledTargets.add(targetId);
     }
 
     // ── 每 tick：剪枝 + 钳制（不施力） ─────────────────────────────────────────
@@ -518,6 +569,8 @@ public class RepulsionEntity extends LivingEntity {
             if (!mob.isAlive() || mob.isRemoved()) continue;
             if (mob.distanceToSqr(this) > AFFECT_RADIUS * AFFECT_RADIUS) continue;
             this.trackedTargets.add(mob.getUUID());
+            // 2026-10-20 用户裁决:每控制一个**新**目标 ⇒ 额外充能 +1(单座封顶 5,重复吸附不重复计数)
+            this.noteControlled(mob.getUUID());
             // 0:10 = 200 tick、I 级（amplifier 0）；ambient=false、visible=true、showIcon=true
             mob.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN,
                     EFFECT_DURATION, 0, false, true, true));

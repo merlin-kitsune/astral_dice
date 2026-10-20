@@ -197,6 +197,7 @@ public class ModCreativeTabs {
                 output.accept(ModItems.PIGGY_BANK_CHIP.get());
                 output.accept(ModItems.SMART_WATCH_CHIP.get());
                 output.accept(ModItems.WHETSTONE_CHIP.get());
+                output.accept(ModItems.EXTRA_BATTERY_CHIP.get());
                 output.accept(ModItems.SATELLITE_CHIP.get());
                 output.accept(ModItems.CURSED_SWORD.get());
                 output.accept(ModItems.REVENGE_HALBERD.get());

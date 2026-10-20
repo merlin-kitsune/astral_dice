@@ -1,8 +1,6 @@
 package com.merlinkitsune.astral_dice.item.sign;
 
 import java.nio.charset.StandardCharsets;
-import java.util.HashSet;
-import java.util.Set;
 import java.util.UUID;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
@@ -179,24 +177,31 @@ public final class LinglingSignManager {
     // ── §4.6 吸附目标数 → 额外充能层 ───────────────────────────────────────────
 
     /**
-     * 统计「<b>自己放置的</b>强化拒止当前吸附的目标数」(去重;目标须仍在服务端可解析且存活)。
+     * 汇总「<b>自己放置的</b>强化拒止」提供的额外充能层数(用户裁决 2026-10-20)。
+     *
+     * <p>口径(取代旧的「当前仍在吸附的目标数」与「击杀后 -1」):
+     * <ul>
+     *   <li>只算 {@code ownerUUID} 是自己的力场;</li>
+     *   <li>每座力场按**它控制过的不同目标数**各计 1 层,单座封顶
+     *       {@link RepulsionEntity#MAX_CHARGE_STACKS}(= 5)—— 上限按**每个强化拒止实体**
+     *       各 5 点,不是全局 5 点;</li>
+     *   <li>同一目标重复吸附不重复计数(去重由力场自身的 {@code controlledTargets} 承担);
+     *       目标阵亡 / 脱离**不再**扣层(旧「击杀 -1」已废弃)。</li>
+     * </ul>
+     *
+     * <p>多座相加后的总上限由 {@link #effectiveCharge} 夹在
+     * {@link GameplayConstants#CHARGE_MAX_STACKS}(20)之内。
      */
-    public static int countTrackedByOwnedFields(Player player) {
+    public static int bonusChargeFromOwnedFields(Player player) {
         if (player == null || !(player.level() instanceof ServerLevel serverLevel)) return 0;
         AABB area = player.getBoundingBox().inflate(BONUS_SCAN_RADIUS);
-        int count = 0;
-        Set<UUID> counted = new HashSet<>();
+        int total = 0;
         for (RepulsionEntity field : serverLevel.getEntitiesOfClass(RepulsionEntity.class, area)) {
             UUID owner = field.getOwnerUUID();
             if (owner == null || !owner.equals(player.getUUID())) continue;
-            for (UUID id : new HashSet<>(field.getTrackedTargets())) {
-                if (!counted.add(id)) continue;
-                if (!field.isTracking(id)) continue;
-                if (!(serverLevel.getEntity(id) instanceof LivingEntity living) || !living.isAlive()) continue;
-                count++;
-            }
+            total += field.chargeStacks();
         }
-        return count;
+        return total;
     }
 
     /** 目标是否正被任意强化拒止吸附(§4.7 判定入口) */
@@ -212,7 +217,7 @@ public final class LinglingSignManager {
     /** 按当前吸附目标数重算额外充能层(值不变则不写 NBT) */
     public static void recomputeBonusCharge(Player player) {
         if (player == null || player.level().isClientSide) return;
-        int bonus = countTrackedByOwnedFields(player);
+        int bonus = bonusChargeFromOwnedFields(player);
         if (bonus != ModAttachments.getLinglingBonusCharge(player)) {
             ModAttachments.setLinglingBonusCharge(player, bonus);
         }

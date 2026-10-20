@@ -66,6 +66,7 @@
     "astral_dice:fortune_stick_chip",
     "astral_dice:abyss_reagent_chip",
     "astral_dice:infinite_grid_chip",
-    "astral_dice:sensor_chip"
+    "astral_dice:sensor_chip",
+    "astral_dice:extra_battery_chip"
   ]
 }

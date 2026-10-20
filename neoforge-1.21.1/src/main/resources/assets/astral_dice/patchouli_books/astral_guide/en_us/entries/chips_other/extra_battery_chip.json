@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.extra_battery_chip",
+  "category": "astral_dice:chips_other",
+  "icon": "astral_dice:extra_battery_chip",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:extra_battery_chip",
+      "text": "astral_dice.guide.entry.extra_battery_chip.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:extra_battery_chip"
+    }
+  ],
+  "sortnum": 25
+}

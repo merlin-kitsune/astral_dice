@@ -513,7 +513,9 @@ public class ModAttachments {
     }
 
     // 怪力乱神立牌(lingling)被动「拦截者」的**额外充能层**(独立加成:不写进 ChargeEffect、不被其它筹码消耗;
-    // 每 10t 由吸附目标数重算,与基础层合计封顶 CHARGE_MAX_STACKS = 20)。
+    // 每 10t 由「自己放置的每座强化拒止各自控制过的不同目标数(单座封顶 5)」之和重算,
+    // 与基础层合计封顶 CHARGE_MAX_STACKS = 20。2026-10-20 用户裁决:同一目标重复吸附不重复计数,
+    // 目标阵亡不再扣层)。
     // 1.21.1 侧是同名键的 .copyOnDeath();本线卸下/死亡由 LinglingSignManager#clearAll 归零。
     public static final AttachedDataKey<Integer> LINGLING_BONUS_CHARGE =
             register(AttachedDataKey.builder("lingling_bonus_charge", Codec.INT, () -> 0).build());

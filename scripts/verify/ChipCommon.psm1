@@ -287,6 +287,7 @@ $GRID = New-PyMapFrom ([ordered]@{
     'PIGGY_BANK_CHIP'             = @(@('MC:GOLD_INGOT', 'MC:PORKCHOP', 'MC:GOLD_INGOT'), @('MC:BRICK', 'B', 'MC:BRICK'), @('C', 'C', 'C'))
     'SMART_WATCH_CHIP'            = @(@('MC:GOLD_INGOT', 'MC:CLOCK', 'MC:GOLD_INGOT'), @('MC:REDSTONE', 'B', 'MC:REDSTONE'), @('P', 'P', 'P'))
     'WHETSTONE_CHIP'              = @(@('MC:NETHERITE_INGOT', 'MC:GRINDSTONE', 'MC:NETHERITE_INGOT'), @('MC:FLINT', 'B', 'MC:FLINT'), @('P', 'P', 'P'))
+    'EXTRA_BATTERY_CHIP'          = @(@('MC:COPPER_INGOT', 'MC:COPPER_INGOT', 'MC:COPPER_INGOT'), @('W', 'B', 'W'), @('P', 'P', 'P'))  # 无流派 · 2026-10-20 补
 })
 
 # 进阶关系: 进阶筹码 -> 上一等级基础筹码

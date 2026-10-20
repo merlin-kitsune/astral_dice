@@ -1,0 +1,40 @@
+{
+  "parent": "minecraft:recipes/root",
+  "conditions": [
+    {
+      "type": "astral_dice:chip_recipes_enabled"
+    }
+  ],
+  "criteria": {
+    "has_blank_chip": {
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "astral_dice:blank_chip"
+            ]
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_the_recipe": {
+      "conditions": {
+        "recipe": "astral_dice:extra_battery_chip"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    }
+  },
+  "requirements": [
+    [
+      "has_blank_chip",
+      "has_the_recipe"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "astral_dice:extra_battery_chip"
+    ]
+  },
+  "sends_telemetry_event": false
+}

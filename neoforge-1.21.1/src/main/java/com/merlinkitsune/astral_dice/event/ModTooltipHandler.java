@@ -453,6 +453,8 @@ public class ModTooltipHandler {
             if (stack.is(ModItems.WEIRD_DICE.get())) {
                 tooltip.add(tt("tooltip.astral_dice.weird_dice_cooldown")
                         .withStyle(ChatFormatting.GREEN));
+                tooltip.add(tt("tooltip.astral_dice.weird_dice_heal")
+                        .withStyle(ChatFormatting.GREEN));
                 tooltip.add(tt("tooltip.astral_dice.weird_dice_lowroll")
                         .withStyle(ChatFormatting.RED));
             }
@@ -1145,6 +1147,10 @@ public class ModTooltipHandler {
             tooltip.add(Component.empty());
             addChipLines(tooltip, "tooltip.astral_dice.chip.whetstone", ChatFormatting.GRAY);
         }
+        if (stack.is(ModItems.EXTRA_BATTERY_CHIP.get())) {
+            tooltip.add(Component.empty());
+            addChipLines(tooltip, "tooltip.astral_dice.chip.extra_battery", ChatFormatting.GRAY);
+        }
         if (stack.is(ModItems.PADMAN_SIGN.get())) {
             tooltip.add(Component.empty());
             addSignKeyHint(tooltip);
@@ -1606,7 +1612,7 @@ public class ModTooltipHandler {
         // 怪力乱神立牌(lingling):主动「能量突击」(瞬时:立即获得 1 张「强化拒止」+ 施加「能量突击」效果
         // 1:00,期间每 10t 按**有效充能层数**(真实充能 + 吸附目标数,夹上限)刷新攻击力 / 移速修饰符)
         // + 被动「拦截者」(首次装备发 2 张「强化拒止」;拾取 / 购买 / 手持的「路障」⇒「强化拒止」;
-        // 「强化拒止」吸附的目标数作为额外充能层;攻击被吸附目标 +5 伤害,不分归属)
+        // 「强化拒止」每控制一个新目标提供 1 层额外充能,单座最多 5 层;攻击被吸附目标 +5 伤害,不分归属)
         // + 备注「路障回流」(充能上限 20 层;手持「路障」自动转换、丢出的「强化拒止」落地变回「路障」)。
         // 本立牌**无玩家级动态计数器**(有效层数已在主动动作栏播报,不重复进 tooltip),故只出
         // 「按键提示 + 主动技能名/描述 + 被动技能名/描述 + 备注区 + 冷却行」五段;块末尾必须调 addSignCooldownRemaining。
