@@ -1113,13 +1113,13 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
                 .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
-        // 额外电池:上排 铜锭·铜锭·铜锭｜中排 导电线材·空白筹码·导电线材｜下排 星盘·星盘·星盘 [史诗·无流派]
+        // 额外电池:上排 铜锭·铜锭·铜锭｜中排 红石块·空白筹码·红石块｜下排 星盘·星盘·星盘 [史诗·无流派]
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.EXTRA_BATTERY_CHIP.get())
                 .pattern("XXX")
                 .pattern("WBW")
                 .pattern("PPP")
                 .define('X', Items.COPPER_INGOT)
-                .define('W', ModItems.CONDUCTIVE_WIRE.get())
+                .define('W', Items.REDSTONE_BLOCK)
                 .define('B', ModItems.BLANK_CHIP.get())
                 .define('P', ModItems.STAR_PLATE.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
