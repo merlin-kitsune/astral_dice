@@ -323,9 +323,14 @@ function Test-ProbeLine {
         $script:NoProbeDir = $true
         Write-Output ''
         return
-        return
     }
     $files = @(Get-ChildItem -LiteralPath $srcDir -Recurse -File -Filter '*.js')
+    if ($files.Count -eq 0) {
+        Write-Output '   [FATAL] 探针目录存在但 0 个 .js 脚本 ⇒ 无法判定（路径约定变化 / 资源缺失）；不得判 PASS'
+        $script:NoProbeDir = $true
+        Write-Output ''
+        return
+    }
     $checked = 0
     $bad = New-Object 'System.Collections.Generic.List[object]'
     foreach ($f in $files) {
@@ -366,7 +371,7 @@ if ($Version -eq 'all') { $vers = @('1.21.1', '1.20.1', '26.1.2') }
 foreach ($v in $vers) { Test-ProbeLine -Ver $v }
 
 if ($script:NoProbeDir) {
-    Write-Output 'RESULT: ERROR（无法判定）—— 至少一条线无探针目录，未核到任何类引用'
+    Write-Output 'RESULT: ERROR（无法判定）—— 至少一条线无探针目录或目录内 0 个 .js 脚本，未核到任何类引用'
     [Console]::Out.Flush()
     exit 2
 }

@@ -8,7 +8,7 @@
 .DESCRIPTION
     用法:
         pwsh -NoProfile -File tools/check_lang_sync.ps1 [-LangDir <assets/astral_dice/lang>]
-        #  未传 -LangDir(默认):在仓库根目录跑时检查三线全部子项目的 lang 目录;
+        #  未传 -LangDir(默认):在仓库根目录跑时检查四线全部子项目的 lang 目录;
         #  在子项目目录内跑时回退为相对默认 src/main/resources/assets/astral_dice/lang。
 
     规则:
@@ -554,7 +554,7 @@ return 0
 # ---------------------------------------------------------------------------
 # 目标选择
 #   显式 -LangDir:只检查该目录(CI 的三步显式调用、以及在子项目目录内的手工调用都走这里)。
-#   未传参:默认检查三线**全部**子项目的 lang 目录 —— 仓库根目录一次跑完
+#   未传参:默认检查四线**全部**子项目的 lang 目录 —— 仓库根目录一次跑完
 #   (`pwsh -NoProfile -File tools/check_lang_sync.ps1`),与 CI 的显式三步等价。
 # ---------------------------------------------------------------------------
 $targetDirs = [System.Collections.Generic.List[string]]::new()

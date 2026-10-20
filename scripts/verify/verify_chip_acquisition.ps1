@@ -433,6 +433,9 @@ function Main {
             $chipList += $p[$p.Count - 1]
         }
         $chipList = Sort-Ordinal $chipList
+        if ($chipList.Count -eq 0) {
+            throw "${sub}: chips 标签成员数为 0 ⇒ 无法判定（缺 data/*/tags/item/chips.json 或路径约定变化）；不得判 PASS"
+        }
         $rec = Get-Recipes $sub
         $tags = Get-AllTags $sub
         $loot = Get-LootSources $sub
