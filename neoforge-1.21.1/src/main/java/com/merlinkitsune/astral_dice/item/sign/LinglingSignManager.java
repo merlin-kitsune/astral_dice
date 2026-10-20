@@ -244,8 +244,19 @@ public final class LinglingSignManager {
     public static int recomputeBonusCharge(Player player) {
         if (player == null || player.level().isClientSide()) return 0;
         int bonus = bonusChargeFromOwnedFields(player);
-        if (bonus != ModAttachments.getLinglingBonusCharge(player)) {
+        int previous = ModAttachments.getLinglingBonusCharge(player);
+        if (bonus != previous) {
             ModAttachments.setLinglingBonusCharge(player, bonus);
+            int delta = bonus - previous;
+            if (delta > 0) {
+                // 2026-10-21 用户裁决：额外层必须是**真实充能层**（HUD 可见、供其它系统读取），
+                // 不再是只影响 buff 数值的隐形加成层。
+                ChargeManager.addStacks(player, delta);
+            } else {
+                // 回收走 ChargeEffect 直调：绕开 ChargeManager.consume 的「消耗充能」回调，
+                // 避免「装备/卸下立牌」刷赋能。
+                com.merlinkitsune.astral_dice.effect.ChargeEffect.consume(player, -delta);
+            }
         }
         return bonus;
     }
@@ -264,9 +275,8 @@ public final class LinglingSignManager {
      */
     public static int effectiveCharge(Player player) {
         if (player == null) return 0;
-        int stacks = ChargeManager.getStacks(player);
-        int bonus = bonusCharge(player);
-        return Math.min(GameplayConstants.CHARGE_MAX_STACKS, stacks + bonus);
+        // 额外层已物化为真实充能层（见 recomputeBonusCharge）⇒ 这里不能再加一次，否则重复计数。
+        return Math.min(GameplayConstants.CHARGE_MAX_STACKS, ChargeManager.getStacks(player));
     }
 
     /**
@@ -321,6 +331,11 @@ public final class LinglingSignManager {
     /** 卸下 / 失去佩戴时的完整清理：额外层归零 + 摘修饰符 + 摘 buff。 */
     public static void clearAll(Player player) {
         if (player == null) return;
+        // 卸下/失效：把立牌物化出来的额外层一并收回（同样绕开「消耗充能」回调）。
+        int bonus = ModAttachments.getLinglingBonusCharge(player);
+        if (bonus > 0) {
+            com.merlinkitsune.astral_dice.effect.ChargeEffect.consume(player, bonus);
+        }
         ModAttachments.setLinglingBonusCharge(player, 0);
         clearModifiers(player);
         ModEffectRemoval.remove(player, ModEffects.LINGLING_SURGE);

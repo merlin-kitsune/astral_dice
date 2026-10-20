@@ -95,9 +95,9 @@ public class PlayerTickEvents {
         // 充能状态图标的可见性(2026-10-03 用户裁决):未装备任何**充能类筹码**时隐藏 HUD 图标,
         // 装备回筹码后恢复。前置 hasCharge 早退 ⇒ 没有充能的玩家零开销;showIcon 未变时
         // setIconVisibility 内部直接 return,不会每 tick 重建效果实例。
+        // 2026-10-21 用户裁决：删除「未装备充能类筹码时隐藏图标」的闸门 —— 只要有充能就显示。
         if (ChargeManager.hasCharge(player)) {
-            com.merlinkitsune.astral_dice.effect.ChargeEffect.setIconVisibility(
-                    player, ChargeManager.isChargeChipEquipped(player));
+            com.merlinkitsune.astral_dice.effect.ChargeEffect.setIconVisibility(player, true);
         }
         // 人偶师立牌(hanna)「幻想千金」/「挚友祝福」:路过友方玩家的判定。
         // 两条被动各有独立的 1:00 冷却 ⇒ 冷却内只读两个 long 即早退,每 tick 调用安全;

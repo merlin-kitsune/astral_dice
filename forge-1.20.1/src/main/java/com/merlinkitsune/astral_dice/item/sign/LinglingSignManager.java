@@ -214,12 +214,20 @@ public final class LinglingSignManager {
         return false;
     }
 
-    /** 按当前吸附目标数重算额外充能层(值不变则不写 NBT) */
+    /** 按当前吸附目标数重算额外充能层，并**物化为真实充能层**（2026-10-21 用户裁决）。 */
     public static void recomputeBonusCharge(Player player) {
         if (player == null || player.level().isClientSide) return;
         int bonus = bonusChargeFromOwnedFields(player);
-        if (bonus != ModAttachments.getLinglingBonusCharge(player)) {
+        int previous = ModAttachments.getLinglingBonusCharge(player);
+        if (bonus != previous) {
             ModAttachments.setLinglingBonusCharge(player, bonus);
+            int delta = bonus - previous;
+            if (delta > 0) {
+                ChargeManager.addStacks(player, delta);
+            } else {
+                // 回收走 ChargeEffect 直调，绕开「消耗充能」回调，避免装备/卸下刷赋能。
+                com.merlinkitsune.astral_dice.effect.ChargeEffect.consume(player, -delta);
+            }
         }
     }
 
@@ -230,7 +238,8 @@ public final class LinglingSignManager {
     /** 有效充能层 = 基础层 + 额外层,合计封顶 {@link GameplayConstants#CHARGE_MAX_STACKS} */
     public static int effectiveCharge(Player player) {
         if (player == null) return 0;
-        return Math.min(GameplayConstants.CHARGE_MAX_STACKS, ChargeManager.getStacks(player) + bonusCharge(player));
+        // 额外层已物化为真实充能层 ⇒ 不能再叠加一次。
+        return Math.min(GameplayConstants.CHARGE_MAX_STACKS, ChargeManager.getStacks(player));
     }
 
     // ── 每 10t 被动刷新(§4.1 / §4.4 / §4.6 / §5 实时修饰器) ────────────────────
@@ -281,6 +290,10 @@ public final class LinglingSignManager {
     /** 卸下 / 死亡:层数归零 + 摘净修饰器 + 移除效果 */
     public static void clearAll(Player player) {
         if (player == null) return;
+        int bonus = ModAttachments.getLinglingBonusCharge(player);
+        if (bonus > 0) {
+            com.merlinkitsune.astral_dice.effect.ChargeEffect.consume(player, bonus);
+        }
         ModAttachments.setLinglingBonusCharge(player, 0);
         clearModifiers(player);
         ModEffectRemoval.remove(player, ModEffects.LINGLING_SURGE.get());
