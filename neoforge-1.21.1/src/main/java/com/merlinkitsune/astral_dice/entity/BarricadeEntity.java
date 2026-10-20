@@ -165,6 +165,13 @@ public class BarricadeEntity extends LivingEntity {
     public void tick() {
         super.tick();
         if (this.level().isClientSide) return;
+        // 没有碰撞方块的路障无法存在（裸 /summon 或旧存档残缺）：
+        // 2026-10-21 实测裸召唤的实体会一路下坠到 y=-245 才被清理 ⇒ 直接自毁，避免「自己掉下去」。
+        if (this.collisionPos == null) {
+            this.discard();
+            return;
+        }
+
         // 钉死在本方块中心：任何外力（爆炸 / 活塞 / 位移效果）把实体推离碰撞方块后
         // 下一 tick 立刻拉回，避免「视觉与碰撞脱节」（2026-10-18 实机：苦力怕爆炸把位置
         // 推到 y=105.75，方块仍在 y=96）。
