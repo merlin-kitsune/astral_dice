@@ -84,7 +84,7 @@ public class RepulsionModel extends EntityModel<RepulsionEntity> {
     private static final float BLADE_TWIST = (float) Math.toRadians(90.0D);
 
     /** bbmodel 的 +45°（绕 Z）⇒ 模型侧 −135°（比「取反」多 90°：叠加渲染期 scale(-1,-1,1) 后北面贴图才与 bbmodel 同向）。 */
-    private static final float HEAD_TWIST = (float) Math.toRadians(135.0D);
+    private static final float HEAD_TWIST = (float) Math.toRadians(45.0D);   // 2026-10-21 用户裁决：牌面相对 10-18 的 -135° 又转了 180° ⇒ +45°（正方形轮廓不变，仅贴图朝向翻转）
 
     private final ModelPart root;
 
@@ -111,7 +111,7 @@ public class RepulsionModel extends EntityModel<RepulsionEntity> {
         root.addOrReplaceChild("head",
                 CubeListBuilder.create().texOffs(0, 3)
                         .addBox(0.0F, 0.0F, 0.0F, 12.0F, 12.0F, 2.0F),
-                PartPose.offsetAndRotation(0.0F, 1.5F, -1.0F, 0.0F, 0.0F, -HEAD_TWIST));
+                PartPose.offsetAndRotation(0.0F, 1.5F, -1.0F, 0.0F, 0.0F, HEAD_TWIST));
 
         return LayerDefinition.create(mesh, 64, 64);
     }

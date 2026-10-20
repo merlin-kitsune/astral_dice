@@ -379,6 +379,23 @@ public class RepulsionEntity extends LivingEntity {
         if (this.level().isClientSide) return;
         if (this.isRemoved() || !this.isAlive()) return;
 
+        // 钉死（2026-10-21 用户裁决：放置后不得再被移动）：
+        // ① 清掉一切外力写入的速度（爆炸 / 击退 / 其它模组的 setDeltaMovement）；
+        // ② 位置若偏离落位锚点（活塞 / 水流 / 直接 setPos），拉回原坐标。
+        if (this.getDeltaMovement().lengthSqr() > 1.0E-6) {
+            this.setDeltaMovement(Vec3.ZERO);
+        }
+        if (!this.pinned) {
+            this.pinX = this.getX();
+            this.pinY = this.getY();
+            this.pinZ = this.getZ();
+            this.pinned = true;
+        } else if (Math.abs(this.getX() - this.pinX) > 1.0E-4
+                || Math.abs(this.getY() - this.pinY) > 1.0E-4
+                || Math.abs(this.getZ() - this.pinZ) > 1.0E-4) {
+            this.setPos(this.pinX, this.pinY, this.pinZ);
+        }
+
         // 剪枝 + 越界钳制：每 tick 做（「目标无法逃离影响范围」需要即时生效）
         this.tickTrackedTargets();
         // 苦力怕引信压制：每 tick 做（自然膨胀路径；打火石点燃路径由 ExplosionEvent.Start 兜底）
@@ -686,6 +703,18 @@ public class RepulsionEntity extends LivingEntity {
     public boolean isPushable() {
         return false;
     }
+
+    /** 水流 / 岩浆流也不得推移（{@code Entity} 默认返回 true）。 */
+    @Override
+    public boolean isPushedByFluid() {
+        return false;
+    }
+
+    /** 落位锚点：首次 tick 记录，之后每 tick 比对（见 {@link #tick()}）。 */
+    private double pinX;
+    private double pinY;
+    private double pinZ;
+    private boolean pinned;
 
     /** 钉在地上：不吃爆炸 / 活塞 / 水流等一切外力推移。 */
     @Override
