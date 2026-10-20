@@ -13,7 +13,6 @@ import java.util.concurrent.ThreadLocalRandom;
  * 诡异骰子:与钻石骰子同阶。
  *
  * 功能:
- * - 立牌主动技能冷却时间 -50%(所有「开始冷却」的入口统一经 {@link #signCooldownTicks} 取值);
  * - 战斗骰(d1-6)低点数(1-3)出现概率提升 50%(权重法:1/2/3 权重 3.0,4/5/6 权重 1,
  *   即 P(低点数) 由 50% 升至 75%,相对提升 50%,与 tooltip 文案一致)。
  * - 立牌主动技能**结束**时获得 5 点治愈({@link #onSignActiveEnded},2026-10-20 新增):
@@ -37,13 +36,12 @@ public final class WeirdDiceHandler {
                 .orElse(false);
     }
 
-    /** 立牌主动技能冷却 tick:拥有充能时先把基础值封顶(180→160 秒),再按诡异骰子减半 */
+    /**
+     * 立牌主动技能冷却 tick:只做充能封顶(180→160 秒),**不再提供诡异骰子的 -50%**
+     * (用户需求 2026-10-21:该能力已删除)。保留本方法仅为不改动既有调用点。
+     */
     public static int signCooldownTicks(Player player) {
-        int ticks = (int) ChargeManager.signCooldownTicks(player, GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS);
-        if (hasWeirdDice(player)) {
-            ticks = Math.max(1, ticks / 2);
-        }
-        return ticks;
+        return (int) ChargeManager.signCooldownTicks(player, GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS);
     }
 
     /**

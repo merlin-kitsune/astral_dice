@@ -451,8 +451,6 @@ public class ModTooltipHandler {
                         .withStyle(ChatFormatting.GOLD));
             }
             if (stack.is(ModItems.WEIRD_DICE.get())) {
-                tooltip.add(tt("tooltip.astral_dice.weird_dice_cooldown")
-                        .withStyle(ChatFormatting.GREEN));
                 tooltip.add(tt("tooltip.astral_dice.weird_dice_heal")
                         .withStyle(ChatFormatting.GREEN));
                 tooltip.add(tt("tooltip.astral_dice.weird_dice_lowroll")
