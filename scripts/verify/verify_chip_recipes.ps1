@@ -208,7 +208,11 @@ function jar_json {
 
 function check_jar {
     param($dialect)
-    $p = [System.IO.Path]::Combine($ROOT, 'build', 'libs', $JAR[$dialect])
+    # 优先读子项目自身产物；根 build/libs 是「部署到整合包」的旧副本，版本升级后会过期
+    $p = [System.IO.Path]::Combine($ROOT, $SUB[$dialect], 'build', 'libs', $JAR[$dialect])
+    if (-not [System.IO.File]::Exists($p)) {
+        $p = [System.IO.Path]::Combine($ROOT, 'build', 'libs', $JAR[$dialect])
+    }
     $zip = [System.IO.Compression.ZipFile]::OpenRead($p)
     try {
         $pre = 'data/astral_dice/' + $RECDIR[$dialect] + '/'
