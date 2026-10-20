@@ -62,6 +62,8 @@ def main(argv=None):
     ap.add_argument("--modrinth-token", default=None)
     ap.add_argument("--curseforge-project", default="1755415")
     ap.add_argument("--curseforge-key", default=None)
+    ap.add_argument("--try-cf", action="store_true",
+                    help="仍然尝试 PUT /v1/mods/{id}（2026-10-20 实测 404，仅供未来重试）")
     ap.add_argument("--proxy", default=None)
     ap.add_argument("--apply", action="store_true")
     args = ap.parse_args(argv)
@@ -100,7 +102,12 @@ def main(argv=None):
         print("[Modrinth] HTTP %s %s" % (status, "" if status == 200 else text))
         rc |= 0 if status == 200 else 1
 
-    if not cf_key:
+    if not args.try_cf:
+        # 2026-10-20 实测：Core API 对 /v1/mods/{id} 只有 GET，PUT/POST/PATCH/OPTIONS 全 404；
+        # Upload API 也没有项目信息端点。公开 API 无法改项目简介/描述。
+        print("[SKIP] CurseForge：公开 API 不支持修改项目信息（需作者后台手动粘贴或非公开端点）")
+        rc |= 2
+    elif not cf_key:
         print("[SKIP] CurseForge：缺少 API key（CURSEFORGE_API_KEY）")
         rc |= 2
     else:
