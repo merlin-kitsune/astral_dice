@@ -603,6 +603,7 @@ pwsh -NoProfile -File scripts/verify/verify_bountiful_instance_exclusions.ps1
 pwsh -NoProfile -File scripts/verify/verify_forge_loader_gate.ps1   # 1.20.1 加载器版本门槛 + Mixin Booster 硬前置（独立离线脚本，零 mt 依赖；0/1/2，见附录 A 续 28）
 pwsh -NoProfile -File tools/check_mod_sources.ps1                    # 模组来源统一口径(Curse/Modrinth Maven);阶段 P 的「模组来源」一项共用本脚本
 pwsh -NoProfile -File scripts/devtools/Test-MtSyntax.ps1              # .ps1/.psm1 解析 + **.js** 的 `node --check`（2026-09-28 扩到 js，见 §10 第 5 条子项）
+python tools/check_changelog_parity.py                                # CHANGELOG 中英逐段条目数 / 标题层级对齐；退出码 2 = 无法判定
 ```
 
 > ℹ️ **`verify_content_library.ps1` 已移出本节（2026-09-23 用户裁决「按第 2 路修复」）** —— 它是 **1.2.0 冻结期一次性验收工具，不是长期闸门**。
