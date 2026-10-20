@@ -181,6 +181,7 @@ public final class ChipShopCatalog {
             e("bank_card_low_chip", TIER_RARE, School.STARLIGHT, Category.ECONOMY),
             e("bank_card_unlimited_chip", TIER_LEGENDARY, School.STARLIGHT, Category.ECONOMY),
             e("eight_sided_dice_chip", TIER_RARE, School.STARLIGHT, Category.ECONOMY),
+            e("extra_battery_chip", TIER_EPIC, School.GENERIC, Category.SUPPORT),
             e("flashlight_burst_chip", TIER_LEGENDARY, School.STARLIGHT, Category.ATTACK),
             e("flashlight_chip", TIER_EPIC, School.STARLIGHT, Category.ATTACK),
             e("fortune_stick_chip", TIER_EPIC, School.STARLIGHT, Category.ATTACK),
