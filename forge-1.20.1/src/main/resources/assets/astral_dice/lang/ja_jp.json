@@ -634,7 +634,7 @@
   "tooltip.astral_dice.crimson_dice_roll1": "§c1§c を出した時、即座に §c6§c のダメージを受ける",
   "tooltip.astral_dice.obsidian_dice_defense": "基礎防御力 §e+3§9",
   "tooltip.astral_dice.obsidian_dice_explosion": "受ける爆発ダメージが §e50%%§6 減少",
-  "tooltip.astral_dice.weird_dice_heal": "アクティブスキル終了後、治癒ポイント §e5§a を獲得",
+  "tooltip.astral_dice.weird_dice_heal": "アクティブスキル終了後、体力を §e5§a 回復",
   "tooltip.astral_dice.weird_dice_lowroll": "戦闘ダイスの低点数（§e1-3§c）の確率が §e50%%§c 上昇",
   "tooltip.astral_dice.glass_dice_death": "死亡するとこのダイスと装備中のすべてのカードを失う",
   "tooltip.astral_dice.glass_dice_max": "戦闘カードの点数は常に最大値を取る",

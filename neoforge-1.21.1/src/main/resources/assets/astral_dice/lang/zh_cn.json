@@ -635,7 +635,7 @@
   "tooltip.astral_dice.crimson_dice_roll1": "骰出 §c1§c 时立即受到 §c6§c 点伤害",
   "tooltip.astral_dice.obsidian_dice_defense": "基础防御力 §e+3§9",
   "tooltip.astral_dice.obsidian_dice_explosion": "受到的爆炸伤害减少 §e50%%§r",
-  "tooltip.astral_dice.weird_dice_heal": "主动技能结束后，获得 §e5§a 点治愈",
+  "tooltip.astral_dice.weird_dice_heal": "主动技能结束后，恢复 §e5§a 点生命值",
   "tooltip.astral_dice.weird_dice_lowroll": "战斗骰低点数（§e1-3§c）概率提升 §e50%%§r",
   "tooltip.astral_dice.glass_dice_death": "死亡会丢失该骰子及其已装备的全部卡牌",
   "tooltip.astral_dice.glass_dice_max": "战斗牌点数始终取最大值",

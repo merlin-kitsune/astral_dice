@@ -15,7 +15,7 @@ import java.util.concurrent.ThreadLocalRandom;
  * 功能:
  * - 战斗骰(d1-6)低点数(1-3)出现概率提升 50%(权重法:1/2/3 权重 3.0,4/5/6 权重 1,
  *   即 P(低点数) 由 50% 升至 75%,相对提升 50%,与 tooltip 文案一致)。
- * - 立牌主动技能**结束**时获得 5 点治愈({@link #onSignActiveEnded},2026-10-20 新增):
+ * - 立牌主动技能**结束**时恢复 5 点生命值({@link #onSignActiveEnded},2026-10-20 新增,2026-10-21 改为直接回血):
  *   口径与挂点见该方法 javadoc。
  */
 public final class WeirdDiceHandler {
@@ -24,8 +24,8 @@ public final class WeirdDiceHandler {
     public static final float LOW_FACE_WEIGHT = 3.0F;
     /** 骰面数 */
     public static final int D6_FACES = 6;
-    /** 主动技能结束后获得的治愈点数(用户需求 2026-10-20:5 点)。 */
-    public static final int HEAL_ON_ACTIVE_END = 5;
+    /** 主动技能结束后恢复的生命值(用户裁决 2026-10-21:5 点 HP,不是治愈点数)。 */
+    public static final int HEALTH_ON_ACTIVE_END = 5;
 
     private WeirdDiceHandler() {
     }
@@ -85,6 +85,6 @@ public final class WeirdDiceHandler {
     public static void onSignActiveEnded(Player player) {
         if (player == null || player.level().isClientSide()) return;
         if (!hasWeirdDice(player)) return;
-        HealingManager.add(player, HEAL_ON_ACTIVE_END);
+        player.heal(HEALTH_ON_ACTIVE_END);
     }
 }
