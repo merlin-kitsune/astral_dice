@@ -180,6 +180,8 @@ BINDING_FILE = "tools/curseforge.json"
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
 JAR_RE = re.compile(r"^astral_dice-(?P<ver>[^+]+)\+(?P<loader>[a-z]+)_(?P<mc>.+)\.jar$")
+# StarEngine 库产物: starengine-<平台>-<版本>.jar（平台含 MC 版本，如 neoforge-1.21.1）
+LIB_JAR_RE = re.compile(r"^starengine-(?P<loader>neoforge|forge|fabric)-(?P<mc>\d+\.\d+(?:\.\d+)?)-(?P<ver>.+)\.jar$")
 CACHE_DAYS = 7
 # CurseForge 官方文档给出的 relation type 全集（没有 include 这一项）。
 RELATION_TYPES = ("requiredDependency", "optionalDependency", "embeddedLibrary", "incompatible", "tool")
@@ -382,9 +384,19 @@ def resolve_ids(cat, mc, loader):
 # ---------------------------------------------------------------- 元数据
 def parse_jar(jar):
     m = JAR_RE.match(jar.name)
-    if not m:
-        raise SystemExit(f"[ERR] jar 名不符合 astral_dice-<版本>+<加载器>_<MC版本>.jar：{jar.name}")
-    return m.group("ver"), m.group("loader"), m.group("mc")
+    if m:
+        return m.group("ver"), m.group("loader"), m.group("mc")
+    m = LIB_JAR_RE.match(jar.name)
+    if m:
+        return m.group("ver"), m.group("loader"), m.group("mc")
+    raise SystemExit(
+        "[ERR] jar 名无法解析。支持两种："
+        "astral_dice-<版本>+<加载器>_<MC版本>.jar / starengine-<平台>-<版本>.jar："
+        f"{jar.name}")
+
+
+def is_lib_jar(name):
+    return bool(LIB_JAR_RE.match(name))
 
 
 def infer_release_type(ver):
@@ -693,6 +705,14 @@ def write_enabled(args):
 def make_ctx(args, write):
     binding = load_binding()
     project_id = str(args.project_id or binding.get("projectId") or DEFAULT_PROJECT_ID)
+    # 库 jar 默认推到库项目（tools/curseforge.json 的 lib.projectId）
+    _jars = [os.path.basename(str(p)) for p in (getattr(args, "jar", None) or [])]
+    if (_jars and all(is_lib_jar(j) for j in _jars)
+            and not args.project_id and binding.get("lib", {}).get("projectId")):
+        project_id = str(binding["lib"]["projectId"])
+        # 库产物不声明本体那套 relations（库的 mods.toml 不要求 Curios/Mixin Booster）
+        if hasattr(args, "no_relations"):
+            args.no_relations = True
     token, token_src = resolve_token_safe(args.token, write)
     api_key, api_key_src, fallback = resolve_api_key(getattr(args, "api_key", None), token)
     proxy = (args.proxy or os.environ.get("HTTPS_PROXY") or os.environ.get("https_proxy"))
