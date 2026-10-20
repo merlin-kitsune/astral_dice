@@ -133,11 +133,11 @@ config="${mod_id}.jade.mixins.json"
     ordering="AFTER"
     side="BOTH"
 
-# StarEngine Lib(必须前置):效果/事件/目标选择/通用组件的共享实现所在库。
+# StarEngine Lib(**独立前置**,必须由玩家/整合包单独安装):效果/事件/目标选择/通用组件的共享实现所在库。
 # 本模组绝大多数共享逻辑已下沉至该库,缺失将导致 NoClassDefFoundError,故为 mandatory。
 # ⚠️ 2026-09-25 起**不再声明库的版本下界**:版本区间规则已移除,版本要求只由 gradle.properties 的
-#   starengine_version **一个量**表达;本段只按「**必须存在**」校验 —— 库随本模组内嵌(JarJar),
-#   内嵌副本就是满足它的那个 mod。
+#   starengine_version **一个量**表达;本段只按「**必须存在**」校验 —— 库**不再内嵌**(2026-10-20 起
+#   移除 JarJar),玩家必须自行把 `starengine-forge-1.20.1-<版本>.jar` 放进 mods(须为生产 SRG 件)。
 # ⚠️⚠️ **但本线不能像 neo 两线那样省略 versionRange**(2026-09-26 实机取证 + 反编译确证):
 #   本线省略时 FML 取 IModInfo.UNBOUNDED,而该常量的静态初始化就是 `ldc ""`(空 spec)⇒
 #   MavenVersionAdapter.createFromVersionSpec("") ⇒ **restriction 数为 0**;

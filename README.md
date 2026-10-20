@@ -83,7 +83,7 @@ This section covers everything that shipped across the 1.5.0 pre-release and rel
 
 | Dependency | Requirement |
 |---|---|
-| Required, bundled | **StarEngine** (mod id `starengine`, currently **1.1.0-pre.1**) ships inside the mod, and the loader picks up the embedded copy at startup. Do not add a standalone `starengine-*.jar` to `mods`: the loader de-duplicates by mod id and prefers the standalone copy, so an older one would shadow the embedded build. The library repository publishes no jars for installation; it is a source and maven project. |
+| Required, install separately | **StarEngine** (mod id `starengine`, currently **1.1.0-pre.1**). On **NeoForge 1.21.1** and **Forge 1.20.1** the library is **no longer bundled**: put `starengine-neoforge-1.21.1-<version>.jar` / `starengine-forge-1.20.1-<version>.jar` into `mods` next to this mod, at the same version this build was compiled against. A missing library fails startup with "Missing or unsupported mandatory dependencies". (The NeoForge 26.1.2 and Fabric 1.20.1 builds still embed it for now.) |
 | Required | Curios API: 5.x on 1.20.1, 9+ on 1.21.1, 15+ on 26.1.2. A missing or too-old Curios is rejected during dependency sorting. This requirement is declared by this mod; StarEngine only uses Curios as a compile-time dependency on the Forge side. |
 | Required, 1.20.1 only | A Mixin runtime: either **Mixin Booster 0.1.3 or newer**, or **Sinytra Connector**. If the pack already ships Connector, nothing else is needed, because Connector bundles the same runtime and Mixin Booster steps aside. When neither is present the mod refuses to start and explains how to install one. An outdated Mixin Booster is rejected. |
 | Required, fabric-1.20.1 only | A different set, listed under [Fabric prerequisites](#fabric-1201-prerequisites). The Curios and Mixin Booster chain does not apply on this line. |
@@ -111,7 +111,7 @@ This section covers everything that shipped across the 1.5.0 pre-release and rel
 
 - **GitHub Releases**: [merlin-kitsune/astral_dice/releases](https://github.com/merlin-kitsune/astral_dice/releases). Each release carries three jars: the two release lines plus the 26.1.2 jar.
 - **Fabric port line**: published as its own `fabric-<version>` pre-release, marked as a pre-release and never as "latest", carrying only its own jar.
-- **Modrinth**: the four builds go to the main project (`5xDtrJ8X`). The bundled library StarEngine has its own project (`2dIXA5wO`); its jars exist only so the `embedded` dependency reference resolves, and they should not be installed. Version numbers keep the `+<loader>_<MC>` suffix (for example `1.5.0-pre.1+neoforge_1.21.1`), and the release channel follows the version suffix.
+- **Modrinth**: the four builds go to the main project (`5xDtrJ8X`). StarEngine has its own project (`2dIXA5wO`); on **NeoForge 1.21.1** and **Forge 1.20.1** it is no longer bundled, so players must install that separate jar themselves (the 26.1.2 and Fabric builds still embed it). Version numbers keep the `+<loader>_<MC>` suffix (for example `1.5.0-pre.1+neoforge_1.21.1`), and the release channel follows the version suffix.
 - **Build artefacts**: `astral_dice-<version>+neoforge_1.21.1.jar`, `+forge_1.20.1.jar`, `+neoforge_26.1.2.jar` and `+fabric_1.20.1.jar`, each under its subproject's `build/libs/`. GitHub Release tags use the bare base version, while the Fabric line uses a `fabric-<version>` pre-release tag.
 
 ## Build

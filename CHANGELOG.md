@@ -28,6 +28,14 @@
   icons, same shapes as vanilla), matching the other three lines; mobs still show their vanilla armor value.
   **Without Jade nothing changes** (no extra dependency is required of players).
 
+- **StarEngine is no longer bundled (NeoForge 1.21.1 / Forge 1.20.1)**: the `jarJar` embedding was removed from
+  both release lines, so the shipped jars no longer contain `META-INF/jarjar/`. StarEngine (`starengine`,
+  **1.1.0-pre.1**) is now a **standalone prerequisite** that must be installed in `mods` at the same version this
+  build was compiled against; a missing library fails startup with "Missing or unsupported mandatory dependencies".
+  The compile-time and dev-run dependencies are unchanged (`implementation` / `modImplementation`), and
+  `mods.toml` still declares `starengine` as a required dependency. The NeoForge 26.1.2 and Fabric 1.20.1 builds
+  still embed the library for now.
+
 #### Input & UI
 
 - **New combat stat bars: Defense and Attack Power** (user request 2026-09-26): the vanilla **armor bar row** now

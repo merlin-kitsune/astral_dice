@@ -26,6 +26,13 @@
   本模组的**防御力**（图标为本模组**满 / 半 / 空**三态盾形图，与原版外观同形），与另三条线一致；
   生物仍显示其原版护甲值。**未装 Jade 时一切照旧**（不产生额外前置要求）。
 
+- **不再内置 StarEngine（NeoForge 1.21.1 / Forge 1.20.1）**：两条发布线已删除 `jarJar` 内嵌，
+  发货 jar 内不再含 `META-INF/jarjar/`。StarEngine（`starengine`，**1.1.0-pre.1**）改为**独立前置**，
+  必须自行安装到 `mods`，且版本要与本构建编译时所用的一致；缺库会以
+  「Missing or unsupported mandatory dependencies」拒绝启动。编译期与 dev 运行期依赖不变
+  （`implementation` / `modImplementation`），`mods.toml` 仍把 `starengine` 声明为必需前置。
+  NeoForge 26.1.2 与 Fabric 1.20.1 两条线目前仍内置该库。
+
 #### 输入与界面
 
 - **新增战斗数值条：防御力条与攻击力条**（2026-09-26 用户需求）：原版**护甲条所在的那一行**改成本模组的
