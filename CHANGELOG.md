@@ -460,6 +460,8 @@
 
 ### Bug Fixes
 
+- **Five chip recipes were missing**: Flashlight - Burst, Fortune Stick, Reagent - Abyss, Wireless Transmission Pole and Sensor Device now have shaped recipes on both P0 lines (their school materials follow the existing charge / healing / mark / starlight patterns).
+
 #### UI & Interaction
 
 - **Fixed the card choice screen's unclickable card frames, cards lost on death, and leftover sessions** (2026-10-17 review P1/P2/P3):

@@ -241,9 +241,12 @@ $GRID = New-PyMapFrom ([ordered]@{
     'AIRBAG_CHIP'                 = @(@('MC:LEATHER', 'MC:WHITE_WOOL', 'MC:LEATHER'), @('W', 'B', 'W'), @('P', 'P', 'P'))
     'RAILGUN_CHIP'                = @(@('MC:REDSTONE_BLOCK', 'MC:END_CRYSTAL', 'MC:REDSTONE_BLOCK'), @('W', 'B', 'W'), @('G', 'G', 'G'))
     'PRIMORDIAL_CORE_CHIP'        = @(@('MC:NETHERITE_INGOT', 'MC:DRAGON_BREATH', 'MC:NETHERITE_INGOT'), @('W', 'B', 'W'), @('G', 'G', 'G'))
+    'INFINITE_GRID_CHIP'          = @(@('MC:COPPER_INGOT', 'MC:LIGHTNING_ROD', 'MC:COPPER_INGOT'), @('W', 'B', 'W'), @('P', 'P', 'P'))  # 充能 · 2026-10-20 补
     # 星光类
     'FLASHLIGHT_CHIP'             = @(@('MC:REDSTONE_LAMP', 'MC:YELLOW_STAINED_GLASS', 'MC:REDSTONE_LAMP'), @('D', 'B', 'D'), @('P', 'P', 'P'))
     'PURPLE_SHOOTING_STAR_CHIP'   = @(@('MC:AMETHYST_SHARD', 'MC:AMETHYST_SHARD', 'MC:AMETHYST_SHARD'), @('D', 'B', 'D'), @('P', 'P', 'P'))
+    'FORTUNE_STICK_CHIP'          = @(@('MC:BAMBOO', 'MC:PAPER', 'MC:BAMBOO'), @('D', 'B', 'D'), @('P', 'P', 'P'))  # 星光 · 2026-10-20 补
+    'FLASHLIGHT_BURST_CHIP'       = @(@('MC:GLOWSTONE', 'MC:REDSTONE_LAMP', 'MC:GLOWSTONE'), @('D', 'B', 'D'), @('G', 'G', 'G'))  # 星光 · 2026-10-20 补
     # 金色飞星已转为**进阶筹码**(紫->金,2026-09-23):不再是基础图案,见 $UPGRADE
     'EIGHT_SIDED_DICE'            = @(@('MC:GOLD_INGOT', 'MOD:DICE', 'MC:GOLD_INGOT'), @('D', 'B', 'D'), @('C', 'C', 'C'))
     'ATM'                         = @(@('MC:GOLD_INGOT', 'MC:GOLD_INGOT', 'MC:GOLD_INGOT'), @('D', 'B', 'D'), @('C', 'C', 'C'))
@@ -257,6 +260,7 @@ $GRID = New-PyMapFrom ([ordered]@{
     'CANDY_CHIP'                  = @(@('MC:SUGAR', 'MC:COOKIE', 'MC:SUGAR'), @('R', 'B', 'R'), @('P', 'P', 'P'))
     'FRIENDSHIP_BADGE'            = @(@('POTION_HEAL', 'MC:ENCHANTED_GOLDEN_APPLE', 'POTION_HEAL'), @('R', 'B', 'R'), @('P', 'P', 'P'))
     'BIG_BOWL_STEW_CHIP'          = @(@('MC:BOWL', 'MC:COOKED_BEEF', 'MC:BOWL'), @('R', 'B', 'R'), @('G', 'G', 'G'))
+    'ABYSS_REAGENT_CHIP'          = @(@('MC:PRISMARINE_SHARD', 'MC:HEART_OF_THE_SEA', 'MC:PRISMARINE_SHARD'), @('R', 'B', 'R'), @('P', 'P', 'P'))  # 治愈 · 2026-10-20 补
     # 标记类
     'SCOPE_CHIP'                  = @(@('MC:AMETHYST_SHARD', 'MC:COPPER_INGOT', 'MC:AMETHYST_SHARD'), @('M', 'B', 'M'), @('P', 'P', 'P'))
     'TARGET_CHIP'                 = @(@('MC:TARGET', 'MC:TARGET', 'MC:TARGET'), @('M', 'B', 'M'), @('C', 'C', 'C'))
@@ -264,6 +268,7 @@ $GRID = New-PyMapFrom ([ordered]@{
     'NINJA_STAR_CHIP'             = @(@('MC:NETHERITE_INGOT', 'MC:REDSTONE_BLOCK', 'MC:NETHERITE_INGOT'), @('M', 'B', 'M'), @('G', 'G', 'G'))
     'HAND_FAN_SMALL_CHIP'         = @(@('MC:FEATHER', 'MC:BAMBOO', 'MC:FEATHER'), @('M', 'B', 'M'), @('C', 'C', 'C'))
     'MAGIC_QUIVER'                = @(@('MC:SPECTRAL_ARROW', 'MC:SPECTRAL_ARROW', 'MC:SPECTRAL_ARROW'), @('M', 'B', 'M'), @('P', 'P', 'P'))
+    'SENSOR_CHIP'                 = @(@('MC:DAYLIGHT_DETECTOR', 'MC:OBSERVER', 'MC:DAYLIGHT_DETECTOR'), @('M', 'B', 'M'), @('P', 'P', 'P'))  # 标记 · 2026-10-20 补
     # 无流派(基底)
     'MAGIC_TOME_CHIP'             = @(@('MC:WRITABLE_BOOK', 'MC:ENDER_EYE', 'MC:WRITABLE_BOOK'), @('MC:EXPERIENCE_BOTTLE', 'B', 'MC:EXPERIENCE_BOTTLE'), @('P', 'P', 'P'))
     'BIG_BACKPACK_CHIP'           = @(@('MC:LEATHER', 'MC:LEATHER', 'MC:LEATHER'), @('MC:IRON_INGOT', 'B', 'MC:IRON_INGOT'), @('P', 'P', 'P'))

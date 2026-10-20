@@ -966,6 +966,19 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
                 .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
+        // 无线输电杆:上排 铜锭·避雷针·铜锭｜中排 导电线材·空白筹码·导电线材｜下排 星盘·星盘·星盘 [史诗·充能]
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.INFINITE_GRID_CHIP.get())
+                .pattern("XLX")
+                .pattern("WBW")
+                .pattern("PPP")
+                .define('X', Items.COPPER_INGOT)
+                .define('L', Items.LIGHTNING_ROD)
+                .define('W', ModItems.CONDUCTIVE_WIRE.get())
+                .define('B', ModItems.BLANK_CHIP.get())
+                .define('P', ModItems.STAR_PLATE.get())
+                .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
+
         // --- 治愈类 ---
         // 大碗炖肉:上排 碗·牛排·碗｜中排 再生试剂·空白筹码·再生试剂｜下排 黄金星盘·黄金星盘·黄金星盘 [传奇·治愈]
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.BIG_BOWL_STEW_CHIP.get())
@@ -977,6 +990,60 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('R', ModItems.REGENERATION_REAGENT.get())
                 .define('B', ModItems.BLANK_CHIP.get())
                 .define('G', ModItems.GOLDEN_STAR_PLATE.get())
+                .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
+
+        // 试剂-深渊:上排 海晶碎片·海洋之心·海晶碎片｜中排 再生试剂·空白筹码·再生试剂｜下排 星盘·星盘·星盘 [史诗·治愈]
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.ABYSS_REAGENT_CHIP.get())
+                .pattern("XLX")
+                .pattern("RBR")
+                .pattern("PPP")
+                .define('X', Items.PRISMARINE_SHARD)
+                .define('L', Items.HEART_OF_THE_SEA)
+                .define('R', ModItems.REGENERATION_REAGENT.get())
+                .define('B', ModItems.BLANK_CHIP.get())
+                .define('P', ModItems.STAR_PLATE.get())
+                .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
+
+        // --- 星光类 ---
+        // 财运签:上排 竹子·纸·竹子｜中排 星币尘·空白筹码·星币尘｜下排 星盘·星盘·星盘 [史诗·星光]
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.FORTUNE_STICK_CHIP.get())
+                .pattern("XLX")
+                .pattern("DBD")
+                .pattern("PPP")
+                .define('X', Items.BAMBOO)
+                .define('L', Items.PAPER)
+                .define('D', ModItems.STAR_COIN_DUST.get())
+                .define('B', ModItems.BLANK_CHIP.get())
+                .define('P', ModItems.STAR_PLATE.get())
+                .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
+
+        // 手电筒-爆闪:上排 荧石·红石灯·荧石｜中排 星币尘·空白筹码·星币尘｜下排 黄金星盘·黄金星盘·黄金星盘 [传奇·星光]
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.FLASHLIGHT_BURST_CHIP.get())
+                .pattern("XLX")
+                .pattern("DBD")
+                .pattern("GGG")
+                .define('X', Items.GLOWSTONE)
+                .define('L', Items.REDSTONE_LAMP)
+                .define('D', ModItems.STAR_COIN_DUST.get())
+                .define('B', ModItems.BLANK_CHIP.get())
+                .define('G', ModItems.GOLDEN_STAR_PLATE.get())
+                .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
+
+        // --- 标记类 ---
+        // 感测装置:上排 阳光探测器·侦测器·阳光探测器｜中排 标记涂料·空白筹码·标记涂料｜下排 星盘·星盘·星盘 [史诗·标记]
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.SENSOR_CHIP.get())
+                .pattern("XLX")
+                .pattern("MBM")
+                .pattern("PPP")
+                .define('X', Items.DAYLIGHT_DETECTOR)
+                .define('L', Items.OBSERVER)
+                .define('M', ModItems.MARK_PAINT.get())
+                .define('B', ModItems.BLANK_CHIP.get())
+                .define('P', ModItems.STAR_PLATE.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
                 .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 

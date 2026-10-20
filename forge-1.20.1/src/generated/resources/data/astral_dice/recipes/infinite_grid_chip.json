@@ -1,0 +1,35 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "conditions": [
+    {
+      "type": "astral_dice:chip_recipes_enabled"
+    }
+  ],
+  "key": {
+    "B": {
+      "item": "astral_dice:blank_chip"
+    },
+    "L": {
+      "item": "minecraft:lightning_rod"
+    },
+    "P": {
+      "item": "astral_dice:star_plate"
+    },
+    "W": {
+      "item": "astral_dice:conductive_wire"
+    },
+    "X": {
+      "item": "minecraft:copper_ingot"
+    }
+  },
+  "pattern": [
+    "XLX",
+    "WBW",
+    "PPP"
+  ],
+  "result": {
+    "item": "astral_dice:infinite_grid_chip"
+  },
+  "show_notification": true
+}

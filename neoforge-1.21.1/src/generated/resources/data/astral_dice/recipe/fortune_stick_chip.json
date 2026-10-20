@@ -1,0 +1,35 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "astral_dice:chip_recipes_enabled"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "astral_dice:blank_chip"
+    },
+    "D": {
+      "item": "astral_dice:star_coin_dust"
+    },
+    "L": {
+      "item": "minecraft:paper"
+    },
+    "P": {
+      "item": "astral_dice:star_plate"
+    },
+    "X": {
+      "item": "minecraft:bamboo"
+    }
+  },
+  "pattern": [
+    "XLX",
+    "DBD",
+    "PPP"
+  ],
+  "result": {
+    "count": 1,
+    "id": "astral_dice:fortune_stick_chip"
+  }
+}
