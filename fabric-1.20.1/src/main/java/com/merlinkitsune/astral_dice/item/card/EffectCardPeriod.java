@@ -1,7 +1,7 @@
 package com.merlinkitsune.astral_dice.item.card;
 import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 
-import com.merlinkitsune.starenginelib.component.GameplayConstants;
+import com.merlinkitsune.starengine.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.item.ChargeManager;

@@ -3,7 +3,7 @@ package com.merlinkitsune.astral_dice.event;
 import com.merlinkitsune.astral_dice.platform.fml.ModList;
 
 import com.merlinkitsune.astral_dice.component.AppliedStone;
-import com.merlinkitsune.starenginelib.component.GameplayConstants;
+import com.merlinkitsune.starengine.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import com.merlinkitsune.astral_dice.component.WeaponEnhancement;

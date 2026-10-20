@@ -1,7 +1,7 @@
 package com.merlinkitsune.astral_dice.combat;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
-import com.merlinkitsune.starenginelib.combat.PlayerHostilityTracker;
+import com.merlinkitsune.starengine.combat.PlayerHostilityTracker;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;

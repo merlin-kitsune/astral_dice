@@ -59,8 +59,8 @@ repositories {
     }
 }
 
-def libVersion = project.starengine_lib_version
-def libGroup = project.starengine_lib_group
+def libVersion = project.starengine_version
+def libGroup = project.starengine_group
 
 dependencies {
     minecraft "com.mojang:minecraft:${minecraft_version}"
@@ -85,8 +85,8 @@ dependencies {
     // ── 前置库(跨仓硬前置;JarJar 内嵌,替代 Forge 侧的 jarJar) ────────────────
     // ⚠️ 库必须先 :fabric-1.20.1:publishToMavenLocal。include(...) 会把库 jar 嵌进产物
     //    (等价于 Forge 侧的 jarJar),玩家无需单独安装;整合包里也不应再放独立库 jar。
-    modImplementation "${libGroup}:starengine_lib-fabric-1.20.1:${libVersion}"
-    include "${libGroup}:starengine_lib-fabric-1.20.1:${libVersion}"
+    modImplementation "${libGroup}:starengine-fabric-1.20.1:${libVersion}"
+    include "${libGroup}:starengine-fabric-1.20.1:${libVersion}"
 
     // ── 饰品栏提供方之一:Trinkets(替代 Curios;本线的原始移植目标) ──────────
     // ⚠️ 2026-09-29 用户裁决:Trinkets 与 Accessories **二选一**即可 ⇒ 由「硬前置」改为**软前置**:
@@ -279,7 +279,7 @@ def templateProps = [
         cca_version            : project.cca_version.toString(),
         accessories_version_range: project.accessories_version_range.toString(),
         puzzleslib_version_range: project.puzzleslib_version_range.toString(),
-        lib_version_range      : project.starengine_lib_version_range.toString(),
+        lib_version_range      : project.starengine_version_range.toString(),
 ]
 processResources {
     inputs.properties(templateProps)
@@ -327,7 +327,7 @@ def packModsDir = file('D:/.minecraft/versions/1.20.1-Fabric 模组测试/mods')
 // 用 -PdeployToPack 强制。
 def packPushBranches = ['multi-main']
 def forcePackPush = project.hasProperty('deployToPack') || project.hasProperty('packPush')
-def libVersionLocked = project.findProperty('starengine_lib_version')?.toString()
+def libVersionLocked = project.findProperty('starengine_version')?.toString()
 def dotGitEntry = rootProject.file('.git')
 
 // 本线(fabric 1.20.1)的旧产物识别规则:**只清理带 `+fabric_1.20.1` 后缀的 jar**。
@@ -468,10 +468,10 @@ tasks.register('pushToGame') {
         }
         if (libVersionLocked) {
             def libJars = packModsDir.listFiles()?.findAll { File f ->
-                f.isFile() && f.name.startsWith('starengine_lib-') && f.name.endsWith('.jar')
+                f.isFile() && f.name.startsWith('starengine-') && f.name.endsWith('.jar')
             } ?: []
             if (libJars) {
-                logger.warn("pushToGame: 整合包内仍存在独立的 starengine_lib jar ${libJars*.name} —— " +
+                logger.warn("pushToGame: 整合包内仍存在独立的 starengine jar ${libJars*.name} —— " +
                         "库现已内嵌进本 mod,独立 jar 会被优先采用并盖掉内嵌版本(${libVersionLocked});建议删除")
             } else {
                 logger.lifecycle("pushToGame: 整合包内无独立库 jar(符合内嵌口径)")

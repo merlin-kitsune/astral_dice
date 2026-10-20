@@ -21,7 +21,7 @@ import net.neoforged.neoforge.client.event.RegisterParticleProvidersEvent;
 import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
 import org.joml.Matrix4f;
 import org.joml.Vector4f;
-import com.merlinkitsune.starenginelib.client.ActionBarManager;
+import com.merlinkitsune.starengine.client.ActionBarManager;
 
 // ⚠️ 26.1.2 的 @EventBusSubscriber **只剩 value()/modid()** —— FML 11.0.15 的该注解
 //    (loader-11.0.15.jar, javap 实证)已删除 `bus()` 与内部枚举 `EventBusSubscriber$Bus`

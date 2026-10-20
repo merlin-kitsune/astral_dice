@@ -33,7 +33,7 @@
     "fabric-api": "*",
     "fabric-data-attachment-api-v1": "*",
     "puzzleslib": "${puzzleslib_version_range}",
-    "starengine_lib": "${lib_version_range}"
+    "starengine": "${lib_version_range}"
   },
   "recommends": {
     "trinkets": ">=${trinkets_version}",

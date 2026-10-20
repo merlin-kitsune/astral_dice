@@ -241,7 +241,7 @@ public final class ModNetwork {
 
         public static void handle(ActionBarMessage msg, Supplier<NetworkEvent.Context> ctx) {
             ctx.get().enqueueWork(() ->
-                    com.merlinkitsune.starenginelib.client.ActionBarManager.show(msg.message, msg.durationTicks));
+                    com.merlinkitsune.starengine.client.ActionBarManager.show(msg.message, msg.durationTicks));
             ctx.get().setPacketHandled(true);
         }
     }
@@ -497,7 +497,7 @@ public final class ModNetwork {
 
         public static void handle(StarCoinBalanceMessage msg, Supplier<NetworkEvent.Context> ctx) {
             ctx.get().enqueueWork(() ->
-                    com.merlinkitsune.starenginelib.economy.StarCoinWalletState.setBalance(msg.balance));
+                    com.merlinkitsune.starengine.economy.StarCoinWalletState.setBalance(msg.balance));
             ctx.get().setPacketHandled(true);
         }
     }

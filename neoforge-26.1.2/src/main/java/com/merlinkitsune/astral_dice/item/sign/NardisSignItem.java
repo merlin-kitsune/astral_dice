@@ -12,7 +12,7 @@ import com.merlinkitsune.astral_dice.effect.NardisPrivilegeEffect;
 import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.card.TemporaryCardUtil;
-import com.merlinkitsune.starenginelib.event.ModEffectRemoval;
+import com.merlinkitsune.starengine.event.ModEffectRemoval;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -231,7 +231,7 @@ public class NardisSignItem extends BaseSignItem {
 
     // 主动技能 ActionBar 注册:自带提示已在 handleUse 内发送,仅阻止默认提示(照 MimiSignItem:96-101)
     @SubscribeEvent
-    public static void onSignActiveTriggered(com.merlinkitsune.starenginelib.event.SignActiveTriggeredEvent event) {
+    public static void onSignActiveTriggered(com.merlinkitsune.starengine.event.SignActiveTriggeredEvent event) {
         if (event.getSignStack().is(ModItems.NARDIS_SIGN.get())) {
             event.setHandled();
         }

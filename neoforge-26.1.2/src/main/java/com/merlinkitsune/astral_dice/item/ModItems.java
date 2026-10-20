@@ -3,7 +3,7 @@ package com.merlinkitsune.astral_dice.item;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.component.AppliedStone;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
-import com.merlinkitsune.starenginelib.item.AstralRarities;
+import com.merlinkitsune.starengine.item.AstralRarities;
 
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -118,7 +118,7 @@ public class ModItems {
                     AstralDiceMod.MODID, "effect_cards"));
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // 本模组稀有度标准(2026-09-25 起改为**自有 5 档**;等级/常量名/颜色码的权威在前置库 starengine_lib):
+    // 本模组稀有度标准(2026-09-25 起改为**自有 5 档**;等级/常量名/颜色码的权威在前置库 starengine):
     //   白 = 普通   → 原版 Rarity.COMMON(本模组**唯一**保留的原版档,直接写 Rarity.COMMON)
     //   水蓝 #55FFFF = 稀有 → AstralRarities.rare()      扩展常量 ASTRAL_DICE_RARE
     //   粉紫 #FF55FF = 史诗 → AstralRarities.epic()      扩展常量 ASTRAL_DICE_EPIC

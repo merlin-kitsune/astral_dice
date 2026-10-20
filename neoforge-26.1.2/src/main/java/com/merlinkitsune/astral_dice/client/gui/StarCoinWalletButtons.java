@@ -5,7 +5,7 @@ import com.merlinkitsune.astral_dice.config.ModCommonConfig;
 import com.merlinkitsune.astral_dice.economy.StarCoinCurrency;
 import com.merlinkitsune.astral_dice.economy.StarCoinWalletActions;
 import com.merlinkitsune.astral_dice.network.StarCoinWalletPayload;
-import com.merlinkitsune.starenginelib.economy.StarCoinWalletState;
+import com.merlinkitsune.starengine.economy.StarCoinWalletState;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;

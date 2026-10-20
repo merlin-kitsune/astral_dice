@@ -191,7 +191,7 @@ public final class LoaderBus implements IEventBus {
      * 派发任意事件对象。
      *
      * <p>对 {@link Event} 子类应用取消语义;对前置库的事件类型
-     * ({@code com.merlinkitsune.starenginelib.event.SignActiveTriggeredEvent} 等,
+     * ({@code com.merlinkitsune.starengine.event.SignActiveTriggeredEvent} 等,
      * 其基类在 Fabric 侧是空类)只做普通派发 —— 语义等价于 Forge 侧该事件不可取消。
      */
     public boolean postEvent(Object event) {

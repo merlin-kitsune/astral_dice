@@ -1,6 +1,6 @@
 package com.merlinkitsune.astral_dice.item.sign;
 
-import com.merlinkitsune.starenginelib.component.GameplayConstants;
+import com.merlinkitsune.starengine.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -12,10 +12,10 @@ import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
 import com.merlinkitsune.astral_dice.network.ActionBarPayload;
 import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
-import com.merlinkitsune.starenginelib.target.TargetSelectionAction;
+import com.merlinkitsune.starengine.target.TargetSelectionAction;
 import com.merlinkitsune.astral_dice.target.TargetSelectionManager;
-import com.merlinkitsune.starenginelib.target.TargetSelectionRegistry;
-import com.merlinkitsune.starenginelib.target.TargetType;
+import com.merlinkitsune.starengine.target.TargetSelectionRegistry;
+import com.merlinkitsune.starengine.target.TargetType;
 import com.merlinkitsune.astral_dice.event.WeirdDiceHandler;
 import com.merlinkitsune.astral_dice.item.chip.CurrentCoreChipItem;
 import net.minecraft.ChatFormatting;

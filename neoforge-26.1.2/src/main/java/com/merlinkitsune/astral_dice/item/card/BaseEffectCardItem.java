@@ -30,12 +30,12 @@ import com.merlinkitsune.astral_dice.item.sign.KomachiSignItem;
 import com.merlinkitsune.astral_dice.network.ActionBarPayload;
 import com.merlinkitsune.astral_dice.target.HoldToSelect;
 import com.merlinkitsune.astral_dice.target.SelfTargetable;
-import com.merlinkitsune.starenginelib.target.SignSelectionGate;
+import com.merlinkitsune.starengine.target.SignSelectionGate;
 import com.merlinkitsune.astral_dice.target.TargetSelectionManager;
-import com.merlinkitsune.starenginelib.component.GameplayConstants;
-import com.merlinkitsune.starenginelib.target.TargetSelectionAction;
-import com.merlinkitsune.starenginelib.target.TargetSelectionRegistry;
-import com.merlinkitsune.starenginelib.target.TargetType;
+import com.merlinkitsune.starengine.component.GameplayConstants;
+import com.merlinkitsune.starengine.target.TargetSelectionAction;
+import com.merlinkitsune.starengine.target.TargetSelectionRegistry;
+import com.merlinkitsune.starengine.target.TargetType;
 import net.neoforged.neoforge.network.PacketDistributor;
 
 /**

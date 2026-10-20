@@ -1,6 +1,6 @@
 package com.merlinkitsune.astral_dice.item.sign;
 
-import com.merlinkitsune.starenginelib.component.GameplayConstants;
+import com.merlinkitsune.starengine.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import net.minecraft.ChatFormatting;
@@ -141,7 +141,7 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
             if (!sign.canBeginSelectorSession(player)) return;
             if (!(player instanceof net.minecraft.server.level.ServerPlayer serverPlayer)) return;
             if (com.merlinkitsune.astral_dice.target.TargetSelectionManager.start(serverPlayer, gatedActionId)) {
-                com.merlinkitsune.starenginelib.target.SignSelectionGate.arm(player, gatedActionId, stack);
+                com.merlinkitsune.starengine.target.SignSelectionGate.arm(player, gatedActionId, stack);
             }
             // 主动技能**生效**音效（2026-09-27 用户裁决：进入目标选择器也算生效）
             playSkillUseSound(player);
@@ -157,8 +157,8 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         FanSmallChipItem.applyAfterSignSkill(player);
         // 5. 立牌主动技能响应事件:立牌类订阅本事件注册自身 ActionBar 反馈(见 SignActiveTriggeredEvent);
         //    无任何处理器响应(未注册)时,发送默认提示"xxx立牌:主动技能已启动!"
-        com.merlinkitsune.starenginelib.event.SignActiveTriggeredEvent triggered =
-                new com.merlinkitsune.starenginelib.event.SignActiveTriggeredEvent(player, stack);
+        com.merlinkitsune.starengine.event.SignActiveTriggeredEvent triggered =
+                new com.merlinkitsune.starengine.event.SignActiveTriggeredEvent(player, stack);
         net.neoforged.neoforge.common.NeoForge.EVENT_BUS.post(triggered);
         if (!triggered.isHandled()) {
             notifyActionBar(player, "msg.astral_dice.sign_active_triggered", signName, ChatFormatting.YELLOW);
@@ -237,13 +237,13 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
      * <p>⚠️ 事件本身照旧抛出(订阅方行为不变),但**有意不补发**默认「主动技能已启动」提示(2026-09-17
      * 用户裁决 O1,结论不变):本方法只由门控路径到达,而该 tick 已经发过反馈 —— 通用「已确认」提示由
      * {@code TargetSelectionManager#confirm} 在 {@code action.apply} **之前**发出,各动作的专属提示又在
-     * {@code apply} 里发出;客户端 actionbar 是**单槽位**(starenginelib 的 {@code ActionBarManager#show}
+     * {@code apply} 里发出;客户端 actionbar 是**单槽位**(starengine 的 {@code ActionBarManager#show}
      * 直接覆盖,同 tick 后发者覆盖先发者)⇒ 若在此补发,它反而会成为玩家唯一看到的那条,而这不是期望反馈。
      * 非门控立牌的原流程(performSkill 第 5 步)仍保留默认提示。
      */
     public static void resumeGatedActiveSkill(Player player, String actionId) {
-        com.merlinkitsune.starenginelib.target.SignSelectionGate.Pending pending =
-                com.merlinkitsune.starenginelib.target.SignSelectionGate.take(player, actionId);
+        com.merlinkitsune.starengine.target.SignSelectionGate.Pending pending =
+                com.merlinkitsune.starengine.target.SignSelectionGate.take(player, actionId);
         if (pending == null) return;
         ItemStack stack = pending.stack();
         // 4. 手持风扇-大/小筹码:确认释放后才发牌(未确认绝不发牌)
@@ -252,8 +252,8 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         // 5. 立牌主动技能响应事件:立牌类订阅本事件注册自身 ActionBar 反馈。
         //    默认「主动技能已启动」提示**有意不补发**(见方法 javadoc:该 tick 已由通用提示与动作专属
         //    提示反馈过,再补发它会成为唯一可见的那条)。
-        com.merlinkitsune.starenginelib.event.SignActiveTriggeredEvent triggered =
-                new com.merlinkitsune.starenginelib.event.SignActiveTriggeredEvent(player, stack);
+        com.merlinkitsune.starengine.event.SignActiveTriggeredEvent triggered =
+                new com.merlinkitsune.starengine.event.SignActiveTriggeredEvent(player, stack);
         net.neoforged.neoforge.common.NeoForge.EVENT_BUS.post(triggered);
     }
 

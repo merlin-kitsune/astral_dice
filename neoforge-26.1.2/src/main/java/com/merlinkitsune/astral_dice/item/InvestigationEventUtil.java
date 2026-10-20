@@ -1,9 +1,9 @@
 package com.merlinkitsune.astral_dice.item;
 
 
-import com.merlinkitsune.starenginelib.component.GameplayConstants;
+import com.merlinkitsune.starengine.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.event.AstralEventSystem;
-import com.merlinkitsune.starenginelib.event.EventTargetCollector;
+import com.merlinkitsune.starengine.event.EventTargetCollector;
 import com.merlinkitsune.astral_dice.network.ActionBarPayload;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;

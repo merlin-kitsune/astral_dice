@@ -1,7 +1,7 @@
 package com.merlinkitsune.astral_dice.combat;
 
-import com.merlinkitsune.starenginelib.combat.HostileTargets;
-import com.merlinkitsune.starenginelib.component.GameplayConstants;
+import com.merlinkitsune.starengine.combat.HostileTargets;
+import com.merlinkitsune.starengine.component.GameplayConstants;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;

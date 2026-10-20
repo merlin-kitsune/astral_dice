@@ -3,7 +3,7 @@ package com.merlinkitsune.astral_dice.combat;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.component.AppliedStone;
-import com.merlinkitsune.starenginelib.component.GameplayConstants;
+import com.merlinkitsune.starengine.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import com.merlinkitsune.astral_dice.component.WeaponEnhancement;
@@ -14,7 +14,7 @@ import com.merlinkitsune.astral_dice.item.sign.BaseSignItem;
 import com.merlinkitsune.astral_dice.item.sign.MosesSignItem;
 import com.merlinkitsune.astral_dice.item.sign.PandamanSignItem;
 import com.merlinkitsune.astral_dice.effect.WeaknessRevealEffect;
-import com.merlinkitsune.starenginelib.item.BossEntityUtil;
+import com.merlinkitsune.starengine.item.BossEntityUtil;
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.astral_dice.item.dice.DiceCurioItem;
 import com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil;
@@ -111,7 +111,7 @@ import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
 import com.merlinkitsune.astral_dice.item.card.FateGuidanceCardItem;
 import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
 import com.merlinkitsune.astral_dice.item.sign.MamushiSignItem;
-import com.merlinkitsune.starenginelib.combat.HostileTargets;
+import com.merlinkitsune.starengine.combat.HostileTargets;
 
 @EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class DiceCombatEvents {
@@ -144,14 +144,14 @@ public class DiceCombatEvents {
     // 把两条内部窗口的开关讲给库听(库的 PlayerHostilityTracker 需要它来区分"主动攻击"与"内部波及",
     // 但窗口状态属本类的玩法实现,不下沉)。
     static {
-        com.merlinkitsune.starenginelib.combat.InternalDamageWindows.install(
+        com.merlinkitsune.starengine.combat.InternalDamageWindows.install(
                 DiceCombatEvents::isInternalAoe,
                 DiceCombatEvents::isInCounterChain);
         // 再把「试验假人应当算敌对目标」讲给库听:库的 combat/HostileTargets 是「敌对目标」的唯一入口,
         // 而它的判定点有一部分落在库内 —— target/SelectorTargets 的可选中判定(客户端射线/半径高亮/
         // 服务端确认)直接调它 ⇒ 消费方无法插手,故由库留 seam、本模组在此注入。
         // 未注入时库退回原口径(假人不算敌对),即本注入是**纯增益**、不影响其它实体。
-        com.merlinkitsune.starenginelib.combat.HostileTargets.installExtraHostileProbe(
+        com.merlinkitsune.starengine.combat.HostileTargets.installExtraHostileProbe(
                 DiceCombatEvents::isTrainingDummy);
     }
 
@@ -736,12 +736,12 @@ public class DiceCombatEvents {
                 double effectiveArmor = Math.max(0, target.getArmorValue() + modifierDefense * 2.0);
                 double toughness = target.getAttributeValue(Attributes.ARMOR_TOUGHNESS);
                 if (target instanceof Player) {
-                    defensePower = com.merlinkitsune.starenginelib.combat.CombatFormula
+                    defensePower = com.merlinkitsune.starengine.combat.CombatFormula
                             .playerDefense(effectiveArmor, toughness);
                 } else {
-                    defensePower = com.merlinkitsune.starenginelib.combat.CombatFormula
+                    defensePower = com.merlinkitsune.starengine.combat.CombatFormula
                             .mobDefenseInt(
-                                    com.merlinkitsune.starenginelib.combat.TargetCategory.classify(target),
+                                    com.merlinkitsune.starengine.combat.TargetCategory.classify(target),
                                     effectiveArmor, toughness);
                 }
                 defensePower += defenseBaseDice + ctx.defenseCardSum;
@@ -756,7 +756,7 @@ public class DiceCombatEvents {
 
             // 骰战层:库统一口径「max(绝对下限 1 点, 攻击点 ×15%, 攻击点 − 防御点)」
             // (2026-09-26 裁决⑥:相对下限入库 —— 修「高防+低攻档位恒定触底 ⇒ 任何修饰器读数都退化为 0」)
-            finalDmg = com.merlinkitsune.starenginelib.combat.DiceBattleResolver
+            finalDmg = com.merlinkitsune.starengine.combat.DiceBattleResolver
                     .resolve(attackPower, defensePower);
 
         }
@@ -765,7 +765,7 @@ public class DiceCombatEvents {
         // 原版这两条通道在 LivingDamageEvent.Pre **之前**已算完,而骰战在此处覆盖式写入自算终值 ⇒
         // 整段减免被丢弃。此处按库 VanillaMitigation 补乘回来,使两条通道在骰战下与原版等价。
         // ⚠️ 「护甲」不在此列:它已折算进防御力(CombatFormula),再乘一次就是重复计算。
-        finalDmg *= com.merlinkitsune.starenginelib.combat.VanillaMitigation.magicAbsorbFactor(
+        finalDmg *= com.merlinkitsune.starengine.combat.VanillaMitigation.magicAbsorbFactor(
                 resistanceAmplifierOf(target), protectionPointsOf(target, source));
 
         if (MarkManager.getLevel(target) > 0) {
@@ -1060,18 +1060,18 @@ public class DiceCombatEvents {
 
         // 生物武器附魔:按原版 Mob#doHurtTarget —— dmg = modifyDamage(level, weaponItem, target, damageSource, dmg)
         // (**替换式**:返回的已是「属性值 + 附魔」的合成值,而非增量)。
-        double mobAttack = com.merlinkitsune.starenginelib.combat.TargetBattleStats.baseAttack(mob)
+        double mobAttack = com.merlinkitsune.starengine.combat.TargetBattleStats.baseAttack(mob)
                 + enchantedMobAttack(mob, target, source)
                 + mobRoll;
-        double playerDefense = com.merlinkitsune.starenginelib.combat.CombatFormula.playerDefense(
+        double playerDefense = com.merlinkitsune.starengine.combat.CombatFormula.playerDefense(
                 target.getArmorValue(), target.getAttributeValue(Attributes.ARMOR_TOUGHNESS))
                 + playerRoll + defenseCardSum;
 
-        float finalDmg = com.merlinkitsune.starenginelib.combat.DiceBattleResolver
+        float finalDmg = com.merlinkitsune.starengine.combat.DiceBattleResolver
                 .resolve(mobAttack, playerDefense);
         // 受击方(玩家)「抗性提升 + 保护附魔」乘算因子 —— 与「玩家→生物」路径**对称**应用
         // (2026-09-26 裁决①:两条路径必须用同一口径,不得一边丢弃、一边泄漏)。
-        finalDmg *= com.merlinkitsune.starenginelib.combat.VanillaMitigation.magicAbsorbFactor(
+        finalDmg *= com.merlinkitsune.starengine.combat.VanillaMitigation.magicAbsorbFactor(
                 resistanceAmplifierOf(target), protectionPointsOf(target, source));
         finalDmg *= (float) victimFactor;
         event.setNewDamage(finalDmg);
@@ -1644,7 +1644,7 @@ public class DiceCombatEvents {
         if (HostileTargets.isHostile(target)) return true;
         if (target instanceof Mob mob) {
             // Boss 允许触发;其余生物仅在被激怒/正在攻击玩家时允许
-            if (com.merlinkitsune.starenginelib.item.BossEntityUtil.isBossEntity(target)) return true;
+            if (com.merlinkitsune.starengine.item.BossEntityUtil.isBossEntity(target)) return true;
             return mob.getTarget() == player || mob.isAggressive();
         }
         // 被动/友好生物不允许触发骰神赐福(中立生物已在上面由 HostileTargets 计入)

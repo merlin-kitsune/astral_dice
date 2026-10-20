@@ -11,7 +11,7 @@ import net.minecraft.world.item.ItemStack;
  * 饰品库存视图(Curios {@code ICursiosItemHandler} 的子集)。
  *
  * <p>实现由 {@link CuriosApi#getCuriosInventory} 提供,底层委托给前置库
- * {@code com.merlinkitsune.starenginelib.item.TrinketsCompat}(Trinkets 3.7.2)。
+ * {@code com.merlinkitsune.starengine.item.TrinketsCompat}(Trinkets 3.7.2)。
  */
 public interface ICursiosItemHandler {
 

@@ -2,7 +2,7 @@ package com.merlinkitsune.astral_dice.item.sign;
 import com.merlinkitsune.astral_dice.network.ModNetwork;
 
 import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
-import com.merlinkitsune.starenginelib.event.SignActiveTriggeredEvent;
+import com.merlinkitsune.starengine.event.SignActiveTriggeredEvent;
 import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
 
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -17,7 +17,7 @@ import com.merlinkitsune.astral_dice.compat.curios.SlotContext;
 
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
-import com.merlinkitsune.starenginelib.component.GameplayConstants;
+import com.merlinkitsune.starengine.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.event.AstralEventSystem;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;

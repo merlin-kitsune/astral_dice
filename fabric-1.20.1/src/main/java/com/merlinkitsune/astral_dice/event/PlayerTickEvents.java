@@ -25,7 +25,7 @@ import com.merlinkitsune.astral_dice.item.chip.RevengeHalberdChipItem;
 import com.merlinkitsune.astral_dice.item.chip.FlashlightChipItem;
 import com.merlinkitsune.astral_dice.item.StarLightManager;
 
-import com.merlinkitsune.starenginelib.event.ModEffectRemoval;
+import com.merlinkitsune.starengine.event.ModEffectRemoval;
 public class PlayerTickEvents {
     @SubscribeEvent
     public static void onPlayerTickPre(TickEvent.PlayerTickEvent event) {

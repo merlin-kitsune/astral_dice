@@ -11,7 +11,7 @@ import com.merlinkitsune.astral_dice.compat.curios.SlotContext;
 import com.merlinkitsune.astral_dice.compat.curios.ICurioStacksHandler;
 import com.merlinkitsune.astral_dice.item.dice.DiceCurioItem;
 import com.merlinkitsune.astral_dice.item.sign.BaseSignItem;
-import com.merlinkitsune.starenginelib.component.GameplayConstants;
+import com.merlinkitsune.starengine.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.network.ModNetwork.ActionBarMessage;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;

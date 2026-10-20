@@ -1,10 +1,10 @@
 package com.merlinkitsune.astral_dice.item.card;
 
-import com.merlinkitsune.starenginelib.combat.CreatureTargets;
+import com.merlinkitsune.starengine.combat.CreatureTargets;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.event.LivingPageFlightScheduler;
 import com.merlinkitsune.astral_dice.item.ModItems;
-import com.merlinkitsune.starenginelib.target.TargetType;
+import com.merlinkitsune.starengine.target.TargetType;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;

@@ -7,7 +7,7 @@ import com.merlinkitsune.astral_dice.platform.FabricBridges;
 import com.merlinkitsune.astral_dice.platform.event.LoaderBus;
 import com.merlinkitsune.astral_dice.platform.fml.event.lifecycle.FMLCommonSetupEvent;
 import com.merlinkitsune.astral_dice.platform.fml.loading.FMLPaths;
-import com.merlinkitsune.starenginelib.component.GameplayConstants;
+import com.merlinkitsune.starengine.component.GameplayConstants;
 import net.fabricmc.api.ModInitializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

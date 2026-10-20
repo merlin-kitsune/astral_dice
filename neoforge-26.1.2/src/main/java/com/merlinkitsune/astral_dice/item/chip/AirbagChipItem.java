@@ -65,7 +65,7 @@ public class AirbagChipItem extends BaseChipItem {
             net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(sp,
                     new com.merlinkitsune.astral_dice.network.ActionBarPayload(
                             Component.translatable("hud.astral_dice.airbag_trigger", CHARGE_COST).withStyle(net.minecraft.ChatFormatting.YELLOW),
-                            com.merlinkitsune.starenginelib.component.GameplayConstants.ACTIONBAR_DURATION_TICKS));
+                            com.merlinkitsune.starengine.component.GameplayConstants.ACTIONBAR_DURATION_TICKS));
         }
         player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
                 SoundEvents.SHIELD_BLOCK, SoundSource.PLAYERS, 1.0F, 0.8F);

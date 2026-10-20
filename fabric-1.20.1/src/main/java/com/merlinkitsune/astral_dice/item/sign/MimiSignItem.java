@@ -6,8 +6,8 @@ import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.card.RandomCardHandler;
 import com.merlinkitsune.astral_dice.item.chip.BaseChipItem;
-import com.merlinkitsune.starenginelib.item.AstralRarities;
-import com.merlinkitsune.starenginelib.item.Rarity;
+import com.merlinkitsune.starengine.item.AstralRarities;
+import com.merlinkitsune.starengine.item.Rarity;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.entity.player.Player;
@@ -107,7 +107,7 @@ public class MimiSignItem extends BaseSignItem {
 
     // 主动技能 ActionBar 注册:自带提示已在 handleUse 内发送,仅阻止默认提示
     @SubscribeEvent
-    public static void onSignActiveTriggered(com.merlinkitsune.starenginelib.event.SignActiveTriggeredEvent event) {
+    public static void onSignActiveTriggered(com.merlinkitsune.starengine.event.SignActiveTriggeredEvent event) {
         if (event.getSignStack().is(ModItems.MIMI_SIGN.get())) {
             event.setHandled();
         }

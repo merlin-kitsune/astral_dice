@@ -1,9 +1,9 @@
 package com.merlinkitsune.astral_dice.combat;
 
-import com.merlinkitsune.starenginelib.item.BossEntityUtil;
+import com.merlinkitsune.starengine.item.BossEntityUtil;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.LivingEntity;
-import com.merlinkitsune.starenginelib.combat.HostileTargets;
+import com.merlinkitsune.starengine.combat.HostileTargets;
 
 /**
  * 「精英怪物或 Boss」判定的**唯一入口**（2026-09-21 用户裁决，必须遵守）。

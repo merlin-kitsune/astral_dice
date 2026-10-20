@@ -35,7 +35,7 @@ public record OpenCardInventoryPayload() implements CustomPacketPayload {
                     net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(serverPlayer,
                             new com.merlinkitsune.astral_dice.network.ActionBarPayload(
                                     Component.translatable("msg.astral_dice.no_dice_equipped").withStyle(net.minecraft.ChatFormatting.RED),
-                                    com.merlinkitsune.starenginelib.component.GameplayConstants.ACTIONBAR_DURATION_TICKS));
+                                    com.merlinkitsune.starengine.component.GameplayConstants.ACTIONBAR_DURATION_TICKS));
                     return;
                 }
                 serverPlayer.openMenu(new SimpleMenuProvider(

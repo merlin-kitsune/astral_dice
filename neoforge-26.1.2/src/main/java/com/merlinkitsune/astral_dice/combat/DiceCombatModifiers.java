@@ -24,7 +24,7 @@ import com.merlinkitsune.astral_dice.item.sign.MamushiSignItem;
 import com.merlinkitsune.astral_dice.item.MarkManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.sign.PadmanSignItem;
-import com.merlinkitsune.starenginelib.item.BossEntityUtil;
+import com.merlinkitsune.starengine.item.BossEntityUtil;
 import com.merlinkitsune.astral_dice.item.StarLightManager;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.damagesource.DamageSource;
@@ -43,7 +43,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
-import com.merlinkitsune.starenginelib.combat.HostileTargets;
+import com.merlinkitsune.starengine.combat.HostileTargets;
 
 /**
  * 骰神赐福攻防修饰器注册表:管理攻击力/防御力修饰器的有序注册与内置修饰器。
@@ -916,7 +916,7 @@ public final class DiceCombatModifiers {
         //    避免「HUD/tooltip 一个值、结算另一个值」的漂移。
         double effectiveArmor = Math.max(0, player.getArmorValue() + modifierDefense * 2.0);
         double toughness = player.getAttributeValue(Attributes.ARMOR_TOUGHNESS);
-        return com.merlinkitsune.starenginelib.combat.CombatFormula.playerDefense(effectiveArmor, toughness);
+        return com.merlinkitsune.starengine.combat.CombatFormula.playerDefense(effectiveArmor, toughness);
     }
 
     // === GUI 显示用:攻击/防御范围(基础值+修饰器+卡牌下限/上限) ===

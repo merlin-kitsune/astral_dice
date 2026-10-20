@@ -1,10 +1,10 @@
 package com.merlinkitsune.astral_dice.target;
-import com.merlinkitsune.starenginelib.target.SelectorTargets;
+import com.merlinkitsune.starengine.target.SelectorTargets;
 
 /**
  * 消费方侧（本模组）目标选择「允许对自身使用」扩展点。
  *
- * <p>由实现了 {@link com.merlinkitsune.starenginelib.target.TargetSelectionAction} 的动作类
+ * <p>由实现了 {@link com.merlinkitsune.starengine.target.TargetSelectionAction} 的动作类
  * **按需**同时实现本接口（如 {@code new TargetSelectionAction() implements SelfTargetable}），
  * 并覆写 {@link #allowSelf()} 返回 {@code true}；{@link TargetSelectionManager#start} 会把该标志
  * 随会话（{@code Session.allowSelf}）与 {@code ModNetwork.TargetSelectStartMessage} 一起下发，

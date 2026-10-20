@@ -5,7 +5,7 @@
       "name": "ASTRAL_DICE_RARE",
       "constructor": "(ILjava/lang/String;Ljava/util/function/UnaryOperator;)V",
       "parameters": {
-        "class": "com/merlinkitsune/starenginelib/item/AstralRarities",
+        "class": "com/merlinkitsune/starengine/item/AstralRarities",
         "field": "RARE"
       }
     },
@@ -14,7 +14,7 @@
       "name": "ASTRAL_DICE_EPIC",
       "constructor": "(ILjava/lang/String;Ljava/util/function/UnaryOperator;)V",
       "parameters": {
-        "class": "com/merlinkitsune/starenginelib/item/AstralRarities",
+        "class": "com/merlinkitsune/starengine/item/AstralRarities",
         "field": "EPIC"
       }
     },
@@ -23,7 +23,7 @@
       "name": "ASTRAL_DICE_LEGENDARY",
       "constructor": "(ILjava/lang/String;Ljava/util/function/UnaryOperator;)V",
       "parameters": {
-        "class": "com/merlinkitsune/starenginelib/item/AstralRarities",
+        "class": "com/merlinkitsune/starengine/item/AstralRarities",
         "field": "LEGENDARY"
       }
     },
@@ -32,7 +32,7 @@
       "name": "ASTRAL_DICE_PINNACLE",
       "constructor": "(ILjava/lang/String;Ljava/util/function/UnaryOperator;)V",
       "parameters": {
-        "class": "com/merlinkitsune/starenginelib/item/AstralRarities",
+        "class": "com/merlinkitsune/starengine/item/AstralRarities",
         "field": "PINNACLE"
       }
     },
@@ -41,7 +41,7 @@
       "name": "ASTRAL_DICE_BIZARRE",
       "constructor": "(ILjava/lang/String;Ljava/util/function/UnaryOperator;)V",
       "parameters": {
-        "class": "com/merlinkitsune/starenginelib/item/AstralRarities",
+        "class": "com/merlinkitsune/starengine/item/AstralRarities",
         "field": "BIZARRE"
       }
     }

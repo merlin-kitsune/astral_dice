@@ -26,7 +26,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import com.merlinkitsune.starenginelib.combat.HostileTargets;
+import com.merlinkitsune.starengine.combat.HostileTargets;
 
 /**
  * 「飞星」筹码（紫色飞星 / 金色飞星）的**唯一执行器**（1.20.1 Forge 移植版）：

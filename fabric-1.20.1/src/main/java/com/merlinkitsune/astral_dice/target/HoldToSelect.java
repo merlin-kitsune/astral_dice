@@ -5,7 +5,7 @@ import net.minecraft.world.entity.player.Player;
 /**
  * 消费方侧（本模组）目标选择「手持即选择」扩展点。
  *
- * <p>实现了 {@link com.merlinkitsune.starenginelib.target.TargetSelectionAction} 的动作类
+ * <p>实现了 {@link com.merlinkitsune.starengine.target.TargetSelectionAction} 的动作类
  * **按需**同时实现本接口，表示该动作由**主手手持对应物品**触发，而不是按键触发：
  * <ul>
  *   <li>开局由消费方每 tick 驱动（{@code BaseEffectCardItem#tickHeldSelector}，见

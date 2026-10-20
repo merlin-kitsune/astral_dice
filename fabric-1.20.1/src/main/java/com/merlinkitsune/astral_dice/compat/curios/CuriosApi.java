@@ -13,7 +13,7 @@ import java.util.function.Predicate;
 
 import com.merlinkitsune.astral_dice.compat.accessories.AccessoriesCompat;
 import com.merlinkitsune.astral_dice.init.ModCompatibilityCheck;
-import com.merlinkitsune.starenginelib.item.TrinketsCompat;
+import com.merlinkitsune.starengine.item.TrinketsCompat;
 
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;

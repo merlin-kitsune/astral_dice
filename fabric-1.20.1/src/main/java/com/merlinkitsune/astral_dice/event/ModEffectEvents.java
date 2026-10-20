@@ -9,7 +9,7 @@ import com.merlinkitsune.astral_dice.platform.event.EventPriority;
 import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
 import com.merlinkitsune.astral_dice.platform.event.entity.living.MobEffectEvent;
 
-import com.merlinkitsune.starenginelib.event.ModEffectRemoval;
+import com.merlinkitsune.starengine.event.ModEffectRemoval;
 public class ModEffectEvents {
     @SubscribeEvent(priority = EventPriority.HIGH)
     public static void onModEffectRemovalPrevented(MobEffectEvent.Remove event) {

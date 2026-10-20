@@ -1,7 +1,7 @@
 package com.merlinkitsune.astral_dice.item.card;
 
 import com.merlinkitsune.astral_dice.combat.DamageCardFxScheduler;
-import com.merlinkitsune.starenginelib.target.TargetType;
+import com.merlinkitsune.starengine.target.TargetType;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
@@ -14,7 +14,7 @@ import net.minecraft.world.level.Level;
  * 确认后对选中目标造成 <b>5</b> 点法术伤害。
  *
  * <h2>目标口径</h2>
- * {@link com.merlinkitsune.starenginelib.target.TargetType#CREATURE} —— 敌对生物 ∪ 中立生物（宠物除外）
+ * {@link com.merlinkitsune.starengine.target.TargetType#CREATURE} —— 敌对生物 ∪ 中立生物（宠物除外）
  * ∪ 未驯服的可驯服生物，**不含玩家**（与「活体书页」同一口径，见 {@code combat/CreatureTargets}）。
  *
  * <h2>FX 与结算时点（2026-10-04 用户裁决）</h2>

@@ -9,7 +9,7 @@ import net.minecraft.world.entity.player.Player;
  *
  * <p>目标防御力按本模组骰战的基础防御公式计算(与骰战 defensePower 前三项逐字同构、与骰战界面显示口径
  * 完全一致;不含随机防御骰与防御卡)。公式自 2026-09-26 起**下沉至库**
- * {@code com.merlinkitsune.starenginelib.combat.CombatFormula},玩家与生物各自一套:
+ * {@code com.merlinkitsune.starengine.combat.CombatFormula},玩家与生物各自一套:
  * <ul>
  *   <li>玩家:{@code 4 + 护甲×0.30 + 0.85×韧性};</li>
  *   <li>生物:{@code 初始值(敌对 0 / 中立 0 / 被动 0 / 友好 0) + 护甲×0.40 + 1.0×韧性}。</li>
@@ -28,9 +28,9 @@ public class PiercingGunChipItem extends BaseChipItem {
         double toughness = target.getAttributeValue(Attributes.ARMOR_TOUGHNESS);
         if (target instanceof Player) {
             return (int) Math.floor(
-                    com.merlinkitsune.starenginelib.combat.CombatFormula.playerDefense(armor, toughness));
+                    com.merlinkitsune.starengine.combat.CombatFormula.playerDefense(armor, toughness));
         }
-        return com.merlinkitsune.starenginelib.combat.CombatFormula.mobDefenseInt(
-                com.merlinkitsune.starenginelib.combat.TargetCategory.classify(target), armor, toughness);
+        return com.merlinkitsune.starengine.combat.CombatFormula.mobDefenseInt(
+                com.merlinkitsune.starengine.combat.TargetCategory.classify(target), armor, toughness);
     }
 }

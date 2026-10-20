@@ -1,7 +1,7 @@
 package com.merlinkitsune.astral_dice.network;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
-import com.merlinkitsune.starenginelib.client.ActionBarManager;
+import com.merlinkitsune.starengine.client.ActionBarManager;
 import com.merlinkitsune.astral_dice.client.DamageNumberStore;
 import com.merlinkitsune.astral_dice.client.EnderDieTotemAnimator;
 import com.merlinkitsune.astral_dice.client.TargetSelectionClient;

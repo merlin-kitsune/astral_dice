@@ -6,8 +6,8 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
-import com.merlinkitsune.starenginelib.event.EventTargetCollector;
-import com.merlinkitsune.starenginelib.target.TargetType;
+import com.merlinkitsune.starengine.event.EventTargetCollector;
+import com.merlinkitsune.starengine.target.TargetType;
 import com.merlinkitsune.astral_dice.item.chip.FriendshipBadgeChipItem;
 import com.merlinkitsune.astral_dice.combat.PartyRelations;
 

@@ -21,7 +21,7 @@ displayName="${mod_name}" #mandatory
 
 # 枚举扩展（稀有度等级）：把 4 个等级 ASTRAL_DICE_RARE / ASTRAL_DICE_EPIC / ASTRAL_DICE_LEGENDARY /
 # ASTRAL_DICE_PINNACLE 扩展进原版 net.minecraft.world.item.Rarity；序列化名与染色函数全部来自前置库
-# starengine_lib 的 com.merlinkitsune.starenginelib.item.AstralRarities。
+# starengine 的 com.merlinkitsune.starengine.item.AstralRarities。
 # ⚠️ 该键是 NeoForge 专有；Forge 1.20.1 线机制不同（Rarity.create + IExtensibleEnum，库侧静态初始化登记）。
 # ⚠️ FML 要求常量名小写后以**声明本文件**的 mod 的 modId 开头 ⇒ 必须 astral_dice_* 前缀。
 enumExtensions="META-INF/enumextensions.json"
@@ -128,10 +128,10 @@ config="${mod_id}.jade.mixins.json"
 # StarEngine Lib(必须前置):效果/事件/通用组件的共享实现所在库。
 # 本模组绝大多数共享逻辑已下沉至该库,缺失将导致 NoClassDefFoundError,故为 required。
 # ⚠️ 2026-09-25 起**不再声明 versionRange**:库版本区间规则已移除,版本要求只由 gradle.properties 的
-#   starengine_lib_version 一个量表达。省略 versionRange 时 FML 取 UNBOUNDED(实测对任意版本均判满足),
+#   starengine_version 一个量表达。省略 versionRange 时 FML 取 UNBOUNDED(实测对任意版本均判满足),
 #   本段仍按「**必须存在**」校验 —— 库随本模组内嵌(JarJar),内嵌副本就是满足它的那个 mod。
 [[dependencies.${mod_id}]]
-    modId="starengine_lib"
+    modId="starengine"
     type="required"
     ordering="AFTER"
     side="BOTH"

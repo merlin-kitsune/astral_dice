@@ -98,6 +98,6 @@ public final class StarCoinWalletActions {
         com.merlinkitsune.astral_dice.network.ModNetwork.sendToPlayer(player,
                 new com.merlinkitsune.astral_dice.network.ModNetwork.ActionBarMessage(
                         message.withStyle(net.minecraft.ChatFormatting.YELLOW),
-                        com.merlinkitsune.starenginelib.component.GameplayConstants.ACTIONBAR_DURATION_TICKS));
+                        com.merlinkitsune.starengine.component.GameplayConstants.ACTIONBAR_DURATION_TICKS));
     }
 }
