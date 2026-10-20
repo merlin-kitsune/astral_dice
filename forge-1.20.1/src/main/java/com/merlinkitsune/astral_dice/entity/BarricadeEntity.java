@@ -285,6 +285,12 @@ public class BarricadeEntity extends LivingEntity {
         return false;
     }
 
+    /** 水流 / 岩浆流也不得推移（{@code Entity} 默认返回 true）。 */
+    @Override
+    public boolean isPushedByFluid() {
+        return false;
+    }
+
     /**
      * 钉在地上：不吃爆炸 / 活塞 / 水流等一切外力推移（2026-10-18 实机：苦力怕爆炸把路障从
      * y=96 推到 y=105.75，而碰撞方块还在原地 ⇒ 视觉与碰撞脱节）。实体的位移只允许由
