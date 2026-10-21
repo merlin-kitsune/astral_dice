@@ -135,10 +135,11 @@ config="${mod_id}.jade.mixins.json"
 #   starengine_version **一个量**表达(本文件经模板展开,升版只改那一处,不会与库坐标漂移)。
 #   ⚠️ 不要写成 `[1.1.0,2.0.0)`:Maven 的 ComparableVersion 把**未知限定符**(pre 即是)排在正式版
 #   **之后** ⇒ 实测 1.1.0-pre.2 > 1.1.0,该区间会放过预发布件、却在 1.1.0 正式版上判不满足。
-#   也不要写 `*` —— 那等于不校验版本。已知取舍:本区间无上界,库发 2.x(可能二进制不兼容)仍判满足。
+#   也不要写 `*` —— 那等于不校验版本。**上界固定写 `2.0.0`**(2026-10-21 裁决):库发 2.x(可能二进制不兼容)
+#   时判不满足并拦在加载前;升到 2.x 需与本区间同一批改写(只改这一处的字面量)。
 [[dependencies.${mod_id}]]
     modId="starengine"
     type="required"
-    versionRange="[${starengine_version},)"
+    versionRange="[${starengine_version},2.0.0)"
     ordering="AFTER"
     side="BOTH"

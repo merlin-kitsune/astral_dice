@@ -55,6 +55,16 @@ public class DorothySignItem extends BaseSignItem {
         return (int) com.merlinkitsune.astral_dice.item.ChargeManager.signCooldownTicks(player, COOLDOWN_TICKS);
     }
 
+    /**
+     * 同上,但**不折电池**({@link ChargeManager#signCooldownTicksBase} = 只做充能封顶);
+     * 供 {@code sign_active_max_cooldown_base}(命运指引卡减半基准)使用。
+     * 与 {@link #activeCooldownBaseTicks(Player)} 逐行镜像,仅把 signCooldownTicks 换成 signCooldownTicksBase。
+     */
+    @Override
+    protected int activeCooldownBaseTicksNoBattery(Player player) {
+        return (int) com.merlinkitsune.astral_dice.item.ChargeManager.signCooldownTicksBase(player, COOLDOWN_TICKS);
+    }
+
     /** 是否佩戴本立牌（温暖叠层的前提）。 */
     public static boolean isEquippedForWarmth(Player player) {
         if (player == null) return false;

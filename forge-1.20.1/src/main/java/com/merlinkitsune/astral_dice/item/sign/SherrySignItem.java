@@ -226,6 +226,23 @@ public class SherrySignItem extends BaseSignItem {
     }
 
     /**
+     * 同上,但**不折电池**:{@code signCooldownTicks} → {@code signCooldownTicksBase},
+     * 其余(isEquipped 三元 / 诡异骰子减半 / Math.max 夹底 / 兜底常量)**逐字保留**。
+     * 供 {@code sign_active_max_cooldown_base}(命运指引卡减半基准)使用。
+     */
+    @Override
+    protected int activeCooldownBaseTicksNoBattery(Player player) {
+        int ticks = isEquipped(player)
+                ? ACTIVE_COOLDOWN_SECONDS * 20
+                : GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS;
+        ticks = (int) ChargeManager.signCooldownTicksBase(player, ticks);
+        if (WeirdDiceHandler.hasWeirdDice(player)) {
+            ticks = Math.max(1, ticks / 2);
+        }
+        return ticks;
+    }
+
+    /**
      * 收集 {@value #THROW_RADIUS} 格内的全部敌对目标并登记投掷。
      *
      * <p><b>候选过滤</b>：敌对 + **视线可达**（{@code hasLineOfSight}）—— 隔墙的目标不投掷

@@ -75,9 +75,9 @@ public final class TemporaryCardUtil {
      *  取值与「每次释放固定发 2 张战斗牌 + 1 张效果牌」对齐 ⇒ 门槛通过时空槽必然够发满一整套,
      *  {@link #grantRandom} 的「少发、绝不落地」截断在正常情况下不可达(它只是安全网)。
      *  ⚠️ 沿革:当日经三轮裁决 —— ① 初始 3;② 曾**放宽为 2**,理由是「卡牌可堆叠
-     *  ({@code stacksTo(64)})⇒ 同 id 临时牌会并进一格,2 格也收得下 3 张」;③ 该放宽仅短暂生效,
+     *  ({@code stacksTo(16)})⇒ 同 id 临时牌会并进一格,2 格也收得下 3 张」;③ 该放宽仅短暂生效,
      *  数小时后**回调为 3**(卡牌堆叠一度被取消,上述理由失效);
-     *  随后卡牌堆叠**已恢复**({@code stacksTo(64)},见 ModItems),理由重新成立,
+     *  随后卡牌堆叠**已恢复**({@code stacksTo(16)},见 ModItems),理由重新成立,
      *  但用户裁决**维持 3** —— 因为 3 才能保证任何随机结果下都发满一整套,语义更稳。
      *  改动本常量**必须同步**三线 × 三语的 {@code msg.astral_dice.nardis_inventory_full} 文案。 */
     public static final int MIN_FREE_SLOTS_TO_CAST = 3;
@@ -360,7 +360,7 @@ public final class TemporaryCardUtil {
      *       它只是安全网(2026-09-27 用户裁决⑦第 5 条:保留不删)。</li>
      * </ol>
      *
-     * <p>⚠️ 卡牌**可堆叠**({@code stacksTo(64)},见 ModItems —— 2026-09-27 一度取消、同日已恢复)
+     * <p>⚠️ 卡牌**可堆叠**({@code stacksTo(16)},见 ModItems —— 2026-09-27 一度取消、同日已恢复)
      * ⇒ 两张战斗牌若随机到**同一张**牌,{@code Inventory#add} 会走合并分支把第二张并进既有堆,
      * 实际占用格数可能少于发放张数(这不影响"发满一整套"的语义)。
      *

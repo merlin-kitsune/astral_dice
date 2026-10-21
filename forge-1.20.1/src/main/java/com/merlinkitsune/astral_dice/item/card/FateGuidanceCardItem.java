@@ -1,5 +1,6 @@
 package com.merlinkitsune.astral_dice.item.card;
 
+import com.merlinkitsune.starengine.component.GameplayConstants;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.Level;
@@ -33,6 +34,7 @@ public class FateGuidanceCardItem extends BaseEffectCardItem {
     public FateGuidanceCardItem(Properties properties) {
         super(properties);
     }
+
     @Override
     protected String cardTypeId() {
         return "fate_guidance";
@@ -57,16 +59,26 @@ public class FateGuidanceCardItem extends BaseEffectCardItem {
     }
 
     // 主动技能冷却时间减半(实时功能):冷却中则从剩余时间中扣除「本次冷却实际使用的最大冷却时长」的 50%
-    // (路线 A:减少量 = 起冷却时记录的 sign_active_max_cooldown ÷ 2,例:180 秒冷却减 90 秒、枪匠 120 秒冷却减 60 秒;
-    //  记录缺失时兜底回退旧行为——按通用最大值重算;玩家级冷却,不受立牌装卸影响)
+    // (路线 A:减少量 = 起冷却时记录的**未折电池**基准 sign_active_max_cooldown_base ÷ 2(缺失时回退
+    //  sign_active_max_cooldown),例:180 秒冷却减 90 秒;全都缺失时兜底按**运行期**未折电池基础值重算;
+    //  玩家级冷却,不受立牌装卸影响)
     // 第二批「三态化」:主动仍在**锁定(生效中)**态时冷却尚未起算(cdEnd == 0),此时把同一减半量
     // **累加进锁定减免池**,由锁定结束起冷却时一次性抵扣——不在这里改任何冷却数值。
     private static void reduceActiveSkillCooldown(Player player) {
         long now = player.level().getGameTime();
-        long maxCooldown = ModAttachments.getSignActiveMaxCooldown(player);
+        // 优先读「未折电池」基准:额外电池的 ×0.5 只作用于立牌主动冷却本身,不得把本卡的减半量一并砍半。
+        long maxCooldown = ModAttachments.getSignActiveMaxCooldownBase(player);
         if (maxCooldown <= 0) {
-            // 兜底:记录缺失(老存档/漏写路径)时按旧行为重算通用最大值
-            maxCooldown = com.merlinkitsune.astral_dice.event.WeirdDiceHandler.signCooldownTicks(player);
+            // 兼容回退：老存档没有 sign_active_max_cooldown_base 附件 ⇒ 退回电池折算后的记录(旧行为)。
+            maxCooldown = ModAttachments.getSignActiveMaxCooldown(player);
+        }
+        if (maxCooldown <= 0) {
+            // 兜底:记录缺失(老存档/漏写路径)时按**运行期**基础冷却值(未折电池)重算 ——
+            // 不走 WeirdDiceHandler.signCooldownTicks:那条链带「额外电池筹码 ×0.5」,
+            // 会把本卡的减半量一起砍掉(电池只作用于立牌主动冷却,不作用于本卡收益)。
+            // 运行期取值(不能冻结成 static final:GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS 可被 config 重算)。
+            maxCooldown = com.merlinkitsune.astral_dice.item.ChargeManager.signCooldownTicksBase(
+                    player, GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS);
         }
         long reduction = maxCooldown / 2;
         if (com.merlinkitsune.astral_dice.item.sign.BaseSignItem.isSignActiveLocked(player)) {

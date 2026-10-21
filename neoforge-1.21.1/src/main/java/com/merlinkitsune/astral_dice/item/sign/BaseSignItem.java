@@ -181,10 +181,18 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
                 //   锁定期间**不写** sign_active_cooldown_end:冷却要等锁定结束才起(第 13 条:无空档);
                 //   但先把本次冷却基准写进 sign_active_max_cooldown,供锁定期间各减免方读它并累加进减免池。
                 ModAttachments.setSignActiveMaxCooldown(player, signCooldownTicks);
+                // 同处记录「未折电池」基准(命运指引卡减半用;电池只作用于立牌主动冷却本身)。
+                // ⚠️ 取的是**该立牌自身**的基础值(虚方法 no-battery 版),不能用全局常量 —— 否则
+                // Dorothy/Parunan/Sherry 等自定义基准的立牌会被写错(如 Dorothy 2400 被写成 3200/3600)。
+                ModAttachments.setSignActiveMaxCooldownBase(player, sign.activeCooldownBaseTicksNoBattery(player));
             } else {
                 ModAttachments.setSignActiveCooldownEnd(player, now + signCooldownTicks);
                 // 路线 A:记录本次冷却实际使用的最大冷却值,所有减免方一律读它(不再各自重算基准)
                 ModAttachments.setSignActiveMaxCooldown(player, signCooldownTicks);
+                // 同处记录「未折电池」基准(命运指引卡减半用;电池只作用于立牌主动冷却本身)。
+                // ⚠️ 取的是**该立牌自身**的基础值(虚方法 no-battery 版),不能用全局常量 —— 否则
+                // Dorothy/Parunan/Sherry 等自定义基准的立牌会被写错(如 Dorothy 2400 被写成 3200/3600)。
+                ModAttachments.setSignActiveMaxCooldownBase(player, sign.activeCooldownBaseTicksNoBattery(player));
             }
             // 电流核心筹码:主动技能实际生效时充能 +1(进入锁定时同样计一次;与是否立即起冷却无关)
             com.merlinkitsune.astral_dice.item.chip.CurrentCoreChipItem.onActiveSkillUsed(player);
@@ -386,6 +394,23 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
      */
     protected int activeCooldownBaseTicks(Player player) {
         return com.merlinkitsune.astral_dice.event.WeirdDiceHandler.signCooldownTicks(player);
+    }
+
+    /**
+     * 本立牌主动技能**基础冷却的「未折电池」版本**(tick)。
+     *
+     * <p>链路与 {@link #activeCooldownBaseTicks(Player)} **完全一致**(自定义基础值、充能封顶、
+     * 诡异骰子折算同名同序),仅跳过「额外电池筹码 ×0.5」这一步 —— 即把其中的
+     * {@code ChargeManager#signCooldownTicks} 换成 {@code ChargeManager#signCooldownTicksBase}。
+     * 覆写者(当前:Dorothy / Parunan / Sherry)必须与 {@code activeCooldownBaseTicks} 逐行镜像。
+     *
+     * <p>用途:与 {@code sign_active_max_cooldown} **同处**写入附件
+     * {@code sign_active_max_cooldown_base}(命运指引卡减半的基准)。电池只作用于立牌主动冷却本身,
+     * 不得连带砍掉本卡的减半收益。
+     */
+    protected int activeCooldownBaseTicksNoBattery(Player player) {
+        return (int) com.merlinkitsune.astral_dice.item.ChargeManager.signCooldownTicksBase(
+                player, com.merlinkitsune.starengine.component.GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS);
     }
 
     /**

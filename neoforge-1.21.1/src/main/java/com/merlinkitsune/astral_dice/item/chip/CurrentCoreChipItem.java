@@ -104,6 +104,8 @@ public class CurrentCoreChipItem extends BaseChipItem {
         // 立即完成冷却:结束时刻置为当前时刻(后续判定 now < cdEnd 不再成立),并让"本次最大冷却"记录随冷却一起失效
         ModAttachments.setSignActiveCooldownEnd(player, now);
         ModAttachments.setSignActiveMaxCooldown(player, 0);
+        // 同处清「未折电池」基准:否则下一轮命运指引卡会读到上一轮残留的基准值。
+        ModAttachments.setSignActiveMaxCooldownBase(player, 0L);
         sendActionBar(player, ChatFormatting.YELLOW, "hud.astral_dice.current_core_finish", cost);
         return FINISH_DONE;
     }

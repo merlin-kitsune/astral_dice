@@ -77,7 +77,9 @@ public final class ChipShopOpener {
                 player.getName().getString(), next.offersKey(), next.purchasedCount());
     }
 
-    /** 物品栏 36 格是否已满（购买落点 = 第一个空格 ⇒ 全满即无处可放） */
+    /** 物品栏 36 格是否已满 —— 开店前预检。筹码一律 {@code stacksTo(1)} ⇒ 落点等价于「第一个空格」；
+     *  全满即拒绝开店：生存模式购买时若无空格会 {@code drop} 成掉落物（见 {@code ChipShopMenu}），
+     *  与其让玩家花钱换一地掉落物，不如直接拒开。 */
     private static boolean hasNoRoom(Player player) {
         for (int i = 0; i < INVENTORY_SLOTS; i++) {
             if (player.getInventory().getItem(i).isEmpty()) {

@@ -45,6 +45,12 @@ public class EventDrawBlock extends Block {
     private static final long COOLDOWN_TICKS = 6000L;
 
     /**
+     * 空白筹码**投入间隔**:2400 ticks = 2:00(对齐筹码商店 {@code ChipShopBlock#BLANK_INSERT_COOLDOWN_TICKS})。
+     * 同一玩家未到点 ⇒ 红字拒绝且**不消耗**空白筹码、不清冷却。
+     */
+    private static final long BLANK_INSERT_COOLDOWN_TICKS = 2400L;
+
+    /**
      * 购买单价的只读访问器（星币）。
      *
      * <p>Jade 的花费行与右键扣费共用此常量，避免两处各写一个数字导致显示与实际扣费漂移。
@@ -99,6 +105,9 @@ public class EventDrawBlock extends Block {
     /**
      * 手持**空白筹码**右键方块 ⇒ 重置抽奖盒（与筹码商店「投入空白筹码」同口径：消耗 1 枚、清空当前批次状态）。
      *
+     * <p><b>投入间隔</b>：与筹码商店同款的 {@value #BLANK_INSERT_COOLDOWN_TICKS} ticks（2:00）——
+     * 距上次投入不足该值时**红字拒绝且不消耗**空白筹码（提示键复用 {@code msg.astral_dice.chip_shop_blank_cooldown}）。
+     *
      * <p>非空白筹码一律回退 {@code super.useItemOn} ⇒ 交给默认交互（{@link #useWithoutItem} 购买），
      * 原有右键购买行为不受影响。
      */
@@ -111,8 +120,18 @@ public class EventDrawBlock extends Block {
         if (level.isClientSide) {
             return ItemInteractionResult.sidedSuccess(true);
         }
+        long now = level.getGameTime();
+        long last = ModAttachments.getEventDrawerBlankInsertAt(player);
+        if (last != 0L && now - last < BLANK_INSERT_COOLDOWN_TICKS) {
+            // 未到投入间隔 ⇒ 拒绝且**不消耗**空白筹码(复用筹码商店同款的冷却提示键)
+            actionBar(player, ChatFormatting.RED, "msg.astral_dice.chip_shop_blank_cooldown");
+            LOGGER.info("AP_EVENT_DRAWER: player={}:blank_insert=denied:cooldown:remain={}",
+                    player.getName().getString(), BLANK_INSERT_COOLDOWN_TICKS - (now - last));
+            return ItemInteractionResult.sidedSuccess(false);
+        }
         stack.shrink(1);
         ModAttachments.setEventDrawerCooldownUntil(player, 0L);
+        ModAttachments.setEventDrawerBlankInsertAt(player, now);
         actionBar(player, ChatFormatting.GOLD, "msg.astral_dice.event_drawer_blank_insert");
         LOGGER.info("AP_EVENT_DRAWER: player={}:blank_insert=ok:reset=cooldown",
                 player.getName().getString());

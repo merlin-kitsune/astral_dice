@@ -134,6 +134,22 @@ public final class LinglingSignManager {
         return new ItemStack(ModItems.EFFECT_CARD_REPULSION.get(), barricade.getCount());
     }
 
+    /**
+     * **落位时真正入包的物品**:佩戴「怪力乱神」立牌时「路障 ⇒ 等张数强化拒止」,其余一律原样返回。
+     *
+     * <p><b>唯一判定源</b>:服务端购买落位({@code CardShopMenu#handleBuy})与客户端可受理判定
+     * ({@code CardShopScreen#canAcceptDrop})都调本方法 —— 两侧口径只有一份,不再各写一遍转换条件
+     * (否则客户端按「货架原物」比较、服务端按「转换后物品」落位 ⇒ 戴铃铃时拖到已有强化拒止栈上会被误拦)。
+     *
+     * <p><b>客户端安全</b>:{@link #toRepulsion} 只做物品构造 + owner 组件写入(不读写世界 / 附件),
+     * 双端产物组件一致 ⇒ {@code ItemStack.isSameItemSameComponents / isSameItemSameTags} 的比较结果一致。
+     */
+    public static ItemStack resolvePlacedItem(ItemStack shelfStack, Player player) {
+        if (!isBarricade(shelfStack)) return shelfStack;
+        if (player == null || !isEquipped(player)) return shelfStack;
+        return toRepulsion(shelfStack, player);
+    }
+
     /** 该 stack 是否是需要被换掉的路障。 */
     public static boolean isBarricade(ItemStack stack) {
         return stack != null && !stack.isEmpty() && stack.is(ModItems.EFFECT_CARD_BARRICADE.get());

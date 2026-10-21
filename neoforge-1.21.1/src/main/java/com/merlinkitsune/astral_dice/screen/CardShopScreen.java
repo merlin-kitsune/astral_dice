@@ -64,7 +64,7 @@ import java.util.UUID;
  *   <li><b>单击</b> = 只做选择：卡框边框变 {@code shop_card_select.png}（{@link #selectedIndex}），**不发任何包**；
  *       空 / 已售牌位点击一律无效；</li>
  *   <li><b>双击</b>（同一框 {@link #DOUBLE_CLICK_MS}=280ms 内第二次按下）= 快速移入物品栏：发
- *       {@link CardShopBuyPayload}(货架格, {@link CardShopMenu#QUICK_MOVE_SLOT}) ⇒ 服务端挑第一个空物品栏格并结算；</li>
+ *       {@link CardShopBuyPayload}(货架格, {@link CardShopMenu#QUICK_MOVE_SLOT}) ⇒ 服务端**先并同类未满栈、再**挑第一个空格并结算；</li>
  *   <li><b>拖拽</b>：按下后位移超过 {@link #DRAG_THRESHOLD} ⇒ 由 {@link #mouseDragged} 升级为拖拽（余额不足则拒绝起拖
  *       + actionbar 提示）→ {@link #mouseReleased} 判定落点：命中玩家物品栏空格 ⇒ 发 {@link CardShopBuyPayload}
  *       （服务端权威结算）；落点无效或该格被占用 ⇒ 仅清本地拖动态（卡牌原地移回，服务端全程无感知）。</li>
@@ -1470,7 +1470,7 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
      * <ul>
      *   <li>空 / 已售牌位：点击一律无效（连选中都不算）；</li>
      *   <li>同一框在 {@link #DOUBLE_CLICK_MS} 内被按下第二次 = <b>双击 ⇒ 快速移入物品栏</b>：
-     *       发 {@link CardShopBuyPayload}(货架格, {@link CardShopMenu#QUICK_MOVE_SLOT})，由服务端挑第一个空物品栏格
+     *       发 {@link CardShopBuyPayload}(货架格, {@link CardShopMenu#QUICK_MOVE_SLOT})，由服务端先并同类未满栈、再挑第一个空格
      *       并走与拖拽完全相同的六步校验（余额不足 / 满包 ⇒ 服务端拒绝 + 余额数字闪烁）；</li>
      *   <li>否则 = 单击：记选中（边框变 shop_card_select.png）与按下点，等 {@link #mouseDragged} 决定是否升格为拖拽。</li>
      * </ul>
@@ -1583,7 +1583,11 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
      * 同类口径与服务端一致（同一物品 + 同一组件）；服务端仍是唯一权威，这里只放宽拦截。
      */
     private boolean canAcceptDrop(int shelfIndex, int invIndex) {
-        ItemStack incoming = this.menu.getSlot(shelfIndex).getItem();
+        // 2026-10-21 D1:可受理判定按**转换后**的物品比较(佩戴怪力乱神时 货架路障 ⇒ 强化拒止),
+        // 与服务端 handleBuy 共用 LinglingSignManager#resolvePlacedItem —— 不复制第二份转换逻辑。
+        ItemStack incoming = LinglingSignManager.resolvePlacedItem(
+                this.menu.getSlot(shelfIndex).getItem(),
+                this.minecraft == null ? null : this.minecraft.player);
         if (incoming.isEmpty()) {
             // 货架格已空（客户端视图滞后）⇒ 交给服务端幂等拒绝，这里不拦
             return true;

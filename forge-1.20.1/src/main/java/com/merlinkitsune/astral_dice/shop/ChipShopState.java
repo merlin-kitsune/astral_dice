@@ -63,7 +63,9 @@ public record ChipShopState(List<String> offers, Optional<String> lastPickCatego
             Codec.STRING.optionalFieldOf("rolled_dice", "").forGetter(ChipShopState::rolledDiceKey)
     ).apply(instance, ChipShopState::new));
 
-    /** 玩家存档读取（客户端读到的是一份「服务端同步值」——本模组不使用附件 sync，客户端不读它） */
+    /** 玩家存档读取（客户端读到的是一份「服务端同步值」——{@code ModAttachments.CHIP_SHOP_STATE} 是
+     *  {@code .sync()} 并进 {@code SYNCED_KEYS} 的同步键；客户端只消费 {@code cooldownUntil}
+     *  （Jade 悬浮框倒计时），其余字段无客户端消费方） */
     public static ChipShopState get(Player player) {
         return ModAttachments.CHIP_SHOP_STATE.get(player);
     }

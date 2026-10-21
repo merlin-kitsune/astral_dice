@@ -125,6 +125,10 @@ public class LuluSignItem extends BaseSignItem {
             int cooldown = WeirdDiceHandler.signCooldownTicks(player);
             ModAttachments.setSignActiveCooldownEnd(player, now + cooldown);
             ModAttachments.setSignActiveMaxCooldown(player, cooldown);
+            // 同处配对写「未折电池」基准(与 BaseSignItem 的写入点同一口径;漏写会让命运指引卡读到旧值)。
+            ModAttachments.setSignActiveMaxCooldownBase(player,
+                    com.merlinkitsune.astral_dice.item.ChargeManager.signCooldownTicksBase(player,
+                            com.merlinkitsune.starengine.component.GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS));
             // 电流核心筹码:主动技能实际生效时充能 +1
             CurrentCoreChipItem.onActiveSkillUsed(player);
 

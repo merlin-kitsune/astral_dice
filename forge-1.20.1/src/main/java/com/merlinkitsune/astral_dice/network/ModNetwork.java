@@ -700,6 +700,8 @@ public final class ModNetwork {
      * {@code targetSlot} 用**物品栏索引**口径(0..8 = 快捷栏、9..35 = 主物品栏),服务端经
      * {@code shop/CardShopMenu#playerSlotOffset(int)} 换算成菜单槽序号。
      *
+     * <p>{@code targetSlot == -1}(双击快速移入):由服务端**先并入同类未满栈、再**挑第一个空格。
+     *
      * <p>本包只承载「哪一格拖到哪一格」;价格、限购、目标格占用、余额与扣款一律由服务端
      * {@code shop/CardShopMenu#handleBuy} 现算并二次校验(**忽略客户端任何数值**)。
      */

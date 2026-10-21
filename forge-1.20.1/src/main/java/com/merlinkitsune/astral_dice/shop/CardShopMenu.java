@@ -53,7 +53,7 @@ import java.util.UUID;
  * <p><b>C2S 载荷</b>：转账需要「目标索引 + 金额」、购买需要「货架索引 + 目标格索引」，原版按钮包只有
  * 一个 int，故各自单独走 {@code CardShopTransferPayload} / {@code CardShopBuyPayload}（其余按钮仍用原版按钮包）；
  * 双击「快速移入物品栏」复用 {@code CardShopBuyPayload}，{@code targetSlot ==}{@link #QUICK_MOVE_SLOT}(-1) 表示
- * 由服务端自动挑第一个空物品栏格（口径与拖拽落点完全一致）。
+ * 由服务端**先并入同类未满栈、再**挑第一个空物品栏格（口径与拖拽落点完全一致）。
  *
  * <p><b>60 秒轮询（2026-10-09 用户裁决）</b>：全店只有**一个**共享计数器（{@link #TRANSFER_COOLDOWN_SECONDS} 秒），
  * 到 0 的那一刻同时 ① 转账恢复可用 ② 重新抽架上新牌；计数器由「就绪态下的购买成功 / 转账成功」开启，
@@ -106,7 +106,7 @@ public class CardShopMenu extends AbstractContainerMenu {
     /** 本轮 60 秒轮询的长度（秒）：到 0 时 转账解锁 + 重新抽架 */
     public static final int TRANSFER_COOLDOWN_SECONDS = 60;
 
-    /** 双击「快速移入物品栏」哨兵：{@code CardShopBuyPayload#targetSlot} 取它 ⇒ 服务端自动挑第一个空物品栏格 */
+    /** 双击「快速移入物品栏」哨兵：{@code CardShopBuyPayload#targetSlot} 取它 ⇒ 服务端先并同类未满栈、再自动挑第一个空物品栏格 */
     public static final int QUICK_MOVE_SLOT = -1;
     /** {@code CardShopDenyPayload#reason}：余额不足（买牌 / 转账被拒 ⇒ 客户端数字红白闪 3 次） */
     public static final int DENY_NO_COIN = 0;
@@ -462,18 +462,16 @@ public class CardShopMenu extends AbstractContainerMenu {
         if (card.isEmpty()) {
             return;
         }
-        ItemStack bought = card.copy();
-        // 2026-10-18 怪力乱神立牌(lingling)§4.3:佩戴者从商店买到的**路障**同样转成强化拒止
-        // (与「拾取路障自动转」同口径;放在写入玩家槽之前,保证入包时已是强化拒止)。
-        // 2026-10-21 卡牌自动堆叠:转换**提前到落位判定之前** ⇒ 同类比较用的是真正入包的那张牌(路障→强化拒止)。
-        if (com.merlinkitsune.astral_dice.item.sign.LinglingSignManager.isEquipped(buyer)
-                && com.merlinkitsune.astral_dice.item.sign.LinglingSignManager.isBarricade(bought)) {
-            bought = com.merlinkitsune.astral_dice.item.sign.LinglingSignManager.toRepulsion(bought, buyer);
-        }
+        // 落位时**真正入包**的物品(§4.3 怪力乱神佩戴时的「路障 ⇒ 强化拒止」)统一由
+        // LinglingSignManager#resolvePlacedItem 解析:客户端 CardShopScreen#canAcceptDrop 调的是同一个方法
+        // ⇒ 「拖到已有强化拒止栈上」不再被客户端按货架原物误拦,转换判定只有一份。
+        // (2026-10-21 卡牌自动堆叠:转换在落位判定之前 ⇒ 同类比较用的是真正入包的那张牌。)
+        ItemStack bought = com.merlinkitsune.astral_dice.item.sign.LinglingSignManager
+                .resolvePlacedItem(card, buyer).copy();
         if (quickMove) {
             // 双击「快速移入物品栏」（2026-10-09 §3）：由**服务端**挑落点 —— 先并同类未满栈，再取第一个空格；
-            // 满包 ⇒ 静默拒绝（任务P §0.2-2 已删除「背包已满」提示文本，不再回任何 actionbar），
-            // 只让客户端闪余额数字（§4 同一条拒绝通道）。
+            // 满包 ⇒ 返回 DENY_INVENTORY_FULL 并触发「背包已满」提示（2026-10-21 D2 起不再静默拒绝），
+            // 同时让客户端闪余额数字（§4 同一条拒绝通道）。
             targetSlot = findQuickMoveSlot(bought);
             if (targetSlot < 0) {
                 notifyDeny(buyer, DENY_INVENTORY_FULL);
@@ -484,7 +482,10 @@ public class CardShopMenu extends AbstractContainerMenu {
         // 装不下 ⇒ 直接拒绝（绝不先扣钱再丢卡）。
         List<int[]> plan = planPlacement(bought, targetSlot, bought.getCount());
         if (plan == null) {
-            if (quickMove) {
+            // 2026-10-21 D2:区分两种拒绝 —— 目标格被**不同物品**占着 ⇒ 既有「目标格被占用」文本;
+            // 其余装不下的情形(目标格是**已满同类栈**且别处无空间 / 空格用尽)都是**背包已满**,
+            // 复用既有 DENY_INVENTORY_FULL 拒绝通道(不新增 lang key)。
+            if (quickMove || !isTargetSlotOccupied(bought, targetSlot)) {
                 notifyDeny(buyer, DENY_INVENTORY_FULL);
             } else {
                 actionBar(buyer, ChatFormatting.RED, "msg.astral_dice.card_shop_slot_occupied");
@@ -822,7 +823,7 @@ public class CardShopMenu extends AbstractContainerMenu {
 
     /**
      * 双击快速移入的落点（0..8 快捷栏 / 9..35 主物品栏）：2026-10-21「卡牌自动堆叠」后**先找可并入的同类未满栈**，
-     * 再取第一个空格；两者都没有 ⇒ -1（调用方按「背包已满」静默拒绝）。
+     * 再取第一个空格；两者都没有 ⇒ -1（调用方返回 DENY_INVENTORY_FULL 并触发「背包已满」提示）。
      */
     private int findQuickMoveSlot(ItemStack incoming) {
         for (int inv = 0; inv < 36; inv++) {
@@ -838,6 +839,15 @@ public class CardShopMenu extends AbstractContainerMenu {
             }
         }
         return -1;
+    }
+
+    /**
+     * 目标格是否被**不同物品**占着 —— 即 {@code planPlacement} 里**唯一**仍回报「目标格被占用」的情形;
+     * 其余装不下(目标格是已满同类栈、空格用尽)一律按「背包已满」走 {@link #DENY_INVENTORY_FULL}。
+     */
+    private boolean isTargetSlotOccupied(ItemStack incoming, int targetSlot) {
+        return targetSlot >= 0 && invSlot(targetSlot).hasItem()
+                && !sameCard(invSlot(targetSlot).getItem(), incoming);
     }
 
     /**

@@ -20,7 +20,7 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
  * @param targetSlot 目标格 = <b>玩家物品栏索引</b> 0..35（0..8 = 快捷栏，9..35 = 主物品栏），
  *                   与 {@link CardShopMenu#playerSlotOffset(int)} 的入参同口径；
  *                   或 {@link CardShopMenu#QUICK_MOVE_SLOT}(-1) = 双击「快速移入物品栏」，
- *                   由服务端挑第一个空物品栏格（满包 ⇒ 拒绝 + 触发「背包已满」提示与余额闪烁）
+ *                   由服务端**先并入同类未满栈、再**挑第一个空格（满包 ⇒ 拒绝 + 触发「背包已满」提示与余额闪烁）
  */
 public record CardShopBuyPayload(int shelfIndex, int targetSlot) implements CustomPacketPayload {
 

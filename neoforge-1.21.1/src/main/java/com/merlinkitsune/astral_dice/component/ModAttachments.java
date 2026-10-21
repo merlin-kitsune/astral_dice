@@ -141,6 +141,22 @@ public class ModAttachments {
         player.setData(EVENT_DRAWER_COOLDOWN_UNTIL.get(), value);
     }
 
+    // 抽奖盒(event_drawer):上次**投入空白筹码**的时刻(level.getGameTime();0 = 从未投入)。
+    // 用途 = 投入间隔(2400t = 2:00,与筹码商店 ChipShopBlock#BLANK_INSERT_COOLDOWN_TICKS 同口径),
+    // 0 兼作「从未投入」哨兵 ⇒ 首次投入不参与冷却判定。判定只在服务端,故**不 .sync**。
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> EVENT_DRAWER_BLANK_INSERT_AT =
+            ATTACHMENTS.register("event_drawer_blank_insert_at", () -> AttachmentType.builder(() -> 0L)
+                    .serialize(Codec.LONG)
+                    .build());
+
+    public static long getEventDrawerBlankInsertAt(net.minecraft.world.entity.player.Player player) {
+        return player.getData(EVENT_DRAWER_BLANK_INSERT_AT.get());
+    }
+
+    public static void setEventDrawerBlankInsertAt(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(EVENT_DRAWER_BLANK_INSERT_AT.get(), value);
+    }
+
     // 治愈点数(玩家级共享资源的单一数值池):由医疗箱(赐福触发时加点)/史莱姆立牌被动/主动/
     // 缓冲盾牌等获取,由 HealingManager 统一管理。治愈体系已无独立计时器:
     // 触发骰神赐福时按当前治愈点×2 回血,赐福结束时治愈点减半(向下取整)。
@@ -624,6 +640,23 @@ public class ModAttachments {
 
     public static void setSignActiveMaxCooldown(net.minecraft.world.entity.player.Player player, long value) {
         updateSignState(player, state -> state.withSignActiveMaxCooldown(value));
+    }
+
+    // 立牌主动技能「本次冷却基准的**未折电池**版本」:与 SIGN_ACTIVE_MAX_COOLDOWN 在同一处写入,
+    // 值取自 {@code ChargeManager#signCooldownTicksBase}(充能封顶后的基础值,跳过「额外电池筹码 ×0.5」)。
+    // 用途 = 命运指引卡把「最大冷却」减半时的基准 —— 电池只作用于立牌主动冷却本身,
+    // 不得连带砍掉本卡的减半收益。仅服务端使用,故不 .sync()(0 = 缺失,读取方按老存档回退)。
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> SIGN_ACTIVE_MAX_COOLDOWN_BASE =
+            ATTACHMENTS.register("sign_active_max_cooldown_base", () -> AttachmentType.builder(() -> 0L)
+                    .serialize(Codec.LONG)
+                    .build());
+
+    public static long getSignActiveMaxCooldownBase(net.minecraft.world.entity.player.Player player) {
+        return player.getData(SIGN_ACTIVE_MAX_COOLDOWN_BASE.get());
+    }
+
+    public static void setSignActiveMaxCooldownBase(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(SIGN_ACTIVE_MAX_COOLDOWN_BASE.get(), value);
     }
 
     // ===== 立牌主动技能"三态化"(可用 / 锁定-生效中 / 冷却)的玩家级状态 =====

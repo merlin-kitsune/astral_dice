@@ -65,22 +65,22 @@ P T P
 - `event/TemporaryCardEvents`（`ItemTossEvent`，实体入世前触发）；佩戴 lingling 且丢出的是 `EFFECT_CARD_REPULSION` ⇒ 把 `event.getEntity().getItem()` 换成等量路障（不是取消事件）。
 - 只做服务端替换即可（ItemTossEvent 服务端触发覆盖 Q 键 / 拖出背包 / `Player#drop`）。
 
-### 4.6 吸附目标数 => 额外充能层数（独立加成层，用户 2026-10-18 裁决）
+### 4.6 吸附新目标 => 放置者 +1 真实充能（2026-10-21 用户裁决）
 
-> **⛔ 2026-10-20 用户裁决（覆盖本节以下旧口径）**：废弃「吸附目标时充能 +1，该目标被击杀后充能 -1」。
-> 新口径 = **每控制一个「新目标」+1 层充能**（同一目标重复吸附**不**重复计数），
-> **单个强化拒止最多提供 5 点充能**（上限按**每个力场实体**各 5 点，**不是**全局 5 点）；
-> 「击杀 / 脱离 ⇒ 减层」整条**废弃**。实现：力场侧持久化 `controlledTargets`（最多 5 个 UUID，
-> 落盘 `RepulsionControlledTargets`），立牌侧按「自己放置的各力场 `chargeStacks()` 之和」重算，
-> 合计仍由 `effectiveCharge` 夹在 20 层。
+> **⛔ 2026-10-21 用户裁决（覆盖本节 2026-10-18 / 10-20 的旧口径）**：废弃「独立加成层 `lingling_bonus_charge`
+> + 每 10t 按距离重算 + 目标脱离/死亡减层」。现行口径 = **强化拒止吸附到一个新目标时，立刻给放置者 +1 真实充能**
+> （与其它充能来源同一条链路）；**单座力场最多 5 点**、**永久到账**（玩家走远 / 目标脱离或阵亡 / 力场碎裂或到期
+> **一律不回收**）。
 
-- **不写进 ChargeEffect**；新增 attachment int `lingling_bonus_charge`（`.copyOnDeath()`）。
-- 重算（每 10t，佩戴时）：bonus = **自己放置的** `RepulsionEntity` 正在吸附的有效目标数（去重；目标需 `isTracking(uuid)` 且实体仍能在该 level 取回且存活）。
-- 有效充能：`LinglingSignManager.effectiveCharge(player) = Math.min(20, ChargeManager.getStacks(player) + bonus)`；上限 20 是「真实 + 额外」合计上限（用户补充说明）。
-- 目标脱离/死亡 ⇒ 下一轮重算自动减层（不残留）。
-- **前置改动**：`entity/RepulsionEntity` 目前**没有 owner 字段**（只有 `Set<UUID> trackedTargets`）⇒ 必须新增持久化 `ownerUUID`（NBT 落盘，参照 trackedTargets 的 UUID 落盘写法），并在 `RepulsionCardItem` 召唤点（旧取证 :129 附近）写入放置者 UUID。forge 同构。
-- 扫描范围口径：从玩家出发取附近 radius 内 RepulsionEntity（先例 `event/RepulsionCreeperGuard.java:88-95` 用 inflate(16)；本立牌按**32** 格扫描并在 spec 记录），`ownerUUID.equals(player.getUUID())` 才计入。
-- 其他系统（筹码消耗等）**不感知**额外层（这是用户选择的口径）。
+- 落点 = `entity/RepulsionEntity#awardCharge`（两线同构）：在 20t 一次的 `scanAndApplyEffects` 里，候选落入
+  `trackedTargets` 后调用一次；**没有**新增 tick 扫描，`LinglingSignManager` 侧**不做任何增删**。
+- 去重：本力场内存集合 `chargedTargets`（同一目标反复进出不重复发；**不落盘**，重载后从 0 重算，仍受 5 点配额约束）。
+- 配额：落盘 int `chargeGiven`（NBT `RepulsionChargeGiven`，0..`MAX_CHARGE_STACKS` = 5），**只在实际加层成功时 +1**
+  ⇒ 玩家已达 `GameplayConstants.CHARGE_MAX_STACKS`(20) 时本次不加、也不占配额；放置者离线 ⇒ 跳过（不记账、不占配额）。
+- 链路：`ChargeManager.addStacks(owner, 1)` ⇒ HUD / 消耗 / 死亡保留自动生效，**不再有独立账本**。
+- 有效充能：`LinglingSignManager.effectiveCharge(player) = min(CHARGE_MAX_STACKS(20), ChargeManager.getStacks(player))`
+  —— 只做总上限夹取。
+- 其他系统（筹码消耗等）**看到的就是真实充能**（旧口径「额外层对其他系统不可见」已作废）。
 
 ### 4.7 攻击被吸附目标 +5 伤害（任意强化拒止，不分归属）
 - 触发面：**玩家本人（佩戴 lingling）对目标造成的任意伤害**（近战/远程/法术都算），目标被**任意** RepulsionEntity 吸附即可（`getEntitiesOfClass(RepulsionEntity.class, target.getBoundingBox().inflate(16))` + `isTracking(target.getUUID())`，先例 `event/RepulsionCreeperGuard.java:88-95`）。

@@ -100,8 +100,17 @@ public final class SignActiveLockMachine {
         long base = ModAttachments.getSignActiveMaxCooldown(player);
         long pool = ModAttachments.getSignActiveReductionPool(player);
         long effective = skipCooldown ? 0L : Math.max(0L, base - pool);
+        // 同处把「未折电池」基准改写成同一算式的结果(基础值换成**该立牌**的 no-battery 版本,
+        // 减去同一个 pool、Math.max(0,...) 兜底):命运指引卡只读 sign_active_max_cooldown_base,
+        // 必须与 sign_active_max_cooldown 同源同步,否则锁定期入池的减免与基准脱节。
+        // 立牌实例解析失败(理论上不发生)时退回锁定起点记录的基准值。
+        long baseNoBattery = lockSign != null
+                ? lockSign.activeCooldownBaseTicksNoBattery(player)
+                : ModAttachments.getSignActiveMaxCooldownBase(player);
+        long effectiveBase = skipCooldown ? 0L : Math.max(0L, baseNoBattery - pool);
         ModAttachments.setSignActiveCooldownEnd(player, now + effective);
         ModAttachments.setSignActiveMaxCooldown(player, effective);
+        ModAttachments.setSignActiveMaxCooldownBase(player, effectiveBase);
         ModAttachments.setSignActiveReductionPool(player, 0L);
         ModAttachments.setSignActiveLockSign(player, "");
         ModAttachments.setSignActiveLockEnd(player, 0L);
