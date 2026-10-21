@@ -859,7 +859,7 @@
   "tooltip.astral_dice.sign.kangel_passive": "Targets you attack or that attack you are marked with the 「Fan」 status, and they deal §e-1§7 damage when attacking the KAngel",
   "tooltip.astral_dice.sign.kangel_note": "Two Hearts as One: while a member of your team wears the Ame Sign, this character's passive ability also applies to them",
   "tooltip.astral_dice.sign.kangel_fans": "Fans: §e%s§7 / §e%s§r",
-  "tooltip.astral_dice.sign.ame_active": "Immediately restore 「Love」 stacks§ex2§7 health and grant a movement speed bonus of §e+20%%§7 for §91:00§7. When it ends, §e4§7 「Love」 stacks are consumed and the 「Love」 stack cap is raised by §e+1§7 (up to §e32§7)",
+  "tooltip.astral_dice.sign.ame_active": "Immediately restore 「Love」 stacks §e×2§7 health and grant a movement speed bonus of §e+20%%§7 for §91:00§7. When it ends, §e4§7 「Love」 stacks are consumed and the 「Love」 stack cap is raised by §e+1§7 (up to §e32§7)",
   "tooltip.astral_dice.sign.ame_passive": "You start with §e6§7 defense. When you take damage you gain §e1§7 「Love」 stack, at most §e1§7 stack every §930 seconds§7. The initial cap is only §e4§7 stacks, and you start with §e2§7 stacks when equipping the Ame Sign",
   "tooltip.astral_dice.sign.ame_note": "Two Hearts as One: while a member of your team wears the KAngel Sign, this character's passive ability also applies to them.",
   "tooltip.astral_dice.sign.ame_love_layers": "Love: §e%s§7 / §e%s§r",
