@@ -57,6 +57,9 @@ public final class NewSignEvents {
         if (player.level().isClientSide()) return;
         if (!immune(player)) return;
         var holder = event.getEffectInstance().getEffect();
+        // 2026-10-21: 青之诅咒由玩家**自己装备**的筹码施加,不属于「外来负面效果」
+        // ⇒ 铁处女 / 摸鱼的 HARMFUL 免疫不得拦它(否则 addEffect 返回 false、效果直接消失)。
+        if (holder.value() == ModEffects.BLUE_CURSE.value()) return;
         if (holder.value().getCategory() == net.minecraft.world.effect.MobEffectCategory.HARMFUL) {
             event.setResult(net.neoforged.neoforge.event.entity.living.MobEffectEvent.Applicable.Result.DO_NOT_APPLY);
         }

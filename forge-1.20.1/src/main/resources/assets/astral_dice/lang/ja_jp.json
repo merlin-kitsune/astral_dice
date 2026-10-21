@@ -449,6 +449,7 @@
   "key.astral_dice.activate_sign": "スタンドのスキルを発動",
   "key.astral_dice.open_card_inventory": "カード欄を開く",
   "key.categories.astral_dice": "アストラルダイス",
+  "msg.astral_dice.blue_curse_blocked": "青の呪いを付与できませんでした（無効化効果に阻まれました）",
   "msg.astral_dice.bonnie_ready": "ボニーのスタンド：アクティブスキルが発動しました。敵対ターゲットを選択して「隠密調査」を付与してください",
   "msg.astral_dice.bonnie_undercover_applied": "隠密行動：%s に「隠密調査」を付与しました",
   "msg.astral_dice.moses_ready": "モーゼスのスタンド：アクティブスキルが発動しました。敵対ターゲットを選択して「綻び」を付与してください",

@@ -119,10 +119,35 @@ public class CursedSwordChipItem extends BaseChipItem {
         }
     }
 
+    // 施加失败提示节流:同一玩家 ≥100 tick 只提示一次(curioTick 每 tick 调用,否则会刷屏)
+    private static final int BLUE_CURSE_WARN_INTERVAL_TICKS = 100;
+    private static final java.util.Map<Player, Long> BLUE_CURSE_LAST_WARN = new java.util.WeakHashMap<>();
+
     private static void applyBlueCurse(Player player) {
-        if (!player.hasEffect(ModEffects.BLUE_CURSE)) {
-            player.addEffect(new MobEffectInstance(ModEffects.BLUE_CURSE, MobEffectInstance.INFINITE_DURATION, 0, false, true, true));
+        MobEffectInstance existing = player.getEffect(ModEffects.BLUE_CURSE);
+        if (existing != null && existing.showIcon()) {
+            return;
         }
+        if (existing != null) {
+            // 历史存档残留的**隐形**实例(showIcon == false):先经仓内既有通道移除,
+            // 再按可见方式重新施加(否则玩家永远看不到图标)。
+            ModEffectRemoval.remove(player, ModEffects.BLUE_CURSE);
+        }
+        if (!player.addEffect(new MobEffectInstance(ModEffects.BLUE_CURSE,
+                MobEffectInstance.INFINITE_DURATION, 0, false, true, true))) {
+            // addEffect 返回 false(被免疫/拦截吃掉)⇒ 必须可观测,不能静默"效果消失"
+            warnBlueCurseBlocked(player);
+        }
+    }
+
+    private static void warnBlueCurseBlocked(Player player) {
+        long now = player.level().getGameTime();
+        Long last = BLUE_CURSE_LAST_WARN.get(player);
+        if (last != null && now - last < BLUE_CURSE_WARN_INTERVAL_TICKS) return;
+        BLUE_CURSE_LAST_WARN.put(player, now);
+        player.displayClientMessage(net.minecraft.network.chat.Component
+                .translatable("msg.astral_dice.blue_curse_blocked")
+                .withStyle(net.minecraft.ChatFormatting.RED), true);
     }
 
     // 诅咒之剑:每击杀 1 个不少于 20 血敌对目标,攻击力 +1(上限由配置决定)

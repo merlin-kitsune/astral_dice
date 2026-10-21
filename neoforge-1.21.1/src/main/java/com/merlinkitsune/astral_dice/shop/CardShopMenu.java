@@ -1,5 +1,7 @@
 package com.merlinkitsune.astral_dice.shop;
 
+import com.merlinkitsune.astral_dice.audio.ModSounds;
+import com.merlinkitsune.astral_dice.audio.SoundPlayback;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.economy.StarCoinBalanceSync;
 import com.merlinkitsune.astral_dice.item.ModItems;
@@ -612,6 +614,9 @@ public class CardShopMenu extends AbstractContainerMenu {
             notifyDeny(owner, DENY_NO_COIN);
             return;
         }
+        // 2026-10-21 用户裁决:转账**成功**即播放钱包音效(wallet_deposit = 「钱包存入」语义)。
+        // 失败 / 余额不足在上方 early-return,不会响 ⇒ 天然只走成功路径。
+        SoundPlayback.playTo(owner, ModSounds.WALLET_DEPOSIT.get());
         // 成功 ⇒ 开启本轮 60 秒轮询（此刻必为就绪态：上面已挡掉进行中）；本轮内不可再转账。
         startCycleIfReady();
         forceDiscountOnOwnShelf();

@@ -29,6 +29,11 @@ public class ModPayloads {
                         DamageNumberStore.add(payload.entityId(), payload.bonusDamage(), payload.color(),
                                 payload.x(), payload.y(), payload.z()))
         );
+        // 光束 FX（激光 / 轨道炮）→ 客户端：服务端每 tick 下发一条已冻结两端点的光线，客户端只画不追实体。
+        registrar.playToClient(
+                BeamFxPayload.TYPE,
+                BeamFxPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() -> BeamFxPayload.handle(payload)));
         registrar.playToClient(
                 ActionBarPayload.TYPE,
                 ActionBarPayload.STREAM_CODEC,

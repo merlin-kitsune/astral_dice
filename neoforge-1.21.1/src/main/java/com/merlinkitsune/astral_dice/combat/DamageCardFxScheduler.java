@@ -4,6 +4,7 @@ import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.audio.ModSounds;
 import com.merlinkitsune.astral_dice.audio.SoundPlayback;
 import com.merlinkitsune.astral_dice.damage.ModDamageTypes;
+import com.merlinkitsune.astral_dice.network.BeamFxPayload;
 import com.merlinkitsune.astral_dice.particle.GlowingDustOptions;
 import net.minecraft.core.particles.BlockParticleOption;
 import net.minecraft.core.particles.ItemParticleOption;
@@ -27,6 +28,7 @@ import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import net.neoforged.neoforge.network.PacketDistributor;
 import org.joml.Vector3f;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -66,7 +68,10 @@ import java.util.List;
  * 见 {@link SpellDamageRegistry}）。
  *
  * <h2>视觉实现</h2>
- * 光束 / 爆裂全部用粒子（本模组既有口径：{@link GlowingDustOptions} 全亮发光尘 + 原版粒子），
+ * 命中 / 爆裂仍用粒子（本模组既有口径：{@link GlowingDustOptions} 全亮发光尘 + 原版粒子）；
+ * **激光与轨道炮光柱自 2026-10-21 起改为客户端真实光线渲染**（服务端每 tick 下发
+ * {@link BeamFxPayload}，客户端 {@code client/BeamFxRenderer} 在 {@code Stage.AFTER_ENTITIES}
+ * 用交叉四边形绘制）—— 旧「每 tick 撒 84 枚尘」的柱状粒子观感已废弃。
  * **不用自定义实体**；仅「砸落的红砖」用原版 {@link Display.ItemDisplay}（红砖物品图标 + 缩放），
  * 经 NBT 装配 —— 因为 {@code Display} 的 setter 在三个 MC 版本里都是 private，走 NBT 可**零 AT/AW**。
  */
@@ -114,10 +119,14 @@ public final class DamageCardFxScheduler {
     /** 定向爆破的波及半径（格），与改造前的 AOE 口径一致。 */
     public static final double BLAST_RADIUS = 6.0D;
 
-    /** 光束粒子柱高度（格）—— 视觉上「无限高」。 */
+    /** 光束顶端相对目标头顶的高度（格）—— 视觉上「无限高」；客户端按两端点直接连一条线。 */
     private static final double BEAM_HEIGHT = 96.0D;
-    /** 光束每 tick 粒子数。 */
-    private static final int BEAM_PARTICLES = 84;
+    /** 激光线宽（格）。 */
+    private static final float LASER_WIDTH = 0.05F;
+    /** 轨道炮光柱宽度（格）。 */
+    private static final float BEACON_WIDTH = 0.45F;
+    /** 光束包存活 tick 数（每 tick 刷新，留 1 tick 容错）。 */
+    private static final int BEAM_TTL_TICKS = 3;
     /** 超龄保护：维度卸载等极端情形下丢弃滞留条目。 */
     private static final long MAX_AGE_TICKS = 400L;
 
@@ -328,7 +337,7 @@ public final class DamageCardFxScheduler {
             p.hit = true;
             resolveBeamHit(p, color);
         }
-        drawBeam(p, color);
+        sendBeamFx(p, color);
         p.elapsed++;
         if (p.elapsed < DELAY_TICKS + BEAM_TICKS) {
             PENDING.add(p);
@@ -360,21 +369,20 @@ public final class DamageCardFxScheduler {
     }
 
     /**
-     * 绘制「从目标头顶向上」的光束（视觉无限高）。
-     *
-     * <p>每 tick **只发一次** {@code sendParticles}：把 {@value #BEAM_PARTICLES} 枚粒子按
-     * {@code [head, head + }{@value #BEAM_HEIGHT}{@code ]} 的竖直区间均匀铺开（dx/dz 给一点点厚度），
-     * 比逐格发包便宜得多，观感同样是「一根光柱」。
+     * 下发「光线」FX：每 tick 向追踪该目标的玩家发一次 {@link BeamFxPayload}，
+     * 客户端在 {@code Stage.AFTER_ENTITIES} 用交叉四边形绘制（激光 = 细红线，轨道炮 = 金色光柱）。
+     * ttl 取 {@value #BEAM_TTL_TICKS} tick，重复下发由客户端按内容去重。
      */
-    private static void drawBeam(Pending p, int color) {
-        double headY = p.target.getY() + p.target.getBbHeight();
+    private static void sendBeamFx(Pending p, int color) {
+        if (p.level.isClientSide()) return;
+        float width = color == BEACON_COLOR ? BEACON_WIDTH : LASER_WIDTH;
         Vec3 pos = p.target.position();
-        p.level.sendParticles(dust(color, 0.75F),
-                pos.x, headY + BEAM_HEIGHT * 0.5D, pos.z,
-                BEAM_PARTICLES, 0.14D, BEAM_HEIGHT * 0.5D, 0.14D, 0.0D);
-        // 贴近头顶的一段加一条更亮的核心，强调「射中」
-        p.level.sendParticles(dust(0xFFFFFF, 0.45F),
-                pos.x, headY + 1.5D, pos.z, 6, 0.10D, 1.4D, 0.10D, 0.0D);
+        double headY = p.target.getY() + p.target.getBbHeight();
+        BeamFxPayload payload = new BeamFxPayload(
+                pos.x, headY + BEAM_HEIGHT, pos.z,
+                pos.x, headY, pos.z,
+                color, width, BEAM_TTL_TICKS);
+        PacketDistributor.sendToPlayersTrackingEntity(p.target, payload);
     }
 
     // ══════════════════════════════════════════════════════════════════════════

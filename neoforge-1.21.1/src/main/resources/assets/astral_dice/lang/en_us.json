@@ -450,6 +450,7 @@
   "key.astral_dice.activate_sign": "Activate Sign Skill",
   "key.astral_dice.open_card_inventory": "Open Card Inventory",
   "key.categories.astral_dice": "Astral Dice Play",
+  "msg.astral_dice.blue_curse_blocked": "Blue Curse could not be applied (blocked by an immunity effect)",
   "msg.astral_dice.bonnie_ready": "Detective sign: active skill activated — select a hostile target to apply the Undercover Investigation",
   "msg.astral_dice.bonnie_undercover_applied": "Undercover Operation: applied the Undercover Investigation to %s",
   "msg.astral_dice.moses_ready": "Gunsmith sign: active skill activated — select a hostile target to apply Broken",

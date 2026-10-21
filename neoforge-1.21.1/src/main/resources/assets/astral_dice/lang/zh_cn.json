@@ -450,6 +450,7 @@
   "key.astral_dice.activate_sign": "激活立牌技能",
   "key.astral_dice.open_card_inventory": "打开卡牌栏",
   "key.categories.astral_dice": "星之骰戏",
+  "msg.astral_dice.blue_curse_blocked": "青之诅咒未能附着（被免疫效果挡下）",
   "msg.astral_dice.bonnie_ready": "秘密侦探立牌：主动技能已激活，请选择敌对目标向其施加「隐匿调查」",
   "msg.astral_dice.bonnie_undercover_applied": "隐匿行动：已对 %s 施加「隐匿调查」",
   "msg.astral_dice.moses_ready": "枪匠立牌：主动技能已激活，请选择敌对目标向其施加「破绽」",

@@ -106,6 +106,10 @@ public final class ModNetwork {
                 CardChoiceConfirmMessage::encode, CardChoiceConfirmMessage::decode, CardChoiceConfirmMessage::handle);
         CHANNEL.registerMessage(id++, CardChoiceCloseMessage.class,
                 CardChoiceCloseMessage::encode, CardChoiceCloseMessage::decode, CardChoiceCloseMessage::handle);
+        // 光束 FX（激光 / 轨道炮，1.20.1 移植，2026-10-21）：id 26 = S→C 一条已冻结两端点的光线。
+        // **只能追加在末尾**：顺序即协议，插队会让旧客户端错包。
+        CHANNEL.registerMessage(id++, BeamFxPayload.class,
+                BeamFxPayload::encode, BeamFxPayload::decode, BeamFxPayload::handle);
     }
 
     // === 发送助手(对应 1.21 PacketDistributor 静态方法) ===
