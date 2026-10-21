@@ -56,7 +56,9 @@ public class CardInventoryMenu extends AbstractContainerMenu {
     private int displayDefenseMin;
     private int displayDefenseMax;
     // 显示数值刷新节流:完整修饰器链(含 Curios 查询/属性读取)只需每秒刷新一次
-    private long lastStatsRefreshTick = Long.MIN_VALUE;
+    // ⚠️ 2026-10-21 修复：原先用 Long.MIN_VALUE 当哨兵，`now - Long.MIN_VALUE` 会 long 溢出成负数
+    // ⇒ 节流条件恒假，攻防数字只在构造时算过一次，之后永不刷新（换卡/换骰/换立牌全不跟手）。
+    private long lastStatsRefreshTick = -1000L;
 
     public CardInventoryMenu(int containerId, Inventory playerInventory) {
         super(ModMenuTypes.CARD_INVENTORY.get(), containerId);

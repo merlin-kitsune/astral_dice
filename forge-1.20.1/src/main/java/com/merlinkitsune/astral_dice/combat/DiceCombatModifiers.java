@@ -842,7 +842,7 @@ public final class DiceCombatModifiers {
     }
 
     /**
-     * 玩家的**防御力**(与 GUI/tooltip 同源的口径):{@code 4 + 有效护甲×0.30 + 0.85×盔甲韧性}。
+     * 玩家的**防御力**(与 GUI/tooltip 同源的口径):{@code 2 + 有效护甲×0.30 + 0.85×盔甲韧性}。
      *
      * <p>效果牌/立牌/筹码的防御力都已折算为**真实护甲**(1 防御 = 2 护甲值,见
      * {@link #setDefenseArmorBonus}),故 {@code getArmorValue()} 已包含它们 ⇒ 本方法自动反映
@@ -1023,13 +1023,12 @@ public final class DiceCombatModifiers {
         int base = (int) Math.floor(dp);
         int min = base;
         int max = base;
-        // 防御卡仅在骰神赐福期间作为防御点生效
-        if (player.hasEffect(ModEffects.DICE_BLESSING.get())) {
-            for (AppliedStone stone : enhancement.appliedStones()) {
-                if (!CardRegistry.isDefense(stone.type())) continue;
-                min += CardRegistry.minRoll(stone.type());
-                max += CardRegistry.maxRoll(stone.type());
-            }
+        // 2026-10-21 修复：结算侧自 2026-09-26 起**不再要求** DICE_BLESSING 才掷防御骰
+        // （DiceCombatEvents「防御方装备骰子即掷」）⇒ 显示口径同步去掉该闸门，否则非赐福时少算全部防御牌。
+        for (AppliedStone stone : enhancement.appliedStones()) {
+            if (!CardRegistry.isDefense(stone.type())) continue;
+            min += CardRegistry.minRoll(stone.type());
+            max += CardRegistry.maxRoll(stone.type());
         }
         return new PowerRange(min, max);
     }
