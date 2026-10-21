@@ -50,6 +50,10 @@ import net.neoforged.neoforge.network.PacketDistributor;
  *
  * <p><b>筹码图标 = 商店专用素材</b>：候选格画的是 {@link ChipShopCatalog.Entry#iconLocation()}
  * （32x32 的商店图标，按 id 入库），**不是**筹码的物品贴图（两者逐字节不同，见逻辑计划 §7 取证件）。
+ *
+ * <p><b>无边框状态图标（2026-10-21 用户裁决）</b>：{@code images/shop/unbord_chips} 那套无边框素材
+ * 与本目录 {@code chip_shop/chips/<chip_id>.png} 67/67 逐字节一致 ⇒ 图标本身即无边框；品质改由
+ * **物品名颜色 / tooltip 的 Rarity 行**表达，屏幕不再叠加 {@code chipshop_quality_*} 描边环。
  */
 public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
 
@@ -76,14 +80,14 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
     private static final int REFRESH_X = 181;
     private static final int REFRESH_Y = 36;
 
-    /** 条带内品质外框 28x28（三个筹码位） */
+    /** 条带内筹码格位 28x28（三个筹码位；2026-10-21 起无品质外框，此尺寸即图标居中口径） */
     private static final int QUALITY_SIZE = 28;
     private static final int[] QUALITY_X = {51, 94, 137};
     private static final int QUALITY_Y = 31;
 
-    /** 筹码物品图标 24x24，在 28x28 外框内每边内缩 2 px（28 = 24 + 2x2 ⇒ 正好居中） */
+    /** 筹码物品图标 24x24，在 28x28 格位内每边内缩 (28 − 24) / 2 = 2 px ⇒ 正好居中 */
     private static final int CHIP_ICON_SIZE = 24;
-    private static final int CHIP_ICON_OFF = 2;
+    private static final int CHIP_ICON_OFF = (QUALITY_SIZE - CHIP_ICON_SIZE) / 2;
     /** 商店筹码图标的**源**尺寸（32x32 素材缩到 {@link #CHIP_ICON_SIZE} 画；逐张实测确认） */
     private static final int CHIP_ICON_SRC_SIZE = 32;
 
@@ -192,9 +196,6 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
     private static final String TEX_CONFIRM_PUSH = "chipshop_confirm_push.png";
     private static final String TEX_REFRESH = "chipshop_refresh.png";
     private static final String TEX_REFRESH_PUSH = "chipshop_refresh_push.png";
-    private static final String TEX_QUALITY_1 = "chipshop_quality_1.png";
-    private static final String TEX_QUALITY_2 = "chipshop_quality_2.png";
-    private static final String TEX_QUALITY_3 = "chipshop_quality_3.png";
     private static final String TEX_SELECT = "chipshop_select.png";
 
     // ────────────────────────────── 界面态（本批全部是本地计数器/反馈态，无业务状态） ──────────────────────────────
@@ -288,22 +289,19 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
         // ⑩ 容器槽位 tooltip 由原版 AbstractContainerScreen#render 收尾绘制；筹码格 tooltip 由本类覆写的 render 补画
     }
 
-    /** ④ + ⑤：三个筹码位的品质外框与 24x24 物品图标（空筹码位两者都不画） */
+    /**
+     * ④ + ⑤：三个筹码位的 24x24 物品图标（空筹码位不画）。
+     * <p>2026-10-21 用户裁决：筹码状态图标一律**无边框** ⇒ 不再绘制 {@code chipshop_quality_*} 品质外框
+     * （28x28 纯描边环）；图标仍按 28x28 格位内缩 {@link #CHIP_ICON_OFF} 居中，几何与价格行不变。
+     */
     private void renderOffers(GuiGraphics guiGraphics) {
         for (int chip = 0; chip < CHIP_COUNT; chip++) {
             ItemStack stack = ChipShopClientState.offer(chip);
             if (stack.isEmpty()) {
                 continue;
             }
-            // 品质外框：优先用服务端同步的品质码（DataSlot[4..6]）；码未到（0）时退回按稀有度现算
-            int frame = ChipShopClientState.qualityCode(chip);
-            if (frame <= 0) {
-                frame = ChipShopClientState.qualityFrameIndexOf(stack);
-            }
-            if (frame != ChipShopClientState.QUALITY_FRAME_NONE) {
-                blitStrip(guiGraphics, tex(qualityTex(frame)),
-                        QUALITY_X[chip], QUALITY_Y, QUALITY_SIZE, QUALITY_SIZE);
-            }
+            // 无边框口径（2026-10-21）：品质外框（chipshop_quality_1/2/3）不再绘制；
+            // 图标坐标仍以 28x28 格位（QUALITY_X / QUALITY_Y）为基准，靠 CHIP_ICON_OFF 内缩居中。
             // 筹码图标 = 商店专用 32x32 素材，缩到 24x24 画在内缩区中心（非物品模型，故无需 scissor）
             ChipShopCatalog.Entry entry = ChipShopCatalog.byStack(stack).orElse(null);
             if (entry == null) {
@@ -483,17 +481,6 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
         guiGraphics.drawString(this.font, amount, groupX + COST_ICON_SIZE + COST_ICON_GAP,
                 y + LABEL_TEXT_DY, color, true);
         guiGraphics.disableScissor();
-    }
-
-    /** 品质外框序号（1/2/3）→ 贴图名；其余值按 3 处理（与 {@link ChipShopClientState} 的兜底同口径） */
-    private static String qualityTex(int frame) {
-        if (frame == 1) {
-            return TEX_QUALITY_1;
-        }
-        if (frame == 2) {
-            return TEX_QUALITY_2;
-        }
-        return TEX_QUALITY_3;
     }
 
     // ────────────────────────────── 输入（规范 §5） ──────────────────────────────

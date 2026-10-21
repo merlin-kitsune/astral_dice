@@ -38,11 +38,12 @@ public final class ModEntityEvents {
                         .add(Attributes.MAX_HEALTH, 30.0D)
                         .build());
 
-        // 强化拒止(2026-10-18;2026-10-18 移植到本线):100 点耐久(用户需求「强化拒止拥有100点耐久」)。
-        // 耐久直接由 getHealth() 承载,扣到 <= 0 时自毁(见 entity/RepulsionEntity#consumeDurability)
+        // 强化拒止(2026-10-18;2026-10-18 移植到本线;2026-10-21 总量由 100 调整为 50):50 点耐久。
+        // 耐久直接由 getHealth() 承载,扣到 <= 0 时自毁(见 entity/RepulsionEntity#consumeDurability);
+        // 扣减节奏不变(每 200 tick 扣 min(吸附目标数, 5)),故 50 点 = 最多 10 次满额结算。
         event.put(ModEntityTypes.REPULSION.get(),
                 LivingEntity.createLivingAttributes()
-                        .add(Attributes.MAX_HEALTH, 100.0D)
+                        .add(Attributes.MAX_HEALTH, 50.0D)
                         .build());
     }
 }

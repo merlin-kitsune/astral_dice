@@ -38,7 +38,7 @@ import java.util.List;
  * 「被怪物攻击会降低一点」）。无来源伤害（坠落 / 冻结 / {@code /kill}）一律不吃，
  * 避免路障被环境伤害白嫖耐久。
  *
- * <p><b>拉仇恨</b>：服务端每 4 tick 对 {@link Mob} 做一次「球形 6 格」扫描，过滤
+ * <p><b>拉仇恨</b>：服务端每 4 tick 对 {@link Mob} 做一次「球形 8 格」扫描，过滤
  * 「敌对（{@link Enemy}）+ 非精英非 Boss（{@link EliteTargets#isEliteOrBoss}）+ 存活」，
  * 命中即 {@code mob.setTarget(this)}。每 4 tick 重设是为了对抗怪物自带 AI 的目标覆盖
  * （{@code TargetGoal} 会在同一 tick 内改回原目标）；两个轮询周期之间的「改走」由
@@ -66,6 +66,12 @@ import java.util.List;
  * <p><b>不掉落</b>：{@link #shouldDropLoot()} / {@link #shouldDropExperience()} 恒 false
  * ⇒ 死亡时既不产战利品也不给经验（用户需求未要求掉落，且路障是「工具」不是战利品）。
  *
+ * <p><b>寿命</b>（2026-10-21 用户需求）：一生固定 {@link #LIFETIME_TICKS} tick（20:00 = 1200 秒），
+ * 到点 {@link #discard()}（走 {@code DISCARDED} ⇒ {@link #release} 会一并删掉碰撞方块并解除仇恨）。
+ * ⚠️ 判据是 {@link Level#getGameTime()} 与落盘字段 {@link #TAG_CREATED_AT} 的差值，
+ * **不用** {@code tickCount}（存档重载会归零）；老存档缺该字段时在
+ * {@link #readAdditionalSaveData} 里回填「当前 gameTime」⇒ 不会被立刻销毁。
+ *
  * <p><b>1.20.1 平台差异</b>（相对 neoforge-1.21.1 蓝本）：
  * <ul>
  *   <li>{@code addAdditionalSaveData} / {@code readAdditionalSaveData}：{@code Entity} 里是
@@ -84,11 +90,11 @@ public class BarricadeEntity extends LivingEntity {
     /** 每次被生物命中固定扣掉的耐久（无视伤害数值，用户需求「被怪物攻击会降低一点」）。 */
     public static final float DAMAGE_PER_HIT = 1.0F;
 
-    /** 拉仇恨半径（格，球形；用户需求「6 格范围内」）。 */
-    public static final double AGGRO_RADIUS = 6.0D;
+    /** 拉仇恨半径（格，球形；用户需求「8 格范围内」，2026-10-21 由 6 提升）。 */
+    public static final double AGGRO_RADIUS = 8.0D;
 
-    /** 死亡 / 移除时解除仇恨的半径（格；比仇恨半径大，保证漏网的目标也被清掉）。 */
-    public static final double RELEASE_RADIUS = 8.0D;
+    /** 死亡 / 移除时解除仇恨的半径（格；比仇恨半径大 2 格留滞回，避免边界抖动）。 */
+    public static final double RELEASE_RADIUS = 10.0D;
 
     /** 拉仇恨/重设目标的周期（tick）。 */
     private static final int AGGRO_INTERVAL = 4;
@@ -99,6 +105,15 @@ public class BarricadeEntity extends LivingEntity {
     /** NBT 键：碰撞方块坐标（{@link BlockPos#asLong()}）。 */
     private static final String TAG_BLOCK_POS = "BarricadeBlockPos";
 
+    /** NBT 键：创建时刻（{@code Level#getGameTime()} 绝对值；**不是** tickCount —— 后者重载会归零）。 */
+    private static final String TAG_CREATED_AT = "BarricadeCreatedAt";
+
+    /** 一生寿命（tick）：20:00 = 1200 秒 = 24000 tick，到点 {@link #discard()}。 */
+    private static final long LIFETIME_TICKS = 24000L;
+
+    /** {@link #createdAt} 的「尚未记录」哨兵（合法的 gameTime 不会是 Long.MIN_VALUE）。 */
+    private static final long CREATED_AT_UNSET = Long.MIN_VALUE;
+
     /** 碰撞方块坐标；null = 尚未放置（理论上不会出现在已生成的路障上）。 */
     private BlockPos collisionPos;
 
@@ -107,6 +122,9 @@ public class BarricadeEntity extends LivingEntity {
 
     /** 加载后首 tick 是否还要做一次方块校验（存档重载 ⇒ 立刻判一次方块是否还在）。 */
     private boolean needsBlockCheck;
+
+    /** 创建时刻（{@code level().getGameTime()}）；{@link #CREATED_AT_UNSET} = 首 tick 时补记。 */
+    private long createdAt = CREATED_AT_UNSET;
 
     public BarricadeEntity(EntityType<? extends BarricadeEntity> entityType, Level level) {
         super(entityType, level);
@@ -155,6 +173,9 @@ public class BarricadeEntity extends LivingEntity {
     @Override
     public void addAdditionalSaveData(CompoundTag tag) {
         super.addAdditionalSaveData(tag);
+        if (this.createdAt != CREATED_AT_UNSET) {
+            tag.putLong(TAG_CREATED_AT, this.createdAt);
+        }
         if (this.collisionPos != null) {
             tag.putLong(TAG_BLOCK_POS, this.collisionPos.asLong());
         }
@@ -163,6 +184,12 @@ public class BarricadeEntity extends LivingEntity {
     @Override
     public void readAdditionalSaveData(CompoundTag tag) {
         super.readAdditionalSaveData(tag);
+        if (tag.contains(TAG_CREATED_AT)) {
+            this.createdAt = tag.getLong(TAG_CREATED_AT);
+        } else {
+            // 老存档没有寿命字段：回填「当前 gameTime」⇒ 从加载这一刻重新计 20:00，不会被立刻销毁。
+            this.createdAt = this.level().getGameTime();
+        }
         if (tag.contains(TAG_BLOCK_POS)) {
             this.collisionPos = BlockPos.of(tag.getLong(TAG_BLOCK_POS));
             // 存档重载：首 tick 立刻校验方块是否还在（不在则自毁，见 tick）
@@ -176,6 +203,17 @@ public class BarricadeEntity extends LivingEntity {
     public void tick() {
         super.tick();
         if (this.level().isClientSide) return;
+
+        // 寿命结算（20:00 = 24000 tick）：用 gameTime 差值，不用 tickCount（重载会归零）。
+        // 首 tick（牌放置 / 裸 /summon / 老存档回填失败）先把创建时刻记下来，本 tick 不判生命周期。
+        if (this.createdAt == CREATED_AT_UNSET) {
+            this.createdAt = this.level().getGameTime();
+        } else if (this.level().getGameTime() - this.createdAt >= LIFETIME_TICKS) {
+            // 到点强制销毁 ⇒ DISCARDED ⇒ remove() ⇒ release()：删碰撞方块 + 解除半径 10 内的仇恨
+            this.discard();
+            return;
+        }
+
         // 没有碰撞方块的路障无法存在（裸 /summon 或旧存档残缺）：
         // 2026-10-21 实测裸召唤的实体会一路下坠到 y=-245 才被清理 ⇒ 直接自毁，避免「自己掉下去」。
         if (this.collisionPos == null) {
@@ -223,9 +261,9 @@ public class BarricadeEntity extends LivingEntity {
     }
 
     /**
-     * 把半径 6 格（球形）内的非精英 / 非 Boss 敌对生物的仇恨转移到自己身上。
+     * 把半径 8 格（球形）内的非精英 / 非 Boss 敌对生物的仇恨转移到自己身上。
      *
-     * <p>用 {@code distanceToSqr <= AGGRO_RADIUS^2} 做**球形**判定（用户需求「半径6格（球形）」），
+     * <p>用 {@code distanceToSqr <= AGGRO_RADIUS^2} 做**球形**判定（用户需求「半径8格（球形）」），
      * 而不是按方块距离；{@code getBoundingBox().inflate(...)} 只是粗筛（AABB 比球大，交给距离判据收口）。
      */
     private void pullAggro() {
@@ -361,7 +399,7 @@ public class BarricadeEntity extends LivingEntity {
         if (this.released) return;
         this.released = true;
 
-        // ① 解除仇恨：半径 8 内以自己为目标的怪全部清空（防止怪物对着空气继续打）
+        // ① 解除仇恨：半径 10 内以自己为目标的怪全部清空（防止怪物对着空气继续打）
         AABB area = this.getBoundingBox().inflate(RELEASE_RADIUS);
         for (Mob mob : this.level().getEntitiesOfClass(Mob.class, area)) {
             if (mob.getTarget() == this) {

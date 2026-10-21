@@ -15,7 +15,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
 /**
- * 本模组唯一的 JEI 插件：向 JEI 注册「卡牌商店」获取方式类别。
+ * 本模组「卡牌商店」的 JEI 插件（与 {@link ChipShopJeiPlugin} 各自独立）：向 JEI 注册「卡牌商店」获取方式类别。
  *
  * <p><b>JEI 缺席安全</b>：本类只通过 {@link JeiPlugin} 注解被 JEI 发现，
  * 模组其它代码没有任何静态引用，未安装 JEI 时本包不会被加载。

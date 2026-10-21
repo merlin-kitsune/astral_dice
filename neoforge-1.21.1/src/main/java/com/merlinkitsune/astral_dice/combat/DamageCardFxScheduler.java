@@ -177,6 +177,9 @@ public final class DamageCardFxScheduler {
      * (那时本次 FX 已经登记)⇒ 认领的必然是**本次这张牌自己**那一条;按 {@link Kind} 配对 ⇒ 不会误认领到
      * 同一玩家另一张仍在飞行中的牌(例:板砖 0.5s 飞行窗口内又打出一张激光)。
      *
+     * <p><b>2026-10-21</b>：电击手套已改用无副作用的 {@link #latestGloveTarget}（peek）取主目标，
+     * 本方法因此可能成为 dead code —— <b>保留勿删</b>（其它链路仍可能使用）。
+     *
      * @return 是否认领成功(false = 本次没投出可用载体 ⇒ 调用方不应扣充能)
      */
     public static boolean markLatestGlovePaid(ServerPlayer caster, ItemStack cardStack) {
@@ -190,6 +193,29 @@ public final class DamageCardFxScheduler {
             }
         }
         return false;
+    }
+
+    /**
+     * <b>peek</b>：返回该玩家**这一张牌**最近一次投出、且尚未结算的那条 FX 的主目标；
+     * 无副作用（**不**置 {@code glovePaid}、**不**从队列移除）。
+     *
+     * <p>配对逻辑与 {@link #markLatestGlovePaid} 完全一致（按 {@link Kind} 配对 ⇒ 不会认领到
+     * 同一玩家另一张仍在飞行中的牌）。
+     *
+     * <p>用途：电击手套（2026-10-21 语义定稿）在出牌时用它取「圆心」，以登记 20 tick 后的独立延迟电击。
+     *
+     * @return 主目标；该牌不是本调度器的牌、或本次没有待结算载体时返回 {@code null}
+     */
+    public static LivingEntity latestGloveTarget(ServerPlayer caster, ItemStack cardStack) {
+        Kind kind = kindOf(cardStack);
+        if (kind == null || caster == null) return null;
+        for (int i = PENDING.size() - 1; i >= 0; i--) {
+            Pending p = PENDING.get(i);
+            if (p.caster == caster && p.kind == kind && !p.glovePaid) {
+                return p.target;
+            }
+        }
+        return null;
     }
 
     /** 四张伤害效果牌 → {@link Kind};非本调度器的牌返回 {@code null}。 */
@@ -572,7 +598,12 @@ public final class DamageCardFxScheduler {
     }
 
     /**
-     * 结算一次法术伤害。
+     * 结算一次法术伤害（「效果牌独立伤害通道」的唯一入口）。
+     *
+     * <p><b>公开可见性</b>（2026-10-21 用户裁决）：电击手套改为独立延迟结算后，由
+     * {@code item/chip/ElectricGloveChipItem#executeShock} 直接复用本方法 ⇒ 仅把 {@code private}
+     * 提升为 {@code public} 并补 javadoc，结算逻辑未改；返回值仅为「本次 hurt 是否被实体接受」
+     * （供调用方统计「每命中一个目标 +1 充能」），既有调用点忽略返回值即可。
      *
      * @param gloveSplash 该次命中是否为「这张牌本次投出、且已为电击手套付过充能的那一次**主目标**伤害」。
      *                    true ⇒ 用 {@link DiceCombatEvents#runAsGloveSplashInstance} 包住 hurt,
@@ -580,13 +611,14 @@ public final class DamageCardFxScheduler {
      *                    ⚠️ 定向爆破的 6 格 AOE **不走本方法**(见 {@link #resolveBlast}),
      *                    因此不会二次触发手套 ⇒ 不递归。
      */
-    private static void applySpellDamageAmount(ServerLevel level, ServerPlayer caster, LivingEntity target,
-                                               int amount, boolean gloveSplash) {
-        if (target == null || !target.isAlive()) return;
+    public static boolean applySpellDamageAmount(ServerLevel level, ServerPlayer caster, LivingEntity target,
+                                                 int amount, boolean gloveSplash) {
+        if (target == null || !target.isAlive()) return false;
         final DamageSource source = ModDamageTypes.cardSpell(level, caster);
+        final boolean[] dealt = {false};
         final Runnable hit = () -> {
             DamageNumberAggregator.tag(target, source, DamageNumberAggregator.Group.SPELL);
-            target.hurt(source, (float) Math.max(1, amount));
+            dealt[0] = target.hurt(source, (float) Math.max(1, amount));
         };
         // 三层窗口(均为「保存 / 恢复」式,与外层嵌套安全):
         //   beginAoe()/endAoe()      = 波及伤害不进骰战结算(深度计数,配对开窗);
@@ -605,6 +637,7 @@ public final class DamageCardFxScheduler {
             DiceCombatEvents.endAoe();
             APPLYING_CARD_FX_DAMAGE.set(wasApplyingCardFx);
         }
+        return dealt[0];
     }
 
     /**

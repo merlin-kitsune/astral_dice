@@ -40,7 +40,7 @@
 - 条带：chipshop_frame_2.png 再 chipshop_frame_1.png 叠加 @ (34, 6, 216, 78)。
 - 五格（格距 43、格宽 40，**条带内相对 x**）：CELL_X = {3, 45, 88, 131, 174}；语义 = 0 确认按钮、1/2/3 筹码位、4 刷新按钮。
 - 按钮 24x24（条带内相对）：CONFIRM @ (11, 36)、REFRESH @ (181, 36)；按下后 2 tick 内用 *_push 贴图（悬停不切换，2026-10-13 用户裁决）。
-- 品质外框 28x28（条带内相对）：QUALITY_X = {51, 94, 137}（= 对应筹码格起点 + 6）、QUALITY_Y = 31；筹码物品图标 24x24，内缩 2 px。
+- 筹码格位 28x28（条带内相对）：QUALITY_X = {51, 94, 137}（= 对应筹码格起点 + 6）、QUALITY_Y = 31；筹码物品图标 24x24 在该格位内每边内缩 (28 − 24) / 2 = 2 px ⇒ 居中（2026-10-21 起**不再绘制品质外框**，格位尺寸只用于图标居中）。
 - 标签框 42x15 @ 条带内 y = 61：LABEL_X = {1, 44, 87, 130, 172}（= 该格中心 - 21）；cell0 显示星币图标+花费数字（无文字前缀，图标与数字间隔 2px）、cell1/2/3 显示筹码名、cell4 只显示剩余刷新次数；筹码名超宽时左右滚动（停 20t→2t/px→停 20t→反向）、选中格文字改黑色（选中标记画在文字下层）。
 - 选中标记 chipshop_select.png（42x15）画在**所选筹码**的标签框内（与标签框同坐标）。
 - 物品栏面板 chipshop_inventory.png @ (56, 89, 172, 86)；玩家槽位：主栏 9x3，槽原点 (61, 94)，槽距 18；快捷栏行 y = 152；槽内物品图标内缩 1 px（即 item x = 61 + 18i + 1、y = 94 + 18j + 1）。
@@ -51,7 +51,7 @@
 
 ## 4. 绘制顺序
 
-1. 背景 → 2. 条带深底（frame_2）→ 3. 格轮廓（frame_1）→ 4. 品质外框（按筹码实际品质选 quality_1/2/3；无筹码则不画）→ 5. 筹码物品图标 → 5b. 悬停格图标覆盖层（悬停格的 24×24 图标区画灰色半透明覆盖层 0x66AAAAAA（与 CardShopScreen.COLOR_ROW_HOVER 同值）；空格不画；压在图标上、被选中标记与文字压在其上；2026-10-13 新增）→ 6. 选中标记（仅所选筹码格；画在筹码名文字下层）→ 7. 三处文本（花费=星币图标+数字 / 筹码名（超宽左右滚动、选中格黑字） / 剩余刷新次数）→ 8. 两个按钮（常态，或 **按下后 2 tick 内**用 *_push；**悬停不再切换 push 贴图**（2026-10-13 用户裁决））→ 9. 物品栏面板 + 原版槽位物品与悬停高亮 → 10. tooltip（逻辑批再补内容）。
+1. 背景 → 2. 条带深底（frame_2）→ 3. 格轮廓（frame_1）→ 4.（2026-10-21 起取消：品质外框 quality_1/2/3 不再绘制）→ 5. 筹码物品图标（无边框素材） → 5b. 悬停格图标覆盖层（悬停格的 24×24 图标区画灰色半透明覆盖层 0x66AAAAAA（与 CardShopScreen.COLOR_ROW_HOVER 同值）；空格不画；压在图标上、被选中标记与文字压在其上；2026-10-13 新增）→ 6. 选中标记（仅所选筹码格；画在筹码名文字下层）→ 7. 三处文本（花费=星币图标+数字 / 筹码名（超宽左右滚动、选中格黑字） / 剩余刷新次数）→ 8. 两个按钮（常态，或 **按下后 2 tick 内**用 *_push；**悬停不再切换 push 贴图**（2026-10-13 用户裁决））→ 9. 物品栏面板 + 原版槽位物品与悬停高亮 → 10. tooltip（逻辑批再补内容）。
 
 ## 5. 交互口径（用户裁决，硬约束）
 
@@ -70,7 +70,7 @@ client/ChipShopClientState.java：
 - remainingRefreshes / totalRefreshes：int（初始 0/0；界面刷新按钮下方框内只显示剩余次数，总次数不再显示）；
 - selectedIndex：int（-1 = 未选中）；
 - clear() / tick() / setOffers / setCost / setRefreshes / select。
-品质 → 外框映射：原版/库 Rarity：rare → quality_1、epic → quality_2、legendary → quality_3；pinnacle / bizarre 暂用 quality_3（**待用户裁决**）。
+品质 → 外框映射：原版/库 Rarity：rare → quality_1、epic → quality_2、legendary → quality_3；pinnacle / bizarre 暂用 quality_3（**待用户裁决**）。2026-10-21 起屏幕**不再绘制**品质外框（状态图标改无边框），品质由物品名颜色 / tooltip 的 Rarity 行表达；该映射当前无绘制/同步调用方，仅作档位对照保留（DataSlot 同步走 ChipShopClientState#setQualityCodes、只读探针走 qualityCode）。
 
 ## 7. 只读探针（供测试台与后续实机断言；一律不得改状态）
 
@@ -82,7 +82,7 @@ client/ChipShopClientState.java：
 ## 8. 验收（scripts/verify/verify_chip_shop_ui.ps1 的 G1..G6；G7/G8 另行执行）
 
 - G1 素材：两线 assets/astral_dice/textures/gui/shop/ 各含 13 张 chipshop_*.png 且与 images/shop 源逐字节相同；**不得**出现 chip_shop_GUI.png。
-- G2 常量：ChipShopScreen.java 含 §3 全部常量的字面量（GUI_WIDTH=284 / GUI_HEIGHT=183 / STRIP_X=34 / STRIP_Y=6 / STRIP_W=216 / STRIP_H=78 / CELL_X={3,45,88,131,174} / BUTTON_SIZE=24 / CONFIRM_X=11 / CONFIRM_Y=36 / REFRESH_X=181 / REFRESH_Y=36 / QUALITY_SIZE=28 / QUALITY_X={51,94,137} / QUALITY_Y=31 / CHIP_ICON_SIZE=24 / CHIP_ICON_OFF=2 / LABEL_W=42 / LABEL_H=15 / LABEL_Y=61 / LABEL_X={1,44,87,130,172} / PANEL_X=56 / PANEL_Y=89 / PANEL_W=172 / PANEL_H=86 / SLOT_X0=61 / SLOT_Y0=94 / SLOT_PITCH=18 / SLOT_COLS=9 / SLOT_ROWS=3 / HOTBAR_Y=152）。
+- G2 常量：ChipShopScreen.java 含 §3 全部常量的字面量（GUI_WIDTH=284 / GUI_HEIGHT=183 / STRIP_X=34 / STRIP_Y=6 / STRIP_W=216 / STRIP_H=78 / CELL_X={3,45,88,131,174} / BUTTON_SIZE=24 / CONFIRM_X=11 / CONFIRM_Y=36 / REFRESH_X=181 / REFRESH_Y=36 / QUALITY_SIZE=28 / QUALITY_X={51,94,137} / QUALITY_Y=31 / CHIP_ICON_SIZE=24 / CHIP_ICON_OFF=(QUALITY_SIZE−CHIP_ICON_SIZE)/2 / LABEL_W=42 / LABEL_H=15 / LABEL_Y=61 / LABEL_X={1,44,87,130,172} / PANEL_X=56 / PANEL_Y=89 / PANEL_W=172 / PANEL_H=86 / SLOT_X0=61 / SLOT_Y0=94 / SLOT_PITCH=18 / SLOT_COLS=9 / SLOT_ROWS=3 / HOTBAR_Y=152）。
 - G3 引用（**可达性判据**，2026-10-11 复核后加固）：13 张贴图名都要有 TEX_* 常量定义；除白名单 `TEX_STRIP_FRAME`（素材登记、不入绘制路径）外，每个贴图常量必须**能经绘制路径取到** —— 直接出现在 `tex(...)` 实参里（含三元表达式），或出现在「被 `tex(...)` 调用的字符串返回助手」方法体内；源码不含 `chip_shop_GUI`。
 - G4 交互：类内不出现 mouseDragged / DOUBLE_CLICK_MS / DRAG_THRESHOLD / dragIndex；`onConfirmPressed()` 恰出现 2 次（声明 + 调用），且**调用点必须落在 mouseClicked 的确认按钮分支内**（位置在 `CONFIRM_X` 命中之后、`chipIndexAt(` 之前）；buyRequestCount 初值 0。
 - G5 文案：三语 lang 各含 gui.astral_dice.chip_shop / .cost / .refresh_counter / .empty。
@@ -98,7 +98,7 @@ client/ChipShopClientState.java：
 |---|---|---|
 | M2 把 `onConfirmPressed();` 从确认按钮分支挪到筹码格分支 | G4 红 | FAIL：onConfirmPressed() 调用点不在确认按钮分支内 |
 | M3 客户端绑定把 `CHIP_SHOP` 换成 `CARD_SHOP` | G6 红 | FAIL：未把 ChipShopScreen 绑到 chip_shop 菜单 |
-| M4 `qualityTex` 不再返回 `TEX_QUALITY_2` | G3 红 | FAIL：TEX_QUALITY_2(chipshop_quality_2.png) 取不到绘制路径 |
+| M4（2026-10-21 口径更新）品质外框 blit 回归：在图标前重画 `chipshop_quality_1/2` | G2b 红 | FAIL：仍引用品质外框 chipshop_quality_ |
 | M5 按钮三元改成固定 `TEX_CONFIRM`（不再用 `*_push`） | G3 红 | FAIL：TEX_CONFIRM_PUSH(chipshop_confirm_push.png) 取不到绘制路径 |
 
 ## 9. 逻辑批的输入清单（等用户告知）

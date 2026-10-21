@@ -17,10 +17,11 @@ import java.util.Optional;
 /**
  * 筹码商店的**静态池与全部冻结常量**（判据正本 = {@code docs/chip-shop-logic-plan.md} §1 / §2）。
  *
- * <p><b>池 = 66 枚</b>：{@code ModItems} 中除 {@code blank_chip}（合成材料，不入池、也不参与「已拥有」判定）
- * 之外的**全部** {@code *_chip} 物品；品质分布 稀有 19 / 史诗 28 / 传奇 19（已与 {@code ModItems} 的
- * {@code AstralRarities} 逐条交叉核对一致）。品质码 1/2/3 与 {@code ChipShopClientState#qualityFrameIndexOf}
- * 的 {@code quality_1/2/3} 贴图一一对应，**永不出现普通 / 巅峰 / 奇特**（R20）。
+ * <p><b>池 = 67 枚</b>：{@code ModItems} 中除 {@code blank_chip}（合成材料，不入池、也不参与「已拥有」判定）
+ * 之外的**全部** {@code *_chip} 物品；品质分布 稀有 19 / 史诗 29 / 传奇 19（已与 {@code ModItems} 的
+ * {@code AstralRarities} 逐条交叉核对一致）。品质码 1/2/3 的档位口径（rare/epic/legendary）与 {@code ChipShopClientState#qualityFrameIndexOf}
+ * 的返回值一致（两者互不调用：品质码由服务端按候选现算、经 DataSlot 同步），**永不出现普通 / 巅峰 / 奇特**（R20）；2026-10-21 起屏幕不再绘制品质外框
+ * （{@code chipshop_quality_1/2/3} 仅保留素材），品质由物品名颜色 / Rarity 行表达。
  *
  * <p><b>流派</b>（{@link School}）的权威来源 = 帕秋莉手册条目的 {@code category} 字段；
  * <b>类别</b>（{@link Category}）是商店「上次购买类别加成」用的五分类。两者都必须**每枚恰一类**（G10）。
@@ -51,7 +52,7 @@ public final class ChipShopCatalog {
 
     /**
      * 筹码合成总开关的**权威默认值**(与 {@code config.ModCommonConfig#ENABLE_CHIP_RECIPES} 对应:
-     * 该配置项以此为默认定义 —— 关闭时 66 枚筹码无法通过合成获得)。
+     * 该配置项以此为默认定义 —— 关闭时 67 枚筹码无法通过合成获得)。
      */
     public static final boolean CHIP_RECIPES_DEFAULT = false;
 
@@ -180,7 +181,7 @@ public final class ChipShopCatalog {
         }
     }
 
-    /** 66 枚池（顺序 = 计划表 §1 的顺序；与 ModItems / 手册三方 66/66 吻合） */
+    /** 67 枚池（顺序 = 计划表 §1 的顺序；与 ModItems / 手册三方 67/67 吻合） */
     public static final List<Entry> POOL = List.of(
             e("atm_chip", TIER_RARE, School.STARLIGHT, Category.ECONOMY),
             e("bank_card_high_chip", TIER_EPIC, School.STARLIGHT, Category.ECONOMY),

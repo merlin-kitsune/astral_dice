@@ -36,7 +36,7 @@ import java.util.UUID;
  * <p><b>形态</b>：只有实体，**没有任何碰撞方块**（实体本身仍有 1.6×2.4 的拾取 / 攻击判定框，
  * 但 {@link #hurt} **恒返回 false** ⇒ 攻击对你无效，见〈免疫攻击〉）；{@code noPhysics = true}
  * ⇒ 不参与任何方块碰撞 / 推动。{@code extends LivingEntity}（**不**用 Mob AI）只为拿到生命值
- * 同步通道：耐久直接用 {@link #getHealth()} 承载（{@code MAX_HEALTH = 100}，由
+ * 同步通道：耐久直接用 {@link #getHealth()} 承载（{@code MAX_HEALTH = 50}，由
  * {@code event/ModEntityEvents} 在 {@code EntityAttributeCreationEvent} 注册）。
  *
  * <p><b>吸附（用户需求原文）</b>：「强化拒止会自动吸附8格范围内的敌对目标，并对其持续施加
@@ -48,16 +48,16 @@ import java.util.UUID;
  * <ol>
  *   <li><b>每 tick</b>（{@link #tickTrackedTargets()}）：维护「被吸附目标」集合 ——
  *       死亡 / 移除 / 距离 &gt; 32 格 / **失去吸附资格**（{@link #isAttachable(Mob)}）的目标剪掉；
- *       3D 距离 &gt; 8 格的目标**按 3D 方向拉回 7.5 格处**并清零速度（「无法逃离影响范围」，
+ *       3D 距离 &gt; 12 格的目标**按 3D 方向拉回 11.5 格处**并清零速度（「无法逃离影响范围」，
  *       见 {@link #clampInside(Mob)}）。本层**不再施加拉力**；</li>
  *   <li><b>每 20 tick（1 秒）</b>（{@link #scanAndApplyEffects()} ＋ {@link #pullTrackedTargets()}）：
- *       先扫描 8 格内**有吸附资格**、存活、{@code distanceToSqr <= 64} 的目标（资格 = 敌对生物 /
+ *       先扫描 12 格内**有吸附资格**、存活、{@code distanceToSqr <= 144} 的目标（资格 = 敌对生物 /
  *       中立生物 + 当前有仇恨目标或被激怒 + 非已驯服宠物，见〈吸附资格〉），
- *       加入集合并施加 缓慢 (0:10) / 虚弱 (0:10)（{@code amplifier = 0}）；随后对 8 格内被吸附目标
+ *       加入集合并施加 缓慢 (0:10) / 虚弱 (0:10)（{@code amplifier = 0}）；随后对 12 格内被吸附目标
  *       施加**一次**向心冲量（{@code 归一化水平方向 × PULL_STRENGTH}，保留 y）——
  *       用户原文「会以1秒为频率……逐渐缓慢拉扯」，**每秒一跳、不是每 tick**；</li>
  *   <li><b>每 200 tick（10 秒）</b>（{@link #consumeDurability()}）：耐久
- *       {@code -= min(当前 8 格内被吸附目标数, 5)}；扣到 &lt;= 0 ⇒ 碎裂粒子 + 玻璃破碎音 +
+ *       {@code -= min(当前 12 格内被吸附目标数, 5)}；扣到 &lt;= 0 ⇒ 碎裂粒子 + 玻璃破碎音 +
  *       {@link #discard()}。</li>
  * </ol>
  *
@@ -120,16 +120,16 @@ import java.util.UUID;
  * {@code NbtUtils} 的 UUID 包装类型）。另有「曾控制过的目标」集合（充能层计数口径，
  * 最多 {@link #MAX_CHARGE_STACKS} 个）也落盘为 {@code long[]}（2026-10-20 新增）。
  * ⚠️ 落盘的只是 UUID 集合：{@link ServerLevel#getEntity(UUID)} 在**区块未加载 / 跨维度**时返回
- * {@code null} ⇒ 该目标会被剪枝（**不保证跨卸载保留**；卸载再加载后要等下一次 8 格扫描才会
+ * {@code null} ⇒ 该目标会被剪枝（**不保证跨卸载保留**；卸载再加载后要等下一次 12 格扫描才会
  * 重新吸附，期间不施加 缓慢 / 虚弱、也不计耐久）。
  *
  * <p><b>⚠️ 实机未验证项</b>（本轮按纪律不启动游戏）：
  * <ul>
  *   <li>拉力手感：位移量「约 0.2–0.5 格/秒」是按 {@code travel} 阻尼**推算**的，未实机读数；
  *       若观感过快 / 过慢，只调 {@link #PULL_STRENGTH}（0.22）一个量即可；</li>
- *   <li>钳制是否会被 AI 覆盖：8 格外的「拉回 7.5 格」用 {@code teleportTo}，已改 3D 方向 ⇒
- *       拉回后 3D 距离 7.5 ≤ 8，**不会**再每 tick 反复瞬移；但击退 / 寻路仍可能在两 tick 之间
- *       把它推出 8 格（下一 tick 会再次拉回，属预期抖动）；</li>
+ *   <li>钳制是否会被 AI 覆盖：12 格外的「拉回 11.5 格」用 {@code teleportTo}，已改 3D 方向 ⇒
+ *       拉回后 3D 距离 11.5 ≤ 12，**不会**再每 tick 反复瞬移；但击退 / 寻路仍可能在两 tick 之间
+ *       把它推出 12 格（下一 tick 会再次拉回，属预期抖动）；</li>
  *   <li>模型朝向 / 贴图面序（见 {@code client/RepulsionModel} 的说明）。</li>
  *   <li>苦力怕「禁止自爆」：逻辑按两线源码推演（{@code Creeper#tick} 的 {@code swell += swellDir}
  *       与 {@code Level#explode} 里 {@code explosion.explode()} 的先后），未实机；尤其「打火石点燃
@@ -145,18 +145,18 @@ import java.util.UUID;
  */
 public class RepulsionEntity extends LivingEntity {
 
-    /** 吸附 / 影响半径（格，球形；用户需求「半径8格」）。 */
-    public static final double AFFECT_RADIUS = 8.0D;
+    /** 吸附 / 影响半径（格，球形；用户需求「半径12格」，2026-10-21 由 8 提升）。 */
+    public static final double AFFECT_RADIUS = 12.0D;
 
     /** 越界目标的「拉回」半径（格，**3D** 距离）：比 {@link #AFFECT_RADIUS} 略小，
-     * 保证拉回后 3D 距离 7.5 ≤ 8，不会每 tick 反复瞬移。 */
-    public static final double CLAMP_RADIUS = 7.5D;
+     * 保证拉回后 3D 距离 11.5 ≤ 12，不会每 tick 反复瞬移。 */
+    public static final double CLAMP_RADIUS = 11.5D;
 
-    /** 遗忘半径（格）：超出即从被吸附集合里剪掉（用户需求「无法逃离影响范围」仍以 8 格为准，
+    /** 遗忘半径（格）：超出即从被吸附集合里剪掉（用户需求「无法逃离影响范围」仍以 12 格为准，
      * 32 格只是「跑太远就彻底不管」的清理阈值）。 */
     public static final double FORGET_RADIUS = 32.0D;
 
-    /** 8 格内目标的向心拉力（**每秒一跳**的冲量，不是每 tick；机制见类 javadoc〈拉力机制〉）。
+    /** 12 格内目标的向心拉力（**每秒一跳**的冲量，不是每 tick；机制见类 javadoc〈拉力机制〉）。
      * 每秒一次的 0.22 配合地面 {@code travel} 阻尼（每 tick ×0.546）约合 0.2–0.5 格/秒的缓慢位移。 */
     public static final double PULL_STRENGTH = 0.22D;
 
@@ -194,6 +194,18 @@ public class RepulsionEntity extends LivingEntity {
 
     /** NBT 键：曾<b>控制过</b>的目标（充能计数口径；{@code long[]}，每目标 2 个 long）。 */
     private static final String TAG_CONTROLLED = "RepulsionControlledTargets";
+
+    /** NBT 键：创建时刻（{@code Level#getGameTime()} 绝对值；**不是** tickCount —— 后者重载会归零）。 */
+    private static final String TAG_CREATED_AT = "RepulsionCreatedAt";
+
+    /** 一生寿命（tick）：20:00 = 1200 秒 = 24000 tick，到点 {@link #discard()}。 */
+    private static final long LIFETIME_TICKS = 24000L;
+
+    /** {@link #createdAt} 的「尚未记录」哨兵（合法的 gameTime 不会是 Long.MIN_VALUE）。 */
+    private static final long CREATED_AT_UNSET = Long.MIN_VALUE;
+
+    /** 创建时刻（{@code level().getGameTime()}）；{@link #CREATED_AT_UNSET} = 首 tick 时补记。 */
+    private long createdAt = CREATED_AT_UNSET;
 
     /** 被吸附目标（服务端权威）。⚠️ 落盘的是 UUID 集合；{@code ServerLevel#getEntity} 在未加载 /
      * 跨维度时返回 null ⇒ 该目标会被剪枝（**不保证跨卸载保留**）。 */
@@ -250,6 +262,9 @@ public class RepulsionEntity extends LivingEntity {
     @Override
     public void addAdditionalSaveData(CompoundTag tag) {
         super.addAdditionalSaveData(tag);
+        if (this.createdAt != CREATED_AT_UNSET) {
+            tag.putLong(TAG_CREATED_AT, this.createdAt);
+        }
         long[] ids = new long[this.trackedTargets.size() * 2];
         int i = 0;
         for (UUID id : this.trackedTargets) {
@@ -273,6 +288,12 @@ public class RepulsionEntity extends LivingEntity {
     @Override
     public void readAdditionalSaveData(CompoundTag tag) {
         super.readAdditionalSaveData(tag);
+        if (tag.contains(TAG_CREATED_AT)) {
+            this.createdAt = tag.getLong(TAG_CREATED_AT);
+        } else {
+            // 老存档没有寿命字段：回填「当前 gameTime」⇒ 从加载这一刻重新计 20:00，不会被立刻销毁。
+            this.createdAt = this.level().getGameTime();
+        }
         this.trackedTargets.clear();
         long[] ids = tag.getLongArray(TAG_TARGETS);
         for (int i = 0; i + 1 < ids.length; i += 2) {
@@ -351,6 +372,16 @@ public class RepulsionEntity extends LivingEntity {
         if (this.level().isClientSide) return;
         if (this.isRemoved() || !this.isAlive()) return;
 
+        // 寿命结算（20:00 = 24000 tick）：用 gameTime 差值，不用 tickCount（重载会归零）。
+        // 首 tick（牌放置 / 裸 /summon / 老存档回填失败）先把创建时刻记下来，本 tick 不判生命周期。
+        if (this.createdAt == CREATED_AT_UNSET) {
+            this.createdAt = this.level().getGameTime();
+        } else if (this.level().getGameTime() - this.createdAt >= LIFETIME_TICKS) {
+            // 到点强制销毁（与耐久耗尽同一入口语义：不走 die，直接移除实体）
+            this.discard();
+            return;
+        }
+
         // 钉死（2026-10-21 用户裁决：放置后不得再被移动）：
         // ① 清掉一切外力写入的速度（爆炸 / 击退 / 其它模组的 setDeltaMovement）；
         // ② 位置若偏离落位锚点（活塞 / 水流 / 直接 setPos），拉回原坐标。
@@ -418,7 +449,7 @@ public class RepulsionEntity extends LivingEntity {
                 continue;
             }
             if (distanceSqr > AFFECT_RADIUS * AFFECT_RADIUS) {
-                // 越界 ⇒ 按 3D 方向拉回 7.5 格处（用户需求「目标无法逃离强化拒止影响范围」）
+                // 越界 ⇒ 按 3D 方向拉回 11.5 格处（用户需求「目标无法逃离强化拒止影响范围」）
                 this.clampInside(mob);
             }
         }
@@ -454,11 +485,11 @@ public class RepulsionEntity extends LivingEntity {
     /**
      * 把越界目标沿**3D 方向**拉回 {@link #CLAMP_RADIUS} 处并清零速度。
      *
-     * <p>目标点 = 本实体位置 + 归一化 3D 向量 × 7.5（不再只钳水平、y 保持不变）。
+     * <p>目标点 = 本实体位置 + 归一化 3D 向量 × 11.5（不再只钳水平、y 保持不变）。
      * 落点若不可用（{@code level.noCollision} 为假 ⇒ 该处有方块碰撞 / 其他实体碰撞 / 出世界边界），
-     * 依次把 y 上抬 0.5 / 1.0 / 1.5 找无碰撞落点；仍失败则**回退**为「只拉水平到 7.5 格、y 保持」。
+     * 依次把 y 上抬 0.5 / 1.0 / 1.5 找无碰撞落点；仍失败则**回退**为「只拉水平到 11.5 格、y 保持」。
      *
-     * <p>为什么 3D 钳制能消除反复瞬移：钳制后目标与本实体的 **3D** 距离正好 7.5 ≤ 8，下一 tick
+     * <p>为什么 3D 钳制能消除反复瞬移：钳制后目标与本实体的 **3D** 距离正好 11.5 ≤ 12，下一 tick
      * 不会再被判为越界；此前只钳水平时，竖直偏移大的目标会被每 tick 反复瞬移。
      * 回退路径（只钳水平）本身**不做**无碰撞校验，若回退点也嵌在方块里由原版碰撞推挤兜底
      * （宁可留竖直偏移，也不主动塞墙）。
@@ -473,7 +504,7 @@ public class RepulsionEntity extends LivingEntity {
 
         Vec3 landing = this.findFreeLanding(mob, target);
         if (landing == null) {
-            // 回退：只钳水平到 7.5 格，y 保持
+            // 回退：只钳水平到 11.5 格，y 保持
             double dx = mob.getX() - this.getX();
             double dz = mob.getZ() - this.getZ();
             double horizontal = Math.sqrt(dx * dx + dz * dz);
@@ -545,7 +576,7 @@ public class RepulsionEntity extends LivingEntity {
     }
 
     /**
-     * 半径 8 格（球形）内**有吸附资格**的目标：加入被吸附集合并持续施加 缓慢 / 虚弱。
+     * 半径 12 格（球形）内**有吸附资格**的目标：加入被吸附集合并持续施加 缓慢 / 虚弱。
      *
      * <p>资格判据 = {@link #isAttachable(Mob)}（2026-10-18 用户追加规则：敌对生物 / 中立生物 ＋ 当前
      * 有仇恨目标或被激怒 ＋ 非已驯服宠物；口径与缘由见类 javadoc〈吸附资格〉）。
@@ -569,7 +600,7 @@ public class RepulsionEntity extends LivingEntity {
     }
 
     /**
-     * 每秒（{@link #SCAN_INTERVAL} tick）对 8 格内被吸附目标施加**一次**向心冲量。
+     * 每秒（{@link #SCAN_INTERVAL} tick）对 12 格内被吸附目标施加**一次**向心冲量。
      *
      * <p>只在 {@link #tick()} 的 {@code tickCount % 20 == 0} 分支里调用（用户原文
      * 「会以1秒为频率……逐渐缓慢拉扯」）；水平距离 &lt; {@link #PULL_DEADZONE} 时跳过，
@@ -606,7 +637,7 @@ public class RepulsionEntity extends LivingEntity {
     // ── 每 10 秒：耐久结算 ────────────────────────────────────────────────────
 
     /**
-     * 每 10 秒按「当前 8 格内被吸附目标数」扣耐久（单次最多 {@link #MAX_DURABILITY_COST} 点）。
+     * 每 10 秒按「当前 12 格内被吸附目标数」扣耐久（单次最多 {@link #MAX_DURABILITY_COST} 点）。
      * 目标数为 0 时不扣（没有吸附对象就没有消耗）。
      */
     private void consumeDurability() {
@@ -621,7 +652,7 @@ public class RepulsionEntity extends LivingEntity {
         }
     }
 
-    /** 当前仍在 8 格内的被吸附目标数量（耐久结算口径）。 */
+    /** 当前仍在 12 格内的被吸附目标数量（耐久结算口径）。 */
     private int countTrackedWithinAura() {
         if (!(this.level() instanceof ServerLevel serverLevel)) return 0;
         int count = 0;

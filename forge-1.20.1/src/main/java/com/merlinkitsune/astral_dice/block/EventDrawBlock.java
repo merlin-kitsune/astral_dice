@@ -1,5 +1,7 @@
 package com.merlinkitsune.astral_dice.block;
 
+import com.merlinkitsune.astral_dice.audio.ModSounds;
+import com.merlinkitsune.astral_dice.audio.SoundPlayback;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.network.ModNetwork;
@@ -56,6 +58,19 @@ public class EventDrawBlock extends Block {
     @Override
     public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand,
                             BlockHitResult hitResult) {
+        ItemStack stack = player.getItemInHand(hand);
+        if (stack.is(ModItems.BLANK_CHIP.get())) {
+            // 投入空白筹码 ⇒ 重置抽奖盒（与筹码商店 ChipShopBlock#use 同口径：消耗 1 枚、清空批次状态）
+            if (level.isClientSide()) {
+                return InteractionResult.sidedSuccess(true);
+            }
+            stack.shrink(1);
+            ModAttachments.setEventDrawerCooldownUntil(player, 0L);
+            actionBar(player, ChatFormatting.GOLD, "msg.astral_dice.event_drawer_blank_insert");
+            LOGGER.info("AP_EVENT_DRAWER: player={}:blank_insert=ok:reset=cooldown",
+                    player.getName().getString());
+            return InteractionResult.sidedSuccess(false);
+        }
         if (!level.isClientSide) {
             String name = player.getName().getString();
             long now = level.getGameTime();
@@ -82,7 +97,10 @@ public class EventDrawBlock extends Block {
                 player.drop(ticket, false);
             }
             ModAttachments.setEventDrawerCooldownUntil(player, now + COOLDOWN_TICKS);
-            actionBar(player, ChatFormatting.GOLD, "msg.astral_dice.event_drawer_bought", ticket.getHoverName());
+            // 购买成功音效：一律走 SoundPlayback（禁止裸写 level.playSound）
+            if (player instanceof ServerPlayer sp) {
+                SoundPlayback.playTo(sp, ModSounds.WALLET_DEPOSIT.get());
+            }
             LOGGER.info("AP_EVENT_DRAWER: player={}:buy=ok:bal={}->{}", name, before,
                     StarEngineEconomy.getBalance(player));
         }

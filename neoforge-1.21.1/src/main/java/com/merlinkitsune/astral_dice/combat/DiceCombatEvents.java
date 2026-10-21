@@ -160,6 +160,14 @@ public class DiceCombatEvents {
     // 用独立闸门把「扩散结算期间的重入」结构性挡掉,不再依赖「恰好不被判为法伤」这一事实。
     static boolean gloveSplashSettling = false;
 
+    // ⚠️ 2026-10-21 语义定稿：电击手套已改为**独立延迟结算**
+    //   （item/chip/ElectricGloveChipItem#executeShock，走 event/RailgunStrikeScheduler 的 20 tick
+    //   延迟队列，用 card_spell 独立结算）⇒ **不再经过本窗口**。
+    //   下列闸门 / 计数 / 登记（gloveSplashInstance、gloveSplashSettling、runAsGloveSplashInstance、
+    //   runAsGloveSplashSettlement、aoeDepth、markCardSplashHit）**全部保留**：
+    //   ① 其它链路（活体书页、定向爆破 AOE 等）仍在用；② 即便暂时无人调用，它们仍是法伤链重入的
+    //   结构性防护 —— **不要**因为"看起来没人用"而删除或简化成布尔。
+
     /** 当前这一次命中是否属于「已付费的伤害效果牌自己的主目标伤害」(供电击手套修饰器判定)。 */
     public static boolean isGloveSplashInstance() {
         return gloveSplashInstance;

@@ -39,8 +39,8 @@ import net.neoforged.neoforge.event.entity.living.LivingChangeTargetEvent;
 @EventBusSubscriber(modid = AstralDiceMod.MODID)
 public final class BarricadeAggroHandler {
 
-    /** 「强制留在路障上」的最大距离（格）的平方 = 6 格，与 {@link BarricadeEntity#AGGRO_RADIUS} 同值。 */
-    private static final double HOLD_RANGE_SQR = 36.0D;
+    /** 「强制留在路障上」的最大距离（格）的平方 = 8 格，与 {@link BarricadeEntity#AGGRO_RADIUS}（8 格）同值。 */
+    private static final double HOLD_RANGE_SQR = 64.0D;
 
     private BarricadeAggroHandler() {
     }

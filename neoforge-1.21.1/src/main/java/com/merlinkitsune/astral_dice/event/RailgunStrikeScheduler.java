@@ -18,7 +18,8 @@ import java.util.Iterator;
 import java.util.List;
 
 /**
- * 电磁炮雷击的延迟队列(精确 1 秒后触发)。
+ * 服务端**延迟动作**队列(精确 1 秒后触发)。最初只服务电磁炮雷击;2026-10-21 起泛化出
+ * {@link StrikeAction} 重载,电击手套的 20 tick 延迟电击复用同一队列(语义/兜底完全一致)。
  *
  * <p><b>为什么不能用原版 {@code MinecraftServer#tell(new TickTask(tickCount + 20, ...))}:</b>
  * {@code MinecraftServer} 继承 {@code ReentrantBlockableEventLoop<TickTask>},其
@@ -34,6 +35,16 @@ import java.util.List;
 public final class RailgunStrikeScheduler {
 
     /**
+     * 延迟到期要执行的动作（2026-10-21 新增：电击手套的 20 tick 延迟电击复用同一队列）。
+     *
+     * <p>实现必须**无返回值、自行兜异常**语义；调度器会把整次调用包在 try/catch 内。
+     */
+    @FunctionalInterface
+    public interface StrikeAction {
+        void run(ServerLevel level, Vec3 center, ServerPlayer cause);
+    }
+
+    /**
      * 待触发雷击:触发瞬间优先跟随仍存活的原目标,否则回退到攻击时的位置快照。
      *
      * <p>伤害值**可变**:登记发生在伤害结算前段(骰战尚未算出最终伤害),先以攻击的即时伤害
@@ -47,16 +58,22 @@ public final class RailgunStrikeScheduler {
         private final long fireAt;
         /** 本次雷击伤害(降雷时按此值 {@code LightningBolt#setDamage}) */
         private float damage;
+        /** 到期执行的动作;null ⇒ 旧路径直接调 {@link RailgunChipItem#executeStrike} */
+        private StrikeAction action;
 
         private Pending(ServerLevel level, LivingEntity target, Vec3 fallbackCenter,
-                        ServerPlayer cause, long fireAt, float damage) {
+                        ServerPlayer cause, long fireAt, float damage, StrikeAction action) {
             this.level = level;
             this.target = target;
             this.fallbackCenter = fallbackCenter;
             this.cause = cause;
             this.fireAt = fireAt;
             this.damage = Math.max(0.0F, damage);
+            this.action = action;
         }
+
+        /** 到期动作(可为 null ⇒ 旧路径) */
+        private StrikeAction action() { return action; }
 
         /** 回填/覆盖本次雷击伤害(负数按 0 处理) */
         public void setDamage(float damage) {
@@ -100,8 +117,35 @@ public final class RailgunStrikeScheduler {
     public static Pending schedule(ServerLevel level, LivingEntity target, Vec3 fallbackCenter,
                                ServerPlayer cause, int delayTicks, float damage) {
         if (level == null) return null;
+        // 旧路径同样包成动作，但动作**读实例字段 damage**（而不是捕获本次参数）：
+        // RailgunChipItem#applyFinalDamage 会在骰战结算后用 setDamage 回填最终伤害，
+        // 若捕获当次参数，回填就永远不生效。
+        final Pending pending = new Pending(level, target, fallbackCenter, cause,
+                level.getGameTime() + Math.max(0, delayTicks), damage, null);
+        pending.action = (l, c, p) -> RailgunChipItem.executeStrike(l, c, p, pending.damage());
+        PENDING.add(pending);
+        return pending;
+    }
+
+    /**
+     * 登记一次**通用延迟动作**（2026-10-21 新增；电击手套的 20 tick 延迟电击走这里）。
+     *
+     * <p>与上面的电磁炮重载共用同一队列 / 同一 tick 边界 / 同一 {@code MAX_AGE_TICKS} 兜底，
+     * 因此延迟是**真实 tick 延迟**，而不是 {@code MinecraftServer#tell} 那种会当 tick 立即执行的伪延迟。
+     *
+     * @param level          触发的服务端维度
+     * @param target         原目标(存活则跟随其当前位置;可为 null)
+     * @param fallbackCenter 目标不可用时的位置快照
+     * @param cause          来源玩家(可为 null)
+     * @param delayTicks     延迟 tick 数
+     * @param action         到期执行的动作（null ⇒ 等价于旧路径，但伤害为 0）
+     * @return 本次登记的句柄;{@code level} 为空时返回 {@code null}
+     */
+    public static Pending schedule(ServerLevel level, LivingEntity target, Vec3 fallbackCenter,
+                               ServerPlayer cause, int delayTicks, StrikeAction action) {
+        if (level == null) return null;
         Pending pending = new Pending(level, target, fallbackCenter, cause,
-                level.getGameTime() + Math.max(0, delayTicks), damage);
+                level.getGameTime() + Math.max(0, delayTicks), 0.0F, action);
         PENDING.add(pending);
         return pending;
     }
@@ -149,9 +193,14 @@ public final class RailgunStrikeScheduler {
                 Vec3 center = (target != null && target.isAlive() && target.level() == p.level())
                         ? target.position() : p.fallbackCenter();
                 if (center == null) continue;
-                RailgunChipItem.executeStrike(p.level(), center, p.cause(), p.damage());
+                final StrikeAction action = p.action();
+                if (action != null) {
+                    action.run(p.level(), center, p.cause());
+                } else {
+                    RailgunChipItem.executeStrike(p.level(), center, p.cause(), p.damage());
+                }
             } catch (Exception ex) {
-                LOGGER.warn("[Astral Dice] 电磁炮雷击触发失败,已跳过本次", ex);
+                LOGGER.warn("[Astral Dice] 延迟动作触发失败(电磁炮雷击 / 电击手套),已跳过本次", ex);
             }
         }
     }

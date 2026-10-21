@@ -3,9 +3,9 @@
 
 做法：对源码/资源逐条注入一处**语义变异**（去重 / 概率表 / 已拥有过滤 / 双击 / 第二购买入口 /
 隐藏槽 mayPickup / 价格步长 / 价格上限 / 刷新周期 / 刷新上限钳制 / 物品栏已满判定取反 / 筹码格命中条件 /
-确认守卫被削 / 语言键集不对称 / 悬空语言键 / 两枚图标互换字节），共 **37 条** = `$mutations` 35 条（文本变异）+ `$swaps` 2 条（图标字节互换）；
-按其 `file` 归属配平：**蓝本线 neoforge-1.21.1 = 24 条**（M1..M15、M17..M24、外加 `$swaps` 的 M16）、
-**移植线 forge-1.20.1 = 13 条**（M25..M37，条目里用 `line = 'forge'` 指定移植线），每条都要求守门脚本**判红**且失败信息命中预期关键字；
+确认守卫被削 / 语言键集不对称 / 悬空语言键 / 两枚图标互换字节 / 品质外框回归），共 **39 条** = `$mutations` 37 条（文本变异）+ `$swaps` 2 条（图标字节互换）；
+按其 `file` 归属配平：**蓝本线 neoforge-1.21.1 = 25 条**（M1..M15、M17..M24、M38、外加 `$swaps` 的 M16）、
+**移植线 forge-1.20.1 = 14 条**（M25..M37、M39，条目里用 `line = 'forge'` 指定移植线），每条都要求守门脚本**判红**且失败信息命中预期关键字；
 随后**字节级还原**并按 SHA256 复核文件已复原。
 
 用法（仓库根目录）：
@@ -144,6 +144,11 @@ $mutations = @(
        find = 'public static final int OFFER_COUNT = 3;'; repl = 'public static final int OFFER_COUNT = 3;' + $nl + '    public static final double discount = 1.0;'; expect = '出现折扣路径标识符' },
     @{ name = 'M24 概率表行序对调（2★ 与 3★ 两行互换）'; file = "$java/shop/ChipShopCatalog.java"
        find = '            {0.40, 0.45, 0.15},' + $nl + '            {0.25, 0.50, 0.25},'; repl = '            {0.25, 0.50, 0.25},' + $nl + '            {0.40, 0.45, 0.15},'; expect = '概率表行序' },
+    # ---- 2026-10-21 无边框口径（用户裁决）追加：把品质外框 blit 塞回去必须被判红（G2b 反向断言真的会红） ----
+    @{ name = 'M38 品质外框 blit 回归（在筹码图标前重新画 chipshop_quality_1）'; file = "$java/screen/ChipShopScreen.java"
+       find = '            // 筹码图标 = 商店专用 32x32 素材，缩到 24x24 画在内缩区中心（非物品模型，故无需 scissor）'
+       repl = '            // 筹码图标 = 商店专用 32x32 素材，缩到 24x24 画在内缩区中心（非物品模型，故无需 scissor）' + $nl + '            blitStrip(guiGraphics, tex("chipshop_quality_1.png"), QUALITY_X[chip], QUALITY_Y, QUALITY_SIZE, QUALITY_SIZE);'
+       expect = '仍引用品质外框' },
     # ---- 2026-10-12 forge 移植后追加：证明 G21b 的**按线分支**两侧都真的会红（否则新分支是死判据） ----
     @{ name = 'M25 移植线方块塞入 1.21.1 专有字面（假 codec 常量蒙守门）'; line = 'forge'; file = "$forge/block/ChipShopBlock.java"
        find = '    private static final VoxelShape SHAPE'; repl = '    static final String MUT = "simpleCodec(ChipShopBlock::new);";' + $nl + '    private static final VoxelShape SHAPE'; expect = '本线不应有的平台专有字面' },
@@ -171,7 +176,11 @@ $mutations = @(
     # 多行锚点 + 移植线 CRLF 文件：既补强「关店必须落在 handleBuy 方法体内」这条判据在移植线的覆盖，
     # 又同时验证 harness 的**行尾归一化**（不归一化时这条锚点会静默匹配不到 ⇒ MUT_HARNESS）
     @{ name = 'M37 移植线关店被挪出 handleBuy（多行锚点，CRLF 文件）'; line = 'forge'; file = "$forge/shop/ChipShopMenu.java"
-       find = '        buyer.closeContainer();' + $nl + '    }'; repl = '    }' + $nl + $nl + '    private void mutatedClose(ServerPlayer buyer) { buyer.closeContainer(); }'; expect = '.closeContainer(); 必须落在 handleBuy 方法体内' }
+       find = '        buyer.closeContainer();' + $nl + '    }'; repl = '    }' + $nl + $nl + '    private void mutatedClose(ServerPlayer buyer) { buyer.closeContainer(); }'; expect = '.closeContainer(); 必须落在 handleBuy 方法体内' },
+    @{ name = 'M39 移植线品质外框 blit 回归（在筹码图标前重新画 chipshop_quality_2）'; line = 'forge'; file = "$forge/screen/ChipShopScreen.java"
+       find = '            // 筹码图标 = 商店专用 32x32 素材，缩到 24x24 画在内缩区中心（非物品模型，故无需 scissor）'
+       repl = '            // 筹码图标 = 商店专用 32x32 素材，缩到 24x24 画在内缩区中心（非物品模型，故无需 scissor）' + $nl + '            blitStrip(guiGraphics, tex("chipshop_quality_2.png"), QUALITY_X[chip], QUALITY_Y, QUALITY_SIZE, QUALITY_SIZE);'
+       expect = '仍引用品质外框' }
 )
 
 # 二进制变异：两枚筹码图标互换字节（只比对文件是否存在的判据抓不到，逐字节对账才抓得到）

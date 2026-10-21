@@ -19,8 +19,9 @@ import java.util.Arrays;
  * 客户端镜像，**没有**为数量类读数新增 S2C 包）。失败提示走 S2C
  * {@code ChipShopDenyPayload} → {@link #notifyDeny(int)}（起 30t 红闪倒计时）。
  *
- * <p><b>品质 → 品质外框序号</b>：{@link #qualityFrameIndexOf(ItemStack)} 的返回值直接拼进贴图名
- * （1 ⇒ {@code chipshop_quality_1.png}、2 ⇒ {@code _2}、3 ⇒ {@code _3}；{@code 0} ⇒ 不画外框）。
+ * <p><b>品质 → 品质外框序号</b>：{@link #qualityFrameIndexOf(ItemStack)} 的返回值原本直接拼进贴图名
+ * （1 ⇒ {@code chipshop_quality_1.png}、2 ⇒ {@code _2}、3 ⇒ {@code _3}；{@code 0} ⇒ 不画外框）；
+ * **2026-10-21 起屏幕不再绘制品质外框**（状态图标改无边框），该档位映射当前无绘制/同步调用方，仅作档位对照保留（DataSlot 同步走 {@link #setQualityCodes}、只读探针走 {@link #qualityCode}）。
  * 档位反查一律走库的 {@link AstralRarities#tierOf}，**不在本类里写 {@code ==} 链** —— 库的 {@code Rarity}
  * 是**扩展过的原版枚举常量**（RARE/EPIC/LEGENDARY/PINNACLE/BIZARRE），与原版自带的 COMMON/UNCOMMON/RARE/EPIC
  * **不是同一组常量**（{@code tierOf} 对原版自带的档位返回 null，见该方法的契约）。

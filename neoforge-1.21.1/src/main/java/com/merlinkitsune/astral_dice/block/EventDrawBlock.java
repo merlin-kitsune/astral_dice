@@ -1,5 +1,7 @@
 package com.merlinkitsune.astral_dice.block;
 
+import com.merlinkitsune.astral_dice.audio.ModSounds;
+import com.merlinkitsune.astral_dice.audio.SoundPlayback;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.network.ActionBarPayload;
@@ -9,7 +11,9 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.ItemInteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
@@ -82,11 +86,37 @@ public class EventDrawBlock extends Block {
                 player.drop(ticket, false);
             }
             ModAttachments.setEventDrawerCooldownUntil(player, now + COOLDOWN_TICKS);
-            actionBar(player, ChatFormatting.GOLD, "msg.astral_dice.event_drawer_bought", ticket.getHoverName());
+            // 购买成功音效：一律走 SoundPlayback（禁止裸写 level.playSound）
+            if (player instanceof ServerPlayer sp) {
+                SoundPlayback.playTo(sp, ModSounds.WALLET_DEPOSIT.get());
+            }
             LOGGER.info("AP_EVENT_DRAWER: player={}:buy=ok:bal={}->{}", name, before,
                     StarEngineEconomy.getBalance(player));
         }
         return InteractionResult.sidedSuccess(level.isClientSide);
+    }
+
+    /**
+     * 手持**空白筹码**右键方块 ⇒ 重置抽奖盒（与筹码商店「投入空白筹码」同口径：消耗 1 枚、清空当前批次状态）。
+     *
+     * <p>非空白筹码一律回退 {@code super.useItemOn} ⇒ 交给默认交互（{@link #useWithoutItem} 购买），
+     * 原有右键购买行为不受影响。
+     */
+    @Override
+    protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos,
+                                              Player player, InteractionHand hand, BlockHitResult hitResult) {
+        if (!stack.is(ModItems.BLANK_CHIP.get())) {
+            return super.useItemOn(stack, state, level, pos, player, hand, hitResult);
+        }
+        if (level.isClientSide) {
+            return ItemInteractionResult.sidedSuccess(true);
+        }
+        stack.shrink(1);
+        ModAttachments.setEventDrawerCooldownUntil(player, 0L);
+        actionBar(player, ChatFormatting.GOLD, "msg.astral_dice.event_drawer_blank_insert");
+        LOGGER.info("AP_EVENT_DRAWER: player={}:blank_insert=ok:reset=cooldown",
+                player.getName().getString());
+        return ItemInteractionResult.sidedSuccess(false);
     }
 
     /** actionbar 提示(红字拒绝 / 金色成功);非服务端玩家时静默跳过。 */

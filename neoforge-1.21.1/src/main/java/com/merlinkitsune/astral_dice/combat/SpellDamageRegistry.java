@@ -394,62 +394,45 @@ public final class SpellDamageRegistry {
                 return bonus + AmethystDiceHandler.rollD6(ctx.attacker);
             }
         });
-        // 电击手套:使用伤害效果牌且充能 ≥ 4 时消耗 4 层充能 ⇒ **该牌本次造成的**主目标命中同时命中目标
-        // 3 格内的其他敌对目标。生效窗口由承载该次使用的那张牌置位
-        // (DiceCombatEvents#runAsGloveSplashInstance)⇒ 原版箭矢 / 别家法术 / 本牌自身的 AOE 波及命中
-        // 都不扩散(= 旧「周期溅伤」已按 2026-10-05 用户裁决废弃)。
-        registerModifier(new SpellDamageModifier() {
-            @Override
-            public boolean isActive(SpellDamageContext ctx) {
-                // 只在「那一张牌自己的主目标命中」窗口内生效;扩散结算期间一律失效(防递归)
-                return DiceCombatEvents.isGloveSplashInstance()
-                        && !DiceCombatEvents.isGloveSplashSettling()
-                        && com.merlinkitsune.astral_dice.item.chip.ElectricGloveChipItem.isEquipped(ctx.attacker);
-            }
+    }
 
-            @Override
-            public double apply(SpellDamageContext ctx, double bonus) {
-                return bonus;
-            }
-
-            @Override
-            public void onHit(SpellDamageContext ctx, double bonus) {
-                float total = ctx.event.getNewDamage();
-                if (total <= 0) return;
-                final net.minecraft.world.phys.AABB aabb = ctx.target.getBoundingBox()
-                        .inflate(com.merlinkitsune.astral_dice.item.chip.ElectricGloveChipItem.AOE_RADIUS);
-                // 2026-09-24 口径统一:波及选目标用法伤链同一闸门(比 HostileTargets 更宽)
-                // e != ctx.attacker:闸门把「无队伍玩家」视为敌对(相对他人成立),对**施法者本人**不成立,
-                // 不显式排除自己则近战距离下 AOE 会波及施法者自己(2026-09-24 修复)
-                final var nearby = ctx.target.level().getEntitiesOfClass(LivingEntity.class, aabb,
-                        e -> DiceCombatEvents.isBlessingTarget(e, ctx.attacker)
-                                && e != ctx.target && e != ctx.attacker && e.isAlive());
-                if (nearby.isEmpty()) return;
-                final var source = com.merlinkitsune.astral_dice.damage.ModDamageTypes
-                        .trueDamage(ctx.target.level(), ctx.attacker);   // 真伤:范围波及伤害同样无视护甲值/盔甲韧性
-                // 两层闸门(均为「保存 / 恢复」式,与外层嵌套安全):
-                //   runAsGloveSplashSettlement = 扩散重入闸门(防递归);
-                //   beginAoe()/endAoe()        = 波及伤害不进骰战结算(深度计数,配对开窗)。
-                DiceCombatEvents.runAsGloveSplashSettlement(() -> {
-                    DiceCombatEvents.beginAoe();
-                    try {
-                        for (LivingEntity e : nearby) {
-                            // 同一目标在**一次用量**内只吃一次扩散/波及:登记失败 = 本次用量内已吃过 ⇒ 跳过。
-                            // 该登记同时让同一次用量的其它枚举(定向爆破 6 格 AOE)看到"这个已吃过"
-                            // (见 DiceCombatEvents#runAsCardSplashResolution / #markCardSplashHit)。
-                            if (!DiceCombatEvents.markCardSplashHit(e)) continue;
-                            // 跳数字:不再直发 —— 电击手套范围波及原为青色(0x00E5FF),2026-09-26 起
-                            // 按用户裁决统一归入**法伤类绿色**(所有法伤/技能伤害共用一个绿色数值)。
-                            // ⚠️ 必须显式登记:astral_dice:true_damage 被多路复用(大当家溅射=红 / 这里=绿)。
-                            DamageNumberAggregator.tag(e, source, DamageNumberAggregator.Group.SPELL);
-                            e.hurt(source, total);
-                            }
-                    } finally {
-                        DiceCombatEvents.endAoe();
-                    }
-                });
-            }
-        });
+    /**
+     * 电击手套：收集以 {@code center} 为中心、半径 {@code radius} 格内的电击受害者。
+     *
+     * <p>口径（2026-10-21 用户裁决）：
+     * <ul>
+     *   <li><b>含主目标</b>：旧实现把主目标从候选集合里显式排除，新语义要求「目标 3 格内
+     *       所有目标」⇒ 不再排除主目标（只排除施法者本人）；</li>
+     *   <li>闸门沿用 {@link DiceCombatEvents#isBlessingTarget}（与法伤链同口径：敌对 / 中立 / Boss）；</li>
+     *   <li>半径取自 {@code ElectricGloveChipItem.AOE_RADIUS}（调用方传入），并按<b>中心点距离</b>再筛一次，
+     *       避免 AABB 立方体把对角 3√3 格外的实体也收进来；</li>
+     *   <li>结果<b>去重</b>（同一实体只出现一次，避免重复受伤）。</li>
+     * </ul>
+     *
+     * @param level    服务端维度
+     * @param center   圆心（主目标位置）
+     * @param attacker 施法者（null ⇒ 无受害者）
+     * @param radius   半径（格；&le;0 时回退到 {@code ElectricGloveChipItem.AOE_RADIUS}）
+     * @return 去重后的受害者列表（保持 {@code level.getEntitiesOfClass} 的天然顺序）
+     */
+    public static List<LivingEntity> collectGloveShockTargets(net.minecraft.server.level.ServerLevel level,
+                                                              net.minecraft.world.phys.Vec3 center,
+                                                              net.minecraft.world.entity.player.Player attacker,
+                                                              double radius) {
+        if (level == null || center == null || attacker == null) return List.of();
+        final double r = radius > 0.0D
+                ? radius
+                : com.merlinkitsune.astral_dice.item.chip.ElectricGloveChipItem.AOE_RADIUS;
+        final net.minecraft.world.phys.AABB aabb = new net.minecraft.world.phys.AABB(center, center).inflate(r);
+        final double rSqr = r * r;
+        final var found = level.getEntitiesOfClass(LivingEntity.class, aabb,
+                e -> e != attacker
+                        && e.isAlive()
+                        && e.position().distanceToSqr(center) <= rSqr
+                        && DiceCombatEvents.isBlessingTarget(e, attacker));
+        // 去重：同一实体只允许出现一次（先到先得，顺序即 getEntitiesOfClass 的天然顺序）
+        final java.util.LinkedHashSet<LivingEntity> unique = new java.util.LinkedHashSet<>(found);
+        return new ArrayList<>(unique);
     }
 
     // ⚠️ 本类原有的 sendAoeDamageNumber 私有帮助方法已于 2026-09-26 移除:跳数字的唯一出口是
