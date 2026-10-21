@@ -861,7 +861,7 @@ public final class DiceCombatModifiers {
     /**
      * 攻击力基础值(属性 + 攻击修饰器链，**不含附魔加伤**)。
      *
-     * <p>用于 {@link #getDisplayAttackRange}（tooltip 区间）。该值在**客户端**求值，
+     * <p>用于 {@link #getDisplayAttackRange}（tooltip 区间）。该方法实际在服务端求值（菜单 broadcastChanges），
      * 而附魔加伤需要 {@code ServerLevel} 才能取到（见 {@link #enchantedAttackDamage}）
      * ⇒ 此处刻意不含附魔，与**原版客户端 tooltip 同样不显示武器附魔加伤**的行为一致。
      * 战斗/降神口径（含附魔）见 {@link #attackPowerOf}。
@@ -1006,7 +1006,9 @@ public final class DiceCombatModifiers {
     public static PowerRange getDisplayAttackRange(Player player, ItemStack diceStack, WeaponEnhancement enhancement) {
         if (player == null) return new PowerRange(0, 0);
         if (enhancement == null) enhancement = WeaponEnhancement.EMPTY;
-        double ap = attackPowerBase(player, diceStack, enhancement);
+        // 2026-10-21 用户裁决：骰子界面的攻击力与 HUD 同口径 ⇒ **剔除手持武器**
+        // （war 里 attackPowerBase 的默认起点是 ATTACK_DAMAGE，含武器；HUD 用 attackPowerDisplayOf 的起点）。
+        double ap = attackPowerBase(player, diceStack, enhancement, attackDamageExcludingHeldWeapon(player));
         int base = (int) Math.floor(ap);
         int min = base;
         int max = base;
