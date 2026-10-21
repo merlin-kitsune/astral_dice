@@ -978,6 +978,7 @@
   "msg.astral_dice.event_drawer_cooldown": "The Lottery Box is cooling down, try again later",
   "msg.astral_dice.event_drawer_no_coin": "Not enough Star Coins (need %s)",
   "msg.astral_dice.event_drawer_blank_insert": "Blank Chip inserted - the Lucky Draw Box was reset and is ready again",
+  "msg.astral_dice.event_global_cooldown": "The previous event has not finished yet (wait §e%s§7s)",
   "event.astral_dice.red_heat_warning.name": "Red-Heat Warning",
   "event.astral_dice.swift_stride.name": "Swift Stride",
   "event.astral_dice.storm_approaching.name": "Storm Approaching",

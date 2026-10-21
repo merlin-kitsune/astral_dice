@@ -39,8 +39,9 @@ public class EventDrawItem extends Item {
                 LOGGER.warn("AP_EVENT_DRAW: src=ITEM_USE:empty");
             } else {
                 LOGGER.info("AP_EVENT_DRAW: src=ITEM_USE:id={}", drawn.get().id());
-                AstralEventDispatcher.trigger(player, drawn.get().id(), AstralEventTrigger.ITEM_USE);
-                if (!player.getAbilities().instabuild) {
+                // 权威入口 = AstralEventDispatcher；被全局硬间隔闸门拒绝时不消耗卡（2026-10-21）
+                boolean started = AstralEventDispatcher.trigger(player, drawn.get().id(), AstralEventTrigger.ITEM_USE);
+                if (started && !player.getAbilities().instabuild) {
                     stack.shrink(1);
                 }
             }

@@ -977,6 +977,7 @@
   "msg.astral_dice.event_drawer_cooldown": "抽選ボックスはクールダウン中です。しばらくお待ちください",
   "msg.astral_dice.event_drawer_no_coin": "スターコインが足りません（必要：%s）",
   "msg.astral_dice.event_drawer_blank_insert": "ブランクチップを投入しました - 抽選ボックスをリセットし、すぐ購入できます",
+  "msg.astral_dice.event_global_cooldown": "前のイベントがまだ終了していません（あと §e%s§7 秒）",
   "event.astral_dice.red_heat_warning.name": "紅熱警告",
   "event.astral_dice.swift_stride.name": "疾走",
   "event.astral_dice.storm_approaching.name": "雷雨接近",

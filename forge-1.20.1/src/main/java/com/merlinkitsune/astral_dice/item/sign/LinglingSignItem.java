@@ -57,7 +57,7 @@ public class LinglingSignItem extends BaseSignItem {
         return InteractionResultHolder.success(stack);
     }
 
-    /** 卸下 / 死亡:额外层归零 + 摘净修饰器 + 移除「能量突击」 */
+    /** 卸下 / 死亡:摘净修饰器 + 移除「能量突击」(不回收已到账充能,2026-10-21 用户裁决) */
     @Override
     protected void clearSignData(Player player, ItemStack stack) {
         super.clearSignData(player, stack);

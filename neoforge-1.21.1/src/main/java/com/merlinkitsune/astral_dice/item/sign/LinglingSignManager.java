@@ -37,11 +37,11 @@ import top.theillusivec4.curios.api.CuriosApi;
  *       {@code StarLightManager.claimEquipGrant} —— 那条链卸下会 release，可以刷）。</li>
  *   <li><b>路障 → 强化拒止</b> —— 拾取（{@code LinglingSignEvents}）、购买（{@code CardShopMenu}）、
  *       手持（{@code PlayerTickEvents}）三个入口全部收敛到本类的 {@link #toRepulsion}。</li>
- *   <li><b>额外充能层</b> —— {@code lingling_bonus_charge} attachment 记的**独立加成层**（不写进
- *       {@code ChargeEffect}）；{@link #effectiveCharge} 把「真实充能 + 额外层」夹在
- *       {@link GameplayConstants#CHARGE_MAX_STACKS} 之内。层数口径（2026-10-20 用户裁决）：
- *       **每控制一个新目标 +1**，**单座强化拒止最多提供 5 点**，同一目标重复吸附不重复计数，
- *       目标阵亡不再扣层（见 {@link #bonusChargeFromOwnedFields}）。</li>
+ *   <li><b>强化拒止 → 充能</b> —— 2026-10-21 用户裁决（取代旧的「按距离重算层数」）：
+ *       强化拒止吸附到一个**新**目标时，由 {@code RepulsionEntity#awardCharge} 立刻给**放置者**
+ *       +1 **真实充能**（{@link ChargeManager#addStacks}），单座最多 5 点、**永久到账**
+ *       （玩家走远 / 目标脱离 / 力场碎裂或到期都不回收）。本类**不再**做任何充能增删，
+ *       只读 {@link ChargeManager#getStacks} 计算有效层数。</li>
  *   <li><b>能量突击数值</b> —— buff 期间每 {@value #REFRESH_INTERVAL_TICKS} tick 用固定
  *       {@link ResourceLocation} 重刷同两个修饰符（攻击力 {@code ADD_VALUE +有效充能}、
  *       移速 {@code ADD_MULTIPLIED_TOTAL +有效充能/100}），因此重复触发只覆盖数值、不叠加。</li>
@@ -56,8 +56,6 @@ public final class LinglingSignManager {
     public static final int FIRST_EQUIP_GRANT = 2;
     /** §5 主动施放时发放的强化拒止张数。 */
     public static final int ACTIVE_GRANT = 1;
-    /** §4.6 额外充能层的扫描半径（格，从佩戴者出发）。 */
-    public static final double BONUS_SCAN_RADIUS = 32.0D;
     /** §4.7 「被吸附」判定半径（格，从受击目标出发，任意强化拒止都算）。 */
     public static final double TRACK_QUERY_RADIUS = 16.0D;
     /** §4.7 命中被吸附目标的追加伤害（点）。 */
@@ -195,36 +193,8 @@ public final class LinglingSignManager {
     }
 
     // ══════════════════════════════════════════════════════════════════════
-    //  §4.6 额外充能层
+    //  §4.7 目标是否被吸附
     // ══════════════════════════════════════════════════════════════════════
-
-    /**
-     * 汇总「**自己放置的**强化拒止」提供的额外充能层数（用户裁决 2026-10-20）。
-     *
-     * <p>口径（取代旧的「当前仍在吸附的目标数」与「击杀后 -1」）：
-     * <ul>
-     *   <li>只算 {@code ownerUUID} 是自己的力场；</li>
-     *   <li>每座力场按**它控制过的不同目标数**各计 1 层，单座封顶
-     *       {@link RepulsionEntity#MAX_CHARGE_STACKS}（= 5）—— 上限按**每个强化拒止实体**
-     *       各 5 点，不是全局 5 点；</li>
-     *   <li>同一目标重复吸附不重复计数（去重由力场自身的 {@code controlledTargets} 承担）；
-     *       目标阵亡 / 脱离**不再**扣层（旧「击杀 -1」已废弃）。</li>
-     * </ul>
-     *
-     * <p>多座相加后的总上限由 {@link #effectiveCharge} 夹在
-     * {@link GameplayConstants#CHARGE_MAX_STACKS}（20）之内。
-     */
-    public static int bonusChargeFromOwnedFields(Player player) {
-        if (player == null || player.level().isClientSide()) return 0;
-        AABB area = player.getBoundingBox().inflate(BONUS_SCAN_RADIUS);
-        int total = 0;
-        for (RepulsionEntity field : player.level().getEntitiesOfClass(RepulsionEntity.class, area)) {
-            UUID owner = field.getOwnerUUID();
-            if (owner == null || !owner.equals(player.getUUID())) continue;
-            total += field.chargeStacks();
-        }
-        return total;
-    }
 
     /**
      * §4.7 目标是否正被**任意**强化拒止吸附（不分归属）。判定口径：以目标包围盒 inflate
@@ -240,54 +210,25 @@ public final class LinglingSignManager {
         return false;
     }
 
-    /** 重算并写回 {@code lingling_bonus_charge}（佩戴时每 {@value #REFRESH_INTERVAL_TICKS} tick 调一次）。 */
-    public static int recomputeBonusCharge(Player player) {
-        if (player == null || player.level().isClientSide()) return 0;
-        int bonus = bonusChargeFromOwnedFields(player);
-        int previous = ModAttachments.getLinglingBonusCharge(player);
-        if (bonus != previous) {
-            ModAttachments.setLinglingBonusCharge(player, bonus);
-            int delta = bonus - previous;
-            if (delta > 0) {
-                // 2026-10-21 用户裁决：额外层必须是**真实充能层**（HUD 可见、供其它系统读取），
-                // 不再是只影响 buff 数值的隐形加成层。
-                ChargeManager.addStacks(player, delta);
-            } else {
-                // 回收走 ChargeEffect 直调：绕开 ChargeManager.consume 的「消耗充能」回调，
-                // 避免「装备/卸下立牌」刷赋能。
-                com.merlinkitsune.astral_dice.effect.ChargeEffect.consume(player, -delta);
-            }
-        }
-        return bonus;
-    }
-
-    /** 额外充能层（只读，磁盘上是 attachment；未佩戴时按 0 处理）。 */
-    public static int bonusCharge(Player player) {
-        if (player == null) return 0;
-        return ModAttachments.getLinglingBonusCharge(player);
-    }
-
     /**
-     * §4.6 有效充能层 = {@code min(20, ChargeManager.getStacks(player) + bonus)}。
+     * 有效充能层 = {@code min(20, ChargeManager.getStacks(player))}。
      *
-     * <p>20 是「真实充能 + 额外层」的**合计**上限（{@link GameplayConstants#CHARGE_MAX_STACKS}）。
-     * 额外层是独立加成层，不写进 {@code ChargeEffect}；其它系统（筹码消耗等）不感知它。
+     * <p>2026-10-21 起强化拒止给的层数是**真实充能**（{@code ChargeEffect}），这里不再有
+     * 「额外加成层」的独立账本 —— 只剩总上限 {@link GameplayConstants#CHARGE_MAX_STACKS} 的夹取。
      */
     public static int effectiveCharge(Player player) {
         if (player == null) return 0;
-        // 额外层已物化为真实充能层（见 recomputeBonusCharge）⇒ 这里不能再加一次，否则重复计数。
         return Math.min(GameplayConstants.CHARGE_MAX_STACKS, ChargeManager.getStacks(player));
     }
 
     /**
-     * 佩戴态的 10t 被动刷新：首次装备发放 + 额外充能层重算 + 手持路障转换 + buff 数值刷新。
+     * 佩戴态的 10t 被动刷新：首次装备发放 + 手持路障转换 + buff 数值刷新。
      * 不佩戴时一律空操作（清理由 {@code LinglingSignEvents} / {@code clearAll} 负责）。
      */
     public static void tickPassive(Player player) {
         if (player == null || player.level().isClientSide()) return;
         if (!isEquipped(player)) return;
         grantFirstEquip(player);
-        recomputeBonusCharge(player);
         convertHeldBarricades(player);
         // 无论 buff 是否还在都刷一遍：buff 已到期时，这一步就是「把两个修饰符摘干净」的唯一时机
         // （hasSurge = false ⇒ refreshActiveModifiers 走清空分支），漏掉会留下永久攻击力/移速加成。
@@ -328,15 +269,14 @@ public final class LinglingSignManager {
         SignAttributeUtil.remove(player, Attributes.MOVEMENT_SPEED, MODIFIER_SPEED);
     }
 
-    /** 卸下 / 失去佩戴时的完整清理：额外层归零 + 摘修饰符 + 摘 buff。 */
+    /**
+     * 卸下 / 失去佩戴时的完整清理：摘修饰符 + 摘 buff。
+     *
+     * <p>⚠️ **不再回收充能**：强化拒止给的是真实充能且「永久到账」（2026-10-21 用户裁决），
+     * 卸下立牌只影响 buff 数值，不得回扣玩家已到账的层数。
+     */
     public static void clearAll(Player player) {
         if (player == null) return;
-        // 卸下/失效：把立牌物化出来的额外层一并收回（同样绕开「消耗充能」回调）。
-        int bonus = ModAttachments.getLinglingBonusCharge(player);
-        if (bonus > 0) {
-            com.merlinkitsune.astral_dice.effect.ChargeEffect.consume(player, bonus);
-        }
-        ModAttachments.setLinglingBonusCharge(player, 0);
         clearModifiers(player);
         ModEffectRemoval.remove(player, ModEffects.LINGLING_SURGE);
     }

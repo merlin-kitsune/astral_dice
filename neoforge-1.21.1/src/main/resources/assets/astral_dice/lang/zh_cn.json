@@ -979,6 +979,7 @@
   "msg.astral_dice.event_drawer_cooldown": "抽奖盒冷却中，请稍后再试",
   "msg.astral_dice.event_drawer_no_coin": "星币不足（需要 %s）",
   "msg.astral_dice.event_drawer_blank_insert": "已投入空白筹码，抽奖盒已重置并可立即再次购买",
+  "msg.astral_dice.event_global_cooldown": "上一个事件尚未结束（还需 §e%s§7 秒）",
   "event.astral_dice.red_heat_warning.name": "红温警告",
   "event.astral_dice.swift_stride.name": "疾行",
   "event.astral_dice.storm_approaching.name": "雷暴将至",

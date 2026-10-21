@@ -117,10 +117,7 @@ public class AstralData implements INBTSerializable<CompoundTag> {
                         // 死亡后重生必须仍是「已赠」,否则死亡 = 再刷 2 张牌(1.21.1 侧同键 .copyOnDeath())。
                         // 本键**没有**任何清零路径(clearSignData 不碰它)⇒ 只需本白名单,不需要
                         // DeathPreservedBonuses 槽位。
-                        ModAttachments.LINGLING_GRANTED.name(),
-                        // 额外充能层是**派生值**(每 10t 由吸附目标数重算),死亡时 clearAll 已归零;
-                        // 仍登记以与 1.21.1 的 .copyOnDeath() 一一对应(重生首 tick 即被重算覆盖)。
-                        ModAttachments.LINGLING_BONUS_CHARGE.name()
+                        ModAttachments.LINGLING_GRANTED.name()
                 };
                 event.getEntity().getCapability(ModCapabilities.ASTRAL_DATA).ifPresent(newData -> {
                     CompoundTag src = oldData.persistentStore();

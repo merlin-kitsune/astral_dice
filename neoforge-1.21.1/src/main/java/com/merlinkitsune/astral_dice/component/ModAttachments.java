@@ -2182,28 +2182,6 @@ public class ModAttachments {
         player.setData(LINGLING_GRANTED.get(), value);
     }
 
-    /**
-     * 怪力乱神立牌(lingling)的**额外充能层**(§4.6):等于「自己放置的每座强化拒止各自**控制过的
-     * 不同目标数**之和,单座封顶 5」(2026-10-20 用户裁决;同一目标重复吸附不重复计数,
-     * 目标阵亡不再扣层)。
-     * 独立加成层,**不写进 {@code ChargeEffect}**(用户裁决);跨死亡保留({@code copyOnDeath})。
-     * 每 10t 由 {@code LinglingSignManager#recomputeBonusCharge} 重算;失去佩戴时归零。
-     * 不 {@code .sync()}(仅服务端用于属性/伤害判定,客户端不读)。
-     */
-    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> LINGLING_BONUS_CHARGE =
-            ATTACHMENTS.register("lingling_bonus_charge", () -> AttachmentType.builder(() -> 0)
-                    .serialize(Codec.INT)
-                    .copyOnDeath()
-                    .build());
-
-    public static int getLinglingBonusCharge(net.minecraft.world.entity.player.Player player) {
-        return player.getData(LINGLING_BONUS_CHARGE.get());
-    }
-
-    public static void setLinglingBonusCharge(net.minecraft.world.entity.player.Player player, int value) {
-        player.setData(LINGLING_BONUS_CHARGE.get(), Math.max(0, value));
-    }
-
     // ── 本批 4 个新立牌的玩家级状态（键原由 NewSignAttachments 内联至此，id/默认值/同步标记逐字不变）──
     /** 调酒师：目标选择确认后暂存的目标 UUID（空串 = 无）。选卡取消即清空。 */
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<String>> JILL_PENDING_TARGET =

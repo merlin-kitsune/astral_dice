@@ -1,5 +1,6 @@
 package com.merlinkitsune.astral_dice.entity;
 
+import com.merlinkitsune.astral_dice.item.ChargeManager;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
@@ -10,23 +11,29 @@ import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.FlyingMob;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.entity.NeutralMob;
 import net.minecraft.world.entity.TamableAnimal;
 import net.minecraft.world.entity.monster.Creeper;
 import net.minecraft.world.entity.monster.Enemy;
+import net.minecraft.world.entity.monster.Vex;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -46,16 +53,16 @@ import java.util.UUID;
  *
  * <p><b>三层节拍</b>：
  * <ol>
- *   <li><b>每 tick</b>（{@link #tickTrackedTargets()}）：维护「被吸附目标」集合 ——
- *       死亡 / 移除 / 距离 &gt; 32 格 / **失去吸附资格**（{@link #isAttachable(Mob)}）的目标剪掉；
- *       3D 距离 &gt; 12 格的目标**按 3D 方向拉回 11.5 格处**并清零速度（「无法逃离影响范围」，
- *       见 {@link #clampInside(Mob)}）。本层**不再施加拉力**；</li>
- *   <li><b>每 20 tick（1 秒）</b>（{@link #scanAndApplyEffects()} ＋ {@link #pullTrackedTargets()}）：
- *       先扫描 12 格内**有吸附资格**、存活、{@code distanceToSqr <= 144} 的目标（资格 = 敌对生物 /
- *       中立生物 + 当前有仇恨目标或被激怒 + 非已驯服宠物，见〈吸附资格〉），
- *       加入集合并施加 缓慢 (0:10) / 虚弱 (0:10)（{@code amplifier = 0}）；随后对 12 格内被吸附目标
- *       施加**一次**向心冲量（{@code 归一化水平方向 × PULL_STRENGTH}，保留 y）——
- *       用户原文「会以1秒为频率……逐渐缓慢拉扯」，**每秒一跳、不是每 tick**；</li>
+ *   <li><b>每 tick</b>（{@link #tickTrackedTargets()} → {@link #controlTarget(UUID, Mob)}）：维护
+ *       「被吸附目标」集合 —— 死亡 / 移除 / 距离 &gt; 32 格 / **失去吸附资格**
+ *       （{@link #isAttachable(Mob)}）的目标剪掉并释放状态；对剩下的受控目标每 tick 做
+ *       ① 飞行目标关重力（原值记录、脱控恢复）② 瞬移 / 闪现拦截 ③ 出 11.5 格硬钳制
+ *       ④ **每 tick 向心牵引**（指数收敛，见 {@link #pullTowardAnchor(Mob)}）
+ *       ⑤ 纵向钳制（遁地）；</li>
+ *   <li><b>每 20 tick（1 秒）</b>（{@link #scanAndApplyEffects()}）：扫描 12 格内**有吸附资格**、
+ *       存活、{@code distanceToSqr <= 144} 的目标（资格 = 敌对生物 / 中立生物 + 当前有仇恨目标
+ *       或被激怒 + 非已驯服宠物，见〈吸附资格〉），加入集合并施加 缓慢 (0:10) / 虚弱 (0:10)
+ *       （{@code amplifier = 0}）；**新**目标随之给放置者 +1 充能（见 {@link #awardCharge(UUID)}）；</li>
  *   <li><b>每 200 tick（10 秒）</b>（{@link #consumeDurability()}）：耐久
  *       {@code -= min(当前 12 格内被吸附目标数, 5)}；扣到 &lt;= 0 ⇒ 碎裂粒子 + 玻璃破碎音 +
  *       {@link #discard()}。</li>
@@ -94,18 +101,17 @@ import java.util.UUID;
  * 只对**被吸附**的苦力怕生效（事件层用 {@link #isTracking(UUID)} 判定）；TNT、其他爆炸、未被吸附的
  * 苦力怕一律不受影响。
  *
- * <p><b>拉力机制（实证，订正此前「0.06 会被 aiStep 覆盖 ⇒ 拉力弱于预期」的错误说法）</b>：
+ * <p><b>拉力机制（2026-10-21 重做：旧「每秒一次 0.22 冲量」实测只有 0.2–0.5 格/秒，用户判「太弱」）</b>：
  * <ul>
- *   <li>{@code LivingEntity#moveRelative} 是把输入向量**加到**当前 {@code deltaMovement} 上
- *       （{@code setDeltaMovement(getDeltaMovement().add(...))}），**不是覆盖**；</li>
- *   <li>{@code travel} 在落地（非水 / 非岩浆）时把水平速度乘约 **0.546**（地面方块摩擦
- *       0.6 × 0.91）⇒ 每秒写入的 0.22 会在随后约 20 tick 里按 0.22 × 0.546^n 等比衰减继续位移，
- *       累计约 **0.2–0.5 格/秒**（随地面摩擦与 AI 输入方向浮动）；</li>
- *   <li>{@code Mob#aiStep} **不会**把 {@code deltaMovement} 重置为 0（它只往 delta 上叠加自己的
- *       移动输入），所以每秒一次的冲量不会被「每 tick 重算」抹掉；</li>
- *   <li>真实副作用：每次冲量都用 {@code setDeltaMovement} **覆盖** delta ⇒ **每跳抹掉目标当时的
- *       水平动量**（对正在奔跑的目标表现为一次顿挫，而不是叠加加速）。这是有意的「拉扯手感」，
- *       登记在此以免被当成 bug。</li>
+ *   <li>改为**每 tick 直接改位置**（{@link #pullTowardAnchor(Mob)}），不再走 {@code setDeltaMovement}：
+ *       后者每 tick 会被 {@code aiStep} 的移动输入与 {@code travel} 的摩擦重算，既拉不动，
+ *       又存在「逐 tick 加速 ⇒ 弹射」的隐患；</li>
+ *   <li>步长按剩余距离**指数收敛**并封顶：{@code min(0.85, max(0.08, (d - 1.2) × 0.35))} 格/tick
+ *       ⇒ 12 格内约 15 tick（0.75 秒）贴到中心 1.2 格；越近步长越小，**不会过冲 / 抖动**；</li>
+ *   <li>落点先做 {@code Level#noCollision} 检查：可用则 {@code setPos}，被占则退回原版
+ *       {@code move(MoverType.SELF, …)} 由碰撞裁剪 ⇒ **不穿模**；</li>
+ *   <li>每次位移后统一 {@code setDeltaMovement(ZERO)} + {@code hurtMarked = true} ⇒ 速度从不累积，
+ *       客户端靠原版位置 / 速度同步跟上，**不发自定义包**。</li>
  * </ul>
  *
  * <p><b>不吸引仇恨</b>：全程**不调用任何 {@code setTarget}**，也不清除目标原有仇恨 ——
@@ -117,19 +123,22 @@ import java.util.UUID;
  *
  * <p><b>持久化</b>：被吸附目标集合以 {@code Set<UUID>} 存字段，NBT 落盘为
  * {@code long[]}（每目标 2 个 long = most/least significant bits，避免依赖
- * {@code NbtUtils} 的 UUID 包装类型）。另有「曾控制过的目标」集合（充能层计数口径，
- * 最多 {@link #MAX_CHARGE_STACKS} 个）也落盘为 {@code long[]}（2026-10-20 新增）。
+ * {@code NbtUtils} 的 UUID 包装类型）。已发放的充能点数
+ * （{@code RepulsionChargeGiven}，{@code int}，0..{@link #MAX_CHARGE_STACKS}）同样落盘
+ * ⇒ 重启后不会重复发满 5 点；「换过充能的目标」与瞬移参照点、重力原值都是纯内存态。
  * ⚠️ 落盘的只是 UUID 集合：{@link ServerLevel#getEntity(UUID)} 在**区块未加载 / 跨维度**时返回
  * {@code null} ⇒ 该目标会被剪枝（**不保证跨卸载保留**；卸载再加载后要等下一次 12 格扫描才会
  * 重新吸附，期间不施加 缓慢 / 虚弱、也不计耐久）。
  *
  * <p><b>⚠️ 实机未验证项</b>（本轮按纪律不启动游戏）：
  * <ul>
- *   <li>拉力手感：位移量「约 0.2–0.5 格/秒」是按 {@code travel} 阻尼**推算**的，未实机读数；
- *       若观感过快 / 过慢，只调 {@link #PULL_STRENGTH}（0.22）一个量即可；</li>
- *   <li>钳制是否会被 AI 覆盖：12 格外的「拉回 11.5 格」用 {@code teleportTo}，已改 3D 方向 ⇒
- *       拉回后 3D 距离 11.5 ≤ 12，**不会**再每 tick 反复瞬移；但击退 / 寻路仍可能在两 tick 之间
- *       把它推出 12 格（下一 tick 会再次拉回，属预期抖动）；</li>
+ *   <li><b>拉怪手感</b>：新步长公式（0.08–0.85 格/tick、指数收敛、停止圈 1.2 格）是按数学推演定的，
+ *       未实机读数；过快 / 过慢只调 {@link #PULL_RATE} 与 {@link #PULL_MAX_STEP} 两个量；</li>
+ *   <li><b>末影人是否还闪</b>：本线靠「单 tick 位移 &gt; 2 格 ⇒ 拉回」兜底（1.20.1 另有
+ *       {@code EntityTeleportEvent.EnderEntity} 事件取消），若实体在力场 tick **之后**才闪现，
+ *       最多可见 1 tick 的闪动 —— 需实机确认观感；</li>
+ *   <li><b>飞行 / 遁地</b>：飞行目标 {@code setNoGravity(true)}、脚底硬钳在锚点 −0.5 格以内，
+ *       是否「压得住」且脱控后能正常恢复，需实机确认（尤其幻翼／恼鬼的脱控恢复）；</li>
  *   <li>模型朝向 / 贴图面序（见 {@code client/RepulsionModel} 的说明）。</li>
  *   <li>苦力怕「禁止自爆」：逻辑按两线源码推演（{@code Creeper#tick} 的 {@code swell += swellDir}
  *       与 {@code Level#explode} 里 {@code explosion.explode()} 的先后），未实机；尤其「打火石点燃
@@ -156,15 +165,34 @@ public class RepulsionEntity extends LivingEntity {
      * 32 格只是「跑太远就彻底不管」的清理阈值）。 */
     public static final double FORGET_RADIUS = 32.0D;
 
-    /** 12 格内目标的向心拉力（**每秒一跳**的冲量，不是每 tick；机制见类 javadoc〈拉力机制〉）。
-     * 每秒一次的 0.22 配合地面 {@code travel} 阻尼（每 tick ×0.546）约合 0.2–0.5 格/秒的缓慢位移。 */
-    public static final double PULL_STRENGTH = 0.22D;
+    /*
+     * ── 拉怪强度（2026-10-21 用户裁决「拉怪强度太低」后重做）────────────────────────
+     * 旧机制：每 20 tick 用 setDeltaMovement 写一次 0.22 的水平冲量（实测约 0.2–0.5 格/秒）。
+     * 新机制：**每 tick 直接改位置**（不经 delta ⇒ 不会被 AI 每 tick 重算抹掉、也绝不会累积成弹射），
+     * 位移量按「剩余距离的固定比例」指数收敛，并对单 tick 位移封顶：
+     *   步长 = clamp((距离 - PULL_STOP_RADIUS) × PULL_RATE, PULL_MIN_STEP, PULL_MAX_STEP)
+     * 指数收敛 ⇒ 越近越慢、永不越过停止圈（无过冲 ⇒ 无抖动、无甩飞）。12 格 → 1.2 格约 15 tick。
+     */
 
-    /** 向心拉力的中心死区（格，**水平**距离）：已贴到中心的目标不再施加冲量，
-     * 否则每秒改写一次 delta 只会让它在中心来回抖。 */
-    private static final double PULL_DEADZONE = 0.35D;
+    /** 牵引停止半径（格，3D）：目标与本实体距离缩到该值即「已贴脸」，不再施加位移。 */
+    private static final double PULL_STOP_RADIUS = 1.2D;
 
-    /** 扫描 / 施加效果 / 施加拉力的周期（tick；用户需求「以1秒为频率」）。 */
+    /** 每 tick 收敛比例（剩余距离的 35%）：指数收敛，越近越慢，天然不过冲。 */
+    private static final double PULL_RATE = 0.35D;
+
+    /** 单 tick 最大位移（格）：封顶避免「一帧甩飞」；0.85 已是 17 格/秒。 */
+    private static final double PULL_MAX_STEP = 0.85D;
+
+    /** 单 tick 最小位移（格）：贴近停止圈时仍缓慢贴合，不被目标自身 AI 抵消成僵持。 */
+    private static final double PULL_MIN_STEP = 0.08D;
+
+    /** 纵向硬钳制余量（格）：目标脚底低于本实体 Y 超过该值 ⇒ 直接抬回（治「遁地」）。 */
+    private static final double VERTICAL_CLAMP = 0.5D;
+
+    /** 瞬移判定阈值（格 / 单 tick）：超过它且不是自由落体 ⇒ 判为瞬移 / 闪现，拉回上一位置。 */
+    private static final double TELEPORT_JUMP = 2.0D;
+
+    /** 扫描 / 施加 缓慢 / 虚弱 的周期（tick；用户需求「以1秒为频率」）。牵引已改为每 tick。 */
     private static final int SCAN_INTERVAL = 20;
 
     /** 耐久结算周期（tick；用户需求「每10秒消耗」）。 */
@@ -192,8 +220,8 @@ public class RepulsionEntity extends LivingEntity {
      */
     public static final int MAX_CHARGE_STACKS = 5;
 
-    /** NBT 键：曾<b>控制过</b>的目标（充能计数口径；{@code long[]}，每目标 2 个 long）。 */
-    private static final String TAG_CONTROLLED = "RepulsionControlledTargets";
+    /** NBT 键：本力场**已实际发放**给放置者的充能点数（{@code int}；上限 {@link #MAX_CHARGE_STACKS}）。 */
+    private static final String TAG_CHARGE_GIVEN = "RepulsionChargeGiven";
 
     /** NBT 键：创建时刻（{@code Level#getGameTime()} 绝对值；**不是** tickCount —— 后者重载会归零）。 */
     private static final String TAG_CREATED_AT = "RepulsionCreatedAt";
@@ -212,13 +240,24 @@ public class RepulsionEntity extends LivingEntity {
     private final Set<UUID> trackedTargets = new HashSet<>();
 
     /**
-     * 曾<b>控制过</b>的目标 UUID（2026-10-20 用户裁决：每控制一个**新**目标 +1 层充能，
-     * 同一目标重复吸附不重复计数；旧的「目标被击杀后 -1」已废弃）。
-     *
-     * <p>只保留前 {@link #MAX_CHARGE_STACKS} 个：计数已封顶，再多也换算不出层数 ⇒ 集合与 NBT
-     * 大小有界（不会随力场存在时间无限增长）。
+     * 已**实际发放**给放置者的充能点数（落盘）。2026-10-21 用户裁决：吸附到一个新目标就立刻给放置者
+     * +1 真实充能，**永久到账** —— 玩家走远 / 目标脱离 / 本力场碎裂或被拆一律**不回收**。
+     * 单座力场最多 {@link #MAX_CHARGE_STACKS} 点，给满后不再累加。
      */
-    private final Set<UUID> controlledTargets = new HashSet<>();
+    private int chargeGiven;
+
+    /**
+     * 本生命周期内「已经换过充能」的目标 UUID（**纯内存，不落盘**）。
+     * 只做去重：同一目标反复进出 12 格不重复发充能；只在**发放成功**时写入，
+     * 因此大小天然有界（≤ {@link #MAX_CHARGE_STACKS}）。
+     */
+    private final Set<UUID> chargedTargets = new HashSet<>();
+
+    /** 受控目标上一 tick 的有效位置（**纯内存**）：瞬移 / 闪现检测的参照点，脱控即清除。 */
+    private final Map<UUID, Vec3> lastPositions = new HashMap<>();
+
+    /** 受控目标的 {@code isNoGravity()} 原值（**纯内存**）：只对飞行目标写入，脱控 / 销毁时恢复。 */
+    private final Map<UUID, Boolean> originalNoGravity = new HashMap<>();
 
     /** 放置者 UUID（§4.6：只有 owner 本人的额外充能层才计入本力场吸附的目标）。
      * 未登记（旧存档 / 非召唤点创建）⇒ {@code null} ⇒ 不计入任何人的额外充能层。 */
@@ -272,13 +311,9 @@ public class RepulsionEntity extends LivingEntity {
             ids[i++] = id.getLeastSignificantBits();
         }
         tag.putLongArray(TAG_TARGETS, ids);
-        long[] controlled = new long[this.controlledTargets.size() * 2];
-        int ci = 0;
-        for (UUID id : this.controlledTargets) {
-            controlled[ci++] = id.getMostSignificantBits();
-            controlled[ci++] = id.getLeastSignificantBits();
+        if (this.chargeGiven > 0) {
+            tag.putInt(TAG_CHARGE_GIVEN, this.chargeGiven);
         }
-        tag.putLongArray(TAG_CONTROLLED, controlled);
         if (this.ownerUUID != null) {
             tag.putLongArray(TAG_OWNER, new long[] {
                     this.ownerUUID.getMostSignificantBits(), this.ownerUUID.getLeastSignificantBits() });
@@ -299,11 +334,9 @@ public class RepulsionEntity extends LivingEntity {
         for (int i = 0; i + 1 < ids.length; i += 2) {
             this.trackedTargets.add(new UUID(ids[i], ids[i + 1]));
         }
-        this.controlledTargets.clear();
-        long[] controlled = tag.getLongArray(TAG_CONTROLLED);
-        for (int i = 0; i + 1 < controlled.length; i += 2) {
-            this.noteControlled(new UUID(controlled[i], controlled[i + 1]));
-        }
+        // 老存档没有该键 ⇒ 0（从 0 起算，已计过的目标会重新计，最多仍只发 5 点）
+        this.chargeGiven = Math.max(0, Math.min(MAX_CHARGE_STACKS, tag.getInt(TAG_CHARGE_GIVEN)));
+        this.chargedTargets.clear();
         long[] owner = tag.getLongArray(TAG_OWNER);
         this.ownerUUID = owner.length >= 2 ? new UUID(owner[0], owner[1]) : null;
     }
@@ -344,24 +377,38 @@ public class RepulsionEntity extends LivingEntity {
         return java.util.Collections.unmodifiableSet(this.trackedTargets);
     }
 
-    /**
-     * 本力场提供的充能层数（只读）= {@code min(5, 曾控制过的不同目标数)}。
-     *
-     * <p>供 {@code LinglingSignManager#recomputeBonusCharge} 按「自己放置的力场」汇总；
-     * 单座封顶 {@link #MAX_CHARGE_STACKS}，多座相加后再由有效充能层的总上限夹一次。
-     */
-    public int chargeStacks() {
-        return Math.min(MAX_CHARGE_STACKS, this.controlledTargets.size());
+    /** 本力场已发放给放置者的充能点数（只读；0 .. {@link #MAX_CHARGE_STACKS}）。 */
+    public int chargeGiven() {
+        return this.chargeGiven;
     }
 
     /**
-     * 记录「本力场控制了一个新目标」：同一 UUID 只存一次；存满 {@link #MAX_CHARGE_STACKS} 后
-     * 不再写入（计数已封顶 ⇒ 集合与 NBT 有界）。
+     * 吸附到一个**新**目标时立刻给放置者 +1 真实充能（2026-10-21 用户裁决）。
+     *
+     * <p>口径：
+     * <ul>
+     *   <li>只认<b>在线</b>的放置者：{@code ownerUUID} 对应玩家已离线 ⇒ <b>跳过</b>（不做离线记账，
+     *       也不占用本力场的 5 点配额 —— 下次吸附新目标会再试一次）；</li>
+     *   <li>走 {@link ChargeManager#addStacks(Player, int)}：与其它充能来源同一条链路
+     *       （HUD / 消耗 / 死亡保留全部自动生效）；</li>
+     *   <li><b>只在真实增加层数时计数</b>：玩家已到
+     *       {@link com.merlinkitsune.starengine.component.GameplayConstants#CHARGE_MAX_STACKS}
+     *       上限时本次不加、也不占配额；</li>
+     *   <li><b>永久到账</b>：玩家走远、目标脱离 / 阵亡、本力场碎裂或被拆 —— 一律**不回收**。</li>
+     * </ul>
      */
-    private void noteControlled(UUID targetId) {
-        if (targetId == null) return;
-        if (this.controlledTargets.size() >= MAX_CHARGE_STACKS) return;
-        this.controlledTargets.add(targetId);
+    private void awardCharge(UUID targetId) {
+        if (targetId == null || this.ownerUUID == null) return;
+        if (this.chargeGiven >= MAX_CHARGE_STACKS) return;
+        if (this.chargedTargets.contains(targetId)) return;
+        if (!(this.level() instanceof ServerLevel serverLevel)) return;
+        Player owner = serverLevel.getServer().getPlayerList().getPlayer(this.ownerUUID);
+        if (owner == null) return; // 离线 ⇒ 跳过（无离线记账）
+        int before = ChargeManager.getStacks(owner);
+        ChargeManager.addStacks(owner, 1);
+        if (ChargeManager.getStacks(owner) <= before) return; // 已满层 ⇒ 不占配额
+        this.chargeGiven++;
+        this.chargedTargets.add(targetId);
     }
 
     // ── 每 tick：剪枝 + 钳制（不施力） ─────────────────────────────────────────
@@ -399,14 +446,13 @@ public class RepulsionEntity extends LivingEntity {
             this.setPos(this.pinX, this.pinY, this.pinZ);
         }
 
-        // 剪枝 + 越界钳制：每 tick 做（「目标无法逃离影响范围」需要即时生效）
+        // 剪枝 + 钳制 + 牵引 + 状态接管：每 tick 做（「目标无法逃离影响范围」需要即时生效）
         this.tickTrackedTargets();
         // 苦力怕引信压制：每 tick 做（自然膨胀路径；打火石点燃路径由 ExplosionEvent.Start 兜底）
         this.suppressTrackedCreeperFuses();
         if (this.tickCount % SCAN_INTERVAL == 0) {
-            // 每秒一次：先刷新吸附集合与 缓慢 / 虚弱，再对界内目标施加**一次**向心冲量
+            // 每秒一次：刷新吸附集合 + 施加 缓慢 / 虚弱（牵引已改为每 tick，见 tickTrackedTargets）
             this.scanAndApplyEffects();
-            this.pullTrackedTargets();
         }
         if (this.tickCount % DURABILITY_INTERVAL == 0) {
             this.consumeDurability();
@@ -424,8 +470,8 @@ public class RepulsionEntity extends LivingEntity {
      * <p>判定顺序固定为「alive / removed → &gt; 32 格 → isAttachable → 越界钳制」：32 格是「跑太远就
      * 彻底不管」的清理阈值，先于资格判定；钳制只对仍具备吸附资格的目标生效。
      *
-     * <p>⚠️ 这里**不再**施加向心拉力 —— 拉力已改为每秒一次（{@link #pullTrackedTargets()}），
-     * 本方法只做每 tick 都必须生效的清理与钳制。
+     * <p>⚠️ 本方法**不施力**：清理（剪枝 / 释放状态）之后把每个受控目标交给
+     * {@link #controlTarget(UUID, Mob)} —— 那里才是每 tick 的瞬移拦截 / 硬钳制 / 牵引 / 纵向钳制。
      *
      * <p>⚠️ 用 {@link ServerLevel#getEntity(UUID)} 取回实体（跨维度 / 未加载返回 null ⇒ 剪枝）。
      */
@@ -433,25 +479,27 @@ public class RepulsionEntity extends LivingEntity {
         if (!(this.level() instanceof ServerLevel serverLevel)) return;
         Iterator<UUID> it = this.trackedTargets.iterator();
         while (it.hasNext()) {
-            Entity entity = serverLevel.getEntity(it.next());
+            UUID id = it.next();
+            Entity entity = serverLevel.getEntity(id);
             if (!(entity instanceof Mob mob) || !mob.isAlive() || mob.isRemoved()) {
+                this.releaseControl(id);
                 it.remove();
                 continue;
             }
             double distanceSqr = mob.distanceToSqr(this);
             if (distanceSqr > FORGET_RADIUS * FORGET_RADIUS) {
+                this.releaseControl(id);
                 it.remove();
                 continue;
             }
             if (!this.isAttachable(mob)) {
                 // 平静即释放（2026-10-18 用户追加规则）：不再施加 缓慢 / 虚弱、不再拉扯 / 钳制、不计耐久
+                this.releaseControl(id);
                 it.remove();
                 continue;
             }
-            if (distanceSqr > AFFECT_RADIUS * AFFECT_RADIUS) {
-                // 越界 ⇒ 按 3D 方向拉回 11.5 格处（用户需求「目标无法逃离强化拒止影响范围」）
-                this.clampInside(mob);
-            }
+            // 受控目标：状态接管 + 瞬移拦截 + 硬钳制 + 每 tick 向心牵引 + 纵向钳制
+            this.controlTarget(id, mob);
         }
     }
 
@@ -516,8 +564,7 @@ public class RepulsionEntity extends LivingEntity {
             landing = new Vec3(this.getX() + dx / horizontal * CLAMP_RADIUS, mob.getY(),
                     this.getZ() + dz / horizontal * CLAMP_RADIUS);
         }
-        mob.teleportTo(landing.x, landing.y, landing.z);
-        mob.setDeltaMovement(Vec3.ZERO);
+        this.hardPlace(mob, landing);
     }
 
     /**
@@ -540,7 +587,7 @@ public class RepulsionEntity extends LivingEntity {
         return null;
     }
 
-    // ── 每秒：扫描 + 施加 缓慢 / 虚弱 + 一次向心冲量 ───────────────────────────
+    // ── 每秒：扫描 + 施加 缓慢 / 虚弱 ──────────────────────────────────────────
 
     /**
      * 吸附资格（2026-10-18 用户追加规则；口径与缘由见类 javadoc〈吸附资格〉）。
@@ -589,8 +636,9 @@ public class RepulsionEntity extends LivingEntity {
             if (!mob.isAlive() || mob.isRemoved()) continue;
             if (mob.distanceToSqr(this) > AFFECT_RADIUS * AFFECT_RADIUS) continue;
             this.trackedTargets.add(mob.getUUID());
-            // 2026-10-20 用户裁决:每控制一个**新**目标 ⇒ 额外充能 +1(单座封顶 5,重复吸附不重复计数)
-            this.noteControlled(mob.getUUID());
+            // 2026-10-21 用户裁决：吸附到一个**新**目标 ⇒ 立刻给放置者 +1 真实充能
+            //（永久到账、单座封顶 5、同一目标不重复计数、放置者离线则跳过；见 #awardCharge）
+            this.awardCharge(mob.getUUID());
             // 0:10 = 200 tick、I 级（amplifier 0）；ambient=false、visible=true、showIcon=true
             mob.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN,
                     EFFECT_DURATION, 0, false, true, true));
@@ -599,39 +647,137 @@ public class RepulsionEntity extends LivingEntity {
         }
     }
 
+    // ── 每 tick：受控目标的硬钳制 / 瞬移拦截 / 牵引 / 状态接管 ────────────────────
+
     /**
-     * 每秒（{@link #SCAN_INTERVAL} tick）对 12 格内被吸附目标施加**一次**向心冲量。
-     *
-     * <p>只在 {@link #tick()} 的 {@code tickCount % 20 == 0} 分支里调用（用户原文
-     * 「会以1秒为频率……逐渐缓慢拉扯」）；水平距离 &lt; {@link #PULL_DEADZONE} 时跳过，
-     * 避免目标在中心左右来回抖。
+     * 单个受控目标每 tick 的完整控制流程（**只在服务端**，由 {@link #tickTrackedTargets()} 调用）：
+     * <ol>
+     *   <li><b>状态接管</b>：飞行目标 {@code setNoGravity(true)}，原值记进 {@link #originalNoGravity}
+     *       （只记第一次）—— 脱控 / 力场销毁时恢复，绝不永久改状态；</li>
+     *   <li><b>瞬移拦截</b>（末影人 / 紫颂果 / 任何 {@code teleportTo}）：与上一 tick 位置相比单 tick
+     *       位移 &gt; {@link #TELEPORT_JUMP} 格且不是自由落体 ⇒ 判为闪现，立刻拉回上一位置；</li>
+     *   <li><b>通用硬钳制</b>：出 {@link #CLAMP_RADIUS} 球即拉回球面 + 清速度 + {@code hurtMarked}
+     *       强制同步（每 tick 判定，不再依赖 20t 扫描）；</li>
+     *   <li><b>每 tick 向心牵引</b>：直接改位置（指数收敛 + 单 tick 封顶），见
+     *       {@link #pullTowardAnchor(Mob)}；</li>
+     *   <li><b>纵向钳制</b>：脚底低于本实体 Y 超过 {@link #VERTICAL_CLAMP} ⇒ 抬回（治「遁地」）。</li>
+     * </ol>
+     * 全程<b>不动 {@code NoAi}</b>、不发自定义包（同步靠 {@code hurtMarked} + 原版位置同步）。
      */
-    private void pullTrackedTargets() {
-        if (!(this.level() instanceof ServerLevel serverLevel)) return;
-        for (UUID id : new ArrayList<>(this.trackedTargets)) {
-            Entity entity = serverLevel.getEntity(id);
-            if (!(entity instanceof Mob mob) || !mob.isAlive() || mob.isRemoved()) continue;
-            if (mob.distanceToSqr(this) > AFFECT_RADIUS * AFFECT_RADIUS) continue;
-            double dx = this.getX() - mob.getX();
-            double dz = this.getZ() - mob.getZ();
-            if (Math.sqrt(dx * dx + dz * dz) < PULL_DEADZONE) continue;
-            this.applyPull(mob);
+    private void controlTarget(UUID id, Mob mob) {
+        // ① 状态接管：飞行目标关重力（原始值只记一次）
+        if (isFlying(mob)) {
+            this.originalNoGravity.putIfAbsent(id, mob.isNoGravity());
+            if (!mob.isNoGravity()) {
+                mob.setNoGravity(true);
+            }
         }
+
+        // ② 瞬移拦截：单 tick 位置突变即视为闪现，拉回上一有效位置
+        Vec3 last = this.lastPositions.get(id);
+        if (last != null && isTeleportJump(mob, last)) {
+            this.hardPlace(mob, last);
+        }
+
+        // ③ 通用硬钳制：每 tick 判定，出球即拉回球面
+        if (mob.distanceToSqr(this) > CLAMP_RADIUS * CLAMP_RADIUS) {
+            this.clampInside(mob);
+        }
+
+        // ④ 每 tick 向心牵引
+        this.pullTowardAnchor(mob);
+
+        // ⑤ 纵向钳制（遁地）：脚底最多低于锚点 VERTICAL_CLAMP 格
+        double floorY = this.getY() - VERTICAL_CLAMP;
+        if (mob.getY() < floorY - 1.0E-4D) {
+            this.hardPlace(mob, new Vec3(mob.getX(), floorY, mob.getZ()));
+        }
+
+        // ⑥ 记录本 tick 的有效位置：下一 tick 的瞬移判定拿它做参照
+        this.lastPositions.put(id, mob.position());
     }
 
     /**
-     * 对单个目标写入一次向心冲量：{@code setDeltaMovement(水平归一化 × PULL_STRENGTH, 保留 y, ...)}。
+     * 是否判为「瞬移 / 闪现」：与上一 tick 位置相比单 tick 位移 &gt; {@link #TELEPORT_JUMP} 格。
      *
-     * <p>⚠️ 此处是**覆盖**写法（不是叠加）：真实副作用是「每跳抹掉目标当时的水平动量」，
-     * 机制与「不会被 aiStep 重算抹掉」的论证见类 javadoc〈拉力机制〉。
+     * <p>⚠️ <b>自由落体例外</b>：重力加速下生物竖直速度可达约 3.9 格/tick（终端速度），正常下落会误判
+     * ⇒ 只有「竖直速度 &gt; -1.0（不是高速下落）」时才按瞬移处理。末影人的横向 / 斜向闪现一律命中；
+     * 向下闪现被漏掉的代价只是「下一 tick 被牵引拉回」，不再有脱离。
      */
-    private void applyPull(Mob mob) {
-        double dx = this.getX() - mob.getX();
-        double dz = this.getZ() - mob.getZ();
-        double horizontal = Math.sqrt(dx * dx + dz * dz);
-        if (horizontal < 1.0E-4D) return;
-        double vy = mob.getDeltaMovement().y;
-        mob.setDeltaMovement(dx / horizontal * PULL_STRENGTH, vy, dz / horizontal * PULL_STRENGTH);
+    private static boolean isTeleportJump(Mob mob, Vec3 last) {
+        if (last.distanceToSqr(mob.position()) <= TELEPORT_JUMP * TELEPORT_JUMP) return false;
+        return mob.getDeltaMovement().y > -1.0D;
+    }
+
+    /** 飞行类目标：原版 {@link FlyingMob}（幻翼 / 恶魂等）＋ 恼鬼。 */
+    private static boolean isFlying(Mob mob) {
+        return mob instanceof FlyingMob || mob instanceof Vex;
+    }
+
+    /**
+     * 把目标**硬放到**指定点：无碰撞则直接 {@code setPos}（不经物理 ⇒ 不会被 AI / 重力改写），
+     * 有碰撞则退回原版 {@code move}（由碰撞裁剪，**不塞墙**）。两种情况都清速度并标记强制同步。
+     *
+     * <p>⚠️ 这是「直接改位置」而不是 {@code setDeltaMovement}：后者每 tick 被 {@code aiStep} /
+     * {@code travel} 重算，既拉不动又可能累积成弹射；直接改位置才是「稳定牵到中心」的实现。
+     */
+    private void hardPlace(Mob mob, Vec3 dest) {
+        Vec3 delta = dest.subtract(mob.position());
+        if (delta.lengthSqr() > 1.0E-10D) {
+            if (this.level().noCollision(mob, mob.getBoundingBox().move(delta))) {
+                mob.setPos(dest.x, dest.y, dest.z);
+            } else {
+                // 目标点被方块 / 实体占住：交给原版碰撞裁剪，宁可卡在边缘也不塞进墙里
+                mob.move(MoverType.SELF, delta);
+            }
+        }
+        mob.setDeltaMovement(Vec3.ZERO);
+        mob.hurtMarked = true;
+    }
+
+    /**
+     * 每 tick 向心牵引（3D）：步长 = clamp(剩余距离 × {@link #PULL_RATE},
+     * {@link #PULL_MIN_STEP}, {@link #PULL_MAX_STEP})，再夹一次「不许越过停止圈」。
+     *
+     * <p>三个反「抖动 / 甩飞」的硬保证：
+     * <ol>
+     *   <li><b>指数收敛</b>：步长 ∝ 剩余距离 ⇒ 越近越慢，理论不过冲；</li>
+     *   <li><b>不越过停止圈</b>：{@code step ≤ 距离 - STOP/2} ⇒ 到位后不会再被推动；</li>
+     *   <li><b>不累积速度</b>：每次 {@code setDeltaMovement(ZERO)}（见 {@link #hardPlace}）⇒
+     *       不存在「逐 tick 加速、最后一帧弹射」的路径。</li>
+     * </ol>
+     */
+    private void pullTowardAnchor(Mob mob) {
+        Vec3 delta = this.position().subtract(mob.position());
+        double distance = delta.length();
+        if (distance <= PULL_STOP_RADIUS) return;
+        double step = Math.min(PULL_MAX_STEP,
+                Math.max(PULL_MIN_STEP, (distance - PULL_STOP_RADIUS) * PULL_RATE));
+        step = Math.min(step, distance - PULL_STOP_RADIUS * 0.5D);
+        if (step <= 1.0E-4D) return;
+        this.hardPlace(mob, mob.position().add(delta.scale(step / distance)));
+    }
+
+    /**
+     * 目标脱控（死亡 / 移除 / 跑出 32 格 / 失去吸附资格 / 力场销毁）：恢复被抓走前的
+     * {@code isNoGravity()}，并清掉瞬移参照点。
+     */
+    private void releaseControl(UUID id) {
+        this.lastPositions.remove(id);
+        Boolean original = this.originalNoGravity.remove(id);
+        if (original == null) return;
+        if (!(this.level() instanceof ServerLevel serverLevel)) return;
+        if (serverLevel.getEntity(id) instanceof Mob mob && mob.isAlive() && !mob.isRemoved()) {
+            mob.setNoGravity(original);
+        }
+    }
+
+    /** 力场销毁（碎裂 / 移除 / 寿命到期）：把所有受控目标的重力状态还原。 */
+    private void releaseAllControls() {
+        for (UUID id : new ArrayList<>(this.originalNoGravity.keySet())) {
+            this.releaseControl(id);
+        }
+        this.lastPositions.clear();
     }
 
     // ── 每 10 秒：耐久结算 ────────────────────────────────────────────────────
@@ -684,11 +830,22 @@ public class RepulsionEntity extends LivingEntity {
         }
         this.level().playSound(null, cx, cy, cz, SoundEvents.GLASS_BREAK, SoundSource.BLOCKS, 1.0F, 1.2F);
         this.setHealth(0.0F);
+        this.releaseAllControls();
         this.trackedTargets.clear();
         this.discard();
     }
 
     // ── 免疫 / 钉地 ───────────────────────────────────────────────────────────
+
+    /**
+     * 实体被移除（碎裂 / 寿命到期 / 区块卸载以外的任何移除路径）：先把受控目标的重力状态还原，
+     * 再走原版移除 —— 保证「飞行怪被关掉的重力」不会残留在世界上。
+     */
+    @Override
+    public void remove(RemovalReason reason) {
+        this.releaseAllControls();
+        super.remove(reason);
+    }
 
     /**
      * 主动攻击**不会造成任何伤害**（用户需求「主动攻击并不会对其造成伤害」）。

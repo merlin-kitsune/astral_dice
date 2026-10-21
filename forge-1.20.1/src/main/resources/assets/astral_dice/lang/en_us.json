@@ -965,6 +965,7 @@
   "msg.astral_dice.event_drawer_cooldown": "The Lottery Box is cooling down, try again later",
   "msg.astral_dice.event_drawer_no_coin": "Not enough Star Coins (need %s)",
   "msg.astral_dice.event_drawer_blank_insert": "Blank Chip inserted - the Lucky Draw Box was reset and is ready again",
+  "msg.astral_dice.event_global_cooldown": "The previous event has not finished yet (wait §e%s§7s)",
 "block.astral_dice.barricade_collision": "Barricade (Collision)",
   "block.astral_dice.card_shop": "Card Shop",
   "msg.astral_dice.card_shop_no_coin": "Not enough Star Coins (need %s)",

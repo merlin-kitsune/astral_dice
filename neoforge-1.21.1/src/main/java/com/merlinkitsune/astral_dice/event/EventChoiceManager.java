@@ -127,6 +127,19 @@ public final class EventChoiceManager {
         Session session = SESSIONS.get(player.getUUID());
         if (session == null || session.token != token || session.resolving >= 0) return;
         if (optionIndex < 0 || optionIndex >= OPTION_COUNT) return;
+        // ③ 全局闸门**只读**预判（2026-10-21）：闸门拒绝时**不能吞掉**玩家这一次选择。
+        //    顺序红线：canStart（只读，不消耗）→ SESSIONS.remove → trigger（内部照常 tryAcquire）。
+        //    禁止用 tryAcquire 预判 —— 它放行时会写掉一次占位（双获取，且第二次会把自己拒掉）。
+        //    OPTION_COUNT 固定为 2：索引 0/1 直接对应 firstEvent/secondEvent。
+        ResourceLocation pendingEvent = optionIndex == 0 ? session.firstEvent : session.secondEvent;
+        long gateTicks = gateDurationTicks(pendingEvent);
+        if (!GlobalEventGate.canStart(player, gateTicks)) {
+            GlobalEventGate.notifyBlocked(player, gateTicks);
+            LOGGER.info("AP_EVENT_CHOICE: confirm_blocked:{}:pick={}:event={}",
+                    token, optionIndex, pendingEvent);
+            // 会话**保留**（未 remove、resolving 未落）⇒ 玩家可再次确认；超时仍会强制第一个选项。
+            return;
+        }
         session.resolving = optionIndex;
         // ① 主动技能音效**不在此处重复播放**：2026-10-11 用户裁决改回「按技能键（使用立牌）瞬间即播」，
         //    由 FannySignItem#handleUse 经 BaseSignItem#performSkill 播放；确认时再播会叠一次。
@@ -148,6 +161,17 @@ public final class EventChoiceManager {
     /** 强制触发第一个选项（超时 / 死亡 / 登出）：不播主动技能音效，直接关界面并走事件触发流程。 */
     private static void forceFirst(Player player, Session session, String reason) {
         if (session.resolving >= 0) return;   // 玩家已确认 ⇒ 尊重其选择（会话由确认路径收尾）
+        // ③ 全局闸门**只读**预判（2026-10-21，与 confirm 同一口径）：闸门拒绝 ⇒ 会话保留，
+        //    不 remove、不 trigger（这次强制不算被吞掉），由后续 tick / 超时重试在闸门放行后再结算。
+        if (player instanceof ServerPlayer gatePlayer) {
+            long gateTicks = gateDurationTicks(session.firstEvent);
+            if (!GlobalEventGate.canStart(gatePlayer, gateTicks)) {
+                GlobalEventGate.notifyBlocked(gatePlayer, gateTicks);
+                LOGGER.info("AP_EVENT_CHOICE: force_blocked:{}:reason={}:event={}",
+                        session.token, reason, session.firstEvent);
+                return;
+            }
+        }
         if (!SESSIONS.remove(player.getUUID(), session)) return;
         session.resolving = 0;
         if (!(player instanceof ServerPlayer serverPlayer)) return;
@@ -155,6 +179,15 @@ public final class EventChoiceManager {
         LOGGER.info("AP_EVENT_CHOICE: force:{}:pick=0:reason={}:event={}",
                 session.token, reason, session.firstEvent);
         AstralEventDispatcher.trigger(serverPlayer, session.firstEvent, AstralEventTrigger.ACTIVE_SKILL);
+    }
+
+    /**
+     * 闸门判定用的时长 = 该事件**原本传给** {@link AstralEventDispatcher#trigger} →
+     * {@link GlobalEventGate#tryAcquire} 的 {@code defaultDurationTicks}（不另造数字）。
+     * 未注册 ⇒ 0（与分发器「未注册即 warn 早退、不占闸门」口径一致）。
+     */
+    private static long gateDurationTicks(ResourceLocation eventId) {
+        return AstralEventRegistry.get(eventId).map(e -> (long) e.defaultDurationTicks()).orElse(0L);
     }
 
     /**

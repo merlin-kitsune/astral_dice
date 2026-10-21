@@ -512,22 +512,6 @@ public class ModAttachments {
         LINGLING_GRANTED.set(player, value);
     }
 
-    // 怪力乱神立牌(lingling)被动「拦截者」的**额外充能层**(独立加成:不写进 ChargeEffect、不被其它筹码消耗;
-    // 每 10t 由「自己放置的每座强化拒止各自控制过的不同目标数(单座封顶 5)」之和重算,
-    // 与基础层合计封顶 CHARGE_MAX_STACKS = 20。2026-10-20 用户裁决:同一目标重复吸附不重复计数,
-    // 目标阵亡不再扣层)。
-    // 1.21.1 侧是同名键的 .copyOnDeath();本线卸下/死亡由 LinglingSignManager#clearAll 归零。
-    public static final AttachedDataKey<Integer> LINGLING_BONUS_CHARGE =
-            register(AttachedDataKey.builder("lingling_bonus_charge", Codec.INT, () -> 0).build());
-
-    public static int getLinglingBonusCharge(net.minecraft.world.entity.player.Player player) {
-        return LINGLING_BONUS_CHARGE.get(player);
-    }
-
-    public static void setLinglingBonusCharge(net.minecraft.world.entity.player.Player player, int value) {
-        LINGLING_BONUS_CHARGE.set(player, Math.max(0, value));
-    }
-
     // 卡牌商店「商店大酬宾」窗口的结束时刻(玩家级;0 = 未生效)。本批只留钩子,事件卡系统尚未实装。
     // 仅服务端使用(开店抽池时读一次),故**不 .sync()、不加入 SYNCED_KEYS**(与 1.21.1 同口径)。
     public static final AttachedDataKey<Long> SHOP_PROMOTION_UNTIL =

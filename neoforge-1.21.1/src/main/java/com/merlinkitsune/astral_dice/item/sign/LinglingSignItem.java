@@ -44,7 +44,7 @@ public class LinglingSignItem extends BaseSignItem {
                 LinglingSurgeEffect.DURATION_TICKS, 0, false, true, true));
         // ③ 立刻按当前有效充能刷一次数值（不等下一个 10t）
         LinglingSignManager.refreshActiveModifiers(player);
-        // ④ 专属动作栏文案（§5）：报「本次生效的有效充能层数」（真实充能 + 额外层，已夹上限）；
+        // ④ 专属动作栏文案（§5）：报「本次生效的有效充能层数」（真实充能，已夹上限）；
         //    通用兜底 msg.astral_dice.sign_active_triggered 由本类 onSignActiveTriggered 抑制。
         sendSignActionBar(player, "msg.astral_dice.lingling_active",
                 LinglingSignManager.effectiveCharge(player));
@@ -54,7 +54,7 @@ public class LinglingSignItem extends BaseSignItem {
     @Override
     protected void clearSignData(Player player, ItemStack stack) {
         super.clearSignData(player, stack);
-        // 卸下 / 失效：额外层归零 + 摘修饰符 + 摘 buff（Curios 会在登录/同步时重放，全部幂等）
+        // 卸下 / 失效：摘修饰符 + 摘 buff（充能已永久到账，不回收；Curios 会在登录/同步时重放，全部幂等）
         LinglingSignManager.clearAll(player);
     }
 
