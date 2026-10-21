@@ -398,7 +398,7 @@ public class ChipShopMenu extends AbstractContainerMenu {
         // ⚠️ 类别取 `chip`（未被 add 消耗）而非 `bought`：`add` 成功时 `bought` 已 setCount(0) ⇒ isEmpty，
         //   而 ChipShopCatalog.byStack 对空栈返 empty ⇒ 用 bought 会**丢掉**这次购买的类别记录。
         ChipShopState next = state.withPurchased(ChipShopCatalog.categoryOf(chip).orElse(null));
-        next = next.withOffers(ChipShopRoller.roll(buyer, next.lastCategory().orElse(null)));
+        next = next.withOffers(ChipShopRoller.roll(buyer, next.lastCategory().orElse(null)), ChipShopRoller.diceKey(buyer));
         // 需求 4：购买成功后进入 5:00 冷却（世界 gameTime 现算），冷却期内禁止再开店
         next = next.withCooldown(buyer.level().getGameTime() + BUY_COOLDOWN_TICKS);
         ChipShopState.store(buyer, next);
@@ -436,7 +436,7 @@ public class ChipShopMenu extends AbstractContainerMenu {
         long now = buyer.level().getGameTime();
         long anchor = state.regenAnchor() == 0L ? now + ChipShopCatalog.REFRESH_REGEN_TICKS : state.regenAnchor();
         ChipShopState next = state.withRefreshes(state.refreshesLeft() - 1, anchor);
-        next = next.withOffers(ChipShopRoller.roll(buyer, next.lastCategory().orElse(null)));
+        next = next.withOffers(ChipShopRoller.roll(buyer, next.lastCategory().orElse(null)), ChipShopRoller.diceKey(buyer));
         ChipShopState.store(buyer, next);
         applyState(next);
         LOGGER.info("[astral_dice] CHIP_SHOP_REFRESH player={} refreshes={}/{} anchor={} offers={}",

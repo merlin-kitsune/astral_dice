@@ -96,6 +96,24 @@ public final class ChipShopRoller {
         return availablePool(player).isEmpty();
     }
 
+    /**
+     * 当前骰子签名 = {@code <物品 id>|<星阶>}（2026-10-21 用户裁决：换骰子或升星都必须重抽筹码商店）。
+     *
+     * <p>用物品 id 而不只是星阶：同为 2★ 的「绿宝石骰子 → 黑曜石骰子」也算换骰子。
+     * 未装备骰子时返回 {@code "none"}。
+     */
+    public static String diceKey(Player player) {
+        if (player == null) return "none";
+        var curios = top.theillusivec4.curios.api.CuriosApi.getCuriosInventory(player);
+        if (curios.isEmpty()) return "none";
+        var dice = curios.get().findFirstCurio(
+                com.merlinkitsune.astral_dice.item.dice.DiceCurioItem::isDiceItem);
+        if (dice.isEmpty()) return "none";
+        net.minecraft.resources.ResourceLocation id = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(
+                dice.get().stack().getItem());
+        return (id == null ? "unknown" : id.toString()) + "|" + starLevel(player);
+    }
+
     /** 骰子星阶（复用卡牌商店口径：下界之星骰恒 3，否则 clamp 0..3） */
     public static int starLevel(Player player) {
         return Math.max(0, Math.min(3, CardShopShelf.currentStarLevel(player)));

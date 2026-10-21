@@ -40,11 +40,12 @@ import java.util.Optional;
  * 不抛异常（与 {@link CardShopShelf} 同口径）。
  */
 public record ChipShopState(List<String> offers, Optional<String> lastPickCategory, int purchasedCount,
-                            int refreshesLeft, long regenAnchor, long cooldownUntil, long lastBlankInsertAt) {
+                            int refreshesLeft, long regenAnchor, long cooldownUntil, long lastBlankInsertAt,
+                            String rolledDiceKey) {
 
     /** 全新状态：无候选、无上次类别、0 次购买、{@value ChipShopCatalog#REFRESH_INITIAL} 次刷新、无锚点 */
     public static final ChipShopState EMPTY = new ChipShopState(
-            List.of(), Optional.empty(), 0, ChipShopCatalog.REFRESH_INITIAL, 0L, 0L, 0L);
+            List.of(), Optional.empty(), 0, ChipShopCatalog.REFRESH_INITIAL, 0L, 0L, 0L, "");
 
     public static final Codec<ChipShopState> CODEC = RecordCodecBuilder.create(instance -> instance.group(
             Codec.STRING.listOf().optionalFieldOf("offers", List.of()).forGetter(ChipShopState::offers),
@@ -54,7 +55,8 @@ public record ChipShopState(List<String> offers, Optional<String> lastPickCatego
                     .forGetter(ChipShopState::refreshesLeft),
             Codec.LONG.optionalFieldOf("regen_anchor", 0L).forGetter(ChipShopState::regenAnchor),
             Codec.LONG.optionalFieldOf("cooldown_until", 0L).forGetter(ChipShopState::cooldownUntil),
-            Codec.LONG.optionalFieldOf("last_blank_insert", 0L).forGetter(ChipShopState::lastBlankInsertAt)
+            Codec.LONG.optionalFieldOf("last_blank_insert", 0L).forGetter(ChipShopState::lastBlankInsertAt),
+            Codec.STRING.optionalFieldOf("rolled_dice", "").forGetter(ChipShopState::rolledDiceKey)
     ).apply(instance, ChipShopState::new));
 
     /** 玩家存档读取（客户端读到的是一份「服务端同步值」——本模组不使用附件 sync，客户端不读它） */
@@ -110,6 +112,10 @@ public record ChipShopState(List<String> offers, Optional<String> lastPickCatego
      * 与「未购买退出候选不变」冲突。
      */
     public boolean needsReroll(Player player) {
+        // 2026-10-21 用户裁决：换骰子或升星 ⇒ 立即作废当前批次（下次进店按新星阶重抽）
+        if (rolledDiceKey == null || !rolledDiceKey.equals(ChipShopRoller.diceKey(player))) {
+            return true;
+        }
         List<ChipShopCatalog.Entry> list = entries();
         if (list.isEmpty()) {
             return true;
@@ -126,26 +132,26 @@ public record ChipShopState(List<String> offers, Optional<String> lastPickCatego
     }
 
     /** 用新掷出的候选替换当前候选（长度可变：池不够时尾部留空） */
-    public ChipShopState withOffers(List<ChipShopCatalog.Entry> picked) {
+    public ChipShopState withOffers(List<ChipShopCatalog.Entry> picked, String diceKey) {
         List<String> ids = new ArrayList<>(picked.size());
         for (ChipShopCatalog.Entry entry : picked) {
             ids.add(entry.id());
         }
         return new ChipShopState(List.copyOf(ids), lastPickCategory, purchasedCount, refreshesLeft, regenAnchor,
-                cooldownUntil, lastBlankInsertAt);
+                cooldownUntil, lastBlankInsertAt, diceKey);
     }
 
     /** 购买成功：累计次数 +1、记录本次类别（R18）；候选由调用方紧接着重抽 */
     public ChipShopState withPurchased(ChipShopCatalog.Category category) {
         return new ChipShopState(offers,
                 category == null ? lastPickCategory : Optional.of(category.key()),
-                purchasedCount + 1, refreshesLeft, regenAnchor, cooldownUntil, lastBlankInsertAt);
+                purchasedCount + 1, refreshesLeft, regenAnchor, cooldownUntil, lastBlankInsertAt, rolledDiceKey);
     }
 
     /** 刷新次数与锚点（首次成功刷新时由调用方把 0 锚点写成 now + REFRESH_REGEN_TICKS） */
     public ChipShopState withRefreshes(int left, long anchor) {
         return new ChipShopState(offers, lastPickCategory, purchasedCount,
-                Math.max(0, Math.min(ChipShopCatalog.REFRESH_MAX, left)), anchor, cooldownUntil, lastBlankInsertAt);
+                Math.max(0, Math.min(ChipShopCatalog.REFRESH_MAX, left)), anchor, cooldownUntil, lastBlankInsertAt, rolledDiceKey);
     }
 
     /**
@@ -156,7 +162,7 @@ public record ChipShopState(List<String> offers, Optional<String> lastPickCatego
      */
     public ChipShopState withCooldown(long until) {
         return new ChipShopState(offers, lastPickCategory, purchasedCount, refreshesLeft, regenAnchor, until,
-                lastBlankInsertAt);
+                lastBlankInsertAt, rolledDiceKey);
     }
 
     /** 是否处于购买冷却中（{@code now} = 当前世界 gameTime；{@code cooldownUntil == 0} ⇒ 永不冷却） */
@@ -173,7 +179,8 @@ public record ChipShopState(List<String> offers, Optional<String> lastPickCatego
      */
     public ChipShopState withBlankInsert(long now, int newRefreshes, long cooldownUntil) {
         return new ChipShopState(offers, lastPickCategory, purchasedCount,
-                Math.max(0, Math.min(ChipShopCatalog.REFRESH_MAX, newRefreshes)), regenAnchor, cooldownUntil, now);
+                Math.max(0, Math.min(ChipShopCatalog.REFRESH_MAX, newRefreshes)), regenAnchor, cooldownUntil, now,
+                rolledDiceKey);
     }
 
     /** 机器行 / 取证用：候选的稳定摘要（同一批任意次读到相同值） */

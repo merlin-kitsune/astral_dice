@@ -73,7 +73,7 @@ public final class ChipShopOpener {
         if (!state.needsReroll(player)) {
             return;
         }
-        ChipShopState next = state.withOffers(ChipShopRoller.roll(player, state.lastCategory().orElse(null)));
+        ChipShopState next = state.withOffers(ChipShopRoller.roll(player, state.lastCategory().orElse(null)), ChipShopRoller.diceKey(player));
         ChipShopState.store(player, next);
         LOGGER.info("[astral_dice] CHIP_SHOP_REROLL_ON_ENTER player={} offers={} purchased={}",
                 player.getName().getString(), next.offersKey(), next.purchasedCount());
