@@ -699,6 +699,12 @@ public class RepulsionEntity extends LivingEntity {
         return false;
     }
 
+    /** 药水（喷溅 / 滞留 / 瞬时）一律不生效（2026-10-21 用户裁决）。 */
+    @Override
+    public boolean isAffectedByPotions() {
+        return false;
+    }
+
     @Override
     public boolean isPushable() {
         return false;

@@ -46,6 +46,13 @@ public final class NewSignEvents {
 
     @SubscribeEvent
     public static void onEffectApplicable(MobEffectEvent.Applicable event) {
+        // 2026-10-21 用户裁决：路障 / 强化拒止不吃任何药水（1.21.1 的 addEffect 只走本事件，
+        // 覆盖 canBeAffected 已无效 ⇒ 必须在这里拦）
+        if (event.getEntity() instanceof com.merlinkitsune.astral_dice.entity.BarricadeEntity
+                || event.getEntity() instanceof com.merlinkitsune.astral_dice.entity.RepulsionEntity) {
+            event.setResult(net.neoforged.neoforge.event.entity.living.MobEffectEvent.Applicable.Result.DO_NOT_APPLY);
+            return;
+        }
         if (!(event.getEntity() instanceof Player player)) return;
         if (player.level().isClientSide()) return;
         if (!immune(player)) return;

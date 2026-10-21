@@ -46,6 +46,12 @@ public final class NewSignEvents {
 
     @SubscribeEvent
     public static void onEffectApplicable(MobEffectEvent.Applicable event) {
+        // 2026-10-21 用户裁决：路障 / 强化拒止不吃任何药水
+        if (event.getEntity() instanceof com.merlinkitsune.astral_dice.entity.BarricadeEntity
+                || event.getEntity() instanceof com.merlinkitsune.astral_dice.entity.RepulsionEntity) {
+            event.setResult(net.minecraftforge.eventbus.api.Event.Result.DENY);
+            return;
+        }
         if (!(event.getEntity() instanceof Player player)) return;
         if (player.level().isClientSide()) return;
         if (!immune(player)) return;

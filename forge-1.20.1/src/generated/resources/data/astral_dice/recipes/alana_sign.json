@@ -6,7 +6,7 @@
       "item": "minecraft:book"
     },
     "C": {
-      "item": "minecraft:candle"
+      "item": "minecraft:quartz"
     },
     "D": {
       "item": "astral_dice:golden_dice"
@@ -15,7 +15,7 @@
       "item": "astral_dice:blank_sign"
     },
     "I": {
-      "item": "minecraft:iron_block"
+      "item": "minecraft:iron_ingot"
     },
     "S": {
       "item": "minecraft:stone_bricks"

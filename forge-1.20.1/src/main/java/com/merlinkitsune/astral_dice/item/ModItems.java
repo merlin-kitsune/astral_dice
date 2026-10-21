@@ -930,7 +930,7 @@ public class ModItems {
     public static final RegistryObject<Item> FANNY_SIGN = registerItem("fanny_sign",
             () -> new FannySignItem(new Item.Properties()
                     .stacksTo(1)
-                    .rarity(AstralRarities.epic())));
+                    .rarity(AstralRarities.rare())));
 
     public static final RegistryObject<Item> RIN_SIGN = registerItem("rin_sign",
             () -> new RinSignItem(new Item.Properties()
@@ -946,7 +946,7 @@ public class ModItems {
     public static final RegistryObject<Item> HAIQING_SIGN = registerItem("haiqing_sign",
             () -> new HaiqingSignItem(new Item.Properties()
                     .stacksTo(1)
-                    .rarity(AstralRarities.epic())));
+                    .rarity(AstralRarities.rare())));
 
     // 命运的指引(专属功能效果牌,击杀带虚弱印记的目标获取)
     public static final RegistryObject<Item> FATE_GUIDANCE_CARD = registerItem("effect_card_fate_guidance",

@@ -287,6 +287,12 @@ public class BarricadeEntity extends LivingEntity {
 
     // ── 死亡 / 移除：清场 + 删方块 ────────────────────────────────────────────
 
+    /** 药水（喷溅 / 滞留 / 瞬时）一律不生效（2026-10-21 用户裁决）。 */
+    @Override
+    public boolean isAffectedByPotions() {
+        return false;
+    }
+
     @Override
     public boolean isPushable() {
         return false;

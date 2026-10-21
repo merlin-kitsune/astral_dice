@@ -23,9 +23,9 @@ public class MotoHelmetChipItem extends BaseChipItem {
     /** 摩托头盔-中级 防御力加成 */
     public static final int DEFENSE_MEDIUM = 4;
     /** 摩托头盔-高级 防御力加成 */
-    public static final int DEFENSE_HIGH = 6;
+    public static final int DEFENSE_HIGH = 8;
     /** 摩托头盔-高级盔甲韧性加成(一般/中级无韧性加成) */
-    public static final int TOUGHNESS_BONUS = 2;
+    public static final int TOUGHNESS_BONUS = 0;
 
     private final int defenseBonus;
     private final int toughnessBonus;
