@@ -437,15 +437,17 @@ public class CardShopMenu extends AbstractContainerMenu {
      * <ol>
      *   <li>菜单归属（{@code buyer == this.player}）且非客户端；</li>
      *   <li>货架索引范围 + 该槽本次开店真的有货（{@code shelfIndex < shelfSize}）且未售出；</li>
-     *   <li>目标格索引范围（0..35），或 {@link #QUICK_MOVE_SLOT}(-1) = 双击快速移入（服务端挑第一个空物品栏格）；</li>
+     *   <li>目标格索引范围（0..35），或 {@link #QUICK_MOVE_SLOT}(-1) = 双击快速移入（服务端先挑可并入的同类栈，
+     *       再挑第一个空物品栏格）；</li>
      *   <li>槽内确实还有卡；</li>
-     *   <li>目标格**必须为空**（不堆叠、不替换，避免吞掉玩家原有物品）；</li>
+     *   <li>**装得下**（2026-10-21 卡牌自动堆叠）：按 {@link #planPlacement} 的顺序（目标格同类栈 → 其余同类未满栈
+     *       → 空格）能容纳整张卡的张数；目标格是**不同物品**且无处可并 ⇒ 仍按既有的「目标格被占用」拒绝；</li>
      *   <li>余额 ≥ 本槽当前价（价格只取服务端 {@link #prices}，**忽略客户端任何数值**）。</li>
      * </ol>
      *
-     * <p><b>结算</b>：扣款 → 服务端把卡**直接写入目标格**（{@link Slot#set}，不经原版「光标携带」机制，
-     * 见 {@link ShelfSlot#mayPickup}）→ 清空货架槽并置 {@link #sold}（该格本轮已售）→ 就绪态下开启本轮 60 秒轮询
-     * → 双端刷新余额 → actionbar 提示。
+     * <p><b>结算</b>：扣款 → 按落位计划写入玩家物品栏（同类栈 {@code grow} 补满 / 空格 {@link Slot#set} 开新栈，
+     * 不经原版「光标携带」机制，见 {@link ShelfSlot#mayPickup}）→ 清空货架槽并置 {@link #sold}（该格本轮已售）
+     * → 就绪态下开启本轮 60 秒轮询 → 双端刷新余额 → actionbar 提示。
      * 重复包 / 并发包由第 2 步的 {@code sold[]} 幂等挡住（同槽只会成功一次）。
      */
     public void handleBuy(ServerPlayer buyer, int shelfIndex, int targetSlot) {
@@ -455,25 +457,41 @@ public class CardShopMenu extends AbstractContainerMenu {
         if (shelfIndex < 0 || shelfIndex >= SHELF_SIZE || shelfIndex >= shelfSize || sold[shelfIndex]) {
             return;
         }
-        if (targetSlot == QUICK_MOVE_SLOT) {
-            // 双击「快速移入物品栏」（2026-10-09 §3）：由**服务端**挑第一个空物品栏格，口径与拖拽落点完全一致；
-            // 满包 ⇒ 静默拒绝（任务P §0.2-2 已删除「背包已满」提示文本，不再回任何 actionbar），
-            // 只让客户端闪余额数字（§4 同一条拒绝通道）。
-            targetSlot = findEmptyInventorySlot();
-            if (targetSlot < 0) {
-                notifyDeny(buyer, DENY_INVENTORY_FULL);
-                return;
-            }
-        } else if (targetSlot < 0 || targetSlot >= 36) {
+        boolean quickMove = targetSlot == QUICK_MOVE_SLOT;
+        if (!quickMove && (targetSlot < 0 || targetSlot >= 36)) {
             return;
         }
         ItemStack card = shelfContainer.getItem(shelfIndex);
         if (card.isEmpty()) {
             return;
         }
-        Slot target = this.slots.get(SHELF_SIZE + playerSlotOffset(targetSlot));
-        if (target.hasItem()) {
-            actionBar(buyer, ChatFormatting.RED, "msg.astral_dice.card_shop_slot_occupied");
+        ItemStack bought = card.copy();
+        // 怪力乱神立牌(lingling)「拦截者」(§4.3):佩戴时从商店买到的「路障」⇒ 写入等张数「强化拒止」。
+        // 购买不触发拾取事件(§4.2 覆盖不到),故必须在这里单独转换;数量保持不丢。
+        // 2026-10-21 卡牌自动堆叠:转换**提前到落位判定之前** ⇒ 同类比较用的是真正入包的那张牌(路障→强化拒止)。
+        if (bought.is(ModItems.EFFECT_CARD_BARRICADE.get())
+                && com.merlinkitsune.astral_dice.item.sign.LinglingSignManager.isEquipped(buyer)) {
+            bought = com.merlinkitsune.astral_dice.item.sign.LinglingSignManager.toRepulsion(bought, buyer);
+        }
+        if (quickMove) {
+            // 双击「快速移入物品栏」（2026-10-09 §3）：由**服务端**挑落点 —— 先并同类未满栈，再取第一个空格；
+            // 满包 ⇒ 静默拒绝（任务P §0.2-2 已删除「背包已满」提示文本，不再回任何 actionbar），
+            // 只让客户端闪余额数字（§4 同一条拒绝通道）。
+            targetSlot = findQuickMoveSlot(bought);
+            if (targetSlot < 0) {
+                notifyDeny(buyer, DENY_INVENTORY_FULL);
+                return;
+            }
+        }
+        // 2026-10-21 卡牌自动堆叠：**扣款前**先算完整落位计划（判定与写入共用同一套顺序），
+        // 装不下 ⇒ 直接拒绝（绝不先扣钱再丢卡）。
+        List<int[]> plan = planPlacement(bought, targetSlot, bought.getCount());
+        if (plan == null) {
+            if (quickMove) {
+                notifyDeny(buyer, DENY_INVENTORY_FULL);
+            } else {
+                actionBar(buyer, ChatFormatting.RED, "msg.astral_dice.card_shop_slot_occupied");
+            }
             return;
         }
         int price = prices[shelfIndex];
@@ -493,17 +511,11 @@ public class CardShopMenu extends AbstractContainerMenu {
                 return;
             }
         }
-        ItemStack bought = card.copy();
-        // 怪力乱神立牌(lingling)「拦截者」(§4.3):佩戴时从商店买到的「路障」⇒ 写入等张数「强化拒止」。
-        // 购买不触发拾取事件(§4.2 覆盖不到),故必须在这里单独转换;数量保持不丢。
-        if (bought.is(ModItems.EFFECT_CARD_BARRICADE.get())
-                && com.merlinkitsune.astral_dice.item.sign.LinglingSignManager.isEquipped(buyer)) {
-            bought = com.merlinkitsune.astral_dice.item.sign.LinglingSignManager.toRepulsion(bought, buyer);
-        }
-        target.set(bought);
-        target.setChanged();
+        // 2026-10-21 卡牌自动堆叠：按计划「先并入同类栈（补满到各自上限）、再逐格开新栈」；不再直接写死目标格。
+        ItemStack boughtForNotify = bought.copy();
+        applyPlacement(plan, bought);
         // 2026-10-09 用户裁决「从商店购买视为获得」：卡牌已写入玩家槽 ⇒ 触发维生素药丸/提尔立牌等「获得」语义
-        com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem.notifyCardObtained(buyer, bought);
+        com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem.notifyCardObtained(buyer, boughtForNotify);
         shelfContainer.setItem(shelfIndex, ItemStack.EMPTY);
         sold[shelfIndex] = true;
         // 任务O §1.3：售出状态**落盘**——货架不再随菜单生命周期存在，重开界面必须仍是「这格已售」
@@ -811,14 +823,118 @@ public class CardShopMenu extends AbstractContainerMenu {
     }
 
 
-    /** 第一个空的玩家物品栏格（0..8 快捷栏 / 9..35 主物品栏）；无空格 ⇒ -1（双击快速移入用） */
-    private int findEmptyInventorySlot() {
+    /**
+     * 双击快速移入的落点（0..8 快捷栏 / 9..35 主物品栏）：2026-10-21「卡牌自动堆叠」后**先找可并入的同类未满栈**，
+     * 再取第一个空格；两者都没有 ⇒ -1（调用方按「背包已满」静默拒绝）。
+     */
+    private int findQuickMoveSlot(ItemStack incoming) {
         for (int inv = 0; inv < 36; inv++) {
-            if (!this.slots.get(SHELF_SIZE + playerSlotOffset(inv)).hasItem()) {
+            Slot slot = invSlot(inv);
+            if (slot.hasItem() && sameCard(slot.getItem(), incoming)
+                    && slot.getItem().getCount() < maxStackSize(slot.getItem())) {
+                return inv;
+            }
+        }
+        for (int inv = 0; inv < 36; inv++) {
+            if (!invSlot(inv).hasItem()) {
                 return inv;
             }
         }
         return -1;
+    }
+
+    /**
+     * 落位计划（2026-10-21 卡牌自动堆叠）：返回「{@code [物品栏索引, 张数]}」序列（**空表 = 全部并入已有栈**）；
+     * 装不下 {@code amount} 张 ⇒ {@code null}（调用方据此在**扣款前**拒绝）。
+     *
+     * <p>顺序与 {@link #applyPlacement} 的写入顺序**完全一致**（判定与写入不得分叉）：
+     * <ol>
+     *   <li>目标格自身是同类未满栈 ⇒ 最先补它（玩家把卡拖到已有的同类栈上应当直接并进去）；</li>
+     *   <li>其余同类未满栈按物品栏顺序补满；</li>
+     *   <li>剩余的逐格开新栈：目标格为空则先用目标格，再按物品栏顺序取空格；</li>
+     *   <li>目标格被**不同物品**占着且无处可并 ⇒ 不另找空格（保持「拖到别的东西上不放」的既有语义）。</li>
+     * </ol>
+     */
+    private List<int[]> planPlacement(ItemStack incoming, int targetSlot, int amount) {
+        List<int[]> plan = new ArrayList<>();
+        int remaining = amount;
+        if (targetSlot >= 0) {
+            remaining -= mergeInto(plan, targetSlot, incoming, remaining);
+        }
+        for (int inv = 0; inv < 36 && remaining > 0; inv++) {
+            if (inv == targetSlot) {
+                continue;
+            }
+            remaining -= mergeInto(plan, inv, incoming, remaining);
+        }
+        if (remaining <= 0) {
+            return plan;
+        }
+        if (targetSlot >= 0 && plan.isEmpty() && invSlot(targetSlot).hasItem()
+                && !sameCard(invSlot(targetSlot).getItem(), incoming)) {
+            // 目标格是别的东西、且**一处都并不进去** ⇒ 维持既有拒绝（不静默换格）
+            return null;
+        }
+        if (targetSlot >= 0 && !invSlot(targetSlot).hasItem()) {
+            int n = Math.min(maxStackSize(incoming), remaining);
+            plan.add(new int[]{targetSlot, n});
+            remaining -= n;
+        }
+        for (int inv = 0; inv < 36 && remaining > 0; inv++) {
+            if (inv == targetSlot || invSlot(inv).hasItem()) {
+                continue;
+            }
+            int n = Math.min(maxStackSize(incoming), remaining);
+            plan.add(new int[]{inv, n});
+            remaining -= n;
+        }
+        return remaining > 0 ? null : plan;
+    }
+
+    /** 把至多 {@code amount} 张同类卡补进第 {@code inventoryIndex} 格；不同类 / 已满 ⇒ 返回 0 且不写计划 */
+    private int mergeInto(List<int[]> plan, int inventoryIndex, ItemStack incoming, int amount) {
+        Slot slot = invSlot(inventoryIndex);
+        if (!slot.hasItem() || !sameCard(slot.getItem(), incoming)) {
+            return 0;
+        }
+        int space = maxStackSize(slot.getItem()) - slot.getItem().getCount();
+        if (space <= 0) {
+            return 0;
+        }
+        int n = Math.min(space, amount);
+        plan.add(new int[]{inventoryIndex, n});
+        return n;
+    }
+
+    /** 按 {@link #planPlacement} 的计划写入：已有同类栈用 {@code grow} 补满，空格用 {@code set} 开新栈 */
+    private void applyPlacement(List<int[]> plan, ItemStack bought) {
+        for (int[] entry : plan) {
+            Slot slot = invSlot(entry[0]);
+            if (slot.hasItem()) {
+                slot.getItem().grow(entry[1]);
+                slot.setChanged();
+            } else {
+                ItemStack fresh = bought.copy();
+                fresh.setCount(entry[1]);
+                slot.set(fresh);
+                slot.setChanged();
+            }
+        }
+    }
+
+    /** 物品栏索引（0..8 快捷栏 / 9..35 主物品栏）→ 菜单里对应的玩家物品栏槽 */
+    private Slot invSlot(int inventoryIndex) {
+        return this.slots.get(SHELF_SIZE + playerSlotOffset(inventoryIndex));
+    }
+
+    /** 同类判定（1.21.1：同一物品 + 同一组件；卡牌按 CARD_USES 等组件区分栈） */
+    private static boolean sameCard(ItemStack a, ItemStack b) {
+        return !a.isEmpty() && !b.isEmpty() && ItemStack.isSameItemSameComponents(a, b);
+    }
+
+    /** 该栈上限（卡牌按剩余次数覆写：满次数 16、已消耗 1） */
+    private static int maxStackSize(ItemStack stack) {
+        return stack.getItem().getMaxStackSize(stack);
     }
 
     /** 拒绝信号（S2C，2026-10-09 §4）：余额不足 / 背包已满 ⇒ 客户端把钱包数字红白闪 3 次（服务端权威触发） */

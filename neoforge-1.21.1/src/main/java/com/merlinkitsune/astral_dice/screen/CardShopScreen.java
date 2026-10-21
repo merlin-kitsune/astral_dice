@@ -1561,9 +1561,8 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
             if (!transferView) {
                 int invIndex = inventoryCellIndexAt((int) mouseX, (int) mouseY);
                 if (invIndex >= 0) {
-                    if (this.menu.getSlot(CardShopMenu.SHELF_SIZE + CardShopMenu.playerSlotOffset(invIndex))
-                            .getItem().isEmpty()) {
-                        // 合法落点：只发购买意图，扣款与发货由服务端 handleBuy 决定
+                    if (canAcceptDrop(index, invIndex)) {
+                        // 合法落点（空 / 同类卡 / 背包有可并入的同类栈）：只发购买意图，扣款与发货由服务端 handleBuy 决定
                         net.neoforged.neoforge.network.PacketDistributor.sendToServer(
                                 new CardShopBuyPayload(index, invIndex));
                     } else {
@@ -1576,6 +1575,43 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
             return true;
         }
         return super.mouseReleased(mouseX, mouseY, button);
+    }
+
+    /**
+     * 落点受理判定（2026-10-21 卡牌自动堆叠）：目标格为空 / 目标格是同类卡（含已满，服务端会另开新格）/
+     * 背包里存在可并入的同类未满栈 ⇒ 允许发包；其余仍按「目标格被占用」拦下并弹既有文本。
+     * 同类口径与服务端一致（同一物品 + 同一组件）；服务端仍是唯一权威，这里只放宽拦截。
+     */
+    private boolean canAcceptDrop(int shelfIndex, int invIndex) {
+        ItemStack incoming = this.menu.getSlot(shelfIndex).getItem();
+        if (incoming.isEmpty()) {
+            // 货架格已空（客户端视图滞后）⇒ 交给服务端幂等拒绝，这里不拦
+            return true;
+        }
+        ItemStack target = this.menu.getSlot(CardShopMenu.SHELF_SIZE
+                + CardShopMenu.playerSlotOffset(invIndex)).getItem();
+        if (target.isEmpty() || sameCard(target, incoming)) {
+            return true;
+        }
+        return hasMergeableStack(incoming);
+    }
+
+    /** 玩家物品栏里是否存在可并入 {@code incoming} 的同类未满栈（服务端「先并栈」落位的前置条件） */
+    private boolean hasMergeableStack(ItemStack incoming) {
+        for (int inv = 0; inv < 36; inv++) {
+            ItemStack candidate = this.menu.getSlot(CardShopMenu.SHELF_SIZE
+                    + CardShopMenu.playerSlotOffset(inv)).getItem();
+            if (!candidate.isEmpty() && sameCard(candidate, incoming)
+                    && candidate.getCount() < candidate.getItem().getMaxStackSize(candidate)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** 同类判定（1.21.1：同一物品 + 同一组件；卡牌按 CARD_USES 等组件区分栈） */
+    private static boolean sameCard(ItemStack a, ItemStack b) {
+        return !a.isEmpty() && !b.isEmpty() && ItemStack.isSameItemSameComponents(a, b);
     }
 
     @Override
