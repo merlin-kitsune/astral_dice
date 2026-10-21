@@ -261,10 +261,19 @@ public final class EventEffects {
         }
         int slot = cardSlots.get(target.getRandom().nextInt(cardSlots.size()));
         // 用户裁决 2026-10-10：抹杀 = 手牌**直接消失**（不再丢到地上）
-        ItemStack removed = target.getInventory().removeItemNoUpdate(slot);
-        if (!removed.isEmpty()) {
-            LOGGER.info("AP_EVENT_EFFECT: hand_erasure:erased={}:target={}", removed.getItem(), target.getName().getString());
+        // 2026-10-21 修正：一次只抹掉 **1 张**。卡牌可堆叠（CardItem = stacksTo(16)），
+        // 旧写法 removeItemNoUpdate(slot) 会把命中槽的**整栈**一次性清空（用户报“丢 1 张却整组消失”）。
+        ItemStack stack = target.getInventory().getItem(slot);
+        if (stack.isEmpty()) return;
+        ItemStack erased = stack.copy();
+        stack.shrink(1);
+        if (stack.isEmpty()) {
+            target.getInventory().setItem(slot, ItemStack.EMPTY);
+        } else {
+            target.getInventory().setChanged();
         }
+        LOGGER.info("AP_EVENT_EFFECT: hand_erasure:erased={}:remaining={}:target={}",
+                erased.getItem(), stack.getCount(), target.getName().getString());
     }
 
     // ────────────────────────── 7. 天崩地裂:立即 4 点伤害 ──────────────────────────
