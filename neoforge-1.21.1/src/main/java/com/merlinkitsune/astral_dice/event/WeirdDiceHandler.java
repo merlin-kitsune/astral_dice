@@ -37,8 +37,12 @@ public final class WeirdDiceHandler {
     }
 
     /**
-     * 立牌主动技能冷却 tick:只做充能封顶(180→160 秒),**不再提供诡异骰子的 -50%**
-     * (用户需求 2026-10-21:该能力已删除)。保留本方法仅为不改动既有调用点。
+     * **立牌主动技能**冷却 tick:转调 {@link ChargeManager#signCooldownTicks}(充能封顶 180→160 秒
+     * → 额外电池筹码 ×0.5),**不提供**诡异骰子的 -50%(用户需求 2026-10-21:该能力已删除)。
+     * 保留本方法仅为不改动既有调用点。
+     *
+     * <p>作用域仅限立牌主动技能冷却 —— 抽奖盒 / 筹码商店 / 任何其它 {@code *CooldownUntil}
+     * 禁止调用本方法(2026-10-21 用户裁决)。
      */
     public static int signCooldownTicks(Player player) {
         return (int) ChargeManager.signCooldownTicks(player, GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS);

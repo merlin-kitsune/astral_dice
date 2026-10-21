@@ -116,23 +116,31 @@ public final class ChargeManager {
     }
 
     /**
-     * 立牌主动技能冷却 tick:拥有充能时把**基础值**封顶为 160 秒
-     * ({@link GameplayConstants#CHARGE_SIGN_COOLDOWN_CAP_SECONDS})。
+     * **立牌主动技能**冷却 tick。
      *
-     * <p>2026-09-25 改口径:取代旧的「有充能即 -20%」比例减免。封顶只作用于**基础值**,
-     * 之后由调用方继续叠加其它减免(诡异骰子 -50%、枪匠「精密技巧」的 120 秒基础值等);
-     * 基础值本就低于上限时保持原值。**已在进行的倒计时不受影响** —— 本方法只在开始冷却时取值。
+     * <p><b>作用域硬边界</b>:本方法只服务「立牌主动技能冷却」这一个量。抽奖盒、筹码商店、
+     * 卡牌商店转账、效果牌等任何其它冷却<b>禁止</b>调用本方法(2026-10-21 用户裁决)。
      *
-     * <p>2026-10-20 追加:本方法末尾再乘一次「额外电池筹码」的 -50%(纯查询,未佩戴时原样返回),
-     * 因此它是「基础值 → 充能封顶 → 额外电池 -50% → 调用方的诡异骰子 -50%」这条链的中段。
+     * <p>取值链(逐段作用,全部只在「开始冷却」时取一次):
+     * <ol>
+     *   <li>基础值 {@code baseTicks}(调用方传入;缺省 = {@code GameplayConstants#SIGN_ACTIVE_COOLDOWN_TICKS} = 180 秒);</li>
+     *   <li>拥有充能时把**基础值**封顶为 {@value GameplayConstants#CHARGE_SIGN_COOLDOWN_CAP_SECONDS} 秒
+     *       —— {@link #capByCharge}(2026-09-25 改口径,取代旧的「有充能即 -20%」);基础值本就低于上限时保持原值;</li>
+     *   <li>「额外电池筹码」×{@code ExtraBatteryChipItem#COOLDOWN_MULTIPLIER}(= 0.5,纯查询,
+     *       未佩戴 / 未装骰子时原样返回)—— {@code ExtraBatteryChipItem#applySignActiveCooldownReduction};</li>
+     *   <li>调用方再自行叠加的减免(如 megas / moses / parunan / sherry 仍各自按诡异骰子再折 ×0.5)。</li>
+     * </ol>
+     *
+     * <p><b>已在进行的倒计时不受影响</b> —— 本方法只在开始冷却时取值。
      */
     public static long signCooldownTicks(Player player, long baseTicks) {
         long capped = capByCharge(player, baseTicks, GameplayConstants.CHARGE_SIGN_COOLDOWN_CAP_SECONDS);
-        // 额外电池筹码(史诗/无流派,2026-10-20):立牌主动冷却 -50%。
+        // 额外电池筹码(史诗/无流派,2026-10-20):立牌主动技能冷却 -50%。
+        // 作用域硬约束(2026-10-21):只允许立牌主动冷却走这条;抽奖盒 / 筹码商店 /
+        // 任何其它 *CooldownUntil / *CooldownEnd 一律禁止调用本折算。
         // 纯查询 ⇒ 卸下 / 失效后下一次开冷却自动恢复原值;已入账的倒计时不受影响。
-        // 与诡异骰子(-50%)正交叠加:本处在「充能封顶之后」折一次,调用方再按骰子折一次。
         return com.merlinkitsune.astral_dice.item.chip.ExtraBatteryChipItem
-                .applyCooldownReduction(player, capped);
+                .applySignActiveCooldownReduction(player, capped);
     }
 
     /** 效果牌公共冷却 tick:拥有充能时把**基础值**封顶为 30 秒(2026-09-30 用户裁决,20 → 30;
