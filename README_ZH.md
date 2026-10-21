@@ -70,10 +70,10 @@ Astral Dice 是一个以骰子为核心的生存扩展。戴上骰子后，每�
 
 | 支持 | 子项目 | Minecraft | 加载器 | Java | 版本 | 帕秋莉手册 |
 |---|---|---|---|---|---|---|
-| ✅ | `neoforge-1.21.1` | 1.21.1 | NeoForge 21.1.235 | 21 | 1.5.0-pre.2 | ✅ |
-| ✅ | `forge-1.20.1` | 1.20.1 | Forge 47.4.10 | 17 | 1.5.0-pre.2 | ✅ |
-| ✅ | `neoforge-26.1.2` | 26.1.2 | NeoForge 26.1.2.109 | 25 | 1.5.0-pre.2 | ✅ |
-| ✅ | `fabric-1.20.1` | 1.20.1 | Fabric Loader 0.19.5 | 17 | 1.5.0-pre.2 | ✅ |
+| ✅ | `neoforge-1.21.1` | 1.21.1 | NeoForge 21.1.235 | 21 | 1.5.0-pre.3 | ✅ |
+| ✅ | `forge-1.20.1` | 1.20.1 | Forge 47.4.10 | 17 | 1.5.0-pre.3 | ✅ |
+| ✅ | `neoforge-26.1.2` | 26.1.2 | NeoForge 26.1.2.109 | 25 | 1.5.0-pre.3 | ✅ |
+| ✅ | `fabric-1.20.1` | 1.20.1 | Fabric Loader 0.19.5 | 17 | 1.5.0-pre.3 | ✅ |
 
 - `neoforge-1.21.1` 与 `forge-1.20.1` 是发布线：两条线保持功能对等，两个 jar 都随每个 GitHub Release 发布。
 - `neoforge-26.1.2` 是迁移线：不单独打 tag，也不单独发 Release，它的 jar 作为第三个附件挂在发布线的 Release 上（CI 会把全部线一起构建，见 `.github/workflows/build.yml`）。上游没有 26.1.x 构建，因此这条线没有 Iron's Spells 'n Spellbooks 联动。
@@ -111,7 +111,7 @@ Astral Dice 是一个以骰子为核心的生存扩展。戴上骰子后，每�
 
 - **GitHub Releases**：[merlin-kitsune/astral_dice/releases](https://github.com/merlin-kitsune/astral_dice/releases)。每个 Release 带三个 jar：两条发布线加上 26.1.2 的 jar。
 - **Fabric 移植线**：以单独的 `fabric-<版本>` 预发布形式发布，标记为 pre-release，不占「最新」，只带它自己那一个 jar。
-- **Modrinth**：四个构建发布到主项目（`5xDtrJ8X`）。StarEngine 有独立项目（`2dIXA5wO`）；**NeoForge 1.21.1** 与 **Forge 1.20.1** 不再内置该库，玩家需自行安装那份独立 jar（26.1.2 与 Fabric 两线目前仍内置）。版本号保留 `+<加载器>_<MC版本>` 后缀（例如 `1.5.0-pre.2+neoforge_1.21.1`），发布渠道由版本后缀决定。
+- **Modrinth**：四个构建发布到主项目（`5xDtrJ8X`）。StarEngine 有独立项目（`2dIXA5wO`）；**NeoForge 1.21.1** 与 **Forge 1.20.1** 不再内置该库，玩家需自行安装那份独立 jar（26.1.2 与 Fabric 两线目前仍内置）。版本号保留 `+<加载器>_<MC版本>` 后缀（例如 `1.5.0-pre.3+neoforge_1.21.1`），发布渠道由版本后缀决定。
 - **构建产物**：`astral_dice-<版本>+neoforge_1.21.1.jar`、`+forge_1.20.1.jar`、`+neoforge_26.1.2.jar`、`+fabric_1.20.1.jar`，各自位于对应子项目的 `build/libs/` 下。GitHub Release 的 tag 用不带后缀的基础版本号，Fabric 线则用 `fabric-<版本>` 预发布 tag。
 
 ## 构建
