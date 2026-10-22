@@ -6,22 +6,24 @@
 
 **背景**：WSL 内运行 Minecraft 客户端存在严重性能问题，实机读数与截图不可信；2026-10-18 的 WSL + AutoJS 测试台与其全部实机结果（含 1.21.1 / 1.20.1 双版本）**一律作废**。
 
-1. **测试台唯一口径 = PowerShell 7**。所有测试脚本都是 `.ps1`，一律 `pwsh -NoProfile -File <绝对路径>` 执行；
-   **禁止** `bash`、`.sh`、`bash mt.sh`、以及任何 WSL 侧测试入口。`.sh` 测试脚本已从仓库清除，不得再引入。
-2. **实机测试只在 Windows 跑**。禁止在 WSL 内启动 Minecraft 客户端做验证（性能/渲染不可靠）。
-   WSL 只承担**编译**：`./gradlew :<线>:classes|jar`。
-3. **产物投放**：WSL 编译出的 jar 一律复制到原项目目录的测试环境
-   `F:\MCProject\astral_dice_multiloader-next\run\<1.21.1|1.20.1|26.1.2|fabric-1.20.1>\mods`，
-   再在 Windows 侧启动客户端验证；**不得**在 WSL 的副本里建 `run/` 做测试。
-4. **原项目目录的一切 git 操作必须经 `cmd.exe`**：
-   `cmd.exe /c "git -C F:\MCProject\astral_dice_multiloader-next <子命令>"`。
-   **禁止**在 WSL 里对 `/mnt/f/...` 直接跑 `git` —— 该目录是 worktree，`.git` 文件里的
-   `gitdir: F:/MCProject/...` 是 Windows 路径，WSL git 必报 `fatal: not a git repository`；
-   也不要指望 `git --git-dir=` 绕过（对象库同样在 Windows 侧）。
-5. **工作副本口径**：原作者目录 `F:\MCProject\astral_dice_multiloader-next` 是唯一事实源与提交源；
-   WSL 副本（`~/work/astral_dice_multiloader-next`）只作编译缓存，**不回写**、不作为 git 事实源。
+**2026-10-22 改写（DSH 转 Windows 原生）**：本块第 1–6 条已由「WSL 口径」整体改写为 Windows 口径，原 WSL 条款**一律失效**（含 `/etc/profile.d` 注入脚本、`/opt/zulu`+`use-jdk`、`~/work/adm-*` 编译副本、WSL git 变通、「bash 里没有 pwsh」类说明）；逐条对照历史见 `docs/agent/AGENTS-full.md` 末尾〈WSL 口径失效对照〉。下文标着「生效红线区」的那一小节（= 快照 L2–L120）经核**不含任何 WSL 专用条款**，故未改动（它与快照必须逐字一致，单边改必 FAIL `verify-split.py` 第 2 项）。
 
-6. **测试收尾必须自动关闭游戏进程（2026-10-18 用户裁决）**：任何测试轮次（单条 / 全量 / 中断 / 失败）结束后，
+1. **测试台唯一口径 = PowerShell 7**。所有测试脚本都是 `.ps1`，一律 `pwsh -NoProfile -File <绝对路径>` 执行；
+   **禁止** `bash`、`.sh`、`bash mt.sh`、WSL 侧测试入口（`.sh` 已从仓库清除，不得再引入）；禁止 Windows PowerShell 5.1。
+2. **编译与实机都在 Windows 原生跑**（原「WSL 只承担编译」口径**失效**）：编译 = 在 `F:\MCProject\astral_dice_multiloader` 执行
+   `gradlew.bat :<线>:classes|jar`；实机 = `pwsh -NoProfile -File F:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1 …`（禁 `wsl.exe` / `/mnt/...`）。
+3. **产物投放**（原「WSL 产物复制回 `-next\run`」**失效**）：以工作树 `build\libs` 为唯一来源，按线复制到
+   `run\<1.21.1|1.20.1|26.1.2|fabric-1.20.1>\mods`，或**成对**投放两个 P0 整合包（`astral_dice-*.jar` + `starengine-*-1.1.0-pre.2.jar`）；
+   投完必须核 sha256，别把同名当新构建。
+4. **git 一律用 git bash 的 `git`**（原「一切 git 操作经 `cmd.exe`」与「WSL 报 `not a git repository`」的变通**均失效，该问题不存在**）：
+   命令写全 `git -C F:\MCProject\<工作树> <子命令>`，或先 `cd` 进工作树；不需要 `--git-dir=`，也不需要 `cmd.exe /c`。
+5. **工作副本口径作废**：工作树 `F:\MCProject\astral_dice_multiloader` 是唯一事实源 / 编译源 / 提交源；
+   `~/work/adm-*`、`/mnt/**` 副本一律不再使用（原「WSL 副本只作编译缓存」条款取消）。
+6. **环境注入脚本与 WSL JDK 路径作废**：`/etc/profile.d/99-wsl-proxy.sh`、`99-wsl-github.sh`、`wsl-env-restore.sh`、`/opt/zulu` + `use-jdk` 均视为已失效；
+   Windows 侧代理走系统环境变量（Clash `http://127.0.0.1:7897`，无注入脚本、无需恢复）；JDK 用 `C:\Program Files\Zulu\zulu-21`（21.0.12），
+   `forge-1.20.1` 的 toolchain 17 由 Gradle 从 `%USERPROFILE%\.gradle\jdks` 取（已缓存 Adoptium 17.0.20），不要手改。
+
+7. **测试收尾必须自动关闭游戏进程（2026-10-18 用户裁决）**：任何测试轮次（单条 / 全量 / 中断 / 失败）结束后，
    必须执行 `pwsh -NoProfile -File scripts\test\mt.ps1 --version <线> --phase stop --force`，并在交付报告里贴出
    `MT_STOP: OK` 原文 + 「无本流程 java 客户端残留」的核对结果（`Get-Process java` 计数）。
    **禁止**让 Minecraft 客户端无人观察地驻留 —— 它会持续占用 CPU/GPU，并污染下一轮冷启动的前置状态。
@@ -278,7 +280,7 @@ When extending this workspace:
 | L2198–L2308 | Mixin 注入规范 · 编译产物上传规则（新版本发布 / CurseForge / Modrinth） | 写 mixin、发布前 |
 | L2309–L2909 | 自动化测试流程（资产重建 / 变更分级 / 测试顺序 / 清场与收尾 / 工具链 / 阶段 P·B·E·L·C·R / 截图识别 / MCP / 超时看门狗） | 任何游戏内测试前（**必读**） |
 | L2910–L3046 | NeoForge 上游 BUG 补丁（neoforge_fixes）· 「敌对目标」判定规范 · `/astralparty` 管理员调试命令 | 上游 bug / 敌对判定 / 调试命令前 |
-| L3047–L3501 | 版本历史与发布记录 · 待办交接各批（fengshui / teru / 新立牌批 / Carpet / 双人测试流程 / 遗留项 / 立牌批验证闭环 + 选卡界面 + Jade 倒计时 + 工具链回 Windows 原生 + AutoJS 求值通道 / lingling 用例 / 强化拒止牌面 / 欠账角色立牌） | 续做历史批次时 |
+| L3047–L3519 | 版本历史与发布记录 · 待办交接各批（fengshui / teru / 新立牌批 / Carpet / 双人测试流程 / 遗留项 / 立牌批验证闭环 + 选卡界面 + Jade 倒计时 + 工具链回 Windows 原生 + AutoJS 求值通道 / lingling 用例 / 强化拒止牌面 / 欠账角色立牌 / WSL 口径失效对照（2026-10-22，末尾小节）） | 续做历史批次时 |
 
 **维护约定**
 1. 新增「每次必读」的红线 ⇒ 直接写进上面的红线区（并同步到 `docs/agent/AGENTS-full.md` 的对应章节，保持两边一致）。

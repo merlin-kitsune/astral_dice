@@ -4,7 +4,7 @@
 > `scripts/test/convert_cases_autojs.py` 机械化迁移，`channel=autojs` 覆盖率 **231/231**，
 > legacy 驱动原语（`inject_command/inject_key/inject_mouse/screenshot/kubejs_reload`）残留 **0**
 > （`python3 scripts/test/lib/mt_case.py validate` ⇒ `files=231 errors=0`）。
-> 通道口径与实机证据见 `docs/wsl-autojs-toolchain.md`；工具链已改为 WSL + bash/python（旧 pwsh 游戏流程脚本已删除）。
+> 通道口径与实机证据见 `docs/wsl-autojs-toolchain.md`；工具链已改为 WSL + bash/python（旧 pwsh 游戏流程脚本已删除）—— ⛔ **2026-10-22 起本句失效**：WSL 测试台与注入脚本全部作废，工具链已回 **Windows 原生 pwsh 7**（见 `AGENTS.md`〈回滚裁决〉与 `docs/agent/AGENTS-full.md` 末尾〈WSL 口径失效对照〉）。
 > **仍未完成**：GUI 状态机类用例（`CC-*` / `BOT-2P` 等）的语义级改写、`vision` 断言（9 条，WSL 下 BLOCKED）、
 > 1.20.1/26.1.2/fabric 三线的 AutoJS 端到端验证。
 

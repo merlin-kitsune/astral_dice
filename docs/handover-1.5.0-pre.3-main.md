@@ -14,15 +14,23 @@
 
 ## 1 环境与路径
 
-- 仓库（唯一工作树）：`/mnt/f/MCProject/astral_dice_multiloader`，分支 `multi-main`，可直接用 WSL git。
+- 仓库（唯一工作树）：`F:\MCProject\astral_dice_multiloader`，分支 `multi-main`；git 一律用 **git bash 的 `git`** ——
+  写全 `git -C F:\MCProject\astral_dice_multiloader <子命令>`，或先 `cd` 进工作树；**不需要** `--git-dir=`，**不需要** `cmd.exe` 中转（原「WSL 报 `not a git repository`」问题不存在，2026-10-22 起失效）。
 - 四子项目同树：`neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1`。
-- 编译：`./gradlew :<线>:classes|jar`（WSL 只编译）；实机只在 Windows 侧跑，脚本一律 `pwsh -NoProfile -File <绝对路径>`。
+- 编译（**Windows 原生**，原「WSL 只编译」口径 2026-10-22 起作废）：在工作树根执行 `gradlew.bat :<线>:classes|jar`；
+  JDK = `C:\Program Files\Zulu\zulu-21`（21.0.12），`forge-1.20.1` 的 `toolchain 17` 由 Gradle 从 `%USERPROFILE%\.gradle\jdks` 取
+  （已缓存 Adoptium 17.0.20），**不要手改**。
+- 实机与脚本：一律 `pwsh -NoProfile -File <绝对路径>.ps1`（**禁** `bash` 跑测试、**禁** `.sh`、**禁** Windows PowerShell 5.1、
+  **禁** `wsl.exe` 与 `/mnt/...` 路径）；bash 只承担 git。
 - 测试台：`scripts/test/mt.ps1`（`--version <线> --phase env|run|stop`）。
 - 整合包投放：
   - neo → `D:\.minecraft\versions\狐の航空学 Voxy Edition\mods`
   - forge → `D:\.minecraft\versions\1.20.1-Forge 模组测试\mods`
 - 库 jar 与之同目录：`starengine-neoforge-1.21.1-1.1.0-pre.2.jar`（98,733 B）/ `starengine-forge-1.20.1-1.1.0-pre.2.jar`（103,604 B）。
-- 委派服务：`/mnt/c/Users/xmace/.codex/mcp/delegation/server.mjs`；日志 `…/delegation/server.log`。
+- 委派：DSH 侧派活走 `subagent` / teammate（明文 brief、禁轮询、结果只从返回值或落盘文件验收）；
+  Codex 侧的委派服务在 `C:\Users\xmace\.codex\mcp\delegation\server.mjs`，日志 `…\delegation\server.log`（仅 Codex 用）。
+- 环境注入：**无** `/etc/profile.d` 注入脚本（`99-wsl-proxy.sh` / `99-wsl-github.sh`）、**无** `wsl-env-restore.sh`、**无** `/opt/zulu`+`use-jdk`
+  （2026-10-22 起全部失效）；Windows 侧代理走系统环境变量（Clash `http://127.0.0.1:7897`），仓库级 `http.proxy` / `https.proxy` 已配好。
 
 ## 2 版本与坐标
 
@@ -110,6 +118,11 @@ CARDSLOT:slots=1:count=3     blank_insert denied:remain=2400
 
 ### Minor
 
+0. **WSL 口径已全面失效（2026-10-22，本轮已完成）**：`AGENTS.md`「回滚裁决」1–6 条改写为 Windows 原生口径（含第 7 条收尾关闭游戏），
+   `docs/agent/AGENTS-full.md` 末尾新增〈WSL 口径失效对照〉（5 行口径表）+ 就地标注 L2861 / 第 37 条 ⑥ 失效；
+   本文档 §1 / §7 改 Windows 口径（`F:\` 路径、`gradlew.bat`、`pwsh`、PowerShell 判据命令）。
+   判据：`python docs/agent/verify-split.py` ⇒ 四项全 `[OK]`（快照 3,519 行 / 红线区 11,520 字符逐字一致 / 索引覆盖 L121–L3519 / AGENTS.md 21,478 字符）。
+
 5. **11 个立牌子类只写 `sign_active_cooldown_end`、不写 `setSignActiveMaxCooldown`**（`BonnieSignItem:88` 等；
    `LuluSignItem` 与 `BaseSignItem` 两处会写）。实测清单见 §7 的判据命令。
 6. **26.1.2 测试环境仍是旧 jar**：`run/26.1.2/mods/astral_dice-1.3.7-beta.2+neoforge_26.1.2.jar`（10-06）。
@@ -133,34 +146,34 @@ CARDSLOT:slots=1:count=3     blank_insert denied:remain=2400
 
 ## 7 关键路径（命令与文件）
 
-```bash
-# 现状
-git -C /mnt/f/MCProject/astral_dice_multiloader status --short -uall
-git -C /mnt/f/MCProject/astral_dice_multiloader rev-parse --short HEAD
-git -C /mnt/f/MCProject/astral_dice_multiloader rev-list --count origin/multi-main..HEAD
+```powershell
+# 现状（git 一律 git bash 的 git；-C 显式指定工作树）
+git -C F:\MCProject\astral_dice_multiloader status --short -uall
+git -C F:\MCProject\astral_dice_multiloader rev-parse --short HEAD
+git -C F:\MCProject\astral_dice_multiloader rev-list --count origin/multi-main..HEAD
 
 # 版本 / 依赖
-grep -n 'mod_version' */gradle.properties
-unzip -p neoforge-1.21.1/build/libs/astral_dice-1.5.0-pre.3+neoforge_1.21.1.jar META-INF/neoforge.mods.toml | grep -n -A4 'modId="starengine"'
-unzip -l <jar> | grep -c 'META-INF/jarjar/'
+Get-ChildItem -Recurse -Filter gradle.properties | Select-String -Pattern 'mod_version'
+tar -xOf 'neoforge-1.21.1\build\libs\astral_dice-1.5.0-pre.3+neoforge_1.21.1.jar' 'META-INF/neoforge.mods.toml' | Select-String -Pattern 'modId="starengine"' -Context 0,4
+(tar -tf <jar> | Select-String -Pattern 'META-INF/jarjar/').Count
 
 # 产物一致性（三处：build/libs / run 副本 / 整合包）
-sha256sum neoforge-1.21.1/build/libs/astral_dice-1.5.0-pre.3+neoforge_1.21.1.jar \
-          forge-1.20.1/build/libs/astral_dice-1.5.0-pre.3+forge_1.20.1.jar
-ls -l "/mnt/d/.minecraft/versions/狐の航空学 Voxy Edition/mods" | grep -Ei 'astral_dice|starengine'
-ls -l "/mnt/d/.minecraft/versions/1.20.1-Forge 模组测试/mods" | grep -Ei 'astral_dice|starengine'
+Get-FileHash -Algorithm SHA256 'neoforge-1.21.1\build\libs\astral_dice-1.5.0-pre.3+neoforge_1.21.1.jar',
+                            'forge-1.20.1\build\libs\astral_dice-1.5.0-pre.3+forge_1.20.1.jar' | Format-List
+Get-ChildItem 'D:\.minecraft\versions\狐の航空学 Voxy Edition\mods' | Where-Object Name -match 'astral_dice|starengine' | Select-Object Name,Length,LastWriteTime
+Get-ChildItem 'D:\.minecraft\versions\1.20.1-Forge 模组测试\mods'     | Where-Object Name -match 'astral_dice|starengine' | Select-Object Name,Length,LastWriteTime
 
 # P1 缺口
-for f in BeamFx GlobalEventGate RepulsionEntity EventDrawBlock planPlacement; do
-  grep -rl "$f" neoforge-26.1.2/src fabric-1.20.1/src | wc -l; done
+foreach ($f in 'BeamFx','GlobalEventGate','RepulsionEntity','EventDrawBlock','planPlacement') {
+  "$f = " + (Get-ChildItem neoforge-26.1.2/src,fabric-1.20.1/src -Recurse -File | Select-String -Pattern $f -List | Measure-Object).Count }
 
 # 立牌冷却口径
-grep -rn 'setSignActiveCooldownEnd\|setSignActiveMaxCooldown' --include=*SignItem.java neoforge-1.21.1/src/main/java
+Get-ChildItem neoforge-1.21.1/src/main/java -Recurse -Filter *SignItem.java | Select-String -Pattern 'setSignActiveCooldownEnd|setSignActiveMaxCooldown'
 
 # 收尾
-pwsh -NoProfile -File scripts/test/mt.ps1 --version <线> --phase stop --force
-pwsh -NoProfile -File scripts/test/mt.ps1 --version <线> --phase stop --purge-saves
-python3 docs/agent/verify-split.py
+pwsh -NoProfile -File F:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1 --version <线> --phase stop --force
+pwsh -NoProfile -File F:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1 --version <线> --phase stop --purge-saves
+python F:\MCProject\astral_dice_multiloader\docs\agent\verify-split.py
 ```
 
 关键文件：`docs/compat-1.5.0-porting.md`（P1 映射）、`docs/compat-1.20.1-forge.md`、
