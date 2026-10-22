@@ -66,7 +66,8 @@ public class EventDrawBlock extends Block {
                             BlockHitResult hitResult) {
         ItemStack stack = player.getItemInHand(hand);
         if (stack.is(ModItems.BLANK_CHIP.get())) {
-            // 投入空白筹码 ⇒ 重置抽奖盒（与筹码商店 ChipShopBlock#use 同口径：消耗 1 枚、清空批次状态）
+            // 投入空白筹码 ⇒ 重置抽奖盒：消耗 1 枚、清空**购买冷却**。
+            // ⚠️ 与筹码商店语义**不同**：抽奖盒无刷新机制 ⇒ = 清购买冷却；筹码商店 = 刷新批次 +1。
             // 投入间隔(2026-10-21):距上次投入不足 BLANK_INSERT_COOLDOWN_TICKS(2400t = 2:00)⇒
             // 红字拒绝且**不消耗**筹码(提示键复用筹码商店同款的 chip_shop_blank_cooldown)。
             if (level.isClientSide()) {

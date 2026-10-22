@@ -114,7 +114,10 @@ public class CardChoiceMenu extends AbstractContainerMenu {
         return filled;
     }
 
-    /** 服务端确认：校验后逐张消耗 1 张（1.20.1 = {@code ItemStack#shrink(1)}；1.21.1 用 consume）。 */
+    /**
+     * 服务端确认：校验后逐张消耗 1 张（1.20.1 = 带创造守卫的 {@code ItemStack#shrink(1)}；1.21.1 用 {@code consume(1, player)}）。
+     * 两线口径一致：创造模式（instabuild）不扣卡，生存模式仍扣。
+     */
     public List<ItemStack> consumeSelection(Player player) {
         // 先整体校验，再动任何一张（避免「消耗到一半发现不合法」）
         for (int i = 0; i < slotCount; i++) {
@@ -127,7 +130,8 @@ public class CardChoiceMenu extends AbstractContainerMenu {
         for (int i = 0; i < slotCount; i++) {
             ItemStack stack = cardContainer.getItem(i);
             ItemStack one = stack.copyWithCount(1);
-            stack.shrink(1);
+            // 创造模式不扣卡（对齐 1.21.1 的 consume(1, player)）
+            if (!player.isCreative()) stack.shrink(1);
             cardContainer.setItem(i, stack.isEmpty() ? ItemStack.EMPTY : stack);
             picked.add(one);
         }

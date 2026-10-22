@@ -27,7 +27,7 @@
   生物仍显示其原版护甲值。**未装 Jade 时一切照旧**（不产生额外前置要求）。
 
 - **不再内置 StarEngine（NeoForge 1.21.1 / Forge 1.20.1）**：两条发布线已删除 `jarJar` 内嵌，
-  发货 jar 内不再含 `META-INF/jarjar/`。StarEngine（`starengine`，**1.1.0-pre.1**）改为**独立前置**，
+  发货 jar 内不再含 `META-INF/jarjar/`。StarEngine（`starengine`，**1.1.0-pre.2**）改为**独立前置**，
   必须自行安装到 `mods`，且版本要与本构建编译时所用的一致；缺库会以
   「Missing or unsupported mandatory dependencies」拒绝启动。编译期与 dev 运行期依赖不变
   （`implementation` / `modImplementation`），`mods.toml` 仍把 `starengine` 声明为必需前置。

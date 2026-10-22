@@ -333,7 +333,8 @@ public abstract class BaseEffectCardItem extends Item {
                 sendActionBar(player, "msg.astral_dice.effect_card_selector_blocked");
                 return;
             }
-            live.shrink(1);
+            // 创造模式不扣卡（对齐 1.21.1 的 consume(1, player)：instabuild ⇒ 不减少）；生存模式仍扣 1 张
+            if (!player.isCreative()) live.shrink(1);
         }
     }
 
@@ -418,7 +419,8 @@ public abstract class BaseEffectCardItem extends Item {
             // 自身牌:实际受益目标恒为自己
             return InteractionResultHolder.fail(stack);
         }
-        stack.shrink(1);
+        // 创造模式不扣卡（对齐 1.21.1 的 consume(1, player)：instabuild ⇒ 不减少）；生存模式仍扣 1 张
+        if (!player.isCreative()) stack.shrink(1);
         return InteractionResultHolder.sidedSuccess(stack, level.isClientSide());
     }
 

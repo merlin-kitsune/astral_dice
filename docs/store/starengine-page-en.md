@@ -2,7 +2,7 @@
 
 Shared engine library for the Astral Dice mod family.
 
-**Version 1.1.0-pre.1** ships four platform builds: NeoForge 1.21.1, Forge 1.20.1, NeoForge 26.1.2 and Fabric 1.20.1.
+**Version 1.1.0-pre.2** ships four platform builds: NeoForge 1.21.1, Forge 1.20.1, NeoForge 26.1.2 and Fabric 1.20.1.
 
 ## Do you need to install this?
 
@@ -13,7 +13,7 @@ Shared engine library for the Astral Dice mod family.
 | NeoForge 26.1.2 | No. The library is still embedded. |
 | Fabric 1.20.1 | No. The library is still embedded. |
 
-For the two builds that need it, drop `starengine-neoforge-1.21.1-1.1.0-pre.1.jar` or `starengine-forge-1.20.1-1.1.0-pre.1.jar` into `mods` next to Astral Dice. The version has to match the one the mod was compiled against. A missing library stops the game with "Missing or unsupported mandatory dependencies".
+For the two builds that need it, drop `starengine-neoforge-1.21.1-1.1.0-pre.2.jar` or `starengine-forge-1.20.1-1.1.0-pre.2.jar` into `mods` next to Astral Dice. The version has to match the one the mod was compiled against. A missing library stops the game with "Missing or unsupported mandatory dependencies".
 
 ## What is inside
 

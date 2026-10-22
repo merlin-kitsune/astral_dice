@@ -32,6 +32,7 @@
 //                                           t0 成功 → +20t 被拒 → +88t(=58+30) 成功
 //    /astralfixbatch card3     <tag>        连发 3 张同款卡 ⇒ 报「占几格 / 共几张」
 //    /astralfixbatch drawerblank <tag>      抽奖盒投入空白筹码两次 ⇒ 报手牌数与返回码
+//    /astralfixbatch handcount <tag>        只读：主手 ItemStack 的 id 与 getCount()（空手 = air:0）
 //
 //  ⚠️ 本探针**只读为主**：除 `hostiles` / `endspawn` / `repplace` / `repclear` / `drawerblank`
 //     （摆靶 / 摆力场 / 清场 / 摆方块，都是测试存档内的布景）与 `gatereset`（清闸门状态）外
@@ -691,6 +692,27 @@ function fbxDoDrawerBlank(ctx, tag) {
     return 1;
 }
 
+// ── ⑭ 主手读数：手牌 id + count（创造模式扣卡对比用；只读，不动任何状态）───────
+//
+//  口径（2026-10-22 用户下达）：读**主手** ItemStack 的注册名与 `getCount()`，空手回
+//  `item=air:count=0`。用途 = 创造模式下出牌前后各读一次，比对「卡牌是否被扣」——
+//  1.21.1 走 `ItemStack#consume(1, player)`（instabuild 豁免）、1.20.1 走 `#shrink(1)`
+//  （不豁免），两条线读数不同属**产品行为差异**。
+//  ⚠️ 只读：不 setItem、不 shrink、不触发任何 use 路径。
+function fbxDoHandCount(ctx, tag) {
+    var p = fbxP(ctx);
+    var id = 'air'; var count = 0;
+    try {
+        var st = p.getMainHandItem();
+        if (st != null && !st.isEmpty()) {
+            id = '' + FBX_Reg.ITEM.getKey(st.getItem());
+            count = st.getCount();
+        }
+    } catch (e0) { fbxSend(ctx, 'AP_FX_' + tag + '_HAND:ex=' + fbxEx(e0)); return 0; }
+    fbxSend(ctx, 'AP_FX_' + tag + '_HAND:item=' + id + ':count=' + count);
+    return 1;
+}
+
 // ── 命令注册 ──────────────────────────────────────────────────────────────
 ServerEvents.commandRegistry(event => {
     var Commands = event.commands;
@@ -772,6 +794,11 @@ ServerEvents.commandRegistry(event => {
                 .then(Commands.argument('tag', FBX_StringArg.word())
                     .executes(ctx => fbxGuard(ctx, FBX_StringArg.getString(ctx, 'tag'), function () {
                         return fbxDoDrawerBlank(ctx, FBX_StringArg.getString(ctx, 'tag'));
+                    }))))
+            .then(Commands.literal('handcount')
+                .then(Commands.argument('tag', FBX_StringArg.word())
+                    .executes(ctx => fbxGuard(ctx, FBX_StringArg.getString(ctx, 'tag'), function () {
+                        return fbxDoHandCount(ctx, FBX_StringArg.getString(ctx, 'tag'));
                     }))))
     );
 });

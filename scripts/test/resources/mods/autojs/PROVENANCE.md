@@ -46,3 +46,12 @@
 `rhino-2101.2.8-build.91.jar`，重复投放会触发 FML `Duplicate mods:` 拒绝启动。
 `Install-MtAutoJs` 投放后会复核「恰好一个 rhino 且满足区间」（区间从 AutoJS 的 jar 内读取，不硬编码）。
 
+## forge-1.20.1 双产物口径（2026-10-22，dev=named / 整合包=reobf）
+
+- **dev 运行**（`run/1.20.1/mods`）用 `build/devlibs/` 的 **named** jar，落地文件名 `*-dev.jar`。
+- **整合包**（`1.20.1-Forge 模组测试/mods`）用 `build/libs/` 的 **reobf** jar。
+- 两者**不可同目录共存**（同 modId 两份 ⇒ duplicate mod 拒绝启动），旧 jar 只能改名保留（`.jar.bak-*` / `.jar.reobf-*`）。
+- 依据：`forgeclientuserdev` 运行环境发布**官方名（Mojmap）**，而 `build/libs` 是 reobf（SRG）——
+  jar 内按 SRG 名调用 MC 的类会抛 `NoSuchMethodError`；`Error` 不被 MCP 的 `catch(Exception)` 兜住，
+  故表现为启动期硬失败。取证：reobf jar 362 处 `m_xxxxx_` 调用点，devlibs jar 0 处。
+

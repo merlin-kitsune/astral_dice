@@ -91,6 +91,9 @@ public class ChipShopBlock extends HorizontalDirectionalBlock {
      *
      * <p>⚠️ {@code lastBlankInsertAt == 0} 是「从未投入」哨兵 ⇒ 首次投入不参与冷却判定
      * （否则世界开局 gameTime &lt; 2400 时首次投入会被误拒）。
+     *
+     * <p>⚠️ 与抽奖盒语义**不同**（2026-10-22 用户裁决）：本处 = 刷新批次 +1（有刷新机制）；
+     * 抽奖盒投入空白筹码 = 只清购买冷却（无刷新机制）。
      */
     @Override
     public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player,

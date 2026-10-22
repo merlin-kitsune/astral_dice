@@ -106,6 +106,7 @@ public class ChipShopBlock extends HorizontalDirectionalBlock {
      * <p>空白筹码分支（仅服务端落盘，客户端只预测挥手）：
      * ① 距上次投入不足 {@value #BLANK_INSERT_COOLDOWN_TICKS} ticks（2:00）⇒ 红字拒绝、**不消耗**筹码；
      * ② 否则消耗 1 枚、刷新次数 +1（封顶）、清零购买冷却，并给一条金色成功提示。**不自动开店**。
+     * ⚠️ 与抽奖盒语义**不同**（2026-10-22 用户裁决）：本处 = 刷新批次 +1；抽奖盒 = 只清购买冷却（无刷新机制）。
      *
      * <p>⚠️ {@code lastBlankInsertAt == 0} 是「从未投入」哨兵 ⇒ 首次投入不参与冷却判定
      * （否则世界开局 gameTime &lt; 2400 时首次投入会被误拒）。
