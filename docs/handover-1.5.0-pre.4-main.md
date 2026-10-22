@@ -402,6 +402,8 @@ AP_NC2B_READ:hand=astral_dice:effect_card_monster_laser:handn=2:cards=2:sel=0:to
 
 27. **`assert/vision` 在测试台里不判红绿（2026-10-22 被复核抓出）**：`scripts/test/mt_case.ps1:1623` 对 vision 一律 `return (New-MtPair 'DELEGATED' …)`、`:2439` 映射成 `→VIS` 步骤标记 ⇒ **含 vision 的用例 PASS 只等于「没崩 + 其余 log 断言过」**，视觉项永远不会让它红，也永远不会让它绿。⇒ ① 视觉项**不能算机器判据**，验收表里要单列「截图取证 / 人工目视」；② 想让它可机判，就得在客户端渲染路径上打机器行（`LOGGER.info("AP_…")`）再用 log 断言，否则别把它写进 PASS 数。本批 `PRE4-CHIPSHOP-FRAME-*` 已按此口径改写标题/证据并单列。
 
+28. **根 `build/libs` 是「统一交付目录」，只跑 `:线:jar` 不会刷新它（2026-10-22 用户抓出）**：它由各子项目的 `pushToRootBuild` 填充，而该任务是 `tasks.named('build')` 的 `finalizedBy`（`neoforge-1.21.1/build.gradle:486`、`forge-1.20.1/build.gradle:622`）⇒ **只跑 `:neoforge-1.21.1:jar` / `:forge-1.20.1:jar` 时根目录一直停在上一次交付的版本**（本批实测：子项目 `build/libs` 已经是 `1.5.0-pre.4`，根 `build/libs` 还挂着 15:47 那批 `1.5.0-pre.3`，用户看到的就是这一份）。⇒ 交付/给别人拿 jar 之前，要么跑**全量** `gradlew.bat build`，要么显式跑 `gradlew.bat :neoforge-1.21.1:pushToRootBuild :forge-1.20.1:pushToRootBuild`（这两个任务**先删后拷、按各自完整后缀过滤**，不会动别线的 jar）。同一坑的第二个面：根 `build/libs` 里的 `starengine-*-1.1.0-pre.1.jar` 也是旧交付残留，而现行硬前置是 `[1.1.0-pre.2,2.0.0)` ⇒ 已换成 `1.1.0-pre.2`（来源 `F:\MCProject\starengine\build\libs`）。判据：根 `build/libs` 里 P0 两个 jar 的 sha256 必须与 `neoforge-1.21.1\build\libs` / `forge-1.20.1\build\libs` 同源一致（本批 `742132DD…` / `4B984008…`）。
+
 ## 7 关键路径（命令与文件）
 
 ```powershell
