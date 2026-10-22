@@ -17,6 +17,8 @@
 
 - **`/astralparty` 新增两个清场子命令**：`/astralparty killbarricade [<radius>|all]` 与 `/astralparty killrepulsion [<radius>|all]`（权限等级 2；省略半径默认 64 格，`all` 清当前维度全部）。用于清掉「拿不到实体 id、`/kill` 也打不掉」的遗留实体：路障走正常拆除路径（解除仇恨 + 删除隐形碰撞方块），强化拒止同时释放被控目标的脱控 / 重力状态；每次执行在 `latest.log` 落一条 `AFTERM|type=…|killed=…|mode=…|radius=…|dim=…|x=…|y=…|z=…` 机器行。
 
+- **史莱姆立牌被动「细胞分裂」改为每 15 秒最多触发一次**（此前为受击后 20 tick / 1 秒内限一次）：受到敌对目标攻击仍 +1 层治愈、主动技能冷却 -10 秒，只把触发间隔从 20 tick 放宽到 300 tick；tooltip 与帕秋莉手册条目均已注明「每 15 秒触发一次」。（P0 两线：neoforge-1.21.1 + forge-1.20.1）
+
 #### 平台与兼容性
 
 - **新增 Fabric 1.20.1 版本**：本模组现同时支持 **NeoForge 1.21.1 / Forge 1.20.1 / NeoForge 26.1.2 / Fabric 1.20.1**

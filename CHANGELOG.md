@@ -17,6 +17,8 @@
 
 - **Two new `/astralparty` cleanup subcommands**: `/astralparty killbarricade [<radius>|all]` and `/astralparty killrepulsion [<radius>|all]` (permission level 2; radius defaults to 64 blocks, `all` clears the whole current dimension). They exist for leftovers that cannot be reached by entity id or by `/kill`: a barricade goes through the normal teardown path (aggro released + invisible collision block removed), and a repulsion field also releases the control / gravity state of everything it was holding. Every run writes one `AFTERM|type=…|killed=…|mode=…|radius=…|dim=…|x=…|y=…|z=…` machine line to `latest.log`.
 
+- **The Slime Sign's passive "Cell Division" now triggers at most once every 15 seconds** (previously once per 20 ticks / 1 s after a hit): a hostile hit still grants +1 Healing layer and reduces the active skill cooldown by 10 seconds; only the interval changes from 20 to 300 ticks. The tooltip and the Patchouli entry now state "once every 15 seconds". (P0 lines: neoforge-1.21.1 + forge-1.20.1)
+
 #### Platform & Compatibility
 
 - **New Fabric 1.20.1 build**: the mod now ships for **four platform lines with full feature parity** —

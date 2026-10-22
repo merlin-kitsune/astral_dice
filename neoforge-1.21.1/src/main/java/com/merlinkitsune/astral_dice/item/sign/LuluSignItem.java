@@ -64,8 +64,8 @@ public class LuluSignItem extends BaseSignItem {
     /** 缓慢时长(60 秒;与旧行为同值,不引入新常量) */
     private static final int SLOWDOWN_TICKS = 1200;
 
-    /** 受击被动冷却(1 秒 = 20 tick;防止被围攻时治愈点数暴涨) */
-    private static final int HURT_COOLDOWN_TICKS = 20;
+    /** 受击被动冷却(15 秒 = 300 tick;防止被围攻时治愈点数暴涨;2026-10-22 用户裁决:由 20 tick 放宽到 300 tick) */
+    private static final int HURT_COOLDOWN_TICKS = 300;
 
     /** 主动技能冷却减免(10 秒 = 200 tick;绝对量,与最大冷却无关) */
     private static final long COOLDOWN_REDUCTION_TICKS = 200L;
@@ -162,7 +162,7 @@ public class LuluSignItem extends BaseSignItem {
     // 2026-09-29 用户裁决:只有**敌对目标**的攻击触发 —— 环境伤害(摔落/仙人掌/着火…)与自伤不再算数;
     // 闸门在 BaseSignItem#invokeHurtHooks 分发处,本类无需自判。
     // 与骰神赐福的玩家攻击链路相互独立。
-    // 受击 +1 有 1 秒冷却(20 tick),防止被围攻时治愈点数暴涨。
+    // 受击 +1 有 15 秒冷却(300 tick),防止被围攻时治愈点数暴涨(2026-10-22 用户裁决放宽)。
     @Override
     protected void onHurt(Player player, DamageSource source, float amount) {
         long nowTick = player.level().getGameTime();

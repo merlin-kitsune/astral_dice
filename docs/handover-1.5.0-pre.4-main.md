@@ -2,8 +2,8 @@
 
 ## 0 速览（一屏）
 
-1. 分支 `multi-main`；pre.3 周期末次提交 `afdcd453`，**本批 pre.4 施工尚未提交**（工作树有改动，见 §5-13）。
-2. 未推送提交 **26** 个（`git rev-list --count origin/multi-main..HEAD`，pre.4 提交前实测），**无** tag（`1.5.0-pre.3` / `1.5.0-pre.4` 均无，需用户放行）。
+1. 分支 `multi-main`；HEAD = **`15c81424`**（pre.4 施工批已提交），**史莱姆被动 15 秒批尚未提交**（工作树有改动，见 §5-15）。
+2. 未推送提交 **28** 个（`git rev-list --count origin/multi-main..HEAD`，2026-10-22 18:0x 提交 `b1758de2` 后实测），**无** tag（`1.5.0-pre.3` / `1.5.0-pre.4` 均无，需用户放行）。
 3. 四线 `mod_version` 均为 `1.5.0-pre.4+<加载器后缀>`（2026-10-22 bump）；`starengine_version=1.1.0-pre.2`（四线一致，未动）。
 4. jar 内硬前置：`modId="starengine"` / `versionRange="[1.1.0-pre.2,2.0.0)"`，`META-INF/jarjar/` 计数 **0**（pre.4 两 jar 已复核）。
 5. 可交付范围：**只发 P0**（`neoforge-1.21.1` + `forge-1.20.1`）。P1 两线版本号同为 pre.4，但内容不含 1.5.0。
@@ -11,7 +11,8 @@
 7. 守门 8 跑 7 绿；唯一红 = `verify_probe_class_refs`（26.1.2 产物陈旧，P1 待重建，见 §5-1）。
 8. 实机：1.20.1 本批 6/6 PASS、1.21.1 5 条 FIXBATCH 判据全命中、末条 49/49 PASS；**创造模式扣卡复验 PASS**（§4.4，2026-10-22 16:10，用例 `CARD-NOCOST-CREATIVE-1.20.1`）。
 9. **pre.4 本批（2026-10-22 17:3x）无新增实机读数**：改动 = 实体拆除口径 + 死亡动画 + 两个管理命令 + 11 张效果图标 + 版本号，判据目前全为静态/字节码/资源 md5（§5-13），实机待用户下达。
-10. 面向整合包会话的交接单见 `docs/handover-1.5.0-pre.4-modpack.md`（投放表 / 自检读数 / 坑 / 剩余事项）。
+10. **史莱姆立牌被动改为「每 15 秒最多触发一次」（2026-10-22 后批，未提交）**：`HURT_COOLDOWN_TICKS` **20 → 300**（仅 P0 两线 `item/sign/LuluSignItem.java`），tooltip / 帕秋莉手册条目 / 两份 CHANGELOG 同步；判据见 §5-15，**无实机读数**。P1 两线未动（§5-16）。
+11. 面向整合包会话的交接单见 `docs/handover-1.5.0-pre.4-modpack.md`（投放表 / 自检读数 / 坑 / 剩余事项）。
 
 ## 1 环境与路径
 
@@ -45,20 +46,21 @@
 | jar 内依赖区间 | `[1.1.0-pre.2,2.0.0)`，`type=required`（neo）/ `mandatory=true`（forge） | `META-INF/neoforge.mods.toml:141-144` / `META-INF/mods.toml:154-158` |
 | 内嵌库 | `META-INF/jarjar/` 计数 **0**（两线） | `unzip -l <jar> \| grep -c 'META-INF/jarjar/'` |
 
-P0 产物（`build/libs`，**2026-10-22 17:2x pre.4 重建**）：
+P0 产物（`build/libs`，**2026-10-22 17:53 重建（含史莱姆被动 15 秒批）**）：
 
-- neo `astral_dice-1.5.0-pre.4+neoforge_1.21.1.jar` — **2,556,723 B** — `7198cc75a559514e1f982074dae7d8f4a875845491fc6a7409ee47daa03c7878`
-- forge `astral_dice-1.5.0-pre.4+forge_1.20.1.jar` — **2,602,280 B** — `fbb776271b8fa3b7189c3d5c810282c58b0de1b0db042b7affe03825c0139227`
-- forge dev named jar `build/devlibs/astral_dice-1.5.0-pre.4+forge_1.20.1.jar` — **2,572,814 B** — `6a445c8fa2451b394e05c9228279e1c579d18d5c3006f29caacaa2ec35cf5cba`
-- 历史值（pre.3，已被覆盖，只作背景）：neo 2,555,654 B `f063102b…`、forge 2,601,208 B `7bf787df…`；更早 14:25 构建为 neo 2,555,453 B `09980b2e…`、forge 2,601,019 B `70b347ba…`。
-- 同目录残留中间构建件（lang 改动前的同版本号产物，**勿投放**）：`build/libs` 2,556,683 B `169b6b4a…` / 2,602,239 B `6d02341f…`、`build/devlibs` 2,572,773 B `06f8ee31…`。
-- 投放（2026-10-22 17:2x 实测，逐处 `Get-Item` + `Get-FileHash`；旧 pre.3 已删除）：
-  | 位置 | jar 形态 | 字节 | 对账 |
-  |---|---|---|---|
-  | `run/1.21.1/mods` | reobf（`build/libs`） | 2,556,723 | MATCH |
-  | `run/1.20.1/mods` | **named dev jar**（`build/devlibs`） | 2,572,814 | MATCH（同源，§6-3） |
-  | `D:\.minecraft\versions\狐の航空学 Voxy Edition\mods` | reobf（`build/libs`） | 2,556,723 | MATCH |
-  | `D:\.minecraft\versions\1.20.1-Forge 模组测试\mods` | reobf（`build/libs`） | 2,602,280 | MATCH |
+- neo `astral_dice-1.5.0-pre.4+neoforge_1.21.1.jar` — **2,556,774 B** — `bdfbe5f9e8296c9a1b91bdee8629b6a55a3ef1ab2c4844614f4b20abfd485df0`
+- forge `astral_dice-1.5.0-pre.4+forge_1.20.1.jar` — **2,602,332 B** — `d9780bd07ff1510f3a7c826d3c4c9ef6a2357deb3f7f969097ee5534abafe098`
+- forge dev named jar `build/devlibs/astral_dice-1.5.0-pre.4+forge_1.20.1.jar` — **2,572,864 B** — `2849258d84acc0ca03a56d9560d773bef85dfb7dc7bd71f8f3cd2ea3d41ab0f2`
+- 历史值（只作背景，均已被覆盖）：pre.4 17:2x = neo 2,556,723 B `7198cc75…` / forge 2,602,280 B `fbb77627…` / devlibs 2,572,814 B `6a445c8f…`；pre.3 15:47 = 2,555,654 B `f063102b…` / 2,601,208 B `7bf787df…`。
+- 同版本号（pre.4）的中间构建件**不残留**：Gradle 同名覆盖，`build/libs` 与 `build/devlibs` 里 pre.4 各只有上面那三份之一（2026-10-22 18:0x 复核：`Get-ChildItem -Filter 'astral_dice-1.5.0-pre.*.jar'` 全树只剩 pre.1/pre.2/pre.3/pre.4 各线一份）。
+- ⚠️ 但**旧版本产物仍留在各子项目 build 目录**（勿投放）：`neoforge-1.21.1/build/libs` pre.1 2,522,270 / pre.2 2,522,595 / pre.3 2,555,654；`forge-1.20.1/build/libs` pre.1 2,567,077 / pre.2 2,567,445 / pre.3 2,601,208；`forge-1.20.1/build/devlibs` pre.1 2,627,085 / pre.3 2,571,732；**仓库根 `build/libs` 另有一对陈旧 pre.3**（neo 2,555,455 @ 00:22、forge 2,600,940 @ 11:59）——取件只认 §2 这三行。
+- 投放（2026-10-22 17:53 实测，逐处 `Copy-Item` + `Get-FileHash` 双向对账；**投放目标**（`run/<线>/mods` 与两个整合包）里的旧 pre.3 已删除，每处只剩 pre.4 一份）：
+  | 位置 | jar 形态 | 字节 | sha256 前 16 | 对账 |
+  |---|---|---|---|---|
+  | `run/1.21.1/mods` | reobf（`build/libs`） | 2,556,774 | `BDFBE5F9E8296C9A` | MATCH |
+  | `run/1.20.1/mods` | **named dev jar**（`build/devlibs`） | 2,572,864 | `2849258D84ACC0CA` | MATCH（同源，§6-3） |
+  | `D:\.minecraft\versions\狐の航空学 Voxy Edition\mods` | reobf（`build/libs`） | 2,556,774 | `BDFBE5F9E8296C9A` | MATCH |
+  | `D:\.minecraft\versions\1.20.1-Forge 模组测试\mods` | reobf（`build/libs`） | 2,602,332 | `D9780BD07FF1510F` | MATCH |
 - jar 内自检：neo version=`1.5.0-pre.4+neoforge_1.21.1` / forge=`1.5.0-pre.4+forge_1.20.1`；`META-INF/jarjar/` = **0**；`AstralPartyCommand.class` 含 `killbarricade` / `killrepulsion` / `AFTERM`；11 张 `mob_effect/*.png` 与 `images/shop/unbord_chips/` 源文件 md5 全等（两线各 11，mismatch 0）；`javap` 读数见 §5-13。
 - 投放后目录状态：两个 `run/<线>/mods` 与两个整合包的 `astral_dice-*.jar` 只剩 pre.4 一份；整合包侧 `starengine-*` 与 `AutoJS-forge-1.20.1-1.0.0.jar`（reobf，167,358 B）在位。
 - 成对库：两个整合包各有 `starengine-neoforge-1.21.1-1.1.0-pre.2.jar`（98,733 B）/ `starengine-forge-1.20.1-1.1.0-pre.2.jar`（103,604 B）；
@@ -81,7 +83,8 @@ P0 产物（`build/libs`，**2026-10-22 17:2x pre.4 重建**）：
 | `36d3c43c` | test(cases) | 修正筹码商店用例口径 + 新增 5 条批次行为用例（两线实机全绿） |
 | `3e200a9b` | fix(card+docs) | 创造模式两线扣卡对齐、CHANGELOG 库版本订正、补 `docs/compat-1.5.0-porting.md` |
 | `afdcd453` | docs(modpack) | 新增整合包交接单 `docs/handover-1.5.0-pre.4-modpack.md`（投放表 / 自检 / 坑） |
-| （未提交） | release+fix(pre.4) | 四线升 pre.4；强化拒止可被玩家拆除 + 两实体 `kill()` 覆写；`/astralparty killbarricade\|killrepulsion`；11 个筹码效果图标换无边框 |
+| `15c81424` | release+fix(pre.4) | 四线升 pre.4；强化拒止可被玩家拆除 + 两实体 `kill()` 覆写；`/astralparty killbarricade\|killrepulsion`；11 个筹码效果图标换无边框 |
+| （未提交） | fix(sign+lang) 史莱姆被动 15 秒 | `item/sign/LuluSignItem.java` 的 `HURT_COOLDOWN_TICKS` **20 → 300**（P0 两线）；tooltip / 帕秋莉手册 / 两份 CHANGELOG 同步 |
 
 ## 4 实机读数（原文摘录）
 
@@ -141,6 +144,13 @@ AP_NC2B_READ:hand=astral_dice:effect_card_monster_laser:handn=2:cards=2:sel=0:to
 本批两条判据本质上要实机：① 「强化拒止可被玩家打掉」需要真实玩家攻击与伤害结算；② 「没有生物式死亡动画」是目视观感。
 已备齐的静态判据见 §5-13（`kill()` / `hurt` / `getHurtSound` 字节码、`AFTERM` 机器行字符串、图标 md5、lang 三语 1045 键一致、两份 CHANGELOG 措辞）。
 ⇒ 实机待用户明确下达；建议最小验证面：装 pre.4 → `/astralparty killrepulsion all` 清场 → 放一个新强化拒止 → 玩家用任意武器砍一刀（观察是否逐步变透明并按实际伤害扣耐久）→ 砍到归零（观察是否同一 tick 消失、无躺倒/变红）。
+
+### 4.6 史莱姆被动 15 秒批（2026-10-22 17:5x）—— **无实机读数**
+
+判据全为静态：`javap -p -c -constants` 命中 `private static final int HURT_COOLDOWN_TICKS = 300;` 且 `onHurt` 存在（两线）；jar 内 `zh_cn/en_us/ja_jp` 的 `tooltip.astral_dice.sign.lulu_passive` 末行分别为
+`每 §915 秒§7 触发一次§r` / `§7at most once per §915s§r` / `§915 秒§7 に 1 回のみ発動§r`，`astral_dice.guide.entry.lulu_sign.2` 句末各带「每 15 秒最多触发一次」口径；
+`check_lang_sync.ps1` exit 0（三语 §/换行/占位符计数一致）；`tooltip_color_audit.ps1` 违规数 **174 = 基线 174**（`git archive HEAD` 导出副本复跑同数，且命中项里无 `lulu_passive`）。
+⇒ 「15 秒内只吃一次受击」属计时行为，真要取证得实机连续挨两刀看治愈层数；实机待用户下达。
 
 ## 5 遗留与欠账
 
@@ -230,6 +240,15 @@ AP_NC2B_READ:hand=astral_dice:effect_card_monster_laser:handn=2:cards=2:sel=0:to
     判据（全绿）：`gradlew.bat :neoforge-1.21.1:jar :forge-1.20.1:jar` BUILD SUCCESSFUL；`python tools/gen_chip_effect_icons.py --check` ⇒ `effects=22 misses=0 unaligned=0`（exit 0）；`python tools/verify_effect_icons.py` ⇒ `RESULT: PASS`（四线 65/65/53/53）；`pwsh -NoProfile -File tools/check_lang_sync.ps1` ⇒ exit 0（P0 两线 zh/en/ja 各 **1045** 键一致）；`javap`：neo `RepulsionEntity` 含 `hurt`/`getHurtSound`/`die`/**`kill()`**、`BarricadeEntity` 含 `die`/**`kill()`**/`remove(RemovalReason)`；forge reobf 对应 SRG = `m_6469_`（hurt）/ `m_7975_`（getHurtSound）/ `m_6667_`（die）/ **`m_6074_`**（kill）/ `m_142687_`（remove）；sha256 见 §2。
      复核（`dsh_code_review` run `44d3003c-d99a-4c0b-8cce-6e686b1e0e11`，R1–R6 SUPPORTED / R7·R8 部分成立，**无 P1 阻断缺陷**）：提 6 项，**已全部就地修** —— ① 两份 CHANGELOG 把强化拒止写成「100 点耐久 / 半径 8 格 / 超过 8 格拉回 7.5 格」，而实现是 `MAX_HEALTH = 50.0D`（两线 `event/ModEntityEvents.java:41` / forge `:46`）+ `AFFECT_RADIUS = 12.0D` / `CLAMP_RADIUS = 11.5D`（`entity/RepulsionEntity.java:167`/`:171`，forge `:191`/`:195`）⇒ 已改为 **50 / 12 / 11.5**；② `command/AstralPartyCommand.java:141`/`:231`（forge `:143`/`:233`）注释写「球体」而实现是 `new AABB(±radius)` + `getEntitiesOfClass`（`:272-274`）⇒ 两线注释改「立方体范围 AABB（对角最远 半径×√3）」；③ `docs/agent/AGENT-SPLIT.md:3` 版本号 → pre.4；④ `docs/handover-new-session-context.md:31` 时间戳 14:25 → 17:36；⑤ `docs/agent/AGENTS-TOC.md:4` 表头行数 3,576 → **3,591**；⑥ 删掉工作树根 6 个临时脚本（`temp_check_lang.py` / `temp_kill2.py` / `temp_kill3.py` / `temp_mcsrc.py` / `temp_mcsrc2.py` / `temp_md5.py`）。复核自身限制：其沙箱对 `~/.gradle` 只读（`gradle-9.2.1-bin.zip.lck` 拒绝访问）⇒ 用独立 `javac` 替代 `./gradlew`（exit 0），且未跑实机。
 14. **P1 两线的筹码效果图标仍是带边框版**（本轮只改 P0：`neoforge-1.21.1` / `forge-1.20.1` 各 11 张）。`neoforge-26.1.2` / `fabric-1.20.1` 的 `textures/mob_effect/*.png` 保持原样，等 1.5.0 正式版前的 P1 批次一起换；`tools/chip_effect_icon_map.json` 已是通用唯一事实源，届时 `--apply` 一次即可。
+15. **史莱姆立牌被动改为每 15 秒最多触发一次（2026-10-22 用户裁决，未提交）**：起因是用户要求 tooltip 补「每 15 秒触发一次」，
+    实测实现为 **1 秒**（`HURT_COOLDOWN_TICKS = 20`），经用户裁决（选项 A）**实现与文案一起改成 15 秒**。落点：
+    ① 代码 `neoforge-1.21.1/src/main/java/com/merlinkitsune/astral_dice/item/sign/LuluSignItem.java:68` 与 `forge-1.20.1/.../LuluSignItem.java:70` 的 `HURT_COOLDOWN_TICKS` **20 → 300**（`onHurt` 判据 `nowTick - getLuluLastHurtTick(player) < HURT_COOLDOWN_TICKS` 未动，`COOLDOWN_REDUCTION_TICKS = 200L` 未动）；
+    ② 语言表 P0 两线 × `zh_cn/en_us/ja_jp`：`tooltip.astral_dice.sign.lulu_passive` 末尾追加一行、`astral_dice.guide.entry.lulu_sign.2` 句末补括注；
+    ③ `docs/agent/AGENTS-full.md:986` 立牌技能一览 lulu 行被动列订正为「受到**敌对目标攻击** +1 治愈…**每 15 秒最多触发一次**（300 tick；原 20 tick）」；
+    ④ 两份 CHANGELOG 各 1 条（写在 `#### 平台与兼容性` 之前）。
+    判据：`gradlew.bat :neoforge-1.21.1:jar :forge-1.20.1:jar` BUILD SUCCESSFUL；打包后 javap 命中 `= 300`；`check_lang_sync.ps1` exit 0（P0 三语各 **1045** 键）；`tooltip_color_audit.ps1` **174 = 基线 174**（无 `lulu_passive` 命中）；四处投放 sha256 见 §2。
+16. **P1 两线的史莱姆被动仍是 1 秒（20 tick）且文案未补**（`neoforge-26.1.2/.../LuluSignItem.java:170`、`fabric-1.20.1/.../LuluSignItem.java:161` 均内联 20）：按「1.5.0 正式版前 P1 不验证不移植」未动，随 P1 批次一起改（与 §5-14 的筹码图标同批）。
+17. **史莱姆批复核（2026-10-22 18:0x，`dsh_code_review` run `27408cf2-5919-461f-8a7d-d948bc50256a`）**：R1–R5 / R7 / R8 **SUPPORTED**、R6 **部分成立**；**无 P1 / P2 代码或产物缺陷**，2 项文档问题已就地修 —— ① `docs/agent/AGENTS-TOC.md:4` 表头「当前 3,591 行」未随第 44 条同步 ⇒ 改 **3,599**；② §2 原写「同目录残留中间构建件 2,556,723 / 2,556,771 / 2,602,329 / 2,572,861 勿投放」与磁盘不符（**同版本号被 Gradle 覆盖，实测不存在**，且与相邻两条自相矛盾）⇒ 改写为「pre.4 中间件不残留 + 旧版本产物仍在各子项目 `build/` 下（列清单）+ 仓库根 `build/libs` 有一对陈旧 pre.3，取件只认 §2 三行」。复核自述限制：沙箱对 `~/.gradle` 只读（`gradle-9.2.1-bin.zip.lck` 拒绝访问）未跑 gradlew，改用 `javap -cp <jar>` + python 常量池解析取证（两 jar 常量池 `ConstantValue=300`、`onHurt` 走 `ldc2_w 300l`）；未实机。它另附一条**非缺陷观察**：`lulu_last_hurt_tick` 默认 `0L`（`component/ModAttachments.java:116`）⇒ 新世界 `gameTime < 300` 时第一次受击被吞（20 tick 时代同样存在，本批只是把窗口从 1 秒放大到 15 秒，未计入缺陷）。
 ## 6 坑（踩过的，后续别重踩）
 
 1. **`run/<线>/mods` 的 jar 曾 ≠ `build/libs`（neo 于 2026-10-22 15:47 对齐；forge 按 §6-3 永远放 devlibs named jar）**：当时 neo 是 00:22 的旧构建（同名、2 B 差异），
@@ -268,6 +287,12 @@ AP_NC2B_READ:hand=astral_dice:effect_card_monster_laser:handn=2:cards=2:sel=0:to
 14. **`dsh_code_review` 必须给 `run_code` 设 `timeoutMs ≥ 600000`（2026-10-22 踩中）**：默认 120s 直接把 cell 打死，插件只留
     `{"state":"finished","result":{"status":"interrupted","detail":"run_code settled"}}`（139 B，`$DSH_HOME/code-review/<sha256>.json`），报告 0 字；
     它**不会**在后台续跑 ⇒ 直接重跑一次（同一批改动重复审查无害）。
+15. **多行 tooltip 追加一句会打乱三语「结构标记」（2026-10-22 踩中）**：`tools/check_lang_sync.ps1` 的告警口径是
+    `(占位符元组, 换行数, 颜色码数)` 三者**跨语言必须相等**（`§.` 每个 § 都计 1）。只给 zh 加 `每 §915 秒§7 触发一次§r`（3 个 §）而 en 加
+    `once per §915s§r`（2 个 §）⇒ 立刻 `[WARN] tooltip.astral_dice.sign.lulu_passive: 结构标记不一致 zh=((), 3, 6) en=((), 3, 5)`。
+    ⇒ 追加带颜色的句子时**先算三种语言各自的 § 数**，不够的一侧补一个语义无害的回落码（本批 en 补成 `§7at most once per §915s§r`）。
+    （该告警**不阻断** exit code，但会在交接报告里留下真假难辨的红字，仍应清零。）
+16. **`AGENTS-full.md` 行数变了必须同步两处（2026-10-22 连续两批都漏）**：① `AGENTS.md` 索引末行的 `| L3047–L<行数> |`（`verify-split.py` 第 3 项会抓）；② `docs/agent/AGENTS-TOC.md:4` 表头的「当前 **N** 行」—— **这一处没有任何守门**，只能靠人肉或复核发现，别忘。
 
 ## 7 关键路径（命令与文件）
 
