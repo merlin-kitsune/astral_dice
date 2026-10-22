@@ -28,8 +28,8 @@
   - neo → `D:\.minecraft\versions\狐の航空学 Voxy Edition\mods`
   - forge → `D:\.minecraft\versions\1.20.1-Forge 模组测试\mods`
 - 库 jar 与之同目录：`starengine-neoforge-1.21.1-1.1.0-pre.2.jar`（98,733 B）/ `starengine-forge-1.20.1-1.1.0-pre.2.jar`（103,604 B）。
-- 委派：DSH 侧派活走 `subagent` / teammate（明文 brief、禁轮询、结果只从返回值或落盘文件验收）；
-  Codex 侧的委派服务在 `C:\Users\xmace\.codex\mcp\delegation\server.mjs`，日志 `…\delegation\server.log`（仅 Codex 用）。
+- 委派（**2026-10-22 用户裁决**：DSH 只用自带子智能体，**禁止**用 Codex 的 `delegate_task`）：一次性活 ⇒ `subagent`（全新 context，brief 必须完全自包含；结果由子代理 `send_message` 回报，运行时另有完成通知）；接续上下文 ⇒ `subagent_fork`；多人并行 ⇒ `spawn_teammate` + `team_task_*`（`write_scopes` 互不重叠）；复核 ⇒ `dsh_code_review({ input })`，不为复核另派 subagent。主 Agent 只做识别需求 → 分配工作 → 验收成果（只看产物，禁轮询）。手册：`docs/agent/delegation-runbook.md`。
+  Codex 侧 `C:\Users\xmace\.codex\mcp\delegation\server.mjs` 的 `delegate_task` 属**另一个宿主**，DSH 会话**不得引用**（日志 `…\delegation\server.log` 仅作历史背景）。
 - 环境注入：**无** `/etc/profile.d` 注入脚本（`99-wsl-proxy.sh` / `99-wsl-github.sh`）、**无** `wsl-env-restore.sh`、**无** `/opt/zulu`+`use-jdk`
   （2026-10-22 起全部失效）；Windows 侧代理走系统环境变量（Clash `http://127.0.0.1:7897`），仓库级 `http.proxy` / `https.proxy` 已配好。
 
@@ -170,6 +170,16 @@ CARDSLOT:slots=1:count=3     blank_insert denied:remain=2400
     `docs/handover-new-session-context.md:57`/`:85`；`scripts/test/TESTING-SPEC.md` 附录 A 续 55；本文档 §6 坑 9。
     判据：`python docs/agent/verify-split.py` 四项 `[OK]`；`grep -c 'code_review_'` 在 AGENTS.md 与 AGENTS-full 红线区 = 0。
     复核（`dsh_code_review` 首跑 `fb01cfcf-ffce-4b0c-80a5-feb1c4016ef0`，patch is correct）提 4 条文档精度问题，**已全部就地修**：① AGENTS-full 新节「历史条目读法」清单误列第 37 条、漏第 33/38/39 条 ⇒ 实测命中为第 25 / 27 / 30 / 33 / 38 / 39 / 41 条（`git grep -n 'code_review' -- docs/agent/AGENTS-full.md` 对回条目号）；② 新节「本文档 §6 坑 9」指向 AGENTS-full 内不存在的章节 ⇒ 改为 `docs/handover-1.5.0-pre.3-main.md` §6 坑 9；③ 新节未写报告落盘位置 ⇒ 表内补 `reportDirectory`（默认 `$DSH_HOME/code-review` 即 `C:\Users\xmace\.dsh\code-review`，文件名 `sha256(会话).json`，`lib/journal.js` 临时文件 + rename 原子写）与「`input` 为空需宿主交互问答器，非交互环境必须给非空 input」；④ `scripts/test/TESTING-SPEC.md:1524` 自标「现行」却仍用 `code_review` 且写作「由主 Agent 亲自编写」 ⇒ 改 `dsh_code_review` 复核并订正为「派子代理编写」。改完复跑 verify-split 四项 `[OK]`，full 行数不变（3,541），索引末行无需再动。
+ 12. **派活口径已改为 DSH 自带子智能体（2026-10-22 用户裁决，本轮已完成）**：DSH 会话的派活唯一通道 = `subagent`（一次性、全新 context、brief 自包含）/
+     `subagent_fork`（接续已完成回合）/ `spawn_teammate` + `team_task_*`（多人并行，`write_scopes` 互不重叠）；**Codex 的 `delegate_task` 不得再引用**
+     （`~/.codex/mcp/delegation/server.mjs` 属另一宿主，日志字段只作历史背景）；复核仍走 `dsh_code_review({ input })`，不为复核另派 subagent。
+     主 Agent 分工不变：识别需求 → 分配工作 → 验收成果；子代理只干活与回报，**禁轮询**（完成靠运行时通知）。
+     同步位置：`AGENTS.md` 契约 §A 第 3/6 条 + §B 首句与③ + 新增 **§B-2**；`docs/agent/delegation-runbook.md` **整篇重写**（82 行，工具选择表 / 四条收敛规则 / 标准流程 / 中断三查 / brief 模板 / 失败模式 + 末尾只留 Codex 历史段）；
+     `docs/agent/AGENTS-full.md` 末尾新增〈派活口径〉节；`docs/agent/AGENTS-TOC.md` **全表重算**（190 行标题，行号与偏移按当前文件）；`docs/handover-new-session-context.md:85`；本文档 §1 委派两行。
+     判据：`python docs/agent/verify-split.py` 四项 `[OK]`；`grep -rn 'delegate_task' AGENTS.md docs/agent/delegation-runbook.md` 只应命中「禁止 / 历史」语境；
+     `grep -n 'delegate_task' docs/handover-new-session-context.md` 仅 1 处且位于「禁止」句；`grep -c 'delegate_task' docs/agent/delegation-runbook.md` = 1（首页口径句）。
+     复核（`dsh_code_review` run `326a3779-dd78-44dc-8c0a-2b9e29f0a22e`，结论「应视为正确（不阻断）」）提 5 项，**已全部就地修**：① 红线区仍有「只读查证用 `Explore` / 跑命令用 `general-purpose`」属 Codex 侧派活类型 ⇒ 两文件同文改为「按 §B 职业声明派 `subagent`」（红线区 12,070→12,129 字符，逐字仍一致）；② 工具表 `subagent_fork` 行场景含「复核」与下一行 `dsh_code_review` 冲突 ⇒ 改为「续写 / 二次核查；复核不算」；③ Minor-12 数字虚报（runbook 83→82 行、`delegate_task` 计数 2→1）；④ 新节「历史条目读法」指认位置 0 命中 ⇒ 改为旧版 runbook 与 `handover-new-session-context.md:85` 旧文；⑤ `AGENTS-TOC.md` 未随新节更新 ⇒ 全表重算（190 标题）。
+
 ## 6 坑（踩过的，后续别重踩）
 
 1. **`run/<线>/mods` 的 jar ≠ `build/libs`**：neo 是 00:22 的旧构建（同名、2 B 差异），forge 是 `build/devlibs`

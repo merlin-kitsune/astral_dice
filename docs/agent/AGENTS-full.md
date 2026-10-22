@@ -53,7 +53,7 @@ When extending this workspace:
 - ✅ **只给**：目标 / 涉及路径 / **期望的不变量** / **可独立执行的判据命令**（守门脚本、`grep -rn`、开包核验…）。
 - ✅ **要求它**：① 先独立取证、后下结论；② 每条结论附**命令 + 原始输出片段**；③ **优先找反例**（差一处、漏一文件、范围跑错）；
   ④ 取不到证据就说 **「无法判定」**，禁止脑补；⑤ **空结论也要报告**（说明「查了什么」才没发现问题）。
-- 只读查证用 `Explore`；需要跑命令 / 开 jar / 查远端用 `general-purpose`。
+- 只读任务与需跑命令 / 开 jar / 查远端的任务，**一律按 §B 的职业声明派 `subagent`**（DSH 无 `Explore` / `general-purpose` 类型；2026-10-22 起旧写法失效）。
 
 ### 验收标准（子代理输出必须满足；主会话逐条回应）
 
@@ -3539,3 +3539,38 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --new <注册id>
 **因此写 brief 的两条硬要求**：① **范围用自然语言写清**（例「审查工作树未提交改动（含未跟踪文件）」「审查最近 1 个提交 `7e7cf978`」「审查提交区间 `<a>..<b>`」）—— 写 `--base main` 等于让子 Agent 自己猜；② R1..Rn 判据与输出格式要求仍**一次性写全**进 `input`，红线区〈二次验证规范〉的三条验收标准不变（逐条挂原始证据 / 覆盖声称改过的每一处 / 明确列出不一致与无法判定项）。
 
 **历史条目读法**：本文档「待办交接各批」第 25 / 27 / 30 / 33 / 38 / 39 / 41 条与 `scripts/test/TESTING-SPEC.md` 附录 A 中出现的 `code_review` 及其 run id / jobId 均为**当时的旧接口**记录，2026-10-22 起一律读作 `dsh_code_review`（旧 id 无法在新工具里查询）。
+
+## 🧭 派活口径：只用 DSH 自己的子智能体（2026-10-22 用户裁决）
+
+**用户原话（2026-10-22）**：「DSH 的 AGENTS 中，不要使用 Codex 的 Delegate Task。而是使用 DSH 自己的子智能体工作。仍然遵循之前主 Agent 识别需求、分配工作、验收成果的要求，Subagent 用来干活和汇报。」
+
+### 1. 背景：为什么换
+
+旧文档里的派活口径写的是 Codex 侧 MCP 委派服务（`C:\Users\xmace\.codex\mcp\delegation\server.mjs` 的 `delegate_task`，超时钳制 `[60,1800]`、同 cwd 互斥 `DELEGATION_BUSY`、日志 `…\delegation\server.log` 的 `done code=0 timedOut=false`、`codex resume` 回放）。那是**另一个宿主**（Codex / Linux 容器侧）的工具，DSH 会话里既连不上那个服务，也没有它的互斥兜底 —— 照旧文档施工只会得到「派不出去 / 等不到回报 / 以为是并发其实是空转」。**自 2026-10-22 起：DSH 会话唯一派活通道 = DSH 自带子智能体。**
+
+### 2. 工具映射（现行）
+
+| 场景 | 用什么 | 关键约束 |
+|---|---|---|
+| 一次性、可独立验收的活（写码 / 取证 / 移植 / 功能审查） | `subagent` | **全新 context，看不到本会话** ⇒ brief 必须完全自包含（目标 + 路径 + 判据命令 + 交付格式）；派发即返回 `subagentId`，结果由子代理 `send_message` 回报，运行时另有完成通知 |
+| 接续本会话上下文（续写、二次核查；**复核不算**，见下一行） | `subagent_fork` | 继承本会话**已完成回合**（不含当前进行中的这一轮）⇒ 不必重复背景，但新事实仍要写清 |
+| 需要多人并行 / 长期角色（跨文件、跨模块） | `spawn_teammate`（Team Lead 专属）+ 共享任务板 `team_task_create` / `team_task_update` / `team_task_list` | 每个 teammate 的 `write_scopes` 必须**互不重叠**；`send_message` 中途改需求；`wait_agent` 长超时一次到位；`interrupt_agent` 止血 |
+| 复核（二次验证） | `dsh_code_review({ input })` | **不是 subagent 派活**（见〈二次验证规范〉）；**不要**为复核另派 subagent |
+
+### 3. 纪律（与契约 §A「A 方案」并用）
+
+1. **主 Agent 分工不变**：识别需求 → 分配工作 → 验收成果；Subagent 只负责干活与汇报。
+2. **一次派发只做一件事、只给一个编译目标**；brief 缺项时子代理只能自行决定 ⇒ 宁可多写 3 行判据，也别事后返工。
+3. **禁止轮询**：子代理完成由**运行时通知**；`list_agents` / `job_list` / 反复 `wait_agent` 探进度一律不执行（每轮询 ≈ 一次主 Agent 全上下文请求）。
+4. **验收只看产物**：`文件:行号` + 命令输出片段 + `git rev-parse --short`；不看子代理的自述。
+5. 子代理回报「没收到任务 / 需要澄清」⇒ 用 `send_message` 补一次，**最多重试 1 次**；仍失败**如实上报用户**，禁止在主会话反复重派。
+6. 模型路由**每次显式写**：`provider: "deepseek-official"` + `model: "deepseek-flash"`（= DeepSeek-V4.1-Flash）；确需深推理才换更强 model 并写明理由；可用 provider/model 一律用 `list_subagent_models` **现查**，禁止凭记忆写 model id。
+
+### 4. 手册与同步位置
+
+操作手册（工具选择 / 四条收敛规则 / 标准流程 / 中断三查 / brief 模板 / 失败模式）：`docs/agent/delegation-runbook.md`（2026-10-22 整篇重写为 DSH 口径，Codex `server.mjs` 字段只留在末尾〈历史〉段）。
+规则本体：`AGENTS.md` 契约 §A 第 3 / 6 条、§B 首句与③、新增 **§B-2**（派活只用 DSH 自己的子智能体）。
+
+### 5. 历史条目读法
+
+旧版 `docs/agent/delegation-runbook.md`（2026-10-22 之前，已整篇重写）与 `docs/handover-new-session-context.md:85` 旧文里出现的 `delegate_task`、`timeout ≤1800s`、`DELEGATION_BUSY`、`fork_turns="none"`、`server.log` 等字样，**均为 2026-10-22 之前的 Codex 侧记录**，一律读作「DSH 子智能体派活」；那些超时/互斥字段在 DSH 侧不存在（并发编译靠人守，见手册 §1 第 2 条）。

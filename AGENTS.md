@@ -68,18 +68,19 @@
 2. **主 Agent 除「写计划 / 派活 / 验收 / 提交」外不得亲自执行任何动作**：`exec_command`、`apply_patch`、grep、
    读大文件、跑 `gradlew`、跑 `mt.ps1`、`git` 取证命令、"我再验一遍" **一律不执行** ——
    并入现有第 7 条的「主 Agent 只负责规划 / 派活 / 验收 / 提交」，扩展为**不亲自跑任何命令**。
-3. **一次派发 + 一次等待**：`wait_agent` 用长超时（≥600s）一次到位；**禁止轮询**（`list_agents` / `read_thread` /
-   反复 `wait_agent` 探进度）—— 每次轮询 ≈ 一次主 Agent 全上下文请求。
+3. **一次派发 + 一次等待**：`wait_agent` 用长超时（≥600s）一次到位；**禁止轮询**（`list_agents` / `job_list` / 反复 `wait_agent` 探进度）
+   —— 每次轮询 ≈ 一次主 Agent 全上下文请求。子代理（`subagent` / `subagent_fork`）完成由**运行时通知**，更不要自己轮询。
 4. **验收只看产物**：文件路径 + 行号 + 命令输出片段 + 哈希/`git rev-parse --short`；不要求主 Agent 复算。
 5. **上下文闸门**：主 Agent 会话 >15–20 回合或上下文 >25 万 tokens ⇒ 把 `plan.md` / `findings.md` 落盘（`work/` 或任务文档）后
    **新开会话**；长日志、整份源码、长表格不进主会话。
-6. 子代理一律 `deepseek-flash`（每次显式写 `model`）；仅确需深推理（架构裁剪、复杂 mixin 冲突、跨线差异裁决）
-   才用 `deepseek-v4-pro` 并写明理由（既有第 7 条⑧不变）。
+6. **子代理一律派给 DeepSeek，且每次显式写路由**：`provider: "deepseek-official"` + `model: "deepseek-flash"`（= DeepSeek-V4.1-Flash）；
+   仅确需深推理（架构裁剪、复杂 mixin 冲突、跨线差异裁决）才换更强的 model，并写明理由（既有第 7 条⑧不变）。
+   可用 provider/model **一律用 `list_subagent_models` 现查**（本机除 `deepseek-official/deepseek-flash` 外还注册了 `xiaomi` / `moonshotai-cn` / `kimi-subscription`，其 model 列表可能变动），禁止凭记忆写 model id。
 
 ### B. 子代理职业指定 —— 每次派发**必须**写明
 
-`spawn_agent` / `followup_task` 的 brief **第一句必须是职业声明**，句式统一为「**你是一位……**」+ 该职业的交付标准；
-**禁止派发没有职业的裸任务**。
+`subagent` / `subagent_fork`（以及 `spawn_teammate`）的 brief **第一句必须是职业声明**，句式统一为「**你是一位……**」+ 该职业的交付标准；
+**禁止派发没有职业的裸任务**。**禁止用 Codex 侧的 `delegate_task` 派活**（见本节 B-2）。
 
 | 本仓任务类型 | 必须使用的职业开场 |
 |---|---|
@@ -94,11 +95,22 @@
 | 资源 / 模型 / Patchouli 手册 | 「你是一位 Minecraft 资源包与手册工程师，精通 JSON 结构与 texture/model 引用一致性」 |
 
 **职业声明的三个作用**（派发时必须体现）：① **约束动作边界**（分析员只读不写、开发者必须编译取证、审查员不得改文件）；
-② **约束质量标准**（把判据命令写进 brief）；③ **配合模型选择**（机械型 → `deepseek-flash`；确需深推理 → `deepseek-v4-pro` 并写明理由）。
+② **约束质量标准**（把判据命令写进 brief）；③ **配合模型选择**（机械型 → `deepseek-official/deepseek-flash`；确需深推理 → 用 `list_subagent_models` 现查更强的 model 并写明理由）。
 
-⚠️ **已知缺陷（2026-10-16 实测 3 次）**：`spawn_agent(fork_turns="none")` 的 brief **投递不到子代理**
-（子代理只收到环境上下文，会反问「请把 brief 发给我」）。应对：优先用默认 `fork_turns`；
-子代理回报「没收到任务」时**最多重试 1 次**，仍失败则**如实上报用户**，禁止在主会话反复重派（每轮 ≈18 万 tokens）。
+### B-2. 派活只用 DSH 自己的子智能体 —— 不用 Codex 的 `delegate_task`（2026-10-22 用户裁决）
+
+**口径**：DSH 会话里**唯一**的派活通道 = DSH 自带子智能体；Codex 侧 `~/.codex/mcp/delegation/server.mjs` 的 `delegate_task` 属**另一个宿主**的工具，**DSH 不得再引用、不得再当派活/等待/验收口径**（旧文档里出现只当历史背景）。主 Agent 分工不变：**识别需求 → 分配工作 → 验收成果**；Subagent 只负责干活与回报。
+
+| 场景 | 用什么 | 关键约束 |
+|---|---|---|
+| 一次性、可独立验收的活（写码 / 取证 / 移植 / 审查） | `subagent` | **全新 context，看不到本会话** ⇒ brief 必须完全自包含（目标 + 路径 + 判据命令 + 交付格式）；派发即返回 `subagentId`，结果由子代理 `send_message` 回报 |
+| 接续本会话上下文的任务（续写、二次核查；**复核不算**，见下一行） | `subagent_fork` | 继承本会话**已完成回合**（不含当前进行中的这一轮）⇒ 不必重复背景，但**新事实仍需写清** |
+| 需要多人并行 / 长期角色（跨文件、跨模块、互斥写作用域） | `spawn_teammate`（Team Lead 专属）+ 共享任务板 `team_task_*` | 每个 teammate 的 `write_scopes` 必须**互不重叠**；用 `send_message` 中途改需求，`wait_agent` 长超时一次到位，`interrupt_agent` 止血 |
+| 复核（二次验证） | `dsh_code_review({ input })` | 不是 subagent 派活，见〈二次验证规范〉；**不要**为复核另派 subagent |
+
+**纪律（与 A 方案并用）**：① 一次派发只做一件事、只给一个编译目标；② brief 缺项时子代理只能自行决定 ⇒ 宁可多写 3 行判据，也不要事后返工；③ 子代理回报「没收到任务 / 需要澄清」时用 `send_message` 补一次，**最多重试 1 次**，仍失败**如实上报用户**，禁止在主会话反复重派；④ 验收只看产物（文件 + 行号 + 命令输出片段 + `git rev-parse --short`），不看子代理的自述。
+
+**Codex 侧限制不变**：Codex（Linux/容器侧）仍是只读验证方，跑 `dsh_code_review`、写 `docs/**`；两边**共用同一工作树**，写作用域必须提前讲清（见 `docs/agent/AGENT-SPLIT.md`）。
 ### C. 交接文档用法 —— 接手 / 交班都按这条走（2026-10-18 用户裁决）
 
 **四层事实源，别搞混**：
@@ -191,7 +203,7 @@ When extending this workspace:
 - ✅ **只给**：目标 / 涉及路径 / **期望的不变量** / **可独立执行的判据命令**（守门脚本、`grep -rn`、开包核验…）。
 - ✅ **要求它**：① 先独立取证、后下结论；② 每条结论附**命令 + 原始输出片段**；③ **优先找反例**（差一处、漏一文件、范围跑错）；
   ④ 取不到证据就说 **「无法判定」**，禁止脑补；⑤ **空结论也要报告**（说明「查了什么」才没发现问题）。
-- 只读查证用 `Explore`；需要跑命令 / 开 jar / 查远端用 `general-purpose`。
+- 只读任务与需跑命令 / 开 jar / 查远端的任务，**一律按 §B 的职业声明派 `subagent`**（DSH 无 `Explore` / `general-purpose` 类型；2026-10-22 起旧写法失效）。
 
 ### 验收标准（子代理输出必须满足；主会话逐条回应）
 
@@ -280,7 +292,7 @@ When extending this workspace:
 | L2198–L2308 | Mixin 注入规范 · 编译产物上传规则（新版本发布 / CurseForge / Modrinth） | 写 mixin、发布前 |
 | L2309–L2909 | 自动化测试流程（资产重建 / 变更分级 / 测试顺序 / 清场与收尾 / 工具链 / 阶段 P·B·E·L·C·R / 截图识别 / MCP / 超时看门狗） | 任何游戏内测试前（**必读**） |
 | L2910–L3046 | NeoForge 上游 BUG 补丁（neoforge_fixes）· 「敌对目标」判定规范 · `/astralparty` 管理员调试命令 | 上游 bug / 敌对判定 / 调试命令前 |
-| L3047–L3541 | 版本历史与发布记录 · 待办交接各批（fengshui / teru / 新立牌批 / Carpet / 双人测试流程 / 遗留项 / 立牌批验证闭环 + 选卡界面 + Jade 倒计时 + 工具链回 Windows 原生 + AutoJS 求值通道 / lingling 用例 / 强化拒止牌面 / 欠账角色立牌 / DSH 原生批次（2026-10-22：规则 Windows 化 + 守门假红修复 + 立牌冷却补 max）/ WSL 口径失效对照（2026-10-22，末尾小节）/ 代码审查工具链换插件（2026-10-22，第 42 条节）） | 续做历史批次时 |
+| L3047–L3576 | 版本历史与发布记录 · 待办交接各批（fengshui / teru / 新立牌批 / Carpet / 双人测试流程 / 遗留项 / 立牌批验证闭环 + 选卡界面 + Jade 倒计时 + 工具链回 Windows 原生 + AutoJS 求值通道 / lingling 用例 / 强化拒止牌面 / 欠账角色立牌 / DSH 原生批次（2026-10-22：规则 Windows 化 + 守门假红修复 + 立牌冷却补 max）/ WSL 口径失效对照（2026-10-22，末尾小节）/ 代码审查工具链换插件（2026-10-22，第 42 条节）/ 派活口径改 DSH 子智能体（2026-10-22，末尾小节）） | 续做历史批次时 |
 
 **维护约定**
 1. 新增「每次必读」的红线 ⇒ 直接写进上面的红线区（并同步到 `docs/agent/AGENTS-full.md` 的对应章节，保持两边一致）。
