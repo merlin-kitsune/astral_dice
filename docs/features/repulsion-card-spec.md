@@ -7,12 +7,14 @@
 >
 > 本批范围：**P0 两线 neoforge-1.21.1 + forge-1.20.1**（逐项对等；两线代码剥注释后 0 hunk，仅平台 API 差异）。neoforge-26.1.2 / fabric-1.20.1 属 P1，不在本批。
 
+> ⚠️ **2026-10-22 用户裁决：品质改为「奇特（bizarre）」** —— 本牌在 `data/astral_dice/tags/item/is_exclusive.json` 里，属专属牌；专属牌一律奇特档。实现 = P0 两线 `item/ModItems.java` 的 `EFFECT_CARD_REPULSION` 用 `.rarity(AstralRarities.bizarre())`（原 `.epic()`）。上面的用户原文按「逐字引用」保留不改。
+
 ## 1. 冻结设计 → 落点（逐条对应）
 
 | 冻结项（Lead 裁决） | 实现位置 |
 |---|---|
 | id：物品 `effect_card_repulsion` / 实体 `astral_dice:repulsion` / 类 `RepulsionEntity` / `RepulsionCardItem` / `cardTypeId() = "repulsion"` | `item/ModItems`、`entity/ModEntityTypes`、`entity/RepulsionEntity`、`item/card/RepulsionCardItem` |
-| 品质 `AstralRarities.epic()` | `ModItems.EFFECT_CARD_REPULSION` 的 `.rarity(...)` |
+| 品质 `AstralRarities.bizarre()` | `ModItems.EFFECT_CARD_REPULSION` 的 `.rarity(...)` |
 | 专属牌：`isExclusive() = true` / `registerExclusiveCard` / `is_exclusive` 标签 / `ExclusiveCardUtil.isExclusive` / tooltip 追加 `exclusive_owner`（DARK_PURPLE） | `RepulsionCardItem#isExclusive`、`RandomCardHandler` 静态块、`data/astral_dice/tags/item/is_exclusive.json`、`ExclusiveCardUtil#isExclusive`、`ModTooltipHandler` |
 | 实体：`LivingEntity`、`MAX_HEALTH = 100`、`noPhysics`、`setNoGravity`、`isPushable=false`、`push` 空实现、`hurt` 恒 false、无碰撞方块、不调用 `setTarget` | `RepulsionEntity`（构造器 / `hurt` / `isPushable` / `push`）+ `event/ModEntityEvents` |
 | 放置：与路障同款落点判据（clip 4.5 格 → 命中块 + 面方向；`canBeReplaced` + 下方 `isFaceSturdy(UP)` + `isWithinBounds` + `mayInteract`），**不放置方块**；实体生成在落点方块中心 `x+0.5, y, z+0.5`；放不下 ⇒ `fail` + 动作栏红字、**不消耗卡** | `RepulsionCardItem#use` / `#resolvePlacement` / `#applyEffect` |
@@ -127,7 +129,7 @@ bbmodel 原文（64×64 分辨率、box_uv、modded_entity）：
 | `entity/ModEntityTypes.java` | 追加 `REPULSION`（`sized(1.6F, 2.4F)`、`clientTrackingRange(10)`） |
 | `event/ModEntityEvents.java` | `EntityAttributeCreationEvent` 注册 100 点最大生命 |
 | `item/card/RepulsionCardItem.java` | 效果牌（落点预检 + 放置 + 专属绑定） |
-| `item/ModItems.java` | 追加 `EFFECT_CARD_REPULSION`（`stacksTo(16)` / `AstralRarities.epic()`） |
+| `item/ModItems.java` | 追加 `EFFECT_CARD_REPULSION`（`stacksTo(16)` / `AstralRarities.bizarre()`） |
 | `item/card/BaseEffectCardItem.java` | `cardByTypeId` 追加 `"repulsion"` |
 | `item/card/ExclusiveCardUtil.java` | `isExclusive` 追加本牌 |
 | `item/card/RandomCardHandler.java` | `registerExclusiveCard` 追加本牌（静态块）+ 类头注释同步 |

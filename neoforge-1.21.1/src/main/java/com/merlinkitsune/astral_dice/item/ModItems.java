@@ -371,11 +371,11 @@ public class ModItems {
 
     // 强化拒止(专属效果牌,2026-10-18):在视线命中的方块面上放置一个实体「强化拒止」
     // (100 点耐久 / 8 格吸附 / 持续 缓慢+虚弱 / 每 10 秒按吸附目标数扣耐久 <=5 / 不吸引仇恨 / 免疫伤害)。
-    // 品质:史诗(用户需求);专属牌:不进随机池、无配方、不进赏金池、仅获得者可用
+    // 品质:奇特(bizarre;2026-10-22 用户裁决:专属牌一律奇特,原为史诗);专属牌:不进随机池、无配方、不进赏金池、仅获得者可用
     public static final DeferredItem<Item> EFFECT_CARD_REPULSION = registerItem("effect_card_repulsion",
             () -> new RepulsionCardItem(new Item.Properties()
                     .stacksTo(16)
-                    .rarity(AstralRarities.epic())));
+                    .rarity(AstralRarities.bizarre())));
 
     public static final DeferredItem<Item> EFFECT_CARD_KING_POWER = registerItem("effect_card_king_power",
             () -> new EffectCardItem(new Item.Properties()

@@ -2,8 +2,8 @@
 
 ## 0 速览（一屏）
 
-1. 分支 `multi-main`；HEAD = **`7c51df63`**（pre.4 施工批 + 史莱姆被动 15 秒批均已提交），**本轮「派子代理屏蔽人格注入」规则批尚未提交**（见 §5-18）。
-2. 未推送提交 **28** 个（`git rev-list --count origin/multi-main..HEAD`，2026-10-22 18:2x 实测；本规则批提交后为 29），**无** tag（`1.5.0-pre.3` / `1.5.0-pre.4` 均无，需用户放行）。
+1. 分支 `multi-main`；HEAD = **本批头提交**（提交号见 `git log -1`，工作树干净）（pre.4 施工批 + 史莱姆被动 15 秒批 + 派子代理屏蔽人格注入规则批 + 强化拒止品质改奇特批均已提交，工作树干净）。
+2. 未推送提交 **30** 个（`git rev-list --count origin/multi-main..HEAD`，2026-10-22 18:1x 实测），**无** tag（`1.5.0-pre.3` / `1.5.0-pre.4` 均无，需用户放行）。
 3. 四线 `mod_version` 均为 `1.5.0-pre.4+<加载器后缀>`（2026-10-22 bump）；`starengine_version=1.1.0-pre.2`（四线一致，未动）。
 4. jar 内硬前置：`modId="starengine"` / `versionRange="[1.1.0-pre.2,2.0.0)"`，`META-INF/jarjar/` 计数 **0**（pre.4 两 jar 已复核）。
 5. 可交付范围：**只发 P0**（`neoforge-1.21.1` + `forge-1.20.1`）。P1 两线版本号同为 pre.4，但内容不含 1.5.0。
@@ -14,6 +14,7 @@
 10. **史莱姆立牌被动改为「每 15 秒最多触发一次」（2026-10-22，已提交 `7c51df63`）**：`HURT_COOLDOWN_TICKS` **20 → 300**（仅 P0 两线 `item/sign/LuluSignItem.java`），tooltip / 帕秋莉手册条目 / 两份 CHANGELOG 同步；判据见 §5-15，**无实机读数**。P1 两线未动（§5-16）。
 11. **派子代理一律屏蔽人格注入（2026-10-22 用户裁决，本轮已完成）**：红线区〈子代理与测试环境硬规则〉新增第 8 条 —— brief 必带「不要使用任何人设 / 角色扮演 / 语气修饰 / 昵称自称」；复核 / 审查 / 取证类任务一律用全新上下文 `subagent`（`subagent_fork` 会继承带人设的对话）；子代理回报出现人格化表达即判不合规。判据见 §5-18。
 12. 面向整合包会话的交接单见 `docs/handover-1.5.0-pre.4-modpack.md`（投放表 / 自检读数 / 坑 / 剩余事项）。
+13. **强化拒止品质改为奇特（2026-10-22 用户裁决，已提交 本批头提交（`git log -1`））**：`is_exclusive` 标签 7 项里只有它还是 `epic` ⇒ P0 两线各改一行 `.rarity(AstralRarities.epic())` → `.rarity(AstralRarities.bizarre())`；判据 = 字节码 `lambda$static$52`（neo）/ `lambda$static$56`（forge）内 `AstralRarities.bizarre()` 1 次、`epic()` 0 次；并新增「专属牌品质总则」+ CHANGELOG/需求文档订正 + 新产物投放 4 处（18:09）。详见 §5-19。
 
 ## 1 环境与路径
 
@@ -47,21 +48,21 @@
 | jar 内依赖区间 | `[1.1.0-pre.2,2.0.0)`，`type=required`（neo）/ `mandatory=true`（forge） | `META-INF/neoforge.mods.toml:141-144` / `META-INF/mods.toml:154-158` |
 | 内嵌库 | `META-INF/jarjar/` 计数 **0**（两线） | `unzip -l <jar> \| grep -c 'META-INF/jarjar/'` |
 
-P0 产物（`build/libs`，**2026-10-22 17:53 重建（含史莱姆被动 15 秒批）**）：
+P0 产物（`build/libs`，**2026-10-22 18:09 重建（含强化拒止品质改奇特批）**）：
 
-- neo `astral_dice-1.5.0-pre.4+neoforge_1.21.1.jar` — **2,556,774 B** — `bdfbe5f9e8296c9a1b91bdee8629b6a55a3ef1ab2c4844614f4b20abfd485df0`
-- forge `astral_dice-1.5.0-pre.4+forge_1.20.1.jar` — **2,602,332 B** — `d9780bd07ff1510f3a7c826d3c4c9ef6a2357deb3f7f969097ee5534abafe098`
-- forge dev named jar `build/devlibs/astral_dice-1.5.0-pre.4+forge_1.20.1.jar` — **2,572,864 B** — `2849258d84acc0ca03a56d9560d773bef85dfb7dc7bd71f8f3cd2ea3d41ab0f2`
-- 历史值（只作背景，均已被覆盖）：pre.4 17:2x = neo 2,556,723 B `7198cc75…` / forge 2,602,280 B `fbb77627…` / devlibs 2,572,814 B `6a445c8f…`；pre.3 15:47 = 2,555,654 B `f063102b…` / 2,601,208 B `7bf787df…`。
+- neo `astral_dice-1.5.0-pre.4+neoforge_1.21.1.jar` — **2,556,778 B** — `cab211ef73a5b87dd5990aed1e9bdf22161dde5a3bf37e391510993a7a11b554`
+- forge `astral_dice-1.5.0-pre.4+forge_1.20.1.jar` — **2,602,334 B** — `5141780ac3389dfd134ac740cd57a4c3a1febf568605222a6cb320ed8f97c7e5`
+- forge dev named jar `build/devlibs/astral_dice-1.5.0-pre.4+forge_1.20.1.jar` — **2,572,866 B** — `544b61def4861ded89902d5fc39a6a2979692287acbe8b6ec436e9cbe4df6e9c`
+- 历史值（只作背景，均已被覆盖）：pre.4 17:53（史莱姆批）= neo 2,556,774 B `bdfbe5f9…` / forge 2,602,332 B `d9780bd0…` / devlibs 2,572,864 B `2849258d…`；pre.4 17:2x = neo 2,556,723 B `7198cc75…` / forge 2,602,280 B `fbb77627…` / devlibs 2,572,814 B `6a445c8f…`；pre.3 15:47 = 2,555,654 B `f063102b…` / 2,601,208 B `7bf787df…`。
 - 同版本号（pre.4）的中间构建件**不残留**：Gradle 同名覆盖，`build/libs` 与 `build/devlibs` 里 pre.4 各只有上面那三份之一（2026-10-22 18:0x 复核：`Get-ChildItem -Filter 'astral_dice-1.5.0-pre.*.jar'` 全树只剩 pre.1/pre.2/pre.3/pre.4 各线一份）。
 - ⚠️ 但**旧版本产物仍留在各子项目 build 目录**（勿投放）：`neoforge-1.21.1/build/libs` pre.1 2,522,270 / pre.2 2,522,595 / pre.3 2,555,654；`forge-1.20.1/build/libs` pre.1 2,567,077 / pre.2 2,567,445 / pre.3 2,601,208；`forge-1.20.1/build/devlibs` pre.1 2,627,085 / pre.3 2,571,732；**仓库根 `build/libs` 另有一对陈旧 pre.3**（neo 2,555,455 @ 00:22、forge 2,600,940 @ 11:59）——取件只认 §2 这三行。
-- 投放（2026-10-22 17:53 实测，逐处 `Copy-Item` + `Get-FileHash` 双向对账；**投放目标**（`run/<线>/mods` 与两个整合包）里的旧 pre.3 已删除，每处只剩 pre.4 一份）：
+- 投放（2026-10-22 18:09 实测，逐处 `Copy-Item` + `Get-FileHash` 双向对账；**投放目标**（`run/<线>/mods` 与两个整合包）里的旧 pre.3 已删除，每处只剩 pre.4 一份）：
   | 位置 | jar 形态 | 字节 | sha256 前 16 | 对账 |
   |---|---|---|---|---|
-  | `run/1.21.1/mods` | reobf（`build/libs`） | 2,556,774 | `BDFBE5F9E8296C9A` | MATCH |
-  | `run/1.20.1/mods` | **named dev jar**（`build/devlibs`） | 2,572,864 | `2849258D84ACC0CA` | MATCH（同源，§6-3） |
-  | `D:\.minecraft\versions\狐の航空学 Voxy Edition\mods` | reobf（`build/libs`） | 2,556,774 | `BDFBE5F9E8296C9A` | MATCH |
-  | `D:\.minecraft\versions\1.20.1-Forge 模组测试\mods` | reobf（`build/libs`） | 2,602,332 | `D9780BD07FF1510F` | MATCH |
+  | `run/1.21.1/mods` | reobf（`build/libs`） | 2,556,778 | `CAB211EF73A5B87D` | MATCH |
+  | `run/1.20.1/mods` | **named dev jar**（`build/devlibs`） | 2,572,866 | `544B61DEF4861DED` | MATCH（同源，§6-3） |
+  | `D:\.minecraft\versions\狐の航空学 Voxy Edition\mods` | reobf（`build/libs`） | 2,556,778 | `CAB211EF73A5B87D` | MATCH |
+  | `D:\.minecraft\versions\1.20.1-Forge 模组测试\mods` | reobf（`build/libs`） | 2,602,334 | `5141780AC3389DFD` | MATCH |
 - jar 内自检：neo version=`1.5.0-pre.4+neoforge_1.21.1` / forge=`1.5.0-pre.4+forge_1.20.1`；`META-INF/jarjar/` = **0**；`AstralPartyCommand.class` 含 `killbarricade` / `killrepulsion` / `AFTERM`；11 张 `mob_effect/*.png` 与 `images/shop/unbord_chips/` 源文件 md5 全等（两线各 11，mismatch 0）；`javap` 读数见 §5-13。
 - 投放后目录状态：两个 `run/<线>/mods` 与两个整合包的 `astral_dice-*.jar` 只剩 pre.4 一份；整合包侧 `starengine-*` 与 `AutoJS-forge-1.20.1-1.0.0.jar`（reobf，167,358 B）在位。
 - 成对库：两个整合包各有 `starengine-neoforge-1.21.1-1.1.0-pre.2.jar`（98,733 B）/ `starengine-forge-1.20.1-1.1.0-pre.2.jar`（103,604 B）；
@@ -86,7 +87,8 @@ P0 产物（`build/libs`，**2026-10-22 17:53 重建（含史莱姆被动 15 秒
 | `afdcd453` | docs(modpack) | 新增整合包交接单 `docs/handover-1.5.0-pre.4-modpack.md`（投放表 / 自检 / 坑） |
 | `15c81424` | release+fix(pre.4) | 四线升 pre.4；强化拒止可被玩家拆除 + 两实体 `kill()` 覆写；`/astralparty killbarricade\|killrepulsion`；11 个筹码效果图标换无边框 |
 | `7c51df63` | fix(sign+lang) 史莱姆被动 15 秒 | `item/sign/LuluSignItem.java` 的 `HURT_COOLDOWN_TICKS` **20 → 300**（P0 两线）；tooltip / 帕秋莉手册 / 两份 CHANGELOG 同步 |
-| （未提交） | docs(rules) 派子代理屏蔽人格注入 | 红线区〈子代理与测试环境硬规则〉第 8 条 + `AGENTS.md` §B 免人设句 + `AGENTS-full.md` 第 45 条 + 索引末行 `L3603` + `AGENTS-TOC.md:4` 行数 |
+| `d4f58586` | docs(rules) 派子代理屏蔽人格注入 | 红线区〈子代理与测试环境硬规则〉第 8 条 + `AGENTS.md` §B 免人设句 + `AGENTS-full.md` 第 45 条 + 索引末行 `L3603` + `AGENTS-TOC.md:4` 行数 |
+| 本批头提交（`git log -1`） | fix(rarity) 强化拒止品质改奇特 | 两线 `item/ModItems.java` 的 `EFFECT_CARD_REPULSION` 由 `AstralRarities.epic()` → `bizarre()`；判据 javap `lambda$static$52`（neo）/`lambda$static$56`（forge）`bizarre` 1 / `epic` 0；专属牌品质总则落 `AGENTS-full.md`（第 46 条）；CHANGELOG 两语 + `docs/features/repulsion-card-spec.md` 订正；产物 18:09 重投 4 处 |
 
 ## 4 实机读数（原文摘录）
 
@@ -153,6 +155,14 @@ AP_NC2B_READ:hand=astral_dice:effect_card_monster_laser:handn=2:cards=2:sel=0:to
 `每 §915 秒§7 触发一次§r` / `§7at most once per §915s§r` / `§915 秒§7 に 1 回のみ発動§r`，`astral_dice.guide.entry.lulu_sign.2` 句末各带「每 15 秒最多触发一次」口径；
 `check_lang_sync.ps1` exit 0（三语 §/换行/占位符计数一致）；`tooltip_color_audit.ps1` 违规数 **174 = 基线 174**（`git archive HEAD` 导出副本复跑同数，且命中项里无 `lulu_passive`）。
 ⇒ 「15 秒内只吃一次受击」属计时行为，真要取证得实机连续挨两刀看治愈层数；实机待用户下达。
+
+### 4.7 强化拒止品质改奇特批（2026-10-22 18:0x）—— **无实机读数**
+
+改动只影响物品稀有度（tooltip 边框色 / 名称色 / 稀有度文案），不触碰功能与掉落池；判据全为静态 + 字节码：
+① `is_exclusive.json` 7 项与两线 `ModItems` 的 `rarity(...)` 逐项对账 ⇒ 7/7 全 `bizarre`（改前 6/7，仅 `effect_card_repulsion` 为 `epic`）；
+② 打包后 `javap -p -c` 按方法块定位：neo `lambda$static$52` / forge `lambda$static$56` 内 `AstralRarities.bizarre()` 1 次、`.epic()` 0 次；
+③ `check_lang_sync.ps1` exit 0（本批未动 lang）、`verify_effect_icons.py` PASS（未动图标）。
+⇒ 实机只需目视确认 tooltip 边框不再是金色（史诗色）⇒ 待用户下达。
 
 ## 5 遗留与欠账
 
@@ -253,6 +263,13 @@ AP_NC2B_READ:hand=astral_dice:effect_card_monster_laser:handn=2:cards=2:sel=0:to
 17. **史莱姆批复核（2026-10-22 18:0x，`dsh_code_review` run `27408cf2-5919-461f-8a7d-d948bc50256a`）**：R1–R5 / R7 / R8 **SUPPORTED**、R6 **部分成立**；**无 P1 / P2 代码或产物缺陷**，2 项文档问题已就地修 —— ① `docs/agent/AGENTS-TOC.md:4` 表头「当前 3,591 行」未随第 44 条同步 ⇒ 改 **3,599**；② §2 原写「同目录残留中间构建件 2,556,723 / 2,556,771 / 2,602,329 / 2,572,861 勿投放」与磁盘不符（**同版本号被 Gradle 覆盖，实测不存在**，且与相邻两条自相矛盾）⇒ 改写为「pre.4 中间件不残留 + 旧版本产物仍在各子项目 `build/` 下（列清单）+ 仓库根 `build/libs` 有一对陈旧 pre.3，取件只认 §2 三行」。复核自述限制：沙箱对 `~/.gradle` 只读（`gradle-9.2.1-bin.zip.lck` 拒绝访问）未跑 gradlew，改用 `javap -cp <jar>` + python 常量池解析取证（两 jar 常量池 `ConstantValue=300`、`onHurt` 走 `ldc2_w 300l`）；未实机。它另附一条**非缺陷观察**：`lulu_last_hurt_tick` 默认 `0L`（`component/ModAttachments.java:116`）⇒ 新世界 `gameTime < 300` 时第一次受击被吞（20 tick 时代同样存在，本批只是把窗口从 1 秒放大到 15 秒，未计入缺陷）。
 18. **派子代理一律屏蔽人格注入（2026-10-22 用户裁决，本轮已完成）**：① 红线区〈子代理与测试环境硬规则〉新增**第 8 条**（`AGENTS.md` 与 `docs/agent/AGENTS-full.md` 同批逐字，两文件红线区仍字节一致）；② `AGENTS.md` 契约 §B 增补「免人设句」段；③ `AGENTS-full.md` 末尾追加**第 45 条**；④ 索引末行 `| L3047–L3603 |` + 主题追加「派子代理屏蔽人格注入（第 45 条）」，`AGENTS-TOC.md:4` 行数 3,599 → **3,603**。口径：brief 除职业声明外**必须原文带**「不要使用任何人设 / 角色扮演 / 语气修饰 / 昵称自称，按你的职业身份以中性技术口吻输出」；**审查 / 取证类任务必须用全新上下文 `subagent`**（`subagent_fork` 会继承主会话带人设的对话；**复核不在此列** —— 复核一律走 `dsh_code_review`，见硬规则第 4 条）；子代理回报出现自称 / 卖萌 / 情绪表演即**不合规**，要求重发中性版，且**不得把带情绪的段落当证据**；主 Agent 对用户的回复不受限（人设只在表达层）。判据：`python docs/agent/verify-split.py` 四项全 [OK]（红线区 **12,567** 字符逐字一致（P1 措辞订正后实测）、索引覆盖 L121–L3603、`AGENTS-TOC.md` 190 行行号/偏移已全表重算）；`grep -c '屏蔽人格注入' AGENTS.md docs/agent/AGENTS-full.md` 均 ≥1。本批**未实派子代理**（只落规则）。⑤ 复核（`dsh_code_review` run `b96a6a0e-a85e-49dc-8cfd-24b84c8da74f`，报告 `temp\review-persona-rule.md`）的 4 项已全部闭环：P1 = 第 8 条「复核与审查类任务」与第 4 条「复核不派 subagent」冲突 ⇒ 两文件红线区 + §B + `docs/handover-new-session-context.md` 同改为「**审查 / 取证类**（复核不在此列）」；P2 = `docs/agent/AGENTS-TOC.md` 行号列整体漂移（实测错 182 行）⇒ 按 `AGENTS-full.md` 实际标题重算 190 行「行号 + LF 字符偏移」两列；P2 = `docs/agent/delegation-runbook.md` 模板缺免人设句 ⇒ 已补（§4 模板 + §2 派活步骤注明「复核本身不派子代理、走 `dsh_code_review`」）；P3 = §0 编号乱序 ⇒ persona 条改 11、整合包交接单指针改 12。
 
+19. **强化拒止品质改奇特（2026-10-22 用户裁决，已提交 本批头提交（`git log -1`））**：
+    ① 代码（P0 两线各 1 行）：`neoforge-1.21.1/src/main/java/com/merlinkitsune/astral_dice/item/ModItems.java` 与 `forge-1.20.1/src/main/java/com/merlinkitsune/astral_dice/item/ModItems.java` 的 `EFFECT_CARD_REPULSION`：`.rarity(AstralRarities.epic())` → `.rarity(AstralRarities.bizarre())`，注释同步「品质:奇特(bizarre;2026-10-22 用户裁决:专属牌一律奇特,原为史诗)」；
+    ② 依据：`neoforge-1.21.1/src/main/resources/data/astral_dice/tags/item/is_exclusive.json` 共 7 项，其中 6 项早已 `bizarre()`，只有 `effect_card_repulsion` 是 `epic()` ⇒ 唯一越轨项；
+    ③ 规格：`docs/agent/AGENTS-full.md` 效果牌表处新增「专属牌品质总则」（所有 `is_exclusive.json` 登记物品一律 `AstralRarities.bizarre()`；新增专属牌先定奇特档；改档须同步效果牌表 / CHANGELOG / P1 移植清单）；
+    ④ 文案：`CHANGELOG_ZH.md:16` 「（史诗；」→「（奇特（bizarre）；」、`CHANGELOG.md:16` 「(Epic;」→「(Bizarre;」；`docs/features/repulsion-card-spec.md` 引用块后追加 2 行裁决说明（用户原文按逐字引用保留）；
+    ⑤ 判据：`gradlew.bat :neoforge-1.21.1:jar :forge-1.20.1:jar` BUILD SUCCESSFUL；javap 方法块命中 `bizarre` 1 / `epic` 0（`lambda$static$52` neo、`lambda$static$56` forge）；4 处投放 sha256 全 MATCH（§2）；
+    ⑥ **P1 欠账**：P1 两线**整张牌尚未移植**（实测 `grep -rni repulsion neoforge-26.1.2/src` / `fabric-1.20.1/src` 各 0 命中，两线 `is_exclusive` 标签各 6 项、无 `effect_card_repulsion`）⇒ 随 P1 批次整体移植（item / entity / lang / patchouli / tag 全套），**不是**「一行 rarity 待改」；按「1.5.0 正式版前 P1 不验证不移植」未动。
 ## 6 坑（踩过的，后续别重踩）
 
 1. **`run/<线>/mods` 的 jar 曾 ≠ `build/libs`（neo 于 2026-10-22 15:47 对齐；forge 按 §6-3 永远放 devlibs named jar）**：当时 neo 是 00:22 的旧构建（同名、2 B 差异），
@@ -297,6 +314,9 @@ AP_NC2B_READ:hand=astral_dice:effect_card_monster_laser:handn=2:cards=2:sel=0:to
     ⇒ 追加带颜色的句子时**先算三种语言各自的 § 数**，不够的一侧补一个语义无害的回落码（本批 en 补成 `§7at most once per §915s§r`）。
     （该告警**不阻断** exit code，但会在交接报告里留下真假难辨的红字，仍应清零。）
 16. **`AGENTS-full.md` 行数变了必须同步两处（2026-10-22 连续两批都漏）**：① `AGENTS.md` 索引末行的 `| L3047–L<行数> |`（`verify-split.py` 第 3 项会抓）；② `docs/agent/AGENTS-TOC.md:4` 表头的「当前 **N** 行」—— **这一处没有任何守门**，只能靠人肉或复核发现，别忘。
+
+17. **改物品稀有度后，判据不能只看源码 diff（2026-10-22，强化拒止批）**：`ModItems` 的稀有度写在**静态注册 lambda** 里（`registerItem(...)` 的 `Supplier`），`javap -p -c` 的普通方法体里看不到；正解是按**方法块**切分 javap 输出后，找**同时含目标类名**（`RepulsionCardItem`）的那一块，再数 `AstralRarities.bizarre()` / `.epic()` 的 `invokestatic` 次数（本批命中 `lambda$static$52` / `lambda$static$56`）。用「固定字符窗口 ±6000」数关键词会被邻近其它卡片的调用污染（首次数出 `epic=2`，纯属窗口越界）。
+18. **改 `epic()` → `bizarre()` 时别看 `AstralRarities` 在 forge 线被 reobf**：库 jar（starengine）不参与本仓 reobf，`bizarre` 方法名在 forge 产物里原样保留（已实测）。真正需要 SRG 名的是**本仓自己的**方法（如 §5-13 的 `m_6074_` = `kill`）。
 
 ## 7 关键路径（命令与文件）
 

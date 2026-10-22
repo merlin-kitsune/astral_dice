@@ -8,19 +8,19 @@
 `1.5.0-pre.4` 已推送两个 P0 整合包并逐项核验（字节 / sha256 / jar 内依赖区间 / jarjar 计数 / 关键类 / 11 张效果图标 md5）；
 本仓本批的实机验证（1.20.1 创造模式出牌扣卡）已于同日 **PASS**，**pre.4 的实体拆除口径尚未实机**（见 §5-3）。余下工作见 §5。
 
-## 1 投放结果（`Get-Item` + `Get-FileHash` 实测，2026-10-22 17:53，含史莱姆被动 15 秒批重建）
+## 1 投放结果（`Get-Item` + `Get-FileHash` 实测，2026-10-22 18:09，含强化拒止品质改奇特批重建）
 
 | 整合包 | 文件 | 字节 | sha256 | 对 `build/libs` |
 |---|---|---|---|---|
-| `D:\.minecraft\versions\狐の航空学 Voxy Edition\mods` | `astral_dice-1.5.0-pre.4+neoforge_1.21.1.jar` | 2,556,774 | `bdfbe5f9e8296c9a…fd485df0` | **MATCH** |
+| `D:\.minecraft\versions\狐の航空学 Voxy Edition\mods` | `astral_dice-1.5.0-pre.4+neoforge_1.21.1.jar` | 2,556,778 | `cab211ef73a5b87d…7a11b554` | **MATCH** |
 | 同上 | `starengine-neoforge-1.21.1-1.1.0-pre.2.jar` | 98,733 | `c0fc596c…` | 成对库在位 |
-| `D:\.minecraft\versions\1.20.1-Forge 模组测试\mods` | `astral_dice-1.5.0-pre.4+forge_1.20.1.jar` | 2,602,332 | `d9780bd07ff1510f…abafe098` | **MATCH** |
+| `D:\.minecraft\versions\1.20.1-Forge 模组测试\mods` | `astral_dice-1.5.0-pre.4+forge_1.20.1.jar` | 2,602,334 | `5141780ac3389dfd…98f97c7e5` | **MATCH** |
 | 同上 | `starengine-forge-1.20.1-1.1.0-pre.2.jar` | 103,604 | `f395939a…` | 成对库在位 |
 | 同上 | `AutoJS-forge-1.20.1-1.0.0.jar` | 167,358 | `39cdc693…` | 整合包用 **reobf**（非 `-dev` named） |
 
 - 两个包各自**只有一行** `astral_dice-*` 与一行 `starengine-*`（同名覆盖即完成升级，旧 pre.3 已删除，无历史版本残留）。
 - 缺库即启动失败：`Missing or unsupported mandatory dependencies`（库区间 `[1.1.0-pre.2,2.0.0)`，**不能**写成 `[1.1.0,2.0.0)`）。
-- 本仓 `run/1.20.1/mods` 放的是 `build/devlibs` 的 named jar（2,572,864 B `2849258d…`），**不要**拿它当整合包来源（§3-1）。
+- 本仓 `run/1.20.1/mods` 放的是 `build/devlibs` 的 named jar（2,572,866 B `544b61de…`），**不要**拿它当整合包来源（§3-1）。
 
 ## 2 jar 内自检（`tar -xOf` / `tar -tf`）
 
