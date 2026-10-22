@@ -28,15 +28,15 @@
 - 仓库：`F:\MCProject\astral_dice_multiloader`，分支 `multi-main`，交接基线 `7df4dab2`；开工先 `git status --short -uall`（应干净）与 `git rev-parse --short HEAD`。四子项目同树：`neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1`。
 - 版本：四线 `mod_version = 1.5.0-pre.4+<加载器后缀>`；`starengine_version = 1.1.0-pre.2`；jar 内硬前置 `[1.1.0-pre.2,2.0.0)`、`META-INF/jarjar/` 计数 0。
 - 交付面：**只 P0** = `neoforge-1.21.1` + `forge-1.20.1`；P1（26.1.2 / fabric）**1.5.0 正式版前不验证、不移植**。
-- P0 产物（各自 `build\libs`，2026-10-22 18:09，含强化拒止品质改奇特批重建）：
-  - neo：`astral_dice-1.5.0-pre.4+neoforge_1.21.1.jar`，2 556 778 B，sha256 `cab211ef73a5b87dd5990aed1e9bdf22161dde5a3bf37e391510993a7a11b554`
-  - forge：`astral_dice-1.5.0-pre.4+forge_1.20.1.jar`，2 602 334 B，sha256 `5141780ac3389dfd134ac740cd57a4c3a1febf568605222a6cb320ed8f97c7e5`
-  - （forge dev 用 `build\devlibs` 的 named jar：2 572 866 B，`544b61def4861ded89902d5fc39a6a2979692287acbe8b6ec436e9cbe4df6e9c`）
+- P0 产物（各自 `build\libs`，2026-10-22 18:18，含电击手套命中 FX 批重建）：
+  - neo：`astral_dice-1.5.0-pre.4+neoforge_1.21.1.jar`，2 558 408 B，sha256 `02719fe60295b8a4626e74721d91f680416e8e9afe923312adf69c6c4cd1b6ae`
+  - forge：`astral_dice-1.5.0-pre.4+forge_1.20.1.jar`，2 603 959 B，sha256 `42cce572094acbf676d4250e3d0dfb7054ac56621741fe3be432dc0e6d155d7d`
+  - （forge dev 用 `build\devlibs` 的 named jar：2 574 494 B，`67bc4d2444c37cdfbec88b945f30e70a24dd982ec5328043f2a8a6cd72538bff`）
 - 投放（**成对**放 `astral_dice-*.jar` + `starengine-*-1.1.0-pre.2.jar`，缺库即启动失败 `Missing or unsupported mandatory dependencies`）：
   - neo → `D:\.minecraft\versions\狐の航空学 Voxy Edition\mods`
   - forge → `D:\.minecraft\versions\1.20.1-Forge 模组测试\mods`
 - 测试台：`scripts\test\mt.ps1`，`--version <线> --phase env|run|stop`。
-- 未推送：**30 个提交**（HEAD `d4f58586` + 本批 rarity 改动；实况以 `git rev-list --count origin/multi-main..HEAD` 为准）；**无** tag；默认**不 push / 不打 tag**（需用户放行）。
+- 未推送：**31 个提交**（HEAD 见 `git log -1`；实况以 `git rev-list --count origin/multi-main..HEAD` 为准）；**无** tag；默认**不 push / 不打 tag**（需用户放行）。
 - 守门：**8 跑 7 绿**，唯一红 `verify_probe_class_refs`。⚠️ 2026-10-22 已查明：红点原有 6 处、**无一是源码缺口**
   （JEI 走 Curse Maven 未被脚本解析 / LWJGL 由加载器运行期提供 / 一处只出现在 JS 注释里 / 26.1.2 产物陈旧）；
   守门脚本已补 Curse Maven 解析 + `org.lwjgl.` 白名单 + 剥 JS 注释，现只剩 **1 处**（26.1.2 `build/libs` 停在
@@ -72,7 +72,8 @@
 6. P1 欠账登记维护：JEI 筹码 / `BeamFx` / `GlobalEventGate` / `RepulsionEntity` / `CardShopMenu#planPlacement` / `EventDrawBlock`；
    外加 **P1 两线筹码效果图标仍是带边框版**（pre.4 只换 P0 两线 11 张，正本 §5-14），以及 **P1 两线史莱姆被动仍是 20 tick(1 秒)、文案未改**（正本 §5-16：`neoforge-26.1.2/.../LuluSignItem.java:170`、`fabric-1.20.1/.../LuluSignItem.java:161`）。
    另：**强化拒止整张牌尚未移植到 P1 两线**（`grep -rni repulsion` 在两线 `src` 各 0 命中，正本 §5-19⑥）⇒ 随 P1 批次整体移植，勿按「改一行 rarity」估工。
-7. **（待用户放行实机）史莱姆立牌被动 15 秒**：P0 两线 `LuluSignItem.HURT_COOLDOWN_TICKS = 300`（原 20 = 1 秒），
+7. **（待用户放行实机）电击手套命中 FX**：命中目标冒冷色电火花（`comet_azur_filament`×2 / `glintstone_spark`×7 / `frost_spark`×4）+ 圆心一次 `lightning_bolt_impact`（0.5 / 1.5）；只要「真正吃到伤害」的目标才有电光，音效只播一次。实现 `combat/ElectricShockFx.java`（P0 两线）+ `SoundPlayback` 新 7 参重载，判据见正本 §5-20（静态全绿，无实机）。
+8. **（待用户放行实机）史莱姆立牌被动 15 秒**：P0 两线 `LuluSignItem.HURT_COOLDOWN_TICKS = 300`（原 20 = 1 秒），
    三语文案末尾均加「每 15 秒触发一次」；判据 = 受击两次间隔 <15s 时只有第一次生效（`AP_FX_*_HURT` 或治愈点数不增）。静态判据已绿（javap 常量 300 / lang 1045 键 / 三语 § 数相等），见正本 §5-15。
 
 ## 硬约束（Windows 版）

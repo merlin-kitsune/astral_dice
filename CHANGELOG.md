@@ -93,6 +93,18 @@
   1.20.1 positional: `/particle astral_dice:particle_library 12 1.5 16755200`). The attribution lives in the README and
   the full MIT text in `docs/third-party/`.
 
+- **Electric Glove hits now spawn electric sparks and play a shock sound** (user ruling 2026-10-22;
+  **landed on both P0 lines**): every target that *actually* takes the shock damage gets a burst of
+  **electric sparks** at its **torso** (midpoint of its bounding-box height) — all sprites are reused from the
+  bundled pixel particle library (`astral_dice:particle_library`), no new textures: `comet_azur_filament`
+  (jagged blue current, the arcs) ×2, `glintstone_spark` (bright cyan spark core, the main sparks) ×7 and
+  `frost_spark` (tiny cross flares, the crackle) ×4, all tinted electric cyan-white (`rgb=0x9BE8FF` /
+  `0xE8FBFF`) so they share one colour scheme without washing out. The shock also plays **one** sound at the
+  centre: vanilla `lightning_bolt_impact` (the crack of a strike, **without** the thunder tail) at
+  **volume 0.5 / pitch 1.5**, which reads as an electric zap rather than a lightning bolt. The sound plays
+  **once per shock**, not once per victim, so a 3-block radius hitting several targets does not stack into a
+  roar; targets that take no damage get no sparks.
+
 <!-- 新内容在此登记 -->
 
 #### Items, Chips & Trading

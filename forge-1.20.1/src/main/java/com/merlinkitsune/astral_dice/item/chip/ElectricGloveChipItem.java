@@ -5,6 +5,7 @@ import com.merlinkitsune.astral_dice.item.ChargeManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.card.BaseEffectCardItem;
 import com.merlinkitsune.astral_dice.combat.DamageCardFxScheduler;
+import com.merlinkitsune.astral_dice.combat.ElectricShockFx;
 import com.merlinkitsune.astral_dice.combat.SpellDamageRegistry;
 import com.merlinkitsune.astral_dice.event.RailgunStrikeScheduler;
 import net.minecraft.server.level.ServerLevel;
@@ -145,7 +146,9 @@ public class ElectricGloveChipItem extends BaseChipItem {
      *   <li>取 {@code center} 半径 {@value #AOE_RADIUS} 格内的受害者（**含主目标**、排除施法者）；</li>
      *   <li>逐个走效果牌同一条<b>独立法术伤害通道</b>（{@code astral_dice:card_spell}）结算固定
      *       {@value #SHOCK_DAMAGE} 点；</li>
-     *   <li>每<b>成功</b>造成一次伤害 ⇒ 施法者 +{@value #CHARGE_PER_HIT} 层【充能】（含主目标）。</li>
+     *   <li>每<b>成功</b>造成一次伤害 ⇒ 施法者 +{@value #CHARGE_PER_HIT} 层【充能】（含主目标）；</li>
+     *   <li>每个真正吃到伤害的受害者 ⇒ 在其躯干位置撒电火花（粒子库，见 {@link ElectricShockFx}）；</li>
+     *   <li>本次只要命中至少一个目标 ⇒ 在圆心播<b>一次</b>电击音效（不按受害者叠加）。</li>
      * </ol>
      *
      * <p>⚠️ 这里<b>不</b>包裹 {@code DiceCombatEvents#runAsGloveSplashInstance}：新路径是独立结算，
@@ -168,9 +171,15 @@ public class ElectricGloveChipItem extends BaseChipItem {
                         level, cause, victim, (int) SHOCK_DAMAGE, false);
                 if (!dealt) continue;
                 hitAny = true;
+                // 观感：只给真正吃到伤害的目标放电火花（未受伤的目标不该有电光）
+                ElectricShockFx.sparksAt(level, ElectricShockFx.victimCenter(victim));
                 if (cause != null) {
                     ChargeManager.addStacks(cause, CHARGE_PER_HIT);
                 }
+            }
+            if (hitAny) {
+                // 音效只播一次：半径 3 格可能同时命中多个目标，按受害者叠加会变成轰鸣
+                ElectricShockFx.shockSound(level, center.add(0.0D, 1.0D, 0.0D));
             }
             return hitAny;
         } catch (Exception ex) {

@@ -2,8 +2,8 @@
 
 ## 0 速览（一屏）
 
-1. 分支 `multi-main`；HEAD = **本批头提交**（提交号见 `git log -1`，工作树干净）（pre.4 施工批 + 史莱姆被动 15 秒批 + 派子代理屏蔽人格注入规则批 + 强化拒止品质改奇特批均已提交，工作树干净）。
-2. 未推送提交 **30** 个（`git rev-list --count origin/multi-main..HEAD`，2026-10-22 18:1x 实测），**无** tag（`1.5.0-pre.3` / `1.5.0-pre.4` 均无，需用户放行）。
+1. 分支 `multi-main`；HEAD = **本批头提交**（提交号见 `git log -1`）（pre.4 施工批 + 史莱姆被动 15 秒批 + 派子代理屏蔽人格注入规则批 + 强化拒止品质改奇特批均已提交；电击手套 FX 批（第 14 条）已一并提交（`git log -1`），工作树干净）。
+2. 未推送提交 **31** 个（`git rev-list --count origin/multi-main..HEAD`，2026-10-22 18:2x 实测），**无** tag（`1.5.0-pre.3` / `1.5.0-pre.4` 均无，需用户放行）。
 3. 四线 `mod_version` 均为 `1.5.0-pre.4+<加载器后缀>`（2026-10-22 bump）；`starengine_version=1.1.0-pre.2`（四线一致，未动）。
 4. jar 内硬前置：`modId="starengine"` / `versionRange="[1.1.0-pre.2,2.0.0)"`，`META-INF/jarjar/` 计数 **0**（pre.4 两 jar 已复核）。
 5. 可交付范围：**只发 P0**（`neoforge-1.21.1` + `forge-1.20.1`）。P1 两线版本号同为 pre.4，但内容不含 1.5.0。
@@ -15,6 +15,7 @@
 11. **派子代理一律屏蔽人格注入（2026-10-22 用户裁决，本轮已完成）**：红线区〈子代理与测试环境硬规则〉新增第 8 条 —— brief 必带「不要使用任何人设 / 角色扮演 / 语气修饰 / 昵称自称」；复核 / 审查 / 取证类任务一律用全新上下文 `subagent`（`subagent_fork` 会继承带人设的对话）；子代理回报出现人格化表达即判不合规。判据见 §5-18。
 12. 面向整合包会话的交接单见 `docs/handover-1.5.0-pre.4-modpack.md`（投放表 / 自检读数 / 坑 / 剩余事项）。
 13. **强化拒止品质改为奇特（2026-10-22 用户裁决，已提交 本批头提交（`git log -1`））**：`is_exclusive` 标签 7 项里只有它还是 `epic` ⇒ P0 两线各改一行 `.rarity(AstralRarities.epic())` → `.rarity(AstralRarities.bizarre())`；判据 = 字节码 `lambda$static$52`（neo）/ `lambda$static$56`（forge）内 `AstralRarities.bizarre()` 1 次、`epic()` 0 次；并新增「专属牌品质总则」+ CHANGELOG/需求文档订正 + 新产物投放 4 处（18:09）。详见 §5-19。
+14. **电击手套命中 FX（2026-10-22 18:18，已提交 本批头提交（`git log -1`））**：命中目标撒 Irons 粒子库电火花（`comet_azur_filament`×2 电弧 / `glintstone_spark`×7 火花芯 / `frost_spark`×4 细闪，rgb `0x9BE8FF`·`0xE8FBFF`），圆心一次 `SoundEvents.LIGHTNING_BOLT_IMPACT`（音量 0.5 / 音调 1.5）；实现 `combat/ElectricShockFx.java`（P0 两线）+ `audio/SoundPlayback` 新增 7 参 `playAt` 重载（旧 5 参委托它） + `item/chip/ElectricGloveChipItem#executeShock` 接线。判据见 §5-20，**无实机读数**。
 
 ## 1 环境与路径
 
@@ -48,21 +49,21 @@
 | jar 内依赖区间 | `[1.1.0-pre.2,2.0.0)`，`type=required`（neo）/ `mandatory=true`（forge） | `META-INF/neoforge.mods.toml:141-144` / `META-INF/mods.toml:154-158` |
 | 内嵌库 | `META-INF/jarjar/` 计数 **0**（两线） | `unzip -l <jar> \| grep -c 'META-INF/jarjar/'` |
 
-P0 产物（`build/libs`，**2026-10-22 18:09 重建（含强化拒止品质改奇特批）**）：
+P0 产物（`build/libs`，**2026-10-22 18:18 重建（含电击手套命中 FX 批）**）：
 
-- neo `astral_dice-1.5.0-pre.4+neoforge_1.21.1.jar` — **2,556,778 B** — `cab211ef73a5b87dd5990aed1e9bdf22161dde5a3bf37e391510993a7a11b554`
-- forge `astral_dice-1.5.0-pre.4+forge_1.20.1.jar` — **2,602,334 B** — `5141780ac3389dfd134ac740cd57a4c3a1febf568605222a6cb320ed8f97c7e5`
-- forge dev named jar `build/devlibs/astral_dice-1.5.0-pre.4+forge_1.20.1.jar` — **2,572,866 B** — `544b61def4861ded89902d5fc39a6a2979692287acbe8b6ec436e9cbe4df6e9c`
-- 历史值（只作背景，均已被覆盖）：pre.4 17:53（史莱姆批）= neo 2,556,774 B `bdfbe5f9…` / forge 2,602,332 B `d9780bd0…` / devlibs 2,572,864 B `2849258d…`；pre.4 17:2x = neo 2,556,723 B `7198cc75…` / forge 2,602,280 B `fbb77627…` / devlibs 2,572,814 B `6a445c8f…`；pre.3 15:47 = 2,555,654 B `f063102b…` / 2,601,208 B `7bf787df…`。
+- neo `astral_dice-1.5.0-pre.4+neoforge_1.21.1.jar` — **2,558,408 B** — `02719fe60295b8a4626e74721d91f680416e8e9afe923312adf69c6c4cd1b6ae`
+- forge `astral_dice-1.5.0-pre.4+forge_1.20.1.jar` — **2,603,959 B** — `42cce572094acbf676d4250e3d0dfb7054ac56621741fe3be432dc0e6d155d7d`
+- forge dev named jar `build/devlibs/astral_dice-1.5.0-pre.4+forge_1.20.1.jar` — **2,574,494 B** — `67bc4d2444c37cdfbec88b945f30e70a24dd982ec5328043f2a8a6cd72538bff`
+- 历史值（只作背景，均已被覆盖）：pre.4 18:09（强化拒止品质批）= neo 2,556,778 B `cab211ef…` / forge 2,602,334 B `5141780a…` / devlibs 2,572,866 B `544b61de…`；pre.4 17:53（史莱姆批）= neo 2,556,774 B `bdfbe5f9…` / forge 2,602,332 B `d9780bd0…` / devlibs 2,572,864 B `2849258d…`；pre.4 17:2x = neo 2,556,723 B `7198cc75…` / forge 2,602,280 B `fbb77627…` / devlibs 2,572,814 B `6a445c8f…`；pre.3 15:47 = 2,555,654 B `f063102b…` / 2,601,208 B `7bf787df…`。
 - 同版本号（pre.4）的中间构建件**不残留**：Gradle 同名覆盖，`build/libs` 与 `build/devlibs` 里 pre.4 各只有上面那三份之一（2026-10-22 18:0x 复核：`Get-ChildItem -Filter 'astral_dice-1.5.0-pre.*.jar'` 全树只剩 pre.1/pre.2/pre.3/pre.4 各线一份）。
 - ⚠️ 但**旧版本产物仍留在各子项目 build 目录**（勿投放）：`neoforge-1.21.1/build/libs` pre.1 2,522,270 / pre.2 2,522,595 / pre.3 2,555,654；`forge-1.20.1/build/libs` pre.1 2,567,077 / pre.2 2,567,445 / pre.3 2,601,208；`forge-1.20.1/build/devlibs` pre.1 2,627,085 / pre.3 2,571,732；**仓库根 `build/libs` 另有一对陈旧 pre.3**（neo 2,555,455 @ 00:22、forge 2,600,940 @ 11:59）——取件只认 §2 这三行。
-- 投放（2026-10-22 18:09 实测，逐处 `Copy-Item` + `Get-FileHash` 双向对账；**投放目标**（`run/<线>/mods` 与两个整合包）里的旧 pre.3 已删除，每处只剩 pre.4 一份）：
+- 投放（2026-10-22 18:18 实测，逐处 `Copy-Item` + `Get-FileHash` 双向对账；**投放目标**（`run/<线>/mods` 与两个整合包）里的旧 pre.3 已删除，每处只剩 pre.4 一份）：
   | 位置 | jar 形态 | 字节 | sha256 前 16 | 对账 |
   |---|---|---|---|---|
-  | `run/1.21.1/mods` | reobf（`build/libs`） | 2,556,778 | `CAB211EF73A5B87D` | MATCH |
-  | `run/1.20.1/mods` | **named dev jar**（`build/devlibs`） | 2,572,866 | `544B61DEF4861DED` | MATCH（同源，§6-3） |
-  | `D:\.minecraft\versions\狐の航空学 Voxy Edition\mods` | reobf（`build/libs`） | 2,556,778 | `CAB211EF73A5B87D` | MATCH |
-  | `D:\.minecraft\versions\1.20.1-Forge 模组测试\mods` | reobf（`build/libs`） | 2,602,334 | `5141780AC3389DFD` | MATCH |
+  | `run/1.21.1/mods` | reobf（`build/libs`） | 2,558,408 | `02719FE60295B8A4` | MATCH |
+  | `run/1.20.1/mods` | **named dev jar**（`build/devlibs`） | 2,574,494 | `67BC4D2444C37CDF` | MATCH（同源，§6-3） |
+  | `D:\.minecraft\versions\狐の航空学 Voxy Edition\mods` | reobf（`build/libs`） | 2,558,408 | `02719FE60295B8A4` | MATCH |
+  | `D:\.minecraft\versions\1.20.1-Forge 模组测试\mods` | reobf（`build/libs`） | 2,603,959 | `42CCE572094ACBF6` | MATCH |
 - jar 内自检：neo version=`1.5.0-pre.4+neoforge_1.21.1` / forge=`1.5.0-pre.4+forge_1.20.1`；`META-INF/jarjar/` = **0**；`AstralPartyCommand.class` 含 `killbarricade` / `killrepulsion` / `AFTERM`；11 张 `mob_effect/*.png` 与 `images/shop/unbord_chips/` 源文件 md5 全等（两线各 11，mismatch 0）；`javap` 读数见 §5-13。
 - 投放后目录状态：两个 `run/<线>/mods` 与两个整合包的 `astral_dice-*.jar` 只剩 pre.4 一份；整合包侧 `starengine-*` 与 `AutoJS-forge-1.20.1-1.0.0.jar`（reobf，167,358 B）在位。
 - 成对库：两个整合包各有 `starengine-neoforge-1.21.1-1.1.0-pre.2.jar`（98,733 B）/ `starengine-forge-1.20.1-1.1.0-pre.2.jar`（103,604 B）；
@@ -270,6 +271,16 @@ AP_NC2B_READ:hand=astral_dice:effect_card_monster_laser:handn=2:cards=2:sel=0:to
     ④ 文案：`CHANGELOG_ZH.md:16` 「（史诗；」→「（奇特（bizarre）；」、`CHANGELOG.md:16` 「(Epic;」→「(Bizarre;」；`docs/features/repulsion-card-spec.md` 引用块后追加 2 行裁决说明（用户原文按逐字引用保留）；
     ⑤ 判据：`gradlew.bat :neoforge-1.21.1:jar :forge-1.20.1:jar` BUILD SUCCESSFUL；javap 方法块命中 `bizarre` 1 / `epic` 0（`lambda$static$52` neo、`lambda$static$56` forge）；4 处投放 sha256 全 MATCH（§2）；
     ⑥ **P1 欠账**：P1 两线**整张牌尚未移植**（实测 `grep -rni repulsion neoforge-26.1.2/src` / `fabric-1.20.1/src` 各 0 命中，两线 `is_exclusive` 标签各 6 项、无 `effect_card_repulsion`）⇒ 随 P1 批次整体移植（item / entity / lang / patchouli / tag 全套），**不是**「一行 rarity 待改」；按「1.5.0 正式版前 P1 不验证不移植」未动。
+20. **电击手套命中 FX：粒子库电火花 + 落雷冲击音（2026-10-22 18:18，已提交 本批头提交（`git log -1`））**：
+    ① 起因（用户原话）：为「电击手套」命中的目标创建 FX，优先用 Irons 粒子库的电火花，并配一个合适音效。
+    ② 实现（P0 两线，`src/main/java/com/merlinkitsune/astral_dice/`）：新类 `combat/ElectricShockFx.java` —— `victimCenter(LivingEntity)` 取「脚底 + 半身高」；`sparksAt(ServerLevel, Vec3)` 每目标三批 `sendParticles(new LibraryParticleOptions(...))`（`COMET_AZUR_FILAMENT`×2 弧光 scale 1.7 / `GLINTSTONE_SPARK`×7 火花芯 scale 0.9 / `FROST_SPARK`×4 细闪 scale 0.7）；`shockSound(ServerLevel, Vec3)` 播 `SoundEvents.LIGHTNING_BOLT_IMPACT`（0.5 / 1.5）。
+    ③ 接线：`item/chip/ElectricGloveChipItem#executeShock` —— `if (!dealt) continue;` 之后逐目标放火花（**只有真正吃到伤害的目标有电光**），循环外 `if (hitAny)` 只在中心播**一次**音效（半径 3 格多目标时避免叠成轰鸣）；`audio/SoundPlayback` 新增 `playAt(Level, double, double, double, SoundEvent, float, float)` 重载（旧 5 参委托它，`volume<=0 || pitch<=0` 直接返回）。
+    ④ 选型依据：粒子库里没有「球形电爆」题材，`comet_azur_filament` 的锯齿蓝丝是唯一像电弧的；音效侧本机**无 ffmpeg** ⇒ 不新增 `.ogg`，改用原版 `LIGHTNING_BOLT_IMPACT`（短促电击冲击，非 `LIGHTNING_BOLT_THUNDER` 的雷鸣尾音），降音量 0.5 + 提音调 1.5 贴合手套小范围电击。
+    ⑤ 判据（全绿，静态）：`gradlew.bat :neoforge-1.21.1:jar :forge-1.20.1:jar` BUILD SUCCESSFUL；两 jar 均含 `combat/ElectricShockFx.class`，`javap` 三方法签名齐全；neo `SoundPlayback` 两个 `playAt` 重载（5 参 / 7 参）齐全；4 处投放 `Get-FileHash` 全 MATCH（§2 表）。
+    ⑥ **无实机读数**：火花观感 / 音效音量音调需用户明确下达实机（§6-1 的老规矩：重建后必须重新投放，已投放）。
+    ⑦ **P1 欠账**：`neoforge-26.1.2` / `fabric-1.20.1` 未移植本 FX（整批随 P1 批次）。
+    ⑧ **复核**（`dsh_code_review` run `cdda4ad6-b3c6-4ca1-bda8-692d4a87b9fb`）：R1–R7 **全部 SUPPORTED**，无代码 / 产物缺陷；提 3 项文档订正**已就地修** —— `handover-new-session-context.md` 的 forge devlibs 仍写旧哈希（2,572,866 / `544b61de…` ⇒ 2,574,494 / `67bc4d24…`）与 18:09 时间戳；`playAt` 重载参数数写成「6 参 / 8 参」（实为 **5 参 / 7 参**）；未推送数写 31（实况 30，FX 批未提交）⇒ 顺带把正本 §0 第 1/2 条与第 14 条「未提交」对齐。
+
 ## 6 坑（踩过的，后续别重踩）
 
 1. **`run/<线>/mods` 的 jar 曾 ≠ `build/libs`（neo 于 2026-10-22 15:47 对齐；forge 按 §6-3 永远放 devlibs named jar）**：当时 neo 是 00:22 的旧构建（同名、2 B 差异），
@@ -318,6 +329,9 @@ AP_NC2B_READ:hand=astral_dice:effect_card_monster_laser:handn=2:cards=2:sel=0:to
 17. **改物品稀有度后，判据不能只看源码 diff（2026-10-22，强化拒止批）**：`ModItems` 的稀有度写在**静态注册 lambda** 里（`registerItem(...)` 的 `Supplier`），`javap -p -c` 的普通方法体里看不到；正解是按**方法块**切分 javap 输出后，找**同时含目标类名**（`RepulsionCardItem`）的那一块，再数 `AstralRarities.bizarre()` / `.epic()` 的 `invokestatic` 次数（本批命中 `lambda$static$52` / `lambda$static$56`）。用「固定字符窗口 ±6000」数关键词会被邻近其它卡片的调用污染（首次数出 `epic=2`，纯属窗口越界）。
 18. **改 `epic()` → `bizarre()` 时别看 `AstralRarities` 在 forge 线被 reobf**：库 jar（starengine）不参与本仓 reobf，`bizarre` 方法名在 forge 产物里原样保留（已实测）。真正需要 SRG 名的是**本仓自己的**方法（如 §5-13 的 `m_6074_` = `kill`）。
 
+19. **粒子库没有「电」题材的现成贴图（2026-10-22 电击手套 FX 批）**：179 张里最接近电弧的是 `comet_azur_filament`（锯齿蓝丝），`glintstone_spark` / `frost_spark` 只是点火花；剩下的火花系（`holy/flame/ember_spark`）是暖色十字，染色后会脏。⇒ 做电类 FX 就「细长弧光 + 冷色点花」两件套，别硬找球形电爆。另：`LibraryParticleOptions` 的 `rgb` 是**逐通道相乘**（`LibraryParticle` 里 `setColor`），给 0x9BE8FF 这类冷白会明显压暗原贴图，想保亮要用接近白色的值。
+20. **改动只落在 chip 类里也会漏判「命中」语义（2026-10-22）**：`ElectricGloveChipItem#executeShock` 的 `dealt` 才是「这目标真的吃到伤害」的判据（`victim.hurt(...)` 的返回值），FX 必须挂在 `if (!dealt) continue;` **之后**；挂在循环头会让未受伤目标也冒电光（假象）。同理音效要放循环外 + `hitAny` 守卫。
+
 ## 7 关键路径（命令与文件）
 
 ```powershell
@@ -349,6 +363,11 @@ Get-ChildItem neoforge-1.21.1/src/main/java -Recurse -Filter *SignItem.java | Se
 python tools/gen_chip_effect_icons.py --check     # 期望 effects=22 misses=0 unaligned=0
 python tools/verify_effect_icons.py              # 期望 RESULT: PASS（四线 65/65/53/53）
 pwsh -NoProfile -File tools/check_lang_sync.ps1   # 期望 exit 0（P0 三语各 1045 键）
+
+# 电击手套命中 FX（ElectricShockFx）判据
+(tar -tf 'neoforge-1.21.1\build\libs\astral_dice-1.5.0-pre.4+neoforge_1.21.1.jar' | Select-String 'combat/ElectricShockFx').Count   # 期望 1
+javap -p -cp 'neoforge-1.21.1\build\libs\astral_dice-1.5.0-pre.4+neoforge_1.21.1.jar' com.merlinkitsune.astral_dice.combat.ElectricShockFx
+javap -p -cp 'neoforge-1.21.1\build\libs\astral_dice-1.5.0-pre.4+neoforge_1.21.1.jar' com.merlinkitsune.astral_dice.audio.SoundPlayback   # 期望 5 参 + 7 参两个 playAt
 
 # 清场（实体管理命令，权限 2）
 #   /astralparty killbarricade [<radius>|all]
