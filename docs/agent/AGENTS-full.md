@@ -3632,3 +3632,34 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --new <注册id>
      ⑤ **判据**：`git status --short -uall` 只剩这三个目录下的新文件时**不算工作树脏**；提交一律用显式路径 `git add <具体文件…>`，禁止 `git add -A` / `git add .`（会把用户素材一起卷进提交）。
 
 
+
+## 51. pre.5 指示器批 + 激光卡顿归因（2026-10-22 用户裁决）
+
+**背景**：用户一次提三件事 —— ① 电磁炮的「就位」效果指示器多余，删掉；② 磨刀石 / 安全气囊触发后没有任何「还要多久才能再触发」的提示，要做**同名**倒计时指示器（把冷却时间关联到效果计时器）；③「在整合包环境里发射激光会让客户端卡一下」，查原因。版本同时 bump 到 `1.5.0-pre.5`。
+
+**① 删电磁炮指示器（P0 两线）**
+
+- `effect/ModEffects.java`：删 `RAILGUN_READY`（`railgun_ready`，0x81D4FA）。
+- `event/PlayerTickEvents#updateChipBonusIndicators`：6 枚 → **5 枚**（删 `refreshIndicatorInfinite(..., ModEffects.RAILGUN_READY, RailgunChipItem.isEquipped(player) && ChargeManager.getStacks(player) >= RailgunChipItem.CHARGE_REQUIRED)`），import 由 `RailgunChipItem` 换 `AirbagChipItem`。
+- 资源：删两线 `textures/mob_effect/railgun_ready.png`、删三语 `effect.astral_dice.railgun_ready`、删 `tools/chip_effect_icon_map.json` 的 railgun 条目。
+
+**② 磨刀石 / 安全气囊冷却倒计时（P0 两线）**
+
+- 新效果 `WHETSTONE_GUARD_CD`（`whetstone_guard_cd`，0xCFD8DC）/ `AIRBAG_GUARD_CD`（`airbag_guard_cd`，0xFFB74D），均 `ChipReadyEffect`。
+- 与既有 ∞「生效中」指示器**语义不同**：只在保命**真的触发后**出现，`duration = 剩余冷却`；显示名沿用筹码本名（用户要求「名称仍然用磨刀石、安全气囊」）。
+- `PlayerTickEvents#updateChipCooldownIndicators(player)` + `refreshIndicatorRemaining(player, effect, equipped, endTick)`：`remaining = endTick - player.level().getGameTime()`；`!equipped || remaining <= 0` ⇒ 有则移除；否则偏差 > `REMAINING_TOLERANCE = 40` tick 才重施加（原版效果自己递减，与剩余冷却天然同步，不必每 tick 发包）。
+- **不能**放进 `!diceGated` 分支 —— 卸下骰子后就没有人负责移除图标。
+- 为什么在 tick 里统一同步而不是触发点 `addEffect` 一次：冷却自然结束 / 卸筹码 / 摘骰子 / 死亡重登（效果实例被清而附件里的冷却仍在）四条路径都要收尾，单点施加必漏。
+- 资源：两线新增 `textures/mob_effect/{whetstone_guard_cd,airbag_guard_cd}.png`（410 / 483 B，取对应筹码的无边框素材）；三语各 +2 行；`tools/chip_effect_icon_map.json` 现 12 条。
+
+**③ 激光「卡一下」= 不是光束渲染（已在真整合包内取证）**
+
+- 结论：`client/BeamFxRenderer` 的光束绘制**不是**成因。真整合包（614 mod、Iris + Complementary + EuphoriaPatches、Voxy、Veil 4.3.2 经 sable jar-in-jar、RTX 5090、2560×1441）内**全帧**统计：有光束 n=366 avg **6.05 ms** / 无光束 n=8774 avg **6.24 ms**（p90 9.57 vs 9.78）；`beamDrawUs` ≤ **66 µs**；\>20 ms 的帧 14/10677 且**全部** `beams=0`（进世界区块 churn）。
+- 旁证：电磁炮 chip（`item/chip/RailgunChipItem`）不走 `combat/DamageCardFxScheduler` 的光束路径，它走 `event/RailgunStrikeScheduler`（延迟 1 秒的雷击）。
+- 因此本批**产品源码零改动**；若仍有卡顿需要真实场景（位置 / 朝向 / 光影 / 是否多人 / F3 读数）。
+- dev 侧两轮加压（Iris + Sodium + Complementary；再叠 voxy + particular）同样复现不出卡顿。
+
+**判据（全绿，静态）**：`:neoforge-1.21.1:classes :forge-1.20.1:classes` 与 `:jar` + `:pushToRootBuild` BUILD SUCCESSFUL；`python tools/verify_effect_icons.py` 四线 66/66/53/53 PASS；`python tools/gen_chip_effect_icons.py --check` effects=24 misses=0；`pwsh -NoProfile -File tools/check_lang_sync.ps1` P0 三语各 **1046 keys** exit 0；jar 内 `META-INF/jarjar/` = 0、`ClientFrameProbe` / `AP_FP_` **0 残留**、新图标在位、`railgun_ready.png` 0；四处投放 sha256 全 MATCH。
+
+**四条新坑**（详见 `docs/handover-1.5.0-pre.5-main.md` §6 坑 29–32）：① 还原被插桩文件不能用 `git show … | Set-Content`（PowerShell 管道把多行塌成 1 行）⇒ node 取字节；② 整合包内不能用 kubejs tick 脚本驱动命令序列（该包无 AutoJS；`ServerEvents.tick` 版本会静默不执行、无报错）⇒ 聊天框手打 + `execute as @a at @s run` 前缀；③ PCL2 冷启动约 3 分钟、标题屏「退出游戏」单击不稳、进程核对要用 `Win32_Process` 的 `CommandLine` 匹配 `net.minecraft.client.main.Main`、双屏拼接时左屏虚拟 x 为负；④ 判「某特效是不是卡顿源」必须做**全帧**基线对比，只看特效可见窗口会把进世界 churn 算到特效头上。
+

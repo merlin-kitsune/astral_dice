@@ -1,4 +1,4 @@
-你接手的是 MC 模组仓库 F:\MCProject\astral_dice_multiloader，分支 multi-main，版本 1.5.0-pre.4。
+你接手的是 MC 模组仓库 F:\MCProject\astral_dice_multiloader，分支 multi-main，版本 1.5.0-pre.5。
 你是 DeepSeek Harness（DSH），在 Windows 原生环境工作（只用 git bash + PowerShell 7），直接在本机工作树动手。
 
 ## 第 0 步（必须先做）：修正你自己的规则
@@ -13,12 +13,12 @@
 | WSL git 对 worktree 报 `not a git repository` 的变通（`--git-dir=` / 改走 `cmd.exe`） | 该问题不存在：git 一律用 git bash 的 `git`，`git -C F:\...` 或先 `cd` 进工作树 |
 | 「bash 里没有 pwsh / 只能 sh 跑测试」类兼容说明 | 作废：测试台一律 `pwsh -NoProfile -File <绝对路径>`，bash 只承担 git |
 
-同时把 `docs/handover-1.5.0-pre.4-main.md` 的 §1（路径与命令）改成 Windows 口径（`F:\` 路径、`gradlew.bat`、`pwsh`）。
+同时把 `docs/handover-1.5.0-pre.5-main.md` 的 §1（路径与命令）改成 Windows 口径（`F:\` 路径、`gradlew.bat`、`pwsh`）。
 改完必跑 `python docs/agent/verify-split.py`，四项 `[OK]`（快照 / 红线区逐字 / 索引无空洞 / 体量）全绿才算过。
 
 ## 第 1 步：先读（按顺序，实读，不凭记忆）
 
-1. `docs/handover-1.5.0-pre.4-main.md` —— §1 路径与命令、§4 实机读数、§5 遗留、§6 坑。
+1. `docs/handover-1.5.0-pre.5-main.md` —— §1 路径与命令、§4 实机读数、§5 遗留、§6 坑。
 2. `AGENTS.md` 红线区 + `docs/agent/AGENT-SPLIT.md`（Codex / DSH 分工与互斥，见下节）。
 3. `docs/agent/AGENTS-full.md` 按主题 `sed -n '<a>,<b>p'` 取用；行号总表 `docs/agent/AGENTS-TOC.md`。
 4. `scripts/test/TESTING-SPEC.md`、`docs/compat-1.5.0-porting.md`。
@@ -26,17 +26,17 @@
 ## 基本盘（版本/坐标/交付面/投放/测试台，全部 Windows 路径）
 
 - 仓库：`F:\MCProject\astral_dice_multiloader`，分支 `multi-main`，交接基线 `7df4dab2`；开工先 `git status --short -uall`（应干净）与 `git rev-parse --short HEAD`。四子项目同树：`neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1`。
-- 版本：四线 `mod_version = 1.5.0-pre.4+<加载器后缀>`；`starengine_version = 1.1.0-pre.2`；jar 内硬前置 `[1.1.0-pre.2,2.0.0)`、`META-INF/jarjar/` 计数 0。
+- 版本：四线 `mod_version = 1.5.0-pre.5+<加载器后缀>`；`starengine_version = 1.1.0-pre.2`；jar 内硬前置 `[1.1.0-pre.2,2.0.0)`、`META-INF/jarjar/` 计数 0。
 - 交付面：**只 P0** = `neoforge-1.21.1` + `forge-1.20.1`；P1（26.1.2 / fabric）**1.5.0 正式版前不验证、不移植**。
 - P0 产物（各自 `build\libs`，2026-10-22 18:32，含筹码商店品质外框恢复 + 卡牌购买钱包音效批重建）：
-  - neo：`astral_dice-1.5.0-pre.4+neoforge_1.21.1.jar`，2 558 631 B，sha256 `742132dd929754c84f6df362dacdd36453f5b7e6ce6feee15f780d231a8da59a`
-  - forge：`astral_dice-1.5.0-pre.4+forge_1.20.1.jar`，2 604 187 B，sha256 `4b984008a03f4bf8b236144eacdbc5814b821105fd4141f1b90125c521ff269a`
+  - neo：`astral_dice-1.5.0-pre.5+neoforge_1.21.1.jar`，2 559 837 B，sha256 `f25546b638892527dcb67a287b431bff206b852a44005dba4affc5576c2138fa`
+  - forge：`astral_dice-1.5.0-pre.5+forge_1.20.1.jar`，2 605 382 B，sha256 `e30980b4e8dfa6dd020fa0c933f31f10f05db88c203069d747a79045de6fab79`
   - （forge dev 用 `build\devlibs` 的 named jar：2 574 721 B，`8f81e4c3ba6710b4a544e8c5df262c1adbb38690dd88dd1c30709ed0784e6e7f`）
 - 投放（**成对**放 `astral_dice-*.jar` + `starengine-*-1.1.0-pre.2.jar`，缺库即启动失败 `Missing or unsupported mandatory dependencies`）：
   - neo → `D:\.minecraft\versions\狐の航空学 Voxy Edition\mods`
   - forge → `D:\.minecraft\versions\1.20.1-Forge 模组测试\mods`
 - 测试台：`scripts\test\mt.ps1`，`--version <线> --phase env|run|stop`。
-- 未推送：**32 个提交**（HEAD 见 `git log -1`；实况以 `git rev-list --count origin/multi-main..HEAD` 为准）；**无** tag；默认**不 push / 不打 tag**（需用户放行）。
+- 未推送：**随本批提交后 1 个**（2026-10-22 pre.4 与 `353cfed4` 已 push；实况以 `git rev-list --count origin/multi-main..HEAD` 为准）；**无** tag；默认**不 push / 不打 tag**（需用户放行）。
 - 守门：**8 跑 7 绿**，唯一红 `verify_probe_class_refs`。⚠️ 2026-10-22 已查明：红点原有 6 处、**无一是源码缺口**
   （JEI 走 Curse Maven 未被脚本解析 / LWJGL 由加载器运行期提供 / 一处只出现在 JS 注释里 / 26.1.2 产物陈旧）；
   守门脚本已补 Curse Maven 解析 + `org.lwjgl.` 白名单 + 剥 JS 注释，现只剩 **1 处**（26.1.2 `build/libs` 停在
@@ -57,9 +57,9 @@
 - **Codex（Linux/容器侧）= 只读验证**：读源码、写 `docs/**`、跑 `dsh_code_review`；禁写源码、禁 commit、禁实机。
 - 锁：动工作树前在 `F:\MCProject\.agent-locks\` 建 `dsh.lock`（PID + 时间 + 任务名），结束删除；同一工作树同时只允许一个 agent 跑 gradle。
 - `git status` 出现**不属于自己**的改动 ⇒ 立即停手，在 `docs/agent/CONFLICT.md` 记一行（时间/文件/推测归属），交用户裁决。
-- 每轮结束更新 `docs/handover-1.5.0-pre.4-main.md` §4（实机读数）与 §5（遗留）；Codex 只消费不回写。
+- 每轮结束更新 `docs/handover-1.5.0-pre.5-main.md` §4（实机读数）与 §5（遗留）；Codex 只消费不回写。
 
-## 立即待办（2026-10-22 pre.4 收尾后，按优先级）
+## 立即待办（2026-10-22 pre.5 收尾后，按优先级）
 
 **2026-10-22 19:00–19:40 已做过一轮 pre.4 全量实机（用户下达）：P0 双线各 10 条用例 = 9 条机器判据 PASS + 1 条截图取证**（`PRE4-CHIPSHOP-FRAME-*` 的 vision 断言在测试台是 DELEGATED，不判红绿），读数见正本 §4.8（新增 §4.8 小节）；下面第 1/7/8/9 条的「待用户放行实机」已全部落地（其中 7 的观感、8 的计时、9 的外框都已按机器行/vision 判定；音效与粒子「好不好看/好不好听」仍属人工观感项）。
 
@@ -81,6 +81,8 @@
 
 10. ✅ **已完成（2026-10-22）** pre.4 全量实机测试：P0 双线各 10/10 PASS，机器行原文见正本 §4.8；测试资产改动 = 两份 `astral_fixbatch_probe.js`（新增 `/astralfixbatch hurtby`、`fbxNow` 修正）+ 两份 `astral_bugfix_probe.js`（新增 `/astralprobe barplace`、`doLuluPrep` 补装金骰子）+ 6 条用例（`PRE4-*` 8 条新建 / `LULU-SIGN-*` 订正 2 条陈旧断言）。**产品源码零改动**。新坑见正本 §6 坑 23–26（Rhino 调不到 `p.hurt` 且 1.20.1 没有 `/damage`；裸 summon 路障必自毁；陈旧用例把规格变更误报成回归；长效增益用例必须 `/effect clear @s`）。
 
+11. **pre.5 指示器批（2026-10-22 22:3x，已提交；正本 §5-24）**：删电磁炮「就位」指示器（效果 `railgun_ready` 整体删除，生效中指示器 6 → 5 枚）；磨刀石 / 安全气囊**保命触发后**新增同名倒计时指示器（`whetstone_guard_cd` / `airbag_guard_cd`，时长 = 剩余冷却，`PlayerTickEvents#updateChipCooldownIndicators` 每 tick 同步）；四线升 `1.5.0-pre.5`。判据全静态（编译 / 图标守门 66-66-53-53 / `gen_chip_effect_icons --check` 24-0 / lang 1046 键 / 四投 sha256 MATCH / jar 内探针 0），**待实机看倒计时数字与图标观感**。
+12. **激光「卡一下」已定性（2026-10-22，正本 §4.10 / §5-25）：不是光束渲染**。真整合包（614 mod + Iris/Complementary + Voxy + Veil）内全帧统计：有光束帧 avg **6.05 ms** vs 无光束 **6.24 ms**，绘制本体 **4–66 µs**，\>20 ms 的帧 14/10677 且**全在光束窗口之外**。所以本批**产品源码零改动**；若再感知卡顿，需要用户给场景（位置 / 朝向 / 光影 / 是否多人 / F3 读数）。
 ## 硬约束（Windows 版）
 
 - 禁止项（无例外）：`wsl.exe`；`/mnt/...` 路径（含 `/mnt/f/...`）；`~/work/adm-*` 编译副本；`~/.codex` 里的 WSL 注入脚本（代理 / `GH_TOKEN` / JDK）—— 上述一律视为已失效，出现在旧文档里只当历史背景。

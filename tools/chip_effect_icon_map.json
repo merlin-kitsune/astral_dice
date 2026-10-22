@@ -12,6 +12,11 @@
       "zh": "肾上腺素-一般"
     },
     {
+      "effect": "airbag_guard_cd",
+      "chip": "airbag_chip",
+      "zh": "安全气囊"
+    },
+    {
       "effect": "cursed_sword_ready",
       "chip": "cursed_sword_chip",
       "zh": "诅咒之剑"
@@ -42,14 +47,14 @@
       "zh": "魔法秘典"
     },
     {
-      "effect": "railgun_ready",
-      "chip": "railgun_chip",
-      "zh": "电磁炮"
-    },
-    {
       "effect": "revenge_halberd",
       "chip": "revenge_halberd_chip",
       "zh": "复仇之戟"
+    },
+    {
+      "effect": "whetstone_guard_cd",
+      "chip": "whetstone_chip",
+      "zh": "磨刀石"
     },
     {
       "effect": "whetstone_ready",

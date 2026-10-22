@@ -136,9 +136,17 @@ public class ModEffects {
     public static final DeferredHolder<MobEffect, MobEffect> ELECTRIC_SWORD_READY =
             EFFECTS.register("electric_sword_ready", () -> new ChipReadyEffect(0xFFF176));
 
-    // 电磁炮：充能 ≥ 6（攻击力 +5 生效）时显示
-    public static final DeferredHolder<MobEffect, MobEffect> RAILGUN_READY =
-            EFFECTS.register("railgun_ready", () -> new ChipReadyEffect(0x81D4FA));
+    // ── 筹码「保命」冷却的倒计时指示器（2026-10-22 用户裁决）──
+    // 与上面那批「生效中」指示器**语义不同**：那批一律 ∞（可生效即常驻），
+    // 这两枚只在保命效果**真的触发**后出现，时长 = 剩余冷却，用倒计时数字告诉玩家还差多久。
+    // 显示名仍然是筹码本名（磨刀石 / 安全气囊），由 PlayerTickEvents#updateChipCooldownIndicators 维护。
+    // 磨刀石：保命（单次伤害至多把生命降到 1 点）触发后 1:00 冷却
+    public static final DeferredHolder<MobEffect, MobEffect> WHETSTONE_GUARD_CD =
+            EFFECTS.register("whetstone_guard_cd", () -> new ChipReadyEffect(0xCFD8DC));
+
+    // 安全气囊：致命伤害无效化触发后 1:00 冷却
+    public static final DeferredHolder<MobEffect, MobEffect> AIRBAG_GUARD_CD =
+            EFFECTS.register("airbag_guard_cd", () -> new ChipReadyEffect(0xFFB74D));
 
     // 对怪激光:远程和魔法伤害 +4
     public static final DeferredHolder<MobEffect, MobEffect> MONSTER_LASER =

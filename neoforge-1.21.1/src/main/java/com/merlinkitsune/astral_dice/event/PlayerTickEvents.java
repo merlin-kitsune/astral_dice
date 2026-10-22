@@ -6,7 +6,7 @@ import com.merlinkitsune.astral_dice.item.ChargeManager;
 import com.merlinkitsune.astral_dice.item.chip.AdrenalineChipItem;
 import com.merlinkitsune.astral_dice.item.chip.CursedSwordChipItem;
 import com.merlinkitsune.astral_dice.item.chip.ElectricSwordChipItem;
-import com.merlinkitsune.astral_dice.item.chip.RailgunChipItem;
+import com.merlinkitsune.astral_dice.item.chip.AirbagChipItem;
 import com.merlinkitsune.astral_dice.item.chip.WhetstoneChipItem;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.item.sign.BaseSignItem;
@@ -64,6 +64,7 @@ public class PlayerTickEvents {
         //       故未佩戴骰子时条件为假 ⇒ 图标被正常移除,而累计数值仍保留在附件/物品数据上。
         updateCutterEffect(player);
         updateChipBonusIndicators(player);
+        updateChipCooldownIndicators(player);
         RevengeHalberdChipItem.updateDisplayEffect(player);
         // 复仇之戟:防御力折算为真实护甲(1 防御力 = 2 护甲值)
         if (!diceGated) RevengeHalberdChipItem.updateArmorBonus(player);
@@ -175,9 +176,12 @@ public class PlayerTickEvents {
      * 美工刀的 {@code hasCutter/hasBlade} 由 {@link #updateCutterEffect} 的 {@code onDice} 显式补上
      * ⇒ 未佩戴骰子时条件为假、图标被移除，而累计数值仍保留。
      *
-     * <p>6 枚的判据各自取「加成真的 > 0」那一档，与各自的攻击修饰器同源：
+     * <p>5 枚的判据各自取「加成真的 > 0」那一档，与各自的攻击修饰器同源：
      * 磨刀石/肾上腺素 = 低血阈值；诅咒之剑 = 累计加成 > 0；
-     * 电流剑 = 充能 ≥ 4（每 4 点 +1）；电磁炮 = 充能 ≥ 6（+5 生效，"就位"）。
+     * 电流剑 = 充能 ≥ 4（每 4 点 +1）。
+     *
+     * <p>2026-10-22 用户裁决：**电磁炮的「就位」指示器已删除**（充能 ≥ 6 时不再挂图标），
+     * 故本方法由 6 枚降为 5 枚。
      */
     private static void updateChipBonusIndicators(Player player) {
         refreshIndicatorInfinite(player, ModEffects.WHETSTONE_READY,
@@ -192,9 +196,6 @@ public class PlayerTickEvents {
         refreshIndicatorInfinite(player, ModEffects.ELECTRIC_SWORD_READY,
                 ElectricSwordChipItem.isEquipped(player)
                         && ChargeManager.getStacks(player) >= ElectricSwordChipItem.CHARGE_PER_ATTACK);
-        refreshIndicatorInfinite(player, ModEffects.RAILGUN_READY,
-                RailgunChipItem.isEquipped(player)
-                        && ChargeManager.getStacks(player) >= RailgunChipItem.CHARGE_REQUIRED);
     }
 
     /**
@@ -202,8 +203,8 @@ public class PlayerTickEvents {
      *
      * <p>⚠️ **仅供「自身条件型」指示器使用**:这类指示器的存在与否完全由玩家自身状态决定、
      * 与任何计时器无关,故用 ∞ 常驻。当前调用方 = 美工刀-初级/锋利、手电筒-强光、
-     * 以及 {@link #updateChipBonusIndicators} 的 6 枚(磨刀石 / 肾上腺素两档 / 诅咒之剑 /
-     * 电流剑 / 电磁炮)。
+     * 以及 {@link #updateChipBonusIndicators} 的 5 枚(磨刀石 / 肾上腺素两档 / 诅咒之剑 /
+     * 电流剑)。
      *
      * <p>2026-10-01 用户裁决后,**伤害增加型筹码的指示器一律无限时长**(可生效即常驻),
      * 因此原先的「有限时长版」{@code refreshIndicator}(5 秒倒计时)已无调用方,随之删除;
@@ -220,6 +221,52 @@ public class PlayerTickEvents {
             ModEffectRemoval.remove(player, effect);
         }
     }
+    private static final int REMAINING_TOLERANCE = 40;
+
+    /**
+     * 筹码「保命」冷却的倒计时指示器（2026-10-22 用户裁决）。
+     *
+     * <p>口径：磨刀石 / 安全气囊的**保命**一旦真的触发就进入 1:00 冷却，此时在效果面板上显示
+     * **同名**（磨刀石 / 安全气囊）的倒计时图标，时长 = 剩余冷却 tick —— 玩家不用记时间。
+     * 与 {@link #updateChipBonusIndicators} 的 ∞「生效中」指示器**并存**：低血时既有 ∞ 的
+     * 「加成生效中」，也有带倒计时的「保命冷却中」，靠有没有跳动的数字区分。
+     *
+     * <p>为什么不在触发点直接 addEffect 一次了事：冷却自然结束、筹码被卸下、骰子被摘、
+     * 玩家死亡/重登（效果实例被清而附件里的冷却仍在）等路径都要有人收尾，单点施加必漏 ⇒
+     * 统一在这里每 tick 以「附件里的冷却结束刻」为准同步，与本类其它指示器同一范式
+     * （**不能**放进 {@code !diceGated} 分支：卸下骰子后就没有人负责移除图标了）。
+     */
+    private static void updateChipCooldownIndicators(Player player) {
+        refreshIndicatorRemaining(player, ModEffects.WHETSTONE_GUARD_CD,
+                WhetstoneChipItem.isEquipped(player), ModAttachments.getWhetstoneGuardCooldownEnd(player));
+        refreshIndicatorRemaining(player, ModEffects.AIRBAG_GUARD_CD,
+                AirbagChipItem.isEquipped(player), ModAttachments.getAirbagCooldownEnd(player));
+    }
+
+    /**
+     * 倒计时指示器：效果时长 = {@code endTick - now}（剩余冷却）。
+     *
+     * <p>不需要显示（筹码未佩戴 / 骰子未佩戴 / 冷却已结束）⇒ 移除；
+     * 需要显示但实例缺失（首次触发 / 重登后实例丢了）⇒ 按剩余冷却补一次；
+     * 已有实例时只在**偏差超过 {@value #REMAINING_TOLERANCE} tick** 才重施加 ——
+     * 原版效果自己按 tick 递减，与剩余冷却天然同步，无需每 tick 发包。
+     */
+    private static void refreshIndicatorRemaining(Player player,
+                                                 net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect> effect,
+                                                 boolean equipped, long endTick) {
+        long remaining = endTick - player.level().getGameTime();
+        if (!equipped || remaining <= 0) {
+            if (player.hasEffect(effect)) ModEffectRemoval.remove(player, effect);
+            return;
+        }
+        // 原版时长是 int；设计上冷却最长 1:00 = 1200 tick，这里仍截断一次以防附件被写坏成天文数字
+        int duration = (int) Math.min(remaining, (long) Integer.MAX_VALUE - 1);
+        MobEffectInstance current = player.getEffect(effect);
+        if (current == null || Math.abs(current.getDuration() - duration) > REMAINING_TOLERANCE) {
+            player.addEffect(new MobEffectInstance(effect, duration, 0, false, true, true));
+        }
+    }
+
     /**
      * 把「历史常驻写法」的残留实例归一为原版无限时长。
      *
