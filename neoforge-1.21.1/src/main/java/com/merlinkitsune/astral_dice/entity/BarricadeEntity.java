@@ -275,7 +275,8 @@ public class BarricadeEntity extends LivingEntity {
      * 受伤入口（**服务端唯一判定**）。
      *
      * <p>只接受生物来源（怪物 / 玩家 / 其发射物）⇒ 玩家可以用手或武器拆掉它；
-     * 环境伤害（坠落、冻结、挤压、{@code /kill} 的 genericKill）被忽略。
+     * 环境伤害（坠落、冻结、挤压）被忽略；{@code /kill} 的 genericKill 也走不到这里 —— 它由
+     * {@link #kill()} 覆写直接转给 {@link #die(DamageSource)}（2026-10-22，让 /kill 打得掉）。
      * 命中一律扣 {@link #DAMAGE_PER_HIT} 点，**与传入的 {@code amount} 无关**。
      */
     @Override
@@ -353,12 +354,40 @@ public class BarricadeEntity extends LivingEntity {
         return false;
     }
 
+    /**
+     * 死亡入口（2026-10-22 用户裁决：**不要生物式死亡动画**，改成「船 / 盔甲架」那样直接消失）。
+     *
+     * <p>原版流程是 {@code super.die} 广播实体事件 3（死亡音 + 客户端置 {@code Pose.DYING}），然后由
+     * {@code LivingEntity#tickDeath()} 在 {@code deathTime >= 20} 时才移除实体 —— 这 20 tick 就是肉眼
+     * 看到的「躺倒 / 变红」动画。这里保留 {@code super.die} 的原版账务与死亡音，随后**同一 tick** 就
+     * {@link #release(boolean) release(false)} + {@code remove(KILLED)} ⇒ 客户端只收到「死亡音 +
+     * 移除包」，看不到动画。
+     *
+     * <p>走 {@code KILLED} 而不是 {@code DISCARDED}：{@link #remove(RemovalReason)} 的清理分支两者都认，
+     * 但原版死亡路径的语义就是 {@code KILLED}。清理本身幂等（{@code released} 标志），不会因为
+     * {@code remove} 里再调一次 {@code release(true)} 而重播死亡音。
+     */
     @Override
     public void die(DamageSource source) {
         super.die(source);
         if (!this.level().isClientSide) {
             this.release(false);
+            if (!this.isRemoved()) {
+                this.remove(RemovalReason.KILLED);
+            }
         }
+    }
+    /**
+     * 「显式判死」入口（2026-10-22 用户反馈：{@code /kill} 打不掉这类实体）。
+     * 原版 {@code /kill} 走 {@code Entity#kill()} → {@code hurt(genericKill, MAX)}，而 {@link #hurt}
+     * 只接受生物来源（{@code genericKill} 的 {@code getEntity()} 为 {@code null}）⇒ 原版 /kill 无效。
+     * 这里直接转给 {@link #die(DamageSource)}：与「被玩家拆掉」同一条路径（清仇恨 + 删碰撞方块 +
+     * 无死亡动画）⇒ {@code /kill @e[type=astral_dice:barricade]} 可用。
+     */
+    @Override
+    public void kill() {
+        if (this.level().isClientSide) return;
+        this.die(this.damageSources().genericKill());
     }
 
     /**

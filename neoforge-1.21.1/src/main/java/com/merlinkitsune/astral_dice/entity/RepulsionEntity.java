@@ -4,6 +4,7 @@ import com.merlinkitsune.astral_dice.item.ChargeManager;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.damagesource.DamageSource;
@@ -41,7 +42,8 @@ import java.util.UUID;
  * 强化拒止实体（效果牌「强化拒止」的可见部分，2026-10-18 新牌；属「怪力乱神」立牌）。
  *
  * <p><b>形态</b>：只有实体，**没有任何碰撞方块**（实体本身仍有 1.6×2.4 的拾取 / 攻击判定框，
- * 但 {@link #hurt} **恒返回 false** ⇒ 攻击对你无效，见〈免疫攻击〉）；{@code noPhysics = true}
+ * 但 {@link #hurt} 只认**玩家来源** ⇒ 怪物 / 环境攻击无效、玩家可以主动打掉，见〈可被玩家拆除〉）；
+ * {@code noPhysics = true}
  * ⇒ 不参与任何方块碰撞 / 推动。{@code extends LivingEntity}（**不**用 Mob AI）只为拿到生命值
  * 同步通道：耐久直接用 {@link #getHealth()} 承载（{@code MAX_HEALTH = 50}，由
  * {@code event/ModEntityEvents} 在 {@code EntityAttributeCreationEvent} 注册）。
@@ -117,9 +119,16 @@ import java.util.UUID;
  * <p><b>不吸引仇恨</b>：全程**不调用任何 {@code setTarget}**，也不清除目标原有仇恨 ——
  * 与「路障」（{@code BarricadeEntity}，主动改写仇恨）是**相反**的语义，两者不得混用判据。
  *
- * <p><b>免疫攻击</b>：{@link #hurt} **恒返回 false**（不吃任何伤害、也不接受任何伤害来源）——
- * 用户需求「主动攻击并不会对其造成伤害」。因此也不覆写 {@code die} / 死亡清理：
- * 唯一的消亡路径是耐久耗尽（{@link #shatter()}）。
+ * <p><b>可被玩家拆除（2026-10-22 用户裁决，取代原「主动攻击并不会对其造成伤害」）</b>：
+ * {@link #hurt} 只认**玩家来源**（{@code source.getEntity() instanceof Player}，含玩家射出的箭 /
+ * 三叉戟 —— 其 {@code getEntity()} 就是发射者）：徒手或武器命中按实际伤害扣耐久（至少
+ * {@link #MIN_PLAYER_DAMAGE} 点），耐久归零 ⇒ {@link #shatter()}。怪物 / 环境伤害**仍然无效**
+ * ⇒「不吸引仇恨」与「玩家能主动清掉它」两个口径同时成立。
+ * <p>{@code /kill} 这类「显式判死」走 {@code Entity#kill()}，本类已覆写 {@link #kill()} 直接接到
+ * {@link #shatter()}（2026-10-22 用户反馈「/kill 打不掉」）⇒
+ * {@code /kill @e[type=astral_dice:repulsion,distance=..64]} 可用；管理员兜底
+ * {@code /astralparty killrepulsion [radius|all]}（2026-10-22 新增，一次清一片，并额外释放
+ * 被控目标的脱控状态）同样可用。
  *
  * <p><b>持久化</b>：被吸附目标集合以 {@code Set<UUID>} 存字段，NBT 落盘为
  * {@code long[]}（每目标 2 个 long = most/least significant bits，避免依赖
@@ -147,7 +156,7 @@ import java.util.UUID;
  *       判据按源码写死（{@code NeutralMob#isAngry()} / {@code TamableAnimal#isTame()}），未实机核对。</li>
  * </ul>
  *
- * <p><b>已登记风险</b>：{@code hurt} 恒 false ⇒ 若被**第三方 goal** 选为目标，该 goal 会永远
+ * <p><b>已登记风险</b>：{@code hurt} 只认玩家 ⇒ 若被**第三方 goal** 选为目标，该 goal 会永远
  * 打不死本实体（原版敌对 goal 只选 {@code Player} / {@code Villager} / {@code Monster}，通常
  * 不命中本实体；第三方若点名 {@code LivingEntity} 才会出现，每 tick 的视线 / 距离判定开销极小，
  * 但如实登记在此）。
@@ -203,6 +212,14 @@ public class RepulsionEntity extends LivingEntity {
 
     /** 单次耐久结算的最大消耗（点；用户需求「单次最大消耗5点」）。 */
     private static final int MAX_DURABILITY_COST = 5;
+
+    /**
+     * 玩家单次命中扣掉的最小耐久（点；2026-10-22 用户裁决新增「玩家可拆除」时定的下限）。
+     *
+     * <p>为什么要有下限：{@code amount} 是攻击方给的伤害值，徒手仅 1 点、且某些第三方武器 / 附魔
+     * 可能给出 {@code 0}（或极小值）；没有下限时会出现「打了半天不见进度」的观感问题。
+     */
+    private static final float MIN_PLAYER_DAMAGE = 1.0F;
 
     /** 碎裂粒子数量（用户需求「耐久耗尽会有碎裂粒子效果」；设计要求 CRIT 至少 16 个）。 */
     private static final int SHATTER_CRIT_COUNT = 32;
@@ -848,15 +865,80 @@ public class RepulsionEntity extends LivingEntity {
     }
 
     /**
-     * 主动攻击**不会造成任何伤害**（用户需求「主动攻击并不会对其造成伤害」）。
+     * 受伤入口（**服务端唯一判定**）：只认**玩家来源**（2026-10-22 用户裁决：要让玩家能主动拆掉它）。
      *
-     * <p>⚠️ 这是**恒 false** 的全量免疫：不吃生物伤害、不吃环境伤害、也不吃 {@code /kill}；
-     * 唯一消亡路径是耐久耗尽（{@link #shatter()}）。代价与「路障」类似 ——
-     * 绕过平台伤害事件与无敌帧，但本实体本来就不打算接受任何伤害，故无副作用。
+     * <p>口径：
+     * <ul>
+     *   <li>来源判定 = {@code source.getEntity() instanceof Player} ⇒ 玩家近战 / 扫击 / 玩家射出的
+     *       箭与三叉戟都算（弹射物的 {@code getEntity()} 是发射者）；怪物、其它生物、环境伤害
+     *       （坠落 / 火焰 / 冻结 / 挤压）与 {@code /kill} 的 {@code genericKill}（没有 entity）
+     *       一律无效 ⇒「不吸引仇恨」的语义不变；</li>
+     *   <li>伤害量 = {@code max(MIN_PLAYER_DAMAGE, amount)}；**全覆写**不经过原版
+     *       {@code LivingEntity#hurt} ⇒ 无无敌帧冷却、无护甲 / 抗性减伤、无格挡（与「路障」同一取舍），
+     *       徒手也保证至少 1 点进度；</li>
+     *   <li>耐久归零 ⇒ {@link #shatter()}（碎裂粒子 + 玻璃破碎音 + {@code discard}），
+     *       **不**走 {@code die} ⇒ 没有生物式死亡动画（见 {@link #die(DamageSource)}）；</li>
+     *   <li>客户端红闪 + 受击音走 {@code broadcastDamageEvent}（{@code ClientboundDamageEventPacket}
+     *       → {@code handleDamageEvent} 置 {@code hurtTime}），受击音由 {@link #getHurtSound} 决定，
+     *       这里不重复 {@code playSound}。</li>
+     * </ul>
      */
     @Override
     public boolean hurt(DamageSource source, float amount) {
-        return false;
+        if (this.level().isClientSide) return false;
+        if (this.isRemoved() || this.isDeadOrDying()) return false;
+        if (!(source.getEntity() instanceof Player)) return false;
+
+        this.markHurt();
+        this.level().broadcastDamageEvent(this, source);
+
+        float dealt = Math.max(MIN_PLAYER_DAMAGE, amount);
+        float next = this.getHealth() - dealt;
+        if (next <= 0.0F) {
+            this.shatter();
+        } else {
+            this.setHealth(next);
+        }
+        return true;
+    }
+
+    /** 受击音：玻璃磕碰（客户端由伤害事件包播放；碎裂音是另一条路径，见 {@link #shatter()}）。 */
+    @Override
+    protected SoundEvent getHurtSound(DamageSource source) {
+        return SoundEvents.GLASS_HIT;
+    }
+
+    /**
+     * 死亡入口（**无生物式死亡动画**，2026-10-22 用户裁决）：一律折叠成 {@link #shatter()}。
+     *
+     * <p>为什么这样就「不动画」：原版 {@code LivingEntity#tickDeath()} 要等 {@code deathTime >= 20}
+     * 才移除实体，这 20 tick 就是客户端看到的躺倒 / 变红动画（由 {@code super.die} 里的
+     * {@code setPose(Pose.DYING)} 与实体事件 3 驱动）。本覆写把「判死」直接换成「碎裂粒子 + 玻璃
+     * 破碎音 + {@code discard}」⇒ 服务端同一 tick 内移除，客户端只收到音效 / 粒子 + 移除包，
+     * 观感与「船 / 盔甲架」一致。客户端侧不做任何本地处理。
+     *
+     * <p>目前没有路径会主动调它（{@link #hurt} 与 {@link #consumeDurability()} 都直接走
+     * {@link #shatter()}）；保留是为了「万一有第三方或未来的伤害路径把本实体判死」时行为不退化成
+     * 生物式死亡。
+     */
+    @Override
+    public void die(DamageSource source) {
+        if (this.level().isClientSide) return;
+        this.shatter();
+    }
+    /**
+     * 「显式判死」入口（2026-10-22 用户反馈「遗留力场拿不到 id，/kill 也杀不掉」）。
+     * 原版 {@code /kill} 走 {@code Entity#kill()} → {@code hurt(genericKill, MAX)}，而本实体的
+     * {@link #hurt} 只认玩家来源 ⇒ 原版 /kill 打不掉它。这里把 {@code kill()} 直接接到唯一的
+     * 消亡路径 {@link #shatter()}：{@code /kill @e[type=astral_dice:repulsion,distance=..64]}
+     * 与 {@code /astralparty killrepulsion [radius|all]} 等价可用。
+     *
+     * <p>只影响「显式判死」这条路径；怪物 / 环境伤害仍走 {@link #hurt} 被拒 ⇒ 免疫口径不变。
+     */
+    @Override
+    public void kill() {
+        if (this.level().isClientSide) return;
+        this.shatter();
     }
 
     /** 药水（喷溅 / 滞留 / 瞬时）一律不生效（2026-10-21 用户裁决）。 */

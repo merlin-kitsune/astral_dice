@@ -3,10 +3,13 @@ package com.merlinkitsune.astral_dice.command;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
+import com.merlinkitsune.astral_dice.entity.BarricadeEntity;
+import com.merlinkitsune.astral_dice.entity.RepulsionEntity;
 import com.merlinkitsune.starengine.event.ModEffectRemoval;
 import com.merlinkitsune.astral_dice.item.card.EffectCardPeriod;
 import com.merlinkitsune.astral_dice.item.sign.BaseSignItem;
 import com.mojang.brigadier.Command;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
@@ -15,9 +18,13 @@ import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.core.Holder;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
@@ -33,7 +40,7 @@ import java.util.Optional;
 /**
  * {@code /astralparty} 调试命令(仅 OP,权限级 2)。
  *
- * <p>五个子命令:三个写入类按「出牌锁的三条判据」分工——出牌锁判定见
+ * <p>七个子命令:五个写入类按「出牌锁的三条判据」分工——出牌锁判定见
  * {@link EffectCardPeriod#isBlocked(net.minecraft.world.entity.player.Player)}:
  * <ol>
  *   <li>{@code isBurstFull} —— 出牌数达当轮上限;</li>
@@ -55,6 +62,12 @@ import java.util.Optional;
  *       (把 {@code sign_active_cooldown_end} 写成当前时刻)。**只结束冷却计时**:不碰锁定(生效中)态
  *       {@code sign_active_lock_*},不碰 {@code sign_active_max_cooldown}(蛟龙立牌 mamushi 的 60s
  *       生效期即锁定态 {@code sign_active_lock_*},同样不碰);**不带任何数值参数**(见文末「能力边界」红线②)。</li>
+ *   <li>{@code /astralparty killbarricade [radius|all]} —— 清掉**当前维度**里的
+ *       {@link BarricadeEntity 路障实体}(2026-10-22 新增);默认半径 {@value #DEFAULT_KILL_RADIUS} 格,
+ *       {@code all} = 整个维度。走 {@code discard} ⇒ 隐形碰撞方块一并删除、半径 10 内的仇恨解除。</li>
+ *   <li>{@code /astralparty killrepulsion [radius|all]} —— 清掉**当前维度**里的
+ *       {@link RepulsionEntity 强化拒止实体}(2026-10-22 新增);同一套参数口径。被它关掉重力的飞行目标
+ *       会随之还原 ⇒ 不留"浮空怪"。这是「拿不到实体 id、{@code /kill} 也打不掉」时的兜底。</li>
  * </ul>
  *
  * <p><b>dump 的输出约定(核心是「格式稳定」,不是给人看)</b>:① 每行固定前缀 {@code APDUMP|},
@@ -107,6 +120,8 @@ public final class AstralPartyCommand {
     private static final String KEY_RESET_LOCK_OTHER = "command.astral_dice.astralparty.resetcardlock.success.other";
     private static final String KEY_FINISH_COOLDOWN_SELF = "command.astral_dice.astralparty.finishsigncooldown.success";
     private static final String KEY_FINISH_COOLDOWN_OTHER = "command.astral_dice.astralparty.finishsigncooldown.success.other";
+    private static final String KEY_KILL_BARRICADE = "command.astral_dice.astralparty.killbarricade.success";
+    private static final String KEY_KILL_REPULSION = "command.astral_dice.astralparty.killrepulsion.success";
     private static final String KEY_NO_PLAYER = "command.astral_dice.astralparty.error.no_player";
     /** dump 的**人类可读摘要**(唯一走 lang key 的 dump 反馈;APDUMP 机器行正文刻意不走 lang) */
     private static final String KEY_DUMP_SUMMARY = "command.astral_dice.astralparty.dump.summary";
@@ -119,6 +134,20 @@ public final class AstralPartyCommand {
     private static final String FINISH_COOLDOWN_LITERAL = "finishsigncooldown";
     /** {@code resetcardlock} 的别名(拼写正确版),与主字面量同一实现 */
     private static final String[] RESET_LOCK_ALIASES = { "resetcardcooldown" };
+    /** {@code killbarricade} 的主字面量(清掉当前维度里的路障实体,含隐形碰撞方块) */
+    private static final String KILL_BARRICADE_LITERAL = "killbarricade";
+    /** {@code killrepulsion} 的主字面量(清掉当前维度里的强化拒止实体) */
+    private static final String KILL_REPULSION_LITERAL = "killrepulsion";
+    /** 实体清理命令的可选参数:半径(格,立方体范围;1..{@link #MAX_KILL_RADIUS}) */
+    private static final String ARG_RADIUS = "radius";
+    /** 实体清理命令的可选子字面量:整个维度(不按半径筛) */
+    private static final String ARG_ALL = "all";
+    /** 实体清理命令的默认半径(格) */
+    private static final int DEFAULT_KILL_RADIUS = 64;
+    /** 实体清理命令允许的最大半径(格;再大就等于 all,但保留显式写法便于脚本参数化) */
+    private static final int MAX_KILL_RADIUS = 1024;
+    /** 实体清理的机器行前缀(落 latest.log,供 scripts/test 断言) */
+    private static final String KILL_LOG_PREFIX = "AFTERM";
 
     // === dump(只读转储)的机器格式约定 =====================================================
     // 机器格式的核心价值是「稳定」:固定前缀 + 固定分隔符 + 固定键序,供 PowerShell 侧对
@@ -172,7 +201,11 @@ public final class AstralPartyCommand {
                         .executes(ctx -> onSelf(ctx, AstralPartyCommand::finishSignCooldown))
                         .then(Commands.argument(ARG_TARGETS, EntityArgument.players())
                                 .executes(ctx -> onTargets(ctx, AstralPartyCommand::finishSignCooldown))))
-                .then(resetCardLockNode(RESET_LOCK_LITERAL));
+                .then(resetCardLockNode(RESET_LOCK_LITERAL))
+                .then(killEntityNode(KILL_BARRICADE_LITERAL, BarricadeEntity.class,
+                        "barricade", KEY_KILL_BARRICADE))
+                .then(killEntityNode(KILL_REPULSION_LITERAL, RepulsionEntity.class,
+                        "repulsion", KEY_KILL_REPULSION));
         // 别名:同一构建器工厂 + 同一执行方法,命令只注册一次主名 + 别名
         for (String alias : RESET_LOCK_ALIASES) {
             root.then(resetCardLockNode(alias));
@@ -186,6 +219,81 @@ public final class AstralPartyCommand {
                 .executes(ctx -> onSelf(ctx, AstralPartyCommand::resetCardLock))
                 .then(Commands.argument(ARG_TARGETS, EntityArgument.players())
                         .executes(ctx -> onTargets(ctx, AstralPartyCommand::resetCardLock)));
+    }
+
+    /**
+     * {@code killbarricade} / {@code killrepulsion} 的构建器工厂：清掉**当前维度**里的本模组实体。
+     *
+     * <p>为什么需要（2026-10-22 用户需求）：强化拒止历史上 {@code hurt} 恒 false ⇒ 玩家拿它没办法；
+     * 叠加「界面里读不到实体 id」时连 {@code /kill @e[type=astral_dice:repulsion]} 都不好使
+     * （手输 id 也容易错）⇒ 给一条**不依赖实体 id**的兜底命令。
+     *
+     * <p>参数：默认半径 {@value #DEFAULT_KILL_RADIUS} 格（以执行者位置为中心的立方体范围 AABB；对角方向最远可达半径×√3）；
+     * {@code radius <1..1024>} 自定义半径；{@code all} = 整个维度（{@code ServerLevel#getAllEntities()}）。
+     *
+     * <p>统一走 {@link Entity#discard()}：路障的 {@code remove(DISCARDED)} 会删掉隐形碰撞方块并解除
+     * 半径 10 内的仇恨；强化拒止的 {@code remove} 会还原被它关掉重力的飞行目标 ⇒ 不留残骸。
+     * 反馈走 lang key，另落一行 {@code AFTERM|...} 机器行供测试脚本断言。
+     */
+    private static LiteralArgumentBuilder<CommandSourceStack> killEntityNode(
+            String literal, Class<? extends Entity> type, String entityId, String langKey) {
+        return Commands.literal(literal)
+                .requires(AstralPartyCommand::hasPermission)
+                .executes(ctx -> killEntities(ctx, type, entityId, langKey, DEFAULT_KILL_RADIUS))
+                .then(Commands.literal(ARG_ALL)
+                        .executes(ctx -> killEntities(ctx, type, entityId, langKey, -1)))
+                .then(Commands.argument(ARG_RADIUS, IntegerArgumentType.integer(1, MAX_KILL_RADIUS))
+                        .executes(ctx -> killEntities(ctx, type, entityId, langKey,
+                                IntegerArgumentType.getInteger(ctx, ARG_RADIUS))));
+    }
+
+    /**
+     * 实体清理的本体（服务端唯一）。
+     *
+     * @param radius 半径（格）；{@code < 0} 表示整个维度
+     */
+    private static int killEntities(CommandContext<CommandSourceStack> ctx,
+                                    Class<? extends Entity> type, String entityId, String langKey, int radius) {
+        CommandSourceStack source = ctx.getSource();
+        ServerLevel level = source.getLevel();
+
+        // 先收集再删：getAllEntities() / getEntitiesOfClass() 返回的集合在 discard() 期间可能被改写
+        List<Entity> found = new ArrayList<>();
+        if (radius < 0) {
+            for (Entity entity : level.getAllEntities()) {
+                if (type.isInstance(entity)) {
+                    found.add(entity);
+                }
+            }
+        } else {
+            Vec3 center = source.getPosition();
+            AABB area = new AABB(center.x - radius, center.y - radius, center.z - radius,
+                    center.x + radius, center.y + radius, center.z + radius);
+            for (Entity entity : level.getEntitiesOfClass(Entity.class, area)) {
+                if (type.isInstance(entity)) {
+                    found.add(entity);
+                }
+            }
+        }
+
+        int killed = 0;
+        for (Entity entity : found) {
+            if (entity.isRemoved()) continue;
+            entity.discard();
+            killed++;
+        }
+
+        // 机器行：落 latest.log（不加颜色码、不走 lang key），供 scripts/test 的正则断言
+        LOGGER.info("{}|type={}|killed={}|mode={}|radius={}|dim={}|x={}|y={}|z={}",
+                KILL_LOG_PREFIX, entityId, killed, radius < 0 ? ARG_ALL : "radius",
+                radius < 0 ? -1 : radius, level.dimension().location(),
+                (int) Math.floor(source.getPosition().x),
+                (int) Math.floor(source.getPosition().y),
+                (int) Math.floor(source.getPosition().z));
+
+        int result = killed;
+        source.sendSuccess(() -> Component.translatable(langKey, result), true);
+        return result;
     }
 
     private static boolean hasPermission(CommandSourceStack source) {

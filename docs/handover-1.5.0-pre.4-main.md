@@ -1,22 +1,17 @@
-# 交接正本 — 1.5.0-pre.3（multi-main）
+# 交接正本 — 1.5.0-pre.4（multi-main）
 
 ## 0 速览（一屏）
 
-1. 分支 `multi-main`，功能末次提交 `3e200a9b`（本文档自身是其后一条 `docs(handover)` 提交，`git log -1` 应显示它），开工时 `git status --short -uall` 为空（干净）。
-2. 未推送提交 **16** 个（`git rev-list --count origin/multi-main..HEAD`，本文档提交前实测；本文档提交后为 **17**，含本条），**无** `1.5.0-pre.3` tag（`git tag --list '*1.5.0-pre.3*'` 为空）。
-3. 四线 `mod_version` 均为 `1.5.0-pre.3+<加载器后缀>`；`starengine_version=1.1.0-pre.2`（四线一致）。
-4. jar 内硬前置：`modId="starengine"` / `versionRange="[1.1.0-pre.2,2.0.0)"`，`META-INF/jarjar/` 计数 **0**（不再内嵌库）。
-5. 可交付范围：**只发 P0**（`neoforge-1.21.1` + `forge-1.20.1`）。P1 两线版本号同为 pre.3，但内容不含 1.5.0。
-6. P0 双 jar 已定稿并投放两个整合包（sha256 与 `build/libs` 一致），库 jar 同名在位。
-7. 守门 8 跑 7 绿；唯一红 = `verify_probe_class_refs`（既有基线，见 §5-1）。2026-10-22 已修该门三处自身缺陷，
-   红点从 6 处降到 **1 处**（26.1.2 产物陈旧，P1 待重建）。
+1. 分支 `multi-main`；pre.3 周期末次提交 `afdcd453`，**本批 pre.4 施工尚未提交**（工作树有改动，见 §5-13）。
+2. 未推送提交 **26** 个（`git rev-list --count origin/multi-main..HEAD`，pre.4 提交前实测），**无** tag（`1.5.0-pre.3` / `1.5.0-pre.4` 均无，需用户放行）。
+3. 四线 `mod_version` 均为 `1.5.0-pre.4+<加载器后缀>`（2026-10-22 bump）；`starengine_version=1.1.0-pre.2`（四线一致，未动）。
+4. jar 内硬前置：`modId="starengine"` / `versionRange="[1.1.0-pre.2,2.0.0)"`，`META-INF/jarjar/` 计数 **0**（pre.4 两 jar 已复核）。
+5. 可交付范围：**只发 P0**（`neoforge-1.21.1` + `forge-1.20.1`）。P1 两线版本号同为 pre.4，但内容不含 1.5.0。
+6. P0 双 jar（pre.4）已重建并投放 **4 处**（两个整合包 + 两个 `run/<线>/mods`），逐处 sha256 见 §2。
+7. 守门 8 跑 7 绿；唯一红 = `verify_probe_class_refs`（26.1.2 产物陈旧，P1 待重建，见 §5-1）。
 8. 实机：1.20.1 本批 6/6 PASS、1.21.1 5 条 FIXBATCH 判据全命中、末条 49/49 PASS；**创造模式扣卡复验 PASS**（§4.4，2026-10-22 16:10，用例 `CARD-NOCOST-CREATIVE-1.20.1`）。
-9. 待办 1 与「产物/投放同源」已闭环：创造模式扣卡 1.20.1 实测扣 **0** 张、生存对照扣 **1** 张（§4.4）；
-   两份 P0 jar 已于 **15:47** 重建并投放：两个整合包 + `run/1.21.1/mods` = `build/libs` reobf jar；
-   `run/1.20.1/mods` 按 §6-3 **仍放 `build/devlibs` named jar**（2,571,732 B `24941dad…`，dev 必需，与 reobf jar 不同哈希）。
-   剩余最大风险 = **提交未推 + 无 tag**（按用户口径不做）与 P1 欠账（§5-3）。
-10. **pre.3 已推送到两个 P0 整合包（2026-10-22 16:2x）**：逐处 `Get-FileHash` 与 `build/libs` **MATCH**，jar 内版本/依赖区间/jarjar 计数/关键类全部核过；
-    面向整合包会话的交接单见 `docs/handover-1.5.0-pre.3-modpack.md`（投放表 / 自检读数 / 三个坑 / 剩余事项）。
+9. **pre.4 本批（2026-10-22 17:3x）无新增实机读数**：改动 = 实体拆除口径 + 死亡动画 + 两个管理命令 + 11 张效果图标 + 版本号，判据目前全为静态/字节码/资源 md5（§5-13），实机待用户下达。
+10. 面向整合包会话的交接单见 `docs/handover-1.5.0-pre.4-modpack.md`（投放表 / 自检读数 / 坑 / 剩余事项）。
 
 ## 1 环境与路径
 
@@ -42,30 +37,31 @@
 
 | 项 | 实测值 | 证据 |
 |---|---|---|
-| neo `mod_version` | `1.5.0-pre.3+neoforge_1.21.1` | `neoforge-1.21.1/gradle.properties:37` |
-| forge `mod_version` | `1.5.0-pre.3+forge_1.20.1` | `forge-1.20.1/gradle.properties:41` |
-| 26.1.2 `mod_version` | `1.5.0-pre.3+neoforge_26.1.2` | `neoforge-26.1.2/gradle.properties:54` |
-| fabric `mod_version` | `1.5.0-pre.3+fabric_1.20.1` | `fabric-1.20.1/gradle.properties:29` |
+| neo `mod_version` | `1.5.0-pre.4+neoforge_1.21.1` | `neoforge-1.21.1/gradle.properties:37` |
+| forge `mod_version` | `1.5.0-pre.4+forge_1.20.1` | `forge-1.20.1/gradle.properties:41` |
+| 26.1.2 `mod_version` | `1.5.0-pre.4+neoforge_26.1.2` | `neoforge-26.1.2/gradle.properties:54` |
+| fabric `mod_version` | `1.5.0-pre.4+fabric_1.20.1` | `fabric-1.20.1/gradle.properties:29` |
 | `starengine_version` | `1.1.0-pre.2`（四线一致） | `fabric:40` / `forge:114` / `neo:43` 起的段落 |
 | jar 内依赖区间 | `[1.1.0-pre.2,2.0.0)`，`type=required`（neo）/ `mandatory=true`（forge） | `META-INF/neoforge.mods.toml:141-144` / `META-INF/mods.toml:154-158` |
 | 内嵌库 | `META-INF/jarjar/` 计数 **0**（两线） | `unzip -l <jar> \| grep -c 'META-INF/jarjar/'` |
 
-P0 产物（`build/libs`，**2026-10-22 15:47 重建**，含立牌冷却补丁）：
+P0 产物（`build/libs`，**2026-10-22 17:2x pre.4 重建**）：
 
-- neo `astral_dice-1.5.0-pre.3+neoforge_1.21.1.jar` — **2,555,654 B** — `f063102b53f171b66229c1dcd47c7b45d4db6dccc93ccdf9c706ba347f04c2ed`
-- forge `astral_dice-1.5.0-pre.3+forge_1.20.1.jar` — **2,601,208 B** — `7bf787dff9e6498593f92119bd5f742799307a490a246926ce761a861c167d1c`
-- 旧值（14:25 构建，已被覆盖，只作历史）：neo 2,555,453 B `09980b2e…`、forge 2,601,019 B `70b347ba…`。
-- 投放（2026-10-22 15:47 实测，逐处 `Get-Item` + `Get-FileHash`）：
-  | 位置 | 字节 | sha256 | 与 §2 对账 |
+- neo `astral_dice-1.5.0-pre.4+neoforge_1.21.1.jar` — **2,556,723 B** — `7198cc75a559514e1f982074dae7d8f4a875845491fc6a7409ee47daa03c7878`
+- forge `astral_dice-1.5.0-pre.4+forge_1.20.1.jar` — **2,602,280 B** — `fbb776271b8fa3b7189c3d5c810282c58b0de1b0db042b7affe03825c0139227`
+- forge dev named jar `build/devlibs/astral_dice-1.5.0-pre.4+forge_1.20.1.jar` — **2,572,814 B** — `6a445c8fa2451b394e05c9228279e1c579d18d5c3006f29caacaa2ec35cf5cba`
+- 历史值（pre.3，已被覆盖，只作背景）：neo 2,555,654 B `f063102b…`、forge 2,601,208 B `7bf787df…`；更早 14:25 构建为 neo 2,555,453 B `09980b2e…`、forge 2,601,019 B `70b347ba…`。
+- 同目录残留中间构建件（lang 改动前的同版本号产物，**勿投放**）：`build/libs` 2,556,683 B `169b6b4a…` / 2,602,239 B `6d02341f…`、`build/devlibs` 2,572,773 B `06f8ee31…`。
+- 投放（2026-10-22 17:2x 实测，逐处 `Get-Item` + `Get-FileHash`；旧 pre.3 已删除）：
+  | 位置 | jar 形态 | 字节 | 对账 |
   |---|---|---|---|
-  | `run/1.21.1/mods` | 2,555,654 | `f063102b…04c2ed` | MATCH |
-  | `D:\.minecraft\versions\狐の航空学 Voxy Edition\mods` | 2,555,654 | `f063102b…04c2ed` | MATCH |
-  | `D:\.minecraft\versions\1.20.1-Forge 模组测试\mods` | 2,601,208 | `7bf787df…c167d1c` | MATCH |
-  | `run/1.20.1/mods` | **2,571,732** | `24941dad…026fff0` | **非同哈希，属预期**：= `build/devlibs` named jar（§6-3） |
-  说明：forge dev 必须跑 named jar（reobf 的 SRG 调用在 dev 会抛 `NoSuchMethodError`），故 `run/1.20.1/mods` **不应**等于 `build/libs`；
-  本轮 1.20.1 实机（§4.4）跑的就是这份 15:47:54 的 named jar（与 reobf jar 同源、同含扣卡修复）。
-- 产物含立牌冷却补丁的字节码证据：两线 `item/sign/BonnieSignItem$1.class` 经 `javap -p -c` 命中 `setSignActiveMaxCooldown` 1 次（外层类 0 次）。
-- 成对库：两个整合包各自有 `starengine-neoforge-1.21.1-1.1.0-pre.2.jar`（98,733 B）/ `starengine-forge-1.20.1-1.1.0-pre.2.jar`（103,604 B）；
+  | `run/1.21.1/mods` | reobf（`build/libs`） | 2,556,723 | MATCH |
+  | `run/1.20.1/mods` | **named dev jar**（`build/devlibs`） | 2,572,814 | MATCH（同源，§6-3） |
+  | `D:\.minecraft\versions\狐の航空学 Voxy Edition\mods` | reobf（`build/libs`） | 2,556,723 | MATCH |
+  | `D:\.minecraft\versions\1.20.1-Forge 模组测试\mods` | reobf（`build/libs`） | 2,602,280 | MATCH |
+- jar 内自检：neo version=`1.5.0-pre.4+neoforge_1.21.1` / forge=`1.5.0-pre.4+forge_1.20.1`；`META-INF/jarjar/` = **0**；`AstralPartyCommand.class` 含 `killbarricade` / `killrepulsion` / `AFTERM`；11 张 `mob_effect/*.png` 与 `images/shop/unbord_chips/` 源文件 md5 全等（两线各 11，mismatch 0）；`javap` 读数见 §5-13。
+- 投放后目录状态：两个 `run/<线>/mods` 与两个整合包的 `astral_dice-*.jar` 只剩 pre.4 一份；整合包侧 `starengine-*` 与 `AutoJS-forge-1.20.1-1.0.0.jar`（reobf，167,358 B）在位。
+- 成对库：两个整合包各有 `starengine-neoforge-1.21.1-1.1.0-pre.2.jar`（98,733 B）/ `starengine-forge-1.20.1-1.1.0-pre.2.jar`（103,604 B）；
   两个 `run/<线>/mods` **无** starengine jar（dev 由 Gradle classpath 提供，历史如此）。
 
 ## 3 本批批次表（一行一批：提交号 / 主题 / 关键落点）
@@ -84,6 +80,8 @@ P0 产物（`build/libs`，**2026-10-22 15:47 重建**，含立牌冷却补丁�
 | `0938a60d` | feat(scope+shop+meta) | 电池折算限立牌主动冷却、商店并栈收口、抽奖盒投入冷却、硬前置补强 |
 | `36d3c43c` | test(cases) | 修正筹码商店用例口径 + 新增 5 条批次行为用例（两线实机全绿） |
 | `3e200a9b` | fix(card+docs) | 创造模式两线扣卡对齐、CHANGELOG 库版本订正、补 `docs/compat-1.5.0-porting.md` |
+| `afdcd453` | docs(modpack) | 新增整合包交接单 `docs/handover-1.5.0-pre.4-modpack.md`（投放表 / 自检 / 坑） |
+| （未提交） | release+fix(pre.4) | 四线升 pre.4；强化拒止可被玩家拆除 + 两实体 `kill()` 覆写；`/astralparty killbarricade\|killrepulsion`；11 个筹码效果图标换无边框 |
 
 ## 4 实机读数（原文摘录）
 
@@ -138,6 +136,12 @@ AP_NC2B_READ:hand=astral_dice:effect_card_monster_laser:handn=2:cards=2:sel=0:to
 - 收尾：`mt.ps1 --version 1.20.1 --phase stop --force --purge-saves` ⇒ `MT_STOP: OK (1s)` / `MT_CLEANUP_SAVES: PURGED 1` / `MT_CLEANUP_RESULT: OK`；
   `Get-Process java` 余 2 个，均为 Gradle 守护进程（Zulu 21 PID 34464 + Adoptium 17 PID 41468），无客户端残留。
 
+### 4.5 pre.4 本批（2026-10-22 17:3x）—— **无新增实机读数**
+
+本批两条判据本质上要实机：① 「强化拒止可被玩家打掉」需要真实玩家攻击与伤害结算；② 「没有生物式死亡动画」是目视观感。
+已备齐的静态判据见 §5-13（`kill()` / `hurt` / `getHurtSound` 字节码、`AFTERM` 机器行字符串、图标 md5、lang 三语 1045 键一致、两份 CHANGELOG 措辞）。
+⇒ 实机待用户明确下达；建议最小验证面：装 pre.4 → `/astralparty killrepulsion all` 清场 → 放一个新强化拒止 → 玩家用任意武器砍一刀（观察是否逐步变透明并按实际伤害扣耐久）→ 砍到归零（观察是否同一 tick 消失、无躺倒/变红）。
+
 ## 5 遗留与欠账
 
 ### Blocker
@@ -174,7 +178,7 @@ AP_NC2B_READ:hand=astral_dice:effect_card_monster_laser:handn=2:cards=2:sel=0:to
 3. **P1 两线整体欠账**（26.1.2 / fabric 均 0 命中，1.21.1 为基准）：JEI 筹码（`compat/jei` 9 文件）、
    `BeamFx`（4）、`GlobalEventGate`（3）、`RepulsionEntity`（10）、`CardShopMenu#planPlacement`（1）、
    `EventDrawBlock`（6）。⇒ 1.5.0 正式版前不验证、不移植（用户裁决）；映射表见 `docs/compat-1.5.0-porting.md`。
-4. **提交未推 + 无 tag**：`origin/multi-main..HEAD` = 16，`git tag --list '*1.5.0-pre.3*'` 为空。按用户口径默认不 push。
+4. **提交未推 + 无 tag**：`origin/multi-main..HEAD` = **26**（pre.4 提交前实测；本次提交后 27），`git tag --list '*1.5.0-pre.*'` 为空。按用户口径默认不 push、不打 tag。
 
 ### Minor
 
@@ -212,7 +216,7 @@ AP_NC2B_READ:hand=astral_dice:effect_card_monster_laser:handn=2:cards=2:sel=0:to
     `docs/agent/AGENTS-full.md`（红线区同文 + 新增〈代码审查工具链更新〉节 + §5-1/§5-2 规则行）；`docs/agent/AGENT-SPLIT.md:19`；
     `docs/handover-new-session-context.md:57`/`:85`；`scripts/test/TESTING-SPEC.md` 附录 A 续 55；本文档 §6 坑 9。
     判据：`python docs/agent/verify-split.py` 四项 `[OK]`；`grep -c 'code_review_'` 在 AGENTS.md 与 AGENTS-full 红线区 = 0。
-    复核（`dsh_code_review` 首跑 `fb01cfcf-ffce-4b0c-80a5-feb1c4016ef0`，patch is correct）提 4 条文档精度问题，**已全部就地修**：① AGENTS-full 新节「历史条目读法」清单误列第 37 条、漏第 33/38/39 条 ⇒ 实测命中为第 25 / 27 / 30 / 33 / 38 / 39 / 41 条（`git grep -n 'code_review' -- docs/agent/AGENTS-full.md` 对回条目号）；② 新节「本文档 §6 坑 9」指向 AGENTS-full 内不存在的章节 ⇒ 改为 `docs/handover-1.5.0-pre.3-main.md` §6 坑 9；③ 新节未写报告落盘位置 ⇒ 表内补 `reportDirectory`（默认 `$DSH_HOME/code-review` 即 `C:\Users\xmace\.dsh\code-review`，文件名 `sha256(会话).json`，`lib/journal.js` 临时文件 + rename 原子写）与「`input` 为空需宿主交互问答器，非交互环境必须给非空 input」；④ `scripts/test/TESTING-SPEC.md:1524` 自标「现行」却仍用 `code_review` 且写作「由主 Agent 亲自编写」 ⇒ 改 `dsh_code_review` 复核并订正为「派子代理编写」。改完复跑 verify-split 四项 `[OK]`，full 行数不变（3,541），索引末行无需再动。
+    复核（`dsh_code_review` 首跑 `fb01cfcf-ffce-4b0c-80a5-feb1c4016ef0`，patch is correct）提 4 条文档精度问题，**已全部就地修**：① AGENTS-full 新节「历史条目读法」清单误列第 37 条、漏第 33/38/39 条 ⇒ 实测命中为第 25 / 27 / 30 / 33 / 38 / 39 / 41 条（`git grep -n 'code_review' -- docs/agent/AGENTS-full.md` 对回条目号）；② 新节「本文档 §6 坑 9」指向 AGENTS-full 内不存在的章节 ⇒ 改为 `docs/handover-1.5.0-pre.4-main.md` §6 坑 9；③ 新节未写报告落盘位置 ⇒ 表内补 `reportDirectory`（默认 `$DSH_HOME/code-review` 即 `C:\Users\xmace\.dsh\code-review`，文件名 `sha256(会话).json`，`lib/journal.js` 临时文件 + rename 原子写）与「`input` 为空需宿主交互问答器，非交互环境必须给非空 input」；④ `scripts/test/TESTING-SPEC.md:1524` 自标「现行」却仍用 `code_review` 且写作「由主 Agent 亲自编写」 ⇒ 改 `dsh_code_review` 复核并订正为「派子代理编写」。改完复跑 verify-split 四项 `[OK]`，full 行数不变（3,541），索引末行无需再动。
  12. **派活口径已改为 DSH 自带子智能体（2026-10-22 用户裁决，本轮已完成）**：DSH 会话的派活唯一通道 = `subagent`（一次性、全新 context、brief 自包含）/
      `subagent_fork`（接续已完成回合）/ `spawn_teammate` + `team_task_*`（多人并行，`write_scopes` 互不重叠）；**Codex 的 `delegate_task` 不得再引用**
      （`~/.codex/mcp/delegation/server.mjs` 属另一宿主，日志字段只作历史背景）；复核仍走 `dsh_code_review({ input })`，不为复核另派 subagent。
@@ -222,7 +226,10 @@ AP_NC2B_READ:hand=astral_dice:effect_card_monster_laser:handn=2:cards=2:sel=0:to
      判据：`python docs/agent/verify-split.py` 四项 `[OK]`；`grep -rn 'delegate_task' AGENTS.md docs/agent/delegation-runbook.md` 只应命中「禁止 / 历史」语境；
      `grep -n 'delegate_task' docs/handover-new-session-context.md` 仅 1 处且位于「禁止」句；`grep -c 'delegate_task' docs/agent/delegation-runbook.md` = 1（首页口径句）。
      复核（`dsh_code_review` run `326a3779-dd78-44dc-8c0a-2b9e29f0a22e`，结论「应视为正确（不阻断）」）提 5 项，**已全部就地修**：① 红线区仍有「只读查证用 `Explore` / 跑命令用 `general-purpose`」属 Codex 侧派活类型 ⇒ 两文件同文改为「按 §B 职业声明派 `subagent`」（红线区 12,070→12,129 字符，逐字仍一致）；② 工具表 `subagent_fork` 行场景含「复核」与下一行 `dsh_code_review` 冲突 ⇒ 改为「续写 / 二次核查；复核不算」；③ Minor-12 数字虚报（runbook 83→82 行、`delegate_task` 计数 2→1）；④ 新节「历史条目读法」指认位置 0 命中 ⇒ 改为旧版 runbook 与 `handover-new-session-context.md:85` 旧文；⑤ `AGENTS-TOC.md` 未随新节更新 ⇒ 全表重算（190 标题）。
-
+13. **pre.4 本批已完成（2026-10-22，尚未提交）**：① 强化拒止改为**只吃玩家近战伤害**（`RepulsionEntity#hurt` 里非 `Player` 来源恒 `false`，`dealt = max(1.0F, amount)`，归零 `shatter()`），`getHurtSound` → `SoundEvents.GLASS_HIT`；② 两者死亡观感改船/盔甲架口径（`die()` 内 `release(false)` + 同 tick `remove(RemovalReason.KILLED)`，无躺倒/变红）；③ 新增 **`kill()` 覆写**（`RepulsionEntity#kill → shatter()`、`BarricadeEntity#kill → die(genericKill())`）—— 原版 `/kill` 走 `Entity#kill() → hurt(genericKill, MAX)`，而 `genericKill` 无实体 ⇒ 旧实现下 `/kill` 恒无效（§6-11）；④ `/astralparty killbarricade|killrepulsion [<radius>|all]`（两线 `command/AstralPartyCommand.java`，权限 2，默认 64 格，`all` 全维度，落 `AFTERM|type=…|killed=…|mode=…|radius=…|dim=…|x=…|y=…|z=…`）；⑤ 11 个筹码效果图标换无边框素材（`tools/gen_chip_effect_icons.py` + `tools/chip_effect_icon_map.json`，P0 两线各 11 张）；⑥ 四线版本 1.5.0-pre.4 + 两份 README 版本表/示例同步 + 两份 CHANGELOG 各 3 处改写 + 2 条新条目。
+    判据（全绿）：`gradlew.bat :neoforge-1.21.1:jar :forge-1.20.1:jar` BUILD SUCCESSFUL；`python tools/gen_chip_effect_icons.py --check` ⇒ `effects=22 misses=0 unaligned=0`（exit 0）；`python tools/verify_effect_icons.py` ⇒ `RESULT: PASS`（四线 65/65/53/53）；`pwsh -NoProfile -File tools/check_lang_sync.ps1` ⇒ exit 0（P0 两线 zh/en/ja 各 **1045** 键一致）；`javap`：neo `RepulsionEntity` 含 `hurt`/`getHurtSound`/`die`/**`kill()`**、`BarricadeEntity` 含 `die`/**`kill()`**/`remove(RemovalReason)`；forge reobf 对应 SRG = `m_6469_`（hurt）/ `m_7975_`（getHurtSound）/ `m_6667_`（die）/ **`m_6074_`**（kill）/ `m_142687_`（remove）；sha256 见 §2。
+     复核（`dsh_code_review` run `44d3003c-d99a-4c0b-8cce-6e686b1e0e11`，R1–R6 SUPPORTED / R7·R8 部分成立，**无 P1 阻断缺陷**）：提 6 项，**已全部就地修** —— ① 两份 CHANGELOG 把强化拒止写成「100 点耐久 / 半径 8 格 / 超过 8 格拉回 7.5 格」，而实现是 `MAX_HEALTH = 50.0D`（两线 `event/ModEntityEvents.java:41` / forge `:46`）+ `AFFECT_RADIUS = 12.0D` / `CLAMP_RADIUS = 11.5D`（`entity/RepulsionEntity.java:167`/`:171`，forge `:191`/`:195`）⇒ 已改为 **50 / 12 / 11.5**；② `command/AstralPartyCommand.java:141`/`:231`（forge `:143`/`:233`）注释写「球体」而实现是 `new AABB(±radius)` + `getEntitiesOfClass`（`:272-274`）⇒ 两线注释改「立方体范围 AABB（对角最远 半径×√3）」；③ `docs/agent/AGENT-SPLIT.md:3` 版本号 → pre.4；④ `docs/handover-new-session-context.md:31` 时间戳 14:25 → 17:36；⑤ `docs/agent/AGENTS-TOC.md:4` 表头行数 3,576 → **3,591**；⑥ 删掉工作树根 6 个临时脚本（`temp_check_lang.py` / `temp_kill2.py` / `temp_kill3.py` / `temp_mcsrc.py` / `temp_mcsrc2.py` / `temp_md5.py`）。复核自身限制：其沙箱对 `~/.gradle` 只读（`gradle-9.2.1-bin.zip.lck` 拒绝访问）⇒ 用独立 `javac` 替代 `./gradlew`（exit 0），且未跑实机。
+14. **P1 两线的筹码效果图标仍是带边框版**（本轮只改 P0：`neoforge-1.21.1` / `forge-1.20.1` 各 11 张）。`neoforge-26.1.2` / `fabric-1.20.1` 的 `textures/mob_effect/*.png` 保持原样，等 1.5.0 正式版前的 P1 批次一起换；`tools/chip_effect_icon_map.json` 已是通用唯一事实源，届时 `--apply` 一次即可。
 ## 6 坑（踩过的，后续别重踩）
 
 1. **`run/<线>/mods` 的 jar 曾 ≠ `build/libs`（neo 于 2026-10-22 15:47 对齐；forge 按 §6-3 永远放 devlibs named jar）**：当时 neo 是 00:22 的旧构建（同名、2 B 差异），
@@ -251,6 +258,17 @@ AP_NC2B_READ:hand=astral_dice:effect_card_monster_laser:handn=2:cards=2:sel=0:to
     `item` = `StringArg.string()`（**必须加引号**）；两种错写法都**静默失败**（全不加引号报 `参数后应有空格分隔…`，全加引号在末尾报错）。
     正形：`/astralprobe cardprep NC1 "astral_dice:effect_card_monster_laser"`。定性手段 = `/astralprobe cmdcheck <tag> <原始命令>`（只解析不执行）。
     ③ 判据只锚 `handn/cards/plays/max/blocked`：出牌成功后会话结束为 `sel=0:token=-1`，锚 `sel=\d+` 必假红。
+11. **原版 `/kill` 对「`hurt` 全覆写」的自定义实体无效（2026-10-22 实测踩中）**：`/kill` 的路径是 `Entity#kill()` → `hurt(damageSources().genericKill(), Float.MAX_VALUE)`，
+    而 `genericKill` 的 `getEntity()` 是 `null`。自定义实体若把 `hurt` 收窄成「只认玩家/生物来源」（强化拒止、路障），该 `hurt` 恒返回 `false` ⇒ 实体**杀不掉、且不给任何提示**。
+    ⇒ 非生物实体要能被 `/kill` 杀死，**必须覆写 `public void kill()`**（本批两线都补了），或在 `hurt` 里对 `genericKill` 特判。
+12. **新增 lang key 时 `ja_jp.json` 也要补（2026-10-22 踩中）**：`tools/check_lang_sync.ps1` 核的是 P0 两线 **zh_cn / en_us / ja_jp 三份**键集，只补 zh/en 会直接 FAIL。
+    另：脚本化插入 key 时若把两条 key 塞在**同一行**（逗号后两个空格），JSON 合法、游戏也能读，但 diff 与 grep 都会漏 —— 本批用 `,[ ]{2,}"command\.` 正则规范成独立行（4 份各 1 处）。
+13. **效果图标守门必须有清单（2026-10-22 定案）**：`gen_chip_effect_icons.py --check` 若只靠「图标像素 == 筹码物品图」启发式，一旦有边框素材被覆盖成无边框，之后**永远空集、永远绿**（假绿）。
+    ⇒ 唯一事实源 = `tools/chip_effect_icon_map.json`（11 条），启发式只负责首次发现；新增筹码效果必须同时补清单，`misses>0` 才是真信号。
+14. **`dsh_code_review` 必须给 `run_code` 设 `timeoutMs ≥ 600000`（2026-10-22 踩中）**：默认 120s 直接把 cell 打死，插件只留
+    `{"state":"finished","result":{"status":"interrupted","detail":"run_code settled"}}`（139 B，`$DSH_HOME/code-review/<sha256>.json`），报告 0 字；
+    它**不会**在后台续跑 ⇒ 直接重跑一次（同一批改动重复审查无害）。
+
 ## 7 关键路径（命令与文件）
 
 ```powershell
@@ -261,12 +279,13 @@ git -C F:\MCProject\astral_dice_multiloader rev-list --count origin/multi-main..
 
 # 版本 / 依赖
 Get-ChildItem -Recurse -Filter gradle.properties | Select-String -Pattern 'mod_version'
-tar -xOf 'neoforge-1.21.1\build\libs\astral_dice-1.5.0-pre.3+neoforge_1.21.1.jar' 'META-INF/neoforge.mods.toml' | Select-String -Pattern 'modId="starengine"' -Context 0,4
+tar -xOf 'neoforge-1.21.1\build\libs\astral_dice-1.5.0-pre.4+neoforge_1.21.1.jar' 'META-INF/neoforge.mods.toml' | Select-String -Pattern 'modId="starengine"' -Context 0,4
 (tar -tf <jar> | Select-String -Pattern 'META-INF/jarjar/').Count
 
 # 产物一致性（三处：build/libs / run 副本 / 整合包）
-Get-FileHash -Algorithm SHA256 'neoforge-1.21.1\build\libs\astral_dice-1.5.0-pre.3+neoforge_1.21.1.jar',
-                            'forge-1.20.1\build\libs\astral_dice-1.5.0-pre.3+forge_1.20.1.jar' | Format-List
+Get-FileHash -Algorithm SHA256 'neoforge-1.21.1\build\libs\astral_dice-1.5.0-pre.4+neoforge_1.21.1.jar',
+                            'forge-1.20.1\build\libs\astral_dice-1.5.0-pre.4+forge_1.20.1.jar',
+                            'forge-1.20.1\build\devlibs\astral_dice-1.5.0-pre.4+forge_1.20.1.jar' | Format-List
 Get-ChildItem 'D:\.minecraft\versions\狐の航空学 Voxy Edition\mods' | Where-Object Name -match 'astral_dice|starengine' | Select-Object Name,Length,LastWriteTime
 Get-ChildItem 'D:\.minecraft\versions\1.20.1-Forge 模组测试\mods'     | Where-Object Name -match 'astral_dice|starengine' | Select-Object Name,Length,LastWriteTime
 
@@ -276,6 +295,16 @@ foreach ($f in 'BeamFx','GlobalEventGate','RepulsionEntity','EventDrawBlock','pl
 
 # 立牌冷却口径
 Get-ChildItem neoforge-1.21.1/src/main/java -Recurse -Filter *SignItem.java | Select-String -Pattern 'setSignActiveCooldownEnd|setSignActiveMaxCooldown'
+
+# 效果图标 / 语言表守门
+python tools/gen_chip_effect_icons.py --check     # 期望 effects=22 misses=0 unaligned=0
+python tools/verify_effect_icons.py              # 期望 RESULT: PASS（四线 65/65/53/53）
+pwsh -NoProfile -File tools/check_lang_sync.ps1   # 期望 exit 0（P0 三语各 1045 键）
+
+# 清场（实体管理命令，权限 2）
+#   /astralparty killbarricade [<radius>|all]
+#   /astralparty killrepulsion [<radius>|all]
+#   日志机器行：AFTERM|type=…|killed=…|mode=…|radius=…|dim=…|x=…|y=…|z=…
 
 # 收尾
 pwsh -NoProfile -File F:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1 --version <线> --phase stop --force

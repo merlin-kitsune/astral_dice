@@ -764,6 +764,8 @@
   "command.astral_dice.astralparty.finishsigncooldown.success.other": "%s 名のプレイヤーの立牌アクティブスキルのクールダウンを即座に終了しました（クールダウンのみ。発動中のスキルには影響しません）",
   "command.astral_dice.astralparty.error.no_player": "このコマンドはプレイヤーが実行するか、プレイヤー引数を指定する必要があります",
   "command.astral_dice.astralparty.dump.summary": "%s 名のプレイヤーの状態をダンプしました。機械可読行はログ (latest.log) を参照",
+  "command.astral_dice.astralparty.killbarricade.success": "バリケードを %s 個除去しました",
+  "command.astral_dice.astralparty.killrepulsion.success": "強化拒止フィールドを %s 個除去しました",
   "item.astral_dice.zhao_sign": "ユメのスタンド",
   "item.astral_dice.fu_card": "御札 - 福",
   "item.astral_dice.huo_card": "御札 - 災い",

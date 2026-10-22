@@ -1,6 +1,6 @@
 # AGENT-SPLIT —— Codex 与 DSH 的操作模式分离（2026-10-22 用户裁决）
 
-适用：`F:\MCProject\astral_dice_multiloader`（分支 `multi-main`，版本 1.5.0-pre.3）。
+适用：`F:\MCProject\astral_dice_multiloader`（分支 `multi-main`，版本 1.5.0-pre.4）。
 一句话：**DSH 是唯一执行者，Codex 只做只读验证**；两种模式并行时互不踩踏。
 
 ## 一、职责矩阵
@@ -37,7 +37,7 @@ pwsh -NoProfile -Command 'Get-ChildItem F:\MCProject\astral_dice_multiloader -Re
 
 ## 三、交接
 
-1. DSH 每轮结束**必须**更新 `docs/handover-1.5.0-pre.3-main.md` 的 **§4（实机读数，贴机器原文）** 与
+1. DSH 每轮结束**必须**更新 `docs/handover-1.5.0-pre.4-main.md` 的 **§4（实机读数，贴机器原文）** 与
    **§5（遗留：销账或新增，禁止静默删）**；并同步刷新 `docs/handover-new-session-context.md`。
 2. Codex **只消费不回写**：可读上述两文件作为事实源，不得修改 §4 / §5，也不得代填读数。
 3. 交接正本行号会漂移 ⇒ 引用一律「§号 + 标题」，不写死行号。

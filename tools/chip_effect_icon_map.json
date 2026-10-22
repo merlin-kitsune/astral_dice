@@ -1,0 +1,60 @@
+{
+  "_comment": "筹码状态效果图标 -> 无边框筹码素材的映射清单（守门唯一事实源）。effect = textures/mob_effect/<effect>.png；chip = 它原先抄的那个筹码物品 id；zh = 该筹码的中文名，对应 images/shop/unbord_chips/<zh>.png。由 tools/gen_chip_effect_icons.py --apply 生成；新增/修改请手改后重跑 --check。",
+  "entries": [
+    {
+      "effect": "adrenaline_high_ready",
+      "chip": "adrenaline_high_chip",
+      "zh": "肾上腺素-高效"
+    },
+    {
+      "effect": "adrenaline_ready",
+      "chip": "adrenaline_low_chip",
+      "zh": "肾上腺素-一般"
+    },
+    {
+      "effect": "cursed_sword_ready",
+      "chip": "cursed_sword_chip",
+      "zh": "诅咒之剑"
+    },
+    {
+      "effect": "cutter_blade_ready",
+      "chip": "cutter_blade_chip",
+      "zh": "美工刀-锋利"
+    },
+    {
+      "effect": "cutter_ready",
+      "chip": "cutter_chip",
+      "zh": "美工刀-初级"
+    },
+    {
+      "effect": "electric_sword_ready",
+      "chip": "electric_sword_chip",
+      "zh": "电流剑"
+    },
+    {
+      "effect": "flashlight_ready",
+      "chip": "flashlight_chip",
+      "zh": "手电筒-强光"
+    },
+    {
+      "effect": "magic_tome_count",
+      "chip": "magic_tome_chip",
+      "zh": "魔法秘典"
+    },
+    {
+      "effect": "railgun_ready",
+      "chip": "railgun_chip",
+      "zh": "电磁炮"
+    },
+    {
+      "effect": "revenge_halberd",
+      "chip": "revenge_halberd_chip",
+      "zh": "复仇之戟"
+    },
+    {
+      "effect": "whetstone_ready",
+      "chip": "whetstone_chip",
+      "zh": "磨刀石"
+    }
+  ]
+}
