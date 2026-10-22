@@ -1,0 +1,246 @@
+{
+  "case_id": "FIXBATCH-GLOVE-MAINTARGET-1.20.1",
+  "title": "电击手套：伤害类效果牌出牌后 20t 落地，主目标 3 格内（含主目标）2 个敌对非亡灵各吃 2 点魔法伤害、施法者 +2 充能；60 秒冷却在调度时置位，第二次使用被拦",
+  "version": "1.20.1",
+  "channel": "kubejs",
+  "target": {
+    "type": "feature",
+    "ref": "electric_glove_chip"
+  },
+  "on_fail": "continue",
+  "steps": [
+    {
+      "op": "note",
+      "text": "判据正本 = `item/chip/ElectricGloveChipItem`（2026-10-21 定稿）：伤害效果牌出牌 → (a) 20t 后主目标 3 格内**含主目标**每个目标受 2 点魔法伤害；(b) 每命中一个目标 +1 充能；(c) 60 秒冷却**在调度时检查并置位**。\n受害者的资格闸门 = `combat/SpellDamageRegistry#collectGloveShockTargets` → `DiceCombatEvents#isBlessingTarget`（L1725-1737）：`HostileTargets.isHostile` 或「Boss」或「正在攻击玩家的 Mob」；**被动/友好生物一律不触发**。\n\n⚠️ 上一轮两处口径错的根因（本轮已修）：\n ① `equip=0`（芯片没装上，`/astralprobe equipslot chip` 无 `AP_G1_EQUIP:chip` 回显）：旧用例装的是**基础骰子** `astral_dice:dice`，`0★` 的筹码栏目标尺寸 = `s -> s` = **0**（`item/ModItems` L246-247），`astral_bugfix_probe.js#ensureChipSlot` 因此报 `chip_slot_insufficient:0/1` 并整条 return（所以一行 `AP_G1_EQUIP` 都不出）。本用例改抄**已在实机跑通过的**芯片装备步骤（`scripts/test/cases/HAMMER-1.20.1.json` L34 / L41-42，金骰子 0★ ⇒ 筹码栏 1 格）：\n       \"/give @s astral_dice:golden_dice 1\"\n       \"/astralprobe equipslot dice 'astral_dice:golden_dice' HS\"\n       \"/astralprobe equipslot chip \\\"astral_dice:star_coin_hammer_chip\\\" HQ\"\n   本用例只把物品与 tag 换成 `electric_glove_chip` / `G1`，其余逐字同款。\n   （补充登记：`CHIP-LOGIC-1.20.1.json` 里**没有**芯片装备步骤 —— 它只有 `curioreset` + 商店购买，故「确实成功的芯片装备步骤」的实例取自 HAMMER 用例。）\n ② 靶是 `cow` 而断言写 `cow`/上一轮实际是 `pig`：本轮靶种统一 `minecraft:pillager`（`Monster` ⇒ 敌对，能过 `isBlessingTarget`；**cow 是 Animal，`isBlessingTarget` 恒 false ⇒ 电击永远 0 伤害**，这条路旧用例是用错的）。\n\n读数：`AP_FX_<tag>_GREAD:equip=<是否佩戴>:cd=<是否冷却>:charge=<充能层>:dmg=<两靶各掉多少血>:n=<靶数>`。\n\n━━ 2026-10-22 第二轮实机读数后的口径修正（**产品行为符合规格，是用例期望值算错**）━━\n装上芯片后实测 `equip=1:cd=1:charge=2:dmg=6,2`：**邻靶 2 = 纯电击**，主靶 6 = 效果牌本体 4 + 电击 2\n（`minecraft:effect_card_monster_laser` 是伤害效果牌，本体当然会打主目标；旧断言把主靶也写成 `dmg=2` 是错的）。\n⇒ 判据改为：`charge=2`（恰好两次电击命中，等价于「含主目标在内 2 个目标各吃 2 点」）+ 邻靶 `dmg=…,2` 精确 2 + 主靶 `[2-9]`。\n另：`_CAST` 读行新增 `cd=`（同一次同步调用内读取）⇒ 冷却「**调度时**置位」有了直接证据：`cd=1` 同时 `charge=0`（电击 20t 后才落地）。\n\n⚠️ 1.20.1 (Forge) 侧口径（2026-10-22 同步）：本用例与 1.21.1 蓝本**逐字同结构**，`channel=kubejs`（AutoJS 在 forge dev 不可用）；探针 `/astralfixbatch` 与用例命令同一套。平台差异只有：① Forge 的 `Block#use` 是**六参**，`drawerblank` 经 `ServerPlayerGameMode#useItemOn` 进同一服务端路径；② `/damage <sel> <n> minecraft:magic` 在 1.20.1 是原版命令（1.19.4+，DamageSource 无实体来源）；③ `ItemStack#use(Level,Player,InteractionHand)` 两线同签名，票据真实扣减的判据不变。\n\n━━ 2026-10-22 1.20.1 首次实机后的口径修正（跨线差异，产品符合各自实现）━━\n首轮唯一 FAIL = `AP_FX_G1B_CAST:…:tok=-1:sel0=0:hand=minecraft:air` ⇒ 第二次 cast 时**手上没有牌**。根因 = 两线消耗语义不同：1.21.1 `BaseEffectCardItem`(L333) 用 `live.consume(1, player)`（创造模式按 instabuild 豁免、不扣卡），1.20.1 同处(L336) 用 `live.shrink(1)`（**无条件扣卡**）⇒ 首张出牌后手牌清零。本轮在 `cast G1B` 前补 `/item replace … effect_card_monster_laser 1`（600ms 等待），使第二段判据（冷却拒绝：cd=1 且 charge 仍 2 / dmg 仍 6,2）真正成立 —— 原断言在无牌时会吃到首轮残留读数（假通过）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/time set midnight",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[tag=afb_target]",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop curioreset G1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[type=!player,distance=..32]",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/give @s astral_dice:golden_dice 1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe equipslot dice \"astral_dice:golden_dice\" G1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe equipslot chip \"astral_dice:electric_glove_chip\" G1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1000
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe chargeset G1 0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralfixbatch hostiles G1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralfixbatch gread G1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/item replace entity @s weapon.mainhand with astral_dice:effect_card_monster_laser 1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralfixbatch cast G1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralfixbatch gread G1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralfixbatch gread G1HIT",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/item replace entity @s weapon.mainhand with astral_dice:effect_card_monster_laser 1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralfixbatch cast G1B",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralfixbatch gread G1B",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[tag=afb_target]",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_FX_G1_HOSTILES:main=\\d+:nbr=\\d+:dist=1\\.5:mrk=2:hp=24,24:type=minecraft:pillager:tg=1,1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_G1_EQUIP:chip:astral_dice:electric_glove_chip"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_FX_G1_GREAD:equip=1:cd=0:charge=0:dmg=0,0:n=2"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_FX_G1_CAST:called=1:tok=-?\\d+:sel0=[01]:tid=\\d+:hand=astral_dice:effect_card_monster_laser:cd=1:charge=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_FX_G1_GREAD:equip=1:cd=1:charge=2:dmg=[2-9],2:n=2"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_FX_G1HIT_GREAD:equip=1:cd=1:charge=2:dmg=[2-9],2:n=2"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_FX_G1B_CAST:called=1:tok=-?\\d+:sel0=[01]:tid=\\d+:hand=astral_dice:effect_card_monster_laser"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_FX_G1B_GREAD:equip=1:cd=1:charge=2:dmg=[2-9],2:n=2"
+    },
+    {
+      "type": "crash"
+    }
+  ]
+}

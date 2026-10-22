@@ -1,0 +1,183 @@
+{
+  "case_id": "FIXBATCH-EVENT-GATE-1.20.1",
+  "title": "全员事件卡硬间隔：生存模式真实消耗；同一 tick 内的第二张被 GlobalEventGate 拒绝且卡不消耗；时长 0 的瞬时事件按 38+20=58t 窗口放行",
+  "version": "1.20.1",
+  "channel": "kubejs",
+  "target": {
+    "type": "feature",
+    "ref": "event-ticket"
+  },
+  "on_fail": "continue",
+  "steps": [
+    {
+      "op": "note",
+      "text": "判据正本 = `event/GlobalEventGate`（源码实读，2026-10-22 复算）：\n  · `GAP_TICKS = 20L`（L37）；\n  · `tryAcquire`：`eventEndsAtGameTime = now + EventCardService.DELAY_TICKS + duration`（L102）→ `gateUntilGameTime = eventEndsAtGameTime + GAP_TICKS`（L103）；\n  · `EventCardService.DELAY_TICKS = 38` ⇒ **窗口 = 58t + duration**；`duration = max(0, ticks)`。\n⇒ 时长 **0** 的事件：窗口恰 58t = 2.9s；本用例按 A2 取 `58t/20 + 1.5s 余量 = 4.4s`（= 88t）后再发第三张。\n\n⚠️ 上一轮三处口径错的根因（本轮已修）：\n  ① 创造模式 `instabuild` ⇒ `EventDrawItem#use` 走 `if (started && !instabuild) shrink(1)`（item/EventDrawItem.java L44）**不扣减** ⇒ 票据类用例必须**生存模式**；\n  ② 断言正则 `id=[a-z0-9_]+` 不含命名空间冒号 ⇒ `id=astral_dice:red_heat_warning` 永不命中 ⇒ 全改 `id=astral_dice:[a-z0-9_]+`；\n  ③ 旧用例第三张放在 +3.4s「必放行」是**按 58t 硬算却忽略随机事件的 duration**（事件卡是随机抽取，duration ∈ {0,300,1200,2400,3600,6000}）⇒ 断言不可判。\n\n本用例拆成两段，各自确定：\n  A. **真物品路径**（生存）：`/astralfixbatch ticket` ⇒ `before=4:after=3`（成功消耗）→ +1s 第二张 `before=3:after=3`（被拒且不消耗）+ `AP_EVENT_GATE_BLOCK: id=<事件>:src=ITEM_USE`；随后 `/astralfixbatch gatereset` 清闸门，第三张 `before=3:after=2`（放行后成功）。\n  B. **时长 0 的算术**（确定性）：`/astralfixbatch gate0` 用 `astral_dice:learn_from_others`（AstralEventRegistry L143：`durationTicks = 0`，效果 `AstralEventEffect.NOOP`）走 `AstralEventDispatcher.trigger(p, id, ITEM_USE)` 三连：t0 成功 → +20t 被拒 → +88t 成功。`/astralfixbatch gatereset` 把窗口钉在 t0（等价服务器重启后的干净状态）。\n\n━━ 2026-10-22 第二轮实机后的口径再修（第一次复跑的唯一 FAIL 根因，**产品无问题**）━━\n首次复跑 G4A 成功消耗（`before=4:after=3`，`at=33039:gate_until=33097` ⇒ 窗口恰 58t，抽中的正是时长 0 的事件），但 3.81s 后的第二张**被放行并消耗**（`before=3:after=2`，`at=33116:gate_until=33174`）。\n根因 = **注入开销**：每条 `inject_command` 要做 layout 探针 + 前台/焦点夺取 + 逐字键入，实测 **≈2.3–2.8s**，而 duration=0 的窗口只有 2.9s ⇒ 两条独立命令**踩在窗口边缘**（上一轮抽到 red_heat_warning=3600t 才侥幸通过）。\n⇒ 改为 `/astralfixbatch ticket2`：在**同一 tick 内**连调两次 `ItemStack#use`（Δt=0），窗口恒成立，与随机抽中的事件时长无关；读数 `before / after1 / after2 / remain / gate_until` 一次给全，`after2 == after1` ⇔ 「被拒且不消耗」。\n\n⚠️ 1.20.1 (Forge) 侧口径（2026-10-22 同步）：本用例与 1.21.1 蓝本**逐字同结构**，`channel=kubejs`（AutoJS 在 forge dev 不可用）；探针 `/astralfixbatch` 与用例命令同一套。平台差异只有：① Forge 的 `Block#use` 是**六参**，`drawerblank` 经 `ServerPlayerGameMode#useItemOn` 进同一服务端路径；② `/damage <sel> <n> minecraft:magic` 在 1.20.1 是原版命令（1.19.4+，DamageSource 无实体来源）；③ `ItemStack#use(Level,Player,InteractionHand)` 两线同签名，票据真实扣减的判据不变。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode survival",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/time set noon",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/give @s astral_dice:event_ticket 4",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/item replace entity @s weapon.mainhand with astral_dice:event_ticket 4",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralfixbatch gatereset G4R",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralfixbatch ticket2 G4A",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1000
+    },
+    {
+      "op": "note",
+      "text": "（第二张事件卡已由上一条 `/astralfixbatch ticket2` 在**同一 tick** 内触发 ⇒ 此处不再单独发第二张命令；保留 1s 观察窗以确认被拒后闸门仍持锁。）\n\n⚠️ 1.20.1 (Forge) 侧口径（2026-10-22 同步）：本用例与 1.21.1 蓝本**逐字同结构**，`channel=kubejs`（AutoJS 在 forge dev 不可用）；探针 `/astralfixbatch` 与用例命令同一套。平台差异只有：① Forge 的 `Block#use` 是**六参**，`drawerblank` 经 `ServerPlayerGameMode#useItemOn` 进同一服务端路径；② `/damage <sel> <n> minecraft:magic` 在 1.20.1 是原版命令（1.19.4+，DamageSource 无实体来源）；③ `ItemStack#use(Level,Player,InteractionHand)` 两线同签名，票据真实扣减的判据不变。"
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralfixbatch gate0 G4Z",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 6000
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralfixbatch gatereset G4W",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralfixbatch ticket G4C",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_FX_G4A_TICKET2:before=4:after1=3:after2=3:remain=[1-9][0-9]*"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_EVENT_DRAW: src=ITEM_USE:id=astral_dice:[a-z0-9_]+"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_EVENT_GATE: acquired:duration=[0-9]+:event_end=[0-9]+:gate_until=[0-9]+"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_EVENT_GATE_BLOCK: id=astral_dice:[a-z0-9_]+:src=ITEM_USE"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_EVENT_GATE: denied:player=[0-9a-f-]+:remain=[1-9][0-9]*:gate_until=[1-9][0-9]*"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_FX_G4Z_GATE0:a1=1:a2=0:remain2=(-1|[0-9]+):t2=20:a3=1:t3=88"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_EVENT_GATE: acquired:duration=0:event_end=[0-9]+:gate_until=[0-9]+"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_EVENT_GATE: denied:player=[0-9a-f-]+:remain=3[0-9]:gate_until=[0-9]+"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_FX_G4C_TICKET:before=3:after=2"
+    },
+    {
+      "type": "crash"
+    }
+  ]
+}

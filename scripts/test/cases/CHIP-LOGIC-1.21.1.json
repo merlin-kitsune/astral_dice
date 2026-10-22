@@ -243,6 +243,24 @@
     },
     {
       "op": "inject_command",
+      "command": "/astralshop creset CL",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop crefresh CL",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
       "command": "/astralshop cprice CL 0",
       "no_esc": true
     },
@@ -261,12 +279,7 @@
     },
     {
       "op": "note",
-      "text": "⚠️ cblock 前必须 creset 清冷却：真购买（/astralshop cbuy CL 0）成功后产品会进入 5:00 购买冷却并关店（计划 §5 需求 4）；冷却期内走 cblock 真实右键开店会被拒绝，日志证据为 CHIP_SHOP_OPEN_DENIED reason=cooldown（AP_CL_CBUY:menu=null / AP_CL_CUSE:res=CONSUME:menu=InventoryMenu）。⇒ 在 /setblock ~2 ~ ~ air 清位之前先 /astralshop creset CL 清掉冷却（creset 之后的等待复用 /setblock 后的 wait 600），再放置方块 + 右键。"
-    },
-    {
-      "op": "inject_command",
-      "command": "/astralshop creset CL",
-      "no_esc": true
+      "text": "⚠️ 顺序修正（2026-10-22）：`creset` 必须排在 `cseq` **之前**。真购买（步骤 46 `/astralshop cbuy CL 0`）成功后产品进入 5:00 购买冷却并关店；cseq 第①段就会 `SP_ChipOpener.open(p)`，冷却期内开店被拒 ⇒ 整段退化成 `AP_CL_CSEQ1:menu=null` 并提前 return（后续 CSEQ4/CSEQ5 全丢）。⇒ 这里先 `creset`（`ChipShopState.store(p, EMPTY)`，本身不依赖购买后的任何状态：只写新态，不读旧态），清掉 cooldownUntil / purchasedCount。但 creset 同时把 refreshes 复位成 REFRESH_INITIAL=3、候选清空，会让 CSEQ0/CSEQ4/CSEQ5 的 `refreshes=2` 与 `offers=<ids>` 三条读数退化为 3 / `-` ⇒ 追加一次 `crefresh` 把次数复刻回 3→2 并重掷候选，使 cseq 基线与原设计逐字一致（**未删任何断言**，期望值不需要改动）。creset 仍在 `/setblock ~2 ~ ~ air` 之前，cblock 的真实右键开店因此不会撞 `CHIP_SHOP_OPEN_DENIED reason=cooldown`。"
     },
     {
       "op": "inject_command",
@@ -296,7 +309,7 @@
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_CL_CPOOL:pool=66:tiers=19/28/19:avail=66:owned=0:all=0:star=0"
+      "pattern": "AP_CL_CPOOL:pool=67:tiers=19/29/19:avail=67:owned=0:all=0:star=0"
     },
     {
       "type": "log",

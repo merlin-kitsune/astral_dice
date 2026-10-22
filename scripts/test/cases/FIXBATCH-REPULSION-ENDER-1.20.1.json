@@ -1,0 +1,213 @@
+{
+  "case_id": "FIXBATCH-REPULSION-ENDER-1.20.1",
+  "title": "强化拒止：末影人（已设仇恨 ⇒ 满足 isAttachable）被吸附后连续 200 tick 到力场的距离始终 ≤ 11.5 格；期间 3 次无来源伤害逼其闪现，均未发生位移（RepulsionTeleportGuard 取消）",
+  "version": "1.20.1",
+  "channel": "kubejs",
+  "target": {
+    "type": "feature",
+    "ref": "effect_card_repulsion"
+  },
+  "on_fail": "continue",
+  "steps": [
+    {
+      "op": "note",
+      "text": "判据正本（源码实读 2026-10-22）：\n  · `entity/RepulsionEntity#isAttachable`（L607-623）：候选 = `Enemy` **或** `NeutralMob`，**且** `getTarget() != null`（或中立生物 `isAngry()`）；已驯服宠物排除。\n  · `scanAndApplyEffects`（L632-648）：12 格内通过资格判定的 Mob 才进 `trackedTargets`。\n  · `controlTarget`（L667-698）：出 `CLAMP_RADIUS = 11.5` 球即 `clampInside`。\n  · `event/RepulsionTeleportGuard`（L39-45）：`EntityTeleportEvent.EnderEntity` 对被吸附目标 `setCanceled(true)` ⇒ `randomTeleport` 返回 false、零位移。\n\n⚠️ 上一轮 `END_START: type=minecraft:pig` 的根因：旧用例靠聊天注入 `/summon … {Tags:[\"afb_ender\"],…}`，NBT 串在注入链路里没生效/被别的生物复用 ⇒ 探针按 tag 抓到的不是末影人。本轮改为**探针直造**（`/astralfixbatch endspawn`：`EntityType.ENDERMAN.create` + `addTag(afb_ender)` + `setTarget(执行者)`），并同时回显 `type=minecraft:enderman`。\n⚠️ 为什么必须 `setTarget`：**未激怒的末影人不会被吸附**（`isAttachable` 第 ③ 条，类 javadoc L71-85 明确「排除没有仇恨目标的敌对（如末影人）」）——旧用例让它「自然被吸附」是口径错，不是产品缺陷。\n⚠️ 逼闪现手段：`EnderMan#hurt` 字节码为 `if (!isClientSide && !(source.getEntity() instanceof LivingEntity) && random.nextInt(10)!=0) teleport()` ⇒ 用**无实体来源**的 `damageSources().magic()` 打 3 次（第 40/41/42 个样本），90% 概率触发 `randomTeleport`；NoAI 不影响这条路径（它不在 AI 里）。\n⚠️ 清场：本轮每条力场用例开头都先 `/astralfixbatch repclear`（实体注册名 `astral_dice:repulsion`，见 `entity/ModEntityTypes` L47-51）并等 ≥20t，避免上一用例的力场残留把 `n=1` 变 `n=2`。\n\n读数：`AP_FX_<tag>_REP_READ:n=<力场数>:id=..:cg=<已发放充能>:tr=<吸附数>:mob=<最近靶距离，-1=无靶>:tg=<带仇恨的存活靶数>:charge=<玩家充能层>`；`AP_FX_<tag>_END_WATCH:ticks=0:max=..:samples=..:alive=1:over=<1=越界>:hits=<逼闪现次数>`。\n\n━━ 2026-10-22 第二轮实机后追加（三条 Rhino 坑 + 逼闪路线改版，**均为探针口径问题**）━━\n实测三次读数（同一会话 `/reload` 热更探针，未重开客户端）暴露：\n ① `player.getUUID()` 在 Rhino 里派发不到（`TypeError: Cannot find function getUUID in object ServerPlayer[...]`）⇒ 力场 `ownerUUID` 恒 null ⇒ `awardCharge` 提前 return ⇒ `cg=0`。改用 `getGameProfile().getId()` 后 `owner=1:ownerSet=1`、`cg=1:charge=1`。\n ② `BuiltInRegistries.ENTITY_TYPE.getKey(type)` 恒返回 `minecraft:pig`（末影人、`/summon` 两条路径都一样；**上一轮 `END_START: type=minecraft:pig` 的真正根因就是它，不是召唤错**）。改用 `'' + EntityType`（实测 `minecraft:enderman`）。\n ③ `LivingEntity#hurt` 在 Rhino 里派发不到（`TypeError: Cannot find function hurt`）⇒ 逼闪改由用例注入**原版** `/damage … 1 minecraft:magic`：该命令的 DamageSource **无实体来源**，正对应 `EnderMan#hurt` 字节码里 `!(source.getEntity() instanceof LivingEntity) && random.nextInt(10)!=0 ⇒ teleport()` 的分支（①/② 是这条判据的前提）。\n 读数新增 `jumps=`：与上一采样位置比**单 tick 位移 > 2 格**的次数 —— 0 ⇔ 每次闪现都被 `RepulsionTeleportGuard` 取消（若守卫失效，末影人会瞬移最远 32 格，`jumps≥1` 且多半 `over=1`）。\n\n⚠️ 1.20.1 (Forge) 侧口径（2026-10-22 同步）：本用例与 1.21.1 蓝本**逐字同结构**，`channel=kubejs`（AutoJS 在 forge dev 不可用）；探针 `/astralfixbatch` 与用例命令同一套。平台差异只有：① Forge 的 `Block#use` 是**六参**，`drawerblank` 经 `ServerPlayerGameMode#useItemOn` 进同一服务端路径；② `/damage <sel> <n> minecraft:magic` 在 1.20.1 是原版命令（1.19.4+，DamageSource 无实体来源）；③ `ItemStack#use(Level,Player,InteractionHand)` 两线同签名，票据真实扣减的判据不变。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/time set midnight",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[tag=afb_target]",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralfixbatch repclear G3P",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[type=!player,distance=..32]",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop curioreset G3",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe equipslot dice \"astral_dice:dice\" G3",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe chargeset G3 0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralfixbatch repplace G3",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralfixbatch endspawn G3",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralfixbatch rread G3",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralfixbatch ewatch G3 200",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/damage @e[tag=afb_ender,limit=1] 1 minecraft:magic",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 300
+    },
+    {
+      "op": "inject_command",
+      "command": "/damage @e[tag=afb_ender,limit=1] 1 minecraft:magic",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 300
+    },
+    {
+      "op": "inject_command",
+      "command": "/damage @e[tag=afb_ender,limit=1] 1 minecraft:magic",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 300
+    },
+    {
+      "op": "wait",
+      "ms": 4000
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[tag=afb_ender]",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralfixbatch repclear G3E",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_FX_G3P_REP_CLEAR:id=astral_dice:repulsion:before=\\d+:after=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_FX_G3_REP_PLACE:id=\\d+:added=1:.*:owner=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_FX_G3_END_SPAWN:type=minecraft:enderman:id=\\d+:dist=(-1|[0-9.]+):tg=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_FX_G3_REP_READ:n=1:id=\\d+:cg=1:tr=1:mob=(-1|[0-9.]+):tg=0:near=(\\[[^\\]]*\\]|-):charge=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_FX_G3_END_START:ticks=200:id=\\d+:type=minecraft:enderman:tg=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_FX_G3_END_WATCH:ticks=0:max=[0-9.]+:samples=200:alive=1:over=0:jumps=0"
+    },
+    {
+      "type": "crash"
+    }
+  ]
+}

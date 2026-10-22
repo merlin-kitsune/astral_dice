@@ -1,0 +1,250 @@
+{
+  "case_id": "FIXBATCH-REPULSION-CHARGE-1.21.1",
+  "title": "强化拒止：吸附 1 对敌对非亡灵靶（pillager，已设仇恨）⇒ 放置者每新目标 +1 充能；目标死亡后不回收；本座力场发满 5 点后不再增加",
+  "version": "1.21.1",
+  "channel": "kubejs",
+  "target": {
+    "type": "feature",
+    "ref": "effect_card_repulsion"
+  },
+  "on_fail": "continue",
+  "steps": [
+    {
+      "op": "note",
+      "text": "判据正本（源码实读 2026-10-22）：\n  · `entity/RepulsionEntity#scanAndApplyEffects`（L632-648）：只对 `isAttachable` 通过的 Mob 调 `awardCharge` + 缓慢/虚弱；`isAttachable`（L607-623）= `Enemy||NeutralMob` **且** `getTarget()!=null`（或 `isAngry()`）**且** 非已驯服宠物。\n  · `awardCharge`（L405-419）：每**新**目标 +1 真实充能（`ChargeManager.addStacks`）、按 UUID 去重、单座封顶 `MAX_CHARGE_STACKS = 5`、**永久到账不回收**。\n\n⚠️ 上一轮读数 `cg=0:tr=0:mob=3.35` 的根因（**产品行为与需求一致，是用例口径错**）：旧用例摆的是 `minecraft:cow` —— `Cow extends Animal`，既不是 `Enemy` 也不是 `NeutralMob` ⇒ `isAttachable` 第一层就返回 false ⇒ 12 格内（3.35 格）也**永不吸附**。本轮靶种统一改 `minecraft:pillager`（`Monster` ⇒ `Enemy`）并由探针 `setTarget(执行者)` 满足第 ③ 条判据。\n⚠️ 上一轮 `n=2` 的根因：上一用例的力场没清 ⇒ 每条力场用例开头先 `/astralfixbatch repclear` + 等 ≥20t。\n\n期望（每对 pillager = 2 个新目标）：\n  G2  = cg 2 / tr 2 / charge 2（首对吸附）\n  G2B = cg 2 / tr 0 / mob -1 / charge 2（全灭 ⇒ 剪枝归零、充能不回收）\n  G2C = cg 4 / tr 2 / charge 4（第 2 对 ⇒ 4 个新目标）\n  G2D = cg 5 / tr 2 / charge 5（第 3 对 ⇒ 第 5 个新目标封顶）\n  G2E = cg 5 / tr 2 / charge 5（第 4 对 ⇒ 给满后不再累加）"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralfixbatch repclear G2P",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[type=!player,distance=..32]",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[tag=afb_target]",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop curioreset G2",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe equipslot dice \"astral_dice:dice\" G2",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe chargeset G2 0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralfixbatch repplace G2",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralfixbatch hostiles G2",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralfixbatch rread G2",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[tag=afb_target]",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralfixbatch rread G2B",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralfixbatch hostiles G2C",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralfixbatch rread G2C",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralfixbatch hostiles G2D",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralfixbatch rread G2D",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralfixbatch hostiles G2E",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralfixbatch rread G2E",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[tag=afb_target]",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralfixbatch repclear G2E",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_FX_G2_REP_PLACE:id=\\d+:added=1:.*:owner=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_FX_G2_HOSTILES:main=\\d+:nbr=\\d+:dist=1\\.5:mrk=2:hp=24,24:type=minecraft:pillager:tg=1,1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_FX_G2_REP_READ:n=1:id=\\d+:cg=2:tr=2:mob=(-1|[0-9.]+):tg=2:near=(\\[[^\\]]*\\]|-):charge=2"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_FX_G2B_REP_READ:n=1:id=\\d+:cg=2:tr=0:mob=-1:tg=0:near=(\\[[^\\]]*\\]|-):charge=2"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_FX_G2C_REP_READ:n=1:id=\\d+:cg=4:tr=2:mob=(-1|[0-9.]+):tg=2:near=(\\[[^\\]]*\\]|-):charge=4"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_FX_G2D_REP_READ:n=1:id=\\d+:cg=5:tr=2:mob=(-1|[0-9.]+):tg=2:near=(\\[[^\\]]*\\]|-):charge=5"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_FX_G2E_REP_READ:n=1:id=\\d+:cg=5:tr=2:mob=(-1|[0-9.]+):tg=2:near=(\\[[^\\]]*\\]|-):charge=5"
+    },
+    {
+      "type": "crash"
+    }
+  ]
+}

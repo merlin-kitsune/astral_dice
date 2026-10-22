@@ -1,0 +1,128 @@
+{
+  "case_id": "FIXBATCH-SHOP-STACK-BLANK-1.21.1",
+  "title": "卡牌并栈（3 张同款只占 1 格、数量 3）+ 抽奖盒空白筹码投入 2:00 冷却（第二次被拒、筹码数量不减）",
+  "version": "1.21.1",
+  "channel": "kubejs",
+  "target": {
+    "type": "feature",
+    "ref": "chip-shop+event-drawer"
+  },
+  "on_fail": "continue",
+  "steps": [
+    {
+      "op": "note",
+      "text": "两段判据：\n① **并栈**：2026-10-21「卡牌自动堆叠」收口后，卡牌 `maxStackSize = 16`，同类卡进包必须并入同一栈 ⇒ 发 3 张只占 1 格、count=3（探针 `/astralfixbatch card3`，走 `Player#getInventory()#add`）。\n② **抽奖盒空白筹码投入冷却**：`block/EventDrawBlock#useItemOn`（L118-140）的 `BLANK_INSERT_COOLDOWN_TICKS = 2400`（2:00，按**玩家**存 `ModAttachments.getEventDrawerBlankInsertAt`），距上次投入不足 2 分钟 ⇒ 红字 `msg.astral_dice.chip_shop_blank_cooldown` + `AP_EVENT_DRAWER: … blank_insert=denied:cooldown:remain=<n>`，且**不消耗**筹码。\n\n⚠️ 上一轮唯一 FAIL 项 `placed=0` 的根因（**探针口径错，产品无问题**）：旧探针把 `placed` 直接回显成 `Level#setBlockAndUpdate` 的布尔值 —— 第二次调用时该坐标**已经是**同一个抽奖盒方块 ⇒ `setBlock` 判定「状态未变」返回 false，与「能不能用」无关。本轮 `placed` 改口径 = **调用后该坐标上确实是抽奖盒**（`level.getBlockState(pos).is(EVENT_DRAWER)`），并额外回显 `pre=<调用前是否已是抽奖盒>:set=<本次 setBlockAndUpdate 返回值>:post=<调用后是否仍是>`；同时**不重放方块**（重放会重建 BlockEntity 并抹掉 2:00 冷却 ⇒ 第二段判据会变成假通过）。\n\n期望：G5 首投成功（hand 3→2）、次投被冷却拒（2→2）；G5B（换 tag）两次都被冷却拒（3→3）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop curioreset G5",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop creset G5",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralfixbatch card3 G5",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralfixbatch drawerblank G5",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralfixbatch drawerblank G5B",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 300
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_FX_G5_CARDSLOT:item=astral_dice:[a-z0-9_]+:added=3:slots=1:count=3"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_EVENT_DRAWER: player=[^:]+:blank_insert=ok:reset=cooldown"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_FX_G5_DRAWER:placed=1:pre=[01]:set=[01]:post=1:res1=[^:]+:res2=[^:]+:hand1=2:hand2=2"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_EVENT_DRAWER: player=[^:]+:blank_insert=denied:cooldown:remain=[1-9][0-9]*"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_FX_G5B_DRAWER:placed=1:pre=[01]:set=[01]:post=1:res1=[^:]+:res2=[^:]+:hand1=3:hand2=3"
+    },
+    {
+      "type": "crash"
+    }
+  ]
+}

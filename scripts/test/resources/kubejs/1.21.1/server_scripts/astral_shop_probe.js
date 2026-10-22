@@ -1738,7 +1738,7 @@ function cp_invDelta(before, after) {
  * ⚠️ ChipShopState 自 `.114` 起为 **7 分量** record（offers / lastPickCategory / purchasedCount /
  * refreshesLeft / regenAnchor / cooldownUntil / lastBlankInsertAt）⇒ **5 参构造器已不存在**，
  * Rhino 直调旧写法会抛 `InternalError: constructor not found`（原 5 参直调写法即此坑）⇒ 只用产品侧公开的
- * `with*` 派生：`EMPTY` ⇒ `withOffers(s.entries())`（复刻候选 ⇒ `offersKeep=1`；未知 id 按产品
+ * `with*` 派生：`EMPTY` ⇒ `withOffers(s.entries(), s.rolledDiceKey())`（复刻候选 ⇒ `offersKeep=1`；未知 id 按产品
  * `entries()` 口径丢弃 —— 用例里的候选均来自真实掷骰，无未知 id）
  * ⇒ `withRefreshes(s.refreshesLeft(), s.regenAnchor())`（复刻次数 / 锚点）
  * ⇒ 逐次 `withPurchased(null)` 累加到 n。
@@ -1747,7 +1747,11 @@ function cp_invDelta(before, after) {
  * 与 `.114` 前的 5 分量口径一致）；本用例断言面（formula / state / menu / offersKeep）不含这三项。
  */
 function cp_stateWith(s, purchased) {
-    var cur = SP_ChipState.EMPTY.withOffers(s.entries()).withRefreshes(s.refreshesLeft(), s.regenAnchor());
+    // ⚠️ withOffers 现为双参 (picked, diceKey)（ChipShopState#withOffers(List, String)，
+    //    换骰/升星即作废候选）。第三参必须复刻源态自身的 rolledDiceKey()，否则重建态
+    //    会被 needsReroll 判成必重掷（口径同 ChipShopMenu/ChipShopOpener：
+    //    ChipShopRoller.diceKey(player) 的返回值即写进该字段的同一语义串）。
+    var cur = SP_ChipState.EMPTY.withOffers(s.entries(), s.rolledDiceKey()).withRefreshes(s.refreshesLeft(), s.regenAnchor());
     for (var i = 0; i < purchased; i++) { cur = cur.withPurchased(null); }
     return cur;
 }
