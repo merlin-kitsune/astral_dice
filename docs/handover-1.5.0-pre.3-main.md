@@ -158,6 +158,10 @@ CARDSLOT:slots=1:count=3     blank_insert denied:remain=2400
    ferritecore / ImmediatelyFast / iris / kubejs / modernfix / carpet / rhino / sodium / superflat…），**没有** JEI 与 LWJGL；
    这正是脚本必须再补 gradle/Maven 依赖 classpath 的原因（§5-1）。
 
+10. **源码领先于产物（2026-10-22 立牌冷却补丁）**：`build\libs` 的两份 pre.3 jar 是 14:25 构建，**不含**本轮的
+    `setSignActiveMaxCooldown` 补丁；`run/<线>/mods` 与两个整合包同源同理。⇒ 若要实机验立牌冷却或对外交付，
+    必须先 `gradlew.bat :neoforge-1.21.1:jar :forge-1.20.1:jar` 重建、再投放并**重录 §2 的 sha256**（现值会变）。
+    （创造模式扣卡修复在 `14:25` 之前就已进 jar，故待办 #1 的实机不受此影响。）
 ## 6 坑（踩过的，后续别重踩）
 
 1. **`run/<线>/mods` 的 jar ≠ `build/libs`**：neo 是 00:22 的旧构建（同名、2 B 差异），forge 是 `build/devlibs`
