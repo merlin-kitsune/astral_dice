@@ -15,6 +15,8 @@
    两份 P0 jar 已于 **15:47** 重建并投放：两个整合包 + `run/1.21.1/mods` = `build/libs` reobf jar；
    `run/1.20.1/mods` 按 §6-3 **仍放 `build/devlibs` named jar**（2,571,732 B `24941dad…`，dev 必需，与 reobf jar 不同哈希）。
    剩余最大风险 = **提交未推 + 无 tag**（按用户口径不做）与 P1 欠账（§5-3）。
+10. **pre.3 已推送到两个 P0 整合包（2026-10-22 16:2x）**：逐处 `Get-FileHash` 与 `build/libs` **MATCH**，jar 内版本/依赖区间/jarjar 计数/关键类全部核过；
+    面向整合包会话的交接单见 `docs/handover-1.5.0-pre.3-modpack.md`（投放表 / 自检读数 / 三个坑 / 剩余事项）。
 
 ## 1 环境与路径
 
