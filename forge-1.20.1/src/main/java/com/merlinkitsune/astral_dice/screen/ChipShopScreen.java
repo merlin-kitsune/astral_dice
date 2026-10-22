@@ -51,9 +51,10 @@ import net.minecraft.world.item.ItemStack;
  * <p><b>筹码图标 = 商店专用素材</b>：候选格画的是 {@link ChipShopCatalog.Entry#iconLocation()}
  * （32x32 的商店图标，按 id 入库），**不是**筹码的物品贴图（两者逐字节不同，见逻辑计划 §7 取证件）。
  *
- * <p><b>无边框状态图标（2026-10-21 用户裁决）</b>：{@code images/shop/unbord_chips} 那套无边框素材
- * 与本目录 {@code chip_shop/chips/<chip_id>.png} 67/67 逐字节一致 ⇒ 图标本身即无边框；品质改由
- * **物品名颜色 / tooltip 的 Rarity 行**表达，屏幕不再叠加 {@code chipshop_quality_*} 描边环。
+ * <p><b>品质外框（2026-10-22 用户裁决：恢复绘制）</b>：{@code images/shop/unbord_chips} 那套无边框素材
+ * 指的是**图标素材本身**（与本目录 {@code chip_shop/chips/<chip_id>.png} 67/67 逐字节一致）；筹码格脚下仍叠
+ * {@code chipshop_quality_1/2/3} 的 28x28 描边环（稀有 / 史诗 / 传奇三色），2026-10-21 曾整圈删除、现恢复。
+ * 图标以 {@link #CHIP_ICON_OFF} 内缩 2 px 画在描边环内侧，两者不重叠。
  * <p><b>平台差异（forge-1.20.1）</b>：发 C2S 包改走本线既有通道 {@code ModNetwork.sendToServer}（1.21.1 是
  * {@code PacketDistributor.sendToServer}）；贴图定位用 {@code new ResourceLocation(MODID, path)}
  * （1.20.1 无 {@code fromNamespaceAndPath}）。布局常量、命中面、红闪条件与 1.21.1 蓝本逐字一致。
@@ -199,6 +200,10 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
     private static final String TEX_CONFIRM_PUSH = "chipshop_confirm_push.png";
     private static final String TEX_REFRESH = "chipshop_refresh.png";
     private static final String TEX_REFRESH_PUSH = "chipshop_refresh_push.png";
+    /** 品质外框（2026-10-22 恢复绘制）：稀有 / 史诗 / 传奇三档 28x28 纯描边环 */
+    private static final String TEX_QUALITY_1 = "chipshop_quality_1.png";
+    private static final String TEX_QUALITY_2 = "chipshop_quality_2.png";
+    private static final String TEX_QUALITY_3 = "chipshop_quality_3.png";
     private static final String TEX_SELECT = "chipshop_select.png";
 
     // ────────────────────────────── 界面态（本批全部是本地计数器/反馈态，无业务状态） ──────────────────────────────
@@ -293,9 +298,9 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
     }
 
     /**
-     * ④ + ⑤：三个筹码位的 24x24 物品图标（空筹码位不画）。
-     * <p>2026-10-21 用户裁决：筹码状态图标一律**无边框** ⇒ 不再绘制 {@code chipshop_quality_*} 品质外框
-     * （28x28 纯描边环）；图标仍按 28x28 格位内缩 {@link #CHIP_ICON_OFF} 居中，几何与价格行不变。
+     * ④ + ⑤：三个筹码位的品质外框（28x28 纯描边环）与 24x24 物品图标（空筹码位两者都不画）。
+     * <p>2026-10-22 用户裁决：品质外框**恢复绘制**（三色描边环 = 稀有 / 史诗 / 传奇）；2026-10-21 的
+     * 「无边框」只针对**图标素材本身**，图标仍按 28x28 格位内缩 {@link #CHIP_ICON_OFF} 居中画在外框内侧。
      */
     private void renderOffers(GuiGraphics guiGraphics) {
         for (int chip = 0; chip < CHIP_COUNT; chip++) {
@@ -303,9 +308,17 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
             if (stack.isEmpty()) {
                 continue;
             }
-            // 无边框口径（2026-10-21）：品质外框（chipshop_quality_1/2/3）不再绘制；
-            // 图标坐标仍以 28x28 格位（QUALITY_X / QUALITY_Y）为基准，靠 CHIP_ICON_OFF 内缩居中。
-            // 筹码图标 = 商店专用 32x32 素材，缩到 24x24 画在内缩区中心（非物品模型，故无需 scissor）
+            // ④ 品质外框（28x28 纯描边环，2026-10-22 恢复）：优先用服务端同步的品质码（DataSlot[4..6]），
+            // 码未到（0）时退回按稀有度现算 ⇒ 客户端不自行猜档位（逻辑计划 R2 / 规范 §6）。
+            int frame = ChipShopClientState.qualityCode(chip);
+            if (frame <= 0) {
+                frame = ChipShopClientState.qualityFrameIndexOf(stack);
+            }
+            if (frame != ChipShopClientState.QUALITY_FRAME_NONE) {
+                blitStrip(guiGraphics, tex(qualityTex(frame)),
+                        QUALITY_X[chip], QUALITY_Y, QUALITY_SIZE, QUALITY_SIZE);
+            }
+            // ⑤ 筹码图标 = 商店专用 32x32 素材，缩到 24x24 画在内缩区中心（非物品模型，故无需 scissor）
             ChipShopCatalog.Entry entry = ChipShopCatalog.byStack(stack).orElse(null);
             if (entry == null) {
                 continue;
@@ -316,6 +329,17 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
                     0.0F, 0.0F, CHIP_ICON_SRC_SIZE, CHIP_ICON_SRC_SIZE,
                     CHIP_ICON_SRC_SIZE, CHIP_ICON_SRC_SIZE);
         }
+    }
+
+    /** 品质外框序号（1/2/3）→ 贴图名；其余值按 3 处理（与 {@link ChipShopClientState} 的兜底同口径） */
+    private static String qualityTex(int frame) {
+        if (frame == 1) {
+            return TEX_QUALITY_1;
+        }
+        if (frame == 2) {
+            return TEX_QUALITY_2;
+        }
+        return TEX_QUALITY_3;
     }
 
     /**

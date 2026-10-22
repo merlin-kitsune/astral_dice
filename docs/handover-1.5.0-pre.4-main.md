@@ -2,8 +2,8 @@
 
 ## 0 速览（一屏）
 
-1. 分支 `multi-main`；HEAD = **本批头提交**（提交号见 `git log -1`）（pre.4 施工批 + 史莱姆被动 15 秒批 + 派子代理屏蔽人格注入规则批 + 强化拒止品质改奇特批均已提交；电击手套 FX 批（第 14 条）已一并提交（`git log -1`），工作树干净）。
-2. 未推送提交 **31** 个（`git rev-list --count origin/multi-main..HEAD`，2026-10-22 18:2x 实测），**无** tag（`1.5.0-pre.3` / `1.5.0-pre.4` 均无，需用户放行）。
+1. 分支 `multi-main`；HEAD = **本批头提交**（提交号见 `git log -1`）（pre.4 施工批 + 史莱姆被动 15 秒批 + 派子代理屏蔽人格注入规则批 + 强化拒止品质改奇特批 + 电击手套 FX 批 + 筹码商店品质外框恢复批（第 15 条）均已提交）。
+2. 未推送提交 **32** 个（`git rev-list --count origin/multi-main..HEAD`，2026-10-22 提交本批后实测），**无** tag（`1.5.0-pre.3` / `1.5.0-pre.4` 均无，需用户放行）。
 3. 四线 `mod_version` 均为 `1.5.0-pre.4+<加载器后缀>`（2026-10-22 bump）；`starengine_version=1.1.0-pre.2`（四线一致，未动）。
 4. jar 内硬前置：`modId="starengine"` / `versionRange="[1.1.0-pre.2,2.0.0)"`，`META-INF/jarjar/` 计数 **0**（pre.4 两 jar 已复核）。
 5. 可交付范围：**只发 P0**（`neoforge-1.21.1` + `forge-1.20.1`）。P1 两线版本号同为 pre.4，但内容不含 1.5.0。
@@ -14,8 +14,9 @@
 10. **史莱姆立牌被动改为「每 15 秒最多触发一次」（2026-10-22，已提交 `7c51df63`）**：`HURT_COOLDOWN_TICKS` **20 → 300**（仅 P0 两线 `item/sign/LuluSignItem.java`），tooltip / 帕秋莉手册条目 / 两份 CHANGELOG 同步；判据见 §5-15，**无实机读数**。P1 两线未动（§5-16）。
 11. **派子代理一律屏蔽人格注入（2026-10-22 用户裁决，本轮已完成）**：红线区〈子代理与测试环境硬规则〉新增第 8 条 —— brief 必带「不要使用任何人设 / 角色扮演 / 语气修饰 / 昵称自称」；复核 / 审查 / 取证类任务一律用全新上下文 `subagent`（`subagent_fork` 会继承带人设的对话）；子代理回报出现人格化表达即判不合规。判据见 §5-18。
 12. 面向整合包会话的交接单见 `docs/handover-1.5.0-pre.4-modpack.md`（投放表 / 自检读数 / 坑 / 剩余事项）。
-13. **强化拒止品质改为奇特（2026-10-22 用户裁决，已提交 本批头提交（`git log -1`））**：`is_exclusive` 标签 7 项里只有它还是 `epic` ⇒ P0 两线各改一行 `.rarity(AstralRarities.epic())` → `.rarity(AstralRarities.bizarre())`；判据 = 字节码 `lambda$static$52`（neo）/ `lambda$static$56`（forge）内 `AstralRarities.bizarre()` 1 次、`epic()` 0 次；并新增「专属牌品质总则」+ CHANGELOG/需求文档订正 + 新产物投放 4 处（18:09）。详见 §5-19。
-14. **电击手套命中 FX（2026-10-22 18:18，已提交 本批头提交（`git log -1`））**：命中目标撒 Irons 粒子库电火花（`comet_azur_filament`×2 电弧 / `glintstone_spark`×7 火花芯 / `frost_spark`×4 细闪，rgb `0x9BE8FF`·`0xE8FBFF`），圆心一次 `SoundEvents.LIGHTNING_BOLT_IMPACT`（音量 0.5 / 音调 1.5）；实现 `combat/ElectricShockFx.java`（P0 两线）+ `audio/SoundPlayback` 新增 7 参 `playAt` 重载（旧 5 参委托它） + `item/chip/ElectricGloveChipItem#executeShock` 接线。判据见 §5-20，**无实机读数**。
+13. **强化拒止品质改为奇特（2026-10-22 用户裁决，已提交）**：`is_exclusive` 标签 7 项里只有它还是 `epic` ⇒ P0 两线各改一行 `.rarity(AstralRarities.epic())` → `.rarity(AstralRarities.bizarre())`；判据 = 字节码 `lambda$static$52`（neo）/ `lambda$static$56`（forge）内 `AstralRarities.bizarre()` 1 次、`epic()` 0 次；并新增「专属牌品质总则」+ CHANGELOG/需求文档订正 + 新产物投放 4 处（18:09）。详见 §5-19。
+14. **电击手套命中 FX（2026-10-22 18:18，已提交）**：命中目标撒 Irons 粒子库电火花（`comet_azur_filament`×2 电弧 / `glintstone_spark`×7 火花芯 / `frost_spark`×4 细闪，rgb `0x9BE8FF`·`0xE8FBFF`），圆心一次 `SoundEvents.LIGHTNING_BOLT_IMPACT`（音量 0.5 / 音调 1.5）；实现 `combat/ElectricShockFx.java`（P0 两线）+ `audio/SoundPlayback` 新增 7 参 `playAt` 重载（旧 5 参委托它） + `item/chip/ElectricGloveChipItem#executeShock` 接线。判据见 §5-20，**无实机读数**。
+15. **筹码商店品质外框恢复 + 卡牌购买钱包音效（2026-10-22 18:32）**：`screen/ChipShopScreen` 把 2026-10-21 误删的三色品质描边环（`chipshop_quality_1/2/3`，28x28）重新画回筹码格脚下、`client/ChipShopClientState`+`shop/ChipShopCatalog` javadoc 同步口径；`shop/CardShopMenu#handleBuy` 成功尾段补 `SoundPlayback.playTo(buyer, ModSounds.WALLET_DEPOSIT.get())`（拒绝分支不响）。守门 `verify_chip_shop_ui.ps1` 的 G2b 由反向改为正向断言、`mutate_chip_shop_ui.ps1` 的 M38/M39 同步反转（`MUT_TOTAL: 39，判红 39`）。判据与产物见 §5-21 / §2，**无实机读数**。
 
 ## 1 环境与路径
 
@@ -49,21 +50,21 @@
 | jar 内依赖区间 | `[1.1.0-pre.2,2.0.0)`，`type=required`（neo）/ `mandatory=true`（forge） | `META-INF/neoforge.mods.toml:141-144` / `META-INF/mods.toml:154-158` |
 | 内嵌库 | `META-INF/jarjar/` 计数 **0**（两线） | `unzip -l <jar> \| grep -c 'META-INF/jarjar/'` |
 
-P0 产物（`build/libs`，**2026-10-22 18:18 重建（含电击手套命中 FX 批）**）：
+P0 产物（`build/libs`，**2026-10-22 18:32 重建（含筹码商店品质外框恢复批）**）：
 
-- neo `astral_dice-1.5.0-pre.4+neoforge_1.21.1.jar` — **2,558,408 B** — `02719fe60295b8a4626e74721d91f680416e8e9afe923312adf69c6c4cd1b6ae`
-- forge `astral_dice-1.5.0-pre.4+forge_1.20.1.jar` — **2,603,959 B** — `42cce572094acbf676d4250e3d0dfb7054ac56621741fe3be432dc0e6d155d7d`
-- forge dev named jar `build/devlibs/astral_dice-1.5.0-pre.4+forge_1.20.1.jar` — **2,574,494 B** — `67bc4d2444c37cdfbec88b945f30e70a24dd982ec5328043f2a8a6cd72538bff`
-- 历史值（只作背景，均已被覆盖）：pre.4 18:09（强化拒止品质批）= neo 2,556,778 B `cab211ef…` / forge 2,602,334 B `5141780a…` / devlibs 2,572,866 B `544b61de…`；pre.4 17:53（史莱姆批）= neo 2,556,774 B `bdfbe5f9…` / forge 2,602,332 B `d9780bd0…` / devlibs 2,572,864 B `2849258d…`；pre.4 17:2x = neo 2,556,723 B `7198cc75…` / forge 2,602,280 B `fbb77627…` / devlibs 2,572,814 B `6a445c8f…`；pre.3 15:47 = 2,555,654 B `f063102b…` / 2,601,208 B `7bf787df…`。
+- neo `astral_dice-1.5.0-pre.4+neoforge_1.21.1.jar` — **2,558,631 B** — `742132dd929754c84f6df362dacdd36453f5b7e6ce6feee15f780d231a8da59a`
+- forge `astral_dice-1.5.0-pre.4+forge_1.20.1.jar` — **2,604,187 B** — `4b984008a03f4bf8b236144eacdbc5814b821105fd4141f1b90125c521ff269a`
+- forge dev named jar `build/devlibs/astral_dice-1.5.0-pre.4+forge_1.20.1.jar` — **2,574,721 B** — `8f81e4c3ba6710b4a544e8c5df262c1adbb38690dd88dd1c30709ed0784e6e7f`
+- 历史值（只作背景，均已被覆盖）：pre.4 18:18（电击手套 FX 批）= neo 2,558,408 B `02719fe6…` / forge 2,603,959 B `42cce572…` / devlibs 2,574,494 B `67bc4d24…`；pre.4 18:09（强化拒止品质批）= neo 2,556,778 B `cab211ef…` / forge 2,602,334 B `5141780a…` / devlibs 2,572,866 B `544b61de…`；pre.4 17:53（史莱姆批）= neo 2,556,774 B `bdfbe5f9…` / forge 2,602,332 B `d9780bd0…` / devlibs 2,572,864 B `2849258d…`；pre.4 17:2x = neo 2,556,723 B `7198cc75…` / forge 2,602,280 B `fbb77627…` / devlibs 2,572,814 B `6a445c8f…`；pre.3 15:47 = 2,555,654 B `f063102b…` / 2,601,208 B `7bf787df…`。
 - 同版本号（pre.4）的中间构建件**不残留**：Gradle 同名覆盖，`build/libs` 与 `build/devlibs` 里 pre.4 各只有上面那三份之一（2026-10-22 18:0x 复核：`Get-ChildItem -Filter 'astral_dice-1.5.0-pre.*.jar'` 全树只剩 pre.1/pre.2/pre.3/pre.4 各线一份）。
 - ⚠️ 但**旧版本产物仍留在各子项目 build 目录**（勿投放）：`neoforge-1.21.1/build/libs` pre.1 2,522,270 / pre.2 2,522,595 / pre.3 2,555,654；`forge-1.20.1/build/libs` pre.1 2,567,077 / pre.2 2,567,445 / pre.3 2,601,208；`forge-1.20.1/build/devlibs` pre.1 2,627,085 / pre.3 2,571,732；**仓库根 `build/libs` 另有一对陈旧 pre.3**（neo 2,555,455 @ 00:22、forge 2,600,940 @ 11:59）——取件只认 §2 这三行。
-- 投放（2026-10-22 18:18 实测，逐处 `Copy-Item` + `Get-FileHash` 双向对账；**投放目标**（`run/<线>/mods` 与两个整合包）里的旧 pre.3 已删除，每处只剩 pre.4 一份）：
+- 投放（2026-10-22 18:32 实测，逐处 `Copy-Item` + `Get-FileHash` 双向对账；**投放目标**（`run/<线>/mods` 与两个整合包）里的旧 pre.3 已删除，每处只剩 pre.4 一份）：
   | 位置 | jar 形态 | 字节 | sha256 前 16 | 对账 |
   |---|---|---|---|---|
-  | `run/1.21.1/mods` | reobf（`build/libs`） | 2,558,408 | `02719FE60295B8A4` | MATCH |
-  | `run/1.20.1/mods` | **named dev jar**（`build/devlibs`） | 2,574,494 | `67BC4D2444C37CDF` | MATCH（同源，§6-3） |
-  | `D:\.minecraft\versions\狐の航空学 Voxy Edition\mods` | reobf（`build/libs`） | 2,558,408 | `02719FE60295B8A4` | MATCH |
-  | `D:\.minecraft\versions\1.20.1-Forge 模组测试\mods` | reobf（`build/libs`） | 2,603,959 | `42CCE572094ACBF6` | MATCH |
+  | `run/1.21.1/mods` | reobf（`build/libs`） | 2,558,631 | `742132DD929754C8` | MATCH |
+  | `run/1.20.1/mods` | **named dev jar**（`build/devlibs`） | 2,574,721 | `8F81E4C3BA6710B4` | MATCH（同源，§6-3） |
+  | `D:\.minecraft\versions\狐の航空学 Voxy Edition\mods` | reobf（`build/libs`） | 2,558,631 | `742132DD929754C8` | MATCH |
+  | `D:\.minecraft\versions\1.20.1-Forge 模组测试\mods` | reobf（`build/libs`） | 2,604,187 | `4B984008A03F4BF8` | MATCH |
 - jar 内自检：neo version=`1.5.0-pre.4+neoforge_1.21.1` / forge=`1.5.0-pre.4+forge_1.20.1`；`META-INF/jarjar/` = **0**；`AstralPartyCommand.class` 含 `killbarricade` / `killrepulsion` / `AFTERM`；11 张 `mob_effect/*.png` 与 `images/shop/unbord_chips/` 源文件 md5 全等（两线各 11，mismatch 0）；`javap` 读数见 §5-13。
 - 投放后目录状态：两个 `run/<线>/mods` 与两个整合包的 `astral_dice-*.jar` 只剩 pre.4 一份；整合包侧 `starengine-*` 与 `AutoJS-forge-1.20.1-1.0.0.jar`（reobf，167,358 B）在位。
 - 成对库：两个整合包各有 `starengine-neoforge-1.21.1-1.1.0-pre.2.jar`（98,733 B）/ `starengine-forge-1.20.1-1.1.0-pre.2.jar`（103,604 B）；
@@ -281,6 +282,16 @@ AP_NC2B_READ:hand=astral_dice:effect_card_monster_laser:handn=2:cards=2:sel=0:to
     ⑦ **P1 欠账**：`neoforge-26.1.2` / `fabric-1.20.1` 未移植本 FX（整批随 P1 批次）。
     ⑧ **复核**（`dsh_code_review` run `cdda4ad6-b3c6-4ca1-bda8-692d4a87b9fb`）：R1–R7 **全部 SUPPORTED**，无代码 / 产物缺陷；提 3 项文档订正**已就地修** —— `handover-new-session-context.md` 的 forge devlibs 仍写旧哈希（2,572,866 / `544b61de…` ⇒ 2,574,494 / `67bc4d24…`）与 18:09 时间戳；`playAt` 重载参数数写成「6 参 / 8 参」（实为 **5 参 / 7 参**）；未推送数写 31（实况 30，FX 批未提交）⇒ 顺带把正本 §0 第 1/2 条与第 14 条「未提交」对齐。
 
+21. **筹码商店品质外框恢复 + 卡牌购买钱包音效（2026-10-22 18:32，用户报障驱动）**：
+    ① 起因（用户原话）：「筹码商店表示品质的外框（3种颜色）莫名其妙丢失了，需要补回来。然后购买卡牌也没有 wallet 音效，补上。」
+    ② 丢框根因：提交 `fe4aa05f`（2026-10-21「筹码无边框图标」批）连 `screen/ChipShopScreen` 的 `TEX_QUALITY_1/2/3` + `qualityTex(int)` + `renderOffers` 里那一段 blit 一起删了（本意只是换**图标**素材）；三张 28×28 描边环贴图 `assets/astral_dice/textures/gui/shop/chipshop_quality_{1,2,3}.png` 一直都在 ⇒ 纯代码回归，无需补美术。
+    ③ 代码（P0 两线各 4 文件）：`screen/ChipShopScreen` 恢复三档贴图常量与 `renderOffers` 外框绘制（`qualityCode(chip)` 优先 → 退 `qualityFrameIndexOf(stack)` → `QUALITY_FRAME_NONE` 跳过），并在「⑤b 悬停覆盖层」前恢复 `private static String qualityTex(int frame)`（1/2/其它 → `TEX_QUALITY_1/2/3`）；`client/ChipShopClientState:24` 与 `shop/ChipShopCatalog` javadoc 同步「2026-10-22 起屏幕重新绘制品质外框」；`shop/CardShopMenu#handleBuy` 成功尾段补 `SoundPlayback.playTo(buyer, ModSounds.WALLET_DEPOSIT.get())`（拒绝/失败分支不响）。
+    ④ 守门口径反转：`scripts/verify/verify_chip_shop_ui.ps1` 的 G2b 由「断言**不**画外框」改成**正向**断言（`$frameNeed` 5 条 + `qualityTex` 方法体正则三档映射 + 输出行 `CHIPUI_FRAME`）；`$drawnTexNames` 恢复为全部 13 张；`scripts/verify/mutate_chip_shop_ui.ps1` 的 M38（neo，挖掉绘制入口）/ M39（forge，`frame == 2` → `frame == 9`）同步反转。
+    ⑤ 判据（全绿，静态）：`pwsh -NoProfile -File scripts/verify/verify_chip_shop_ui.ps1` ⇒ 两线 `CHIPUI_ASSETS: 13/13`、`CHIPUI_LAYOUT: 31/31`、`CHIPUI_TOTAL_FAIL: 0`、`CHIPUI_RESULT: OK`；`mutate_chip_shop_ui.ps1` ⇒ `MUT_TOTAL: 39，判红 39`、`MUT_RESULT: OK`；`gradlew.bat :neoforge-1.21.1:jar :forge-1.20.1:jar` BUILD SUCCESSFUL；`javap -p -c` 两线 `shop/CardShopMenu` 的 `SoundPlayback.playTo` 与 `WALLET_DEPOSIT` 各 **2** 次（原转账 + 新购买），`screen/ChipShopScreen` 的 `qualityTex` 2 / `qualityCode` 4 / `blitStrip` 7；两 jar `META-INF/jarjar/` = 0；4 处投放 sha256 全 MATCH（§2 表）。
+    ⑥ **无实机读数**：三色外框观感与卡牌购买音效需用户明确下达实机（§6-1：重建后必须重新投放，已投放）。
+    ⑦ **P1 欠账**：`neoforge-26.1.2` / `fabric-1.20.1` 未移植本批（外观/音效随 P1 批次）。
+    ⑧ **复核**（`dsh_code_review` run `e6b42a13-bf68-47be-8682-709c3b390c48`）：R1–R4 / R6 / R7 **SUPPORTED**、R5 **部分成立**；**无代码 / 产物缺陷**。它独立取证的关键读数与本批自述一致 —— 外框段与 `fe4aa05f^` 逐字相同（图标在外框之后绘制）、`javap` 计数 `qualityTex=2 / qualityCode=4 / blitStrip=7 / qualityFrameIndexOf=1`、三张 28×28 贴图两线俱在（162/160/158 B）、两 jar `META-INF/jarjar/` = 0、四处投放同源 MATCH、`verify_chip_shop_ui.ps1` 实跑 `CHIPUI_RESULT: OK`、`AGENTS-full.md` **3,621 行** 且 `verify-split.py` 四项 `[OK]`；mutate 套件它按「会改源码再还原」的口径只做静态核对（M38/M39 的 find 串各命中 1 行）。唯一 finding = **本文档 §0 第 2 条与 `handover-new-session-context.md` 的未推送数口径**（提审时实况 31、我按「提交后 32」提前写了 32）⇒ 提交后实况确为 **32**，两处已统一为 32 并注明实测时点。
+
 ## 6 坑（踩过的，后续别重踩）
 
 1. **`run/<线>/mods` 的 jar 曾 ≠ `build/libs`（neo 于 2026-10-22 15:47 对齐；forge 按 §6-3 永远放 devlibs named jar）**：当时 neo 是 00:22 的旧构建（同名、2 B 差异），
@@ -331,6 +342,9 @@ AP_NC2B_READ:hand=astral_dice:effect_card_monster_laser:handn=2:cards=2:sel=0:to
 
 19. **粒子库没有「电」题材的现成贴图（2026-10-22 电击手套 FX 批）**：179 张里最接近电弧的是 `comet_azur_filament`（锯齿蓝丝），`glintstone_spark` / `frost_spark` 只是点火花；剩下的火花系（`holy/flame/ember_spark`）是暖色十字，染色后会脏。⇒ 做电类 FX 就「细长弧光 + 冷色点花」两件套，别硬找球形电爆。另：`LibraryParticleOptions` 的 `rgb` 是**逐通道相乘**（`LibraryParticle` 里 `setColor`），给 0x9BE8FF 这类冷白会明显压暗原贴图，想保亮要用接近白色的值。
 20. **改动只落在 chip 类里也会漏判「命中」语义（2026-10-22）**：`ElectricGloveChipItem#executeShock` 的 `dealt` 才是「这目标真的吃到伤害」的判据（`victim.hurt(...)` 的返回值），FX 必须挂在 `if (!dealt) continue;` **之后**；挂在循环头会让未受伤目标也冒电光（假象）。同理音效要放循环外 + `hitAny` 守卫。
+
+21. **反向断言守门在功能回滚后会变成「假绿」（2026-10-22 踩中）**：`verify_chip_shop_ui.ps1` 的 G2b 原本断言「不画品质外框」（2026-10-21 无边框口径），用户报障时它**照样全绿** —— 因为「外框被误删」正好满足那条反向断言。⇒ 一旦某个特性是**用户可见的既有行为**，守门必须是**正向**断言（存在性 + 逐字锚点 + 方法体完整性），反向断言只用于「明确禁止某写法」的场景；特性被回滚时，反向断言必须同批反转（本批 M38/M39 已同步）。
+22. **变异套件跑不完就中断会把变异留在源码里（2026-10-22 踩中）**：`mutate_chip_shop_ui.ps1` 单跑 2–4 分钟，`run_code` 默认 `timeoutMs` 120s 会把它打断，当场把第 35 条变异（`if (chip >= 0) {` → `if (chip > 0) {`）留在 `forge-1.20.1/.../screen/ChipShopScreen.java`，随后守门报 `筹码格命中判定被改` —— 极易被误判成「我刚写的代码有问题」。⇒ 跑变异套件一律 `tools.pwsh({ run_in_background: true })` + `job_output({ wait: true })` 并给 `run_code` 足够 `timeoutMs`；**中断后先 `git status` 看有没有残留变异痕**（它会自动还原，但被杀时来不及），另需预建 `temp\t87`（脚本不建目录，缺目录只报 `Could not find a part of the path ...\temp\t87\mutation.log`）。
 
 ## 7 关键路径（命令与文件）
 

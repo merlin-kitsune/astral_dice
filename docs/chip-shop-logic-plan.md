@@ -10,7 +10,7 @@
 | # | 你的需求（要点） | 实现点 | 落点 | 判据 |
 |---|---|---|---|---|
 | R1 | 三格显示 3 个候选筹码，图标取 `images/shop/unbord_chips` 同名图 | 资产入库为 `assets/astral_dice/textures/gui/chip_shop/chips/<chip_id>.png`，`ChipShopCatalog` 记录图标路径 | assets + `shop/ChipShopCatalog.java` | 守门 G9：池 66 枚 ↔ 图标映射 66/66（含 2 条显式别名，见 §1.1） |
-| R2 | 三格边缘三种框代表三种品质 | 屏幕层已有 `qualityFrameIndexOf(ItemStack)`（稀有=1/史诗=2/传奇=3） | .86 已实现 | G10：品质码由服务端槽内容推导，客户端不自行猜测 |
+| R2 | 三格边缘三种框代表三种品质 | 屏幕层已有 `qualityFrameIndexOf(ItemStack)`（稀有=1/史诗=2/传奇=3） | .86 已实现；2026-10-22 恢复绘制（2026-10-21 曾误删 blit） | G10：品质码由服务端槽内容推导，客户端不自行猜测；G2b（2026-10-22 起正向）断言绘制锚点 + 三档映射 + 图标内缩几何 |
 | R3 | 每次进店重抽 3 个，且互不相同 | **口径已改**：候选**落盘**，进店**不无条件重抽**（见 R16/R17）；三格共用一个池、抽走即移除 | `shop/ChipShopRoller.java` | G12：三格 id 互不相同；G19：候选持久化语义 |
 | R4 | 骰子星级决定品质概率 60/37/3 · 40/45/15 · 25/50/25 | `QUALITY_PROB[starLevel]` 逐字落地；星级复用卡牌商店口径 | `ChipShopCatalog` | G11：概率表逐字比对 + 星级取值 0..3 |
 | R5 | 只能抽「饰品栏与物品栏都没有」的筹码；不足 3 时依次移除第三槽、第二槽 | 抽前过滤 `ownedBy(player)`；抽不满自然留空（先缺第 3 格，再缺第 2 格） | `ChipShopRoller` | G12/G13：已拥有过滤 + 缺口顺序 |

@@ -21,7 +21,8 @@ import java.util.Arrays;
  *
  * <p><b>品质 → 品质外框序号</b>：{@link #qualityFrameIndexOf(ItemStack)} 的返回值原本直接拼进贴图名
  * （1 ⇒ {@code chipshop_quality_1.png}、2 ⇒ {@code _2}、3 ⇒ {@code _3}；{@code 0} ⇒ 不画外框）；
- * **2026-10-21 起屏幕不再绘制品质外框**（状态图标改无边框），该档位映射当前无绘制/同步调用方，仅作档位对照保留（DataSlot 同步走 {@link #setQualityCodes}、只读探针走 {@link #qualityCode}）。
+ * **2026-10-22 起屏幕恢复绘制品质外框**（2026-10-21 的「无边框」只针对图标素材本身）⇒ 该档位映射重新回到绘制路径：
+ * {@code ChipShopScreen#renderOffers} 先读 {@link #qualityCode}（服务端 DataSlot 同步），码未到（0）再退回 {@link #qualityFrameIndexOf(ItemStack)}；只读探针仍走 {@link #qualityCode}。
  * 档位反查一律走库的 {@link AstralRarities#tierOf}，**不在本类里写 {@code ==} 链** —— 库的 {@code Rarity}
  * 是**扩展过的原版枚举常量**（RARE/EPIC/LEGENDARY/PINNACLE/BIZARRE），与原版自带的 COMMON/UNCOMMON/RARE/EPIC
  * **不是同一组常量**（{@code tierOf} 对原版自带的档位返回 null，见该方法的契约）。

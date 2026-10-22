@@ -40,7 +40,7 @@
 - 条带：chipshop_frame_2.png 再 chipshop_frame_1.png 叠加 @ (34, 6, 216, 78)。
 - 五格（格距 43、格宽 40，**条带内相对 x**）：CELL_X = {3, 45, 88, 131, 174}；语义 = 0 确认按钮、1/2/3 筹码位、4 刷新按钮。
 - 按钮 24x24（条带内相对）：CONFIRM @ (11, 36)、REFRESH @ (181, 36)；按下后 2 tick 内用 *_push 贴图（悬停不切换，2026-10-13 用户裁决）。
-- 筹码格位 28x28（条带内相对）：QUALITY_X = {51, 94, 137}（= 对应筹码格起点 + 6）、QUALITY_Y = 31；筹码物品图标 24x24 在该格位内每边内缩 (28 − 24) / 2 = 2 px ⇒ 居中（2026-10-21 起**不再绘制品质外框**，格位尺寸只用于图标居中）。
+- 筹码格位 28x28（条带内相对）：QUALITY_X = {51, 94, 137}（= 对应筹码格起点 + 6）、QUALITY_Y = 31；筹码物品图标 24x24 在该格位内每边内缩 (28 − 24) / 2 = 2 px ⇒ 居中（**2026-10-22 起品质外框恢复绘制**：先画 28x28 描边环 quality_1/2/3，再在内侧内缩 2 px 画 24x24 图标；2026-10-21 的「无边框」只针对图标素材本身）。
 - 标签框 42x15 @ 条带内 y = 61：LABEL_X = {1, 44, 87, 130, 172}（= 该格中心 - 21）；cell0 显示星币图标+花费数字（无文字前缀，图标与数字间隔 2px）、cell1/2/3 显示筹码名、cell4 只显示剩余刷新次数；筹码名超宽时左右滚动（停 20t→2t/px→停 20t→反向）、选中格文字改黑色（选中标记画在文字下层）。
 - 选中标记 chipshop_select.png（42x15）画在**所选筹码**的标签框内（与标签框同坐标）。
 - 物品栏面板 chipshop_inventory.png @ (56, 89, 172, 86)；玩家槽位：主栏 9x3，槽原点 (61, 94)，槽距 18；快捷栏行 y = 152；槽内物品图标内缩 1 px（即 item x = 61 + 18i + 1、y = 94 + 18j + 1）。
@@ -48,10 +48,11 @@
 
 (2026-10-13 修订：图标 24x24/内缩 2、花费改星币图标+数字、刷新只显剩余)
 (2026-10-13 二次修订：筹码名 marquee、图标间距 2px、选中黑字+顺序互换)
+(2026-10-22 修订：品质外框 quality_1/2/3 恢复绘制 —— 2026-10-21 把「图标素材无边框」误扩成「商店品质环也不画」并删掉了 blit，本轮补回；守门 G2b 同步由反向断言改为正向断言)
 
 ## 4. 绘制顺序
 
-1. 背景 → 2. 条带深底（frame_2）→ 3. 格轮廓（frame_1）→ 4.（2026-10-21 起取消：品质外框 quality_1/2/3 不再绘制）→ 5. 筹码物品图标（无边框素材） → 5b. 悬停格图标覆盖层（悬停格的 24×24 图标区画灰色半透明覆盖层 0x66AAAAAA（与 CardShopScreen.COLOR_ROW_HOVER 同值）；空格不画；压在图标上、被选中标记与文字压在其上；2026-10-13 新增）→ 6. 选中标记（仅所选筹码格；画在筹码名文字下层）→ 7. 三处文本（花费=星币图标+数字 / 筹码名（超宽左右滚动、选中格黑字） / 剩余刷新次数）→ 8. 两个按钮（常态，或 **按下后 2 tick 内**用 *_push；**悬停不再切换 push 贴图**（2026-10-13 用户裁决））→ 9. 物品栏面板 + 原版槽位物品与悬停高亮 → 10. tooltip（逻辑批再补内容）。
+1. 背景 → 2. 条带深底（frame_2）→ 3. 格轮廓（frame_1）→ 4. 品质外框 quality_1/2/3（28x28 纯描边环，**2026-10-22 恢复**；2026-10-21 曾整圈删除）→ 5. 筹码物品图标（无边框素材，按 CHIP_ICON_OFF 内缩 2 px 画在外框内侧） → 5b. 悬停格图标覆盖层（悬停格的 24×24 图标区画灰色半透明覆盖层 0x66AAAAAA（与 CardShopScreen.COLOR_ROW_HOVER 同值）；空格不画；压在图标上、被选中标记与文字压在其上；2026-10-13 新增）→ 6. 选中标记（仅所选筹码格；画在筹码名文字下层）→ 7. 三处文本（花费=星币图标+数字 / 筹码名（超宽左右滚动、选中格黑字） / 剩余刷新次数）→ 8. 两个按钮（常态，或 **按下后 2 tick 内**用 *_push；**悬停不再切换 push 贴图**（2026-10-13 用户裁决））→ 9. 物品栏面板 + 原版槽位物品与悬停高亮 → 10. tooltip（逻辑批再补内容）。
 
 ## 5. 交互口径（用户裁决，硬约束）
 
@@ -70,7 +71,7 @@ client/ChipShopClientState.java：
 - remainingRefreshes / totalRefreshes：int（初始 0/0；界面刷新按钮下方框内只显示剩余次数，总次数不再显示）；
 - selectedIndex：int（-1 = 未选中）；
 - clear() / tick() / setOffers / setCost / setRefreshes / select。
-品质 → 外框映射：原版/库 Rarity：rare → quality_1、epic → quality_2、legendary → quality_3；pinnacle / bizarre 暂用 quality_3（**待用户裁决**）。2026-10-21 起屏幕**不再绘制**品质外框（状态图标改无边框），品质由物品名颜色 / tooltip 的 Rarity 行表达；该映射当前无绘制/同步调用方，仅作档位对照保留（DataSlot 同步走 ChipShopClientState#setQualityCodes、只读探针走 qualityCode）。
+品质 → 外框映射：原版/库 Rarity：rare → quality_1、epic → quality_2、legendary → quality_3；pinnacle / bizarre 暂用 quality_3（**待用户裁决**）。2026-10-22 起屏幕**恢复绘制**品质外框（2026-10-21 的「无边框」只针对图标素材本身）：`renderOffers` 先读 `ChipShopClientState#qualityCode`（服务端 DataSlot 同步），码未到（0）时退回 `qualityFrameIndexOf(ItemStack)` 现算，命中 `QUALITY_FRAME_NONE` 则不画；只读探针仍走 qualityCode。
 
 ## 7. 只读探针（供测试台与后续实机断言；一律不得改状态）
 
@@ -98,7 +99,7 @@ client/ChipShopClientState.java：
 |---|---|---|
 | M2 把 `onConfirmPressed();` 从确认按钮分支挪到筹码格分支 | G4 红 | FAIL：onConfirmPressed() 调用点不在确认按钮分支内 |
 | M3 客户端绑定把 `CHIP_SHOP` 换成 `CARD_SHOP` | G6 红 | FAIL：未把 ChipShopScreen 绑到 chip_shop 菜单 |
-| M4（2026-10-21 口径更新）品质外框 blit 回归：在图标前重画 `chipshop_quality_1/2` | G2b 红 | FAIL：仍引用品质外框 chipshop_quality_ |
+| M4（2026-10-22 口径反转）品质外框绘制入口被挖掉：`int frame = ChipShopClientState.qualityCode(chip);` → `int frame = 0;` | G2b 红 | FAIL：品质外框绘制锚点缺失 int frame = ChipShopClientState.qualityCode(chip) |
 | M5 按钮三元改成固定 `TEX_CONFIRM`（不再用 `*_push`） | G3 红 | FAIL：TEX_CONFIRM_PUSH(chipshop_confirm_push.png) 取不到绘制路径 |
 
 ## 9. 逻辑批的输入清单（等用户告知）

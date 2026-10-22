@@ -20,8 +20,8 @@ import java.util.Optional;
  * <p><b>池 = 67 枚</b>：{@code ModItems} 中除 {@code blank_chip}（合成材料，不入池、也不参与「已拥有」判定）
  * 之外的**全部** {@code *_chip} 物品；品质分布 稀有 19 / 史诗 29 / 传奇 19（已与 {@code ModItems} 的
  * {@code AstralRarities} 逐条交叉核对一致）。品质码 1/2/3 的档位口径（rare/epic/legendary）与 {@code ChipShopClientState#qualityFrameIndexOf}
- * 的返回值一致（两者互不调用：品质码由服务端按候选现算、经 DataSlot 同步），**永不出现普通 / 巅峰 / 奇特**（R20）；2026-10-21 起屏幕不再绘制品质外框
- * （{@code chipshop_quality_1/2/3} 仅保留素材），品质由物品名颜色 / Rarity 行表达。
+ * 的返回值一致（两者互不调用：品质码由服务端按候选现算、经 DataSlot 同步），**永不出现普通 / 巅峰 / 奇特**（R20）；
+ * 2026-10-22 起屏幕恢复绘制品质外框（{@code chipshop_quality_1/2/3} 回到绘制路径；2026-10-21 的「无边框」只针对图标素材本身）。
  *
  * <p><b>流派</b>（{@link School}）的权威来源 = 帕秋莉手册条目的 {@code category} 字段；
  * <b>类别</b>（{@link Category}）是商店「上次购买类别加成」用的五分类。两者都必须**每枚恰一类**（G10）。

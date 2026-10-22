@@ -523,6 +523,9 @@ public class CardShopMenu extends AbstractContainerMenu {
         startCycleIfReady();
         StarCoinBalanceSync.notifyChanged(buyer);
         actionBar(buyer, ChatFormatting.GOLD, "msg.astral_dice.card_shop_bought", bought.getHoverName(), price);
+        // 2026-10-22 用户裁决：卡牌购买**成功**也播钱包音效（wallet_deposit）——与转账成功 / 抽奖盒购买成功同口径；
+        // 只在这一处（发货 + 扣款都已完成之后）播，任何拒绝分支都不响。
+        SoundPlayback.playTo(buyer, ModSounds.WALLET_DEPOSIT.get());
     }
 
     /**

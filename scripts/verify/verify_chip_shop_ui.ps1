@@ -15,13 +15,15 @@
         ① G21 ModItems：改「整条注册语句锚定」（兼容两线各异的注册入口），不再写死 1.21.1 的 registerSimpleBlockItem 字面；
         ② G21b neo 侧越线字面：收窄为「1.20.1 形态的六参 use 声明头」（原字面会被本线合法的七参 useItemOn 续行误命中）；
         ③ G22 chip_shop 配方：改判 pattern GPG/HKH/HHH + key K = astral_dice:blank_chip（.112 起 blank_chip 由 S 位移到 K 位）。
-      **2026-10-21 判据刷新（无边框口径，用户裁决：所有筹码状态图标改为 images/shop/unbord_chips 的无边框图标）**：
-        筹码图标素材本就没有边框（jar 内 chip_shop/chips/<id>.png 与 unbord_chips 67/67 逐字节一致），
-        界面上的「边框」= ChipShopScreen 在图标下先 blit 的 chipshop_quality_1/2/3（28x28 纯描边环）⇒ 该 blit 已删除。
-        · G1 仍校验三张 quality 素材与源逐字节一致（素材保留、不入绘制路径）；
-        · G2 只要求「绘制路径上的贴图」有 TEX_ 常量（$drawnTexNames 去掉 quality_*）；
-        · 新增 G2b（反向 + 正向双断言）：源码出现任何品质外框引用即红；24x24 图标必须仍以 CHIP_ICON_OFF
-          内缩画在 QUALITY_X[chip] / QUALITY_Y 的 28x28 格位内（CHIP_ICON_OFF = (QUALITY_SIZE - CHIP_ICON_SIZE) / 2）。
+       **2026-10-22 判据刷新（品质外框恢复绘制，用户裁决：筹码商店表示品质的三色外框被误删，补回）**：
+         筹码图标素材本就没有边框（jar 内 chip_shop/chips/<id>.png 与 unbord_chips 67/67 逐字节一致），
+         界面上的「边框」= ChipShopScreen 在图标下先 blit 的 chipshop_quality_1/2/3（28x28 纯描边环）；
+         2026-10-21 曾把「图标无边框」误扩成「商店品质环也不画」并删掉该 blit，2026-10-22 恢复。
+         · G1 仍校验三张 quality 素材与源逐字节一致（这次它们回到绘制路径）；
+         · G2 的 $drawnTexNames 重新包含 quality_*（三张都必须有 TEX_ 常量且取得到绘制路径）；
+         · G2b 改为**正向**断言：绘制锚点齐（qualityCode 优先生效、码未到退回 qualityFrameIndexOf、QUALITY_FRAME_NONE
+           跳过、blitStrip 锚 QUALITY_X[chip]/QUALITY_Y/QUALITY_SIZE）、三档映射在 qualityTex 体内、24x24 图标仍以
+           CHIP_ICON_OFF 内缩画在 28x28 格位（CHIP_ICON_OFF = (QUALITY_SIZE - CHIP_ICON_SIZE) / 2）。
 #>
 [CmdletBinding()]
 param(
@@ -96,9 +98,8 @@ $texNames = @(
     'chipshop_refresh.png', 'chipshop_refresh_push.png',
     'chipshop_quality_1.png', 'chipshop_quality_2.png', 'chipshop_quality_3.png', 'chipshop_select.png'
 )
-# 2026-10-21（无边框口径）：三张 chipshop_quality_* 仍是 jar 内素材（G1 逐字节校验不变），但**不在绘制路径上**
-# ⇒ 不再要求屏幕内有它们的 TEX_ 常量；「绝不绘制」由 G2b 的反向断言守。
-$drawnTexNames = @($texNames | Where-Object { $_ -notlike 'chipshop_quality_*' })
+# 2026-10-22（品质外框恢复）：三张 chipshop_quality_* 重新进入绘制路径 ⇒ 绘制路径白名单 = 全部 13 张素材。
+$drawnTexNames = @($texNames)
 
 $layoutTokens = @(
     'GUI_WIDTH = 284', 'GUI_HEIGHT = 183',
@@ -165,7 +166,7 @@ foreach ($key in $targets) {
         if ($missing.Count -gt 0) { Fail ($line + ': 布局常量缺失 ' + ($missing -join ' | ')) }
         Write-Out ('CHIPUI_LAYOUT: ' + ($layoutTokens.Count - $missing.Count) + '/' + $layoutTokens.Count + ' 常量命中')
 
-        # 判据：绘制路径上的 10 张贴图名都要有常量定义（quality_* 三张只保留素材，见 G2b）；除白名单外，每个贴图常量都必须「可被绘制路径取到」：
+        # 判据：绘制路径上的 13 张贴图名都要有常量定义（含 quality_* 三张，见 G2b）；除白名单外，每个贴图常量都必须「可被绘制路径取到」：
         #   直接出现在 tex(...) 实参里（含三元表达式），或出现在「被 tex(...) 调用的字符串返回助手」方法体内。
         $regOnly = @('TEX_STRIP_FRAME')   # 素材登记、不入绘制路径（规范 §2/§3：本批外层用 frame_2）
         $defs = @{}
@@ -209,22 +210,37 @@ foreach ($key in $targets) {
         if ($unref.Count -gt 0) { Fail ($line + ': 贴图常量取不到绘制路径（tex(...) 实参或其字符串助手方法体内均未出现）' + ($unref -join ' | ')) }
         if ($src.IndexOf('chip_shop_GUI') -ge 0) { Fail ($line + ': 源码不得引用参考图 chip_shop_GUI') }
 
-        # ---- G2b 无边框口径（2026-10-21 用户裁决）：无品质外框，但图标仍按 28x28 格位内缩居中 ----
-        # 反向：出现任何品质外框引用即红（重新引入 blit / 常量 / 贴图名字面量都算回归）
-        $frameBad = @()
-        foreach ($qt in @('chipshop_quality_', 'TEX_QUALITY', 'qualityTex(')) { if ($src.IndexOf($qt) -ge 0) { $frameBad += $qt } }
-        if ($frameBad.Count -gt 0) { Fail ($line + ': 仍引用品质外框 ' + ($frameBad -join ' | ') + '（无边框口径禁止绘制 chipshop_quality_*）') }
-        # 正向：24x24 图标仍以 CHIP_ICON_OFF 内缩画在 QUALITY_X[chip] / QUALITY_Y 的 28x28 格位内（几何不得漂移）
+        # ---- G2b 品质外框（2026-10-22 用户裁决：恢复绘制）----
+        # 正向：品质码优先生效（服务端 DataSlot）、码未到退回按稀有度现算、NONE 跳过、blit 锚在 28x28 格位
         $frameNeed = @(
+            'int frame = ChipShopClientState.qualityCode(chip)',
+            'frame = ChipShopClientState.qualityFrameIndexOf(stack)',
+            'frame != ChipShopClientState.QUALITY_FRAME_NONE',
+            'blitStrip(guiGraphics, tex(qualityTex(frame))',
+            'QUALITY_X[chip], QUALITY_Y, QUALITY_SIZE, QUALITY_SIZE'
+        )
+        $frameMiss = @($frameNeed | Where-Object { $src.IndexOf($_) -lt 0 })
+        if ($frameMiss.Count -gt 0) { Fail ($line + ': 品质外框绘制锚点缺失 ' + ($frameMiss -join ' | ')) }
+        # 三档映射必须都在 qualityTex(...) 的返回体内（1/2/3 → TEX_QUALITY_1/2/3），不得写死单档
+        $qm = [regex]::Match($src, 'private static String qualityTex\([^)]*\)\s*\{(?<b>.*?)\n    \}', 'Singleline')
+        if (-not $qm.Success) {
+            Fail ($line + ': 缺少 qualityTex(...) 字符串助手（品质外框三档映射）')
+        } else {
+            $qb = $qm.Groups['b'].Value
+            $qMiss = @(@('frame == 1', 'TEX_QUALITY_1', 'frame == 2', 'TEX_QUALITY_2', 'TEX_QUALITY_3') | Where-Object { $qb.IndexOf($_) -lt 0 })
+            if ($qMiss.Count -gt 0) { Fail ($line + ': qualityTex 三档映射不完整 ' + ($qMiss -join ' | ')) }
+        }
+        # 图标几何不得漂移：24x24 图标仍以 CHIP_ICON_OFF 内缩画在 QUALITY_X[chip] / QUALITY_Y 的 28x28 格位内
+        $iconNeed = @(
             'stripX(QUALITY_X[chip] + CHIP_ICON_OFF)',
             'stripY(QUALITY_Y + CHIP_ICON_OFF)',
             'entry.iconLocation()',
             'CHIP_ICON_SIZE, CHIP_ICON_SIZE',
             'CHIP_ICON_OFF = (QUALITY_SIZE - CHIP_ICON_SIZE) / 2'
         )
-        $frameMiss = @($frameNeed | Where-Object { $src.IndexOf($_) -lt 0 })
-        if ($frameMiss.Count -gt 0) { Fail ($line + ': 无框图标绘制锚点缺失 ' + ($frameMiss -join ' | ')) }
-        Write-Out 'CHIPUI_NOFRAME: 无品质外框引用；24x24 图标仍锚在 28x28 格位（QUALITY_X/QUALITY_Y + CHIP_ICON_OFF，内缩 2 px）'
+        $iconMiss = @($iconNeed | Where-Object { $src.IndexOf($_) -lt 0 })
+        if ($iconMiss.Count -gt 0) { Fail ($line + ': 无框图标绘制锚点缺失 ' + ($iconMiss -join ' | ')) }
+        Write-Out 'CHIPUI_FRAME: 品质外框已绘制（qualityCode 优先 / qualityFrameIndexOf 兜底 / NONE 跳过，三档 28x28 描边环）；24x24 图标仍锚在 28x28 格位（CHIP_ICON_OFF，内缩 2 px）'
 
         $bad = @()
         foreach ($f in $forbidden) { if ($src.IndexOf($f) -ge 0) { $bad += $f } }

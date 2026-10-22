@@ -43,6 +43,7 @@
 #### Input & UI
 
 - **Chip status-effect icons switched to borderless chip art**: the HUD icons of 11 chip effects used to reuse the chip item textures (which carry the inventory-slot border); they now use the borderless 32×32 art from `images/shop/unbord_chips/` (Cutter Lv1 / Cutter Sharp / Electric Sword / Railgun / Adrenaline Normal / Adrenaline High / Flashlight / Whetstone / Cursed Sword / Magic Tome / Revenge Halberd; both P0 lines). The mapping lives in `tools/chip_effect_icon_map.json`; the gate is `python tools/gen_chip_effect_icons.py --check`.
+- **Chip shop three-color quality frames restored** (user ruling 2026-10-22): the 28x28 quality outline rings under each chip cell (`chipshop_quality_1/2/3` = rare blue / epic purple / legendary gold) had been removed together with the "borderless status icons" pass and are drawn again — the screen reads the server-synced quality code first, falls back to computing it from the item's rarity when the code has not arrived (0), and skips drawing when the tier is "none"; the 24x24 borderless icon is still inset by 2 px inside the ring (both P0 lines). Gate `scripts/verify/verify_chip_shop_ui.ps1` G2b flipped from a reverse ("must not draw") to a forward ("must draw") assertion, with mutations M38/M39 inverted accordingly.
 
 - **New combat stat bars: Defense and Attack Power** (user request 2026-09-26): the vanilla **armor bar row** now
   shows this mod's **Defense** bar instead (the vanilla armor bar is no longer drawn, and Overloaded Armor Bar's
@@ -104,6 +105,8 @@
   **volume 0.5 / pitch 1.5**, which reads as an electric zap rather than a lightning bolt. The sound plays
   **once per shock**, not once per victim, so a 3-block radius hitting several targets does not stack into a
   roar; targets that take no damage get no sparks.
+
+- **Card shop purchase now plays the wallet sound** (user ruling 2026-10-22): a **successful** card purchase in `CardShopMenu#handleBuy` plays `wallet_deposit` (the same sound already used by the lottery-box purchase and by successful star-coin transfers), once, at the tail of the success path only — no rejection branch (insufficient balance / already owned / inventory full) makes any sound (both P0 lines).
 
 <!-- 新内容在此登记 -->
 
