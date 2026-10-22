@@ -223,6 +223,8 @@ public class DorothySignItem extends BaseSignItem {
             }
             ModAttachments.setSignActiveCooldownEnd(player, now
                     + (int) com.merlinkitsune.astral_dice.item.ChargeManager.signCooldownTicks(player, COOLDOWN_TICKS));
+            // 冷却口径一致(2026-10-22 补):记录本次实际最大冷却,供「瞬时冷却」/减免换算剩余比例
+            ModAttachments.setSignActiveMaxCooldown(player, (long) ((int) com.merlinkitsune.astral_dice.item.ChargeManager.signCooldownTicks(player, COOLDOWN_TICKS)));
             CurrentCoreChipItem.onActiveSkillUsed(player);
             sendSignActionBar(player, "msg.astral_dice.dorothy_done");
         }

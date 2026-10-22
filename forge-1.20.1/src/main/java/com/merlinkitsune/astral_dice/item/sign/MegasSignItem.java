@@ -100,6 +100,8 @@ public class MegasSignItem extends BaseSignItem {
                 // 主动成功触发：开始玩家级冷却并计入「电流核心」充能
                 ModAttachments.setSignActiveCooldownEnd(player,
                         player.level().getGameTime() + signCooldownTicks(player));
+                // 冷却口径一致(2026-10-22 补):记录本次实际最大冷却,供「瞬时冷却」/减免换算剩余比例
+                ModAttachments.setSignActiveMaxCooldown(player, (long) (signCooldownTicks(player)));
                 CurrentCoreChipItem.onActiveSkillUsed(player);
                 // 玩家可见反馈(与其他立牌的专属提示同款;行为口径见
                 // TargetSelectionManager#confirm 的注释:actionbar 单槽位 ⇒ 这里发的会覆盖

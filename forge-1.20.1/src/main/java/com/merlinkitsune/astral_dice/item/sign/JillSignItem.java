@@ -162,6 +162,8 @@ public class JillSignItem extends BaseSignItem {
 
         ModAttachments.setSignActiveCooldownEnd(caster, caster.level().getGameTime()
                 + com.merlinkitsune.astral_dice.event.WeirdDiceHandler.signCooldownTicks(caster));
+        // 冷却口径一致(2026-10-22 补):记录本次实际最大冷却,供「瞬时冷却」/减免换算剩余比例
+        ModAttachments.setSignActiveMaxCooldown(caster, (long) (com.merlinkitsune.astral_dice.event.WeirdDiceHandler.signCooldownTicks(caster)));
         CurrentCoreChipItem.onActiveSkillUsed(caster);
         sendSignActionBar(caster, "msg.astral_dice.jill_done");
         LOGGER.info("AP_JILL: player={}:target={}:atk={}:def={}:eff={}:same={}", caster.getName().getString(),

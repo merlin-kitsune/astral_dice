@@ -75,6 +75,8 @@ public class MosesSignItem extends BaseSignItem
                 // 主动成功施加:开始玩家级冷却(被动「精密技巧」120 秒)并计入「电流核心」充能
                 ModAttachments.setSignActiveCooldownEnd(player,
                         player.level().getGameTime() + signCooldownTicks(player));
+                // 冷却口径一致(2026-10-22 补):记录本次实际最大冷却,供「瞬时冷却」/减免换算剩余比例
+                ModAttachments.setSignActiveMaxCooldown(player, (long) (signCooldownTicks(player)));
                 CurrentCoreChipItem.onActiveSkillUsed(player);
                 LOGGER.debug("[Astral Dice][TargetSelection] moses_apply_broken applied to {}({}) by {}",
                         target.getId(), target.getName().getString(), player.getName().getString());

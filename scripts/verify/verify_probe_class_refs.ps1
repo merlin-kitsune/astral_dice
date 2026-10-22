@@ -107,11 +107,17 @@ $script:Whitelist = @(
     'com.mojang.authlib.',        # 同上（GameProfile 等）
     'com.mojang.blaze3d.',        # Blaze3D 由加载器运行期提供
     'com.mojang.datafixers.',     # DataFixerUpper 由加载器运行期提供
-    'com.mojang.serialization.'   # DFU 序列化层同上
+    'com.mojang.serialization.',  # DFU 序列化层同上
+    'org.lwjgl.'                  # LWJGL 由加载器/启动器在运行期提供，版本随 MC 钉死、不进 build.gradle；
+                                  # 实测 gradle 缓存 lwjgl-glfw-3.3.x.jar 内含 org/lwjgl/glfw/GLFW.class（2026-10-22 取证）
 )
 
 $script:ClassRe = [regex]'Java\.loadClass\(\s*[''"]([A-Za-z_$][A-Za-z0-9_$.]*)[''"]\s*\)'
 $script:ModrinthRe = [regex]'maven\.modrinth:([\w.\-]+):([\w.+\-]+)'
+# Curse Maven：curse.maven:<slug>-<projectId>:<fileId>；缓存路径 = curse.maven/<group>/<fileId>/<sha1>/<file>.jar
+# （2026-10-22 补：JEI 自 2026-09-17 改走 Curse Maven，原实现只补 maven.modrinth ⇒ JEI 的
+#  mezz.jei.common.Internal 被误判「不在运行时 classpath」，实测该 jar 内含该类）
+$script:CurseRe = [regex]'curse\.maven:([\w.\-]+):(\d+)'
 # JarJar 内嵌 jar 的递归深度上限（本模组只有 1 层；上限只为防自引用内嵌导致的无限递归）
 $script:MaxJarDepth = 3
 
@@ -241,10 +247,17 @@ function Get-GradleModJars {
     }
 
     $text = [System.IO.File]::ReadAllText((Resolve-Path -LiteralPath $g).Path)
+    # 注释行里被注掉的依赖不得参与解析（实测 forge-1.20.1/build.gradle 有一行注释掉的 immediatelyfast 被误报成未解析）
+    $text = Remove-JsComments $text
     $pairs = New-Object 'System.Collections.Generic.List[string]'
+    $cursePairs = New-Object 'System.Collections.Generic.List[string]'
     foreach ($m in $script:ModrinthRe.Matches($text)) {
         $key = '{0}|{1}' -f $m.Groups[1].Value, $m.Groups[2].Value
         if (-not $pairs.Contains($key)) { [void]$pairs.Add($key) }
+    }
+    foreach ($m in $script:CurseRe.Matches($text)) {
+        $key = '{0}|{1}' -f $m.Groups[1].Value, $m.Groups[2].Value
+        if (-not $cursePairs.Contains($key)) { [void]$cursePairs.Add($key) }
     }
 
     $cacheRoot = Join-Path (Join-Path $env:USERPROFILE '.gradle') 'caches\modules-2\files-2.1'
@@ -259,7 +272,72 @@ function Get-GradleModJars {
             [void]$unresolved.Add(('maven.modrinth:{0}:{1}' -f $parts[0], $parts[1]))
         }
     }
+    foreach ($k in $cursePairs) {
+        $parts = $k -split '\|'
+        $pat = Join-Path (Join-Path (Join-Path $cacheRoot 'curse.maven') $parts[0]) "$($parts[1])\*\*.jar"
+        $hits = @(Get-ChildItem -Path $pat -File -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -notmatch 'sources' })
+        if ($hits.Count -gt 0) {
+            [void]$jars.Add(($hits | Sort-Object LastWriteTime -Descending | Select-Object -First 1).FullName)
+        } else {
+            [void]$unresolved.Add(('curse.maven:{0}:{1}' -f $parts[0], $parts[1]))
+        }
+    }
     return @{ Jars = $jars.ToArray(); Unresolved = $unresolved.ToArray() }
+}
+
+function Remove-JsComments {
+    <#>
+    .SYNOPSIS
+        单趟、字符串感知地剥掉 JS/Groovy 注释，只对代码里的引用判据。
+
+    .NOTES
+        2026-10-22 二次修复（独立复核 R3-④ REFUTED）：旧实现「先全文删块注释、再删行注释」会误删真代码，两个可复现反例：
+        ① var s = "http://host//x"; Java.loadClass("good.ClassE");  → 只保护了 ://，URL 里第二个 // 把同行真代码吃掉；
+        ② scripts/test/resources/kubejs/1.21.1/server_scripts/astral_hostile_probe.js:18 的行注释里出现块注释开头符，旧实现一路吃到 L77 的结束符。
+        现实现 = 单趟扫描：字符串字面量（双引号/单引号，含转义）原样保留 → 块注释替换成等量换行（保行号）→ 行注释丢到行尾。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][AllowEmptyString()][string]$Text)
+
+    $LF = [char]10
+    $BS = [char]92
+    $sb = New-Object System.Text.StringBuilder ($Text.Length + 16)
+    $n = $Text.Length
+    $i = 0
+    $quote = [char]0
+    while ($i -lt $n) {
+        $c = $Text[$i]
+        if ($quote -ne [char]0) {
+            [void]$sb.Append($c)
+            if ($c -eq $BS -and ($i + 1) -lt $n) { [void]$sb.Append($Text[$i + 1]); $i += 2; continue }
+            if ($c -eq $quote) { $quote = [char]0 }
+            $i++
+            continue
+        }
+        if ([int]$c -eq 34 -or [int]$c -eq 39) { $quote = $c; [void]$sb.Append($c); $i++; continue }
+        if ($c -eq '/' -and ($i + 1) -lt $n) {
+            $d = $Text[$i + 1]
+            if ($d -eq '*') {
+                $end = $Text.IndexOf('*/', $i + 2)
+                if ($end -lt 0) { break }
+                $block = $Text.Substring($i, $end + 2 - $i)
+                $nlCount = @($block.ToCharArray() | Where-Object { $_ -eq $LF }).Count
+                if ($nlCount -gt 0) { [void]$sb.Append($LF.ToString() * $nlCount) }
+                $i = $end + 2
+                continue
+            }
+            if ($d -eq '/') {
+                $eol = $Text.IndexOf($LF, $i)
+                if ($eol -lt 0) { break }
+                $i = $eol
+                continue
+            }
+        }
+        [void]$sb.Append($c)
+        $i++
+    }
+    return $sb.ToString()
 }
 
 function Get-GradleProperty {
@@ -439,7 +517,7 @@ function Test-ProbeLine {
     $checked = 0
     $bad = New-Object 'System.Collections.Generic.List[object]'
     foreach ($f in $files) {
-        $text = [System.IO.File]::ReadAllText($f.FullName)
+        $text = Remove-JsComments ([System.IO.File]::ReadAllText($f.FullName))
         $seen = New-Object 'System.Collections.Generic.HashSet[string]'
         foreach ($m in $script:ClassRe.Matches($text)) {
             $fqn = $m.Groups[1].Value

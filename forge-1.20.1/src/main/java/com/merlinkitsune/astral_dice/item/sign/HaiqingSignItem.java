@@ -69,6 +69,8 @@ public class HaiqingSignItem extends BaseSignItem {
                 // 主动成功施加:开始玩家级冷却(统一经 signCooldownTicks:含诡异骰子 -50% 与充能递减)
                 ModAttachments.setSignActiveCooldownEnd(player,
                         player.level().getGameTime() + WeirdDiceHandler.signCooldownTicks(player));
+                // 冷却口径一致(2026-10-22 补):记录本次实际最大冷却,供「瞬时冷却」/减免换算剩余比例
+                ModAttachments.setSignActiveMaxCooldown(player, (long) (WeirdDiceHandler.signCooldownTicks(player)));
                 // 电流核心筹码:主动技能实际生效时充能 +1
                 CurrentCoreChipItem.onActiveSkillUsed(player);
                 ModNetwork.sendToPlayer(player, new ModNetwork.ActionBarMessage(
