@@ -334,6 +334,9 @@ AP_NC2B_READ:hand=astral_dice:effect_card_monster_laser:handn=2:cards=2:sel=0:to
     ③ 判据：两线各 10 条 `MT_CASE_RESULT: … = PASS`（其中 9 条有机器判据；`PRE4-CHIPSHOP-FRAME-*` 只有健康断言 + 截图，vision 在测试台是 DELEGATED，见坑 27）；收尾 `MT_STOP: OK` / `MT_CLEANUP_SAVES: PURGED 1` / `MT_CLEANUP_RESULT: OK`，`Get-Process java` 无客户端残留（§4.8）。
     ④ 未覆盖：观感类（粒子 / 音效 / 美术 / 死亡动画帧）见 §4.8「判据边界」；P1 两线按用户口径不测。
     ⑤ **复核（`dsh_code_review` run `5f2955ef-125c-420b-8f5b-498d03d206df`）**：R1 / R2 / R4 / R5 / R6 / R7 **SUPPORTED**，R3 **部分成立** —— 两处 finding 全部已修：(a) [P2] `PRE4-CHIPSHOP-FRAME-*` 的 `assert/vision` 在测试台是 **DELEGATED**（`mt_case.ps1:1623` / `:2439`），该条 PASS 不含视觉判定 ⇒ 已把两条用例改标「截图取证」、加 `note` 步与 `evidence.machine_judge_none`，并把验收口径从「10/10 PASS」改为「9 机器 + 1 截图」（坑 27）；(b) [P3] `LULU-SIGN-*` 的 title 与两处 note 仍写「友方瞬间治疗 6→10」，与已改断言自相矛盾 ⇒ 已按断言口径改为「友方 6→6 / 只剩敌对缓慢」。修完把 4 条改过的用例双线重跑，全 PASS（见 §4.8 补跑行）。
+23. **素材目录口径（2026-10-22 用户裁决，`AGENTS-full.md` 第 50 条）**：`models/` / `images/` / `sound/` **随时更新、有新文件属正常**；`models/astral_anvil.bbmodel` 是用户下一步更新要用的素材，**不得动**。
+    ⇒ 铁律：未跟踪 / 变动文件只要落在这三个目录下，**既不报 CONFLICT、也不得删除 / 移动 / 重命名 / 擅自纳入提交**（需要入库先问用户）；本正本此后不再把 `models/astral_anvil.bbmodel` 记成「意外 / 来历待查」的文件（`images/` / `sound/` 本就被 `.gitignore:63` / `:67` 忽略）。提交用显式路径，禁 `git add -A` / `git add .`。
+
 ## 6 坑（踩过的，后续别重踩）
 
 1. **`run/<线>/mods` 的 jar 曾 ≠ `build/libs`（neo 于 2026-10-22 15:47 对齐；forge 按 §6-3 永远放 devlibs named jar）**：当时 neo 是 00:22 的旧构建（同名、2 B 差异），

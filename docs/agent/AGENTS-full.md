@@ -24,7 +24,7 @@ When extending this workspace:
 1. **分支归属纪律（禁止镜像/回填）**：任务只属于哪个分支，就**只在那个工作树的磁盘路径**上处理，**禁止**把改动「镜像/回填/同步」到另一个工作树。
    - 当前两个常驻工作树：**主线** `F:\MCProject\astral_dice_multiloader`（分支 `multi-main`，含**四条线** —— 三条生产线 + `fabric-1.20.1` 移植线，属**封包**状态）与 **2.0.0 开发线** `F:\MCProject\astral_dice_multiloader-next`（分支 `multi-dev-next`）。**fabric 的原独立工作树 `F:\MCProject\astral_dice_multiloader_fabric` 已于 2026-10-01 移除**（分支并入 `multi-main`，故本仓现只余上述两棵常驻树）。
    - dev 分支的任务（如目标选择器改造与其工具链改动）**只能**在 `-next` 工作树落地；主线的 `scripts/test/**` 等文件**必须保持封包版本**（改动若必须进主线，须由用户在主线工作树内单独裁决，不由 dev 任务顺带推送）。
-   - 核验方式（收尾必做）：`git -C F:\MCProject\astral_dice_multiloader status --short --untracked-files=all` 除 `?? .agent-teams/**` 外**必须无输出**；`git -C F:\MCProject\astral_dice_multiloader rev-parse --short HEAD` 必须仍是收尾前的封包提交。**所有 git 命令一律带 `-C <工作树绝对路径>`**，不要依赖 cwd。
+   - 核验方式（收尾必做）：`git -C F:\MCProject\astral_dice_multiloader status --short --untracked-files=all` 除 `?? .agent-teams/**` 与 `models/` / `images/` / `sound/` 三处素材目录下的未跟踪 / 改动文件（2026-10-22 用户裁决：随时更新，见 `AGENTS-full.md` 第 50 条）外**必须无输出**；`git -C F:\MCProject\astral_dice_multiloader rev-parse --short HEAD` 必须仍是收尾前的封包提交。**所有 git 命令一律带 `-C <工作树绝对路径>`**，不要依赖 cwd。
 2. **相对路径陷阱（必须用绝对路径）**：.NET / `System.IO` / 多数文件 API 的**相对路径按进程 cwd 解析**，而本会话的进程 cwd 往往是**主线工作树** —— 于是「写一个 `scripts/test/cases/xxx.json`」会静默落到**主线**（实测事故：一条 0 字节用例文件落在主线，事后删除复原）。
    - 规则：跨工作树的任务**写文件一律用绝对路径**（`F:\MCProject\astral_dice_multiloader-next\...`），或先 `Set-Location` 到目标工作树再操作；`git` 命令用 `-C` 显式指定工作树；脚本内的输出路径同理（相对路径只在「已知 cwd 就是目标工作树」时可用）。
    - 自查：改动后对**另一个**工作树跑一次 `git status --short`，确认没有意外文件。
@@ -3625,4 +3625,10 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --new <注册id>
      ④ **判据读数**：强化拒止 `AP_FX_RP1R_REP_READ:n=1` → 怪物近战 `RP2R:n=1` → 玩家 999 点 `RP3R:n=0` → `/kill` 后 `RP4R:n=0` → `AFTERM|type=repulsion|killed=2|mode=all` / `killed=1|mode=radius|radius=8`；路障 `AP_B1_BARR:placed=1:n=1` / `AP_B2_BARR:placed=1:n=2` → `AFTERM|type=barricade|killed=2|mode=all`、重建后 `/kill @e[type=astral_dice:barricade]` ⇒ `killed=0`（已由 `kill()` 覆写接管）、`killbarricade 8` ⇒ `killed=1`；15 秒冷却 `LL1 heal=1:since=0` → `LL2 heal=1:since=132`（300 tick 闸门挡住）→ `LL3 heal=2:since=0`（1.20.1 同形 `since=131`）；收尾 `MT_STOP: OK` / `MT_CLEANUP_SAVES: PURGED 1` / `MT_CLEANUP_RESULT: OK`，`Get-Process java` 仅 3 个 Gradle 守护。
      ⑤ **判据边界（如实登记）**：观感类（火花像不像电 / 音效音量音调 / 图标美术 / 碎裂粒子 / 死亡动画帧）**无字节判据**，机器行只证明「结算发生 / 实体同 tick 消失」；卡牌购买钱包音效只到「购买路径确实调了 `SoundPlayback`」（`javap` 2 次 + `CHIP-CLIENT-BUY` 回归）；三色外框只有截图（vision = DELEGATED，机器判据在静态守门 `verify_chip_shop_ui.ps1` 的 G2b）。P1 两线按用户口径不测。复核（`dsh_code_review` run `5f2955ef-125c-420b-8f5b-498d03d206df`）R1/R2/R4–R7 SUPPORTED、R3 部分成立，两处 finding 已修：vision=DELEGATED 的 PASS 口径（坑 27）与 `LULU-SIGN-*` 残留「友方 6→10」文案；改过的 4 条用例双线重跑全 PASS。
      ⑥ **新增三条测试坑（正本 §6 坑 23–26）**：`ServerPlayer#hurt` 在 Rhino 下派发不到（`TypeError: … It is not a function, it is "boolean"`，声明在 `LivingEntity`）且 **1.20.1 没有 `/damage` 命令**（1.20.2 才进原版）⇒ 两线共用的玩家受伤用例必须走 `hurtby` 链；裸 summon 路障必自毁；陈旧用例会把「规格已变」误报成回归；长效增益用例必须 `/effect clear @s` 否则污染后续用例（实测把 `hp=12->16` 顶成 `20->20`）。
+50. **`models/` / `images/` / `sound/` 是随时更新的素材目录（2026-10-22 用户裁决）**：① 用户原话「`astral_anvil.bbmodel` 是用户下一步更新准备用的素材，不要乱动。models、images、sound 这 3 个目录随时更新。有新文件是正常的。」
+     ② **仓库事实**：`models/` 有 7 个已跟踪 `*.bbmodel`（cardshop / cardshop_villager / chipshop / chipshop_villager / eventblock / `强化拒止 - Converted` / `路障 - Converted`），`models/astral_anvil.bbmodel` 是**未跟踪的用户素材**；`images/`（324 文件）与 `sound/`（24 文件）由 `.gitignore:63`（`images/`）/ `.gitignore:67`（`sound/`）**整目录忽略** ⇒ `git status --short -uall` 里本就不会出现它们，看不到属正常。
+     ③ **纪律**：这三个目录里出现未跟踪 / 变动的文件**属正常现象**，一律**不得**当成「不属于自己的改动」写 `docs/agent/CONFLICT.md`、**不得**删除 / 移动 / 重命名 / 擅自纳入提交；需要其中某个文件入库时先问用户。
+     ④ **`models/astral_anvil.bbmodel` 专指**：用户下一步更新（铁砧相关）要用的素材，**只读**，不得改写、不得作为交付物挪出 `models/`。
+     ⑤ **判据**：`git status --short -uall` 只剩这三个目录下的新文件时**不算工作树脏**；提交一律用显式路径 `git add <具体文件…>`，禁止 `git add -A` / `git add .`（会把用户素材一起卷进提交）。
+
 

@@ -176,7 +176,7 @@ When extending this workspace:
 1. **分支归属纪律（禁止镜像/回填）**：任务只属于哪个分支，就**只在那个工作树的磁盘路径**上处理，**禁止**把改动「镜像/回填/同步」到另一个工作树。
    - 当前两个常驻工作树：**主线** `F:\MCProject\astral_dice_multiloader`（分支 `multi-main`，含**四条线** —— 三条生产线 + `fabric-1.20.1` 移植线，属**封包**状态）与 **2.0.0 开发线** `F:\MCProject\astral_dice_multiloader-next`（分支 `multi-dev-next`）。**fabric 的原独立工作树 `F:\MCProject\astral_dice_multiloader_fabric` 已于 2026-10-01 移除**（分支并入 `multi-main`，故本仓现只余上述两棵常驻树）。
    - dev 分支的任务（如目标选择器改造与其工具链改动）**只能**在 `-next` 工作树落地；主线的 `scripts/test/**` 等文件**必须保持封包版本**（改动若必须进主线，须由用户在主线工作树内单独裁决，不由 dev 任务顺带推送）。
-   - 核验方式（收尾必做）：`git -C F:\MCProject\astral_dice_multiloader status --short --untracked-files=all` 除 `?? .agent-teams/**` 外**必须无输出**；`git -C F:\MCProject\astral_dice_multiloader rev-parse --short HEAD` 必须仍是收尾前的封包提交。**所有 git 命令一律带 `-C <工作树绝对路径>`**，不要依赖 cwd。
+   - 核验方式（收尾必做）：`git -C F:\MCProject\astral_dice_multiloader status --short --untracked-files=all` 除 `?? .agent-teams/**` 与 `models/` / `images/` / `sound/` 三处素材目录下的未跟踪 / 改动文件（2026-10-22 用户裁决：随时更新，见 `AGENTS-full.md` 第 50 条）外**必须无输出**；`git -C F:\MCProject\astral_dice_multiloader rev-parse --short HEAD` 必须仍是收尾前的封包提交。**所有 git 命令一律带 `-C <工作树绝对路径>`**，不要依赖 cwd。
 2. **相对路径陷阱（必须用绝对路径）**：.NET / `System.IO` / 多数文件 API 的**相对路径按进程 cwd 解析**，而本会话的进程 cwd 往往是**主线工作树** —— 于是「写一个 `scripts/test/cases/xxx.json`」会静默落到**主线**（实测事故：一条 0 字节用例文件落在主线，事后删除复原）。
    - 规则：跨工作树的任务**写文件一律用绝对路径**（`F:\MCProject\astral_dice_multiloader-next\...`），或先 `Set-Location` 到目标工作树再操作；`git` 命令用 `-C` 显式指定工作树；脚本内的输出路径同理（相对路径只在「已知 cwd 就是目标工作树」时可用）。
    - 自查：改动后对**另一个**工作树跑一次 `git status --short`，确认没有意外文件。
@@ -295,7 +295,7 @@ When extending this workspace:
 | L2198–L2308 | Mixin 注入规范 · 编译产物上传规则（新版本发布 / CurseForge / Modrinth） | 写 mixin、发布前 |
 | L2309–L2909 | 自动化测试流程（资产重建 / 变更分级 / 测试顺序 / 清场与收尾 / 工具链 / 阶段 P·B·E·L·C·R / 截图识别 / MCP / 超时看门狗） | 任何游戏内测试前（**必读**） |
 | L2910–L3046 | NeoForge 上游 BUG 补丁（neoforge_fixes）· 「敌对目标」判定规范 · `/astralparty` 管理员调试命令 | 上游 bug / 敌对判定 / 调试命令前 |
-| L3047–L3628 | 版本历史与发布记录 · 待办交接各批（fengshui / teru / 新立牌批 / Carpet / 双人测试流程 / 遗留项 / 立牌批验证闭环 + 选卡界面 + Jade 倒计时 + 工具链回 Windows 原生 + AutoJS 求值通道 / lingling 用例 / 强化拒止牌面 / 欠账角色立牌 / DSH 原生批次（2026-10-22：规则 Windows 化 + 守门假红修复 + 立牌冷却补 max）/ WSL 口径失效对照（2026-10-22，末尾小节）/ 代码审查工具链换插件（2026-10-22，第 42 条节） / pre.4 全量实机（2026-10-22，第 49 条）/ 电击手套命中 FX（2026-10-22，第 47 条）/ 派活口径改 DSH 子智能体（2026-10-22，末尾小节）/ pre.4 实体拆除口径 + 管理命令 + 筹码效果图标（2026-10-22，第 43 条）/ 史莱姆立牌被动 15 秒（2026-10-22，第 44 条）/ 派子代理屏蔽人格注入（2026-10-22，第 45 条）/ 强化拒止品质改奇特 + 专属牌品质总则（2026-10-22，第 46 条）/ 筹码商店品质外框恢复 + 卡牌购买钱包音效（2026-10-22，第 48 条）） | 续做历史批次时 |
+| L3047–L3634 | 版本历史与发布记录 · 待办交接各批（fengshui / teru / 新立牌批 / Carpet / 双人测试流程 / 遗留项 / 立牌批验证闭环 + 选卡界面 + Jade 倒计时 + 工具链回 Windows 原生 + AutoJS 求值通道 / lingling 用例 / 强化拒止牌面 / 欠账角色立牌 / DSH 原生批次（2026-10-22：规则 Windows 化 + 守门假红修复 + 立牌冷却补 max）/ WSL 口径失效对照（2026-10-22，末尾小节）/ 代码审查工具链换插件（2026-10-22，第 42 条节） / pre.4 全量实机（2026-10-22，第 49 条）/ 电击手套命中 FX（2026-10-22，第 47 条）/ 派活口径改 DSH 子智能体（2026-10-22，末尾小节）/ pre.4 实体拆除口径 + 管理命令 + 筹码效果图标（2026-10-22，第 43 条）/ 史莱姆立牌被动 15 秒（2026-10-22，第 44 条）/ 派子代理屏蔽人格注入（2026-10-22，第 45 条）/ 强化拒止品质改奇特 + 专属牌品质总则（2026-10-22，第 46 条）/ 筹码商店品质外框恢复 + 卡牌购买钱包音效（2026-10-22，第 48 条）/ 素材目录口径：models/images/sound 随时更新（2026-10-22，第 50 条）） | 续做历史批次时 |
 
 **维护约定**
 1. 新增「每次必读」的红线 ⇒ 直接写进上面的红线区（并同步到 `docs/agent/AGENTS-full.md` 的对应章节，保持两边一致）。
