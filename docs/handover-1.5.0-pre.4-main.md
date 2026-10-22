@@ -2,8 +2,8 @@
 
 ## 0 速览（一屏）
 
-1. 分支 `multi-main`；HEAD = **`15c81424`**（pre.4 施工批已提交），**史莱姆被动 15 秒批尚未提交**（工作树有改动，见 §5-15）。
-2. 未推送提交 **28** 个（`git rev-list --count origin/multi-main..HEAD`，2026-10-22 18:0x 提交 `b1758de2` 后实测），**无** tag（`1.5.0-pre.3` / `1.5.0-pre.4` 均无，需用户放行）。
+1. 分支 `multi-main`；HEAD = **`7c51df63`**（pre.4 施工批 + 史莱姆被动 15 秒批均已提交），**本轮「派子代理屏蔽人格注入」规则批尚未提交**（见 §5-18）。
+2. 未推送提交 **28** 个（`git rev-list --count origin/multi-main..HEAD`，2026-10-22 18:2x 实测；本规则批提交后为 29），**无** tag（`1.5.0-pre.3` / `1.5.0-pre.4` 均无，需用户放行）。
 3. 四线 `mod_version` 均为 `1.5.0-pre.4+<加载器后缀>`（2026-10-22 bump）；`starengine_version=1.1.0-pre.2`（四线一致，未动）。
 4. jar 内硬前置：`modId="starengine"` / `versionRange="[1.1.0-pre.2,2.0.0)"`，`META-INF/jarjar/` 计数 **0**（pre.4 两 jar 已复核）。
 5. 可交付范围：**只发 P0**（`neoforge-1.21.1` + `forge-1.20.1`）。P1 两线版本号同为 pre.4，但内容不含 1.5.0。
@@ -11,8 +11,9 @@
 7. 守门 8 跑 7 绿；唯一红 = `verify_probe_class_refs`（26.1.2 产物陈旧，P1 待重建，见 §5-1）。
 8. 实机：1.20.1 本批 6/6 PASS、1.21.1 5 条 FIXBATCH 判据全命中、末条 49/49 PASS；**创造模式扣卡复验 PASS**（§4.4，2026-10-22 16:10，用例 `CARD-NOCOST-CREATIVE-1.20.1`）。
 9. **pre.4 本批（2026-10-22 17:3x）无新增实机读数**：改动 = 实体拆除口径 + 死亡动画 + 两个管理命令 + 11 张效果图标 + 版本号，判据目前全为静态/字节码/资源 md5（§5-13），实机待用户下达。
-10. **史莱姆立牌被动改为「每 15 秒最多触发一次」（2026-10-22 后批，未提交）**：`HURT_COOLDOWN_TICKS` **20 → 300**（仅 P0 两线 `item/sign/LuluSignItem.java`），tooltip / 帕秋莉手册条目 / 两份 CHANGELOG 同步；判据见 §5-15，**无实机读数**。P1 两线未动（§5-16）。
-11. 面向整合包会话的交接单见 `docs/handover-1.5.0-pre.4-modpack.md`（投放表 / 自检读数 / 坑 / 剩余事项）。
+10. **史莱姆立牌被动改为「每 15 秒最多触发一次」（2026-10-22，已提交 `7c51df63`）**：`HURT_COOLDOWN_TICKS` **20 → 300**（仅 P0 两线 `item/sign/LuluSignItem.java`），tooltip / 帕秋莉手册条目 / 两份 CHANGELOG 同步；判据见 §5-15，**无实机读数**。P1 两线未动（§5-16）。
+11. **派子代理一律屏蔽人格注入（2026-10-22 用户裁决，本轮已完成）**：红线区〈子代理与测试环境硬规则〉新增第 8 条 —— brief 必带「不要使用任何人设 / 角色扮演 / 语气修饰 / 昵称自称」；复核 / 审查 / 取证类任务一律用全新上下文 `subagent`（`subagent_fork` 会继承带人设的对话）；子代理回报出现人格化表达即判不合规。判据见 §5-18。
+12. 面向整合包会话的交接单见 `docs/handover-1.5.0-pre.4-modpack.md`（投放表 / 自检读数 / 坑 / 剩余事项）。
 
 ## 1 环境与路径
 
@@ -84,7 +85,8 @@ P0 产物（`build/libs`，**2026-10-22 17:53 重建（含史莱姆被动 15 秒
 | `3e200a9b` | fix(card+docs) | 创造模式两线扣卡对齐、CHANGELOG 库版本订正、补 `docs/compat-1.5.0-porting.md` |
 | `afdcd453` | docs(modpack) | 新增整合包交接单 `docs/handover-1.5.0-pre.4-modpack.md`（投放表 / 自检 / 坑） |
 | `15c81424` | release+fix(pre.4) | 四线升 pre.4；强化拒止可被玩家拆除 + 两实体 `kill()` 覆写；`/astralparty killbarricade\|killrepulsion`；11 个筹码效果图标换无边框 |
-| （未提交） | fix(sign+lang) 史莱姆被动 15 秒 | `item/sign/LuluSignItem.java` 的 `HURT_COOLDOWN_TICKS` **20 → 300**（P0 两线）；tooltip / 帕秋莉手册 / 两份 CHANGELOG 同步 |
+| `7c51df63` | fix(sign+lang) 史莱姆被动 15 秒 | `item/sign/LuluSignItem.java` 的 `HURT_COOLDOWN_TICKS` **20 → 300**（P0 两线）；tooltip / 帕秋莉手册 / 两份 CHANGELOG 同步 |
+| （未提交） | docs(rules) 派子代理屏蔽人格注入 | 红线区〈子代理与测试环境硬规则〉第 8 条 + `AGENTS.md` §B 免人设句 + `AGENTS-full.md` 第 45 条 + 索引末行 `L3603` + `AGENTS-TOC.md:4` 行数 |
 
 ## 4 实机读数（原文摘录）
 
@@ -249,6 +251,8 @@ AP_NC2B_READ:hand=astral_dice:effect_card_monster_laser:handn=2:cards=2:sel=0:to
     判据：`gradlew.bat :neoforge-1.21.1:jar :forge-1.20.1:jar` BUILD SUCCESSFUL；打包后 javap 命中 `= 300`；`check_lang_sync.ps1` exit 0（P0 三语各 **1045** 键）；`tooltip_color_audit.ps1` **174 = 基线 174**（无 `lulu_passive` 命中）；四处投放 sha256 见 §2。
 16. **P1 两线的史莱姆被动仍是 1 秒（20 tick）且文案未补**（`neoforge-26.1.2/.../LuluSignItem.java:170`、`fabric-1.20.1/.../LuluSignItem.java:161` 均内联 20）：按「1.5.0 正式版前 P1 不验证不移植」未动，随 P1 批次一起改（与 §5-14 的筹码图标同批）。
 17. **史莱姆批复核（2026-10-22 18:0x，`dsh_code_review` run `27408cf2-5919-461f-8a7d-d948bc50256a`）**：R1–R5 / R7 / R8 **SUPPORTED**、R6 **部分成立**；**无 P1 / P2 代码或产物缺陷**，2 项文档问题已就地修 —— ① `docs/agent/AGENTS-TOC.md:4` 表头「当前 3,591 行」未随第 44 条同步 ⇒ 改 **3,599**；② §2 原写「同目录残留中间构建件 2,556,723 / 2,556,771 / 2,602,329 / 2,572,861 勿投放」与磁盘不符（**同版本号被 Gradle 覆盖，实测不存在**，且与相邻两条自相矛盾）⇒ 改写为「pre.4 中间件不残留 + 旧版本产物仍在各子项目 `build/` 下（列清单）+ 仓库根 `build/libs` 有一对陈旧 pre.3，取件只认 §2 三行」。复核自述限制：沙箱对 `~/.gradle` 只读（`gradle-9.2.1-bin.zip.lck` 拒绝访问）未跑 gradlew，改用 `javap -cp <jar>` + python 常量池解析取证（两 jar 常量池 `ConstantValue=300`、`onHurt` 走 `ldc2_w 300l`）；未实机。它另附一条**非缺陷观察**：`lulu_last_hurt_tick` 默认 `0L`（`component/ModAttachments.java:116`）⇒ 新世界 `gameTime < 300` 时第一次受击被吞（20 tick 时代同样存在，本批只是把窗口从 1 秒放大到 15 秒，未计入缺陷）。
+18. **派子代理一律屏蔽人格注入（2026-10-22 用户裁决，本轮已完成）**：① 红线区〈子代理与测试环境硬规则〉新增**第 8 条**（`AGENTS.md` 与 `docs/agent/AGENTS-full.md` 同批逐字，两文件红线区仍字节一致）；② `AGENTS.md` 契约 §B 增补「免人设句」段；③ `AGENTS-full.md` 末尾追加**第 45 条**；④ 索引末行 `| L3047–L3603 |` + 主题追加「派子代理屏蔽人格注入（第 45 条）」，`AGENTS-TOC.md:4` 行数 3,599 → **3,603**。口径：brief 除职业声明外**必须原文带**「不要使用任何人设 / 角色扮演 / 语气修饰 / 昵称自称，按你的职业身份以中性技术口吻输出」；**审查 / 取证类任务必须用全新上下文 `subagent`**（`subagent_fork` 会继承主会话带人设的对话；**复核不在此列** —— 复核一律走 `dsh_code_review`，见硬规则第 4 条）；子代理回报出现自称 / 卖萌 / 情绪表演即**不合规**，要求重发中性版，且**不得把带情绪的段落当证据**；主 Agent 对用户的回复不受限（人设只在表达层）。判据：`python docs/agent/verify-split.py` 四项全 [OK]（红线区 **12,567** 字符逐字一致（P1 措辞订正后实测）、索引覆盖 L121–L3603、`AGENTS-TOC.md` 190 行行号/偏移已全表重算）；`grep -c '屏蔽人格注入' AGENTS.md docs/agent/AGENTS-full.md` 均 ≥1。本批**未实派子代理**（只落规则）。⑤ 复核（`dsh_code_review` run `b96a6a0e-a85e-49dc-8cfd-24b84c8da74f`，报告 `temp\review-persona-rule.md`）的 4 项已全部闭环：P1 = 第 8 条「复核与审查类任务」与第 4 条「复核不派 subagent」冲突 ⇒ 两文件红线区 + §B + `docs/handover-new-session-context.md` 同改为「**审查 / 取证类**（复核不在此列）」；P2 = `docs/agent/AGENTS-TOC.md` 行号列整体漂移（实测错 182 行）⇒ 按 `AGENTS-full.md` 实际标题重算 190 行「行号 + LF 字符偏移」两列；P2 = `docs/agent/delegation-runbook.md` 模板缺免人设句 ⇒ 已补（§4 模板 + §2 派活步骤注明「复核本身不派子代理、走 `dsh_code_review`」）；P3 = §0 编号乱序 ⇒ persona 条改 11、整合包交接单指针改 12。
+
 ## 6 坑（踩过的，后续别重踩）
 
 1. **`run/<线>/mods` 的 jar 曾 ≠ `build/libs`（neo 于 2026-10-22 15:47 对齐；forge 按 §6-3 永远放 devlibs named jar）**：当时 neo 是 00:22 的旧构建（同名、2 B 差异），

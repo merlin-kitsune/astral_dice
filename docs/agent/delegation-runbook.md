@@ -27,7 +27,7 @@
 ```
 
 1. **体检**：`git -C F:\MCProject\astral_dice_multiloader status --short -uall` 必须空输出；有脏改动先处理，否则事后无法归因。
-2. **派活**：一条 `subagent`（或 `subagent_fork`），brief 用第 4 节模板；显式写 `provider: "deepseek-official"` + `model: "deepseek-flash"`（其它 model 用 `list_subagent_models` 现查）。
+2. **派活**：一条 `subagent`（或 `subagent_fork`），brief 用第 4 节模板（**必带免人设句**，2026-10-22 起；复核/审查类一律用全新上下文 `subagent`，复核本身不派子代理、走 `dsh_code_review`）；显式写 `provider: "deepseek-official"` + `model: "deepseek-flash"`（其它 model 用 `list_subagent_models` 现查）。
 3. **等回报**：子代理用 `send_message` 回结论；运行时也会通知完成。长时间无回报 ⇒ 按第 3 节处置。
 4. **编译/守门**：核对它报的改动清单（`文件:行号`），再本地跑编译与 `git status` 确认无越界文件。
 5. **提交**：一个改动面一个 commit；信息写清「做了什么 + 为什么」。
@@ -51,6 +51,8 @@
 
 ```text
 你是一位<职业>（<加载器>/MC <版本>），交付前必须编译通过并贴出命令输出。
+
+不要使用任何人设 / 角色扮演 / 语气修饰 / 昵称自称，按你的职业身份以中性技术口吻输出。
 
 ## 目标
 <一句话说明这一轮唯一要做的事>

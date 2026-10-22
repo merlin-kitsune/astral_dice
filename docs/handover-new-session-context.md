@@ -36,7 +36,7 @@
   - neo → `D:\.minecraft\versions\狐の航空学 Voxy Edition\mods`
   - forge → `D:\.minecraft\versions\1.20.1-Forge 模组测试\mods`
 - 测试台：`scripts\test\mt.ps1`，`--version <线> --phase env|run|stop`。
-- 未推送：**28 个提交**（HEAD `b1758de2`；实况以 `git rev-list --count origin/multi-main..HEAD` 为准）；**无** tag；默认**不 push / 不打 tag**（需用户放行）。
+- 未推送：**29 个提交**（HEAD `7c51df63` + 本批规则改动；实况以 `git rev-list --count origin/multi-main..HEAD` 为准）；**无** tag；默认**不 push / 不打 tag**（需用户放行）。
 - 守门：**8 跑 7 绿**，唯一红 `verify_probe_class_refs`。⚠️ 2026-10-22 已查明：红点原有 6 处、**无一是源码缺口**
   （JEI 走 Curse Maven 未被脚本解析 / LWJGL 由加载器运行期提供 / 一处只出现在 JS 注释里 / 26.1.2 产物陈旧）；
   守门脚本已补 Curse Maven 解析 + `org.lwjgl.` 白名单 + 剥 JS 注释，现只剩 **1 处**（26.1.2 `build/libs` 停在
@@ -82,4 +82,5 @@
 - `--purge-saves` 会删 `testworld`：下轮实机前先 `--phase env`。
 - P1 不碰：26.1.2 / fabric 的实现、验证、移植一律等用户下达。
 - 不 push、不打 tag、不擅自装工具（`apt`/`npm`/`pip`/新 JDK 等一律先征得用户许可）。
-- 独立复核用 DSH 插件 `@michengai/dsh-code-review`（工具 `dsh_code_review({ input })`：`input` 空 ⇒ 原生范围选择，非空 ⇒ 整段原样作为审查要求，范围写自然语言；报告以 GFM 回本会话）。**派活只用 DSH 自带子智能体**：一次性活 ⇒ `subagent`（全新 context，brief 完全自包含）；接续上下文 ⇒ `subagent_fork`；多人并行 ⇒ `spawn_teammate` + `team_task_*`；结果由子代理 `send_message` 回报，**禁轮询**。**禁止**用 Codex 的 `delegate_task` / `fork_turns="none"`（属另一宿主，DSH 不再引用）；主 Agent 只做识别需求 → 分配工作 → 验收成果。
+- 独立复核用 DSH 插件 `@michengai/dsh-code-review`（工具 `dsh_code_review({ input })`：`input` 空 ⇒ 原生范围选择，非空 ⇒ 整段原样作为审查要求，范围写自然语言；报告以 GFM 回本会话）。**派活只用 DSH 自带子智能体**：一次性活 ⇒ `subagent`（全新 context，brief 完全自包含）；接续上下文 ⇒ `subagent_fork`；多人并行 ⇒ `spawn_teammate` + `team_task_*`；结果由子代理 `send_message` 回报，**禁轮询**。
+- **派子代理一律屏蔽人格注入（2026-10-22 用户裁决）**：brief 除职业声明外必须原文带「不要使用任何人设 / 角色扮演 / 语气修饰 / 昵称自称，按你的职业身份以中性技术口吻输出」；审查 / 取证类任务用全新上下文的 `subagent`（`subagent_fork` 会继承带人设的对话；复核不在此列，复核只用 `dsh_code_review`）；子代理回报出现自称 / 卖萌 / 情绪表演即不合规，要求重发中性版。人设只作用于对用户的表达层。**禁止**用 Codex 的 `delegate_task` / `fork_turns="none"`（属另一宿主，DSH 不再引用）；主 Agent 只做识别需求 → 分配工作 → 验收成果。
