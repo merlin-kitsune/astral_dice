@@ -8,7 +8,8 @@
 4. jar 内硬前置：`modId="starengine"` / `versionRange="[1.1.0-pre.2,2.0.0)"`，`META-INF/jarjar/` 计数 **0**（不再内嵌库）。
 5. 可交付范围：**只发 P0**（`neoforge-1.21.1` + `forge-1.20.1`）。P1 两线版本号同为 pre.3，但内容不含 1.5.0。
 6. P0 双 jar 已定稿并投放两个整合包（sha256 与 `build/libs` 一致），库 jar 同名在位。
-7. 守门 8 跑 7 绿；唯一红 = `verify_probe_class_refs`（既有基线条目，见 §5-1）。
+7. 守门 8 跑 7 绿；唯一红 = `verify_probe_class_refs`（既有基线，见 §5-1）。2026-10-22 已修该门三处自身缺陷，
+   红点从 6 处降到 **1 处**（26.1.2 产物陈旧，P1 待重建）。
 8. 实机：1.20.1 本批 6/6 PASS、1.21.1 5 条 FIXBATCH 判据全命中、末条 49/49 PASS。
 9. 最大风险：**创造模式扣卡修复（1.20.1 三处）尚未实机复验**；且 `run/<线>/mods` 里的 jar 与 `build/libs` 不一致（§6-1）。
 
@@ -103,12 +104,27 @@ CARDSLOT:slots=1:count=3     blank_insert denied:remain=2400
 
 ### Major
 
-1. **`verify_probe_class_refs` FAIL（既有基线，非本批引入）**：`docs/audit/1.3.2-release-audit-2026-09-27.md:50`
-   有该门的基线定性（1.3.2 时 17 处、根因「脚本不扫 JarJar 内嵌库」）。本轮红点为 6 处不可解析，
-   代表项：`mezz.jei.common.Internal`（`scripts/test/resources/kubejs/*/client_scripts/astral_shop_client.js`）、
-   `org.lwjgl.glfw.GLFW`（同文件）、`net.minecraftforge.registries.ForgeRegistries`
-   （`kubejs/1.20.1/server_scripts/astral_bugfix_probe.js`）、`...client.DamageNumberStore`（`astral_dnum_diag.js`）。
-   原因：`run/1.21.1/mods` 未装 JEI/LWJGL 等外部件，探针引用的类不在被扫描的 5 处 classpath 内。
+1. **`verify_probe_class_refs` 6 处红点已定性（2026-10-22），守门自身三处缺陷已修，只剩 1 条产物陈旧项**：
+   原 6 处**无一是源码真缺口**，逐条取证 ——
+   - `mezz.jei.common.Internal`：真类在，JEI 走 **Curse Maven**（`neoforge-1.21.1/build.gradle:187`
+     `curse.maven:jei-238222:8512040` / `forge-1.20.1/build.gradle:272` `curse.maven:jei-238222:8778011`），
+     缓存 jar 内含 `mezz/jei/common/Internal.class`；脚本原只解析 `maven.modrinth` ⇒ 盲区。
+   - `org.lwjgl.glfw.GLFW`：真类在（gradle 缓存 `lwjgl-glfw-3.3.x.jar`），LWJGL 由加载器/启动器运行期提供、不进 `build.gradle`。
+   - `net.minecraftforge.registries.ForgeRegistries`：**被判红的 2 处**都在 `kubejs/1.21.1/server_scripts/astral_bugfix_probe.js:16817`/`:16833`
+     的 **JSDoc 反例说明**里（该线跑 NeoForge，本无此类）⇒ 正则把注释当真引用 = 假红。
+     （另：`kubejs/1.20.1/server_scripts/astral_bugfix_probe.js:2789` 有**真代码** `Java.loadClass` 同名类，1.20.1 本来就是 Forge、可解析，不在红点内。）
+   - `client.DamageNumberStore`：类在源码（三条线都有；该文件最早由 `46986687`（2026-09-26）加入，10-20 的 `15d5ff25` 只是最近一次触及），
+     红因 **26.1.2 产物与源码不同源**：`neoforge-26.1.2/build/libs` 最新仍是 `astral_dice-1.3.7-beta.2+neoforge_26.1.2.jar`（2026-10-05 11:55），
+     该 jar 内 `DamageNumberStore` 条目 **0**（30 个 `client/*` 类可正常枚举）⇒ P1 待重建，非代码缺失。
+   **守门修正**（`scripts/verify/verify_probe_class_refs.ps1`）：① 新增 `$script:CurseRe` 并解析
+   `~/.gradle/caches/modules-2/files-2.1/curse.maven/<group>/<fileId>/**/*.jar`；② 白名单加 `org.lwjgl.`；
+   ③ 新增 `Remove-JsComments`（**单趟、字符串感知**扫描：字符串字面量原样保留 → `/*…*/` 换成等量换行保行号 → `//` 丢到行尾；
+    并对 `build.gradle` 也先剥注释，避免把**被注释掉的依赖**当成未解析）；④ 依赖解析补 `curse.maven` 与 `org.lwjgl.` 之后
+    该门对 1.20.1 的 `maven.modrinth:immediatelyfast:NJ17fqEK` 误报也消失（该坐标在 `forge-1.20.1/build.gradle:325` 本是注释行）。
+   **修正后实跑**：1.21.1 = 21 jar / 34,081 条目 / **150 处** / **不可解析 0**；1.20.1 = 21 jar / 31,270 / **142 处** / **0**；
+   26.1.2 = 19 jar / 46,346 / **108 处** / **1**（仅 `DamageNumberStore`）⇒ 末行仍 `RESULT: FAIL（1 处）`。
+   （处数比修前多 2/1/1：旧版剥注释实现会**误删真代码**，被删掉的 `Java.loadClass` 不参与判据。）
+   ⚠️ 该脚本判 FAIL 时 **`exit 1`**（2026-10-22 实测，`scripts/verify/verify_probe_class_refs.ps1:527-529`），判据以末行 `RESULT` 为准。
 2. **创造模式扣卡修复未实机复验**：改动已落盘（`forge-1.20.1/.../item/card/BaseEffectCardItem.java:337`、
    `:423`，`forge-1.20.1/.../screen/CardChoiceMenu.java:134`），但 1.20.1 创造出牌仍待实机确认扣 0 张。
 3. **P1 两线整体欠账**（26.1.2 / fabric 均 0 命中，1.21.1 为基准）：JEI 筹码（`compat/jei` 9 文件）、
@@ -121,14 +137,26 @@ CARDSLOT:slots=1:count=3     blank_insert denied:remain=2400
 0. **WSL 口径已全面失效（2026-10-22，本轮已完成）**：`AGENTS.md`「回滚裁决」1–6 条改写为 Windows 原生口径（含第 7 条收尾关闭游戏），
    `docs/agent/AGENTS-full.md` 末尾新增〈WSL 口径失效对照〉（5 行口径表）+ 就地标注 L2861 / 第 37 条 ⑥ 失效；
    本文档 §1 / §7 改 Windows 口径（`F:\` 路径、`gradlew.bat`、`pwsh`、PowerShell 判据命令）。
-   判据：`python docs/agent/verify-split.py` ⇒ 四项全 `[OK]`（快照 3,519 行 / 红线区 11,520 字符逐字一致 / 索引覆盖 L121–L3519 / AGENTS.md 21,478 字符）。
+   判据：`python docs/agent/verify-split.py` ⇒ 四项全 `[OK]`（快照 3,522 行 / 红线区 11,520 字符逐字一致 / 索引覆盖 L121–L3522 / AGENTS.md 21,874 字符）。
 
-5. **11 个立牌子类只写 `sign_active_cooldown_end`、不写 `setSignActiveMaxCooldown`**（`BonnieSignItem:88` 等；
-   `LuluSignItem` 与 `BaseSignItem` 两处会写）。实测清单见 §7 的判据命令。
-6. **26.1.2 测试环境仍是旧 jar**：`run/26.1.2/mods/astral_dice-1.3.7-beta.2+neoforge_26.1.2.jar`（10-06）。
+5. **立牌冷却口径：9 个「起冷却」子类已补 `setSignActiveMaxCooldown`（2026-10-22 完成，两线对等）**。
+   补齐清单（`item/sign/`，四条线里 P0 两条同改）：`BonnieSignItem`、`DorothySignItem`、`HaiqingSignItem`、
+   `JillSignItem`、`MegasSignItem`、`MosesSignItem`、`RenSignItem`、`TeruSignItem`、`ZhaoSignItem`
+   （每个文件 +2 行：一行注释 + 一行 `setSignActiveMaxCooldown(player, (long) (<与 CooldownEnd 同一表达式>))`）。
+   ⚠️ **不是 11 个**：原清单里的 `JasmineSignItem:121` 与 `KomachiSignItem:150` 只**缩短已有冷却**
+   （`setSignActiveCooldownEnd(now + 剩余×比例)`），它们**是 max 的消费者而非生产者**（Jasmine 还读 `maxCooldown`
+   算减半量）⇒ 在那里写 max 会把基准改错，**故意不改**。
+   判据：`:neoforge-1.21.1:classes` + `:forge-1.20.1:classes` 均 BUILD SUCCESSFUL；两线各 9 个立牌的匿名内部类
+   （`BonnieSignItem$1.class` 等）字节码内含 `setSignActiveMaxCooldown` 引用（外层类不含，调用在 action 内部类里）；
+   `git diff` 中 **18 个 java 文件各 +2 行**（整份 diff 是 23 文件：18 java + 4 文档 + 1 脚本）。
+6. **26.1.2 线与测试环境都停在旧 jar**：`run/26.1.2/mods/astral_dice-1.3.7-beta.2+neoforge_26.1.2.jar`（10-06），
+   且 `neoforge-26.1.2/build/libs` 最新也只到 `astral_dice-1.3.7-beta.2+neoforge_26.1.2.jar`（2026-10-05 11:55）
+   ⇒ 该线守门第 4 条红点（`client.DamageNumberStore`）就是这个陈旧产物造成的；P1 不重建（用户裁决），重建后自动转绿。
 7. **AutoJS 两个本地补丁未上游化**：根级 `pack.mcmeta`（`pack_format 15`）+ `status` 反射兜底。
 8. **`testworld` 会被 `--purge-saves` 删除**：现存仅 `run/1.21.1/saves/testworld`；下轮实机前必须先 `--phase env`。
-9. **`run/1.21.1/mods` 未装 JEI**：直接导致 §5-1 的部分探针不可解析（该目录仅 astral_dice 一个 jar）。
+9. **`run/1.21.1/mods` 未装 JEI**：该目录实测 **13 个 jar / 14 个条目**（architectury / AstralDice / AutoJS×2 / collective /
+   ferritecore / ImmediatelyFast / iris / kubejs / modernfix / carpet / rhino / sodium / superflat…），**没有** JEI 与 LWJGL；
+   这正是脚本必须再补 gradle/Maven 依赖 classpath 的原因（§5-1）。
 
 ## 6 坑（踩过的，后续别重踩）
 
@@ -143,6 +171,12 @@ CARDSLOT:slots=1:count=3     blank_insert denied:remain=2400
    区间上界固定 `2.0.0`，且**不能**写成 `[1.1.0,2.0.0)`（Maven 把 `pre` 排在正式版之后）。
 6. **抽奖盒「投入空白筹码」只清购买冷却**（无刷新机制），与筹码商店「刷新批次 +1」语义不同且**有意**（用户裁决）。
 7. **探针 `Java.loadClass` 的类被搬走 ⇒ 该线所有 kubejs 断言全红**（报「KubeJS 有错误」，极易误判为模组 bug）。
+8. **`verify_probe_class_refs` 的假红有三个来源**（2026-10-22 全部实测）：① JS **注释**里的类名被当引用；
+   ② 依赖只写 `curse.maven` 而脚本只解析 `maven.modrinth`；③ 加载器运行期提供的库（LWJGL）不在 `build.gradle`。
+   修完仍剩红点时，先查**该线产物是否陈旧**（jar 早于源码 `mtime`），别急着往源码里补类。
+9. **`code_review_execute` 会撞 cell 的 600s 墙钟上限**（实测整份文件级复核远超 10 分钟）：改用
+   `code_review_start({ phase:"execute", previewId, confirmed:true })` 拿 `jobId` 后台跑，再用 `code_review_wait` /
+   `code_review_status` 取结果；`code_review_status` 只吃 `jobId`，内联执行超时后拿不到任何结果（白跑一轮）。
 
 ## 7 关键路径（命令与文件）
 

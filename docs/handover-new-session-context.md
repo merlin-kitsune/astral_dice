@@ -35,8 +35,12 @@
   - neo → `D:\.minecraft\versions\狐の航空学 Voxy Edition\mods`
   - forge → `D:\.minecraft\versions\1.20.1-Forge 模组测试\mods`
 - 测试台：`scripts\test\mt.ps1`，`--version <线> --phase env|run|stop`。
-- 未推送：**17 个提交**；**无** `1.5.0-pre.3` tag；默认**不 push / 不打 tag**（需用户放行）。
-- 守门：**8 跑 7 绿**，唯一红 `verify_probe_class_refs`（既有基线：`run/1.21.1/mods` 未装 JEI/LWJGL）。
+- 未推送：开工时 **17 个提交**（2026-10-22 后又追加规则/守门/立牌冷却等提交，实况以
+  `git rev-list --count origin/multi-main..HEAD` 为准）；**无** `1.5.0-pre.3` tag；默认**不 push / 不打 tag**（需用户放行）。
+- 守门：**8 跑 7 绿**，唯一红 `verify_probe_class_refs`。⚠️ 2026-10-22 已查明：红点原有 6 处、**无一是源码缺口**
+  （JEI 走 Curse Maven 未被脚本解析 / LWJGL 由加载器运行期提供 / 一处只出现在 JS 注释里 / 26.1.2 产物陈旧）；
+  守门脚本已补 Curse Maven 解析 + `org.lwjgl.` 白名单 + 剥 JS 注释，现只剩 **1 处**（26.1.2 `build/libs` 停在
+  `astral_dice-1.3.7-beta.2+neoforge_26.1.2.jar`，2026-10-05）。详见交接正本 §5-1。
 
 ## 工具集（git bash / pwsh / JDK / gradlew.bat 的具体调用方式与自检命令）
 
@@ -57,11 +61,18 @@
 
 ## 立即待办（沿用现有 5 条，按优先级）
 
-1. 1.20.1 创造模式出牌扣卡复验：期望扣 **0** 张（改动在 `BaseEffectCardItem:337` / `:423`、`CardChoiceMenu:134`）。
-2. 重投 `run\<线>\mods` 与两个整合包后再开实机（run 内 jar 与 `build\libs` 不一致，见交接正本 §6-1）。
-3. 处理 `verify_probe_class_refs` 红点：判明是探针引用缺失（JEI/LWJGL）还是真缺口，给出证据链。
-4. 补 11 个立牌子类的 `setSignActiveMaxCooldown`（`BonnieSignItem:88` 等），保持冷却口径一致。
-5. P1 欠账登记维护：JEI 筹码 / `BeamFx` / `GlobalEventGate` / `RepulsionEntity` / `CardShopMenu#planPlacement` / `EventDrawBlock`。
+1. **（待用户放行实机）** 1.20.1 创造模式出牌扣卡复验：期望扣 **0** 张。静态取证已完成且成立 ——
+   `forge-1.20.1/.../item/card/BaseEffectCardItem.java:337`、`:423`、`.../screen/CardChoiceMenu.java:134` 均为
+   `if (!player.isCreative()) <shrink>`；neo 侧对应点用 `stack.consume(1, player)`（内建 instabuild 判定）。
+2. ✅ **已完成（2026-10-22）**：`run/1.21.1/mods` 与 `run/1.20.1/mods` 已用 `build/libs` 覆盖并逐份核 sha256；
+   两个 P0 整合包本来就是同一对 pre.3 jar（各自带 `starengine-*-1.1.0-pre.2.jar`）。
+3. ✅ **已完成（2026-10-22）**：`verify_probe_class_refs` 六处红点全部定性为「守门自身缺陷 / 产物陈旧」，
+   脚本已修三处，残留 1 处 = 26.1.2 旧 jar（P1 待重建）。
+4. ✅ **已完成（2026-10-22）**：立牌冷却补齐 **9 个**「起冷却」子类（两线各 9 文件 × +2 行），
+   `:neoforge-1.21.1:classes` + `:forge-1.20.1:classes` 双绿。`JasmineSignItem` / `KomachiSignItem` **故意不改**
+   （它们是 `sign_active_max_cooldown` 的消费者，只缩短已有冷却）。
+5. P1 欠账登记维护：JEI 筹码 / `BeamFx` / `GlobalEventGate` / `RepulsionEntity` / `CardShopMenu#planPlacement` / `EventDrawBlock`
+   （已在交接正本 §5 Major-3 登记；1.5.0 正式版前不动）。
 
 ## 硬约束（Windows 版）
 
