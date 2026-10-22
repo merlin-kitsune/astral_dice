@@ -61,7 +61,9 @@
 
 ## 立即待办（2026-10-22 pre.4 收尾后，按优先级）
 
-1. **（待用户放行实机）pre.4 实体拆除口径**：强化拒止应「只吃玩家近战伤害、可按实际伤害拆掉、归零同一 tick 消失且无生物式躺倒动画」；
+**2026-10-22 19:00–19:40 已做过一轮 pre.4 全量实机（用户下达）：P0 双线各 10 条用例 = 9 条机器判据 PASS + 1 条截图取证**（`PRE4-CHIPSHOP-FRAME-*` 的 vision 断言在测试台是 DELEGATED，不判红绿），读数见正本 §4.8（新增 §4.8 小节）；下面第 1/7/8/9 条的「待用户放行实机」已全部落地（其中 7 的观感、8 的计时、9 的外框都已按机器行/vision 判定；音效与粒子「好不好看/好不好听」仍属人工观感项）。
+
+1. ✅ **已完成（2026-10-22 实机）** pre.4 实体拆除口径：强化拒止应「只吃玩家近战伤害、可按实际伤害拆掉、归零同一 tick 消失且无生物式躺倒动画」；
    路障拆除同理。判据面：`/astralparty killrepulsion all` / `killbarricade all`（权限 2，落 `AFTERM|type=…|killed=…|…` 机器行）+ 玩家实砍。
    静态判据已全绿（`kill()` / `hurt` / `getHurtSound` 字节码、图标 md5、lang 1045 键），见交接正本 §5-13。
 2. ✅ **已完成（2026-10-22）** 1.20.1 创造模式出牌扣卡复验 **PASS**：创造扣 **0** 张、生存对照扣 **1** 张；
@@ -72,10 +74,12 @@
 6. P1 欠账登记维护：JEI 筹码 / `BeamFx` / `GlobalEventGate` / `RepulsionEntity` / `CardShopMenu#planPlacement` / `EventDrawBlock`；
    外加 **P1 两线筹码效果图标仍是带边框版**（pre.4 只换 P0 两线 11 张，正本 §5-14），以及 **P1 两线史莱姆被动仍是 20 tick(1 秒)、文案未改**（正本 §5-16：`neoforge-26.1.2/.../LuluSignItem.java:170`、`fabric-1.20.1/.../LuluSignItem.java:161`）。
    另：**强化拒止整张牌尚未移植到 P1 两线**（`grep -rni repulsion` 在两线 `src` 各 0 命中，正本 §5-19⑥）⇒ 随 P1 批次整体移植，勿按「改一行 rarity」估工。
-7. **（待用户放行实机）电击手套命中 FX**：命中目标冒冷色电火花（`comet_azur_filament`×2 / `glintstone_spark`×7 / `frost_spark`×4）+ 圆心一次 `lightning_bolt_impact`（0.5 / 1.5）；只要「真正吃到伤害」的目标才有电光，音效只播一次。实现 `combat/ElectricShockFx.java`（P0 两线）+ `SoundPlayback` 新 7 参重载，判据见正本 §5-20（静态全绿，无实机）。
-8. **（待用户放行实机）史莱姆立牌被动 15 秒**：P0 两线 `LuluSignItem.HURT_COOLDOWN_TICKS = 300`（原 20 = 1 秒），
+7. ✅ **触发面已实机（2026-10-22）** 电击手套命中 FX：命中目标冒冷色电火花（`comet_azur_filament`×2 / `glintstone_spark`×7 / `frost_spark`×4）+ 圆心一次 `lightning_bolt_impact`（0.5 / 1.5）；只要「真正吃到伤害」的目标才有电光，音效只播一次。实现 `combat/ElectricShockFx.java`（P0 两线）+ `SoundPlayback` 新 7 参重载，判据见正本 §5-20（静态全绿，无实机）。
+8. ✅ **已完成（2026-10-22 实机）** 史莱姆立牌被动 15 秒：P0 两线 `LuluSignItem.HURT_COOLDOWN_TICKS = 300`（原 20 = 1 秒），
    三语文案末尾均加「每 15 秒触发一次」；判据 = 受击两次间隔 <15s 时只有第一次生效（`AP_FX_*_HURT` 或治愈点数不增）。静态判据已绿（javap 常量 300 / lang 1045 键 / 三语 § 数相等），见正本 §5-15。
-9. **（待用户放行实机）筹码商店三色品质外框 + 卡牌购买钱包音效**：2026-10-22 用户报障「外框丢了 / 买卡没 wallet 音效」；根因 = 提交 `fe4aa05f`（10-21 换筹码图标素材时连外框绘制一起删了），本批把 `screen/ChipShopScreen` 的 `TEX_QUALITY_1/2/3` + `qualityTex(int)` + `renderOffers` blit 恢复（`qualityCode` 优先 / `qualityFrameIndexOf` 兜底 / `NONE` 跳过），`shop/CardShopMenu#handleBuy` 成功尾段补 `SoundPlayback.playTo(buyer, ModSounds.WALLET_DEPOSIT.get())`。守门 `verify_chip_shop_ui.ps1` 的 G2b 已由反向改写为**正向**（旧反向断言在外框被误删时照样全绿），变异套件 M38/M39 同步反转（`MUT_TOTAL: 39，判红 39`）。判据见正本 §5-21（静态全绿，**无实机**）。
+9. ✅ **外框已实机 / 音效到调用层（2026-10-22）** 筹码商店三色品质外框 + 卡牌购买钱包音效：2026-10-22 用户报障「外框丢了 / 买卡没 wallet 音效」；根因 = 提交 `fe4aa05f`（10-21 换筹码图标素材时连外框绘制一起删了），本批把 `screen/ChipShopScreen` 的 `TEX_QUALITY_1/2/3` + `qualityTex(int)` + `renderOffers` blit 恢复（`qualityCode` 优先 / `qualityFrameIndexOf` 兜底 / `NONE` 跳过），`shop/CardShopMenu#handleBuy` 成功尾段补 `SoundPlayback.playTo(buyer, ModSounds.WALLET_DEPOSIT.get())`。守门 `verify_chip_shop_ui.ps1` 的 G2b 已由反向改写为**正向**（旧反向断言在外框被误删时照样全绿），变异套件 M38/M39 同步反转（`MUT_TOTAL: 39，判红 39`）。判据见正本 §5-21（静态全绿，**无实机**）。
+
+10. ✅ **已完成（2026-10-22）** pre.4 全量实机测试：P0 双线各 10/10 PASS，机器行原文见正本 §4.8；测试资产改动 = 两份 `astral_fixbatch_probe.js`（新增 `/astralfixbatch hurtby`、`fbxNow` 修正）+ 两份 `astral_bugfix_probe.js`（新增 `/astralprobe barplace`、`doLuluPrep` 补装金骰子）+ 6 条用例（`PRE4-*` 8 条新建 / `LULU-SIGN-*` 订正 2 条陈旧断言）。**产品源码零改动**。新坑见正本 §6 坑 23–26（Rhino 调不到 `p.hurt` 且 1.20.1 没有 `/damage`；裸 summon 路障必自毁；陈旧用例把规格变更误报成回归；长效增益用例必须 `/effect clear @s`）。
 
 ## 硬约束（Windows 版）
 

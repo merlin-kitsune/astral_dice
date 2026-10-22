@@ -33,6 +33,9 @@
 //    /astralfixbatch card3     <tag>        连发 3 张同款卡 ⇒ 报「占几格 / 共几张」
 //    /astralfixbatch drawerblank <tag>      抽奖盒投入空白筹码两次 ⇒ 报手牌数与返回码
 //    /astralfixbatch handcount <tag>        只读：主手 ItemStack 的 id 与 getCount()（空手 = air:0）
+//    /astralfixbatch luheal <tag>           只读：治愈点数 + 上次被动受击 tick（史莱姆立牌 15 秒冷却判据）
+//    /astralfixbatch hurtby   <tag>         让执行者挨一下怪物近战(1.0, NoAI 掠夺者, 打完即 discard)，
+//                                           并同 tick 报 heal/last/since/hp（1.20.1 无 /damage 的替代）
 //
 //  ⚠️ 本探针**只读为主**：除 `hostiles` / `endspawn` / `repplace` / `repclear` / `drawerblank`
 //     （摆靶 / 摆力场 / 清场 / 摆方块，都是测试存档内的布景）与 `gatereset`（清闸门状态）外
@@ -713,6 +716,112 @@ function fbxDoHandCount(ctx, tag) {
     return 1;
 }
 
+// ── ⑨ 史莱姆立牌被动读数：治愈点数 + 上次受击 tick（2026-10-22 新增）─────────
+/**
+ * 只读：`/astralfixbatch luheal <tag>`。
+ *
+ * <p>为什么必须单开一条命令（2026-10-22 用户裁决：被动受击冷却 20t → 300t = 15 秒）：
+ * 该项的唯一可观测产出是「治愈点数 +1」，而既有 `luluprep` 会先把治愈点清 0 再报 ⇒ 不能当读数器；
+ * `luluactive` 走主动技能，与被动无关。于是这里直接读
+ * {@code HealingManager.getPoints} 与 {@code ModAttachments.getLuluLastHurtTick}：
+ *   · `heal=` 治愈点数（读不到 = -1，用于区分「0 点」与「读失败」）；
+ *   · `last=` 上次触发被动的游戏刻（0 = 从未触发）；
+ *   · `since=` 距上次触发的 tick 数（-1 = 读不到）。
+ * 判据形态见 `scripts/test/cases/PRE4-LULU-15S-*.json`。
+ */
+var FBX_HealingManager = fbxTryClass('com.merlinkitsune.astral_dice.item.HealingManager');
+var FBX_ModAttachments = fbxTryClass('com.merlinkitsune.astral_dice.component.ModAttachments');
+
+function fbxDoLuluHealRead(ctx, tag) {
+    var p = fbxP(ctx);
+    var heal = -1; var last = -1; var now = -1;
+    try { heal = FBX_HealingManager.getPoints(p); } catch (e0) { heal = -1; }
+    try { last = FBX_ModAttachments.getLuluLastHurtTick(p); } catch (e1) { last = -1; }
+    try { now = fbxNow(p); } catch (e2) { now = -1; }
+    fbxSend(ctx, 'AP_FX_' + tag + '_LUHEAL:heal=' + heal + ':last=' + last + ':now=' + now
+        + ':since=' + ((last < 0 || now < 0) ? -1 : (now - last)));
+    return 1;
+}
+
+
+/** 1.20.1 的 ResourceLocation 没有静态 parse（1.21.1 才有）⇒ 两线统一走这个回退 */
+function fbxRl(id) {
+    var Rl = fbxTryClass('net.minecraft.resources.ResourceLocation');
+    if (Rl == null) return null;
+    try { return Rl.parse(id); } catch (e0) { /* 1.20.1 无 parse */ }
+    try { return new Rl(id); } catch (e1) { return null; }
+}
+
+/**
+ * 让玩家吃一次「怪物近战」伤害（1.0），返回真正生效的 API 名。
+ * 判据是**血量真的掉了**而不是「没抛异常」（骰神赐福/骰战/受击钩子都挂在伤害结算里）。
+ *
+ * 为什么不写 `p.hurt(src, 1.0)`：Rhino 下 `hurt` 声明于 LivingEntity，成员查找派发不到
+ * （2026-10-22 实测 `TypeError: Cannot call property hurt … it is "boolean"`，把 `p.hurt` 读成了别的布尔属性）。
+ * KubeJS 的实体包装器另有 `damage(amount, source)`（**参数顺序与 hurt 相反**，见 astral_bugfix_probe 在同仓的实证），
+ * 同步生效；再兜底 `mob.doHurtTarget(p)`（原版怪物近战本体，归因就是 mobAttack）。
+ */
+function fbxHurtAsMob(p, mob, lvl) {
+    var before = -1;
+    try { before = p.getHealth(); } catch (e0) { before = -1; }
+    function dropped() { try { return before >= 0 && p.getHealth() < before; } catch (e1) { return false; } }
+    var tried = [];
+    var src = null;
+    try { src = lvl.damageSources().mobAttack(mob); } catch (e2) { tried.push('src:' + fbxEx(e2)); }
+    if (src != null) {
+        try { p.damage(1.0, src); if (dropped()) return { api: 'player_damage', tried: tried }; }
+        catch (e3) { tried.push('damage:' + fbxEx(e3)); }
+        try { p.attack(src, 1.0); if (dropped()) return { api: 'player_attack_ds', tried: tried }; }
+        catch (e4) { tried.push('attack_ds:' + fbxEx(e4)); }
+    }
+    try { mob.doHurtTarget(p); if (dropped()) return { api: 'mob_doHurtTarget', tried: tried }; }
+    catch (e5) { tried.push('doHurtTarget:' + fbxEx(e5)); }
+    try { mob.attack(p); if (dropped()) return { api: 'mob_attack', tried: tried }; }
+    catch (e6) { tried.push('mob_attack:' + fbxEx(e6)); }
+    return { api: 'none', tried: tried };
+}
+
+/**
+ * /astralfixbatch hurtby <tag> —— 让执行者挨一下「怪物近战」伤害（1.0），并同 tick 读回治愈状态。
+ * 为什么不用 /damage：该命令 1.20.2 才进原版，1.20.1 侧不存在 ⇒ 两线统一走本入口。
+ * 伤害源 = 现场造的一只 NoAI 掠夺者（damageSources().mobAttack），与实际被怪近身打中的归因一致；
+ * 打完立刻 discard 攻击者，避免 17 秒窗口里它继续追打（实测 2026-10-22：玩家被怪打死会让
+ * LuluLastHurtTick 附件重置成 0 ⇒ heal 归零，假红）。
+ * 输出 AP_FX_<tag>_HURT:ok=<0|1>:heal=:last=:now=:since=:hp=[err=]
+ */
+function fbxDoHurtBy(ctx, tag) {
+    var p = fbxP(ctx);
+    var lvl = p.level;
+    var ok = 0; var err = ''; var api = '-'; var tried = [];
+    try {
+        var entType = FBX_Reg.ENTITY_TYPE.get(fbxRl('minecraft:pillager'));
+        var mob = entType.create(lvl);
+        if (mob == null) {
+            err = 'create=null';
+        } else {
+            mob.setPos(p.getX() + 2.0, p.getY(), p.getZ());
+            mob.setNoAi(true);
+            lvl.addFreshEntity(mob);
+            var res = fbxHurtAsMob(p, mob, lvl);
+            api = res.api; tried = res.tried;
+            ok = (res.api === 'none') ? 0 : 1;
+            mob.discard();
+        }
+    } catch (e0) {
+        err = fbxEx(e0);
+    }
+    var heal = -1; var last = -1; var now = -1; var hp = -1;
+    try { heal = FBX_HealingManager.getPoints(p); } catch (e1) { heal = -1; }
+    try { last = FBX_ModAttachments.getLuluLastHurtTick(p); } catch (e2) { last = -1; }
+    try { now = fbxNow(p); } catch (e3) { now = -1; }
+    try { hp = p.getHealth(); } catch (e4) { hp = -1; }
+    fbxSend(ctx, 'AP_FX_' + tag + '_HURT:ok=' + ok + ':api=' + api + ':heal=' + heal + ':last=' + last
+        + ':now=' + now + ':since=' + ((last < 0 || now < 0) ? -1 : (now - last))
+        + ':hp=' + hp + (err === '' ? '' : ':err=' + err)
+        + (tried.length === 0 ? '' : ':tried=' + tried.join(',')));
+    return 1;
+}
+
 // ── 命令注册 ──────────────────────────────────────────────────────────────
 ServerEvents.commandRegistry(event => {
     var Commands = event.commands;
@@ -799,6 +908,16 @@ ServerEvents.commandRegistry(event => {
                 .then(Commands.argument('tag', FBX_StringArg.word())
                     .executes(ctx => fbxGuard(ctx, FBX_StringArg.getString(ctx, 'tag'), function () {
                         return fbxDoHandCount(ctx, FBX_StringArg.getString(ctx, 'tag'));
+                    }))))
+            .then(Commands.literal('luheal')
+                .then(Commands.argument('tag', FBX_StringArg.word())
+                    .executes(ctx => fbxGuard(ctx, FBX_StringArg.getString(ctx, 'tag'), function () {
+                        return fbxDoLuluHealRead(ctx, FBX_StringArg.getString(ctx, 'tag'));
+                    }))))
+            .then(Commands.literal('hurtby')
+                .then(Commands.argument('tag', FBX_StringArg.word())
+                    .executes(ctx => fbxGuard(ctx, FBX_StringArg.getString(ctx, 'tag'), function () {
+                        return fbxDoHurtBy(ctx, FBX_StringArg.getString(ctx, 'tag'));
                     }))))
     );
 });

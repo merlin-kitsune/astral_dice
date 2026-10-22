@@ -4740,6 +4740,50 @@ function luluDiscardNearby(p, radius) {
 }
 
 /** 基线 + 摆「自身段」判据靶:see 函数头注释 */
+/**
+ * `/astralprobe barplace <tag> <dx> <dz>` —— 按**效果牌的真实放置语义**放一座路障（2026-10-22 新增）。
+ *
+ * <p>为什么不能直接 `/summon astral_dice:barricade`（本批实测 2026-10-22）：裸召唤的实体
+ * `collisionPos == null`，`tick()` 首 tick 就自毁（见 `entity/BarricadeEntity.java` 的注释：
+ * 「裸 /summon 或旧存档残缺 ⇒ 直接自毁，避免自己掉下去」）⇒ `/astralparty killbarricade` 永远读到
+ * killed=0，用例会得到「命令不工作」的假红。
+ *
+ * <p>这里逐条复刻 `item/card/BarricadeCardItem#applyEffect` 的落点流程：
+ *   ① `level.setBlockAndUpdate(pos, barricade_collision)`（碰撞方块先落地，实体首 tick 校验才过得去）；
+ *   ② `EntityType#create` → `setPos(方块中心)` → `setCollisionPos(pos)` → `addFreshEntity`。
+ * `dx/dz` 为相对玩家脚下方块的水平偏移（不与玩家同格 ⇒ 不会把玩家卡进方块）。
+ * 读数 `AP_<tag>_BARR:placed=..:n=..:pos=x,y,z`（n = 64 格内现有路障实体数，用于先证「确实放下了」）。
+ */
+function doBarPlace(ctx, tag, dx, dz) {
+    var p = ctx.source.getPlayerOrException();
+    var lvl = p.level;
+    var x = Math.floor(p.getX()) + dx;
+    var y = Math.floor(p.getY());
+    var z = Math.floor(p.getZ()) + dz;
+    var placed = 0, err = "";
+    try {
+        var BlockPosCls = Java.loadClass("net.minecraft.core.BlockPos");
+        var ModBlocksCls = Java.loadClass("com.merlinkitsune.astral_dice.block.ModBlocks");
+        var pos = new BlockPosCls(x + 0, y + 0, z + 0);
+        if (lvl.setBlockAndUpdate(pos, ModBlocksCls.BARRICADE_COLLISION.get().defaultBlockState())) {
+            var type = BuiltInRegistries.ENTITY_TYPE.get(ResourceLocation.parse("astral_dice:barricade"));
+            var ent = type.create(lvl);
+            if (ent != null) {
+                placeAt(ent, x + 0.5, y, z + 0.5);
+                ent.setCollisionPos(pos);
+                if (lvl.addFreshEntity(ent)) placed = 1;
+            }
+        }
+    } catch (e0) { err = exText(e0); }
+    var n = -1;
+    try {
+        var BarCls = Java.loadClass("com.merlinkitsune.astral_dice.entity.BarricadeEntity");
+        n = lvl.getEntitiesOfClass(BarCls, AABBClass.ofSize(p.position(), 64, 64, 64)).size();
+    } catch (e1) { n = -2; }
+    send(ctx, "AP_" + tag + "_BARR:placed=" + placed + ":n=" + n + ":pos=" + x + "," + y + "," + z
+        + (err ? ":err=" + err : ""));
+    return 1;
+}
 function doLuluPrep(ctx, tag) {
     var p = ctx.source.getPlayerOrException();
     try { HealingManagerClass.clear(p); } catch (e0) { /* 忽略 */ }
@@ -4749,6 +4793,11 @@ function doLuluPrep(ctx, tag) {
     try { TargetSelectionManagerClass.cancelSessionForTests(p); } catch (e2b) { /* 忽略 */ }
     var err = equipSign(p, LULU_SIGN_ID);
     if (err != null) { send(ctx, "AP_" + tag + "_ERR:" + err); return 1; }
+    // 骰子总闸门（2026-10-01 提交 3c8f0d36）：未佩戴骰子时立牌主动/被动一律失效 ⇒
+    // 本 prep 必须成对装备一枚基础骰子（金骰子 0★ ⇒ 骰子栏 1 格），否则 performSkillForCurio 在
+    // !hasDiceEquipped 处早退、选择会话永远开不起来（实测 2026-10-22：AP_LA_SELF session=0 token_seen=0）。
+    var diceErr = putInSlot(p, "dice", new ItemStack(resolveItem("astral_dice:golden_dice")), 0);
+    if (diceErr != null) { send(ctx, "AP_" + tag + "_ERR:dice:" + diceErr); return 1; }
     luluDiscardNearby(p, 48);
     // 自身先扣到 12 血:主体瞬间治疗(HEAL I = 4 点)可读
     try { p.setHealth(12); } catch (e3) { /* 忽略 */ }
@@ -14994,6 +15043,15 @@ ServerEvents.commandRegistry(event => {
                             return doLuluConfirm(ctx, StringArg.getString(ctx, "tag"),
                                 StringArg.getString(ctx, "name"));
                         })))))
+            // 路障放置（2026-10-22）：裸 /summon 的实体会首 tick 自毁，见 doBarPlace 头注释
+            .then(Commands.literal("barplace")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("dx", IntegerArg.integer(-32, 32))
+                        .then(Commands.argument("dz", IntegerArg.integer(-32, 32))
+                            .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                return doBarPlace(ctx, StringArg.getString(ctx, "tag"),
+                                    IntegerArg.getInteger(ctx, "dx"), IntegerArg.getInteger(ctx, "dz"));
+                            }))))))
             // ── 教主立牌(teru)「降神」+「狐光」(2026-09-27)────────────────────────
             .then(Commands.literal("teruprep")
                 .then(Commands.argument("tag", StringArg.word())

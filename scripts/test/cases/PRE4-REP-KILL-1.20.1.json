@@ -1,0 +1,264 @@
+{
+  "case_id": "PRE4-REP-KILL-1.20.1",
+  "title": "pre.4 强化拒止拆除链（P0 实机）：怪物伤害被拒 → 玩家攻击一击拆掉（伤害 999 > 耐久 50）→ /kill 生效（kill() 覆写）→ /astralparty killrepulsion all / radius 清场并落 AFTERM 机器行",
+  "version": "1.20.1",
+  "channel": "kubejs",
+  "target": {
+    "type": "feature",
+    "ref": "repulsion_player_dismantle"
+  },
+  "on_fail": "continue",
+  "steps": [
+    {
+      "op": "note",
+      "text": "判据正本：`entity/RepulsionEntity.java` 的 `hurt`（只认 `source.getEntity() instanceof Player`，`MIN_PLAYER_DAMAGE=1.0F`，耐久 = `getHealth()`，MAX_HEALTH=50）与 `kill()` 覆写（原版 `/kill` → `hurt(genericKill, MAX)`，genericKill 没有 entity ⇒ 旧版打不掉）。\n\n量具 = `/astralfixbatch rread <tag>` 的 `AP_FX_<tag>_REP_READ:n=<力场数>`（探针按 `getEntitiesOfClass(RepulsionEntity, 玩家 20 格 AABB)` 统计，只数未移除的）。\n\n四段：① 摆 1 座 ⇒ n=1；② 让**pillager**打它（`minecraft:mob_attack by <pillager>`）⇒ n=1（怪物伤害无效，负对照）；③ 玩家打它（`minecraft:player_attack by @s` 伤害 999）⇒ n=0（玩家可拆，正判据）；④ 再摆 1 座后 `/kill @e[type=astral_dice:repulsion]` ⇒ n=0（kill() 覆写生效）。末段验 `/astralparty killrepulsion all|radius` 与 `AFTERM|...` 机器行。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[type=!player,distance=..48]",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1000
+    },
+    {
+      "op": "note",
+      "text": "【①】基线清场 + 摆 1 座"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralfixbatch repclear RP0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralfixbatch repplace RP1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralfixbatch rread RP1R",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "note",
+      "text": "【②】怪物伤害负对照：pillager 的 mob_attack 必须被拒（力场数仍为 1）"
+    },
+    {
+      "op": "inject_command",
+      "command": "/summon minecraft:pillager ~3 ~ ~3 {NoAI:1b,PersistenceRequired:1b}",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/damage @e[type=astral_dice:repulsion,limit=1,sort=nearest] 10 minecraft:mob_attack by @e[type=minecraft:pillager,limit=1,sort=nearest]",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralfixbatch rread RP2R",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "note",
+      "text": "【③】玩家攻击正判据：999 伤害 > 耐久 50 ⇒ 一击 shattered（n=0）"
+    },
+    {
+      "op": "inject_command",
+      "command": "/damage @e[type=astral_dice:repulsion,limit=1,sort=nearest] 999 minecraft:player_attack by @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralfixbatch rread RP3R",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "note",
+      "text": "【④】/kill 覆写：再摆一座后 /kill 必须打得掉（旧版会存活 ⇒ n=1）"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralfixbatch repplace RP4",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[type=astral_dice:repulsion]",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralfixbatch rread RP4R",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "note",
+      "text": "【⑤】/astralparty 清场命令：all 与 radius 两档 + AFTERM 机器行"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralfixbatch repplace RP5",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralfixbatch repplace RP6",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralparty killrepulsion all",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralfixbatch rread RP7R",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralfixbatch repplace RP8",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralparty killrepulsion 8",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[type=minecraft:pillager]",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_FX_RP1R_REP_READ:n=1:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_FX_RP2R_REP_READ:n=1:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_FX_RP3R_REP_READ:n=0:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_FX_RP4R_REP_READ:n=0:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_FX_RP7R_REP_READ:n=0:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AFTERM\\|type=repulsion\\|killed=[1-9]\\d*\\|mode=all\\|"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AFTERM\\|type=repulsion\\|killed=[1-9]\\d*\\|mode=radius\\|radius=8\\|"
+    },
+    {
+      "type": "crash"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "mixin"
+    }
+  ],
+  "evidence": []
+}

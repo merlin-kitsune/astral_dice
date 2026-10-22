@@ -1,0 +1,165 @@
+{
+  "case_id": "PRE4-BARR-KILL-1.21.1",
+  "title": "pre.4 路障 /kill 与清理命令（P0 实机）：/astralparty killbarricade all 报 killed=2 → 重建后用原版 /kill 全清 → 再跑命令报 killed=0（kill() 覆写生效）→ radius 档单独计数",
+  "version": "1.21.1",
+  "channel": "kubejs",
+  "target": {
+    "type": "feature",
+    "ref": "barricade_kill_command"
+  },
+  "on_fail": "continue",
+  "steps": [
+    {
+      "op": "note",
+      "text": "判据正本：`entity/BarricadeEntity.java` 的 `hurt` 只接受 LivingEntity 来源（genericKill 无实体 ⇒ 原版 /kill 走不到它），故补 `kill()` 覆写直接转 `die(genericKill)`（2026-10-22）。\n\n量具 = `/astralparty killbarricade ...` 自己落的机器行 `AFTERM|type=barricade|killed=N|mode=...|radius=...|dim=...|x=...|y=...|z=...`（`AstralPartyCommand.killEntities` 里 `LOGGER.info`）。命令既是**被测对象**，也是**剩余计数**：先用它把场面清零，再用原版 `/kill` 全清，再跑命令读 killed ⇒ 0 就证明 `/kill` 真的删掉了（旧版会残留 N 座）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[type=!player,distance=..48]",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1000
+    },
+    {
+      "op": "note",
+      "text": "【A】两座路障 ⇒ 命令报 killed=2（同时确立「命令本身工作」）"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe barplace B1 2 2",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe barplace B2 -2 2",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralparty killbarricade all",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "note",
+      "text": "【B】重建两座 ⇒ 原版 /kill ⇒ 命令报 killed=0（kill() 覆写判据）"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe barplace B3 2 2",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe barplace B4 -2 2",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[type=astral_dice:barricade]",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralparty killbarricade all",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "note",
+      "text": "【C】radius 档：单座 + 半径 8 ⇒ killed=1 / mode=radius / radius=8"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe barplace B5 2 2",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralparty killbarricade 8",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AFTERM\\|type=barricade\\|killed=2\\|mode=all\\|"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AFTERM\\|type=barricade\\|killed=0\\|mode=all\\|"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AFTERM\\|type=barricade\\|killed=1\\|mode=radius\\|radius=8\\|"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_B1_BARR:placed=1:n=1:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_B2_BARR:placed=1:n=2:"
+    },
+    {
+      "type": "crash"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "mixin"
+    }
+  ],
+  "evidence": []
+}

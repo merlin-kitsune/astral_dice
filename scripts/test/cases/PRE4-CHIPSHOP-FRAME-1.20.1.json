@@ -1,0 +1,93 @@
+{
+  "case_id": "PRE4-CHIPSHOP-FRAME-1.20.1",
+  "title": "pre.4 筹码商店三色品质外框恢复（截图取证，非机器判据）：开商店截图留证，人工逐格核对 28x28 描边环与 24x24 图标内缩",
+  "version": "1.20.1",
+  "channel": "kubejs",
+  "target": {
+    "type": "feature",
+    "ref": "chip_shop_quality_frame"
+  },
+  "on_fail": "continue",
+  "steps": [
+    {
+      "op": "note",
+      "text": "背景：`screen/ChipShopScreen.java` 的品质外框 blit 曾被 `fe4aa05f`（2026-10-21 无边框图标批）删掉，2026-10-22 恢复（`qualityCode(DataSlot)` 优先、`qualityFrameIndexOf` 兜底、`QUALITY_FRAME_NONE` 跳过）。本轮实机只做**观感取证**（外框是客户端绘制，服务端日志无判据），静态判据由 `scripts/verify/verify_chip_shop_ui.ps1`（G2b 正向断言）承担。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop creset CF",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop bal CF 770",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop copenkeep CF",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 2500
+    },
+    {
+      "op": "screenshot",
+      "tag": "pre4-chipshop-frame",
+      "mode": "f2"
+    },
+    {
+      "op": "note",
+      "text": "注意：下一条 vision 断言在测试台里是 DELEGATED（不判红绿），仅作截图取证；外框的机器判据是 verify_chip_shop_ui.ps1 的 G2b 静态正向断言。"
+    },
+    {
+      "op": "assert",
+      "type": "vision",
+      "image": "pre4-chipshop-frame",
+      "question": "这是 Minecraft 模组「筹码商店」的界面截图。请逐格检查商品格子：(1) 每个商品图标外面是否都有一圈 **28x28 的彩色描边方框**（而不是只有图标、外面是空的）？(2) 这些描边方框是否出现了**至少两种不同颜色**（例如蓝、紫、金/橙）？请分别描述你看到的框颜色以及它们出现在第几格（从左到右、从上到下编号）。(3) 图标本身是否比方框小一圈（图标边缘与框之间留有一圈内边距）？(4) 若完全看不到任何彩色方框，请明确回答「没有任何品质外框」。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop close CF",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    }
+  ],
+  "asserts": [
+    {
+      "type": "crash"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "mixin"
+    }
+  ],
+  "evidence": {
+    "0": "pre4-chipshop-frame",
+    "machine_judge_none": "本用例唯一的外框判据是 steps 里的 `assert/vision`，而 scripts/test/mt_case.ps1 对 vision 一律返回 DELEGATED（:1623，:2439 映射成 →VIS），既不判红也不判绿 ⇒ 该用例 PASS 只代表 crash / kubejs / mixin 三条健康断言通过，**不代表外框被画出来**。外框的机器判据是静态守门 `scripts/verify/verify_chip_shop_ui.ps1` 的 G2b 正向断言（绘制入口 + qualityTex 三档映射 + 几何），截图供人工目视。",
+    "screenshot_tag": "pre4-chipshop-frame"
+  }
+}

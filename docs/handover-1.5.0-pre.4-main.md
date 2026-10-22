@@ -18,6 +18,7 @@
 14. **电击手套命中 FX（2026-10-22 18:18，已提交）**：命中目标撒 Irons 粒子库电火花（`comet_azur_filament`×2 电弧 / `glintstone_spark`×7 火花芯 / `frost_spark`×4 细闪，rgb `0x9BE8FF`·`0xE8FBFF`），圆心一次 `SoundEvents.LIGHTNING_BOLT_IMPACT`（音量 0.5 / 音调 1.5）；实现 `combat/ElectricShockFx.java`（P0 两线）+ `audio/SoundPlayback` 新增 7 参 `playAt` 重载（旧 5 参委托它） + `item/chip/ElectricGloveChipItem#executeShock` 接线。判据见 §5-20，**无实机读数**。
 15. **筹码商店品质外框恢复 + 卡牌购买钱包音效（2026-10-22 18:32）**：`screen/ChipShopScreen` 把 2026-10-21 误删的三色品质描边环（`chipshop_quality_1/2/3`，28x28）重新画回筹码格脚下、`client/ChipShopClientState`+`shop/ChipShopCatalog` javadoc 同步口径；`shop/CardShopMenu#handleBuy` 成功尾段补 `SoundPlayback.playTo(buyer, ModSounds.WALLET_DEPOSIT.get())`（拒绝分支不响）。守门 `verify_chip_shop_ui.ps1` 的 G2b 由反向改为正向断言、`mutate_chip_shop_ui.ps1` 的 M38/M39 同步反转（`MUT_TOTAL: 39，判红 39`）。判据与产物见 §5-21 / §2，**无实机读数**。
 
+16. **pre.4 全量实机测试（2026-10-22 19:00–19:40，用户下达「pre.4 以上所有更改全部做一遍实机测试并输出报告」）**：P0 双线各 **10 条用例：9 条机器判据 PASS + 1 条截图取证**（4 条新用例 × 2 线 + 6 条回归）——`PRE4-CHIPSHOP-FRAME-*` 的 vision 断言在测试台里是 **DELEGATED**（不判红绿），本体只覆盖 crash/kubejs/mixin 健康项，外框的机器判据在静态守门 `verify_chip_shop_ui.ps1` 的 G2b；机器行原文见 §4.8。本轮为跑通判据改了**测试资产**（两份 fixbatch probe 新增 `hurtby`、bugfix probe 新增 `barplace` 与 `doLuluPrep` 补骰子、6 条用例重写/订正），**未改任何产品源码**；新增的探针能力同时让 §4.5–§4.7 三批「无实机读数」落地。
 ## 1 环境与路径
 
 - 仓库（唯一工作树）：`F:\MCProject\astral_dice_multiloader`，分支 `multi-main`；git 一律用 **git bash 的 `git`** ——
@@ -166,6 +167,38 @@ AP_NC2B_READ:hand=astral_dice:effect_card_monster_laser:handn=2:cards=2:sel=0:to
 ③ `check_lang_sync.ps1` exit 0（本批未动 lang）、`verify_effect_icons.py` PASS（未动图标）。
 ⇒ 实机只需目视确认 tooltip 边框不再是金色（史诗色）⇒ 待用户下达。
 
+### 4.8 pre.4 全量实机（2026-10-22 19:00–19:40，P0 双线，**各 9 条机器判据 PASS + 1 条截图取证**）
+
+跑法：`pwsh -NoProfile -File scripts\test\mt.ps1 --version <线> --phase env` → `--phase launch`（脱离式、冷启动）→ 逐条 `--phase cases --case <case_id>`；两条线各一轮。1.21.1 那轮跑了两遍：首轮 3 条红，全部定性为**测试资产问题**（见 §5-22、坑 23–26），修完重跑全绿。
+
+| 用例 | 1.21.1 | 1.20.1 | 覆盖的 pre.4 改动 |
+|---|---|---|---|
+| `PRE4-REP-KILL-*` | PASS | PASS | 强化拒止可被玩家拆掉 / 怪物伤害无效 / `/kill` / `/astralparty killrepulsion` |
+| `PRE4-BARR-KILL-*` | PASS | PASS | 路障 `killbarricade`（all / radius）+ `/kill` |
+| `PRE4-LULU-15S-*` | PASS | PASS | 史莱姆立牌被动 15 秒冷却（`HURT_COOLDOWN_TICKS` 300） |
+| `PRE4-CHIPSHOP-FRAME-*` | 截图† | 截图† | 筹码商店三色品质外框 —— †vision 断言在 `mt_case.ps1:1623` 是 **DELEGATED**（`2439` 映射 `→VIS`，不判红绿）⇒ 该条 PASS 只代表健康断言通过；外框机器判据 = `verify_chip_shop_ui.ps1` G2b 静态正向 + 截图人工目视 |
+| `FIXBATCH-REPULSION-CHARGE-*` | PASS | PASS | 回归：强化拒止充能 |
+| `FIXBATCH-GLOVE-MAINTARGET-*` | PASS | PASS | 回归：电击手套主目标 + AOE（同日 FX 的触发面） |
+| `FIXBATCH-EVENT-GATE-*` | PASS | PASS | 回归：事件闸门 |
+| `FIXBATCH-SHOP-STACK-BLANK-*` | PASS | PASS | 回归：抽奖盒空白筹码 |
+| `CHIP-CLIENT-BUY-*` | PASS | PASS | 回归：筹码购买（卡牌购买钱包音效走同一 `SoundPlayback` 通道） |
+| `LULU-SIGN-*` | PASS | PASS | 回归：史莱姆立牌主动（顺手修好一条 2026-10-01 起就失效的陈旧用例） |
+
+机器行原文（键读数，两线同形）：
+
+- 强化拒止（1.21.1）：`AP_FX_RP1R_REP_READ:n=1:id=721:…` → 怪物近战 `RP2R:n=1`（**没被打掉**）→ 玩家 999 点 `RP3R:n=0`（**打掉了**）→ 重新放置后 `/kill @e[type=astral_dice:repulsion]` ⇒ `RP4R:n=0` → `/astralparty killrepulsion all` ⇒ `AFTERM|type=repulsion|killed=2|mode=all|radius=-1|dim=minecraft:overworld|x=1|y=-60|z=-9`，`8` 格档 ⇒ `AFTERM|type=repulsion|killed=1|mode=radius|radius=8|…`，随后 `RP7R:n=0`。
+- 强化拒止（1.20.1）：同形，`AFTERM|type=repulsion|killed=2|mode=all`、`killed=1|mode=radius|radius=8`。
+- 路障（两线）：`AP_B1_BARR:placed=1:n=1:pos=…` / `AP_B2_BARR:placed=1:n=2:pos=…`（证明**真的放下去了**）→ `AFTERM|type=barricade|killed=2|mode=all` → 重建两座后 `/kill @e[type=astral_dice:barricade]` ⇒ `AFTERM|…|killed=0`（**/kill 已被 `kill()` 覆写接管，实体在管理命令扫描前就摘掉了**）→ 单座 + `killbarricade 8` ⇒ `AFTERM|type=barricade|killed=1|mode=radius|radius=8`。
+- 15 秒冷却（1.21.1，`api=player_damage`）：`AP_FX_LL0_LUHEAL:heal=0:last=0:now=3321:since=3321` → `LL1_HURT:ok=1:heal=1:last=3386:now=3386:since=0:hp=15` → 3 秒后 `LL2_HURT:ok=1:heal=1:last=3386:now=3518:since=132:hp=14`（**被 300 tick 闸门挡住，since 132 落在 40..299**）→ 17 秒后 `LL3_HURT:ok=1:heal=2:last=3928:now=3928:since=0:hp=14`（闸门到期）。
+- 15 秒冷却（1.20.1，`api=player_attack_ds`；该线没有 `p.damage` 包装 ⇒ 走链式回退）：`LL1 … heal=1:since=0` / `LL2 … heal=1:since=131` / `LL3 … heal=2`。
+- 收尾：`mt.ps1 --version 1.21.1 --phase stop --force --purge-saves` ⇒ `MT_STOP: OK (0s)` / `MT_CLEANUP_SAVES: PURGED 1` / `MT_CLEANUP_RESULT: OK`；`Get-Process java` 余 3 个**全是 Gradle 守护**（Zulu 21 PID 34464 + Adoptium 17 PID 36080 / 41468），无客户端残留。
+- **补跑（2026-10-22 19:44–19:53，复核后）**：复核抓出两处用例文档/判据口径问题（见坑 27 与 §5-22 ⑤），据此改了 4 个用例文件（`LULU-SIGN-*` 的标题与两处 note 对齐「友方 6→6」；`PRE4-CHIPSHOP-FRAME-*` 标题/证据改标「截图取证」并加一条 `note` 说明 vision 是 DELEGATED）⇒ 把改过的 4 条在两条线上**重跑一遍**：`LULU-SIGN-1.21.1` / `PRE4-CHIPSHOP-FRAME-1.21.1` / `LULU-SIGN-1.20.1` / `PRE4-CHIPSHOP-FRAME-1.20.1` **全 PASS**；两次收尾同样 `MT_STOP: OK` + `MT_CLEANUP_SAVES: PURGED 1` + `MT_CLEANUP_RESULT: OK`，`Get-Process java` 余 3 个皆 Gradle 守护。
+
+判据边界（如实登记，别当成已验）：
+
+1. **观感类没有字节判据**：电击手套火花「像不像电」、落雷音的音量音调、图标美术、碎裂粒子观感 —— 机器行只能证明「伤害结算发生了 / 实体在同一 tick 消失」，**不能**证明观感符合预期。三色外框那条更弱一层：`assert/vision` 在测试台里被映射成 **DELEGATED**（`scripts/test/mt_case.ps1:1623` 直接 `return New-MtPair 'DELEGATED'`、`:2439` 标 `→VIS`），**不判红也不判绿** ⇒ 该用例的 PASS 只等于「没崩 + kubejs/mixin 健康」，外框本身靠 `verify_chip_shop_ui.ps1` 的 G2b 静态正向断言 + 截图人工目视（见坑 27）。
+2. **卡牌购买钱包音效**只到「购买路径确实调了 `SoundPlayback`」这一层（`javap` 2 次 + `CHIP-CLIENT-BUY` 回归通过）；「耳朵里响起钱包声」仍需人工听。
+3. **死亡动画**（同一 tick `remove(KILLED)`、无躺倒/变红）实机只能看到「砍掉即消失」，帧级动画须录屏目视。
 ## 5 遗留与欠账
 
 ### Blocker
@@ -292,6 +325,15 @@ AP_NC2B_READ:hand=astral_dice:effect_card_monster_laser:handn=2:cards=2:sel=0:to
     ⑦ **P1 欠账**：`neoforge-26.1.2` / `fabric-1.20.1` 未移植本批（外观/音效随 P1 批次）。
     ⑧ **复核**（`dsh_code_review` run `e6b42a13-bf68-47be-8682-709c3b390c48`）：R1–R4 / R6 / R7 **SUPPORTED**、R5 **部分成立**；**无代码 / 产物缺陷**。它独立取证的关键读数与本批自述一致 —— 外框段与 `fe4aa05f^` 逐字相同（图标在外框之后绘制）、`javap` 计数 `qualityTex=2 / qualityCode=4 / blitStrip=7 / qualityFrameIndexOf=1`、三张 28×28 贴图两线俱在（162/160/158 B）、两 jar `META-INF/jarjar/` = 0、四处投放同源 MATCH、`verify_chip_shop_ui.ps1` 实跑 `CHIPUI_RESULT: OK`、`AGENTS-full.md` **3,621 行** 且 `verify-split.py` 四项 `[OK]`；mutate 套件它按「会改源码再还原」的口径只做静态核对（M38/M39 的 find 串各命中 1 行）。唯一 finding = **本文档 §0 第 2 条与 `handover-new-session-context.md` 的未推送数口径**（提审时实况 31、我按「提交后 32」提前写了 32）⇒ 提交后实况确为 **32**，两处已统一为 32 并注明实测时点。
 
+22. **pre.4 全量实机测试（2026-10-22 19:00–19:40，用户下达）—— 双线 10/10 PASS**：
+    ① 范围与读数见 §4.8；共 20 次用例执行（P0 两线 × 10 条）。1.21.1 首轮 3 条红，全部定性为**测试资产问题**（非产品缺陷），修完重跑全绿。
+    ② 为跑通判据新增/修正的**测试资产**（唯一改动面，产品源码零改动）：
+      - `scripts/test/resources/kubejs/<1.21.1|1.20.1>/server_scripts/astral_fixbatch_probe.js`：新增 `/astralfixbatch hurtby <tag>`（现场造一只 NoAI 掠夺者 → 施加一次怪物近战伤害 → 同 tick 读 `heal/last/now/since/hp` → 攻击者立刻 discard；伤害链全记在机器行 `api=` 与 `tried=` 里）；`fbxDoLuluHealRead` 的 `now` 从 `p.level.getGameTime()` 改为既有 `fbxNow(p)`（前者在 Rhino 下取到 -1）。
+      - `scripts/test/resources/kubejs/<线>/server_scripts/astral_bugfix_probe.js`：新增 `/astralprobe barplace <tag> <dx> <dz>`（按 `item/card/BarricadeCardItem#applyEffect` 的真实路径落碰撞方块 + 建实体 + `setCollisionPos`）；`doLuluPrep` 补装金骰子（`putInSlot(p,"dice",…,0)`）。
+      - 用例：`PRE4-BARR-KILL-*` 把裸 `/summon` 换成 `barplace` 并加放置断言；`PRE4-LULU-15S-*` 重排为 `hurtby` 三击（0s / 3s / 17s）+ 保命 regeneration + 收尾 `/effect clear @s`；`LULU-SIGN-*` 订正 2 条与 2026-09-28 规格冲突的陈旧断言（坑 25）。
+    ③ 判据：两线各 10 条 `MT_CASE_RESULT: … = PASS`（其中 9 条有机器判据；`PRE4-CHIPSHOP-FRAME-*` 只有健康断言 + 截图，vision 在测试台是 DELEGATED，见坑 27）；收尾 `MT_STOP: OK` / `MT_CLEANUP_SAVES: PURGED 1` / `MT_CLEANUP_RESULT: OK`，`Get-Process java` 无客户端残留（§4.8）。
+    ④ 未覆盖：观感类（粒子 / 音效 / 美术 / 死亡动画帧）见 §4.8「判据边界」；P1 两线按用户口径不测。
+    ⑤ **复核（`dsh_code_review` run `5f2955ef-125c-420b-8f5b-498d03d206df`）**：R1 / R2 / R4 / R5 / R6 / R7 **SUPPORTED**，R3 **部分成立** —— 两处 finding 全部已修：(a) [P2] `PRE4-CHIPSHOP-FRAME-*` 的 `assert/vision` 在测试台是 **DELEGATED**（`mt_case.ps1:1623` / `:2439`），该条 PASS 不含视觉判定 ⇒ 已把两条用例改标「截图取证」、加 `note` 步与 `evidence.machine_judge_none`，并把验收口径从「10/10 PASS」改为「9 机器 + 1 截图」（坑 27）；(b) [P3] `LULU-SIGN-*` 的 title 与两处 note 仍写「友方瞬间治疗 6→10」，与已改断言自相矛盾 ⇒ 已按断言口径改为「友方 6→6 / 只剩敌对缓慢」。修完把 4 条改过的用例双线重跑，全 PASS（见 §4.8 补跑行）。
 ## 6 坑（踩过的，后续别重踩）
 
 1. **`run/<线>/mods` 的 jar 曾 ≠ `build/libs`（neo 于 2026-10-22 15:47 对齐；forge 按 §6-3 永远放 devlibs named jar）**：当时 neo 是 00:22 的旧构建（同名、2 B 差异），
@@ -345,6 +387,17 @@ AP_NC2B_READ:hand=astral_dice:effect_card_monster_laser:handn=2:cards=2:sel=0:to
 
 21. **反向断言守门在功能回滚后会变成「假绿」（2026-10-22 踩中）**：`verify_chip_shop_ui.ps1` 的 G2b 原本断言「不画品质外框」（2026-10-21 无边框口径），用户报障时它**照样全绿** —— 因为「外框被误删」正好满足那条反向断言。⇒ 一旦某个特性是**用户可见的既有行为**，守门必须是**正向**断言（存在性 + 逐字锚点 + 方法体完整性），反向断言只用于「明确禁止某写法」的场景；特性被回滚时，反向断言必须同批反转（本批 M38/M39 已同步）。
 22. **变异套件跑不完就中断会把变异留在源码里（2026-10-22 踩中）**：`mutate_chip_shop_ui.ps1` 单跑 2–4 分钟，`run_code` 默认 `timeoutMs` 120s 会把它打断，当场把第 35 条变异（`if (chip >= 0) {` → `if (chip > 0) {`）留在 `forge-1.20.1/.../screen/ChipShopScreen.java`，随后守门报 `筹码格命中判定被改` —— 极易被误判成「我刚写的代码有问题」。⇒ 跑变异套件一律 `tools.pwsh({ run_in_background: true })` + `job_output({ wait: true })` 并给 `run_code` 足够 `timeoutMs`；**中断后先 `git status` 看有没有残留变异痕**（它会自动还原，但被杀时来不及），另需预建 `temp\t87`（脚本不建目录，缺目录只报 `Could not find a part of the path ...\temp\t87\mutation.log`）。
+
+23. **Rhino 下调不到 `p.hurt(...)`，且 1.20.1 没有 `/damage` 命令（2026-10-22 连踩两个）**：
+    ① `ServerPlayer.hurt(DamageSource,float)` 在 KubeJS/Rhino 里报 `TypeError: Cannot call property hurt in object ServerPlayer[…] It is not a function, it is "boolean"`（`hurt` 声明于 `LivingEntity`，成员派发落到了别的同名 boolean 上）；
+    ② `/damage` 是 **1.20.2** 才进原版的命令，1.20.1 侧不存在 ⇒ 任何「两线共用一条用例、用 `/damage` 打玩家」的写法在 forge 线必然红。
+    ⇒ 统一走探针 `/astralfixbatch hurtby <tag>`：`p.damage(amount, src)`（KubeJS 包装器，**参数顺序 = 伤害在前**）→ 兜底 `p.attack(src, amount)` → `mob.doHurtTarget(p)` → `mob.attack(p)`，判据是**血量真的掉了**而不是「没抛异常」。实测 1.21.1 落在 `player_damage`、1.20.1 落在 `player_attack_ds`。
+24. **裸 `/summon astral_dice:barricade` 必定自毁（2026-10-22 踩中，白跑一轮）**：`entity/BarricadeEntity#tick` 首段「没有碰撞方块的路障无法存在」⇒ `if (collisionPos == null) { discard(); return; }`；用裸 summon 摆靶再测 `killbarricade`，读数恒为 `killed=0`（看着像产品坏了）。正解 = 复刻真实放置路径（`ModBlocks.BARRICADE_COLLISION` 落方块 + `create` + `setCollisionPos`），即探针的 `barplace`。
+25. **陈旧用例会把「规格已变」误报成回归（2026-10-22）**：`LULU-SIGN-*` 还要求「范围内友方 pig 被瞬间治疗 6→10」，而这段范围治疗已在 **2026-09-28 用户裁决**里整段删除（`LuluSignItem` 类 javadoc 与 `apply()` 逐字可查，范围能力只剩「敌对生物缓慢 1:00」）；该用例另自 **2026-10-01** 骰子闸门（`3c8f0d36`）起就开不出会话（`luluprep` 从不装骰子）。两条都是**测试资产陈旧**，不是产品缺陷。⇒ 断言里的期望值必须能在源码 javadoc/常量里找到**同一时点**的依据；找不到就先怀疑用例。
+
+26. **用例之间会互相污染（2026-10-22 踩中）**：新用例为防止 17 秒窗口里被怪打死给了 `/effect give @s regeneration 300 3`，结果 5 分钟内下一条用例的「加血」断言被顶到满血（`hp=12->16` 实测成 `20->20`）。⇒ 任何给玩家上长效增益/减益的用例，**收尾必须 `/effect clear @s`**；跨用例的世界状态（时间 / 天气 / 血量 / 难度）一律在用例开头显式重置。
+
+27. **`assert/vision` 在测试台里不判红绿（2026-10-22 被复核抓出）**：`scripts/test/mt_case.ps1:1623` 对 vision 一律 `return (New-MtPair 'DELEGATED' …)`、`:2439` 映射成 `→VIS` 步骤标记 ⇒ **含 vision 的用例 PASS 只等于「没崩 + 其余 log 断言过」**，视觉项永远不会让它红，也永远不会让它绿。⇒ ① 视觉项**不能算机器判据**，验收表里要单列「截图取证 / 人工目视」；② 想让它可机判，就得在客户端渲染路径上打机器行（`LOGGER.info("AP_…")`）再用 log 断言，否则别把它写进 PASS 数。本批 `PRE4-CHIPSHOP-FRAME-*` 已按此口径改写标题/证据并单列。
 
 ## 7 关键路径（命令与文件）
 

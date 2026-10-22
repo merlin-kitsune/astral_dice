@@ -1,0 +1,183 @@
+{
+  "case_id": "PRE4-LULU-15S-1.21.1",
+  "title": "史莱姆立牌被动 15 秒冷却（HURT_COOLDOWN_TICKS 300）—— 怪物近战三击：0s / 3s / 17s",
+  "version": "1.21.1",
+  "channel": "kubejs",
+  "target": {
+    "type": "feature",
+    "ref": "lulu_hurt_cooldown_15s"
+  },
+  "on_fail": "continue",
+  "steps": [
+    {
+      "op": "note",
+      "text": "判据正本：`item/sign/LuluSignItem.java` 的 `HURT_COOLDOWN_TICKS`（2026-10-22 由 20 → **300**，neo :68 / forge :70）与 `onHurt`（`nowTick - getLuluLastHurtTick < HURT_COOLDOWN_TICKS` ⇒ return；否则写 last + 治愈点 +1）。\n\n量具 = 本轮新增的两个只读通道：\n- `/astralfixbatch luheal <tag>` ⇒ `AP_FX_<tag>_LUHEAL:heal=:last=:now=:since=`（基线读数）\n- `/astralfixbatch hurtby <tag>` ⇒ 现场造一只 NoAI 掠夺者 → `p.hurt(damageSources().mobAttack(mob), 1.0)` → 打完立刻 discard，同 tick 落 `AP_FX_<tag>_HURT:ok=:heal=:last=:now=:since=:hp=`\n\n为什么不用 `/damage`：该命令 1.20.2 才进原版，1.20.1 侧不存在 ⇒ 两线统一走 `hurtby`（伤害源仍是怪物近战，与被怪近身打中的归因一致）。\n为什么先给 regeneration：17 秒窗口里只要玩家被怪打死，`LuluLastHurtTick` 附件会随重生重置 ⇒ heal 归零假红（2026-10-22 18:53 实测踩中）。\n三击间隔 0s / 3s / 17s：第二次必须被 300 tick 闸门挡住（heal 仍 1），第三次必须过闸（heal 2）；旧 20 tick 口径会在第二次漏成 2。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode survival",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/time set noon",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[type=!player,distance=..48]",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/effect give @s minecraft:regeneration 300 3 true",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 300
+    },
+    {
+      "op": "note",
+      "text": "布景：装史莱姆立牌（luluprep 会先把治愈点清 0，并在本轮额外补装骰子 —— 立牌技能有骰子总闸门）"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe luluprep LL",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralfixbatch luheal LL0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "note",
+      "text": "【①】首次受击 ⇒ heal 0 → 1（写入 last）"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralfixbatch hurtby LL1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "note",
+      "text": "【②】3 秒后再受击 ⇒ heal 仍为 1，since 落在 60..99 tick（被 300 tick 闸门挡住；旧 20 tick 口径会漏成 2）"
+    },
+    {
+      "op": "wait",
+      "ms": 3000
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralfixbatch hurtby LL2",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "note",
+      "text": "【③】再过 17 秒受击 ⇒ 距上次触发 > 300 tick ⇒ heal 变 2（闸门到期）"
+    },
+    {
+      "op": "wait",
+      "ms": 17000
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralfixbatch hurtby LL3",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "note",
+      "text": "收尾：清掉保命用的 regeneration（否则 5 分钟内后续用例的「加血」类断言会被顶到满血，实测 2026-10-22 把 LULU-SIGN 的 hp=12->16 撞成 20->20）"
+    },
+    {
+      "op": "inject_command",
+      "command": "/effect clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_LL_PREP:heal=0:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_FX_LL0_LUHEAL:heal=0:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_FX_LL1_HURT:ok=1:[^\\n]*:heal=1:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_FX_LL2_HURT:ok=1:[^\\n]*:heal=1:[^\\n]*:since=(?:[4-9]\\d|[12]\\d{2}):"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_FX_LL3_HURT:ok=1:[^\\n]*:heal=2:"
+    },
+    {
+      "type": "crash"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "mixin"
+    }
+  ],
+  "evidence": {
+    "note": "机器行锚点：AP_LL_PREP / AP_FX_LL0_LUHEAL / AP_FX_LL1..LL3_HURT（探针 astralprobe luluprep + astralfixbatch luheal|hurtby）"
+  }
+}
