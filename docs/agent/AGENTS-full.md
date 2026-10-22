@@ -31,9 +31,9 @@ When extending this workspace:
 
 ## 二次验证规范（Independent Second-Pass Verification）— 必须遵守（2026-10-01 用户裁决）
 
-> ⚠️ **2026-10-08 用户裁决：复核执行方已改为 DSH 原生代码审查（`code_review`）** —— 本节的验收要求（独立证据、逐条对账、先取证后结论）仍然有效，但**不再派 subagent 做复核**；规则正本见〈子代理与测试环境硬规则〉第 4 条。
+> ⚠️ **2026-10-08 用户裁决：复核执行方已改为 DSH 原生代码审查（2026-10-22 起执行工具 = `dsh_code_review`，插件 `@michengai/dsh-code-review`）** —— 本节的验收要求（独立证据、逐条对账、先取证后结论）仍然有效，但**不再派 subagent 做复核**；规则正本见〈子代理与测试环境硬规则〉第 4 条。
 
-**任何非平凡改动，收尾前必须做一遍独立二次验证（2026-10-08 起复核执行方 = `code_review` 一次性独立会话，正本见〈子代理与测试环境硬规则〉第 4 条）。** 目的**不是**「再读一遍」，
+**任何非平凡改动，收尾前必须做一遍独立二次验证（2026-10-08 起复核执行方 = DSH 原生代码审查 `dsh_code_review` 一次性独立会话，正本见〈子代理与测试环境硬规则〉第 4 条）。** 目的**不是**「再读一遍」，
 而是用**独立证据**去证伪主会话的结论：主会话的自述（「我已核对」「守门全绿」「已落盘」「已全线对等」）
 **不能作为验收依据** —— 它可能就是幻觉或遗漏，且**自证天然有偏**（复用自己的假设去检查自己的结论）。
 
@@ -47,7 +47,7 @@ When extending this workspace:
 
 ### 怎么派（brief 必须自包含 —— 子代理看不到本会话）
 
-> ⚠️ 2026-10-08 起：复核统一改用 `code_review`（一次性独立会话、brief 一次性写全）；本节「brief 自包含 / 禁喂主会话结论 / 要原文证据」的要求同样适用于喂给 `code_review` 的输入。
+> ⚠️ 2026-10-08 起：复核统一改用 DSH 原生代码审查（一次性独立会话、brief 一次性写全）；本节「brief 自包含 / 禁喂主会话结论 / 要原文证据」的要求同样适用于喂给审查工具的输入。**2026-10-22 工具口径**：执行工具 = `dsh_code_review({ input })`（插件 `@michengai/dsh-code-review`）；`input` 非空 ⇒ 整段**原样**作为自定义审查要求（不解析 CLI 选项，`--base main` / `.` / `status` 都当普通文字），`input` 为空 ⇒ 打开原生范围选择（对比基准分支 / 未提交更改 / 某次提交 / 自定义要求）。⚠️ 故**范围必须写成自然语言**（例「审查工作树未提交改动，含未跟踪文件」「审查最近 1 个提交 `7e7cf978`」）；子 Agent 自行取 git 状态与差异，报告以 GFM 回到本会话，进度看 `/review-status`、取消用 `/review-cancel`。
 
 - 🚫 **禁**把主会话的结论、改动清单、「我已经改好了」当**事实**喂给它 —— 那是诱导它附和，等于白做。
 - ✅ **只给**：目标 / 涉及路径 / **期望的不变量** / **可独立执行的判据命令**（守门脚本、`grep -rn`、开包核验…）。
@@ -83,13 +83,13 @@ When extending this workspace:
    它会持续占用 CPU / GPU、污染下一次冷启动前置状态，并让 enableShaders 之类的运行期状态被意外持久化。
    **收尾一律带 `--purge-saves`**（2026-10-08 用户裁决：每轮实机验证后清理旧存档）：标准收尾命令 = `pwsh -File scripts/test/mt.ps1 --version <线> --phase stop --purge-saves`，成功判据 = `MT_CLEANUP_SAVES: PURGED <n>` + `MT_CLEANUP_RESULT: OK`；`.mt_keep_alive` 存在时只提示、保留取证现场。收尾同时**删除本轮注入的临时探针**（`run/<线>/kubejs/**` 的一次性测试脚本，以及源码侧 `scripts/test/resources/kubejs/**` 的临时探针），并在交付报告里贴 `git status --short -uall` 原文（2026-10-11 用户交接裁决）。
 
-4. **二次验证（复核）一律改用 DSH 原生代码审查（code_review），不再派 subagent / teammate**：每次复核 = **一次性独立会话、不复用**；
-   调用时把「复核对象（提交或文件范围）+ 背景 + 逐项判据（R1..Rn）+ 输出要求（判定 SUPPORTED / REFUTED / 部分成立 + 逐字证据 文件:行号 + 未验证项 + 最小修法）」**一次性写全**（会话干净，不给它沿用上下文的机会）。代码修改仍按第 1 条（每任务一个新 subagent、单任务、用完即弃）；复核不再由 subagent 承担。 ⚠️ **区分两件事**：本条约束的是**复核（二次验证，执行方 = `code_review`）**；**功能审查 / 功能验证**（静态取证、`:<线>:classes` 编译、`scripts/verify/**` 守门脚本、与需求逐字对账）自 2026-10-12 起按第 7 条**由一次性独立子代理**执行 —— 两者不得互相替代（**复核不派 subagent，功能审查必须派 subagent**）。
+4. **二次验证（复核）一律改用 DSH 原生代码审查（插件 `@michengai/dsh-code-review`，工具 `dsh_code_review`），不再派 subagent / teammate**：每次复核 = **一次性独立会话、不复用**；
+   调用 `dsh_code_review({ input })` 把「复核对象（提交或文件范围，用自然语言写清）+ 背景 + 逐项判据（R1..Rn）+ 输出要求（判定 SUPPORTED / REFUTED / 部分成立 + 逐字证据 文件:行号 + 未验证项 + 最小修法）」**一次性写全**进 `input`（会话干净，不给它沿用上下文的机会；该工具不解析 CLI 选项）。代码修改仍按第 1 条（每任务一个新 subagent、单任务、用完即弃）；复核不再由 subagent 承担。 ⚠️ **区分两件事**：本条约束的是**复核（二次验证，执行方 = `dsh_code_review`）**；**功能审查 / 功能验证**（静态取证、`:<线>:classes` 编译、`scripts/verify/**` 守门脚本、与需求逐字对账）自 2026-10-12 起按第 7 条**由一次性独立子代理**执行 —— 两者不得互相替代（**复核不派 subagent，功能审查必须派 subagent**）。
 
-5. **实机验证必须由用户在提示词中明确下达**（2026-10-08 用户裁决）：默认情况下 agent 只做**代码功能验证** —— 静态取证与逐字对账、`:<线>:classes` 编译、`code_review`、`scripts/verify/**` 守门脚本、用例 JSON 与文档的一致性/行尾核对；**不得**自行启动 dev 客户端跑实机、连拍、探针或用例。用户明确要求实机时才执行，且收尾按第 3 条带 `--purge-saves`；未实机的欠账如实登记在交付报告里，等用户点名下指令再补。
+5. **实机验证必须由用户在提示词中明确下达**（2026-10-08 用户裁决）：默认情况下 agent 只做**代码功能验证** —— 静态取证与逐字对账、`:<线>:classes` 编译、`dsh_code_review`、`scripts/verify/**` 守门脚本、用例 JSON 与文档的一致性/行尾核对；**不得**自行启动 dev 客户端跑实机、连拍、探针或用例。用户明确要求实机时才执行，且收尾按第 3 条带 `--purge-saves`；未实机的欠账如实登记在交付报告里，等用户点名下指令再补。
 
 6. **改动后旧实机证据一律作废，先停旧实例再测新构建（2026-10-11 用户交接裁决）**：任何代码 / 资源改动落地后，此前一切实机读数与截图立即失效，不得作为新构建的验收依据；测新构建前必须先 `mt.ps1 --phase stop` 停掉旧实例（禁止在旧实例上叠加新构建 —— `run/<线>/mods` 的 jar 会被旧进程持有且内容是旧代码）。
-7. **开发操作流程（2026-10-12 用户裁决，取代 2026-10-11 版本；同日二次裁决修订②③⑤⑥⑧：所有代码编写一律通过向 Subagent 下达写代码命令完成，主 Agent 只负责规划 / 派活 / 验收 / 提交，不亲自编写任何代码）**：① 新功能先写**开发需求 / 设计计划**；② **P0 基准线 `neoforge-1.21.1` 的实现派子代理编写**（一次性、单任务、brief 自包含；主 Agent 不亲自写主线实现）；③ 子代理交付后由主 Agent 验收并按需自测（`:<线>:classes` 编译 / `scripts/verify/**` 守门脚本）；④ 完成后用 `code_review` 复核；⑤ 复核问题派新子代理修完后，**派子代理做独立功能审查**（静态取证、编译、守门脚本、与需求逐字对账）；⑥ 主 Agent 逐条回应审查结论、缺陷**派新子代理修复**，**全部确认无误后**才派子代理做 `forge-1.20.1` 移植（按 `docs/compat-1.20.1-forge.md` 差异映射）；⑦ 移植线再走一次 `code_review` 复核 + **另派一个独立子代理**做功能审查；⑧ 子代理派发一律**优先派给 DeepSeek**（功能实现用 **DeepSeek V41 Flash**），其它模型仅作备用，仍受第 1 条「一个子代理一个任务、用完即弃」约束；复核 / 审查发现的问题交**新**子代理改进，**连续 3 次仍改不到位 ⇒ 报用户拍板**。⑨ **复核分级（2026-10-13 用户裁决）**：a) **非代码改动**（文档 / 规则 / 版本号 / CHANGELOG / 配置注释等）只做 `code_review`，免子代理功能复验；b) **小规模代码修正**（口径 / 字符串 / 数值 / 显示内容等简单修改）只做 `code_review`，除非用户另行下达指令，不执行子代理功能复验；c) **新功能请求**：`code_review` 后由主 Agent 按改动规模自判功能复验范围（全量 / 部分 / 不做），判断依据如实写进交付报告；d) **大型功能变更或新增**执行**全量**功能复核；e) **实机测试仍须用户明确许可**——无法仅靠功能复核确认的结果，必须向用户说明情况并请求其下达实机测试。**代码与二进制都无法确认是否符合需求时，必须询问用户是否实机测试**（用户明确下达才做，流程见第 5 条，收尾按第 3 条）；必须用户决策的问题或难以实现的功能**交用户拍板**，不得擅自取舍。
+7. **开发操作流程（2026-10-12 用户裁决，取代 2026-10-11 版本；同日二次裁决修订②③⑤⑥⑧：所有代码编写一律通过向 Subagent 下达写代码命令完成，主 Agent 只负责规划 / 派活 / 验收 / 提交，不亲自编写任何代码）**：① 新功能先写**开发需求 / 设计计划**；② **P0 基准线 `neoforge-1.21.1` 的实现派子代理编写**（一次性、单任务、brief 自包含；主 Agent 不亲自写主线实现）；③ 子代理交付后由主 Agent 验收并按需自测（`:<线>:classes` 编译 / `scripts/verify/**` 守门脚本）；④ 完成后用 `dsh_code_review` 复核；⑤ 复核问题派新子代理修完后，**派子代理做独立功能审查**（静态取证、编译、守门脚本、与需求逐字对账）；⑥ 主 Agent 逐条回应审查结论、缺陷**派新子代理修复**，**全部确认无误后**才派子代理做 `forge-1.20.1` 移植（按 `docs/compat-1.20.1-forge.md` 差异映射）；⑦ 移植线再走一次 `dsh_code_review` 复核 + **另派一个独立子代理**做功能审查；⑧ 子代理派发一律**优先派给 DeepSeek**（功能实现用 **DeepSeek V41 Flash**），其它模型仅作备用，仍受第 1 条「一个子代理一个任务、用完即弃」约束；复核 / 审查发现的问题交**新**子代理改进，**连续 3 次仍改不到位 ⇒ 报用户拍板**。⑨ **复核分级（2026-10-13 用户裁决）**：a) **非代码改动**（文档 / 规则 / 版本号 / CHANGELOG / 配置注释等）只做 `dsh_code_review`，免子代理功能复验；b) **小规模代码修正**（口径 / 字符串 / 数值 / 显示内容等简单修改）只做 `dsh_code_review`，除非用户另行下达指令，不执行子代理功能复验；c) **新功能请求**：`dsh_code_review` 后由主 Agent 按改动规模自判功能复验范围（全量 / 部分 / 不做），判断依据如实写进交付报告；d) **大型功能变更或新增**执行**全量**功能复核；e) **实机测试仍须用户明确许可**——无法仅靠功能复核确认的结果，必须向用户说明情况并请求其下达实机测试。**代码与二进制都无法确认是否符合需求时，必须询问用户是否实机测试**（用户明确下达才做，流程见第 5 条，收尾按第 3 条）；必须用户决策的问题或难以实现的功能**交用户拍板**，不得擅自取舍。
 
 ## 命令执行规范（Shell）— 必须遵守（2026-09-19 用户裁决）
 
@@ -544,7 +544,7 @@ When extending this workspace:
 - **基准线 = `neoforge-1.21.1`**：一切功能面的差异判定以它为基准。`forge-1.20.1` 是 P0 同侪（功能面与基准线一致，MC 版本差异另计）。
 - **移植方向**：`neoforge-26.1.2` = **向上**（1.21.1 → 26.1.2）；`fabric-1.20.1` = **向下**（MC 1.20.1）。
 - **fabric 的代码蓝本优先取 `forge-1.20.1`**（同为 MC 1.20.1）：凡 forge 已实现的功能，**照搬 forge 对应文件 + 固定平台替换**，天然保留 1.20.1 的配方 / 行为差异；只有 forge 也没有的功能才从 1.21.1 降级移植。⚠️ **但「整文件照搬」只适用于平台中性文件** —— 平台敏感类（含已裁决差异或本线独有内容）**必须逐段局部改**。
-- **P0 内部的落地时序（2026-10-12 用户裁决，同日二次裁决修订为派子代理实现）**：`neoforge-1.21.1`（基准线）的实现**派子代理编写**（主 Agent 不亲自写代码），先经 `code_review` 复核、再由**独立子代理做功能审查**，**确认无误后**才派子代理做 `forge-1.20.1` 移植，移植线再走 `code_review` + 独立子代理功能审查；两线最终仍同处一个提交批次（功能对等），但**实施有先后顺序**，不允许「两线并行各写一遍」。
+- **P0 内部的落地时序（2026-10-12 用户裁决，同日二次裁决修订为派子代理实现）**：`neoforge-1.21.1`（基准线）的实现**派子代理编写**（主 Agent 不亲自写代码），先经 `dsh_code_review` 复核、再由**独立子代理做功能审查**，**确认无误后**才派子代理做 `forge-1.20.1` 移植，移植线再走 `dsh_code_review` + 独立子代理功能审查；两线最终仍同处一个提交批次（功能对等），但**实施有先后顺序**，不允许「两线并行各写一遍」。
 
 ### 二、P0 内部允许的三类差异（其余一律要求对等）
 
@@ -721,7 +721,7 @@ When extending this workspace:
 
 ### 子项目修改默认规则 — 必须遵守
 - **功能/修复默认同步修改 P0 两线（2026-10-04 用户裁决；原「三线同批」口径作废）**:所有功能、修复、平衡性调整一律**同批落 `neoforge-1.21.1`(基准线)+ `forge-1.20.1`**,两线保持功能对等;**P1 两线(`neoforge-26.1.2` / `fabric-1.20.1`)待 P0 完成后按「## 版本优先级与跨线移植纪律」分别移植**。**实施方式**:以 `neoforge-1.21.1` 的实现为**语义基准**,按 `docs/compat-1.20.1-forge.md` / `docs/compat-26.1.2-neoforge.md` / `porting/fabric-1.20.1/FABRIC-DIFFS.md` 的差异映射在各线落地;平台差异逐条登记(不写「看起来一致」的实现)。
-- **实施分工（2026-10-12 用户裁决，取代 2026-09-19「每次代码修改必须创建 subagent、各线并行实施」的口径；同日二次裁决修订①③：写代码一律派 Subagent，主 Agent 不亲自编写任何代码）**：① **基准线 `neoforge-1.21.1` 的实现派子代理编写**（单任务、用完即弃；主 Agent 只负责规划、派活、验收与提交）；② 主线完成后 `code_review` 复核 → 由**一次性独立子代理**做功能审查（静态取证 / `:<线>:classes` 编译 / `scripts/verify/**` 守门 / 与需求逐字对账）；③ 主 Agent 逐条回应并派新子代理修完、**确认无误后**才派子代理做 `forge-1.20.1` 移植；④ 移植线再走 `code_review` + **另派一个独立子代理**做功能审查。子代理一律**单任务、用完即弃**（硬规则第 1 条），派发优先 DeepSeek（功能实现用 DeepSeek V41 Flash），其它模型仅作备用；同一文件同一时间只能归**一个** subagent 所有（共享文件由主 agent 预先指派 owner，跨文件接口由主 agent 先固定）；P1 两线并行移植时同受此约束。流程正本见「## 子代理与测试环境硬规则」第 7 条。
+- **实施分工（2026-10-12 用户裁决，取代 2026-09-19「每次代码修改必须创建 subagent、各线并行实施」的口径；同日二次裁决修订①③：写代码一律派 Subagent，主 Agent 不亲自编写任何代码）**：① **基准线 `neoforge-1.21.1` 的实现派子代理编写**（单任务、用完即弃；主 Agent 只负责规划、派活、验收与提交）；② 主线完成后 `dsh_code_review` 复核 → 由**一次性独立子代理**做功能审查（静态取证 / `:<线>:classes` 编译 / `scripts/verify/**` 守门 / 与需求逐字对账）；③ 主 Agent 逐条回应并派新子代理修完、**确认无误后**才派子代理做 `forge-1.20.1` 移植；④ 移植线再走 `dsh_code_review` + **另派一个独立子代理**做功能审查。子代理一律**单任务、用完即弃**（硬规则第 1 条），派发优先 DeepSeek（功能实现用 DeepSeek V41 Flash），其它模型仅作备用；同一文件同一时间只能归**一个** subagent 所有（共享文件由主 agent 预先指派 owner，跨文件接口由主 agent 先固定）；P1 两线并行移植时同受此约束。流程正本见「## 子代理与测试环境硬规则」第 7 条。
 - **每次改动完成后自动执行下述收尾(无需用户逐项指示)**:① 同步两个 CHANGELOG 文件 → ② 构建**本批涉及的全部线** → ③ **自动部署到整合包**(随 `gradlew build` 触发的 `pushToGame`;**四条线的推送白名单都是 `['multi-main']`——本开发工作树 `multi-dev-next` 与 `wt/*` 一律跳过,需强推时加 `-PdeployToPack`;四条线各推往自己的整合包 `狐の航空学 Voxy Edition` / `1.20.1-Forge 模组测试` / `26.1.2-NeoForge 模组测试` / `1.20.1-Fabric 模组测试` —— ⚠️ **目录名一律以本机 `ls D:/.minecraft/versions/` 实测为准,禁止按命名规则推测**(本类「目录已改名而配置未跟」的缺口已复发多次)**)→ ④ **自动本地提交**。全程**不执行 `git push`**。
 - **单侧改动仅限用户明确要求**:只有当用户明确说“只改 1.21.1 / 先不移植”时,才允许只改一个版本;禁止擅自只改单侧或长期让 **P0 两线**功能不对等（P1 待移植期的阶段性不对等属设计内，按差异清单登记）。
 - 平台差异按各子项目规范实现(1.21.1 / 26.1.2 用数据组件/附件,1.20.1 用 `component/*DataKey` 与 Capability;事件、Curios 注册、Mixin、数据包目录均不同),**不得为了“看起来一致”而破坏目标平台的正确写法**。
@@ -3237,7 +3237,7 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --new <注册id>
 - **断言侧**：读数必须按实际字段顺序写正则；`zhaocard` 类成对读数用 `before>after`。
 - **测试工具侧**：全目录 `--phase cases` 会给另一版本条目写 `SKIP` 记账，`report.md` 自动判定把非 `PASS` 全判 ❌；且其预算是固定 `90+90×用例数`，`MT_CASES_TIMEOUT_SEC` 管不到 ⇒ 一律逐条 `--case` 单跑，必要时用 `mt_report.ps1 collect --version <V> --verdict PASS` 重算并留痕（详见 zhao 测试流程段）。
 - **数据生成**：改资源前必须按「Gradle 构建守护规则」第 7 条移开 `run/<V>/mods` 里的旧产物 jar，否则 `runData` 静默用旧代码；两发布线 `exclude("**/.cache")` 口径不得回退。
-- **26.1.2 后续落地（P1）**：该线纳入主线，但⛔ **2026-10-12 起「与本批同批落地」的口径已作废** —— 现行 **P1 次要优先级**（见「## 版本优先级与跨线移植纪律」）：P0 两线（`neoforge-1.21.1` + `forge-1.20.1`）同批，26.1.2 待 P0 完成后移植（实施方式见〈子代理与测试环境硬规则〉第 7 条：P0 基准线派子代理编写、再经 `code_review` 与子代理功能审查后移植）。确有不落该线的例外时，必须在本清单追加迁移项。
+- **26.1.2 后续落地（P1）**：该线纳入主线，但⛔ **2026-10-12 起「与本批同批落地」的口径已作废** —— 现行 **P1 次要优先级**（见「## 版本优先级与跨线移植纪律」）：P0 两线（`neoforge-1.21.1` + `forge-1.20.1`）同批，26.1.2 待 P0 完成后移植（实施方式见〈子代理与测试环境硬规则〉第 7 条：P0 基准线派子代理编写、再经 `dsh_code_review` 与子代理功能审查后移植）。确有不落该线的例外时，必须在本清单追加迁移项。
 
 ---
 
@@ -3520,3 +3520,22 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --new <注册id>
 ## 待办交接：DSH 原生批次（2026-10-22）
 
 41. **DSH 接手批（Windows 原生）—— 规则口径改写 + 守门假红修复 + 立牌冷却补齐（2026-10-22）**：交接基线：分支 `multi-main`，交接点 `7df4dab2`（其后一条 `docs(handover)` 提交 = `5b134a38`），版本 `1.5.0-pre.3`，四线 `mod_version = 1.5.0-pre.3+<后缀>`、`starengine_version = 1.1.0-pre.2`。① **WSL→Windows 口径改写（提交链 `cf872bfb` → `76b2c4d2` → `3e90be38`）**：`AGENTS.md` 开头「## ⛔ 回滚裁决」原 1–5 条整体改写为 1–6 条 Windows 口径（测试台唯一 pwsh 7 / 编译与实机都 Windows 原生 / 产物以 `build\libs` 为唯一来源并核 sha256 / git 一律 git bash 的 `git -C` 不需 `--git-dir=` 与 `cmd.exe` / `~/work/adm-*` 与 `/mnt/**` 副本作废 / 注入脚本与 `/opt/zulu`+`use-jdk` 作废），原「测试收尾关游戏」顺延第 7 条；`docs/agent/AGENTS-full.md` 就地标注 L2861（WSL 等价命令）与第 37 条 ⑥（WSL 环境新知）失效，并新增本文件末尾〈WSL 口径失效对照〉5 行表；`docs/handover-1.5.0-pre.3-main.md` §1/§7 改 Windows 口径。判据 `python docs/agent/verify-split.py` 四项 `[OK]`。⚠️ **坑**：`AGENTS.md` 正文不得出现「生效红线区」两个分隔标记的完整字面量（脚本按它切分，实测报「红线区 19,092 字符 vs 原文 11,520 字符 [FAIL]」）；`tools.edit` 插多行会把整文件转成 LF，需全量 `\r\n` 归一化。② **`verify_probe_class_refs` 六处红点全部定性为「守门自身缺陷 / 产物陈旧」，无一是源码缺口**：JEI 走 **Curse Maven**（`neoforge-1.21.1/build.gradle:187` `curse.maven:jei-238222:8512040`、`forge-1.20.1/build.gradle:272` `curse.maven:jei-238222:8778011`）而脚本原只解析 `maven.modrinth`；`org.lwjgl.glfw.GLFW` 由加载器运行期提供（gradle 缓存 `lwjgl-glfw-3.3.x.jar`）；`net.minecraftforge.registries.ForgeRegistries` 只出现在 `kubejs/1.21.1/server_scripts/astral_bugfix_probe.js:16817`/`:16833` 的 JSDoc 反例里；`client.DamageNumberStore` 红因 `neoforge-26.1.2/build/libs` 最新仍为 `astral_dice-1.3.7-beta.2+neoforge_26.1.2.jar`（2026-10-05），该 jar 内该类条目 0（源码侧 2026-09-26 由 `46986687` 加入）⇒ 产物与源码不同源。脚本修正 = 新增 `$script:CurseRe` + `curse.maven` 缓存解析循环、白名单加 `org.lwjgl.`、新增 `Remove-JsComments`（先删 `/*…*/` 再删 `(?<!:)//…`，不吃 URL 的 `://`）。修正后：1.21.1 = 150 处 / 1.20.1 = 142 处 / 均 **0 处不可解析**，26.1.2 = 108 处 / 剩 1 处（陈旧产物）⇒ 末行 `RESULT: FAIL（1 处）`；该脚本判 FAIL 时 **`exit 1`**（2026-10-22 实测），判据只看末行。「处数比修前多 2/1/1」的根因 = 旧剥注释实现会误删真代码，被删掉的 `Java.loadClass` 不进判据；现实现为单趟字符串感知扫描，并对 `build.gradle` 同样先剥注释（顺带消掉 `maven.modrinth:immediatelyfast` 误报）。③ **立牌冷却口径补齐（9 个而非 11 个）**：`item/sign/` 下 `BonnieSignItem` / `DorothySignItem` / `HaiqingSignItem` / `JillSignItem` / `MegasSignItem` / `MosesSignItem` / `RenSignItem` / `TeruSignItem` / `ZhaoSignItem` 各 +2 行（注释 + `ModAttachments.setSignActiveMaxCooldown(<receiver>, (long) (<与 setSignActiveCooldownEnd 同一表达式>))`），P0 两线同改（整份 diff = 23 文件：18 java + 4 文档 + 1 脚本；两线 9 个立牌的匿名 action 内部类字节码内含该调用，外层类不含）；`JasmineSignItem:121` 与 `KomachiSignItem:150` **故意不改** —— 它们只缩短已有冷却（Jasmine 读 `maxCooldown` 后 `cdEnd - maxCooldown/2`、Komachi 把剩余 ×0.7），是 max 的**消费者**，写 max 会改错基准。判据：`gradlew.bat :neoforge-1.21.1:classes :forge-1.20.1:classes` BUILD SUCCESSFUL。④ **`run/<线>/mods` 已重投**：两份 pre.3 产物 sha256 与 `build\libs` 逐一相符（neo `09980b2e…`、forge `70b347ba…`），两个 P0 整合包本即同一对 jar（各自成对带 `starengine-*-1.1.0-pre.2.jar`）。⑤ **复核工具坑**：`code_review_execute` 内联跑会撞 cell 600s 墙钟且超时后拿不到结果（`code_review_status` 缺 `jobId` 报 `Invalid review job id`），预览还会过期（`Preview missing, expired or owner/model/directory changed`）⇒ 正解 `code_review_preview({})`（传绝对路径会报 `Unsafe repository path`）→ `code_review_start({phase:'execute',previewId,confirmed:true})` → `code_review_wait`。⑥ **未做（如实登记）**：1.20.1 创造模式扣卡**实机复验仍未做**（静态判据成立：`forge-1.20.1/.../item/card/BaseEffectCardItem.java:337`/`:423` 与 `.../screen/CardChoiceMenu.java:134` 均 `if (!player.isCreative())`；neo 侧用 `consume(1, player)` 内建 instabuild 判定），须用户明确下达实机；P1 两线（26.1.2 / fabric）一律未动；未 push、无 tag。
+## 🧰 代码审查工具链更新（2026-10-22 用户裁决：改用 @michengai/dsh-code-review）
+
+**背景**：旧的 DSH 原生 `code_review_*` 六件套（`code_review_preview` / `code_review_execute` / `code_review_start` / `code_review_wait` / `code_review_status` / `code_review_cancel`）**已不在工具面上**，由插件 `@michengai/dsh-code-review`（v1.0.1，装在 desktop/web profile）取代 —— 旧口径的 600s 墙钟、preview 过期、`protocol-correction` 卡死等问题随之作废（`docs/handover-1.5.0-pre.3-main.md` §6 坑 9 已改写）。
+
+**现行唯一口径**（AGENTS.md 红线区〈二次验证规范〉与〈子代理与测试环境硬规则〉第 4 条已同步为同一口径）：
+
+| 项 | 值 |
+|---|---|
+| 插件 | `@michengai/dsh-code-review` v1.0.1；命令入口 `/review`（范围选择）、`/review-status`（进度与最近报告）、`/review-cancel`（取消） |
+| 工具 | `dsh_code_review({ input })` —— **唯一参数** `input: string`（必填，`additionalProperties: false`） |
+| `input` 非空 | 整段**原样**作为自定义审查要求交给子 Agent（**不解析 CLI 选项**：`--base main`、`.`、`status` 都按普通文字传递） |
+| `input` 为空 | 打开原生范围选择：对比基准分支 / 未提交更改（暂存 + 未暂存 + 未跟踪）/ 某次提交（最近 100 条或自由输入引用）/ 自定义要求。⚠️ 该路径走宿主交互式问答器（`lib/selection.js` 的 `userQuestions`）⇒ 非交互环境（脚本 / 无人值守会话）必须给非空 `input`，否则走不通 |
+| 执行方式 | 宿主原生 `spawn` 一个**独立**子 Agent，保留宿主系统提示与其余工具，**只禁用递归审查与专家召唤**；子 Agent 自行取 git 状态、diff 与相关代码 |
+| 返回值 | 本会话收到一份 GFM 报告（状态标题 + 发现 + 带行号片段的本地文件链接）；同一份报告原子保存到 `reportDirectory`（默认 `$DSH_HOME/code-review`，即 `C:\Users\xmace\.dsh\code-review`，文件名为 `sha256(会话).json`，`/review-status` 由它重渲染 GFM；`lib/journal.js` 实测为临时文件 + rename 原子写） |
+| 权限 | 插件不改写审批策略；受权限限制的操作由宿主拒绝，审查 Agent 说明证据与测试缺口后返回（「完成」= Agent 已返回，不代表 diff 取全或测试通过） |
+
+**因此写 brief 的两条硬要求**：① **范围用自然语言写清**（例「审查工作树未提交改动（含未跟踪文件）」「审查最近 1 个提交 `7e7cf978`」「审查提交区间 `<a>..<b>`」）—— 写 `--base main` 等于让子 Agent 自己猜；② R1..Rn 判据与输出格式要求仍**一次性写全**进 `input`，红线区〈二次验证规范〉的三条验收标准不变（逐条挂原始证据 / 覆盖声称改过的每一处 / 明确列出不一致与无法判定项）。
+
+**历史条目读法**：本文档「待办交接各批」第 25 / 27 / 30 / 33 / 38 / 39 / 41 条与 `scripts/test/TESTING-SPEC.md` 附录 A 中出现的 `code_review` 及其 run id / jobId 均为**当时的旧接口**记录，2026-10-22 起一律读作 `dsh_code_review`（旧 id 无法在新工具里查询）。

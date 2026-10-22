@@ -162,6 +162,14 @@ CARDSLOT:slots=1:count=3     blank_insert denied:remain=2400
     `setSignActiveMaxCooldown` 补丁；`run/<线>/mods` 与两个整合包同源同理。⇒ 若要实机验立牌冷却或对外交付，
     必须先 `gradlew.bat :neoforge-1.21.1:jar :forge-1.20.1:jar` 重建、再投放并**重录 §2 的 sha256**（现值会变）。
     （创造模式扣卡修复在 `14:25` 之前就已进 jar，故待办 #1 的实机不受此影响。）
+11. **代码审查工具链已换插件（2026-10-22 用户裁决，本轮已完成）**：旧 DSH `code_review_*` 六件套已不在工具面上，
+    现行 = 插件 `@michengai/dsh-code-review`（v1.0.1）的单一工具 `dsh_code_review({ input })`：`input` 空 ⇒ 原生范围选择，
+    非空 ⇒ **整段原样**作为自定义审查要求（不解析 CLI 选项，范围须写自然语言）；报告以 GFM 回本会话，`/review-status` 查进度、`/review-cancel` 取消。
+    同步位置：`AGENTS.md` 红线区〈二次验证规范〉+〈子代理与测试环境硬规则〉第 4/5/7 条、契约 §C 第 6 条、索引末行；
+    `docs/agent/AGENTS-full.md`（红线区同文 + 新增〈代码审查工具链更新〉节 + §5-1/§5-2 规则行）；`docs/agent/AGENT-SPLIT.md:19`；
+    `docs/handover-new-session-context.md:57`/`:85`；`scripts/test/TESTING-SPEC.md` 附录 A 续 55；本文档 §6 坑 9。
+    判据：`python docs/agent/verify-split.py` 四项 `[OK]`；`grep -c 'code_review_'` 在 AGENTS.md 与 AGENTS-full 红线区 = 0。
+    复核（`dsh_code_review` 首跑 `fb01cfcf-ffce-4b0c-80a5-feb1c4016ef0`，patch is correct）提 4 条文档精度问题，**已全部就地修**：① AGENTS-full 新节「历史条目读法」清单误列第 37 条、漏第 33/38/39 条 ⇒ 实测命中为第 25 / 27 / 30 / 33 / 38 / 39 / 41 条（`git grep -n 'code_review' -- docs/agent/AGENTS-full.md` 对回条目号）；② 新节「本文档 §6 坑 9」指向 AGENTS-full 内不存在的章节 ⇒ 改为 `docs/handover-1.5.0-pre.3-main.md` §6 坑 9；③ 新节未写报告落盘位置 ⇒ 表内补 `reportDirectory`（默认 `$DSH_HOME/code-review` 即 `C:\Users\xmace\.dsh\code-review`，文件名 `sha256(会话).json`，`lib/journal.js` 临时文件 + rename 原子写）与「`input` 为空需宿主交互问答器，非交互环境必须给非空 input」；④ `scripts/test/TESTING-SPEC.md:1524` 自标「现行」却仍用 `code_review` 且写作「由主 Agent 亲自编写」 ⇒ 改 `dsh_code_review` 复核并订正为「派子代理编写」。改完复跑 verify-split 四项 `[OK]`，full 行数不变（3,541），索引末行无需再动。
 ## 6 坑（踩过的，后续别重踩）
 
 1. **`run/<线>/mods` 的 jar ≠ `build/libs`**：neo 是 00:22 的旧构建（同名、2 B 差异），forge 是 `build/devlibs`
@@ -178,9 +186,9 @@ CARDSLOT:slots=1:count=3     blank_insert denied:remain=2400
 8. **`verify_probe_class_refs` 的假红有三个来源**（2026-10-22 全部实测）：① JS **注释**里的类名被当引用；
    ② 依赖只写 `curse.maven` 而脚本只解析 `maven.modrinth`；③ 加载器运行期提供的库（LWJGL）不在 `build.gradle`。
    修完仍剩红点时，先查**该线产物是否陈旧**（jar 早于源码 `mtime`），别急着往源码里补类。
-9. **`code_review_execute` 会撞 cell 的 600s 墙钟上限**（实测整份文件级复核远超 10 分钟）：改用
-   `code_review_start({ phase:"execute", previewId, confirmed:true })` 拿 `jobId` 后台跑，再用 `code_review_wait` /
-   `code_review_status` 取结果；`code_review_status` 只吃 `jobId`，内联执行超时后拿不到任何结果（白跑一轮）。
+9. **旧 `code_review_*` 接口已作废（2026-10-22 用户裁决）**：`code_review_execute` 撞 cell 600s 墙钟、`preview` 有时效、
+   `code_review_start` 后还会卡在 `protocol-correction` —— **一律不要再调用**。现行 = 插件 `@michengai/dsh-code-review` 的
+   `dsh_code_review({ input })`（`input` 空 ⇒ 原生范围选择；非空 ⇒ 整段原样作为审查要求，范围要写自然语言）。
 
 ## 7 关键路径（命令与文件）
 

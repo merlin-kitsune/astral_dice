@@ -54,7 +54,7 @@
 ## 分工与互斥（Codex vs DSH，见 docs/agent/AGENT-SPLIT.md）
 
 - **DSH（你）= 唯一执行者**：写源码、编译、`git commit`（push 仍需用户放行）、实机 / `mt.ps1`、投放整合包。
-- **Codex（Linux/容器侧）= 只读验证**：读源码、写 `docs/**`、跑 `code_review`；禁写源码、禁 commit、禁实机。
+- **Codex（Linux/容器侧）= 只读验证**：读源码、写 `docs/**`、跑 `dsh_code_review`；禁写源码、禁 commit、禁实机。
 - 锁：动工作树前在 `F:\MCProject\.agent-locks\` 建 `dsh.lock`（PID + 时间 + 任务名），结束删除；同一工作树同时只允许一个 agent 跑 gradle。
 - `git status` 出现**不属于自己**的改动 ⇒ 立即停手，在 `docs/agent/CONFLICT.md` 记一行（时间/文件/推测归属），交用户裁决。
 - 每轮结束更新 `docs/handover-1.5.0-pre.3-main.md` §4（实机读数）与 §5（遗留）；Codex 只消费不回写。
@@ -82,4 +82,4 @@
 - `--purge-saves` 会删 `testworld`：下轮实机前先 `--phase env`。
 - P1 不碰：26.1.2 / fabric 的实现、验证、移植一律等用户下达。
 - 不 push、不打 tag、不擅自装工具（`apt`/`npm`/`pip`/新 JDK 等一律先征得用户许可）。
-- 独立复核用 Codex 侧 `code_review`（`mcp__code_review__code_review`）；派活走明文委派 `delegate_task`（一次一件事，timeout ≤1800s，禁轮询，结果只从返回值或落盘文件验收）；禁止 `fork_turns="none"`。
+- 独立复核用 DSH 插件 `@michengai/dsh-code-review`（工具 `dsh_code_review({ input })`：`input` 空 ⇒ 原生范围选择，非空 ⇒ 整段原样作为审查要求，范围写自然语言；报告以 GFM 回本会话）；派活走明文委派 `delegate_task`（一次一件事，timeout ≤1800s，禁轮询，结果只从返回值或落盘文件验收）；禁止 `fork_turns="none"`。

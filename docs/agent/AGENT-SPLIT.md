@@ -16,7 +16,7 @@
 | 文档 | 可以（`docs/**`） | 可以 |
 
 判定口径：凡会改变工作树内容或占用本机进程/GPU 的动作（写文件、`gradlew`、`mt.ps1`、`git commit`、
-复制 jar 到整合包）一律归 DSH；Codex 只做读取、`grep`、`code_review`、`docs/**` 写作。
+复制 jar 到整合包）一律归 DSH；Codex 只做读取、`grep`、`dsh_code_review`、`docs/**` 写作。
 Codex 私有副本的编译结果**不作为验收证据**（副本与工作树可能不同步），只用于它自己判断可行性。
 
 ## 二、互斥（同一工作树只允许一个执行者）
