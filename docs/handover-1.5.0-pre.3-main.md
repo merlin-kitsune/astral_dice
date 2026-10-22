@@ -10,8 +10,11 @@
 6. P0 双 jar 已定稿并投放两个整合包（sha256 与 `build/libs` 一致），库 jar 同名在位。
 7. 守门 8 跑 7 绿；唯一红 = `verify_probe_class_refs`（既有基线，见 §5-1）。2026-10-22 已修该门三处自身缺陷，
    红点从 6 处降到 **1 处**（26.1.2 产物陈旧，P1 待重建）。
-8. 实机：1.20.1 本批 6/6 PASS、1.21.1 5 条 FIXBATCH 判据全命中、末条 49/49 PASS。
-9. 最大风险：**创造模式扣卡修复（1.20.1 三处）尚未实机复验**；且 `run/<线>/mods` 里的 jar 与 `build/libs` 不一致（§6-1）。
+8. 实机：1.20.1 本批 6/6 PASS、1.21.1 5 条 FIXBATCH 判据全命中、末条 49/49 PASS；**创造模式扣卡复验 PASS**（§4.4，2026-10-22 16:10，用例 `CARD-NOCOST-CREATIVE-1.20.1`）。
+9. 待办 1 与「产物/投放同源」已闭环：创造模式扣卡 1.20.1 实测扣 **0** 张、生存对照扣 **1** 张（§4.4）；
+   两份 P0 jar 已于 **15:47** 重建并投放：两个整合包 + `run/1.21.1/mods` = `build/libs` reobf jar；
+   `run/1.20.1/mods` 按 §6-3 **仍放 `build/devlibs` named jar**（2,571,732 B `24941dad…`，dev 必需，与 reobf jar 不同哈希）。
+   剩余最大风险 = **提交未推 + 无 tag**（按用户口径不做）与 P1 欠账（§5-3）。
 
 ## 1 环境与路径
 
@@ -45,12 +48,23 @@
 | jar 内依赖区间 | `[1.1.0-pre.2,2.0.0)`，`type=required`（neo）/ `mandatory=true`（forge） | `META-INF/neoforge.mods.toml:141-144` / `META-INF/mods.toml:154-158` |
 | 内嵌库 | `META-INF/jarjar/` 计数 **0**（两线） | `unzip -l <jar> \| grep -c 'META-INF/jarjar/'` |
 
-P0 产物（`build/libs`，2026-10-22 14:25）：
+P0 产物（`build/libs`，**2026-10-22 15:47 重建**，含立牌冷却补丁）：
 
-- neo `astral_dice-1.5.0-pre.3+neoforge_1.21.1.jar` — **2,555,453 B** — `09980b2e0927f99a9086084f7b426d09c6ab038fdc43a5d7e95107b13e849a02`
-- forge `astral_dice-1.5.0-pre.3+forge_1.20.1.jar` — **2,601,019 B** — `70b347ba2367e13823a66789c22b05172f3a8ca8d3228060049d29f3c9695507`
-- 两个整合包内同名 jar 的 sha256 与上表**逐字一致**（实测）。
-- `run/1.21.1/mods` 副本 `4e5b498b…`（2,555,455 B，10-22 00:22）、`run/1.20.1/mods` 副本 `07a2e2db…`（2,571,445 B = `build/devlibs` named jar）—— **与 build/libs 不一致**，见 §6-1。
+- neo `astral_dice-1.5.0-pre.3+neoforge_1.21.1.jar` — **2,555,654 B** — `f063102b53f171b66229c1dcd47c7b45d4db6dccc93ccdf9c706ba347f04c2ed`
+- forge `astral_dice-1.5.0-pre.3+forge_1.20.1.jar` — **2,601,208 B** — `7bf787dff9e6498593f92119bd5f742799307a490a246926ce761a861c167d1c`
+- 旧值（14:25 构建，已被覆盖，只作历史）：neo 2,555,453 B `09980b2e…`、forge 2,601,019 B `70b347ba…`。
+- 投放（2026-10-22 15:47 实测，逐处 `Get-Item` + `Get-FileHash`）：
+  | 位置 | 字节 | sha256 | 与 §2 对账 |
+  |---|---|---|---|
+  | `run/1.21.1/mods` | 2,555,654 | `f063102b…04c2ed` | MATCH |
+  | `D:\.minecraft\versions\狐の航空学 Voxy Edition\mods` | 2,555,654 | `f063102b…04c2ed` | MATCH |
+  | `D:\.minecraft\versions\1.20.1-Forge 模组测试\mods` | 2,601,208 | `7bf787df…c167d1c` | MATCH |
+  | `run/1.20.1/mods` | **2,571,732** | `24941dad…026fff0` | **非同哈希，属预期**：= `build/devlibs` named jar（§6-3） |
+  说明：forge dev 必须跑 named jar（reobf 的 SRG 调用在 dev 会抛 `NoSuchMethodError`），故 `run/1.20.1/mods` **不应**等于 `build/libs`；
+  本轮 1.20.1 实机（§4.4）跑的就是这份 15:47:54 的 named jar（与 reobf jar 同源、同含扣卡修复）。
+- 产物含立牌冷却补丁的字节码证据：两线 `item/sign/BonnieSignItem$1.class` 经 `javap -p -c` 命中 `setSignActiveMaxCooldown` 1 次（外层类 0 次）。
+- 成对库：两个整合包各自有 `starengine-neoforge-1.21.1-1.1.0-pre.2.jar`（98,733 B）/ `starengine-forge-1.20.1-1.1.0-pre.2.jar`（103,604 B）；
+  两个 `run/<线>/mods` **无** starengine jar（dev 由 Gradle classpath 提供，历史如此）。
 
 ## 3 本批批次表（一行一批：提交号 / 主题 / 关键落点）
 
@@ -91,10 +105,36 @@ CARDSLOT:slots=1:count=3     blank_insert denied:remain=2400
 5 条 FIXBATCH 判据全命中：`G4A_TICKET2:after1=3:after2=3`、`END_WATCH:jumps=0`、`charge 2→4→5`、
 `equip=1:cd=1:charge=2:dmg=6,2`、`slots=1:count=3`；末条 **49/49 PASS**。
 
-### 4.3 创造模式扣卡（改前实测）
+### 4.3 创造模式扣卡（改前实测，改后见 §4.4）
 
 - 1.21.1 创造：扣 **0** 张（`live.consume(1, player)` 按 instabuild 豁免，`BaseEffectCardItem:338`/`:423`、`CardChoiceMenu:130`）。
 - 1.20.1 创造：扣 **1** 张（裸 `shrink`）⇒ 已改三处为 `if (!player.isCreative())`。
+
+### 4.4 创造模式扣卡复验（2026-10-22 16:10，1.20.1，**PASS**）
+
+用例：`scripts/test/cases/CARD-NOCOST-CREATIVE-1.20.1.json`（46 steps / 10 asserts，`channel=kubejs`）
+命令：`pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.20.1 --phase cases --case cases/CARD-NOCOST-CREATIVE-1.20.1.json --case-timeout 300`
+⇒ `MT_CASE_RESULT: CARD-NOCOST-CREATIVE-1.20.1 = PASS`（exit 0，10/10 assert PASS，无 crash-reports）。
+
+关键读数原文（探针日志，非截图）：
+
+```
+AP_NC1_PREP:hand=astral_dice:effect_card_monster_laser:handn=1:cards=1:...:plays=0:max=1:blocked=0      # 创造段基线
+AP_NC1A_READ:hand=astral_dice:effect_card_monster_laser:handn=3:cards=3:...:plays=0:max=1:blocked=0      # 发 3 张后
+AP_FX_NC1_CAST:called=1:tok=597076215:sel0=1:tid=1426:hand=...:cd=0:charge=0
+AP_NC1B_READ:hand=astral_dice:effect_card_monster_laser:handn=3:cards=3:sel=0:token=-1:...:plays=1:max=1:blocked=1   # 出牌成功、卡数不变
+AP_NC2A_READ:hand=astral_dice:effect_card_monster_laser:handn=3:cards=3:...:plays=0:max=1:blocked=0      # 生存对照段
+AP_FX_NC2_CAST:called=1:tok=147078057:sel0=1:tid=1450:hand=...:cd=0:charge=0
+AP_NC2B_READ:hand=astral_dice:effect_card_monster_laser:handn=2:cards=2:sel=0:token=-1:...:plays=1:max=1:blocked=1   # 生存扣 1 张
+```
+
+- 创造段：`plays=1`（**出牌确实发生**）且 `handn/cards` 3→3 ⇒ **扣 0 张** ⇒ `BaseEffectCardItem.java:337` 的 `if (!player.isCreative())` 实机成立。
+- 生存对照段：同一流程 `handn/cards` 3→2 ⇒ 量具本身能测出扣除（**反假绿**）。
+- 两段 `blocked=1` 都在出牌成功（`plays=1`）之后出现，属 `EffectCardPeriod` 正常锁定；出牌成功后会话结束（`sel=0:token=-1`），故断言**不锚** `sel/token`。
+- 前置两处闸门（第一轮假绿的真因，见 §6 坑 10）：① 未佩骰子时 `TargetSelectionManager.java:287` 直接 return；② `cardprep` 的 item 参数必须加引号。
+- 摘录的那一轮（16:07:32 / 16:07:57 两次 cast）与最终 PASS 轮（16:08:47–16:09:33，`.mt_progress.json` 记 `step_index=56/56`）读数一致，仅 token 值不同（后轮为 `884704855` / `1965359188`），结论不变。
+- 收尾：`mt.ps1 --version 1.20.1 --phase stop --force --purge-saves` ⇒ `MT_STOP: OK (1s)` / `MT_CLEANUP_SAVES: PURGED 1` / `MT_CLEANUP_RESULT: OK`；
+  `Get-Process java` 余 2 个，均为 Gradle 守护进程（Zulu 21 PID 34464 + Adoptium 17 PID 41468），无客户端残留。
 
 ## 5 遗留与欠账
 
@@ -125,8 +165,10 @@ CARDSLOT:slots=1:count=3     blank_insert denied:remain=2400
    26.1.2 = 19 jar / 46,346 / **108 处** / **1**（仅 `DamageNumberStore`）⇒ 末行仍 `RESULT: FAIL（1 处）`。
    （处数比修前多 2/1/1：旧版剥注释实现会**误删真代码**，被删掉的 `Java.loadClass` 不参与判据。）
    ⚠️ 该脚本判 FAIL 时 **`exit 1`**（2026-10-22 实测，`scripts/verify/verify_probe_class_refs.ps1:527-529`），判据以末行 `RESULT` 为准。
-2. **创造模式扣卡修复未实机复验**：改动已落盘（`forge-1.20.1/.../item/card/BaseEffectCardItem.java:337`、
-   `:423`，`forge-1.20.1/.../screen/CardChoiceMenu.java:134`），但 1.20.1 创造出牌仍待实机确认扣 0 张。
+2. ~~**创造模式扣卡修复未实机复验**~~ ⇒ **2026-10-22 已闭环（§4.4）**：1.20.1 创造实测扣 **0** 张、生存对照扣 **1** 张，
+   用例 `scripts/test/cases/CARD-NOCOST-CREATIVE-1.20.1.json` PASS。三处改动（`BaseEffectCardItem.java:337`/`:423`、
+   `CardChoiceMenu.java:134`）中，`:337`（选择器确认路径）已实机取证；`:423`（自身牌 `use()`）与 `:134`（`CardChoiceMenu#consumeSelection`）
+   仍只有静态判据 ⇒ 登记为**剩余轻度欠账**（同一用例未覆盖这两条入口）。
 3. **P1 两线整体欠账**（26.1.2 / fabric 均 0 命中，1.21.1 为基准）：JEI 筹码（`compat/jei` 9 文件）、
    `BeamFx`（4）、`GlobalEventGate`（3）、`RepulsionEntity`（10）、`CardShopMenu#planPlacement`（1）、
    `EventDrawBlock`（6）。⇒ 1.5.0 正式版前不验证、不移植（用户裁决）；映射表见 `docs/compat-1.5.0-porting.md`。
@@ -158,10 +200,9 @@ CARDSLOT:slots=1:count=3     blank_insert denied:remain=2400
    ferritecore / ImmediatelyFast / iris / kubejs / modernfix / carpet / rhino / sodium / superflat…），**没有** JEI 与 LWJGL；
    这正是脚本必须再补 gradle/Maven 依赖 classpath 的原因（§5-1）。
 
-10. **源码领先于产物（2026-10-22 立牌冷却补丁）**：`build\libs` 的两份 pre.3 jar 是 14:25 构建，**不含**本轮的
-    `setSignActiveMaxCooldown` 补丁；`run/<线>/mods` 与两个整合包同源同理。⇒ 若要实机验立牌冷却或对外交付，
-    必须先 `gradlew.bat :neoforge-1.21.1:jar :forge-1.20.1:jar` 重建、再投放并**重录 §2 的 sha256**（现值会变）。
-    （创造模式扣卡修复在 `14:25` 之前就已进 jar，故待办 #1 的实机不受此影响。）
+10. ~~**源码领先于产物（2026-10-22 立牌冷却补丁）**~~ ⇒ **15:47 已闭环**：`gradlew.bat :neoforge-1.21.1:jar :forge-1.20.1:jar` 重建
+    （BUILD SUCCESSFUL），四处投放 sha256 全部 MATCH，§2 的 sha256 已重录。历史记录：14:25 的 jar 不含
+    `setSignActiveMaxCooldown` 补丁，`run/<线>/mods` 与整合包当时同源同理。
 11. **代码审查工具链已换插件（2026-10-22 用户裁决，本轮已完成）**：旧 DSH `code_review_*` 六件套已不在工具面上，
     现行 = 插件 `@michengai/dsh-code-review`（v1.0.1）的单一工具 `dsh_code_review({ input })`：`input` 空 ⇒ 原生范围选择，
     非空 ⇒ **整段原样**作为自定义审查要求（不解析 CLI 选项，范围须写自然语言）；报告以 GFM 回本会话，`/review-status` 查进度、`/review-cancel` 取消。
@@ -182,9 +223,9 @@ CARDSLOT:slots=1:count=3     blank_insert denied:remain=2400
 
 ## 6 坑（踩过的，后续别重踩）
 
-1. **`run/<线>/mods` 的 jar ≠ `build/libs`**：neo 是 00:22 的旧构建（同名、2 B 差异），forge 是 `build/devlibs`
-   的 named jar（dev 必需，reobf 的 SRG 调用在 dev 会抛 `NoSuchMethodError`，且 `Error` 不被 MCP 的
-   `catch(Exception)` 兜住）。⇒ 实机前必须重新投放，别拿 `ls` 到同名就当成新构建。
+1. **`run/<线>/mods` 的 jar 曾 ≠ `build/libs`（neo 于 2026-10-22 15:47 对齐；forge 按 §6-3 永远放 devlibs named jar）**：当时 neo 是 00:22 的旧构建（同名、2 B 差异），
+   forge 是 `build/devlibs` 的 named jar（dev 必需，reobf 的 SRG 调用在 dev 会抛 `NoSuchMethodError`，且 `Error` 不被 MCP 的
+   `catch(Exception)` 兜住）。⇒ **每次重建 jar 后一律重新投放并核 sha256**，别拿 `ls` 到同名就当成新构建。
 2. **`--purge-saves` 会删 `testworld`** ⇒ 下轮实机前先 `pwsh -NoProfile -File scripts/test/mt.ps1 --version <线> --phase env`。
 3. **1.20.1 dev 必须用 `build/devlibs` 的 named jar**；整合包仍用 reobf jar（两者不可互换）。
 4. **AutoJS 已按上游 `7138d72` 重编**（包根 `cc.sighs` → `com.sighs`）；仓库内 Maven 坐标仍是
@@ -200,6 +241,14 @@ CARDSLOT:slots=1:count=3     blank_insert denied:remain=2400
    `code_review_start` 后还会卡在 `protocol-correction` —— **一律不要再调用**。现行 = 插件 `@michengai/dsh-code-review` 的
    `dsh_code_review({ input })`（`input` 空 ⇒ 原生范围选择；非空 ⇒ 整段原样作为审查要求，范围要写自然语言）。
 
+10. **实机用例的两处假绿闸门（2026-10-22 实测，1.20.1 扣卡用例连吃 5 轮假绿）**：
+    ① **骰子门控**：`TargetSelectionManager.java:287` `if (!CurioSlotUtil.hasDiceEquipped(player)) return;` —— 未佩骰子时
+    `confirm` 仍成功、会话被移除、token 换新，但 `action.apply` **根本不执行** ⇒ 既不扣卡也不出牌（`plays=0`）。
+    用例必须先 `/astralshop curioreset <tag>` → `/give @s astral_dice:golden_dice 1` → `/astralprobe equipslot dice "astral_dice:golden_dice" <tag>`。
+    ② **`/astralprobe cardprep <tag> <item>` 的引号口径**：注册处 `tag` = `StringArg.word()`（**不能加引号**）、
+    `item` = `StringArg.string()`（**必须加引号**）；两种错写法都**静默失败**（全不加引号报 `参数后应有空格分隔…`，全加引号在末尾报错）。
+    正形：`/astralprobe cardprep NC1 "astral_dice:effect_card_monster_laser"`。定性手段 = `/astralprobe cmdcheck <tag> <原始命令>`（只解析不执行）。
+    ③ 判据只锚 `handn/cards/plays/max/blocked`：出牌成功后会话结束为 `sel=0:token=-1`，锚 `sel=\d+` 必假红。
 ## 7 关键路径（命令与文件）
 
 ```powershell

@@ -1,0 +1,268 @@
+{
+  "case_id": "CARD-NOCOST-CREATIVE-1.20.1",
+  "title": "1.20.1 创造模式出牌不扣卡：先装金骰子过 TargetSelectionManager:287 的门控，再对选择器牌（monster_laser）跑创造/生存两段各 3 张 → 两段 plays=1（确实出牌），创造 3 张不变、生存 2 张（对照组证明量具能测出扣除）",
+  "version": "1.20.1",
+  "channel": "kubejs",
+  "target": {
+    "type": "feature",
+    "ref": "effect_card_creative_no_cost"
+  },
+  "on_fail": "continue",
+  "steps": [
+    {
+      "op": "note",
+      "text": "判据正本 = `forge-1.20.1/src/main/java/com/merlinkitsune/astral_dice/item/card/BaseEffectCardItem.java:337`（选择器牌确认后）与 `:423`（自身牌 use()）：两处均已包 `if (!player.isCreative())`，对齐 1.21.1 的 `consume(1, player)`（instabuild ⇒ 不减少）。\n\n本用例只验**选择器出牌路径**（:337，可由服务端探针驱动，见 `/astralfixbatch cast`）：\n  ① 创造模式：主手 3 张 → 确认出牌 → `handn` 仍为 3（扣 0 张）；\n  ② 生存模式对照：主手 3 张 → 确认出牌 → `handn` 为 2（扣 1 张）。\n对照组是同一条用例的非空判据：没有它，『创造不扣卡』可能只是量具读不到扣卡（假绿）。\n\n量具 = `/astralprobe cardread <tag>` 的 `AP_<tag>_READ:` 行，`handn=` 是该物品 id 在整个背包（含主手）里的总数（`astral_bugfix_probe.js#cardState`）。\n基线重置 = `/astralprobe cardprep <tag> <item>`（出牌周期归零 + 清效果 + 清主背包 + 主手放 1 张），随后用 `/item replace ... 3` 把主手那张抬到 3 张。\n靶 = `/astralfixbatch hostiles <tag>`（两只 `minecraft:pillager`，非亡灵、NoAI、带仇恨），`cast` 走 `TargetSelectionManager.confirm` ⇒ `SelectorAction#apply`，即 :337 那条守卫所在的方法。\n\n已知口径：探针改背包要**下一 tick** 才生效（`runCmd` 同命令内看不到）⇒ 每步之间都有 wait。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/time set midnight",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[type=!player,distance=..32]",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1000
+    },
+    {
+      "op": "note",
+      "text": "前置闸门（2026-10-22 第一轮假绿根因）：`forge-1.20.1/src/main/java/com/merlinkitsune/astral_dice/target/TargetSelectionManager.java:287` `if (!CurioSlotUtil.hasDiceEquipped(player)) return;` —— **未佩戴骰子时 confirm 成功但 action.apply 根本不执行**，于是既不扣卡也不出牌（读数 plays=0、两段 handn 都是 3 ⇒ 创造段「不扣卡」是假绿）。故先按 FIXBATCH 实测通过的通道装上金骰子（0★ ⇒ 骰子栏 1 格）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop curioreset NC0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/give @s astral_dice:golden_dice 1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe equipslot dice \"astral_dice:golden_dice\" NC0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "note",
+      "text": "【A】创造模式：3 张选择器牌，确认出牌后应仍是 3 张"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe cardprep NC1 \"astral_dice:effect_card_monster_laser\"",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/item replace entity @s weapon.mainhand with astral_dice:effect_card_monster_laser 3",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralfixbatch hostiles NC1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe cardread NC1A",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralfixbatch cast NC1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1000
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe cardread NC1B",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "note",
+      "text": "【B】生存对照：同样 3 张，确认出牌后应剩 2 张（证明量具能测出扣除）"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode survival",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe cardprep NC2 \"astral_dice:effect_card_monster_laser\"",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/item replace entity @s weapon.mainhand with astral_dice:effect_card_monster_laser 3",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralfixbatch hostiles NC2",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe cardread NC2A",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralfixbatch cast NC2",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1000
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe cardread NC2B",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[tag=afb_target]",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_NC0_EQUIP:dice:astral_dice:golden_dice"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_FX_NC1_HOSTILES:main=\\d+:nbr=\\d+:dist=1\\.5:mrk=2"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_NC1A_READ:hand=astral_dice:effect_card_monster_laser:handn=3:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_FX_NC1_CAST:called=1:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_NC1B_READ:hand=astral_dice:effect_card_monster_laser:handn=3:cards=3:[^\\n]*:plays=1:max=1:blocked=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_FX_NC2_HOSTILES:main=\\d+:nbr=\\d+:dist=1\\.5:mrk=2"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_NC2A_READ:hand=astral_dice:effect_card_monster_laser:handn=3:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_FX_NC2_CAST:called=1:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_NC2B_READ:hand=astral_dice:effect_card_monster_laser:handn=2:cards=2:[^\\n]*:plays=1:max=1:blocked=1"
+    },
+    {
+      "type": "crash"
+    }
+  ]
+}
