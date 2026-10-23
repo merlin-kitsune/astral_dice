@@ -288,6 +288,46 @@ AP_NC2B_READ:hand=astral_dice:effect_card_monster_laser:handn=2:cards=2:sel=0:to
 | `DEBT-STORMX2-*` | PASS | PASS | 刷怪发生 + `storm_night_spawn_x2` 仅自然刷怪 |
 | `DEBT-JADE-*` | PASS | PASS | 图标已换 + 防御力数值交叉核对 |
 
+### 4.17 实机欠账批 · 村民带 AI 认领工作站（2026-10-23 16:00，**P0 双线 PASS**）
+
+> 背景：§4.14 的 D2 因 `scripts/test/resources/kubejs/<线>/server_scripts/astral_test_noai.js` 每 2 tick 强制 `setNoAi(true)` 而**不可观测**。本轮给闸门加**显式豁免**（带 `astral_allow_ai` 标签的实体保留 AI，其余语义不变），单独起一轮带 AI 的验证。
+
+- 用例：`scripts/test/cases/DEBT-POI-AI-1.21.1.json` / `scripts/test/cases/DEBT-POI-AI-1.20.1.json`（24 步 / 4 断言，两线逐字同构）。
+- 判据链：工作站自证 `AP_VSHOP:ok=1` → 召唤带标签村民（`{NoAI:0b,Tags:["astral_allow_ai"],PersistenceRequired:1b}`）→ `debtvill` 三读都 `noai=0` → 职业 = `astral_dice:card_trader`。
+- 读数（两线逐字相同）：
+  - neo（1.21.1）：`AP_VSHOP:ok=1` / `AP_V0_VILL:ok=1:n=1:prof=astral_dice:card_trader:lv=1:noai=0` / `AP_V1_VILL:…:noai=0` / `AP_V2_VILL:…:noai=0` ⇒ `MT_CASE_RESULT: DEBT-POI-AI-1.21.1 = PASS`
+  - forge（1.20.1，16:03:54）：三行逐字相同 ⇒ `MT_CASE_RESULT: DEBT-POI-AI-1.20.1 = PASS`
+- 结论：`AcquirePoi → AssignProfessionFromJobSite` 全链在**带 AI** 条件下双线成立——村民召唤后 1.2 s 内就认领 `astral_dice:card_shop` 并转职 `astral_dice:card_trader`（V0 时已是 `card_trader`，故断言允许 V0 为 none 或 card_trader 两值）。§4.14 记的「不可观测」由此销账：**不是代码缺陷，是闸门副作用**，现已由标签豁免支持。
+- 收尾：`--phase stop --force --purge-saves` ⇒ `MT_CLEANUP_SAVES: PURGED 1` / `MT_CLEANUP_RESULT: OK` / `MT_STOP: OK (0s)`；`Get-Process java` 仅剩 2 个 Gradle 守护（PID 11396 Adoptium 17 / 30264 Zulu 21）。
+
+### 4.18 Jade 护甲图标尺寸取证（2026-10-23，**只读取证，不修代码**；用户称图标「大小溢出」，自行本地修）
+
+一句话：**Jade 的标准护甲图标 = 有效 8×8 px、画布 9×9 px、横向步距 8 px**；我们两线的贴图是 **9×9 且满画布无透明 padding**，所以在 8 px 步距下相邻图标互相压 1 px 描边（forge 侧还被多裁 1 px）⇒ 视觉上「变大/粘连」。
+
+| 项 | neo 1.21.1 / Jade 15.10.6 `ArmorElement#render` | forge 1.20.1 / Jade 11.13.3 `ArmorElement#render` |
+|---|---|---|
+| 每图标 quad | `blitSprite(sprite,(int)(x+xOffset),(int)(y+yOffset),9,9)` ⇒ **9×9** | `DisplayHelper.renderIcon(gui,x+xOffset,y,8,8,IconUI.ARMOR/HALF_ARMOR/EMPTY_ARMOR)` ⇒ **8×8**（源 = 8×8、图集格 9×9） |
+| 横向步距 | **8**（`xOffset=(iconCount-1)%iconsPerLine*8`，循环体 `xOffset-=8`） | **8**（循环体 `xOffset+=8`） |
+| 纵向 | `yOffset = lineCount*4-4`，换行 `yOffset-=4` | 换行 `y += 10` |
+| `getSize()` | `Vec2(8*iconsPerLine+1, 5+4*lineCount)` | `Vec2(8*iconsPerLine, 10*lineCount)` |
+| 图标数 | `iconCount = Mth.ceil(armor*0.5)` | 同口径（`armor*=0.5f` 后 `ceil`） |
+| 三态绘制 | 每格先铺 `EMPTY_ARMOR` 再叠 `ARMOR`/`HALF_ARMOR` | 直接按 `i<=floor(armor)` / 半格 选 `ARMOR`/`HALF_ARMOR`/`EMPTY_ARMOR` |
+
+**我方现状（两线）**：
+- 贴图 `{neoforge-1.21.1,forge-1.20.1}/src/main/resources/assets/astral_dice/textures/gui/defense_{full,half,empty}.png` 全是 **9×9**，且 **alpha bbox = x0..8 / y0..8（满画布，无 padding）**。
+- HUD `neoforge-1.21.1/src/main/java/com/merlinkitsune/astral_dice/client/CombatPowerHud.java`：`ICON_SIZE=9`(:101) / `ICON_STEP=8`(:102) / `MAX_ICONS=10`(:104) / `ROW_HEIGHT=10`(:107)，绘制 `guiGraphics.blit(texture,x,y,0,0,ICON_SIZE,ICON_SIZE,ICON_SIZE,ICON_SIZE)`(:225-226)。
+- neo mixin `neoforge-1.21.1/src/main/java/com/merlinkitsune/astral_dice/mixin/jade/DisplayHelperArmorIconMixin.java:73` 把 `GuiGraphics.blitSprite(rl,x,y,w,h)` 换成 `blit(ours,x,y,0,0,width,height,width,height)`（入参 width=height=**9**）。
+- forge mixin `forge-1.20.1/src/main/java/com/merlinkitsune/astral_dice/mixin/jade/ArmorElementIconMixin.java:105` 用 `blit(ours,(int)x,(int)y,0,0,sx,sy,9,9)`，入参 **sx=sy=8** ⇒ 只取左上 8×8，**右/下各裁 1 px**。
+
+**溢出机制**：8 px 步距 + 9 px 满画布 ⇒ 相邻图标的第 8 列/第 0 列（都是不透明描边）互相重叠 1 px；forge 侧更有左右不对称（右边被裁）。
+
+**修法（像素级，用户本地改）**：把图标本体画在 **9×9 画布的左上 8×8** 内，**第 9 列与第 9 行全透明（alpha 0）**。这样：forge（裁 8×8）拿到完整图标、neo/HUD（9×9 直绘 @8 步距）多出的 1 px 是透明 padding ⇒ 相邻不再叠描边，视觉宽度回到 8 px，与原版护甲条/心形同宽。
+
+**对照证据（原版就是按 8 px 步距留白设计的）**：
+- neo 的 `neoforge-21.1.235-client-extra-aka-minecraft-resources.jar` 内 `assets/minecraft/textures/gui/sprites/hud/armor_full.png` 也是 **9×9**，但**第 8 列只有中部 3 行不透明**（alpha 网格 col8 行 1..3 = 255，其余 0；右上角 (0,0) = 0）。
+- forge 的 `client-extra-1.20.1-47.4.10.jar` 内 `assets/minecraft/textures/gui/icons.png`（256×256）三个护甲格 `(34,9)/(25,9)/(16,9)` 各 9×9 同理。
+- 对照图（模拟 8 px 步距下 vanilla 行 / 我方行 / forge 裁切行）：`temp/jade-size/jade-armor-row-compare.png`（1288×700，9,829 B，**temp 下不入库**）。
+
 ## 5 遗留与欠账
 
 ### Blocker
@@ -516,6 +556,12 @@ AP_NC2B_READ:hand=astral_dice:effect_card_monster_laser:handn=2:cards=2:sel=0:to
     ② **×2 正面证据样本少**（§4.13）：neo 侧整轮 0 行 `storm_night_spawn_x2`（测试世界自然刷怪太少），目前正面证据只有 forge 15:06:21 的 skeleton×2 / creeper×2。
     ③ `DEBT-JADE-*` 的断言只覆盖健康项，图标观感靠截图人工判读 + `debtdef` 数值交叉（vision 断言在测试台里是 DELEGATED，§6-27）。
 
+34. **村民带 AI 认领工作站已补测 + Jade 护甲图标尺寸口径（2026-10-23，用户「为村民单独起一轮带 AI 的」+「获取 Jade 护甲图标正确大小」）**：
+    ① **NoAI 闸门加了显式豁免**（两线 `scripts/test/resources/kubejs/{1.21.1,1.20.1}/server_scripts/astral_test_noai.js`，7,785 → 8,013 字符，CRLF 保留）：新增 `var NOAI_ALLOW_TAG = "astral_allow_ai";`，`noaiKeepAi(e)` 改为 `e.getTags().contains(NOAI_ALLOW_TAG)`（`noaiSweep` 与 `EntityEvents.spawned` 两处既有接线未动）⇒ **带该标签的实体保留 AI，其余语义完全不变**。
+    ② 新用例 `scripts/test/cases/DEBT-POI-AI-1.21.1.json` / `DEBT-POI-AI-1.20.1.json`（24 步 / 4 断言）：`/setblock ~8 ~ ~8 astral_dice:card_shop` + `execute if block … run say AP_VSHOP:ok=1` 自证工作站 → 召唤带标签村民 → `debtvill` 三读 → 断言 V0/V2 都是 `noai=0` 且 V2 = `prof=astral_dice:card_trader`。**双线 PASS**（§4.17）。
+    ③ **Jade 护甲图标正确尺寸**（§4.18）：标准图标 = **有效 8×8 px / 画布 9×9 px / 横向步距 8 px**（neo 每 quad 9×9 via `blitSprite`，forge 每 quad 8×8 via `renderIcon` 源 8×8 图集格 9×9）。我方贴图 9×9 **满画布无 padding** ⇒ 8 px 步距下相邻叠 1 px 描边 + forge 额外裁右/下 1 px ⇒ 「看起来溢出」。修法：本体画在左上 8×8、第 9 列/行全透明。**本轮只读取证，代码留给用户本地修。**
+    ④ 未做：Jade 生物「防御力 X」tooltip 一行仍待裁决（§5-28 ⑨）；图标像素修正由用户本地执行，本仓仅留口径。
+
 ## 6 坑（踩过的，后续别重踩）
 
 1. **`run/<线>/mods` 的 jar 曾 ≠ `build/libs`（neo 于 2026-10-22 15:47 对齐；forge 按 §6-3 永远放 devlibs named jar）**：当时 neo 是 00:22 的旧构建（同名、2 B 差异），
@@ -599,6 +645,11 @@ AP_NC2B_READ:hand=astral_dice:effect_card_monster_laser:handn=2:cards=2:sel=0:to
 36. **探针（`scripts/test/resources/kubejs/**`）改动后：先 `mt_env.ps1 kubejs` 同步，再在用例里 `/reload`，且 `/reload` 之后必须 `wait ≥12000` 才能发命令（2026-10-23 连踩两次）**：同步只做 resources→run 拷贝（回显「探针命令的改动需**冷启动**才生效」），而 `/reload` 是异步重载；`/reload` 后立刻注入命令会**跑旧脚本**（本轮 D1 因此两次假红）。另：用例 JSON **必须至少 1 条断言**，否则 `MT_CASE: ERROR — 条目没有任何断言`，步骤一条都不执行。
 
 37. **KubeJS/Rhino 三处硬边界（2026-10-23 实测）**：① `TagKey` **不能**作为参数传给 Java 方法（`ID.mc` 抛 `KubeRuntimeException: Could not create ID from 'TagKey[...]'`）⇒ 判标签归属用 `holder.containsTag(tagKey)`（forge 1.20.1 可靠）或 `"" + tagKey` 字符串比对；② `net.minecraft.core.Holder` **没有 `getTags()`**（1.21.1/1.20.1 都是 `tags(): Stream<TagKey<T>>`，用 `.toList()`）；③ 读实体类型**不要**用 `BuiltInRegistries.ENTITY_TYPE.getKey(ent.getType())`（Rhino 下恒返回同一类型，本轮恒 `minecraft:pig`，连玩家都报 pig），改用 `ent.getEncodeId()`（Java 侧内部取键，实测正确）。
+
+38. **`/setblock` 会静默失败，测试用例必须自证方块真的放下了（2026-10-23 踩中，害得「村民不转职」被误读成功能缺陷）**：
+    现象：`/setblock ~4 ~ ~4 astral_dice:card_shop` 回显 **「无法放置方块」**（位置被既有方块占住/不可替换），用例继续跑 ⇒ `debtvill` 三读都是 `prof=minecraft:none`，看上去像「转职坏了」。
+    正确写法：紧跟一条 **`/execute if block <pos> <block> run say AP_VSHOP:ok=1`**，并把它作为断言；放置位置也别复用旧例的坐标（同一世界反复跑会被上一次的方块占住）。
+    附注：同一批还踩到「诊断用例没有 `case_id`/`title` ⇒ `MT_CASE: ERROR — 校验失败`，**steps 一条都不执行**」——看到「什么都没发生」先看用例校验回显。
 
 ## 7 关键路径（命令与文件）
 

@@ -33,6 +33,19 @@ var ComponentClass = Java.loadClass("net.minecraft.network.chat.Component");
 var MobClass = Java.loadClass("net.minecraft.world.entity.Mob");
 var AABBClass = Java.loadClass("net.minecraft.world.phys.AABB");
 
+// 2026-10-23 新增：**显式豁免**（opt-in）—— 带 `astral_allow_ai` 标签的实体保留 AI。
+//   用途：村民「认领工作站 → 转职」这类必须跑 brain 的行为，在 NoAI 闸门下天然不可观测；
+//   用例里 `/summon villager ~ ~ ~3 {NoAI:0b,Tags:["astral_allow_ai"],...}` 即可单独放行，
+//   不带该标签的实体（含自然刷怪、探针靶子）照旧每 2 tick 强制 NoAI，闸门语义不变。
+//   判据：`AP_NOAI:mobs=n:noai=m` 里 n-m 应等于带标签的实体数；用例结束时请 `/kill` 掉。
+var NOAI_ALLOW_TAG = "astral_allow_ai";
+
+function noaiKeepAi(e) {
+    try {
+        return e.getTags().contains(NOAI_ALLOW_TAG);
+    } catch (err) { return false; }
+}
+
 var NOAI_RADIUS = 128;                  // 与 mt_launch 清场半径一致
 var NOAI_EVERY_TICKS = 2;               // 强制频率（2 tick = 0.1s）
 var NOAI_REPORT_EARLY = 600;            // 前 30 秒：闸门取样窗口
@@ -100,6 +113,7 @@ function noaiSweep(server) {
             while (mi.hasNext()) {
                 var m = mi.next();
                 if (m == null) continue;
+                if (noaiKeepAi(m)) continue;
                 var key = null;
                 try { key = "" + m.getUUID(); } catch (e3) { key = null; }
                 if (key != null) {
@@ -123,7 +137,7 @@ try {
         try {
             var e = event.entity;
             if (e == null) return;
-            if (e instanceof MobClass) e.setNoAi(true);
+            if (e instanceof MobClass && !noaiKeepAi(e)) e.setNoAi(true);
         } catch (eInner) { /* 忽略 */ }
     });
 } catch (eHook) {

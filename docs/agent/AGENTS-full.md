@@ -3752,3 +3752,41 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --new <注册id>
 - **新踩坑（三条，详见交接正本 §6-35–§6-37）**：① Mixin 0.8.5 处理器 static 性必须与目标一致、`required:false` 会吞异常；② 探针改动 = `mt_env.ps1 kubejs` 同步 + 用例内 `/reload` + `wait ≥12000`，否则跑旧脚本（用例还必须至少有 1 条断言，否则 0 步执行）；③ Rhino 下 `TagKey` 不能进 Java、`Holder` 无 `getTags()`（用 `tags().toList()` / `containsTag`）、实体类型要用 `ent.getEncodeId()`（`ENTITY_TYPE.getKey(...)` 恒返回同一类型）。
 - **限制（留痕）**：村民转职在测试台内因 `astral_test_noai.js` 强制 NoAI 而不可观测（`prof=minecraft:none:noai=1`），要测须 `MT_ALLOW_MOB_AI=1`；×2 正面证据目前只有 forge 一次样本（测试世界自然刷怪极少）；Jade tooltip「防御力 X」一行未做（用户未裁决）。
 
+
+## 55. 村民带 AI 轮 + Jade 护甲图标尺寸口径（2026-10-23 用户裁决/请求）
+
+### 55.1 任务原文
+- 用户：「为村民单独起一轮带AI的，另外Jade上护甲图标显示似乎有问题（图标大小溢出），请获取Jade上护甲图标的正确大小，我在本地测修」
+  ⇒ ① 村民认领/转职要在**带 AI** 条件下实机验（此前因 NoAI 闸门不可观测）；② **只读取证** Jade 护甲图标的真实尺寸口径，代码由用户本地修。
+
+### 55.2 NoAI 闸门的显式豁免（测试资产，已永久落地）
+- 文件：`scripts/test/resources/kubejs/1.21.1/server_scripts/astral_test_noai.js` 与 `.../1.20.1/.../astral_test_noai.js`（各 7,785 → 8,013 字符，CRLF 保留）。
+- 新增 `var NOAI_ALLOW_TAG = "astral_allow_ai";`；`noaiKeepAi(e)` 由「按实体 id 豁免村民」的临时版改为 `e.getTags().contains(NOAI_ALLOW_TAG)`；`noaiSweep` 的 `if (noaiKeepAi(m)) continue;` 与 `EntityEvents.spawned` 的 `if (e instanceof MobClass && !noaiKeepAi(e)) e.setNoAi(true);` 是既有接线，未改。
+- 语义：**带该标签的实体保留 AI，其余实体照旧每 2 tick 强制 NoAI**（闸门不变）。用例里 `{NoAI:0b,Tags:["astral_allow_ai"],PersistenceRequired:1b}` 即可单独放行。
+
+### 55.3 新用例与判据（双线 PASS）
+- `scripts/test/cases/DEBT-POI-AI-1.21.1.json` / `DEBT-POI-AI-1.20.1.json`：24 步 / 4 断言（`AP_VSHOP:ok=1` / V0 `noai=0` / V2 `prof=astral_dice:card_trader` + `noai=0` / crash）。
+- 实测（两线逐字相同）：`AP_VSHOP:ok=1`、`AP_V0/V1/V2_VILL:ok=1:n=1:prof=astral_dice:card_trader:lv=1:noai=0` ⇒ **村民带 AI 时 1.2 s 内认领 `astral_dice:card_shop` 并转职 `astral_dice:card_trader`**（AcquirePoi → AssignProfessionFromJobSite 全链成立）。
+- 教训：要验证 brain 类行为（认领 POI / 寻路 / 转职）必须先解除 NoAI；但**只能对被测实体豁免**，不能整体关闸门（否则用例互相污染）。
+
+### 55.4 Jade 护甲图标正确尺寸（唯一定义 = 有效 8×8 px / 画布 9×9 px / 横向步距 8 px）
+- neo 1.21.1 / Jade 15.10.6 `snownee.jade.impl.ui.ArmorElement#render`：`blitSprite(sprite,(int)(x+xOffset),(int)(y+yOffset),9,9)` ⇒ 每 quad **9×9**；步距 **8**（`xOffset=(iconCount-1)%iconsPerLine*8`，循环 `-=8`）；纵向 `yOffset=lineCount*4-4`，换行 `-=4`；`getSize()=Vec2(8*iconsPerLine+1, 5+4*lineCount)`。
+- forge 1.20.1 / Jade 11.13.3 同名方法：`DisplayHelper.renderIcon(gui,x+xOffset,y,8,8,IconUI.ARMOR|HALF_ARMOR|EMPTY_ARMOR)` ⇒ 每 quad **8×8**，源 = 8×8、图集格 = 9×9（`IconUI.ARMOR(34,9,9,9)` / `HALF_ARMOR(25,9,9,9)` / `EMPTY_ARMOR(16,9,9,9)`，无背景层）；步距 8，换行 `y+=10`；`iconsPerLine` 默认 10，阈值 `MC_ENTITY_ARMOR_MAX_FOR_RENDER` 默认 20；`getSize()=Vec2(8*iconsPerLine, 10*lineCount)`。
+- **原版同款设计**：`assets/minecraft/textures/gui/sprites/hud/armor_full.png` 也是 9×9，但第 8 列只有中部 3 行不透明 ⇒ 原版按 8 px 步距留白。
+
+### 55.5 我方「图标溢出」根因与修法（代码留给用户本地改）
+- 根因：两线 `assets/astral_dice/textures/gui/defense_{full,half,empty}.png` 是 **9×9 且 alpha bbox = 0..8（满画布，无透明 padding）**；而 HUD `CombatPowerHud` 用 `ICON_SIZE=9 / ICON_STEP=8`（:101-:107，绘制 :225-226）、neo mixin `DisplayHelperArmorIconMixin.java:73` 也按 9×9 直绘 ⇒ **相邻图标互相压 1 px 描边**；forge mixin `ArmorElementIconMixin.java:105` 入参 `sx=sy=8` 再裁掉右/下 1 px（左右不对称）。
+- 修法（像素级）：图标本体画在 **9×9 画布的左上 8×8**，**第 9 列与第 9 行全透明（alpha 0）** ⇒ forge 裁 8×8 拿到完整图标、neo/HUD 多出的 1 px 是透明 padding，相邻不再叠描边，视觉宽度回到 8 px。
+- 对照图：`temp/jade-size/jade-armor-row-compare.png`（1288×700，仅作取证，temp 不入库）。
+
+### 55.6 判据命令
+```powershell
+# 用例（需先 launch；村民带 AI 要用 MT_ALLOW_MOB_AI=1 起服）
+$env:MT_ALLOW_MOB_AI='1'
+pwsh -NoProfile -File scripts\test\mt.ps1 --version 1.21.1 --phase launch
+pwsh -NoProfile -File scripts\test\mt.ps1 --version 1.21.1 --phase cases --case scripts\test\cases\DEBT-POI-AI-1.21.1.json
+# 读数锚点
+#   AP_VSHOP:ok=1 / AP_V2_VILL:ok=1:n=1:prof=astral_dice:card_trader:lv=1:noai=0
+# 收尾（归档口径）
+pwsh -NoProfile -File scripts\test\mt.ps1 --version 1.20.1 --phase stop --force --purge-saves
+```

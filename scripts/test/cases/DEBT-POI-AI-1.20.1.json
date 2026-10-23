@@ -1,0 +1,128 @@
+{
+  "case_id": "DEBT-POI-AI-1.20.1",
+  "title": "村民带 AI 对照实验：无业村民自行走到 astral_dice:card_shop 认领工作站并转职 card_trader（与 DEBT-POI 的 D1 谓词矩阵互补；本轮临时放行村民 AI）",
+  "version": "1.20.1",
+  "channel": "kubejs",
+  "target": {
+    "type": "feature",
+    "ref": "villager_job_site_ai"
+  },
+  "on_fail": "continue",
+  "steps": [
+    {
+      "op": "note",
+      "text": "判据（2026-10-23 用户下达「为村民单独起一轮带 AI 的」）：NoAI 闸门（`scripts/test/resources/kubejs/<线>/server_scripts/astral_test_noai.js`）自本批起支持**显式豁免**——带 `astral_allow_ai` 标签的实体保留 AI，其余照旧每 2 tick 强制 NoAI。\n期望：① `AP_VSHOP:ok=1`（工作站确实放下）；② V0/V1/V2 三读都 `noai=0`（村民真的带 AI）；③ V2 = `prof=astral_dice:card_trader`（AcquirePoi → AssignProfessionFromJobSite 全链成立）。\n实测（2026-10-23 双线）：带 AI 的村民在召唤后 1.2 s 内就认领并转职，所以 V0 接受 none 或 card_trader 两值。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/reload"
+    },
+    {
+      "op": "wait",
+      "ms": 12000
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative"
+    },
+    {
+      "op": "inject_command",
+      "command": "/time set noon"
+    },
+    {
+      "op": "inject_command",
+      "command": "/tp @s ~ ~ ~ 0 0"
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[type=!player,distance=..64]"
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/setblock ~8 ~ ~8 astral_dice:card_shop"
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/execute if block ~8 ~ ~8 astral_dice:card_shop run say AP_VSHOP:ok=1"
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/summon villager ~8 ~ ~10 {NoAI:0b,Tags:[\"astral_allow_ai\"],PersistenceRequired:1b}"
+    },
+    {
+      "op": "wait",
+      "ms": 2500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe debtvill V0 16"
+    },
+    {
+      "op": "wait",
+      "ms": 25000
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe debtvill V1 16"
+    },
+    {
+      "op": "wait",
+      "ms": 15000
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe debtvill V2 16"
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/execute as @e[type=minecraft:villager,limit=1,sort=nearest,distance=..16] run data get entity @s Brain.memories"
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "screenshot"
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_VSHOP:ok=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_V0_VILL:ok=1:n=1:prof=(minecraft:none|astral_dice:card_trader):lv=1:noai=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_V2_VILL:ok=1:n=1:prof=astral_dice:card_trader:lv=\\d+:noai=0"
+    },
+    {
+      "type": "crash"
+    }
+  ]
+}
