@@ -690,9 +690,11 @@
 > Decided by the user on 2026-10-23: the Java source license changes from MIT to **GPL-3.0**, while **1.3.7 and every earlier release stays under MIT**.
 
 - **Source code is now GPL-3.0-only**: from **1.5.0** onward the Java sources, Gradle scripts, the tools under `tools/` and `scripts/`, and the documents under `docs/` are released under the [GNU General Public License, version 3](LICENSE) (version 3 only); the source for every released jar is the tree at the matching tag of this repository.
-- **1.3.7 and earlier remain MIT**: every release up to and including **1.3.7** (all loaders, including the `1.3.7-hotfix` refresh and the `1.3.7-alpha` / `1.3.7-beta` pre-releases) stays under the MIT License; that grant cannot be withdrawn and its text is preserved verbatim in [LICENSE-MIT](LICENSE-MIT).
+- **1.3.7 and earlier remain MIT**: every release up to and including **1.3.7** (all loaders, including the `1.3.7-hotfix` refresh and the `1.3.7-alpha` / `1.3.7-beta` pre-releases) stays under the MIT License; that grant cannot be withdrawn; the MIT text is the `LICENSE` file at the corresponding tag (e.g. `1.3.7`).
 - **In-game assets stay CC BY-NC-SA 4.0**: textures, models, animations, particles, GUI sprites, fonts, sounds and handbook text are unaffected by the GPL and keep the CC BY-NC-SA 4.0 terms declared in the previous batch; recipe / loot / tag / worldgen JSON and `lang/*.json` follow the code to GPL-3.0-only.
 - The `mod_license` metadata of all four lines now reads `GPL-3.0-only (code) / CC BY-NC-SA 4.0 (assets)` (including the `license` field of `fabric.mod.json`).
+- **No separate MIT text file any more**: a same-day follow-up decision removed `LICENSE-MIT`, so the working tree no longer ships a standalone MIT text; the MIT grant for 1.3.7 and earlier is unaffected - read it in the `LICENSE` file at the corresponding release tag.
+- **The StarEngine prerequisite library moves to GPL-3.0-only as well**: its sources (a separate project, [StarEngine](https://github.com/merlin-kitsune/StarEngine)) are now GPL-3.0 (version 3 only), while every `1.0.0`-`1.0.12` release and the already distributed `1.1.0-pre.x` builds stay under MIT.
 
 ### Carried over from the unreleased 1.3.5-alpha.1 development line
 

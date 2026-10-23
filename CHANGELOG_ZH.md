@@ -558,9 +558,11 @@
 > 2026-10-23 用户裁决：Java 源代码许可协议由 MIT 改为 **GPL-3.0**，**1.3.7 及以前的版本仍保持 MIT**。
 
 - **源代码改为 GPL-3.0-only**：从 **1.5.0** 起，Java 源码、Gradle 脚本、`tools/` 与 `scripts/` 下的工具、以及 `docs/` 下的文档按 [GNU 通用公共许可证第 3 版](LICENSE)（仅第 3 版）发布；每个已发布 jar 的源码就是本仓库对应 tag 上的那棵树。
-- **1.3.7 及以前的版本仍为 MIT**：截至并包含 **1.3.7** 的全部发布（四线都算，含 `1.3.7-hotfix` 刷新版与 `1.3.7-alpha` / `1.3.7-beta` 预发布）继续按 MIT 许可，该授权不可撤回，原文逐字保留在 [LICENSE-MIT](LICENSE-MIT)。
+- **1.3.7 及以前的版本仍为 MIT**：截至并包含 **1.3.7** 的全部发布（四线都算，含 `1.3.7-hotfix` 刷新版与 `1.3.7-alpha` / `1.3.7-beta` 预发布）继续按 MIT 许可，该授权不可撤回，MIT 原文见对应发布 tag（如 `1.3.7`）的 `LICENSE`。
 - **游戏内资产仍为 CC BY-NC-SA 4.0**：贴图、模型、动画、粒子、GUI 贴图、字体、音效与手册正文不受 GPL 影响，沿用上一批的 CC BY-NC-SA 4.0 声明；配方 / 战利品 / 标签 / 世界生成 JSON 与 `lang/*.json` 随代码改为 GPL-3.0-only。
 - 四线 `mod_license` 元数据同步改为 `GPL-3.0-only (code) / CC BY-NC-SA 4.0 (assets)`（含 `fabric.mod.json` 的 `license` 字段）。
+- **不再单独提供 MIT 原文文件**：同日二次裁决要求删除 `LICENSE-MIT`，工作树里不再保留独立 MIT 文本；1.3.7 及以前的 MIT 授权不受影响，原文见对应发布 tag 的 `LICENSE`。
+- **前置库 StarEngine 同步改为 GPL-3.0-only**：独立项目 [StarEngine](https://github.com/merlin-kitsune/StarEngine) 的源码同样改为 GPL-3.0（仅第 3 版），其 `1.0.0`–`1.0.12` 全部发布与已分发的 `1.1.0-pre.x` 构建仍为 MIT。
 
 ### 由 1.3.5-alpha.1 未发布开发线并入
 

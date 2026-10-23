@@ -3799,9 +3799,9 @@ pwsh -NoProfile -File scripts\test\mt.ps1 --version 1.20.1 --phase stop --force 
 
 ### 56.2 落地文件与口径
 
-- `LICENSE`：换成 **GPL-3.0 全文**（取自 <https://www.gnu.org/licenses/gpl-3.0.txt>，35,149 字符，LF→CRLF 归一后 39,383 字符），末尾追加〈Project licensing notes (not part of the GNU GPL text above)〉四节：① SOURCE CODE = **GPL-3.0-only**（仅第 3 版，不是 "any later version"）；② LEGACY RELEASES = 截至并含 **1.3.7** 仍 MIT、不可撤回；③ GAME ASSETS = **CC BY-NC-SA 4.0**，并明写 GPL **不延伸**到这些文件；④ THIRD-PARTY（ier 粒子库 MIT）。
-- `LICENSE-MIT`（新增）：原 MIT 21 行逐字 + 〈Scope of this license〉段，覆盖 **≤ 1.3.7 全部加载器**，含 `1.3.7-hotfix` 刷新版与 `1.3.7-alpha` / `1.3.7-beta` 预发布。
-- `README.md` / `README_ZH.md`：`## License` / `## 许可` 改写为六条 —— 源代码 GPL-3.0-only（附「每个已发布 jar 的源码 = 本仓库对应 tag 的树」）/ 1.3.7 及以前仍 MIT（指向 `LICENSE-MIT`）/ 游戏内资产 CC BY-NC-SA 4.0 / 数据与 `lang/*.json` 随代码 GPL-3.0-only / 商业用途需授权 / 第三方例外。
+- `LICENSE`：换成 **GPL-3.0 全文**（取自 <https://www.gnu.org/licenses/gpl-3.0.txt>，35,149 字符，LF→CRLF 归一后 39,383 字符（追加 StarEngine 指针与删 `LICENSE-MIT` 措辞后为 **39,913 字符 / 755 行**，见 §57）），末尾追加〈Project licensing notes (not part of the GNU GPL text above)〉四节：① SOURCE CODE = **GPL-3.0-only**（仅第 3 版，不是 "any later version"）；② LEGACY RELEASES = 截至并含 **1.3.7** 仍 MIT、不可撤回；③ GAME ASSETS = **CC BY-NC-SA 4.0**，并明写 GPL **不延伸**到这些文件；④ THIRD-PARTY（ier 粒子库 MIT）。
+- `LICENSE-MIT`：**同日（2026-10-23）二次裁决要求删除**，本批先新增后移除，最终**不在工作树保留独立 MIT 文件**；≤ 1.3.7 的 MIT 原文改为指向「对应发布 tag 的 `LICENSE`」（`1.3.7` / `fabric-1.3.7-alpha.2` 等），授权范围含 `1.3.7-hotfix` 与 `1.3.7-alpha` / `1.3.7-beta` 预发布。
+- `README.md` / `README_ZH.md`：`## License` / `## 许可` 改写为六条 —— 源代码 GPL-3.0-only（附「每个已发布 jar 的源码 = 本仓库对应 tag 的树」）/ 1.3.7 及以前仍 MIT（指向对应发布 tag 的 `LICENSE`，不再有独立 MIT 文件）/ 游戏内资产 CC BY-NC-SA 4.0 / 数据与 `lang/*.json` 随代码 GPL-3.0-only / 商业用途需授权 / 第三方例外。
 - 两份 `CHANGELOG(-_ZH).md` 在 1.5.0 段末尾新增〈许可与授权 / Licensing〉段（4 条）。
 
 ### 56.3 元数据
@@ -3825,8 +3825,50 @@ pwsh -NoProfile -File scripts\test\mt.ps1 --version 1.20.1 --phase stop --force 
 Select-String -Path F:\MCProject\astral_dice_multiloader\LICENSE -Pattern 'GNU GENERAL PUBLIC LICENSE','Version 3, 29 June 2007','END OF TERMS AND CONDITIONS'
 # 换行归一（bareLF 必须 0）
 python -c "d=open(r'F:\MCProject\astral_dice_multiloader\LICENSE','rb').read(); print('crlf',d.count(b'\r\n'),'bareLF',d.count(b'\n')-d.count(b'\r\n'))"
-# 元数据（应只剩第三方归属与 LICENSE-MIT 自身的 MIT 字样）
+# 元数据（应只剩第三方归属的 MIT 字样）
 Select-String -Path F:\MCProject\astral_dice_multiloader\*-1.20.1\gradle.properties,F:\MCProject\astral_dice_multiloader\neoforge-1.21.1\gradle.properties,F:\MCProject\astral_dice_multiloader\fabric-1.20.1\src\main\resources\fabric.mod.json -Pattern 'MIT License'
 # 规则文件自检
 python docs/agent/verify-split.py
 ```
+
+## 57. 许可二次裁决：删 `LICENSE-MIT` + 前置库 StarEngine 同步改 GPL-3.0-only（2026-10-23 用户裁决）
+
+### 57.1 裁决原文
+
+「StarEngine库也需要重新声明为GPL-3.0。另外，LICENSE-MIT不保留，直接删除」—— 即：① 第 56 条的 GPL 化要延伸到前置库仓；② 上一批为「≤1.3.7 仍 MIT」而新建的 `LICENSE-MIT` **不保留**。
+
+### 57.2 本仓（`F:\MCProject\astral_dice_multiloader`）
+
+- `LICENSE-MIT` **删除**（`git rm`）。该文件只存在于提交 `7e4e4f17`，需要时从该提交取回。
+- `LICENSE` §2 改为：「That grant is irrevocable and cannot be withdrawn; the MIT text for those versions is the LICENSE file at the corresponding release tag (for example the `1.3.7` or `fabric-1.3.7-alpha.2` tags of this repository). This working tree no longer ships a separate MIT file…」。
+- `LICENSE` §1 末尾新增一段：前置库 StarEngine（`https://github.com/merlin-kitsune/StarEngine`）是**独立项目**、同为 GPL-3.0-only、**不由本文件重新授权**；仍以 JarJar 内嵌它的平台线按同一许可内嵌。
+- 引用清理 9 处：`README.md:133` / `README_ZH.md:133` / `CHANGELOG.md:693` / `CHANGELOG_ZH.md:561` 的「原文逐字保存在 [LICENSE-MIT]」改为「见对应发布 tag 的 `LICENSE`；本工作树不再单独保留 MIT 文本」；`docs/handover-1.5.0-pre.5-main.md` §0-23、§5-35 ②③⑦ 与 `docs/handover-new-session-context.md` 第 19 条同步改写。
+- **≤1.3.7 仍 MIT 的授权不变**（不可撤回），只是不再随工作树附带独立 MIT 文本。
+
+### 57.3 前置库仓（`F:\MCProject\starengine`，分支 `main`，独立仓库）
+
+- 改造前 HEAD `6d2a96d`（`release(lib): 版本号 1.1.0-pre.1 -> 1.1.0-pre.2`），工作树干净。
+- `LICENSE`（702 行 / 37,148 字符 / 全 CRLF）= GPL-3.0 全文（与 astral 侧同源）+ 分隔线 +〈Project licensing notes〉三节：① SOURCE CODE = GPL-3.0-only；② LEGACY RELEASES = 2026-10-23 之前发布的版本仍 MIT —— `1.0.0`–`1.0.12` 全部 tag 与已分发到消费方 / mavenLocal / 整合包的 `1.1.0-pre.1` / `1.1.0-pre.2` 构建，原文见对应 tag 的 `LICENSE`；③ THIRD-PARTY = 无捆绑第三方源码，`gradlew` / `gradlew.bat` / `gradle/wrapper/**` 仍 Apache-2.0。
+- 元数据 5 处：`neoforge-1.21.1/gradle.properties:203`、`forge-1.20.1/gradle.properties:88`、`neoforge-26.1.2/gradle.properties:75`、`fabric-1.20.1/gradle.properties:27` → `mod_license=GPL-3.0-only`；`fabric-1.20.1/src/main/resources/fabric.mod.json:11` → `"license": "GPL-3.0-only"`（两个 `mods.toml` 模板仍 `license="${mod_license}"`）。
+- 文档：`README.md:326` / `README_ZH.md:324` §License 改写；两份 CHANGELOG 的 `2.0.0-SNAPSHOT.15` 未发布段各加〈许可 / Licensing〉条目。
+- 提交 `53db33b`（10 文件 +731/−28）。**未 push、未重建产物**：mavenLocal 与整合包里的 `starengine-*-1.1.0-pre.2.jar` 内 `mods.toml` 仍写 `MIT License`。
+
+### 57.4 判据命令
+
+```powershell
+# 本仓：MIT 文件已无、引用只剩历史描述
+git -C F:\MCProject\astral_dice_multiloader ls-files LICENSE-MIT   # 应为空
+Select-String -Path F:\MCProject\astral_dice_multiloader\LICENSE -Pattern 'corresponding release tag','no longer ships a separate MIT file'
+# 前置库：许可与元数据
+git -C F:\MCProject\starengine log --oneline -1              # 53db33b
+Select-String -Path F:\MCProject\starengine\LICENSE -Pattern 'GNU GENERAL PUBLIC LICENSE','LEGACY RELEASES'
+Select-String -Path F:\MCProject\starengine\*-1.20.1\gradle.properties,F:\MCProject\starengine\neoforge-*\gradle.properties -Pattern 'mod_license'
+# 规则文件自检
+python docs/agent/verify-split.py
+```
+
+### 57.5 未做与风险
+
+- 两仓都**未重建产物**：本仓 pre.5 jar 与前置库 1.1.0-pre.2 jar 的元数据仍是旧串，对外发布前必须重建并成对重投。
+- 前置库的「历史版本仍 MIT」边界按**发布时间**（2026-10-23 之前）划，不按版本号；若用户要按版本号划（例如「≤1.1.0-pre.2 仍 MIT，之后全部 GPL」），改 `LICENSE` §2 一句即可。
+- `F:\MCProject\starengine_next` 是**坏掉的 worktree**：其 `.git` 文件指向 WSL 路径 `gitdir: /mnt/f/MCProject/starengine/.git/worktrees/starengine_lib_next`，Windows 侧 `git` 解析不了（`fatal: not a git repository: (NULL)`），本批未动它，也未改其 `LICENSE`（2.0.0-SNAPSHOT 开发线文件同样还是 MIT 文本）。
