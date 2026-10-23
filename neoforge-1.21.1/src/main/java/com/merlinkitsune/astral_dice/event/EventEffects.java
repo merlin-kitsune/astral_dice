@@ -12,14 +12,18 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.phys.AABB;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -103,7 +107,7 @@ public final class EventEffects {
         EventTimerStore.start(target, event.id(), 2400, null);
     }
 
-    // ────────────────────────── 3. 雷暴将至:1 张随机卡牌 + 范围内敌对生物攻防 +2,2:00（夜间刷怪 ×2 暂缓） ──────────────────────────
+    // ────────────────────────── 3. 雷暴将至:1 张随机卡牌 + 立即刷一波怪 + 范围内敌对生物攻防 +2,2:00（夜间刷怪 ×2） ──────────────
 
     public static void stormApproaching(ServerLevel level, Player triggerer, Player target, AstralEvent event,
                                         AstralEventTrigger source, int tier) {
@@ -111,6 +115,9 @@ public final class EventEffects {
         target.addEffect(new MobEffectInstance(com.merlinkitsune.astral_dice.effect.ModEffects.STORM_APPROACHING,
                 2400, 0, false, false, true));
         RandomCardHandler.giveCardTo(target, RandomCardHandler.CardCategory.ALL);
+        // 用户裁决 2026-10-23：触发瞬间在**玩家附近立即刷一波怪**（5–7 只僵尸/骷髅/蜘蛛 + 小概率女巫）。
+        // 放在取 box 之前 ⇒ 这一波怪同样吃到 +2 攻 / +4 护甲的雷暴增益，并在到期回调里一并撤销。
+        spawnStormWave(level, target);
         AABB box = triggerer.getBoundingBox().inflate(event.radius());
         List<LivingEntity> mobs = new ArrayList<>();
         for (LivingEntity e : level.getEntitiesOfClass(LivingEntity.class, box)) {
@@ -128,6 +135,145 @@ public final class EventEffects {
             }
         });
         LOGGER.info("AP_EVENT_EFFECT: storm_approaching:mobs={}:nightSpawnX2=hook", mobs.size());
+    }
+
+    // ────────────────────────── 3b. 雷暴将至：立即刷一波怪（用户裁决 2026-10-23） ──────────────────────────
+
+    /** 一波怪的数量区间（含端点）。 */
+    private static final int WAVE_MIN = 5;
+    private static final int WAVE_MAX = 7;
+    /** 落点环形：距玩家 8–16 格。 */
+    private static final double WAVE_RING_MIN = 8.0D;
+    private static final double WAVE_RING_MAX = 16.0D;
+    /** 同区域判定半径：玩家 32 格内若有其他玩家，该区域只刷一波。 */
+    private static final double WAVE_CLUSTER_RADIUS = 32.0D;
+    /** 追加女巫的概率。 */
+    private static final float WAVE_WITCH_CHANCE = 0.15F;
+    /** 单只怪找落点的最大尝试次数。 */
+    private static final int WAVE_PLACE_TRIES = 12;
+
+    /** 本次分发（同一 gameTime）内已刷出的波心；跨 tick 自动清空。 */
+    private static long waveTick = Long.MIN_VALUE;
+    private static final List<WaveOrigin> WAVE_ORIGINS = new ArrayList<>();
+
+    /** 波心：维度 + 坐标。只按坐标聚类会把不同维度里恰好接近的两个玩家判成同一区域（复核 P3，2026-10-23）。 */
+    private record WaveOrigin(net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> dim,
+                              net.minecraft.world.phys.Vec3 pos) {
+    }
+
+    /**
+     * 在玩家附近刷一波敌怪：5–7 只（僵尸 / 骷髅 / 蜘蛛等概率），另按 {@link #WAVE_WITCH_CHANCE} 追加 1 只女巫。
+     *
+     * <p>去重口径（用户裁决 2026-10-23）：玩家半径 32 格内若有其他玩家，则该区域只刷一波 ⇒
+     * 同一次事件分发里，与已刷波心相距 ≤32 格的玩家直接跳过（多目标事件不会叠出两波）。
+     *
+     * <p>僵尸与骷髅一律戴头盔：原版 {@code Zombie#aiStep} / {@code AbstractSkeleton#aiStep}
+     * 只按 HEAD 槽是否为空决定要不要点燃，戴头盔即不在白天燃烧。
+     */
+    private static void spawnStormWave(ServerLevel level, Player player) {
+        long now = level.getGameTime();
+        if (now != waveTick) {
+            waveTick = now;
+            WAVE_ORIGINS.clear();
+        }
+        for (WaveOrigin origin : WAVE_ORIGINS) {
+            if (!origin.dim().equals(level.dimension())) continue;
+            if (origin.pos().distanceToSqr(player.position()) <= WAVE_CLUSTER_RADIUS * WAVE_CLUSTER_RADIUS) {
+                LOGGER.info("AP_EVENT_EFFECT: storm_wave_skip:player={}:reason=nearby_wave", player.getName().getString());
+                return;
+            }
+        }
+        int want = WAVE_MIN + level.getRandom().nextInt(WAVE_MAX - WAVE_MIN + 1);
+        int placed = 0;
+        for (int i = 0; i < want; i++) {
+            Mob mob = createWaveMob(level);
+            if (mob == null) continue;
+            if (placeStormMob(level, player, mob)) placed++;
+        }
+        int witch = 0;
+        if (level.getRandom().nextFloat() < WAVE_WITCH_CHANCE) {
+            Mob mob = EntityType.WITCH.create(level);
+            if (mob != null && placeStormMob(level, player, mob)) witch++;
+        }
+        // 只有真的刷出怪才算「本区域已有一波」，否则同区第二个玩家还能补刷
+        if (placed + witch > 0) WAVE_ORIGINS.add(new WaveOrigin(level.dimension(), player.position()));
+        LOGGER.info("AP_EVENT_EFFECT: storm_wave:player={}:want={}:placed={}:witch={}",
+                player.getName().getString(), want, placed, witch);
+    }
+
+    /** 候选怪：僵尸 / 骷髅 / 蜘蛛（用户裁决 2026-10-23 只允许这三种）。 */
+    private static Mob createWaveMob(ServerLevel level) {
+        EntityType<? extends Mob> type = switch (level.getRandom().nextInt(3)) {
+            case 0 -> EntityType.ZOMBIE;
+            case 1 -> EntityType.SKELETON;
+            default -> EntityType.SPIDER;
+        };
+        return type.create(level);
+    }
+
+    /**
+     * 在玩家 8–16 格环形内找一个合法落点（无碰撞 + 脚下实心 + 生成阻塞检查），
+     * 再补 {@code finalizeSpawn}（装备 / 幼年 / 属性等原生初始化）与头盔；全部尝试失败则丢弃并返回 false。
+     *
+     * <p>纵向优先取玩家所在高度附近（±4 格），找不到才退到该列地表 —— 洞穴 / 下界基地里也能刷在玩家身边。
+     */
+    private static boolean placeStormMob(ServerLevel level, Player player, Mob mob) {
+        int baseY = net.minecraft.util.Mth.floor(player.getY());
+        for (int attempt = 0; attempt < WAVE_PLACE_TRIES; attempt++) {
+            double angle = level.getRandom().nextDouble() * (Math.PI * 2.0D);
+            double dist = WAVE_RING_MIN + level.getRandom().nextDouble() * (WAVE_RING_MAX - WAVE_RING_MIN);
+            double x = player.getX() + Math.cos(angle) * dist;
+            double z = player.getZ() + Math.sin(angle) * dist;
+            int y = findSpawnY(level, net.minecraft.util.Mth.floor(x), net.minecraft.util.Mth.floor(z), baseY);
+            if (y == Integer.MIN_VALUE) continue;
+            mob.moveTo(x, y, z, level.getRandom().nextFloat() * 360.0F, 0.0F);
+            if (!level.noCollision(mob)) continue;
+            if (!mob.checkSpawnObstruction(level)) continue;
+            // ⚠️ 必须直接调 Mob#finalizeSpawn：走 EventHooks.finalizeMobSpawn 会重新派发 FinalizeSpawnEvent
+            //    ⇒ 命中本类的「夜间刷怪 ×2」钩子，无限翻倍（复制体还会再复制）。
+            mob.finalizeSpawn(level, level.getCurrentDifficultyAt(mob.blockPosition()), MobSpawnType.NATURAL, null);
+            equipStormHelmet(mob);
+            if (level.addFreshEntity(mob)) return true;
+            break;
+        }
+        mob.discard();
+        return false;
+    }
+
+    /** [baseY-4, baseY+4] 由高到低找「本格空气 + 脚下非空气」；该列都不行再退到地表。找不到返回 {@link Integer#MIN_VALUE}。 */
+    private static int findSpawnY(ServerLevel level, int x, int z, int baseY) {
+        net.minecraft.core.BlockPos.MutableBlockPos pos = new net.minecraft.core.BlockPos.MutableBlockPos();
+        for (int y = baseY + 4; y >= baseY - 4; y--) {
+            if (y <= level.getMinBuildHeight() || y >= level.getMaxBuildHeight() - 2) continue;
+            if (isSpawnFloor(level, pos.set(x, y, z))) return y;
+        }
+        int surface = level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
+        if (surface <= level.getMinBuildHeight() || surface >= level.getMaxBuildHeight() - 2) return Integer.MIN_VALUE;
+        return isSpawnFloor(level, pos.set(x, surface, z)) ? surface : Integer.MIN_VALUE;
+    }
+
+    /** 落点判定：本格是空气、脚下不是空气（水面 / 岩浆 / 树叶上方都算不合格的地面由下游 noCollision 再筛）。 */
+    private static boolean isSpawnFloor(ServerLevel level, net.minecraft.core.BlockPos pos) {
+        if (!level.isEmptyBlock(pos)) return false;
+        return !level.isEmptyBlock(pos.below());
+    }
+
+    /** 僵尸 / 骷髅戴头盔（随机配装已有头部装备时不覆盖）；头盔不掉落，避免被刷成铁装备农场。 */
+    private static void equipStormHelmet(Mob mob) {
+        if (!(mob instanceof net.minecraft.world.entity.monster.Zombie)
+                && !(mob instanceof net.minecraft.world.entity.monster.AbstractSkeleton)) {
+            return;
+        }
+        EquipmentSlot head = EquipmentSlot.HEAD;
+        if (!mob.getItemBySlot(head).isEmpty()) return;
+        ItemStack helmet = new ItemStack(Items.IRON_HELMET);
+        // ⚠️ 必须标不可破坏：原版 Zombie#aiStep / AbstractSkeleton#aiStep 在日光点燃判定命中时会给头盔扣耐久
+        //    （0.04/tick × 均值 0.5 ⇒ 铁头盔 165 耐久约 6.9 分钟直射日光后碎掉、随即点燃）。
+        //    标了 UNBREAKABLE 之后 ItemStack#isDamageableItem() 为假：既不扣耐久，flag 仍被置 false ⇒ 不点燃。
+        helmet.set(net.minecraft.core.component.DataComponents.UNBREAKABLE,
+                new net.minecraft.world.item.component.Unbreakable(false));
+        mob.setItemSlot(head, helmet);
+        mob.setDropChance(head, 0.0F);
     }
 
     // ────────────────────────── 4. 取长补短：血量最低者 +8、最高者 -8（集合层结算） ──────────────────────────
@@ -171,24 +317,57 @@ public final class EventEffects {
         }
     }
 
-    // ────────────────────────── 「雷暴将至」夜间刷怪数量 ×2（用户裁决 3：直接建钩子） ──────────────────────────
+    // ────────────────────────── 「雷暴将至」夜间刷怪数量 ×2（用户裁决 3；2026-10-23 修复口径） ──────────────────────────
 
     /**
-     * 夜间、且**存在带「雷暴将至」指示器的玩家**时，把敌对生物的自然刷新**再来一只**（数量 ×2）。
+     * 夜间、且**存在带「雷暴将至」指示器的玩家**时，把敌对生物的**自然刷新**再来一只（数量 ×2）。
      *
      * <p>用平台刷怪收尾事件实现（非 mixin）：1.21.1 = {@code FinalizeSpawnEvent}。
+     *
+     * <p>2026-10-23 修复（用户裁决）：
+     * <ol>
+     *   <li>只认 {@link MobSpawnType#NATURAL} —— 刷怪笼 / {@code /summon} / 结构生成 / 袭击波次 /
+     *       僵尸增援 / 村民转化一律不翻倍；</li>
+     *   <li>已被取消（cancel 或 {@code setSpawnCancelled}）的生成跳过；</li>
+     *   <li>复制体补 {@code finalizeSpawn}（否则丢拾取战利品 / 幼年 / 鸡骑士 / 难度装备等初始化）；</li>
+     *   <li>落点先做碰撞与生成阻塞校验，候选位都不可用则不刷第二只。</li>
+     * </ol>
      */
     @net.neoforged.bus.api.SubscribeEvent
     public static void onFinalizeSpawn(net.neoforged.neoforge.event.entity.living.FinalizeSpawnEvent event) {
-        if (!(event.getEntity() instanceof Mob mob) || !(mob instanceof Enemy)) return;
+        if (event.getSpawnType() != MobSpawnType.NATURAL) return;
+        if (event.isCanceled() || event.isSpawnCancelled()) return;
+        if (!(event.getEntity() instanceof Mob mob)) return;
+        if (!(mob instanceof Enemy)) return;
         if (!(mob.level() instanceof ServerLevel level)) return;
         if (!level.isNight()) return;
         if (!hasStormWatcherNear(level, mob)) return;
-        net.minecraft.world.entity.Entity copy = mob.getType().create(level);
-        if (copy == null) return;
-        copy.moveTo(mob.getX() + 1.0D, mob.getY(), mob.getZ() + 1.0D, mob.getYRot(), mob.getXRot());
-        level.addFreshEntity(copy);
+        net.minecraft.world.entity.Entity created = mob.getType().create(level);
+        if (!(created instanceof Mob copy)) {
+            if (created != null) created.discard();
+            return;
+        }
+        if (!placeStormCopy(level, mob, copy)) {
+            copy.discard();
+            return;
+        }
         LOGGER.info("AP_EVENT_EFFECT: storm_night_spawn_x2:type={}", mob.getType());
+    }
+
+    /** 在原生成点附近（含原位共 7 个候选）找合法落点，并补 finalizeSpawn 后入世；全部不合法返回 false。 */
+    private static boolean placeStormCopy(ServerLevel level, Mob origin, Mob copy) {
+        double[][] offsets = {{1.0D, 0.0D}, {-1.0D, 0.0D}, {0.0D, 1.0D}, {0.0D, -1.0D},
+                              {1.0D, 1.0D}, {-1.0D, -1.0D}, {0.0D, 0.0D}};
+        for (double[] offset : offsets) {
+            copy.moveTo(origin.getX() + offset[0], origin.getY(), origin.getZ() + offset[1],
+                    origin.getYRot(), origin.getXRot());
+            if (!level.noCollision(copy)) continue;
+            if (!copy.checkSpawnObstruction(level)) continue;
+            // 同上：直接调 Mob#finalizeSpawn，禁止走 EventHooks.finalizeMobSpawn（会递归触发本事件）
+            copy.finalizeSpawn(level, level.getCurrentDifficultyAt(copy.blockPosition()), MobSpawnType.NATURAL, null);
+            if (level.addFreshEntity(copy)) return true;
+        }
+        return false;
     }
 
     /** 附近（64 格内）是否有玩家正处于「雷暴将至」状态。 */
@@ -198,6 +377,7 @@ public final class EventEffects {
         }
         return false;
     }
+
     // ────────────────────────── 计时器惰性到期(每 10 tick) ──────────────────────────
 
     /**

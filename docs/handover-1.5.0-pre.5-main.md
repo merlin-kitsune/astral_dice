@@ -7,7 +7,7 @@
 3. 四线 `mod_version` 均为 `1.5.0-pre.5+<加载器后缀>`（2026-10-22 22:2x bump）；`starengine_version=1.1.0-pre.2`（四线一致，未动）。
 4. jar 内硬前置：`modId="starengine"` / `versionRange="[1.1.0-pre.2,2.0.0)"`，`META-INF/jarjar/` 计数 **0**（pre.4 两 jar 已复核）。
 5. 可交付范围：**只发 P0**（`neoforge-1.21.1` + `forge-1.20.1`）。P1 两线版本号同为 pre.5，但内容不含 1.5.0（本批也未移植）。
-6. P0 双 jar（pre.5，**2026-10-23 12:35 重建，含 Jade 生物护甲批**）已投放 **4 处**（两个整合包 + 两个 `run/<线>/mods`）+ 根 `build/libs`，逐处 sha256 见 §2。
+6. P0 双 jar（pre.5，**2026-10-23 13:40 重建，含「雷暴将至」修复 + 立即刷怪波**）已投放 **4 处**（两个整合包 + 两个 `run/<线>/mods`）+ 根 `build/libs`，逐处 sha256 见 §2。
 7. 守门 8 跑 7 绿；唯一红 = `verify_probe_class_refs`（26.1.2 产物陈旧，P1 待重建，见 §5-1）。
 8. 实机：1.20.1 本批 6/6 PASS、1.21.1 5 条 FIXBATCH 判据全命中、末条 49/49 PASS；**创造模式扣卡复验 PASS**（§4.4，2026-10-22 16:10，用例 `CARD-NOCOST-CREATIVE-1.20.1`）。
 9. **pre.4 本批（2026-10-22 17:3x）无新增实机读数**：改动 = 实体拆除口径 + 死亡动画 + 两个管理命令 + 11 张效果图标 + 版本号，判据目前全为静态/字节码/资源 md5（§5-13），实机待用户下达。
@@ -23,6 +23,8 @@
 18. **玩家侧状态效果保护（2026-10-23 用户裁决，本批头提交）**：玩家身上的效果**除非被声明可清除（牛奶 / 蜂蜜瓶）否则不受任何外部影响**；mob 侧**保持原版**（不搬计时表 —— 女巫 / 诡术师会反复喝药清 mob 状态，改保活会叠加 tick 负载）。新增两线 `event/PlayerEffectProtection`，把此前散落的裸 `addEffect` 收口为统一入口并留下「结束 tick」快照，外部清除时 `astral_dice:` 直接取消、原版命名空间**下一 tick 按余量补回**；主动移除必须走 `removeNow`。独立复核 `dsh_code_review`（run `c20953f4`）三条 finding 已全部修复。详见 §5-26，**无实机读数**（补回时序 / 牛奶可清除 / mob 不受影响三项待用户下达）。
 
 19. **Jade 生物护甲改为「防御力」（2026-10-23 用户裁决 A，本批头提交）**：审计发现 Jade 玩家分支显示 `defensePowerOf`（防御力）而生物分支回落原版 `getArmorValue()`，与骰战结算 `CombatFormula.mobDefenseInt` 是两个单位；两线各改 1 文件（`mixin/jade/ArmorValueProviderMixin.java`）把非玩家分支改走 `mobDefenseInt(TargetCategory.classify(entity), getArmorValue(), 韧性)`。产物 12:35 重建、4 处投放 sha256 全 MATCH（§2）。详见 §5-28，**无实机读数**。
+
+20. **「雷暴将至」修复 + 立即刷怪波（2026-10-23 用户裁决，本批头提交）**：① 修掉审计查出的 4 处缺陷（×2 复制域无 `MobSpawnType` 白名单 / 复制体未 `finalizeSpawn` / 无视 `isCanceled`·`isSpawnCancelled` / 落点不校验）；② 新增「施放瞬间在玩家 8–16 格刷 5–7 只僵尸·骷髅·蜘蛛（僵尸与骷髅强制铁头盔、掉落率 0），15% 概率追加一只女巫；半径 32 格内只刷一波」；两线各改 1 文件 `event/EventEffects.java`。产物 13:40 重建、4 处投放 sha256 全 MATCH（§2）。详见 §5-29，**无实机读数**。
 
 ## 1 环境与路径
 
@@ -56,23 +58,23 @@
 | jar 内依赖区间 | `[1.1.0-pre.2,2.0.0)`，`type=required`（neo）/ `mandatory=true`（forge） | `META-INF/neoforge.mods.toml:141-144` / `META-INF/mods.toml:154-158` |
 | 内嵌库 | `META-INF/jarjar/` 计数 **0**（两线） | `unzip -l <jar> \| grep -c 'META-INF/jarjar/'` |
 
-P0 产物（`build/libs`，**2026-10-23 12:35 重建（含 Jade 生物护甲批；诊断探针已剔除）**）：
+P0 产物（`build/libs`，**2026-10-23 13:40 重建（含「雷暴将至」修复 + 立即刷怪波；诊断探针已剔除）**）：
 
-> ✅ **2026-10-23 12:35 已重建并含本批「Jade 生物护甲改为防御力」（提交后 §5-28）**：两 jar 内 `mixin/jade/ArmorValueProviderMixin` 的 javap 命中 `TargetCategory.classify`@18 + `CombatFormula.mobDefenseInt`@33；`META-INF/jarjar/` 仍 0；4 处投放 + 根 `build/libs` 已刷新。上一批（12:05，效果保护 `a344fc46`）的三份 jar 已作废，仅作历史值（下行）。
+> ✅ **2026-10-23 13:40 已重建并含本批「雷暴将至」修复 + 立即刷怪波（提交后 §5-29）**：两 jar 内 `event/EventEffects` 的 `javap` 命中 `spawnStormWave` / `createWaveMob` / `placeStormMob` / `findSpawnY` / `isSpawnFloor` / `equipStormHelmet` / `placeStormCopy` + 7 个 `WAVE_*` 常量，字节码含 `MobSpawnType.NATURAL` 门控、`isCanceled` / `isSpawnCancelled` 早退与 4 参（neo）/ 5 参（forge reobf SRG `Mob.m_6518_`）`finalizeSpawn`；`META-INF/jarjar/` 仍 0；4 处投放 + 根 `build/libs` 已刷新。上一批（12:35，Jade 生物护甲 `539c4698`）的三份 jar 已作废，仅作历史值（下行）。
 
-- neo `astral_dice-1.5.0-pre.5+neoforge_1.21.1.jar` — **2,565,536 B** — `a34cbc483a345cd4572ab34dd19afadb92e360d6084985ae93094a5a2293029c`
-- forge `astral_dice-1.5.0-pre.5+forge_1.20.1.jar` — **2,611,060 B** — `aebca4d5a504b40ee391025b936a05b5cbee5e0b817a08d331315c7fb42b088b`
-- forge dev named jar `build/devlibs/astral_dice-1.5.0-pre.5+forge_1.20.1.jar` — **2,581,605 B** — `0d961f7a0f6c47d39d6cb28d85e977778ff40e8ea805a5162e587bb0b59d2ad1`
-- 历史值（只作背景，均已被覆盖）：pre.5 12:05（**不含** Jade 生物护甲批）= neo 2,565,317 B `d9b3742d…` / forge 2,610,860 B `3a54d2bc…` / devlibs 2,581,395 B `284528e5…`；pre.5 22:32（**不含**效果保护批）= neo 2,559,837 B `f25546b6…` / forge 2,605,382 B `e30980b4…` / devlibs 2,575,899 B `86c6350b…`；pre.4 22:21（**带诊断探针的临时构建，勿投放，已删除**）= neo 2,561,853 B `bfc88d8e…`；pre.4 18:32（筹码商店品质外框批）= neo 2,558,631 B `742132dd…` / forge 2,604,187 B `4b984008…` / devlibs 2,574,721 B `8f81e4c3…`；pre.4 18:18（电击手套 FX 批）= neo 2,558,408 B `02719fe6…` / forge 2,603,959 B `42cce572…` / devlibs 2,574,494 B `67bc4d24…`；pre.4 18:09（强化拒止品质批）= neo 2,556,778 B `cab211ef…` / forge 2,602,334 B `5141780a…` / devlibs 2,572,866 B `544b61de…`；pre.4 17:53（史莱姆批）= neo 2,556,774 B `bdfbe5f9…` / forge 2,602,332 B `d9780bd0…` / devlibs 2,572,864 B `2849258d…`；pre.4 17:2x = neo 2,556,723 B `7198cc75…` / forge 2,602,280 B `fbb77627…` / devlibs 2,572,814 B `6a445c8f…`；pre.3 15:47 = 2,555,654 B `f063102b…` / 2,601,208 B `7bf787df…`。
+- neo `astral_dice-1.5.0-pre.5+neoforge_1.21.1.jar` — **2,569,892 B** — `6c13fbe01e4e8eb6c9e2e1ccbb5e8e52a7103ef48b51983294e654e195d3e407`
+- forge `astral_dice-1.5.0-pre.5+forge_1.20.1.jar` — **2,615,326 B** — `0c85cd3ec9b6b9947b98178ff19e6d728d18e671057bb98d576705d8b4eeb031`
+- forge dev named jar `build/devlibs/astral_dice-1.5.0-pre.5+forge_1.20.1.jar` — **2,585,937 B** — `00151870f1a694af7df7feb3acdaa91abef035359e3fb7a3987ec7570588b403`
+- 历史值（只作背景，均已被覆盖）：pre.5 13:29（复核前，已被上行覆盖）= neo 2,568,549 B `e99db150…` / forge 2,614,004 B `8f714e84…` / devlibs 2,584,622 B `7122d0c4…`；pre.5 12:35（**不含**「雷暴将至」批）= neo 2,565,536 B `a34cbc48…` / forge 2,611,060 B `aebca4d5…` / devlibs 2,581,605 B `0d961f7a…`；pre.5 12:05（**不含** Jade 生物护甲批）= neo 2,565,317 B `d9b3742d…` / forge 2,610,860 B `3a54d2bc…` / devlibs 2,581,395 B `284528e5…`；pre.5 22:32（**不含**效果保护批）= neo 2,559,837 B `f25546b6…` / forge 2,605,382 B `e30980b4…` / devlibs 2,575,899 B `86c6350b…`；pre.4 22:21（**带诊断探针的临时构建，勿投放，已删除**）= neo 2,561,853 B `bfc88d8e…`；pre.4 18:32（筹码商店品质外框批）= neo 2,558,631 B `742132dd…` / forge 2,604,187 B `4b984008…` / devlibs 2,574,721 B `8f81e4c3…`；pre.4 18:18（电击手套 FX 批）= neo 2,558,408 B `02719fe6…` / forge 2,603,959 B `42cce572…` / devlibs 2,574,494 B `67bc4d24…`；pre.4 18:09（强化拒止品质批）= neo 2,556,778 B `cab211ef…` / forge 2,602,334 B `5141780a…` / devlibs 2,572,866 B `544b61de…`；pre.4 17:53（史莱姆批）= neo 2,556,774 B `bdfbe5f9…` / forge 2,602,332 B `d9780bd0…` / devlibs 2,572,864 B `2849258d…`；pre.4 17:2x = neo 2,556,723 B `7198cc75…` / forge 2,602,280 B `fbb77627…` / devlibs 2,572,814 B `6a445c8f…`；pre.3 15:47 = 2,555,654 B `f063102b…` / 2,601,208 B `7bf787df…`。
 - 同版本号（pre.5）的中间构建件**不残留**：Gradle 同名覆盖，`build/libs` 与 `build/devlibs` 里 pre.5 各只有上面那三份之一。
-- ⚠️ **旧版本产物仍留在各子项目 build 目录**（pre.1–pre.4，勿投放）；**仓库根 `build/libs` 已于本批（2026-10-23 12:35）用 `pushToRootBuild` 刷新为 pre.5 一对**（坑 28；根目录同时保留 P1 旧件 `astral_dice-1.3.7-*` 与 `starengine-*-1.1.0-pre.2.jar`）——取件只认 §2 这三行。
-- 投放（2026-10-23 12:35 实测，逐处 `Copy-Item` + `Get-FileHash` 双向对账；四个目标里的旧 `astral_dice-1.5.0-pre.*` 已先删除，每处只剩 pre.5 一份）：
+- ⚠️ **旧版本产物仍留在各子项目 build 目录**（pre.1–pre.4，勿投放）；**仓库根 `build/libs` 已于本批（2026-10-23 13:40）用 `pushToRootBuild` 刷新为 pre.5 一对**（坑 28；根目录同时保留 P1 旧件 `astral_dice-1.3.7-*` 与 `starengine-*-1.1.0-pre.2.jar`）——取件只认 §2 这三行。
+- 投放（2026-10-23 13:40 实测，逐处 `Get-FileHash` 双向对账；四个目标里的 `astral_dice-1.5.0-pre.*` 每处只剩 pre.5 一份）：
   | 位置 | jar 形态 | 字节 | sha256 前 16 | 对账 |
   |---|---|---|---|---|
-  | `run/1.21.1/mods` | reobf（`build/libs`） | 2,565,536 | `A34CBC483A345CD4` | MATCH |
-  | `run/1.20.1/mods` | **named dev jar**（`build/devlibs`） | 2,581,605 | `0D961F7A0F6C47D3` | MATCH（同源，§6-3） |
-  | `D:\.minecraft\versions\狐の航空学 Voxy Edition\mods` | reobf（`build/libs`） | 2,565,536 | `A34CBC483A345CD4` | MATCH |
-  | `D:\.minecraft\versions\1.20.1-Forge 模组测试\mods` | reobf（`build/libs`） | 2,611,060 | `AEBCA4D5A504B40E` | MATCH |
+  | `run/1.21.1/mods` | reobf（`build/libs`） | 2,569,892 | `6C13FBE01E4E8EB6` | MATCH |
+  | `run/1.20.1/mods` | **named dev jar**（`build/devlibs`） | 2,585,937 | `00151870F1A694AF` | MATCH（同源，§6-3） |
+  | `D:\.minecraft\versions\狐の航空学 Voxy Edition\mods` | reobf（`build/libs`） | 2,569,892 | `6C13FBE01E4E8EB6` | MATCH |
+  | `D:\.minecraft\versions\1.20.1-Forge 模组测试\mods` | reobf（`build/libs`） | 2,615,326 | `0C85CD3EC9B6B994` | MATCH |
 - jar 内自检（`python zipfile` + `javap`）：neo version=`1.5.0-pre.5+neoforge_1.21.1` / forge=`1.5.0-pre.5+forge_1.20.1`；`META-INF/jarjar/` = **0**；依赖区间 `[1.1.0-pre.2,2.0.0)` 在位；**诊断探针 0 残留**（`client/ClientFrameProbe.class` 0 个、字节码含 `AP_FP_` 的 class 0 个）；新效果图标 `textures/mob_effect/{whetstone_guard_cd,airbag_guard_cd}.png`（410 / 483 B）两线俱在、`railgun_ready.png` **0** 个；`command/AstralPartyCommand.class` 含 `killbarricade` / `killrepulsion` / `AFTERM`。
 - 投放后目录状态：两个 `run/<线>/mods` 与两个整合包的 `astral_dice-*.jar` 只剩 pre.5 一份；整合包侧 `starengine-*` 与 `AutoJS-forge-1.20.1-1.0.0.jar`（reobf，167,358 B）在位；**整合包里本轮注入的测试资产已全部清除**（`kubejs/server_scripts/` 的 `astral_bugfix_probe.js` / `astral_fixbatch_probe.js` / `zz_lpfx_drive2.js` 已删、世界副本 `saves/lp-fx-test` 已删，用户原世界 `saves/新しい世界` 未动）。
 
@@ -101,6 +103,7 @@ P0 产物（`build/libs`，**2026-10-23 12:35 重建（含 Jade 生物护甲批�
 | 本批头提交（`git log -1`） | feat(effect) 玩家侧状态效果保护 | 新增两线 `event/PlayerEffectProtection`（统一计时权威 + 抗外部清除 + `removeNow` 主动移除入口 + 死亡/登出/重生清场）；`ModEffectEvents` HIGH/LOWEST 双通道 + `PlayerEvent.Clone`；两线各 26 文件 `EffectTimerGuard.apply` 收口；审计正本 `docs/features/effect-client-server-split-audit.md`；**无实机读数**（§5-26） |
 
 | 本批头提交（提交后 `git log -1`） | fix(jade) 生物护甲改显示防御力 | 两线 `mixin/jade/ArmorValueProviderMixin.java` 的非玩家分支改 `CombatFormula.mobDefenseInt(TargetCategory.classify(e), e.getArmorValue(), 韧性)`（玩家分支仍 `DiceCombatModifiers.defensePowerOf`）；判据 javap `classify`@18 / `mobDefenseInt`@33；产物 12:35 重建 + 4 处投放（§2） |
+| 本批头提交（提交后 `git log -1`） | fix(event) 「雷暴将至」修复 + 立即刷怪波 | 两线 `event/EventEffects.java`：×2 钩子加 `MobSpawnType.NATURAL` 白名单 + 取消早退 + 复制体补 `finalizeSpawn`（4/5 参分叉）+ 7 点落位校验；新增 `spawnStormWave`（5–7 只僵尸/骷髅/蜘蛛 + 15% 女巫、8–16 格、`player.y ± 4` 纵向扫描、铁头盔 `setDropChance 0`、32 格内一波）；判据 javap 7 个新方法 + `WAVE_*` 常量；产物 13:40 重建 + 4 处投放（§2） |
 
 ## 4 实机读数（原文摘录）
 
@@ -410,6 +413,16 @@ AP_NC2B_READ:hand=astral_dice:effect_card_monster_laser:handn=2:cards=2:sel=0:to
     ⑦ **无实机读数**：Jade 面板实际图标数、门控（防御力 0 不显示）表现需用户下达实机；P1 两线按规则不测。
     ⑧ **P1 欠账**：`fabric-1.20.1/src/main/java/com/merlinkitsune/astral_dice/mixin/jade/ArmorValueProviderMixin.java`（相关行 15/16/45/54/63）与 `neoforge-26.1.2/src/main/java/com/merlinkitsune/astral_dice/mixin/jade/ArmorValueProviderMixin.java`（15/16/24/37/46）**仍是旧行为 + 旧注释**（生物回落原版护甲值），随 P1 批次移植。
     ⑨ 顺带登记（**本轮未修，待裁决**）：(a) `DiceCombatModifiers.java` 的 `setDefenseArmorBonus(LivingEntity, String, int)` 重载（neo `:254` / forge `:256`）**零调用者**（死重载，注释所称「雷暴将至给怪加防御」实际没走它）；(b)「雷暴将至」走原版 `Attributes.ARMOR` +4.0（neo `event/EventEffects.java:121-122` / forge `:127-128`，到期归零 `:126-127` / `:132-133`）⇒ 等价 +2 防御力、生物防御实际只 +1（`floor(4×0.4)`）；(c) starengine 库侧 `TargetCategory.java:47-57` 的枚举 javadoc 仍写「HOSTILE 初始防御 2、攻击 5 / NEUTRAL 防御 0、攻击 4」，与 `TargetBattleStats`（0/4、0/3）及在用 jar 字节码（四类基数均 0）冲突 = **陈旧注释**，须在 starengine 仓改（不在本仓）。
+29. **「雷暴将至」修复 + 立即刷怪波（2026-10-23 用户裁决，本批）**：起因 = 用户先要「雷暴降至事件的代码验证，判定其功能是否正常或者有缺陷」（只读审计），随后裁决「执行修复」，并追加功能：「玩家附近立即刷新 5-7 只怪，只能是僵尸、骷髅、蜘蛛（僵尸和骷髅必须戴头盔避免白天被烧死），小概率刷新一个女巫。如果玩家半径 32 格内有其他玩家，则该区域内只刷新一波」。
+    ① 审计查出的 4 处缺陷（**全部已修**）：(a) P1 **×2 复制域过宽** —— 旧钩子只判 `Mob` + `Enemy`，不看 `getSpawnType()` ⇒ `/summon`（COMMAND）、刷怪笼（SPAWNER）、僵尸增援（REINFORCEMENT）、转化（CONVERSION）、袭击（EVENT）、结构（STRUCTURE）**夜间全会被 ×2**；(b) P1 **复制体未 `finalizeSpawn`** ⇒ 丢 `setCanPickUpLoot(0.55f)` / 幼年 / 鸡骑士 / 难度配装；(c) P2 **无视取消** —— 不查 `isCanceled()` / `isSpawnCancelled()`（cancel 只跳过 `finalizeSpawn`，实体照样生成）；(d) P2 **落点不校验** —— 固定 `+1/+1` 直接 `addFreshEntity`。
+    ② 修复（`onFinalizeSpawn`）：`getSpawnType() != MobSpawnType.NATURAL` 早退 → `isCanceled() || isSpawnCancelled()` 早退 → 复制体改「`create` → 7 个候选偏移逐一 `noCollision` / `checkSpawnObstruction` → **直接** `finalizeSpawn(...NATURAL, null)` → `addFreshEntity`」，全失败 `discard()`；日志 `AP_EVENT_EFFECT: storm_night_spawn_x2:type={}` 未变。
+    ③ 新功能（两线 `event/EventEffects.java`）：`spawnStormWave(level, target)` 在施放瞬间调用，**位置在取 `AABB` / 加攻防之前**（新波怪同批吃到 +2 攻 / +4 护甲并进到期清零列表）；常量 `WAVE_MIN=5` / `WAVE_MAX=7` / `WAVE_RING_MIN=8.0D` / `WAVE_RING_MAX=16.0D` / `WAVE_CLUSTER_RADIUS=32.0D` / `WAVE_WITCH_CHANCE=0.15F` / `WAVE_PLACE_TRIES=12`；种类 ZOMBIE / SKELETON / SPIDER 等概率、女巫**额外** 15%（不计入 5–7）；Y 由 `findSpawnY` 在 `player.y ± 4` 纵向扫描（`isSpawnFloor` = 脚下非空、上方空），扫不到再退 `Heightmap.MOTION_BLOCKING_NO_LEAVES`；头盔 = `Items.IRON_HELMET` + **不可破坏**（neo `DataComponents.UNBREAKABLE` / forge NBT `Unbreakable=true`）+ `setDropChance(HEAD, 0.0F)`（仅 Zombie / AbstractSkeleton 且 HEAD 槽为空）；机器行 `AP_EVENT_EFFECT: storm_wave:player={}:want={}:placed={}:witch={}`。
+    ④ 「32 格一波」= 同 tick 静态 `WAVE_ORIGINS`（`List<WaveOrigin>` = **维度 + 坐标**；`waveTick != level.getGameTime()` 时清空；维度不同的原点不参与聚类），新原点距任一已刷原点 ≤32 格即打 `AP_EVENT_EFFECT: storm_wave_skip:player={}:reason=nearby_wave` 跳过；**只有 `placed + witch > 0` 才登记原点**（否则同区第二个玩家可补刷）。
+    ⑤ **平台差异（坑 33）**：`Mob#finalizeSpawn` 1.21.1 = **4 参**、1.20.1 = **5 参**（末位 `@Nullable CompoundTag`）；**不得**走 `EventHooks.finalizeMobSpawn`（会再次派发 `FinalizeSpawn`，×2 钩子连锁翻倍）；forge reobf 里是 SRG `Mob.m_6518_`（5 参含 `CompoundTag`）。
+    ⑥ 判据（静态全绿）：两线 `:classes` BUILD SUCCESSFUL；`javap -p` 两线均见 `spawnStormWave` / `createWaveMob` / `placeStormMob` / `findSpawnY` / `isSpawnFloor` / `equipStormHelmet` / `placeStormCopy` + 7 个 `WAVE_*`；字节码命中 `getSpawnType` / `isCanceled` / `isSpawnCancelled` 与 4 参（neo）/ 5 参（forge reobf）`finalizeSpawn`；jar 内 `META-INF/jarjar/` = 0；13:40 重建 + 6 个推送任务 + 4 处投放与根 `build/libs` 逐处 sha256 MATCH（§2）。
+    ⑦ **已知限制**：头盔已标不可破坏（2026-10-23 复核 P3 收口）⇒ 不再掉耐久、也不会在白天被点燃，原「约 6.9 分钟碎」的限制作废；波怪在**任意维度 / 任意时刻**都会刷（用户未限时段）；`+2 攻 / +4 护甲` 仍走原版 `Attributes` 瞬态修饰符，`setDefenseArmorBonus(LivingEntity,…)` 死重载仍未启用（规格第 34 条 ④ 分歧未裁决）。
+    ⑧ **无实机读数**：刷怪数量 / 头盔防烧 / 32 格一波三项需用户下达实机；P1 两线（26.1.2 / fabric）未移植。
+    ⑨ **独立复核（2026-10-23，`dsh_code_review` run `e7302744-2c90-4f45-8ec2-b54ad3c40cec`）**：R1–R5 / R7 SUPPORTED、R6 部分成立，无 P0/P1；三条 finding 全部已修 —— (a) **P2** `docs/handover-new-session-context.md` 产物块只刷了两行（dev named jar 与标题停在旧批）⇒ 已按 §2 刷新；(b) **P3** `WAVE_ORIGINS` 只存裸 `Vec3`，同 tick 跨维度且坐标巧合接近时第二波被静默跳过 ⇒ 改 `record WaveOrigin(ResourceKey<Level> dim, Vec3 pos)` + 维度相等才聚类；(c) **P3** 铁头盔 165 耐久在直射日光下约 6.9 分钟碎、随后点燃（裁决「避免白天被烧死」只部分满足）⇒ 改不可破坏（1.21.1 `DataComponents.UNBREAKABLE` + `new Unbreakable(false)`；1.20.1 `getOrCreateTag().putBoolean("Unbreakable", true)`，两线 `ItemStack#isDamageableItem()` 遇它均为假）。复核同时硬证：两线 `coremods/finalize_spawn_targets.json` 只列 22 个原版类（无模组类）⇒ 直调 `finalizeSpawn` 不会重派事件。
 
 ## 6 坑（踩过的，后续别重踩）
 
@@ -484,6 +497,7 @@ AP_NC2B_READ:hand=astral_dice:effect_card_monster_laser:handn=2:cards=2:sel=0:to
 31. **PCL2 启动器 + 双屏桌面自动化的读数坑（2026-10-22）**：① 冷启动到标题屏约 **3 分钟**（100 秒轮询会误判失败）；② 标题屏「退出游戏」单击**不一定生效**，常常要点第二次；③ 进程核对别只信 `Get-Process -Id`，要用 `Win32_Process` 的 `CommandLine` 匹配 `net.minecraft.client.main.Main`；④ 屏幕是 5120×1440 拼接、**左屏虚拟 x 为负**（-2560..0），MCP 截图坐标 = 虚拟坐标 + 2560，且 `take_screenshot(title_pattern)` 偶尔抓到前台别的窗口 ⇒ 关键取图用全屏截图再按矩形裁。
 
 32. **判定「某特效是不是卡顿源」必须做全帧基线对比（2026-10-22）**：只在「特效可见期间」打印帧间隔，会把进世界后的区块 churn 全算到特效头上（第一轮因此误得「光束窗口只有 66 FPS」）。⇒ 探针要**全帧无条件**打印，再按「有/无特效」分组算 avg / p90 / p99 / max；判据是**两组分布一致**，而不是「窗口内偶发一帧 >40 ms」。
+33. **`Mob#finalizeSpawn` 两线参数不一致，且 reobf 产物里改名叫 SRG（2026-10-23 踩过）**：1.21.1 = **4 参** `(ServerLevelAccessor, DifficultyInstance, MobSpawnType, SpawnGroupData)`、1.20.1 = **5 参**（末位 `@Nullable CompoundTag`）⇒ 同一段手工刷怪代码必须分叉；另：**不要**用 `EventHooks.finalizeMobSpawn` 手工补初始化 —— 它自己就是 `FinalizeSpawn` 的派发点，夜间 ×2 钩子会连锁翻倍，直接调 `Mob#finalizeSpawn`（方法体是纯原版初始化、内部不派发事件）即可；核 jar 字节码时 forge 侧是 SRG `Mob.m_6518_`，**按 `finalizeSpawn` 名字 grep 会假阴性**（要用 `SpawnGroupData;` 描述符锚）。
 
 ## 7 关键路径（命令与文件）
 
