@@ -3,7 +3,7 @@
 ## 0 速览（一屏）
 
 1. 分支 `multi-main`；HEAD = **本批头提交**（本批提交后即此值，提交号见 `git log -1`）（pre.4 施工批 + 史莱姆被动 15 秒批 + 派子代理屏蔽人格注入规则批 + 强化拒止品质改奇特批 + 电击手套 FX 批 + 筹码商店品质外框恢复批（第 15 条）均已提交）。
-2. **2026-10-23 用户放行 push**（`重新构建所有产物，提交并推送，同时更新整合包`）⇒ 本轮把积压的 **12** 个提交推到 `origin/multi-main`、前置库 `F:\MCProject\starengine` 的 1 个提交推到 `origin/main`；推送后 `git rev-list --count origin/multi-main..HEAD` = **0**。**仍无** tag（`1.5.0-pre.3` / `pre.4` / `pre.5` 均无，打 tag 未获指示）。
+2. **2026-10-23 用户放行 push**（`重新构建所有产物，提交并推送，同时更新整合包`）⇒ 本仓积压的 **12** 个提交已推到 `origin/multi-main`（`353cfed4..2d811c8b`；推送后 `git rev-list --count origin/multi-main..HEAD` = **0**，`git ls-remote` = 本地 HEAD）；⚠️ **前置库 `F:\MCProject\starengine` 的 1 个提交 `c545b75` 仍推不上去**（`git push origin main` ⇒ `fatal: could not read Username for 'https://github.com'`，exit 128；`GCM_INTERACTIVE=never` / `GIT_TERMINAL_PROMPT=0` 同样失败）⇒ 待用户裁决（配凭证 / 改 SSH / 手动 push）。**仍无** tag（`1.5.0-pre.3` / `pre.4` / `pre.5` 均无，打 tag 未获指示）。
 3. 四线 `mod_version` 均为 `1.5.0-pre.5+<加载器后缀>`（2026-10-22 22:2x bump）；`starengine_version=1.1.0-pre.2`（四线一致，未动）。
 4. jar 内硬前置：`modId="starengine"` / `versionRange="[1.1.0-pre.2,2.0.0)"`，`META-INF/jarjar/` 计数 **0**（pre.4 两 jar 已复核）。
 5. 可交付范围：**只发 P0**（`neoforge-1.21.1` + `forge-1.20.1`）。P1 两线版本号同为 pre.5，但内容不含 1.5.0（本批也未移植）。
@@ -632,8 +632,10 @@ AP_NC2B_READ:hand=astral_dice:effect_card_monster_laser:handn=2:cards=2:sel=0:to
     ③ 本仓 P0 两线：`gradlew.bat :neoforge-1.21.1:jar :forge-1.20.1:jar` + 6 个推送任务 ⇒ **BUILD SUCCESSFUL in 5s / 17 tasks**；**产物字节与 17:00 完全一致**（`jar` 任务 `UP-TO-DATE`、forge `reobfJar` 重跑但输出相同 ⇒ 构建可复现，本轮源码零改动）：neo **2,570,968 B** `8796e6cf4db317b4…` / forge **2,616,502 B** `1519f22142bfd911…` / devlibs **2,587,015 B** `5eac2ac6e637ca88…`；4 处投放 + 根 `build/libs` 逐处 sha256 MATCH（§2 表）。
     ④ 整合包更新：`狐の航空学 Voxy Edition\mods` ← `starengine-neoforge-1.21.1-1.1.0-pre.2.jar`（98,737 B `76C7B910…`）；`1.20.1-Forge 模组测试\mods` ← `starengine-forge-1.20.1-1.1.0-pre.2.jar`（103,609 B `15DC9B8A…`）；旧的 98,733 / 103,604 B 版被**同名覆盖**（每目录仍只有一份），astral jar 由 `pushToGame` 推送并核哈希；根 `build/libs` 也换成新 pre.2 一对。
     ⑤ **P1 两线不重建（有意）**：`neoforge-26.1.2` / `fabric-1.20.1` 虽已 bump 到 `1.5.0-pre.5`，但源码仍是 1.3.7 时代、未移植 1.5.0 内容（§5-5）；重建会产出「版本号 pre.5、内容陈旧」的 jar，且明令「1.5.0 正式版前不验证、不移植」⇒ 等用户下达。守门 `verify_probe_class_refs` 的 26.1.2 红点因此仍在（§5-1）。
-    ⑥ push（用户本轮放行）：本仓 `git push origin multi-main`（12 个提交）、前置库 `git push origin main`（1 个提交 `c545b75`）；走仓库级 `http.proxy` / `https.proxy` = `http://127.0.0.1:7897`；**均不打 tag**（打 tag 未获指示）。
-    ⑦ 判据：`python docs/agent/verify-split.py` 四项 `[OK]`；`git status --short -uall` 只剩 `?? models/astral_anvil.bbmodel`；推送后 `git rev-list --count origin/multi-main..HEAD` = 0 且 `git ls-remote origin refs/heads/multi-main` 与本地 HEAD 同号；两个整合包 `mods` 内 astral / starengine 各仅一版且版本对（`1.5.0-pre.5` + `1.1.0-pre.2`）。
+    ⑥ push（用户本轮放行，走仓库级 `http.proxy` / `https.proxy` = `http://127.0.0.1:7897`；**均不打 tag**）：
+       - 本仓**成功**：`git -C F:\MCProject\astral_dice_multiloader push origin multi-main` ⇒ `353cfed4..2d811c8b  multi-main -> multi-main`，EXIT=0；实测 `rev-list --count origin/multi-main..HEAD` = **0**、`ls-remote refs/heads/multi-main` = `2d811c8b9f4a9b1d4d5f4f84c784dc36da8005e7` = 本地 HEAD。
+       - 前置库**仍失败**：`git -C F:\MCProject\starengine push origin main` ⇒ `bash: line 1: /dev/tty: No such device or address` + `error: failed to execute prompt script (exit code 1)` + `fatal: could not read Username for 'https://github.com': No such file or directory`，EXIT=**128**；再以 `$env:GCM_INTERACTIVE='never'` + `$env:GIT_TERMINAL_PROMPT='0'` 重试 ⇒ `fatal: could not read Username for 'https://github.com': terminal prompts disabled`，EXIT=128 ⇒ 实测 `rev-list --count origin/main..HEAD` = **1**（远端 `origin/main` 仍是 `6d2a96df`）。两仓均无 repo 级 `credential.helper`，全局 helper = `!"…/PortableGit/versions/1.2.0/mingw64/bin/git-credential-manager.exe"`（本机已知「全局坏 GCM helper」遗留问题）。**待用户裁决**：配凭证 / 改 SSH remote / 用户手动 push。
+    ⑦ 判据：`python docs/agent/verify-split.py` 四项 `[OK]`；`git status --short -uall` 只剩 `?? models/astral_anvil.bbmodel`；本仓推送后 `git rev-list --count origin/multi-main..HEAD` = 0 且 `git ls-remote origin refs/heads/multi-main` = `2d811c8b…` = 本地 HEAD（**前置库例外：仍 ahead 1，见 ⑥**）；两个整合包 `mods` 内 astral / starengine 各仅一版且版本对（`1.5.0-pre.5` + `1.1.0-pre.2`）。
 
 ## 6 坑（踩过的，后续别重踩）
 

@@ -36,7 +36,7 @@
   - neo → `D:\.minecraft\versions\狐の航空学 Voxy Edition\mods`
   - forge → `D:\.minecraft\versions\1.20.1-Forge 模组测试\mods`
 - 测试台：`scripts\test\mt.ps1`，`--version <线> --phase env|run|stop`。
-- 推送：**2026-10-23 用户放行**（`重新构建所有产物，提交并推送，同时更新整合包`）⇒ 本仓 12 提交已 push `origin/multi-main`、前置库 1 提交已 push `origin/main`，推送后 `git rev-list --count origin/multi-main..HEAD` = 0；**仍无** tag；后续每轮 push / 打 tag **仍需用户逐次放行**。
+- 推送：**2026-10-23 用户放行**（`重新构建所有产物，提交并推送，同时更新整合包`）⇒ 本仓 12 提交已 push `origin/multi-main`（`353cfed4..2d811c8b`，推送后 `git rev-list --count origin/multi-main..HEAD` = 0）；⚠️ **前置库 1 提交 `c545b75` 仍推不上去**（GCM 凭证缺失，`could not read Username`，exit 128）⇒ 待用户裁决；**仍无** tag；后续每轮 push / 打 tag **仍需用户逐次放行**。
 - 守门：**8 跑 7 绿**，唯一红 `verify_probe_class_refs`。⚠️ 2026-10-22 已查明：红点原有 6 处、**无一是源码缺口**
   （JEI 走 Curse Maven 未被脚本解析 / LWJGL 由加载器运行期提供 / 一处只出现在 JS 注释里 / 26.1.2 产物陈旧）；
   守门脚本已补 Curse Maven 解析 + `org.lwjgl.` 白名单 + 剥 JS 注释，现只剩 **1 处**（26.1.2 `build/libs` 停在
@@ -106,7 +106,7 @@
   (b) 本仓 P0 两线：`:neoforge-1.21.1:jar :forge-1.20.1:jar` + 6 个推送任务 ⇒ BUILD SUCCESSFUL 5s；**产物与 17:00 逐字节一致**（构建可复现，本轮源码零改动）：neo 2 570 968 B `8796e6cf…` / forge 2 616 502 B `1519f221…` / devlibs 2 587 015 B `5eac2ac6…`；4 处投放 + 根 `build/libs` 全 MATCH。
   (c) 整合包：两个 `mods` 里的库 jar 换成新 pre.2（旧 98 733 / 103 604 B 被同名覆盖，每目录仍只一份），astral jar 由 `pushToGame` 推送；根 `build/libs` 同步换新。
   (d) **P1 两线不重建（有意）**：`neoforge-26.1.2` / `fabric-1.20.1` 源码仍是 1.3.7 时代、未移植 1.5.0，产出 pre.5 jar 只会误导；等用户下达（`verify_probe_class_refs` 的 26.1.2 红点因此仍在）。
-  (e) push：本仓 12 提交 → `origin/multi-main`、前置库 1 提交 → `origin/main`（走 `http://127.0.0.1:7897`）；**均不打 tag**。
+  (e) push：本仓 12 提交 → `origin/multi-main` **成功**（`353cfed4..2d811c8b`，`rev-list` = 0、`ls-remote` = 本地 HEAD）；前置库 1 提交 → `origin/main` **失败**（GCM 凭证缺失 exit 128，`origin/main` 仍 `6d2a96df`）⇒ 待用户裁决；**均不打 tag**。
 
 
 ## 硬约束（Windows 版）
