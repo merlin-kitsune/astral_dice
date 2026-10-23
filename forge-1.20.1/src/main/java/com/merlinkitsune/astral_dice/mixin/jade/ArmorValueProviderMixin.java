@@ -1,8 +1,11 @@
 package com.merlinkitsune.astral_dice.mixin.jade;
 
 import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
+import com.merlinkitsune.starengine.combat.CombatFormula;
+import com.merlinkitsune.starengine.combat.TargetCategory;
 
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -22,10 +25,16 @@ import org.spongepowered.asm.mixin.injection.Redirect;
  * tooltip.add(new ArmorElement(armor));
  * </pre>
  * 因此这里 {@code getArmorValue()} 只有**一次**调用，重定向后门控与数值同时落在防御力上 ——
- * 防御力下限为 2（{@code DiceCombatModifiers#defensePowerOf}）恒 &gt; 0 ⇒ 护甲行永远显示。
+ * **玩家分支**的防御力下限为 2（{@code DiceCombatModifiers#defensePowerOf}）恒 &gt; 0 ⇒ 护甲行永远显示；
+ * **生物分支**的下限是 0（{@code CombatFormula#mobDefenseInt} 向下取整）⇒ 折不出 1 点防御时整行不显示（见下节）。
  *
- * <h2>只对玩家生效</h2>
- * 防御力是本模组的玩家侧派生值 ⇒ 非玩家回落原版 {@code getArmorValue()}，生物显示保持原样。
+ * <h2>玩家与生物：同一个单位（2026-10-23 用户裁决 A）</h2>
+ * 玩家 = {@code DiceCombatModifiers#defensePowerOf(Player)}；生物 =
+ * {@code CombatFormula#mobDefenseInt(TargetCategory.classify(e), e.getArmorValue(), 韧性)}
+ * —— 后者正是本线骰战结算（{@code DiceCombatEvents} 防御结算块）与贯穿之铳
+ * （{@code PiercingGunChipItem#getTargetDefense}）用的那一支 ⇒ Jade 图标在两条分支上都是**防御力**。
+ * <p>本线的门控是「局部变量 {@code armor} == 0 就 return」，重定向后该局部变量同样是防御力 ⇒
+ * 生物折不出 1 点防御（护甲 &lt; 2.5）时整行不显示，玩家恒 ≥ 2 点恒显示，均与公式自洽。
  *
  * <h2>1.20 的方法名重映射</h2>
  * 本线产物是**生产 SRG** jar（目标 jar 里 {@code getArmorValue} 实际是 {@code m_21230_}），
@@ -101,6 +110,11 @@ public abstract class ArmorValueProviderMixin {
         if (entity instanceof Player player) {
             return DiceCombatModifiers.defensePowerOf(player);
         }
-        return entity.getArmorValue();
+        // 生物：与骰战结算同一口径（CombatFormula.mobDefenseInt，含向下取整），
+        // 不再显示原版护甲值 —— 否则 Jade 的「护甲」与真实防御力是两个单位。
+        return CombatFormula.mobDefenseInt(
+                TargetCategory.classify(entity),
+                entity.getArmorValue(),
+                entity.getAttributeValue(Attributes.ARMOR_TOUGHNESS));
     }
 }

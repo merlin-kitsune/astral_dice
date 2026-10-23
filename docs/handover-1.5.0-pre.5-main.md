@@ -7,7 +7,7 @@
 3. 四线 `mod_version` 均为 `1.5.0-pre.5+<加载器后缀>`（2026-10-22 22:2x bump）；`starengine_version=1.1.0-pre.2`（四线一致，未动）。
 4. jar 内硬前置：`modId="starengine"` / `versionRange="[1.1.0-pre.2,2.0.0)"`，`META-INF/jarjar/` 计数 **0**（pre.4 两 jar 已复核）。
 5. 可交付范围：**只发 P0**（`neoforge-1.21.1` + `forge-1.20.1`）。P1 两线版本号同为 pre.5，但内容不含 1.5.0（本批也未移植）。
-6. P0 双 jar（pre.5，**2026-10-23 12:05 重建，含玩家侧效果保护批**）已投放 **4 处**（两个整合包 + 两个 `run/<线>/mods`）+ 根 `build/libs`，逐处 sha256 见 §2。
+6. P0 双 jar（pre.5，**2026-10-23 12:35 重建，含 Jade 生物护甲批**）已投放 **4 处**（两个整合包 + 两个 `run/<线>/mods`）+ 根 `build/libs`，逐处 sha256 见 §2。
 7. 守门 8 跑 7 绿；唯一红 = `verify_probe_class_refs`（26.1.2 产物陈旧，P1 待重建，见 §5-1）。
 8. 实机：1.20.1 本批 6/6 PASS、1.21.1 5 条 FIXBATCH 判据全命中、末条 49/49 PASS；**创造模式扣卡复验 PASS**（§4.4，2026-10-22 16:10，用例 `CARD-NOCOST-CREATIVE-1.20.1`）。
 9. **pre.4 本批（2026-10-22 17:3x）无新增实机读数**：改动 = 实体拆除口径 + 死亡动画 + 两个管理命令 + 11 张效果图标 + 版本号，判据目前全为静态/字节码/资源 md5（§5-13），实机待用户下达。
@@ -21,6 +21,8 @@
 16. **pre.4 全量实机测试（2026-10-22 19:00–19:40，用户下达「pre.4 以上所有更改全部做一遍实机测试并输出报告」）**：P0 双线各 **10 条用例：9 条机器判据 PASS + 1 条截图取证**（4 条新用例 × 2 线 + 6 条回归）——`PRE4-CHIPSHOP-FRAME-*` 的 vision 断言在测试台里是 **DELEGATED**（不判红绿），本体只覆盖 crash/kubejs/mixin 健康项，外框的机器判据在静态守门 `verify_chip_shop_ui.ps1` 的 G2b；机器行原文见 §4.8。本轮为跑通判据改了**测试资产**（两份 fixbatch probe 新增 `hurtby`、bugfix probe 新增 `barplace` 与 `doLuluPrep` 补骰子、6 条用例重写/订正），**未改任何产品源码**；新增的探针能力同时让 §4.5–§4.7 三批「无实机读数」落地。17. **pre.5 指示器批（2026-10-22 22:3x，本批头提交 `git log -1`）**：① **移除电磁炮「就位」效果指示器**（效果 `railgun_ready` 连同注册 / 三语 lang / 图标 / 图标映射一并删除，「生效中」指示器 6 枚 → **5 枚**）；② **磨刀石 / 安全气囊保命触发后新增同名倒计时指示器**（新效果 `whetstone_guard_cd` / `airbag_guard_cd`，时长 = 剩余冷却，`event/PlayerTickEvents#updateChipCooldownIndicators` 每 tick 按附件里的冷却结束刻同步；与 ∞「生效中」指示器并存）；③ 四线 `mod_version` 升 **`1.5.0-pre.5`**；④ 需求「激光让客户端卡一下」**在真整合包内取证定性为「不是光束绘制」**（§4.10：光束可见帧 avg 6.05 ms vs 无光束 6.24 ms、绘制本体 4–66 µs），**产品源码零改动**。判据见 §5-24 / §5-25，产物与投放见 §2。
 
 18. **玩家侧状态效果保护（2026-10-23 用户裁决，本批头提交）**：玩家身上的效果**除非被声明可清除（牛奶 / 蜂蜜瓶）否则不受任何外部影响**；mob 侧**保持原版**（不搬计时表 —— 女巫 / 诡术师会反复喝药清 mob 状态，改保活会叠加 tick 负载）。新增两线 `event/PlayerEffectProtection`，把此前散落的裸 `addEffect` 收口为统一入口并留下「结束 tick」快照，外部清除时 `astral_dice:` 直接取消、原版命名空间**下一 tick 按余量补回**；主动移除必须走 `removeNow`。独立复核 `dsh_code_review`（run `c20953f4`）三条 finding 已全部修复。详见 §5-26，**无实机读数**（补回时序 / 牛奶可清除 / mob 不受影响三项待用户下达）。
+
+19. **Jade 生物护甲改为「防御力」（2026-10-23 用户裁决 A，本批头提交）**：审计发现 Jade 玩家分支显示 `defensePowerOf`（防御力）而生物分支回落原版 `getArmorValue()`，与骰战结算 `CombatFormula.mobDefenseInt` 是两个单位；两线各改 1 文件（`mixin/jade/ArmorValueProviderMixin.java`）把非玩家分支改走 `mobDefenseInt(TargetCategory.classify(entity), getArmorValue(), 韧性)`。产物 12:35 重建、4 处投放 sha256 全 MATCH（§2）。详见 §5-28，**无实机读数**。
 
 ## 1 环境与路径
 
@@ -54,23 +56,23 @@
 | jar 内依赖区间 | `[1.1.0-pre.2,2.0.0)`，`type=required`（neo）/ `mandatory=true`（forge） | `META-INF/neoforge.mods.toml:141-144` / `META-INF/mods.toml:154-158` |
 | 内嵌库 | `META-INF/jarjar/` 计数 **0**（两线） | `unzip -l <jar> \| grep -c 'META-INF/jarjar/'` |
 
-P0 产物（`build/libs`，**2026-10-22 22:32 重建（含 pre.5 指示器批；诊断探针已剔除）**）：
+P0 产物（`build/libs`，**2026-10-23 12:35 重建（含 Jade 生物护甲批；诊断探针已剔除）**）：
 
-> ✅ **2026-10-23 12:05 已重建并含本批「玩家侧状态效果保护」（提交 `a344fc46`）**：三份 jar 内 `PlayerEffectProtection.class` + `PlayerEffectProtection$Observed.class` 各 1；4 处投放已刷新（§5-27 已闭环）。
+> ✅ **2026-10-23 12:35 已重建并含本批「Jade 生物护甲改为防御力」（提交后 §5-28）**：两 jar 内 `mixin/jade/ArmorValueProviderMixin` 的 javap 命中 `TargetCategory.classify`@18 + `CombatFormula.mobDefenseInt`@33；`META-INF/jarjar/` 仍 0；4 处投放 + 根 `build/libs` 已刷新。上一批（12:05，效果保护 `a344fc46`）的三份 jar 已作废，仅作历史值（下行）。
 
-- neo `astral_dice-1.5.0-pre.5+neoforge_1.21.1.jar` — **2,565,317 B** — `d9b3742dc0c1d4cff419d68c5dcd9f511ae741110f4567dfc2f9006c9e1d24b5`
-- forge `astral_dice-1.5.0-pre.5+forge_1.20.1.jar` — **2,610,860 B** — `3a54d2bc65ac4c8ebabfbe2e67dfa18af8ccc9b932f0f436baa2d59625426707`
-- forge dev named jar `build/devlibs/astral_dice-1.5.0-pre.5+forge_1.20.1.jar` — **2,581,395 B** — `284528e5ff578026f382e77f6e9dcad9207d924978882d627f958b8d52bc71ad`
-- 历史值（只作背景，均已被覆盖）：pre.5 22:32（**不含**效果保护批）= neo 2,559,837 B `f25546b6…` / forge 2,605,382 B `e30980b4…` / devlibs 2,575,899 B `86c6350b…`；pre.4 22:21（**带诊断探针的临时构建，勿投放，已删除**）= neo 2,561,853 B `bfc88d8e…`；pre.4 18:32（筹码商店品质外框批）= neo 2,558,631 B `742132dd…` / forge 2,604,187 B `4b984008…` / devlibs 2,574,721 B `8f81e4c3…`；pre.4 18:18（电击手套 FX 批）= neo 2,558,408 B `02719fe6…` / forge 2,603,959 B `42cce572…` / devlibs 2,574,494 B `67bc4d24…`；pre.4 18:09（强化拒止品质批）= neo 2,556,778 B `cab211ef…` / forge 2,602,334 B `5141780a…` / devlibs 2,572,866 B `544b61de…`；pre.4 17:53（史莱姆批）= neo 2,556,774 B `bdfbe5f9…` / forge 2,602,332 B `d9780bd0…` / devlibs 2,572,864 B `2849258d…`；pre.4 17:2x = neo 2,556,723 B `7198cc75…` / forge 2,602,280 B `fbb77627…` / devlibs 2,572,814 B `6a445c8f…`；pre.3 15:47 = 2,555,654 B `f063102b…` / 2,601,208 B `7bf787df…`。
+- neo `astral_dice-1.5.0-pre.5+neoforge_1.21.1.jar` — **2,565,536 B** — `a34cbc483a345cd4572ab34dd19afadb92e360d6084985ae93094a5a2293029c`
+- forge `astral_dice-1.5.0-pre.5+forge_1.20.1.jar` — **2,611,060 B** — `aebca4d5a504b40ee391025b936a05b5cbee5e0b817a08d331315c7fb42b088b`
+- forge dev named jar `build/devlibs/astral_dice-1.5.0-pre.5+forge_1.20.1.jar` — **2,581,605 B** — `0d961f7a0f6c47d39d6cb28d85e977778ff40e8ea805a5162e587bb0b59d2ad1`
+- 历史值（只作背景，均已被覆盖）：pre.5 12:05（**不含** Jade 生物护甲批）= neo 2,565,317 B `d9b3742d…` / forge 2,610,860 B `3a54d2bc…` / devlibs 2,581,395 B `284528e5…`；pre.5 22:32（**不含**效果保护批）= neo 2,559,837 B `f25546b6…` / forge 2,605,382 B `e30980b4…` / devlibs 2,575,899 B `86c6350b…`；pre.4 22:21（**带诊断探针的临时构建，勿投放，已删除**）= neo 2,561,853 B `bfc88d8e…`；pre.4 18:32（筹码商店品质外框批）= neo 2,558,631 B `742132dd…` / forge 2,604,187 B `4b984008…` / devlibs 2,574,721 B `8f81e4c3…`；pre.4 18:18（电击手套 FX 批）= neo 2,558,408 B `02719fe6…` / forge 2,603,959 B `42cce572…` / devlibs 2,574,494 B `67bc4d24…`；pre.4 18:09（强化拒止品质批）= neo 2,556,778 B `cab211ef…` / forge 2,602,334 B `5141780a…` / devlibs 2,572,866 B `544b61de…`；pre.4 17:53（史莱姆批）= neo 2,556,774 B `bdfbe5f9…` / forge 2,602,332 B `d9780bd0…` / devlibs 2,572,864 B `2849258d…`；pre.4 17:2x = neo 2,556,723 B `7198cc75…` / forge 2,602,280 B `fbb77627…` / devlibs 2,572,814 B `6a445c8f…`；pre.3 15:47 = 2,555,654 B `f063102b…` / 2,601,208 B `7bf787df…`。
 - 同版本号（pre.5）的中间构建件**不残留**：Gradle 同名覆盖，`build/libs` 与 `build/devlibs` 里 pre.5 各只有上面那三份之一。
-- ⚠️ **旧版本产物仍留在各子项目 build 目录**（pre.1–pre.4，勿投放）；**仓库根 `build/libs` 已于本批 22:32 用 `pushToRootBuild` 刷新为 pre.5 一对**（坑 28；根目录同时保留 P1 旧件 `astral_dice-1.3.7-*` 与 `starengine-*-1.1.0-pre.2.jar`）——取件只认 §2 这三行。
-- 投放（2026-10-22 22:33 实测，逐处 `Copy-Item` + `Get-FileHash` 双向对账；四个目标里的旧 `astral_dice-1.5.0-pre.*` 已先删除，每处只剩 pre.5 一份）：
+- ⚠️ **旧版本产物仍留在各子项目 build 目录**（pre.1–pre.4，勿投放）；**仓库根 `build/libs` 已于本批（2026-10-23 12:35）用 `pushToRootBuild` 刷新为 pre.5 一对**（坑 28；根目录同时保留 P1 旧件 `astral_dice-1.3.7-*` 与 `starengine-*-1.1.0-pre.2.jar`）——取件只认 §2 这三行。
+- 投放（2026-10-23 12:35 实测，逐处 `Copy-Item` + `Get-FileHash` 双向对账；四个目标里的旧 `astral_dice-1.5.0-pre.*` 已先删除，每处只剩 pre.5 一份）：
   | 位置 | jar 形态 | 字节 | sha256 前 16 | 对账 |
   |---|---|---|---|---|
-  | `run/1.21.1/mods` | reobf（`build/libs`） | 2,565,317 | `D9B3742DC0C1D4CF` | MATCH |
-  | `run/1.20.1/mods` | **named dev jar**（`build/devlibs`） | 2,581,395 | `284528E5FF578026` | MATCH（同源，§6-3） |
-  | `D:\.minecraft\versions\狐の航空学 Voxy Edition\mods` | reobf（`build/libs`） | 2,565,317 | `D9B3742DC0C1D4CF` | MATCH |
-  | `D:\.minecraft\versions\1.20.1-Forge 模组测试\mods` | reobf（`build/libs`） | 2,610,860 | `3A54D2BC65AC4C8E` | MATCH |
+  | `run/1.21.1/mods` | reobf（`build/libs`） | 2,565,536 | `A34CBC483A345CD4` | MATCH |
+  | `run/1.20.1/mods` | **named dev jar**（`build/devlibs`） | 2,581,605 | `0D961F7A0F6C47D3` | MATCH（同源，§6-3） |
+  | `D:\.minecraft\versions\狐の航空学 Voxy Edition\mods` | reobf（`build/libs`） | 2,565,536 | `A34CBC483A345CD4` | MATCH |
+  | `D:\.minecraft\versions\1.20.1-Forge 模组测试\mods` | reobf（`build/libs`） | 2,611,060 | `AEBCA4D5A504B40E` | MATCH |
 - jar 内自检（`python zipfile` + `javap`）：neo version=`1.5.0-pre.5+neoforge_1.21.1` / forge=`1.5.0-pre.5+forge_1.20.1`；`META-INF/jarjar/` = **0**；依赖区间 `[1.1.0-pre.2,2.0.0)` 在位；**诊断探针 0 残留**（`client/ClientFrameProbe.class` 0 个、字节码含 `AP_FP_` 的 class 0 个）；新效果图标 `textures/mob_effect/{whetstone_guard_cd,airbag_guard_cd}.png`（410 / 483 B）两线俱在、`railgun_ready.png` **0** 个；`command/AstralPartyCommand.class` 含 `killbarricade` / `killrepulsion` / `AFTERM`。
 - 投放后目录状态：两个 `run/<线>/mods` 与两个整合包的 `astral_dice-*.jar` 只剩 pre.5 一份；整合包侧 `starengine-*` 与 `AutoJS-forge-1.20.1-1.0.0.jar`（reobf，167,358 B）在位；**整合包里本轮注入的测试资产已全部清除**（`kubejs/server_scripts/` 的 `astral_bugfix_probe.js` / `astral_fixbatch_probe.js` / `zz_lpfx_drive2.js` 已删、世界副本 `saves/lp-fx-test` 已删，用户原世界 `saves/新しい世界` 未动）。
 
@@ -97,6 +99,8 @@ P0 产物（`build/libs`，**2026-10-22 22:32 重建（含 pre.5 指示器批；
 | `548b4405` | fix(rarity) 强化拒止品质改奇特 | 两线 `item/ModItems.java` 的 `EFFECT_CARD_REPULSION` 由 `AstralRarities.epic()` → `bizarre()`；判据 javap `lambda$static$52`（neo）/`lambda$static$56`（forge）`bizarre` 1 / `epic` 0；专属牌品质总则落 `AGENTS-full.md`（第 46 条）；CHANGELOG 两语 + `docs/features/repulsion-card-spec.md` 订正；产物 18:09 重投 4 处 |
 | `fc913507` | release+ui(pre.5) 指示器批 | 删电磁炮「就位」指示器；磨刀石 / 安全气囊保命触发后新增**同名倒计时**指示器（`whetstone_guard_cd` / `airbag_guard_cd`）；四线升 pre.5；整合包内激光卡顿取证定性为「非光束绘制」（§4.9 / §5-25） |
 | 本批头提交（`git log -1`） | feat(effect) 玩家侧状态效果保护 | 新增两线 `event/PlayerEffectProtection`（统一计时权威 + 抗外部清除 + `removeNow` 主动移除入口 + 死亡/登出/重生清场）；`ModEffectEvents` HIGH/LOWEST 双通道 + `PlayerEvent.Clone`；两线各 26 文件 `EffectTimerGuard.apply` 收口；审计正本 `docs/features/effect-client-server-split-audit.md`；**无实机读数**（§5-26） |
+
+| 本批头提交（提交后 `git log -1`） | fix(jade) 生物护甲改显示防御力 | 两线 `mixin/jade/ArmorValueProviderMixin.java` 的非玩家分支改 `CombatFormula.mobDefenseInt(TargetCategory.classify(e), e.getArmorValue(), 韧性)`（玩家分支仍 `DiceCombatModifiers.defensePowerOf`）；判据 javap `classify`@18 / `mobDefenseInt`@33；产物 12:35 重建 + 4 处投放（§2） |
 
 ## 4 实机读数（原文摘录）
 
@@ -388,6 +392,24 @@ AP_NC2B_READ:hand=astral_dice:effect_card_monster_laser:handn=2:cards=2:sel=0:to
         (c) **P3 文档**：52 的分解与 `removeNow` 计数已按实测订正（见 ⑥），审计文档 §8 建议 6 / §10.3 / §10.4 / §10.5 同步。
 27. ~~**源码领先于产物（2026-10-23 效果保护批，提交 `a344fc46`）**~~ ⇒ **12:05 已闭环**：`gradlew.bat :neoforge-1.21.1:jar :forge-1.20.1:jar`（BUILD SUCCESSFUL in 5s）+ 六个 push 任务（`:*:pushToDevRun` / `:pushToGame` / `:pushToRootBuild`，BUILD SUCCESSFUL）完成重建与重投，§2 三行 sha256 与投放表已重录、4 处 `Get-FileHash` 全部 MATCH。
     产物证据：三份 jar 内 `PlayerEffectProtection.class` + `PlayerEffectProtection$Observed.class` 各 1（`META-INF/jarjar/` 仍 0）；`javap -p -c` 命中 `ModEffectEvents.onPlayerClone` / `onExternalRemovalRestore`（两线）、`EnderDiceHandler` → `PlayerEffectProtection.removeNow`（neo `#352` / forge `#469`）、PEP 六个公开成员。历史：重建前 `build/libs` 是 2026-10-22 22:32 的 pre.5 件（neo 2,559,837 B `f25546b6…` / forge 2,605,382 B `e30980b4…`），不含本批。
+
+28. **Jade 生物护甲改为「防御力」（2026-10-23 用户裁决 A，本批）**：起因 = 审计（用户 m04669「验证友好/被动/中立/敌对生物的护甲值计算是否准确，以及 Jade 上的护甲值呈现是否正确」）查出 Jade 两侧不同源。
+    ① 审计结论（只读取证，源码 / 字节码 / MC 反编译三证）：**计算链准确、无双计** —— `DiceCombatEvents.java:759` 取 `target.getArmorValue() + modifierDefense * 2.0`，玩家走 `CombatFormula.playerDefense`（`2 + 护甲×0.30 + 0.85×韧性`）、生物走 `mobDefenseInt(classify, 护甲, 韧性)`（`floor(基数 0 + 护甲×0.40 + 1.0×韧性)`）；原版 `LivingEntity#actuallyHurt` 的护甲减免在 `CommonHooks.onLivingDamagePre` 之后才发生，被本模组 `setNewDamage` 覆盖后丢弃 ⇒ 生物护甲只计一次。四类生物**防御力基数全为 0** ⇒ 分类只影响攻击力（敌对 4 / 中立 3 / 被动 0 / 友好 0）。
+    ② 缺口：Jade 15.10.6 `EntityHealthAndArmorProvider.appendTooltip` 里 `getArmorValue()` 出现 **2 次**（偏移 109-114 门控 `ifle`、121-127 作 `ArmorElement(float)` 入参），旧 mixin 只把**玩家**换成 `defensePowerOf`，生物回落到原版护甲 ⇒ 两个单位。对照读数：全套铁甲僵尸 armor **15** → 实际防御 **6** 而 Jade 画 **8** 图标；钻石甲 armor 20 + 韧性 8 → 实际防御 **16** 而 Jade 封顶 **10** 图标；铁头盔僵尸 armor 2 → 实际防御 floor(0.8)=**0** 而 Jade 有 **1** 图标；下界合金 armor 20/韧性 12 → 实际 20 与 Jade 恰好一致。
+    ③ 代码（P0 两线各 1 文件）：`neoforge-1.21.1/src/main/java/com/merlinkitsune/astral_dice/mixin/jade/ArmorValueProviderMixin.java`（3,469 B / 61 行 → **4,788 B / 77 行**）与 `forge-1.20.1/src/main/java/com/merlinkitsune/astral_dice/mixin/jade/ArmorValueProviderMixin.java`（7,400 B / 106 行 → **8,532 B / 119 行**）。处理器非玩家分支改为：
+    ```java
+    return CombatFormula.mobDefenseInt(
+            TargetCategory.classify(entity),
+            entity.getArmorValue(),
+            entity.getAttributeValue(Attributes.ARMOR_TOUGHNESS));
+    ```
+    新增 import `CombatFormula` / `TargetCategory` / `Attributes`；javadoc 小节「只对玩家生效」整段改为「玩家与生物：同一个单位（2026-10-23 用户裁决 A）」。**照旧不变的硬约束**：`@Redirect` 的 `method` 用完整描述符、`@At` 指原版 `LivingEntity#getArmorValue()I`；**forge 处理器必须非 static**（Mixin 0.8.5 严格匹配实例方法，写 static 会 `InvalidInjectionException` 且因 `required:false` 静默失效）；`Attributes.ARMOR_TOUGHNESS` 在 neo 是 `Holder`、forge 是 `Attribute`。
+    ④ 行为变化：门控被重定向后判的是**防御力 > 0** ⇒ 护甲 <2.5 的生物（铁头盔僵尸之类）**整行不显示护甲**；玩家侧恒 ≥2 恒显示。`MC_ENTITY_ARMOR_MAX_FOR_RENDER` 默认 **20**（`VanillaPlugin` 字节码 `bipush 20`）⇒ ≤20 画图标（每图标 2 点）、>20 退化为数字，与 HUD 的 `POINTS_PER_ICON=2` 同口径。
+    ⑤ 判据（静态全绿）：`gradlew.bat :neoforge-1.21.1:classes :forge-1.20.1:classes` BUILD SUCCESSFUL；两个产物 jar 内 `ArmorValueProviderMixin` 的 `javap -p -c` 命中 `TargetCategory.classify`@18 + `CombatFormula.mobDefenseInt`@33；`META-INF/jarjar/` 计数 **0**；产物 12:35 重建 + 6 个推送任务 + 4 处投放与根 `build/libs` 逐处 sha256 MATCH（§2）。
+    ⑥ **未做的一半（有意）**：原方案 A 还含「tooltip 追加一行『防御力 X』」。统一单位后图标本身即防御力、玩家侧从不显示数字，再叠一行会造成两侧口径不对称；且需两线各写一条 `ITooltip` 注入，无实机放行无法验证（有启动崩溃风险）⇒ **暂不做**，待用户裁决是否另开一批。
+    ⑦ **无实机读数**：Jade 面板实际图标数、门控（防御力 0 不显示）表现需用户下达实机；P1 两线按规则不测。
+    ⑧ **P1 欠账**：`fabric-1.20.1/src/main/java/com/merlinkitsune/astral_dice/mixin/jade/ArmorValueProviderMixin.java`（相关行 15/16/45/54/63）与 `neoforge-26.1.2/src/main/java/com/merlinkitsune/astral_dice/mixin/jade/ArmorValueProviderMixin.java`（15/16/24/37/46）**仍是旧行为 + 旧注释**（生物回落原版护甲值），随 P1 批次移植。
+    ⑨ 顺带登记（**本轮未修，待裁决**）：(a) `DiceCombatModifiers.java` 的 `setDefenseArmorBonus(LivingEntity, String, int)` 重载（neo `:254` / forge `:256`）**零调用者**（死重载，注释所称「雷暴将至给怪加防御」实际没走它）；(b)「雷暴将至」走原版 `Attributes.ARMOR` +4.0（neo `event/EventEffects.java:121-122` / forge `:127-128`，到期归零 `:126-127` / `:132-133`）⇒ 等价 +2 防御力、生物防御实际只 +1（`floor(4×0.4)`）；(c) starengine 库侧 `TargetCategory.java:47-57` 的枚举 javadoc 仍写「HOSTILE 初始防御 2、攻击 5 / NEUTRAL 防御 0、攻击 4」，与 `TargetBattleStats`（0/4、0/3）及在用 jar 字节码（四类基数均 0）冲突 = **陈旧注释**，须在 starengine 仓改（不在本仓）。
 
 ## 6 坑（踩过的，后续别重踩）
 
