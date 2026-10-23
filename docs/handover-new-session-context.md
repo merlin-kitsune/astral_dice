@@ -108,6 +108,13 @@
   (d) **P1 两线不重建（有意）**：`neoforge-26.1.2` / `fabric-1.20.1` 源码仍是 1.3.7 时代、未移植 1.5.0，产出 pre.5 jar 只会误导；等用户下达（`verify_probe_class_refs` 的 26.1.2 红点因此仍在）。
   (e) push：本仓 12 提交 → `origin/multi-main` **成功**（`353cfed4..2d811c8b`，`rev-list` = 0、`ls-remote` = 本地 HEAD）；前置库 1 提交 → `origin/main` 由**用户手动推送**完成（17:19 复核 = 本地 HEAD、ahead 0）；**均不打 tag**。
 
+23. **Modrinth 发布链路永久移除 + StarEngine 四产物上 CurseForge（2026-10-23 用户裁决，正本 §5-39 / §6-40）**：
+  (a) **只删发布、不删依赖源**：`tools/modrinth_upload.py` / `tools/modrinth.json` 已删；`tools/update_store_page.py` 重写为 CurseForge-only；`.gitignore` 的 Modrinth 凭据说明注释换成 1 行 ⛔ 说明（`.modrinth/` 忽略项保留）；CI 本就没有商店上传步骤；`maven.modrinth:` 依赖源（四线 build.gradle 43 处）、`mt_env.ps1` 测试模组下载、`ref/**` **全部保留**。
+  (b) **StarEngine 1.1.0-pre.2 四产物已上 CurseForge 项目 1755415**（`beta`）：neo 1.21.1 = `9296227`、forge 1.20.1 = `9296225`、neo 26.1.2 = `9296221`、fabric 1.20.1 = `9296224`。⚠️ 同名旧件 `9269333`（neo）/ `9269334`（forge）需作者后台删；cfwidget 有缓存，判据用 fileId。
+  (c) **真缺陷修复**：`tools/curseforge_upload.py` 的 urllib 被 Cloudflare 指纹级封锁（恒 403）⇒ 新增 curl 回退（`--noproxy *` 直连优先、代理兜底；多部分表单必须用 metadata 临时文件，内联 JSON 会 400）。
+  (d) 未重建任何 jar、未 push（本轮只删工具与改文档）。
+  (e) 复核 `dsh_code_review` run `65fa9e63`（无 P0/P1）：四条已修 —— `.gitignore` 的 `.modrinth/` 忽略项**必须保留**（只换注释）、`maven.modrinth:` 处数 79→**43**、curl 回退的 JSON 请求补 `Content-Type: application/json`、索引末行 `L4023`。
+  (f) 后续裁决：`tools/curseforge-description.md` 中英两行的 Modrinth 项目链接**已撤**（CF 商店描述只留 GitHub）；**本体 pre 版本不发 CurseForge** —— `1.5.0-pre.5` 不上传，项目 `1662159` 最新文件仍是 2026-10-05 的 1.3.7-hotfix。
 
 ## 硬约束（Windows 版）
 

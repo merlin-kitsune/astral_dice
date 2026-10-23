@@ -83,9 +83,7 @@ base-mod-compile-libs/
 ### 用法见 tools/curseforge_upload.py --help
 .curseforge/
 
-### Modrinth 上传凭据与标签表缓存(2026-10-01):**不入库** ###
-### token 放 .modrinth/token(本地)或环境变量 MODRINTH_TOKEN(CI secret);
-### 用法见 tools/modrinth_upload.py --help
+### Modrinth 发布链路已于 2026-10-23 永久移除(用户裁决);本地遗留目录仍不入库 ###
 .modrinth/
 
 ### 移植参考源(fabric-1.20.1 第四线,2026-09-29 接入):Fabric/Forge/Trinkets/CCA 等参考仓克隆件,不入库

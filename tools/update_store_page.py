@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-"""Update the StarEngine project page on Modrinth and CurseForge.
+"""Print (and optionally push) the StarEngine store-page text for CurseForge.
 
-Modrinth: PATCH /v2/project/{id} with {"body", "description"} using a personal token.
 CurseForge: PUT /v1/mods/{id} with {"summary", "description"} using a Core API key.
+
+Modrinth publishing was removed from this repository on 2026-10-23 (user ruling:
+permanently drop every Modrinth publish chain); this tool no longer touches it.
 
 Default is dry-run. Pass --apply to send write requests.
 """
@@ -16,9 +18,7 @@ import urllib.error
 import urllib.request
 
 UA = "merlin-kitsune/starengine-publisher/1.0.0 (store page updater)"
-MODRINTH_BASE = "https://api.modrinth.com/v2"
 CF_BASE = "https://api.curseforge.com/v1"
-MODRINTH_SUMMARY_MAX = 256
 CF_SUMMARY_MAX = 500
 
 
@@ -58,8 +58,6 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--body-file", default="docs/store/starengine-page-en.md")
     ap.add_argument("--summary", default=None)
-    ap.add_argument("--modrinth-project", default="2dIXA5wO")
-    ap.add_argument("--modrinth-token", default=None)
     ap.add_argument("--curseforge-project", default="1755415")
     ap.add_argument("--curseforge-key", default=None)
     ap.add_argument("--try-cf", action="store_true",
@@ -71,53 +69,34 @@ def main(argv=None):
     body = open(args.body_file, encoding="utf-8").read()
     if "\u2014" in body:
         raise SystemExit("[ERR] body 含 em dash，请先清理")
-    mr_summary = read_summary(args.body_file, args.summary, MODRINTH_SUMMARY_MAX)
     cf_summary = read_summary(args.body_file, args.summary, CF_SUMMARY_MAX)
 
-    token = args.modrinth_token or os.environ.get("MODRINTH_TOKEN")
-    if not token and os.path.exists(".modrinth/token"):
-        token = open(".modrinth/token", encoding="utf-8").read().strip()
     cf_key = args.curseforge_key or os.environ.get("CURSEFORGE_API_KEY")
     proxy = args.proxy or os.environ.get("HTTPS_PROXY")
     opener = build_opener(proxy)
 
-    print("Modrinth project = %s  summary=%d/%d  body=%d 字符"
-          % (args.modrinth_project, len(mr_summary), MODRINTH_SUMMARY_MAX, len(body)))
-    print("CurseForge project = %s  summary=%d/%d" % (args.curseforge_project, len(cf_summary), CF_SUMMARY_MAX))
+    print("CurseForge project = %s  summary=%d/%d  body=%d 字符"
+          % (args.curseforge_project, len(cf_summary), CF_SUMMARY_MAX, len(body)))
     print("代理 = %s | 写请求 = %s" % (proxy or "直连", "是" if args.apply else "否（dry-run）"))
-    print(json.dumps({"modrinth": {"description": mr_summary}, "curseforge": {"summary": cf_summary}},
-                     ensure_ascii=False, indent=1))
+    print(json.dumps({"curseforge": {"summary": cf_summary}}, ensure_ascii=False, indent=1))
     if not args.apply:
         print("DRY-RUN：未发送任何请求")
         return 0
-
-    rc = 0
-    if not token:
-        print("[SKIP] Modrinth：缺少 token")
-    else:
-        status, text = request(opener, "PATCH", "%s/project/%s" % (MODRINTH_BASE, args.modrinth_project),
-                               {"Authorization": token, "User-Agent": UA,
-                                "Content-Type": "application/json"},
-                               {"body": body, "description": mr_summary})
-        print("[Modrinth] HTTP %s %s" % (status, "" if status == 200 else text))
-        rc |= 0 if status == 200 else 1
 
     if not args.try_cf:
         # 2026-10-20 实测：Core API 对 /v1/mods/{id} 只有 GET，PUT/POST/PATCH/OPTIONS 全 404；
         # Upload API 也没有项目信息端点。公开 API 无法改项目简介/描述。
         print("[SKIP] CurseForge：公开 API 不支持修改项目信息（需作者后台手动粘贴或非公开端点）")
-        rc |= 2
-    elif not cf_key:
+        return 2
+    if not cf_key:
         print("[SKIP] CurseForge：缺少 API key（CURSEFORGE_API_KEY）")
-        rc |= 2
-    else:
-        status, text = request(opener, "PUT", "%s/mods/%s" % (CF_BASE, args.curseforge_project),
-                               {"x-api-key": cf_key, "Accept": "application/json",
-                                "Content-Type": "application/json", "User-Agent": UA},
-                               {"summary": cf_summary, "description": body})
-        print("[CurseForge] HTTP %s %s" % (status, "" if status == 200 else text[:200]))
-        rc |= 0 if status == 200 else 1
-    return rc
+        return 2
+    status, text = request(opener, "PUT", "%s/mods/%s" % (CF_BASE, args.curseforge_project),
+                           {"x-api-key": cf_key, "Accept": "application/json",
+                            "Content-Type": "application/json", "User-Agent": UA},
+                           {"summary": cf_summary, "description": body})
+    print("[CurseForge] HTTP %s %s" % (status, "" if status == 200 else text[:200]))
+    return 0 if status == 200 else 1
 
 
 if __name__ == "__main__":

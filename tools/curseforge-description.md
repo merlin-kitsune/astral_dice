@@ -62,7 +62,6 @@ Installed automatically by the launcher from the dependency relations on each fi
 
 - **Source & issue tracker**: <https://github.com/merlin-kitsune/astral_dice>
 - **Releases** (changelogs, all builds): <https://github.com/merlin-kitsune/astral_dice/releases>
-- **Modrinth**: <https://modrinth.com/mod/astral-dice>
 
 Suggested one-line **Summary** for the project header:
 
@@ -125,7 +124,6 @@ Suggested one-line **Summary** for the project header:
 
 - **源码与问题反馈**：<https://github.com/merlin-kitsune/astral_dice>
 - **发布页**（更新日志与全部构建）：<https://github.com/merlin-kitsune/astral_dice/releases>
-- **Modrinth**：<https://modrinth.com/mod/astral-dice>
 
 项目标题下方建议填的**一句话简介（Summary）**：
 

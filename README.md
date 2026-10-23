@@ -103,7 +103,7 @@ This section covers everything that shipped across the 1.5.0 pre-release and rel
 | n/a | Not applicable on this line | Curios API, Mixin Booster, Sinytra Connector, Bountiful, Iron's Spells 'n Spellbooks |
 
 - The accessory provider is either-or. Fabric's `depends` block is AND-only, so Trinkets and Accessories are both declared under `recommends`, and the mod checks at startup, refusing to launch only when neither is present.
-- Store listings on Modrinth and CurseForge declare Trinkets as required and Accessories as optional. That is a store-page declaration only; `fabric.mod.json` keeps both as recommendations, so an Accessories-only setup still starts.
+- The CurseForge store listing declares Trinkets as required and Accessories as optional. That is a store-page declaration only; `fabric.mod.json` keeps both as recommendations, so an Accessories-only setup still starts.
 
 ---
 
@@ -111,7 +111,7 @@ This section covers everything that shipped across the 1.5.0 pre-release and rel
 
 - **GitHub Releases**: [merlin-kitsune/astral_dice/releases](https://github.com/merlin-kitsune/astral_dice/releases). Each release carries three jars: the two release lines plus the 26.1.2 jar.
 - **Fabric port line**: published as its own `fabric-<version>` pre-release, marked as a pre-release and never as "latest", carrying only its own jar.
-- **Modrinth**: the four builds go to the main project (`5xDtrJ8X`). StarEngine has its own project (`2dIXA5wO`); on **NeoForge 1.21.1** and **Forge 1.20.1** it is no longer bundled, so players must install that separate jar themselves (the 26.1.2 and Fabric builds still embed it). Version numbers keep the `+<loader>_<MC>` suffix (for example `1.5.0-pre.5+neoforge_1.21.1`), and the release channel follows the version suffix.
+- **CurseForge**: the builds go to the main project (`astral-dice`, project id `1662159`). StarEngine has its own project (`starengine`, id `1755415`); on **NeoForge 1.21.1** and **Forge 1.20.1** it is not bundled, so players must install that separate jar themselves (the 26.1.2 and Fabric builds still embed it). Version numbers keep the `+<loader>_<MC>` suffix (for example `1.5.0-pre.5+neoforge_1.21.1`), and the release channel follows the version suffix. Modrinth publishing was permanently dropped on 2026-10-23; CurseForge is the only store channel.
 - **Build artefacts**: `astral_dice-<version>+neoforge_1.21.1.jar`, `+forge_1.20.1.jar`, `+neoforge_26.1.2.jar` and `+fabric_1.20.1.jar`, each under its subproject's `build/libs/`. GitHub Release tags use the bare base version, while the Fabric line uses a `fabric-<version>` pre-release tag.
 
 ## Build

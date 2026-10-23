@@ -2613,6 +2613,8 @@ CF 文件按 id 独立、同名不去重不覆盖 ⇒ 后台不删就会看到�
 
 ## 附录 A 续 40. Modrinth 发布链路接入 + 1.3.5 四线产物与前置库上架（2026-10-01）
 
+> ⛔ **2026-10-23 用户裁决：本节链路已永久移除**（`tools/modrinth_upload.py` / `tools/modrinth.json` 已删；CI 从未装过该步骤）。下文仅作历史记录，不得据以施工；现行商店发布通道见 `AGENTS.md` 的 CurseForge 段。
+
 > 用户指令：「添加 modrinth api token … 主项目 id `5xDtrJ8X` / StarEngine Lib 项目 id `2dIXA5wO`；
 > 将新版本同步上传至 modrinth，StarEngine Lib 产物**单独上传到对应项目**；后续同步上传 modrinth。
 > 补充：1.20.1 fabric 版本前置使用 **Trinkets 为必需、Accessories 为可选**（curseforge 上没有 Trinkets），

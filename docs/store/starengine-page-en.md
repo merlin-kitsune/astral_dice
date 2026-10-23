@@ -39,7 +39,7 @@ Curios and Trinkets are compile-time dependencies of the library only. They are 
 
 ## Where to get builds
 
-- Modrinth and CurseForge carry the platform jars.
+- CurseForge carries the platform jars.
 - The GitHub repository serves source only. Its Releases hold source archives and no jars.
 
 ## Building from source

@@ -2290,6 +2290,8 @@ When extending this workspace:
 - ⚠️ **自动推送规则（触发时机 / 是否并入 CI）待用户设定** —— 在此之前**不要**把 CurseForge 上传接进 `build` 或 CI 流程。
 - ⚠️ **项目说明（Description）无法经 API 修改（2026-10-02 实测，别再试）**：`.curseforge/token` 是**legacy 上传 token** —— `https://api.curseforge.com/v1/mods/{id}/description` 对它返回 **403**（0 字节，非 Cloudflare 页），Core API 的 `PUT /v1/mods/{id}` 同理不可用；legacy 上传 API 本身**没有**改描述的接口；项目页 `/minecraft/mc-mods/astral-dice` 与站点 JSON `/api/v1/mods/{id}` 均被 **Cloudflare 403**（即使挂了 `--proxy` 也一样，拿不到现有正文）。⇒ **说明全文维护在 `tools/curseforge-description.md`**（中英各一份，含 Fabric 前置），改版时由人工在项目页 Description 编辑器整段替换；产物上传仍走上面的脚本（`--jar` / `--update-file`）。
 
+> ⛔ **2026-10-23 用户裁决（m07502）**：Modrinth 发布链路**永久移除**（上游始终不给过审）。下面这一段是实现原文，**仅作历史**，不要照着做。
+
 ### Modrinth 上传（2026-10-01 起；**发布动作，与本地部署无关**）
 
 - 工具 = `tools/modrinth_upload.py`（**纯标准库**）。`--dry-run` **不需要 token**（只读公开标签表与依赖项目名），先看计划再去掉它。
@@ -2310,6 +2312,15 @@ When extending this workspace:
 - CI：`.github/workflows/build.yml` 末步 `Publish to Modrinth`，触发口径与上方两个 Release 步骤一致（发布线分支 push 或 tag push）；**缺 `MODRINTH_TOKEN` secret 只告警不失败**（⚠️ 这是个**静默坑**：步骤照样 success，但什么都没传 —— 曾连续三批发版都只发了 GitHub 而 Modrinth 空着）。🆕 **2026-10-03 已把该 secret 配到本仓**（`gho_` PAT + `pynacl` sealed box 经 Actions secrets API 写入，HTTP 201；幂等仍由脚本「先查后跳」保证）⇒ 此后 CI 会**真的上传**。库产物取自 `.ci/starengine_lib/*/build/libs`（同 job 的 `Publish to mavenLocal` 已经构建过），并**显式过滤** `-sources.jar` / `-javadoc.jar` —— 它们过不了文件名解析，会把整批判非法而中止。
 - ⚠️ **触发时机的边界**：Modrinth 已按用户 2026-10-01 要求接入 CI（见上）；**CurseForge 仍待用户设定** —— 在此之前不要把它接进 `build` 或 CI。
 - ⚠️ **发布后必须核对 Modrinth 是否真的上了该版本（2026-10-02 实测教训）**：本机同日 CI 三次全绿，但 Modrinth 主项目上**仍只有 1.3.5** —— 因为 `MODRINTH_TOKEN` secret 未配置 ⇒ 该步**静默跳过**（只打 warning）。核对 = `python tools/modrinth_upload.py --list --project-id 5xDtrJ8X`（脚本自身先查后跳）；缺失时本地补发，**必须带 `--proxy http://127.0.0.1:7897`**（`--dry-run` 免 token，可先看计划）。⚠️ 项目 `status=processing` 时**匿名** `GET /v2/project/{id}/version` 返回 **404** —— 那不是「项目不存在」，带上 `Authorization: <token>` 即可读到（主项目 5xDtrJ8X 当前即处于该状态）。⚠️ 补发时**别忘库项目**：同一次跳步也会漏掉库产物（该滞后**已于 2026-10-03 根治**：secret 配好 + 当批补发完成 —— 实测 `--list` 主项目出现 `1.3.7+forge_1.20.1` / `1.3.7+neoforge_1.21.1` / `1.3.7-beta.1+neoforge_26.1.2` / `1.3.7-alpha.1+fabric_1.20.1`，库项目出现 `1.0.11+` 四平台）。
+
+**2026-10-23 现状（本节作废后的事实，施工以这几条为准）**：
+
+- **已删除**：`tools/modrinth_upload.py`、`tools/modrinth.json`；`tools/update_store_page.py` 的 Modrinth PATCH 分支（现只保留 CurseForge 的计划打印）；`.modrinth/` 本地凭据目录仍被 `.gitignore` 忽略（本地缓存，不是发布链路）。
+- **CI 现状（已实测）**：`.github/workflows/build.yml` 里 `modrinth` / `curseforge` 关键字命中各 **0** —— 只有 tag + 两个 GitHub Release 步骤；上方原文里「末步 `Publish to Modrinth`」在本仓**当前工作树中不存在**（历史描述）。
+- **保留（不是发布链路，禁止误删）**：`maven.modrinth:` **依赖源**（四线 `build.gradle` 共 43 处）、`scripts/test/mt_env.ps1` 的测试模组下载、`tools/check_mod_sources.ps1` 与 `scripts/verify/verify_probe_class_refs.ps1` 的 Maven 源校验、`ref/**` 参考源。
+- **历史 id（只作考古，禁止再用）**：主项目 `5xDtrJ8X`、库项目 `2dIXA5wO`；「版本标题统一 = `<namePrefix> <基础版本>`」「`version_type` 由版本后缀派生」等 Modrinth 侧口径随链路一并作废。
+- **现行唯一商店发布通道 = CurseForge**：`tools/curseforge_upload.py`（子命令 `push` / `update-info`，默认 dry-run，`--apply` 才写）。⚠️ 2026-10-23 实测：python urllib 打 `minecraft.curseforge.com/api/**` 会被 Cloudflare 按 **TLS/HTTP 指纹**拦成恒 403「Just a moment...」，而 `curl.exe` 直连 200 ⇒ 该脚本已内置 curl 回退（`--noproxy *` 直连优先、代理兜底；多部分表单必须 `-F "metadata=<tmpfile"`，内联 JSON 会被判 400）。
+- **发布后核对**：`api.cfwidget.com/minecraft/mc-mods/<slug>` 有缓存延迟（实测新上传件立刻查仍只显示旧件），判据以 Upload API 返回的 `fileId` + 稍后复查为准。
 
 ## 自动化测试流程（Automated Testing）— 必须遵守（子配置）
 > ⚠️ **2026-10-18 通道变更（用户指令）：实机测试的运行时求值主通道 = AutoJS（MCP，`http://127.0.0.1:25585/mcp`），KubeJS 注入降为 legacy。** 新用例一律 `"channel": "autojs"`（`eval_js` / `await_state` / `mcp_status` 原语 + `eval` / `state` 断言）；端点没起记 **BLOCKED** 而非 FAIL。**mixin / crash / 禁 AI 审计 / vision 四类日志判据不得用 eval 取代**。规范正本：`scripts/test/TESTING-SPEC.md` §7A、`scripts/test/TESTING-RULES-OVERVIEW.md` §15；存量用例迁移欠账：`docs/features/autojs-legacy-debt.md`。
@@ -3956,3 +3967,65 @@ git -C F:\MCProject\astral_dice_multiloader ls-remote origin refs/heads/multi-ma
 Get-FileHash <四处投放> -Algorithm SHA256                            # 逐处对账（§59.4）
 python <zipfile 脚本>                                               # 库 jar license / jarjar 0
 ```
+
+## 60. Modrinth 发布链路永久移除 + StarEngine 四产物上 CurseForge（2026-10-23 用户裁决）
+
+### 60.1 裁决原文
+
+> 「永久移除所有Modrinth推送链路（MR管理员死活不给过审，脑子有泡）。将StarEngine新产物推送到CurseForge」（m07502）。
+
+⇒ 两件事：① Modrinth **发布 / 上传**链路永久删除（**只删发布**，不删依赖源）；② StarEngine `1.1.0-pre.2` 四平台产物上传 CurseForge 库项目。
+
+### 60.2 Modrinth 链路：删了什么、留了什么
+
+- **删除**：`tools/modrinth_upload.py`、`tools/modrinth.json`、`.gitignore` 的 Modrinth 凭据说明注释（3 行 → 1 行；**`.modrinth/` 忽略项保留**，本地 token 仍需忽略）；`tools/update_store_page.py` 整份重写为**只更新 CurseForge 计划**（`--modrinth-*` 参数与 PATCH 分支全删）。
+- **未动 CI**：`.github/workflows/build.yml` 本就没有商店上传步骤（只有 tag + 两个 GitHub Release 步骤），`modrinth` / `curseforge` 关键字命中各 0。
+- **保留（不是发布链路）**：`maven.modrinth:` **依赖源**（四线 `build.gradle` 共 43 处）、`scripts/test/mt_env.ps1` 的测试模组下载、`tools/check_mod_sources.ps1` 与 `scripts/verify/verify_probe_class_refs.ps1` 的 Maven 源校验、`ref/**` 参考源。
+- **历史 id 只作考古**：主项目 `5xDtrJ8X`、库项目 `2dIXA5wO`；配套「版本标题统一 = `<namePrefix> <基础版本>`」等口径随之作废。
+- **文档改口径**：`AGENTS.md` 索引 L2198 行主题、`AGENTS-full.md` 的〈Modrinth 上传〉节改写为「永久移除 + 只留历史」、`scripts/test/TESTING-SPEC.md` 附录 A 续 40 加 ⛔ 横幅、`README.md` / `README_ZH.md` 的 Download 段把 Modrinth 条目换成 CurseForge（含 `astral-dice` 1662159 / `starengine` 1755415 两个 project id）、`docs/store/starengine-page-en.md:42` 改「CurseForge carries the platform jars」。
+- `docs/AGENT-HANDOFF.md` 是 multi-main @9825cf1e 的**历史快照**，按规则不改（其中的 Modrinth 叙述只作背景）。
+
+### 60.3 StarEngine 四产物上传 CurseForge（项目 1755415）
+
+| jar | 大小 | sha256 | fileId |
+|---|---|---|---|
+| `starengine-neoforge-1.21.1-1.1.0-pre.2.jar` | 98,737 B | `76C7B9108D5278BE…` | **9296227** |
+| `starengine-forge-1.20.1-1.1.0-pre.2.jar` | 103,609 B | `15DC9B8A27A0608D…` | **9296225** |
+| `starengine-neoforge-26.1.2-1.1.0-pre.2.jar` | 98,976 B | `43F1EC6C01CE1CBE…` | **9296221** |
+| `starengine-fabric-1.20.1-1.1.0-pre.2.jar` | 112,639 B | `46EA2494C5F83B7E…` | **9296224** |
+
+- 全部 `HTTP 200`，`releaseType=beta`（`infer_release_type('1.1.0-pre.2')` ⇒ beta），gameVersions 由脚本离线表解析：neo 1.21.1 `[9638,9639,11779,10150]`、forge 1.20.1 `[9638,9639,9990,7498]`、neo 26.1.2 `[9638,9639,16082,10150]`、fabric 1.20.1 `[9638,9639,9990,7499]`（9638=Client / 9639=Server）。
+- ⚠️ **同名旧件需清理**：forge / neo 两条线上一次（2026-10-20 17:44，MIT 元数据）已发过同名 jar —— `9269334`（forge）/ `9269333`（neo）；CurseForge 允许同名并存，旧件只能在作者后台删（该 token 无删除端点）。
+- ⚠️ **cfwidget 缓存**：上传后立刻查 `api.cfwidget.com/minecraft/mc-mods/starengine` 仍只列旧两件 ⇒ 判据用 Upload API 返回的 `fileId`，cfwidget 稍后复查。
+- astral 本体项目 `1662159` 的最新 CF 文件仍是 2026-10-05（1.3.7-hotfix）；`1.5.0-pre.5` **未上传**（用户本轮只要 StarEngine）。
+
+### 60.4 `tools/curseforge_upload.py` 增加 curl 传输回退（本轮真缺陷修复）
+
+- **现象**：脚本原用 python urllib，`POST /api/projects/1755415/upload-file` 与 `GET /api/game/versions` 一律 `HTTP 403` + Cloudflare「Just a moment...」；`Invoke-WebRequest` 同样 403；**`curl.exe` 直连 200**，走代理 403 ⇒ 是 **TLS/HTTP 指纹**级封锁（不是 token、不是网络）。
+- **实现**：新增 `CURL_BIN` / `CURL_PROXY` / `CF_CHALLENGE_MARKERS` / `_is_cf_challenge()` / `_curl_run()` / `_curl_attempts()` / `_curl_with_fallback()` / `_hdr_args()` / `_curl_multipart()` / `_curl_json()`；四处 API 入口（`api_get_url` / `api_put_json` / `api_upload` / `api_post_metadata`）在命中挑战页时打印 `[curl] Cloudflare 拦截 urllib（HTTP 403）⇒ 改用 curl 重试…` 并改走 curl（**直连优先、代理兜底**，`make_ctx` 把 proxy 注入 `CURL_PROXY`）。
+- ⚠️ **metadata 必须走文件**：`-F "metadata=<file"`；内联 `-F "metadata={json}"` 会被服务端判 400 `errorCode 1002 / Invalid JSON`。
+- 判据（本轮实测）：`python -c "import sys;sys.path.insert(0,'tools');import curseforge_upload as m;m.api_get(m.make_opener(None),'/game/version-types','<token>')"` ⇒ 打印两行 `[curl] …` 后返回 **31 个类型 / 7623 个版本**；`_curl_multipart` 对不存在的 project id 返回 `status=400 body={"errorCode":1003,…"Missing field `file`."}`（证明 curl 写通道真的执行、非挑战页响应原样回传）。
+
+### 60.5 判据命令
+
+```powershell
+git -C F:\MCProject\astral_dice_multiloader status --short -uall   # 只应有素材目录未跟踪项
+Test-Path F:\MCProject\astral_dice_multiloader\tools\modrinth_upload.py # 期望 False
+Test-Path F:\MCProject\astral_dice_multiloader\tools\modrinth.json       # 期望 False
+Select-String -Path F:\MCProject\astral_dice_multiloader\tools\curseforge_upload.py -Pattern 'MODRINTH_TOKEN'   # 期望无输出（`.gitignore` 内仍有 3 行 modrinth：依赖源模板 + 保留的 `.modrinth/` 忽略项）
+python docs/agent/verify-split.py   # 四项 [OK]
+```
+
+### 60.6 未做 / 风险
+
+- **未重建任何 jar**：本轮只删工具与改文档，产物与 17:00/17:10 的 pre.5 一致（mod jar 不含 `tools/**`，故无需重建）。
+- **未推送**：按默认口径不 push（需用户放行）。
+- **StarEngine 仓**：只改了发布说明与 README 的 Modrinth 字样（见该仓提交），无上传脚本（该仓 CI 从来不传商店）。
+
+### 60.7 复核（2026-10-23，`dsh_code_review` run `65fa9e63-a130-4b13-8517-aec9a1a65e1e`）
+
+- 判定：无 P0/P1；R1 / R2 / R3 / R5 / R6 / R8 SUPPORTED、R4 / R7 部分成立。
+- 四条 finding 全部已修：①【P2】「`.gitignore` 删 `.modrinth/` 块」与实物矛盾（只换了注释、忽略项必须保留）⇒ 文档改为「保留 `.modrinth/`」、判据改判 `curseforge_upload.py` 的 `MODRINTH_TOKEN`；②【P2】`maven.modrinth:` 处数 **79 → 43**（7+12+4+20）；③【P2】`_curl_json` 走 curl 时丢 `Content-Type`（`--data-binary` 默认 urlencoded）⇒ `_hdr_args(headers, drop_content_type=True)`、`_curl_json` 传 `False` 并补 `-H "Content-Type: application/json"`（抓包复测 `PUT ct=application/json`、`GET ct=null`、multipart 不变）；④【P3】handover 的索引末行 `L4002 → L4023`。
+- **有意不改**：curl multipart 的 `metadata` 分片不带 `Content-Type: application/json`（urllib 路径带），CF 实测 200 接受，属未文档化依赖 —— 已跑通的写通道不动。
+- **无法判定**：四个新 fileId 本身（cfwidget 缓存未刷、CF v1 端点无 key 一律 403）；`python -m py_compile` 在本机被 `tools/__pycache__` 的 ACL 拒写挡下（未改动文件同样失败），改用 `py_compile.compile(cfile=…)` 判语法。
+- **后续裁决（2026-10-23，用户）**：① 撤掉 `tools/curseforge-description.md` 中英两行的 Modrinth 项目链接（CF 商店描述只留 GitHub 源码 / 发布页）；② **本体 pre 版本不发 CurseForge** —— `1.5.0-pre.5` 不上传，astral 项目 `1662159` 维持 2026-10-05 的 1.3.7-hotfix 为最新文件（StarEngine 库项目 `1755415` 那四件是唯一例外，已发）。判据：`Select-String -Path tools/curseforge-description.md -Pattern 'modrinth'` 期望无输出。

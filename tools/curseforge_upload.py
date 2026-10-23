@@ -143,8 +143,11 @@ import json
 import os
 import pathlib
 import re
+import shutil
 import ssl
+import subprocess
 import sys
+import tempfile
 import time
 import urllib.error
 import urllib.parse
@@ -242,6 +245,125 @@ def make_opener(proxy):
     return urllib.request.build_opener(*handlers)
 
 
+# ---------------------------------------------------------------- curl 传输回退
+# 背景（2026-10-23 实测）：Cloudflare 对 python urllib 的 TLS/HTTP 指纹直接回 403
+# 「Just a moment...」（minecraft.curseforge.com/api/**），而系统 curl 直连可用（200）。
+# 故 urllib 命中 Cloudflare 挑战页时自动改用 curl 重试：直连优先（代理出口同样被拦），
+# 直连失败再试一次代理。写请求（上传 / update-file）与读请求（版本表）都要走这条路。
+CURL_BIN = shutil.which("curl") or "curl"
+CURL_PROXY = None            # 由 make_ctx 注入（--proxy / HTTPS_PROXY），供无 ctx 的 GET 回退使用
+CF_CHALLENGE_MARKERS = ("just a moment", "cf-chl", "attention required", "cf-mitigated")
+
+
+def _is_cf_challenge(status, body):
+    """judge 一次响应是否 Cloudflare 挑战页（只有它才值得换 curl 重试）。"""
+    if status not in (403, 503):
+        return False
+    head = (body or "")[:6000].lower()
+    return any(m in head for m in CF_CHALLENGE_MARKERS)
+
+
+def _curl_run(argv):
+    """跑一次 curl，返回 (status, body)；status=0 表示未执行/未取到状态码。"""
+    try:
+        p = subprocess.run([CURL_BIN, "-sS", "-w", "\n__HTTP__%{http_code}"] + argv,
+                           capture_output=True, text=True, encoding="utf-8", errors="replace")
+    except OSError as e:  # pragma: no cover - 环境缺 curl
+        return 0, "curl 启动失败：%s" % e
+    out = p.stdout or ""
+    m = re.search(r"\n__HTTP__(\d+)\s*$", out)
+    if not m:
+        return 0, (out + (p.stderr or "")).strip()
+    return int(m.group(1)), out[: m.start()]
+
+
+def _curl_attempts(proxy):
+    tries = [["--noproxy", "*"]]
+    if proxy:
+        tries.append(["-x", proxy])
+    return tries
+
+
+def _curl_with_fallback(build_args, proxy):
+    last = (0, "")
+    for base in _curl_attempts(proxy):
+        status, body = _curl_run(base + build_args())
+        if status and not _is_cf_challenge(status, body):
+            return status, body
+        last = (status, body)
+    return last
+
+
+def _hdr_args(headers, drop_content_type=True):
+    """把 headers 转 curl `-H` 参数。
+
+    multipart 的 `-F` 自己带 boundary，调用方给的 `Content-Type` 必须丢掉；
+    但 JSON 请求（`--data-binary`）**不能丢**，否则 curl 默认发
+    `application/x-www-form-urlencoded`（2026-10-23 复核 P2）。
+    """
+    out = []
+    for k, v in (headers or {}).items():
+        low = k.lower()
+        if low in ("user-agent", "content-length"):
+            continue
+        if low == "content-type" and drop_content_type:
+            continue
+        out += ["-H", "%s: %s" % (k, v)]
+    return out
+
+
+def _curl_multipart(url, headers, metadata, jar_path=None, proxy=None):
+    """curl 版 multipart POST（metadata 走文件，见 2026-10-23 实测：内联会 400 Invalid JSON）。"""
+    fd, tmp = tempfile.mkstemp(suffix=".json")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(metadata, f, ensure_ascii=False)
+
+        def build():
+            args = ["-X", "POST", "-A", UA] + _hdr_args(headers)
+            args += ["-F", "metadata=<" + tmp]
+            if jar_path is not None:
+                args += ["-F", "file=@" + str(jar_path)]
+            args.append(url)
+            return args
+
+        return _curl_with_fallback(build, proxy)
+    finally:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+
+
+def _curl_json(url, method, headers, payload, proxy=None):
+    """curl 版 JSON 请求（GET 无 body；PUT/POST 用 --data-binary 读临时文件）。"""
+    tmp = None
+    try:
+        if payload is not None:
+            fd, tmp = tempfile.mkstemp(suffix=".json")
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                json.dump(payload, f, ensure_ascii=False)
+
+        has_ct = any(k.lower() == "content-type" for k in (headers or {}))
+
+        def build():
+            args = ["-X", method, "-A", UA] + _hdr_args(headers, drop_content_type=False)
+            if tmp and not has_ct:
+                # --data-binary 的默认 content-type 是 urlencoded；JSON 端点必须显式声明。
+                args += ["-H", "Content-Type: application/json"]
+            if tmp:
+                args += ["--data-binary", "@" + tmp]
+            args.append(url)
+            return args
+
+        return _curl_with_fallback(build, proxy)
+    finally:
+        if tmp:
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
+
 def api_get(opener, path, token):
     return api_get_url(opener, API_BASE + path, {
         "X-Api-Token": token, "User-Agent": UA, "Accept": "application/json"})
@@ -250,8 +372,18 @@ def api_get(opener, path, token):
 def api_get_url(opener, url, headers):
     """GET 任意 URL 并解析 JSON（Core API v1 用；调用方自带鉴权头）。"""
     req = urllib.request.Request(url, headers=headers, method="GET")
-    with opener.open(req, timeout=60) as r:
-        return json.loads(r.read().decode("utf-8", "replace"))
+    try:
+        with opener.open(req, timeout=60) as r:
+            return json.loads(r.read().decode("utf-8", "replace"))
+    except urllib.error.HTTPError as e:
+        status, body = e.code, e.read().decode("utf-8", "replace")
+        if not _is_cf_challenge(status, body):
+            raise
+        print("[curl] Cloudflare 拦截 urllib（HTTP %s）⇒ 改用 curl 重试：%s" % (status, url))
+        cstatus, cbody = _curl_json(url, "GET", headers, None, CURL_PROXY)
+        if not cstatus or cstatus >= 400:
+            raise RuntimeError("curl 回退失败（HTTP %s）：%s" % (cstatus, cbody[:400]))
+        return json.loads(cbody)
 
 
 def core_headers(ctx, json_body=False):
@@ -278,7 +410,11 @@ def api_put_json(opener, url, headers, payload):
         with opener.open(req, timeout=300) as r:
             return r.status, r.read().decode("utf-8", "replace")
     except urllib.error.HTTPError as e:
-        return e.code, e.read().decode("utf-8", "replace")
+        status, body = e.code, e.read().decode("utf-8", "replace")
+        if not _is_cf_challenge(status, body):
+            return status, body
+        print("[curl] Cloudflare 拦截 urllib（HTTP %s）⇒ 改用 curl 重试：%s" % (status, url))
+        return _curl_json(url, "PUT", headers, payload, CURL_PROXY)
 
 
 def api_upload(opener, project_id, token, metadata, jar_path):
@@ -304,7 +440,12 @@ def api_upload(opener, project_id, token, metadata, jar_path):
         with opener.open(req, timeout=600) as r:
             return r.status, r.read().decode("utf-8", "replace")
     except urllib.error.HTTPError as e:
-        return e.code, e.read().decode("utf-8", "replace")
+        status, body = e.code, e.read().decode("utf-8", "replace")
+        if not _is_cf_challenge(status, body):
+            return status, body
+        print("[curl] Cloudflare 拦截 urllib（HTTP %s）⇒ 改用 curl 上传：%s" % (status, jar_path.name))
+        return _curl_multipart(f"{API_BASE}/projects/{project_id}/upload-file",
+                               {"X-Api-Token": token}, metadata, jar_path, CURL_PROXY)
 
 
 def api_post_metadata(opener, token, url, metadata):
@@ -326,7 +467,11 @@ def api_post_metadata(opener, token, url, metadata):
         with opener.open(req, timeout=600) as r:
             return r.status, r.read().decode("utf-8", "replace")
     except urllib.error.HTTPError as e:
-        return e.code, e.read().decode("utf-8", "replace")
+        status, body = e.code, e.read().decode("utf-8", "replace")
+        if not _is_cf_challenge(status, body):
+            return status, body
+        print("[curl] Cloudflare 拦截 urllib（HTTP %s）⇒ 改用 curl 提交：%s" % (status, url))
+        return _curl_multipart(url, {"X-Api-Token": token}, metadata, None, CURL_PROXY)
 
 
 # ---------------------------------------------------------------- 版本 id
@@ -716,6 +861,8 @@ def make_ctx(args, write):
     token, token_src = resolve_token_safe(args.token, write)
     api_key, api_key_src, fallback = resolve_api_key(getattr(args, "api_key", None), token)
     proxy = (args.proxy or os.environ.get("HTTPS_PROXY") or os.environ.get("https_proxy"))
+    global CURL_PROXY
+    CURL_PROXY = proxy
     return {"binding": binding, "project_id": project_id,
             "token": token, "token_src": token_src,
             "api_key": api_key, "api_key_src": api_key_src, "key_fallback": fallback,

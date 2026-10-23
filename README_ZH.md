@@ -103,7 +103,7 @@ Astral Dice 是一个以骰子为核心的生存扩展。戴上骰子后，每�
 | 不适用 | 本线用不到 | Curios API、Mixin Booster、Sinytra Connector、Bountiful、Iron's Spells 'n Spellbooks |
 
 - 饰品栏是二选一。Fabric 的 `depends` 只有 AND 语义，所以 Trinkets 与 Accessories 都写在 `recommends` 下，模组自己在启动时检查，只有两者都不在时才拒绝启动。
-- Modrinth 与 CurseForge 的商店页把 Trinkets 记为必需、Accessories 记为可选。这只是商店页上的声明，`fabric.mod.json` 仍把两者当推荐，只装 Accessories 的环境照样能启动。
+- CurseForge 的商店页把 Trinkets 记为必需、Accessories 记为可选。这只是商店页上的声明，`fabric.mod.json` 仍把两者当推荐，只装 Accessories 的环境照样能启动。
 
 ---
 
@@ -111,7 +111,7 @@ Astral Dice 是一个以骰子为核心的生存扩展。戴上骰子后，每�
 
 - **GitHub Releases**：[merlin-kitsune/astral_dice/releases](https://github.com/merlin-kitsune/astral_dice/releases)。每个 Release 带三个 jar：两条发布线加上 26.1.2 的 jar。
 - **Fabric 移植线**：以单独的 `fabric-<版本>` 预发布形式发布，标记为 pre-release，不占「最新」，只带它自己那一个 jar。
-- **Modrinth**：四个构建发布到主项目（`5xDtrJ8X`）。StarEngine 有独立项目（`2dIXA5wO`）；**NeoForge 1.21.1** 与 **Forge 1.20.1** 不再内置该库，玩家需自行安装那份独立 jar（26.1.2 与 Fabric 两线目前仍内置）。版本号保留 `+<加载器>_<MC版本>` 后缀（例如 `1.5.0-pre.5+neoforge_1.21.1`），发布渠道由版本后缀决定。
+- **CurseForge**：构建发布到主项目（`astral-dice`，project id `1662159`）。StarEngine 有独立项目（`starengine`，id `1755415`）；**NeoForge 1.21.1** 与 **Forge 1.20.1** 不再内置该库，玩家需自行安装那份独立 jar（26.1.2 与 Fabric 两线目前仍内置）。版本号保留 `+<加载器>_<MC版本>` 后缀（例如 `1.5.0-pre.5+neoforge_1.21.1`），发布渠道由版本后缀决定。Modrinth 发布链路已于 2026-10-23 永久移除，唯一商店通道是 CurseForge。
 - **构建产物**：`astral_dice-<版本>+neoforge_1.21.1.jar`、`+forge_1.20.1.jar`、`+neoforge_26.1.2.jar`、`+fabric_1.20.1.jar`，各自位于对应子项目的 `build/libs/` 下。GitHub Release 的 tag 用不带后缀的基础版本号，Fabric 线则用 `fabric-<版本>` 预发布 tag。
 
 ## 构建
