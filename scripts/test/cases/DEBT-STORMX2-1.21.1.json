@@ -1,0 +1,92 @@
+{
+  "case_id": "DEBT-STORMX2-1.21.1",
+  "title": "「雷暴将至」×2 夜间加刷只对自然刷怪生效：午夜 + 持有 storm_approaching 时出现 storm_night_spawn_x2 机器行",
+  "version": "1.21.1",
+  "channel": "kubejs",
+  "target": {
+    "type": "feature",
+    "ref": "storm_approaching"
+  },
+  "on_fail": "continue",
+  "steps": [
+    {
+      "op": "note",
+      "text": "判据：`EventEffects#onFinalizeSpawn` 在 `MobSpawnType.NATURAL` + 夜间 + 64 格内有玩家持 storm_approaching 时复制一只，并落 `AP_EVENT_EFFECT: storm_night_spawn_x2:type=<id>`。\n本用例给足自然刷怪窗口（清场 → 午夜 → 最多 20 s），只断言机器行出现；计数类反例在 DEBT-STORM 的 S4（/summon 不复制）里。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/time set midnight",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/difficulty normal",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 300
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamerule doMobSpawning true",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 300
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[type=!player,distance=..48]",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe debtstorm X1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "wait",
+      "ms": 90000
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe debtwave X2 32",
+      "no_esc": true
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_X1_STORM:event=storm_approaching:ok=1:now=\\d+:err=none"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_EVENT_EFFECT: storm_night_spawn_x2:type=minecraft:"
+    }
+  ]
+}

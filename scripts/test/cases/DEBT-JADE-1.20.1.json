@@ -1,0 +1,136 @@
+{
+  "case_id": "DEBT-JADE-1.20.1",
+  "title": "Jade 生物护甲显示改本模组防御力：僵尸套钻石整套（自带护甲 2 + 套装 ⇒ floor(护甲×0.40 + 韧性×1.0)）显示 8 个满图标；仅铁头盔僵尸（护甲 4 ⇒ 防御 1）显示 1 个半图标",
+  "version": "1.20.1",
+  "channel": "kubejs",
+  "target": {
+    "type": "feature",
+    "ref": "jade_mob_defense"
+  },
+  "on_fail": "continue",
+  "steps": [
+    {
+      "op": "note",
+      "text": "判据正本（批 539c4698）：`mixin/jade/ArmorValueProviderMixin` 的非玩家分支改为 `CombatFormula.mobDefenseInt(TargetCategory.classify(e), e.getArmorValue(), toughness)`，与 `DiceCombatEvents` 结算同源；门控仍是 Jade 自己的 `armor <= 0 → 整行不显示`。\n期望（含僵尸自带基础护甲 2）：钻石整套（护甲 2+20=22、韧性 8）→ floor(22×0.40 + 8×1.0) = 16 → 8 个满图标；仅铁头盔（护甲 2+2=4、韧性 0）→ floor(1.6) = 1 → 1 个半图标（不整行隐藏）。\n本用例只有截图判据（Jade 面板是客户端渲染，服务端无读数）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/time set noon",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[type=!player,distance=..48]",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/tp @s ~ ~ ~ 0 0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/summon zombie ~ ~ ~3 {NoAI:1b,PersistenceRequired:1b}",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/item replace entity @e[type=zombie,limit=1,sort=nearest,distance=..8] armor.head with minecraft:diamond_helmet",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 200
+    },
+    {
+      "op": "inject_command",
+      "command": "/item replace entity @e[type=zombie,limit=1,sort=nearest,distance=..8] armor.chest with minecraft:diamond_chestplate",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 200
+    },
+    {
+      "op": "inject_command",
+      "command": "/item replace entity @e[type=zombie,limit=1,sort=nearest,distance=..8] armor.legs with minecraft:diamond_leggings",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 200
+    },
+    {
+      "op": "inject_command",
+      "command": "/item replace entity @e[type=zombie,limit=1,sort=nearest,distance=..8] armor.feet with minecraft:diamond_boots",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "screenshot"
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[type=zombie,distance=..8]",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/summon zombie ~ ~ ~3 {NoAI:1b,PersistenceRequired:1b}",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/item replace entity @e[type=zombie,limit=1,sort=nearest,distance=..8] armor.head with minecraft:iron_helmet",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "screenshot"
+    }
+  ],
+  "asserts": [
+    {
+      "type": "crash"
+    }
+  ]
+}

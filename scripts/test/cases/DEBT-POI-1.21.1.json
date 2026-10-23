@@ -1,0 +1,118 @@
+{
+  "case_id": "DEBT-POI-1.21.1",
+  "title": "村民职业工作方块：两职业各用专用 POI 标签（card_trader_job_site → astral_dice:card_shop，chip_trader_job_site → astral_dice:chip_shop），共享标签仍含两者；无业村民认领卡牌商店后转职 card_trader",
+  "version": "1.21.1",
+  "channel": "kubejs",
+  "target": {
+    "type": "feature",
+    "ref": "villager_job_site"
+  },
+  "on_fail": "continue",
+  "steps": [
+    {
+      "op": "note",
+      "text": "判据正本（2026-10-23 批 4ddeb2e6）：`world/ModPoiTypes` 新增 `CARD_TRADER_JOB_SITES` / `CHIP_TRADER_JOB_SITES`，`ModVillagerProfessions` 的 `acquirableJobSite` 改 `holder -> holder.is(专用标签)`，`heldJobSite` 与**原版共享标签 `minecraft:acquirable_job_site` 均未动**（无业村民靠共享标签发现工作站）。JEP 4.0.5 字节码证明它按 `profession.acquirableJobSite()` 枚举方块 ⇒ 谓词矩阵即面板口径。\n\nD1 直接读：标签条目数（必须恰好 1，不能靠「目标在里面」碰巧成立）+ 两职业谓词交叉矩阵（对角为 1、非对角为 0）。\nD2 用无业村民 + 一个卡牌商店方块验证认领转职。"
+    },
+    {
+      "op": "wait",
+      "ms": 9000
+    },
+    {
+      "op": "inject_command",
+      "command": "/reload",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 12000
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe debtpoi D1",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[type=minecraft:villager,distance=..64]",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/setblock ~4 ~-1 ~4 minecraft:stone",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 200
+    },
+    {
+      "op": "inject_command",
+      "command": "/setblock ~4 ~ ~4 astral_dice:card_shop",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/summon villager ~1 ~ ~1 {VillagerData:{profession:\"minecraft:none\",level:1,type:\"minecraft:plains\"},PersistenceRequired:1b}",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 20000
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe debtvill D2 16",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/data get entity @e[type=minecraft:villager,limit=1,sort=nearest,distance=..16] NoAI",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe debtvill D3 16",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_D1_POI:ok=1:cardPoiGot=1:chipPoiGot=1:cardTagN=1:cardTag=astral_dice:card_shop:chipTagN=1:chipTag=astral_dice:chip_shop:sharedN=\\d+:cardInCardTag=1:cardInChipTag=0:chipInCardTag=0:chipInChipTag=1:cardInShared=1:chipInShared=1:cardProfOnCard=1:cardProfOnChip=0:chipProfOnCard=0:chipProfOnChip=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_D2_VILL:ok=1:n=1:prof=minecraft:none:lv=1:noai=1"
+    },
+    {
+      "type": "crash"
+    }
+  ]
+}

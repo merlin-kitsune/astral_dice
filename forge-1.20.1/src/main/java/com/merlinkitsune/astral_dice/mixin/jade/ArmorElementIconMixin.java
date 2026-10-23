@@ -40,6 +40,13 @@ import snownee.jade.overlay.OverlayRenderer;
  * ⇒ 按 {@code width=height=8}、{@code textureWidth=textureHeight=9} 绘制（轻微等比缩小），
  * 与原版此处「9×9 源区画进 8×8」的取法同构。
  *
+ * <h2>⚠️ 处理器必须非 static（2026-10-23 实机抓到）</h2>
+ * Mixin 0.8.5（Forge 1.20.1）的 {@code checkTargetModifiers(target, true)} 要求 {@code @Redirect}
+ * 处理器与目标方法的 static 性**严格一致**；{@code ArmorElement#render} 是实例方法 ⇒ 处理器写
+ * {@code static} 会抛 {@code InvalidInjectionException: 'static' modifier of handler method does
+ * not match target}，而本 mixin 配置是 {@code required: false} ⇒ **静默失效**（图标仍是原版胸甲 UV，
+ * 只在日志留一行 WARN）。实机证据：1.20.1 客户端 15:07:34 日志有此 WARN，截图护甲行仍是原版图标。
+ * neo 1.21.1 用 Mixin 0.8.7 放宽了该检查，所以同一写法在 neo 侧不报错。
  * <h2>回落</h2>
  * {@code IconUI} 里还有心形/经验球等其它常量（同一 {@code renderIcon} 也会服务血量行）
  * ⇒ 非护甲三态一律回落 {@code DisplayHelper.renderIcon}，行为与原来逐字节相同。
@@ -84,7 +91,7 @@ public abstract class ArmorElementIconMixin {
                             + "renderIcon(Lnet/minecraft/client/gui/GuiGraphics;FFIILsnownee/jade/overlay/IconUI;)V"),
             // 见类头「为什么必须显式写 remap = false」：两个目标都是 Jade 自身成员，无可重映射项。
             remap = false)
-    private static void astralDice$defenseIcons(GuiGraphics guiGraphics, float x, float y,
+    private void astralDice$defenseIcons(GuiGraphics guiGraphics, float x, float y,
                                                 int sx, int sy, IconUI icon) {
         ResourceLocation ours = astralDice$defenseIcon(icon);
         if (ours == null) {

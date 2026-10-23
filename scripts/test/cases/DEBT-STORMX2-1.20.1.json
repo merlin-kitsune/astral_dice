@@ -1,0 +1,135 @@
+{
+  "case_id": "DEBT-STORMX2-1.20.1",
+  "title": "「雷暴将至」×2 夜间加刷只对自然刷怪生效：午夜 + 持有 storm_approaching 时出现 storm_night_spawn_x2 机器行",
+  "version": "1.20.1",
+  "channel": "kubejs",
+  "target": {
+    "type": "feature",
+    "ref": "storm_approaching"
+  },
+  "on_fail": "continue",
+  "steps": [
+    {
+      "op": "note",
+      "text": "判据（2026-10-23 实机）：×2 钩子已收窄到 MobSpawnType.NATURAL（event/EventEffects#onFinalizeSpawn 早退）。测试台小平台里自然刷怪几乎不发生 ⇒ 正面不可观测；改用**负面对照**：午夜 + storm_approaching 生效时，用刷怪笼（SPAWNER）与 /summon（COMMAND）各刷一批，判据 = （a）刷出来的怪数量 > 0（AP_X2_WAVE n>0），（b）日志里 storm_night_spawn_x2 行数 = 0（旧实现会双倍）。"
+    },
+    {
+      "op": "wait",
+      "ms": 9000
+    },
+    {
+      "op": "inject_command",
+      "command": "/reload",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 12000
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/time set midnight",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 300
+    },
+    {
+      "op": "inject_command",
+      "command": "/difficulty normal",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 300
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamerule doMobSpawning true",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 300
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[type=!player,distance=..64]",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/execute at @s run setblock ~6 ~-1 ~6 minecraft:stone",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 200
+    },
+    {
+      "op": "inject_command",
+      "command": "/execute at @s run setblock ~6 ~ ~6 minecraft:spawner{SpawnData:{entity:{id:\"minecraft:zombie\"}},SpawnCount:2,MaxNearbyEntities:30,RequiredPlayerRange:40,SpawnRange:4,Delay:20,MinSpawnDelay:40,MaxSpawnDelay:80}",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe debtstorm X1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/summon minecraft:zombie ~3 ~ ~3",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "wait",
+      "ms": 20000
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe debtwave X2 32",
+      "no_esc": true
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_X1_STORM:event=storm_approaching:ok=1:now=\\d+:err=none"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_X2_WAVE:ok=1:n=[1-9]\\d*:"
+    },
+    {
+      "type": "crash"
+    }
+  ]
+}

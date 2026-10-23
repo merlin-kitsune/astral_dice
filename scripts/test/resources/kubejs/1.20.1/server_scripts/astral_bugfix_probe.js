@@ -15949,6 +15949,84 @@ ServerEvents.commandRegistry(event => {
                     .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
                         return doLinglingReset(ctx, StringArg.getString(ctx, "tag"));
                     }))))
+            // ── 欠账实机验证（2026-10-23）：POI 标签 / 效果保护 / 冷却指示器 / 雷暴将至 / 村民职业 ──
+            .then(Commands.literal("debtpoi")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doDebtPoi(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("debtpoi2")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doDebtPoi2(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("debtpeff")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("fx", StringArg.string())
+                        .then(Commands.argument("ticks", IntegerArg.integer(1, 20000))
+                            .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                return doDebtPeff(ctx, StringArg.getString(ctx, "tag"),
+                                    StringArg.getString(ctx, "fx"), IntegerArg.getInteger(ctx, "ticks"));
+                            }))))))
+            .then(Commands.literal("debtpeffread")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("fx", StringArg.string())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doDebtPeffRead(ctx, StringArg.getString(ctx, "tag"),
+                                StringArg.getString(ctx, "fx"));
+                        })))))
+            .then(Commands.literal("debtmob")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("fx", StringArg.string())
+                        .then(Commands.argument("ticks", IntegerArg.integer(1, 20000))
+                            .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                return doDebtMob(ctx, StringArg.getString(ctx, "tag"),
+                                    StringArg.getString(ctx, "fx"), IntegerArg.getInteger(ctx, "ticks"));
+                            }))))))
+            .then(Commands.literal("debtmobread")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("fx", StringArg.string())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doDebtMobRead(ctx, StringArg.getString(ctx, "tag"),
+                                StringArg.getString(ctx, "fx"));
+                        })))))
+            .then(Commands.literal("debtind")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("chip", StringArg.word())
+                        .then(Commands.argument("ticks", IntegerArg.integer(0, 20000))
+                            .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                return doDebtInd(ctx, StringArg.getString(ctx, "tag"),
+                                    StringArg.getString(ctx, "chip"), IntegerArg.getInteger(ctx, "ticks"));
+                            }))))))
+            .then(Commands.literal("debtindread")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doDebtIndRead(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("debtstorm")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doDebtStorm(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("debtwave")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("radius", IntegerArg.integer(1, 64))
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doDebtWave(ctx, StringArg.getString(ctx, "tag"),
+                                IntegerArg.getInteger(ctx, "radius"));
+                        })))))
+            .then(Commands.literal("debtvill")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("radius", IntegerArg.integer(1, 64))
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doDebtVill(ctx, StringArg.getString(ctx, "tag"),
+                                IntegerArg.getInteger(ctx, "radius"));
+                        })))))
+            .then(Commands.literal("debtdef")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doDebtDef(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
 
     );
 });
@@ -17136,5 +17214,369 @@ function doPmfixGuide(ctx, tag, entryId) {
     } catch (e0) { out = "ERR:" + exText(e0); }
     send(ctx, "AP_" + tag + "_GUIDE:book=astral_dice:astral_guide:entry=" + entryId + ":open=" + out);
     send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  欠账实机验证探针（2026-10-23）——「补所有欠账实机验证」的机器行出口
+//
+//  ⚠️ 1.20.1 变体（与 1.21.1 探头同构，但平台 API 不同）：
+//    · 效果用裸 MobEffect：resolveEffectId(fx) → BuiltInRegistries.MOB_EFFECT.get(RL)
+//    · 读实例：LivingEntity#getEffect(MobEffect)（1.21.1 是 getEffect(Holder)）
+//    · 构造：new MobEffectInstance(effect, ticks, amp, ambient, visible, showIcon)
+//    · 村民职业：VillagerData#getProfession() 返回裸 VillagerProfession
+//
+//  命令：debtpoi / debtpeff / debtpeffread / debtmob / debtmobread / debtind / debtindread
+//        / debtstorm / debtwave / debtvill（用法见 1.21.1 探头同名段）
+// ════════════════════════════════════════════════════════════════════════════
+
+var DebtLivingEntity = Java.loadClass("net.minecraft.world.entity.LivingEntity");
+
+function debtEffect(fxId) {
+    try { return resolveEffectId(fxId); } catch (e) { return null; }
+}
+
+/** 读某实体身上的效果实例（1.20.1：LivingEntity#getEffect(MobEffect)） */
+function debtReadOn(ent, fxId) {
+    var out = { present: 0, dur: "na", inf: "na", amp: "na" };
+    if (ent == null) return out;
+    var effect = debtEffect(fxId);
+    if (effect == null) return out;
+    var inst = null;
+    try { inst = ent.getEffect(effect); } catch (e) { inst = null; }
+    if (inst == null) return out;
+    out.present = 1;
+    try { out.dur = inst.getDuration() - 0; } catch (e1) { }
+    try { out.inf = inst.isInfiniteDuration() ? 1 : 0; } catch (e2) { }
+    try { out.amp = inst.getAmplifier() - 0; } catch (e3) { }
+    return out;
+}
+
+var DEBT_CLS = null;
+function debtCls() {
+    if (DEBT_CLS != null) return DEBT_CLS;
+    var o = {};
+    try { o.witch = Java.loadClass("net.minecraft.world.entity.monster.Witch"); } catch (e1) { o.witch = null; }
+    try { o.player = Java.loadClass("net.minecraft.world.entity.player.Player"); } catch (e2) { o.player = null; }
+    try { o.zombie = Java.loadClass("net.minecraft.world.entity.monster.Zombie"); } catch (e3) { o.zombie = null; }
+    try { o.skeleton = Java.loadClass("net.minecraft.world.entity.monster.AbstractSkeleton"); } catch (e4) { o.skeleton = null; }
+    try { o.spider = Java.loadClass("net.minecraft.world.entity.monster.Spider"); } catch (e5) { o.spider = null; }
+    DEBT_CLS = o;
+    return o;
+}
+
+/** 实体注册名：Rhino 下 ENTITY_TYPE.getKey(实体对象) 恒返回 minecraft:pig（2026-10-23 1.21.1 实测），
+ *  getEncodeId() 在 Java 内部取键，不受 Rhino 传参影响 —— 首选；类判定退为兜底。 */
+function debtTypeId(ent) {
+    try { var ec = ent.getEncodeId(); if (ec != null) return "" + ec; } catch (e0) { }
+    var o = debtCls();
+    try { if (o.witch != null && o.witch.isInstance(ent)) return "minecraft:witch"; } catch (e6) { }
+    try { if (o.player != null && o.player.isInstance(ent)) return "minecraft:player"; } catch (e7) { }
+    try { if (o.zombie != null && o.zombie.isInstance(ent)) return "minecraft:zombie"; } catch (e8) { }
+    try { if (o.skeleton != null && o.skeleton.isInstance(ent)) return "minecraft:skeleton"; } catch (e9) { }
+    try { if (o.spider != null && o.spider.isInstance(ent)) return "minecraft:spider"; } catch (e10) { }
+    return "other";
+}
+
+function debtNearestZombie(p, radius) {
+    var ZombieCls = Java.loadClass("net.minecraft.world.entity.monster.Zombie");
+    var list = null;
+    try { list = p.level.getEntitiesOfClass(ZombieCls, p.getBoundingBox().inflate(radius)); }
+    catch (e) { return null; }
+    var best = null, bd = 1e18;
+    for (var i = 0; i < list.size(); i++) {
+        var z = list.get(i);
+        var d = z.distanceToSqr(p);
+        if (d < bd) { bd = d; best = z; }
+    }
+    return best;
+}
+
+function debtPoiRef(poiId) {
+    var KeyCls = Java.loadClass("net.minecraft.resources.ResourceKey");
+    var Regs = Java.loadClass("net.minecraft.core.registries.Registries");
+    var key = null;
+    try { key = KeyCls.create(Regs.POINT_OF_INTEREST_TYPE, RSRC.ns(poiId)); }
+    catch (e) { return null; }
+    try { return BuiltInRegistries.POINT_OF_INTEREST_TYPE.getHolderOrThrow(key); }
+    catch (e2) { return null; }
+}
+
+function debtInTag(holder, tagKey) {
+    // 2026-10-23 实测（1.20.1 Forge）：Holder.containsTag(TagKey) 直接可用（probe 实证 true）；
+    // Holder.tags() 在 doDebtPoi 调用路径里会抛错 ⇒ containsTag 优先，tags()/getTagKeys() 仅作兜底。
+    // 另：不能把 TagKey 作为参数直接传给 KubeJS 的 Java 方法（Rhino 按 ID 包装会抛错），字符串拼接是安全的。
+    if (holder == null || tagKey == null) return -1;
+    try { return holder.containsTag(tagKey) ? 1 : 0; } catch (e0) { }
+    try {
+        var want = "" + tagKey;
+        var list = holder.tags().toList();
+        for (var i = 0; i < list.size(); i++) {
+            if (("" + list.get(i)) === want) return 1;
+        }
+        return 0;
+    } catch (e) {
+        try {
+            var k2 = holder.getTagKeys().toList();
+            var want2 = "" + tagKey;
+            for (var j = 0; j < k2.size(); j++) {
+                if (("" + k2.get(j)) === want2) return 1;
+            }
+            return 0;
+        } catch (e2) { return -1; }
+    }
+}
+
+function debtProfTest(profHolder, holder) {
+    if (holder == null || profHolder == null) return -1;
+    try { return profHolder.get().acquirableJobSite().test(holder) ? 1 : 0; } catch (e) { return -1; }
+}
+
+function debtTagCount(tagKey) {
+    var out = { n: -1, names: [] };
+    if (tagKey == null) return out;
+    out.n = 0;
+    try {
+        var it = BuiltInRegistries.POINT_OF_INTEREST_TYPE.iterator();
+        while (it.hasNext()) {
+            var v = it.next();
+            var h = null;
+            try { h = BuiltInRegistries.POINT_OF_INTEREST_TYPE.wrapAsHolder(v); } catch (e) { h = null; }
+            if (debtInTag(h, tagKey) === 1) {
+                out.n++;
+                try { out.names.push(BuiltInRegistries.POINT_OF_INTEREST_TYPE.getKey(v).toString()); }
+                catch (e2) { out.names.push("?"); }
+            }
+        }
+    } catch (e3) { out.n = -1; }
+    return out;
+}
+
+function doDebtPoi(ctx, tag) {
+    var out = "AP_" + tag + "_POI";
+    var C = null, Prof = null, Shared = null;
+    try { C = Java.loadClass("com.merlinkitsune.astral_dice.world.ModPoiTypes"); } catch (e0) { C = null; }
+    try { Prof = Java.loadClass("com.merlinkitsune.astral_dice.world.ModVillagerProfessions"); } catch (e1) { Prof = null; }
+    try { Shared = Java.loadClass("net.minecraft.tags.PoiTypeTags").ACQUIRABLE_JOB_SITE; } catch (e2) { Shared = null; }
+    if (C == null || Prof == null || Shared == null) {
+        send(ctx, out + ":ok=0:err=class_missing");
+        return 0;
+    }
+    var cardTag = null, chipTag = null;
+    try { cardTag = C.CARD_TRADER_JOB_SITES; } catch (e3) { cardTag = null; }
+    try { chipTag = C.CHIP_TRADER_JOB_SITES; } catch (e4) { chipTag = null; }
+    var cardPoi = debtPoiRef("astral_dice:card_shop");
+    var chipPoi = debtPoiRef("astral_dice:chip_shop");
+    var cn = debtTagCount(cardTag);
+    var kn = debtTagCount(chipTag);
+    var sn = debtTagCount(Shared);
+    send(ctx, out + ":ok=1"
+        + ":cardPoiGot=" + (cardPoi == null ? 0 : 1) + ":chipPoiGot=" + (chipPoi == null ? 0 : 1)
+        + ":cardTagN=" + cn.n + ":cardTag=" + cn.names.join(",")
+        + ":chipTagN=" + kn.n + ":chipTag=" + kn.names.join(",")
+        + ":sharedN=" + sn.n
+        + ":cardInCardTag=" + debtInTag(cardPoi, cardTag)
+        + ":cardInChipTag=" + debtInTag(cardPoi, chipTag)
+        + ":chipInCardTag=" + debtInTag(chipPoi, cardTag)
+        + ":chipInChipTag=" + debtInTag(chipPoi, chipTag)
+        + ":cardInShared=" + debtInTag(cardPoi, Shared)
+        + ":chipInShared=" + debtInTag(chipPoi, Shared)
+        + ":cardProfOnCard=" + debtProfTest(Prof.CARD_TRADER, cardPoi)
+        + ":cardProfOnChip=" + debtProfTest(Prof.CARD_TRADER, chipPoi)
+        + ":chipProfOnCard=" + debtProfTest(Prof.CHIP_TRADER, cardPoi)
+        + ":chipProfOnChip=" + debtProfTest(Prof.CHIP_TRADER, chipPoi));
+    return 1;
+}
+
+function debtApplyPep(ent, fxId, ticks) {
+    var effect = debtEffect(fxId);
+    if (effect == null) return "unresolved";
+    var inst = null;
+    try { inst = new MobEffectInstanceClass(effect, ticks, 0, false, true, true); }
+    catch (e) { return "instance:" + exText(e); }
+    try {
+        var PEP = Java.loadClass("com.merlinkitsune.astral_dice.event.PlayerEffectProtection");
+        PEP.apply(ent, inst);
+    } catch (e2) { return "apply:" + exText(e2); }
+    return "ok";
+}
+
+function doDebtPeff(ctx, tag, fxId, ticks) {
+    var p = ctx.source.getPlayerOrException();
+    var how = debtApplyPep(p, fxId, ticks);
+    var r = debtReadOn(p, fxId);
+    send(ctx, "AP_" + tag + "_PEFF:fx=" + fxId + ":how=" + how + ":now=" + nowTick(p)
+        + ":present=" + r.present + ":dur=" + r.dur + ":inf=" + r.inf);
+    return 1;
+}
+
+function doDebtPeffRead(ctx, tag, fxId) {
+    var p = ctx.source.getPlayerOrException();
+    var r = debtReadOn(p, fxId);
+    send(ctx, "AP_" + tag + "_PEFFREAD:fx=" + fxId + ":now=" + nowTick(p)
+        + ":present=" + r.present + ":dur=" + r.dur + ":inf=" + r.inf + ":amp=" + r.amp);
+    return 1;
+}
+
+function doDebtMob(ctx, tag, fxId, ticks) {
+    var p = ctx.source.getPlayerOrException();
+    var z = debtNearestZombie(p, 16);
+    if (z == null) { send(ctx, "AP_" + tag + "_MOBEFF:ok=0:err=no_zombie"); return 0; }
+    var how = debtApplyPep(z, fxId, ticks);
+    var r = debtReadOn(z, fxId);
+    send(ctx, "AP_" + tag + "_MOBEFF:fx=" + fxId + ":how=" + how + ":type=" + debtTypeId(z)
+        + ":present=" + r.present + ":dur=" + r.dur);
+    return 1;
+}
+
+function doDebtMobRead(ctx, tag, fxId) {
+    var p = ctx.source.getPlayerOrException();
+    var z = debtNearestZombie(p, 16);
+    if (z == null) { send(ctx, "AP_" + tag + "_MOBREAD:fx=" + fxId + ":ok=0:err=no_zombie"); return 0; }
+    var r = debtReadOn(z, fxId);
+    send(ctx, "AP_" + tag + "_MOBREAD:fx=" + fxId + ":type=" + debtTypeId(z)
+        + ":present=" + r.present + ":dur=" + r.dur);
+    return 1;
+}
+
+function debtEq(className, p) {
+    try { return Java.loadClass(className).isEquipped(p) ? 1 : 0; } catch (e) { return -1; }
+}
+
+function doDebtInd(ctx, tag, chip, ticks) {
+    var p = ctx.source.getPlayerOrException();
+    var Att = Java.loadClass("com.merlinkitsune.astral_dice.component.ModAttachments");
+    var now = nowTick(p);
+    var end = now + ticks;
+    if (chip === "whetstone") { Att.setWhetstoneGuardCooldownEnd(p, end); }
+    else if (chip === "airbag") { Att.setAirbagCooldownEnd(p, end); }
+    else { send(ctx, "AP_" + tag + "_INDSET:chip=" + chip + ":ok=0:err=unknown_chip"); return 0; }
+    send(ctx, "AP_" + tag + "_INDSET:chip=" + chip + ":ok=1:now=" + now + ":end=" + end);
+    return 1;
+}
+
+function doDebtIndRead(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var Att = Java.loadClass("com.merlinkitsune.astral_dice.component.ModAttachments");
+    var now = nowTick(p);
+    var wEnd = -1, aEnd = -1;
+    try { wEnd = Att.getWhetstoneGuardCooldownEnd(p) - 0; } catch (e1) { }
+    try { aEnd = Att.getAirbagCooldownEnd(p) - 0; } catch (e2) { }
+    var wEq = debtEq("com.merlinkitsune.astral_dice.item.chip.WhetstoneChipItem", p);
+    var aEq = debtEq("com.merlinkitsune.astral_dice.item.chip.AirbagChipItem", p);
+    var w = debtReadOn(p, "astral_dice:whetstone_guard_cd");
+    var a = debtReadOn(p, "astral_dice:airbag_guard_cd");
+    send(ctx, "AP_" + tag + "_INDREAD:now=" + now
+        + ":wEq=" + wEq + ":wEnd=" + wEnd + ":wRem=" + (wEnd < 0 ? -1 : wEnd - now)
+        + ":wPresent=" + w.present + ":wDur=" + w.dur
+        + ":aEq=" + aEq + ":aEnd=" + aEnd + ":aRem=" + (aEnd < 0 ? -1 : aEnd - now)
+        + ":aPresent=" + a.present + ":aDur=" + a.dur);
+    return 1;
+}
+
+function doDebtStorm(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var ok = 0, err = "none";
+    try {
+        var Disp = Java.loadClass("com.merlinkitsune.astral_dice.event.AstralEventDispatcher");
+        var Ids = Java.loadClass("com.merlinkitsune.astral_dice.event.AstralEventIds");
+        var Trig = Java.loadClass("com.merlinkitsune.astral_dice.event.api.AstralEventTrigger");
+        ok = Disp.trigger(p, Ids.STORM_APPROACHING, Trig.CUSTOM) ? 1 : 0;
+    } catch (e) { err = exText(e); }
+    send(ctx, "AP_" + tag + "_STORM:event=storm_approaching:ok=" + ok + ":now=" + nowTick(p) + ":err=" + err);
+    return 1;
+}
+
+function doDebtWave(ctx, tag, radius) {
+    var p = ctx.source.getPlayerOrException();
+    var AttrCls = Java.loadClass("net.minecraft.world.entity.ai.attributes.Attributes");
+    var SlotCls = Java.loadClass("net.minecraft.world.entity.EquipmentSlot");
+    var list = null;
+    try { list = p.level.getEntitiesOfClass(DebtLivingEntity, p.getBoundingBox().inflate(radius - 0)); }
+    catch (e) { send(ctx, "AP_" + tag + "_WAVE:ok=0:err=" + exText(e)); return 0; }
+    var counts = {}, order = [], n = 0, helmet = 0, onfire = 0, witch = 0;
+    var dmin = 1e9, dmax = -1, armorCsv = [], atkCsv = [];
+    for (var i = 0; i < list.size(); i++) {
+        var e2 = list.get(i);
+        var tid = debtTypeId(e2);
+        var isWave = (tid === "minecraft:zombie" || tid === "minecraft:skeleton"
+            || tid === "minecraft:spider" || tid === "minecraft:witch");
+        if (!isWave) continue;
+        n++;
+        if (counts[tid] == null) { counts[tid] = 0; order.push(tid); }
+        counts[tid]++;
+        if (tid === "minecraft:witch") witch++;
+        var head = null;
+        try { head = e2.getItemBySlot(SlotCls.HEAD); } catch (e3) { head = null; }
+        if (head != null && !head.isEmpty()) helmet++;
+        try { if (e2.isOnFire()) onfire++; } catch (e4) { }
+        var d = Math.sqrt(e2.distanceToSqr(p));
+        if (d < dmin) dmin = d;
+        if (d > dmax) dmax = d;
+        try { armorCsv.push("" + Math.round(e2.getAttributeValue(AttrCls.ARMOR))); } catch (e5) { armorCsv.push("?"); }
+        try { atkCsv.push("" + Math.round(e2.getAttributeValue(AttrCls.ATTACK_DAMAGE))); } catch (e6) { atkCsv.push("?"); }
+    }
+    var types = [];
+    for (var k = 0; k < order.length; k++) types.push(order[k].replace("minecraft:", "") + ":" + counts[order[k]]);
+    var dm = (dmax < 0) ? "na" : ("" + (Math.round(dmin * 10) / 10) + "-" + (Math.round(dmax * 10) / 10));
+    send(ctx, "AP_" + tag + "_WAVE:ok=1:n=" + n + ":types=" + types.join(",") + ":witch=" + witch
+        + ":helmet=" + helmet + ":onfire=" + onfire + ":dist=" + dm
+        + ":armor=" + armorCsv.join(",") + ":atk=" + atkCsv.join(","));
+    return 1;
+}
+
+function doDebtVill(ctx, tag, radius) {
+    var p = ctx.source.getPlayerOrException();
+    var VillagerCls = Java.loadClass("net.minecraft.world.entity.npc.Villager");
+    var list = null;
+    try { list = p.level.getEntitiesOfClass(VillagerCls, p.getBoundingBox().inflate(radius - 0)); }
+    catch (e) { send(ctx, "AP_" + tag + "_VILL:ok=0:err=" + exText(e)); return 0; }
+    var profs = [], lv = [], noais = [], n = 0;
+    for (var i = 0; i < list.size(); i++) {
+        var v = list.get(i);
+        n++;
+        var prof = null;
+        try { prof = v.getVillagerData().getProfession(); } catch (e2) { prof = null; }
+        var pid = "?";
+        try { pid = BuiltInRegistries.VILLAGER_PROFESSION.getKey(prof).toString(); } catch (e3) { pid = "?"; }
+        profs.push(pid);
+        try { lv.push("" + (v.getVillagerData().getLevel() - 0)); } catch (e4) { lv.push("?"); }
+        try { noais.push(v.isNoAi() ? "1" : "0"); } catch (e5) { noais.push("?"); }
+    }
+    send(ctx, "AP_" + tag + "_VILL:ok=1:n=" + n + ":prof=" + profs.join(",") + ":lv=" + lv.join(",") + ":noai=" + noais.join(","));
+    return 1;
+}
+
+function doDebtPoi2(ctx, tag) {
+    var out = "AP_" + tag + "_POI2";
+    var C = Java.loadClass("com.merlinkitsune.astral_dice.world.ModPoiTypes");
+    var cardTag = C.CARD_TRADER_JOB_SITES;
+    var cardPoi = debtPoiRef("astral_dice:card_shop");
+    var s1 = "?", s2 = "?", s3 = "?", s4 = "?", e1 = "-", e2 = "-", e3 = "-", e4 = "-";
+    try { s1 = "" + cardTag; } catch (a) { e1 = exText(a); }
+    try { s2 = "" + cardPoi.tags().count(); } catch (b) { e2 = exText(b); }
+    try { s3 = "" + cardPoi.containsTag(cardTag); } catch (c) { e3 = exText(c); }
+    try { s4 = "" + cardPoi.getTagKeys().count(); } catch (d) { e4 = exText(d); }
+    send(ctx, out + ":v=2:str=" + s1 + ":tagsN=" + s2 + ":contains=" + s3 + ":keyN=" + s4 + ":dtag=" + debtInTag(cardPoi, cardTag)
+        + ":e1=" + e1 + ":e2=" + e2 + ":e3=" + e3 + ":e4=" + e4);
+    return 1;
+}
+
+function doDebtDef(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var z = debtNearestZombie(p, 16);
+    if (z == null) { send(ctx, "AP_" + tag + "_DEF:none"); return 0; }
+    try {
+        var CF = Java.loadClass("com.merlinkitsune.starengine.combat.CombatFormula");
+        var TC = Java.loadClass("com.merlinkitsune.starengine.combat.TargetCategory");
+        var AT = Java.loadClass("net.minecraft.world.entity.ai.attributes.Attributes");
+        var ES = Java.loadClass("net.minecraft.world.entity.EquipmentSlot");
+        var armor = z.getArmorValue();
+        var tough = z.getAttributeValue(AT.ARMOR_TOUGHNESS);
+        var cat = TC.classify(z);
+        var def = CF.mobDefenseInt(cat, armor, tough);
+        send(ctx, "AP_" + tag + "_DEF:type=" + z.getEncodeId() + ":armor=" + armor + ":tough=" + tough
+            + ":cat=" + cat + ":def=" + def + ":head=" + z.getItemBySlot(ES.HEAD));
+    } catch (e) { send(ctx, "AP_" + tag + "_DEF:err=" + exText(e)); }
     return 1;
 }

@@ -3741,3 +3741,14 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --new <注册id>
 - **无实机读数**：JEP 面板两卡片是否各显示自己的方块、无业村民认领/转职是否仍正常，需用户下达实机。
 - **P1 欠账**：`neoforge-26.1.2` / `fabric-1.20.1` 未移植（同第 52 条口径，随 P1 批次处理）。
 
+## 54. 实机欠账验证批：五类欠账销账 + forge Jade 图标 mixin 静默失效修复（2026-10-23 用户下达）
+
+- **用户指令**：「以上修改完之后，补所有欠账实机验证。」⇒ P0 双线（`neoforge-1.21.1` / `forge-1.20.1`）逐项实机。
+- **结果**：10 条用例 **10 跑 10 PASS** —— `scripts/test/cases/DEBT-{EFFECT,STORM,POI,STORMX2,JADE}-{1.21.1,1.20.1}.json`；机器行原文见交接正本 §4.11–§4.15、销账条目 §5-31。
+- **五类欠账判据**：① 玩家侧效果保护 = 原版效果被 `/effect clear` 后按余量补回（`present=1:dur=427`）、`astral_dice:marked` 可清（`present=0`）、自定义效果移除被取消（`present=1`）、mob 侧不保护（`present=0`）；② pre.5 冷却指示器 = `AP_IC8_INDREAD` 的 `wPresent=0` / `aPresent=1:aDur=1138`；③ 「雷暴将至」= 波怪 `want=5:placed=5` / `want=6:placed=6`、5–7 只、8–16 格、`helmet>0`、白天 `onfire=0`；④ Jade 生物防御力 = 图标已换（neo 1 半 / forge 8 满 + 1 半）+ `AP_G1_DEF:armor=4:tough=0:cat=HOSTILE:def=1`；⑤ 村民工作方块 = `AP_D1_POI` 两线逐字相同（专用标签各 1 项 / 共享标签 15 项 / 职业谓词对角矩阵）。
+- **×2 收窄判据**：午夜 + storm 效果下，刷怪笼（SPAWNER）与 `/summon`（COMMAND）造出 15–19 只怪 ⇒ `storm_night_spawn_x2` **0 行**；forge 同一轮里 4 行 x2 全部是自然刷怪的 `skeleton`×2 / `creeper`×2（`MobSpawnType.NATURAL` 白名单双向成立）。
+- **新缺陷（已修）**：forge `mixin/jade/ArmorElementIconMixin` 的 `@Redirect` 处理器写成 `private static`，与 Mixin 0.8.5 的 `checkTargetModifiers(target, true)` 冲突 ⇒ `InvalidInjectionException: 'static' modifier of handler method does not match target`，因 `required: false` **静默失效**（Jade 护甲图标一直是原版）；改为非 static 后重建 forge 产物（15:09）。neo 的 Mixin 0.8.7 放宽该检查，故同代码两线表现不同。
+- **测试资产**：两线探针新增 10 条 `debt*` 子命令（`debtpoi` / `debtpeff` / `debtpeffread` / `debtmob` / `debtmobread` / `debtind` / `debtindread` / `debtstorm` / `debtwave` / `debtvill`；forge 另有 `debtdef` 读 `armor/tough/cat/def`）；新建 10 条 `DEBT-*` 用例；**产品源码只改 1 行**（上述 mixin 修饰符）。
+- **新踩坑（三条，详见交接正本 §6-35–§6-37）**：① Mixin 0.8.5 处理器 static 性必须与目标一致、`required:false` 会吞异常；② 探针改动 = `mt_env.ps1 kubejs` 同步 + 用例内 `/reload` + `wait ≥12000`，否则跑旧脚本（用例还必须至少有 1 条断言，否则 0 步执行）；③ Rhino 下 `TagKey` 不能进 Java、`Holder` 无 `getTags()`（用 `tags().toList()` / `containsTag`）、实体类型要用 `ent.getEncodeId()`（`ENTITY_TYPE.getKey(...)` 恒返回同一类型）。
+- **限制（留痕）**：村民转职在测试台内因 `astral_test_noai.js` 强制 NoAI 而不可观测（`prof=minecraft:none:noai=1`），要测须 `MT_ALLOW_MOB_AI=1`；×2 正面证据目前只有 forge 一次样本（测试世界自然刷怪极少）；Jade tooltip「防御力 X」一行未做（用户未裁决）。
+

@@ -28,10 +28,10 @@
 - 仓库：`F:\MCProject\astral_dice_multiloader`，分支 `multi-main`，交接基线 `7df4dab2`；开工先 `git status --short -uall`（应干净）与 `git rev-parse --short HEAD`。四子项目同树：`neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1`。
 - 版本：四线 `mod_version = 1.5.0-pre.5+<加载器后缀>`；`starengine_version = 1.1.0-pre.2`；jar 内硬前置 `[1.1.0-pre.2,2.0.0)`、`META-INF/jarjar/` 计数 0。
 - 交付面：**只 P0** = `neoforge-1.21.1` + `forge-1.20.1`；P1（26.1.2 / fabric）**1.5.0 正式版前不验证、不移植**。
-- P0 产物（各自 `build\libs`，**2026-10-23 13:49 重建，含「雷暴将至」修复 + 立即刷怪波 + 村民职业专用工作方块标签**）：
+- P0 产物（各自 `build\libs`，**neo 2026-10-23 13:49 / forge 2026-10-23 15:09**；两者均含「雷暴将至」修复 + 立即刷怪波 + 村民职业专用工作方块标签，forge 另含 Jade 图标 mixin 非 static 修复）：
   - neo：`astral_dice-1.5.0-pre.5+neoforge_1.21.1.jar`，2 570 891 B，sha256 `ad65a8d59149d11c21fefd0b37fd7e3b829ca0bf6348fd1cee843cb0d3419161`
-  - forge：`astral_dice-1.5.0-pre.5+forge_1.20.1.jar`，2 616 420 B，sha256 `cb8bc93c54cd9374ee123709562cfe9be600a5ae3ee7e06f29f1d8d869c3461b`
-  - （forge dev 用 `build\devlibs` 的 named jar：2 586 934 B，`589a027b80f07613c7f0b676d25de59c99926a1a6a4166296c9cb70cdb8fa6d7`）
+  - forge：`astral_dice-1.5.0-pre.5+forge_1.20.1.jar`，2 616 424 B，sha256 `e6081853bda7f14107a4914bbfb2f00878eff56e4ca2357a7cedb08610b536d0`
+  - （forge dev 用 `build\devlibs` 的 named jar：2 586 937 B，`49c3b6436a5fea5439f76721e6591217d802f0fad10a4a208da049caffe2a329`）
 - 投放（**成对**放 `astral_dice-*.jar` + `starengine-*-1.1.0-pre.2.jar`，缺库即启动失败 `Missing or unsupported mandatory dependencies`）：
   - neo → `D:\.minecraft\versions\狐の航空学 Voxy Edition\mods`
   - forge → `D:\.minecraft\versions\1.20.1-Forge 模组测试\mods`
@@ -88,6 +88,8 @@
 15. **「雷暴将至」修复 + 立即刷怪波（2026-10-23，正本 §5-29）**：×2 钩子补 `MobSpawnType.NATURAL` 白名单 + `isCanceled`/`isSpawnCancelled` 早退 + 复制体 `finalizeSpawn`（neo 4 参 / forge 5 参分叉）+ 7 点落位校验；新增 `spawnStormWave`（施放瞬间在玩家 8–16 格刷 5–7 只僵尸/骷髅/蜘蛛，僵尸与骷髅强制铁头盔（**不可破坏**、掉落率 0），15% 追加女巫，半径 32 格内只刷一波）；两线各改 `event/EventEffects.java`。产物 13:40 重建 + 4 处投放 MATCH；独立复核 `dsh_code_review` run `e7302744…` 三条 finding 全部已修（`WAVE_ORIGINS` 加维度键 / 头盔不可破坏 / 本文件产物块刷新）。**无实机读数**。
 
 16. **村民职业工作方块指向错乱（2026-10-23 用户报障 + 裁决，正本 §5-30）**：JEI 风格两卡片「卡牌交易员」/「筹码商人」显示的工作方块完全相同，因为两职业 `acquirableJobSite` 都传 `VillagerProfession.ALL_ACQUIRABLE_JOBS`（原版共享标签），而 JEP（Just Enough Professions 4.0.5）正是按它枚举展示项。修法 = 两线 `world/ModPoiTypes.java` 新增职业专用 `TagKey<PoiType>`（`CARD_TRADER_JOB_SITES` / `CHIP_TRADER_JOB_SITES`）+ `ModVillagerProfessions.java` 的 `acquirableJobSite` 改用它们 + 新增 4 个 `data/astral_dice/tags/point_of_interest_type/*.json`；**原版共享标签必须保留**（无业村民靠它发现工作站，转职判定仍用 `heldJobSite`）。顺带补 `chip_shop` 进两线 `mineable/axe`（1.21.1 目录 `block` / 1.20.1 `blocks`）。判据：两线 `:classes` BUILD SUCCESSFUL、字节码 lambda 里两个 `TagKey` 各 1 且 `ALL_ACQUIRABLE_JOBS` 0、产物 13:49 重建 + 4 处投放 MATCH。**无实机读数**（JEP 面板是否正确、村民认领是否仍正常待放行）；P1 两线未移植。
+
+17. **实机欠账验证批（2026-10-23，用户下达「补所有欠账实机验证」，正本 §5-31 / §4.11–§4.16）**：P0 双线各 5 条 `DEBT-*` 用例 **10 跑 10 PASS**，五类欠账全部销账 —— ① 玩家侧效果保护（原版效果被 `/effect clear` 后按余量补回 `present=1:dur=427`、`astral_dice:marked` 可清 `present=0`、自定义效果移除被取消 `present=1`、mob 侧不保护 `present=0`）；② pre.5 冷却指示器（`AP_IC8_INDREAD` 的 `wPresent=0` / `aPresent=1:aDur=1138`）；③ 「雷暴将至」（波怪 `want=5:placed=5` / `want=6:placed=6`、8–16 格、`helmet>0`、白天 `onfire=0`；×2 只认 `MobSpawnType.NATURAL` —— 刷怪笼/召唤 15–19 只怪时 `storm_night_spawn_x2` 0 行，而自然刷怪的 skeleton/creeper 各被复制 2 次）；④ Jade 生物防御力（图标已换：neo 1 半 / forge 8 满 + 1 半；`AP_G1_DEF:armor=4:tough=0:cat=HOSTILE:def=1`）；⑤ 村民工作方块（`AP_D1_POI` 两线逐字相同：专用标签各 1 项 / 共享标签 15 项 / 职业谓词对角矩阵）。**过程中修掉 1 个真缺陷**：forge `mixin/jade/ArmorElementIconMixin` 的 `@Redirect` 处理器写成 `static`，与 Mixin 0.8.5 的 `checkTargetModifiers(target, true)` 冲突 ⇒ `InvalidInjectionException`，因 `required: false` **静默失效**（Jade 护甲图标一直是原版）；改为非 static 后重建 forge 产物（15:09）。测试资产：两线探针新增 10 条 `debt*` 子命令（forge 另有 `debtdef`）+ 10 条 `DEBT-*` 用例；**产品源码只改 1 行**。限制：村民转职因 `astral_test_noai.js` 强制 NoAI 在测试台内不可观测；×2 正面证据目前只有 forge 一次样本。
 
 ## 硬约束（Windows 版）
 

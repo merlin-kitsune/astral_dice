@@ -1,0 +1,120 @@
+{
+  "case_id": "DEBT-STORM-1.21.1",
+  "title": "「雷暴将至」：触发成功、立即刷 5–7 只僵尸/骷髅/蜘蛛（+15% 女巫）、环带 8–16 格、僵尸骷髅戴不可破坏铁头盔且在正午不着火、/summon（COMMAND 类型）不会被 ×2 复制",
+  "version": "1.21.1",
+  "channel": "kubejs",
+  "target": {
+    "type": "feature",
+    "ref": "storm_approaching"
+  },
+  "on_fail": "continue",
+  "steps": [
+    {
+      "op": "note",
+      "text": "判据正本（2026-10-23 批 a8c651f6）：`event/EventEffects#stormApproaching` 先 `spawnStormWave` 再给触发者 ±半径内 Enemy 加 +2 攻 / +4 护甲；`spawnStormWave`：want = 5 + rnd(3)、女巫额外 15%（不计入 5–7）、环带 8–16 格、12 次落位尝试、直调 `finalizeSpawn(..., NATURAL, null)` ⇒ 自带难度装备；僵尸/骷髅强制不可破坏铁头盔 + dropChance 0。\n×2 钩子 `onFinalizeSpawn` 只认 `MobSpawnType.NATURAL` 且 `isCanceled()/isSpawnCancelled()` 早退。\n\n本用例：正午触发（排除「夜里靠燃烧假阳性」）→ 读 S2（数量/种类/头盔/着火）→ 等 5 s 再读 S3（正午仍在 ⇒ 头盔挡住日晒）→ 清场后用 /summon 造 1 只僵尸再读 S4（COMMAND 类型不复制 ⇒ n=1）。\n⚠️ 32 格「只刷一波」需要双人/同 tick 多目标，单客户端无法实测，本条已登记为未实机。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/time set noon",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[type=!player,distance=..64]",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1000
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe debtstorm S1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1000
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe debtwave S2 24",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 5000
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe debtwave S3 24",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[type=!player,distance=..48]",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/summon zombie ~ ~ ~3 {NoAI:1b,PersistenceRequired:1b}",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe debtwave S4 8",
+      "no_esc": true
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_S1_STORM:event=storm_approaching:ok=1:now=\\d+:err=none"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_EVENT_EFFECT: storm_approaching:mobs=\\d+:nightSpawnX2=hook"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_S2_WAVE:ok=1:n=[5-9]:types=(zombie|skeleton|spider):\\d+(,(zombie|skeleton|spider):\\d+)*:witch=[01]:helmet=[1-9]:onfire=0:dist=\\d+(\\.\\d)?-\\d+(\\.\\d)?"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_S3_WAVE:ok=1:n=\\d+:.*:onfire=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_S4_WAVE:ok=1:n=1:types=zombie:1:witch=0"
+    },
+    {
+      "type": "crash"
+    }
+  ]
+}

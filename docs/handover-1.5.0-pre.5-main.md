@@ -28,6 +28,8 @@
 
 21. **村民职业工作方块指向错乱（2026-10-23 用户裁决，本批头提交）**：JEI 风格两卡片「卡牌交易员」/「筹码商人」显示的**工作方块完全相同**（截图报障）。根因 = 两职业的 `acquirableJobSite` 都传 `VillagerProfession.ALL_ACQUIRABLE_JOBS`（原版共享标签），而 JEP（Just Enough Professions 4.0.5）正是按 `profession.acquirableJobSite().test(poi)` 枚举展示项。修法 = 两线新增专用标签 `astral_dice:{card,chip}_trader_job_site`（`ModPoiTypes.CARD_TRADER_JOB_SITES` / `CHIP_TRADER_JOB_SITES`）并只收各自方块；**原版共享标签必须保留**（无业村民靠它发现工作站）。顺带补 `chip_shop` 进 axe 采掘标签。产物 13:49 重建、4 处投放 sha256 全 MATCH（§2）。详见 §5-30，**无实机读数**。
 
+22. **实机欠账验证批（2026-10-23 用户下达「以上修改完之后，补所有欠账实机验证」）**：P0 双线各 5 条用例（`scripts/test/cases/DEBT-{EFFECT,STORM,POI,STORMX2,JADE}-{1.21.1,1.20.1}.json`）共 **10 跑 10 PASS**，五类欠账（玩家侧效果保护 / pre.5 冷却指示器 / 「雷暴将至」四项 / Jade 生物防御力 / 村民工作方块）**全部销账**（§5-31，读数见 §4.11–§4.15）。过程中抓到 **1 个真缺陷**：forge `mixin/jade/ArmorElementIconMixin` 的 `@Redirect` 处理器写成 `static`，与 Mixin 0.8.5 的 `checkTargetModifiers(target, true)` 冲突 ⇒ 抛 `InvalidInjectionException`，因 `required: false` **静默失效**（图标一直是原版，功能等于没生效）；已改为非 static 并重建 forge 产物（15:09）。详见 §5-32 / §6-35。
+
 ## 1 环境与路径
 
 - 仓库（唯一工作树）：`F:\MCProject\astral_dice_multiloader`，分支 `multi-main`；git 一律用 **git bash 的 `git`** ——
@@ -60,23 +62,23 @@
 | jar 内依赖区间 | `[1.1.0-pre.2,2.0.0)`，`type=required`（neo）/ `mandatory=true`（forge） | `META-INF/neoforge.mods.toml:141-144` / `META-INF/mods.toml:154-158` |
 | 内嵌库 | `META-INF/jarjar/` 计数 **0**（两线） | `unzip -l <jar> \| grep -c 'META-INF/jarjar/'` |
 
-P0 产物（`build/libs`，**2026-10-23 13:49 重建（含「雷暴将至」修复 + 立即刷怪波 + 村民职业专用工作方块标签；诊断探针已剔除）**）：
+P0 产物（`build/libs`，**neo 2026-10-23 13:49 / forge 2026-10-23 15:09**（后者含 Jade 图标 mixin 非 static 修复；两者均含「雷暴将至」修复 + 立即刷怪波 + 村民职业专用工作方块标签；诊断探针已剔除））：
 
-> ✅ **2026-10-23 13:49 已重建并含本批「村民职业专用工作方块标签」（§5-30）**：两 jar 内 `ModPoiTypes` 公开字段含 `Card_Trader/CHIP` 类 `TagKey<PoiType>`、`ModVillagerProfessions` 的 `acquirableJobSite` lambda 里 `getstatic ModPoiTypes.CARD_TRADER_JOB_SITES` / `CHIP_TRADER_JOB_SITES` 各 1（`ALL_ACQUIRABLE_JOBS` 0 次）；jar 内含 `data/astral_dice/tags/point_of_interest_type/{card_trader_job_site,chip_trader_job_site}.json` 与更新后的 `mineable/axe`；上一批「雷暴将至」的方法/常量证据（`spawnStormWave` 等 7 个方法 + `WAVE_*`、`MobSpawnType.NATURAL` 门控、4/5 参 `finalizeSpawn`）仍在；`META-INF/jarjar/` 仍 0；4 处投放 + 根 `build/libs` 已刷新。上一批（13:40）的三份 jar 已作废，仅作历史值（下行）。
+> ✅ **2026-10-23 13:49 已重建并含本批「村民职业专用工作方块标签」（§5-30）**：两 jar 内 `ModPoiTypes` 公开字段含 `Card_Trader/CHIP` 类 `TagKey<PoiType>`、`ModVillagerProfessions` 的 `acquirableJobSite` lambda 里 `getstatic ModPoiTypes.CARD_TRADER_JOB_SITES` / `CHIP_TRADER_JOB_SITES` 各 1（`ALL_ACQUIRABLE_JOBS` 0 次）；jar 内含 `data/astral_dice/tags/point_of_interest_type/{card_trader_job_site,chip_trader_job_site}.json` 与更新后的 `mineable/axe`；上一批「雷暴将至」的方法/常量证据（`spawnStormWave` 等 7 个方法 + `WAVE_*`、`MobSpawnType.NATURAL` 门控、4/5 参 `finalizeSpawn`）仍在；`META-INF/jarjar/` 仍 0；4 处投放 + 根 `build/libs` 已刷新。上一批（13:40）的三份 jar 已作废，仅作历史值（下行）。**2026-10-23 15:09 仅重建 forge**（Jade 图标 mixin 静默失效修复，§5-32）：forge 两份 jar 哈希已变，neo 未动；4 处投放 + 根 `build/libs` 已重新对账（下行表）。
 
 - neo `astral_dice-1.5.0-pre.5+neoforge_1.21.1.jar` — **2,570,891 B** — `ad65a8d59149d11c21fefd0b37fd7e3b829ca0bf6348fd1cee843cb0d3419161`
-- forge `astral_dice-1.5.0-pre.5+forge_1.20.1.jar` — **2,616,420 B** — `cb8bc93c54cd9374ee123709562cfe9be600a5ae3ee7e06f29f1d8d869c3461b`
-- forge dev named jar `build/devlibs/astral_dice-1.5.0-pre.5+forge_1.20.1.jar` — **2,586,934 B** — `589a027b80f07613c7f0b676d25de59c99926a1a6a4166296c9cb70cdb8fa6d7`
-- 历史值（只作背景，均已被覆盖）：pre.5 13:40（「雷暴将至」复核收口，**不含**村民工作方块标签批）= neo 2,569,892 B `6c13fbe0…` / forge 2,615,326 B `0c85cd3e…` / devlibs 2,585,937 B `00151870…`；pre.5 13:29（复核前，已被覆盖）= neo 2,568,549 B `e99db150…` / forge 2,614,004 B `8f714e84…` / devlibs 2,584,622 B `7122d0c4…`；pre.5 12:35（**不含**「雷暴将至」批）= neo 2,565,536 B `a34cbc48…` / forge 2,611,060 B `aebca4d5…` / devlibs 2,581,605 B `0d961f7a…`；pre.5 12:05（**不含** Jade 生物护甲批）= neo 2,565,317 B `d9b3742d…` / forge 2,610,860 B `3a54d2bc…` / devlibs 2,581,395 B `284528e5…`；pre.5 22:32（**不含**效果保护批）= neo 2,559,837 B `f25546b6…` / forge 2,605,382 B `e30980b4…` / devlibs 2,575,899 B `86c6350b…`；pre.4 22:21（**带诊断探针的临时构建，勿投放，已删除**）= neo 2,561,853 B `bfc88d8e…`；pre.4 18:32（筹码商店品质外框批）= neo 2,558,631 B `742132dd…` / forge 2,604,187 B `4b984008…` / devlibs 2,574,721 B `8f81e4c3…`；pre.4 18:18（电击手套 FX 批）= neo 2,558,408 B `02719fe6…` / forge 2,603,959 B `42cce572…` / devlibs 2,574,494 B `67bc4d24…`；pre.4 18:09（强化拒止品质批）= neo 2,556,778 B `cab211ef…` / forge 2,602,334 B `5141780a…` / devlibs 2,572,866 B `544b61de…`；pre.4 17:53（史莱姆批）= neo 2,556,774 B `bdfbe5f9…` / forge 2,602,332 B `d9780bd0…` / devlibs 2,572,864 B `2849258d…`；pre.4 17:2x = neo 2,556,723 B `7198cc75…` / forge 2,602,280 B `fbb77627…` / devlibs 2,572,814 B `6a445c8f…`；pre.3 15:47 = 2,555,654 B `f063102b…` / 2,601,208 B `7bf787df…`。
+- forge `astral_dice-1.5.0-pre.5+forge_1.20.1.jar` — **2,616,424 B** — `e6081853bda7f14107a4914bbfb2f00878eff56e4ca2357a7cedb08610b536d0`
+- forge dev named jar `build/devlibs/astral_dice-1.5.0-pre.5+forge_1.20.1.jar` — **2,586,937 B** — `49c3b6436a5fea5439f76721e6591217d802f0fad10a4a208da049caffe2a329`
+- 历史值（只作背景，均已被覆盖）：pre.5 15:09（**仅 forge 重建：Jade 图标 mixin 非 static 修复**）= forge 2,616,424 B `e6081853…` / devlibs 2,586,937 B `49c3b643…`（neo 仍是 13:49 的 2,570,891 B `ad65a8d5…`）；pre.5 13:40（「雷暴将至」复核收口，**不含**村民工作方块标签批）= neo 2,569,892 B `6c13fbe0…` / forge 2,615,326 B `0c85cd3e…` / devlibs 2,585,937 B `00151870…`；pre.5 13:29（复核前，已被覆盖）= neo 2,568,549 B `e99db150…` / forge 2,614,004 B `8f714e84…` / devlibs 2,584,622 B `7122d0c4…`；pre.5 12:35（**不含**「雷暴将至」批）= neo 2,565,536 B `a34cbc48…` / forge 2,611,060 B `aebca4d5…` / devlibs 2,581,605 B `0d961f7a…`；pre.5 12:05（**不含** Jade 生物护甲批）= neo 2,565,317 B `d9b3742d…` / forge 2,610,860 B `3a54d2bc…` / devlibs 2,581,395 B `284528e5…`；pre.5 22:32（**不含**效果保护批）= neo 2,559,837 B `f25546b6…` / forge 2,605,382 B `e30980b4…` / devlibs 2,575,899 B `86c6350b…`；pre.4 22:21（**带诊断探针的临时构建，勿投放，已删除**）= neo 2,561,853 B `bfc88d8e…`；pre.4 18:32（筹码商店品质外框批）= neo 2,558,631 B `742132dd…` / forge 2,604,187 B `4b984008…` / devlibs 2,574,721 B `8f81e4c3…`；pre.4 18:18（电击手套 FX 批）= neo 2,558,408 B `02719fe6…` / forge 2,603,959 B `42cce572…` / devlibs 2,574,494 B `67bc4d24…`；pre.4 18:09（强化拒止品质批）= neo 2,556,778 B `cab211ef…` / forge 2,602,334 B `5141780a…` / devlibs 2,572,866 B `544b61de…`；pre.4 17:53（史莱姆批）= neo 2,556,774 B `bdfbe5f9…` / forge 2,602,332 B `d9780bd0…` / devlibs 2,572,864 B `2849258d…`；pre.4 17:2x = neo 2,556,723 B `7198cc75…` / forge 2,602,280 B `fbb77627…` / devlibs 2,572,814 B `6a445c8f…`；pre.3 15:47 = 2,555,654 B `f063102b…` / 2,601,208 B `7bf787df…`。
 - 同版本号（pre.5）的中间构建件**不残留**：Gradle 同名覆盖，`build/libs` 与 `build/devlibs` 里 pre.5 各只有上面那三份之一。
 - ⚠️ **旧版本产物仍留在各子项目 build 目录**（pre.1–pre.4，勿投放）；**仓库根 `build/libs` 已于本批（2026-10-23 13:49）用 `pushToRootBuild` 刷新为 pre.5 一对**（坑 28；根目录同时保留 P1 旧件 `astral_dice-1.3.7-*` 与 `starengine-*-1.1.0-pre.2.jar`）——取件只认 §2 这三行。
-- 投放（2026-10-23 13:49 实测，逐处 `Get-FileHash` 双向对账；四个目标里的 `astral_dice-1.5.0-pre.*` 每处只剩 pre.5 一份）：
+- 投放（2026-10-23 15:09 实测（forge 重建后重对账；neo 仍 13:49 值），逐处 `Get-FileHash` 双向对账；四个目标里的 `astral_dice-1.5.0-pre.*` 每处只剩 pre.5 一份）：
   | 位置 | jar 形态 | 字节 | sha256 前 16 | 对账 |
   |---|---|---|---|---|
   | `run/1.21.1/mods` | reobf（`build/libs`） | 2,570,891 | `AD65A8D59149D11C` | MATCH |
-  | `run/1.20.1/mods` | **named dev jar**（`build/devlibs`） | 2,586,934 | `589A027B80F07613` | MATCH（同源，§6-3） |
+  | `run/1.20.1/mods` | **named dev jar**（`build/devlibs`） | 2,586,937 | `49C3B6436A5FEA54` | MATCH（同源，§6-3） |
   | `D:\.minecraft\versions\狐の航空学 Voxy Edition\mods` | reobf（`build/libs`） | 2,570,891 | `AD65A8D59149D11C` | MATCH |
-  | `D:\.minecraft\versions\1.20.1-Forge 模组测试\mods` | reobf（`build/libs`） | 2,616,420 | `CB8BC93C54CD9374` | MATCH |
+  | `D:\.minecraft\versions\1.20.1-Forge 模组测试\mods` | reobf（`build/libs`） | 2,616,424 | `E6081853BDA7F141` | MATCH |
 - jar 内自检（`python zipfile` + `javap`）：neo version=`1.5.0-pre.5+neoforge_1.21.1` / forge=`1.5.0-pre.5+forge_1.20.1`；`META-INF/jarjar/` = **0**；依赖区间 `[1.1.0-pre.2,2.0.0)` 在位；**诊断探针 0 残留**（`client/ClientFrameProbe.class` 0 个、字节码含 `AP_FP_` 的 class 0 个）；新效果图标 `textures/mob_effect/{whetstone_guard_cd,airbag_guard_cd}.png`（410 / 483 B）两线俱在、`railgun_ready.png` **0** 个；`command/AstralPartyCommand.class` 含 `killbarricade` / `killrepulsion` / `AFTERM`；**村民职业专用标签**：两 jar 内 `data/astral_dice/tags/point_of_interest_type/{card_trader_job_site,chip_trader_job_site}.json` 各 1（值分别为 `astral_dice:card_shop` / `astral_dice:chip_shop`），`data/minecraft/tags/blocks*/mineable/axe.json` 均含 `astral_dice:chip_shop`（neo 单数 `block`、forge 复数 `blocks`）。
 - 投放后目录状态：两个 `run/<线>/mods` 与两个整合包的 `astral_dice-*.jar` 只剩 pre.5 一份；整合包侧 `starengine-*` 与 `AutoJS-forge-1.20.1-1.0.0.jar`（reobf，167,358 B）在位；**整合包里本轮注入的测试资产已全部清除**（`kubejs/server_scripts/` 的 `astral_bugfix_probe.js` / `astral_fixbatch_probe.js` / `zz_lpfx_drive2.js` 已删、世界副本 `saves/lp-fx-test` 已删，用户原世界 `saves/新しい世界` 未动）。
 
@@ -107,6 +109,7 @@ P0 产物（`build/libs`，**2026-10-23 13:49 重建（含「雷暴将至」修�
 | 本批头提交（提交后 `git log -1`） | fix(jade) 生物护甲改显示防御力 | 两线 `mixin/jade/ArmorValueProviderMixin.java` 的非玩家分支改 `CombatFormula.mobDefenseInt(TargetCategory.classify(e), e.getArmorValue(), 韧性)`（玩家分支仍 `DiceCombatModifiers.defensePowerOf`）；判据 javap `classify`@18 / `mobDefenseInt`@33；产物 12:35 重建 + 4 处投放（§2） |
 | 本批头提交（提交后 `git log -1`） | fix(event) 「雷暴将至」修复 + 立即刷怪波 | 两线 `event/EventEffects.java`：×2 钩子加 `MobSpawnType.NATURAL` 白名单 + 取消早退 + 复制体补 `finalizeSpawn`（4/5 参分叉）+ 7 点落位校验；新增 `spawnStormWave`（5–7 只僵尸/骷髅/蜘蛛 + 15% 女巫、8–16 格、`player.y ± 4` 纵向扫描、铁头盔 `setDropChance 0`、32 格内一波）；判据 javap 7 个新方法 + `WAVE_*` 常量；产物 13:40 重建 + 4 处投放（§2） |
 | 本批头提交（提交后 `git log -1`） | fix(villager) 工作方块改职业专用标签 | 两线 `world/ModPoiTypes.java` 新增 `CARD_TRADER_JOB_SITES` / `CHIP_TRADER_JOB_SITES`（`TagKey<PoiType>`）+ `world/ModVillagerProfessions.java` 的 `acquirableJobSite` 不再用 `VillagerProfession.ALL_ACQUIRABLE_JOBS`；新增 4 个标签文件 `data/astral_dice/tags/point_of_interest_type/*.json`；`chip_shop` 补进两线 `mineable/axe`；判据 javap lambda 里两个 `TagKey` 各 1、`ALL_ACQUIRABLE_JOBS` 0；产物 13:49 重建 + 4 处投放（§2） |
+| 本批头提交（提交后 `git log -1`） | test(verify) 实机欠账验证批 | P0 双线各 5 条 `DEBT-*` 用例（10 跑 10 PASS）+ 探针新增 10 条 `debt*` 子命令（`debtpoi/debtpeff/debtpeffread/debtmob/debtmobread/debtind/debtindread/debtstorm/debtwave/debtvill`，forge 另有 `debtdef`）；**修 1 个真缺陷**：forge `mixin/jade/ArmorElementIconMixin` 的 `@Redirect` 处理器 `static` → 非 static（Mixin 0.8.5 静默失效，§5-32）；产物 15:09 只重建 forge |
 
 ## 4 实机读数（原文摘录）
 
@@ -231,6 +234,59 @@ AP_NC2B_READ:hand=astral_dice:effect_card_monster_laser:handn=2:cards=2:sel=0:to
 - F3 同屏读数（无光束时）：`164 fps T: 180`、p50 180 / p98 88 / p99 56、`Display 2560x1441`、RTX 5090、`Mem 42% 13836/32768MB`、16x Ryzen 7 9800X3D。
 - **结论：光束绘制不是「卡一下」的成因**；本轮日志无 `Can't keep up` / `ticks behind`。第一轮（22:18）看到的 66–103 FPS 是进世界 churn 撞上光束窗口，同口径平稳期是 6.05 ms ≈ 165 FPS。
 - 判据边界：**单机单场景**（超平坦、朝地平线、顶配机型）；用户实际场景（远处 LOD 多、光影负载高、多人）未复现 ⇒ 若仍能感知卡顿，需要「卡的那一下」的场景 + F3 读数再定位。
+
+### 4.11 实机欠账批 · 玩家侧效果保护 + pre.5 冷却指示器（2026-10-23 14:1x–14:4x，**P0 双线 PASS**）
+
+用例 `DEBT-EFFECT-{1.21.1,1.20.1}.json`（各 16 条断言 = 15 条 log + 1 条 crash，两线口径相同）：
+- 原版效果被外部清除后**补回**：`AP_P1_PEFF:fx=minecraft:regeneration:how=ok:now=17625:present=1:dur=600:inf=0` → （`/effect clear @s` 后）`AP_P3_PEFFREAD:fx=minecraft:regeneration:now=17797:present=1:dur=427:inf=0:amp=0` ⇒ 余量补回；
+- **声明可清除**的效果不补回：`AP_P5_PEFFREAD:fx=astral_dice:marked:now=17970:present=0:dur=na:inf=na:amp=na` ⇒ 牛奶/蜂蜜瓶可清（`DECLARED_CLEARABLE`）；
+- 自定义命名空间**直接取消移除**：`AP_P7_PEFFREAD:fx=astral_dice:directional_blast:now=18143:present=1:dur=479:inf=0:amp=0`；
+- **mob 侧不受保护**（2026-10-23 裁决）：`AP_M1_MOBEFF:fx=minecraft:slowness:how=ok:type=minecraft:zombie:present=1:dur=600`，`/effect clear` 后 `present=0`（`AP_M3_MOBREAD`）；
+- 指示器（磨刀石 / 安全气囊冷却倒计时）：`AP_IC8_INDREAD:now=19437:wEq=0:wEnd=19137:wRem=-300:wPresent=0:wDur=na:aEq=1:aEnd=20575:aRem=1138:aPresent=1:aDur=1138` ⇒ 磨刀石冷却到点后 `wPresent=0`、换装安全气囊后 `aPresent=1` 且 `aDur` 按剩余冷却走。
+- 判据：`MT_CASE_RESULT: DEBT-EFFECT-1.21.1 = PASS` / `DEBT-EFFECT-1.20.1 = PASS`。
+
+### 4.12 实机欠账批 · 「雷暴将至」立即刷怪波（2026-10-23 14:3x / 15:1x，**P0 双线 PASS**）
+
+- neo：`AP_S1_STORM:event=storm_approaching:ok=1:now=21378:err=none`、`AP_EVENT_EFFECT: storm_wave:player=Dev:want=5:placed=5:witch=0`、`AP_S2_WAVE:ok=1:n=7:types=spider:3,skeleton:3,zombie:1:witch=0:helmet=4:onfire=0:dist=8.5-15.7:armor=4,6,6,4,4,8,6:atk=4,4,4,4,4,5,4`。
+- forge：`AP_S1_STORM:event=storm_approaching:ok=1:now=3219:err=none`、`AP_EVENT_EFFECT: storm_wave:player=Dev:want=6:placed=6:witch=1`、`AP_S2_WAVE:ok=1:n=7:types=zombie:2,spider:3,witch:1,skeleton:1:witch=1:helmet=3:onfire=0:dist=8.2-16:armor=8,4,4,8,4,4,6:atk=5,4,4,5,4,4,4`。
+- 落点都在 **8–16 格环带**（`dist=` 区间）；`helmet=` > 0 表示僵尸/骷髅都戴上了头盔；`onfire=0`（白天施放，日晒未点燃 ⇒ 不可破坏标记生效）；`armor=8` 即波怪被 +4 护甲buff（基础 4 + 4）。
+- 判据：`MT_CASE_RESULT: DEBT-STORM-1.21.1 = PASS` / `DEBT-STORM-1.20.1 = PASS`。
+
+### 4.13 实机欠账批 · ×2 复制只认自然刷怪（**双线负面对照 + forge 正面证据**）
+
+- **负面对照（两线）**：午夜 + `storm_approaching` 生效期间，用刷怪笼（`MobSpawnType.SPAWNER`）与 `/summon`（`COMMAND`）制造 15–19 只怪：neo `AP_X2_WAVE:ok=1:n=7:types=zombie:3,skeleton:2,spider:2:witch=0:helmet=5:onfire=0:dist=8.2-15.9:armor=8,8,6,4,6,4,8:atk=5,5,4,4,4,4,5`（其中波怪被 ×2 前置判定挡掉）、forge `AP_X2_WAVE:ok=1:n=19:types=skeleton:3,zombie:15,spider:1:…` ⇒ 整份日志里 `storm_night_spawn_x2` 行数 **0**（neo）/ **4**（forge）。
+- **forge 的 4 行全是自然刷怪**：15:06:21 的 `type=entity.minecraft.skeleton` ×2、`type=entity.minecraft.creeper` ×2 —— 同一时刻刷怪笼/召唤出的 15 只僵尸**一条 zombie 的 x2 行都没有** ⇒ 白名单双向成立（自然刷怪照旧 ×2、非 NATURAL 一律跳过）。
+- 已知限制：测试世界是小平台，自然刷怪量极少（neo 侧整轮 0 行），故 **neo 侧只拿到负面对照**；正面证据目前只有 forge 一次样本。
+- 判据：`MT_CASE_RESULT: DEBT-STORMX2-1.21.1 = PASS` / `DEBT-STORMX2-1.20.1 = PASS`；计数命令 `Select-String -Path run/<线>/logs/latest.log -Pattern 'storm_night_spawn_x2'`。
+
+### 4.14 实机欠账批 · 村民职业工作方块专用标签（**P0 双线 PASS**）
+
+两线同一行（逐字相同）：
+
+`AP_D1_POI:ok=1:cardPoiGot=1:chipPoiGot=1:cardTagN=1:cardTag=astral_dice:card_shop:chipTagN=1:chipTag=astral_dice:chip_shop:sharedN=15:cardInCardTag=1:cardInChipTag=0:chipInCardTag=0:chipInChipTag=1:cardInShared=1:chipInShared=1:cardProfOnCard=1:cardProfOnChip=0:chipProfOnCard=0:chipProfOnChip=1`
+
+⇒ 专用标签各只含自己那一个方块（`cardTagN=1` / `chipTagN=1`）、原版共享标签仍含两者（`sharedN=15`，两个都在）、两职业谓词交叉矩阵**对角为 1 非对角为 0**（JEP 面板不再混同）。
+
+- 村民转职一侧**在测试台内不可观测**：`AP_D2_VILL:ok=1:n=1:prof=minecraft:none:lv=1:noai=1` —— `scripts/test/resources/kubejs/1.21.1/server_scripts/astral_test_noai.js` 对 128 格内所有 `Mob` 强制 `setNoAi(true)`（`mt_launch.ps1:792-800` 的 `AP_NOAI` 硬闸门），NoAI 村民不跑 brain ⇒ 不会认领 POI。断言因此把 `noai=1` 写进判据本身（诚实标注不可观测原因），转职路径的语义证据仍是 §5-30 ③ 的原版源码链。
+- 判据：`MT_CASE_RESULT: DEBT-POI-1.21.1 = PASS` / `DEBT-POI-1.20.1 = PASS`。
+
+### 4.15 实机欠账批 · Jade 生物护甲显示 = 防御力（**双线图标已换 + 数值交叉核对**）
+
+- neo（1.21.1）：截图 `run/1.21.1/screenshots/2026-10-23_14.52.32.png` —— 僵尸戴铁头盔，Jade 护甲行显示 **1 个本模组盾形半图标**；日志 `Mixin apply for mod` 失败行 **0**。
+- forge（1.20.1）：先抓到 mixin 静默失效（截图 `15.07.46.png` / `15.07.59.png` 是**原版胸甲图标**），修复重建后：
+  - 钻石整套（僵尸基础 2 + 钻石 20 = 22 护甲、韧性 8）⇒ `floor(22×0.40 + 8×1.0) = 16` ⇒ 截图 `2026-10-23_15.12.54.png` 显示 **8 个满图标**（若走原版护甲值应是 11 个/或 >20 退数字）；
+  - 铁头盔（僵尸基础 2 + 头盔 2 = 4 护甲、韧性 0）⇒ `floor(4×0.40) = 1` ⇒ 截图 `2026-10-23_15.13.08.png` 显示 **1 个半图标**；探针交叉核对 `AP_G1_DEF:type=minecraft:zombie:armor=4:tough=0:cat=HOSTILE:def=1:head=1 iron_helmet`。
+- 判据：`MT_CASE_RESULT: DEBT-JADE-1.21.1 = PASS` / `DEBT-JADE-1.20.1 = PASS`（截图 + 探针数值双证；用例内断言只覆盖健康项，图标观感靠截图人工判读 + `debtdef` 数值交叉）。
+
+### 4.16 本批实机用例清单（10 跑 10 PASS）
+
+| 用例 | 1.21.1 | 1.20.1 | 主要判据 |
+|---|---|---|---|
+| `DEBT-EFFECT-*` | PASS | PASS | 补回 / 可清除 / 取消移除 / mob 不受保护 / 指示器 IC1–IC8 |
+| `DEBT-STORM-*` | PASS | PASS | 波怪 5–7 只、种类、8–16 格、头盔、白天不烧 |
+| `DEBT-POI-*` | PASS | PASS | 专用标签各 1 项、共享标签 15 项、职业谓词对角矩阵 |
+| `DEBT-STORMX2-*` | PASS | PASS | 刷怪发生 + `storm_night_spawn_x2` 仅自然刷怪 |
+| `DEBT-JADE-*` | PASS | PASS | 图标已换 + 防御力数值交叉核对 |
 
 ## 5 遗留与欠账
 
@@ -437,6 +493,29 @@ AP_NC2B_READ:hand=astral_dice:effect_card_monster_laser:handn=2:cards=2:sel=0:to
     ⑦ 说明：本轮**未动** `data/minecraft/tags/point_of_interest_type/acquirable_job_site.json`（原版共享标签仍含两个方块）—— 这是有意保留，见 ③。
     ⑧ **独立复核（2026-10-23，`dsh_code_review` run `f03b5116-5243-40cf-955c-5e6125d7f18b`）**：R1–R5 / R7 SUPPORTED、R8 未见反例、R6 部分成立（唯一不一致 = §0 第 6 条仍写 13:40）；两条 finding 已修 —— (a) **P3** §0 第 6 条时间与批次内容改为 13:49 + 村民标签；(b) **P2** 两份 `CHANGELOG.md` / `CHANGELOG_ZH.md` 缺本批条目（违反 AGENTS-full L719/L726 的强制同步约定）⇒ 已在两语的〈已修复BUG / Bug Fixes〉各补 2 条（界面与交互：职业工作方块专用标签；物品、筹码与交易：筹码商店补斧类采掘标签）。复核同时硬证：1.20.1 的 `ResourceLocation.fromNamespaceAndPath` 存在（`javap` forge merged jar）、两线 `ModVillagerProfessions` lambda 分别 `getstatic` 两个新 `TagKey` 且 `ALL_ACQUIRABLE_JOBS` 0 次、4 个新标签文件无 BOM 且纯 CRLF、共享标签未被 `git diff` 触及。
 
+31. **实机欠账验证批（2026-10-23，用户下达「补所有欠账实机验证」）—— 五类欠账全部销账**：
+    ① **玩家侧效果保护三项 PASS**（§4.11）：原版 `regeneration` 被 `/effect clear` 后按余量补回（`present=1:dur=427`）、`astral_dice:marked` 可被清除（`present=0`）、`astral_dice:directional_blast` 移除被取消（`present=1`）、mob 侧 `present=0`（裁决要求不保护）。
+    ② **pre.5 冷却指示器 PASS**（§4.11）：`AP_IC8_INDREAD` 显示磨刀石冷却到点 `wPresent=0`、安全气囊换上后 `aPresent=1:aDur=1138`（与剩余冷却同步）。
+    ③ **「雷暴将至」四项 PASS**（§4.12 / §4.13）：波怪 `want=5:placed=5` / `want=6:placed=6`、5–7 只、种类只含僵尸/骷髅/蜘蛛（+ 一次女巫）、8–16 格、头盔 `helmet=4/3`、白天 `onfire=0`、×2 只对 `MobSpawnType.NATURAL`。
+    ④ **Jade 生物防御力 PASS**（§4.15）：双线图标已换（neo 1 半图标 / forge 8 满 + 1 半），数值与 `mobDefenseInt` 一致。
+    ⑤ **村民工作方块 PASS**（§4.14）：`AP_D1_POI` 两线逐字相同，专用标签各 1 项、共享标签 15 项、职业谓词对角矩阵成立。
+    ⑥ 测试资产（纯测试侧，**未改产品源码**）：两线探针新增 10 条 `debt*` 子命令（`debtpoi/debtpeff/debtpeffread/debtmob/debtmobread/debtind/debtindread/debtstorm/debtwave/debtvill`，forge 另有 `debtdef`）+ 新建 10 条 `DEBT-*` 用例；探针里仍留 4 条**诊断专用**命令（neo `debtdiag/debttagn/debtfire`、forge `debtpoi2`，后者已不生效，仅作历史）。
+    ⑦ **仍未做**：Jade tooltip 追加「防御力 X」一行（用户未裁决，属另一批，§5-28 ⑨）。
+    ⑧ **独立复核（2026-10-23，`dsh_code_review` run `81ffbd98-0bf7-48ea-a2b5-3a1d34dfd36a`）**：R1 / R2 / R6 SUPPORTED、R3 / R4 / R5 部分成立，无 P0/P1；六条 finding 全部已修 —— (a) **P2** 1.21.1 探针工作副本被写成全量 CRLF 且 `linglingreset` 块留 4 个孤立 CR ⇒ `git diff` 膨胀成整文件重写（17,893 / 17,344）⇒ 已还原为 **LF**（现 `i/lf w/lf`，真实改动 549 行）；(b) **P2** `DEBT-POI-1.21.1.json` 在 `/reload` 后只等 6 s ⇒ 对齐 1.20.1（`wait 9000 → /reload → wait 12000`）；(c) **P3** `debttagn` 调 `Holder#getTags()`（1.21.1 无此方法）⇒ 改 `h.tags().toList()`；(d) **P3** `DEBT-JADE-1.20.1` 标题/说明写「下界合金 ⇒ 10 图标」而实装是钻石整套 ⇒ 两线标题/说明按实际装备改写（钻石 8 满 / 下界合金 10 满），并把「铁头盔整行不显示」订正为「僵尸自带护甲 2 + 铁盔 2 = 4 ⇒ 防御 1 ⇒ 1 个半图标」；(e) **P3** 本文档 §5-32 ③ 的 mixin 行号 `:87` → `:94`；(f) **P3** §4.11「18 条断言」→「各 16 条（15 log + 1 crash）」、`AP_M3_MOBEFF` → `AP_M3_MOBREAD`。复核同时硬证：`ArmorElement#render` 是实例方法、`DisplayHelper#renderIcon` 是 `public static`（1.20.1 Jade 11.13.3 `javap -p`）；`git diff --numstat` 产品侧只有该 mixin 一个文件（8/1）。
+
+32. **新缺陷（本批实机抓到并已修）：forge Jade 护甲图标 mixin 长期静默失效（2026-10-23）**：
+    ① 现象：1.20.1 的 Jade 护甲行一直画**原版胸甲图标**（截图 `15.07.46.png`），而 1.21.1 正常。
+    ② 根因（日志逐字）：`Mixin apply for mod (unknown) failed astral_dice.jade.mixins.json:ArmorElementIconMixin from mod (unknown) -> snownee.jade.impl.ui.ArmorElement: org.spongepowered.asm.mixin.injection.throwables.InvalidInjectionException: 'static' modifier of handler method does not match target in snownee/jade/impl/ui/ArmorElement::astralDice$defenseIcons` —— 1.20.1 用 Mixin **0.8.5**，`checkTargetModifiers(target, true)` 要求处理器与目标方法 static 性一致（`ArmorElement#render` 是实例方法）；且 mixin 配置写的是 `required: false` ⇒ **异常被吞，功能等于没生效**（编译、启动、用例全绿）。1.21.1 的 Mixin **0.8.7** 放宽了该检查，所以同写法在 neo 侧正常（neo 日志失败行 0）。
+    ③ 修法：`forge-1.20.1/src/main/java/com/merlinkitsune/astral_dice/mixin/jade/ArmorElementIconMixin.java:94` `private static void astralDice$defenseIcons(...)` → `private void astralDice$defenseIcons(...)`；类头 javadoc 新增「⚠️ 处理器必须非 static」段（引用异常原文与 `required: false` 的吞异常行为）。`ArmorValueProviderMixin.java:109` 本来就是非 static，无需改。
+    ④ 重建与投放：`:forge-1.20.1:jar` + 6 个推送任务 ⇒ forge `2,616,424 B / e6081853…`、devlibs `2,586,937 B / 49c3b643…`；`run/1.20.1/mods`、`D:\…1.20.1-Forge 模组测试\mods`、根 `build/libs` 全 MATCH（neo 未变）。
+    ⑤ 修后判据：截图 `15.12.54.png` 8 满图标 / `15.13.08.png` 1 半图标；`run/1.20.1/logs/latest.log` 里 `Mixin apply for mod` 失败行 **0**。
+    ⑥ 教训入 §6-35；同类风险面：任何第三方 mixin 的 `required: false` 失效都只在**客户端日志留一行 WARN**，编译/启动/用例检测不到。
+
+33. **本批新登记的限制（不修，如实留痕）**：
+    ① **村民转职在测试台内不可观测**（§4.14）：`astral_test_noai.js` 强制 NoAI ⇒ brain 不跑、不认领 POI；要测须 `MT_ALLOW_MOB_AI=1` 单独起一轮（会触发 `AP_NOAI` WARN，需用户放行）。
+    ② **×2 正面证据样本少**（§4.13）：neo 侧整轮 0 行 `storm_night_spawn_x2`（测试世界自然刷怪太少），目前正面证据只有 forge 15:06:21 的 skeleton×2 / creeper×2。
+    ③ `DEBT-JADE-*` 的断言只覆盖健康项，图标观感靠截图人工判读 + `debtdef` 数值交叉（vision 断言在测试台里是 DELEGATED，§6-27）。
+
 ## 6 坑（踩过的，后续别重踩）
 
 1. **`run/<线>/mods` 的 jar 曾 ≠ `build/libs`（neo 于 2026-10-22 15:47 对齐；forge 按 §6-3 永远放 devlibs named jar）**：当时 neo 是 00:22 的旧构建（同名、2 B 差异），
@@ -514,6 +593,12 @@ AP_NC2B_READ:hand=astral_dice:effect_card_monster_laser:handn=2:cards=2:sel=0:to
 
 34. **第三方 GUI 按 `profession.acquirableJobSite()` 枚举工作方块，共用原版共享标签会让所有职业长得一样（2026-10-23 踩中）**：JEP（Just Enough Professions 4.0.5）的 `registerRecipes` 只认 `acquirableJobSite().test(poi)`，不看 `heldJobSite()`；而我们两职业原先都传 `VillagerProfession.ALL_ACQUIRABLE_JOBS` ⇒ 卡片右侧全变成同一份「所有工作站」列表。
     ⇒ 新职业的 `acquirableJobSite` 一律给**职业专用标签**（本仓 `astral_dice:{card,chip}_trader_job_site`），共享标签留给原版无业村民的发现路径；另注意 POI 型标签目录在 1.20.1/1.21.1 都是**单数** `point_of_interest_type`，而方块采掘标签目录是 `blocks`（1.20.1）/ `block`（1.21.1）——写错目录**不报错**，只是标签静默为空。
+
+35. **Mixin 0.8.5 的 `@Redirect` 处理器 static 性必须与目标方法一致，写错 + `required:false` = 静默失效（2026-10-23 实机抓到）**：1.20.1 的 Jade `ArmorElement#render` 是**实例**方法 ⇒ 处理器必须 `private void`；写成 `private static void` 会抛 `InvalidInjectionException: 'static' modifier of handler method does not match target`，而混入配置 `required: false` 把它降级成**一行 WARN**（`Mixin apply for mod (unknown) failed …`）。`neo` 的 Mixin 0.8.7 放宽了该检查 ⇒ 同代码两线表现不同。判据：改完 mixin 必须 `Select-String -Path run/<线>/logs/latest.log -Pattern 'Mixin apply for mod'` 计数 0 + 截图观感双证。
+
+36. **探针（`scripts/test/resources/kubejs/**`）改动后：先 `mt_env.ps1 kubejs` 同步，再在用例里 `/reload`，且 `/reload` 之后必须 `wait ≥12000` 才能发命令（2026-10-23 连踩两次）**：同步只做 resources→run 拷贝（回显「探针命令的改动需**冷启动**才生效」），而 `/reload` 是异步重载；`/reload` 后立刻注入命令会**跑旧脚本**（本轮 D1 因此两次假红）。另：用例 JSON **必须至少 1 条断言**，否则 `MT_CASE: ERROR — 条目没有任何断言`，步骤一条都不执行。
+
+37. **KubeJS/Rhino 三处硬边界（2026-10-23 实测）**：① `TagKey` **不能**作为参数传给 Java 方法（`ID.mc` 抛 `KubeRuntimeException: Could not create ID from 'TagKey[...]'`）⇒ 判标签归属用 `holder.containsTag(tagKey)`（forge 1.20.1 可靠）或 `"" + tagKey` 字符串比对；② `net.minecraft.core.Holder` **没有 `getTags()`**（1.21.1/1.20.1 都是 `tags(): Stream<TagKey<T>>`，用 `.toList()`）；③ 读实体类型**不要**用 `BuiltInRegistries.ENTITY_TYPE.getKey(ent.getType())`（Rhino 下恒返回同一类型，本轮恒 `minecraft:pig`，连玩家都报 pig），改用 `ent.getEncodeId()`（Java 侧内部取键，实测正确）。
 
 ## 7 关键路径（命令与文件）
 

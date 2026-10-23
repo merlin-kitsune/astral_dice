@@ -1,0 +1,358 @@
+{
+  "case_id": "DEBT-EFFECT-1.20.1",
+  "title": "玩家侧效果保护（PlayerEffectProtection）+ 保命冷却指示器：原版效果被 /effect clear 后仍补回、声明可清除的 marked 可清、自定义效果不可清、mob 侧按裁决可清；whetstone/airbag 倒计时数字随附件冷却出现/消失",
+  "version": "1.20.1",
+  "channel": "kubejs",
+  "target": {
+    "type": "feature",
+    "ref": "player_effect_protection"
+  },
+  "on_fail": "continue",
+  "steps": [
+    {
+      "op": "note",
+      "text": "判据正本（2026-10-23 m04335 裁决 + 实现）：\n ① 玩家侧：`PlayerEffectProtection.apply` 施加的效果，除非在 `DECLARED_CLEARABLE`（现只有 `astral_dice:marked`），否则不受外部清除 —— `astral_dice:` 命名空间由 `ModEffectEvents#onModEffectRemovalPrevented` 直接取消移除；原版命名空间（Remove 事件不带实例、按类型取消会让牛奶失效）改由 LOWEST 的 `onExternalRemovalRestore` 排队，下一 tick 按剩余时长原样补回。\n ② mob 侧按同一裁决**保持原版**（女巫/术士 AI 会反复自清），不设防。\n ③ 指示器：`PlayerTickEvents#updateChipCooldownIndicators` → `refreshIndicatorRemaining`，remaining = endTick − gameTime，未佩戴或 remaining ≤ 0 就移除效果，偏差 > 40 tick 才重施。\n\n本用例三段读数：\n  · P1/P2 原版 regeneration 正常施加 → `/effect clear @s` → P3 仍 present=1（= 补回生效）\n  · P4 marked 施加 → 清除 → P5 present=0（= 声明可清除），P6/P7 自定义 directional_blast 清除后 present=1（= 取消移除生效）\n  · M1/M2 mob 上 slowness → 清除 → M3 present=0（= mob 不设防）\n  · IC 段：whetstone 佩戴 ⇒ 倒计时效果出现（wPresent=1 且 wDur 递减）；airbag 未佩戴时写冷却不显示（aEq=0/aPresent=0）；whetstone 冷却到点 ⇒ wPresent=0；换装 airbag ⇒ aPresent=1"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/effect clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe debtpeff P1 \"minecraft:regeneration\" 600",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe debtpeffread P2 \"minecraft:regeneration\"",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/effect clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe debtpeffread P3 \"minecraft:regeneration\"",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe debtpeff P4 \"astral_dice:marked\" 600",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/effect clear @s astral_dice:marked",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe debtpeffread P5 \"astral_dice:marked\"",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe debtpeff P6 \"astral_dice:directional_blast\" 600",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/effect clear @s astral_dice:directional_blast",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe debtpeffread P7 \"astral_dice:directional_blast\"",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[type=!player,distance=..48]",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/summon zombie ~ ~ ~3 {NoAI:1b,PersistenceRequired:1b}",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe debtmob M1 \"minecraft:slowness\" 600",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe debtmobread M2 \"minecraft:slowness\"",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/effect clear @e[type=minecraft:zombie,limit=1,sort=nearest,distance=..16]",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe debtmobread M3 \"minecraft:slowness\"",
+      "no_esc": true
+    },
+    {
+      "op": "note",
+      "text": "指示器段：先清饰品栏 → 金骰子（0★ ⇒ 筹码栏 1 格，抄 HAMMER 用例）→ 装 whetstone → 写冷却 → 读数。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop curioreset IC",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/give @s astral_dice:golden_dice 1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe equipslot dice \"astral_dice:golden_dice\" IC",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/give @s astral_dice:whetstone_chip 1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 300
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe equipslot chip \"astral_dice:whetstone_chip\" IC",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe debtind IC1 whetstone 1200",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe debtindread IC2",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe debtind IC3 airbag 1200",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe debtindread IC4",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe debtind IC5 whetstone 30",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe debtindread IC6",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/give @s astral_dice:airbag_chip 1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 300
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe equipslot chip \"astral_dice:airbag_chip\" IC",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe debtind IC7 airbag 1200",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe debtindread IC8",
+      "no_esc": true
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_P1_PEFF:fx=minecraft:regeneration:how=ok:now=\\d+:present=1:dur=600:inf=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_P2_PEFFREAD:fx=minecraft:regeneration:now=\\d+:present=1:dur=[3-6]\\d\\d:inf=0:amp=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_P3_PEFFREAD:fx=minecraft:regeneration:now=\\d+:present=1:dur=[2-6]\\d\\d:inf=0:amp=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_P4_PEFF:fx=astral_dice:marked:how=ok:now=\\d+:present=1:dur=600:inf=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_P5_PEFFREAD:fx=astral_dice:marked:now=\\d+:present=0:dur=na:inf=na:amp=na"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_P6_PEFF:fx=astral_dice:directional_blast:how=ok:now=\\d+:present=1:dur=600:inf=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_P7_PEFFREAD:fx=astral_dice:directional_blast:now=\\d+:present=1:dur=[2-6]\\d\\d:inf=0:amp=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_M1_MOBEFF:fx=minecraft:slowness:how=ok:type=minecraft:zombie:present=1:dur=600"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_M2_MOBREAD:fx=minecraft:slowness:type=minecraft:zombie:present=1:dur=[2-6]\\d\\d"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_M3_MOBREAD:fx=minecraft:slowness:type=minecraft:zombie:present=0:dur=na"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_IC1_INDSET:chip=whetstone:ok=1:now=\\d+:end=\\d+"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_IC2_INDREAD:now=\\d+:wEq=1:wEnd=\\d+:wRem=\\d+:wPresent=1:wDur=\\d+"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_IC4_INDREAD:now=\\d+:wEq=1:.*:aEq=0:.*:aPresent=0:aDur=na"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_IC6_INDREAD:now=\\d+:wEq=1:.*:wPresent=0:wDur=na"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_IC8_INDREAD:now=\\d+:wEq=0:.*:aEq=1:.*:aPresent=1:aDur=\\d+"
+    },
+    {
+      "type": "crash"
+    }
+  ]
+}
