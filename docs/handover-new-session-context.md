@@ -28,15 +28,15 @@
 - 仓库：`F:\MCProject\astral_dice_multiloader`，分支 `multi-main`，交接基线 `7df4dab2`；开工先 `git status --short -uall`（应干净）与 `git rev-parse --short HEAD`。四子项目同树：`neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1`。
 - 版本：四线 `mod_version = 1.5.0-pre.5+<加载器后缀>`；`starengine_version = 1.1.0-pre.2`；jar 内硬前置 `[1.1.0-pre.2,2.0.0)`、`META-INF/jarjar/` 计数 0。
 - 交付面：**只 P0** = `neoforge-1.21.1` + `forge-1.20.1`；P1（26.1.2 / fabric）**1.5.0 正式版前不验证、不移植**。
-- P0 产物（各自 `build\libs`，**两线均 2026-10-23 17:00 重建**；含「雷暴将至」修复 + 立即刷怪波 + 村民职业专用工作方块标签 + 玩家侧效果保护 + 本模组防御力口径的 Jade 护甲行 + Jade 护甲图标 8×8 留白版；jar 内 `license="GPL-3.0-only (code) / CC BY-NC-SA 4.0 (assets)"`）：
+- P0 产物（各自 `build\libs`，**两线均 2026-10-23 17:10 全量重建（与 17:00 逐字节一致）**；含「雷暴将至」修复 + 立即刷怪波 + 村民职业专用工作方块标签 + 玩家侧效果保护 + 本模组防御力口径的 Jade 护甲行 + Jade 护甲图标 8×8 留白版；jar 内 `license="GPL-3.0-only (code) / CC BY-NC-SA 4.0 (assets)"`）：
   - neo：`astral_dice-1.5.0-pre.5+neoforge_1.21.1.jar`，2 570 968 B，sha256 `8796e6cf4db317b4f35fc295eb0a968ff58cdeb9b941678cb576d0ff5c57078b`
   - forge：`astral_dice-1.5.0-pre.5+forge_1.20.1.jar`，2 616 502 B，sha256 `1519f22142bfd911e39ad7e1934d2051d08b85ba7753961e7663b15f15b61284`
   - （forge dev 用 `build\devlibs` 的 named jar：2 587 015 B，`5eac2ac6e637ca88c79c678759611e429a55385067d38b3798fb4c17c82e46bf`）
-- 投放（**成对**放 `astral_dice-*.jar` + `starengine-*-1.1.0-pre.2.jar`，缺库即启动失败 `Missing or unsupported mandatory dependencies`）：
+- 投放（**成对**放 `astral_dice-*.jar` + `starengine-*-1.1.0-pre.2.jar`，缺库即启动失败 `Missing or unsupported mandatory dependencies`；库 jar 于 2026-10-23 17:09–17:10 重建：neo 98 737 B `76c7b910…` / forge 103 609 B `15dc9b8a…`，两者 `license="GPL-3.0-only"`）：
   - neo → `D:\.minecraft\versions\狐の航空学 Voxy Edition\mods`
   - forge → `D:\.minecraft\versions\1.20.1-Forge 模组测试\mods`
 - 测试台：`scripts\test\mt.ps1`，`--version <线> --phase env|run|stop`。
-- 未推送：**随本批提交后 1 个**（2026-10-22 pre.4 与 `353cfed4` 已 push；实况以 `git rev-list --count origin/multi-main..HEAD` 为准）；**无** tag；默认**不 push / 不打 tag**（需用户放行）。
+- 推送：**2026-10-23 用户放行**（`重新构建所有产物，提交并推送，同时更新整合包`）⇒ 本仓 12 提交已 push `origin/multi-main`、前置库 1 提交已 push `origin/main`，推送后 `git rev-list --count origin/multi-main..HEAD` = 0；**仍无** tag；后续每轮 push / 打 tag **仍需用户逐次放行**。
 - 守门：**8 跑 7 绿**，唯一红 `verify_probe_class_refs`。⚠️ 2026-10-22 已查明：红点原有 6 处、**无一是源码缺口**
   （JEI 走 Curse Maven 未被脚本解析 / LWJGL 由加载器运行期提供 / 一处只出现在 JS 注释里 / 26.1.2 产物陈旧）；
   守门脚本已补 Curse Maven 解析 + `org.lwjgl.` 白名单 + 剥 JS 注释，现只剩 **1 处**（26.1.2 `build/libs` 停在
@@ -98,8 +98,16 @@
   (d) **我方溢出根因**：两线 `assets/astral_dice/textures/gui/defense_{full,half,empty}.png` 都是 9×9 **满画布无透明 padding**（第 0 / 8 列、第 0 / 8 行均为不透明描边）⇒ 8 px 步距下相邻图标互相压 1 px 描边、整行看起来变宽粘连；forge 侧 `ArmorElementIconMixin.java:105` 的 `blit(ours, x, y, 0, 0, sx, sy, 9, 9)` 入参 `sx=sy=8` 还会额外裁掉右/下 1 px。**修法**：把图标本体画在 9×9 画布的左上 8×8，第 9 列与第 9 行全透明（alpha 0）。
   (e) 环境事实：`/setblock` 会静默失败（旧位置被占）⇒ 必须 `execute if block … run say` 自证；用例 JSON 缺 `case_id`/`title` 直接 `MT_CASE: ERROR`，**steps 一条都不执行**。
 19. **Java 源代码许可 MIT → GPL-3.0-only（2026-10-23 用户裁决，正本 §5-35 / §6-39）**：用户原文「将Java源代码许可协议从MIT改为GPL-3.0，1.3.7及以前版本仍保持MIT协议」。落地 = ① `LICENSE` 换成 GPL-3.0 全文（取自 gnu.org，35,149 字符，CRLF 归一后 39,383 字符；本批追加 StarEngine 指针后 39,913 字符 / 755 行）+ 末尾〈Project licensing notes〉四节（源码 **GPL-3.0-only** / ≤1.3.7 仍 MIT / 资产 CC BY-NC-SA 4.0 / 第三方 ier 粒子库 MIT）；② **不保留 `LICENSE-MIT`**（2026-10-23 同日二次裁决直接删除，该文件只存在于 `7e4e4f17`），≤1.3.7 的 MIT 授权仍在 `LICENSE` §2，原文指向对应发布 tag 的 `LICENSE`；③ `README.md` / `README_ZH.md` 的 `## License` / `## 许可` 改写为六条（GPL-3.0-only 源码 / 1.3.7 及以前 MIT / 资产 CC BY-NC-SA 4.0 / 数据与 lang 随代码 / 商用需授权 / 第三方例外）；④ 四线 `gradle.properties` 的 `mod_license=` 与 `fabric-1.20.1/src/main/resources/fabric.mod.json:11` 的 `"license"` 改为 `GPL-3.0-only (code) / CC BY-NC-SA 4.0 (assets)`；⑤ 两份 CHANGELOG 各加〈许可与授权 / Licensing〉段。**已发出的 jar 元数据仍是 MIT（未重建）**，是否重建 P0 两线 + 重投 4 处待用户裁决；GPL 与 MC 闭源映射 / EULA 的争议已如实提示用户。
-20. **许可二次裁决（2026-10-23 同日，原文：`StarEngine库也需要重新声明为GPL-3.0`、`LICENSE-MIT不保留，直接删除`）**：① 本仓 `LICENSE-MIT` **已删除**（只存在于 `7e4e4f17`），引用清理 9 处（`LICENSE` §2 + `README.md`/`README_ZH.md` 各 1 + 两份 CHANGELOG 各 1 + 本正本 §0-23/§5-35 与本文第 19 条）；`LICENSE` §1 新增一段说明前置库 StarEngine 是独立项目、同为 GPL-3.0-only、不由本文件重新授权。② **前置库仓 `F:\MCProject\starengine`（`main`）提交 `c545b75`（原 `c545b75` 已 amend 补 tag 边界）**：`LICENSE` = GPL-3.0 全文 +〈Project licensing notes〉三节，四平台 `mod_license` 与 `fabric.mod.json` 改 `GPL-3.0-only`，两 README §License 与两份 CHANGELOG 同步；边界 = `1.0.0`–`1.0.12` 与已发布 `1.1.0-pre.x` 仍 MIT。③ **两仓均未 push**；产物侧：本仓 pre.5 两线已于 2026-10-23 17:00 重建并重投 4 处（见第 21 条），前置库 1.1.0-pre.2 jar **仍未重建**（其 `mods.toml` 仍写 `MIT License`），对外发布前必须重建并成对重投。④ `F:\MCProject\starengine_next` 是坏掉的 worktree（`.git` 指向 `/mnt/f/...` 的 WSL 路径），本批未动。
+20. **许可二次裁决（2026-10-23 同日，原文：`StarEngine库也需要重新声明为GPL-3.0`、`LICENSE-MIT不保留，直接删除`）**：① 本仓 `LICENSE-MIT` **已删除**（只存在于 `7e4e4f17`），引用清理 9 处（`LICENSE` §2 + `README.md`/`README_ZH.md` 各 1 + 两份 CHANGELOG 各 1 + 本正本 §0-23/§5-35 与本文第 19 条）；`LICENSE` §1 新增一段说明前置库 StarEngine 是独立项目、同为 GPL-3.0-only、不由本文件重新授权。② **前置库仓 `F:\MCProject\starengine`（`main`）提交 `c545b75`（原 `c545b75` 已 amend 补 tag 边界）**：`LICENSE` = GPL-3.0 全文 +〈Project licensing notes〉三节，四平台 `mod_license` 与 `fabric.mod.json` 改 `GPL-3.0-only`，两 README §License 与两份 CHANGELOG 同步；边界 = `1.0.0`–`1.0.12` 与已发布 `1.1.0-pre.x` 仍 MIT。③ 产物侧：本仓 pre.5 两线已于 2026-10-23 17:00 重建并重投 4 处（见第 21 条），前置库 `1.1.0-pre.2` 四平台 jar 已于同日 **17:09–17:10 重建**（`license="GPL-3.0-only"`）并成对重投两个整合包（见第 22 条）；两仓提交已于 2026-10-23 推送（`origin/multi-main` / `origin/main`）。④ `F:\MCProject\starengine_next` 是坏掉的 worktree（`.git` 指向 `/mnt/f/...` 的 WSL 路径），本批未动。
 21. **Jade 护甲图标换 8×8 留白版（2026-10-23 17:00，正本 §4.19 / §5-37）**：用户素材 `images\Def_{0,1,2}_jade.png`（9×9 画布、alpha bbox `(0,0,8,8)`、各 50 个不透明像素，映射 0=空/1=半/2=满）**直接覆盖**两线 `assets/astral_dice/textures/gui/defense_{empty,half,full}.png`（empty 140 B `64dab948…` / half 167 B `a9bda341…` / full 173 B `8c1f6ccc…`）；`images/` 被 `.gitignore:63` 忽略，素材不入库。**未改代码**：neo 走 `blitSprite` 1:1 9×9、forge 从 `(0,0)` 裁 8×8 取本体、HUD 9×9 @8 px 步距，三处都对。同轮 17:00 重建两线并重投 4 处（sha256 全 MATCH），GPL 元数据首次进 jar；无实机（用户本地自测），判据 = 静态仿真图 `temp/def-jade-sim.png`。
+
+22. **全量重建 + 推送 + 整合包更新（2026-10-23 用户裁决「重新构建所有产物，提交并推送，同时更新整合包」，正本 §5-38）**：
+  (a) 前置库 `F:\MCProject\starengine`（`main`，HEAD `c545b75`）：`gradlew.bat build publishToMavenLocal` ⇒ BUILD SUCCESSFUL 13s / 35 tasks；四份 `1.1.0-pre.2` jar —— neo 1.21.1 **98 737 B** `76c7b910…` / forge 1.20.1 **103 609 B** `15dc9b8a…` / neo 26.1.2 **98 976 B** `43f1ec6c…` / fabric 1.20.1 **112 639 B** `46ea2494…`；四者 jar 内 `license="GPL-3.0-only"`、`META-INF/jarjar/` **0**。
+  (b) 本仓 P0 两线：`:neoforge-1.21.1:jar :forge-1.20.1:jar` + 6 个推送任务 ⇒ BUILD SUCCESSFUL 5s；**产物与 17:00 逐字节一致**（构建可复现，本轮源码零改动）：neo 2 570 968 B `8796e6cf…` / forge 2 616 502 B `1519f221…` / devlibs 2 587 015 B `5eac2ac6…`；4 处投放 + 根 `build/libs` 全 MATCH。
+  (c) 整合包：两个 `mods` 里的库 jar 换成新 pre.2（旧 98 733 / 103 604 B 被同名覆盖，每目录仍只一份），astral jar 由 `pushToGame` 推送；根 `build/libs` 同步换新。
+  (d) **P1 两线不重建（有意）**：`neoforge-26.1.2` / `fabric-1.20.1` 源码仍是 1.3.7 时代、未移植 1.5.0，产出 pre.5 jar 只会误导；等用户下达（`verify_probe_class_refs` 的 26.1.2 红点因此仍在）。
+  (e) push：本仓 12 提交 → `origin/multi-main`、前置库 1 提交 → `origin/main`（走 `http://127.0.0.1:7897`）；**均不打 tag**。
+
 
 ## 硬约束（Windows 版）
 
@@ -109,6 +117,6 @@
 - `--purge-saves` 会删 `testworld`：下轮实机前先 `--phase env`。
 - P1 不碰：26.1.2 / fabric 的实现、验证、移植一律等用户下达。
 - **`models/` / `images/` / `sound/` 是素材目录（2026-10-22 用户裁决）**：随时更新、有新文件属正常，`git status` 里出现这三处的未跟踪 / 变动项**不算冲突、也不算工作树脏**，但**不得删除 / 移动 / 重命名 / 擅自纳入提交**（需要入库先问用户）；`models/astral_anvil.bbmodel` 是用户下一步更新的素材，**只读**。提交一律显式路径，禁 `git add -A` / `git add .`。
-- 不 push、不打 tag、不擅自装工具（`apt`/`npm`/`pip`/新 JDK 等一律先征得用户许可）。
+- 默认不 push、不打 tag（**每轮需用户放行**；2026-10-23 已放行一次全量推送）、不擅自装工具（`apt`/`npm`/`pip`/新 JDK 等一律先征得用户许可）。
 - 独立复核用 DSH 插件 `@michengai/dsh-code-review`（工具 `dsh_code_review({ input })`：`input` 空 ⇒ 原生范围选择，非空 ⇒ 整段原样作为审查要求，范围写自然语言；报告以 GFM 回本会话）。**派活只用 DSH 自带子智能体**：一次性活 ⇒ `subagent`（全新 context，brief 完全自包含）；接续上下文 ⇒ `subagent_fork`；多人并行 ⇒ `spawn_teammate` + `team_task_*`；结果由子代理 `send_message` 回报，**禁轮询**。
 - **派子代理一律屏蔽人格注入（2026-10-22 用户裁决）**：brief 除职业声明外必须原文带「不要使用任何人设 / 角色扮演 / 语气修饰 / 昵称自称，按你的职业身份以中性技术口吻输出」；审查 / 取证类任务用全新上下文的 `subagent`（`subagent_fork` 会继承带人设的对话；复核不在此列，复核只用 `dsh_code_review`）；子代理回报出现自称 / 卖萌 / 情绪表演即不合规，要求重发中性版。人设只作用于对用户的表达层。**禁止**用 Codex 的 `delegate_task` / `fork_turns="none"`（属另一宿主，DSH 不再引用）；主 Agent 只做识别需求 → 分配工作 → 验收成果。

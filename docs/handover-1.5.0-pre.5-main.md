@@ -3,11 +3,11 @@
 ## 0 速览（一屏）
 
 1. 分支 `multi-main`；HEAD = **本批头提交**（本批提交后即此值，提交号见 `git log -1`）（pre.4 施工批 + 史莱姆被动 15 秒批 + 派子代理屏蔽人格注入规则批 + 强化拒止品质改奇特批 + 电击手套 FX 批 + 筹码商店品质外框恢复批（第 15 条）均已提交）。
-2. 未推送提交 **1** 个（`git rev-list --count origin/multi-main..HEAD`：pre.4 与 353cfed4 已 push，**提交本批之前实测 0**，提交本批后为 1），**无** tag（`1.5.0-pre.3` / `1.5.0-pre.4` / `1.5.0-pre.5` 均无，需用户放行）。
+2. **2026-10-23 用户放行 push**（`重新构建所有产物，提交并推送，同时更新整合包`）⇒ 本轮把积压的 **12** 个提交推到 `origin/multi-main`、前置库 `F:\MCProject\starengine` 的 1 个提交推到 `origin/main`；推送后 `git rev-list --count origin/multi-main..HEAD` = **0**。**仍无** tag（`1.5.0-pre.3` / `pre.4` / `pre.5` 均无，打 tag 未获指示）。
 3. 四线 `mod_version` 均为 `1.5.0-pre.5+<加载器后缀>`（2026-10-22 22:2x bump）；`starengine_version=1.1.0-pre.2`（四线一致，未动）。
 4. jar 内硬前置：`modId="starengine"` / `versionRange="[1.1.0-pre.2,2.0.0)"`，`META-INF/jarjar/` 计数 **0**（pre.4 两 jar 已复核）。
 5. 可交付范围：**只发 P0**（`neoforge-1.21.1` + `forge-1.20.1`）。P1 两线版本号同为 pre.5，但内容不含 1.5.0（本批也未移植）。
-6. P0 双 jar（pre.5，**2026-10-23 13:49 重建，含「雷暴将至」修复 + 立即刷怪波 + 村民职业专用工作方块标签**）已投放 **4 处**（两个整合包 + 两个 `run/<线>/mods`）+ 根 `build/libs`，逐处 sha256 见 §2。
+6. P0 双 jar（pre.5，**2026-10-23 17:10 全量重建：含截至本批的全部改动 + GPL 元数据 + Jade 护甲图标留白版**）已投放 **4 处**（两个整合包 + 两个 `run/<线>/mods`）+ 根 `build/libs`，逐处 sha256 见 §2。
 7. 守门 8 跑 7 绿；唯一红 = `verify_probe_class_refs`（26.1.2 产物陈旧，P1 待重建，见 §5-1）。
 8. 实机：1.20.1 本批 6/6 PASS、1.21.1 5 条 FIXBATCH 判据全命中、末条 49/49 PASS；**创造模式扣卡复验 PASS**（§4.4，2026-10-22 16:10，用例 `CARD-NOCOST-CREATIVE-1.20.1`）。
 9. **pre.4 本批（2026-10-22 17:3x）无新增实机读数**：改动 = 实体拆除口径 + 死亡动画 + 两个管理命令 + 11 张效果图标 + 版本号，判据目前全为静态/字节码/资源 md5（§5-13），实机待用户下达。
@@ -36,6 +36,13 @@
 
 25. **Jade 护甲图标换 8×8 留白版（2026-10-23 用户裁决：`防御力图标已更新（jade专用），位于images目录下Def_0_jade、Def_1_jade、Def_2_jade。直接替换原资产`）**：把 `images/Def_{0,1,2}_jade.png`（9×9 画布，本体占左上 8×8，第 9 列/行 alpha 全 0）**直接替换**两线 `assets/astral_dice/textures/gui/defense_{empty,half,full}.png`；三文件两线同哈希（`64DAB948…` / `A9BDA341…` / `8C1F6CCC…`，140 / 167 / 173 B）。**同轮重建两线 pre.5 产物并重投 4 处**（17:00 值见 §2）——这批 jar 首次带 `license="GPL-3.0-only (code) / CC BY-NC-SA 4.0 (assets)"`，§5-36 ③ 的「未重建」由此销账。HUD 与两线 Jade 共用这三张贴图，8 px 步距下都正确落位（§4.19 静态仿真）。详见 §5-37，**无实机读数**（用户本地自测）。
 
+26. **全量重建 + 推送 + 整合包更新（2026-10-23 用户裁决：`重新构建所有产物，提交并推送，同时更新整合包`）**：
+    ① **前置库 `F:\MCProject\starengine` 全平台重建**（`gradlew.bat build publishToMavenLocal`，BUILD SUCCESSFUL 13s / 35 tasks）⇒ 四份 `1.1.0-pre.2` jar：`neoforge-1.21.1` 98,737 B `76C7B910…` / `forge-1.20.1` 103,609 B `15DC9B8A…` / `neoforge-26.1.2` 98,976 B `43F1EC6C…` / `fabric-1.20.1` 112,639 B `46EA2494…`，四者 jar 内 `license` 均为 `GPL-3.0-only`（fabric 走 `fabric.mod.json`）、`META-INF/jarjar/` = 0；已 `publishToMavenLocal`（消费方解析到的是新元数据）。
+    ② **本仓 P0 两线重建**（`jar` + 6 个推送任务，BUILD SUCCESSFUL 5s）—— 产物与 17:00 **逐字节一致**（neo 2,570,968 `8796e6cf…` / forge 2,616,502 `1519f221…` / devlibs 2,587,015 `5eac2ac6…`）⇒ 构建可复现，本轮无源码改动。
+    ③ **投放**：4 处 astral jar + 根 `build/libs` 全 MATCH，且**两个整合包的库 jar 换成新 pre.2**（98,737 `76C7B910…` / 103,609 `15DC9B8A…`，旧 98,733 / 103,604 B 被同名覆盖），根 `build/libs` 同步。
+    ④ **P1 两线未重建（有意）**：`neoforge-26.1.2` / `fabric-1.20.1` 源码仍是 1.3.7 时代、未移植 1.5.0，产出 pre.5 jar 只会误导；按「1.5.0 正式版前不验证、不移植」等用户下达。
+    ⑤ **push**：本仓 12 个提交 → `origin/multi-main`、前置库 1 个提交 → `origin/main`（走仓库级代理 `http://127.0.0.1:7897`），**均不打 tag**。详见 §5-38。
+
 ## 1 环境与路径
 
 - 仓库（唯一工作树）：`F:\MCProject\astral_dice_multiloader`，分支 `multi-main`；git 一律用 **git bash 的 `git`** ——
@@ -50,7 +57,7 @@
 - 整合包投放：
   - neo → `D:\.minecraft\versions\狐の航空学 Voxy Edition\mods`
   - forge → `D:\.minecraft\versions\1.20.1-Forge 模组测试\mods`
-- 库 jar 与之同目录：`starengine-neoforge-1.21.1-1.1.0-pre.2.jar`（98,733 B）/ `starengine-forge-1.20.1-1.1.0-pre.2.jar`（103,604 B）。
+- 库 jar 与之同目录：`starengine-neoforge-1.21.1-1.1.0-pre.2.jar`（**2026-10-23 17:09–17:10 重建后 98,737 B** `76C7B910…`）/ `starengine-forge-1.20.1-1.1.0-pre.2.jar`（**103,609 B** `15DC9B8A…`）；重建前为 98,733 / 103,604 B（`license` 仍是 MIT）。
 - 委派（**2026-10-22 用户裁决**：DSH 只用自带子智能体，**禁止**用 Codex 的 `delegate_task`）：一次性活 ⇒ `subagent`（全新 context，brief 必须完全自包含；结果由子代理 `send_message` 回报，运行时另有完成通知）；接续上下文 ⇒ `subagent_fork`；多人并行 ⇒ `spawn_teammate` + `team_task_*`（`write_scopes` 互不重叠）；复核 ⇒ `dsh_code_review({ input })`，不为复核另派 subagent。主 Agent 只做识别需求 → 分配工作 → 验收成果（只看产物，禁轮询）。手册：`docs/agent/delegation-runbook.md`。
   Codex 侧 `C:\Users\xmace\.codex\mcp\delegation\server.mjs` 的 `delegate_task` 属**另一个宿主**，DSH 会话**不得引用**（日志 `…\delegation\server.log` 仅作历史背景）。
 - 环境注入：**无** `/etc/profile.d` 注入脚本（`99-wsl-proxy.sh` / `99-wsl-github.sh`）、**无** `wsl-env-restore.sh`、**无** `/opt/zulu`+`use-jdk`
@@ -72,6 +79,8 @@ P0 产物（`build/libs`，**2026-10-23 17:00 两线同时重建**：Jade 护甲
 
 > ✅ **2026-10-23 17:00 两线同时重建并重投**（本批：Jade 护甲图标留白版 + 许可元数据）：jar 内 `assets/astral_dice/textures/gui/defense_full.png` = 173 B `8C1F6CCC…`、`defense_half.png` = 167 B `A9BDA341…`、`defense_empty.png` = 140 B `64DAB948…`（两线同源同哈希，与 `images/Def_{2,1,0}_jade.png` 逐字节一致，alpha bbox 均为 `(0,0,8,8)`）；`META-INF/{neoforge.mods,mods}.toml` 的 `license` 首次为 `GPL-3.0-only (code) / CC BY-NC-SA 4.0 (assets)`；`META-INF/jarjar/` = 0。13:49 批（村民专用标签）与 15:09 批（forge Jade 图标 mixin 非 static 修复）的字节码/方法证据全部仍在（`spawnStormWave` / `WAVE_*` / `MobSpawnType.NATURAL` / `ModPoiTypes` 两个 `TagKey` / `ArmorElementIconMixin` 非 static）。4 处投放 + 根 `build/libs` 已重新对账（下行表）。
 
+> ✅ **2026-10-23 17:10 全量重建（用户下达「重新构建所有产物」）**：P0 两线重跑 `jar` 与 6 个推送任务，产物与 17:00 **逐字节一致**（`8796e6cf…` / `1519f221…` / `5eac2ac6…`，长度也一致）⇒ 构建可复现；同轮前置库 `starengine` 四平台重建（§5-38 ②），并把两个整合包与根 `build/libs` 的库 jar 换成新 pre.2。
+
 - neo `astral_dice-1.5.0-pre.5+neoforge_1.21.1.jar` — **2,570,968 B** — `8796e6cf4db317b4f35fc295eb0a968ff58cdeb9b941678cb576d0ff5c57078b`
 - forge `astral_dice-1.5.0-pre.5+forge_1.20.1.jar` — **2,616,502 B** — `1519f22142bfd911e39ad7e1934d2051d08b85ba7753961e7663b15f15b61284`
 - forge dev named jar `build/devlibs/astral_dice-1.5.0-pre.5+forge_1.20.1.jar` — **2,587,015 B** — `5eac2ac6e637ca88c79c678759611e429a55385067d38b3798fb4c17c82e46bf`
@@ -87,7 +96,7 @@ P0 产物（`build/libs`，**2026-10-23 17:00 两线同时重建**：Jade 护甲
   | `D:\.minecraft\versions\狐の航空学 Voxy Edition\mods` | reobf（`build/libs`） | 2,570,968 | `8796E6CF4DB317B4` | MATCH |
   | `D:\.minecraft\versions\1.20.1-Forge 模组测试\mods` | reobf（`build/libs`） | 2,616,502 | `1519F22142BFD911` | MATCH |
 - jar 内自检（`python zipfile` + `javap`）：neo version=`1.5.0-pre.5+neoforge_1.21.1` / forge=`1.5.0-pre.5+forge_1.20.1`；`META-INF/jarjar/` = **0**；依赖区间 `[1.1.0-pre.2,2.0.0)` 在位；**诊断探针 0 残留**（`client/ClientFrameProbe.class` 0 个、字节码含 `AP_FP_` 的 class 0 个）；新效果图标 `textures/mob_effect/{whetstone_guard_cd,airbag_guard_cd}.png`（410 / 483 B）两线俱在、`railgun_ready.png` **0** 个；`command/AstralPartyCommand.class` 含 `killbarricade` / `killrepulsion` / `AFTERM`；**村民职业专用标签**：两 jar 内 `data/astral_dice/tags/point_of_interest_type/{card_trader_job_site,chip_trader_job_site}.json` 各 1（值分别为 `astral_dice:card_shop` / `astral_dice:chip_shop`），`data/minecraft/tags/blocks*/mineable/axe.json` 均含 `astral_dice:chip_shop`（neo 单数 `block`、forge 复数 `blocks`）。；**Jade 护甲图标留白版**：`textures/gui/defense_{full,half,empty}.png` = 173 / 167 / 140 B（sha256 前 16 = `8C1F6CCC…` / `A9BDA341…` / `64DAB948…`，两线一致），alpha bbox = `(0,0,8,8)`；**许可元数据**：`license="GPL-3.0-only (code) / CC BY-NC-SA 4.0 (assets)"`（两线，首次进 jar）
-- 投放后目录状态：两个 `run/<线>/mods` 与两个整合包的 `astral_dice-*.jar` 只剩 pre.5 一份；整合包侧 `starengine-*` 与 `AutoJS-forge-1.20.1-1.0.0.jar`（reobf，167,358 B）在位；**整合包里本轮注入的测试资产已全部清除**（`kubejs/server_scripts/` 的 `astral_bugfix_probe.js` / `astral_fixbatch_probe.js` / `zz_lpfx_drive2.js` 已删、世界副本 `saves/lp-fx-test` 已删，用户原世界 `saves/新しい世界` 未动）。
+- 投放后目录状态：两个 `run/<线>/mods` 与两个整合包的 `astral_dice-*.jar` 只剩 pre.5 一份；整合包侧 `starengine-*-1.1.0-pre.2.jar` 已换成 2026-10-23 17:09–17:10 重建版（98,737 B `76C7B910…` / 103,609 B `15DC9B8A…`，各目录仅一份）与 `AutoJS-forge-1.20.1-1.0.0.jar`（reobf，167,358 B）在位；**整合包里本轮注入的测试资产已全部清除**（`kubejs/server_scripts/` 的 `astral_bugfix_probe.js` / `astral_fixbatch_probe.js` / `zz_lpfx_drive2.js` 已删、世界副本 `saves/lp-fx-test` 已删，用户原世界 `saves/新しい世界` 未动）。
 
 ## 3 本批批次表（一行一批：提交号 / 主题 / 关键落点）
 
@@ -121,6 +130,7 @@ P0 产物（`build/libs`，**2026-10-23 17:00 两线同时重建**：Jade 护甲
 | `7e4e4f17` | docs(license) 源码改 GPL-3.0-only | `LICENSE` 换 GPL-3.0 全文 +〈Project licensing notes〉；四线 `mod_license` 与 `fabric.mod.json` 改串；两份 CHANGELOG 加许可段；`LICENSE-MIT`（后被删） |
 | `ba19c599` | docs(license) 删 `LICENSE-MIT` + 前置库同步 | 本仓删 `LICENSE-MIT` 并清理 9 处引用、`LICENSE` §1 加 StarEngine 指针；前置库仓 `F:\MCProject\starengine` 提交 `c545b75`（GPL-3.0 全文 + 5 处元数据 + 两 README + 两 CHANGELOG；原 `53db33b` 已 amend 补 tag 边界） |
 | 本批头提交（提交后 `git log -1`） | fix(assets) Jade 护甲图标换 8×8 留白版 | 两线 `assets/astral_dice/textures/gui/defense_{empty,half,full}.png` ← `images/Def_{0,1,2}_jade.png`（9×9 画布、本体左上 8×8、第 9 列/行全透明）；判据：三文件两线同 sha256 + jar 内一致；产物 17:00 两线重建 + 4 处投放（§2），jar 首次带 GPL 元数据 |
+| 本批头提交（提交后 `git log -1`） | build(release) 全量重建 + 推送 + 整合包更新 | 前置库四平台 `build publishToMavenLocal`（四 jar `license="GPL-3.0-only"`、jarjar 0）；本仓 P0 两线重建（与 17:00 **字节一致**）+ 4 处投放 MATCH；两个整合包与根 `build/libs` 的库 jar 换新 pre.2；本仓 12 提交 push `origin/multi-main`、前置库 1 提交 push `origin/main`；**P1 两线不重建**（§5-38） |
 
 ## 4 实机读数（原文摘录）
 
@@ -604,7 +614,7 @@ AP_NC2B_READ:hand=astral_dice:effect_card_monster_laser:handn=2:cards=2:sel=0:to
        · 元数据 5 处：`neoforge-1.21.1/gradle.properties:203`、`forge-1.20.1/gradle.properties:88`、`neoforge-26.1.2/gradle.properties:75`、`fabric-1.20.1/gradle.properties:27` 的 `mod_license=GPL-3.0-only`；`fabric-1.20.1/src/main/resources/fabric.mod.json:11` 的 `"license": "GPL-3.0-only"`（`mods.toml` / `neoforge.mods.toml` 仍走 `license="${mod_license}"`）。
        · 文档：`README.md:326` / `README_ZH.md:324` 的 §License 改写为「源码 GPL-3.0-only + 历史版本仍 MIT + 不再单独保留 MIT 文件」；两份 CHANGELOG 的 Unreleased/未发布（2.0.0-SNAPSHOT.15）段各加〈许可 / Licensing〉条目（zh 8 行 / en 10 行）。
        · 提交 `c545b75`「docs(license): 源码许可改为 GPL-3.0-only（1.0.0–1.0.12 与已发布 1.1.0-pre.x 仍 MIT）」，10 文件 +732/−28（原 `53db33b` 已 `--amend` 补 §2 的 tag 边界），**未 push**。
-    ③ **本仓已重建**（2026-10-23 17:00，随 Jade 图标批一起）：两线 pre.5 jar 内 `META-INF/{neoforge.mods,mods}.toml` 的 `license` = `GPL-3.0-only (code) / CC BY-NC-SA 4.0 (assets)`，4 处投放 + 根 `build/libs` 全 MATCH（§2）；**前置库 `starengine-*-1.1.0-pre.2.jar` 仍未重建**（mavenLocal / 两个整合包内 `mods.toml` 仍是 `MIT License`），要对外发布须先重建库产物并成对重投。
+    ③ **本仓已重建**（2026-10-23 17:00，随 Jade 图标批一起）：两线 pre.5 jar 内 `META-INF/{neoforge.mods,mods}.toml` 的 `license` = `GPL-3.0-only (code) / CC BY-NC-SA 4.0 (assets)`，4 处投放 + 根 `build/libs` 全 MATCH（§2）；**前置库 `starengine-*-1.1.0-pre.2.jar` 已于同日 17:09–17:10 重建并成对重投**（四平台 `build publishToMavenLocal`，jar 内 `license="GPL-3.0-only"`、jarjar 0；两个整合包与根 `build/libs` 已换新，见 §5-38 ②④）。
     ④ 判据：本仓 `git ls-files LICENSE-MIT` 为空、`grep -rn 'LICENSE-MIT'` 仅剩历史记录（`docs/` 内本正本与 AGENTS-full 的「已删除」描述）；前置库 `git -C F:\MCProject\starengine log --oneline -1` = `c545b75`、`git -C … status --short` 干净、5 处元数据 `grep -R 'MIT License'` 0 命中（除 `gradlew*` 的 Apache 头）。
 
 37. **Jade 护甲图标换 8×8 留白版（2026-10-23 用户裁决，本批）**：
@@ -615,6 +625,15 @@ AP_NC2B_READ:hand=astral_dice:effect_card_monster_laser:handn=2:cards=2:sel=0:to
     ⑤ 判据：jar 内三张贴图 sha256 与工作树一致（`python zipfile` 实读）；两线 17:00 重建 + 4 处投放 MATCH（§2）；`META-INF/jarjar/` = 0；静态仿真 `temp/def-jade-sim.png`（neo 9×9 / forge 8×8 / 原版 armor_full 三行 8 px 步距对照，无叠边）。
     ⑥ 未做：**无实机读数**（用户明确自测，本批未开客户端）；Jade 生物「防御力 X」tooltip 一行仍待裁决（§5-28 ⑨）；**P1 两线**（`neoforge-26.1.2` / `fabric-1.20.1`）的同名三张贴图仍是旧 9×9 满画布版（`948dee4c…` / `14855590…` / `d1d851bc…`，126 / 159 / 153 B），随 P1 批次替换，本批不动。
     ⑦ 复核：`dsh_code_review` run `7a9f5b2e-a51c-45bf-8dbe-5890231638e7` —— R1–R7 全 SUPPORTED，两条 P3 已修（`AGENTS-full` §58.3 的「sha256 前 8 字节」→ 16 位；本节/§4.19 的「与原版护甲条同宽」→「基本同宽（少 1 px）」）；另登记 P1 两线贴图未换。
+
+38. **全量重建 + 推送 + 整合包更新（2026-10-23 用户裁决，本批）**：
+    ① 裁决原文：「重新构建所有产物，提交并推送，同时更新整合包。」
+    ② 前置库仓 `F:\MCProject\starengine`（分支 `main`，HEAD `c545b75`）：`gradlew.bat build publishToMavenLocal`（`JAVA_HOME=C:\Program Files\Zulu\zulu-21`）⇒ **BUILD SUCCESSFUL in 13s / 35 actionable tasks**；四份 jar 均出自 `build\libs`（各平台 `pushToRootBuild` 推上去）：`starengine-neoforge-1.21.1-1.1.0-pre.2.jar` **98,737 B** `76C7B9108D5278BE…` / `starengine-forge-1.20.1-1.1.0-pre.2.jar` **103,609 B** `15DC9B8A27A0608D…` / `starengine-neoforge-26.1.2-1.1.0-pre.2.jar` **98,976 B** `43F1EC6C01CE1CBE…` / `starengine-fabric-1.20.1-1.1.0-pre.2.jar` **112,639 B** `46EA2494C5F83B7E…`；jar 内元数据 `license="GPL-3.0-only"`（三平台 `mods.toml` / `neoforge.mods.toml`；fabric 侧 `fabric.mod.json` 的 `"license": "GPL-3.0-only"`），`META-INF/jarjar/` = **0**（`python zipfile` 实读）；`publishToMavenLocal` 已跑，消费方解析到的是新元数据。
+    ③ 本仓 P0 两线：`gradlew.bat :neoforge-1.21.1:jar :forge-1.20.1:jar` + 6 个推送任务 ⇒ **BUILD SUCCESSFUL in 5s / 17 tasks**；**产物字节与 17:00 完全一致**（`jar` 任务 `UP-TO-DATE`、forge `reobfJar` 重跑但输出相同 ⇒ 构建可复现，本轮源码零改动）：neo **2,570,968 B** `8796e6cf4db317b4…` / forge **2,616,502 B** `1519f22142bfd911…` / devlibs **2,587,015 B** `5eac2ac6e637ca88…`；4 处投放 + 根 `build/libs` 逐处 sha256 MATCH（§2 表）。
+    ④ 整合包更新：`狐の航空学 Voxy Edition\mods` ← `starengine-neoforge-1.21.1-1.1.0-pre.2.jar`（98,737 B `76C7B910…`）；`1.20.1-Forge 模组测试\mods` ← `starengine-forge-1.20.1-1.1.0-pre.2.jar`（103,609 B `15DC9B8A…`）；旧的 98,733 / 103,604 B 版被**同名覆盖**（每目录仍只有一份），astral jar 由 `pushToGame` 推送并核哈希；根 `build/libs` 也换成新 pre.2 一对。
+    ⑤ **P1 两线不重建（有意）**：`neoforge-26.1.2` / `fabric-1.20.1` 虽已 bump 到 `1.5.0-pre.5`，但源码仍是 1.3.7 时代、未移植 1.5.0 内容（§5-5）；重建会产出「版本号 pre.5、内容陈旧」的 jar，且明令「1.5.0 正式版前不验证、不移植」⇒ 等用户下达。守门 `verify_probe_class_refs` 的 26.1.2 红点因此仍在（§5-1）。
+    ⑥ push（用户本轮放行）：本仓 `git push origin multi-main`（12 个提交）、前置库 `git push origin main`（1 个提交 `c545b75`）；走仓库级 `http.proxy` / `https.proxy` = `http://127.0.0.1:7897`；**均不打 tag**（打 tag 未获指示）。
+    ⑦ 判据：`python docs/agent/verify-split.py` 四项 `[OK]`；`git status --short -uall` 只剩 `?? models/astral_anvil.bbmodel`；推送后 `git rev-list --count origin/multi-main..HEAD` = 0 且 `git ls-remote origin refs/heads/multi-main` 与本地 HEAD 同号；两个整合包 `mods` 内 astral / starengine 各仅一版且版本对（`1.5.0-pre.5` + `1.1.0-pre.2`）。
 
 ## 6 坑（踩过的，后续别重踩）
 

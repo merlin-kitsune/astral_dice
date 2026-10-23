@@ -3892,3 +3892,67 @@ python docs/agent/verify-split.py
 
 ### 58.6 复核
 `dsh_code_review` run `7a9f5b2e-a51c-45bf-8dbe-5890231638e7`：R1–R7 全部 SUPPORTED（映射/50 不透明像素与 bbox/三条绘制路径/文档数字对实物/索引 3891 与 verify-split 四项/jar 内贴图与 license 与 jarjar=0/四处投放），仅两条 P3 措辞已修 —— ① 本节 58.3 原写「sha256 前 8 字节」但只给 8 位十六进制（= 4 字节）⇒ 改为 16 位；② 交接 §4.19 原写「与原版护甲条同宽」多算 1 px（原版本体 9 px 跨 8 px 步距会重叠 1 px，整行 81 px vs 我方 80 px）⇒ 改为「基本同宽（少 1 px）」。复核另发现 26.1.2 / fabric 仍是旧贴图，已登记于 58.5。
+
+## 59. 全量重建 + 推送 + 整合包更新（2026-10-23 用户裁决）
+
+### 59.1 裁决原文
+
+> 重新构建所有产物，提交并推送，同时更新整合包。
+
+此前 12 个提交一直积压未推（用户 2026-10-22 的「默认不 push」口径），本轮**用户明确放行**；打 tag 仍未获指示。
+
+### 59.2 前置库仓 `F:\MCProject\starengine`（分支 `main`，HEAD `c545b75`）
+
+命令：`gradlew.bat build publishToMavenLocal`（`JAVA_HOME=C:\Program Files\Zulu\zulu-21`）⇒ **BUILD SUCCESSFUL in 13s / 35 actionable tasks**。四份 jar（各自 `build\libs`，由各平台 `pushToRootBuild` 汇总）：
+
+| 产物 | 字节 | sha256 前 16 | 元数据 |
+|---|---|---|---|
+| `starengine-neoforge-1.21.1-1.1.0-pre.2.jar` | 98,737 | `76C7B9108D5278BE` | `license="GPL-3.0-only"` |
+| `starengine-forge-1.20.1-1.1.0-pre.2.jar` | 103,609 | `15DC9B8A27A0608D` | `license="GPL-3.0-only"` |
+| `starengine-neoforge-26.1.2-1.1.0-pre.2.jar` | 98,976 | `43F1EC6C01CE1CBE` | `license="GPL-3.0-only"` |
+| `starengine-fabric-1.20.1-1.1.0-pre.2.jar` | 112,639 | `46EA2494C5F83B7E` | `"license": "GPL-3.0-only"`（`fabric.mod.json`） |
+
+四者 `META-INF/jarjar/` 计数均为 **0**（`python zipfile` 实读）。`publishToMavenLocal` 已跑，消费方解析到的是新元数据。
+
+### 59.3 本仓 P0 两线
+
+命令：`gradlew.bat :neoforge-1.21.1:jar :forge-1.20.1:jar` + 6 个推送任务（`pushToDevRun` / `pushToGame` / `pushToRootBuild` × 两线）⇒ **BUILD SUCCESSFUL in 5s / 17 tasks**。
+
+**产物与 2026-10-23 17:00 的构建逐字节一致**（`jar` 任务 `UP-TO-DATE`；forge `reobfJar` 重跑但输出相同）⇒ 构建可复现，本轮**源码零改动**：
+
+- neo `astral_dice-1.5.0-pre.5+neoforge_1.21.1.jar` — 2,570,968 B — `8796e6cf4db317b4f35fc295eb0a968ff58cdeb9b941678cb576d0ff5c57078b`
+- forge `astral_dice-1.5.0-pre.5+forge_1.20.1.jar` — 2,616,502 B — `1519f22142bfd911e39ad7e1934d2051d08b85ba7753961e7663b15f15b61284`
+- forge dev named `build/devlibs/astral_dice-1.5.0-pre.5+forge_1.20.1.jar` — 2,587,015 B — `5eac2ac6e637ca88c79c678759611e429a55385067d38b3798fb4c17c82e46bf`
+
+### 59.4 投放与整合包
+
+| 位置 | 内容 | 字节 / sha256 前 16 |
+|---|---|---|
+| `run/1.21.1/mods` | astral reobf | 2,570,968 / `8796E6CF4DB317B4` |
+| `run/1.20.1/mods` | astral **named devlibs** | 2,587,015 / `5EAC2AC6E637CA88` |
+| `D:\.minecraft\versions\狐の航空学 Voxy Edition\mods` | astral reobf + **库 jar（新 pre.2）** | 2,570,968 / `8796E6CF4DB317B4`；库 98,737 / `76C7B910…` |
+| `D:\.minecraft\versions\1.20.1-Forge 模组测试\mods` | astral reobf + **库 jar（新 pre.2）** | 2,616,502 / `1519F22142BFD911`；库 103,609 / `15DC9B8A…` |
+
+两个整合包的旧库 jar（98,733 / 103,604 B，`license` 仍是 MIT）被**同名覆盖**，每目录仍只有一份；根 `build/libs` 也换成新 pre.2 一对。
+
+### 59.5 P1 两线不重建（有意）
+
+`neoforge-26.1.2` / `fabric-1.20.1` 虽已 bump 到 `1.5.0-pre.5`，但**源码仍是 1.3.7 时代、未移植 1.5.0 内容**；重建只会产出「版本号 pre.5、内容陈旧」的 jar，且明令「1.5.0 正式版前不验证、不移植」⇒ 等用户下达。守门 `verify_probe_class_refs` 的 26.1.2 红点因此仍在（交接正本 §5-1）。
+
+### 59.6 push（用户本轮放行）
+
+- 本仓：`git push origin multi-main`（12 个提交）；
+- 前置库：`git -C F:\MCProject\starengine push origin main`（1 个提交 `c545b75`）；
+- 网络走仓库级 `http.proxy` / `https.proxy` = `http://127.0.0.1:7897`（Git 代理规范）；
+- **均不打 tag**（`1.5.0-pre.3` / `pre.4` / `pre.5` 仍无）；后续 push / 打 tag 仍需用户逐次放行。
+
+### 59.7 判据
+
+```powershell
+python docs/agent/verify-split.py                                    # 四项 [OK]
+git -C F:\MCProject\astral_dice_multiloader status --short -uall     # 只剩 ?? models/astral_anvil.bbmodel
+git -C F:\MCProject\astral_dice_multiloader rev-list --count origin/multi-main..HEAD   # 0
+git -C F:\MCProject\astral_dice_multiloader ls-remote origin refs/heads/multi-main     # 与本地 HEAD 同号
+Get-FileHash <四处投放> -Algorithm SHA256                            # 逐处对账（§59.4）
+python <zipfile 脚本>                                               # 库 jar license / jarjar 0
+```
