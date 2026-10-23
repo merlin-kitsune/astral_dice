@@ -28,10 +28,10 @@
 - 仓库：`F:\MCProject\astral_dice_multiloader`，分支 `multi-main`，交接基线 `7df4dab2`；开工先 `git status --short -uall`（应干净）与 `git rev-parse --short HEAD`。四子项目同树：`neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1`。
 - 版本：四线 `mod_version = 1.5.0-pre.5+<加载器后缀>`；`starengine_version = 1.1.0-pre.2`；jar 内硬前置 `[1.1.0-pre.2,2.0.0)`、`META-INF/jarjar/` 计数 0。
 - 交付面：**只 P0** = `neoforge-1.21.1` + `forge-1.20.1`；P1（26.1.2 / fabric）**1.5.0 正式版前不验证、不移植**。
-- P0 产物（各自 `build\libs`，**2026-10-23 13:40 重建，含「雷暴将至」修复 + 立即刷怪波（复核后）**）：
-  - neo：`astral_dice-1.5.0-pre.5+neoforge_1.21.1.jar`，2 569 892 B，sha256 `6c13fbe01e4e8eb6c9e2e1ccbb5e8e52a7103ef48b51983294e654e195d3e407`
-  - forge：`astral_dice-1.5.0-pre.5+forge_1.20.1.jar`，2 615 326 B，sha256 `0c85cd3ec9b6b9947b98178ff19e6d728d18e671057bb98d576705d8b4eeb031`
-  - （forge dev 用 `build\devlibs` 的 named jar：2 585 937 B，`00151870f1a694af7df7feb3acdaa91abef035359e3fb7a3987ec7570588b403`）
+- P0 产物（各自 `build\libs`，**2026-10-23 13:49 重建，含「雷暴将至」修复 + 立即刷怪波 + 村民职业专用工作方块标签**）：
+  - neo：`astral_dice-1.5.0-pre.5+neoforge_1.21.1.jar`，2 570 891 B，sha256 `ad65a8d59149d11c21fefd0b37fd7e3b829ca0bf6348fd1cee843cb0d3419161`
+  - forge：`astral_dice-1.5.0-pre.5+forge_1.20.1.jar`，2 616 420 B，sha256 `cb8bc93c54cd9374ee123709562cfe9be600a5ae3ee7e06f29f1d8d869c3461b`
+  - （forge dev 用 `build\devlibs` 的 named jar：2 586 934 B，`589a027b80f07613c7f0b676d25de59c99926a1a6a4166296c9cb70cdb8fa6d7`）
 - 投放（**成对**放 `astral_dice-*.jar` + `starengine-*-1.1.0-pre.2.jar`，缺库即启动失败 `Missing or unsupported mandatory dependencies`）：
   - neo → `D:\.minecraft\versions\狐の航空学 Voxy Edition\mods`
   - forge → `D:\.minecraft\versions\1.20.1-Forge 模组测试\mods`
@@ -86,6 +86,8 @@
 13. **玩家侧状态效果保护批（2026-10-23，提交 `a344fc46`；正本 §5-26 / §5-27）**：用户裁决 = 玩家身上的效果**除非被声明可清除（牛奶 / 蜂蜜瓶）否则不受任何外部影响**，mob 侧**保持原版**（不搬计时表，避免女巫 / 诡术师反复喝药叠加 tick）。新增两线 `event/PlayerEffectProtection`（`apply` 统一入口 + 玩家快照 / `onExternalRemoval` LOWEST 延后补回 / `tick` 按余量重施 / `removeNow` 主动移除唯一入口 / `clear` 死亡·登出·重生），`ModEffectEvents` HIGH+LOWEST+`PlayerLoggedOutEvent`+`PlayerEvent.Clone`，两线各 26 文件 `EffectTimerGuard.apply` 收口（含 7 处原版裸施 + 卡牌默认入口 + 6 处 `removeEffect`）。审计正本 `docs/features/effect-client-server-split-audit.md`。复核 `dsh_code_review` run `c20953f4` 三条 finding 已修（`EnderDiceHandler` 改 `removeNow`、Clone 清场、52 分解订正）。判据：两线 `:classes` + jar BUILD SUCCESSFUL / 4 处投放 + 根 `build/libs` sha256 MATCH / jar 内 `PlayerEffectProtection` 2 类。**无实机读数**：补回时序、牛奶可清除（`marked`）、mob 不受影响三项待用户下达。
 14. **Jade 生物护甲改「防御力」批（2026-10-23 用户裁决 A，正本 §5-28）**：审计（m04669）确认骰战计算链准确无双计（玩家 `2+护甲×0.30+0.85×韧性` / 生物 `floor(0+护甲×0.40+1.0×韧性)`，四类基数均 0，只影响攻击力 4/3/0/0），但 Jade 玩家分支显示防御力、生物分支回落原版护甲 ⇒ 两个单位（铁甲僵尸 armor 15 → 实际 6 / Jade 8 图标）。两线各改 1 文件 `mixin/jade/ArmorValueProviderMixin.java`：非玩家分支改 `CombatFormula.mobDefenseInt(TargetCategory.classify(e), e.getArmorValue(), 韧性)`（forge 处理器必须非 static）。判据：两线 `:classes` BUILD SUCCESSFUL、两 jar javap 命中 `classify`@18 + `mobDefenseInt`@33、`META-INF/jarjar/` 0、4 处投放 + 根 `build/libs` sha256 MATCH。**未做**：tooltip 追加「防御力 X」一行（单位已统一、玩家侧从不显示数字，待裁决）。**无实机读数**；P1 两线（fabric / 26.1.2 的同名 mixin）**仍是旧行为**，随 P1 批次移植。
 15. **「雷暴将至」修复 + 立即刷怪波（2026-10-23，正本 §5-29）**：×2 钩子补 `MobSpawnType.NATURAL` 白名单 + `isCanceled`/`isSpawnCancelled` 早退 + 复制体 `finalizeSpawn`（neo 4 参 / forge 5 参分叉）+ 7 点落位校验；新增 `spawnStormWave`（施放瞬间在玩家 8–16 格刷 5–7 只僵尸/骷髅/蜘蛛，僵尸与骷髅强制铁头盔（**不可破坏**、掉落率 0），15% 追加女巫，半径 32 格内只刷一波）；两线各改 `event/EventEffects.java`。产物 13:40 重建 + 4 处投放 MATCH；独立复核 `dsh_code_review` run `e7302744…` 三条 finding 全部已修（`WAVE_ORIGINS` 加维度键 / 头盔不可破坏 / 本文件产物块刷新）。**无实机读数**。
+
+16. **村民职业工作方块指向错乱（2026-10-23 用户报障 + 裁决，正本 §5-30）**：JEI 风格两卡片「卡牌交易员」/「筹码商人」显示的工作方块完全相同，因为两职业 `acquirableJobSite` 都传 `VillagerProfession.ALL_ACQUIRABLE_JOBS`（原版共享标签），而 JEP（Just Enough Professions 4.0.5）正是按它枚举展示项。修法 = 两线 `world/ModPoiTypes.java` 新增职业专用 `TagKey<PoiType>`（`CARD_TRADER_JOB_SITES` / `CHIP_TRADER_JOB_SITES`）+ `ModVillagerProfessions.java` 的 `acquirableJobSite` 改用它们 + 新增 4 个 `data/astral_dice/tags/point_of_interest_type/*.json`；**原版共享标签必须保留**（无业村民靠它发现工作站，转职判定仍用 `heldJobSite`）。顺带补 `chip_shop` 进两线 `mineable/axe`（1.21.1 目录 `block` / 1.20.1 `blocks`）。判据：两线 `:classes` BUILD SUCCESSFUL、字节码 lambda 里两个 `TagKey` 各 1 且 `ALL_ACQUIRABLE_JOBS` 0、产物 13:49 重建 + 4 处投放 MATCH。**无实机读数**（JEP 面板是否正确、村民认领是否仍正常待放行）；P1 两线未移植。
 
 ## 硬约束（Windows 版）
 

@@ -3708,3 +3708,36 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --new <注册id>
 
 **⑥ 判据（静态全绿）**：`gradlew.bat :neoforge-1.21.1:classes :forge-1.20.1:classes` BUILD SUCCESSFUL；`javap -p` 两线均见 `spawnStormWave` / `createWaveMob` / `placeStormMob` / `findSpawnY` / `isSpawnFloor` / `equipStormHelmet` / `placeStormCopy` + 7 个 `WAVE_*` 常量；字节码命中 `FinalizeSpawnEvent` / `MobSpawnEvent$FinalizeSpawn` 的 `getSpawnType` / `isCanceled` / `isSpawnCancelled` 与 4 参 / 5 参 `finalizeSpawn`（reobf 为 `Mob.m_6518_`）；jar 内 `META-INF/jarjar/` = 0；产物重建（2026-10-23 13:40，neo 2,569,892 B `6c13fbe0…` / forge 2,615,326 B `0c85cd3e…` / devlibs 2,585,937 B `00151870…`）+ 4 处投放 sha256 全 MATCH；独立复核 `dsh_code_review` run `e7302744…`（R1–R5/R7 SUPPORTED、3 条 finding 全修）。**无实机读数**（刷怪数量 / 头盔防烧 / 32 格一波三项需用户下达实机）。
 
+## 53. 村民职业工作方块改职业专用标签（2026-10-23 用户裁决）
+
+**① 报障与裁决**
+
+- 用户截图：JEI 风格两卡片「卡牌交易员」/「筹码商人」右侧的工作方块图标**完全相同**。
+- 裁决原文：「卡牌交易员和筹码商人指向的工作方块混乱，应该避免使用公用 tag，而是专用于特定工作方块。」
+
+**② 根因链（实证）**
+
+- 展示方：JEP（Just Enough Professions 4.0.5）`NeoForgeProfessionPlugin.registerRecipes` 对数据包内每个 POI 调 `profession.acquirableJobSite().test(holder)` 决定展示哪些方块。
+- 我们两线 `world/ModVillagerProfessions.java` 的 `acquirableJobSite` 都传 `VillagerProfession.ALL_ACQUIRABLE_JOBS`（= `p -> p.is(PoiTypeTags.ACQUIRABLE_JOB_SITE)` 原版**共享**标签）⇒ 两职业列表相同。
+
+**③ 原版语义（`neoforge-21.1.235-sources.jar` 实读；决定改法安全边界）**
+
+- `VillagerGoalPackages.java:37` `ValidateNearbyPoi.create(profession.heldJobSite(), JOB_SITE)`；`:38` `ValidateNearbyPoi.create(profession.acquirableJobSite(), POTENTIAL_JOB_SITE)`；`:43` `AcquirePoi.create(profession.acquirableJobSite(), JOB_SITE, POTENTIAL_JOB_SITE, true, Optional.empty())`；`:48` `AssignProfessionFromJobSite.create()`。
+- `Villager.java:186` 的 `POI_MEMORIES[JOB_SITE]` 用 `heldJobSite`；`:188` 的 `POTENTIAL_JOB_SITE` 用 `VillagerProfession.ALL_ACQUIRABLE_JOBS`；转职判定 `AssignProfessionFromJobSite.java:39` `.filter(p -> p.heldJobSite().test(poiHolder))`。
+- ⇒ 把职业的 `acquirableJobSite` 收窄成专用标签只影响「转职后只认本站点」与 JEP 展示，**不影响**无业村民靠共享标签发现工作站；**原版共享标签必须保留**（`data/minecraft/tags/point_of_interest_type/acquirable_job_site.json` 里两个方块都别删）。
+
+**④ 代码（P0 两线各 4 处）**
+
+- `world/ModPoiTypes.java`：新增 import `net.minecraft.tags.TagKey`；新增 `public static final TagKey<PoiType> CARD_TRADER_JOB_SITES = TagKey.create(Registries.POINT_OF_INTEREST_TYPE, ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, "card_trader_job_site"));` 与 `CHIP_TRADER_JOB_SITES`（`"chip_trader_job_site"`）；类头补 ⚠️ 段「职业专用标签，勿与共享标签混用」。
+- `world/ModVillagerProfessions.java`：`acquirableJobSite` 由 `VillagerProfession.ALL_ACQUIRABLE_JOBS` 改为 `holder -> holder.is(ModPoiTypes.CARD_TRADER_JOB_SITES)` / `CHIP_TRADER_JOB_SITES`；`heldJobSite` 不变（`holder.is(ModPoiTypes.CARD_SHOP_KEY | CHIP_SHOP_KEY)`）。
+- 新增 4 个标签文件（CRLF）：`data/astral_dice/tags/point_of_interest_type/{card_trader_job_site,chip_trader_job_site}.json`，值分别为 `astral_dice:card_shop` / `astral_dice:chip_shop`。**1.20.1 的 POI 型标签目录同样是单数 `point_of_interest_type`**。
+- 顺手修 axe 采掘标签不对称（`chip_shop` 与 `card_shop` 同为 `MapColor.WOOD` / `SoundType.WOOD`）：两线 `data/minecraft/tags/{block|blocks}/mineable/axe.json` 各补 `"astral_dice:chip_shop"`（**1.21.1 目录 `block`、1.20.1 目录 `blocks`**，写错目录静默为空）。
+
+**⑤ 判据（静态全绿，2026-10-23 13:49）**
+
+- 两线 `gradlew.bat :neoforge-1.21.1:classes :forge-1.20.1:classes` BUILD SUCCESSFUL。
+- 字节码：`ModVillagerProfessions.class` 的 `acquirableJobSite` lambda 内 `getstatic ModPoiTypes.CARD_TRADER_JOB_SITES` / `CHIP_TRADER_JOB_SITES` 各 1、`VillagerProfession.ALL_ACQUIRABLE_JOBS` **0**；`ModPoiTypes.class` 公开字段含两个 `TagKey<PoiType>`。
+- 产物（`build/libs` / `build/devlibs`）：neo **2,570,891 B** `ad65a8d5…` / forge reobf **2,616,420 B** `cb8bc93c…` / forge dev named **2,586,934 B** `589a027b…`；4 处投放（`run/1.21.1/mods`、`run/1.20.1/mods`=devlibs、两个 P0 整合包）+ 根 `build/libs` 逐处 sha256 MATCH；`META-INF/jarjar/` = 0。
+- **无实机读数**：JEP 面板两卡片是否各显示自己的方块、无业村民认领/转职是否仍正常，需用户下达实机。
+- **P1 欠账**：`neoforge-26.1.2` / `fabric-1.20.1` 未移植（同第 52 条口径，随 P1 批次处理）。
+

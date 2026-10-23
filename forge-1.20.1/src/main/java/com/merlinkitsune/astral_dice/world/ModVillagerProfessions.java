@@ -42,8 +42,9 @@ public final class ModVillagerProfessions {
                     "card_trader",
                     // heldJobSite：本站点就是卡牌商店
                     holder -> holder.is(ModPoiTypes.CARD_SHOP_KEY),
-                    // acquirableJobSite：必须用原版标签口径（见 ModPoiTypes 的说明），否则村民不会认领
-                    VillagerProfession.ALL_ACQUIRABLE_JOBS,
+                    // acquirableJobSite：**专用**标签（只含 card_shop）—— 共用原版共享标签会让本职业去认领
+                    // 别人家的工作站，且 JEI（Just Enough Professions）按该谓词枚举站点，会把两个职业画成同一个方块。
+                    holder -> holder.is(ModPoiTypes.CARD_TRADER_JOB_SITES),
                     ImmutableSet.of(),
                     ImmutableSet.of(),
                     null));
@@ -54,8 +55,8 @@ public final class ModVillagerProfessions {
                     "chip_trader",
                     // heldJobSite：本站点就是筹码商店
                     holder -> holder.is(ModPoiTypes.CHIP_SHOP_KEY),
-                    // acquirableJobSite：必须用原版标签口径（见 ModPoiTypes 的说明），否则村民不会认领
-                    VillagerProfession.ALL_ACQUIRABLE_JOBS,
+                    // acquirableJobSite：**专用**标签（只含 chip_shop），口径同 CARD_TRADER
+                    holder -> holder.is(ModPoiTypes.CHIP_TRADER_JOB_SITES),
                     ImmutableSet.of(),
                     ImmutableSet.of(),
                     null));

@@ -7,7 +7,7 @@
 3. 四线 `mod_version` 均为 `1.5.0-pre.5+<加载器后缀>`（2026-10-22 22:2x bump）；`starengine_version=1.1.0-pre.2`（四线一致，未动）。
 4. jar 内硬前置：`modId="starengine"` / `versionRange="[1.1.0-pre.2,2.0.0)"`，`META-INF/jarjar/` 计数 **0**（pre.4 两 jar 已复核）。
 5. 可交付范围：**只发 P0**（`neoforge-1.21.1` + `forge-1.20.1`）。P1 两线版本号同为 pre.5，但内容不含 1.5.0（本批也未移植）。
-6. P0 双 jar（pre.5，**2026-10-23 13:40 重建，含「雷暴将至」修复 + 立即刷怪波**）已投放 **4 处**（两个整合包 + 两个 `run/<线>/mods`）+ 根 `build/libs`，逐处 sha256 见 §2。
+6. P0 双 jar（pre.5，**2026-10-23 13:49 重建，含「雷暴将至」修复 + 立即刷怪波 + 村民职业专用工作方块标签**）已投放 **4 处**（两个整合包 + 两个 `run/<线>/mods`）+ 根 `build/libs`，逐处 sha256 见 §2。
 7. 守门 8 跑 7 绿；唯一红 = `verify_probe_class_refs`（26.1.2 产物陈旧，P1 待重建，见 §5-1）。
 8. 实机：1.20.1 本批 6/6 PASS、1.21.1 5 条 FIXBATCH 判据全命中、末条 49/49 PASS；**创造模式扣卡复验 PASS**（§4.4，2026-10-22 16:10，用例 `CARD-NOCOST-CREATIVE-1.20.1`）。
 9. **pre.4 本批（2026-10-22 17:3x）无新增实机读数**：改动 = 实体拆除口径 + 死亡动画 + 两个管理命令 + 11 张效果图标 + 版本号，判据目前全为静态/字节码/资源 md5（§5-13），实机待用户下达。
@@ -25,6 +25,8 @@
 19. **Jade 生物护甲改为「防御力」（2026-10-23 用户裁决 A，本批头提交）**：审计发现 Jade 玩家分支显示 `defensePowerOf`（防御力）而生物分支回落原版 `getArmorValue()`，与骰战结算 `CombatFormula.mobDefenseInt` 是两个单位；两线各改 1 文件（`mixin/jade/ArmorValueProviderMixin.java`）把非玩家分支改走 `mobDefenseInt(TargetCategory.classify(entity), getArmorValue(), 韧性)`。产物 12:35 重建、4 处投放 sha256 全 MATCH（§2）。详见 §5-28，**无实机读数**。
 
 20. **「雷暴将至」修复 + 立即刷怪波（2026-10-23 用户裁决，本批头提交）**：① 修掉审计查出的 4 处缺陷（×2 复制域无 `MobSpawnType` 白名单 / 复制体未 `finalizeSpawn` / 无视 `isCanceled`·`isSpawnCancelled` / 落点不校验）；② 新增「施放瞬间在玩家 8–16 格刷 5–7 只僵尸·骷髅·蜘蛛（僵尸与骷髅强制铁头盔、掉落率 0），15% 概率追加一只女巫；半径 32 格内只刷一波」；两线各改 1 文件 `event/EventEffects.java`。产物 13:40 重建、4 处投放 sha256 全 MATCH（§2）。详见 §5-29，**无实机读数**。
+
+21. **村民职业工作方块指向错乱（2026-10-23 用户裁决，本批头提交）**：JEI 风格两卡片「卡牌交易员」/「筹码商人」显示的**工作方块完全相同**（截图报障）。根因 = 两职业的 `acquirableJobSite` 都传 `VillagerProfession.ALL_ACQUIRABLE_JOBS`（原版共享标签），而 JEP（Just Enough Professions 4.0.5）正是按 `profession.acquirableJobSite().test(poi)` 枚举展示项。修法 = 两线新增专用标签 `astral_dice:{card,chip}_trader_job_site`（`ModPoiTypes.CARD_TRADER_JOB_SITES` / `CHIP_TRADER_JOB_SITES`）并只收各自方块；**原版共享标签必须保留**（无业村民靠它发现工作站）。顺带补 `chip_shop` 进 axe 采掘标签。产物 13:49 重建、4 处投放 sha256 全 MATCH（§2）。详见 §5-30，**无实机读数**。
 
 ## 1 环境与路径
 
@@ -58,24 +60,24 @@
 | jar 内依赖区间 | `[1.1.0-pre.2,2.0.0)`，`type=required`（neo）/ `mandatory=true`（forge） | `META-INF/neoforge.mods.toml:141-144` / `META-INF/mods.toml:154-158` |
 | 内嵌库 | `META-INF/jarjar/` 计数 **0**（两线） | `unzip -l <jar> \| grep -c 'META-INF/jarjar/'` |
 
-P0 产物（`build/libs`，**2026-10-23 13:40 重建（含「雷暴将至」修复 + 立即刷怪波；诊断探针已剔除）**）：
+P0 产物（`build/libs`，**2026-10-23 13:49 重建（含「雷暴将至」修复 + 立即刷怪波 + 村民职业专用工作方块标签；诊断探针已剔除）**）：
 
-> ✅ **2026-10-23 13:40 已重建并含本批「雷暴将至」修复 + 立即刷怪波（提交后 §5-29）**：两 jar 内 `event/EventEffects` 的 `javap` 命中 `spawnStormWave` / `createWaveMob` / `placeStormMob` / `findSpawnY` / `isSpawnFloor` / `equipStormHelmet` / `placeStormCopy` + 7 个 `WAVE_*` 常量，字节码含 `MobSpawnType.NATURAL` 门控、`isCanceled` / `isSpawnCancelled` 早退与 4 参（neo）/ 5 参（forge reobf SRG `Mob.m_6518_`）`finalizeSpawn`；`META-INF/jarjar/` 仍 0；4 处投放 + 根 `build/libs` 已刷新。上一批（12:35，Jade 生物护甲 `539c4698`）的三份 jar 已作废，仅作历史值（下行）。
+> ✅ **2026-10-23 13:49 已重建并含本批「村民职业专用工作方块标签」（§5-30）**：两 jar 内 `ModPoiTypes` 公开字段含 `Card_Trader/CHIP` 类 `TagKey<PoiType>`、`ModVillagerProfessions` 的 `acquirableJobSite` lambda 里 `getstatic ModPoiTypes.CARD_TRADER_JOB_SITES` / `CHIP_TRADER_JOB_SITES` 各 1（`ALL_ACQUIRABLE_JOBS` 0 次）；jar 内含 `data/astral_dice/tags/point_of_interest_type/{card_trader_job_site,chip_trader_job_site}.json` 与更新后的 `mineable/axe`；上一批「雷暴将至」的方法/常量证据（`spawnStormWave` 等 7 个方法 + `WAVE_*`、`MobSpawnType.NATURAL` 门控、4/5 参 `finalizeSpawn`）仍在；`META-INF/jarjar/` 仍 0；4 处投放 + 根 `build/libs` 已刷新。上一批（13:40）的三份 jar 已作废，仅作历史值（下行）。
 
-- neo `astral_dice-1.5.0-pre.5+neoforge_1.21.1.jar` — **2,569,892 B** — `6c13fbe01e4e8eb6c9e2e1ccbb5e8e52a7103ef48b51983294e654e195d3e407`
-- forge `astral_dice-1.5.0-pre.5+forge_1.20.1.jar` — **2,615,326 B** — `0c85cd3ec9b6b9947b98178ff19e6d728d18e671057bb98d576705d8b4eeb031`
-- forge dev named jar `build/devlibs/astral_dice-1.5.0-pre.5+forge_1.20.1.jar` — **2,585,937 B** — `00151870f1a694af7df7feb3acdaa91abef035359e3fb7a3987ec7570588b403`
-- 历史值（只作背景，均已被覆盖）：pre.5 13:29（复核前，已被上行覆盖）= neo 2,568,549 B `e99db150…` / forge 2,614,004 B `8f714e84…` / devlibs 2,584,622 B `7122d0c4…`；pre.5 12:35（**不含**「雷暴将至」批）= neo 2,565,536 B `a34cbc48…` / forge 2,611,060 B `aebca4d5…` / devlibs 2,581,605 B `0d961f7a…`；pre.5 12:05（**不含** Jade 生物护甲批）= neo 2,565,317 B `d9b3742d…` / forge 2,610,860 B `3a54d2bc…` / devlibs 2,581,395 B `284528e5…`；pre.5 22:32（**不含**效果保护批）= neo 2,559,837 B `f25546b6…` / forge 2,605,382 B `e30980b4…` / devlibs 2,575,899 B `86c6350b…`；pre.4 22:21（**带诊断探针的临时构建，勿投放，已删除**）= neo 2,561,853 B `bfc88d8e…`；pre.4 18:32（筹码商店品质外框批）= neo 2,558,631 B `742132dd…` / forge 2,604,187 B `4b984008…` / devlibs 2,574,721 B `8f81e4c3…`；pre.4 18:18（电击手套 FX 批）= neo 2,558,408 B `02719fe6…` / forge 2,603,959 B `42cce572…` / devlibs 2,574,494 B `67bc4d24…`；pre.4 18:09（强化拒止品质批）= neo 2,556,778 B `cab211ef…` / forge 2,602,334 B `5141780a…` / devlibs 2,572,866 B `544b61de…`；pre.4 17:53（史莱姆批）= neo 2,556,774 B `bdfbe5f9…` / forge 2,602,332 B `d9780bd0…` / devlibs 2,572,864 B `2849258d…`；pre.4 17:2x = neo 2,556,723 B `7198cc75…` / forge 2,602,280 B `fbb77627…` / devlibs 2,572,814 B `6a445c8f…`；pre.3 15:47 = 2,555,654 B `f063102b…` / 2,601,208 B `7bf787df…`。
+- neo `astral_dice-1.5.0-pre.5+neoforge_1.21.1.jar` — **2,570,891 B** — `ad65a8d59149d11c21fefd0b37fd7e3b829ca0bf6348fd1cee843cb0d3419161`
+- forge `astral_dice-1.5.0-pre.5+forge_1.20.1.jar` — **2,616,420 B** — `cb8bc93c54cd9374ee123709562cfe9be600a5ae3ee7e06f29f1d8d869c3461b`
+- forge dev named jar `build/devlibs/astral_dice-1.5.0-pre.5+forge_1.20.1.jar` — **2,586,934 B** — `589a027b80f07613c7f0b676d25de59c99926a1a6a4166296c9cb70cdb8fa6d7`
+- 历史值（只作背景，均已被覆盖）：pre.5 13:40（「雷暴将至」复核收口，**不含**村民工作方块标签批）= neo 2,569,892 B `6c13fbe0…` / forge 2,615,326 B `0c85cd3e…` / devlibs 2,585,937 B `00151870…`；pre.5 13:29（复核前，已被覆盖）= neo 2,568,549 B `e99db150…` / forge 2,614,004 B `8f714e84…` / devlibs 2,584,622 B `7122d0c4…`；pre.5 12:35（**不含**「雷暴将至」批）= neo 2,565,536 B `a34cbc48…` / forge 2,611,060 B `aebca4d5…` / devlibs 2,581,605 B `0d961f7a…`；pre.5 12:05（**不含** Jade 生物护甲批）= neo 2,565,317 B `d9b3742d…` / forge 2,610,860 B `3a54d2bc…` / devlibs 2,581,395 B `284528e5…`；pre.5 22:32（**不含**效果保护批）= neo 2,559,837 B `f25546b6…` / forge 2,605,382 B `e30980b4…` / devlibs 2,575,899 B `86c6350b…`；pre.4 22:21（**带诊断探针的临时构建，勿投放，已删除**）= neo 2,561,853 B `bfc88d8e…`；pre.4 18:32（筹码商店品质外框批）= neo 2,558,631 B `742132dd…` / forge 2,604,187 B `4b984008…` / devlibs 2,574,721 B `8f81e4c3…`；pre.4 18:18（电击手套 FX 批）= neo 2,558,408 B `02719fe6…` / forge 2,603,959 B `42cce572…` / devlibs 2,574,494 B `67bc4d24…`；pre.4 18:09（强化拒止品质批）= neo 2,556,778 B `cab211ef…` / forge 2,602,334 B `5141780a…` / devlibs 2,572,866 B `544b61de…`；pre.4 17:53（史莱姆批）= neo 2,556,774 B `bdfbe5f9…` / forge 2,602,332 B `d9780bd0…` / devlibs 2,572,864 B `2849258d…`；pre.4 17:2x = neo 2,556,723 B `7198cc75…` / forge 2,602,280 B `fbb77627…` / devlibs 2,572,814 B `6a445c8f…`；pre.3 15:47 = 2,555,654 B `f063102b…` / 2,601,208 B `7bf787df…`。
 - 同版本号（pre.5）的中间构建件**不残留**：Gradle 同名覆盖，`build/libs` 与 `build/devlibs` 里 pre.5 各只有上面那三份之一。
-- ⚠️ **旧版本产物仍留在各子项目 build 目录**（pre.1–pre.4，勿投放）；**仓库根 `build/libs` 已于本批（2026-10-23 13:40）用 `pushToRootBuild` 刷新为 pre.5 一对**（坑 28；根目录同时保留 P1 旧件 `astral_dice-1.3.7-*` 与 `starengine-*-1.1.0-pre.2.jar`）——取件只认 §2 这三行。
-- 投放（2026-10-23 13:40 实测，逐处 `Get-FileHash` 双向对账；四个目标里的 `astral_dice-1.5.0-pre.*` 每处只剩 pre.5 一份）：
+- ⚠️ **旧版本产物仍留在各子项目 build 目录**（pre.1–pre.4，勿投放）；**仓库根 `build/libs` 已于本批（2026-10-23 13:49）用 `pushToRootBuild` 刷新为 pre.5 一对**（坑 28；根目录同时保留 P1 旧件 `astral_dice-1.3.7-*` 与 `starengine-*-1.1.0-pre.2.jar`）——取件只认 §2 这三行。
+- 投放（2026-10-23 13:49 实测，逐处 `Get-FileHash` 双向对账；四个目标里的 `astral_dice-1.5.0-pre.*` 每处只剩 pre.5 一份）：
   | 位置 | jar 形态 | 字节 | sha256 前 16 | 对账 |
   |---|---|---|---|---|
-  | `run/1.21.1/mods` | reobf（`build/libs`） | 2,569,892 | `6C13FBE01E4E8EB6` | MATCH |
-  | `run/1.20.1/mods` | **named dev jar**（`build/devlibs`） | 2,585,937 | `00151870F1A694AF` | MATCH（同源，§6-3） |
-  | `D:\.minecraft\versions\狐の航空学 Voxy Edition\mods` | reobf（`build/libs`） | 2,569,892 | `6C13FBE01E4E8EB6` | MATCH |
-  | `D:\.minecraft\versions\1.20.1-Forge 模组测试\mods` | reobf（`build/libs`） | 2,615,326 | `0C85CD3EC9B6B994` | MATCH |
-- jar 内自检（`python zipfile` + `javap`）：neo version=`1.5.0-pre.5+neoforge_1.21.1` / forge=`1.5.0-pre.5+forge_1.20.1`；`META-INF/jarjar/` = **0**；依赖区间 `[1.1.0-pre.2,2.0.0)` 在位；**诊断探针 0 残留**（`client/ClientFrameProbe.class` 0 个、字节码含 `AP_FP_` 的 class 0 个）；新效果图标 `textures/mob_effect/{whetstone_guard_cd,airbag_guard_cd}.png`（410 / 483 B）两线俱在、`railgun_ready.png` **0** 个；`command/AstralPartyCommand.class` 含 `killbarricade` / `killrepulsion` / `AFTERM`。
+  | `run/1.21.1/mods` | reobf（`build/libs`） | 2,570,891 | `AD65A8D59149D11C` | MATCH |
+  | `run/1.20.1/mods` | **named dev jar**（`build/devlibs`） | 2,586,934 | `589A027B80F07613` | MATCH（同源，§6-3） |
+  | `D:\.minecraft\versions\狐の航空学 Voxy Edition\mods` | reobf（`build/libs`） | 2,570,891 | `AD65A8D59149D11C` | MATCH |
+  | `D:\.minecraft\versions\1.20.1-Forge 模组测试\mods` | reobf（`build/libs`） | 2,616,420 | `CB8BC93C54CD9374` | MATCH |
+- jar 内自检（`python zipfile` + `javap`）：neo version=`1.5.0-pre.5+neoforge_1.21.1` / forge=`1.5.0-pre.5+forge_1.20.1`；`META-INF/jarjar/` = **0**；依赖区间 `[1.1.0-pre.2,2.0.0)` 在位；**诊断探针 0 残留**（`client/ClientFrameProbe.class` 0 个、字节码含 `AP_FP_` 的 class 0 个）；新效果图标 `textures/mob_effect/{whetstone_guard_cd,airbag_guard_cd}.png`（410 / 483 B）两线俱在、`railgun_ready.png` **0** 个；`command/AstralPartyCommand.class` 含 `killbarricade` / `killrepulsion` / `AFTERM`；**村民职业专用标签**：两 jar 内 `data/astral_dice/tags/point_of_interest_type/{card_trader_job_site,chip_trader_job_site}.json` 各 1（值分别为 `astral_dice:card_shop` / `astral_dice:chip_shop`），`data/minecraft/tags/blocks*/mineable/axe.json` 均含 `astral_dice:chip_shop`（neo 单数 `block`、forge 复数 `blocks`）。
 - 投放后目录状态：两个 `run/<线>/mods` 与两个整合包的 `astral_dice-*.jar` 只剩 pre.5 一份；整合包侧 `starengine-*` 与 `AutoJS-forge-1.20.1-1.0.0.jar`（reobf，167,358 B）在位；**整合包里本轮注入的测试资产已全部清除**（`kubejs/server_scripts/` 的 `astral_bugfix_probe.js` / `astral_fixbatch_probe.js` / `zz_lpfx_drive2.js` 已删、世界副本 `saves/lp-fx-test` 已删，用户原世界 `saves/新しい世界` 未动）。
 
 ## 3 本批批次表（一行一批：提交号 / 主题 / 关键落点）
@@ -104,6 +106,7 @@ P0 产物（`build/libs`，**2026-10-23 13:40 重建（含「雷暴将至」修�
 
 | 本批头提交（提交后 `git log -1`） | fix(jade) 生物护甲改显示防御力 | 两线 `mixin/jade/ArmorValueProviderMixin.java` 的非玩家分支改 `CombatFormula.mobDefenseInt(TargetCategory.classify(e), e.getArmorValue(), 韧性)`（玩家分支仍 `DiceCombatModifiers.defensePowerOf`）；判据 javap `classify`@18 / `mobDefenseInt`@33；产物 12:35 重建 + 4 处投放（§2） |
 | 本批头提交（提交后 `git log -1`） | fix(event) 「雷暴将至」修复 + 立即刷怪波 | 两线 `event/EventEffects.java`：×2 钩子加 `MobSpawnType.NATURAL` 白名单 + 取消早退 + 复制体补 `finalizeSpawn`（4/5 参分叉）+ 7 点落位校验；新增 `spawnStormWave`（5–7 只僵尸/骷髅/蜘蛛 + 15% 女巫、8–16 格、`player.y ± 4` 纵向扫描、铁头盔 `setDropChance 0`、32 格内一波）；判据 javap 7 个新方法 + `WAVE_*` 常量；产物 13:40 重建 + 4 处投放（§2） |
+| 本批头提交（提交后 `git log -1`） | fix(villager) 工作方块改职业专用标签 | 两线 `world/ModPoiTypes.java` 新增 `CARD_TRADER_JOB_SITES` / `CHIP_TRADER_JOB_SITES`（`TagKey<PoiType>`）+ `world/ModVillagerProfessions.java` 的 `acquirableJobSite` 不再用 `VillagerProfession.ALL_ACQUIRABLE_JOBS`；新增 4 个标签文件 `data/astral_dice/tags/point_of_interest_type/*.json`；`chip_shop` 补进两线 `mineable/axe`；判据 javap lambda 里两个 `TagKey` 各 1、`ALL_ACQUIRABLE_JOBS` 0；产物 13:49 重建 + 4 处投放（§2） |
 
 ## 4 实机读数（原文摘录）
 
@@ -424,6 +427,16 @@ AP_NC2B_READ:hand=astral_dice:effect_card_monster_laser:handn=2:cards=2:sel=0:to
     ⑧ **无实机读数**：刷怪数量 / 头盔防烧 / 32 格一波三项需用户下达实机；P1 两线（26.1.2 / fabric）未移植。
     ⑨ **独立复核（2026-10-23，`dsh_code_review` run `e7302744-2c90-4f45-8ec2-b54ad3c40cec`）**：R1–R5 / R7 SUPPORTED、R6 部分成立，无 P0/P1；三条 finding 全部已修 —— (a) **P2** `docs/handover-new-session-context.md` 产物块只刷了两行（dev named jar 与标题停在旧批）⇒ 已按 §2 刷新；(b) **P3** `WAVE_ORIGINS` 只存裸 `Vec3`，同 tick 跨维度且坐标巧合接近时第二波被静默跳过 ⇒ 改 `record WaveOrigin(ResourceKey<Level> dim, Vec3 pos)` + 维度相等才聚类；(c) **P3** 铁头盔 165 耐久在直射日光下约 6.9 分钟碎、随后点燃（裁决「避免白天被烧死」只部分满足）⇒ 改不可破坏（1.21.1 `DataComponents.UNBREAKABLE` + `new Unbreakable(false)`；1.20.1 `getOrCreateTag().putBoolean("Unbreakable", true)`，两线 `ItemStack#isDamageableItem()` 遇它均为假）。复核同时硬证：两线 `coremods/finalize_spawn_targets.json` 只列 22 个原版类（无模组类）⇒ 直调 `finalizeSpawn` 不会重派事件。
 
+30. **村民职业「工作方块指向错乱」（2026-10-23 用户报障 + 裁决，本批）**：截图里 JEI 风格两卡片「卡牌交易员」/「筹码商人」右侧显示的方块**完全相同**。
+    ① 裁决原文：**「卡牌交易员和筹码商人指向的工作方块混乱，应该避免使用公用 tag，而是专用于特定工作方块。」**
+    ② 根因链（已实证）：外部 JUPP 类似物 **JEP（Just Enough Professions 4.0.5）** 的 `NeoForgeProfessionPlugin.registerRecipes` 对数据包内每个 POI 调 `profession.acquirableJobSite().test(holder)` 决定展示哪些方块；我们两线 `world/ModVillagerProfessions.java` 的 `acquirableJobSite` 都传 `VillagerProfession.ALL_ACQUIRABLE_JOBS`（= `p -> p.is(PoiTypeTags.ACQUIRABLE_JOB_SITE)` 原版**共享**标签）⇒ 两职业列表 = 全部工作站方块，看起来「都一样」。
+    ③ 原版语义（`neoforge-21.1.235-sources.jar` 实读，决定改法安全边界）：`VillagerGoalPackages.java:37` `ValidateNearbyPoi.create(profession.heldJobSite(), JOB_SITE)`；`:38` `ValidateNearbyPoi.create(profession.acquirableJobSite(), POTENTIAL_JOB_SITE)`；`:43` `AcquirePoi.create(profession.acquirableJobSite(), …)`；`:48` `AssignProfessionFromJobSite.create()`；`Villager.java:186` 的 `POI_MEMORIES[JOB_SITE]` 用 `heldJobSite`、`:188` 的 `POTENTIAL_JOB_SITE` 用 `VillagerProfession.ALL_ACQUIRABLE_JOBS`；转职判定 `AssignProfessionFromJobSite.java:39` `.filter(p -> p.heldJobSite().test(poiHolder))`。⇒ 把职业的 `acquirableJobSite` 收窄成专用标签只影响「转职后只认本站点」与 JEP 展示，**不影响**无业村民靠共享标签发现工作站；**共享标签必须保留**（别顺手删 `data/minecraft/tags/point_of_interest_type/acquirable_job_site.json` 里的条目）。
+    ④ 代码（P0 两线各 4 处）：(a) `world/ModPoiTypes.java` 新增 import `net.minecraft.tags.TagKey` 与两个常量 `CARD_TRADER_JOB_SITES` / `CHIP_TRADER_JOB_SITES`（`TagKey.create(Registries.POINT_OF_INTEREST_TYPE, ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, "card_trader_job_site" | "chip_trader_job_site"))`），类头补 ⚠️ 段说明「专用标签，勿与共享标签混用」；(b) `world/ModVillagerProfessions.java` 的 `acquirableJobSite` 改 `holder -> holder.is(ModPoiTypes.CARD_TRADER_JOB_SITES)` / `CHIP_TRADER_JOB_SITES`（`heldJobSite` 不变，仍是 `holder.is(ModPoiTypes.CARD_SHOP_KEY | CHIP_SHOP_KEY)`）；(c) 新增 4 个标签文件 `data/astral_dice/tags/point_of_interest_type/{card_trader_job_site,chip_trader_job_site}.json`（`{"replace": false, "values": ["astral_dice:card_shop"]}` 等；1.20.1 的 POI 型标签目录同样是**单数** `point_of_interest_type`）；(d) 顺手补 axe 采掘标签不对称（`chip_shop` 与 `card_shop` 同为 `MapColor.WOOD` / `SoundType.WOOD`）⇒ 两线 `mineable/axe` 各补 `astral_dice:chip_shop`（**1.21.1 目录 `block`、1.20.1 目录 `blocks`**）。
+    ⑤ 判据（静态全绿）：两线 `:neoforge-1.21.1:classes :forge-1.20.1:classes` BUILD SUCCESSFUL；字节码 `ModVillagerProfessions.class` 的 lambda 内 `getstatic ModPoiTypes.CARD_TRADER_JOB_SITES` / `CHIP_TRADER_JOB_SITES` 各 1、`VillagerProfession.ALL_ACQUIRABLE_JOBS` **0**；`ModPoiTypes.class` 公开字段含两个 `TagKey<PoiType>`；13:49 重建（`:*:jar` + 6 个 push 任务 BUILD SUCCESSFUL）后 4 处投放与根 `build/libs` 逐处 sha256 MATCH（§2），jar 内 4 个标签文件在位、`META-INF/jarjar/` = 0。
+    ⑥ **无实机读数**：JEP 面板两卡片是否各显示自己的方块、村民转职/认领是否仍正常（尤其无业村民）需用户下达实机；P1 两线（26.1.2 / fabric）未移植（同 §5-16 / §5-28 ⑧ 的 P1 欠账口径）。
+    ⑦ 说明：本轮**未动** `data/minecraft/tags/point_of_interest_type/acquirable_job_site.json`（原版共享标签仍含两个方块）—— 这是有意保留，见 ③。
+    ⑧ **独立复核（2026-10-23，`dsh_code_review` run `f03b5116-5243-40cf-955c-5e6125d7f18b`）**：R1–R5 / R7 SUPPORTED、R8 未见反例、R6 部分成立（唯一不一致 = §0 第 6 条仍写 13:40）；两条 finding 已修 —— (a) **P3** §0 第 6 条时间与批次内容改为 13:49 + 村民标签；(b) **P2** 两份 `CHANGELOG.md` / `CHANGELOG_ZH.md` 缺本批条目（违反 AGENTS-full L719/L726 的强制同步约定）⇒ 已在两语的〈已修复BUG / Bug Fixes〉各补 2 条（界面与交互：职业工作方块专用标签；物品、筹码与交易：筹码商店补斧类采掘标签）。复核同时硬证：1.20.1 的 `ResourceLocation.fromNamespaceAndPath` 存在（`javap` forge merged jar）、两线 `ModVillagerProfessions` lambda 分别 `getstatic` 两个新 `TagKey` 且 `ALL_ACQUIRABLE_JOBS` 0 次、4 个新标签文件无 BOM 且纯 CRLF、共享标签未被 `git diff` 触及。
+
 ## 6 坑（踩过的，后续别重踩）
 
 1. **`run/<线>/mods` 的 jar 曾 ≠ `build/libs`（neo 于 2026-10-22 15:47 对齐；forge 按 §6-3 永远放 devlibs named jar）**：当时 neo 是 00:22 的旧构建（同名、2 B 差异），
@@ -498,6 +511,9 @@ AP_NC2B_READ:hand=astral_dice:effect_card_monster_laser:handn=2:cards=2:sel=0:to
 
 32. **判定「某特效是不是卡顿源」必须做全帧基线对比（2026-10-22）**：只在「特效可见期间」打印帧间隔，会把进世界后的区块 churn 全算到特效头上（第一轮因此误得「光束窗口只有 66 FPS」）。⇒ 探针要**全帧无条件**打印，再按「有/无特效」分组算 avg / p90 / p99 / max；判据是**两组分布一致**，而不是「窗口内偶发一帧 >40 ms」。
 33. **`Mob#finalizeSpawn` 两线参数不一致，且 reobf 产物里改名叫 SRG（2026-10-23 踩过）**：1.21.1 = **4 参** `(ServerLevelAccessor, DifficultyInstance, MobSpawnType, SpawnGroupData)`、1.20.1 = **5 参**（末位 `@Nullable CompoundTag`）⇒ 同一段手工刷怪代码必须分叉；另：**不要**用 `EventHooks.finalizeMobSpawn` 手工补初始化 —— 它自己就是 `FinalizeSpawn` 的派发点，夜间 ×2 钩子会连锁翻倍，直接调 `Mob#finalizeSpawn`（方法体是纯原版初始化、内部不派发事件）即可；核 jar 字节码时 forge 侧是 SRG `Mob.m_6518_`，**按 `finalizeSpawn` 名字 grep 会假阴性**（要用 `SpawnGroupData;` 描述符锚）。
+
+34. **第三方 GUI 按 `profession.acquirableJobSite()` 枚举工作方块，共用原版共享标签会让所有职业长得一样（2026-10-23 踩中）**：JEP（Just Enough Professions 4.0.5）的 `registerRecipes` 只认 `acquirableJobSite().test(poi)`，不看 `heldJobSite()`；而我们两职业原先都传 `VillagerProfession.ALL_ACQUIRABLE_JOBS` ⇒ 卡片右侧全变成同一份「所有工作站」列表。
+    ⇒ 新职业的 `acquirableJobSite` 一律给**职业专用标签**（本仓 `astral_dice:{card,chip}_trader_job_site`），共享标签留给原版无业村民的发现路径；另注意 POI 型标签目录在 1.20.1/1.21.1 都是**单数** `point_of_interest_type`，而方块采掘标签目录是 `blocks`（1.20.1）/ `block`（1.21.1）——写错目录**不报错**，只是标签静默为空。
 
 ## 7 关键路径（命令与文件）
 

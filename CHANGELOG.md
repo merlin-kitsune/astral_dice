@@ -518,6 +518,8 @@
   "already open"; ③ corrected two factually wrong comments (`isAlive()`'s real definition, and 1.20.1 dispatching the death
   event only once) plus the spectator notes in the design document.
 
+- **Fixed the Card Trader and Chip Trader showing the same job site** (reported 2026-10-23): both professions used vanilla's **shared** "acquirable job site" tag, so any third-party overlay that enumerates job sites per profession (Just Enough Professions and the like) listed the very same blocks for both — the block icon on the two cards was identical. Each profession now uses its own **dedicated tag** (`astral_dice:card_trader_job_site` / `astral_dice:chip_trader_job_site`) and only accepts its own block. The vanilla shared tag is **still kept**, so unemployed villagers can still spot and claim a job site and the profession-gaining path is unchanged. (P0 lines: neoforge-1.21.1 + forge-1.20.1)
+
 #### Damage & Resolution
 
 - **Fixed two PvP misreads on the KAngel Sign: the "Fan" mark and the wearer's indicator shared one status** (2026-10-17): the wearer's
@@ -681,6 +683,7 @@
 - **Fixed the chip shop block facing away from the player when placed**: its screen side was modeled on the opposite face compared to the card shop, so placed blocks always showed the back; the orientation mapping is corrected and the screen now faces the placing player in all four directions.
 - **Fixed the Card Shop block not facing the player when placed**: it always faced north regardless of where the player looked; it now faces the player who placed it.
 - **Fixed the Card Shop block's break particles showing the purple-black missing texture**: they now use the block's own texture.
+- **The Chip Shop is now in the axe-mineable tag**: it is a wooden block like the Card Shop, but only the Card Shop was listed under `mineable/axe`, so an axe was no faster than bare hands on it; it is now listed as well (each line uses its own tag directory), matching the Card Shop. (P0 lines)
 
 ### Carried over from the unreleased 1.3.5-alpha.1 development line
 
