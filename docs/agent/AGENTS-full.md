@@ -3790,3 +3790,43 @@ pwsh -NoProfile -File scripts\test\mt.ps1 --version 1.21.1 --phase cases --case 
 # 收尾（归档口径）
 pwsh -NoProfile -File scripts\test\mt.ps1 --version 1.20.1 --phase stop --force --purge-saves
 ```
+
+## 56. Java 源代码许可改为 GPL-3.0-only（2026-10-23 用户裁决）
+
+### 56.1 裁决原文
+
+> 「将Java源代码许可协议从MIT改为GPL-3.0，1.3.7及以前版本仍保持MIT协议」
+
+### 56.2 落地文件与口径
+
+- `LICENSE`：换成 **GPL-3.0 全文**（取自 <https://www.gnu.org/licenses/gpl-3.0.txt>，35,149 字符，LF→CRLF 归一后 39,383 字符），末尾追加〈Project licensing notes (not part of the GNU GPL text above)〉四节：① SOURCE CODE = **GPL-3.0-only**（仅第 3 版，不是 "any later version"）；② LEGACY RELEASES = 截至并含 **1.3.7** 仍 MIT、不可撤回；③ GAME ASSETS = **CC BY-NC-SA 4.0**，并明写 GPL **不延伸**到这些文件；④ THIRD-PARTY（ier 粒子库 MIT）。
+- `LICENSE-MIT`（新增）：原 MIT 21 行逐字 + 〈Scope of this license〉段，覆盖 **≤ 1.3.7 全部加载器**，含 `1.3.7-hotfix` 刷新版与 `1.3.7-alpha` / `1.3.7-beta` 预发布。
+- `README.md` / `README_ZH.md`：`## License` / `## 许可` 改写为六条 —— 源代码 GPL-3.0-only（附「每个已发布 jar 的源码 = 本仓库对应 tag 的树」）/ 1.3.7 及以前仍 MIT（指向 `LICENSE-MIT`）/ 游戏内资产 CC BY-NC-SA 4.0 / 数据与 `lang/*.json` 随代码 GPL-3.0-only / 商业用途需授权 / 第三方例外。
+- 两份 `CHANGELOG(-_ZH).md` 在 1.5.0 段末尾新增〈许可与授权 / Licensing〉段（4 条）。
+
+### 56.3 元数据
+
+四处 `gradle.properties` 的 `mod_license=` 与 `fabric.mod.json` 的 `"license"` 统一改为 `GPL-3.0-only (code) / CC BY-NC-SA 4.0 (assets)`：`neoforge-1.21.1/gradle.properties:35`、`forge-1.20.1/gradle.properties:38`、`neoforge-26.1.2/gradle.properties:48`、`fabric-1.20.1/gradle.properties:23`、`fabric-1.20.1/src/main/resources/fabric.mod.json:11`。`mods.toml` / `neoforge.mods.toml` 用 `license="${mod_license}"` 自动跟随，无需单独改。
+
+### 56.4 第三方归属不是自有许可（勿批量替换）
+
+源码里仍有 **12 处** `MIT License` 字样（四线 × 3 个文件，每文件 1 处），全部是 **Iron Elden Ring 粒子库（shuimo0413）的归属注释**：`LibraryParticle.java`、`LibraryParticleOptions.java`、`LibraryVariants.java` 各线（另 `tools/gen_particle_library.py:6/:59`、`docs/third-party/Iron-Elden-Ring-Particle-library-LICENSE.txt`、`scripts/test/TESTING-SPEC.md:4128`）。**必须保持原样**；将来任何「MIT → GPL」批量替换都要排除这些文件。
+
+### 56.5 未做与风险（如实留痕）
+
+- **未重建 jar**：`build\libs` 与四处投放的 jar 内 `mods.toml` 的 `license` 仍是旧值（MIT）；是否重建 P0 两线 + 重投 4 处待用户裁决。
+- 已在交付报告提示：GPL 与 Minecraft 闭源映射 / Mojang EULA 的兼容性存在社区争议；GPL 要求随二进制提供源码，本仓每个 tag 的树即源码（可自证）。
+- P1 两线（`neoforge-26.1.2` / `fabric-1.20.1`）元数据已同步改，但按规则不为其重建 / 不验证。
+
+### 56.6 判据命令
+
+```powershell
+# LICENSE 正文自证（应回显 GNU GENERAL PUBLIC LICENSE / Version 3, 29 June 2007 / END OF TERMS AND CONDITIONS）
+Select-String -Path F:\MCProject\astral_dice_multiloader\LICENSE -Pattern 'GNU GENERAL PUBLIC LICENSE','Version 3, 29 June 2007','END OF TERMS AND CONDITIONS'
+# 换行归一（bareLF 必须 0）
+python -c "d=open(r'F:\MCProject\astral_dice_multiloader\LICENSE','rb').read(); print('crlf',d.count(b'\r\n'),'bareLF',d.count(b'\n')-d.count(b'\r\n'))"
+# 元数据（应只剩第三方归属与 LICENSE-MIT 自身的 MIT 字样）
+Select-String -Path F:\MCProject\astral_dice_multiloader\*-1.20.1\gradle.properties,F:\MCProject\astral_dice_multiloader\neoforge-1.21.1\gradle.properties,F:\MCProject\astral_dice_multiloader\fabric-1.20.1\src\main\resources\fabric.mod.json -Pattern 'MIT License'
+# 规则文件自检
+python docs/agent/verify-split.py
+```

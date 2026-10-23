@@ -685,6 +685,15 @@
 - **Fixed the Card Shop block's break particles showing the purple-black missing texture**: they now use the block's own texture.
 - **The Chip Shop is now in the axe-mineable tag**: it is a wooden block like the Card Shop, but only the Card Shop was listed under `mineable/axe`, so an axe was no faster than bare hands on it; it is now listed as well (each line uses its own tag directory), matching the Card Shop. (P0 lines)
 
+### Licensing
+
+> Decided by the user on 2026-10-23: the Java source license changes from MIT to **GPL-3.0**, while **1.3.7 and every earlier release stays under MIT**.
+
+- **Source code is now GPL-3.0-only**: from **1.5.0** onward the Java sources, Gradle scripts, the tools under `tools/` and `scripts/`, and the documents under `docs/` are released under the [GNU General Public License, version 3](LICENSE) (version 3 only); the source for every released jar is the tree at the matching tag of this repository.
+- **1.3.7 and earlier remain MIT**: every release up to and including **1.3.7** (all loaders, including the `1.3.7-hotfix` refresh and the `1.3.7-alpha` / `1.3.7-beta` pre-releases) stays under the MIT License; that grant cannot be withdrawn and its text is preserved verbatim in [LICENSE-MIT](LICENSE-MIT).
+- **In-game assets stay CC BY-NC-SA 4.0**: textures, models, animations, particles, GUI sprites, fonts, sounds and handbook text are unaffected by the GPL and keep the CC BY-NC-SA 4.0 terms declared in the previous batch; recipe / loot / tag / worldgen JSON and `lang/*.json` follow the code to GPL-3.0-only.
+- The `mod_license` metadata of all four lines now reads `GPL-3.0-only (code) / CC BY-NC-SA 4.0 (assets)` (including the `license` field of `fabric.mod.json`).
+
 ### Carried over from the unreleased 1.3.5-alpha.1 development line
 
 > Decided by the user on 2026-09-29: this line is a **development line**, so version numbers now carry

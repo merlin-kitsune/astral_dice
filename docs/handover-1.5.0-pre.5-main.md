@@ -30,6 +30,8 @@
 
 22. **实机欠账验证批（2026-10-23 用户下达「以上修改完之后，补所有欠账实机验证」）**：P0 双线各 5 条用例（`scripts/test/cases/DEBT-{EFFECT,STORM,POI,STORMX2,JADE}-{1.21.1,1.20.1}.json`）共 **10 跑 10 PASS**，五类欠账（玩家侧效果保护 / pre.5 冷却指示器 / 「雷暴将至」四项 / Jade 生物防御力 / 村民工作方块）**全部销账**（§5-31，读数见 §4.11–§4.15）。过程中抓到 **1 个真缺陷**：forge `mixin/jade/ArmorElementIconMixin` 的 `@Redirect` 处理器写成 `static`，与 Mixin 0.8.5 的 `checkTargetModifiers(target, true)` 冲突 ⇒ 抛 `InvalidInjectionException`，因 `required: false` **静默失效**（图标一直是原版，功能等于没生效）；已改为非 static 并重建 forge 产物（15:09）。详见 §5-32 / §6-35。
 
+23. **Java 源代码许可改为 GPL-3.0-only（2026-10-23 用户裁决：`将Java源代码许可协议从MIT改为GPL-3.0`，`1.3.7及以前版本仍保持MIT协议`）**：`LICENSE` 全文换成 **GPL-3.0** 正文 + 末尾〈Project licensing notes〉（源码 GPL-3.0-only / 游戏内资产 CC BY-NC-SA 4.0 / 第三方 ier 粒子库 MIT）；原 MIT 21 行逐字另存 **`LICENSE-MIT`** 并声明「≤ 1.3.7 不可撤回」；`README.md` / `README_ZH.md` 许可章节整体改写；四线 `mod_license` 与 `fabric.mod.json` 的 `license` 改为 `GPL-3.0-only (code) / CC BY-NC-SA 4.0 (assets)`；两份 CHANGELOG 各加〈许可与授权 / Licensing〉段。**已发出的 jar 元数据仍是 MIT（未重建）**，是否重建 P0 两线并重投 4 处待用户裁决。详见 §5-35。
+
 ## 1 环境与路径
 
 - 仓库（唯一工作树）：`F:\MCProject\astral_dice_multiloader`，分支 `multi-main`；git 一律用 **git bash 的 `git`** ——
@@ -562,6 +564,15 @@ AP_NC2B_READ:hand=astral_dice:effect_card_monster_laser:handn=2:cards=2:sel=0:to
     ③ **Jade 护甲图标正确尺寸**（§4.18）：标准图标 = **有效 8×8 px / 画布 9×9 px / 横向步距 8 px**（neo 每 quad 9×9 via `blitSprite`，forge 每 quad 8×8 via `renderIcon` 源 8×8 图集格 9×9）。我方贴图 9×9 **满画布无 padding** ⇒ 8 px 步距下相邻叠 1 px 描边 + forge 额外裁右/下 1 px ⇒ 「看起来溢出」。修法：本体画在左上 8×8、第 9 列/行全透明。**本轮只读取证，代码留给用户本地修。**
     ④ 未做：Jade 生物「防御力 X」tooltip 一行仍待裁决（§5-28 ⑨）；图标像素修正由用户本地执行，本仓仅留口径。
 
+35. **Java 源代码许可 MIT → GPL-3.0-only（2026-10-23 用户裁决，本批）**：
+    ① 裁决原文：**「将Java源代码许可协议从MIT改为GPL-3.0，1.3.7及以前版本仍保持MIT协议」**；GPL 取 **only**（第 3 版，不含 "any later version"）。
+    ② 落地文件：`F:\MCProject\astral_dice_multiloader\LICENSE`（39,383 字符 / 全 CRLF）= 取自 <https://www.gnu.org/licenses/gpl-3.0.txt> 的 GPL-3.0 全文（35,149 字符，首行 `GNU GENERAL PUBLIC LICENSE`、含 `Version 3, 29 June 2007` 与 `END OF TERMS AND CONDITIONS`）LF→CRLF 归一 + 追加〈Project licensing notes (not part of the GNU GPL text above)〉四节（① SOURCE CODE = GPL-3.0-only；② LEGACY RELEASES = 截至并含 1.3.7 仍 MIT、不可撤回；③ GAME ASSETS = CC BY-NC-SA 4.0，明写 GPL 不延伸到这些文件；④ THIRD-PARTY = ier 粒子库 MIT）；新增 `F:\MCProject\astral_dice_multiloader\LICENSE-MIT`（1,737 字符 / CRLF）= 原 MIT 21 行逐字 + 〈Scope of this license〉（适用 ≤1.3.7 全加载器、含 `1.3.7-hotfix` 与 `1.3.7-alpha`/`1.3.7-beta` 预发布）。
+    ③ `README.md` / `README_ZH.md` 的 `## License` / `## 许可`（均在 `:130`）整体改写为六条：源代码 GPL-3.0-only（含「每个已发布 jar 的源码 = 本仓库对应 tag 的树」）/ 1.3.7 及以前仍 MIT（指向 `LICENSE-MIT`，含 hotfix 与预发布）/ 游戏内资产 CC BY-NC-SA 4.0（补「上述 GPL 不适用于这些文件」）/ 数据与 `lang/*.json` 随代码 GPL-3.0-only / 商业用途需授权 / 第三方例外。两版 README 保持 **LF**（145 行）。
+    ④ 元数据（各 1 处命中）：`neoforge-1.21.1/gradle.properties:35`、`forge-1.20.1/gradle.properties:38`、`neoforge-26.1.2/gradle.properties:48`、`fabric-1.20.1/gradle.properties:23` 的 `mod_license=` 与 `fabric-1.20.1/src/main/resources/fabric.mod.json:11` 的 `"license"` 统一改为 `GPL-3.0-only (code) / CC BY-NC-SA 4.0 (assets)`（三线 `mods.toml` / `neoforge.mods.toml` 用 `license="${mod_license}"` 自动跟随）。
+    ⑤ 两份 CHANGELOG 各在 1.5.0 段末尾（`由 1.3.5-alpha.1 未发布开发线并入` 之前）新增〈许可与授权 / Licensing〉段（4 条：源码 GPL-3.0-only / ≤1.3.7 仍 MIT / 资产仍 CC BY-NC-SA 4.0 / 元数据同步）。
+    ⑥ **未做（待用户裁决）**：**未重建 P0 两线 jar** ⇒ 现有 `build\libs` 与四处投放的 jar 里 `mods.toml` 的 `license` 仍是旧值（MIT）；GPL 与 Minecraft 闭源映射 / Mojang EULA 的兼容性争议、以及「GPL 要求随二进制提供源码」的合规问题已在交付报告里如实提示（本仓每个 tag 的树即源码，可自证）。
+    ⑦ 判据（静态）：`LICENSE` 首行 `GNU GENERAL PUBLIC LICENSE`、含 `Version 3, 29 June 2007`、`END OF TERMS AND CONDITIONS`，全文 CRLF 且 bareLF = 0；`LICENSE-MIT` 首行 `MIT License`；四线 `gradle.properties` 与 `fabric.mod.json` grep `MIT License` **0 命中**（除 `docs/third-party/`、`tools/gen_particle_library.py`、**12 处**（四线 × 3 个文件）`Library*.java` 的第三方归属注释与 `LICENSE-MIT` 自身，这些必须保留）；`verify-split.py` 四项 `[OK]`。
+
 ## 6 坑（踩过的，后续别重踩）
 
 1. **`run/<线>/mods` 的 jar 曾 ≠ `build/libs`（neo 于 2026-10-22 15:47 对齐；forge 按 §6-3 永远放 devlibs named jar）**：当时 neo 是 00:22 的旧构建（同名、2 B 差异），
@@ -650,6 +661,8 @@ AP_NC2B_READ:hand=astral_dice:effect_card_monster_laser:handn=2:cards=2:sel=0:to
     现象：`/setblock ~4 ~ ~4 astral_dice:card_shop` 回显 **「无法放置方块」**（位置被既有方块占住/不可替换），用例继续跑 ⇒ `debtvill` 三读都是 `prof=minecraft:none`，看上去像「转职坏了」。
     正确写法：紧跟一条 **`/execute if block <pos> <block> run say AP_VSHOP:ok=1`**，并把它作为断言；放置位置也别复用旧例的坐标（同一世界反复跑会被上一次的方块占住）。
     附注：同一批还踩到「诊断用例没有 `case_id`/`title` ⇒ `MT_CASE: ERROR — 校验失败`，**steps 一条都不执行**」——看到「什么都没发生」先看用例校验回显。
+
+39. **许可迁移的三个坑（2026-10-23）**：① 元数据分散在四处 `gradle.properties` 的 `mod_license=` + `fabric.mod.json` 的 `"license"`，`mods.toml` 只是 `license="${mod_license}"` 的转发 ⇒ 改完**必须重跑 `jar` 才进产物**，旧 jar 内仍是旧值（本轮按用户节奏暂未重建）；② 第三方归属注释里的 `MIT License`（`LibraryParticle` / `LibraryParticleOptions` / `LibraryVariants`，指 ier 粒子库 shuimo0413）**不是**自有许可，批量替换会误伤 ⇒ 只改 `mod_license` 与 metadata 字段；③ 用户口中的「CC0-BY-NC-SA」不是真实许可证（CC0 允许商用不要求署名，BY-NC-SA 要求署名且禁商用）⇒ 遇到自造许可证名先用 `ask_user_question` 让用户在候选里挑，别照写。
 
 ## 7 关键路径（命令与文件）
 
