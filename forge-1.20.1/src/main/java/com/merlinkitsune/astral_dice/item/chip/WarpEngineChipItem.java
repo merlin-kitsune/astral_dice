@@ -3,7 +3,6 @@ package com.merlinkitsune.astral_dice.item.chip;
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
-import com.merlinkitsune.starengine.event.EffectTimerGuard;
 import com.merlinkitsune.astral_dice.event.WaystoneWarpCompat;
 import com.merlinkitsune.astral_dice.item.ChargeManager;
 import com.merlinkitsune.starengine.item.CuriosCompat;
@@ -15,6 +14,7 @@ import net.minecraftforge.event.entity.EntityTeleportEvent;
 import net.minecraftforge.event.entity.EntityTravelToDimensionEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
+import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
 
 /**
  * 跃迁引擎筹码:触发指定传送后,获得 2 层充能并获得迅捷 0:10。
@@ -70,7 +70,7 @@ public class WarpEngineChipItem extends BaseChipItem {
 
     private static void grantTeleportReward(Player player) {
         ChargeManager.addStacks(player, STACK_GAIN);
-        EffectTimerGuard.apply(player, new MobEffectInstance(MobEffects.MOVEMENT_SPEED,
+        PlayerEffectProtection.apply(player, new MobEffectInstance(MobEffects.MOVEMENT_SPEED,
                 SPEED_DURATION_TICKS, 0, false, true));
     }
 

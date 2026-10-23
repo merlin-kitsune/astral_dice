@@ -1,6 +1,5 @@
 package com.merlinkitsune.astral_dice.item.sign;
 
-import com.merlinkitsune.starengine.event.EffectTimerGuard;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.effect.LinglingSurgeEffect;
 import com.merlinkitsune.astral_dice.item.ModItems;
@@ -11,6 +10,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
 
 /**
  * 怪力乱神立牌（{@code astral_dice:lingling_sign}，史诗）。
@@ -40,7 +40,7 @@ public class LinglingSignItem extends BaseSignItem {
         // ① 立即获得 1 张强化拒止（§5，口径同 §4.1）
         LinglingSignManager.giveRepulsion(player, LinglingSignManager.ACTIVE_GRANT);
         // ② 施加「能量突击」1200t（覆盖时长与数值，不叠层 ⇒ amplifier 恒为 0）
-        EffectTimerGuard.apply(player, new MobEffectInstance(ModEffects.LINGLING_SURGE,
+        PlayerEffectProtection.apply(player, new MobEffectInstance(ModEffects.LINGLING_SURGE,
                 LinglingSurgeEffect.DURATION_TICKS, 0, false, true, true));
         // ③ 立刻按当前有效充能刷一次数值（不等下一个 10t）
         LinglingSignManager.refreshActiveModifiers(player);

@@ -1,7 +1,6 @@
 package com.merlinkitsune.astral_dice.item.card;
 
 import com.merlinkitsune.starengine.component.GameplayConstants;
-import com.merlinkitsune.starengine.event.EffectTimerGuard;
 
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -10,6 +9,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
 
 /**
  * 岿然不动(功能效果牌):使用后获得"岿然不动"效果——每层护甲 +8(对应骰战防御力 +2.4,按"防御 = 4 + 护甲×0.30 + 0.85×韧性"折算),
@@ -39,6 +39,6 @@ public class UnwaveringCardItem extends BaseEffectCardItem {
         int newDuration = existing != null ? Math.max(existing.getDuration(), 3600) : 3600;
         applyTo.addEffect(new MobEffectInstance(ModEffects.UNWAVERING.get(), newDuration, newAmp, false, false, true));
         // 抗性提升 II:固定 amplifier 1(不随层数提高),随重复使用刷新 3:00
-        EffectTimerGuard.apply(applyTo, new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, 3600, 1, false, true));
+        PlayerEffectProtection.apply(applyTo, new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, 3600, 1, false, true));
     }
 }

@@ -2,7 +2,6 @@ package com.merlinkitsune.astral_dice.item.sign;
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.starengine.item.CuriosCompat;
 
-import com.merlinkitsune.starengine.event.EffectTimerGuard;
 
 import com.merlinkitsune.starengine.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.item.ChargeManager;
@@ -24,6 +23,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
+import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
 
 public class JasmineSignItem extends BaseSignItem {
     // 被动:每移动 300 米触发一次增益
@@ -65,12 +65,12 @@ public class JasmineSignItem extends BaseSignItem {
     protected InteractionResultHolder<ItemStack> handleUse(Level level, Player player, ItemStack stack) {
         if (!level.isClientSide) {
             // 主动:获得"清扫"效果 2 分钟(迅捷 + 护甲 -30%)
-            EffectTimerGuard.apply(player, new MobEffectInstance(ModEffects.JASMINE_SWEEP.get(), DURATION_TICKS, 0, false, false, true));
+            PlayerEffectProtection.apply(player, new MobEffectInstance(ModEffects.JASMINE_SWEEP.get(), DURATION_TICKS, 0, false, false, true));
             // 随机获得以下任一效果(时长与主动技能同步 2 分钟)
             if (ThreadLocalRandom.current().nextBoolean()) {
-                EffectTimerGuard.apply(player, new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, DURATION_TICKS, 0, false, true)); // 抗性提升 2 分钟
+                PlayerEffectProtection.apply(player, new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, DURATION_TICKS, 0, false, true)); // 抗性提升 2 分钟
             } else {
-                EffectTimerGuard.apply(player, new MobEffectInstance(MobEffects.DAMAGE_BOOST, DURATION_TICKS, 0, false, true)); // 力量 2 分钟
+                PlayerEffectProtection.apply(player, new MobEffectInstance(MobEffects.DAMAGE_BOOST, DURATION_TICKS, 0, false, true)); // 力量 2 分钟
             }
         }
         return InteractionResultHolder.success(stack);

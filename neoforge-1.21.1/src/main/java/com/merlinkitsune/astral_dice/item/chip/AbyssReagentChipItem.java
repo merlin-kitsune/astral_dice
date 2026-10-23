@@ -14,6 +14,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
 import top.theillusivec4.curios.api.CuriosApi;
 import top.theillusivec4.curios.api.SlotContext;
+import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
 
 /**
  * 试剂-深渊筹码(史诗 / 治愈)。
@@ -133,7 +134,7 @@ public class AbyssReagentChipItem extends BaseChipItem {
         int needed = Math.max(0, (int) Math.ceil(target / ABSORPTION_CAP_PER_LEVEL) - 1);
         int amplifier = Math.max(current == null ? 0 : current.getAmplifier(), needed);
         // 六参构造 =(效果, 时长, 等级, ambient, visible, showIcon):关粒子、保留 HUD 图标(模组口径)
-        player.addEffect(new MobEffectInstance(MobEffects.ABSORPTION,
+        PlayerEffectProtection.apply(player, new MobEffectInstance(MobEffects.ABSORPTION,
                 ABSORPTION_DURATION_TICKS, amplifier, false, false, true));
         // 显式写入精确目标值(上一步的"效果自带顶值"只是中间态;上限已由本次层数撑起 ≥ 目标)
         player.setAbsorptionAmount(Math.min(target, player.getMaxAbsorption()));

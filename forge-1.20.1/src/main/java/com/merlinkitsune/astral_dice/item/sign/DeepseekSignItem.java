@@ -2,7 +2,6 @@ package com.merlinkitsune.astral_dice.item.sign;
 
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
-import com.merlinkitsune.starengine.event.EffectTimerGuard;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.shop.CardTradeFilter;
 import com.merlinkitsune.starengine.economy.StarEngineEconomy;
@@ -17,6 +16,7 @@ import top.theillusivec4.curios.api.SlotContext;
 
 import java.util.ArrayList;
 import java.util.List;
+import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
 
 /**
  * 大肥鱼立牌（deepseek，奇特，仅创造获得）。
@@ -61,7 +61,7 @@ public class DeepseekSignItem extends BaseSignItem {
             return;
         }
         if (now - since >= IDLE_TICKS) {
-            EffectTimerGuard.apply(player, new MobEffectInstance(ModEffects.DEEPSEEK_FISHING.get(), (int) IDLE_TICKS + 20, 0,
+            PlayerEffectProtection.apply(player, new MobEffectInstance(ModEffects.DEEPSEEK_FISHING.get(), (int) IDLE_TICKS + 20, 0,
                     false, true, true));
         }
     }

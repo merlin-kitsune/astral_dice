@@ -2,7 +2,6 @@ package com.merlinkitsune.astral_dice.item.sign;
 
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
-import com.merlinkitsune.starengine.event.EffectTimerGuard;
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -12,6 +11,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import top.theillusivec4.curios.api.CuriosApi;
+import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
 
 /**
  * 修女立牌（alana，稀有）。
@@ -69,7 +69,7 @@ public class AlanaSignItem extends BaseSignItem implements SignHooks.BlessingTri
                                                                               ItemStack stack) {
         if (!level.isClientSide) {
             boolean blessingActive = player.hasEffect(ModEffects.DICE_BLESSING);
-            EffectTimerGuard.apply(player, new MobEffectInstance(ModEffects.ALANA_IRON_MAIDEN, IRON_MAIDEN_TICKS, 0,
+            PlayerEffectProtection.apply(player, new MobEffectInstance(ModEffects.ALANA_IRON_MAIDEN, IRON_MAIDEN_TICKS, 0,
                     false, true, true));
             if (blessingActive && ModAttachments.getAlanaPassiveBonus(player) <= 0) {
                 ModAttachments.setAlanaPassiveBonus(player, BONUS_PER_TRIGGER);

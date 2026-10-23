@@ -7,6 +7,7 @@ import net.minecraft.world.effect.MobEffectCategory;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
+import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
 
 /**
  * 隐匿(秘密侦探立牌「调查阶段」;2026-09-28 用户裁决:取代原版「隐身」,图标沿用隐身图标)。
@@ -39,7 +40,7 @@ public class ConcealmentEffect extends MobEffect {
     public static void apply(Player player, int durationTicks) {
         if (player == null || player.level().isClientSide()) return;
         // 自定义效果(astral_dice:*)的计时由 MobEffectEvent.Added 统一记录(见 event/EffectTimerGuard
-        // 的类注释),故此处**不走** EffectTimerGuard.apply(那是给"本模组施加的原版效果"用的包装)。
+        // 的类注释),故此处**不走** PlayerEffectProtection.apply(那是给"本模组施加的原版效果"用的包装)。
         player.addEffect(new MobEffectInstance(ModEffects.CONCEALMENT.get(), durationTicks, 0, false, true));
     }
 

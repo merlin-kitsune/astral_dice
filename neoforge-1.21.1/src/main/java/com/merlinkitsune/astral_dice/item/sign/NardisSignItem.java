@@ -22,6 +22,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import top.theillusivec4.curios.api.CuriosApi;
 import top.theillusivec4.curios.api.SlotContext;
+import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
 
 /**
  * 绿洲女王立牌(nardis,稀有 RARE)。
@@ -221,7 +222,7 @@ public class NardisSignItem extends BaseSignItem {
             player.forceAddEffect(refreshed, null);
         } else {
             // 首次释放 ⇒ 常规施加(与既有实现一致)
-            EffectTimerGuard.apply(player, refreshed);
+            PlayerEffectProtection.apply(player, refreshed);
         }
         if (player.hasEffect(ModEffects.NARDIS_PRIVILEGE)) {
             // 守卫记账同步:forceAddEffect 不抛 MobEffectEvent.Added,不显式写就会被守卫按旧 endTick 裁回去

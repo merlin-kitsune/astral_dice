@@ -4,7 +4,6 @@ import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.starengine.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
-import com.merlinkitsune.starengine.event.EffectTimerGuard;
 import com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
@@ -34,6 +33,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Optional;
 import java.util.UUID;
+import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
 
 /**
  * 占星师立牌(命名:haiqing)。
@@ -65,8 +65,8 @@ public class HaiqingSignItem extends BaseSignItem {
             public void apply(ServerPlayer player, LivingEntity target) {
                 // 施加"虚弱印记"5:00 + 虚弱效果,记录释放者(击杀后仅释放者获得奖励)
                 ModAttachments.setWeakMarkSource(target, Optional.of(player.getUUID()));
-                EffectTimerGuard.apply(target, new MobEffectInstance(ModEffects.WEAK_MARK, 6000, 0, false, true));
-                EffectTimerGuard.apply(target, new MobEffectInstance(MobEffects.WEAKNESS, 6000, 0, false, true));
+                PlayerEffectProtection.apply(target, new MobEffectInstance(ModEffects.WEAK_MARK, 6000, 0, false, true));
+                PlayerEffectProtection.apply(target, new MobEffectInstance(MobEffects.WEAKNESS, 6000, 0, false, true));
                 // 主动成功施加:开始玩家级冷却(统一经 signCooldownTicks:含诡异骰子 -50% 与充能递减)
                 ModAttachments.setSignActiveCooldownEnd(player,
                         player.level().getGameTime() + WeirdDiceHandler.signCooldownTicks(player));

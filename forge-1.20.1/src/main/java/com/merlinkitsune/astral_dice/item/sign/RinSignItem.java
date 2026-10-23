@@ -15,8 +15,8 @@ import com.merlinkitsune.astral_dice.item.card.LivingPageItem;
 import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
 import net.minecraft.world.effect.MobEffectInstance;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
-import com.merlinkitsune.starengine.event.EffectTimerGuard;
 import com.merlinkitsune.astral_dice.effect.RinPageRangeEffect;
+import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
 
 public class RinSignItem extends BaseSignItem {
 
@@ -51,7 +51,7 @@ public class RinSignItem extends BaseSignItem {
             VitaminPillChipItem.giveCard(player, LivingPageItem.createFor(player));
         }
         // 追加(2026-10-03 用户裁决):主动追加「书页射程」—— 活体书页使用射程 +50%,持续 2:00
-        EffectTimerGuard.apply(player, new MobEffectInstance(ModEffects.RIN_PAGE_RANGE.get(),
+        PlayerEffectProtection.apply(player, new MobEffectInstance(ModEffects.RIN_PAGE_RANGE.get(),
                 RinPageRangeEffect.DURATION_TICKS, 0, false, false, true));
         return InteractionResultHolder.success(stack);
     }

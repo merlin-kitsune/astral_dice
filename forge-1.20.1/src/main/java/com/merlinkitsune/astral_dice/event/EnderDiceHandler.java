@@ -3,7 +3,6 @@ package com.merlinkitsune.astral_dice.event;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
-import com.merlinkitsune.starengine.event.ModEffectRemoval;
 import com.merlinkitsune.starengine.item.CuriosCompat;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.item.ModItems;
@@ -170,9 +169,11 @@ public final class EnderDiceHandler {
         event.setCanceled(true);
         // 保命清效果(用户裁决,两版本统一为 HARMFUL-only):只移除**有害**效果,保留增益
         // (原 removeAllEffects() 会连增益一起清掉)。1.20.1 无 EffectCures 类;
-        // 保持"先 setHealth(1.0F) 再清效果"的既有顺序,统一经 ModEffectRemoval 内部通道移除 ——
-        // 它以内部标志放行,故 astral_dice: 命名空间的效果同样被移除
+        // 保持"先 setHealth(1.0F) 再清效果"的既有顺序,统一经 PlayerEffectProtection.removeNow 移除 ——
+        // 它先丢弃保护快照、再走 ModEffectRemoval 内部通道(内部标志放行),故 astral_dice: 命名空间的效果同样被移除
         // (该命名空间守卫只拦外部清除:牛奶/蜂蜜//effect clear 等,不要动那个守卫)。
+        // ⚠️ 必须走 removeNow 而不是裸 ModEffectRemoval.remove:后者不丢弃快照 ⇒ 原版有害效果被清后若快照残留,
+        //    玩家随后被第三方短时中毒再喝牛奶,会被 LOWEST 通道按**旧剩余时长**复活(2026-10-23 复核 P2)。
         player.setHealth(1.0F);
         List<MobEffect> effectsToRemove = new ArrayList<>();
         for (MobEffectInstance instance : player.getActiveEffects()) {
@@ -190,13 +191,13 @@ public final class EnderDiceHandler {
             effectsToRemove.add(MobEffects.GLOWING);
         }
         for (MobEffect effect : effectsToRemove) {
-            ModEffectRemoval.remove(player, effect);
+            PlayerEffectProtection.removeNow(player, effect);
         }
-        player.addEffect(new MobEffectInstance(MobEffects.REGENERATION,
+        PlayerEffectProtection.apply(player, new MobEffectInstance(MobEffects.REGENERATION,
                 REGEN_DURATION_TICKS, REGEN_AMPLIFIER, false, true));
-        player.addEffect(new MobEffectInstance(MobEffects.ABSORPTION,
+        PlayerEffectProtection.apply(player, new MobEffectInstance(MobEffects.ABSORPTION,
                 ABSORPTION_DURATION_TICKS, ABSORPTION_AMPLIFIER, false, true));
-        player.addEffect(new MobEffectInstance(MobEffects.FIRE_RESISTANCE,
+        PlayerEffectProtection.apply(player, new MobEffectInstance(MobEffects.FIRE_RESISTANCE,
                 FIRE_RESIST_DURATION_TICKS, FIRE_RESIST_AMPLIFIER, false, true));
         // 客户端播放不死图腾动画:粒子 + 音效 + 手持高亮(图标为末影骰子)
         ModNetwork.EnderDieTotemMessage.send(player);

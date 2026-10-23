@@ -369,6 +369,19 @@ AP_NC2B_READ:hand=astral_dice:effect_card_monster_laser:handn=2:cards=2:sel=0:to
     ③ 前一轮 dev 复现同样失败：Iris + Sodium + Complementary 下首帧 60 µs、之后 5–6 µs；再加载 Voxy + particular 后首帧 58 µs、光束窗口帧间隔 2.5–15.8 ms。
     ④ 因此本批**产品源码零改动**；若用户仍能感知卡顿，需要真实场景（位置 / 朝向 / 光影 / 是否多人 / F3 读数）再定位。下一步候选嫌疑：cast 瞬间的效果音与粒子首播、或同一时刻其它 mod 的行为（与本模组无关）。
 
+26. **玩家侧状态效果保护（2026-10-23 用户裁决，本批）**：玩家身上的效果**除非被声明可清除（牛奶 / 蜂蜜瓶）否则不受任何外部影响**；mob 侧**保持原版状态效果**（不搬计时表）。
+    ① 审计正本 `docs/features/effect-client-server-split-audit.md`（只读审计 5 维 D1–D5，含 66 个效果计时口径矩阵 / 102 处 `new MobEffectInstance` 分类 / R1–R9 风险分级）。
+    ② 裁决口径：R1（mob 窗口效果不设防）**不修** —— 女巫 / 诡厄巫法的术士会持续喝药或喝奶清 mob 状态，改造成保活计时会反复重施、叠加 tick 负载；R2（7 处玩家侧原版效果裸施）**已修**。
+    ③ 新增两线 `event/PlayerEffectProtection.java`：`apply(LivingEntity, MobEffectInstance)` 统一入口（= `EffectTimerGuard.apply` + 玩家快照登记，跳过 ∞ / 近 ∞ / `DECLARED_CLEARABLE`）、`onExternalRemoval`（LOWEST 通道，延后到下一 tick 补回，避免 `removeAllEffects` 遍历期 CME）、`tick(Player)`（按 `endTick` 余量重施并重新登记，清 `endTick + 40 < now` 陈旧记录）、`removeNow(LivingEntity, effect)`（**本模组主动移除**的唯一合法入口）、`clear(Player)`（死亡 / 登出）。白名单当前 = `astral_dice:marked`（沿用 2026-09-30 裁决：标记可被牛奶清掉）。
+    ④ 接线：`ModEffectEvents` HIGH（死亡 clear + 声明可清除放行）+ 新增 LOWEST 补回 + `PlayerLoggedOutEvent` 清理；`PlayerTickEvents` 先 `PlayerEffectProtection.tick` 后 `EffectTimerGuard.tick`；两线各 26 文件机械替换 `EffectTimerGuard.apply(` → `PlayerEffectProtection.apply(`（25 非 event 包文件补 import、18 删无用 import）；7 处原版裸施 + `item/card/BaseEffectCardItem` 默认入口一并收口。
+    ⑤ 两个真 bug（已修，别重踩）：(a) 替换脚本用 `endsWith("event/PlayerEffectProtection.java")` 跳自身，Windows 反斜杠导致新类被自己改写 ⇒ `apply()` 自递归（**能编译**，运行栈溢出）；(b) 补回通道会把本模组主动移除当成外部清除而**复活效果**（`MarkManager` GLOWING / `RenShieldManager` 黄心 / `NancyLuSignItem` 隐身 ×3 / `FightPoisonWithPoisonCardItem` 共 6 处）⇒ 全部改 `removeNow(...)`。**新纪律：主动移除玩家效果必须走 `removeNow`。**（复核后又补第 7 处，见 ⑧）
+    ⑥ 判据（静态全绿）：`:neoforge-1.21.1:classes :forge-1.20.1:classes` BUILD SUCCESSFUL；`PlayerEffectProtection.apply(` **52**（51 调用点 + 类内 restore 1 处；定义行不含该串）、`EffectTimerGuard.apply(` **1**（仅新类内部）、`removeNow(` **8**（7 调用 + 定义）、`new MobEffectInstance(` neo **103** / forge **104**。
+    ⑦ **无实机读数**：补回时序、牛奶可清除（`marked`）、mob 侧不受影响三项需用户下达实机；P1 两线未移植。
+    ⑧ **独立复核（2026-10-23，`dsh_code_review` run `c20953f4-1d9a-43b9-b323-500598e5f118`）**：R1（两线语义等价）/ R3（无自递归）/ R4（HIGH+LOWEST 配对与 tick 顺序）/ R5（无遗漏原版效果）SUPPORTED；R2 部分成立（前提被证伪）；R6 数字全对、仅 52 的分解写错（已改为 51 调用 + restore）。三条 finding 已全部修复：
+        (a) **P2 真缺陷**：`event/EnderDiceHandler.java:194`（forge `:193`）保命清效果走裸 `ModEffectRemoval.remove` —— 内部标志让 HIGH 放行、效果真被移除，但**保护快照没丢**；陈旧 `endTick` 会让随后「第三方短时中毒（不经 apply 覆盖快照）→ 牛奶」被 LOWEST 按旧剩余时长补回 ⇒ 已改 `PlayerEffectProtection.removeNow` 并删无用 import。
+        (b) **P3**：死亡 / 重生不清快照（原版死亡**不派发** `MobEffectEvent.Remove`，`PlayerLifecycleHandler` 只清本模组 11 个效果）⇒ `ModEffectEvents` 新增 `@SubscribeEvent onPlayerClone(PlayerEvent.Clone)` → `clear(getEntity())`（两线各 +10 行，文件 119 行）。
+        (c) **P3 文档**：52 的分解与 `removeNow` 计数已按实测订正（见 ⑥），审计文档 §8 建议 6 / §10.3 / §10.4 / §10.5 同步。
+
 ## 6 坑（踩过的，后续别重踩）
 
 1. **`run/<线>/mods` 的 jar 曾 ≠ `build/libs`（neo 于 2026-10-22 15:47 对齐；forge 按 §6-3 永远放 devlibs named jar）**：当时 neo 是 00:22 的旧构建（同名、2 B 差异），

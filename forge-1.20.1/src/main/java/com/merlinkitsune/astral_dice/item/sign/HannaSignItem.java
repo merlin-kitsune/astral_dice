@@ -31,6 +31,7 @@ import top.theillusivec4.curios.api.SlotContext;
 
 import java.util.List;
 import com.merlinkitsune.starengine.combat.PartyRelations;
+import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
 
 /**
  * 人偶师立牌(hanna,稀有)1.20.1 Forge 移植版。
@@ -205,7 +206,7 @@ public class HannaSignItem extends BaseSignItem implements SignHooks.DiceRollRes
             return InteractionResultHolder.success(stack);
         }
         // 有限时长效果经 EffectTimerGuard 记账 ⇒ HUD 计时器严格 20 t/s
-        EffectTimerGuard.apply(player, new MobEffectInstance(ModEffects.HANNA_FLOAT.get(),
+        PlayerEffectProtection.apply(player, new MobEffectInstance(ModEffects.HANNA_FLOAT.get(),
                 HannaFloatEffect.DURATION_TICKS, 0, false, true, true));
         sendSignActionBar(player, "msg.astral_dice.hanna_float");
         return InteractionResultHolder.success(stack);
@@ -264,9 +265,9 @@ public class HannaSignItem extends BaseSignItem implements SignHooks.DiceRollRes
         if (now >= ModAttachments.getHannaBlessingCooldownEnd(wearer)) {
             Player sherryWearer = nearest(nearby, wearer, p -> wearsSign(p, SHERRY_SIGN_ID));
             if (sherryWearer != null) {
-                EffectTimerGuard.apply(sherryWearer, new MobEffectInstance(MobEffects.DAMAGE_BOOST,
+                PlayerEffectProtection.apply(sherryWearer, new MobEffectInstance(MobEffects.DAMAGE_BOOST,
                         BLESSING_BUFF_TICKS, 1, false, true));
-                EffectTimerGuard.apply(sherryWearer, new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE,
+                PlayerEffectProtection.apply(sherryWearer, new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE,
                         BLESSING_BUFF_TICKS, 0, false, true));
                 SherrySignItem.addLayers(sherryWearer, 1);
                 ModAttachments.setHannaBlessingCooldownEnd(wearer, now + PASSIVE_INTERVAL_TICKS);
@@ -282,7 +283,7 @@ public class HannaSignItem extends BaseSignItem implements SignHooks.DiceRollRes
                 giveCoins(friend, floating ? COIN_ON_PASS_FLOAT : COIN_ON_PASS);
                 addCraftLayers(wearer, 1);
                 if (isComplete(wearer)) {
-                    EffectTimerGuard.apply(friend, new MobEffectInstance(MobEffects.MOVEMENT_SPEED,
+                    PlayerEffectProtection.apply(friend, new MobEffectInstance(MobEffects.MOVEMENT_SPEED,
                             COMPLETE_BUFF_TICKS, 1, false, true));
                     giveCoins(friend, COIN_ON_COMPLETE);
                 }

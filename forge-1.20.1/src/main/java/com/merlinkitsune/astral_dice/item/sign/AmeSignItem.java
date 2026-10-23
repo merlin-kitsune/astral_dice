@@ -34,6 +34,7 @@ import top.theillusivec4.curios.api.SlotContext;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
 
 /**
  * 地雷女立牌(ame,奇特)。
@@ -243,7 +244,7 @@ public class AmeSignItem extends BaseSignItem {
         }
         // ② 施加「感情过量摄入」(1:00,移速 +20%,图标可见计时)
         //    有限时长效果经 EffectTimerGuard 记账 ⇒ HUD 计时器严格 20 t/s(照 hanna 同款)
-        EffectTimerGuard.apply(player, new MobEffectInstance(ModEffects.AME_OVERDOSE.get(),
+        PlayerEffectProtection.apply(player, new MobEffectInstance(ModEffects.AME_OVERDOSE.get(),
                 AmeOverdoseEffect.DURATION_TICKS, 0, false, true, true));
         sendSignActionBar(player, "msg.astral_dice.ame_overdose", love * HEAL_PER_LOVE);
         return InteractionResultHolder.success(stack);

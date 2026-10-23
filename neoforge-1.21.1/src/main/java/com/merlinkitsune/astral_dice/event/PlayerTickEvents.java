@@ -34,6 +34,8 @@ public class PlayerTickEvents {
     public static void onPlayerTickPre(PlayerTickEvent.Pre event) {
         Player player = event.getEntity();
         if (player.level().isClientSide()) return;
+        // 玩家侧效果保护:外部清除后下一 tick 补回(未声明可清除者一律不受外部影响,2026-10-23 裁决)
+        PlayerEffectProtection.tick(player);
         EffectTimerGuard.tick(player);
         // 立牌"待命"等待器已随目标选择器并入而移除(2026-09-17:主线 → dev-next 合并裁决),原先在此的
         // BaseSignItem.tickSignReadyTimeout(player) 不再存在;立牌主动的冷却门槛改由

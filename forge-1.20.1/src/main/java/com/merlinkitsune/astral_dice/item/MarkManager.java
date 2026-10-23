@@ -11,6 +11,7 @@ import net.minecraftforge.fml.common.Mod;
 
 import java.util.ArrayList;
 import java.util.List;
+import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
 
 /**
  * "标记"管理器(目标身上的效果,与具体饰品/卡牌解耦)。
@@ -43,7 +44,7 @@ public final class MarkManager {
         var existing = target.getEffect(ModEffects.MARKED.get());
         int level = existing != null ? Math.min(existing.getAmplifier() + 1, GameplayConstants.MAX_MARKER - 1) : 0;
         target.addEffect(new MobEffectInstance(ModEffects.MARKED.get(), durationTicks, level, false, true));
-        com.merlinkitsune.starengine.event.EffectTimerGuard.apply(target,
+        PlayerEffectProtection.apply(target,
                 new MobEffectInstance(net.minecraft.world.effect.MobEffects.GLOWING, durationTicks, 0, false, false, false));
         return level + 1;
     }
@@ -76,11 +77,11 @@ public final class MarkManager {
         if (effect.getAmplifier() > 0) {
             PENDING_DECAY.add(new PendingDecay(entity, effect.getAmplifier() - 1));
             // 同步刷新伴随的"高亮",与标记保持同一寿命(showIcon=false 不显示 HUD 效果标识器)
-            com.merlinkitsune.starengine.event.EffectTimerGuard.apply(entity,
+            PlayerEffectProtection.apply(entity,
                     new MobEffectInstance(net.minecraft.world.effect.MobEffects.GLOWING, MARK_DURATION_TICKS, 0, false, false, false));
         } else {
             // 标记层数归零:同时移除伴随的"高亮"效果(兜底;正常情况下发光随标记自然结束)
-            entity.removeEffect(net.minecraft.world.effect.MobEffects.GLOWING);
+            PlayerEffectProtection.removeNow(entity, net.minecraft.world.effect.MobEffects.GLOWING);
         }
     }
 

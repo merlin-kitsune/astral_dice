@@ -2,7 +2,6 @@ package com.merlinkitsune.astral_dice.item.sign;
 
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
-import com.merlinkitsune.starengine.event.EffectTimerGuard;
 import com.merlinkitsune.astral_dice.choice.CardChoiceManager;
 import com.merlinkitsune.astral_dice.choice.CardChoiceType;
 import com.merlinkitsune.astral_dice.item.ModItems;
@@ -33,6 +32,7 @@ import top.theillusivec4.curios.api.SlotContext;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
 
 /**
  * 调酒师立牌（jill，奇特）。
@@ -142,17 +142,17 @@ public class JillSignItem extends BaseSignItem {
                     net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation.ADDITION);
         }
         if (effect > 0) {
-            EffectTimerGuard.apply(target, new MobEffectInstance(MobEffects.REGENERATION, DURATION_TICKS, effect - 1, false, true, true));
+            PlayerEffectProtection.apply(target, new MobEffectInstance(MobEffects.REGENERATION, DURATION_TICKS, effect - 1, false, true, true));
         }
-        EffectTimerGuard.apply(target, new MobEffectInstance(ModEffects.JILL_MIXED.get(), DURATION_TICKS, 0, false, true, true));
+        PlayerEffectProtection.apply(target, new MobEffectInstance(ModEffects.JILL_MIXED.get(), DURATION_TICKS, 0, false, true, true));
         // 记录受惠目标与到期刻(2:00):由 onCurioTick 到期摘除 / onUnequip 立即清。
         ModAttachments.setJillBuffTarget(caster, target.getUUID().toString());
         ModAttachments.setJillBuffEnd(caster, caster.level().getGameTime() + DURATION_TICKS);
 
         boolean allSame = attack == 3 || defense == 3 || effect == 3;
         if (allSame) {
-            EffectTimerGuard.apply(caster, new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 1200, 1, false, true, true));
-            EffectTimerGuard.apply(target, new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 1200, 1, false, true, true));
+            PlayerEffectProtection.apply(caster, new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 1200, 1, false, true, true));
+            PlayerEffectProtection.apply(target, new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 1200, 1, false, true, true));
         } else {
             StarEngineEconomy.deposit(caster, COIN_PER_PROC);
             StarEngineEconomy.deposit(target, COIN_PER_PROC);

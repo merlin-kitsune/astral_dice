@@ -2,7 +2,6 @@ package com.merlinkitsune.astral_dice.item.sign;
 
 import com.merlinkitsune.starengine.combat.HostileTargets;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
-import com.merlinkitsune.starengine.event.EffectTimerGuard;
 import com.merlinkitsune.astral_dice.event.WeirdDiceHandler;
 import com.merlinkitsune.astral_dice.item.HealingManager;
 import com.merlinkitsune.astral_dice.item.chip.CurrentCoreChipItem;
@@ -27,6 +26,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import com.merlinkitsune.starengine.combat.PartyRelations;
+import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
 
 /**
  * 史莱姆立牌。
@@ -103,7 +103,7 @@ public class LuluSignItem extends BaseSignItem {
                 // 友情徽章:治疗者对**友方玩家**施加治疗时双方各 +2 治愈(自疗不触发,钩子内部自判)
                 FriendshipBadgeChipItem.onHealApplied(player, receiver);
             }
-            EffectTimerGuard.apply(target, new MobEffectInstance(MobEffects.HEAL, 1, 0, false, true));
+            PlayerEffectProtection.apply(target, new MobEffectInstance(MobEffects.HEAL, 1, 0, false, true));
 
             // ── 2. 范围能力(2026-09-28 起仅剩「敌对生物缓慢」):以**被指向的目标**为中心 ──────
             // 目标自身已吃到主体效果,故与旧实现排除施放者同构,这里排除目标本身。
@@ -113,7 +113,7 @@ public class LuluSignItem extends BaseSignItem {
             for (LivingEntity entity : nearby) {
                 if (PartyRelations.isHostileTo(player, entity)) {
                     // 敌对生物:缓慢 1:00
-                    EffectTimerGuard.apply(entity,
+                    PlayerEffectProtection.apply(entity,
                             new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, SLOWDOWN_TICKS, 0, false, true));
                 }
             }

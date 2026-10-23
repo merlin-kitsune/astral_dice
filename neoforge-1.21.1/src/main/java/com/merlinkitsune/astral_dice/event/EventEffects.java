@@ -99,7 +99,7 @@ public final class EventEffects {
 
     public static void swiftStride(ServerLevel level, Player triggerer, Player target, AstralEvent event,
                                    AstralEventTrigger source, int tier) {
-        target.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 2400, 1, false, true));
+        PlayerEffectProtection.apply(target, new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 2400, 1, false, true));
         EventTimerStore.start(target, event.id(), 2400, null);
     }
 
@@ -301,10 +301,10 @@ public final class EventEffects {
         target.hurt(level.damageSources().generic(), 2.0F);
         // 专用指示器（用户裁决 1/2）。注:原生中毒/饥饿以 visible=false 施加 ⇒ **HUD 侧已隐藏**;
         // 但物品栏「效果」面板走 isVisibleInInventory(默认 true) ⇒ 该面板仍会显示两行,待补客户端 mixin。
-        target.addEffect(new MobEffectInstance(com.merlinkitsune.astral_dice.effect.ModEffects.PROBLEM_DELIVERY,
+        PlayerEffectProtection.apply(target, new MobEffectInstance(com.merlinkitsune.astral_dice.effect.ModEffects.PROBLEM_DELIVERY,
                 300, 0, false, false, true));
-        target.addEffect(new MobEffectInstance(MobEffects.POISON, 300, 0, false, false));
-        target.addEffect(new MobEffectInstance(MobEffects.HUNGER, 300, 0, false, false));
+        PlayerEffectProtection.apply(target, new MobEffectInstance(MobEffects.POISON, 300, 0, false, false));
+        PlayerEffectProtection.apply(target, new MobEffectInstance(MobEffects.HUNGER, 300, 0, false, false));
         setHealBlocked(target, true);
         EventTimerStore.start(target, event.id(), 300, p -> setHealBlocked(p, false));
         LOGGER.info("AP_EVENT_EFFECT: problem_delivery:healBlocked=true:target={}", target.getName().getString());

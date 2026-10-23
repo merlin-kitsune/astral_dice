@@ -4,7 +4,6 @@ import com.merlinkitsune.astral_dice.component.AppliedStone;
 import com.merlinkitsune.starengine.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
-import com.merlinkitsune.starengine.event.EffectTimerGuard;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.player.Player;
@@ -15,6 +14,7 @@ import top.theillusivec4.curios.api.CuriosApi;
 import java.util.concurrent.ThreadLocalRandom;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
+import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
 
 public class MisakiSignItem extends BaseSignItem {
     public MisakiSignItem(Properties properties) {
@@ -25,7 +25,7 @@ public class MisakiSignItem extends BaseSignItem {
     protected InteractionResultHolder<ItemStack> handleUse(Level level, Player player, ItemStack stack) {
         if (!level.isClientSide) {
             // 主动技能:获得"爆发"效果 2:00(visible=true 使效果图标在 HUD 正常显示)
-            EffectTimerGuard.apply(player, new MobEffectInstance(ModEffects.MISAKI_BURST, 2400, 0, false, true, true));
+            PlayerEffectProtection.apply(player, new MobEffectInstance(ModEffects.MISAKI_BURST, 2400, 0, false, true, true));
 
             // 若被动层数已达 3 层:减少 2 层,并向物品栏增加一张"名刀嘎呜切"
             int stacks = stack.getOrDefault(ModDataComponents.MISAKI_SIGN_STACKS.get(), 0);

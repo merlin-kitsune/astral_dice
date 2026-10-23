@@ -2,7 +2,6 @@ package com.merlinkitsune.astral_dice.item.sign;
 
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.starengine.combat.HostileTargets;
-import com.merlinkitsune.starengine.event.EffectTimerGuard;
 import com.merlinkitsune.starengine.event.ModEffectRemoval;
 
 import com.merlinkitsune.astral_dice.combat.CardRegistry;
@@ -34,6 +33,7 @@ import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.projectile.ThrownEnderpearl;
 import net.neoforged.bus.api.SubscribeEvent;
 import com.merlinkitsune.starengine.combat.PartyRelations;
+import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
 
 /**
  * 骇客立牌(命名:nancy_lu)。
@@ -81,7 +81,7 @@ public class NancyLuSignItem extends BaseSignItem implements SignHooks.BlessingE
         long hiddenExpiry = Math.max(hiddenUntil, ModAttachments.getSignActiveLockEnd(player));
         if (hiddenUntil > 0 && now >= hiddenExpiry) {
             ModAttachments.setNancyLuHiddenUntil(player, 0);
-            player.removeEffect(net.minecraft.world.effect.MobEffects.INVISIBILITY);
+            PlayerEffectProtection.removeNow(player, net.minecraft.world.effect.MobEffects.INVISIBILITY);
         }
         // 主动攻击力加成到期
         if (now >= ModAttachments.getNancyLuActiveBonusUntil(player)) {
@@ -100,7 +100,7 @@ public class NancyLuSignItem extends BaseSignItem implements SignHooks.BlessingE
         // 仅清除立牌自身授予的状态(附件标记仍有效时),不触碰其他来源的公共数值:
         // 隐身可能由其他模组或原版机制授予,卸载立牌不得一并清除
         if (ModAttachments.getNancyLuHiddenUntil(player) > 0) {
-            player.removeEffect(net.minecraft.world.effect.MobEffects.INVISIBILITY);
+            PlayerEffectProtection.removeNow(player, net.minecraft.world.effect.MobEffects.INVISIBILITY);
         }
         ModAttachments.setNancyLuPassiveType(player, PASSIVE_NONE);
         ModAttachments.setNancyLuActiveBonus(player, 0);
@@ -123,7 +123,7 @@ public class NancyLuSignItem extends BaseSignItem implements SignHooks.BlessingE
         // DATA_EFFECT_PARTICLES 承载(updateSynchronizedMobEffectParticles 只收集
         // isVisible() 的效果实例),置 true 时隐身期间自身会持续冒粒子而暴露位置。
         // showIcon=true 只保留 HUD 图标,不影响世界可见性。
-        EffectTimerGuard.apply(player, new MobEffectInstance(net.minecraft.world.effect.MobEffects.INVISIBILITY,
+        PlayerEffectProtection.apply(player, new MobEffectInstance(net.minecraft.world.effect.MobEffects.INVISIBILITY,
                 HIDDEN_DURATION_TICKS, 0, false, false, true));
         ModAttachments.setNancyLuHiddenUntil(player, now + HIDDEN_DURATION_TICKS);
         // 清除附近已经锁定该玩家的生物目标,确保“绝对无法被生物索敌”
@@ -161,7 +161,7 @@ public class NancyLuSignItem extends BaseSignItem implements SignHooks.BlessingE
 
         // 解除完全隐身
         ModAttachments.setNancyLuHiddenUntil(player, 0);
-        player.removeEffect(net.minecraft.world.effect.MobEffects.INVISIBILITY);
+        PlayerEffectProtection.removeNow(player, net.minecraft.world.effect.MobEffects.INVISIBILITY);
 
         // 消耗一张随机战斗牌并按费用×2 提升攻击力;攻击力加成最低 +2。
         // 主物品栏无战斗牌可消耗时,同样获得保底 +2 攻击力加成。
@@ -174,7 +174,7 @@ public class NancyLuSignItem extends BaseSignItem implements SignHooks.BlessingE
         }
         ModAttachments.setNancyLuActiveBonus(player, bonus);
         ModAttachments.setNancyLuActiveBonusUntil(player, now + ACTIVE_DURATION_TICKS);
-        EffectTimerGuard.apply(player, new MobEffectInstance(ModEffects.NANCY_LU_HACK,
+        PlayerEffectProtection.apply(player, new MobEffectInstance(ModEffects.NANCY_LU_HACK,
                 ACTIVE_DURATION_TICKS, 0, false, true, true));
     }
 

@@ -12,9 +12,9 @@ import com.merlinkitsune.astral_dice.AstralDiceMod;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
-import com.merlinkitsune.starengine.event.EffectTimerGuard;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.bus.api.EventPriority;
+import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
 
 /**
  * 吸血鬼立牌(命名:papara)。
@@ -33,7 +33,7 @@ public class PaparaSignItem extends BaseSignItem {
             return InteractionResultHolder.success(stack);
         }
         // 主动:获得"汲取"效果 3:00(visible=true 使效果图标在 HUD 正常显示)
-        EffectTimerGuard.apply(player, new MobEffectInstance(ModEffects.PAPARA_BITE, 3600, 0, false, true, true));
+        PlayerEffectProtection.apply(player, new MobEffectInstance(ModEffects.PAPARA_BITE, 3600, 0, false, true, true));
         return InteractionResultHolder.success(stack);
     }
 

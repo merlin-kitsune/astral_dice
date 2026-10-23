@@ -31,6 +31,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import com.merlinkitsune.starengine.combat.PartyRelations;
+import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
 
 /**
  * 蛟龙立牌(mamushi,传奇 {@code ASTRAL_DICE_LEGENDARY})。
@@ -471,9 +472,9 @@ public class MamushiSignItem extends BaseSignItem
      */
     public static void applyRoarDebuff(LivingEntity victim) {
         if (victim == null || victim.level().isClientSide()) return;
-        EffectTimerGuard.apply(victim, new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN,
+        PlayerEffectProtection.apply(victim, new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN,
                 ROAR_DEBUFF_TICKS, ROAR_SLOW_AMPLIFIER, false, false, true));
-        EffectTimerGuard.apply(victim, new MobEffectInstance(ModEffects.DRAGON_ROAR_BREAK.get(),
+        PlayerEffectProtection.apply(victim, new MobEffectInstance(ModEffects.DRAGON_ROAR_BREAK.get(),
                 ROAR_DEBUFF_TICKS, 0, false, false, true));
     }
 

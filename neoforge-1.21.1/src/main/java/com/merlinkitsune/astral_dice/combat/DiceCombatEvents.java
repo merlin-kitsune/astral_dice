@@ -72,9 +72,9 @@ import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
 import com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem;
 import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
 import com.merlinkitsune.astral_dice.item.card.FateGuidanceCardItem;
-import com.merlinkitsune.starengine.event.EffectTimerGuard;
 import com.merlinkitsune.starengine.combat.HostileTargets;
 import com.merlinkitsune.starengine.combat.PartyRelations;
+import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
 
 @EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class DiceCombatEvents {
@@ -940,7 +940,7 @@ public class DiceCombatEvents {
         }
 
         if (hasShadowStrike && !player.level().isClientSide()) {
-            EffectTimerGuard.apply(target, new MobEffectInstance(MobEffects.DARKNESS, 60, 0, false, false));
+            PlayerEffectProtection.apply(target, new MobEffectInstance(MobEffects.DARKNESS, 60, 0, false, false));
         }
 
         // === DICE STONE CONSUMPTION (与赐福触发逻辑一致:仅在触发骰神赐福的那次攻击消耗一次耐久;

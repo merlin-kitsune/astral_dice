@@ -5,7 +5,6 @@ import com.merlinkitsune.starengine.combat.HostileTargets;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
-import com.merlinkitsune.starengine.event.EffectTimerGuard;
 import com.merlinkitsune.starengine.item.CuriosCompat;
 import com.merlinkitsune.astral_dice.item.HealingManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
@@ -34,6 +33,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 import com.merlinkitsune.starengine.combat.PartyRelations;
+import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
 
 /**
  * 肉弹战车立牌(命名:pandaman,稀有)。
@@ -109,7 +109,7 @@ public class PandamanSignItem extends BaseSignItem {
                 // 故此处显式排除玩家并保留单参判定(玩家不是"嘲讽目标"的语义域)
                 e -> HostileTargets.isHostile(e) && !(e instanceof Player) && e.isAlive());
         for (LivingEntity target : nearby) {
-            EffectTimerGuard.apply(target, new MobEffectInstance(ModEffects.PANDAMAN_TAUNT.get(),
+            PlayerEffectProtection.apply(target, new MobEffectInstance(ModEffects.PANDAMAN_TAUNT.get(),
                     TAUNT_DURATION_TICKS, 0, false, true));
             ModAttachments.setPandamanTauntSource(target, Optional.of(player.getUUID()));
             if (target instanceof Mob mob) {

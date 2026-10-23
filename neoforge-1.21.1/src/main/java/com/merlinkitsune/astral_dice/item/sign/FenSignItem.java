@@ -1,7 +1,6 @@
 package com.merlinkitsune.astral_dice.item.sign;
 
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
-import com.merlinkitsune.starengine.event.EffectTimerGuard;
 
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
@@ -15,6 +14,7 @@ import top.theillusivec4.curios.api.CuriosApi;
 import top.theillusivec4.curios.api.SlotContext;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.StarLightManager;
+import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
 
 /**
  * 大当家立牌(命名:fen)。
@@ -88,7 +88,7 @@ public class FenSignItem extends BaseSignItem implements SignHooks.SplashBlessin
         // 只管粒子"就把它当遗留 bug 改掉(对照:同方法里「养精蓄锐 → 迅捷」那一处按裁决已改
         // visible=false —— 两处口径不同是**有意**的)。
         // 正向锁定:两条线用例 ZHAO-SIGN-{1.21.1,1.20.1} 的 FS1 断言把 `frenzy_visible=1` 写成期望值。
-        EffectTimerGuard.apply(player, new MobEffectInstance(ModEffects.FEN_FRENZY,
+        PlayerEffectProtection.apply(player, new MobEffectInstance(ModEffects.FEN_FRENZY,
                 FRENZY_DURATION_TICKS, 0, false, true, true));
 
         int stacks = ModAttachments.getFenRecharge(player);
@@ -99,7 +99,7 @@ public class FenSignItem extends BaseSignItem implements SignHooks.SplashBlessin
             // ambient=false, visible=false, showIcon=true —— **HUD 图标由 showIcon 决定、与 visible
             // 无关**(旧实参只写到第 5 参 `visible=true`,把图标开关误当成了 visible,于是平白产生
             // 漂浮粒子,玩家把它归因于养精蓄锐)。战斗爽那一处按用户裁决**有意保留粒子**(见上方注释)。
-            EffectTimerGuard.apply(player, new MobEffectInstance(MobEffects.MOVEMENT_SPEED,
+            PlayerEffectProtection.apply(player, new MobEffectInstance(MobEffects.MOVEMENT_SPEED,
                     FRENZY_DURATION_TICKS, 0, false, false, true));
         }
         // 被动「心意相连」(风水师立牌 zhao):本立牌**使用主动技能**时,同队中装备风水师立牌的玩家

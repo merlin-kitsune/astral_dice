@@ -38,6 +38,7 @@ import com.merlinkitsune.starengine.target.TargetSelectionAction;
 import com.merlinkitsune.starengine.target.TargetSelectionRegistry;
 import com.merlinkitsune.starengine.target.TargetType;
 import com.merlinkitsune.starengine.target.SelectorTargets;
+import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
 
 /**
  * 效果牌统一基类(不再区分"功能效果牌/伤害效果牌")。
@@ -185,7 +186,7 @@ public abstract class BaseEffectCardItem extends Item {
     protected void applyEffect(Level level, Player user, LivingEntity applyTo, ItemStack stack) {
         MobEffect effect = getEffect();
         if (effect != null) {
-            applyTo.addEffect(new MobEffectInstance(effect, getEffectDuration(), 0, false, true));
+            PlayerEffectProtection.apply(applyTo, new MobEffectInstance(effect, getEffectDuration(), 0, false, true));
         }
     }
 

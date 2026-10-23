@@ -3,7 +3,6 @@ package com.merlinkitsune.astral_dice.item.sign;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.effect.LinglingSurgeEffect;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
-import com.merlinkitsune.starengine.event.EffectTimerGuard;
 import com.merlinkitsune.astral_dice.item.ModItems;
 
 import net.minecraft.world.InteractionResultHolder;
@@ -12,6 +11,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
+import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
 
 /**
  * 「怪力乱神立牌」(lingling)主动技能「能量突击」。
@@ -49,7 +49,7 @@ public class LinglingSignItem extends BaseSignItem {
             return InteractionResultHolder.success(stack);
         }
         LinglingSignManager.giveRepulsion(player, LinglingSignManager.ACTIVE_GRANT);
-        EffectTimerGuard.apply(player,
+        PlayerEffectProtection.apply(player,
                 new MobEffectInstance(ModEffects.LINGLING_SURGE.get(), LinglingSurgeEffect.DURATION_TICKS, 0,
                         false, true, true));
         LinglingSignManager.refreshActiveModifiers(player);
