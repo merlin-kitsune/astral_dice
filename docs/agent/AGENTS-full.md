@@ -3851,7 +3851,7 @@ python docs/agent/verify-split.py
 - `LICENSE`（702 行 / 37,148 字符 / 全 CRLF）= GPL-3.0 全文（与 astral 侧同源）+ 分隔线 +〈Project licensing notes〉三节：① SOURCE CODE = GPL-3.0-only；② LEGACY RELEASES = 2026-10-23 之前发布的版本仍 MIT —— `1.0.0`–`1.0.12` 全部 tag 与已分发到消费方 / mavenLocal / 整合包的 `1.1.0-pre.1` / `1.1.0-pre.2` 构建，原文见对应 tag 的 `LICENSE`；③ THIRD-PARTY = 无捆绑第三方源码，`gradlew` / `gradlew.bat` / `gradle/wrapper/**` 仍 Apache-2.0。
 - 元数据 5 处：`neoforge-1.21.1/gradle.properties:203`、`forge-1.20.1/gradle.properties:88`、`neoforge-26.1.2/gradle.properties:75`、`fabric-1.20.1/gradle.properties:27` → `mod_license=GPL-3.0-only`；`fabric-1.20.1/src/main/resources/fabric.mod.json:11` → `"license": "GPL-3.0-only"`（两个 `mods.toml` 模板仍 `license="${mod_license}"`）。
 - 文档：`README.md:326` / `README_ZH.md:324` §License 改写；两份 CHANGELOG 的 `2.0.0-SNAPSHOT.15` 未发布段各加〈许可 / Licensing〉条目。
-- 提交 `53db33b`（10 文件 +731/−28）。**未 push、未重建产物**：mavenLocal 与整合包里的 `starengine-*-1.1.0-pre.2.jar` 内 `mods.toml` 仍写 `MIT License`。
+- 提交 `c545b75`（10 文件 +732/−28；原 `c545b75` 已 `--amend` 补 §2 的 tag 边界）。**未 push、未重建产物**：mavenLocal 与整合包里的 `starengine-*-1.1.0-pre.2.jar` 内 `mods.toml` 仍写 `MIT License`。
 
 ### 57.4 判据命令
 
@@ -3860,7 +3860,7 @@ python docs/agent/verify-split.py
 git -C F:\MCProject\astral_dice_multiloader ls-files LICENSE-MIT   # 应为空
 Select-String -Path F:\MCProject\astral_dice_multiloader\LICENSE -Pattern 'corresponding release tag','no longer ships a separate MIT file'
 # 前置库：许可与元数据
-git -C F:\MCProject\starengine log --oneline -1              # 53db33b
+git -C F:\MCProject\starengine log --oneline -1              # c545b75
 Select-String -Path F:\MCProject\starengine\LICENSE -Pattern 'GNU GENERAL PUBLIC LICENSE','LEGACY RELEASES'
 Select-String -Path F:\MCProject\starengine\*-1.20.1\gradle.properties,F:\MCProject\starengine\neoforge-*\gradle.properties -Pattern 'mod_license'
 # 规则文件自检
@@ -3872,3 +3872,23 @@ python docs/agent/verify-split.py
 - 两仓都**未重建产物**：本仓 pre.5 jar 与前置库 1.1.0-pre.2 jar 的元数据仍是旧串，对外发布前必须重建并成对重投。
 - 前置库的「历史版本仍 MIT」边界按**发布时间**（2026-10-23 之前）划，不按版本号；若用户要按版本号划（例如「≤1.1.0-pre.2 仍 MIT，之后全部 GPL」），改 `LICENSE` §2 一句即可。
 - `F:\MCProject\starengine_next` 是**坏掉的 worktree**：其 `.git` 文件指向 WSL 路径 `gitdir: /mnt/f/MCProject/starengine/.git/worktrees/starengine_lib_next`，Windows 侧 `git` 解析不了（`fatal: not a git repository: (NULL)`），本批未动它，也未改其 `LICENSE`（2.0.0-SNAPSHOT 开发线文件同样还是 MIT 文本）。
+
+## 58. Jade 护甲图标换 8×8 留白版（2026-10-23 用户裁决）
+
+### 58.1 裁决原文
+「防御力图标已更新（jade专用），位于images目录下Def_0_jade、Def_1_jade、Def_2_jade。直接替换原资产，替换后应该显示正常了。」
+
+### 58.2 素材与映射
+`images/Def_{0,1,2}_jade.png`（9×9 画布、alpha bbox `(0,0,8,8)` ⇒ 第 9 列 / 第 9 行全透明）→ `defense_empty`（0）/ `defense_half`（1）/ `defense_full`（2）；三文件均 50 个不透明像素（旧版 66，且 col8 = 6 行 / row8 = 3 列有像素）。`images/` 目录被 `.gitignore:63` 忽略 ⇒ 素材本身不入库，只入库替换后的 `src/main/resources` 贴图。
+
+### 58.3 落地与判据
+两线 `src/main/resources/assets/astral_dice/textures/gui/defense_{empty,half,full}.png` 直接覆盖；sha256 前 16 位 = `64DAB94879B17962…`（140 B）/ `A9BDA341395E366B…`（167 B）/ `8C1F6CCCABE0E174…`（173 B），两线一致；jar 内同哈希；`META-INF/jarjar/` = 0；2026-10-23 17:00 两线同时重建 pre.5 并重投 4 处（这批 jar 首次带 `license="GPL-3.0-only (code) / CC BY-NC-SA 4.0 (assets)"`）。
+
+### 58.4 为什么不新增 `*_jade` 分叉文件
+三张贴图被 HUD（`client/CombatPowerHud.java`：`ICON_SIZE=9` / `ICON_STEP=8`，9×9 quad @ 8 px 步距）与两线 Jade（neo `DisplayHelperArmorIconMixin` 重定向 `blitSprite(rl,x,y,9,9)`；forge `ArmorElementIconMixin` 从 `(0,0)` 取 `sx=sy=8`、图集 9×9）共用；留白版对三条路径都正确（HUD / neo 多画 1 px 透明、forge 正好取本体）⇒ 一条资产修三处，无需分叉。
+
+### 58.5 未做
+无实机读数（用户本地自测，本批未开客户端）；Jade「防御力 X」tooltip 一行仍待裁决（第 57 条同批遗留）；P1 两线（`neoforge-26.1.2` / `fabric-1.20.1`）的 `defense_{empty,half,full}.png` 仍是旧 9×9 满画布版（`948dee4c…` / `14855590…` / `d1d851bc…`，126 / 159 / 153 B），随 P1 批次替换，本批不动。
+
+### 58.6 复核
+`dsh_code_review` run `7a9f5b2e-a51c-45bf-8dbe-5890231638e7`：R1–R7 全部 SUPPORTED（映射/50 不透明像素与 bbox/三条绘制路径/文档数字对实物/索引 3891 与 verify-split 四项/jar 内贴图与 license 与 jarjar=0/四处投放），仅两条 P3 措辞已修 —— ① 本节 58.3 原写「sha256 前 8 字节」但只给 8 位十六进制（= 4 字节）⇒ 改为 16 位；② 交接 §4.19 原写「与原版护甲条同宽」多算 1 px（原版本体 9 px 跨 8 px 步距会重叠 1 px，整行 81 px vs 我方 80 px）⇒ 改为「基本同宽（少 1 px）」。复核另发现 26.1.2 / fabric 仍是旧贴图，已登记于 58.5。

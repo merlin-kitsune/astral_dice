@@ -34,6 +34,8 @@
 
 24. **许可二次裁决（2026-10-23 同日，用户原文：`StarEngine库也需要重新声明为GPL-3.0`、`LICENSE-MIT不保留，直接删除`）**：① 本仓 `LICENSE-MIT` **已删除**（该文件只在 `7e4e4f17` 存在过），≤1.3.7 的 MIT 授权仍在 `LICENSE` §2 声明、原文改为指向对应发布 tag 的 `LICENSE`；`LICENSE` §1 另加一段说明前置库 StarEngine 是独立项目（`https://github.com/merlin-kitsune/StarEngine`）、同为 GPL-3.0-only、不由本文件重新授权。② **前置库仓 `F:\MCProject\starengine`（分支 `main`）已同批改造**：`LICENSE` 换成 GPL-3.0 全文 + 〈Project licensing notes〉三节（源码 GPL-3.0-only / 历史版本仍 MIT / 第三方 gradle wrapper），四平台 `mod_license` 与 `fabric.mod.json` 的 `license` 改为 `GPL-3.0-only`，`README.md` / `README_ZH.md` §License 改写，两份 CHANGELOG 各加〈许可 / Licensing〉段；**边界 = `1.0.0`–`1.0.12` 全部发布 + 已分发的 `1.1.0-pre.1` / `1.1.0-pre.2` 构建仍 MIT**。**两仓均未重建产物、未 push。** 详见 §5-36。
 
+25. **Jade 护甲图标换 8×8 留白版（2026-10-23 用户裁决：`防御力图标已更新（jade专用），位于images目录下Def_0_jade、Def_1_jade、Def_2_jade。直接替换原资产`）**：把 `images/Def_{0,1,2}_jade.png`（9×9 画布，本体占左上 8×8，第 9 列/行 alpha 全 0）**直接替换**两线 `assets/astral_dice/textures/gui/defense_{empty,half,full}.png`；三文件两线同哈希（`64DAB948…` / `A9BDA341…` / `8C1F6CCC…`，140 / 167 / 173 B）。**同轮重建两线 pre.5 产物并重投 4 处**（17:00 值见 §2）——这批 jar 首次带 `license="GPL-3.0-only (code) / CC BY-NC-SA 4.0 (assets)"`，§5-36 ③ 的「未重建」由此销账。HUD 与两线 Jade 共用这三张贴图，8 px 步距下都正确落位（§4.19 静态仿真）。详见 §5-37，**无实机读数**（用户本地自测）。
+
 ## 1 环境与路径
 
 - 仓库（唯一工作树）：`F:\MCProject\astral_dice_multiloader`，分支 `multi-main`；git 一律用 **git bash 的 `git`** ——
@@ -66,24 +68,25 @@
 | jar 内依赖区间 | `[1.1.0-pre.2,2.0.0)`，`type=required`（neo）/ `mandatory=true`（forge） | `META-INF/neoforge.mods.toml:141-144` / `META-INF/mods.toml:154-158` |
 | 内嵌库 | `META-INF/jarjar/` 计数 **0**（两线） | `unzip -l <jar> \| grep -c 'META-INF/jarjar/'` |
 
-P0 产物（`build/libs`，**neo 2026-10-23 13:49 / forge 2026-10-23 15:09**（后者含 Jade 图标 mixin 非 static 修复；两者均含「雷暴将至」修复 + 立即刷怪波 + 村民职业专用工作方块标签；诊断探针已剔除））：
+P0 产物（`build/libs`，**2026-10-23 17:00 两线同时重建**：Jade 护甲图标换成 8×8 留白版（`defense_{full,half,empty}.png`，本体占左上 8×8、第 9 列/行全透明）+ 许可元数据 `license="GPL-3.0-only (code) / CC BY-NC-SA 4.0 (assets)"` 首次进 jar；13:49/15:09 的组合见下行历史值）：
 
-> ✅ **2026-10-23 13:49 已重建并含本批「村民职业专用工作方块标签」（§5-30）**：两 jar 内 `ModPoiTypes` 公开字段含 `Card_Trader/CHIP` 类 `TagKey<PoiType>`、`ModVillagerProfessions` 的 `acquirableJobSite` lambda 里 `getstatic ModPoiTypes.CARD_TRADER_JOB_SITES` / `CHIP_TRADER_JOB_SITES` 各 1（`ALL_ACQUIRABLE_JOBS` 0 次）；jar 内含 `data/astral_dice/tags/point_of_interest_type/{card_trader_job_site,chip_trader_job_site}.json` 与更新后的 `mineable/axe`；上一批「雷暴将至」的方法/常量证据（`spawnStormWave` 等 7 个方法 + `WAVE_*`、`MobSpawnType.NATURAL` 门控、4/5 参 `finalizeSpawn`）仍在；`META-INF/jarjar/` 仍 0；4 处投放 + 根 `build/libs` 已刷新。上一批（13:40）的三份 jar 已作废，仅作历史值（下行）。**2026-10-23 15:09 仅重建 forge**（Jade 图标 mixin 静默失效修复，§5-32）：forge 两份 jar 哈希已变，neo 未动；4 处投放 + 根 `build/libs` 已重新对账（下行表）。
+> ✅ **2026-10-23 17:00 两线同时重建并重投**（本批：Jade 护甲图标留白版 + 许可元数据）：jar 内 `assets/astral_dice/textures/gui/defense_full.png` = 173 B `8C1F6CCC…`、`defense_half.png` = 167 B `A9BDA341…`、`defense_empty.png` = 140 B `64DAB948…`（两线同源同哈希，与 `images/Def_{2,1,0}_jade.png` 逐字节一致，alpha bbox 均为 `(0,0,8,8)`）；`META-INF/{neoforge.mods,mods}.toml` 的 `license` 首次为 `GPL-3.0-only (code) / CC BY-NC-SA 4.0 (assets)`；`META-INF/jarjar/` = 0。13:49 批（村民专用标签）与 15:09 批（forge Jade 图标 mixin 非 static 修复）的字节码/方法证据全部仍在（`spawnStormWave` / `WAVE_*` / `MobSpawnType.NATURAL` / `ModPoiTypes` 两个 `TagKey` / `ArmorElementIconMixin` 非 static）。4 处投放 + 根 `build/libs` 已重新对账（下行表）。
 
-- neo `astral_dice-1.5.0-pre.5+neoforge_1.21.1.jar` — **2,570,891 B** — `ad65a8d59149d11c21fefd0b37fd7e3b829ca0bf6348fd1cee843cb0d3419161`
-- forge `astral_dice-1.5.0-pre.5+forge_1.20.1.jar` — **2,616,424 B** — `e6081853bda7f14107a4914bbfb2f00878eff56e4ca2357a7cedb08610b536d0`
-- forge dev named jar `build/devlibs/astral_dice-1.5.0-pre.5+forge_1.20.1.jar` — **2,586,937 B** — `49c3b6436a5fea5439f76721e6591217d802f0fad10a4a208da049caffe2a329`
-- 历史值（只作背景，均已被覆盖）：pre.5 15:09（**仅 forge 重建：Jade 图标 mixin 非 static 修复**）= forge 2,616,424 B `e6081853…` / devlibs 2,586,937 B `49c3b643…`（neo 仍是 13:49 的 2,570,891 B `ad65a8d5…`）；pre.5 13:40（「雷暴将至」复核收口，**不含**村民工作方块标签批）= neo 2,569,892 B `6c13fbe0…` / forge 2,615,326 B `0c85cd3e…` / devlibs 2,585,937 B `00151870…`；pre.5 13:29（复核前，已被覆盖）= neo 2,568,549 B `e99db150…` / forge 2,614,004 B `8f714e84…` / devlibs 2,584,622 B `7122d0c4…`；pre.5 12:35（**不含**「雷暴将至」批）= neo 2,565,536 B `a34cbc48…` / forge 2,611,060 B `aebca4d5…` / devlibs 2,581,605 B `0d961f7a…`；pre.5 12:05（**不含** Jade 生物护甲批）= neo 2,565,317 B `d9b3742d…` / forge 2,610,860 B `3a54d2bc…` / devlibs 2,581,395 B `284528e5…`；pre.5 22:32（**不含**效果保护批）= neo 2,559,837 B `f25546b6…` / forge 2,605,382 B `e30980b4…` / devlibs 2,575,899 B `86c6350b…`；pre.4 22:21（**带诊断探针的临时构建，勿投放，已删除**）= neo 2,561,853 B `bfc88d8e…`；pre.4 18:32（筹码商店品质外框批）= neo 2,558,631 B `742132dd…` / forge 2,604,187 B `4b984008…` / devlibs 2,574,721 B `8f81e4c3…`；pre.4 18:18（电击手套 FX 批）= neo 2,558,408 B `02719fe6…` / forge 2,603,959 B `42cce572…` / devlibs 2,574,494 B `67bc4d24…`；pre.4 18:09（强化拒止品质批）= neo 2,556,778 B `cab211ef…` / forge 2,602,334 B `5141780a…` / devlibs 2,572,866 B `544b61de…`；pre.4 17:53（史莱姆批）= neo 2,556,774 B `bdfbe5f9…` / forge 2,602,332 B `d9780bd0…` / devlibs 2,572,864 B `2849258d…`；pre.4 17:2x = neo 2,556,723 B `7198cc75…` / forge 2,602,280 B `fbb77627…` / devlibs 2,572,814 B `6a445c8f…`；pre.3 15:47 = 2,555,654 B `f063102b…` / 2,601,208 B `7bf787df…`。
+- neo `astral_dice-1.5.0-pre.5+neoforge_1.21.1.jar` — **2,570,968 B** — `8796e6cf4db317b4f35fc295eb0a968ff58cdeb9b941678cb576d0ff5c57078b`
+- forge `astral_dice-1.5.0-pre.5+forge_1.20.1.jar` — **2,616,502 B** — `1519f22142bfd911e39ad7e1934d2051d08b85ba7753961e7663b15f15b61284`
+- forge dev named jar `build/devlibs/astral_dice-1.5.0-pre.5+forge_1.20.1.jar` — **2,587,015 B** — `5eac2ac6e637ca88c79c678759611e429a55385067d38b3798fb4c17c82e46bf`
+- 更早的历史值（只作背景，均已被覆盖）：pre.5 13:49 + 15:09（**仅 forge 重建：Jade 图标 mixin 非 static 修复**）= forge 2,616,424 B `e6081853…` / devlibs 2,586,937 B `49c3b643…`（neo 仍是 13:49 的 2,570,891 B `ad65a8d5…`）；pre.5 13:40（「雷暴将至」复核收口，**不含**村民工作方块标签批）= neo 2,569,892 B `6c13fbe0…` / forge 2,615,326 B `0c85cd3e…` / devlibs 2,585,937 B `00151870…`；pre.5 13:29（复核前，已被覆盖）= neo 2,568,549 B `e99db150…` / forge 2,614,004 B `8f714e84…` / devlibs 2,584,622 B `7122d0c4…`；pre.5 12:35（**不含**「雷暴将至」批）= neo 2,565,536 B `a34cbc48…` / forge 2,611,060 B `aebca4d5…` / devlibs 2,581,605 B `0d961f7a…`；pre.5 12:05（**不含** Jade 生物护甲批）= neo 2,565,317 B `d9b3742d…` / forge 2,610,860 B `3a54d2bc…` / devlibs 2,581,395 B `284528e5…`；pre.5 22:32（**不含**效果保护批）= neo 2,559,837 B `f25546b6…` / forge 2,605,382 B `e30980b4…` / devlibs 2,575,899 B `86c6350b…`；pre.4 22:21（**带诊断探针的临时构建，勿投放，已删除**）= neo 2,561,853 B `bfc88d8e…`；pre.4 18:32（筹码商店品质外框批）= neo 2,558,631 B `742132dd…` / forge 2,604,187 B `4b984008…` / devlibs 2,574,721 B `8f81e4c3…`；pre.4 18:18（电击手套 FX 批）= neo 2,558,408 B `02719fe6…` / forge 2,603,959 B `42cce572…` / devlibs 2,574,494 B `67bc4d24…`；pre.4 18:09（强化拒止品质批）= neo 2,556,778 B `cab211ef…` / forge 2,602,334 B `5141780a…` / devlibs 2,572,866 B `544b61de…`；pre.4 17:53（史莱姆批）= neo 2,556,774 B `bdfbe5f9…` / forge 2,602,332 B `d9780bd0…` / devlibs 2,572,864 B `2849258d…`；pre.4 17:2x = neo 2,556,723 B `7198cc75…` / forge 2,602,280 B `fbb77627…` / devlibs 2,572,814 B `6a445c8f…`；pre.3 15:47 = 2,555,654 B `f063102b…` / 2,601,208 B `7bf787df…`。
+- 历史值（17:00 之前的组合，已被覆盖）：neo 2,570,891 B `ad65a8d59149d11c21fefd0b37fd7e3b829ca0bf6348fd1cee843cb0d3419161` / forge 2,616,424 B `e6081853bda7f14107a4914bbfb2f00878eff56e4ca2357a7cedb08610b536d0` / devlibs 2,586,937 B `49c3b6436a5fea5439f76721e6591217d802f0fad10a4a208da049caffe2a329`（当时**不含** Jade 图标留白版与 GPL 元数据）
 - 同版本号（pre.5）的中间构建件**不残留**：Gradle 同名覆盖，`build/libs` 与 `build/devlibs` 里 pre.5 各只有上面那三份之一。
-- ⚠️ **旧版本产物仍留在各子项目 build 目录**（pre.1–pre.4，勿投放）；**仓库根 `build/libs` 已于本批（2026-10-23 13:49）用 `pushToRootBuild` 刷新为 pre.5 一对**（坑 28；根目录同时保留 P1 旧件 `astral_dice-1.3.7-*` 与 `starengine-*-1.1.0-pre.2.jar`）——取件只认 §2 这三行。
-- 投放（2026-10-23 15:09 实测（forge 重建后重对账；neo 仍 13:49 值），逐处 `Get-FileHash` 双向对账；四个目标里的 `astral_dice-1.5.0-pre.*` 每处只剩 pre.5 一份）：
+- ⚠️ **旧版本产物仍留在各子项目 build 目录**（pre.1–pre.4，勿投放）；**仓库根 `build/libs` 已于 2026-10-23 17:00 用 `pushToRootBuild` 刷新为 pre.5 一对**（坑 28；根目录同时保留 P1 旧件 `astral_dice-1.3.7-*` 与 `starengine-*-1.1.0-pre.2.jar`）——取件只认 §2 这三行。
+- 投放（2026-10-23 17:00 实测（两线同时重建后重对账），逐处 `Get-FileHash` 双向对账；四个目标里的 `astral_dice-1.5.0-pre.*` 每处只剩 pre.5 一份）：
   | 位置 | jar 形态 | 字节 | sha256 前 16 | 对账 |
   |---|---|---|---|---|
-  | `run/1.21.1/mods` | reobf（`build/libs`） | 2,570,891 | `AD65A8D59149D11C` | MATCH |
-  | `run/1.20.1/mods` | **named dev jar**（`build/devlibs`） | 2,586,937 | `49C3B6436A5FEA54` | MATCH（同源，§6-3） |
-  | `D:\.minecraft\versions\狐の航空学 Voxy Edition\mods` | reobf（`build/libs`） | 2,570,891 | `AD65A8D59149D11C` | MATCH |
-  | `D:\.minecraft\versions\1.20.1-Forge 模组测试\mods` | reobf（`build/libs`） | 2,616,424 | `E6081853BDA7F141` | MATCH |
-- jar 内自检（`python zipfile` + `javap`）：neo version=`1.5.0-pre.5+neoforge_1.21.1` / forge=`1.5.0-pre.5+forge_1.20.1`；`META-INF/jarjar/` = **0**；依赖区间 `[1.1.0-pre.2,2.0.0)` 在位；**诊断探针 0 残留**（`client/ClientFrameProbe.class` 0 个、字节码含 `AP_FP_` 的 class 0 个）；新效果图标 `textures/mob_effect/{whetstone_guard_cd,airbag_guard_cd}.png`（410 / 483 B）两线俱在、`railgun_ready.png` **0** 个；`command/AstralPartyCommand.class` 含 `killbarricade` / `killrepulsion` / `AFTERM`；**村民职业专用标签**：两 jar 内 `data/astral_dice/tags/point_of_interest_type/{card_trader_job_site,chip_trader_job_site}.json` 各 1（值分别为 `astral_dice:card_shop` / `astral_dice:chip_shop`），`data/minecraft/tags/blocks*/mineable/axe.json` 均含 `astral_dice:chip_shop`（neo 单数 `block`、forge 复数 `blocks`）。
+  | `run/1.21.1/mods` | reobf（`build/libs`） | 2,570,968 | `8796E6CF4DB317B4` | MATCH |
+  | `run/1.20.1/mods` | **named dev jar**（`build/devlibs`） | 2,587,015 | `5EAC2AC6E637CA88` | MATCH（同源，§6-3） |
+  | `D:\.minecraft\versions\狐の航空学 Voxy Edition\mods` | reobf（`build/libs`） | 2,570,968 | `8796E6CF4DB317B4` | MATCH |
+  | `D:\.minecraft\versions\1.20.1-Forge 模组测试\mods` | reobf（`build/libs`） | 2,616,502 | `1519F22142BFD911` | MATCH |
+- jar 内自检（`python zipfile` + `javap`）：neo version=`1.5.0-pre.5+neoforge_1.21.1` / forge=`1.5.0-pre.5+forge_1.20.1`；`META-INF/jarjar/` = **0**；依赖区间 `[1.1.0-pre.2,2.0.0)` 在位；**诊断探针 0 残留**（`client/ClientFrameProbe.class` 0 个、字节码含 `AP_FP_` 的 class 0 个）；新效果图标 `textures/mob_effect/{whetstone_guard_cd,airbag_guard_cd}.png`（410 / 483 B）两线俱在、`railgun_ready.png` **0** 个；`command/AstralPartyCommand.class` 含 `killbarricade` / `killrepulsion` / `AFTERM`；**村民职业专用标签**：两 jar 内 `data/astral_dice/tags/point_of_interest_type/{card_trader_job_site,chip_trader_job_site}.json` 各 1（值分别为 `astral_dice:card_shop` / `astral_dice:chip_shop`），`data/minecraft/tags/blocks*/mineable/axe.json` 均含 `astral_dice:chip_shop`（neo 单数 `block`、forge 复数 `blocks`）。；**Jade 护甲图标留白版**：`textures/gui/defense_{full,half,empty}.png` = 173 / 167 / 140 B（sha256 前 16 = `8C1F6CCC…` / `A9BDA341…` / `64DAB948…`，两线一致），alpha bbox = `(0,0,8,8)`；**许可元数据**：`license="GPL-3.0-only (code) / CC BY-NC-SA 4.0 (assets)"`（两线，首次进 jar）
 - 投放后目录状态：两个 `run/<线>/mods` 与两个整合包的 `astral_dice-*.jar` 只剩 pre.5 一份；整合包侧 `starengine-*` 与 `AutoJS-forge-1.20.1-1.0.0.jar`（reobf，167,358 B）在位；**整合包里本轮注入的测试资产已全部清除**（`kubejs/server_scripts/` 的 `astral_bugfix_probe.js` / `astral_fixbatch_probe.js` / `zz_lpfx_drive2.js` 已删、世界副本 `saves/lp-fx-test` 已删，用户原世界 `saves/新しい世界` 未动）。
 
 ## 3 本批批次表（一行一批：提交号 / 主题 / 关键落点）
@@ -116,7 +119,8 @@ P0 产物（`build/libs`，**neo 2026-10-23 13:49 / forge 2026-10-23 15:09**（�
 | 本批头提交（提交后 `git log -1`） | test(verify) 实机欠账验证批 | P0 双线各 5 条 `DEBT-*` 用例（10 跑 10 PASS）+ 探针新增 10 条 `debt*` 子命令（`debtpoi/debtpeff/debtpeffread/debtmob/debtmobread/debtind/debtindread/debtstorm/debtwave/debtvill`，forge 另有 `debtdef`）；**修 1 个真缺陷**：forge `mixin/jade/ArmorElementIconMixin` 的 `@Redirect` 处理器 `static` → 非 static（Mixin 0.8.5 静默失效，§5-32）；产物 15:09 只重建 forge |
 | `f6fd7d17` | docs(license) 资产声明 CC BY-NC-SA 4.0 | `LICENSE` 末尾加资产范围段、`README*.md` 各加 `## License`/`## 许可`（代码仍 MIT） |
 | `7e4e4f17` | docs(license) 源码改 GPL-3.0-only | `LICENSE` 换 GPL-3.0 全文 +〈Project licensing notes〉；四线 `mod_license` 与 `fabric.mod.json` 改串；两份 CHANGELOG 加许可段；`LICENSE-MIT`（后被删） |
-| 本批头提交（提交后 `git log -1`） | docs(license) 删 `LICENSE-MIT` + 前置库同步 | 本仓删 `LICENSE-MIT` 并清理 9 处引用、`LICENSE` §1 加 StarEngine 指针；前置库仓 `F:\MCProject\starengine` 提交 `53db33b`（GPL-3.0 全文 + 5 处元数据 + 两 README + 两 CHANGELOG） |
+| `ba19c599` | docs(license) 删 `LICENSE-MIT` + 前置库同步 | 本仓删 `LICENSE-MIT` 并清理 9 处引用、`LICENSE` §1 加 StarEngine 指针；前置库仓 `F:\MCProject\starengine` 提交 `c545b75`（GPL-3.0 全文 + 5 处元数据 + 两 README + 两 CHANGELOG；原 `53db33b` 已 amend 补 tag 边界） |
+| 本批头提交（提交后 `git log -1`） | fix(assets) Jade 护甲图标换 8×8 留白版 | 两线 `assets/astral_dice/textures/gui/defense_{empty,half,full}.png` ← `images/Def_{0,1,2}_jade.png`（9×9 画布、本体左上 8×8、第 9 列/行全透明）；判据：三文件两线同 sha256 + jar 内一致；产物 17:00 两线重建 + 4 处投放（§2），jar 首次带 GPL 元数据 |
 
 ## 4 实机读数（原文摘录）
 
@@ -334,6 +338,21 @@ AP_NC2B_READ:hand=astral_dice:effect_card_monster_laser:handn=2:cards=2:sel=0:to
 - neo 的 `neoforge-21.1.235-client-extra-aka-minecraft-resources.jar` 内 `assets/minecraft/textures/gui/sprites/hud/armor_full.png` 也是 **9×9**，但**第 8 列只有中部 3 行不透明**（alpha 网格 col8 行 1..3 = 255，其余 0；右上角 (0,0) = 0）。
 - forge 的 `client-extra-1.20.1-47.4.10.jar` 内 `assets/minecraft/textures/gui/icons.png`（256×256）三个护甲格 `(34,9)/(25,9)/(16,9)` 各 9×9 同理。
 - 对照图（模拟 8 px 步距下 vanilla 行 / 我方行 / forge 裁切行）：`temp/jade-size/jade-armor-row-compare.png`（1288×700，9,829 B，**temp 下不入库**）。
+
+### 4.19 Jade 护甲图标留白版（2026-10-23，**静态仿真，无实机**）
+
+用户把 Jade 护甲图标重做成 8×8 留白版（`images/Def_{0,1,2}_jade.png`）并直接替换了两线 `defense_{empty,half,full}.png`。静态仿真（`temp/def-jade-sim.png`，Python/PIL 按各路径的真实绘制参数逐像素合成，8 px 步距，10 个图标）：
+
+| 路径 | 绘制方式 | 结果 |
+|---|---|---|
+| neo Jade 15.10.6 | `DisplayHelperArmorIconMixin` 重定向 `blitSprite(rl,x,y,9,9)`（1:1，9×9） | 图标本体 8 px + 右侧/下方 1 px 透明 ⇒ 相邻不叠描边 |
+| forge Jade 11.13.3 | `ArmorElementIconMixin` 从 `(0,0)` 取 `sx=sy=8`、图集 9×9 | 正好取到本体 8×8，无裁切 |
+| HUD（两线共用） | `CombatPowerHud` 9×9 quad @ 8 px 步距（`ICON_SIZE=9` / `ICON_STEP=8`） | 同 neo 路径，留白 1 px |
+
+原版对照：`assets/minecraft/textures/gui/sprites/hud/armor_full.png` 同为 9×9（alpha bbox `x[0..8] y[0..8]`、63 个不透明像素 ⇒ 本体横跨 9 px），按 `@8 px` 步距绘制时相邻图标重叠 1 px、10 个图标整行跨 81 px；我方留白版本体 8 px + 8 px 步距 ⇒ 整行 80 px，即**与原版护甲条基本同宽（少 1 px，因为不再重叠描边）**。
+
+判据：三文件 alpha bbox = `(0,0,8,8)`（旧版满画布 9×9、col8 = 6 行 / row8 = 3 列有像素）；jar 内三文件 sha256 与工作树一致；`META-INF/jarjar/` = 0。**未开客户端**（用户本地自测），如实登记为无实机读数。
+
 
 ## 5 遗留与欠账
 
@@ -575,7 +594,7 @@ AP_NC2B_READ:hand=astral_dice:effect_card_monster_laser:handn=2:cards=2:sel=0:to
     ③ `README.md` / `README_ZH.md` 的 `## License` / `## 许可`（均在 `:130`）整体改写为六条：源代码 GPL-3.0-only（含「每个已发布 jar 的源码 = 本仓库对应 tag 的树」）/ 1.3.7 及以前仍 MIT（指向对应发布 tag 的 `LICENSE`，含 hotfix 与预发布；不再有独立 MIT 文件）/ 游戏内资产 CC BY-NC-SA 4.0（补「上述 GPL 不适用于这些文件」）/ 数据与 `lang/*.json` 随代码 GPL-3.0-only / 商业用途需授权 / 第三方例外。两版 README 保持 **LF**（145 行）。
     ④ 元数据（各 1 处命中）：`neoforge-1.21.1/gradle.properties:35`、`forge-1.20.1/gradle.properties:38`、`neoforge-26.1.2/gradle.properties:48`、`fabric-1.20.1/gradle.properties:23` 的 `mod_license=` 与 `fabric-1.20.1/src/main/resources/fabric.mod.json:11` 的 `"license"` 统一改为 `GPL-3.0-only (code) / CC BY-NC-SA 4.0 (assets)`（三线 `mods.toml` / `neoforge.mods.toml` 用 `license="${mod_license}"` 自动跟随）。
     ⑤ 两份 CHANGELOG 各在 1.5.0 段末尾（`由 1.3.5-alpha.1 未发布开发线并入` 之前）新增〈许可与授权 / Licensing〉段（4 条：源码 GPL-3.0-only / ≤1.3.7 仍 MIT / 资产仍 CC BY-NC-SA 4.0 / 元数据同步）。
-    ⑥ **未做（待用户裁决）**：**未重建 P0 两线 jar** ⇒ 现有 `build\libs` 与四处投放的 jar 里 `mods.toml` 的 `license` 仍是旧值（MIT）；GPL 与 Minecraft 闭源映射 / Mojang EULA 的兼容性争议、以及「GPL 要求随二进制提供源码」的合规问题已在交付报告里如实提示（本仓每个 tag 的树即源码，可自证）。
+    ⑥ **未做（待用户裁决）**：**未重建 P0 两线 jar** ⇒ 现有 `build\libs` 与四处投放的 jar 里 `mods.toml` 的 `license` 仍是旧值（MIT）——**2026-10-23 17:00 已重建，见 §5-36 ③**；GPL 与 Minecraft 闭源映射 / Mojang EULA 的兼容性争议、以及「GPL 要求随二进制提供源码」的合规问题已在交付报告里如实提示（本仓每个 tag 的树即源码，可自证）。
     ⑦ 判据（静态）：`LICENSE` 首行 `GNU GENERAL PUBLIC LICENSE`、含 `Version 3, 29 June 2007`、`END OF TERMS AND CONDITIONS`，全文 CRLF 且 bareLF = 0；**工作树内无 `LICENSE-MIT`**（`git ls-files LICENSE-MIT` 为空）；四线 `gradle.properties` 与 `fabric.mod.json` grep `MIT License` **0 命中**（除 `docs/third-party/`、`tools/gen_particle_library.py`、**12 处**（四线 × 3 个文件）`Library*.java` 的第三方归属注释，这些必须保留）；`verify-split.py` 四项 `[OK]`。
 
 36. **许可二次裁决收口：删 `LICENSE-MIT` + StarEngine 同步改 GPL（2026-10-23）**：
@@ -584,9 +603,18 @@ AP_NC2B_READ:hand=astral_dice:effect_card_monster_laser:handn=2:cards=2:sel=0:to
        · `LICENSE`（702 行 / 37,148 字符 / 全 CRLF）= GPL-3.0 全文（与 astral 侧同源，逐行一致）+ 分隔线 + 〈Project licensing notes〉三节：① SOURCE CODE = GPL-3.0-only（Java 源码 / Gradle 脚本 / 非资产资源）；② LEGACY RELEASES = 2026-10-23 之前发布的版本仍 MIT（`1.0.0`–`1.0.12` 全部 tag + 已分发到消费方 / mavenLocal / 整合包的 `1.1.0-pre.1` / `1.1.0-pre.2` 构建），原文见对应 tag 的 `LICENSE`；③ THIRD-PARTY = 无捆绑第三方源码，`gradlew` / `gradlew.bat` / `gradle/wrapper/**` 仍为 Apache-2.0。
        · 元数据 5 处：`neoforge-1.21.1/gradle.properties:203`、`forge-1.20.1/gradle.properties:88`、`neoforge-26.1.2/gradle.properties:75`、`fabric-1.20.1/gradle.properties:27` 的 `mod_license=GPL-3.0-only`；`fabric-1.20.1/src/main/resources/fabric.mod.json:11` 的 `"license": "GPL-3.0-only"`（`mods.toml` / `neoforge.mods.toml` 仍走 `license="${mod_license}"`）。
        · 文档：`README.md:326` / `README_ZH.md:324` 的 §License 改写为「源码 GPL-3.0-only + 历史版本仍 MIT + 不再单独保留 MIT 文件」；两份 CHANGELOG 的 Unreleased/未发布（2.0.0-SNAPSHOT.15）段各加〈许可 / Licensing〉条目（zh 8 行 / en 10 行）。
-       · 提交 `53db33b`「docs(license): 源码许可改为 GPL-3.0-only（1.0.0–1.0.12 与已发布 1.1.0-pre.x 仍 MIT）」，10 文件 +731/−28，**未 push**。
-    ③ **未做**：两仓都**未重建产物**——本仓 `build\libs` 与四处投放的 pre.5 jar 的 `mods.toml` 仍是 `MIT License`；前置库 `starengine-*-1.1.0-pre.2.jar`（mavenLocal / 整合包）内 `mods.toml` 同样是旧值。要对外发布须先重建两仓产物并成对重投。
-    ④ 判据：本仓 `git ls-files LICENSE-MIT` 为空、`grep -rn 'LICENSE-MIT'` 仅剩历史记录（`docs/` 内本正本与 AGENTS-full 的「已删除」描述）；前置库 `git -C F:\MCProject\starengine log --oneline -1` = `53db33b`、`git -C … status --short` 干净、5 处元数据 `grep -R 'MIT License'` 0 命中（除 `gradlew*` 的 Apache 头）。
+       · 提交 `c545b75`「docs(license): 源码许可改为 GPL-3.0-only（1.0.0–1.0.12 与已发布 1.1.0-pre.x 仍 MIT）」，10 文件 +732/−28（原 `53db33b` 已 `--amend` 补 §2 的 tag 边界），**未 push**。
+    ③ **本仓已重建**（2026-10-23 17:00，随 Jade 图标批一起）：两线 pre.5 jar 内 `META-INF/{neoforge.mods,mods}.toml` 的 `license` = `GPL-3.0-only (code) / CC BY-NC-SA 4.0 (assets)`，4 处投放 + 根 `build/libs` 全 MATCH（§2）；**前置库 `starengine-*-1.1.0-pre.2.jar` 仍未重建**（mavenLocal / 两个整合包内 `mods.toml` 仍是 `MIT License`），要对外发布须先重建库产物并成对重投。
+    ④ 判据：本仓 `git ls-files LICENSE-MIT` 为空、`grep -rn 'LICENSE-MIT'` 仅剩历史记录（`docs/` 内本正本与 AGENTS-full 的「已删除」描述）；前置库 `git -C F:\MCProject\starengine log --oneline -1` = `c545b75`、`git -C … status --short` 干净、5 处元数据 `grep -R 'MIT License'` 0 命中（除 `gradlew*` 的 Apache 头）。
+
+37. **Jade 护甲图标换 8×8 留白版（2026-10-23 用户裁决，本批）**：
+    ① 裁决原文：「防御力图标已更新（jade专用），位于images目录下Def_0_jade、Def_1_jade、Def_2_jade。直接替换原资产，替换后应该显示正常了。」
+    ② 素材：`images/Def_{0,1,2}_jade.png`（9×9 画布，alpha bbox = `(0,0,8,8)` ⇒ 第 9 列 / 第 9 行全透明，正是 §4.18 给的修法）；0 = 空 / 1 = 半 / 2 = 满；三文件均 50 个不透明像素（旧版 66、col8 = 6 行 / row8 = 3 列有像素）。
+    ③ 落地：两线 `assets/astral_dice/textures/gui/defense_{empty,half,full}.png` **直接覆盖**（按用户口径替换原资产，不新增 `*_jade` 分叉文件）。sha256：`64DAB94879B17962…`（empty 140 B）/ `A9BDA341395E366B…`（half 167 B）/ `8C1F6CCCABE0E174…`（full 173 B），两线一致。
+    ④ 为何三处共用安全：neo Jade（`mixin/jade/DisplayHelperArmorIconMixin` 重定向 `blitSprite(rl,x,y,9,9)`）与 HUD（`client/CombatPowerHud.java` 9×9 quad @ 8 px 步距）都按 1:1 取 9×9，多的第 9 列/行透明 ⇒ 相邻不再叠描边（整行比原版护甲条少 1 px，因原版本体 9 px 跨 8 px 步距会重叠 1 px）；forge Jade（`mixin/jade/ArmorElementIconMixin` 从 `(0,0)` 取 `sx=sy=8`、图集 9×9）正好取到本体。**无需改任何代码**。
+    ⑤ 判据：jar 内三张贴图 sha256 与工作树一致（`python zipfile` 实读）；两线 17:00 重建 + 4 处投放 MATCH（§2）；`META-INF/jarjar/` = 0；静态仿真 `temp/def-jade-sim.png`（neo 9×9 / forge 8×8 / 原版 armor_full 三行 8 px 步距对照，无叠边）。
+    ⑥ 未做：**无实机读数**（用户明确自测，本批未开客户端）；Jade 生物「防御力 X」tooltip 一行仍待裁决（§5-28 ⑨）；**P1 两线**（`neoforge-26.1.2` / `fabric-1.20.1`）的同名三张贴图仍是旧 9×9 满画布版（`948dee4c…` / `14855590…` / `d1d851bc…`，126 / 159 / 153 B），随 P1 批次替换，本批不动。
+    ⑦ 复核：`dsh_code_review` run `7a9f5b2e-a51c-45bf-8dbe-5890231638e7` —— R1–R7 全 SUPPORTED，两条 P3 已修（`AGENTS-full` §58.3 的「sha256 前 8 字节」→ 16 位；本节/§4.19 的「与原版护甲条同宽」→「基本同宽（少 1 px）」）；另登记 P1 两线贴图未换。
 
 ## 6 坑（踩过的，后续别重踩）
 
