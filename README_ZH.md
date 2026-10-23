@@ -127,6 +127,14 @@ Astral Dice 是一个以骰子为核心的生存扩展。戴上骰子后，每�
 - 第三方模组（含前端模组）只从 **Curse Maven**（`curse.maven:`）或 **Modrinth Maven**（`maven.modrinth:`）获取。`build.gradle` 的 `exclusiveContent` 在依赖解析时强制这一点，`tools/check_mod_sources.ps1` 负责静态检查，细则见 `AGENTS.md`。模组 jar 不入库。
 - 库从 mavenLocal 解析。做新版本时先发布：在 StarEngine 仓库里执行 `./gradlew :<platform>:publishToMavenLocal`。
 
+## 许可
+
+- **源代码**：Java 源码、Gradle 脚本、`tools/` 与 `scripts/` 下的工具、以及 `docs/` 下的文档，按 **MIT 许可**发布，全文见 [LICENSE](LICENSE)。
+- **游戏内资产**：本模组随包发布的全部贴图、方块/物品/实体模型、动画、粒子贴图、GUI 贴图、字体、音效与音乐，以及帕秋莉手册的正文与插图（即四个子项目 `src/main/resources/assets/astral_dice/` 下**除 `lang/` 以外**的内容，连同 `models/`、`images/`、`sound/` 三处素材），按 **CC BY-NC-SA 4.0**（[知识共享 署名—非商业性使用—相同方式共享 4.0 国际](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans)）授权：可自由分享与改编用于非商业用途，但必须署名 *Astral Dice* / MerlinKitsune，并以相同方式共享你的演绎作品。
+- **数据与语言文件**：配方、战利品、标签、世界生成的 JSON 与 `lang/*.json` 随代码按 MIT 授权。
+- **商业用途**：付费整合包、付费服务器、付费转载或转售资产需先取得作者授权；免费整合包、免费视频与直播无需授权，欢迎使用。
+- **例外**：属于第三方的素材保留其原许可，见下文「第三方资源」。
+
 ## 第三方资源
 
 - **铁-艾尔登法环像素粒子库**：179 张 shuimo0413 手工绘制的 32x32 粒子贴图（[仓库](https://github.com/shuimo0413/Iron-Elden-Ring-Particle-library)，MIT 许可）。四条线都在 `assets/astral_dice/textures/particle/ier/` 下随包发布，并由生成的 `assets/astral_dice/particles/particle_library.json` 逐一列出。许可全文与归属声明见 [docs/third-party/Iron-Elden-Ring-Particle-library-LICENSE.txt](docs/third-party/Iron-Elden-Ring-Particle-library-LICENSE.txt)。

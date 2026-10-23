@@ -19,3 +19,53 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+-------------------------------------------------------------------------
+Scope of this license, and the asset license
+-------------------------------------------------------------------------
+
+The MIT permission above covers the SOURCE CODE of this project: the Java
+sources, the Gradle build scripts, the tooling under tools/ and scripts/, and
+the documentation under docs/.
+
+All GAME ASSETS shipped by this mod are licensed separately under the
+Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International
+License (CC BY-NC-SA 4.0). This covers, without limitation:
+
+  - textures (items, blocks, entities, particles, GUI, HUD, effects),
+  - block models, item models, entity and animation models, blockstates,
+  - sprites, fonts, particle definitions and their artwork,
+  - sound effects and music,
+  - the Patchouli guidebook text and illustrations,
+  - the corresponding source material under models/, images/ and sound/.
+
+In practice that is everything under each subproject's
+src/main/resources/assets/astral_dice/ directory EXCEPT lang/, plus the asset
+source directories named above. Language files live inside the assets
+directory but are not assets; the rule that matters is the file type, not
+the directory.
+
+Data-driven JSON that defines gameplay (recipes, loot tables, tags,
+world generation) and language files (lang/*.json) are NOT assets: they are
+covered by the MIT permission above.
+
+License text: https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode
+Human-readable summary: https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+Under CC BY-NC-SA 4.0 you may copy, redistribute and adapt the assets for
+non-commercial purposes, provided that you:
+
+  - give appropriate credit to "Astral Dice" / MerlinKitsune (a link to
+    this repository is enough) and indicate whether changes were made;
+  - do not use the assets for commercial purposes - paid modpacks, paid
+    server access, paid redistribution or resale require prior written
+    permission from the copyright holder; free modpacks, videos and
+    streams are fine and need no permission;
+  - distribute your derivative assets under the same CC BY-NC-SA 4.0
+    license, without adding further restrictions.
+
+Exceptions: assets owned by third parties keep their own licenses and are
+not relicensed here. The currently bundled exception is the Iron Elden Ring
+Pixel Particle Library (MIT, by shuimo0413) under
+assets/astral_dice/textures/particle/ier/; its full license text and
+attribution are in docs/third-party/Iron-Elden-Ring-Particle-library-LICENSE.txt.

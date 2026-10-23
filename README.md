@@ -127,6 +127,14 @@ This section covers everything that shipped across the 1.5.0 pre-release and rel
 - Third-party mods (front-ends included) come only from **Curse Maven** (`curse.maven:`) or **Modrinth Maven** (`maven.modrinth:`). `exclusiveContent` in `build.gradle` enforces this during resolution, and `tools/check_mod_sources.ps1` checks it statically. Details in `AGENTS.md`. Mod jars are never committed.
 - The library resolves from mavenLocal. Publish it first when working on a new version: `./gradlew :<platform>:publishToMavenLocal` inside the StarEngine repository.
 
+## License
+
+- **Source code** — Java sources, Gradle scripts, everything under `tools/` and `scripts/`, and the documentation in `docs/` are released under the **MIT License**; see [LICENSE](LICENSE).
+- **Game assets** — every texture, block/item/entity model, animation, particle sprite, GUI sprite, font, sound effect and music track shipped by this mod, plus the Patchouli guidebook text and illustrations (that is, the contents of each subproject's `src/main/resources/assets/astral_dice/` **except `lang/`**, together with the source material in `models/`, `images/` and `sound/`), are licensed under **CC BY-NC-SA 4.0** — [Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International](https://creativecommons.org/licenses/by-nc-sa/4.0/). You may share and adapt them for non-commercial purposes as long as you credit *Astral Dice* / MerlinKitsune and release your derivative work under the same terms.
+- **Data and language files** — recipe, loot, tag and worldgen JSON plus `lang/*.json` follow the code license (MIT).
+- **Commercial use** — paid modpacks, paid server access, paid redistribution or resale of the assets need prior permission from the author; free modpacks, videos and streams need none and are welcome.
+- **Exceptions** — assets owned by third parties keep their original licenses; see [Third-party assets](#third-party-assets).
+
 ## Third-party assets
 
 - **Iron Elden Ring Pixel Particle Library**: 179 hand-drawn 32x32 particle sprites by shuimo0413 ([repository](https://github.com/shuimo0413/Iron-Elden-Ring-Particle-library), MIT licence). They ship on all four lines under `assets/astral_dice/textures/particle/ier/` and are enumerated by the generated `assets/astral_dice/particles/particle_library.json`. The full licence text and the attribution live in [docs/third-party/Iron-Elden-Ring-Particle-library-LICENSE.txt](docs/third-party/Iron-Elden-Ring-Particle-library-LICENSE.txt).
