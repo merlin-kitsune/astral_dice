@@ -7,7 +7,7 @@
 3. 四线 `mod_version` 均为 `1.5.0-pre.5+<加载器后缀>`（2026-10-22 22:2x bump）；`starengine_version=1.1.0-pre.2`（四线一致，未动）。
 4. jar 内硬前置：`modId="starengine"` / `versionRange="[1.1.0-pre.2,2.0.0)"`，`META-INF/jarjar/` 计数 **0**（pre.4 两 jar 已复核）。
 5. 可交付范围：**只发 P0**（`neoforge-1.21.1` + `forge-1.20.1`）。P1 两线版本号同为 pre.5，但内容不含 1.5.0（本批也未移植）。
-6. P0 双 jar（pre.5，22:32 干净重建、已剔诊断探针）已投放 **4 处**（两个整合包 + 两个 `run/<线>/mods`），逐处 sha256 见 §2。
+6. P0 双 jar（pre.5，**2026-10-23 12:05 重建，含玩家侧效果保护批**）已投放 **4 处**（两个整合包 + 两个 `run/<线>/mods`）+ 根 `build/libs`，逐处 sha256 见 §2。
 7. 守门 8 跑 7 绿；唯一红 = `verify_probe_class_refs`（26.1.2 产物陈旧，P1 待重建，见 §5-1）。
 8. 实机：1.20.1 本批 6/6 PASS、1.21.1 5 条 FIXBATCH 判据全命中、末条 49/49 PASS；**创造模式扣卡复验 PASS**（§4.4，2026-10-22 16:10，用例 `CARD-NOCOST-CREATIVE-1.20.1`）。
 9. **pre.4 本批（2026-10-22 17:3x）无新增实机读数**：改动 = 实体拆除口径 + 死亡动画 + 两个管理命令 + 11 张效果图标 + 版本号，判据目前全为静态/字节码/资源 md5（§5-13），实机待用户下达。
@@ -19,6 +19,8 @@
 15. **筹码商店品质外框恢复 + 卡牌购买钱包音效（2026-10-22 18:32）**：`screen/ChipShopScreen` 把 2026-10-21 误删的三色品质描边环（`chipshop_quality_1/2/3`，28x28）重新画回筹码格脚下、`client/ChipShopClientState`+`shop/ChipShopCatalog` javadoc 同步口径；`shop/CardShopMenu#handleBuy` 成功尾段补 `SoundPlayback.playTo(buyer, ModSounds.WALLET_DEPOSIT.get())`（拒绝分支不响）。守门 `verify_chip_shop_ui.ps1` 的 G2b 由反向改为正向断言、`mutate_chip_shop_ui.ps1` 的 M38/M39 同步反转（`MUT_TOTAL: 39，判红 39`）。判据与产物见 §5-21 / §2，**无实机读数**。
 
 16. **pre.4 全量实机测试（2026-10-22 19:00–19:40，用户下达「pre.4 以上所有更改全部做一遍实机测试并输出报告」）**：P0 双线各 **10 条用例：9 条机器判据 PASS + 1 条截图取证**（4 条新用例 × 2 线 + 6 条回归）——`PRE4-CHIPSHOP-FRAME-*` 的 vision 断言在测试台里是 **DELEGATED**（不判红绿），本体只覆盖 crash/kubejs/mixin 健康项，外框的机器判据在静态守门 `verify_chip_shop_ui.ps1` 的 G2b；机器行原文见 §4.8。本轮为跑通判据改了**测试资产**（两份 fixbatch probe 新增 `hurtby`、bugfix probe 新增 `barplace` 与 `doLuluPrep` 补骰子、6 条用例重写/订正），**未改任何产品源码**；新增的探针能力同时让 §4.5–§4.7 三批「无实机读数」落地。17. **pre.5 指示器批（2026-10-22 22:3x，本批头提交 `git log -1`）**：① **移除电磁炮「就位」效果指示器**（效果 `railgun_ready` 连同注册 / 三语 lang / 图标 / 图标映射一并删除，「生效中」指示器 6 枚 → **5 枚**）；② **磨刀石 / 安全气囊保命触发后新增同名倒计时指示器**（新效果 `whetstone_guard_cd` / `airbag_guard_cd`，时长 = 剩余冷却，`event/PlayerTickEvents#updateChipCooldownIndicators` 每 tick 按附件里的冷却结束刻同步；与 ∞「生效中」指示器并存）；③ 四线 `mod_version` 升 **`1.5.0-pre.5`**；④ 需求「激光让客户端卡一下」**在真整合包内取证定性为「不是光束绘制」**（§4.10：光束可见帧 avg 6.05 ms vs 无光束 6.24 ms、绘制本体 4–66 µs），**产品源码零改动**。判据见 §5-24 / §5-25，产物与投放见 §2。
+
+18. **玩家侧状态效果保护（2026-10-23 用户裁决，本批头提交）**：玩家身上的效果**除非被声明可清除（牛奶 / 蜂蜜瓶）否则不受任何外部影响**；mob 侧**保持原版**（不搬计时表 —— 女巫 / 诡术师会反复喝药清 mob 状态，改保活会叠加 tick 负载）。新增两线 `event/PlayerEffectProtection`，把此前散落的裸 `addEffect` 收口为统一入口并留下「结束 tick」快照，外部清除时 `astral_dice:` 直接取消、原版命名空间**下一 tick 按余量补回**；主动移除必须走 `removeNow`。独立复核 `dsh_code_review`（run `c20953f4`）三条 finding 已全部修复。详见 §5-26，**无实机读数**（补回时序 / 牛奶可清除 / mob 不受影响三项待用户下达）。
 
 ## 1 环境与路径
 
@@ -54,19 +56,21 @@
 
 P0 产物（`build/libs`，**2026-10-22 22:32 重建（含 pre.5 指示器批；诊断探针已剔除）**）：
 
-- neo `astral_dice-1.5.0-pre.5+neoforge_1.21.1.jar` — **2,559,837 B** — `f25546b638892527dcb67a287b431bff206b852a44005dba4affc5576c2138fa`
-- forge `astral_dice-1.5.0-pre.5+forge_1.20.1.jar` — **2,605,382 B** — `e30980b4e8dfa6dd020fa0c933f31f10f05db88c203069d747a79045de6fab79`
-- forge dev named jar `build/devlibs/astral_dice-1.5.0-pre.5+forge_1.20.1.jar` — **2,575,899 B** — `86c6350b3172d2d80c5e64d101825e650d9927429d1dd6497f812a12a1dc23e0`
-- 历史值（只作背景，均已被覆盖）：pre.4 22:21（**带诊断探针的临时构建，勿投放，已删除**）= neo 2,561,853 B `bfc88d8e…`；pre.4 18:32（筹码商店品质外框批）= neo 2,558,631 B `742132dd…` / forge 2,604,187 B `4b984008…` / devlibs 2,574,721 B `8f81e4c3…`；pre.4 18:18（电击手套 FX 批）= neo 2,558,408 B `02719fe6…` / forge 2,603,959 B `42cce572…` / devlibs 2,574,494 B `67bc4d24…`；pre.4 18:09（强化拒止品质批）= neo 2,556,778 B `cab211ef…` / forge 2,602,334 B `5141780a…` / devlibs 2,572,866 B `544b61de…`；pre.4 17:53（史莱姆批）= neo 2,556,774 B `bdfbe5f9…` / forge 2,602,332 B `d9780bd0…` / devlibs 2,572,864 B `2849258d…`；pre.4 17:2x = neo 2,556,723 B `7198cc75…` / forge 2,602,280 B `fbb77627…` / devlibs 2,572,814 B `6a445c8f…`；pre.3 15:47 = 2,555,654 B `f063102b…` / 2,601,208 B `7bf787df…`。
+> ✅ **2026-10-23 12:05 已重建并含本批「玩家侧状态效果保护」（提交 `a344fc46`）**：三份 jar 内 `PlayerEffectProtection.class` + `PlayerEffectProtection$Observed.class` 各 1；4 处投放已刷新（§5-27 已闭环）。
+
+- neo `astral_dice-1.5.0-pre.5+neoforge_1.21.1.jar` — **2,565,317 B** — `d9b3742dc0c1d4cff419d68c5dcd9f511ae741110f4567dfc2f9006c9e1d24b5`
+- forge `astral_dice-1.5.0-pre.5+forge_1.20.1.jar` — **2,610,860 B** — `3a54d2bc65ac4c8ebabfbe2e67dfa18af8ccc9b932f0f436baa2d59625426707`
+- forge dev named jar `build/devlibs/astral_dice-1.5.0-pre.5+forge_1.20.1.jar` — **2,581,395 B** — `284528e5ff578026f382e77f6e9dcad9207d924978882d627f958b8d52bc71ad`
+- 历史值（只作背景，均已被覆盖）：pre.5 22:32（**不含**效果保护批）= neo 2,559,837 B `f25546b6…` / forge 2,605,382 B `e30980b4…` / devlibs 2,575,899 B `86c6350b…`；pre.4 22:21（**带诊断探针的临时构建，勿投放，已删除**）= neo 2,561,853 B `bfc88d8e…`；pre.4 18:32（筹码商店品质外框批）= neo 2,558,631 B `742132dd…` / forge 2,604,187 B `4b984008…` / devlibs 2,574,721 B `8f81e4c3…`；pre.4 18:18（电击手套 FX 批）= neo 2,558,408 B `02719fe6…` / forge 2,603,959 B `42cce572…` / devlibs 2,574,494 B `67bc4d24…`；pre.4 18:09（强化拒止品质批）= neo 2,556,778 B `cab211ef…` / forge 2,602,334 B `5141780a…` / devlibs 2,572,866 B `544b61de…`；pre.4 17:53（史莱姆批）= neo 2,556,774 B `bdfbe5f9…` / forge 2,602,332 B `d9780bd0…` / devlibs 2,572,864 B `2849258d…`；pre.4 17:2x = neo 2,556,723 B `7198cc75…` / forge 2,602,280 B `fbb77627…` / devlibs 2,572,814 B `6a445c8f…`；pre.3 15:47 = 2,555,654 B `f063102b…` / 2,601,208 B `7bf787df…`。
 - 同版本号（pre.5）的中间构建件**不残留**：Gradle 同名覆盖，`build/libs` 与 `build/devlibs` 里 pre.5 各只有上面那三份之一。
 - ⚠️ **旧版本产物仍留在各子项目 build 目录**（pre.1–pre.4，勿投放）；**仓库根 `build/libs` 已于本批 22:32 用 `pushToRootBuild` 刷新为 pre.5 一对**（坑 28；根目录同时保留 P1 旧件 `astral_dice-1.3.7-*` 与 `starengine-*-1.1.0-pre.2.jar`）——取件只认 §2 这三行。
 - 投放（2026-10-22 22:33 实测，逐处 `Copy-Item` + `Get-FileHash` 双向对账；四个目标里的旧 `astral_dice-1.5.0-pre.*` 已先删除，每处只剩 pre.5 一份）：
   | 位置 | jar 形态 | 字节 | sha256 前 16 | 对账 |
   |---|---|---|---|---|
-  | `run/1.21.1/mods` | reobf（`build/libs`） | 2,559,837 | `F25546B638892527` | MATCH |
-  | `run/1.20.1/mods` | **named dev jar**（`build/devlibs`） | 2,575,899 | `86C6350B3172D2D8` | MATCH（同源，§6-3） |
-  | `D:\.minecraft\versions\狐の航空学 Voxy Edition\mods` | reobf（`build/libs`） | 2,559,837 | `F25546B638892527` | MATCH |
-  | `D:\.minecraft\versions\1.20.1-Forge 模组测试\mods` | reobf（`build/libs`） | 2,605,382 | `E30980B4E8DFA6DD` | MATCH |
+  | `run/1.21.1/mods` | reobf（`build/libs`） | 2,565,317 | `D9B3742DC0C1D4CF` | MATCH |
+  | `run/1.20.1/mods` | **named dev jar**（`build/devlibs`） | 2,581,395 | `284528E5FF578026` | MATCH（同源，§6-3） |
+  | `D:\.minecraft\versions\狐の航空学 Voxy Edition\mods` | reobf（`build/libs`） | 2,565,317 | `D9B3742DC0C1D4CF` | MATCH |
+  | `D:\.minecraft\versions\1.20.1-Forge 模组测试\mods` | reobf（`build/libs`） | 2,610,860 | `3A54D2BC65AC4C8E` | MATCH |
 - jar 内自检（`python zipfile` + `javap`）：neo version=`1.5.0-pre.5+neoforge_1.21.1` / forge=`1.5.0-pre.5+forge_1.20.1`；`META-INF/jarjar/` = **0**；依赖区间 `[1.1.0-pre.2,2.0.0)` 在位；**诊断探针 0 残留**（`client/ClientFrameProbe.class` 0 个、字节码含 `AP_FP_` 的 class 0 个）；新效果图标 `textures/mob_effect/{whetstone_guard_cd,airbag_guard_cd}.png`（410 / 483 B）两线俱在、`railgun_ready.png` **0** 个；`command/AstralPartyCommand.class` 含 `killbarricade` / `killrepulsion` / `AFTERM`。
 - 投放后目录状态：两个 `run/<线>/mods` 与两个整合包的 `astral_dice-*.jar` 只剩 pre.5 一份；整合包侧 `starengine-*` 与 `AutoJS-forge-1.20.1-1.0.0.jar`（reobf，167,358 B）在位；**整合包里本轮注入的测试资产已全部清除**（`kubejs/server_scripts/` 的 `astral_bugfix_probe.js` / `astral_fixbatch_probe.js` / `zz_lpfx_drive2.js` 已删、世界副本 `saves/lp-fx-test` 已删，用户原世界 `saves/新しい世界` 未动）。
 
@@ -91,7 +95,8 @@ P0 产物（`build/libs`，**2026-10-22 22:32 重建（含 pre.5 指示器批；
 | `7c51df63` | fix(sign+lang) 史莱姆被动 15 秒 | `item/sign/LuluSignItem.java` 的 `HURT_COOLDOWN_TICKS` **20 → 300**（P0 两线）；tooltip / 帕秋莉手册 / 两份 CHANGELOG 同步 |
 | `d4f58586` | docs(rules) 派子代理屏蔽人格注入 | 红线区〈子代理与测试环境硬规则〉第 8 条 + `AGENTS.md` §B 免人设句 + `AGENTS-full.md` 第 45 条 + 索引末行 `L3603` + `AGENTS-TOC.md:4` 行数 |
 | `548b4405` | fix(rarity) 强化拒止品质改奇特 | 两线 `item/ModItems.java` 的 `EFFECT_CARD_REPULSION` 由 `AstralRarities.epic()` → `bizarre()`；判据 javap `lambda$static$52`（neo）/`lambda$static$56`（forge）`bizarre` 1 / `epic` 0；专属牌品质总则落 `AGENTS-full.md`（第 46 条）；CHANGELOG 两语 + `docs/features/repulsion-card-spec.md` 订正；产物 18:09 重投 4 处 |
-| 本批头提交（`git log -1`） | release+ui(pre.5) 指示器批 | 删电磁炮「就位」指示器；磨刀石 / 安全气囊保命触发后新增**同名倒计时**指示器（`whetstone_guard_cd` / `airbag_guard_cd`）；四线升 pre.5；整合包内激光卡顿取证定性为「非光束绘制」（§4.9 / §5-25） |
+| `fc913507` | release+ui(pre.5) 指示器批 | 删电磁炮「就位」指示器；磨刀石 / 安全气囊保命触发后新增**同名倒计时**指示器（`whetstone_guard_cd` / `airbag_guard_cd`）；四线升 pre.5；整合包内激光卡顿取证定性为「非光束绘制」（§4.9 / §5-25） |
+| 本批头提交（`git log -1`） | feat(effect) 玩家侧状态效果保护 | 新增两线 `event/PlayerEffectProtection`（统一计时权威 + 抗外部清除 + `removeNow` 主动移除入口 + 死亡/登出/重生清场）；`ModEffectEvents` HIGH/LOWEST 双通道 + `PlayerEvent.Clone`；两线各 26 文件 `EffectTimerGuard.apply` 收口；审计正本 `docs/features/effect-client-server-split-audit.md`；**无实机读数**（§5-26） |
 
 ## 4 实机读数（原文摘录）
 
@@ -381,6 +386,8 @@ AP_NC2B_READ:hand=astral_dice:effect_card_monster_laser:handn=2:cards=2:sel=0:to
         (a) **P2 真缺陷**：`event/EnderDiceHandler.java:194`（forge `:193`）保命清效果走裸 `ModEffectRemoval.remove` —— 内部标志让 HIGH 放行、效果真被移除，但**保护快照没丢**；陈旧 `endTick` 会让随后「第三方短时中毒（不经 apply 覆盖快照）→ 牛奶」被 LOWEST 按旧剩余时长补回 ⇒ 已改 `PlayerEffectProtection.removeNow` 并删无用 import。
         (b) **P3**：死亡 / 重生不清快照（原版死亡**不派发** `MobEffectEvent.Remove`，`PlayerLifecycleHandler` 只清本模组 11 个效果）⇒ `ModEffectEvents` 新增 `@SubscribeEvent onPlayerClone(PlayerEvent.Clone)` → `clear(getEntity())`（两线各 +10 行，文件 119 行）。
         (c) **P3 文档**：52 的分解与 `removeNow` 计数已按实测订正（见 ⑥），审计文档 §8 建议 6 / §10.3 / §10.4 / §10.5 同步。
+27. ~~**源码领先于产物（2026-10-23 效果保护批，提交 `a344fc46`）**~~ ⇒ **12:05 已闭环**：`gradlew.bat :neoforge-1.21.1:jar :forge-1.20.1:jar`（BUILD SUCCESSFUL in 5s）+ 六个 push 任务（`:*:pushToDevRun` / `:pushToGame` / `:pushToRootBuild`，BUILD SUCCESSFUL）完成重建与重投，§2 三行 sha256 与投放表已重录、4 处 `Get-FileHash` 全部 MATCH。
+    产物证据：三份 jar 内 `PlayerEffectProtection.class` + `PlayerEffectProtection$Observed.class` 各 1（`META-INF/jarjar/` 仍 0）；`javap -p -c` 命中 `ModEffectEvents.onPlayerClone` / `onExternalRemovalRestore`（两线）、`EnderDiceHandler` → `PlayerEffectProtection.removeNow`（neo `#352` / forge `#469`）、PEP 六个公开成员。历史：重建前 `build/libs` 是 2026-10-22 22:32 的 pre.5 件（neo 2,559,837 B `f25546b6…` / forge 2,605,382 B `e30980b4…`），不含本批。
 
 ## 6 坑（踩过的，后续别重踩）
 

@@ -28,10 +28,10 @@
 - 仓库：`F:\MCProject\astral_dice_multiloader`，分支 `multi-main`，交接基线 `7df4dab2`；开工先 `git status --short -uall`（应干净）与 `git rev-parse --short HEAD`。四子项目同树：`neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1`。
 - 版本：四线 `mod_version = 1.5.0-pre.5+<加载器后缀>`；`starengine_version = 1.1.0-pre.2`；jar 内硬前置 `[1.1.0-pre.2,2.0.0)`、`META-INF/jarjar/` 计数 0。
 - 交付面：**只 P0** = `neoforge-1.21.1` + `forge-1.20.1`；P1（26.1.2 / fabric）**1.5.0 正式版前不验证、不移植**。
-- P0 产物（各自 `build\libs`，2026-10-22 18:32，含筹码商店品质外框恢复 + 卡牌购买钱包音效批重建）：
-  - neo：`astral_dice-1.5.0-pre.5+neoforge_1.21.1.jar`，2 559 837 B，sha256 `f25546b638892527dcb67a287b431bff206b852a44005dba4affc5576c2138fa`
-  - forge：`astral_dice-1.5.0-pre.5+forge_1.20.1.jar`，2 605 382 B，sha256 `e30980b4e8dfa6dd020fa0c933f31f10f05db88c203069d747a79045de6fab79`
-  - （forge dev 用 `build\devlibs` 的 named jar：2 574 721 B，`8f81e4c3ba6710b4a544e8c5df262c1adbb38690dd88dd1c30709ed0784e6e7f`）
+- P0 产物（各自 `build\libs`，**2026-10-23 12:05 重建，含玩家侧状态效果保护批**）：
+  - neo：`astral_dice-1.5.0-pre.5+neoforge_1.21.1.jar`，2 565 317 B，sha256 `d9b3742dc0c1d4cff419d68c5dcd9f511ae741110f4567dfc2f9006c9e1d24b5`
+  - forge：`astral_dice-1.5.0-pre.5+forge_1.20.1.jar`，2 610 860 B，sha256 `3a54d2bc65ac4c8ebabfbe2e67dfa18af8ccc9b932f0f436baa2d59625426707`
+  - （forge dev 用 `build\devlibs` 的 named jar：2 581 395 B，`284528e5ff578026f382e77f6e9dcad9207d924978882d627f958b8d52bc71ad`）
 - 投放（**成对**放 `astral_dice-*.jar` + `starengine-*-1.1.0-pre.2.jar`，缺库即启动失败 `Missing or unsupported mandatory dependencies`）：
   - neo → `D:\.minecraft\versions\狐の航空学 Voxy Edition\mods`
   - forge → `D:\.minecraft\versions\1.20.1-Forge 模组测试\mods`
@@ -83,6 +83,7 @@
 
 11. **pre.5 指示器批（2026-10-22 22:3x，已提交；正本 §5-24）**：删电磁炮「就位」指示器（效果 `railgun_ready` 整体删除，生效中指示器 6 → 5 枚）；磨刀石 / 安全气囊**保命触发后**新增同名倒计时指示器（`whetstone_guard_cd` / `airbag_guard_cd`，时长 = 剩余冷却，`PlayerTickEvents#updateChipCooldownIndicators` 每 tick 同步）；四线升 `1.5.0-pre.5`。判据全静态（编译 / 图标守门 66-66-53-53 / `gen_chip_effect_icons --check` 24-0 / lang 1046 键 / 四投 sha256 MATCH / jar 内探针 0），**待实机看倒计时数字与图标观感**。
 12. **激光「卡一下」已定性（2026-10-22，正本 §4.10 / §5-25）：不是光束渲染**。真整合包（614 mod + Iris/Complementary + Voxy + Veil）内全帧统计：有光束帧 avg **6.05 ms** vs 无光束 **6.24 ms**，绘制本体 **4–66 µs**，\>20 ms 的帧 14/10677 且**全在光束窗口之外**。所以本批**产品源码零改动**；若再感知卡顿，需要用户给场景（位置 / 朝向 / 光影 / 是否多人 / F3 读数）。
+13. **玩家侧状态效果保护批（2026-10-23，提交 `a344fc46`；正本 §5-26 / §5-27）**：用户裁决 = 玩家身上的效果**除非被声明可清除（牛奶 / 蜂蜜瓶）否则不受任何外部影响**，mob 侧**保持原版**（不搬计时表，避免女巫 / 诡术师反复喝药叠加 tick）。新增两线 `event/PlayerEffectProtection`（`apply` 统一入口 + 玩家快照 / `onExternalRemoval` LOWEST 延后补回 / `tick` 按余量重施 / `removeNow` 主动移除唯一入口 / `clear` 死亡·登出·重生），`ModEffectEvents` HIGH+LOWEST+`PlayerLoggedOutEvent`+`PlayerEvent.Clone`，两线各 26 文件 `EffectTimerGuard.apply` 收口（含 7 处原版裸施 + 卡牌默认入口 + 6 处 `removeEffect`）。审计正本 `docs/features/effect-client-server-split-audit.md`。复核 `dsh_code_review` run `c20953f4` 三条 finding 已修（`EnderDiceHandler` 改 `removeNow`、Clone 清场、52 分解订正）。判据：两线 `:classes` + jar BUILD SUCCESSFUL / 4 处投放 + 根 `build/libs` sha256 MATCH / jar 内 `PlayerEffectProtection` 2 类。**无实机读数**：补回时序、牛奶可清除（`marked`）、mob 不受影响三项待用户下达。
 ## 硬约束（Windows 版）
 
 - 禁止项（无例外）：`wsl.exe`；`/mnt/...` 路径（含 `/mnt/f/...`）；`~/work/adm-*` 编译副本；`~/.codex` 里的 WSL 注入脚本（代理 / `GH_TOKEN` / JDK）—— 上述一律视为已失效，出现在旧文档里只当历史背景。
