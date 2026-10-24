@@ -4,7 +4,6 @@ import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.starengine.combat.HostileTargets;
 import com.merlinkitsune.starengine.event.ModEffectRemoval;
 
-import com.merlinkitsune.astral_dice.combat.CardRegistry;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.item.ModItems;
@@ -19,9 +18,6 @@ import net.minecraft.world.level.Level;
 import top.theillusivec4.curios.api.CuriosApi;
 import top.theillusivec4.curios.api.SlotContext;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.ThreadLocalRandom;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -40,14 +36,13 @@ import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
  *
  * <p>被动"网络防火墙":
  * - 免疫末影珍珠传送时的伤害;
- * - 骰神赐福结束后,若周围 6 格内没有敌对生物:攻击力 +3 并获得一张随机战斗牌;
+ * - 骰神赐福结束后,若周围 3 格内没有敌对生物:攻击力 +3 并获得一张随机战斗牌;
  *   否则防御力 +3。被动类型每次刷新覆盖旧类型,不能叠加。
  *
  * <p>主动"远程侵入":
  * - 立即进入完全隐身状态(最多持续 30 秒);
- * - 攻击敌对目标或玩家时解除隐身,并消耗一张随机战斗牌;
- * - 按该牌费用 ×2 提升攻击力,持续 2:00;攻击力加成最低 +2,
- *   主物品栏无战斗牌可消耗时同样获得保底 +2。
+ * - 隐身期间攻击敌对目标并破除隐身时,固定获得 +6 攻击力,持续 2:00;
+ * - 按下主动本身不给攻击力加成,隐身自然到期而未攻击同样不给;不消耗任何卡牌。
  */
 @EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class NancyLuSignItem extends BaseSignItem implements SignHooks.BlessingEnded {
@@ -55,11 +50,10 @@ public class NancyLuSignItem extends BaseSignItem implements SignHooks.BlessingE
     public static final int PASSIVE_ATTACK = 1;
     public static final int PASSIVE_DEFENSE = 2;
     public static final int PASSIVE_BONUS = 3;
-    public static final double PASSIVE_RANGE = 6.0;
+    public static final double PASSIVE_RANGE = 3.0;
+    public static final int ACTIVE_ATTACK_BONUS = 6;
     public static final int ACTIVE_DURATION_TICKS = 2400;
     public static final int HIDDEN_DURATION_TICKS = 600;
-    public static final int ACTIVE_BONUS_MULTIPLIER = 2;
-    public static final int ACTIVE_MIN_BONUS = 2;
     public static final int ENDER_PEARL_IMMUNE_TICKS = 20;
 
     public NancyLuSignItem(Properties properties) {
@@ -149,7 +143,7 @@ public class NancyLuSignItem extends BaseSignItem implements SignHooks.BlessingE
         return player.hasEffect(net.minecraft.world.effect.MobEffects.INVISIBILITY);
     }
 
-    // 隐身状态下攻击敌对目标/玩家时调用:解除隐身,尝试消耗战斗牌并按费用*2提升攻击力
+    // 隐身状态下攻击敌对目标时调用:先解除隐身,再固定给 +6 攻击力(不消耗战斗牌)
     public static void onAttackWhileHidden(Player player) {
         if (player == null || player.level().isClientSide()) return;
         long now = player.level().getGameTime();
@@ -163,16 +157,9 @@ public class NancyLuSignItem extends BaseSignItem implements SignHooks.BlessingE
         ModAttachments.setNancyLuHiddenUntil(player, 0);
         PlayerEffectProtection.removeNow(player, net.minecraft.world.effect.MobEffects.INVISIBILITY);
 
-        // 消耗一张随机战斗牌并按费用×2 提升攻击力;攻击力加成最低 +2。
-        // 主物品栏无战斗牌可消耗时,同样获得保底 +2 攻击力加成。
-        ItemStack consumed = findAndConsumeRandomBattleCard(player);
-        int bonus = ACTIVE_MIN_BONUS;
-        if (consumed != null) {
-            String typeId = CardRegistry.itemToType(consumed);
-            int cost = typeId != null ? CardRegistry.cost(typeId, player) : 1;
-            bonus = Math.max(ACTIVE_MIN_BONUS, cost * ACTIVE_BONUS_MULTIPLIER);
-        }
-        ModAttachments.setNancyLuActiveBonus(player, bonus);
+        // 破隐奖励固定 +6 / 2:00:只有"攻击敌对目标并破除隐身"这一条路径给加成,
+        // 按下主动本身与隐身自然到期都不给,也不消耗任何卡牌。
+        ModAttachments.setNancyLuActiveBonus(player, ACTIVE_ATTACK_BONUS);
         ModAttachments.setNancyLuActiveBonusUntil(player, now + ACTIVE_DURATION_TICKS);
         PlayerEffectProtection.apply(player, new MobEffectInstance(ModEffects.NANCY_LU_HACK,
                 ACTIVE_DURATION_TICKS, 0, false, true, true));
@@ -267,21 +254,7 @@ public class NancyLuSignItem extends BaseSignItem implements SignHooks.BlessingE
         }
     }
 
-    private static ItemStack findAndConsumeRandomBattleCard(Player player) {
-        List<ItemStack> candidates = new ArrayList<>();
-        // 仅主物品栏(平衡调整:不再从末影箱/精妙背包等容器能力中消耗)
-        for (ItemStack stack : player.getInventory().items) {
-            if (!stack.isEmpty() && CardRegistry.itemToType(stack) != null) {
-                candidates.add(stack);
-            }
-        }
-        if (candidates.isEmpty()) return null;
-        ItemStack chosen = candidates.get(ThreadLocalRandom.current().nextInt(candidates.size()));
-        chosen.shrink(1);
-        return chosen.copy();
-    }
-
-    // 骇客立牌:完全隐身状态下攻击敌对目标/玩家 → 解除隐身并触发战斗牌加成
+    // 骇客立牌:完全隐身状态下攻击敌对目标 → 解除隐身并获得固定攻击力加成
     @SubscribeEvent
     public static void onNancyLuAttackWhileHidden(
             net.neoforged.neoforge.event.entity.player.AttackEntityEvent event) {
@@ -296,7 +269,7 @@ public class NancyLuSignItem extends BaseSignItem implements SignHooks.BlessingE
     }
 
 
-    // 骇客立牌:任何攻击行为(含远程/投掷物/魔法)命中敌对生物或玩家时,同样解除隐身并触发战斗牌加成
+    // 骇客立牌:任何攻击行为(含远程/投掷物/魔法)命中敌对目标时,同样解除隐身并获得固定攻击力加成
     @SubscribeEvent(priority = EventPriority.NORMAL)
     public static void onNancyLuAnyAttackWhileHidden(LivingDamageEvent.Pre event) {
         if (event.getEntity().level().isClientSide()) return;

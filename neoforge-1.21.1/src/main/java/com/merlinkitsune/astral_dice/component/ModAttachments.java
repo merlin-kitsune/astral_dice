@@ -11,6 +11,7 @@ import net.neoforged.neoforge.registries.NeoForgeRegistries;
 
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -2267,10 +2268,25 @@ public class ModAttachments {
             ATTACHMENTS.register("alana_passive_bonus", () -> AttachmentType.builder(() -> 0)
                     .serialize(Codec.INT).sync(ByteBufCodecs.VAR_INT).build());
 
-    /** 大肥鱼：静止锚点（BlockPos.asLong；0 = 未锚定）。 */
-    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> DEEPSEEK_ANCHOR =
-            ATTACHMENTS.register("deepseek_anchor", () -> AttachmentType.builder(() -> 0L)
-                    .serialize(Codec.LONG).build());
+    /** 大肥鱼：上一 tick 的精确位置快照（x,y,z；空 = 尚无快照）。仅内存态：登录/重登后重建快照。 */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<List<Double>>> DEEPSEEK_LAST_POS =
+            ATTACHMENTS.register("deepseek_last_pos", () -> AttachmentType.builder(() -> List.<Double>of())
+                    .build());
+
+    /** 大肥鱼：摸鱼中累计的移动 tick（满 100 解除摸鱼；中途停下不清零）。仅内存态。 */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> DEEPSEEK_MOVE_TICKS =
+            ATTACHMENTS.register("deepseek_move_ticks", () -> AttachmentType.builder(() -> 0)
+                    .build());
+
+    /** 大肥鱼：主动攻/防加成结束刻（0 = 无加成）。仅内存态：与瞬态攻/防修饰符同寿命。 */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> DEEPSEEK_BUFF_END =
+            ATTACHMENTS.register("deepseek_buff_end", () -> AttachmentType.builder(() -> 0L)
+                    .build());
+
+    /** 大肥鱼：上一次 Curio tick 的 gameTime（0 = 尚未记录）。仅内存态：检测 tick 中断。 */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> DEEPSEEK_LAST_TICK =
+            ATTACHMENTS.register("deepseek_last_tick", () -> AttachmentType.builder(() -> 0L)
+                    .build());
 
     /** 大肥鱼：静止起始刻。 */
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> DEEPSEEK_IDLE_SINCE =
@@ -2409,12 +2425,36 @@ public class ModAttachments {
         player.setData(ALANA_PASSIVE_BONUS.get(), Math.max(0, value));
     }
 
-    public static long getDeepseekAnchor(net.minecraft.world.entity.player.Player player) {
-        return player.getData(DEEPSEEK_ANCHOR.get());
+    public static List<Double> getDeepseekLastPos(net.minecraft.world.entity.player.Player player) {
+        return player.getData(DEEPSEEK_LAST_POS.get());
     }
 
-    public static void setDeepseekAnchor(net.minecraft.world.entity.player.Player player, long value) {
-        player.setData(DEEPSEEK_ANCHOR.get(), value);
+    public static void setDeepseekLastPos(net.minecraft.world.entity.player.Player player, List<Double> value) {
+        player.setData(DEEPSEEK_LAST_POS.get(), value == null ? List.<Double>of() : value);
+    }
+
+    public static int getDeepseekMoveTicks(net.minecraft.world.entity.player.Player player) {
+        return player.getData(DEEPSEEK_MOVE_TICKS.get());
+    }
+
+    public static void setDeepseekMoveTicks(net.minecraft.world.entity.player.Player player, int value) {
+        player.setData(DEEPSEEK_MOVE_TICKS.get(), Math.max(0, value));
+    }
+
+    public static long getDeepseekBuffEnd(net.minecraft.world.entity.player.Player player) {
+        return player.getData(DEEPSEEK_BUFF_END.get());
+    }
+
+    public static void setDeepseekBuffEnd(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(DEEPSEEK_BUFF_END.get(), value);
+    }
+
+    public static long getDeepseekLastTick(net.minecraft.world.entity.player.Player player) {
+        return player.getData(DEEPSEEK_LAST_TICK.get());
+    }
+
+    public static void setDeepseekLastTick(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(DEEPSEEK_LAST_TICK.get(), value);
     }
 
     public static long getDeepseekIdleSince(net.minecraft.world.entity.player.Player player) {

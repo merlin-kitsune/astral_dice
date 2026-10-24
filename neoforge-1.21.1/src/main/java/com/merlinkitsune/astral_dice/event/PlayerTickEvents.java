@@ -44,6 +44,9 @@ public class PlayerTickEvents {
         // ① 忍者宽限 1:00 内未出任何效果牌 ⇒ 强制重置出牌状态并起冷却;
         // ② 其余立牌门控计时器跑完 ⇒ 必起冷却(无空档);与立牌是否仍在饰品槽无关。
         BaseSignItem.tickSignActiveLock(player);
+        // 大肥鱼立牌(deepseek)主动「大口干饭」:攻/防加成到期清理。放在 Pre 阶段每 tick 判定,
+        // tickBuff 以「结束刻归零后早退」保证重复调用安全(本线每 tick 只派发一次 Pre)。
+        com.merlinkitsune.astral_dice.item.sign.DeepseekSignItem.tickBuff(player);
     }
 
     // 计时器守卫:本模组自定义效果被成功施加时记录结束时刻(有限时长效果;无限时长效果不记录)

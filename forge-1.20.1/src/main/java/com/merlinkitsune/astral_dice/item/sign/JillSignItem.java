@@ -37,12 +37,15 @@ import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
 /**
  * 调酒师立牌（jill，奇特）。
  *
- * <p><b>被动「改变生活」</b>：调制结算时 3 张牌**全部同类型** ⇒ 自身与目标各获迅捷 II(1:00)；
- * 否则各 +3 星币。
+ * <p><b>被动「改变生活」</b>：调制结算时 3 张牌**全部同类型**且非全效果牌 ⇒ 自身与目标各获迅捷 II(1:00)；
+ * 类型混搭（含攻/防/效果各一）⇒ 各 +3 星币。**全效果牌（3 张效果牌）是例外**：既不给迅捷也不给星币，
+ * 只保留下面的固定治疗。
  *
  * <p><b>主动「调制人生」</b>：目标选择器选一名玩家 → 选卡界面选 3 张（背包现有牌，不足 3 张直接取消、
- * 不进冷却）→ 按槽位顺序结算：攻击牌 +2 攻/张、防御牌 +2 防/张（均叠加，2:00）、效果牌使生命恢复
- * 等级 = 效果牌张数（2:00）；随后消耗这 3 张、从商店可售池补 3 张；目标获得 {@code jill_mixed}(2:00)。
+ * 不进冷却）→ 按槽位顺序结算：攻击牌 +2 攻/张、防御牌 +2 防/张（均叠加，2:00）；效果牌只要 ≥1 张，
+ * 目标立即 {@code heal(HEAL_AMOUNT)} 固定 2 点（不按张数叠加、无状态图标）；随后消耗这 3 张、
+ * 从商店可售池补 3 张。非全效果牌时目标另获 {@code jill_mixed}(2:00)，攻/防修饰符与内部的
+ * 目标 + 到期刻只在攻击牌 + 防御牌 &gt; 0 时记录（全效果牌不写计时器）。
  */
 public class JillSignItem extends BaseSignItem {
     private static final Logger LOGGER = LoggerFactory.getLogger(JillSignItem.class);
@@ -50,6 +53,8 @@ public class JillSignItem extends BaseSignItem {
     public static final String ACTION_ID = "astral_dice:jill_mix";
 
     private static final int DURATION_TICKS = 2400;
+    /** 效果牌提供的固定即时治疗量（不按效果牌张数叠加）。 */
+    private static final float HEAL_AMOUNT = 2.0F;
     private static final int COIN_PER_PROC = 3;
     private static final String TARGET_ATTACK_KEY = "jill_target_attack";
     private static final String TARGET_ARMOR_KEY = "jill_target_armor";
@@ -132,6 +137,10 @@ public class JillSignItem extends BaseSignItem {
         int total = attack + defense + effect;
         if (total < 3) return;
 
+        // 全效果牌(3 张效果牌)是独立分支:只有固定治疗,不进任何计时器/图标/星币路径。
+        boolean allEffect = effect == 3;
+        boolean allSame = attack == 3 || defense == 3 || effect == 3;
+
         clearTargetBuff(caster);
         if (attack > 0) {
             SignAttributeUtil.apply(target, Attributes.ATTACK_DAMAGE, TARGET_ATTACK_KEY, attack * 2.0D,
@@ -142,18 +151,24 @@ public class JillSignItem extends BaseSignItem {
                     net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation.ADDITION);
         }
         if (effect > 0) {
-            PlayerEffectProtection.apply(target, new MobEffectInstance(MobEffects.REGENERATION, DURATION_TICKS, effect - 1, false, true, true));
+            // 固定总量 2 点:有 1 张还是 3 张效果牌都一样,不按张数叠加。
+            target.heal(HEAL_AMOUNT);
         }
-        PlayerEffectProtection.apply(target, new MobEffectInstance(ModEffects.JILL_MIXED.get(), DURATION_TICKS, 0, false, true, true));
+        // 全效果牌不施加 jill_mixed(混合牌标记只属于非全效果牌的组合);旧实例不主动清除。
+        if (!allEffect) {
+            PlayerEffectProtection.apply(target, new MobEffectInstance(ModEffects.JILL_MIXED.get(), DURATION_TICKS, 0, false, true, true));
+        }
         // 记录受惠目标与到期刻(2:00):由 onCurioTick 到期摘除 / onUnequip 立即清。
-        ModAttachments.setJillBuffTarget(caster, target.getUUID().toString());
-        ModAttachments.setJillBuffEnd(caster, caster.level().getGameTime() + DURATION_TICKS);
+        // 全效果牌没有攻/防修饰符,不写内部计时器(攻击 + 防御 == 0)。
+        if (attack + defense > 0) {
+            ModAttachments.setJillBuffTarget(caster, target.getUUID().toString());
+            ModAttachments.setJillBuffEnd(caster, caster.level().getGameTime() + DURATION_TICKS);
+        }
 
-        boolean allSame = attack == 3 || defense == 3 || effect == 3;
-        if (allSame) {
+        if (allSame && !allEffect) {
             PlayerEffectProtection.apply(caster, new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 1200, 1, false, true, true));
             PlayerEffectProtection.apply(target, new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 1200, 1, false, true, true));
-        } else {
+        } else if (!allSame) {
             StarEngineEconomy.deposit(caster, COIN_PER_PROC);
             StarEngineEconomy.deposit(target, COIN_PER_PROC);
         }
@@ -166,8 +181,8 @@ public class JillSignItem extends BaseSignItem {
         ModAttachments.setSignActiveMaxCooldown(caster, (long) (com.merlinkitsune.astral_dice.event.WeirdDiceHandler.signCooldownTicks(caster)));
         CurrentCoreChipItem.onActiveSkillUsed(caster);
         sendSignActionBar(caster, "msg.astral_dice.jill_done");
-        LOGGER.info("AP_JILL: player={}:target={}:atk={}:def={}:eff={}:same={}", caster.getName().getString(),
-                target.getName().getString(), attack, defense, effect, allSame);
+        LOGGER.info("AP_JILL: player={}:target={}:atk={}:def={}:eff={}:same={}:allEffect={}", caster.getName().getString(),
+                target.getName().getString(), attack, defense, effect, allSame, allEffect);
     }
 
     /** 从商店可售池随机补 {@code count} 张牌（战斗牌 + 效果牌）。 */

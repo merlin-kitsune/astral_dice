@@ -1643,8 +1643,8 @@ public class ModTooltipHandler {
         }
         // 多萝西立牌(dorothy):主动「真正的我」(传送到目标身边安全落点;1:00 内经过友方玩家使双方
         // +1 攻击力,每 10 秒一次、每人一次;【温暖】满 5 层时消耗全部层数换取「当前防御力」点攻击力
-        // 1:00) + 被动「交际花」(恢复生命值时按效果等级获得【温暖】,每层防御力 +1;路过友方玩家时
-        // 双方恢复 2 点生命)。【温暖】层数已在效果栏展示,不重复进 tooltip。
+        // 1:00) + 被动「交际花」(每次有效治疗获得【温暖】:默认 +1 层,瞬间治疗 / 生命恢复按效果等级;
+        // 每层防御力 +1;路过友方玩家时双方恢复 2 点生命)。【温暖】层数已在效果栏展示,不重复进 tooltip。
         if (stack.is(ModItems.DOROTHY_SIGN.get())) {
             tooltip.add(Component.empty());
             addSignKeyHint(tooltip);
@@ -1665,8 +1665,9 @@ public class ModTooltipHandler {
             addSignLines(tooltip, "tooltip.astral_dice.sign.alana_passive");
             addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player jp ? jp : null);
         }
-        // 大肥鱼立牌(deepseek,仅创造获得):主动「大口干饭」(立即 +100 星币,并随机获得 1 个立牌
-        // 或筹码) + 被动「摸鱼中」(10 秒位置不变 ⇒ 免伤/免负面/不被怪物索敌,移动即清除)。
+        // 大肥鱼立牌(deepseek,仅创造获得):主动「大口干饭」(按余额随机消耗 1-20 星币,按实际消耗
+        // 等量给攻/防 2:00,并发 3 张随机牌) + 被动「摸鱼中」(静止 10 秒 ⇒ 免伤/免负面/不被怪物索敌,
+        // 获得后累计移动 5 秒解除)。
         if (stack.is(ModItems.DEEPSEEK_SIGN.get())) {
             tooltip.add(Component.empty());
             addSignKeyHint(tooltip);

@@ -2052,9 +2052,22 @@ public class ModAttachments {
     public static final AttachedDataKey<Integer> ALANA_PASSIVE_BONUS =
             register(AttachedDataKey.builder("alana_passive_bonus", Codec.INT, () -> 0).sync().build());
 
-    /** 大肥鱼：静止锚点（BlockPos.asLong；0 = 未锚定）。 */
-    public static final AttachedDataKey<Long> DEEPSEEK_ANCHOR =
-            register(AttachedDataKey.builder("deepseek_anchor", Codec.LONG, () -> 0L).build());
+    /** 大肥鱼：上一 tick 的精确位置快照（x,y,z；空 = 尚无快照）。仅内存态：登录/重登后重建快照。 */
+    public static final AttachedDataKey<List<Double>> DEEPSEEK_LAST_POS =
+            register(AttachedDataKey.builder("deepseek_last_pos", Codec.DOUBLE.listOf(), () -> List.<Double>of())
+                    .inMemory().build());
+
+    /** 大肥鱼：摸鱼中累计的移动 tick（满 100 解除摸鱼；中途停下不清零）。仅内存态。 */
+    public static final AttachedDataKey<Integer> DEEPSEEK_MOVE_TICKS =
+            register(AttachedDataKey.builder("deepseek_move_ticks", Codec.INT, () -> 0).inMemory().build());
+
+    /** 大肥鱼：主动攻/防加成结束刻（0 = 无加成）。仅内存态：与瞬态攻/防修饰符同寿命。 */
+    public static final AttachedDataKey<Long> DEEPSEEK_BUFF_END =
+            register(AttachedDataKey.builder("deepseek_buff_end", Codec.LONG, () -> 0L).inMemory().build());
+
+    /** 大肥鱼：上一次 Curio tick 的 gameTime（0 = 尚未记录）。仅内存态：检测 tick 中断。 */
+    public static final AttachedDataKey<Long> DEEPSEEK_LAST_TICK =
+            register(AttachedDataKey.builder("deepseek_last_tick", Codec.LONG, () -> 0L).inMemory().build());
 
     /** 大肥鱼：静止起始刻。 */
     public static final AttachedDataKey<Long> DEEPSEEK_IDLE_SINCE =
@@ -2192,12 +2205,36 @@ public class ModAttachments {
         ALANA_PASSIVE_BONUS.set(player, Math.max(0, value));
     }
 
-    public static long getDeepseekAnchor(net.minecraft.world.entity.player.Player player) {
-        return DEEPSEEK_ANCHOR.get(player);
+    public static List<Double> getDeepseekLastPos(net.minecraft.world.entity.player.Player player) {
+        return DEEPSEEK_LAST_POS.get(player);
     }
 
-    public static void setDeepseekAnchor(net.minecraft.world.entity.player.Player player, long value) {
-        DEEPSEEK_ANCHOR.set(player, value);
+    public static void setDeepseekLastPos(net.minecraft.world.entity.player.Player player, List<Double> value) {
+        DEEPSEEK_LAST_POS.set(player, value == null ? List.<Double>of() : value);
+    }
+
+    public static int getDeepseekMoveTicks(net.minecraft.world.entity.player.Player player) {
+        return DEEPSEEK_MOVE_TICKS.get(player);
+    }
+
+    public static void setDeepseekMoveTicks(net.minecraft.world.entity.player.Player player, int value) {
+        DEEPSEEK_MOVE_TICKS.set(player, Math.max(0, value));
+    }
+
+    public static long getDeepseekBuffEnd(net.minecraft.world.entity.player.Player player) {
+        return DEEPSEEK_BUFF_END.get(player);
+    }
+
+    public static void setDeepseekBuffEnd(net.minecraft.world.entity.player.Player player, long value) {
+        DEEPSEEK_BUFF_END.set(player, value);
+    }
+
+    public static long getDeepseekLastTick(net.minecraft.world.entity.player.Player player) {
+        return DEEPSEEK_LAST_TICK.get(player);
+    }
+
+    public static void setDeepseekLastTick(net.minecraft.world.entity.player.Player player, long value) {
+        DEEPSEEK_LAST_TICK.set(player, value);
     }
 
     public static long getDeepseekIdleSince(net.minecraft.world.entity.player.Player player) {

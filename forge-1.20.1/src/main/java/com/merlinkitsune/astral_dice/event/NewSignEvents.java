@@ -5,11 +5,12 @@ import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.item.sign.AlanaSignItem;
 import com.merlinkitsune.astral_dice.item.sign.DorothySignItem;
 import net.minecraft.world.effect.MobEffectInstance;
-import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.player.Player;
+import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.event.entity.living.LivingChangeTargetEvent;
+import net.minecraftforge.event.entity.living.LivingHealEvent;
 import net.minecraftforge.event.entity.living.LivingHurtEvent;
 import net.minecraftforge.event.entity.living.MobEffectEvent;
 
@@ -18,7 +19,7 @@ import net.minecraftforge.event.entity.living.MobEffectEvent;
  *
  * <ul>
  *   <li>铁处女 / 摸鱼：免疫一切伤害与负面效果；摸鱼还要「不被怪物索敌」。</li>
- *   <li>多萝西：获得治疗（生命恢复效果）按等级叠【温暖】。</li>
+ *   <li>多萝西：每次有效治疗叠 1 层【温暖】；瞬间治疗 / 生命恢复按效果等级计算。</li>
  *   <li>修女：受击 &gt;10 点移除被动加成；骰神赐福结束始终移除。</li>
  * </ul>
  */
@@ -72,19 +73,20 @@ public final class NewSignEvents {
         }
     }
 
-    @SubscribeEvent
-    public static void onEffectAdded(MobEffectEvent.Added event) {
+    @SubscribeEvent(priority = EventPriority.LOWEST)
+    public static void onLivingHeal(LivingHealEvent event) {
         if (!(event.getEntity() instanceof Player player)) return;
         if (player.level().isClientSide()) return;
-        MobEffectInstance instance = event.getEffectInstance();
-        if (instance == null) return;
-        if (!instance.getEffect().equals(ModEffects.DOROTHY_WARMTH.get())) {
-            if (!DorothySignItem.isEquippedForWarmth(player)) return;
-            boolean healing = instance.getEffect().equals(MobEffects.REGENERATION)
-                    || instance.getEffect().equals(MobEffects.HEAL);
-            if (!healing) return;
-            grantWarmth(player, instance.getAmplifier() + 1);
-        }
+        if (!player.isAlive()) return;
+        if (event.isCanceled()) return;
+        // 过疗 / 空治疗不算有效治疗：满血或治疗量 <= 0 时 heal() 不会改变生命值
+        if (event.getAmount() <= 0.0F) return;
+        if (player.getHealth() >= player.getMaxHealth()) return;
+        if (!DorothySignItem.isEquippedForWarmth(player)) return;
+
+        // 有标注来源（瞬间治疗 / 生命恢复）取其效果等级，其余治疗（自然恢复 / 其他 heal 调用）每次 1 层
+        DorothyWarmthHealContext.Source source = DorothyWarmthHealContext.current();
+        grantWarmth(player, source == null ? 1 : source.level());
     }
 
     private static void grantWarmth(Player player, int stacks) {

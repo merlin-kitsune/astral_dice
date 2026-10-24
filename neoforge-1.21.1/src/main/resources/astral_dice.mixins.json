@@ -14,7 +14,9 @@
     "trade.MerchantOfferMixin",
     "trade.MerchantResultSlotMixin",
     "trade.ServerPlayerMixin",
-    "PiglinAiMixin"
+    "PiglinAiMixin",
+    "HealOrHarmMobEffectMixin",
+    "RegenerationMobEffectMixin"
   ],
   "client": [
     "client.AstralUseItemGuardMixin",

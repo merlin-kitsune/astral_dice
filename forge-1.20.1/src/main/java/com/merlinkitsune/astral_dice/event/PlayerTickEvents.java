@@ -45,6 +45,9 @@ public class PlayerTickEvents {
         // ② 其余立牌门控计时器跑完 ⇒ 必起冷却(无空档);与立牌是否仍在饰品槽无关。
         // (本方法每 tick 被 START/END 两个阶段各调用一次,迁移逻辑幂等)
         BaseSignItem.tickSignActiveLock(player);
+        // 大肥鱼立牌(deepseek)主动「大口干饭」:攻/防加成到期清理。本入口每 tick 被 START/END
+        // 两个阶段各调用一次 ⇒ tickBuff 以「结束刻归零后早退」保证幂等。
+        com.merlinkitsune.astral_dice.item.sign.DeepseekSignItem.tickBuff(player);
     }
 
     // 计时器守卫:本模组自定义效果被成功施加时记录结束时刻(有限时长效果;无限时长效果不记录)
