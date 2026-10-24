@@ -37,8 +37,8 @@ pwsh -NoProfile -Command 'Get-ChildItem F:\MCProject\astral_dice_multiloader -Re
 
 ## 三、交接
 
-1. DSH 每轮结束**必须**更新 `docs/handover-1.5.0-pre.5-main.md` 的 **§4（实机读数，贴机器原文）** 与
-   **§5（遗留：销账或新增，禁止静默删）**；并同步刷新 `docs/handover-new-session-context.md`。
+1. DSH 每轮结束**必须**更新**当前滚动正本**（2026-10-24 起 = `docs/handover-1.5.0-pre.6-main.md`；pre.5 及更早见 `docs/handover-1.5.0-pre.5-main.md`）的 **§4（实机读数，贴机器原文）** 与
+   **§5（遗留：销账或新增，禁止静默删）**；并同步刷新 `docs/handover-new-session-context.md`。版本 bump 时**新建**下一份正本（`docs/handover-<版本>-main.md`），旧本不删不改正文。
 2. Codex **只消费不回写**：可读上述两文件作为事实源，不得修改 §4 / §5，也不得代填读数。
 3. 交接正本行号会漂移 ⇒ 引用一律「§号 + 标题」，不写死行号。
 
