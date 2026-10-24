@@ -97,10 +97,11 @@ public final class ChipShopRoller {
     }
 
     /**
-     * 当前骰子签名 = {@code <物品 id>|<星阶>}（2026-10-21 用户裁决：换骰子或升星都必须重抽筹码商店）。
+     * 当前骰子签名 = {@code <物品 id>|<星阶>}（**仅诊断留痕**，不参与 {@link ChipShopState#needsReroll} 判定）。
      *
-     * <p>用物品 id 而不只是星阶：同为 2★ 的「绿宝石骰子 → 黑曜石骰子」也算换骰子。
-     * 未装备骰子时返回 {@code "none"}。
+     * <p>用物品 id 而不只是星阶：同为 2★ 的「绿宝石骰子 → 黑曜石骰子」也能在日志 / 取证里区分。
+     * 2026-10-24 用户裁决：换骰子 / 换装备**不再触发免费重抽**（原「换骰或升星都必须重抽」的口径已作废）；
+     * 真实铁砧升星改为在**取走成品**时授予 1 次刷新。未装备骰子时返回 {@code "none"}。
      */
     public static String diceKey(Player player) {
         if (player == null) return "none";

@@ -347,7 +347,8 @@ foreach ($key in $targets) {
     $rollerSrc = Code-Src (Join-Path $javaDir 'shop/ChipShopRoller.java')
     $stateSrc = Code-Src (Join-Path $javaDir 'shop/ChipShopState.java')
     $openerSrc = Code-Src (Join-Path $javaDir 'shop/ChipShopOpener.java')
-    $tickerSrc = Code-Src (Join-Path $javaDir 'shop/ChipShopRegenTicker.java')
+    # 注：原 $tickerSrc（shop/ChipShopRegenTicker.java）随 2026-10-24「移除自动补充刷新次数」一并删除 ——
+    #     G18c 改为断言该文件**不存在**，故不再预读它的源码。
     $csSrc = Code-Src (Join-Path $javaDir 'client/ChipShopClientState.java')
     $src = Code-Src $screenPath
     $ms = Code-Src $menuPath
@@ -558,11 +559,15 @@ foreach ($key in $targets) {
     if ($ms.IndexOf('priceOf(') -ge 0) { Fail ($line + ': 菜单不得自行算价（三格同价只能来自状态）') }
     Write-Out ('CHIPUI_G17: 价格曲线 0→' + $priceCurve[0] + ' / 1→' + $priceCurve[1] + ' / 18→' + $priceCurve[2] + ' / 30→' + $priceCurve[3])
 
-    # ---- G18 刷新常量 3/5/36000 + 首次消耗才起算 + 到上限不顺延 ----
+    # ---- G18 刷新常量 3/5/36000 + 首次消耗才起算 + 手写钳制 ----
+    # 2026-10-24 用户裁决：**移除自动补充刷新次数**（时间驱动的 +1 已删）。现在刷新次数只有两个来源：
+    #   ① 真实铁砧**取走**升星成品（AnvilRepairEvent 授予 1 次）；② 方块投入空白筹码（ChipShopBlock，未变）。
+    # 换装备 / 换骰子一律**不得**免费刷新；死亡也不得回落成自动补满。
+    # ⇒ 旧「ticker 必须存在且必须在到上限时提前跳过」的两条断言作废，改为「ticker 彻底消失 + 授予点唯一
+    #    + 死亡保留 + 写入方白名单」。常量 / 锚点 / withRefreshes 钳制断言原样保留（冻结测试资产仍读它们）。
     foreach ($t in @('REFRESH_INITIAL = 3', 'REFRESH_MAX = 5', 'REFRESH_REGEN_TICKS = 36000')) { if ($catSrc.IndexOf($t) -lt 0) { Fail ($line + ': 刷新常量不符 ' + $t) } }
     if ($ms.IndexOf('state.regenAnchor() == 0L ? now + ChipShopCatalog.REFRESH_REGEN_TICKS : state.regenAnchor()') -lt 0) { Fail ($line + ': 刷新锚点未按「首次消耗才起算」设置') }
     if ($ms.IndexOf('state.refreshesLeft() <= 0') -lt 0) { Fail ($line + ': 服务端未拦「刷新次数为 0」') }
-    foreach ($t in @('state.regenAnchor()', 'ChipShopCatalog.REFRESH_MAX', 'ChipShopCatalog.REFRESH_REGEN_TICKS', 'continue;')) { if ($tickerSrc.IndexOf($t) -lt 0) { Fail ($line + ': 刷新恢复 ticker 缺 ' + $t) } }
     # G18b withRefreshes 上限钳制（复核发现：Math.min→Math.max 可让刷新次数超过上限而守门放行）
     $wr = [regex]::Match($stateSrc, 'public ChipShopState withRefreshes\(int left, long anchor\)\s*\{(?<b>.*?)\n    \}', 'Singleline')
     if (-not $wr.Success) { Fail ($line + ': 未找到 withRefreshes 方法体') }
@@ -572,8 +577,106 @@ foreach ($key in $targets) {
         $nMax = ([regex]::Matches($wb, 'Math\.max\(')).Count
         if ($nMax -ne 1) { Fail ($line + ': withRefreshes 内 Math.max 应恰 1 处（实测 ' + $nMax + '）') }
     }
-    $iCap = $tickerSrc.IndexOf('ChipShopCatalog.REFRESH_MAX'); $iStore = $tickerSrc.IndexOf('ChipShopState.store(')
-    if ($iCap -lt 0 -or $iStore -lt 0 -or $iCap -gt $iStore) { Fail ($line + ': ticker 未在到上限时提前跳过（锚点会被顺延）') }
+
+    # ---- G18c 自动恢复 ticker 必须彻底消失（文件 + 代码引用 + javadoc 悬空链接） ----
+    if (Test-Path -LiteralPath (Join-Path $javaDir 'shop/ChipShopRegenTicker.java')) { Fail ($line + ': 自动恢复 ticker 仍存在（shop/ChipShopRegenTicker.java 必须删除）') }
+    $tickerRefs = @()
+    foreach ($f in (Get-ChildItem -LiteralPath (Join-Path $lineDir 'src/main/java') -Recurse -Filter '*.java' -File)) {
+        if ((Code-Src $f.FullName).IndexOf('ChipShopRegenTicker') -ge 0) { $tickerRefs += $f.Name }
+        elseif ((Read-Src $f.FullName).IndexOf('{@link ChipShopRegenTicker}') -ge 0) { $tickerRefs += ($f.Name + '（javadoc 悬空链接）') }
+    }
+    if ($tickerRefs.Count -gt 0) { Fail ($line + ': 仍有 ticker 引用 ' + ($tickerRefs -join ' | ')) }
+
+    # ---- G18d needsReroll 不得再按骰子签名判定（换骰/升星免费重抽 = 白嫖刷新） ----
+    # 语义锚定：删掉 rolledDiceKey/diceKey 比对，但「空表 / 未知 id / 已拥有」三条重抽条件必须保留。
+    $nr = [regex]::Match($stateSrc, 'public boolean needsReroll\(Player player\)\s*\{(?<b>.*?)\n    \}', 'Singleline')
+    if (-not $nr.Success) { Fail ($line + ': 未找到 needsReroll 方法体') }
+    else {
+        $nb = $nr.Groups['b'].Value
+        if ($nb.IndexOf('diceKey') -ge 0) { Fail ($line + ': needsReroll 仍按骰子签名判定（换装备/换骰子会免费刷新），须删除该比对') }
+        foreach ($t in @('list.isEmpty()', 'list.size() != offers.size()', 'ChipShopRoller.isOwned(player, entry)')) {
+            if ($nb.IndexOf($t) -lt 0) { Fail ($line + ': needsReroll 缺其它重抽条件 ' + $t) }
+        }
+    }
+
+    # ---- G18e withRefreshGranted：在存档现值上 +1 并夹 0..REFRESH_MAX，不得回填初值 ----
+    $wrg = [regex]::Match($stateSrc, 'public ChipShopState withRefreshGranted\(\)\s*\{(?<b>.*?)\n    \}', 'Singleline')
+    if (-not $wrg.Success) { Fail ($line + ': 未找到 withRefreshGranted 方法体（升星授予的唯一入口）') }
+    else {
+        $gb = $wrg.Groups['b'].Value
+        if ($gb -notmatch 'Math\.max\(0,\s*Math\.min\(ChipShopCatalog\.REFRESH_MAX,\s*refreshesLeft \+ 1\)\)') { Fail ($line + ': withRefreshGranted 未按「现有 refreshesLeft + 1 并夹 0..REFRESH_MAX」实现') }
+        if ($gb.IndexOf('REFRESH_INITIAL') -ge 0) { Fail ($line + ': withRefreshGranted 不得回填 REFRESH_INITIAL（会清掉存档次数）') }
+        $keep = @('offers', 'lastPickCategory', 'purchasedCount', 'regenAnchor', 'cooldownUntil', 'lastBlankInsertAt', 'rolledDiceKey')
+        $keepMiss = @($keep | Where-Object { $gb.IndexOf($_) -lt 0 })
+        if ($keepMiss.Count -gt 0) { Fail ($line + ': withRefreshGranted 未保留其它 record 字段 ' + ($keepMiss -join ' | ')) }
+    }
+
+    # ---- G18f 升星授予唯一在 AnvilRepairEvent（预览 / 装备查询 / 抽取器一律不得授予） ----
+    $anvilSrc = Code-Src (Join-Path $javaDir 'event/AnvilUpgradeHandler.java')
+    if ($anvilSrc -eq '') { Fail ($line + ': 缺少 event/AnvilUpgradeHandler.java') }
+    else {
+        if ($anvilSrc.IndexOf('AnvilRepairEvent') -lt 0) { Fail ($line + ': AnvilUpgradeHandler 未接入 AnvilRepairEvent（取走升星结果才发券）') }
+        $rep = [regex]::Match($anvilSrc, 'public static void onAnvilRepair\(AnvilRepairEvent event\)\s*\{(?<b>.*?)\n    \}', 'Singleline')
+        if (-not $rep.Success) { Fail ($line + ': 未找到 onAnvilRepair(AnvilRepairEvent) 处理') }
+        else {
+            $rb2 = $rep.Groups['b'].Value
+            # 两条「防白嫖」守卫单独点名（2026-10-24 复核）：只查 starCoinCost/store 时，删掉「右槽必须是星币」
+            # 或「产物必须与左槽同种」仍会假绿 —— 前者会让普通修理/任意右槽组合发券，后者让高星复制品绕过同种校验。
+            $rNeed = @(
+                'event.getEntity() instanceof ServerPlayer',
+                'event.getLeft()', 'event.getRight()', 'event.getOutput()',
+                'right.is(ModItems.STAR_COIN.get())',
+                'output.is(left.getItem())',
+                'starCoinCost(', 'ChipShopState.store(', 'withRefreshGranted()'
+            )
+            $rMiss = @($rNeed | Where-Object { $rb2.IndexOf($_) -lt 0 })
+            if ($rMiss.Count -gt 0) { Fail ($line + ': 取走授予处理缺校验/授予锚点 ' + ($rMiss -join ' | ')) }
+            if ($rb2 -notmatch 'starLevel\(\) \+ 1') { Fail ($line + ': 取走授予未校验「输出星阶 = 输入星阶 + 1」（高星复制品可刷次数）') }
+        }
+        $upd = [regex]::Match($anvilSrc, 'public static void onAnvilUpdate\(AnvilUpdateEvent event\)\s*\{(?<b>.*?)\n    \}', 'Singleline')
+        if (-not $upd.Success) { Fail ($line + ': 未找到 onAnvilUpdate(AnvilUpdateEvent) 预览处理') }
+        elseif ($upd.Groups['b'].Value.IndexOf('withRefreshGranted') -ge 0) { Fail ($line + ': AnvilUpdateEvent 预览分支不得授予刷新次数（每次重算都会白送）') }
+        # 星币成本只有一份：15/20/25 只允许出现在预览与授予共用的 helper 内
+        $costBody = [regex]::Match($anvilSrc, 'private static int starCoinCost\(int \w+\)\s*\{(?<b>.*?)\n    \}', 'Singleline')
+        if (-not $costBody.Success) { Fail ($line + ': 缺星币成本共用 helper starCoinCost(int)（预览与授予不得各写一套数值）') }
+        else {
+            foreach ($t in @('case 0 -> 15;', 'case 1 -> 20;', 'case 2 -> 25;')) { if ($costBody.Groups['b'].Value.IndexOf($t) -lt 0) { Fail ($line + ': 星币成本 helper 缺 ' + $t) } }
+        }
+        foreach ($t in @('-> 15;', '-> 20;', '-> 25;')) {
+            $nCost = ([regex]::Matches($anvilSrc, [regex]::Escape($t))).Count
+            if ($nCost -ne 1) { Fail ($line + ': 星币成本「' + $t + '」应恰 1 处（预览与授予共用 starCoinCost），实测 ' + $nCost) }
+        }
+    }
+
+    # ---- G18g 死亡不清零：neo .copyOnDeath() / forge kept 白名单 ----
+    if ($line -eq 'neoforge-1.21.1') {
+        $maSrc = Code-Src (Join-Path $javaDir 'component/ModAttachments.java')
+        $reg = [regex]::Match($maSrc, 'ATTACHMENTS\.register\("chip_shop_state",\s*\(\)\s*->\s*AttachmentType\.builder\(\(\)\s*->\s*ChipShopState\.EMPTY\)(?<b>.*?)\);', 'Singleline')
+        if (-not $reg.Success) { Fail ($line + ': 未找到 chip_shop_state 附件注册') }
+        elseif ($reg.Groups['b'].Value.IndexOf('.copyOnDeath()') -lt 0) { Fail ($line + ': chip_shop_state 附件未加 .copyOnDeath()（死亡会把刷新次数重置为初值）') }
+    } else {
+        $adSrc = Code-Src (Join-Path $javaDir 'component/AstralData.java')
+        $kept = [regex]::Match($adSrc, 'String\[\] kept = \{(?<b>.*?)\};', 'Singleline')
+        if (-not $kept.Success) { Fail ($line + ': 未找到 AstralData 死亡保留白名单 kept[]') }
+        elseif ($kept.Groups['b'].Value.IndexOf('ModAttachments.CHIP_SHOP_STATE.name()') -lt 0) { Fail ($line + ': 死亡保留白名单未含 ModAttachments.CHIP_SHOP_STATE.name()（死亡会重置刷新次数）') }
+    }
+
+    # ---- G18h 写入方白名单（次数 −1 仅 ChipShopMenu / 空白投入仅 ChipShopBlock / 升星授予仅 AnvilUpgradeHandler） ----
+    function Get-CallSiteFiles([string]$needle) {
+        $hits = @()
+        foreach ($f in (Get-ChildItem -LiteralPath (Join-Path $lineDir 'src/main/java') -Recurse -Filter '*.java' -File)) {
+            $n = ([regex]::Matches((Code-Src $f.FullName), [regex]::Escape($needle))).Count
+            if ($n -gt 0) { $hits += ($f.Name + '×' + $n) }
+        }
+        return (($hits | Sort-Object) -join '|')
+    }
+    $wrSites = Get-CallSiteFiles 'withRefreshes('
+    if ($wrSites -ne 'ChipShopMenu.java×1|ChipShopState.java×1') { Fail ($line + ': withRefreshes 调用点越界（扣次数只允许 ChipShopMenu#handleRefresh 一次），实测 ' + $wrSites) }
+    $biSites = Get-CallSiteFiles 'withBlankInsert('
+    if ($biSites -ne 'ChipShopBlock.java×1|ChipShopState.java×1') { Fail ($line + ': withBlankInsert 调用点越界（空白投入只允许 ChipShopBlock 一次），实测 ' + $biSites) }
+    $grSites = Get-CallSiteFiles 'withRefreshGranted('
+    if ($grSites -ne 'AnvilUpgradeHandler.java×1|ChipShopState.java×1') { Fail ($line + ': withRefreshGranted 调用点越界（升星授予只允许 AnvilUpgradeHandler 一次），实测 ' + $grSites) }
+    Write-Out 'CHIPUI_G18: 刷新来源 = 铁砧升星取走 1 次（唯一授予点）+ 空白筹码；ticker 已删；扣次数仅 ChipShopMenu / 空白仅 ChipShopBlock'
 
     # ---- G19 菜单构造不掷骰；重抽只允许 3 处（购买 / 刷新 / 进店补抽） ----
     $rollInMenu = ([regex]::Matches($ms, [regex]::Escape('ChipShopRoller.roll('))).Count
@@ -601,7 +704,7 @@ foreach ($key in $targets) {
     elseif ($iClose -ge 0 -and $iClose -lt $iWd) { Fail ($line + ': closeContainer() 必须在扣款之后（扣款=' + $iWd + ' 关店=' + $iClose + '）') }
     if ($ms.IndexOf('StarCoinBalanceSync.notifyChanged(') -lt 0) { Fail ($line + ': 扣款后未同步余额（notifyChanged）') }
 
-    Write-Out ('CHIPUI_LOGIC: G11..G16b / G17..G20（含 G13b 语义锚定 / G17b 三格同价 / G18b 上限钳制）判据组新增失败 ' + ($fail.Count - $logicFailStart) + ' 条')
+    Write-Out ('CHIPUI_LOGIC: G11..G16b / G17..G20（含 G13b 语义锚定 / G17b 三格同价 / G18b 上限钳制 / G18c..G18h 刷新来源）判据组新增失败 ' + ($fail.Count - $logicFailStart) + ' 条')
 
     # ---- G21 方块接入齐备 ----
     $blockPath = Join-Path $javaDir 'block/ChipShopBlock.java'

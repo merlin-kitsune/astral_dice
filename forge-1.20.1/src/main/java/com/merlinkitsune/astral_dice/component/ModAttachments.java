@@ -564,7 +564,11 @@ public class ModAttachments {
 
     // 筹码商店:候选存档(2026-10-12 移植,对应 1.21.1 的 ModAttachments.CHIP_SHOP_STATE)。
     // 与 SHOP_SHELF 完全同型:菜单只读、重抽入口只有三处(shop/ChipShopOpener#ensureOffers 的进店补抽、
-    // ChipShopMenu#handleRefresh、购买成功),服务端 tick(shop/ChipShopRegenTicker)只恢复刷新次数。
+    // ChipShopMenu#handleRefresh、购买成功)。
+    // 刷新次数**不再随时间自动恢复**(2026-10-24 用户裁决,原时间驱动的自动恢复 ticker 已整个删除);
+    // 现有两条来源 = 铁砧取走升星成品(event/AnvilUpgradeHandler#onAnvilRepair 授予 1 次)
+    // + 方块投入空白筹码(ChipShopBlock)。
+    // 死亡保留见 AstralData#onPlayerClone 的 kept 白名单(1.21.1 侧 = 同名键的 .copyOnDeath())。
     // 客户端菜单靠隐藏槽位读同一批候选 + DataSlot 读价格/次数/品质码;另需在 **Jade 悬浮框**显示
     // 「可进入倒计时」——方块无 BlockEntity ⇒ 1.20.1 的 Jade 不收服务端数据,只能读同步值,
     // 故本条 **.sync()** 并进 SYNCED_KEYS(整条记录含 3 个候选 id,体积很小)。
@@ -1373,7 +1377,7 @@ public class ModAttachments {
      * <b>不 {@code .sync()}</b> —— 客户端 tooltip 的层数计数器读的是**已同步的效果实例**,不读本键。
      *
      * <p><b>不跨死亡保留</b>:技能原文未声明死亡保留 ⇒ 按"未声明即不保留"的既定口径处理
-     * (照「剑气」「弱点识破」),故**不**进 {@code AstralData#onPlayerClone} 白名单、
+     * (同「弱点识破」等未声明死亡保留的附件),故**不**进 {@code AstralData#onPlayerClone} 白名单、
      * 也**不**占 {@code DeathPreservedBonuses} 槽位。
      */
     public static final AttachedDataKey<Integer> HANNA_DOLL_CRAFT_LAYERS =

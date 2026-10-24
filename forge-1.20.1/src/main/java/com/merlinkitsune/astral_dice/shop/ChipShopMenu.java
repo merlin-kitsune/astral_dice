@@ -291,7 +291,7 @@ public class ChipShopMenu extends AbstractContainerMenu {
         return player.level().isClientSide() ? clientRefreshesLeft : ChipShopState.get(player).refreshesLeft();
     }
 
-    /** 刷新次数上限（界面不再显示；仅作恢复逻辑的上限口径） */
+    /** 刷新次数上限（界面不再显示；仅表示「当前允许持有的刷新次数上限」{@value ChipShopCatalog#REFRESH_MAX}，不暗示任何自动恢复） */
     public int totalRefreshes() {
         return ChipShopCatalog.REFRESH_MAX;
     }
@@ -423,8 +423,9 @@ public class ChipShopMenu extends AbstractContainerMenu {
     /**
      * 刷新候选（唯一入口，来自 {@code ChipShopRefreshPayload}）：次数 −1 并重抽，候选与次数一起落盘。
      *
-     * <p><b>锚点</b>（用户裁决 2）：**第一次成功刷新**时若锚点还是 0 ⇒ 记 {@code now + 36000}，
-     * 之后由 {@link ChipShopRegenTicker} 每 36000 tick +1（上限 {@value ChipShopCatalog#REFRESH_MAX}）。
+     * <p><b>锚点</b>（用户裁决 2）：**第一次成功刷新**时若锚点还是 0 ⇒ 记 {@code now + 36000}。
+     * 2026-10-24 起**不再有自动恢复**（时间驱动的 ticker 已删）——该锚点只作存档 / 冻结测试兼容字段保留，
+     * 没有任何读取方据此 +1；次数只靠「铁砧取走升星成品」与「投入空白筹码」获得。
      * 次数为 0 时**静默拒绝 + 红闪**（客户端同样不发包，这里是服务端兜底）。
      */
     public void handleRefresh(ServerPlayer buyer) {

@@ -179,14 +179,14 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output);
 
-        // T4 极强:护法立牌(钻石骰子 + 铁剑×2 + 红色染料×2 + 青色染料×2 + 黄金星盘×1,有序,空白立牌置中,骰子置中下)
+        // T3 强:护法立牌(钻石骰子 + 铁剑×2 + 红色染料×2 + 青色染料×2 + 星盘×1,有序,空白立牌置中,骰子置中下)
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.MISAKI_SIGN.get())
                 .pattern("RPR")
                 .pattern("IEI")
                 .pattern("CDC")
                 .define('E', ModItems.BLANK_SIGN.get())
                 .define('R', Items.RED_DYE)
-                .define('P', ModItems.GOLDEN_STAR_PLATE.get())
+                .define('P', ModItems.STAR_PLATE.get())
                 .define('I', Items.IRON_SWORD)
                 .define('C', Items.CYAN_DYE)
                 .define('D', ModItems.DIAMOND_DICE.get())

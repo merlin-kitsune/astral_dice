@@ -616,11 +616,17 @@ public class ModAttachments {
 
     // 筹码商店:候选与运行态存档(2026-10-12 用户裁决 Q9/R16「未购买退出 ⇒ 候选逐字不变」)。
     // 与 SHOP_SHELF 完全同型:菜单只读、重抽入口只有三处(shop/ChipShopOpener#ensureOffers 的进店补抽、
-    // ChipShopMenu#handleRefresh、购买成功),服务端 tick(shop/ChipShopRegenTicker)只恢复刷新次数。
+    // ChipShopMenu#handleRefresh、购买成功)。
+    // 刷新次数**不再随时间自动恢复**(2026-10-24 用户裁决,原时间驱动的自动恢复 ticker 已整个删除);
+    // 现有两条来源 = 铁砧取走升星成品(event/AnvilUpgradeHandler#onAnvilRepair 授予 1 次)
+    // + 方块投入空白筹码(ChipShopBlock)。
+    // .copyOnDeath() 依据:死亡若回默认值就等于「自动补满到初值」,与「死亡也不能把状态重置」冲突;
+    // 同时保证旧存档里已攒下的次数(可能 > 初值)跨死亡保留。forge-1.20.1 侧对应 AstralData 的 kept 白名单。
     // 仅服务端使用,不同步客户端(客户端靠菜单隐藏槽位读同一批候选 + DataSlot 读价格/次数/品质码)。
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<ChipShopState>> CHIP_SHOP_STATE =
             ATTACHMENTS.register("chip_shop_state", () -> AttachmentType.builder(() -> ChipShopState.EMPTY)
                     .serialize(ChipShopState.CODEC)
+                    .copyOnDeath()
                     .build());
 
 
@@ -1987,7 +1993,7 @@ public class ModAttachments {
      * <b>不 {@code .sync()}</b> —— 客户端 tooltip 的层数计数器读的是**已同步的效果实例**,不读本键。
      *
      * <p><b>不跨死亡保留</b>:技能原文未声明死亡保留 ⇒ 按"未声明即不保留"的既定口径处理
-     * (照「剑气」「弱点识破」),故**不**加 {@code .copyOnDeath()}、也不进 1.20.1 的白名单。
+     * (同「弱点识破」等未声明死亡保留的附件),故**不**加 {@code .copyOnDeath()}、也不进 1.20.1 的白名单。
      */
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> HANNA_DOLL_CRAFT_LAYERS =
             ATTACHMENTS.register("hanna_doll_craft_layers", () -> AttachmentType.builder(() -> 0)

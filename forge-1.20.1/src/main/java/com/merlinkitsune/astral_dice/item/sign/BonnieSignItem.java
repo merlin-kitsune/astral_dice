@@ -42,8 +42,8 @@ import com.merlinkitsune.starengine.combat.PartyRelations;
  * 1. 攻击带有"标记"的目标时攻击力+3;
  * 2. 击杀带有"标记"的敌对目标后获得一张随机攻击牌;
  * (击杀"隐匿调查"目标触发调查阶段事件已由 InvestigationEventUtil 全局处理)
- * 主动:使用目标选择器选择目标并施加"隐匿调查"(永久,直到目标死亡/消失);若目标带"标记",
- * 按标记层数获得 标记层数*2 星币(选择器目标规则:敌对生物或非队友玩家,
+ * 主动:使用目标选择器选择目标并施加"隐匿调查"(永久,直到目标死亡/消失)与 1 层"标记";
+ * 按施加后的标记层数获得 标记层数*2 星币(选择器目标规则:敌对生物或非队友玩家,
  * 选择者无队伍时对所有玩家生效;不符合规则的目标不可选中)。
  *
  * 主动为"目标选择器"类技能:触发后经 {@link TargetSelectionManager} 进入选择模式,
@@ -77,13 +77,11 @@ public class BonnieSignItem extends BaseSignItem {
                 ModAttachments.setUndercoverSource(target, Optional.of(player.getUUID()));
                 target.addEffect(new MobEffectInstance(ModEffects.UNDERCOVER_INVESTIGATION.get(),
                         MobEffectInstance.INFINITE_DURATION, 0, false, true));
-                // 目标带"标记"时:按标记层数 ×2 获得星币
-                int markLevel = MarkManager.getLevel(target);
-                if (markLevel > 0) {
-                    ItemStack coinStack = new ItemStack(ModItems.STAR_COIN.get(), markLevel * 2);
-                    // 2026-10-11 用户裁决:全模组发币统一走中央漏斗(钱包开启且「获得即入钱包」打开时折算进钱包)。
-                    com.merlinkitsune.astral_dice.resource.ResourceConversion.giveItem(player, coinStack);
-                }
+                // 用户裁决(2026-10-24):施加隐匿调查的同时追加 1 层"标记";返币按施加后的当前层数结算
+                int markLevel = MarkManager.apply(target);
+                ItemStack coinStack = new ItemStack(ModItems.STAR_COIN.get(), markLevel * 2);
+                // 2026-10-11 用户裁决:全模组发币统一走中央漏斗(钱包开启且「获得即入钱包」打开时折算进钱包)。
+                com.merlinkitsune.astral_dice.resource.ResourceConversion.giveItem(player, coinStack);
                 // 主动成功施加:开始玩家级冷却(统一经 signCooldownTicks:含诡异骰子 -50% 与充能递减)
                 ModAttachments.setSignActiveCooldownEnd(player,
                         player.level().getGameTime() + WeirdDiceHandler.signCooldownTicks(player));

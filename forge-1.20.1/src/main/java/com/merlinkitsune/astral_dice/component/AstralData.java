@@ -65,8 +65,8 @@ public class AstralData implements INBTSerializable<CompoundTag> {
     /**
      * 维度切换:复制全部数据。死亡重生:只复制**随死亡保留**的键
      * ({@code rin_pages} / {@code komachi_damage_bonus} / {@code guide_book_given} /
-     * {@code teru_huguang_layers} / {@code teru_equip_watermark} / {@code mamushi_awakening}),
-     * 与 1.21.1 侧 {@code AttachmentType.Builder#copyOnDeath()} 的键集合一一对应;
+     * {@code teru_huguang_layers} / {@code teru_equip_watermark} / {@code mamushi_awakening} / … /
+     * {@code chip_shop_state}),与 1.21.1 侧 {@code AttachmentType.Builder#copyOnDeath()} 的键集合一一对应;
      * 其余键与 1.21 附件默认行为一致——死亡不复制。
      *
      * <p>注意:死亡清理({@code LivingDeathEvent})在**旧实体**上执行且刻意不清除这些键,
@@ -117,7 +117,10 @@ public class AstralData implements INBTSerializable<CompoundTag> {
                         // 死亡后重生必须仍是「已赠」,否则死亡 = 再刷 2 张牌(1.21.1 侧同键 .copyOnDeath())。
                         // 本键**没有**任何清零路径(clearSignData 不碰它)⇒ 只需本白名单,不需要
                         // DeathPreservedBonuses 槽位。
-                        ModAttachments.LINGLING_GRANTED.name()
+                        ModAttachments.LINGLING_GRANTED.name(),
+                        // 2026-10-24 筹码商店:刷新次数已无时间自动恢复(原 ticker 删除)⇒ 若死亡不复制
+                        // 这条存档,重生后次数会回默认初值 = 变相「自动补满」。1.21.1 侧同键 .copyOnDeath()。
+                        ModAttachments.CHIP_SHOP_STATE.name()
                 };
                 event.getEntity().getCapability(ModCapabilities.ASTRAL_DATA).ifPresent(newData -> {
                     CompoundTag src = oldData.persistentStore();

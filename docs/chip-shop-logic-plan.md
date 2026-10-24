@@ -146,7 +146,7 @@ roll(player, reason):                     # reason = ENTER_FIRST | REFRESH | POS
 | `CATEGORY_ALPHA` | 2.0 | 「上次购买筹码」同类别 ⇒ 权重 ×2.0（仅 slot0 全强度） |
 | `SLOT_DECAY` | 0.25 | slot1/2 用 (factor − 1) × 0.25 + 1 ⇒ 随机性显著更大 |
 | `PRICE_INITIAL` / `PRICE_STEP` / `PRICE_MAX` | 10 / 5 / 100 | 见 §6（R 裁决 1） |
-| `REFRESH_INITIAL` / `REFRESH_MAX` / `REFRESH_REGEN_TICKS` | 3 / 5 / 36000 | 36000 ticks = 30:00 ⇒ 见 §6（裁决 2） |
+| `REFRESH_INITIAL` / `REFRESH_MAX` / `REFRESH_REGEN_TICKS` | 3 / 5 / 36000 | 前两者 = 刷新次数初值 / 上限；`REFRESH_REGEN_TICKS` 自 2026-10-24 起仅为**存档 / 冻结测试兼容常量**（无自动恢复消费者）⇒ 见 §6 |
 
 ## §3 状态与落盘（**v1 的「候选不落盘」已作废**）
 
@@ -158,10 +158,10 @@ roll(player, reason):                     # reason = ENTER_FIRST | REFRESH | POS
 | `lastPickCategory` | `Optional<ChipCategory>` | R10：上次购买筹码的类别 |
 | `purchasedCount` | int | 累计购买次数 ⇒ 价格 = min(100, 10 + 5×count)（裁决 1） |
 | `refreshesLeft` | int | 当前剩余刷新次数（初值 3、上限 5） |
-| `regenAnchor` | long（世界 gameTime） | 刷新恢复锚点：首次消耗刷新后 = now + 36000；每次到点 +1 并顺延（裁决 2） |
+| `regenAnchor` | long（世界 gameTime） | **存档 / 冻结测试兼容字段**：首次消耗刷新后写入 `now + 36000`，但 2026-10-24 起**没有任何读取方据此 +1**（原时间驱动恢复已删除） |
 
-- **重抽的唯一三个入口**（R16/R17）：① 附件**无候选**或候选**含已拥有项**时的进店补抽（免费，见 Q15）；② `handleRefresh` 成功（−1 次）；③ 购买成功（R18）。
-- **刷新恢复**：服务端 tick（照抄 `CardShopCycleTicker.onServerTick` 的逐玩家遍历口径）检查 `refreshesLeft < REFRESH_MAX && now >= regenAnchor` ⇒ `+1`、`regenAnchor += 36000`、落盘；**玩家不在店内也照涨**（与卡牌商店沙漏口径一致）。
+- **重抽的唯一三个入口**（R16/R17）：① 附件**无候选**、候选**含已拥有项**或候选**含未知 id** 时的进店补抽（免费，见 Q15）；② `handleRefresh` 成功（−1 次）；③ 购买成功（R18）。换骰子 / 换装备**不触发**免费重抽（骰子签名只作诊断留痕）。
+- **刷新次数来源（2026-10-24 用户裁决，替代原「刷新恢复」）**：**无时间自动恢复**（原服务端 tick 恢复器已删除）。次数只有两个来源：① **真实铁砧升星** —— 玩家从铁砧输出槽**取走**升星成品时授予 1 次（输入星阶 0..2★、产物星阶恰为输入 +1、右槽星币数量达到 15/20/25 ⇒ 在存档现值上 `+1` 并封顶 5，不重置）；② 方块**投入空白筹码**。升星预览 / 装备查询 / 换骰都不发券；**死亡不重置**（存档跨死亡保留）。
 - 服务端运行态：`SimpleContainer(3)`（隐藏槽，承载候选 ItemStack 供同步）+ `int[] prices`（每格单价，见 §6）+ 附件读出的 `refreshesLeft`。
 
 ## §4 菜单 / 网络 / 客户端接线
@@ -192,9 +192,10 @@ roll(player, reason):                     # reason = ENTER_FIRST | REFRESH | POS
   - 价格曲线：第 1 次 10 → 第 2 次 15 → … → 第 19 次 100 → 之后恒 100。
   - `member_recommendation_chip`（会员推荐信）的商店 −1：**已裁决 = 不适用于筹码商店**（Q13：该 −1 只影响卡牌商店）⇒ 筹码商店**没有任何折扣路径**，价格恒为 `PRICE_INITIAL + PRICE_STEP × purchasedCount`（10 → 上限 100）。
   - 余额权威 = 前置库 `StarEngineEconomy.hasBalance / withdraw`；扣款成功后 `StarCoinBalanceSync.notifyChanged(player)`。
-- **刷新（裁决 2）**：`REFRESH_INITIAL = 3`（首次获得该状态时）、`REFRESH_MAX = 5`。
-  - 「**第一次使用刷新后**」才开始恢复：首次成功刷新时若 `regenAnchor == 0` ⇒ `regenAnchor = now + 36000`（30:00）。
-  - 之后每 `REFRESH_REGEN_TICKS = 36000` tick `+1`（上限 5）；到上限后锚点停止顺延。
+- **刷新（裁决 2 + 2026-10-24 修订）**：`REFRESH_INITIAL = 3`（首次获得该状态时）、`REFRESH_MAX = 5`。
+  - **无时间自动恢复**（2026-10-24 用户裁决：原「每 36000 tick +1」的服务端 tick 恢复器已删除；`REFRESH_REGEN_TICKS` 与 `regenAnchor` 仅作存档 / 冻结测试兼容保留，无自动恢复消费者）。
+  - 次数来源只有两条：① **真实铁砧升星** —— 从输出槽**取走**升星成品时授予 1 次（输入星阶 0..2★、产物星阶恰为输入 +1、右槽星币数量达到 `15/20/25` ⇒ `+1` 并封顶 5；在存档现值上累加，不重置）；② 方块**投入空白筹码**。
+  - 换骰子 / 换装备**不触发**免费重抽（`rolledDiceKey` 仅诊断留痕）；**死亡后次数保留**（附件 / 键跨死亡复制）。
   - 次数为 0 时按钮**只红闪、不发包**（服务端同样拒绝）。
 - **购买后（R18）**：写物品栏 → `purchasedCount += 1` → `lastPickCategory = 刚购买的类别` → **重抽候选并落盘** → 同步余额 + actionbar → `player.closeContainer()`（2026-10-12 口径修订：关店是这条链的**最后一步**，此前写的是「关店在重抽之前」，实现按本条执行；判据仍为「关店与扣款同分支」= G20/G20b）⇒ 下次开店看到的是新一批。
 
@@ -276,7 +277,7 @@ roll(player, reason):                     # reason = ENTER_FIRST | REFRESH | POS
 **逐项裁决记录（Q13–Q17，2026-10-12 全部落定）**
 
 - **Q13 已裁决（2026-10-12）**：会员推荐信的商店 −1 **只影响卡牌商店**，筹码商店**不适用** ⇒ 筹码商店无折扣路径（恒定「初始 10、每次购买 +5、上限 100」）。
-- **Q14 已裁决**：刷新次数恢复用**世界 gameTime**、**离线照涨**（回来一次性补算，上限 5）—— 已确认，无需改动。
+- **Q14 已裁决**：刷新次数恢复用**世界 gameTime**、**离线照涨**（回来一次性补算，上限 5）—— 已确认，无需改动。**（2026-10-24 已被新裁决取代：移除自动补充刷新次数、无时间自动恢复；次数来源 = 真实铁砧取走升星成品 / 投入空白筹码。）**
 - **Q15 已裁决**：开店时若落盘候选含**玩家已拥有**的筹码（在别处获得）⇒ **直接整组免费重抽** —— 已确认。
 - **Q16 已裁决（素材已补齐）**：`大背包.png` 已入 `images/shop/unbord_chips` ⇒ 用正式素材，取消 `textures/item/big_backpack_chip.png` 兜底。
 - **Q17 已裁决（2026-10-12）**：**不需要画标题** ⇒ 三语 `gui.astral_dice.chip_shop` 键保留（不删除、不影响 key 集一致性），界面**不绘制任何标题文字**（照参考图）。

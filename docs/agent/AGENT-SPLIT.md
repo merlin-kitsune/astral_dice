@@ -58,3 +58,19 @@ git -C F:\MCProject\astral_dice_multiloader status --short -uall      # 只应�
 pwsh -NoProfile -Command 'Test-Path F:\MCProject\.agent-locks\dsh.lock'  # DSH 收尾后应为 False
 python docs/agent/verify-split.py                                      # 动过规则文件后四项全 [OK]
 ```
+
+## 六、Kimi Code 兼容说明（2026-10-24 追加；第一至五节原文不变）
+
+1. 第一至五节的矩阵、互斥与冲突处理仍属 **Codex / DSH** 口径，Kimi Code 不据此执行；Kimi 的规则正本是
+   `docs/agent/AGENTS-kimi.md`，公共分派见根 `AGENTS.md`。
+2. 锁目录新增 Kimi 的 `kimi.lock`：Kimi 每次动工作树前创建（`PID=` / `TIME=` / `TASK=` 三行），收尾删除。
+   **Codex / DSH 启动写入或构建前，除 `dsh.lock` 外也必须检查 `kimi.lock`**：存在且 PID 存活 ⇒ 等待或询问用户，
+   **不得删除、不得覆盖**；陈旧锁同样不自行删除，记录后交用户裁决。
+3. 冲突处理依旧按第四节：发现不属于自己的改动即停手，追加到 `docs/agent/CONFLICT.md`，交用户裁决。
+4. 交接互不覆盖：DSH 仍按第三节维护自己的交接正本；Kimi 的对接文档为 `docs/handover-2026-10-24-kimi-takeover.md`
+   （每批新建，不覆盖旧交接文件）。
+5. 追加到第五节的自查口径（只读，双方可跑）：
+
+```powershell
+pwsh -NoProfile -Command 'Test-Path F:\MCProject\.agent-locks\kimi.lock'   # Kimi 收尾后应为 False
+```

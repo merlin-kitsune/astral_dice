@@ -80,7 +80,14 @@ public final class ChipShopCatalog {
     public static final int PRICE_STEP = 5;
     public static final int PRICE_MAX = 100;
 
-    /** 刷新次数：初值 / 上限 / 恢复周期（36000 ticks = 30:00） */
+    /**
+     * 刷新次数：初值 / 上限 / 历史恢复周期（36000 ticks = 30:00）。
+     *
+     * <p>⚠️ {@code REFRESH_REGEN_TICKS} 自 2026-10-24 起是**存档 / 冻结测试兼容常量**：时间驱动的自动恢复
+     * （原服务端 tick 恢复器）已按用户裁决删除，产品内**没有任何自动恢复消费者**；
+     * 保留它是因为旧存档的 {@code regen_anchor} 与冻结测试资产仍按此周期读写。刷新次数的两条真实来源 =
+     * 铁砧取走升星成品（+1，封顶 {@link #REFRESH_MAX}）+ 方块投入空白筹码。**不得**据此常量新增自动 +1。
+     */
     public static final int REFRESH_INITIAL = 3;
     public static final int REFRESH_MAX = 5;
     public static final int REFRESH_REGEN_TICKS = 36000;

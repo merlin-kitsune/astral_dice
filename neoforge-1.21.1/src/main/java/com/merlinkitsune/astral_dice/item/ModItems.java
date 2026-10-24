@@ -470,7 +470,7 @@ public class ModItems {
     public static final DeferredItem<Item> MISAKI_SIGN = registerItem("misaki_sign",
             () -> new MisakiSignItem(new Item.Properties()
                     .stacksTo(1)
-                    .rarity(AstralRarities.legendary())));
+                    .rarity(AstralRarities.epic())));
 
     public static final DeferredItem<Item> MIMI_SIGN = registerItem("mimi_sign",
             () -> new MimiSignItem(new Item.Properties()

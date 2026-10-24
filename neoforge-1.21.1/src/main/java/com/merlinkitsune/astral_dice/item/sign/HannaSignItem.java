@@ -60,7 +60,7 @@ import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
  *
  * <p><b>层数真值在附件 {@code ModAttachments#HANNA_DOLL_CRAFT_LAYERS}</b>,效果实例只是 HUD 镜像
  * (图标 = 立牌同图 + 层数,照「狐光」「推理时间」同款写法)。**不跨死亡保留** —— 技能原文未声明
- * 死亡保留,故按未声明即不保留的既定口径处理(与「剑气」「弱点识破」一致)。
+ * 死亡保留,故按未声明即不保留的既定口径处理(与「弱点识破」等未声明保留的附件一致)。
  */
 @EventBusSubscriber(modid = AstralDiceMod.MODID)
 public class HannaSignItem extends BaseSignItem implements SignHooks.DiceRollResult {

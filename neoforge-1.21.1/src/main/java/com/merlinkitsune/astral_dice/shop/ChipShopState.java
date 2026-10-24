@@ -26,14 +26,22 @@ import java.util.Optional;
  *   <li>{@code lastPickCategory} = 上次**购买**筹码的类别（R10；空 ⇒ 无类别偏置）；</li>
  *   <li>{@code purchasedCount} = 累计购买次数 ⇒ 价格 {@link ChipShopCatalog#priceOf(int)}（永久持久化）；</li>
  *   <li>{@code refreshesLeft} = 剩余刷新次数（初值 {@value ChipShopCatalog#REFRESH_INITIAL}、
- *       上限 {@value ChipShopCatalog#REFRESH_MAX}）；</li>
- *   <li>{@code regenAnchor} = 刷新恢复锚点（世界 gameTime）；<b>0 = 从未刷新过</b>（此时不恢复）。</li>
+ *       上限 {@value ChipShopCatalog#REFRESH_MAX}）；**不再随时间恢复** —— 只有两条获取路径：
+ *       ① 真实铁砧**取走**升星成品（{@code event/AnvilUpgradeHandler#onAnvilRepair} 调用
+ *       {@link #withRefreshGranted()} 授予 1 次）；② 方块投入空白筹码（{@link #withBlankInsert}）。
+ *       换装备 / 换骰子**不再**触发任何刷新，死亡也不重置（附件随死亡复制）；</li>
+ *   <li>{@code regenAnchor} = 原「刷新恢复锚点」的**存档 / 冻结测试兼容字段**（世界 gameTime；
+ *       <b>0 = 从未刷新过</b>）。2026-10-24 起**已无产品内的自动恢复消费者**（原时间驱动 ticker 已删除），
+ *       写入点仅保留在 {@link ChipShopMenu#handleRefresh}，不再有任何读取方据此 +1；</li>
  *   <li>{@code cooldownUntil} = 购买后的**禁止使用**截止时刻（世界 gameTime）；<b>0 = 无冷却</b>；</li>
- *   <li>{@code lastBlankInsertAt} = 最近一次**空白筹码投入**的时刻（世界 gameTime）；<b>0 = 从未投入</b>。</li>
+ *   <li>{@code lastBlankInsertAt} = 最近一次**空白筹码投入**的时刻（世界 gameTime）；<b>0 = 从未投入</b>；</li>
+ *   <li>{@code rolledDiceKey} = 上次掷骰时的骰子签名（{@code <物品 id>|<星阶>}）。**仅作诊断留痕**：
+ *       2026-10-24 起不再参与 {@link #needsReroll} 判定（旧行为「换骰/升星即作废批次」会让玩家
+ *       靠换装备白嫖刷新），字段 / Codec / 写入一律保留以兼容旧存档与冻结测试资产。</li>
  * </ul>
  *
  * <p><b>重抽的唯一三个入口</b>（R16/R17/G19）：① {@link ChipShopOpener#ensureOffers} 的进店补抽
- * （仅在「无候选」或「候选含已拥有项」时，免费）；② {@link ChipShopMenu#handleRefresh}；
+ * （仅在「无候选」「候选含已拥有项」或「候选含未知 id」时，免费）；② {@link ChipShopMenu#handleRefresh}；
  * ③ 购买成功分支。其余任何路径都**不得**掷骰。
  *
  * <p><b>Codec 容错</b>：全部字段 {@code optionalFieldOf} —— 旧存档 / 裁剪线缺少某个键时按默认值读入，
@@ -110,12 +118,11 @@ public record ChipShopState(List<String> offers, Optional<String> lastPickCatego
      *
      * <p>⚠️ 只按「候选本身」判断，**不因池不够造成的尾部空槽重抽** —— 否则池少时每次进店都会重掷，
      * 与「未购买退出候选不变」冲突。
+     *
+     * <p>⚠️ 2026-10-24 用户裁决：**已删除「骰子签名变化即重抽」的比对** —— 换装备 / 换骰子 / 升星
+     * 都不得再免费刷新（旧比对让换一次骰子就等于白送一批候选）。{@code rolledDiceKey} 仅作诊断留痕。
      */
     public boolean needsReroll(Player player) {
-        // 2026-10-21 用户裁决：换骰子或升星 ⇒ 立即作废当前批次（下次进店按新星阶重抽）
-        if (rolledDiceKey == null || !rolledDiceKey.equals(ChipShopRoller.diceKey(player))) {
-            return true;
-        }
         List<ChipShopCatalog.Entry> list = entries();
         if (list.isEmpty()) {
             return true;
@@ -152,6 +159,22 @@ public record ChipShopState(List<String> offers, Optional<String> lastPickCatego
     public ChipShopState withRefreshes(int left, long anchor) {
         return new ChipShopState(offers, lastPickCategory, purchasedCount,
                 Math.max(0, Math.min(ChipShopCatalog.REFRESH_MAX, left)), anchor, cooldownUntil, lastBlankInsertAt, rolledDiceKey);
+    }
+
+    /**
+     * 授予 **1 次**刷新（2026-10-24 用户裁决：真实铁砧取走升星成品才发券）。
+     *
+     * <p>语义 = 存档现值 {@code refreshesLeft} **+1** 并夹在 {@code 0..REFRESH_MAX}，
+     * 其余 record 字段原样保留 —— **不是**重置、也不回填 {@code REFRESH_INITIAL}，
+     * 因此已有存档次数（含旧版本攒下的 >初值 次数）不会被清掉。
+     *
+     * <p>唯一调用点 = {@code event/AnvilUpgradeHandler#onAnvilRepair}（取走分支）；
+     * 预览（{@code AnvilUpdateEvent}）/ 装备查询 / 抽取器一律不得调用。
+     */
+    public ChipShopState withRefreshGranted() {
+        return new ChipShopState(offers, lastPickCategory, purchasedCount,
+                Math.max(0, Math.min(ChipShopCatalog.REFRESH_MAX, refreshesLeft + 1)), regenAnchor, cooldownUntil,
+                lastBlankInsertAt, rolledDiceKey);
     }
 
     /**

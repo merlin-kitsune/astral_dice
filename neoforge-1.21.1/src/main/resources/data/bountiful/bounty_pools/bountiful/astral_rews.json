@@ -412,7 +412,7 @@
 		},
 		"misaki_sign": {
 			"type": "item",
-			"rarity": "LEGENDARY",
+			"rarity": "EPIC",
 			"content": "astral_dice:misaki_sign",
 			"amount": {
 				"min": 1,

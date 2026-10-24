@@ -64,16 +64,12 @@ public class PlayerLifecycleHandler {
         // 效果牌出牌轮状态(出牌数/冷却/一次性加成/可口糖果/探天卫星/活体书页本周期累计)、忍者与
         // 魔法秘典计数器、骰咒倍率同样无需在此清理:它们都是附件且不在死亡复制集合内。
         // 效果牌伤害加成(忍者立牌 KomachiDamageBonus/调查员立牌 RinPages)死亡保留,不清除
-        // 护法立牌:死亡时丢失全部"剑气"层数(死亡时刻即清除装备中的立牌数据,不受 KeepInventory 影响)
+        // 护法立牌:死亡**保留**"剑气"层数(2026-10-24 用户裁决)——本处不再主动清 MISAKI_SIGN_STACKS;
+        // 层数留在立牌物品的数据组件上,卸下立牌时 {@code MisakiSignItem#clearSignData} 的清零语义保留。
         com.merlinkitsune.starengine.item.CuriosCompat.getCuriosInventory(player).ifPresent(handler -> {
-            var misaki = handler.findFirstCurio(
-                    s -> s.is(com.merlinkitsune.astral_dice.item.ModItems.MISAKI_SIGN.get()));
-            if (misaki.isPresent()) {
-                ModDataComponents.MISAKI_SIGN_STACKS.set(misaki.get().stack(), 0);
-            }
-            // 上班族立牌:与护法同理——攻防/移动累计值写在**立牌物品数据组件**上,
+            // 上班族立牌:攻防/移动累计值写在**立牌物品数据组件**上,
             // 而死亡掉落走 Curios handleDrops(不回调 onUnequip),没有任何其它清理路径会归零它们
-            // (2026-09-15 P5 审计发现),故在这里按 MISAKI 同款方式清除(不受 KeepInventory 影响)。
+            // (2026-09-15 P5 审计发现),故在这里清除(不受 KeepInventory 影响;与护法不同,后者死亡保留)。
             //
             // ⚠️ **扫地机立牌(jasmine)已按 2026-09-30 用户裁决移出本段**:其攻/防加成改为
             // **死亡保留**(与忍者 komachi_damage_bonus / 调查员 rin_pages / 蛟龙 mamushi_awakening 同口径)——
