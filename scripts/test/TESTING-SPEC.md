@@ -228,6 +228,8 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --phase <p> --version <v>
 
 ## 7A. AutoJS 通道（运行时求值通道，2026-10-18 新增）
 
+> **现行操作口径**（DSH 侧 MCP 注册 / 技能安装 / 三层组成 / 排障表）见 docs/features/autojs-testing-flow.md；2026-10-24 复验：端点 GET /health = 200、status 两 side 均 available、工具面 4 个。本节仍是通道契约正本。
+
 > 权威规格 = `docs/features/autojs-test-harness-spec.md`（需求书；本节的「为什么」全部引自它）。本节只记录**已落地**的实现与用法，每条判据都标「文件:行号」便于逐字对账；legacy 用例的迁移欠账见 `docs/features/autojs-legacy-debt.md`；「什么时候必须用哪条通道」的规则见 `TESTING-RULES-OVERVIEW.md` §15。
 
 ### 7A.1 判据口径的变化：从「日志里命中某行」到「从 JVM 取状态」

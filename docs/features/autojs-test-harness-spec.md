@@ -1,5 +1,7 @@
 # AutoJS 实机测试台重写规格（autojs-test-harness-spec）
 
+> **现行操作口径**：端点 / DSH MCP 注册 / 技能安装 / 流程 / 排障见 [docs/features/autojs-testing-flow.md](autojs-testing-flow.md)（2026-10-24 复验）。本文仍是通道契约与用例 schema 的正本。
+
 > 用户指令（2026-10-18）：把 AutoJS（https://github.com/MerrySnow404/AutoJS）作为实机测试**专用库**导入所有测试环境；
 > 重写整个实机测试流程，用 AutoJS 替换旧的纯 KubeJS 通道；把 AutoJS 的 MCP 服务加进 DSH。
 > 用户裁决：范围 = **A 档（核心通道重写 + 样板用例）**；实机验证 = **已授权**（收尾带 `--purge-saves`）。
