@@ -10,33 +10,18 @@
 
 <!-- BEGIN 代理协作契约（2026-10-16 用户裁决）— 如需挪位，整块剪切到别处即可 -->
 
-## ⛔ 回滚裁决（2026-10-18 用户裁决，优先级高于本文件其余测试/环境条款）
+## ⚙️ 环境与工具链口径（Windows 原生，优先级高于本文件其余测试 / 环境条款）
 
-**背景**：WSL 内运行 Minecraft 客户端存在严重性能问题，实机读数与截图不可信；2026-10-18 的 WSL + AutoJS 测试台与其全部实机结果（含 1.21.1 / 1.20.1 双版本）**一律作废**。
+1. **一台机器、一种工作流**：DSH 直接在本机 Windows 工作树上动手 —— 没有第二个运行环境，也没有路径转译层。
+2. **测试台唯一口径 = PowerShell 7**：所有测试脚本都是 `.ps1`，一律 `pwsh -NoProfile -File <绝对路径>` 执行；不写 `.sh`，不用 Windows PowerShell 5.1。
+3. **编译**：在 `F:\MCProject\astral_dice_multiloader` 执行 `gradlew.bat :<线>:classes|jar`。
+4. **实机**：`pwsh -NoProfile -File F:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1 --version <线> --phase <env|run|stop>`。
+5. **产物投放**：以工作树 `build\libs` 为唯一来源，按线复制到 `run\<1.21.1|1.20.1|26.1.2|fabric-1.20.1>\mods`，或**成对**投放两个 P0 整合包（`astral_dice-*.jar` + `starengine-*-<库版本>.jar`）；投完必须核 `Get-FileHash`，别把同名当新构建。
+6. **git**：一律用 git bash 的 `git`，命令写全 `git -C F:\MCProject\<工作树> <子命令>`，或先 `cd` 进工作树。
+7. **JDK**：`JAVA_HOME=C:\Program Files\Zulu\zulu-21`（21.0.12）；`forge-1.20.1` 的 toolchain 17 由 Gradle 从 `%USERPROFILE%\.gradle\jdks` 取（已缓存 Adoptium 17.0.20），不要手改。
+8. **测试收尾必须自动关闭游戏进程（2026-10-18 用户裁决）**：任何测试轮次（单条 / 全量 / 中断 / 失败）结束后，必须执行 `pwsh -NoProfile -File scripts\test\mt.ps1 --version <线> --phase stop --force`，并在交付报告里贴出 `MT_STOP: OK` 原文 + 「无本流程 java 客户端残留」的核对结果（`Get-Process java` 计数）。**禁止**让 Minecraft 客户端无人观察地驻留 —— 它持续占用 CPU/GPU 并污染下一轮冷启动的前置状态。唯一例外：用例 `on_fail=keep_game_running` 落了 `.mt_keep_alive-<版本>` 的取证现场，此时在报告里说明保留原因与路径，取证完成后立即 `--phase stop --force`。
 
-**2026-10-22 改写（DSH 转 Windows 原生）**：本块第 1–6 条已由「WSL 口径」整体改写为 Windows 口径，原 WSL 条款**一律失效**（含 `/etc/profile.d` 注入脚本、`/opt/zulu`+`use-jdk`、`~/work/adm-*` 编译副本、WSL git 变通、「bash 里没有 pwsh」类说明）；逐条对照历史见 `docs/agent/AGENTS-full.md` 末尾〈WSL 口径失效对照〉。下文标着「生效红线区」的那一小节（= 快照 L2–L120）经核**不含任何 WSL 专用条款**，故未改动（它与快照必须逐字一致，单边改必 FAIL `verify-split.py` 第 2 项）。
-
-1. **测试台唯一口径 = PowerShell 7**。所有测试脚本都是 `.ps1`，一律 `pwsh -NoProfile -File <绝对路径>` 执行；
-   **禁止** `bash`、`.sh`、`bash mt.sh`、WSL 侧测试入口（`.sh` 已从仓库清除，不得再引入）；禁止 Windows PowerShell 5.1。
-2. **编译与实机都在 Windows 原生跑**（原「WSL 只承担编译」口径**失效**）：编译 = 在 `F:\MCProject\astral_dice_multiloader` 执行
-   `gradlew.bat :<线>:classes|jar`；实机 = `pwsh -NoProfile -File F:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1 …`（禁 `wsl.exe` / `/mnt/...`）。
-3. **产物投放**（原「WSL 产物复制回 `-next\run`」**失效**）：以工作树 `build\libs` 为唯一来源，按线复制到
-   `run\<1.21.1|1.20.1|26.1.2|fabric-1.20.1>\mods`，或**成对**投放两个 P0 整合包（`astral_dice-*.jar` + `starengine-*-1.1.0-pre.2.jar`）；
-   投完必须核 sha256，别把同名当新构建。
-4. **git 一律用 git bash 的 `git`**（原「一切 git 操作经 `cmd.exe`」与「WSL 报 `not a git repository`」的变通**均失效，该问题不存在**）：
-   命令写全 `git -C F:\MCProject\<工作树> <子命令>`，或先 `cd` 进工作树；不需要 `--git-dir=`，也不需要 `cmd.exe /c`。
-5. **工作副本口径作废**：工作树 `F:\MCProject\astral_dice_multiloader` 是唯一事实源 / 编译源 / 提交源；
-   `~/work/adm-*`、`/mnt/**` 副本一律不再使用（原「WSL 副本只作编译缓存」条款取消）。
-6. **环境注入脚本与 WSL JDK 路径作废**：`/etc/profile.d/99-wsl-proxy.sh`、`99-wsl-github.sh`、`wsl-env-restore.sh`、`/opt/zulu` + `use-jdk` 均视为已失效；
-   Windows 侧代理走系统环境变量（Clash `http://127.0.0.1:7897`，无注入脚本、无需恢复）；JDK 用 `C:\Program Files\Zulu\zulu-21`（21.0.12），
-   `forge-1.20.1` 的 toolchain 17 由 Gradle 从 `%USERPROFILE%\.gradle\jdks` 取（已缓存 Adoptium 17.0.20），不要手改。
-
-7. **测试收尾必须自动关闭游戏进程（2026-10-18 用户裁决）**：任何测试轮次（单条 / 全量 / 中断 / 失败）结束后，
-   必须执行 `pwsh -NoProfile -File scripts\test\mt.ps1 --version <线> --phase stop --force`，并在交付报告里贴出
-   `MT_STOP: OK` 原文 + 「无本流程 java 客户端残留」的核对结果（`Get-Process java` 计数）。
-   **禁止**让 Minecraft 客户端无人观察地驻留 —— 它会持续占用 CPU/GPU，并污染下一轮冷启动的前置状态。
-   唯一例外：用例 `on_fail=keep_game_running` 落了 `.mt_keep_alive-<版本>` 的取证现场，
-   此时在报告里说明保留原因与路径，取证完成后立即 `--phase stop --force`。
+> 红线区〈命令执行规范〉里那段「默认 shell 是 PowerShell 5.1」的旧背景不适用于 DSH —— 本宿主的 `pwsh` 一律是 PowerShell 7，直接按该节的规则执行即可。
 
 
 ## 下沉到 StarEngine 的判定规则 —— 必须遵守（2026-10-19 用户裁决）
@@ -64,18 +49,16 @@
 ## ⛔ 代理协作契约 —— A 方案 + 子代理职业指定（必须遵守，2026-10-16 用户裁决）
 
 > 本节与下文「## 子代理与测试环境硬规则」第 1 / 4 / 7 条**并用**；任何冲突处取**更严格**的一方。
-> 放在文件最前是**故意的**：本仓 AGENTS.md 已超 53 万字符，实测首次请求总输入仅 2.4～3.7 万 tokens ⇒ **只有前缀真正进入上下文，文件尾部的规则实际不生效**（详见 `~/.codex/usage-baseline-2026-10-16.md`）。
+> 放在文件前部是**故意的**：只有前缀真正进入上下文 —— 长驻规则留在本文件，逐批历史与领域规格一律在 `docs/agent/AGENTS-full.md` 按需读取（索引见文末）。
 
 ### A. A 方案：主 Agent 的请求数 / 上下文硬指标（省额度）
 
-**实测依据**：K3 主线程单请求输入中位 **18 万 tokens**（96.9% 命中缓存）；42 个用户回合打了 **871 次**请求
-（中位 12 次/回合、最高 132 次）；K3 输出仅 52 万 tokens ⇒ **额度是被主线程重复上下文烧掉的，不是被「思考」烧掉的**；
-子线程已 **100%** 走 DeepSeek（无误伤）。
+**依据**：成本主要来自**主线程重复上下文**（每多一次工具往返 ≈ 把整份上下文再送一遍），子代理只承担一次性工作 ⇒ 硬指标针对「主 Agent 的动作数」，不针对「思考」。
 
-1. **硬指标：主 Agent 每个用户回合的请求数 ≤ 6**（当前 12–21）。每多一次主线程工具往返 ≈ +18 万 tokens。
-2. **主 Agent 除「写计划 / 派活 / 验收 / 提交」外不得亲自执行任何动作**：`exec_command`、`apply_patch`、grep、
-   读大文件、跑 `gradlew`、跑 `mt.ps1`、`git` 取证命令、"我再验一遍" **一律不执行** ——
-   并入现有第 7 条的「主 Agent 只负责规划 / 派活 / 验收 / 提交」，扩展为**不亲自跑任何命令**。
+1. **硬指标：主 Agent 每个用户回合的请求数 ≤ 6** —— 多一次工具往返 ≈ 把整份主上下文再送一遍。
+2. **主 Agent 除「写计划 / 派活 / 验收 / 提交」外不得亲自执行任何动作**：`bash` / `pwsh` / `read` / `grep`、
+   跑 `gradlew`、跑 `mt.ps1`、`git` 取证命令、"我再验一遍" **一律不执行** ——
+   扩展为**不亲自跑任何命令**（要证据就派子代理，验收只看它回报的产物）。
 3. **一次派发 + 一次等待**：`wait_agent` 用长超时（≥600s）一次到位；**禁止轮询**（`list_agents` / `job_list` / 反复 `wait_agent` 探进度）
    —— 每次轮询 ≈ 一次主 Agent 全上下文请求。子代理（`subagent` / `subagent_fork`）完成由**运行时通知**，更不要自己轮询。
 4. **验收只看产物**：文件路径 + 行号 + 命令输出片段 + 哈希/`git rev-parse --short`；不要求主 Agent 复算。
@@ -88,7 +71,7 @@
 ### B. 子代理职业指定 —— 每次派发**必须**写明
 
 `subagent` / `subagent_fork`（以及 `spawn_teammate`）的 brief **第一句必须是职业声明**，句式统一为「**你是一位……**」+ 该职业的交付标准；
-**禁止派发没有职业的裸任务**。**禁止用 Codex 侧的 `delegate_task` 派活**（见本节 B-2）。
+**禁止派发没有职业的裸任务**。派活通道只有 DSH 子智能体；复核单独走 `dsh_code_review`（见本节 B-2）。
 
 | 本仓任务类型 | 必须使用的职业开场 |
 |---|---|
@@ -107,9 +90,9 @@
 **职业声明的三个作用**（派发时必须体现）：① **约束动作边界**（分析员只读不写、开发者必须编译取证、审查员不得改文件）；
 ② **约束质量标准**（把判据命令写进 brief）；③ **配合模型选择**（机械型 → `deepseek-official/deepseek-flash`；确需深推理 → 用 `list_subagent_models` 现查更强的 model 并写明理由）。
 
-### B-2. 派活只用 DSH 自己的子智能体 —— 不用 Codex 的 `delegate_task`（2026-10-22 用户裁决）
+### B-2. 派活与复核只能走 DSH 自己的工具（2026-10-22 用户裁决）
 
-**口径**：DSH 会话里**唯一**的派活通道 = DSH 自带子智能体；Codex 侧 `~/.codex/mcp/delegation/server.mjs` 的 `delegate_task` 属**另一个宿主**的工具，**DSH 不得再引用、不得再当派活/等待/验收口径**（旧文档里出现只当历史背景）。主 Agent 分工不变：**识别需求 → 分配工作 → 验收成果**；Subagent 只负责干活与回报。
+**口径**：DSH 会话里**唯一**的派活通道 = DSH 自带子智能体，复核 = `dsh_code_review`。主 Agent 分工：**识别需求 → 分配工作 → 验收成果**；Subagent 只负责干活与回报。
 
 | 场景 | 用什么 | 关键约束 |
 |---|---|---|
@@ -120,7 +103,8 @@
 
 **纪律（与 A 方案并用）**：① 一次派发只做一件事、只给一个编译目标；② brief 缺项时子代理只能自行决定 ⇒ 宁可多写 3 行判据，也不要事后返工；③ 子代理回报「没收到任务 / 需要澄清」时用 `send_message` 补一次，**最多重试 1 次**，仍失败**如实上报用户**，禁止在主会话反复重派；④ 验收只看产物（文件 + 行号 + 命令输出片段 + `git rev-parse --short`），不看子代理的自述。
 
-**Codex 侧限制不变**：Codex（Linux/容器侧）仍是只读验证方，跑 `dsh_code_review`、写 `docs/**`；两边**共用同一工作树**，写作用域必须提前讲清（见 `docs/agent/AGENT-SPLIT.md`）。
+**跨宿主分工与互斥**（谁能写源码 / 谁只读 / 锁目录与冲突登记）见 `docs/agent/AGENT-SPLIT.md`。
+
 ### C. 交接文档用法 —— 接手 / 交班都按这条走（2026-10-18 用户裁决）
 
 **四层事实源，别搞混**：
@@ -142,20 +126,20 @@
 **交班义务（收班前必须做完，缺一即不算交付）**：
 1. 刷新正本 `docs/handover-2.0.0-dev-next.md`：header 快照（日期 / 分支 / HEAD / mod_version / 工作树残留）+ §0 速览 + §3 追加批次行 + §4 追加实机机器行原文 + §5 追加或销账遗留项 + §6 追加新坑 + §7 补关键路径；
 2. 在 `docs/agent/AGENTS-full.md` 末尾「待办交接各批」**追加**一条（新条目，禁止改写旧条目）；
-3. 同步 `AGENTS.md` 索引最后一行（尾部行号 = AGENTS-full 的行数），并跑 `python docs/agent/verify-split.py`，**四项全 [OK]** 才算过；
+3. 同步本文件文末〈📇 规则索引〉末行（尾部行号 = `AGENTS-full.md` 的行数），并跑 `python -B docs/agent/verify-split.py`，**四项全 [OK]** 才算过；
 4. 同步刷新 `docs/handover-new-session-context.md` 的基本盘 / 已完成 / 立即待办；
 5. 未实机的欠账、REFUTED 的规格差异（例：lingling 冷却 3600t=180s vs 规格 120s）、无法测度的判据（例：牌面「厚度边」在两面同图案后无像素差异）**如实登记**，禁止静默删；
 6. 交接文档属**非代码改动** ⇒ 按第 7 条⑨a 只做 `dsh_code_review`，免子代理功能复验。
 
 <!-- END 代理协作契约（2026-10-16 用户裁决） -->
 
-> **本文件已拆分（2026-10-16 用户裁决：AGENTS.md 只保留「每次必读」红线 + 索引，原文不丢）**
-> - **逐字全文快照**：`docs/agent/AGENTS-full.md` —— 等于拆分前的 AGENTS.md 原文（3,480 行），**逐字节一致**；下文所有行号都指该文件。
+> **本文件的定位（2026-10-16 拆分；2026-10-24 迁入本文件）**
+> - **本文件 = DSH 的规则正本**：每次必读的红线 + DSH 专用工作方式（环境口径 / 下沉判定 / 委派 / 交接）。
+> - **逐字全文快照**：`docs/agent/AGENTS-full.md` —— 拆分前的规则原文（只追加、不改旧条）；下文所有行号都指该文件。
 > - **定位命令**：`grep -n '^#' docs/agent/AGENTS-full.md`；标题 + 行号总表见 `docs/agent/AGENTS-TOC.md`。
-> - **派活必须带规则**：子代理看不到本文件以外的规则 ⇒ brief 里要写「先读 `sed -n '<a>,<b>p' docs/agent/AGENTS-full.md`」（区间见下表）。
+> - **派活必须带规则**：子代理看不到本文件 ⇒ brief 里要写清区间（`docs/agent/AGENTS-full.md` L<a>–L<b>，行号查 `AGENTS-TOC.md`）。
 > - **交叉引用口径**：其它文件（脚本 / README / TESTING-SPEC 等）里写的「见 AGENTS.md〈X〉」，一律改到 `docs/agent/AGENTS-full.md` 里**按标题名检索**；标题文字未做任何改动。
-> - **回滚**：`cp AGENTS.md.bak-slim-20261016-184259 AGENTS.md`（备份在仓库根；另有一份拆分前的原始备份 `AGENTS.md.bak-a-plan-*`）。
-> - **自检**：`python -B docs/agent/verify-split.py`（只读；2026-10-24 重写为四项 —— ① 快照保序包含 + **本文件红线区块与快照 L2–L120 逐字一致**；② 根 `AGENTS.md` 结构完整（宿主分派 / 共同红线 1–6 / 按需索引）；③ `AGENTS.md` 引用的 docs 路径都存在（默认 WARN，`--strict` 才 FAIL）；④ 体量 < 32K 且本文件的 `using-superpowers` 段没被删）。
+> - **自检**：`python -B docs/agent/verify-split.py`（只读；四项 —— ① 快照保序包含 + **本文件红线区块与快照 L2–L120 逐字一致**；② 根 `AGENTS.md` 结构完整（宿主分派 / 共同红线 1–6 / 按需索引）；③ `AGENTS.md` 引用的 docs 路径都存在（默认 WARN，`--strict` 才 FAIL）；④ 体量 < 32K 且本文件的 `using-superpowers` 段没被删）。
 
 ## 📍 生效红线区 —— 原文逐字（`docs/agent/AGENTS-full.md` L1–L120；原文 H1 由本文件 H1 取代）
 
@@ -303,7 +287,7 @@ When extending this workspace:
 | L2198–L2308 | Mixin 注入规范 · 编译产物上传规则（新版本发布 / CurseForge；Modrinth 发布链路已于 2026-10-23 永久移除） | 写 mixin、发布前 |
 | L2309–L2909 | 自动化测试流程（资产重建 / 变更分级 / 测试顺序 / 清场与收尾 / 工具链 / 阶段 P·B·E·L·C·R / 截图识别 / MCP / 超时看门狗） | 任何游戏内测试前（**必读**） |
 | L2910–L3046 | NeoForge 上游 BUG 补丁（neoforge_fixes）· 「敌对目标」判定规范 · `/astralparty` 管理员调试命令 | 上游 bug / 敌对判定 / 调试命令前 |
-| L3047–L4031 | 版本历史与发布记录 · 待办交接各批（fengshui / teru / 新立牌批 / Carpet / 双人测试流程 / 遗留项 / 立牌批验证闭环 + 选卡界面 + Jade 倒计时 + 工具链回 Windows 原生 + AutoJS 求值通道 / lingling 用例 / 强化拒止牌面 / 欠账角色立牌 / DSH 原生批次（2026-10-22：规则 Windows 化 + 守门假红修复 + 立牌冷却补 max）/ WSL 口径失效对照（2026-10-22，末尾小节）/ 代码审查工具链换插件（2026-10-22，第 42 条节） / pre.4 全量实机（2026-10-22，第 49 条）/ 电击手套命中 FX（2026-10-22，第 47 条）/ 派活口径改 DSH 子智能体（2026-10-22，末尾小节）/ pre.4 实体拆除口径 + 管理命令 + 筹码效果图标（2026-10-22，第 43 条）/ 史莱姆立牌被动 15 秒（2026-10-22，第 44 条）/ 派子代理屏蔽人格注入（2026-10-22，第 45 条）/ 强化拒止品质改奇特 + 专属牌品质总则（2026-10-22，第 46 条）/ 筹码商店品质外框恢复 + 卡牌购买钱包音效（2026-10-22，第 48 条）/ 素材目录口径：models/images/sound 随时更新（2026-10-22，第 50 条）/ pre.5 指示器批 + 激光卡顿归因（2026-10-22，第 51 条）/ 「雷暴将至」修复 + 立即刷怪波（2026-10-23，第 52 条）/ 村民职业工作方块专用标签（2026-10-23，第 53 条）/ 实机欠账验证批 + forge Jade 图标 mixin 静默失效（2026-10-23，第 54 条）/ 村民带 AI 轮 + Jade 护甲图标尺寸口径（2026-10-23，第 55 条）/ Java 源代码许可改 GPL-3.0-only + 资产 CC BY-NC-SA 4.0（2026-10-23，第 56 条）/ 许可二次裁决：删 LICENSE-MIT + 前置库 StarEngine 同步 GPL-3.0-only（2026-10-23，第 57 条）/ Jade 护甲图标换 8×8 留白版（2026-10-23，第 58 条）/ 全量重建 + 推送 + 整合包更新（2026-10-23，第 59 条） · Modrinth 发布链路永久移除 + StarEngine 四产物上 CurseForge（2026-10-23，第 60 条）/ Modrinth 移除批复核与四条修正（2026-10-23，第 60.7 节） | 续做历史批次时 |
+| L3047–L4031 | 版本历史与发布记录 · 待办交接各批（fengshui / teru / 新立牌批 / Carpet / 双人测试流程 / 遗留项 / 立牌批验证闭环 + 选卡界面 + Jade 倒计时 + 工具链回 Windows 原生 + AutoJS 求值通道 / lingling 用例 / 强化拒止牌面 / 欠账角色立牌 / DSH 原生批次（2026-10-22：规则 Windows 化 + 守门假红修复 + 立牌冷却补 max）/ 代码审查工具链换插件（2026-10-22，第 42 条节） / pre.4 全量实机（2026-10-22，第 49 条）/ 电击手套命中 FX（2026-10-22，第 47 条）/ 派活口径改 DSH 子智能体（2026-10-22，末尾小节）/ pre.4 实体拆除口径 + 管理命令 + 筹码效果图标（2026-10-22，第 43 条）/ 史莱姆立牌被动 15 秒（2026-10-22，第 44 条）/ 派子代理屏蔽人格注入（2026-10-22，第 45 条）/ 强化拒止品质改奇特 + 专属牌品质总则（2026-10-22，第 46 条）/ 筹码商店品质外框恢复 + 卡牌购买钱包音效（2026-10-22，第 48 条）/ 素材目录口径：models/images/sound 随时更新（2026-10-22，第 50 条）/ pre.5 指示器批 + 激光卡顿归因（2026-10-22，第 51 条）/ 「雷暴将至」修复 + 立即刷怪波（2026-10-23，第 52 条）/ 村民职业工作方块专用标签（2026-10-23，第 53 条）/ 实机欠账验证批 + forge Jade 图标 mixin 静默失效（2026-10-23，第 54 条）/ 村民带 AI 轮 + Jade 护甲图标尺寸口径（2026-10-23，第 55 条）/ Java 源代码许可改 GPL-3.0-only + 资产 CC BY-NC-SA 4.0（2026-10-23，第 56 条）/ 许可二次裁决：删 LICENSE-MIT + 前置库 StarEngine 同步 GPL-3.0-only（2026-10-23，第 57 条）/ Jade 护甲图标换 8×8 留白版（2026-10-23，第 58 条）/ 全量重建 + 推送 + 整合包更新（2026-10-23，第 59 条） · Modrinth 发布链路永久移除 + StarEngine 四产物上 CurseForge（2026-10-23，第 60 条）/ Modrinth 移除批复核与四条修正（2026-10-23，第 60.7 节） | 续做历史批次时 |
 
 **维护约定**
 1. 新增「每次必读」的红线 ⇒ 直接写进上面的红线区（并同步到 `docs/agent/AGENTS-full.md` 的对应章节，保持两边一致）。
