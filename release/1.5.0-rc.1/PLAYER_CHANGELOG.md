@@ -1,242 +1,293 @@
-# Astral Dice 1.5.0-rc.1 Changelog
+# Astral Dice 1.5.0-rc.1 — Player Changelog
 
-Released: 1.5.0-rc.1 (**pre-release / Beta**) — covers everything since 1.3.7. This is a large version jump:
-a full **shop system** (Card Shop and Chip Shop blocks plus the Card Trader and Chip Merchant villager professions),
-a new **event system** (12 events, event-card animation, event selection screen), **two bizarre-grade signs**
-(Kangel / Jirai-ko), **two new effect cards** (Barricade / Repulsion, the latter also has an item form),
-**5 new chips**, a **combat rework** (split defense formula with 1:1 conversion, mobs included in dice combat,
-single declining dice roll for combat cards, defense cards 150 durability, vanilla damage modifiers restored),
-a **combat stat HUD**, and a license change to GPL-3.0-only.
+Released: **1.5.0-rc.1 (pre-release / beta)** — covers **everything** since 1.3.7. This is a large version jump. Main changes:
+
+- **Shops**: the Card Shop and Chip Shop blocks, the Card Trader and Chip Merchant villager professions, and the Loot Box block;
+- **Event system**: 12 events, event-card animation, and the Great Detective's event-choice screen;
+- **Content**: two quirky signs (KAngel, Ame), two new effect cards (Barricade, Reinforced Repulsion, the latter also as an item), and 5 new chips;
+- **Combat rework**: split player/mob defense formulas, 1:1 defense conversion, mob attacks rolled into dice battles, damage floor at 15% of attack, battle cards now single-shot decreasing dice, defense-card durability 150, vanilla damage modifiers restored, and color-coded damage numbers;
+- **UI**: combat stat bars (defense / attack), Jade integration, shop cooldown countdowns;
+- **License**: source code is now GPL-3.0-only.
+
+> **This pre-release ships two builds only**: `astral_dice-1.5.0-rc.1+neoforge_1.21.1.jar` (Minecraft 1.21.1 / NeoForge)
+> and `astral_dice-1.5.0-rc.1+forge_1.20.1.jar` (Minecraft 1.20.1 / Forge). Other platforms are out of scope for this pre-release.
 
 ## Installation and requirements (read first)
 
-- **StarEngine is no longer bundled (NeoForge 1.21.1 / Forge 1.20.1)**: the embedded library has been removed from the
-  shipped jar. StarEngine (`starengine`, **1.1.0**) is now a **separate requirement** — download the matching
-  `starengine-<loader>-1.1.0.jar` and put it in `mods`. The version **must match** the one this build was compiled against (1.1.0);
-  a missing library fails startup with "Missing or unsupported mandatory dependencies".
-  The NeoForge 26.1.2 and Fabric 1.20.1 lines **still bundle** it.
-- Mixin runtime on 1.20.1: **Mixin Booster ≥0.1.3** or **Sinytra Connector** — either one is enough.
-- Fabric 1.20.1 requires **Fabric API** and **Puzzles Lib** (which ships Forge Config API Port);
-  accessories use **Trinkets** (optionally compatible with **Accessories**) — Trinkets alone or Accessories alone both work,
-  only having neither refuses to start.
-- **Cards can no longer be crafted**: 22 card recipes were removed; cards come from the Card Shop / Card Trader / dice and signs.
-- 1.3.7 and older worlds can be upgraded directly; shops, events and villagers are new content and never rewrite existing items.
+- **StarEngine is no longer bundled** (NeoForge 1.21.1 / Forge 1.20.1): the shipped jars no longer contain `META-INF/jarjar/`.
+  StarEngine (modId `starengine`, **1.1.0**) is now a **separate dependency** — download the `starengine-<loader>-1.1.0.jar`
+  for your loader and drop it into `mods`. The version must match the one the mod was built against; if it is missing
+  the game refuses to start with “Missing or unsupported mandatory dependencies” — check the library jar first.
+- Mixin runtime for 1.20.1: **Mixin Booster ≥0.1.3** or **Sinytra Connector** — either one, not both.
+- **Cards can no longer be crafted**: all 22 card recipes were removed. Cards now come from the Card Shop, the Card Trader,
+  dice, and signs.
+- Worlds from 1.3.7 and earlier upgrade in place; shops, events and villagers are additive and never rewrite existing items.
 
 ## New content
 
-### Shops and villagers
+### Card Shop (new block)
 
-- **New block "Card Shop"**: crafted from 3 smooth stone slabs / 3 star coins / 3 logs; new Blockbench wooden counter model
-  (with a glass display window) that faces the player who placed it.
-- **The Card Shop UI was rebuilt and buying is now drag-and-drop**: hold a card and drag it to your inventory to buy it —
-  the card follows the cursor, releasing it in an invalid slot cancels without charging. Empty slots show the "sold out" style.
-- **The shop now polls every 60 seconds**: the stock only changes when the timer hits zero; the hourglass shows 4 stages
-  (no more seconds); one transfer and one starlight exchange per round (buying is unlimited); reopening the shop no longer rerolls it.
-- **Equipping the Business sign or triggering "Store Sale" no longer rerolls the whole shelf**: missing cards are filled in
-  (sign +1 combat card, sale +2), while existing cards, prices, sold state and timer stay untouched; removing the sign
-  or ending the sale never shrinks the shelf — that change waits for the next reroll.
-- **Starlight exchange and transfers are inside the shop**: **2 starlight = 1 star coin** (no cooldown, with a hint when short);
-  transfers send **5–20** star coins to other online players, with a name search box and a scrolling list.
-- **New block "Chip Shop"**: draws and sells chips in sets; candidates get quality-colored frames (rare blue / epic purple /
-  legendary gold) with 24×24 icons; long chip names scroll left and right; hovering a candidate (or its label) shows its tooltip.
-- **5 new chips**: Flashlight-Flashbang, Lucky Slip, Reagent-Abyss, Wireless Power Pole, Sensing Device — all craftable.
-- **New villager profession "Card Trader"**: the Card Shop block is now a job site; villagers claim it and trade cards.
-- **New villager profession "Chip Merchant"**: the Chip Shop block is a job site; traders sell chips
-  (quality tied to level: L1 rare / L2 rare+epic / L3 epic / L4 epic+legendary / L5 legendary, weights 6/3/2);
-  journeyman unlocks "1 emerald → 1 star coin" (hidden while an emerald dice is equipped). Each profession now uses its own
-  job-site tag, so profession-viewer mods no longer list both as the same block.
-- **"Lottery Box"** (formerly Event Lottery Box): right-click to buy a lottery ticket for **5 star coins**, once per **5:00**;
-  new texture and recipe (star compass · star coin · star compass / star coin · diamond dice · star coin / star compass · star coin · star compass),
-  with a recipe page in the guidebook. "Event Lottery Ticket" became **"Strange Question Mark"** with a new icon.
-  Card Shop, Chip Shop and Lottery Box are no longer stackable.
+- **Recipe**: top row 3 smooth stone slabs, middle row 3 star coins, bottom row 3 logs. Place it and **right-click to open** — free, no cooldown.
+- **Stock**: **3 cards** on the shelf by default (no duplicate names in one batch), **base price 3 star coins**;
+  a bought slot shows “Sold Out”; **the same batch stays** until the **60-second** restock timer hits zero (closing and reopening does not reroll).
+- **Business sign synergy**: if someone on your team wears the Business sign, one extra **battle card** is stocked and each card has a **10%** chance to be discounted to **1 star coin**.
+- **Battery cards** only appear when your **dice is 2★ or higher**.
+- **UI**: a wooden counter with a glass case (Blockbench model, collision and selection box tightened to it); magenta “Card Shop” title centred;
+  6 card frames with the card art filling each frame and the full name shown (font shrinks when long); discounts are marked **bottom-right of the card art**;
+  left button = starlight→star coin exchange, middle button = transfer (greyed out below 5 star coins or while cooling down);
+  the hourglass shows **cooldown progress**; star-coin balance bottom-left, your inventory bottom-right.
+- **Buying is drag-and-drop**: hold a card and drag it into the inventory to buy — the card follows the cursor and the source slot shows the “Sold Out” backing;
+  dropping it anywhere else returns it (no charge); **you cannot drag a card you cannot afford** (red text shows the price); an occupied slot asks you to pick another.
+  Empty slots all share the “Sold Out” look.
+- **A purchase counts as “obtaining”**: Vitamin Pill healing and Till the Fox's foxfire stack both trigger; a wallet sound plays on success.
+- **Detailing**: buttons are icon-only (explanations moved to tooltips); the transfer screen renders completely on its own (no shop content behind it);
+  transfers use **four amount buttons** (5 / 10 / 15 / 20) with a name search box, a scrolling list, and each row showing head, name and current balance,
+  with a pink arrow marking the selection. A successful transfer returns to the shop and **you cannot transfer twice in one visit**.
 
-### Event system
+### Starlight exchange and transfers inside the Card Shop
 
-- **The event system was rewritten**: each event has a name, icon, type (positive / neutral / negative — text color only),
-  tier, scope and registerable trigger, with per-event timers (re-triggering resets them).
-- **12 events implemented** (scope is "trigger within 64 blocks ∪ whole team"):
-  **Overheat Warning** (+5 attack, 3:00) | **Haste** (Speed II, 2:00) | **Storm Approaching** (1 random card; nearby hostile mobs +2 attack, +2 defense, 2:00) |
-  **Learn From Each Other** (lowest-health player +8, highest −8) | **Store Sale** (+2 cards on sale, 5:00) |
-  **Hand Erasure** (randomly discard a card) | **World Shatters** (instant 4 damage) | **Gift From Above** (1 random card + 3 star coins) |
-  **Angel Descent** (4 healing) | **Questionable Takeout** (instant 2 damage + Poison/Hunger 0:15 each + no healing for 15 s) |
-  **Crowded Corridor** (all players teleported to the trigger) | **Combat Rush** (2 "Attack - Extra Large" cards).
-  Storm Approaching also doubles hostile mob spawns at night near affected players.
-- **Event card animation**: a card pops up in the center of the screen (0.2 s fade/scale in → 1.0 s hold → 0.2 s fade out),
-  with the event icon on top and the name (colored by type) plus timer below; the event resolves ~1.9 s later together with its sound.
-  Card text now fades out with the card instead of lingering.
-- **The Great Detective sign's active skill became an "event selection screen"**: 2 random events are drawn,
-  hovering highlights, clicking selects, confirming triggers. A **15-second countdown** sits at the top;
-  timing out, dying or leaving triggers the first option; confirming closes the screen and starts the event flow immediately (no extra second).
-- **Secret Detective "Investigation Stage"**: only killing the "Hidden Investigation" target raises a stage
-  (the current stage resolves first, then it upgrades); 4 stage icons are wired in (I / II / III / Revelation),
-  and multiple secret detectives in a party track their stages independently.
-- **Two ways to draw events**: the "Event Voucher" item and the "Event Drawer" block (now renamed "Strange Question Mark" and "Lottery Box").
+- **Starlight exchange**: **2 starlight = 1 star coin**, **no cooldown**, once per visit (a hint appears when you lack starlight).
+  This is where the Business sign's old “cash out” ability went.
+- **Transfers**: send star coins to **other online players**, **5–20 per transfer**, **60-second** cooldown afterwards
+  (shared timer with the shop restock, keeps counting while offline); once per visit. If the target logs off before confirming,
+  the list refreshes and you pick again.
+  **A Business-sign wearer who completes a transfer** forces the **first unsold card** on their shelf down to 1 star coin.
 
-### Signs and effect cards
+### Chip Shop (new block)
 
-- **Two new bizarre-grade signs, Kangel and Jirai-ko** (both crafted from amethyst dice + 2 golden star compasses):
-  - **Kangel**: active "Cyber Angel" instantly grants (1 + fans) star coins (up to 10; at ≥3 fans also fully heals,
-    at ≥9 nearby friendly players each get 3 star coins); passive "Little Angel's Greeting" turns targets you attack
-    or that attack you into "fans" (permanent), and fans deal 1 less damage to you; a party Jirai-ko also counts.
-    Fan cap 10, kept across death, cleared when the sign is unequipped.
-  - **Jirai-ko**: active "Emotional Overindulgence" heals 2× your "Love" stacks and grants 1:00 of +20% movement speed,
-    then removes 4 stacks and raises the cap by 1 (max 32); passive "Unbearable Love" gives 6 base defense and
-    +1 "Love" every 30 s when hit by hostiles (starts at 2 stacks, cap 4); each stack gives +1 attack and −1 defense
-    (never below 0), and each stack above 4 gives +1 max health; a party Kangel gains 6 base defense and each Jirai-ko
-    gains +1 "Love" whenever she is hurt.
-- **New effect card "Barricade"** (rare): right-click a block face to place it (up to 4.5 blocks, no card consumed on failure).
-  A visible entity plus invisible collision blocks: 30 durability, −1 per mob hit, 1.5 blocks tall, blocks players and mobs
-  like a fence, catches arrows and bolts in the block layer (also −1), and cannot be pushed by explosions.
-  Every 4 ticks it pulls aggro from non-elite, non-boss hostiles within 6 blocks. When destroyed (durability, `/kill`,
-  or `/astralparty killbarricade`) it releases aggro, removes its collision blocks and plays a wood-break sound.
-- **New exclusive effect card "Repulsion"** (bizarre; owner only): place on a block face (up to 4.5 blocks, not consumed on failure).
-  A collision-less field entity with **50 durability / 20:00 lifetime** that every second pulls in hostile / angered-neutral mobs
-  **that currently have an aggro target** within 12 blocks and applies Slowness (0:10) and Weakness (0:10),
-  yanks anything past 12 blocks back to 11.5 blocks, and **never draws aggro**; grabbed creepers cannot detonate.
-  Mobs and environmental damage do nothing to it; the placer's **5th melee hit recycles it into item form**
-  (anyone else just gets a message). Exclusive cards are excluded from the random pool, recipes and bounty pools.
-  The item form is identical to the card form and carries **durability / remaining lifetime / charge already granted**,
-  restored on re-placement. The item is **hidden from the creative tab and JEI** (still obtainable and usable).
-- **New `/astralparty` cleanup subcommands**: `/astralparty killbarricade [<radius>|all]` and
-  `/astralparty killrepulsion [<radius>|all]` (permission 2; 64 blocks by default, `all` for the whole dimension)
-  for leftover entities you cannot get an id for and `/kill` cannot remove.
-- **The Business sign was rewritten**: the active became **"Online Shopping"** — remotely open the Card Shop
-  (buying, starlight exchange and transfers all inside), then a 120-second cooldown. The "Legendary Merchant" passive became five lines:
-  +1 star coin on entering the shop; +1 combat card for your own and teammates' shops; each card has a 10% chance to drop to
-  1 star coin; after a transfer the first non-discounted card drops to 1 star coin; starlight exchange gains +50%.
-- **Slime sign's "Cell Division" passive now triggers at most once every 15 seconds** (still +1 healing and −10 s active cooldown).
-- **Gunsmith sign active/passive reworked**: the active now marks a target with "Opening (2:00)";
-  the decay of "Weakness Insight" and the Weird Detective's "Reasoning Time" now uses its own 1-minute timer
-  instead of hanging off Dice Blessing.
+- **Recipe**: `gold ingot · star plate · gold ingot / polished blackstone bricks · blank chip · polished blackstone bricks / polished blackstone bricks ×3` (shaped).
+- **Three chip slots** per visit, drawn by weight from chips **you do not own yet** (no duplicates in a batch); each slot shows its own icon and **all three share one price**.
+- **Price**: starts at **10 star coins**, **+5 for every chip you have bought**, capped at **100** (not reset by restocking or reopening).
+- **Rarity weighting by dice stars**: 0–1★ = rare 60% / epic 37% / legendary 3%; 2★ = 40% / 45% / 15%; 3★ = 25% / 50% / 25%.
+- **School weighting**: chips of a school **you already have equipped** are more likely (**+60% each**); the **category you bought last time** gets **×2** on slot 1 and **×1.25** on slots 2–3.
+- **Rerolls**: **3** to start, max **5**; the timer only begins **after your first reroll** and recovers 1 every **30 minutes** (accumulates while away);
+  when exhausted the reroll button just flashes red and sends nothing. You **cannot open the shop** with a full chip collection or a full inventory (a hint is shown).
+- **Buying**: the chip goes straight into your inventory and the screen closes; **the shop then has a 5:00 cooldown**.
+  While cooling down, **right-click a blank chip** into the shop to clear the cooldown and gain **+1 reroll** (once per 2:00).
+  With a full inventory the trade still **goes through** — you are charged, the counter advances, the reroll happens —
+  and the chip **drops at your feet**; in creative mode it is simply consumed (no drop, no message).
+- **UI**: cost row = small star-coin icon plus amount; reroll shows **remaining count only**; icons are **24×24** with a **rarity ring** under each slot
+  (rare blue / epic purple / legendary gold); long chip names **scroll horizontally**; the selected slot's name turns **black**;
+  hovering a chip (**either the slot or its label**) shows the tooltip. The shop **draws no title** and has **no discount path at all**
+  (Membership Letter only discounts the Card Shop).
 
-### Interface and presentation
+### Villager professions
 
-- **New combat stat bars (defense and attack)**: the vanilla armor row becomes the mod's defense bar (the vanilla armor bar and
-  Overloaded Armor Bar's armor bar are hidden), and the attack bar sits right above hunger; 10 icons per row, 2 points per icon,
-  with full and half icons; above 20 points it collapses to "1 full icon + number". Values come straight from the combat formula,
-  and the vanilla armor number is no longer shown. **The attack bar excludes weapons in hand** (combat still uses the full value).
-- **The attack bar now shows every attack bonus**: client evaluation used to be short-circuited by per-site client guards,
-  so the HUD only reflected some modifiers (chips like the Electric Sword worked server-side but never moved the number);
-  the client now runs the whole chain in "display mode", excluding only **weapons in hand** and **dice-combat random rolls**.
-- **Jade shows the mod's defense**: hovering a player shows the mod's defense value with full/half/empty shield icons;
-  mobs still show their vanilla armor.
-- **Shop blocks gained Jade cooldown readouts**: "restock in M:SS" on the Card Shop and "enter in M:SS" on the Chip Shop / Lottery Box.
-- **Chip status icons switched to borderless chip art** (11 effects), and the chip shop's three quality frames were restored.
-- **The Railgun "ready" indicator was removed**, and **Whetstone / Airbag gained "cooling down" indicators**
-  whose duration equals the remaining cooldown.
-- **New generic "card picker" UI component**: server menu plus client screen, 1 or 3 slots, optional card type filter,
-  double-click or drag to fill, confirm only when full, Esc or closing consumes nothing.
-- **5 new custom sounds and 1 rewritten**: the four damage effect cards have dedicated cast/hit sounds, events have their own
-  trigger sounds, a wallet sound plays on a successful shop purchase, and the Shock Gloves gain spark FX and a shock sound.
-- **Pixel particle library imported**: 179 hand-drawn 32×32 particle textures by shuimo0413 (MIT).
+- **Card Trader** (Card Shop block is its workstation): novice/apprentice sell **rare** cards (2–6 emeralds), journeyman/expert **epic**,
+  expert/master **legendary** (up to 20 emeralds), with prices nudged by card strength; from **journeyman** onward it also offers **1 emerald → 1 star coin**.
+  That trade is **hidden while you wear an emerald dice**.
+- **Chip Merchant** (Chip Shop block is its workstation): sells chips with rarity tied to level — L1 rare / L2 rare + epic / L3 epic /
+  L4 epic + legendary / L5 legendary, appearing with weights 6 / 3 / 2; journeyman also unlocks **1 emerald → 1 star coin** (hidden with an emerald dice).
+- Both professions now use **dedicated workstation tags** (the vanilla shared tag is kept, so villagers still claim the blocks),
+  and mods that inspect professions no longer show both blocks as the same job site.
+
+### Loot Box (formerly “Event Loot Box”)
+
+- Right-click to buy a loot card for **5 star coins**, limit **one per 5:00** (insufficient balance or cooldown is refused via ActionBar red text);
+  new texture and recipe (`star plate · star coin · star plate / star coin · diamond dice · star coin / star plate · star coin · star plate`), with a manual recipe page.
+- The item “Event Loot Card” is renamed **Strange Question Mark** with a new icon (using it draws one random event from the pool; consumes 1 in survival).
+- The Card Shop, Chip Shop and Loot Box blocks are now **non-stackable**.
+
+### Trading-chip adjustments
+
+- **Membership Letter** gains: while equipped, **every card in your own shop costs 1 star coin less**; it **stacks** with the Business sign's 10% discount and
+  **floors at 0** (a 0-cost card is free).
+- **ATM rewritten**: every transfer to another player grants **both sides +1 starlight and +2 star coins** (only triggers when the initiator wears it).
+  The old “+1 starlight on equip” and “+40% starlight exchange” abilities are **removed**.
+- **The starlight “base floor” bug is fixed**: the +4 / +7 starlight from Bank Card-Low Balance / High Balance now **converts normally to star coins**
+  (they used to be treated as a floor on your balance, so that amount could never be exchanged).
+
+### Event system (rewritten)
+
+- Every event now has a unified name, icon, type (positive / neutral / negative — **text colour only**), tier, scope and registrable triggers,
+  plus its **own timer** (retriggering resets it).
+- **12 events** (scope = 64 blocks around the trigger ∪ the whole team):
+  - **Red Heat Warning** (attack +5, 3:00, positive)
+  - **Haste** (Speed II, 2:00)
+  - **Storm Incoming** (1 random card; hostile mobs in range gain +2 attack and +2 defense, 2:00; **at night, hostile natural spawns ×2 near players carrying it**)
+  - **Trade Strengths** (lowest-health player +8, highest −8; **heals first, damages 1 second later**)
+  - **Shop Sale** (shops stock +2 cards, 5:00)
+  - **Hand Wipe** (lose one random card — **it vanishes, it does not drop**)
+  - **Earth Shatter** (4 damage immediately)
+  - **Gift From Above** (1 random card + 3 star coins, **coins go straight into the wallet**, positive)
+  - **Angel Descends** (4 healing)
+  - **Questionable Takeout** (2 damage now + Poison / Hunger 0:15 each + **healing disabled for 15 seconds**, negative)
+  - **Crowded Corridor** (all players teleported to the trigger, neutral)
+  - **Battle Rush** (2 × Attack-Extra Large)
+- **Status indicators**: Red Heat Warning / Storm Incoming / Questionable Takeout show their own icons; while Takeout is active a dedicated icon replaces vanilla Poison/Hunger.
+  Red Heat's attack bonus and Storm's attack/defense bonuses **run through this mod's combat model** and are **transient** (lost on death or relog).
+- **Event card animation**: the card pops up centre-screen — 0.2s fade/scale in → 1.0s hold → 0.2s shrink/fade out;
+  upper cell is the art, lower cell the name (coloured by type: positive green / neutral yellow / negative red) plus the timer.
+  **The event resolves about 1.9s (38 ticks) after the card appears** (28 ticks visible + 10 ticks buffer); the timer, effects and sound are registered on the same tick.
+- **Event sounds**: `event_fade_in`, `event_heal`, `event_damage`, `event_poisoning`, `event_transport`, `event_bonus`.
+- **Great Detective sign active is now an event-choice screen**: using it opens a centred panel drawing **2** events from the pool
+  (duplicates possible; any mix of positive/negative/neutral); hovering highlights the card, clicking selects it, and **you must confirm** to trigger.
+  A **15-second** countdown sits on top; on timeout, death or logout the first option is forced (a confirmed choice is never overridden).
+  The active sound plays the moment the skill key is pressed, not on confirm, and confirming **closes the screen instantly** and starts the flow.
+- **Secret Detective “Investigation Stage”**: only killing an **Undercover Investigation** target raises the stage (**triggers at the current stage first, then upgrades**),
+  wired to 4 stage icons (Investigation I / II / III / Truth Revealed) with **1:00** duration at every stage;
+  multiple Secret Detectives each track independently; **a target already carrying the mark cannot be marked again by anyone**;
+  apart from Truth Revealed, the event only affects **the detective who applied the mark and the killer**.
+  That event can **only be drawn when a Secret Detective is on the team**.
+- **Two ways to draw events**: the Strange Question Mark item and the Loot Box block.
+- **All star-coin payouts now go to the wallet first** (Haiqing, Bonnie, Hanna, Mimi, Gift From Above, the Great Detective passive, …)
+  instead of being stuffed into the inventory (and dropped if full); the item is handed over only when the wallet is closed.
+
+### New signs
+
+- **KAngel** (quirky; recipe: amethyst dice + 2 golden star plates)
+  - Active “Net Angel”: gain (1 + fan count) star coins (max 10); at ≥3 fans heal to full; at ≥9 fans every friendly player gains 3 star coins
+    (team scope with a team, otherwise players within 64 blocks).
+  - Passive “Little Angel Greeting”: anything you hit or that hits you becomes a permanent **fan**, and **fans deal 1 less damage to you**.
+  - Note “Two Hearts As One”: with an Ame on the team this passive applies to her too (her fans count for you). Fans cap at 10, persist through death, and reset when the sign is removed.
+- **Ame** (quirky; same recipe)
+  - Active “Overdose of Feeling”: heal (Love stacks × 2) and gain 1:00 of +20% movement speed; when it ends, lose 4 Love and raise the Love cap by 1 (up to 32).
+  - Passive “Unbearable Love”: 6 base defense; each hostile attack taken grants +1 Love every 30 seconds (starts at 2, cap starts at 4);
+    each Love gives +1 attack and −1 defense (never below 0); every Love above 4 adds +1 max health.
+  - Note “Two Hearts As One”: with a KAngel on the team she gains 6 base defense, and whenever she is hurt every Ame on the team gains +1 Love.
+    Love persists through death and resets when the sign is removed.
+- **Slime sign passive “Cell Division” now triggers at most once every 15 seconds** (still +1 healing stack and −10s active cooldown).
+- **Gunsmith sign active/passive rewritten**: the active now marks one target with **Opening (2:00)** (their battle dice roll is locked to 0; cannot be applied to an already-marked target);
+  the passive and the Muscle Detective's “Reasoning Time” decay each use their **own 1-minute timer** (no longer tied to the dice blessing), shown as remaining time in the UI.
+
+### New effect cards
+
+- **Barricade** (rare): right-click the face you are looking at (up to 4.5 blocks, vanilla placement rules; a failed placement **does not consume the card**).
+  A **visible entity plus an invisible collision block**: **30 durability**, loses a flat **−1** per mob attack (players can break it too);
+  **1.5 blocks tall**, blocking players and mobs like a fence; arrows and crossbow bolts are caught at the block layer and also cost −1; explosions cannot move it.
+  The server retargets non-elite, non-boss hostiles within **6 blocks** onto the barricade every 4 ticks.
+  When durability runs out, a player breaks it, it is `/kill`ed, or it is removed by `/astralparty killbarricade`, it clears aggro, deletes the collision block and plays the wood-break sound;
+  **no item drop, no XP**. Added to the random effect-card pool, the creative tab and the bounty reward pool.
+- **Reinforced Repulsion** (quirky, exclusive — only the owner can use it): right-click the face you are looking at (up to 4.5 blocks; failed placement is free).
+  A collision-free force entity with **50 durability / 20:00 lifetime**; every second it pulls hostile / provoked-neutral mobs that **currently have an aggro target** within **12 blocks**,
+  applying **Slowness (0:10)** and **Weakness (0:10)**; each tick any target that escapes 12 blocks is dragged back to **11.5 blocks**; it **generates no aggro** (never rewrites targets);
+  caught creepers **cannot detonate**; mob and environmental damage does nothing to it. **Every 10 seconds it loses durability equal to the number of caught targets (max 5 per tick).**
+  The placer can **recover it as an item by landing 5 melee hits** (other players just get a hint).
+  An exclusive card: **not in the random pool, no recipe, not in bounty pools**, and never offered by shops or villagers.
+- **Reinforced Repulsion (item form)**: the recovered item carries **durability (max 50) / ticks survived (remaining life, max 20:00) / charges granted (0–5)**,
+  and re-placing restores exactly those values; non-owners can neither place nor recover it. The item form is **not listed in the creative tab or JEI** (it is still obtainable and usable).
+- **New `/astralparty` subcommands**: `killbarricade [<radius>|all]` and `killrepulsion [<radius>|all]`
+  (permission level 2; radius defaults to 64 blocks, `all` clears the current dimension) — for leftovers that have no entity id and survive `/kill`.
+
+### New chips (5; pool 61 → 66; rare 19 / epic 28 / legendary 19)
+
+- **Flashlight-Burst** (legendary / starlight): attacking a hostile target **that this player has not attacked before** grants +1 starlight
+  (dedup per player × target, cap 256); every 2 starlight adds +1 attack damage.
+- **Fortune Slip** (epic / starlight): killing your first mob during a dice blessing gives you and friendly players within 16 blocks 1–7 starlight each (once per cycle).
+- **Reagent-The Abyss** (epic / healing): +2 healing stacks on equip (−2 on unequip); healing procs grant absorption equal to **twice the effective heal** (yellow hearts);
+  +2 when a dice blessing triggers and +2 at each **1:00** healing settlement (same cadence as the Medkit).
+- **Wireless Power Pole** (epic / charge): +1 effect card play; whenever you gain charge, other friendly players within 8 blocks each gain 1 charge.
+- **Sensor Device** (epic / mark): every 3 marks on a target gives it −1 battle dice roll (max −4); a successful dodge puts 1 mark on the attacker.
+- Crafting for these 5 chips is governed by the **chip recipe master switch** (`enable_chip_recipes`), which is **off by default**;
+  while off, the creative tab also hides Regeneration Reagent / Conductive Wire / Star Coin Dust / Mark Paint (Blank Chip still shows).
+
+### UI and presentation
+
+- **Combat stat bars (new HUD)**:
+  - the **defense bar** takes over the armour row, the **attack bar** sits above the hunger bar; each icon is **2 points**, above 20 it collapses to “one icon + number”.
+  - **F1** hides them together with the rest of the HUD; **held weapons are excluded** (weapon damage never enters the dice comparison).
+  - the **attack bar now runs the whole attack chain** (previously only about a third of effects showed up):
+    every bonus that actually competes in a dice battle (bank cards, electric sword, flashlight, star-coin hammer, King's Power, Berserk, protection, target mark, boxing gloves,
+    cursed sword, Big Boss rage, investigation stage, collected attack cards, …) is now included; **battle dice rolls do not enter the bar**
+    (the bar shows the stable range, the roll only happens during the clash).
+- **Jade integration**: hovering a player shows **this mod's defense** (not just vanilla armour); hovering either shop block shows the **cooldown countdown (M:SS)**.
+- **Chip effect icons**: 11 chips switched to **borderless** art, centred and enlarged (the old frames made them look oversized next to other icons);
+  the Chip Shop restores **three-tier rarity frames** (rare blue / epic purple / legendary gold), matching the Card Shop and JEI.
+- **Indicator changes**: the Railgun's “Ready” indicator is **removed** (it lit every cycle, so players could not tell when it was actually usable);
+  Whetstone and Airbag gain **cooldown countdown indicators** (icon + remaining seconds, disappearing when ready).
+- **Generic card-choice screen**: two layouts (1 or 3 slots) — danger left, resource in the middle, confirm right — unifying every “pick one of several cards” interaction;
+  the logic is wired but **no skill uses it yet**, so it is not visible in game.
+- **Audio**: 5 new sounds (`damage_effect_card_cast`, `monster_laser_hit`, `monster_brick_hit`, `orbital_strike_hit`, `directional_blast_hit`) and 1 rewritten (`damage_effect_card_hit`);
+  Electric Gloves play `lightning_bolt_impact` on extra targets (volume 0.5 / pitch 1.5, once).
+- **Particles**: the bundled **179-texture** Iron / Elden Ring pixel particle library (MIT) is exposed as the particle type `astral_dice:particle_library`.
 
 ## Combat rework
 
-- **The defense formula is split between players and mobs, and the 20-armor hard cap is gone**:
-  player `defense = 2 + armor×0.30 + 0.85×toughness`; mob `defense = base defense + armor×0.40 + 1.0×toughness` (floored).
-  Armor always uses the final attribute value, so status effects and other mods' armor modifiers apply first and are never re-converted.
-- **Player base defense is now 2 (one shield), down from 4**; base attack is unchanged (1 bare-handed).
-- **Defense points and armor are back to a 1:1 conversion**: every "defense +X" source now really grants X defense —
-  the old code added `X × 2.0` armor which, after the coefficient, paid out only **0.6X** (0.8X for mobs).
-  After the fix, Moto Helmet +2/+4/+8, Obsidian Dice +10 armor (= +3 defense), Dorothy's warmth +1 defense per stack,
-  Jill's +2 defense per defense card and Storm Approaching's +2 mob defense all match their text.
-  **Player-side defense bonuses are ×1.667 as strong as in the previous build (×1.25 for mobs)**.
-- **Defense no longer loses a point to rounding**: armor is read as the double final value instead of the floored
-  `getArmorValue()` — 26.6667 armor used to be truncated to 26, so "defense +8" only delivered +7.
-  Dice combat and the piercing gun use the same single entry point, keeping "what you see = what is resolved".
-- **Mobs now have base attack and their melee attacks join dice combat**: hostile base attack 4, neutral 3, passive/friendly 0;
-  mob attack = base attack + attack attribute + weapon enchantment bonus (the already-mitigated damage event value is no longer counted).
-- **Dice combat requires both sides to have dice equipped**: if either side has no dice, both rolls count as 0,
-  but **the dice formula still applies** (players without dice no longer fall back to vanilla combat).
-- **Combat cards now roll once with declining weights**: "roll twice, take the max" is gone; the lowest value is about twice as
-  likely as the highest. Max-roll chances drop sharply: 1~3 from 55.6% → 25%, 1~6 from 30.6% → 11.8%,
-  1~10 from 19% → 6.9%, 1~20 from 9.8% → 3.4%; expected values drop 25%–32%.
-  The Meito's raised floor still applies; Glass Dice and the Office Worker's "take the max" are unaffected.
-- **Defense card durability 10 → 150**: every dice-combat hit costs all equipped defense cards 1 point each; a card at 0
-  is removed and refunds its cost. Ranged, magic and skill damage never consume defense cards.
-- **Vanilla damage modifiers apply inside dice combat**: Sharpness, crits (vanilla conditions, ×1.5 on the base segment only),
-  attack cooldown (`0.2 + charge²×0.8`), Protection and Resistance (post-resolution multipliers on both the player→mob and
-  mob→player paths) are all rebuilt and match vanilla (Sharpness V +42.9%, crit +50%, full Protection IV −64%, Resistance II −40%).
-- **Damage numbers show the final value and are colored by damage type**, anchored where the hit resolved instead of following the target.
-- **Effect card cooldowns are fully separated from effect durations**: playing a card starts the cooldown immediately.
-- **The healing timer is decoupled from Dice Blessing**: it now resolves automatically every 1:00.
-- **The Curse charm card's damage type became magic damage** (it used to be true damage).
+- **Separate defense formulas for players and mobs** (both floor the result):
+  - Player: `2 + armor × 0.30 + 0.85 × toughness` (was `4 + armor × 0.30 + 0.85 × toughness`) — **base defense 4 → 2**.
+  - Mob: `base defense + armor × 0.40 + 1.0 × toughness` (was `armor × 0.40`).
+  - Mob base defense: hostile **4** / neutral **3** / passive **0** (passive mobs no longer benefit from hostile-grade armor efficiency).
+- **Defense bonuses are now converted 1:1**: every point of “defense +X” from bank cards, signs and chips is worth exactly **1 defense**.
+  The old implementation multiplied by 2.0 armor and then applied the 0.30 / 0.40 coefficient, so only 0.6X landed for players and 0.8X for mobs —
+  **the effective strength is ×1.667 for players and ×1.25 for mobs** compared to the previous build, which is why this pre-release feels squishier. That is intended.
+- **No lost fractions**: defense enters combat as a double, so the 0.6 in `2 + armor×0.30` is no longer rounded away.
+- **Zero dice still uses the formula**: if either side has no dice equipped the roll counts as 0, but the attack/defense formulas still apply (no longer skipped).
+- **Damage floor**: when defense ≥ attack, final damage becomes `max(1, attack × 15%)` (previously a flat 1);
+  **reduction effects (Whetstone, Muscle Detective, …) apply after the final damage and may reduce it to 0**.
+- **Battle cards now roll decreasing dice** (consecutive hits on the same target lower the die face by 1; a skill or a new target resets it):
+  full-value chance 1–3 faces 55.6% → 25%, 1–6 faces 30.6% → 11.8%, 1–10 faces 19% → 6.9%, 1–20 faces 9.8% → 3.4% —
+  **expected damage drops 25–32%**, flattening the “snowball in long fights” advantage.
+- **Defense-card durability 10 → 150** (together with the 1:1 conversion, defense cards go from a one-shot shield to a real armor layer).
+- **Dice blessing only triggers on a player's own melee attack**: mob attacks on players and the defender's roll no longer trigger it.
+- **Vanilla damage modifiers restored**: Sharpness V **+42.9%**, critical **+50%**, Protection IV **−64%**, Resistance II **−40%** —
+  the earlier rework had dropped them; vanilla is now applied first and the dice battle result stacks on top.
+- **Damage numbers reworked**: the value is **the HP actually removed** (pipeline result), not the theoretical damage;
+  **red** = attack power and damage bonuses (including splash / chain / counter), **green** = spell and skill damage;
+  multiple hits in the same tick on the same target in the same colour **merge into one number**;
+  **only the player who dealt the damage sees them** (the victim sees them when there is no player owner); the position is fixed by the server at settlement and **does not follow the target**,
+  with **±30°** random spread so stacked numbers no longer overlap exactly.
+- **Other flow changes**: card stack size **64 → 16**; effect-card cooldown **starts when the card is played** (each play in one cycle resets the 45s, charge caps at 30s);
+  the healing timer now settles **every 1:00 independently** (no longer tied to the blessing cycle).
 
 ## Balance and numbers
 
-- **Card stack size 64 → 16** (combat cards included).
-- **Chip economy tuning**: new `enable_chip_recipes` switch (off by default; when off the creative tab hides the four crafting
-  materials); blank chip loot chance 3% → 1% (buried treasure stays 100%); buying from the chip shop starts a 5:00 cooldown,
-  and right-clicking a blank chip into the shop during that cooldown clears it and grants +1 reroll (once per 2:00).
-- **The four damage effect cards (Monster Laser, Monster Brick, Rail Cannon, Directional Blast) were rebuilt**:
-  the "remote/magic damage +N for 1:00" buff is gone; holding the card enters target selection (hostiles ∪ neutrals
-  (pets excluded) ∪ untamed tamables, never players) and confirming deals **magic damage** (fixed 4 / 6 / 8 / 5 plus
-  effect-card bonuses). Directional Blast also hits everything within 6 blocks for the same damage.
-  New FX delay the damage to the moment of impact (a red laser beam 0.5 s after casting, a red brick dropped on the target's head,
-  a golden beacon beam, an explosion for the blast).
-- **Each effect card now declares its own lock-on range**: Monster Laser 32, Monster Brick 16, Rail Cannon 24, Directional Blast 24,
-  Living Page 32, Curse charm 32; supportive effect cards share 16.
-- **Shock Gloves reworked**: using a damage effect card spends 4 charge so that card's remote/magic damage also hits targets within
-  3 blocks; the spread is bound to that single use and does not chain with Directional Blast's 6-block blast.
-- **Airbag gained abilities**: after negating a lethal hit it counters the attacker once (through the shared counter-damage path);
-  taking damage now grants +1 charge (15-second cooldown, tracked independently).
-- **7 existing chips adjusted**: Bank Card-Restless (32-block radius when not in a party), Big Bowl of Stew (16-block players when
-  not in a party), Magic Quiver (returns the card actually used), Eagle Eye Sight (bonus becomes extra attack damage),
-  Warp Engine (shared cooldown 5:00 → 3:00), Perpetual Motion (blessing top-up 6 → 8, vanilla melee cooldown −50% while equipped,
-  without inflating dice-combat attack), Bookmark (effect card damage +1 → +2).
-- **ATM rewritten**: every transfer to another player gives both sides 1 starlight and 2 star coins.
-- **Membership Letter gains an ability**: all cards in your own shop cost 1 star coin less while equipped.
-- **Weird Dice no longer shortens sign active cooldowns** (still keeps the low-roll weighting raised from 50% to 75% and heals 5 on active end).
-- **Recipe changes**: the golden star compass keeps two recipes (1 compass + 1 nether star shapeless / 3 compasses + 6 star coins shaped);
-  star coins and star compasses now drop from kills; 16 sign/chip recipes had their materials adjusted; the chip shop recipe is
-  "gold ingot · star compass · gold ingot / polished blackstone bricks · blank chip · polished blackstone bricks / 3 polished blackstone bricks".
-- **The starlight exchange "base value floor" bug is fixed**: the +4 / +7 starlight from Bank Card-Low Balance / High Balance
-  **can be exchanged now** (they used to act as a permanent floor that was always subtracted from the exchangeable amount).
-- **All star coin payouts now prefer the wallet**: Haiching, Bonnie, Hanna, Mimi, Gift From Above and the Great Detective passive
-  no longer stuff the inventory (and drop on the ground when full); they credit the wallet first and only hand out items when the wallet is off.
+- **Signs**: Business and Gunsmith actives/passives rewritten; Slime's Cell Division at most once per 15s;
+  Poster Girl swap threshold **25 → 100**; Weird Dice **no longer shortens sign cooldowns** (keeps the 1–3 weight 50% → 75% and the 5 HP heal after the active).
+- **7 chips**: Bank Card-Unlimited (out-of-team range tightened to **32 blocks**), Big Bowl of Stew (out-of-team **16 blocks**),
+  Magic Quiver (returns **the card actually used**), Eagle Eye Sight (now extra attack damage, stacks ×2),
+  Warp Engine (shared cooldown **5:00 → 3:00**), Perpetual Motion (refill tier **6 → 8** plus **−50%** vanilla melee cooldown while equipped, ≈ ×2 attack speed; dice battles do not gain attack), Bookmark (**+1 → +2**).
+- **Drops**: star-coin kills — Zombie / Zombified Piglin **1%**, Enderman / Piglin **3%**, Piglin Brute **20%**;
+  star plates by target — Wither **5**, Warden **3–5**, Elder Guardian **1–3**, Ghast **1**, Wither Skeleton / Guardian **5%**, everything else **0.3%**.
+- **Acquisition**: golden star plate now has **two recipes**; **16 items changed recipe ingredients** (5 cards — Office Worker, Ninja, Hacker, Secret Detective, Mechanic — and 11 chips);
+  blank chip buried chance **3% → 1%** (Buried Treasure itself stays 100%).
+- **Creative tab / JEI ordering**: chips sort by **ascending rarity** (school order 星光 → 治愈 → 标记 → 充能 → none unchanged, rare → epic → legendary inside each);
+  the Reinforced Repulsion item form is **hidden from the creative tab and JEI** (still registered, still obtainable; only visible with hidden items shown).
+- **Chip recipe master switch**: `enable_chip_recipes` defaults to **off**; while off the creative tab also hides Regeneration Reagent / Conductive Wire / Star Coin Dust / Mark Paint (Blank Chip still shows).
 
 ## Bug fixes
 
-- **A 100% startup crash in production was fixed**; **the world-join / tooltip-hover crash caused by an Architectury conflict was fixed**.
-- **Party detection was completely broken and is fixed**: teammates could still damage each other and the railgun still hit allies.
-- **Third-party melee weapons could not trigger Dice Blessing and now can**: melee detection is back to a blacklist
-  (only bare hands / shields / ranged-only items / blocks / gun bodies / non-weapon tools are excluded).
-- **Mobs spamming milk to clear effects (server lag) is fixed**; **"Mark" can now be cleared with milk**.
-- **The Ninja sign's active was almost unusable and is fixed** (it now requires fewer than 9 cards played this round).
-- **King's Power's 8-point cost now always applies**; **the Sweeper sign's attack/defense bonuses now survive death**.
-- **"The guidebook is re-issued every launch" is fixed**; parsing the guidebook recipes without Patchouli installed no longer errors.
-- **Accessories slot icons render again**; Fabric's "Concealment" effect gained its HUD icon.
-- **Permanent status effects now display ∞**; **status effects now show a description** (values, duration, trigger).
-- **Medkit's infinite healing via relog / dimension changes is fixed** (it only resolves when actually equipped and on respawn).
-- **Repeated star coin payouts from re-entering the shop are fixed**; **a full inventory no longer blocks chip shop purchases**
-  (the chip drops at your feet).
-- **Chip Shop's purple-black missing texture, backwards screen, Card Shop not facing the placer, and wrong break particles are fixed**;
-  the Chip Shop was added to the axe mineable tag.
-- **Damage effect cards occasionally dealing 1 less damage is fixed**; Fabric 1.20.1's halved FX duration is fixed;
-  hit sounds no longer stack.
-- **Jirai-ko's active resolving multiple times on natural expiry is fixed**; **two Kangel PvP misjudgements are fixed**
-  (the fan marker and the wearer's indicator no longer share one status).
-- **Card picker**: non-interactive card frames, dropping cards on death, session leaks, swapping with occupied slots when dragging back,
-  and permanent sessions after an open failure are all fixed.
-- **Misaki discount face**: with the Misaki sign equipped, the shop shelf draws the discounted "Meito Gawu-chan" face (3 points);
-  unequipping restores the original face.
-- **The Repulsion item is hidden from the creative tab and JEI**; chips in the creative tab / JEI are now sorted by rarity
-  (the five archetype groups and their order are unchanged).
+- **1.20.1 refused to start (Forge)**: the StarEngine version range was written as a star, which Maven parses as an empty range ⇒
+  `containsVersion()` was always false and every 1.20.1 player hit “Missing or unsupported mandatory dependencies”. Now an explicit range.
+- **Jade crash on 1.20.1**: Jade's mixin handlers cannot be `static` under Mixin 0.8.5 (validation throws), changed back to instance methods.
+- **Architectury tooltip constant-injection crash**: replaced the constant injection with a wrapped draw call, so toolchains stop fighting.
+- **Unified team / hostile checks**: every check now goes through one path (scoreboard teams ∪ FTB Teams ∪ OPAC), fixing
+  **about 30 hostile checks and 5 friendly checks** (previously each was hand-rolled, so teammates were still hit or counted as enemies).
+- **Third-party melee weapons use a blacklist**: excludes empty hand / shield / pickaxe-shovel-hoe (**axes kept**) / ranged / blocks, so modded melee weapons work.
+- **Mob milk-drinking lag**: non-player entities no longer take the vanilla per-frame recalculation, fixing lag when many mobs drink milk.
+- **Marks can be cleared with milk** (the leftover glowing effect fades within 60 seconds instead of sticking forever).
+- **Ninja active** now works while under the 9-card cap for the round (previously it required a full hand).
+- **King's Power / Sweeper**: King's Power cost fixed at 8 points; the Sweeper's attack/defense bonuses **persist through death**.
+- **Manual issues**: upgrading an old world no longer fails to grant the guide book, and Patchouli recipes are back (obtainable again, recipes visible in JEI / the book).
+- **Medkit relog healing** no longer double-settles after relogging.
+- **Card-choice screen**: lingering screen, accidental close, and lost materials after confirming are all fixed.
+- **Protection discount card face** now shows the discount; **KAngel had two PvP misjudgements** (PvP targets counted as fans, fan damage applied in PvP);
+- **Ame settled multiple times** from a single hit; **four damage effect cards were 1 point short**.
+- **Repeated star-coin payouts from re-entering the shop** are fixed (one payout per batch); **full-inventory chip purchases being swallowed** is fixed (see “the trade still goes through” above).
 
-## Text and guidebook
+## Known issues and design notes
 
-- The guidebook gained a **"Blocks"** category (with the Card Shop recipe page) and a pink cover; a new "Combat system changes"
-  entry summarizes this development line's combat changes for players.
-- Guidebook defense examples now use the real base: `2 + armor×0.30 + 0.85×toughness`, and
-  `1 defense = 1 ÷ armor coefficient armor` (≈3.33 for players, 2.5 for mobs).
-- Internal-mechanic notes were removed from tooltips and the guidebook, and the three damage effect cards' descriptions were
-  trimmed to "how to use + magic damage".
+- This pre-release covers **only the NeoForge 1.21.1 and Forge 1.20.1 builds**; other platform lines are out of scope.
+- The generic card-choice screen has its logic wired but **no skill uses it yet**, so it is not visible.
+- Crafting for the 5 new chips follows `enable_chip_recipes` (off by default); enable it in the config if you want recipe access.
+- “Reinforced Repulsion” is an **exclusive card**: not in the random pool, no recipe, not in bounty pools. Its item form is deliberately hidden from the creative tab and JEI.
+- This is a Beta pre-release; **numbers are still moving** (especially the difficulty curve after the 1:1 defense conversion). Feedback is welcome.
+
+## Text and manual
+
+- The Patchouli guide covers everything new: Card Shop / Chip Shop / Loot Box / events / both quirky signs / both new effect cards / the 5 new chips,
+  and entries that still described the old defense formula were corrected.
+- All three languages (zh_cn / en_us / ja_jp) are in sync — same key set, every new or changed entry translated.
+- Tooltips and ActionBar hints share one voice (values highlighted, times coloured), and failure messages are no longer silent.
 
 ## License changes
 
-- **Source code is now GPL-3.0-only**: from 1.5.0 on, the source, Gradle scripts, `tools/` and `scripts/` utilities and
-  `docs/` are released under GPLv3 (version 3 only).
-- **1.3.7 and earlier remain MIT** (all four lines' releases and pre-releases); that grant is irrevocable.
-- **In-game assets (textures, models, animations, particles, GUI, fonts, sounds, guidebook text) remain CC BY-NC-SA 4.0**;
-  recipes / loot / tags / worldgen JSON and `lang/*.json` follow the code into GPL-3.0-only.
-- StarEngine switched to GPL-3.0-only as of 1.1.0 (its 1.0.0–1.0.12 and already-distributed 1.1.0-pre.x builds remain MIT).
+- **Source code is GPL-3.0-only from this version on** (1.3.7 and earlier were MIT — licenses already granted cannot be revoked).
+- **Art and audio assets**: CC BY-NC-SA 4.0.
+- **Data files** (recipes / loot tables / tags / worldgen JSON) and language files follow the code: GPL-3.0-only.
+- **StarEngine (the dependency library) is GPL-3.0-only from 1.1.0**; 1.0.0–1.0.12 and the already-distributed 1.1.0-pre.x remain MIT.
+- The bundled 179 particle textures come from the Iron / Elden Ring pixel particle library (MIT).
+
+---
+
+中文版见同目录 `PLAYER_CHANGELOG_ZH.md`（GitHub Release 正文会把中英两版拼接展示）。
+
