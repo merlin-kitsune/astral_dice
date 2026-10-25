@@ -5,8 +5,8 @@
 
 ## 0 速览（一屏）
 
-1. 分支 `multi-main`，HEAD = 本批提交（`release(rc.1): 版本号 1.5.0-pre.6 -> 1.5.0-rc.1 + 前置库 StarEngine 1.1.0`，其父 `1705f3d2`）。**未 push、无 tag**（用户明确「暂不推送」；累计未推送 20 个提交，前置库仓另有 1 个未推送提交 `16b48c4`）。
-2. 四线 `mod_version = 1.5.0-rc.1+<加载器后缀>`；四线 `starengine_version = 1.1.0`（前置库同批由 `1.1.0-pre.2` 转**正式版**，库内 Java 源码零改动）；硬前置区间随之展开为 `[1.1.0,2.0.0)`。
+1. 分支 `multi-main`，HEAD = 本批提交（`release(rc.2): 1.5.0-rc.1 -> 1.5.0-rc.2`，含调酒师治疗按张数 + 多萝西【交际花】双版本实机）。**未 push、无 tag**（用户明确「只本地提交 + 推整合包」；累计未推送 **6** 个提交；前置库仓 `origin..HEAD` = **0**）。
+2. 四线 `mod_version = 1.5.0-rc.2+<加载器后缀>`；四线 `starengine_version = 1.1.0`（前置库同批由 `1.1.0-pre.2` 转**正式版**，库内 Java 源码零改动）；硬前置区间随之展开为 `[1.1.0,2.0.0)`。
 3. 本批收编 **Kimi 上一轮四批未提交改动**（member-detective / misaki 立牌 / 筹码商店刷新源 / 规则分派），并完成 **DSH 三语语言同步** + **地雷女备注区染色修复**。
 4. 判据：P0 两线 `:classes` `BUILD SUCCESSFUL in 4s`；`check_lang_sync` EXIT=0；`audit_patchouli_keys` 悬空 0；`verify-split` EXIT=0；三道专项 python 判据 PASS 26/12/14；`verify_chip_shop_ui` `CHIPUI_TOTAL_FAIL: 0`。
 5. **rc.1 产物已重建并投放**（2026-10-25 15:3x，`:neoforge-1.21.1:build :forge-1.20.1:build` 触发 `pushToDevRun/pushToGame/pushToRootBuild`）——四个目标（`run/1.21.1/mods`、`run/1.20.1/mods`=dev named、两个 P0 整合包）逐处 sha256 **MATCH**；**前置库 jar 成对换成 `1.1.0`**（四处旧 `1.1.0-pre.2` 已删），读数见 §2 与 §4.1f。
@@ -21,6 +21,7 @@
 13. **发布收口（2026-10-25 18:2x–18:5x，§4.1l）**：`1.5.0-rc.1` 与前置库 `1.1.0` **已提交并 push**（本体 `6ee75a34`、库 `16b48c4`，两仓 `origin..HEAD` 均 **0**）；**CurseForge 已上传 6 个文件** —— 本体两线 `beta`（neo fileID `9320026` / forge `9320028`），库四平台 `release`（`9320029` / `9320030` / `9320031` / `9320032`）；`tools/curseforge.json` 的 P0 两线**补登 `starengine(1755415)=requiredDependency`**（lib 自 1.1.0 起不再内嵌，此前 CF 关系缺这一条 ⇒ 玩家会直接缺库起不来）。
 14. **玩家更新日志（1.3.7→1.5.0 全量）**：新建 `release/1.5.0-rc.1/PLAYER_CHANGELOG_ZH.md`（218 行 / 24,201 B）+ `PLAYER_CHANGELOG.md`（242 行 / 23,492 B），**全部 CRLF、裸 LF 0**；CF 本体两文件即用英文版（23,134 字符）作 `--changelog`。
 
+15. **`1.5.0-rc.2` 双版本实机 PASS（2026-10-25 21:2x–21:3x，§4.1o）**：【交际花】在 1.21.1 / 1.20.1 双线实测成立 —— 队友 ATK **1→2** 且拿到效果（`dur=1200` / `amp=0` / 可见）、重复获得**只刷时长不叠层**、主动窗口结束后队友效果**不回收**（`windowEnd=0` 时队友仍余 675t）、施法者自身 `dorothy_bond_attack` 按窗口 +1（窗口结束归 0）；**节流确已删除**（同一窗口内第二个队友 40 tick 内即入账，旧 10 秒节流会挡 200t）；客户端效果名 = **交际花**、图标 448 B。构建 `BUILD SUCCESSFUL in 13s`，四投放点均为 rc.2 且库成对、jar 内 `version=1.5.0-rc.2+<后缀>` / `META-INF/jarjar/`=0 / `DorothySocialiteEffect.class` 与图标各 1。
 ## 1 环境与路径
 
 路径与命令**沿用 pre.5 正本 §1**（Windows 原生：git bash 的 `git`、`pwsh -NoProfile -File`、`JAVA_HOME=C:\Program Files\Zulu\zulu-21`、工作树直接 `gradlew.bat`、测试台 `scripts\test\mt.ps1`）。两条补充：
@@ -32,14 +33,19 @@
 
 | 项 | 值 | 落点 |
 |---|---|---|
-| neo `mod_version` | `1.5.0-rc.1+neoforge_1.21.1` | `neoforge-1.21.1/gradle.properties` |
-| forge `mod_version` | `1.5.0-rc.1+forge_1.20.1` | `forge-1.20.1/gradle.properties` |
-| 26.1.2 `mod_version` | `1.5.0-rc.1+neoforge_26.1.2`（源码 bump，**P1 不构建不验证**） | `neoforge-26.1.2/gradle.properties` |
-| fabric `mod_version` | `1.5.0-rc.1+fabric_1.20.1`（源码 bump，**P1 不构建不验证**） | `fabric-1.20.1/gradle.properties` |
+| neo `mod_version` | `1.5.0-rc.2+neoforge_1.21.1` | `neoforge-1.21.1/gradle.properties` |
+| forge `mod_version` | `1.5.0-rc.2+forge_1.20.1` | `forge-1.20.1/gradle.properties` |
+| 26.1.2 `mod_version` | `1.5.0-rc.2+neoforge_26.1.2`（源码 bump，**P1 不构建不验证**） | `neoforge-26.1.2/gradle.properties` |
+| fabric `mod_version` | `1.5.0-rc.2+fabric_1.20.1`（源码 bump，**P1 不构建不验证**） | `fabric-1.20.1/gradle.properties` |
 | `starengine_version` | `1.1.0`（四线，**正式版**）；fabric 另有 `starengine_version_range=>=1.1.0` | 各线 `gradle.properties` |
 | 硬前置区间 | `[1.1.0,2.0.0)`（模板插值 `[${starengine_version},2.0.0)`，改 `gradle.properties` 一处即随动）；`META-INF/jarjar/` 计数 **0** | `neoforge-1.21.1/src/main/templates/META-INF/neoforge.mods.toml:143` · `forge-1.20.1/src/main/templates/META-INF/mods.toml:157` |
 
-**产物现状（2026-10-25 15:3x 重建，`1.5.0-rc.1`；源码同 pre.6 收尾，仅版本号与前置库坐标变化）**：
+**产物现状（2026-10-25 21:3x 重建，`1.5.0-rc.2`；源码 = rc.1 + 调酒师治疗按张数 + 多萝西【交际花】）**：
+neo `astral_dice-1.5.0-rc.2+neoforge_1.21.1.jar` **2,589,502 B** / sha256 `b562974217bc726bff838e03fded6a77159e683484da01df44e2d2f9155687c6`（`run/1.21.1/mods`、仓库根 `build/libs`、「狐の航空学 Voxy Edition」**同一份**）；
+forge reobf `astral_dice-1.5.0-rc.2+forge_1.20.1.jar` **2,634,295 B** / `3c7b089de70c0d7d6b0a7ed19ff06655c2e54d6b7a1501b7120aefee42e3dba8`（`build/libs` + 「1.20.1-Forge 模组测试」）；
+forge dev **named** **2,604,839 B** / `f11a613d1ee441f2e309360212fb49760cfe722ce659804ba348049e942034aa`（`run/1.20.1/mods`）。
+四目标 21:3x 逐处核过：每处**只有**一个 `astral_dice-*.jar`（rc.1 旧 jar 已被投放任务覆盖，无并存）；jar 内判据（两线两件实测）：`version="1.5.0-rc.2+<后缀>"`、`META-INF/jarjar/` 计数 **0**、`com/merlinkitsune/astral_dice/effect/DorothySocialiteEffect.class` 与 `assets/astral_dice/textures/mob_effect/dorothy_socialite.png`（448 B）各 **1**；两 P0 整合包内库 jar 仍在（neo `starengine-neoforge-1.21.1-1.1.0.jar` `62c92595…` / forge `starengine-forge-1.20.1-1.1.0.jar` `73da2e59…`）。
+> 上一轮（2026-10-25 15:3x，`1.5.0-rc.1`）读数（历史，已被本批覆盖）：
 neo `astral_dice-1.5.0-rc.1+neoforge_1.21.1.jar` **2,586,701 B** / sha256 `65a22d700926fbddedf5ced803930c9ef74a709426a614a3f3f311e410450610`（`run/1.21.1/mods` 与「狐の航空学 Voxy Edition」同一份）；
 forge `astral_dice-1.5.0-rc.1+forge_1.20.1.jar` **2,631,740 B** / `7ad926ca072b1c4c9e87218b366da4e70de0746fb2dd218c3ca2b2ff08b2d8dd`（reobf → 1.20.1-Forge 模组测试）；
 forge dev **named** **2,602,271 B** / `926800675c850d2fdea51bd94439e66f6ec96c766629e2104624907e46878123`（`run/1.20.1/mods`）。
@@ -382,6 +388,26 @@ forge dev named 102,013 B / `e280aeab6c4b37c43468f7cce32a8bf64c70b6bdbcd2203f6c5
 - **文档**：`CHANGELOG_ZH.md`（`#### 立牌与技能`）与 `CHANGELOG.md`（`#### Signs & Skills`）各追加 1 条；`release/1.5.0-rc.1/PLAYER_CHANGELOG_ZH.md` / `PLAYER_CHANGELOG.md` / `PLAYER_CHANGELOG_MCMOD.html` 的「多萝西立牌 · 主动」段同句订正。
 - **P1 两线未移植**（26.1.2 / fabric 均无 `DorothySignItem`）⇒ 本项无 P1 欠账。
 
+### 4.1o 双版本实机：【交际花】状态效果 + 删节流（2026-10-25 21:22–21:31）—— 1.21.1 / 1.20.1 全 PASS
+
+- 环境：1.21.1 `--phase env` ⇒ `MT_WORLD: OK — 世界重建`；`--phase launch` ⇒ `MT_LAUNCH: OK (54s)`（AutoJS 端点 `http://127.0.0.1:25585/mcp`）。1.20.1 `--phase env` ⇒ `MT_WORLD: OK — 种子快恢复`（`MT_ENV_AUTOJS: 跳过 — 1.20.1 线未接入 AutoJS`，但 `AUTOJS_MOD=detected — AutoJS-forge-1.20.1-1.0.0-dev.jar` 仍在 `run/1.20.1/mods`）⇒ `--phase launch` `MT_LAUNCH: OK (49s)`。两线全部判据都取自 AutoJS `server/eval_js` 运行时读数（非截图）。
+- 角色铺设（两线同一套）：Curios 槽位实测只有 `dice` / `stand` / `chip`（**立牌槽 = `stand`**）；`dice` 槽塞 `astral_dice:golden_dice`、`stand` 槽塞 `astral_dice:dorothy_sign`；Carpet 假人 `player Bot spawn` + `team add socialite` + `team join socialite Dev/Bot` + `tp Bot Dev` ⇒ `PartyRelations.isSameTeam(dev, bot)=true`、`distanceToSqr=0`。
+- **两道闸门（务必记住）**：① 立牌 `curioTick` 有总闸门 `CurioSlotUtil.hasDiceEquipped`（`item/sign/BaseSignItem.java:47-49`）——**只装立牌不装骰子时 `onCurioTick` 整段不跑**（首轮现象：窗口到期而队友零效果）；② `/astralprobe equipslot stand …` 对该槽**无效**（slot0 仍 air、latest.log 无 `AP_DSW` 行），必须走 `CuriosApi.getCuriosInventory(p).get()/resolve().setEquippedCurio("stand", 0, stack)`。
+- 主动窗口用附件模拟真实施放：`ModAttachments.setDorothyWindowEnd(dev, now + 1200)`（与技能走同一真值）。
+
+| 判据 | 1.21.1（neo） | 1.20.1（forge） |
+|---|---|---|
+| 效果注册 | `found=true` / `effect.astral_dice.dorothy_socialite` / `BENEFICIAL` | 同（`BuiltInRegistries.MOB_EFFECT.get(...)`） |
+| 队友获得效果 | `botHas=true`、`dur 1200`（254t 后 946）、`amp=0` | `botHas=true`、`dur=1056`、`amp=0`、`visible=true` |
+| 队友攻击力 | `1 → 2`（修饰符 `astral_dice:dorothy_socialite_attack` / `amount=1.0` / `ADD_VALUE`） | `1 → 2`（`ADDITION`；**id = `d4b20452-7270-5185-ab1e-46ce1b3325ab`**，与设计 UUIDv5 一致） |
+| 重复获得 | `dur 946 → 1200`、`amp` 仍 0（只刷时长不叠层） | 新窗口内 `dur 675 → 1161`、`amp` 仍 0 |
+| 施法者自身 | `dorothy_bond_attack` +1（`atk 1→2`） | 同（`atk 2`，修饰符 `dorothy_bond_attack`） |
+| 窗口解耦 | 窗口到期（`windowEnd=0` / `devBonus=0` / `atk` 回 1）后**队友仍余 1140t 效果** | 同：`windowEnd=0` / `atk` 回 1，队友仍 `dur=675` / `atk=2` |
+| 删除节流 | 第二个假人 `Bot2` 入队后 **40t 内**即入账（`devBonus 1→2`、`atk 3`；两队友 `dur≈1160 / 904`、`amp=0`）⇒ 旧 200t（10 秒）节流确已不存在 | 未重复跑（两线代码同形，已由 1.21.1 证） |
+| 客户端呈现 | `getDisplayName()` = **交际花**；两线 jar 内 `textures/mob_effect/dorothy_socialite.png` 448 B | 同 |
+
+- 收尾：1.21.1 `--phase stop --force` ⇒ `MT_STOP: OK (1s) — 收停完成，无本流程残留进程`；1.20.1 同（`已收停 2 个本流程进程`、`MT_STOP: OK (1s)`）；`Get-Process java` 仅剩 Gradle 守护（pid 1760 / 8548）。
+- **未覆盖（如实登记）**：① 真实按键施放（本轮用附件模拟窗口，未按键走 `BaseSignItem` 主动链路）；② 玩家**死亡 / 重登**后队友效果与自身加成是否按预期清空（瞬态效果默认随死亡清除，未实测）；③ 同一窗口内反复进出（「每人每窗口一次」已由 `Bot2` 一处证实，进出重入未逐帧验）；④ 视觉截图（本轮以运行时读数 + 客户端 `getDisplayName()` 为准）。
 ### 4.2 历史读数
 
 pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（含 4.8 pre.4 全量双线 10 跑 10 PASS、4.11–4.17 pre.5 各批、4.19 Jade 图标留白版）。
@@ -438,6 +464,8 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 12. **调酒师治疗效果口径 = 一次 heal(总数)**（2026-10-25，§4.1m）：落地选择 `heal(HEAL_AMOUNT * effect)`（3 张 = 一次 6 点），**不是**「三次 heal(2)」——因此治疗事件只 1 次，多萝西「温暖」不会按张数叠层。若日后要求「每张各触发一次治疗事件」，需同批改 3 处：`JillSignItem` 的 heal 循环、`tools/verify_sign_balance_changes.py` 的 JIL-1、以及三语文案（每张独立结算的表述）。P1 两线（26.1.2 / fabric）**没有** `JillSignItem`，本项无需登记移植欠账。
 13. **多萝西队友加成 = 状态效果【交际花】，不再是瞬态修饰符**（2026-10-25，§4.1n）：唯一事实源改为 `DorothySocialiteEffect` 自带的 `ATTACK_DAMAGE +1` 修饰符，**固定 1:00、从获得时起算、与主动窗口解耦**；窗口结束不回收、重复获得只刷时长。旧的 `dorothy_partner_attack` 修饰符、`applyTempAttack`、`clearPartnerBuffs`、`DOROTHY_PARTNERS` 节流表均已删除（§5 里若有旧描述按本条读）。P1 两线无该立牌，无移植欠账。
 
+14. **`1.5.0-rc.2` 版本已落盘（2026-10-25，§4.1o）**：四线 `mod_version = 1.5.0-rc.2+<后缀>`、`release/1.5.0-rc.2/` 三份玩家更新日志（版本串已换，内容 = rc.1 + 调酒师治疗按张数 + 【交际花】）、`README*.md` 版本列同步；P0 两线已重建并投放四目标（§2 产物现状）。**未 push、无 tag**；若日后打 `1.5.0-rc.2` tag，CI 从 `release/1.5.0-rc.2/` 取正文（已备好）。**实机未覆盖项见 §4.1o 末行**（真实按键施放 / 死亡重登 / 窗口内反复进出）。
+## 6 坑（本批新增，后续继续追加）
 ## 6 坑（本批新增，后续继续追加）
 
 1. **`git show HEAD:<file>` 是 LF**（仓库存 LF、工作树 CRLF 由 autocrlf 转换）⇒ 行级改写先 `replace(/\r\n/g,"\n").split("\n")` 再 `join("\r\n")`。
