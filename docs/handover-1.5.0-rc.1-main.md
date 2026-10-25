@@ -409,6 +409,8 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 7. **护法减费卡面仅落 P0 两线**（2026-10-25，§4.1k）：P1（`neoforge-26.1.2` / `fabric-1.20.1`）的 `CardShopScreen` 没有 `cardFaceTexture` 分支、也没有 `attack_card_meito_discount.png` ⇒ 那两线仍显示原卡面（4 点）。移植时同批拷贴图 + 抄 `cardFaceTexture`（fabric 用 `new ResourceLocation(...)` 口径，26.1.2 按其 API 复核），并把 `tools/verify_meito_discount_face.py` 的 D2/D3/D4 扩到四线。
 
 8. **CF 关系口径变更（2026-10-25，§4.1l）**：`tools/curseforge.json` 的 P0 两线（`neoforge_1.21.1` / `forge_1.20.1`）新增 `starengine(1755415)=requiredDependency`（lib 自 1.1.0 起不再内嵌）；P1 两线（26.1.2 / fabric）**未加**（它们仍内嵌库 jar）—— 若日后 P1 也改为独立前置，必须同批补登，否则同样缺库起不来。
+9. **玩家版更新日志已整份重写（2026-10-25 19:4x，提交 `e185595c`）**：`release/1.5.0-rc.1/PLAYER_CHANGELOG_ZH.md`（287 行 / 30,207 B）与 `PLAYER_CHANGELOG.md`（293 行 / 30,349 B）按 `CHANGELOG_ZH.md` / `CHANGELOG.md` 的 1.5.0 段（L7–L773 / L7–L953）逐条重写，补齐卡牌商店与筹码商店全部经济参数、村民价格表、15% 伤害下限、跳字红绿口径、星币/星盘掉落、16 件配方换料、看板娘 25→100、筹码商店 5:00 冷却与空白筹码解冷却、抽奖盒 5 星币/5:00 等；删除全部 P1（26.1.2 / fabric）陈述；修正 `Bank Card-Restless` → `Bank Card-Unlimited`。重传走 CI（tag `1.5.0-rc.1` 已存在 ⇒ `gh release edit --notes-file` + `upload --clobber`）：run `40190519908` 全绿，Release `updated_at` 11:51:59Z、正文 43,140 字符、附件两份 rc.1 jar 已覆盖。
+10. **CF 项目说明草稿的事实错误已就地修正（2026-10-25）**：`tools/curseforge-description.md` 第 31 / 93 行原写「Six new signs / 六张新立牌 = KAngel + Ame + 酒保 + 多萝西 + 修女 + 大肥鱼」——经 CHANGELOG_ZH.md 全文核对，1.5.0 段**只**新增 KAngel 与 Ame（`修女`/`酒保`/`大肥鱼` 全文 0 命中），已改为「两张新立牌 / Two new signs」并注明其余角色早于本版存在；同句「一身同体」订正为「一心同体」。该文件仍为**未提交修改**（CF 描述因 403 只能由作者后台手贴，等用户粘贴后决定是否入库）。
 
 ## 6 坑（本批新增，后续继续追加）
 
