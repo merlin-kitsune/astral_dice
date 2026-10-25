@@ -32,11 +32,11 @@
 | `starengine_version` | `1.1.0-pre.2`（四线）；fabric 另有 `starengine_version_range=>=1.1.0-pre.2` | 各线 `gradle.properties` |
 | 硬前置区间 | `[1.1.0-pre.2,2.0.0)`；`META-INF/jarjar/` 计数 **0** | `neoforge-1.21.1/.../neoforge.mods.toml` · `forge-1.20.1/.../mods.toml` |
 
-**产物现状（2026-10-25 14:25 重建，pre.6；含强化拒止物品形态 + 手册文案/图标修正）**：
-neo `astral_dice-1.5.0-pre.6+neoforge_1.21.1.jar` 2,585,301 B / sha256 `461756a40bc94ddff1a6791e7f78020f5769b4c9e2311c4632b5dfbe9aeaa4a8`（`run/1.21.1/mods` 与「狐の航空学 Voxy Edition」同一份）；
-forge `astral_dice-1.5.0-pre.6+forge_1.20.1.jar` 2,630,389 B / `f1a81d5f82d45108b774e344803de86fc360cc9cb7d4b302c36c9a786957f0f7`（→ 1.20.1-Forge 模组测试）；
-forge dev **named** 2,600,922 B / `5304bafdf152c2910b6344da06cbcba209306600483188a9a8deb7cc825345b8`（`run/1.20.1/mods`）。
-四目标 2026-10-25 14:25 逐处 sha256 MATCH；jar 内判据：`assets/astral_dice/models/item/repulsion.json` 与 `textures/item/repulsion.png` 均在、`lang/zh_cn.json` 含 `item.astral_dice.repulsion` / `msg.astral_dice.repulsion_hit` / 新卡面文案「回收成物品形式」。
+**产物现状（2026-10-25 15:5x 重建，pre.6；含强化拒止物品形态 + owner 闸门 + 手册第 4/5 页）**：
+neo `astral_dice-1.5.0-pre.6+neoforge_1.21.1.jar` **2,586,610 B** / sha256 `4686ec6de2b637d22f8a9688e87c88180dad36f9f68f6d8a5a522714a8c53fb4`（`run/1.21.1/mods` 与「狐の航空学 Voxy Edition」同一份）；
+forge `astral_dice-1.5.0-pre.6+forge_1.20.1.jar` **2,631,683 B** / `dbccaf2c16112681fe9e36494072021662ec0d119952401a52e4aeebb2535cd0`（→ 1.20.1-Forge 模组测试）；
+forge dev **named** **2,602,214 B** / `19bff3310bb540beb7f2a74b6aa673e22eaac04458723d5a45f34741ffca2e45`（`run/1.20.1/mods`）。
+四目标 2026-10-25 15:5x 逐处 sha256 MATCH；jar 内判据：`assets/astral_dice/models/item/repulsion.json` 与 `textures/item/repulsion.png` 均在、`lang/zh_cn.json` 含 `item.astral_dice.repulsion` / `msg.astral_dice.repulsion_hit` / 新卡面文案「回收成物品形式」/ 手册键 `effect_card_repulsion.4`·`.5`，手册条目 `effect_card_repulsion.json` 的 page 计数 **5**（含 `astral_dice:repulsion` 的 spotlight）。
 > 上一轮（11:55，星光批次）读数：neo 2,577,145 B / `7995d714…5b5ff9e`；forge reobf 2,622,362 B / `2f14b079…c8f71e9`；forge dev 2,592,867 B / `40bfe716…6a32f274` —— 已被本批覆盖。
 库 jar（成对投放，未随本批变动）：neo 98,737 B / forge 103,609 B（`1.1.0-pre.2`）。
 
@@ -189,6 +189,22 @@ forge dev **named** 2,600,922 B / `5304bafdf152c2910b6344da06cbcba20930660048318
 守门：`verify-split.py` 8 项 `[OK]`；`check_lang_sync` EXIT 0；`audit_patchouli_keys` 引用 1694 处 / 悬空 **0**。产物已重建并按四目标投放（§2），jar 内两项内容均已生效。
 
 **未做**：实机打开手册页看图标与正文（需用户下达）。
+### 4.1e 手册补充：强化拒止物品形态（2026-10-25，用户裁决「连带补充帕秋莉手册，路障不动」）
+
+在既有条目 `en_us/entries/cards_effect/effect_card_repulsion.json` 追加**第 4、5 页**（不新建条目 —— 物品形态与效果牌是同一机制，放同一条目内更易读）：
+
+| 页 | 类型 | 内容 |
+|---|---|---|
+| 4 | `patchouli:spotlight`（`item: astral_dice:repulsion`） | 物品形态即效果牌召唤的同一力场：落点判据共用一份（4.5 格 / 需可依附实心面 / 该处不能已有强化拒止）；耐久 · 剩余寿命 · 已提供充能随物品保存，重放即恢复 |
+| 5 | `patchouli:text` | 获取方式（放置者本人近战 5 次；弹射物不算）、放置与回收仅属获得者（其他人只会收到「这个强化拒止不属于你」）、悬停查看耐久（满耐久不显示条）/ 剩余寿命 / 已提供充能 |
+
+落点：两线同一个 `effect_card_repulsion.json`（3 → 5 页，两线文件逐字节相同）+ 两线 × 三语 lang 各 +2 键（`astral_dice.guide.entry.effect_card_repulsion.4` / `.5`）⇒ P0 键数 1058 → **1060**。
+
+判据（2026-10-25 15:5x）：`python tools/audit_patchouli_keys.py` ⇒ 四线引用 **1698** 处 / 悬空 **0**（EXIT 0）；`check_lang_sync.ps1` EXIT 0（P0 各 **1060** 键一致，P1 836 / 844 未受影响，3 条既有 WARN 照旧）；`tooltip_color_audit` 仍 **144 处 / 9 键**（本批不新增 tooltip）；`verify-split.py` 8 项 `[OK]`；两线 `build` EXIT 0 并按四目标投放，开 jar 核：条目 page `type` 计数 **5**、spotlight 的 item 为 `astral_dice:repulsion`、`zh_cn.json` 命中 `effect_card_repulsion.4` / `.5`，四目标 sha256 全 MATCH。
+
+产物（15:5x 重建）：neo **2,586,610 B** `4686ec6de2b637d22f8a9688e87c88180dad36f9f68f6d8a5a522714a8c53fb4`；forge reobf **2,631,683 B** `dbccaf2c16112681fe9e36494072021662ec0d119952401a52e4aeebb2535cd0`；forge dev **2,602,214 B** `19bff3310bb540beb7f2a74b6aa673e22eaac04458723d5a45f34741ffca2e45`。
+
+**未做**：实机翻开该条目看第 4/5 页排版（需用户下达）。**路障不动** —— `card.barricade` 的 6 处 `§e20:00§7` 按用户本次裁决保持原样，`tooltip_color_audit` 的 144 处存量全部继续保留。
 
 ### 4.2 历史读数
 
@@ -209,7 +225,7 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 5. **8 条「代码与文案都不符」**（已报用户，未改 tooltip）：bite 觉醒按撕咬张数 / huo_card = `CREATURE_OR_RIVAL` / magic_quiver 真闸门 = 目标已有标记 + 先用过伤害牌 / railgun 只 `bypasses_armor` / 三张卡 `NON_HOSTILE` / member_recommendation 只数主背包+副手 / repulsion 单次最多 5 点耐久 / airbag 掉虚空救不了。
 6. **P1 两线欠账**（正式版前不移植，仅登记）：JEI 筹码 / `BeamFx` / `GlobalEventGate` / `RepulsionEntity` / `CardShopMenu#planPlacement` / `EventDrawBlock`；筹码效果图标仍带边框；史莱姆被动仍 20 tick；misaki 仍 `legendary()` + 黄金星盘 + 死亡清零剑气；pre.5 冷却指示器未移植。
 7. **陈旧锁 `kimi.lock`**（`PID=26580` 已不存在）——不自行删，交用户裁决。
-8. ~~强化拒止物品形态未实机~~ → **已完成**（2026-10-25 15:0x，双版本 7 项判据全 PASS，§4.1c）。owner 闸门（非放置者命中被拒）也已双版本实机四态 PASS（§4.1c 末节，2026-10-25 15:3x）。仍有两个**待用户裁决**的小项：(a) 是否给新物品**加帕秋莉手册第 4 页**（现只把卡条目的文案改成「会被回收」）；(b) 玩家自写染色 `card.barricade` 的 6 处 `§e20:00§7` 是否也一并改 §9（本批只改了 repulsion）。
+8. ~~强化拒止物品形态未实机~~ → **已完成**（2026-10-25 15:0x，双版本 7 项判据全 PASS，§4.1c）。owner 闸门（非放置者命中被拒）也已双版本实机四态 PASS（§4.1c 末节，2026-10-25 15:3x）。仍有两个**待用户裁决**的小项：~~(a) 是否给新物品加帕秋莉手册第 4 页~~ → **已完成**（2026-10-25 §4.1e：同条目追加第 4/5 页，两线 × 三语）；(b) `card.barricade` 的 6 处 `§e20:00§7` —— **用户裁决「路障不动」，保持原样**（2026-10-25），`tooltip_color_audit` 的 144 处存量继续保留。
 
 ### Minor
 

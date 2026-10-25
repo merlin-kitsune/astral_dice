@@ -15,6 +15,15 @@
     {
       "type": "patchouli:text",
       "text": "astral_dice.guide.entry.effect_card_repulsion.3"
+    },
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:repulsion",
+      "text": "astral_dice.guide.entry.effect_card_repulsion.4"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.effect_card_repulsion.5"
     }
   ],
   "sortnum": 18
