@@ -130,6 +130,11 @@ forge dev **named** 2,600,922 B / `5304bafdf152c2910b6344da06cbcba20930660048318
 | 稀有度一致性 | `tools/verify_rarity_consistency.py` | `GATE: PASS` |
 | 规则分派 | `python -B docs/agent/verify-split.py` | 8 项全 `[OK]` |
 
+补充拦截（2026-10-25 用户裁决「增加一层拦截：玩家只能破坏自己放置的强化拒止」）：
+
+`RepulsionEntity#hurt` 在「只认玩家本人」之后再加一道 owner 闸门 —— `this.ownerUUID != null && !this.ownerUUID.equals(player.getUUID())` ⇒ 动作栏红字 `msg.astral_dice.repulsion_not_owner`（「这个强化拒止不属于你」）并 `return false`（**不计 `meleeHits`、不播受击红闪 / 受击音、不扣耐久**）；`ownerUUID == null`（管理命令 / 老存档）时对所有人开放。两线同批；三语 lang 四处同步（`tooltip.astral_dice.card.repulsion` 末行、`tooltip.astral_dice.item.repulsion` 第三行、`tooltip.astral_dice.item.repulsion_owner`、`astral_dice.guide.entry.effect_card_repulsion.2`）——「玩家近战」一律改为「**放置者**近战」，并补「其他人无法回收」；`_owner` 行由「仅获得者可以放置」改为「仅获得者可以放置**与回收**」。
+
+判据（2026-10-25 15:2x）：两线 `:classes` + `:build` EXIT=0（`BUILD SUCCESSFUL in 9s` / `in 2s`）；产物 neo **2,585,715 B** `5a93e3fa…`、forge reobf **2,630,787 B** `61f6fce2…`、forge dev **2,601,318 B** `2f0969fd…`，四目标 sha256 MATCH；`javap -p -c` 取 jar 内 `RepulsionEntity.class` 的 `hurt`：`getfield ownerUUID → ifnull → Player.getUUID → UUID.equals → ifne` 之后 `ldc_w` 载入 `msg.astral_dice.repulsion_not_owner`（闸门已落盘）；`check_lang_sync` RC=0（P0 各 1058 键）；`tooltip_color_audit` 仍 144/9 键（repulsion 0 处）；`verify_rarity_consistency` PASS；`verify_resource_integrity` `RESULT: PASS`（157/157 模型与贴图）；`verify-split` RC=0 九项 `[OK]`。**未实机**（需用户下达）。
 实机读数（2026-10-25 15:0x，双版本，驱动 = `mt.ps1 --phase env|launch` + AutoJS `eval_js`，判据值全部逐条实测）：
 
 | 判据 | 1.21.1 | 1.20.1 |

@@ -895,6 +895,10 @@ public class RepulsionEntity extends LivingEntity {
      *       {@code getDirectEntity()} 是弹射物本身 ⇒ 自动排除；怪物、其它生物、环境伤害
      *       （坠落 / 火焰 / 冻结 / 挤压）与 {@code /kill} 的 {@code genericKill}（没有 directEntity）
      *       一律无效 ⇒「不吸引仇恨」的语义不变；</li>
+     *   <li><b>只认放置者本人</b>（2026-10-25 用户裁决：玩家只能破坏自己放置的强化拒止）：
+     *       {@code ownerUUID} 非空且不是该玩家 ⇒ 动作栏提示「这个强化拒止不属于你」并 {@code return false}，
+     *       既不计 {@link #meleeHits}、也不播受击红闪 / 受击音；{@code ownerUUID} 为空（管理命令 / 老存档）
+     *       时对所有人开放；</li>
      *   <li><b>命中不再扣耐久</b>：耐久（= {@link #getHealth()}）只由 {@link #consumeDurability()}
      *       按吸附目标数消耗、或由放置时从物品恢复的状态决定；命中只累加 {@link #meleeHits}；</li>
      *   <li>命中 {@link #MAX_MELEE_HITS} 次 ⇒ {@link #recoverIntoItem(Player)}：掉落**物品形式**的
@@ -910,6 +914,12 @@ public class RepulsionEntity extends LivingEntity {
         if (this.isRemoved() || this.isDeadOrDying()) return false;
         // 只认玩家本人（近战 / 扫击）；弹射物的 directEntity 是箭 / 三叉戟 / 子弹 ⇒ 不计
         if (!(source.getDirectEntity() instanceof Player player)) return false;
+        // 只允许放置者本人回收（2026-10-25 用户裁决）：别人的强化拒止打不动、不计命中
+        if (this.ownerUUID != null && !this.ownerUUID.equals(player.getUUID())) {
+            player.displayClientMessage(Component.translatable(RepulsionItem.MSG_NOT_OWNER)
+                    .withStyle(ChatFormatting.RED), true);
+            return false;
+        }
 
         this.markHurt();
         this.level().broadcastDamageEvent(this, source);
