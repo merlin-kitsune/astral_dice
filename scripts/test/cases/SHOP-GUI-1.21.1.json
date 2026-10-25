@@ -275,7 +275,7 @@
     },
     {
       "op": "note",
-      "text": "⑧-pre 重新佩戴骰子: 筹码栏位只在佩戴骰子时才有(curios/slots/chip.json size=0, DiceCurioItem 总闸门); 提尔立牌狐光计层同样以「佩戴骰子」为前提"
+      "text": "⑧-pre 重新佩戴骰子: 筹码栏位只在佩戴骰子时才有(curios/slots/chip.json size=0, DiceCurioItem 总闸门); 教主立牌狐光计层同样以「佩戴骰子」为前提"
     },
     {
       "op": "inject_command",
@@ -288,7 +288,7 @@
     },
     {
       "op": "note",
-      "text": "⑧ 购买即获得: 维生素药丸(治愈) / 提尔立牌(攻击牌→狐光)"
+      "text": "⑧ 购买即获得: 维生素药丸(治愈) / 教主立牌(攻击牌→狐光)"
     },
     {
       "op": "inject_command",

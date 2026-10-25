@@ -888,7 +888,7 @@ function sp_doEquip(ctx, tag, slot, idStr) {
 }
 
 
-/** 现场归零: 清三个 curio 槽 + 治愈点数 + 提尔狐光层数(存档会跨 launch 保留, 冷实例的 P0/OB2 断言必须靠它保证基线) */
+/** 现场归零: 清三个 curio 槽 + 治愈点数 + 教主狐光层数(存档会跨 launch 保留, 冷实例的 P0/OB2 断言必须靠它保证基线) */
 function sp_doCurioReset(ctx, tag) {
     var p = sp_p(ctx);
     var eChip = sp_setCurio(p, 'chip', 'none', 0);
@@ -911,7 +911,7 @@ function sp_doCurio(ctx, tag) {
     return 1;
 }
 
-/** 直接调产品侧「获得卡牌」出口:治愈 +1 / 提尔狐光层数 */
+/** 直接调产品侧「获得卡牌」出口:治愈 +1 / 教主狐光层数 */
 function sp_doObtain(ctx, tag, idStr) {
     idStr = sp_unq(idStr);
     var p = sp_p(ctx);

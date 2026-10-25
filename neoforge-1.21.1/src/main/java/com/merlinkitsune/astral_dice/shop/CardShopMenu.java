@@ -515,7 +515,7 @@ public class CardShopMenu extends AbstractContainerMenu {
         // 2026-10-21 卡牌自动堆叠：按计划「先并入同类栈（补满到各自上限）、再逐格开新栈」；不再直接写死目标格。
         ItemStack boughtForNotify = bought.copy();
         applyPlacement(plan, bought);
-        // 2026-10-09 用户裁决「从商店购买视为获得」：卡牌已写入玩家槽 ⇒ 触发维生素药丸/提尔立牌等「获得」语义
+        // 2026-10-09 用户裁决「从商店购买视为获得」：卡牌已写入玩家槽 ⇒ 触发维生素药丸/教主立牌等「获得」语义
         com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem.notifyCardObtained(buyer, boughtForNotify);
         shelfContainer.setItem(shelfIndex, ItemStack.EMPTY);
         sold[shelfIndex] = true;

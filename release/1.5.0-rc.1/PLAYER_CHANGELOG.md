@@ -268,7 +268,7 @@ Released: **1.5.0-rc.1 (pre-release / beta)** — covers **everything** since 1.
   - Mamushi: the batch of cards it throws lives **5s → 10s**; “Dragon Roar” now **requires the Dragon Roar card equipped**;
   - Cult Leader: “Fox Light” no longer counts **crafting** (only obtaining or equipping an attack card);
   - Game Master: shield wording unified to “5 yellow hearts + resistance + 1 counter” (numbers unchanged);
-  - Pandaman: “a roll of 6 ignores target defense (armour included)” is now explicit (mechanic unchanged);
+  - Padman Sign: “a roll of 6 ignores target defense (armour included)” is now explicit (mechanic unchanged);
   - Investigator / Ninja / Protector: wording unified (range → distance, “every 3 cards” → “after 3 cards”, burst noted as active-only).
 - **Chips (existing)**:
   - Electric Gloves reworked: attacking with a damage effect card hits every target within 3 blocks (main target included) for **2 magic damage**, 1 second later;
