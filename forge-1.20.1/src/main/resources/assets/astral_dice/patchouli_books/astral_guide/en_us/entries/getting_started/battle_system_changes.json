@@ -1,7 +1,7 @@
 {
   "name": "astral_dice.guide.entry.battle_system_changes.name",
   "category": "astral_dice:getting_started",
-  "icon": "astral_dice:dice",
+  "icon": "minecraft:iron_sword",
   "pages": [
     {
       "type": "patchouli:text",

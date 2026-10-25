@@ -27,7 +27,7 @@ Select-String -Path F:\MCProject\astral_dice_multiloader\*\gradle.properties -Pa
 
 - 四子项目同树：`neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1`；交付面**只 P0** = 前两条，P1 两线在 `1.5.0` 正式版前不验证、不移植。
 - 版本：四线 `mod_version = 1.5.0-pre.6+<加载器后缀>`；`starengine_version = 1.1.0-pre.2`；jar 内硬前置 `[1.1.0-pre.2,2.0.0)`，`META-INF/jarjar/` 计数 0（库**不内嵌**，必须成对投放）。
-- 产物：**pre.6 已重建并投放**（最新 2026-10-25 14:22，含强化拒止物品形态，四目标 sha256 全 MATCH）——neo `astral_dice-1.5.0-pre.6+neoforge_1.21.1.jar` 2,585,277 B / `72369578…7178ac95f`（18 位 `7236957807d0fa6f`）；forge reobf 2,630,363 B / `d1bd35f0…5f85a0cb`（18 位 `d1bd35f0bffe488a`）；forge dev named 2,600,896 B / `421bbb4c…6e6fb562`（18 位 `421bbb4c8d6c90ae`，投 `run/1.20.1/mods`）。再改源码后必须重跑 `build`（各线 `build` 已 `finalizedBy pushToDevRun/pushToGame/pushToRootBuild`，一条命令即可重建+投放）并重录 sha256。
+- 产物：**pre.6 已重建并投放**（最新 2026-10-25 14:25，含强化拒止物品形态 + 手册文案/图标修正，四目标 sha256 全 MATCH）——neo `astral_dice-1.5.0-pre.6+neoforge_1.21.1.jar` 2,585,267 B / `7e88f262…0567cace0`（18 位 `7e88f2627e99534c`）；forge reobf 2,630,355 B / `5f5cb754…c779e8d`（18 位 `5f5cb754666fac1e`）；forge dev named 2,600,888 B / `fb5be4d2…25b856e`（18 位 `fb5be4d26916b118`，投 `run/1.20.1/mods`）。再改源码后必须重跑 `build`（各线 `build` 已 `finalizedBy pushToDevRun/pushToGame/pushToRootBuild`，一条命令即可重建+投放）并重录 sha256。
 - 未推送：本批提交**未 push**、**无 tag**（用户明确「暂不推送」）；push / tag / 实机 / 部署整合包均需用户逐次放行。
 - 构建：`JAVA_HOME=C:\Program Files\Zulu\zulu-21`；`.\gradlew.bat :<线>:classes|jar`；forge dev 必须 `build/devlibs` 的 **named** jar。
 - 测试台唯一入口：`pwsh -NoProfile -File scripts\test\mt.ps1 --version <线> --phase env|run|stop`；`--purge-saves` 会删 testworld。
@@ -40,6 +40,7 @@ Select-String -Path F:\MCProject\astral_dice_multiloader\*\gradle.properties -Pa
 3. 版本 bump 到 `1.5.0-pre.6`。
 4. DSH：**星光兑换改造**（`1ff14106`，24 文件 +1380/−217）——装备时一次性发放 + 每次兑换后按佩戴补星（`StarLightManager` 4bit 账本严格记账，封顶只记实际量），经商立牌 +50% 保留；新增守门 `tools/verify_starlight_exchange_refill.py`（196 项 PASS）。**已双版本实机验证 5 组判据全 PASS**（读 `docs/handover-1.5.0-pre.6-main.md` §4.1）。
 5. DSH：**强化拒止改造**（P0 两线）——玩家近战命中力场第 5 次 ⇒ 回收成新物品 `astral_dice:repulsion`（不是效果牌），携带耐久 / 已存活 tick / 已提供充能；再次放置按**与效果牌同一份** `item/RepulsionPlacement.resolve` 恢复三份状态。两线 `:classes` 通过、两线 `runData` 生成模型、`verify_resource_integrity` PASS（157/157）、`check_lang_sync` EXIT 0、三语 + CHANGELOG 双文件已改。**未实机**（判据清单见 handover §4.1c）。
+6. DSH：**手册修正**（2026-10-25）—— 战斗系统介绍页正文 `2.0.0` → `1.5.0`（两线 × 三语），条目图标 `astral_dice:dice` → `minecraft:iron_sword`（避开骰神赐福）；`PMFIX-TIP-*` 的陈旧断言同步（否则必红）。判据见 handover §4.1d。
 
 判据：P0 两线 `:classes` `BUILD SUCCESSFUL`；`check_lang_sync` EXIT=0；`audit_patchouli_keys` 悬空 0；`verify-split` EXIT=0；`verify_chip_shop_ui` `CHIPUI_TOTAL_FAIL: 0`；三道专项 python 判据 PASS（26 / 12 / 14 项）。
 

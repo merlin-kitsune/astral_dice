@@ -218,7 +218,7 @@
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_PMFIX\\|lang\\|astral_dice\\.guide\\.entry\\.battle_system_changes\\.1\\|strip=2\\.0\\.0 开发线对战斗结算做了一轮系统化对齐。"
+      "pattern": "AP_PMFIX\\|lang\\|astral_dice\\.guide\\.entry\\.battle_system_changes\\.1\\|strip=1\\.5\\.0 对战斗结算做了一轮系统化对齐。"
     },
     {
       "type": "log",

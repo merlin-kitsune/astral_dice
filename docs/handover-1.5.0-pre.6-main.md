@@ -32,11 +32,11 @@
 | `starengine_version` | `1.1.0-pre.2`（四线）；fabric 另有 `starengine_version_range=>=1.1.0-pre.2` | 各线 `gradle.properties` |
 | 硬前置区间 | `[1.1.0-pre.2,2.0.0)`；`META-INF/jarjar/` 计数 **0** | `neoforge-1.21.1/.../neoforge.mods.toml` · `forge-1.20.1/.../mods.toml` |
 
-**产物现状（2026-10-25 14:22 重建，pre.6；含强化拒止物品形态）**：
-neo `astral_dice-1.5.0-pre.6+neoforge_1.21.1.jar` 2,585,277 B / sha256 `7236957807d0fa6f528382be8c80984cfa1059e6a3d451aff264cdf7178ac95f`（`run/1.21.1/mods` 与「狐の航空学 Voxy Edition」同一份）；
-forge `astral_dice-1.5.0-pre.6+forge_1.20.1.jar` 2,630,363 B / `d1bd35f0bffe488aa595f2ad58f07dc25925c0ed1ffdbbbc6cdb36375f85a0cb`（→ 1.20.1-Forge 模组测试）；
-forge dev **named** 2,600,896 B / `421bbb4c8d6c90ae46057205f8ee31e0aa4f294c2b29b113cba48e166c6fb562`（`run/1.20.1/mods`）。
-四目标 2026-10-25 14:22 逐处 sha256 MATCH；jar 内判据：`assets/astral_dice/models/item/repulsion.json` 与 `textures/item/repulsion.png` 均在、`lang/zh_cn.json` 含 `item.astral_dice.repulsion` / `msg.astral_dice.repulsion_hit` / 新卡面文案「回收成物品形式」。
+**产物现状（2026-10-25 14:25 重建，pre.6；含强化拒止物品形态 + 手册文案/图标修正）**：
+neo `astral_dice-1.5.0-pre.6+neoforge_1.21.1.jar` 2,585,267 B / sha256 `7e88f2627e99534ce664f5157a80f12c8daefb24dd07ee8b6b379000567cace0`（`run/1.21.1/mods` 与「狐の航空学 Voxy Edition」同一份）；
+forge `astral_dice-1.5.0-pre.6+forge_1.20.1.jar` 2,630,355 B / `5f5cb754666fac1ebdc282da98bcbc7c338f598928f6d975da409290dc779e8d`（→ 1.20.1-Forge 模组测试）；
+forge dev **named** 2,600,888 B / `fb5be4d26916b118941422180ffa36f602b112b03a624901d625baee925b856e`（`run/1.20.1/mods`）。
+四目标 2026-10-25 14:25 逐处 sha256 MATCH；jar 内判据：`assets/astral_dice/models/item/repulsion.json` 与 `textures/item/repulsion.png` 均在、`lang/zh_cn.json` 含 `item.astral_dice.repulsion` / `msg.astral_dice.repulsion_hit` / 新卡面文案「回收成物品形式」。
 > 上一轮（11:55，星光批次）读数：neo 2,577,145 B / `7995d714…5b5ff9e`；forge reobf 2,622,362 B / `2f14b079…c8f71e9`；forge dev 2,592,867 B / `40bfe716…6a32f274` —— 已被本批覆盖。
 库 jar（成对投放，未随本批变动）：neo 98,737 B / forge 103,609 B（`1.1.0-pre.2`）。
 
@@ -47,6 +47,7 @@ forge dev **named** 2,600,896 B / `421bbb4c8d6c90ae46057205f8ee31e0aa4f294c2b29b
 | `e2aed527` | bump pre.6 + 收编 Kimi 四批 + 三语语言同步（53 文件，+994/−981） | 见下 7 条 |
 | `1ff14106` | feat(starlight)：星光兑换改为「装备时发放 + 每次兑换后按佩戴补星」（24 文件 +1380/−217） | `resource/ResourceConversion`（兑换后 `replenishOnExchange`）· `item/StarLightManager`（`grantedStarlight` 4bit 账本 / `grantStarlightOnEquip` / `revokeStarlightOnUnequip` / `replenishOnExchange`）· 四枚星光筹码 `onEquip`/`onChipUnequip` · 经商立牌 +50% 保留在 `CardShopMenu#tryExchange` · 新增 `tools/verify_starlight_exchange_refill.py`（`GATE: PASS (196 项)`） |
 | `9321d624` | feat(repulsion)：强化拒止改为「近战 5 次回收成物品形态」（32 文件 +973/−172） | 新增 `item/RepulsionItem`（三份状态 + 耐久条）/ `item/RepulsionPlacement`（卡与物品共用落点解析）· `entity/RepulsionEntity`（`MAX_MELEE_HITS = 5` / `recoverIntoItem` / `restoreState` / NBT `RepulsionMeleeHits`）· `component/ModDataComponents` 三个 INT 键 · 两线三语 +11 键 · 贴图 + 生成模型 |
+| 本文件所在提交（追加） | fix(guide)：战斗系统介绍页版本号 `2.0.0`→`1.5.0` + 条目图标骰子→铁剑（10 文件） | 两线 × 三语 lang（`guide.entry.battle_system_changes.1`）· 两线 `getting_started/battle_system_changes.json` 的 `"icon"` · `scripts/test/cases/PMFIX-TIP-1.20.1/1.21.1.json:221` 陈旧断言 |
 | 本文件所在提交 | docs：Kimi 交接单 + 工程参考 + pre.6 正本 + 新会话上下文 | `docs/handover-2026-10-24-kimi-takeover.md` · `docs/agent/PROJECT-REFERENCE.md` · 本文件 · `docs/handover-new-session-context.md` |
 
 `e2aed527` 的七条内容：
@@ -115,6 +116,23 @@ forge dev **named** 2,600,896 B / `421bbb4c8d6c90ae46057205f8ee31e0aa4f294c2b29b
 | 规则分派 | `python -B docs/agent/verify-split.py` | 8 项全 `[OK]` |
 
 **未做**：实机（放置 / 近战 5 次回收 / 重放恢复 / 非 owner 拒止 / 耐久条与 tooltip 三行读数）—— 按规则需用户明确下达。
+
+### 4.1d 手册文案与图标修正（2026-10-25）—— 只读判据全绿，实机未做
+
+用户指出的两处错误（战斗系统介绍页）：
+
+1. 正文误写 **`2.0.0` 开发线** —— 实际版本是 `1.5.0`；
+2. 该条目的书本图标是 **`astral_dice:dice`**，与「骰神赐福」条目图标撞车 —— 改为 **`minecraft:iron_sword`**（铁剑）。
+
+| 落点 | 改动 | 判据 |
+|---|---|---|
+| 两线 × 三语 lang（6 文件） | `astral_dice.guide.entry.battle_system_changes.1` 正文改 `1.5.0`：zh「1.5.0 对战斗结算做了一轮系统化对齐。」/ en「Version 1.5.0 realigns combat resolution as a whole;」/ ja「1.5.0 で戦闘の計算を全面的に見直した。」 | `check_lang_sync` EXIT 0（P0 各 1058 键）；jar 内 `zh_cn.json` 命中新句、`2.0.0 开发线` 计数 0 |
+| 两线 `assets/astral_dice/patchouli_books/astral_guide/en_us/entries/getting_started/battle_system_changes.json` | `"icon": "astral_dice:dice"` → `"icon": "minecraft:iron_sword"` | 开 jar 核：`minecraft:iron_sword=True` / `astral_dice:dice=False`（两线） |
+| `scripts/test/cases/PMFIX-TIP-{1.20.1,1.21.1}.json:221` | 陈旧断言跟着改：`strip=2\.0\.0 开发线…` → `strip=1\.5\.0 …`（否则该两条用例必红） | 锚点唯一命中 1 处/文件 |
+
+守门：`verify-split.py` 8 项 `[OK]`；`check_lang_sync` EXIT 0；`audit_patchouli_keys` 引用 1694 处 / 悬空 **0**。产物已重建并按四目标投放（§2），jar 内两项内容均已生效。
+
+**未做**：实机打开手册页看图标与正文（需用户下达）。
 
 ### 4.2 历史读数
 

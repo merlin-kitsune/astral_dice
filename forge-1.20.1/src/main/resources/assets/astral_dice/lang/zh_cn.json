@@ -46,7 +46,7 @@
   "astral_dice.guide.entry.battle_dice.3": "骰子可经铁砧以星币升星，星级越高赐福加成越强，卡牌栏格数也越多（0★=4、1★=6、2★=8、3★=12，攻防各半）；基础→黄金→钻石→下界合金的升级链解锁更多筹码栏位（卡牌栏格数由星级决定，各品阶同星级格数相同；同一阶层的骰子均可作为升级基础）。",
   "astral_dice.guide.entry.battle_dice.name": "战斗骰点",
   "astral_dice.guide.entry.battle_system_changes.name": "战斗系统改动",
-  "astral_dice.guide.entry.battle_system_changes.1": "2.0.0 开发线对战斗结算做了一轮系统化对齐。本页汇总与玩家直接相关的部分；各体系的完整规则见「特殊效果」与「流派」两页。",
+  "astral_dice.guide.entry.battle_system_changes.1": "1.5.0 对战斗结算做了一轮系统化对齐。本页汇总与玩家直接相关的部分；各体系的完整规则见「特殊效果」与「流派」两页。",
   "astral_dice.guide.entry.battle_system_changes.2": "骰战伤害链：攻击力 = 属性攻击力 × 蓄力系数（蓄力越满越高）+ 武器附魔加伤 + 骰点与卡牌加成。暴击 ×1.5 只作用于「属性攻击力 × 蓄力系数」这一段 —— 武器附魔、骰点与卡牌都不吃暴击；受击方的保护附魔与抗性提升改为按比例减免最终伤害。",
   "astral_dice.guide.entry.battle_system_changes.3": "攻击速度不再影响骰战：只让挥击变快的加成（如永动机筹码的近战冷却 -50%%）不会抬高同一真实蓄力节奏下的骰战攻击力 —— 骰战系数只看蓄力时长。",
   "astral_dice.guide.entry.battle_system_changes.4": "额外加伤通道：手电筒（按星光）、星币锤、美工刀（按治愈点数）、鹰眼瞄具、教主立牌的「追击」等加伤改为独立的「攻击伤害」，在命中之后单独结算 —— 不受目标防御力抵扣，也不吃暴击与全力攻击等倍率。",
