@@ -2032,11 +2032,7 @@ public class ModAttachments {
     public static final AttachedDataKey<Long> DOROTHY_WINDOW_END =
             register(AttachedDataKey.builder("dorothy_window_end", Codec.LONG, () -> 0L).sync().build());
 
-    /** 多萝西：窗口内已触发过的友方玩家 UUID 与最近触发刻（"uuid=tick" 逗号分隔；10 秒节流）。 */
-    public static final AttachedDataKey<String> DOROTHY_PARTNERS =
-            register(AttachedDataKey.builder("dorothy_partners", Codec.STRING, () -> "").build());
-
-    /** 多萝西：窗口内已结算「每人一次」的友方玩家 UUID（"uuid,uuid" 逗号分隔；窗口重置时与节流映射一并清零）。 */
+    /** 多萝西：窗口内已结算「每人一次」的友方玩家 UUID（"uuid,uuid" 逗号分隔；每次主动施放与窗口结束时清零）。 */
     public static final AttachedDataKey<String> DOROTHY_PARTNERS_ONCE =
             register(AttachedDataKey.builder("dorothy_partners_once", Codec.STRING, () -> "").build());
 
@@ -2126,31 +2122,17 @@ public class ModAttachments {
     }
 
     public static void clearDorothyPartners(net.minecraft.world.entity.player.Player player) {
-        DOROTHY_PARTNERS.set(player, "");
         DOROTHY_PARTNERS_ONCE.set(player, "");
     }
 
-    /** 返回 true 表示该友方玩家本次可结算：节流(距上次触发 ≥ throttleTicks)与每人一次(本窗口未结算过)同时成立。 */
-    public static boolean tryTriggerDorothyPartner(net.minecraft.world.entity.player.Player player, UUID other, long now, long throttleTicks) {
-        String raw = DOROTHY_PARTNERS.get(player);
-        java.util.Map<String, Long> seen = new java.util.LinkedHashMap<>();
-        if (raw != null && !raw.isEmpty()) {
-            for (String part : raw.split(",")) {
-                if (part.isEmpty()) continue;
-                int eq = part.indexOf('=');
-                String key = eq >= 0 ? part.substring(0, eq) : part;
-                long last = 0L;
-                if (eq >= 0) {
-                    try {
-                        last = Long.parseLong(part.substring(eq + 1));
-                    } catch (NumberFormatException ignored) {
-                    }
-                }
-                seen.put(key, last);
-            }
-        }
+    /**
+     * 返回 true 表示该友方玩家本窗口首次结算（每人每窗口一次）。
+     *
+     * <p>2026-10-25 用户裁决：删掉 10 秒节流 —— 「每人每窗口一次」本身已足够防刷（多萝西自己叠层，
+     * 不会出现反复刷的情况）；队友拿到的攻击力改由【交际花】效果承载（固定 1:00，与窗口解耦）。
+     */
+    public static boolean tryTriggerDorothyPartner(net.minecraft.world.entity.player.Player player, UUID other) {
         String key = other.toString();
-        // ① 每人一次：本窗口已结算过该队友 ⇒ 拒绝（窗口重置时 clearDorothyPartners 一并清零）
         String onceRaw = DOROTHY_PARTNERS_ONCE.get(player);
         java.util.Set<String> once = new java.util.LinkedHashSet<>();
         if (onceRaw != null && !onceRaw.isEmpty()) {
@@ -2158,11 +2140,8 @@ public class ModAttachments {
                 if (!part.isEmpty()) once.add(part);
             }
         }
+        // 每人一次：本窗口已结算过该队友 ⇒ 拒绝（窗口重置时 clearDorothyPartners 清零）
         if (once.contains(key)) return false;
-        // ② 节流：距上次触发不足 throttleTicks ⇒ 拒绝
-        Long prev = seen.get(key);
-        if (prev != null && now - prev < throttleTicks) return false;
-        // 两条闸门都通过：记入「每人一次」标记 + 更新节流时间
         once.add(key);
         StringBuilder onceSb = new StringBuilder();
         for (String p : once) {
@@ -2170,31 +2149,7 @@ public class ModAttachments {
             onceSb.append(p);
         }
         DOROTHY_PARTNERS_ONCE.set(player, onceSb.toString());
-        seen.put(key, now);
-        StringBuilder sb = new StringBuilder();
-        for (java.util.Map.Entry<String, Long> e : seen.entrySet()) {
-            if (sb.length() > 0) sb.append(',');
-            sb.append(e.getKey()).append('=').append(e.getValue());
-        }
-        DOROTHY_PARTNERS.set(player, sb.toString());
         return true;
-    }
-
-    /** 当前窗口内已触发过的友方玩家 UUID 集合(用于窗口结束/卸下时扫除队友加成)。 */
-    public static Set<UUID> dorothyPartnerUuids(net.minecraft.world.entity.player.Player player) {
-        Set<UUID> out = new HashSet<>();
-        String raw = DOROTHY_PARTNERS.get(player);
-        if (raw == null || raw.isEmpty()) return out;
-        for (String part : raw.split(",")) {
-            if (part.isEmpty()) continue;
-            int eq = part.indexOf('=');
-            String key = eq >= 0 ? part.substring(0, eq) : part;
-            try {
-                out.add(UUID.fromString(key));
-            } catch (IllegalArgumentException ignored) {
-            }
-        }
-        return out;
     }
 
     public static int getAlanaPassiveBonus(net.minecraft.world.entity.player.Player player) {

@@ -2,6 +2,7 @@ package com.merlinkitsune.astral_dice.item.sign;
 
 import com.merlinkitsune.starengine.combat.PartyRelations;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
+import com.merlinkitsune.astral_dice.effect.DorothySocialiteEffect;
 import com.merlinkitsune.astral_dice.effect.DorothyWarmthEffect;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.item.chip.CurrentCoreChipItem;
@@ -24,9 +25,10 @@ import top.theillusivec4.curios.api.SlotContext;
  * <p><b>被动「交际花」</b>：每次有效治疗叠 1 层【温暖】（瞬间治疗 / 生命恢复按效果等级计算），上限 5，每层防御 +1；
  * 3 格内出现友方玩家时双方 +2 生命（10 秒一次）。
  *
- * <p><b>主动「真正的我」</b>：传送到目标身边安全落点，随后 1:00 内 3 格内每个友方玩家**首次**进入范围时
- * 双方 +1 攻（自身可叠）；窗口结束清除该加成。施放时若温暖满 5 层 ⇒ 消耗全部，额外获得
- * 「当前防御力」点攻击 1:00。
+ * <p><b>主动「真正的我」</b>：传送到目标身边安全落点，随后 1:00 内 3 格内每个友方玩家**首次**进入范围时，
+ * 自身 +1 攻（可叠，窗口结束清除）；队友改挂【交际花】——攻击力 +1、**固定 1:00**，与主动窗口解耦
+ * （2026-10-25 用户裁决：加成由效果自带的属性修饰符承载，窗口结束不回收，重复获得只把时长刷回满）。
+ * 施放时若温暖满 5 层 ⇒ 消耗全部，额外获得「当前防御力」点攻击 1:00。
  */
 public class DorothySignItem extends BaseSignItem {
     public static final String ACTION_ID = "astral_dice:dorothy_bond";
@@ -35,7 +37,6 @@ public class DorothySignItem extends BaseSignItem {
     private static final int WINDOW_TICKS = 1200;
     private static final int PASSIVE_HEAL_COOLDOWN = 200;
     private static final double PASSIVE_RADIUS = 3.0D;
-    private static final int DOROTHY_THROTTLE_TICKS = 200;
 
     static {
         TargetSelectionRegistry.register(new DorothyBondAction());
@@ -109,20 +110,19 @@ public class DorothySignItem extends BaseSignItem {
             }
         }
 
-        // 主动窗口：3 格内友方玩家首次进入 ⇒ 双方 +1 攻
+        // 主动窗口：3 格内友方玩家首次进入 ⇒ 自身 +1 攻（可叠）、队友挂【交际花】1:00
         long windowEnd = ModAttachments.getDorothyWindowEnd(player);
         if (windowEnd > now) {
             for (Player other : level.players()) {
                 if (other == player || !PartyRelations.isSameTeam(player, other)) continue;
                 if (player.distanceToSqr(other) > PASSIVE_RADIUS * PASSIVE_RADIUS) continue;
-                if (!ModAttachments.tryTriggerDorothyPartner(player, other.getUUID(), now, DOROTHY_THROTTLE_TICKS)) continue;
+                if (!ModAttachments.tryTriggerDorothyPartner(player, other.getUUID())) continue;
                 ModAttachments.addDorothyAttackBonus(player, 1);
                 refreshAttackBonus(player);
-                applyTempAttack(other, "dorothy_partner_attack", 1.0D, windowEnd);
+                applySocialite(other);
             }
         } else if (windowEnd != 0L) {
             ModAttachments.setDorothyWindowEnd(player, 0L);
-            clearPartnerBuffs(player, level);
             ModAttachments.clearDorothyPartners(player);
             int bonus = ModAttachments.getDorothyAttackBonus(player);
             refreshAttackBonus(player);
@@ -141,22 +141,16 @@ public class DorothySignItem extends BaseSignItem {
                 AttributeModifier.Operation.ADD_VALUE);
     }
 
-    private static void applyTempAttack(Player player, String key, double amount, long until) {
-        if (player == null || until <= player.level().getGameTime()) return;
-        SignAttributeUtil.apply(player, Attributes.ATTACK_DAMAGE, key, amount,
-                AttributeModifier.Operation.ADD_VALUE);
-    }
-
-    /** 窗口结束 / 卸下时,移除所有受惠队友身上的 dorothy_partner_attack 修饰符(修复永久瞬态修饰符泄漏)。 */
-    private static void clearPartnerBuffs(Player caster, Level level) {
-        if (level.isClientSide()) return;
-        java.util.Set<java.util.UUID> partners = ModAttachments.dorothyPartnerUuids(caster);
-        if (partners.isEmpty()) return;
-        for (Player other : level.players()) {
-            if (partners.contains(other.getUUID())) {
-                SignAttributeUtil.remove(other, Attributes.ATTACK_DAMAGE, "dorothy_partner_attack");
-            }
-        }
+    /**
+     * 给受惠队友挂【交际花】：攻击力 +1、固定 1:00（与主动窗口解耦 —— 窗口结束不回收；重复获得只把时长刷回满）。
+     *
+     * <p>加成唯一事实源 = {@link DorothySocialiteEffect} 自带的 ATTACK_DAMAGE 属性修饰符；
+     * 2026-10-25 用户裁决后不再使用瞬态修饰符 {@code dorothy_partner_attack}。
+     */
+    private static void applySocialite(Player other) {
+        if (other == null || other.level().isClientSide()) return;
+        other.addEffect(new MobEffectInstance(ModEffects.DOROTHY_SOCIALITE,
+                DorothySocialiteEffect.DURATION_TICKS, 0, false, true, true));
     }
 
     @Override
@@ -165,7 +159,6 @@ public class DorothySignItem extends BaseSignItem {
         if (slotContext.entity() instanceof Player player) {
             SignAttributeUtil.remove(player, Attributes.ARMOR, "dorothy_warmth_armor");
             SignAttributeUtil.remove(player, Attributes.ATTACK_DAMAGE, "dorothy_bond_attack");
-            clearPartnerBuffs(player, player.level());
             ModAttachments.setDorothyWindowEnd(player, 0L);
             ModAttachments.setDorothyAttackBonus(player, 0);
             ModAttachments.clearDorothyPartners(player);
@@ -203,14 +196,14 @@ public class DorothySignItem extends BaseSignItem {
             long now = player.level().getGameTime();
             ModAttachments.setDorothyWindowEnd(player, now + WINDOW_TICKS);
             ModAttachments.clearDorothyPartners(player);
-            // 传送落地即刻算一次「路过」：双方回血；同队才按 tick 循环同一入口给 +1 攻并记入 partner 集合
+            // 传送落地即刻算一次「路过」：双方回血；同队才按 tick 循环同一入口给 +1 攻（队友走【交际花】效果）并记入「每人一次」集合
             player.heal(2.0F);
             other.heal(2.0F);
             if (PartyRelations.isSameTeam(player, other)
-                    && ModAttachments.tryTriggerDorothyPartner(player, other.getUUID(), now, DOROTHY_THROTTLE_TICKS)) {
+                    && ModAttachments.tryTriggerDorothyPartner(player, other.getUUID())) {
                 ModAttachments.addDorothyAttackBonus(player, 1);
                 refreshAttackBonus(player);
-                applyTempAttack(other, "dorothy_partner_attack", 1.0D, now + WINDOW_TICKS);
+                applySocialite(other);
             }
             // 满层转化：消耗全部温暖，额外获得「当前防御力」点攻击
             if (warmthStacks(player) >= DorothyWarmthEffect.MAX_STACKS) {

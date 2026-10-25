@@ -156,7 +156,9 @@ Released: **1.5.0-rc.1 (pre-release / beta)** — covers **everything** since 1.
   - Passive “Slacking”: standing still for **10 seconds** grants Fishing — no damage, no harmful effects and mobs ignore you;
     moving for a cumulative **5 seconds** ends it.
 - **Dorothy Sign** (quirky)
-  - Active “True Me”: teleport to a safe spot beside the target; for **1:00**, passing friendly players grants both of you **+1 attack** (once per 10s per player, self stacks), cleared when the timer ends;
+  - Active “True Me”: teleport to a safe spot beside the target; for **1:00**, passing a friendly player gives **you +1 attack** (once per player, self stacks, cleared when the timer ends);
+    that ally gains the status effect **Socialite** (the Dorothy Sign icon): **+1 attack** for **1:00** — timed from when it is gained and **independent** of the active timer,
+    so the window ending does not remove it; reapplying only refreshes the duration;
     at **5 Warmth** stacks, consume them all to gain attack equal to your current defense (1:00).
   - Passive “Socialite”: restoring health grants **1 Warmth** (max **5** stacks; Instant Health and Regeneration count by effect level), each stack gives **+1 defense**;
     passing a friendly player heals both for **2 HP** (once every **10s**).

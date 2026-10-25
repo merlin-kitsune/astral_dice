@@ -431,6 +431,18 @@
   "Warmth" (Dorothy Sign) does not gain extra stacks and downstream hooks (Zhao overflow, heal-cancel events)
   see one event. zh/en/ja tooltips, the Patchouli guide and the player changelogs were corrected (P0 both lines).
 
+- **Dorothy Sign: the attack the active grants to allies is now its own status effect "Socialite"** (2026-10-25 ruling):
+  that **+1 ATK** used to be a transient attribute modifier (no icon, absent from the effects bar) that the caster's
+  active window **cleaned up on expiry** — so an ally joining late got a shorter buff. It is now the new effect
+  `dorothy_socialite` (BENEFICIAL, **fixed 1200t = 1:00**, icon = Dorothy Sign texture): the single source of truth is
+  the effect's own `ATTACK_DAMAGE +1` modifier (Neo `ADD_VALUE` / Forge `ADDITION` + UUID
+  `d4b20452-7270-5185-ab1e-46ce1b3325ab`), **timed from when it is gained and decoupled from the active window**
+  (the window ending no longer removes it); reapplying only refreshes the duration, never stacks. The **10-second
+  trigger throttle was also removed** (each ally is already limited to one payout per window; Dorothy herself keeps
+  stacking +1 per ally) — `ModAttachments` drops the `DOROTHY_PARTNERS` throttle map and `dorothyPartnerUuids`, and
+  `tryTriggerDorothyPartner` narrows to `(player, uuid)`. The passive "2 HP per 10s" is unaffected.
+  zh/en/ja tooltips, the Patchouli guide and the player changelogs were corrected (P0 both lines).
+
 #### Cards
 
 - **The four damage effect cards (Monster Laser / Monster Brick / Orbital Strike / Directional Blast) were reworked**

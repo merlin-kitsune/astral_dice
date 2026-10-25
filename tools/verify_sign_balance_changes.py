@@ -24,6 +24,12 @@
     5 层上限；旧“获得治疗效果”语义与旧组合“恢复生命值时获得 1 层「温暖」（按效果等级计算…）”
     不得复活（不禁止准确的“恢复生命值时获得 1 层”），en/ja 旧文案 Gaining a healing effect /
     回復効果を得ると 消失。
+  * 【交际花】状态效果（DOR-4，2026-10-25 用户裁决）：队友那 1 点攻击力改由
+    `DorothySocialiteEffect` 自带的 ATTACK_DAMAGE 修饰符承载，`DURATION_TICKS = 1200`
+    （固定 1:00、与主动窗口解耦）；`ModEffects` 注册 `dorothy_socialite`；两处 `applySocialite(other)`；
+    `tryTriggerDorothyPartner` 只保留 (player, uuid) 两参（10 秒节流已删）；旧
+    `DOROTHY_THROTTLE_TICKS` / `dorothy_partner_attack` / `applyTempAttack` /
+    `clearPartnerBuffs` / `DOROTHY_PARTNERS` / `dorothyPartnerUuids` 不得复活；图标必须存在。
 - `jill`：
   * `resolve` 用 `HEAL_AMOUNT = 2.0F` 按效果牌张数调 `target.heal(HEAL_AMOUNT * effect)`
     （2026-10-25 裁决：每张 2 点、3 张 6 点；合并为一次 heal ⇒ 治疗事件只 1 次），且不再施加 REGENERATION；
@@ -700,6 +706,91 @@ def check_dorothy(line, res):
         else:
             res.run(False, "DOR-3 [%s] mixin defaultRequire=%r（应为 1）"
                     % (line, injectors.get("defaultRequire")))
+
+    # ------------------------------------------------------------------
+    # DOR-4：【交际花】状态效果（2026-10-25 用户裁决）
+    # 队友那 1 点攻击力改由效果自带的属性修饰符承载：固定 1:00、与主动窗口解耦；
+    # 同时删掉 10 秒节流（每人每窗口一次已足够防刷）。
+    # ------------------------------------------------------------------
+    socialite_item = os.path.join(ROOT, line, "src/main/java/com/merlinkitsune/astral_dice/item/sign/DorothySignItem.java")
+    socialite_effect = os.path.join(ROOT, line, "src/main/java/com/merlinkitsune/astral_dice/effect/DorothySocialiteEffect.java")
+    socialite_mods = os.path.join(ROOT, line, "src/main/java/com/merlinkitsune/astral_dice/effect/ModEffects.java")
+    socialite_attach = os.path.join(ROOT, line, "src/main/java/com/merlinkitsune/astral_dice/component/ModAttachments.java")
+    socialite_icon = os.path.join(ROOT, line, "src/main/resources/assets/astral_dice/textures/mob_effect/dorothy_socialite.png")
+
+    if not os.path.isfile(socialite_effect):
+        res.run(False, "DOR-4 [%s] 缺少 DorothySocialiteEffect.java（【交际花】效果类）" % line)
+    else:
+        eff = strip_comments(read_text(socialite_effect))
+        require(res, eff, r"DURATION_TICKS\s*=\s*1200\s*;", "DOR-4", line,
+                "【交际花】固定 1:00（DURATION_TICKS = 1200，与主动窗口解耦）")
+        require(res, eff, r"Attributes\s*\.\s*ATTACK_DAMAGE", "DOR-4", line,
+                "【交际花】走 ATTACK_DAMAGE 属性修饰符")
+        require(res, eff, r"addAttributeModifier\s*\(", "DOR-4", line,
+                "【交际花】用 addAttributeModifier 挂修饰符")
+        require(res, eff, r"ATTACK_BONUS\s*=\s*1(?:\.0)?D?\s*;", "DOR-4", line,
+                "【交际花】攻击力 +1")
+        if line == "neoforge-1.21.1":
+            require(res, eff, r'"dorothy_socialite_attack"', "DOR-4", line,
+                    "Neo 修饰符 key = astral_dice:dorothy_socialite_attack")
+            require(res, eff, r"Operation\s*\.\s*ADD_VALUE", "DOR-4", line,
+                    "Neo Operation.ADD_VALUE")
+        else:
+            require(res, eff, r'"d4b20452-7270-5185-ab1e-46ce1b3325ab"', "DOR-4", line,
+                    "Forge 修饰符 UUID = astral_dice:dorothy_socialite_attack 的 UUIDv5")
+            require(res, eff, r"Operation\s*\.\s*ADDITION", "DOR-4", line,
+                    "Forge Operation.ADDITION")
+            require(res, eff, r"getAttributeModifierValue\s*\(", "DOR-4", line,
+                    "Forge 覆写 getAttributeModifierValue")
+
+    if not os.path.isfile(socialite_mods):
+        res.run(False, "DOR-4 [%s] 文件不存在 effect/ModEffects.java" % line)
+    else:
+        mods_src = strip_comments(read_text(socialite_mods))
+        require(res, mods_src, r'EFFECTS\s*\.\s*register\s*\(\s*"dorothy_socialite"',
+                "DOR-4", line, "ModEffects 注册 dorothy_socialite")
+        require(res, mods_src, r"DOROTHY_SOCIALITE", "DOR-4", line,
+                "ModEffects 暴露 DOROTHY_SOCIALITE 常量")
+
+    if not os.path.isfile(socialite_item):
+        res.run(False, "DOR-4 [%s] 文件不存在 item/sign/DorothySignItem.java" % line)
+    else:
+        item_src = strip_comments(read_text(socialite_item))
+        calls = len(re.findall(r"applySocialite\s*\(\s*other\s*\)", item_src))
+        res.run(True if calls >= 2 else False,
+                "DOR-4 [%s] applySocialite(other) 调用点 %d 处（tick 循环 + 落地即刻，应 ≥ 2）"
+                % (line, calls))
+        require(res, item_src, r"new\s+MobEffectInstance\s*\(\s*ModEffects\s*\.\s*DOROTHY_SOCIALITE",
+                "DOR-4", line, "队友加成通过 MobEffectInstance(DOROTHY_SOCIALITE) 施加")
+        require(res, item_src, r"tryTriggerDorothyPartner\s*\(\s*player\s*,\s*other\s*\.\s*getUUID\s*\(\s*\)\s*\)",
+                "DOR-4", line, "按 (player, uuid) 两参调用 tryTriggerDorothyPartner")
+        forbid(res, item_src, r"DOROTHY_THROTTLE_TICKS", "DOR-4", line,
+               "仍存在 10 秒节流常量 DOROTHY_THROTTLE_TICKS（应删除）")
+        forbid(res, item_src, r'tryTriggerDorothyPartner\s*\([^)]*,\s*now\s*,', "DOR-4", line,
+               "仍按 4 参（含 now/throttle）调用 tryTriggerDorothyPartner")
+        forbid(res, item_src, r"applyTempAttack\s*\(", "DOR-4", line,
+               "仍调用 applyTempAttack（瞬态修饰符路径应删除）")
+        forbid(res, item_src, r'"dorothy_partner_attack"', "DOR-4", line,
+               "仍使用瞬态修饰符 key dorothy_partner_attack")
+        forbid(res, item_src, r"clearPartnerBuffs\s*\(", "DOR-4", line,
+               "仍调用 clearPartnerBuffs（窗口结束不再回收队友加成）")
+
+    if not os.path.isfile(socialite_attach):
+        res.run(False, "DOR-4 [%s] 文件不存在 component/ModAttachments.java" % line)
+    else:
+        attach_src = strip_comments(read_text(socialite_attach))
+        require(res, attach_src, r"tryTriggerDorothyPartner\s*\([^)]*Player\s+player\s*,\s*UUID\s+other\s*\)",
+                "DOR-4", line, "ModAttachments.tryTriggerDorothyPartner 只保留 (player, other)")
+        forbid(res, attach_src, r"DOROTHY_PARTNERS\b", "DOR-4", line,
+               "仍存在 DOROTHY_PARTNERS（uuid=tick 节流表，应删除）")
+        forbid(res, attach_src, r"dorothyPartnerUuids\s*\(", "DOR-4", line,
+               "仍存在 dorothyPartnerUuids（窗口结束扫除队友加成，应删除）")
+
+    if os.path.isfile(socialite_icon):
+        res.run(True, "DOR-4 [%s] 图标 textures/mob_effect/dorothy_socialite.png 存在" % line)
+    else:
+        res.run(False, "DOR-4 [%s] 缺少图标 textures/mob_effect/dorothy_socialite.png" % line)
+
 
 
 # ---------------------------------------------------------------------------

@@ -48,6 +48,10 @@ public class ModEffects {
             EFFECTS.register("jill_mixed", com.merlinkitsune.astral_dice.effect.JillMixedEffect::new);
     public static final RegistryObject<MobEffect> DOROTHY_WARMTH =
             EFFECTS.register("dorothy_warmth", com.merlinkitsune.astral_dice.effect.DorothyWarmthEffect::new);
+
+    // 交际花(多萝西主动给队友的攻击力增益):固定 1:00,与主动窗口解耦(2026-10-25 用户裁决)
+    public static final RegistryObject<MobEffect> DOROTHY_SOCIALITE =
+            EFFECTS.register("dorothy_socialite", com.merlinkitsune.astral_dice.effect.DorothySocialiteEffect::new);
     public static final RegistryObject<MobEffect> ALANA_IRON_MAIDEN =
             EFFECTS.register("alana_iron_maiden", com.merlinkitsune.astral_dice.effect.AlanaIronMaidenEffect::new);
     public static final RegistryObject<MobEffect> DEEPSEEK_FISHING =
