@@ -12,7 +12,7 @@ import top.theillusivec4.curios.api.CuriosApi;
  * 原初核心筹码:每消耗 1 层充能,获得 1 层「赋能」。
  *
  * <p>每层赋能提供攻击力 +1 与防御力 +1;防御力折算为真实护甲
- * (1 防御力 = 2 护甲值,见 {@link DiceCombatModifiers#setDefenseArmorBonus});
+ * (1 防御力 = 1÷护甲系数 护甲值,见 {@link DiceCombatModifiers#setDefenseArmorBonus});
  * 赋能每 0:30 减少 1 层,层数为 1 时直接归 0
  * (计时器见 {@link EmpowerManager})。
  */

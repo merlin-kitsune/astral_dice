@@ -11,7 +11,7 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
  * <ul>
  *   <li>类别 {@link MobEffectCategory#HARMFUL};时长 1:00({@link #DURATION_TICKS} = 1200 tick);</li>
  *   <li>携带 {@code Attributes.ARMOR} 的 {@link AttributeModifier.Operation#ADDITION} 修饰器
- *       {@code -8.0}:按本仓统一折算口径「1 点防御力 = 2 点护甲值」即**减 4 点防御力**
+ *       {@code -8.0}:按本仓统一折算口径「1 点防御力 = 2 点护甲值」即**怪物减 3.2 / 玩家减 2.4 点防御力**
  *       (与 {@link UnwaveringEffect} 的 {@code +8} 正值版互为镜像);</li>
  *   <li><b>重复命中只刷新时长、不叠层</b>(裁决 D8):施加方 {@code MamushiSignItem#applyRoarDebuff}
  *       恒用 {@code amplifier = 0} ⇒ 下面覆写的取值方法恒返回 -8;原版
@@ -40,7 +40,7 @@ public class DragonRoarBreakEffect extends MobEffect {
     /** 效果时长:1:00 = 1200 tick(规格 §1 效果表 {@code ROAR_DEBUFF_TICKS}) */
     public static final int DURATION_TICKS = 1200;
 
-    /** 护甲修正量:−8 护甲 = −4 点防御力(1 防御力 = 2 护甲值) */
+    /** 护甲修正量:−8 护甲 = −4 点防御力(1 防御力 = 1÷护甲系数 护甲值) */
     public static final double ARMOR_DELTA = -8.0;
 
     /** 修饰器 id(语义名 {@code astral_dice:dragon_roar_break_armor} 的 UUIDv5;两线同值) */

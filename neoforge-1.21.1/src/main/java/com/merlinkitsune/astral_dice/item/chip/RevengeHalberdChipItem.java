@@ -86,7 +86,7 @@ public class RevengeHalberdChipItem extends BaseChipItem {
         }
     }
 
-    /** 每 tick 驱动:防御力折算为真实护甲(1 防御力 = 2 护甲值;攻击加成仍走骰战攻击修饰器) */
+    /** 每 tick 驱动:防御力折算为真实护甲(1 防御力 = 1÷护甲系数 护甲值;攻击加成仍走骰战攻击修饰器) */
     public static void updateArmorBonus(Player player) {
         com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.setDefenseArmorBonus(
                 player, "revenge_halberd_def_armor", currentDefenseBonus(player));

@@ -92,7 +92,7 @@ public class MosesSignItem extends BaseSignItem
     protected void onCurioTick(SlotContext slotContext, ItemStack stack) {
         if (!(slotContext.entity() instanceof Player player)) return;
         if (player.level().isClientSide()) return;
-        // 防御力按弱点识破层数折算为真实护甲(1 防御力 = 2 护甲)
+        // 防御力按弱点识破层数折算为真实护甲(1 防御力 = 1÷护甲系数 护甲)
         DiceCombatModifiers.setDefenseArmorBonus(player, "moses_weakness_armor",
                 isEquipped(player) ? WeaknessRevealEffect.getStacks(player) : 0);
     }

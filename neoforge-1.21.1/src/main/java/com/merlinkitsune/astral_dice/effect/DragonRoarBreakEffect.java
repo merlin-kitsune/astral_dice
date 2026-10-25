@@ -9,7 +9,7 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 
 /**
  * 破防(蛟龙立牌 mamushi 专属战斗牌「龙之咆哮」的命中减益):
- * 效果期间护甲值 {@code -8}(ADD_VALUE;按"1 防御 = 2 护甲"折算 ⇒ **减 4 点防御**)。
+ * 效果期间护甲值 {@code -8}(ADD_VALUE;按"1 防御 = 1÷护甲系数 护甲"折算 ⇒ **怪物减 3.2 / 玩家减 2.4 点防御**)。
  *
  * <p>写法 = 「岿然不动」({@link UnwaveringEffect})的**正值版取负**:同一条
  * {@code MobEffect#addAttributeModifier(Attributes.ARMOR, id, ADD_VALUE, curve)} 重载,
@@ -24,7 +24,7 @@ public class DragonRoarBreakEffect extends MobEffect {
     public static final int DURATION_TICKS = 1200;
 
     /**
-     * 护甲变化量:1 防御 = 2 护甲 ⇒ {@code -8} 护甲 = 减 4 点防御(规格 §1 / D3)。
+     * 护甲变化量:1 防御 = 1÷护甲系数 护甲 ⇒ {@code -8} 护甲 = 怪物减 3.2 / 玩家减 2.4 点防御(规格 §1 / D3)。
      * 施加方 {@code MamushiSignItem#ROAR_ARMOR_DELTA} 直接引用本常量,保证单一真值。
      */
     public static final double ARMOR_DELTA = -8.0;

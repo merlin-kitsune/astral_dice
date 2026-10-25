@@ -38,7 +38,7 @@ import java.util.UUID;
  * <p>口径与暂缓项（如实登记，待用户补充细节）：
  * <ul>
  *   <li>「攻击力 / 防御力」按本模组口径映射：攻击力 = `Attributes.ATTACK_DAMAGE` 的 ADD_VALUE（与 `NetherStarDiceItem` 同款），
- *       防御力 = {@link DiceCombatModifiers#setDefenseArmorBonus}（1 防御 = 2 护甲）。</li>
+ *       防御力 = {@link DiceCombatModifiers#setDefenseArmorBonus}（1 防御 = 1÷护甲系数 护甲）。</li>
  *   <li>带时长的效果用 {@link EventTimerStore} 登记（覆盖/重置语义）；**属性增益是瞬态修饰符**，
  *       到期由计时器回调移除，**不跨重登持久**。</li>
  *   <li>**状态指示器（取 images 同名图标）与「屏蔽中毒/饥饿指示器、显示专用指示器」暂缓** ——
@@ -130,9 +130,10 @@ public final class EventEffects {
             if (e instanceof Enemy) mobs.add(e);
         }
         for (LivingEntity mob : mobs) {
-            // 攻击力 +2;防御力 +2(1 防御 = 2 护甲 ⇒ +4 护甲),持续 2:00 后由计时器回调移除
+            // 攻击力 +2;防御力 +2(1 防御 = 1/生物护甲系数 ⇒ +5 护甲),持续 2:00 后由计时器回调移除
             setMobAttribute(mob, "event_storm_atk", Attributes.ATTACK_DAMAGE, 2.0D);
-            setMobAttribute(mob, "event_storm_def", Attributes.ARMOR, 4.0D);
+            setMobAttribute(mob, "event_storm_def", Attributes.ARMOR,
+                    2 * DiceCombatModifiers.MOB_ARMOR_PER_DEFENSE);
         }
         EventTimerStore.start(target, event.id(), 2400, p -> {
             for (LivingEntity mob : mobs) {

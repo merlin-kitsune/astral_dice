@@ -85,7 +85,7 @@ import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
  *       ({@link ModAttachments#MAMUSHI_BITE_BONUS_ACTIVE});加成 = {@code min(觉醒, 4)},
  *       **实时**读取(裁决 4),赐福结束由 {@link #onDiceBlessingEnded(Player)} 清锁存;</li>
  *   <li><b>龙之咆哮</b>:费用 3 / 耐久 5 / 攻击贡献 +3;命中对**受击者**施加
- *       {@code 缓慢 III 1:00} + {@link ModEffects#DRAGON_ROAR_BREAK}(减 4 点防御,1:00),
+ *       {@code 缓慢 III 1:00} + {@link ModEffects#DRAGON_ROAR_BREAK}(怪物减 3.2 / 玩家减 2.4 点防御,1:00),
  *       重复命中只刷新时长(裁决 D8)。施加入口 {@link #applyRoarDebuff(LivingEntity)},
  *       由 {@code combat/DiceCombatEvents} 在伤害定稿附近按 `攻击方装备了龙之咆哮` 调用。</li>
  * </ul>
@@ -461,7 +461,7 @@ public class MamushiSignItem extends BaseSignItem
     // ══════════════════════════════════════════════════════════════════════════
 
     /**
-     * 对**被攻击的目标**施加「缓慢 III 1:00」+「破防({@code ARMOR -8} = 减 4 点防御)1:00」。
+     * 对**被攻击的目标**施加「缓慢 III 1:00」+「破防({@code ARMOR -8} = 怪物减 3.2 / 玩家减 2.4 点防御)1:00」。
      *
      * <p>D8:重复命中只刷新时长(不叠层)—— 两条效果都以 {@code amplifier = 0} 施加,原版
      * {@code MobEffectInstance#update} 对同放大器实例只取较长时长;

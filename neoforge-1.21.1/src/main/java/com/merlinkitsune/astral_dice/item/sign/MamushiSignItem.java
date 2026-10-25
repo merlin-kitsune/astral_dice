@@ -112,7 +112,7 @@ public class MamushiSignItem extends BaseSignItem
     public static final int ROAR_DEBUFF_TICKS = DragonRoarBreakEffect.DURATION_TICKS;
     /** 龙之咆哮命中施加的缓慢等级(amplifier 2 = 缓慢 III) */
     public static final int ROAR_SLOW_AMPLIFIER = 2;
-    /** 龙之咆哮的破防护甲变化量(−8 护甲 = 减 4 点防御;单一真值在 {@link DragonRoarBreakEffect#ARMOR_DELTA}) */
+    /** 龙之咆哮的破防护甲变化量(−8 护甲 ⇒ 按阵营系数折算:怪物 −3.2 点防御 / 玩家 −2.4 点防御;单一真值在 {@link DragonRoarBreakEffect#ARMOR_DELTA}) */
     public static final double ROAR_ARMOR_DELTA = DragonRoarBreakEffect.ARMOR_DELTA;
 
     /** 静态批次表的惰性清理窗口(tick):超过该时长的批次只可能是残留(每批次只在一个 gameTime 内有效) */
@@ -311,7 +311,7 @@ public class MamushiSignItem extends BaseSignItem
     /**
      * 对**被攻击的目标**施加减益(挂点 = {@code CombatEvents} 的伤害定稿处,条件 = 攻击方骰子卡牌栏
      * 装备了任意张龙之咆哮):缓慢 III {@link #ROAR_DEBUFF_TICKS} +
-     * {@link ModEffects#DRAGON_ROAR_BREAK}(护甲 {@link #ROAR_ARMOR_DELTA} = 减 4 点防御)同时长。
+     * {@link ModEffects#DRAGON_ROAR_BREAK}(护甲 {@link #ROAR_ARMOR_DELTA} = 怪物减 3.2 / 玩家减 2.4 点防御)同时长。
      *
      * <p>六参构造 = 关粒子、留图标(仓库统一口径);D8:重复命中只**刷新时长**、不叠层(amplifier 恒 0,
      * 原版 {@code addEffect} 对同等级效果只续期)。两效果均经

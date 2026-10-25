@@ -11,11 +11,11 @@ import net.minecraft.world.entity.player.Player;
  * 完全一致;不含随机防御骰与防御卡)。公式自 2026-09-26 起**下沉至库**
  * {@code com.merlinkitsune.starengine.combat.CombatFormula},玩家与生物各自一套:
  * <ul>
- *   <li>玩家:{@code 4 + 护甲×0.30 + 0.85×韧性};</li>
+ *   <li>玩家:{@code 2 + 护甲×0.30 + 0.85×韧性};</li>
  *   <li>生物:{@code 初始值(敌对 0 / 中立 0 / 被动 0 / 友好 0) + 护甲×0.40 + 1.0×韧性}。</li>
  * </ul>
  * 结果向下取整;护甲 20 硬上限与此前「怪物与玩家公式同步」的口径已于 2026-09-26 一并作废
- * (1 防御力 = 2 护甲值不变)。
+ * (1 防御力 = 1÷护甲系数 护甲值不变)。
  */
 public class PiercingGunChipItem extends BaseChipItem {
     public PiercingGunChipItem(Properties properties) {

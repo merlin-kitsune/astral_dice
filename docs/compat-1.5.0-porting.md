@@ -30,6 +30,7 @@
 | **抽奖盒** | `block/EventDrawBlock`（投入冷却 `BLANK_INSERT_COOLDOWN_TICKS = 2400L`）+ 附件 `event_drawer_blank_insert_at` | 交互入口两线不同（1.21.1 `useItemOn`；1.20.1 六参 `use`）；附件在 1.20.1 是 `AttachedDataKey.builder(name, Codec.LONG, () -> 0L)`。**语义勿抄错**：抽奖盒 = 只清购买冷却（无刷新机制），筹码商店 = 刷新批次 +1。 |
 | **商店并栈** | `shop/CardShopMenu#planPlacement`、`screen/CardShopScreen#canAcceptDrop`、`item/sign/LinglingSignManager#resolvePlacedItem` | 三处共用**同一份**转换逻辑（`resolvePlacedItem` 唯一入口），移植时禁止各写一份；物品同判按 §1（1.21.1 组件 / 1.20.1 NBT）；`planPlacement` 是服务端权威顺序（目标格同类栈 → 其余同类未满栈 → 空槽），客户端 `canAcceptDrop` 只做预判。 |
 | **电池折算作用域** | `item/ChargeManager#signCooldownTicksBase` + 附件 `sign_active_max_cooldown_base` | `signCooldownTicksBase` = 只做充能封顶、**跳过「额外电池 ×0.5」**；电池折算仍由 `signCooldownTicks` 负责。命运指引卡减半读 base，老存档缺附件时回退折算后的记录（`FateGuidanceCardItem` 有兼容分支，须一并移植）。 |
+| **防御力折算 1:1（2026-10-25 P0 已改，P1 欠账）** | `combat/DiceCombatModifiers`（`armorValueForDefensePoints(points, side)` / `defensePointsForArmor(armor, side)` / `PLAYER_ARMOR_PER_DEFENSE` / `MOB_ARMOR_PER_DEFENSE`）、`combat/DiceCombatEvents` 骰战 `effectiveArmor`、`item/chip/MotoHelmetChipItem`、`item/dice/ObsidianDiceItem`、`item/sign/DorothySignItem`（暖意护甲 + 「当前防御力」反算）、`item/sign/JillSignItem`、事件雷暴生物护甲 | P0 口径：防御力点数按 **库系数倒数** 折成护甲（`1.0 / CombatFormula.PLAYER_ARMOR_COEF` ≈ 3.333 护甲/点，生物 `1.0 / MOB_ARMOR_COEF` = 2.5），**禁止**任何地方再写死 `points * 2.0`（旧「1 防御 = 2 护甲」残留在 P1 各 5 处，见守门 D8）。折算必须走单一入口，反向（护甲→防御力）只走 `defensePointsForArmor`；取整记得带 `+ 1.0E-6D` 浮点尘埃容差。库系数是现成 public 常量，**库无需改动、无版本 bump**。
 
 ## 3. 取证命令（移植前后各跑一遍）
 
@@ -42,10 +43,14 @@ done
 # 创造模式扣卡两线一致性（P0 现状）
 grep -rn "shrink(1)" forge-1.20.1/src/main/java/com/merlinkitsune/astral_dice/item/card/ \
   forge-1.20.1/src/main/java/com/merlinkitsune/astral_dice/screen/CardChoiceMenu.java
+# 防御力折算 1:1 守门（D1–D8；D8 打印 P1 旧折算残留处数，正常应各 5 处）
+python tools/verify_defense_unit_parity.py
 ```
 
 ## 4. 待办登记
 
-1. 上表 8 个主题在 26.1.2 / Fabric 的移植（按用户批次下达；本文件不含任何 P1 代码改动）。
+1. 上表 9 个主题在 26.1.2 / Fabric 的移植（按用户批次下达；本文件不含任何 P1 代码改动）。
 2. **创造模式扣卡**：P0 两线已对齐（创造不扣、生存扣 1）；`fabric-1.20.1` 的效果卡仍是裸 `shrink(1)`，**待移植时统一**为 `if (!player.isCreative())`。
 3. 26.1.2 的 `ChipShopCategory` 等 JEI 类须按该线 JEI 版本重取 API；Fabric 的 JEI 走 `fabric-api` 变体，不可照搬 Forge 侧注册。
+
+4. **防御力折算 1:1（2026-10-25 P0 已修）**：P0 两线已全部改为「防御力点数 ÷ 库护甲系数」的单一入口；**P1 两线仍是旧的 `× 2.0` 折算（各 5 处）**，`python tools/verify_defense_unit_parity.py` 的 D8 项只统计、不判 FAIL。移植时必须同步落地（否则 P1 的「防御力 +X」仍只兑现 60% / 80%），并连带把该线 12 份指南 lang（四线 × 三语）的「4 + 护甲×0.30」改成「2 + 护甲×0.30」与「1 防御力 = 1÷护甲系数 护甲值」。

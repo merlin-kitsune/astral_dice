@@ -82,7 +82,9 @@ public class DorothySignItem extends BaseSignItem {
     /** 按层数刷写防御修饰符（层数变化 / 卸下 / 效果结束时都要走）。 */
     public static void refreshWarmthModifier(Player player) {
         int stacks = warmthStacks(player);
-        SignAttributeUtil.apply(player, Attributes.ARMOR, "dorothy_warmth_armor", stacks * 2.0D,
+        // 文案「每层防御力 +1」⇒ 护甲按玩家系数倒数折算(2026-10-25 口径修正)
+        SignAttributeUtil.apply(player, Attributes.ARMOR, "dorothy_warmth_armor",
+                stacks * com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.PLAYER_ARMOR_PER_DEFENSE,
                 AttributeModifier.Operation.ADDITION);
     }
 
@@ -213,8 +215,12 @@ public class DorothySignItem extends BaseSignItem {
             // 满层转化：消耗全部温暖，额外获得「当前防御力」点攻击
             if (warmthStacks(player) >= DorothyWarmthEffect.MAX_STACKS) {
                 com.merlinkitsune.starengine.event.ModEffectRemoval.remove(player, ModEffects.DOROTHY_WARMTH.get());
+                // 「当前防御力」= 当前护甲折算回的防御力点数(1 防御力 = 1÷玩家护甲系数 护甲值;2026-10-25 口径修正:
+                // 原先写死 armor / 2.0 是旧公式「2 + 护甲÷2」的遗留)
                 double armor = player.getAttributeValue(Attributes.ARMOR);
-                int converted = (int) Math.floor(armor / 2.0D);
+                int converted = (int) Math.floor(
+                        com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.defensePointsForArmor(armor, true)
+                                + 1.0E-6D);
                 if (converted > 0) {
                     ModAttachments.addDorothyAttackBonus(player, converted);
                 }

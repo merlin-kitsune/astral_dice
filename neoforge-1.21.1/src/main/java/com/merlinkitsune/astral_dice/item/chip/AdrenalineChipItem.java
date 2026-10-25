@@ -19,7 +19,7 @@ import com.merlinkitsune.starengine.combat.PartyRelations;
 /**
  * 肾上腺素筹码(一般/高效):生命值为 50% 或更低时,攻击力/防御力 +3/+8。
  * - 攻击力经骰战攻击修饰器注册表(DiceCombatModifiers)计入;
- * - 防御力按「1 防御力 = 2 护甲值」折算为真实护甲(curioTick 维护,见防御力折算规范);
+ * - 防御力按「1 防御力 = 1÷护甲系数 护甲值」折算为真实护甲(curioTick 维护,见防御力折算规范);
  * - 触发加成时被敌方攻击,有 20% 概率闪避单次攻击伤害。
  * - 一般:仅攻防加成(+3,防御按 1 点 = 2 点护甲折算);
  * - 高效额外:触发加成时被敌方攻击,有 20% 概率闪避单次攻击伤害。
@@ -76,7 +76,7 @@ public class AdrenalineChipItem extends BaseChipItem {
                 && !CurioSlotUtil.hasDiceEquipped(gatePlayer)) {
             return;
         }
-        // 防御力折算真实护甲(1 防御力 = 2 护甲值):触发加成状态生效,否则移除
+        // 防御力折算真实护甲(1 防御力 = 1÷护甲系数 护甲值):触发加成状态生效,否则移除
         com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.setDefenseArmorBonus(
                 player, "adrenaline_def_armor" + bonus, isLowHp(player) ? bonus : 0);
     }

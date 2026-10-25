@@ -14,6 +14,7 @@
 7. 规则分派已落地：根 `AGENTS.md` 为 41 行入口，Kimi → `docs/agent/AGENTS-kimi.md`，DSH → `docs/agent/AGENTS-dsh.md`，Codex → `docs/agent/AGENT-SPLIT.md`（只读）。
 8. 未处置：陈旧锁 `F:\MCProject\.agent-locks\kimi.lock`（`PID=26580` / `TASK=misaki-chip-shop-balance-p0`，进程已不存在）—— 按规则不自行删，交用户裁决。
 9. **HUD 攻击力口径已统一**（2026-10-25，§4.1g）：攻击修饰器链上 23（neo）/ 24（forge）处客户端模板守卫收敛为 `skipOnClient(ctx)` + 显示口径标记 `DiceCombatContext.displaySnapshot` ⇒ HUD 现在含全部攻击力修饰器，只排除手持武器与骰战随机点数；新增守门 `python tools/verify_hud_attack_parity.py` ⇒ `GATE: PASS (21 项全部满足)`，两线已 `:build` 并把六处产物刷到新 jar，**未实机**。
+10. **防御力折算已改为 1:1**（2026-10-25，§4.1h）：所有「防御力 +X」的站点改走单一入口 `armorValueForDefensePoints(points, side)`（= 点数 ÷ 库护甲系数，玩家 ≈3.333 护甲/点、怪物 2.5）——此前写死 `× 2.0` 只兑现 60%（玩家）/ 80%（怪物），属平衡性红线；同时把 12 份指南 lang 的基数 4 改为 2。新增守门 `python tools/verify_defense_unit_parity.py` ⇒ `GATE: PASS（34 项全部满足）`，两线 `:classes` 通过，**但 jar 尚未重建、未实机**；玩家侧实际强度是上一版的 **×1.667**。
 
 ## 1 环境与路径
 
@@ -271,6 +272,17 @@ forge dev named 102,013 B / `e280aeab6c4b37c43468f7cce32a8bf64c70b6bdbcd2203f6c5
 - **产物（2026-10-25 16:2x）**：neo **2,586,892 B** / sha256 `5c4a6207…38ed0ac`（`build/libs` = `run/1.21.1/mods` = 「狐の航空学 Voxy Edition」同一份）；forge reobf **2,631,933 B** / `576430bb…adefbbe4`（`build/libs` = 「1.20.1-Forge 模组测试」）；forge dev named **2,602,467 B** / `cc0f4341…6758f892`（`run/1.20.1/mods`）。六处 jar 内 `com/merlinkitsune/astral_dice/combat/DiceCombatModifiers.class` 全部命中 `skipOnClient` 与 `displaySnapshot` 字符串（字节码判据）。
 - **未覆盖的边界**（登记在 §5-Minor 5）：目标依赖型加成在客户端无目标 ⇒ HUD 只能是「无目标」口径；P1 两线未移植。
 
+### 4.1h 防御力口径修正（2026-10-25）—— 静态判据全绿，**未重建产物、未实机**
+
+- **用户裁决**：先解防御口径问题，再跑实机。依据 `docs/agent/AGENTS-full.md:584-613`〈平衡性红线〉——「任何使既有数值口径失真的实现」属恶性 BUG，必须当批修复，不得按「设计取舍 / 已知限制 / 待裁决」放过。
+- **两个失真点**：① **折算写死 `× 2.0`**：所有「防御力 +X」的来源都按 `X × 2.0` 加护甲，经 0.30 / 0.40 系数后只兑现 **0.6X（玩家）/ 0.8X（怪物）**；根因是旧公式「2 + 护甲÷2」时代的换算（2026-09-26 系数 0.5 → 0.30 时未同步）。② **指南基数 4 vs 代码 2**：库 `CombatFormula.PLAYER_BASE_DEFENSE = 2.0`（注释：2026-10-21 用户裁决，2 点 = 1 面盾），而 12 份指南 lang（四线 × 三语）仍写「玩家 防御 = 4 + 护甲×0.30」。
+- **修法（单一真值）**：两线 `combat/DiceCombatModifiers.java` 新增 `PLAYER_ARMOR_PER_DEFENSE = 1.0 / CombatFormula.PLAYER_ARMOR_COEF`（≈3.333）、`MOB_ARMOR_PER_DEFENSE = 1.0 / CombatFormula.MOB_ARMOR_COEF`（2.5）、`armorValueForDefensePoints(points, side|entity)` 与反函数 `defensePointsForArmor(armor, side)`；10 处站点全部改走它（两个 `setDefenseArmorBonus`、`defensePowerBase`、`defensePowerOf`（floor 带 `+1.0E-6D` 浮点尘埃容差）、骰战 `effectiveArmor`、摩托头盔、黑曜石骰、多萝西暖意、Jill 防御牌、雷暴将至生物护甲）。多萝西主动技读「当前防御力」原来写死 `armor / 2.0`，改为 `defensePointsForArmor(armor, true)`（保留 `getAttributeValue` 取 double，避免 `getArmorValue()` 先取整丢 0.2 点）。注释口径同步归一 51 组（两线各 ~21 文件）；12 份指南 lang 改 2 基数 + 「1 防御力 = 1÷护甲系数 护甲值（玩家约 3.33、怪物 2.5）」。
+- **库不动**：`CombatFormula` 的系数与基数都是现成 public 常量 ⇒ 库无改动、无版本 bump。
+- **判据（实跑）**：`python tools/verify_defense_unit_parity.py` ⇒ `GATE: PASS（34 项全部满足）`（D1 旧字面量 0 处 / D2 折算常量同源 / D3 defensePower* 走折算 / D4 骰战 / D5 五处站点 / D6 12 份 lang / D7 ARMOR 写点白名单 / D8 P1 只统计）；数值自检「玩家 +2 防御力 ⇒ +6.6667 护甲 ⇒ 折算回 2.0000」；`git grep` 两线旧字面量 `defensePoints * 2.0|modifierDefense * 2.0|defense * 4.0D|stacks * 2.0D` = 0 命中；`gradlew.bat :neoforge-1.21.1:classes :forge-1.20.1:classes` ⇒ `BUILD_EXIT=0`（仅既有 deprecation 警告）。
+- **平衡影响（必须如实登记）**：玩家侧防御力加成实际强度是上一版的 **×1.667**（怪物侧 ×1.25）；公式其余部分未动。若要回退，只需把 `armorValueForDefensePoints` 的两常量改回 2.0 / 2.0（其它站点都走单一入口）。
+- **未做**：未重建 jar、未投放四目标、未实机。P1 两线仍为旧 `× 2.0` 折算（各 5 处），已登记 `docs/compat-1.5.0-porting.md` §2 主题行 + §4 第 4 条。
+
+
 ### 4.2 历史读数
 
 pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（含 4.8 pre.4 全量双线 10 跑 10 PASS、4.11–4.17 pre.5 各批、4.19 Jade 图标留白版）。
@@ -294,6 +306,7 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 
 
 9. **`mt_env` 的 modernfix 钉子在整合包升版后 BLOCKED**（2026-10-25 实测）：`scripts/test/mt_env.ps1:48` 钉 `5.27.26`、整合包已是 `5.27.27` ⇒ `--phase env` EXIT 11 中断（详见 §6 坑 19）。**改测试资产需用户裁决**（本轮跳 env 直接 launch 完成冒烟）。
+10. **防御力折算 1:1 已修，但产物未重建 / 未实机**（2026-10-25，§4.1h）：P0 两线静态判据全绿（守门 34 项 PASS + 两线 `:classes` 通过），但 `build/libs` 与四目标仍是 §4.1g 那批 jar（**不含**防御折算）⇒ 交付 / 实机前必须 `:build` 重建并重录 sha256。P1 两线仍是旧 `× 2.0` 折算（各 5 处），已登记 `docs/compat-1.5.0-porting.md` §2 主题行 + §4 第 4 条。
 ### Minor
 
 1. `docs/handover-2026-10-24-member-detective.md` 等 Kimi 批次文档已入库，措辞按 2026-10-24 事实；后续改动若改变其中数字需回填。

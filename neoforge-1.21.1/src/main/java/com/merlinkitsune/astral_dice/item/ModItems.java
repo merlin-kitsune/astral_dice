@@ -336,7 +336,7 @@ public class ModItems {
                     .component(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("bite")), "bite"));
 
     // 龙之咆哮(蛟龙立牌 mamushi 专属战斗牌):费用 3 / 耐久 5 / 定值攻击 +3。
-    // 命中使目标 缓慢 III 1:00 并减 4 点防御 1:00(见 MamushiSignItem.applyRoarDebuff);
+    // 命中使目标 缓慢 III 1:00 并怪物减 3.2 / 玩家减 2.4 点防御 1:00(见 MamushiSignItem.applyRoarDebuff);
     // 只能由处于真龙形态的蛟龙立牌佩戴者获得(主动发放 / 撕咬转换),无配方、不进任何池。
     public static final DeferredItem<Item> ATTACK_CARD_DRAGON_ROAR = registerItem("attack_card_dragon_roar",
             () -> new CardItem(new Item.Properties()

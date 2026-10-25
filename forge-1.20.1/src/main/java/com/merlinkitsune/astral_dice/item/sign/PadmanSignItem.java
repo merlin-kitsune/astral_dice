@@ -26,7 +26,7 @@ public class PadmanSignItem extends BaseSignItem {
             refreshBonus(stack);
             ModDataComponents.PADMAN_LAST_REFRESH.set(stack, gameTime);
         }
-        // 防御力折算为真实护甲(1 防御力 = 2 护甲值;负防御受护甲属性下限 0 约束)
+        // 防御力折算为真实护甲(1 防御力 = 1÷护甲系数 护甲值;负防御受护甲属性下限 0 约束)
         com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.setDefenseArmorBonus(
                 player, "padman_def_armor", getDefenseBonus(stack));
     }

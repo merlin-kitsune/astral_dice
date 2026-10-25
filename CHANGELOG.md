@@ -296,7 +296,7 @@
 
 - **Defense formula split between players and mobs, and the 20-point armor cap removed** (user request 2026-09-26;
   coefficient curve re-calibrated by user ruling 2026-09-26):
-  - Players: `Defense = 4 + armor x 0.30 + 0.85 x armor toughness`;
+  - Players: `Defense = 2 + armor x 0.30 + 0.85 x armor toughness` (base lowered 4 → 2 by user ruling 2026-10-21);
   - Mobs: `Defense = base defense + armor x 0.40 + 1.0 x armor toughness`, **floored to a whole number**;
   - Base defense: **hostile mobs 0**, neutral / passive / friendly mobs **0**;
   - The coefficients were re-calibrated in the same round as the vanilla-modifier fix below: the base was raised and the
@@ -308,6 +308,26 @@
     them**, keeping other mods' changes always effective (maximum mod compatibility). Vanilla armor-affecting status
     effects are handled by **equivalent substitution**: they change the armor value exactly as they always did, and
     the result then goes through this mod's defense conversion.
+
+- **Defense points are now converted 1:1 into armor (unit parity restored)** (user ruling 2026-10-25; this is a
+  balance red-line fix — the old conversion distorted the numbers printed on tooltips and in the guide): every
+  "Defense +X" source used to add `X x 2.0` armor, which after the 0.30 / 0.40 coefficients only delivered **0.6X**
+  (players) / **0.8X** (mobs) of the Defense it promised. All P0 conversion sites now go through one entry point,
+  `DiceCombatModifiers#armorValueForDefensePoints(points, side)` = `points / coefficient` (**players ≈ 3.33 armor per
+  point, mobs 2.5**), so **+X Defense is worth exactly +X**: Moto Helmet (+2 / +4 / +8), Obsidian Dice (a flat +10
+  armor = +3 Defense), Dorothy's warmth stacks (+1 Defense per stack), Jill (each defense card = +2 Defense to the
+  target) and the Thunderstorm event's mob armor (+2 Defense by the mob coefficient). The dice-combat resolver and
+  `defensePowerOf` use the same conversion (the floor keeps a 1e-6 float-dust tolerance so 3 points do not read as
+  2), and Dorothy's active "turn current Defense into Attack Power" now reads armor back through the reverse of the
+  same entry point (`defensePointsForArmor`), so "current Defense" is 1:1 as well. **Practical effect: player-side
+  defense bonuses are x1.667 of what this build delivered before** (mob-side x1.25); nothing else about the formula
+  changed. Gate: `python tools/verify_defense_unit_parity.py` (D1–D8, non-zero exit on any regression).
+
+- **The guide / handbook defense examples now use the real base of 2** (text only, no gameplay change): the
+  battle-dice entry in all three languages (`en_us` / `zh_cn` / `ja_jp`) still said `Defense = 4 + ...` and
+  "1 Defense = 2 armor", both stale once the base became 2 and the unit became `1 / coefficient`; all 12 files
+  (four lines x three languages) now read `2 + armor x 0.30 + 0.85 x armor toughness` and "1 Defense = 1 / armor
+  coefficient armor (≈3.33 players / 2.5 mobs)".
 
 - **Mobs gained base attack power and their melee attacks now take part in dice combat** (user request 2026-09-26;
   values re-calibrated by user ruling 2026-09-26): hostile mobs start at **4** attack power, neutral mobs at **3**,

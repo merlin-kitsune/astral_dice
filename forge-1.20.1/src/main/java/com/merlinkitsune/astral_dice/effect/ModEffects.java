@@ -261,7 +261,7 @@ public class ModEffects {
             EFFECTS.register("mamushi_dragon", MamushiDragonEffect::new);
 
     /**
-     * 「破防」(龙之咆哮命中):{@code HARMFUL},携带 {@code ARMOR -8}(= 减 4 点防御,1 防御 = 2 护甲)。
+     * 「破防」(龙之咆哮命中):{@code HARMFUL},携带 {@code ARMOR -8}(= 怪物减 3.2 / 玩家减 2.4 点防御,1 防御 = 1÷护甲系数 护甲)。
      * 时长 {@code DragonRoarBreakEffect.DURATION_TICKS} = 1:00,重复命中**刷新时长、不叠层**。
      * 图标 = {@code images/龙之咆哮.png}(实装路径 {@code textures/mob_effect/dragon_roar_break.png},
      * 与战斗牌贴图逐字节相同)。

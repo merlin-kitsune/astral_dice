@@ -45,7 +45,7 @@ public class JasmineSignItem extends BaseSignItem {
         if (player.level().isClientSide()) return;
         // 被动:移动距离累计
         tickJasmineWalk(player, stack);
-        // 防御力折算为真实护甲(1 防御力 = 2 护甲值;经 ARMOR 属性,骰战与原版伤害均生效)
+        // 防御力折算为真实护甲(1 防御力 = 1÷护甲系数 护甲值;经 ARMOR 属性,骰战与原版伤害均生效)
         com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.setDefenseArmorBonus(
                 player, "jasmine_def_armor", getDefenseBonus(stack));
     }

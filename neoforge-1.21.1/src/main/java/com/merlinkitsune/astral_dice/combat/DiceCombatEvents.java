@@ -746,7 +746,7 @@ public class DiceCombatEvents {
                     modifierDefense = modifier.apply(ctx, modifierDefense);
                 }
 
-                // 效果牌/立牌/筹码的防御力已折算为真实护甲(1 防御力 = 2 护甲值,
+                // 效果牌/立牌/筹码的防御力已折算为真实护甲(1 防御力 = 1/护甲系数 护甲值,
                 // 见 DiceCombatModifiers.setDefenseArmorBonus),getArmorValue() 已包含;
                 // modifierDefense 恒为 0(仅防御卡掷骰写入 ctx.defenseCardSum 作为防御点直接加入)。
                 // === 玩家与生物公式分离(2026-09-26 用户裁决) ===
@@ -756,7 +756,8 @@ public class DiceCombatEvents {
                 // · 玩家:2 + 护甲×0.30 + 0.85×韧性;
                 // · 生物:初始值(敌对 0 / 中立 0 / 被动 0 / 友好 0) + 护甲×0.40 + 1.0×韧性,最终取整。
                 //   ↑ 两式均取自库 CombatFormula,本模组不再内联系数(2.0.0-SNAPSHOT.2 起)。
-                double effectiveArmor = Math.max(0, target.getArmorValue() + modifierDefense * 2.0);
+                double effectiveArmor = Math.max(0, target.getArmorValue()
+                        + com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.armorValueForDefensePoints(modifierDefense, target instanceof Player));
                 double toughness = target.getAttributeValue(Attributes.ARMOR_TOUGHNESS);
                 if (target instanceof Player) {
                     defensePower = com.merlinkitsune.starengine.combat.CombatFormula
@@ -851,7 +852,7 @@ public class DiceCombatEvents {
             }
         }
         // 蛟龙立牌(mamushi)「龙之咆哮」:命中时对**本次伤害的受击者**施加 缓慢 III 1:00 +
-        // 破防(ARMOR -8 = 减 4 点防御)1:00;重复命中刷新时长、不叠层(D8)。
+        // 破防(ARMOR -8 = 怪物减 3.2 / 玩家减 2.4 点防御)1:00;重复命中刷新时长、不叠层(D8)。
         // 条件 = 攻击方骰子卡牌栏装备了任意张 dragon_roar(与赐福触发块同源口径)。
         if (!player.level().isClientSide()) {
             // 蛟龙立牌:原「骰子卡牌栏装备了 dragon_roar」闸门已下沉到 MamushiSignItem#handleDragonRoar

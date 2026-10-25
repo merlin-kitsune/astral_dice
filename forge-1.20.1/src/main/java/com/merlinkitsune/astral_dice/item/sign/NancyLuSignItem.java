@@ -84,7 +84,7 @@ public class NancyLuSignItem extends BaseSignItem implements SignHooks.BlessingE
             ModAttachments.setNancyLuActiveBonusUntil(player, 0);
             ModEffectRemoval.remove(player, ModEffects.NANCY_LU_HACK.get());
         }
-        // 防御力折算为真实护甲(1 防御力 = 2 护甲值;被动类型为防御时护甲 +6)
+        // 防御力折算为真实护甲(1 防御力 = 1÷护甲系数 护甲值;被动类型为防御时护甲 +6)
         com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.setDefenseArmorBonus(
                 player, "nancy_lu_def_armor", getDefenseBonus(player));
     }

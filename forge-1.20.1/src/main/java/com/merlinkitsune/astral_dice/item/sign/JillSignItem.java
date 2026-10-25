@@ -147,7 +147,9 @@ public class JillSignItem extends BaseSignItem {
                     net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation.ADDITION);
         }
         if (defense > 0) {
-            SignAttributeUtil.apply(target, Attributes.ARMOR, TARGET_ARMOR_KEY, defense * 4.0D,
+            // 每张防御牌 = 防御力 +2 ⇒ 护甲按玩家系数倒数折算(2026-10-25 口径修正)
+            SignAttributeUtil.apply(target, Attributes.ARMOR, TARGET_ARMOR_KEY,
+                    defense * 2 * com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.PLAYER_ARMOR_PER_DEFENSE,
                     net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation.ADDITION);
         }
         if (effect > 0) {

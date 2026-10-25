@@ -18,14 +18,14 @@ import top.theillusivec4.curios.api.SlotContext;
  * - 卡牌槽与费用点数始终按最高档(3★:卡牌栏 12 格、攻防费用上限各 6,见
  *   {@link DiceCurioItem#getCardSlots} 与 {@link com.merlinkitsune.starengine.component.GameplayConstants#cardCostForStar});
  * - 可装备筹码数量 +1(T4 筹码栏 = 4+s:0★4/1★5/2★6/3★7,见 ModItems 阶层注册);
- * - 骰子每提升 1 星级:攻击力 +2、防御力 +2(按 1 防御力 = 2 护甲折算为 +4 护甲),
+ * - 骰子每提升 1 星级:攻击力 +2、防御力 +2(按 1 防御力 = 1÷护甲系数 护甲折算为 +4 护甲),
  *   属性随星级变化实时刷新(经 curioTick 瞬态属性修饰器)。
  */
 public class NetherStarDiceItem extends DiceCurioItem {
 
     /** 每星级攻击力加成 */
     public static final int ATTACK_PER_STAR = 2;
-    /** 每星级防御力加成(1 防御力 = 2 护甲值,经 DiceCombatModifiers.setDefenseArmorBonus 折算) */
+    /** 每星级防御力加成(1 防御力 = 1÷护甲系数 护甲值,经 DiceCombatModifiers.setDefenseArmorBonus 折算) */
     public static final int DEFENSE_PER_STAR = 2;
     /** 星级上限(3★;卡牌槽/费用按该档配置,与最高档一致) */
     public static final int MAX_STAR = 3;
@@ -71,7 +71,7 @@ public class NetherStarDiceItem extends DiceCurioItem {
 
     private static void applyStarAttributes(Player player, ItemStack stack) {
         int star = actualStar(stack);
-        // 防御力:每星 +DEFENSE_PER_STAR(1 防御 = 2 护甲),内部按防御点传入自动折算
+        // 防御力:每星 +DEFENSE_PER_STAR(1 防御 = 1÷护甲系数 护甲),内部按防御点传入自动折算
         com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.setDefenseArmorBonus(
                 player, ARMOR_MODIFIER_KEY, star * DEFENSE_PER_STAR);
         // 攻击力:每星 +ATTACK_PER_STAR

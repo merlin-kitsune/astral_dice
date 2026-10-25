@@ -1764,7 +1764,7 @@ public class ModAttachments {
         TERU_DESCENT_ATK_BONUS.set(player, Math.max(0, value));
     }
 
-    /** 降神给施法者的防御力加成快照 = ⌊目标防御力 × 50%⌋(消费点 = setDefenseArmorBonus,1 防御 = 2 护甲) */
+    /** 降神给施法者的防御力加成快照 = ⌊目标防御力 × 50%⌋(消费点 = setDefenseArmorBonus,1 防御 = 1÷护甲系数 护甲) */
     public static final AttachedDataKey<Integer> TERU_DESCENT_DEF_BONUS =
             register(AttachedDataKey.builder("teru_descent_def_bonus", Codec.INT, () -> 0).build());
 

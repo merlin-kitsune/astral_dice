@@ -11,15 +11,16 @@ import net.minecraft.world.item.ItemStack;
 import top.theillusivec4.curios.api.SlotContext;
 
 /**
- * 摩托头盔筹码(一般/中级/高级):**防御力** +2/+4/+6;盔甲韧性 +2 仅高级拥有(属性修饰器,装备期间生效)。
+ * 摩托头盔筹码(一般/中级/高级):**防御力** +2/+4/+8;盔甲韧性 +2 仅高级拥有(属性修饰器,装备期间生效)。
  *
  * <p><b>防御力口径</b>:本 mod 文案一律使用「防御力」,由代码层按 {@link #ARMOR_PER_DEFENSE}
- * (1 防御力 = 2 护甲值)折算为原版护甲值(`Attributes.ARMOR`)后落到属性修饰器上,
+ * (1 防御力 = 1 ÷ 玩家护甲系数 ≈ 3.33 护甲值)折算为原版护甲值(`Attributes.ARMOR`)后落到属性修饰器上,
  * 与肾上腺素/磨刀石等防御力加成保持同一口径——描述中的数字始终是防御力,不是护甲值。
  */
 public class MotoHelmetChipItem extends BaseChipItem {
-    /** 防御力 → 护甲值 换算比例(1 防御力 = 2 护甲值) */
-    public static final double ARMOR_PER_DEFENSE = 2.0;
+    /** 防御力 → 护甲值 换算比例(= 1 ÷ 玩家护甲系数,单一真值见 DiceCombatModifiers) */
+    public static final double ARMOR_PER_DEFENSE =
+            com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.PLAYER_ARMOR_PER_DEFENSE;
     /** 摩托头盔-一般 防御力加成 */
     public static final int DEFENSE_LOW = 2;
     /** 摩托头盔-中级 防御力加成 */
@@ -42,7 +43,7 @@ public class MotoHelmetChipItem extends BaseChipItem {
     public Multimap<Holder<Attribute>, AttributeModifier> getAttributeModifiers(
             SlotContext slotContext, ResourceLocation id, ItemStack stack) {
         Multimap<Holder<Attribute>, AttributeModifier> map = HashMultimap.create();
-        // 防御力按 1:2 折算为真实护甲值(仅在代码层换算)
+        // 防御力按「1 ÷ 玩家护甲系数」折算为真实护甲值(仅在代码层换算)
         map.put(Attributes.ARMOR,
                 new AttributeModifier(attributeModifierId("armor"), defenseBonus * ARMOR_PER_DEFENSE,
                         AttributeModifier.Operation.ADD_VALUE));
