@@ -10,7 +10,7 @@
 3. 本批收编 **Kimi 上一轮四批未提交改动**（member-detective / misaki 立牌 / 筹码商店刷新源 / 规则分派），并完成 **DSH 三语语言同步** + **地雷女备注区染色修复**。
 4. 判据：P0 两线 `:classes` `BUILD SUCCESSFUL in 4s`；`check_lang_sync` EXIT=0；`audit_patchouli_keys` 悬空 0；`verify-split` EXIT=0；三道专项 python 判据 PASS 26/12/14；`verify_chip_shop_ui` `CHIPUI_TOTAL_FAIL: 0`。
 5. **pre.6 产物已重建并投放**（2026-10-25 11:55，`:neoforge-1.21.1:build :forge-1.20.1:build` 触发 `pushToDevRun/pushToGame/pushToRootBuild`）——四个目标（`run/1.21.1/mods`、`run/1.20.1/mods`=devlibs named、两个 P0 整合包）逐处 sha256 **MATCH**，读数见 §2。
-6. 本批实机：**星光兑换双版本 5 组判据全 PASS**（2026-10-25，§4.1）；其余改动（筹码商店刷新源 / 39 条 tooltip + 21 条手册 / `ame_note` 染色）**仍零实机**（§4.1b）。`scripts/test/cases/CHIP-REGEN-*.json`（等 tick 自动 +1）随 ticker 删除**已失效**。
+6. 本批实机：**星光兑换 5 组 + 筹码商店刷新源 / 文案（38 tooltip + 21 手册）/ `ame_note` 染色，双版本全 PASS**（2026-10-25，§4.1 / §4.1b）。`scripts/test/cases/CHIP-REGEN-*.json`（等 tick 自动 +1）随 ticker 删除**已失效**（§5-3）。
 7. 规则分派已落地：根 `AGENTS.md` 为 41 行入口，Kimi → `docs/agent/AGENTS-kimi.md`，DSH → `docs/agent/AGENTS-dsh.md`，Codex → `docs/agent/AGENT-SPLIT.md`（只读）。
 8. 未处置：陈旧锁 `F:\MCProject\.agent-locks\kimi.lock`（`PID=26580` / `TASK=misaki-chip-shop-balance-p0`，进程已不存在）—— 按规则不自行删，交用户裁决。
 
@@ -74,11 +74,27 @@ forge dev **named** 2,592,867 B / `40bfe7162c446457803f5dcc8618601b30c935b2d2a4c
 
 补充实读：卸下四枚筹码后 `star` 由 20 回落到 **1**（按账本扣 19）；全程背包内 `astral_dice:star_coin` 计数 **0**（钱直接进钱包 `StarEngineEconomy.getBalance`）；两线 `CardShopMenu` 的兑换按钮都返回 `ret=1` 且 `star/bal` 前后对照相符。
 
-### 4.1b 本批**仍无实机读数**的部分
+### 4.1b 筹码商店刷新源 + 文案 + `ame_note` 染色（2026-10-25）—— 双版本实机全 PASS
 
-- 筹码商店「刷新次数只来自升星」改造（删 ticker 后不再自动回满）——需一轮实机确认「摆形态不再自动 +1 / 升星取走 +1 / 死亡后次数不自愈」。
-- 语言改动（39 tooltip + 21 手册 + 三语译文）——需实机看 tooltip 换行/染色与手册页文字。
-- `ame_note` 染色——静态规则已判，仍需肉眼确认备注区观感（`§d` 底色 + `§e`/`§9` 对比）。
+判据正本：`shop/ChipShopCatalog.java:89-92`（`REFRESH_INITIAL=3` / `REFRESH_MAX=5` / `REFRESH_REGEN_TICKS=36000`，`:89` 注释「不得据此常量新增自动 +1」）+ `shop/ChipShopState.java:174-178`（`withRefreshGranted` = `min(MAX, left+1)`，唯一调用点 `event/AnvilUpgradeHandler.java:91`，日志 `CHIP_SHOP_REFRESH_GRANTED` 在 `:93`）+ `shop/ChipShopMenu.java:428-446`（`handleRefresh`）+ `shop/ChipShopOpener.java:39-62`（`open`）。
+驱动面：`mt.ps1 --phase env|launch` + AutoJS server `eval_js` 直调 `ChipShopOpener.open(p)` / `ChipShopMenu#handleRefresh(p)` / `ChipShopState.get(p)`；铁砧走探针真实结算链 `/astralprobe anvilstar "astral_dice:golden_dice" ANV`；死亡用 `/kill @s`。
+
+| # | 判据 | 1.21.1（neo） | 1.20.1（forge） |
+|---|---|---|---|
+| R0 | 初值 | `refreshes=3 anchor=0 offers="-"`（tick 1015） | `refreshes=3 anchor=0 offers="-"`（tick 1955） |
+| R1 | 时间流逝不自增 | 1642 t（≈82 s）后仍 `3 / 0 / "-"` | 首次刷新前仍 `3 / 0`；`ChipShopRegenTicker` 两线 jar 内均 **0 条目**（neo 2002 / forge dev 2016、reobf 2016） |
+| R2 | 刷新消耗 + anchor 首写 | `3→2→1`，`anchor=38865`（=2865+36000）首刷写入、二次不变；日志 `CHIP_SHOP_REFRESH refreshes=2/5`、`1/5` | `3→2→1`，`anchor=37955`（=1955+36000），同左 |
+| R3 | 升星取走 +1 | `1→2`（同 tick）；日志 `CHIP_SHOP_REFRESH_GRANTED player=Dev star=0->1 coins=18 refreshes=2/5` | 同左（`1→2`、`refreshes=2/5`） |
+| R4 | 铁砧真实结算链 | `AP_ANV_TAKE:clicked:30:20` / `AP_ANV_RESULT:astral_dice:golden_dice:1` / `AP_ANV_STAR:0:1` / `AP_ANV_DONE` | 同左（逐字相同） |
+| R5 | 死亡不自愈 | `kill @s` → 4 s 后重生 `refreshes=2`、`anchor` 不变 | 同左（`refreshes=2`、`anchor=37955`） |
+
+文案（本批 **60 键 = 38 `tooltip.*` + 21 `astral_dice.guide.*` + 1 `msg.astral_dice.card_shop_no_starlight`**，两线 lang 逐字相同；old/new 落盘 `temp/lang_changed_neo.json`）：
+
+- tooltip：两线各 dump 全 **156** 个 `astral_dice` 物品的 `Screen.getTooltipFromItem` 渲染行（保留字面 § 码），与 lang 逐键比对 ⇒ **37/38 命中，两线一致**。唯一未显示 = `tooltip.astral_dice.sign.misaki_enigmatic`：`event/ModTooltipHandler.java:686-700` 以 `ModList.get().isLoaded("enigmaticlegacyplus")` 为条件，两线 dev 均未装 ⇒ **正确地不出现**。
+- 换行口径：`komachi_passive` 的「␠␠缩进」渲染成 `- ` 项目符；`investigation_desc` 续行**去掉前导两空格且无项目符**（渲染原文 `§dI：自身与施加者获得 §9隐匿 (1:00)§r`，不是缺陷）；其余多行键逐行渲染。
+- 两线 tooltip 全量对照：**11 个物品仅行序不同、行集完全相同**（`curios.modifiers.*` + 属性行在 neo 前置 1 行块、forge 后置），属平台差异、非本批回归（`moto_helmet ×3` / `sandwich ×3` / `speed_skates ×3` / `obsidian_dice` / `perpetual_motion_chip`）。
+- 手册：21 键两线均 **21/21** 解析成功，17 条逐字一致、4 条只差 `%%`→`%`（`battle_system_changes.3` / `komachi_sign.2` / `rin_sign.1` / `extra_battery_chip.1`），**0 条含显式 `\n`**（折行由 Patchouli 自动）。
+- `ame_note` 染色：两线逐字一致 —— `§d`（备注体）+ `§e`（数值）+ `§9`（时间），行首区段前缀由 `addSignNoteLines` 注入，符合 tooltip 染色规则；证据 = 上述渲染行原文（未取截图）。
 
 ### 4.2 历史读数
 
@@ -93,7 +109,7 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 ### Major
 
 1. ~~pre.6 产物未建未投~~ → **已完成**（2026-10-25 11:55）：`:neoforge-1.21.1:build :forge-1.20.1:build` 触发 `pushTo*`，四目标 sha256 全 MATCH（§2）；库 jar 成对在位（neo 98,737 B / forge 103,609 B，`1.1.0-pre.2`）。
-2. **本批局部实机**：星光兑换双版本 5 组判据已 PASS（§4.1）；筹码商店刷新源 / 语言 / `ame_note` 染色仍待用户下达（§4.1b）。
+2. ~~本批局部实机~~ → **已完成**（2026-10-25）：星光兑换 5 组（§4.1）+ 筹码商店刷新源 R0–R5 / 38 tooltip + 21 手册 / `ame_note` 染色（§4.1b），**双版本全 PASS**。
 3. **`CHIP-REGEN-1.20.1.json` / `CHIP-REGEN-1.21.1.json` 已失效**（仍断言「等 tick 自动 +1」）——退役或按新语义改写（升星取走 +1）。
 4. **`tooltip_color_audit` 存量 130 处**（10 键）：`jill_active` 22 / `storm_approaching.description` 18 / `problem_delivery.description` 18 / `dorothy_active` 18 / `red_heat_warning.description` 16 / `fanny_active` 12 / `jill_passive` 8 / `card.barricade` 6 / `card.repulsion` 6 / `deepseek_passive` 6。其中 `card.barricade`/`card.repulsion` 是**用户自写 `§e20:00§7`**（规则应为 §9），按「tooltip 以用户为准」未动。
 5. **8 条「代码与文案都不符」**（已报用户，未改 tooltip）：bite 觉醒按撕咬张数 / huo_card = `CREATURE_OR_RIVAL` / magic_quiver 真闸门 = 目标已有标记 + 先用过伤害牌 / railgun 只 `bypasses_armor` / 三张卡 `NON_HOSTILE` / member_recommendation 只数主背包+副手 / repulsion 单次最多 5 点耐久 / airbag 掉虚空救不了。
@@ -121,6 +137,9 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 10. **探针输出通道 = 聊天** ⇒ `run\<线>\logs\latest.log` 的 `[CHAT] AP_...`；`mcp__autojs__kubejs_log` 返回 0 entries 属正常，别据此判失败。
 11. **AutoJS/Rhino 口径**（1.21.1 rhino 2101 / 1.20.1 rhino 2001）：无 `server` 全局（用 `AutoJS.server()/AutoJS.player()`）；同一 eval 内不能 `function f(){}`（用 `var f = function(){}`）；`obj.getClass()` 不可用；`p.level` 是属性、`p.level.getGameTime()` 报错；返回值必须 `JSON.stringify((function(){...})())`。`StarLightManager` **没有** `getCap(player)`（实测 `Can't find method ... getCap(ServerPlayer)`）。
 12. **`/astralshop reset` 只清 cd/余额/星光，不释放筹码的发放账本位** ⇒ 兑换前必须「卸下 → 等 tick → 装回」重新申领，否则读到 `star=0` 的空转结果（首轮 GUI 验证就栽在这里）。
+14. **探针的 `StringArg.string()` 参数必须加引号**：`/astralprobe anvilstar "astral_dice:golden_dice" ANV`（`dice` = `StringArg.string()`、`tag` = `StringArg.word()`）；不加引号只在聊天里留一行被截断的 `...stral_dice:golden_dice ANV<--[此处]`，日志里几乎认不出是参数错。另 **`performPrefixedCommand` 在 Rhino 里返回 `undefined`**，不能当失败判据 —— 用 `say TESTPFC12` 能进日志即证明通道通。
+15. **同一时刻只能一条线占用 AutoJS 的 25585**：1.21.1 未停就 launch 1.20.1 ⇒ 客户端日志 `[AutoJS]: Could not bind the MCP endpoint on 127.0.0.1:25585`（`java.net.BindException`），紧接着 preflight 报 `MT_INJECT_FOCUS: FAIL — 目标窗口无法置前台` 与「客户端未在运行」 ⇒ **先 `--phase stop --force` 另一线再 launch**。
+16. **1.20.1 的 AutoJS 是 `run\1.20.1\mods\AutoJS-forge-1.20.1-1.0.0-dev.jar`（named）**：`MT_ENV_AUTOJS: 跳过 — 1.20.1 线未接入` 只表示**不再自动投放**，运行时照样有端点；判据看启动日志 `MT_LAUNCH: OK — AutoJS 端点已就绪`。
 13. pre.5 及更早的 32 条坑见 `docs/handover-1.5.0-pre.5-main.md` §6。
 
 ## 7 关键路径（命令）
