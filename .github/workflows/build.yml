@@ -1,4 +1,5 @@
-name: Build
+  replaced: release-jars
+  replaced: release-head   replaced: artifacts   replaced: header name: Build
 
 on:
   push:
@@ -9,16 +10,11 @@ on:
       # 合并后的开发主线（原 dev-targetselector 重命名而来）
       - 'multi-dev-next'
       # 26.1.2 第三条线:2026-09-17 起已与发布线同树(该分支保留为历史/回滚入口)。
-      # 它同样跑 lang 同步 + 三子项目构建,并且它的 jar 会**一并附到发布线的 Release**(见文末三 jar 步骤);
-      # 打 tag / 建 Release 这两步仍**只在发布线分支**(multi-main)触发 —— 26.1.2 的版本号
-      # 形如 `1.2.1-beta+neoforge_26.1.2`,不是裸 x.y.z,按发布规范不会(也不应)生成独立 tag。
+      # ⛔ 2026-10-25 用户裁决（强制）：**默认只发布/上传 P0 两线** = `neoforge-1.21.1` + `forge-1.20.1`。
+      #    `neoforge-26.1.2` / `fabric-1.20.1`（P1）**从未获授权移植**，其产物一律视为不可用 ⇒
+      #    既不进 Release 附件、也不单独建 Release/tag，Actions 里也不再产出它们的 artifact。
+      #    需要 P1 时必须由用户逐次点名下达（届时手工处理，不改本条默认）。
       - 'multi-26.1.2-neoforge'
-      # fabric 第四条线(Fabric Loom;版本号形如 `2.0.0-SNAPSHOT.19+fabric_1.20.1`,预发布后缀
-      # 与 26.1.2 线的 `-beta.x` 同构):**独立的移植线**,自发布线 `multi-main` 并入(本分支同树)。
-      # ⚠️ 它的产物**不并入**(也绝不能被并入)发布线的 Release —— 见文末 `fabric pre-release` 步骤:
-      #    该线单独出一个 Release 并标记 `--prerelease`,避免玩家把移植线产物当正式版下载。
-      # ⚠️ 本线的构建与 pre-release 由**发布线 `multi-main` 的 push** 触发(见文末步骤的 `if` 条件),
-      #    故此处不登记独立分支 —— 开发分支 `multi-dev-next` 上该步骤不会触发,符合预期。
     tags:
       # 发布规范:tag 使用不含后缀的基础版本号(如 1.1.3),禁止 v 前缀与 +加载器后缀
       - '[0-9]*'
@@ -138,23 +134,15 @@ jobs:
         # 根 settings.gradle 中 include,故无需在此显式列出子项目）。
         run: ./gradlew build
 
-      - name: Upload Astral Dice JARs
+      - name: Upload Astral Dice JARs (P0 only)
+        # ⛔ 2026-10-25 用户裁决：artifact 也只产出 P0 两线（neoforge-1.21.1 / forge-1.20.1）。
+        #    P1（neoforge-26.1.2 / fabric-1.20.1）未获授权移植、产物不可用 ⇒ 不再产出 artifact。
         uses: actions/upload-artifact@v4
         with:
           name: astral_dice-jars
           path: |
             neoforge-1.21.1/build/libs/astral_dice-*.jar
             forge-1.20.1/build/libs/astral_dice-*.jar
-            neoforge-26.1.2/build/libs/astral_dice-*.jar
-
-      - name: Upload Astral Dice JAR (fabric 1.20.1)
-        # 与三条生产线**分开**的 artifact:便于只取 fabric 产物,也避免与上面的 glob 混淆。
-        # (fabric 的 jar 只在它自己的 pre-release 里发布,不进发布线 Release 的附件。)
-        if: hashFiles('fabric-1.20.1/build.gradle') != ''
-        uses: actions/upload-artifact@v4
-        with:
-          name: astral_dice-jar-fabric-1.20.1
-          path: fabric-1.20.1/build/libs/astral_dice-*.jar
 
       - name: Read base version
         id: version
@@ -198,9 +186,9 @@ jobs:
           # 交给下一步发布 Release(同 job:tag 已保证存在)
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
-      - name: Create/Update GitHub Release (three JARs, notes from release/<tag>/)
-        # 发布 Release 的两种来源(同一 job 内完成,附件 = 刚构建的三个 jar:
-        #   1.21.1 NeoForge + 1.20.1 Forge(发布线)+ 26.1.2 NeoForge(低优先级移植线,版本号带 -beta)):
+      - name: Create/Update GitHub Release (P0 two JARs, notes from release/<tag>/)
+        # 发布 Release 的两种来源(同一 job 内完成,附件 = 刚构建的 P0 两个 jar:
+        #   1.21.1 NeoForge + 1.20.1 Forge —— 2026-10-25 起**不再附 26.1.2 / fabric**):
         #   ① 发布线分支 push:用上一步新建/已存在的 tag(已在库内,无需再触发 workflow);
         #   ② ref 本身就是 tag(tag push,或对 tag 手动 workflow_dispatch 补发):直接用 GITHUB_REF 的 tag。
         # 说明正文取自**玩家侧发布说明** `release/<tag>/PLAYER_CHANGELOG_ZH.md` + `PLAYER_CHANGELOG.md`
@@ -216,8 +204,9 @@ jobs:
             TAG="${{ steps.tag.outputs.tag }}"
           fi
           echo "publishing release for tag: $TAG"
-          # ⚠️ 三个 glob 都必须至少命中一个文件,否则 bash 会把未展开的模式原样传给 gh 并报错(故意让它失败)。
-          JARS=(neoforge-1.21.1/build/libs/astral_dice-*.jar forge-1.20.1/build/libs/astral_dice-*.jar neoforge-26.1.2/build/libs/astral_dice-*.jar)
+          # ⚠️ 两个 glob 都必须至少命中一个文件,否则 bash 会把未展开的模式原样传给 gh 并报错(故意让它失败)。
+          # ⛔ 2026-10-25 用户裁决：Release 附件**只放 P0 两线**（neoforge-1.21.1 + forge-1.20.1）。
+          JARS=(neoforge-1.21.1/build/libs/astral_dice-*.jar forge-1.20.1/build/libs/astral_dice-*.jar)
           # 说明正文拼成一个临时文件后用 `--notes-file` 传入 —— 玩家侧发布说明可达数十 KB,
           # 经 `--notes "$(...)"` 内联会踩长度与引号问题(旧的内联单行写法已废弃)。
           NOTES_ZH="release/$TAG/PLAYER_CHANGELOG_ZH.md"
@@ -260,71 +249,6 @@ jobs:
               --latest
           fi
 
-      - name: Create/Update Fabric release (pre-release, separate tag)
-        # fabric 第四条线**单独推送**,并标记为 pre-release。
-        #
-        # 设计与发布线的**三处刻意差异**:
-        #   ① **独立 tag**(形如 `fabric-2.0.0-SNAPSHOT.19`)。它**不以数字开头** ⇒ 不命中本 workflow
-        #      顶部的 `tags: ['[0-9]*']` 过滤器 ⇒ 推送该 tag **不会再触发一次 CI**(发布线的裸版本 tag
-        #      则会被 `gh release` 复用,二者的行为差异是有意的)。
-        #   ② `--prerelease` 且**不带** `--latest` ⇒ 不进仓库首页的 "Latest release" 卡片,
-        #      玩家不会被引导到移植线产物。
-        #   ③ 附件只有 fabric 的**单个** jar;三条生产线的 jar 不掺入,反之亦然。
-        #
-        # 触发条件 = 在发布线分支 `multi-main` 上 push(与上方 `Create Git tag (release branch push only)`
-        # 同一分支判断口径)。
-        # ⚠️ 当前分支为开发线 `multi-dev-next` ⇒ 该步骤在开发分支上**不会触发**,符合预期
-        #    (fabric 线已与发布线同树,随发布线 push 一并产出即可)。
-        #    幂等性与发布线一致:tag 已存在则复用;Release 已存在则「编辑说明 + --clobber 覆盖附件」。
-        if: github.event_name == 'push' && github.ref == 'refs/heads/multi-main'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          VERSION=$(grep '^mod_version=' fabric-1.20.1/gradle.properties | cut -d'=' -f2)
-          # 2.0.0-SNAPSHOT.19+fabric_1.20.1 → 2.0.0-SNAPSHOT.19(只剥 `+加载器` 后缀,预发布后缀保留 ⇒
-          # tag 形如 `fabric-2.0.0-SNAPSHOT.19`,与生产线的裸版本 tag 天然不冲突)
-          BASE=${VERSION%%+*}
-          TAG="fabric-$BASE"
-          echo "fabric version=$VERSION tag=$TAG"
-          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
-            echo "Tag $TAG already exists"
-          else
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git tag -a "$TAG" -m "Fabric 1.20.1 $BASE (pre-release)"
-            git push origin "$TAG"
-          fi
-          # ⚠️ glob 必须至少命中一个文件;未命中时让 bash 原样传参并失败,而不是静默发一个空 Release。
-          JARS=(fabric-1.20.1/build/libs/astral_dice-*.jar)
-          if [[ ! -e "${JARS[0]}" ]]; then
-            echo "::error::fabric jar not found: ${JARS[0]}"
-            exit 1
-          fi
-          NOTES_FILE="$RUNNER_TEMP/astral-dice-fabric-notes-$TAG.md"
-          {
-            printf 'Astral Dice `%s` —— Fabric 1.20.1 移植线 / pre-release\n\n' "$VERSION"
-            printf '> ⚠️ **这是移植/测试线产物,不是正式版。** 三条生产线\n'
-            printf '> (NeoForge 1.21.1 / Forge 1.20.1 / NeoForge 26.1.2)已另有 Release。\n\n'
-            printf '**必需前置 / Required dependencies**\n\n'
-            printf -- '- Fabric Loader 0.19.x + Fabric API(1.20.1 线,0.92.12)\n'
-            printf -- '- Trinkets 3.7.2 —— 饰品栏\n'
-            printf -- '- Puzzles Lib 8.1.33 + Forge Config API Port 8.0.3 —— 事件桥\n\n'
-            printf '**可选 / Optional**\n\n'
-            printf -- '- Accessories 1.0.0-beta.48 —— 装了即优先走它(与 Trinkets 双源聚合)\n\n'
-            printf '**附件 / Attachments**\n'
-            for j in "${JARS[@]}"; do printf -- '- `%s`\n' "${j##*/}"; done
-          } >> "$NOTES_FILE"
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release edit "$TAG" \
-              --title "Astral Dice $TAG (Fabric 1.20.1, pre-release)" \
-              --notes-file "$NOTES_FILE" \
-              --prerelease
-            gh release upload "$TAG" "${JARS[@]}" --clobber
-          else
-            gh release create "$TAG" \
-              "${JARS[@]}" \
-              --title "Astral Dice $TAG (Fabric 1.20.1, pre-release)" \
-              --notes-file "$NOTES_FILE" \
-              --prerelease
-          fi
+      # ⛔ 2026-10-25 用户裁决（强制）：原「Create/Update Fabric release (pre-release)」步骤已整段删除。
+      #    fabric-1.20.1 / neoforge-26.1.2（P1）从未获授权移植，产物不可用 ⇒ 不再自动打 tag、
+      #    不再自动建 pre-release。需要 P1 发布时必须由用户逐次点名下达，并按手工流程处理。

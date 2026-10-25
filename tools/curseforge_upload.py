@@ -928,6 +928,27 @@ def report_abort(steps, slug, uploaded, info_attempted, old_info):
 
 
 # ---------------------------------------------------------------- 上传计划（push / 旧式共用）
+# ⛔ 2026-10-25 用户裁决（强制，优先级高于本文件其余说明）
+# 默认只上传 P0 两线 = `neoforge-1.21.1` + `forge-1.20.1` 的产物；P1 两线
+# （`neoforge-26.1.2` + `fabric-1.20.1`）从未获授权移植，其编译产物一律视为不可用。
+# 仅在用户当次点名要求发布 P1 时才允许 `--allow-p1` 放行（逐次都要显式给）。
+P0_UPLOAD_LINES = {("neoforge", "1.21.1"), ("forge", "1.20.1")}
+
+
+def guard_p0_only(loader, mc, jar, allow_p1):
+    """P0-only 闸门：拒绝上传 P1 线产物（2026-10-25 用户裁决）。"""
+    if (str(loader), str(mc)) in P0_UPLOAD_LINES:
+        return
+    if allow_p1:
+        print(f"[WARN] P1 产物上传已放行（--allow-p1）：{jar.name} | {loader} | MC {mc}"
+              " —— 仅限用户逐次点名下达的任务")
+        return
+    raise SystemExit(
+        f"[BLOCKED] {jar.name} 属于 P1 线（{loader} / MC {mc}），按 2026-10-25 用户裁决默认禁止上传：\n"
+        "          P1 两线（neoforge-26.1.2 / fabric-1.20.1）从未获授权移植，其编译产物一律视为不可用。\n"
+        "          允许上传的只有 P0 两线：neoforge-1.21.1 与 forge-1.20.1。\n"
+        "          若本次任务确由用户点名要求发布 P1，请显式加 --allow-p1。")
+
 def build_jobs(args, binding, cat, offline):
     jobs = []
     for raw in args.jar:
@@ -937,6 +958,8 @@ def build_jobs(args, binding, cat, offline):
         ver, loader, mc = parse_jar(jar)
         loader = args.loader or loader
         mc = args.mc_version or mc
+        # 2026-10-25 rule: only P0 lines may be uploaded (P1 blocked by default)
+        guard_p0_only(loader, mc, jar, getattr(args, 'allow_p1', False))
         rtype = args.release_type or infer_release_type(ver)
         ids, detail = plan_ids(cat, mc, loader, offline)
         line = find_line(binding, key=args.line, loader=loader, mc=mc)
@@ -1150,6 +1173,9 @@ def build_push_parser():
                    help="本次不发送 binding 里声明的 relations（默认发送）")
     p.add_argument("--refresh-versions", action="store_true",
                    help="忽略缓存重新拉取版本表（仅 --apply 时生效）")
+    p.add_argument("--allow-p1", action="store_true",
+                   help="放行 P1 两线产物上传（neoforge-26.1.2 / fabric-1.20.1）；"
+                        "仅在用户当次点名要求发布 P1 时使用，默认禁止")
     add_info_args(p, with_switch=True)
     add_auth_args(p)
     add_write_args(p)
@@ -1268,6 +1294,9 @@ def build_legacy_parser():
     ap.add_argument("--no-relations", action="store_true",
                     help="本次不发送 binding 里声明的 relations（默认发送）")
     ap.add_argument("--refresh-versions", action="store_true", help="忽略缓存重新拉取版本表")
+    ap.add_argument("--allow-p1", action="store_true",
+                    help="放行 P1 两线产物上传（neoforge-26.1.2 / fabric-1.20.1）；"
+                         "仅在用户当次点名要求发布 P1 时使用，默认禁止")
     add_info_args(ap, with_switch=True)
     add_auth_args(ap)
     add_write_args(ap)

@@ -384,6 +384,13 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 
 9. **`mt_env` 的 modernfix 钉子在整合包升版后 BLOCKED**（2026-10-25 实测）：`scripts/test/mt_env.ps1:48` 钉 `5.27.26`、整合包已是 `5.27.27` ⇒ `--phase env` EXIT 11 中断（详见 §6 坑 19）。**改测试资产需用户裁决**（本轮跳 env 直接 launch 完成冒烟）。
 10. ~~防御力折算 1:1 已修，但产物未重建 / 未实机~~ → **已完成**（2026-10-25 17:0x，§4.1i）：`:build` 重建 + 四目标 sha256 实测 MATCH，两线实机 `+8 防御力 ⇒ 防御力 10`；**同批修掉实机暴露的取整吞点**（新增 `effectiveArmorPoints`，守门加 D9，42 项 PASS）。P1 两线仍是旧 `× 2.0` 折算（各 5 处），已登记 `docs/compat-1.5.0-porting.md` §2 主题行 + §4 第 4 条。
+11. **GitHub 发布清理 + 「只发 P0」发布红线（2026-10-25 用户裁决）**：用户裁决「除非有要求，否则默认只上传 `forge-1.20.1` 与 `neoforge-1.21.1`」——P1 两线（`neoforge-26.1.2` / `fabric-1.20.1`）**从未获授权移植**，其编译产物一律视为不可用（用户已手工删掉误传的 CurseForge 内容）。本轮落地四件：
+    - 红线区〈子项目优先级与默认规则〉长行末尾追加「⛔ 发布投放红线（必须遵守,2026-10-25 用户裁决…）」句 —— **红线区行数不变**，`verify-split.py` 八项仍全 [OK]。
+    - `.github/workflows/build.yml` 现 **255 行**：**整段删除** `Create/Update Fabric release (pre-release)` 步骤（那是「每次 multi-main push 都建一个 fabric pre-release」的根源）、Release 附件 `JARS=(...)` 去掉 `neoforge-26.1.2`、artifact 步骤合并为 `Upload Astral Dice JARs (P0 only)` 并删掉 fabric artifact 步骤（计数复核：`neoforge-26.1.2/build/libs` = 0、`astral_dice-jar-fabric` = 0）。
+    - `tools/curseforge_upload.py` 新增 `P0_UPLOAD_LINES = {("neoforge", "1.21.1"), ("forge", "1.20.1")}` 与 `guard_p0_only(loader, mc, jar, allow_p1)`，在 `build_jobs()` 解析出 `loader`/`mc` 后立即调用；P1 jar 默认 `[BLOCKED]` + `SystemExit`（exit 1），仅显式 `--allow-p1` 放行（`push` 与 `update-info` 两个子命令 parser 各加一处）。
+    - 两仓 Release/tag **全清**：`merlin-kitsune/astral_dice` **28 releases + 31 tags → 0/0**；`merlin-kitsune/starengine` **4 releases + 7 tags → 0/0**；`git -C <repo> ls-remote --tags origin` 计数 **0**。删除口径 = `gh api -X DELETE repos/<repo>/releases/<id>` 逐条 + `repos/<repo>/git/refs/tags/<name>`（tag 名先 `[uri]::EscapeDataString()` 编码）。
+    - 判据（实测）：`python -m py_compile tools/curseforge_upload.py` EXIT 0；fabric jar `push --dry-run` ⇒ `[BLOCKED] astral_dice-1.3.5-alpha.1+fabric_1.20.1.jar 属于 P1 线（fabric / MC 1.20.1）` / EXIT 1；P0 neo jar `push --dry-run` ⇒ 正常出计划（projectId 1662159 / token 就绪）。
+
 ### Minor
 
 1. `docs/handover-2026-10-24-member-detective.md` 等 Kimi 批次文档已入库，措辞按 2026-10-24 事实；后续改动若改变其中数字需回填。
@@ -430,6 +437,10 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 
 23. **`--project-id` 只改目标项目、不改关系来源（2026-10-25 实测）**：`tools/curseforge_upload.py` 的 `find_line()` 只按 **loader + MC 版本** 匹配 `tools/curseforge.json` 的 `lines` ⇒ 上传 starengine（库）jar 时会命中 astral 的 `neoforge_1.21.1` / `forge_1.20.1` 线，把 curios / mixinbooster 作为 requiredDependency 挂到**库文件**上。**库/前置类产物一律带 `--no-relations`**（本轮 4 个库文件已带）。
 24. **`run_code` 的 120s 程序级 deadline 也会掐断 `git push`（2026-10-25 实测）**：本轮首次 `push` 因未给 `run_code` 的 `timeoutMs` 而在 120s 被中断（实际已推完，重跑得到 `Everything up-to-date` 才知道）⇒ 推送 / 批量上传这类网络长任务必须同时把 `run_code` 的 `timeoutMs` 设到 ≥540000，`tools.pwsh` 自己的 `timeoutMs` 不够。
+
+25. **`String.Replace` 是「全部替换」——用它做规则追加会写进每一处同锚点（2026-10-25 实测）**：把发布红线追加到 `默认不执行 `git push`**。` 这个锚点时，`docs/agent/AGENTS-full.md` 里该串出现 **2 次**（红线区 L3 + 版本流程第 5 条），而 `docs/agent/AGENTS-dsh.md` 只 1 次 ⇒ 后缀被写进两处，`verify-split.py` 第 2 项（红线区逐字一致）必 FAIL。正确做法：先 `[regex]::Matches($s,[regex]::Escape($anchor)).Count` 断言期望次数，再只按**行号**改目标行（或 `IndexOf` + 精确拼接）。
+
+26. **PowerShell 函数里的 `Write-Output` 会混进返回值（2026-10-25 实测）**：`function Rep { Write-Output '  ok'; return $src.Replace(...) }` 在 `$t = Rep ...` 处拿到的是 **Object[]**（日志行 + 结果行），写回文件后首行变成 `ok: arg-push ok: ...#!/usr/bin/env python3`，`py_compile` 报 `IndentationError: unexpected indent (line 1)`。修法：函数内只用 `Write-Host` 打日志、`return` 只返回目标字符串（必要时 `[string]` 强转）；已写坏的文件用 `git checkout -- <file>` 复原再重跑。
 
 ## 7 关键路径（命令）
 
