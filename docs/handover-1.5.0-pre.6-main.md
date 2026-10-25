@@ -134,7 +134,7 @@ forge dev **named** 2,600,922 B / `5304bafdf152c2910b6344da06cbcba20930660048318
 
 `RepulsionEntity#hurt` 在「只认玩家本人」之后再加一道 owner 闸门 —— `this.ownerUUID != null && !this.ownerUUID.equals(player.getUUID())` ⇒ 动作栏红字 `msg.astral_dice.repulsion_not_owner`（「这个强化拒止不属于你」）并 `return false`（**不计 `meleeHits`、不播受击红闪 / 受击音、不扣耐久**）；`ownerUUID == null`（管理命令 / 老存档）时对所有人开放。两线同批；三语 lang 四处同步（`tooltip.astral_dice.card.repulsion` 末行、`tooltip.astral_dice.item.repulsion` 第三行、`tooltip.astral_dice.item.repulsion_owner`、`astral_dice.guide.entry.effect_card_repulsion.2`）——「玩家近战」一律改为「**放置者**近战」，并补「其他人无法回收」；`_owner` 行由「仅获得者可以放置」改为「仅获得者可以放置**与回收**」。
 
-判据（2026-10-25 15:2x）：两线 `:classes` + `:build` EXIT=0（`BUILD SUCCESSFUL in 9s` / `in 2s`）；产物 neo **2,585,715 B** `5a93e3fa…`、forge reobf **2,630,787 B** `61f6fce2…`、forge dev **2,601,318 B** `2f0969fd…`，四目标 sha256 MATCH；`javap -p -c` 取 jar 内 `RepulsionEntity.class` 的 `hurt`：`getfield ownerUUID → ifnull → Player.getUUID → UUID.equals → ifne` 之后 `ldc_w` 载入 `msg.astral_dice.repulsion_not_owner`（闸门已落盘）；`check_lang_sync` RC=0（P0 各 1058 键）；`tooltip_color_audit` 仍 144/9 键（repulsion 0 处）；`verify_rarity_consistency` PASS；`verify_resource_integrity` `RESULT: PASS`（157/157 模型与贴图）；`verify-split` RC=0 九项 `[OK]`。**未实机**（需用户下达）。
+判据（2026-10-25 15:2x）：两线 `:classes` + `:build` EXIT=0（`BUILD SUCCESSFUL in 9s` / `in 2s`）；产物 neo **2,585,715 B** `5a93e3fa…`、forge reobf **2,630,787 B** `61f6fce2…`、forge dev **2,601,318 B** `2f0969fd…`，四目标 sha256 MATCH；`javap -p -c` 取 jar 内 `RepulsionEntity.class` 的 `hurt`：`getfield ownerUUID → ifnull → Player.getUUID → UUID.equals → ifne` 之后 `ldc_w` 载入 `msg.astral_dice.repulsion_not_owner`（闸门已落盘）；`check_lang_sync` RC=0（P0 各 1058 键）；`tooltip_color_audit` 仍 144/9 键（repulsion 0 处）；`verify_rarity_consistency` PASS；`verify_resource_integrity` `RESULT: PASS`（157/157 模型与贴图）；`verify-split` RC=0 九项 `[OK]`。**owner 闸门已实机验证**（四态读数见下方「补充拦截 · owner 闸门实机」）。
 实机读数（2026-10-25 15:0x，双版本，驱动 = `mt.ps1 --phase env|launch` + AutoJS `eval_js`，判据值全部逐条实测）：
 
 | 判据 | 1.21.1 | 1.20.1 |
@@ -148,6 +148,28 @@ forge dev **named** 2,600,922 B / `5304bafdf152c2910b6344da06cbcba20930660048318
 | G 客户端耐久条 + tooltip | `barVisible true / barWidth 8 / barColor 12713728`（0xC1FF00 黄绿）；满耐久件 `fullBarVisible false`；tooltip 九行逐字正确（`耐久：§e31§7 / §e50§r`、`剩余寿命：§919:31§r`、`已提供充能：§e3§7 / §e5§r`） | 同（`barColor 12713728`、九行逐字相同），**唯一差异**：末行模组名 1.21.1 是纯文本 `Astral Dice`、1.20.1 是 `§9§oAstral Dice`（平台展示差异，非本批改动） |
 
 视觉证据：`temp/bar-hotbar-zoom.png`（1.21.1）与 `temp/bar-hotbar-zoom-1201.png`（1.20.1）= 窗口截图裁底部热键栏 4× 放大，均可见槽 0 图标下方黄绿色耐久条（宽 8/13）。
+
+#### 补充拦截 · owner 闸门实机（2026-10-25 15:1x–15:2x，双版本 PASS）
+
+驱动：`temp/owner_neo.js` / `temp/owner_forge.js` + `temp/autojs_eval.ps1`（`mt.ps1 --version <线> --phase env|launch` 起客户端，AutoJS `eval_js` 求值）。命中走真实伤害链 —— `/damage @e[type=astral_dice:repulsion,limit=1,sort=nearest] 2 minecraft:player_attack by @s`（`directEntity` = 玩家）；命中计数与 owner 从实体 NBT 读（`e.saveWithoutId(t)` 的 `RepulsionMeleeHits` / `RepulsionOwner`（longArray 2 = 非空））。
+
+| 判据 | 1.21.1 | 1.20.1 |
+|---|---|---|
+| A 放置 | `hp 50 / ownerTags 2 / hits 0` | 同 |
+| B 放置者本人命中 1 次 | `hits 1`、hp 50 | 同 |
+| C 改成外来 owner 后连打 3 次 | **`hits` 仍 1**、hp 仍 50、ownerTags 2 ⇒ 三次全被拒 | 同（`hits` 仍 1、hp 50、ownerTags 2） |
+| D `setOwnerUUID(null)` 后命中 | `hits 2`、ownerTags 0 ⇒ 无主件对所有人开放 | 同 |
+| E 还原原 owner 后连打 | `hits` 3 → 4 → 第 5 次后 `repsLeft 0`；回收物进背包 `dur 50 / elapsed 421 / charge 0 / owner Optional[380df991-…]` | `hits` 3 → 4 → 第 5 次后 `repLeft 0`；地面回收物 `dur 50 / elapsed 231`（未被拾取，双通道都要查） |
+
+结论：非放置者的命中被「不计命中 / 不扣耐久 / 不播受击反馈」地拒绝，放置者第 5 次仍按原语义回收成物品；两线一致。
+
+实机侧三条脚本坑（两线通用）：
+
+1. `sp.getUUID()` 在 Rhino 里不可用（`Cannot find function getUUID`）⇒ 「记住原 owner」改用实体 NBT 的 `RepulsionOwner` longArray 往返（`saveWithoutId` → 之后 `putLongArray` / `put` 还原 → `load`）。
+2. `ItemStack.save(CompoundTag)` 在 1.21.1 不可用（已改 `save(holder,counter)`）⇒ 物品状态一律读 `RepulsionItem.getDurability / getElapsedTicks / getChargeGiven` 静态方法。
+3. 1.20.1 侧 `CompoundTag.putLongArray(String, long[])` 会被 Rhino 判 ambiguous（候选 `(String,long[])` / `(String,List)`）⇒ 还原 owner 用 `tE.put('RepulsionOwner', t0.get('RepulsionOwner'))` 复制 Tag 元素。
+
+收尾（2026-10-25 15:3x）：1.21.1 `--phase stop --force` ⇒ `MT_STOP: OK (1s)`；1.20.1 `--phase stop --force --purge-saves` ⇒ `MT_CLEANUP_SAVES: PURGED 1` / `MT_CLEANUP_RESULT: OK` / `MT_STOP: OK (0s)`；`Get-CimInstance Win32_Process -Filter "Name='java.exe'"` 仅剩 Gradle 守护 70556（Zulu 21）与 32252（toolchain 17），无 Minecraft 客户端残留。
 
 实机侧两个**方法可见性坑**（`1.21.1` 与 `1.20.1` 同）：Rhino 里 `sp.setXRot` / `sp.getXRot` / `sp.getUUID` / `entity.hurt(DamageSource,float)` / `lvl.getGameTime()` 全部 `Cannot find function`（哪怕 javap 是 public）⇒ 俯角用 `tp @s ~ ~ ~ ~ 70`、伤害用 `/damage … minecraft:player_attack by @s`（走真实伤害链，`directEntity` = 玩家）、改实体内部值走 NBT `saveWithoutId → putInt → load`。
 
@@ -187,7 +209,7 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 5. **8 条「代码与文案都不符」**（已报用户，未改 tooltip）：bite 觉醒按撕咬张数 / huo_card = `CREATURE_OR_RIVAL` / magic_quiver 真闸门 = 目标已有标记 + 先用过伤害牌 / railgun 只 `bypasses_armor` / 三张卡 `NON_HOSTILE` / member_recommendation 只数主背包+副手 / repulsion 单次最多 5 点耐久 / airbag 掉虚空救不了。
 6. **P1 两线欠账**（正式版前不移植，仅登记）：JEI 筹码 / `BeamFx` / `GlobalEventGate` / `RepulsionEntity` / `CardShopMenu#planPlacement` / `EventDrawBlock`；筹码效果图标仍带边框；史莱姆被动仍 20 tick；misaki 仍 `legendary()` + 黄金星盘 + 死亡清零剑气；pre.5 冷却指示器未移植。
 7. **陈旧锁 `kimi.lock`**（`PID=26580` 已不存在）——不自行删，交用户裁决。
-8. ~~强化拒止物品形态未实机~~ → **已完成**（2026-10-25 15:0x，双版本 7 项判据全 PASS，§4.1c）。仍有两个**待用户裁决**的小项：(a) 是否给新物品**加帕秋莉手册第 4 页**（现只把卡条目的文案改成「会被回收」）；(b) 玩家自写染色 `card.barricade` 的 6 处 `§e20:00§7` 是否也一并改 §9（本批只改了 repulsion）。
+8. ~~强化拒止物品形态未实机~~ → **已完成**（2026-10-25 15:0x，双版本 7 项判据全 PASS，§4.1c）。owner 闸门（非放置者命中被拒）也已双版本实机四态 PASS（§4.1c 末节，2026-10-25 15:3x）。仍有两个**待用户裁决**的小项：(a) 是否给新物品**加帕秋莉手册第 4 页**（现只把卡条目的文案改成「会被回收」）；(b) 玩家自写染色 `card.barricade` 的 6 处 `§e20:00§7` 是否也一并改 §9（本批只改了 repulsion）。
 
 ### Minor
 
