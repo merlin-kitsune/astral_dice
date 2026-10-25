@@ -5,7 +5,7 @@
 
 ## 0 速览（一屏）
 
-1. 分支 `multi-main`，HEAD = 本批提交（`release(rc.2): 1.5.0-rc.1 -> 1.5.0-rc.2`，含调酒师治疗按张数 + 多萝西【交际花】双版本实机）。**未 push、无 tag**（用户明确「只本地提交 + 推整合包」；累计未推送 **6** 个提交；前置库仓 `origin..HEAD` = **0**）。
+1. 分支 `multi-main`，HEAD = 本批提交（`release(rc.2): 1.5.0-rc.1 -> 1.5.0-rc.2`，含调酒师治疗按张数 + 多萝西【交际花】双版本实机）。**已 push + CI 自动建 tag**（2026-10-25 23:1x，用户下达「执行 push」）：`git push origin multi-main` ⇒ `8dcdb715..13a45619`，`rev-list --count origin/multi-main..HEAD` = **0**；CI（`.github/workflows/build.yml` 的 auto-tag 步骤）自动建注解 tag **`1.5.0-rc.2`**（指向 `13a45619`）并发布 prerelease（附件 = 刚构建的 P0 两个 rc.2 jar，正文取 `release/1.5.0-rc.2/`）。前置库仓 `origin..HEAD` = **0**。
 2. 四线 `mod_version = 1.5.0-rc.2+<加载器后缀>`；四线 `starengine_version = 1.1.0`（前置库同批由 `1.1.0-pre.2` 转**正式版**，库内 Java 源码零改动）；硬前置区间随之展开为 `[1.1.0,2.0.0)`。
 3. 本批收编 **Kimi 上一轮四批未提交改动**（member-detective / misaki 立牌 / 筹码商店刷新源 / 规则分派），并完成 **DSH 三语语言同步** + **地雷女备注区染色修复**。
 4. 判据：P0 两线 `:classes` `BUILD SUCCESSFUL in 4s`；`check_lang_sync` EXIT=0；`audit_patchouli_keys` 悬空 0；`verify-split` EXIT=0；三道专项 python 判据 PASS 26/12/14；`verify_chip_shop_ui` `CHIPUI_TOTAL_FAIL: 0`。
@@ -266,7 +266,7 @@ forge dev named 102,013 B / `e280aeab6c4b37c43468f7cce32a8bf64c70b6bdbcd2203f6c5
 
 1. **rc.1 未实机**：本批只改版本号与前置库坐标，行为等价 pre.6（pre.6 的实机读数见 §4.1–§4.1c）。唯一新增风险面是**版本门槛**——需在实机里确认「mod rc.1 + 库 1.1.0」能过 FML 版本检查、且旧 `1.1.0-pre.2` 库会被 `[1.1.0,2.0.0)` 正确拒绝。
 2. **P1 两线（26.1.2 / fabric）只做源码 bump，未构建未验证**（库侧四平台 jar 已构建并发布 mavenLocal，mod 侧 P1 产物未重建）。
-3. 未 push、未打 tag（用户明确「暂不推送」）。
+3. 推送状态（2026-10-25 23:1x 更新）：本批**已 push**（`13a45619`），无遗留未推送提交；tag `1.5.0-rc.2` 由 CI 自动创建。
 
 #### 4.1f-a 双版本冒烟实机（2026-10-25 15:39–15:43）—— 全 PASS
 
@@ -464,7 +464,7 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 12. **调酒师治疗效果口径 = 一次 heal(总数)**（2026-10-25，§4.1m）：落地选择 `heal(HEAL_AMOUNT * effect)`（3 张 = 一次 6 点），**不是**「三次 heal(2)」——因此治疗事件只 1 次，多萝西「温暖」不会按张数叠层。若日后要求「每张各触发一次治疗事件」，需同批改 3 处：`JillSignItem` 的 heal 循环、`tools/verify_sign_balance_changes.py` 的 JIL-1、以及三语文案（每张独立结算的表述）。P1 两线（26.1.2 / fabric）**没有** `JillSignItem`，本项无需登记移植欠账。
 13. **多萝西队友加成 = 状态效果【交际花】，不再是瞬态修饰符**（2026-10-25，§4.1n）：唯一事实源改为 `DorothySocialiteEffect` 自带的 `ATTACK_DAMAGE +1` 修饰符，**固定 1:00、从获得时起算、与主动窗口解耦**；窗口结束不回收、重复获得只刷时长。旧的 `dorothy_partner_attack` 修饰符、`applyTempAttack`、`clearPartnerBuffs`、`DOROTHY_PARTNERS` 节流表均已删除（§5 里若有旧描述按本条读）。P1 两线无该立牌，无移植欠账。
 
-14. **`1.5.0-rc.2` 版本已落盘（2026-10-25，§4.1o）**：四线 `mod_version = 1.5.0-rc.2+<后缀>`、`release/1.5.0-rc.2/` 三份玩家更新日志（版本串已换，内容 = rc.1 + 调酒师治疗按张数 + 【交际花】）、`README*.md` 版本列同步；P0 两线已重建并投放四目标（§2 产物现状）。**未 push、无 tag**；若日后打 `1.5.0-rc.2` tag，CI 从 `release/1.5.0-rc.2/` 取正文（已备好）。**实机未覆盖项见 §4.1o 末行**（真实按键施放 / 死亡重登 / 窗口内反复进出）。
+14. **`1.5.0-rc.2` 版本已落盘（2026-10-25，§4.1o）**：四线 `mod_version = 1.5.0-rc.2+<后缀>`、`release/1.5.0-rc.2/` 三份玩家更新日志（版本串已换，内容 = rc.1 + 调酒师治疗按张数 + 【交际花】）、`README*.md` 版本列同步；P0 两线已重建并投放四目标（§2 产物现状）。**已 push（`13a45619`）**，CI 自动建 tag `1.5.0-rc.2` 并从 `release/1.5.0-rc.2/` 取正文发布 prerelease（实测页面 200，两个 P0 jar 均在附件里）。**实机未覆盖项见 §4.1o 末行**（真实按键施放 / 死亡重登 / 窗口内反复进出）。
 
 15. **`tools/curseforge-description.md` 已删除（2026-10-25，用户裁决）**：CF 项目说明已由用户**手动粘贴**到作者后台（`https://authors.curseforge.com/#/projects/1662159/description`），仓库内草稿（含本轮中英两版全文 + 一句话 Summary）随之删除，避免与线上正文双份漂移。**CF 的 Description 字段至今无法经 API 修改**（`.curseforge/token` 只是 legacy upload token，Core API 也没有该端点，见 `AGENTS-full.md:2294`），今后要改说明一律在 CF 作者后台直接改，仓库不再留副本。历史文档里对 `tools/curseforge-description.md` 的引用（`docs/AGENT-HANDOFF.md:106` / `:593` / `:617`、`docs/agent/AGENTS-full.md:4034`、`docs/prerelease-check-1.3.7-hotfix.md:48` / `:84`、`docs/handover-1.5.0-pre.5-main.md:654`）一律读作**历史记录**，文件本身已不存在。
 
