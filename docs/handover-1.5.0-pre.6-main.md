@@ -33,9 +33,9 @@
 | 硬前置区间 | `[1.1.0-pre.2,2.0.0)`；`META-INF/jarjar/` 计数 **0** | `neoforge-1.21.1/.../neoforge.mods.toml` · `forge-1.20.1/.../mods.toml` |
 
 **产物现状（2026-10-25 14:25 重建，pre.6；含强化拒止物品形态 + 手册文案/图标修正）**：
-neo `astral_dice-1.5.0-pre.6+neoforge_1.21.1.jar` 2,585,267 B / sha256 `7e88f2627e99534ce664f5157a80f12c8daefb24dd07ee8b6b379000567cace0`（`run/1.21.1/mods` 与「狐の航空学 Voxy Edition」同一份）；
-forge `astral_dice-1.5.0-pre.6+forge_1.20.1.jar` 2,630,355 B / `5f5cb754666fac1ebdc282da98bcbc7c338f598928f6d975da409290dc779e8d`（→ 1.20.1-Forge 模组测试）；
-forge dev **named** 2,600,888 B / `fb5be4d26916b118941422180ffa36f602b112b03a624901d625baee925b856e`（`run/1.20.1/mods`）。
+neo `astral_dice-1.5.0-pre.6+neoforge_1.21.1.jar` 2,585,301 B / sha256 `461756a40bc94ddff1a6791e7f78020f5769b4c9e2311c4632b5dfbe9aeaa4a8`（`run/1.21.1/mods` 与「狐の航空学 Voxy Edition」同一份）；
+forge `astral_dice-1.5.0-pre.6+forge_1.20.1.jar` 2,630,389 B / `f1a81d5f82d45108b774e344803de86fc360cc9cb7d4b302c36c9a786957f0f7`（→ 1.20.1-Forge 模组测试）；
+forge dev **named** 2,600,922 B / `5304bafdf152c2910b6344da06cbcba209306600483188a9a8deb7cc825345b8`（`run/1.20.1/mods`）。
 四目标 2026-10-25 14:25 逐处 sha256 MATCH；jar 内判据：`assets/astral_dice/models/item/repulsion.json` 与 `textures/item/repulsion.png` 均在、`lang/zh_cn.json` 含 `item.astral_dice.repulsion` / `msg.astral_dice.repulsion_hit` / 新卡面文案「回收成物品形式」。
 > 上一轮（11:55，星光批次）读数：neo 2,577,145 B / `7995d714…5b5ff9e`；forge reobf 2,622,362 B / `2f14b079…c8f71e9`；forge dev 2,592,867 B / `40bfe716…6a32f274` —— 已被本批覆盖。
 库 jar（成对投放，未随本批变动）：neo 98,737 B / forge 103,609 B（`1.1.0-pre.2`）。
@@ -100,6 +100,15 @@ forge dev **named** 2,600,888 B / `fb5be4d26916b118941422180ffa36f602b112b03a624
 - `ame_note` 染色：两线逐字一致 —— `§d`（备注体）+ `§e`（数值）+ `§9`（时间），行首区段前缀由 `addSignNoteLines` 注入，符合 tooltip 染色规则；证据 = 上述渲染行原文（未取截图）。
 
 ### 4.1c 强化拒止物品形态（2026-10-25）—— 代码/资源就绪，**未实机**
+
+物品图标 `textures/item/repulsion.png`（两线同一份，181 B / sha256 `dcfe5129102d9dae3fa9348e150c357fa1ed9cd97f7c0d4889fcf96c1b5811c3`）**由实体模型 + 实体贴图直接生成**（2026-10-25 第二轮）：
+
+- 取 `textures/entity/repulsion.png` 的**北面块** (4,10)-(28,34)（24×24，即 `RepulsionModel` 头块 `texOffs(0,3)` 的盒式 UV，`LayerDefinition(tw,th)=64` ⇒ 128 PNG 里 2 倍纹素密度），**精确 2:1 盒式降采样**成 12×12（蓝 2 纹素边框 → 1 px 边框、白底与蓝图形原样保留，无插值糊边）；
+- 杆子（`blade`，24×2 模型单位）**截断**后只留 **2×3 px** 短柄，颜色取同一贴图里 blade 北面 (2,2)-(50,6) 的左右两列均值（`(125,131,135)` / `(117,123,127)`，形成左亮右暗的圆柱感）；
+- 版面：12×12 板在 `(2,1)`、2×3 杆在 `(7,13)`，板占图高 **12/16 = 75%**（原手绘稿只有 ~10×12 且杆子过长，牌子显得小）；
+- **未采用菱形（45°）外观**：按实体 `HEAD_TWIST=+45°` 渲染成 9 px 菱形后蓝边框塌成亚像素、图形糊成一团（三版对比已弃），故图标取「正视板面」口径；若日后要菱形观感需 32×32 或换美术稿。
+
+判据（2026-10-25 15:0x 重建 + 投放）：两线 `build` EXIT=0 / BUILD SUCCESSFUL in 2s；四目标 jar 逐处 sha256 相同（neo `461756a4…` 2,585,301 B；forge reobf `f1a81d5f…` 2,630,389 B；forge dev `5304bafd…` 2,600,922 B）；开两线 jar 取 `assets/astral_dice/textures/item/repulsion.png` ⇒ 长度 181 / sha256 **match=True**。
 
 改动（P0 两线同批）：玩家近战命中已放置力场第 5 次 ⇒ 回收成**新物品** `astral_dice:repulsion`（不是效果牌），携带耐久（= 关联血量）/ 已存活 tick / 已提供充能三份状态；再次放置按与效果牌**同一份**落点解析（`item/RepulsionPlacement.resolve`）恢复三份状态。
 
