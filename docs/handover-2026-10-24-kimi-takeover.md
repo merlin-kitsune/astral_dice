@@ -12,7 +12,7 @@
 1. `git -C F:\MCProject\astral_dice_multiloader log -1 --oneline` + `git status --short -uall`（当前应只剩 `?? models/astral_anvil.bbmodel` 这条用户素材）。
 2. `docs/agent/AGENTS-kimi.md`（你的规则正本：Git Bash 优先 / 长上下文全委派 / 版本迭代必建新交接）。
 3. `docs/agent/AGENTS-dsh.md`（DSH 侧的规则与红线；**不是**你的，但冲突时以用户裁决为准）。
-4. 本文件 §2–§5 → `docs/agent/PROJECT-REFERENCE.md`（拓扑与命令）→ `docs/handover-1.5.0-pre.6-main.md`（滚动正本；pre.5 及更早历史在同目录 `docs/handover-1.5.0-pre.5-main.md`）。
+4. 本文件 §2–§5 → `docs/agent/PROJECT-REFERENCE.md`（拓扑与命令）→ `docs/handover-1.5.0-rc.1-main.md`（滚动正本；pre.5 及更早历史在同目录 `docs/handover-1.5.0-pre.5-main.md`）。
 5. 领域规格按需：`docs/agent/AGENTS-full.md`（行号总表 `docs/agent/AGENTS-TOC.md`）、`scripts/test/TESTING-SPEC.md`、`docs/compat-1.5.0-porting.md`。
 
 ## 2. 本批已落地（2026-10-24，一次提交 `e2aed527`，53 文件）

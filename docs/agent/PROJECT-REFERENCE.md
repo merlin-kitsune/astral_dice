@@ -82,7 +82,7 @@ pwsh -NoProfile -File F:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1 -
 
 ## 7. 交接文件
 
-- DSH 滚动正本：`docs/handover-1.5.0-pre.6-main.md`（pre.5 及更早：`docs/handover-1.5.0-pre.5-main.md`）。
+- DSH 滚动正本：`docs/handover-1.5.0-rc.1-main.md`（pre.5 及更早：`docs/handover-1.5.0-pre.5-main.md`）。
 - 新会话寒暄提示词：`docs/handover-new-session-context.md`。
 - Kimi 接手：`docs/handover-<日期>-kimi-<主题>.md`（每批新建）。
 - 逐批历史：`docs/agent/AGENTS-full.md` 末尾「待办交接各批」（只追加不改旧条）。

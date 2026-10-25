@@ -1,16 +1,16 @@
-# 交接正本 — 1.5.0-pre.6（multi-main）
+# 交接正本 — 1.5.0-rc.1（multi-main）
 
-> **本文件自 `1.5.0-pre.6` 起为滚动交接正本**。pre.5 及更早的批次、实机读数、遗留与坑**不迁入**，一律回 `docs/handover-1.5.0-pre.5-main.md`（§0 速览 / §3 批次表 / §4 实机读数 / §5 遗留 / §6 坑 / §7 路径）。
+> **本文件自 `1.5.0-rc.1`（2026-10-25）起继续为滚动交接正本**（原 `docs/handover-1.5.0-pre.6-main.md` 于同批 `git mv` 改名；pre.6 的批次、实机读数、遗留与坑**原样保留在本文档内**，不另建文件）。pre.5 及更早的批次一律回 `docs/handover-1.5.0-pre.5-main.md`（§0 速览 / §3 批次表 / §4 实机读数 / §5 遗留 / §6 坑 / §7 路径）。
 > 数字均为 2026-10-24 快照；**开工先实读** `git log -1 --oneline` + `git status --short -uall` + 四线 `gradle.properties`。
 
 ## 0 速览（一屏）
 
-1. 分支 `multi-main`，HEAD = 本批提交（`chore(release): bump 1.5.0-pre.6 …`，其父 `4f6140c5`）。**未 push、无 tag**（用户明确「暂不推送」）。
-2. 四线 `mod_version = 1.5.0-pre.6+<加载器后缀>`；四线 `starengine_version = 1.1.0-pre.2`（未动）。
+1. 分支 `multi-main`，HEAD = 本批提交（`release(rc.1): 版本号 1.5.0-pre.6 -> 1.5.0-rc.1 + 前置库 StarEngine 1.1.0`，其父 `1705f3d2`）。**未 push、无 tag**（用户明确「暂不推送」；累计未推送 20 个提交，前置库仓另有 1 个未推送提交 `16b48c4`）。
+2. 四线 `mod_version = 1.5.0-rc.1+<加载器后缀>`；四线 `starengine_version = 1.1.0`（前置库同批由 `1.1.0-pre.2` 转**正式版**，库内 Java 源码零改动）；硬前置区间随之展开为 `[1.1.0,2.0.0)`。
 3. 本批收编 **Kimi 上一轮四批未提交改动**（member-detective / misaki 立牌 / 筹码商店刷新源 / 规则分派），并完成 **DSH 三语语言同步** + **地雷女备注区染色修复**。
 4. 判据：P0 两线 `:classes` `BUILD SUCCESSFUL in 4s`；`check_lang_sync` EXIT=0；`audit_patchouli_keys` 悬空 0；`verify-split` EXIT=0；三道专项 python 判据 PASS 26/12/14；`verify_chip_shop_ui` `CHIPUI_TOTAL_FAIL: 0`。
-5. **pre.6 产物已重建并投放**（最新一次 2026-10-25 14:58，含强化拒止物品形态 + 耐久条原版口径；`:neoforge-1.21.1:build :forge-1.20.1:build` 触发 `pushToDevRun/pushToGame/pushToRootBuild`）——四个目标（`run/1.21.1/mods`、`run/1.20.1/mods`=devlibs named、两个 P0 整合包）逐处 sha256 **MATCH**，读数见 §2。
-6. 本批实机：**星光兑换 5 组 + 筹码商店刷新源 / 文案（38 tooltip + 21 手册）/ `ame_note` 染色 + 强化拒止物品形态 7 项，双版本全 PASS**（2026-10-25，§4.1 / §4.1b / §4.1c）。`scripts/test/cases/CHIP-REGEN-*.json`（等 tick 自动 +1）随 ticker 删除失效，**已按用户裁决退役（两文件删除）**（§5-3）。
+5. **rc.1 产物已重建并投放**（2026-10-25 15:3x，`:neoforge-1.21.1:build :forge-1.20.1:build` 触发 `pushToDevRun/pushToGame/pushToRootBuild`）——四个目标（`run/1.21.1/mods`、`run/1.20.1/mods`=dev named、两个 P0 整合包）逐处 sha256 **MATCH**；**前置库 jar 成对换成 `1.1.0`**（四处旧 `1.1.0-pre.2` 已删），读数见 §2 与 §4.1f。
+6. 本批实机：**星光兑换 5 组 + 筹码商店刷新源 / 文案（38 tooltip + 21 手册）/ `ame_note` 染色 + 强化拒止物品形态 7 项 + owner 闸门四态，双版本全 PASS**（2026-10-25，§4.1 / §4.1b / §4.1c）。**rc.1 版本升级本身未实机**（只做构建 / 打包 / 投放 / 静态判据，§4.1f）。`scripts/test/cases/CHIP-REGEN-*.json`（等 tick 自动 +1）随 ticker 删除失效，**已按用户裁决退役（两文件删除）**（§5-3）。
 7. 规则分派已落地：根 `AGENTS.md` 为 41 行入口，Kimi → `docs/agent/AGENTS-kimi.md`，DSH → `docs/agent/AGENTS-dsh.md`，Codex → `docs/agent/AGENT-SPLIT.md`（只读）。
 8. 未处置：陈旧锁 `F:\MCProject\.agent-locks\kimi.lock`（`PID=26580` / `TASK=misaki-chip-shop-balance-p0`，进程已不存在）—— 按规则不自行删，交用户裁决。
 
@@ -25,20 +25,24 @@
 
 | 项 | 值 | 落点 |
 |---|---|---|
-| neo `mod_version` | `1.5.0-pre.6+neoforge_1.21.1` | `neoforge-1.21.1/gradle.properties` |
-| forge `mod_version` | `1.5.0-pre.6+forge_1.20.1` | `forge-1.20.1/gradle.properties` |
-| 26.1.2 `mod_version` | `1.5.0-pre.6+neoforge_26.1.2` | `neoforge-26.1.2/gradle.properties` |
-| fabric `mod_version` | `1.5.0-pre.6+fabric_1.20.1` | `fabric-1.20.1/gradle.properties` |
-| `starengine_version` | `1.1.0-pre.2`（四线）；fabric 另有 `starengine_version_range=>=1.1.0-pre.2` | 各线 `gradle.properties` |
-| 硬前置区间 | `[1.1.0-pre.2,2.0.0)`；`META-INF/jarjar/` 计数 **0** | `neoforge-1.21.1/.../neoforge.mods.toml` · `forge-1.20.1/.../mods.toml` |
+| neo `mod_version` | `1.5.0-rc.1+neoforge_1.21.1` | `neoforge-1.21.1/gradle.properties` |
+| forge `mod_version` | `1.5.0-rc.1+forge_1.20.1` | `forge-1.20.1/gradle.properties` |
+| 26.1.2 `mod_version` | `1.5.0-rc.1+neoforge_26.1.2`（源码 bump，**P1 不构建不验证**） | `neoforge-26.1.2/gradle.properties` |
+| fabric `mod_version` | `1.5.0-rc.1+fabric_1.20.1`（源码 bump，**P1 不构建不验证**） | `fabric-1.20.1/gradle.properties` |
+| `starengine_version` | `1.1.0`（四线，**正式版**）；fabric 另有 `starengine_version_range=>=1.1.0` | 各线 `gradle.properties` |
+| 硬前置区间 | `[1.1.0,2.0.0)`（模板插值 `[${starengine_version},2.0.0)`，改 `gradle.properties` 一处即随动）；`META-INF/jarjar/` 计数 **0** | `neoforge-1.21.1/src/main/templates/META-INF/neoforge.mods.toml:143` · `forge-1.20.1/src/main/templates/META-INF/mods.toml:157` |
 
-**产物现状（2026-10-25 15:5x 重建，pre.6；含强化拒止物品形态 + owner 闸门 + 手册第 4/5 页）**：
-neo `astral_dice-1.5.0-pre.6+neoforge_1.21.1.jar` **2,586,610 B** / sha256 `4686ec6de2b637d22f8a9688e87c88180dad36f9f68f6d8a5a522714a8c53fb4`（`run/1.21.1/mods` 与「狐の航空学 Voxy Edition」同一份）；
-forge `astral_dice-1.5.0-pre.6+forge_1.20.1.jar` **2,631,683 B** / `dbccaf2c16112681fe9e36494072021662ec0d119952401a52e4aeebb2535cd0`（→ 1.20.1-Forge 模组测试）；
-forge dev **named** **2,602,214 B** / `19bff3310bb540beb7f2a74b6aa673e22eaac04458723d5a45f34741ffca2e45`（`run/1.20.1/mods`）。
-四目标 2026-10-25 15:5x 逐处 sha256 MATCH；jar 内判据：`assets/astral_dice/models/item/repulsion.json` 与 `textures/item/repulsion.png` 均在、`lang/zh_cn.json` 含 `item.astral_dice.repulsion` / `msg.astral_dice.repulsion_hit` / 新卡面文案「回收成物品形式」/ 手册键 `effect_card_repulsion.4`·`.5`，手册条目 `effect_card_repulsion.json` 的 page 计数 **5**（含 `astral_dice:repulsion` 的 spotlight）。
-> 上一轮（11:55，星光批次）读数：neo 2,577,145 B / `7995d714…5b5ff9e`；forge reobf 2,622,362 B / `2f14b079…c8f71e9`；forge dev 2,592,867 B / `40bfe716…6a32f274` —— 已被本批覆盖。
-库 jar（成对投放，未随本批变动）：neo 98,737 B / forge 103,609 B（`1.1.0-pre.2`）。
+**产物现状（2026-10-25 15:3x 重建，`1.5.0-rc.1`；源码同 pre.6 收尾，仅版本号与前置库坐标变化）**：
+neo `astral_dice-1.5.0-rc.1+neoforge_1.21.1.jar` **2,586,701 B** / sha256 `65a22d700926fbddedf5ced803930c9ef74a709426a614a3f3f311e410450610`（`run/1.21.1/mods` 与「狐の航空学 Voxy Edition」同一份）；
+forge `astral_dice-1.5.0-rc.1+forge_1.20.1.jar` **2,631,740 B** / `7ad926ca072b1c4c9e87218b366da4e70de0746fb2dd218c3ca2b2ff08b2d8dd`（reobf → 1.20.1-Forge 模组测试）；
+forge dev **named** **2,602,271 B** / `926800675c850d2fdea51bd94439e66f6ec96c766629e2104624907e46878123`（`run/1.20.1/mods`）。
+四目标 2026-10-25 15:3x 逐处 sha256 MATCH；jar 内判据（两线两件实测）：`version="1.5.0-rc.1+<后缀>"`、`modId="starengine"` 的 `versionRange="[1.1.0,2.0.0)"`、`META-INF/jarjar/` 计数 **0**。
+> 上一轮（15:5x，pre.6 收尾）读数：neo 2,586,610 B / `4686ec6d…c53fb4`；forge reobf 2,631,683 B / `dbccaf2c…2535cd0`；forge dev 2,602,214 B / `19bff331…43f2e45` —— 已被本批覆盖。
+**前置库 jar（同批换成 `1.1.0`，与 mod 成对，四处旧 `1.1.0-pre.2` 已删）**：
+neo `starengine-neoforge-1.21.1-1.1.0.jar` 98,734 B / `62c92595b012929d2fba6098cc2d71e6ab2a9a14ddaac52869e2bbec6b476ac8`（`run/1.21.1/mods` + 「狐の航空学 Voxy Edition」，同一份）；
+forge reobf 103,605 B / `73da2e599e60dab047e3640eb396f1db6f6eedd5a0dd95494afde471f43af304`（「1.20.1-Forge 模组测试」）；
+forge dev named 102,013 B / `e280aeab6c4b37c43468f7cce32a8bf64c70b6bdbcd2203f6c5600776f987e0e`（`run/1.20.1/mods`）；
+另 fabric 112,634 B / `4f5cb0eca44c48840355ecaca4a752f0de1c3d0d89c8363b46c3a0283f3e6955`、26.1.2 98,970 B / `625057e19c114f7f1f452ba176a588d8e58a303b9d48002b6438c031b7dff8c8` 已构建并 `publishToMavenLocal`，**不投放**（P1 不验证）。
 
 ## 3 本批批次表
 
@@ -51,6 +55,8 @@ forge dev **named** **2,602,214 B** / `19bff3310bb540beb7f2a74b6aa673e22eaac0445
 | `669b0150` | fix(repulsion)：耐久条改原版工具口径（6 文件 +14/−10） | 两线 `item/RepulsionItem#isBarVisible`（满耐久不画条）+ CHANGELOG 双文件 + 本文件 + session-context |
 | 本文件所在提交（追加） | docs(handover)：强化拒止双版本实机 7 项判据 + 实机侧方法可见性坑 | 本文件 §4.1c / §5-8 / §0-6 |
 | 本文件所在提交 | docs：Kimi 交接单 + 工程参考 + pre.6 正本 + 新会话上下文 | `docs/handover-2026-10-24-kimi-takeover.md` · `docs/agent/PROJECT-REFERENCE.md` · 本文件 · `docs/handover-new-session-context.md` |
+| `16b48c4`（**前置库仓** `F:\MCProject\starengine`） | release(lib)：`1.1.0-pre.2` → **`1.1.0`** 正式版（8 文件 +63/−32） | 四子项目 `gradle.properties`（`lib_version` / `mod_version`）· `README.md`/`README_ZH.md`（坐标表 + 依赖示例 + 当前版本）· `CHANGELOG.md`/`CHANGELOG_ZH.md` 新增 `## 1.1.0` 小节 · 四平台 `publishToMavenLocal` |
+| 本文件所在提交（追加） | release(rc.1)：`1.5.0-pre.6` → **`1.5.0-rc.1`** + 前置库坐标 `1.1.0` | 四线 `gradle.properties`（`mod_version` / `starengine_version` / fabric `starengine_version_range`）· 两线 toml 模板注释（预发布期「不要写 `[1.1.0,2.0.0)`」改成正式版口径）· `.github/workflows/build.yml:105` 库 ref SHA `6d2a96d…`→`16b48c4…` · `README*.md`（版本列 `1.5.0-pre.5`→`rc.1`、库版本 `1.1.0`）· `CHANGELOG*.md`（库版本串）· 本文件 `git mv` pre.6→rc.1 + §0/§2/§3/§4.1f · `docs/handover-new-session-context.md` · 5 处旧文件名引用 |
 
 `e2aed527` 的七条内容：
 
@@ -205,6 +211,44 @@ forge dev **named** **2,602,214 B** / `19bff3310bb540beb7f2a74b6aa673e22eaac0445
 产物（15:5x 重建）：neo **2,586,610 B** `4686ec6de2b637d22f8a9688e87c88180dad36f9f68f6d8a5a522714a8c53fb4`；forge reobf **2,631,683 B** `dbccaf2c16112681fe9e36494072021662ec0d119952401a52e4aeebb2535cd0`；forge dev **2,602,214 B** `19bff3310bb540beb7f2a74b6aa673e22eaac04458723d5a45f34741ffca2e45`。
 
 **未做**：实机翻开该条目看第 4/5 页排版（需用户下达）。**路障不动** —— `card.barricade` 的 6 处 `§e20:00§7` 按用户本次裁决保持原样，`tooltip_color_audit` 的 144 处存量全部继续保留。
+
+### 4.1f 版本升级判据（`1.5.0-rc.1` + 前置库 `1.1.0`，2026-10-25）—— 静态全绿，**未实机**
+
+**前置库侧（`F:\MCProject\starengine`，提交 `16b48c4`）**
+
+- 四子项目 `gradle.properties` 由 `lib_version=1.1.0-pre.2` / `mod_version=1.1.0-pre.2+<suffix>` 升为 `1.1.0` / `1.1.0+<suffix>`；`README*.md` 坐标表、依赖示例、Fabric `depends` 串、当前版本段同步。
+- `gradlew.bat publishToMavenLocal`（四平台）+ 各线 `build`：`BUILD SUCCESSFUL`；产物 `starengine-neoforge-1.21.1-1.1.0.jar` 98,734 B / `starengine-forge-1.20.1-1.1.0.jar` 103,605 B（reobf）/ dev named 102,013 B / `starengine-neoforge-26.1.2-1.1.0.jar` 98,970 B / `starengine-fabric-1.20.1-1.1.0.jar` 112,634 B，sha256 见 §2。
+- jar 内实测：`version="1.1.0+<平台后缀>"`、`license="GPL-3.0-only"`。**库内 Java 源码零改动** —— `1.1.0-pre.2` 之后只有许可切换（`c545b75`）与文档（`413cc39`），故 1.1.0 是 pre.2 的定版。
+
+**mod 侧**
+
+- 四线 `mod_version = 1.5.0-rc.1+<后缀>`；四线 `starengine_version = 1.1.0`；fabric `starengine_version_range=>=1.1.0`。
+- 硬前置区间由模板插值自动成为 `[1.1.0,2.0.0)`（两线 toml 的 `versionRange="[${starengine_version},2.0.0)"` 未改字面量）；两线模板注释里「⚠️ 不要写成 `[1.1.0,2.0.0)`」的**预发布期禁令**改为正式版口径（保留历史原因：`ComparableVersion` 把未知限定符 `pre` 排在正式版之后，预发布件会污染下界判定）。
+- `.github/workflows/build.yml:105` 库 `ref` 由 `6d2a96df…`（pre.2）改为 `16b48c413d92bcd830d97c0a80b0df4e0c47ba6c`（1.1.0），注释同步（与四线 `starengine_version` 同提交更新）。
+- `README*.md`：四线版本列 `1.5.0-pre.5` → `1.5.0-rc.1`（4 行/文件）、库版本 `1.1.0-pre.2` → `1.1.0`；`CHANGELOG.md:38` / `CHANGELOG_ZH.md:35` 的库版本串同步。
+
+**打包 / 投放判据**
+
+- 两线 jar 内：`version="1.5.0-rc.1+<后缀>"`、`modId="starengine"` 的 `versionRange="[1.1.0,2.0.0)"`、`META-INF/jarjar/` 计数 **0**（`pushToRootBuild` 自检亦输出「无 META-INF/jarjar/(符合「不内置」口径)」）。
+- 四目标 sha256 MATCH：`run/1.21.1/mods`、`run/1.20.1/mods`（dev named）、`D:\.minecraft\versions\狐の航空学 Voxy Edition\mods`、`D:\.minecraft\versions\1.20.1-Forge 模组测试\mods`。
+- **库 jar 成对替换**：四处 `starengine-*-1.1.0-pre.2.jar` 已删除，换成 `1.1.0`（neo 用生产 jar；`run/1.20.1` 用 dev named；forge 整合包用 reobf）；复制后逐处 sha256 与源一致，目标目录内 `starengine*.jar` 只剩 1 个。
+
+**守门**
+
+| 判据 | 读数 |
+|---|---|
+| `python -B docs/agent/verify-split.py` | `全部通过`（8 项 [OK]，EXIT 0） |
+| `pwsh -NoProfile -File tools/check_lang_sync.ps1` | EXIT 0；P0 每条 1060 键 / 26.1.2 836 / fabric 844；3 条既有 WARN |
+| `python tools/audit_patchouli_keys.py` | 引用 1698 处 / 悬空 **0** |
+| `python tools/verify_rarity_consistency.py` | `GATE: PASS`（C1/C2/C3） |
+| `pwsh -NoProfile -File scripts/audit/tooltip_color_audit.ps1` | `FAIL（144 处）` —— **既有基线债**，repulsion 相关 0 处（§5 Major-4） |
+| `pwsh -NoProfile -File scripts/verify/verify_resource_integrity.ps1` | `RESULT: PASS`；rc.1 两线各 157 物品、模型/贴图 157/157（26.1.2 旧 jar 137/137 属 P1 陈旧产物） |
+
+**未做（如实登记）**
+
+1. **rc.1 未实机**：本批只改版本号与前置库坐标，行为等价 pre.6（pre.6 的实机读数见 §4.1–§4.1c）。唯一新增风险面是**版本门槛**——需在实机里确认「mod rc.1 + 库 1.1.0」能过 FML 版本检查、且旧 `1.1.0-pre.2` 库会被 `[1.1.0,2.0.0)` 正确拒绝。
+2. **P1 两线（26.1.2 / fabric）只做源码 bump，未构建未验证**（库侧四平台 jar 已构建并发布 mavenLocal，mod 侧 P1 产物未重建）。
+3. 未 push、未打 tag（用户明确「暂不推送」）。
 
 ### 4.2 历史读数
 

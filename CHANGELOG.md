@@ -35,7 +35,7 @@
 
 - **StarEngine is no longer bundled (NeoForge 1.21.1 / Forge 1.20.1)**: the `jarJar` embedding was removed from
   both release lines, so the shipped jars no longer contain `META-INF/jarjar/`. StarEngine (`starengine`,
-  **1.1.0-pre.2**) is now a **standalone prerequisite** that must be installed in `mods` at the same version this
+  **1.1.0**) is now a **standalone prerequisite** that must be installed in `mods` at the same version this
   build was compiled against; a missing library fails startup with "Missing or unsupported mandatory dependencies".
   The compile-time and dev-run dependencies are unchanged (`implementation` / `modImplementation`), and
   `mods.toml` still declares `starengine` as a required dependency. The NeoForge 26.1.2 and Fabric 1.20.1 builds

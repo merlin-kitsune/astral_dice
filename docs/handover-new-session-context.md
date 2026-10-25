@@ -1,6 +1,6 @@
-# 新会话交接上下文（可整份贴给新会话）— 1.5.0-pre.6
+# 新会话交接上下文（可整份贴给新会话）— 1.5.0-rc.1
 
-你接手的是 MC 模组仓库 `F:\MCProject\astral_dice_multiloader`，分支 `multi-main`，版本 `1.5.0-pre.6`，Windows 原生环境（git bash 只承担 git；构建与测试台一律 PowerShell 7）。
+你接手的是 MC 模组仓库 `F:\MCProject\astral_dice_multiloader`，分支 `multi-main`，版本 `1.5.0-rc.1`（前置库 `1.1.0` 正式版），Windows 原生环境（git bash 只承担 git；构建与测试台一律 PowerShell 7）。
 
 ## 第 0 步：认领你自己的规则
 
@@ -21,13 +21,13 @@ git -C F:\MCProject\astral_dice_multiloader status --short -uall     # 应只剩
 Select-String -Path F:\MCProject\astral_dice_multiloader\*\gradle.properties -Pattern '^mod_version|^starengine_version'
 ```
 
-再按顺序读：`docs/agent/PROJECT-REFERENCE.md`（工程拓扑与命令）→ `docs/handover-1.5.0-pre.6-main.md`（滚动正本 §0/§5/§6）→ 需要历史批次再回 `docs/handover-1.5.0-pre.5-main.md` → 领域规格按需 `docs/agent/AGENTS-full.md`（行号总表 `docs/agent/AGENTS-TOC.md`）。
+再按顺序读：`docs/agent/PROJECT-REFERENCE.md`（工程拓扑与命令）→ `docs/handover-1.5.0-rc.1-main.md`（滚动正本 §0/§5/§6）→ 需要历史批次再回 `docs/handover-1.5.0-pre.5-main.md` → 领域规格按需 `docs/agent/AGENTS-full.md`（行号总表 `docs/agent/AGENTS-TOC.md`）。
 
 ## 基本盘
 
 - 四子项目同树：`neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1`；交付面**只 P0** = 前两条，P1 两线在 `1.5.0` 正式版前不验证、不移植。
-- 版本：四线 `mod_version = 1.5.0-pre.6+<加载器后缀>`；`starengine_version = 1.1.0-pre.2`；jar 内硬前置 `[1.1.0-pre.2,2.0.0)`，`META-INF/jarjar/` 计数 0（库**不内嵌**，必须成对投放）。
-- 产物：**pre.6 已重建并投放**（最新 2026-10-25 15:5x，含强化拒止物品形态（图标 = 用户美术稿 `images/强化拒止物品.png` 逐字节复制）+ owner 闸门 + 手册第 4/5 页，四目标 sha256 全 MATCH）——neo `astral_dice-1.5.0-pre.6+neoforge_1.21.1.jar` 2,586,610 B / `4686ec6d…c53fb4`（全 `4686ec6de2b637d22f8a9688e87c88180dad36f9f68f6d8a5a522714a8c53fb4`）；forge reobf 2,631,683 B / `dbccaf2c…35cd0`（全 `dbccaf2c16112681fe9e36494072021662ec0d119952401a52e4aeebb2535cd0`）；forge dev named 2,602,214 B / `19bff331…ca2e45`（投 `run/1.20.1/mods`）。再改源码后必须重跑 `build`（各线 `build` 已 `finalizedBy pushToDevRun/pushToGame/pushToRootBuild`，一条命令即可重建+投放）并重录 sha256。
+- 版本：四线 `mod_version = 1.5.0-rc.1+<加载器后缀>`；`starengine_version = 1.1.0`（**正式版**，前置库仓 `F:\MCProject\starengine` 提交 `16b48c4`）；jar 内硬前置 `[1.1.0,2.0.0)`（模板插值自动展开），`META-INF/jarjar/` 计数 0（库**不内嵌**，必须成对投放）。
+- 产物：**rc.1 已重建并投放**（2026-10-25 15:3x，行为等价 pre.6；四目标 sha256 全 MATCH）——neo `astral_dice-1.5.0-rc.1+neoforge_1.21.1.jar` 2,586,701 B / `65a22d700926fbddedf5ced803930c9ef74a709426a614a3f3f311e410450610`；forge reobf 2,631,740 B / `7ad926ca072b1c4c9e87218b366da4e70de0746fb2dd218c3ca2b2ff08b2d8dd`；forge dev named 2,602,271 B / `926800675c850d2fdea51bd94439e66f6ec96c766629e2104624907e46878123`（投 `run/1.20.1/mods`）。**前置库 jar 成对换成 1.1.0**（四处旧 `1.1.0-pre.2` 已删）：neo 98,734 B / `62c92595b012929d2fba6098cc2d71e6ab2a9a14ddaac52869e2bbec6b476ac8`；forge reobf 103,605 B / `73da2e599e60dab047e3640eb396f1db6f6eedd5a0dd95494afde471f43af304`；forge dev named 102,013 B / `e280aeab6c4b37c43468f7cce32a8bf64c70b6bdbcd2203f6c5600776f987e0e`。再改源码后必须重跑 `build`（各线 `build` 已 `finalizedBy pushToDevRun/pushToGame/pushToRootBuild`，一条命令即可重建+投放）并重录 sha256。
 - 未推送：本批提交**未 push**、**无 tag**（用户明确「暂不推送」）；push / tag / 实机 / 部署整合包均需用户逐次放行。
 - 构建：`JAVA_HOME=C:\Program Files\Zulu\zulu-21`；`.\gradlew.bat :<线>:classes|jar`；forge dev 必须 `build/devlibs` 的 **named** jar。
 - 测试台唯一入口：`pwsh -NoProfile -File scripts\test\mt.ps1 --version <线> --phase env|run|stop`；`--purge-saves` 会删 testworld。
@@ -37,8 +37,8 @@ Select-String -Path F:\MCProject\astral_dice_multiloader\*\gradle.properties -Pa
 1. 收编 Kimi 四批（此前未提交）：member-detective 筹码 5 张闸门 + bonnie 按标记层数返币；misaki 立牌 epic 化 / 星盘配方 / 死亡保留剑气；筹码商店**删除自动 ticker**、刷新只来自升星 +1（死亡保留）；规则分派（根 `AGENTS.md` 收口 + 两宿主规则文件 + `verify-split.py` 重写 + `AGENT-SPLIT` §六）。
 2. DSH：三语语言同步（用户手改 39 条 tooltip/msg 为权威 → 改写 21 条手册 guide 正文 → zh_cn 按 forge 自身键序同步 60 值 → 两线 en_us/ja_jp 各 60 键重译，格式保真全过）。
 2. DSH：`tooltip.astral_dice.sign.ame_note`（地雷女备注区）补 7 对染色码（`§e` 数值 / `§9` 时间 / `§d` 回落），正文未改。
-3. 版本 bump 到 `1.5.0-pre.6`。
-4. DSH：**星光兑换改造**（`1ff14106`，24 文件 +1380/−217）——装备时一次性发放 + 每次兑换后按佩戴补星（`StarLightManager` 4bit 账本严格记账，封顶只记实际量），经商立牌 +50% 保留；新增守门 `tools/verify_starlight_exchange_refill.py`（196 项 PASS）。**已双版本实机验证 5 组判据全 PASS**（读 `docs/handover-1.5.0-pre.6-main.md` §4.1）。
+3. 版本 bump：`1.5.0-pre.6` → **`1.5.0-rc.1`**（进入预发布版），同时前置库 `1.1.0-pre.2` → **`1.1.0` 正式版**（库仓 `16b48c4`；库内 Java 源码零改动），两仓各自提交、四平台 `publishToMavenLocal`、P0 两线重建并投放、**库 jar 与 mod 成对替换**（旧 pre.2 已删）。判据与未做项见 handover §4.1f（**rc.1 未实机**）。
+4. DSH：**星光兑换改造**（`1ff14106`，24 文件 +1380/−217）——装备时一次性发放 + 每次兑换后按佩戴补星（`StarLightManager` 4bit 账本严格记账，封顶只记实际量），经商立牌 +50% 保留；新增守门 `tools/verify_starlight_exchange_refill.py`（196 项 PASS）。**已双版本实机验证 5 组判据全 PASS**（读 `docs/handover-1.5.0-rc.1-main.md` §4.1）。
 5. DSH：**强化拒止改造**（P0 两线）——玩家近战命中力场第 5 次 ⇒ 回收成新物品 `astral_dice:repulsion`（不是效果牌），携带耐久 / 已存活 tick / 已提供充能；再次放置按**与效果牌同一份** `item/RepulsionPlacement.resolve` 恢复三份状态。两线 `:classes` 通过、两线 `runData` 生成模型、`verify_resource_integrity` PASS（157/157）、`check_lang_sync` EXIT 0、三语 + CHANGELOG 双文件已改。**未实机**（判据清单见 handover §4.1c）。
 6. DSH：**强化拒止双版本实机**（2026-10-25）：1.21.1 与 1.20.1 各跑 A–G 七项 —— 满耐久不画条 / 近战 5 次回收成物品（耐久 31 + elapsed + charge 3）/ 重放恢复三份状态 / 近寿命到点自行消失 / 非 owner 拒止 / 客户端耐久条 `barWidth 8` + tooltip 九行，**全 PASS**（读数见 handover §4.1c）。
 7. DSH：**强化拒止加一层拦截**（2026-10-25）—— `RepulsionEntity#hurt` 增加 owner 闸门：非放置者的近战命中被直接拒绝（红字「这个强化拒止不属于你」，不计命中 / 不播受击反馈），三语 lang 四处与 CHANGELOG 双文件同步改为「放置者近战命中 5 次」；两线编译/打包/投放全绿，**已双版本实机验证四态（放置 / 放置者命中 / 外来 owner 三次全拒 / 无主开放 / 放置者第 5 次回收）全 PASS**（读数见 handover §4.1c「补充拦截 · owner 闸门实机」）。

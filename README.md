@@ -70,10 +70,10 @@ This section covers everything that shipped across the 1.5.0 pre-release and rel
 
 | Support | Subproject | Minecraft | Loader | Java | Version | Patchouli |
 |---|---|---|---|---|---|---|
-| ✅ | `neoforge-1.21.1` | 1.21.1 | NeoForge 21.1.235 | 21 | 1.5.0-pre.5 | ✅ |
-| ✅ | `forge-1.20.1` | 1.20.1 | Forge 47.4.10 | 17 | 1.5.0-pre.5 | ✅ |
-| ✅ | `neoforge-26.1.2` | 26.1.2 | NeoForge 26.1.2.109 | 25 | 1.5.0-pre.5 | ✅ |
-| ✅ | `fabric-1.20.1` | 1.20.1 | Fabric Loader 0.19.5 | 17 | 1.5.0-pre.5 | ✅ |
+| ✅ | `neoforge-1.21.1` | 1.21.1 | NeoForge 21.1.235 | 21 | 1.5.0-rc.1 | ✅ |
+| ✅ | `forge-1.20.1` | 1.20.1 | Forge 47.4.10 | 17 | 1.5.0-rc.1 | ✅ |
+| ✅ | `neoforge-26.1.2` | 26.1.2 | NeoForge 26.1.2.109 | 25 | 1.5.0-rc.1 | ✅ |
+| ✅ | `fabric-1.20.1` | 1.20.1 | Fabric Loader 0.19.5 | 17 | 1.5.0-rc.1 | ✅ |
 
 - `neoforge-1.21.1` and `forge-1.20.1` are the release lines. They stay at feature parity, and both jars ship with every GitHub Release.
 - `neoforge-26.1.2` is the migration line. It never gets its own tag or Release; its jar ships as a third attachment on the release lines' Release, because CI builds all lines together (`.github/workflows/build.yml`). There is no Iron's Spells 'n Spellbooks integration here, since upstream ships no 26.1.x build.
@@ -83,7 +83,7 @@ This section covers everything that shipped across the 1.5.0 pre-release and rel
 
 | Dependency | Requirement |
 |---|---|
-| Required, install separately | **StarEngine** (mod id `starengine`, currently **1.1.0-pre.2**). On **NeoForge 1.21.1** and **Forge 1.20.1** the library is **no longer bundled**: put `starengine-neoforge-1.21.1-<version>.jar` / `starengine-forge-1.20.1-<version>.jar` into `mods` next to this mod, at the same version this build was compiled against. A missing library fails startup with "Missing or unsupported mandatory dependencies". (The NeoForge 26.1.2 and Fabric 1.20.1 builds still embed it for now.) |
+| Required, install separately | **StarEngine** (mod id `starengine`, currently **1.1.0**). On **NeoForge 1.21.1** and **Forge 1.20.1** the library is **no longer bundled**: put `starengine-neoforge-1.21.1-<version>.jar` / `starengine-forge-1.20.1-<version>.jar` into `mods` next to this mod, at the same version this build was compiled against. A missing library fails startup with "Missing or unsupported mandatory dependencies". (The NeoForge 26.1.2 and Fabric 1.20.1 builds still embed it for now.) |
 | Required | Curios API: 5.x on 1.20.1, 9+ on 1.21.1, 15+ on 26.1.2. A missing or too-old Curios is rejected during dependency sorting. This requirement is declared by this mod; StarEngine only uses Curios as a compile-time dependency on the Forge side. |
 | Required, 1.20.1 only | A Mixin runtime: either **Mixin Booster 0.1.3 or newer**, or **Sinytra Connector**. If the pack already ships Connector, nothing else is needed, because Connector bundles the same runtime and Mixin Booster steps aside. When neither is present the mod refuses to start and explains how to install one. An outdated Mixin Booster is rejected. |
 | Required, fabric-1.20.1 only | A different set, listed under [Fabric prerequisites](#fabric-1201-prerequisites). The Curios and Mixin Booster chain does not apply on this line. |
@@ -111,7 +111,7 @@ This section covers everything that shipped across the 1.5.0 pre-release and rel
 
 - **GitHub Releases**: [merlin-kitsune/astral_dice/releases](https://github.com/merlin-kitsune/astral_dice/releases). Each release carries three jars: the two release lines plus the 26.1.2 jar.
 - **Fabric port line**: published as its own `fabric-<version>` pre-release, marked as a pre-release and never as "latest", carrying only its own jar.
-- **CurseForge**: the builds go to the main project (`astral-dice`, project id `1662159`). StarEngine has its own project (`starengine`, id `1755415`); on **NeoForge 1.21.1** and **Forge 1.20.1** it is not bundled, so players must install that separate jar themselves (the 26.1.2 and Fabric builds still embed it). Version numbers keep the `+<loader>_<MC>` suffix (for example `1.5.0-pre.5+neoforge_1.21.1`), and the release channel follows the version suffix. Modrinth publishing was permanently dropped on 2026-10-23; CurseForge is the only store channel.
+- **CurseForge**: the builds go to the main project (`astral-dice`, project id `1662159`). StarEngine has its own project (`starengine`, id `1755415`); on **NeoForge 1.21.1** and **Forge 1.20.1** it is not bundled, so players must install that separate jar themselves (the 26.1.2 and Fabric builds still embed it). Version numbers keep the `+<loader>_<MC>` suffix (for example `1.5.0-rc.1+neoforge_1.21.1`), and the release channel follows the version suffix. Modrinth publishing was permanently dropped on 2026-10-23; CurseForge is the only store channel.
 - **Build artefacts**: `astral_dice-<version>+neoforge_1.21.1.jar`, `+forge_1.20.1.jar`, `+neoforge_26.1.2.jar` and `+fabric_1.20.1.jar`, each under its subproject's `build/libs/`. GitHub Release tags use the bare base version, while the Fabric line uses a `fabric-<version>` pre-release tag.
 
 ## Build
