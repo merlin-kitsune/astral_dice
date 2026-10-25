@@ -617,17 +617,17 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(AstralRarities.rare())));
 
-    // 银行卡-余额少:装备期间星光基础值 +4(下限)
+    // 银行卡-余额少:装备时发放星光 4(卸下按账本扣回,兑换成功后按佩戴补充)
     public static final DeferredItem<Item> BANK_CARD_LOW = registerItem("bank_card_low_chip",
             () -> new BankCardChipItem(new Item.Properties()
                     .stacksTo(1)
-                    .rarity(AstralRarities.rare()), BankCardChipItem.BASE_LOW));
+                    .rarity(AstralRarities.rare()), BankCardChipItem.STARLIGHT_LOW));
 
-    // 银行卡-余额多:装备期间星光基础值 +7(下限)
+    // 银行卡-余额多:装备时发放星光 7(卸下按账本扣回,兑换成功后按佩戴补充)
     public static final DeferredItem<Item> BANK_CARD_HIGH = registerItem("bank_card_high_chip",
             () -> new BankCardChipItem(new Item.Properties()
                     .stacksTo(1)
-                    .rarity(AstralRarities.epic()), BankCardChipItem.BASE_HIGH));
+                    .rarity(AstralRarities.epic()), BankCardChipItem.STARLIGHT_HIGH));
 
     // 银行卡-用不完:装备时星光 +3;每次骰神赐福结束后,自身及团队所有成员获得 3 星币
     public static final DeferredItem<Item> BANK_CARD_UNLIMITED = registerItem("bank_card_unlimited_chip",

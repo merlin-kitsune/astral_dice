@@ -918,16 +918,17 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
 
     /**
      * 星光兑换的真实数值证据：{@code get=..:base=..:spendable=..:cd=..:ready=..}；仅供测试探针读取。
-     * <p>{@code get/base/spendable} 与 {@link #canExchange()} 同源；{@code cd} = 本轮剩余秒数（DataSlot[6]）、
-     * {@code ready} = {@link #canExchangeNow()}（任务O §1.4 起含冷却）⇒ 机器行可自证「为何不可用」。
+     * <p>{@code get/spendable} 均取完整当前星光（两者相等，与 {@link #canExchange()} 同源）；
+     * {@code base} 仅为探针兼容字段：就绪路径恒 {@code 0}，未就绪沿用哨兵 {@code -1}。
+     * <p>{@code cd} = 本轮剩余秒数（DataSlot[6]）、{@code ready} = {@link #canExchangeNow()}
+     * （任务O §1.4 起含冷却）⇒ 机器行可自证「为何不可用」。
      */
     public String starlightState() {
         if (this.minecraft == null || this.minecraft.player == null) {
             return "get=-1:base=-1:spendable=-1:cd=-1:ready=-1";
         }
         int get = StarLightManager.get(this.minecraft.player);
-        int base = StarLightManager.getBasePoints(this.minecraft.player);
-        return "get=" + get + ":base=" + base + ":spendable=" + Math.max(0, get - base)
+        return "get=" + get + ":base=0:spendable=" + get
                 + ":cd=" + this.menu.transferCooldownSeconds()
                 + ":ready=" + (canExchangeNow() ? 1 : 0);
     }
@@ -1026,18 +1027,15 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
     /**
      * 左按钮（星光兑换星币）可用条件 —— 任务N′ §2.4。
      * <p>与服务器 {@code CardShopMenu#tryExchange} → {@code ResourceConversion.starlightToStarCoins} 的
-     * 拒绝口径**逐字同源**：可自由支配星光（= 当前星光 − 银行卡提供的基础星光，后者不可兑换）
-     * ≥ {@code ResourceConversion.STARLIGHT_PER_COIN}(2) ⇒ 至少能换到 1 枚星币。
-     * <p>两端判定必然一致：星光 attachment 已 sync 到客户端（见 {@code ModAttachments.PLAYER_STARLIGHT}），
-     * 而基础星光只看 Curios 槽位（客户端同样可见）。
+     * 拒绝口径**同源**：当前星光 ≥ {@code ResourceConversion.STARLIGHT_PER_COIN}(2) ⇒ 至少能换到 1 枚星币。
+     * <p>两端判定必然一致：星光 attachment 已 sync 到客户端（见 {@code ModAttachments.PLAYER_STARLIGHT}）。
      * <p>玩家尚未就绪时**不**判不可用（返回 true）：那只是「还读不到数据」，不该把按钮画灰。
      */
     private boolean canExchange() {
         if (this.minecraft == null || this.minecraft.player == null) {
             return true;
         }
-        int spendable = Math.max(0, StarLightManager.get(this.minecraft.player)
-                - StarLightManager.getBasePoints(this.minecraft.player));
+        int spendable = StarLightManager.get(this.minecraft.player);
         return spendable >= ResourceConversion.STARLIGHT_PER_COIN;
     }
 

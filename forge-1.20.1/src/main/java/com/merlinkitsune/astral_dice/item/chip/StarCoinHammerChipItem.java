@@ -33,6 +33,8 @@ public class StarCoinHammerChipItem extends BaseChipItem {
     public static final int MAX_ATTACK_BONUS = 100;
     /** 星币袋折算星币数 */
     public static final int COINS_PER_BAG = 9;
+    /** 装备时发放的星光量(一次性) */
+    public static final int STARLIGHT_ON_EQUIP = 5;
 
     public StarCoinHammerChipItem(Properties properties) {
         super(properties);
@@ -215,9 +217,9 @@ public class StarCoinHammerChipItem extends BaseChipItem {
         // ⚠️ 第 3 参 stack 才是刚装上的那件(恒非空);旧代码把空槽守卫写在第 3 参上 ⇒ 恒 return、星光从未发放。
         // 一次性发放改由「装备会话闸门」判定:Curios 登录 / 重生 / 切维度后会重放 onEquip
         // (重放时 prevStack 恰好是空栈,空槽守卫拦不住)⇒ 见 StarLightManager#claimEquipGrant。
-        // 装备时星光 +5(上限由 StarLightManager 统一管理);走统一发放入口 —— 把**实际**抬升量记账,
-        // 卸除时按账本严格扣回(见 StarLightManager#revokeStarlightOnUnequip)。
-        StarLightManager.grantStarlightOnEquip(player, StarLightManager.GRANT_BIT_STAR_COIN_HAMMER, 5);
+        // 装备时发放 STARLIGHT_ON_EQUIP 点星光(上限由 StarLightManager 统一管理);走统一发放入口 ——
+        // 把**实际**抬升量记账,卸除时按账本严格扣回(见 StarLightManager#revokeStarlightOnUnequip)。
+        StarLightManager.grantStarlightOnEquip(player, StarLightManager.GRANT_BIT_STAR_COIN_HAMMER, STARLIGHT_ON_EQUIP);
     }
 
     // 卸下筹码:清除当前赐福的攻击加成(下次装备重新计算)+ 按账本严格扣除装备时获得的星光

@@ -21,6 +21,9 @@ import com.merlinkitsune.starengine.combat.PartyRelations;
  * (由 {@link #onBlessingEnd} 在赐福结束时调用)。
  */
 public class BankCardUnlimitedChipItem extends BaseChipItem {
+    /** 装备时发放的星光量(一次性) */
+    public static final int STARLIGHT_ON_EQUIP = 3;
+
     /** 赐福结束后发放的星币数量 */
     public static final int REWARD_COINS = 3;
 
@@ -48,9 +51,9 @@ public class BankCardUnlimitedChipItem extends BaseChipItem {
         // 一次性发放改由「装备会话闸门」判定:Curios 登录 / 重生 / 切维度后会重放 onEquip
         // (重放时 prevStack 恰好是空栈,空槽守卫拦不住),没有闸门就会每次登录重发 3 层
         // ⇒ 见 StarLightManager#claimEquipGrant。
-        // 装备时星光 +3(上限由 StarLightManager 统一管理);走统一发放入口 —— 把**实际**抬升量记账,
-        // 卸除时按账本严格扣回(见 StarLightManager#revokeStarlightOnUnequip)。
-        StarLightManager.grantStarlightOnEquip(player, StarLightManager.GRANT_BIT_BANK_CARD_UNLIMITED, 3);
+        // 装备时发放 STARLIGHT_ON_EQUIP 点星光(上限由 StarLightManager 统一管理);走统一发放入口 ——
+        // 把**实际**抬升量记账,卸除时按账本严格扣回(见 StarLightManager#revokeStarlightOnUnequip)。
+        StarLightManager.grantStarlightOnEquip(player, StarLightManager.GRANT_BIT_BANK_CARD_UNLIMITED, STARLIGHT_ON_EQUIP);
     }
 
     // 卸下筹码:释放发放闸门 ⇒ 再次装备可再发

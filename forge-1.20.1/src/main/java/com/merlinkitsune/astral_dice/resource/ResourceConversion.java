@@ -22,25 +22,26 @@ public final class ResourceConversion {
      * 星光 → 星币(按 2:1 比例)。
      *
      * @param player 玩家
-     * @param amount 用于兑换的星光数;-1 = 消耗全部可支配星光(余数保留);其他 = 最多消耗 amount 点。
-     *               仅「当前值超过基础值」的部分可被兑换(银行卡等提供的下限不可兑换出去),无实际扣除则阻止兑换
+     * @param amount 用于兑换的星光数;-1 = 消耗全部星光(余数保留);其他 = 最多消耗 amount 点。
+     *               无实际扣除则阻止兑换
      * @return 实际获得的星币数
      */
     public static int starlightToStarCoins(Player player, int amount) {
         if (player.level().isClientSide()) return 0;
-        // 可自由支配的星光 = 当前值 − 基础值(银行卡等提供的"下限"不可被兑换出去)。
-        // 否则 spend 的扣除会被 set() 的下限抬回,出现"净扣 0 仍按请求量发币"的白嫖路径。
-        int spendable = Math.max(0, StarLightManager.get(player) - StarLightManager.getBasePoints(player));
+        // 可兑换的星光 = 当前值(星光只有发放与消耗,不再有不可兑换的下限)
+        int spendable = StarLightManager.get(player);
         int use = amount < 0 ? spendable : Math.min(amount, spendable);
         int coins = use / STARLIGHT_PER_COIN;
         if (coins <= 0) return 0;
-        // 按「实际扣除量」发币;若实际没有任何扣除(理论上不可达),阻止兑换
+        // 先扣:按「实际扣除量」发币;若实际没有任何扣除(理论上不可达),阻止兑换
         int before = StarLightManager.get(player);
         StarLightManager.spend(player, coins * STARLIGHT_PER_COIN);
         int gained = Math.max(0, before - StarLightManager.get(player)) / STARLIGHT_PER_COIN;
         // ⚠️ 2026-10-08 用户裁决「重写 ATM 机筹码」:原「兑换量 +40%」已移除(ATM 现为转账奖励筹码);
         // 星光兑换的加成改由经商立牌被动「传奇商人」第 5 条承担(+50%,结算在 CardShopMenu#tryExchange)。
         if (gained > 0) {
+            // 兑换成功后才按当前佩戴补充星光(普通 add,不写装备账本)
+            StarLightManager.replenishOnExchange(player);
             giveItem(player, new ItemStack(ModItems.STAR_COIN.get(), gained));
         }
         return gained;
