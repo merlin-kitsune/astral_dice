@@ -10,7 +10,7 @@
 3. 本批收编 **Kimi 上一轮四批未提交改动**（member-detective / misaki 立牌 / 筹码商店刷新源 / 规则分派），并完成 **DSH 三语语言同步** + **地雷女备注区染色修复**。
 4. 判据：P0 两线 `:classes` `BUILD SUCCESSFUL in 4s`；`check_lang_sync` EXIT=0；`audit_patchouli_keys` 悬空 0；`verify-split` EXIT=0；三道专项 python 判据 PASS 26/12/14；`verify_chip_shop_ui` `CHIPUI_TOTAL_FAIL: 0`。
 5. **rc.1 产物已重建并投放**（2026-10-25 15:3x，`:neoforge-1.21.1:build :forge-1.20.1:build` 触发 `pushToDevRun/pushToGame/pushToRootBuild`）——四个目标（`run/1.21.1/mods`、`run/1.20.1/mods`=dev named、两个 P0 整合包）逐处 sha256 **MATCH**；**前置库 jar 成对换成 `1.1.0`**（四处旧 `1.1.0-pre.2` 已删），读数见 §2 与 §4.1f。
-6. 本批实机：**星光兑换 5 组 + 筹码商店刷新源 / 文案（38 tooltip + 21 手册）/ `ame_note` 染色 + 强化拒止物品形态 7 项 + owner 闸门四态，双版本全 PASS**（2026-10-25，§4.1 / §4.1b / §4.1c）。**rc.1 版本升级本身未实机**（只做构建 / 打包 / 投放 / 静态判据，§4.1f）。`scripts/test/cases/CHIP-REGEN-*.json`（等 tick 自动 +1）随 ticker 删除失效，**已按用户裁决退役（两文件删除）**（§5-3）。
+6. 本批实机：**星光兑换 5 组 + 筹码商店刷新源 / 文案（38 tooltip + 21 手册）/ `ame_note` 染色 + 强化拒止物品形态 7 项 + owner 闸门四态，双版本全 PASS**（2026-10-25，§4.1 / §4.1b / §4.1c）。**rc.1 版本升级已双版本冒烟实机 PASS**（§4.1f-a：两线 mod/库版本号正确、`Missing or unsupported mandatory dependencies` 计数 0、1.20.1 放置强化拒止实体 hp 50）（只做构建 / 打包 / 投放 / 静态判据，§4.1f）。`scripts/test/cases/CHIP-REGEN-*.json`（等 tick 自动 +1）随 ticker 删除失效，**已按用户裁决退役（两文件删除）**（§5-3）。
 7. 规则分派已落地：根 `AGENTS.md` 为 41 行入口，Kimi → `docs/agent/AGENTS-kimi.md`，DSH → `docs/agent/AGENTS-dsh.md`，Codex → `docs/agent/AGENT-SPLIT.md`（只读）。
 8. 未处置：陈旧锁 `F:\MCProject\.agent-locks\kimi.lock`（`PID=26580` / `TASK=misaki-chip-shop-balance-p0`，进程已不存在）—— 按规则不自行删，交用户裁决。
 
@@ -250,6 +250,14 @@ forge dev named 102,013 B / `e280aeab6c4b37c43468f7cce32a8bf64c70b6bdbcd2203f6c5
 2. **P1 两线（26.1.2 / fabric）只做源码 bump，未构建未验证**（库侧四平台 jar 已构建并发布 mavenLocal，mod 侧 P1 产物未重建）。
 3. 未 push、未打 tag（用户明确「暂不推送」）。
 
+#### 4.1f-a 双版本冒烟实机（2026-10-25 15:39–15:43）—— 全 PASS
+
+- **1.21.1**：`--phase launch` ⇒ `MT_LAUNCH: OK (54s)`；mod 列表 `Astral Dice 1.5.0-rc.1+neoforge_1.21.1`（`latest.log:24`）/ `StarEngine 1.1.0+neoforge_1.21.1`（`:46`）。AutoJS `server/eval_js`：`astral=1.5.0-rc.1+neoforge_1.21.1`、`lib=1.1.0+neoforge_1.21.1`、`repReg=true`、`cardReg=true`、`/give astral_dice:repulsion` 后读 `dur=50 / age=0 / charge=0`。
+- **1.20.1**：`--phase env` ⇒ `MT_WORLD: OK — 种子快恢复`；`--phase launch` ⇒ `MT_LAUNCH: OK (52s)`。AutoJS：`astral=1.5.0-rc.1+forge_1.20.1`、`lib=1.1.0+forge_1.20.1`、`repReg/cardReg=true`；背包槽 1 得到 `repulsion ×1 / dur=50`，`use(...)` 放置成功 ⇒ **实体 1 个、hp 50**，创造模式不消耗（手持仍 `repulsion ×1`）。
+- **版本门槛判据**：两线 `latest.log` 里 `Missing or unsupported mandatory dependencies` / `MissingDependency` / `Incompatible mods` 计数 **0** ⇒ `[1.1.0,2.0.0)` 对库 `1.1.0` 正确放行。
+- **已知非阻断告警（来源是 testworld 种子模板，不是 rc.1）**：1.20.1 `latest.log:259-262` Forge 打印 `The following mods have version differences that were not resolved: astral_dice (1.3.2+forge_1.20.1 -> 1.5.0-rc.1+forge_1.20.1) / starengine (1.0.4+forge_1.20.1 -> 1.1.0+forge_1.20.1)`，随后 `Injecting existing registry data` 与一批 `Object did not get ID it asked for`；种子模板的 `level.dat` 记录的是旧版本，registry 重新注入后正常进世界。
+- **收尾**：1.21.1 `MT_STOP: OK (1s)`；1.20.1 `--phase stop --force --purge-saves` ⇒ `MT_CLEANUP_SAVES: PURGED 1` / `MT_CLEANUP_RESULT: OK` / `MT_STOP: OK (1s)`；`java.exe` 仅剩两个 Gradle 守护（70556 Zulu 21 / 32252 toolchain 17），`.agent-locks` 空。
+
 ### 4.2 历史读数
 
 pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（含 4.8 pre.4 全量双线 10 跑 10 PASS、4.11–4.17 pre.5 各批、4.19 Jade 图标留白版）。
@@ -271,6 +279,8 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 7. **陈旧锁 `kimi.lock`**（`PID=26580` 已不存在）——不自行删，交用户裁决。
 8. ~~强化拒止物品形态未实机~~ → **已完成**（2026-10-25 15:0x，双版本 7 项判据全 PASS，§4.1c）。owner 闸门（非放置者命中被拒）也已双版本实机四态 PASS（§4.1c 末节，2026-10-25 15:3x）。仍有两个**待用户裁决**的小项：~~(a) 是否给新物品加帕秋莉手册第 4 页~~ → **已完成**（2026-10-25 §4.1e：同条目追加第 4/5 页，两线 × 三语）；(b) `card.barricade` 的 6 处 `§e20:00§7` —— **用户裁决「路障不动」，保持原样**（2026-10-25），`tooltip_color_audit` 的 144 处存量继续保留。
 
+
+9. **`mt_env` 的 modernfix 钉子在整合包升版后 BLOCKED**（2026-10-25 实测）：`scripts/test/mt_env.ps1:48` 钉 `5.27.26`、整合包已是 `5.27.27` ⇒ `--phase env` EXIT 11 中断（详见 §6 坑 19）。**改测试资产需用户裁决**（本轮跳 env 直接 launch 完成冒烟）。
 ### Minor
 
 1. `docs/handover-2026-10-24-member-detective.md` 等 Kimi 批次文档已入库，措辞按 2026-10-24 事实；后续改动若改变其中数字需回填。
@@ -298,6 +308,8 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 17. **`run/<线>/mods` 里的 astral_dice jar 会遮蔽 dev classes ⇒ datagen 静默不产出**（2026-10-25 实测）：`runData` 日志里 `Item Models: astral_dice finished` 与 `HashCache new count ... written: 0/1` 都正常，但新 `basicItem(...)` 对应的 `src/generated/.../models/item/xxx.json` **不存在**。根因：`run/1.21.1/mods/astral_dice-1.5.0-pre.6+neoforge_1.21.1.jar` 与 `neoforge-1.21.1/build/classes/java/main` 都声明 modid `astral_dice`，`UniqueModListBuilder` 选的是 **jar**（日志 `Selected file astral_dice-...jar for modid astral_dice`）⇒ 跑的是旧 jar 里的旧 `ModItemModelProvider`。修法：先把 `run/<线>/mods/astral_dice-*.jar` 移出（本轮移到 `temp/mods-bak-datagen/`），跑 `--rerun-tasks :<线>:runData`，再把 jar 拷回。
 18. **`run_code` 自带 120s 程序级 deadline，`tools.pwsh` 的 `timeoutMs` 覆盖不到它** ⇒ 长任务（两线 `runData`、双线 `build`）必须同时给 `run_code` 的 `timeoutMs`，否则进程在中途被杀、日志看似「跑完了」。另：**bundled python 在本会话无法写文件**（PIL `im.save()` 对 `temp/` 与 `src/main/resources/` 均 `PermissionError: [Errno 13]`）⇒ 生成 png/二进制一律用 node（`fs` + `zlib` 手写 PNG 编码器），不要走 python 写盘。
 13. pre.5 及更早的 32 条坑见 `docs/handover-1.5.0-pre.5-main.md` §6。
+
+19. **`mt_env` 的 modernfix 钉子会因整合包升版而 BLOCKED（2026-10-25 实测）**：`scripts/test/mt_env.ps1:48` 的 `$script:NeoForgeMods` 写死 `*modernfix-neoforge*5.27.26*.jar`（Target `modernfix-neoforge-5.27.26+mc1.21.1.jar`），而整合包已升到 **5.27.27** ⇒ `--phase env` 直接 `MT_MODS: BLOCKED — 整合包缺少 *modernfix-neoforge*5.27.26*.jar`（EXIT **11**），整条 env 中断（Sodium/Iris/KubeJS 都还没走到）。本轮绕过：跳过 env 直接 `--phase launch`（`run/1.21.1/mods` 已有完整 14 jar 且库为 1.1.0）。**修法待裁决**：把钉子与 Target 同步到 5.27.27，或改成不带补丁号的宽匹配（`*modernfix-neoforge*5.27.*.jar`）。
 
 ## 7 关键路径（命令）
 
