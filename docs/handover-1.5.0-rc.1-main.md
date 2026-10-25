@@ -465,7 +465,9 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 13. **多萝西队友加成 = 状态效果【交际花】，不再是瞬态修饰符**（2026-10-25，§4.1n）：唯一事实源改为 `DorothySocialiteEffect` 自带的 `ATTACK_DAMAGE +1` 修饰符，**固定 1:00、从获得时起算、与主动窗口解耦**；窗口结束不回收、重复获得只刷时长。旧的 `dorothy_partner_attack` 修饰符、`applyTempAttack`、`clearPartnerBuffs`、`DOROTHY_PARTNERS` 节流表均已删除（§5 里若有旧描述按本条读）。P1 两线无该立牌，无移植欠账。
 
 14. **`1.5.0-rc.2` 版本已落盘（2026-10-25，§4.1o）**：四线 `mod_version = 1.5.0-rc.2+<后缀>`、`release/1.5.0-rc.2/` 三份玩家更新日志（版本串已换，内容 = rc.1 + 调酒师治疗按张数 + 【交际花】）、`README*.md` 版本列同步；P0 两线已重建并投放四目标（§2 产物现状）。**未 push、无 tag**；若日后打 `1.5.0-rc.2` tag，CI 从 `release/1.5.0-rc.2/` 取正文（已备好）。**实机未覆盖项见 §4.1o 末行**（真实按键施放 / 死亡重登 / 窗口内反复进出）。
-## 6 坑（本批新增，后续继续追加）
+
+15. **`tools/curseforge-description.md` 已删除（2026-10-25，用户裁决）**：CF 项目说明已由用户**手动粘贴**到作者后台（`https://authors.curseforge.com/#/projects/1662159/description`），仓库内草稿（含本轮中英两版全文 + 一句话 Summary）随之删除，避免与线上正文双份漂移。**CF 的 Description 字段至今无法经 API 修改**（`.curseforge/token` 只是 legacy upload token，Core API 也没有该端点，见 `AGENTS-full.md:2294`），今后要改说明一律在 CF 作者后台直接改，仓库不再留副本。历史文档里对 `tools/curseforge-description.md` 的引用（`docs/AGENT-HANDOFF.md:106` / `:593` / `:617`、`docs/agent/AGENTS-full.md:4034`、`docs/prerelease-check-1.3.7-hotfix.md:48` / `:84`、`docs/handover-1.5.0-pre.5-main.md:654`）一律读作**历史记录**，文件本身已不存在。
+
 ## 6 坑（本批新增，后续继续追加）
 
 1. **`git show HEAD:<file>` 是 LF**（仓库存 LF、工作树 CRLF 由 autocrlf 转换）⇒ 行级改写先 `replace(/\r\n/g,"\n").split("\n")` 再 `join("\r\n")`。
