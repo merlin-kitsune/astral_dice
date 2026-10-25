@@ -45,7 +45,10 @@ Initialize-MtConsole
 $script:NeoForgeMods = @(
     @{ Pattern = '*sodium-neoforge*0.8.13*.jar'; Target = 'sodium-neoforge-0.8.13+mc1.21.1.jar' }
     @{ Pattern = '*iris-neoforge*1.8.14*.jar'; Target = 'iris-neoforge-1.8.14-beta.1+mc1.21.1.jar' }
-    @{ Pattern = '*modernfix-neoforge*5.27.26*.jar'; Target = 'modernfix-neoforge-5.27.26+mc1.21.1.jar' }
+    # 2026-10-25 用户裁决「放宽」：整合包 ModernFix 已 5.27.27（原来这里钉死 5.27.26 ⇒ `--phase env`
+    # 直接 MT_MODS: BLOCKED / EXIT 11）。改为**同 5.27.x 家族通配**，落位名按源文件名派生（见下方复制循环），
+    # 这样整合包小版本再变也不需要改测试资产；`Target` 只作为派生失败时的兜底值。
+    @{ Pattern = '*modernfix-neoforge*5.27.*.jar'; Target = 'modernfix-neoforge-5.27.27+mc1.21.1.jar'; Cleanup = 'modernfix-neoforge-*' }
 )
 
 # ── 1.21.1 探针宿主（KubeJS + Rhino + Architectury API）──────────────────────
@@ -2090,13 +2093,28 @@ function Invoke-MtEnvMods {
         }
         if ($null -eq $src) { $missing += $spec.Pattern; continue }
 
-        $dst = Join-Path $p.mods_dir $spec.Target
+        # 落位名按**源文件名派生**（剥掉整合包的 `[中文] ` 前缀），`Target` 只在派生为空时兜底 ——
+        # 2026-10-25 起 ModernFix 用 `5.27.*` 通配，版本小变动不再需要改这张表（否则会写出
+        # 「文件名 5.27.26、内容 5.27.27」的骗人 jar）。
+        $landName = ($src.Name -replace '^\[[^\]]+\]\s*', '')
+        if ([string]::IsNullOrWhiteSpace($landName)) { $landName = $spec.Target }
+        $dst = Join-Path $p.mods_dir $landName
+
+        # 同族旧版本必须先清掉：`run/<线>/mods` 里同时出现两个 ModernFix 会 FML 直接起不来。
+        if ($spec.ContainsKey('Cleanup')) {
+            foreach ($stale in @(Get-ChildItem -LiteralPath $p.mods_dir -File -Filter $spec.Cleanup -ErrorAction SilentlyContinue)) {
+                if ($stale.Name -ne $landName) {
+                    Remove-Item -LiteralPath $stale.FullName -Force
+                    Write-MtLine "MT_MODS: 清理旧同族 $($stale.Name)"
+                }
+            }
+        }
         if (Test-Path -LiteralPath $dst -PathType Leaf) {
             $di = Get-Item -LiteralPath $dst
             if ($di.LastWriteTimeUtc -ge $src.LastWriteTimeUtc) { continue }
         }
         Copy-Item -LiteralPath $src.FullName -Destination $dst -Force
-        $copied += $spec.Target
+        $copied += $landName
     }
 
     if ($missing.Count -gt 0) {

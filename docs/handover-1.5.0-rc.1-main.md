@@ -12,7 +12,7 @@
 5. **rc.1 产物已重建并投放**（2026-10-25 15:3x，`:neoforge-1.21.1:build :forge-1.20.1:build` 触发 `pushToDevRun/pushToGame/pushToRootBuild`）——四个目标（`run/1.21.1/mods`、`run/1.20.1/mods`=dev named、两个 P0 整合包）逐处 sha256 **MATCH**；**前置库 jar 成对换成 `1.1.0`**（四处旧 `1.1.0-pre.2` 已删），读数见 §2 与 §4.1f。
 6. 本批实机：**星光兑换 5 组 + 筹码商店刷新源 / 文案（38 tooltip + 21 手册）/ `ame_note` 染色 + 强化拒止物品形态 7 项 + owner 闸门四态，双版本全 PASS**（2026-10-25，§4.1 / §4.1b / §4.1c）。**rc.1 版本升级已双版本冒烟实机 PASS**（§4.1f-a：两线 mod/库版本号正确、`Missing or unsupported mandatory dependencies` 计数 0、1.20.1 放置强化拒止实体 hp 50）（只做构建 / 打包 / 投放 / 静态判据，§4.1f）。`scripts/test/cases/CHIP-REGEN-*.json`（等 tick 自动 +1）随 ticker 删除失效，**已按用户裁决退役（两文件删除）**（§5-3）。
 7. 规则分派已落地：根 `AGENTS.md` 为 41 行入口，Kimi → `docs/agent/AGENTS-kimi.md`，DSH → `docs/agent/AGENTS-dsh.md`，Codex → `docs/agent/AGENT-SPLIT.md`（只读）。
-8. 未处置：陈旧锁 `F:\MCProject\.agent-locks\kimi.lock`（`PID=26580` / `TASK=misaki-chip-shop-balance-p0`，进程已不存在）—— 按规则不自行删，交用户裁决。
+8. ~~未处置：陈旧锁 `F:\MCProject\.agent-locks\kimi.lock`~~ → **已结案（2026-10-25 用户裁决「删」）**：实测 `.agent-locks` 目录**已空**（`Get-ChildItem -Force` 无条目），`kimi.lock`（原 `PID=26580` / `TASK=misaki-chip-shop-balance-p0`）已不存在，无需再删；该目录从此只放当轮活锁。
 9. **HUD 攻击力口径已统一**（2026-10-25，§4.1g）：攻击修饰器链上 23（neo）/ 24（forge）处客户端模板守卫收敛为 `skipOnClient(ctx)` + 显示口径标记 `DiceCombatContext.displaySnapshot` ⇒ HUD 现在含全部攻击力修饰器，只排除手持武器与骰战随机点数；新增守门 `python tools/verify_hud_attack_parity.py` ⇒ `GATE: PASS (21 项全部满足)`，两线已 `:build` 并把六处产物刷到新 jar；**已双版本实机 PASS**（§4.1i：装电流剑 + 充能 8 ⇒ client 显示 3；清充能回 1；主手持剑仍 3）。
 10. **防御力折算已改为 1:1**（2026-10-25，§4.1h）：所有「防御力 +X」的站点改走单一入口 `armorValueForDefensePoints(points, side)`（= 点数 ÷ 库护甲系数，玩家 ≈3.333 护甲/点、怪物 2.5）——此前写死 `× 2.0` 只兑现 60%（玩家）/ 80%（怪物），属平衡性红线；同时把 12 份指南 lang 的基数 4 改为 2。新增守门 `python tools/verify_defense_unit_parity.py` ⇒ `GATE: PASS（42 项全部满足）`（新增 D9 取整口径），两线 `:classes` 通过、`:build` 已重建并投放四目标，**双版本实机 PASS**（§4.1i：+8 防御力 ⇒ 防御力 10；同批修掉 `getArmorValue()` 取整吞点）；玩家侧实际强度是上一版的 **×1.667**。
 11. **创造栏收尾（2026-10-25，§4.1j）**：强化拒止**物品**已从创造栏与 JEI 隐藏（JEI 物品列表直接取自创造栏，**未加任何 JEI 代码**）；筹码在组序不变前提下改为**组内稀有度升序**（67 个零增删）。守门 `tools/verify_creative_tab_chip_order.py` PASS + 变异测试证非假绿；产物已重建并投放四目标（neo `366D68C8…` / forge reobf `FD7B01D7…`），jar 内 `ModItems.REPULSION` 引用 0 处；**未实机**。
@@ -26,7 +26,7 @@
 路径与命令**沿用 pre.5 正本 §1**（Windows 原生：git bash 的 `git`、`pwsh -NoProfile -File`、`JAVA_HOME=C:\Program Files\Zulu\zulu-21`、工作树直接 `gradlew.bat`、测试台 `scripts\test\mt.ps1`）。两条补充：
 
 - 仓库多了一整套**规则分派**文件：根 `AGENTS.md`（入口/红线/索引）· `docs/agent/AGENTS-kimi.md` · `docs/agent/AGENTS-dsh.md`（旧根逐字节留存 + 开头 DSH 段）· `docs/agent/PROJECT-REFERENCE.md`（工程拓扑）· `docs/agent/AGENT-SPLIT.md`（Codex/DSH 分工 + §六 Kimi 兼容）· `AGENTS-full.md`（逐批历史，未变）。
-- 锁：`F:\MCProject\.agent-locks\` 现同时存在 `kimi.lock`（陈旧）与 `dsh.lock`（DSH 若在建）；动工作树前两侧都要看。
+- 锁：`F:\MCProject\.agent-locks\` 现**为空**（2026-10-25 实测，`kimi.lock` 已不存在）；开工建 `dsh.lock`、收尾删除，动工作树前先看该目录。
 
 ## 2 版本与坐标
 
@@ -312,7 +312,7 @@ forge dev named 102,013 B / `e280aeab6c4b37c43468f7cce32a8bf64c70b6bdbcd2203f6c5
 
   构建：`gradlew.bat :neoforge-1.21.1:build :forge-1.20.1:build --console=plain` ⇒ `BUILD SUCCESSFUL in 7s`，六条 `pushTo{Game,DevRun,RootBuild}` 全命中；库 jar 成对在位（`starengine-neoforge-1.21.1-1.1.0.jar` / `starengine-forge-1.20.1-1.1.0.jar`）。
 - **守门（实跑）**：`python tools/verify_defense_unit_parity.py` ⇒ `GATE: PASS（42 项全部满足）`（新增 **D9** 四项：入口存在且读 `getAttributeValue(Attributes.ARMOR)` / `defensePowerBase` 走它 / 骰战走它 / `combat/**` 与穿甲枪里 `getArmorValue()` 调用 0 处）；`python tools/verify_hud_attack_parity.py` ⇒ `GATE: PASS (21 项全部满足)`；`pwsh tools/check_lang_sync.ps1` ⇒ EXIT 0（四线键集一致）；`python docs/agent/verify-split.py` ⇒ 全部通过；`pwsh scripts/audit/tooltip_color_audit.ps1` ⇒ 仍 **144 处**（既有基线债，用户已裁决路障不动）。
-- **仍未实机 / 未做**：§5-Major 5 的 8 条「代码与文案不符」（等文案口径裁决，非行为缺陷）、§5-Minor 3 `misaki_sign` datagen 逐字节对等（下次 `runData` 后 diff）、P1 两线未移植。
+- **仍未实机 / 未做**：§5-Major 5 的 8 条「代码与文案不符」（2026-10-25 用户裁决「不管（黑箱）」⇒ 不修、不再列待办）、§5-Minor 3 `misaki_sign` datagen 逐字节对等（下次 `runData` 后 diff）、P1 两线未移植。
 - **本轮坑补充**：① 1.21.1 客户端未停就 launch 1.20.1 ⇒ 25585 端口冲突 + `MT_INJECT_FOCUS: FAIL — 目标窗口无法置前台`（§6 坑 15），必须先对另一线 `--phase stop --force`；② `/astralprobe equipslot` 在两条线都不落槽，装备类实验一律走 Curios API；③ 1.21.1 的 Curios 9.5.1 写入槽位后需 1–2 tick 再读（§6 坑 8），本轮客户端读数前已 sleep 1.5–1.8 s。
 
 ### 4.1j 创造栏收尾：强化拒止物品隐藏 + 筹码按稀有度重排（2026-10-25）—— 静态判据全绿，**本条无实机**
@@ -376,13 +376,13 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 2. ~~本批局部实机~~ → **已完成**（2026-10-25）：星光兑换 5 组（§4.1）+ 筹码商店刷新源 R0–R5 / 38 tooltip + 21 手册 / `ame_note` 染色（§4.1b），**双版本全 PASS**。
 3. ~~`CHIP-REGEN-*.json` 已失效~~ → **已退役**（2026-10-25 用户裁决「旧用例直接退役」）：`scripts/test/cases/CHIP-REGEN-1.20.1.json` / `CHIP-REGEN-1.21.1.json` **两文件已删除**（它们断言「摆形态 → 等 tick → 自动 +1」，随 `ChipShopRegenTicker` 删除永久不成立）。新语义（刷新 3→2→1 + anchor 首写 + 升星取走 1→2 + 死亡不自愈）已在 §4.1b R2/R3/R5 双线实机取证；若日后要**自动化**回归再按这套判据重写，勿复活旧文件。探针 `/astralshop cregen` 仍保留（只摆状态、不再指望 ticker 推进）。
 4. **`tooltip_color_audit` 存量 144 处**（9 键，2026-10-25 复跑）：`jill_active` 36 / `storm_approaching.description` 18 / `problem_delivery.description` 18 / `dorothy_active` 18 / `red_heat_warning.description` 16 / `fanny_active` 12 / `jill_passive` 8 / `card.barricade` 6 / `deepseek_passive` 6（+ 若干零散项）。原 `card.repulsion` 的 6 处 `§e20:00§7` 已按染色规则改为 `§920:00§7`（**时间值必须 §9**），复跑后 repulsion 相关 **0 处**；其余 9 键属既有基线债，仍未动。
-5. **8 条「代码与文案都不符」**（已报用户，未改 tooltip）：bite 觉醒按撕咬张数 / huo_card = `CREATURE_OR_RIVAL` / magic_quiver 真闸门 = 目标已有标记 + 先用过伤害牌 / railgun 只 `bypasses_armor` / 三张卡 `NON_HOSTILE` / member_recommendation 只数主背包+副手 / repulsion 单次最多 5 点耐久 / airbag 掉虚空救不了。
-6. **P1 两线欠账**（正式版前不移植，仅登记）：JEI 筹码 / `BeamFx` / `GlobalEventGate` / `RepulsionEntity` / `CardShopMenu#planPlacement` / `EventDrawBlock`；筹码效果图标仍带边框；史莱姆被动仍 20 tick；misaki 仍 `legendary()` + 黄金星盘 + 死亡清零剑气；pre.5 冷却指示器未移植。
-7. **陈旧锁 `kimi.lock`**（`PID=26580` 已不存在）——不自行删，交用户裁决。
+5. **8 条「代码与文案都不符」**（已报用户，未改 tooltip）：bite 觉醒按撕咬张数 / huo_card = `CREATURE_OR_RIVAL` / magic_quiver 真闸门 = 目标已有标记 + 先用过伤害牌 / railgun 只 `bypasses_armor` / 三张卡 `NON_HOSTILE` / member_recommendation 只数主背包+副手 / repulsion 单次最多 5 点耐久 / airbag 掉虚空救不了。 **2026-10-25 用户裁决：不管（黑箱）** —— 不修文案也不改行为，仅作事实登记，不再列为待办、不再每轮提示。
+6. **P1 两线欠账**（正式版前不移植，仅登记）：JEI 筹码 / `BeamFx` / `GlobalEventGate` / `RepulsionEntity` / `CardShopMenu#planPlacement` / `EventDrawBlock`；筹码效果图标仍带边框；史莱姆被动仍 20 tick；misaki 仍 `legendary()` + 黄金星盘 + 死亡清零剑气；pre.5 冷却指示器未移植。 **2026-10-25 用户裁决：继续欠着，等把正式版做完了再考虑移植的事。**
+7. ~~陈旧锁 `kimi.lock`~~ → **已结案（2026-10-25 用户裁决「删」）**：实测 `.agent-locks` 目录已空、该文件不存在（`PID=26580` 的进程早已退出），无需操作。
 8. ~~强化拒止物品形态未实机~~ → **已完成**（2026-10-25 15:0x，双版本 7 项判据全 PASS，§4.1c）。owner 闸门（非放置者命中被拒）也已双版本实机四态 PASS（§4.1c 末节，2026-10-25 15:3x）。仍有两个**待用户裁决**的小项：~~(a) 是否给新物品加帕秋莉手册第 4 页~~ → **已完成**（2026-10-25 §4.1e：同条目追加第 4/5 页，两线 × 三语）；(b) `card.barricade` 的 6 处 `§e20:00§7` —— **用户裁决「路障不动」，保持原样**（2026-10-25），`tooltip_color_audit` 的 144 处存量继续保留。
 
 
-9. **`mt_env` 的 modernfix 钉子在整合包升版后 BLOCKED**（2026-10-25 实测）：`scripts/test/mt_env.ps1:48` 钉 `5.27.26`、整合包已是 `5.27.27` ⇒ `--phase env` EXIT 11 中断（详见 §6 坑 19）。**改测试资产需用户裁决**（本轮跳 env 直接 launch 完成冒烟）。
+9. ~~`mt_env` 的 modernfix 钉子在整合包升版后 BLOCKED~~ → **已修复（放宽，2026-10-25 用户裁决「放宽」）**：`scripts/test/mt_env.ps1:48` 钉子改为 `*modernfix-neoforge*5.27.*.jar` + `Target` 兜底 `modernfix-neoforge-5.27.27+mc1.21.1.jar` + 新增 `Cleanup = 'modernfix-neoforge-*'`；复制循环改为**落位名按源文件名派生**（剥整合包的 `[中文] ` 前缀，与 `Install-MtProbeHost` 同口径）并先清同族旧版本（两个 ModernFix 同目录会让 FML 起不来）。判据（实测 2026-10-25 19:2x）：`--phase env` **EXIT 0**，日志含 `MT_MODS: 清理旧同族 modernfix-neoforge-5.27.26+mc1.21.1.jar` 与 `MT_MODS: OK — Sodium/Iris/ModernFix 新装 1 个`，`MT_WORLD: OK — 世界重建`；`run/1.21.1/mods` 只剩 `modernfix-neoforge-5.27.27+mc1.21.1.jar`（614,138 B）。
 10. ~~防御力折算 1:1 已修，但产物未重建 / 未实机~~ → **已完成**（2026-10-25 17:0x，§4.1i）：`:build` 重建 + 四目标 sha256 实测 MATCH，两线实机 `+8 防御力 ⇒ 防御力 10`；**同批修掉实机暴露的取整吞点**（新增 `effectiveArmorPoints`，守门加 D9，42 项 PASS）。P1 两线仍是旧 `× 2.0` 折算（各 5 处），已登记 `docs/compat-1.5.0-porting.md` §2 主题行 + §4 第 4 条。
 11. **GitHub 发布清理 + 「只发 P0」发布红线（2026-10-25 用户裁决）**：用户裁决「除非有要求，否则默认只上传 `forge-1.20.1` 与 `neoforge-1.21.1`」——P1 两线（`neoforge-26.1.2` / `fabric-1.20.1`）**从未获授权移植**，其编译产物一律视为不可用（用户已手工删掉误传的 CurseForge 内容）。本轮落地四件：
     - 红线区〈子项目优先级与默认规则〉长行末尾追加「⛔ 发布投放红线（必须遵守,2026-10-25 用户裁决…）」句 —— **红线区行数不变**，`verify-split.py` 八项仍全 [OK]。
@@ -401,7 +401,7 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 5. **HUD 攻击力显示口径**（2026-10-25，§4.1g）——**已双版本实机 PASS**（§4.1i：装电流剑 + 充能 8 ⇒ client 显示 3；removeAll 后回到 1；主手换钻石剑仍 3）。余下两处已知边界：
    - **目标依赖型修饰器**（秘密侦探「目标带标记 +3」= `MarkManager.getLevel(ctx.target)`、调查阶段依赖 `isBlessingTarget(ctx.target, ctx.attacker)`）在客户端求值时上下文的目标位只能填**玩家自身**（`attackPowerBase` 构造 `DiceCombatContext` 的占位）⇒ HUD 无法体现「对某类目标的加成」，只显示不依赖目标的那部分。属显示层固有上限，不是缺陷。
    - **骰战随机点数已排除**（`ctx.displaySnapshot` 下攻击卡不掷）⇒ HUD 不含随机加成，符合裁决。
-   - **P1 两线未移植**（26.1.2 / fabric），正式版前不动（§5-Major 6）。
+    - **P1 两线未移植**（26.1.2 / fabric）—— 2026-10-25 用户裁决「继续欠着，等把正式版做完了再考虑移植的事」（§5-Major 6）。
 
 6. **创造栏收尾仅落 P0 两线**（2026-10-25，§4.1j）：P1（`neoforge-26.1.2` / `fabric-1.20.1`）的 `ModCreativeTabs.java` 仍列出强化拒止物品、筹码仍是旧顺序。⚠️ 移植时必须**同批调整** `tools/verify_fabric_assets.py` 第 7 项（`check_creative_tabs`：要求「所有注册物品都在创造栏」——与本条的隐藏口径相反，只对 fabric 线生效，暂未改）。
 7. **护法减费卡面仅落 P0 两线**（2026-10-25，§4.1k）：P1（`neoforge-26.1.2` / `fabric-1.20.1`）的 `CardShopScreen` 没有 `cardFaceTexture` 分支、也没有 `attack_card_meito_discount.png` ⇒ 那两线仍显示原卡面（4 点）。移植时同批拷贴图 + 抄 `cardFaceTexture`（fabric 用 `new ResourceLocation(...)` 口径，26.1.2 按其 API 复核），并把 `tools/verify_meito_discount_face.py` 的 D2/D3/D4 扩到四线。
@@ -442,6 +442,8 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 25. **`String.Replace` 是「全部替换」——用它做规则追加会写进每一处同锚点（2026-10-25 实测）**：把发布红线追加到 `默认不执行 `git push`**。` 这个锚点时，`docs/agent/AGENTS-full.md` 里该串出现 **2 次**（红线区 L3 + 版本流程第 5 条），而 `docs/agent/AGENTS-dsh.md` 只 1 次 ⇒ 后缀被写进两处，`verify-split.py` 第 2 项（红线区逐字一致）必 FAIL。正确做法：先 `[regex]::Matches($s,[regex]::Escape($anchor)).Count` 断言期望次数，再只按**行号**改目标行（或 `IndexOf` + 精确拼接）。
 
 26. **PowerShell 函数里的 `Write-Output` 会混进返回值（2026-10-25 实测）**：`function Rep { Write-Output '  ok'; return $src.Replace(...) }` 在 `$t = Rep ...` 处拿到的是 **Object[]**（日志行 + 结果行），写回文件后首行变成 `ok: arg-push ok: ...#!/usr/bin/env python3`，`py_compile` 报 `IndentationError: unexpected indent (line 1)`。修法：函数内只用 `Write-Host` 打日志、`return` 只返回目标字符串（必要时 `[string]` 强转）；已写坏的文件用 `git checkout -- <file>` 复原再重跑。（同一轮该 bug 还写坏了 `.github/workflows/build.yml`：首两行变成 `  replaced: release-jars` / `  replaced: ... name: Build` ⇒ YAML 解析失败，push 只换来一个「**没有任何 job**」的空 CI run —— `gh api repos/<r>/actions/runs/<id>` 里 `jobs` 数组为空、run 的 `name` 退化成文件路径 `.github/workflows/build.yml`；修法 = 从 `HEAD^` 取原始文件重打补丁，再用 `require('C:/Users/xmace/.dsh/profiles/desktop/node_modules/js-yaml')` 校验结构。）
+
+27. **测试资产里的模组版本钉子必须写成「家族通配 + 落位名派生」（2026-10-25 用户裁决「放宽」）**：`scripts/test/mt_env.ps1:48` 的 `$script:NeoForgeMods` 原来把 ModernFix 钉成 `*modernfix-neoforge*5.27.26*.jar` 且 `Target` 定死同名 ⇒ ① 整合包一升到 5.27.27 就 `MT_MODS: BLOCKED` / EXIT 11；② 即使放宽通配，`Target` 也会把 5.27.27 的内容写成 `...5.27.26...jar`（骗人 jar）。现行口径：`Pattern` 用「模组家族 + 主.次版本 + `.*`」通配，`Target` 只作派生失败兜底，落位名从源文件名派生（剥整合包 `[中文] ` 前缀），并在复制前按 `Cleanup` 前缀清掉同族旧版本。
 
 ## 7 关键路径（命令）
 
