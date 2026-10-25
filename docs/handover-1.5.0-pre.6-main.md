@@ -9,8 +9,8 @@
 2. 四线 `mod_version = 1.5.0-pre.6+<加载器后缀>`；四线 `starengine_version = 1.1.0-pre.2`（未动）。
 3. 本批收编 **Kimi 上一轮四批未提交改动**（member-detective / misaki 立牌 / 筹码商店刷新源 / 规则分派），并完成 **DSH 三语语言同步** + **地雷女备注区染色修复**。
 4. 判据：P0 两线 `:classes` `BUILD SUCCESSFUL in 4s`；`check_lang_sync` EXIT=0；`audit_patchouli_keys` 悬空 0；`verify-split` EXIT=0；三道专项 python 判据 PASS 26/12/14；`verify_chip_shop_ui` `CHIPUI_TOTAL_FAIL: 0`。
-5. ⚠️ **`build/libs` 与投放仍是 pre.5 产物**（本批只跑 `classes`）⇒ 实机 / 交付前必须 `:jar` 重建 pre.6 并重投四个目标。
-6. ⚠️ 本批**零实机**；`scripts/test/cases/CHIP-REGEN-*.json`（等 tick 自动 +1）随 ticker 删除**已失效**。
+5. **pre.6 产物已重建并投放**（2026-10-25 11:55，`:neoforge-1.21.1:build :forge-1.20.1:build` 触发 `pushToDevRun/pushToGame/pushToRootBuild`）——四个目标（`run/1.21.1/mods`、`run/1.20.1/mods`=devlibs named、两个 P0 整合包）逐处 sha256 **MATCH**，读数见 §2。
+6. 本批实机：**星光兑换双版本 5 组判据全 PASS**（2026-10-25，§4.1）；其余改动（筹码商店刷新源 / 39 条 tooltip + 21 条手册 / `ame_note` 染色）**仍零实机**（§4.1b）。`scripts/test/cases/CHIP-REGEN-*.json`（等 tick 自动 +1）随 ticker 删除**已失效**。
 7. 规则分派已落地：根 `AGENTS.md` 为 41 行入口，Kimi → `docs/agent/AGENTS-kimi.md`，DSH → `docs/agent/AGENTS-dsh.md`，Codex → `docs/agent/AGENT-SPLIT.md`（只读）。
 8. 未处置：陈旧锁 `F:\MCProject\.agent-locks\kimi.lock`（`PID=26580` / `TASK=misaki-chip-shop-balance-p0`，进程已不存在）—— 按规则不自行删，交用户裁决。
 
@@ -32,17 +32,19 @@
 | `starengine_version` | `1.1.0-pre.2`（四线）；fabric 另有 `starengine_version_range=>=1.1.0-pre.2` | 各线 `gradle.properties` |
 | 硬前置区间 | `[1.1.0-pre.2,2.0.0)`；`META-INF/jarjar/` 计数 **0** | `neoforge-1.21.1/.../neoforge.mods.toml` · `forge-1.20.1/.../mods.toml` |
 
-**产物现状（未重建）**：`build/libs/` 仍是 pre.5（2026-10-23 17:10）——
-neo `astral_dice-1.5.0-pre.5+neoforge_1.21.1.jar` 2,570,968 B / sha256 `8796e6cf4db317b4f35fc295eb0a968ff58cdeb9b941678cb576d0ff5c57078b`；
-forge `astral_dice-1.5.0-pre.5+forge_1.20.1.jar` 2,616,502 B / `1519f22142bfd911e39ad7e1934d2051d08b85ba7753961e7663b15f15b61284`；
-forge dev named 2,587,015 B / `5eac2ac6e637ca88c79c678759611e429a55385067d38b3798fb4c17c82e46bf`。
-库 jar：neo 98,737 B / forge 103,609 B（`1.1.0-pre.2`，2026-10-23 17:09–17:10）。
+**产物现状（2026-10-25 11:55 重建，pre.6）**：
+neo `astral_dice-1.5.0-pre.6+neoforge_1.21.1.jar` 2,577,145 B / sha256 `7995d7145da5bf25763d68f598b8c8a9817c3e5dbedeb23225d0326ac5b5ff9e`（`run/1.21.1/mods` 与「狐の航空学 Voxy Edition」同一份）；
+forge `astral_dice-1.5.0-pre.6+forge_1.20.1.jar` 2,622,362 B / `2f14b07951b8517930445db3a8f41ebd85630315c253669d74cd4fa08c8f71e9`（→ 1.20.1-Forge 模组测试）；
+forge dev **named** 2,592,867 B / `40bfe7162c446457803f5dcc8618601b30c935b2d2a4c2bde666db46ca32f274`（`run/1.20.1/mods`）。
+四目标 2026-10-25 11:55:50 逐处 sha256 MATCH；字节码判据（`item/StarLightManager.class`）含 `replenishOnExchange`、不含 `getBasePoints`。
+库 jar（成对投放，未随本批变动）：neo 98,737 B / forge 103,609 B（`1.1.0-pre.2`）。
 
 ## 3 本批批次表
 
 | 提交 | 主题 | 关键落点 |
 |---|---|---|
 | `e2aed527` | bump pre.6 + 收编 Kimi 四批 + 三语语言同步（53 文件，+994/−981） | 见下 7 条 |
+| `1ff14106` | feat(starlight)：星光兑换改为「装备时发放 + 每次兑换后按佩戴补星」（24 文件 +1380/−217） | `resource/ResourceConversion`（兑换后 `replenishOnExchange`）· `item/StarLightManager`（`grantedStarlight` 4bit 账本 / `grantStarlightOnEquip` / `revokeStarlightOnUnequip` / `replenishOnExchange`）· 四枚星光筹码 `onEquip`/`onChipUnequip` · 经商立牌 +50% 保留在 `CardShopMenu#tryExchange` · 新增 `tools/verify_starlight_exchange_refill.py`（`GATE: PASS (196 项)`） |
 | 本文件所在提交 | docs：Kimi 交接单 + 工程参考 + pre.6 正本 + 新会话上下文 | `docs/handover-2026-10-24-kimi-takeover.md` · `docs/agent/PROJECT-REFERENCE.md` · 本文件 · `docs/handover-new-session-context.md` |
 
 `e2aed527` 的七条内容：
@@ -57,9 +59,22 @@ forge dev named 2,587,015 B / `5eac2ac6e637ca88c79c678759611e429a55385067d38b379
 
 ## 4 实机读数
 
-### 4.1 本批（pre.6）—— **零实机**
+### 4.1 pre.6 星光兑换（2026-10-25）—— 双版本实机 5 组判据全 PASS
 
-本批全部判据为静态 + 编译，未开客户端。新增/变更行为**均无实机读数**，尤其：
+判据正本：`resource/ResourceConversion#starlightToStarCoins`（两线同文件 L29-48）+ `item/StarLightManager#grantStarlightOnEquip / revokeStarlightOnUnequip / replenishOnExchange`（neo L91/L106/L140；forge L94/L109/L143）+ `shop/CardShopMenu#tryExchange`（neo `:551`、forge `:553`，入口 = `clickMenuButton(player, 17)`）。
+驱动面：`pwsh -NoProfile -File scripts\test\mt.ps1 --version <线> --phase env|launch` + AutoJS server `eval_js`（**两线都有 AutoJS**：1.21.1 由 `MT_ENV_AUTOJS` 投放；1.20.1 走 `run\1.20.1\mods\AutoJS-forge-1.20.1-1.0.0-dev.jar`，启动日志 `MT_LAUNCH: OK — AutoJS 端点已就绪`）+ 探针 `/astralshop {reset,star,openkeep,exchange,close}`（输出去 `run\<线>\logs\latest.log` 的 `[CHAT] AP_<TAG>_*`，**不是** `kubejs_log`）。
+
+| # | 场景 | 1.21.1（neo）读数 | 1.20.1（forge）读数 |
+|---|---|---|---|
+| A | 下界之星骰（4 槽）装四枚星光筹码（锤 5 + 卡少 4 + 卡多 7 + 卡无限 3）后点兑换 | `AP_S2_EXCH:ret=1:star=19->20:bal=0->9`（19 扣 18 ⇒ 9 枚，余 1，再按佩戴补 19 回 20） | `AP_T1_EXCH:ret=1:star=19->20:bal=0->9` |
+| B | 60 秒共享冷却：立刻再点一次 | `AP_S2_EXCH:star=20->20:bal=9->9`（`cdBefore=10068 / now=8868` ⇒ 1200t） | `AP_T1_EXCH:star=20->20:bal=9->9`（`cdBefore=2438 / now=1238`） |
+| C | 无筹码时兑换 5 点 | `AP_S3_EXCH:ret=1:star=5->1:bal=0->2`（**无补星**） | `AP_T2_EXCH:ret=1:star=5->1:bal=0->2` |
+| D | 经商立牌 `parunan_sign` +50%：20 点兑换 | `AP_S4_EXCH:ret=1:star=20->0:bal=1->16`（10 枚 + `max(1,(int)(10*0.5))`=5） | `AP_T3_EXCH:ret=1:star=20->0:bal=1->16` |
+| E | 封顶边界 + 账本严格扣除（银行卡-余额多 7，cap=32） | `star=30` → 装备 → `32`；卸下 → `30`（只扣**实际** 2） | `star=30` → `32` → `30`（同左） |
+
+补充实读：卸下四枚筹码后 `star` 由 20 回落到 **1**（按账本扣 19）；全程背包内 `astral_dice:star_coin` 计数 **0**（钱直接进钱包 `StarEngineEconomy.getBalance`）；两线 `CardShopMenu` 的兑换按钮都返回 `ret=1` 且 `star/bal` 前后对照相符。
+
+### 4.1b 本批**仍无实机读数**的部分
 
 - 筹码商店「刷新次数只来自升星」改造（删 ticker 后不再自动回满）——需一轮实机确认「摆形态不再自动 +1 / 升星取走 +1 / 死亡后次数不自愈」。
 - 语言改动（39 tooltip + 21 手册 + 三语译文）——需实机看 tooltip 换行/染色与手册页文字。
@@ -77,8 +92,8 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 
 ### Major
 
-1. **pre.6 产物未建未投**：`:jar` 重建 → 记 sha256 → 投 `run/1.21.1/mods`、`run/1.20.1/mods`（forge 用 named）、两个 P0 整合包，**成对**带 `starengine-*-1.1.0-pre.2.jar`；投放后逐份核 sha256。
-2. **本批零实机**（见 §4.1），需用户下达后补。
+1. ~~pre.6 产物未建未投~~ → **已完成**（2026-10-25 11:55）：`:neoforge-1.21.1:build :forge-1.20.1:build` 触发 `pushTo*`，四目标 sha256 全 MATCH（§2）；库 jar 成对在位（neo 98,737 B / forge 103,609 B，`1.1.0-pre.2`）。
+2. **本批局部实机**：星光兑换双版本 5 组判据已 PASS（§4.1）；筹码商店刷新源 / 语言 / `ame_note` 染色仍待用户下达（§4.1b）。
 3. **`CHIP-REGEN-1.20.1.json` / `CHIP-REGEN-1.21.1.json` 已失效**（仍断言「等 tick 自动 +1」）——退役或按新语义改写（升星取走 +1）。
 4. **`tooltip_color_audit` 存量 130 处**（10 键）：`jill_active` 22 / `storm_approaching.description` 18 / `problem_delivery.description` 18 / `dorothy_active` 18 / `red_heat_warning.description` 16 / `fanny_active` 12 / `jill_passive` 8 / `card.barricade` 6 / `card.repulsion` 6 / `deepseek_passive` 6。其中 `card.barricade`/`card.repulsion` 是**用户自写 `§e20:00§7`**（规则应为 §9），按「tooltip 以用户为准」未动。
 5. **8 条「代码与文案都不符」**（已报用户，未改 tooltip）：bite 觉醒按撕咬张数 / huo_card = `CREATURE_OR_RIVAL` / magic_quiver 真闸门 = 目标已有标记 + 先用过伤害牌 / railgun 只 `bypasses_armor` / 三张卡 `NON_HOSTILE` / member_recommendation 只数主背包+副手 / repulsion 单次最多 5 点耐久 / airbag 掉虚空救不了。
@@ -101,7 +116,12 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 5. **`withRefreshGranted` 不可是「重置」**（`min(MAX, left+1)`），且**死亡必须保留**（否则重生 = 变相补满）；forge 侧走 `AstralData` 白名单而非 `copyOnDeath`。
 6. **`MemberRecommendationChipItem` 只数主背包 + 副手**，不含 Curios 卡牌栏（与用户文案一致）。
 7. **备注区（`*_note` 键）回落码必须 `§d`**（`addSignNoteLines` 会把行内 `§7` 替换成 `§d`），否则踩 R0。
-8. pre.5 及更早的 32 条坑见 `docs/handover-1.5.0-pre.5-main.md` §6。
+8. **`ICuriosItemHandler#setEquippedCurio` 在 Curios 9.5.1（1.21.1）不触发 `onEquip`**（字节码只做 `setStackInSlot`）⇒ 装备类效果（星光发放 / 筹码槽扩容）必须**等 1–2 个 tick** 再读，否则读出「什么都没发生」的假阴性；1.20.1 的 Curios 5.x 反而当场生效。另：**1.20.1 `CuriosApi.getCuriosInventory` 返回 Forge `LazyOptional`（`.orElse(null)`），1.21.1 返回 `Optional`（`.get()`）**；`getStacksHandler` 在 1.20.1 也要 `.isPresent()/.get()`。
+9. **探针 `open` 会开店后立刻关**（否则 GUI 吞掉后续聊天命令）⇒ 要连点「星光兑换」必须在**同一次 AutoJS eval 内**顺序 `openkeep → exchange → close`（`performPrefixedCommand` 不走 GUI，不受影响）。
+10. **探针输出通道 = 聊天** ⇒ `run\<线>\logs\latest.log` 的 `[CHAT] AP_...`；`mcp__autojs__kubejs_log` 返回 0 entries 属正常，别据此判失败。
+11. **AutoJS/Rhino 口径**（1.21.1 rhino 2101 / 1.20.1 rhino 2001）：无 `server` 全局（用 `AutoJS.server()/AutoJS.player()`）；同一 eval 内不能 `function f(){}`（用 `var f = function(){}`）；`obj.getClass()` 不可用；`p.level` 是属性、`p.level.getGameTime()` 报错；返回值必须 `JSON.stringify((function(){...})())`。`StarLightManager` **没有** `getCap(player)`（实测 `Can't find method ... getCap(ServerPlayer)`）。
+12. **`/astralshop reset` 只清 cd/余额/星光，不释放筹码的发放账本位** ⇒ 兑换前必须「卸下 → 等 tick → 装回」重新申领，否则读到 `star=0` 的空转结果（首轮 GUI 验证就栽在这里）。
+13. pre.5 及更早的 32 条坑见 `docs/handover-1.5.0-pre.5-main.md` §6。
 
 ## 7 关键路径（命令）
 
