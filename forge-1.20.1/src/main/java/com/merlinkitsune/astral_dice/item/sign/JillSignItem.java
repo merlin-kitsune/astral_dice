@@ -39,11 +39,11 @@ import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
  *
  * <p><b>被动「改变生活」</b>：调制结算时 3 张牌**全部同类型**且非全效果牌 ⇒ 自身与目标各获迅捷 II(1:00)；
  * 类型混搭（含攻/防/效果各一）⇒ 各 +3 星币。**全效果牌（3 张效果牌）是例外**：既不给迅捷也不给星币，
- * 只保留下面的固定治疗。
+ * 只保留下面的按张数治疗。
  *
  * <p><b>主动「调制人生」</b>：目标选择器选一名玩家 → 选卡界面选 3 张（背包现有牌，不足 3 张直接取消、
- * 不进冷却）→ 按槽位顺序结算：攻击牌 +2 攻/张、防御牌 +2 防/张（均叠加，2:00）；效果牌只要 ≥1 张，
- * 目标立即 {@code heal(HEAL_AMOUNT)} 固定 2 点（不按张数叠加、无状态图标）；随后消耗这 3 张、
+ * 不进冷却）→ 按槽位顺序结算：攻击牌 +2 攻/张、防御牌 +2 防/张（均叠加，2:00）；效果牌 2 点生命/张（同样叠加），
+ * 目标立即 {@code heal(HEAL_AMOUNT * effect)} 恢复（按张数叠加、无状态图标）；随后消耗这 3 张、
  * 从商店可售池补 3 张。非全效果牌时目标另获 {@code jill_mixed}(2:00)，攻/防修饰符与内部的
  * 目标 + 到期刻只在攻击牌 + 防御牌 &gt; 0 时记录（全效果牌不写计时器）。
  */
@@ -53,7 +53,7 @@ public class JillSignItem extends BaseSignItem {
     public static final String ACTION_ID = "astral_dice:jill_mix";
 
     private static final int DURATION_TICKS = 2400;
-    /** 效果牌提供的固定即时治疗量（不按效果牌张数叠加）。 */
+    /** 每张效果牌提供的即时治疗量（按张数叠加：1 张 2 点、3 张 6 点）。 */
     private static final float HEAL_AMOUNT = 2.0F;
     private static final int COIN_PER_PROC = 3;
     private static final String TARGET_ATTACK_KEY = "jill_target_attack";
@@ -153,8 +153,8 @@ public class JillSignItem extends BaseSignItem {
                     net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation.ADDITION);
         }
         if (effect > 0) {
-            // 固定总量 2 点:有 1 张还是 3 张效果牌都一样,不按张数叠加。
-            target.heal(HEAL_AMOUNT);
+            // 每张效果牌 2 点,按张数叠加(3 张 = 6 点);合并为一次 heal,治疗事件只触发 1 次。
+            target.heal(HEAL_AMOUNT * effect);
         }
         // 全效果牌不施加 jill_mixed(混合牌标记只属于非全效果牌的组合);旧实例不主动清除。
         if (!allEffect) {

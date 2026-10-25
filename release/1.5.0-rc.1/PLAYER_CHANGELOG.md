@@ -162,7 +162,7 @@ Released: **1.5.0-rc.1 (pre-release / beta)** — covers **everything** since 1.
     passing a friendly player heals both for **2 HP** (once every **10s**).
 - **Bartender Sign** (quirky)
   - Active “Mix Life”: pick a target player, then choose **3 cards**. Effects apply in slot order, the cards are consumed and **3 random cards** are granted.
-    Attack card ⇒ target **+2 attack** (2:00); defense card ⇒ target **+2 defense** (2:00); any effect card ⇒ the target heals a flat **2 HP** (not 2 per card);
+    Attack card ⇒ target **+2 attack** (2:00); defense card ⇒ target **+2 defense** (2:00); each effect card ⇒ the target instantly heals **2 HP** (**stacks per card** — three effect cards heal **6**);
     with **three effect cards** only that heal applies — no timer and no icon.
   - Passive “Change Life”: all three of the **same type** (all-effect excluded) ⇒ you and the target gain **Speed II (1:00)**; otherwise both gain **+3 star coins**; all-effect gives neither.
 - **Lingling Sign** (epic; recipe: 4 star plates + 4 conductive wire + redstone block + diamond dice)

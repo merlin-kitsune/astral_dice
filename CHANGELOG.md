@@ -423,6 +423,14 @@
   ⑤ **Starlight exchange grants 50% extra income** (at least +1 after truncation). ⚠️ **The old passive ("+1 Starlight every
   60 seconds" and "first dice roll ×2 Starlight on a dice blessing") has been removed**; ①④⑤ apply to the **wearer only**,
   while ②③ apply to you and your team.
+
+- **Bartender Sign: active "Mix Life" heal now scales with the number of effect cards** (2026-10-25 ruling):
+  previously any number of effect cards healed a flat 2 HP (three effect cards still 2 HP), inconsistent with the
+  per-card "+2 ATK / +2 DEF" of the same skill — a **calculation error**. It now heals **2 HP per effect card**
+  (1 card = 2, 3 cards = 6) and still resolves as a **single** `heal` call, so only one healing event fires:
+  "Warmth" (Dorothy Sign) does not gain extra stacks and downstream hooks (Zhao overflow, heal-cancel events)
+  see one event. zh/en/ja tooltips, the Patchouli guide and the player changelogs were corrected (P0 both lines).
+
 #### Cards
 
 - **The four damage effect cards (Monster Laser / Monster Brick / Orbital Strike / Directional Blast) were reworked**

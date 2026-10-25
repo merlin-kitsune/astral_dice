@@ -25,12 +25,13 @@
     不得复活（不禁止准确的“恢复生命值时获得 1 层”），en/ja 旧文案 Gaining a healing effect /
     回復効果を得ると 消失。
 - `jill`：
-  * `resolve` 用固定 `HEAL_AMOUNT = 2.0F` 调 `target.heal(...)`，且不再施加 REGENERATION；
+  * `resolve` 用 `HEAL_AMOUNT = 2.0F` 按效果牌张数调 `target.heal(HEAL_AMOUNT * effect)`
+    （2026-10-25 裁决：每张 2 点、3 张 6 点；合并为一次 heal ⇒ 治疗事件只 1 次），且不再施加 REGENERATION；
   * `boolean allEffect = effect == 3` 驱动 `JILL_MIXED`、迅捷、buff 计时、星币四类分支；
   * `JILL_MIXED` 受 `!allEffect` 守卫；迅捷受 `allSame && !allEffect` 守卫；
     星币受 `!allSame` 守卫；目标/结束刻只在 `attack + defense > 0` 时写；
   * 非全效果牌路径（攻/防修饰符、随机 3 张牌、冷却）保留；
-  * 三语主动/被动/手册写固定 2 点治疗、全效果牌无计时器/图标且不给迅捷/星币，
+  * 三语主动/被动/手册写「每张效果牌 2 点、按张数叠加」、全效果牌无计时器/图标且不给迅捷/星币，
     旧“生命恢复（等级 = 效果牌数量）”与“三张卡牌全部同类型…迅捷”文案消失。
 - `deepseek`：
   * 主动：`nextInt(20) + 1` 掷 1..20，`Math.min(roll, getBalance(...))` 夹取实际消耗，
@@ -720,11 +721,14 @@ def check_jill(line, res):
     forbid(res, src, r"MobEffects\s*\.\s*REGENERATION",
            "JIL-1", line, "仍施加 MobEffects.REGENERATION（旧按效果牌数量给再生）")
     require(res, resolve["body"],
-            r"target\s*\.\s*heal\s*\(\s*(?:HEAL_AMOUNT|2(?:\.0)?[Ff])\s*\)",
-            "JIL-1", line, "固定即时治疗 target.heal(HEAL_AMOUNT / 2.0F)")
+            r"target\s*\.\s*heal\s*\(\s*HEAL_AMOUNT\s*\*\s*effect\s*\)",
+            "JIL-1", line, "按张数叠加的即时治疗 target.heal(HEAL_AMOUNT * effect)")
+    forbid(res, resolve["body"],
+           r"target\s*\.\s*heal\s*\(\s*(?:HEAL_AMOUNT|2(?:\.0)?[Ff])\s*\)",
+           "JIL-1", line, "仍用固定即时治疗 target.heal(HEAL_AMOUNT / 2.0F)（不按张数叠加）")
     require(res, resolve["body"],
             r"effect\s*>\s*0[\s\S]{0,160}target\s*\.\s*heal\s*\(",
-            "JIL-1", line, "仅效果牌计数 > 0 时执行固定治疗")
+            "JIL-1", line, "仅效果牌计数 > 0 时执行治疗")
     require(res, src,
             r"HEAL_AMOUNT\s*=\s*2(?:\.0)?[Ff]\s*;",
             "JIL-1", line, "常量 HEAL_AMOUNT = 2.0F")
@@ -1277,7 +1281,9 @@ def dorothy_lang_specs():
 
 def jill_lang_specs():
     act_zh_req = [
-        ("固定治疗 2 点", r"2\s*点"),
+        ("每张效果牌", r"每张"),
+        ("2 点治疗量", r"2[^\u4e00-\u9fff]{0,6}点"),
+        ("按张数叠加", r"张数[^。\n]{0,8}叠加"),
         ("全效果牌例外", r"全效果牌|三张效果牌|3\s*张效果牌|全部(?:为|是)效果牌"),
         ("全效果牌无计时器/图标",
          r"(?:不|无|没有|未)[^。\n]{0,20}(?:计时器|图标|状态)|(?:计时器|图标|状态)[^。\n]{0,12}(?:不|无|没有)"),
@@ -1285,9 +1291,13 @@ def jill_lang_specs():
     act_zh_forbid = [
         ("旧文案「生命恢复（等级 = 效果牌数量）」",
          r"生命恢复\s*[（(]\s*等级|等级\s*=\s*效果牌数量"),
+        ("旧文案「固定 2 点 / 不按张数叠加」",
+         r"固定\s*2\s*点|不按效果牌张数叠加|不随张数叠加"),
     ]
     act_en_req = [
-        ("fixed 2 HP", r"2\s*HP|heal(?:s|ing)?\s+(?:for\s+)?2|restor(?:e|es|ing)\s+2"),
+        ("each card heals 2 HP",
+         r"(?:each\s+(?:effect\s+)?card|per\s+card)[^.\n]{0,60}2[^A-Za-z0-9]{0,6}HP"),
+        ("stacks per card", r"stacks?\s+per\s+card"),
         ("all-effect exception",
          r"all[- ]effect|all three (?:cards are )?effect cards?|three effect cards"),
         ("no timer/icon",
@@ -1296,9 +1306,12 @@ def jill_lang_specs():
     act_en_forbid = [
         ("old 'Regeneration (level = number of effect cards)'",
          r"regeneration\s*\(\s*level|level\s*=\s*number of effect cards"),
+        ("old 'flat 2' / 'not 2 per card'",
+         r"flat\s+2|not\s+2\s+per\s+card|not\s+per\s+card"),
     ]
     act_ja_req = [
-        ("固定 2 回復", r"2\s*(?:HP|回復|体力)|(?:HP|回復|体力)[^。\n]{0,8}2"),
+        ("1 枚につき 2 回復", r"1枚につき[^。\n]{0,24}2"),
+        ("枚数分加算", r"枚数分加算"),
         ("全効果カード例外",
          r"全効果カード|すべて(?:が)?効果カード|効果カード3枚|3枚とも効果カード"),
         ("タイマー/アイコンなし",
@@ -1307,6 +1320,7 @@ def jill_lang_specs():
     act_ja_forbid = [
         ("旧文案「再生（レベル＝効果カード枚数）」",
          r"再生\s*[（(]\s*レベル|レベル\s*[=＝]\s*効果カード枚数"),
+        ("旧文案「固定2 / 枚数分ではない」", r"固定2|枚数分ではない"),
     ]
 
     pas_zh_req = [
