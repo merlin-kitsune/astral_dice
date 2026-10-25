@@ -101,14 +101,18 @@ forge dev **named** 2,600,922 B / `5304bafdf152c2910b6344da06cbcba20930660048318
 
 ### 4.1c 强化拒止物品形态（2026-10-25）—— 代码/资源就绪，**未实机**
 
-物品图标 `textures/item/repulsion.png`（两线同一份，181 B / sha256 `dcfe5129102d9dae3fa9348e150c357fa1ed9cd97f7c0d4889fcf96c1b5811c3`）**由实体模型 + 实体贴图直接生成**（2026-10-25 第二轮）：
+物品图标 `textures/item/repulsion.png`（两线同一份）= **用户提供的美术稿 `images/强化拒止物品.png` 逐字节复制**（32×32 RGBA / 344 B / sha256 `c12248b7431f087b14f6c175aeef3e450d30a8635c1fdfe83db0963d4522bf9f`，2026-10-25 用户裁决；与效果牌图标「`images/强化拒止.png`（32×32）逐字节复制」同一口径，见 `docs/features/repulsion-card-spec.md` §4）。32×32 直接可用：MC 按 UV 把贴图铺满 16×16 的 quad ⇒ 纹素密度 2×，比 16×16 更清晰。
 
-- 取 `textures/entity/repulsion.png` 的**北面块** (4,10)-(28,34)（24×24，即 `RepulsionModel` 头块 `texOffs(0,3)` 的盒式 UV，`LayerDefinition(tw,th)=64` ⇒ 128 PNG 里 2 倍纹素密度），**精确 2:1 盒式降采样**成 12×12（蓝 2 纹素边框 → 1 px 边框、白底与蓝图形原样保留，无插值糊边）；
-- 杆子（`blade`，24×2 模型单位）**截断**后只留 **2×3 px** 短柄，颜色取同一贴图里 blade 北面 (2,2)-(50,6) 的左右两列均值（`(125,131,135)` / `(117,123,127)`，形成左亮右暗的圆柱感）；
-- 版面：12×12 板在 `(2,1)`、2×3 杆在 `(7,13)`，板占图高 **12/16 = 75%**（原手绘稿只有 ~10×12 且杆子过长，牌子显得小）；
-- **未采用菱形（45°）外观**：按实体 `HEAD_TWIST=+45°` 渲染成 9 px 菱形后蓝边框塌成亚像素、图形糊成一团（三版对比已弃），故图标取「正视板面」口径；若日后要菱形观感需 32×32 或换美术稿。
+> 历史（已被上面取代）：上一轮「用实体模型 + 实体贴图生成」的 12×12 正视板 + 2×3 短柄稿（181 B / `dcfe5129…`）作废。取证结论留档备用：实体 `textures/entity/repulsion.png` 头块北面 UV = (4,10)-(28,34)（128 空间）、杆子北面 = (2,2)-(50,6)、`LayerDefinition(...,64,64)` ⇒ 128 PNG 里 2 倍纹素密度；按实体 `HEAD_TWIST=+45°` 渲染成菱形时牌面对角只有 ~9 px、蓝边框塌成亚像素（三版对比全不可读），故当时改取正视口径。
 
-判据（2026-10-25 15:0x 重建 + 投放）：两线 `build` EXIT=0 / BUILD SUCCESSFUL in 2s；四目标 jar 逐处 sha256 相同（neo `461756a4…` 2,585,301 B；forge reobf `f1a81d5f…` 2,630,389 B；forge dev `5304bafd…` 2,600,922 B）；开两线 jar 取 `assets/astral_dice/textures/item/repulsion.png` ⇒ 长度 181 / sha256 **match=True**。
+**耐久显示（= 关联血量）已在两处**（2026-10-25 复核，均未实机）：
+
+- 物品栏 / 快捷栏**耐久条**：`item/RepulsionItem` 覆写 `isBarVisible` 恒 `true`、`getBarWidth = max(1, round(13 × health/50))`、`getBarColor = Mth.hsvToRgb(ratio/3, 1, 1)`（与 `ItemStack#getBarColor` 同一渐变）。合法性有源码判据：1.21.1 `GuiGraphics#renderItemDecorations` 直接读这三个钩子（`if (stack.isBarVisible()) { int l = stack.getBarWidth(); int i = stack.getBarColor(); … }`，见 `neoforge-21.1.235-sources.jar` 的 `net/minecraft/client/gui/GuiGraphics.java` 1343-1349 行）；forge 1.20.1 同构。
+- **tooltip 三行**：`event/ModTooltipHandler` 的 `if (stack.is(ModItems.REPULSION.get()))` 块 = `tooltip.astral_dice.item.repulsion`（静态说明）+ `_durability`（`耐久：§eX§7 / §e50§r`）/ `_lifetime`（`剩余寿命：§9M:SS§r`）/ `_charge`（`已提供充能：§eX§7 / §e5§r`）+ `_owner`（紫）。
+- 单一数据源：耐久 / 已存活 tick / 已提供充能都存 `ModDataComponents.REPULSION_HEALTH|AGE|CHARGE`（neo = `Codec.INT` + `networkSynchronized(ByteBufCodecs.INT)`；forge = `ItemDataKey<Integer>` 落 NBT 随栈同步）⇒ 客户端读到的是真值而非缺省 50。
+- 满耐久 50/50 时条为满格绿色（不隐藏）；`RepulsionItem.MAX_DURABILITY = 50` 与 `event/ModEntityEvents` 注册的 `Attributes.MAX_HEALTH = 50.0D` 同值。
+
+判据（2026-10-25 15:4x 重建 + 投放，图标换用户美术稿后）：两线 `build` EXIT=0；四目标 jar 逐处 sha256 相同（neo `0137ad85…` 2,585,468 B；forge reobf `33dcec1d…` 2,630,556 B；forge dev `ebf89c7d…` 2,601,089 B）；开两线 jar 取 `assets/astral_dice/textures/item/repulsion.png` ⇒ 长度 344 / sha256 **match=True**。
 
 改动（P0 两线同批）：玩家近战命中已放置力场第 5 次 ⇒ 回收成**新物品** `astral_dice:repulsion`（不是效果牌），携带耐久（= 关联血量）/ 已存活 tick / 已提供充能三份状态；再次放置按与效果牌**同一份**落点解析（`item/RepulsionPlacement.resolve`）恢复三份状态。
 
