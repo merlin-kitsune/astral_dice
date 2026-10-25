@@ -16,7 +16,7 @@
 9. **HUD 攻击力口径已统一**（2026-10-25，§4.1g）：攻击修饰器链上 23（neo）/ 24（forge）处客户端模板守卫收敛为 `skipOnClient(ctx)` + 显示口径标记 `DiceCombatContext.displaySnapshot` ⇒ HUD 现在含全部攻击力修饰器，只排除手持武器与骰战随机点数；新增守门 `python tools/verify_hud_attack_parity.py` ⇒ `GATE: PASS (21 项全部满足)`，两线已 `:build` 并把六处产物刷到新 jar；**已双版本实机 PASS**（§4.1i：装电流剑 + 充能 8 ⇒ client 显示 3；清充能回 1；主手持剑仍 3）。
 10. **防御力折算已改为 1:1**（2026-10-25，§4.1h）：所有「防御力 +X」的站点改走单一入口 `armorValueForDefensePoints(points, side)`（= 点数 ÷ 库护甲系数，玩家 ≈3.333 护甲/点、怪物 2.5）——此前写死 `× 2.0` 只兑现 60%（玩家）/ 80%（怪物），属平衡性红线；同时把 12 份指南 lang 的基数 4 改为 2。新增守门 `python tools/verify_defense_unit_parity.py` ⇒ `GATE: PASS（42 项全部满足）`（新增 D9 取整口径），两线 `:classes` 通过、`:build` 已重建并投放四目标，**双版本实机 PASS**（§4.1i：+8 防御力 ⇒ 防御力 10；同批修掉 `getArmorValue()` 取整吞点）；玩家侧实际强度是上一版的 **×1.667**。
 11. **创造栏收尾（2026-10-25，§4.1j）**：强化拒止**物品**已从创造栏与 JEI 隐藏（JEI 物品列表直接取自创造栏，**未加任何 JEI 代码**）；筹码在组序不变前提下改为**组内稀有度升序**（67 个零增删）。守门 `tools/verify_creative_tab_chip_order.py` PASS + 变异测试证非假绿；产物已重建并投放四目标（neo `366D68C8…` / forge reobf `FD7B01D7…`），jar 内 `ModItems.REPULSION` 引用 0 处；**未实机**。
-12. **护法立牌减费卡面（2026-10-25，§4.1k）**：佩戴 `misaki_sign` 时商店货架上的「名刀·嘎呜切」改画 `attack_card_meito_discount.png`（纯客户端只读 Curios 缓存、缺素材自动回退），价格与购买链路零改动；守门 `python tools/verify_meito_discount_face.py` ⇒ `GATE: PASS（D1-D6）` + 变异测试证非假绿；产物已重建并投放四目标（neo `59E12108…` / forge reobf `33717FA9…`），**未实机**。
+12. **护法立牌减费卡面（2026-10-25，§4.1k）**：佩戴 `misaki_sign` 时商店货架上的「名刀·嘎呜切」改画 `attack_card_meito_discount.png`（纯客户端只读 Curios 缓存、缺素材自动回退），价格与购买链路零改动；守门 `python tools/verify_meito_discount_face.py` ⇒ `GATE: PASS（D1-D6）` + 变异测试证非假绿；产物已重建并投放四目标（neo `59E12108…` / forge reobf `33717FA9…`），**双版本实机 PASS（2026-10-25 18:12–18:23，见 §4.1k）**。
 
 ## 1 环境与路径
 
@@ -319,7 +319,7 @@ forge dev named 102,013 B / `e280aeab6c4b37c43468f7cce32a8bf64c70b6bdbcd2203f6c5
 - **产物与投放（17:32 已完成）**：`:neoforge-1.21.1:build :forge-1.20.1:build` ⇒ `BUILD SUCCESSFUL in 2s`，四条 `pushTo*` 全命中 —— neo `2,587,467 B` sha256 `366D68C86DDFB86229F5AB437EBF5FC386859BD6658A7B0FD45B8E70F97B642D`（`build\libs` = `run\1.21.1\mods` = 整合包，同一份）；forge reobf `2,632,431 B` `FD7B01D79FEA43080E3744F81FAF752F7526770D1F45FBB3BC0A7CB84DAFB4D9`（`build\libs` = 整合包）；`run\1.20.1\mods` 为 dev 的 named jar `2,603,035 B` `A3741D16F03A0BE11A2CFCF640D44A6634D395E6A5804A7650D729B2C9D29FE2`。**jar 内字节码复核**：解 `run\1.21.1\mods` 的 `com/merlinkitsune/astral_dice/init/ModCreativeTabs.class` 做 `javap -p -c` ⇒ `ModItems.REPULSION` 引用 **0 处**、`EFFECT_CARD_REPULSION` **1 处** ⇒ 隐藏已进产物（顺序改动在字节码里不可见，由 D3/D5 守门 + 源码结构核对覆盖）。
 - **未做**：**未实机**（本条只改展示层可见性与顺序，无行为变化）。P1 两线未改（§5-Minor 6）。
 
-### 4.1k 护法立牌减费卡面（2026-10-25）—— 静态判据全绿，**本条无实机**
+### 4.1k 护法立牌减费卡面（2026-10-25）—— 静态判据全绿 + **双版本实机 PASS**
 
 - **用户裁决**（m12348）：装备护法立牌（`misaki_sign`）时，商店货架上的「名刀·嘎呜切」（`astral_dice:attack_card_meito`）卡面换成减费版素材。
 - **为什么只能换图**：该立牌被动把名刀的战斗费用 4→3 点（服务端 `neoforge-1.21.1/src/main/java/com/merlinkitsune/astral_dice/item/sign/MisakiSignItem.java:64-66` `hasMisakiEquipped(player) ? 3 : AppliedStone.cost("meito")`；forge 同 `:66`），而 64×64 卡面素材右下角的费用点是**画在贴图里的**；商店实际价格与它无关（`shop/CardShopMenu.java:667` `prices[i] = CardShopShelf.priceOf(true, memberReduction);`）⇒ 纯展示层换图，价格与购买链路零改动。
@@ -328,7 +328,10 @@ forge dev named 102,013 B / `e280aeab6c4b37c43468f7cce32a8bf64c70b6bdbcd2203f6c5
 - **素材**：`images/shop/card+event/嘎呜切减费.png`（904 B / 64×64）逐字节拷成两线 `src/main/resources/assets/astral_dice/textures/gui/shop/card/attack_card_meito_discount.png`。
 - **判据（实跑）**：新增 `F:\MCProject\astral_dice_multiloader\tools\verify_meito_discount_face.py`（D1 源素材 64×64 / D2 两线贴图与源素材逐字节一致 / D3 两线有 `cardFaceTexture` 且 `drawCardFace` 走它 / D4 方法体四要素 `ATTACK_CARD_MEITO`·`hasMisakiEquipped`·`_discount.png`·`faceExists(discount) ? discount : base` / D5 两线 `getMeitoCost` 语义唯一 / D6 贴图名只出现在两线 `CardShopScreen`）⇒ `GATE: PASS（D1-D6）`；**变异测试**把 `"_discount.png"` 改成 `"_discountX.png"` ⇒ `GATE: FAIL (1 项) - D4`，还原后 PASS（证非假绿）。
 - **产物与投放（已实测）**：`:neoforge-1.21.1:build :forge-1.20.1:build` ⇒ `BUILD SUCCESSFUL in 4s`，六条 `pushTo*` 全命中；四目标 jar 内 `attack_card_meito_discount.png` 均有 1 份 —— `run/1.21.1/mods` 与「狐の航空学 Voxy Edition」同为 `2,588,804 B` sha256 `59E12108CF9681928661BE0C86FEA203A15642502095AECE1AB6BC9BD2F625D0`；`run/1.20.1/mods`（devlibs named）`2,604,380 B` `CB21FA244F7EBBE2B87A9CE269F8A7D620CE3A1AD4096A652DAEE6BA2A4A5CAB`；「1.20.1-Forge 模组测试」（reobf）`2,633,788 B` `33717FA935133587AC65711C6AC9B0BBBD6562BABE65DC18B502DE4220911702`。
-- **未做**：**未实机**（本条是纯客户端绘制分支，进入商店 GUI 才能看到）。P1 两线（`neoforge-26.1.2` / `fabric-1.20.1`）未移植（§5-Minor 6 同口径）。
+- **实机（双版本 PASS，2026-10-25 18:12–18:23）**：`--phase launch`（1.21.1 `MT_LAUNCH: OK (55s)` / 1.20.1 `MT_LAUNCH: OK (49s)`，AutoJS 端点 `http://127.0.0.1:25585/mcp` 就绪）。驱动口径：`/astralshop equip MK stand "astral_dice:misaki_sign"`（chat `AP_MK_EQUIP:slot=stand:...:err=none:got=astral_dice:misaki_sign`）+ 服务端 `CardShopShelf.store(player, 强制货架)` 把首格钉成 `astral_dice:attack_card_meito` + `/astralshop openkeep SP1|SP2|SP3` 开商店 GUI；客户端 `MisakiSignItem.hasMisakiEquipped(player)` 实测 `true`（佩戴）/`false`（卸下），`mc.screen = ...screen.CardShopScreen`。
+- **判据（像素级，不看肉眼）**：对「佩戴 vs 卸下」两张全屏截图取卡面格 82×120 区域逐像素比较 —— **1.21.1 差 347 px / 1.20.1 差 360 px**，差异 bbox 两线同为 region-local `(10,82)-(85,119)`（费用点行 + 卡名行；卡名是超宽标签的水平滚动，故卡名行也有差）；费用点行可辨 **3 点（佩戴）vs 4 点（卸下）**，放大 8× crop 见 `temp/crop_sign_yes.png` / `temp/crop_sign_no.png`（1.21.1）与 `temp/crop120_sign_yes.png` / `temp/crop120_sign_no.png`（1.20.1）；贴图本体差异 bbox（64×64 内 `(20,50)-(29,61)`、88 px，正常不透明 `(26,26,26,255)` vs 减费透明）与屏上差异位置一致 ⇒ 佩戴时确实换成 `attack_card_meito_discount.png`。
+- **收尾**：1.21.1 `--phase stop --force` ⇒ `MT_STOP: OK`；1.20.1 `--phase stop --force --purge-saves` ⇒ `MT_CLEANUP_SAVES: PURGED 1` / `MT_CLEANUP_RESULT: OK` / `MT_STOP: OK (1s)`；`Get-Process java` 仅剩 Gradle 守护（9984 / 12776）。
+- **未做**：P1 两线（`neoforge-26.1.2` / `fabric-1.20.1`）未移植（§5-Minor 7 同口径）；购买链路与价格未做回归 —— 本条硬约束是「价格与购买链路零改动」，由源码口径保证（`CardShopMenu.java:667` 未动）。
 
 ### 4.2 历史读数
 
@@ -392,6 +395,9 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 19. **`mt_env` 的 modernfix 钉子会因整合包升版而 BLOCKED（2026-10-25 实测）**：`scripts/test/mt_env.ps1:48` 的 `$script:NeoForgeMods` 写死 `*modernfix-neoforge*5.27.26*.jar`（Target `modernfix-neoforge-5.27.26+mc1.21.1.jar`），而整合包已升到 **5.27.27** ⇒ `--phase env` 直接 `MT_MODS: BLOCKED — 整合包缺少 *modernfix-neoforge*5.27.26*.jar`（EXIT **11**），整条 env 中断（Sodium/Iris/KubeJS 都还没走到）。本轮绕过：跳过 env 直接 `--phase launch`（`run/1.21.1/mods` 已有完整 14 jar 且库为 1.1.0）。**修法待裁决**：把钉子与 Target 同步到 5.27.27，或改成不带补丁号的宽匹配（`*modernfix-neoforge*5.27.*.jar`）。
 
 20. **同一次批量改写里两文件的 EOL 可能不同**（2026-10-25 实测）：`combat/DiceCombatModifiers.java` 是 **LF**，同一提交里的 `combat/DiceCombatContext.java` 是 **CRLF**（仓库历史原因，不由 autocrlf 统一）⇒ 改写脚本必须**逐文件探测** `text.includes("\r\n")` 再拼多行锚点/插入块；固定用 CRLF 拼锚点会 `anchor missing`（本轮首跑即失败、文件未被写入，属安全失败）。
+
+21. **Rhino 跨语言装箱**（1.20.1 KubeJS 侧）：`List<Integer>` 里塞 JS 数字会变成 `Double`，`CardShopShelf.store` 序列化时抛 `ClassCastException: Double cannot be cast to Integer`（`prices.add(4)` / `Integer.valueOf(4)` / `Integer.parseInt("4")` 三种写法都踩）；绕法 = 传**空** prices 列表 → `ensureLengths()`（Java 侧补 0）→ `withDiscounted(0, 4)`（形参是 `int`，跨界不装箱）。
+22. **服务端 `CardShopOpener.open(player)` 不一定上屏**：1.20.1 实测 client `mc.screen` 一度是 `CardShopScreen`，随后被容器关闭包清成 `null`（而 `containerMenu` 仍是 `CardShopMenu`）⇒ 截图前改用探针 `/astralshop openkeep <tag>` 重开并当拍即截；1.21.1 无此现象。
 
 ## 7 关键路径（命令）
 
