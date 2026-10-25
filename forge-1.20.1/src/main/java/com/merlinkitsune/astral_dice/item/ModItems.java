@@ -391,11 +391,19 @@ public class ModItems {
                     .rarity(AstralRarities.rare())));
 
     // 强化拒止(专属效果牌,2026-10-18;2026-10-18 移植到本线):在视线命中的方块面上放置一个实体
-    // 「强化拒止」(100 点耐久 / 8 格吸附 / 持续 缓慢+虚弱 / 每 10 秒按吸附目标数扣耐久 <=5 /
-    // 不吸引仇恨 / 免疫伤害)。品质:奇特(bizarre;2026-10-22 用户裁决:专属牌一律奇特,原为史诗);专属牌:不进随机池、无配方、不进赏金池、仅获得者可用
+    // 「强化拒止」(50 点耐久 / 12 格吸附 / 持续 缓慢+虚弱 / 每 10 秒按吸附目标数扣耐久 <=5 /
+    // 不吸引仇恨 / 免疫怪物与环境伤害)。品质:奇特(bizarre;2026-10-22 用户裁决:专属牌一律奇特,原为史诗);专属牌:不进随机池、无配方、不进赏金池、仅获得者可用
     public static final RegistryObject<Item> EFFECT_CARD_REPULSION = registerItem("effect_card_repulsion",
             () -> new RepulsionCardItem(new Item.Properties()
                     .stacksTo(16)
+                    .rarity(AstralRarities.bizarre())));
+
+    // 强化拒止（**物品形态**,2026-10-25 用户裁决）:玩家对已放置的强化拒止近战命中 5 次 ⇒ 实体回收成
+    // 本物品(不是效果牌),带走三份状态(关联血量 / 已存活 tick / 已发放充能);再次放置即恢复(放置判据
+    // 与效果牌完全一致,共用 item/RepulsionPlacement)。品质与专属牌一致 = 奇特;专属语义同样保留。
+    public static final RegistryObject<Item> REPULSION = registerItem("repulsion",
+            () -> new RepulsionItem(new Item.Properties()
+                    .stacksTo(1)
                     .rarity(AstralRarities.bizarre())));
 
     // 对怪激光(伤害效果牌):远程和魔法伤害 +4。品质:青(蓝)

@@ -1,6 +1,10 @@
 package com.merlinkitsune.astral_dice.entity;
 
+import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import com.merlinkitsune.astral_dice.item.ChargeManager;
+import com.merlinkitsune.astral_dice.item.RepulsionItem;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
@@ -15,6 +19,7 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.FlyingMob;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.HumanoidArm;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.MoverType;
@@ -35,6 +40,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -42,7 +48,8 @@ import java.util.UUID;
  * 强化拒止实体（效果牌「强化拒止」的可见部分，2026-10-18 新牌；属「怪力乱神」立牌）。
  *
  * <p><b>形态</b>：只有实体，**没有任何碰撞方块**（实体本身仍有 1.6×2.4 的拾取 / 攻击判定框，
- * 但 {@link #hurt} 只认**玩家来源** ⇒ 怪物 / 环境攻击无效、玩家可以主动打掉，见〈可被玩家拆除〉）；
+ * 但 {@link #hurt} 只认**玩家本人的近战** ⇒ 怪物 / 环境攻击无效、玩家近战命中 5 次会把它回收成
+ * 物品形式，见〈被玩家回收〉）；
  * {@code noPhysics = true}
  * ⇒ 不参与任何方块碰撞 / 推动。{@code extends LivingEntity}（**不**用 Mob AI）只为拿到生命值
  * 同步通道：耐久直接用 {@link #getHealth()} 承载（{@code MAX_HEALTH = 50}，由
@@ -119,11 +126,12 @@ import java.util.UUID;
  * <p><b>不吸引仇恨</b>：全程**不调用任何 {@code setTarget}**，也不清除目标原有仇恨 ——
  * 与「路障」（{@code BarricadeEntity}，主动改写仇恨）是**相反**的语义，两者不得混用判据。
  *
- * <p><b>可被玩家拆除（2026-10-22 用户裁决，取代原「主动攻击并不会对其造成伤害」）</b>：
- * {@link #hurt} 只认**玩家来源**（{@code source.getEntity() instanceof Player}，含玩家射出的箭 /
- * 三叉戟 —— 其 {@code getEntity()} 就是发射者）：徒手或武器命中按实际伤害扣耐久（至少
- * {@link #MIN_PLAYER_DAMAGE} 点），耐久归零 ⇒ {@link #shatter()}。怪物 / 环境伤害**仍然无效**
- * ⇒「不吸引仇恨」与「玩家能主动清掉它」两个口径同时成立。
+ * <p><b>被玩家回收（2026-10-25 用户裁决，取代 2026-10-22 的「玩家可拆除」）</b>：
+ * {@link #hurt} 只认<b>玩家本人的近战 / 扫击</b>（{@code source.getDirectEntity() instanceof Player}
+ * ⇒ 玩家射出的箭 / 三叉戟等弹射物<b>不算</b>），命中<b>不扣耐久</b>，只累加近战次数：满
+ * {@link #MAX_MELEE_HITS} 次 ⇒ {@link #recoverIntoItem(Player)} 掉落<b>物品形式</b>的强化拒止
+ * （耐久 / 剩余寿命 / 已发放充能随物品带走），再次放置由 {@link #restoreState(float, long, int)} 恢复。
+ * 怪物 / 环境伤害**仍然无效** ⇒「不吸引仇恨」与「玩家能收走它」两个口径同时成立。
  * <p>{@code /kill} 这类「显式判死」走 {@code Entity#kill()}，本类已覆写 {@link #kill()} 直接接到
  * {@link #shatter()}（2026-10-22 用户反馈「/kill 打不掉」）⇒
  * {@code /kill @e[type=astral_dice:repulsion,distance=..64]} 可用；管理员兜底
@@ -214,12 +222,17 @@ public class RepulsionEntity extends LivingEntity {
     private static final int MAX_DURABILITY_COST = 5;
 
     /**
-     * 玩家单次命中扣掉的最小耐久（点；2026-10-22 用户裁决新增「玩家可拆除」时定的下限）。
+     * 近战回收所需命中次数（2026-10-25 用户裁决：玩家**不再能把强化拒止打掉**，改为「对其近战 5 次
+     * ⇒ 重新掉落<b>物品形式</b>的强化拒止」）。
      *
-     * <p>为什么要有下限：{@code amount} 是攻击方给的伤害值，徒手仅 1 点、且某些第三方武器 / 附魔
-     * 可能给出 {@code 0}（或极小值）；没有下限时会出现「打了半天不见进度」的观感问题。
+     * <p>为什么改成「次数」而不是「伤害」：同一批改动把耐久改成**由物品承载的关联血量**（回收时随物品
+     * 带走、再次放置时恢复）。若命中仍扣耐久，玩家一次近战就会同时推动两条进度（回收计数 + 血量），
+     * 语义互相污染；改成纯计数后，「打 5 次」与「耐久随时间被吸附目标消耗」是两条独立进度。
      */
-    private static final float MIN_PLAYER_DAMAGE = 1.0F;
+    public static final int MAX_MELEE_HITS = 5;
+
+    /** NBT 键：已累计的玩家近战命中次数（{@code int}；上限 {@link #MAX_MELEE_HITS}）。 */
+    private static final String TAG_MELEE_HITS = "RepulsionMeleeHits";
 
     /** 碎裂粒子数量（用户需求「耐久耗尽会有碎裂粒子效果」；设计要求 CRIT 至少 16 个）。 */
     private static final int SHATTER_CRIT_COUNT = 32;
@@ -262,6 +275,9 @@ public class RepulsionEntity extends LivingEntity {
      * 单座力场最多 {@link #MAX_CHARGE_STACKS} 点，给满后不再累加。
      */
     private int chargeGiven;
+
+    /** 已累计的玩家近战命中次数（落盘）；达到 {@link #MAX_MELEE_HITS} 即 {@link #recoverIntoItem(Player)}。 */
+    private int meleeHits;
 
     /**
      * 本生命周期内「已经换过充能」的目标 UUID（**纯内存，不落盘**）。
@@ -331,6 +347,9 @@ public class RepulsionEntity extends LivingEntity {
         if (this.chargeGiven > 0) {
             tag.putInt(TAG_CHARGE_GIVEN, this.chargeGiven);
         }
+        if (this.meleeHits > 0) {
+            tag.putInt(TAG_MELEE_HITS, this.meleeHits);
+        }
         if (this.ownerUUID != null) {
             tag.putLongArray(TAG_OWNER, new long[] {
                     this.ownerUUID.getMostSignificantBits(), this.ownerUUID.getLeastSignificantBits() });
@@ -354,6 +373,8 @@ public class RepulsionEntity extends LivingEntity {
         // 老存档没有该键 ⇒ 0（从 0 起算，已计过的目标会重新计，最多仍只发 5 点）
         this.chargeGiven = Math.max(0, Math.min(MAX_CHARGE_STACKS, tag.getInt(TAG_CHARGE_GIVEN)));
         this.chargedTargets.clear();
+        // 老存档没有该键 ⇒ 0（回收进度从零开始，不影响既有耐久 / 寿命 / 充能语义）
+        this.meleeHits = Math.max(0, Math.min(MAX_MELEE_HITS, tag.getInt(TAG_MELEE_HITS)));
         long[] owner = tag.getLongArray(TAG_OWNER);
         this.ownerUUID = owner.length >= 2 ? new UUID(owner[0], owner[1]) : null;
     }
@@ -864,20 +885,20 @@ public class RepulsionEntity extends LivingEntity {
         super.remove(reason);
     }
 
-    /**
-     * 受伤入口（**服务端唯一判定**）：只认**玩家来源**（2026-10-22 用户裁决：要让玩家能主动拆掉它）。
+        /**
+     * 受伤入口（**服务端唯一判定**；2026-10-25 用户裁决改写）。
      *
      * <p>口径：
      * <ul>
-     *   <li>来源判定 = {@code source.getEntity() instanceof Player} ⇒ 玩家近战 / 扫击 / 玩家射出的
-     *       箭与三叉戟都算（弹射物的 {@code getEntity()} 是发射者）；怪物、其它生物、环境伤害
-     *       （坠落 / 火焰 / 冻结 / 挤压）与 {@code /kill} 的 {@code genericKill}（没有 entity）
+     *   <li>来源判定 = {@code source.getDirectEntity() instanceof Player} ⇒ **只认玩家本人的近战 /
+     *       扫击**。与旧版（{@code getEntity()}）的关键差别：玩家射出的箭 / 三叉戟的
+     *       {@code getDirectEntity()} 是弹射物本身 ⇒ 自动排除；怪物、其它生物、环境伤害
+     *       （坠落 / 火焰 / 冻结 / 挤压）与 {@code /kill} 的 {@code genericKill}（没有 directEntity）
      *       一律无效 ⇒「不吸引仇恨」的语义不变；</li>
-     *   <li>伤害量 = {@code max(MIN_PLAYER_DAMAGE, amount)}；**全覆写**不经过原版
-     *       {@code LivingEntity#hurt} ⇒ 无无敌帧冷却、无护甲 / 抗性减伤、无格挡（与「路障」同一取舍），
-     *       徒手也保证至少 1 点进度；</li>
-     *   <li>耐久归零 ⇒ {@link #shatter()}（碎裂粒子 + 玻璃破碎音 + {@code discard}），
-     *       **不**走 {@code die} ⇒ 没有生物式死亡动画（见 {@link #die(DamageSource)}）；</li>
+     *   <li><b>命中不再扣耐久</b>：耐久（= {@link #getHealth()}）只由 {@link #consumeDurability()}
+     *       按吸附目标数消耗、或由放置时从物品恢复的状态决定；命中只累加 {@link #meleeHits}；</li>
+     *   <li>命中 {@link #MAX_MELEE_HITS} 次 ⇒ {@link #recoverIntoItem(Player)}：掉落**物品形式**的
+     *       强化拒止（耐久 / 剩余寿命 / 已发放充能随物品带走），本实体 {@code discard}；</li>
      *   <li>客户端红闪 + 受击音走 {@code broadcastDamageEvent}（{@code ClientboundDamageEventPacket}
      *       → {@code handleDamageEvent} 置 {@code hurtTime}），受击音由 {@link #getHurtSound} 决定，
      *       这里不重复 {@code playSound}。</li>
@@ -887,19 +908,78 @@ public class RepulsionEntity extends LivingEntity {
     public boolean hurt(DamageSource source, float amount) {
         if (this.level().isClientSide) return false;
         if (this.isRemoved() || this.isDeadOrDying()) return false;
-        if (!(source.getEntity() instanceof Player)) return false;
+        // 只认玩家本人（近战 / 扫击）；弹射物的 directEntity 是箭 / 三叉戟 / 子弹 ⇒ 不计
+        if (!(source.getDirectEntity() instanceof Player player)) return false;
 
         this.markHurt();
         this.level().broadcastDamageEvent(this, source);
 
-        float dealt = Math.max(MIN_PLAYER_DAMAGE, amount);
-        float next = this.getHealth() - dealt;
-        if (next <= 0.0F) {
-            this.shatter();
-        } else {
-            this.setHealth(next);
+        this.meleeHits++;
+        int remaining = MAX_MELEE_HITS - this.meleeHits;
+        if (remaining <= 0) {
+            this.recoverIntoItem(player);
+            return true;
         }
+        player.displayClientMessage(Component.translatable(RepulsionItem.MSG_HIT, remaining)
+                .withStyle(ChatFormatting.YELLOW), true);
         return true;
+    }
+
+    /**
+     * 回收为物品形式（2026-10-25 用户裁决）：把「耐久 / 已存活 tick / 已发放充能」三份状态写进
+     * {@code astral_dice:repulsion} 物品并掉在原地（带默认拾取延迟），本实体走 {@code discard}。
+     *
+     * <p>为什么不复用 {@link #shatter()}：碎裂是「耐久耗尽」的语义（CRIT 碎裂粒子 + 玻璃破碎音 +
+     * 什么都不掉）；回收是「玩家把装置收起来了」，用较轻的 {@code POOF} + 物品拾取音，两件事的观感
+     * 必须能分开。owner 一并写进物品：再次放置时仍是原主的装置（专属语义与效果牌一致）。
+     */
+    private void recoverIntoItem(Player player) {
+        long elapsed = this.createdAt == CREATED_AT_UNSET
+                ? 0L
+                : Math.max(0L, this.level().getGameTime() - this.createdAt);
+        ItemStack recovered = RepulsionItem.createRecovered(this.getHealth(), elapsed, this.chargeGiven,
+                this.ownerUUID != null ? this.ownerUUID : player.getUUID());
+
+        double cx = this.getX();
+        double cy = this.getY();
+        double cz = this.getZ();
+        ItemEntity drop = new ItemEntity(this.level(), cx, cy, cz, recovered);
+        drop.setDefaultPickUpDelay();
+        this.level().addFreshEntity(drop);
+
+        if (this.level() instanceof ServerLevel serverLevel) {
+            serverLevel.sendParticles(ParticleTypes.POOF, cx, cy + this.getBbHeight() * 0.5D, cz,
+                    SHATTER_POOF_COUNT, 0.4D, 0.6D, 0.4D, 0.02D);
+        }
+        this.level().playSound(null, cx, cy, cz, SoundEvents.ITEM_PICKUP, SoundSource.PLAYERS, 0.9F, 1.3F);
+
+        player.displayClientMessage(Component.translatable(RepulsionItem.MSG_RECOVERED,
+                RepulsionItem.getDurability(recovered), RepulsionItem.MAX_DURABILITY)
+                .withStyle(ChatFormatting.GREEN), true);
+
+        this.releaseAllControls();
+        this.trackedTargets.clear();
+        this.discard();
+    }
+
+    /**
+     * 由物品形态恢复状态（{@code item/RepulsionItem#place} 调用，**仅服务端**）：
+     * 血量 / 剩余寿命 / 已发放充能。
+     *
+     * <p>剩余寿命的算法：{@code createdAt = now - elapsedTicks} ⇒ {@link #LIFETIME_TICKS} 到点的判据
+     * （{@code gameTime - createdAt >= LIFETIME_TICKS}）自动变成「只消耗掉已存活的那部分」；
+     * 不做任何特判。
+     *
+     * <p>{@code chargedTargets} 与 {@code meleeHits} 归零：前者是「本次生命周期内已换过充能的目标」
+     * 去重表（纯内存），后者是回收进度；两者都不该跨放置继承。
+     */
+    public void restoreState(float health, long elapsedTicks, int chargeGiven) {
+        this.setHealth(Math.max(1.0F, Math.min(this.getMaxHealth(), health)));
+        long elapsed = Math.max(0L, Math.min(LIFETIME_TICKS, elapsedTicks));
+        this.createdAt = this.level().getGameTime() - elapsed;
+        this.chargeGiven = Math.max(0, Math.min(MAX_CHARGE_STACKS, chargeGiven));
+        this.chargedTargets.clear();
+        this.meleeHits = 0;
     }
 
     /** 受击音：玻璃磕碰（客户端由伤害事件包播放；碎裂音是另一条路径，见 {@link #shatter()}）。 */

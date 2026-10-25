@@ -10,6 +10,7 @@ import com.merlinkitsune.astral_dice.item.ChargeManager;
 import com.merlinkitsune.astral_dice.item.HealingManager;
 import com.merlinkitsune.astral_dice.item.StarLightManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
+import com.merlinkitsune.astral_dice.item.RepulsionItem;
 import com.merlinkitsune.astral_dice.item.sign.JasmineSignItem;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -1281,6 +1282,23 @@ public class ModTooltipHandler {
                             effectCardCooldownSeconds(player))
                     .withStyle(ChatFormatting.RED));
             tooltip.add(Component.translatable("tooltip.astral_dice.card.exclusive_owner")
+                    .withStyle(ChatFormatting.DARK_PURPLE));
+        }
+        if (stack.is(ModItems.REPULSION.get())) {
+            // 2026-10-25 强化拒止(物品形态):静态说明(三行) + 三份状态(耐久 / 剩余寿命 / 已提供充能)
+            // 行内数值着 §e、时间着 §9(见 AGENTS「tooltip 文案唯一基准」)
+            addCardLines(tooltip, "tooltip.astral_dice.item.repulsion");
+            tooltip.add(Component.translatable("tooltip.astral_dice.item.repulsion_durability",
+                            RepulsionItem.getDurability(stack), RepulsionItem.MAX_DURABILITY)
+                    .withStyle(ChatFormatting.GRAY));
+            tooltip.add(Component.translatable("tooltip.astral_dice.item.repulsion_lifetime",
+                            formatMmSs((int) ((RepulsionItem.getRemainingTicks(stack) + 19L) / 20L)))
+                    .withStyle(ChatFormatting.GRAY));
+            tooltip.add(Component.translatable("tooltip.astral_dice.item.repulsion_charge",
+                            RepulsionItem.getChargeGiven(stack),
+                            com.merlinkitsune.astral_dice.entity.RepulsionEntity.MAX_CHARGE_STACKS)
+                    .withStyle(ChatFormatting.GRAY));
+            tooltip.add(Component.translatable("tooltip.astral_dice.item.repulsion_owner")
                     .withStyle(ChatFormatting.DARK_PURPLE));
         }
         if (stack.is(ModItems.HAIQING_SIGN.get())) {

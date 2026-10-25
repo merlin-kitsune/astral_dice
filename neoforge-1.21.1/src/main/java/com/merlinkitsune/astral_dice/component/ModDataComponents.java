@@ -116,4 +116,29 @@ public class ModDataComponents {
                             .persistent(UUIDUtil.CODEC.optionalFieldOf("id").codec())
                             .networkSynchronized(ByteBufCodecs.optional(UUIDUtil.STREAM_CODEC)));
 
+    // ── 强化拒止（物品形态，2026-10-25 用户裁决）─────────────────────────────
+    // 实体被玩家近战 5 次后回收成物品（item/RepulsionItem），三份状态随物品走；客户端要画
+    // 耐久条与 tooltip ⇒ 三个都必须 networkSynchronized（否则客户端读到缺省值）。
+
+    /** 关联血量（0..50；缺省 50）。必须等于实体 MAX_HEALTH（event/ModEntityEvents 的 50.0D）。 */
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<Integer>> REPULSION_HEALTH =
+            DATA_COMPONENTS.registerComponentType("repulsion_health",
+                    builder -> builder
+                            .persistent(Codec.INT)
+                            .networkSynchronized(ByteBufCodecs.INT));
+
+    /** 已存活 tick（0..24000；缺省 0）。缺省 0 = 全新装置，总寿命见 RepulsionItem#LIFETIME_TICKS。 */
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<Integer>> REPULSION_AGE =
+            DATA_COMPONENTS.registerComponentType("repulsion_age",
+                    builder -> builder
+                            .persistent(Codec.INT)
+                            .networkSynchronized(ByteBufCodecs.INT));
+
+    /** 该座力场已**实际发放**给放置者的充能层数（0..5；缺省 0）。 */
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<Integer>> REPULSION_CHARGE =
+            DATA_COMPONENTS.registerComponentType("repulsion_charge",
+                    builder -> builder
+                            .persistent(Codec.INT)
+                            .networkSynchronized(ByteBufCodecs.INT));
+
 }

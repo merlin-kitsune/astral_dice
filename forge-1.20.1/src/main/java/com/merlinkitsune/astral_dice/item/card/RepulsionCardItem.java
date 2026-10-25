@@ -3,24 +3,17 @@ package com.merlinkitsune.astral_dice.item.card;
 import com.merlinkitsune.astral_dice.audio.SoundPlayback;
 import com.merlinkitsune.astral_dice.entity.ModEntityTypes;
 import com.merlinkitsune.astral_dice.entity.RepulsionEntity;
+import com.merlinkitsune.astral_dice.item.RepulsionPlacement;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.BlockHitResult;
-import net.minecraft.world.phys.HitResult;
-import net.minecraft.world.phys.Vec3;
 
 /**
  * 强化拒止（专属效果牌，史诗 · 2026-10-18 新牌；属「怪力乱神」立牌，该立牌会在后续添加；
@@ -87,9 +80,6 @@ public class RepulsionCardItem extends BaseEffectCardItem {
 
     /** 卡牌类型 id（忍者立牌 / 魔法秘典 / 魔法箭袋的复制计数与「按类型找回本体」共用）。 */
     public static final String CARD_TYPE_ID = "repulsion";
-
-    /** 放置距离（格；视线射线长度）= 4.5 格，即**原版方块交互距离**。 */
-    public static final double PLACE_REACH = 4.5D;
 
     public static final String MSG_INVALID = "msg.astral_dice.effect_card_repulsion_invalid";
     public static final String MSG_PLACED = "msg.astral_dice.effect_card_repulsion_placed";
@@ -166,39 +156,14 @@ public class RepulsionCardItem extends BaseEffectCardItem {
     /**
      * 落点解析（客户端 / 服务端**同一份**判据）。
      *
+     * <p>2026-10-25 用户裁决新增物品形态的强化拒止（{@code item/RepulsionItem}），并要求
+     * 「玩家放置强化拒止物品的行为，与放置强化拒止效果牌行为一致」⇒ 判据**只存一份**，实现搬到
+     * {@link RepulsionPlacement#resolve(Level, Player)}，本方法只做转发（卡片 / 物品两条路径
+     * 永远看到同一份坐标结果，不会出现「卡片能放、物品不能放」）。
+     *
      * @return 可放置的方块坐标；{@code null} = 当前视线落点不合法
      */
     private static BlockPos resolvePlacement(Level level, Player player) {
-        Vec3 eye = player.getEyePosition();
-        Vec3 end = eye.add(player.getViewVector(1.0F).scale(PLACE_REACH));
-        BlockHitResult hit = level.clip(new ClipContext(eye, end,
-                ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, player));
-        if (hit.getType() != HitResult.Type.BLOCK) return null;
-
-        BlockPos target = hit.getBlockPos().relative(hit.getDirection());
-        if (!level.isInWorldBounds(target)) return null;
-
-        // ① 世界边界 + 交互权限（ServerLevel#mayInteract = 出生点保护 + 世界边界）
-        if (!level.getWorldBorder().isWithinBounds(target)) return null;
-        if (!level.mayInteract(player, target)) return null;
-
-        // ② 落点本身可替换（空气 / 水 / 草…）
-        BlockState atTarget = level.getBlockState(target);
-        if (!atTarget.canBeReplaced()) return null;
-
-        // ③ 下方必须是「朝上的实心面」= 原版「放在方块面上」的等价判据
-        BlockPos below = target.below();
-        if (!level.getBlockState(below).isFaceSturdy(level, below, Direction.UP)) return null;
-
-        // ④ 同格已有存活的强化拒止 ⇒ 放不下（本牌不落方块，没有别的办法占住这一格）。
-        //    只比 blockPosition，不用 AABB（1.6 宽会溢出到邻格，导致相邻格放不下第二座）
-        AABB cell = new AABB(target.getX(), target.getY(), target.getZ(),
-                target.getX() + 1.0D, target.getY() + 1.0D, target.getZ() + 1.0D);
-        for (Entity entity : level.getEntitiesOfClass(RepulsionEntity.class, cell)) {
-            if (entity.isAlive() && !entity.isRemoved() && entity.blockPosition().equals(target)) {
-                return null;
-            }
-        }
-        return target;
+        return RepulsionPlacement.resolve(level, player);
     }
 }

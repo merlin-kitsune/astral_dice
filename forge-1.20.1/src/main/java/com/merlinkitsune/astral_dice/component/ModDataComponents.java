@@ -88,6 +88,17 @@ public class ModDataComponents {
     public static final ItemDataKey<Optional<UUID>> OWNER_UUID =
             ItemDataKey.create("owner_uuid", UUIDUtil.CODEC.optionalFieldOf("id").codec());
 
+    // 强化拒止物品形态(2026-10-25):回收进物品时带走的三份状态 —— 关联血量 / 已存活 tick / 已发放充能。
+    // 1.20.1 由 ItemDataKey(ItemStack NBT)承载,随物品同步到客户端(据此画耐久条与 tooltip)。
+    public static final ItemDataKey<Integer> REPULSION_HEALTH =
+            ItemDataKey.create("repulsion_health", Codec.INT);
+
+    public static final ItemDataKey<Integer> REPULSION_AGE =
+            ItemDataKey.create("repulsion_age", Codec.INT);
+
+    public static final ItemDataKey<Integer> REPULSION_CHARGE =
+            ItemDataKey.create("repulsion_charge", Codec.INT);
+
 
 
 

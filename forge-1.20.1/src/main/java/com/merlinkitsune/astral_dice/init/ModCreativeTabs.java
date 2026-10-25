@@ -86,6 +86,7 @@ public class ModCreativeTabs {
                 output.accept(ModItems.FATE_GUIDANCE_CARD.get());
                 output.accept(ModItems.EFFECT_CARD_BARRICADE.get());
                 output.accept(ModItems.EFFECT_CARD_REPULSION.get());
+            output.accept(ModItems.REPULSION.get());
                 // 风水师立牌专属符卡(专属绑定获得者的效果牌)
                 output.accept(ModItems.FU_CARD.get());
                 output.accept(ModItems.HUO_CARD.get());

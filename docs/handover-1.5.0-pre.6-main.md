@@ -9,7 +9,7 @@
 2. 四线 `mod_version = 1.5.0-pre.6+<加载器后缀>`；四线 `starengine_version = 1.1.0-pre.2`（未动）。
 3. 本批收编 **Kimi 上一轮四批未提交改动**（member-detective / misaki 立牌 / 筹码商店刷新源 / 规则分派），并完成 **DSH 三语语言同步** + **地雷女备注区染色修复**。
 4. 判据：P0 两线 `:classes` `BUILD SUCCESSFUL in 4s`；`check_lang_sync` EXIT=0；`audit_patchouli_keys` 悬空 0；`verify-split` EXIT=0；三道专项 python 判据 PASS 26/12/14；`verify_chip_shop_ui` `CHIPUI_TOTAL_FAIL: 0`。
-5. **pre.6 产物已重建并投放**（2026-10-25 11:55，`:neoforge-1.21.1:build :forge-1.20.1:build` 触发 `pushToDevRun/pushToGame/pushToRootBuild`）——四个目标（`run/1.21.1/mods`、`run/1.20.1/mods`=devlibs named、两个 P0 整合包）逐处 sha256 **MATCH**，读数见 §2。
+5. **pre.6 产物已重建并投放**（最新一次 2026-10-25 14:22，含强化拒止物品形态；`:neoforge-1.21.1:build :forge-1.20.1:build` 触发 `pushToDevRun/pushToGame/pushToRootBuild`）——四个目标（`run/1.21.1/mods`、`run/1.20.1/mods`=devlibs named、两个 P0 整合包）逐处 sha256 **MATCH**，读数见 §2。
 6. 本批实机：**星光兑换 5 组 + 筹码商店刷新源 / 文案（38 tooltip + 21 手册）/ `ame_note` 染色，双版本全 PASS**（2026-10-25，§4.1 / §4.1b）。`scripts/test/cases/CHIP-REGEN-*.json`（等 tick 自动 +1）随 ticker 删除失效，**已按用户裁决退役（两文件删除）**（§5-3）。
 7. 规则分派已落地：根 `AGENTS.md` 为 41 行入口，Kimi → `docs/agent/AGENTS-kimi.md`，DSH → `docs/agent/AGENTS-dsh.md`，Codex → `docs/agent/AGENT-SPLIT.md`（只读）。
 8. 未处置：陈旧锁 `F:\MCProject\.agent-locks\kimi.lock`（`PID=26580` / `TASK=misaki-chip-shop-balance-p0`，进程已不存在）—— 按规则不自行删，交用户裁决。
@@ -32,11 +32,12 @@
 | `starengine_version` | `1.1.0-pre.2`（四线）；fabric 另有 `starengine_version_range=>=1.1.0-pre.2` | 各线 `gradle.properties` |
 | 硬前置区间 | `[1.1.0-pre.2,2.0.0)`；`META-INF/jarjar/` 计数 **0** | `neoforge-1.21.1/.../neoforge.mods.toml` · `forge-1.20.1/.../mods.toml` |
 
-**产物现状（2026-10-25 11:55 重建，pre.6）**：
-neo `astral_dice-1.5.0-pre.6+neoforge_1.21.1.jar` 2,577,145 B / sha256 `7995d7145da5bf25763d68f598b8c8a9817c3e5dbedeb23225d0326ac5b5ff9e`（`run/1.21.1/mods` 与「狐の航空学 Voxy Edition」同一份）；
-forge `astral_dice-1.5.0-pre.6+forge_1.20.1.jar` 2,622,362 B / `2f14b07951b8517930445db3a8f41ebd85630315c253669d74cd4fa08c8f71e9`（→ 1.20.1-Forge 模组测试）；
-forge dev **named** 2,592,867 B / `40bfe7162c446457803f5dcc8618601b30c935b2d2a4c2bde666db46ca32f274`（`run/1.20.1/mods`）。
-四目标 2026-10-25 11:55:50 逐处 sha256 MATCH；字节码判据（`item/StarLightManager.class`）含 `replenishOnExchange`、不含 `getBasePoints`。
+**产物现状（2026-10-25 14:22 重建，pre.6；含强化拒止物品形态）**：
+neo `astral_dice-1.5.0-pre.6+neoforge_1.21.1.jar` 2,585,277 B / sha256 `7236957807d0fa6f528382be8c80984cfa1059e6a3d451aff264cdf7178ac95f`（`run/1.21.1/mods` 与「狐の航空学 Voxy Edition」同一份）；
+forge `astral_dice-1.5.0-pre.6+forge_1.20.1.jar` 2,630,363 B / `d1bd35f0bffe488aa595f2ad58f07dc25925c0ed1ffdbbbc6cdb36375f85a0cb`（→ 1.20.1-Forge 模组测试）；
+forge dev **named** 2,600,896 B / `421bbb4c8d6c90ae46057205f8ee31e0aa4f294c2b29b113cba48e166c6fb562`（`run/1.20.1/mods`）。
+四目标 2026-10-25 14:22 逐处 sha256 MATCH；jar 内判据：`assets/astral_dice/models/item/repulsion.json` 与 `textures/item/repulsion.png` 均在、`lang/zh_cn.json` 含 `item.astral_dice.repulsion` / `msg.astral_dice.repulsion_hit` / 新卡面文案「回收成物品形式」。
+> 上一轮（11:55，星光批次）读数：neo 2,577,145 B / `7995d714…5b5ff9e`；forge reobf 2,622,362 B / `2f14b079…c8f71e9`；forge dev 2,592,867 B / `40bfe716…6a32f274` —— 已被本批覆盖。
 库 jar（成对投放，未随本批变动）：neo 98,737 B / forge 103,609 B（`1.1.0-pre.2`）。
 
 ## 3 本批批次表
@@ -45,6 +46,7 @@ forge dev **named** 2,592,867 B / `40bfe7162c446457803f5dcc8618601b30c935b2d2a4c
 |---|---|---|
 | `e2aed527` | bump pre.6 + 收编 Kimi 四批 + 三语语言同步（53 文件，+994/−981） | 见下 7 条 |
 | `1ff14106` | feat(starlight)：星光兑换改为「装备时发放 + 每次兑换后按佩戴补星」（24 文件 +1380/−217） | `resource/ResourceConversion`（兑换后 `replenishOnExchange`）· `item/StarLightManager`（`grantedStarlight` 4bit 账本 / `grantStarlightOnEquip` / `revokeStarlightOnUnequip` / `replenishOnExchange`）· 四枚星光筹码 `onEquip`/`onChipUnequip` · 经商立牌 +50% 保留在 `CardShopMenu#tryExchange` · 新增 `tools/verify_starlight_exchange_refill.py`（`GATE: PASS (196 项)`） |
+| `9321d624` | feat(repulsion)：强化拒止改为「近战 5 次回收成物品形态」（32 文件 +973/−172） | 新增 `item/RepulsionItem`（三份状态 + 耐久条）/ `item/RepulsionPlacement`（卡与物品共用落点解析）· `entity/RepulsionEntity`（`MAX_MELEE_HITS = 5` / `recoverIntoItem` / `restoreState` / NBT `RepulsionMeleeHits`）· `component/ModDataComponents` 三个 INT 键 · 两线三语 +11 键 · 贴图 + 生成模型 |
 | 本文件所在提交 | docs：Kimi 交接单 + 工程参考 + pre.6 正本 + 新会话上下文 | `docs/handover-2026-10-24-kimi-takeover.md` · `docs/agent/PROJECT-REFERENCE.md` · 本文件 · `docs/handover-new-session-context.md` |
 
 `e2aed527` 的七条内容：
@@ -96,6 +98,24 @@ forge dev **named** 2,592,867 B / `40bfe7162c446457803f5dcc8618601b30c935b2d2a4c
 - 手册：21 键两线均 **21/21** 解析成功，17 条逐字一致、4 条只差 `%%`→`%`（`battle_system_changes.3` / `komachi_sign.2` / `rin_sign.1` / `extra_battery_chip.1`），**0 条含显式 `\n`**（折行由 Patchouli 自动）。
 - `ame_note` 染色：两线逐字一致 —— `§d`（备注体）+ `§e`（数值）+ `§9`（时间），行首区段前缀由 `addSignNoteLines` 注入，符合 tooltip 染色规则；证据 = 上述渲染行原文（未取截图）。
 
+### 4.1c 强化拒止物品形态（2026-10-25）—— 代码/资源就绪，**未实机**
+
+改动（P0 两线同批）：玩家近战命中已放置力场第 5 次 ⇒ 回收成**新物品** `astral_dice:repulsion`（不是效果牌），携带耐久（= 关联血量）/ 已存活 tick / 已提供充能三份状态；再次放置按与效果牌**同一份**落点解析（`item/RepulsionPlacement.resolve`）恢复三份状态。
+
+已成立的静态判据：
+
+| 判据 | 命令 | 读数 |
+|---|---|---|
+| 两线编译 | `gradlew.bat :neoforge-1.21.1:classes` / `:forge-1.20.1:classes` | `BUILD SUCCESSFUL in 4s` / `in 11s`（EXIT 0，零新警告） |
+| 两线打包 + 投放 | `gradlew.bat :<线>:build` | `BUILD SUCCESSFUL`，四目标 sha256 MATCH（§2） |
+| 模型链 | `runData`（两线） | 生成 `src/generated/.../models/item/repulsion.json`（`parent: minecraft:item/generated`，`layer0: astral_dice:item/repulsion`） |
+| 资源完整性 | `scripts/verify/verify_resource_integrity.ps1` | `RESULT: PASS`；两线注册物品 157，模型 157/157、贴图 157/157 |
+| 语言同步 | `tools/check_lang_sync.ps1` | EXIT 0；P0 各 1058 键一致（3 条既有 WARN） |
+| 稀有度一致性 | `tools/verify_rarity_consistency.py` | `GATE: PASS` |
+| 规则分派 | `python -B docs/agent/verify-split.py` | 8 项全 `[OK]` |
+
+**未做**：实机（放置 / 近战 5 次回收 / 重放恢复 / 非 owner 拒止 / 耐久条与 tooltip 三行读数）—— 按规则需用户明确下达。
+
 ### 4.2 历史读数
 
 pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（含 4.8 pre.4 全量双线 10 跑 10 PASS、4.11–4.17 pre.5 各批、4.19 Jade 图标留白版）。
@@ -111,10 +131,11 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 1. ~~pre.6 产物未建未投~~ → **已完成**（2026-10-25 11:55）：`:neoforge-1.21.1:build :forge-1.20.1:build` 触发 `pushTo*`，四目标 sha256 全 MATCH（§2）；库 jar 成对在位（neo 98,737 B / forge 103,609 B，`1.1.0-pre.2`）。
 2. ~~本批局部实机~~ → **已完成**（2026-10-25）：星光兑换 5 组（§4.1）+ 筹码商店刷新源 R0–R5 / 38 tooltip + 21 手册 / `ame_note` 染色（§4.1b），**双版本全 PASS**。
 3. ~~`CHIP-REGEN-*.json` 已失效~~ → **已退役**（2026-10-25 用户裁决「旧用例直接退役」）：`scripts/test/cases/CHIP-REGEN-1.20.1.json` / `CHIP-REGEN-1.21.1.json` **两文件已删除**（它们断言「摆形态 → 等 tick → 自动 +1」，随 `ChipShopRegenTicker` 删除永久不成立）。新语义（刷新 3→2→1 + anchor 首写 + 升星取走 1→2 + 死亡不自愈）已在 §4.1b R2/R3/R5 双线实机取证；若日后要**自动化**回归再按这套判据重写，勿复活旧文件。探针 `/astralshop cregen` 仍保留（只摆状态、不再指望 ticker 推进）。
-4. **`tooltip_color_audit` 存量 130 处**（10 键）：`jill_active` 22 / `storm_approaching.description` 18 / `problem_delivery.description` 18 / `dorothy_active` 18 / `red_heat_warning.description` 16 / `fanny_active` 12 / `jill_passive` 8 / `card.barricade` 6 / `card.repulsion` 6 / `deepseek_passive` 6。其中 `card.barricade`/`card.repulsion` 是**用户自写 `§e20:00§7`**（规则应为 §9），按「tooltip 以用户为准」未动。
+4. **`tooltip_color_audit` 存量 144 处**（9 键，2026-10-25 复跑）：`jill_active` 36 / `storm_approaching.description` 18 / `problem_delivery.description` 18 / `dorothy_active` 18 / `red_heat_warning.description` 16 / `fanny_active` 12 / `jill_passive` 8 / `card.barricade` 6 / `deepseek_passive` 6（+ 若干零散项）。原 `card.repulsion` 的 6 处 `§e20:00§7` 已按染色规则改为 `§920:00§7`（**时间值必须 §9**），复跑后 repulsion 相关 **0 处**；其余 9 键属既有基线债，仍未动。
 5. **8 条「代码与文案都不符」**（已报用户，未改 tooltip）：bite 觉醒按撕咬张数 / huo_card = `CREATURE_OR_RIVAL` / magic_quiver 真闸门 = 目标已有标记 + 先用过伤害牌 / railgun 只 `bypasses_armor` / 三张卡 `NON_HOSTILE` / member_recommendation 只数主背包+副手 / repulsion 单次最多 5 点耐久 / airbag 掉虚空救不了。
 6. **P1 两线欠账**（正式版前不移植，仅登记）：JEI 筹码 / `BeamFx` / `GlobalEventGate` / `RepulsionEntity` / `CardShopMenu#planPlacement` / `EventDrawBlock`；筹码效果图标仍带边框；史莱姆被动仍 20 tick；misaki 仍 `legendary()` + 黄金星盘 + 死亡清零剑气；pre.5 冷却指示器未移植。
 7. **陈旧锁 `kimi.lock`**（`PID=26580` 已不存在）——不自行删，交用户裁决。
+8. **强化拒止物品形态未实机**（2026-10-25）：代码/贴图/三语 lang/模型/CHANGELOG 全部就绪、两线编译与四道守门全绿（§4.1c），但**没有任何实机读数**。待用户下达后按 §4.1c 末段的六项判据跑。另有两个**待用户裁决**的小项：(a) 是否给新物品**加帕秋莉手册第 4 页**（现只把卡条目的文案改成「会被回收」）；(b) 玩家自写染色 `card.barricade` 的 6 处 `§e20:00§7` 是否也一并改 §9（本批只改了 repulsion）。
 
 ### Minor
 
@@ -140,6 +161,8 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 14. **探针的 `StringArg.string()` 参数必须加引号**：`/astralprobe anvilstar "astral_dice:golden_dice" ANV`（`dice` = `StringArg.string()`、`tag` = `StringArg.word()`）；不加引号只在聊天里留一行被截断的 `...stral_dice:golden_dice ANV<--[此处]`，日志里几乎认不出是参数错。另 **`performPrefixedCommand` 在 Rhino 里返回 `undefined`**，不能当失败判据 —— 用 `say TESTPFC12` 能进日志即证明通道通。
 15. **同一时刻只能一条线占用 AutoJS 的 25585**：1.21.1 未停就 launch 1.20.1 ⇒ 客户端日志 `[AutoJS]: Could not bind the MCP endpoint on 127.0.0.1:25585`（`java.net.BindException`），紧接着 preflight 报 `MT_INJECT_FOCUS: FAIL — 目标窗口无法置前台` 与「客户端未在运行」 ⇒ **先 `--phase stop --force` 另一线再 launch**。
 16. **1.20.1 的 AutoJS 是 `run\1.20.1\mods\AutoJS-forge-1.20.1-1.0.0-dev.jar`（named）**：`MT_ENV_AUTOJS: 跳过 — 1.20.1 线未接入` 只表示**不再自动投放**，运行时照样有端点；判据看启动日志 `MT_LAUNCH: OK — AutoJS 端点已就绪`。
+17. **`run/<线>/mods` 里的 astral_dice jar 会遮蔽 dev classes ⇒ datagen 静默不产出**（2026-10-25 实测）：`runData` 日志里 `Item Models: astral_dice finished` 与 `HashCache new count ... written: 0/1` 都正常，但新 `basicItem(...)` 对应的 `src/generated/.../models/item/xxx.json` **不存在**。根因：`run/1.21.1/mods/astral_dice-1.5.0-pre.6+neoforge_1.21.1.jar` 与 `neoforge-1.21.1/build/classes/java/main` 都声明 modid `astral_dice`，`UniqueModListBuilder` 选的是 **jar**（日志 `Selected file astral_dice-...jar for modid astral_dice`）⇒ 跑的是旧 jar 里的旧 `ModItemModelProvider`。修法：先把 `run/<线>/mods/astral_dice-*.jar` 移出（本轮移到 `temp/mods-bak-datagen/`），跑 `--rerun-tasks :<线>:runData`，再把 jar 拷回。
+18. **`run_code` 自带 120s 程序级 deadline，`tools.pwsh` 的 `timeoutMs` 覆盖不到它** ⇒ 长任务（两线 `runData`、双线 `build`）必须同时给 `run_code` 的 `timeoutMs`，否则进程在中途被杀、日志看似「跑完了」。另：**bundled python 在本会话无法写文件**（PIL `im.save()` 对 `temp/` 与 `src/main/resources/` 均 `PermissionError: [Errno 13]`）⇒ 生成 png/二进制一律用 node（`fs` + `zlib` 手写 PNG 编码器），不要走 python 写盘。
 13. pre.5 及更早的 32 条坑见 `docs/handover-1.5.0-pre.5-main.md` §6。
 
 ## 7 关键路径（命令）
