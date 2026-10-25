@@ -4,7 +4,9 @@ Released: **1.5.0-rc.1 (pre-release / beta)** — covers **everything** since 1.
 
 - **Shops**: the Card Shop and Chip Shop blocks, the Card Trader and Chip Merchant villager professions, and the Loot Box block;
 - **Event system**: 12 events, event-card animation, and the Great Detective's event-choice screen;
-- **Content**: two quirky signs (KAngel, Ame), two new effect cards (Barricade, Reinforced Repulsion, the latter also as an item), and 5 new chips;
+- **Content**: **seven new signs** (KAngel, Ame, Sister Sign, Big Fat Fish Sign, Dorothy Sign, Bartender Sign, Lingling Sign; 24 → 31 signs),
+  two new effect cards (Barricade, Reinforced Repulsion, the latter also as an item), and **6 new chips** (pool 61 → 67);
+- **Balance**: 10 existing signs, 16 existing chips and the Weird Dice changed mechanically or numerically; two “on obtain” paths no longer count crafting;
 - **Combat rework**: split player/mob defense formulas, 1:1 defense conversion, mob attacks rolled into dice battles, damage floor at 15% of attack, battle cards now single-shot decreasing dice, defense-card durability 150, vanilla damage modifiers restored, and color-coded damage numbers;
 - **UI**: combat stat bars (defense / attack), Jade integration, shop cooldown countdowns;
 - **License**: source code is now GPL-3.0-only.
@@ -133,7 +135,7 @@ Released: **1.5.0-rc.1 (pre-release / beta)** — covers **everything** since 1.
 - **All star-coin payouts now go to the wallet first** (Haiqing, Bonnie, Hanna, Mimi, Gift From Above, the Great Detective passive, …)
   instead of being stuffed into the inventory (and dropped if full); the item is handed over only when the wallet is closed.
 
-### New signs
+### New signs (7; sign count 24 → 31)
 
 - **KAngel** (quirky; recipe: amethyst dice + 2 golden star plates)
   - Active “Net Angel”: gain (1 + fan count) star coins (max 10); at ≥3 fans heal to full; at ≥9 fans every friendly player gains 3 star coins
@@ -146,9 +148,30 @@ Released: **1.5.0-rc.1 (pre-release / beta)** — covers **everything** since 1.
     each Love gives +1 attack and −1 defense (never below 0); every Love above 4 adds +1 max health.
   - Note “Two Hearts As One”: with a KAngel on the team she gains 6 base defense, and whenever she is hurt every Ame on the team gains +1 Love.
     Love persists through death and resets when the sign is removed.
-- **Slime sign passive “Cell Division” now triggers at most once every 15 seconds** (still +1 healing stack and −10s active cooldown).
-- **Gunsmith sign active/passive rewritten**: the active now marks one target with **Opening (2:00)** (their battle dice roll is locked to 0; cannot be applied to an already-marked target);
-  the passive and the Muscle Detective's “Reasoning Time” decay each use their **own 1-minute timer** (no longer tied to the dice blessing), shown as remaining time in the UI.
+- **Sister Sign** (rare)
+  - Active “Iron Maiden”: immune to all damage and harmful effects for **0:30**; if the passive was lost during a Dice Blessing it is restored immediately.
+  - Passive “Courage”: each Dice Blessing trigger grants **+5 attack**; taking more than **10 damage** removes the bonus, and it is always removed when the blessing ends.
+- **Big Fat Fish Sign** (quirky)
+  - Active “Big Feast”: spend a random **1–20 star coins** (capped by your balance), gain attack and defense equal to the actual cost (**2:00**), then gain **3 random cards**; unusable without star coins.
+  - Passive “Slacking”: standing still for **10 seconds** grants Fishing — no damage, no harmful effects and mobs ignore you;
+    moving for a cumulative **5 seconds** ends it.
+- **Dorothy Sign** (quirky)
+  - Active “True Me”: teleport to a safe spot beside the target; for **1:00**, passing friendly players grants both of you **+1 attack** (once per 10s per player, self stacks), cleared when the timer ends;
+    at **5 Warmth** stacks, consume them all to gain attack equal to your current defense (1:00).
+  - Passive “Socialite”: restoring health grants **1 Warmth** (max **5** stacks; Instant Health and Regeneration count by effect level), each stack gives **+1 defense**;
+    passing a friendly player heals both for **2 HP** (once every **10s**).
+- **Bartender Sign** (quirky)
+  - Active “Mix Life”: pick a target player, then choose **3 cards**. Effects apply in slot order, the cards are consumed and **3 random cards** are granted.
+    Attack card ⇒ target **+2 attack** (2:00); defense card ⇒ target **+2 defense** (2:00); any effect card ⇒ the target heals a flat **2 HP** (not 2 per card);
+    with **three effect cards** only that heal applies — no timer and no icon.
+  - Passive “Change Life”: all three of the **same type** (all-effect excluded) ⇒ you and the target gain **Speed II (1:00)**; otherwise both gain **+3 star coins**; all-effect gives neither.
+- **Lingling Sign** (epic; recipe: 4 star plates + 4 conductive wire + redstone block + diamond dice)
+  - Active “Energy Surge”: gain **1 Reinforced Repulsion** immediately; convert your current charge stacks into attack and movement speed for **1:00**; cooldown **120 s**.
+  - Passive “Interceptor”: **2 Reinforced Repulsion** on first equip; Barricades you pick up or buy are converted into Reinforced Repulsion;
+    attacking a target clung to by your own field deals **+5 damage** (attacking any clung target grants the bonus, but only your own field grants charge);
+    every new target caught by one of your fields grants **+1 charge**, capped at **5 per field** and **20 in total** (a target is never counted twice, deaths do not subtract).
+  - Note: a Barricade in your hand is converted into Reinforced Repulsion; a thrown Reinforced Repulsion turns back into a Barricade on landing.
+- Only the Lingling Sign's recipe is listed here; the rest are in JEI and the guide.
 
 ### New effect cards
 
@@ -169,7 +192,7 @@ Released: **1.5.0-rc.1 (pre-release / beta)** — covers **everything** since 1.
 - **New `/astralparty` subcommands**: `killbarricade [<radius>|all]` and `killrepulsion [<radius>|all]`
   (permission level 2; radius defaults to 64 blocks, `all` clears the current dimension) — for leftovers that have no entity id and survive `/kill`.
 
-### New chips (5; pool 61 → 66; rare 19 / epic 28 / legendary 19)
+### New chips (6; pool 61 → 67; rare 19 / epic 29 / legendary 19)
 
 - **Flashlight-Burst** (legendary / starlight): attacking a hostile target **that this player has not attacked before** grants +1 starlight
   (dedup per player × target, cap 256); every 2 starlight adds +1 attack damage.
@@ -178,7 +201,8 @@ Released: **1.5.0-rc.1 (pre-release / beta)** — covers **everything** since 1.
   +2 when a dice blessing triggers and +2 at each **1:00** healing settlement (same cadence as the Medkit).
 - **Wireless Power Pole** (epic / charge): +1 effect card play; whenever you gain charge, other friendly players within 8 blocks each gain 1 charge.
 - **Sensor Device** (epic / mark): every 3 marks on a target gives it −1 battle dice roll (max −4); a successful dodge puts 1 mark on the attacker.
-- Crafting for these 5 chips is governed by the **chip recipe master switch** (`enable_chip_recipes`), which is **off by default**;
+- **Extra Battery** (epic / none): sign active cooldowns are **−50%** while equipped (stacks with other cooldown reductions).
+- Crafting for these 6 chips is governed by the **chip recipe master switch** (`enable_chip_recipes`), which is **off by default**;
   while off, the creative tab also hides Regeneration Reagent / Conductive Wire / Star Coin Dust / Mark Paint (Blank Chip still shows).
 
 ### UI and presentation
@@ -231,11 +255,41 @@ Released: **1.5.0-rc.1 (pre-release / beta)** — covers **everything** since 1.
 
 ## Balance and numbers
 
-- **Signs**: Business and Gunsmith actives/passives rewritten; Slime's Cell Division at most once per 15s;
-  Poster Girl swap threshold **25 → 100**; Weird Dice **no longer shortens sign cooldowns** (keeps the 1–3 weight 50% → 75% and the 5 HP heal after the active).
-- **7 chips**: Bank Card-Unlimited (out-of-team range tightened to **32 blocks**), Big Bowl of Stew (out-of-team **16 blocks**),
-  Magic Quiver (returns **the card actually used**), Eagle Eye Sight (now extra attack damage, stacks ×2),
-  Warp Engine (shared cooldown **5:00 → 3:00**), Perpetual Motion (refill tier **6 → 8** plus **−50%** vanilla melee cooldown while equipped, ≈ ×2 attack speed; dice battles do not gain attack), Bookmark (**+1 → +2**).
+- **Signs (the 24 existing ones, vs 1.3.7)**:
+  - Business sign: active and passive rewritten (see “Card Shop” and “Trading-chip adjustments”);
+  - Gunsmith sign: the active now marks one target with **Opening (2:00)** (their battle dice roll is locked to 0; cannot be applied to an already-marked target);
+    the passive and the Muscle Detective's “Reasoning Time” each use their **own 1-minute timer**, shown as remaining time in the UI;
+  - Great Detective: the 11 random events are gone, replaced by **event choice** (see “Event system”);
+  - Secret Detective: the active now applies **1 mark** first, then Covert Investigation, and pays star coins = marks × 2 (at least 2 per use);
+  - Hacker: the passive radius is **6 → 3 blocks**; the active's invisibility bonus is now a **flat +6 attack (2:00)** (no longer card cost ×2, no cards consumed);
+  - Mechanic: active cooldown **2:00 → 3:00**;
+  - Poster Girl: swap threshold **25 → 100**, and only **returns** count (crafting no longer does);
+  - Slime: “Cell Division” now triggers at most once every **15 seconds** (still +1 healing stack and −10s active cooldown);
+  - Mamushi: the batch of cards it throws lives **5s → 10s**; “Dragon Roar” now **requires the Dragon Roar card equipped**;
+  - Cult Leader: “Fox Light” no longer counts **crafting** (only obtaining or equipping an attack card);
+  - Game Master: shield wording unified to “5 yellow hearts + resistance + 1 counter” (numbers unchanged);
+  - Pandaman: “a roll of 6 ignores target defense (armour included)” is now explicit (mechanic unchanged);
+  - Investigator / Ninja / Protector: wording unified (range → distance, “every 3 cards” → “after 3 cards”, burst noted as active-only).
+- **Chips (existing)**:
+  - Electric Gloves reworked: attacking with a damage effect card hits every target within 3 blocks (main target included) for **2 magic damage**, 1 second later;
+    each target hit grants **+1 charge**; cooldown **1:00**;
+  - Airbag: gains “+1 charge when taking damage (15s cooldown)”; void damage still cannot be cancelled;
+  - Motor Helmet-Advanced: defense +6 / toughness +2 → **defense +8**;
+  - Railgun: the lightning strike changed from “separate true damage, floor 5” to **“ignores target defense”**;
+  - Member's Reference Letter: gains “all cards in your own shop cost −1 star coin (stacks with the Business sign discount, floor 0)”;
+    the random card now only triggers while you hold **fewer than 5** cards;
+  - Bank Card-Unlimited (out-of-team range tightened to **32 blocks**), Big Bowl of Stew (out-of-team **16 blocks**),
+    Magic Quiver (returns **the card actually used**), Eagle Eye Sight (now extra attack damage, stacks ×2),
+    Warp Engine (shared cooldown **5:00 → 3:00**), Perpetual Motion (refill tier **6 → 8** plus **−50%** vanilla melee cooldown while equipped, ≈ ×2 attack speed; dice battles do not gain attack),
+    Bookmark (**+1 → +2**);
+  - Bank Card-Low / -High / -Unlimited and Star Coin Hammer: starlight is now **granted once on equip and topped up after every successful exchange**
+    (4 / 7 / 3 / 5, stacking, cap 32);
+  - Vitamin Pills: crafting no longer counts (only obtaining any card grants +1 healing); Ninja Shuriken / Armour-Piercing Gun: wording only, numbers unchanged.
+- **Dice and card notes**:
+  - Weird Dice **no longer shortens sign cooldowns** (keeps the 1–3 weight 50% → 75% and +5 healing points when the active ends);
+  - attack and defense cards drop “roll twice, take the max” for a single, decreasing roll (see “Combat rework”);
+  - the four damage effect cards (Monster Laser 4 / Monster Brick 6 / Orbital Strike 8 / Directional Blast 5) changed from a 1:00 ranged/magic buff
+    to “aim at a target, 0.5s delay, flat magic damage”, each with its own FX.
 - **Drops**: star-coin kills — Zombie / Zombified Piglin **1%**, Enderman / Piglin **3%**, Piglin Brute **20%**;
   star plates by target — Wither **5**, Warden **3–5**, Elder Guardian **1–3**, Ghast **1**, Wither Skeleton / Guardian **5%**, everything else **0.3%**.
 - **Acquisition**: golden star plate now has **two recipes**; **16 items changed recipe ingredients** (5 cards — Office Worker, Ninja, Hacker, Secret Detective, Mechanic — and 11 chips);
@@ -268,14 +322,16 @@ Released: **1.5.0-rc.1 (pre-release / beta)** — covers **everything** since 1.
 
 - This pre-release covers **only the NeoForge 1.21.1 and Forge 1.20.1 builds**; other platform lines are out of scope.
 - The generic card-choice screen has its logic wired but **no skill uses it yet**, so it is not visible.
-- Crafting for the 5 new chips follows `enable_chip_recipes` (off by default); enable it in the config if you want recipe access.
+- Crafting for the 6 new chips follows `enable_chip_recipes` (off by default); enable it in the config if you want recipe access.
 - “Reinforced Repulsion” is an **exclusive card**: not in the random pool, no recipe, not in bounty pools. Its item form is deliberately hidden from the creative tab and JEI.
 - This is a Beta pre-release; **numbers are still moving** (especially the difficulty curve after the 1:1 defense conversion). Feedback is welcome.
 
 ## Text and manual
 
-- The Patchouli guide covers everything new: Card Shop / Chip Shop / Loot Box / events / both quirky signs / both new effect cards / the 5 new chips,
+- The Patchouli guide covers everything new: Card Shop / Chip Shop / Loot Box / events / **the seven new signs** / both new effect cards / **the six new chips**,
   and entries that still described the old defense formula were corrected.
+- Battle-card and dice-battle text rewritten: “roll twice, take the max” is gone, the dice roll counts as 0 when no dice are equipped,
+  the damage floor is 15% of attack (minimum 1), and both the player and mob defense formulas are spelled out.
 - All three languages (zh_cn / en_us / ja_jp) are in sync — same key set, every new or changed entry translated.
 - Tooltips and ActionBar hints share one voice (values highlighted, times coloured), and failure messages are no longer silent.
 
