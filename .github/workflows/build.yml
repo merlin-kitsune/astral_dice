@@ -1,5 +1,4 @@
-  replaced: release-jars
-  replaced: release-head   replaced: artifacts   replaced: header name: Build
+name: Build
 
 on:
   push:
@@ -248,7 +247,6 @@ jobs:
               --notes-file "$NOTES_FILE" \
               --latest
           fi
-
-      # ⛔ 2026-10-25 用户裁决（强制）：原「Create/Update Fabric release (pre-release)」步骤已整段删除。
-      #    fabric-1.20.1 / neoforge-26.1.2（P1）从未获授权移植，产物不可用 ⇒ 不再自动打 tag、
+      # 2026-10-25 用户裁决（强制）：原「Create/Update Fabric release (pre-release)」步骤已整段删除。
+      #    fabric-1.20.1 / neoforge-26.1.2（P1）从未获授权移植，产物不可用 => 不再自动打 tag、
       #    不再自动建 pre-release。需要 P1 发布时必须由用户逐次点名下达，并按手工流程处理。
