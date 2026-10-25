@@ -16,6 +16,7 @@
 9. **HUD 攻击力口径已统一**（2026-10-25，§4.1g）：攻击修饰器链上 23（neo）/ 24（forge）处客户端模板守卫收敛为 `skipOnClient(ctx)` + 显示口径标记 `DiceCombatContext.displaySnapshot` ⇒ HUD 现在含全部攻击力修饰器，只排除手持武器与骰战随机点数；新增守门 `python tools/verify_hud_attack_parity.py` ⇒ `GATE: PASS (21 项全部满足)`，两线已 `:build` 并把六处产物刷到新 jar；**已双版本实机 PASS**（§4.1i：装电流剑 + 充能 8 ⇒ client 显示 3；清充能回 1；主手持剑仍 3）。
 10. **防御力折算已改为 1:1**（2026-10-25，§4.1h）：所有「防御力 +X」的站点改走单一入口 `armorValueForDefensePoints(points, side)`（= 点数 ÷ 库护甲系数，玩家 ≈3.333 护甲/点、怪物 2.5）——此前写死 `× 2.0` 只兑现 60%（玩家）/ 80%（怪物），属平衡性红线；同时把 12 份指南 lang 的基数 4 改为 2。新增守门 `python tools/verify_defense_unit_parity.py` ⇒ `GATE: PASS（42 项全部满足）`（新增 D9 取整口径），两线 `:classes` 通过、`:build` 已重建并投放四目标，**双版本实机 PASS**（§4.1i：+8 防御力 ⇒ 防御力 10；同批修掉 `getArmorValue()` 取整吞点）；玩家侧实际强度是上一版的 **×1.667**。
 11. **创造栏收尾（2026-10-25，§4.1j）**：强化拒止**物品**已从创造栏与 JEI 隐藏（JEI 物品列表直接取自创造栏，**未加任何 JEI 代码**）；筹码在组序不变前提下改为**组内稀有度升序**（67 个零增删）。守门 `tools/verify_creative_tab_chip_order.py` PASS + 变异测试证非假绿；产物已重建并投放四目标（neo `366D68C8…` / forge reobf `FD7B01D7…`），jar 内 `ModItems.REPULSION` 引用 0 处；**未实机**。
+12. **护法立牌减费卡面（2026-10-25，§4.1k）**：佩戴 `misaki_sign` 时商店货架上的「名刀·嘎呜切」改画 `attack_card_meito_discount.png`（纯客户端只读 Curios 缓存、缺素材自动回退），价格与购买链路零改动；守门 `python tools/verify_meito_discount_face.py` ⇒ `GATE: PASS（D1-D6）` + 变异测试证非假绿；产物已重建并投放四目标（neo `59E12108…` / forge reobf `33717FA9…`），**未实机**。
 
 ## 1 环境与路径
 
@@ -61,6 +62,7 @@ forge dev named 102,013 B / `e280aeab6c4b37c43468f7cce32a8bf64c70b6bdbcd2203f6c5
 | `16b48c4`（**前置库仓** `F:\MCProject\starengine`） | release(lib)：`1.1.0-pre.2` → **`1.1.0`** 正式版（8 文件 +63/−32） | 四子项目 `gradle.properties`（`lib_version` / `mod_version`）· `README.md`/`README_ZH.md`（坐标表 + 依赖示例 + 当前版本）· `CHANGELOG.md`/`CHANGELOG_ZH.md` 新增 `## 1.1.0` 小节 · 四平台 `publishToMavenLocal` |
 | 本文件所在提交（追加） | release(rc.1)：`1.5.0-pre.6` → **`1.5.0-rc.1`** + 前置库坐标 `1.1.0` | 四线 `gradle.properties`（`mod_version` / `starengine_version` / fabric `starengine_version_range`）· 两线 toml 模板注释（预发布期「不要写 `[1.1.0,2.0.0)`」改成正式版口径）· `.github/workflows/build.yml:105` 库 ref SHA `6d2a96d…`→`16b48c4…` · `README*.md`（版本列 `1.5.0-pre.5`→`rc.1`、库版本 `1.1.0`）· `CHANGELOG*.md`（库版本串）· 本文件 `git mv` pre.6→rc.1 + §0/§2/§3/§4.1f · `docs/handover-new-session-context.md` · 5 处旧文件名引用 |
 | 本文件所在提交（追加） | feat(hud)：攻击力显示口径统一（4 文件 + 新增守门脚本） | 两线 `combat/DiceCombatContext`（+`displaySnapshot`）· 两线 `combat/DiceCombatModifiers`（`skipOnClient` 收敛 23/24 处模板守卫 · 攻击卡在显示口径下不掷 · `attackPowerBase` 5 参重载）· 新增 `tools/verify_hud_attack_parity.py`（H1–H6，`GATE: PASS (21 项)`） |
+| 本文件所在提交（追加） | feat(shop)：护法立牌减费卡面（8 文件 +228/−6） | 两线 `screen/CardShopScreen#cardFaceTexture`（非名刀/未佩戴/素材缺失回退原图）· 两线 `textures/gui/shop/card/attack_card_meito_discount.png`（904 B）· `tools/verify_meito_discount_face.py`（D1-D6）· CHANGELOG 双文件 · 本文件 §0-12 / §4.1k / §5-Minor 7 |
 
 `e2aed527` 的七条内容：
 
@@ -317,6 +319,17 @@ forge dev named 102,013 B / `e280aeab6c4b37c43468f7cce32a8bf64c70b6bdbcd2203f6c5
 - **产物与投放（17:32 已完成）**：`:neoforge-1.21.1:build :forge-1.20.1:build` ⇒ `BUILD SUCCESSFUL in 2s`，四条 `pushTo*` 全命中 —— neo `2,587,467 B` sha256 `366D68C86DDFB86229F5AB437EBF5FC386859BD6658A7B0FD45B8E70F97B642D`（`build\libs` = `run\1.21.1\mods` = 整合包，同一份）；forge reobf `2,632,431 B` `FD7B01D79FEA43080E3744F81FAF752F7526770D1F45FBB3BC0A7CB84DAFB4D9`（`build\libs` = 整合包）；`run\1.20.1\mods` 为 dev 的 named jar `2,603,035 B` `A3741D16F03A0BE11A2CFCF640D44A6634D395E6A5804A7650D729B2C9D29FE2`。**jar 内字节码复核**：解 `run\1.21.1\mods` 的 `com/merlinkitsune/astral_dice/init/ModCreativeTabs.class` 做 `javap -p -c` ⇒ `ModItems.REPULSION` 引用 **0 处**、`EFFECT_CARD_REPULSION` **1 处** ⇒ 隐藏已进产物（顺序改动在字节码里不可见，由 D3/D5 守门 + 源码结构核对覆盖）。
 - **未做**：**未实机**（本条只改展示层可见性与顺序，无行为变化）。P1 两线未改（§5-Minor 6）。
 
+### 4.1k 护法立牌减费卡面（2026-10-25）—— 静态判据全绿，**本条无实机**
+
+- **用户裁决**（m12348）：装备护法立牌（`misaki_sign`）时，商店货架上的「名刀·嘎呜切」（`astral_dice:attack_card_meito`）卡面换成减费版素材。
+- **为什么只能换图**：该立牌被动把名刀的战斗费用 4→3 点（服务端 `neoforge-1.21.1/src/main/java/com/merlinkitsune/astral_dice/item/sign/MisakiSignItem.java:64-66` `hasMisakiEquipped(player) ? 3 : AppliedStone.cost("meito")`；forge 同 `:66`），而 64×64 卡面素材右下角的费用点是**画在贴图里的**；商店实际价格与它无关（`shop/CardShopMenu.java:667` `prices[i] = CardShopShelf.priceOf(true, memberReduction);`）⇒ 纯展示层换图，价格与购买链路零改动。
+- **实现**：两线 `screen/CardShopScreen.java` 新增 `private ResourceLocation cardFaceTexture(ItemStack stack)`（插在 `drawCardFace` 之前），`drawCardFace` 改为 `ResourceLocation face = cardFaceTexture(stack);`（neo 现 `:720`）。判定链：非 `ATTACK_CARD_MEITO` ⇒ 原图；`MisakiSignItem.hasMisakiEquipped(this.minecraft.player)` 为假（含 `minecraft`/`player` 为 null）⇒ 原图；否则用 `<id>_discount.png`，`faceExists()` 为假仍回退原图。两线唯一差异：neo `ResourceLocation.fromNamespaceAndPath(...)` / forge `new ResourceLocation(...)`。
+- **客户端只读**：沿用同文件 `displayStack(ItemStack)` 的先例（怪力乱神佩戴时把路障显示成强化拒止），只读 Curios 双端同步缓存，不写状态、不伪造物品。
+- **素材**：`images/shop/card+event/嘎呜切减费.png`（904 B / 64×64）逐字节拷成两线 `src/main/resources/assets/astral_dice/textures/gui/shop/card/attack_card_meito_discount.png`。
+- **判据（实跑）**：新增 `F:\MCProject\astral_dice_multiloader\tools\verify_meito_discount_face.py`（D1 源素材 64×64 / D2 两线贴图与源素材逐字节一致 / D3 两线有 `cardFaceTexture` 且 `drawCardFace` 走它 / D4 方法体四要素 `ATTACK_CARD_MEITO`·`hasMisakiEquipped`·`_discount.png`·`faceExists(discount) ? discount : base` / D5 两线 `getMeitoCost` 语义唯一 / D6 贴图名只出现在两线 `CardShopScreen`）⇒ `GATE: PASS（D1-D6）`；**变异测试**把 `"_discount.png"` 改成 `"_discountX.png"` ⇒ `GATE: FAIL (1 项) - D4`，还原后 PASS（证非假绿）。
+- **产物与投放（已实测）**：`:neoforge-1.21.1:build :forge-1.20.1:build` ⇒ `BUILD SUCCESSFUL in 4s`，六条 `pushTo*` 全命中；四目标 jar 内 `attack_card_meito_discount.png` 均有 1 份 —— `run/1.21.1/mods` 与「狐の航空学 Voxy Edition」同为 `2,588,804 B` sha256 `59E12108CF9681928661BE0C86FEA203A15642502095AECE1AB6BC9BD2F625D0`；`run/1.20.1/mods`（devlibs named）`2,604,380 B` `CB21FA244F7EBBE2B87A9CE269F8A7D620CE3A1AD4096A652DAEE6BA2A4A5CAB`；「1.20.1-Forge 模组测试」（reobf）`2,633,788 B` `33717FA935133587AC65711C6AC9B0BBBD6562BABE65DC18B502DE4220911702`。
+- **未做**：**未实机**（本条是纯客户端绘制分支，进入商店 GUI 才能看到）。P1 两线（`neoforge-26.1.2` / `fabric-1.20.1`）未移植（§5-Minor 6 同口径）。
+
 ### 4.2 历史读数
 
 pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（含 4.8 pre.4 全量双线 10 跑 10 PASS、4.11–4.17 pre.5 各批、4.19 Jade 图标留白版）。
@@ -353,6 +366,7 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
    - **P1 两线未移植**（26.1.2 / fabric），正式版前不动（§5-Major 6）。
 
 6. **创造栏收尾仅落 P0 两线**（2026-10-25，§4.1j）：P1（`neoforge-26.1.2` / `fabric-1.20.1`）的 `ModCreativeTabs.java` 仍列出强化拒止物品、筹码仍是旧顺序。⚠️ 移植时必须**同批调整** `tools/verify_fabric_assets.py` 第 7 项（`check_creative_tabs`：要求「所有注册物品都在创造栏」——与本条的隐藏口径相反，只对 fabric 线生效，暂未改）。
+7. **护法减费卡面仅落 P0 两线**（2026-10-25，§4.1k）：P1（`neoforge-26.1.2` / `fabric-1.20.1`）的 `CardShopScreen` 没有 `cardFaceTexture` 分支、也没有 `attack_card_meito_discount.png` ⇒ 那两线仍显示原卡面（4 点）。移植时同批拷贴图 + 抄 `cardFaceTexture`（fabric 用 `new ResourceLocation(...)` 口径，26.1.2 按其 API 复核），并把 `tools/verify_meito_discount_face.py` 的 D2/D3/D4 扩到四线。
 
 ## 6 坑（本批新增，后续继续追加）
 

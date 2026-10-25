@@ -548,6 +548,8 @@
 
 - **Fixed the Card Trader and Chip Trader showing the same job site** (reported 2026-10-23): both professions used vanilla's **shared** "acquirable job site" tag, so any third-party overlay that enumerates job sites per profession (Just Enough Professions and the like) listed the very same blocks for both — the block icon on the two cards was identical. Each profession now uses its own **dedicated tag** (`astral_dice:card_trader_job_site` / `astral_dice:chip_trader_job_site`) and only accepts its own block. The vanilla shared tag is **still kept**, so unemployed villagers can still spot and claim a job site and the profession-gaining path is unchanged. (P0 lines: neoforge-1.21.1 + forge-1.20.1)
 
+- **The shop shelf now shows the discounted "Gawu Slash" card face while the Hufa sign is worn** (2026-10-25): the Hufa sign's passive lowers Gawu Slash's in-battle cost from 4 to 3 points, but the 64x64 card art has the cost pips painted into it, so the shelf kept showing 4 points. With the sign equipped the shelf draws `attack_card_meito_discount.png` instead. Pure client-side and read-only: it only reads the synced Curios cache and falls back to the original face when the new asset is missing.
+
 #### Damage & Resolution
 
 - **Fixed two PvP misreads on the KAngel Sign: the "Fan" mark and the wearer's indicator shared one status** (2026-10-17): the wearer's

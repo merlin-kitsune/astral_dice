@@ -5,6 +5,7 @@ import com.merlinkitsune.astral_dice.client.CardShopClientState;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.StarLightManager;
 import com.merlinkitsune.astral_dice.item.sign.LinglingSignManager;
+import com.merlinkitsune.astral_dice.item.sign.MisakiSignItem;
 import com.merlinkitsune.astral_dice.item.sign.ParunanSignItem;
 import com.merlinkitsune.astral_dice.network.CardShopBuyPayload;
 import com.merlinkitsune.astral_dice.network.CardShopTransferListPayload;
@@ -688,12 +689,36 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
         return LinglingSignManager.displayAsRepulsion(stack);
     }
 
+    /**
+     * 卡面贴图：默认 {@code textures/gui/shop/card/(物品注册名).png}。
+     * <p><b>护法立牌（{@code misaki_sign}）佩戴时换「减费版」卡面</b>：该立牌被动把「名刀·嘎呜切」的战斗费用
+     * 从 4 点降到 3 点（服务端 {@code MisakiSignItem#getMeitoCost}），而卡面 64×64 素材右下角**画着费用点**，
+     * 照原样显示会让玩家看到 4 点、与真实结算不符 ⇒ 佩戴时改画减费素材
+     * {@code attack_card_meito_discount.png}（源素材 {@code images/shop/card+event/嘎呜切减费.png}）。
+     * <p>纯客户端只读：{@link MisakiSignItem#hasMisakiEquipped} 只读 Curios **双端同步**缓存（同本类
+     * {@code LinglingSignManager.isEquipped} 的既有先例），不写状态、不伪造物品 ⇒ 拖拽 / 购买 / 扣费链路不变。
+     * 减费素材缺失（资源包覆盖等）时自动回退原卡面，不崩。
+     */
+    private ResourceLocation cardFaceTexture(ItemStack stack) {
+        ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
+        ResourceLocation base = ResourceLocation.fromNamespaceAndPath(id.getNamespace(),
+                "textures/gui/shop/card/" + id.getPath() + ".png");
+        if (!stack.is(ModItems.ATTACK_CARD_MEITO.get())) {
+            return base;
+        }
+        if (this.minecraft == null || this.minecraft.player == null
+                || !MisakiSignItem.hasMisakiEquipped(this.minecraft.player)) {
+            return base;
+        }
+        ResourceLocation discount = ResourceLocation.fromNamespaceAndPath(id.getNamespace(),
+                "textures/gui/shop/card/" + id.getPath() + "_discount.png");
+        return faceExists(discount) ? discount : base;
+    }
+
     /** 卡面图标：astral_dice:textures/gui/shop/card/(物品注册名).png（64x64 整体等比缩放到 38x38） */
     private void drawCardFace(GuiGraphics guiGraphics, ItemStack stack, int x, int y) {
         stack = displayStack(stack);
-        ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
-        ResourceLocation face = ResourceLocation.fromNamespaceAndPath(id.getNamespace(),
-                "textures/gui/shop/card/" + id.getPath() + ".png");
+        ResourceLocation face = cardFaceTexture(stack);
         if (!faceExists(face)) {
             // 缺素材 ⇒ 画占位（半透明底 + 问号），不崩
             guiGraphics.fill(x, y, x + FACE_SIZE, y + FACE_SIZE, 0x66000000);
