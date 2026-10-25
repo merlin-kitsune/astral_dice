@@ -85,7 +85,9 @@ public class ModCreativeTabs {
                 output.accept(ModItems.FATE_GUIDANCE_CARD.get());
                 output.accept(ModItems.EFFECT_CARD_BARRICADE.get());
                 output.accept(ModItems.EFFECT_CARD_REPULSION.get());
-                output.accept(ModItems.REPULSION.get());
+                // 强化拒止（repulsion）不列入创造栏：2026-10-25 用户裁决从创造栏与 JEI 隐藏。
+                //   理由：JEI 的物品列表直接取自创造栏 displayItems（见本方法末尾注释），故这一处移除即同时从 JEI 消失。
+                //   物品本体仍注册：强化拒止实体死亡时照常掉落（entity/RepulsionEntity），效果牌 effect_card_repulsion 不受影响。
                 // 风水师立牌专属符卡(专属绑定获得者的效果牌)
                 output.accept(ModItems.FU_CARD.get());
                 output.accept(ModItems.HUO_CARD.get());
@@ -130,78 +132,94 @@ public class ModCreativeTabs {
                 // deepseek 未在 Wiki「Characters」页面出现(本模组原创),排在末尾
                 output.accept(ModItems.DEEPSEEK_SIGN.get());
                 // 筹码
+                // 2026-10-25 用户裁决：先保持既有流派分组顺序（星光 → 治愈 → 标记 → 充能 → 无流派），
+                //   组内再按稀有度升序排列（稀有 → 史诗 → 传奇，同档沿用原有相对顺序）；五档里本类只用到前 3 档。
                 // === 星光类 ===
-                output.accept(ModItems.FLASHLIGHT_CHIP.get());
-                output.accept(ModItems.FLASHLIGHT_BURST_CHIP.get());
-                output.accept(ModItems.FORTUNE_STICK_CHIP.get());
+                // -- 稀有（RARE） (3) --
                 output.accept(ModItems.EIGHT_SIDED_DICE.get());
                 output.accept(ModItems.ATM.get());
                 output.accept(ModItems.BANK_CARD_LOW.get());
+                // -- 史诗（EPIC） (4) --
+                output.accept(ModItems.FLASHLIGHT_CHIP.get());
+                output.accept(ModItems.FORTUNE_STICK_CHIP.get());
                 output.accept(ModItems.BANK_CARD_HIGH.get());
+                output.accept(ModItems.PURPLE_SHOOTING_STAR_CHIP.get());
+                // -- 传奇（LEGENDARY） (4) --
+                output.accept(ModItems.FLASHLIGHT_BURST_CHIP.get());
                 output.accept(ModItems.BANK_CARD_UNLIMITED.get());
                 output.accept(ModItems.STAR_COIN_HAMMER.get());
-                output.accept(ModItems.PURPLE_SHOOTING_STAR_CHIP.get());
                 output.accept(ModItems.GOLDEN_SHOOTING_STAR_CHIP.get());
                 // === 治愈类 ===
+                // -- 稀有（RARE） (2) --
                 output.accept(ModItems.MEDKIT_EMERGENCY_CHIP.get());
-                output.accept(ModItems.MEDKIT_COMPLETE_CHIP.get());
+                output.accept(ModItems.BUFFER_SHIELD.get());
+                // -- 史诗（EPIC） (5) --
                 output.accept(ModItems.VITAMIN_PILL_CHIP.get());
                 output.accept(ModItems.ABYSS_REAGENT_CHIP.get());
                 output.accept(ModItems.CUTTER_CHIP.get());
-                output.accept(ModItems.CUTTER_BLADE_CHIP.get());
-                output.accept(ModItems.BUFFER_SHIELD.get());
                 output.accept(ModItems.CANDY_CHIP.get());
                 output.accept(ModItems.FRIENDSHIP_BADGE.get());
+                // -- 传奇（LEGENDARY） (3) --
+                output.accept(ModItems.MEDKIT_COMPLETE_CHIP.get());
+                output.accept(ModItems.CUTTER_BLADE_CHIP.get());
                 output.accept(ModItems.BIG_BOWL_STEW_CHIP.get());
                 // === 标记类 ===
-                output.accept(ModItems.SCOPE_CHIP.get());
-                output.accept(ModItems.EAGLE_SCOPE_CHIP.get());
+                // -- 稀有（RARE） (3) --
                 output.accept(ModItems.TARGET_CHIP.get());
                 output.accept(ModItems.MARKER_SPRAYER_CHIP.get());
-                output.accept(ModItems.NINJA_STAR_CHIP.get());
-                output.accept(ModItems.SENSOR_CHIP.get());
                 output.accept(ModItems.HAND_FAN_SMALL_CHIP.get());
+                // -- 史诗（EPIC） (4) --
+                output.accept(ModItems.SCOPE_CHIP.get());
+                output.accept(ModItems.SENSOR_CHIP.get());
                 output.accept(ModItems.HAND_FAN_BIG_CHIP.get());
                 output.accept(ModItems.MAGIC_QUIVER.get());
+                // -- 传奇（LEGENDARY） (2) --
+                output.accept(ModItems.EAGLE_SCOPE_CHIP.get());
+                output.accept(ModItems.NINJA_STAR_CHIP.get());
                 // === 充能类 ===
+                // -- 稀有（RARE） (3) --
                 output.accept(ModItems.WARP_ENGINE_CHIP.get());
                 output.accept(ModItems.ENERGY_RECYCLER.get());
                 output.accept(ModItems.ELECTRIC_SWORD.get());
+                // -- 史诗（EPIC） (5) --
                 output.accept(ModItems.INFINITE_GRID_CHIP.get());
                 output.accept(ModItems.ADVANCED_PERIPHERALS.get());
                 output.accept(ModItems.CURRENT_CORE_CHIP.get());
                 output.accept(ModItems.ELECTRIC_GLOVE_CHIP.get());
                 output.accept(ModItems.AIRBAG_CHIP.get());
-                // 永动机（移至电磁炮之前）
+                // -- 传奇（LEGENDARY） (3) --
                 output.accept(ModItems.PERPETUAL_MOTION.get());
                 output.accept(ModItems.RAILGUN_CHIP.get());
                 output.accept(ModItems.PRIMORDIAL_CORE_CHIP.get());
                 // === 无流派 ===
-                output.accept(ModItems.MAGIC_TOME_CHIP.get());
-                output.accept(ModItems.BIG_BACKPACK_CHIP.get());
+                // -- 稀有（RARE） (8) --
                 output.accept(ModItems.BOXING_GLOVES_LOW.get());
-                output.accept(ModItems.BOXING_GLOVES_MEDIUM.get());
-                output.accept(ModItems.BOXING_GLOVES_HIGH.get());
                 output.accept(ModItems.SPEED_SKATES_LOW.get());
-                output.accept(ModItems.SPEED_SKATES_MEDIUM.get());
-                output.accept(ModItems.SPEED_SKATES_HIGH.get());
                 output.accept(ModItems.MOTO_HELMET_LOW.get());
-                output.accept(ModItems.MOTO_HELMET_MEDIUM.get());
-                output.accept(ModItems.MOTO_HELMET_HIGH.get());
                 output.accept(ModItems.SANDWICH_LOW.get());
-                output.accept(ModItems.SANDWICH_MEDIUM.get());
-                output.accept(ModItems.SANDWICH_HIGH.get());
-                output.accept(ModItems.ADRENALINE_LOW.get());
-                output.accept(ModItems.ADRENALINE_HIGH.get());
                 output.accept(ModItems.MEMBER_RECOMMENDATION_CHIP.get());
                 output.accept(ModItems.BOOKMARK_CHIP.get());
                 output.accept(ModItems.PIGGY_BANK_CHIP.get());
+                output.accept(ModItems.CURSED_SWORD.get());
+                // -- 史诗（EPIC） (11) --
+                output.accept(ModItems.MAGIC_TOME_CHIP.get());
+                output.accept(ModItems.BIG_BACKPACK_CHIP.get());
+                output.accept(ModItems.BOXING_GLOVES_MEDIUM.get());
+                output.accept(ModItems.SPEED_SKATES_MEDIUM.get());
+                output.accept(ModItems.MOTO_HELMET_MEDIUM.get());
+                output.accept(ModItems.SANDWICH_MEDIUM.get());
+                output.accept(ModItems.ADRENALINE_LOW.get());
                 output.accept(ModItems.SMART_WATCH_CHIP.get());
                 output.accept(ModItems.WHETSTONE_CHIP.get());
                 output.accept(ModItems.EXTRA_BATTERY_CHIP.get());
-                output.accept(ModItems.SATELLITE_CHIP.get());
-                output.accept(ModItems.CURSED_SWORD.get());
                 output.accept(ModItems.REVENGE_HALBERD.get());
+                // -- 传奇（LEGENDARY） (7) --
+                output.accept(ModItems.BOXING_GLOVES_HIGH.get());
+                output.accept(ModItems.SPEED_SKATES_HIGH.get());
+                output.accept(ModItems.MOTO_HELMET_HIGH.get());
+                output.accept(ModItems.SANDWICH_HIGH.get());
+                output.accept(ModItems.ADRENALINE_HIGH.get());
+                output.accept(ModItems.SATELLITE_CHIP.get());
                 output.accept(ModItems.PIERCING_GUN.get());
                 // 任务S §4（2026-10-10 用户裁决）：卡牌商店移到**最后**。
                 //   JEI 的物品列表顺序直接取自创造模式物品栏（jei 的 ItemStackListFactory 迭代 CreativeModeTabs.allTabs()

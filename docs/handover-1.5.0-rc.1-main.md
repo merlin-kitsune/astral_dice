@@ -15,6 +15,7 @@
 8. 未处置：陈旧锁 `F:\MCProject\.agent-locks\kimi.lock`（`PID=26580` / `TASK=misaki-chip-shop-balance-p0`，进程已不存在）—— 按规则不自行删，交用户裁决。
 9. **HUD 攻击力口径已统一**（2026-10-25，§4.1g）：攻击修饰器链上 23（neo）/ 24（forge）处客户端模板守卫收敛为 `skipOnClient(ctx)` + 显示口径标记 `DiceCombatContext.displaySnapshot` ⇒ HUD 现在含全部攻击力修饰器，只排除手持武器与骰战随机点数；新增守门 `python tools/verify_hud_attack_parity.py` ⇒ `GATE: PASS (21 项全部满足)`，两线已 `:build` 并把六处产物刷到新 jar；**已双版本实机 PASS**（§4.1i：装电流剑 + 充能 8 ⇒ client 显示 3；清充能回 1；主手持剑仍 3）。
 10. **防御力折算已改为 1:1**（2026-10-25，§4.1h）：所有「防御力 +X」的站点改走单一入口 `armorValueForDefensePoints(points, side)`（= 点数 ÷ 库护甲系数，玩家 ≈3.333 护甲/点、怪物 2.5）——此前写死 `× 2.0` 只兑现 60%（玩家）/ 80%（怪物），属平衡性红线；同时把 12 份指南 lang 的基数 4 改为 2。新增守门 `python tools/verify_defense_unit_parity.py` ⇒ `GATE: PASS（42 项全部满足）`（新增 D9 取整口径），两线 `:classes` 通过、`:build` 已重建并投放四目标，**双版本实机 PASS**（§4.1i：+8 防御力 ⇒ 防御力 10；同批修掉 `getArmorValue()` 取整吞点）；玩家侧实际强度是上一版的 **×1.667**。
+11. **创造栏收尾（2026-10-25，§4.1j）**：强化拒止**物品**已从创造栏与 JEI 隐藏（JEI 物品列表直接取自创造栏，**未加任何 JEI 代码**）；筹码在组序不变前提下改为**组内稀有度升序**（67 个零增删）。守门 `tools/verify_creative_tab_chip_order.py` PASS + 变异测试证非假绿；产物已重建并投放四目标（neo `366D68C8…` / forge reobf `FD7B01D7…`），jar 内 `ModItems.REPULSION` 引用 0 处；**未实机**。
 
 ## 1 环境与路径
 
@@ -306,6 +307,16 @@ forge dev named 102,013 B / `e280aeab6c4b37c43468f7cce32a8bf64c70b6bdbcd2203f6c5
 - **仍未实机 / 未做**：§5-Major 5 的 8 条「代码与文案不符」（等文案口径裁决，非行为缺陷）、§5-Minor 3 `misaki_sign` datagen 逐字节对等（下次 `runData` 后 diff）、P1 两线未移植。
 - **本轮坑补充**：① 1.21.1 客户端未停就 launch 1.20.1 ⇒ 25585 端口冲突 + `MT_INJECT_FOCUS: FAIL — 目标窗口无法置前台`（§6 坑 15），必须先对另一线 `--phase stop --force`；② `/astralprobe equipslot` 在两条线都不落槽，装备类实验一律走 Curios API；③ 1.21.1 的 Curios 9.5.1 写入槽位后需 1–2 tick 再读（§6 坑 8），本轮客户端读数前已 sleep 1.5–1.8 s。
 
+### 4.1j 创造栏收尾：强化拒止物品隐藏 + 筹码按稀有度重排（2026-10-25）—— 静态判据全绿，**本条无实机**
+
+- **用户裁决**（m12164）：① 把「强化拒止」**物品**从创造栏与 JEI 隐藏；② 筹码在**保持流派分组**的前提下按**稀有度**重排。
+- **隐藏机制（JEI 侧零代码）**：`neoforge-1.21.1/src/main/java/com/merlinkitsune/astral_dice/init/ModCreativeTabs.java` 删掉 `output.accept(ModItems.REPULSION.get());`（neo 原 `:88`、forge 原 `:89`，两处一并换成 3 行说明注释）。JEI 不另写代码的依据是**实装 jar 字节码**：`jei-238222-8512040.jar` 的 `mezz/jei/library/plugins/vanilla/ingredients/ItemStackListFactory` 在 `javap -p -c` 里命中 `net/minecraft/world/item/CreativeModeTabs.allTabs()`（偏移 201）与 `CreativeModeTab.getDisplayItems()`（偏移 311）⇒ 物品列表就是创造栏 displayItems。同字节码里那条「从物品注册表补加」的分支只在 JEI 客户端配置 `showHiddenIngredients`（调试项「显示隐藏物品」）为 true 时执行，默认关闭；`mezz.jei.api.IModPlugin` 的方法列表里也没有 registerItemBlacklist 一类接口。
+- **物品本体零改动**：仍注册、仍是「放置者近战命中 5 次把力场打回物品形式」的产物、力场碎裂时仍掉落（`entity/RepulsionEntity`）；效果牌 `effect_card_repulsion` 仍在创造栏（`ModCreativeTabs.java:87`）。
+- **筹码重排**：五组与组序**不变**（星光 → 治愈 → 标记 → 充能 → 无流派），组内改为**稀有度升序**（稀有 → 史诗 → 传奇；本类只用这 3 档），同档沿用原有相对顺序；67 个筹码**零增删、零改档**；每组每档加了小标题注释（`// -- 稀有（RARE） (n) --`）便于后续插入。
+- **判据（实跑）**：新增 `tools/verify_creative_tab_chip_order.py`（D1 物品不在创造栏且效果牌仍在 / D2 组序 / D3 组内稀有度非降序 / D4 筹码数 67 且无重复 / D5 两线筹码段空白规范化后完全一致）⇒ `GATE: PASS (D1-D5 全部满足，两线)`；**变异测试**：把 forge 的 `EIGHT_SIDED_DICE` 与 `STAR_COIN_HAMMER` 对调后重跑 ⇒ `GATE: FAIL (2 项)`（D3 组内乱序 + D5 两线不一致），按字节还原后再次 `PASS` ⇒ 判据不是假绿。编译 `:neoforge-1.21.1:classes :forge-1.20.1:classes` ⇒ `BUILD SUCCESSFUL in 7s`。
+- **产物与投放（17:32 已完成）**：`:neoforge-1.21.1:build :forge-1.20.1:build` ⇒ `BUILD SUCCESSFUL in 2s`，四条 `pushTo*` 全命中 —— neo `2,587,467 B` sha256 `366D68C86DDFB86229F5AB437EBF5FC386859BD6658A7B0FD45B8E70F97B642D`（`build\libs` = `run\1.21.1\mods` = 整合包，同一份）；forge reobf `2,632,431 B` `FD7B01D79FEA43080E3744F81FAF752F7526770D1F45FBB3BC0A7CB84DAFB4D9`（`build\libs` = 整合包）；`run\1.20.1\mods` 为 dev 的 named jar `2,603,035 B` `A3741D16F03A0BE11A2CFCF640D44A6634D395E6A5804A7650D729B2C9D29FE2`。**jar 内字节码复核**：解 `run\1.21.1\mods` 的 `com/merlinkitsune/astral_dice/init/ModCreativeTabs.class` 做 `javap -p -c` ⇒ `ModItems.REPULSION` 引用 **0 处**、`EFFECT_CARD_REPULSION` **1 处** ⇒ 隐藏已进产物（顺序改动在字节码里不可见，由 D3/D5 守门 + 源码结构核对覆盖）。
+- **未做**：**未实机**（本条只改展示层可见性与顺序，无行为变化）。P1 两线未改（§5-Minor 6）。
+
 ### 4.2 历史读数
 
 pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（含 4.8 pre.4 全量双线 10 跑 10 PASS、4.11–4.17 pre.5 各批、4.19 Jade 图标留白版）。
@@ -340,6 +351,8 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
    - **目标依赖型修饰器**（秘密侦探「目标带标记 +3」= `MarkManager.getLevel(ctx.target)`、调查阶段依赖 `isBlessingTarget(ctx.target, ctx.attacker)`）在客户端求值时上下文的目标位只能填**玩家自身**（`attackPowerBase` 构造 `DiceCombatContext` 的占位）⇒ HUD 无法体现「对某类目标的加成」，只显示不依赖目标的那部分。属显示层固有上限，不是缺陷。
    - **骰战随机点数已排除**（`ctx.displaySnapshot` 下攻击卡不掷）⇒ HUD 不含随机加成，符合裁决。
    - **P1 两线未移植**（26.1.2 / fabric），正式版前不动（§5-Major 6）。
+
+6. **创造栏收尾仅落 P0 两线**（2026-10-25，§4.1j）：P1（`neoforge-26.1.2` / `fabric-1.20.1`）的 `ModCreativeTabs.java` 仍列出强化拒止物品、筹码仍是旧顺序。⚠️ 移植时必须**同批调整** `tools/verify_fabric_assets.py` 第 7 项（`check_creative_tabs`：要求「所有注册物品都在创造栏」——与本条的隐藏口径相反，只对 fabric 线生效，暂未改）。
 
 ## 6 坑（本批新增，后续继续追加）
 
