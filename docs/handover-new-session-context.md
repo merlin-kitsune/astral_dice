@@ -45,7 +45,7 @@ Select-String -Path F:\MCProject\astral_dice_multiloader\*\gradle.properties -Pa
 ## 立即待办（按优先级）
 
 1. ~~实机复验~~ → **已完成**（2026-10-25，双版本）：星光兑换 5 组（handover §4.1）+ 筹码商店刷新源 R0–R5 / 38 tooltip + 21 手册文案 / `ame_note` 染色（§4.1b）全 PASS。剩余须用户下达的实机项见 handover §5。
-2. **`CHIP-REGEN-1.20.1/1.21.1` 用例退役或改写**（仍断言「等 tick 自动 +1」，已随 ticker 删除失效）。
+2. ~~`CHIP-REGEN-1.20.1/1.21.1` 用例退役或改写~~ → **已退役**（2026-10-25 用户裁决，两文件删除）；新语义判据见 handover §4.1b R2/R3/R5。
 3. **`tooltip_color_audit` 存量 130 处**（10 键；重灾 `jill_active` 22 / `storm_approaching.description` 18 / `problem_delivery.description` 18 / `dorothy_active` 18）——是否清理待用户裁决；其中 `card.barricade`/`card.repulsion` 的 6 处是**用户自写** `§e20:00§7`，按「tooltip 以用户为准」未动。
 4. **8 条「代码与文案都不符」**已报用户、未改 tooltip，等裁决（bite 觉醒层数 / huo_card 选择器 / magic_quiver 闸门 / railgun 真伤口径 / 三张卡 NON_HOSTILE / member_recommendation 只数主背包+副手 / repulsion 单次 5 点耐久 / airbag 掉虚空）。
 5. **P1 两线欠账**：JEI 筹码 / `BeamFx` / `GlobalEventGate` / `RepulsionEntity` / `CardShopMenu#planPlacement` / `EventDrawBlock`；筹码图标边框版；史莱姆 20 tick；misaki 未同步；pre.5 冷却指示器未移植。

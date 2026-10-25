@@ -10,7 +10,7 @@
 3. 本批收编 **Kimi 上一轮四批未提交改动**（member-detective / misaki 立牌 / 筹码商店刷新源 / 规则分派），并完成 **DSH 三语语言同步** + **地雷女备注区染色修复**。
 4. 判据：P0 两线 `:classes` `BUILD SUCCESSFUL in 4s`；`check_lang_sync` EXIT=0；`audit_patchouli_keys` 悬空 0；`verify-split` EXIT=0；三道专项 python 判据 PASS 26/12/14；`verify_chip_shop_ui` `CHIPUI_TOTAL_FAIL: 0`。
 5. **pre.6 产物已重建并投放**（2026-10-25 11:55，`:neoforge-1.21.1:build :forge-1.20.1:build` 触发 `pushToDevRun/pushToGame/pushToRootBuild`）——四个目标（`run/1.21.1/mods`、`run/1.20.1/mods`=devlibs named、两个 P0 整合包）逐处 sha256 **MATCH**，读数见 §2。
-6. 本批实机：**星光兑换 5 组 + 筹码商店刷新源 / 文案（38 tooltip + 21 手册）/ `ame_note` 染色，双版本全 PASS**（2026-10-25，§4.1 / §4.1b）。`scripts/test/cases/CHIP-REGEN-*.json`（等 tick 自动 +1）随 ticker 删除**已失效**（§5-3）。
+6. 本批实机：**星光兑换 5 组 + 筹码商店刷新源 / 文案（38 tooltip + 21 手册）/ `ame_note` 染色，双版本全 PASS**（2026-10-25，§4.1 / §4.1b）。`scripts/test/cases/CHIP-REGEN-*.json`（等 tick 自动 +1）随 ticker 删除失效，**已按用户裁决退役（两文件删除）**（§5-3）。
 7. 规则分派已落地：根 `AGENTS.md` 为 41 行入口，Kimi → `docs/agent/AGENTS-kimi.md`，DSH → `docs/agent/AGENTS-dsh.md`，Codex → `docs/agent/AGENT-SPLIT.md`（只读）。
 8. 未处置：陈旧锁 `F:\MCProject\.agent-locks\kimi.lock`（`PID=26580` / `TASK=misaki-chip-shop-balance-p0`，进程已不存在）—— 按规则不自行删，交用户裁决。
 
@@ -110,7 +110,7 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 
 1. ~~pre.6 产物未建未投~~ → **已完成**（2026-10-25 11:55）：`:neoforge-1.21.1:build :forge-1.20.1:build` 触发 `pushTo*`，四目标 sha256 全 MATCH（§2）；库 jar 成对在位（neo 98,737 B / forge 103,609 B，`1.1.0-pre.2`）。
 2. ~~本批局部实机~~ → **已完成**（2026-10-25）：星光兑换 5 组（§4.1）+ 筹码商店刷新源 R0–R5 / 38 tooltip + 21 手册 / `ame_note` 染色（§4.1b），**双版本全 PASS**。
-3. **`CHIP-REGEN-1.20.1.json` / `CHIP-REGEN-1.21.1.json` 已失效**（仍断言「等 tick 自动 +1」）——退役或按新语义改写（升星取走 +1）。
+3. ~~`CHIP-REGEN-*.json` 已失效~~ → **已退役**（2026-10-25 用户裁决「旧用例直接退役」）：`scripts/test/cases/CHIP-REGEN-1.20.1.json` / `CHIP-REGEN-1.21.1.json` **两文件已删除**（它们断言「摆形态 → 等 tick → 自动 +1」，随 `ChipShopRegenTicker` 删除永久不成立）。新语义（刷新 3→2→1 + anchor 首写 + 升星取走 1→2 + 死亡不自愈）已在 §4.1b R2/R3/R5 双线实机取证；若日后要**自动化**回归再按这套判据重写，勿复活旧文件。探针 `/astralshop cregen` 仍保留（只摆状态、不再指望 ticker 推进）。
 4. **`tooltip_color_audit` 存量 130 处**（10 键）：`jill_active` 22 / `storm_approaching.description` 18 / `problem_delivery.description` 18 / `dorothy_active` 18 / `red_heat_warning.description` 16 / `fanny_active` 12 / `jill_passive` 8 / `card.barricade` 6 / `card.repulsion` 6 / `deepseek_passive` 6。其中 `card.barricade`/`card.repulsion` 是**用户自写 `§e20:00§7`**（规则应为 §9），按「tooltip 以用户为准」未动。
 5. **8 条「代码与文案都不符」**（已报用户，未改 tooltip）：bite 觉醒按撕咬张数 / huo_card = `CREATURE_OR_RIVAL` / magic_quiver 真闸门 = 目标已有标记 + 先用过伤害牌 / railgun 只 `bypasses_armor` / 三张卡 `NON_HOSTILE` / member_recommendation 只数主背包+副手 / repulsion 单次最多 5 点耐久 / airbag 掉虚空救不了。
 6. **P1 两线欠账**（正式版前不移植，仅登记）：JEI 筹码 / `BeamFx` / `GlobalEventGate` / `RepulsionEntity` / `CardShopMenu#planPlacement` / `EventDrawBlock`；筹码效果图标仍带边框；史莱姆被动仍 20 tick；misaki 仍 `legendary()` + 黄金星盘 + 死亡清零剑气；pre.5 冷却指示器未移植。
