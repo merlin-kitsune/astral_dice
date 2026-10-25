@@ -322,6 +322,7 @@
   same entry point (`defensePointsForArmor`), so "current Defense" is 1:1 as well. **Practical effect: player-side
   defense bonuses are x1.667 of what this build delivered before** (mob-side x1.25); nothing else about the formula
   changed. Gate: `python tools/verify_defense_unit_parity.py` (D1–D8, non-zero exit on any regression).
+- **Defense no longer loses a point to truncation** (fixed after 2026-10-25 in-game evidence on both P0 lines): armor is now read as the double attribute value of `Attributes.ARMOR` through the single entry point `DiceCombatModifiers#effectiveArmorPoints`, instead of `LivingEntity#getArmorValue()` which floors it - previously 26.6667 armor was truncated to 26 so "Defense +8" only granted +7 (exactly integral +3 / +4 were unaffected). Both dice-combat settlement sites and the piercing gun share this accessor, so the displayed value equals the settled value. New gate D9: `getArmorValue()` must appear 0 times under `combat/**` and in the piercing-gun chip.
 
 - **The guide / handbook defense examples now use the real base of 2** (text only, no gameplay change): the
   battle-dice entry in all three languages (`en_us` / `zh_cn` / `ja_jp`) still said `Defense = 4 + ...` and

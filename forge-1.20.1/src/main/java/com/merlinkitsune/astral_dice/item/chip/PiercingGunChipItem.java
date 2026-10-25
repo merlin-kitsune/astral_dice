@@ -24,7 +24,7 @@ public class PiercingGunChipItem extends BaseChipItem {
 
     // 计算目标当前基础防御力点数(玩家/生物各按自身公式,结果向下取整;与骰战结算同源)
     public static int getTargetDefense(LivingEntity target) {
-        double armor = target.getArmorValue();
+        double armor = com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.effectiveArmorPoints(target);
         double toughness = target.getAttributeValue(Attributes.ARMOR_TOUGHNESS);
         if (target instanceof Player) {
             return (int) Math.floor(

@@ -745,16 +745,16 @@ public class DiceCombatEvents {
                 }
 
                 // 效果牌/立牌/筹码的防御力已折算为真实护甲(1 防御力 = 1/护甲系数 护甲值,
-                // 见 DiceCombatModifiers.setDefenseArmorBonus),getArmorValue() 已包含;
+                // 见 DiceCombatModifiers.setDefenseArmorBonus),effectiveArmorPoints() 已包含;
                 // modifierDefense 恒为 0(仅防御卡掷骰写入 ctx.defenseCardSum 作为防御点直接加入)。
                 // === 玩家与生物公式分离(2026-09-26 用户裁决) ===
                 // · 护甲 20 硬上限**两侧一律移除**;
-                // · 护甲取**属性终值**(getArmorValue()) ⇒ 状态效果与第三方模组(如七咒之戒)修饰
+                // · 护甲取**属性终值**(ARMOR 属性 double 值,见 effectiveArmorPoints) ⇒ 状态效果与第三方模组(如七咒之戒)修饰
                 //   完毕后的真实值先参与换算,本模组**不再二次换算**(最大模组兼容性);
                 // · 玩家:2 + 护甲×0.30 + 0.85×韧性;
                 // · 生物:初始值(敌对 0 / 中立 0 / 被动 0 / 友好 0) + 护甲×0.40 + 1.0×韧性,最终取整。
                 //   ↑ 两式均取自库 CombatFormula,本模组不再内联系数(2.0.0-SNAPSHOT.2 起)。
-                double effectiveArmor = Math.max(0, target.getArmorValue()
+                double effectiveArmor = Math.max(0, com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.effectiveArmorPoints(target)
                         + com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.armorValueForDefensePoints(modifierDefense, target instanceof Player));
                 double toughness = target.getAttributeValue(Attributes.ARMOR_TOUGHNESS);
                 if (target instanceof Player) {
@@ -1084,7 +1084,7 @@ public class DiceCombatEvents {
                 + enchantDamageBonus(mob, target)
                 + mobRoll;
         double playerDefense = com.merlinkitsune.starengine.combat.CombatFormula.playerDefense(
-                target.getArmorValue(), target.getAttributeValue(Attributes.ARMOR_TOUGHNESS))
+                com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.effectiveArmorPoints(target), target.getAttributeValue(Attributes.ARMOR_TOUGHNESS))
                 + playerRoll + defenseCardSum;
 
         float finalDmg = com.merlinkitsune.starengine.combat.DiceBattleResolver

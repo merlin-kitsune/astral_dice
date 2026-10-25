@@ -261,7 +261,7 @@ forge dev named 102,013 B / `e280aeab6c4b37c43468f7cce32a8bf64c70b6bdbcd2203f6c5
 - **已知非阻断告警（来源是 testworld 种子模板，不是 rc.1）**：1.20.1 `latest.log:259-262` Forge 打印 `The following mods have version differences that were not resolved: astral_dice (1.3.2+forge_1.20.1 -> 1.5.0-rc.1+forge_1.20.1) / starengine (1.0.4+forge_1.20.1 -> 1.1.0+forge_1.20.1)`，随后 `Injecting existing registry data` 与一批 `Object did not get ID it asked for`；种子模板的 `level.dat` 记录的是旧版本，registry 重新注入后正常进世界。
 - **收尾**：1.21.1 `MT_STOP: OK (1s)`；1.20.1 `--phase stop --force --purge-saves` ⇒ `MT_CLEANUP_SAVES: PURGED 1` / `MT_CLEANUP_RESULT: OK` / `MT_STOP: OK (1s)`；`java.exe` 仅剩两个 Gradle 守护（70556 Zulu 21 / 32252 toolchain 17），`.agent-locks` 空。
 
-### 4.1g HUD 攻击力显示口径统一（2026-10-25）—— 静态判据全绿，**未实机**
+### 4.1g HUD 攻击力显示口径统一（2026-10-25）—— 静态判据全绿，**双版本已实机（见 §4.1i）**
 
 - **用户裁决**：「所有攻击力加入显示，除手持武器本身与骰战中的随机攻击力数值加成」。
 - **根因**：`combat/DiceCombatModifiers.java` 的攻击修饰器链上有 23（neo）/ 24（forge）处**逐批复制粘贴**的 `if (ctx.attacker.level().isClientSide()) return ap;` 模板守卫 ⇒ 客户端 `CombatPowerHud` 求值时整链被跳过，HUD 只含 10 块修饰器（电流剑等 13 块静默消失）。
@@ -272,7 +272,7 @@ forge dev named 102,013 B / `e280aeab6c4b37c43468f7cce32a8bf64c70b6bdbcd2203f6c5
 - **产物（2026-10-25 16:2x）**：neo **2,586,892 B** / sha256 `5c4a6207…38ed0ac`（`build/libs` = `run/1.21.1/mods` = 「狐の航空学 Voxy Edition」同一份）；forge reobf **2,631,933 B** / `576430bb…adefbbe4`（`build/libs` = 「1.20.1-Forge 模组测试」）；forge dev named **2,602,467 B** / `cc0f4341…6758f892`（`run/1.20.1/mods`）。六处 jar 内 `com/merlinkitsune/astral_dice/combat/DiceCombatModifiers.class` 全部命中 `skipOnClient` 与 `displaySnapshot` 字符串（字节码判据）。
 - **未覆盖的边界**（登记在 §5-Minor 5）：目标依赖型加成在客户端无目标 ⇒ HUD 只能是「无目标」口径；P1 两线未移植。
 
-### 4.1h 防御力口径修正（2026-10-25）—— 静态判据全绿，**未重建产物、未实机**
+### 4.1h 防御力口径修正（2026-10-25）—— 静态判据全绿，**已重建产物并双版本实机（见 §4.1i）**
 
 - **用户裁决**：先解防御口径问题，再跑实机。依据 `docs/agent/AGENTS-full.md:584-613`〈平衡性红线〉——「任何使既有数值口径失真的实现」属恶性 BUG，必须当批修复，不得按「设计取舍 / 已知限制 / 待裁决」放过。
 - **两个失真点**：① **折算写死 `× 2.0`**：所有「防御力 +X」的来源都按 `X × 2.0` 加护甲，经 0.30 / 0.40 系数后只兑现 **0.6X（玩家）/ 0.8X（怪物）**；根因是旧公式「2 + 护甲÷2」时代的换算（2026-09-26 系数 0.5 → 0.30 时未同步）。② **指南基数 4 vs 代码 2**：库 `CombatFormula.PLAYER_BASE_DEFENSE = 2.0`（注释：2026-10-21 用户裁决，2 点 = 1 面盾），而 12 份指南 lang（四线 × 三语）仍写「玩家 防御 = 4 + 护甲×0.30」。
@@ -282,6 +282,29 @@ forge dev named 102,013 B / `e280aeab6c4b37c43468f7cce32a8bf64c70b6bdbcd2203f6c5
 - **平衡影响（必须如实登记）**：玩家侧防御力加成实际强度是上一版的 **×1.667**（怪物侧 ×1.25）；公式其余部分未动。若要回退，只需把 `armorValueForDefensePoints` 的两常量改回 2.0 / 2.0（其它站点都走单一入口）。
 - **未做**：未重建 jar、未投放四目标、未实机。P1 两线仍为旧 `× 2.0` 折算（各 5 处），已登记 `docs/compat-1.5.0-porting.md` §2 主题行 + §4 第 4 条。
 
+
+### 4.1i 双版本实机：HUD 攻击力（§4.1g）+ 防御力 1:1（§4.1h）+ 取整 off-by-one 修补（2026-10-25 16:5x–17:1x）
+
+- **用户下达**（m11563）：「先解决防御口径问题，再运行实机测试（验证所有遗留项）」。本节是 rc.1 批次（mod `1.5.0-rc.1` + 库 `1.1.0`）的实机读数，全部由 AutoJS `eval_js` 的 server / client 侧直接取证（不靠截图）。
+- **HUD 攻击力 = PASS ⇒ §5-Minor 5 销账**：两条线上 `/astralprobe equipslot` 都**不会真正落槽**（dice 槽仍空、chip 槽 0 格，命令本身不报错）⇒ 必须用 Curios API 直写：1.21.1 用 `getCuriosInventory(p).get()` / `getStacksHandler('dice').get()`，1.20.1 用 `getCuriosInventory(p).orElse(null)` / `getStacksHandler('dice').orElse(null)`（Curios 5.14 返回 Optional/LazyOptional）；0 星 `golden_dice` 经 `DiceCurioItem.refreshChipSlotCount(p)` 得 **1** 个 chip 槽后才装得进筹码。
+  - **1.21.1**：`electric_sword_chip` 已装 + `ChargeManager.addStacks(p, 8)`（`CHARGE_PER_ATTACK = 4`）⇒ `getAttackBonus = 2`；server `attackPowerOf = 3`、`attackPowerDisplayOf = 3`；**client `attackPowerDisplayOf = 3`**（修复前该值恒 1 —— 23 处客户端模板守卫把整链跳过）。对照 A：`ChargeManager.removeAll(p)` ⇒ client `bonus 0 / display 1`（数字确由筹码驱动）；对照 B：主手写 `diamond_sword` ⇒ client display 仍 3（手持武器按裁决不进 HUD）。
+  - **1.20.1**：同套装扮 ⇒ server `{eq:true, charge:8, bonus:2, disp:3, full:3}`、client `{eq:true, bonus:2, disp:3}` ⇒ **两线一致**（forge 的 24 处守卫收敛同样生效）。
+- **防御力 1:1 = PASS**：裸装（护甲 0 / 韧性 0，基数 `CombatFormula.PLAYER_BASE_DEFENSE = 2`）下 `setDefenseArmorBonus(p, tag, 8)` ⇒ `ARMOR 属性 = 26.666666666666668`、`defensePowerOf = 10`；`+3` ⇒ `ARMOR = 10`、`dp = 5`；清除后回到 `dp = 2`；生物系数 `armorValueForDefensePoints(8, false) = 20.0`。**1.21.1 与 1.20.1 逐项一致**。
+- **实机暴露并当批修掉的残留缺陷：取整吞点（floor off-by-one）**。`LivingEntity#getArmorValue()` = `Mth.floor(ARMOR)` ⇒ 26.6667 被截成 26 ⇒ `2 + 26 × 0.30 = 9.8` ⇒ `floor 9`，于是「防御力 +8」只兑现 **+7**（`+3` 恰好整数故无感，正好构成对照）。修法：两线新增单一入口 `DiceCombatModifiers#effectiveArmorPoints(LivingEntity)`（读 `Attributes.ARMOR` 的 **double 终值**，`max(0, …)`），4 处取甲改走它 —— `defensePowerBase`（neo 原 :1051 / forge 原 :1049）、`DiceCombatEvents` 骰战（neo 原 :759 / forge 原 :757）、`DiceCombatEvents` 怪物→玩家（neo 原 :1091 / forge 原 :1087）、`PiercingGunChipItem:27`（两线），注释同步 6 处。修后复验：1.21.1 `{dp0:2, armorRaw8:26.666666666666668, armor8:26, dp8:10, dp3:5, dpBack:2}`、1.20.1 同值 ⇒ **+8 兑现 10**。
+  **未改**（真护甲语义站点）：`UnwaveringEffect`(+8 护甲/层)、`DragonRoarBreakEffect`(-8)、`BlueCurse`(-20%)、`JasmineSweep`(-30%)、`DorothySignItem`（本来就用 `getAttributeValue`）、`MosesEnigmaticLink`、`jade/ArmorValueProviderMixin`（mob 整数口径）。
+- **产物（2026-10-25 17:0x 重建 + 四目标投放，sha256 实测）**：
+
+  | 目标 | 字节 | sha256 | 字节码 `effectiveArmorPoints` |
+  |---|---|---|---|
+  | `run/1.21.1/mods`（neo） | 2,587,472 | `600E29E9BA473FFB5251F1E3B2921A1ABF37E0E626581BA8A6FFA1B0A8264B1D` | True |
+  | `run/1.20.1/mods`（forge **devlibs named**） | 2,603,042 | `E0C6D70FA527E75F7451DBD71A9C238E9A88DBA7DAF762DF47F04CDEC7DBA47A` | True |
+  | `D:\.minecraft\versions\狐の航空学 Voxy Edition\mods`（neo） | 2,587,472 | 同 `600E29E9…`（与 run 同一份） | True |
+  | `D:\.minecraft\versions\1.20.1-Forge 模组测试\mods`（forge **reobf**） | 2,632,435 | `AD987CC7A64DF8043B50EF388A456DE938BFD4330A5E6123275C4E465F8BB106` | True |
+
+  构建：`gradlew.bat :neoforge-1.21.1:build :forge-1.20.1:build --console=plain` ⇒ `BUILD SUCCESSFUL in 7s`，六条 `pushTo{Game,DevRun,RootBuild}` 全命中；库 jar 成对在位（`starengine-neoforge-1.21.1-1.1.0.jar` / `starengine-forge-1.20.1-1.1.0.jar`）。
+- **守门（实跑）**：`python tools/verify_defense_unit_parity.py` ⇒ `GATE: PASS（42 项全部满足）`（新增 **D9** 四项：入口存在且读 `getAttributeValue(Attributes.ARMOR)` / `defensePowerBase` 走它 / 骰战走它 / `combat/**` 与穿甲枪里 `getArmorValue()` 调用 0 处）；`python tools/verify_hud_attack_parity.py` ⇒ `GATE: PASS (21 项全部满足)`；`pwsh tools/check_lang_sync.ps1` ⇒ EXIT 0（四线键集一致）；`python docs/agent/verify-split.py` ⇒ 全部通过；`pwsh scripts/audit/tooltip_color_audit.ps1` ⇒ 仍 **144 处**（既有基线债，用户已裁决路障不动）。
+- **仍未实机 / 未做**：§5-Major 5 的 8 条「代码与文案不符」（等文案口径裁决，非行为缺陷）、§5-Minor 3 `misaki_sign` datagen 逐字节对等（下次 `runData` 后 diff）、P1 两线未移植。
+- **本轮坑补充**：① 1.21.1 客户端未停就 launch 1.20.1 ⇒ 25585 端口冲突 + `MT_INJECT_FOCUS: FAIL — 目标窗口无法置前台`（§6 坑 15），必须先对另一线 `--phase stop --force`；② `/astralprobe equipslot` 在两条线都不落槽，装备类实验一律走 Curios API；③ 1.21.1 的 Curios 9.5.1 写入槽位后需 1–2 tick 再读（§6 坑 8），本轮客户端读数前已 sleep 1.5–1.8 s。
 
 ### 4.2 历史读数
 
@@ -306,14 +329,14 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 
 
 9. **`mt_env` 的 modernfix 钉子在整合包升版后 BLOCKED**（2026-10-25 实测）：`scripts/test/mt_env.ps1:48` 钉 `5.27.26`、整合包已是 `5.27.27` ⇒ `--phase env` EXIT 11 中断（详见 §6 坑 19）。**改测试资产需用户裁决**（本轮跳 env 直接 launch 完成冒烟）。
-10. **防御力折算 1:1 已修，但产物未重建 / 未实机**（2026-10-25，§4.1h）：P0 两线静态判据全绿（守门 34 项 PASS + 两线 `:classes` 通过），但 `build/libs` 与四目标仍是 §4.1g 那批 jar（**不含**防御折算）⇒ 交付 / 实机前必须 `:build` 重建并重录 sha256。P1 两线仍是旧 `× 2.0` 折算（各 5 处），已登记 `docs/compat-1.5.0-porting.md` §2 主题行 + §4 第 4 条。
+10. ~~防御力折算 1:1 已修，但产物未重建 / 未实机~~ → **已完成**（2026-10-25 17:0x，§4.1i）：`:build` 重建 + 四目标 sha256 实测 MATCH，两线实机 `+8 防御力 ⇒ 防御力 10`；**同批修掉实机暴露的取整吞点**（新增 `effectiveArmorPoints`，守门加 D9，42 项 PASS）。P1 两线仍是旧 `× 2.0` 折算（各 5 处），已登记 `docs/compat-1.5.0-porting.md` §2 主题行 + §4 第 4 条。
 ### Minor
 
 1. `docs/handover-2026-10-24-member-detective.md` 等 Kimi 批次文档已入库，措辞按 2026-10-24 事实；后续改动若改变其中数字需回填。
 2. 仓库根 `undefined/temp/`（2026-10-23 历史临时脚本残留，被 `temp/` 规则忽略）未清理。
 3. `misaki_sign.json` 是手改的（与 datagen 是否逐字节一致未验）；下次 `runData` 后须 diff。
 4. **子代理模型口径已收紧为「唯一」**（2026-10-22 用户裁决）：一律 `provider: "deepseek-official"` + `model: "deepseek-flash"`（DeepSeek-V4.1-Flash），不得换更强 / 其它 provider 的 model；原「确需深推理才换更强 model」「其它模型仅作备用」两种口径**作废**；`list_subagent_models` 只核注册表、不换模型；该路由失效 ⇒ 停下报用户。同步文件 4 个：`docs/agent/AGENTS-dsh.md`（§A 第 6 条 / §B ③ / 红线区第 7 条⑧）、`docs/agent/AGENTS-full.md`（红线区第 7 条⑧同文 + 子项目修改默认规则实施分工 + 第 3 节纪律第 6 条）、`docs/agent/delegation-runbook.md`（§2 派活）、`docs/agent/AGENTS-kimi.md`（§0 第 2 条，使用 Kimi 路由 `DeepSeek/deepseek-flash`）。
-5. **HUD 攻击力显示口径的两处已知边界**（2026-10-25，§4.1g）：
+5. **HUD 攻击力显示口径**（2026-10-25，§4.1g）——**已双版本实机 PASS**（§4.1i：装电流剑 + 充能 8 ⇒ client 显示 3；removeAll 后回到 1；主手换钻石剑仍 3）。余下两处已知边界：
    - **目标依赖型修饰器**（秘密侦探「目标带标记 +3」= `MarkManager.getLevel(ctx.target)`、调查阶段依赖 `isBlessingTarget(ctx.target, ctx.attacker)`）在客户端求值时上下文的目标位只能填**玩家自身**（`attackPowerBase` 构造 `DiceCombatContext` 的占位）⇒ HUD 无法体现「对某类目标的加成」，只显示不依赖目标的那部分。属显示层固有上限，不是缺陷。
    - **骰战随机点数已排除**（`ctx.displaySnapshot` 下攻击卡不掷）⇒ HUD 不含随机加成，符合裁决。
    - **P1 两线未移植**（26.1.2 / fabric），正式版前不动（§5-Major 6）。

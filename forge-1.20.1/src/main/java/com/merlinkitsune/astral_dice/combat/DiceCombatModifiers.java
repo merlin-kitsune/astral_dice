@@ -220,6 +220,18 @@ public final class DiceCombatModifiers {
     }
 
     /**
+     * **有效护甲**(防御力换算与骰战结算的唯一读法):取 ARMOR 属性的 double 终值。
+     *
+     * <p>不能用 {@code LivingEntity#getArmorValue()}:它是 {@code Mth.floor(ARMOR)},而本模组
+     * 折算出的护甲常带小数(如「防御力 +8」= 26.6667 护甲)⇒ 先截断会让防御力少算 1 点
+     * (2 + 26 x 0.30 = 9.8 ⇒ 9,而非 10;2026-10-25 实机暴露)。护甲上限已移除,不需要再钳制。
+     */
+    public static double effectiveArmorPoints(net.minecraft.world.entity.LivingEntity entity) {
+        if (entity == null) return 0.0D;
+        return Math.max(0.0D, entity.getAttributeValue(Attributes.ARMOR));
+    }
+
+    /**
      * 效果牌/立牌/筹码的防御力统一按「1 防御力 = 1 ÷ 阵营护甲系数 护甲值」折算为真实护甲值
      * (见 {@link #armorValueForDefensePoints})。
      * 通过瞬态 ARMOR 属性修饰器施加:仅当数值变化时才增删(避免每 tick 属性同步)。
@@ -884,7 +896,7 @@ public final class DiceCombatModifiers {
      * 玩家的**防御力**(与 GUI/tooltip 同源的口径):{@code 2 + 有效护甲×0.30 + 0.85×盔甲韧性}。
      *
      * <p>效果牌/立牌/筹码的防御力都已折算为**真实护甲**(1 防御 = 1/护甲系数 护甲值,见
-     * {@link #setDefenseArmorBonus}),故 {@code getArmorValue()} 已包含它们 ⇒ 本方法自动反映
+     * {@link #setDefenseArmorBonus}),故 {@link #effectiveArmorPoints} 已包含它们 ⇒ 本方法自动反映
      * 「当前实际防御力」。与 {@link #getDisplayDefenseRange} 的基础项逐字同源。
      */
     public static int defensePowerOf(Player player) {
@@ -1043,10 +1055,10 @@ public final class DiceCombatModifiers {
             modifierDefense = modifier.apply(ctx, modifierDefense);
         }
         // 效果牌/立牌/筹码的防御力已折算为真实护甲(1 防御力 = 1/护甲系数 护甲值,见 setDefenseArmorBonus),
-        // getArmorValue() 已包含其瞬态修饰器;此处 modifierDefense 恒为 0(仅防御卡掷骰写 ctx.defenseCardSum)
+        // effectiveArmorPoints() 已包含其瞬态修饰器;此处 modifierDefense 恒为 0(仅防御卡掷骰写 ctx.defenseCardSum)
         // ⚠️ 护甲 20 硬上限已于 2026-09-26 移除;公式下沉至库 CombatFormula,与骰战结算**同源**,
         //    避免「HUD/tooltip 一个值、结算另一个值」的漂移。
-        double effectiveArmor = Math.max(0, player.getArmorValue() + armorValueForDefensePoints(modifierDefense, true));
+        double effectiveArmor = Math.max(0, effectiveArmorPoints(player) + armorValueForDefensePoints(modifierDefense, true));
         double toughness = player.getAttributeValue(Attributes.ARMOR_TOUGHNESS);
         return com.merlinkitsune.starengine.combat.CombatFormula.playerDefense(effectiveArmor, toughness);
     }

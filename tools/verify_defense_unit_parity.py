@@ -48,6 +48,12 @@ D7 Attributes.ARMOR 站点白名单(两线)
    除白名单里**真护甲语义**的站点外，任何写 ARMOR 修饰器的行必须带折算 token
    (armorValueForDefensePoints / PLAYER_ARMOR_PER_DEFENSE / MOB_ARMOR_PER_DEFENSE
    / ARMOR_PER_DEFENSE / ARMOR_BONUS)
+D9 护甲读数不得用 floor 值(2026-10-25 实机暴露的 off-by-one)
+   D9-a DiceCombatModifiers.effectiveArmorPoints 存在且读 getAttributeValue(Attributes.ARMOR)
+   D9-b defensePowerBase 的 effectiveArmor 走 effectiveArmorPoints(player)
+   D9-c DiceCombatEvents 骰战 effectiveArmor 走 effectiveArmorPoints(target)
+   D9-d combat/*.java 与 PiercingGunChipItem 里不得再出现 .getArmorValue() 调用
+        （getArmorValue = Mth.floor(ARMOR)，会把 26.6667 截成 26 ⇒ 「防御力 +8」只兑现 +7）
 D8 P1 两线(neoforge-26.1.2 / fabric-1.20.1)欠账登记可见性
    只统计、不判 FAIL；读数必须与 docs/compat-1.5.0-porting.md 的登记一致(逐线打印)
 
@@ -305,6 +311,47 @@ def numeric_table() -> list[str]:
     return out
 
 
+# ------------------------------------------- D9 护甲读数(floor 值)清零
+FLOOR_FILES = [
+    f"{PKG}/combat/DiceCombatModifiers.java",
+    f"{PKG}/combat/DiceCombatEvents.java",
+    f"{PKG}/item/chip/PiercingGunChipItem.java",
+]
+
+
+def _strip_code_noise(src: str) -> str:
+    """去掉 // 注释与字符串字面量，避免把注释里的 getArmorValue 当调用。"""
+    src = re.sub(r'"(?:\\.|[^"\\])*"', '""', src)
+    return re.sub(r"//[^\n]*", "", src)
+
+
+def check_d9(verbose: bool) -> None:
+    for line, base in P0.items():
+        mod = find_one(base, f"{PKG}/combat/DiceCombatModifiers.java")
+        ev = find_one(base, f"{PKG}/combat/DiceCombatEvents.java")
+        mtext, etext = read_text(mod), read_text(ev)
+
+        a = re.search(r"effectiveArmorPoints\s*\(\s*(?:net\.minecraft\.world\.entity\.)?LivingEntity\s+entity\s*\)\s*\{[^}]*getAttributeValue\s*\(\s*Attributes\.ARMOR\s*\)", mtext, re.S) is not None
+        record(f"D9-a[{line}]", a, "effectiveArmorPoints 存在且读 ARMOR 属性 double 终值")
+
+        b = re.search(r"effectiveArmor\s*=\s*Math\.max\([^;]*effectiveArmorPoints\s*\(\s*player\s*\)", mtext) is not None
+        record(f"D9-b[{line}]", b, "defensePowerBase 走 effectiveArmorPoints(player)")
+
+        c = re.search(r"effectiveArmor\s*=\s*Math\.max\([^;]*effectiveArmorPoints\s*\(\s*target\s*\)", etext) is not None
+        record(f"D9-c[{line}]", c, "骰战 effectiveArmor 走 effectiveArmorPoints(target)")
+
+        hits = []
+        for rel in FLOOR_FILES:
+            f = find_one(base, rel)
+            for i, src in enumerate(read_text(f).splitlines(), 1):
+                if ".getArmorValue(" in _strip_code_noise(src):
+                    hits.append(f"{f.relative_to(ROOT)}:{i}: {src.strip()}")
+        record(f"D9-d[{line}]", not hits,
+               "防御公式侧 .getArmorValue() 0 处" if not hits else f"{len(hits)} 处 floor 读数: " + " | ".join(hits[:5]))
+        if verbose and hits:
+            print("\n".join(hits))
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="防御力 → 护甲值 折算口径守门")
     ap.add_argument("--verbose", action="store_true", help="打印逐条命中明细")
@@ -315,6 +362,7 @@ def main() -> int:
     check_d5(args.verbose)
     check_d6(args.verbose)
     check_d7(args.verbose)
+    check_d9(args.verbose)
     report_d8()
 
     for cid, status, detail in rows:
