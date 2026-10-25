@@ -27,7 +27,7 @@ Select-String -Path F:\MCProject\astral_dice_multiloader\*\gradle.properties -Pa
 
 - 四子项目同树：`neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1`；交付面**只 P0** = 前两条，P1 两线在 `1.5.0` 正式版前不验证、不移植。
 - 版本：四线 `mod_version = 1.5.0-pre.6+<加载器后缀>`；`starengine_version = 1.1.0-pre.2`；jar 内硬前置 `[1.1.0-pre.2,2.0.0)`，`META-INF/jarjar/` 计数 0（库**不内嵌**，必须成对投放）。
-- 产物：**pre.6 已重建并投放**（最新 2026-10-25 15:45，含强化拒止物品形态（图标 = 用户美术稿 `images/强化拒止物品.png` 逐字节复制）+ 手册文案/图标修正，四目标 sha256 全 MATCH）——neo `astral_dice-1.5.0-pre.6+neoforge_1.21.1.jar` 2,585,468 B / `0137ad85…86286743`（18 位 `0137ad852290b617`）；forge reobf 2,630,556 B / `33dcec1d…0ffc7743`（18 位 `33dcec1d6b9b11bd`）；forge dev named 2,601,089 B / `ebf89c7d…e8b37cc`（18 位 `ebf89c7d08ec5506`，投 `run/1.20.1/mods`）。再改源码后必须重跑 `build`（各线 `build` 已 `finalizedBy pushToDevRun/pushToGame/pushToRootBuild`，一条命令即可重建+投放）并重录 sha256。
+- 产物：**pre.6 已重建并投放**（最新 2026-10-25 14:58，含强化拒止物品形态（图标 = 用户美术稿 `images/强化拒止物品.png` 逐字节复制）+ 手册文案/图标修正，四目标 sha256 全 MATCH）——neo `astral_dice-1.5.0-pre.6+neoforge_1.21.1.jar` 2,585,488 B / `27d6799f…253f72d8`（18 位 `27d6799fb91d425e`）；forge reobf 2,630,575 B / `706ceca0…1776b4d2`（18 位 `706ceca0d838793a`）；forge dev named 2,601,109 B / `6bfa91e1…d9b243b7`（18 位 `6bfa91e126151917`，投 `run/1.20.1/mods`）。再改源码后必须重跑 `build`（各线 `build` 已 `finalizedBy pushToDevRun/pushToGame/pushToRootBuild`，一条命令即可重建+投放）并重录 sha256。
 - 未推送：本批提交**未 push**、**无 tag**（用户明确「暂不推送」）；push / tag / 实机 / 部署整合包均需用户逐次放行。
 - 构建：`JAVA_HOME=C:\Program Files\Zulu\zulu-21`；`.\gradlew.bat :<线>:classes|jar`；forge dev 必须 `build/devlibs` 的 **named** jar。
 - 测试台唯一入口：`pwsh -NoProfile -File scripts\test\mt.ps1 --version <线> --phase env|run|stop`；`--purge-saves` 会删 testworld。

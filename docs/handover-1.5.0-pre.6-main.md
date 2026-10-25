@@ -107,12 +107,12 @@ forge dev **named** 2,600,922 B / `5304bafdf152c2910b6344da06cbcba20930660048318
 
 **耐久显示（= 关联血量）已在两处**（2026-10-25 复核，均未实机）：
 
-- 物品栏 / 快捷栏**耐久条**：`item/RepulsionItem` 覆写 `isBarVisible` 恒 `true`、`getBarWidth = max(1, round(13 × health/50))`、`getBarColor = Mth.hsvToRgb(ratio/3, 1, 1)`（与 `ItemStack#getBarColor` 同一渐变）。合法性有源码判据：1.21.1 `GuiGraphics#renderItemDecorations` 直接读这三个钩子（`if (stack.isBarVisible()) { int l = stack.getBarWidth(); int i = stack.getBarColor(); … }`，见 `neoforge-21.1.235-sources.jar` 的 `net/minecraft/client/gui/GuiGraphics.java` 1343-1349 行）；forge 1.20.1 同构。
+- 物品栏 / 快捷栏**耐久条**：`item/RepulsionItem` 覆写 `isBarVisible`（**原版工具口径**，2026-10-25 用户裁决：`return getDurability(stack) < MAX_DURABILITY;` —— 满耐久不显示、掉血后才出现，等价于 `Item#isBarVisible` 的默认实现 `stack.isDamaged()`）、`getBarWidth = max(1, round(13 × health/50))`、`getBarColor = Mth.hsvToRgb(ratio/3, 1, 1)`（与 `ItemStack#getBarColor` 同一渐变）。合法性有源码判据：1.21.1 `GuiGraphics#renderItemDecorations` 直接读这三个钩子（`if (stack.isBarVisible()) { int l = stack.getBarWidth(); int i = stack.getBarColor(); … }`，见 `neoforge-21.1.235-sources.jar` 的 `net/minecraft/client/gui/GuiGraphics.java` 1343-1349 行）；forge 1.20.1 同构。
 - **tooltip 三行**：`event/ModTooltipHandler` 的 `if (stack.is(ModItems.REPULSION.get()))` 块 = `tooltip.astral_dice.item.repulsion`（静态说明）+ `_durability`（`耐久：§eX§7 / §e50§r`）/ `_lifetime`（`剩余寿命：§9M:SS§r`）/ `_charge`（`已提供充能：§eX§7 / §e5§r`）+ `_owner`（紫）。
 - 单一数据源：耐久 / 已存活 tick / 已提供充能都存 `ModDataComponents.REPULSION_HEALTH|AGE|CHARGE`（neo = `Codec.INT` + `networkSynchronized(ByteBufCodecs.INT)`；forge = `ItemDataKey<Integer>` 落 NBT 随栈同步）⇒ 客户端读到的是真值而非缺省 50。
-- 满耐久 50/50 时条为满格绿色（不隐藏）；`RepulsionItem.MAX_DURABILITY = 50` 与 `event/ModEntityEvents` 注册的 `Attributes.MAX_HEALTH = 50.0D` 同值。
+- 满耐久 50/50 时**不画条**（原版工具口径）；受损后条长 = `13 × 血量/50`、配色随血量由绿转红；`RepulsionItem.MAX_DURABILITY = 50` 与 `event/ModEntityEvents` 注册的 `Attributes.MAX_HEALTH = 50.0D` 同值。
 
-判据（2026-10-25 15:4x 重建 + 投放，图标换用户美术稿后）：两线 `build` EXIT=0；四目标 jar 逐处 sha256 相同（neo `0137ad85…` 2,585,468 B；forge reobf `33dcec1d…` 2,630,556 B；forge dev `ebf89c7d…` 2,601,089 B）；开两线 jar 取 `assets/astral_dice/textures/item/repulsion.png` ⇒ 长度 344 / sha256 **match=True**。
+判据（2026-10-25 14:5x 重建 + 投放，图标换用户美术稿 + 耐久条改原版口径后）：两线 `build` EXIT=0（`BUILD SUCCESSFUL in 9s`）；四目标 jar 逐处 sha256 相同（neo `27d6799f…` 2,585,488 B；forge reobf `706ceca0…` 2,630,575 B；forge dev `6bfa91e1…` 2,601,109 B）；贴图仍为 344 B 用户稿；**字节码判据**（`javap -p -c` 取 jar 内 `com/merlinkitsune/astral_dice/item/RepulsionItem.class` 的 `isBarVisible`）：neo 与 forge dev 均为 `aload_1 → invokestatic getDurability → bipush 50 → if_icmpge → iconst_1/iconst_0 → ireturn`；forge reobf 同体但方法名被重映射为 `m_142522_`（**覆写原版方法在 SRG 生产包必然改名，属正常**，查条时别按 `isBarVisible` 找）。
 
 改动（P0 两线同批）：玩家近战命中已放置力场第 5 次 ⇒ 回收成**新物品** `astral_dice:repulsion`（不是效果牌），携带耐久（= 关联血量）/ 已存活 tick / 已提供充能三份状态；再次放置按与效果牌**同一份**落点解析（`item/RepulsionPlacement.resolve`）恢复三份状态。
 

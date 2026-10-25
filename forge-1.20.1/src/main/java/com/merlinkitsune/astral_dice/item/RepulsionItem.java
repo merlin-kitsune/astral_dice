@@ -170,11 +170,13 @@ public class RepulsionItem extends Item {
         player.displayClientMessage(Component.translatable(MSG_PLACED).withStyle(ChatFormatting.GREEN), true);
     }
 
-    // ── 耐久条（物品栏里直接显示关联血量；与原版耐久条同一套渐变） ────────────
+    // ── 耐久条（物品栏里显示关联血量；可见性/宽度/配色均按原版工具口径） ──────────
 
     @Override
     public boolean isBarVisible(ItemStack stack) {
-        return true;
+        // 原版工具口径（2026-10-25 用户裁决）：满耐久不显示耐久条，掉血后才出现
+        // （等价于 {@code Item#isBarVisible} 的默认实现 {@code stack.isDamaged()}，本物品的「伤害值」= 50 - 关联血量）
+        return getDurability(stack) < MAX_DURABILITY;
     }
 
     @Override
