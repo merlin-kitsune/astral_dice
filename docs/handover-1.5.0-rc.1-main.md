@@ -390,6 +390,7 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
     - `tools/curseforge_upload.py` 新增 `P0_UPLOAD_LINES = {("neoforge", "1.21.1"), ("forge", "1.20.1")}` 与 `guard_p0_only(loader, mc, jar, allow_p1)`，在 `build_jobs()` 解析出 `loader`/`mc` 后立即调用；P1 jar 默认 `[BLOCKED]` + `SystemExit`（exit 1），仅显式 `--allow-p1` 放行（`push` 与 `update-info` 两个子命令 parser 各加一处）。
     - 两仓 Release/tag **全清**：`merlin-kitsune/astral_dice` **28 releases + 31 tags → 0/0**；`merlin-kitsune/starengine` **4 releases + 7 tags → 0/0**；`git -C <repo> ls-remote --tags origin` 计数 **0**。删除口径 = `gh api -X DELETE repos/<repo>/releases/<id>` 逐条 + `repos/<repo>/git/refs/tags/<name>`（tag 名先 `[uri]::EscapeDataString()` 编码）。
     - 判据（实测）：`python -m py_compile tools/curseforge_upload.py` EXIT 0；fabric jar `push --dry-run` ⇒ `[BLOCKED] astral_dice-1.3.5-alpha.1+fabric_1.20.1.jar 属于 P1 线（fabric / MC 1.20.1）` / EXIT 1；P0 neo jar `push --dry-run` ⇒ 正常出计划（projectId 1662159 / token 就绪）。
+    - CI 实证（2026-10-25 19:0x）：push `4848caf7` 触发的 run **40186748662 失败** —— `build.yml` 首两行被脚本污染（见坑 26）⇒ YAML 解析失败、一个 job 都没起（`gh api .../runs/<id>` 的 `jobs` 为空、run `name` 显示成文件路径）。已由 **`fb930c61`** 修复（从 `4848caf7^` 取原件重打补丁，并 `js-yaml` 校验：`jobs=build` / `steps=18` / `branches` 三条 / Release 只剩 P0 两步 / `JARS` 只含 P0 两 jar）。修复后 run **40186866765 success**，artifact 仅 `astral_dice-jars`（4,474,594 B，解包实测只有 `astral_dice-1.5.0-rc.1+forge_1.20.1.jar` 2,632,606 B 与 `astral_dice-1.5.0-rc.1+neoforge_1.21.1.jar` 2,587,570 B，**无 fabric artifact**），全程 **releases=0 / tags=0**（rc 版本按规则不自动打 tag，Release 步骤因 tag 为空跳过）。
 
 ### Minor
 
@@ -440,7 +441,7 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 
 25. **`String.Replace` 是「全部替换」——用它做规则追加会写进每一处同锚点（2026-10-25 实测）**：把发布红线追加到 `默认不执行 `git push`**。` 这个锚点时，`docs/agent/AGENTS-full.md` 里该串出现 **2 次**（红线区 L3 + 版本流程第 5 条），而 `docs/agent/AGENTS-dsh.md` 只 1 次 ⇒ 后缀被写进两处，`verify-split.py` 第 2 项（红线区逐字一致）必 FAIL。正确做法：先 `[regex]::Matches($s,[regex]::Escape($anchor)).Count` 断言期望次数，再只按**行号**改目标行（或 `IndexOf` + 精确拼接）。
 
-26. **PowerShell 函数里的 `Write-Output` 会混进返回值（2026-10-25 实测）**：`function Rep { Write-Output '  ok'; return $src.Replace(...) }` 在 `$t = Rep ...` 处拿到的是 **Object[]**（日志行 + 结果行），写回文件后首行变成 `ok: arg-push ok: ...#!/usr/bin/env python3`，`py_compile` 报 `IndentationError: unexpected indent (line 1)`。修法：函数内只用 `Write-Host` 打日志、`return` 只返回目标字符串（必要时 `[string]` 强转）；已写坏的文件用 `git checkout -- <file>` 复原再重跑。
+26. **PowerShell 函数里的 `Write-Output` 会混进返回值（2026-10-25 实测）**：`function Rep { Write-Output '  ok'; return $src.Replace(...) }` 在 `$t = Rep ...` 处拿到的是 **Object[]**（日志行 + 结果行），写回文件后首行变成 `ok: arg-push ok: ...#!/usr/bin/env python3`，`py_compile` 报 `IndentationError: unexpected indent (line 1)`。修法：函数内只用 `Write-Host` 打日志、`return` 只返回目标字符串（必要时 `[string]` 强转）；已写坏的文件用 `git checkout -- <file>` 复原再重跑。（同一轮该 bug 还写坏了 `.github/workflows/build.yml`：首两行变成 `  replaced: release-jars` / `  replaced: ... name: Build` ⇒ YAML 解析失败，push 只换来一个「**没有任何 job**」的空 CI run —— `gh api repos/<r>/actions/runs/<id>` 里 `jobs` 数组为空、run 的 `name` 退化成文件路径 `.github/workflows/build.yml`；修法 = 从 `HEAD^` 取原始文件重打补丁，再用 `require('C:/Users/xmace/.dsh/profiles/desktop/node_modules/js-yaml')` 校验结构。）
 
 ## 7 关键路径（命令）
 
