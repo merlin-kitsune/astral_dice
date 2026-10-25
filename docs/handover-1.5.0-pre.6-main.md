@@ -9,8 +9,8 @@
 2. 四线 `mod_version = 1.5.0-pre.6+<加载器后缀>`；四线 `starengine_version = 1.1.0-pre.2`（未动）。
 3. 本批收编 **Kimi 上一轮四批未提交改动**（member-detective / misaki 立牌 / 筹码商店刷新源 / 规则分派），并完成 **DSH 三语语言同步** + **地雷女备注区染色修复**。
 4. 判据：P0 两线 `:classes` `BUILD SUCCESSFUL in 4s`；`check_lang_sync` EXIT=0；`audit_patchouli_keys` 悬空 0；`verify-split` EXIT=0；三道专项 python 判据 PASS 26/12/14；`verify_chip_shop_ui` `CHIPUI_TOTAL_FAIL: 0`。
-5. **pre.6 产物已重建并投放**（最新一次 2026-10-25 14:22，含强化拒止物品形态；`:neoforge-1.21.1:build :forge-1.20.1:build` 触发 `pushToDevRun/pushToGame/pushToRootBuild`）——四个目标（`run/1.21.1/mods`、`run/1.20.1/mods`=devlibs named、两个 P0 整合包）逐处 sha256 **MATCH**，读数见 §2。
-6. 本批实机：**星光兑换 5 组 + 筹码商店刷新源 / 文案（38 tooltip + 21 手册）/ `ame_note` 染色，双版本全 PASS**（2026-10-25，§4.1 / §4.1b）。`scripts/test/cases/CHIP-REGEN-*.json`（等 tick 自动 +1）随 ticker 删除失效，**已按用户裁决退役（两文件删除）**（§5-3）。
+5. **pre.6 产物已重建并投放**（最新一次 2026-10-25 14:58，含强化拒止物品形态 + 耐久条原版口径；`:neoforge-1.21.1:build :forge-1.20.1:build` 触发 `pushToDevRun/pushToGame/pushToRootBuild`）——四个目标（`run/1.21.1/mods`、`run/1.20.1/mods`=devlibs named、两个 P0 整合包）逐处 sha256 **MATCH**，读数见 §2。
+6. 本批实机：**星光兑换 5 组 + 筹码商店刷新源 / 文案（38 tooltip + 21 手册）/ `ame_note` 染色 + 强化拒止物品形态 7 项，双版本全 PASS**（2026-10-25，§4.1 / §4.1b / §4.1c）。`scripts/test/cases/CHIP-REGEN-*.json`（等 tick 自动 +1）随 ticker 删除失效，**已按用户裁决退役（两文件删除）**（§5-3）。
 7. 规则分派已落地：根 `AGENTS.md` 为 41 行入口，Kimi → `docs/agent/AGENTS-kimi.md`，DSH → `docs/agent/AGENTS-dsh.md`，Codex → `docs/agent/AGENT-SPLIT.md`（只读）。
 8. 未处置：陈旧锁 `F:\MCProject\.agent-locks\kimi.lock`（`PID=26580` / `TASK=misaki-chip-shop-balance-p0`，进程已不存在）—— 按规则不自行删，交用户裁决。
 
@@ -48,6 +48,8 @@ forge dev **named** 2,600,922 B / `5304bafdf152c2910b6344da06cbcba20930660048318
 | `1ff14106` | feat(starlight)：星光兑换改为「装备时发放 + 每次兑换后按佩戴补星」（24 文件 +1380/−217） | `resource/ResourceConversion`（兑换后 `replenishOnExchange`）· `item/StarLightManager`（`grantedStarlight` 4bit 账本 / `grantStarlightOnEquip` / `revokeStarlightOnUnequip` / `replenishOnExchange`）· 四枚星光筹码 `onEquip`/`onChipUnequip` · 经商立牌 +50% 保留在 `CardShopMenu#tryExchange` · 新增 `tools/verify_starlight_exchange_refill.py`（`GATE: PASS (196 项)`） |
 | `9321d624` | feat(repulsion)：强化拒止改为「近战 5 次回收成物品形态」（32 文件 +973/−172） | 新增 `item/RepulsionItem`（三份状态 + 耐久条）/ `item/RepulsionPlacement`（卡与物品共用落点解析）· `entity/RepulsionEntity`（`MAX_MELEE_HITS = 5` / `recoverIntoItem` / `restoreState` / NBT `RepulsionMeleeHits`）· `component/ModDataComponents` 三个 INT 键 · 两线三语 +11 键 · 贴图 + 生成模型 |
 | 本文件所在提交（追加） | fix(guide)：战斗系统介绍页版本号 `2.0.0`→`1.5.0` + 条目图标骰子→铁剑（10 文件） | 两线 × 三语 lang（`guide.entry.battle_system_changes.1`）· 两线 `getting_started/battle_system_changes.json` 的 `"icon"` · `scripts/test/cases/PMFIX-TIP-1.20.1/1.21.1.json:221` 陈旧断言 |
+| `669b0150` | fix(repulsion)：耐久条改原版工具口径（6 文件 +14/−10） | 两线 `item/RepulsionItem#isBarVisible`（满耐久不画条）+ CHANGELOG 双文件 + 本文件 + session-context |
+| 本文件所在提交（追加） | docs(handover)：强化拒止双版本实机 7 项判据 + 实机侧方法可见性坑 | 本文件 §4.1c / §5-8 / §0-6 |
 | 本文件所在提交 | docs：Kimi 交接单 + 工程参考 + pre.6 正本 + 新会话上下文 | `docs/handover-2026-10-24-kimi-takeover.md` · `docs/agent/PROJECT-REFERENCE.md` · 本文件 · `docs/handover-new-session-context.md` |
 
 `e2aed527` 的七条内容：
@@ -99,13 +101,13 @@ forge dev **named** 2,600,922 B / `5304bafdf152c2910b6344da06cbcba20930660048318
 - 手册：21 键两线均 **21/21** 解析成功，17 条逐字一致、4 条只差 `%%`→`%`（`battle_system_changes.3` / `komachi_sign.2` / `rin_sign.1` / `extra_battery_chip.1`），**0 条含显式 `\n`**（折行由 Patchouli 自动）。
 - `ame_note` 染色：两线逐字一致 —— `§d`（备注体）+ `§e`（数值）+ `§9`（时间），行首区段前缀由 `addSignNoteLines` 注入，符合 tooltip 染色规则；证据 = 上述渲染行原文（未取截图）。
 
-### 4.1c 强化拒止物品形态（2026-10-25）—— 代码/资源就绪，**未实机**
+### 4.1c 强化拒止物品形态（2026-10-25）—— 双版本实机 7 项判据全 PASS
 
 物品图标 `textures/item/repulsion.png`（两线同一份）= **用户提供的美术稿 `images/强化拒止物品.png` 逐字节复制**（32×32 RGBA / 344 B / sha256 `c12248b7431f087b14f6c175aeef3e450d30a8635c1fdfe83db0963d4522bf9f`，2026-10-25 用户裁决；与效果牌图标「`images/强化拒止.png`（32×32）逐字节复制」同一口径，见 `docs/features/repulsion-card-spec.md` §4）。32×32 直接可用：MC 按 UV 把贴图铺满 16×16 的 quad ⇒ 纹素密度 2×，比 16×16 更清晰。
 
 > 历史（已被上面取代）：上一轮「用实体模型 + 实体贴图生成」的 12×12 正视板 + 2×3 短柄稿（181 B / `dcfe5129…`）作废。取证结论留档备用：实体 `textures/entity/repulsion.png` 头块北面 UV = (4,10)-(28,34)（128 空间）、杆子北面 = (2,2)-(50,6)、`LayerDefinition(...,64,64)` ⇒ 128 PNG 里 2 倍纹素密度；按实体 `HEAD_TWIST=+45°` 渲染成菱形时牌面对角只有 ~9 px、蓝边框塌成亚像素（三版对比全不可读），故当时改取正视口径。
 
-**耐久显示（= 关联血量）已在两处**（2026-10-25 复核，均未实机）：
+**耐久显示（= 关联血量）已在两处**（2026-10-25 复核 + 双版本实机）：
 
 - 物品栏 / 快捷栏**耐久条**：`item/RepulsionItem` 覆写 `isBarVisible`（**原版工具口径**，2026-10-25 用户裁决：`return getDurability(stack) < MAX_DURABILITY;` —— 满耐久不显示、掉血后才出现，等价于 `Item#isBarVisible` 的默认实现 `stack.isDamaged()`）、`getBarWidth = max(1, round(13 × health/50))`、`getBarColor = Mth.hsvToRgb(ratio/3, 1, 1)`（与 `ItemStack#getBarColor` 同一渐变）。合法性有源码判据：1.21.1 `GuiGraphics#renderItemDecorations` 直接读这三个钩子（`if (stack.isBarVisible()) { int l = stack.getBarWidth(); int i = stack.getBarColor(); … }`，见 `neoforge-21.1.235-sources.jar` 的 `net/minecraft/client/gui/GuiGraphics.java` 1343-1349 行）；forge 1.20.1 同构。
 - **tooltip 三行**：`event/ModTooltipHandler` 的 `if (stack.is(ModItems.REPULSION.get()))` 块 = `tooltip.astral_dice.item.repulsion`（静态说明）+ `_durability`（`耐久：§eX§7 / §e50§r`）/ `_lifetime`（`剩余寿命：§9M:SS§r`）/ `_charge`（`已提供充能：§eX§7 / §e5§r`）+ `_owner`（紫）。
@@ -128,7 +130,21 @@ forge dev **named** 2,600,922 B / `5304bafdf152c2910b6344da06cbcba20930660048318
 | 稀有度一致性 | `tools/verify_rarity_consistency.py` | `GATE: PASS` |
 | 规则分派 | `python -B docs/agent/verify-split.py` | 8 项全 `[OK]` |
 
-**未做**：实机（放置 / 近战 5 次回收 / 重放恢复 / 非 owner 拒止 / 耐久条与 tooltip 三行读数）—— 按规则需用户明确下达。
+实机读数（2026-10-25 15:0x，双版本，驱动 = `mt.ps1 --phase env|launch` + AutoJS `eval_js`，判据值全部逐条实测）：
+
+| 判据 | 1.21.1 | 1.20.1 |
+|---|---|---|
+| A 满耐久物品 | `dur 50 / bar false`；`use` = SUCCESS；**创造不消耗**（`countAfterUse 1`）；实体 `hp 50/50 / charge 0` | 同（`dur 50 / bar false`、SUCCESS、实体 `hp 50 / charge 0`） |
+| B 近战 5 次 | `meleeHits` 1→2→3→4→5，**每次回读 hp 恒 31**；第 5 次后实体消失、地面 1 个物品 | 同（1..5，hp 恒 31，实体消失、1 个物品） |
+| C 回收物三份状态 | `dur 31 / elapsed 591 / remaining 23409 / charge 3 / bar true / barWidth 8` | `dur 31 / elapsed 0 / remaining 24000 / charge 3 / bar true / barWidth 8`（同一 tick 内完成 ⇒ elapsed 0） |
+| D 重放恢复 | 实体 `hp 31 / max 50 / charge 3 / owner set / meleeHits 0` | 同 + `createdAt` 与回收前完全一致（elapsed 0 精确保留） |
+| E 剩余寿命 | `createRecovered(40, 23990, 0, null)` ⇒ 放置后 `createdAt = gameTime − 23990`（只剩 10 tick），**2.5 s 后自行消失** | `createdAt = -23135`，**2.6 s 后复查 `repAlive 0`** |
+| F 非 owner 拒止 | 外来 UUID ⇒ `use` = FAIL、实体 0、物品仍在手；未绑定 owner 的同款 ⇒ SUCCESS、实体 1 | 同（外来 FAIL、实体 0） |
+| G 客户端耐久条 + tooltip | `barVisible true / barWidth 8 / barColor 12713728`（0xC1FF00 黄绿）；满耐久件 `fullBarVisible false`；tooltip 九行逐字正确（`耐久：§e31§7 / §e50§r`、`剩余寿命：§919:31§r`、`已提供充能：§e3§7 / §e5§r`） | 同（`barColor 12713728`、九行逐字相同），**唯一差异**：末行模组名 1.21.1 是纯文本 `Astral Dice`、1.20.1 是 `§9§oAstral Dice`（平台展示差异，非本批改动） |
+
+视觉证据：`temp/bar-hotbar-zoom.png`（1.21.1）与 `temp/bar-hotbar-zoom-1201.png`（1.20.1）= 窗口截图裁底部热键栏 4× 放大，均可见槽 0 图标下方黄绿色耐久条（宽 8/13）。
+
+实机侧两个**方法可见性坑**（`1.21.1` 与 `1.20.1` 同）：Rhino 里 `sp.setXRot` / `sp.getXRot` / `sp.getUUID` / `entity.hurt(DamageSource,float)` / `lvl.getGameTime()` 全部 `Cannot find function`（哪怕 javap 是 public）⇒ 俯角用 `tp @s ~ ~ ~ ~ 70`、伤害用 `/damage … minecraft:player_attack by @s`（走真实伤害链，`directEntity` = 玩家）、改实体内部值走 NBT `saveWithoutId → putInt → load`。
 
 ### 4.1d 手册文案与图标修正（2026-10-25）—— 只读判据全绿，实机未做
 
@@ -166,7 +182,7 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 5. **8 条「代码与文案都不符」**（已报用户，未改 tooltip）：bite 觉醒按撕咬张数 / huo_card = `CREATURE_OR_RIVAL` / magic_quiver 真闸门 = 目标已有标记 + 先用过伤害牌 / railgun 只 `bypasses_armor` / 三张卡 `NON_HOSTILE` / member_recommendation 只数主背包+副手 / repulsion 单次最多 5 点耐久 / airbag 掉虚空救不了。
 6. **P1 两线欠账**（正式版前不移植，仅登记）：JEI 筹码 / `BeamFx` / `GlobalEventGate` / `RepulsionEntity` / `CardShopMenu#planPlacement` / `EventDrawBlock`；筹码效果图标仍带边框；史莱姆被动仍 20 tick；misaki 仍 `legendary()` + 黄金星盘 + 死亡清零剑气；pre.5 冷却指示器未移植。
 7. **陈旧锁 `kimi.lock`**（`PID=26580` 已不存在）——不自行删，交用户裁决。
-8. **强化拒止物品形态未实机**（2026-10-25）：代码/贴图/三语 lang/模型/CHANGELOG 全部就绪、两线编译与四道守门全绿（§4.1c），但**没有任何实机读数**。待用户下达后按 §4.1c 末段的六项判据跑。另有两个**待用户裁决**的小项：(a) 是否给新物品**加帕秋莉手册第 4 页**（现只把卡条目的文案改成「会被回收」）；(b) 玩家自写染色 `card.barricade` 的 6 处 `§e20:00§7` 是否也一并改 §9（本批只改了 repulsion）。
+8. ~~强化拒止物品形态未实机~~ → **已完成**（2026-10-25 15:0x，双版本 7 项判据全 PASS，§4.1c）。仍有两个**待用户裁决**的小项：(a) 是否给新物品**加帕秋莉手册第 4 页**（现只把卡条目的文案改成「会被回收」）；(b) 玩家自写染色 `card.barricade` 的 6 处 `§e20:00§7` 是否也一并改 §9（本批只改了 repulsion）。
 
 ### Minor
 

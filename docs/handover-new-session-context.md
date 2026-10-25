@@ -40,13 +40,14 @@ Select-String -Path F:\MCProject\astral_dice_multiloader\*\gradle.properties -Pa
 3. 版本 bump 到 `1.5.0-pre.6`。
 4. DSH：**星光兑换改造**（`1ff14106`，24 文件 +1380/−217）——装备时一次性发放 + 每次兑换后按佩戴补星（`StarLightManager` 4bit 账本严格记账，封顶只记实际量），经商立牌 +50% 保留；新增守门 `tools/verify_starlight_exchange_refill.py`（196 项 PASS）。**已双版本实机验证 5 组判据全 PASS**（读 `docs/handover-1.5.0-pre.6-main.md` §4.1）。
 5. DSH：**强化拒止改造**（P0 两线）——玩家近战命中力场第 5 次 ⇒ 回收成新物品 `astral_dice:repulsion`（不是效果牌），携带耐久 / 已存活 tick / 已提供充能；再次放置按**与效果牌同一份** `item/RepulsionPlacement.resolve` 恢复三份状态。两线 `:classes` 通过、两线 `runData` 生成模型、`verify_resource_integrity` PASS（157/157）、`check_lang_sync` EXIT 0、三语 + CHANGELOG 双文件已改。**未实机**（判据清单见 handover §4.1c）。
+6. DSH：**强化拒止双版本实机**（2026-10-25）：1.21.1 与 1.20.1 各跑 A–G 七项 —— 满耐久不画条 / 近战 5 次回收成物品（耐久 31 + elapsed + charge 3）/ 重放恢复三份状态 / 近寿命到点自行消失 / 非 owner 拒止 / 客户端耐久条 `barWidth 8` + tooltip 九行，**全 PASS**（读数见 handover §4.1c）。
 6. DSH：**手册修正**（2026-10-25）—— 战斗系统介绍页正文 `2.0.0` → `1.5.0`（两线 × 三语），条目图标 `astral_dice:dice` → `minecraft:iron_sword`（避开骰神赐福）；`PMFIX-TIP-*` 的陈旧断言同步（否则必红）。判据见 handover §4.1d。
 
 判据：P0 两线 `:classes` `BUILD SUCCESSFUL`；`check_lang_sync` EXIT=0；`audit_patchouli_keys` 悬空 0；`verify-split` EXIT=0；`verify_chip_shop_ui` `CHIPUI_TOTAL_FAIL: 0`；三道专项 python 判据 PASS（26 / 12 / 14 项）。
 
 ## 立即待办（按优先级）
 
-0. **强化拒止物品形态待实机**（2026-10-25）：放置 → 近战 5 次回收 → 重放恢复（耐久 / 剩余寿命 / 已提供充能）→ 非 owner 拒止 → 耐久条与 tooltip 三行；另需裁决「是否给新物品加帕秋莉第 4 页」。判据见 handover §4.1c。
+0. ~~强化拒止物品形态待实机~~ → **已完成**（2026-10-25，双版本 7 项判据全 PASS，见 handover §4.1c）。仅剩裁决项：「是否给新物品加帕秋莉第 4 页」。
 1. ~~实机复验~~ → **已完成**（2026-10-25，双版本）：星光兑换 5 组（handover §4.1）+ 筹码商店刷新源 R0–R5 / 38 tooltip + 21 手册文案 / `ame_note` 染色（§4.1b）全 PASS。剩余须用户下达的实机项见 handover §5。
 2. ~~`CHIP-REGEN-1.20.1/1.21.1` 用例退役或改写~~ → **已退役**（2026-10-25 用户裁决，两文件删除）；新语义判据见 handover §4.1b R2/R3/R5。
 3. **`tooltip_color_audit` 存量 144 处**（9 键；重灾 `jill_active` 36 / `storm_approaching.description` 18 / `problem_delivery.description` 18 / `dorothy_active` 18）——是否清理待用户裁决。`card.repulsion` 的 6 处 `§e20:00§7` 已在强化拒止批次按规则改成 `§9`（时间值必须 §9），复跑后 repulsion 相关 0 处；`card.barricade` 的 6 处是**用户自写**，仍未动（是否一并改 §9 待裁决）。
