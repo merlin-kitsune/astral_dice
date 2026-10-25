@@ -13,8 +13,8 @@
 6. 本批实机：**星光兑换 5 组 + 筹码商店刷新源 / 文案（38 tooltip + 21 手册）/ `ame_note` 染色 + 强化拒止物品形态 7 项 + owner 闸门四态，双版本全 PASS**（2026-10-25，§4.1 / §4.1b / §4.1c）。**rc.1 版本升级已双版本冒烟实机 PASS**（§4.1f-a：两线 mod/库版本号正确、`Missing or unsupported mandatory dependencies` 计数 0、1.20.1 放置强化拒止实体 hp 50）（只做构建 / 打包 / 投放 / 静态判据，§4.1f）。`scripts/test/cases/CHIP-REGEN-*.json`（等 tick 自动 +1）随 ticker 删除失效，**已按用户裁决退役（两文件删除）**（§5-3）。
 7. 规则分派已落地：根 `AGENTS.md` 为 41 行入口，Kimi → `docs/agent/AGENTS-kimi.md`，DSH → `docs/agent/AGENTS-dsh.md`，Codex → `docs/agent/AGENT-SPLIT.md`（只读）。
 8. 未处置：陈旧锁 `F:\MCProject\.agent-locks\kimi.lock`（`PID=26580` / `TASK=misaki-chip-shop-balance-p0`，进程已不存在）—— 按规则不自行删，交用户裁决。
-9. **HUD 攻击力口径已统一**（2026-10-25，§4.1g）：攻击修饰器链上 23（neo）/ 24（forge）处客户端模板守卫收敛为 `skipOnClient(ctx)` + 显示口径标记 `DiceCombatContext.displaySnapshot` ⇒ HUD 现在含全部攻击力修饰器，只排除手持武器与骰战随机点数；新增守门 `python tools/verify_hud_attack_parity.py` ⇒ `GATE: PASS (21 项全部满足)`，两线已 `:build` 并把六处产物刷到新 jar，**未实机**。
-10. **防御力折算已改为 1:1**（2026-10-25，§4.1h）：所有「防御力 +X」的站点改走单一入口 `armorValueForDefensePoints(points, side)`（= 点数 ÷ 库护甲系数，玩家 ≈3.333 护甲/点、怪物 2.5）——此前写死 `× 2.0` 只兑现 60%（玩家）/ 80%（怪物），属平衡性红线；同时把 12 份指南 lang 的基数 4 改为 2。新增守门 `python tools/verify_defense_unit_parity.py` ⇒ `GATE: PASS（34 项全部满足）`，两线 `:classes` 通过，**但 jar 尚未重建、未实机**；玩家侧实际强度是上一版的 **×1.667**。
+9. **HUD 攻击力口径已统一**（2026-10-25，§4.1g）：攻击修饰器链上 23（neo）/ 24（forge）处客户端模板守卫收敛为 `skipOnClient(ctx)` + 显示口径标记 `DiceCombatContext.displaySnapshot` ⇒ HUD 现在含全部攻击力修饰器，只排除手持武器与骰战随机点数；新增守门 `python tools/verify_hud_attack_parity.py` ⇒ `GATE: PASS (21 项全部满足)`，两线已 `:build` 并把六处产物刷到新 jar；**已双版本实机 PASS**（§4.1i：装电流剑 + 充能 8 ⇒ client 显示 3；清充能回 1；主手持剑仍 3）。
+10. **防御力折算已改为 1:1**（2026-10-25，§4.1h）：所有「防御力 +X」的站点改走单一入口 `armorValueForDefensePoints(points, side)`（= 点数 ÷ 库护甲系数，玩家 ≈3.333 护甲/点、怪物 2.5）——此前写死 `× 2.0` 只兑现 60%（玩家）/ 80%（怪物），属平衡性红线；同时把 12 份指南 lang 的基数 4 改为 2。新增守门 `python tools/verify_defense_unit_parity.py` ⇒ `GATE: PASS（42 项全部满足）`（新增 D9 取整口径），两线 `:classes` 通过、`:build` 已重建并投放四目标，**双版本实机 PASS**（§4.1i：+8 防御力 ⇒ 防御力 10；同批修掉 `getArmorValue()` 取整吞点）；玩家侧实际强度是上一版的 **×1.667**。
 
 ## 1 环境与路径
 
