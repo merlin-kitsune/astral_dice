@@ -203,7 +203,7 @@ Released: **1.5.0-rc.1 (pre-release / beta)** — covers **everything** since 1.
 - **Sensor Device** (epic / mark): every 3 marks on a target gives it −1 battle dice roll (max −4); a successful dodge puts 1 mark on the attacker.
 - **Extra Battery** (epic / none): sign active cooldowns are **−50%** while equipped (stacks with other cooldown reductions).
 - Crafting for these 6 chips is governed by the **chip recipe master switch** (`enable_chip_recipes`), which is **off by default**;
-  while off, the creative tab also hides Regeneration Reagent / Conductive Wire / Star Coin Dust / Mark Paint (Blank Chip still shows).
+  but the four chip-crafting materials (Regeneration Reagent / Conductive Wire / Star Coin Dust / Mark Paint) are not affected by it — they always show in the creative tab and JEI (Blank Chip and every chip itself stay visible too).
 
 ### UI and presentation
 
@@ -296,7 +296,7 @@ Released: **1.5.0-rc.1 (pre-release / beta)** — covers **everything** since 1.
   blank chip buried chance **3% → 1%** (Buried Treasure itself stays 100%).
 - **Creative tab / JEI ordering**: chips sort by **ascending rarity** (school order 星光 → 治愈 → 标记 → 充能 → none unchanged, rare → epic → legendary inside each);
   the Reinforced Repulsion item form is **hidden from the creative tab and JEI** (still registered, still obtainable; only visible with hidden items shown).
-- **Chip recipe master switch**: `enable_chip_recipes` defaults to **off**; while off the creative tab also hides Regeneration Reagent / Conductive Wire / Star Coin Dust / Mark Paint (Blank Chip still shows).
+- **Chip recipe master switch**: `enable_chip_recipes` defaults to **off**; while off only the chip crafting recipes are affected; Regeneration Reagent / Conductive Wire / Star Coin Dust / Mark Paint and all chips (Blank Chip included) still always show in the creative tab and JEI (decoupled from the switch on 2026-10-18 — sign recipes need those materials).
 
 ## Bug fixes
 

@@ -36,8 +36,8 @@ public class ModCreativeTabs {
                 output.accept(ModItems.BLANK_SIGN.get());
                 output.accept(ModItems.BLANK_CHIP.get());
                 // 已解绑筹码配方总开关（2026-10-18，怪力乱神立牌 spec §7）：这 4 种材料不再受
-                // ENABLE_CHIP_RECIPES 影响，创造栏**始终显示** —— 立牌合成需要它们（其余筹码
-                // 条目仍按原开关分组，见 chips 页）。
+                // ENABLE_CHIP_RECIPES 影响，创造栏**始终显示** —— 立牌合成需要它们。开关只作用于
+                // 筹码合成配方的数据加载（ChipRecipesEnabledCondition），筹码本身同样始终显示。
                 output.accept(ModItems.REGENERATION_REAGENT.get());
                 output.accept(ModItems.CONDUCTIVE_WIRE.get());
                 output.accept(ModItems.STAR_COIN_DUST.get());
