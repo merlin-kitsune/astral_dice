@@ -60,6 +60,16 @@ public class DiceCombatContext {
      */
     public int eagleScopeMarkLevel;
 
+    /**
+     * 本次求值是否为**显示口径**（HUD 攻击力条等纯展示用途）。
+     *
+     * <p>客户端上唯一会跑攻击修饰器链的用途就是显示 ⇒ {@link DiceCombatModifiers#attackPowerBase}
+     * 在客户端求值时置 true，修饰器据此不再跳过客户端分支（2026-10-25 用户裁决：
+     * 所有攻击力都要显示，除手持武器本身与骰战中的随机数值加成）。
+     * 真实战斗上下文由服务端构建，本字段恒为 false。
+     */
+    public boolean displaySnapshot;
+
     public DiceCombatContext(Player attacker, LivingEntity target, LivingDamageEvent.Pre event,
                              int baseDice, ItemStack diceStack, WeaponEnhancement enhancement,
                              boolean triggeredBlessing, boolean misakiBurst,

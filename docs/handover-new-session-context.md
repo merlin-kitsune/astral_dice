@@ -44,6 +44,7 @@ Select-String -Path F:\MCProject\astral_dice_multiloader\*\gradle.properties -Pa
 7. DSH：**强化拒止加一层拦截**（2026-10-25）—— `RepulsionEntity#hurt` 增加 owner 闸门：非放置者的近战命中被直接拒绝（红字「这个强化拒止不属于你」，不计命中 / 不播受击反馈），三语 lang 四处与 CHANGELOG 双文件同步改为「放置者近战命中 5 次」；两线编译/打包/投放全绿，**已双版本实机验证四态（放置 / 放置者命中 / 外来 owner 三次全拒 / 无主开放 / 放置者第 5 次回收）全 PASS**（读数见 handover §4.1c「补充拦截 · owner 闸门实机」）。
 8. DSH：**手册补充强化拒止物品形态**（2026-10-25，用户裁决「连带补充帕秋莉手册，路障不动」）—— 既有条目 `effect_card_repulsion.json` 追加第 4 页（spotlight `astral_dice:repulsion`：与效果牌共用落点判据、三份状态随物品保存）与第 5 页（获取方式 / 仅获得者 / 悬停三行），两线 × 三语各 +2 键（P0 1058→1060）；`audit_patchouli_keys` 1698 处悬空 0、`check_lang_sync` EXIT 0、`tooltip_color_audit` 仍 144/9 键（路障按裁决保持原样）；产物已重建投放。
 6. DSH：**手册修正**（2026-10-25）—— 战斗系统介绍页正文 `2.0.0` → `1.5.0`（两线 × 三语），条目图标 `astral_dice:dice` → `minecraft:iron_sword`（避开骰神赐福）；`PMFIX-TIP-*` 的陈旧断言同步（否则必红）。判据见 handover §4.1d。
+9. DSH：**HUD 攻击力显示口径统一**（2026-10-25，handover §4.1g）—— 攻击修饰器链上 23（neo）/ 24（forge）处客户端模板守卫收敛为 `skipOnClient(ctx)` + 新显示口径标记 `DiceCombatContext.displaySnapshot` ⇒ HUD 现在包含**全部**攻击力修饰器（原先只有 10 块），只排除手持武器（`attackDamageExcludingHeldWeapon`）与骰战随机点数（攻击卡在显示口径下不掷）；新增守门 `tools/verify_hud_attack_parity.py`（`GATE: PASS (21 项)`），两线 `:build` 并投放六处，jar 内字节码命中 `skipOnClient`/`displaySnapshot`。**未实机**。
 
 判据：P0 两线 `:classes` `BUILD SUCCESSFUL`；`check_lang_sync` EXIT=0；`audit_patchouli_keys` 悬空 0；`verify-split` EXIT=0；`verify_chip_shop_ui` `CHIPUI_TOTAL_FAIL: 0`；三道专项 python 判据 PASS（26 / 12 / 14 项）。
 
@@ -57,6 +58,7 @@ Select-String -Path F:\MCProject\astral_dice_multiloader\*\gradle.properties -Pa
 5. **P1 两线欠账**：JEI 筹码 / `BeamFx` / `GlobalEventGate` / `RepulsionEntity` / `CardShopMenu#planPlacement` / `EventDrawBlock`；筹码图标边框版；史莱姆 20 tick；misaki 未同步；pre.5 冷却指示器未移植。
 6. **陈旧锁** `F:\MCProject\.agent-locks\kimi.lock`（`PID=26580` 已不存在）处置待用户裁决。
 7. push / tag 待用户放行。
+8. **HUD 攻击力口径统一（§4.1g）已静态全绿并投放六处，实机读数待用户下达**（要看的是：戴电流剑等 13 块原被吞的修饰器时 HUD 数字是否随之变化；手持武器换刀剑时数字不变；骰战随机卡点不进 HUD）。
 
 ## 禁止项（共同红线，摘自根 `AGENTS.md`）
 

@@ -13,6 +13,7 @@
 6. 本批实机：**星光兑换 5 组 + 筹码商店刷新源 / 文案（38 tooltip + 21 手册）/ `ame_note` 染色 + 强化拒止物品形态 7 项 + owner 闸门四态，双版本全 PASS**（2026-10-25，§4.1 / §4.1b / §4.1c）。**rc.1 版本升级已双版本冒烟实机 PASS**（§4.1f-a：两线 mod/库版本号正确、`Missing or unsupported mandatory dependencies` 计数 0、1.20.1 放置强化拒止实体 hp 50）（只做构建 / 打包 / 投放 / 静态判据，§4.1f）。`scripts/test/cases/CHIP-REGEN-*.json`（等 tick 自动 +1）随 ticker 删除失效，**已按用户裁决退役（两文件删除）**（§5-3）。
 7. 规则分派已落地：根 `AGENTS.md` 为 41 行入口，Kimi → `docs/agent/AGENTS-kimi.md`，DSH → `docs/agent/AGENTS-dsh.md`，Codex → `docs/agent/AGENT-SPLIT.md`（只读）。
 8. 未处置：陈旧锁 `F:\MCProject\.agent-locks\kimi.lock`（`PID=26580` / `TASK=misaki-chip-shop-balance-p0`，进程已不存在）—— 按规则不自行删，交用户裁决。
+9. **HUD 攻击力口径已统一**（2026-10-25，§4.1g）：攻击修饰器链上 23（neo）/ 24（forge）处客户端模板守卫收敛为 `skipOnClient(ctx)` + 显示口径标记 `DiceCombatContext.displaySnapshot` ⇒ HUD 现在含全部攻击力修饰器，只排除手持武器与骰战随机点数；新增守门 `python tools/verify_hud_attack_parity.py` ⇒ `GATE: PASS (21 项全部满足)`，两线已 `:build` 并把六处产物刷到新 jar，**未实机**。
 
 ## 1 环境与路径
 
@@ -57,6 +58,7 @@ forge dev named 102,013 B / `e280aeab6c4b37c43468f7cce32a8bf64c70b6bdbcd2203f6c5
 | 本文件所在提交 | docs：Kimi 交接单 + 工程参考 + pre.6 正本 + 新会话上下文 | `docs/handover-2026-10-24-kimi-takeover.md` · `docs/agent/PROJECT-REFERENCE.md` · 本文件 · `docs/handover-new-session-context.md` |
 | `16b48c4`（**前置库仓** `F:\MCProject\starengine`） | release(lib)：`1.1.0-pre.2` → **`1.1.0`** 正式版（8 文件 +63/−32） | 四子项目 `gradle.properties`（`lib_version` / `mod_version`）· `README.md`/`README_ZH.md`（坐标表 + 依赖示例 + 当前版本）· `CHANGELOG.md`/`CHANGELOG_ZH.md` 新增 `## 1.1.0` 小节 · 四平台 `publishToMavenLocal` |
 | 本文件所在提交（追加） | release(rc.1)：`1.5.0-pre.6` → **`1.5.0-rc.1`** + 前置库坐标 `1.1.0` | 四线 `gradle.properties`（`mod_version` / `starengine_version` / fabric `starengine_version_range`）· 两线 toml 模板注释（预发布期「不要写 `[1.1.0,2.0.0)`」改成正式版口径）· `.github/workflows/build.yml:105` 库 ref SHA `6d2a96d…`→`16b48c4…` · `README*.md`（版本列 `1.5.0-pre.5`→`rc.1`、库版本 `1.1.0`）· `CHANGELOG*.md`（库版本串）· 本文件 `git mv` pre.6→rc.1 + §0/§2/§3/§4.1f · `docs/handover-new-session-context.md` · 5 处旧文件名引用 |
+| 本文件所在提交（追加） | feat(hud)：攻击力显示口径统一（4 文件 + 新增守门脚本） | 两线 `combat/DiceCombatContext`（+`displaySnapshot`）· 两线 `combat/DiceCombatModifiers`（`skipOnClient` 收敛 23/24 处模板守卫 · 攻击卡在显示口径下不掷 · `attackPowerBase` 5 参重载）· 新增 `tools/verify_hud_attack_parity.py`（H1–H6，`GATE: PASS (21 项)`） |
 
 `e2aed527` 的七条内容：
 
@@ -258,6 +260,17 @@ forge dev named 102,013 B / `e280aeab6c4b37c43468f7cce32a8bf64c70b6bdbcd2203f6c5
 - **已知非阻断告警（来源是 testworld 种子模板，不是 rc.1）**：1.20.1 `latest.log:259-262` Forge 打印 `The following mods have version differences that were not resolved: astral_dice (1.3.2+forge_1.20.1 -> 1.5.0-rc.1+forge_1.20.1) / starengine (1.0.4+forge_1.20.1 -> 1.1.0+forge_1.20.1)`，随后 `Injecting existing registry data` 与一批 `Object did not get ID it asked for`；种子模板的 `level.dat` 记录的是旧版本，registry 重新注入后正常进世界。
 - **收尾**：1.21.1 `MT_STOP: OK (1s)`；1.20.1 `--phase stop --force --purge-saves` ⇒ `MT_CLEANUP_SAVES: PURGED 1` / `MT_CLEANUP_RESULT: OK` / `MT_STOP: OK (1s)`；`java.exe` 仅剩两个 Gradle 守护（70556 Zulu 21 / 32252 toolchain 17），`.agent-locks` 空。
 
+### 4.1g HUD 攻击力显示口径统一（2026-10-25）—— 静态判据全绿，**未实机**
+
+- **用户裁决**：「所有攻击力加入显示，除手持武器本身与骰战中的随机攻击力数值加成」。
+- **根因**：`combat/DiceCombatModifiers.java` 的攻击修饰器链上有 23（neo）/ 24（forge）处**逐批复制粘贴**的 `if (ctx.attacker.level().isClientSide()) return ap;` 模板守卫 ⇒ 客户端 `CombatPowerHud` 求值时整链被跳过，HUD 只含 10 块修饰器（电流剑等 13 块静默消失）。
+- **修法（不逐处删守卫）**：新增显示口径标记 `DiceCombatContext.displaySnapshot`（客户端求值只可能为了显示 ⇒ 放行；服务端战斗上下文恒 false），守卫统一收敛为 `skipOnClient(ctx)` = `attacker.level().isClientSide() && !ctx.displaySnapshot`；`attackPowerBase` 增 5 参重载（末参 `boolean displaySnapshot`），原 4 参版按 `player.level().isClientSide()` 委托，3 参版与既有调用点（`attackPowerOf` / `getDisplayAttackRange`）零改动。
+- **随机点数排除**：攻击卡掷骰修饰器（`CardRegistry.roll`）在 `ctx.displaySnapshot` 下直接 `return ap`（不掷卡、不写 `ctx.attackCardSum`）。
+- **手持武器**：仍由 `attackDamageExcludingHeldWeapon`（主手 + 副手属性修饰器逐项重算）剔除，附魔加伤随武器一起不计。
+- **判据（实跑）**：源码不变量 `bareGuards=0`、`skipOnClient=23/24`、`cardSkip/flagSet/overload5=true`（两线）；`python tools/verify_hud_attack_parity.py` ⇒ `GATE: PASS  (21 项全部满足)`；`gradlew.bat :neoforge-1.21.1:classes :forge-1.20.1:classes` ⇒ `BUILD SUCCESSFUL in 25s`；`gradlew.bat :neoforge-1.21.1:build :forge-1.20.1:build` ⇒ `BUILD SUCCESSFUL in 5s` 并触发 `pushToRootBuild` / `pushToDevRun` / `pushToGame` 四条推送。
+- **产物（2026-10-25 16:2x）**：neo **2,586,892 B** / sha256 `5c4a6207…38ed0ac`（`build/libs` = `run/1.21.1/mods` = 「狐の航空学 Voxy Edition」同一份）；forge reobf **2,631,933 B** / `576430bb…adefbbe4`（`build/libs` = 「1.20.1-Forge 模组测试」）；forge dev named **2,602,467 B** / `cc0f4341…6758f892`（`run/1.20.1/mods`）。六处 jar 内 `com/merlinkitsune/astral_dice/combat/DiceCombatModifiers.class` 全部命中 `skipOnClient` 与 `displaySnapshot` 字符串（字节码判据）。
+- **未覆盖的边界**（登记在 §5-Minor 5）：目标依赖型加成在客户端无目标 ⇒ HUD 只能是「无目标」口径；P1 两线未移植。
+
 ### 4.2 历史读数
 
 pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（含 4.8 pre.4 全量双线 10 跑 10 PASS、4.11–4.17 pre.5 各批、4.19 Jade 图标留白版）。
@@ -287,6 +300,10 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 2. 仓库根 `undefined/temp/`（2026-10-23 历史临时脚本残留，被 `temp/` 规则忽略）未清理。
 3. `misaki_sign.json` 是手改的（与 datagen 是否逐字节一致未验）；下次 `runData` 后须 diff。
 4. **子代理模型口径已收紧为「唯一」**（2026-10-22 用户裁决）：一律 `provider: "deepseek-official"` + `model: "deepseek-flash"`（DeepSeek-V4.1-Flash），不得换更强 / 其它 provider 的 model；原「确需深推理才换更强 model」「其它模型仅作备用」两种口径**作废**；`list_subagent_models` 只核注册表、不换模型；该路由失效 ⇒ 停下报用户。同步文件 4 个：`docs/agent/AGENTS-dsh.md`（§A 第 6 条 / §B ③ / 红线区第 7 条⑧）、`docs/agent/AGENTS-full.md`（红线区第 7 条⑧同文 + 子项目修改默认规则实施分工 + 第 3 节纪律第 6 条）、`docs/agent/delegation-runbook.md`（§2 派活）、`docs/agent/AGENTS-kimi.md`（§0 第 2 条，使用 Kimi 路由 `DeepSeek/deepseek-flash`）。
+5. **HUD 攻击力显示口径的两处已知边界**（2026-10-25，§4.1g）：
+   - **目标依赖型修饰器**（秘密侦探「目标带标记 +3」= `MarkManager.getLevel(ctx.target)`、调查阶段依赖 `isBlessingTarget(ctx.target, ctx.attacker)`）在客户端求值时上下文的目标位只能填**玩家自身**（`attackPowerBase` 构造 `DiceCombatContext` 的占位）⇒ HUD 无法体现「对某类目标的加成」，只显示不依赖目标的那部分。属显示层固有上限，不是缺陷。
+   - **骰战随机点数已排除**（`ctx.displaySnapshot` 下攻击卡不掷）⇒ HUD 不含随机加成，符合裁决。
+   - **P1 两线未移植**（26.1.2 / fabric），正式版前不动（§5-Major 6）。
 
 ## 6 坑（本批新增，后续继续追加）
 
@@ -310,6 +327,8 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 13. pre.5 及更早的 32 条坑见 `docs/handover-1.5.0-pre.5-main.md` §6。
 
 19. **`mt_env` 的 modernfix 钉子会因整合包升版而 BLOCKED（2026-10-25 实测）**：`scripts/test/mt_env.ps1:48` 的 `$script:NeoForgeMods` 写死 `*modernfix-neoforge*5.27.26*.jar`（Target `modernfix-neoforge-5.27.26+mc1.21.1.jar`），而整合包已升到 **5.27.27** ⇒ `--phase env` 直接 `MT_MODS: BLOCKED — 整合包缺少 *modernfix-neoforge*5.27.26*.jar`（EXIT **11**），整条 env 中断（Sodium/Iris/KubeJS 都还没走到）。本轮绕过：跳过 env 直接 `--phase launch`（`run/1.21.1/mods` 已有完整 14 jar 且库为 1.1.0）。**修法待裁决**：把钉子与 Target 同步到 5.27.27，或改成不带补丁号的宽匹配（`*modernfix-neoforge*5.27.*.jar`）。
+
+20. **同一次批量改写里两文件的 EOL 可能不同**（2026-10-25 实测）：`combat/DiceCombatModifiers.java` 是 **LF**，同一提交里的 `combat/DiceCombatContext.java` 是 **CRLF**（仓库历史原因，不由 autocrlf 统一）⇒ 改写脚本必须**逐文件探测** `text.includes("\r\n")` 再拼多行锚点/插入块；固定用 CRLF 拼锚点会 `anchor missing`（本轮首跑即失败、文件未被写入，属安全失败）。
 
 ## 7 关键路径（命令）
 
@@ -335,6 +354,7 @@ pwsh -NoProfile -File scripts\verify\verify_chip_shop_ui.ps1
 python tools\verify_misaki_balance.py
 python tools\verify_bonnie_active_order.py
 python tools\verify_member_recommendation_hand_gate.py
+python tools\verify_hud_attack_parity.py
 
 # 测试台（实机须用户下达）
 pwsh -NoProfile -File F:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1 --version 1.20.1 --phase env

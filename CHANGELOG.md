@@ -500,6 +500,8 @@
 
 #### UI & Interaction
 
+- **The attack-power bar now shows every attack-power bonus** (2026-10-25): the attack-modifier chain carried 23 (1.21.1) / 24 (1.20.1) copy-pasted client-side guards, so client evaluation bailed out and the HUD only reflected 10 of the 33 / 34 modifiers — chips such as the Electric Sword silently never moved the number even though the server applied them. Client evaluation now runs the whole chain behind an explicit display-snapshot flag (`DiceCombatContext.displaySnapshot`, set only when the client computes a value for display; real combat builds the context on the server with it false), so the "no client evaluation for non-display purposes" rule stays intact. Two things remain excluded, per the ruling: **the held weapon itself** (main + off hand, enchantment bonus included, recomputed from attribute modifiers) and **dice-battle random rolls** (the attack-card modifier does not roll in display mode). Target-conditional bonuses that need a real target (mysterious detective's marked-target +3, the investigation stage vs hostile / boss targets) can only show their target-less value. (P0 lines: neoforge-1.21.1 + forge-1.20.1)
+
 - **Fixed the card choice screen's unclickable card frames, cards lost on death, and leftover sessions** (2026-10-17 review P1/P2/P3):
   ① the virtual card slots live at the hidden coordinate `-10000`, while the screen's press detection and drop target only
   tested vanilla slot coordinates, so **the card frames could never be clicked** and drag-to-place / drop-to-revert /
