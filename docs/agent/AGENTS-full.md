@@ -4032,3 +4032,54 @@ python docs/agent/verify-split.py   # 四项 [OK]
 - **有意不改**：curl multipart 的 `metadata` 分片不带 `Content-Type: application/json`（urllib 路径带），CF 实测 200 接受，属未文档化依赖 —— 已跑通的写通道不动。
 - **无法判定**：四个新 fileId 本身（cfwidget 缓存未刷、CF v1 端点无 key 一律 403）；`python -m py_compile` 在本机被 `tools/__pycache__` 的 ACL 拒写挡下（未改动文件同样失败），改用 `py_compile.compile(cfile=…)` 判语法。
 - **后续裁决（2026-10-23，用户）**：① 撤掉 `tools/curseforge-description.md` 中英两行的 Modrinth 项目链接（CF 商店描述只留 GitHub 源码 / 发布页）；② **本体 pre 版本不发 CurseForge** —— `1.5.0-pre.5` 不上传，astral 项目 `1662159` 维持 2026-10-05 的 1.3.7-hotfix 为最新文件（StarEngine 库项目 `1755415` 那四件是唯一例外，已发）。判据：`Select-String -Path tools/curseforge-description.md -Pattern 'modrinth'` 期望无输出。
+
+### 61. 收尾发布批（2026-10-25）：rc.1 + 前置库 1.1.0 推送、CurseForge 6 文件、玩家更新日志、CF 关系补登
+
+#### 61.1 提交与推送（两仓均已同步远端）
+
+- **本体** `F:\MCProject\astral_dice_multiloader`：玩家日志提交 `6ee75a34`「docs(release)：1.5.0-rc.1 玩家更新日志（中英，2 文件 +460）」；此前累计的 28 个未推送提交一并推送 —— `git push origin multi-main` 后远端 `origin/multi-main` = `6ee75a34b…`，`git rev-list --count origin/multi-main..HEAD` = **0**。
+- **前置库** `F:\MCProject\starengine`：`16b48c4`「release(lib)：1.1.0（1.1.0-pre.2 定版；四平台版本号/README/CHANGELOG 同步）」⇒ `git push origin main` 得 `413cc39..16b48c4  main -> main`，`rev-list --count origin/main..HEAD` = **0**。
+- 版本号实测（`lib_version` / `mod_version` 全为 1.1.0）：`neoforge-1.21.1\gradle.properties:196`（`1.1.0`）/ `:198`（`1.1.0+neoforge_1.21.1`）、`forge-1.20.1\gradle.properties:82` / `:83`（`1.1.0+forge_1.20.1`）、`neoforge-26.1.2\gradle.properties:68` / `:70`（`1.1.0+neoforge_26.1.2`）、`fabric-1.20.1\gradle.properties:52` / `:53`（`1.1.0+fabric_1.20.1`）。
+- **未打 tag**、**未建 GitHub Release**（用户未下达）。
+
+#### 61.2 玩家更新日志（1.3.7 → 1.5.0 全量，中英双份）
+
+- `release/1.5.0-rc.1/PLAYER_CHANGELOG_ZH.md` **218 行 / 24,201 B**、`release/1.5.0-rc.1/PLAYER_CHANGELOG.md` **242 行 / 23,492 B**，均 **CRLF、裸 LF 0**。
+- H2 顺序：安装与前置（必读）/ 新增内容（商店与村民 · 事件体系 · 立牌与效果牌 · 界面与表现）/ 战斗系统重做 / 平衡与数值调整 / BUG 修复 / 1.3.7-hotfix 的修复 / 文案与手册 / 许可变更。
+- 素材来源：`CHANGELOG_ZH.md` 的 `## 1.5.0`（L7–L773）+ `## 1.3.7-hotfix`（L774–L832）+ `release/1.3.7/PLAYER_CHANGELOG_ZH.md` 的既有房格（玩家视角改写，不复述工程条目）。
+
+#### 61.3 CF 关系补登（真缺口，必须与本版同批）
+
+- `tools/curseforge.json` 的 P0 两线 `neoforge_1.21.1` / `forge_1.20.1` 在 curios（forge 另含 mixinbooster）之后追加 `{"slug":"starengine","projectID":1755415,"type":"requiredDependency"}`，并在 `_relationsNote` 追加「2026-10-25 起 P0 两线 StarEngine 独立前置、P1 两线仍内嵌」；`json.load` 自检通过，文件 5,233 → **5,736 B**（LF）。
+- 理由：库自 1.1.0 起从 P0 两线 jar 内移除（`META-INF/jarjar/` 计数 0）⇒ 不登记关系时 CF 玩家下载后直接 `Missing or unsupported mandatory dependencies`。
+- `neoforge_26.1.2` / `fabric_1.20.1`（P1）**未加**（它们仍内嵌库 jar）。
+
+#### 61.4 CurseForge 上传（6 文件全部 HTTP 200）
+
+| 项目 | jar | 大小 | fileID | 渠道 |
+|---|---|---|---|---|
+| astral-dice `1662159` | `astral_dice-1.5.0-rc.1+neoforge_1.21.1.jar` | 2,588,804 B | `9320026` | **beta** |
+| astral-dice `1662159` | `astral_dice-1.5.0-rc.1+forge_1.20.1.jar` | 2,633,788 B | `9320028` | **beta** |
+| starengine `1755415` | `starengine-neoforge-1.21.1-1.1.0.jar` | 98,734 B | `9320029` | **release** |
+| starengine `1755415` | `starengine-forge-1.20.1-1.1.0.jar` | 103,605 B | `9320030` | **release** |
+| starengine `1755415` | `starengine-neoforge-26.1.2-1.1.0.jar` | 98,970 B | `9320031` | **release** |
+| starengine `1755415` | `starengine-fabric-1.20.1-1.1.0.jar` | 112,634 B | `9320032` | **release** |
+
+- relations 随同一次 POST：neo = curios(309927) + starengine(1755415)；forge = curios + mixinbooster(980731) + starengine；库四文件用 `--no-relations`。
+- gameVersions：neo 1.21.1 `[9638,9639,11779,10150]`；forge 1.20.1 `[9638,9639,9990,7498]`；neo 26.1.2 `[9638,9639,16082,10150]`；fabric 1.20.1 `[9638,9639,9990,7499]`。
+- changelog 入参：本体两文件用 `release/1.5.0-rc.1/PLAYER_CHANGELOG.md`（英文 23,134 字符）；库四文件用 `temp/cf-changelog-starengine-1.1.0.md`（1,335 字符，temp 不入库）。
+- 每次上传都打印「Cloudflare 拦截 urllib（HTTP 403）⇒ 改用 curl」，即 `_curl_json` 回退通道仍是 CF 的唯一可行链路。
+
+#### 61.5 库「1.1.0 是否已改号并重编译」复核（2026-10-25 18:37）
+
+- 重编译：`F:\MCProject\starengine` 跑 `gradlew.bat build --console=plain`（JAVA_HOME=Zulu 21）⇒ **BUILD SUCCESSFUL in 6s**，`25 actionable tasks: 4 executed, 21 up-to-date`；四线 `jar` / `forge:reobfJar` / `fabric:remapJar` **全 UP-TO-DATE** ⇒ 与 15:30 那批产物逐字节相同（本次只由 `pushToRootBuild` 重新拷到 `F:\MCProject\starengine\build\libs`）。
+- 产物（`build\libs`，mtime 2026-10-25 18:37:30）：`starengine-neoforge-1.21.1-1.1.0.jar` 98,734 B sha256 `62C92595B012929D2FBA6098CC2D71E6AB2A9A14DDAAC52869E2BBEC6B476AC8`；`starengine-forge-1.20.1-1.1.0.jar` 103,605 B `73DA2E599E60DAB047E3640EB396F1DB6F6EEDD5A0DD95494AFDE471F43AF304`；`starengine-neoforge-26.1.2-1.1.0.jar` 98,970 B `625057E19C114F7F1F452BA176A588D8E58A303B9D48002B6438C031B7DFF8C8`；`starengine-fabric-1.20.1-1.1.0.jar` 112,634 B `4F5CB0ECA44C48840355ECACA4A752F0DE1C3D0D89C8363B46C3A0283F3E6955`。
+- jar 内版本字符串实测：`META-INF/neoforge.mods.toml` `version="1.1.0+neoforge_1.21.1"` / `1.1.0+neoforge_26.1.2`、`META-INF/mods.toml` `version="1.1.0+forge_1.20.1"`、`fabric.mod.json` `"version": "1.1.0"`。
+- mavenLocal 同步存在：`%USERPROFILE%\.m2\repository\com\merlinkitsune\starengine\starengine-<line>\1.1.0\*.jar` 四件（15:30–15:31，尺寸与 build/libs 相同），消费方按 `starengine_version=1.1.0` 可解析。
+- 与 CF 上那 4 个库文件的对应关系：文件名与字节数完全一致（98,734 / 103,605 / 98,970 / 112,634），且 jar 任务 UP-TO-DATE ⇒ 内容未变，无需重传。
+
+#### 61.6 坑（新增）
+
+- `tools/curseforge_upload.py` 的 `--project-id` **只改目标项目、不改关系来源**：`find_line()` 只按 loader+MC 匹配 `curseforge.json` 的线 ⇒ 上传库 jar 会命中 astral 的线并把 curios/mixinbooster 挂到库文件上，**库/前置类产物一律带 `--no-relations`**。
+- `run_code` 的 120s 程序级 deadline 会掐断 `git push`（本轮首次 push 被中断，实际已推完，重跑得 `Everything up-to-date` 才发现）⇒ 推送/批量上传必须同时给 `run_code` 的 `timeoutMs`（≥540000）。
+- CF 判成功只看 Upload API 返回的 fileID；cfwidget 与公开列表会滞后，勿据此判失败。

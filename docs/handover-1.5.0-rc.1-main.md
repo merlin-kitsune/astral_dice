@@ -18,6 +18,9 @@
 11. **创造栏收尾（2026-10-25，§4.1j）**：强化拒止**物品**已从创造栏与 JEI 隐藏（JEI 物品列表直接取自创造栏，**未加任何 JEI 代码**）；筹码在组序不变前提下改为**组内稀有度升序**（67 个零增删）。守门 `tools/verify_creative_tab_chip_order.py` PASS + 变异测试证非假绿；产物已重建并投放四目标（neo `366D68C8…` / forge reobf `FD7B01D7…`），jar 内 `ModItems.REPULSION` 引用 0 处；**未实机**。
 12. **护法立牌减费卡面（2026-10-25，§4.1k）**：佩戴 `misaki_sign` 时商店货架上的「名刀·嘎呜切」改画 `attack_card_meito_discount.png`（纯客户端只读 Curios 缓存、缺素材自动回退），价格与购买链路零改动；守门 `python tools/verify_meito_discount_face.py` ⇒ `GATE: PASS（D1-D6）` + 变异测试证非假绿；产物已重建并投放四目标（neo `59E12108…` / forge reobf `33717FA9…`），**双版本实机 PASS（2026-10-25 18:12–18:23，见 §4.1k）**。
 
+13. **发布收口（2026-10-25 18:2x–18:5x，§4.1l）**：`1.5.0-rc.1` 与前置库 `1.1.0` **已提交并 push**（本体 `6ee75a34`、库 `16b48c4`，两仓 `origin..HEAD` 均 **0**）；**CurseForge 已上传 6 个文件** —— 本体两线 `beta`（neo fileID `9320026` / forge `9320028`），库四平台 `release`（`9320029` / `9320030` / `9320031` / `9320032`）；`tools/curseforge.json` 的 P0 两线**补登 `starengine(1755415)=requiredDependency`**（lib 自 1.1.0 起不再内嵌，此前 CF 关系缺这一条 ⇒ 玩家会直接缺库起不来）。
+14. **玩家更新日志（1.3.7→1.5.0 全量）**：新建 `release/1.5.0-rc.1/PLAYER_CHANGELOG_ZH.md`（218 行 / 24,201 B）+ `PLAYER_CHANGELOG.md`（242 行 / 23,492 B），**全部 CRLF、裸 LF 0**；CF 本体两文件即用英文版（23,134 字符）作 `--changelog`。
+
 ## 1 环境与路径
 
 路径与命令**沿用 pre.5 正本 §1**（Windows 原生：git bash 的 `git`、`pwsh -NoProfile -File`、`JAVA_HOME=C:\Program Files\Zulu\zulu-21`、工作树直接 `gradlew.bat`、测试台 `scripts\test\mt.ps1`）。两条补充：
@@ -63,6 +66,9 @@ forge dev named 102,013 B / `e280aeab6c4b37c43468f7cce32a8bf64c70b6bdbcd2203f6c5
 | 本文件所在提交（追加） | release(rc.1)：`1.5.0-pre.6` → **`1.5.0-rc.1`** + 前置库坐标 `1.1.0` | 四线 `gradle.properties`（`mod_version` / `starengine_version` / fabric `starengine_version_range`）· 两线 toml 模板注释（预发布期「不要写 `[1.1.0,2.0.0)`」改成正式版口径）· `.github/workflows/build.yml:105` 库 ref SHA `6d2a96d…`→`16b48c4…` · `README*.md`（版本列 `1.5.0-pre.5`→`rc.1`、库版本 `1.1.0`）· `CHANGELOG*.md`（库版本串）· 本文件 `git mv` pre.6→rc.1 + §0/§2/§3/§4.1f · `docs/handover-new-session-context.md` · 5 处旧文件名引用 |
 | 本文件所在提交（追加） | feat(hud)：攻击力显示口径统一（4 文件 + 新增守门脚本） | 两线 `combat/DiceCombatContext`（+`displaySnapshot`）· 两线 `combat/DiceCombatModifiers`（`skipOnClient` 收敛 23/24 处模板守卫 · 攻击卡在显示口径下不掷 · `attackPowerBase` 5 参重载）· 新增 `tools/verify_hud_attack_parity.py`（H1–H6，`GATE: PASS (21 项)`） |
 | 本文件所在提交（追加） | feat(shop)：护法立牌减费卡面（8 文件 +228/−6） | 两线 `screen/CardShopScreen#cardFaceTexture`（非名刀/未佩戴/素材缺失回退原图）· 两线 `textures/gui/shop/card/attack_card_meito_discount.png`（904 B）· `tools/verify_meito_discount_face.py`（D1-D6）· CHANGELOG 双文件 · 本文件 §0-12 / §4.1k / §5-Minor 7 |
+
+| `6ee75a34` | docs(release)：1.5.0-rc.1 玩家更新日志（中英，2 文件 +460/−0） | `release/1.5.0-rc.1/PLAYER_CHANGELOG_ZH.md`（1.3.7→1.5.0 全量：安装与前置 / 新增内容 / 战斗系统重做 / 平衡与数值 / BUG 修复 / 文案与手册 / 许可变更）+ 英文镜像 |
+| 本文件所在提交（追加） | chore(tools)+docs：CF 关系补 starengine + 发布收口 | `tools/curseforge.json`（P0 两线 +`starengine(1755415)=requiredDependency`）· 本文件 §0-13/14 · §4.1l · §3 两行 · §5-Minor 8 · §6 坑 23/24 |
 
 `e2aed527` 的七条内容：
 
@@ -333,6 +339,27 @@ forge dev named 102,013 B / `e280aeab6c4b37c43468f7cce32a8bf64c70b6bdbcd2203f6c5
 - **收尾**：1.21.1 `--phase stop --force` ⇒ `MT_STOP: OK`；1.20.1 `--phase stop --force --purge-saves` ⇒ `MT_CLEANUP_SAVES: PURGED 1` / `MT_CLEANUP_RESULT: OK` / `MT_STOP: OK (1s)`；`Get-Process java` 仅剩 Gradle 守护（9984 / 12776）。
 - **未做**：P1 两线（`neoforge-26.1.2` / `fabric-1.20.1`）未移植（§5-Minor 7 同口径）；购买链路与价格未做回归 —— 本条硬约束是「价格与购买链路零改动」，由源码口径保证（`CardShopMenu.java:667` 未动）。
 
+### 4.1l 交付与发布：rc.1 + 库 1.1.0 推送 + CurseForge 上传（2026-10-25 18:2x–18:5x）—— 全部成功
+
+- **提交与推送**：本体 `6ee75a34`（docs(release)：玩家更新日志，2 文件 +460）⇒ `git push origin multi-main`，远端 `origin/multi-main` = `6ee75a34b…`，`rev-list --count origin/multi-main..HEAD` = **0**（此前累计 28 个未推送提交一并推送）。前置库仓 `F:\MCProject\starengine`：`16b48c4` 推送 ⇒ `413cc39..16b48c4  main -> main`，`origin/main..HEAD` = **0**。无 tag（用户未下达打 tag）。
+- **玩家更新日志（1.3.7→1.5.0 全量，中英）**：`release/1.5.0-rc.1/PLAYER_CHANGELOG_ZH.md` **218 行 / 24,201 B** + `PLAYER_CHANGELOG.md` **242 行 / 23,492 B**（全 CRLF、裸 LF 0）。H2 顺序：安装与前置（必读）/ 新增内容（商店与村民 · 事件体系 · 立牌与效果牌 · 界面与表现）/ 战斗系统重做 / 平衡与数值调整 / BUG 修复 / 1.3.7-hotfix 的修复 / 文案与手册 / 许可变更。素材 = `CHANGELOG_ZH.md` 的 `## 1.5.0`（L7–L773）+ `## 1.3.7-hotfix`（L774–L832）+ `release/1.3.7/PLAYER_CHANGELOG_ZH.md` 的既有房格。
+- **CF 关系补登（本轮真缺口）**：`tools/curseforge.json` 的 `neoforge_1.21.1` / `forge_1.20.1` 两线在 curios（forge 另有 mixinbooster）之后追加 `{"slug":"starengine","projectID":1755415,"type":"requiredDependency"}`，并在 `_relationsNote` 追加「2026-10-25 起 P0 两线 StarEngine 独立前置、P1 两线仍内嵌」说明；`json.load` 自检通过，文件 5,233 → 5,736 B（LF）。理由：lib 自 1.1.0 起从 P0 两线 jar 内移除（`META-INF/jarjar/` 计数 0），不登记关系则 CF 玩家下载后直接 `Missing or unsupported mandatory dependencies`。
+- **CF 上传（`tools/curseforge_upload.py`，6 个文件全部 `HTTP 200`；每次均打印「Cloudflare 拦截 urllib（HTTP 403）⇒ 改用 curl」，即 curl 回退仍在生效）**：
+
+  | 项目 | jar | 大小 | fileID | 渠道 |
+  |---|---|---|---|---|
+  | astral-dice `1662159` | `astral_dice-1.5.0-rc.1+neoforge_1.21.1.jar` | 2,588,804 B | **`9320026`** | **beta** |
+  | astral-dice `1662159` | `astral_dice-1.5.0-rc.1+forge_1.20.1.jar` | 2,633,788 B | **`9320028`** | **beta** |
+  | starengine `1755415` | `starengine-neoforge-1.21.1-1.1.0.jar` | 98,734 B | **`9320029`** | **release** |
+  | starengine `1755415` | `starengine-forge-1.20.1-1.1.0.jar` | 103,605 B | **`9320030`** | **release** |
+  | starengine `1755415` | `starengine-neoforge-26.1.2-1.1.0.jar` | 98,970 B | **`9320031`** | **release** |
+  | starengine `1755415` | `starengine-fabric-1.20.1-1.1.0.jar` | 112,634 B | **`9320032`** | **release** |
+
+- **gameVersions（离线表解析）**：neo 1.21.1 `[9638,9639,11779,10150]`；forge 1.20.1 `[9638,9639,9990,7498]`；neo 26.1.2 `[9638,9639,16082,10150]`；fabric 1.20.1 `[9638,9639,9990,7499]`（9638=Client / 9639=Server）。
+- **CF 更新日志入参**：本体两文件用 `release/1.5.0-rc.1/PLAYER_CHANGELOG.md`（英文 23,134 字符，与 1.3.x 的「三条生产线共用英文版」惯例一致）；库四文件用 `temp/cf-changelog-starengine-1.1.0.md`（1,335 字符 = 库 `CHANGELOG.md` 的 `## 1.1.0` 段 + 安装说明；temp 不入库）。
+- **库上传必须 `--project-id 1755415 --no-relations`**：`find_line()` 只按 loader+mc 匹配 `curseforge.json` 的线，库 jar 会命中 astral 的 `neoforge_1.21.1` / `forge_1.20.1` ⇒ 不带 `--no-relations` 会把 curios / mixinbooster 挂到库文件上（详见 §6 坑 23）。
+- **判据**：两仓 `rev-list --count origin/...` = 0 / 0；6 次上传均打印 `[OK] 上传 … fileID=<id> HTTP 200`（CF 不回显，判成功以 Upload API 返回 fileID 为准；cfwidget 列表缓存会滞后，勿据此判失败）。**未做**：`update-info`（项目简介 / 分类未改）、tag / GitHub Release（用户未下达）、P1 两线未上传（正式版前不验证）。
+
 ### 4.2 历史读数
 
 pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（含 4.8 pre.4 全量双线 10 跑 10 PASS、4.11–4.17 pre.5 各批、4.19 Jade 图标留白版）。
@@ -371,6 +398,8 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 6. **创造栏收尾仅落 P0 两线**（2026-10-25，§4.1j）：P1（`neoforge-26.1.2` / `fabric-1.20.1`）的 `ModCreativeTabs.java` 仍列出强化拒止物品、筹码仍是旧顺序。⚠️ 移植时必须**同批调整** `tools/verify_fabric_assets.py` 第 7 项（`check_creative_tabs`：要求「所有注册物品都在创造栏」——与本条的隐藏口径相反，只对 fabric 线生效，暂未改）。
 7. **护法减费卡面仅落 P0 两线**（2026-10-25，§4.1k）：P1（`neoforge-26.1.2` / `fabric-1.20.1`）的 `CardShopScreen` 没有 `cardFaceTexture` 分支、也没有 `attack_card_meito_discount.png` ⇒ 那两线仍显示原卡面（4 点）。移植时同批拷贴图 + 抄 `cardFaceTexture`（fabric 用 `new ResourceLocation(...)` 口径，26.1.2 按其 API 复核），并把 `tools/verify_meito_discount_face.py` 的 D2/D3/D4 扩到四线。
 
+8. **CF 关系口径变更（2026-10-25，§4.1l）**：`tools/curseforge.json` 的 P0 两线（`neoforge_1.21.1` / `forge_1.20.1`）新增 `starengine(1755415)=requiredDependency`（lib 自 1.1.0 起不再内嵌）；P1 两线（26.1.2 / fabric）**未加**（它们仍内嵌库 jar）—— 若日后 P1 也改为独立前置，必须同批补登，否则同样缺库起不来。
+
 ## 6 坑（本批新增，后续继续追加）
 
 1. **`git show HEAD:<file>` 是 LF**（仓库存 LF、工作树 CRLF 由 autocrlf 转换）⇒ 行级改写先 `replace(/\r\n/g,"\n").split("\n")` 再 `join("\r\n")`。
@@ -398,6 +427,9 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 
 21. **Rhino 跨语言装箱**（1.20.1 KubeJS 侧）：`List<Integer>` 里塞 JS 数字会变成 `Double`，`CardShopShelf.store` 序列化时抛 `ClassCastException: Double cannot be cast to Integer`（`prices.add(4)` / `Integer.valueOf(4)` / `Integer.parseInt("4")` 三种写法都踩）；绕法 = 传**空** prices 列表 → `ensureLengths()`（Java 侧补 0）→ `withDiscounted(0, 4)`（形参是 `int`，跨界不装箱）。
 22. **服务端 `CardShopOpener.open(player)` 不一定上屏**：1.20.1 实测 client `mc.screen` 一度是 `CardShopScreen`，随后被容器关闭包清成 `null`（而 `containerMenu` 仍是 `CardShopMenu`）⇒ 截图前改用探针 `/astralshop openkeep <tag>` 重开并当拍即截；1.21.1 无此现象。
+
+23. **`--project-id` 只改目标项目、不改关系来源（2026-10-25 实测）**：`tools/curseforge_upload.py` 的 `find_line()` 只按 **loader + MC 版本** 匹配 `tools/curseforge.json` 的 `lines` ⇒ 上传 starengine（库）jar 时会命中 astral 的 `neoforge_1.21.1` / `forge_1.20.1` 线，把 curios / mixinbooster 作为 requiredDependency 挂到**库文件**上。**库/前置类产物一律带 `--no-relations`**（本轮 4 个库文件已带）。
+24. **`run_code` 的 120s 程序级 deadline 也会掐断 `git push`（2026-10-25 实测）**：本轮首次 `push` 因未给 `run_code` 的 `timeoutMs` 而在 120s 被中断（实际已推完，重跑得到 `Everything up-to-date` 才知道）⇒ 推送 / 批量上传这类网络长任务必须同时把 `run_code` 的 `timeoutMs` 设到 ≥540000，`tools.pwsh` 自己的 `timeoutMs` 不够。
 
 ## 7 关键路径（命令）
 
