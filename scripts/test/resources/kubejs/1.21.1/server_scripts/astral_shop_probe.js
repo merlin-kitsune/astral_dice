@@ -1520,7 +1520,8 @@ function sp_doPromo(ctx, tag, windowTicks) {
     return 1;
 }
 
-/** 转账探针（**不关菜单**）：本轮进行中调用 handleTransfer ⇒ 应被拒（余额差 = 0）。
+/** 转账探针（**不关菜单**）：直接调 handleTransfer 并打前后余额 —— 2026-10-26 起「买牌 / 星光兑换」不再锁转账，
+ *  只有「本轮已转账」（DataSlot[9]）才锁 ⇒ applied=1 即成功、applied=0 即被挡。
  *  与 sp_doTransfer 的区别：后者走 guardMenu（跑完自动收屏），界面开着时不能再用。 */
 function sp_doTxTry(ctx, tag, name, amount) {
     var p = sp_p(ctx);

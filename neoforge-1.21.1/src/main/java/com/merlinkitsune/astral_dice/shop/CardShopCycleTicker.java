@@ -78,6 +78,8 @@ public final class CardShopCycleTicker {
         CardShopShelf shelf = CardShopShelf.roll(player);
         CardShopShelf.store(player, shelf);
         ModAttachments.setShopTransferCooldownEnd(player, 0L);
+        // 到点换架 ⇒ 本轮转账额度一并恢复（2026-10-26 用户裁决：转账锁与换架周期同起同落）
+        ModAttachments.setShopTransferUsed(player, false);
         boolean menuOpen = false;
         if (player.containerMenu instanceof CardShopMenu menu) {
             menuOpen = true;

@@ -830,7 +830,7 @@ function csRunPoll(mc, step) {
     } else if (step === 76) {
         csRelease(mc, 29, 58, "c0_dbl2_p2", step);
     } else if (step === 84) {
-        cs("evt=poll_after_quickmove:" + csState(mc));             // 期望 shelf0(sold) + cd>0 + used=1 + bal 减少
+        cs("evt=poll_after_quickmove:" + csState(mc));             // 期望 shelf0(sold) + cd>0 + used=0（买牌只开周期、不锁转账；2026-10-26）+ bal 减少
         try {
             var cardId = (csShelf0Id !== "?" && csShelf0Id !== "empty") ? csShelf0Id : csId(mc.screen.getMenu().getSlot(0).getItem());
             var has = 0;
@@ -845,11 +845,12 @@ function csRunPoll(mc, step) {
         csScreen(mc, "cycle_started");                             // 期望 hour=4 ready=0（周期刚起 ⇒ 60s ⇒ 4 档）
         csShot(mc, "poll_hour5_shot", step);
     } else if (step === 92) {
-        csClick(mc, 64, 125, "xfer_btn_cooling", step);            // 轮询进行中 ⇒ 应打不开面板
+        csClick(mc, 64, 125, "xfer_btn_in_cycle", step);           // 买牌开的周期内 ⇒ 现在应能打开面板（转账锁只由「本轮已转账」触发）
     } else if (step === 96) {
-        csScreen(mc, "xfer_btn_cooling");                          // 期望 view=0 ready=0
+        csScreen(mc, "xfer_btn_in_cycle");                         // 期望 view=1 ready=1（周期内可转账：ready=canOpenTransfer）
+        csClick(mc, 190, 13, "back_after_cycle_open", step);   // 立刻关面板，避免污染后续沙漏读数
     } else if (step === 100) {
-        csCmd(mc, "astralshop txtry TH0 Bot1 10", "tx_during_cycle", step);  // 轮询中转账 ⇒ 期望 applied=0
+        csCmd(mc, "astralshop txtry TH0 Bot1 10", "tx_in_cycle", step);        // 周期内转账 ⇒ 期望 applied=1（买牌不锁转账）
     } else if (step === 112) {
         csCmd(mc, "astralshop cycleset CY4 55", "cyc55", step);    // 剩 55s ⇒ 沙漏 4（4 档 = 每档 15s）
     } else if (step === 122) {

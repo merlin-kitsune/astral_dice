@@ -197,7 +197,7 @@
     },
     {
       "op": "note",
-      "text": "②③④⑤⑧ 主序列（哨兵 779）：单击只选中/空位无效 → 余额不足双击被拒 → 双击快速移入 → 沙漏 5→1→0 与就绪保持 → 轮询中转账被拒 → 就绪后转账面板 → 面板与沙漏一致 → 大酬宾只补差额牌（不刷架/不换批/沙漏不动，任务V D5 订正）→ 双击窗口 500ms/200ms 实测"
+      "text": "②③④⑤⑧ 主序列（哨兵 779）：单击只选中/空位无效 → 余额不足双击被拒 → 双击快速移入 → 沙漏 5→1→0 与就绪保持 → 买牌后周期内仍可转账（转账锁只由「本轮已转账」触发） → 就绪后转账面板 → 面板与沙漏一致 → 大酬宾只补差额牌（不刷架/不换批/沙漏不动，任务V D5 订正）→ 双击窗口 500ms/200ms 实测"
     },
     {
       "op": "inject_command",
@@ -448,7 +448,7 @@
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_CSC:evt=poll_after_quickmove:.*:used=1:cd=[1-9][0-9]*"
+      "pattern": "AP_CSC:evt=poll_after_quickmove:.*:used=0:cd=[1-9][0-9]*"
     },
     {
       "type": "log",
@@ -468,7 +468,7 @@
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_CSC:evt=scr:cycle_started:.*:used=1:"
+      "pattern": "AP_CSC:evt=scr:cycle_started:.*:used=0:"
     },
     {
       "type": "log",
@@ -518,12 +518,12 @@
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_CSC:evt=scr:xfer_btn_cooling:.*view=0:.*ready=0:"
+      "pattern": "AP_CSC:evt=scr:xfer_btn_in_cycle:.*:used=0:.*:view=1:ready=1:"
     },
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_TH0_TXTRY:name=Bot1:.*:applied=0"
+      "pattern": "AP_TH0_TXTRY:name=Bot1:.*:used=1:applied=1"
     },
     {
       "type": "log",

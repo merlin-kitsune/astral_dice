@@ -10,7 +10,7 @@ import java.util.List;
  * <p>**刻意不做任何过滤**（用户 2026-10-08 裁决：转账候选 = 全服在线玩家，不筛选队伍）；
  * 服务端在**打开转账视图**、**点击放大镜刷新**、以及**目标玩家已下线（名单失效）**时重发
  * （见 {@code network/CardShopTransferListPayload}）。⚠️ **转账成功后不会重发** —— 此时界面已退回商店主界面，
- * 且本店会话已锁定转账（{@code CardShopMenu#isTransferUsedThisSession()}）。
+ * 且本轮已锁定转账（{@code CardShopMenu#isTransferUsedThisSession()}；2026-10-26 起买牌 / 兑换不再锁）。
  *
  * <p><b>下标口径</b>：{@link #transferCandidates()} 的**完整名单**下标就是转账载荷的目标下标 ——
  * 界面上的搜索过滤只发生在 {@code CardShopScreen} 内部（过滤后行号 → 完整名单下标 的映射），

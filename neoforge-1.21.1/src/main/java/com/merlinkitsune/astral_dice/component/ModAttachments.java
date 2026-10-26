@@ -606,6 +606,22 @@ public class ModAttachments {
         player.setData(SHOP_TRANSFER_COOLDOWN_END.get(), value);
     }
 
+    // 卡牌商店:「本轮已经转账过」(2026-10-26 用户裁决:买牌 / 星光兑换只开换架周期,**不**锁转账;
+    // 转账锁独立成这一位 —— 只有本轮真的转过账才锁,到点换架时随周期一起清零)。
+    // 仅服务端权威;客户端经菜单 DataSlot[9] 同步读,不在玩家附件层 .sync()。
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Boolean>> SHOP_TRANSFER_USED =
+            ATTACHMENTS.register("shop_transfer_used", () -> AttachmentType.builder(() -> Boolean.FALSE)
+                    .serialize(Codec.BOOL)
+                    .build());
+
+    public static boolean isShopTransferUsed(net.minecraft.world.entity.player.Player player) {
+        return player.getData(SHOP_TRANSFER_USED.get());
+    }
+
+    public static void setShopTransferUsed(net.minecraft.world.entity.player.Player player, boolean value) {
+        player.setData(SHOP_TRANSFER_USED.get(), value);
+    }
+
     // 卡牌商店:货架存档(任务O §1.3,2026-10-09 用户裁决「重新进店不得刷新卡牌」)。改造前货架只活在菜单字段里,
     // 开店时无条件重抽 ⇒ 关店再开店就换一批;现在货架落在这里(随玩家存档持久化),只有「沙漏归 0」那一刻
     // (服务端 tick: shop/CardShopCycleTicker)或大酬宾事件才会重抽覆写,开店只读(shop/CardShopShelf)。

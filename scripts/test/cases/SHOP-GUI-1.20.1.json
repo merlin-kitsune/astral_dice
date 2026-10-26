@@ -760,12 +760,12 @@
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_TB0_TBAD:amount=(0|4|21|-1):.*:applied=0:used=0"
+      "pattern": "AP_TB0_TBAD:amount=(0|4|21|-1):.*:applied=0:used=1"
     },
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_C0_CLOSE:.*:opened=0:used=1:.*:cdBefore=[0-9]+:cdMid=[1-9][0-9]*:cdAfter=[1-9][0-9]*:.*:deltaMid=[1-9][0-9]*:"
+      "pattern": "AP_C0_CLOSE:.*:opened=0:used=1:.*:cdBefore=[0-9]+:cdMid=[1-9][0-9]*:cdAfter=[1-9][0-9]*:.*:deltaMid=0:"
     },
     {
       "type": "log",
@@ -845,12 +845,12 @@
     {
       "type": "log",
       "source": "kubejs_client",
-      "pattern": "AP_CSC:evt=stateD_afterxfer:.*used=1:"
+      "pattern": "AP_CSC:evt=stateD_afterxfer:.*used=0:"
     },
     {
       "type": "log",
       "source": "kubejs_client",
-      "pattern": "AP_CSC:evt=stateE_repeat:.*used=1:"
+      "pattern": "AP_CSC:evt=stateE_repeat:.*used=0:"
     },
     {
       "type": "log",

@@ -500,8 +500,8 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
         // 拒绝信号（§4）倒计时：由服务端的 CardShopDenyPayload 置位 ⇒ 每 tick 递减，渲染层据此染红数字
         CardShopClientState.tickDeny();
         if (transferView) {
-            // 服务端把「本轮 60 秒轮询进行中」置位后（DataSlot[8] 同步）自动退回商店主界面
-            // （2026-10-09 §2 改写：买牌或转账成功都会开启本轮 ⇒ 二级视图不再停留在「已用」状态上）
+            // 服务端把「本轮已转账」置位后（DataSlot[9] 同步）自动退回商店主界面
+            // （2026-10-26 用户裁决：只有**转账成功**才退，买牌 / 兑换不再把二级视图踢回主界面）
             if (this.menu.isTransferUsedThisSession()) {
                 closeTransferView();
             }
@@ -1034,13 +1034,13 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
     }
 
     /**
-     * 中按钮可用条件（2026-10-09 §2 改写）= 星币 >= CardShopMenu.MIN_TRANSFER 且 **本轮 60 秒轮询已到点（就绪）**。
-     * 「本轮进行中」与「剩余秒数 &gt; 0」是同一个服务端状态的两个视图（DataSlot[8] / DataSlot[6]），
-     * 故不再需要单独的「本店会话位」判据。
+     * 中按钮可用条件（2026-10-26 用户裁决改写）= 星币 >= CardShopMenu.MIN_TRANSFER 且 **本轮还没转过账**。
+     * 换架周期（DataSlot[8] / 剩余秒数 DataSlot[6]）只决定沙漏与星光兑换，**不再**锁转账：
+     * 买牌 / 兑换开启的周期内仍可转账；只有转账成功（DataSlot[9] = 1）才锁到本轮结束。
      */
     private boolean canOpenTransfer() {
         return StarCoinWalletState.balance() >= CardShopMenu.MIN_TRANSFER
-                && this.menu.transferCooldownSeconds() <= 0;
+                && !this.menu.isTransferUsedThisSession();
     }
 
     /**
@@ -1666,7 +1666,7 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
             return;
         }
         if (!canConfirmTransfer()) {
-            if (this.menu.transferCooldownSeconds() <= 0 && transferAmount > StarCoinWalletState.balance()) {
+            if (!this.menu.isTransferUsedThisSession() && transferAmount > StarCoinWalletState.balance()) {
                 overlayMessage(Component.translatable("msg.astral_dice.card_shop_no_coin", transferAmount)
                         .withStyle(ChatFormatting.RED));
             } else {
@@ -1686,14 +1686,13 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
 
     /**
      * 中按钮不可用时的 actionbar 说明（按真实原因分档，避免误报「星币不足」）：
-     * ①/② 本轮 60 秒周期进行中 —— 「剩余秒数 &gt; 0」与「本轮已用过」是同一服务端状态的两个视图，
-     *        统一走既有的 {@code msg.astral_dice.card_shop_transfer_used}（任务O §1.2 已删掉本轮新增的文案键
-     *        {@code gui.astral_dice.card_shop.cooldown_hint} 与其绘制/弹提示代码，不再多一句说明文本）；
+     * ① 本轮已经转过账 —— 走既有的 {@code msg.astral_dice.card_shop_transfer_used}
+     *    （2026-10-26 起买牌 / 兑换只开换架周期，**不再**让中按钮不可用）；
      * ③ 否则报星币门槛（余额 &lt; 5）。
      */
     private void showTransferDisabledHint() {
         Component message;
-        if (this.menu.transferCooldownSeconds() > 0 || this.menu.isTransferUsedThisSession()) {
+        if (this.menu.isTransferUsedThisSession()) {
             message = Component.translatable("msg.astral_dice.card_shop_transfer_used");
         } else {
             message = Component.translatable("msg.astral_dice.card_shop_no_coin", CardShopMenu.MIN_TRANSFER);
@@ -1994,7 +1993,7 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
         if (transferSelectedRow() < 0) {
             return false;
         }
-        if (this.menu.transferCooldownSeconds() > 0) {
+        if (this.menu.isTransferUsedThisSession()) {
             return false;
         }
         return this.transferAmount >= CardShopMenu.MIN_TRANSFER

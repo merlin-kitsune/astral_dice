@@ -34,6 +34,7 @@
 23. **双版本 tooltip 全面检查 + 三处修复（2026-10-26 17:1x，§4.1w）**：CF 上 rc.3 两件经下载比对确认是 13:28 修复前的坏构建（neo 2,588,530 B b086b984 / forge 2,633,363 B 79fc4b5e）；补齐 Curios 自定义槽位 curios.modifiers.{chip,dice,stand} 三语（P0 每线 1,059→1,062 键）、恢复被 b7b26f82 附带回退的多萝西主动技能中文；两条线实机复验「佩戴筹码时：」已解析、调酒师提示框无字面换行转义；新产物 neo 2,588,650 B 43e56966 / forge 2,633,448 B 6731d798。CF 坏件尚未处理（删后重传 vs bump rc.4 待裁决）。
 
 24. **1.5.0-rc.3 重发（CF 重传 + tag 重指，2026-10-26 17:1x–17:2x，§4.1x）**：用户手工删除 CF 旧件后重传 —— neo `fileID=9331458` / forge `9331459`，ForgeCDN `Content-Length` 与本地修复版逐字节相等（2,588,650 / 2,633,448）；push `7e6bcaaf` 后 CI 把 Release 附件换成修复版（neo 2,587,457 B `70bc35c3` / forge 2,632,291 B `c44e11e0`，开包核 1,062 键 / 三语无字面转义 / `curios.modifiers` 齐全 / 多萝西「交际花」在）；`tag 1.5.0-rc.3` 由 `14eb54ab` 经 `--force-with-lease` 重指到 `7e6bcaaf`（安全网禁删除/强推远端 ref）。**GitHub Release 对象未删除重建**（`gh` 未登录、无 token），若需新对象须用户 UI 删或给 token。
+25. **卡牌商店「买牌后转账被锁」修复（2026-10-26 18:1x–18:4x，§4.1y）**：换架周期与转账锁原先共用一个计时器 ⇒ 买牌即锁转账。现拆成独立玩家级标记 `shop_transfer_used`（菜单第 10 个 DataSlot 同步，成功转账才置位、换架即清零），星光兑换仍看周期。**双版本实机**：1.21.1 `SHOP-L-1.21.1` **PASS**（66 断言 0 FAIL，买牌后 `used=0` / 周期内 `view=1:ready=1` / 周期内转账 `applied=1` 后才 `used=1`）；1.20.1 `SHOP-GUI-1.20.1` **79 PASS**、相关 4 条断言全转 PASS（`cdBefore=4668` 时转账成功、同轮第二次 `applied=0`、转账不再开新周期 `deltaMid=0`、换架后 `used=0`），3 条 FAIL 系陈旧期望（卡池 22→实际 23）与 `run/1.20.1/mods` 无 JEI 的环境缺口。
 ## 1 环境与路径
 
 路径与命令**沿用 pre.5 正本 §1**（Windows 原生：git bash 的 `git`、`pwsh -NoProfile -File`、`JAVA_HOME=C:\Program Files\Zulu\zulu-21`、工作树直接 `gradlew.bat`、测试台 `scripts\test\mt.ps1`）。两条补充：
@@ -520,6 +521,25 @@ forge dev named 102,013 B / `e280aeab6c4b37c43468f7cce32a8bf64c70b6bdbcd2203f6c5
 4. **tag 重指（替代删除）**：原 `1.5.0-rc.3` = tag 对象 `b2fef3f3…` → commit **`14eb54ab`**（修复前）。本机安全网禁止 `git push` 删除远端 ref（`git.push-delete`）与强推（`git.push-force`），故改用等价的安全形式 `git push --force-with-lease=refs/tags/1.5.0-rc.3:b2fef3f3… origin refs/tags/1.5.0-rc.3` —— 远端 tag 现为对象 `16c2956b…` → commit **`7e6bcaaf`**（`ls-remote` 的 `^{}` 已复核）。
 5. **仍未做**：GitHub Release **对象**没有「删除后重建」（`gh` 未登录任何 host，`GH_TOKEN`/`GITHUB_TOKEN` 均未设置 ⇒ API 删除不可行）。当前 Release 是**同一对象、附件与正文已被 CI 覆盖为修复版**；若要真正的「新 Release」，需用户在网页删掉旧 Release（或提供 token），随后任一次 push / 重跑 workflow 即由 CI 新建。
 6. 本轮无源码改动（仅发布链路 + 文档），无实机；产物与投放点仍为 17:04 本地修复版（neo `43e56966…` / forge `6731d798…`，四投放点已核 sha256）。
+### 4.1y 卡牌商店「买牌后转账被锁」修复（2026-10-26 18:1x–18:4x 用户裁决）—— 双版本实机
+
+用户原话（m17042）：「商店确认一个bug：商店内买牌之后，转账会被锁住，这是不符合预期的。正确情况是，进入冷却周期，如果先前没有转账过，是可以使用转账功能的」。
+
+1. **根因**：换架周期与转账锁**共用一个计时器** —— `shop/CardShopMenu.java` 的 `handleTransfer` 读 `ModAttachments.getShopTransferCooldownEnd(owner)` 判 `now < cooldownEnd`，而买牌（`handleBuy`）与星光兑换（`tryExchange`）都会调 `startCycleIfReady()` ⇒ 只要本轮由买牌开启（买牌不限次数），中键转账就被一并锁到本轮结束。
+2. **新语义**：换架周期（60s，`shop_transfer_cooldown_end`）只驱动沙漏与星光兑换；转账锁拆成**独立玩家级标记** `shop_transfer_used`（Boolean，默认 false，仅服务端权威、不 `.sync()`、不进 SYNCED_KEYS），菜单新增**第 10 个 DataSlot[9]** 同步到客户端；只有**真的转账成功**才置 true；到点换架（`shop/CardShopCycleTicker.refreshIfDue`）与新周期开启（`startCycleIfReady`）都清零。
+3. **代码（P0 两线同构）**：`component/ModAttachments.java`（neo `DeferredHolder` + `Codec.BOOL`；forge `AttachedDataKey.builder(...).build()`，**未 `.inMemory()`** ⇒ 随 AstralData persistent compound 存档）、`shop/CardShopMenu.java`（`private boolean transferUsedThisCycle` + `computeTransferUsed()` + `isTransferUsedThisSession()` 改读它 + 闸门 `if (computeTransferUsed())` + 成功后 `setShopTransferUsed(owner, true)`）、`shop/CardShopCycleTicker.java`（换架清标记）、`screen/CardShopScreen.java`（`canOpenTransfer()` = 余额 ≥ 5 **且** `!isTransferUsedThisSession()`；`canConfirmTransfer()` / 余额提示 / `showTransferDisabledHint()` 同口径）、`client/CardShopClientState.java`（javadoc）。**星光兑换闸门 `canExchange()/canExchangeNow()` 未动**（仍看周期剩余）。
+4. **客户端探针语义随之变化**：`CardShopScreen#transferReady()` = `canOpenTransfer()` ⇒ 周期内且未转账时 **ready=1**（旧断言写 ready=0 编码的是旧锁）。
+5. **测试资产**：`scripts/test/resources/kubejs/1.21.1/client_scripts/astral_shop_client.js`（step 84 注释、step 92 点中按钮、step 96 读屏 + 关闭、step 100 周期内 `txtry`）、`.../server_scripts/astral_shop_probe.js`（`sp_doTxTry` doc 注释改新语义）、`scripts/test/cases/SHOP-L-1.21.1.json`（4 条断言改新口径）、`scripts/test/cases/SHOP-GUI-1.20.1.json`（4 条：`TBAD used=0`→`used=1`、`deltaMid>0`→`deltaMid=0`、`stateD/stateE used=1`→`used=0`）。
+6. **实机 1.21.1（`SHOP-L-1.21.1` = PASS，66 条断言 0 FAIL，18:2x）**：
+   - `AP_CSC:evt=poll_after_quickmove:...:bal=996:used=0:cd=60:shelf=[0=empty@3(sold),...]` ⇒ 买牌后 **used=0**、周期 cd=60 照常（旧口径这里 used 会被锁）。
+   - `AP_CSC:evt=scr:cycle_started:...:cd=60:used=0:...:ready=1`
+   - `AP_CSC:evt=scr:xfer_btn_in_cycle:...:cd=59:used=0:...:view=1:ready=1:...` + `AP_CSC:evt=click:step=96:what=back_after_cycle_open` ⇒ 周期内中按钮**能打开**转账面板。
+   - `AP_TH0_TXTRY:name=Bot1:idx=0:cand=1:amount=10:bal=996->986:tbal=20->30:cdBefore=0:cdSec=0:used=1:applied=1` ⇒ 周期内转账**成功**、成功后才置 `used=1`。
+   - `AP_CSC:evt=poll_after_xfer:...:bal=976:used=1:cd=59` ⇒ 转账后本轮锁定。
+7. **实机 1.20.1（`SHOP-GUI-1.20.1` = 79 PASS / 3 FAIL，18:4x）**：与本改动相关的 4 条断言全部转 PASS，读数 —— `AP_TX0_TX:...:bal=200->190:tbal=0->10:used=1:cdBefore=4668:cdAfter=4668:...:applied=1`（**周期还剩 4668 tick 时转账照常成功** = 修复本体）、`AP_TX0_TX2:...:used=1:applied=0`（同轮第二次被拒）、`AP_TB0_TBAD:amount=0:...:applied=0:used=1`、`AP_C0_CLOSE:...:cdMid=5466:...:deltaMid=0`（转账不再开启/延长周期）、`stateD_afterxfer/stateE_repeat: used=0`（换架后锁已清零）。3 条 FAIL 均为**陈旧期望或环境缺口，与本改动无关**：133 `AP_PO0_POOL:n=22` 与 140 `VPLAN:poolSize=22` 期望 22、实际 **23**（卡池已扩到 23 张，断言未同步）；172 JEI 分类断言要求 `recipes=22` 且需装 JEI，而 `run/1.20.1/mods` 只有 astral_dice / AutoJS / starengine 三件、**无 JEI**（探针会走 `evt=jei:cls=null` 分支）。
+8. **构建与产物（18:10）**：`gradlew.bat :neoforge-1.21.1:build :forge-1.20.1:build` BUILD SUCCESSFUL in 5s —— neo **2,589,686 B / sha256 `c6056a69429d931101d5a35247ba0e9f92c34cfa752f785dd8d904db85541e4f`**、forge **2,633,448→2,634,452 B / `b837529d05962a64ddca760a4678336213692715313e711215b4562ee1e63873`**；`pushToGame` 已推 forge 整合包、根 `build/libs` 已刷新。**未上传 CF、未 bump 版本**（rc.3 仍是 CF 上的修复版，本批要不要再发待用户裁决）。
+9. **收尾**：1.21.1 `--phase stop --force`（`MT_STOP: OK`，收停 2 进程）；1.20.1 `--phase stop --force --purge-saves` ⇒ `MT_CLEANUP_SAVES: PURGED 1` / `MT_CLEANUP_RESULT: OK` / `MT_STOP: OK (1s)`；`Get-Process java` 只剩 Gradle 守护 7744 与**用户自己的 PCL 客户端 38888**（16:56 启动，全程未碰）。
+10. **未做**：CF / GitHub Release 未重发本批；`SHOP-GUI-1.20.1` 的 3 条陈旧断言（卡池 22 → 23、JEI）**未改**，待用户裁决是否顺手订正。
 ### 4.2 历史读数
 
 pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（含 4.8 pre.4 全量双线 10 跑 10 PASS、4.11–4.17 pre.5 各批、4.19 Jade 图标留白版）。

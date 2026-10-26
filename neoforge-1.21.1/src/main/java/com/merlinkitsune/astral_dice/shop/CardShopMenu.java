@@ -128,7 +128,8 @@ public class CardShopMenu extends AbstractContainerMenu {
 
     /**
      * DataSlot[0..5] = 货架格显示码；DataSlot[6] = 本轮剩余秒数（0 = 就绪）；
-     * DataSlot[7] = 大酬宾窗口是否激活；DataSlot[8] = 本轮 60 秒轮询是否进行中（= 转账锁）。
+     * DataSlot[7] = 大酬宾窗口是否激活；DataSlot[8] = 本轮换架周期是否进行中（**不是**转账锁）；
+     * DataSlot[9] = 本轮是否**已转账**（= 转账锁；2026-10-26 用户裁决：买牌 / 兑换不锁转账）。
      */
 
     private final Player player;
@@ -146,12 +147,19 @@ public class CardShopMenu extends AbstractContainerMenu {
     private boolean promotionActive = false;
     private List<UUID> candidateIds = List.of();
     /**
-     * 客户端读到的「本轮 60 秒轮询是否进行中」（服务端真值 = 附件终点 &gt; 当前 gameTime，
-     * 由 {@link #computeCycleRunning()} 现算并经 DataSlot[8] 同步）⇒ 中按钮立刻灰化、二级视图自动退回。
-     * 2026-10-09 用户裁决：语义由「本店会话是否用过转账」改写为「本轮轮询进行中」——
-     * 购买成功同样开启本轮（买牌不限次数，但**一轮只能用一次转账**）。
+     * 客户端读到的「本轮换架周期是否进行中」（服务端真值 = 附件终点 &gt; 当前 gameTime，
+     * 由 {@link #computeCycleRunning()} 现算并经 DataSlot[8] 同步）——**只**驱动沙漏与星光兑换闸门；
+     * 2026-10-26 用户裁决起**不再**锁转账（买牌 / 兑换只开周期，转账锁见 transferUsedThisCycle）。
      */
     private boolean cycleRunning = false;
+
+    /**
+     * 客户端读到的「本轮是否已经转账过」（= 转账锁；服务端真值 = 周期进行中 &amp;&amp; 附件
+     * {@code shop_transfer_used}，由 {@link #computeTransferUsed()} 现算并经 DataSlot[9] 同步）。
+     * 2026-10-26 用户裁决：周期由买牌 / 兑换 / 转账任一路径开启，但只有**本轮真的转过账**才锁转账 ⇒
+     * 买牌之后仍可转账（先前没转过就还能用）；转账成功后本轮剩余时间内锁定，到点换架自动解锁。
+     */
+    private boolean transferUsedThisCycle = false;
 
     /** 2 参构造 = {@link ModMenuTypes#CARD_SHOP} 的工厂入口（客户端实例的 viaActiveSkill 无意义：initShelf 只在服务端执行） */
     public CardShopMenu(int containerId, Inventory playerInventory) {
@@ -222,8 +230,8 @@ public class CardShopMenu extends AbstractContainerMenu {
                 promotionActive = value != 0;
             }
         });
-        // 第 9 个 DataSlot：本轮 60 秒轮询是否进行中（2026-10-09 用户裁决改写；客户端靠它
-        // 在成功转账/购买后把中按钮画成不可用态、让二级视图自动退回主界面；0 = 就绪、1 = 进行中）
+        // 第 9 个 DataSlot：本轮换架周期是否进行中（0 = 就绪、1 = 进行中）——只驱动沙漏与星光兑换闸门；
+        // 2026-10-26 起**不再**代表转账锁。
         addDataSlot(new DataSlot() {
             @Override
             public int get() {
@@ -233,6 +241,18 @@ public class CardShopMenu extends AbstractContainerMenu {
             @Override
             public void set(int value) {
                 cycleRunning = value != 0;
+            }
+        });
+        // 第 10 个 DataSlot：本轮是否已经转账过（= 转账锁；0 = 还没转过（可转）、1 = 已转（本轮剩余时间锁定））
+        addDataSlot(new DataSlot() {
+            @Override
+            public int get() {
+                return computeTransferUsed() ? 1 : 0;
+            }
+
+            @Override
+            public void set(int value) {
+                transferUsedThisCycle = value != 0;
             }
         });
 
@@ -594,8 +614,9 @@ public class CardShopMenu extends AbstractContainerMenu {
 
     /**
      * 确认转账（服务端二次校验：菜单归属 / 本轮轮询状态 / 目标有效性 / 余额）。
-     * 2026-10-09 用户裁决 §2.4：**一轮 60 秒只能用一次转账** —— 由「本轮进行中」统一挡住
-     * （进行中 ⇒ {@code card_shop_transfer_cooling} 提示，不再单独维护「本店会话位」）。
+     * 2026-10-26 用户裁决：转账锁**只**看「本轮是否已经转账过」——买牌 / 星光兑换只开换架周期，
+     * 不消耗本次转账额度（先前没转过就还能转）；真正转过一次后本轮剩余时间锁定，到点换架自动解锁。
+     * （2026-10-09 原口径「本轮进行中就挡」已作废。）
      *
      * <p>成功后按 D6 给**转账者自己**的当前货架强制一张降价牌（顺延到第一张未降价的未售出格），
      * 并双端刷新星币余额显示。
@@ -607,11 +628,10 @@ public class CardShopMenu extends AbstractContainerMenu {
         if (amount < MIN_TRANSFER || amount > MAX_TRANSFER) {
             return;
         }
-        long now = owner.level().getGameTime();
-        long cooldownEnd = ModAttachments.getShopTransferCooldownEnd(owner);
-        if (now < cooldownEnd) {
-            actionBar(owner, ChatFormatting.RED, "msg.astral_dice.card_shop_transfer_cooling",
-                    (int) ((cooldownEnd - now + 19L) / 20L));
+        // 2026-10-26 用户裁决：转账锁只看「本轮是否已经转账过」——买牌 / 星光兑换只开换架周期，
+        // 不消耗本次转账额度（先前没转就还能转）；周期不在进行中时附件标记视同已清。
+        if (computeTransferUsed()) {
+            actionBar(owner, ChatFormatting.RED, "msg.astral_dice.card_shop_transfer_used");
             return;
         }
         if (targetIndex < 0 || targetIndex >= candidateIds.size()) {
@@ -633,8 +653,10 @@ public class CardShopMenu extends AbstractContainerMenu {
         // 2026-10-21 用户裁决:转账**成功**即播放钱包音效(wallet_deposit = 「钱包存入」语义)。
         // 失败 / 余额不足在上方 early-return,不会响 ⇒ 天然只走成功路径。
         SoundPlayback.playTo(owner, ModSounds.WALLET_DEPOSIT.get());
-        // 成功 ⇒ 开启本轮 60 秒轮询（此刻必为就绪态：上面已挡掉进行中）；本轮内不可再转账。
+        // 成功 ⇒ 开启本轮 60 秒轮询（此刻必为就绪态：上面只挡「本轮已转账」）；本轮内不可再转账。
         startCycleIfReady();
+        // 本轮额度用掉：周期进行中 ⇒ 本轮剩余时间内转账锁定，到点换架（CardShopCycleTicker）自动清零。
+        ModAttachments.setShopTransferUsed(owner, true);
         forceDiscountOnOwnShelf();
         // ATM 机筹码(2026-10-08 重写):**转账发起者**装备时,转账双方各额外获得 1 星光与 2 星币
         if (AtmChipItem.isEquipped(owner)) {
@@ -770,17 +792,18 @@ public class CardShopMenu extends AbstractContainerMenu {
         return transferCooldownSeconds;
     }
 
-    /** 本轮 60 秒轮询是否进行中（客户端读 DataSlot[8]）：为 true ⇒ 中按钮不可用、二级视图自动退回 */
+    /** 本轮换架周期是否进行中（客户端读 DataSlot[8]）：只驱动沙漏 / 星光兑换闸门，**不**锁转账 */
     public boolean isCycleRunning() {
         return computeCycleRunning();
     }
 
     /**
-     * 兼容别名：1.21.1 侧 KubeJS 探针（{@code astral_shop_probe.js} / {@code astral_shop_client.js}）
-     * 与屏幕层仍按旧名调用；语义已改写为 {@link #isCycleRunning()}（本轮 60 秒轮询进行中）。
+     * 兼容别名：KubeJS 探针（{@code astral_shop_probe.js} / {@code astral_shop_client.js}）与屏幕层
+     * 仍按旧名调用；语义 = 「本轮是否已经转账过」（= 转账锁，见 {@link #computeTransferUsed()}）。
+     * 2026-10-26 起**不再**等价于「本轮周期进行中」——买牌之后该值仍为 false。
      */
     public boolean isTransferUsedThisSession() {
-        return isCycleRunning();
+        return computeTransferUsed();
     }
 
     /** 「商店大酬宾」窗口是否激活（客户端读 DataSlot[7]；标题带 8t 流光仅在此为 true 时播放） */
@@ -812,6 +835,18 @@ public class CardShopMenu extends AbstractContainerMenu {
     }
 
     /**
+     * 本轮是否**已经转账过**（转账锁的唯一真值）：客户端读 DataSlot[9] 同步值；服务端 =
+     * 周期进行中 &amp;&amp; 附件 {@code shop_transfer_used}。周期不在进行中 ⇒ 一律视为没转过账
+     * （到点换架时附件会被清零，这一层兜底让陈旧标记永远不会误锁）。
+     */
+    private boolean computeTransferUsed() {
+        if (player.level().isClientSide()) {
+            return transferUsedThisCycle;
+        }
+        return computeCycleRunning() && ModAttachments.isShopTransferUsed(player);
+    }
+
+    /**
      * 就绪态下开启新一轮 60 秒轮询（购买成功 / 转账成功调用）；**进行中不重开**。
      * 真值写在玩家附件 {@code shop_transfer_cooldown_end} 上 ⇒ 客户端无法伪造、掉线后依然计时。
      */
@@ -824,6 +859,9 @@ public class CardShopMenu extends AbstractContainerMenu {
             return;
         }
         ModAttachments.setShopTransferCooldownEnd(player, now + TRANSFER_COOLDOWN_SECONDS * 20L);
+        // 新一轮 ⇒ 转账额度恢复：清掉上一轮（或掉线前）残留的「已转账」标记，
+        // 否则新一轮一开就被自己的旧标记锁住（2026-10-26 用户裁决后转账锁与周期互相独立）。
+        ModAttachments.setShopTransferUsed(player, false);
     }
 
 
