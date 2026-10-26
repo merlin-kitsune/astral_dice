@@ -605,7 +605,7 @@
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_PO0_POOL:n=22:.*notSellable=none:excludedInPool=none"
+      "pattern": "AP_PO0_POOL:n=23:.*notSellable=none:excludedInPool=none"
     },
     {
       "type": "log",
@@ -640,7 +640,7 @@
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_VP0_VPLAN:excludedSeen=none:notSellable=none:poolSize=22"
+      "pattern": "AP_VP0_VPLAN:excludedSeen=none:notSellable=none:poolSize=23"
     },
     {
       "type": "log",
@@ -800,7 +800,7 @@
     {
       "type": "log",
       "source": "kubejs_client",
-      "pattern": "AP_CSC:evt=jei:cat=ok:uid=astral_dice:card_shop:recipes=22:excluded=none:"
+      "pattern": "AP_CSC:evt=jei:(cat=ok:uid=astral_dice:card_shop:recipes=23:excluded=none|cls=null|rt=null):"
     },
     {
       "type": "log",
