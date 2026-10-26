@@ -722,6 +722,8 @@
   the final damage proportionally), attack speed no longer affecting dice-battle attack power, the extra damage channel, the
   four systems (Starlight / Healing / Marks / Charge), the dodge and counterattack rules, and the damage number colours
   (red = attack power and extra damage, green = spell and skill damage). All three languages.
+- **Sign English / Japanese names now use the official wiki character names instead of machine-translated Chinese titles** (2026-10-26, both P0 lines): sign ids were always Astral Party character names, but the English names were machine-translated job titles (Secret Detective Sign / Cult Leader Sign / Bartender Sign / Sister Sign) and the Japanese names mixed in Chinese titles (超天酱 / 地雷女 / 怪力乱神 / シスター / バーテンダー) ⇒ they now use the official names (`Bonnie Sign` / `Jill Sign` / … and `ボニーのスタンド` / `ジルのスタンド` / …; 58 English and 23 Japanese occurrences per line, including prose references in tooltips, the guide and chat messages). The Chinese side (job-title style such as 秘密侦探立牌) is unchanged. Authoritative table `tools/sign_display_names.json`, puller `tools/sign_names_from_wiki.py`, gate `tools/verify_sign_display_names.py` (rule: `docs/agent/AGENTS-full.md`〈立牌 / 物品英日命名规则〉).
+
 
 
 #### Input & UI

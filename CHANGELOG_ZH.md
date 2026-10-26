@@ -580,6 +580,8 @@
   骰战伤害链（暴击只作用于基础段；武器附魔、骰点与卡牌都不吃暴击；受击方保护与抗性按比例减免）、攻击速度不再影响骰战攻击力、
   额外加伤通道、四大体系（星光 / 治愈 / 标记 / 充能）、闪避与反击口径，以及伤害跳字配色（红 = 攻击力与额外加伤，
   绿 = 法术与技能伤害）。中 / 英 / 日三语同步。
+- **立牌英文 / 日文名改为官方 wiki 角色人名，不再中文职称机翻**（2026-10-26，P0 两线）：立牌 id 本就取自 Astral Party 角色名，英文名却曾是职称机翻（Secret Detective Sign / Cult Leader Sign / Bartender Sign / Sister Sign），日文名也混进中文职称（超天酱 / 地雷女 / 怪力乱神 / シスター / バーテンダー）⇒ 现统一为官方译名（`Bonnie Sign` / `Jill Sign` / … 与 `ボニーのスタンド` / `ジルのスタンド` / …；英文每线 58 处、日文每线 23 处，含 tooltip / 手册 / 提示文案里的散文指代）。中文侧（「秘密侦探立牌」等职称式）不变。命名权威表 `tools/sign_display_names.json`、拉取脚本 `tools/sign_names_from_wiki.py`、门禁 `tools/verify_sign_display_names.py`（规则见 `docs/agent/AGENTS-full.md`〈立牌 / 物品英日命名规则〉）。
+
 
 #### 输入与界面
 

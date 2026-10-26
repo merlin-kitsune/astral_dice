@@ -1,0 +1,268 @@
+{
+  "schema": 1,
+  "updated": "2026-10-26",
+  "rule": "EN = \"<wiki 英文页名> Sign\"；JA = \"<wiki nameJapanese>のスタンド\"；wiki 无条目则用 id 人名，禁止机翻职称。zh 侧保持游戏内职称式命名。",
+  "sources": {
+    "en_and_ja": "https://astralparty.miraheze.org/w/api.php?action=parse&page=<Title>&prop=wikitext&format=json&formatversion=2 （title = EN 名；CharPlayable.nameJapanese = JA 名）",
+    "zh_crosscheck": "https://wiki.biligame.com/starengine/",
+    "gate": "python tools/verify_sign_display_names.py"
+  },
+  "signs": [
+    {
+      "id": "blank",
+      "zh": "空白立牌",
+      "en": "Blank Sign",
+      "ja": "空白のスタンド",
+      "wiki_page": "",
+      "note": "通用基材，非角色"
+    },
+    {
+      "id": "bonnie",
+      "zh": "秘密侦探立牌",
+      "en": "Bonnie Sign",
+      "ja": "ボニーのスタンド",
+      "wiki_page": "Bonnie",
+      "note": ""
+    },
+    {
+      "id": "fanny",
+      "zh": "大侦探立牌",
+      "en": "Fanny Sign",
+      "ja": "ファニィのスタンド",
+      "wiki_page": "Fanny",
+      "note": ""
+    },
+    {
+      "id": "fen",
+      "zh": "大当家立牌",
+      "en": "Fen Sign",
+      "ja": "ヒメのスタンド",
+      "wiki_page": "Fen",
+      "note": ""
+    },
+    {
+      "id": "haiqing",
+      "zh": "占星师立牌",
+      "en": "HaiQing Sign",
+      "ja": "カイセイのスタンド",
+      "wiki_page": "HaiQing",
+      "note": ""
+    },
+    {
+      "id": "jasmine",
+      "zh": "扫地机立牌",
+      "en": "Jasmine Sign",
+      "ja": "ジャスミンのスタンド",
+      "wiki_page": "Jasmine",
+      "note": ""
+    },
+    {
+      "id": "komachi",
+      "zh": "忍者立牌",
+      "en": "Komachi Sign",
+      "ja": "コマチのスタンド",
+      "wiki_page": "Komachi",
+      "note": ""
+    },
+    {
+      "id": "lulu",
+      "zh": "史莱姆立牌",
+      "en": "Lulu Sign",
+      "ja": "ルルのスタンド",
+      "wiki_page": "Lulu",
+      "note": ""
+    },
+    {
+      "id": "mimi",
+      "zh": "看板娘立牌",
+      "en": "Mimi Sign",
+      "ja": "ミミのスタンド",
+      "wiki_page": "Mimi",
+      "note": ""
+    },
+    {
+      "id": "misaki",
+      "zh": "护法立牌",
+      "en": "Misaki Sign",
+      "ja": "ミサキのスタンド",
+      "wiki_page": "Misaki",
+      "note": ""
+    },
+    {
+      "id": "nancy_lu",
+      "zh": "骇客立牌",
+      "en": "Nancy Lu Sign",
+      "ja": "ナンシー・ローのスタンド",
+      "wiki_page": "Nancy Lu",
+      "note": ""
+    },
+    {
+      "id": "moses",
+      "zh": "枪匠立牌",
+      "en": "Moses Sign",
+      "ja": "モーゼスのスタンド",
+      "wiki_page": "Moses",
+      "note": "wiki 的 nameJapanese 为空；日服写法经 wikiwiki/gamerch 检索确认"
+    },
+    {
+      "id": "padman",
+      "zh": "上班族立牌",
+      "en": "Padman Sign",
+      "ja": "パッドマンのスタンド",
+      "wiki_page": "Padman",
+      "note": ""
+    },
+    {
+      "id": "papara",
+      "zh": "吸血鬼立牌",
+      "en": "Papara Sign",
+      "ja": "パパラのスタンド",
+      "wiki_page": "Papara",
+      "note": ""
+    },
+    {
+      "id": "parunan",
+      "zh": "经商立牌",
+      "en": "Parunan Sign",
+      "ja": "パルナンのスタンド",
+      "wiki_page": "Parunan",
+      "note": ""
+    },
+    {
+      "id": "rin",
+      "zh": "调查员立牌",
+      "en": "Rin Sign",
+      "ja": "リンのスタンド",
+      "wiki_page": "Rin",
+      "note": ""
+    },
+    {
+      "id": "pandaman",
+      "zh": "肉弹战车立牌",
+      "en": "Pandaman Sign",
+      "ja": "パンダマンのスタンド",
+      "wiki_page": "Pandaman",
+      "note": ""
+    },
+    {
+      "id": "ren",
+      "zh": "游戏大师立牌",
+      "en": "Ren Sign",
+      "ja": "レンのスタンド",
+      "wiki_page": "Ren",
+      "note": ""
+    },
+    {
+      "id": "zhao",
+      "zh": "风水师立牌",
+      "en": "Zhao Sign",
+      "ja": "ユメのスタンド",
+      "wiki_page": "Zhao",
+      "note": ""
+    },
+    {
+      "id": "teru",
+      "zh": "教主立牌",
+      "en": "Teru Sign",
+      "ja": "テルのスタンド",
+      "wiki_page": "Teru",
+      "note": ""
+    },
+    {
+      "id": "nardis",
+      "zh": "绿洲女王立牌",
+      "en": "Nardis Sign",
+      "ja": "ナーディスのスタンド",
+      "wiki_page": "Nardis",
+      "note": ""
+    },
+    {
+      "id": "mamushi",
+      "zh": "蛟龙立牌",
+      "en": "Mamushi Sign",
+      "ja": "真夢梓のスタンド",
+      "wiki_page": "Mamushi",
+      "note": ""
+    },
+    {
+      "id": "sherry",
+      "zh": "怪力侦探立牌",
+      "en": "Sherry Sign",
+      "ja": "橘シェリーのスタンド",
+      "wiki_page": "Sherry",
+      "note": ""
+    },
+    {
+      "id": "kangel",
+      "zh": "超天酱立牌",
+      "en": "KAngel Sign",
+      "ja": "超てんちゃんのスタンド",
+      "wiki_page": "KAngel",
+      "note": ""
+    },
+    {
+      "id": "ame",
+      "zh": "地雷女立牌",
+      "en": "Ame Sign",
+      "ja": "あめちゃんのスタンド",
+      "wiki_page": "Ame",
+      "note": ""
+    },
+    {
+      "id": "lingling",
+      "zh": "怪力乱神立牌",
+      "en": "LingLing Sign",
+      "ja": "リンリンのスタンド",
+      "wiki_page": "LingLing",
+      "note": ""
+    },
+    {
+      "id": "hanna",
+      "zh": "人偶师立牌",
+      "en": "Hanna Sign",
+      "ja": "遠野ハンナのスタンド",
+      "wiki_page": "Hanna",
+      "note": ""
+    },
+    {
+      "id": "megas",
+      "zh": "机械师立牌",
+      "en": "Megas Sign",
+      "ja": "メガスのスタンド",
+      "wiki_page": "Megas",
+      "note": ""
+    },
+    {
+      "id": "deepseek",
+      "zh": "大肥鱼立牌",
+      "en": "Big Fat Fish Sign",
+      "ja": "大食い魚のスタンド",
+      "wiki_page": "",
+      "note": "本模组自制形象（大肥鱼），wiki 无条目 ⇒ 保留既有专名，不按 id 套译"
+    },
+    {
+      "id": "alana",
+      "zh": "修女立牌",
+      "en": "Alana Sign",
+      "ja": "アランナのスタンド",
+      "wiki_page": "Alana",
+      "note": ""
+    },
+    {
+      "id": "dorothy",
+      "zh": "多萝西立牌",
+      "en": "Dorothy Sign",
+      "ja": "ドロシーのスタンド",
+      "wiki_page": "Dorothy",
+      "note": ""
+    },
+    {
+      "id": "jill",
+      "zh": "调酒师立牌",
+      "en": "Jill Sign",
+      "ja": "ジルのスタンド",
+      "wiki_page": "Jill",
+      "note": ""
+    }
+  ]
+}

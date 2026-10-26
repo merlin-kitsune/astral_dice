@@ -4083,3 +4083,76 @@ python docs/agent/verify-split.py   # 四项 [OK]
 - `tools/curseforge_upload.py` 的 `--project-id` **只改目标项目、不改关系来源**：`find_line()` 只按 loader+MC 匹配 `curseforge.json` 的线 ⇒ 上传库 jar 会命中 astral 的线并把 curios/mixinbooster 挂到库文件上，**库/前置类产物一律带 `--no-relations`**。
 - `run_code` 的 120s 程序级 deadline 会掐断 `git push`（本轮首次 push 被中断，实际已推完，重跑得 `Everything up-to-date` 才发现）⇒ 推送/批量上传必须同时给 `run_code` 的 `timeoutMs`（≥540000）。
 - CF 判成功只看 Upload API 返回的 fileID；cfwidget 与公开列表会滞后，勿据此判失败。
+
+## 🎌 立牌 / 物品英日命名规则（2026-10-26 用户裁决）
+
+### 起因
+立牌 id 全部取自 Astral Party 的角色名（`bonnie` / `jill` / `dorothy` …），但英文名一度被写成**中文职称的机翻**（Secret Detective Sign / Cult Leader Sign / Bartender Sign / Sister Sign），日文名也混入中文职称（超天酱 / 地雷女 / 怪力乱神 / シスター / バーテンダー），与官方译名脱节。⇒ 固化本规则，并配权威表 + 门禁脚本，杜绝下次再「乱套」。
+
+### 规则（改任何立牌 / 角色相关英日文案前必须遵守）
+1. **先查 wiki，不许机翻**：EN / JA 名字一律取官方 wiki 的角色名，不得把中文职称（秘密侦探 / 大当家 / 教主 / 调酒师 / 修女 …）翻成英文或日文。
+2. **EN = `<wiki 英文页名> Sign`**：miraheze 页面标题即英文名（`Jill` ⇒ `Jill Sign`、`Nancy Lu` ⇒ `Nancy Lu Sign`）。
+3. **JA = `<wiki nameJapanese>のスタンド`**：模板 `{{CharPlayable|nameJapanese = ジル}}` 给日文名（⇒ `ジルのスタンド`）。
+4. **wiki 无条目 ⇒ 用 id 的人名，禁止机翻职称**；本模组自制形象（`deepseek` = 大肥鱼）保留既有专名 `Big Fat Fish Sign` / `大食い魚のスタンド`，不套角色规则。
+5. **zh 侧不动**：中文保持游戏内职称式（秘密侦探立牌 / 教主立牌 / 调酒师立牌 …），本规则只约束 EN / JA。
+6. **改名要改全部引用**：同一角色名会被 `item.*` / `tooltip.*` / `msg.*` / `astral_dice.guide.entry.*` 复述，只改 item key 会留半截；散文里的指代（`the Astrologer gains`、`怪力乱神が…`）同样要换成人名。
+7. **既有专名不动**：`Ninja Star`（筹码）、`Ninja Combo` / `Healing Slime` / `Legendary Merchant`（技能名）、泛指 `Boss`（敌人）不属于立牌命名，不要顺手改。
+
+### 权威来源与拉取方法
+- **EN + JA 一次拿全**：`https://astralparty.miraheze.org/w/api.php?action=parse&page=<英文页名>&prop=wikitext&format=json&formatversion=2` ⇒ `parse.title` = EN 名、wikitext 里的 `nameJapanese` = JA 名（`nameChinese` 可交叉校核）。
+- **角色页清单**：`action=query&prop=links&titles=Characters`。
+- **中文校核**：`https://wiki.biligame.com/starengine/`（星引擎 Party 中文 wiki）——⚠️ 非首页请求会返回反爬 HTML，只有 `api.php?action=query&list=search` 偶尔可用，**不能**当自动化数据源。
+- **脚本（首选，免手抄）**：
+  ```
+  python tools/sign_names_from_wiki.py                 # 校验权威表与 wiki 是否一致（漂移 ⇒ exit 1）
+  python tools/sign_names_from_wiki.py --write         # 有漂移则写回权威表
+  python tools/sign_names_from_wiki.py --proxy http://127.0.0.1:7897   # 需要代理时
+  ```
+- **权威表**：`tools/sign_display_names.json`（32 条，字段 `id` / `zh` / `en` / `ja` / `wiki_page` / `note`）——**这是本仓立牌命名的唯一事实源**，改名字先改表再改 lang。
+
+### 门禁
+```
+python tools/verify_sign_display_names.py      # 期望 GATE: PASS
+```
+三项判据：① P0 两线（`neoforge-1.21.1` / `forge-1.20.1`）的 `item.astral_dice.<id>_sign` 必须与权威表**逐字一致**（zh 只读，`--strict-zh` 才判失败）；② EN 任意文案不得再出现 `<旧职称>(?:'s)? ?[Ss]ign`（20 个旧职称，含 Secret Detective / Boss / Cult Leader / Bartender / Sister …）；③ JA 不得含 `超天酱` / `地雷女` / `怪力乱神`。表与 lang 的立牌 id 集合也必须一致。
+
+### 对照表（2026-10-26 实测：连 wiki 30/30 一致，2 条 wiki 无条目）
+
+| id | zh（游戏内显示，保持职称式） | EN | JA | wiki 页面 / 备注 
+|---|---|---|---|---
+| `blank` | 空白立牌 | Blank Sign | 空白のスタンド | （非角色，通用基材） 
+| `bonnie` | 秘密侦探立牌 | Bonnie Sign | ボニーのスタンド | Bonnie 
+| `fanny` | 大侦探立牌 | Fanny Sign | ファニィのスタンド | Fanny 
+| `fen` | 大当家立牌 | Fen Sign | ヒメのスタンド | Fen 
+| `haiqing` | 占星师立牌 | HaiQing Sign | カイセイのスタンド | HaiQing 
+| `jasmine` | 扫地机立牌 | Jasmine Sign | ジャスミンのスタンド | Jasmine 
+| `komachi` | 忍者立牌 | Komachi Sign | コマチのスタンド | Komachi 
+| `lulu` | 史莱姆立牌 | Lulu Sign | ルルのスタンド | Lulu 
+| `mimi` | 看板娘立牌 | Mimi Sign | ミミのスタンド | Mimi 
+| `misaki` | 护法立牌 | Misaki Sign | ミサキのスタンド | Misaki 
+| `nancy_lu` | 骇客立牌 | Nancy Lu Sign | ナンシー・ローのスタンド | Nancy Lu 
+| `moses` | 枪匠立牌 | Moses Sign | モーゼスのスタンド | Moses（wiki nameJapanese 为空 ⇒ 手填，日服 モーゼス） 
+| `padman` | 上班族立牌 | Padman Sign | パッドマンのスタンド | Padman 
+| `papara` | 吸血鬼立牌 | Papara Sign | パパラのスタンド | Papara 
+| `parunan` | 经商立牌 | Parunan Sign | パルナンのスタンド | Parunan 
+| `rin` | 调查员立牌 | Rin Sign | リンのスタンド | Rin 
+| `pandaman` | 肉弹战车立牌 | Pandaman Sign | パンダマンのスタンド | Pandaman 
+| `ren` | 游戏大师立牌 | Ren Sign | レンのスタンド | Ren 
+| `zhao` | 风水师立牌 | Zhao Sign | ユメのスタンド | Zhao 
+| `teru` | 教主立牌 | Teru Sign | テルのスタンド | Teru 
+| `nardis` | 绿洲女王立牌 | Nardis Sign | ナーディスのスタンド | Nardis 
+| `mamushi` | 蛟龙立牌 | Mamushi Sign | 真夢梓のスタンド | Mamushi 
+| `sherry` | 怪力侦探立牌 | Sherry Sign | 橘シェリーのスタンド | Sherry 
+| `kangel` | 超天酱立牌 | KAngel Sign | 超てんちゃんのスタンド | KAngel 
+| `ame` | 地雷女立牌 | Ame Sign | あめちゃんのスタンド | Ame 
+| `lingling` | 怪力乱神立牌 | LingLing Sign | リンリンのスタンド | LingLing 
+| `hanna` | 人偶师立牌 | Hanna Sign | 遠野ハンナのスタンド | Hanna 
+| `megas` | 机械师立牌 | Megas Sign | メガスのスタンド | Megas 
+| `deepseek` | 大肥鱼立牌 | Big Fat Fish Sign | 大食い魚のスタンド | （本模组自制形象，wiki 无条目 ⇒ 保留既有专名，不按 id 套译） 
+| `alana` | 修女立牌 | Alana Sign | アランナのスタンド | Alana 
+| `dorothy` | 多萝西立牌 | Dorothy Sign | ドロシーのスタンド | Dorothy 
+| `jill` | 调酒师立牌 | Jill Sign | ジルのスタンド | Jill |
+
+### 沿革
+- 2026-10-26：本规则成文；EN 每线改 58 处、JA 每线改 23 处（含 2 处「怪力乱神」散句），zh 零改动；新增 `tools/sign_display_names.json` / `tools/sign_names_from_wiki.py` / `tools/verify_sign_display_names.py`。
+- 历史遗留：`CHANGELOG.md` 里 57 行含旧职称名属**历史记录**，按「只追加不改旧条」保留，另加新条目说明改名。
