@@ -22,6 +22,8 @@
 14. **玩家更新日志（1.3.7→1.5.0 全量）**：新建 `release/1.5.0-rc.1/PLAYER_CHANGELOG_ZH.md`（218 行 / 24,201 B）+ `PLAYER_CHANGELOG.md`（242 行 / 23,492 B），**全部 CRLF、裸 LF 0**；CF 本体两文件即用英文版（23,134 字符）作 `--changelog`。
 
 15. **`1.5.0-rc.2` 双版本实机 PASS（2026-10-25 21:2x–21:3x，§4.1o）**：【交际花】在 1.21.1 / 1.20.1 双线实测成立 —— 队友 ATK **1→2** 且拿到效果（`dur=1200` / `amp=0` / 可见）、重复获得**只刷时长不叠层**、主动窗口结束后队友效果**不回收**（`windowEnd=0` 时队友仍余 675t）、施法者自身 `dorothy_bond_attack` 按窗口 +1（窗口结束归 0）；**节流确已删除**（同一窗口内第二个队友 40 tick 内即入账，旧 10 秒节流会挡 200t）；客户端效果名 = **交际花**、图标 448 B。构建 `BUILD SUCCESSFUL in 13s`，四投放点均为 rc.2 且库成对、jar 内 `version=1.5.0-rc.2+<后缀>` / `META-INF/jarjar/`=0 / `DorothySocialiteEffect.class` 与图标各 1。
+
+16. **`1.5.0-rc.2` 已上传 CurseForge（2026-10-26 11:4x，§4.1p）**：本体 P0 两线 **beta** 渠道 —— neo `fileID=9329558` / forge `9329560`，均 `HTTP 200` 且随上传带 relations；次源判据 = ForgeCDN `HEAD` 200 且 `Content-Length` 与本地 jar 逐字节相等（2,589,502 / 2,634,295）。cfwidget 镜像仍滞后（38 文件、无 rc.2），不作为失败依据。
 ## 1 环境与路径
 
 路径与命令**沿用 pre.5 正本 §1**（Windows 原生：git bash 的 `git`、`pwsh -NoProfile -File`、`JAVA_HOME=C:\Program Files\Zulu\zulu-21`、工作树直接 `gradlew.bat`、测试台 `scripts\test\mt.ps1`）。两条补充：
@@ -408,6 +410,16 @@ forge dev named 102,013 B / `e280aeab6c4b37c43468f7cce32a8bf64c70b6bdbcd2203f6c5
 
 - 收尾：1.21.1 `--phase stop --force` ⇒ `MT_STOP: OK (1s) — 收停完成，无本流程残留进程`；1.20.1 同（`已收停 2 个本流程进程`、`MT_STOP: OK (1s)`）；`Get-Process java` 仅剩 Gradle 守护（pid 1760 / 8548）。
 - **未覆盖（如实登记）**：① 真实按键施放（本轮用附件模拟窗口，未按键走 `BaseSignItem` 主动链路）；② 玩家**死亡 / 重登**后队友效果与自身加成是否按预期清空（瞬态效果默认随死亡清除，未实测）；③ 同一窗口内反复进出（「每人每窗口一次」已由 `Bot2` 一处证实，进出重入未逐帧验）；④ 视觉截图（本轮以运行时读数 + 客户端 `getDisplayName()` 为准）。
+
+### 4.1p `1.5.0-rc.2` 上传 CurseForge（2026-10-26 11:3x–11:5x）—— 两线全 `HTTP 200`
+
+- 入口（一条命令两线）：`python tools/curseforge_upload.py push --apply --proxy http://127.0.0.1:7897 --changelog release/1.5.0-rc.2/PLAYER_CHANGELOG.md --jar neoforge-1.21.1/build/libs/astral_dice-1.5.0-rc.2+neoforge_1.21.1.jar --jar forge-1.20.1/build/libs/astral_dice-1.5.0-rc.2+forge_1.20.1.jar`；凭据 = 本机 `.curseforge/token`（36 B legacy upload token），`x-api-key` 仍回退同一 token（本轮没跑 `update-info`，用不到）。
+- 结果：`[1] [OK  ] 上传 astral_dice-1.5.0-rc.2+neoforge_1.21.1.jar  fileID=9329558  HTTP 200` / `[3] [OK  ] 上传 astral_dice-1.5.0-rc.2+forge_1.20.1.jar  fileID=9329560  HTTP 200`；两次都打印「Cloudflare 拦截 urllib（HTTP 403）⇒ 改用 curl 上传」（curl 回退仍生效）。渠道 **beta**（`-rc` 自动派生）；gameVersions 四件套 = Client / Server / `1.21.1`|`1.20.1` / neoforge|forge；relations 随同一次 POST 带上（neo = curios + starengine；forge = curios + mixinbooster + starengine）。
+- **次源判据（本轮新增，独立于 CF 的返回值）**：ForgeCDN `HEAD https://mediafilez.forgecdn.net/files/9329/558/astral_dice-1.5.0-rc.2+neoforge_1.21.1.jar` ⇒ **200 / Content-Length 2,589,502**；`…/files/9329/560/astral_dice-1.5.0-rc.2+forge_1.20.1.jar` ⇒ **200 / 2,634,295** —— 与本地 jar 字节数逐一相等（sha256 neo `b562974217bc726bff838e03fded6a77159e683484da01df44e2d2f9155687c6`、forge `3c7b089de70c0d7d6b0a7ed19ff06655c2e54d6b7a1501b7120aefee42e3dba8`）。
+- **cfwidget 镜像滞后**：上传后 10 分钟内 `api.cfwidget.com/minecraft/mc-mods/astral-dice` 仍是 38 个文件、不含 rc.2（rc.1 的两件也是隔天才出现）⇒ **不能据此判失败**，与 §4.1l 同口径；`https://www.curseforge.com/…/files/<id>` 对 rc.2 与 rc.1 对照件一律 Cloudflare 403，同样不作判据。
+- 失败前置（第一跑 400，改参数重跑，**无副作用**）：`{"errorCode":1002,"errorMessage":"Error in field metadata: Required properties are missing from object: changelog. …"}` —— 根因见 §6-28（`pick_changelog` 把 `1.5.0-rc.2` 截成 `1.5.0` 去找目录）。
+- 未做：`update-info`（项目简介/说明不变）、P1 两线（按发布红线不传）、CF 侧「已发布」人工复核（需作者后台）。
+
 ### 4.2 历史读数
 
 pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（含 4.8 pre.4 全量双线 10 跑 10 PASS、4.11–4.17 pre.5 各批、4.19 Jade 图标留白版）。
@@ -504,6 +516,8 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 26. **PowerShell 函数里的 `Write-Output` 会混进返回值（2026-10-25 实测）**：`function Rep { Write-Output '  ok'; return $src.Replace(...) }` 在 `$t = Rep ...` 处拿到的是 **Object[]**（日志行 + 结果行），写回文件后首行变成 `ok: arg-push ok: ...#!/usr/bin/env python3`，`py_compile` 报 `IndentationError: unexpected indent (line 1)`。修法：函数内只用 `Write-Host` 打日志、`return` 只返回目标字符串（必要时 `[string]` 强转）；已写坏的文件用 `git checkout -- <file>` 复原再重跑。（同一轮该 bug 还写坏了 `.github/workflows/build.yml`：首两行变成 `  replaced: release-jars` / `  replaced: ... name: Build` ⇒ YAML 解析失败，push 只换来一个「**没有任何 job**」的空 CI run —— `gh api repos/<r>/actions/runs/<id>` 里 `jobs` 数组为空、run 的 `name` 退化成文件路径 `.github/workflows/build.yml`；修法 = 从 `HEAD^` 取原始文件重打补丁，再用 `require('C:/Users/xmace/.dsh/profiles/desktop/node_modules/js-yaml')` 校验结构。）
 
 27. **测试资产里的模组版本钉子必须写成「家族通配 + 落位名派生」（2026-10-25 用户裁决「放宽」）**：`scripts/test/mt_env.ps1:48` 的 `$script:NeoForgeMods` 原来把 ModernFix 钉成 `*modernfix-neoforge*5.27.26*.jar` 且 `Target` 定死同名 ⇒ ① 整合包一升到 5.27.27 就 `MT_MODS: BLOCKED` / EXIT 11；② 即使放宽通配，`Target` 也会把 5.27.27 的内容写成 `...5.27.26...jar`（骗人 jar）。现行口径：`Pattern` 用「模组家族 + 主.次版本 + `.*`」通配，`Target` 只作派生失败兜底，落位名从源文件名派生（剥整合包 `[中文] ` 前缀），并在复制前按 `Cleanup` 前缀清掉同族旧版本。
+
+28. **`pick_changelog` 对预发布版本解析失败 ⇒ 上传被 CF 400 拒（2026-10-26 实测）**：`tools/curseforge_upload.py:638` 的 `base = ver.split("-")[0]` 会把 `1.5.0-rc.2` 截成 `1.5.0`，于是去 `release/1.5.0/PLAYER_CHANGELOG.md` 找（不存在）⇒ 返回 `None`；`build_jobs` 里 `if job["_changelog"]:` 才写 `metadata["changelog"]`，字段直接缺失，CF 侧回 `HTTP 400 {"errorCode":1002,"errorMessage":"Error in field metadata: Required properties are missing from object: changelog."}`。dry-run 只打印「更新日志 = （无，留空）」且**不读文件**，所以计划态看不出来。**绕法**：显式 `--changelog release/<完整版本>/PLAYER_CHANGELOG.md`（本轮即此）。**未落地的修法（待裁决）**：`base` 改为「先按完整版本目录找，找不到再退回 `re.sub(r"-(?:alpha|beta|pre|rc).*$", "", ver)`」，或 `None` 时直接 `SystemExit` 报错而不是静默留空。
 
 ## 7 关键路径（命令）
 
