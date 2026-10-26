@@ -4,6 +4,18 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
+## 26.4-SNAPSHOT.1
+
+> dev 线自本版起版本号规则改为 `<年份>.<季度>-SNAPSHOT.<序号>`（2026-10-26 用户裁决，本次 `26.4-SNAPSHOT.1`）；
+> 本版由发布线 `multi-main`（`1.5.0-rc.4`）整体前移而来，功能内容即该版本的全量内容。
+
+### 工程口径
+
+- 代码基线：本工作树（`multi-dev-next`）前移到 `multi-main` 的 `cce71efb`，四子项目源码/资源/测试资产与发布线一致；迁移前 `multi-main...multi-dev-next` = 150 / 0（dev 线独有提交 0 个，无内容丢失）。
+- 版本号：四线 `mod_version=26.4-SNAPSHOT.1+<平台>`、`starengine_version=26.4-SNAPSHOT.1`（fabric 另有 `starengine_version_range=>=26.4-SNAPSHOT.1`）；前置库 `starengine` 的 `next` 分支同批发布 `lib_version=26.4-SNAPSHOT.1`（库内 Java 源码与 `1.1.0` 完全一致）。
+- 加载器门槛：两条 P0 线 `mods.toml` 的 starengine `versionRange` 上界 `2.0.0` -> `27.0.0`（新规则版本号首位 = 年份，只有破坏性更新才进位）。
+- CI：`.github/workflows/build.yml` 的库 checkout `ref` 钉到库 `next` 提交 `b78fe10`（库 `next` 需先推送，否则该步 checkout 失败）。
+
 ## 1.5.0
 
 ### 新增内容

@@ -4,6 +4,18 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 26.4-SNAPSHOT.1
+
+> From this version the dev line uses `<year>.<quarter>-SNAPSHOT.<n>` (2026-10-26 user decision; this build `26.4-SNAPSHOT.1`).
+> The content is the release line `multi-main` (`1.5.0-rc.4`) moved forward wholesale - the feature set equals that version.
+
+### Engineering notes
+
+- Code baseline: this worktree (`multi-dev-next`) is fast-forwarded to `multi-main` `cce71efb`; all four subproject sources, resources and test assets match the release line. Before the migration `multi-main...multi-dev-next` = 150 / 0 (the dev line had zero unique commits, nothing lost).
+- Version numbers: all four lines use `mod_version=26.4-SNAPSHOT.1+<platform>` and `starengine_version=26.4-SNAPSHOT.1` (fabric also `starengine_version_range=>=26.4-SNAPSHOT.1`); the `starengine` `next` branch ships `lib_version=26.4-SNAPSHOT.1` in the same batch (library Java sources identical to `1.1.0`).
+- Loader gate: the starengine `versionRange` upper bound in both P0 `mods.toml` files moves `2.0.0` -> `27.0.0` (under the new scheme the leading digit is the year, so only a breaking change bumps it).
+- CI: the library checkout `ref` in `.github/workflows/build.yml` is pinned to library `next` commit `b78fe10` (the `next` branch must be pushed first, otherwise that step fails).
+
 ## 1.5.0
 
 ### New Content

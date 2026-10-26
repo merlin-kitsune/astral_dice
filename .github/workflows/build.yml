@@ -99,7 +99,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: merlin-kitsune/StarEngine
-          ref: 16b48c413d92bcd830d97c0a80b0df4e0c47ba6c   # = 库 `main` 提交 `16b48c4`（= 库版本 `1.1.0` 正式版，2026-10-25，由 `1.1.0-pre.2` 定版：库内 Java 源码零改动，仅许可 GPL-3.0-only + 文档）。⚠️ 本 SHA 必须与四线 `starengine_version`（现为 `1.1.0`）同提交更新。
+          ref: b78fe107024adc35763479d065fc2bf2792a02b0   # = 库 `next` 提交 `b78fe10`（= 库版本 `26.4-SNAPSHOT.1`，dev 线新版本号规则首版：库内 Java 源码与 `1.1.0` 完全一致，仅版本号与文档）。⚠️ 本 SHA 必须与四线 `starengine_version`（现为 `26.4-SNAPSHOT.1`）同提交更新；**库 `next` 必须先推到远端，否则本步骤 checkout 失败**。
           path: .ci/StarEngine
           fetch-depth: 1
 
