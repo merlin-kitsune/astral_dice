@@ -31,6 +31,7 @@
 20. **撤回「全效果牌不给迅捷 / 不给星币」例外（2026-10-26 13:0x，§4.1t）**：该规则由 `e193e6eb`（2026-10-24，本代理会话）擅自引入，用户声明从未要求 ⇒ 代码两线 `if (allSame)` / `} else`、javadoc、6 份 lang 12 处文案、守门 JIL-2 与被动文案规则同批撤回；`classes` 两线 BUILD SUCCESSFUL 37s + `GATE: PASS (833)` + `check_lang_sync` exit 0。产物未重建，无实机。
 21. **tooltip 精简口径建立（保留黑箱）+ 调酒师主动技能 tooltip 精简（2026-10-26 13:2x，§4.1u）**：按用户本地改法（228→148 字符，只留「效果牌：目标恢复 §e2§7 点生命」）建立〈tooltip 精简原则〉—— tooltip 只写「做什么」不写「怎么算」；同一口径同步 `neoforge-1.21.1` + `forge-1.20.1` × 三语共 6 份 lang（P1 两线无该键）；守门 `verify_sign_balance_changes.py` 新增精简口径判据（PASS 839 项，变异测试能挡回潮）。手册是否同口径、chips 两处「计时器」是否精简待裁决。
 22. **1.5.0-rc.3 发布收口（2026-10-26 13:2x–13:4x，§4.1v）**：四线 `mod_version` → `1.5.0-rc.3+后缀`（`starengine_version=1.1.0` 未动）；技术 CHANGELOG 中英各 +6 行、`release/1.5.0-rc.3/` 三份玩家说明；P0 两线 `build` 成功（neo 2,588,530 B / forge 2,633,363 B，`META-INF/jarjar/`=0）；提交 `14eb54ab` 已 push；CI 建 tag `1.5.0-rc.3` 并发 **prerelease** Release（两个附件）；CurseForge 两线 **beta** 已上传（neo `9330278` / forge `9330279`，ForgeCDN 字节数吹策相等）。
+23. **双版本 tooltip 全面检查 + 三处修复（2026-10-26 17:1x，§4.1w）**：CF 上 rc.3 两件经下载比对确认是 13:28 修复前的坏构建（neo 2,588,530 B b086b984 / forge 2,633,363 B 79fc4b5e）；补齐 Curios 自定义槽位 curios.modifiers.{chip,dice,stand} 三语（P0 每线 1,059→1,062 键）、恢复被 b7b26f82 附带回退的多萝西主动技能中文；两条线实机复验「佩戴筹码时：」已解析、调酒师提示框无字面换行转义；新产物 neo 2,588,650 B 43e56966 / forge 2,633,448 B 6731d798。CF 坏件尚未处理（删后重传 vs bump rc.4 待裁决）。
 
 ## 1 环境与路径
 
@@ -491,8 +492,23 @@ forge dev named 102,013 B / `e280aeab6c4b37c43468f7cce32a8bf64c70b6bdbcd2203f6c5
 - **CurseForge**：`python tools/curseforge_upload.py push --apply --proxy http://127.0.0.1:7897 --changelog release/1.5.0-rc.3/PLAYER_CHANGELOG.md --jar ...rc.3+neoforge... --jar ...rc.3+forge...` ⇒ 两线 **beta** `HTTP 200`，neo `fileID=9330278` / forge `9330279`，relations 随上传同 POST（curios + （forge 另有 1.20.1 另 mixinbooster）+ starengine=requiredDependency）；CF `CF_EXIT=0`。次源判据 = ForgeCDN `HEAD` 两件均 **200** 且 `Content-Length` 与本地逐字节相等（2,588,530 / 2,633,363）`。
 - **未做**：本批无实机（实机判据已在 §4.1r/§4.1t/§4.1u 分别立成）；手册是否同口径、chips 两处「计时器」是否精简仍待用户裁决。
 
-- **⚠️ 16:5x 补修（用户反馈「forge 版 tooltip 显示异常（似乎已损坏）」）**：`12ef8102`（tooltip 精简批）的行替换脚本把 `jill_active` 值里的换行写成了**双转义** `\n`（字面反斜杠 + n），游戏里 tooltip 直接显示 `
-` 字符；受影响 = neo `en_us`/`ja_jp` + forge `zh_cn`/`en_us`/`ja_jp`（各 1 行 3 处，neo `zh_cn` 未受影响），**rc.2 及之前产物无此问题**。修法：读 JSON 后把值里的 `\n` 字符串还原为真换行再写回（每文件 1 行）；重建 `BUILD SUCCESSFUL in 9s`，neo **2,588,528 B** sha256 `6fe2bb86ef56491356f1088102b062fa76c3ff6b50ba374234ffb701fddd42ce`，forge **2,633,346 B** sha256 `f7eb529f3e32275b1b62b7947df441c36c2737a5f1794bd91c683cd3b6787372`；jar 内三语均「双转义=0 / parse=ok」，四投放点逐处 sha256 MATCH（forge dev 用 devlibs named 2,603,885 B，整合包用 reobf）。
+- **⚠️ 16:5x 补修（用户反馈「forge 版 tooltip 显示异常（似乎已损坏）」）**：`12ef8102`（tooltip 精简批）的行替换脚本把 `jill_active` 值里的换行写成了**双转义** `\n`（字面反斜杠 + n），游戏里 tooltip 直接显示字面 `\\n` 字符；受影响 = neo `en_us`/`ja_jp` + forge `zh_cn`/`en_us`/`ja_jp`（各 1 行 3 处，neo `zh_cn` 未受影响），**rc.2 及之前产物无此问题**。修法：读 JSON 后把值里的 `\n` 字符串还原为真换行再写回（每文件 1 行）；重建 `BUILD SUCCESSFUL in 9s`，neo **2,588,528 B** sha256 `6fe2bb86ef56491356f1088102b062fa76c3ff6b50ba374234ffb701fddd42ce`，forge **2,633,346 B** sha256 `f7eb529f3e32275b1b62b7947df441c36c2737a5f1794bd91c683cd3b6787372`；jar 内三语均「双转义=0 / parse=ok」，四投放点逐处 sha256 MATCH（forge dev 用 devlibs named 2,603,885 B，整合包用 reobf）。
+### 4.1w 双版本 tooltip 全面检查：CF 坏构建取证 + `curios.modifiers` 缺键 + 两处文案事故修复（2026-10-26 17:0x–17:1x）
+
+- **用户反馈（m16667）**：「有人反馈 neoforge 版也有相同问题，但是我本地的版本正常，怀疑你上传 CF 上传的有问题的版本，请全面检查双版本 tooltip」+ 截图（forge 摩托头盔·高级筹码提示框里原样显示 `curios.modifiers.chip`）。
+- **CF 坏构建取证**：从 mediafilez 下载两件 —— neo `https://mediafilez.forgecdn.net/files/9330/278/…` = **2,588,530 B / sha256 `b086b984419a4152441700a9f523e9e9681db28c563504d94e9c50f7ee05787c`**，forge `…/9330/279/…` = **2,633,363 B / sha256 `79fc4b5ed231e1a6d8f267cb5f5b345ecccb9dd6977cbb91dd8ad3fd8051ace9`** —— 与 13:28 **修复前**的本地构建逐字节相同 ⇒ CF fileID `9330278` / `9330279` 上架的仍是带双转义的坏件（1.20.1 三语 / 1.21.1 英日受影响）。
+- **本地 12 份 lang 全量审计**（`temp/lang_audit.py`，四线 × 三语）：值内字面「反斜杠 + n」**0**、非法 § 码 **0**、控制字符 **0**、三语换行数不一致 **0**；仅两条 § 数量差且合法（`tooltip.astral_dice.sign.dorothy_passive` zh10/en10/ja14、`tooltip.astral_dice.sign.jill_active` zh14/en10/ja10 —— 中日文额外给前段数字着色）。
+- **真缺陷 1（截图那条）= Curios 自定义槽位缺 `curios.modifiers.*` 翻译键**：Curios 用 `curios.modifiers.<slotId>` 作属性段标题键，查不到就回退显示原始键名；本模组三个自定义槽位此前只有 `curios.identifier.{chip,dice,stand}`，`curios.modifiers.*` **一个都没有**。已补齐 6 份 lang（锚点行 `"curios.identifier.stand"` 之后插入）：zh `佩戴筹码时：` / `佩戴骰子时：` / `佩戴立牌时：`，en `When worn as chip:` / `… dice:` / `… sign:`，ja `チップとして着用した場合:` / `ダイスとして着用した場合:` / `スタンドとして着用した場合:`。键数 **1,059 → 1,062**（P0 每线）。Java 侧 key 全量扫描（404 候选）确认无其他缺键（2 条为前缀拼接误报）。
+- **真缺陷 2 = 多萝西主动技能中文被回退（我自己造成）**：`tooltip.astral_dice.sign.dorothy_active` 的 neo `zh_cn` 值在 `b7b26f82`（撤回调酒师例外那批）里被附带改成 `85c9d2f6` 之前的旧文本（丢掉【交际花】说明与计时括注）。逐提交按 key 审计（`temp/audit_lang_commits.py`）确认**只此一处**附带损害；已恢复为 `b7b26f82^` 的值并断言与 forge 现值逐字相等（`neo==forge now: True`）。
+- **真缺陷 3 复核**：`jill_active` 的双转义已由 `b83a7435` 修掉，本批在 jar 内复核「三语双转义 = 0」。
+- **实机复验（两条线都做了，新口径）**：
+  - 1.21.1：AutoJS client 侧 `eval_js`（`side=client`）直接调 `Screen.getTooltipFromItem(mc, stack)` 取玩家可见行 —— 摩托头盔·高级 = `摩托头盔-高级` / `栏位: 筹码` / 空行 / **`佩戴筹码时：`** / `+26.67 护甲值` / 空行 / `防御力 §e+8§7` / `Astral Dice`；调酒师 13 行、效果牌行 = `- 效果牌：目标恢复 2 点生命`、无字面 `\n`。
+  - 1.20.1（dev 无 AutoJS）：走 KubeJS 客户端探针 `astral_pmfix_client.js` → `AP_PMFIX|tip|moto|i=5|strip=佩戴筹码时：|END`，同形输出、键名同样已解析；`jill` 13 行亦无字面 `\n`。
+- **测试资产增补**：`scripts/test/resources/kubejs/1.21.1/client_scripts/astral_pmfix_client.js` 与 `…/1.20.1/client_scripts/…` 的 `PMF_ITEMS` 各加两项 —— `moto`（`astral_dice:moto_helmet_high_chip`）、`jill`（`astral_dice:jill_sign`），两条线同形；属工程资产，按口径只进 `scripts/test/TESTING-SPEC.md` 附录 A，不进 CHANGELOG。
+- **守门**：`check_lang_sync.ps1` **exit 0**（P0 两线各 1,062 键三语一致；WARN 仍为那两条合法 § 差）；`verify_sign_balance_changes.py` **GATE: PASS (839)**；`check_changelog_parity.py` **OK sections=26 entries=757/757**；`docs/agent/verify-split.py` 全部通过。
+- **构建**（17:0x）：`gradlew.bat :neoforge-1.21.1:build :forge-1.20.1:build` **BUILD SUCCESSFUL in 2s** —— neo **2,588,650 B / sha256 `43e569667daf0967d575624d92d1283d9ad0b85f23aaba74dc8ba6eab7d8a1b5`**、forge **2,633,448 B / sha256 `6731d798b7089ca60f3b636045b89fe27a538a5e14c475552b3e9e58be2a01bd`**；两 jar 内三语各 1,062 键、双转义 0、`curios.modifiers.*` 3 条、`META-INF/jarjar/` 0。
+- **收尾**：1.20.1 `--phase stop --force --purge-saves` ⇒ `MT_CLEANUP_SAVES: PURGED 1` / `MT_CLEANUP_RESULT: OK` / `MT_STOP: OK (1s)`；`Get-Process java` 只剩**用户自己的 PCL 客户端 pid 38888**（16:56 启动，全程未碰）。
+- **未做**：CF 上两份坏件**尚未处理**（同版本同文件名重传通常被 CF 拒；`删后重传 rc.3` 与 `bump rc.4` 两条路待用户裁决）；forge 的多萝西详版是否按新「tooltip 精简」口径改短，同待裁决。
 ### 4.2 历史读数
 
 pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（含 4.8 pre.4 全量双线 10 跑 10 PASS、4.11–4.17 pre.5 各批、4.19 Jade 图标留白版）。

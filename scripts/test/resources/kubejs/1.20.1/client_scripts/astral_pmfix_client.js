@@ -44,7 +44,9 @@ var PMF_ITEMS = [
     { k: "laser",   id: "astral_dice:effect_card_monster_laser" },
     { k: "brick",   id: "astral_dice:effect_card_monster_brick" },
     { k: "orbital", id: "astral_dice:effect_card_orbital_strike" },
-    { k: "abyss",   id: "astral_dice:abyss_reagent_chip" }
+    { k: "abyss",   id: "astral_dice:abyss_reagent_chip" },
+    { k: "moto",    id: "astral_dice:moto_helmet_high_chip" },
+    { k: "jill",    id: "astral_dice:jill_sign" }
 ];
 
 /** 手册条目文案（lang 键 ⇒ 玩家在书页上看到的文本；手册条目 json 引用的就是这些键） */
