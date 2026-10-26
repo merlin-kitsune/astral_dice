@@ -1,0 +1,115 @@
+{
+  "case_id": "JILL-HEAL-PERCARD-1.21.1",
+  "title": "调酒师立牌 3 张效果牌 = 3 次治疗（多萝西「温暖」+3 层）——逐张 heal 口径实机复验",
+  "version": "1.21.1",
+  "channel": "autojs",
+  "target": {
+    "type": "feature",
+    "ref": "jill-heal-per-card"
+  },
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "复验 2026-10-26 裁决：JillSignItem.resolve 里 for (i<effect) target.heal(HEAL_AMOUNT)（3 张效果牌 = 3 次 heal(2) = 6 点；多萝西「温暖」按治疗事件次数 +3 层）。\n\n判据（两条同时成立才 PASS）：\n- hp 6 → 12（3 次各 2 点）\n- warmth 0 → 3（若被合并成一次 heal(6) 只会 +1 层）\n\n入口 = 产品真实链路：TargetSelectionManager.start('astral_dice:jill_mix') → confirm(token, self) → JillMixAction.apply 打开选卡界面 → 服务端把 3 张效果牌放进 CardChoiceMenu 的卡槽 → CardChoiceManager.confirm → 回调 JillSignItem.resolve。\n（反射调用 resolve 走不通：AutoJS 沙箱 Class.forName 报 IllegalAccessException restricted lookup object，类对象上的 getDeclaredMethods 也不可用 ⇒ 只能走真实链路。）\n\n温暖清理：p.removeAllEffects() 会被本模组的效果保护挡住（实测残留 3 层）⇒ 用 ModEffectRemoval.remove(p, ModEffects.DOROTHY_WARMTH) 单点强制清除。\n\n反假绿对照臂（ctl）：清温暖 + 卸多萝西立牌后同样 3 张 ⇒ hp 仍 6→12，但 warmth 保持 0。\n\n未覆盖：客户端选卡 UI 不驱动，本用例覆盖服务端菜单 + 结算。"
+    },
+    {
+      "op": "mcp_status",
+      "save_as": "st",
+      "timeout_ms": 15000
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "save_as": "prep",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var list = s.getPlayerList().getPlayers();\n  if (list.size() === 0) { return { ok: false, reason: 'no-player' }; }\n  var p = list.get(0);\n  var Reg = Java.loadClass('net.minecraft.core.registries.BuiltInRegistries');\n  var RL = Java.loadClass('net.minecraft.resources.ResourceLocation');\n  var IS = Java.loadClass('net.minecraft.world.item.ItemStack');\n  var CuriosApi = Java.loadClass('top.theillusivec4.curios.api.CuriosApi');\n  var Dorothy = Java.loadClass('com.merlinkitsune.astral_dice.item.sign.DorothySignItem');\n  var Jill = Java.loadClass('com.merlinkitsune.astral_dice.item.sign.JillSignItem');\n  var Effects = Java.loadClass('com.merlinkitsune.astral_dice.effect.ModEffects');\n  var Removal = Java.loadClass('com.merlinkitsune.starengine.event.ModEffectRemoval');\n  try { Removal.remove(p, Effects.DOROTHY_WARMTH); } catch (e) { }\n  p.setHealth(6.0);\n  var curios = CuriosApi.getCuriosInventory(p).get();\n  var stand = curios.getStacksHandler('stand').get().getStacks();\n  stand.setStackInSlot(0, new IS(Reg.ITEM.get(RL.parse('astral_dice:dorothy_sign'))));\n  var dice = curios.getStacksHandler('dice').get().getStacks();\n  dice.setStackInSlot(0, new IS(Reg.ITEM.get(RL.parse('astral_dice:golden_dice'))));\n  var item = Reg.ITEM.get(RL.parse('astral_dice:effect_card_monster_laser'));\n  var inv = p.getInventory();\n  for (var i = 0; i < 3; i++) { inv.add(new IS(item)); }\n  return {\n    ok: true,\n    name: p.getName().getString(),\n    hp0: p.getHealth(),\n    max: p.getMaxHealth(),\n    warmth0: Dorothy.warmthStacks(p),\n    equipped: Dorothy.isEquippedForWarmth(p),\n    stand: String(Reg.ITEM.getKey(stand.getStackInSlot(0).getItem())),\n    dice: String(Reg.ITEM.getKey(dice.getStackInSlot(0).getItem())),\n    cards: Jill.countCards(p)\n  };\n})()"
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "save_as": "mix",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var p = s.getPlayerList().getPlayers().get(0);\n  var Reg = Java.loadClass('net.minecraft.core.registries.BuiltInRegistries');\n  var RL = Java.loadClass('net.minecraft.resources.ResourceLocation');\n  var IS = Java.loadClass('net.minecraft.world.item.ItemStack');\n  var TSM = Java.loadClass('com.merlinkitsune.astral_dice.target.TargetSelectionManager');\n  var CCM = Java.loadClass('com.merlinkitsune.astral_dice.choice.CardChoiceManager');\n  var Att = Java.loadClass('com.merlinkitsune.astral_dice.component.ModAttachments');\n  var Dorothy = Java.loadClass('com.merlinkitsune.astral_dice.item.sign.DorothySignItem');\n  var Jill = Java.loadClass('com.merlinkitsune.astral_dice.item.sign.JillSignItem');\n  var out = { ok: false, label: 'dorothy-equipped-3effect' };\n  out.hpBefore = p.getHealth();\n  out.warmthBefore = Dorothy.warmthStacks(p);\n  out.cardsBefore = Jill.countCards(p);\n  var started = TSM.start(p, 'astral_dice:jill_mix');\n  out.started = started;\n  if (!started) { out.reason = 'start-failed'; return out; }\n  var tok = TSM.sessionTokenForTests(p);\n  out.selToken = tok;\n  TSM.confirm(p, tok, p.getId());\n  var menu = p.containerMenu;\n  out.menuToken = -1;\n  try { out.menuToken = menu.token(); } catch (e) { out.menuErr = ('' + e).substring(0, 80); }\n  var item = Reg.ITEM.get(RL.parse('astral_dice:effect_card_monster_laser'));\n  var filled = 0;\n  for (var i = 0; i < 3; i++) {\n    try { menu.getSlot(i).set(new IS(item)); filled++; } catch (e2) { out.fillErr = ('' + e2).substring(0, 80); }\n  }\n  out.filled = filled;\n  out.filledSlots = -1;\n  try { out.filledSlots = menu.filledSlots(); } catch (e3) { }\n  out.pendingBefore = String(Att.getJillPendingTarget(p)).length > 0;\n  if (out.menuToken > 0) { CCM.confirm(p, out.menuToken); }\n  out.pendingAfter = String(Att.getJillPendingTarget(p));\n  out.hp = p.getHealth();\n  out.warmth = Dorothy.warmthStacks(p);\n  out.equipped = Dorothy.isEquippedForWarmth(p);\n  out.cardsAfter = Jill.countCards(p);\n  out.ok = (out.filledSlots === 3) && (String(out.pendingAfter).length === 0) && (out.hp !== out.hpBefore);\n  return out;\n})()"
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "save_as": "ctl",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var p = s.getPlayerList().getPlayers().get(0);\n  var CuriosApi = Java.loadClass('top.theillusivec4.curios.api.CuriosApi');\n  var IS = Java.loadClass('net.minecraft.world.item.ItemStack');\n  var Dorothy = Java.loadClass('com.merlinkitsune.astral_dice.item.sign.DorothySignItem');\n  var Effects = Java.loadClass('com.merlinkitsune.astral_dice.effect.ModEffects');\n  var Removal = Java.loadClass('com.merlinkitsune.starengine.event.ModEffectRemoval');\n  try { Removal.remove(p, Effects.DOROTHY_WARMTH); } catch (e) { }\n  p.setHealth(6.0);\n  var curios = CuriosApi.getCuriosInventory(p).get();\n  var stand = curios.getStacksHandler('stand').get().getStacks();\n  stand.setStackInSlot(0, IS.EMPTY);\n  return { ok: true, hp0: p.getHealth(), warmth0: Dorothy.warmthStacks(p), equipped: Dorothy.isEquippedForWarmth(p) };\n})()"
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "save_as": "mix2",
+      "timeout_ms": 20000,
+      "code": "(function(){\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var s = SH.getCurrentServer();\n  if (s === null) { return { ok: false, reason: 'no-server' }; }\n  var p = s.getPlayerList().getPlayers().get(0);\n  var Reg = Java.loadClass('net.minecraft.core.registries.BuiltInRegistries');\n  var RL = Java.loadClass('net.minecraft.resources.ResourceLocation');\n  var IS = Java.loadClass('net.minecraft.world.item.ItemStack');\n  var TSM = Java.loadClass('com.merlinkitsune.astral_dice.target.TargetSelectionManager');\n  var CCM = Java.loadClass('com.merlinkitsune.astral_dice.choice.CardChoiceManager');\n  var Att = Java.loadClass('com.merlinkitsune.astral_dice.component.ModAttachments');\n  var Dorothy = Java.loadClass('com.merlinkitsune.astral_dice.item.sign.DorothySignItem');\n  var Jill = Java.loadClass('com.merlinkitsune.astral_dice.item.sign.JillSignItem');\n  var out = { ok: false, label: 'dorothy-unequipped-3effect' };\n  out.hpBefore = p.getHealth();\n  out.warmthBefore = Dorothy.warmthStacks(p);\n  out.cardsBefore = Jill.countCards(p);\n  var started = TSM.start(p, 'astral_dice:jill_mix');\n  out.started = started;\n  if (!started) { out.reason = 'start-failed'; return out; }\n  var tok = TSM.sessionTokenForTests(p);\n  out.selToken = tok;\n  TSM.confirm(p, tok, p.getId());\n  var menu = p.containerMenu;\n  out.menuToken = -1;\n  try { out.menuToken = menu.token(); } catch (e) { out.menuErr = ('' + e).substring(0, 80); }\n  var item = Reg.ITEM.get(RL.parse('astral_dice:effect_card_monster_laser'));\n  var filled = 0;\n  for (var i = 0; i < 3; i++) {\n    try { menu.getSlot(i).set(new IS(item)); filled++; } catch (e2) { out.fillErr = ('' + e2).substring(0, 80); }\n  }\n  out.filled = filled;\n  out.filledSlots = -1;\n  try { out.filledSlots = menu.filledSlots(); } catch (e3) { }\n  out.pendingBefore = String(Att.getJillPendingTarget(p)).length > 0;\n  if (out.menuToken > 0) { CCM.confirm(p, out.menuToken); }\n  out.pendingAfter = String(Att.getJillPendingTarget(p));\n  out.hp = p.getHealth();\n  out.warmth = Dorothy.warmthStacks(p);\n  out.equipped = Dorothy.isEquippedForWarmth(p);\n  out.cardsAfter = Jill.countCards(p);\n  out.ok = (out.filledSlots === 3) && (String(out.pendingAfter).length === 0) && (out.hp !== out.hpBefore);\n  return out;\n})()"
+    },
+    {
+      "op": "note",
+      "text": "断言全部走 eval 结果；温暖层数唯一事实源 = DorothySignItem.warmthStacks（温暖效果 amplifier+1）。数值判据一律单键/标量（mt_assert 的操作符对象只允许一个键）。"
+    }
+  ],
+  "asserts": [
+    {
+      "type": "state",
+      "from": "st",
+      "expect": {
+        "Ok": true
+      }
+    },
+    {
+      "type": "state",
+      "from": "prep",
+      "expect": {
+        "ok": true,
+        "equipped": true,
+        "stand": "astral_dice:dorothy_sign",
+        "dice": "astral_dice:golden_dice",
+        "warmth0": 0,
+        "hp0": 6,
+        "cards": {
+          "gte": 3
+        }
+      }
+    },
+    {
+      "type": "state",
+      "from": "mix",
+      "expect": {
+        "ok": true,
+        "filledSlots": 3,
+        "equipped": true,
+        "warmth": 3,
+        "hp": 12
+      }
+    },
+    {
+      "type": "state",
+      "from": "ctl",
+      "expect": {
+        "ok": true,
+        "equipped": false,
+        "warmth0": 0,
+        "hp0": 6
+      }
+    },
+    {
+      "type": "state",
+      "from": "mix2",
+      "expect": {
+        "ok": true,
+        "filledSlots": 3,
+        "equipped": false,
+        "warmth": 0,
+        "hp": 12
+      }
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_JILL: player=.*:eff=3:same=true:allEffect=true"
+    }
+  ]
+}
