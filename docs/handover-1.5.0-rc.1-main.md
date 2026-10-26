@@ -24,6 +24,9 @@
 15. **`1.5.0-rc.2` 双版本实机 PASS（2026-10-25 21:2x–21:3x，§4.1o）**：【交际花】在 1.21.1 / 1.20.1 双线实测成立 —— 队友 ATK **1→2** 且拿到效果（`dur=1200` / `amp=0` / 可见）、重复获得**只刷时长不叠层**、主动窗口结束后队友效果**不回收**（`windowEnd=0` 时队友仍余 675t）、施法者自身 `dorothy_bond_attack` 按窗口 +1（窗口结束归 0）；**节流确已删除**（同一窗口内第二个队友 40 tick 内即入账，旧 10 秒节流会挡 200t）；客户端效果名 = **交际花**、图标 448 B。构建 `BUILD SUCCESSFUL in 13s`，四投放点均为 rc.2 且库成对、jar 内 `version=1.5.0-rc.2+<后缀>` / `META-INF/jarjar/`=0 / `DorothySocialiteEffect.class` 与图标各 1。
 
 16. **`1.5.0-rc.2` 已上传 CurseForge（2026-10-26 11:4x，§4.1p）**：本体 P0 两线 **beta** 渠道 —— neo `fileID=9329558` / forge `9329560`，均 `HTTP 200` 且随上传带 relations；次源判据 = ForgeCDN `HEAD` 200 且 `Content-Length` 与本地 jar 逐字节相等（2,589,502 / 2,634,295）。cfwidget 镜像仍滞后（38 文件、无 rc.2），不作为失败依据。
+
+17. **玩家侧更新日志补齐「本版变化」（2026-10-26 11:5x，§4.1q）**：`release/1.5.0-rc.2/` 三份（ZH / EN / MCMOD）此前是 rc.1 的**整份拷贝**（只在正文各处被就地改成 rc.2 口径），本轮各新增一节「本版（rc.2）相对 rc.1 的变化」= 多萝西【交际花】（同伴 ATK +1 / 固定 1:00 / 与窗口解耦 / 不叠层 / 删 10 秒节流）+ 调酒师治疗按张数（2 / 4 / 6）+ 立牌中文名订正（熊猫人→上班族 · 提尔→教主 · 酒保→调酒师）；MCMOD 版 h2 编号顺延（原 一~八 → 二~九）。md 两份全 CRLF、MCMOD 版按既有口径仍是 **LF-only**。**纯文档，无代码改动、无实机**。
+
 ## 1 环境与路径
 
 路径与命令**沿用 pre.5 正本 §1**（Windows 原生：git bash 的 `git`、`pwsh -NoProfile -File`、`JAVA_HOME=C:\Program Files\Zulu\zulu-21`、工作树直接 `gradlew.bat`、测试台 `scripts\test\mt.ps1`）。两条补充：
@@ -419,6 +422,14 @@ forge dev named 102,013 B / `e280aeab6c4b37c43468f7cce32a8bf64c70b6bdbcd2203f6c5
 - **cfwidget 镜像滞后**：上传后 10 分钟内 `api.cfwidget.com/minecraft/mc-mods/astral-dice` 仍是 38 个文件、不含 rc.2（rc.1 的两件也是隔天才出现）⇒ **不能据此判失败**，与 §4.1l 同口径；`https://www.curseforge.com/…/files/<id>` 对 rc.2 与 rc.1 对照件一律 Cloudflare 403，同样不作判据。
 - 失败前置（第一跑 400，改参数重跑，**无副作用**）：`{"errorCode":1002,"errorMessage":"Error in field metadata: Required properties are missing from object: changelog. …"}` —— 根因见 §6-28（`pick_changelog` 把 `1.5.0-rc.2` 截成 `1.5.0` 去找目录）。
 - 未做：`update-info`（项目简介/说明不变）、P1 两线（按发布红线不传）、CF 侧「已发布」人工复核（需作者后台）。
+
+### 4.1q 玩家侧更新日志：补齐「本版变化」+ MCMOD 版重出（2026-10-26 11:5x–12:0x）—— 纯文档，无代码 / 无实机
+
+- **起因**：`release/1.5.0-rc.2/` 三份玩家侧文件（`PLAYER_CHANGELOG_ZH.md` / `PLAYER_CHANGELOG.md` / `PLAYER_CHANGELOG_MCMOD.html`）是 `51c6c97e chore(release)` 从 rc.1 **整份拷贝**的 —— 与 `release/1.5.0-rc.1/` 同名文件字节数完全相同、`diff` 只有 4 行版本号串（标题 / `已发布：` / 两个 jar 名）。rc.2 的三处真改动（`85c9d2f6` 【交际花】、`e9dab567` 调酒师按张数、`b58e1df4` 立牌名订正）是**先改了 rc.1 的这三份再被拷贝**，所以正文口径是对的，但**缺一段「本版相对上一版的变化」** ⇒ 从 rc.1 升上来的玩家看不出改了什么（CF 上传的 `--changelog` 与 GitHub Release 正文都直接取这份文件）。
+- **改动**：三份各新增一节，位置 = 「两个构建」说明之后、`安装与前置` 之前 —— ZH `## 本版（1.5.0-rc.2）相对 1.5.0-rc.1 的变化`（自 :17，14 行）/ EN `## Changes in 1.5.0-rc.2 since 1.5.0-rc.1`（自 :17，18 行）/ MCMOD `[h2=一、本版（rc.2）相对 rc.1 的变化]`（自 :15，7 行，含 3 个 `<li>`）。三条内容 = ① 多萝西【交际花】：同伴 **+1 ATK**、**固定 1:00**、**从获得时计时**且与施放者主动窗口**解耦**（窗口结束不回收）、重复只刷时长**不叠层**、**删 10 秒触发节流**，多萝西自身 +1/人与被动「每 10 秒回 2 血」不变；② 调酒师主动治疗**按效果牌张数叠加**（1 张 2 / 2 张 4 / 3 张 6，仍只结算一次 heal）；③ 立牌中文名订正（**熊猫人 → 上班族** Padman Sign、**提尔 → 教主** Cult Leader Sign、**酒保 → 调酒师** Bartender Sign，纯文案）。
+- **MCMOD 版编号重排**：新节占「一、」，原 `一、安装与前置` … `八、许可变更` 顺延为 `二、`…`九、`（脚本按旧编号**倒序**替换，共 8 处）；重排后 h2 序列 = 一（本版变化）/ 二 安装与前置 / 三 新增内容 / 四 战斗系统重做 / 五 平衡与数值调整 / 六 BUG 修复 / 七 已知问题与设计说明 / 八 文案与手册 / 九 许可变更。
+- **判据**：`PLAYER_CHANGELOG_ZH.md` **38,695 B / 358 行**、`PLAYER_CHANGELOG.md` **38,817 B / 369 行**，两者**全 CRLF、裸 LF = 0**；`PLAYER_CHANGELOG_MCMOD.html` **41,192 B / 275 行**，按 rc.1 起的既有口径保持 **LF-only**（`\r\n` 计数 0，三份里只有它是 LF；`.gitattributes` 未给 html 钉 `eol`、仓库 `core.autocrlf=true` ⇒ 对象库里仍存 LF、新克隆检出会变 CRLF，对 mcmod 粘贴无影响）；三份都命中「交际花 / Socialite」「上班族 / Padman」「按张数叠加 / per effect card」三组关键词（`grep -c` 均 ≥ 1）。
+- **未做（如实登记）**：仓库里**没有** MCMOD 生成脚本（`grep` `mcmod|MCMOD` 在 `tools/*.py` 命中 0；该文件自 rc.1 起就是手工维护的 mcmod.cn 语法：`[h1=]/[h2=]/[h3=]` 标题 + 内联 HTML 正文，且正文与 ZH 版**并非逐句一一对应**，是手工压缩版）⇒ 本轮用脚本做「插入 + 编号重排」，**未**做全量重新生成。若要让 MCMOD 版永远跟 ZH 版逐句同步，需另开一批写 `tools/gen_player_changelog_mcmod.py`（判据可用「用 rc.1 的 ZH 重生成 rc.1 的 html 并逐字节比对」验证转换器正确性）。
 
 ### 4.2 历史读数
 
