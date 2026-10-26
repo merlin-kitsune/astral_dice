@@ -14,25 +14,6 @@ Released: **1.5.0-rc.2 (pre-release / beta)** — covers **everything** since 1.
 > **This pre-release ships two builds only**: `astral_dice-1.5.0-rc.2+neoforge_1.21.1.jar` (Minecraft 1.21.1 / NeoForge)
 > and `astral_dice-1.5.0-rc.2+forge_1.20.1.jar` (Minecraft 1.20.1 / Forge). Other platforms are out of scope for this pre-release.
 
-## Changes in 1.5.0-rc.2 since 1.5.0-rc.1
-
-> The chapters below cover **everything since 1.3.7**. If you already played **1.5.0-rc.1**, only this section matters.
-
-- **Dorothy Sign · active "True Me":** the **+1 ATK** that the active gives allies is now its own status effect
-  **Socialite** (icon = the Dorothy Sign texture; it shares its name with that sign's passive, but they are two
-  different things). It lasts a **fixed 1:00**, is timed **from the moment the ally gains it**, and is **decoupled from
-  the caster window** (the window ending no longer strips it, so an ally who joins late still gets the full 1:00);
-  reapplying only refreshes the duration and **never stacks** (always exactly **+1 ATK**). The **10-second trigger
-  throttle was removed** (each ally already resolves at most once per window). Dorothy's **own +1 ATK per ally**
-  (stackable, cleared when the window ends) and her passive "2 HP per 10s" are unchanged.
-- **Bartender Sign · active "Mix Life":** the heal now **scales with the number of effect cards** — it used to heal a
-  flat **2 HP** no matter how many effect cards you picked; it is now **2 HP per effect card** (1 → 2, 2 → 4, 3 → 6),
-  matching the "+2 ATK / +2 DEF per card" of the same skill. **Each card is its own heal** (three cards = three
-  heals = 6 HP), so Dorothy's "Warmth" gains **one stack per heal** (three cards = +3 stacks) and per-heal hooks
-  (Zhao overflow, heal-cancel) also resolve three times.
-- **Chinese display names corrected** (**text only, no mechanic change**): 熊猫人 → **上班族** (Padman Sign),
-  提尔 → **教主** (Cult Leader Sign), 酒保 → **调酒师** (Bartender Sign).
-
 ## Installation and requirements (read first)
 
 - **StarEngine is no longer bundled** (NeoForge 1.21.1 / Forge 1.20.1): the shipped jars no longer contain `META-INF/jarjar/`.

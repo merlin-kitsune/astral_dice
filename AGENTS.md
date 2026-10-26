@@ -15,7 +15,7 @@
 | **Codex** | `docs/agent/AGENT-SPLIT.md` | 维持原**只读验证**分工：可读、可 `grep`、可写 `docs/**`；不写源码、不跑构建、不跑实机 |
 | **其他宿主** | 先向用户确认 | **不得**把 `AGENTS-kimi.md` 或 `AGENTS-dsh.md` 当成自己的规则 |
 
-- `docs/agent/AGENTS-dsh.md` = **DSH 的规则正本**（2026-10-24 起从旧根规则文件迁入；同日按用户裁决清掉非 DSH 内容 —— WSL 口径、路径转译、跨宿主的派活工具说明一律删除，只留实际工作流裁决）。目录内另有历史留存：原根规则文件备份 `AGENTS.md.bak-a-plan-183829` 经 `docs/agent/AGENTS-full.md` 逐字留存。当前 `AGENTS-dsh.md` SHA-256 `bb640cc030551f170c0f772e1771921cd6b31a6d5196535697df5541f9e72c5d`（CRLF，307 行 / 48,926 B）。
+- `docs/agent/AGENTS-dsh.md` = **DSH 的规则正本**（2026-10-24 起从旧根规则文件迁入；同日按用户裁决清掉非 DSH 内容 —— WSL 口径、路径转译、跨宿主的派活工具说明一律删除，只留实际工作流裁决）。目录内另有历史留存：原根规则文件备份 `AGENTS.md.bak-a-plan-183829` 经 `docs/agent/AGENTS-full.md` 逐字留存。当前 `AGENTS-dsh.md` SHA-256 `0e31e466ebb3eade48f1fe3d5c4013591b8c08447ebf132dbbb0a63eeeea90fe`（CRLF，307 行 / 48,926 B）。
 - Kimi 当前接手文档：`docs/handover-2026-10-24-kimi-takeover.md`；Kimi 当前工程参考：`docs/agent/PROJECT-REFERENCE.md`。
 
 ## 二、共同安全红线（所有宿主）
@@ -35,7 +35,7 @@
 | 当前接手 / 交班 | Kimi：`docs/handover-2026-10-24-kimi-takeover.md`；DSH：`docs/handover-*.md` 中最新一份 + `docs/handover-new-session-context.md` |
 | 规则全文（逐批历史、领域规格） | `docs/agent/AGENTS-full.md`；标题→行号总表 `docs/agent/AGENTS-TOC.md` |
 | 宿主分工矩阵、互斥、冲突处理 | `docs/agent/AGENT-SPLIT.md` |
-| 立牌 / 物品的英文与日文命名（wiki 角色人名，禁机翻） | `docs/agent/AGENTS-full.md`〈立牌 / 物品英日命名规则〉（L4087 起）；权威表 `tools/sign_display_names.json`；门禁 `python tools/verify_sign_display_names.py` |
+| 立牌 / 物品的英文与日文命名（wiki 角色人名，禁机翻） | `docs/agent/AGENTS-full.md`〈立牌 / 物品英日命名规则〉（L4090 起）；权威表 `tools/sign_display_names.json`；门禁 `python tools/verify_sign_display_names.py` |
 | DSH 委派 runbook | `docs/agent/delegation-runbook.md` |
 | 规则库自身说明 | `docs/agent/README.md` |
 

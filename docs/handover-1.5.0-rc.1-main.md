@@ -25,8 +25,9 @@
 
 16. **`1.5.0-rc.2` 已上传 CurseForge（2026-10-26 11:4x，§4.1p）**：本体 P0 两线 **beta** 渠道 —— neo `fileID=9329558` / forge `9329560`，均 `HTTP 200` 且随上传带 relations；次源判据 = ForgeCDN `HEAD` 200 且 `Content-Length` 与本地 jar 逐字节相等（2,589,502 / 2,634,295）。cfwidget 镜像仍滞后（38 文件、无 rc.2），不作为失败依据。
 
-17. **玩家侧更新日志补齐「本版变化」（2026-10-26 11:5x，§4.1q）**：`release/1.5.0-rc.2/` 三份（ZH / EN / MCMOD）此前是 rc.1 的**整份拷贝**（只在正文各处被就地改成 rc.2 口径），本轮各新增一节「本版（rc.2）相对 rc.1 的变化」= 多萝西【交际花】（同伴 ATK +1 / 固定 1:00 / 与窗口解耦 / 不叠层 / 删 10 秒节流）+ 调酒师治疗按张数（2 / 4 / 6）+ 立牌中文名订正（熊猫人→上班族 · 提尔→教主 · 酒保→调酒师）；MCMOD 版 h2 编号顺延（原 一~八 → 二~九）。md 两份全 CRLF、MCMOD 版按既有口径仍是 **LF-only**。**纯文档，无代码改动、无实机**。
+17. **玩家侧更新日志补齐「本版变化」（2026-10-26 11:5x，§4.1q）**：`release/1.5.0-rc.2/` 三份（ZH / EN / MCMOD）此前是 rc.1 的**整份拷贝**（只在正文各处被就地改成 rc.2 口径），本轮各新增一节「本版（rc.2）相对 rc.1 的变化」= 多萝西【交际花】（同伴 ATK +1 / 固定 1:00 / 与窗口解耦 / 不叠层 / 删 10 秒节流）+ 调酒师治疗按张数（2 / 4 / 6）+ 立牌中文名订正（熊猫人→上班族 · 提尔→教主 · 酒保→调酒师）；MCMOD 版 h2 编号顺延（原 一~八 → 二~九）。md 两份全 CRLF、MCMOD 版按既有口径仍是 **LF-only**。**纯文档，无代码改动、无实机**。　**⚠️ 2026-10-26 12:2x 用户裁决撤销：该节对预发布无意义，已从三份文件中整节删除（见 §4.1s）。**
 18. **调酒师治疗改为「逐张各结算一次」（2026-10-26，§4.1r）**：`JillSignItem#resolve` 由 `heal(HEAL_AMOUNT * effect)` 改为 `for (i < effect) heal(HEAL_AMOUNT)` —— 3 张效果牌 = **3 次治疗 = 6 点**，多萝西「温暖」按治疗次数叠层（**+3 层**），下游（赵赐福溢出 / 治疗失效）各结算三次；六份 lang + 两份 CHANGELOG + rc.2 三份玩家日志同步订正。**rc.2 已发布产物仍是旧口径**（tag / Release / CF 均未变），本修正进下一版需用户裁决版本号。
+19. **玩家日志去掉「相对上一版的变化」+ 怪力乱神手册条目去掉配方（2026-10-26 12:2x，§4.1s）**：`release/1.5.0-rc.2/` 三份的 delta 小节**整节删除**（ZH 17 行 / EN 20 行 / MCMOD 8 行，MCMOD 节号随之重排为一～八）；`astral_dice.guide.entry.lingling_sign.3` 末尾「配方：星盘 ×4 + 导电线材 ×4 + 红石块 + 钻石骰子（史诗档）。」在三语 × P0 两线删除（配方由 Patchouli `recipe` 页承载）。两条口径已写进 `AGENTS-full.md`。
 
 ## 1 环境与路径
 
@@ -424,7 +425,7 @@ forge dev named 102,013 B / `e280aeab6c4b37c43468f7cce32a8bf64c70b6bdbcd2203f6c5
 - 失败前置（第一跑 400，改参数重跑，**无副作用**）：`{"errorCode":1002,"errorMessage":"Error in field metadata: Required properties are missing from object: changelog. …"}` —— 根因见 §6-28（`pick_changelog` 把 `1.5.0-rc.2` 截成 `1.5.0` 去找目录）。
 - 未做：`update-info`（项目简介/说明不变）、P1 两线（按发布红线不传）、CF 侧「已发布」人工复核（需作者后台）。
 
-### 4.1q 玩家侧更新日志：补齐「本版变化」+ MCMOD 版重出（2026-10-26 11:5x–12:0x）—— 纯文档，无代码 / 无实机
+### 4.1q 玩家侧更新日志：补齐「本版变化」+ MCMOD 版重出（2026-10-26 11:5x–12:0x）—— ⚠️ **已被 2026-10-26 12:2x 用户裁决撤销（该节已整节删除，见 §4.1s）**，本条仅作历史记录
 
 - **起因**：`release/1.5.0-rc.2/` 三份玩家侧文件（`PLAYER_CHANGELOG_ZH.md` / `PLAYER_CHANGELOG.md` / `PLAYER_CHANGELOG_MCMOD.html`）是 `51c6c97e chore(release)` 从 rc.1 **整份拷贝**的 —— 与 `release/1.5.0-rc.1/` 同名文件字节数完全相同、`diff` 只有 4 行版本号串（标题 / `已发布：` / 两个 jar 名）。rc.2 的三处真改动（`85c9d2f6` 【交际花】、`e9dab567` 调酒师按张数、`b58e1df4` 立牌名订正）是**先改了 rc.1 的这三份再被拷贝**，所以正文口径是对的，但**缺一段「本版相对上一版的变化」** ⇒ 从 rc.1 升上来的玩家看不出改了什么（CF 上传的 `--changelog` 与 GitHub Release 正文都直接取这份文件）。
 - **改动**：三份各新增一节，位置 = 「两个构建」说明之后、`安装与前置` 之前 —— ZH `## 本版（1.5.0-rc.2）相对 1.5.0-rc.1 的变化`（自 :17，14 行）/ EN `## Changes in 1.5.0-rc.2 since 1.5.0-rc.1`（自 :17，18 行）/ MCMOD `[h2=一、本版（rc.2）相对 rc.1 的变化]`（自 :15，7 行，含 3 个 `<li>`）。三条内容 = ① 多萝西【交际花】：同伴 **+1 ATK**、**固定 1:00**、**从获得时计时**且与施放者主动窗口**解耦**（窗口结束不回收）、重复只刷时长**不叠层**、**删 10 秒触发节流**，多萝西自身 +1/人与被动「每 10 秒回 2 血」不变；② 调酒师主动治疗**按效果牌张数叠加**（1 张 2 / 2 张 4 / 3 张 6；⛔ 本句「仍只结算一次 heal」已于 2026-10-26 用户裁决订正为**逐张各结算 1 次**，详见 **§4.1r**）；③ 立牌中文名订正（**熊猫人 → 上班族** Padman Sign、**提尔 → 教主** Cult Leader Sign、**酒保 → 调酒师** Bartender Sign，纯文案）。
@@ -440,6 +441,15 @@ forge dev named 102,013 B / `e280aeab6c4b37c43468f7cce32a8bf64c70b6bdbcd2203f6c5
 - **文案**：neo/forge × zh_cn/en_us/ja_jp 共 6 份 lang 的 `tooltip.astral_dice.sign.jill_active` 与 `astral_dice.guide.entry.jill_sign.1` 改为「每张各自结算一次治疗（3 张 = 3 次 = 6 点；多萝西「温暖」按次数叠层）」；`CHANGELOG_ZH.md` / `CHANGELOG.md` 两条按新口径重写；`release/1.5.0-rc.2/` 三份玩家日志（ZH / EN / MCMOD）同句订正；本文档 §4.1m / §4.1q 加行内订正标注、§5 第 12 条整条改写。
 - **判据（实测）**：`python tools/verify_sign_balance_changes.py` = `GATE: PASS (801 项全部满足)`；`pwsh -NoProfile -File tools/check_lang_sync.ps1` exit 0（P0 两线各 1,062 键；每线 3 条 WARN、共 6 行，属既有基线，见 §4.1m）；`gradlew.bat :neoforge-1.21.1:classes :forge-1.20.1:classes` **BUILD SUCCESSFUL in 29s**；`python -B docs/agent/verify-split.py` 8 项 `[OK]`。
 - **未做 / 待裁决**：rc.2 产物、tag `1.5.0-rc.2`、GitHub prerelease、CF 文件（neo `9329558` / forge `9329560`）**仍是旧口径** ⇒ 要交付本修正需 bump 版本（rc.3）并重走构建 / 四目标投放 / CF 上传 / 推送，**需用户放行**。本条**无实机**；实机判据 = 3 张效果牌施放后目标治疗 3 次（多萝西「温暖」+3 层）、治疗失效时 3 次全被取消。
+
+### 4.1s 玩家日志去「相对上一版」章节 + 怪力乱神手册条目去配方（2026-10-26 12:2x）—— 纯文档，无代码 / 无实机
+
+- **用户裁决（原话）**：「生成玩家日志时，丢弃『相对 xxx 的变化』章节（预发布版本保留这个无意义），另外怪力乱神立牌品质里莫名其妙带了配方也一并清理」。
+- **改动 A · 玩家日志**：`release/1.5.0-rc.2/` 三份各整节删除 delta 小节 —— `PLAYER_CHANGELOG_ZH.md` 删 17 行（自原 :17 `## 本版（1.5.0-rc.2）相对 1.5.0-rc.1 的变化`）、`PLAYER_CHANGELOG.md` 删 20 行（`## Changes in 1.5.0-rc.2 since 1.5.0-rc.1`）、`PLAYER_CHANGELOG_MCMOD.html` 删 8 行（`[h2=一、本版（rc.2）相对 rc.1 的变化]`）；MCMOD 剩余 h2 顺次重排 `二→一` … `九→八`（8 处，重排后 = 一 安装与前置 / 二 新增内容 / 三 战斗系统重做 / 四 平衡与数值调整 / 五 BUG 修复 / 六 已知问题与设计说明 / 七 文案与手册 / 八 许可变更）。三份残留检索 `相对 rc|相对 1.5.0-rc|since 1.5.0-rc|只需看本节|only this section` = **0 命中**。
+- **改动 B · 立牌手册条目**：`astral_dice.guide.entry.lingling_sign.3` 末尾的配方整句删除（配方另有 Patchouli `recipe` 页 `astral_dice:lingling_sign` 承载，两线均已核在 `entries/signs/lingling_sign.json:21`）—— 三语 × P0 两线共 6 份 lang：zh 141→104 字符 / en 421→333 / ja 200→145，技能描述部分**一字未动**；残留检索 `配方|Recipe|レシピ` = 0。
+- **判据（实测）**：`PLAYER_CHANGELOG_ZH.md` 全 CRLF（343 CRLF / 裸 LF 0）、`PLAYER_CHANGELOG.md`（351 / 0）、`PLAYER_CHANGELOG_MCMOD.html` 维持 rc.1 起的 **LF-only**（268 行）；`tools/check_lang_sync.ps1` **exit 0**（P0 两线各 1,062 键，仍是既有 3 条 § 染色 WARN，已用 `git show HEAD:` 逐键比对证明**与本批无关**：`dorothy_passive` 10/10/14、`jill_active` 16/12/12 前后同值）；`python -B tools/verify_sign_display_names.py` = **GATE: PASS（49,046 项）**；`python -B docs/agent/verify-split.py` = **八项全 [OK]**（快照 **4,160 行**、红线区 13,404 字符、`AGENTS-dsh.md` 27,258 字符）。
+- **口径落盘**：`docs/agent/AGENTS-full.md` 加两条 —— ① 玩家侧发布说明规则追加「**预发布不写『本版相对上一版的变化』章节**」（锚点 = `CI 直接以这一对文件作为 GitHub Release 正文` 之后）；② tooltip 文案基准表第 8 行后加「**手册条目不重复配方清单**」（`recipe` 页已承载）。索引末行随之 `L3047–L4157`→`L3047–L4160`，命名小节行号 `L4087–L4157`→`L4090–L4160`，`AGENTS.md` 里 `AGENTS-dsh.md` 的 SHA-256 更新为 `0e31e466…a90fe`。
+- **未做（如实登记）**：同类配方句仍存在于另外 6 个立牌手册条目（`nardis_sign.3` / `kangel_sign.3` / `ame_sign.3` / `sherry_sign.3` / `hanna_sign.3` / `megas_sign.3`，三语 × 两线）—— 本轮只按用户点名的 `lingling_sign` 清理，是否全量清理**待用户裁决**；本条**无实机**（纯文本，判据 = 门禁 + 残留检索）。
 
 ### 4.2 历史读数
 
