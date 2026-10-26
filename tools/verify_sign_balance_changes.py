@@ -1430,6 +1430,50 @@ def jill_lang_specs():
          r"まとめて1回|1回にまとめ|回数分重複しない"),
     ]
 
+    # 2026-10-26 用户裁决：tooltip 要精简、保留黑箱 —— 主动 tooltip 不再解释结算口径与内部状态，
+    # 只写「牌型 -> 对象 -> 数值」。手册条目（guide.entry.*.1）仍按详细口径检查。
+    tip_zh_req = [
+        ("效果牌行", r"效果牌[：:]"),
+        ("2 点生命", r"恢复[^。\n]{0,12}2[^。\n]{0,6}点生命"),
+    ]
+    tip_zh_forbid = [
+        ("臃肿「每张使目标立即恢复」（2026-10-26 精简，不得复活）", r"每张使目标"),
+        ("臃肿「按张数叠加」", r"按张数叠加"),
+        ("臃肿「各自结算为一次治疗 / 逐张结算」", r"各自结算|逐张[^。\n]{0,12}结算"),
+        ("臃肿「全效果牌」括号说明", r"全效果牌|三张均为效果牌"),
+        ("内部状态「计时器 / 图标」", r"计时器|图标"),
+        ("内部联动「温暖」叠层说明", r"温暖"),
+        ("算术结论「共 N 点」", r"共\s*§?e?\s*6\s*§?7?\s*点"),
+    ]
+    tip_en_req = [
+        ("effect card line", r"effect\s+card[：:]"),
+        ("2 HP", r"2[^A-Za-z0-9]{0,4}HP"),
+    ]
+    tip_en_forbid = [
+        ("bloated 'each card instantly heals' (2026-10-26",
+         r"each\s+(?:effect\s+)?card\s+instantly|instantly\s+heals"),
+        ("bloated 'stacks per card'", r"stacks?\s+per\s+card"),
+        ("bloated 'its own heal'", r"its\s+own\s+(?:separate\s+)?heal"),
+        ("bloated 'all-effect'", r"all[- ]effect"),
+        ("internal state 'timer / icon'", r"timer|icon"),
+        ("internal 'Warmth' stacking note", r"warmth"),
+        ("arithmetic '6 HP total'", r"6\s*HP\s+total"),
+    ]
+    tip_ja_req = [
+        ("効果カード行", r"効果カード[：:]"),
+        ("HP を 2 回復", r"HP[^。\n]{0,8}2[^。\n]{0,4}回復"),
+        ("回復の語", r"回復"),
+    ]
+    tip_ja_forbid = [
+        ("冗長「1枚につき対象のHPを」（2026-10-26 簡素化）", r"1\u679a\u306b\u3064\u304d\u5bfe\u8c61\u306eHP"),
+        ("冗長「枚数分加算」", r"枚数分加算"),
+        ("冗長「各枚が独立した1回の回復」", r"各枚が独立"),
+        ("冗長「全効果カード」", r"全効果カード|すべて効果カード"),
+        ("内部状態「タイマー / アイコン」", r"タイマー|アイコン"),
+        ("内部連動「温暖」の重複説明", r"温暖"),
+        ("算術結論「計 N」", r"計\s*\u00a7?e?\s*6"),
+    ]
+
     pas_zh_req = [
         ("保留迅捷 II", r"迅捷"),
         ("保留星币分支", r"星币"),
@@ -1470,13 +1514,15 @@ def jill_lang_specs():
     ]
 
     specs = []
-    for key, label in (
-            ("tooltip.astral_dice.sign.jill_active", "JIL-L1"),
-            ("astral_dice.guide.entry.jill_sign.1", "JIL-L2")):
-        specs.append(_key_specs(
-            key, label,
-            _spec((act_zh_req, act_zh_forbid), (act_en_req, act_en_forbid),
-                  (act_ja_req, act_ja_forbid))))
+    # tooltip = 精简口径（2026-10-26 用户裁决）；手册条目 = 详细口径
+    specs.append(_key_specs(
+        "tooltip.astral_dice.sign.jill_active", "JIL-L1",
+        _spec((tip_zh_req, tip_zh_forbid), (tip_en_req, tip_en_forbid),
+              (tip_ja_req, tip_ja_forbid))))
+    specs.append(_key_specs(
+        "astral_dice.guide.entry.jill_sign.1", "JIL-L2",
+        _spec((act_zh_req, act_zh_forbid), (act_en_req, act_en_forbid),
+              (act_ja_req, act_ja_forbid))))
     for key, label in (
             ("tooltip.astral_dice.sign.jill_passive", "JIL-L3"),
             ("astral_dice.guide.entry.jill_sign.2", "JIL-L4")):

@@ -29,6 +29,7 @@
 18. **调酒师治疗改为「逐张各结算一次」（2026-10-26，§4.1r；12:4x 实机复验 PASS —— 装备段 hp 6→12 / 温暖 0→3，卸多萝西对照段温暖保持 0）**：`JillSignItem#resolve` 由 `heal(HEAL_AMOUNT * effect)` 改为 `for (i < effect) heal(HEAL_AMOUNT)` —— 3 张效果牌 = **3 次治疗 = 6 点**，多萝西「温暖」按治疗次数叠层（**+3 层**），下游（赵赐福溢出 / 治疗失效）各结算三次；六份 lang + 两份 CHANGELOG + rc.2 三份玩家日志同步订正。**rc.2 已发布产物仍是旧口径**（tag / Release / CF 均未变），本修正进下一版需用户裁决版本号。
 19. **玩家日志去掉「相对上一版的变化」+ 怪力乱神手册条目去掉配方（2026-10-26 12:2x，§4.1s）**：`release/1.5.0-rc.2/` 三份的 delta 小节**整节删除**（ZH 17 行 / EN 20 行 / MCMOD 8 行，MCMOD 节号随之重排为一～八）；`astral_dice.guide.entry.lingling_sign.3` 末尾「配方：星盘 ×4 + 导电线材 ×4 + 红石块 + 钻石骰子（史诗档）。」在三语 × P0 两线删除（配方由 Patchouli `recipe` 页承载）。两条口径已写进 `AGENTS-full.md`。
 20. **撤回「全效果牌不给迅捷 / 不给星币」例外（2026-10-26 13:0x，§4.1t）**：该规则由 `e193e6eb`（2026-10-24，本代理会话）擅自引入，用户声明从未要求 ⇒ 代码两线 `if (allSame)` / `} else`、javadoc、6 份 lang 12 处文案、守门 JIL-2 与被动文案规则同批撤回；`classes` 两线 BUILD SUCCESSFUL 37s + `GATE: PASS (833)` + `check_lang_sync` exit 0。产物未重建，无实机。
+21. **tooltip 精简口径建立（保留黑箱）+ 调酒师主动技能 tooltip 精简（2026-10-26 13:2x，§4.1u）**：按用户本地改法（228→148 字符，只留「效果牌：目标恢复 §e2§7 点生命」）建立〈tooltip 精简原则〉—— tooltip 只写「做什么」不写「怎么算」；同一口径同步 `neoforge-1.21.1` + `forge-1.20.1` × 三语共 6 份 lang（P1 两线无该键）；守门 `verify_sign_balance_changes.py` 新增精简口径判据（PASS 839 项，变异测试能挡回潮）。手册是否同口径、chips 两处「计时器」是否精简待裁决。
 
 ## 1 环境与路径
 
@@ -466,6 +467,16 @@ forge dev named 102,013 B / `e280aeab6c4b37c43468f7cce32a8bf64c70b6bdbcd2203f6c5
   - **守门（`tools/verify_sign_balance_changes.py`）**：JIL-2 迅捷判据 `allSame && !allEffect` → `if (allSame)`、星币判据 `if (!allSame)` → `else` 分支，并新增两条 `forbid`（`allSame && !allEffect`、`!allSame)` 不得复活）；被动文案规则删掉「全效果牌不给迅捷 / 不给星币」的**要求**项与「三张卡牌全部同类型…迅捷」的**禁止**项，改为 3 条 `forbid`（中文「全效果牌…不给迅捷 / 不给星币」「同类型（全效果牌除外）」、英文 `no Speed II / coins for all-effect` 与 `except all-effect`、日文「全効果カード…移動速度上昇IIなし / スターナなし」「全効果カードは同種類の例外」）。docstring 同步。
 - **判据（实测）**：`gradlew.bat :neoforge-1.21.1:classes :forge-1.20.1:classes` **BUILD SUCCESSFUL in 37s**；`python -B tools/verify_sign_balance_changes.py` = **GATE: PASS (833 项全部满足)**（由 801 增至 833，增量即本轮 forbid 项）；`pwsh -NoProfile -File tools/check_lang_sync.ps1` **exit 0**（P0 两线各 **1,059** 键、三语一致；WARN 仍为既有 baseline `dorothy_passive` / `jill_active` 的 § 码差，`jill_passive` 的 WARN 已随之消失）。
 - **未做 / 待办**：① 产物与投放**未重建**（`build/libs` 仍是 12:36:55 的 rc.2 旧口径、含该例外）—— 实机或交付前须重建并重投四目标；② `release/1.5.0-rc.1` / `rc.2` 三份玩家日志里「全效果牌两者都不给」的句子**保留**（如实记录已发布版本的行为，修正随下一版说明）；③ 本条**无实机**，实机判据 = 三张效果牌调制后**双方各获迅捷 II** 且不进星币分支，可与既有 `AP_JILL: …:allEffect=true` 日志行同批断言。
+### 4.1u 建立 tooltip 精简口径（保留黑箱）+ 调酒师主动技能 tooltip 精简（2026-10-26 13:2x 用户裁决）—— 三语 × P0 两线同步，无实机
+
+- **用户原话**：「tooltip文案此前过于臃肿（加了很多没有必要的注释信息，这破坏了可读性，而且不符合保留黑箱的要求）。请重写建立tooltip规则，按照我更改后的写法纪录，后续写tooltip时要保持精简度，不需要完全解释清楚玩法，保留一定黑箱性。随后将我更改的内容同步其他语言其他版本。」
+- **用户本地改动（唯一一处，`git diff` 实测 1 行）**：`neoforge-1.21.1/src/main/resources/assets/astral_dice/lang/zh_cn.json:1050` 键 `tooltip.astral_dice.sign.jill_active` 末行由「效果牌：每张使目标立即恢复 §e2§7 点生命（按张数叠加，且每张各自结算为一次治疗 —— 三张 = 三次治疗、共 §e6§7 点；「温暖」按治疗次数叠层）；三张均为效果牌（全效果牌）时不给计时器与图标」（228 字符）改为 **「效果牌：目标恢复 §e2§7 点生命」**（148 字符）。
+- **同步面**：`neoforge-1.21.1` + `forge-1.20.1` × `{zh_cn,en_us,ja_jp}` 共 6 份 lang（en `Effect card: target heals §e2§7 HP` 268 字符；ja `効果カード：対象のHPを §e2§7 回復` 155 字符；forge 三语与 neo 同文）。**P1 两线无该键**（26.1.2 / fabric 的 4 个 jill 键 dump 全空）⇒「其他版本」本轮 = forge-1.20.1。键数各 **1,059** 不变、CRLF、裸 LF 0。
+- **规则落盘**：`docs/agent/AGENTS-full.md`〈新增内容 tooltip 文案的唯一基准〉表新增第 9 行「精简优先、保留黑箱」，并新增小节〈tooltip 精简原则（保留黑箱）— 必须遵守〉（一句话原则 / 长度预算 单条 ≤4 行 · 每行 ≤40 汉字 / 每行一个可执行事实 / 黑名单 6 项 / 用户改前改后正样本 / 三语两线同批 / 手册分档待裁决 / 自检三问 / 守门命令）。全文 4,177 行。
+- **索引与哈希**：`docs/agent/AGENTS-dsh.md` 索引末行 `| L3047–L4177 |` 且指向命名小节 `L4107–L4177`；`AGENTS.md` §一 的 SHA-256 更新为 `9d0b9387…8b04`（307 行 / 49,046 B）、§三「（L4107 起）」。
+- **守门**：`tools/verify_sign_balance_changes.py` 里 `jill_lang_specs()` 新增精简口径集合（`tip_*`），把 `tooltip.astral_dice.sign.jill_active`（JIL-L1）与手册 `astral_dice.guide.entry.jill_sign.1`（JIL-L2，仍是详版判据）拆成两条。**坑**：`check_lang_specs` 先剥掉所有 § 码再匹配（`tools/verify_sign_balance_changes.py:1729`），正则必须按无 § 文本写。
+- **判据（实测）**：`python -B tools/verify_sign_balance_changes.py` = GATE: PASS（**839 项**，原 833）；变异测试（把旧臃肿句植回 ja_jp）命中 4 条 FAIL 且还原后 sha256 一致 ⇒ 守门能挡住回潮；`tools/check_lang_sync.ps1` exit 0；`python -B docs/agent/verify-split.py` 全通过；`scripts/audit/tooltip_color_audit.ps1` working 121 处违规 vs HEAD 基线 131 处 ⇒ **既有基线瑕疵**，本批净减 10 处。
+- **未做**：手册条目（`guide.entry.jill_sign.1` 等）**故意未精简**，口径待用户裁决；`tooltip.astral_dice.chip.{purple,golden}_shooting_star` 两处「计时器」是否精简亦待裁决；P1 两线无该键故未动；产物未重建（build/libs 仍是非本批源码）；`docs/agent/AGENTS-full.md:1596` 仍指向不存在的技能 `astral-dice-tooltip-optimizer`（悬空引用，待裁决）。
 ### 4.2 历史读数
 
 pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（含 4.8 pre.4 全量双线 10 跑 10 PASS、4.11–4.17 pre.5 各批、4.19 Jade 图标留白版）。
