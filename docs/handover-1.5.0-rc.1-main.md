@@ -28,6 +28,7 @@
 17. **玩家侧更新日志补齐「本版变化」（2026-10-26 11:5x，§4.1q）**：`release/1.5.0-rc.2/` 三份（ZH / EN / MCMOD）此前是 rc.1 的**整份拷贝**（只在正文各处被就地改成 rc.2 口径），本轮各新增一节「本版（rc.2）相对 rc.1 的变化」= 多萝西【交际花】（同伴 ATK +1 / 固定 1:00 / 与窗口解耦 / 不叠层 / 删 10 秒节流）+ 调酒师治疗按张数（2 / 4 / 6）+ 立牌中文名订正（熊猫人→上班族 · 提尔→教主 · 酒保→调酒师）；MCMOD 版 h2 编号顺延（原 一~八 → 二~九）。md 两份全 CRLF、MCMOD 版按既有口径仍是 **LF-only**。**纯文档，无代码改动、无实机**。　**⚠️ 2026-10-26 12:2x 用户裁决撤销：该节对预发布无意义，已从三份文件中整节删除（见 §4.1s）。**
 18. **调酒师治疗改为「逐张各结算一次」（2026-10-26，§4.1r；12:4x 实机复验 PASS —— 装备段 hp 6→12 / 温暖 0→3，卸多萝西对照段温暖保持 0）**：`JillSignItem#resolve` 由 `heal(HEAL_AMOUNT * effect)` 改为 `for (i < effect) heal(HEAL_AMOUNT)` —— 3 张效果牌 = **3 次治疗 = 6 点**，多萝西「温暖」按治疗次数叠层（**+3 层**），下游（赵赐福溢出 / 治疗失效）各结算三次；六份 lang + 两份 CHANGELOG + rc.2 三份玩家日志同步订正。**rc.2 已发布产物仍是旧口径**（tag / Release / CF 均未变），本修正进下一版需用户裁决版本号。
 19. **玩家日志去掉「相对上一版的变化」+ 怪力乱神手册条目去掉配方（2026-10-26 12:2x，§4.1s）**：`release/1.5.0-rc.2/` 三份的 delta 小节**整节删除**（ZH 17 行 / EN 20 行 / MCMOD 8 行，MCMOD 节号随之重排为一～八）；`astral_dice.guide.entry.lingling_sign.3` 末尾「配方：星盘 ×4 + 导电线材 ×4 + 红石块 + 钻石骰子（史诗档）。」在三语 × P0 两线删除（配方由 Patchouli `recipe` 页承载）。两条口径已写进 `AGENTS-full.md`。
+20. **撤回「全效果牌不给迅捷 / 不给星币」例外（2026-10-26 13:0x，§4.1t）**：该规则由 `e193e6eb`（2026-10-24，本代理会话）擅自引入，用户声明从未要求 ⇒ 代码两线 `if (allSame)` / `} else`、javadoc、6 份 lang 12 处文案、守门 JIL-2 与被动文案规则同批撤回；`classes` 两线 BUILD SUCCESSFUL 37s + `GATE: PASS (833)` + `check_lang_sync` exit 0。产物未重建，无实机。
 
 ## 1 环境与路径
 
@@ -454,6 +455,17 @@ forge dev named 102,013 B / `e280aeab6c4b37c43468f7cce32a8bf64c70b6bdbcd2203f6c5
 - **口径落盘**：`docs/agent/AGENTS-full.md` 加两条 —— ① 玩家侧发布说明规则追加「**预发布不写『本版相对上一版的变化』章节**」（锚点 = `CI 直接以这一对文件作为 GitHub Release 正文` 之后）；② tooltip 文案基准表第 8 行后加「**手册条目不重复配方清单**」（`recipe` 页已承载）。索引末行随之 `L3047–L4157`→`L3047–L4160`，命名小节行号 `L4087–L4157`→`L4090–L4160`，`AGENTS.md` 里 `AGENTS-dsh.md` 的 SHA-256 更新为 `0e31e466…a90fe`。
 - **后续（同一轮，2026-10-26 12:3x 用户裁决「一并清理」）**：另外 6 个立牌条目已清 —— `kangel_sign.3` / `ame_sign.3` / `megas_sign.3` 只摘除配方句（保留「一心同体」技能与「精准打击」效果描述，zh 159→104 / 159→105 / 87→39、en 455→333 / 433→321 / 224→115、ja 214→135 / 222→151 / 119→48 字符）；`nardis_sign.3` / `sherry_sign.3` / `hanna_sign.3` 的正文**只有配方一句** ⇒ 连同 Patchouli `patchouli:text` 页整页撤下并删除对应 lang 键（两线各 1,062 → **1,059** 键）。判据：P0 两线三语 `guide.entry.*` 的配方字样 = **0**；`check_lang_sync` exit 0（1,059 键三语一致）；`audit_patchouli_keys` 悬空 **0**（引用 1,692 处，P0 各线 463）；`verify_sign_display_names` **GATE: PASS（48,908 项）**。两份 CHANGELOG 各加一条。本条**无实机**（纯文本）。
 
+### 4.1t 撤回「全效果牌不给迅捷 / 不给星币」例外（2026-10-26 13:0x 用户裁决）—— 代码 + 文案 + 守门同批撤回，无实机
+
+- **用户裁决（原话）**：「调酒师立牌：我从来没要求过『全效果牌：不给迅捷，也不给星币』。这条是你擅自加的，立即改回来」。
+- **溯源（git 证据）**：该例外由 `e193e6eb feat(signs): apply P0 balance updates`（2026-10-24 20:14，本代理会话）一次性引入 —— 同一提交把被动从「三张同类型 ⇒ 迅捷 II，否则各 +3 星币」改成「…且非全效果牌 ⇒ 迅捷；全效果牌既不给迅捷也不给星币」，并连带新增 `!allEffect`（JILL_MIXED 守卫）、`attack + defense > 0`（计时守卫）、`allSame && !allEffect`（迅捷守卫）、`else if (!allSame)`（星币守卫）四处代码改动、javadoc、6 份 lang 与守门脚本 1,649 行。用户声明该例外**从未被要求**。
+- **根因**：把「全效果牌不写计时器（无攻/防修饰符 ⇒ 无可清理的 buff）」这一**实现层**推断，越权升级成了**玩法规则**（不给迅捷 / 星币），并写进文案与守门。
+- **本轮撤回范围（只撤这一条，其余不动）**：
+  - **代码（P0 两线 `item/sign/JillSignItem.java`）**：`if (allSame && !allEffect)` → `if (allSame)`；`} else if (!allSame)` → `} else`；javadoc 被动段恢复「三张牌全部同类型 ⇒ 自身与目标各获迅捷 II(1:00)；否则各 +3 星币。」；`allEffect` 顶部注释改为「只免去 jill_mixed 与内部计时器；被动（迅捷 / 星币）照常按『同类型 / 混搭』判定」。`!allEffect`（JILL_MIXED）与 `attack + defense > 0`（计时）两处守卫**保持原样**（不在本次裁决范围）。
+  - **文案（`neoforge-1.21.1` / `forge-1.20.1` × `zh_cn` / `en_us` / `ja_jp`，共 6 份 12 处）**：`tooltip.astral_dice.sign.jill_passive` 与 `astral_dice.guide.entry.jill_sign.2` 删掉「（全效果牌除外）」「全效果牌：不给迅捷，也不给星币」及其英日对应句。现值 —— zh 工具提示「调制时若三张卡牌同类型：自身与目标获得 迅捷 II（§91:00§7）」+「否则：自身与目标各获得 §e3§7 星币」；zh 手册「…获得迅捷 II（1:00）；否则自身与目标各获得 3 星币。」；en 工具提示「If the three cards share one type: …」/ 手册「Passive Change Life: if the three cards share one type, …」；ja 工具提示「3枚とも同種類なら…スターナ」/ 手册「パッシブ「暮らしを変える」：…3スターナ。」。
+  - **守门（`tools/verify_sign_balance_changes.py`）**：JIL-2 迅捷判据 `allSame && !allEffect` → `if (allSame)`、星币判据 `if (!allSame)` → `else` 分支，并新增两条 `forbid`（`allSame && !allEffect`、`!allSame)` 不得复活）；被动文案规则删掉「全效果牌不给迅捷 / 不给星币」的**要求**项与「三张卡牌全部同类型…迅捷」的**禁止**项，改为 3 条 `forbid`（中文「全效果牌…不给迅捷 / 不给星币」「同类型（全效果牌除外）」、英文 `no Speed II / coins for all-effect` 与 `except all-effect`、日文「全効果カード…移動速度上昇IIなし / スターナなし」「全効果カードは同種類の例外」）。docstring 同步。
+- **判据（实测）**：`gradlew.bat :neoforge-1.21.1:classes :forge-1.20.1:classes` **BUILD SUCCESSFUL in 37s**；`python -B tools/verify_sign_balance_changes.py` = **GATE: PASS (833 项全部满足)**（由 801 增至 833，增量即本轮 forbid 项）；`pwsh -NoProfile -File tools/check_lang_sync.ps1` **exit 0**（P0 两线各 **1,059** 键、三语一致；WARN 仍为既有 baseline `dorothy_passive` / `jill_active` 的 § 码差，`jill_passive` 的 WARN 已随之消失）。
+- **未做 / 待办**：① 产物与投放**未重建**（`build/libs` 仍是 12:36:55 的 rc.2 旧口径、含该例外）—— 实机或交付前须重建并重投四目标；② `release/1.5.0-rc.1` / `rc.2` 三份玩家日志里「全效果牌两者都不给」的句子**保留**（如实记录已发布版本的行为，修正随下一版说明）；③ 本条**无实机**，实机判据 = 三张效果牌调制后**双方各获迅捷 II** 且不进星币分支，可与既有 `AP_JILL: …:allEffect=true` 日志行同批断言。
 ### 4.2 历史读数
 
 pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（含 4.8 pre.4 全量双线 10 跑 10 PASS、4.11–4.17 pre.5 各批、4.19 Jade 图标留白版）。

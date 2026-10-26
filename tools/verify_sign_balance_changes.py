@@ -35,12 +35,13 @@
     `for (int i = 0; i < effect; i++) target.heal(HEAL_AMOUNT);`
     （2026-10-26 用户裁决：每张 2 点、3 张 = 3 次治疗 = 6 点；治疗事件按次数各触发 ⇒ 多萝西「温暖」
     按张数叠层。**不得**合并成一次 `target.heal(HEAL_AMOUNT * effect)`），且不再施加 REGENERATION；
-  * `boolean allEffect = effect == 3` 驱动 `JILL_MIXED`、迅捷、buff 计时、星币四类分支；
-  * `JILL_MIXED` 受 `!allEffect` 守卫；迅捷受 `allSame && !allEffect` 守卫；
-    星币受 `!allSame` 守卫；目标/结束刻只在 `attack + defense > 0` 时写；
+  * `boolean allEffect = effect == 3` 只驱动 `JILL_MIXED` 与 buff 计时两处守卫；
+  * `JILL_MIXED` 受 `!allEffect` 守卫；被动迅捷受 `if (allSame)` 守卫、星币在 `else` 分支；
+    目标/结束刻只在 `attack + defense > 0` 时写；
   * 非全效果牌路径（攻/防修饰符、随机 3 张牌、冷却）保留；
-  * 三语主动/被动/手册写「每张效果牌 2 点、按张数叠加」、全效果牌无计时器/图标且不给迅捷/星币，
-    旧“生命恢复（等级 = 效果牌数量）”与“三张卡牌全部同类型…迅捷”文案消失。
+  * 三语主动/被动/手册写「每张效果牌 2 点、按张数叠加」、全效果牌无计时器/图标；被动只写「三张同类型 ⇒ 迅捷 II，否则各 +3 星币」
+    （**不得**再出现「全效果牌不给迅捷 / 不给星币」——2026-10-26 用户裁决：该例外从未被要求，属擅自添加，已撤回），
+    旧“生命恢复（等级 = 效果牌数量）”文案消失。
 - `deepseek`：
   * 主动：`nextInt(20) + 1` 掷 1..20，`Math.min(roll, getBalance(...))` 夹取实际消耗，
     余额 0 / 扣款失败直接返回，`setAttackPowerBonus` / `setDefenseArmorBonus` 用实际值，
@@ -837,22 +838,23 @@ def check_jill(line, res):
         require(res, mixed_scope, r"\bJILL_MIXED\b",
                 "JIL-2", line, "!allEffect 守卫块内才施加 JILL_MIXED")
 
-    speed_scope = guarded_scope(
-        resolve["body"],
-        re.compile(r"if\s*\(\s*(?:allSame\s*&&\s*!\s*allEffect|!\s*allEffect\s*&&\s*allSame)\s*\)"))
+    speed_scope = guarded_scope(resolve["body"], re.compile(r"if\s*\(\s*allSame\s*\)"))
     if speed_scope is None:
-        res.run(False, "JIL-2 [%s] 迅捷未受 allSame && !allEffect 守卫（全效果牌仍会获得迅捷）" % line)
+        res.run(False, "JIL-2 [%s] 迅捷未受 allSame 守卫（2026-10-26 裁决：全效果牌照常获得迅捷）" % line)
     else:
         require(res, speed_scope, r"MOVEMENT_SPEED",
-                "JIL-2", line, "allSame && !allEffect 守卫块内才施加迅捷")
+                "JIL-2", line, "allSame 守卫块内才施加迅捷")
 
-    coin_scope = guarded_scope(resolve["body"],
-                               re.compile(r"if\s*\(\s*!\s*allSame\s*\)"))
+    coin_scope = guarded_scope(resolve["body"], re.compile(r"\belse\s*(?=\{)"))
     if coin_scope is None:
-        res.run(False, "JIL-2 [%s] 星币未受 !allSame 守卫（全效果牌会落入混合牌星币分支）" % line)
+        res.run(False, "JIL-2 [%s] 星币未落在 allSame 的 else 分支（星币只在混搭时发放）" % line)
     else:
         require(res, coin_scope, r"StarEngineEconomy\s*\.\s*deposit",
-                "JIL-2", line, "!allSame 守卫块内的双方星币")
+                "JIL-2", line, "else 分支内的双方星币")
+    forbid(res, resolve["body"], r"allSame\s*&&\s*!\s*allEffect",
+           "JIL-2", line, "迅捷分支不得再带 !allEffect 守卫（2026-10-26 撤回）")
+    forbid(res, resolve["body"], r"!\s*allSame\s*\)",
+           "JIL-2", line, "不得再以 !allSame 作星币守卫（2026-10-26 撤回）")
 
     buff_scope = guarded_scope(
         resolve["body"],
@@ -1429,43 +1431,42 @@ def jill_lang_specs():
     ]
 
     pas_zh_req = [
-        ("全效果牌例外", r"全效果牌|三张效果牌|3\s*张效果牌|全部(?:为|是)效果牌"),
-        ("保留迅捷 II（非全效果牌）", r"迅捷"),
-        ("全效果牌不给迅捷",
-         r"(?:全效果牌|三张效果牌|3\s*张效果牌|全部(?:为|是)效果牌)[^。\n]{0,60}(?:不|无)[^。\n]{0,24}迅捷"),
-        ("全效果牌不给星币",
-         r"(?:全效果牌|三张效果牌|3\s*张效果牌|全部(?:为|是)效果牌)[^。\n]{0,60}(?:不|无)[^。\n]{0,24}星币"),
+        ("保留迅捷 II", r"迅捷"),
+        ("保留星币分支", r"星币"),
     ]
     pas_zh_forbid = [
-        ("旧文案「三张卡牌全部同类型…迅捷」",
-         r"三张卡牌全部同类型[^。\n]{0,30}迅捷"),
+        ("全效果牌不给迅捷（2026-10-26 裁决撤回，不得复活）",
+         r"(?:全效果牌|三张效果牌|3\s*张效果牌)[^。\n]{0,60}(?:不|无)[^。\n]{0,24}迅捷"),
+        ("全效果牌不给星币（2026-10-26 裁决撤回，不得复活）",
+         r"(?:全效果牌|三张效果牌|3\s*张效果牌)[^。\n]{0,60}(?:不|无)[^。\n]{0,24}星币"),
+        ("被动「全效果牌除外」标注（2026-10-26 撤回）",
+         r"(?:同类型|同種類)[（(]\s*(?:全效果牌|全効果カード)|全效果牌[^。\n]{0,20}除外"),
     ]
     pas_en_req = [
-        ("all-effect exception",
-         r"all[- ]effect|all three (?:cards are )?effect cards?|three effect cards"),
-        ("Speed II retained", r"speed\s+ii"),
-        ("no Speed II for all-effect",
-         r"all[- ]effect[^.\n]{0,100}(?:no|not|without)[^.\n]{0,30}speed"
-         r"|(?:three effect cards)[^.\n]{0,100}(?:no|not|without)[^.\n]{0,30}speed"),
-        ("no coins for all-effect",
-         r"all[- ]effect[^.\n]{0,100}(?:no|not|without)[^.\n]{0,30}coins?"
-         r"|(?:three effect cards)[^.\n]{0,100}(?:no|not|without)[^.\n]{0,30}coins?"),
+        ("Speed II kept", r"speed\s+ii"),
+        ("star coins kept", r"star\s+coins?"),
     ]
     pas_en_forbid = [
-        ("old 'all three cards share the same/one type ... Speed II'",
-         r"all three cards share\s+(?:the\s+same\s+|one\s+)?type"
-         r"[^.\n]{0,80}speed\s+ii"),
+        ("no Speed II for all-effect (reverted 2026-10-26)",
+         r"all[- ]effect[^.\n]{0,100}(?:no|not|without)[^.\n]{0,30}speed"
+         r"|(?:three effect cards)[^.\n]{0,100}(?:no|not|without)[^.\n]{0,30}speed"),
+        ("no coins for all-effect (reverted 2026-10-26)",
+         r"all[- ]effect[^.\n]{0,100}(?:no|not|without)[^.\n]{0,30}coins?"
+         r"|(?:three effect cards)[^.\n]{0,100}(?:no|not|without)[^.\n]{0,30}coins?"),
+        ("'except all-effect' qualifier (reverted 2026-10-26)",
+         r"except\s+all[- ]effect|all[- ]effect\s+exception"),
     ]
     pas_ja_req = [
-        ("全効果カード例外",
-         r"全効果カード|すべて(?:が)?効果カード|効果カード3枚|3枚とも効果カード"),
         ("移動速度上昇 II を保留", r"移動速度上昇II"),
-        ("全効果カードはスターナなし",
-         r"(?:全効果カード|効果カード3枚|3枚とも効果カード)[^。\n]{0,80}"
-         r"(?:なし|無し|得られない|付与しない|ない)"),
+        ("スターナを保留", r"スターナ"),
     ]
     pas_ja_forbid = [
-        ("旧文案「3枚がすべて同じ種類なら」", r"3枚がすべて同じ種類なら"),
+        ("全効果カードで移動速度上昇IIなし（撤回）",
+         r"(?:全効果カード|効果カード3枚)[^。\n]{0,80}(?:移動速度上昇II[^。\n]{0,12}(?:なし|無し)|(?:なし|無し)[^。\n]{0,12}移動速度上昇II)"),
+        ("全効果カードはスターナなし（撤回）",
+         r"(?:全効果カード|効果カード3枚)[^。\n]{0,80}スターナ[^。\n]{0,12}(?:なし|無し)"),
+        ("「全効果カードは同種類の例外」注記（撤回）",
+         r"全効果カード[^。\n]{0,20}例外"),
     ]
 
     specs = []

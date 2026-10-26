@@ -37,9 +37,8 @@ import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
 /**
  * 调酒师立牌（jill，奇特）。
  *
- * <p><b>被动「改变生活」</b>：调制结算时 3 张牌**全部同类型**且非全效果牌 ⇒ 自身与目标各获迅捷 II(1:00)；
- * 类型混搭（含攻/防/效果各一）⇒ 各 +3 星币。**全效果牌（3 张效果牌）是例外**：既不给迅捷也不给星币，
- * 只保留下面的按张数治疗。
+ * <p><b>被动「改变生活」</b>：调制结算时 3 张牌**全部同类型** ⇒ 自身与目标各获迅捷 II(1:00)；
+ * 否则各 +3 星币。
  *
  * <p><b>主动「调制人生」</b>：目标选择器选一名玩家 → 选卡界面选 3 张（背包现有牌，不足 3 张直接取消、
  * 不进冷却）→ 按槽位顺序结算：攻击牌 +2 攻/张、防御牌 +2 防/张（均叠加，2:00）；效果牌每张各结算
@@ -139,7 +138,7 @@ public class JillSignItem extends BaseSignItem {
         int total = attack + defense + effect;
         if (total < 3) return;
 
-        // 全效果牌(3 张效果牌)是独立分支:只有固定治疗,不进任何计时器/图标/星币路径。
+        // 全效果牌(3 张效果牌)只免去 jill_mixed 与内部计时器;被动(迅捷/星币)照常按「同类型 / 混搭」判定。
         boolean allEffect = effect == 3;
         boolean allSame = attack == 3 || defense == 3 || effect == 3;
 
@@ -173,10 +172,10 @@ public class JillSignItem extends BaseSignItem {
             ModAttachments.setJillBuffEnd(caster, caster.level().getGameTime() + DURATION_TICKS);
         }
 
-        if (allSame && !allEffect) {
+        if (allSame) {
             PlayerEffectProtection.apply(caster, new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 1200, 1, false, true, true));
             PlayerEffectProtection.apply(target, new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 1200, 1, false, true, true));
-        } else if (!allSame) {
+        } else {
             StarEngineEconomy.deposit(caster, COIN_PER_PROC);
             StarEngineEconomy.deposit(target, COIN_PER_PROC);
         }
