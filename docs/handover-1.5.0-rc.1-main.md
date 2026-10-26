@@ -30,6 +30,7 @@
 19. **玩家日志去掉「相对上一版的变化」+ 怪力乱神手册条目去掉配方（2026-10-26 12:2x，§4.1s）**：`release/1.5.0-rc.2/` 三份的 delta 小节**整节删除**（ZH 17 行 / EN 20 行 / MCMOD 8 行，MCMOD 节号随之重排为一～八）；`astral_dice.guide.entry.lingling_sign.3` 末尾「配方：星盘 ×4 + 导电线材 ×4 + 红石块 + 钻石骰子（史诗档）。」在三语 × P0 两线删除（配方由 Patchouli `recipe` 页承载）。两条口径已写进 `AGENTS-full.md`。
 20. **撤回「全效果牌不给迅捷 / 不给星币」例外（2026-10-26 13:0x，§4.1t）**：该规则由 `e193e6eb`（2026-10-24，本代理会话）擅自引入，用户声明从未要求 ⇒ 代码两线 `if (allSame)` / `} else`、javadoc、6 份 lang 12 处文案、守门 JIL-2 与被动文案规则同批撤回；`classes` 两线 BUILD SUCCESSFUL 37s + `GATE: PASS (833)` + `check_lang_sync` exit 0。产物未重建，无实机。
 21. **tooltip 精简口径建立（保留黑箱）+ 调酒师主动技能 tooltip 精简（2026-10-26 13:2x，§4.1u）**：按用户本地改法（228→148 字符，只留「效果牌：目标恢复 §e2§7 点生命」）建立〈tooltip 精简原则〉—— tooltip 只写「做什么」不写「怎么算」；同一口径同步 `neoforge-1.21.1` + `forge-1.20.1` × 三语共 6 份 lang（P1 两线无该键）；守门 `verify_sign_balance_changes.py` 新增精简口径判据（PASS 839 项，变异测试能挡回潮）。手册是否同口径、chips 两处「计时器」是否精简待裁决。
+22. **1.5.0-rc.3 发布收口（2026-10-26 13:2x–13:4x，§4.1v）**：四线 `mod_version` → `1.5.0-rc.3+后缀`（`starengine_version=1.1.0` 未动）；技术 CHANGELOG 中英各 +6 行、`release/1.5.0-rc.3/` 三份玩家说明；P0 两线 `build` 成功（neo 2,588,530 B / forge 2,633,363 B，`META-INF/jarjar/`=0）；提交 `14eb54ab` 已 push；CI 建 tag `1.5.0-rc.3` 并发 **prerelease** Release（两个附件）；CurseForge 两线 **beta** 已上传（neo `9330278` / forge `9330279`，ForgeCDN 字节数吹策相等）。
 
 ## 1 环境与路径
 
@@ -477,6 +478,19 @@ forge dev named 102,013 B / `e280aeab6c4b37c43468f7cce32a8bf64c70b6bdbcd2203f6c5
 - **守门**：`tools/verify_sign_balance_changes.py` 里 `jill_lang_specs()` 新增精简口径集合（`tip_*`），把 `tooltip.astral_dice.sign.jill_active`（JIL-L1）与手册 `astral_dice.guide.entry.jill_sign.1`（JIL-L2，仍是详版判据）拆成两条。**坑**：`check_lang_specs` 先剥掉所有 § 码再匹配（`tools/verify_sign_balance_changes.py:1729`），正则必须按无 § 文本写。
 - **判据（实测）**：`python -B tools/verify_sign_balance_changes.py` = GATE: PASS（**839 项**，原 833）；变异测试（把旧臃肿句植回 ja_jp）命中 4 条 FAIL 且还原后 sha256 一致 ⇒ 守门能挡住回潮；`tools/check_lang_sync.ps1` exit 0；`python -B docs/agent/verify-split.py` 全通过；`scripts/audit/tooltip_color_audit.ps1` working 121 处违规 vs HEAD 基线 131 处 ⇒ **既有基线瑕疵**，本批净减 10 处。
 - **未做**：手册条目（`guide.entry.jill_sign.1` 等）**故意未精简**，口径待用户裁决；`tooltip.astral_dice.chip.{purple,golden}_shooting_star` 两处「计时器」是否精简亦待裁决；P1 两线无该键故未动；产物未重建（build/libs 仍是非本批源码）；`docs/agent/AGENTS-full.md:1596` 仍指向不存在的技能 `astral-dice-tooltip-optimizer`（悬空引用，待裁决）。
+
+### 4.1v 1.5.0-rc.3 发布全链（2026-10-26 13:25–13:29 用户裁决：「更新到rc.3，执行推送+上传cf」）
+
+- **bump**：四线 `gradle.properties` `mod_version=1.5.0-rc.2+<后缀>` → `1.5.0-rc.3+<后缀>`（各 1 处）；`starengine_version=1.1.0` 与 CI 里 StarEngine checkout `16b48c4` 未动（两者同提交前提仍满足）。
+- **技术 CHANGELOG**：`CHANGELOG_ZH.md` / `CHANGELOG.md` 各 +6 行（立牌与技能：撤回「全效果牌」例外；文案与手册：tooltip 精简口径 + 手册不重复配方）；`check_changelog_parity.py` ⇒ `CHANGELOG_PARITY: OK sections=26 entries=754/754`（仅两条历史 WARN P2）。
+- **玩家侧说明**：`release/1.5.0-rc.3/` 三份从 rc.2 整份复制后就地改口径（版本串 ZH/EN 各 4 处、MCMOD 3 处）+ 新增两条内容；读数 = ZH **37,971 B / 346 CRLF / 裸 LF 0**、EN **38,102 B / 354 CRLF / 裸 LF 0**、MCMOD **40,569 B / 290 行 LF-only**（html 本来就是 LF）；仍**无**「相对上一版的变化」小节（预发布口径）。
+- **P0 构建**：`gradlew.bat :neoforge-1.21.1:build :forge-1.20.1:build`（JAVA_HOME=Zulu 21）**BUILD SUCCESSFUL in 6s**（17 tasks / 13 executed）；neo `astral_dice-1.5.0-rc.3+neoforge_1.21.1.jar` **2,588,530 B** sha256 `b086b984419a4152441700a9f523e9e9681db28c563504d94e9c50f7ee05787c`；forge `astral_dice-1.5.0-rc.3+forge_1.20.1.jar` **2,633,363 B** sha256 `79fc4b5ed231e1a6d8f267cb5f5b345ecccb9dd6977cbb91dd8ad3fd8051ace9`；两 jar 内 `META-INF/jarjar/` 条目均 **0**。投放由 Gradle 任务自动完成（pushToDevRun / pushToGame 两个整合包 / pushToRootBuild）。
+- **守门 5 项全绿**：`check_lang_sync.ps1` exit 0（P0 两线各 1,059 键；`jill_active` 的§ 码数差仍为既有 WARN）；`verify_sign_display_names.py` **GATE: PASS**（48,908 项）；`verify_sign_balance_changes.py` **GATE: PASS (839)**；`check_changelog_parity.py` OK；`docs/agent/verify-split.py` 全部通过。
+- **提交 + push**：`14eb54ab release: 1.5.0-rc.3（版本 bump + 技术 CHANGELOG + 玩家侧说明三份）` —— 9 文件 +1,007/−4；`git push origin multi-main` ⇒ `abb0c916..14eb54ab`，EXIT=0。
+- **CI 自动发布**：远端 tag `1.5.0-rc.3` 已建（指向 `14eb54ab`）；GitHub Release `Astral Dice 1.5.0-rc.3` **prerelease=true**，published 2026-10-26T05:30:58Z，附件 `astral_dice-1.5.0-rc.3+forge_1.20.1.jar` (2,632,182 B) / `... +neoforge_1.21.1.jar` (2,587,301 B)。⚠️ CI 构建产物比本地少 ~1.2 KB（rc.2 同样：2,633,112 / 2,588,269 vs 本地 2,634,295 / 2,589,502）—— 既有差异（CI `./gradlew build` 全任务与本地部分任务源不同），**不是**本批引入。
+- **CurseForge**：`python tools/curseforge_upload.py push --apply --proxy http://127.0.0.1:7897 --changelog release/1.5.0-rc.3/PLAYER_CHANGELOG.md --jar ...rc.3+neoforge... --jar ...rc.3+forge...` ⇒ 两线 **beta** `HTTP 200`，neo `fileID=9330278` / forge `9330279`，relations 随上传同 POST（curios + （forge 另有 1.20.1 另 mixinbooster）+ starengine=requiredDependency）；CF `CF_EXIT=0`。次源判据 = ForgeCDN `HEAD` 两件均 **200** 且 `Content-Length` 与本地逐字节相等（2,588,530 / 2,633,363）`。
+- **未做**：本批无实机（实机判据已在 §4.1r/§4.1t/§4.1u 分别立成）；手册是否同口径、chips 两处「计时器」是否精简仍待用户裁决。
+
 ### 4.2 历史读数
 
 pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（含 4.8 pre.4 全量双线 10 跑 10 PASS、4.11–4.17 pre.5 各批、4.19 Jade 图标留白版）。
