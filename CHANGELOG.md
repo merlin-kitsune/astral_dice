@@ -445,6 +445,8 @@
   `tryTriggerDorothyPartner` narrows to `(player, uuid)`. The passive "2 HP per 10s" is unaffected.
   zh/en/ja tooltips, the Patchouli guide and the player changelogs were corrected (P0 both lines).
 
+- **"Bartender Sign" passive "Change Life": the "all-effect cards" exception is withdrawn** (user ruling, 2026-10-26): sharing one card type always grants Speed II (1:00), *including* three effect cards; mixed types still grant 3 star coins each. The extra rule ("three effect cards grant neither Speed nor coins") was never requested and has been reverted (P0 builds).
+
 #### Cards
 
 - **The four damage effect cards (Monster Laser / Monster Brick / Orbital Strike / Directional Blast) were reworked**
@@ -727,6 +729,10 @@
 
 
 
+
+- **Tooltips now say *what* a thing does, not *how* it is computed** (user ruling, 2026-10-26): tooltips no longer explain resolution order, stacking rules, timers/icons, stack caps or arithmetic, and stay within 4 lines. First cleanup: the effect-card line of the Bartender Sign active, shortened from "each card instantly heals 2 HP (stacks per card, each card is its own heal…; three effect cards grant no timer or icon)" to **"Effect card: target heals 2 HP"** (all three languages).
+
+- **Handbooks no longer repeat recipe lists** (user ruling, 2026-10-26; P0 builds, all three languages): the "Recipe: …" sentence is gone from sign handbook entries (each entry already has its own recipe page); 7 signs were affected and their skill/effect text is untouched.
 
 #### Input & UI
 
