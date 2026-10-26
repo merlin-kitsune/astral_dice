@@ -424,12 +424,14 @@
   60 seconds" and "first dice roll ×2 Starlight on a dice blessing") has been removed**; ①④⑤ apply to the **wearer only**,
   while ②③ apply to you and your team.
 
-- **Bartender Sign: active "Mix Life" heal now scales with the number of effect cards** (2026-10-25 ruling):
-  previously any number of effect cards healed a flat 2 HP (three effect cards still 2 HP), inconsistent with the
-  per-card "+2 ATK / +2 DEF" of the same skill — a **calculation error**. It now heals **2 HP per effect card**
-  (1 card = 2, 3 cards = 6) and still resolves as a **single** `heal` call, so only one healing event fires:
-  "Warmth" (Dorothy Sign) does not gain extra stacks and downstream hooks (Zhao overflow, heal-cancel events)
-  see one event. zh/en/ja tooltips, the Patchouli guide and the player changelogs were corrected (P0 both lines).
+- **Bartender Sign: active "Mix Life" heal now scales with the number of effect cards** (2026-10-25 ruling,
+  2026-10-26 correction of the resolution model): previously any number of effect cards healed a flat 2 HP
+  (three effect cards still 2 HP), inconsistent with the per-card "+2 ATK / +2 DEF" of the same skill — a
+  **calculation error**. It now heals **2 HP per effect card** (1 card = 2, 3 cards = 6), and **every card is its
+  own `heal(2)` call** (three cards = three heals = 6 HP) — deliberately **not** merged into one `heal(6)`, so the
+  healing event fires once per card: "Warmth" (Dorothy Sign) gains **one stack per heal** (three cards = +3 stacks)
+  and downstream hooks (Zhao overflow, heal-cancel events) each resolve three times. zh/en/ja tooltips, the
+  Patchouli guide and the player changelogs were corrected (P0 both lines).
 
 - **Dorothy Sign: the attack the active grants to allies is now its own status effect "Socialite"** (2026-10-25 ruling):
   that **+1 ATK** used to be a transient attribute modifier (no icon, absent from the effects bar) that the caster's

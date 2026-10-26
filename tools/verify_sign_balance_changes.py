@@ -31,8 +31,10 @@
     `DOROTHY_THROTTLE_TICKS` / `dorothy_partner_attack` / `applyTempAttack` /
     `clearPartnerBuffs` / `DOROTHY_PARTNERS` / `dorothyPartnerUuids` 不得复活；图标必须存在。
 - `jill`：
-  * `resolve` 用 `HEAL_AMOUNT = 2.0F` 按效果牌张数调 `target.heal(HEAL_AMOUNT * effect)`
-    （2026-10-25 裁决：每张 2 点、3 张 6 点；合并为一次 heal ⇒ 治疗事件只 1 次），且不再施加 REGENERATION；
+  * `resolve` 用 `HEAL_AMOUNT = 2.0F` **逐张各结算 1 次**：
+    `for (int i = 0; i < effect; i++) target.heal(HEAL_AMOUNT);`
+    （2026-10-26 用户裁决：每张 2 点、3 张 = 3 次治疗 = 6 点；治疗事件按次数各触发 ⇒ 多萝西「温暖」
+    按张数叠层。**不得**合并成一次 `target.heal(HEAL_AMOUNT * effect)`），且不再施加 REGENERATION；
   * `boolean allEffect = effect == 3` 驱动 `JILL_MIXED`、迅捷、buff 计时、星币四类分支；
   * `JILL_MIXED` 受 `!allEffect` 守卫；迅捷受 `allSame && !allEffect` 守卫；
     星币受 `!allSame` 守卫；目标/结束刻只在 `attack + defense > 0` 时写；
@@ -812,13 +814,13 @@ def check_jill(line, res):
     forbid(res, src, r"MobEffects\s*\.\s*REGENERATION",
            "JIL-1", line, "仍施加 MobEffects.REGENERATION（旧按效果牌数量给再生）")
     require(res, resolve["body"],
-            r"target\s*\.\s*heal\s*\(\s*HEAL_AMOUNT\s*\*\s*effect\s*\)",
-            "JIL-1", line, "按张数叠加的即时治疗 target.heal(HEAL_AMOUNT * effect)")
+            r"for\s*\([^)]*\)\s*\{[^}]{0,120}target\s*\.\s*heal\s*\(\s*HEAL_AMOUNT\s*\)",
+            "JIL-1", line, "逐张各结算 1 次：for 循环体里的 target.heal(HEAL_AMOUNT)")
     forbid(res, resolve["body"],
-           r"target\s*\.\s*heal\s*\(\s*(?:HEAL_AMOUNT|2(?:\.0)?[Ff])\s*\)",
-           "JIL-1", line, "仍用固定即时治疗 target.heal(HEAL_AMOUNT / 2.0F)（不按张数叠加）")
+           r"target\s*\.\s*heal\s*\(\s*HEAL_AMOUNT\s*\*\s*effect\s*\)",
+           "JIL-1", line, "仍合并为一次 heal(HEAL_AMOUNT * effect)（2026-10-26 裁决：必须逐张各结算 1 次）")
     require(res, resolve["body"],
-            r"effect\s*>\s*0[\s\S]{0,160}target\s*\.\s*heal\s*\(",
+            r"effect\s*>\s*0[\s\S]{0,200}target\s*\.\s*heal\s*\(",
             "JIL-1", line, "仅效果牌计数 > 0 时执行治疗")
     require(res, src,
             r"HEAL_AMOUNT\s*=\s*2(?:\.0)?[Ff]\s*;",
@@ -1375,6 +1377,8 @@ def jill_lang_specs():
         ("每张效果牌", r"每张"),
         ("2 点治疗量", r"2[^\u4e00-\u9fff]{0,6}点"),
         ("按张数叠加", r"张数[^。\n]{0,8}叠加"),
+        ("逐张各结算一次治疗（2026-10-26 裁决）",
+         r"每张各自结算|各自结算为一次治疗|逐张[^。\n]{0,12}(?:结算|治疗)"),
         ("全效果牌例外", r"全效果牌|三张效果牌|3\s*张效果牌|全部(?:为|是)效果牌"),
         ("全效果牌无计时器/图标",
          r"(?:不|无|没有|未)[^。\n]{0,20}(?:计时器|图标|状态)|(?:计时器|图标|状态)[^。\n]{0,12}(?:不|无|没有)"),
@@ -1384,11 +1388,15 @@ def jill_lang_specs():
          r"生命恢复\s*[（(]\s*等级|等级\s*=\s*效果牌数量"),
         ("旧文案「固定 2 点 / 不按张数叠加」",
          r"固定\s*2\s*点|不按效果牌张数叠加|不随张数叠加"),
+        ("旧口径「合并为一次治疗 / 温暖不叠层」（2026-10-26 裁决作废）",
+         r"合并为[^。\n]{0,6}一次(?:治疗| heal)|不因张数多叠层|温暖[^。\n]{0,12}不(?:会)?[^。\n]{0,6}叠层"),
     ]
     act_en_req = [
         ("each card heals 2 HP",
          r"(?:each\s+(?:effect\s+)?card|per\s+card)[^.\n]{0,60}2[^A-Za-z0-9]{0,6}HP"),
         ("stacks per card", r"stacks?\s+per\s+card"),
+        ("each card is its own heal (2026-10-26 ruling)",
+         r"(?:each card (?:is )?its own|its own (?:separate )?heal|one heal per card)"),
         ("all-effect exception",
          r"all[- ]effect|all three (?:cards are )?effect cards?|three effect cards"),
         ("no timer/icon",
@@ -1399,10 +1407,14 @@ def jill_lang_specs():
          r"regeneration\s*\(\s*level|level\s*=\s*number of effect cards"),
         ("old 'flat 2' / 'not 2 per card'",
          r"flat\s+2|not\s+2\s+per\s+card|not\s+per\s+card"),
+        ("old 'single heal' / 'Warmth gains no extra stacks' (void 2026-10-26)",
+         r"single\s+heal[^\n]{0,80}(?:event|once)|gains?\s+no\s+extra\s+stacks|only\s+one\s+heal(?:ing)?\s+event"),
     ]
     act_ja_req = [
         ("1 枚につき 2 回復", r"1枚につき[^。\n]{0,24}2"),
         ("枚数分加算", r"枚数分加算"),
+        ("各枚が独立した1回の回復（2026-10-26 裁決）",
+         r"各枚が独立した1回の回復|1枚につき1回"),
         ("全効果カード例外",
          r"全効果カード|すべて(?:が)?効果カード|効果カード3枚|3枚とも効果カード"),
         ("タイマー/アイコンなし",
@@ -1412,6 +1424,8 @@ def jill_lang_specs():
         ("旧文案「再生（レベル＝効果カード枚数）」",
          r"再生\s*[（(]\s*レベル|レベル\s*[=＝]\s*効果カード枚数"),
         ("旧文案「固定2 / 枚数分ではない」", r"固定2|枚数分ではない"),
+        ("旧口径「まとめて1回の回復」（2026-10-26 裁決で無効）",
+         r"まとめて1回|1回にまとめ|回数分重複しない"),
     ]
 
     pas_zh_req = [

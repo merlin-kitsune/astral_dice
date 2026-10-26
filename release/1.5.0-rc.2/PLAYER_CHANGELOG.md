@@ -27,8 +27,9 @@ Released: **1.5.0-rc.2 (pre-release / beta)** — covers **everything** since 1.
   (stackable, cleared when the window ends) and her passive "2 HP per 10s" are unchanged.
 - **Bartender Sign · active "Mix Life":** the heal now **scales with the number of effect cards** — it used to heal a
   flat **2 HP** no matter how many effect cards you picked; it is now **2 HP per effect card** (1 → 2, 2 → 4, 3 → 6),
-  matching the "+2 ATK / +2 DEF per card" of the same skill, and still resolves as a **single** heal event (Dorothy's
-  "Warmth" gains no extra stacks).
+  matching the "+2 ATK / +2 DEF per card" of the same skill. **Each card is its own heal** (three cards = three
+  heals = 6 HP), so Dorothy's "Warmth" gains **one stack per heal** (three cards = +3 stacks) and per-heal hooks
+  (Zhao overflow, heal-cancel) also resolve three times.
 - **Chinese display names corrected** (**text only, no mechanic change**): 熊猫人 → **上班族** (Padman Sign),
   提尔 → **教主** (Cult Leader Sign), 酒保 → **调酒师** (Bartender Sign).
 
