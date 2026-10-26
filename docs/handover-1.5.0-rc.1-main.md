@@ -491,6 +491,8 @@ forge dev named 102,013 B / `e280aeab6c4b37c43468f7cce32a8bf64c70b6bdbcd2203f6c5
 - **CurseForge**：`python tools/curseforge_upload.py push --apply --proxy http://127.0.0.1:7897 --changelog release/1.5.0-rc.3/PLAYER_CHANGELOG.md --jar ...rc.3+neoforge... --jar ...rc.3+forge...` ⇒ 两线 **beta** `HTTP 200`，neo `fileID=9330278` / forge `9330279`，relations 随上传同 POST（curios + （forge 另有 1.20.1 另 mixinbooster）+ starengine=requiredDependency）；CF `CF_EXIT=0`。次源判据 = ForgeCDN `HEAD` 两件均 **200** 且 `Content-Length` 与本地逐字节相等（2,588,530 / 2,633,363）`。
 - **未做**：本批无实机（实机判据已在 §4.1r/§4.1t/§4.1u 分别立成）；手册是否同口径、chips 两处「计时器」是否精简仍待用户裁决。
 
+- **⚠️ 16:5x 补修（用户反馈「forge 版 tooltip 显示异常（似乎已损坏）」）**：`12ef8102`（tooltip 精简批）的行替换脚本把 `jill_active` 值里的换行写成了**双转义** `\n`（字面反斜杠 + n），游戏里 tooltip 直接显示 `
+` 字符；受影响 = neo `en_us`/`ja_jp` + forge `zh_cn`/`en_us`/`ja_jp`（各 1 行 3 处，neo `zh_cn` 未受影响），**rc.2 及之前产物无此问题**。修法：读 JSON 后把值里的 `\n` 字符串还原为真换行再写回（每文件 1 行）；重建 `BUILD SUCCESSFUL in 9s`，neo **2,588,528 B** sha256 `6fe2bb86ef56491356f1088102b062fa76c3ff6b50ba374234ffb701fddd42ce`，forge **2,633,346 B** sha256 `f7eb529f3e32275b1b62b7947df441c36c2737a5f1794bd91c683cd3b6787372`；jar 内三语均「双转义=0 / parse=ok」，四投放点逐处 sha256 MATCH（forge dev 用 devlibs named 2,603,885 B，整合包用 reobf）。
 ### 4.2 历史读数
 
 pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（含 4.8 pre.4 全量双线 10 跑 10 PASS、4.11–4.17 pre.5 各批、4.19 Jade 图标留白版）。
@@ -588,7 +590,8 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 
 27. **测试资产里的模组版本钉子必须写成「家族通配 + 落位名派生」（2026-10-25 用户裁决「放宽」）**：`scripts/test/mt_env.ps1:48` 的 `$script:NeoForgeMods` 原来把 ModernFix 钉成 `*modernfix-neoforge*5.27.26*.jar` 且 `Target` 定死同名 ⇒ ① 整合包一升到 5.27.27 就 `MT_MODS: BLOCKED` / EXIT 11；② 即使放宽通配，`Target` 也会把 5.27.27 的内容写成 `...5.27.26...jar`（骗人 jar）。现行口径：`Pattern` 用「模组家族 + 主.次版本 + `.*`」通配，`Target` 只作派生失败兜底，落位名从源文件名派生（剥整合包 `[中文] ` 前缀），并在复制前按 `Cleanup` 前缀清掉同族旧版本。
 
-28. **`pick_changelog` 对预发布版本解析失败 ⇒ 上传被 CF 400 拒（2026-10-26 实测）**：`tools/curseforge_upload.py:638` 的 `base = ver.split("-")[0]` 会把 `1.5.0-rc.2` 截成 `1.5.0`，于是去 `release/1.5.0/PLAYER_CHANGELOG.md` 找（不存在）⇒ 返回 `None`；`build_jobs` 里 `if job["_changelog"]:` 才写 `metadata["changelog"]`，字段直接缺失，CF 侧回 `HTTP 400 {"errorCode":1002,"errorMessage":"Error in field metadata: Required properties are missing from object: changelog."}`。dry-run 只打印「更新日志 = （无，留空）」且**不读文件**，所以计划态看不出来。**绕法**：显式 `--changelog release/<完整版本>/PLAYER_CHANGELOG.md`（本轮即此）。**未落地的修法（待裁决）**：`base` 改为「先按完整版本目录找，找不到再退回 `re.sub(r"-(?:alpha|beta|pre|rc).*$", "", ver)`」，或 `None` 时直接 `SystemExit` 报错而不是静默留空。
+28. **`pick_changelog` 对预发布版本解析失败 ⇒ 上传被 CF 400 拒（2026-10-26 实测）**：`tools/curseforge_upload.py:638` 的 `base = ver.split("-")[0]` 会把 `1.5.0-rc.2` 截成 `1.5.0`，于是去 `release/1.5.0/PLAYER_CHANGELOG.md` 找（不存在）⇒ 返回 `None`；`build_jobs` 里 `if job["_changelog"]:` 才写 `metadata["changelog"]`，字段直接缺失，CF 侧回 `HTTP 400 {"errorCode":1002,"errorMessage":"Error in field metadata: Required properties are missing from object: changelog."}`。dry-run 只打印「更新日志 = （无，留空）」且**不读文件**，所以计划态看不出来。**绕法**：显式 `--changelog release/<完整版本>/PLAYER_CHANGELOG.md`（本轮即此）。**未落地的修法（待裁决）**：`base` 改为「先按完整版本目录找，找不到再退回 `re.sub(r"-(?:alpha|beta|pre|rc).*$", "", ver)`」，或 `None` 时直接 `SystemExit` 报错而不是静默留空。29. **用 `JSON.stringify` 处理「从文件里直接截出来的 JSON 行子串」会把换行双转义（2026-10-26 实测）**：`lang` 行子串里的 `\n` 本来就是 JSON 转义，再套一层 `JSON.stringify` 会变成 `\\n`（值里是字面反斜杠+n），语言文件仍能 `JSON.parse`，守门全绿，但游戏里 tooltip 会直接显示 `\n`。正确做法：**先 `JSON.parse` 拿到真值**（已含真换行）再 `JSON.stringify` 回写；或用 `String.fromCharCode(92)` 拼转义再替换。实测误伤面：`12ef8102` 把 5 份 lang 的 `jill_active` 写成双转义，直到用户实机发现。守门补强建议：`grep` 一遍「双转义行数 = 0」当作 lang 改动的收尾判据。
+
 
 ## 7 关键路径（命令）
 
