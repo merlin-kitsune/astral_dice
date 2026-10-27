@@ -57,8 +57,9 @@ Select-String -Path F:\MCProject\astral_dice_multiloader\*\gradle.properties -Pa
 4. **8 条「代码与文案都不符」**已报用户、未改 tooltip，等裁决（bite 觉醒层数 / huo_card 选择器 / magic_quiver 闸门 / railgun 真伤口径 / 三张卡 NON_HOSTILE / member_recommendation 只数主背包+副手 / repulsion 单次 5 点耐久 / airbag 掉虚空）。
 5. **P1 两线欠账**：JEI 筹码 / `BeamFx` / `GlobalEventGate` / `RepulsionEntity` / `CardShopMenu#planPlacement` / `EventDrawBlock`；筹码图标边框版；史莱姆 20 tick；misaki 未同步；pre.5 冷却指示器未移植。
 6. **陈旧锁** `F:\MCProject\.agent-locks\kimi.lock`（`PID=26580` 已不存在）处置待用户裁决。
-7. push / tag 待用户放行（现存 8 个未推提交，见「基本盘」末条）。
+7. push / tag 待用户放行（现存 9 个未推提交，见「基本盘」末条）。
 12. ~~第二次复核（run `f93916e6`）findings~~ → **已闭环（2026-10-27，handover §4.1ac）**：注释改成如实表述 + 登记「同优先级更晚取消会丢来源」边界；`/astraldst clean` 改为记录 `dEquip` 返回值 + 读回 `hasEffect`；同批修掉「临时牌可堆叠 ⇒ 篡改要拆单张」的探针缺陷。双线重跑：1.20.1 `DST-P0` 13/13 + 1.21.1 三案全 PASS。仍欠同第 9/11 条。
+13. ~~智能手表同源双触发~~ → **已闭环（2026-10-27，handover §4.1ad）**：`DeathTriggerGuard` 两线 + 5 处击杀奖励闸门 + 真伤段排除「怪力乱神 +5」；同批修掉 1.20.1「+5 从未生效」（挂点 `LivingHurtEvent` → `LivingDamageEvent` LOWEST，实测中位差 5）。实机：1.21.1 `NESTED-DOUBLE` PASS、1.20.1 `DST-NESTED` PASS 10/10；四目标已投放且 sha256 MATCH。**未做 `dsh_code_review` 复核（下轮补）**。
 9. ~~三批欠账未实机~~ → **已实机（2026-10-27，handover §4.1aa）**：1.21.1 三案（`UNDERCOVER-DOUBLE` 4/4 / `REPULSION-SIGN` / `TEMPCARD-OWNER` 6/6）+ 1.20.1 一案（`DST-P0-1.20.1` 10/10，走新建 KubeJS 探针 `/astraldst`）全 PASS。**仍欠**：tooltip「所有者：」行客户端渲染取证、规则④跨容器（箱子 / AE2）搬运、死亡掉牌不误销毁、`/curios set` 类命令清槽。
 
 10. **HUD 攻击力口径统一（§4.1g）已静态全绿并投放六处，实机读数待用户下达**（要看的是：戴电流剑等 13 块原被吞的修饰器时 HUD 数字是否随之变化；手持武器换刀剑时数字不变；骰战随机卡点不进 HUD）。

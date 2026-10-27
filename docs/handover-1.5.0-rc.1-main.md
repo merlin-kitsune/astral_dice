@@ -611,6 +611,20 @@ forge dev named 102,013 B / `e280aeab6c4b37c43468f7cce32a8bf64c70b6bdbcd2203f6c5
 5. **1.21.1 三案全 PASS**（新世界，`temp/case_*_e.log`）：`UNDERCOVER-DOUBLE-1.21.1` / `REPULSION-SIGN-1.21.1` / `TEMPCARD-OWNER-1.21.1` 均 `MT_CASE_RESULT: PASS`。
 6. **收尾**：`mt.ps1 --version 1.21.1 --phase stop --force --purge-saves` ⇒ `MT_CLEANUP_SAVES: PURGED 1` / `MT_CLEANUP_RESULT: OK` / `MT_STOP: OK (1s) — 收停完成，无本流程残留进程`；`Get-CimInstance Win32_Process java.exe` 剩 3 个（Gradle daemon Zulu21 `15920` + Adoptium 17 worker `16556`/`2572`），**无客户端残留**。
 
+### 4.1ad 智能手表同源双触发 + 击杀奖励去重 + 1.20.1 立牌「被追踪 +5」挂点修正（2026-10-27 17:2x–18:2x）—— 双线实机 PASS
+
+1. **触发来源（用户报告）**：智能手表筹码与「隐匿调查」同一个 bug —— 法伤加成走独立真伤段时一次死亡派发两次 `LivingDeathEvent`。全面排查法伤结算链后确认，凡挂 `LivingDeathEvent` 的**击杀奖励**都受影响（两线各 5 处）。
+2. **代码落地（两线，共 22 文件）**：
+   - 新增 `combat/DeathTriggerGuard.java`（两线各 1，66 行）：`claim(LivingEntity, String channel)` 以 `UUID|channel` 为键，同一游戏刻（`SAME_DEATH_WINDOW_TICKS=1`）的第二次派发返回 false；带 `PRUNE_THRESHOLD=4096` / `PRUNE_KEEP_TICKS=400` 清理。
+   - 5 个击杀奖励处理器接入闸门（`SmartWatchChipItem` / `ElectricSwordChipItem` / `FlashlightChipItem` / `HaiqingSignItem`(weak_mark) / `BonnieSignItem`(sign_kill)）：闸门放在 isCanceled、阵营与资格筛选**之后**、发放奖励之前 —— 否则被取消或被筛掉的派发会白吃 claim。
+   - 真伤段自身不再吃「怪力乱神 +5」：`DamageEffectCardHandler` 暴露 `isApplyingTrueBonus()`，两线 `LinglingSignEvents` 的 +5 处理器在 `EXTRA_DAMAGE` 判定之后再拦这一段。
+3. **⭐ 实机新发现（既有 bug，非本批引入）：1.20.1 的「被追踪目标 +5」从来就没生效过。** 1.20.1 骰战处理器（`combat/DiceCombatEvents.java:274 onLivingDamagePre`，优先级 **NORMAL**）在 `LivingDamageEvent` 上以 `event.setAmount((float) finalDmg)`（`:822`）**覆盖式**写入自算终值；原挂点在 `LivingHurtEvent`（护甲之前、更早）⇒ 加上的 +5 被整段丢弃。而该被动的前置恰是「佩戴骰子 + 立牌」⇒ **骰战路径必然生效** ⇒ 等于从未生效。取证：临时插桩 `AP_HURTDBG` 显示闸门全真（`eq=true:trk=true:amt=1.0`），目标却只掉骰战自算的 3 点；改挂 `LivingDamageEvent`(**LOWEST**，排在骰战 NORMAL 之后) 后同一场景 16 对统计 diff 中位数 **= 5**。1.21.1 侧本来就挂 `LivingDamageEvent.Pre` + LOWEST，因此无此问题。
+4. **产物（2026-10-27 18:2x）**：neo `neoforge-1.21.1/build/libs/astral_dice-1.5.0-rc.4+neoforge_1.21.1.jar` **2,597,544 B** sha256 `FD3C8306A8EA26412EEAB5A25621C1FA4D4F929ACB290823BE6DF9D001492FC6`（与上一轮字节一致：本批未改 neo 代码路径）；forge prod **2,642,731 B** `79D3CF88A7ED9862B1DDB4B34FBE21DF69FBD602153D795AC22C21FDCD2477D3`；forge dev named **2,613,244 B** `71535C422D708D5A1995304C82EBD6695C6C69662345E397A11FCC95D25C26A6`。**四目标全部投放且 sha256 MATCH**：`run/1.21.1/mods`、`run/1.20.1/mods`、整合包「狐の航空学 Voxy Edition」、整合包「1.20.1-Forge 模组测试」。
+5. **1.21.1 实机 `NESTED-DOUBLE-1.21.1` ⇒ PASS**（29 步 / 9 断言）：`swread` = `{"ok":true,"cards":1}`（修前 2）；B 段 `{"n":16,"median":5,"near5":10,"near0":0,"marksOk":1,"trackedOk":1,"hasSign":true}`；C 段（卸立牌）`{"n":16,"median":0.5,"near0":7,"hasSign":false}`。伤害噪声的处理方式：同轮内每对「未追踪 / 被追踪」同 tick 各吃一发 `card_spell`，取 diff 中位数（均值会被骰战尖峰污染）。
+6. **1.20.1 实机 `DST-NESTED-1.20.1` ⇒ PASS 10/10**（34 步）：`AP_ND_NDSWREAD:cards=1:ok=1`；`AP_ND_NDMEAS:B:n=16:median=5:near5=7:tracked=1:marks=1:hasSign=1:eq=true`；`AP_ND_NDMEAS:C:n=16:median=0:near5=1:tracked=0:hasSign=0:eq=false`；`AP_ND_CLEAN:sign=eq:ok:dice=eq:ok`。修前同用例 B/C 段 median 都是 **0**（当时的断言只锁 tracked/marks/hasSign，属「结构绿」）。
+7. **测试资产**：`scripts/test/cases/NESTED-DOUBLE-1.21.1.json`（新）、`scripts/test/cases/DST-NESTED-1.20.1.json`（新，10 断言含两条中位数判据）、`scripts/test/resources/kubejs/1.20.1/server_scripts/astral_dst_probe.js` 新增 `ndsw` / `ndswread` / `ndb` / `ndmeasb` / `ndmeasc` / `ndc` 六个子命令。
+8. **收尾**：`mt.ps1 --version 1.20.1 --phase stop --force --purge-saves` ⇒ `MT_CLEANUP_SAVES: PURGED 1` / `MT_CLEANUP_RESULT: OK` / `MT_STOP: OK (1s) — 收停完成，无本流程残留进程`；`java.exe` 剩 4 个，逐条核命令行 = Gradle daemon（Zulu 21 ×2）+ Adoptium 17 编译 worker（×2），**无客户端残留**。
+9. **提交**：`59d69ce4`（22 文件 +?）；未 push、无 tag。
 ### 4.2 历史读数
 
 pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（含 4.8 pre.4 全量双线 10 跑 10 PASS、4.11–4.17 pre.5 各批、4.19 Jade 图标留白版）。
@@ -650,6 +664,7 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 14. **复核 findings 已闭环（2026-10-27，§4.1ab）**：`dsh_code_review` run `1e6e1c84` 的 3 条问题全部落地并双线重跑 —— 清空时序（改为结算后清空）、1.20.1 D2 恒绿（补真·女王特权 + 判据 `n>=2`）、探针无收尾（新增 `/astraldst clean`）。**仍欠**：本批新产物（neo `2,595,454 B` / forge prod `2,640,648 B` / dev named `2,611,172 B`）**只投了 `run/<线>/mods`**，两个 P0 整合包与根 `build/libs` 仍是 rc.4 旧构建；tooltip「所有者：」行渲染 / 跨容器搬运 / 死亡掉牌 / `/curios set` 清槽四项依旧未实机（同第 13 条）。
 
 15. **第二次复核（run `f93916e6`）已闭环（2026-10-27，§4.1ac）**：两条 findings 处置 —— (a) 清空时序的注释改为如实表述 + 登记「同优先级更晚取消会丢来源」的已知边界（彻底兑现需降 `EventPriority.LOWEST`）；(b) `clean` 回显改为记录 `dEquip` 返回值 + 读回 `hasEffect`。**同批修掉第三处探针缺陷**：临时牌可堆叠 ⇒ 篡改要拆单张副本（否则清理会多掉一张，读数在 1/2 间跳）。双线重跑：1.20.1 `DST-P0` 13/13 + 1.21.1 三案全 PASS。**仍欠**同第 13/14 条（整合包与根 `build/libs` 仍是 rc.4 旧构建；tooltip 渲染 / 跨容器 / 死亡掉牌 / `/curios set` 四项未实机）。
+16. **智能手表同源双触发 + 击杀奖励去重 + 1.20.1 立牌 +5 挂点已闭环（2026-10-27，§4.1ad）**：`DeathTriggerGuard`（两线）+ 5 处击杀奖励闸门 + 真伤段排除「怪力乱神 +5」+ forge 挂点从 `LivingHurtEvent` 改 `LivingDamageEvent(LOWEST)`。实机：1.21.1 `NESTED-DOUBLE` PASS、1.20.1 `DST-NESTED` PASS 10/10；四目标已投放且 sha256 MATCH。**仍欠**：本批未做 `dsh_code_review` 独立复核（下轮补）；智能手表双触发的客户端侧表现（发卡动画 / 提示）未单独取证。
 
 ### Minor
 
@@ -722,6 +737,8 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 
 30. **两个「读数全 0」的陷阱组合（2026-10-27 实测，§4.1ab）**：① `TemporaryCardUtil.grantNardisPrivilege(player)` **只发牌、不挂「女王特权」效果**（效果由 `NardisSignItem#handleUse` 另挂）⇒ 只调它再等一会儿，`tick` 的「无效果 ⇒ `purgeAll`」会把牌全清，任何 `n===me` 式判据都会**恒绿**；正解是显式 `addEffect(new MobEffectInstance(ModEffects.NARDIS_PRIVILEGE.get(), 12000, 0, false, false, true))` 并读回 `hasEffect` 再继续。② `ModAttachments.setInvestigationStage(player, n)` 内部是 `Math.max(1, value)` ⇒ **归零不可达**，探针「复位到 0」的读数会与随后实测的 1 不一致；断言要么锁 1，要么干脆不锁。
 
+31. **1.20.1 里在 `LivingHurtEvent` 给伤害做「加法」可能整段失效（2026-10-27 实测，§4.1ad）**：本线骰战处理器（`combat/DiceCombatEvents.java:274`，NORMAL）在 `LivingDamageEvent` 上以 `setAmount` **覆盖式**写入自算终值 ⇒ 任何更早发生的加法（`LivingHurtEvent` 阶段、护甲之前）都会被丢弃。症状：闸门全真、事件确实被调用，但目标掉血没有加成。凡「就在同一次伤害上做加法」的需求，1.20.1 一律挂 `LivingDamageEvent` 且优先级 **LOWEST**（排在骰战 NORMAL 之后），与 1.21.1 的 `LivingDamageEvent.Pre` + LOWEST 对齐。
+32. **1.20.1 dev 其实有 AutoJS 通道（订正坑 29）**：`run/1.20.1/mods` 里的 `AutoJS-forge-1.20.1-1.0.0-dev.jar` 会起端点，`mt.ps1 --phase launch` 日志直接打出 `MT_LAUNCH: OK — AutoJS 端点已就绪（http://127.0.0.1:25585/mcp, protocolVersion=2025-06-18）`（注意：`--phase env` 仍会打印 `MT_ENV_AUTOJS: 跳过`，两句话矛盾，以 launch 实测为准）。2026-10-27 实测 `eval_js`（server 侧）在 1.20.1 可用：`net.minecraftforge.server.ServerLifecycleHooks.getCurrentServer()` + `getCommands().performPrefixedCommand(...)` 可直跑命令，`diagnostics` 里能看到 KubeJS 与探针脚本的加载行。⇒ 1.20.1 快速迭代优先用 AutoJS eval（免冷启动），可断言的用例面仍走 KubeJS 探针。
 ## 7 关键路径（命令）
 
 ```powershell
