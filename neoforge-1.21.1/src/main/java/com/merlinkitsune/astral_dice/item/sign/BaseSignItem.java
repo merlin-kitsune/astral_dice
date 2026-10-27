@@ -496,10 +496,13 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
      * 环境伤害(摔落 / 仙人掌 / 着火 / 饥饿…)与自伤**不算**(2026-09-29 用户裁决)。
      * 子类覆写以实现受击类被动(如史莱姆立牌的受击 +1 治愈)。
      *
-     * <p><b>{@code amount} 口径(2026-10-27 近战审计 D3)</b>:两条线**不同** —— forge 传的是
-     * {@code LivingIncomingDamageEvent#getAmount()}(护甲之前),
-     * forge 传的是 {@code LivingDamageEvent#getAmount()}(护甲 / 药水 / 吸收已结算、骰战覆盖之前的平台值)。它只用于「是否受击」这类开关判定,
-     * <b>禁止</b>拿它做数值计算(落地终值以 {@code DiceCombatEvents#settleDiceDamage} 为准)。
+     * <p><b>{@code amount} 口径(2026-10-27 近战审计 D3;2026-10-27 复核订正)</b>:两条线**不同** ——
+     * 本线(neo)传的是 {@code LivingDamageEvent.Pre#getNewDamage()}(护甲 / 药水之后、**吸收之前**);
+     * forge 线传的是 {@code LivingDamageEvent#getAmount()}(护甲 / 药水 / 吸收已结算、骰战覆盖之前的平台值)。
+     * 另有闪避取消路径传入的是 {@code LivingAttackEvent} 的**未减免原始值**。
+     * 该数值只用于「是否受击」这类开关判定,<b>禁止</b>拿它做数值计算 —— 落地终值以骰战自算值为准
+     * (neo 是 {@code DiceCombatEvents#onLivingDamagePre} 写入的 setNewDamage;forge 是
+     * {@code DiceCombatEvents#settleDiceDamage} 的返回值,两者都已扣过吸收)。
      */
     protected void onHurt(Player player, DamageSource source, float amount) {
     }

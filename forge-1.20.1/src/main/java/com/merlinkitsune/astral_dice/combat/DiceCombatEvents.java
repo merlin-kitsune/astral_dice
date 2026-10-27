@@ -546,7 +546,12 @@ public class DiceCombatEvents {
                     continue;
                 }
                 float actual = target.getAbsorptionAmount();
-                if (actual > recorded.expectedAfter + 0.01F) {
+                // N6(2026-10-27 复核):只纠「幻影量原封未动」那一档 —— 若同 tick 内有别的来源
+                //  (第三方 / 我们自己的吸收类治疗)合法加了吸收,actual 会高于 expectedAfter+amount,
+                //  此时一刀切收回会白白吃掉合法增益。
+                float phantomUntouched = recorded.expectedAfter + recorded.amount;
+                if (actual > recorded.expectedAfter + 0.01F
+                        && Math.abs(actual - phantomUntouched) <= 0.01F) {
                     target.setAbsorptionAmount(recorded.expectedAfter);
                     it.remove();
                 }
@@ -1119,7 +1124,7 @@ public class DiceCombatEvents {
         //   该 +5 原本挂在 LivingDamageEvent(LOWEST),与筹码减伤/安全气囊**同档**,先后取决于注册顺序:
         //   气囊把金额归零之后仍可能被 +5 破防,或 +5 先加 ⇒ 气囊白烧充能(用户裁决:保命必须优先)。
         //   骰战路径在此一次并入;LinglingSignEvents 用 isDiceBattleSettledDamage 跳过,
-        //   非骰战路径(远程/法伤/无骰)仍由那个 LOWEST 处理器加。
+        //   非骰战路径(远程 / 法伤 / 非武器近战 / 无骰且非赐福目标)仍由那个 LOWEST 处理器加。
         if (LinglingSignManager.isEquipped(player) && LinglingSignManager.isTrackedByAny(target)) {
             finalDmg += LinglingSignManager.TRACKED_TARGET_BONUS_DAMAGE;
         }
@@ -1415,6 +1420,13 @@ public class DiceCombatEvents {
         // (2026-09-26 裁决①:两条路径必须用同一口径,不得一边丢弃、一边泄漏)。
         finalDmg *= com.merlinkitsune.starengine.combat.VanillaMitigation.magicAbsorbFactor(
                 resistanceAmplifierOf(target), protectionPointsOf(target, source));
+        // A6(2026-10-27 近战审计):生物近战路径漏了「目标身上有标记 ⇒ +1」 —— 判定与玩家路径同口径
+        //   (本文件玩家分支的 if (MarkManager.getLevel(target) > 0) finalDmg += 1)。
+        //   位置也与玩家路径对齐:**victimFactor 之前**,故这个 +1 同样会被「同一伤害实例」的倍率放大
+        //   (玩家路径的 +1 还会再过 EXTERNAL_DAMAGE_FACTORS;生物攻击者没有外部因子来源)。
+        if (MarkManager.getLevel(target) > 0) {
+            finalDmg += 1;
+        }
         finalDmg *= (float) victimFactor;
         // N8:虚弱印记 x1.10 必须作用在**吸收之前**的骰战终值上(审计 §2 不变量③)。本线原先只有
         // onWeakMarkDamage(@LOW,吸收之后)在乘 => 与 1.21.1(LivingDamageEvent.Pre)口径不同。现并入
@@ -1422,11 +1434,6 @@ public class DiceCombatEvents {
         // 生物攻击者不是玩家 => 没有「命运的指引」+0.20 那条来源,只需基准倍率。
         if (target.hasEffect(ModEffects.WEAK_MARK.get())) {
             finalDmg *= WEAK_MARK_DAMAGE_MULTIPLIER;
-        }
-        // A6(2026-10-27 近战审计):生物近战路径漏了「目标身上有标记 ⇒ +1」 —— 与玩家路径(本文件
-        //   玩家分支的 if (MarkManager.getLevel(target) > 0) finalDmg += 1)对齐,口径沿用「有标记即 +1」。
-        if (MarkManager.getLevel(target) > 0) {
-            finalDmg += 1;
         }
         // F3(2026-10-27 近战审计):七咒(神秘遗物+ 第一诅咒)倍率在生物近战路径被整段丢弃 ——
         //   该倍率由 FateGuidanceCardItem 在 LivingHurtEvent 捕获进**目标侧**附件,只有「玩家攻击」路径的
@@ -1892,16 +1899,18 @@ public class DiceCombatEvents {
     }
 
     /** N8:该次伤害是否属于「骰战自算终值」路径 —— 是则虚弱印记倍率已在骰战里并入,外部处理器必须跳过。
-     *  <p>两条路径的判据必须与 {@link #onLivingDamagePre} 的入口分流**同源**,否则会出现
-     *  「骰战并入一份 + LOW 再乘一份 = x1.21」或「两边都不乘 = 丢增益」:
-     *  <ul>
-     *    <li>玩家攻击:攻击者赐福激活 + 佩戴骰子 + 近战武器(与入口处 diceStack / isMeleeWeaponAttack 闸门一致);</li>
-     *    <li>生物近战:directEntity 是 Mob 且目标是玩家 —— {@link #resolveMobMeleeAttack} 无论是否对骰成立
-     *        都会自算并 setAmount,故整条路径都是骰战终值。</li>
-     *  </ul>
+     *  <p>判定顺序(与 {@link #onLivingDamagePre} 的入口分流**逐条同源**):<br>
+     *  ① 客户端 / 内部波及(AOE 顺劈、溅射、法伤波及)与反击链中的伤害不是骰战本体 ⇒ false;<br>
+     *  ② 直接伤害实体是玩家:必须近战武器、非**法伤**(法伤走 SpellDamageRegistry 加成链)、
+     *     不是自伤;装备骰子 ⇒ 看是否赐福激活(骰战入口同判据),未装备 ⇒ 看目标是否为
+     *     「骰神赐福合法目标」(入口的 diceStack == null 分支);<br>
+     *  ③ 直接伤害实体是生物且目标是玩家 ⇒ 生物近战 —— {@link #resolveMobMeleeAttack} 无论是否
+     *     对骰成立都会自算并 setAmount,故整条路径都是骰战终值;<br>
+     *  ④ 其余(投掷物 / 无直接实体 / 环境伤害)⇒ false。<br>
      *  必须连内部窗口一起判:入口在 {@code isInternalAoe() || counterDepth > 0} 时直接 return,
      *  此时骰战**没有**接管金额 => 本判据也必须返回 false,否则那段伤害会丢掉虚弱印记增益。 */
     public static boolean isDiceBattleSettledDamage(DamageSource source, LivingEntity target) {
+        if (source == null || target == null) return false;
         if (target.level().isClientSide()) return false;
         if (isInternalAoe() || isInCounterChain()) return false;
         Entity direct = source.getDirectEntity();
@@ -1911,7 +1920,7 @@ public class DiceCombatEvents {
             //   于是「无骰玩家打赐福合法目标」(入口显式支持)走进骰战并乘过一次虚弱印记后,
             //   这里仍返回 false ⇒ 外部处理器再乘一次 ⇒ ×1.21(指引激活 ×1.69)。
             if (!isMeleeWeaponAttack(attacker)) return false;
-            // 法伤链不参与骰战结算(入口 :584 同源判据)⇒ 不算骰战终值。
+            // 法伤链不参与骰战结算(入口 :650 的法伤闸门同源)⇒ 不算骰战终值。
             if (com.merlinkitsune.astral_dice.combat.SpellDamageRegistry.isSpellDamage(source, direct)) {
                 return false;
             }
@@ -2135,7 +2144,7 @@ public class DiceCombatEvents {
      * 若不排除,同一次受击会因紧随其后的反噬**再触发一遍**受击被动(立牌 onHurt / BufferShield / Papara 回血)。
      *
      * <p>消费者:{@link BaseSignItem#invokeHurtHooks}(立牌受击被动)、
-     * {@code item/chip/BufferShieldChipItem#onHurt}、{@code item/sign/PaparaSignItem#onPaparaBiteHurtHeal}。
+     * {@code item/chip/BufferShieldChipItem#onHurt}、{@code item/sign/PaparaSignItem#settleBiteHeal}。
      * <p>不额外判 {@code amount > 0} —— 与本模组受击钩子的既有约定一致(该数值仅用于「是否受击」判定;
      * 闪避取消路径传入的是未减免的原始值)。
      */

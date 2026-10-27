@@ -845,8 +845,10 @@ public class DiceCombatEvents {
 
         event.setNewDamage((float) finalDmg);
         // F7(2026-10-27 近战审计,与 1.20.1 线同步):修女被动「单次受击 >10 清空加成」读的是护甲前
-        //   原版值,骰战覆盖后实际落地量由上一行决定 ⇒ 这里按并入终值后的落地量判定。
-        if (target instanceof Player alanaVictim && (float) finalDmg > 10.0F
+        //   原版值,骰战覆盖后要按**落地红心量**判定。本线写的是 LivingDamageEvent.Pre#setNewDamage,
+        //   平台在 Pre **之后**才扣吸收(neo LivingEntity.java:1790-1792)⇒ 落地量 = 终值 - min(终值, 吸收)。
+        float landing = (float) finalDmg - Math.min((float) finalDmg, target.getAbsorptionAmount());
+        if (target instanceof Player alanaVictim && landing > 10.0F
                 && ModAttachments.getAlanaPassiveBonus(alanaVictim) > 0) {
             com.merlinkitsune.astral_dice.item.sign.AlanaSignItem.clearBonus(alanaVictim);
         }
@@ -1125,12 +1127,14 @@ public class DiceCombatEvents {
         // (2026-09-26 裁决①:两条路径必须用同一口径,不得一边丢弃、一边泄漏)。
         finalDmg *= com.merlinkitsune.starengine.combat.VanillaMitigation.magicAbsorbFactor(
                 resistanceAmplifierOf(target), protectionPointsOf(target, source));
-        finalDmg *= (float) victimFactor;
-        // A6(2026-10-27 近战审计):生物近战路径漏了「目标身上有标记 ⇒ +1」 —— 与玩家路径
-        //   (本文件 :808-810 的 if (MarkManager.getLevel(target) > 0) finalDmg += 1)对齐。
+        // A6(2026-10-27 近战审计):生物近战路径漏了「目标身上有标记 ⇒ +1」 —— 判定与玩家路径同口径
+        //   (本文件玩家分支的 if (MarkManager.getLevel(target) > 0) finalDmg += 1)。
+        //   位置也与玩家路径对齐:**victimFactor 之前**;玩家路径的 +1 还会再过 EXTERNAL_DAMAGE_FACTORS,
+        //   生物攻击者没有外部因子来源,故这里只随实例倍率放大。
         if (MarkManager.getLevel(target) > 0) {
             finalDmg += 1;
         }
+        finalDmg *= (float) victimFactor;
         // 虚弱印记:生物近战原先只靠 onWeakMarkDamage(@LOW)在事件后乘;该处理器现改用
         //   isDiceBattleSettledDamage 跳过骰战(含 生物→玩家),故倍率必须并入终值(与 1.20.1 线同口径)。
         //   生物攻击者不是玩家 ⇒ 没有「命运的指引」+0.20 那条来源,只需基准倍率。

@@ -446,3 +446,21 @@ combat/DiceCombatEvents.java:305-317 赐福/降神倒计时启动、秘密侦探
 - 两线 `gradlew.bat :neoforge-1.21.1:classes :forge-1.20.1:classes` ⇒ EXIT 0（forge 89 条 / neo 4 条既有 deprecation 警告）。
 - 编译期踩坑：`resolveMobMeleeAttack(Mob mob, Player target, ...)` 的形参**已是 Player** ⇒ 写 `target instanceof Player p` 会报「模式类型 Player 是表达式类型 Player 的子类型」，直接读形参即可。
 - **未实机**（本轮为代码级修复；实机判据待用户放行：F1 读黄心终态、F2 无骰 ×1.21、A4 气囊归零后是否仍 +5）。
+#### 7.9.5 独立复核（提交 `4ec7ba93`）与 findings 处置（2026-10-27 21:3x）
+
+- **复核方式**：一次性只读子代理，独立解两线 `build/moddev/artifacts` 的 sources jar 复核平台前提 —— forge `net/minecraft/world/entity/player/Player.java:940-957` 的 `actuallyHurt` 是**覆写且不调 super**（`:942 onLivingHurt` → `:944-945` 护甲/魔法 → `:946-947` 扣吸收 → `:948 onLivingDamage` → `:954-957` 扣血，**没有** `LivingEntity.java:1684` 那次再扣吸收）；neo `LivingEntity.java:1785-1806` 的 `LivingDamageEvent.Pre` 在 `:1789` 派发、吸收在 `:1790-1792` 才扣。
+- **逐条判定**：R1（forge 黄心）/ R4（EXTRA_DAMAGE 排除）/ R5（+5 折叠）/ R6（幻影 tick 对账）**SUPPORTED**；R2（判据同源）/ R3（生物路径三件事）**SUPPORTED，各 1 处不对称**；R7（修女被动）**部分成立 —— neo 未达**。
+- **反例探查**：F1 未发现泄漏路径（扫全部 `actuallyHurt` 覆写：forge = LocalPlayer/LivingEntity/Camel/Player；neo 另有 Animal/Wolf/Armadillo，Wolf 有甲分支既不调 super 也不派发 `LivingDamageEvent`）；判据与入口逐支等价；+5 无「双加 / 漏加」；neo 生物路径无重复乘；`settleBiteHeal` 无双调（`ChipDamageHandler` 只有一个监听器，try/finally 每事件一次）。
+
+| finding | 级 | 处置 |
+|---|---|---|
+| **N1** neo 修女被动仍读「吸收前」量（与提交自称的落地量不符） | P2 | 已修：`landing = 终值 - min(终值, 吸收)` 再判 `> 10`（`neoforge-1.21.1/.../combat/DiceCombatEvents.java:850-851`） |
+| **N2** 生物近战的「有标记 ⇒ +1」乘序与玩家路径不同（注释宣称「对齐」不实） | P3 | 已修并**产生数值变化**：两线把 +1 上移到 `finalDmg *= victimFactor` **之前**（与玩家路径同序）⇒ mob→player 时这 1 点会随「同一伤害实例」的倍率放大（如末影骰子雨中/水下 ×1.4）；玩家路径的 +1 还会再过 `EXTERNAL_DAMAGE_FACTORS`，生物攻击者没有外部因子来源 |
+| **N3** D3 的 javadoc 与代码不符（neo 版「forge」写了两遍、事件名也错） | P2 | 已修：两线改为「本线 / 对方线」分述，neo 写明是 `LivingDamageEvent.Pre#getNewDamage()`（护甲 / 药水之后、**吸收之前**），并补「闪避取消路径传 `LivingAttackEvent` 未减免原始值」 |
+| **N4** forge 判据缺 `null` 守卫、javadoc 仍是旧口径、行号引用错 | P3 | 已修：补 `if (source == null || target == null) return false;`；javadoc 改 ①②③④（含「无骰 ⇒ isBlessingTarget」）；`:584` → `:650`（真正的法伤闸门） |
+| **N5** Papara 改名后残留空 `@Mod.EventBusSubscriber` 与未用 import、`#onPaparaBiteHurtHeal` 悬空引用 | P3 | 已修：删注解 + 3 个 import（`Mod` / `AstralDiceMod` / `SubscribeEvent` / `EventPriority`），引用改 `#settleBiteHeal` |
+| **N6** tick 对账「只纠上偏」会把同 tick 内**合法**吸收增益一并夹回 | P3 | 已修：只纠「幻影量原封未动」那一档 —— `actual > expectedAfter + 0.01` **且** `|actual - (expectedAfter + amount)| <= 0.01` 才收回 |
+| **N7** A4 注释把非骰战路径写成「远程/法伤/无骰」 | P3 | 已修：改为「远程 / 法伤 / 非武器近战 / 无骰且非赐福目标」 |
+| **N8** neo 用裸 `1.10f`、forge 有 `WEAK_MARK_DAMAGE_MULTIPLIER` 常量 | P3 | **登记不改**（该线本无此常量，数值一致） |
+
+- 判据：两线 `gradlew.bat :neoforge-1.21.1:classes :forge-1.20.1:classes` ⇒ EXIT 0（日志 `temp/compile_review_fix.log`）。**仍未实机、未重出 jar**。
