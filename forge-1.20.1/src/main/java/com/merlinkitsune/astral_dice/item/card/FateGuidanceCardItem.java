@@ -15,6 +15,8 @@ import net.minecraft.world.item.ItemStack;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * 命运的指引(专属功能效果牌,击杀带虚弱印记的目标获取)。
@@ -30,6 +32,9 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
  */
 @Mod.EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class FateGuidanceCardItem extends BaseEffectCardItem {
+
+    // 七咒倍率机制证据通道(AP_CURSE_RATIO):仅在捕获到 >1 倍率时输出。
+    private static final Logger LOGGER = LoggerFactory.getLogger(FateGuidanceCardItem.class);
 
     public FateGuidanceCardItem(Properties properties) {
         super(properties);
@@ -104,13 +109,17 @@ public class FateGuidanceCardItem extends BaseEffectCardItem {
     // 七咒第一诅咒处理:神秘遗物+ 模组(默认 NORMAL 优先级)先应用其配置/修正物品后的伤害倍率,
     // 本处理器在 LOWEST 捕获该【实际倍率】(amount/original,动态适配 painMultiplier 配置、大地誓约、
     // 救赎之戒转换等模组内修正),而非固化倍率。
-    // 1.20.1 Forge 无 LivingIncomingDamageEvent:改用 LivingAttackEvent(HIGHEST 记录原始伤害,
-    // 存瞬态附件)+ LivingHurtEvent(LOWEST 读当前伤害)组合还原 1.21 的 original/current 语义。
+    // 1.20.1 Forge 无 LivingIncomingDamageEvent:改用 LivingHurtEvent(HIGHEST 记录「已过原版难度缩放、
+    // 尚未过模组倍率」的基准值,存瞬态附件)+ LivingHurtEvent(LOWEST 读当前伤害)还原 1.21 语义。
+    // ⚠️ 基准点必须是 LivingHurtEvent 而非 LivingAttackEvent:后者早于原版「按难度缩放受击方伤害」
+    // (Easy ⇒ amount/2+1、Hard ⇒ ×1.5),拿它当基准会把原版难度因子一起折进 ratio。
+    // 实测(Easy 世界):命令 10 点 → 原版缩放到 6 → 神秘遗物 painMultiplier 2.0 → 12;
+    // 若基准取 10 则 ratio 被算成 1.2(把 0.6 的难度因子锁进倍率),取 6 才是模组真实倍率 2.0。
     // - 骰战攻击(攻击者赐福激活+骰子+近战):不修改模组倍率,仅捕获存至目标侧,由骰战最终伤害使用;
     // - 非骰战攻击:命运的指引激活时按加幅减半(第一诅咒影响 -50%),未激活则保持模组倍率。
     @SubscribeEvent(priority = net.minecraftforge.eventbus.api.EventPriority.HIGHEST)
     public static void onCurseOriginalCapture(
-            net.minecraftforge.event.entity.living.LivingAttackEvent event) {
+            net.minecraftforge.event.entity.living.LivingHurtEvent event) {
         if (event.getEntity() instanceof Player player && !player.level().isClientSide()) {
             com.merlinkitsune.astral_dice.component.ModAttachments.setCurseOriginalAmount(player, event.getAmount());
         }
@@ -137,6 +146,12 @@ public class FateGuidanceCardItem extends BaseEffectCardItem {
         boolean diceCombat = DiceCombatEvents.isDiceBattleSettledDamage(event.getSource(), player);
         if (diceCombat) {
             com.merlinkitsune.astral_dice.component.ModAttachments.setDiceCurseRatio(player, ratio);
+            // AP_CURSE_RATIO(机制证据,2026-10-27):仅当神秘遗物实际放大了本次伤害(ratio>1)时输出,
+            // 证明「模组倍率被捕获 / 捕获值多少」;正常游玩(未戴七咒)零噪声。
+            if (ratio > 1.0f) {
+                LOGGER.info("AP_CURSE_RATIO:player={}:original={}:current={}:ratio={}",
+                        player.getName().getString(), original, current, ratio);
+            }
             return;
         }
 

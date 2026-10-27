@@ -748,6 +748,35 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 
 7. **收尾**：`--phase stop --force --purge-saves` ⇒ `MT_CLEANUP_SAVES: PURGED 1` / `MT_CLEANUP_RESULT: OK` / `MT_STOP: OK (1s)`；`java.exe` 残留 7 个**全部是 Gradle daemon/worker**（按命令行判 `client-like = 0`）；`run/1.21.1/mods` 的两个临时 jar 已删回原状。本轮**未改任何源码 / 文档代码面**，只做部署 + 探针（`temp/en1.js`…`temp/en38.js`）。
 
+### 4.1al 神秘遗物 1.20.1 复测（A 决策）+ 七咒倍率端到端证据（2026-10-27 23:5x–2026-10-28 00:2x）
+
+用户原话（m22452）：「1.20.1 按A决策补测，七咒倍率需要更强的证据验证，补测以上内容。另外派子代理独立验证所有特殊骰子（重点是紫晶骰子）」
+
+1. **A 决策落地（`forge-1.20.1/build.gradle`）**：新增三个测试用 `modImplementation`（默认开启，`-PtestEnigmatic=false` 可关，不进发货产物）——`curse.maven:enigmatic-legacy-336184:5600004`（EnigmaticLegacy-2.30.1）、`maven.modrinth:enigmatic-addons:8UpnBHv1`（enigmaticaddons-1.2.7）、`maven.modrinth:caelus:mRry0DgY`（caelus-forge-3.2.0+1.20.1）。判据：`:forge-1.20.1:dependencies --configuration runtimeClasspath` 三条均带 `(c)`；`:classes` BUILD SUCCESSFUL；1.20.1 dev 实机 `ModList.get().isLoaded()` ⇒ `enigmaticlegacy=true / enigmaticaddons=true / caelus=true`。
+
+2. **七咒倍率（F3）—— 修复后 1.20.1 端到端 PASS**
+   - **根因（实测链）**：旧捕获点 `onCurseOriginalCapture(LivingAttackEvent, HIGHEST)` 早于原版「按难度缩放受击伤害」。EASY 世界命令 10 点 → 缩放为 6（`amount/2+1`）→ 神秘遗物 `painMultiplier=200%` → 12；旧口径 `ratio = 12/10 = 1.2`，把 **0.6 的难度因子锁进了模组倍率**（HARD 下 ×1.5 会反向放大成 3.0）。临时 trace 三段读数：`stage=hurtHigh:amount=6.0` → `AP_CURSE_RATIO original=10.0 current=12.0 ratio=1.2` → `stage=damageNormal:amount=12.0`。
+   - **修复**：捕获处理器改为 `onCurseOriginalCapture(LivingHurtEvent, HIGHEST)`（基准 = 已过难度缩放、未过模组倍率），注释写死 10→6→12。
+   - **修复后常驻机器行（仅 `ratio>1` 输出，正常游玩零噪声）**：`AP_CURSE_RATIO:player=Dev:original=6.0:current=12.0:ratio=2.0`（3/3）；`AP_CURSE_APPLY:channel=mob:player=Dev:ratio=2.0:pre=6.0:post=12.0`（另 `pre=7.0:post=14.0`、`pre=4.0:post=8.0`）；受击落地 deltas `[12.0, 14.0, 8.0]` ⇒ 倍率真正作用在骰战终值上。
+   - **交叉取证**：EL 配置 `run/1.20.1/config/enigmaticlegacy-common.omniconf:816-817` `I:CursedRingPainModifier=200`；运行时 `CursedRing.painMultiplier.getValue().asModifier()=2.0`（`asMultiplier/asModifier = probability/100`）；字节码 `EnigmaticEventHandler` 在 `LivingHurtEvent` 内 `event.setAmount(event.getAmount() * CursedRing.painMultiplier.getValue().asModifier())`；无 `by` 实体的非骰战源（magic / mob_attack / generic）无戒 10 / 戴戒 20。
+   - **1.21.1 同源风险已由源码排除**：`neoforge-1.21.1/build/moddev/artifacts/neoforge-21.1.235-sources.jar` 的 `net/minecraft/world/entity/player/Player.java:936` 先 `scaleDamage(...)`，`:952` 才 `super.hurt(...)`（`LivingIncomingDamageEvent` 在 `super.hurt` 内派发）⇒ neo 的 `getOriginalAmount()` 本就是缩放后值，无需改。活体旁证：命令 12 点 `mob_attack` 落地 7（= `12/2+1`）。
+   - ⚠️ **1.21.1 的 `ratio>1` 仍抓不到**（EL+ 的放大不在 `LivingIncomingDamageEvent` 之前），§5-18(a) 结论不变；只是「是否需要同样修复」已排除。
+
+3. **诅咒点数矩阵（1.20.1，机制行 `AP_CURSE_PTS pre/post`，取证后已移除）**：戴戒 **×0.6**（`5→3` / `3→1.7999999999999998` / `4→2.4`）；戴戒 + 副手 `the_acknowledgment` **×0.8**（`4→3.2` / `6→4.8` / `5→4.0` / `3→2.4`）；副手 `the_twist` **×1.0**；`MISAKI_BURST` **×1.0**；无戒不输出（`hasEnigmaticCurse` false 早退）。与 `forge-1.20.1/src/main/java/com/merlinkitsune/astral_dice/combat/DiceCombatEvents.java:267-280`（`cursePenalty=0.4`、ack 再 `-0.2`、三件全额）逐条一致。**1.20.1 的 EL 2.30.1 没有 `the_bless`** ⇒ 该免疫分支在本线恒不命中（`DiceCombatEvents.java:85` 注释已自认）。
+
+4. **诅咒之剑筹码（1.20.1，`astral_dice:cursed_sword_chip`）四项判据 PASS**：初始 `bonus=1 / trig=false`；攻击触发赐福后击杀 pillager（2 击）⇒ `bonus=2 trig=true`；**同赐福周期**第二只 ⇒ 仍 2；清赐福重开周期再杀 ⇒ 3；`maxHealth=16` 的 spider ⇒ 仍 3 且 `trig` 复位（`>=20` 闸门）；卸下骰子后杀 ⇒ 无赐福、`bonus` 不变（`CursedSwordChipItem.isEquipped` 要求 `hasDiceEquipped`）。
+
+5. **饕餮之锅（`enigmaticlegacy:eldritch_pan`）—— 网关 PASS、端到端 UNVERIFIED-LIVE**
+   - `DiceCombatEvents.isMeleeWeaponAttack(p)` 持锅 = **true**（`MELEE_WEAPON_EXTRA_INCLUDES` 显式纳入，`DiceCombatEvents.java:2052-2060`）。
+   - 但锅经 `p.attack(target)` 或 `/damage <target> 12 minecraft:player_attack by Dev` 均 **0 伤害**：同场景铁剑 24（击杀）、弓 12、空手 12、牛对照「剑 10 / 锅 0」；赐福在/不在都一样 ⇒ **EL 侧自身抑制**，与本模组骰战无关。
+   - javap：`EldritchPan extends TieredItem implements Vanishable, ICursed, ICreativeTabMember`，静态 `Map<Player,Integer> HOLDING_DURATIONS` + 配置 `attackDamage=31.0 / attackSpeed=-3.2 / lifeSteal=0.15 / hungerSteal=2.0`；`HOLDING_DURATIONS` 实际用途是**饥饿机制**（`EnigmaticEventHandler.onPlayerTick` 主手持锅时累加并挂 `GROWING_HUNGER`），**不是**伤害闸门 ⇒ 0 伤害未落到具体分支，登记为 EL 侧未解。
+
+6. **崩溃（探针自伤，非产品缺陷）**：往 `EldritchPan.HOLDING_DURATIONS` 写 `put(player, 200)` 时 Rhino 数字是 `Double`，EL tick 里 `checkcast Integer` ⇒ `ClassCastException`（`EnigmaticEventHandler.onPlayerTick:1238`，`run/1.20.1/crash-reports/crash-2026-10-28_00.17.16-server.txt`，`Description: Ticking player`）。**勿再向 Java 泛型集合写 Rhino 数字**。
+
+7. **产物与收尾**：`:neoforge-1.21.1:build :forge-1.20.1:build` BUILD SUCCESSFUL ⇒ neo prod `2,599,283 B / 6FE1D2CD`、forge prod `2,648,157 B / 9327BDF4`、forge dev named `2,618,723 B / 2B051830`；四目标（根 `build/libs` / 子项目 `build/libs` / `run/<线>/mods` / 两个整合包）哈希核对一致（`run` 用 dev named、整合包用 prod SRG —— 既有口径）。`--phase stop --force --purge-saves` ⇒ `MT_CLEANUP_SAVES: PURGED 1` / `MT_CLEANUP_RESULT: OK` / `MT_STOP: OK (1s)`；1.21.1 `run/mods` 的两个临时 jar（legacyplus / caelus）已删。
+
+8. **骰子独立验证（子代理 46870f94，只读）**：报告 `docs/features/dice-special-verification.md`（13 个骰子逐个 SUPPORTED/REFUTED + Top5 疑似缺陷 + 5 条待裁决），紫晶骰子四条链已厘清。**未改任何代码**，等用户裁决（§5-19）。
+
 ## 5 遗留与欠账
 
 ### Blocker
@@ -785,10 +814,11 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 15. **第二次复核（run `f93916e6`）已闭环（2026-10-27，§4.1ac）**：两条 findings 处置 —— (a) 清空时序的注释改为如实表述 + 登记「同优先级更晚取消会丢来源」的已知边界（彻底兑现需降 `EventPriority.LOWEST`）；(b) `clean` 回显改为记录 `dEquip` 返回值 + 读回 `hasEffect`。**同批修掉第三处探针缺陷**：临时牌可堆叠 ⇒ 篡改要拆单张副本（否则清理会多掉一张，读数在 1/2 间跳）。双线重跑：1.20.1 `DST-P0` 13/13 + 1.21.1 三案全 PASS。**仍欠**同第 13/14 条（整合包与根 `build/libs` 仍是 rc.4 旧构建；tooltip 渲染 / 跨容器 / 死亡掉牌 / `/curios set` 四项未实机）。
 16. **智能手表同源双触发 + 击杀奖励去重 + 1.20.1 立牌 +5 挂点已闭环（2026-10-27，§4.1ad）**：`DeathTriggerGuard`（两线）+ 5 处击杀奖励闸门 + 真伤段排除「怪力乱神 +5」+ forge 挂点从 `LivingHurtEvent` 改 `LivingDamageEvent(LOWEST)`。实机：1.21.1 `NESTED-DOUBLE` PASS、1.20.1 `DST-NESTED` PASS 10/10；四目标已投放且 sha256 MATCH。**复核**：`dsh_code_review` run `439bfc3c-374c-4a02-b6bb-b8727f24f59d`（范围仅提交 `59d69ce4`）R1–R5 **全 SUPPORTED**，无返工项；两条限定 —— ① `LAST_CLAIM` 的实际上限是「最近 400 刻内的 claim 条数」（`PRUNE_THRESHOLD=4096` 只触发清理、不是硬上限），② P1 两线（26.1.2 / fabric）同名处理器仍未接闸门（按「P0 双线」范围既定）。**仍欠**：智能手表双触发的客户端侧表现（发卡动画 / 提示）未单独取证。
 
-17. **神秘遗物 1.20.1 复测路径待用户裁决（2026-10-27，§4.1ak）**：证据链已闭环 —— 生产 jar 是 SRG（`javap -p` 见 `m_8119_`），forge dev 是 Mojmap，因此 `enigmaticaddons` 的 mixin 在 dev 里 `could not find any targets matching '…tick()V'`、`--phase launch` EXIT 2。两条路径任选：(a) 给三件（`EnigmaticLegacy-2.30.1` / `enigmaticaddons-1.2.7` / `caelus-forge-3.2.0+1.20.1`）在 `forge-1.20.1/build.gradle` 加 `modImplementation`（测试用依赖，MDG 会重映射成 dev 名；属**测试资产改动**，须用户放行）；(b) 在真实整合包（生产 SRG 环境 = `D:\.minecraft\versions\1.20.1-Forge 模组测试`）里跑并接 AutoJS。**未裁决前 1.20.1 的神秘遗物联动一律视为未验证。**
+17. **神秘遗物 1.20.1 复测路径待用户裁决（2026-10-27，§4.1ak）** → **已闭环（2026-10-28 用户裁决「按 A 决策」，§4.1al-1）**：证据链已闭环 —— 生产 jar 是 SRG（`javap -p` 见 `m_8119_`），forge dev 是 Mojmap，因此 `enigmaticaddons` 的 mixin 在 dev 里 `could not find any targets matching '…tick()V'`、`--phase launch` EXIT 2。两条路径任选：(a) 给三件（`EnigmaticLegacy-2.30.1` / `enigmaticaddons-1.2.7` / `caelus-forge-3.2.0+1.20.1`）在 `forge-1.20.1/build.gradle` 加 `modImplementation`（测试用依赖，MDG 会重映射成 dev 名；属**测试资产改动**，须用户放行）；(b) 在真实整合包（生产 SRG 环境 = `D:\.minecraft\versions\1.20.1-Forge 模组测试`）里跑并接 AutoJS。**未裁决前 1.20.1 的神秘遗物联动一律视为未验证。**
 
-18. **神秘遗物+ 两处现场不可验证（2026-10-27，§4.1ak）**：(a) **F3 七咒倍率** —— `ratio` 捕获（`FateGuidanceCardItem.java:110-141`，LOWEST）读到的恒为 1，因为 EL+ 的放大发生在更晚的事件/分支；要真验需改变捕获点（如改挂 `LivingDamageEvent`）或让 EL+ 在 LOWEST 之前放大，属**判据设计问题**而非代码缺陷，先登记不返工；(b) **饕餮之锅** —— 1.21.1 的锅在 `enigmaticdelicacy`（缺 FarmersDelight）、1.20.1 被 SRG 阻塞 ⇒ 两条线的锅 melee 识别（`DiceCombatEvents.java:2039-2041` 强制武器口径）均**未验证**。
+18. **神秘遗物+ 两处现场不可验证（2026-10-27，§4.1ak）** → **部分闭环（2026-10-28，§4.1al-2 / §4.1al-5）**：(a) **F3 七咒倍率** —— `ratio` 捕获（`FateGuidanceCardItem.java:110-141`，LOWEST）读到的恒为 1，因为 EL+ 的放大发生在更晚的事件/分支；要真验需改变捕获点（如改挂 `LivingDamageEvent`）或让 EL+ 在 LOWEST 之前放大，属**判据设计问题**而非代码缺陷，先登记不返工；(b) **饕餮之锅** —— 1.21.1 的锅在 `enigmaticdelicacy`（缺 FarmersDelight）、1.20.1 被 SRG 阻塞 ⇒ 两条线的锅 melee 识别（`DiceCombatEvents.java:2039-2041` 强制武器口径）均**未验证**。
 
+19. **骰子独立验证报告待用户裁决（2026-10-28，§4.1al-8）**：`docs/features/dice-special-verification.md` 给出 13 个骰子逐个判定与 Top5 疑似缺陷 —— **P0-1** `ObsidianDiceHandler.java:33` 判的是 `IS_EXPLOSION`、`:35` 伤害 ×0.5，而全仓 `IS_FIRE` / lava 零命中 ⇒「火焰 -70%」零实现；**P0-2** `ObsidianDiceItem.java:27` DEFENSE_BONUS=3 经 `DiceCombatModifiers.java:198` 的 `1/0.30` 落成 **+10 护甲**（非 +6）；**P0-3** `starengine combat/SpellDamageRegistry.java:389-394` 紫晶「追加骰点」实为纯均匀 `nextInt(1,7)`，且本模组自产的 `CARD_SPELL` 也走该路径（多段法术线性叠加）；**P0-4** 卡牌栏口径冲突：`ModItems.java:167/:179/:185` 注释 4/5/6 vs `DiceCurioItem.java:43-46` `CARD_SLOTS_BY_STAR={4,6,8,12}`；**P0-5** weird 骰「立牌主动冷却 -50%」残留 4 类（Megas / Moses / Parunan / Sherry 各 `ticks = Math.max(1, ticks / 2)`，两线各 6 处）与 `WeirdDiceHandler.java:41` 的「已删除」注释矛盾。**五条待裁决**：卡牌栏以注释还是星档公式为准 / obsidian 应然是火焰还是爆炸 / 紫晶「骰点」= 独立 d6 还是骰战骰面 / 枪械是否算远程（`ALLOW_FIREARM_DAMAGE` 默认 false）/ 玻璃骰死亡丢卡牌应销毁还是落地。**裁决前不动代码**。
 ### Minor
 
 1. `docs/handover-2026-10-24-member-detective.md` 等 Kimi 批次文档已入库，措辞按 2026-10-24 事实；后续改动若改变其中数字需回填。
@@ -886,6 +916,13 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 
 37. **第三方「生产 jar 丢进 forge dev」＝ mixin 必崩（2026-10-27 实测，§4.1ak）**：Forge 1.20.1 生产是 SRG、dev 是 Mojmap ⇒ 若该模组的 mixin 目标是**第三方类**（refmap 不覆盖），`@Inject` 的 `method` 在生产 jar 里是 `m_xxxxx_` 名字，dev 里找不到 ⇒ `InvalidInjectionException` + 整局起不来。判据不是「能不能加载」，而是 `javap -p <生产 jar 内的目标类>` 看方法名是否 SRG；正解是走 `modImplementation` 让 MDG 重映射（本仓 kubejs/rhino/JEI 等既有先例）。
 
+38. **Rhino 的数字一律是 `Double`，写进 `Map<Player,Integer>` 会崩服**（2026-10-28 实测，§4.1al-6）：`EldritchPan.HOLDING_DURATIONS.put(player, 200)` 存的是 `Double`，EL 的 `EnigmaticEventHandler.onPlayerTick:1238` 做 `(Integer)` checkcast ⇒ `ClassCastException: class java.lang.Double cannot be cast to class java.lang.Integer`（`Description: Ticking player`，整局崩）。要写整形集合一律 `Java.loadClass('java.lang.Integer').valueOf(n)`。
+
+39. **`mt.ps1 --phase env` 会重建 `run/<线>/mods`，第三方测试 jar 必须在 env 之后再拷**（2026-10-28 实测）：先拷 `enigmaticlegacyplus` / `caelus` 再跑 `--phase env`，env 按清单重写 mods 目录，两件消失 ⇒ 探针里 `ModList.get().isLoaded(...)` 全 false、`setEquippedCurio` 返回 undefined。正确顺序：stop → env → 拷 jar → launch。
+
+40. **dev 运行的 jar 与整合包不是同一份**（2026-10-28 复核）：`pushToDevRun` 把 `forge-1.20.1/build/devlibs` 的 **Mojmap dev named** jar 推进 `run/<线>/mods`，`pushToGame` 才把 **reobf SRG 生产** jar 推进整合包。两者大小/哈希本来就不同（`2,618,723 / 2B051830` vs `2,648,157 / 9327BDF4`），别当「产物不一致」报缺陷；改完源码要实机必须跑 `pushToDevRun`（`:build` 会带）。
+
+41. **git bash 环境下写文件 / git 写操作可能被拒**（2026-10-28 实测）：`ops_bash`（git bash）里 node 写文件报 `EPERM: operation not permitted`，`git add` 报 `fatal: Unable to create '.git/index.lock': Permission denied`（无残留 lock、无 git 进程）⇒ 所有写文件与 git 写操作走 **pwsh**，bash 只做只读查询。
 ## 7 关键路径（命令）
 
 ```powershell

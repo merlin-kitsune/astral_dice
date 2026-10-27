@@ -55,6 +55,8 @@ import net.neoforged.neoforge.event.entity.living.MobEffectEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
 import top.theillusivec4.curios.api.CuriosApi;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -78,6 +80,8 @@ import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
 
 @EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class DiceCombatEvents {
+    // 七咒倍率机制证据通道(AP_CURSE_APPLY):仅在倍率 >1 时输出。
+    private static final Logger LOGGER = LoggerFactory.getLogger(DiceCombatEvents.class);
     // === 神秘遗物+ (Enigmatic Legacy+, modId `enigmaticlegacyplus`) 联动 ===
     // ⚠️ **物品 path 与 1.20.1 原版完全相同,只有命名空间不同**(2026-09-30 逐项核对两版 jar 的 lang 物品表):
     //    七咒之戒 / 启示之证 / 倒转之启 / 恩惠之典 全在本线命名空间下。改任一侧前先核另一侧,别照抄。
@@ -1146,7 +1150,11 @@ public class DiceCombatEvents {
         //   (与内置因子同语义,避免残留到下一击)。
         float curseRatio = ModAttachments.getDiceCurseRatio(target);
         if (curseRatio > 1.0f) {
+            double cursePre = finalDmg;
             finalDmg *= curseRatio;
+            // AP_CURSE_APPLY(机制证据,2026-10-27):证明捕获到的倍率确实乘进了生物近战骰战终值。
+            LOGGER.info("AP_CURSE_APPLY:channel=mob:player={}:ratio={}:pre={}:post={}",
+                    target.getName().getString(), curseRatio, cursePre, finalDmg);
         }
         ModAttachments.setDiceCurseRatio(target, 1.0f);
         event.setNewDamage(finalDmg);
@@ -1599,7 +1607,12 @@ public class DiceCombatEvents {
             if (target instanceof Player cursed) {
                 float ratio = com.merlinkitsune.astral_dice.component.ModAttachments.getDiceCurseRatio(cursed);
                 if (ratio > 1.0f) {
-                    damage *= FateGuidanceCardItem.isFateGuidanceActive(attacker) ? (1.0 + (ratio - 1.0) * 0.5) : ratio;
+                    double curseFactor = FateGuidanceCardItem.isFateGuidanceActive(attacker) ? (1.0 + (ratio - 1.0) * 0.5) : ratio;
+                    double cursePre = damage;
+                    damage *= curseFactor;
+                    // AP_CURSE_APPLY(机制证据,2026-10-27):玩家攻击路径同样留读数(含命运指引半幅因子)。
+                    LOGGER.info("AP_CURSE_APPLY:channel=player:player={}:ratio={}:factor={}:pre={}:post={}",
+                            cursed.getName().getString(), ratio, curseFactor, cursePre, damage);
                 }
                 com.merlinkitsune.astral_dice.component.ModAttachments.setDiceCurseRatio(cursed, 1.0f);
             }

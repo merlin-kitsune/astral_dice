@@ -301,6 +301,8 @@
   (Ninja Star / Piercing Gun / Mark Spray / Magic Quiver, etc.). ⚠️ The "Misfortune" holding cost — its periodic
   damage every 2:00 — **stays true damage** (it is a harmful cost on the holder, not this card's damage to a target).
 
+- **The Seven Curses damage multiplier is compared against the right baseline again** (Forge 1.20.1; found during the Enigmatic Legacy re-test, 2026-10-28): the multiplier Enigmatic Legacy applies to a cursed bearer was measured against a value captured **before** vanilla scales incoming damage by difficulty (Easy `amount / 2 + 1`, Hard `x1.5`), so on Easy a raw 10 landed as 6 and the 2.0x curse showed up as 1.2x - and on Hard the same bug would have inflated it to 3.0x. The baseline is now taken from `LivingHurtEvent` (after difficulty scaling, before the mod multiplier), so the ratio is the mod's real multiplier again: on Easy the mechanism log reads `original=6.0 / current=12.0 / ratio=2.0`, and the landed hits are exactly twice the dice-battle result (12.0 / 14.0 / 8.0 for pre-values 6.0 / 7.0 / 4.0). NeoForge 1.21.1 needs no change - its `LivingIncomingDamageEvent` already fires after the scaling.
+- **Seven Curses multiplier now has a machine-readable evidence trail**: two log lines (`AP_CURSE_RATIO` at the capture point, `AP_CURSE_APPLY:channel=player|mob` where the multiplier is applied) are emitted **only when the ratio exceeds 1.0**, so they are silent during normal play and can be used to verify the whole chain in `latest.log`.
 #### Combat Statistics & Resolution
 
 - **Defense formula split between players and mobs, and the 20-point armor cap removed** (user request 2026-09-26;

@@ -16,6 +16,8 @@ import net.minecraft.world.item.ItemStack;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import net.neoforged.bus.api.SubscribeEvent;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * 命运的指引(专属功能效果牌,击杀带虚弱印记的目标获取)。
@@ -31,6 +33,9 @@ import net.neoforged.bus.api.SubscribeEvent;
  */
 @EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class FateGuidanceCardItem extends BaseEffectCardItem {
+
+    // 七咒倍率机制证据通道(AP_CURSE_RATIO):仅在捕获到 >1 倍率时输出。
+    private static final Logger LOGGER = LoggerFactory.getLogger(FateGuidanceCardItem.class);
 
     public FateGuidanceCardItem(Properties properties) {
         super(properties);
@@ -127,6 +132,12 @@ public class FateGuidanceCardItem extends BaseEffectCardItem {
         boolean diceCombat = DiceCombatEvents.isDiceBattleSettledDamage(event.getSource(), player);
         if (diceCombat) {
             com.merlinkitsune.astral_dice.component.ModAttachments.setDiceCurseRatio(player, ratio);
+            // AP_CURSE_RATIO(机制证据,2026-10-27):仅当神秘遗物实际放大了本次伤害(ratio>1)时输出,
+            // 证明「模组倍率被捕获 / 捕获值多少」;正常游玩(未戴七咒)零噪声。
+            if (ratio > 1.0f) {
+                LOGGER.info("AP_CURSE_RATIO:player={}:original={}:current={}:ratio={}",
+                        player.getName().getString(), original, current, ratio);
+            }
             return;
         }
 
