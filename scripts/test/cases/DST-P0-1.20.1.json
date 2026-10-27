@@ -1,0 +1,189 @@
+{
+  "case_id": "DST-P0-1.20.1",
+  "title": "1.20.1 三批对等复验：隐匿调查法伤击杀只升一阶 / 临时牌他人 owner 被清且无特权清空 / 强化拒止依附怪力乱神五规则（拾卡变路障·卸牌销毁物品与已放置场·无立牌 use 硬拒）",
+  "version": "1.20.1",
+  "channel": "kubejs",
+  "target": {
+    "type": "feature",
+    "ref": "investigation + temporary_card + repulsion"
+  },
+  "on_fail": "continue",
+  "steps": [
+    {
+      "op": "note",
+      "text": "1.20.1 线三批实机复验（与 1.21.1 三条已 PASS 的 AutoJS 用例对等；1.20.1 未接入 AutoJS ⇒ 走 KubeJS 服务端探针 /astraldst 的分步命令）。\n\n覆盖三批：\n① 隐匿调查法伤击杀双罚修复（提交 59b14e10）：一次击杀只让调查阶段 +1。判据 `AP_D1_IG_DONE:stage0=1:stage1=2` + `AP_D1_IG_V:ok=1`（修前 = 3）。\n② 绿洲女王临时牌 owner（提交 51efba03）：他人 owner 的牌被产品 tick 自检清掉；无女王特权 ⇒ 本人牌也被清空。判据 `AP_D2_TC_PURGE_V:ok=1` + `AP_D2_TC_V:purge=1:nopriv=1`。\n③ 强化拒止五规则（提交 6fcc756a）：无立牌拾卡→立即路障；装立牌发卡/发有主物品/造有主场；卸立牌⇒卡变路障、物品销毁、已放置场销毁；无立牌 use() 硬拒。判据三条 _V + RP_V:lost=1:gate=1。\n\n探针 = scripts/test/resources/kubejs/1.20.1/server_scripts/astral_dst_probe.js（本轮新增，命令改动需**冷启动**才生效）。\n读数走聊天回显 → latest.log 的 `[CHAT] AP_...` 行；伤害一律走原版 `/damage ... by @s`（Rhino 里 LivingEntity#hurt 不可见）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[type=!player,distance=..32]",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astraldst ig D1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 3000
+    },
+    {
+      "op": "inject_command",
+      "command": "/astraldst igread D1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astraldst tc D2",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 2500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astraldst tcread D2",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 2500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astraldst tcread2 D2",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astraldst rp D3",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 2500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astraldst rpread D3",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 2500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astraldst rpread2 D3",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 3000
+    },
+    {
+      "op": "inject_command",
+      "command": "/astraldst rpread3 D3",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astraldst snap D9",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1000
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_D1_IG:stage0=1:dice=ok:dmg=ok"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_D1_IG_DONE:stage0=1:stage1=2"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_D1_IG_V:ok=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_D2_TC_GRANT:granted=3:n=3:me=3:other=0:tampered=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_D2_TC_PURGE_V:ok=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_D2_TC_V:purge=1:nopriv=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_D3_RP_PICK_V:ok=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_D3_RP_BOUND_V:ok=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_D3_RP_V:lost=1:gate=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_D9_SNAP:.*hasSign=0:cards=0"
+    },
+    {
+      "type": "crash"
+    }
+  ]
+}
