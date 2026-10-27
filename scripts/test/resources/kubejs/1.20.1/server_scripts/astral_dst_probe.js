@@ -494,19 +494,24 @@ function dNdMeasureBody(ctx, p) {
             if (tg.contains("MT" + k)) ents["MT" + k] = list.get(i);
         }
     }
+    // MELEE-06(2026-10-27 用户裁决):+5 只在**骰战**路径生效(法伤/远程/技能一律排除),
+    //   故这里必须用「玩家近战武器攻击」制造骰战:主手近战武器 + 赐福效果 + 每轮清零无敌帧。
+    dCmd(ctx, "item replace entity @s weapon.mainhand with minecraft:diamond_sword 1");
+    try { p.addEffect(new DMobEffectInstance(dFx().DICE_BLESSING.get(), 12000, 0, false, false, true)); } catch (e) { }
     var diff = [], n = 0, tracked = 1, marksOk = 1, du = [], dt = [];
     for (var j = 0; j < 16; j++) {
         var u = ents["MU" + j], b = ents["MT" + j];
         if (u == null || b == null) continue;
         u.setHealth(20.0); b.setHealth(20.0);
+        u.invulnerableTime = 0; b.invulnerableTime = 0;
         try { dMark().apply(u); dMark().apply(b); } catch (e) { marksOk = 0; }
         try {
             if (dMark().getLevel(u) !== 1 || dMark().getLevel(b) !== 1) marksOk = 0;
             if (!dLSM().isTrackedByAny(b)) tracked = 0;
         } catch (e2) { marksOk = -1; tracked = -1; }
         var hu0 = u.getHealth(), hb0 = b.getHealth();
-        dCmd(ctx, "damage @e[tag=MU" + j + ",limit=1] 1 astral_dice:card_spell by @s");
-        dCmd(ctx, "damage @e[tag=MT" + j + ",limit=1] 1 astral_dice:card_spell by @s");
+        dCmd(ctx, "damage @e[tag=MU" + j + ",limit=1] 1 minecraft:player_attack by @s");
+        dCmd(ctx, "damage @e[tag=MT" + j + ",limit=1] 1 minecraft:player_attack by @s");
         var duv = hu0 - u.getHealth(), dtv = hb0 - b.getHealth();
         du.push(duv); dt.push(dtv);
         diff.push(dtv - duv);

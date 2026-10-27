@@ -50,6 +50,8 @@
 33. **三位裁决落地：F8 不改 / MELEE-06 限定骰战 / MELEE-07 反击 1 刻去重（2026-10-27 21:5x，§4.1ai）**：删掉两线 `event/LinglingSignEvents.java` 里非骰战的 +5 伤害处理器，+5 的唯一落点收敛到骰战终值（`combat/DiceCombatEvents.java` neo `:841-844` / forge `:1128-1130`），三语 lang 同步改为「骰战攻击…」；`combat/DeathTriggerGuard.java` 新增 `claimPair(attacker, victim, channel)`（`SAME_SWING_WINDOW_TICKS = 1L`），`injectCounterDamage` 首段加闸门 ⇒ 熊猫人嘲讽 / 破绽闪避 / 鼠鼠护盾 / 安全气囊四条反击出口共用一把锁。判据：两线 `:classes` EXIT 0；`check_lang_sync.ps1` 两线 1065/1065/1065。**未实机、未重出 jar**。
 
 
+34. **近战批双线实机闭环（2026-10-27 22:1x–22:3x，§4.1aj）**：§4.1ah / §4.1ai 的全部落地项已双线实机走查，期间新修两处**只在实机暴露**的缺口 —— F7 修女被动清理原先只挂玩家攻击路径（生物→玩家骰战漏判：实机 22 点仍不清加成）⇒ 搬到公共出口 `applyAlanaBigHit`；MELEE-04 吸血鬼立牌回血基数用的是 `settleDiceDamage` **之前**的 `finalDmg` ⇒ 改为落地量。产物已重出并四目标投放（neo 2,598,569 B `35387D4B…F059C6` / forge prod 2,647,447 B `1FA57C6E…8F72B` / forge dev named 2,618,039 B `4AA4308B…26488`）。读数：F7 ✅（`bonusAfter=0`）/ MELEE-04 ✅（heal=floor(落地/2)）/ MELEE-06 ✅（法伤 dT=dU=1）/ 骰战 +5 只加一次（B 段 median 5、C 段 median 0）/ F1 ✅（`absAfter=0`）/ A6 ✅（+1）/ F2 ✅（×1.0999985）/ MELEE-07 ✅（同刻只反击一次）/ A5 无上偏。无法实机四项（A3 需 PvP、A5 第三方取消路径、F3 需神秘遗物+、N14 无专项判据）已登记在审计正本 §7.11.6。
+
 ## 1 环境与路径
 
 路径与命令**沿用 pre.5 正本 §1**（Windows 原生：git bash 的 `git`、`pwsh -NoProfile -File`、`JAVA_HOME=C:\Program Files\Zulu\zulu-21`、工作树直接 `gradlew.bat`、测试台 `scripts\test\mt.ps1`）。两条补充：
@@ -698,6 +700,20 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 6. **行为面净变更**：骰战路径 +5 不变；非骰战（法伤 / 技能 / 远程 / 环境）从「+5」变为「不加」—— 本批唯一数值变更，已与三语文案同批落地。
 7. **判据**：`gradlew.bat :neoforge-1.21.1:classes :forge-1.20.1:classes` ⇒ EXIT 0（`temp/compile_melee70.log`，forge 89 / neo 4 条既有 deprecation 警告）；`pwsh -NoProfile -File tools/check_lang_sync.ps1` ⇒ exit 0，两线 `OK: zh_cn(1065) = en_us(1065) = ja_jp(1065)`；8 个 java + 6 个 lang 改写后 bareLF 全 0。**未实机、未重出 jar、未投放**；P1 两线未镜像。建议实机判据：① 法伤 / 远程击杀被吸附目标不再 +5；② 近战骰战打被吸附目标仍 +5；③ 被嘲讽单位同一次挥击的多段伤害只反击一次。
 
+### 4.1aj 近战批双线实机闭环 + F7 公共出口 / MELEE-04 回血基数修复（2026-10-27 22:1x–22:3x）
+
+用户裁决（m21607）：「走实机，验证所有改动」。
+
+1. **实机第一轮暴露两处缺口（本批新修）**
+   - **F7**（修女 `alana_sign` 被动「单次受击 >10 清空加成」）的清理原先只写在**玩家攻击**路径（forge `combat/DiceCombatEvents.java:1138-1141` / neo `:852-855`），而生物→玩家走 `resolveMobMeleeAttack`（forge `:1379-1456` / neo `:1087-1159`）直接调 `settleDiceDamage`，没有这段 ⇒ 1.20.1 实机见证「怪打 22 点、`bonus` 仍为 3」。修法：新增 `private static void applyAlanaBigHit(LivingEntity target, float applied)`（`target instanceof Player victim && applied > 10.0F && ModAttachments.getAlanaPassiveBonus(victim) > 0` ⇒ `AlanaSignItem.clearBonus(victim)`），forge 在 `settleDiceDamage` 的**三个 return 点**各调用一次并删掉玩家路径 inline 块；neo 在玩家路径（`landing = finalDmg - min(finalDmg, 吸收)` 后）与生物近战路径（`setNewDamage(finalDmg)` 后）各调用一次，helper 放 `resolveMobMeleeAttack` 末尾。
+   - **MELEE-04**（吸血鬼立牌 papara 攻击回血）原先用 `finalDmg`（settle 之前的值）⇒ 被护盾 / 黄心吃掉的部分也回血。forge 玩家路径 `Math.max(1, (int) finalDmg / 2)` → `(int) applied / 2`（`applied` = settle 返回的落地红心量）；neo → `landing / 2`。
+2. **产物与投放（2026-10-27 22:2x）**：neo `2,598,569 B` sha256 `35387D4BF62F9191E4936B41952653EFFF00793B0163E107BBADF5C072F059C6`；forge prod `2,647,447 B` `1FA57C6E821709D802EDB2C7B8AD62F35138DEAE997BFBA21300DB1A9428F72B`；forge dev named `2,618,039 B` `4AA4308B71420C406F3A5F65A431047FAF2C44D3DC6EC756D89190828EF26488`。四目标（`run/1.21.1` ← neo prod、`run/1.20.1` ← forge dev named、狐の航空学 Voxy Edition ← neo prod、1.20.1-Forge 模组测试 ← forge prod）逐处 `Get-FileHash` **MATCH**（脚本 `temp/build_deploy_final.ps1`）。
+3. **1.20.1 读数（AutoJS 服务端 eval；world=testworld）**：S1 MELEE-06 `{"tracked":1.0,"hasSign":1.0,"dU":1.0,"dT":1.0,"diff":0.0}`；S2 骰战 +5 统计 n=64 `meanDiff 5.25 / medianDiff 6.0`；S3 F1 `absAfter=0.0`、红心掉 6，A6 无标记 7 → 有标记 8，F3 不可测（未装神秘遗物+）；S4 F2 `ratio 1.0999984741210938`；S5 F7 修前 `bonusAfter=3` → 修后 `bonusAfter=0`（`dealt=22`）；S6 MELEE-07 `{"r1":true,"r2":false,"armB":1.0}`；S11 A5 `{"hpDelta":3.0,"absRightAfter":0.0}` → 700ms 后 `abs 0.0`；S12 MELEE-04 `{"mobHpDelta":3.0,"heal":1.0,"expectFixed":1.0}`。
+4. **1.21.1 读数**：四案全 PASS（`UNDERCOVER-DOUBLE` / `REPULSION-SIGN` / `TEMPCARD-OWNER` / `NESTED-DOUBLE`）；`NESTED-DOUBLE` B 段 `{"median":5,"near5":15,"hasSign":true}`、C 段 `{"median":0,"near5":2,"hasSign":false}`；F7 `22 → bonusAfter 0`；F2 `ratio 1.0999985`；MELEE-04 `{"mobHpDelta":4,"heal":2,"expectFixed":2}`；MELEE-06 `{"tracked":1,"hasSign":1,"dT":1,"dU":1}`。
+5. **1.20.1 用例**：`DST-P0-1.20.1` **PASS 13/13**；`DST-NESTED-1.20.1` 首轮 FAIL（唯一红点 `AP_ND_NDMEAS:B:median=[4-6]`）—— 根因是测量段仍打 `astral_dice:card_spell`（法伤），MELEE-06 之后 +5 只走骰战 ⇒ u=t=1、median 恒 0，**用例陈旧而非回归**；把 `dNdMeasureBody` 改成「主手 diamond_sword + `DICE_BLESSING` + `invulnerableTime=0` + `minecraft:player_attack`」后 PASS。1.21.1 的 `NESTED-DOUBLE` 两段 eval（`llmeas` / `nomeas`）同批改造。
+6. **收尾**：`MT_CLEANUP_SAVES: PURGED 1` / `MT_CLEANUP_RESULT: OK` / `MT_STOP: OK (1s)`；`Get-CimInstance Win32_Process java.exe` 无输出（无客户端 / daemon 残留）。
+7. **无法实机（如实登记，不得当已验证）**：A3（`extra_damage` 嵌套 hurt 二次触发受击被动）需 PvP 受害者；A5 的「第三方在 LivingDamageEvent 取消」路径不可模拟（只验无上偏）；F3 需装神秘遗物+；N14「AOE 按目标逐个计」无专项判据。
+
 ## 5 遗留与欠账
 
 ### Blocker
@@ -773,6 +789,8 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 21. **折叠批三条裁决已落地、待实机（2026-10-27 20:5x，§4.1ag）**：N14「AOE 命中也算」⇒ 两线 `DiceCombatEvents` 把赐福/降神倒计时与隐匿解除提到 AOE 闸门之前（反击链 `counterDepth` 仍早退）；「加成必须绕过护甲」⇒ 两线 `DamageEffectCardHandler.foldBonusBypassingArmor(...)` 在护甲前预补偿（源带 `bypasses_armor` 或护甲 0 时直接相加），数值回到与旧 `true_damage` 段一致；「连击保留 cooldown」⇒ 不加 `bypasses_cooldown`。双线 `:classes` EXIT 0，**未实机、未重出 jar**。
 23. **近战三裁决批（2026-10-27，§4.1ai）待实机 + 未重出 jar**：三项需实机读数（法伤/远程打被吸附目标应无 +5、近战骰战应仍 +5、嘲讽目标同挥击多段只反击一次）；本批**未重出 jar、未投放**（两个 P0 整合包与根 `build/libs` 仍是 rc.4 旧构建）。
 
+24. **近战批实机闭环（2026-10-27，§4.1aj）**：§4.1ah / §4.1ai 全部落地项已双线实测；期间新修 F7 公共出口（生物→玩家骰战漏判）与 MELEE-04 回血基数（改用落地量），两线 jar 已重出并四目标投放。**仍欠**：A3（需 PvP）/ A5 第三方取消路径 / F3（需神秘遗物+）/ N14 专项判据 —— 四项只能代码级；P1 两线（`neoforge-26.1.2` / `fabric-1.20.1`）未折叠未镜像。
+
 ## 6 坑（本批新增，后续继续追加）
 
 1. **`git show HEAD:<file>` 是 LF**（仓库存 LF、工作树 CRLF 由 autocrlf 转换）⇒ 行级改写先 `replace(/\r\n/g,"\n").split("\n")` 再 `join("\r\n")`。
@@ -821,6 +839,8 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 31. **1.20.1 里在 `LivingHurtEvent` 给伤害做「加法」可能整段失效（2026-10-27 实测，§4.1ad）**：本线骰战处理器（`combat/DiceCombatEvents.java:274`，NORMAL）在 `LivingDamageEvent` 上以 `setAmount` **覆盖式**写入自算终值 ⇒ 任何更早发生的加法（`LivingHurtEvent` 阶段、护甲之前）都会被丢弃。症状：闸门全真、事件确实被调用，但目标掉血没有加成。凡「就在同一次伤害上做加法」的需求，1.20.1 一律挂 `LivingDamageEvent` 且优先级 **LOWEST**（排在骰战 NORMAL 之后），与 1.21.1 的 `LivingDamageEvent.Pre` + LOWEST 对齐。
 32. **1.20.1 dev 其实有 AutoJS 通道（订正坑 29）**：`run/1.20.1/mods` 里的 `AutoJS-forge-1.20.1-1.0.0-dev.jar` 会起端点，`mt.ps1 --phase launch` 日志直接打出 `MT_LAUNCH: OK — AutoJS 端点已就绪（http://127.0.0.1:25585/mcp, protocolVersion=2025-06-18）`（注意：`--phase env` 仍会打印 `MT_ENV_AUTOJS: 跳过`，两句话矛盾，以 launch 实测为准）。2026-10-27 实测 `eval_js`（server 侧）在 1.20.1 可用：`net.minecraftforge.server.ServerLifecycleHooks.getCurrentServer()` + `getCommands().performPrefixedCommand(...)` 可直跑命令，`diagnostics` 里能看到 KubeJS 与探针脚本的加载行。⇒ 1.20.1 快速迭代优先用 AutoJS eval（免冷启动），可断言的用例面仍走 KubeJS 探针。
 33. **整行 CJK 字符串做脚本锚点会静默失配（2026-10-27 实测，§4.1ai）**：用 `docs/features/attack-damage-chain-audit.md` §7.9.3 的表格整行当 python 锚点，匹配 0 次（全角括号 / 箭头 / 空格差异肉眼不可见）⇒ 表格与列表行一律改用**行首前缀**（`startswith`）定位 + 命中数断言；同理 `tools.read` 的 `offset` 超过文件行数会直接抛错（本轮 forge `LinglingSignEvents.java` 删完处理器只剩 82 行）。
+
+34. **语义改了，旧用例可能变假绿（2026-10-27 实测，§4.1aj）**：MELEE-06 把「+5」限定骰战后，两条既有用例的测量段仍在打 `astral_dice:card_spell`（法伤）⇒ 被吸附靶与普通靶都只掉 1、`diff` 恒 0 ⇒ B 段「median 4–6」红、C 段「median ≈0」绿，`near5` 同时失去意义。教训：**改判据语义的批次必须回看既有用例/探针的「量具」是否还分辨得出**（本例量具改成 `minecraft:player_attack` + 主手剑 + `DICE_BLESSING` + 每轮 `invulnerableTime = 0`）；1.20.1 探针改动后照例 `--phase stop --force` → `mt_env.ps1 kubejs --version 1.20.1` → `--phase launch` 冷启动。
 
 ## 7 关键路径（命令）
 

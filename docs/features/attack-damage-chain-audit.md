@@ -489,3 +489,74 @@ combat/DiceCombatEvents.java:305-317 赐福/降神倒计时启动、秘密侦探
 - 行为面：骰战路径 +5 不变（仍在 `isEquipped && isTrackedByAny` 时并入终值）；非骰战（法伤 / 技能 / 远程 / 环境）从「+5」变为「不加」—— 这是本次唯一的数值变更，且与三语文案同批落地。
 - **仍未实机、未重出 jar**（实机判据：法伤击杀被吸附目标应无 +5；近战骰战击杀应仍 +5；嘲讽单位同挥击多段只反击一次）。
 - P1 两线（`neoforge-26.1.2` / `fabric-1.20.1`）未镜像（既定范围外）。
+
+### 7.11 近战批实机验证 + F7 公共出口 / MELEE-04 回血基数修复（2026-10-27 22:1x–22:3x，P0 双线）
+
+用户裁决（m21607）：「走实机，验证所有改动」。本轮先把上一批（§7.9 / §7.10）全部落地项在双线实机走了一遍，期间发现并修掉两处**只在实机才暴露**的缺口。
+
+#### 7.11.1 本轮新修：F7 的清理只在玩家攻击路径
+
+F7（修女 `alana_sign` 被动「单次受击 >10 清空加成」）的清理代码原先只写在**玩家攻击**路径（forge `combat/DiceCombatEvents.java:1138-1141` / neo `:852-855`），而**生物→玩家**走 `resolveMobMeleeAttack`（forge `:1379-1456` / neo `:1087-1159`）直接调 `settleDiceDamage`，没有这段 ⇒ 生物骰战下该被动形同不存在。1.20.1 实机见证：怪打 22 点、`bonus` 仍为 3。
+
+修法（两线）：把清理搬到**公共出口**，新增
+
+```java
+private static void applyAlanaBigHit(LivingEntity target, float applied) {
+    if (target instanceof Player victim && applied > 10.0F
+            && ModAttachments.getAlanaPassiveBonus(victim) > 0) {
+        AlanaSignItem.clearBonus(victim);
+    }
+}
+```
+
+- forge：`private static float settleDiceDamage(LivingEntity target, LivingDamageEvent event, float finalDamage)`（原 `:374`）的**三个 return 点**（`A0<=0` 分支、`target instanceof Player` 分支、非玩家分支）各调用一次，并删掉玩家路径里原有的 inline 块。
+- neo：玩家路径 `event.setNewDamage((float) finalDmg);` 之后取 `float landing = (float) finalDmg - Math.min((float) finalDmg, target.getAbsorptionAmount());` 再调用；生物近战路径 `event.setNewDamage(finalDmg);` 之后同式调用。helper 放在 `resolveMobMeleeAttack` 末尾。
+
+#### 7.11.2 本轮新修：MELEE-04 回血基数是 settle 前金额
+
+吸血鬼立牌（papara）「攻击造成伤害后回血」原用 `finalDmg` —— 该值在 `settleDiceDamage` **之前**计算，被护盾钳制 / 黄心整段吃掉的部分也算进去 ⇒ 白送回血。
+
+- forge 玩家路径：`player.heal(Math.max(1, (int) finalDmg / 2))` → `Math.max(1, (int) applied / 2)`（`applied` = `settleDiceDamage` 返回的落地红心量）。
+- neo 玩家路径：`... finalDmg / 2` → `... landing / 2`。
+
+#### 7.11.3 测试资产改造：把「+5」判据从法伤改成骰战
+
+MELEE-06 把 +5 限定骰战后，两条既有实机用例的测量段失效（法伤侧 u=t=1、median 恒 0 ⇒ **假绿**）。改造：
+
+- `scripts/test/resources/kubejs/1.20.1/server_scripts/astral_dst_probe.js` 的 `dNdMeasureBody`：主手换 `minecraft:diamond_sword`、挂 `DICE_BLESSING`、每轮 `invulnerableTime = 0`、伤害命令 `astral_dice:card_spell` → `minecraft:player_attack`。
+- `scripts/test/cases/NESTED-DOUBLE-1.21.1.json` 的 `llmeas` 与 `nomeas` 两段 eval 同步改造（同一套 sword + blessing + invulnerableTime 归零）。
+
+#### 7.11.4 双线实机读数（产物 sha256 见 §7.11.5）
+
+| 项 | 1.21.1 | 1.20.1 | 判据 |
+|---|---|---|---|
+| **F7**（受击 >10 清加成） | ✅ `{"bonusBefore":3,"dealt":22,"bonusAfter":0}` | ✅ `{"bonusBefore":3,"dealt":22.0,"bonusAfter":0}`（修前 `bonusAfter=3`） | 加成被清 |
+| **MELEE-04**（回血基数） | ✅ `{"mobHpDelta":4,"heal":2,"expectFixed":2}` | ✅ `{"mobHpDelta":3,"heal":1,"expectFixed":1}` | heal = floor(落地/2)（修前会按 finalDmg 多回） |
+| **MELEE-06**（法伤不 +5） | ✅ 金骰 + 立牌 + 力场：`{"tracked":1,"hasSign":1,"dT":1,"dU":1}` | ✅ `{"tracked":1.0,"hasSign":1.0,"dT":1.0,"dU":1.0,"diff":0.0}` | 被吸附靶与普通靶伤害相同 |
+| **骰战 +5 仍只加一次** | ✅ `NESTED-DOUBLE` B 段 `{"n":16,"median":5,"near5":15}`；C 段（卸立牌）`{"median":0,"near5":2}` | ✅ `DST-NESTED-1.20.1` B 段 `AP_ND_NDMEAS:B:n=16:median=5:near5=11:eq=true`；C 段 `median=0:eq=false` | median ≈ 5 / 0 |
+| **F1**（黄心写回上偏） | — | ✅ 吸收 2.0 挨一击后 `absAfter=0.0`、红心掉 6 | 无白得黄心 |
+| **A6**（生物近战对带标记玩家 +1） | — | ✅ 无标记 7 → 有标记 8 | +1 |
+| **F2**（无骰打赐福目标弱印仅 ×1.10） | ✅ `ratio 1.0999984741210938` | ✅ 同值 | 修前 1.21 |
+| **MELEE-07**（反击 1 刻去重） | — | ✅ `{"r1":true,"r2":false,"armA":1.0,"armB":1.0,"armC1":1.0}` | 同刻只反击一次、跨刻不误封 |
+| **A5**（幻影吸收 tick 末对账） | — | ✅ `{"hpDelta":3.0,"absRightAfter":0.0}` → 700ms 后 `{"abs":0.0}` | 无上偏 |
+
+用例侧：1.21.1 四案全 PASS（`UNDERCOVER-DOUBLE` / `REPULSION-SIGN` / `TEMPCARD-OWNER` / `NESTED-DOUBLE`）；1.20.1 `DST-P0-1.20.1` **PASS 13/13**、`DST-NESTED-1.20.1` **PASS**（B/C 段改造后）。
+
+#### 7.11.5 产物与投放（本轮最终构建，2026-10-27 22:2x）
+
+| 产物 | 字节 | sha256 |
+|---|---|---|
+| `neoforge-1.21.1/build/libs/astral_dice-1.5.0-rc.4+neoforge_1.21.1.jar` | 2,598,569 | `35387D4BF62F9191E4936B41952653EFFF00793B0163E107BBADF5C072F059C6` |
+| `forge-1.20.1/build/libs/astral_dice-1.5.0-rc.4+forge_1.20.1.jar` | 2,647,447 | `1FA57C6E821709D802EDB2C7B8AD62F35138DEAE997BFBA21300DB1A9428F72B` |
+| `forge-1.20.1/build/devlibs/astral_dice-1.5.0-rc.4+forge_1.20.1.jar` | 2,618,039 | `4AA4308B71420C406F3A5F65A431047FAF2C44D3DC6EC756D89190828EF26488` |
+
+投放四目标逐处 `Get-FileHash` **MATCH**：`run\1.21.1\mods` ← neo prod、`run\1.20.1\mods` ← forge dev named、`D:\.minecraft\versions\狐の航空学 Voxy Edition\mods` ← neo prod、`D:\.minecraft\versions\1.20.1-Forge 模组测试\mods` ← forge prod。
+
+#### 7.11.6 仍无法实机（登记，不得当作已验证）
+
+1. **A3**（`extra_damage` 嵌套 hurt 让受击被动二次触发）：需要**玩家受害者**且额外加伤源在攻击方 —— 单人环境不可复现（`extra_damage` 由玩家攻击产生），仅代码级。
+2. **A5 的第三方取消路径**：需第三方模组在 `LivingDamageEvent` 里取消，dev 环境无此条件；只验了「不产生上偏」。
+3. **F3**（七咒 `DiceCurseRatio` 生物近战生效）：`FateGuidanceCardItem` 在 `!hasEnigmaticCurse(player)` 时先把 ratio 清 1.0，而 dev `run\1.20.1\mods` 未装神秘遗物+ ⇒ 只能代码级（`forge-1.20.1/.../DiceCombatEvents.java:1443-1447`）。
+4. **N14「AOE 命中按目标逐个计攻击行为」**：语义已由 §7.8 落地，但未写专项判据。
+
+收尾：`mt.ps1 --version 1.21.1 --phase stop --force --purge-saves` ⇒ `MT_CLEANUP_SAVES: PURGED 1` / `MT_CLEANUP_RESULT: OK` / `MT_STOP: OK (1s)`；`Get-CimInstance Win32_Process java.exe` 无输出（无客户端 / daemon 残留）。

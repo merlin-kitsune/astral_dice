@@ -388,6 +388,8 @@ public class DiceCombatEvents {
             //    getAbsorptionAmount()(审计 §2 不变量④要求它们读到"扣除本次吸收后的量"),中途把吸收
             //    改成 damage 会直接污染这些判据。A0 == 0 时本就不需要补偿(写回值与平台扣减量天然一致)。
             event.setAmount(damage);
+            // F7:修女被动一律在公共出口判(见 applyAlanaBigHit)
+            applyAlanaBigHit(target, damage);
             return damage;
         }
         float absorbedShould = Math.min(damage, absorptionBefore);
@@ -405,6 +407,7 @@ public class DiceCombatEvents {
             target.setAbsorptionAmount(expectedAfter);
             PHANTOM_ABSORPTION.remove(target);
             event.setAmount(toHealth);
+            applyAlanaBigHit(target, toHealth);
             return toHealth;
         }
         target.setAbsorptionAmount(absorptionBefore - absorbedShould + toHealth);
@@ -412,7 +415,25 @@ public class DiceCombatEvents {
         // H == 0 时平台 :1681 整段跳过、不会有后续扣减 ⇒ 不登记(顺带清掉可能残留的旧登记)。
         registerPhantom(target, toHealth, expectedAfter);
         event.setAmount(toHealth);
+        applyAlanaBigHit(target, toHealth);
         return toHealth;
+    }
+
+    /**
+     * F7(2026-10-27 近战审计):修女(alana)被动「单次受击 >10 清空全部加成」的判定。
+     *
+     * <p>原判据挂在 {@code event/NewSignEvents}(非骰战)与<b>玩家攻击路径</b>上,读的是护甲前原版值;
+     * 骰战以自算终值覆盖式写入后该值已无意义(近战骰战下几乎永不触发)。故改为按<b>落地红心量</b>判定,
+     * 并放在两条骰战路径的<b>共同出口</b>:{@link #settleDiceDamage}(玩家攻击 / 生物近战都走它)。
+     * 只挂玩家路径会漏判生物→玩家骰战(2026-10-27 实机见证:怪 22 点打到玩家、加成未清)。
+     *
+     * @param applied 落地红心量(= settle 之后 event.getAmount())
+     */
+    private static void applyAlanaBigHit(LivingEntity target, float applied) {
+        if (target instanceof Player victim && applied > 10.0F
+                && ModAttachments.getAlanaPassiveBonus(victim) > 0) {
+            com.merlinkitsune.astral_dice.item.sign.AlanaSignItem.clearBonus(victim);
+        }
     }
 
     // ============================================================================================
@@ -1132,13 +1153,9 @@ public class DiceCombatEvents {
         // N1 + N2:护盾钳制 + 吸收按终值只扣一次(两条写终值路径的唯一出口,见 settleDiceDamage)
         float applied = settleDiceDamage(target, event, (float) finalDmg);
 
-        // F7(2026-10-27 近战审计):修女(alana)「赐福期间单次受击 >10 清空全部加成」在骰战路径下
-        //   必须按**落地红心量**判定 —— NewSignEvents.onIncomingDamage 读的是护甲前、骰战覆盖前的原版值,
-        //   近战骰战几乎永远不会 >10 ⇒ 该被动形同不存在。非骰战路径仍由那个处理器兜。
-        if (target instanceof Player alanaVictim && applied > 10.0F
-                && ModAttachments.getAlanaPassiveBonus(alanaVictim) > 0) {
-            com.merlinkitsune.astral_dice.item.sign.AlanaSignItem.clearBonus(alanaVictim);
-        }
+        // F7(2026-10-27 近战审计):修女被动「单次受击 >10 清空加成」的判定已挪进 settleDiceDamage
+        //   (公共出口) —— 生物→玩家骰战(resolveMobMeleeAttack)也走 settle,只挂在这条路径会漏判。
+        //   applied 变量保留:供下面跳字/耐久等后续逻辑使用语义清晰。
         // 跳数字不再在此直发(2026-09-26):登记组别,由 DamageNumberAggregator 在**伤害管线终值**
         // (LivingDamageEvent#getAmount() = 实际扣血量)上取值,并与本 tick 同目标的其它
         // 攻击力类伤害累加成一个**总值**后一次性下发。
@@ -1259,9 +1276,12 @@ public class DiceCombatEvents {
             }
         }
 
-        // 吸血鬼立牌(papara)主动"汲取":攻击时恢复骰神赐福最终伤害的一半生命(取整,至少 1 点)
+        // 吸血鬼立牌(papara)主动"汲取":攻击时恢复骰神赐福**落地**伤害的一半生命(取整,至少 1 点)
+        // MELEE-04(2026-10-27 近战审计):基数必须是 settle 之后的 applied(护盾钳制 + 吸收都已扣掉)。
+        //   原实现用 finalDmg(settle 之前的自算终值)⇒ 一记被鼠鼠护盾 / 黄心整段吃掉的攻击仍会白送回血,
+        //   与受击侧 settleBiteHeal 的「金额归零不回血」自相矛盾。
         if (!player.level().isClientSide() && player.hasEffect(ModEffects.PAPARA_BITE.get())) {
-            player.heal(Math.max(1, (int) finalDmg / 2));
+            player.heal(Math.max(1, (int) applied / 2));
         }
 
         if (hasShadowStrike && !player.level().isClientSide()) {

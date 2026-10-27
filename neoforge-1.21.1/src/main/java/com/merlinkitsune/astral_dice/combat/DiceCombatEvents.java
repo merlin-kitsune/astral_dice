@@ -845,14 +845,11 @@ public class DiceCombatEvents {
         }
 
         event.setNewDamage((float) finalDmg);
-        // F7(2026-10-27 近战审计,与 1.20.1 线同步):修女被动「单次受击 >10 清空加成」读的是护甲前
-        //   原版值,骰战覆盖后要按**落地红心量**判定。本线写的是 LivingDamageEvent.Pre#setNewDamage,
-        //   平台在 Pre **之后**才扣吸收(neo LivingEntity.java:1790-1792)⇒ 落地量 = 终值 - min(终值, 吸收)。
+        // F7(2026-10-27 近战审计):修女被动「单次受击 >10 清空加成」的判定见 applyAlanaBigHit(...) ——
+        //   两条骰战路径(玩家攻击 / 生物近战)都必须覆盖,口径 = 落地红心量(本线写 Pre#setNewDamage,
+        //   平台在 Pre **之后**才扣吸收 ⇒ 落地 = 终值 - min(终值, 吸收余额))。
         float landing = (float) finalDmg - Math.min((float) finalDmg, target.getAbsorptionAmount());
-        if (target instanceof Player alanaVictim && landing > 10.0F
-                && ModAttachments.getAlanaPassiveBonus(alanaVictim) > 0) {
-            com.merlinkitsune.astral_dice.item.sign.AlanaSignItem.clearBonus(alanaVictim);
-        }
+        applyAlanaBigHit(target, landing);
         // 跳数字不再在此直发(2026-09-26):登记组别,由 DamageNumberAggregator 在**伤害管线终值**
         // (LivingDamageEvent.Post 的 getNewDamage = 实际扣血量)上取值,并与本 tick 同目标的其它
         // 攻击力类伤害累加成一个**总值**后一次性下发。
@@ -966,9 +963,11 @@ public class DiceCombatEvents {
             }
         }
 
-        // 吸血鬼立牌(papara)主动"汲取":攻击时恢复骰神赐福最终伤害的一半生命(取整,至少 1 点)
+        // 吸血鬼立牌(papara)主动"汲取":攻击时恢复骰神赐福**落地**伤害的一半生命(取整,至少 1 点)
+        // MELEE-04(2026-10-27 近战审计,与 1.20.1 线同步):基数必须是**落地红心量**(landing = 终值 - min(终值, 吸收)),
+        //   原实现用 finalDmg ⇒ 一记被黄心整段吃掉的攻击仍会白送回血,与受击侧 settleBiteHeal 口径矛盾。
         if (!player.level().isClientSide() && player.hasEffect(ModEffects.PAPARA_BITE)) {
-            player.heal(Math.max(1, (int) finalDmg / 2));
+            player.heal(Math.max(1, (int) landing / 2));
         }
 
         if (hasShadowStrike && !player.level().isClientSide()) {
@@ -1151,11 +1150,31 @@ public class DiceCombatEvents {
         }
         ModAttachments.setDiceCurseRatio(target, 1.0f);
         event.setNewDamage(finalDmg);
+        // F7(2026-10-27 近战审计):生物近战同样是骰战 ⇒ 修女被动也按落地量判定(与玩家路径同口径);
+        //   原先只在玩家路径判,导致「怪一击 22 点打到玩家」时加成不被清(2026-10-27 实机见证)。
+        applyAlanaBigHit(target, finalDmg - Math.min(finalDmg, target.getAbsorptionAmount()));
         // 跳数字:与玩家攻击同一出口(登记组别,由 DamageNumberAggregator 在管线终值上取值)
         DamageNumberAggregator.tag(target, source, DamageNumberAggregator.Group.ATTACK);
         // 防御牌耐久:每次受到骰战攻击,防御方装备的所有防御牌各扣 1 点(仅在对骰成立时)
         if (opposed) {
             consumeAllDefenseCardDurability(target);
+        }
+    }
+
+    /**
+     * F7(2026-10-27 近战审计):修女(alana)被动「单次受击 >10 清空全部加成」的判定。
+     *
+     * <p>原判据挂在 {@code event/NewSignEvents}(非骰战)与玩家攻击路径上,读的是护甲前原版值;
+     * 骰战以自算终值覆盖式写入后该值已无意义(近战骰战下几乎永不触发)。故改为按<b>落地红心量</b>判定,
+     * 并放在两条骰战路径的共同出口:玩家攻击({@code event.setNewDamage} 之后)与生物近战
+     * ({@link #resolveMobMeleeAttack})。
+     *
+     * @param landing 落地红心量(= 终值 - min(终值, 吸收余额))
+     */
+    private static void applyAlanaBigHit(LivingEntity target, float landing) {
+        if (target instanceof Player victim && landing > 10.0F
+                && ModAttachments.getAlanaPassiveBonus(victim) > 0) {
+            com.merlinkitsune.astral_dice.item.sign.AlanaSignItem.clearBonus(victim);
         }
     }
 
