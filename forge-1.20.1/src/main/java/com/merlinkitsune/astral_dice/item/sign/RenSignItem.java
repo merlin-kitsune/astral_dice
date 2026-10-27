@@ -83,7 +83,7 @@ public class RenSignItem extends BaseSignItem {
             if (receiver != player) {
                 RenShieldManager.notifyShieldGained(receiver);
             }
-            // 主动成功施加:开始玩家级冷却(统一经 signCooldownTicks:含诡异骰子 -50% 与充能递减)
+            // 主动成功施加:开始玩家级冷却(统一经 signCooldownTicks:含充能封顶与额外电池筹码减成)
             ModAttachments.setSignActiveCooldownEnd(player,
                     player.level().getGameTime() + WeirdDiceHandler.signCooldownTicks(player));
             // 冷却口径一致(2026-10-22 补):记录本次实际最大冷却,供「瞬时冷却」/减免换算剩余比例

@@ -15,8 +15,9 @@ import top.theillusivec4.curios.api.SlotContext;
  * 下界之星骰子:全新的 T4 奇异品阶(dice_t4),由任意 T3 骰子(下界合金/绯红/末影)升级。
  *
  * 功能:
- * - 卡牌槽与费用点数始终按最高档(3★:卡牌栏 12 格、攻防费用上限各 6,见
- *   {@link DiceCurioItem#getCardSlots} 与 {@link com.merlinkitsune.starengine.component.GameplayConstants#cardCostForStar});
+ * - 卡牌栏 12 格(由 T4 品阶固定,与星级无关,见 {@link DiceCurioItem#getCardSlots});
+ *   费用点数始终按最高档(3★:攻防费用上限各 6,见
+ *   {@link com.merlinkitsune.starengine.component.GameplayConstants#cardCostForStar});
  * - 可装备筹码数量 +1(T4 筹码栏 = 4+s:0★4/1★5/2★6/3★7,见 ModItems 阶层注册);
  * - 骰子每提升 1 星级:攻击力 +2、防御力 +2(按 1 防御力 = 1÷护甲系数 护甲折算为 +4 护甲),
  *   属性随星级变化实时刷新(经 curioTick 瞬态属性修饰器)。

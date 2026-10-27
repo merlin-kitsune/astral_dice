@@ -7,7 +7,6 @@ import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.starengine.effect.MosesBrokenEffect;
 import com.merlinkitsune.astral_dice.effect.WeaknessRevealEffect;
-import com.merlinkitsune.astral_dice.event.WeirdDiceHandler;
 import com.merlinkitsune.astral_dice.item.ChargeManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.chip.CurrentCoreChipItem;
@@ -127,16 +126,13 @@ public class MosesSignItem extends BaseSignItem
 
     /**
      * 立牌主动冷却 tick:佩戴枪匠时基础 120 秒(低于充能上限 160 秒 ⇒ 有充能时不受影响);
-     * 先按充能上限封顶,再按诡异骰子减半。
+     * 仅按充能上限封顶。
      */
     public static int signCooldownTicks(Player player) {
         int ticks = isEquipped(player)
                 ? ACTIVE_COOLDOWN_SECONDS * 20
                 : GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS;
         ticks = (int) ChargeManager.signCooldownTicks(player, ticks);
-        if (WeirdDiceHandler.hasWeirdDice(player)) {
-            ticks = Math.max(1, ticks / 2);
-        }
         return ticks;
     }
 

@@ -82,7 +82,7 @@ public class BonnieSignItem extends BaseSignItem {
                 ItemStack coinStack = new ItemStack(ModItems.STAR_COIN.get(), markLevel * 2);
                 // 用户裁决 2026-10-11：发币优先入钱包（中央漏斗），钱包关闭才给物品
                 com.merlinkitsune.astral_dice.resource.ResourceConversion.giveItem(player, coinStack);
-                // 主动成功施加:开始玩家级冷却(统一经 signCooldownTicks:含诡异骰子 -50% 与充能递减)
+                // 主动成功施加:开始玩家级冷却(统一经 signCooldownTicks:含充能封顶与额外电池筹码减成)
                 ModAttachments.setSignActiveCooldownEnd(player,
                         player.level().getGameTime() + WeirdDiceHandler.signCooldownTicks(player));
                 // 冷却口径一致(2026-10-22 补):记录本次实际最大冷却,供「瞬时冷却」/减免换算剩余比例

@@ -26,7 +26,7 @@ import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
  *   <li>① 订阅者注解是 {@code @Mod.EventBusSubscriber}(1.21.1 是 {@code @EventBusSubscriber});</li>
  *   <li>② {@code ModEffects.LINGLING_SURGE} 是 {@code RegistryObject} ⇒ {@code .get()};</li>
  *   <li>③ 冷却**不覆写基准** ⇒ 走基类默认口径 {@code WeirdDiceHandler.signCooldownTicks}
- *       (默认 180 秒 = 3600t,含充能封顶 + 诡异骰子 −50%),与默认立牌同一条代码路径。</li>
+ *       (默认 180 秒 = 3600t,含充能封顶 + 额外电池筹码减成),与默认立牌同一条代码路径。</li>
  * </ul>
  *
  * <p>主动技能由「立牌主动键」触发({@code BaseSignItem#performSkill}),不是右键 —— 右键(潜行)只自动装备。
