@@ -344,3 +344,25 @@ combat/DiceCombatEvents.java:305-317 赐福/降神倒计时启动、秘密侦探
 **判据**：双线 `:classes` EXIT 0；`setAbsorptionAmount(` 在 forge `DiceCombatEvents.java` 共 9 命中（4 注释 + 5 代码：`:395` 写回 / `:465` 剥 / `:469` 挂回 / `:487` 对齐）；neo 与 P1 两线零 diff。**未实机**。
 
 **残余边缘（登记不改）**：① 窗口内其它代码读余额仍看到虚高值（只活到同 tick `:1684`，对 HUD/跨线程不可见）；② `event/DamageEffectCardHandler.java:102` 的嵌套真伤与骰战近战互斥（不可达），若将来交叉再套 `withPhantomPeeled`（无登记时 no-op）；③ 第三方在 LOWEST 段之后再改金额且不调 `compensateAbsorption` 会回退偏移；④ 非玩家目标的登记无 compensate 出口，但同 tick `:1684` 照常扣，跨 tick 由 `gameTime` 过期与 `:346` 兜底。
+
+### 7.6 法伤加成折叠为单次结算（方案 A，2026-10-27 19:3x–20:2x，双线）
+
+**裁决**：N15 由用户裁决「必须改回单次结算」（m20709）；两路只读验证（`docs/features/spell-single-hit-option-a.md` / `-option-b.md`）后落地方案一 / 路径 0 —— 把加成**折叠进本次伤害事件**，不再补一次独立真伤。
+
+**第一轮的订正（关键，必须记住）**：初版把折叠点放在 `LivingDamageEvent`（neo `:1789 onLivingDamagePre` / forge `:1680 onLivingDamage`），而这两个派发点都在**护甲与魔法吸收之后** ⇒ 折进去的加成不再吃抗性 / 保护附魔：抗性 II + 保护 IV 放大 **4.63×**、抗性 IV + 保护 IV 放大 **13.9×**（裸目标 ×1.0 不变）。与「加成与本体同管道」的目标语义相反，故折叠点**上移到护甲之前**。
+
+**最终落点（双线）**：
+- neo `neoforge-1.21.1/src/main/java/com/merlinkitsune/astral_dice/event/DamageEffectCardHandler.java:73-74` = `@SubscribeEvent(priority = EventPriority.HIGHEST) public static void onLivingIncomingDamagePre(LivingIncomingDamageEvent event)`；唯一写值 `:134 event.setAmount(event.getAmount() + (float) bonus);`
+- forge `forge-1.20.1/src/main/java/com/merlinkitsune/astral_dice/event/DamageEffectCardHandler.java:66-67` = `@SubscribeEvent(priority = EventPriority.HIGHEST) public static void onLivingHurtPre(LivingHurtEvent event)`；`:122-128 event.setAmount(event.getAmount() + (float) bonus);`
+- 音效拆出：neo `:157-158 onLivingDamageSound(LivingDamageEvent.Pre)`（`:176 Math.round(event.getNewDamage())`）/ forge `:152-153 onLivingDamageSound(LivingDamageEvent)`（`:169 Math.round(event.getAmount())`）—— **不再 `+ bonus`**（加成已在同一实例里），仍挂在原实现的同一个桶（NORMAL）；档位与 HUD 跳字同源，带保护/抗性时数值比旧代码手算的 `getAmount()+bonus` 略低，这是「加成也被减免」的必然结果。
+- `combat/SpellDamageContext.java` 两线 event 字段类型随之改为 `LivingIncomingDamageEvent` / `LivingHurtEvent`（全仓无消费者读该字段）。
+
+**「一次 hurt 只加一次」取证**：neo `LivingEntity.java:1153 CommonHooks.onEntityIncomingDamage` 是全文件唯一派发点；forge `:1665 ForgeHooks.onLivingHurt` 唯一派发点（`hurt` 的 `:1136` 无敌帧差额 / `:1142` 全额二选一，各只调一次 `actuallyHurt`）。
+
+**数值口径（相对改造前的乘性因子）**：裸目标 ×1.0（不变）、保护 IV + 抗性 II ×0.216（不变）、保护 IV + 抗性 IV ×0.072（不变）。真正的行为修正是「只结算一次」的那些环节：吸收钳制、筹码固定点数减伤、按次触发的受击被动、跳字与音效、第三方对多次判定的捕获。
+
+**连带删除**：`APPLYING_TRUE_BONUS` ThreadLocal + `isApplyingTrueBonus()` + 三处消费者（两线 `LinglingSignEvents` 的 +5 闸门、`DiceCombatEvents` 的 N7 狂暴反噬闸门）—— 同一击不再有第二次 hurt，闸门失去判据。⚠️ **旧行为订正**：那道 +5 闸门本来就排除了嵌套加成段，所以「一次命中 +10」的说法不成立，折叠前后都是 **+5 一次**（neo `event/LinglingSignEvents.java:93` 注释已写明）。
+
+**骰战覆盖风险（已核不可达）**：法伤源 `getDirectEntity() == null` 在 `forge-1.20.1/.../combat/DiceCombatEvents.java:552` 早退，另有 `:576` 近战闸门；若将来可达，settle 会**覆盖**折叠值（加成丢失）而不是再叠一次 —— 注释已写死该前提。
+
+**判据**：双线 `:classes` EXIT 0；javap 两线 `DamageEffectCardHandler` 类面只剩 `LIVING_PAGE_BIG_HIT_THRESHOLD` + `onLivingIncomingDamagePre`(neo)/`onLivingHurtPre`(forge) + `onLivingDamageSound`，`setAmount` 各 1 处、`hurt` 0 处、`trueDamage` 0 处；`isApplyingTrueBonus` 全仓仅剩注释。**未实机、未重出 jar**。

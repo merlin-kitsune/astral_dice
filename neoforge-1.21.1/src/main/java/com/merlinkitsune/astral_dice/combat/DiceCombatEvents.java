@@ -1461,13 +1461,15 @@ public class DiceCombatEvents {
     // 标记效果自然结束时:每分钟减少 1 层标记(层数>1 时重新施加并重置计时,否则标记消失)
 
     /** 狂暴「伤害增加」真伤段的**重入闸门**:该段真伤自身也会派发伤害事件 ⇒ 不加闸门会无限递归。
-     *  与 {@code DamageEffectCardHandler} 的法伤真伤段同范式(ThreadLocal,只覆盖本处理器自己发起的那一次)。 */
+     *  只覆盖本处理器自己发起的那一次 hurt。(法伤加成段已于 2026-10-27 折叠为单次结算,
+     *  不再有它自己的 ThreadLocal;本闸门仍由本段反噬独占。) */
     private static final ThreadLocal<Boolean> BERSERK_BACKLASH_APPLYING =
             ThreadLocal.withInitial(() -> Boolean.FALSE);
 
     // 「伤害增加」口径(2026-10-02 用户裁决):狂暴的「受到任意伤害 +1/层」**不再并入本次伤害**
     // (并入会被护甲/保护/抗性削减,并被磨刀石等固定点数减伤吃掉),改为**独立真伤段** ——
-    // 与 DamageEffectCardHandler 的法伤加成同范式(重入闸门 + ModDamageTypes.unreducibleDamage)。
+    // 范式 = 「ThreadLocal 重入闸门 + 独立伤害源」;法伤加成段已于 2026-10-27 折叠进单次结算,
+    // 本段反噬仍保留自己的独立真伤(见下方闸门)。
     // ⚠️ 该段登记 bypasses_armor/enchantments/resistance ⇒ 护甲/保护/抗性全跳过;
     //    并被 ChipDamageHandler 识别为「不可削减」⇒ 磨刀石 -2 与怪力侦探立牌 -N 也跳过;
     //    **保命**机制仍对这一段独立结算(安全气囊/不死图腾/末影骰子/磨刀石「不可被一次击倒」)。
@@ -1475,15 +1477,15 @@ public class DiceCombatEvents {
     public static void onBerserkDamageTaken(LivingDamageEvent.Pre event) {
         LivingEntity target = event.getEntity();
         if (target.level().isClientSide()) return;
-        // N7(2026-10-27,与 1.20.1 线同步):内部波及(AOE 顺劈/溅射/法伤波及)与法伤真伤段
-        // **不触发**狂暴反噬。理由:①它们都是「本次受击的派生物」而非新的受击事实 —— AOE 扫 N 个
-        // 目标就会反向开 N 段反噬(审计 §2 不变量⑤:惩罚伤害只随真实受击发生,且必须走 hurt());
-        // ②DamageEffectCardHandler 的法伤段是同一击的伤害补充,再叠反噬等于一次受击结算两次惩罚。
+        // N7(2026-10-27,与 1.20.1 线同步):内部波及(AOE 顺劈/溅射/法伤波及)**不触发**狂暴反噬。
+        // 理由:它们是「本次受击的派生物」而非新的受击事实 —— AOE 扫 N 个目标就会反向开 N 段反噬
+        // (审计 §2 不变量⑤:惩罚伤害只随真实受击发生,且必须走 hurt())。
+        // 2026-10-27 方案 A 折叠后,法伤加成已并进同一事件、不再有「同一击的第二次 hurt」⇒
+        // 原先这里那道 `DamageEffectCardHandler.isApplyingTrueBonus()` 闸门失去判据,已删除。
         // 下面的 BERSERK_BACKLASH_APPLYING 重入闸门必须保留:反噬自己 hurt() 出来的
-        //    unreducibleDamage **不在**上面两个窗口里(故意如此,否则反噬会把自己吞掉),
+        //    unreducibleDamage **不在**上面那个窗口里(故意如此,否则反噬会把自己吞掉),
         //    自递归只能靠 ThreadLocal 拦。
-        if (isInternalAoe()
-                || com.merlinkitsune.astral_dice.event.DamageEffectCardHandler.isApplyingTrueBonus()) {
+        if (isInternalAoe()) {
             return;
         }
         if (BERSERK_BACKLASH_APPLYING.get()) return;

@@ -14,48 +14,57 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.event.entity.living.LivingDamageEvent;
+import net.minecraftforge.event.entity.living.LivingHurtEvent;
 import com.merlinkitsune.astral_dice.combat.DamageNumberAggregator;
 
 /**
  * 法伤(远程/魔法伤害)结算主链路:判定作用域后,由注册表修饰器聚合加成并应用。
  * 作用域白名单与加成修饰器见 {@link SpellDamageRegistry};
  * 新增卡牌/筹码/立牌对法伤的作用只需注册修饰器,无需修改本类。
+ *
+ * <p>2026-10-27 用户裁决(方案A 折叠):加成**并进同一次伤害事件**
+ * ({@code event.setAmount(event.getAmount() + (float) bonus)}),不再发嵌套真伤 hurt。
+ * 折叠点 = {@link LivingHurtEvent}(平台 {@code LivingEntity#actuallyHurt} 里的
+ * {@code ForgeHooks.onLivingHurt},1.20.1 :1665),在护甲/韧性减免(:1667-1668)与
+ * 魔法吸收/抗性/保护结算(:1669-1670)之**前** ⇒ 加成与本体**完全同源同管道**:
+ * 同一条伤害实例一起过护甲(该伤害源 bypasses_armor 时不参与)、抗性、保护附魔、吸收、
+ * 受击侧倍率、弱印记与筹码减伤,**只结算一次**。
+ * 目的:消除抗性/保护、受击侧倍率、弱印记、筹码固定点减、黄心钳制对加成的**双重结算**,以及
+ * 第三方把加成当成第二次命中的问题(N15)。1.20.1 专有的位置关系见
+ * {@link #onLivingHurtPre(LivingHurtEvent)} 方法头的注释。
  */
 @Mod.EventBusSubscriber(modid = AstralDiceMod.MODID)
 public class DamageEffectCardHandler {
 
-    /** 真伤加成结算的**重入闸门**:真伤伤害源会再次进入本处理器(伤害事件对每一次 hurt 都会触发),
-     *  若将来某个作用域 matcher 把它判为法伤就会无限递归;闸门只覆盖"本处理器自己发起的那一次真伤结算"。 */
-    private static final ThreadLocal<Boolean> APPLYING_TRUE_BONUS = ThreadLocal.withInitial(() -> Boolean.FALSE);
-
-    /**
-     * 当前线程是否正处于「法伤加成」的**嵌套真伤段**结算中。
-     *
-     * <p>法伤加成按用户裁决走独立真伤（{@link #onLivingDamagePre} 里那句
-     * {@code target.hurt(true_damage, bonus)}），该嵌套 hurt 会**再跑一遍**整条伤害管线 ⇒
-     * 其它 {@code LivingDamageEvent} 处理器会把它当成「第二次命中」。凡是要按「一次命中只算一次」的
-     * 处理器（例：lingling 立牌对被吸附目标的 +5）都必须用本方法把这一段排除，
-     * 否则同一次攻击的加伤会被算两遍。
-     */
-    public static boolean isApplyingTrueBonus() {
-        return APPLYING_TRUE_BONUS.get();
-    }
+    // 2026-10-27 法伤折叠(用户裁决,见 onLivingHurtPre 的新语义):法伤加成不再发嵌套真伤 hurt,
+    // 重入闸门 APPLYING_TRUE_BONUS / isApplyingTrueBonus() 已无意义,随批移除。
+    // 原两个消费者(event/LinglingSignEvents 的 +5、combat/DiceCombatEvents 的狂暴反噬)同步删掉该闸门。
+    // 残余清理记录:本类不再产出 true_damage 伤害源,故也不再需要"防止自己的真伤段被判成法伤"的递归保护。
 
 
     /** 活体书页命中的「重击」音效门槛:本次**完整伤害**(与 HUD 跳字同值) >= 该值即播 bighit。 */
     private static final int LIVING_PAGE_BIG_HIT_THRESHOLD = 8;
 
-    // ⚠️ 事件时机必须与 1.21.1 对齐(2026-09-15 用户裁决修补 KI-5「电击手套 AOE 基准跨版本」):
-    // 1.21.1 挂在 LivingDamageEvent.Pre(**护甲/附魔减免之后**),而 1.20.1 原先挂 LivingHurtEvent
-    // (**护甲前**,LivingEntity.java:1665 早于 :1667-1668 的护甲减免)⇒ 同一发法伤在 1.20.1 上
-    // 会以「护甲前原始值」为基准做 3 格 AOE 波及,带甲目标周围多打一截。
-    // 按 AGENTS.md「伤害事件映射」的既定口径(LivingDamageEvent.Pre ↔ 1.20.1 LivingDamageEvent,
-    // 即**护甲之后**),此处改挂 LivingDamageEvent;`SpellDamageContext.event` 的类型随之同步。
-    // 残余(平台固有,已在 AGENTS.md 记录):1.20.1 的 LivingDamageEvent 在**吸收结算之后**
-    // (吸收 :1669-1670 早于派发 :1680),1.21.1 的 Pre 在**吸收之前**(:1789 早于 :1790-1792),
-    // 故目标带吸收(黄心)时两版本基准仍会有差异——普通目标无吸收,实际影响可忽略。
-    @SubscribeEvent(priority = EventPriority.NORMAL)
-    public static void onLivingDamagePre(LivingDamageEvent event) {
+    // ⚠️ 折叠点必须在**护甲之前**那次派发上(2026-10-27 第二批裁决,取代本处 2026-09-15 的
+    // 「对齐 1.21.1 LivingDamageEvent.Pre」口径):用户要求「加成与本体完全同管道」—— 同一条
+    // 伤害实例一起过护甲/抗性/保护/吸收/受击侧倍率/筹码减伤,故折叠点只能是平台 actuallyHurt 里
+    // `ForgeHooks.onLivingHurt`(:1665,早于护甲 :1667-1668、早于吸收与魔法吸收 :1669-1670)
+    // 派发的 LivingHurtEvent。它与 1.21.1 侧折叠到 LivingIncomingDamageEvent(同为护甲之前)
+    // 是**同一语义**,两线逐字对称(仅事件类型与 setter 名不同)。
+    // KI-5「电击手套 AOE 基准跨版本」的老顾虑已不适用:电击手套改为独立延迟结算、固定 2 点伤害
+    // (item/chip/ElectricGloveChipItem),全仓已无修饰器消费事件金额,分档差异不再存在。
+    // `SpellDamageContext.event` 的类型随之由 LivingDamageEvent 改为 LivingHurtEvent
+    // (全仓无消费者读该字段,只影响 javadoc)。
+    // 音效分档拆到 {@link #onLivingDamageSound(LivingDamageEvent)}:它仍取管线终值
+    // (护甲/吸收之后、LOWEST 改动之前),与本批折叠点搬家无关。
+    //
+    // 优先级取 HIGHEST 的理由:**必须早于**受击侧倍率(DiceCombatModifiers 的应用点
+    // event/EnderDiceHandler @HIGH)与鼠鼠护盾钳制(item/RenShieldManager @LOWEST),
+    // 这样加成与本体一起被乘、一起被钳 —— 这就是「同管道」的全部含义。
+    // 与之同档的 DiceCombatEvents#onLivingHurtRecordAbsorption(@HIGHEST)只读吸收余额/护盾、
+    // 不读也不写金额,两者同桶无顺序风险。
+    @SubscribeEvent(priority = EventPriority.HIGHEST)
+    public static void onLivingHurtPre(LivingHurtEvent event) {
         LivingEntity target = event.getEntity();
         if (target.level().isClientSide()) return;
         DamageSource source = event.getSource();
@@ -80,48 +89,88 @@ public class DamageEffectCardHandler {
         }
 
         // 应用加成并跳数字。
-        // **法伤加成按「真伤」独立结算**(2026-09-14 用户裁决):不再并进本次伤害事件——
-        // 并进去的话这份加成会连同武器伤害一起吃护甲值/盔甲韧性/保护附魔的减免,与
-        // 「伤害效果牌伤害纳入真伤机制」的口径不符;改走 ModDamageTypes.trueDamage(...)
-        // 独立结算:直接伤害实体为空 + 击杀归属施法者(与旧 explosion(null, player) 同形状,
-        // 不会被本模组或其它模组当成"玩家的直接攻击"重走骰战)。
-        // 2026-09-26:本处原有的「HUD 数显 = getAmount() + bonus」直发已移除 —— 显示值**同源**,
-        // 但改由 combat/DamageNumberAggregator 在伤害管线终值(本线 = LivingDamageEvent#getAmount(),
-        // 已是吸收之后的最终值)上取,并与基础伤害累加成一个法伤总值。
-        if (bonus > 0 && !APPLYING_TRUE_BONUS.get()) {
-            // ① 本次命中的**基础伤害**也归入法伤组。必须显式登记:这条命中绝大多数是**原版**伤害源
-            //    (箭矢 arrow / 投掷物 / 其它模组法术),聚合器的类型回落认不出来。
+        // **2026-10-27 用户裁决(方案A 折叠)**:法伤加成**并进同一次伤害事件**(本处 = 护甲之前那次
+        // 派发的 LivingHurtEvent),不再发嵌套 true_damage hurt。语义 = 加成与本体**完全同管道**:
+        // 同一条伤害实例一起过护甲(该伤害源 bypasses_armor 时不参与)、抗性、保护附魔、吸收、
+        // 受击侧倍率(EnderDiceHandler @HIGH)、弱印记乘算、筹码固定点数减伤 —— 每项**只算一次**。
+        // 这正是「true_damage 与法伤链口径一致:都只绕过护甲、都吃抗性/保护」的落地方式。
+        // 收益(本方案目的):一次命中只产生**一条**伤害实例 ⇒ 抗性/保护、受击侧倍率(1.10²/1.4²)、
+        // 固定点减伤、黄心钳制不再对加成各算两次;第三方也不再把它当成第二次命中(N15)。
+        // 历史:2026-09-14 裁决曾把加成拆成独立真伤段绕开护甲/保护;2026-10-27 第一批折叠到
+        // LivingDamageEvent(护甲**之后**)⇒ 加成反而不吃抗性/保护,在高抗高保护目标上相当于被
+        // 放大 4.6~13.9 倍,与用户意图不符,故按第二批裁决上移到本处(护甲**之前**)。
+        // 连带清理:ThreadLocal 重入闸门 APPLYING_TRUE_BONUS / isApplyingTrueBonus() 及其两个消费者
+        // (LinglingSignEvents +5、DiceCombatEvents 狂暴反噬)已无用,一并移除。
+        // 2026-09-26:本处原有的「HUD 数显 = getAmount() + bonus」直发仍保持移除状态 —— 显示值**同源**,
+        // 改由 combat/DamageNumberAggregator 在伤害管线终值上取(= 本线 LivingDamageEvent#getAmount(),
+        // 吸收之后的最终值),并与基础伤害累加成一个法伤总值;折叠后该终值天然含加成。
+        //
+        // ⚠️ 一次 hurt 只加一次(平台源码取证,勿凭印象):LivingEntity#hurt 的两个分支
+        //    (:1136 无敌帧差额 / :1142 全额)各自只调一次 actuallyHurt,而 actuallyHurt 里
+        //    ForgeHooks.onLivingHurt(:1665)是**全文件唯一**的 LivingHurtEvent 派发点
+        //    ⇒ 本处理器每次受击只跑一次,同一 hurt 的后续阶段不会再派发一次 LivingHurtEvent,
+        //    bonus 不会被重复叠加(LivingDamageEvent 侧本类只剩音效读取,不再写值)。
+        //
+        // ⚠️ 位置关系(1.20.1 专有):本处理器 @HIGHEST 是 LivingHurtEvent 上**最早**的一档,
+        //    早于受击侧倍率(EnderDiceHandler @HIGH)与鼠鼠护盾钳制(RenShieldManager @LOWEST)
+        //    ⇒ 加成按「本体」口径被这两处一起乘/一起钳,而不是绕过它们。
+        //    骰战终值写回 settleDiceDamage 在 LivingDamageEvent(@NORMAL,批次A),晚于本处;
+        //    而法伤源的 getDirectEntity() == null 会在 DiceCombatEvents#onLivingDamagePre 的
+        //    玩家分支前置早退(那里要求 directEntity instanceof Player),永不走到 settle。
+        //    因此若将来出现「骰战 + 法伤」重叠的伤害,settle 会**覆盖**本次折叠值(加成丢失)
+        //    而不是再叠一次 —— 不会出现"加成被骰战再乘算"的风险。
+        if (bonus > 0) {
+            // 本次命中的**基础伤害**也归入法伤组。必须显式登记:这条命中绝大多数是**原版**伤害源
+            // (箭矢 arrow / 投掷物 / 其它模组法术),聚合器的类型回落认不出来。
+            // 折叠后本体与加成是同一个 DamageSource / 同一个事件 ⇒ 只此一处登记,单 SPELL 槽。
             DamageNumberAggregator.tag(target, source, DamageNumberAggregator.Group.SPELL);
-            APPLYING_TRUE_BONUS.set(true);
-            try {
-                var bonusSource = com.merlinkitsune.astral_dice.damage.ModDamageTypes
-                        .trueDamage(target.level(), player);
-                // ② 法伤加成段(独立真伤)。组别同样必须显式登记:astral_dice:true_damage 被多路复用
-                //    (大当家溅射=攻击力类红 / 这里与效果牌范围波及=法伤类绿),只看类型区分不出来。
-                DamageNumberAggregator.tag(target, bonusSource, DamageNumberAggregator.Group.SPELL);
-                target.hurt(bonusSource, (float) bonus);
-            } finally {
-                APPLYING_TRUE_BONUS.set(false);
-            }
-        }
-
-        // 活体书页命中音效:**按本次命中的完整伤害分档**，取值与上面的 HUD 跳字完全同源
-        // （原始基础伤害 + 法伤加成，取整）⇒ 玩家听到的强弱与看到的数字一致。
-        // 判据 = 伤害类型是 astral_dice:card_spell，**且**不是四张伤害效果牌自己的 FX 伤害
-        // （2026-10-07 修复 KI-G4：card_spell 不再只有活体书页一条产出路径 —— 四张牌重做后它们也走
-        //   ModDamageTypes.cardSpell，且各自已播命中音，见 combat/DamageCardFxScheduler）。
-        if (source.is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.CARD_SPELL)
-                && !com.merlinkitsune.astral_dice.combat.DamageCardFxScheduler.isApplyingCardFxDamage()) {
-            int dealt = (int) Math.round(event.getAmount() + bonus);
-            SoundPlayback.playAt(target.level(), target.getX(), target.getY(), target.getZ(),
-                    dealt >= LIVING_PAGE_BIG_HIT_THRESHOLD
-                            ? ModSounds.DAMAGE_EFFECT_CARD_BIGHIT.get()
-                            : ModSounds.DAMAGE_EFFECT_CARD_HIT.get());
+            event.setAmount(event.getAmount() + (float) bonus);
         }
 
         // 命中副作用(施加标记/定向爆破 AOE 等)
         for (SpellDamageModifier modifier : active) {
             modifier.onHit(ctx, bonus);
+        }
+    }
+
+    /**
+     * 活体书页命中音效(2026-10-27 折叠点搬家的配套拆分,原样搬自折叠处理器)。
+     *
+     * <p>为什么必须独立:折叠点搬到 {@link #onLivingHurtPre(LivingHurtEvent)}(护甲**之前**)后,
+     * 若还在同一方法里顺读 {@code event.getAmount()} 分档,基准就变成「护甲前本金」,
+     * {@link #LIVING_PAGE_BIG_HIT_THRESHOLD} 的重击门槛(8)会明显更容易触发。
+     * 本处理器挂在 {@link LivingDamageEvent} 的 {@code NORMAL} —— 正是旧实现所在的那个桶:
+     * 护甲/韧性与魔法吸收已结算(平台 :1669-1670 早于派发 :1680),又早于 {@code LOWEST} 的
+     * 筹码减伤链。与旧实现的唯一差别是**加成已经并入同一数值**(旧代码自己 + bonus 原始值):
+     * 无保护无抗性 ⇒ 取值逐字相同;带保护/抗性 ⇒ 新值略低(加成被减免),而这正是 HUD 跳字
+     * 也会显示的同一个数(聚合器取管线终值)⇒ 音效档位与跳字仍然同源、不会出现"数字小却播重击"。
+     *
+     * <p>三个前置闸门逐条复刻折叠处理器(施法者是玩家 / 赐福目标 / 法伤作用域),不得省略:
+     * 折叠处理器在护甲之前、@HIGHEST,取消类处理器(event/NewSignEvents 的免疫 cancel)在它之后,
+     * 所以「事件还能走到这里」并不等于「旧实现会放音效」—— 只有闸门复刻才能保证触发面不变。
+     */
+    @SubscribeEvent(priority = EventPriority.NORMAL)
+    public static void onLivingDamageSound(LivingDamageEvent event) {
+        LivingEntity target = event.getEntity();
+        if (target.level().isClientSide()) return;
+        DamageSource source = event.getSource();
+        if (!(source.getEntity() instanceof Player player)) return;
+        if (!com.merlinkitsune.astral_dice.combat.DiceCombatEvents.isBlessingTarget(target, player)) return;
+        if (!SpellDamageRegistry.isSpellDamage(source, source.getDirectEntity())) return;
+
+        // 活体书页命中音效:**按本次命中的完整伤害分档**,取值与 HUD 跳字同源。
+        // ⚠️ 本处读到的 {@code getAmount()} 已含折叠进来的法伤加成(加成在护甲之前就并进同一条
+        //    伤害实例),故**不得**再 + bonus —— 再加一次就是双算,会把普通命中误判成重击。
+        // 判据 = 伤害类型是 astral_dice:card_spell,**且**不是四张伤害效果牌自己的 FX 伤害
+        // (2026-10-07 修复 KI-G4:card_spell 不再只有活体书页一条产出路径 —— 四张牌重做后它们也走
+        //  ModDamageTypes.cardSpell,且各自已播命中音,见 combat/DamageCardFxScheduler)。
+        if (source.is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.CARD_SPELL)
+                && !com.merlinkitsune.astral_dice.combat.DamageCardFxScheduler.isApplyingCardFxDamage()) {
+            int dealt = (int) Math.round(event.getAmount());
+            SoundPlayback.playAt(target.level(), target.getX(), target.getY(), target.getZ(),
+                    dealt >= LIVING_PAGE_BIG_HIT_THRESHOLD
+                            ? ModSounds.DAMAGE_EFFECT_CARD_BIGHIT.get()
+                            : ModSounds.DAMAGE_EFFECT_CARD_HIT.get());
         }
     }
 

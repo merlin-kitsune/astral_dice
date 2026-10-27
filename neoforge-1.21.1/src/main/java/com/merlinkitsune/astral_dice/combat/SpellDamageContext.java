@@ -5,7 +5,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
-import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
+import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
 import top.theillusivec4.curios.api.CuriosApi;
 import top.theillusivec4.curios.api.type.capability.ICuriosItemHandler;
 
@@ -22,8 +22,8 @@ public class SpellDamageContext {
     public final Player attacker;
     /** 伤害目标 */
     public final LivingEntity target;
-    /** 本次伤害事件 */
-    public final LivingDamageEvent.Pre event;
+    /** 本次伤害事件(护甲前的入伤事件;折叠点口径见 DamageEffectCardHandler 的方法头注释) */
+    public final LivingIncomingDamageEvent event;
     /** 伤害来源 */
     public final DamageSource source;
     /** 直接伤害实体(弹射物/施法者等) */
@@ -31,7 +31,7 @@ public class SpellDamageContext {
 
     private Optional<ICuriosItemHandler> curiosCache = null;
 
-    public SpellDamageContext(Player attacker, LivingEntity target, LivingDamageEvent.Pre event,
+    public SpellDamageContext(Player attacker, LivingEntity target, LivingIncomingDamageEvent event,
                               DamageSource source, Entity directEntity) {
         this.attacker = attacker;
         this.target = target;

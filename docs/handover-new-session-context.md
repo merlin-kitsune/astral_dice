@@ -27,7 +27,7 @@ Select-String -Path F:\MCProject\astral_dice_multiloader\*\gradle.properties -Pa
 
 - 四子项目同树：`neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1`；交付面**只 P0** = 前两条，P1 两线在 `1.5.0` 正式版前不验证、不移植。
 - 版本：四线 `mod_version = 1.5.0-rc.4+<加载器后缀>`；`starengine_version = 1.1.0`（**正式版**，前置库仓 `F:\MCProject\starengine` 提交 `16b48c4`）；jar 内硬前置 `[1.1.0,2.0.0)`（模板插值自动展开），`META-INF/jarjar/` 计数 0（库**不内嵌**，必须成对投放）。
-- 产物（2026-10-27 16:58 重建，含第二次复核修复与如实注释）：`neoforge-1.21.1/build/libs/astral_dice-1.5.0-rc.4+neoforge_1.21.1.jar` **2,595,451 B / `E76C231749263703C78203843CD14F066A0A76B3470E786F0A9FCFD8B3978748`**；`forge-1.20.1/build/libs/…+forge_1.20.1.jar`（reobf）**2,640,650 B / `F5417FDD6BEA22FB9AFF5F867030367C12192FBC9C15F4772A1B774BEEC3B0E9`**；`forge-1.20.1/build/devlibs/…+forge_1.20.1.jar`（dev **named**，投 `run/1.20.1/mods`）**2,611,171 B / `A1E3BC014ED7B5F929DEF23F6C06F22780F5274DBEDD34406BE64625AE5F4407`**。投放态：`run/1.21.1/mods` ← neo prod、`run/1.20.1/mods` ← forge dev named（两处 sha256 MATCH，实测 16:58）；**两个 P0 整合包与仓库根 `build/libs` 仍是 rc.4 旧构建**（未重投）。`META-INF/jarjar/` 计数 0，库必须成对投放。再改源码后必须重跑 `build` 并重录 sha256。
+- 产物（2026-10-27 16:58 重建，含第二次复核修复与如实注释）：`neoforge-1.21.1/build/libs/astral_dice-1.5.0-rc.4+neoforge_1.21.1.jar` **2,595,451 B / `E76C231749263703C78203843CD14F066A0A76B3470E786F0A9FCFD8B3978748`**；`forge-1.20.1/build/libs/…+forge_1.20.1.jar`（reobf）**2,640,650 B / `F5417FDD6BEA22FB9AFF5F867030367C12192FBC9C15F4772A1B774BEEC3B0E9`**；`forge-1.20.1/build/devlibs/…+forge_1.20.1.jar`（dev **named**，投 `run/1.20.1/mods`）**2,611,171 B / `A1E3BC014ED7B5F929DEF23F6C06F22780F5274DBEDD34406BE64625AE5F4407`**。投放态：`run/1.21.1/mods` ← neo prod、`run/1.20.1/mods` ← forge dev named（两处 sha256 MATCH，实测 16:58）；**两个 P0 整合包与仓库根 `build/libs` 仍是 rc.4 旧构建**（未重投）。`META-INF/jarjar/` 计数 0，库必须成对投放。再改源码后必须重跑 `build` 并重录 sha256。 ⚠️ 折叠批（§4.1af，法伤加成改单次结算）**尚未重出 jar**，上面三件不含该批；重建后须重录 sha256 并重投四个目标。
 - 推送状态（2026-10-27 17:1x）：**本地有 8 个未 push 提交** —— `6fcc756a`（强化拒止五规则）/ `51efba03`（临时牌 owner）/ `59b14e10`（隐匿调查双罚修复 + 1.21.1 三案）/ `052934cd`（1.20.1 探针 + DST-P0 用例）/ `4fa59395`（交接与 CHANGELOG）/ `483c7924`（复核 findings 修复 + 探针收尾 + §4.1ab）/ `bd2067c1`（第二次复核 `f93916e6` 处置 + 单张篡改 + §4.1ac）/ 本轮末（复核 `aecff184` 的两处订正：末影骰归类 + 远端 head / 时间窗；提交号见 `git log -1`）；远端 `origin/multi-main` = `cce71efb`（tag `1.5.0-rc.4` 指向 `84e1938b`，是该 head 的祖先），无新 tag。push / tag / 实机均须用户逐次放行。
 - 构建：`JAVA_HOME=C:\Program Files\Zulu\zulu-21`；`.\gradlew.bat :<线>:classes|jar`；forge dev 必须 `build/devlibs` 的 **named** jar。
 - 测试台唯一入口：`pwsh -NoProfile -File scripts\test\mt.ps1 --version <线> --phase env|run|stop`；`--purge-saves` 会删 testworld。
@@ -66,6 +66,8 @@ Select-String -Path F:\MCProject\astral_dice_multiloader\*\gradle.properties -Pa
 10. **HUD 攻击力口径统一（§4.1g）已静态全绿并投放六处，实机读数待用户下达**（要看的是：戴电流剑等 13 块原被吞的修饰器时 HUD 数字是否随之变化；手持武器换刀剑时数字不变；骰战随机卡点不进 HUD）。
 
 11. ~~复核 findings（清空时序 / 1.20.1 D2 恒绿 / 探针无收尾）~~ → **已闭环（2026-10-27，handover §4.1ab）**：两线改「结算后再清空来源」，1.20.1 `DST-P0` 收紧判据后 **PASS 13/13**（D2 实测 `n=3` ⇒ 篡改后 `n=2:me=2:other=0`），1.21.1 三案在新产物上重跑全 PASS。**仍欠**：本批新产物只投了 `run/<线>/mods`，两个 P0 整合包与根 `build/libs` 未重投；tooltip 所有者行 / 跨容器 / 死亡掉牌 / `/curios set` 四项未实机。
+
+15. **法伤加成折叠为单次结算（2026-10-27，handover §4.1af）**：折叠点必须在**护甲之前**（neo `LivingIncomingDamageEvent` / forge `LivingHurtEvent`，均 HIGHEST；折在 `LivingDamageEvent` 会让加成放大 4.63×–13.9×）；乘性因子相对旧实现不变，删掉 `isApplyingTrueBonus()` 三处闸门（+5 从未 +10）；新增 `docs/features/neo-to-forge-porting-mapping.md` 作为后续双线移植基线（**先做 neo，再按 mapping 落 forge**）。**待办：重出 jar + 投放 + 实机**。
 
 ## 禁止项（共同红线，摘自根 `AGENTS.md`）
 

@@ -32,8 +32,8 @@ public final class LivingPageImpact {
         final int dealt = base;
 
         // ⚠️ 2026-09-26 起本处**不再自行发包** —— 跳数字统一由 combat/DamageNumberAggregator 在
-        // LivingDamageEvent.Post 上取「实际扣血量(伤害管线终值)」,并与同 tick 的法伤加成
-        // (astral_dice:true_damage,见 event/DamageEffectCardHandler)合并成一个**总值**后一次性下发。
+        // LivingDamageEvent.Post 上取「实际扣血量(伤害管线终值)」后一次性下发
+        // (法伤加成自 2026-10-27 起已折叠进同一伤害实例,终值天然含加成)。
         // 旧实现是「先发 base、再指望被链内那次带加成的包覆盖」(客户端按 entityId 单槽、后到覆盖先到),
         // 正确性挂在两处发包的先后顺序上;现在由聚合器结构性保证。
         final DamageSource spellSource = ModDamageTypes.cardSpell(level, caster);

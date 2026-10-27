@@ -11,9 +11,9 @@ import net.minecraft.world.entity.LivingEntity;
  * <p><b>为什么需要它</b>：平台的 {@code LivingDeathEvent} 派发点在 {@code LivingEntity#die()} 的
  * {@code !dead} 守卫<b>之前</b>（NeoForge {@code CommonHooks.onLivingDeath} / Forge
  * {@code ForgeHooks.onLivingDeath} 都是 die() 的第一句）⇒ <b>每一次</b> die() 调用都会派发一次事件。
- * 而本模组有多条「嵌套 hurt」路径：法伤加成段（{@code event/DamageEffectCardHandler} 的
- * {@code astral_dice:true_damage}）与额外加伤段（{@code combat/DiceCombatEvents} 的
- * {@code astral_dice:extra_damage}）。这两段的伤害在 {@code LivingDamageEvent} 阶段内<b>同步</b>打进目标，
+ * 而本模组仍有多条「嵌套 hurt」路径：额外加伤段（{@code combat/DiceCombatEvents} 的
+ * {@code astral_dice:extra_damage}）、大当家溅射与狂暴反噬等。这些伤害在伤害事件阶段内<b>同步</b>打进目标，
+ * （法伤加成段自 2026-10-27 起已折叠为单次结算，不再产生第二次 die()，但其余路径仍在，故本闸门保留）
  * 若它恰好致死：内层 hurt 触发内层 die() ⇒ 事件第一次；外层 hurt 继续扣血、发现血量为 0 再 die() ⇒
  * 事件第二次。判定只修「派发时机」做不到（那是平台语义），故在<b>消费侧</b>按「实体 + 频道」去重。
  *

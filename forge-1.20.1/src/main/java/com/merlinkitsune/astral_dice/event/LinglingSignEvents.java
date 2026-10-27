@@ -103,9 +103,12 @@ public final class LinglingSignEvents {
         if (source == null) return;
         // 防递归:本模组派生的额外伤害段不再叠加
         if (source.is(ModDamageTypes.EXTRA_DAMAGE)) return;
-        // 防二次结算(2026-10-27):法伤加成走「独立真伤段」时，那一段 hurt 会再次进入本处理器 ⇒ 不再 +5。
-        // 否则一次法伤命中在目标被强化拒止吸附时会 +10（基础命中 +5、嵌套的加成段又 +5）。
-        if (DamageEffectCardHandler.isApplyingTrueBonus()) return;
+        // 2026-10-27 法伤折叠(用户裁决):法伤加成不再发嵌套真伤 hurt ⇒ 同一击只会进入本处理器一次,
+        // 原先用于排除「加成段」的 isApplyingTrueBonus() 闸门失去判据,随批移除。
+        // 数值核对(重要,别误读):旧实现**有**该闸门 ⇒ 加成段本来就被排除,一次法伤命中一直只 +5
+        // 一次;折叠后仍是 +5 一次 ⇒ 本处**数值行为不变**,变的是判据来源(不再需要闸门)。
+        // 唯一的口径变化在乘算侧:这个 +5 现在加在「本体 + 加成」的同一个事件终值上(以前加在基础段
+        // 事件上、加成段另算),绝对加数相同 ⇒ 与 1.21.1 侧同一裁决一致。
         // 判据集与蓝本逐条一致:佩戴者「本人」造成的任意伤害(近战/远程/法术),不做近战限定
         if (!(source.getEntity() instanceof Player player)) return;
         if (!LinglingSignManager.isEquipped(player)) return;

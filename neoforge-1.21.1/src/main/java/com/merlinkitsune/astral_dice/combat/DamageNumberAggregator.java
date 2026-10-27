@@ -29,6 +29,7 @@ import net.neoforged.neoforge.event.tick.ServerTickEvent;
  *   <li>一次骰战命中会先发「主伤害」、再发「额外加伤」⇒ 前者被后者覆盖,玩家只看到一段;</li>
  *   <li>活体书页命中先发基础值、再由 {@code DamageEffectCardHandler} 发「基础+法伤加成」
  *       ⇒ 只能靠「谁先谁后」的脆弱约定保证显示正确(见 {@code LivingPageImpact} 的注释);</li>
+ *   <li>（历史）法伤加成自 2026-10-27 起已折叠进同一伤害实例，不再有「两段发包」；</li>
  *   <li>各调用点发的是**结算前**的数值(主伤害发 {@code finalDmg}、活体书页发 {@code base}),
  *       与实际扣血量在「吸收(黄心)」这一环上对不上。</li>
  * </ul>

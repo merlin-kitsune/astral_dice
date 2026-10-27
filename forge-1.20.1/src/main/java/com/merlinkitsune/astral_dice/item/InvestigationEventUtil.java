@@ -101,9 +101,10 @@ public final class InvestigationEventUtil {
     // ⚠️ 幂等闸门(2026-10-27 修复「法伤链击杀触发两次」):
     //   平台把 LivingDeathEvent 派发在 LivingEntity#die 的 `!dead` 守卫**之前**
     //   (NeoForge CommonHooks.onLivingDeath / Forge ForgeHooks.onLivingDeath 均为 die() 首行),
-    //   而法伤加成走的是「外层伤害事件 Pre 阶段里嵌套 hurt」(DamageEffectCardHandler)——
-    //   加成致死时内层 die() 先派发一次,返回后外层 hurt 仍会再 die() 一次 ⇒ 本处理器被调用两次
+    //   而本模组仍有多条「嵌套 hurt」路径(额外加伤 extra_damage / 大当家溅射 / 狂暴反噬)——
+    //   内层 hurt 致死时内层 die() 先派发一次,返回后外层 hurt 仍会再 die() 一次 ⇒ 本处理器被调用两次
     //   (调查阶段事件结算两次、阶段 +2、阶段效果与 actionbar 各两遍)。
+    //   (法伤加成段自 2026-10-27 起已折叠为单次结算,不再产生第二次 die(),但上述路径仍在,故闸门保留)
     //   一次死亡只能算一次:结算完之后**立刻清空** undercover_source,第二次调用就在 isEmpty() 处返回。
     //   清空语义与 onUndercoverRemoved 一致(目标已死,来源不再有意义)。
     //
