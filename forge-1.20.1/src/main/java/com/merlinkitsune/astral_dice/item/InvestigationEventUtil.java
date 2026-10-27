@@ -104,8 +104,12 @@ public final class InvestigationEventUtil {
     //   而法伤加成走的是「外层伤害事件 Pre 阶段里嵌套 hurt」(DamageEffectCardHandler)——
     //   加成致死时内层 die() 先派发一次,返回后外层 hurt 仍会再 die() 一次 ⇒ 本处理器被调用两次
     //   (调查阶段事件结算两次、阶段 +2、阶段效果与 actionbar 各两遍)。
-    //   一次死亡只能算一次:读到来源后**立刻清空** undercover_source,第二次调用就在 isEmpty() 处返回。
+    //   一次死亡只能算一次:结算完之后**立刻清空** undercover_source,第二次调用就在 isEmpty() 处返回。
     //   清空语义与 onUndercoverRemoved 一致(目标已死,来源不再有意义)。
+    //
+    //   清空必须放在 triggerByKill **之后**:若本次死亡事件随后被别的处理器取消(die() 会直接 return,
+    //   实体其实还活着),提前清空会让这只目标后续的真实击杀再也不能触发调查阶段。
+    //   放在 triggerByKill 之后不影响幂等:第二次派发发生在本处理器返回**之后**,那时来源已被清空。
     @SubscribeEvent
     public static void onUndercoverInvestigationKill(LivingDeathEvent event) {
         if (event.isCanceled()) return;
@@ -117,10 +121,10 @@ public final class InvestigationEventUtil {
         if (source.isEmpty()) return;
         Player applier = target.level().getPlayerByUUID(source.get());
         if (applier == null) return;
-        // 幂等闸门:首次触发即清空来源,挡住同一死亡的第二次派发(见方法头注释)
-        ModAttachments.setUndercoverSource(target, Optional.empty());
         int markLevel = MarkManager.getLevel(target);
         InvestigationEventUtil.triggerByKill(killer, applier, markLevel);
+        // 幂等闸门:结算完即清空来源,挡住同一死亡的第二次派发(见方法头注释;必须放在结算之后)
+        ModAttachments.setUndercoverSource(target, Optional.empty());
     }
 
     // "隐匿调查"被移除(自然到期/死亡/清除)时清空来源,避免残留 UUID 后续误触发

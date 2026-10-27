@@ -129,6 +129,33 @@
     {
       "op": "wait",
       "ms": 1000
+    },
+    {
+      "op": "inject_command",
+      "command": "/astraldst clean D0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astraldst snap D8",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1000
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode survival",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
     }
   ],
   "asserts": [
@@ -150,7 +177,7 @@
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_D2_TC_GRANT:granted=3:n=3:me=3:other=0:tampered=1"
+      "pattern": "AP_D2_TC_GRANT:granted=3:n=.*:me=.*:other=0:tampered=1:priv=applied:fx_on0=1"
     },
     {
       "type": "log",
@@ -181,6 +208,16 @@
       "type": "log",
       "source": "latest",
       "pattern": "AP_D9_SNAP:.*hasSign=0:cards=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_D0_CLEAN:sign=cleared:dice=cleared:stage=1:priv=removed"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_D8_SNAP:.*hasSign=0:cards=0:barricades=0:items=0"
     },
     {
       "type": "crash"

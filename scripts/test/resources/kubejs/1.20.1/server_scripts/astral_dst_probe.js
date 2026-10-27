@@ -277,6 +277,19 @@ function dDoIgRead(ctx, tag) {
 function dDoTc(ctx, tag) {
     var p = ctx.source.getPlayerOrException();
     var tc = dTC();
+    // 正面控制:先让「女王特权」在位 —— 否则 TemporaryCardUtil#tick 的「无效果 ⇒ purgeAll」会把
+    // 全部临时牌（含被篡改的那张）一起清空，使「他人 owner 被清」这一判据退化成恒绿。
+    // 正面控制:真的把「女王特权」效果挂上 —— grantNardisPrivilege() 只发牌、不挂效果,
+    // 若只调它,TemporaryCardUtil#tick 的「无效果 ⇒ purgeAll」会把全部临时牌(含被篡改那张)一起清掉,
+    // 「他人 owner 被清」的判据就退化成恒绿。
+    var priv = "ERR";
+    try {
+        p.addEffect(new DMobEffectInstance(dFx().NARDIS_PRIVILEGE.get(), 12000, 0, false, false, true));
+        priv = "applied";
+    } catch (e) { dSend(ctx, "AP_" + tag + "_TC:ERR:priv:" + dEx(e)); return 0; }
+    var fxOn0 = 0;
+    try { fxOn0 = p.hasEffect(dFx().NARDIS_PRIVILEGE.get()) ? 1 : 0; } catch (e) { fxOn0 = -1; }
+    if (fxOn0 !== 1) { dSend(ctx, "AP_" + tag + "_TC:ERR:fx_not_applied:" + fxOn0); return 0; }
     var granted = -1;
     try { granted = tc.grantRandom(p, 3); } catch (e) { dSend(ctx, "AP_" + tag + "_TC:ERR:grant:" + dEx(e)); return 0; }
     var a = dTemp(p);
@@ -294,7 +307,7 @@ function dDoTc(ctx, tag) {
             break;
         }
     } catch (e) { dSend(ctx, "AP_" + tag + "_TC:ERR:tamper:" + dEx(e)); }
-    dSend(ctx, "AP_" + tag + "_TC_GRANT:granted=" + granted + ":n=" + a.n + ":me=" + a.me + ":other=" + a.other + ":tampered=" + tampered);
+    dSend(ctx, "AP_" + tag + "_TC_GRANT:granted=" + granted + ":n=" + a.n + ":me=" + a.me + ":other=" + a.other + ":tampered=" + tampered + ":priv=" + priv + ":fx_on0=" + fxOn0);
     return 1;
 }
 
@@ -302,7 +315,8 @@ function dDoTc(ctx, tag) {
 function dDoTcRead(ctx, tag) {
     var p = ctx.source.getPlayerOrException();
     var b = dTemp(p);
-    var ok = (b.other === 0 && b.n === b.me) ? 1 : 0;
+    // 判据收紧:他人 owner 的牌被清、本人牌仍在、且仍在 >=2 张 ⇒ 排除「无特权被 purgeAll 清空」的恒绿
+    var ok = (b.other === 0 && b.n === b.me && b.n >= 2) ? 1 : 0;
     dSend(ctx, "AP_" + tag + "_TC_PURGE:n=" + b.n + ":me=" + b.me + ":other=" + b.other);
     dSend(ctx, "AP_" + tag + "_TC_PURGE_V:ok=" + ok);
     var pr = "-";
@@ -318,6 +332,7 @@ function dDoTcRead2(ctx, tag) {
     var p = ctx.source.getPlayerOrException();
     var c = dTemp(p);
     var okNo = (c.n === 0) ? 1 : 0;
+    try { if (dTC().countTemporaryTotal(p) !== 0) okNo = 0; } catch (e) { okNo = 0; }
     dSend(ctx, "AP_" + tag + "_TC_DONE:n=" + c.n + ":me=" + c.me + ":other=" + c.other);
     dSend(ctx, "AP_" + tag + "_TC_V:purge=" + (c.other === 0 ? 1 : 0) + ":nopriv=" + okNo);
     return 1;
@@ -392,6 +407,44 @@ function dDoSnap(ctx, tag) {
     return 1;
 }
 
+/** 收尾:清掉本探针留下的状态（立牌/骰子槽、调查阶段、女王特权、附近的强化拒止） */
+function dDoClean(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var sign = "ERR";
+    var dice = "ERR";
+    var stage = "ERR";
+    var priv = "ERR";
+    var fields = -1;
+    try { dEquip(p, "stand", null, 0); sign = "cleared"; } catch (e) { sign = "ERR:" + dEx(e); }
+    try { dEquip(p, "dice", null, 0); dice = "cleared"; } catch (e) { dice = "ERR:" + dEx(e); }
+    // 注意:ModAttachments.setInvestigationStage 是 Math.max(1, value) ⇒ 地板值恒为 1,归零不可达。
+    try { dAtt().setInvestigationStage(p, 1); stage = "" + dAtt().getInvestigationStage(p); } catch (e) { stage = "ERR:" + dEx(e); }
+    try { dMER().remove(p, dFx().NARDIS_PRIVILEGE.get()); priv = "removed"; } catch (e) { priv = "ERR:" + dEx(e); }
+    try { dTC().purgeAll(p); } catch (e) { }
+    var purged = 0;
+    try {
+        var inv = p.getInventory();
+        var items = inv.items;
+        for (var i = 0; i < items.size(); i++) {
+            var id = dId(items.get(i));
+            if (id === D_ID_ITEM || id === D_ID_CARD || id === D_ID_BAR) { inv.setItem(i, DItemStack.EMPTY); purged++; }
+        }
+        var off = inv.offhand;
+        for (var j = 0; j < off.size(); j++) {
+            var id2 = dId(off.get(j));
+            if (id2 === D_ID_ITEM || id2 === D_ID_CARD || id2 === D_ID_BAR) { inv.setItem(40, DItemStack.EMPTY); purged++; }
+        }
+    } catch (e) { }
+    try {
+        var level = p.getLevel();
+        var list = level.getEntitiesOfClass(dEnt(), p.getBoundingBox().inflate(48));
+        for (var i = 0; i < list.size(); i++) { try { list.get(i).discard(); } catch (e2) { } }
+        fields = 0;
+    } catch (e) { fields = -1; }
+    dSend(ctx, "AP_" + tag + "_CLEAN:sign=" + sign + ":dice=" + dice + ":stage=" + stage + ":priv=" + priv + ":fields=" + fields + ":purged=" + purged);
+    return 1;
+}
+
 ServerEvents.commandRegistry(event => {
     var C = event.commands;
     var root = C.literal("astraldst");
@@ -399,7 +452,7 @@ ServerEvents.commandRegistry(event => {
         ["ig", dDoIg], ["igread", dDoIgRead],
         ["tc", dDoTc], ["tcread", dDoTcRead], ["tcread2", dDoTcRead2],
         ["rp", dDoRp], ["rpread", dDoRpRead], ["rpread2", dDoRpRead2], ["rpread3", dDoRpRead3],
-        ["snap", dDoSnap]
+        ["snap", dDoSnap], ["clean", dDoClean]
     ];
     for (var i = 0; i < subs.length; i++) {
         var name = subs[i][0];

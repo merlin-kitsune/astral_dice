@@ -39,6 +39,7 @@
 
 
 27. **三批欠账实机全 PASS（2026-10-27 15:39–16:16，§4.1aa）**：修复本体 = 隐匿调查法伤击杀双罚（`InvestigationEventUtil` 幂等闸门）**+ 之前两批未实机的 `6fcc756a` 强化拒止五规则、`51efba03` 临时牌 owner**，均已实机取证 —— 1.21.1 三案（`UNDERCOVER-DOUBLE` 4/4、`REPULSION-SIGN`、`TEMPCARD-OWNER` 6/6）+ 1.20.1 一案（`DST-P0-1.20.1` 10/10，走新建 KubeJS 探针 `/astraldst`，1.20.1 无 AutoJS 通道）。未覆盖项（tooltip 所有者行渲染 / 跨容器搬运 / 死亡掉牌不误销毁 / 命令级清槽）已在 §4.1aa 第 6 条如实登记。提交 **`59b14e10` + `052934cd`**，本地未 push（`origin/multi-main..HEAD` = **4**：`6fcc756a` / `51efba03` / `59b14e10` / `052934cd`），无新 tag；`build/libs` 已重建为 rc.4 号（2,595,450 / 2,640,648 B），**未上传 CF、未发版**。
+28. **复核 findings 修复 + 双线重跑全 PASS（2026-10-27 16:30–16:50，§4.1ab）**：按 `dsh_code_review`（run `1e6e1c84`）三条 findings 落地 —— ① 两线 `InvestigationEventUtil` 把「清空 `undercover_source`」从 `triggerByKill` **之前**移到**之后**（防本次死亡事件被第三方取消时提前丢来源）；② 1.20.1 探针 D2 加**真·女王特权**正面控制（`p.addEffect(NARDIS_PRIVILEGE)`）并收紧判据 `n>=2` ⇒ 不再恒绿；③ 探针新增 `/astraldst clean` 收尾 + 用例补 `/gamemode survival`。重建 rc.4 两 jar（neo 2,595,454 B / forge prod 2,640,648 B / dev named 2,611,172 B）并重投 run 两线后：1.20.1 `DST-P0` **PASS 13/13**（D2 现为 `n=3 → 篡改后 n=2:me=2:other=0`，真验证 `purgeIllegalHoldings`），1.21.1 `UNDERCOVER-DOUBLE` / `REPULSION-SIGN` / `TEMPCARD-OWNER` **三案全 PASS**。
 
 ## 1 环境与路径
 
@@ -576,6 +577,22 @@ forge dev named 102,013 B / `e280aeab6c4b37c43468f7cce32a8bf64c70b6bdbcd2203f6c5
 5. **收尾**：`mt.ps1 --version 1.20.1 --phase stop --force --purge-saves` ⇒ `MT_CLEANUP_SAVES: PURGED 1` / `MT_CLEANUP_RESULT: OK` / `MT_STOP: OK (1s) — 收停完成，无本流程残留进程`；`Get-Process java` 剩 3 个，`Win32_Process` 命令行核对为 Gradle daemon（Zulu 21 PID 15920）与两个 Adoptium 17 worker（16556 / 2572），**无 Minecraft 客户端残留**。
 6. **本轮未覆盖**（如实登记）：① 强化拒止 tooltip 的「所有者：」行只有静态代码 + 三语键证据，**未做客户端截图取证**（1.20.1 无客户端 eval；1.21.1 那条用例也没读渲染结果）；② 规则④的「存进箱子 / AE2 等第三方存储后跨容器保留、他人可取出但不可用」只验了同背包内的 owner 门控与硬门控，**跨容器搬运未实机**；③ 死亡掉牌不误销毁（`onSignLost` 的 `isDeadOrDying()` 早退）**未实机**；④ `/curios set` 之类的命令级清槽是否触发 `onUnequip` 未验（本轮用探针 `setStackInSlot(EMPTY)`，实测会触发）。
 
+### 4.1ab 复核 findings 修复 + 双线重跑（2026-10-27 16:30–16:50）—— 1.21.1 三案 + 1.20.1 一案全 PASS
+
+1. **复核来源**：`dsh_code_review` run `1e6e1c84-989c-43a0-b712-728a5de75099`（范围 `59b14e10` + `052934cd`）给出 3 条 findings，本轮逐条落地：
+   - **[P3] 清空时序**：两线 `item/InvestigationEventUtil.java` 原在 `triggerByKill` **之前**清空 `undercover_source`；若本次 `LivingDeathEvent` 随后被别的处理器取消（`die()` 直接 return、实体还活着），来源已丢、后续真实击杀不再触发。现改为 **结算之后再清空**，方法头 javadoc 补四行理由（同线程序列 ⇒ 幂等不受影响）。
+   - **[P2] D2 判据恒绿**：`astral_dst_probe.js` 的 `dDoTc` 原先只调 `TemporaryCardUtil.grantNardisPrivilege`（**只发牌、不挂效果**），而 `tick` 里「无 `NARDIS_PRIVILEGE` ⇒ `purgeAll`」会把牌全清 ⇒ `n=me=other=0` 让 `other===0 && n===me` 恒真。现改为 `p.addEffect(new MobEffectInstance(ModEffects.NARDIS_PRIVILEGE.get(), 12000, 0, false, false, true))` 作正面控制（读回 `fx_on0=1` 才继续），判据收紧为 `other===0 && n===me && n>=2`；无特权段再加 `countTemporaryTotal(p)===0`。
+   - **[P2] 无收尾**：探针新增 `/astraldst clean <tag>`（清 `stand`/`dice` 槽、调查阶段复位、走内部通道移除 `NARDIS_PRIVILEGE`、`purgeAll`、清主物品栏/副手的强化拒止三形态、discard 48 格内 `RepulsionEntity`，回显 `AP_<tag>_CLEAN:sign=..:dice=..:stage=..:priv=..:fields=..:purged=..`）；用例末尾补 `/astraldst clean D0` + `/astraldst snap D8` + `/gamemode survival`，断言加 `AP_D0_CLEAN` 与 `AP_D8_SNAP:.*hasSign=0:cards=0:barricades=0:items=0`。
+2. **产物**：`gradlew.bat :neoforge-1.21.1:jar :forge-1.20.1:jar`（JAVA_HOME=Zulu 21）**BUILD SUCCESSFUL in 4s**（`temp/build-20261027b.log`、`EXIT=0`）—— neo `2,595,454 B` sha256 `EE99C1597C317C9B5746EBC14099CB78EA722A2C9C63F4385AF4BACB83B156AD`；forge prod `2,640,648 B` `C0F2441F81F04E597FA685BD3720BA1851FFB03132FEFBFBD49654019A645041`；forge dev named `2,611,172 B` `59D13AC7FD84D86402BE5745F191BBD8901EE278DB820F3A920C680891A2FDA2`。投放 `run/1.21.1/mods` ← neo prod、`run/1.20.1/mods` ← forge dev named，两处 `Get-FileHash` 均 **MATCH**。
+3. **1.20.1 `DST-P0-1.20.1` ⇒ PASS 13/13**（`temp/case_dst_c.log`，16:4x，冷启动后首跑）：
+   - `AP_D2_TC_GRANT:granted=3:n=3:me=3:other=0:tampered=1:priv=applied:fx_on0=1` ⇒ 特权是真挂上的；
+   - `AP_D2_TC_PURGE:n=2:me=2:other=0` + `AP_D2_TC_PURGE_V:ok=1` ⇒ 被篡改成他人 UUID 的那 1 张被产品 tick 清掉、本人 2 张仍在（**真跑通 `purgeIllegalHoldings`**，修前是 `n=0` 的假绿）；
+   - `AP_D2_TC_DONE:n=0` + `AP_D2_TC_V:purge=1:nopriv=1` ⇒ 无女王特权 ⇒ 连本人牌一起清空；
+   - `AP_D0_CLEAN:sign=cleared:dice=cleared:stage=1:priv=removed:fields=0:purged=2`、`AP_D8_SNAP:now=3346:hasSign=0:cards=0:barricades=0:items=0:owned=0:fields=0:temp=0:stage=1` ⇒ 收尾干净。
+   - ⚠️ **`stage` 地板值是 1**：`ModAttachments.setInvestigationStage` 内部是 `Math.max(1, value)` ⇒ 「归零」不可达，`clean` 只能复位到 1、`D8` 断言因此不锁 stage（本轮实测先把它写成 `stage=0` 才发现的）。
+4. **1.21.1 三案全 PASS**（新产物、新世界，16:4x）：`UNDERCOVER-DOUBLE-1.21.1`（`temp/case_uc_b.log`，stage 1→2 且 `AP_EVENT_FIRE ... src=INVESTIGATION_KILL` 仍只 **1** 次 ⇒ 把清空移到结算之后**没有**破坏幂等）、`REPULSION-SIGN-1.21.1`、`TEMPCARD-OWNER-1.21.1` 均 `MT_CASE_RESULT: PASS`。
+5. **收尾**：`mt.ps1 --version 1.21.1 --phase stop --force --purge-saves` ⇒ `MT_CLEANUP_SAVES: PURGED 2` / `MT_CLEANUP_RESULT: OK` / `MT_STOP: OK (1s) — 收停完成，无本流程残留进程`；`Get-CimInstance Win32_Process java.exe` 剩 3 个（Gradle daemon Zulu21 `15920` + Adoptium 17 worker `16556`/`2572`），**无客户端残留**。
+
 ### 4.2 历史读数
 
 pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（含 4.8 pre.4 全量双线 10 跑 10 PASS、4.11–4.17 pre.5 各批、4.19 Jade 图标留白版）。
@@ -611,6 +628,8 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 12. **GitHub Release 新规则：tag 只按 mod 版本（2026-10-25 用户裁决）**：tag **不得**按游戏平台命名（`fabric-1.5.0-rc.1` / `neoforge-…` 一律禁止）、禁止 `v` 前缀、禁止 `+加载器` 后缀；同一版本的**多平台 jar 放进同一个 Release**；带 `-rc` / `-pre` / `-alpha` / `-beta` 的版本**照样打 tag**（rc.1 与 rc.2 是两个版本），并标 `--prerelease` / `--latest=false`（只有正式版才 `--latest`）。落地：① 红线区〈子项目优先级与默认规则〉长行末尾追加「② tag 与 Release 命名红线」（`AGENTS-dsh.md` 与 `AGENTS-full.md` 同文、**行数不变** ⇒ `verify-split.py` 九项全 [OK]，红线区 12,723 → **13,404** 字符）；② `.github/workflows/build.yml`：`Read base version` 只剥 `+加载器` 后缀（保留 `-rc`）、守门正则改 `^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z][0-9A-Za-z.-]*)?$`、新增 `is_prerelease` 输出；`Create Git tag` **删掉**「版本含 `-` 就跳过」的分支（旧口径导致 rc/pre 永远没有 tag）；Release 步骤按 `is_prerelease` 传 `--prerelease --latest=false`（正式版 `--latest --prerelease=false`），附件仍是 P0 两 jar 挂在**同一个** Release。判据：`js-yaml` 解析 OK（`jobs=build` / `steps=18` / 无 tab / `tagTriggers=["[0-9]*"]` 能匹配 `1.5.0-rc.1`）。
 
 13. ~~强化拒止五规则（`6fcc756a`）与临时牌 owner（`51efba03`）未实机~~ → **已实机（2026-10-27，§4.1aa）**：1.21.1 `REPULSION-SIGN-1.21.1` / `TEMPCARD-OWNER-1.21.1` + 1.20.1 `DST-P0-1.20.1` 全 PASS。**仍欠**（只登记，不阻塞）：tooltip「所有者：」行的客户端渲染取证、规则④的跨容器（箱子 / AE2）搬运语义、死亡掉牌不误销毁、`/curios set` 类命令清槽是否等同主动卸下。
+
+14. **复核 findings 已闭环（2026-10-27，§4.1ab）**：`dsh_code_review` run `1e6e1c84` 的 3 条问题全部落地并双线重跑 —— 清空时序（改为结算后清空）、1.20.1 D2 恒绿（补真·女王特权 + 判据 `n>=2`）、探针无收尾（新增 `/astraldst clean`）。**仍欠**：本批新产物（neo `2,595,454 B` / forge prod `2,640,648 B` / dev named `2,611,172 B`）**只投了 `run/<线>/mods`**，两个 P0 整合包与根 `build/libs` 仍是 rc.4 旧构建；tooltip「所有者：」行渲染 / 跨容器搬运 / 死亡掉牌 / `/curios set` 清槽四项依旧未实机（同第 13 条）。
 
 ### Minor
 
@@ -680,6 +699,8 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 
 
 29. **1.20.1 线没有 AutoJS 通道 ⇒ 实机只能走 KubeJS 服务端探针，且改了命令体必须冷启动**（2026-10-27 实测，§4.1aa）：`mt_env.ps1 kubejs --version 1.20.1` 只同步脚本（`MT_KUBEJS: OK`），`/kubejs reload server_scripts` 会显示 `Loaded script …` 但**新命令不进 dispatcher**（`未知或不完整的命令`）、**闭包旧逻辑照旧跑** ⇒ 每次改探针都要 `--phase stop --force` + `--phase launch`（约 90s）。另外三处 Rhino 坑：`LivingEntity#hurt` 与 `Entity#getUUID()` 不可见（伤害走原版 `/damage … by @s`、UUID 走 `UUID.fromString(p.getStringUUID())`）；`ServerEvents.tick` 里 `getTickCount()` 会让异步任务静默不执行 ⇒ 放弃 tick 调度、改「一条命令一步 + 用例 wait 推进」；`ExclusiveCardUtil.ownerOf` 返回 `java.util.Optional<UUID>`，比较前必须 `.orElse(null)`（`TemporaryCardUtil.ownerOf` 才是裸 UUID）。
+
+30. **两个「读数全 0」的陷阱组合（2026-10-27 实测，§4.1ab）**：① `TemporaryCardUtil.grantNardisPrivilege(player)` **只发牌、不挂「女王特权」效果**（效果由 `NardisSignItem#handleUse` 另挂）⇒ 只调它再等一会儿，`tick` 的「无效果 ⇒ `purgeAll`」会把牌全清，任何 `n===me` 式判据都会**恒绿**；正解是显式 `addEffect(new MobEffectInstance(ModEffects.NARDIS_PRIVILEGE.get(), 12000, 0, false, false, true))` 并读回 `hasEffect` 再继续。② `ModAttachments.setInvestigationStage(player, n)` 内部是 `Math.max(1, value)` ⇒ **归零不可达**，探针「复位到 0」的读数会与随后实测的 1 不一致；断言要么锁 1，要么干脆不锁。
 
 ## 7 关键路径（命令）
 
