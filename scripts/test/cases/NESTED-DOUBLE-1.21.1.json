@@ -1,0 +1,227 @@
+{
+  "case_id": "NESTED-DOUBLE-1.21.1",
+  "title": "法伤嵌套真伤段二次触发去重（智能手表只发 1 张卡 + lingling +5 只加一次，含无立牌对照组）",
+  "version": "1.21.1",
+  "channel": "autojs",
+  "on_fail": "continue",
+  "steps": [
+    {
+      "op": "note",
+      "text": "法伤嵌套真伤段二次触发去重（1.21.1）：A 智能手表只发 1 张卡；B 有立牌时追踪 +5 只加一次（16 对中位数≈5、修前≈10）；C 卸掉立牌后对照组差值≈0"
+    },
+    {
+      "op": "inject_command",
+      "command": "/say MT_NESTED_WARMUP"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop curioreset ND"
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[type=!player,distance=..64]"
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "save_as": "clr",
+      "code": "(function(){\n  var server = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks').getCurrentServer();\n  var p = server.getPlayerList().getPlayers().get(0);\n  var level = p.level;\n  var LE = Java.loadClass('net.minecraft.world.entity.LivingEntity');\n  var MI = Java.loadClass('com.merlinkitsune.astral_dice.item.ModItems');\n  var cleared = 0; var items = p.getInventory().items;\n  for (var i = 0; i < items.size(); i++) { var st = items.get(i); if (st != null && !st.isEmpty() && MI.isCardItem(st)) { cleared += st.getCount(); st.setCount(0); } }\n  return {ok:true, cleared:cleared};\n})()"
+    },
+    {
+      "op": "inject_command",
+      "command": "/give @s astral_dice:golden_dice 1"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe equipslot dice \"astral_dice:golden_dice\" ND"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe equipslot chip \"astral_dice:smart_watch_chip\" ND"
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "save_as": "swset",
+      "code": "(function(){\n  var server = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks').getCurrentServer();\n  var p = server.getPlayerList().getPlayers().get(0);\n  var level = p.level;\n  var LE = Java.loadClass('net.minecraft.world.entity.LivingEntity');\n  var ET = Java.loadClass('net.minecraft.world.entity.EntityType');\n  var MM = Java.loadClass('com.merlinkitsune.astral_dice.item.MarkManager');\n  var old = level.getEntitiesOfClass(LE, p.getBoundingBox().inflate(48));\n  for (var i = 0; i < old.size(); i++) { if (old.get(i).getTags().contains('SW_T')) old.get(i).discard(); }\n  var ent = ET.PILLAGER.create(level);\n  ent.setPos(p.getX() + 2.5, p.getY(), p.getZ() + 0.5);\n  ent.setNoAi(true); ent.addTag('SW_T'); level.addFreshEntity(ent);\n  MM.apply(ent); ent.setHealth(1.0);\n  return {ok:true, hp: ent.getHealth(), marked: MM.getLevel(ent)};\n})()"
+    },
+    {
+      "op": "inject_command",
+      "command": "/damage @e[tag=SW_T,limit=1] 1 astral_dice:card_spell by @s"
+    },
+    {
+      "op": "wait",
+      "ms": 1600
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "save_as": "swread",
+      "code": "(function(){\n  var server = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks').getCurrentServer();\n  var p = server.getPlayerList().getPlayers().get(0);\n  var level = p.level;\n  var LE = Java.loadClass('net.minecraft.world.entity.LivingEntity');\n  var MI = Java.loadClass('com.merlinkitsune.astral_dice.item.ModItems');\n  var n = 0; var items = p.getInventory().items;\n  for (var i = 0; i < items.size(); i++) { var st = items.get(i); if (st != null && !st.isEmpty() && MI.isCardItem(st)) { n += st.getCount(); } }\n  return {ok:true, cards:n};\n})()"
+    },
+    {
+      "op": "note",
+      "text": "B：清筹码 + 装怪力乱神立牌，16 对 MU（未被追踪）/MT（被力场追踪）同装备同标记对照"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe equipslot chip \"minecraft:air\" NDC"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe signprep LL \"astral_dice:lingling_sign\""
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "save_as": "llset",
+      "code": "(function(){\n  var server = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks').getCurrentServer();\n  var p = server.getPlayerList().getPlayers().get(0);\n  var level = p.level;\n  var LE = Java.loadClass('net.minecraft.world.entity.LivingEntity');\n  var ET = Java.loadClass('net.minecraft.world.entity.EntityType');\n  var list = level.getEntitiesOfClass(LE, p.getBoundingBox().inflate(90));\n  for (var i = 0; i < list.size(); i++) { var tg = list.get(i).getTags(); var kill = false; var it = tg.iterator(); while (it.hasNext()) { var s = '' + it.next(); if (s.indexOf('MU') === 0 || s.indexOf('MT') === 0) { kill = true; } } if (kill) { list.get(i).discard(); } }\n  var made = 0;\n  function mkOne(tag, dx, dz, tracked) { var e = ET.PILLAGER.create(level); e.setPos(p.getX() + dx, p.getY(), p.getZ() + dz); e.setNoAi(true); e.addTag(tag); level.addFreshEntity(e); e.setHealth(20.0); if (tracked) { e.setTarget(p); } return e; }\n  for (var u = 0; u < 16; u++) { mkOne('MU' + u, 1.5 + (u % 4) * 1.0, 16.0 + Math.floor(u / 4) * 1.0, false); made++; }\n  for (var t = 0; t < 16; t++) { mkOne('MT' + t, 1.5 + (t % 4) * 1.0, -2.0 - Math.floor(t / 4) * 1.0, true); made++; }\n  return {ok:true, made:made};\n})()"
+    },
+    {
+      "op": "inject_command",
+      "command": "/summon astral_dice:repulsion ~1 ~ ~-1"
+    },
+    {
+      "op": "wait",
+      "ms": 3000
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "save_as": "llmeas",
+      "code": "(function(){\n  var server = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks').getCurrentServer();\n  var p = server.getPlayerList().getPlayers().get(0);\n  var level = p.level;\n  var LE = Java.loadClass('net.minecraft.world.entity.LivingEntity');\n  var MM = Java.loadClass('com.merlinkitsune.astral_dice.item.MarkManager');\n  var LSM = Java.loadClass('com.merlinkitsune.astral_dice.item.sign.LinglingSignManager');\n  var SC = Java.loadClass('com.merlinkitsune.astral_dice.item.sign.SignEquipCheck');\n  var MI = Java.loadClass('com.merlinkitsune.astral_dice.item.ModItems');\n  var list = level.getEntitiesOfClass(LE, p.getBoundingBox().inflate(90));\n  var ents = {};\n  for (var i = 0; i < list.size(); i++) { var tg = list.get(i).getTags(); var it = tg.iterator(); while (it.hasNext()) { ents['' + it.next()] = list.get(i); } }\n  var srcU = [], srcT = [], marksOk = 1, trackedOk = 1;\n  for (var k = 0; k < 16; k++) {\n    var u = ents['MU' + k]; var t = ents['MT' + k];\n    if (u == null || t == null) { continue; }\n    u.setHealth(20.0); t.setHealth(20.0);\n    MM.apply(u); MM.apply(t);\n    if (MM.getLevel(u) !== 1 || MM.getLevel(t) !== 1) { marksOk = 0; }\n    if (!LSM.isTrackedByAny(t)) { trackedOk = 0; }\n    var hu0 = u.getHealth(); var ht0 = t.getHealth();\n    server.getCommands().performPrefixedCommand(p.createCommandSourceStack().withSuppressedOutput(), 'damage @e[tag=MU' + k + ',limit=1] 1 astral_dice:card_spell by @s');\n    server.getCommands().performPrefixedCommand(p.createCommandSourceStack().withSuppressedOutput(), 'damage @e[tag=MT' + k + ',limit=1] 1 astral_dice:card_spell by @s');\n    srcU.push(hu0 - u.getHealth()); srcT.push(ht0 - t.getHealth());\n  }\n  var n = srcU.length; var diff = []; var near5 = 0; var near0 = 0;\n  for (var j = 0; j < n; j++) { var d = srcT[j] - srcU[j]; diff.push(d); if (d >= 4.0 && d <= 6.0) { near5++; } if (d >= -1.0 && d <= 1.0) { near0++; } }\n  var sorted = diff.slice(0); sorted.sort(function(a, b) { return a - b; });\n  var median = -1;\n  if (n > 0) { if (n % 2 === 1) { median = sorted[(n - 1) / 2]; } else { median = (sorted[n / 2 - 1] + sorted[n / 2]) / 2; } }\n  var hasSign = SC.isEquipped(p, MI.LINGLING_SIGN.get());\n  return {ok:true, n:n, median:median, near5:near5, near0:near0, srcU:srcU, srcT:srcT, diff:diff, marksOk:marksOk, trackedOk:trackedOk, hasSign:hasSign};\n})()"
+    },
+    {
+      "op": "note",
+      "text": "C：卸掉立牌后再测一组（对照组，差值应≈0，证明 B 段的 +5 不是测量噪声）"
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "save_as": "llclean",
+      "code": "(function(){\n  var server = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks').getCurrentServer();\n  var p = server.getPlayerList().getPlayers().get(0);\n  var level = p.level;\n  var LE = Java.loadClass('net.minecraft.world.entity.LivingEntity');\n  var list = level.getEntitiesOfClass(LE, p.getBoundingBox().inflate(90));\n  var n = 0;\n  for (var i = 0; i < list.size(); i++) { var tg = list.get(i).getTags(); var it = tg.iterator(); while (it.hasNext()) { var s = '' + it.next(); if (s.indexOf('MU') === 0 || s.indexOf('MT') === 0 || s === 'SW_T') { list.get(i).discard(); n++; } } }\n  server.getCommands().performPrefixedCommand(p.createCommandSourceStack().withSuppressedOutput(), 'kill @e[type=astral_dice:repulsion,distance=..32]');\n  return {ok:true, removed:n};\n})()"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe equipslot stand \"minecraft:air\" NOSIGN"
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "save_as": "noset",
+      "code": "(function(){\n  var server = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks').getCurrentServer();\n  var p = server.getPlayerList().getPlayers().get(0);\n  var level = p.level;\n  var LE = Java.loadClass('net.minecraft.world.entity.LivingEntity');\n  var ET = Java.loadClass('net.minecraft.world.entity.EntityType');\n  var list = level.getEntitiesOfClass(LE, p.getBoundingBox().inflate(90));\n  for (var i = 0; i < list.size(); i++) { var tg = list.get(i).getTags(); var kill = false; var it = tg.iterator(); while (it.hasNext()) { var s = '' + it.next(); if (s.indexOf('MU') === 0 || s.indexOf('MT') === 0) { kill = true; } } if (kill) { list.get(i).discard(); } }\n  var made = 0;\n  function mkOne(tag, dx, dz, tracked) { var e = ET.PILLAGER.create(level); e.setPos(p.getX() + dx, p.getY(), p.getZ() + dz); e.setNoAi(true); e.addTag(tag); level.addFreshEntity(e); e.setHealth(20.0); if (tracked) { e.setTarget(p); } return e; }\n  for (var u = 0; u < 16; u++) { mkOne('MU' + u, 1.5 + (u % 4) * 1.0, 16.0 + Math.floor(u / 4) * 1.0, false); made++; }\n  for (var t = 0; t < 16; t++) { mkOne('MT' + t, 1.5 + (t % 4) * 1.0, -2.0 - Math.floor(t / 4) * 1.0, true); made++; }\n  return {ok:true, made:made};\n})()"
+    },
+    {
+      "op": "inject_command",
+      "command": "/summon astral_dice:repulsion ~1 ~ ~-1"
+    },
+    {
+      "op": "wait",
+      "ms": 3000
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "save_as": "nomeas",
+      "code": "(function(){\n  var server = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks').getCurrentServer();\n  var p = server.getPlayerList().getPlayers().get(0);\n  var level = p.level;\n  var LE = Java.loadClass('net.minecraft.world.entity.LivingEntity');\n  var MM = Java.loadClass('com.merlinkitsune.astral_dice.item.MarkManager');\n  var LSM = Java.loadClass('com.merlinkitsune.astral_dice.item.sign.LinglingSignManager');\n  var SC = Java.loadClass('com.merlinkitsune.astral_dice.item.sign.SignEquipCheck');\n  var MI = Java.loadClass('com.merlinkitsune.astral_dice.item.ModItems');\n  var list = level.getEntitiesOfClass(LE, p.getBoundingBox().inflate(90));\n  var ents = {};\n  for (var i = 0; i < list.size(); i++) { var tg = list.get(i).getTags(); var it = tg.iterator(); while (it.hasNext()) { ents['' + it.next()] = list.get(i); } }\n  var srcU = [], srcT = [], marksOk = 1, trackedOk = 1;\n  for (var k = 0; k < 16; k++) {\n    var u = ents['MU' + k]; var t = ents['MT' + k];\n    if (u == null || t == null) { continue; }\n    u.setHealth(20.0); t.setHealth(20.0);\n    MM.apply(u); MM.apply(t);\n    if (MM.getLevel(u) !== 1 || MM.getLevel(t) !== 1) { marksOk = 0; }\n    if (!LSM.isTrackedByAny(t)) { trackedOk = 0; }\n    var hu0 = u.getHealth(); var ht0 = t.getHealth();\n    server.getCommands().performPrefixedCommand(p.createCommandSourceStack().withSuppressedOutput(), 'damage @e[tag=MU' + k + ',limit=1] 1 astral_dice:card_spell by @s');\n    server.getCommands().performPrefixedCommand(p.createCommandSourceStack().withSuppressedOutput(), 'damage @e[tag=MT' + k + ',limit=1] 1 astral_dice:card_spell by @s');\n    srcU.push(hu0 - u.getHealth()); srcT.push(ht0 - t.getHealth());\n  }\n  var n = srcU.length; var diff = []; var near5 = 0; var near0 = 0;\n  for (var j = 0; j < n; j++) { var d = srcT[j] - srcU[j]; diff.push(d); if (d >= 4.0 && d <= 6.0) { near5++; } if (d >= -1.0 && d <= 1.0) { near0++; } }\n  var sorted = diff.slice(0); sorted.sort(function(a, b) { return a - b; });\n  var median = -1;\n  if (n > 0) { if (n % 2 === 1) { median = sorted[(n - 1) / 2]; } else { median = (sorted[n / 2 - 1] + sorted[n / 2]) / 2; } }\n  var hasSign = SC.isEquipped(p, MI.LINGLING_SIGN.get());\n  return {ok:true, n:n, median:median, near5:near5, near0:near0, srcU:srcU, srcT:srcT, diff:diff, marksOk:marksOk, trackedOk:trackedOk, hasSign:hasSign};\n})()"
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "save_as": "llclean2",
+      "code": "(function(){\n  var server = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks').getCurrentServer();\n  var p = server.getPlayerList().getPlayers().get(0);\n  var level = p.level;\n  var LE = Java.loadClass('net.minecraft.world.entity.LivingEntity');\n  var list = level.getEntitiesOfClass(LE, p.getBoundingBox().inflate(90));\n  var n = 0;\n  for (var i = 0; i < list.size(); i++) { var tg = list.get(i).getTags(); var it = tg.iterator(); while (it.hasNext()) { var s = '' + it.next(); if (s.indexOf('MU') === 0 || s.indexOf('MT') === 0 || s === 'SW_T') { list.get(i).discard(); n++; } } }\n  server.getCommands().performPrefixedCommand(p.createCommandSourceStack().withSuppressedOutput(), 'kill @e[type=astral_dice:repulsion,distance=..32]');\n  return {ok:true, removed:n};\n})()"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode survival"
+    }
+  ],
+  "asserts": [
+    {
+      "type": "state",
+      "from": "swread",
+      "expect": {
+        "ok": true,
+        "cards": 1
+      }
+    },
+    {
+      "type": "state",
+      "from": "llmeas",
+      "expect": {
+        "ok": true,
+        "hasSign": true,
+        "marksOk": 1,
+        "trackedOk": 1,
+        "n": 16
+      }
+    },
+    {
+      "type": "state",
+      "from": "llmeas",
+      "expect": {
+        "median": {
+          "min": 4
+        }
+      }
+    },
+    {
+      "type": "state",
+      "from": "llmeas",
+      "expect": {
+        "median": {
+          "max": 6.5
+        }
+      }
+    },
+    {
+      "type": "state",
+      "from": "llmeas",
+      "expect": {
+        "near5": {
+          "min": 9
+        }
+      }
+    },
+    {
+      "type": "state",
+      "from": "nomeas",
+      "expect": {
+        "ok": true,
+        "hasSign": false,
+        "n": 16
+      }
+    },
+    {
+      "type": "state",
+      "from": "nomeas",
+      "expect": {
+        "median": {
+          "min": -1.5
+        }
+      }
+    },
+    {
+      "type": "state",
+      "from": "nomeas",
+      "expect": {
+        "median": {
+          "max": 1.5
+        }
+      }
+    },
+    {
+      "type": "state",
+      "from": "nomeas",
+      "expect": {
+        "near5": {
+          "max": 3
+        }
+      }
+    }
+  ]
+}

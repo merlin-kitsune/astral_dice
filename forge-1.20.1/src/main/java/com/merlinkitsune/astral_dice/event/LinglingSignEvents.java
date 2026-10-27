@@ -10,7 +10,7 @@ import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.event.entity.item.ItemTossEvent;
-import net.minecraftforge.event.entity.living.LivingHurtEvent;
+import net.minecraftforge.event.entity.living.LivingDamageEvent;
 import net.minecraftforge.event.entity.player.EntityItemPickupEvent;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -30,9 +30,15 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
  *   <li><b>§4.5 丢出</b>:{@code ItemTossEvent} 在掉落物**入世之前**派发(照
  *       {@code event/TemporaryCardEvents} 用法),此时 {@code entity.setItem(...)} 即完成「入世前替换」。</li>
  *   <li><b>§4.7 攻击被吸附目标 +5</b>:1.20.1 Forge <b>没有</b> {@code LivingDamageEvent.Pre},
- *       其 {@code LivingDamageEvent} 派发在<b>吸收/黄心之后</b>(本线 {@code DiceCombatEvents} 注释多处
- *       明写)⇒ 改挂 {@code LivingHurtEvent} —— 它是「护甲之后、吸收之前」的同一阶段,与 1.21.1 的
- *       {@code LivingDamageEvent.Pre} <b>等价</b>(先例 {@code RenShieldManager.java:399-408} 已固证)。
+ *       只有单类 {@code LivingDamageEvent}(在 {@code actuallyHurt} 内、护甲/抗性/保护之后派发)。
+ *       ⚠️ <b>不能挂 {@code LivingHurtEvent}</b>:骰战处理器
+ *       ({@code combat/DiceCombatEvents.java:274 onLivingDamagePre}, 优先级 NORMAL)在
+ *       {@code LivingDamageEvent} 上以 {@code event.setAmount((float) finalDmg)}(:822) <b>覆盖式</b>
+ *       写入自算终值,任何一个更早发生的加法(护甲前的 {@code LivingHurtEvent} 也在其中)都会被整段丢弃。
+ *       而本效果的前置恰是「佩戴骰子 + 立牌」⇒ 骰战路径必然生效 ⇒ 早期挂点等于从未生效
+ *       (2026-10-27 实机取证:闸门全真 eq=true trk=true,目标却只掉骰战自算的 3 点,而非 1+5)。
+ *       ⇒ 改挂 {@code LivingDamageEvent}(<b>LOWEST</b>,排在骰战的 NORMAL 之后),与 1.21.1 的
+ *       {@code LivingDamageEvent.Pre} + LOWEST <b>同阶段同先后</b>。
  *       <b>判据集与蓝本逐条一致</b>:佩戴者<b>本人造成的任意伤害</b>(近战 / 远程 / 法术都算,
  *       <b>不做近战限定</b>)· 目标被<b>任意</b>归属的强化拒止吸附 · 排除 {@code EXTRA_DAMAGE} 防递归。
  *       落地方式 = <b>就在同一次伤害上做加法</b>({@code event.setAmount(event.getAmount() + 5)},
@@ -88,7 +94,7 @@ public final class LinglingSignEvents {
     // ── §4.7 攻击被吸附目标 +5(佩戴者本人造成的**任意**伤害,不限近战) ───────────
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
-    public static void onLivingHurt(LivingHurtEvent event) {
+    public static void onLivingDamage(LivingDamageEvent event) {
         if (event.isCanceled()) return;
         LivingEntity target = event.getEntity();
         if (target == null || target.level().isClientSide) return;
@@ -96,11 +102,18 @@ public final class LinglingSignEvents {
         if (source == null) return;
         // 防递归:本模组派生的额外伤害段不再叠加
         if (source.is(ModDamageTypes.EXTRA_DAMAGE)) return;
+        // 防二次结算(2026-10-27):法伤加成走「独立真伤段」时，那一段 hurt 会再次进入本处理器 ⇒ 不再 +5。
+        // 否则一次法伤命中在目标被强化拒止吸附时会 +10（基础命中 +5、嵌套的加成段又 +5）。
+        if (DamageEffectCardHandler.isApplyingTrueBonus()) return;
         // 判据集与蓝本逐条一致:佩戴者「本人」造成的任意伤害(近战/远程/法术),不做近战限定
         if (!(source.getEntity() instanceof Player player)) return;
         if (!LinglingSignManager.isEquipped(player)) return;
         if (!LinglingSignManager.isTrackedByAny(target)) return;
         // 就在同一次伤害上做加法(不嵌套新伤害、不清 i-frame、不绕过护甲;照 ChipDamageHandler 先例)
+        // 2026-10-27 修正挂点:必须挂**最终**的 LivingDamageEvent(LOWEST)。骰战在同类事件的 NORMAL
+        // 以 setAmount **覆盖式**写入自算终值(combat/DiceCombatEvents.java:274/822),在 LivingHurtEvent
+        // 里加的 +5 会被整段盖掉 —— 而本效果的前置就是「佩戴骰子 + 立牌」,骰战路径必然生效 ⇒ 旧挂点
+        // 在 1.20.1 等于从未生效(实机取证见类头 §4.7)。1.21.1 侧挂 LivingDamageEvent.Pre(LOWEST) 同理。
         event.setAmount(event.getAmount() + LinglingSignManager.TRACKED_TARGET_BONUS_DAMAGE);
     }
 }

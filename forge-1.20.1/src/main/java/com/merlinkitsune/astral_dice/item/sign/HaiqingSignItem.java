@@ -125,6 +125,9 @@ public class HaiqingSignItem extends BaseSignItem {
         if (target.level().isClientSide()) return;
         if (!target.hasEffect(ModEffects.WEAK_MARK.get())) return;
         Optional<UUID> source = ModAttachments.getWeakMarkSource(target);
+        // 同一次死亡的第二次派发不再重复结算：法伤加成 / 额外加伤都以**嵌套 hurt** 结算，致死时
+        // 内层 die() 与外层 die() 会各派发一次 LivingDeathEvent（平台把该事件挂在 !dead 守卫之前）。
+        if (!com.merlinkitsune.astral_dice.combat.DeathTriggerGuard.claim(event.getEntity(), "weak_mark")) return;
         if (source.isEmpty()) return;
         // 1.20.1:Level.getPlayerByUUID 返回类型即 Player,不可用 instanceof 模式匹配
         Player applier = target.level().getPlayerByUUID(source.get());

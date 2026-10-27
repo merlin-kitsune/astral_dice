@@ -460,6 +460,168 @@ function dDoClean(ctx, tag) {
     return 1;
 }
 
+// ── nested-double:法伤嵌套真伤段二次触发去重(智能手表发卡数 + lingling 追踪加伤只加一次) ──
+function dNdCleanMobs(p) {
+    var level = p.level;
+    var list = level.getEntitiesOfClass(DLivingEntity, p.getBoundingBox().inflate(90));
+    for (var i = 0; i < list.size(); i++) {
+        var tg = list.get(i).getTags();
+        var kill = tg.contains("SW_T");
+        for (var k = 0; k < 16; k++) { if (tg.contains("MU" + k) || tg.contains("MT" + k)) kill = true; }
+        if (kill) { try { list.get(i).discard(); } catch (e) { } }
+    }
+}
+function dNdSpawnPairs(p, tracked) {
+    var level = p.level;
+    for (var u = 0; u < 16; u++) {
+        var a = DEntityType.PILLAGER.create(level);
+        a.setPos(p.getX() + 1.5 + (u % 4) * 1.0, p.getY(), p.getZ() + 16.0 + Math.floor(u / 4) * 1.0);
+        a.setNoAi(true); a.addTag("MU" + u); level.addFreshEntity(a); a.setHealth(20.0);
+        var b = DEntityType.PILLAGER.create(level);
+        b.setPos(p.getX() + 1.5 + (u % 4) * 1.0, p.getY(), p.getZ() - 2.0 - Math.floor(u / 4) * 1.0);
+        b.setNoAi(true); b.addTag("MT" + u); level.addFreshEntity(b); b.setHealth(20.0);
+        if (tracked) { try { b.setTarget(p); } catch (e) { } }
+    }
+}
+function dNdMeasureBody(ctx, p) {
+    var level = p.level;
+    var list = level.getEntitiesOfClass(DLivingEntity, p.getBoundingBox().inflate(90));
+    var ents = {};
+    for (var i = 0; i < list.size(); i++) {
+        var tg = list.get(i).getTags();
+        for (var k = 0; k < 16; k++) {
+            if (tg.contains("MU" + k)) ents["MU" + k] = list.get(i);
+            if (tg.contains("MT" + k)) ents["MT" + k] = list.get(i);
+        }
+    }
+    var diff = [], n = 0, tracked = 1, marksOk = 1, du = [], dt = [];
+    for (var j = 0; j < 16; j++) {
+        var u = ents["MU" + j], b = ents["MT" + j];
+        if (u == null || b == null) continue;
+        u.setHealth(20.0); b.setHealth(20.0);
+        try { dMark().apply(u); dMark().apply(b); } catch (e) { marksOk = 0; }
+        try {
+            if (dMark().getLevel(u) !== 1 || dMark().getLevel(b) !== 1) marksOk = 0;
+            if (!dLSM().isTrackedByAny(b)) tracked = 0;
+        } catch (e2) { marksOk = -1; tracked = -1; }
+        var hu0 = u.getHealth(), hb0 = b.getHealth();
+        dCmd(ctx, "damage @e[tag=MU" + j + ",limit=1] 1 astral_dice:card_spell by @s");
+        dCmd(ctx, "damage @e[tag=MT" + j + ",limit=1] 1 astral_dice:card_spell by @s");
+        var duv = hu0 - u.getHealth(), dtv = hb0 - b.getHealth();
+        du.push(duv); dt.push(dtv);
+        diff.push(dtv - duv);
+        n++;
+    }
+    var sorted = diff.slice(0);
+    sorted.sort(function (x, y) { return x - y; });
+    var median = -1;
+    if (n > 0) { median = (n % 2 === 1) ? sorted[(n - 1) / 2] : (sorted[n / 2 - 1] + sorted[n / 2]) / 2; }
+    median = Math.round(median * 100) / 100;
+    var near5 = 0;
+    for (var q = 0; q < n; q++) { if (diff[q] >= 4.0 && diff[q] <= 6.0) near5++; }
+    return { n: n, median: median, near5: near5, tracked: tracked, marksOk: marksOk, du: du.join("/"), dt: dt.join("/") };
+}
+/** A:装金骰子 + 智能手表筹码,造 1 血带标记靶,法伤一击(内层 true_damage 致死 ⇒ 修前会 die 两次) */
+function dDoNdSw(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var level = p.level;
+    dNdCleanMobs(p);
+    var mi = dItems();
+    var eq = "-", chip = "-", slot = "-";
+    try { eq = dEquip(p, "dice", new DItemStack(mi.GOLDEN_DICE.get()), 0); } catch (e) { eq = "ERR:" + dEx(e); }
+    try { dLoad("com.merlinkitsune.astral_dice.item.dice.DiceCurioItem").refreshChipSlotCount(p); slot = "refreshed"; } catch (e) { slot = "ERR:" + dEx(e); }
+    try { chip = dEquip(p, "chip", new DItemStack(mi.SMART_WATCH_CHIP.get()), 0); } catch (e) { chip = "ERR:" + dEx(e); }
+    var hp = -1, mk = -1;
+    try {
+        var t = DEntityType.PILLAGER.create(level);
+        t.setPos(p.getX() + 2.5, p.getY(), p.getZ() + 0.5);
+        t.setNoAi(true); t.addTag("SW_T"); level.addFreshEntity(t);
+        dMark().apply(t);
+        t.setHealth(1.0);
+        hp = t.getHealth(); mk = dMark().getLevel(t);
+        dCmd(ctx, "damage @e[tag=SW_T,limit=1] 1 astral_dice:card_spell by @s");
+    } catch (e) { dSend(ctx, "AP_" + tag + "_NDSW:ERR:" + dEx(e)); return 0; }
+    dSend(ctx, "AP_" + tag + "_NDSW:eq=" + eq + ":chip=" + chip + ":slot=" + slot + ":hp=" + hp + ":mk=" + mk);
+    return 1;
+}
+/** A 读数:手牌总数(期望 1 —— 修前会发 2 张) */
+function dDoNdSwRead(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var mi = dItems();
+    var n = 0;
+    try {
+        var items = p.getInventory().items;
+        for (var i = 0; i < items.size(); i++) { var st = items.get(i); if (st != null && !st.isEmpty() && mi.isCardItem(st)) n += st.getCount(); }
+    } catch (e) { dSend(ctx, "AP_" + tag + "_NDSWREAD:ERR:" + dEx(e)); return 0; }
+    dSend(ctx, "AP_" + tag + "_NDSWREAD:cards=" + n + ":ok=" + (n === 1 ? 1 : 0));
+    return 1;
+}
+/** B:装怪力乱神立牌 + 16 对 MU/MT + 力场(MT 被追踪) */
+function dDoNdB(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var mi = dItems();
+    var sign = "-";
+    try { dEquip(p, "chip", null, 0); } catch (e) { }
+    try { sign = "eq:" + dEquip(p, "stand", new DItemStack(mi.LINGLING_SIGN.get()), 0); } catch (e) { sign = "ERR:" + dEx(e); }
+    dNdCleanMobs(p);
+    try { dNdSpawnPairs(p, true); } catch (e) { dSend(ctx, "AP_" + tag + "_NDB:ERR:spawn:" + dEx(e)); return 0; }
+    var f = dMakeField(p);
+    dSend(ctx, "AP_" + tag + "_NDB:sign=" + sign + ":field=" + f + ":hasSign=" + dHasSign(p));
+    return 1;
+}
+/** C:卸掉立牌后再造一组(对照组) */
+function dDoNdC(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var sign = "-";
+    try { sign = "eq:" + dEquip(p, "stand", null, 0); } catch (e) { sign = "ERR:" + dEx(e); }
+    dNdCleanMobs(p);
+    try { dNdSpawnPairs(p, true); } catch (e) { dSend(ctx, "AP_" + tag + "_NDC:ERR:spawn:" + dEx(e)); return 0; }
+    var f = dMakeField(p);
+    dSend(ctx, "AP_" + tag + "_NDC:sign=" + sign + ":field=" + f + ":hasSign=" + dHasSign(p));
+    return 1;
+}
+function dNdMeas(ctx, tag, phase) {
+    var p = ctx.source.getPlayerOrException();
+    var r = dNdMeasureBody(ctx, p);
+    dSend(ctx, "AP_" + tag + "_NDMEAS:" + phase + ":n=" + r.n + ":median=" + r.median + ":near5=" + r.near5 + ":tracked=" + r.tracked + ":marks=" + r.marksOk + ":hasSign=" + dHasSign(p) + ":eq=" + dLSM().isEquipped(p) + ":u=" + r.du + ":t=" + r.dt);
+    return 1;
+}
+function dDoNdMeasB(ctx, tag) { return dNdMeas(ctx, tag, "B"); }
+function dDoNdMeasC(ctx, tag) { return dNdMeas(ctx, tag, "C"); }
+
+/** 近战对照:用 p.attack 打同一对(MU 未追踪 / MT 被追踪),看 +5 是否出现 */
+function dNdMeasureMelee(p, pairs) {
+    var level = p.level;
+    var list = level.getEntitiesOfClass(DLivingEntity, p.getBoundingBox().inflate(90));
+    var ents = {};
+    for (var i = 0; i < list.size(); i++) {
+        var tg = list.get(i).getTags();
+        for (var k = 0; k < 16; k++) {
+            if (tg.contains("MU" + k)) ents["MU" + k] = list.get(i);
+            if (tg.contains("MT" + k)) ents["MT" + k] = list.get(i);
+        }
+    }
+    var du = [], dt = [], n = 0;
+    for (var j = 0; j < pairs; j++) {
+        var u = ents["MU" + j], b = ents["MT" + j];
+        if (u == null || b == null) continue;
+        u.setHealth(20.0); b.setHealth(20.0);
+        var hu0 = u.getHealth(), hb0 = b.getHealth();
+        try { p.attack(u); } catch (e) { return "ERR_ATTACK:" + dEx(e); }
+        try { p.attack(b); } catch (e2) { return "ERR_ATTACK2:" + dEx(e2); }
+        du.push(hu0 - u.getHealth()); dt.push(hb0 - b.getHealth());
+        n++;
+    }
+    return { n: n, du: du.join("/"), dt: dt.join("/") };
+}
+function dDoNdMelee(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var r = dNdMeasureMelee(p, 12);
+    if (typeof r === "string") { dSend(ctx, "AP_" + tag + "_NDMELEE:" + r); return 0; }
+    dSend(ctx, "AP_" + tag + "_NDMELEE:n=" + r.n + ":eq=" + dLSM().isEquipped(p) + ":u=" + r.du + ":t=" + r.dt);
+    return 1;
+}
+
 ServerEvents.commandRegistry(event => {
     var C = event.commands;
     var root = C.literal("astraldst");
@@ -467,7 +629,7 @@ ServerEvents.commandRegistry(event => {
         ["ig", dDoIg], ["igread", dDoIgRead],
         ["tc", dDoTc], ["tcread", dDoTcRead], ["tcread2", dDoTcRead2],
         ["rp", dDoRp], ["rpread", dDoRpRead], ["rpread2", dDoRpRead2], ["rpread3", dDoRpRead3],
-        ["snap", dDoSnap], ["clean", dDoClean]
+        ["snap", dDoSnap], ["clean", dDoClean], ["ndsw", dDoNdSw], ["ndswread", dDoNdSwRead], ["ndb", dDoNdB], ["ndmeasb", dDoNdMeasB], ["ndc", dDoNdC], ["ndmeasc", dDoNdMeasC], ["ndmelee", dDoNdMelee]
     ];
     for (var i = 0; i < subs.length; i++) {
         var name = subs[i][0];

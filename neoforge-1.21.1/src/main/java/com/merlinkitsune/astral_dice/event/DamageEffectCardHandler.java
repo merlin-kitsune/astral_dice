@@ -31,6 +31,19 @@ public class DamageEffectCardHandler {
     /** 真伤加成结算的**重入闸门**:真伤伤害源会再次进入本处理器(伤害事件对每一次 hurt 都会触发),
      *  若将来某个作用域 matcher 把它判为法伤就会无限递归;闸门只覆盖"本处理器自己发起的那一次真伤结算"。 */
     private static final ThreadLocal<Boolean> APPLYING_TRUE_BONUS = ThreadLocal.withInitial(() -> Boolean.FALSE);
+    /**
+     * 当前线程是否正处于「法伤加成」的**嵌套真伤段**结算中。
+     *
+     * <p>法伤加成按用户裁决走独立真伤（{@link #onLivingDamagePre} 里那句
+     * {@code target.hurt(true_damage, bonus)}），该嵌套 hurt 会**再跑一遍**整条伤害管线 ⇒
+     * 其它 {@code LivingDamageEvent} 处理器会把它当成「第二次命中」。凡是要按「一次命中只算一次」的
+     * 处理器（例：lingling 立牌对被吸附目标的 +5）都必须用本方法把这一段排除，
+     * 否则同一次攻击的加伤会被算两遍。
+     */
+    public static boolean isApplyingTrueBonus() {
+        return APPLYING_TRUE_BONUS.get();
+    }
+
 
     /** 活体书页命中的「重击」音效门槛:本次**完整伤害**(与 HUD 跳字同值) >= 该值即播 bighit。 */
     private static final int LIVING_PAGE_BIG_HIT_THRESHOLD = 8;

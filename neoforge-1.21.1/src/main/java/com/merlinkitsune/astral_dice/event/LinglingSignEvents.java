@@ -89,6 +89,9 @@ public final class LinglingSignEvents {
         if (source == null) return;
         // 防递归：本模组派生的额外伤害段不再叠加
         if (source.is(ModDamageTypes.EXTRA_DAMAGE)) return;
+        // 防二次结算(2026-10-27):法伤加成走「独立真伤段」时，那一段 hurt 会再次进入本处理器 ⇒ 不再 +5。
+        // 否则一次法伤命中在目标被强化拒止吸附时会 +10（基础命中 +5、嵌套的加成段又 +5）。
+        if (DamageEffectCardHandler.isApplyingTrueBonus()) return;
         if (!(source.getEntity() instanceof Player player)) return;
         if (!LinglingSignManager.isEquipped(player)) return;
         if (!LinglingSignManager.isTrackedByAny(target)) return;

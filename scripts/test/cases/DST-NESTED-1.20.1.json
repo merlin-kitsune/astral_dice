@@ -1,0 +1,171 @@
+{
+  "case_id": "DST-NESTED-1.20.1",
+  "title": "1.20.1 对等复验：智能手表一次击杀只发 1 张卡 / 怪力乱神被追踪 +5 在法伤嵌套真伤段只加一次（16 对统计中位数≈5，卸立牌对照≈0）",
+  "version": "1.20.1",
+  "channel": "kubejs",
+  "target": {
+    "type": "feature",
+    "ref": "nested true damage double trigger"
+  },
+  "on_fail": "continue",
+  "steps": [
+    {
+      "op": "note",
+      "text": "1.20.1 对等复验：法伤嵌套真伤段二次触发去重（与 1.21.1 用例 NESTED-DOUBLE-1.21.1 同判据口径）。\n\n覆盖两项修复（工作树 DeathTriggerGuard + DamageEffectCardHandler/LinglingSignEvents）：\n① 智能手表筹码一次击杀只发 1 张卡（修前 2 张）——判据 AP_ND_NDSWREAD:cards=1:ok=1。\n② 怪力乱神「被追踪目标 +5」在嵌套真伤段只加一次 —— 用 16 对统计：同一轮内每对「未追踪 MU」与「被追踪 MT」同一 tick 各吃一发 card_spell，取 diff = deltaT - deltaU 的中位数；修复后≈5，修复前≈10（base 本身随机，均值不可用）。\n③ 对照组：卸掉立牌后 diff 中位数≈0。\n\n1.20.1 未接入 AutoJS ⇒ 走 KubeJS 服务端探针 /astraldst 的分步命令（ndsw / ndswread / ndb / ndmeasb / ndc / ndmeasc / clean），读数走聊天回显 → latest.log 的 [CHAT] AP_... 行。命令体改动必须冷启动（stop → mt_env kubejs → launch）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/say MT_NESTED_WARMUP_1201",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[type=!player,distance=..64]",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astraldst ndsw ND",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 2000
+    },
+    {
+      "op": "inject_command",
+      "command": "/astraldst ndswread ND",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astraldst ndb ND",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 3200
+    },
+    {
+      "op": "inject_command",
+      "command": "/astraldst ndmeasb ND",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astraldst ndc ND",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 3200
+    },
+    {
+      "op": "inject_command",
+      "command": "/astraldst ndmeasc ND",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astraldst clean ND",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode survival",
+      "no_esc": true
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_ND_NDSW:eq=ok:chip=ok:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_ND_NDSWREAD:cards=1:ok=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_ND_NDB:sign=eq:ok:field=1:hasSign=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_ND_NDMEAS:B:n=16:.*tracked=1:marks=1:hasSign=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_ND_NDMEAS:B:n=16:median=[4-6]:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_ND_NDC:sign=eq:ok:field=1:hasSign=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_ND_NDMEAS:C:.*hasSign=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_ND_NDMEAS:C:.*median=0:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_ND_CLEAN:sign=eq:ok:dice=eq:ok"
+    },
+    {
+      "type": "crash"
+    }
+  ]
+}

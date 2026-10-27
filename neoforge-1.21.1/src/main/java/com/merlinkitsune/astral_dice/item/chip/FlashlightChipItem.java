@@ -63,6 +63,9 @@ public class FlashlightChipItem extends BaseChipItem {
         if (!isEquipped(killer)) return;
         if (!PartyRelations.isHostileTo(killer, target)) return;
         if (target.getMaxHealth() < MIN_KILL_MAX_HEALTH) return;
+        // 同一次死亡的第二次派发不再重复结算：法伤加成 / 额外加伤都以**嵌套 hurt** 结算，致死时
+        // 内层 die() 与外层 die() 会各派发一次 LivingDeathEvent（平台把该事件挂在 !dead 守卫之前）。
+        if (!com.merlinkitsune.astral_dice.combat.DeathTriggerGuard.claim(event.getEntity(), "flashlight")) return;
         StarLightManager.add(killer, STARLIGHT_PER_KILL);
     }
 }
