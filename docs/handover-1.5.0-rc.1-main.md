@@ -714,6 +714,40 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 6. **收尾**：`MT_CLEANUP_SAVES: PURGED 1` / `MT_CLEANUP_RESULT: OK` / `MT_STOP: OK (1s)`；`Get-CimInstance Win32_Process java.exe` 无输出（无客户端 / daemon 残留）。
 7. **无法实机（如实登记，不得当已验证）**：A3（`extra_damage` 嵌套 hurt 二次触发受击被动）需 PvP 受害者；A5 的「第三方在 LivingDamageEvent 取消」路径不可模拟（只验无上偏）；F3 需装神秘遗物+；N14「AOE 按目标逐个计」无专项判据。
 
+### 4.1ak 神秘遗物 / 神秘遗物+ 联动复测（2026-10-27 22:4x–23:3x，用户 m21935）—— 1.21.1 三项 PASS、F3 现场不可触发、1.20.1 被 SRG/Mojmap 阻塞
+
+用户原话：「1.20.1部署enigmaticlegacy+enigmaticaddons，1.21.1部署enigmaticlegacyplus。执行神秘遗物/神秘遗物+的复测」
+
+1. **部署与可行性（先给结论）**
+   - **1.21.1（NeoForge：dev 与生产同为 Mojmap）可直接吃生产 jar**：`run/1.21.1/mods` ← `enigmaticlegacyplus-1.21.1-1.1.2.jar`（7,248,130 B）+ `caelus-neoforge-7.0.1+1.21.1.jar`（50,235 B）；`enigmaticdelicacy-1.21.1-1.0.0.jar` 因硬前置 `farmersdelight` 缺失撤除（`run/1.21.1/crash-reports/crash-2026-10-27_22.57.27-fml.txt`：`Mod enigmaticdelicacy requires farmersdelight 1.2 or above`）。`--phase env` EXIT 0（`MT_WORLD: OK — 世界重建`）、`--phase launch` EXIT 0，`latest.log` 载入 `Caelus API 7.0.1+1.21.1 (caelus)` 与 `EnigmaticLegacy+ 1.21.1-1.1.2 (enigmaticlegacyplus)`（另有其自身资源告警 `Unable to load model: 'enigmaticlegacy:item/the_acknowledgment'`，无害）。
+   - **1.20.1（Forge）dev 跑不了 enigmatic 生产 jar**：`--phase launch` **EXIT 2**，`run/1.20.1/logs/latest.log` FATAL =
+     `Mixin apply for mod (unknown) failed enigmaticaddons.mixins.json:legacy.MixinPermanentItemEntity from mod (unknown) -> com.aizistral.enigmaticlegacy.entities.PermanentItemEntity: … InvalidInjectionException Critical injection failure: @Inject annotation on tickMix could not find any targets matching 'Lcom/aizistral/enigmaticlegacy/entities/PermanentItemEntity;tick()V' … Using refmap enigmaticaddons.refmap.json`。
+     `javap -p` 实测该类在生产 jar 里是 **SRG `public void m_8119_()`**（无 `tick()`）⇒ **生产 SRG jar 丢进 dev（Mojmap）时，凡 mixin 第三方类（非 MC 类）必然找不到目标**。本仓既有口径同理：`forge-1.20.1/build.gradle:249-345` 的 kubejs / rhino / architectury / collective / JEI / Embaddium / FerriteCore / Carpet 全走 `modImplementation`（由 MDG 重映射成 dev 名），AutoJS 也因此另有 `AutoJS-forge-1.20.1-1.0.0-dev.jar`。
+     **三件已从 `run/1.20.1/mods` 撤回**（当前只剩 `astral_dice-1.5.0-rc.4+forge_1.20.1.jar` / `AutoJS-forge-1.20.1-1.0.0-dev.jar` / `starengine-forge-1.20.1-1.1.0.jar`）⇒ 1.20.1 复测路径待用户裁决（§5-17）。
+
+2. **诅咒点数矩阵（1.21.1，N=180/批，靶 pillager + `astral_dice:moses_broken`，主手 iron_sword，dice=golden_dice）—— PASS**
+   - 口径：落地 = **常数项 + f × 骰点**，用**步长**判 f（常数项随主手/会话在 1↔6 之间漂移，步长稳健）。读数：`curse`（戴戒指）= `{6.8:26,7.6:25,8.4:28,9.2:36,10.0:30,10.8:35}` mean 8.951 ⇒ 步长 **0.6**；`ack`（戒指 + 副手 `the_acknowledgment`）步长 **0.8**；`twist` / `bless` / `burst`（`MISAKI_BURST`）步长 **1.0**。
+   - 全部符合 `neoforge-1.21.1/src/main/java/com/merlinkitsune/astral_dice/combat/DiceCombatEvents.java:264-277` 的 `applyCurseToDicePoints`（`cursePenalty = 0.4`，持 `the_acknowledgment` 时再 `-0.2`；`MISAKI_BURST`/`the_twist`/`the_bless` 全额免疫）。
+   - 命名空间：1.21.1 的四件是 `enigmaticlegacyplus:cursed_ring / the_acknowledgment / the_twist / the_bless`，与 `DiceCombatEvents.java:84-87` 常量一致；`enigmaticlegacy:eldritch_pan` 在本线**不存在**（那是 1.20.1 legacy 的 id），1.21.1 的锅是 `enigmaticdelicacy:voracious_pan`。
+
+3. **诅咒之剑筹码（真 id = `astral_dice:cursed_sword_chip`，`item/ModItems.java:749`）五条判据 PASS**
+   - 装备后 `bonus=0 / trig=false / eq=true`；用**攻击触发赐福**（`/effect give` 不复位 triggered）⇒ `bless=true`。
+   - 击杀 1（`player_attack by Dev from Dev`，靶 `moses_broken`、hp=1）⇒ `bonus=1 trig=true`；**同周期第二次击杀 ⇒ bonus 仍 1**（每赐福周期一次）；`MER.remove` 后再次攻击 ⇒ `trig=false`（复位）；新周期击杀 ⇒ `bonus=2`；对 **maxHealth=10** 的目标击杀 ⇒ 仍 2（`>=20` 闸门生效）。
+   - 60 次输出：`{errs:0, mean:11.433, h:{"9":11,"10":11,"11":10,"12":8,"13":9,"14":11}}` ⇒ 落地 9..14 = `6(铁剑) + 2(bonus) + 1..6(骰点)`，**加成确实进入攻击力**（`combat/DiceCombatModifiers.java:586-592`）。
+   - 卸下用脚本 `setEquippedCurio(chip,0,air)` **不清零**（仍 `bonus=2`）：属 `item/CurioSlotUtil.java:181-189` 的 `isIntentionalUnequip` 口径 + Curios 9.5.1 的 `setEquippedCurio` 不触发 `onUnequip`（坑 8），**非产品缺陷**。
+
+4. **计时器守卫 vs 烈焰之核：机制 PASS，佩戴不可构造**
+   - `enigmaticlegacyplus:blazing_core`（烈焰之核；tooltip：`Any status effects applied to you tick down twice as fast, except Molten Heart`）属 **spellstone** 槽，而 `data/enigmaticlegacyplus/curios/slots/spellstone.json` 的 `size = 0`（`scroll` 同为 0；仅 `SpellstoneTableMenu$5` 里 `grow`）⇒ 裸 dev 世界无法合法佩戴，**现场不可构造**。
+   - 改用等价构造验证守卫的加速校正分支：`effect give Dev astral_dice:deepseek_fishing 20 0`（守卫记录 end = now+400）后，再以 `1 1`（20t、amp 1）覆盖 ⇒ `gt 28126 / dur 20`；1 秒后 `gt 28164 / dur 349`（预期 350）、2 秒后 `gt 28223 / dur 290`（预期 291）⇒ **守卫把被加速的剩余时长拉回 20 t/s 时间表**（`F:/MCProject/starengine_next/common/src/main/java/com/merlinkitsune/starengine/event/EffectTimerGuard.java:163-168`），即烈焰之核「tick 翻倍」会被抵消。
+
+5. **F3（七咒倍率）—— UNVERIFIED-LIVE（不得当已验证）**
+   - `minecraft:mob_attack by pillager` 15 次落地**恒 7**，`ModAttachments.getDiceCurseRatio(p)` 前后**恒 1**；戴/不戴 `cursed_ring` 完全一样。`EnigmaticHandler.isTheCursedOne(p)` 在**未戴戒指时也为 true**（EL+ 的「被诅咒者」是世界级状态，`isCurseBoosted=false`）。
+   - 旁证：同世界 `minecraft:generic`/`magic` 曾读到 2× 放大，复测**不可复现**（玩家 `generic 2` → Δ2；牛 `generic 4` → Δ4）；EL+ jar 内 `EnigmaticEventHandler.onAttack` 的放大只在**怪物跳劈暴击**分支。⇒ 放大发生在 `LivingIncomingDamageEvent` LOWEST **之后**，`FateGuidanceCardItem.java:110-141` 的 `ratio = current/original` 捕获恒 1，`resolveMobMeleeAttack` 的 `finalDmg *= curseRatio`（`DiceCombatEvents.java:1147-1151`）**现场不可达**。接线在、通路不通，只能登记（§5-18）。
+
+6. **未测项（写清原因，不作已验证）**：饕餮之锅 melee 识别 —— 1.21.1 需 `enigmaticdelicacy`（缺 FarmersDelight）、1.20.1 被 SRG 阻塞；1.20.1 的诅咒矩阵 / 诅咒之剑 / 治愈与 F7 交叉同样整批未跑。
+
+7. **收尾**：`--phase stop --force --purge-saves` ⇒ `MT_CLEANUP_SAVES: PURGED 1` / `MT_CLEANUP_RESULT: OK` / `MT_STOP: OK (1s)`；`java.exe` 残留 7 个**全部是 Gradle daemon/worker**（按命令行判 `client-like = 0`）；`run/1.21.1/mods` 的两个临时 jar 已删回原状。本轮**未改任何源码 / 文档代码面**，只做部署 + 探针（`temp/en1.js`…`temp/en38.js`）。
+
 ## 5 遗留与欠账
 
 ### Blocker
@@ -750,6 +784,10 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 
 15. **第二次复核（run `f93916e6`）已闭环（2026-10-27，§4.1ac）**：两条 findings 处置 —— (a) 清空时序的注释改为如实表述 + 登记「同优先级更晚取消会丢来源」的已知边界（彻底兑现需降 `EventPriority.LOWEST`）；(b) `clean` 回显改为记录 `dEquip` 返回值 + 读回 `hasEffect`。**同批修掉第三处探针缺陷**：临时牌可堆叠 ⇒ 篡改要拆单张副本（否则清理会多掉一张，读数在 1/2 间跳）。双线重跑：1.20.1 `DST-P0` 13/13 + 1.21.1 三案全 PASS。**仍欠**同第 13/14 条（整合包与根 `build/libs` 仍是 rc.4 旧构建；tooltip 渲染 / 跨容器 / 死亡掉牌 / `/curios set` 四项未实机）。
 16. **智能手表同源双触发 + 击杀奖励去重 + 1.20.1 立牌 +5 挂点已闭环（2026-10-27，§4.1ad）**：`DeathTriggerGuard`（两线）+ 5 处击杀奖励闸门 + 真伤段排除「怪力乱神 +5」+ forge 挂点从 `LivingHurtEvent` 改 `LivingDamageEvent(LOWEST)`。实机：1.21.1 `NESTED-DOUBLE` PASS、1.20.1 `DST-NESTED` PASS 10/10；四目标已投放且 sha256 MATCH。**复核**：`dsh_code_review` run `439bfc3c-374c-4a02-b6bb-b8727f24f59d`（范围仅提交 `59d69ce4`）R1–R5 **全 SUPPORTED**，无返工项；两条限定 —— ① `LAST_CLAIM` 的实际上限是「最近 400 刻内的 claim 条数」（`PRUNE_THRESHOLD=4096` 只触发清理、不是硬上限），② P1 两线（26.1.2 / fabric）同名处理器仍未接闸门（按「P0 双线」范围既定）。**仍欠**：智能手表双触发的客户端侧表现（发卡动画 / 提示）未单独取证。
+
+17. **神秘遗物 1.20.1 复测路径待用户裁决（2026-10-27，§4.1ak）**：证据链已闭环 —— 生产 jar 是 SRG（`javap -p` 见 `m_8119_`），forge dev 是 Mojmap，因此 `enigmaticaddons` 的 mixin 在 dev 里 `could not find any targets matching '…tick()V'`、`--phase launch` EXIT 2。两条路径任选：(a) 给三件（`EnigmaticLegacy-2.30.1` / `enigmaticaddons-1.2.7` / `caelus-forge-3.2.0+1.20.1`）在 `forge-1.20.1/build.gradle` 加 `modImplementation`（测试用依赖，MDG 会重映射成 dev 名；属**测试资产改动**，须用户放行）；(b) 在真实整合包（生产 SRG 环境 = `D:\.minecraft\versions\1.20.1-Forge 模组测试`）里跑并接 AutoJS。**未裁决前 1.20.1 的神秘遗物联动一律视为未验证。**
+
+18. **神秘遗物+ 两处现场不可验证（2026-10-27，§4.1ak）**：(a) **F3 七咒倍率** —— `ratio` 捕获（`FateGuidanceCardItem.java:110-141`，LOWEST）读到的恒为 1，因为 EL+ 的放大发生在更晚的事件/分支；要真验需改变捕获点（如改挂 `LivingDamageEvent`）或让 EL+ 在 LOWEST 之前放大，属**判据设计问题**而非代码缺陷，先登记不返工；(b) **饕餮之锅** —— 1.21.1 的锅在 `enigmaticdelicacy`（缺 FarmersDelight）、1.20.1 被 SRG 阻塞 ⇒ 两条线的锅 melee 识别（`DiceCombatEvents.java:2039-2041` 强制武器口径）均**未验证**。
 
 ### Minor
 
@@ -841,6 +879,12 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 33. **整行 CJK 字符串做脚本锚点会静默失配（2026-10-27 实测，§4.1ai）**：用 `docs/features/attack-damage-chain-audit.md` §7.9.3 的表格整行当 python 锚点，匹配 0 次（全角括号 / 箭头 / 空格差异肉眼不可见）⇒ 表格与列表行一律改用**行首前缀**（`startswith`）定位 + 命中数断言；同理 `tools.read` 的 `offset` 超过文件行数会直接抛错（本轮 forge `LinglingSignEvents.java` 删完处理器只剩 82 行）。
 
 34. **语义改了，旧用例可能变假绿（2026-10-27 实测，§4.1aj）**：MELEE-06 把「+5」限定骰战后，两条既有用例的测量段仍在打 `astral_dice:card_spell`（法伤）⇒ 被吸附靶与普通靶都只掉 1、`diff` 恒 0 ⇒ B 段「median 4–6」红、C 段「median ≈0」绿，`near5` 同时失去意义。教训：**改判据语义的批次必须回看既有用例/探针的「量具」是否还分辨得出**（本例量具改成 `minecraft:player_attack` + 主手剑 + `DICE_BLESSING` + 每轮 `invulnerableTime = 0`）；1.20.1 探针改动后照例 `--phase stop --force` → `mt_env.ps1 kubejs --version 1.20.1` → `--phase launch` 冷启动。
+
+35. **Rhino 里 `ItemStack.is(Item)` 是歧义调用（2026-10-27 实测）**：`stack.is(core)` 直接抛 `EvaluatorException: The choice of Java method net.minecraft.world.item.ItemStack.is matching JavaScript argument types (…BlazingCore) is ambiguous; candidate methods are: boolean is(net.minecraft.world.item.Item) / boolean is(net.minecraft.core.HolderSet)` ⇒ 探针里一律改用 `String(stack.getItem()) === 'ns:id'` 比较；同理 `BuiltInRegistries.ITEM.get(...)` 用错 id 时返回 air 而**不报错**（本轮 `cursed_sword` 应为 `cursed_sword_chip`，导致整份探针静默全灭）—— 装备类探针**先回读槽位内容**再往下跑。
+
+36. **`ServerLevel.getGameTime()` 在 Rhino 里不可用（2026-10-27 实测）**：`level.getGameTime()` 抛 `TypeError: Cannot find function getGameTime in object ServerLevel[testworld]` ⇒ 需要 tick 时钟一律用 `server.getTickCount()`（`ServerLifecycleHooks.getCurrentServer()`）。
+
+37. **第三方「生产 jar 丢进 forge dev」＝ mixin 必崩（2026-10-27 实测，§4.1ak）**：Forge 1.20.1 生产是 SRG、dev 是 Mojmap ⇒ 若该模组的 mixin 目标是**第三方类**（refmap 不覆盖），`@Inject` 的 `method` 在生产 jar 里是 `m_xxxxx_` 名字，dev 里找不到 ⇒ `InvalidInjectionException` + 整局起不来。判据不是「能不能加载」，而是 `javap -p <生产 jar 内的目标类>` 看方法名是否 SRG；正解是走 `modImplementation` 让 MDG 重映射（本仓 kubejs/rhino/JEI 等既有先例）。
 
 ## 7 关键路径（命令）
 
