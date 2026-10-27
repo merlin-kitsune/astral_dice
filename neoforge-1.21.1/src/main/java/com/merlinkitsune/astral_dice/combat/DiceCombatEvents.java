@@ -295,9 +295,9 @@ public class DiceCombatEvents {
             com.merlinkitsune.astral_dice.item.chip.BufferShieldChipItem.onHurt(targetPlayer, event.getSource(), event.getNewDamage());
         }
 
-        // AOE(顺劈/溅射)波及的目标不进入骰战结算,避免二次吃到完整骰战;
         // 反击链中的伤害不进入骰战结算(已按反击公式自算),同时结构性阻止反击递归
-        if (isInternalAoe() || counterDepth > 0) return;
+        // (AOE 闸门已下移到「生物近战 / 玩家攻击」分支之前,见下方注释)
+        if (counterDepth > 0) return;
 
         // 白泽赐福 / 降神:倒计时由「被施加者实施**一次有效攻击**」启动(2026-09-28 用户裁决)。
         // 判据 = **任意攻击行为(近战或远程)且必须命中目标** —— 本事件到达本身即"命中"(伤害正在落地),
@@ -321,6 +321,11 @@ public class DiceCombatEvents {
                 && !(target instanceof Player)) {
             com.merlinkitsune.astral_dice.effect.ConcealmentEffect.breakOnAttack(concealBreaker);
         }
+        // AOE(顺劈/溅射/法伤波及)波及的目标**只**拦骰战结算,不再抵销「攻击行为」本身
+        // (2026-10-27 用户裁决 N14:AOE 命中也算) ⇒ 上面的赐福/降神倒计时启动与隐匿解除
+        // 已提到本闸门**之前**执行;此处仅保证被波及目标不二次吃到完整骰战。
+        if (isInternalAoe()) return;
+
         if (!(directEntity instanceof Player player)) {
             // 生物近战攻击玩家:走**独立**骰战路径(2026-09-26 新增)。
             // ⚠️ 该路径不进入下方玩家攻击逻辑(DiceCombatContext 要求 Player 攻击者),

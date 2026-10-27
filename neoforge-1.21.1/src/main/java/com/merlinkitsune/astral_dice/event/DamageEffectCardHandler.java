@@ -8,7 +8,10 @@ import com.merlinkitsune.astral_dice.combat.SpellDamageContext;
 import com.merlinkitsune.astral_dice.combat.SpellDamageModifier;
 import com.merlinkitsune.astral_dice.combat.DiceCombatEvents;
 import com.merlinkitsune.astral_dice.combat.SpellDamageRegistry;
+import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.damagesource.CombatRules;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
@@ -77,6 +80,35 @@ public class DamageEffectCardHandler {
     // 取消类处理器(HannaSignItem / NancyLuSignItem / NewSignEvents)都在 NORMAL 或更晚 ⇒ 它们取消时
     // 本方法已跑完;取消语义是 hurt 直接 return false(LivingEntity.java:1153),该击不落地任何伤害
     // ⇒ 折叠金额不生效;**但 onHit 副作用本方法已执行**(与上文 ④ 同源,已知残余)。
+
+    /** 折叠时为「加成绕过护甲」做预补偿(2026-10-27 用户裁决:法伤加成必须绕过护甲)。
+     *  <p>折叠把加成并进本体,而护甲对整条伤害实例统一结算;若本体源要吃护甲,加成也会被削。
+     *  这里在护甲**之前**求解 x,使平台的护甲公式在 x 上得到「本体护甲后值 + bonus」 ⇒ 护甲后的
+     *  总量 = 本体护甲后值 + bonus,加成等效绕过护甲;抗性/保护/吸收/受击倍率仍对整段作用**一次**。
+     *  <p>源自身带 {@code bypasses_armor}(本仓全部 {@code astral_dice:card_spell} 法伤都在内)或
+     *  目标没有护甲时直接相加、不做补偿。求解用二分:护甲公式对伤害单调不减(f(x) >= 0.2x),
+     *  故以 [0, 8*want] 为区间迭代 40 次足够收敛到 float 精度。
+     */
+    private static float foldBonusBypassingArmor(LivingEntity target, DamageSource source, float base, double bonus) {
+        if (bonus <= 0.0) return base;
+        if (source.is(DamageTypeTags.BYPASSES_ARMOR)) return (float) (base + bonus);
+        float armor = (float) target.getArmorValue();
+        if (armor <= 0.0F) return (float) (base + bonus);
+        float toughness = (float) target.getAttributeValue(Attributes.ARMOR_TOUGHNESS);
+        float want = CombatRules.getDamageAfterAbsorb(target, base, source, armor, toughness) + (float) bonus;
+        float lo = 0.0F;
+        float hi = want * 8.0F;
+        for (int i = 0; i < 40; i++) {
+            float mid = (lo + hi) * 0.5F;
+            if (CombatRules.getDamageAfterAbsorb(target, mid, source, armor, toughness) < want) {
+                lo = mid;
+            } else {
+                hi = mid;
+            }
+        }
+        return hi;
+    }
+
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onLivingIncomingDamagePre(LivingIncomingDamageEvent event) {
         LivingEntity target = event.getEntity();
@@ -140,7 +172,12 @@ public class DamageEffectCardHandler {
             // (箭矢 arrow / 投掷物 / 其它模组法术),聚合器的类型回落认不出来。
             // 折叠后本体与加成是同一个 DamageSource / 同一个事件 ⇒ 只此一处登记,单 SPELL 槽。
             DamageNumberAggregator.tag(target, source, DamageNumberAggregator.Group.SPELL);
-            event.setAmount(event.getAmount() + (float) bonus);
+            // 2026-10-27 用户裁决(补充):**法伤加成必须绕过护甲** —— 与旧实现那一段独立
+            // true_damage(在 bypasses_armor 内)一致。折叠后加成与本体共用一个伤害源,若该源要吃护甲
+            // (近战 / 箭矢 / 部分第三方模组的法术类型),直接相加会让加成也被护甲削。
+            // 故在护甲之前做预补偿:求 x 使 armor(x) = armor(base) + bonus ⇒ 护甲后总量
+            // = 本体护甲后值 + bonus(加成等效绕过护甲),而抗性 / 保护 / 吸收 / 受击倍率仍整段只作用一次。
+            event.setAmount(foldBonusBypassingArmor(target, source, event.getAmount(), bonus));
         }
 
         // 命中副作用(施加标记/定向爆破 AOE 等)

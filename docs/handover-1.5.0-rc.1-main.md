@@ -44,6 +44,8 @@
 29. **攻击 / 受击链路排查 + 三批修复（2026-10-27 18:28–19:2x，§4.1ae）**：只读排查 N1–N14 后派四路子代理 —— A 修 1.20.1 骰战吸收/护盾口径（新增 `settleDiceDamage` 唯一出口）、B 把事件牌惩罚伤害从 `setHealth`/无来源伤害改走正常管线（`unreducible_damage` + 触发者归因）、C 给 `dice_damage` 补 `bypasses_cooldown` 并统一 Papara 回血基数、D 只读复核两端法伤链。**Lead 否掉 D 的一条建议**（「forge 双扣吸收须补偿」经查 `setAbsorptionAmount` 已把负值钳 0，补偿反而白送吸收）。双线 `:classes` EXIT 0；**未实机**；待裁决 10 项见审计正本 §7.4。
 
 30. **法伤加成折叠为单次结算（方案 A）+ neo→forge 移植 mapping（2026-10-27 19:3x–20:2x，§4.1af）**：折叠点最终落在**护甲之前**（neo `LivingIncomingDamageEvent` @HIGHEST / forge `LivingHurtEvent` @HIGHEST），加成与本体同管道且只结算一次；乘性因子**仅对本体源自身不吃护甲的情形**（P0 全部 `astral_dice:card_spell` 法伤）与旧实现一致（裸 ×1.0 / 保护IV+抗性II ×0.216 / 保护IV+抗性IV ×0.072），本体源不在 `bypasses_armor` 内时（近战 / 箭矢 / 部分第三方法术类型）加成改为吃护甲 ⇒ 相对旧实现下降（护甲20/韧性8 约 ×0.30），属预期语义变更，第一轮「折在 `LivingDamageEvent`」会让加成放大 4.63×–13.9× 已订正。同批删除 `isApplyingTrueBonus()` 三处闸门（+5 旧口径订正：从未 +10），并产出 `docs/features/neo-to-forge-porting-mapping.md`（后续双线先做 neo、再按 mapping 落 forge）。双线 `:classes` 通过 + javap 类面核对；**未实机、未重出 jar**。
+31. **折叠批三条裁决落地（2026-10-27 20:5x，§4.1ag）**：N14 AOE 命中也算攻击行为（两线副作用块提到 AOE 闸门之前，反击链仍早退）；法伤加成**必须绕过护甲** ⇒ 两线折叠处改调 `foldBonusBypassingArmor(...)`（护甲前二分预补偿，源带 `bypasses_armor` 或护甲 0 时直接相加）⇒ 数值回到与旧 `true_damage` 段一致；连击保留 cooldown。双线 `:classes` EXIT 0，**未实机、未重出 jar**。
+
 ## 1 环境与路径
 
 路径与命令**沿用 pre.5 正本 §1**（Windows 原生：git bash 的 `git`、`pwsh -NoProfile -File`、`JAVA_HOME=C:\Program Files\Zulu\zulu-21`、工作树直接 `gradlew.bat`、测试台 `scripts\test\mt.ps1`）。两条补充：
@@ -652,6 +654,14 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 6. **mapping 文档**：`docs/features/neo-to-forge-porting-mapping.md`（602 行 / 62,765 B；14 节 + 附录 A/B，36 张表、每节末「对齐检查清单」，陷阱 T-01…T-18、未验证 U-01…U-10）。三条头号差异：forge 改伤害金额只能在 `settleDiceDamage` 出口（`LivingHurtEvent` 段的钳制会被随后 `setAmount(终值)` 整段丢掉）；neo `MobEffectEvent.Expired` 可取消而 forge 不可；`ItemStack#consume` / `isSameItemSameComponents` / `DeferredHolder` 在 forge 都不存在。
 7. **判据**：双线 `:classes` `BUILD SUCCESSFUL`（8 tasks up-to-date）；javap 实测两线 `DamageEffectCardHandler` 类面只剩 `LIVING_PAGE_BIG_HIT_THRESHOLD` + `onLivingIncomingDamagePre`(neo)/`onLivingHurtPre`(forge) + `onLivingDamageSound`，`setAmount` 各 1 处 / `hurt` 0 处 / `trueDamage` 0 处；`isApplyingTrueBonus` 在 P0 两线只剩注释（P1 两线仍是活代码）；两线 16 个改动文件均 CRLF。**未实机、未重出 jar、四目标未投放**。
 
+### 4.1ag 折叠批三条裁决落地：AOE 计攻击行为 + 加成绕过护甲 + 连击保留 cooldown（2026-10-27 20:5x）—— 双线 `:classes` 通过，**未实机**
+
+1. **N14（AOE 命中也算）**：两线 `combat/DiceCombatEvents.java` 拆开原合并闸门 —— `if (counterDepth > 0) return;` 留在原位（反击链自算伤害仍整段早退），`if (isInternalAoe()) return;` 下移到「生物近战 / 玩家攻击」分支之前（forge :521 → :545 附近，neo :300 → :324 附近）⇒ 赐福 / 降神倒计时启动与隐匿解除对 AOE 的**每个被命中目标**都生效（按目标逐个计），骰战结算仍只对主目标发生。
+2. **法伤加成绕过护甲**：两线 `event/DamageEffectCardHandler.java` 新增 `foldBonusBypassingArmor(...)`，折叠行改为 `event.setAmount(foldBonusBypassingArmor(target, source, event.getAmount(), bonus));`。规则：源带 `bypasses_armor`（本仓全部 `astral_dice:card_spell`）或护甲 0 ⇒ 直接相加；否则护甲前二分求 x 使 `armor(x) = armor(base) + bonus`（`[0, 8*want]`，40 次）⇒ 加成等效绕过护甲，抗性 / 保护 / 吸收 / 受击倍率仍整段只算一次。数值回到与旧 `true_damage` 段一致（不再有「本体吃护甲时加成也吃」的下降）。
+3. **连击**：保留 cooldown 现状（不给加成单独 `bypasses_cooldown`），被无敌帧吞掉时加成与本体一起吞。
+
+**判据**：`gradlew.bat :neoforge-1.21.1:classes :forge-1.20.1:classes` **EXIT 0 / BUILD SUCCESSFUL in 3s / 8 actionable tasks: 2 executed, 6 up-to-date**；两线改动文件 CRLF、bareLF 0。**仍欠**：① 重出 jar + 四目标投放；② 实机验证 —— AOE 命中 N 目标时赐福倒计时只启动一次但隐匿对每个目标都解除、护甲 20 目标上加成仍按全额落地（对比无护甲目标的差值 = bonus）、连击被吞的可接受性；③ P1 两线未折叠。
+
 ## 5 遗留与欠账
 
 ### Blocker
@@ -721,6 +731,8 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 
 19. **折叠批独立复核闭环（2026-10-27，§4.1af / §7.7）**：`dsh_code_review` 因范围过大（1 提交 + 23 文件）600s 超时 ⇒ 改两路只读复核（一次性 `subagent` + teammate `verify-opt-a`），R1–R7 结论一致。**已落地两条必须项**：① R5 窄风险 —— 两线 `combat/DiceCombatEvents.java` 近战闸门前加 `if (SpellDamageRegistry.isSpellDamage(source, directEntity)) return;`（拦第三方法术源 direct=玩家时被骰战覆盖）；② R6 口径订正 —— 折叠后加成随**本体源**标签走，`astral_dice:card_spell` 路径与旧实现逐位一致，本体源要吃护甲时加成改为同吃（护甲20/韧性8 约 ×0.30，**预期语义变更**），初稿「乘性因子完全不变」已按 R6 订正（audit §7.6 / option-a §7 / §0 第 30 条 / 本文件 §4.1af / CHANGELOG 双份）。连带订正 R4 文档口径（mapping `:56/:106/:472`、verification `:284/:459/:509` 标废止）与 R1/R2 注释（@HIGHEST vs @HIGH、forge 两个互斥派发点、两线四点不对称）。**仍欠**：① 重出 jar + 四目标投放 + 实机；② 两个待裁决点 —— N14（AOE 计数口径）、「加成随本体吃护甲 / 连击被无敌帧吞」是否接受；③ P1 两线未折叠。
 
+
+21. **折叠批三条裁决已落地、待实机（2026-10-27 20:5x，§4.1ag）**：N14「AOE 命中也算」⇒ 两线 `DiceCombatEvents` 把赐福/降神倒计时与隐匿解除提到 AOE 闸门之前（反击链 `counterDepth` 仍早退）；「加成必须绕过护甲」⇒ 两线 `DamageEffectCardHandler.foldBonusBypassingArmor(...)` 在护甲前预补偿（源带 `bypasses_armor` 或护甲 0 时直接相加），数值回到与旧 `true_damage` 段一致；「连击保留 cooldown」⇒ 不加 `bypasses_cooldown`。双线 `:classes` EXIT 0，**未实机、未重出 jar**。
 ## 6 坑（本批新增，后续继续追加）
 
 1. **`git show HEAD:<file>` 是 LF**（仓库存 LF、工作树 CRLF 由 autocrlf 转换）⇒ 行级改写先 `replace(/\r\n/g,"\n").split("\n")` 再 `join("\r\n")`。

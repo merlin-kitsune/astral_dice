@@ -386,3 +386,13 @@ combat/DiceCombatEvents.java:305-317 赐福/降神倒计时启动、秘密侦探
 **既存不对称（非本批）**：forge `event/LinglingSignEvents.java:125` 有 `DiceCombatEvents.compensateAbsorption(target, event.getAmount())`，neo 无对应（因 neo 折叠点在其之前）。
 
 **范围**：本批只覆盖 P0 双线。P1 `fabric-1.20.1` / `neoforge-26.1.2` 仍是「双段 hurt + 活闸门」⇒ 「全仓单次结算」不成立。**未实机**。
+
+### 7.8 三条裁决落地（2026-10-27 20:5x，用户裁决）
+
+| 裁决 | 落地 |
+| --- | --- |
+| **N14：AOE 命中也算攻击行为** | 两线 `combat/DiceCombatEvents.java` 把「赐福 / 降神倒计时启动」与「秘密侦探隐匿解除」两个副作用块提到 AOE 闸门**之前**：原先合并的 `if (isInternalAoe() || counterDepth > 0) return;` 拆成两段 —— `counterDepth > 0`（反击链自算伤害）仍在原位置整段早退，`isInternalAoe()` 则下移到「生物近战 / 玩家攻击」分支之前（forge 现 :521 与 :545 附近，neo :300 与 :324 附近）。效果：AOE 的每个被命中目标都算一次攻击行为（按目标逐个计），但骰战结算仍只对主目标发生。 |
+| **法伤加成必须绕过护甲（特殊处理）** | 两线 `event/DamageEffectCardHandler.java` 新增 `foldBonusBypassingArmor(target, source, base, bonus)`：源自身带 `bypasses_armor`（本仓全部 `astral_dice:card_spell` 法伤都在内）或目标护甲为 0 时直接 `base + bonus`；否则在护甲**之前**二分求解 x 使 `CombatRules.getDamageAfterAbsorb(x) = getDamageAfterAbsorb(base) + bonus`（区间 `[0, 8*want]`，40 次迭代）⇒ 护甲之后的总量 = 本体护甲后值 + bonus，**加成等效绕过护甲**，而抗性 / 保护 / 吸收 / 受击倍率仍对整段只作用一次。数值口径因此回到与旧 `true_damage` 段一致（旧段也只绕过护甲、吃抗性与保护）⇒ §7.6 数值口径 (b) 的「预期语义变更」已被本条取代（不再下降）。 |
+| **连击：保留 cooldown 现状** | 不给加成单独加 `bypasses_cooldown`；连击时加成与本体同命（被无敌帧吞掉即一起吞）。§7.7 登记的「neo 参与差额分摊 / forge 整段丢弃」保留为已知差异。 |
+
+**判据**：双线 `:classes` EXIT 0（本批 3s / 2 executed）；两线 helper 出现在 `DamageEffectCardHandler` 内、折叠行改为调用它；AOE 顺序可由源码顺序核对（副作用块行号 < `isInternalAoe()` 行号）。**未实机**。
