@@ -664,7 +664,7 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 14. **复核 findings 已闭环（2026-10-27，§4.1ab）**：`dsh_code_review` run `1e6e1c84` 的 3 条问题全部落地并双线重跑 —— 清空时序（改为结算后清空）、1.20.1 D2 恒绿（补真·女王特权 + 判据 `n>=2`）、探针无收尾（新增 `/astraldst clean`）。**仍欠**：本批新产物（neo `2,595,454 B` / forge prod `2,640,648 B` / dev named `2,611,172 B`）**只投了 `run/<线>/mods`**，两个 P0 整合包与根 `build/libs` 仍是 rc.4 旧构建；tooltip「所有者：」行渲染 / 跨容器搬运 / 死亡掉牌 / `/curios set` 清槽四项依旧未实机（同第 13 条）。
 
 15. **第二次复核（run `f93916e6`）已闭环（2026-10-27，§4.1ac）**：两条 findings 处置 —— (a) 清空时序的注释改为如实表述 + 登记「同优先级更晚取消会丢来源」的已知边界（彻底兑现需降 `EventPriority.LOWEST`）；(b) `clean` 回显改为记录 `dEquip` 返回值 + 读回 `hasEffect`。**同批修掉第三处探针缺陷**：临时牌可堆叠 ⇒ 篡改要拆单张副本（否则清理会多掉一张，读数在 1/2 间跳）。双线重跑：1.20.1 `DST-P0` 13/13 + 1.21.1 三案全 PASS。**仍欠**同第 13/14 条（整合包与根 `build/libs` 仍是 rc.4 旧构建；tooltip 渲染 / 跨容器 / 死亡掉牌 / `/curios set` 四项未实机）。
-16. **智能手表同源双触发 + 击杀奖励去重 + 1.20.1 立牌 +5 挂点已闭环（2026-10-27，§4.1ad）**：`DeathTriggerGuard`（两线）+ 5 处击杀奖励闸门 + 真伤段排除「怪力乱神 +5」+ forge 挂点从 `LivingHurtEvent` 改 `LivingDamageEvent(LOWEST)`。实机：1.21.1 `NESTED-DOUBLE` PASS、1.20.1 `DST-NESTED` PASS 10/10；四目标已投放且 sha256 MATCH。**仍欠**：本批未做 `dsh_code_review` 独立复核（下轮补）；智能手表双触发的客户端侧表现（发卡动画 / 提示）未单独取证。
+16. **智能手表同源双触发 + 击杀奖励去重 + 1.20.1 立牌 +5 挂点已闭环（2026-10-27，§4.1ad）**：`DeathTriggerGuard`（两线）+ 5 处击杀奖励闸门 + 真伤段排除「怪力乱神 +5」+ forge 挂点从 `LivingHurtEvent` 改 `LivingDamageEvent(LOWEST)`。实机：1.21.1 `NESTED-DOUBLE` PASS、1.20.1 `DST-NESTED` PASS 10/10；四目标已投放且 sha256 MATCH。**复核**：`dsh_code_review` run `439bfc3c-374c-4a02-b6bb-b8727f24f59d`（范围仅提交 `59d69ce4`）R1–R5 **全 SUPPORTED**，无返工项；两条限定 —— ① `LAST_CLAIM` 的实际上限是「最近 400 刻内的 claim 条数」（`PRUNE_THRESHOLD=4096` 只触发清理、不是硬上限），② P1 两线（26.1.2 / fabric）同名处理器仍未接闸门（按「P0 双线」范围既定）。**仍欠**：智能手表双触发的客户端侧表现（发卡动画 / 提示）未单独取证。
 
 ### Minor
 
