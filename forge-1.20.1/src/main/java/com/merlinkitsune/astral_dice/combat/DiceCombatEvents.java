@@ -47,10 +47,14 @@ import net.minecraft.tags.DamageTypeTags;
 import net.minecraftforge.event.entity.living.LivingAttackEvent;
 import net.minecraftforge.event.entity.living.LivingChangeTargetEvent;
 import net.minecraftforge.event.entity.living.LivingDamageEvent;
+import net.minecraftforge.event.entity.living.LivingHurtEvent;
 import net.minecraftforge.event.entity.living.MobEffectEvent;
 import net.minecraftforge.event.TickEvent;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Map;
+import java.util.WeakHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -268,6 +272,120 @@ public class DiceCombatEvents {
             cursePenalty = Math.max(0, cursePenalty - 0.2);
         }
         return points * (1 - cursePenalty);
+    }
+
+    // ============================================================================================
+    // N1 + N2(审计 docs/features/attack-damage-chain-audit.md §2 不变量②③):受击侧吸收按**骰战终值**
+    // 结算且**只扣一次**;鼠鼠护盾按剩余护盾钳制终值。两条写终值路径(玩家攻击 / 生物近战)共用
+    // settleDiceDamage —— 将来任何新的写终值路径也必须走它,否则吸收会被平台双扣。
+    // --------------------------------------------------------------------------------------------
+    // 平台(1.20.1)在 actuallyHurt 里对吸收做了**两段**扣减(forge-1.20.1-47.4.10-sources.jar,
+    // net/minecraft/world/entity/LivingEntity.java):
+    //   :1669-1670  P = 护甲/抗性/保护后的平台数值;c1 = min(P, A0);setAbsorptionAmount(A0 - c1)
+    //   :1680       f1 = ForgeHooks.onLivingDamage(...)   <- 骰战在本事件里用终值 F 覆盖式 setAmount
+    //   :1684       setAbsorptionAmount(getAbsorptionAmount() - f1)  <- 又按(可能被改过的)f1 扣一次
+    // 原版路径之所以不出错:平台 f1 = max(P - A0, 0),f1 > 0 时吸收在 :1670 已扣到 0,第二段被
+    // setAbsorptionAmount 对负值的钳位吞掉(吸收不会变负)。骰战覆盖 f1 = F 后,第二段就会**再吃一遍
+    // 吸收** => 吸收双扣、红心反而少扣。故本类显式记账:
+    //   A0 = 护甲前(:1665 LivingHurtEvent,平台尚未扣吸收)的目标吸收余额
+    //   F  = 骰战终值(已含 N1 护盾钳制 / N8 弱印记)
+    //   absorbedShould = min(F, A0)   <- 本次**应当**被吸收吃掉的量
+    //   H = F - absorbedShould        <- 应当落红心的量
+    //   写回 setAbsorptionAmount(A0 - absorbedShould + H) 且 setAmount(H)
+    //   => 平台 :1684 再扣 H => 终态吸收 = A0 - absorbedShould (正确);红心 = H (正确)
+    //   => H == 0 时平台 :1681 整个分支跳过(不扣血也不再扣吸收),终态同样正确
+    // 已知限制(本批不修):本模组 LOWEST 处理器(安全气囊归零 / 磨刀石 -N / 立牌 -N)可能在
+    //    本处之后**再改金额** => 平台 :1684 的扣减量 != H => 吸收终值偏移 |H - f1最终|。
+    //    1.20.1 没有 LivingDamageEvent.Post,同优先级内的监听顺序也不可依赖,故不在此补偿;
+    //    偏移方向是"少消耗吸收 / 多留吸收",不会让玩家多吃红心,记入审计待后续批次。
+    private static final Map<LivingEntity, PreHurtSnapshot> PRE_HURT_ABSORPTION =
+            Collections.synchronizedMap(new WeakHashMap<>());
+
+    /** N2 受击前快照:护甲前(平台 L1665 LivingHurtEvent,尚未扣吸收)的**吸收余额**与**鼠鼠护盾剩余**。
+     *  <p>为什么护盾也必须在这里取:平台在 :1669-1670 就按平台数值扣掉了一段吸收;等 :1680
+     *  (LivingDamageEvent)再读 {@code remainingShieldAbsorption} 时,只要平台数值 >= 护盾,读到的就是 0。
+     *  那样 N1 的钳制会静默失效 —— 骰战覆盖金额后超出的部分会漏到红心,破坏 2026-09-24 的裁决
+     *  「护盾免疫单次超过黄心的伤害(不会影响红心)」。受击前取才与 1.21.1(LivingDamageEvent.Pre,
+     *  吸收之前)同口径。 */
+    private static final class PreHurtSnapshot {
+        final float absorption;
+        final float shield;
+
+        PreHurtSnapshot(float absorption, float shield) {
+            this.absorption = absorption;
+            this.shield = shield;
+        }
+    }
+
+    /** N8:虚弱印记受击侧倍率(审计 §2 不变量③:受击方乘算必须在**吸收之前**,等价 1.21.1 的
+     *  {@code LivingDamageEvent.Pre})。原先散落两处 1.10f 字面量(骰战并入 + LOW 处理器),抽成
+     *  同一常量后两条路径同源,避免"并入一份、LOW 再乘一份"的漂移。 */
+    private static final float WEAK_MARK_DAMAGE_MULTIPLIER = 1.10f;
+
+    /** N2 记录点:护甲前、平台扣吸收(L1669)之前把吸收余额记进 {@link #PRE_HURT_ABSORPTION}。
+     *  <p>用 HIGHEST:本事件里 RenShieldManager#onRenShieldAbsorb(LOWEST)只钳**金额**、不动吸收
+     *  余额,故记在它前后数值相同;取 HIGHEST 是为了贴近 L1665 的派发起点、尽量避开其它监听器副作用。
+     *  <p>容器选型:弱键 => 实体卸载后条目可回收(不随实体数无限增长);同键覆盖写 => 一次受击只有一条
+     *  生效的 Hurt 实例;若该实例最终没有派发 LivingDamageEvent(金额被别的监听器清成 <= 0),条目会被
+     *  下一次受击覆盖,且取用点绝不会把它算到别的实体头上。 */
+    @SubscribeEvent(priority = EventPriority.HIGHEST)
+    public static void onLivingHurtRecordAbsorption(LivingHurtEvent event) {
+        LivingEntity target = event.getEntity();
+        if (target.level().isClientSide()) return;
+        // N1:护盾剩余与吸收余额同批快照(见 PreHurtSnapshot);非玩家目标没有鼠鼠护盾,记 0。
+        float shield = target instanceof Player defender
+                ? RenShieldManager.remainingShieldAbsorption(defender) : 0.0F;
+        PRE_HURT_ABSORPTION.put(target, new PreHurtSnapshot(target.getAbsorptionAmount(), shield));
+    }
+
+    /** N2 取用点:**立刻**摘走并移除登记 —— 同一 tick 内同一实体可能有嵌套/多段伤害实例
+     *  (额外加伤 / 狂暴反噬 / 反击 / 溅射),先摘后算可保证各实例互不串味。 */
+    private static PreHurtSnapshot consumePreHurtAbsorption(LivingEntity target) {
+        PreHurtSnapshot recorded = PRE_HURT_ABSORPTION.remove(target);
+        if (recorded != null) return recorded;
+        // 兜底:理论上不会走到(能派发 LivingDamageEvent 说明走过 ForgeHooks.onLivingHurt)。
+        // 只有绕过 hurt() 的同 tick 路径(其它模组直接改血量/重复派发)才可能取不到登记;那时平台已扣过
+        // 一段吸收,取当前值 => A0 偏小、护盾可能已被打空 => 结果偏「少消耗吸收」,绝不双扣、绝不多掉红心。
+        float shield = target instanceof Player defender
+                ? RenShieldManager.remainingShieldAbsorption(defender) : 0.0F;
+        return new PreHurtSnapshot(target.getAbsorptionAmount(), shield);
+    }
+
+    /** N1 + N2 唯一出口:把骰战终值落到平台上(护盾钳制 => 吸收按终值只扣一次)。
+     *
+     *  <p><b>N1 鼠鼠护盾</b>:按「剩余护盾」钳制终值,等价 1.21.1 侧
+     *  {@code RenShieldManager#onRenShieldAbsorb}(LivingDamageEvent.Pre)的
+     *  {@code if (damage <= remaining) return; setNewDamage(remaining);}。
+     *  为什么必须在这里补:本线 RenShieldManager 只能挂 LivingHurtEvent(LOWEST,护甲前),
+     *  它钳的是**平台数值**;骰战随后用自算终值覆盖式 setAmount => 那次钳制被整段丢弃(审计 N1)。
+     *  shield 取**受击前**值(见 PreHurtSnapshot),此时 shield = A0 - baseline <= A0;钳制后 F <= shield
+     *  => absorbedShould = F、H = 0 => 护盾完整吃掉这一击(与 neo 同口径)。
+     *
+     *  <p><b>N2 吸收结算</b>:推导见 {@link #PRE_HURT_ABSORPTION} 上方注释。 */
+    private static void settleDiceDamage(LivingEntity target, LivingDamageEvent event, float finalDamage) {
+        float damage = finalDamage;
+        // N1+N2:先摘快照(受击前吸收余额 + 受击前护盾剩余)再算 —— 后续额外加伤/狂暴反噬会再 hurt 一轮,
+        // 先摘后算保证本轮与嵌套轮各用各的快照,不串味。
+        PreHurtSnapshot snapshot = consumePreHurtAbsorption(target);
+        // N1:剩余护盾钳制(护盾余额与基线的口径归 RenShieldManager,此处只消费受击前快照)
+        if (snapshot.shield > 0.0F && damage > snapshot.shield) {
+            damage = snapshot.shield;
+        }
+        // N2:A0 = 平台扣吸收**前**的吸收余额
+        float absorptionBefore = snapshot.absorption;
+        if (absorptionBefore <= 0.0F) {
+            // A0 == 0:本击没有吸收可吃 => **完全跳过**吸收补偿,只写终值。
+            // 不能在这里顺手 setAbsorptionAmount(damage):本事件同优先级以及更低优先级的处理器会读
+            //    getAbsorptionAmount()(审计 §2 不变量④要求它们读到"扣除本次吸收后的量"),中途把吸收
+            //    改成 damage 会直接污染这些判据。A0 == 0 时本就不需要补偿(写回值与平台扣减量天然一致)。
+            event.setAmount(damage);
+            return;
+        }
+        float absorbedShould = Math.min(damage, absorptionBefore);
+        float toHealth = damage - absorbedShould;
+        // 写回 A0 - absorbedShould + H:平台 L1684 会再扣一次 H => 终态吸收 = A0 - absorbedShould
+        target.setAbsorptionAmount(absorptionBefore - absorbedShould + toHealth);
+        event.setAmount(toHealth);
     }
 
     @SubscribeEvent(priority = EventPriority.NORMAL)
@@ -797,7 +915,7 @@ public class DiceCombatEvents {
         // 虚弱印记:目标受到任意伤害 +10%;命运指引激活时额外 +20%(骰战自包含结算,
         // 不依赖外部处理器顺序;onWeakMarkDamage 仅对非骰战攻击生效)
         if (target.hasEffect(ModEffects.WEAK_MARK.get())) {
-            float weakMultiplier = 1.10f;
+            float weakMultiplier = WEAK_MARK_DAMAGE_MULTIPLIER;
             if (FateGuidanceCardItem.isFateGuidanceActive(player)) {
                 weakMultiplier += 0.20f;
             }
@@ -819,7 +937,8 @@ public class DiceCombatEvents {
         // 注:victimFactor 可能已被上面的七咒 ratio 规则(P2-C8)置为 1.0,避免与 ratio 链路重复计。
         finalDmg *= victimFactor;
 
-        event.setAmount((float) finalDmg);
+        // N1 + N2:护盾钳制 + 吸收按终值只扣一次(两条写终值路径的唯一出口,见 settleDiceDamage)
+        settleDiceDamage(target, event, (float) finalDmg);
         // 跳数字不再在此直发(2026-09-26):登记组别,由 DamageNumberAggregator 在**伤害管线终值**
         // (LivingDamageEvent#getAmount() = 实际扣血量)上取值,并与本 tick 同目标的其它
         // 攻击力类伤害累加成一个**总值**后一次性下发。
@@ -1094,7 +1213,15 @@ public class DiceCombatEvents {
         finalDmg *= com.merlinkitsune.starengine.combat.VanillaMitigation.magicAbsorbFactor(
                 resistanceAmplifierOf(target), protectionPointsOf(target, source));
         finalDmg *= (float) victimFactor;
-        event.setAmount(finalDmg);
+        // N8:虚弱印记 x1.10 必须作用在**吸收之前**的骰战终值上(审计 §2 不变量③)。本线原先只有
+        // onWeakMarkDamage(@LOW,吸收之后)在乘 => 与 1.21.1(LivingDamageEvent.Pre)口径不同。现并入
+        // 终值,onWeakMarkDamage 对生物近战骰战路径改为跳过(判据 isDiceBattleSettledDamage 同源)。
+        // 生物攻击者不是玩家 => 没有「命运的指引」+0.20 那条来源,只需基准倍率。
+        if (target.hasEffect(ModEffects.WEAK_MARK.get())) {
+            finalDmg *= WEAK_MARK_DAMAGE_MULTIPLIER;
+        }
+        // N1 + N2:护盾钳制 + 吸收按终值只扣一次(与玩家攻击路径同一出口)
+        settleDiceDamage(target, event, finalDmg);
         // 跳数字:与玩家攻击同一出口(登记组别,由 DamageNumberAggregator 在管线终值上取值)
         DamageNumberAggregator.tag(target, source, DamageNumberAggregator.Group.ATTACK);
         // 防御牌耐久:每次受到骰战攻击,防御方装备的所有防御牌各扣 1 点(仅在对骰成立时)
@@ -1458,6 +1585,17 @@ public class DiceCombatEvents {
     public static void onBerserkDamageTaken(LivingDamageEvent event) {
         LivingEntity target = event.getEntity();
         if (target.level().isClientSide()) return;
+        // N7:内部波及(AOE 顺劈/溅射/法伤波及)与法伤真伤段**不触发**狂暴反噬。
+        // 理由:①它们都是「本次受击的派生物」而非新的受击事实 —— AOE 扫 N 个目标就会反向开 N 段反噬
+        //       (审计 §2 不变量⑤:惩罚伤害只随真实受击发生,且必须走 hurt());
+        //       ②DamageEffectCardHandler 的法伤段是同一击的伤害补充,再叠反噬等于一次受击结算两次惩罚。
+        // 下面的 BERSERK_BACKLASH_APPLYING 重入闸门必须保留:反噬自己 hurt() 出来的
+        //    unreducibleDamage **不在**上面两个窗口里(故意如此,否则反噬会把自己吞掉),
+        //    自递归只能靠 ThreadLocal 拦。
+        if (isInternalAoe()
+                || com.merlinkitsune.astral_dice.event.DamageEffectCardHandler.isApplyingTrueBonus()) {
+            return;
+        }
         if (BERSERK_BACKLASH_APPLYING.get()) return;
         var berserk = target.getEffect(ModEffects.BERSERK.get());
         if (berserk == null) return;
@@ -1512,19 +1650,39 @@ public class DiceCombatEvents {
         LivingEntity target = event.getEntity();
         if (target.level().isClientSide()) return;
         if (!target.hasEffect(ModEffects.WEAK_MARK.get())) return;
-        // 骰战攻击(攻击者赐福激活 + 佩戴骰子 + 近战):虚弱印记倍率已并入骰战结算,跳过以免双重应用
-        if (event.getSource().getEntity() instanceof Player attacker
-                && attacker.hasEffect(ModEffects.DICE_BLESSING.get())
-                && attackerHasDiceCurio(attacker)
-                && isMeleeWeaponAttack(attacker)) {
+        // 骰战路径(玩家赐福近战 / 生物近战)的倍率已并入骰战终值,跳过以免双重应用。
+        // 判据与写终值处同源,见 isDiceBattleSettledDamage(N8)。
+        if (isDiceBattleSettledDamage(event.getSource(), target)) {
             return;
         }
-        float multiplier = 1.10f;
+        float multiplier = WEAK_MARK_DAMAGE_MULTIPLIER;
         if (event.getSource().getEntity() instanceof Player attacker2
                 && FateGuidanceCardItem.isFateGuidanceActive(attacker2)) {
             multiplier += 0.20f;
         }
         event.setAmount(event.getAmount() * multiplier);
+    }
+
+    /** N8:该次伤害是否属于「骰战自算终值」路径 —— 是则虚弱印记倍率已在骰战里并入,外部处理器必须跳过。
+     *  <p>两条路径的判据必须与 {@link #onLivingDamagePre} 的入口分流**同源**,否则会出现
+     *  「骰战并入一份 + LOW 再乘一份 = x1.21」或「两边都不乘 = 丢增益」:
+     *  <ul>
+     *    <li>玩家攻击:攻击者赐福激活 + 佩戴骰子 + 近战武器(与入口处 diceStack / isMeleeWeaponAttack 闸门一致);</li>
+     *    <li>生物近战:directEntity 是 Mob 且目标是玩家 —— {@link #resolveMobMeleeAttack} 无论是否对骰成立
+     *        都会自算并 setAmount,故整条路径都是骰战终值。</li>
+     *  </ul>
+     *  必须连内部窗口一起判:入口在 {@code isInternalAoe() || counterDepth > 0} 时直接 return,
+     *  此时骰战**没有**接管金额 => 本判据也必须返回 false,否则那段伤害会丢掉虚弱印记增益。 */
+    private static boolean isDiceBattleSettledDamage(DamageSource source, LivingEntity target) {
+        if (target.level().isClientSide()) return false;
+        if (isInternalAoe() || isInCounterChain()) return false;
+        if (source.getEntity() instanceof Player attacker
+                && attacker.hasEffect(ModEffects.DICE_BLESSING.get())
+                && attackerHasDiceCurio(attacker)
+                && isMeleeWeaponAttack(attacker)) {
+            return true;
+        }
+        return source.getDirectEntity() instanceof Mob && target instanceof Player;
     }
 
     // 玩家是否持有骰子(curio 骰子槽)
@@ -1734,6 +1892,11 @@ public class DiceCombatEvents {
      *       ∪「非同队伍、且曾主动攻击过该玩家」的玩家)。</li>
      * </ol>
      *
+     * <p><b>2026-10-27(P2-5) 增补</b>:在此之上再排除**本模组自身产出的惩罚类伤害类型**——
+     * {@code ModDamageTypes.UNREDUCIBLE_DAMAGE}(狂暴反噬 / 事件牌惩罚)与 {@code ModDamageTypes.CARD_COST}
+     * (「王之力」的使用代价)。这些伤害带着攻击者归属只为跳字与统计,**并不代表「被敌对目标打了」**:
+     * 若不排除,同一次受击会因紧随其后的反噬**再触发一遍**受击被动(立牌 onHurt / BufferShield / Papara 回血)。
+     *
      * <p>消费者:{@link BaseSignItem#invokeHurtHooks}(立牌受击被动)、
      * {@code item/chip/BufferShieldChipItem#onHurt}、{@code item/sign/PaparaSignItem#onPaparaBiteHurtHeal}。
      * <p>不额外判 {@code amount > 0} —— 与本模组受击钩子的既有约定一致(该数值仅用于「是否受击」判定;
@@ -1741,6 +1904,16 @@ public class DiceCombatEvents {
      */
     public static boolean isHostileAttack(Player player, DamageSource source) {
         if (player == null || source == null) return false;
+        // 2026-10-27(P2-5):本模组**自身的惩罚类伤害**不算「敌对目标的攻击」(两线与 P1 线口径见下)。
+        //   反噬(onBerserkDamageTaken)与事件牌惩罚(EventEffects#hurtAsEventCardPenalty)都走
+        //   unreducible_damage、且攻击者归属 = 原攻击者;卡代价(card_cost)的攻击者恒为使用者本人
+        //   (本已被下面 attacker == player 拦掉,这里纳入只为让「惩罚类伤害」在闸门上**成文**)。
+        //   不排除的后果:原击已触发过一次受击被动,反噬落在同一次受击流程里会**再触发一遍**;
+        //   牌惩罚在 PvP 里也会被误算成「被人打了」。
+        if (source.is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.UNREDUCIBLE_DAMAGE)
+                || source.is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.CARD_COST)) {
+            return false;
+        }
         if (!(source.getEntity() instanceof LivingEntity attacker)) return false;
         if (attacker == player) return false;
         return PartyRelations.isHostileTo(player, attacker);

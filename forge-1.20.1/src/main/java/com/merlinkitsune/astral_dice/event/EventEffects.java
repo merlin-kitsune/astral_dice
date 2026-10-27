@@ -1,7 +1,9 @@
 package com.merlinkitsune.astral_dice.event;
 
+import com.merlinkitsune.astral_dice.combat.DamageNumberAggregator;
 import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
+import com.merlinkitsune.astral_dice.damage.ModDamageTypes;
 import com.merlinkitsune.astral_dice.event.api.AstralEvent;
 import com.merlinkitsune.astral_dice.event.api.AstralEventTrigger;
 import com.merlinkitsune.astral_dice.item.ModItems;
@@ -10,8 +12,10 @@ import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
@@ -287,9 +291,11 @@ public final class EventEffects {
     /**
      * 集合层结算（由 {@link AstralEventDispatcher} 在逐目标施加之后调用）：
      * 取受影响玩家中生命值**最低**者 +8、**最高**者 -8（均以 0 为下限）。
+     * 2026-10-27（N4 修复）：-8 **不再是 setHealth 旁路**，改走正常伤害管线（见
+     * {@link #hurtAsEventCardPenalty}）⇒ 会派发伤害事件、可致死、带触发者归因。
      * 若受影响集合只有一人，只按最低结算（+8），不扣血。
      */
-    public static void learnFromOthersApply(List<Player> targets) {
+    public static void learnFromOthersApply(Player triggerer, List<Player> targets) {
         if (targets.isEmpty()) return;
         Player lowest = null;
         Player highest = null;
@@ -307,7 +313,9 @@ public final class EventEffects {
         if (healed.level() instanceof ServerLevel lvl) {
             EventCardService.schedule(lvl, 20, l -> {
                 if (damaged.isAlive()) {
-                    damaged.setHealth(Math.max(0.0F, damaged.getHealth() - 8.0F));
+                    // 2026-10-27（N4 修复）：惩罚性扣血一律走 hurt() 正常管线，不再 setHealth 直改
+                    // （类型 / 归因 / 跳字口径见 hurtAsEventCardPenalty）。
+                    hurtAsEventCardPenalty(l, triggerer, damaged, 8.0F, "learn_from_others");
                     LOGGER.info("AP_EVENT_EFFECT: learn_from_others:damage={}", damaged.getName().getString());
                 }
             });
@@ -316,10 +324,15 @@ public final class EventEffects {
                 (group.size() == 1 || lowest == highest ? "-" : highest.getName().getString()));
     }
 
-    /** 分发器后置钩子：处理需要「整个受影响集合」才能结算的事件（目前只有取长补短）。 */
-    public static void afterDispatch(AstralEvent event, List<Player> targets) {
+    /**
+     * 分发器后置钩子：处理需要「整个受影响集合」才能结算的事件（目前只有取长补短）。
+     *
+     * @param triggerer 事件触发者，作为惩罚伤害的 causing entity（{@code EventCardService} 的
+     *                  延迟回调里仍持调用当下的实体引用；离线也安全，只影响归因）
+     */
+    public static void afterDispatch(Player triggerer, AstralEvent event, List<Player> targets) {
         if (AstralEventIds.LEARN_FROM_OTHERS.equals(event.id())) {
-            learnFromOthersApply(targets);
+            learnFromOthersApply(triggerer, targets);
         }
     }
 
@@ -459,7 +472,8 @@ public final class EventEffects {
 
     public static void worldCollapse(ServerLevel level, Player triggerer, Player target, AstralEvent event,
                                      AstralEventTrigger source, int tier) {
-        target.hurt(level.damageSources().generic(), 4.0F);
+        // N5：4 点惩罚改走带归因的惩罚型类型（与 -8 / 2 点同一口径，见 hurtAsEventCardPenalty）。
+        hurtAsEventCardPenalty(level, triggerer, target, 4.0F, "world_collapse");
     }
 
     // ────────────────────────── 8. 天降之物:1 张随机卡牌 + 3 星币 ──────────────────────────
@@ -486,7 +500,8 @@ public final class EventEffects {
 
     public static void problemDelivery(ServerLevel level, Player triggerer, Player target, AstralEvent event,
                                        AstralEventTrigger source, int tier) {
-        target.hurt(level.damageSources().generic(), 2.0F);
+        // N5：2 点惩罚改走带归因的惩罚型类型（与 -8 / 4 点同一口径，见 hurtAsEventCardPenalty）。
+        hurtAsEventCardPenalty(level, triggerer, target, 2.0F, "problem_delivery");
         // 专用指示器（用户裁决 1/2）。注:原生中毒/饥饿以 visible=false 施加 ⇒ **HUD 侧已隐藏**;
         // 但物品栏「效果」面板走 isVisibleInInventory(默认 true) ⇒ 该面板仍会显示两行,待补客户端 mixin。
         PlayerEffectProtection.apply(target, new MobEffectInstance(com.merlinkitsune.astral_dice.effect.ModEffects.PROBLEM_DELIVERY.get(),
@@ -514,6 +529,59 @@ public final class EventEffects {
         for (int i = 0; i < 2; i++) {
             VitaminPillChipItem.giveCard(target, new ItemStack(ModItems.ATTACK_CARD_EPIC.get()));
         }
+    }
+
+    // ────────────────────────── 事件牌惩罚伤害：唯一口径（N4 / N5，2026-10-27） ──────────────────────────
+
+    /**
+     * 事件牌「惩罚性扣血」的**唯一出口**。三处点数（-8 / 4 / 2）全部走这里 ⇒ 类型与归因不可能漂移。
+     *
+     * <p><b>为什么是这个伤害类型</b>（{@code astral_dice:unreducible_damage}，数据见
+     * {@code data/minecraft/tags/damage_type/*.json}，两线逐字节一致）：
+     * <ul>
+     *   <li>在 {@code bypasses_armor} / {@code bypasses_enchantments} / {@code bypasses_resistance} 内
+     *       ⇒ 护甲值 / 盔甲韧性 / 保护类附魔 / 抗性提升**全部跳过**。事件牌惩罚是「明码标价的点数」，
+     *       若被减伤削成 2、4 点就不叫惩罚（旧实现 {@code damageSources().generic} 会被全部削减）；</li>
+     *   <li>在 {@code bypasses_cooldown} 内 ⇒ 不受 0.5s（10t）受击无敌帧约束。原版
+     *       {@code LivingEntity#hurt} 在 {@code invulnerableTime > 10.0F && !source.is(BYPASSES_COOLDOWN)}
+     *       且 {@code amount <= lastHurt} 时**直接 return false** ⇒ 旧实现在战斗中可能整段被吞；</li>
+     *   <li>**不**在 {@code bypasses_invulnerability} 内 ⇒ 创造模式 / 重生无敌期照旧免疫（与
+     *       {@code astral_dice:card_cost} 同口径；原版 {@code Player#hurt} 的 {@code abilities.invulnerable}
+     *       判定独立于此，先于任何减伤）；</li>
+     *   <li>走 {@code hurt(...)} 而非 {@code setHealth} ⇒ 派发完整伤害事件链（受伤反馈 / 护盾类保命
+     *       钩子 / 死亡 {@code LivingDeathEvent}）。旧实现直接把血量改小，不派发伤害事件、也不调
+     *       {@code die()}（原版 {@code die()} 只由 {@code hurt()} 与 {@code handleEntityEvent(3)} 触发）
+     *       ⇒ 打到 0 血不死，掉进 {@code tickDeath()} 异常路径。</li>
+     * </ul>
+     *
+     * <p><b>归因</b>：用「直接伤害实体 = {@code null}、击杀归属 = 事件触发者」的形状
+     * （{@link com.merlinkitsune.astral_dice.damage.ModDamageTypes#unreducibleDamage}）。直接实体
+     * **刻意**留空 —— 事件牌伤害不该被任何「玩家/生物近战攻击」判定当成一次真刀真枪的命中（否则会重走
+     * 骰战、触发立牌受击被动）；而击杀归属与跳字收件人都认 causing，故保留触发者。
+     *
+     * <p><b>null 兜底</b>：{@code level == null} / {@code target == null} / {@code amount <= 0} 直接 return；
+     * {@code triggerer == null}（外部 CUSTOM 触发，或延迟结算期间触发者已离线）时回落到**受害者本人**
+     * 作 causing —— {@code DamageSource} 构造本身允许 causing 为 null，但用受害者自己可保住「有归因」这一档，
+     * 且不会把伤害记到别人头上。<b>不会 NPE</b>。
+     *
+     * <p><b>跳字</b>：显式 {@link com.merlinkitsune.astral_dice.combat.DamageNumberAggregator#tag} 登记为
+     * SPELL（绿）—— 该聚合器的类型回落表只认 dice / extra / card_spell / skill 四种，
+     * {@code unreducible_damage} 不登记就**不会显示**；这是本入口唯一需要额外补的一步。
+     *
+     * @param amount 惩罚点数（8 / 4 / 2）
+     * @param tag    机器行标记，仅用于日志取证
+     * @return {@code hurt(...)} 的返回值（false = 被免疫 / 无敌帧拒绝）
+     */
+    private static boolean hurtAsEventCardPenalty(ServerLevel level, Player triggerer, Player target,
+                                                  float amount, String tag) {
+        if (level == null || target == null || amount <= 0.0F) return false;
+        Entity causing = triggerer != null ? triggerer : target;
+        DamageSource source = ModDamageTypes.unreducibleDamage(level, causing);
+        DamageNumberAggregator.tag(target, source, DamageNumberAggregator.Group.SPELL);
+        boolean applied = target.hurt(source, amount);
+        LOGGER.info("AP_EVENT_PENALTY: tag={}:target={}:causing={}:amount={}:hurt={}",
+                tag, target.getName().getString(), causing.getName().getString(), amount, applied);
+        return applied;
     }
 
     // ────────────────────────── 工具 ──────────────────────────

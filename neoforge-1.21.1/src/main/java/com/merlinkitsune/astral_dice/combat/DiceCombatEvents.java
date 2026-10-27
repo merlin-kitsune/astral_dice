@@ -1475,6 +1475,17 @@ public class DiceCombatEvents {
     public static void onBerserkDamageTaken(LivingDamageEvent.Pre event) {
         LivingEntity target = event.getEntity();
         if (target.level().isClientSide()) return;
+        // N7(2026-10-27,与 1.20.1 线同步):内部波及(AOE 顺劈/溅射/法伤波及)与法伤真伤段
+        // **不触发**狂暴反噬。理由:①它们都是「本次受击的派生物」而非新的受击事实 —— AOE 扫 N 个
+        // 目标就会反向开 N 段反噬(审计 §2 不变量⑤:惩罚伤害只随真实受击发生,且必须走 hurt());
+        // ②DamageEffectCardHandler 的法伤段是同一击的伤害补充,再叠反噬等于一次受击结算两次惩罚。
+        // 下面的 BERSERK_BACKLASH_APPLYING 重入闸门必须保留:反噬自己 hurt() 出来的
+        //    unreducibleDamage **不在**上面两个窗口里(故意如此,否则反噬会把自己吞掉),
+        //    自递归只能靠 ThreadLocal 拦。
+        if (isInternalAoe()
+                || com.merlinkitsune.astral_dice.event.DamageEffectCardHandler.isApplyingTrueBonus()) {
+            return;
+        }
         if (BERSERK_BACKLASH_APPLYING.get()) return;
         var berserk = target.getEffect(ModEffects.BERSERK);
         if (berserk == null) return;
@@ -1751,6 +1762,11 @@ public class DiceCombatEvents {
      *       ∪「非同队伍、且曾主动攻击过该玩家」的玩家)。</li>
      * </ol>
      *
+     * <p><b>2026-10-27(P2-5) 增补</b>:在此之上再排除**本模组自身产出的惩罚类伤害类型**——
+     * {@code ModDamageTypes.UNREDUCIBLE_DAMAGE}(狂暴反噬 / 事件牌惩罚)与 {@code ModDamageTypes.CARD_COST}
+     * (「王之力」的使用代价)。这些伤害带着攻击者归属只为跳字与统计,**并不代表「被敌对目标打了」**:
+     * 若不排除,同一次受击会因紧随其后的反噬**再触发一遍**受击被动(立牌 onHurt / BufferShield / Papara 回血)。
+     *
      * <p>消费者:{@link BaseSignItem#invokeHurtHooks}(立牌受击被动)、
      * {@code item/chip/BufferShieldChipItem#onHurt}、{@code item/sign/PaparaSignItem#onPaparaBiteHurtHeal}。
      * <p>不额外判 {@code amount > 0} —— 与本模组受击钩子的既有约定一致(该数值仅用于「是否受击」判定;
@@ -1758,6 +1774,16 @@ public class DiceCombatEvents {
      */
     public static boolean isHostileAttack(Player player, DamageSource source) {
         if (player == null || source == null) return false;
+        // 2026-10-27(P2-5):本模组**自身的惩罚类伤害**不算「敌对目标的攻击」(两线与 P1 线口径见下)。
+        //   反噬(onBerserkDamageTaken)与事件牌惩罚(EventEffects#hurtAsEventCardPenalty)都走
+        //   unreducible_damage、且攻击者归属 = 原攻击者;卡代价(card_cost)的攻击者恒为使用者本人
+        //   (本已被下面 attacker == player 拦掉,这里纳入只为让「惩罚类伤害」在闸门上**成文**)。
+        //   不排除的后果:原击已触发过一次受击被动,反噬落在同一次受击流程里会**再触发一遍**;
+        //   牌惩罚在 PvP 里也会被误算成「被人打了」。
+        if (source.is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.UNREDUCIBLE_DAMAGE)
+                || source.is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.CARD_COST)) {
+            return false;
+        }
         if (!(source.getEntity() instanceof LivingEntity attacker)) return false;
         if (attacker == player) return false;
         return PartyRelations.isHostileTo(player, attacker);

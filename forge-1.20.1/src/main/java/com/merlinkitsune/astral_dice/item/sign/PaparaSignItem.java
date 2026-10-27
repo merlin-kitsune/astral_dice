@@ -77,6 +77,13 @@ public class PaparaSignItem extends BaseSignItem {
         // 2026-09-29 用户裁决:只有**敌对目标**的攻击才回血(环境伤害与自伤不算)
         if (!com.merlinkitsune.astral_dice.combat.DiceCombatEvents
                 .isHostileAttack(player, event.getSource())) return;
+        // 阶段口径(N9,2026-10-27 两线统一):本线 LivingDamageEvent#getAmount() 已是「实际扣红心量」,与 neo 侧 Post 同义。
+        // 取证(sources jar,net/minecraft/world/entity/LivingEntity.java#actuallyHurt):
+        //   :1669 f1 = max(damageAmount - absorption, 0)(护甲 / 药水 / 吸收均已结算)
+        //   → :1680 f1 = ForgeHooks.onLivingDamage(this, source, f1)(即本事件 getAmount())
+        //   → :1683 setHealth(getHealth() - f1);事件 javadoc 亦写明「already been applied ... this is FINAL value」。
+        // 残留不确定:同档(LOWEST)内仍有 RenShield 钳制等处理器,若它们在本次之后改 amount,读到的是本处理器时点
+        // 的值(与仓内既有的「同档顺序不可依赖」一致);不调优先级,保持既有触发面不变。
         int heal = Math.max(1, (int) event.getAmount() / 2);
         player.heal(heal);
     }
