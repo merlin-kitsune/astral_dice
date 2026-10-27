@@ -226,7 +226,7 @@ public final class DragonCardUtil {
             // 耐久口径(两线统一):转换为龙之咆哮的**满耐久** ROAR_USES ——
             // 骰子侧原先"保留剩余耐久"(撕咬 leftover=1)会与背包侧口径不一致(背包侧新牌来自
             // 物品自带的 CARD_USES=5,即满耐久)。临时牌标记仍原样保留。
-            kept.add(new AppliedStone(TYPE_DRAGON_ROAR, MamushiSignItem.ROAR_USES, stone.temporary()));
+            kept.add(new AppliedStone(TYPE_DRAGON_ROAR, MamushiSignItem.ROAR_USES, stone.temporary(), stone.owner()));
             converted++;
         }
         if (converted <= 0 && dropped <= 0) return 0;

@@ -266,7 +266,7 @@ public class CardInventoryMenu extends AbstractContainerMenu {
                     // 临时牌(绿洲女王 nardis):装配状态下的临时性只存在 AppliedStone 里(装配会销毁
                     // 物品栈),这里把它**还原**到重建出来的栈上 ⇒ 卡牌栏 UI 里也一眼可辨(isFoil 会亮)。
                     if (stone.temporary()) {
-                        TemporaryCardUtil.mark(player, itemStack);
+                        TemporaryCardUtil.mark(player, itemStack, stone.ownerId());
                     }
                     cardContainer.setItem(defIdx, itemStack);
                     defIdx++;
@@ -276,7 +276,7 @@ public class CardInventoryMenu extends AbstractContainerMenu {
                     ItemStack itemStack = stoneToItem(stone);
                     ModDataComponents.CARD_USES.set(itemStack,  stone.uses());
                     if (stone.temporary()) {
-                        TemporaryCardUtil.mark(player, itemStack);
+                        TemporaryCardUtil.mark(player, itemStack, stone.ownerId());
                     }
                     cardContainer.setItem(attIdx, itemStack);
                     attIdx++;
@@ -302,7 +302,8 @@ public class CardInventoryMenu extends AbstractContainerMenu {
                     int uses = ModDataComponents.CARD_USES.getOrDefault(stack,  AppliedStone.defaultUses(type));
                     // 临时性从物品栈**读回**写进记录(装配后物品栈会被销毁,记录是唯一载体;
                     // 反向还原见 loadFromDice)。
-                    stones.add(new AppliedStone(type, uses, TemporaryCardUtil.isTemporary(stack)));
+                    stones.add(new AppliedStone(type, uses, TemporaryCardUtil.isTemporary(stack),
+                            TemporaryCardUtil.ownerKeyOf(stack)));
                     if (isDefenseType(type)) {
                         totalDefenseCost += cost;
                     } else {
@@ -350,6 +351,23 @@ public class CardInventoryMenu extends AbstractContainerMenu {
         return removed;
     }
 
+    /**
+     * 清空卡牌栏里**非本人持有**的临时牌,返回移除张数(幂等;判据 =
+     * {@link TemporaryCardUtil#isIllegalHold(ItemStack, Player)})。
+     *
+     * <p>与 {@link #purgeTemporaryCards()} 的分工:那个清**所有**临时牌(死亡 / 效果结束),
+     * 这个只清「别人的牌」,获得者本人的牌毫发无损(2026-10-27 用户裁决)。
+     */
+    public int purgeIllegalCards() {
+        int removed = 0;
+        for (int i = 0; i < cardSlots; i++) {
+            ItemStack stack = cardContainer.getItem(i);
+            if (!TemporaryCardUtil.isIllegalHold(stack, player)) continue;
+            removed += stack.getCount();
+            cardContainer.setItem(i, ItemStack.EMPTY);
+        }
+        return removed;
+    }
     public ItemStack getCardItem(int slotIndex) {
         return cardContainer.getItem(slotIndex);
     }
@@ -471,6 +489,8 @@ public class CardInventoryMenu extends AbstractContainerMenu {
             if (type == null || isDefenseType(type)) return false;
             // 专属牌守门(撕咬/龙之咆哮等):非获得者不得装备(无主时放行并首次绑定,与效果牌同语义)
             if (ExclusiveCardUtil.isExclusive(stack) && !ExclusiveCardUtil.canUse(player, stack)) return false;
+            // 临时牌(绿洲女王 nardis):只能由获得者装备(装备即「使用」,2026-10-27 用户裁决)
+            if (TemporaryCardUtil.isIllegalHold(stack, player)) return false;
             int slotCost = stoneCost(type);
             int usedWithoutThis = 0;
             for (int i = 0; i < attackSlots; i++) {
@@ -501,6 +521,8 @@ public class CardInventoryMenu extends AbstractContainerMenu {
             if (type == null || !isDefenseType(type)) return false;
             // 专属牌守门(同攻击牌槽;当前专属战斗牌均为攻击牌,防御槽此行为纵深防御)
             if (ExclusiveCardUtil.isExclusive(stack) && !ExclusiveCardUtil.canUse(player, stack)) return false;
+            // 临时牌(绿洲女王 nardis):只能由获得者装备(装备即「使用」,2026-10-27 用户裁决)
+            if (TemporaryCardUtil.isIllegalHold(stack, player)) return false;
             int slotCost = stoneCost(type);
             int usedWithoutThis = 0;
             for (int i = attackSlots; i < cardSlots; i++) {

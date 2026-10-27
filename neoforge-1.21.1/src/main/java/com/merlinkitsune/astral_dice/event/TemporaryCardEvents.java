@@ -8,6 +8,7 @@ import net.minecraft.world.item.ItemStack;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.item.ItemTossEvent;
+import net.neoforged.neoforge.event.entity.player.ItemEntityPickupEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,5 +53,20 @@ public class TemporaryCardEvents {
             LOGGER.warn("[Astral Dice][TemporaryCard] 背包放不下,临时牌已销毁(不落地): player={} item={}",
                     player.getName().getString(), toReturn);
         }
+    }
+
+    /**
+     * 拾取即清(2026-10-27 用户裁决:临时牌只能由获得者持有)。
+     *
+     * <p>{@code Post} = 物品**已进背包之后**才触发,且 NeoForge 明确禁止在事件里调
+     * {@code ItemEntity#setItem}(未定义行为)⇒ 这里不改实体,只在拾取完成的当拍把玩家身上
+     * 「非法持有」的临时牌扫掉(判据同 {@link TemporaryCardUtil#isIllegalHold(ItemStack, Player)});
+     * 即使本处理器晚一拍,{@link TemporaryCardUtil#tick(Player)} 的每 tick 巡查也会兜住。
+     */
+    @SubscribeEvent
+    public static void onItemPickup(ItemEntityPickupEvent.Post event) {
+        Player player = event.getPlayer();
+        if (player == null || player.level().isClientSide()) return;
+        TemporaryCardUtil.purgeIllegalHoldings(player);
     }
 }

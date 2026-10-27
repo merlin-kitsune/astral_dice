@@ -974,7 +974,7 @@ public class DiceCombatEvents {
             } else {
                 // ⚠️ 必须透传 temporary:临时牌(绿洲女王 nardis)扣 1 点耐久后仍须保持临时性,
                 //    否则本次消耗就会把它"洗"成永久牌(到期清理便找不到它)—— 见 AppliedStone 类注释。
-                newStones.add(new AppliedStone(stone.type(), newUses, stone.temporary()));
+                newStones.add(new AppliedStone(stone.type(), newUses, stone.temporary(), stone.owner()));
                 dirty = true;
             }
         }
@@ -1023,7 +1023,7 @@ public class DiceCombatEvents {
                 defenseCostFreed += MisakiSignItem.effectiveCost(defender, s.type());
             } else {
                 // temporary 必须透传(临时牌不会因扣耐久变回永久牌),同 consumeAttackCardDurabilityOnce 口径
-                newStones.add(new AppliedStone(s.type(), newUses, s.temporary()));
+                newStones.add(new AppliedStone(s.type(), newUses, s.temporary(), s.owner()));
             }
         }
         if (!dirty) return;

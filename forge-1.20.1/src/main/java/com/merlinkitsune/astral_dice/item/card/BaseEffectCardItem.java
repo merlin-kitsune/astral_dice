@@ -384,6 +384,10 @@ public abstract class BaseEffectCardItem extends Item {
         if (card.isExclusive() && !ExclusiveCardUtil.canUse(serverPlayer, stack)) {
             return false;
         }
+        // 临时牌(绿洲女王 nardis):只能由获得者出牌(2026-10-27 用户裁决)
+        if (TemporaryCardUtil.isIllegalHold(stack, serverPlayer)) {
+            return false;
+        }
         if (EffectCardPeriod.isBlocked(serverPlayer)) {
             return false;
         }
@@ -484,6 +488,10 @@ public abstract class BaseEffectCardItem extends Item {
     private boolean tryUseCard(Level level, Player player, LivingEntity applyTo, ItemStack stack) {
         // 专属牌:仅允许获得者使用
         if (isExclusive() && !ExclusiveCardUtil.canUse(player, stack)) {
+            return false;
+        }
+        // 临时牌(绿洲女王 nardis):只能由获得者使用(2026-10-27 用户裁决)
+        if (TemporaryCardUtil.isIllegalHold(stack, player)) {
             return false;
         }
         // 出牌锁:出牌数上限/冷却/效果待定任一阻止则失败
