@@ -1,6 +1,6 @@
-# 新会话交接上下文（可整份贴给新会话）— 1.5.0-rc.2
+# 新会话交接上下文（可整份贴给新会话）— 1.5.0-rc.4
 
-你接手的是 MC 模组仓库 `F:\MCProject\astral_dice_multiloader`，分支 `multi-main`，版本 `1.5.0-rc.2`（前置库 `1.1.0` 正式版），Windows 原生环境（git bash 只承担 git；构建与测试台一律 PowerShell 7）。
+你接手的是 MC 模组仓库 `F:\MCProject\astral_dice_multiloader`，分支 `multi-main`，版本 `1.5.0-rc.4`（前置库 `1.1.0` 正式版），Windows 原生环境（git bash 只承担 git；构建与测试台一律 PowerShell 7）。
 
 ## 第 0 步：认领你自己的规则
 
@@ -26,9 +26,9 @@ Select-String -Path F:\MCProject\astral_dice_multiloader\*\gradle.properties -Pa
 ## 基本盘
 
 - 四子项目同树：`neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1`；交付面**只 P0** = 前两条，P1 两线在 `1.5.0` 正式版前不验证、不移植。
-- 版本：四线 `mod_version = 1.5.0-rc.2+<加载器后缀>`；`starengine_version = 1.1.0`（**正式版**，前置库仓 `F:\MCProject\starengine` 提交 `16b48c4`）；jar 内硬前置 `[1.1.0,2.0.0)`（模板插值自动展开），`META-INF/jarjar/` 计数 0（库**不内嵌**，必须成对投放）。
-- 产物：**rc.2 已重建并投放**（2026-10-25 21:3x；四目标里每处只有一个 astral_dice jar）——neo `astral_dice-1.5.0-rc.2+neoforge_1.21.1.jar` 2,589,502 B / `b562974217bc726bff838e03fded6a77159e683484da01df44e2d2f9155687c6`；forge reobf 2,634,295 B / `3c7b089de70c0d7d6b0a7ed19ff06655c2e54d6b7a1501b7120aefee42e3dba8`；forge dev named 2,604,839 B / `f11a613d1ee441f2e309360212fb49760cfe722ce659804ba348049e942034aa`（投 `run/1.20.1/mods`）。**前置库 jar 成对换成 1.1.0**（四处旧 `1.1.0-pre.2` 已删）：neo 98,734 B / `62c92595b012929d2fba6098cc2d71e6ab2a9a14ddaac52869e2bbec6b476ac8`；forge reobf 103,605 B / `73da2e599e60dab047e3640eb396f1db6f6eedd5a0dd95494afde471f43af304`；forge dev named 102,013 B / `e280aeab6c4b37c43468f7cce32a8bf64c70b6bdbcd2203f6c5600776f987e0e`。再改源码后必须重跑 `build`（各线 `build` 已 `finalizedBy pushToDevRun/pushToGame/pushToRootBuild`，一条命令即可重建+投放）并重录 sha256。
-- 推送状态（2026-10-25 23:1x）：本批**已 push**（`origin/multi-main` = `13a45619`，`origin..HEAD` = 0），CI 自动建 tag `1.5.0-rc.2` 并发布 prerelease（附件 = P0 两个 rc.2 jar）。后续 push / tag / 实机仍要用户逐次放行。
+- 版本：四线 `mod_version = 1.5.0-rc.4+<加载器后缀>`；`starengine_version = 1.1.0`（**正式版**，前置库仓 `F:\MCProject\starengine` 提交 `16b48c4`）；jar 内硬前置 `[1.1.0,2.0.0)`（模板插值自动展开），`META-INF/jarjar/` 计数 0（库**不内嵌**，必须成对投放）。
+- 产物（2026-10-27 15:28 重建，含三批实机批次的代码）：`neoforge-1.21.1/build/libs/astral_dice-1.5.0-rc.4+neoforge_1.21.1.jar` **2,595,450 B / `932C9A4F37D3324CA8033DF3FF57B912949CDFDF497EA8E85708F3D607EE4690`**；`forge-1.20.1/build/libs/…+forge_1.20.1.jar`（reobf）**2,640,648 B / `7FA5A5F0216CC24D2B44892347F6DAF2E8433991699D7D35EF1C7EAA2CE3ACFC`**；`forge-1.20.1/build/devlibs/…+forge_1.20.1.jar`（dev **named**，投 `run/1.20.1/mods`）**2,611,167 B / `6032361106624E33E1DAABA254F897FD03BED255211E9E7962331B8244C9CC00`**。投放态：`run/1.21.1/mods` ← neo prod、`run/1.20.1/mods` ← forge dev named；**两个 P0 整合包与仓库根 `build/libs` 仍是 rc.4 旧构建**（未重投）。`META-INF/jarjar/` 计数 0，库必须成对投放。再改源码后必须重跑 `build` 并重录 sha256。
+- 推送状态（2026-10-27 16:2x）：**本地有 4 个未 push 提交** —— `6fcc756a`（强化拒止五规则）/ `51efba03`（临时牌 owner）/ `59b14e10`（隐匿调查双罚修复 + 1.21.1 三案）/ `052934cd`（1.20.1 探针 + DST-P0 用例）；远端 `origin/multi-main` 仍是 `84e1938b`（= tag `1.5.0-rc.4` 指向的提交），无新 tag。push / tag / 实机均须用户逐次放行。
 - 构建：`JAVA_HOME=C:\Program Files\Zulu\zulu-21`；`.\gradlew.bat :<线>:classes|jar`；forge dev 必须 `build/devlibs` 的 **named** jar。
 - 测试台唯一入口：`pwsh -NoProfile -File scripts\test\mt.ps1 --version <线> --phase env|run|stop`；`--purge-saves` 会删 testworld。
 
@@ -57,8 +57,10 @@ Select-String -Path F:\MCProject\astral_dice_multiloader\*\gradle.properties -Pa
 4. **8 条「代码与文案都不符」**已报用户、未改 tooltip，等裁决（bite 觉醒层数 / huo_card 选择器 / magic_quiver 闸门 / railgun 真伤口径 / 三张卡 NON_HOSTILE / member_recommendation 只数主背包+副手 / repulsion 单次 5 点耐久 / airbag 掉虚空）。
 5. **P1 两线欠账**：JEI 筹码 / `BeamFx` / `GlobalEventGate` / `RepulsionEntity` / `CardShopMenu#planPlacement` / `EventDrawBlock`；筹码图标边框版；史莱姆 20 tick；misaki 未同步；pre.5 冷却指示器未移植。
 6. **陈旧锁** `F:\MCProject\.agent-locks\kimi.lock`（`PID=26580` 已不存在）处置待用户裁决。
-7. push / tag 待用户放行。
-8. **HUD 攻击力口径统一（§4.1g）已静态全绿并投放六处，实机读数待用户下达**（要看的是：戴电流剑等 13 块原被吞的修饰器时 HUD 数字是否随之变化；手持武器换刀剑时数字不变；骰战随机卡点不进 HUD）。
+7. push / tag 待用户放行（现存 4 个未推提交，见「基本盘」末条）。
+9. ~~三批欠账未实机~~ → **已实机（2026-10-27，handover §4.1aa）**：1.21.1 三案（`UNDERCOVER-DOUBLE` 4/4 / `REPULSION-SIGN` / `TEMPCARD-OWNER` 6/6）+ 1.20.1 一案（`DST-P0-1.20.1` 10/10，走新建 KubeJS 探针 `/astraldst`）全 PASS。**仍欠**：tooltip「所有者：」行客户端渲染取证、规则④跨容器（箱子 / AE2）搬运、死亡掉牌不误销毁、`/curios set` 类命令清槽。
+
+10. **HUD 攻击力口径统一（§4.1g）已静态全绿并投放六处，实机读数待用户下达**（要看的是：戴电流剑等 13 块原被吞的修饰器时 HUD 数字是否随之变化；手持武器换刀剑时数字不变；骰战随机卡点不进 HUD）。
 
 ## 禁止项（共同红线，摘自根 `AGENTS.md`）
 
