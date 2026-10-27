@@ -28,7 +28,7 @@ Select-String -Path F:\MCProject\astral_dice_multiloader\*\gradle.properties -Pa
 - 四子项目同树：`neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1`；交付面**只 P0** = 前两条，P1 两线在 `1.5.0` 正式版前不验证、不移植。
 - 版本：四线 `mod_version = 1.5.0-rc.4+<加载器后缀>`；`starengine_version = 1.1.0`（**正式版**，前置库仓 `F:\MCProject\starengine` 提交 `16b48c4`）；jar 内硬前置 `[1.1.0,2.0.0)`（模板插值自动展开），`META-INF/jarjar/` 计数 0（库**不内嵌**，必须成对投放）。
 - 产物（2026-10-27 16:58 重建，含第二次复核修复与如实注释）：`neoforge-1.21.1/build/libs/astral_dice-1.5.0-rc.4+neoforge_1.21.1.jar` **2,595,451 B / `E76C231749263703C78203843CD14F066A0A76B3470E786F0A9FCFD8B3978748`**；`forge-1.20.1/build/libs/…+forge_1.20.1.jar`（reobf）**2,640,650 B / `F5417FDD6BEA22FB9AFF5F867030367C12192FBC9C15F4772A1B774BEEC3B0E9`**；`forge-1.20.1/build/devlibs/…+forge_1.20.1.jar`（dev **named**，投 `run/1.20.1/mods`）**2,611,171 B / `A1E3BC014ED7B5F929DEF23F6C06F22780F5274DBEDD34406BE64625AE5F4407`**。投放态：`run/1.21.1/mods` ← neo prod、`run/1.20.1/mods` ← forge dev named（两处 sha256 MATCH，实测 16:58）；**两个 P0 整合包与仓库根 `build/libs` 仍是 rc.4 旧构建**（未重投）。`META-INF/jarjar/` 计数 0，库必须成对投放。再改源码后必须重跑 `build` 并重录 sha256。
-- 推送状态（2026-10-27 17:1x）：**本地有 7 个未 push 提交** —— `6fcc756a`（强化拒止五规则）/ `51efba03`（临时牌 owner）/ `59b14e10`（隐匿调查双罚修复 + 1.21.1 三案）/ `052934cd`（1.20.1 探针 + DST-P0 用例）/ `4fa59395`（交接与 CHANGELOG）/ `483c7924`（复核 findings 修复 + 探针收尾 + §4.1ab）/ 本轮（第二次复核 `f93916e6` 处置 + 单张篡改 + §4.1ac）；远端 `origin/multi-main` 仍是 `84e1938b`（= tag `1.5.0-rc.4` 指向的提交），无新 tag。push / tag / 实机均须用户逐次放行。
+- 推送状态（2026-10-27 17:1x）：**本地有 8 个未 push 提交** —— `6fcc756a`（强化拒止五规则）/ `51efba03`（临时牌 owner）/ `59b14e10`（隐匿调查双罚修复 + 1.21.1 三案）/ `052934cd`（1.20.1 探针 + DST-P0 用例）/ `4fa59395`（交接与 CHANGELOG）/ `483c7924`（复核 findings 修复 + 探针收尾 + §4.1ab）/ `bd2067c1`（第二次复核 `f93916e6` 处置 + 单张篡改 + §4.1ac）/ 本轮末（复核 `aecff184` 的两处订正：末影骰归类 + 远端 head / 时间窗；提交号见 `git log -1`）；远端 `origin/multi-main` = `cce71efb`（tag `1.5.0-rc.4` 指向 `84e1938b`，是该 head 的祖先），无新 tag。push / tag / 实机均须用户逐次放行。
 - 构建：`JAVA_HOME=C:\Program Files\Zulu\zulu-21`；`.\gradlew.bat :<线>:classes|jar`；forge dev 必须 `build/devlibs` 的 **named** jar。
 - 测试台唯一入口：`pwsh -NoProfile -File scripts\test\mt.ps1 --version <线> --phase env|run|stop`；`--purge-saves` 会删 testworld。
 
@@ -57,7 +57,7 @@ Select-String -Path F:\MCProject\astral_dice_multiloader\*\gradle.properties -Pa
 4. **8 条「代码与文案都不符」**已报用户、未改 tooltip，等裁决（bite 觉醒层数 / huo_card 选择器 / magic_quiver 闸门 / railgun 真伤口径 / 三张卡 NON_HOSTILE / member_recommendation 只数主背包+副手 / repulsion 单次 5 点耐久 / airbag 掉虚空）。
 5. **P1 两线欠账**：JEI 筹码 / `BeamFx` / `GlobalEventGate` / `RepulsionEntity` / `CardShopMenu#planPlacement` / `EventDrawBlock`；筹码图标边框版；史莱姆 20 tick；misaki 未同步；pre.5 冷却指示器未移植。
 6. **陈旧锁** `F:\MCProject\.agent-locks\kimi.lock`（`PID=26580` 已不存在）处置待用户裁决。
-7. push / tag 待用户放行（现存 7 个未推提交，见「基本盘」末条）。
+7. push / tag 待用户放行（现存 8 个未推提交，见「基本盘」末条）。
 12. ~~第二次复核（run `f93916e6`）findings~~ → **已闭环（2026-10-27，handover §4.1ac）**：注释改成如实表述 + 登记「同优先级更晚取消会丢来源」边界；`/astraldst clean` 改为记录 `dEquip` 返回值 + 读回 `hasEffect`；同批修掉「临时牌可堆叠 ⇒ 篡改要拆单张」的探针缺陷。双线重跑：1.20.1 `DST-P0` 13/13 + 1.21.1 三案全 PASS。仍欠同第 9/11 条。
 9. ~~三批欠账未实机~~ → **已实机（2026-10-27，handover §4.1aa）**：1.21.1 三案（`UNDERCOVER-DOUBLE` 4/4 / `REPULSION-SIGN` / `TEMPCARD-OWNER` 6/6）+ 1.20.1 一案（`DST-P0-1.20.1` 10/10，走新建 KubeJS 探针 `/astraldst`）全 PASS。**仍欠**：tooltip「所有者：」行客户端渲染取证、规则④跨容器（箱子 / AE2）搬运、死亡掉牌不误销毁、`/curios set` 类命令清槽。
 

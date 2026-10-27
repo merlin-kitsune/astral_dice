@@ -593,7 +593,7 @@ forge dev named 102,013 B / `e280aeab6c4b37c43468f7cce32a8bf64c70b6bdbcd2203f6c5
 4. **1.21.1 三案全 PASS**（新产物、新世界，16:4x）：`UNDERCOVER-DOUBLE-1.21.1`（`temp/case_uc_b.log`，stage 1→2 且 `AP_EVENT_FIRE ... src=INVESTIGATION_KILL` 仍只 **1** 次 ⇒ 把清空移到结算之后**没有**破坏幂等）、`REPULSION-SIGN-1.21.1`、`TEMPCARD-OWNER-1.21.1` 均 `MT_CASE_RESULT: PASS`。
 5. **收尾**：`mt.ps1 --version 1.21.1 --phase stop --force --purge-saves` ⇒ `MT_CLEANUP_SAVES: PURGED 2` / `MT_CLEANUP_RESULT: OK` / `MT_STOP: OK (1s) — 收停完成，无本流程残留进程`；`Get-CimInstance Win32_Process java.exe` 剩 3 个（Gradle daemon Zulu21 `15920` + Adoptium 17 worker `16556`/`2572`），**无客户端残留**。
 
-### 4.1ac 第二次复核（run `f93916e6`）三条处置 + 双线重跑（2026-10-27 17:5x–18:1x）—— 1.21.1 三案 + 1.20.1 一案全 PASS
+### 4.1ac 第二次复核（run `f93916e6`）三条处置 + 双线重跑（2026-10-27 16:58–17:12）—— 1.21.1 三案 + 1.20.1 一案全 PASS
 
 1. **复核来源**：`dsh_code_review` run `f93916e6-9fa2-4cf7-9b5d-77245b9f9e8c`（范围仅提交 `483c7924`），R2–R5 SUPPORTED、R1 部分成立，两条 actionable findings：
    - **[P2] 注释宣称了未实现的取消保护**：`setUndercoverSource(...empty())` 仍在**同一次** `LivingDeathEvent` 派发内、处理器无 `priority` ⇒ 「移到 `triggerByKill` 之后」相对移动前只有在 `triggerByKill` 抛异常时才有区别；同优先级/更晚的取消（`event/EnderDiceHandler.java:158-169` 不死图腾）仍会在来源已清空后把玩家救活（只有 `ChipDamageHandler.java:133-145` 的 HIGHEST 取消会被 `event.isCanceled()` 挡住）。

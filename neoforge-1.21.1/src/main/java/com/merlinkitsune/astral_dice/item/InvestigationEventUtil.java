@@ -115,10 +115,11 @@ public final class InvestigationEventUtil {
     //   放在 triggerByKill 之后**不影响幂等**:第二次派发发生在本处理器返回**之后**,那时来源已被清空。
     //
     //   已知边界(2026-10-27 复核如实登记):本处理器用**默认优先级**,所以
-    //   ① 更高优先级处理器先取消(如气囊 HIGHEST、末影骰)→ 平台默认 receiveCanceled=false,本处理器
-    //      根本不会被投递,来源自然保留 ⇒ 该场景是安全的;
-    //   ② 同优先级 / 更晚的取消(如目标为玩家且被不死图腾救活)会在来源已清空之后把实体救活 ⇒
-    //      这只目标后续真实击杀不再触发调查阶段。当前不修:强化拒止/隐匿调查的实际目标几乎都是怪物,
+    //   ① 更高优先级处理器先取消(如气囊 ChipDamageHandler,EventPriority.HIGHEST)→ 平台默认
+    //      receiveCanceled=false,本处理器根本不会被投递,来源自然保留 ⇒ 该场景是安全的;
+    //   ② 同优先级 / 更晚的取消会在来源已清空之后把实体救活 ⇒ 这只目标后续真实击杀不再触发调查阶段。
+    //      例:不死图腾(ChipDamageHandler 同批)与末影骰(EnderDiceHandler#onLivingDeath,无 priority
+    //      ⇒ 同为默认优先级,注册顺序决定先后)。当前不修:强化拒止/隐匿调查的实际目标几乎都是怪物,
     //      怪物没有保命手段;若日后要彻底兑现「取消即不消耗」,应把本处理器降到 EventPriority.LOWEST
     //      并确认排在所有保命处理器之后。
     @SubscribeEvent
