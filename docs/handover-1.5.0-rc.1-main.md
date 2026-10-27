@@ -775,6 +775,7 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 
 7. **产物与收尾**：`:neoforge-1.21.1:build :forge-1.20.1:build` BUILD SUCCESSFUL ⇒ neo prod `2,599,283 B / 6FE1D2CD`、forge prod `2,648,157 B / 9327BDF4`、forge dev named `2,618,723 B / 2B051830`；四目标（根 `build/libs` / 子项目 `build/libs` / `run/<线>/mods` / 两个整合包）哈希核对一致（`run` 用 dev named、整合包用 prod SRG —— 既有口径）。`--phase stop --force --purge-saves` ⇒ `MT_CLEANUP_SAVES: PURGED 1` / `MT_CLEANUP_RESULT: OK` / `MT_STOP: OK (1s)`；1.21.1 `run/mods` 的两个临时 jar（legacyplus / caelus）已删。
 
+9. **复核（2026-10-28 00:3x–00:4x，`testworld` 重建后）**：`mt.ps1 --phase env` 重建世界 → `--phase launch` EXIT 0 → 客户端 `level=true / player=Dev`。探针 `temp/curse3.js`（`/damage Dev 4 minecraft:mob_attack by @e[tag=cur_mob,limit=1,sort=nearest]`）复现同一条链：`AP_CURSE_RATIO:player=Dev:original=3.0:current=6.0:ratio=2.0`（EASY 下 4→3 缩放后再 ×2）+ `AP_CURSE_APPLY:channel=mob` `pre=7.0:post=14.0` / `pre=10.0:post=20.0` / `pre=4.0:post=8.0` / `pre=9.0:post=18.0` ⇒ §4.1al-2 在**全新世界**上复现。同轮 `temp/en121_melee.js` 复验锅网关：`pan {meleeGate:true, dealt:0.0}` / `iron_sword {meleeGate:true, dealt:1.0}`（骰战 d6 低点）/ `bow` 与 `bare_hand` `{meleeGate:false, dealt:12.0}` ⇒ §4.1al-5「网关 PASS、端到端 0」不变。
 8. **骰子独立验证（子代理 46870f94，只读）**：报告 `docs/features/dice-special-verification.md`（13 个骰子逐个 SUPPORTED/REFUTED + Top5 疑似缺陷 + 5 条待裁决），紫晶骰子四条链已厘清。**未改任何代码**，等用户裁决（§5-19）。
 
 ## 5 遗留与欠账
@@ -923,6 +924,7 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 40. **dev 运行的 jar 与整合包不是同一份**（2026-10-28 复核）：`pushToDevRun` 把 `forge-1.20.1/build/devlibs` 的 **Mojmap dev named** jar 推进 `run/<线>/mods`，`pushToGame` 才把 **reobf SRG 生产** jar 推进整合包。两者大小/哈希本来就不同（`2,618,723 / 2B051830` vs `2,648,157 / 9327BDF4`），别当「产物不一致」报缺陷；改完源码要实机必须跑 `pushToDevRun`（`:build` 会带）。
 
 41. **git bash 环境下写文件 / git 写操作可能被拒**（2026-10-28 实测）：`ops_bash`（git bash）里 node 写文件报 `EPERM: operation not permitted`，`git add` 报 `fatal: Unable to create '.git/index.lock': Permission denied`（无残留 lock、无 git 进程）⇒ 所有写文件与 git 写操作走 **pwsh**，bash 只做只读查询。
+42. **前置库 jar 也分 dev / prod，forge 线 `run/mods` 必须放 `devlibs` 那份**（2026-10-28 实测）：`F:\MCProject\starengine\build\libs\starengine-forge-1.20.1-1.1.0.jar` 是 **reobf SRG**（103,605 B），`F:\MCProject\starengine\forge-1.20.1\build\devlibs\starengine-forge-1.20.1-1.1.0.jar` 才是 **Mojmap dev named**（102,013 B，正是 `run/1.20.1/mods` 该放的那份）。误把 libs 那份塞进 dev run ⇒ 加载世界时 KubeJS 注册命令炸：`java.lang.NoSuchMethodError: 'com.mojang.brigadier.builder.LiteralArgumentBuilder net.minecraft.commands.Commands.m_82127_(java.lang.String)'`，栈为 `WorldLoader.load` → `WorldOpenFlows.loadWorldStem` → `QuickPlay.joinSingleplayerWorld`，客户端停在主菜单、AutoJS 只剩 `client` side（报 `Side 'server' is not registered in this game instance`）⇒ 看到这两个症状就先去比 `run/<forge 线>/mods` 里库 jar 与 `devlibs` 的大小/哈希。neo 线无此差别（1.21 生产即 Mojmap，98,734 B 两份一致）。
 ## 7 关键路径（命令）
 
 ```powershell
