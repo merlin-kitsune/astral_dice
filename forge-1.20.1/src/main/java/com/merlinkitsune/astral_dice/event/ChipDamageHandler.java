@@ -1,6 +1,7 @@
 package com.merlinkitsune.astral_dice.event;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
+import com.merlinkitsune.astral_dice.combat.DiceCombatEvents;
 import com.merlinkitsune.astral_dice.item.chip.AirbagChipItem;
 import com.merlinkitsune.astral_dice.item.RenShieldManager;
 import com.merlinkitsune.astral_dice.item.chip.WhetstoneChipItem;
@@ -50,7 +51,19 @@ public final class ChipDamageHandler {
         LivingEntity entity = event.getEntity();
         if (entity.level().isClientSide()) return;
         if (!(entity instanceof Player player)) return;
+        // 2026-10-27 批次F(P2-B):本处理器是「settle 之后改金额」的最后一站 —— 气囊归零 / 磨刀石 /
+        // 怪力侦探立牌 / 超天酱立牌四条分支都会改 event.getAmount()。骰战 settle 写回的吸收里含幻影 H,
+        // 金额被改后平台 :1684 的扣减量就不再等于 H(气囊归零时 :1681 整段跳过 ⇒ 黄心白涨 H)⇒ 必须在
+        // **所有出口**(含下面的早退)统一把吸收重对齐一次;无幻影登记时是 no-op。
+        try {
+            applyChipMitigation(player, event);
+        } finally {
+            DiceCombatEvents.compensateAbsorption(player, event.getAmount());
+        }
+    }
 
+    /** 原 {@link #onLivingDamage} 的主体(2026-10-27 批次F 原样搬出,只为给它一个 finally 收尾点)。 */
+    private static void applyChipMitigation(Player player, LivingDamageEvent event) {
         float damage = event.getAmount();
         if (damage <= 0.0F) return;
 

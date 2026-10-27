@@ -317,3 +317,19 @@ combat/DiceCombatEvents.java:305-317 赐福/降神倒计时启动、秘密侦探
 | N24 | 惩罚伤害跳字组别 `SPELL` | 是否改用 `CARD_COST` 配色 |
 | N25 | P1 两线 `bypasses_cooldown.json` 缺 `dice_damage` | 何时补（P1 批次） |
 
+### 7.5 批次 F：幻影吸收余额显式化（2026-10-27 19:0x–19:2x，forge 单线）
+
+**起因**：`dsh_code_review` run `15212f5f` 的两条 P2 —— 批次A 的 `settleDiceDamage` 用 `setAbsorptionAmount(A0 - absorbedShould + toHealth)` 写回一个**只活到平台 `LivingEntity.java:1684` 之前**的幻影余额 H，把约定隐式散落在时间轴上：
+
+1. **P2-A**：窗口内对同一目标补发的嵌套 `hurt()`（额外加伤、大当家溅射、狂暴反噬）在平台 `:1669-1670` 按 `c1 = min(P, 含 H 的余额)` 结算 ⇒ 这段伤害被幻影整段吞掉（跳字满额、红心未扣）。
+2. **P2-B**：窗口内改金额的 LOWEST 处理器（筹码减伤 / 立牌 +5 / 弱印记 ×1.10）让平台 `:1684` 的扣减量 ≠ H；气囊归零时 `:1681` 整段跳过 ⇒ 吸收停在 `A0 - absorbedShould + H`（例 A0=4、F=20 ⇒ 黄心白涨 12 点）。
+
+**修法（forge `combat/DiceCombatEvents.java`）**：把 H 登记成显式数据（`PHANTOM_ABSORPTION`，弱键 + `gameTime`，跨 tick 自动失效），新增三个操作：
+- `phantomOf(LivingEntity)`（`:443-452`）读登记；
+- `withPhantomPeeled(LivingEntity, Runnable)`（`:458-472`）剥 H 并**摘登记** ⇒ 嵌套 hurt 在真实余额上结算 ⇒ 结束后挂回 H 交给外层 `:1684`；三处包裹：额外加伤 `:1062`、大当家溅射 `:1131`、狂暴反噬 `:1717`（清单外同机制，注释标注可单点回退）；
+- `compensateAbsorption(LivingEntity, float finalAmount)`（`:482-489`）剥 H ⇒ 写 `真实余额 + finalAmount` ⇒ 平台扣 finalAmount 落回真实余额；**写完把登记刷新成 `finalAmount` 而非清除**（LOWEST 段可能多个处理器依次改金额，后者必须知道平台还会扣多少），`finalAmount <= 0` 才转清除。调用点：`event/ChipDamageHandler.java:61`（`finally` 覆盖气囊/磨刀石/侦探/超天酱四条分支与全部早退）、`event/LinglingSignEvents.java:121`（+5 之后）、`combat/DiceCombatEvents.java:1777`（弱印记乘算之后）。
+- 另在 `onLivingHurtRecordAbsorption`（`:335-347`）末尾 `PHANTOM_ABSORPTION.remove(target)`，保证每段新受击从干净状态开始。
+
+**判据**：双线 `:classes` EXIT 0；`setAbsorptionAmount(` 在 forge `DiceCombatEvents.java` 共 9 命中（4 注释 + 5 代码：`:395` 写回 / `:465` 剥 / `:469` 挂回 / `:487` 对齐）；neo 与 P1 两线零 diff。**未实机**。
+
+**残余边缘（登记不改）**：① 窗口内其它代码读余额仍看到虚高值（只活到同 tick `:1684`，对 HUD/跨线程不可见）；② `event/DamageEffectCardHandler.java:102` 的嵌套真伤与骰战近战互斥（不可达），若将来交叉再套 `withPhantomPeeled`（无登记时 no-op）；③ 第三方在 LOWEST 段之后再改金额且不调 `compensateAbsorption` 会回退偏移；④ 非玩家目标的登记无 compensate 出口，但同 tick `:1684` 照常扣，跨 tick 由 `gameTime` 过期与 `:346` 兜底。

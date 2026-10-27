@@ -294,10 +294,14 @@ public class DiceCombatEvents {
     //   写回 setAbsorptionAmount(A0 - absorbedShould + H) 且 setAmount(H)
     //   => 平台 :1684 再扣 H => 终态吸收 = A0 - absorbedShould (正确);红心 = H (正确)
     //   => H == 0 时平台 :1681 整个分支跳过(不扣血也不再扣吸收),终态同样正确
-    // 已知限制(本批不修):本模组 LOWEST 处理器(安全气囊归零 / 磨刀石 -N / 立牌 -N)可能在
-    //    本处之后**再改金额** => 平台 :1684 的扣减量 != H => 吸收终值偏移 |H - f1最终|。
+    // 已知限制(原始记录;2026-10-27 批次F 已在下游出口消除,机制见 {@link #PHANTOM_ABSORPTION}):
+    //    本模组 LOWEST 处理器(安全气囊归零 / 磨刀石 -N / 立牌 -N)可能在本处之后**再改金额**
+    //    => 平台 :1684 的扣减量 != H => 吸收终值偏移 |H - f1最终|。
     //    1.20.1 没有 LivingDamageEvent.Post,同优先级内的监听顺序也不可依赖,故不在此补偿;
     //    偏移方向是"少消耗吸收 / 多留吸收",不会让玩家多吃红心,记入审计待后续批次。
+    // 2026-10-27 批次F:settle 写回处把 H 登记进 {@link #PHANTOM_ABSORPTION};窗口内改金额的处理器
+    // 统一调 {@link #compensateAbsorption}(改金额后),窗口内的嵌套 hurt 统一用
+    // {@link #withPhantomPeeled} 包裹 ⇒ 「嵌套伤害被幻影吞掉」与「改金额后黄心白涨」两条都消除。
     private static final Map<LivingEntity, PreHurtSnapshot> PRE_HURT_ABSORPTION =
             Collections.synchronizedMap(new WeakHashMap<>());
 
@@ -336,6 +340,10 @@ public class DiceCombatEvents {
         float shield = target instanceof Player defender
                 ? RenShieldManager.remainingShieldAbsorption(defender) : 0.0F;
         PRE_HURT_ABSORPTION.put(target, new PreHurtSnapshot(target.getAbsorptionAmount(), shield));
+        // 2026-10-27 批次F:每次**新受击**都会开启一个新的「settle ⇒ 平台 :1684」窗口,上一窗口留下的
+        // 幻影登记必然已被 :1684 消费掉(或该实例没派发 LivingDamageEvent)⇒ 这里先清空,避免上一段的 H
+        // 被本段的收尾处理器误当成「仍待扣的幻影」再剥一次(同 tick 连续两击 / A0<=0 短路后无新登记时)。
+        PHANTOM_ABSORPTION.remove(target);
     }
 
     /** N2 取用点:**立刻**摘走并移除登记 —— 同一 tick 内同一实体可能有嵌套/多段伤害实例
@@ -385,7 +393,99 @@ public class DiceCombatEvents {
         float toHealth = damage - absorbedShould;
         // 写回 A0 - absorbedShould + H:平台 L1684 会再扣一次 H => 终态吸收 = A0 - absorbedShould
         target.setAbsorptionAmount(absorptionBefore - absorbedShould + toHealth);
+        // 2026-10-27 批次F:把这份「幻影 H」显式登记(见 {@link #PHANTOM_ABSORPTION})。
+        // H == 0 时平台 :1681 整段跳过、不会有后续扣减 ⇒ 不登记(顺带清掉可能残留的旧登记)。
+        registerPhantom(target, toHealth);
         event.setAmount(toHealth);
+    }
+
+    // ============================================================================================
+    // 2026-10-27 批次F:幻影吸收余额 H 的显式管理(P2-A / P2-B)
+    // --------------------------------------------------------------------------------------------
+    // settle 写回的「A0 - absorbedShould + H」中,H 是一个**幻影余额**:它只活在「settle 之后 ⇒ 平台
+    // :1684 之前」这段窗口里,靠平台再扣一次 H 才落回真实余额。原实现把这个约定**隐式散落在时间轴上**,
+    // 于是窗口内任何再次触碰吸收 / 金额的代码都会破坏它:
+    //   P2-A:窗口内对**同一目标**补发的嵌套 hurt(额外加伤 / 大当家溅射 / 狂暴反噬)在平台 :1669-1670
+    //        按 c1 = min(P, 含 H 的余额) 结算 ⇒ 这段伤害被幻影整段吞掉。
+    //   P2-B:窗口内改动**金额**的 LOWEST 处理器(筹码减伤 / 立牌 +5 / 弱印记)让平台 :1684 的扣减量
+    //        != H;气囊归零时 :1681 整段跳过 ⇒ 吸收停在 A0-absorbedShould+H(例 A0=4、F=20 白涨 12 点黄心)。
+    // 故把 H 登记成显式数据(弱键 + gameTime),对外提供三个操作:
+    //   phantomOf(target)                     读登记(跨 tick 自动失效)
+    //   withPhantomPeeled(target, action)     临时剥掉 H ⇒ 嵌套 hurt 在**真实余额**上结算 ⇒ 结束后挂回 H
+    //   compensateAbsorption(target, amount)  剥掉 H ⇒ 写成 真实余额 + amount ⇒ 交平台 :1684 扣 amount
+    private static final Map<LivingEntity, PhantomBalance> PHANTOM_ABSORPTION =
+            Collections.synchronizedMap(new WeakHashMap<>());
+
+    /** 单条幻影登记:{@code amount} = settle 写回后**仍待平台 :1684 扣掉**的量。 */
+    private static final class PhantomBalance {
+        final float amount;
+        final long gameTime;
+
+        PhantomBalance(float amount, long gameTime) {
+            this.amount = amount;
+            this.gameTime = gameTime;
+        }
+    }
+
+    /** 登记本次写回留下的幻影;{@code amount <= 0} 时改为一律清除(H == 0 ⇒ 平台 :1681 整段跳过,无需幻影)。 */
+    private static void registerPhantom(LivingEntity target, float amount) {
+        if (amount <= 0.0F) {
+            PHANTOM_ABSORPTION.remove(target);
+            return;
+        }
+        PHANTOM_ABSORPTION.put(target, new PhantomBalance(amount, target.level().getGameTime()));
+    }
+
+    /** 当前目标身上登记的幻影余额(未登记 / 跨 tick ⇒ 0)。
+     *  <p>跨 tick 失效的理由:平台 :1684 只会在**同一 tick** 的那次 {@code hurt()} 里扣掉幻影;任何活过
+     *  一个 tick 的登记都说明平台没走 :1684(金额被改回 0 的路径已由 {@link #compensateAbsorption} 清除),
+     *  再拿它去剥余额只会把真实余额剥坏。 */
+    public static float phantomOf(LivingEntity target) {
+        if (target == null || target.level().isClientSide()) return 0.0F;
+        PhantomBalance recorded = PHANTOM_ABSORPTION.get(target);
+        if (recorded == null) return 0.0F;
+        if (recorded.gameTime != target.level().getGameTime()) {
+            PHANTOM_ABSORPTION.remove(target);
+            return 0.0F;
+        }
+        return recorded.amount;
+    }
+
+    /** 在**真实余额**(剥掉幻影 H)上执行一段会再次派发伤害事件的代码,结束后把 H 挂回去。
+     *  <p>嵌套 hurt 的整条平台流程(:1669-1670 扣吸收 → :1680 派发事件 → :1684 再扣)都在 {@code action}
+     *  内同步跑完,故「挂回 H」= 让**外层**平台 :1684 扣掉它,终态仍是 settle 承诺的 A0 - absorbedShould。
+     *  <p>剥掉期间**同时摘掉登记**:嵌套伤害自己的收尾处理器(补偿点)不能拿外层的 H 去剥余额。 */
+    public static void withPhantomPeeled(LivingEntity target, Runnable action) {
+        float phantom = phantomOf(target);
+        if (phantom <= 0.0F) {
+            action.run();
+            return;
+        }
+        PHANTOM_ABSORPTION.remove(target);
+        target.setAbsorptionAmount(Math.max(0.0F, target.getAbsorptionAmount() - phantom));
+        try {
+            action.run();
+        } finally {
+            target.setAbsorptionAmount(target.getAbsorptionAmount() + phantom);
+            PHANTOM_ABSORPTION.put(target, new PhantomBalance(phantom, target.level().getGameTime()));
+        }
+    }
+
+    /** 把「settle 之后又被改过金额」的这次伤害重新对齐:剥掉幻影 ⇒ 写成 真实余额 + {@code finalAmount}
+     *  ⇒ 平台 :1684 扣 {@code finalAmount} ⇒ 落回真实余额。
+     *
+     *  <p>登记的处理(本批关键):写入后把登记**刷新成 {@code finalAmount}** 而不是一律清除 ——
+     *  LOWEST 阶段可能有多个处理器依次改金额(弱印记 @LOW ⇒ 立牌 +5 ⇒ 筹码减伤 @LOWEST,先后不可依赖),
+     *  后一个处理器必须能看到「平台接下来会扣多少」才能继续对齐。{@code finalAmount <= 0} 时平台 :1681
+     *  整段跳过、不会再有扣减,登记随之清除。
+     *  <p>没有登记 ⇒ 直接返回(这一击不是骰战写终值的,或已被别人结清),绝不改吸收余额。 */
+    public static void compensateAbsorption(LivingEntity target, float finalAmount) {
+        if (target == null || target.level().isClientSide()) return;
+        float phantom = phantomOf(target);
+        if (phantom <= 0.0F) return;
+        float real = Math.max(0.0F, target.getAbsorptionAmount() - phantom);
+        target.setAbsorptionAmount(real + finalAmount);
+        registerPhantom(target, finalAmount);
     }
 
     @SubscribeEvent(priority = EventPriority.NORMAL)
@@ -957,11 +1057,15 @@ public class DiceCombatEvents {
                 int savedInvulnerable = target.invulnerableTime;
                 beginAoe();
                 try {
-                    target.invulnerableTime = 0;
-                    target.hurt(com.merlinkitsune.astral_dice.damage.ModDamageTypes.extraDamage(
-                            target.level(), player), extraDamage);
-                    // 跳数字:不再直发,由 DamageNumberAggregator 在受伤事件上取终值并累加。
-                    // 组别走**类型回落**即可 —— astral_dice:extra_damage ⇒ 攻击力/伤害加成类(红)。
+                    // 2026-10-27 批次F(P2-A):嵌套 hurt 必须在**真实余额**上结算 —— settle(:941)刚写回的
+                    // 吸收里含幻影 H,不剥掉就会被平台 :1669-1670 的 c1 = min(P, 余额) 整段吞掉。
+                    withPhantomPeeled(target, () -> {
+                        target.invulnerableTime = 0;
+                        target.hurt(com.merlinkitsune.astral_dice.damage.ModDamageTypes.extraDamage(
+                                target.level(), player), extraDamage);
+                        // 跳数字:不再直发,由 DamageNumberAggregator 在受伤事件上取终值并累加。
+                        // 组别走**类型回落**即可 —— astral_dice:extra_damage ⇒ 攻击力/伤害加成类(红)。
+                    });
                 } finally {
                     target.invulnerableTime = savedInvulnerable;
                     endAoe();
@@ -1022,14 +1126,18 @@ public class DiceCombatEvents {
                         boolean isMainTarget = victim == target;
                         int savedInvulnerable = isMainTarget ? victim.invulnerableTime : 0;
                         try {
-                            if (isMainTarget) victim.invulnerableTime = 0;
-                            // 跳数字:登记组别后由 DamageNumberAggregator 取终值(不再直发)。
-                            // ⚠️ 必须显式登记:astral_dice:true_damage 被多路复用
-                            //    (大当家溅射=攻击力类红 / 效果牌范围波及与法伤加成=法伤类绿),
-                            //    只看类型区分不出来。
-                            DamageNumberAggregator.tag(victim, splashSource,
-                                    DamageNumberAggregator.Group.ATTACK);
-                            victim.hurt(splashSource, splashDmg);
+                            // 2026-10-27 批次F(P2-A):主目标此刻的吸收里含幻影 H(settle :941 写回),
+                            // 这段溅射同样必须在真实余额上结算;其余目标没有登记 ⇒ 本包装是 no-op。
+                            withPhantomPeeled(victim, () -> {
+                                if (isMainTarget) victim.invulnerableTime = 0;
+                                // 跳数字:登记组别后由 DamageNumberAggregator 取终值(不再直发)。
+                                // ⚠️ 必须显式登记:astral_dice:true_damage 被多路复用
+                                //    (大当家溅射=攻击力类红 / 效果牌范围波及与法伤加成=法伤类绿),
+                                //    只看类型区分不出来。
+                                DamageNumberAggregator.tag(victim, splashSource,
+                                        DamageNumberAggregator.Group.ATTACK);
+                                victim.hurt(splashSource, splashDmg);
+                            });
                         } finally {
                             if (isMainTarget) victim.invulnerableTime = savedInvulnerable;
                         }
@@ -1603,8 +1711,11 @@ public class DiceCombatEvents {
         if (extra <= 0) return;
         BERSERK_BACKLASH_APPLYING.set(Boolean.TRUE);
         try {
-            target.hurt(com.merlinkitsune.astral_dice.damage.ModDamageTypes
-                    .unreducibleDamage(target.level(), event.getSource().getEntity()), extra);
+            // 2026-10-27 批次F(P2-A 的同源第三点):本处理器 @LOW,排在 settle(NORMAL)**之后**、平台
+            // :1684 **之前**,且 hurt 的正是同一个目标 ⇒ 不剥幻影 H 的话,这段反噬真伤会被平台
+            // :1669-1670 整段吞掉(与额外加伤 / 大当家溅射完全同一机制)。
+            withPhantomPeeled(target, () -> target.hurt(com.merlinkitsune.astral_dice.damage.ModDamageTypes
+                    .unreducibleDamage(target.level(), event.getSource().getEntity()), extra));
         } finally {
             BERSERK_BACKLASH_APPLYING.set(Boolean.FALSE);
         }
@@ -1661,6 +1772,9 @@ public class DiceCombatEvents {
             multiplier += 0.20f;
         }
         event.setAmount(event.getAmount() * multiplier);
+        // 2026-10-27 批次F(P2-B):本处理器 @LOW,若这一击由骰战 settle 写终值(吸收里含幻影 H),
+        // 改了金额就必须同步重对齐吸收,否则平台 :1684 的扣减量 != H。无登记时是 no-op。
+        compensateAbsorption(target, event.getAmount());
     }
 
     /** N8:该次伤害是否属于「骰战自算终值」路径 —— 是则虚弱印记倍率已在骰战里并入,外部处理器必须跳过。

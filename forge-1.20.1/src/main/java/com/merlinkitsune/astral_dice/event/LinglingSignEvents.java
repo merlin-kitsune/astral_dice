@@ -1,6 +1,7 @@
 package com.merlinkitsune.astral_dice.event;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
+import com.merlinkitsune.astral_dice.combat.DiceCombatEvents;
 import com.merlinkitsune.astral_dice.damage.ModDamageTypes;
 import com.merlinkitsune.astral_dice.item.sign.LinglingSignManager;
 
@@ -115,5 +116,8 @@ public final class LinglingSignEvents {
         // 里加的 +5 会被整段盖掉 —— 而本效果的前置就是「佩戴骰子 + 立牌」,骰战路径必然生效 ⇒ 旧挂点
         // 在 1.20.1 等于从未生效(实机取证见类头 §4.7)。1.21.1 侧挂 LivingDamageEvent.Pre(LOWEST) 同理。
         event.setAmount(event.getAmount() + LinglingSignManager.TRACKED_TARGET_BONUS_DAMAGE);
+        // 2026-10-27 批次F(P2-B):+5 之后再对齐吸收 —— settle 写回的吸收里含幻影 H,金额变了平台
+        // :1684 的扣减量就不等于 H。无幻影登记时是 no-op(非骰战伤害 / 目标不是本次 settle 的受害者)。
+        DiceCombatEvents.compensateAbsorption(target, event.getAmount());
     }
 }
