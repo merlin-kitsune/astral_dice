@@ -122,10 +122,9 @@ public class FateGuidanceCardItem extends BaseEffectCardItem {
         float ratio = current > original ? current / original : 1.0f;
 
         // 是否骰战攻击(骰战攻击的最终伤害由骰战接管,此处仅捕获倍率,不修改伤害链)
-        boolean diceCombat = event.getSource().getEntity() instanceof Player attacker
-                && attacker.hasEffect(ModEffects.DICE_BLESSING)
-                && DiceCombatEvents.attackerHasDiceCurio(attacker)
-                && DiceCombatEvents.isMeleeWeaponAttack(attacker);
+        // F3(2026-10-27 近战审计):判据与骰战入口同源 —— 旧写法只认「玩家 + 赐福 + 骰子 + 近战」,
+        //   漏掉入口支持的无骰分支 ⇒ 该分支的半幅写入被骰战整段覆盖、ratio 又被清成 1.0(倍率丢失)。
+        boolean diceCombat = DiceCombatEvents.isDiceBattleSettledDamage(event.getSource(), player);
         if (diceCombat) {
             com.merlinkitsune.astral_dice.component.ModAttachments.setDiceCurseRatio(player, ratio);
             return;

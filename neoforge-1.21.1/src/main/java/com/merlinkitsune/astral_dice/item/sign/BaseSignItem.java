@@ -495,6 +495,11 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
      * 佩戴本立牌的玩家被**敌对目标攻击**时触发(由 {@link #invokeHurtHooks} 分发,并在此统一过闸门)。
      * 环境伤害(摔落 / 仙人掌 / 着火 / 饥饿…)与自伤**不算**(2026-09-29 用户裁决)。
      * 子类覆写以实现受击类被动(如史莱姆立牌的受击 +1 治愈)。
+     *
+     * <p><b>{@code amount} 口径(2026-10-27 近战审计 D3)</b>:两条线**不同** —— forge 传的是
+     * {@code LivingIncomingDamageEvent#getAmount()}(护甲之前),
+     * forge 传的是 {@code LivingDamageEvent#getAmount()}(护甲 / 药水 / 吸收已结算、骰战覆盖之前的平台值)。它只用于「是否受击」这类开关判定,
+     * <b>禁止</b>拿它做数值计算(落地终值以 {@code DiceCombatEvents#settleDiceDamage} 为准)。
      */
     protected void onHurt(Player player, DamageSource source, float amount) {
     }

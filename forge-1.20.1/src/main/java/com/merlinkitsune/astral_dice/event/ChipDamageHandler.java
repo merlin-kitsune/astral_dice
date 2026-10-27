@@ -59,6 +59,10 @@ public final class ChipDamageHandler {
             applyChipMitigation(player, event);
         } finally {
             DiceCombatEvents.compensateAbsorption(player, event.getAmount());
+            // F5(2026-10-27 近战审计):吸血鬼立牌「受击汲取」的回血基数必须是**最终**金额。
+            // 它原先是独立的 @LOWEST 监听器,与本处理器同档 ⇒ 先后取决于注册顺序,可能读到筹码减伤
+            // 之前/之后的中间值。改由本处理器(金额改动的最后一站)的 finally 显式调用,顺序确定。
+            com.merlinkitsune.astral_dice.item.sign.PaparaSignItem.settleBiteHeal(event);
         }
     }
 

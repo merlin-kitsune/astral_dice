@@ -1,6 +1,7 @@
 package com.merlinkitsune.astral_dice.event;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
+import com.merlinkitsune.astral_dice.combat.DiceCombatEvents;
 import com.merlinkitsune.astral_dice.damage.ModDamageTypes;
 import com.merlinkitsune.astral_dice.item.sign.LinglingSignManager;
 
@@ -93,9 +94,15 @@ public final class LinglingSignEvents {
         // 原先这里用于排除「加成段」的 `DamageEffectCardHandler.isApplyingTrueBonus()` 闸门已删除。
         // 旧行为订正(2026-10-27,与 forge 线核对):那道闸门**正好排除**了嵌套的加成段,
         // 所以旧实现本来就是「+5 只加一次」,并非「基础段 +5 + 加成段 +5」。折叠前后均为 +5 一次。
+        // A4(2026-10-27 近战审计):骰战路径的 +5 已并入骰战终值(DiceCombatEvents 玩家路径),
+        //   这里必须跳过,否则与 ChipDamageHandler(@LOWEST) 的先后不可依赖(气囊归零后仍 +5 /
+        //   +5 先加则气囊白烧充能)。
+        if (DiceCombatEvents.isDiceBattleSettledDamage(source, target)) return;
         if (!(source.getEntity() instanceof Player player)) return;
         if (!LinglingSignManager.isEquipped(player)) return;
         if (!LinglingSignManager.isTrackedByAny(target)) return;
+        // 已被其它系统减到 0 / 负值(如安全气囊归零)时不再追加,否则会把「免死」变成「掉 5 点」。
+        if (event.getNewDamage() <= 0.0F) return;
         event.setNewDamage(event.getNewDamage() + LinglingSignManager.TRACKED_TARGET_BONUS_DAMAGE);
     }
 }

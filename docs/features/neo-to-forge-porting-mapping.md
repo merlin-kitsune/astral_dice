@@ -82,18 +82,20 @@
 | 护甲/魔法之后、吸收之前或之后（可改终值） | `LivingDamageEvent.Pre`：`neoforge-1.21.1/src/main/java/com/merlinkitsune/astral_dice/combat/DiceCombatEvents.java:279 @SubscribeEvent(priority = EventPriority.NORMAL)` → `:280 onLivingDamagePre(LivingDamageEvent.Pre event)`，改值用 `event.setNewDamage(...)`（`:824`、`:1101`、`:1555`） | `LivingDamageEvent`（单类）：`forge-1.20.1/src/main/java/com/merlinkitsune/astral_dice/combat/DiceCombatEvents.java:365 settleDiceDamage(LivingEntity, LivingDamageEvent, float)`，改值用 `event.setAmount(...)`（`:389`、`:399`）；另一处 `:1774 event.setAmount(event.getAmount() * multiplier)` | **已核**。这是全仓最大坑，见 1.2。 |
 | 结算完成（读最终伤害） | `LivingDamageEvent.Post`：`neoforge-1.21.1/src/main/java/com/merlinkitsune/astral_dice/combat/DamageNumberAggregator.java:113 onLivingDamagePost(LivingDamageEvent.Post event)`（注释 `:38`、`:55` 说明 Post 的 `getNewDamage()` 是实际扣血量） | `LivingDamageEvent`：`forge-1.20.1/src/main/java/com/merlinkitsune/astral_dice/combat/DamageNumberAggregator.java:119 onLivingDamage(LivingDamageEvent)`（注释 `:38`「1.20.1 是单类、没有 Pre/Post 之分」） | **已核**。neo 有两段可取，forge 只有一段 ⇒ forge 里「读终值」和「改终值」挤在同一个事件，优先级决定先后。 |
 | 护盾（吸收池）钳制 | `item/RenShieldManager`：`neoforge-1.21.1/src/main/java/com/merlinkitsune/astral_dice/item/RenShieldManager.java:414 event.setNewDamage(remaining)`（挂在 Pre） | `forge-1.20.1/src/main/java/com/merlinkitsune/astral_dice/item/RenShieldManager.java:416 event.setAmount(remaining)`（挂在 `LivingHurtEvent`） | **已核**。落点不同 ⇒ forge 的钳制会被后面的 `LivingDamageEvent` 覆盖掉（1.2）。 |
-| 法伤加成段（第二次 hurt） | `neoforge-1.21.1/src/main/java/com/merlinkitsune/astral_dice/event/DamageEffectCardHandler.java:82-99` 建 `ModDamageTypes.trueDamage(level, player)` 后 `target.hurt(bonusSource, (float) bonus)`；投递时点在原版吸收 `LE.java:1790-1792` **之前**（护甲 `:1787`、魔法 `:1788`、Pre `:1789`） | `forge-1.20.1/src/main/java/com/merlinkitsune/astral_dice/event/DamageEffectCardHandler.java:91-106` 同构；投递时点在原版吸收 `:1669-1670` **之后**（`LivingDamageEvent` 在 `:1680`） | **已核**（批次 D 审计结论）。⇒ 法伤 = **两次 hurt**，且两段吃吸收的顺序相反。 |
+| 法伤加成段（**已折叠，不再是第二次 hurt**） | 折叠点 = **护甲之前**：`neoforge-1.21.1/src/main/java/com/merlinkitsune/astral_dice/event/DamageEffectCardHandler.java:73-74 `SubscribeEvent(priority = EventPriority.HIGHEST) onLivingIncomingDamagePre(LivingIncomingDamageEvent)`，唯一写值 `:180 event.setAmount(foldBonusBypassingArmor(...))` | 折叠点 = `forge-1.20.1/src/main/java/com/merlinkitsune/astral_dice/event/DamageEffectCardHandler.java:66-67 onLivingHurtPre(LivingHurtEvent)` `HIGHEST，唯一写值 `:172` 同一句 | **已核（2026-10-27 折叠批 `047bb89c` + 裁决批 `34929f46`）**。旧口径「法伤 = 两次 hurt、两段吃吸收顺序相反」**作废**；现在加成与本体同管道、只结算一次，且 `foldBonusBypassingArmor` 通过在护甲公式上做二分预补偿实现「加成不吃护甲」（见审计 §7.8）。 |
 
 ### 1.2 谁能覆盖谁（本仓踩过的最大坑）
 
 | 场景 | 事实 | 正确写法 |
 |---|---|---|
 | forge 骰战覆盖护盾钳制 | `RenShieldManager` 只能挂 `LivingHurtEvent` 改「平台数值」；骰战随后在 `LivingDamageEvent` 用终值 `setAmount` 覆盖 ⇒ 那次钳制被整段丢弃。仓内已有明确注释：`forge-1.20.1/src/main/java/com/merlinkitsune/astral_dice/combat/DiceCombatEvents.java:366-368`（**已核**，批次新增）。 | 把「本模组自己的」数值钳制搬进 `settleDiceDamage`（`forge-1.20.1/src/main/java/com/merlinkitsune/astral_dice/combat/DiceCombatEvents.java:365`），**不要**指望 `LivingHurtEvent`。 |
-| forge 吸收被扣两次 | 原版 forge 侧 `LivingEntity.java:1684 setAbsorptionAmount(getAbsorptionAmount() - f1)` 与 `:1669-1670` 各扣一次；再叠加骰战自己的补偿算法（`DiceCombatEvents.java` 里 `setAbsorptionAmount(absorptionBefore - absorbedShould + toHealth)` + `registerPhantom`，批次 F 新增）。 | 不在本仓内改原版码；若要修必须做「按段补偿」并在 `LivingDamageEvent` 的 LOWEST 收尾，见 §12 陷阱 T-04。**当前状态：仍存在**（审计 P1-1）。 |
+| ~~forge 吸收被扣两次~~ **REFUTED** | ① `setAbsorptionAmount`（`LivingEntity.java:2932-2938`）把负值钳 0 ⇒ 玩家/非玩家路径的总消耗恒为 `min(d, A)`，`d > A` 时不存在双扣（批次 D 的 P1-1 已被 Lead 与批次 E 双双否掉）；② 真正存在的是**幻影 H 挂在玩家黄心上**：`Player#actuallyHurt`（`Player.java:940-965`，覆写不调 super）**没有** `LivingEntity.java:1684` 那一步 ⇒ 批次 F 约定的「平台会再扣一次 H」对玩家不成立。 | **已修（2026-10-27 近战批 F1）**：`settleDiceDamage` 对 `target instanceof Player` 直接写真实终态、**不登记幻影**。不要再照抄「补偿玩家吸收」的修法。 |
 | neo 侧等价的坑 | neo 的 `Pre` 就是终值唯一出口，`Post` 只读；平台吸收在 Pre 之后扣（`LE.java:1790-1792`）⇒ 不存在「后续事件覆盖前面钳制」的问题。 | neo 侧照常写 `Pre` + `setNewDamage`。 |
 | 迁移动作（一句话） | **neo 写在 `LivingDamageEvent.Pre` 里的 `setNewDamage`，落到 forge 必须写进 `settleDiceDamage`（或确保是该事件里最后一个 `setAmount`）**；写在 `LivingHurtEvent` 里的改动，凡是会改「最终掉血量」的，一律视为会被覆盖。 | — |
 
-### 1.3 两次 hurt 的连带影响（已核，批次 D）
+### 1.3 两次 hurt 的连带影响（**历史**：2026-10-27 折叠后不再成立）
+
+> ⚠️ 本节记录的是**折叠前**的事实，仅供理解历史缺陷；现行做法见本节末段「移植纪律」。
 
 法伤命中 = 本体一段 + 加成段一次独立 `hurt`。加成段用的伤害类型在 `bypasses_cooldown` 里（`neoforge-1.21.1/src/main/resources/data/minecraft/tags/damage_type/bypasses_cooldown.json`、`forge-1.20.1/src/main/resources/data/minecraft/tags/damage_type/bypasses_cooldown.json`，两线同值），所以不进无敌帧分支。代价是**所有「每次受击」类效果会执行两次**：
 
@@ -518,7 +520,7 @@
 | T-01 | forge 的护盾钳制「没生效」，玩家被一击打穿护盾 | `RenShieldManager` 挂在 `LivingHurtEvent`，骰战随后在 `LivingDamageEvent` 用终值覆盖 | 钳制搬进 `settleDiceDamage` | `forge-1.20.1/src/main/java/com/merlinkitsune/astral_dice/item/RenShieldManager.java:416` vs `combat/DiceCombatEvents.java:365`、注释 `:366-368` |
 | T-02 | forge 吸收被扣两次，吸收池出现负值 | 原版 `LivingEntity.java:1684` 与 `:1669-1670` 各扣一次，叠加骰战自己的补偿 | 按段补偿 + 在 `LivingDamageEvent` LOWEST 收尾；不改原版 | `forge-1.20.1/.../combat/DiceCombatEvents.java` 的 `registerPhantom` 段（批次 F）+ 审计 P1-1 |
 | T-03 | neo 能取消 `MobEffectEvent.Expired`，forge 写了 `setCanceled` 编译错/无效 | forge 的 `Expired` 不是 `@Cancelable` | 改用 `MobEffectEvent.Remove` 拦截 | sources jar 两侧 `MobEffectEvent.java`（neo `implements ICancellableEvent`；forge 注释 `not Cancelable`、`Remove` 在 `:46` 带 `@Cancelable`） |
-| T-04 | 给吸收做「补偿式」修法时算错段数 | 法伤命中是**两次 hurt**，每段各被扣一次 | 补偿按「每次 hurt 一次」做，写在 LOWEST；不要在 `LivingHurtEvent` 里补 | 审计批次 D §4 + `event/DamageEffectCardHandler.java:82-99`(neo)/`:91-106`(forge) |
+| T-04 | 给吸收做「补偿式」修法时算错段数 | ① 法伤已折叠为**单次** hurt（2026-10-27），旧的「两次 hurt、每段各扣一次」口径作废；② 更危险的是把 `LivingEntity.java:1684` 的补偿逻辑套到**玩家**身上 —— `Player#actuallyHurt`（`Player.java:940-965`）没有那一步 | 数值型改动优先写在 `settleDiceDamage` 出口；玩家与非玩家必须分叉（见 F1） | 审计 §7.8 + §7.9.1；`forge-1.20.1/src/main/java/com/merlinkitsune/astral_dice/combat/DiceCombatEvents.java:374-416` |
 | T-05 | forge 编译报 `incompatible types: DeferredHolder … RegistryObject` | 持有者类型不同 | forge 侧一律 `.get()`，或把变量类型改成 `RegistryObject` | `effect/ModEffects.java:34`（两线） |
 | T-06 | 效果「删不掉」 | 直接 `removeEffect` 被「阻止移除」逻辑拦回 | 走 `ModEffectRemoval` | `command/AstralPartyCommand.java:623-624`（forge 注释）；neo `:625` / forge `:635` |
 | T-07 | forge 编不过 `consume` | 1.20.1 无 `ItemStack#consume` | `if (!player.isCreative()) shrink(1)` | sources jar `ItemStack.java`：neo `:1089` 有 `consume`，forge 无 |
@@ -558,7 +560,7 @@
 | U-06 | 组件值可变性要求 | 无反面用例 | 查 1.21 组件规范 |
 | U-07 | `starengine_version_range` 在 forge `gradle.properties` 是否也已移除 | 只读了 neo 的注释 | `grep -n 'starengine' forge-1.20.1/gradle.properties` |
 | U-08 | curios 依赖在 forge toml 的行号与区间 | 未逐一核 | `grep -n -i curios forge-1.20.1/src/main/templates/META-INF/mods.toml` |
-| U-09 | 法伤链的「两次 hurt」在 forge 侧对吸收池的实际分配顺序 | 批 D 只做了源码推断，无实机 | 探针读吸收池前后值（§10） |
+| ~~U-09~~ | ~~法伤链的「两次 hurt」在 forge 侧对吸收池的实际分配顺序~~ | **已作废**：折叠为单次结算后不存在两段；且玩家路径的吸收分配已按 `Player.java:946-947` 静态核清（只剩实机读数待做） | 若要补读数：探针比对「黄心终态」与 `A0 - min(F, A0)` |
 | U-10 | `settleDiceDamage` 的 `registerPhantom` 与「幻影吸收 H」的完整语义 | 批次 F 新增，仅读到片段 | 通读该文件相关方法 |
 
 ### 13.2 行号漂移

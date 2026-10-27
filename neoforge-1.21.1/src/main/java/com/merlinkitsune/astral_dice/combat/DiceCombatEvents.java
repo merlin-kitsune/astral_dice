@@ -834,7 +834,22 @@ public class DiceCombatEvents {
         // 用处理器开头固化的局部变量:避免被后续嵌套伤害实例刷新的登记槽影响。
         finalDmg *= victimFactor;
 
+        // A4(2026-10-27 近战审计,与 1.20.1 线同步):怪力乱神「被吸附目标受到佩戴者伤害 +5」原先由
+        //   LinglingSignEvents(@LOWEST)在事件之后追加 —— 它与 ChipDamageHandler(@LOWEST)先后不可依赖
+        //   (气囊归零后仍 +5 / +5 先加则气囊白烧)。统一改为并入骰战终值,事件侧改判
+        //   isDiceBattleSettledDamage 跳过(见 event/LinglingSignEvents)。
+        if (com.merlinkitsune.astral_dice.item.sign.LinglingSignManager.isEquipped(player)
+                && com.merlinkitsune.astral_dice.item.sign.LinglingSignManager.isTrackedByAny(target)) {
+            finalDmg += com.merlinkitsune.astral_dice.item.sign.LinglingSignManager.TRACKED_TARGET_BONUS_DAMAGE;
+        }
+
         event.setNewDamage((float) finalDmg);
+        // F7(2026-10-27 近战审计,与 1.20.1 线同步):修女被动「单次受击 >10 清空加成」读的是护甲前
+        //   原版值,骰战覆盖后实际落地量由上一行决定 ⇒ 这里按并入终值后的落地量判定。
+        if (target instanceof Player alanaVictim && (float) finalDmg > 10.0F
+                && ModAttachments.getAlanaPassiveBonus(alanaVictim) > 0) {
+            com.merlinkitsune.astral_dice.item.sign.AlanaSignItem.clearBonus(alanaVictim);
+        }
         // 跳数字不再在此直发(2026-09-26):登记组别,由 DamageNumberAggregator 在**伤害管线终值**
         // (LivingDamageEvent.Post 的 getNewDamage = 实际扣血量)上取值,并与本 tick 同目标的其它
         // 攻击力类伤害累加成一个**总值**后一次性下发。
@@ -1111,6 +1126,25 @@ public class DiceCombatEvents {
         finalDmg *= com.merlinkitsune.starengine.combat.VanillaMitigation.magicAbsorbFactor(
                 resistanceAmplifierOf(target), protectionPointsOf(target, source));
         finalDmg *= (float) victimFactor;
+        // A6(2026-10-27 近战审计):生物近战路径漏了「目标身上有标记 ⇒ +1」 —— 与玩家路径
+        //   (本文件 :808-810 的 if (MarkManager.getLevel(target) > 0) finalDmg += 1)对齐。
+        if (MarkManager.getLevel(target) > 0) {
+            finalDmg += 1;
+        }
+        // 虚弱印记:生物近战原先只靠 onWeakMarkDamage(@LOW)在事件后乘;该处理器现改用
+        //   isDiceBattleSettledDamage 跳过骰战(含 生物→玩家),故倍率必须并入终值(与 1.20.1 线同口径)。
+        //   生物攻击者不是玩家 ⇒ 没有「命运的指引」+0.20 那条来源,只需基准倍率。
+        if (target.hasEffect(ModEffects.WEAK_MARK)) {
+            finalDmg *= 1.10f;
+        }
+        // F3(2026-10-27 近战审计):七咒(神秘遗物+ 第一诅咒)倍率原先只在「玩家攻击」路径的内置
+        //   外部因子里乘,生物近战路径整段丢弃。生物攻击者永远没有命运的指引 ⇒ 全额应用,用后清零
+        //   (与内置因子同语义,避免残留到下一击)。
+        float curseRatio = ModAttachments.getDiceCurseRatio(target);
+        if (curseRatio > 1.0f) {
+            finalDmg *= curseRatio;
+        }
+        ModAttachments.setDiceCurseRatio(target, 1.0f);
         event.setNewDamage(finalDmg);
         // 跳数字:与玩家攻击同一出口(登记组别,由 DamageNumberAggregator 在管线终值上取值)
         DamageNumberAggregator.tag(target, source, DamageNumberAggregator.Group.ATTACK);
@@ -1555,11 +1589,10 @@ public class DiceCombatEvents {
         LivingEntity target = event.getEntity();
         if (target.level().isClientSide()) return;
         if (!target.hasEffect(ModEffects.WEAK_MARK)) return;
-        // 骰战攻击(攻击者赐福激活 + 佩戴骰子 + 近战):虚弱印记倍率已并入骰战结算,跳过以免双重应用
-        if (event.getSource().getEntity() instanceof Player attacker
-                && attacker.hasEffect(ModEffects.DICE_BLESSING)
-                && attackerHasDiceCurio(attacker)
-                && isMeleeWeaponAttack(attacker)) {
+        // 骰战攻击:虚弱印记倍率已并入骰战结算(玩家路径 :814-820 / 生物路径同上),跳过以免双重应用。
+        // F2(2026-10-27 近战审计):判据必须与骰战入口同源 —— 旧写法只认「玩家 + 赐福 + 骰子 + 近战」,
+        //   漏掉入口支持的「无骰玩家打赐福合法目标」分支,该分支会被乘两次(×1.21 / 命运指引激活 ×1.69)。
+        if (isDiceBattleSettledDamage(event.getSource(), target)) {
             return;
         }
         float multiplier = 1.10f;
@@ -1568,6 +1601,38 @@ public class DiceCombatEvents {
             multiplier += 0.20f;
         }
         event.setNewDamage(event.getNewDamage() * multiplier);
+    }
+
+    /**
+     * 「本次伤害是否已由骰战结算接管」(2026-10-27 近战审计 F2/F3,与 1.20.1 线同名同口径)。
+     *
+     * <p>用途:凡是在伤害管线里**再乘一次**的处理器(虚弱印记 ×1.10、命运的指引半幅、
+     * 立牌 +5)都必须跳过骰战,否则会与骰战内的同名因子叠乘。判据必须与骰战入口完全同源
+     * ({@link #resolveMobMeleeAttack} 与玩家路径的入口条件),否则「入口支持、判据漏掉」的分支
+     * 就会双乘 —— 历史缺陷:无骰玩家攻击骰神赐福合法目标时印记被乘两次(×1.21)。
+     *
+     * <p>判定顺序:<br>
+     * ① 客户端 / 内部波及(AOE 顺劈、溅射、法伤波及)与反击链中的伤害不是骰战本体 ⇒ false;<br>
+     * ② 直接伤害实体是玩家:必须近战武器、非**法伤**(法伤走 SpellDamageRegistry 加成链)、
+     *    不是自伤;装备骰子 ⇒ 看是否赐福激活(骰战入口同判据),未装备 ⇒ 看目标是否为
+     *    「骰神赐福合法目标」(入口的 diceStack == null 分支);<br>
+     * ③ 直接伤害实体是生物且目标是玩家 ⇒ 生物近战(守卫目标已装备骰子与否不影响入口)。<br>
+     * ④ 其余(投掷物 / 无直接实体 / 环境伤害)⇒ false。
+     */
+    public static boolean isDiceBattleSettledDamage(DamageSource source, LivingEntity target) {
+        if (source == null || target == null) return false;
+        if (target.level().isClientSide()) return false;
+        if (isInternalAoe() || isInCounterChain()) return false;
+        Entity direct = source.getDirectEntity();
+        if (direct instanceof Player attacker) {
+            if (!isMeleeWeaponAttack(attacker)) return false;
+            if (SpellDamageRegistry.isSpellDamage(source, direct)) return false;
+            if (attacker == target) return false;
+            return attackerHasDiceCurio(attacker)
+                    ? attacker.hasEffect(ModEffects.DICE_BLESSING)
+                    : isBlessingTarget(target, attacker);
+        }
+        return direct instanceof Mob && target instanceof Player;
     }
 
     // 玩家是否持有骰子(curio 骰子槽)
@@ -1795,8 +1860,12 @@ public class DiceCombatEvents {
         //   (本已被下面 attacker == player 拦掉,这里纳入只为让「惩罚类伤害」在闸门上**成文**)。
         //   不排除的后果:原击已触发过一次受击被动,反噬落在同一次受击流程里会**再触发一遍**;
         //   牌惩罚在 PvP 里也会被误算成「被人打了」。
+        // A3(2026-10-27 近战审计):额外加伤段(extra_damage)是骰战主伤害的**派生物**(嵌套 hurt,
+        //   directEntity = null、entity = 攻击者)⇒ 同一次攻击会因此再触发一遍受击被动(立牌 onHurt /
+        //   BufferShield 回血 / Papara 回血)。与上面的惩罚类伤害同理,不属于「新的受击事实」。
         if (source.is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.UNREDUCIBLE_DAMAGE)
-                || source.is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.CARD_COST)) {
+                || source.is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.CARD_COST)
+                || source.is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.EXTRA_DAMAGE)) {
             return false;
         }
         if (!(source.getEntity() instanceof LivingEntity attacker)) return false;

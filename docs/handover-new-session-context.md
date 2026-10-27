@@ -69,6 +69,7 @@ Select-String -Path F:\MCProject\astral_dice_multiloader\*\gradle.properties -Pa
 
 15. **法伤加成折叠为单次结算（2026-10-27，handover §4.1af）**：折叠点必须在**护甲之前**（neo `LivingIncomingDamageEvent` / forge `LivingHurtEvent`，均 HIGHEST；折在 `LivingDamageEvent` 会让加成放大 4.63×–13.9×）；乘性因子**仅在本体源自身不吃护甲时**（`astral_dice:card_spell`）与旧实现一致、本体源不在 `bypasses_armor` 内时加成改为吃护甲（预期语义变更），删掉 `isApplyingTrueBonus()` 三处闸门（+5 从未 +10）；新增 `docs/features/neo-to-forge-porting-mapping.md` 作为后续双线移植基线（**先做 neo，再按 mapping 落 forge**）。**待办：重出 jar + 投放 + 实机**。
 16. **折叠批三条裁决（2026-10-27 20:5x，handover §4.1ag）**：N14「AOE 命中也算攻击行为」——两线 `combat/DiceCombatEvents.java` 的赐福/降神倒计时与隐匿解除提到 AOE 闸门之前（`counterDepth > 0` 的反击链仍整段早退）；「法伤加成必须绕过护甲」——两线 `event/DamageEffectCardHandler.java` 新增 `foldBonusBypassingArmor(...)`（护甲前二分预补偿，源带 `bypasses_armor` 或护甲 0 时直接相加），数值回到与旧 `true_damage` 段一致；「连击保留 cooldown」——不给加成单独 `bypasses_cooldown`。**待办：重出 jar + 投放 + 实机**（AOE 计数 / 护甲绕过 / 连击被吞）。
+17. **近战链路专项审计（2026-10-27 21:0x，handover §4.1ah）**：forge 端为重灾区，落地 F1（玩家黄心被写高 —— `Player#actuallyHurt` 覆写没有 `LivingEntity:1684` 那一步）/ F2（无骰赐福目标弱印记 ×1.21）/ F3（七咒在生物近战丢失）/ A3（额外加伤让受击被动二次）/ A4（立牌 +5 折进终态）/ A5（幻影 tick 末对账）/ A6（生物路径漏 +1）/ F7（修女被动读护甲前值起算）/ D3（`BaseSignItem#onHurt` amount 口径 javadoc）；mapping 文档同步订正 5 处（§1.1/§1.2/§1.3/T-04/U-09）。双线 `:classes` EXIT 0，**未实机、未重出 jar**。
 
 ## 禁止项（共同红线，摘自根 `AGENTS.md`）
 

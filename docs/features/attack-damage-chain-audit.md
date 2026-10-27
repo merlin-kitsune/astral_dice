@@ -396,3 +396,53 @@ combat/DiceCombatEvents.java:305-317 赐福/降神倒计时启动、秘密侦探
 | **连击：保留 cooldown 现状** | 不给加成单独加 `bypasses_cooldown`；连击时加成与本体同命（被无敌帧吞掉即一起吞）。§7.7 登记的「neo 参与差额分摊 / forge 整段丢弃」保留为已知差异。 |
 
 **判据**：双线 `:classes` EXIT 0（本批 3s / 2 executed）；两线 helper 出现在 `DamageEffectCardHandler` 内、折叠行改为调用它；AOE 顺序可由源码顺序核对（副作用块行号 < `isInternalAoe()` 行号）。**未实机**。
+### 7.9 近战链路专项审计与修复（2026-10-27 21:0x–21:3x，P0 双线）
+
+用户指令（2026-10-27）：「继续验证近战攻击类是否有遗留问题（重点关注 forge 端），争取一次全部解决战斗/伤害类问题」。
+做法：三路**只读**子代理并行取证（F1–F9 / A1–A6 / MELEE-01–08），互相印证；Lead 用两线 sources jar 逐字复核每条机制前提后落代码。
+
+#### 7.9.1 最关键的平台事实（F1 的前提，本轮新证）
+
+`forge-1.20.1/build/moddev/artifacts/forge-1.20.1-47.4.10-sources.jar` → `net/minecraft/world/entity/player/Player.java:940-965`（`Player#actuallyHurt` **覆写且不调 super**）：
+
+| 行 | 内容 |
+|---|---|
+| `:942` | `ForgeHooks.onLivingHurt(this, src, amount)`（⇒ `LivingHurtEvent` 在护甲之前派发，玩家路径也走这里） |
+| `:944-945` | 护甲 / 魔法吸收 |
+| `:946` | `f1 = Math.max(damage - absorption, 0)` |
+| `:947` | `setAbsorptionAmount(getAbsorptionAmount() - (damage - f1))` |
+| `:948` | `f1 = ForgeHooks.onLivingDamage(this, src, f1)` |
+| `:954-963` | `setHealth(getHealth() - f1)` / 统计 / gameEvent —— **没有** `LivingEntity.java:1684` 的第二次 `setAbsorptionAmount` |
+
+⇒ 批次 F 的「settle 写回 `A0 - absorbedShould + H`，等平台 `:1684` 再扣一次 H」在**非玩家**上成立、在**玩家**上不成立：写回值里的幻影 H 永远不会被扣掉，A0=8、F=20 时终态吸收变成 **12**（白得 12 点黄心），且 `compensateAbsorption` 对玩家恰好是恒等式（永远清不掉），并连带抬高鼠鼠护盾钳制上限、让 `ChipDamageHandler` 的「护盾 > 0 直接 return」旁路筹码减伤。
+
+#### 7.9.2 必修清单（本轮全部落地）
+
+| 编号 | 级 | 线 | 问题 | 落点 |
+|---|---|---|---|---|
+| **F1** | P0 | forge | 玩家受害者的黄心被写高（见 7.9.1）；PvP 与 mob→player 都中，player→mob 不受影响 | `combat/DiceCombatEvents.java` 的 `settleDiceDamage` 新增玩家分支：直接写 `expectedAfter`、**不登记幻影**、`event.setAmount(toHealth)` |
+| **F2** | P0 | 双线 | 无骰玩家攻击「赐福合法目标」时弱印记 ×1.10 被乘两次（×1.21；命运的指引激活 ×1.69） | 新增 `public static boolean isDiceBattleSettledDamage(DamageSource, LivingEntity)`，判据与骰战入口**同源**（有骰 ⇒ 看赐福；无骰 ⇒ 看 `isBlessingTarget`）；`onWeakMarkDamage` / `LinglingSignEvents` / `FateGuidanceCardItem` 三处统一改用它 |
+| **F3** | P1 | 双线 | 七咒（神秘遗物+）/ `DiceCurseRatio` 在生物近战路径被整段丢弃 | 生物近战路径在终值前乘 ratio 并清零；`FateGuidanceCardItem` 的 `diceCombat` 判据改同源 |
+| **A3** | P2 | 双线 | 带「额外加伤」的骰战让受击被动一次攻击触发两次（`extra_damage` 段是嵌套 hurt、`directEntity = null`） | `isHostileAttack` 排除清单加 `ModDamageTypes.EXTRA_DAMAGE` |
+| **A4** | P1 | 双线 | 立牌 +5 与筹码减伤 / 气囊同在 LOWEST，先后不可依赖（气囊归零后仍 +5 / +5 先加则气囊白烧） | +5 折进骰战终值；`LinglingSignEvents` 加「骰战已接管则跳过」+「金额 ≤ 0 不追加」 |
+| **A5** | P2 | forge | 幻影 H 在第三方取消 / 改金额后残留（本仓气囊已有 finally 补偿，第三方没有） | `PhantomBalance` 增 `expectedAfter`；新增 `onServerTickReconcilePhantoms(TickEvent.ServerTickEvent END)` 只纠上偏 |
+| **A6** | P1 | 双线 | 生物近战路径漏了「目标有标记 ⇒ +1」（玩家路径有） | 生物路径补同三行 |
+| **F7** | P1 | 双线 | 修女被动「单次受击 > 10 清空加成」读护甲前原版值 ⇒ 骰战下几乎永不触发 | 骰战落地量 > 10 且目标有被动加成时 `AlanaSignItem.clearBonus` |
+| **弱印记** | P2 | 双线 | 生物近战路径的 ×1.10 口径（forge 已并入终值，neo 靠事件后乘） | neo 生物路径补并入终值，与 forge 对齐（F2 的连带项） |
+| **D3** | P3 | 双线 | `BaseSignItem#onHurt` 的 `amount` 两线口径不同（forge 护甲/药水/吸收后、neo 护甲前）无人写明 | 两线 javadoc 增「amount 口径」段：只用于开关判定，**禁止**数值计算 |
+
+#### 7.9.3 登记不改（本轮定案）
+
+| 项 | 结论 |
+|---|---|
+| MELEE-04 Papara 主动汲取回血基数 | **保持** `finalDmg`（lang 规格写的是「恢复骰神赐福最终伤害的一半」，不是落地红心量） |
+| F8 mob→player 不判敌对 | 2026-09-26 设计即「对所有生物生效」，收窄需用户裁决 |
+| MELEE-06 立牌 +5 未限定近战 | 与 lang / 手册规格一致（「造成的任意伤害」） |
+| MELEE-07 熊猫人嘲讽反击无 per-swing 去重 | 近战主路径一挥击一实例，重复仅在异常多实例时出现 |
+| F5 显示侧 | `DamageNumberAggregator`（LOWEST）在骰战覆盖前后读到中间值；forge 无 Post 事件，搬到别处仍与 `ChipDamageHandler` 同档 |
+
+#### 7.9.4 判据
+
+- 两线 `gradlew.bat :neoforge-1.21.1:classes :forge-1.20.1:classes` ⇒ EXIT 0（forge 89 条 / neo 4 条既有 deprecation 警告）。
+- 编译期踩坑：`resolveMobMeleeAttack(Mob mob, Player target, ...)` 的形参**已是 Player** ⇒ 写 `target instanceof Player p` 会报「模式类型 Player 是表达式类型 Player 的子类型」，直接读形参即可。
+- **未实机**（本轮为代码级修复；实机判据待用户放行：F1 读黄心终态、F2 无骰 ×1.21、A4 气囊归零后是否仍 +5）。

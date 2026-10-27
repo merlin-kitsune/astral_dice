@@ -97,6 +97,8 @@ public final class LinglingSignEvents {
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void onLivingDamage(LivingDamageEvent event) {
         if (event.isCanceled()) return;
+        // A4(2026-10-27 近战审计):金额已被归零(安全气囊 / 鼠鼠护盾吃满)时不再加,否则保命会被 +5 破防。
+        if (event.getAmount() <= 0.0F) return;
         LivingEntity target = event.getEntity();
         if (target == null || target.level().isClientSide) return;
         DamageSource source = event.getSource();
@@ -113,6 +115,10 @@ public final class LinglingSignEvents {
         if (!(source.getEntity() instanceof Player player)) return;
         if (!LinglingSignManager.isEquipped(player)) return;
         if (!LinglingSignManager.isTrackedByAny(target)) return;
+        // A4(2026-10-27 近战审计):骰战路径的 +5 已并入骰战终值(DiceCombatEvents 玩家攻击分支)⇒ 跳过。
+        // 本处理器与筹码减伤 / 安全气囊同为 LOWEST,先后取决于注册顺序,不可依赖;
+        // 判据与写终值处同源(无骰 + 赐福合法目标也算骰战),否则会漏跳、变成 +10。
+        if (DiceCombatEvents.isDiceBattleSettledDamage(source, target)) return;
         // 就在同一次伤害上做加法(不嵌套新伤害、不清 i-frame、不绕过护甲;照 ChipDamageHandler 先例)
         // 2026-10-27 修正挂点:必须挂**最终**的 LivingDamageEvent(LOWEST)。骰战在同类事件的 NORMAL
         // 以 setAmount **覆盖式**写入自算终值(combat/DiceCombatEvents.java:274/822),在 LivingHurtEvent

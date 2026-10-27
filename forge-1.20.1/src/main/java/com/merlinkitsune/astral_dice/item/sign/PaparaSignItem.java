@@ -69,8 +69,13 @@ public class PaparaSignItem extends BaseSignItem {
     }
 
     // 吸血鬼立牌(papara)主动"汲取":受伤时恢复单次受到伤害的一半生命(取整,至少 1 点)
-    @SubscribeEvent(priority = EventPriority.LOWEST)
-    public static void onPaparaBiteHurtHeal(LivingDamageEvent event) {
+    /**
+     * 受击汲取结算(2026-10-27 近战审计 F5):由 {@code event/ChipDamageHandler} 的 finally **显式调用**。
+     *
+     * <p>原先本方法是自订阅的 {@code @LOWEST} 监听器 —— 与筹码减伤 / 安全气囊同档,先后取决于注册顺序,
+     * 回血基数可能读到「减伤之前」或「归零之前」的中间值。挪到金额改动的最后一站之后即可确定。
+     */
+    public static void settleBiteHeal(LivingDamageEvent event) {
         if (!(event.getEntity() instanceof Player player)) return;
         if (player.level().isClientSide()) return;
         if (!player.hasEffect(ModEffects.PAPARA_BITE.get())) return;
@@ -84,6 +89,8 @@ public class PaparaSignItem extends BaseSignItem {
         //   → :1683 setHealth(getHealth() - f1);事件 javadoc 亦写明「already been applied ... this is FINAL value」。
         // 残留不确定:同档(LOWEST)内仍有 RenShield 钳制等处理器,若它们在本次之后改 amount,读到的是本处理器时点
         // 的值(与仓内既有的「同档顺序不可依赖」一致);不调优先级,保持既有触发面不变。
+        // 金额已被归零(气囊 / 护盾吃满 / 磨刀石)时不再回血 —— 否则一记被完全无效化的攻击反而白送生命。
+        if (event.getAmount() <= 0.0F) return;
         int heal = Math.max(1, (int) event.getAmount() / 2);
         player.heal(heal);
     }

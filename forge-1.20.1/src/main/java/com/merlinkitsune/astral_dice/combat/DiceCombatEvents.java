@@ -11,6 +11,7 @@ import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.item.RenShieldManager;
 import com.merlinkitsune.astral_dice.item.sign.BaseSignItem;
 import com.merlinkitsune.astral_dice.item.sign.MosesSignItem;
+import com.merlinkitsune.astral_dice.item.sign.LinglingSignManager;
 import com.merlinkitsune.astral_dice.item.sign.PandamanSignItem;
 import com.merlinkitsune.astral_dice.item.sign.SignHookDispatcher;
 import com.merlinkitsune.astral_dice.effect.WeaknessRevealEffect;
@@ -370,7 +371,7 @@ public class DiceCombatEvents {
      *  => absorbedShould = F、H = 0 => 护盾完整吃掉这一击(与 neo 同口径)。
      *
      *  <p><b>N2 吸收结算</b>:推导见 {@link #PRE_HURT_ABSORPTION} 上方注释。 */
-    private static void settleDiceDamage(LivingEntity target, LivingDamageEvent event, float finalDamage) {
+    private static float settleDiceDamage(LivingEntity target, LivingDamageEvent event, float finalDamage) {
         float damage = finalDamage;
         // N1+N2:先摘快照(受击前吸收余额 + 受击前护盾剩余)再算 —— 后续额外加伤/狂暴反噬会再 hurt 一轮,
         // 先摘后算保证本轮与嵌套轮各用各的快照,不串味。
@@ -387,16 +388,31 @@ public class DiceCombatEvents {
             //    getAbsorptionAmount()(审计 §2 不变量④要求它们读到"扣除本次吸收后的量"),中途把吸收
             //    改成 damage 会直接污染这些判据。A0 == 0 时本就不需要补偿(写回值与平台扣减量天然一致)。
             event.setAmount(damage);
-            return;
+            return damage;
         }
         float absorbedShould = Math.min(damage, absorptionBefore);
         float toHealth = damage - absorbedShould;
         // 写回 A0 - absorbedShould + H:平台 L1684 会再扣一次 H => 终态吸收 = A0 - absorbedShould
+        float expectedAfter = Math.max(0.0F, absorptionBefore - absorbedShould);
+        // F1(2026-10-27 近战审计,forge 专属):**玩家受害者**路径上平台不会再扣一次吸收。
+        //   非玩家走 LivingEntity#actuallyHurt(:1669-1670 扣吸收 → :1680 派发 → :1683 扣血 → :1684 再扣吸收);
+        //   玩家走 Player#actuallyHurt(:940-965 覆写、不调 super)::946-947 扣吸收 → :948 派发 → :954 扣血,
+        //   **没有** :1684 那一步。故写回「A0 - absorbedShould + H」会把幻影 H 永久留在黄心上
+        //   (A0=8、F=20 ⇒ 终态 12;且 compensateAbsorption 对玩家恰好是恒等式,永远清不掉),
+        //   并连带抬高鼠鼠护盾钳制上限、让 ChipDamageHandler 的「护盾>0 就直接 return」旁路筹码减伤。
+        //   ⇒ 玩家路径直接写真实终态、不登记幻影。
+        if (target instanceof Player) {
+            target.setAbsorptionAmount(expectedAfter);
+            PHANTOM_ABSORPTION.remove(target);
+            event.setAmount(toHealth);
+            return toHealth;
+        }
         target.setAbsorptionAmount(absorptionBefore - absorbedShould + toHealth);
         // 2026-10-27 批次F:把这份「幻影 H」显式登记(见 {@link #PHANTOM_ABSORPTION})。
         // H == 0 时平台 :1681 整段跳过、不会有后续扣减 ⇒ 不登记(顺带清掉可能残留的旧登记)。
-        registerPhantom(target, toHealth);
+        registerPhantom(target, toHealth, expectedAfter);
         event.setAmount(toHealth);
+        return toHealth;
     }
 
     // ============================================================================================
@@ -420,20 +436,23 @@ public class DiceCombatEvents {
     private static final class PhantomBalance {
         final float amount;
         final long gameTime;
+        /** 这一击**应该**留下的真实吸收余额(= A0 - absorbedShould);供 tick 末对账收回上偏(A5)。 */
+        final float expectedAfter;
 
-        PhantomBalance(float amount, long gameTime) {
+        PhantomBalance(float amount, long gameTime, float expectedAfter) {
             this.amount = amount;
             this.gameTime = gameTime;
+            this.expectedAfter = expectedAfter;
         }
     }
 
     /** 登记本次写回留下的幻影;{@code amount <= 0} 时改为一律清除(H == 0 ⇒ 平台 :1681 整段跳过,无需幻影)。 */
-    private static void registerPhantom(LivingEntity target, float amount) {
+    private static void registerPhantom(LivingEntity target, float amount, float expectedAfter) {
         if (amount <= 0.0F) {
             PHANTOM_ABSORPTION.remove(target);
             return;
         }
-        PHANTOM_ABSORPTION.put(target, new PhantomBalance(amount, target.level().getGameTime()));
+        PHANTOM_ABSORPTION.put(target, new PhantomBalance(amount, target.level().getGameTime(), expectedAfter));
     }
 
     /** 当前目标身上登记的幻影余额(未登记 / 跨 tick ⇒ 0)。
@@ -456,18 +475,21 @@ public class DiceCombatEvents {
      *  内同步跑完,故「挂回 H」= 让**外层**平台 :1684 扣掉它,终态仍是 settle 承诺的 A0 - absorbedShould。
      *  <p>剥掉期间**同时摘掉登记**:嵌套伤害自己的收尾处理器(补偿点)不能拿外层的 H 去剥余额。 */
     public static void withPhantomPeeled(LivingEntity target, Runnable action) {
-        float phantom = phantomOf(target);
+        PhantomBalance recorded = PHANTOM_ABSORPTION.get(target);
+        float phantom = recorded == null || recorded.gameTime != target.level().getGameTime()
+                ? 0.0F : recorded.amount;
         if (phantom <= 0.0F) {
             action.run();
             return;
         }
+        float expectedAfter = recorded.expectedAfter;
         PHANTOM_ABSORPTION.remove(target);
         target.setAbsorptionAmount(Math.max(0.0F, target.getAbsorptionAmount() - phantom));
         try {
             action.run();
         } finally {
             target.setAbsorptionAmount(target.getAbsorptionAmount() + phantom);
-            PHANTOM_ABSORPTION.put(target, new PhantomBalance(phantom, target.level().getGameTime()));
+            PHANTOM_ABSORPTION.put(target, new PhantomBalance(phantom, target.level().getGameTime(), expectedAfter));
         }
     }
 
@@ -481,11 +503,55 @@ public class DiceCombatEvents {
      *  <p>没有登记 ⇒ 直接返回(这一击不是骰战写终值的,或已被别人结清),绝不改吸收余额。 */
     public static void compensateAbsorption(LivingEntity target, float finalAmount) {
         if (target == null || target.level().isClientSide()) return;
-        float phantom = phantomOf(target);
+        PhantomBalance recorded = PHANTOM_ABSORPTION.get(target);
+        if (recorded == null) return;
+        if (recorded.gameTime != target.level().getGameTime()) {
+            PHANTOM_ABSORPTION.remove(target);
+            return;
+        }
+        float phantom = recorded.amount;
         if (phantom <= 0.0F) return;
         float real = Math.max(0.0F, target.getAbsorptionAmount() - phantom);
         target.setAbsorptionAmount(real + finalAmount);
-        registerPhantom(target, finalAmount);
+        // expectedAfter 不随「后来有人改了金额」变化 —— 它描述的是这一击的真实终态。
+        registerPhantom(target, finalAmount, recorded.expectedAfter);
+    }
+
+    /**
+     * A5(2026-10-27 近战审计):tick 末对账幻影吸收。
+     *
+     * <p>settle 写回的 H 靠平台 :1684 再扣一次才落回真实余额;但**事件被取消**(第三方/本模组未覆盖的
+     * 取消点)或**金额被第三方改成与 H 不一致**时,平台那次扣减不发生或量不对 ⇒ 黄心永久偏高。
+     * 本仓自家改动点已由 {@link #compensateAbsorption} 覆盖,这里补的是"没人通知我们"的那类。
+     *
+     * <p>只纠**上偏**:当前余额高于 {@code expectedAfter} 时才收回,绝不动已经合法扣掉的量。
+     */
+    @SubscribeEvent
+    public static void onServerTickReconcilePhantoms(TickEvent.ServerTickEvent event) {
+        if (event.phase != TickEvent.Phase.END) return;
+        if (PHANTOM_ABSORPTION.isEmpty()) return;
+        synchronized (PHANTOM_ABSORPTION) {
+            var it = PHANTOM_ABSORPTION.entrySet().iterator();
+            while (it.hasNext()) {
+                var entry = it.next();
+                LivingEntity target = entry.getKey();
+                PhantomBalance recorded = entry.getValue();
+                if (target == null || target.isRemoved() || target.level().isClientSide()) {
+                    it.remove();
+                    continue;
+                }
+                long now = target.level().getGameTime();
+                if (recorded.gameTime != now) {
+                    it.remove();
+                    continue;
+                }
+                float actual = target.getAbsorptionAmount();
+                if (actual > recorded.expectedAfter + 0.01F) {
+                    target.setAbsorptionAmount(recorded.expectedAfter);
+                    it.remove();
+                }
+            }
+        }
     }
 
     @SubscribeEvent(priority = EventPriority.NORMAL)
@@ -1049,8 +1115,25 @@ public class DiceCombatEvents {
         // 注:victimFactor 可能已被上面的七咒 ratio 规则(P2-C8)置为 1.0,避免与 ratio 链路重复计。
         finalDmg *= victimFactor;
 
+        // A4(2026-10-27 近战审计):怪力乱神立牌「攻击被吸附目标 +5」并入骰战终值。
+        //   该 +5 原本挂在 LivingDamageEvent(LOWEST),与筹码减伤/安全气囊**同档**,先后取决于注册顺序:
+        //   气囊把金额归零之后仍可能被 +5 破防,或 +5 先加 ⇒ 气囊白烧充能(用户裁决:保命必须优先)。
+        //   骰战路径在此一次并入;LinglingSignEvents 用 isDiceBattleSettledDamage 跳过,
+        //   非骰战路径(远程/法伤/无骰)仍由那个 LOWEST 处理器加。
+        if (LinglingSignManager.isEquipped(player) && LinglingSignManager.isTrackedByAny(target)) {
+            finalDmg += LinglingSignManager.TRACKED_TARGET_BONUS_DAMAGE;
+        }
+
         // N1 + N2:护盾钳制 + 吸收按终值只扣一次(两条写终值路径的唯一出口,见 settleDiceDamage)
-        settleDiceDamage(target, event, (float) finalDmg);
+        float applied = settleDiceDamage(target, event, (float) finalDmg);
+
+        // F7(2026-10-27 近战审计):修女(alana)「赐福期间单次受击 >10 清空全部加成」在骰战路径下
+        //   必须按**落地红心量**判定 —— NewSignEvents.onIncomingDamage 读的是护甲前、骰战覆盖前的原版值,
+        //   近战骰战几乎永远不会 >10 ⇒ 该被动形同不存在。非骰战路径仍由那个处理器兜。
+        if (target instanceof Player alanaVictim && applied > 10.0F
+                && ModAttachments.getAlanaPassiveBonus(alanaVictim) > 0) {
+            com.merlinkitsune.astral_dice.item.sign.AlanaSignItem.clearBonus(alanaVictim);
+        }
         // 跳数字不再在此直发(2026-09-26):登记组别,由 DamageNumberAggregator 在**伤害管线终值**
         // (LivingDamageEvent#getAmount() = 实际扣血量)上取值,并与本 tick 同目标的其它
         // 攻击力类伤害累加成一个**总值**后一次性下发。
@@ -1340,6 +1423,21 @@ public class DiceCombatEvents {
         if (target.hasEffect(ModEffects.WEAK_MARK.get())) {
             finalDmg *= WEAK_MARK_DAMAGE_MULTIPLIER;
         }
+        // A6(2026-10-27 近战审计):生物近战路径漏了「目标身上有标记 ⇒ +1」 —— 与玩家路径(本文件
+        //   玩家分支的 if (MarkManager.getLevel(target) > 0) finalDmg += 1)对齐,口径沿用「有标记即 +1」。
+        if (MarkManager.getLevel(target) > 0) {
+            finalDmg += 1;
+        }
+        // F3(2026-10-27 近战审计):七咒(神秘遗物+ 第一诅咒)倍率在生物近战路径被整段丢弃 ——
+        //   该倍率由 FateGuidanceCardItem 在 LivingHurtEvent 捕获进**目标侧**附件,只有「玩家攻击」路径的
+        //   内置外部因子会乘;生物攻击者永远没有「命运的指引」⇒ 按全额 ratio 应用,用后清零(与内置因子同语义,
+        //   避免残留到下一击)。
+        //   本方法签名里 target 已是 Player(生物近战只打玩家)⇒ 不做 instanceof 模式匹配。
+        float curseRatio = ModAttachments.getDiceCurseRatio(target);
+        if (curseRatio > 1.0f) {
+            finalDmg *= curseRatio;
+        }
+        ModAttachments.setDiceCurseRatio(target, 1.0f);
         // N1 + N2:护盾钳制 + 吸收按终值只扣一次(与玩家攻击路径同一出口)
         settleDiceDamage(target, event, finalDmg);
         // 跳数字:与玩家攻击同一出口(登记组别,由 DamageNumberAggregator 在管线终值上取值)
@@ -1803,16 +1901,25 @@ public class DiceCombatEvents {
      *  </ul>
      *  必须连内部窗口一起判:入口在 {@code isInternalAoe() || counterDepth > 0} 时直接 return,
      *  此时骰战**没有**接管金额 => 本判据也必须返回 false,否则那段伤害会丢掉虚弱印记增益。 */
-    private static boolean isDiceBattleSettledDamage(DamageSource source, LivingEntity target) {
+    public static boolean isDiceBattleSettledDamage(DamageSource source, LivingEntity target) {
         if (target.level().isClientSide()) return false;
         if (isInternalAoe() || isInCounterChain()) return false;
-        if (source.getEntity() instanceof Player attacker
-                && attacker.hasEffect(ModEffects.DICE_BLESSING.get())
-                && attackerHasDiceCurio(attacker)
-                && isMeleeWeaponAttack(attacker)) {
-            return true;
+        Entity direct = source.getDirectEntity();
+        if (direct instanceof Player attacker) {
+            // F2(2026-10-27 近战审计):判据必须与 onLivingDamagePre 的入口分流**逐条同源** ——
+            //   入口是「有骰 ⇒ 必须赐福激活 / 无骰 ⇒ 必须是赐福合法目标」。旧判据只写了前半句,
+            //   于是「无骰玩家打赐福合法目标」(入口显式支持)走进骰战并乘过一次虚弱印记后,
+            //   这里仍返回 false ⇒ 外部处理器再乘一次 ⇒ ×1.21(指引激活 ×1.69)。
+            if (!isMeleeWeaponAttack(attacker)) return false;
+            // 法伤链不参与骰战结算(入口 :584 同源判据)⇒ 不算骰战终值。
+            if (com.merlinkitsune.astral_dice.combat.SpellDamageRegistry.isSpellDamage(source, direct)) {
+                return false;
+            }
+            if (attacker == target) return false;
+            if (attackerHasDiceCurio(attacker)) return attacker.hasEffect(ModEffects.DICE_BLESSING.get());
+            return isBlessingTarget(target, attacker);
         }
-        return source.getDirectEntity() instanceof Mob && target instanceof Player;
+        return direct instanceof Mob && target instanceof Player;
     }
 
     // 玩家是否持有骰子(curio 骰子槽)
@@ -2041,7 +2148,11 @@ public class DiceCombatEvents {
         //   不排除的后果:原击已触发过一次受击被动,反噬落在同一次受击流程里会**再触发一遍**;
         //   牌惩罚在 PvP 里也会被误算成「被人打了」。
         if (source.is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.UNREDUCIBLE_DAMAGE)
-                || source.is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.CARD_COST)) {
+                || source.is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.CARD_COST)
+                // A3(2026-10-27 近战审计):额外加伤(星光/星币/治愈点)是**同一次攻击的第二段**伤害
+                //   (嵌套 hurt,entity=攻击者、directEntity=null)。不排除会让受击被动一次攻击触发两次
+                //   (立牌 onHurt / 缓冲盾牌回血 / 吸血鬼汲血)。
+                || source.is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.EXTRA_DAMAGE)) {
             return false;
         }
         if (!(source.getEntity() instanceof LivingEntity attacker)) return false;

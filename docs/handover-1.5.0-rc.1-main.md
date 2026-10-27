@@ -45,6 +45,8 @@
 
 30. **法伤加成折叠为单次结算（方案 A）+ neo→forge 移植 mapping（2026-10-27 19:3x–20:2x，§4.1af）**：折叠点最终落在**护甲之前**（neo `LivingIncomingDamageEvent` @HIGHEST / forge `LivingHurtEvent` @HIGHEST），加成与本体同管道且只结算一次；乘性因子**仅对本体源自身不吃护甲的情形**（P0 全部 `astral_dice:card_spell` 法伤）与旧实现一致（裸 ×1.0 / 保护IV+抗性II ×0.216 / 保护IV+抗性IV ×0.072），本体源不在 `bypasses_armor` 内时（近战 / 箭矢 / 部分第三方法术类型）加成改为吃护甲 ⇒ 相对旧实现下降（护甲20/韧性8 约 ×0.30），属预期语义变更，第一轮「折在 `LivingDamageEvent`」会让加成放大 4.63×–13.9× 已订正。同批删除 `isApplyingTrueBonus()` 三处闸门（+5 旧口径订正：从未 +10），并产出 `docs/features/neo-to-forge-porting-mapping.md`（后续双线先做 neo、再按 mapping 落 forge）。双线 `:classes` 通过 + javap 类面核对；**未实机、未重出 jar**。
 31. **折叠批三条裁决落地（2026-10-27 20:5x，§4.1ag）**：N14 AOE 命中也算攻击行为（两线副作用块提到 AOE 闸门之前，反击链仍早退）；法伤加成**必须绕过护甲** ⇒ 两线折叠处改调 `foldBonusBypassingArmor(...)`（护甲前二分预补偿，源带 `bypasses_armor` 或护甲 0 时直接相加）⇒ 数值回到与旧 `true_damage` 段一致；连击保留 cooldown。双线 `:classes` EXIT 0，**未实机、未重出 jar**。
+32. **近战链路专项审计（2026-10-27，§4.1ah）**：三路只读子代理交叉取证（F/A/MELEE 三套编号）+ Lead 逐字复核；落地 F1（forge 玩家黄心被写高，根因 `Player#actuallyHurt` 覆写没有 `:1684`）、F2（无骰赐福目标弱印记 ×1.21）、F3（七咒在生物近战丢失）、A3（额外加伤导致受击被动二次）、A4（立牌 +5 与 LOWEST 先后）、A5（幻影残留 tick 末对账）、A6（生物路径漏 +1）、F7（修女被动读护甲前值）、D3（`BaseSignItem#onHurt` amount 口径）。双线 `:classes` EXIT 0，**未实机**。
+
 
 ## 1 环境与路径
 
@@ -661,6 +663,26 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 3. **连击**：保留 cooldown 现状（不给加成单独 `bypasses_cooldown`），被无敌帧吞掉时加成与本体一起吞。
 
 **判据**：`gradlew.bat :neoforge-1.21.1:classes :forge-1.20.1:classes` **EXIT 0 / BUILD SUCCESSFUL in 3s / 8 actionable tasks: 2 executed, 6 up-to-date**；两线改动文件 CRLF、bareLF 0。**仍欠**：① 重出 jar + 四目标投放；② 实机验证 —— AOE 命中 N 目标时赐福倒计时只启动一次但隐匿对每个目标都解除、护甲 20 目标上加成仍按全额落地（对比无护甲目标的差值 = bonus）、连击被吞的可接受性；③ P1 两线未折叠。
+### 4.1ah 近战链路专项审计与修复（2026-10-27 21:0x–21:3x，P0 双线）—— 双线 `:classes` 通过，**未实机**
+
+用户指令：「继续验证近战攻击类是否有遗留问题（重点关注 forge 端），争取一次全部解决战斗/伤害类问题」。审计正本见 `docs/features/attack-damage-chain-audit.md` §7.9（本轮追加：7.9.1 平台事实 / 7.9.2 必修清单 / 7.9.3 登记不改 / 7.9.4 判据）。
+
+1. **最关键新证（F1 前提）**：`forge-1.20.1/build/moddev/artifacts/forge-1.20.1-47.4.10-sources.jar` 的 `net/minecraft/world/entity/player/Player.java:940-965` 是 `actuallyHurt` **覆写且不调 super** —— `:946-947` 扣吸收、`:948` 派发 `LivingDamageEvent`、`:954` 扣血，**没有** `LivingEntity.java:1684` 那次再扣吸收。⇒ 批次 F 的「写回 `A0-absorbedShould+H` 等平台再扣 H」对玩家不成立，幻影 H 永留黄心（A0=8、F=20 ⇒ 终态 12），`compensateAbsorption` 对玩家恒等 ⇒ 永远清不掉。
+2. **落地清单（两线对称，除 F1 为 forge 专属）**：
+   - **F1** `forge-1.20.1/.../combat/DiceCombatEvents.java` 的 `settleDiceDamage` 现返回 `float`，新增 `target instanceof Player` 分支：写 `expectedAfter`、`PHANTOM_ABSORPTION.remove`、`event.setAmount(toHealth)`、返回 `toHealth`；非玩家仍走原「写回 A0-absorbedShould+H + registerPhantom」。
+   - **F2** 两线新增 `public static boolean isDiceBattleSettledDamage(DamageSource, LivingEntity)`：`isInternalAoe()/isInCounterChain()` 早退 → `directEntity` 是玩家时要求「近战 且 非法伤 且 非自伤」，再按「有骰 ⇒ 赐福激活 / 无骰 ⇒ `isBlessingTarget`」；`directEntity` 是生物且目标是玩家 ⇒ true。`onWeakMarkDamage`、`event/LinglingSignEvents`、`item/card/FateGuidanceCardItem` 三处统一改用它（原判据只认「玩家+赐福+骰子+近战」，漏掉入口支持的无骰分支 ⇒ ×1.21 / 命运的指引 ×1.69）。
+   - **F3** 两线生物近战路径（`resolveMobMeleeAttack`）在终值前乘 `getDiceCurseRatio(target)` 并清零；`FateGuidanceCardItem` 的 `diceCombat` 改同源判据。
+   - **A3** 两线 `isHostileAttack` 排除清单加 `ModDamageTypes.EXTRA_DAMAGE`（与 `UNREDUCIBLE_DAMAGE` / `CARD_COST` 同处）。
+   - **A4** 两线玩家骰战路径在写终值前把「`LinglingSignManager.isEquipped(player) && isTrackedByAny(target)` ⇒ +5」折进去；`LinglingSignEvents` 加「`isDiceBattleSettledDamage` ⇒ 跳过」与「`getAmount()/getNewDamage() <= 0` ⇒ 不追加」。
+   - **A5** forge `PhantomBalance` 增 `expectedAfter`；`registerPhantom` 改 3 参；新增 `onServerTickReconcilePhantoms(TickEvent.ServerTickEvent)`（仅 END 相位，`actual > expectedAfter + 0.01F` 才收回）。
+   - **A6** 两线生物近战路径补 `if (MarkManager.getLevel(target) > 0) finalDmg += 1;`；neo 生物路径同时补弱印记 ×1.10（与 forge 已并入终值的口径对齐）。
+   - **F7** 两线骰战落地量 > 10 且 `getAlanaPassiveBonus > 0` ⇒ `AlanaSignItem.clearBonus`（`event/NewSignEvents` 的原判据保留给非骰战）。
+   - **D3** 两线 `item/sign/BaseSignItem.java` 的 `onHurt` javadoc 增「amount 口径」段：两线数值口径不同（forge 护甲/药水/吸收后、neo 护甲前），只用于开关判定，**禁止**数值计算。
+3. **其它小修**：forge `item/sign/PaparaSignItem.java` 的受击回血从 `LivingDamageEvent` 处理器改为 `settleBiteHeal(LivingDamageEvent)`，由 `event/ChipDamageHandler.java` 的 finally（`compensateAbsorption` 之后）显式调用 ⇒ 顺序确定；forge `combat/PlayerHostilityTrackerEvents` 删掉重复的 `if (event.isCanceled()) return;`。
+4. **端口化文档**：`docs/features/neo-to-forge-porting-mapping.md` 订正 5 处过期口径 —— §1.1 法伤行（两次 hurt → 折叠成单次、折叠点行号）、§1.2 「forge 吸收被扣两次」（标 REFUTED，改为幻影 H 复盘）、§1.3（标为历史）、§12 T-04、§13 U-09。
+5. **登记不改**：Papara 主动汲取回血仍用 `finalDmg`（lang 规格是「骰神赐福最终伤害的一半」）；F8（mob→player 不判敌对）、MELEE-06（+5 不限近战）、MELEE-07（熊猫人反击无 per-swing 去重）、F5 显示侧（`DamageNumberAggregator` 读中间值）均登记。
+6. **判据**：`gradlew.bat :neoforge-1.21.1:classes :forge-1.20.1:classes` ⇒ EXIT 0（nex 4 / forge 89 条既有 deprecation 警告）；**未实机、未重出 jar**。建议实机验证：F1 读黄心终态、F2 无骰×1.21、A4 气囊归零后是否仍 +5。
+
 
 ## 5 遗留与欠账
 
@@ -731,6 +753,8 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 
 19. **折叠批独立复核闭环（2026-10-27，§4.1af / §7.7）**：`dsh_code_review` 因范围过大（1 提交 + 23 文件）600s 超时 ⇒ 改两路只读复核（一次性 `subagent` + teammate `verify-opt-a`），R1–R7 结论一致。**已落地两条必须项**：① R5 窄风险 —— 两线 `combat/DiceCombatEvents.java` 近战闸门前加 `if (SpellDamageRegistry.isSpellDamage(source, directEntity)) return;`（拦第三方法术源 direct=玩家时被骰战覆盖）；② R6 口径订正 —— 折叠后加成随**本体源**标签走，`astral_dice:card_spell` 路径与旧实现逐位一致，本体源要吃护甲时加成改为同吃（护甲20/韧性8 约 ×0.30，**预期语义变更**），初稿「乘性因子完全不变」已按 R6 订正（audit §7.6 / option-a §7 / §0 第 30 条 / 本文件 §4.1af / CHANGELOG 双份）。连带订正 R4 文档口径（mapping `:56/:106/:472`、verification `:284/:459/:509` 标废止）与 R1/R2 注释（@HIGHEST vs @HIGH、forge 两个互斥派发点、两线四点不对称）。**仍欠**：① 重出 jar + 四目标投放 + 实机；② 两个待裁决点 —— N14（AOE 计数口径）、「加成随本体吃护甲 / 连击被无敌帧吞」是否接受；③ P1 两线未折叠。
 
+
+22. **近战链路批（2026-10-27，§4.1ah）待实机**：F1（forge 玩家黄心终态）/ F2（无骰赐福目标弱印记只乘一次）/ A4（气囊归零后不 +5、+5 不白烧充能）/ A5（第三方取消后幻影不残留）四项需实机读数；另本批**未重出 jar、未投放**（两个 P0 整合包与根 `build/libs` 仍是 rc.4 旧构建）。剩余登记项（F8 / MELEE-06 / MELEE-07 / F5 显示侧）与 N11 / N14 之前的裁决项一并见审计正本 §7.9.3。
 
 21. **折叠批三条裁决已落地、待实机（2026-10-27 20:5x，§4.1ag）**：N14「AOE 命中也算」⇒ 两线 `DiceCombatEvents` 把赐福/降神倒计时与隐匿解除提到 AOE 闸门之前（反击链 `counterDepth` 仍早退）；「加成必须绕过护甲」⇒ 两线 `DamageEffectCardHandler.foldBonusBypassingArmor(...)` 在护甲前预补偿（源带 `bypasses_armor` 或护甲 0 时直接相加），数值回到与旧 `true_damage` 段一致；「连击保留 cooldown」⇒ 不加 `bypasses_cooldown`。双线 `:classes` EXIT 0，**未实机、未重出 jar**。
 ## 6 坑（本批新增，后续继续追加）
