@@ -302,12 +302,20 @@ function dDoTc(ctx, tag) {
             var exp = 0;
             try { exp = dComp().TEMPORARY_CARD_EXPIRES.get(st); } catch (e) { exp = 0; }
             if (exp == null) exp = 0;
-            tc.mark(st, 6000 + exp, DUUID.randomUUID());
+            // 只篡改**一张**:临时牌可堆叠(stacksTo 16),整栈 mark 会把同栈的同伴一起换成他人 UUID,
+            // 清理后会多掉一张 ⇒ 读数忽 2 忽 1。这里先拆出单张副本,再对副本 mark 并把原栈减 1。
+            var single = st.copy();
+            single.setCount(1);
+            tc.mark(single, 6000 + exp, DUUID.randomUUID());
+            if (st.getCount() > 1) { st.setCount(st.getCount() - 1); } else { st.setCount(0); }
+            p.getInventory().add(single);
             tampered = 1;
             break;
         }
     } catch (e) { dSend(ctx, "AP_" + tag + "_TC:ERR:tamper:" + dEx(e)); }
-    dSend(ctx, "AP_" + tag + "_TC_GRANT:granted=" + granted + ":n=" + a.n + ":me=" + a.me + ":other=" + a.other + ":tampered=" + tampered + ":priv=" + priv + ":fx_on0=" + fxOn0);
+    var a2 = dTemp(p);
+    dSend(ctx, "AP_" + tag + "_TC_GRANT:granted=" + granted + ":n=" + a.n + ":me=" + a.me + ":other=" + a.other + ":tampered=" + tampered + ":priv=" + priv + ":fx_on0=" + fxOn0
+        + ":n2=" + a2.n + ":me2=" + a2.me + ":other2=" + a2.other);
     return 1;
 }
 
@@ -415,11 +423,18 @@ function dDoClean(ctx, tag) {
     var stage = "ERR";
     var priv = "ERR";
     var fields = -1;
-    try { dEquip(p, "stand", null, 0); sign = "cleared"; } catch (e) { sign = "ERR:" + dEx(e); }
-    try { dEquip(p, "dice", null, 0); dice = "cleared"; } catch (e) { dice = "ERR:" + dEx(e); }
+    // dEquip 失败是**返回值**(no_curios / no_slot:<id>)而不是异常 ⇒ 必须记录返回值,否则读数恒真
+    try { sign = "eq:" + dEquip(p, "stand", null, 0); } catch (e) { sign = "ERR:" + dEx(e); }
+    try { dice = "eq:" + dEquip(p, "dice", null, 0); } catch (e) { dice = "ERR:" + dEx(e); }
     // 注意:ModAttachments.setInvestigationStage 是 Math.max(1, value) ⇒ 地板值恒为 1,归零不可达。
     try { dAtt().setInvestigationStage(p, 1); stage = "" + dAtt().getInvestigationStage(p); } catch (e) { stage = "ERR:" + dEx(e); }
-    try { dMER().remove(p, dFx().NARDIS_PRIVILEGE.get()); priv = "removed"; } catch (e) { priv = "ERR:" + dEx(e); }
+    // remove 被外部清除护栏拦回时同样不抛 ⇒ 追加 hasEffect 读回
+    try {
+        dMER().remove(p, dFx().NARDIS_PRIVILEGE.get());
+        var fxLeft = -1;
+        try { fxLeft = p.hasEffect(dFx().NARDIS_PRIVILEGE.get()) ? 1 : 0; } catch (e2) { fxLeft = -2; }
+        priv = "removed:fx=" + fxLeft;
+    } catch (e) { priv = "ERR:" + dEx(e); }
     try { dTC().purgeAll(p); } catch (e) { }
     var purged = 0;
     try {

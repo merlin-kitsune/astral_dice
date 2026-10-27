@@ -593,6 +593,24 @@ forge dev named 102,013 B / `e280aeab6c4b37c43468f7cce32a8bf64c70b6bdbcd2203f6c5
 4. **1.21.1 三案全 PASS**（新产物、新世界，16:4x）：`UNDERCOVER-DOUBLE-1.21.1`（`temp/case_uc_b.log`，stage 1→2 且 `AP_EVENT_FIRE ... src=INVESTIGATION_KILL` 仍只 **1** 次 ⇒ 把清空移到结算之后**没有**破坏幂等）、`REPULSION-SIGN-1.21.1`、`TEMPCARD-OWNER-1.21.1` 均 `MT_CASE_RESULT: PASS`。
 5. **收尾**：`mt.ps1 --version 1.21.1 --phase stop --force --purge-saves` ⇒ `MT_CLEANUP_SAVES: PURGED 2` / `MT_CLEANUP_RESULT: OK` / `MT_STOP: OK (1s) — 收停完成，无本流程残留进程`；`Get-CimInstance Win32_Process java.exe` 剩 3 个（Gradle daemon Zulu21 `15920` + Adoptium 17 worker `16556`/`2572`），**无客户端残留**。
 
+### 4.1ac 第二次复核（run `f93916e6`）三条处置 + 双线重跑（2026-10-27 17:5x–18:1x）—— 1.21.1 三案 + 1.20.1 一案全 PASS
+
+1. **复核来源**：`dsh_code_review` run `f93916e6-9fa2-4cf7-9b5d-77245b9f9e8c`（范围仅提交 `483c7924`），R2–R5 SUPPORTED、R1 部分成立，两条 actionable findings：
+   - **[P2] 注释宣称了未实现的取消保护**：`setUndercoverSource(...empty())` 仍在**同一次** `LivingDeathEvent` 派发内、处理器无 `priority` ⇒ 「移到 `triggerByKill` 之后」相对移动前只有在 `triggerByKill` 抛异常时才有区别；同优先级/更晚的取消（`event/EnderDiceHandler.java:158-169` 不死图腾）仍会在来源已清空后把玩家救活（只有 `ChipDamageHandler.java:133-145` 的 HIGHEST 取消会被 `event.isCanceled()` 挡住）。
+     ⇒ **落地方案 = 如实表述而不是硬改优先级**：两线 `item/InvestigationEventUtil.java` 的 javadoc 保留代码位置，理由改写为「结算抛异常时不白丢来源」，并新增「已知边界」四条（更高优先级取消 ⇒ 平台默认 `receiveCanceled=false`、本处理器不被投递，来源自然保留；同优先级/更晚取消会丢来源；当前不修的理由 = 隐匿调查/强化拒止的实际目标几乎都是怪物，怪物无保命手段；彻底兑现需降到 `EventPriority.LOWEST` 并确认排在所有保命处理器之后）。
+   - **[P3] `clean` 回显恒真**：`dEquip` 的失败是**返回值**（`no_curios` / `no_slot:<id>`）不是异常，`ModEffectRemoval.remove` 被拦回也不抛 ⇒ Curios 缺失时照样打印 `sign=cleared:dice=cleared:priv=removed`，而 D0 断言正锁这几个字段。
+     ⇒ 探针改为记录返回值 + 读回：`sign=eq:ok` / `dice=eq:ok`（失败即 `eq:no_curios` 等）、`priv=removed:fx=<0|1|-2>`（`fx` 是 `p.hasEffect(NARDIS_PRIVILEGE)` 的读回，`-2` 表示读抛出）；用例 D0 断言随之收紧为 `AP_D0_CLEAN:sign=eq:ok:dice=eq:ok:stage=1:priv=removed:fx=0:fields=0`。
+2. **又发现并修掉一个探针缺陷（本轮 FAIL 的唯一根因）**：`dDoTc` 原先篡改「第一个临时牌**栈**」，而临时牌 `stacksTo(16)` 可堆叠 ⇒ 整栈被 `tc.mark` 换成他人 UUID，清理时同栈两张一起掉（实测 `AP_D2_TC_PURGE:n=1:me=1` ⇒ `PURGE_V:ok=0`，用例 FAIL；第一次跑还是 `n=2`，**读数在 1/2 之间跳**才是真信号）。修法：拆单张副本（`st.copy()` + `setCount(1)`）→ 对副本 `tc.mark` → 原栈 `setCount(-1)` → `p.getInventory().add(single)`（owner 不同 ⇒ 1.20.1 不并栈）；读数行追加篡改后快照 `n2/me2/other2`，用例断言收紧为 `...tampered=1:priv=applied:fx_on0=1:n2=.*:me2=.*:other2=1`。
+3. **产物**（仅注释改动，jar 仍需重出以保持「源码 = 产物」）：neo `2,595,451 B` sha256 `E76C231749263703C78203843CD14F066A0A76B3470E786F0A9FCFD8B3978748`；forge prod `2,640,650 B` `F5417FDD6BEA22FB9AFF5F867030367C12192FBC9C15F4772A1B774BEEC3B0E9`；forge dev named `2,611,171 B` `A1E3BC014ED7B5F929DEF23F6C06F22780F5274DBEDD34406BE64625AE5F4407`。投放 `run/1.21.1/mods` ← neo prod、`run/1.20.1/mods` ← forge dev named，两处 `Get-FileHash` **MATCH**。
+4. **1.20.1 `DST-P0-1.20.1` ⇒ PASS 13/13**（`temp/case_dst_e.log`，冷启动后跑；先因上面的栈缺陷 FAIL 一次）：
+   - `AP_D1_IG:stage0=1:dice=ok:dmg=ok:hp=0:dead=1` + `AP_D1_IG_DONE:stage0=1:stage1=2` + `AP_D1_IG_V:ok=1` ⇒ 双罚修复在 1.20.1 成立；
+   - `AP_D2_TC_GRANT:granted=3:n=3:me=3:other=0:tampered=1:priv=applied:fx_on0=1:n2=3:me2=2:other2=1` ⇒ 单张篡改成立（**总量 3 不变，本人 2 / 他人 1**）；
+   - `AP_D2_TC_PURGE:n=2:me=2:other=0` + `AP_D2_TC_PURGE_V:ok=1` + `AP_D2_TC_DONE:n=0` + `AP_D2_TC_V:purge=1:nopriv=1`；
+   - `AP_D3_RP_PICK_V:ok=1` / `AP_D3_RP_BOUND:cards=5:barricades=0:items=1:owned=1:other=0:noowner=0:fields=1` / `AP_D3_RP_BOUND_V:ok=1` / `AP_D3_RP_DONE:cards=0:barricades=5:items=0:fields=0:use=FAIL` / `AP_D3_RP_V:lost=1:gate=1` ⇒ 强化拒止五规则仍成立；
+   - `AP_D0_CLEAN:sign=eq:ok:dice=eq:ok:stage=1:priv=removed:fx=0:fields=0:purged=2`（真读回）+ `AP_D8_SNAP:now=3573:hasSign=0:cards=0:barricades=0:items=0:owned=0:fields=0:temp=0:stage=1`。
+5. **1.21.1 三案全 PASS**（新世界，`temp/case_*_e.log`）：`UNDERCOVER-DOUBLE-1.21.1` / `REPULSION-SIGN-1.21.1` / `TEMPCARD-OWNER-1.21.1` 均 `MT_CASE_RESULT: PASS`。
+6. **收尾**：`mt.ps1 --version 1.21.1 --phase stop --force --purge-saves` ⇒ `MT_CLEANUP_SAVES: PURGED 1` / `MT_CLEANUP_RESULT: OK` / `MT_STOP: OK (1s) — 收停完成，无本流程残留进程`；`Get-CimInstance Win32_Process java.exe` 剩 3 个（Gradle daemon Zulu21 `15920` + Adoptium 17 worker `16556`/`2572`），**无客户端残留**。
+
 ### 4.2 历史读数
 
 pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（含 4.8 pre.4 全量双线 10 跑 10 PASS、4.11–4.17 pre.5 各批、4.19 Jade 图标留白版）。
@@ -630,6 +648,8 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 13. ~~强化拒止五规则（`6fcc756a`）与临时牌 owner（`51efba03`）未实机~~ → **已实机（2026-10-27，§4.1aa）**：1.21.1 `REPULSION-SIGN-1.21.1` / `TEMPCARD-OWNER-1.21.1` + 1.20.1 `DST-P0-1.20.1` 全 PASS。**仍欠**（只登记，不阻塞）：tooltip「所有者：」行的客户端渲染取证、规则④的跨容器（箱子 / AE2）搬运语义、死亡掉牌不误销毁、`/curios set` 类命令清槽是否等同主动卸下。
 
 14. **复核 findings 已闭环（2026-10-27，§4.1ab）**：`dsh_code_review` run `1e6e1c84` 的 3 条问题全部落地并双线重跑 —— 清空时序（改为结算后清空）、1.20.1 D2 恒绿（补真·女王特权 + 判据 `n>=2`）、探针无收尾（新增 `/astraldst clean`）。**仍欠**：本批新产物（neo `2,595,454 B` / forge prod `2,640,648 B` / dev named `2,611,172 B`）**只投了 `run/<线>/mods`**，两个 P0 整合包与根 `build/libs` 仍是 rc.4 旧构建；tooltip「所有者：」行渲染 / 跨容器搬运 / 死亡掉牌 / `/curios set` 清槽四项依旧未实机（同第 13 条）。
+
+15. **第二次复核（run `f93916e6`）已闭环（2026-10-27，§4.1ac）**：两条 findings 处置 —— (a) 清空时序的注释改为如实表述 + 登记「同优先级更晚取消会丢来源」的已知边界（彻底兑现需降 `EventPriority.LOWEST`）；(b) `clean` 回显改为记录 `dEquip` 返回值 + 读回 `hasEffect`。**同批修掉第三处探针缺陷**：临时牌可堆叠 ⇒ 篡改要拆单张副本（否则清理会多掉一张，读数在 1/2 间跳）。双线重跑：1.20.1 `DST-P0` 13/13 + 1.21.1 三案全 PASS。**仍欠**同第 13/14 条（整合包与根 `build/libs` 仍是 rc.4 旧构建；tooltip 渲染 / 跨容器 / 死亡掉牌 / `/curios set` 四项未实机）。
 
 ### Minor
 

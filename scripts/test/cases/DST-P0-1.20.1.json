@@ -177,7 +177,7 @@
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_D2_TC_GRANT:granted=3:n=.*:me=.*:other=0:tampered=1:priv=applied:fx_on0=1"
+      "pattern": "AP_D2_TC_GRANT:granted=3:n=.*:me=.*:other=0:tampered=1:priv=applied:fx_on0=1:n2=.*:me2=.*:other2=1"
     },
     {
       "type": "log",
@@ -212,7 +212,7 @@
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_D0_CLEAN:sign=cleared:dice=cleared:stage=1:priv=removed"
+      "pattern": "AP_D0_CLEAN:sign=eq:ok:dice=eq:ok:stage=1:priv=removed:fx=0:fields=0"
     },
     {
       "type": "log",
