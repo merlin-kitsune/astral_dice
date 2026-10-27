@@ -20,6 +20,8 @@
 
 - **The Slime Sign's passive "Cell Division" now triggers at most once every 15 seconds** (previously once per 20 ticks / 1 s after a hit): a hostile hit still grants +1 Healing layer and reduces the active skill cooldown by 10 seconds; only the interval changes from 20 to 300 ticks. The tooltip and the Patchouli entry now state "once every 15 seconds". (P0 lines: neoforge-1.21.1 + forge-1.20.1)
 
+- **Reinforced Repulsion now depends on the LingLing Sign** (2026-10-27 ruling): the card and the item are bound to the sign — only a player who has the LingLing Sign sitting in its curio slot can hold and use them. ① A player without the sign who obtains the **card** sees it turn into a **Barricade** immediately; ② unequipping the sign while holding the card turns the card back into a Barricade right away and **destroys the Reinforced Repulsion item** carried in the inventory; ③ an already **placed** field shatters the moment the sign leaves its owner (fields also re-check every 10 ticks, so an offline owner or a sign removed by a command still destroys it); ④ cards and items stored in the inventory, in a chest or in another mod's storage (e.g. AE2) are **never destroyed**, but the item records its **owner UUID and name** — anyone else who obtains it can neither place nor use it (the card likewise becomes a Barricade for a player without the sign); ⑤ the item tooltip gains an "Owner: <name>" line naming the only player who can place it. Losing the sign on death does not count as a deliberate unequip and triggers nothing. (P0 lines: neoforge-1.21.1 + forge-1.20.1)
+
 #### Platform & Compatibility
 
 - **New Fabric 1.20.1 build**: the mod now ships for **four platform lines with full feature parity** —

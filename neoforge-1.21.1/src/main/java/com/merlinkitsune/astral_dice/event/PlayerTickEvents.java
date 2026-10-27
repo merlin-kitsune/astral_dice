@@ -116,6 +116,9 @@ public class PlayerTickEvents {
         // 「额外充能层」的回收路径 ⇒ 这里只按 buff 判定,不得再回扣任何层数。
         // **不放在 diceGated 里**:骰子被摘掉不会派发任何事件,而清场必须仍然发生。
         if (player.tickCount % 10 == 0) {
+            // 2026-10-27 用户裁决：强化拒止必须依附「怪力乱神」立牌 ⇒ 每 10t 对账一次持有集合
+            //（未佩戴立牌 ⇒ 手里的强化拒止**卡牌**换回等张数路障；物品形态不动，靠使用时的立牌闸门拦）
+            com.merlinkitsune.astral_dice.item.sign.LinglingSignManager.reconcileInventory(player);
             if (com.merlinkitsune.astral_dice.item.sign.LinglingSignManager.isEquipped(player)) {
                 com.merlinkitsune.astral_dice.item.sign.LinglingSignManager.tickPassive(player);
             } else if (com.merlinkitsune.astral_dice.item.sign.LinglingSignManager.hasSurge(player)) {

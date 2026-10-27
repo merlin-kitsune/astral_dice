@@ -62,6 +62,9 @@ public class LinglingSignItem extends BaseSignItem {
     protected void clearSignData(Player player, ItemStack stack) {
         super.clearSignData(player, stack);
         LinglingSignManager.clearAll(player);
+        // 2026-10-27 用户裁决:立牌主动卸下 ⇒ 卡牌变回等张数路障、身上的强化拒止物品销毁、
+        // 本人已放置的强化拒止立即销毁(死亡掉牌不算主动卸下,由 onSignLost 内部兜住)。
+        LinglingSignManager.onSignLost(player);
     }
 
     /**

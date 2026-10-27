@@ -51,8 +51,21 @@ public final class LinglingSignEvents {
     public static void onItemPickup(EntityItemPickupEvent event) {
         Player player = event.getEntity();
         if (player.level().isClientSide) return;
-        if (!LinglingSignManager.isEquipped(player)) return;
+        // 2026-10-27 用户裁决：立牌离身时拾取到的强化拒止卡牌要立即变回路障（不等下一个 10t 对账）。
+        // Forge 的 EntityItemPickupEvent 在**入包之前**派发（见本类 §4.2 说明）：直接改掉落物内容，
+        // 让它以路障形态入包，规则①的「立即」才算成立。
+        LinglingSignManager.reconcileInventory(player);
         ItemEntity itemEntity = event.getItem();
+        if (!LinglingSignManager.hasSign(player)) {
+            ItemStack picked = itemEntity.getItem();
+            if (LinglingSignManager.isRepulsion(picked)) {
+                itemEntity.setItem(LinglingSignManager.toBarricade(picked));
+            }
+            return;
+        }
+        // 立牌在位仍需骰子才恢复「路障 ⇒ 强化拒止」的入包转换（与 neo 的同名判断一致，也和本文件
+        // onItemToss 的 isEquipped 口径对齐）——本批只改「没有立牌」那一支，不放开骰子前提。
+        if (!LinglingSignManager.isEquipped(player)) return;
         ItemStack stack = itemEntity.getItem();
         if (!LinglingSignManager.isBarricade(stack)) return;
         // 只换掉落物内容(数量不变);不取消拾取、不入背包、不丢弃 ⇒ 原版随后正常入包

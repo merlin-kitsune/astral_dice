@@ -3,7 +3,9 @@ package com.merlinkitsune.astral_dice.item.card;
 import com.merlinkitsune.astral_dice.audio.SoundPlayback;
 import com.merlinkitsune.astral_dice.entity.ModEntityTypes;
 import com.merlinkitsune.astral_dice.entity.RepulsionEntity;
+import com.merlinkitsune.astral_dice.item.RepulsionItem;
 import com.merlinkitsune.astral_dice.item.RepulsionPlacement;
+import com.merlinkitsune.astral_dice.item.sign.LinglingSignManager;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -108,6 +110,17 @@ public class RepulsionCardItem extends BaseEffectCardItem {
     @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
+        // 立牌依附闸门（2026-10-27 用户裁决）：未装备「怪力乱神」立牌 ⇒ 手里这张卡立即变回等张数路障
+        if (!LinglingSignManager.hasSign(player)) {
+            if (!level.isClientSide) {
+                player.displayClientMessage(
+                        Component.translatable(RepulsionItem.MSG_NEED_SIGN).withStyle(ChatFormatting.RED), true);
+                if (LinglingSignManager.isRepulsion(stack)) {
+                    player.setItemInHand(hand, LinglingSignManager.toBarricade(stack));
+                }
+            }
+            return InteractionResultHolder.fail(stack);
+        }
         if (resolvePlacement(level, player) == null) {
             if (!level.isClientSide) {
                 player.displayClientMessage(

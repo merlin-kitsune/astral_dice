@@ -88,6 +88,11 @@ public class ModDataComponents {
     public static final ItemDataKey<Optional<UUID>> OWNER_UUID =
             ItemDataKey.create("owner_uuid", UUIDUtil.CODEC.optionalFieldOf("id").codec());
 
+    // 专属物品:获得者显示名(2026-10-27)。tooltip 在客户端渲染,按 UUID 反查只认在线玩家,
+    // 故绑定时一并写名字;空串 = 未绑定 / 名字缺失(tooltip 显示「未知」)。
+    public static final ItemDataKey<String> OWNER_NAME =
+            ItemDataKey.create("owner_name", Codec.STRING);
+
     // 强化拒止物品形态(2026-10-25):回收进物品时带走的三份状态 —— 关联血量 / 已存活 tick / 已发放充能。
     // 1.20.1 由 ItemDataKey(ItemStack NBT)承载,随物品同步到客户端(据此画耐久条与 tooltip)。
     public static final ItemDataKey<Integer> REPULSION_HEALTH =

@@ -14,12 +14,23 @@ public final class SignEquipCheck {
     private SignEquipCheck() {
     }
 
+    /**
+     * 立牌是否**在位**（只看 Curios {@code stand} 槽，**不含骰子闸门**）。
+     *
+     * <p>2026-10-27 用户裁决「强化拒止必须依附于怪力乱神立牌」引入：这是**合法性**判据，
+     * 不是**功能性**判据 —— 换骰子只让功能暂时不生效，不该把强化拒止销毁；只有立牌离身才算失去依附。
+     */
+    public static boolean hasSign(Player player, Item signItem) {
+        if (player == null) return false;
+        var curios = CuriosApi.getCuriosInventory(player);
+        return curios.isPresent()
+                && curios.get().findFirstCurio(s -> s.is(signItem)).isPresent();
+    }
+
     /** 是否佩戴了 {@code signItem} 且已佩戴骰子（被动统计的前提）。 */
     public static boolean isEquipped(Player player, Item signItem) {
         if (player == null) return false;
         if (!CurioSlotUtil.hasDiceEquipped(player)) return false;
-        var curios = CuriosApi.getCuriosInventory(player);
-        return curios.isPresent()
-                && curios.get().findFirstCurio(s -> s.is(signItem)).isPresent();
+        return hasSign(player, signItem);
     }
 }

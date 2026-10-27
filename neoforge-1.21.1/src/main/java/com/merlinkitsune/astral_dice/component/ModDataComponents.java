@@ -116,6 +116,18 @@ public class ModDataComponents {
                             .persistent(UUIDUtil.CODEC.optionalFieldOf("id").codec())
                             .networkSynchronized(ByteBufCodecs.optional(UUIDUtil.STREAM_CODEC)));
 
+    /**
+     * 专属物品的**获得者显示名**（2026-10-27 用户裁决：强化拒止物品 tooltip 要标明所有者）。
+     *
+     * <p>为什么不靠 UUID 现查：tooltip 在客户端渲染，按 UUID 反查只认**在线**玩家 ⇒ 所有者离线时
+     * 读不到名字。绑定 owner 的那一刻本体必然在线，顺手把名字写进物品，客户端直接读字符串即可。
+     */
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<String>> OWNER_NAME =
+            DATA_COMPONENTS.registerComponentType("owner_name",
+                    builder -> builder
+                            .persistent(Codec.STRING)
+                            .networkSynchronized(ByteBufCodecs.STRING_UTF8));
+
     // ── 强化拒止（物品形态，2026-10-25 用户裁决）─────────────────────────────
     // 实体被玩家近战 5 次后回收成物品（item/RepulsionItem），三份状态随物品走；客户端要画
     // 耐久条与 tooltip ⇒ 三个都必须 networkSynchronized（否则客户端读到缺省值）。

@@ -42,6 +42,9 @@ public final class LinglingSignEvents {
     public static void onItemPickup(ItemEntityPickupEvent.Post event) {
         Player player = event.getPlayer();
         if (player == null || player.level().isClientSide()) return;
+        // 2026-10-27 用户裁决：拾取后先对账 —— 未佩戴立牌时捡到的强化拒止**卡牌**必须立刻变回路障
+        //（物品形态不转换：它可保留，只在使用时被立牌闸门拦住）
+        LinglingSignManager.reconcileInventory(player);
         if (!LinglingSignManager.isEquipped(player)) return;
         LinglingSignManager.convertBarricadesInInventory(player);
     }

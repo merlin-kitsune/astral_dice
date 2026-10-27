@@ -2,6 +2,7 @@ package com.merlinkitsune.astral_dice.entity;
 
 import com.merlinkitsune.astral_dice.item.ChargeManager;
 import com.merlinkitsune.astral_dice.item.RepulsionItem;
+import com.merlinkitsune.astral_dice.item.sign.LinglingSignManager;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.core.particles.ParticleTypes;
@@ -493,6 +494,19 @@ public class RepulsionEntity extends LivingEntity {
             return;
         }
 
+        // 立牌依附安全网（2026-10-27 用户裁决 ③）：放置者主动卸下「怪力乱神」立牌后，
+        // 已放置的强化拒止必须立即销毁。即时路径在 LinglingSignManager#onSignLost；
+        // 这里兜住「卸载时玩家不在线 / 命令移除立牌 / 老存档」等漏网情形（每 10t 一次）。
+        if (this.ownerUUID != null && this.tickCount % 10 == 0
+                && this.level() instanceof ServerLevel ownerLevel) {
+            Player owner = ownerLevel.getServer().getPlayerList().getPlayer(this.ownerUUID);
+            if (owner != null && owner.tickCount > 20 && !owner.isDeadOrDying()
+                    && !LinglingSignManager.hasSign(owner)) {
+                this.shatter();
+                return;
+            }
+        }
+
         // 钉死（2026-10-21 用户裁决：放置后不得再被移动）：
         // ① 清掉一切外力写入的速度（爆炸 / 击退 / 其它模组的 setDeltaMovement）；
         // ② 位置若偏离落位锚点（活塞 / 水流 / 直接 setPos），拉回原坐标。
@@ -899,6 +913,18 @@ public class RepulsionEntity extends LivingEntity {
         this.discard();
     }
 
+    /**
+     * 外部（{@code LinglingSignManager#destroyOwnedFields}）触发的「所有者失去立牌」销毁。
+     *
+     * <p>语义与耐久耗尽的 {@link #shatter()} 一致（碎裂观感 + 直接移除，不掉落物品）；
+     * 客户端 / 已移除实体直接忽略，幂等。
+     */
+    public void destroyByOwnerLoss() {
+        if (this.level().isClientSide) return;
+        if (this.isRemoved()) return;
+        this.shatter();
+    }
+
     // ── 免疫 / 钉地 ───────────────────────────────────────────────────────────
 
     /**
@@ -973,8 +999,9 @@ public class RepulsionEntity extends LivingEntity {
         long elapsed = this.createdAt == CREATED_AT_UNSET
                 ? 0L
                 : Math.max(0L, this.level().getGameTime() - this.createdAt);
+        UUID ownerId = this.ownerUUID != null ? this.ownerUUID : player.getUUID();
         ItemStack recovered = RepulsionItem.createRecovered(this.getHealth(), elapsed, this.chargeGiven,
-                this.ownerUUID != null ? this.ownerUUID : player.getUUID());
+                ownerId, ownerNameOf(ownerId, player));
 
         double cx = this.getX();
         double cy = this.getY();
@@ -996,6 +1023,22 @@ public class RepulsionEntity extends LivingEntity {
         this.releaseAllControls();
         this.trackedTargets.clear();
         this.discard();
+    }
+
+    /** 取所有者显示名（本人优先自查；否则查在线玩家表；查不到返回空串 ⇒ tooltip 显示「未知」）。 */
+    private static String ownerNameOf(UUID ownerId, Player fallback) {
+        if (ownerId == null) {
+            return fallback != null ? fallback.getGameProfile().getName() : "";
+        }
+        if (fallback != null && ownerId.equals(fallback.getUUID())) {
+            return fallback.getGameProfile().getName();
+        }
+        var server = fallback != null ? fallback.getServer() : null;
+        if (server != null) {
+            var online = server.getPlayerList().getPlayer(ownerId);
+            if (online != null) return online.getGameProfile().getName();
+        }
+        return "";
     }
 
     /**

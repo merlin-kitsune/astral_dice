@@ -56,6 +56,8 @@ public class LinglingSignItem extends BaseSignItem {
         super.clearSignData(player, stack);
         // 卸下 / 失效：摘修饰符 + 摘 buff（充能已永久到账，不回收；Curios 会在登录/同步时重放，全部幂等）
         LinglingSignManager.clearAll(player);
+        // 2026-10-27 用户裁决：立牌离身 ⇒ 卡牌变路障 / 身上的强化拒止物品销毁 / 已放置力场销毁
+        LinglingSignManager.onSignLost(player);
     }
 
     // 主动技能 ActionBar 注册：自带提示已在 handleUse 内发送，仅阻止默认提示
