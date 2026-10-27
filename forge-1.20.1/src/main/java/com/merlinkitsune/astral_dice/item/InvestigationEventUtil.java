@@ -97,8 +97,18 @@ public final class InvestigationEventUtil {
     }
 
     // 击杀"隐匿调查"目标 → 触发调查阶段事件(全局处理,不要求击杀者佩戴秘密侦探立牌)
+    //
+    // ⚠️ 幂等闸门(2026-10-27 修复「法伤链击杀触发两次」):
+    //   平台把 LivingDeathEvent 派发在 LivingEntity#die 的 `!dead` 守卫**之前**
+    //   (NeoForge CommonHooks.onLivingDeath / Forge ForgeHooks.onLivingDeath 均为 die() 首行),
+    //   而法伤加成走的是「外层伤害事件 Pre 阶段里嵌套 hurt」(DamageEffectCardHandler)——
+    //   加成致死时内层 die() 先派发一次,返回后外层 hurt 仍会再 die() 一次 ⇒ 本处理器被调用两次
+    //   (调查阶段事件结算两次、阶段 +2、阶段效果与 actionbar 各两遍)。
+    //   一次死亡只能算一次:读到来源后**立刻清空** undercover_source,第二次调用就在 isEmpty() 处返回。
+    //   清空语义与 onUndercoverRemoved 一致(目标已死,来源不再有意义)。
     @SubscribeEvent
     public static void onUndercoverInvestigationKill(LivingDeathEvent event) {
+        if (event.isCanceled()) return;
         LivingEntity target = event.getEntity();
         if (target.level().isClientSide()) return;
         if (!target.hasEffect(ModEffects.UNDERCOVER_INVESTIGATION.get())) return;
@@ -107,6 +117,8 @@ public final class InvestigationEventUtil {
         if (source.isEmpty()) return;
         Player applier = target.level().getPlayerByUUID(source.get());
         if (applier == null) return;
+        // 幂等闸门:首次触发即清空来源,挡住同一死亡的第二次派发(见方法头注释)
+        ModAttachments.setUndercoverSource(target, Optional.empty());
         int markLevel = MarkManager.getLevel(target);
         InvestigationEventUtil.triggerByKill(killer, applier, markLevel);
     }

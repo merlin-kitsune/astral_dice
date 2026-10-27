@@ -1,0 +1,327 @@
+{
+  "case_id": "REPULSION-SIGN-1.21.1",
+  "title": "强化拒止依附怪力乱神立牌五规则复验（1.21.1）",
+  "version": "1.21.1",
+  "channel": "autojs",
+  "target": "client",
+  "on_fail": "continue",
+  "description": "A 有立牌可放置；B 卸立牌→卡变路障/物品销毁/实体销毁；C 无立牌捡卡即变路障；D 无立牌与他人 owner 硬门控",
+  "steps": [
+    {
+      "op": "note",
+      "text": "A. 有立牌：得卡/物品、已放置实体存在"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative"
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop curioreset RB"
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralfixbatch repclear RB"
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[type=!player,distance=..32]"
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s astral_dice:repulsion"
+    },
+    {
+      "op": "wait",
+      "ms": 300
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s astral_dice:effect_card_repulsion"
+    },
+    {
+      "op": "wait",
+      "ms": 300
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s astral_dice:effect_card_barricade"
+    },
+    {
+      "op": "wait",
+      "ms": 300
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/give @s astral_dice:golden_dice 1"
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe equipslot dice \"astral_dice:golden_dice\" RB"
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe signprep RB \"astral_dice:lingling_sign\""
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "code": "(function(){\nfunction J(n){ return Java.loadClass(n); }\nfunction L(){ return {LSM:J('com.merlinkitsune.astral_dice.item.sign.LinglingSignManager'),\n  ECU:J('com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil'),\n  MI:J('com.merlinkitsune.astral_dice.item.ModItems'),\n  MDC:J('com.merlinkitsune.astral_dice.component.ModDataComponents')}; }\nfunction srv(){ return J('net.neoforged.neoforge.server.ServerLifecycleHooks').getCurrentServer(); }\nfunction P0(s){ return s.getPlayerList().getPlayers().get(0); }\nfunction ownerStr(st){\n  var MDC=L().MDC; var o=st.get(MDC.OWNER_UUID.get());\n  if (o===null) return 'null';\n  var v=o.orElse(null); return v===null?'empty':String(v);\n}\nfunction fieldCount(p){\n  var list=p.level.getEntitiesOfClass(J('com.merlinkitsune.astral_dice.entity.RepulsionEntity'), p.getBoundingBox().inflate(64));\n  return list.size();\n}\nfunction snap(p){\n  var k=L(); var items=p.inventory.items; var me=String(p.uuid);\n  var r={hasSign:k.LSM.hasSign(p), isEquipped:k.LSM.isEquipped(p), repCards:0, barricades:0, repItems:0, ownedCards:0, ownedItems:0, ownNames:0, dump:''};\n  var d=[];\n  for (var i=0;i<items.size();i++){ var st=items.get(i); if (st===null||st.isEmpty()) continue; var it=st.getItem();\n    var isRep=k.LSM.isRepulsion(st); var isBar=k.LSM.isBarricade(st); var isItem=k.LSM.isRepulsionItem(st);\n    if (isRep) r.repCards++;\n    if (isBar) r.barricades++;\n    if (isItem) r.repItems++;\n    var os=ownerStr(st); var nm=String(k.ECU.ownerName(st));\n    if (isRep && os===me) r.ownedCards++;\n    if (isItem && os===me) r.ownedItems++;\n    if (nm!=='') r.ownNames++;\n    d.push(i+':'+(isRep?'R':'-')+(isBar?'B':'-')+(isItem?'I':'-')+':'+st.getCount()+':o='+(os===me?'me':os)+':n='+nm);\n  }\n  r.fields=fieldCount(p); r.dump=d.join(' ');\n  return r;\n}\n  var p=P0(srv()); return {ok:true, snap:snap(p)};\n})()",
+      "save_as": "base",
+      "timeout_ms": 10000
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "code": "(function(){\nfunction J(n){ return Java.loadClass(n); }\nfunction L(){ return {LSM:J('com.merlinkitsune.astral_dice.item.sign.LinglingSignManager'),\n  ECU:J('com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil'),\n  MI:J('com.merlinkitsune.astral_dice.item.ModItems'),\n  MDC:J('com.merlinkitsune.astral_dice.component.ModDataComponents')}; }\nfunction srv(){ return J('net.neoforged.neoforge.server.ServerLifecycleHooks').getCurrentServer(); }\nfunction P0(s){ return s.getPlayerList().getPlayers().get(0); }\nfunction ownerStr(st){\n  var MDC=L().MDC; var o=st.get(MDC.OWNER_UUID.get());\n  if (o===null) return 'null';\n  var v=o.orElse(null); return v===null?'empty':String(v);\n}\nfunction fieldCount(p){\n  var list=p.level.getEntitiesOfClass(J('com.merlinkitsune.astral_dice.entity.RepulsionEntity'), p.getBoundingBox().inflate(64));\n  return list.size();\n}\nfunction snap(p){\n  var k=L(); var items=p.inventory.items; var me=String(p.uuid);\n  var r={hasSign:k.LSM.hasSign(p), isEquipped:k.LSM.isEquipped(p), repCards:0, barricades:0, repItems:0, ownedCards:0, ownedItems:0, ownNames:0, dump:''};\n  var d=[];\n  for (var i=0;i<items.size();i++){ var st=items.get(i); if (st===null||st.isEmpty()) continue; var it=st.getItem();\n    var isRep=k.LSM.isRepulsion(st); var isBar=k.LSM.isBarricade(st); var isItem=k.LSM.isRepulsionItem(st);\n    if (isRep) r.repCards++;\n    if (isBar) r.barricades++;\n    if (isItem) r.repItems++;\n    var os=ownerStr(st); var nm=String(k.ECU.ownerName(st));\n    if (isRep && os===me) r.ownedCards++;\n    if (isItem && os===me) r.ownedItems++;\n    if (nm!=='') r.ownNames++;\n    d.push(i+':'+(isRep?'R':'-')+(isBar?'B':'-')+(isItem?'I':'-')+':'+st.getCount()+':o='+(os===me?'me':os)+':n='+nm);\n  }\n  r.fields=fieldCount(p); r.dump=d.join(' ');\n  return r;\n}\n  var p=P0(srv()); var k=L();\n  var gave=k.LSM.giveRepulsion(p,2);\n  k.LSM.reconcileInventory(p);\n  return {ok:true, gave:gave, snap:snap(p)};\n})()",
+      "save_as": "grant",
+      "timeout_ms": 10000
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "code": "(function(){\nfunction J(n){ return Java.loadClass(n); }\nfunction L(){ return {LSM:J('com.merlinkitsune.astral_dice.item.sign.LinglingSignManager'),\n  ECU:J('com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil'),\n  MI:J('com.merlinkitsune.astral_dice.item.ModItems'),\n  MDC:J('com.merlinkitsune.astral_dice.component.ModDataComponents')}; }\nfunction srv(){ return J('net.neoforged.neoforge.server.ServerLifecycleHooks').getCurrentServer(); }\nfunction P0(s){ return s.getPlayerList().getPlayers().get(0); }\nfunction ownerStr(st){\n  var MDC=L().MDC; var o=st.get(MDC.OWNER_UUID.get());\n  if (o===null) return 'null';\n  var v=o.orElse(null); return v===null?'empty':String(v);\n}\nfunction fieldCount(p){\n  var list=p.level.getEntitiesOfClass(J('com.merlinkitsune.astral_dice.entity.RepulsionEntity'), p.getBoundingBox().inflate(64));\n  return list.size();\n}\nfunction snap(p){\n  var k=L(); var items=p.inventory.items; var me=String(p.uuid);\n  var r={hasSign:k.LSM.hasSign(p), isEquipped:k.LSM.isEquipped(p), repCards:0, barricades:0, repItems:0, ownedCards:0, ownedItems:0, ownNames:0, dump:''};\n  var d=[];\n  for (var i=0;i<items.size();i++){ var st=items.get(i); if (st===null||st.isEmpty()) continue; var it=st.getItem();\n    var isRep=k.LSM.isRepulsion(st); var isBar=k.LSM.isBarricade(st); var isItem=k.LSM.isRepulsionItem(st);\n    if (isRep) r.repCards++;\n    if (isBar) r.barricades++;\n    if (isItem) r.repItems++;\n    var os=ownerStr(st); var nm=String(k.ECU.ownerName(st));\n    if (isRep && os===me) r.ownedCards++;\n    if (isItem && os===me) r.ownedItems++;\n    if (nm!=='') r.ownNames++;\n    d.push(i+':'+(isRep?'R':'-')+(isBar?'B':'-')+(isItem?'I':'-')+':'+st.getCount()+':o='+(os===me?'me':os)+':n='+nm);\n  }\n  r.fields=fieldCount(p); r.dump=d.join(' ');\n  return r;\n}\n  var p=P0(srv()); return {ok:true, snap:snap(p)};\n})()",
+      "save_as": "withSign",
+      "timeout_ms": 10000
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "code": "(function(){\nfunction J(n){ return Java.loadClass(n); }\nfunction L(){ return {LSM:J('com.merlinkitsune.astral_dice.item.sign.LinglingSignManager'),\n  ECU:J('com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil'),\n  MI:J('com.merlinkitsune.astral_dice.item.ModItems'),\n  MDC:J('com.merlinkitsune.astral_dice.component.ModDataComponents')}; }\nfunction srv(){ return J('net.neoforged.neoforge.server.ServerLifecycleHooks').getCurrentServer(); }\nfunction P0(s){ return s.getPlayerList().getPlayers().get(0); }\nfunction ownerStr(st){\n  var MDC=L().MDC; var o=st.get(MDC.OWNER_UUID.get());\n  if (o===null) return 'null';\n  var v=o.orElse(null); return v===null?'empty':String(v);\n}\nfunction fieldCount(p){\n  var list=p.level.getEntitiesOfClass(J('com.merlinkitsune.astral_dice.entity.RepulsionEntity'), p.getBoundingBox().inflate(64));\n  return list.size();\n}\nfunction snap(p){\n  var k=L(); var items=p.inventory.items; var me=String(p.uuid);\n  var r={hasSign:k.LSM.hasSign(p), isEquipped:k.LSM.isEquipped(p), repCards:0, barricades:0, repItems:0, ownedCards:0, ownedItems:0, ownNames:0, dump:''};\n  var d=[];\n  for (var i=0;i<items.size();i++){ var st=items.get(i); if (st===null||st.isEmpty()) continue; var it=st.getItem();\n    var isRep=k.LSM.isRepulsion(st); var isBar=k.LSM.isBarricade(st); var isItem=k.LSM.isRepulsionItem(st);\n    if (isRep) r.repCards++;\n    if (isBar) r.barricades++;\n    if (isItem) r.repItems++;\n    var os=ownerStr(st); var nm=String(k.ECU.ownerName(st));\n    if (isRep && os===me) r.ownedCards++;\n    if (isItem && os===me) r.ownedItems++;\n    if (nm!=='') r.ownNames++;\n    d.push(i+':'+(isRep?'R':'-')+(isBar?'B':'-')+(isItem?'I':'-')+':'+st.getCount()+':o='+(os===me?'me':os)+':n='+nm);\n  }\n  r.fields=fieldCount(p); r.dump=d.join(' ');\n  return r;\n}\n  var p=P0(srv()); var k=L(); var IH=J('net.minecraft.world.InteractionHand');\n  var nm=String(p.getGameProfile().getName());\n  var stack=k.MI.REPULSION.get().createRecovered(40.0, 0, 0, p.uuid, nm);\n  p.setItemInHand(IH.MAIN_HAND, stack);\n  return {ok:true, snap:snap(p)};\n})()",
+      "save_as": "withItem",
+      "timeout_ms": 10000
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "code": "(function(){\nfunction J(n){ return Java.loadClass(n); }\nfunction L(){ return {LSM:J('com.merlinkitsune.astral_dice.item.sign.LinglingSignManager'),\n  ECU:J('com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil'),\n  MI:J('com.merlinkitsune.astral_dice.item.ModItems'),\n  MDC:J('com.merlinkitsune.astral_dice.component.ModDataComponents')}; }\nfunction srv(){ return J('net.neoforged.neoforge.server.ServerLifecycleHooks').getCurrentServer(); }\nfunction P0(s){ return s.getPlayerList().getPlayers().get(0); }\nfunction ownerStr(st){\n  var MDC=L().MDC; var o=st.get(MDC.OWNER_UUID.get());\n  if (o===null) return 'null';\n  var v=o.orElse(null); return v===null?'empty':String(v);\n}\nfunction fieldCount(p){\n  var list=p.level.getEntitiesOfClass(J('com.merlinkitsune.astral_dice.entity.RepulsionEntity'), p.getBoundingBox().inflate(64));\n  return list.size();\n}\nfunction snap(p){\n  var k=L(); var items=p.inventory.items; var me=String(p.uuid);\n  var r={hasSign:k.LSM.hasSign(p), isEquipped:k.LSM.isEquipped(p), repCards:0, barricades:0, repItems:0, ownedCards:0, ownedItems:0, ownNames:0, dump:''};\n  var d=[];\n  for (var i=0;i<items.size();i++){ var st=items.get(i); if (st===null||st.isEmpty()) continue; var it=st.getItem();\n    var isRep=k.LSM.isRepulsion(st); var isBar=k.LSM.isBarricade(st); var isItem=k.LSM.isRepulsionItem(st);\n    if (isRep) r.repCards++;\n    if (isBar) r.barricades++;\n    if (isItem) r.repItems++;\n    var os=ownerStr(st); var nm=String(k.ECU.ownerName(st));\n    if (isRep && os===me) r.ownedCards++;\n    if (isItem && os===me) r.ownedItems++;\n    if (nm!=='') r.ownNames++;\n    d.push(i+':'+(isRep?'R':'-')+(isBar?'B':'-')+(isItem?'I':'-')+':'+st.getCount()+':o='+(os===me?'me':os)+':n='+nm);\n  }\n  r.fields=fieldCount(p); r.dump=d.join(' ');\n  return r;\n}\n  var p=P0(srv());\n  var ME=J('com.merlinkitsune.astral_dice.entity.ModEntityTypes');\n  var e=ME.REPULSION.get().create(p.level);\n  if (e===null) return {ok:false, reason:'create-null'};\n  e.setPos(p.getX()+2.0, p.getY(), p.getZ());\n  e.setOwnerUUID(p.uuid);\n  p.level.addFreshEntity(e);\n  return {ok:true, fields:fieldCount(p)};\n})()",
+      "save_as": "place",
+      "timeout_ms": 10000
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "note",
+      "text": "B. 主动卸下怪力乱神立牌 → 卡变路障 / 物品销毁 / 已放置实体销毁"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe equipslot stand \"minecraft:air\" RB"
+    },
+    {
+      "op": "wait",
+      "ms": 1800
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "code": "(function(){\nfunction J(n){ return Java.loadClass(n); }\nfunction L(){ return {LSM:J('com.merlinkitsune.astral_dice.item.sign.LinglingSignManager'),\n  ECU:J('com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil'),\n  MI:J('com.merlinkitsune.astral_dice.item.ModItems'),\n  MDC:J('com.merlinkitsune.astral_dice.component.ModDataComponents')}; }\nfunction srv(){ return J('net.neoforged.neoforge.server.ServerLifecycleHooks').getCurrentServer(); }\nfunction P0(s){ return s.getPlayerList().getPlayers().get(0); }\nfunction ownerStr(st){\n  var MDC=L().MDC; var o=st.get(MDC.OWNER_UUID.get());\n  if (o===null) return 'null';\n  var v=o.orElse(null); return v===null?'empty':String(v);\n}\nfunction fieldCount(p){\n  var list=p.level.getEntitiesOfClass(J('com.merlinkitsune.astral_dice.entity.RepulsionEntity'), p.getBoundingBox().inflate(64));\n  return list.size();\n}\nfunction snap(p){\n  var k=L(); var items=p.inventory.items; var me=String(p.uuid);\n  var r={hasSign:k.LSM.hasSign(p), isEquipped:k.LSM.isEquipped(p), repCards:0, barricades:0, repItems:0, ownedCards:0, ownedItems:0, ownNames:0, dump:''};\n  var d=[];\n  for (var i=0;i<items.size();i++){ var st=items.get(i); if (st===null||st.isEmpty()) continue; var it=st.getItem();\n    var isRep=k.LSM.isRepulsion(st); var isBar=k.LSM.isBarricade(st); var isItem=k.LSM.isRepulsionItem(st);\n    if (isRep) r.repCards++;\n    if (isBar) r.barricades++;\n    if (isItem) r.repItems++;\n    var os=ownerStr(st); var nm=String(k.ECU.ownerName(st));\n    if (isRep && os===me) r.ownedCards++;\n    if (isItem && os===me) r.ownedItems++;\n    if (nm!=='') r.ownNames++;\n    d.push(i+':'+(isRep?'R':'-')+(isBar?'B':'-')+(isItem?'I':'-')+':'+st.getCount()+':o='+(os===me?'me':os)+':n='+nm);\n  }\n  r.fields=fieldCount(p); r.dump=d.join(' ');\n  return r;\n}\n  var p=P0(srv()); return {ok:true, snap:snap(p)};\n})()",
+      "save_as": "after",
+      "timeout_ms": 10000
+    },
+    {
+      "op": "note",
+      "text": "C. 规则①：无立牌时捡起强化拒止卡 → 到手即变路障"
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "code": "(function(){\nfunction J(n){ return Java.loadClass(n); }\nfunction L(){ return {LSM:J('com.merlinkitsune.astral_dice.item.sign.LinglingSignManager'),\n  ECU:J('com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil'),\n  MI:J('com.merlinkitsune.astral_dice.item.ModItems'),\n  MDC:J('com.merlinkitsune.astral_dice.component.ModDataComponents')}; }\nfunction srv(){ return J('net.neoforged.neoforge.server.ServerLifecycleHooks').getCurrentServer(); }\nfunction P0(s){ return s.getPlayerList().getPlayers().get(0); }\nfunction ownerStr(st){\n  var MDC=L().MDC; var o=st.get(MDC.OWNER_UUID.get());\n  if (o===null) return 'null';\n  var v=o.orElse(null); return v===null?'empty':String(v);\n}\nfunction fieldCount(p){\n  var list=p.level.getEntitiesOfClass(J('com.merlinkitsune.astral_dice.entity.RepulsionEntity'), p.getBoundingBox().inflate(64));\n  return list.size();\n}\nfunction snap(p){\n  var k=L(); var items=p.inventory.items; var me=String(p.uuid);\n  var r={hasSign:k.LSM.hasSign(p), isEquipped:k.LSM.isEquipped(p), repCards:0, barricades:0, repItems:0, ownedCards:0, ownedItems:0, ownNames:0, dump:''};\n  var d=[];\n  for (var i=0;i<items.size();i++){ var st=items.get(i); if (st===null||st.isEmpty()) continue; var it=st.getItem();\n    var isRep=k.LSM.isRepulsion(st); var isBar=k.LSM.isBarricade(st); var isItem=k.LSM.isRepulsionItem(st);\n    if (isRep) r.repCards++;\n    if (isBar) r.barricades++;\n    if (isItem) r.repItems++;\n    var os=ownerStr(st); var nm=String(k.ECU.ownerName(st));\n    if (isRep && os===me) r.ownedCards++;\n    if (isItem && os===me) r.ownedItems++;\n    if (nm!=='') r.ownNames++;\n    d.push(i+':'+(isRep?'R':'-')+(isBar?'B':'-')+(isItem?'I':'-')+':'+st.getCount()+':o='+(os===me?'me':os)+':n='+nm);\n  }\n  r.fields=fieldCount(p); r.dump=d.join(' ');\n  return r;\n}\n  var p=P0(srv()); var k=L();\n  var IE=J('net.minecraft.world.entity.item.ItemEntity');\n  var IS=J('net.minecraft.world.item.ItemStack');\n  var st=k.LSM.toRepulsion(new IS(k.MI.EFFECT_CARD_BARRICADE.get()), p);\n  var ie=new IE(p.level, p.getX(), p.getY()+0.2, p.getZ(), st);\n  p.level.addFreshEntity(ie);\n  return {ok:true, spawned:true, before:snap(p).repCards};\n})()",
+      "save_as": "pickup",
+      "timeout_ms": 10000
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "code": "(function(){\nfunction J(n){ return Java.loadClass(n); }\nfunction L(){ return {LSM:J('com.merlinkitsune.astral_dice.item.sign.LinglingSignManager'),\n  ECU:J('com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil'),\n  MI:J('com.merlinkitsune.astral_dice.item.ModItems'),\n  MDC:J('com.merlinkitsune.astral_dice.component.ModDataComponents')}; }\nfunction srv(){ return J('net.neoforged.neoforge.server.ServerLifecycleHooks').getCurrentServer(); }\nfunction P0(s){ return s.getPlayerList().getPlayers().get(0); }\nfunction ownerStr(st){\n  var MDC=L().MDC; var o=st.get(MDC.OWNER_UUID.get());\n  if (o===null) return 'null';\n  var v=o.orElse(null); return v===null?'empty':String(v);\n}\nfunction fieldCount(p){\n  var list=p.level.getEntitiesOfClass(J('com.merlinkitsune.astral_dice.entity.RepulsionEntity'), p.getBoundingBox().inflate(64));\n  return list.size();\n}\nfunction snap(p){\n  var k=L(); var items=p.inventory.items; var me=String(p.uuid);\n  var r={hasSign:k.LSM.hasSign(p), isEquipped:k.LSM.isEquipped(p), repCards:0, barricades:0, repItems:0, ownedCards:0, ownedItems:0, ownNames:0, dump:''};\n  var d=[];\n  for (var i=0;i<items.size();i++){ var st=items.get(i); if (st===null||st.isEmpty()) continue; var it=st.getItem();\n    var isRep=k.LSM.isRepulsion(st); var isBar=k.LSM.isBarricade(st); var isItem=k.LSM.isRepulsionItem(st);\n    if (isRep) r.repCards++;\n    if (isBar) r.barricades++;\n    if (isItem) r.repItems++;\n    var os=ownerStr(st); var nm=String(k.ECU.ownerName(st));\n    if (isRep && os===me) r.ownedCards++;\n    if (isItem && os===me) r.ownedItems++;\n    if (nm!=='') r.ownNames++;\n    d.push(i+':'+(isRep?'R':'-')+(isBar?'B':'-')+(isItem?'I':'-')+':'+st.getCount()+':o='+(os===me?'me':os)+':n='+nm);\n  }\n  r.fields=fieldCount(p); r.dump=d.join(' ');\n  return r;\n}\n  var p=P0(srv()); return {ok:true, snap:snap(p)};\n})()",
+      "save_as": "picked",
+      "timeout_ms": 10000
+    },
+    {
+      "op": "note",
+      "text": "D. 硬门控：无立牌 / 他人 owner → 不能放置"
+    },
+    {
+      "op": "inject_command",
+      "command": "/item replace entity @s weapon.mainhand with astral_dice:repulsion 1"
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "code": "(function(){\nfunction J(n){ return Java.loadClass(n); }\nfunction L(){ return {LSM:J('com.merlinkitsune.astral_dice.item.sign.LinglingSignManager'),\n  ECU:J('com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil'),\n  MI:J('com.merlinkitsune.astral_dice.item.ModItems'),\n  MDC:J('com.merlinkitsune.astral_dice.component.ModDataComponents')}; }\nfunction srv(){ return J('net.neoforged.neoforge.server.ServerLifecycleHooks').getCurrentServer(); }\nfunction P0(s){ return s.getPlayerList().getPlayers().get(0); }\nfunction ownerStr(st){\n  var MDC=L().MDC; var o=st.get(MDC.OWNER_UUID.get());\n  if (o===null) return 'null';\n  var v=o.orElse(null); return v===null?'empty':String(v);\n}\nfunction fieldCount(p){\n  var list=p.level.getEntitiesOfClass(J('com.merlinkitsune.astral_dice.entity.RepulsionEntity'), p.getBoundingBox().inflate(64));\n  return list.size();\n}\nfunction snap(p){\n  var k=L(); var items=p.inventory.items; var me=String(p.uuid);\n  var r={hasSign:k.LSM.hasSign(p), isEquipped:k.LSM.isEquipped(p), repCards:0, barricades:0, repItems:0, ownedCards:0, ownedItems:0, ownNames:0, dump:''};\n  var d=[];\n  for (var i=0;i<items.size();i++){ var st=items.get(i); if (st===null||st.isEmpty()) continue; var it=st.getItem();\n    var isRep=k.LSM.isRepulsion(st); var isBar=k.LSM.isBarricade(st); var isItem=k.LSM.isRepulsionItem(st);\n    if (isRep) r.repCards++;\n    if (isBar) r.barricades++;\n    if (isItem) r.repItems++;\n    var os=ownerStr(st); var nm=String(k.ECU.ownerName(st));\n    if (isRep && os===me) r.ownedCards++;\n    if (isItem && os===me) r.ownedItems++;\n    if (nm!=='') r.ownNames++;\n    d.push(i+':'+(isRep?'R':'-')+(isBar?'B':'-')+(isItem?'I':'-')+':'+st.getCount()+':o='+(os===me?'me':os)+':n='+nm);\n  }\n  r.fields=fieldCount(p); r.dump=d.join(' ');\n  return r;\n}\n  var p=P0(srv()); var k=L(); var IH=J('net.minecraft.world.InteractionHand');\n  var before=fieldCount(p);\n  var res=k.MI.REPULSION.get().use(p.level, p, IH.MAIN_HAND);\n  return {ok:true, hasSign:k.LSM.hasSign(p), result:String(res.getResult()),\n          fieldsBefore:before, fieldsAfter:fieldCount(p), itemLeft:!(p.getMainHandItem().isEmpty())};\n})()",
+      "save_as": "gate",
+      "timeout_ms": 10000
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "code": "(function(){\nfunction J(n){ return Java.loadClass(n); }\nfunction L(){ return {LSM:J('com.merlinkitsune.astral_dice.item.sign.LinglingSignManager'),\n  ECU:J('com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil'),\n  MI:J('com.merlinkitsune.astral_dice.item.ModItems'),\n  MDC:J('com.merlinkitsune.astral_dice.component.ModDataComponents')}; }\nfunction srv(){ return J('net.neoforged.neoforge.server.ServerLifecycleHooks').getCurrentServer(); }\nfunction P0(s){ return s.getPlayerList().getPlayers().get(0); }\nfunction ownerStr(st){\n  var MDC=L().MDC; var o=st.get(MDC.OWNER_UUID.get());\n  if (o===null) return 'null';\n  var v=o.orElse(null); return v===null?'empty':String(v);\n}\nfunction fieldCount(p){\n  var list=p.level.getEntitiesOfClass(J('com.merlinkitsune.astral_dice.entity.RepulsionEntity'), p.getBoundingBox().inflate(64));\n  return list.size();\n}\nfunction snap(p){\n  var k=L(); var items=p.inventory.items; var me=String(p.uuid);\n  var r={hasSign:k.LSM.hasSign(p), isEquipped:k.LSM.isEquipped(p), repCards:0, barricades:0, repItems:0, ownedCards:0, ownedItems:0, ownNames:0, dump:''};\n  var d=[];\n  for (var i=0;i<items.size();i++){ var st=items.get(i); if (st===null||st.isEmpty()) continue; var it=st.getItem();\n    var isRep=k.LSM.isRepulsion(st); var isBar=k.LSM.isBarricade(st); var isItem=k.LSM.isRepulsionItem(st);\n    if (isRep) r.repCards++;\n    if (isBar) r.barricades++;\n    if (isItem) r.repItems++;\n    var os=ownerStr(st); var nm=String(k.ECU.ownerName(st));\n    if (isRep && os===me) r.ownedCards++;\n    if (isItem && os===me) r.ownedItems++;\n    if (nm!=='') r.ownNames++;\n    d.push(i+':'+(isRep?'R':'-')+(isBar?'B':'-')+(isItem?'I':'-')+':'+st.getCount()+':o='+(os===me?'me':os)+':n='+nm);\n  }\n  r.fields=fieldCount(p); r.dump=d.join(' ');\n  return r;\n}\n  var p=P0(srv()); var k=L(); var IH=J('net.minecraft.world.InteractionHand');\n  var foreign=J('java.util.UUID').randomUUID();\n  var stack=k.MI.REPULSION.get().createRecovered(40.0, 0, 0, foreign, 'Foreign');\n  p.setItemInHand(IH.MAIN_HAND, stack);\n  var before=fieldCount(p);\n  var res=k.MI.REPULSION.get().use(p.level, p, IH.MAIN_HAND);\n  return {ok:true, result:String(res.getResult()), fieldsBefore:before, fieldsAfter:fieldCount(p),\n          itemLeft:!(p.getMainHandItem().isEmpty())};\n})()",
+      "save_as": "foreign",
+      "timeout_ms": 10000
+    }
+  ],
+  "asserts": [
+    {
+      "type": "state",
+      "from": "base",
+      "expect": {
+        "ok": true,
+        "snap": {
+          "hasSign": true
+        }
+      }
+    },
+    {
+      "type": "state",
+      "from": "grant",
+      "expect": {
+        "ok": true,
+        "gave": {
+          "gte": 1
+        }
+      }
+    },
+    {
+      "type": "state",
+      "from": "withSign",
+      "expect": {
+        "ok": true,
+        "snap": {
+          "hasSign": true,
+          "repCards": {
+            "gte": 1
+          },
+          "ownedCards": {
+            "gte": 1
+          },
+          "ownNames": {
+            "gte": 1
+          }
+        }
+      }
+    },
+    {
+      "type": "state",
+      "from": "withItem",
+      "expect": {
+        "ok": true,
+        "snap": {
+          "repItems": {
+            "gte": 1
+          },
+          "ownedItems": {
+            "gte": 1
+          }
+        }
+      }
+    },
+    {
+      "type": "state",
+      "from": "place",
+      "expect": {
+        "ok": true,
+        "fields": {
+          "gte": 1
+        }
+      }
+    },
+    {
+      "type": "state",
+      "from": "after",
+      "expect": {
+        "ok": true,
+        "snap": {
+          "hasSign": false,
+          "repCards": 0,
+          "barricades": {
+            "gte": 1
+          },
+          "repItems": 0,
+          "fields": 0
+        }
+      }
+    },
+    {
+      "type": "state",
+      "from": "picked",
+      "expect": {
+        "ok": true,
+        "snap": {
+          "repCards": 0,
+          "barricades": {
+            "gte": 1
+          }
+        }
+      }
+    },
+    {
+      "type": "state",
+      "from": "gate",
+      "expect": {
+        "ok": true,
+        "hasSign": false,
+        "fieldsAfter": 0,
+        "itemLeft": true
+      }
+    },
+    {
+      "type": "state",
+      "from": "foreign",
+      "expect": {
+        "ok": true,
+        "fieldsAfter": 0,
+        "itemLeft": true
+      }
+    }
+  ]
+}
