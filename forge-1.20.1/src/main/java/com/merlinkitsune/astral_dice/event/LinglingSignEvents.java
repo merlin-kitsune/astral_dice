@@ -1,19 +1,13 @@
 package com.merlinkitsune.astral_dice.event;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
-import com.merlinkitsune.astral_dice.combat.DiceCombatEvents;
-import com.merlinkitsune.astral_dice.damage.ModDamageTypes;
 import com.merlinkitsune.astral_dice.item.sign.LinglingSignManager;
 
-import net.minecraft.world.damagesource.DamageSource;
-import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.event.entity.item.ItemTossEvent;
-import net.minecraftforge.event.entity.living.LivingDamageEvent;
 import net.minecraftforge.event.entity.player.EntityItemPickupEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 
 /**
@@ -30,20 +24,9 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
  *       数量守恒、不吞物品、不复制。</li>
  *   <li><b>§4.5 丢出</b>:{@code ItemTossEvent} 在掉落物**入世之前**派发(照
  *       {@code event/TemporaryCardEvents} 用法),此时 {@code entity.setItem(...)} 即完成「入世前替换」。</li>
- *   <li><b>§4.7 攻击被吸附目标 +5</b>:1.20.1 Forge <b>没有</b> {@code LivingDamageEvent.Pre},
- *       只有单类 {@code LivingDamageEvent}(在 {@code actuallyHurt} 内、护甲/抗性/保护之后派发)。
- *       ⚠️ <b>不能挂 {@code LivingHurtEvent}</b>:骰战处理器
- *       ({@code combat/DiceCombatEvents.java:274 onLivingDamagePre}, 优先级 NORMAL)在
- *       {@code LivingDamageEvent} 上以 {@code event.setAmount((float) finalDmg)}(:822) <b>覆盖式</b>
- *       写入自算终值,任何一个更早发生的加法(护甲前的 {@code LivingHurtEvent} 也在其中)都会被整段丢弃。
- *       而本效果的前置恰是「佩戴骰子 + 立牌」⇒ 骰战路径必然生效 ⇒ 早期挂点等于从未生效
- *       (2026-10-27 实机取证:闸门全真 eq=true trk=true,目标却只掉骰战自算的 3 点,而非 1+5)。
- *       ⇒ 改挂 {@code LivingDamageEvent}(<b>LOWEST</b>,排在骰战的 NORMAL 之后),与 1.21.1 的
- *       {@code LivingDamageEvent.Pre} + LOWEST <b>同阶段同先后</b>。
- *       <b>判据集与蓝本逐条一致</b>:佩戴者<b>本人造成的任意伤害</b>(近战 / 远程 / 法术都算,
- *       <b>不做近战限定</b>)· 目标被<b>任意</b>归属的强化拒止吸附 · 排除 {@code EXTRA_DAMAGE} 防递归。
- *       落地方式 = <b>就在同一次伤害上做加法</b>({@code event.setAmount(event.getAmount() + 5)},
- *       照 {@code ChipDamageHandler} 先例):<b>不嵌套新伤害、不清 i-frame、不绕过护甲</b>。</li>
+ *   <li><b>§4.7 攻击被吸附目标 +5</b>：<b>2026-10-27 用户裁决</b> ⇒ 该加成<b>只</b>在骰战结算里加
+ *       ({@code combat/DiceCombatEvents} 玩家攻击分支的最终伤害段)，法伤 / 技能 / 远程 / 环境等
+ *       非骰战伤害一律不再叠加；本文件不再挂任何伤害事件。</li>
  * </ul>
  */
 @net.minecraftforge.fml.common.Mod.EventBusSubscriber(modid = AstralDiceMod.MODID)
@@ -92,41 +75,8 @@ public final class LinglingSignEvents {
         entity.setItem(LinglingSignManager.toBarricade(stack));
     }
 
-    // ── §4.7 攻击被吸附目标 +5(佩戴者本人造成的**任意**伤害,不限近战) ───────────
+    // ── §4.7 攻击被吸附目标 +5：2026-10-27 用户裁决后只在骰战结算里加 ─────────────
 
-    @SubscribeEvent(priority = EventPriority.LOWEST)
-    public static void onLivingDamage(LivingDamageEvent event) {
-        if (event.isCanceled()) return;
-        // A4(2026-10-27 近战审计):金额已被归零(安全气囊 / 鼠鼠护盾吃满)时不再加,否则保命会被 +5 破防。
-        if (event.getAmount() <= 0.0F) return;
-        LivingEntity target = event.getEntity();
-        if (target == null || target.level().isClientSide) return;
-        DamageSource source = event.getSource();
-        if (source == null) return;
-        // 防递归:本模组派生的额外伤害段不再叠加
-        if (source.is(ModDamageTypes.EXTRA_DAMAGE)) return;
-        // 2026-10-27 法伤折叠(用户裁决):法伤加成不再发嵌套真伤 hurt ⇒ 同一击只会进入本处理器一次,
-        // 原先用于排除「加成段」的 isApplyingTrueBonus() 闸门失去判据,随批移除。
-        // 数值核对(重要,别误读):旧实现**有**该闸门 ⇒ 加成段本来就被排除,一次法伤命中一直只 +5
-        // 一次;折叠后仍是 +5 一次 ⇒ 本处**数值行为不变**,变的是判据来源(不再需要闸门)。
-        // 唯一的口径变化在乘算侧:这个 +5 现在加在「本体 + 加成」的同一个事件终值上(以前加在基础段
-        // 事件上、加成段另算),绝对加数相同 ⇒ 与 1.21.1 侧同一裁决一致。
-        // 判据集与蓝本逐条一致:佩戴者「本人」造成的任意伤害(近战/远程/法术),不做近战限定
-        if (!(source.getEntity() instanceof Player player)) return;
-        if (!LinglingSignManager.isEquipped(player)) return;
-        if (!LinglingSignManager.isTrackedByAny(target)) return;
-        // A4(2026-10-27 近战审计):骰战路径的 +5 已并入骰战终值(DiceCombatEvents 玩家攻击分支)⇒ 跳过。
-        // 本处理器与筹码减伤 / 安全气囊同为 LOWEST,先后取决于注册顺序,不可依赖;
-        // 判据与写终值处同源(无骰 + 赐福合法目标也算骰战),否则会漏跳、变成 +10。
-        if (DiceCombatEvents.isDiceBattleSettledDamage(source, target)) return;
-        // 就在同一次伤害上做加法(不嵌套新伤害、不清 i-frame、不绕过护甲;照 ChipDamageHandler 先例)
-        // 2026-10-27 修正挂点:必须挂**最终**的 LivingDamageEvent(LOWEST)。骰战在同类事件的 NORMAL
-        // 以 setAmount **覆盖式**写入自算终值(combat/DiceCombatEvents.java:274/822),在 LivingHurtEvent
-        // 里加的 +5 会被整段盖掉 —— 而本效果的前置就是「佩戴骰子 + 立牌」,骰战路径必然生效 ⇒ 旧挂点
-        // 在 1.20.1 等于从未生效(实机取证见类头 §4.7)。1.21.1 侧挂 LivingDamageEvent.Pre(LOWEST) 同理。
-        event.setAmount(event.getAmount() + LinglingSignManager.TRACKED_TARGET_BONUS_DAMAGE);
-        // 2026-10-27 批次F(P2-B):+5 之后再对齐吸收 —— settle 写回的吸收里含幻影 H,金额变了平台
-        // :1684 的扣减量就不等于 H。无幻影登记时是 no-op(非骰战伤害 / 目标不是本次 settle 的受害者)。
-        DiceCombatEvents.compensateAbsorption(target, event.getAmount());
-    }
+    // 本文件只做拾取(§4.2)与丢出(§4.5)两条转换。骰战路径的 +5 已并入骰战终值，
+    // 非骰战（法伤 / 技能 / 远程 / 环境）不再叠加（用户裁决：限定必须为骰战）。
 }

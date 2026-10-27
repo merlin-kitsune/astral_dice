@@ -436,9 +436,9 @@ combat/DiceCombatEvents.java:305-317 赐福/降神倒计时启动、秘密侦探
 | 项 | 结论 |
 |---|---|
 | MELEE-04 Papara 主动汲取回血基数 | **保持** `finalDmg`（lang 规格写的是「恢复骰神赐福最终伤害的一半」，不是落地红心量） |
-| F8 mob→player 不判敌对 | 2026-09-26 设计即「对所有生物生效」，收窄需用户裁决 |
-| MELEE-06 立牌 +5 未限定近战 | 与 lang / 手册规格一致（「造成的任意伤害」） |
-| MELEE-07 熊猫人嘲讽反击无 per-swing 去重 | 近战主路径一挥击一实例，重复仅在异常多实例时出现 |
+| F8 mob→player 不判敌 | **正常机制（用户裁决 2026-10-27）**：任何使用近战攻击带骰子的玩家一律算骰战（消耗防御牌 / 触发防御牌防御力），不改；见 7.10 |
+| MELEE-06 立牌 +5 未限定近战 | **已改**（用户裁决 2026-10-27）：限定必须为骰战，法术 / 技能 / 远程等排除；三语 lang 同步；见 7.10 |
+| MELEE-07 熊猫人嘲讽反击无 per-swing 去重 | **已改**（用户裁决 2026-10-27）：`DeathTriggerGuard.claimPair` 1 刻窗口去重，四条反击入口共用；见 7.10 |
 | F5 显示侧 | `DamageNumberAggregator`（LOWEST）在骰战覆盖前后读到中间值；forge 无 Post 事件，搬到别处仍与 `ChipDamageHandler` 同档 |
 
 #### 7.9.4 判据
@@ -464,3 +464,28 @@ combat/DiceCombatEvents.java:305-317 赐福/降神倒计时启动、秘密侦探
 | **N8** neo 用裸 `1.10f`、forge 有 `WEAK_MARK_DAMAGE_MULTIPLIER` 常量 | P3 | **登记不改**（该线本无此常量，数值一致） |
 
 - 判据：两线 `gradlew.bat :neoforge-1.21.1:classes :forge-1.20.1:classes` ⇒ EXIT 0（日志 `temp/compile_review_fix.log`）。**仍未实机、未重出 jar**。
+
+### 7.10 三条用户裁决落地（2026-10-27 21:5x，P0 双线）
+
+用户裁决（原话要点）：① **F8 是正常机制**——任何使用近战攻击带骰子的玩家一律算骰战（消耗防御牌，且被攻击方触发防御牌提供的防御力加成）；② **MELEE-06 需要修改**，限定必须为骰战（法术、技能等排除）；③ **MELEE-07 执行去重**（一次计算正确伤害），使用 1 tick，所有涉及反击的立牌 / 筹码一并修（因为共用同逻辑）。
+
+| 项 | 裁决 | 落地 |
+|---|---|---|
+| **F8** mob→player 不判敌 | 正常机制，**不改** | 无需改动。`resolveMobMeleeAttack`（neo `combat/DiceCombatEvents.java:1087` / forge `:1379`）对所有生物生效：分类攻击力（`starengine/combat/TargetBattleStats.java:40-46` HOSTILE 4 / NEUTRAL 3 / PASSIVE 0 / FRIENDLY 0）× 玩家防御 ⇒ 消耗防御牌耐久（neo `:1157` / forge `:1454`）、并按防御牌加防御力。宠物 / 中立 / 被动攻击同样算骰战——设计如此，不是缺陷 |
+| **MELEE-06** 立牌 +5 未限定 | 改为**只限骰战** | 删掉两线 `event/LinglingSignEvents.java` 里的 +5 伤害处理器（neo 原 `onLivingDamagePre(LivingDamageEvent.Pre)` @LOWEST / forge 原 `onLivingDamage(LivingDamageEvent)` @LOWEST），`+5` 的**唯一**落点 = 骰战终值（neo `combat/DiceCombatEvents.java:841-844` / forge `:1128-1130`）。法伤 / 技能 / 远程 / 环境等非骰战伤害不再叠加；无骰但目标为「赐福合法目标」时仍属骰战 ⇒ 照样 +5 |
+| **MELEE-07** 反击无 per-swing 去重 | 按 **1 刻**窗口去重，**全部反击出口共用** | `combat/DeathTriggerGuard.java` 新增 `public static boolean claimPair(LivingEntity attacker, LivingEntity victim, String channel)`（键 = 攻击者 UUID + 受害者 UUID + 频道，窗口 `SAME_SWING_WINDOW_TICKS = 1L`，与 `claim` 共用 `PRUNE_THRESHOLD` / `PRUNE_KEEP_TICKS` 淘汰）；两线 `combat/DiceCombatEvents.java#injectCounterDamage` 在 `isInCounterChain()` 之后加 `if (!DeathTriggerGuard.claimPair(attacker, player, "counter")) return;` ⇒ 嘲讽反击（`onPandamanTauntCounter`）/ 破绽闪避（`onMosesBrokenDodge`）/ 鼠鼠护盾（`onRenShieldCounter`）/ 安全气囊（`AirbagChipItem#counterAttacker`）四条入口一次覆盖 |
+
+**连带项**
+
+- 三语 lang 同步限定为骰战（两线 × 3 文件，键数仍 1065/1065/1065）：`tooltip.astral_dice.sign.lingling_passive` 末行改为「怪力乱神**骰战**攻击被「强化拒止」吸附的目标时…」/ "In a dice battle the Lingling deals §e+5§7 …" / 「リンリンがダイス戦で…」；`astral_dice.guide.entry.lingling_sign.2` 与 `.3` 的「攻击…」改为「骰战攻击…」。
+- `combat/DiceCombatEvents.java` 两线的 A4 注释同步改写（原来写「非骰战仍由那个 LOWEST 处理器加」已失效）。
+- 反击去重的语义边界：key 含受害者 UUID，故「同一 tick 内两个不同攻击者」各自照常反击；`isInCounterChain()` 仍在最前，反击伤害本身（`dice_damage`）不会自我递归；`AirbagChipItem` 先置冷却（`isOnCooldown` ⇒ 第二次直接早退）本就幂等，本次只是统一到同一把锁。
+- `claimPair` 的表同样按 `PRUNE_THRESHOLD = 4096` 触发顺带淘汰、保留 `PRUNE_KEEP_TICKS = 400L` 刻内的条目（与 `LAST_CLAIM` 一致，**不是**硬上限）。
+
+**判据（实跑）**
+
+- 两线 `gradlew.bat :neoforge-1.21.1:classes :forge-1.20.1:classes` ⇒ **EXIT 0 / BUILD SUCCESSFUL**（`temp/compile_melee70.log`；forge 89 条 / neo 4 条既有 deprecation 警告）。
+- `pwsh -NoProfile -File tools/check_lang_sync.ps1` ⇒ exit 0，两线 `OK: zh_cn(1065) = en_us(1065) = ja_jp(1065)`（WARN 仅既有的 `dorothy_passive` / `jill_active` 颜色码差异）。
+- 行为面：骰战路径 +5 不变（仍在 `isEquipped && isTrackedByAny` 时并入终值）；非骰战（法伤 / 技能 / 远程 / 环境）从「+5」变为「不加」—— 这是本次唯一的数值变更，且与三语文案同批落地。
+- **仍未实机、未重出 jar**（实机判据：法伤击杀被吸附目标应无 +5；近战骰战击杀应仍 +5；嘲讽单位同挥击多段只反击一次）。
+- P1 两线（`neoforge-26.1.2` / `fabric-1.20.1`）未镜像（既定范围外）。

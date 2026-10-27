@@ -836,8 +836,9 @@ public class DiceCombatEvents {
 
         // A4(2026-10-27 近战审计,与 1.20.1 线同步):怪力乱神「被吸附目标受到佩戴者伤害 +5」原先由
         //   LinglingSignEvents(@LOWEST)在事件之后追加 —— 它与 ChipDamageHandler(@LOWEST)先后不可依赖
-        //   (气囊归零后仍 +5 / +5 先加则气囊白烧)。统一改为并入骰战终值,事件侧改判
-        //   isDiceBattleSettledDamage 跳过(见 event/LinglingSignEvents)。
+        //   (气囊归零后仍 +5 / +5 先加则气囊白烧)。统一改为并入骰战终值。
+        // MELEE-06(2026-10-27 用户裁决:限定必须为骰战,法术/技能等排除)⇒本处是**唯一**加点,
+        //   event/LinglingSignEvents 已不再挂任何伤害事件（非骰战伤害不再叠加）。
         if (com.merlinkitsune.astral_dice.item.sign.LinglingSignManager.isEquipped(player)
                 && com.merlinkitsune.astral_dice.item.sign.LinglingSignManager.isTrackedByAny(target)) {
             finalDmg += com.merlinkitsune.astral_dice.item.sign.LinglingSignManager.TRACKED_TARGET_BONUS_DAMAGE;
@@ -2029,6 +2030,11 @@ public class DiceCombatEvents {
     // 2026-10-08 起同时被安全气囊筹码复用(见 item/chip/AirbagChipItem#counterAttacker) ⇒ 提升为 public。
     public static void injectCounterDamage(Player player, LivingEntity attacker) {
         if (isInCounterChain()) return;
+        // MELEE-07(2026-10-27 用户裁决):一次挥击只结算一次反击。
+        //   同一次命中可能派发多个伤害事件(本模组额外加伤段的嵌套 hurt / 第三方多段攻击)，
+        //   嘲讽、破绽闪避、鼠鼠护盾、安全气囊共用本出口 ⇒ 不去重就会对同一挥击注入多次反击。
+        //   按「攻击者 + 受害者」在 1 刻窗口内只放行一次；反击伤害本身在 isInCounterChain() 内，不会自我递归。
+        if (!DeathTriggerGuard.claimPair(attacker, player, "counter")) return;
         // 整个「反击伤害计算 + 注入」都必须落在反击链内:计算过程本身也会造成伤害——
         // computeCounterDamage → rollCombatDie → CrimsonDiceHandler.rollD6 掷出 1 时会对掷骰者
         // 本人施加 6 点 astral_dice:dice_damage(CrimsonDiceHandler.java:63-65)。若把计算留在

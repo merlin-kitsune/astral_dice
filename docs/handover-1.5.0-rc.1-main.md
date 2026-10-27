@@ -47,6 +47,8 @@
 31. **折叠批三条裁决落地（2026-10-27 20:5x，§4.1ag）**：N14 AOE 命中也算攻击行为（两线副作用块提到 AOE 闸门之前，反击链仍早退）；法伤加成**必须绕过护甲** ⇒ 两线折叠处改调 `foldBonusBypassingArmor(...)`（护甲前二分预补偿，源带 `bypasses_armor` 或护甲 0 时直接相加）⇒ 数值回到与旧 `true_damage` 段一致；连击保留 cooldown。双线 `:classes` EXIT 0，**未实机、未重出 jar**。
 32. **近战链路专项审计（2026-10-27，§4.1ah）**：三路只读子代理交叉取证（F/A/MELEE 三套编号）+ Lead 逐字复核；落地 F1（forge 玩家黄心被写高，根因 `Player#actuallyHurt` 覆写没有 `:1684`）、F2（无骰赐福目标弱印记 ×1.21）、F3（七咒在生物近战丢失）、A3（额外加伤导致受击被动二次）、A4（立牌 +5 与 LOWEST 先后）、A5（幻影残留 tick 末对账）、A6（生物路径漏 +1）、F7（修女被动读护甲前值）、D3（`BaseSignItem#onHurt` amount 口径）。双线 `:classes` EXIT 0，**未实机**。
 
+33. **三位裁决落地：F8 不改 / MELEE-06 限定骰战 / MELEE-07 反击 1 刻去重（2026-10-27 21:5x，§4.1ai）**：删掉两线 `event/LinglingSignEvents.java` 里非骰战的 +5 伤害处理器，+5 的唯一落点收敛到骰战终值（`combat/DiceCombatEvents.java` neo `:841-844` / forge `:1128-1130`），三语 lang 同步改为「骰战攻击…」；`combat/DeathTriggerGuard.java` 新增 `claimPair(attacker, victim, channel)`（`SAME_SWING_WINDOW_TICKS = 1L`），`injectCounterDamage` 首段加闸门 ⇒ 熊猫人嘲讽 / 破绽闪避 / 鼠鼠护盾 / 安全气囊四条反击出口共用一把锁。判据：两线 `:classes` EXIT 0；`check_lang_sync.ps1` 两线 1065/1065/1065。**未实机、未重出 jar**。
+
 
 ## 1 环境与路径
 
@@ -680,9 +682,21 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
    - **D3** 两线 `item/sign/BaseSignItem.java` 的 `onHurt` javadoc 增「amount 口径」段：两线数值口径不同（forge 护甲/药水/吸收后、neo 护甲前），只用于开关判定，**禁止**数值计算。
 3. **其它小修**：forge `item/sign/PaparaSignItem.java` 的受击回血从 `LivingDamageEvent` 处理器改为 `settleBiteHeal(LivingDamageEvent)`，由 `event/ChipDamageHandler.java` 的 finally（`compensateAbsorption` 之后）显式调用 ⇒ 顺序确定；forge `combat/PlayerHostilityTrackerEvents` 删掉重复的 `if (event.isCanceled()) return;`。
 4. **端口化文档**：`docs/features/neo-to-forge-porting-mapping.md` 订正 5 处过期口径 —— §1.1 法伤行（两次 hurt → 折叠成单次、折叠点行号）、§1.2 「forge 吸收被扣两次」（标 REFUTED，改为幻影 H 复盘）、§1.3（标为历史）、§12 T-04、§13 U-09。
-5. **登记不改**：Papara 主动汲取回血仍用 `finalDmg`（lang 规格是「骰神赐福最终伤害的一半」）；F8（mob→player 不判敌对）、MELEE-06（+5 不限近战）、MELEE-07（熊猫人反击无 per-swing 去重）、F5 显示侧（`DamageNumberAggregator` 读中间值）均登记。
+5. **登记不改**：Papara 主动汲取回血仍用 `finalDmg`（lang 规格是「骰神赐福最终伤害的一半」）；F8（mob→player 不判敌对）、MELEE-06（+5 不限近战）、MELEE-07（熊猫人反击无 per-swing 去重）、F5 显示侧（`DamageNumberAggregator` 读中间值）均登记。 ⛔ 2026-10-27 21:5x 用户裁决已推翻其中 F8 / MELEE-06 / MELEE-07 三项，见 §4.1ai。
 6. **判据**：`gradlew.bat :neoforge-1.21.1:classes :forge-1.20.1:classes` ⇒ EXIT 0（nex 4 / forge 89 条既有 deprecation 警告）；**未实机、未重出 jar**。建议实机验证：F1 读黄心终态、F2 无骰×1.21、A4 气囊归零后是否仍 +5。
 
+
+### 4.1ai 近战三裁决落地：F8 不改 + MELEE-06 限定骰战 + MELEE-07 反击 1 刻去重（2026-10-27 21:5x，P0 双线）—— 双线 `:classes` 通过 + lang 门禁通过，**未实机**
+
+用户裁决（`m21480` 原话要点）：「F8 是正常机制，任何使用近战攻击带骰子的玩家一律算骰战（消耗防御牌，且被攻击方触发防御牌提供的防御力加成）；MELEE-06 需要修改限定必须为骰战（法术、技能等排除）；MELEE-07 执行去重（一次计算正确伤害），使用 1 tick。所有涉及反击的立牌/筹码一并修（因为共用同逻辑）」。审计正本同步追加 `docs/features/attack-damage-chain-audit.md` §7.10（§7.9.3 的三行登记项已按裁决逐行改写）。
+
+1. **F8（mob→player 不判敌对）· 不改**：`resolveMobMeleeAttack`（neo `combat/DiceCombatEvents.java:1087` / forge `:1379`）对所有生物生效，攻击力按 `starengine` 的 `combat/TargetBattleStats.java:40-46` 分类（HOSTILE 4 / NEUTRAL 3 / PASSIVE 0 / FRIENDLY 0），`opposed` 时扣防御牌耐久（neo `:1157` / forge `:1454`）—— 裁决认定为正常机制，代码零改动。
+2. **MELEE-06（立牌 +5 未限定）· 改为只限骰战**：删掉两线 `event/LinglingSignEvents.java` 的 +5 伤害处理器（neo 原 `onLivingDamagePre(LivingDamageEvent.Pre)` @LOWEST / forge 原 `onLivingDamage(LivingDamageEvent)` @LOWEST，含 forge 的 `compensateAbsorption` 调用），两文件随之清掉 6 个失效 import（现分别 76 / 82 行）；javadoc 与 `combat/DiceCombatEvents.java` 的 A4 注释同步改写为「这是**唯一**加点，`LinglingSignEvents` 已不再挂任何伤害事件」。+5 唯一落点 = 骰战终值（neo `:841-844` / forge `:1128-1130`，`isEquipped(player) && isTrackedByAny(target)` ⇒ `finalDmg += TRACKED_TARGET_BONUS_DAMAGE`，常量 neo `LinglingSignManager.java:68` / forge `:75` = 5.0F）；无骰但目标是「赐福合法目标」仍属骰战 ⇒ 照样 +5。
+3. **MELEE-06 文案**：两线三语（`zh_cn` / `en_us` / `ja_jp`）改 3 个键 `tooltip.astral_dice.sign.lingling_passive`、`astral_dice.guide.entry.lingling_sign.2`、`.3`，全部加「骰战」限定（en "In a dice battle …"、ja「ダイス戦で…」）；键数仍 1065/1065/1065。
+4. **MELEE-07（反击无 per-swing 去重）· 1 刻窗口去重，四出口共用**：`combat/DeathTriggerGuard.java` 新增 `SAME_SWING_WINDOW_TICKS = 1L`、表 `LAST_SWING`、`public static boolean claimPair(LivingEntity attacker, LivingEntity victim, String channel)`（key = `attacker|victim|channel`，同刻重复 ⇒ false，`LAST_SWING.size() > PRUNE_THRESHOLD` 触发 `prune`，`prune` 里同步淘汰超 `PRUNE_KEEP_TICKS` 的条目）；两线 `injectCounterDamage` 首段（`isInCounterChain()` 之后）加 `if (!DeathTriggerGuard.claimPair(attacker, player, "counter")) return;` ⇒ 熊猫人嘲讽（`onPandamanTauntCounter`）、枪匠破绽闪避（`onMosesBrokenDodge`）、鼠鼠护盾（`onRenShieldCounter`）、安全气囊（`AirbagChipItem.tryNegateFatal → counterAttacker`）四条出口共用同一把锁，全部立牌 / 筹码一并修好。
+5. **语义边界**：key 含受害者 UUID ⇒ 同一刻两个不同攻击者各自照常反击；`isInCounterChain()` 仍在最前 ⇒ 反击伤害（`dice_damage`）不会自我递归；`AirbagChipItem` 先置冷却，第二段本就被 `isOnCooldown` 挡掉（双重保险）。
+6. **行为面净变更**：骰战路径 +5 不变；非骰战（法伤 / 技能 / 远程 / 环境）从「+5」变为「不加」—— 本批唯一数值变更，已与三语文案同批落地。
+7. **判据**：`gradlew.bat :neoforge-1.21.1:classes :forge-1.20.1:classes` ⇒ EXIT 0（`temp/compile_melee70.log`，forge 89 / neo 4 条既有 deprecation 警告）；`pwsh -NoProfile -File tools/check_lang_sync.ps1` ⇒ exit 0，两线 `OK: zh_cn(1065) = en_us(1065) = ja_jp(1065)`；8 个 java + 6 个 lang 改写后 bareLF 全 0。**未实机、未重出 jar、未投放**；P1 两线未镜像。建议实机判据：① 法伤 / 远程击杀被吸附目标不再 +5；② 近战骰战打被吸附目标仍 +5；③ 被嘲讽单位同一次挥击的多段伤害只反击一次。
 
 ## 5 遗留与欠账
 
@@ -757,6 +771,8 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 22. **近战链路批（2026-10-27，§4.1ah）待实机**：F1（forge 玩家黄心终态）/ F2（无骰赐福目标弱印记只乘一次）/ A4（气囊归零后不 +5、+5 不白烧充能）/ A5（第三方取消后幻影不残留）四项需实机读数；另本批**未重出 jar、未投放**（两个 P0 整合包与根 `build/libs` 仍是 rc.4 旧构建）。剩余登记项（F8 / MELEE-06 / MELEE-07 / F5 显示侧）与 N11 / N14 之前的裁决项一并见审计正本 §7.9.3。 独立复核（只读子代理）已核对平台前提并对 R1–R7 给判，六条建议修（N1 neo 修女被动改真落地量 / N2 生物路径 +1 上移到 victimFactor 之前 —— **mob→player 的这 1 点改为随实例倍率放大** / N3 D3 javadoc / N4 forge 判据 null 守卫与行号 / N5 Papara 空订阅清理 / N6 对账加「幻影量原封未动」校验）已全部落地，详见审计正本 §7.9.5。
 
 21. **折叠批三条裁决已落地、待实机（2026-10-27 20:5x，§4.1ag）**：N14「AOE 命中也算」⇒ 两线 `DiceCombatEvents` 把赐福/降神倒计时与隐匿解除提到 AOE 闸门之前（反击链 `counterDepth` 仍早退）；「加成必须绕过护甲」⇒ 两线 `DamageEffectCardHandler.foldBonusBypassingArmor(...)` 在护甲前预补偿（源带 `bypasses_armor` 或护甲 0 时直接相加），数值回到与旧 `true_damage` 段一致；「连击保留 cooldown」⇒ 不加 `bypasses_cooldown`。双线 `:classes` EXIT 0，**未实机、未重出 jar**。
+23. **近战三裁决批（2026-10-27，§4.1ai）待实机 + 未重出 jar**：三项需实机读数（法伤/远程打被吸附目标应无 +5、近战骰战应仍 +5、嘲讽目标同挥击多段只反击一次）；本批**未重出 jar、未投放**（两个 P0 整合包与根 `build/libs` 仍是 rc.4 旧构建）。
+
 ## 6 坑（本批新增，后续继续追加）
 
 1. **`git show HEAD:<file>` 是 LF**（仓库存 LF、工作树 CRLF 由 autocrlf 转换）⇒ 行级改写先 `replace(/\r\n/g,"\n").split("\n")` 再 `join("\r\n")`。
@@ -804,6 +820,8 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 
 31. **1.20.1 里在 `LivingHurtEvent` 给伤害做「加法」可能整段失效（2026-10-27 实测，§4.1ad）**：本线骰战处理器（`combat/DiceCombatEvents.java:274`，NORMAL）在 `LivingDamageEvent` 上以 `setAmount` **覆盖式**写入自算终值 ⇒ 任何更早发生的加法（`LivingHurtEvent` 阶段、护甲之前）都会被丢弃。症状：闸门全真、事件确实被调用，但目标掉血没有加成。凡「就在同一次伤害上做加法」的需求，1.20.1 一律挂 `LivingDamageEvent` 且优先级 **LOWEST**（排在骰战 NORMAL 之后），与 1.21.1 的 `LivingDamageEvent.Pre` + LOWEST 对齐。
 32. **1.20.1 dev 其实有 AutoJS 通道（订正坑 29）**：`run/1.20.1/mods` 里的 `AutoJS-forge-1.20.1-1.0.0-dev.jar` 会起端点，`mt.ps1 --phase launch` 日志直接打出 `MT_LAUNCH: OK — AutoJS 端点已就绪（http://127.0.0.1:25585/mcp, protocolVersion=2025-06-18）`（注意：`--phase env` 仍会打印 `MT_ENV_AUTOJS: 跳过`，两句话矛盾，以 launch 实测为准）。2026-10-27 实测 `eval_js`（server 侧）在 1.20.1 可用：`net.minecraftforge.server.ServerLifecycleHooks.getCurrentServer()` + `getCommands().performPrefixedCommand(...)` 可直跑命令，`diagnostics` 里能看到 KubeJS 与探针脚本的加载行。⇒ 1.20.1 快速迭代优先用 AutoJS eval（免冷启动），可断言的用例面仍走 KubeJS 探针。
+33. **整行 CJK 字符串做脚本锚点会静默失配（2026-10-27 实测，§4.1ai）**：用 `docs/features/attack-damage-chain-audit.md` §7.9.3 的表格整行当 python 锚点，匹配 0 次（全角括号 / 箭头 / 空格差异肉眼不可见）⇒ 表格与列表行一律改用**行首前缀**（`startswith`）定位 + 命中数断言；同理 `tools.read` 的 `offset` 超过文件行数会直接抛错（本轮 forge `LinglingSignEvents.java` 删完处理器只剩 82 行）。
+
 ## 7 关键路径（命令）
 
 ```powershell
