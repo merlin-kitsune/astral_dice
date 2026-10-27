@@ -359,10 +359,30 @@ combat/DiceCombatEvents.java:305-317 赐福/降神倒计时启动、秘密侦探
 
 **「一次 hurt 只加一次」取证**：neo `LivingEntity.java:1153 CommonHooks.onEntityIncomingDamage` 是全文件唯一派发点；forge `:1665 ForgeHooks.onLivingHurt` 唯一派发点（`hurt` 的 `:1136` 无敌帧差额 / `:1142` 全额二选一，各只调一次 `actuallyHurt`）。
 
-**数值口径（相对改造前的乘性因子）**：裸目标 ×1.0（不变）、保护 IV + 抗性 II ×0.216（不变）、保护 IV + 抗性 IV ×0.072（不变）。真正的行为修正是「只结算一次」的那些环节：吸收钳制、筹码固定点数减伤、按次触发的受击被动、跳字与音效、第三方对多次判定的捕获。
+**数值口径（相对改造前，按本体源分两类）**：折叠后加成随**本体源**的标签走，而旧加成恒走 `astral_dice:true_damage`（两线 `src/main/resources/data/minecraft/tags/damage_type/bypasses_armor.json:3` 与 `bypasses_cooldown.json:3` 都在内）⇒ (a) **本体源也不吃护甲时**（P0 全部法伤牌/技能的 `astral_dice:card_spell`，两线同）乘性因子与旧实现**逐位一致**：裸 ×1.0、保护 IV + 抗性 II ×0.216、保护 IV + 抗性 IV ×0.072；(b) **本体源不在 `bypasses_armor` 内时**（近战 / 箭矢 / 部分第三方法术类型）加成改为**吃护甲**，相对旧实现下降 —— 反例 护甲 20 / 韧性 8 / 本次 10 ⇒ `f = 2 + 8/4 = 4`、`armorEff = clamp(20 - 10/4, 4, 20) = 17.5`、因子 `1 - 17.5/25 = 0.30`，再叠保护 IV + 抗性 II 由旧 0.216 降到 0.0648（约 30%）—— 这是「加成与本体同管道」的**预期语义变更**（2026-10-27 独立复核 R6 订正，初稿漏算护甲）；(c) **无敌帧**：旧加成源带 `bypasses_cooldown` ⇒ 必落地，折叠后与本体同命（neo 参与 `LivingEntity.java:1190-1197` 差额分摊 / forge 在 `:1131-1142` 可整段丢弃）⇒ 连击时加成可能被吞，登记为已知差异待裁决。真正的行为修正是「只结算一次」的那些环节：吸收钳制、筹码固定点数减伤、按次触发的受击被动、跳字与音效、第三方对多次判定的捕获。
 
 **连带删除**：`APPLYING_TRUE_BONUS` ThreadLocal + `isApplyingTrueBonus()` + 三处消费者（两线 `LinglingSignEvents` 的 +5 闸门、`DiceCombatEvents` 的 N7 狂暴反噬闸门）—— 同一击不再有第二次 hurt，闸门失去判据。⚠️ **旧行为订正**：那道 +5 闸门本来就排除了嵌套加成段，所以「一次命中 +10」的说法不成立，折叠前后都是 **+5 一次**（neo `event/LinglingSignEvents.java:93` 注释已写明）。
 
 **骰战覆盖风险（已核不可达）**：法伤源 `getDirectEntity() == null` 在 `forge-1.20.1/.../combat/DiceCombatEvents.java:552` 早退，另有 `:576` 近战闸门；若将来可达，settle 会**覆盖**折叠值（加成丢失）而不是再叠一次 —— 注释已写死该前提。
 
-**判据**：双线 `:classes` EXIT 0；javap 两线 `DamageEffectCardHandler` 类面只剩 `LIVING_PAGE_BIG_HIT_THRESHOLD` + `onLivingIncomingDamagePre`(neo)/`onLivingHurtPre`(forge) + `onLivingDamageSound`，`setAmount` 各 1 处、`hurt` 0 处、`trueDamage` 0 处；`isApplyingTrueBonus` 全仓仅剩注释。**未实机、未重出 jar**。
+**判据**：双线 `:classes` EXIT 0；javap 两线 `DamageEffectCardHandler` 类面只剩 `LIVING_PAGE_BIG_HIT_THRESHOLD` + `onLivingIncomingDamagePre`(neo)/`onLivingHurtPre`(forge) + `onLivingDamageSound`，`setAmount` 各 1 处、`hurt` 0 处、`trueDamage` 0 处；P0 两线 `.java` 的 `isApplyingTrueBonus` / `APPLYING_TRUE_BONUS` 只剩注释（P1 `fabric-1.20.1` / `neoforge-26.1.2` 仍是活代码 + 双段 hurt ⇒ 本批范围仅 P0 双线）。**未实机、未重出 jar**。
+
+### 7.7 折叠批独立复核（2026-10-27，R1–R7）—— 两条必须处置项已落地
+
+复核路径两条（结论一致）：一次性只读 `subagent` + 复用 teammate `verify-opt-a`。原 `dsh_code_review` 因「1 个提交 + 23 文件（含 6 份文档）」在 600s 内跑不完被掐（报告目录只留 139 B interrupted stub）⇒ 结论：一个提交 + 大量文档核验的复核必须拆小，或改派只读子代理。
+
+| 项 | 结论 | 关键判据 |
+| --- | --- | --- |
+| R1 neo 折叠点 | SUPPORTED | `LivingEntity.java:1153` 唯一派发（`CommonHooks.java:296` 全 jar 仅 1 处 new），`:1159` 以 container 为唯一事实源，早于 `:1164` 盾牌 / `:1178` 冰冻 / `:1182` 头盔 / `:1190-1197` 无敌帧 / `:1787-1789` 护甲与魔法吸收 |
+| R2 forge 折叠点 | SUPPORTED（措辞订正） | `LivingEntity.java:1665` 早于 `:1667` 护甲 / `:1668` 魔法吸收；但全 jar 有**两个互斥**派发点（另一处 `player/Player.java:942` 覆写不调 super）⇒「全 jar 唯一」不成立，「LivingEntity 内唯一」成立 |
+| R3 `SpellDamageContext` | SUPPORTED | 两线字段类型与处理器入参一致；全仓无消费者读该字段（`DiceCombatModifiers` 读的是 `DiceCombatContext.event`） |
+| R4 折叠残留 | 部分成立 | P0 两线 `.java` 只剩注释、判据链完整；但 mapping 文档 `:56/:106/:472` 仍教旧闸门（**已订正**），且 P1 两线仍是活代码 |
+| R5 骰战覆盖 | SUPPORTED + 窄风险（**已加闸门**） | 本仓法伤源 `new DamageSource(holder, null, causing)` ⇒ `getDirectEntity()` 恒 null ⇒ 必早退；第三方法术源若 direct = 玩家本人且主手近战武器则可进 `settleDiceDamage` ⇒ 已在两线 `combat/DiceCombatEvents.java` 的近战闸门前加 `if (SpellDamageRegistry.isSpellDamage(source, directEntity)) return;` |
+| R6 数值不变 | **REFUTED（已订正口径）** | 旧加成走 `true_damage`（在 `bypasses_armor` 内）⇒ 不吃护甲；折叠后随本体源。见 §7.6 数值口径 (a)(b)(c) |
+| R7 音效 | SUPPORTED | 音效处理器与折叠处理器同集同序，读数已去 `+bonus`（neo `:176` / forge `:169`）；既存不对称：neo 读吸收前、forge 读吸收后 |
+
+**两线四点不对称（本批引入，已写进两线 handler 注释）**：① 无敌帧——neo 折叠点在 `LivingEntity.java:1190` 之前（加成参与差额分摊），forge 在 `actuallyHurt` 之后（与本体同命）；② 冰冻 ×5 / 头盔 ×0.75——neo 加成吃，forge 不吃；③ 盾牌 `onDamageBlock`——neo 折算，forge 不参与；④ onHit 副作用——neo 被无敌帧丢弃的击仍执行 `modifier.onHit`，forge 不执行。
+
+**既存不对称（非本批）**：forge `event/LinglingSignEvents.java:125` 有 `DiceCombatEvents.compensateAbsorption(target, event.getAmount())`，neo 无对应（因 neo 折叠点在其之前）。
+
+**范围**：本批只覆盖 P0 双线。P1 `fabric-1.20.1` / `neoforge-26.1.2` 仍是「双段 hurt + 活闸门」⇒ 「全仓单次结算」不成立。**未实机**。

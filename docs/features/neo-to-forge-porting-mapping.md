@@ -53,7 +53,7 @@
 |---|---|---|---|
 | 吸收快照 `PreHurtSnapshot` / `onLivingHurtRecordAbsorption` | forge | `forge-1.20.1/src/main/java/com/merlinkitsune/astral_dice/combat/DiceCombatEvents.java:335-336` | **批次新增**。在 `LivingHurtEvent`(HIGHEST) 记下吸收值，供 `LivingDamageEvent` 段使用 —— 跨事件传值的补丁 |
 | `settleDiceDamage` 终值收口 + 幻影吸收 | forge | 同文件 `:365`、`:389`、`:398`、`:431 registerPhantom` | **批次新增**。审计 N1/N2 的实际落地点；也是 forge 侧「改最终掉血量」的唯一正确出口 |
-| `isApplyingTrueBonus()` 重入闸门 | 两线 | `neoforge-1.21.1/src/main/java/com/merlinkitsune/astral_dice/event/DamageEffectCardHandler.java:43-45`、`forge-1.20.1/src/main/java/com/merlinkitsune/astral_dice/event/DamageEffectCardHandler.java:41` | 审计 N7。**本批之后新增的「受击时」被动应默认考虑加这个闸门**，避免法伤双击跑两次 |
+| `isApplyingTrueBonus()` 重入闸门 | 两线 | `neoforge-1.21.1/src/main/java/com/merlinkitsune/astral_dice/event/DamageEffectCardHandler.java:43-45`、`forge-1.20.1/src/main/java/com/merlinkitsune/astral_dice/event/DamageEffectCardHandler.java:41` | 审计 N7 用的重入闸门已于 2026-10-27 折叠批（`047bb89c`）**整体删除**（两线 `.java` 0 处）。折叠后一次命中只有一条伤害实例，**新增「受击时」被动不再需要这类闸门** |
 | 弱标记 ×1.10 并入终值 | forge | `forge-1.20.1/src/main/java/com/merlinkitsune/astral_dice/combat/DiceCombatEvents.java:327`（常量）、`:1018`、`:1329` | 审计 N8。常量抽出；但法伤链仍走独立的 `onWeakMarkDamage`（见 §1.3） |
 | Papara 回血改挂结算后事件 | 两线 | `neoforge-1.21.1/src/main/java/com/merlinkitsune/astral_dice/item/PaparaSignItem.java:72-73`、`forge-1.20.1/src/main/java/com/merlinkitsune/astral_dice/item/PaparaSignItem.java:72-73` | 审计 N9。两线写法不同（neo `Post` / forge 单类），属平台差异 |
 | `dice_damage` 进 `bypasses_cooldown` | 两线 | `neoforge-1.21.1/src/main/resources/data/minecraft/tags/damage_type/bypasses_cooldown.json`、`forge-1.20.1/src/main/resources/data/minecraft/tags/damage_type/bypasses_cooldown.json` | 审计 N6。两线同值（7 项全集），旧交接里「仍缺」的说法不成立（见 §8.3） |
@@ -103,7 +103,7 @@
 | Papara 回血 | `neoforge-1.21.1/src/main/java/com/merlinkitsune/astral_dice/item/PaparaSignItem.java:72-73`（挂 `Post`） | `forge-1.20.1/src/main/java/com/merlinkitsune/astral_dice/item/PaparaSignItem.java:72-73`（挂 `LivingDamageEvent`） | 仍会触发两次（审计 P1-2 清单第 1 条未加闸门） |
 | 狂暴反噬 / 芯片承伤 | `DiceCombatEvents.java` 内对应 handler | 同名 handler | 见审计 P1-2 |
 
-**移植纪律**：在 neo 侧新增任何「受击时」被动，落 forge 前先问一句 —— 这个被动在法伤双击下跑两次是否合理？不合理就在 handler 里加 `DamageEffectCardHandler.isApplyingTrueBonus()` 闸门（两线都已具备该判定：`neoforge-1.21.1/src/main/java/com/merlinkitsune/astral_dice/event/DamageEffectCardHandler.java:43-45`、`forge-1.20.1/src/main/java/com/merlinkitsune/astral_dice/event/DamageEffectCardHandler.java:41`）。
+**移植纪律**：2026-10-27 折叠批（`047bb89c`）之后，法伤加成并入**同一次**伤害事件、只结算一次 ⇒ 不再存在「加成段第二次 hurt」，`DamageEffectCardHandler.isApplyingTrueBonus()` 已删除（两线 `.java` 0 处），**不要再照抄旧口径去加这个闸门**。需要判断「本次受击是否来自法伤」时用 `SpellDamageRegistry.isSpellDamage(source, source.getDirectEntity())`。
 
 ### 1.4 对齐检查清单（§1）
 
@@ -469,7 +469,7 @@
 | | neo | forge |
 |---|---|---|
 | 挂点 | `LivingDamageEvent.Pre`（要影响本次伤害）或 `.Post`（只读/触发副作用） | 统一 `LivingDamageEvent`，用 `priority` 决定先后 |
-| 代码 | `@SubscribeEvent(priority = EventPriority.LOW)` + `if (DamageEffectCardHandler.isApplyingTrueBonus()) return;` | 同结构，但 `event.getAmount()` 是唯一读数 |
+| 代码 | `@SubscribeEvent(priority = EventPriority.LOW)` + `if (SpellDamageRegistry.isSpellDamage(source, source.getDirectEntity())) return;`（旧口径的 `isApplyingTrueBonus()` 已于 `047bb89c` 删除） | 同结构，但 `event.getAmount()` 是唯一读数 |
 | 判据 | 一次法伤命中，被动触发次数打印到探针（预期 1 次，除非明确接受 2 次） | 同上，且 forge 侧要注意吸收已被扣（`getAmount()` 是扣血值） |
 
 ### T3 加数据组件

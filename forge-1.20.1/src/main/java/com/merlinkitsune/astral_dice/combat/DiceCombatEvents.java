@@ -571,6 +571,14 @@ public class DiceCombatEvents {
                         player, target, event.getAmount())
                 : null;
 
+        // 法伤链不参与骰战结算(2026-10-27 折叠批复核 R5 补口):
+        // 法伤加成已折叠进**本次**伤害事件(DamageEffectCardHandler),而骰战 settle 是覆盖式写值
+        // (自算终值 setNewDamage/setAmount、不读事件现值)⇒ 法伤一旦走进 settle,折叠加成会被整段覆盖。
+        // 本仓自产法伤源 getDirectEntity() 恒 null(必然在上面早退),但**第三方法术源**的直接实体可能就是
+        // 玩家本人;此处按伤害类型白名单显式排除,不再依赖"direct==null"这一巧合。
+        // 只拦骰战结算:此前的赐福倒计时启动 / 隐匿解除 / 手电筒爆闪 / 电磁炮保持原有触发面(技能命中算攻击)。
+        if (SpellDamageRegistry.isSpellDamage(source, directEntity)) return;
+
         // 骰神赐福仅能由近战武器攻击触发与生效:直接伤害来源必须为玩家(已排除弓/弩/三叉戟投掷等远程),
         // 主手必须持有近战武器(排除空手/盾牌/非近战类武器)
         if (!isMeleeWeaponAttack(player)) return;

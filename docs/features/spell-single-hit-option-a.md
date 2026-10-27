@@ -246,6 +246,6 @@
 ## §7 落地复盘（2026-10-27 实施后回填）
 
 1. **本报告 §2 的折叠点需要修正**：报告按「折进 `LivingDamageEvent`」推演（neo `onLivingDamagePre` / forge `onLivingDamage`），但这两个派发点都在**护甲与魔法吸收之后**（neo `LivingEntity.java:1787-1789`、forge `:1667-1680`）⇒ 折进去的加成**不吃抗性 / 保护附魔**：抗性 II + 保护 IV 放大 **4.63×**、抗性 IV + 保护 IV 放大 **13.9×**（裸目标 ×1.0 不变）。这与「加成与本体同管道」的目标语义相反。
-2. **实际落点**：折叠点上移到**护甲之前** —— neo `LivingIncomingDamageEvent`（`LivingEntity.java:1153` 唯一派发点）/ forge `LivingHurtEvent`（`:1665` 唯一派发点），均 `EventPriority.HIGHEST`。乘性因子相对改造前**完全不变**（×1.0 / ×0.216 / ×0.072），「只结算一次」的收益全部保留。
+2. **实际落点**：折叠点上移到**护甲之前** —— neo `LivingIncomingDamageEvent`（`LivingEntity.java:1153` 唯一派发点）/ forge `LivingHurtEvent`（`:1665` 唯一派发点），均 `EventPriority.HIGHEST`。「只结算一次」的收益全部保留；乘性因子**仅在本体源自身不吃护甲时**（P0 全部 `astral_dice:card_spell` 法伤）与改造前逐位一致（×1.0 / ×0.216 / ×0.072），本体源不在 `bypasses_armor` 内时（近战 / 箭矢 / 部分第三方法术类型）加成改为吃护甲 ⇒ 相对旧实现下降（护甲 20 / 韧性 8 约 ×0.30），属预期语义变更。§7 初稿「完全不变」漏算护甲，已按 2026-10-27 独立复核 R6 订正（详见 `docs/features/attack-damage-chain-audit.md` §7.6 数值口径）。
 3. **音效拆分**：活体书页命中音效留在原桶（`LivingDamageEvent` NORMAL）读管线值，**不再 `+ bonus`**（加成已在同一实例里）⇒ 档位与 HUD 跳字同源；对带保护/抗性的目标，新值比旧代码手算的 `getAmount()+bonus` 略低，这是「加成也被减免」的必然结果。
 4. **对 §5「未验证项」的回应**：第 1 条（数值均为源码推演、未实测）**仍成立** —— 本批只做了双线编译 + javap 类面核对，未起游戏；§5 其余各条（第三方 mixin 注入形态、暴击倍率时机等）状态不变，已在 `docs/features/neo-to-forge-porting-mapping.md` §13 与本文 §5 保留。

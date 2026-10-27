@@ -67,7 +67,7 @@ Select-String -Path F:\MCProject\astral_dice_multiloader\*\gradle.properties -Pa
 
 11. ~~复核 findings（清空时序 / 1.20.1 D2 恒绿 / 探针无收尾）~~ → **已闭环（2026-10-27，handover §4.1ab）**：两线改「结算后再清空来源」，1.20.1 `DST-P0` 收紧判据后 **PASS 13/13**（D2 实测 `n=3` ⇒ 篡改后 `n=2:me=2:other=0`），1.21.1 三案在新产物上重跑全 PASS。**仍欠**：本批新产物只投了 `run/<线>/mods`，两个 P0 整合包与根 `build/libs` 未重投；tooltip 所有者行 / 跨容器 / 死亡掉牌 / `/curios set` 四项未实机。
 
-15. **法伤加成折叠为单次结算（2026-10-27，handover §4.1af）**：折叠点必须在**护甲之前**（neo `LivingIncomingDamageEvent` / forge `LivingHurtEvent`，均 HIGHEST；折在 `LivingDamageEvent` 会让加成放大 4.63×–13.9×）；乘性因子相对旧实现不变，删掉 `isApplyingTrueBonus()` 三处闸门（+5 从未 +10）；新增 `docs/features/neo-to-forge-porting-mapping.md` 作为后续双线移植基线（**先做 neo，再按 mapping 落 forge**）。**待办：重出 jar + 投放 + 实机**。
+15. **法伤加成折叠为单次结算（2026-10-27，handover §4.1af）**：折叠点必须在**护甲之前**（neo `LivingIncomingDamageEvent` / forge `LivingHurtEvent`，均 HIGHEST；折在 `LivingDamageEvent` 会让加成放大 4.63×–13.9×）；乘性因子**仅在本体源自身不吃护甲时**（`astral_dice:card_spell`）与旧实现一致、本体源不在 `bypasses_armor` 内时加成改为吃护甲（预期语义变更），删掉 `isApplyingTrueBonus()` 三处闸门（+5 从未 +10）；新增 `docs/features/neo-to-forge-porting-mapping.md` 作为后续双线移植基线（**先做 neo，再按 mapping 落 forge**）。**待办：重出 jar + 投放 + 实机**。
 
 ## 禁止项（共同红线，摘自根 `AGENTS.md`）
 

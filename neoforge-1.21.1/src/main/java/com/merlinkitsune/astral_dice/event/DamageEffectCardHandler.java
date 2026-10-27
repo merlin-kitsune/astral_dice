@@ -55,8 +55,14 @@ public class DamageEffectCardHandler {
     // 伤害实例一起过护甲/抗性/保护/吸收/受击侧倍率/筹码减伤,故折叠点只能是 LivingIncomingDamageEvent
     // (CommonHooks.onEntityIncomingDamage 派发,1.21.1 LivingEntity.java:1153,早于同一 hurt 里的
     // :1190 无敌帧差额判定、:1787-1789 护甲/抗性/保护附魔与 :1790-1792 吸收)。
-    // 它与 1.20.1 侧折叠到 LivingHurtEvent(ForgeHooks.onLivingHurt,:1665,同为护甲之前)
-    // 是**同一语义**,两线逐字对称(仅事件类型与 setter 名不同)。
+    // 它与 1.20.1 侧折叠到 LivingHurtEvent(ForgeHooks.onLivingHurt,:1665,同为护甲之前)是
+    // **同一口径**(加成与本体同管道、只结算一次),但两线**并非逐字对称**(2026-10-27 复核实证,四点):
+    // ① 无敌帧:本事件在 :1190 无敌帧判定**之前** ⇒ 加成进 amount、参与 amount<=lastHurt 比较与差额分摊;
+    //    forge 派发在 actuallyHurt(:1665)、无敌帧之后 ⇒ 加成与本体同命(整击丢弃时一起丢,不分摊)。
+    // ② 冰冻 ×5(:1178)/破甲头盔 ×0.75(:1182) 在本事件之后 ⇒ 加成一起吃;forge 在 actuallyHurt 内 ⇒ 不吃。
+    // ③ 盾牌格挡 onDamageBlock(:1164):neo 合并值按格挡比例折算;forge 在其后 ⇒ 加成不参与。
+    // ④ 副作用时机:本事件早于无敌帧 ⇒ 被无敌帧丢弃的击**也已执行** onHit(标记/箭矢);
+    //    forge 在 actuallyHurt 内 ⇒ 丢弃的击不执行。④ 为已知残余(候选修法=把 onHit 移到 LivingDamageEvent.Pre)。
     // KI-5「电击手套 AOE 基准跨版本」的老顾虑已不适用:电击手套改为独立延迟结算、固定 2 点伤害
     // (item/chip/ElectricGloveChipItem),全仓已无修饰器消费事件金额,分档差异不再存在。
     // `SpellDamageContext.event` 的类型随之由 LivingDamageEvent.Pre 改为 LivingIncomingDamageEvent
@@ -65,11 +71,12 @@ public class DamageEffectCardHandler {
     // (护甲/吸收之后、LOWEST 改动之前),与本批折叠点搬家无关。
     //
     // 优先级取 HIGHEST 的理由:**必须早于**受击侧倍率与鼠鼠护盾钳制,这样加成与本体一起被乘、
-    // 一起被钳 —— 这就是「同管道」的全部含义。本事件上早于我们的只有 ObsidianDiceHandler(@HIGH,
-    // 黑曜石爆炸折算,改的是"已有金额×系数"、不读 bonus)⇒ 加成按最大值口径与本体一致。
+    // 一起被钳 —— 这就是「同管道」的全部含义。@HIGHEST 是本事件**最早**的一档 ⇒ 后排的
+    // ObsidianDiceHandler(@HIGH,黑曜石爆炸折算,只把"已有金额"乘系数、不读 bonus)作用在**已含加成**
+    // 的合并值上 ⇒ 加成按同口径折算,与本体一致(方向勿写反:@HIGH 晚于 @HIGHEST)。
     // 取消类处理器(HannaSignItem / NancyLuSignItem / NewSignEvents)都在 NORMAL 或更晚 ⇒ 它们取消时
-    // 本方法已跑完;取消语义是 hurt 直接 return false(LivingEntity.java:1153),该击不落地任何伤害,
-    // 折叠金额与 onHit 副作用随之作废,数值无影响。
+    // 本方法已跑完;取消语义是 hurt 直接 return false(LivingEntity.java:1153),该击不落地任何伤害
+    // ⇒ 折叠金额不生效;**但 onHit 副作用本方法已执行**(与上文 ④ 同源,已知残余)。
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onLivingIncomingDamagePre(LivingIncomingDamageEvent event) {
         LivingEntity target = event.getEntity();
@@ -118,12 +125,14 @@ public class DamageEffectCardHandler {
         //    只调一次;后续阶段(:1190 无敌帧差额走 actuallyHurt(amount - lastHurt)、:1203 全额)
         //    都在 already-派发之后,不会再派发一次本事件 ⇒ bonus 不会被重复叠加。
         //    残余(平台固有,如实登记):本事件在**无敌帧判定之前**派发(neo :1190 amount <= lastHurt
-        //    时直接 return false),即被无敌帧吞掉的那一击也会先加上加成 —— 但该击随即被丢弃,
-        //    不落地任何伤害,数值无影响(LivingDamageEvent 侧本类只剩音效读取,不再写值)。
+        //    时直接 return false),即被无敌帧吞掉的那一击也会先加上加成 —— 该击随即被丢弃、不落地任何伤害,
+        //    数值无影响;**但 onHit 副作用(标记施加/箭袋触发等)已在本方法末尾执行**(见上文 ④ 与残余清单)。
         //
         // ⚠️ 位置关系(1.21.1 专有):骰战终值写回在 LivingDamageEvent.Pre(@NORMAL,批次A),晚于本处,
-        //    且是**覆盖式**写入 ⇒ 若将来出现「骰战 + 法伤」重叠的伤害,settle 会覆盖本次折叠值
-        //    (加成丢失)而不是再叠一次 —— 不会出现"加成被骰战再乘算"的风险。
+        //    且是**覆盖式**写入 ⇒ 若法伤误入骰战,settle 会覆盖本次折叠值(加成丢失)而不是再叠一次。
+        //    2026-10-27 复核实证:本仓自产法伤源 getDirectEntity() 恒 null ⇒ 骰战玩家分支必然早退;
+        //    第三方法术源的直接实体**可能**是玩家本人,故 DiceCombatEvents 骰战入口已补显式白名单排除
+        //    (SpellDamageRegistry.isSpellDamage)⇒ 不再依赖巧合。
         //    七咒减半(FateGuidanceCardItem @LOWEST on LivingIncomingDamageEvent)与鼠鼠护盾钳制
         //    (RenShieldManager @LOWEST on LivingDamageEvent.Pre)都在本处之后 ⇒ 口径 = 加成也算进基础值。
         if (bonus > 0) {

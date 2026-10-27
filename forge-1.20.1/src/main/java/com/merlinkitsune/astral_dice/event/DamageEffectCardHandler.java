@@ -49,8 +49,13 @@ public class DamageEffectCardHandler {
     // 「对齐 1.21.1 LivingDamageEvent.Pre」口径):用户要求「加成与本体完全同管道」—— 同一条
     // 伤害实例一起过护甲/抗性/保护/吸收/受击侧倍率/筹码减伤,故折叠点只能是平台 actuallyHurt 里
     // `ForgeHooks.onLivingHurt`(:1665,早于护甲 :1667-1668、早于吸收与魔法吸收 :1669-1670)
-    // 派发的 LivingHurtEvent。它与 1.21.1 侧折叠到 LivingIncomingDamageEvent(同为护甲之前)
-    // 是**同一语义**,两线逐字对称(仅事件类型与 setter 名不同)。
+    // 派发的 LivingHurtEvent。它与 1.21.1 侧折叠到 LivingIncomingDamageEvent(同为护甲之前)是
+    // **同一口径**(加成与本体同管道、只结算一次),但两线**并非逐字对称**(2026-10-27 复核实证,四点):
+    // ① 无敌帧:本事件在 actuallyHurt 内、无敌帧判定(:1131-1142)之后 ⇒ 加成与本体同命(整击丢弃时一起丢);
+    //    neo 在无敌帧之前 ⇒ 参与差额分摊。
+    // ② 冰冻 ×5 / 破甲头盔 ×0.75 在 actuallyHurt 内 ⇒ 加成不吃;neo 在其之前 ⇒ 加成一起吃。
+    // ③ 盾牌格挡:本事件之后 ⇒ 加成不参与折算;neo 合并值按格挡比例折算。
+    // ④ onHit 副作用:本事件在否决之后 ⇒ 被丢弃的击不执行;neo 会执行(那边已知残余)。
     // KI-5「电击手套 AOE 基准跨版本」的老顾虑已不适用:电击手套改为独立延迟结算、固定 2 点伤害
     // (item/chip/ElectricGloveChipItem),全仓已无修饰器消费事件金额,分档差异不再存在。
     // `SpellDamageContext.event` 的类型随之由 LivingDamageEvent 改为 LivingHurtEvent
@@ -106,19 +111,22 @@ public class DamageEffectCardHandler {
         // 吸收之后的最终值),并与基础伤害累加成一个法伤总值;折叠后该终值天然含加成。
         //
         // ⚠️ 一次 hurt 只加一次(平台源码取证,勿凭印象):LivingEntity#hurt 的两个分支
-        //    (:1136 无敌帧差额 / :1142 全额)各自只调一次 actuallyHurt,而 actuallyHurt 里
-        //    ForgeHooks.onLivingHurt(:1665)是**全文件唯一**的 LivingHurtEvent 派发点
-        //    ⇒ 本处理器每次受击只跑一次,同一 hurt 的后续阶段不会再派发一次 LivingHurtEvent,
-        //    bonus 不会被重复叠加(LivingDamageEvent 侧本类只剩音效读取,不再写值)。
+        //    (:1136 无敌帧差额 / :1142 全额)各自只调一次 actuallyHurt;LivingHurtEvent 全 jar 有**两个互斥**
+        //    派发点 —— LivingEntity#actuallyHurt(:1665) 与 Player#actuallyHurt 的覆写(Player.java:942,不调 super),
+        //    每次受击只经其一(LivingEntity 内"全文件唯一"成立,全 jar 不算)
+        //    ⇒ 本处理器每次受击只跑一次,bonus 不会被重复叠加(LivingDamageEvent 侧本类只剩音效读取)。
         //
         // ⚠️ 位置关系(1.20.1 专有):本处理器 @HIGHEST 是 LivingHurtEvent 上**最早**的一档,
         //    早于受击侧倍率(EnderDiceHandler @HIGH)与鼠鼠护盾钳制(RenShieldManager @LOWEST)
         //    ⇒ 加成按「本体」口径被这两处一起乘/一起钳,而不是绕过它们。
-        //    骰战终值写回 settleDiceDamage 在 LivingDamageEvent(@NORMAL,批次A),晚于本处;
-        //    而法伤源的 getDirectEntity() == null 会在 DiceCombatEvents#onLivingDamagePre 的
-        //    玩家分支前置早退(那里要求 directEntity instanceof Player),永不走到 settle。
-        //    因此若将来出现「骰战 + 法伤」重叠的伤害,settle 会**覆盖**本次折叠值(加成丢失)
-        //    而不是再叠一次 —— 不会出现"加成被骰战再乘算"的风险。
+        //    骰战终值写回 settleDiceDamage 在 LivingDamageEvent(@NORMAL,批次A),晚于本处。
+        //    法伤不进 settle:本仓自产法伤源一律 new DamageSource(holder, null, causing)
+        //    (damage/ModDamageTypes 的 trueDamage/cardSpell/skillDamage/extraDamage/unreducibleDamage)
+        //    ⇒ getDirectEntity() 恒 null,DiceCombatEvents#onLivingDamagePre 玩家分支要求
+        //    directEntity instanceof Player ⇒ 必然早退。第三方法术源的直接实体**可能**是玩家本人,
+        //    故 2026-10-27 折叠批复核已在骰战入口补显式白名单排除(「法伤链不参与骰战结算」),
+        //    不再依赖"direct==null"这一巧合。若有漏网法伤进入 settle,settle 是**覆盖式**写值
+        //    (自算终值、不读事件现值)⇒ 加分会丢失,不会重复叠乘。
         if (bonus > 0) {
             // 本次命中的**基础伤害**也归入法伤组。必须显式登记:这条命中绝大多数是**原版**伤害源
             // (箭矢 arrow / 投掷物 / 其它模组法术),聚合器的类型回落认不出来。

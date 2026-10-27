@@ -281,6 +281,7 @@ if (bonus > 0 && !APPLYING_TRUE_BONUS.get()) {
 }
 ```
 
+- ⛔ **2026-10-27 废止（提交 `047bb89c`）**：下文围绕 `APPLYING_TRUE_BONUS` / `isApplyingTrueBonus()` 的分析与建议已失效 —— 该 ThreadLocal 与判定方法连同三处消费者已整体删除，法伤加成改为折叠进同一次伤害事件（见 `docs/features/attack-damage-chain-audit.md` §7.6）。本节保留作历史取证。
 - `APPLYING_TRUE_BONUS` 是 `ThreadLocal<Boolean>`（`NEO :33` / `FORGE :29`），对外暴露 `isApplyingTrueBonus()`（`:43-45` / `:41`），唯一外部消费者是 `LinglingSignEvents`（`NEO :94` / `FORGE :107`）。
 - 加成段**不写回本体事件**（不 `setNewDamage` / `setAmount`）⇒ 本体的吸收/护甲/附魔结算完全按原版进行；加成段是**第二条独立伤害实例**。
 
@@ -456,7 +457,7 @@ if (bonus > 0 && !APPLYING_TRUE_BONUS.get()) {
 | `ChipDamageHandler` | `NEO/event/ChipDamageHandler.java:48-49` @LOWEST | 两段各判一次保命 |
 | `RenShieldManager` 黄心钳制 | `:406-414` @LOWEST | 两段各钳一次；因加成段是**先**结算（嵌套在本体 Pre 内），它先吃黄心，本体随后读到的是**已减少的** `remaining` ⇒ 总吸收仍受池上限约束，**不双扣**（与 forge 的 D1 不同——那边是真双扣） |
 
-**审计正本 §2 第 1 条（受击侧修饰统一作用于「本次命中终值 finalDmg」）在法伤链上是结构性偏离**：法伤没有「单一 finalDmg」，本体与加成是两条独立管线。最小修法见 §8 P1-2（**复用现成的 `isApplyingTrueBonus()` 闸门**，成本极低）。
+**审计正本 §2 第 1 条（受击侧修饰统一作用于「本次命中终值 finalDmg」）在法伤链上是结构性偏离**：法伤没有「单一 finalDmg」，本体与加成是两条独立管线。最小修法见 §8 P1-2（**复用现成的 `isApplyingTrueBonus()` 闸门**，成本极低）。⛔ **2026-10-27 废止**：该偏离已由提交 `047bb89c` 按「折叠单次结算」根治，闸门随之删除。
 
 ### 7.2 立牌「被追踪 +5」
 
@@ -506,7 +507,7 @@ if (bonus > 0 && !APPLYING_TRUE_BONUS.get()) {
 
 ### P1-2 「加成段是独立伤害实例」⇒ 所有「每次受击」效果翻倍
 
-一条闸门就能解决，而且**已经存在**：`DamageEffectCardHandler.isApplyingTrueBonus()`（`NEO :43-45` / `FORGE :41`），目前只有 `LinglingSignEvents`（`NEO :94` / `FORGE :107`）一个消费者。
+一条闸门就能解决，而且**已经存在**：`DamageEffectCardHandler.isApplyingTrueBonus()`（`NEO :43-45` / `FORGE :41`），目前只有 `LinglingSignEvents`（`NEO :94` / `FORGE :107`）一个消费者。⛔ **2026-10-27 废止**：该闸门已随 `047bb89c` 删除，法伤不再有第二次 hurt，本条修法作废。
 
 **最小修法**：在下列每个 handler 开头加一行
 
