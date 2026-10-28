@@ -859,7 +859,7 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 1. **用户裁决（m24344 逐字）**：「帕秋莉手册问题：删掉这些 crafting 页 / 改成 spotlight + 说明「由筹码商店获得」」
 
 2. **根因（订正 §5-Minor-25 的旧取证）**：筹码配方**存在**，是 datagen 产物且带条件门禁 ——
-   - `neoforge-1.21.1/src/generated/resources/data/astral_dice/recipe/` 与 `forge-1.20.1/src/generated/resources/data/astral_dice/recipes/` 各 **108 个 json**，筹码配方形如 `{"neoforge:conditions":[{"type":"astral_dice:chip_recipes_enabled"}], …}`（forge 线为 `forge:conditions`）。
+   - `neoforge-1.21.1/src/generated/resources/data/astral_dice/recipe/` 与 `forge-1.20.1/src/generated/resources/data/astral_dice/recipes/` 各 **108 个 json**，筹码配方形如 `{"neoforge:conditions":[{"type":"astral_dice:chip_recipes_enabled"}], …}`（forge 线为顶层 `conditions`）。
    - 条件实现 `neoforge-1.21.1/src/main/java/com/merlinkitsune/astral_dice/recipe/condition/ChipRecipesEnabledCondition.java:44-47`（forge 线同名同位置）：`public boolean test(IContext context) { return ModCommonConfig.ENABLE_CHIP_RECIPES.get(); }`；注册 id 见 `:34` `ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, "chip_recipes_enabled")`。
    - 默认值是 **false**：`config/ModCommonConfig.java:111`（两线同位置）`.define("enable_chip_recipes", false);`（`:28` 的类注释写「关闭时 61 枚筹码无法通过合成获得」，实测筹码数 68 —— 该注释偏旧，本轮未改）。
    - ⇒ 默认配置下 **67 条**筹码配方（`*_chip`）整体不加载（另有 `blank_chip_duplicate` 产出 `blank_chip` 但**不受门禁**，仍可合成），手册里 62 条 `patchouli:crafting` 页因而解析不到配方，游戏内 `[patchouli/]: Recipe astral_dice:<id> (of type minecraft:crafting) not found`。
@@ -896,6 +896,7 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 7. **整合包重名 jar 处置（本轮新坑）**：`D:\.minecraft\versions\狐の航空学 Voxy Edition\mods` 里原有用户改名过的 `[星之骰戏] astral_dice-1.5.0-rc.4+neoforge_1.21.1.jar`（2,589,686 B，10-26 19:40），而 `pushToGame` 只清理自己的命名 ⇒ 两者**同 mod id 并存**，NeoForge 会以重复 mod 拒绝启动。处置：删旧件、把新件改回同一 `[星之骰戏] ` 前缀名（哈希仍 `284a9fc0…`），整合包恢复「单一 mod jar + `starengine-neoforge-1.21.1-1.1.0.jar`（98,734 B）」。**该前缀是否为长期口径待用户确认**（1.20.1 整合包无前缀：`astral_dice-1.5.0-rc.4+forge_1.20.1.jar` 2,648,371 + `starengine-forge-1.20.1-1.1.0.jar` 103,605）。
 
 8. **本节无实机**：`[patchouli/]: Recipe … not found` 是否归零需用户下达实机后再记（判据：1.21.1 `run/1.21.1/logs/latest.log` 里该行计数 = 0）。
+9. **独立复核**：首轮 `dsh_code_review` run `80958f22` 判 R1–R4 / R7 SUPPORTED、R5 部分成立（[P2] 门禁筹码条目整份缺失时两条判据同时静默）、R6 部分成立（[P3] 把 67 条门禁配方写成 68 条）；两条均已修（提交 `23cf2c0e`，判据去掉 `$craft` 守卫 + 三处数字订正），复审 run `882f0bf3` 无 finding。**遗留口径说明**：`stale_page` / `no_note` 仍是 `isFatal=$false` 的告警项（脚本头既有契约「手册缺口仅告警」），只在**单线**缺失时由对等性判据判 FAIL，两线对称缺失仍 PASS —— 若将来要 CI 硬拦，需另立一条把 `stale_page` 提为致命项（待用户裁决）。
 
 ## 5 遗留与欠账
 
