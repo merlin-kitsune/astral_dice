@@ -4176,3 +4176,68 @@ python tools/verify_sign_display_names.py      # 期望 GATE: PASS
 ### 沿革
 - 2026-10-26：本规则成文；EN 每线改 58 处、JA 每线改 23 处（含 2 处「怪力乱神」散句），zh 零改动；新增 `tools/sign_display_names.json` / `tools/sign_names_from_wiki.py` / `tools/verify_sign_display_names.py`。
 - 历史遗留：`CHANGELOG.md` 里 57 行含旧职称名属**历史记录**，按「只追加不改旧条」保留，另加新条目说明改名。
+
+### 62. rc.5 收尾发布批（2026-10-28，用户下达实机与发布）：四线 bump、筹码门禁致命化 + CI、1.21.1 实机、CF 两文件
+
+#### 62.1 提交与推送（已 push，未推 0）
+
+- 四线 `mod_version` → **`1.5.0-rc.5+<后缀>`**（`50e5e406`，4 文件 +4/−4：`neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1`）；`starengine_version` 仍 `1.1.0`（本轮未动库）。
+- `1368b837`（2 文件 +15/−4）：`scripts/verify/verify_chip_acquisition.ps1`（+11/−4，见 62.5）+ `.github/workflows/build.yml`（+8，见 62.5）。
+- `79e3b183`（5 文件 +1077/−6）：`release/1.5.0-rc.5/PLAYER_CHANGELOG_ZH.md` 375 行 / `release/1.5.0-rc.5/PLAYER_CHANGELOG.md` 382 行 / `release/1.5.0-rc.5/PLAYER_CHANGELOG_MCMOD.html` 314 行 + `CHANGELOG.md` / `CHANGELOG_ZH.md` 各 6 行。
+- **HEAD = `79e3b183`**；push 原文 `cce71efb..79e3b183  multi-main -> multi-main`（远端操作经 `-c http.proxy=http://127.0.0.1:7897`），推送后 `git rev-list --count origin/multi-main..HEAD` = **0**。
+- tag 实读（`git ls-remote --tags --refs origin`）：`1.5.0-rc.1` / `1.5.0-rc.2` / `1.5.0-rc.3` / `1.5.0-rc.4` / **`1.5.0-rc.5`** 共 5 个，**无正式 `1.5.0`**；`refs/tags/1.5.0-rc.5` 为注解 tag（对象 `db3b1796…`）→ `79e3b183` ⇒ CI 已按 push 打成 tag。**GitHub Release 与附件已确认**（`releases/expanded_assets/1.5.0-rc.5` 200：neo 2,598,301 B / `c97ea383…`、forge 2,647,158 B / `d4e48687…`，见 62.8）。
+
+#### 62.2 构建产物（三件，含哈希）
+
+- 命令：`gradlew.bat :neoforge-1.21.1:build :forge-1.20.1:build --console=plain` ⇒ `BUILD SUCCESSFUL in 5s`（2026-10-28 13:48）。
+- `neoforge-1.21.1/build/libs/astral_dice-1.5.0-rc.5+neoforge_1.21.1.jar` **2,599,540 B / `949560A7A6F8575343D988CD0B1D6B1A7502DABDEDBEBBE0D255EA859DE17775`**
+- `forge-1.20.1/build/libs/astral_dice-1.5.0-rc.5+forge_1.20.1.jar`（reobf SRG）**2,648,370 B / `B54CE7F5BC7E78EAAFE06880B117E3FB0B36A15DDDB82D3AC3C0CBBE964BAFB1`**
+- `forge-1.20.1/build/devlibs/astral_dice-1.5.0-rc.5+forge_1.20.1.jar`（dev named，不进发货面）**2,618,955 B / `E8111544C8D9ACB065B8CF777A75181D3BA1017665DA9758779DFAB38E9A913A`**
+- 打包判据：两件生产 jar 的 `META-INF/jarjar/` 条目 = **0**（库不内嵌 ⇒ CF 关系必须登记 starengine）；forge reobf 证据 `m_\d+_` **3132** / `f_\d+_` **710**（同一 jar 的 dev named 为 66 / 0）。
+
+#### 62.3 部署三处（逐处哈希）
+
+- `run/1.21.1/mods`：rc.5 neo 件（62.2 哈希）+ `starengine-neoforge-1.21.1-1.1.0.jar`（98,734 B / `62C92595B012929D2FBA6098CC2D71E6AB2A9A14DDAAC52869E2BBEC6B476AC8`）。
+- 整合包 A `D:\.minecraft\versions\狐の航空学 Voxy Edition\mods`：按用户裁决**删除** PCL 加前缀旧件 `[星之骰戏] astral_dice-1.5.0-rc.4+neoforge_1.21.1.jar`（2,599,540 B / `284A9FC0…`）；复查 **510** 个 jar、`prefixed_count=0`、`astral_dice` 1 份 + `starengine` 1 份，全量 modId 扫描无第二份、无 jarjar 副本。
+- 整合包 B `D:\.minecraft\versions\1.20.1-Forge 模组测试\mods`：`pushToGame` 自动换 rc.5 forge 件（62.2 哈希）+ `starengine-forge-1.20.1-1.1.0.jar`（103,605 B / `73DA2E599E60DAB047E3640EB396F1DB6F6EEDD5A0DD95494AFDE471F43AF304`）。
+
+#### 62.4 实机判据（只跑 1.21.1 一次；2026-10-28 13:51–13:55）
+
+- 驱动（长驻相位走分离包装器，`scripts/test/TESTING-SPEC.md:121-124` 要求；**不跑 `--phase env`**，否则按清单重写 `run/1.21.1/mods`）：`pwsh -NoProfile -File scripts\devtools\Start-MtDetached.ps1 -Script scripts\test\mt.ps1 -Out temp\mt_detached\tester1211_launch_20261028-1355.log -ScriptArgs --phase launch --version 1.21.1`
+- 就绪原文：`MT_LAUNCH: OK (54s)`（已进入世界，quickplay=testworld）；`MT_LAUNCH: OK — AutoJS 端点已就绪（http://127.0.0.1:25585/mcp，protocolVersion=2025-06-18）`。
+- 主判据：`[patchouli/]: Recipe astral_dice:` 命中 = **0**（停机前 `latest.log` 5,733 行与停机后 8,501 行各测一次均 0；`debug.log` 亦 0）。
+- `[patchouli/]` 全量 9 行分类：`Files found in <n> μs` ×6 / `preloaded 212 jsons` ×1 / `Could not locate JEI keybindings` ×1（dev 无 JEI 的既存噪声）/ `Sending reload packet to clients` ×1；**无 ERROR**。
+- 假归零排除三条：① `run/1.21.1/config/astral_dice-common.toml` 的 `[chips] enable_chip_recipes = false`（配方确为关闭态）；② AutoJS 读 `vazkii.patchouli.common.book.BookRegistry` 得 `{"bookCount":2,"found":true,"errored":false,"entries":164,"categories":15}`，与资源侧 164 个 entry json 对齐；③ 同一 Patchouli 构建的改前归档 `debug-1.log.gz` / `debug-2.log.gz` / `2026-10-26-1.log.gz` 各有 62 条同类告警。
+- 版本行：`Astral Dice 1.5.0-rc.5+neoforge_1.21.1 (astral_dice)`（`latest.log:24`）/ `StarEngine 1.1.0+neoforge_1.21.1 (starengine)`（:50）/ `astral_dice (version 1.5.0-rc.4+neoforge_1.21.1 -> 1.5.0-rc.5+neoforge_1.21.1)`（:260）；FATAL=0 / 缺强依赖=0 / Incompatible mods=0。
+- 收尾：`MT_CLEANUP_SAVES: PURGED 1` / `MT_CLEANUP_RESULT: OK` / `MT_STOP: OK (0s)`；仅剩 Gradle 守护 `java`，未杀用户进程。
+- **销账**：正本 §4.1ap-8（配方页 not found 是否归零）与 §5-Minor-25 至此闭合。
+
+#### 62.5 守门致命化 + CI + 变异自证
+
+- `scripts/verify/verify_chip_acquisition.ps1`：`stale_page` / `no_note` 由 `isFatal=$false` 升为 **`$true`**（输出标签随之改 ❌），`no_page` 保持告警；逐线「无致命问题」条件同步补两项；头部退出码契约改写。
+- 变异自证：`…/chips_starlight/star_coin_hammer_chip.json` 的 `text` 改成 `astral_dice.guide.chip_source.note_BROKEN` ⇒ `❌ 手册未说明筹码获取途径 1: ['star_coin_hammer_chip']` / `RESULT: FAIL` / `exit 1`；还原后 `PASS`（文件与 HEAD 逐字节一致）。
+- CI：`.github/workflows/build.yml` 在 parity 之后、Gradle 构建之前新增 `Check chip acquisition gate (P0)`（`run: pwsh -NoProfile -File scripts/verify/verify_chip_acquisition.ps1`）⇒ 筹码获取途径守门成为 push / PR 的硬拦。
+
+#### 62.6 CurseForge 发布（2 文件 HTTP 200 + 回读校验）
+
+| 项目 | jar | 大小 | fileID | 渠道 |
+|---|---|---|---|---|
+| astral-dice `1662159` | `astral_dice-1.5.0-rc.5+neoforge_1.21.1.jar` | 2,599,540 B | `9349843` | **beta** |
+| astral-dice `1662159` | `astral_dice-1.5.0-rc.5+forge_1.20.1.jar` | 2,648,370 B | `9349844` | **beta** |
+
+- changelog 入参 `release/1.5.0-rc.5/PLAYER_CHANGELOG.md`（**49,242 字符**，显式 `--changelog`；rc 版本 `pick_changelog` 永远匹配不到该目录）；relations 随同一次 POST：neo = `curios(309927)` + `starengine(1755415)` `requiredDependency`，forge 另加 `mixinbooster(980731)`。
+- 上传通道：`urllib` 被 Cloudflare 403 ⇒ 自动走 `curl` 成功（`_curl_json` 回退仍是唯一可用链路）。
+- 回读校验：`edge.forgecdn.net/files/9349/843/…` 与 `/9349/844/…` 下载件 = 2,599,540 B / `949560A7…`、2,648,370 B / `B54CE7F5…`，与本地构建件逐字节同哈希（本机留档 `temp\cf_neo.jar` / `temp\cf_forge.jar`）。
+
+#### 62.7 坑（正本 §6 记为 48–51）
+
+- `ops_bash`（git bash 子进程）在本宿主**写文件全部被拒**（`git add` → `index.lock Permission denied`；`Set-Content` / `[System.IO.File]::Create` → `UnauthorizedAccessException`，`%TEMP%` 与仓库 `temp/` 皆然），读正常 ⇒ 写操作一律原生 `pwsh` 或 write/edit；bash 只做只读查询。
+- `mt.ps1` 的 `--phase launch` 必须走 `scripts\devtools\Start-MtDetached.ps1` 分离启动（直呼会等到整棵进程树超时）；纯实机取证**不跑 `--phase env`**（会按清单重写 `run/<线>/mods`，可能删掉已核验 jar）。
+- 筹码配方门禁的实际配置键 = `config/astral_dice-common.toml` 的 `[chips] enable_chip_recipes`；`astral_dice:chip_recipes_enabled` 只是 datapack recipe condition 的 id。
+- Patchouli 的 book id 不出现在 INFO 日志；要证手册真的加载必须用 AutoJS 读 `BookRegistry.INSTANCE.books`（该版本无 `getBook()`）。
+
+#### 62.8 遗留（同步正本 §5-Major-20）
+
+- **GitHub Release 已确认（14:0x 闭环）**：Release `1.5.0-rc.5` 存在，附件 neo 2,598,301 B / `c97ea383…` + forge 2,647,158 B / `d4e48687…`（下载件与页面 sha256 一致）；与本地构建条目集相同，差异仅 JSON 的 CRLF/LF 与 forge 5 个类常量池序（`javap` 逐字相同）⇒ 功能等价。
+- **1.20.1 未实机**：本批只跑 1.21.1，forge 线仅构建 + 投放 + 哈希。
+- **P1 两线**（`neoforge-26.1.2` / `fabric-1.20.1`）按「只发 P0」红线仍未验证 / 未移植。

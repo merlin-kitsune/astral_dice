@@ -1,13 +1,13 @@
 # 交接正本 — 1.5.0（multi-main）
 
-> **版本口径（2026-10-28 用户裁决）**：本线一律称 **1.5.0**，不再带 `rc` 后缀；本文件已由 `docs/handover-1.5.0-rc.1-main.md` 改名为 **`docs/handover-1.5.0-main.md`**。**历史记录一律不改写真名** —— 正文里出现的 `1.5.0-rc.1`…`1.5.0-rc.4`、产物文件名、tag / CurseForge / GitHub Release 编号都是当时实况；代码侧四线 `gradle.properties` 目前仍是 `1.5.0-rc.4+<后缀>`（本轮**未 bump**），正式版发布那一轮才落成 `1.5.0+<后缀>`。
+> **版本口径（2026-10-28 用户裁决）**：本线一律称 **1.5.0**，不再带 `rc` 后缀；本文件已由 `docs/handover-1.5.0-rc.1-main.md` 改名为 **`docs/handover-1.5.0-main.md`**。**历史记录一律不改写真名** —— 正文里出现的 `1.5.0-rc.1`…`1.5.0-rc.4`、产物文件名、tag / CurseForge / GitHub Release 编号都是当时实况；代码侧四线 `gradle.properties` 现为 **`1.5.0-rc.5+<后缀>`**（2026-10-28 提交 `50e5e406` bump，见 §4.1aq-1），正式版发布那一轮才落成 `1.5.0+<后缀>`。
 >
 > **本文件自 `1.5.0-rc.1`（2026-10-25）起继续为滚动交接正本**（原 `docs/handover-1.5.0-pre.6-main.md` 于同批 `git mv` 改名；pre.6 的批次、实机读数、遗留与坑**原样保留在本文档内**，不另建文件）。pre.5 及更早的批次一律回 `docs/handover-1.5.0-pre.5-main.md`（§0 速览 / §3 批次表 / §4 实机读数 / §5 遗留 / §6 坑 / §7 路径）。
 > 数字均为 2026-10-24 快照；**开工先实读** `git log -1 --oneline` + `git status --short -uall` + 四线 `gradle.properties`。
 
 ## 0 速览（一屏）
 
-> **状态快照（2026-10-28 13:3x，接手先看这条）**：HEAD = 见 `git log -1`（本轮 `b6587145` 起）；**`origin/multi-main..HEAD` = 32 个未 push 提交**，远端 `origin/multi-main` = `cce71efb`、**无 `1.5.0` tag**（远端已有 `1.5.0-rc.4` 不是本轮产物）；工作树应只剩 `?? models/astral_anvil.bbmodel`（用户素材，禁 add）。**下方 1–26 条是 2026-10-25～10-28 各批的历史速览，含"已 push / 已建 tag"等当时实况，不得当现状读**。
+> **状态快照（2026-10-28 13:5x，接手先看这条）**：HEAD = **`79e3b183`**（`docs(release): 1.5.0-rc.5 玩家发布说明 + CHANGELOG 补充`）；**`origin/multi-main..HEAD` = 0**（已 push `cce71efb..79e3b183`），远端 `origin/multi-main` = `79e3b183`；**本批收班文档改动在 `79e3b183` 之后另成 docs 提交**（若你读到 `origin..HEAD` = 1，即此条，待放行推送）；四线 `mod_version = 1.5.0-rc.5+<后缀>`、`starengine_version = 1.1.0`；远端 tag **无正式 `1.5.0`**，`1.5.0-rc.5` 已由 CI 生成（注解 tag `db3b1796…` → `79e3b183`）；**GitHub Release 已确认**（`1.5.0-rc.5`，附件 neo 2,598,301 B / `c97ea383…` + forge 2,647,158 B / `d4e48687…`，与本地构建仅 CRLF / 常量池序差异，§4.1aq-6）；**rc.5 两件已发 CurseForge**（fileID `9349843` / `9349844`，beta）；**1.21.1 实机通过**（`[patchouli/]: Recipe astral_dice:` 计数 = 0，§4.1aq-4）；工作树只剩 `?? models/astral_anvil.bbmodel`（用户素材，禁 add）。**下方各条是 2026-10-25～10-28 各批的历史速览，含「已 push / 已建 tag」等当时实况，不得当现状读**。
 1. 分支 `multi-main`，HEAD = 本批提交（`release(rc.2): 1.5.0-rc.1 -> 1.5.0-rc.2`，含调酒师治疗按张数 + 多萝西【交际花】双版本实机）。**已 push + CI 自动建 tag**（2026-10-25 23:1x，用户下达「执行 push」）：`git push origin multi-main` ⇒ `8dcdb715..13a45619`，`rev-list --count origin/multi-main..HEAD` = **0**；CI（`.github/workflows/build.yml` 的 auto-tag 步骤）自动建注解 tag **`1.5.0-rc.2`**（指向 `13a45619`）并发布 prerelease（附件 = 刚构建的 P0 两个 rc.2 jar，正文取 `release/1.5.0-rc.2/`）。前置库仓 `origin..HEAD` = **0**。
 2. 四线 `mod_version = 1.5.0-rc.2+<加载器后缀>`；四线 `starengine_version = 1.1.0`（前置库同批由 `1.1.0-pre.2` 转**正式版**，库内 Java 源码零改动）；硬前置区间随之展开为 `[1.1.0,2.0.0)`。
 3. 本批收编 **Kimi 上一轮四批未提交改动**（member-detective / misaki 立牌 / 筹码商店刷新源 / 规则分派），并完成 **DSH 三语语言同步** + **地雷女备注区染色修复**。
@@ -108,6 +108,9 @@ forge dev named 102,013 B / `e280aeab6c4b37c43468f7cce32a8bf64c70b6bdbcd2203f6c5
 
 | `6ee75a34` | docs(release)：1.5.0-rc.1 玩家更新日志（中英，2 文件 +460/−0） | `release/1.5.0-rc.1/PLAYER_CHANGELOG_ZH.md`（1.3.7→1.5.0 全量：安装与前置 / 新增内容 / 战斗系统重做 / 平衡与数值 / BUG 修复 / 文案与手册 / 许可变更）+ 英文镜像 |
 | 本文件所在提交（追加） | chore(tools)+docs：CF 关系补 starengine + 发布收口 | `tools/curseforge.json`（P0 两线 +`starengine(1755415)=requiredDependency`）· 本文件 §0-13/14 · §4.1l · §3 两行 · §5-Minor 8 · §6 坑 23/24 |
+| `50e5e406` | chore(release)：四线 `mod_version` bump 到 `1.5.0-rc.5`（4 文件 +4/−4） | 四条线 `gradle.properties`（`starengine_version` 仍 `1.1.0`）· 本文件 §4.1aq-1 |
+| `1368b837` | fix(verify,ci)：筹码获取途径守门 `stale_page` / `no_note` 升为致命项并接入 CI（2 文件 +15/−4） | `scripts/verify/verify_chip_acquisition.ps1`（`isFatal=$true` · ❌ 标签 · 逐线条件补两项 · 退出码契约）· `.github/workflows/build.yml` 新增 `Check chip acquisition gate (P0)`（+8 行）· §4.1aq-5 |
+| `79e3b183` | docs(release)：1.5.0-rc.5 玩家发布说明 + CHANGELOG 补充（5 文件 +1077/−6） | `release/1.5.0-rc.5/PLAYER_CHANGELOG_ZH.md`（375 行）/ `PLAYER_CHANGELOG.md`（382 行）/ `PLAYER_CHANGELOG_MCMOD.html`（314 行）· `CHANGELOG.md` / `CHANGELOG_ZH.md` 各 6 行 · §4.1aq-6 |
 
 `e2aed527` 的七条内容：
 
@@ -901,6 +904,67 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 8. **本节无实机**：`[patchouli/]: Recipe … not found` 是否归零需用户下达实机后再记（判据：1.21.1 `run/1.21.1/logs/latest.log` 里该行计数 = 0）。
 9. **独立复核**：首轮 `dsh_code_review` run `80958f22` 判 R1–R4 / R7 SUPPORTED、R5 部分成立（[P2] 门禁筹码条目整份缺失时两条判据同时静默）、R6 部分成立（[P3] 把 67 条门禁配方写成 68 条）；两条均已修（提交 `23cf2c0e`，判据去掉 `$craft` 守卫 + 三处数字订正），复审 run `882f0bf3` 无 finding。**遗留口径说明**：`stale_page` / `no_note` 仍是 `isFatal=$false` 的告警项（脚本头既有契约「手册缺口仅告警」），只在**单线**缺失时由对等性判据判 FAIL，两线对称缺失仍 PASS —— 若将来要 CI 硬拦，需另立一条把 `stale_page` 提为致命项（待用户裁决）。
 
+### 4.1aq rc.5 收尾发布批：四线 bump + 筹码门禁致命化 + CF 两文件 + 1.21.1 实机（2026-10-28，用户下达实机与发布）
+
+1. **版本与提交**（本线口径仍称 `1.5.0`，`rc` 后缀只存在于构建名 / tag / 产物文件名）：四线 `mod_version` 全部 bump 到 **`1.5.0-rc.5+<后缀>`**（`neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1`），`starengine_version` 仍 **`1.1.0`**。三个提交：
+
+   | 提交 | message | 改动面 |
+   |---|---|---|
+   | `50e5e406` | `chore(release): 四线 mod_version bump 到 1.5.0-rc.5` | 四条线 `gradle.properties`（4 文件 +4/−4） |
+   | `1368b837` | `fix(verify,ci): 筹码获取途径守门 stale_page/no_note 升为致命项并接入 CI` | `scripts/verify/verify_chip_acquisition.ps1`（+11/−4）+ `.github/workflows/build.yml`（+8） |
+   | `79e3b183` | `docs(release): 1.5.0-rc.5 玩家发布说明 + CHANGELOG 补充` | `release/1.5.0-rc.5/` 三份（`PLAYER_CHANGELOG_ZH.md` 375 行 / `PLAYER_CHANGELOG.md` 382 行 / `PLAYER_CHANGELOG_MCMOD.html` 314 行）+ `CHANGELOG.md` / `CHANGELOG_ZH.md` 各 6 行（合计 5 文件 +1077/−6） |
+
+   - **HEAD = `79e3b183`**；已 push（`cce71efb..79e3b183  multi-main -> multi-main`，经 `-c http.proxy=http://127.0.0.1:7897`），推送后 `git rev-list --count origin/multi-main..HEAD` = **0**。
+   - 远端 tag 实读（`git ls-remote --tags --refs origin`）：`1.5.0-rc.1` / `1.5.0-rc.2` / `1.5.0-rc.3` / `1.5.0-rc.4` / **`1.5.0-rc.5`**，**无正式 `1.5.0` tag**；`refs/tags/1.5.0-rc.5` 是注解 tag（`db3b1796…`）指向 `79e3b183` ⇒ CI 已按 push 打成 tag。**GitHub Release 与附件未确认**（`gh` 未登录、公开 API 限流 403；见 §5-Major-20）。
+
+2. **构建产物**（2026-10-28 13:48，`gradlew.bat :neoforge-1.21.1:build :forge-1.20.1:build`，`BUILD SUCCESSFUL in 5s`）：
+
+   | 线（落点） | 文件 | 字节 | SHA-256 |
+   |---|---|---|---|
+   | neo（生产，Mojmap） | `neoforge-1.21.1/build/libs/astral_dice-1.5.0-rc.5+neoforge_1.21.1.jar` | 2,599,540 | `949560A7A6F8575343D988CD0B1D6B1A7502DABDEDBEBBE0D255EA859DE17775` |
+   | forge（reobf SRG，生产） | `forge-1.20.1/build/libs/astral_dice-1.5.0-rc.5+forge_1.20.1.jar` | 2,648,370 | `B54CE7F5BC7E78EAAFE06880B117E3FB0B36A15DDDB82D3AC3C0CBBE964BAFB1` |
+   | forge（dev named，不进发货面） | `forge-1.20.1/build/devlibs/astral_dice-1.5.0-rc.5+forge_1.20.1.jar` | 2,618,955 | `E8111544C8D9ACB065B8CF777A75181D3BA1017665DA9758779DFAB38E9A913A` |
+
+   - 打包判据：两件生产 jar 的 `META-INF/jarjar/` 条目 = **0**（库不内嵌，必须成对投放）；forge reobf 证据 `m_\d+_` **3132** 处 / `f_\d+_` **710** 处（对照 devlibs `m_` 66 / `f_` 0）⇒ 生产件确为 SRG 重映射产物。
+
+3. **部署（三处，逐处哈希）**：
+   - `run/1.21.1/mods`：rc.5 neo 件（哈希同上）+ `starengine-neoforge-1.21.1-1.1.0.jar`（98,734 B / `62C92595B012929D2FBA6098CC2D71E6AB2A9A14DDAAC52869E2BBEC6B476AC8`）。
+   - 整合包 A `D:\.minecraft\versions\狐の航空学 Voxy Edition\mods`：按用户裁决**删除** PCL 加前缀的旧件 `[星之骰戏] astral_dice-1.5.0-rc.4+neoforge_1.21.1.jar`（2,599,540 B / `284A9FC0…`）；现存 **510** 个 jar、`prefixed_count=0`、`astral_dice` 恰 1 份 + `starengine` 恰 1 份；全量 modId 扫描无第二份、无 jarjar 副本。
+   - 整合包 B `D:\.minecraft\versions\1.20.1-Forge 模组测试\mods`：`pushToGame` 已自动换 rc.5 forge 件（哈希同上）+ `starengine-forge-1.20.1-1.1.0.jar`（103,605 B / `73DA2E599E60DAB047E3640EB396F1DB6F6EEDD5A0DD95494AFDE471F43AF304`）。
+
+4. **实机（1.21.1 单次，用户明确下达；2026-10-28 13:51–13:55）**：
+   - 驱动（长驻相位走分离包装器，依据 `scripts/test/TESTING-SPEC.md:121-124`；**不跑 `--phase env`**，避免按清单重写 `run/1.21.1/mods` 覆盖已核验 jar）：
+     ```powershell
+     pwsh -NoProfile -File scripts\devtools\Start-MtDetached.ps1 -Script scripts\test\mt.ps1 -Out temp\mt_detached\tester1211_launch_20261028-1355.log -ScriptArgs --phase launch --version 1.21.1
+     ```
+   - 就绪原文：`MT_LAUNCH: OK (54s)`（已进入世界，quickplay=testworld）/ `MT_LAUNCH: OK — AutoJS 端点已就绪（http://127.0.0.1:25585/mcp，protocolVersion=2025-06-18）`。
+   - 判据（本批要证的那条）：`[patchouli/]: Recipe astral_dice:` 命中 = **0** —— 停机前 `latest.log`（5,733 行）与停机后（8,501 行）各测一次均 0，`debug.log` 亦 0。
+   - `[patchouli/]` 全量 **9** 行分类：`Files found in <n> μs` ×6、`preloaded 212 jsons` ×1、`Could not locate JEI keybindings` ×1（dev 无 JEI 的既存噪声）、`Sending reload packet to clients` ×1；**无 ERROR**。
+   - **假归零已排除三条**：① `run/1.21.1/config/astral_dice-common.toml` 的 `[chips] enable_chip_recipes = false`（配方确为关闭态）；② 运行时 AutoJS 读 `vazkii.patchouli.common.book.BookRegistry` 得 `{"bookCount":2,"found":true,"errored":false,"entries":164,"categories":15}`，与资源侧 **164** 个 entry json 对齐（手册真的加载了）；③ 同一 Patchouli 构建的改前归档 `debug-1.log.gz` / `debug-2.log.gz` / `2026-10-26-1.log.gz` 各有 **62** 条同类告警（旧基线一致）。
+   - 版本行（`run/1.21.1/logs/latest.log`）：`Astral Dice 1.5.0-rc.5+neoforge_1.21.1 (astral_dice)`（:24）、`StarEngine 1.1.0+neoforge_1.21.1 (starengine)`（:50）、`astral_dice (version 1.5.0-rc.4+neoforge_1.21.1 -> 1.5.0-rc.5+neoforge_1.21.1)`（:260）；**FATAL=0 / 缺强依赖=0 / Incompatible mods=0**。
+   - 收尾：`MT_CLEANUP_SAVES: PURGED 1` / `MT_CLEANUP_RESULT: OK` / `MT_STOP: OK (0s)`；仅剩 Gradle 守护 `java`，未杀用户进程。
+   - **销账**：§4.1ap-8 的「`[patchouli/]: Recipe … not found` 是否归零待实机」至此闭合；§5-Minor-25 同步销账。
+
+5. **守门致命化 + 变异自证 + CI 接入（`1368b837`）**：
+   - `scripts/verify/verify_chip_acquisition.ps1`：`stale_page` / `no_note` 由 `isFatal=$false` 升为 **`$true`**（输出标签随之改为 ❌），`no_page` 保持告警；逐线「无致命问题」判定条件同步补这两项；头部退出码契约改写。
+   - 变异自证：把 `…/chips_starlight/star_coin_hammer_chip.json` 的 `text` 改成 `astral_dice.guide.chip_source.note_BROKEN` ⇒ 输出 `❌ 手册未说明筹码获取途径 1: ['star_coin_hammer_chip']` / `RESULT: FAIL` / `exit 1`；还原后 `PASS`（文件与 HEAD 逐字节一致）。
+   - `.github/workflows/build.yml`：在 parity 步骤之后、Gradle 构建之前新增 `Check chip acquisition gate (P0)`，`run: pwsh -NoProfile -File scripts/verify/verify_chip_acquisition.ps1`。
+
+6. **CurseForge 发布（2026-10-28 13:5x，`--apply`，经代理）**：
+
+   | 项目 | 文件 | 大小 | fileID | version type |
+   |---|---|---|---|---|
+   | astral-dice `1662159` | `astral_dice-1.5.0-rc.5+neoforge_1.21.1.jar` | 2,599,540 B | `9349843` | **beta** |
+   | astral-dice `1662159` | `astral_dice-1.5.0-rc.5+forge_1.20.1.jar` | 2,648,370 B | `9349844` | **beta** |
+
+   - changelog 入参 = `release/1.5.0-rc.5/PLAYER_CHANGELOG.md`（**49,242 字符**，显式 `--changelog`）；relations 随同一次 POST：neo = `curios(309927)` + `starengine(1755415)` `requiredDependency`，forge 另加 `mixinbooster(980731)`。
+   - 上传时 `urllib` 被 Cloudflare 403、工具自动改走 `curl` 成功（既有回退通道）。
+   - **回读校验**：`edge.forgecdn.net/files/9349/843/…`（本机 `temp\cf_neo.jar`，2,599,540 B / `949560A7…`）与 `/9349/844/…`（`temp\cf_forge.jar`，2,648,370 B / `B54CE7F5…`）与本地构建件**逐字节同哈希**。
+   - 工具事实两条登记在 §5-Minor-26（`--changelog` 只认显式路径；多 jar = N 次 POST、非原子、不可幂等）。
+   - **GitHub Release 复核（2026-10-28 14:0x，curl 经代理 + 页面直读，避开 403 限流的 API）**：`/releases/expanded_assets/1.5.0-rc.5` 200，列出 `astral_dice-1.5.0-rc.5+neoforge_1.21.1.jar`（2,598,301 B / `c97ea383…`）与 `…+forge_1.20.1.jar`（2,647,158 B / `d4e48687…`），下载件 sha256 与页面一致。**与本地构建件的关系**：条目集完全相同（neo 2,011 / forge 2,027；`only_ci` = `only_lo` = 0），差异只有两类 —— (a) JSON 条目 CRLF vs LF（neo 302 / forge 296 条，CRLF 归一为 LF 后 0 差异）＝ CI 在 ubuntu 检出 LF、本机 Windows 工作树 CRLF；(b) forge 5 个网络/立牌类 `.class` 仅常量池序不同（`javap -p -c` 全文逐字相同）。`META-INF/jarjar/` = 0，`mods.toml` 版本 `1.5.0-rc.5+neoforge_1.21.1` / `1.5.0-rc.5+forge_1.20.1` ⇒ **Release 附件功能等价、可投放**。
+
+7. **本批不改源码**：改动面 = 四线 `gradle.properties` 的版本号、守门脚本、`.github/workflows/build.yml`、`release/1.5.0-rc.5/` 与两份 `CHANGELOG`；工作树 `git status --short -uall` 只剩 `?? models/astral_anvil.bbmodel`（用户素材，禁 add）。
+
 ## 5 遗留与欠账
 
 ### Blocker
@@ -943,6 +1007,9 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 18. **神秘遗物+ 两处现场不可验证（2026-10-27，§4.1ak）** → **部分闭环（2026-10-28，§4.1al-2 / §4.1al-5）**：(a) **F3 七咒倍率** —— `ratio` 捕获（`FateGuidanceCardItem.java:110-141`，LOWEST）读到的恒为 1，因为 EL+ 的放大发生在更晚的事件/分支；要真验需改变捕获点（如改挂 `LivingDamageEvent`）或让 EL+ 在 LOWEST 之前放大，属**判据设计问题**而非代码缺陷，先登记不返工；(b) **饕餮之锅** —— 1.21.1 的锅在 `enigmaticdelicacy`（缺 FarmersDelight）、1.20.1 被 SRG 阻塞 ⇒ 两条线的锅 melee 识别（`DiceCombatEvents.java:2039-2041` 强制武器口径）均**未验证**。**2026-10-28 12:2x 更新（§4.1an）**：1.20.1 的锅已实机定案 —— 0 伤害是 EL 自己的「值得者」闸门（`isTheWorthyOne` = 戴戒 + 受苦比例 ≥ 0.995，在 `LivingHurtEvent` 里 `setCanceled(true)`，我方骰战入口根本不执行）；把受苦比例强改为 1 后同一挥击打满 24 点 ⇒ 我方锅 melee 识别**工作正常**。**2026-10-28 12:5x 1.21.1 已测（§4.1ao-3）**：1.21.1 的锅同样是 EL+ 的 `isTheWorthyOne`「值得者」闸门（`cursed_ring` 或持久标记 `SevenCursesBearing` **加上**苦难度达标；`d0/hurt=0` 即事件取消判据），worthy 翻转后与铁剑同伤害 ⇒ **两线的锅 melee 识别均已定案、均非本仓缺陷**。
 
 19. **骰子独立验证报告（2026-10-28，§4.1al-8）→ 已裁决并落地（§4.1am）**：`docs/features/dice-special-verification.md` 给出 13 个骰子逐个判定与 Top5 疑似缺陷 —— **P0-1** `ObsidianDiceHandler.java:33` 判的是 `IS_EXPLOSION`、`:35` 伤害 ×0.5，而全仓 `IS_FIRE` / lava 零命中 ⇒「火焰 -70%」零实现；**P0-2** `ObsidianDiceItem.java:27` DEFENSE_BONUS=3 经 `DiceCombatModifiers.java:198` 的 `1/0.30` 落成 **+10 护甲**（非 +6）；**P0-3** `starengine combat/SpellDamageRegistry.java:389-394` 紫晶「追加骰点」实为纯均匀 `nextInt(1,7)`，且本模组自产的 `CARD_SPELL` 也走该路径（多段法术线性叠加）；**P0-4** 卡牌栏口径冲突：`ModItems.java:167/:179/:185` 注释 4/5/6 vs `DiceCurioItem.java:43-46` `CARD_SLOTS_BY_STAR={4,6,8,12}`；**P0-5** weird 骰「立牌主动冷却 -50%」残留 4 类（Megas / Moses / Parunan / Sherry 各 `ticks = Math.max(1, ticks / 2)`，两线各 6 处）与 `WeirdDiceHandler.java:41` 的「已删除」注释矛盾。**五条待裁决**：卡牌栏以注释还是星档公式为准 / obsidian 应然是火焰还是爆炸 / 紫晶「骰点」= 独立 d6 还是骰战骰面 / 枪械是否算远程（`ALLOW_FIREARM_DAMAGE` 默认 false）/ 玻璃骰死亡丢卡牌应销毁还是落地。**2026-10-28 用户裁决并已落地（§4.1am）**：① **卡牌栏按骰子品质固定、与星级无关**（星级只影响费用上限）—— `DiceTier` 扩 `cardSlots`、`DiceCurioItem#getCardSlots` 改读品阶、`ModItems` 13 条注册逐条登记，实机 `byTier` 13 条核对通过；② **黑曜石骰子保持现有实现**（爆炸 -50% + 防御力 +3 真加防御力），只订正注释与 lang，不改成火焰；③ **紫晶骰子现行行为正确**（独立 d6 追加）—— 不改；④ **诡异骰子「立牌冷却 -50%」残留全部删除**（两线各 6 处），实机 3600 tick 不变。**2026-10-28 12:2x 第二条裁决已闭环（§4.1an 实机 PASS）**：玻璃骰死亡丢卡牌 = **销毁**，骰子物品自身携带的卡牌随之销毁（现行实现，无需改代码）；**第三条裁决已下并销账（2026-10-28 用户 m23942 + §4.1ao-4）**：枪械**算远程**，且默认由 `config/ModCommonConfig.java:95-99` 的 `ALLOW_FIREARM_DAMAGE`（`allow_firearm_damage = false`）关闭、玩家改配置后才计入；近战侧 `combat/DiceCombatEvents.java` 的 `isMeleeWeaponAttack`（neo `:1784` / forge `:2076`）亦排除 `ProjectileWeaponItem` / `BlockItem` / `isFirearmItem` ⇒ 现行实现与裁决一致，无需改动。**§5-19 的五条裁决至此全部闭环。**
+
+20. **rc.5 收尾批的三项欠账（2026-10-28，§4.1aq）**：① **GitHub Release 已确认（2026-10-28 14:0x 闭环，§4.1aq-6）** —— push `cce71efb..79e3b183` 触发 CI：tag `1.5.0-rc.5`（注解 `db3b1796…` → `79e3b183`）与 Release `Astral Dice 1.5.0-rc.5` 均存在；`releases/expanded_assets/1.5.0-rc.5` HTTP 200 列出两件附件并带原文 sha256（neo 2,598,301 B / `c97ea383…`、forge 2,647,158 B / `d4e48687…`），下载件哈希与页面一致；正文由 `release/<tag>/PLAYER_CHANGELOG_ZH.md` + `PLAYER_CHANGELOG.md` 生成；② **1.20.1 线未实机** —— 本批实机只跑 1.21.1（用户下达范围），forge 线只有构建 + 投放 + 哈希判据；③ P1 两线（`neoforge-26.1.2` / `fabric-1.20.1`）按「只发 P0」红线仍未验证 / 未移植。
+
 ### Minor
 
 1. `docs/handover-2026-10-24-member-detective.md` 等 Kimi 批次文档已入库，措辞按 2026-10-24 事实；后续改动若改变其中数字需回填。
@@ -982,7 +1049,8 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 23. **近战三裁决批（2026-10-27，§4.1ai）待实机 + 未重出 jar**：三项需实机读数（法伤/远程打被吸附目标应无 +5、近战骰战应仍 +5、嘲讽目标同挥击多段只反击一次）；本批**未重出 jar、未投放**（两个 P0 整合包与根 `build/libs` 仍是 rc.4 旧构建）。
 
 24. **近战批实机闭环（2026-10-27，§4.1aj）**：§4.1ah / §4.1ai 全部落地项已双线实测；期间新修 F7 公共出口（生物→玩家骰战漏判）与 MELEE-04 回血基数（改用落地量），两线 jar 已重出并四目标投放。**仍欠**：A3（需 PvP）/ A5 第三方取消路径 / F3（需神秘遗物+）/ N14 专项判据 —— 四项只能代码级；P1 两线（`neoforge-26.1.2` / `fabric-1.20.1`）未折叠未镜像。
-25. ~~62 个筹码手册条目的 crafting 页指向不存在的配方~~ → **已修（2026-10-28，用户裁决 m24344「改成说明页」，落地与读数见 §4.1ap）**：62 个 `patchouli:crafting` 页原位换成 `{"type":"patchouli:text","text":"astral_dice.guide.chip_source.note"}`，5 个原本缺页的条目补同一说明页（两线各 67/67 带说明），三语新键写清「在筹码商店与筹码商人交易获得 / 服务器开启 `enable_chip_recipes` 后也可合成」。**根因订正**：筹码配方其实**存在**（`src/generated/resources/data/astral_dice/recipe`（neo）/ `recipes`（forge）各 108 个 json，带 `astral_dice:chip_recipes_enabled` 条件），旧取证只扫 `src/main/resources/data` 才误判「没有任何 `*_chip` 配方」；默认 `enable_chip_recipes=false`（`config/ModCommonConfig.java:111`，两线同位置）⇒ **67 条**筹码配方整体不加载（`blank_chip_duplicate` 不门禁），手册页才解析不到。守门 `scripts/verify/verify_chip_acquisition.ps1` 已加 `stale_page` / `no_note` 两判据并做过变异测试。**仍欠**：实机确认 `[patchouli/]: Recipe … not found` 归零（待用户下达）。
+25. ~~62 个筹码手册条目的 crafting 页指向不存在的配方~~ → **已修（2026-10-28，用户裁决 m24344「改成说明页」，落地与读数见 §4.1ap）**：62 个 `patchouli:crafting` 页原位换成 `{"type":"patchouli:text","text":"astral_dice.guide.chip_source.note"}`，5 个原本缺页的条目补同一说明页（两线各 67/67 带说明），三语新键写清「在筹码商店与筹码商人交易获得 / 服务器开启 `enable_chip_recipes` 后也可合成」。**根因订正**：筹码配方其实**存在**（`src/generated/resources/data/astral_dice/recipe`（neo）/ `recipes`（forge）各 108 个 json，带 `astral_dice:chip_recipes_enabled` 条件），旧取证只扫 `src/main/resources/data` 才误判「没有任何 `*_chip` 配方」；默认 `enable_chip_recipes=false`（`config/ModCommonConfig.java:111`，两线同位置）⇒ **67 条**筹码配方整体不加载（`blank_chip_duplicate` 不门禁），手册页才解析不到。守门 `scripts/verify/verify_chip_acquisition.ps1` 已加 `stale_page` / `no_note` 两判据并做过变异测试。**已销账（2026-10-28 实机，§4.1aq-4）**：1.21.1 `run/1.21.1/logs/latest.log` 的 `[patchouli/]: Recipe astral_dice:` 计数 = 0（停机前 5,733 行 / 停机后 8,501 行各测一次均 0），且 `stale_page` / `no_note` 已由 `1368b837` 升为致命项并接入 CI（§4.1aq-5）。
+26. **CF 上传工具两处事实（2026-10-28，§4.1aq-6）**：① `tools/curseforge_upload.py` **只认 `--changelog` 显式路径** —— rc 版本的 `pick_changelog` 用 `base = ver.split("-")[0]`，永远匹配不到 `release/1.5.0-rc.5/`（既有坑 28；本批按显式路径上传，正文 49,242 字符）；② **多 jar = N 次 POST、非原子、不可幂等** —— 两件上传中途失败会在 CF 留半批文件，重传须先在作者后台手删（本批 2/2 HTTP 200 一次过，回读哈希逐字节一致）。
 
 ## 6 坑（本批新增，后续继续追加）
 
@@ -1057,6 +1125,14 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 
 47. **正则替换 CRLF 文本时 `\n` 会吃掉 `\r`，插入块带出 `\r\r\n`**（2026-10-28 实测，§4.1ap）：用 `replace(/\n([ \t]*)\{/g, nl + …)` 改写 CRLF 的 json 时，匹配只吃掉 `\r\n` 里的 `\n`，前一个 `\r` 留在原位，再拼上 `nl`（`\r\n`）就得到 `\r\r\n` —— JSON 仍能解析（孤立 `\r` 属合法空白），但 `git diff` 会把整个文件判成重写（实测 124 个手册条目全文件 diff）。修法：① 匹配式写 `\r?\n` 并由替换串统一补 `nl`；② 落盘前断言 `/\r\r\n/` 命中 0（本轮用 `temp/fix_stray_cr.mjs --apply` 事后修了 124 个文件）。
 
+48. **本宿主 `ops_bash`（git bash 子进程）的任何写文件操作都被拒**（2026-10-28 实测，接手必读）：`git add` 报 `fatal: Unable to create '.git/index.lock': Permission denied`，`Set-Content` / `Tee-Object` / `[System.IO.File]::Create` 一律 `UnauthorizedAccessException`（`%TEMP%` 与仓库 `temp/` 皆然），而**读操作正常** ⇒ 所有写操作（git 写、脚本落盘、Gradle）一律走**原生 `pwsh` 工具**或 write/edit 工具，bash 只做只读查询（与坑 41 同源；本条覆盖 git 写与 Gradle 调用，坑 41 只讲了 node 写文件与 `git add`）。
+
+49. **`mt.ps1` 的长驻相位必须用分离包装器启动，直呼会等整棵进程树至超时**（2026-10-28 实测）：`--phase launch` 会挂住到游戏退出，前台直呼会把 `run_code` / 工具的超时时间耗光。正解 = `scripts\devtools\Start-MtDetached.ps1 -Script scripts\test\mt.ps1 -Out temp\mt_detached\<tag>.log -ScriptArgs --phase launch --version 1.21.1`（依据 `scripts/test/TESTING-SPEC.md:121-124`）；纯实机取证**直接 `--phase launch`、不跑 `--phase env`** —— env 会按清单重写 `run/<线>/mods`（坑 39），把刚核验过哈希的 jar 换掉。
+
+50. **筹码配方门禁的实际配置键是 `[chips] enable_chip_recipes`，不是 `astral_dice:chip_recipes_enabled`**（2026-10-28 实测，§4.1aq-4）：实机取证看 `run/1.21.1/config/astral_dice-common.toml` 的 `[chips] enable_chip_recipes = false`；`astral_dice:chip_recipes_enabled` 是 datapack recipe condition 的 id（`src/generated` 里那 108 个配方 json 顶层的 condition），两者名字不同，别拿后者当「配方是否加载」的判据。
+
+51. **Patchouli 的书 id 不出现在 INFO 日志里**（2026-10-28 实测，§4.1aq-4）：`latest.log` 只打 `preloaded <n> jsons` / `Files found in <n> μs` 这类行，**没有** book id ⇒ 要证明手册真的加载了，必须用 AutoJS 读 `vazkii.patchouli.common.book.BookRegistry` 的 `INSTANCE.books`（该版本**没有** `getBook()`）；本批读数 `{"bookCount":2,"found":true,"errored":false,"entries":164,"categories":15}`，与资源侧 164 个 entry json 对齐。
+
 ## 7 关键路径（命令）
 
 ```powershell
@@ -1086,4 +1162,12 @@ python tools\verify_hud_attack_parity.py
 # 测试台（实机须用户下达）
 pwsh -NoProfile -File F:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1 --version 1.20.1 --phase env
 pwsh -NoProfile -File F:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1 --version 1.20.1 --phase stop --force --purge-saves
+
+# 长驻相位：分离启动（scripts/test/TESTING-SPEC.md:121-124；不跑 --phase env，避免重写 run/<线>/mods）
+pwsh -NoProfile -File F:\MCProject\astral_dice_multiloader\scripts\devtools\Start-MtDetached.ps1 -Script scripts\test\mt.ps1 -Out temp\mt_detached\tester1211_launch_<yyyyMMdd-HHmm>.log -ScriptArgs --phase launch --version 1.21.1
+
+# 临时产物（temp/ 不入库）
+F:\MCProject\astral_dice_multiloader\temp\mt_detached\            # 分离启动日志 + .err（本批 tester1211_launch_20261028-1355.log 778 B / .err 0 B）
+F:\MCProject\astral_dice_multiloader\temp\cf_neo.jar              # CF 回读校验下载件（files/9349/843；2,599,540 B / 949560A7…）
+F:\MCProject\astral_dice_multiloader\temp\cf_forge.jar            # CF 回读校验下载件（files/9349/844；2,648,370 B / B54CE7F5…）
 ```
