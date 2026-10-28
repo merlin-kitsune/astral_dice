@@ -862,7 +862,7 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
    - `neoforge-1.21.1/src/generated/resources/data/astral_dice/recipe/` 与 `forge-1.20.1/src/generated/resources/data/astral_dice/recipes/` 各 **108 个 json**，筹码配方形如 `{"neoforge:conditions":[{"type":"astral_dice:chip_recipes_enabled"}], …}`（forge 线为 `forge:conditions`）。
    - 条件实现 `neoforge-1.21.1/src/main/java/com/merlinkitsune/astral_dice/recipe/condition/ChipRecipesEnabledCondition.java:44-47`（forge 线同名同位置）：`public boolean test(IContext context) { return ModCommonConfig.ENABLE_CHIP_RECIPES.get(); }`；注册 id 见 `:34` `ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, "chip_recipes_enabled")`。
    - 默认值是 **false**：`config/ModCommonConfig.java:111`（两线同位置）`.define("enable_chip_recipes", false);`（`:28` 的类注释写「关闭时 61 枚筹码无法通过合成获得」，实测筹码数 68 —— 该注释偏旧，本轮未改）。
-   - ⇒ 默认配置下 68 条筹码配方整体不加载，手册里 62 条 `patchouli:crafting` 页因而解析不到配方，游戏内 `[patchouli/]: Recipe astral_dice:<id> (of type minecraft:crafting) not found`。
+   - ⇒ 默认配置下 **67 条**筹码配方（`*_chip`）整体不加载（另有 `blank_chip_duplicate` 产出 `blank_chip` 但**不受门禁**，仍可合成），手册里 62 条 `patchouli:crafting` 页因而解析不到配方，游戏内 `[patchouli/]: Recipe astral_dice:<id> (of type minecraft:crafting) not found`。
    - §5-Minor-25 的旧取证「`data/astral_dice/recipe|recipes/` 没有任何 `*_chip` 配方 ⇒ 筹码只经商店获得」**只扫了 `src/main/resources/data`、漏了 generated**，故结论错。
 
 3. **改造（P0 两线 `assets/astral_dice/patchouli_books/astral_guide/en_us/entries/chips_*/`，各 67 个条目）**：
@@ -875,7 +875,7 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
    - P1 两线（26.1.2 / fabric）**未动**（1.5.0 正式版前冻结）。
 
 4. **守门改造（`scripts/verify/verify_chip_acquisition.ps1`，+73 行）**：新增 `Get-GatedChipRecipes`（扫 generated + main 两处 recipe 目录，取 JSON 文本含 `chip_recipes_enabled` 的 result id）与 `Get-ManualNote`（扫 `en_us` 条目里 page `text == astral_dice.guide.chip_source.note`）；判定改三分支：`门禁配方 + 仍有 crafting 页` ⇒ 新告警「⚠️ 手册仍展示 crafting 页（配方默认关闭）」；`门禁配方 + 无说明页` ⇒ 「⚠️ 手册未说明筹码获取途径」；`非门禁 + 无 crafting 页` ⇒ 保留旧告警「⚠️ 手册未展示 crafting 页」。双版本对等性键表 4 → 6（+`stale_page` / `no_note`）。
-   - **变异测试（证明新判据非空转）**：对 `chips_charge/advanced_peripherals_chip.json` 删说明页 ⇒ 命中「未说明筹码获取途径」；注入 crafting 页 ⇒ 命中「仍展示 crafting 页」；还原后 `RESULT: PASS`（两次都只改单线，故同时对等性 FAIL，属预期）。
+   - **变异测试（证明新判据非空转）**：对 `chips_charge/advanced_peripherals_chip.json` 删说明页 ⇒ 命中「未说明筹码获取途径」；注入 crafting 页 ⇒ 命中「仍展示 crafting 页」；还原后 `RESULT: PASS`（两次都只改单线，故同时对等性 FAIL，属预期）。**复核补强**：原实现把「未说明获取途径」判据写成了 `if ($craft.Contains($cid) -and -not $note.Contains($cid))`，门禁筹码的手册条目被整份删除/改名时会**两条判据同时静默**；已去掉该守卫（条目缺失即命中 `no_note`），并实测「删条目 ⇒ 命中未说明」、还原后零告警。
 
 5. **守门读数（P0 两线一致）**：
    - `verify_chip_acquisition.ps1`：`筹码 68 | 有配方 68 | 传递可达 68` / `curios:chip 槽 67 | 创造栏覆盖 68/68` / **零告警** / 对等性 6 键全 `一致=True` / `RESULT: PASS（致命项 0）`（改造前有 `⚠️ 手册未展示 crafting 页 5`）。
@@ -978,7 +978,7 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 23. **近战三裁决批（2026-10-27，§4.1ai）待实机 + 未重出 jar**：三项需实机读数（法伤/远程打被吸附目标应无 +5、近战骰战应仍 +5、嘲讽目标同挥击多段只反击一次）；本批**未重出 jar、未投放**（两个 P0 整合包与根 `build/libs` 仍是 rc.4 旧构建）。
 
 24. **近战批实机闭环（2026-10-27，§4.1aj）**：§4.1ah / §4.1ai 全部落地项已双线实测；期间新修 F7 公共出口（生物→玩家骰战漏判）与 MELEE-04 回血基数（改用落地量），两线 jar 已重出并四目标投放。**仍欠**：A3（需 PvP）/ A5 第三方取消路径 / F3（需神秘遗物+）/ N14 专项判据 —— 四项只能代码级；P1 两线（`neoforge-26.1.2` / `fabric-1.20.1`）未折叠未镜像。
-25. ~~62 个筹码手册条目的 crafting 页指向不存在的配方~~ → **已修（2026-10-28，用户裁决 m24344「改成说明页」，落地与读数见 §4.1ap）**：62 个 `patchouli:crafting` 页原位换成 `{"type":"patchouli:text","text":"astral_dice.guide.chip_source.note"}`，5 个原本缺页的条目补同一说明页（两线各 67/67 带说明），三语新键写清「在筹码商店与筹码商人交易获得 / 服务器开启 `enable_chip_recipes` 后也可合成」。**根因订正**：筹码配方其实**存在**（`src/generated/resources/data/astral_dice/recipe`（neo）/ `recipes`（forge）各 108 个 json，带 `astral_dice:chip_recipes_enabled` 条件），旧取证只扫 `src/main/resources/data` 才误判「没有任何 `*_chip` 配方」；默认 `enable_chip_recipes=false`（`config/ModCommonConfig.java:111`，两线同位置）⇒ 68 条筹码配方整体不加载，手册页才解析不到。守门 `scripts/verify/verify_chip_acquisition.ps1` 已加 `stale_page` / `no_note` 两判据并做过变异测试。**仍欠**：实机确认 `[patchouli/]: Recipe … not found` 归零（待用户下达）。
+25. ~~62 个筹码手册条目的 crafting 页指向不存在的配方~~ → **已修（2026-10-28，用户裁决 m24344「改成说明页」，落地与读数见 §4.1ap）**：62 个 `patchouli:crafting` 页原位换成 `{"type":"patchouli:text","text":"astral_dice.guide.chip_source.note"}`，5 个原本缺页的条目补同一说明页（两线各 67/67 带说明），三语新键写清「在筹码商店与筹码商人交易获得 / 服务器开启 `enable_chip_recipes` 后也可合成」。**根因订正**：筹码配方其实**存在**（`src/generated/resources/data/astral_dice/recipe`（neo）/ `recipes`（forge）各 108 个 json，带 `astral_dice:chip_recipes_enabled` 条件），旧取证只扫 `src/main/resources/data` 才误判「没有任何 `*_chip` 配方」；默认 `enable_chip_recipes=false`（`config/ModCommonConfig.java:111`，两线同位置）⇒ **67 条**筹码配方整体不加载（`blank_chip_duplicate` 不门禁），手册页才解析不到。守门 `scripts/verify/verify_chip_acquisition.ps1` 已加 `stale_page` / `no_note` 两判据并做过变异测试。**仍欠**：实机确认 `[patchouli/]: Recipe … not found` 归零（待用户下达）。
 
 ## 6 坑（本批新增，后续继续追加）
 

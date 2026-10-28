@@ -558,7 +558,7 @@ function Main {
             if ($gated.Contains($cid)) {
                 # 配方受 chip_recipes_enabled 门禁（默认关闭）⇒ 手册不应展示 crafting 页，且必须说明获取途径
                 if ($hasPage) { $stale_page += $cid }
-                if ($craft.Contains($cid) -and (-not $note.Contains($cid))) { $no_note += $cid }
+                if (-not $note.Contains($cid)) { $no_note += $cid }
             }
             elseif (-not $hasPage) {
                 $no_page += $cid
