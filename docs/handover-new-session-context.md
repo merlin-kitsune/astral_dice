@@ -1,6 +1,6 @@
-# 新会话交接上下文（可整份贴给新会话）— 1.5.0-rc.4
+# 新会话交接上下文（可整份贴给新会话）— 1.5.0
 
-你接手的是 MC 模组仓库 `F:\MCProject\astral_dice_multiloader`，分支 `multi-main`，版本 `1.5.0-rc.4`（前置库 `1.1.0` 正式版），Windows 原生环境（git bash 只承担 git；构建与测试台一律 PowerShell 7）。
+你接手的是 MC 模组仓库 `F:\MCProject\astral_dice_multiloader`，分支 `multi-main`，版本 **1.5.0**（当前构建名 `1.5.0-rc.4+<后缀>`，rc 后缀只留在历史产物/tag 里；前置库 `1.1.0` 正式版），Windows 原生环境（git bash 只承担 git；构建与测试台一律 PowerShell 7）。
 
 ## 第 0 步：认领你自己的规则
 
@@ -21,14 +21,14 @@ git -C F:\MCProject\astral_dice_multiloader status --short -uall     # 应只剩
 Select-String -Path F:\MCProject\astral_dice_multiloader\*\gradle.properties -Pattern '^mod_version|^starengine_version'
 ```
 
-再按顺序读：`docs/agent/PROJECT-REFERENCE.md`（工程拓扑与命令）→ `docs/handover-1.5.0-rc.1-main.md`（滚动正本 §0/§5/§6）→ 需要历史批次再回 `docs/handover-1.5.0-pre.5-main.md` → 领域规格按需 `docs/agent/AGENTS-full.md`（行号总表 `docs/agent/AGENTS-TOC.md`）。
+再按顺序读：`docs/agent/PROJECT-REFERENCE.md`（工程拓扑与命令）→ `docs/handover-1.5.0-main.md`（滚动正本 §0/§5/§6）→ 需要历史批次再回 `docs/handover-1.5.0-pre.5-main.md` → 领域规格按需 `docs/agent/AGENTS-full.md`（行号总表 `docs/agent/AGENTS-TOC.md`）。
 
 ## 基本盘
 
 - 四子项目同树：`neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1`；交付面**只 P0** = 前两条，P1 两线在 `1.5.0` 正式版前不验证、不移植。
-- 版本：四线 `mod_version = 1.5.0-rc.4+<加载器后缀>`；`starengine_version = 1.1.0`（**正式版**，前置库仓 `F:\MCProject\starengine` 提交 `16b48c4`）；jar 内硬前置 `[1.1.0,2.0.0)`（模板插值自动展开），`META-INF/jarjar/` 计数 0（库**不内嵌**，必须成对投放）。
-- 产物（2026-10-28 00:5x 重建，含骰子卡牌栏按品质 + 诡异骰子残留清除 + 七咒倍率基准修复 + 近战批全部落地项）：`neoforge-1.21.1/build/libs/astral_dice-1.5.0-rc.4+neoforge_1.21.1.jar` **2,599,237 B / `6225135ECE4E7A0BD3DA259442F27F70EB7A16C07B11D7665CE1DF30A364950F`**；`forge-1.20.1/build/libs/…+forge_1.20.1.jar`（reobf）**2,648,063 B / `B3752EAEECB71E7D428C6E87449AC6A64CB589918CBF12D9D277A15AF6741462`**；`forge-1.20.1/build/devlibs/…+forge_1.20.1.jar`（dev named，`run/1.20.1/mods` 用这份）**2,618,648 B / `BD243190F7E6EFB3E7BE00FBACF0BD4D3750E96534F85E1AE2ACF56859CB6376`**。两个 P0 整合包已同批覆盖且哈希 MATCH。
-- 推送状态（2026-10-28 01:2x）：**本地 27 个未 push 提交**（HEAD 见 `git log -1`；最近三条 = `da9ef30d` 新会话上下文刷新 / `3c40e0f2` 交接正本与 CHANGELOG 归档 / `45966455` 骰子卡牌栏口径 + 诡异骰子残留清除）；远端 `origin/multi-main` = `cce71efb`（远端已有 tag `1.5.0-rc.4`，**不是**本轮产物）。
+- 版本：四线 `mod_version = 1.5.0-rc.4+<加载器后缀>`（**口径称 1.5.0**：rc 后缀仅存在于历史构建名 / 产物文件名 / tag，未 bump）；`starengine_version = 1.1.0`（**正式版**，前置库仓 `F:\MCProject\starengine` 提交 `16b48c4`）；jar 内硬前置 `[1.1.0,2.0.0)`（模板插值自动展开），`META-INF/jarjar/` 计数 0（库**不内嵌**，必须成对投放）。
+- 产物（2026-10-28 12:0x 重建，含筹码手册获取途径说明）：`neoforge-1.21.1/build/libs/astral_dice-1.5.0-rc.4+neoforge_1.21.1.jar` **2,599,540 B / `284A9FC0E5FEBBDEB5F2043D81AE81C8A1A29BA6B8D40AA71E66C730AD85AF0`**；`forge-1.20.1/build/libs/…+forge_1.20.1.jar`（reobf）**2,648,371 B / `AC1DE3E9659E97882AD7FB2BFD39A2F57686E55677CE1F39F1489430B3BD820D`**；`forge-1.20.1/build/devlibs/…+forge_1.20.1.jar`（dev named，`run/1.20.1/mods` 用这份）**2,618,956 B / `E311C0981069D6754FF8A16B359617F467B27A7ED1C0C1F8209F458313EE17D4`**。四个投放目标（`build/libs` / `run/<线>/mods` / 两个 P0 整合包）已同批覆盖且哈希 MATCH。
+- 推送状态（2026-10-28 13:3x）：**本地 32 个未 push 提交**（HEAD 见 `git log -1`；最近三条 = `b6587145` 复核记录 / `23cf2c0e` 复核修法 / `baebae47` 筹码手册批）；远端 `origin/multi-main` = `cce71efb`，**无 1.5.0 tag**（远端已有 tag `1.5.0-rc.4`，不是本轮产物）。push / tag 均待用户放行。
 - 构建：`JAVA_HOME=C:\Program Files\Zulu\zulu-21`；`.\gradlew.bat :<线>:classes|jar`；forge dev 必须 `build/devlibs` 的 **named** jar。
 - 测试台唯一入口：`pwsh -NoProfile -File scripts\test\mt.ps1 --version <线> --phase env|run|stop`；`--purge-saves` 会删 testworld。
 
@@ -38,7 +38,7 @@ Select-String -Path F:\MCProject\astral_dice_multiloader\*\gradle.properties -Pa
 2. DSH：三语语言同步（用户手改 39 条 tooltip/msg 为权威 → 改写 21 条手册 guide 正文 → zh_cn 按 forge 自身键序同步 60 值 → 两线 en_us/ja_jp 各 60 键重译，格式保真全过）。
 2. DSH：`tooltip.astral_dice.sign.ame_note`（地雷女备注区）补 7 对染色码（`§e` 数值 / `§9` 时间 / `§d` 回落），正文未改。
 3. 版本 bump：`1.5.0-pre.6` → **`1.5.0-rc.1`**（进入预发布版），同时前置库 `1.1.0-pre.2` → **`1.1.0` 正式版**（库仓 `16b48c4`；库内 Java 源码零改动），两仓各自提交、四平台 `publishToMavenLocal`、P0 两线重建并投放、**库 jar 与 mod 成对替换**（旧 pre.2 已删）。判据与未做项见 handover §4.1f（**rc.1 已双版本冒烟实机 PASS**，见 handover §4.1f-a）。
-4. DSH：**星光兑换改造**（`1ff14106`，24 文件 +1380/−217）——装备时一次性发放 + 每次兑换后按佩戴补星（`StarLightManager` 4bit 账本严格记账，封顶只记实际量），经商立牌 +50% 保留；新增守门 `tools/verify_starlight_exchange_refill.py`（196 项 PASS）。**已双版本实机验证 5 组判据全 PASS**（读 `docs/handover-1.5.0-rc.1-main.md` §4.1）。
+4. DSH：**星光兑换改造**（`1ff14106`，24 文件 +1380/−217）——装备时一次性发放 + 每次兑换后按佩戴补星（`StarLightManager` 4bit 账本严格记账，封顶只记实际量），经商立牌 +50% 保留；新增守门 `tools/verify_starlight_exchange_refill.py`（196 项 PASS）。**已双版本实机验证 5 组判据全 PASS**（读 `docs/handover-1.5.0-main.md` §4.1）。
 5. DSH：**强化拒止改造**（P0 两线）——玩家近战命中力场第 5 次 ⇒ 回收成新物品 `astral_dice:repulsion`（不是效果牌），携带耐久 / 已存活 tick / 已提供充能；再次放置按**与效果牌同一份** `item/RepulsionPlacement.resolve` 恢复三份状态。两线 `:classes` 通过、两线 `runData` 生成模型、`verify_resource_integrity` PASS（157/157）、`check_lang_sync` EXIT 0、三语 + CHANGELOG 双文件已改。**未实机**（判据清单见 handover §4.1c）。
 6. DSH：**强化拒止双版本实机**（2026-10-25）：1.21.1 与 1.20.1 各跑 A–G 七项 —— 满耐久不画条 / 近战 5 次回收成物品（耐久 31 + elapsed + charge 3）/ 重放恢复三份状态 / 近寿命到点自行消失 / 非 owner 拒止 / 客户端耐久条 `barWidth 8` + tooltip 九行，**全 PASS**（读数见 handover §4.1c）。
 7. DSH：**强化拒止加一层拦截**（2026-10-25）—— `RepulsionEntity#hurt` 增加 owner 闸门：非放置者的近战命中被直接拒绝（红字「这个强化拒止不属于你」，不计命中 / 不播受击反馈），三语 lang 四处与 CHANGELOG 双文件同步改为「放置者近战命中 5 次」；两线编译/打包/投放全绿，**已双版本实机验证四态（放置 / 放置者命中 / 外来 owner 三次全拒 / 无主开放 / 放置者第 5 次回收）全 PASS**（读数见 handover §4.1c「补充拦截 · owner 闸门实机」）。
@@ -78,6 +78,7 @@ Select-String -Path F:\MCProject\astral_dice_multiloader\*\gradle.properties -Pa
 20. **骰子口径裁决已落地（2026-10-28，handover §4.1am）**：卡牌栏改回按骰子品质固定（星级只抬费用上限，基础 4 / 黄金·玻璃 8 / 钻石 10 / 下界合金 12 / 绿宝石 10 / 黑曜石 10 / 下界岩 8 / 诡异 10 / 绯红 12 / 紫晶 10 / 末影 12 / 下界之星 12）、黑曜石骰子保持「爆炸 -50% + 防御力 +3（真加防御力）」只订正注释与 lang、紫晶骰子现行行为不动、诡异骰子「立牌冷却 -50%」残留两线各 6 处已删除。1.21.1 实机 `byTier` 13 条逐条命中、戴诡异骰子主动冷却仍 3600 tick；四目标已投放。**2026-10-28 12:2x 裁决闭环（handover §4.1an）**：玻璃骰死亡丢卡牌 = 销毁（1.20.1 实机 PASS）；**枪械裁决已下并销账（§4.1ao-4）**：枪械**算远程**，默认由 `config/ModCommonConfig.java:95-99` 的 `ALLOW_FIREARM_DAMAGE`（`allow_firearm_damage = false`）关闭、玩家改配置后才计入；近战侧 `isMeleeWeaponAttack` 亦排除 `ProjectileWeaponItem`/`BlockItem`/`isFirearmItem` ⇒ 现行实现与裁决一致。**§5-19 五条裁决至此全部闭环。** 另：**两线的饕餮之锅 0 伤害均已定案为第三方「值得者」闸门、非本仓缺陷** —— 1.20.1（§4.1an）是 EL 的 `isTheWorthyOne`（戴戒 + 受苦比例 ≥ 0.995，在 `LivingHurtEvent` 里 `setCanceled(true)`，我方骰战入口根本不执行），把受苦比例强改为 1 后同一挥击打满 24 点；1.21.1（§4.1ao-3）是 EL+ 同名闸门，`worthy` 翻转后锅与铁剑同伤害（`d0/hurt=0` 即取消判据，且与骰子无关）。1.21.1 玻璃骰死亡销毁亦已实机 PASS（§4.1ao-2）。
 
 21. **筹码手册条目改「获取途径说明」（2026-10-28，用户裁决 m24344，handover §4.1ap）**：62 个筹码条目的 `patchouli:crafting` 页原位换成说明页、5 个原本缺页的条目补同一页（P0 两线各 67/67），三语新增键 `astral_dice.guide.chip_source.note`。**根因订正**：筹码配方其实存在（generated 各 108 个 json，带 `astral_dice:chip_recipes_enabled` 条件），旧取证只扫 `src/main/resources/data` 才误判；默认 `enable_chip_recipes=false`（`config/ModCommonConfig.java:111`）⇒ **67 条**筹码配方不加载（`blank_chip_duplicate` 不门禁），手册页才解析不到。守门 `verify_chip_acquisition.ps1` 加 `stale_page` / `no_note` 两判据并做过变异测试；`audit_patchouli_keys` 悬空 0、`check_lang_sync` 1066 键一致。两线 jar 已重出并四目标投放（neo `284a9fc0…` / forge reobf `ac1de3e9…` / forge dev named `e311c098…`）。**仍欠**：实机确认 `[patchouli/]: Recipe … not found` 归零（待用户下达）。另：整合包 neo 侧沿用用户改名前缀 `[星之骰戏] `，是否长期口径待用户确认。
+22. **交接文件改名 + 版本口径统一（2026-10-28 13:3x，用户裁决）**：`docs/handover-1.5.0-rc.1-main.md` → **`docs/handover-1.5.0-main.md`**（`git mv`，历史内容不改写真名），全仓 5 处文件名引用同步（`AGENT-SPLIT.md:40` / `PROJECT-REFERENCE.md:85` / 本文件 / `handover-2026-10-24-kimi-takeover.md:15`）；本线与交接文档一律称 **1.5.0**，去 rc 后缀，而 **代码 `gradle.properties` 仍是 `1.5.0-rc.4+<后缀>`（未 bump）**，正式版那一轮才落 `1.5.0` 并重建产物 / 重投四目标 / 清掉整合包里的 rc.4 重名件。
 
 ## 禁止项（共同红线，摘自根 `AGENTS.md`）
 
