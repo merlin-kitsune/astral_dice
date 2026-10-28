@@ -129,6 +129,14 @@ jobs:
 
       - name: Check CHANGELOG parity (en/zh)
         run: python tools/check_changelog_parity.py
+
+      - name: Check chip acquisition gate (P0)
+        # 筹码获取途径守门（2026-10-28）：把 stale_page（手册仍展示 crafting 页，配方默认关闭）与
+        # no_note（手册未说明筹码获取途径）由告警升为**致命项**；仅 no_page（手册未展示 crafting 页）
+        # 保持告警（2026-10 裁决把筹码 crafting 页统一改成 @spotlight + 获取途径说明后属预期）。
+        # 脚本内部对 P0 两线（neoforge-1.21.1 / forge-1.20.1）各跑一次并做双版本对等性校验。
+        run: pwsh -NoProfile -File scripts/verify/verify_chip_acquisition.ps1
+
       - name: Build with Gradle (all targets)
         # 根项目的 `build` 会级联构建 `settings.gradle` 中 include 的**全部**子项目 —— 现为四条线:
         # neoforge-1.21.1 / forge-1.20.1 / neoforge-26.1.2 / **fabric-1.20.1**（fabric 子项目已在

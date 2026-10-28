@@ -12,7 +12,8 @@
   迭代 = 配方（任一）的全部本模组材料均已可达 → 该物品可达
   标签材料（如 #astral_dice:dice_t3）展开为其成员
 
-退出码：0 = 无致命问题（手册缺口仅告警）；1 = 存在缺配方/不可达/悬空引用/槽缺项/对等性偏差；2 = 运行错误。
+退出码：0 = 无致命问题（仅「手册未展示 crafting 页」no_page 仍为告警）；
+          1 = 存在缺配方/不可达/悬空引用/槽缺项/对等性偏差/手册残留 crafting 页（stale_page）/手册未说明获取途径（no_note）；2 = 运行错误。
 
 用法：
   pwsh -File scripts/verify/verify_chip_acquisition.ps1 [-Root <仓库根>]
@@ -576,9 +577,10 @@ function Main {
             [pscustomobject]@{ label = '❌ 配方引用未注册物品'; lst = $dangling; isFatal = $true; isMap = $true }
             [pscustomobject]@{ label = '❌ curios:chip 槽缺项'; lst = $no_slot; isFatal = $true; isMap = $false }
             [pscustomobject]@{ label = '❌ 未进创造栏'; lst = $no_tab; isFatal = $true; isMap = $false }
+            # 2026-10 裁决：筹码 crafting 页已统一改成 @spotlight + 获取途径说明 ⇒ no_page 属预期，保持告警，不得升致命。
             [pscustomobject]@{ label = '⚠️ 手册未展示 crafting 页'; lst = $no_page; isFatal = $false; isMap = $false }
-            [pscustomobject]@{ label = '⚠️ 手册仍展示 crafting 页（配方默认关闭）'; lst = $stale_page; isFatal = $false; isMap = $false }
-            [pscustomobject]@{ label = '⚠️ 手册未说明筹码获取途径'; lst = $no_note; isFatal = $false; isMap = $false }
+            [pscustomobject]@{ label = '❌ 手册仍展示 crafting 页（配方默认关闭）'; lst = $stale_page; isFatal = $true; isMap = $false }
+            [pscustomobject]@{ label = '❌ 手册未说明筹码获取途径'; lst = $no_note; isFatal = $true; isMap = $false }
         )
         foreach ($chk in $checks) {
             $cnt = 0
@@ -590,7 +592,8 @@ function Main {
             }
         }
         if ((@($no_rec).Count -eq 0) -and (@($unreach).Count -eq 0) -and ($dangling.Count -eq 0) -and
-            (@($no_slot).Count -eq 0) -and (@($no_tab).Count -eq 0)) {
+            (@($no_slot).Count -eq 0) -and (@($no_tab).Count -eq 0) -and
+            (@($stale_page).Count -eq 0) -and (@($no_note).Count -eq 0)) {
             Write-Out '    ✅ 无致命问题'
         }
         $summary[$sub] = @{ chips = $chipList; no_rec = $no_rec; unreach = $unreach; no_page = $no_page; stale_page = $stale_page; no_note = $no_note }
