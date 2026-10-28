@@ -9,8 +9,8 @@
       "text": "astral_dice.guide.entry.big_backpack_chip.1"
     },
     {
-      "type": "patchouli:crafting",
-      "recipe": "astral_dice:big_backpack_chip"
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.chip_source.note"
     }
   ],
   "sortnum": 1

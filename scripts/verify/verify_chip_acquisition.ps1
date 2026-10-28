@@ -358,6 +358,65 @@ function Get-ManualCrafting {
 }
 
 
+function Get-GatedChipRecipes {
+    <#
+    受 chip_recipes_enabled 条件门禁的筹码配方（result 的 item id 集合）
+    默认 enable_chip_recipes=false ⇒ 这些配方整体不加载，手册不应展示 crafting 页
+    #>
+    param([string]$sub)
+    $set = New-StrSet
+    foreach ($d in @('src/generated/resources/data', 'src/main/resources/data')) {
+        foreach ($rdir in @('recipe', 'recipes')) {
+            $base = [System.IO.Path]::Combine($ROOT, $sub,
+                ($d -replace '/', [System.IO.Path]::DirectorySeparatorChar), $NS, $rdir)
+            if (-not (Get-IsDir $base)) { continue }
+            foreach ($f in [System.IO.Directory]::GetFiles($base)) {
+                if (-not $f.EndsWith('.json', [System.StringComparison]::OrdinalIgnoreCase)) { continue }
+                $txt = [System.IO.File]::ReadAllText($f, [System.Text.Encoding]::UTF8)
+                if (-not $txt.Contains('chip_recipes_enabled')) { continue }
+                $j = Read-Json $f
+                if (-not ($j -is [System.Collections.IDictionary])) { continue }
+                if (-not $j.Contains('result')) { continue }
+                $r = $j['result']
+                $rid = $null
+                if ($r -is [System.Collections.IDictionary]) {
+                    if ($r.Contains('id')) { $rid = $r['id'] }
+                    elseif ($r.Contains('item')) { $rid = $r['item'] }
+                }
+                else { $rid = $r }
+                if (-not $rid) { continue }
+                $parts = ([string]$rid) -split ':'
+                [void]$set.Add($parts[$parts.Count - 1])
+            }
+        }
+    }
+    return , $set
+}
+
+
+function Get-ManualNote {
+    <#
+    {en_us 手册条目里带筹码获取说明页（text == astral_dice.guide.chip_source.note）的 item_id}
+    #>
+    param([string]$sub)
+    $noteKey = 'astral_dice.guide.chip_source.note'
+    $base = [System.IO.Path]::Combine($ROOT, $sub, 'src', 'main', 'resources', 'assets', $NS,
+        'patchouli_books', 'astral_guide', 'en_us', 'entries')
+    $res = New-StrSet
+    foreach ($f in (Get-JsonFiles $base)) {
+        $iid = [System.IO.Path]::GetFileNameWithoutExtension($f)
+        $j = Read-Json $f
+        if (-not (($j -is [System.Collections.IDictionary]) -and $j.Contains('pages'))) { continue }
+        foreach ($p in @($j['pages'])) {
+            if (-not ($p -is [System.Collections.IDictionary])) { continue }
+            if (-not $p.Contains('text')) { continue }
+            if ([string]$p['text'] -eq $noteKey) { [void]$res.Add($iid); break }
+        }
+    }
+    return , $res
+}
+
+
 function Get-Closure {
     param([string]$sub, $i2c, $rec, $tags, $loot, $gives)
     $reach = New-StrSet
@@ -447,6 +506,8 @@ function Main {
             [void]$slot.Add($p[$p.Count - 1])
         }
         $craft = Get-ManualCrafting $sub
+        $gated = Get-GatedChipRecipes $sub
+        $note = Get-ManualNote $sub
         $creative = New-StrSet
         $ct = @(Get-FilesRecursive ([System.IO.Path]::Combine($ROOT, $sub, 'src', 'main', 'java')) 'ModCreativeTabs.java')
         if ($ct.Count -gt 0) {
@@ -466,6 +527,8 @@ function Main {
         $no_slot = @()
         $no_tab = @()
         $no_page = @()
+        $stale_page = @()
+        $no_note = @()
         foreach ($cid in $chipList) {
             $rlist = $null
             if ($rec.Contains($cid)) { $rlist = $rec[$cid] }
@@ -491,7 +554,15 @@ function Main {
             }
             if ((-not $slot.Contains($cid)) -and (-not ($SLOT_EXEMPT -contains $cid))) { $no_slot += $cid }
             if (-not $creativeIds.Contains($cid)) { $no_tab += $cid }
-            if ($craft.Contains($cid) -and ($craft[$cid] -eq $false)) { $no_page += $cid }
+            $hasPage = ($craft.Contains($cid) -and ($craft[$cid] -eq $true))
+            if ($gated.Contains($cid)) {
+                # 配方受 chip_recipes_enabled 门禁（默认关闭）⇒ 手册不应展示 crafting 页，且必须说明获取途径
+                if ($hasPage) { $stale_page += $cid }
+                if ($craft.Contains($cid) -and (-not $note.Contains($cid))) { $no_note += $cid }
+            }
+            elseif (-not $hasPage) {
+                $no_page += $cid
+            }
         }
 
         Write-Out ''
@@ -506,6 +577,8 @@ function Main {
             [pscustomobject]@{ label = '❌ curios:chip 槽缺项'; lst = $no_slot; isFatal = $true; isMap = $false }
             [pscustomobject]@{ label = '❌ 未进创造栏'; lst = $no_tab; isFatal = $true; isMap = $false }
             [pscustomobject]@{ label = '⚠️ 手册未展示 crafting 页'; lst = $no_page; isFatal = $false; isMap = $false }
+            [pscustomobject]@{ label = '⚠️ 手册仍展示 crafting 页（配方默认关闭）'; lst = $stale_page; isFatal = $false; isMap = $false }
+            [pscustomobject]@{ label = '⚠️ 手册未说明筹码获取途径'; lst = $no_note; isFatal = $false; isMap = $false }
         )
         foreach ($chk in $checks) {
             $cnt = 0
@@ -520,7 +593,7 @@ function Main {
             (@($no_slot).Count -eq 0) -and (@($no_tab).Count -eq 0)) {
             Write-Out '    ✅ 无致命问题'
         }
-        $summary[$sub] = @{ chips = $chipList; no_rec = $no_rec; unreach = $unreach; no_page = $no_page }
+        $summary[$sub] = @{ chips = $chipList; no_rec = $no_rec; unreach = $unreach; no_page = $no_page; stale_page = $stale_page; no_note = $no_note }
     }
 
     if ($summary.Count -eq 2) {
@@ -529,7 +602,7 @@ function Main {
         Write-Out ('=' * 78)
         Write-Out '双版本对等性'
         Write-Out ('=' * 78)
-        foreach ($key in @('chips', 'no_rec', 'unreach', 'no_page')) {
+        foreach ($key in @('chips', 'no_rec', 'unreach', 'no_page', 'stale_page', 'no_note')) {
             $sa = New-StrSet
             foreach ($x in $summary[$keys[0]][$key]) { [void]$sa.Add($x) }
             $sb = New-StrSet

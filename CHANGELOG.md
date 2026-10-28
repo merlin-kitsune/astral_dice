@@ -767,6 +767,8 @@
 - **Fixed the Dorothy Sign active tooltip reverting to older Chinese text** (2026-10-26, both P0 lines): the batch that reverted the Bartender exception also touched `tooltip.astral_dice.sign.dorothy_active` in the same file, restoring the pre-change wording instead of the "Comedienne" effect description. It is back to the intended text and both P0 lines are now byte-identical.
 - **Fixed the Bartender Sign active tooltip rendering a literal `\n`** (2026-10-26): the tooltip-slimming change double-escaped the line breaks, so the game showed the characters `\n`; affected Chinese / English / Japanese on 1.20.1 and English / Japanese on 1.21.1 (this is the state of the already-published 1.5.0-rc.3 builds). All three languages on both lines are fixed now.
 
+- **Chip handbook entries now say how to obtain chips** (2026-10-28, P0 two lines x three languages): every chip entry's recipe page pointed at a crafting recipe that is disabled by default, so the guidebook showed a broken recipe page for **62 chips**. Those pages are replaced by a "where to get it" note (trade with the Chip Trader at the Chip Shop; craftable only when the server turns on `enable_chip_recipes`), and the five chip entries that had no recipe page got the same note.
+
 #### Input & UI
 
 - **Chip shop UI interaction fixes (2026-10-13)**: the Confirm / Refresh buttons' pressed ("push") texture now only appears briefly **after a click**, and no longer switches on mouse hover; hovering a chip icon now overlays a **grey translucent highlight** on the icon (matching the hover indication in the card shop and player transfer screens).

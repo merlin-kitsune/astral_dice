@@ -29,6 +29,7 @@
   "astral_dice.guide.category.materials.desc": "Base materials used in crafting.",
   "astral_dice.guide.category.signs": "Signs",
   "astral_dice.guide.category.signs.desc": "Signs grant character-flavored active and passive skills.",
+  "astral_dice.guide.chip_source.note": "Obtained by trading with a \"Chip Trader\" at the Chip Shop (also craftable at a crafting table when the server enables enable_chip_recipes).",
   "astral_dice.guide.entry.amethyst_dice.1": "Amethyst die. Same tier as the Diamond Die and upgradeable from it; your ranged/magic attacks also roll the combat die (1-6) and add its roll as damage — without triggering a Dice Blessing.",
   "astral_dice.guide.entry.atm_chip.1": "When equipped, a transfer grants both sides 1 Starlight and 2 Star Coins.",
   "astral_dice.guide.entry.attack_card_charge.1": "Charge: fixed +5 attack power during the Dice Blessing; returns Full Power when the blessing ends.",

@@ -29,6 +29,7 @@
   "astral_dice.guide.category.materials.desc": "Modの基本材料で、各種の合成に使われる。",
   "astral_dice.guide.category.signs": "スタンド",
   "astral_dice.guide.category.signs.desc": "スタンドはキャラクター風のパッシブスキルとアクティブスキルを提供する。",
+  "astral_dice.guide.chip_source.note": "入手方法：「チップショップ」で「チップトレーダー」と取引して入手（サーバーでチップのクラフトレシピ enable_chip_recipes を有効にすると作業台でもクラフト可能）。",
   "astral_dice.guide.entry.amethyst_dice.1": "アメジストのダイス。ダイヤモンドのダイスと同品位で、ダイヤモンドのダイスからアップグレードできる；自身の遠距離/魔法攻撃でも戦闘ダイス（1-6）が発動し、ダイス分のダメージを追加するが、ダイス神の加護は発動しない。",
   "astral_dice.guide.entry.atm_chip.1": "装着後、送金するたびに双方が 1 星光と 2 星貨を獲得する。",
   "astral_dice.guide.entry.attack_card_charge.1": "チャージ：ダイス神の加護中は攻撃力が +5 固定；加護終了後に「全力攻撃」を返却する。",

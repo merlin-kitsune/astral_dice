@@ -823,7 +823,7 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
      | `[农夫乐事] FarmersDelight-1.21.1-1.3.4.jar` | 3,160,490 |
 
    - `mt.ps1 --version 1.21.1 --phase env` OK（`MT_WORLD: OK`，`allowCommands=1 / keepInventory=true`）；`--phase launch` OK（脱离日志 `temp/mt_detached/mt_launch_20261028-123401.log`）；`node temp/mcp.mjs status "{}"` ⇒ server / client 均 `available`、1 玩家在线。
-   - `run/1.21.1/logs/latest.log`（35,852 行）计数：caelus / EnigmaticDelicacy / EnigmaticLegacy+ / Farmer's Delight 全部加载；**FATAL=0**、**ERROR=1**（第三方 EL+ 字幕缺失 `Missing subtitle translation{key='subtitle.enigmaticlegacy.cosmic_cake.restore'}`）、**WARN=165**（缺模型 11 行 —— `enigmaticlegacyplus:item/spirit_crystal`、`enigmaticdelicacy:item/e1|e2`、`enigmaticlegacyplus:item/ichor_charm`；**62 行 patchouli `Recipe astral_dice:<chip>_chip (of type minecraft:crafting) not found`** —— 见 §5-Minor-25；余为 Sodium workarounds / JarJar / mixin refmap / 客户端 `Received passengers for unknown entity`）。
+   - `run/1.21.1/logs/latest.log`（35,852 行）计数：caelus / EnigmaticDelicacy / EnigmaticLegacy+ / Farmer's Delight 全部加载；**FATAL=0**、**ERROR=1**（第三方 EL+ 字幕缺失 `Missing subtitle translation{key='subtitle.enigmaticlegacy.cosmic_cake.restore'}`）、**WARN=165**（缺模型 11 行 —— `enigmaticlegacyplus:item/spirit_crystal`、`enigmaticdelicacy:item/e1|e2`、`enigmaticlegacyplus:item/ichor_charm`；**62 行 patchouli `Recipe astral_dice:<id>_chip (of type minecraft:crafting) not found`** —— 见 §5-Minor-25；余为 Sodium workarounds / JarJar / mixin refmap / 客户端 `Received passengers for unknown entity`）。
    - 4 个第三方 jar **仍留在 `run/1.21.1/mods`**（供后续复测；`--phase env` 不会清它们，下次要「纯净 P0」时手工移除即可）。
 
 2. **玻璃骰子死亡销毁 = 1.21.1 实机 PASS（与 1.20.1 结论一致，不改代码）**
@@ -853,6 +853,49 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 
 5. **收尾与工作树**：`pwsh -NoProfile -File scripts\test\mt.ps1 --version 1.21.1 --phase stop --force` ⇒ `MT_CLEANUP: 已收停 2 个本流程进程（范围：1.21.1）` / `MT_CLEANUP_RESULT: OK` / `MT_STOP: OK (1s) — 收停完成，无本流程残留进程` / `MT_CLEANUP_SAVES: KEPT（未指定 --purge-saves）`；`Get-Process java` 余 1（12:06 起的 Gradle 守护）。本轮**零源码改动**，`git status --short -uall` 只有 `?? models/astral_anvil.bbmodel`。
 6. **独立复核（`dsh_code_review` run `07910dc8-755e-4aea-bd0b-58218cbd271d`，范围仅本提交）**：R1 源码行号 5/5 SUPPORTED、R2 两线对称 SUPPORTED、R3 文档内部一致性 SUPPORTED、R4 CRLF SUPPORTED、R5 引用完整性 SUPPORTED；唯一 [P2] = 第 1 条那句「只有缺模型 WARN、无 ERROR / FATAL」与日志实物不符（实测 ERROR=1 条第三方字幕缺失 + WARN=165 条，其中 62 条是筹码手册配方未命中）⇒ 已按实测改成计数口径，并把 62 条手册配方页问题登记为 §5-Minor-25。
+
+### 4.1ap 筹码手册条目改「获取途径说明」取代悬空配方页（2026-10-28，用户 m24344 裁决）
+
+1. **用户裁决（m24344 逐字）**：「帕秋莉手册问题：删掉这些 crafting 页 / 改成 spotlight + 说明「由筹码商店获得」」
+
+2. **根因（订正 §5-Minor-25 的旧取证）**：筹码配方**存在**，是 datagen 产物且带条件门禁 ——
+   - `neoforge-1.21.1/src/generated/resources/data/astral_dice/recipe/` 与 `forge-1.20.1/src/generated/resources/data/astral_dice/recipes/` 各 **108 个 json**，筹码配方形如 `{"neoforge:conditions":[{"type":"astral_dice:chip_recipes_enabled"}], …}`（forge 线为 `forge:conditions`）。
+   - 条件实现 `neoforge-1.21.1/src/main/java/com/merlinkitsune/astral_dice/recipe/condition/ChipRecipesEnabledCondition.java:44-47`（forge 线同名同位置）：`public boolean test(IContext context) { return ModCommonConfig.ENABLE_CHIP_RECIPES.get(); }`；注册 id 见 `:34` `ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, "chip_recipes_enabled")`。
+   - 默认值是 **false**：`config/ModCommonConfig.java:111`（两线同位置）`.define("enable_chip_recipes", false);`（`:28` 的类注释写「关闭时 61 枚筹码无法通过合成获得」，实测筹码数 68 —— 该注释偏旧，本轮未改）。
+   - ⇒ 默认配置下 68 条筹码配方整体不加载，手册里 62 条 `patchouli:crafting` 页因而解析不到配方，游戏内 `[patchouli/]: Recipe astral_dice:<id> (of type minecraft:crafting) not found`。
+   - §5-Minor-25 的旧取证「`data/astral_dice/recipe|recipes/` 没有任何 `*_chip` 配方 ⇒ 筹码只经商店获得」**只扫了 `src/main/resources/data`、漏了 generated**，故结论错。
+
+3. **改造（P0 两线 `assets/astral_dice/patchouli_books/astral_guide/en_us/entries/chips_*/`，各 67 个条目）**：
+   - 62 个条目的 crafting 页**原位替换**为 `{"type":"patchouli:text","text":"astral_dice.guide.chip_source.note"}`；
+   - 5 个原本没有 crafting 页的条目（`abyss_reagent_chip` / `flashlight_burst_chip` / `fortune_stick_chip` / `infinite_grid_chip` / `sensor_chip`）**追加**同一说明页 ⇒ 67/67 全部带说明；
+   - 三语新增键 `astral_dice.guide.chip_source.note`（`assets/astral_dice/lang/{zh_cn,en_us,ja_jp}.json`，插在 `astral_dice.guide.category.*` 之后）：
+     - zh_cn：`获取方式：在「筹码商店」与「筹码商人」交易获得（服务器开启筹码合成配方 enable_chip_recipes 后，也可在工作台合成）。`
+     - en_us：`Obtained by trading with a "Chip Trader" at the Chip Shop (also craftable at a crafting table when the server enables enable_chip_recipes).`
+     - ja_jp：`入手方法：「チップショップ」で「チップトレーダー」と取引して入手（サーバーでチップのクラフトレシピ enable_chip_recipes を有効にすると作業台でもクラフト可能）。`
+   - P1 两线（26.1.2 / fabric）**未动**（1.5.0 正式版前冻结）。
+
+4. **守门改造（`scripts/verify/verify_chip_acquisition.ps1`，+73 行）**：新增 `Get-GatedChipRecipes`（扫 generated + main 两处 recipe 目录，取 JSON 文本含 `chip_recipes_enabled` 的 result id）与 `Get-ManualNote`（扫 `en_us` 条目里 page `text == astral_dice.guide.chip_source.note`）；判定改三分支：`门禁配方 + 仍有 crafting 页` ⇒ 新告警「⚠️ 手册仍展示 crafting 页（配方默认关闭）」；`门禁配方 + 无说明页` ⇒ 「⚠️ 手册未说明筹码获取途径」；`非门禁 + 无 crafting 页` ⇒ 保留旧告警「⚠️ 手册未展示 crafting 页」。双版本对等性键表 4 → 6（+`stale_page` / `no_note`）。
+   - **变异测试（证明新判据非空转）**：对 `chips_charge/advanced_peripherals_chip.json` 删说明页 ⇒ 命中「未说明筹码获取途径」；注入 crafting 页 ⇒ 命中「仍展示 crafting 页」；还原后 `RESULT: PASS`（两次都只改单线，故同时对等性 FAIL，属预期）。
+
+5. **守门读数（P0 两线一致）**：
+   - `verify_chip_acquisition.ps1`：`筹码 68 | 有配方 68 | 传递可达 68` / `curios:chip 槽 67 | 创造栏覆盖 68/68` / **零告警** / 对等性 6 键全 `一致=True` / `RESULT: PASS（致命项 0）`（改造前有 `⚠️ 手册未展示 crafting 页 5`）。
+   - `python tools/audit_patchouli_keys.py`：四线引用 1826 处、**悬空 0 处**。
+   - `tools/check_lang_sync.ps1`：两线 `zh_cn / en_us / ja_jp` 各 **1066 keys 完全一致**（改造前 1065）；3 条 `[WARN] sign.dorothy_passive / sign.jill_active 结构标记不一致` 为改造前既有，与本批无关。
+   - `node temp/verify_chip_pages.mjs`（一次性校验）：两线 `entries=67 pages=142 noNote=0 stale=0`。
+
+6. **产物与投放**（`gradlew.bat :neoforge-1.21.1:build :forge-1.20.1:build -PdeployToPack`，BUILD SUCCESSFUL；`pushToRootBuild` / `pushToDevRun` / `pushToGame` 全触发；jar 内实测 `entries=67 clean_note=67`、三语均含新键）：
+
+   | 线（落点） | 文件 | 字节 | sha256 |
+   |---|---|---|---|
+   | neo（`build/libs` = `run/1.21.1/mods` = 整合包） | `astral_dice-1.5.0-rc.4+neoforge_1.21.1.jar` | 2,599,540 | `284a9fc00e5febbdeb5f2043d81ae81c8a1a29ba6b8d40aa71e66c730ad85af0` |
+   | forge（reobf，`build/libs` = 整合包） | `astral_dice-1.5.0-rc.4+forge_1.20.1.jar` | 2,648,371 | `ac1de3e9659e97882ad7fb2bfd39a2f57686e55677ce1f39f1489430b3bd820d` |
+   | forge（dev named，`run/1.20.1/mods`） | 同名 | 2,618,956 | `e311c0981069d6754ff8a16b359617f467b27a7ed1c0c1f8209f458313ee17d4` |
+
+   - neo 三处同哈希；forge 整合包与 `build/libs` 同哈希，`run/1.20.1/mods` 是 named dev jar（按 §6 坑 40 的既有口径，两者本就不同字节）。
+
+7. **整合包重名 jar 处置（本轮新坑）**：`D:\.minecraft\versions\狐の航空学 Voxy Edition\mods` 里原有用户改名过的 `[星之骰戏] astral_dice-1.5.0-rc.4+neoforge_1.21.1.jar`（2,589,686 B，10-26 19:40），而 `pushToGame` 只清理自己的命名 ⇒ 两者**同 mod id 并存**，NeoForge 会以重复 mod 拒绝启动。处置：删旧件、把新件改回同一 `[星之骰戏] ` 前缀名（哈希仍 `284a9fc0…`），整合包恢复「单一 mod jar + `starengine-neoforge-1.21.1-1.1.0.jar`（98,734 B）」。**该前缀是否为长期口径待用户确认**（1.20.1 整合包无前缀：`astral_dice-1.5.0-rc.4+forge_1.20.1.jar` 2,648,371 + `starengine-forge-1.20.1-1.1.0.jar` 103,605）。
+
+8. **本节无实机**：`[patchouli/]: Recipe … not found` 是否归零需用户下达实机后再记（判据：1.21.1 `run/1.21.1/logs/latest.log` 里该行计数 = 0）。
 
 ## 5 遗留与欠账
 
@@ -935,7 +978,7 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 23. **近战三裁决批（2026-10-27，§4.1ai）待实机 + 未重出 jar**：三项需实机读数（法伤/远程打被吸附目标应无 +5、近战骰战应仍 +5、嘲讽目标同挥击多段只反击一次）；本批**未重出 jar、未投放**（两个 P0 整合包与根 `build/libs` 仍是 rc.4 旧构建）。
 
 24. **近战批实机闭环（2026-10-27，§4.1aj）**：§4.1ah / §4.1ai 全部落地项已双线实测；期间新修 F7 公共出口（生物→玩家骰战漏判）与 MELEE-04 回血基数（改用落地量），两线 jar 已重出并四目标投放。**仍欠**：A3（需 PvP）/ A5 第三方取消路径 / F3（需神秘遗物+）/ N14 专项判据 —— 四项只能代码级；P1 两线（`neoforge-26.1.2` / `fabric-1.20.1`）未折叠未镜像。
-25. **62 个筹码手册条目的 crafting 页指向不存在的配方（2026-10-28 复核时发现，未修）**：`run/1.21.1/logs/latest.log` 有 62 条 `[patchouli/]: Recipe astral_dice:<chip>_chip (of type minecraft:crafting) not found`，覆盖 `cutter_chip` / `magic_quiver_chip` / `member_recommendation_chip` 等 id。取证：`data/astral_dice/recipe/`（1.21.1，17 个文件）与 `data/astral_dice/recipes/`（1.20.1）**都没有任何 `*_chip` 配方**（四线 `grep -c _chip` 全为 0 —— 筹码只经筹码商店 / 战利品获得），而 `assets/astral_dice/patchouli_books/astral_guide/en_us/entries/**` 里 117 个条目带 `"recipe"` 页、其中 62 个是 `{ "type": "patchouli:crafting", "recipe": "astral_dice:<chip>_chip" }`（例 `entries/chips_healing/cutter_chip.json` 第 2 页）⇒ 游戏内这 62 页会显示配方缺失。**待用户裁决**：删掉这些 crafting 页 / 改成 spotlight + 说明「由筹码商店获得」/ 或补配方（会动平衡，不建议）。
+25. ~~62 个筹码手册条目的 crafting 页指向不存在的配方~~ → **已修（2026-10-28，用户裁决 m24344「改成说明页」，落地与读数见 §4.1ap）**：62 个 `patchouli:crafting` 页原位换成 `{"type":"patchouli:text","text":"astral_dice.guide.chip_source.note"}`，5 个原本缺页的条目补同一说明页（两线各 67/67 带说明），三语新键写清「在筹码商店与筹码商人交易获得 / 服务器开启 `enable_chip_recipes` 后也可合成」。**根因订正**：筹码配方其实**存在**（`src/generated/resources/data/astral_dice/recipe`（neo）/ `recipes`（forge）各 108 个 json，带 `astral_dice:chip_recipes_enabled` 条件），旧取证只扫 `src/main/resources/data` 才误判「没有任何 `*_chip` 配方」；默认 `enable_chip_recipes=false`（`config/ModCommonConfig.java:111`，两线同位置）⇒ 68 条筹码配方整体不加载，手册页才解析不到。守门 `scripts/verify/verify_chip_acquisition.ps1` 已加 `stale_page` / `no_note` 两判据并做过变异测试。**仍欠**：实机确认 `[patchouli/]: Recipe … not found` 归零（待用户下达）。
 
 ## 6 坑（本批新增，后续继续追加）
 
@@ -1007,6 +1050,9 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 44. **AutoJS / Rhino 在 1.21.1 的 API 事实（2026-10-28 实测，探针必用）**：`InteractionHand` 字段是 `MAIN_HAND`/**`OFF_HAND`**（写 `OFFHAND` 报 `has no public instance field or method named "OFFHAND"`）；**`mob.hurt(DamageSource,float)` 调用不到**（`TypeError: Cannot find function hurt in object Pillager`）⇒ 伤害一律走 `/damage @e[type=…,tag=…,limit=1] <n> <dmgType> by Dev`，`DamageSource` 也没有 `getMsgId()`（要看源就把 ds 转成字符串）；未声明变量赋值报 `EvaluatorException: Assignment to undeclared variable p` ⇒ 必须 `var p=…`；给 `Item.of(...)` 传不存在的 id 抛 `KubeRuntimeException` 且**会穿透 JS try/catch 终止整次 eval** ⇒ 探测 id 先迭代 `BuiltInRegistries.ITEM.keySet()`；1.21.1 没有 `astral_dice:basic_dice`（用 `golden_dice` / `glass_dice` 等）；1.21.1 的 `/astralprobe …` 探针命令**不出任何读数**（`logs/kubejs/server.log` 无 AP_ 行）⇒ 直接写 curio 槽。
 45. **EL+ 的「值得者」不能靠写 curio 槽伪造成立**（2026-10-28 实测）：给 `dice` / `ring` 槽 `setStackInSlot` 写进物品之后 `isTheCursedOne` 仍 false（绕过 `CurioEquipEvent` 链路）；要造 `cursed=true` 用 `EnigmaticHandler.getPersistedData(p).putBoolean(SevenCursesBearing, true)`，要造 `worthy=true` 还要改苦难度：`var EA=Java.loadClass(auviotre.enigmatic.legacy.registries.EnigmaticAttachments); var d=p.getData(EA.ENIGMATIC_DATA); d.setTimeWithCurses(1000000); d.setTimeWithoutCurses(0);`。判「伤害是否被取消」只认 `hurtTime`：`d=0 && hurtTime=0` ⇒ 事件取消（`LivingEntity.hurt` 在 `CommonHooks.onEntityIncomingDamage` 返回 true 时直接 `return false`）。
 46. **jar 名带 `[中文] ` / `+`，解包与反编译都要绕**（2026-10-28 实测）：`Get-ChildItem -Filter` 带方括号的模式匹配不到这类 jar（`[ ]` 是通配语义）⇒ 用 `-File | Where-Object { $_.Name -match … }`；git bash 没有 `unzip` ⇒ 用 pwsh `System.IO.Compression.ZipFile`（`OpenRead` 列条目 / `ExtractToDirectory` 解包）；反编译直接 `javap -p -c -classpath "<jar路径>" <fqcn>` 可读 jar 内类，不必先解包。另：`1.21.1/logs/latest.log` 会被客户端 AP_PMFIX 探针逐条刷屏 ⇒ 读日志一律 grep 关键词，别只看尾部。
+
+47. **正则替换 CRLF 文本时 `\n` 会吃掉 `\r`，插入块带出 `\r\r\n`**（2026-10-28 实测，§4.1ap）：用 `replace(/\n([ \t]*)\{/g, nl + …)` 改写 CRLF 的 json 时，匹配只吃掉 `\r\n` 里的 `\n`，前一个 `\r` 留在原位，再拼上 `nl`（`\r\n`）就得到 `\r\r\n` —— JSON 仍能解析（孤立 `\r` 属合法空白），但 `git diff` 会把整个文件判成重写（实测 124 个手册条目全文件 diff）。修法：① 匹配式写 `\r?\n` 并由替换串统一补 `nl`；② 落盘前断言 `/\r\r\n/` 命中 0（本轮用 `temp/fix_stray_cr.mjs --apply` 事后修了 124 个文件）。
+
 ## 7 关键路径（命令）
 
 ```powershell
