@@ -55,6 +55,8 @@ import net.neoforged.neoforge.event.entity.living.MobEffectEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
 import top.theillusivec4.curios.api.CuriosApi;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -78,6 +80,8 @@ import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
 
 @EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class DiceCombatEvents {
+    // 七咒倍率机制证据通道(AP_CURSE_APPLY):仅在倍率 >1 时输出。
+    private static final Logger LOGGER = LoggerFactory.getLogger(DiceCombatEvents.class);
     // === 神秘遗物+ (Enigmatic Legacy+, modId `enigmaticlegacyplus`) 联动 ===
     // ⚠️ **物品 path 与 1.20.1 原版完全相同,只有命名空间不同**(2026-09-30 逐项核对两版 jar 的 lang 物品表):
     //    七咒之戒 / 启示之证 / 倒转之启 / 恩惠之典 全在本线命名空间下。改任一侧前先核另一侧,别照抄。
@@ -295,9 +299,9 @@ public class DiceCombatEvents {
             com.merlinkitsune.astral_dice.item.chip.BufferShieldChipItem.onHurt(targetPlayer, event.getSource(), event.getNewDamage());
         }
 
-        // AOE(顺劈/溅射)波及的目标不进入骰战结算,避免二次吃到完整骰战;
         // 反击链中的伤害不进入骰战结算(已按反击公式自算),同时结构性阻止反击递归
-        if (isInternalAoe() || counterDepth > 0) return;
+        // (AOE 闸门已下移到「生物近战 / 玩家攻击」分支之前,见下方注释)
+        if (counterDepth > 0) return;
 
         // 白泽赐福 / 降神:倒计时由「被施加者实施**一次有效攻击**」启动(2026-09-28 用户裁决)。
         // 判据 = **任意攻击行为(近战或远程)且必须命中目标** —— 本事件到达本身即"命中"(伤害正在落地),
@@ -321,6 +325,11 @@ public class DiceCombatEvents {
                 && !(target instanceof Player)) {
             com.merlinkitsune.astral_dice.effect.ConcealmentEffect.breakOnAttack(concealBreaker);
         }
+        // AOE(顺劈/溅射/法伤波及)波及的目标**只**拦骰战结算,不再抵销「攻击行为」本身
+        // (2026-10-27 用户裁决 N14:AOE 命中也算) ⇒ 上面的赐福/降神倒计时启动与隐匿解除
+        // 已提到本闸门**之前**执行;此处仅保证被波及目标不二次吃到完整骰战。
+        if (isInternalAoe()) return;
+
         if (!(directEntity instanceof Player player)) {
             // 生物近战攻击玩家:走**独立**骰战路径(2026-09-26 新增)。
             // ⚠️ 该路径不进入下方玩家攻击逻辑(DiceCombatContext 要求 Player 攻击者),
@@ -349,6 +358,14 @@ public class DiceCombatEvents {
                 ? com.merlinkitsune.astral_dice.item.chip.RailgunChipItem.onAttack(
                         player, target, event.getNewDamage())
                 : null;
+
+        // 法伤链不参与骰战结算(2026-10-27 折叠批复核 R5 补口):
+        // 法伤加成已折叠进**本次**伤害事件(DamageEffectCardHandler),而骰战 settle 是覆盖式写值
+        // (自算终值 setNewDamage/setAmount、不读事件现值)⇒ 法伤一旦走进 settle,折叠加成会被整段覆盖。
+        // 本仓自产法伤源 getDirectEntity() 恒 null(必然在上面早退),但**第三方法术源**的直接实体可能就是
+        // 玩家本人;此处按伤害类型白名单显式排除,不再依赖"direct==null"这一巧合。
+        // 只拦骰战结算:此前的赐福倒计时启动 / 隐匿解除 / 手电筒爆闪 / 电磁炮保持原有触发面(技能命中算攻击)。
+        if (SpellDamageRegistry.isSpellDamage(source, directEntity)) return;
 
         // 骰神赐福仅能由近战武器攻击触发与生效:直接伤害来源必须为玩家(已排除弓/弩/三叉戟投掷等远程),
         // 主手必须持有近战武器(排除空手/盾牌/非近战类武器)
@@ -821,7 +838,22 @@ public class DiceCombatEvents {
         // 用处理器开头固化的局部变量:避免被后续嵌套伤害实例刷新的登记槽影响。
         finalDmg *= victimFactor;
 
+        // A4(2026-10-27 近战审计,与 1.20.1 线同步):怪力乱神「被吸附目标受到佩戴者伤害 +5」原先由
+        //   LinglingSignEvents(@LOWEST)在事件之后追加 —— 它与 ChipDamageHandler(@LOWEST)先后不可依赖
+        //   (气囊归零后仍 +5 / +5 先加则气囊白烧)。统一改为并入骰战终值。
+        // MELEE-06(2026-10-27 用户裁决:限定必须为骰战,法术/技能等排除)⇒本处是**唯一**加点,
+        //   event/LinglingSignEvents 已不再挂任何伤害事件（非骰战伤害不再叠加）。
+        if (com.merlinkitsune.astral_dice.item.sign.LinglingSignManager.isEquipped(player)
+                && com.merlinkitsune.astral_dice.item.sign.LinglingSignManager.isTrackedByAny(target)) {
+            finalDmg += com.merlinkitsune.astral_dice.item.sign.LinglingSignManager.TRACKED_TARGET_BONUS_DAMAGE;
+        }
+
         event.setNewDamage((float) finalDmg);
+        // F7(2026-10-27 近战审计):修女被动「单次受击 >10 清空加成」的判定见 applyAlanaBigHit(...) ——
+        //   两条骰战路径(玩家攻击 / 生物近战)都必须覆盖,口径 = 落地红心量(本线写 Pre#setNewDamage,
+        //   平台在 Pre **之后**才扣吸收 ⇒ 落地 = 终值 - min(终值, 吸收余额))。
+        float landing = (float) finalDmg - Math.min((float) finalDmg, target.getAbsorptionAmount());
+        applyAlanaBigHit(target, landing);
         // 跳数字不再在此直发(2026-09-26):登记组别,由 DamageNumberAggregator 在**伤害管线终值**
         // (LivingDamageEvent.Post 的 getNewDamage = 实际扣血量)上取值,并与本 tick 同目标的其它
         // 攻击力类伤害累加成一个**总值**后一次性下发。
@@ -935,9 +967,11 @@ public class DiceCombatEvents {
             }
         }
 
-        // 吸血鬼立牌(papara)主动"汲取":攻击时恢复骰神赐福最终伤害的一半生命(取整,至少 1 点)
+        // 吸血鬼立牌(papara)主动"汲取":攻击时恢复骰神赐福**落地**伤害的一半生命(取整,至少 1 点)
+        // MELEE-04(2026-10-27 近战审计,与 1.20.1 线同步):基数必须是**落地红心量**(landing = 终值 - min(终值, 吸收)),
+        //   原实现用 finalDmg ⇒ 一记被黄心整段吃掉的攻击仍会白送回血,与受击侧 settleBiteHeal 口径矛盾。
         if (!player.level().isClientSide() && player.hasEffect(ModEffects.PAPARA_BITE)) {
-            player.heal(Math.max(1, (int) finalDmg / 2));
+            player.heal(Math.max(1, (int) landing / 2));
         }
 
         if (hasShadowStrike && !player.level().isClientSide()) {
@@ -977,7 +1011,7 @@ public class DiceCombatEvents {
             } else {
                 // ⚠️ 必须透传 temporary:临时牌(绿洲女王 nardis)扣 1 点耐久后仍须保持临时性,
                 //    否则本次消耗就会把它"洗"成永久牌(到期清理便找不到它)—— 见 AppliedStone 类注释。
-                newStones.add(new AppliedStone(stone.type(), newUses, stone.temporary()));
+                newStones.add(new AppliedStone(stone.type(), newUses, stone.temporary(), stone.owner()));
                 dirty = true;
             }
         }
@@ -1027,7 +1061,7 @@ public class DiceCombatEvents {
                 defenseCostFreed += MisakiSignItem.effectiveCost(defender, s.type());
             } else {
                 // temporary 必须透传(临时牌不会因扣耐久变回永久牌),同 consumeAttackCardDurabilityOnce 口径
-                newStones.add(new AppliedStone(s.type(), newUses, s.temporary()));
+                newStones.add(new AppliedStone(s.type(), newUses, s.temporary(), s.owner()));
             }
         }
         if (!dirty) return;
@@ -1097,13 +1131,58 @@ public class DiceCombatEvents {
         // (2026-09-26 裁决①:两条路径必须用同一口径,不得一边丢弃、一边泄漏)。
         finalDmg *= com.merlinkitsune.starengine.combat.VanillaMitigation.magicAbsorbFactor(
                 resistanceAmplifierOf(target), protectionPointsOf(target, source));
+        // A6(2026-10-27 近战审计):生物近战路径漏了「目标身上有标记 ⇒ +1」 —— 判定与玩家路径同口径
+        //   (本文件玩家分支的 if (MarkManager.getLevel(target) > 0) finalDmg += 1)。
+        //   位置也与玩家路径对齐:**victimFactor 之前**;玩家路径的 +1 还会再过 EXTERNAL_DAMAGE_FACTORS,
+        //   生物攻击者没有外部因子来源,故这里只随实例倍率放大。
+        if (MarkManager.getLevel(target) > 0) {
+            finalDmg += 1;
+        }
         finalDmg *= (float) victimFactor;
+        // 虚弱印记:生物近战原先只靠 onWeakMarkDamage(@LOW)在事件后乘;该处理器现改用
+        //   isDiceBattleSettledDamage 跳过骰战(含 生物→玩家),故倍率必须并入终值(与 1.20.1 线同口径)。
+        //   生物攻击者不是玩家 ⇒ 没有「命运的指引」+0.20 那条来源,只需基准倍率。
+        if (target.hasEffect(ModEffects.WEAK_MARK)) {
+            finalDmg *= 1.10f;
+        }
+        // F3(2026-10-27 近战审计):七咒(神秘遗物+ 第一诅咒)倍率原先只在「玩家攻击」路径的内置
+        //   外部因子里乘,生物近战路径整段丢弃。生物攻击者永远没有命运的指引 ⇒ 全额应用,用后清零
+        //   (与内置因子同语义,避免残留到下一击)。
+        float curseRatio = ModAttachments.getDiceCurseRatio(target);
+        if (curseRatio > 1.0f) {
+            double cursePre = finalDmg;
+            finalDmg *= curseRatio;
+            // AP_CURSE_APPLY(机制证据,2026-10-27):证明捕获到的倍率确实乘进了生物近战骰战终值。
+            LOGGER.info("AP_CURSE_APPLY:channel=mob:player={}:ratio={}:pre={}:post={}",
+                    target.getName().getString(), curseRatio, cursePre, finalDmg);
+        }
+        ModAttachments.setDiceCurseRatio(target, 1.0f);
         event.setNewDamage(finalDmg);
+        // F7(2026-10-27 近战审计):生物近战同样是骰战 ⇒ 修女被动也按落地量判定(与玩家路径同口径);
+        //   原先只在玩家路径判,导致「怪一击 22 点打到玩家」时加成不被清(2026-10-27 实机见证)。
+        applyAlanaBigHit(target, finalDmg - Math.min(finalDmg, target.getAbsorptionAmount()));
         // 跳数字:与玩家攻击同一出口(登记组别,由 DamageNumberAggregator 在管线终值上取值)
         DamageNumberAggregator.tag(target, source, DamageNumberAggregator.Group.ATTACK);
         // 防御牌耐久:每次受到骰战攻击,防御方装备的所有防御牌各扣 1 点(仅在对骰成立时)
         if (opposed) {
             consumeAllDefenseCardDurability(target);
+        }
+    }
+
+    /**
+     * F7(2026-10-27 近战审计):修女(alana)被动「单次受击 >10 清空全部加成」的判定。
+     *
+     * <p>原判据挂在 {@code event/NewSignEvents}(非骰战)与玩家攻击路径上,读的是护甲前原版值;
+     * 骰战以自算终值覆盖式写入后该值已无意义(近战骰战下几乎永不触发)。故改为按<b>落地红心量</b>判定,
+     * 并放在两条骰战路径的共同出口:玩家攻击({@code event.setNewDamage} 之后)与生物近战
+     * ({@link #resolveMobMeleeAttack})。
+     *
+     * @param landing 落地红心量(= 终值 - min(终值, 吸收余额))
+     */
+    private static void applyAlanaBigHit(LivingEntity target, float landing) {
+        if (target instanceof Player victim && landing > 10.0F
+                && ModAttachments.getAlanaPassiveBonus(victim) > 0) {
+            com.merlinkitsune.astral_dice.item.sign.AlanaSignItem.clearBonus(victim);
         }
     }
 
@@ -1461,13 +1540,15 @@ public class DiceCombatEvents {
     // 标记效果自然结束时:每分钟减少 1 层标记(层数>1 时重新施加并重置计时,否则标记消失)
 
     /** 狂暴「伤害增加」真伤段的**重入闸门**:该段真伤自身也会派发伤害事件 ⇒ 不加闸门会无限递归。
-     *  与 {@code DamageEffectCardHandler} 的法伤真伤段同范式(ThreadLocal,只覆盖本处理器自己发起的那一次)。 */
+     *  只覆盖本处理器自己发起的那一次 hurt。(法伤加成段已于 2026-10-27 折叠为单次结算,
+     *  不再有它自己的 ThreadLocal;本闸门仍由本段反噬独占。) */
     private static final ThreadLocal<Boolean> BERSERK_BACKLASH_APPLYING =
             ThreadLocal.withInitial(() -> Boolean.FALSE);
 
     // 「伤害增加」口径(2026-10-02 用户裁决):狂暴的「受到任意伤害 +1/层」**不再并入本次伤害**
     // (并入会被护甲/保护/抗性削减,并被磨刀石等固定点数减伤吃掉),改为**独立真伤段** ——
-    // 与 DamageEffectCardHandler 的法伤加成同范式(重入闸门 + ModDamageTypes.unreducibleDamage)。
+    // 范式 = 「ThreadLocal 重入闸门 + 独立伤害源」;法伤加成段已于 2026-10-27 折叠进单次结算,
+    // 本段反噬仍保留自己的独立真伤(见下方闸门)。
     // ⚠️ 该段登记 bypasses_armor/enchantments/resistance ⇒ 护甲/保护/抗性全跳过;
     //    并被 ChipDamageHandler 识别为「不可削减」⇒ 磨刀石 -2 与怪力侦探立牌 -N 也跳过;
     //    **保命**机制仍对这一段独立结算(安全气囊/不死图腾/末影骰子/磨刀石「不可被一次击倒」)。
@@ -1475,6 +1556,17 @@ public class DiceCombatEvents {
     public static void onBerserkDamageTaken(LivingDamageEvent.Pre event) {
         LivingEntity target = event.getEntity();
         if (target.level().isClientSide()) return;
+        // N7(2026-10-27,与 1.20.1 线同步):内部波及(AOE 顺劈/溅射/法伤波及)**不触发**狂暴反噬。
+        // 理由:它们是「本次受击的派生物」而非新的受击事实 —— AOE 扫 N 个目标就会反向开 N 段反噬
+        // (审计 §2 不变量⑤:惩罚伤害只随真实受击发生,且必须走 hurt())。
+        // 2026-10-27 方案 A 折叠后,法伤加成已并进同一事件、不再有「同一击的第二次 hurt」⇒
+        // 原先这里那道 `DamageEffectCardHandler.isApplyingTrueBonus()` 闸门失去判据,已删除。
+        // 下面的 BERSERK_BACKLASH_APPLYING 重入闸门必须保留:反噬自己 hurt() 出来的
+        //    unreducibleDamage **不在**上面那个窗口里(故意如此,否则反噬会把自己吞掉),
+        //    自递归只能靠 ThreadLocal 拦。
+        if (isInternalAoe()) {
+            return;
+        }
         if (BERSERK_BACKLASH_APPLYING.get()) return;
         var berserk = target.getEffect(ModEffects.BERSERK);
         if (berserk == null) return;
@@ -1515,7 +1607,12 @@ public class DiceCombatEvents {
             if (target instanceof Player cursed) {
                 float ratio = com.merlinkitsune.astral_dice.component.ModAttachments.getDiceCurseRatio(cursed);
                 if (ratio > 1.0f) {
-                    damage *= FateGuidanceCardItem.isFateGuidanceActive(attacker) ? (1.0 + (ratio - 1.0) * 0.5) : ratio;
+                    double curseFactor = FateGuidanceCardItem.isFateGuidanceActive(attacker) ? (1.0 + (ratio - 1.0) * 0.5) : ratio;
+                    double cursePre = damage;
+                    damage *= curseFactor;
+                    // AP_CURSE_APPLY(机制证据,2026-10-27):玩家攻击路径同样留读数(含命运指引半幅因子)。
+                    LOGGER.info("AP_CURSE_APPLY:channel=player:player={}:ratio={}:factor={}:pre={}:post={}",
+                            cursed.getName().getString(), ratio, curseFactor, cursePre, damage);
                 }
                 com.merlinkitsune.astral_dice.component.ModAttachments.setDiceCurseRatio(cursed, 1.0f);
             }
@@ -1529,11 +1626,10 @@ public class DiceCombatEvents {
         LivingEntity target = event.getEntity();
         if (target.level().isClientSide()) return;
         if (!target.hasEffect(ModEffects.WEAK_MARK)) return;
-        // 骰战攻击(攻击者赐福激活 + 佩戴骰子 + 近战):虚弱印记倍率已并入骰战结算,跳过以免双重应用
-        if (event.getSource().getEntity() instanceof Player attacker
-                && attacker.hasEffect(ModEffects.DICE_BLESSING)
-                && attackerHasDiceCurio(attacker)
-                && isMeleeWeaponAttack(attacker)) {
+        // 骰战攻击:虚弱印记倍率已并入骰战结算(玩家路径 :814-820 / 生物路径同上),跳过以免双重应用。
+        // F2(2026-10-27 近战审计):判据必须与骰战入口同源 —— 旧写法只认「玩家 + 赐福 + 骰子 + 近战」,
+        //   漏掉入口支持的「无骰玩家打赐福合法目标」分支,该分支会被乘两次(×1.21 / 命运指引激活 ×1.69)。
+        if (isDiceBattleSettledDamage(event.getSource(), target)) {
             return;
         }
         float multiplier = 1.10f;
@@ -1542,6 +1638,38 @@ public class DiceCombatEvents {
             multiplier += 0.20f;
         }
         event.setNewDamage(event.getNewDamage() * multiplier);
+    }
+
+    /**
+     * 「本次伤害是否已由骰战结算接管」(2026-10-27 近战审计 F2/F3,与 1.20.1 线同名同口径)。
+     *
+     * <p>用途:凡是在伤害管线里**再乘一次**的处理器(虚弱印记 ×1.10、命运的指引半幅、
+     * 立牌 +5)都必须跳过骰战,否则会与骰战内的同名因子叠乘。判据必须与骰战入口完全同源
+     * ({@link #resolveMobMeleeAttack} 与玩家路径的入口条件),否则「入口支持、判据漏掉」的分支
+     * 就会双乘 —— 历史缺陷:无骰玩家攻击骰神赐福合法目标时印记被乘两次(×1.21)。
+     *
+     * <p>判定顺序:<br>
+     * ① 客户端 / 内部波及(AOE 顺劈、溅射、法伤波及)与反击链中的伤害不是骰战本体 ⇒ false;<br>
+     * ② 直接伤害实体是玩家:必须近战武器、非**法伤**(法伤走 SpellDamageRegistry 加成链)、
+     *    不是自伤;装备骰子 ⇒ 看是否赐福激活(骰战入口同判据),未装备 ⇒ 看目标是否为
+     *    「骰神赐福合法目标」(入口的 diceStack == null 分支);<br>
+     * ③ 直接伤害实体是生物且目标是玩家 ⇒ 生物近战(守卫目标已装备骰子与否不影响入口)。<br>
+     * ④ 其余(投掷物 / 无直接实体 / 环境伤害)⇒ false。
+     */
+    public static boolean isDiceBattleSettledDamage(DamageSource source, LivingEntity target) {
+        if (source == null || target == null) return false;
+        if (target.level().isClientSide()) return false;
+        if (isInternalAoe() || isInCounterChain()) return false;
+        Entity direct = source.getDirectEntity();
+        if (direct instanceof Player attacker) {
+            if (!isMeleeWeaponAttack(attacker)) return false;
+            if (SpellDamageRegistry.isSpellDamage(source, direct)) return false;
+            if (attacker == target) return false;
+            return attackerHasDiceCurio(attacker)
+                    ? attacker.hasEffect(ModEffects.DICE_BLESSING)
+                    : isBlessingTarget(target, attacker);
+        }
+        return direct instanceof Mob && target instanceof Player;
     }
 
     // 玩家是否持有骰子(curio 骰子槽)
@@ -1751,6 +1879,11 @@ public class DiceCombatEvents {
      *       ∪「非同队伍、且曾主动攻击过该玩家」的玩家)。</li>
      * </ol>
      *
+     * <p><b>2026-10-27(P2-5) 增补</b>:在此之上再排除**本模组自身产出的惩罚类伤害类型**——
+     * {@code ModDamageTypes.UNREDUCIBLE_DAMAGE}(狂暴反噬 / 事件牌惩罚)与 {@code ModDamageTypes.CARD_COST}
+     * (「王之力」的使用代价)。这些伤害带着攻击者归属只为跳字与统计,**并不代表「被敌对目标打了」**:
+     * 若不排除,同一次受击会因紧随其后的反噬**再触发一遍**受击被动(立牌 onHurt / BufferShield / Papara 回血)。
+     *
      * <p>消费者:{@link BaseSignItem#invokeHurtHooks}(立牌受击被动)、
      * {@code item/chip/BufferShieldChipItem#onHurt}、{@code item/sign/PaparaSignItem#onPaparaBiteHurtHeal}。
      * <p>不额外判 {@code amount > 0} —— 与本模组受击钩子的既有约定一致(该数值仅用于「是否受击」判定;
@@ -1758,6 +1891,20 @@ public class DiceCombatEvents {
      */
     public static boolean isHostileAttack(Player player, DamageSource source) {
         if (player == null || source == null) return false;
+        // 2026-10-27(P2-5):本模组**自身的惩罚类伤害**不算「敌对目标的攻击」(两线与 P1 线口径见下)。
+        //   反噬(onBerserkDamageTaken)与事件牌惩罚(EventEffects#hurtAsEventCardPenalty)都走
+        //   unreducible_damage、且攻击者归属 = 原攻击者;卡代价(card_cost)的攻击者恒为使用者本人
+        //   (本已被下面 attacker == player 拦掉,这里纳入只为让「惩罚类伤害」在闸门上**成文**)。
+        //   不排除的后果:原击已触发过一次受击被动,反噬落在同一次受击流程里会**再触发一遍**;
+        //   牌惩罚在 PvP 里也会被误算成「被人打了」。
+        // A3(2026-10-27 近战审计):额外加伤段(extra_damage)是骰战主伤害的**派生物**(嵌套 hurt,
+        //   directEntity = null、entity = 攻击者)⇒ 同一次攻击会因此再触发一遍受击被动(立牌 onHurt /
+        //   BufferShield 回血 / Papara 回血)。与上面的惩罚类伤害同理,不属于「新的受击事实」。
+        if (source.is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.UNREDUCIBLE_DAMAGE)
+                || source.is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.CARD_COST)
+                || source.is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.EXTRA_DAMAGE)) {
+            return false;
+        }
         if (!(source.getEntity() instanceof LivingEntity attacker)) return false;
         if (attacker == player) return false;
         return PartyRelations.isHostileTo(player, attacker);
@@ -1915,6 +2062,11 @@ public class DiceCombatEvents {
     // 2026-10-08 起同时被安全气囊筹码复用(见 item/chip/AirbagChipItem#counterAttacker) ⇒ 提升为 public。
     public static void injectCounterDamage(Player player, LivingEntity attacker) {
         if (isInCounterChain()) return;
+        // MELEE-07(2026-10-27 用户裁决):一次挥击只结算一次反击。
+        //   同一次命中可能派发多个伤害事件(本模组额外加伤段的嵌套 hurt / 第三方多段攻击)，
+        //   嘲讽、破绽闪避、鼠鼠护盾、安全气囊共用本出口 ⇒ 不去重就会对同一挥击注入多次反击。
+        //   按「攻击者 + 受害者」在 1 刻窗口内只放行一次；反击伤害本身在 isInCounterChain() 内，不会自我递归。
+        if (!DeathTriggerGuard.claimPair(attacker, player, "counter")) return;
         // 整个「反击伤害计算 + 注入」都必须落在反击链内:计算过程本身也会造成伤害——
         // computeCounterDamage → rollCombatDie → CrimsonDiceHandler.rollD6 掷出 1 时会对掷骰者
         // 本人施加 6 点 astral_dice:dice_damage(CrimsonDiceHandler.java:63-65)。若把计算留在

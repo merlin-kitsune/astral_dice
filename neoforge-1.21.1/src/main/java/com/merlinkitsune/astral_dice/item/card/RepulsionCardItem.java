@@ -3,7 +3,9 @@ package com.merlinkitsune.astral_dice.item.card;
 import com.merlinkitsune.astral_dice.audio.SoundPlayback;
 import com.merlinkitsune.astral_dice.entity.ModEntityTypes;
 import com.merlinkitsune.astral_dice.entity.RepulsionEntity;
+import com.merlinkitsune.astral_dice.item.RepulsionItem;
 import com.merlinkitsune.astral_dice.item.RepulsionPlacement;
+import com.merlinkitsune.astral_dice.item.sign.LinglingSignManager;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -95,6 +97,19 @@ public class RepulsionCardItem extends BaseEffectCardItem {
     @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
+        // 2026-10-27 用户裁决：强化拒止必须依附「怪力乱神」立牌。
+        // 未装备立牌 ⇒ 拦下本次使用；服务端若发现手里还是**卡牌形态**（异常残留 / 刚被别人塞过来），
+        // 就地换回等张数路障，保证「未装备立牌的玩家手上不该有强化拒止卡」。
+        if (!LinglingSignManager.hasSign(player)) {
+            if (!level.isClientSide) {
+                player.displayClientMessage(
+                        Component.translatable(RepulsionItem.MSG_NEED_SIGN).withStyle(ChatFormatting.RED), true);
+                if (LinglingSignManager.isRepulsion(stack)) {
+                    player.setItemInHand(hand, LinglingSignManager.toBarricade(stack));
+                }
+            }
+            return InteractionResultHolder.fail(stack);
+        }
         if (resolvePlacement(level, player) == null) {
             if (!level.isClientSide) {
                 player.displayClientMessage(

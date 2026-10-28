@@ -1,18 +1,13 @@
 package com.merlinkitsune.astral_dice.event;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
-import com.merlinkitsune.astral_dice.damage.ModDamageTypes;
 import com.merlinkitsune.astral_dice.item.sign.LinglingSignManager;
 
-import net.minecraft.world.damagesource.DamageSource;
-import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.event.entity.item.ItemTossEvent;
-import net.minecraftforge.event.entity.living.LivingHurtEvent;
 import net.minecraftforge.event.entity.player.EntityItemPickupEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 
 /**
@@ -29,14 +24,9 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
  *       数量守恒、不吞物品、不复制。</li>
  *   <li><b>§4.5 丢出</b>:{@code ItemTossEvent} 在掉落物**入世之前**派发(照
  *       {@code event/TemporaryCardEvents} 用法),此时 {@code entity.setItem(...)} 即完成「入世前替换」。</li>
- *   <li><b>§4.7 攻击被吸附目标 +5</b>:1.20.1 Forge <b>没有</b> {@code LivingDamageEvent.Pre},
- *       其 {@code LivingDamageEvent} 派发在<b>吸收/黄心之后</b>(本线 {@code DiceCombatEvents} 注释多处
- *       明写)⇒ 改挂 {@code LivingHurtEvent} —— 它是「护甲之后、吸收之前」的同一阶段,与 1.21.1 的
- *       {@code LivingDamageEvent.Pre} <b>等价</b>(先例 {@code RenShieldManager.java:399-408} 已固证)。
- *       <b>判据集与蓝本逐条一致</b>:佩戴者<b>本人造成的任意伤害</b>(近战 / 远程 / 法术都算,
- *       <b>不做近战限定</b>)· 目标被<b>任意</b>归属的强化拒止吸附 · 排除 {@code EXTRA_DAMAGE} 防递归。
- *       落地方式 = <b>就在同一次伤害上做加法</b>({@code event.setAmount(event.getAmount() + 5)},
- *       照 {@code ChipDamageHandler} 先例):<b>不嵌套新伤害、不清 i-frame、不绕过护甲</b>。</li>
+ *   <li><b>§4.7 攻击被吸附目标 +5</b>：<b>2026-10-27 用户裁决</b> ⇒ 该加成<b>只</b>在骰战结算里加
+ *       ({@code combat/DiceCombatEvents} 玩家攻击分支的最终伤害段)，法伤 / 技能 / 远程 / 环境等
+ *       非骰战伤害一律不再叠加；本文件不再挂任何伤害事件。</li>
  * </ul>
  */
 @net.minecraftforge.fml.common.Mod.EventBusSubscriber(modid = AstralDiceMod.MODID)
@@ -51,8 +41,21 @@ public final class LinglingSignEvents {
     public static void onItemPickup(EntityItemPickupEvent event) {
         Player player = event.getEntity();
         if (player.level().isClientSide) return;
-        if (!LinglingSignManager.isEquipped(player)) return;
+        // 2026-10-27 用户裁决：立牌离身时拾取到的强化拒止卡牌要立即变回路障（不等下一个 10t 对账）。
+        // Forge 的 EntityItemPickupEvent 在**入包之前**派发（见本类 §4.2 说明）：直接改掉落物内容，
+        // 让它以路障形态入包，规则①的「立即」才算成立。
+        LinglingSignManager.reconcileInventory(player);
         ItemEntity itemEntity = event.getItem();
+        if (!LinglingSignManager.hasSign(player)) {
+            ItemStack picked = itemEntity.getItem();
+            if (LinglingSignManager.isRepulsion(picked)) {
+                itemEntity.setItem(LinglingSignManager.toBarricade(picked));
+            }
+            return;
+        }
+        // 立牌在位仍需骰子才恢复「路障 ⇒ 强化拒止」的入包转换（与 neo 的同名判断一致，也和本文件
+        // onItemToss 的 isEquipped 口径对齐）——本批只改「没有立牌」那一支，不放开骰子前提。
+        if (!LinglingSignManager.isEquipped(player)) return;
         ItemStack stack = itemEntity.getItem();
         if (!LinglingSignManager.isBarricade(stack)) return;
         // 只换掉落物内容(数量不变);不取消拾取、不入背包、不丢弃 ⇒ 原版随后正常入包
@@ -72,22 +75,8 @@ public final class LinglingSignEvents {
         entity.setItem(LinglingSignManager.toBarricade(stack));
     }
 
-    // ── §4.7 攻击被吸附目标 +5(佩戴者本人造成的**任意**伤害,不限近战) ───────────
+    // ── §4.7 攻击被吸附目标 +5：2026-10-27 用户裁决后只在骰战结算里加 ─────────────
 
-    @SubscribeEvent(priority = EventPriority.LOWEST)
-    public static void onLivingHurt(LivingHurtEvent event) {
-        if (event.isCanceled()) return;
-        LivingEntity target = event.getEntity();
-        if (target == null || target.level().isClientSide) return;
-        DamageSource source = event.getSource();
-        if (source == null) return;
-        // 防递归:本模组派生的额外伤害段不再叠加
-        if (source.is(ModDamageTypes.EXTRA_DAMAGE)) return;
-        // 判据集与蓝本逐条一致:佩戴者「本人」造成的任意伤害(近战/远程/法术),不做近战限定
-        if (!(source.getEntity() instanceof Player player)) return;
-        if (!LinglingSignManager.isEquipped(player)) return;
-        if (!LinglingSignManager.isTrackedByAny(target)) return;
-        // 就在同一次伤害上做加法(不嵌套新伤害、不清 i-frame、不绕过护甲;照 ChipDamageHandler 先例)
-        event.setAmount(event.getAmount() + LinglingSignManager.TRACKED_TARGET_BONUS_DAMAGE);
-    }
+    // 本文件只做拾取(§4.2)与丢出(§4.5)两条转换。骰战路径的 +5 已并入骰战终值，
+    // 非骰战（法伤 / 技能 / 远程 / 环境）不再叠加（用户裁决：限定必须为骰战）。
 }

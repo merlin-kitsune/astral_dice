@@ -167,10 +167,8 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         //    ⚠️ 判据用 isSelectingByKey:「手持即选择」会话不算「本次主动开了会话」,否则玩家握着效果牌
         //    放技能时会被误判 ⇒ 冷却/锁定与电流核心充能**全部不生效**。
         if (!com.merlinkitsune.astral_dice.target.TargetSelectionManager.isSelectingByKey(player)) {
-            // 诡异骰子:立牌主动冷却 -50%
             // 强制冷却(规格 §3.4):{@code forcedActiveCooldownTicks() > 0} 的立牌(当前无实现者)
-            // **直接使用该值**,完全不经过 WeirdDiceHandler.signCooldownTicks ⇒ 诡异骰子的 -50%、
-            // 充能封顶、命运的指引及其它任何减免一律无效(硬闸门同时在冷却判定侧生效)。
+            // **直接使用该值**,完全不经过 WeirdDiceHandler.signCooldownTicks ⇒ 充能封顶、命运的指引及其它任何减免一律无效(硬闸门同时在冷却判定侧生效)。
             int forcedCooldown = sign.forcedActiveCooldownTicks();
             int signCooldownTicks = forcedCooldown > 0
                     ? forcedCooldown
@@ -372,8 +370,7 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
      * 本立牌主动技能的**强制冷却**时长(tick)。
      *
      * <p>返回 {@code > 0} 时,{@link #performSkill} 第 6 步(冷却入账;规格 §3.4 记作第⑧步)
-     * **直接使用该值**,**不经过** {@code WeirdDiceHandler.signCooldownTicks} ⇒ 诡异骰子(-50%)、
-     * 充能封顶、命运的指引及其它任何减免一律无效(规格 §3.4 冻结口径;当前无实现者 —— 蛟龙立牌 mamushi
+     * **直接使用该值**,**不经过** {@code WeirdDiceHandler.signCooldownTicks} ⇒ 充能封顶、命运的指引及其它任何减免一律无效(规格 §3.4 冻结口径;当前无实现者 —— 蛟龙立牌 mamushi
      * 已改为「锁定 1:00 + 锁定结束无额外冷却」,见 {@link #skipCooldownAfterLock()})。
      *
      * <p>缺省 0 = 无强制冷却(其余立牌走原流程,行为逐字不变)。
@@ -385,7 +382,7 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
     /**
      * 本立牌主动技能的**基础冷却 tick**(仍受既有减免链影响)。
      *
-     * <p>缺省 = 全局口径 {@code WeirdDiceHandler.signCooldownTicks(player)}(含充能封顶、诡异骰子 −50%
+     * <p>缺省 = 全局口径 {@code WeirdDiceHandler.signCooldownTicks(player)}(含充能封顶、额外电池筹码
      * 等全部既有减免)⇒ **其余立牌行为逐字不变**。个别立牌需要**自己的基础值**时覆写本方法
      * (当前实现者:怪力侦探立牌 sherry = 120 秒,与枪匠立牌同款链)。
      *
@@ -495,6 +492,14 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
      * 佩戴本立牌的玩家被**敌对目标攻击**时触发(由 {@link #invokeHurtHooks} 分发,并在此统一过闸门)。
      * 环境伤害(摔落 / 仙人掌 / 着火 / 饥饿…)与自伤**不算**(2026-09-29 用户裁决)。
      * 子类覆写以实现受击类被动(如史莱姆立牌的受击 +1 治愈)。
+     *
+     * <p><b>{@code amount} 口径(2026-10-27 近战审计 D3;2026-10-27 复核订正)</b>:两条线**不同** ——
+     * 本线(neo)传的是 {@code LivingDamageEvent.Pre#getNewDamage()}(护甲 / 药水之后、**吸收之前**);
+     * forge 线传的是 {@code LivingDamageEvent#getAmount()}(护甲 / 药水 / 吸收已结算、骰战覆盖之前的平台值)。
+     * 另有闪避取消路径传入的是 {@code LivingAttackEvent} 的**未减免原始值**。
+     * 该数值只用于「是否受击」这类开关判定,<b>禁止</b>拿它做数值计算 —— 落地终值以骰战自算值为准
+     * (neo 是 {@code DiceCombatEvents#onLivingDamagePre} 写入的 setNewDamage;forge 是
+     * {@code DiceCombatEvents#settleDiceDamage} 的返回值,两者都已扣过吸收)。
      */
     protected void onHurt(Player player, DamageSource source, float amount) {
     }

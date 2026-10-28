@@ -6,6 +6,7 @@ import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.event.entity.item.ItemTossEvent;
+import net.minecraftforge.event.entity.player.EntityItemPickupEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,5 +59,31 @@ public class TemporaryCardEvents {
             LOGGER.warn("[Astral Dice][TemporaryCard] 背包放不下,临时牌已销毁(不落地): player={} item={}",
                     player.getName().getString(), toReturn);
         }
+    }
+
+    /**
+     * 拾取即清(2026-10-27 用户裁决:临时牌只能由获得者持有)。
+     *
+     * <p>1.20.1 的 {@code EntityItemPickupEvent} 在**入包之前**派发(见本类 §4.2 时序说明),
+     * 但**只清空实体上的栈是不够的**:{@code ItemEntity#playerTouch} 在事件返回前已经把
+     * {@code getItem()} 取进了局部变量 {@code itemstack},后续 {@code entity.getInventory().add(itemstack)}
+     * 用的仍是那份引用 ⇒ 必须同时取消事件(取消后 {@code playerTouch} 直接返回 -1,既不进背包也不记
+     * {@code ITEM_PICKED_UP} 统计)。因此本处理器先取消、再清空栈 + {@code discard()}:无主 / 他人的
+     * 临时牌既入不了包,也不在世界里留一张看得见摸不到的牌。获得者本人拾取自己的牌不受影响。
+     */
+    @SubscribeEvent
+    public static void onItemPickup(EntityItemPickupEvent event) {
+        Player player = event.getEntity();
+        if (player == null || player.level().isClientSide) return;
+        ItemEntity itemEntity = event.getItem();
+        if (itemEntity == null) return;
+        ItemStack picked = itemEntity.getItem();
+        if (!TemporaryCardUtil.isIllegalHold(picked, player)) return;
+        // 先取消:playerTouch 已在事件前把栈取进局部变量,不取消就会照样入包(见方法 javadoc)
+        event.setCanceled(true);
+        itemEntity.setItem(ItemStack.EMPTY);
+        itemEntity.discard();
+        LOGGER.debug("[Astral Dice][TemporaryCard] 拾取到非本人临时牌,已就地销毁: player={} item={}",
+                player.getName().getString(), picked);
     }
 }

@@ -5,6 +5,7 @@ import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import com.merlinkitsune.astral_dice.entity.ModEntityTypes;
 import com.merlinkitsune.astral_dice.entity.RepulsionEntity;
 import com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil;
+import com.merlinkitsune.astral_dice.item.sign.LinglingSignManager;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -55,6 +56,8 @@ public class RepulsionItem extends Item {
     public static final String MSG_INVALID = "msg.astral_dice.repulsion_invalid";
     public static final String MSG_PLACED = "msg.astral_dice.repulsion_placed";
     public static final String MSG_NOT_OWNER = "msg.astral_dice.repulsion_not_owner";
+    /** 未装备「怪力乱神」立牌时的动作栏提示（2026-10-27 用户裁决）。 */
+    public static final String MSG_NEED_SIGN = "msg.astral_dice.repulsion_need_sign";
     /** 实体每次被玩家近战命中时的动作栏提示（参数：还需次数）。 */
     public static final String MSG_HIT = "msg.astral_dice.repulsion_hit";
     /** 回收成功时的动作栏提示（参数：耐久 / 满耐久）。 */
@@ -96,8 +99,10 @@ public class RepulsionItem extends Item {
      * @param elapsedTicks 实体已存活 tick
      * @param chargeGiven  该座力场已发放的充能层数
      * @param owner        力场放置者（{@code null} = 未登记 ⇒ 不写 owner）
+     * @param ownerName    放置者显示名（{@code null} / 空串 ⇒ 不写，tooltip 显示「未知」）
      */
-    public static ItemStack createRecovered(float health, long elapsedTicks, int chargeGiven, UUID owner) {
+    public static ItemStack createRecovered(float health, long elapsedTicks, int chargeGiven, UUID owner,
+            String ownerName) {
         ItemStack stack = new ItemStack(ModItems.REPULSION.get());
         ModDataComponents.REPULSION_HEALTH.set(stack,
                 Math.max(0, Math.min(MAX_DURABILITY, Math.round(health))));
@@ -108,6 +113,9 @@ public class RepulsionItem extends Item {
         if (owner != null) {
             ModDataComponents.OWNER_UUID.set(stack, Optional.of(owner));
         }
+        if (ownerName != null && !ownerName.isEmpty()) {
+            ModDataComponents.OWNER_NAME.set(stack, ownerName);
+        }
         return stack;
     }
 
@@ -116,6 +124,14 @@ public class RepulsionItem extends Item {
     @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
+        // 立牌依附闸门（2026-10-27 用户裁决）：未装备「怪力乱神」立牌 ⇒ 不能放置
+        if (!LinglingSignManager.hasSign(player)) {
+            if (!level.isClientSide) {
+                player.displayClientMessage(
+                        Component.translatable(MSG_NEED_SIGN).withStyle(ChatFormatting.RED), true);
+            }
+            return InteractionResultHolder.fail(stack);
+        }
         // 专属：只有获得者（或尚未绑定的持有者）能放置
         if (!ExclusiveCardUtil.canUse(player, stack)) {
             if (!level.isClientSide) {

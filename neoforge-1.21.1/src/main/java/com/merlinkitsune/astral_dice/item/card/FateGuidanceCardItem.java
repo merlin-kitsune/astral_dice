@@ -16,6 +16,8 @@ import net.minecraft.world.item.ItemStack;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import net.neoforged.bus.api.SubscribeEvent;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * 命运的指引(专属功能效果牌,击杀带虚弱印记的目标获取)。
@@ -31,6 +33,9 @@ import net.neoforged.bus.api.SubscribeEvent;
  */
 @EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class FateGuidanceCardItem extends BaseEffectCardItem {
+
+    // 七咒倍率机制证据通道(AP_CURSE_RATIO):仅在捕获到 >1 倍率时输出。
+    private static final Logger LOGGER = LoggerFactory.getLogger(FateGuidanceCardItem.class);
 
     public FateGuidanceCardItem(Properties properties) {
         super(properties);
@@ -122,12 +127,17 @@ public class FateGuidanceCardItem extends BaseEffectCardItem {
         float ratio = current > original ? current / original : 1.0f;
 
         // 是否骰战攻击(骰战攻击的最终伤害由骰战接管,此处仅捕获倍率,不修改伤害链)
-        boolean diceCombat = event.getSource().getEntity() instanceof Player attacker
-                && attacker.hasEffect(ModEffects.DICE_BLESSING)
-                && DiceCombatEvents.attackerHasDiceCurio(attacker)
-                && DiceCombatEvents.isMeleeWeaponAttack(attacker);
+        // F3(2026-10-27 近战审计):判据与骰战入口同源 —— 旧写法只认「玩家 + 赐福 + 骰子 + 近战」,
+        //   漏掉入口支持的无骰分支 ⇒ 该分支的半幅写入被骰战整段覆盖、ratio 又被清成 1.0(倍率丢失)。
+        boolean diceCombat = DiceCombatEvents.isDiceBattleSettledDamage(event.getSource(), player);
         if (diceCombat) {
             com.merlinkitsune.astral_dice.component.ModAttachments.setDiceCurseRatio(player, ratio);
+            // AP_CURSE_RATIO(机制证据,2026-10-27):仅当神秘遗物实际放大了本次伤害(ratio>1)时输出,
+            // 证明「模组倍率被捕获 / 捕获值多少」;正常游玩(未戴七咒)零噪声。
+            if (ratio > 1.0f) {
+                LOGGER.info("AP_CURSE_RATIO:player={}:original={}:current={}:ratio={}",
+                        player.getName().getString(), original, current, ratio);
+            }
             return;
         }
 

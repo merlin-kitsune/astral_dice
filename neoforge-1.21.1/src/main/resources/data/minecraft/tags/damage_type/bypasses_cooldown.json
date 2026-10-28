@@ -5,6 +5,7 @@
     "astral_dice:extra_damage",
     "astral_dice:card_cost",
     "astral_dice:unreducible_damage",
-    "astral_dice:card_spell"
+    "astral_dice:card_spell",
+    "astral_dice:dice_damage"
   ]
 }

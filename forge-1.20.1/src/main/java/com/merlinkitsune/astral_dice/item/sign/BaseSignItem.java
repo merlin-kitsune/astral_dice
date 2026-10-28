@@ -174,7 +174,7 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
             //   时长本身无效 —— 闸门由第 1 步的 forcedCooldownUntil 覆盖,不依赖本笔入账)。
             //   缺省实现恒为 0 ⇒ 其余立牌走下方基础冷却。
             // ★ 基础冷却(2026-09-21 怪力侦探立牌 sherry):activeCooldownBaseTicks = **自定义基础值、
-            //   仍走既有减免链**(缺省实现 = WeirdDiceHandler.signCooldownTicks 的诡异骰子 −50% 原口径)
+            //   仍走既有减免链**(缺省实现 = WeirdDiceHandler.signCooldownTicks 的充能封顶 + 额外电池筹码口径)
             //   ⇒ 未覆写者与改动前逐字相同。
             int forced = sign.forcedActiveCooldownTicks();
             int signCooldownTicks = forced > 0
@@ -390,7 +390,7 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
     /**
      * 本立牌主动技能的**基础冷却 tick**(仍受既有减免链影响)。
      *
-     * <p>缺省 = 全局口径 {@code WeirdDiceHandler.signCooldownTicks(player)}(含充能封顶、诡异骰子 −50%
+     * <p>缺省 = 全局口径 {@code WeirdDiceHandler.signCooldownTicks(player)}(含充能封顶、额外电池筹码
      * 等全部既有减免)⇒ **其余立牌行为逐字不变**。个别立牌需要**自己的基础值**时覆写本方法
      * (当前实现者:怪力侦探立牌 sherry = 120 秒,与枪匠立牌同款链)。
      *
@@ -525,6 +525,13 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
      * 佩戴本立牌的玩家被**敌对目标攻击**时触发(由 {@link #invokeHurtHooks} 分发,并在此统一过闸门)。
      * 环境伤害(摔落 / 仙人掌 / 着火 / 饥饿…)与自伤**不算**(2026-09-29 用户裁决)。
      * 子类覆写以实现受击类被动(如史莱姆立牌的受击 +1 治愈)。
+     *
+     * <p><b>{@code amount} 口径(2026-10-27 近战审计 D3;2026-10-27 复核订正)</b>:两条线**不同** ——
+     * 本线(forge)传的是 {@code LivingDamageEvent#getAmount()}(护甲 / 药水 / 吸收已结算、骰战覆盖之前的平台值);
+     * neo 线传的是 {@code LivingDamageEvent.Pre#getNewDamage()}(护甲 / 药水之后、**吸收之前**)。
+     * 另有闪避取消路径传入的是 {@code LivingAttackEvent} 的**未减免原始值**。
+     * 该数值只用于「是否受击」这类开关判定,<b>禁止</b>拿它做数值计算 —— 落地终值以骰战自算值为准
+     * (本线是 {@code DiceCombatEvents#settleDiceDamage} 的返回值,已扣过吸收)。
      */
     protected void onHurt(Player player, DamageSource source, float amount) {
     }

@@ -67,7 +67,7 @@ public class HaiqingSignItem extends BaseSignItem {
                 ModAttachments.setWeakMarkSource(target, Optional.of(player.getUUID()));
                 PlayerEffectProtection.apply(target, new MobEffectInstance(ModEffects.WEAK_MARK, 6000, 0, false, true));
                 PlayerEffectProtection.apply(target, new MobEffectInstance(MobEffects.WEAKNESS, 6000, 0, false, true));
-                // 主动成功施加:开始玩家级冷却(统一经 signCooldownTicks:含诡异骰子 -50% 与充能递减)
+                // 主动成功施加:开始玩家级冷却(统一经 signCooldownTicks:含充能封顶与额外电池筹码减成)
                 ModAttachments.setSignActiveCooldownEnd(player,
                         player.level().getGameTime() + WeirdDiceHandler.signCooldownTicks(player));
                 // 冷却口径一致(2026-10-22 补):记录本次实际最大冷却,供「瞬时冷却」/减免换算剩余比例
@@ -126,6 +126,9 @@ public class HaiqingSignItem extends BaseSignItem {
         if (target.level().isClientSide()) return;
         if (!target.hasEffect(ModEffects.WEAK_MARK)) return;
         Optional<UUID> source = ModAttachments.getWeakMarkSource(target);
+        // 同一次死亡的第二次派发不再重复结算：法伤加成 / 额外加伤都以**嵌套 hurt** 结算，致死时
+        // 内层 die() 与外层 die() 会各派发一次 LivingDeathEvent（平台把该事件挂在 !dead 守卫之前）。
+        if (!com.merlinkitsune.astral_dice.combat.DeathTriggerGuard.claim(event.getEntity(), "weak_mark")) return;
         if (source.isEmpty()) return;
         if (target.level().getPlayerByUUID(source.get()) instanceof Player applier) {
             // 只判定击杀者:非玩家击杀(如其它生物)时不发放「命运的指引」

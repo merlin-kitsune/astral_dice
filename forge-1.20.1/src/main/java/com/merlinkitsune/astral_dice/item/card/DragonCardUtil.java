@@ -267,7 +267,7 @@ public final class DragonCardUtil {
                 runningCost += roarCost;
             }
             // 耐久口径(两线统一,见方法注释 F2):写回为龙之咆哮的**满耐久**;临时牌标记原样保留
-            kept.add(new AppliedStone(TYPE_DRAGON_ROAR, MamushiSignItem.ROAR_USES, stone.temporary()));
+            kept.add(new AppliedStone(TYPE_DRAGON_ROAR, MamushiSignItem.ROAR_USES, stone.temporary(), stone.owner()));
             converted++;
         }
         if (converted <= 0 && dropped <= 0) return 0;

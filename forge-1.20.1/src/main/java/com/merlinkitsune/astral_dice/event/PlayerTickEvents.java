@@ -114,6 +114,11 @@ public class PlayerTickEvents {
         if (!diceGated) com.merlinkitsune.astral_dice.item.sign.HannaSignItem.tickPassing(player);
         // 怪力乱神立牌(lingling)被动:每 10t 一次(§4.4 手持路障转换节流 / §4.6 额外充能层重算 /
         // §5 实时修饰器刷新)。放在 % 20 早退**之前**;方法本身幂等(Forge 每 tick 发两次本事件)。
+        // 立牌依附对账（2026-10-27 用户裁决）：每 10t 让「强化拒止卡牌 / 物品」与立牌在位状态一致。
+        // 与骰子闸门无关 —— 立牌离身就是失去依附，换骰子不算。
+        if (player.tickCount % 10 == 0) {
+            com.merlinkitsune.astral_dice.item.sign.LinglingSignManager.reconcileInventory(player);
+        }
         if (!diceGated && player.tickCount % 10 == 0) {
             com.merlinkitsune.astral_dice.item.sign.LinglingSignManager.tickPassive(player);
         }

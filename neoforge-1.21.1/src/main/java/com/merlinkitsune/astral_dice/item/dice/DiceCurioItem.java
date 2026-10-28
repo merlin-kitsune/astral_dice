@@ -17,6 +17,7 @@ import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.astral_dice.item.ModItems;
+import com.merlinkitsune.starengine.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.item.sign.MimiSignItem;
 
 public class DiceCurioItem extends Item implements ICurioItem {
@@ -40,10 +41,10 @@ public class DiceCurioItem extends Item implements ICurioItem {
         return DiceTierRegistry.isDice(stack);
     }
 
-    // 卡牌放置栏总槽位数:由"卡牌配置星级"决定,与骰子品阶无关——0★=4(攻防各2)、1★=6(各3)、
-    // 2★=8(各4)、3★=12(各6);星级超出 0-3 时按最近档钳制。
-    // 下界之星骰子(T4):卡牌槽与费用点数始终按最高档 3★ 配置(12 格 / 费用上限各 6)。
-    private static final int[] CARD_SLOTS_BY_STAR = {4, 6, 8, 12};
+    // 卡牌放置栏总槽位数**由骰子品质(品阶)决定,与星级无关**(用户裁决 2026-10-28):
+    // 基础 4(各 2) / T1 8(各 4) / T2 10(各 5) / T3 12(各 6) / T4 12(各 6),
+    // 由 {@link DiceTier#cardSlots()} 逐骰子登记;星级只影响费用上限与赐福强度。
+    // 未登记的骰子(理论上不存在)回退 GameplayConstants.CARD_SLOTS_TOTAL。
 
     /** 卡牌配置星级:下界之星骰子恒为 3★(最高档),其余骰子取实际星级 */
     public static int configStarLevel(ItemStack stack) {
@@ -54,7 +55,8 @@ public class DiceCurioItem extends Item implements ICurioItem {
     }
 
     public static int getCardSlots(ItemStack stack) {
-        return CARD_SLOTS_BY_STAR[configStarLevel(stack)];
+        DiceTier tier = DiceTierRegistry.get(stack);
+        return tier != null ? tier.cardSlots() : GameplayConstants.CARD_SLOTS_TOTAL;
     }
 
     @Override

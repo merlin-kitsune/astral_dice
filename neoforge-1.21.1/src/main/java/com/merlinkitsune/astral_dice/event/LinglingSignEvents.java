@@ -1,24 +1,19 @@
 package com.merlinkitsune.astral_dice.event;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
-import com.merlinkitsune.astral_dice.damage.ModDamageTypes;
 import com.merlinkitsune.astral_dice.item.sign.LinglingSignManager;
 
-import net.minecraft.world.damagesource.DamageSource;
-import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.item.ItemTossEvent;
-import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
 import net.neoforged.neoforge.event.entity.player.ItemEntityPickupEvent;
 
 /**
  * 怪力乱神立牌（{@code lingling}）的被动事件面：拾取转换（§4.2）、丢出转换（§4.5）、
- * 「攻击被吸附目标 +5 伤害」（§4.7）。购买转换（§4.3）在 {@code CardShopMenu}、
+ * 「骰战攻击被吸附目标 +5 伤害」（§4.7，2026-10-27 起只在骰战结算里加，非骰战不再叠加）。购买转换（§4.3）在 {@code CardShopMenu}、
  * 手持转换与 10t 被动刷新在 {@code PlayerTickEvents} / {@code LinglingSignItem#onCurioTick}。
  *
  * <p>全部只在服务端落地且幂等；Curios 会重放 equip / 登录，故任何「发牌」都不挂在这里。
@@ -42,6 +37,9 @@ public final class LinglingSignEvents {
     public static void onItemPickup(ItemEntityPickupEvent.Post event) {
         Player player = event.getPlayer();
         if (player == null || player.level().isClientSide()) return;
+        // 2026-10-27 用户裁决：拾取后先对账 —— 未佩戴立牌时捡到的强化拒止**卡牌**必须立刻变回路障
+        //（物品形态不转换：它可保留，只在使用时被立牌闸门拦住）
+        LinglingSignManager.reconcileInventory(player);
         if (!LinglingSignManager.isEquipped(player)) return;
         LinglingSignManager.convertBarricadesInInventory(player);
     }
@@ -67,28 +65,12 @@ public final class LinglingSignEvents {
     }
 
     // ══════════════════════════════════════════════════════════════════════
-    //  §4.7 攻击被吸附目标 +5 伤害
+    //  §4.7 攻击被吸附目标 +5 伤害 —— 2026-10-27 用户裁决：限定骰战
     // ══════════════════════════════════════════════════════════════════════
 
-    /**
-     * 佩戴者**本人**造成的任意伤害（近战 / 远程 / 法术）命中「正被任意强化拒止吸附」的目标时 +5。
-     *
-     * <p>三条判据：① {@code source.getEntity()} 必须是佩戴 lingling 的玩家（宠物 / 荆棘 / 反伤不算）；
-     * ② 目标被**任意**归属的强化拒止吸附即可（不分归属）；③ 排除本模组的
-     * {@code ExtraDamage} 类型以防自递归加伤。{@code LOWEST} 优先级 ⇒ 最后加，其它系统的
-     * 倍率类改动都已结算完。
-     */
-    @SubscribeEvent(priority = EventPriority.LOWEST)
-    public static void onLivingDamagePre(LivingDamageEvent.Pre event) {
-        LivingEntity target = event.getEntity();
-        if (target == null || target.level().isClientSide()) return;
-        DamageSource source = event.getSource();
-        if (source == null) return;
-        // 防递归：本模组派生的额外伤害段不再叠加
-        if (source.is(ModDamageTypes.EXTRA_DAMAGE)) return;
-        if (!(source.getEntity() instanceof Player player)) return;
-        if (!LinglingSignManager.isEquipped(player)) return;
-        if (!LinglingSignManager.isTrackedByAny(target)) return;
-        event.setNewDamage(event.getNewDamage() + LinglingSignManager.TRACKED_TARGET_BONUS_DAMAGE);
-    }
+    // 该 +5 现在**只**在骰战结算里加（见 combat/DiceCombatEvents 玩家攻击分支的最终伤害段）。
+    // 法伤 / 技能 / 远程 / 环境等非骰战伤害一律不再叠加（2026-10-27 用户裁决：限定必须为骰战，法术、技能等排除）。
+    // 理由：① 骰战路径的 +5 已并入终值，事件侧再加就是 +10（A4 近战审计结论）；
+    //       ② 非骰战叠加与规格不符 —— 三语 tooltip / 手册口径已同步改为「骰战攻击被吸附目标 +5」。
+
 }

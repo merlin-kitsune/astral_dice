@@ -1,10 +1,13 @@
-# 交接正本 — 1.5.0-rc.1（multi-main）
+# 交接正本 — 1.5.0（multi-main）
 
+> **版本口径（2026-10-28 用户裁决）**：本线一律称 **1.5.0**，不再带 `rc` 后缀；本文件已由 `docs/handover-1.5.0-rc.1-main.md` 改名为 **`docs/handover-1.5.0-main.md`**。**历史记录一律不改写真名** —— 正文里出现的 `1.5.0-rc.1`…`1.5.0-rc.4`、产物文件名、tag / CurseForge / GitHub Release 编号都是当时实况；代码侧四线 `gradle.properties` 现为 **`1.5.0-rc.5+<后缀>`**（2026-10-28 提交 `50e5e406` bump，见 §4.1aq-1），正式版发布那一轮才落成 `1.5.0+<后缀>`。
+>
 > **本文件自 `1.5.0-rc.1`（2026-10-25）起继续为滚动交接正本**（原 `docs/handover-1.5.0-pre.6-main.md` 于同批 `git mv` 改名；pre.6 的批次、实机读数、遗留与坑**原样保留在本文档内**，不另建文件）。pre.5 及更早的批次一律回 `docs/handover-1.5.0-pre.5-main.md`（§0 速览 / §3 批次表 / §4 实机读数 / §5 遗留 / §6 坑 / §7 路径）。
 > 数字均为 2026-10-24 快照；**开工先实读** `git log -1 --oneline` + `git status --short -uall` + 四线 `gradle.properties`。
 
 ## 0 速览（一屏）
 
+> **状态快照（2026-10-28 13:5x，接手先看这条）**：HEAD = **`79e3b183`**（`docs(release): 1.5.0-rc.5 玩家发布说明 + CHANGELOG 补充`）；**`origin/multi-main..HEAD` = 0**（已 push `cce71efb..79e3b183`），远端 `origin/multi-main` = `79e3b183`；**本批收班文档改动另成 docs 提交 `c071c4d7`（2026-10-28 14:4x 用户放行后已 push，`origin..HEAD` = 0；CI run `40645654862` = COMPLETED / SUCCESS，2m 14s）**；四线 `mod_version = 1.5.0-rc.5+<后缀>`、`starengine_version = 1.1.0`；远端 tag **无正式 `1.5.0`**，`1.5.0-rc.5` 已由 CI 生成（注解 tag `db3b1796…` → `79e3b183`）；**GitHub Release 已确认**（`1.5.0-rc.5`，附件 neo 2,598,301 B / `c97ea383…` + forge 2,647,158 B / `d4e48687…`，与本地构建仅 CRLF / 常量池序差异，§4.1aq-6）；**rc.5 两件已发 CurseForge**（fileID `9349843` / `9349844`，beta）；**1.21.1 实机通过**（`[patchouli/]: Recipe astral_dice:` 计数 = 0，§4.1aq-4）；工作树只剩 `?? models/astral_anvil.bbmodel`（用户素材，禁 add）。**下方各条是 2026-10-25～10-28 各批的历史速览，含「已 push / 已建 tag」等当时实况，不得当现状读**。
 1. 分支 `multi-main`，HEAD = 本批提交（`release(rc.2): 1.5.0-rc.1 -> 1.5.0-rc.2`，含调酒师治疗按张数 + 多萝西【交际花】双版本实机）。**已 push + CI 自动建 tag**（2026-10-25 23:1x，用户下达「执行 push」）：`git push origin multi-main` ⇒ `8dcdb715..13a45619`，`rev-list --count origin/multi-main..HEAD` = **0**；CI（`.github/workflows/build.yml` 的 auto-tag 步骤）自动建注解 tag **`1.5.0-rc.2`**（指向 `13a45619`）并发布 prerelease（附件 = 刚构建的 P0 两个 rc.2 jar，正文取 `release/1.5.0-rc.2/`）。前置库仓 `origin..HEAD` = **0**。
 2. 四线 `mod_version = 1.5.0-rc.2+<加载器后缀>`；四线 `starengine_version = 1.1.0`（前置库同批由 `1.1.0-pre.2` 转**正式版**，库内 Java 源码零改动）；硬前置区间随之展开为 `[1.1.0,2.0.0)`。
 3. 本批收编 **Kimi 上一轮四批未提交改动**（member-detective / misaki 立牌 / 筹码商店刷新源 / 规则分派），并完成 **DSH 三语语言同步** + **地雷女备注区染色修复**。
@@ -36,6 +39,21 @@
 24. **1.5.0-rc.3 重发（CF 重传 + tag 重指，2026-10-26 17:1x–17:2x，§4.1x）**：用户手工删除 CF 旧件后重传 —— neo `fileID=9331458` / forge `9331459`，ForgeCDN `Content-Length` 与本地修复版逐字节相等（2,588,650 / 2,633,448）；push `7e6bcaaf` 后 CI 把 Release 附件换成修复版（neo 2,587,457 B `70bc35c3` / forge 2,632,291 B `c44e11e0`，开包核 1,062 键 / 三语无字面转义 / `curios.modifiers` 齐全 / 多萝西「交际花」在）；`tag 1.5.0-rc.3` 由 `14eb54ab` 经 `--force-with-lease` 重指到 `7e6bcaaf`（安全网禁删除/强推远端 ref）。**GitHub Release 对象未删除重建**（`gh` 未登录、无 token），若需新对象须用户 UI 删或给 token。
 25. **卡牌商店「买牌后转账被锁」修复（2026-10-26 18:1x–18:4x，§4.1y）**：换架周期与转账锁原先共用一个计时器 ⇒ 买牌即锁转账。现拆成独立玩家级标记 `shop_transfer_used`（菜单第 10 个 DataSlot 同步，成功转账才置位、换架即清零），星光兑换仍看周期。**双版本实机**：1.21.1 `SHOP-L-1.21.1` **PASS**（66 断言 0 FAIL，买牌后 `used=0` / 周期内 `view=1:ready=1` / 周期内转账 `applied=1` 后才 `used=1`）；1.20.1 `SHOP-GUI-1.20.1` **79 PASS**、相关 4 条断言全转 PASS（`cdBefore=4668` 时转账成功、同轮第二次 `applied=0`、转账不再开新周期 `deltaMid=0`、换架后 `used=0`），3 条 FAIL 系陈旧期望（卡池 22→实际 23）与 `run/1.20.1/mods` 无 JEI 的环境缺口。
 26. **1.5.0-rc.4 发布收口（2026-10-26 19:3x–19:5x，§4.1z）**：四线 `mod_version` → `1.5.0-rc.4+后缀`；`SHOP-GUI-1.20.1` 三条陈旧断言订正（卡池 22→23、JEI 允许 `cls=null`）；`release/1.5.0-rc.4/` 三份玩家说明（含买牌不再锁转账、筹码属性标题缺键、字面换行转义等四条 BUG 修复）；构建 neo 2,589,686 B `2aa82aed` / forge 2,634,452 B `cc387ca6`（jarjar=0、三语 1,062 键、转义 0）；守门五项全绿；提交 `84e1938b` 已 push；CI 建 tag `1.5.0-rc.4`（tag 对象 `cafc9509`，`^{}`=`84e1938b`）并**新建独立 prerelease Release**（附件 neo 2,588,493 B / forge 2,633,295 B，开包核为修复版）；CF 两线 beta 上传成功（neo `fileID=9332423` / forge `9332424`，HTTP 200），`mediafilez` 前端暂 403 但 `edge.forgecdn.net` 200 且字节数与本地相等。
+
+
+27. **三批欠账实机全 PASS（2026-10-27 15:39–16:16，§4.1aa）**：修复本体 = 隐匿调查法伤击杀双罚（`InvestigationEventUtil` 幂等闸门）**+ 之前两批未实机的 `6fcc756a` 强化拒止五规则、`51efba03` 临时牌 owner**，均已实机取证 —— 1.21.1 三案（`UNDERCOVER-DOUBLE` 4/4、`REPULSION-SIGN`、`TEMPCARD-OWNER` 6/6）+ 1.20.1 一案（`DST-P0-1.20.1` 10/10，走新建 KubeJS 探针 `/astraldst`，1.20.1 无 AutoJS 通道）。未覆盖项（tooltip 所有者行渲染 / 跨容器搬运 / 死亡掉牌不误销毁 / 命令级清槽）已在 §4.1aa 第 6 条如实登记。提交 **`59b14e10` + `052934cd`**，本地未 push（`origin/multi-main..HEAD` = **4**：`6fcc756a` / `51efba03` / `59b14e10` / `052934cd`），无新 tag；`build/libs` 已重建为 rc.4 号（2,595,450 / 2,640,648 B），**未上传 CF、未发版**。
+28. **复核 findings 修复 + 双线重跑全 PASS（2026-10-27 16:30–16:50，§4.1ab）**：按 `dsh_code_review`（run `1e6e1c84`）三条 findings 落地 —— ① 两线 `InvestigationEventUtil` 把「清空 `undercover_source`」从 `triggerByKill` **之前**移到**之后**（防本次死亡事件被第三方取消时提前丢来源）；② 1.20.1 探针 D2 加**真·女王特权**正面控制（`p.addEffect(NARDIS_PRIVILEGE)`）并收紧判据 `n>=2` ⇒ 不再恒绿；③ 探针新增 `/astraldst clean` 收尾 + 用例补 `/gamemode survival`。重建 rc.4 两 jar（neo 2,595,454 B / forge prod 2,640,648 B / dev named 2,611,172 B）并重投 run 两线后：1.20.1 `DST-P0` **PASS 13/13**（D2 现为 `n=3 → 篡改后 n=2:me=2:other=0`，真验证 `purgeIllegalHoldings`），1.21.1 `UNDERCOVER-DOUBLE` / `REPULSION-SIGN` / `TEMPCARD-OWNER` **三案全 PASS**。
+
+29. **攻击 / 受击链路排查 + 三批修复（2026-10-27 18:28–19:2x，§4.1ae）**：只读排查 N1–N14 后派四路子代理 —— A 修 1.20.1 骰战吸收/护盾口径（新增 `settleDiceDamage` 唯一出口）、B 把事件牌惩罚伤害从 `setHealth`/无来源伤害改走正常管线（`unreducible_damage` + 触发者归因）、C 给 `dice_damage` 补 `bypasses_cooldown` 并统一 Papara 回血基数、D 只读复核两端法伤链。**Lead 否掉 D 的一条建议**（「forge 双扣吸收须补偿」经查 `setAbsorptionAmount` 已把负值钳 0，补偿反而白送吸收）。双线 `:classes` EXIT 0；**未实机**；待裁决 10 项见审计正本 §7.4。
+
+30. **法伤加成折叠为单次结算（方案 A）+ neo→forge 移植 mapping（2026-10-27 19:3x–20:2x，§4.1af）**：折叠点最终落在**护甲之前**（neo `LivingIncomingDamageEvent` @HIGHEST / forge `LivingHurtEvent` @HIGHEST），加成与本体同管道且只结算一次；乘性因子**仅对本体源自身不吃护甲的情形**（P0 全部 `astral_dice:card_spell` 法伤）与旧实现一致（裸 ×1.0 / 保护IV+抗性II ×0.216 / 保护IV+抗性IV ×0.072），本体源不在 `bypasses_armor` 内时（近战 / 箭矢 / 部分第三方法术类型）加成改为吃护甲 ⇒ 相对旧实现下降（护甲20/韧性8 约 ×0.30），属预期语义变更，第一轮「折在 `LivingDamageEvent`」会让加成放大 4.63×–13.9× 已订正。同批删除 `isApplyingTrueBonus()` 三处闸门（+5 旧口径订正：从未 +10），并产出 `docs/features/neo-to-forge-porting-mapping.md`（后续双线先做 neo、再按 mapping 落 forge）。双线 `:classes` 通过 + javap 类面核对；**未实机、未重出 jar**。
+31. **折叠批三条裁决落地（2026-10-27 20:5x，§4.1ag）**：N14 AOE 命中也算攻击行为（两线副作用块提到 AOE 闸门之前，反击链仍早退）；法伤加成**必须绕过护甲** ⇒ 两线折叠处改调 `foldBonusBypassingArmor(...)`（护甲前二分预补偿，源带 `bypasses_armor` 或护甲 0 时直接相加）⇒ 数值回到与旧 `true_damage` 段一致；连击保留 cooldown。双线 `:classes` EXIT 0，**未实机、未重出 jar**。
+32. **近战链路专项审计（2026-10-27，§4.1ah）**：三路只读子代理交叉取证（F/A/MELEE 三套编号）+ Lead 逐字复核；落地 F1（forge 玩家黄心被写高，根因 `Player#actuallyHurt` 覆写没有 `:1684`）、F2（无骰赐福目标弱印记 ×1.21）、F3（七咒在生物近战丢失）、A3（额外加伤导致受击被动二次）、A4（立牌 +5 与 LOWEST 先后）、A5（幻影残留 tick 末对账）、A6（生物路径漏 +1）、F7（修女被动读护甲前值）、D3（`BaseSignItem#onHurt` amount 口径）。双线 `:classes` EXIT 0，**未实机**。
+
+33. **三位裁决落地：F8 不改 / MELEE-06 限定骰战 / MELEE-07 反击 1 刻去重（2026-10-27 21:5x，§4.1ai）**：删掉两线 `event/LinglingSignEvents.java` 里非骰战的 +5 伤害处理器，+5 的唯一落点收敛到骰战终值（`combat/DiceCombatEvents.java` neo `:841-844` / forge `:1128-1130`），三语 lang 同步改为「骰战攻击…」；`combat/DeathTriggerGuard.java` 新增 `claimPair(attacker, victim, channel)`（`SAME_SWING_WINDOW_TICKS = 1L`），`injectCounterDamage` 首段加闸门 ⇒ 熊猫人嘲讽 / 破绽闪避 / 鼠鼠护盾 / 安全气囊四条反击出口共用一把锁。判据：两线 `:classes` EXIT 0；`check_lang_sync.ps1` 两线 1065/1065/1065。**未实机、未重出 jar**。
+
+
+34. **近战批双线实机闭环（2026-10-27 22:1x–22:3x，§4.1aj）**：§4.1ah / §4.1ai 的全部落地项已双线实机走查，期间新修两处**只在实机暴露**的缺口 —— F7 修女被动清理原先只挂玩家攻击路径（生物→玩家骰战漏判：实机 22 点仍不清加成）⇒ 搬到公共出口 `applyAlanaBigHit`；MELEE-04 吸血鬼立牌回血基数用的是 `settleDiceDamage` **之前**的 `finalDmg` ⇒ 改为落地量。产物已重出并四目标投放（neo 2,598,569 B `35387D4B…F059C6` / forge prod 2,647,447 B `1FA57C6E…8F72B` / forge dev named 2,618,039 B `4AA4308B…26488`）。读数：F7 ✅（`bonusAfter=0`）/ MELEE-04 ✅（heal=floor(落地/2)）/ MELEE-06 ✅（法伤 dT=dU=1）/ 骰战 +5 只加一次（B 段 median 5、C 段 median 0）/ F1 ✅（`absAfter=0`）/ A6 ✅（+1）/ F2 ✅（×1.0999985）/ MELEE-07 ✅（同刻只反击一次）/ A5 无上偏。无法实机四项（A3 需 PvP、A5 第三方取消路径、F3 需神秘遗物+、N14 无专项判据）已登记在审计正本 §7.11.6。
 
 ## 1 环境与路径
 
@@ -90,6 +108,9 @@ forge dev named 102,013 B / `e280aeab6c4b37c43468f7cce32a8bf64c70b6bdbcd2203f6c5
 
 | `6ee75a34` | docs(release)：1.5.0-rc.1 玩家更新日志（中英，2 文件 +460/−0） | `release/1.5.0-rc.1/PLAYER_CHANGELOG_ZH.md`（1.3.7→1.5.0 全量：安装与前置 / 新增内容 / 战斗系统重做 / 平衡与数值 / BUG 修复 / 文案与手册 / 许可变更）+ 英文镜像 |
 | 本文件所在提交（追加） | chore(tools)+docs：CF 关系补 starengine + 发布收口 | `tools/curseforge.json`（P0 两线 +`starengine(1755415)=requiredDependency`）· 本文件 §0-13/14 · §4.1l · §3 两行 · §5-Minor 8 · §6 坑 23/24 |
+| `50e5e406` | chore(release)：四线 `mod_version` bump 到 `1.5.0-rc.5`（4 文件 +4/−4） | 四条线 `gradle.properties`（`starengine_version` 仍 `1.1.0`）· 本文件 §4.1aq-1 |
+| `1368b837` | fix(verify,ci)：筹码获取途径守门 `stale_page` / `no_note` 升为致命项并接入 CI（2 文件 +15/−4） | `scripts/verify/verify_chip_acquisition.ps1`（`isFatal=$true` · ❌ 标签 · 逐线条件补两项 · 退出码契约）· `.github/workflows/build.yml` 新增 `Check chip acquisition gate (P0)`（+8 行）· §4.1aq-5 |
+| `79e3b183` | docs(release)：1.5.0-rc.5 玩家发布说明 + CHANGELOG 补充（5 文件 +1077/−6） | `release/1.5.0-rc.5/PLAYER_CHANGELOG_ZH.md`（375 行）/ `PLAYER_CHANGELOG.md`（382 行）/ `PLAYER_CHANGELOG_MCMOD.html`（314 行）· `CHANGELOG.md` / `CHANGELOG_ZH.md` 各 6 行 · §4.1aq-6 |
 
 `e2aed527` 的七条内容：
 
@@ -558,9 +579,392 @@ forge dev named 102,013 B / `e280aeab6c4b37c43468f7cce32a8bf64c70b6bdbcd2203f6c5
 9. **CDN 判据**：`https://mediafilez.forgecdn.net/files/9332/{423,424}/…` 上传后数分钟内仍 **403 AccessDenied**（前端媒体层尚未生效，与 rc.3 当时立刻 200 不同）；改判 **`https://edge.forgecdn.net/files/9332/423/astral_dice-1.5.0-rc.4+neoforge_1.21.1.jar` = 200 / 2,589,686 B**、`…/9332/424/…forge_1.20.1.jar` = **200 / 2,634,452 B** ⇒ 与本地逐字节相等。
 10. **未做**：本批**无源码改动**（版本号 + 玩家说明 + 测试断言），故未跑实机；`SHOP-GUI-1.20.1` 的 3 条陈旧断言已按本节第 1 条订正，但**订正后未再跑一次 1.20.1 用例**（订正内容是放宽到实测值，风险低）—— 若要 80+ 全绿证据，下一轮 `--phase env` 后重跑即可（记得先重建 testworld，见 §6 坑 20 的同轮累积问题）。
 11. **订正后复跑（19:51–19:53）**：`--phase env`（本次走了**种子快恢复**而非世界重建）→ `launch` OK（1m01s）→ `--phase cases --case SHOP-GUI-1.20.1` ⇒ **184 PASS / 3 FAIL**（`temp/rc4_case1201.log`），三条已订正断言 **133/140/172 全部转 PASS**（读数 `AP_PO0_POOL:n=23:rare=13:epic=7:legend=3`、`VPLAN:…:poolSize=23`、`AP_CSC:evt=jei:…` 命中 7 次）。新出现的 3 条 FAIL 是**拖拽类**断言：178 `stateB_afterbuy … shelf=[0=empty … :dst=9:dstItem=astral_dice:`（实测 `dstItem=emptyx0`）、185 `stateF_afterdrag … :inv9=astral_dice:` / 186 `stateG_onetickdrag … :inv9=astral_dice:`（实测 `inv9=emptyx0`）—— 即「从货架拖出到背包槽 9」这一步没落地，不是期望值陈旧。**同三条在 18:36（`case_shopgui_1201.log`）与 18:43（`case_shopgui2_1201.log`）两次「世界重建」世界的跑次里均 PASS**，本轮唯一变量是 env 走了种子快恢复（`resources/testworld-seed-1.20.1.zip`）⇒ 判为世界预备路径差异（店铺方块/GUI 由探针 `astralshop block B0` 生成，但玩家背包与实体状态来自种子档），**暂无证据指向本批或上一批（`a7d6af06`）的代码**。想拿全绿证据必须先恢复「世界重建」路径：`scripts/test/mt_env.ps1 world --version 1.20.1` 当前 **BLOCKED** —— server 任务里 `Oculus (oculus) has failed to load correctly`（`run/1.20.1/crash-reports/crash-2026-10-26_19.55.14-fml.txt`，Mod File `oculus-581495-6020952.jar` 1.8.0 / ERROR），纯客户端渲染栈在 runServer 里加载失败，与本模组无关；已用 `--seed` 复原世界（`MT_WORLD: OK — 种子快恢复`），客户端收停 `MT_STOP: OK (1s)` 无残留。
+### 4.1aa 三批欠账实机复验：隐匿调查双罚修复 + 强化拒止五规则 + 临时牌 owner（2026-10-27 15:39–16:16）—— 1.21.1 三案 + 1.20.1 一案全 PASS
+
+1. **产物与投放**：本轮源码领先产物（`6fcc756a` / `51efba03` / 本轮 `InvestigationEventUtil` 修复），先 `gradlew.bat :neoforge-1.21.1:jar :forge-1.20.1:jar`（JAVA_HOME=Zulu 21）**BUILD SUCCESSFUL in 4s**（`temp/build-20261027.log`、`EXIT=0`）：neo `2,595,450 B`、forge prod `2,640,648 B`、forge devlibs named `2,611,167 B`。投放 `run/1.21.1/mods` ← **neo prod**（sha256 `932C9A4F…4690`）、`run/1.20.1/mods` ← **forge dev named**（`60323611…CC00`），旧 `astral_dice-*.jar` 先删。
+2. **1.21.1（autojs 通道，三条新用例全 PASS）**：
+   - `scripts/test/cases/UNDERCOVER-DOUBLE-1.21.1.json` ⇒ **PASS 4/4**（`temp/case_ia.log`）：hit `{ok:true, hp_before:2, marks:2, has_effect:true, stage:1}` → `/damage @e[tag=IA_TGT,limit=1] 1 astral_dice:card_spell by @s` → done `{ok:true, stage:2, alive:0, matched:0, src_left:none}`；log 断言 `AP_EVENT_FIRE: id=astral_dice:investigation_stage:src=INVESTIGATION_KILL` **命中 1 次** ⇒ 一次法伤击杀只派发一次事件、调查阶段只 +1（修前 +2）。
+   - `scripts/test/cases/REPULSION-SIGN-1.21.1.json` ⇒ **PASS**（`temp/case_rb.log`，assert 44–52）：装牌后 `hasSign:true / isEquipped:true` → `giveRepulsion` 得 `gave:2`、`ownedCards:1 / ownNames:1` → `createRecovered` 的 `repItems:1 / ownedItems:1` → 放置出 `fields:1` → 卸牌后 `{hasSign:false, repCards:0, barricades:2, repItems:0, fields:0}` → 无立牌 `use` 回 `result:FAIL` 且 `itemLeft:true`（物品没被消耗）。
+   - `scripts/test/cases/TEMPCARD-OWNER-1.21.1.json` ⇒ **PASS 6/6**（`temp/case_tc.log`）：`n_temp:3 / me:3 / other:0` → 篡改一张 `tampered:1` → 等 52t `n_temp:2 / me:2 / other:0`（他人 owner 被产品 tick 自检清掉）→ 走内部通道 `ModEffectRemoval.remove(p, NARDIS_PRIVILEGE)` 后 `n_temp:0`（无女王特权连本人牌也清空）。
+3. **1.20.1（未接入 AutoJS ⇒ 新建 KubeJS 探针 `/astraldst`）**：`scripts/test/cases/DST-P0-1.20.1.json` ⇒ **PASS 10/10**（`temp/case_dst_6.log`），读数全部取自 `latest.log` 的 `[CHAT] AP_...`：
+   - `AP_D1_IG_DONE:stage0=1:stage1=2` + `AP_D1_IG_V:ok=1` ⇒ 双罚修复在 1.20.1 同样成立（紫晶骰子 1d6 加成走嵌套 `true_damage` 致死）。
+   - `AP_D2_TC_GRANT:granted=3:n=3:me=3:other=0:tampered=1` + `AP_D2_TC_PURGE_V:ok=1` + `AP_D2_TC_V:purge=1:nopriv=1` ⇒ 临时牌 owner 两条规则成立。
+   - `AP_D3_RP_PICK:cards=0:barricades=1:items=0`（PICK_V ok=1，无立牌拾卡即路障）→ `AP_D3_RP_EQUIP:eq=ok:give=ok:item=1:field=1:hasSign=1` → `AP_D3_RP_BOUND:cards=5:barricades=0:items=1:owned=1:other=0:noowner=0:fields=1`（BOUND_V ok=1）→ 卸牌 → `AP_D3_RP_DONE:cards=0:barricades=5:items=0:fields=0:use=FAIL`（RP_V:lost=1:gate=1）⇒ 五规则成立。
+4. **新增测试资产**：`scripts/test/resources/kubejs/1.20.1/server_scripts/astral_dst_probe.js`（415 行，命令根 `/astraldst`，纯服务端、无 tick 调度：`ig / igread`、`tc / tcread / tcread2`、`rp / rpread / rpread2 / rpread3`、`snap`）+ `scripts/test/cases/DST-P0-1.20.1.json`（27 步，纯 `inject_command` + `wait`；断言全 `type:log, source:latest`）。提交 **`052934cd`**（2 文件 +604）；修复本体 + 1.21.1 三案为 **`59b14e10`**（5 文件 +664）。
+5. **收尾**：`mt.ps1 --version 1.20.1 --phase stop --force --purge-saves` ⇒ `MT_CLEANUP_SAVES: PURGED 1` / `MT_CLEANUP_RESULT: OK` / `MT_STOP: OK (1s) — 收停完成，无本流程残留进程`；`Get-Process java` 剩 3 个，`Win32_Process` 命令行核对为 Gradle daemon（Zulu 21 PID 15920）与两个 Adoptium 17 worker（16556 / 2572），**无 Minecraft 客户端残留**。
+6. **本轮未覆盖**（如实登记）：① 强化拒止 tooltip 的「所有者：」行只有静态代码 + 三语键证据，**未做客户端截图取证**（1.20.1 无客户端 eval；1.21.1 那条用例也没读渲染结果）；② 规则④的「存进箱子 / AE2 等第三方存储后跨容器保留、他人可取出但不可用」只验了同背包内的 owner 门控与硬门控，**跨容器搬运未实机**；③ 死亡掉牌不误销毁（`onSignLost` 的 `isDeadOrDying()` 早退）**未实机**；④ `/curios set` 之类的命令级清槽是否触发 `onUnequip` 未验（本轮用探针 `setStackInSlot(EMPTY)`，实测会触发）。
+
+### 4.1ab 复核 findings 修复 + 双线重跑（2026-10-27 16:30–16:50）—— 1.21.1 三案 + 1.20.1 一案全 PASS
+
+1. **复核来源**：`dsh_code_review` run `1e6e1c84-989c-43a0-b712-728a5de75099`（范围 `59b14e10` + `052934cd`）给出 3 条 findings，本轮逐条落地：
+   - **[P3] 清空时序**：两线 `item/InvestigationEventUtil.java` 原在 `triggerByKill` **之前**清空 `undercover_source`；若本次 `LivingDeathEvent` 随后被别的处理器取消（`die()` 直接 return、实体还活着），来源已丢、后续真实击杀不再触发。现改为 **结算之后再清空**，方法头 javadoc 补四行理由（同线程序列 ⇒ 幂等不受影响）。
+   - **[P2] D2 判据恒绿**：`astral_dst_probe.js` 的 `dDoTc` 原先只调 `TemporaryCardUtil.grantNardisPrivilege`（**只发牌、不挂效果**），而 `tick` 里「无 `NARDIS_PRIVILEGE` ⇒ `purgeAll`」会把牌全清 ⇒ `n=me=other=0` 让 `other===0 && n===me` 恒真。现改为 `p.addEffect(new MobEffectInstance(ModEffects.NARDIS_PRIVILEGE.get(), 12000, 0, false, false, true))` 作正面控制（读回 `fx_on0=1` 才继续），判据收紧为 `other===0 && n===me && n>=2`；无特权段再加 `countTemporaryTotal(p)===0`。
+   - **[P2] 无收尾**：探针新增 `/astraldst clean <tag>`（清 `stand`/`dice` 槽、调查阶段复位、走内部通道移除 `NARDIS_PRIVILEGE`、`purgeAll`、清主物品栏/副手的强化拒止三形态、discard 48 格内 `RepulsionEntity`，回显 `AP_<tag>_CLEAN:sign=..:dice=..:stage=..:priv=..:fields=..:purged=..`）；用例末尾补 `/astraldst clean D0` + `/astraldst snap D8` + `/gamemode survival`，断言加 `AP_D0_CLEAN` 与 `AP_D8_SNAP:.*hasSign=0:cards=0:barricades=0:items=0`。
+2. **产物**：`gradlew.bat :neoforge-1.21.1:jar :forge-1.20.1:jar`（JAVA_HOME=Zulu 21）**BUILD SUCCESSFUL in 4s**（`temp/build-20261027b.log`、`EXIT=0`）—— neo `2,595,454 B` sha256 `EE99C1597C317C9B5746EBC14099CB78EA722A2C9C63F4385AF4BACB83B156AD`；forge prod `2,640,648 B` `C0F2441F81F04E597FA685BD3720BA1851FFB03132FEFBFBD49654019A645041`；forge dev named `2,611,172 B` `59D13AC7FD84D86402BE5745F191BBD8901EE278DB820F3A920C680891A2FDA2`。投放 `run/1.21.1/mods` ← neo prod、`run/1.20.1/mods` ← forge dev named，两处 `Get-FileHash` 均 **MATCH**。
+3. **1.20.1 `DST-P0-1.20.1` ⇒ PASS 13/13**（`temp/case_dst_c.log`，16:4x，冷启动后首跑）：
+   - `AP_D2_TC_GRANT:granted=3:n=3:me=3:other=0:tampered=1:priv=applied:fx_on0=1` ⇒ 特权是真挂上的；
+   - `AP_D2_TC_PURGE:n=2:me=2:other=0` + `AP_D2_TC_PURGE_V:ok=1` ⇒ 被篡改成他人 UUID 的那 1 张被产品 tick 清掉、本人 2 张仍在（**真跑通 `purgeIllegalHoldings`**，修前是 `n=0` 的假绿）；
+   - `AP_D2_TC_DONE:n=0` + `AP_D2_TC_V:purge=1:nopriv=1` ⇒ 无女王特权 ⇒ 连本人牌一起清空；
+   - `AP_D0_CLEAN:sign=cleared:dice=cleared:stage=1:priv=removed:fields=0:purged=2`、`AP_D8_SNAP:now=3346:hasSign=0:cards=0:barricades=0:items=0:owned=0:fields=0:temp=0:stage=1` ⇒ 收尾干净。
+   - ⚠️ **`stage` 地板值是 1**：`ModAttachments.setInvestigationStage` 内部是 `Math.max(1, value)` ⇒ 「归零」不可达，`clean` 只能复位到 1、`D8` 断言因此不锁 stage（本轮实测先把它写成 `stage=0` 才发现的）。
+4. **1.21.1 三案全 PASS**（新产物、新世界，16:4x）：`UNDERCOVER-DOUBLE-1.21.1`（`temp/case_uc_b.log`，stage 1→2 且 `AP_EVENT_FIRE ... src=INVESTIGATION_KILL` 仍只 **1** 次 ⇒ 把清空移到结算之后**没有**破坏幂等）、`REPULSION-SIGN-1.21.1`、`TEMPCARD-OWNER-1.21.1` 均 `MT_CASE_RESULT: PASS`。
+5. **收尾**：`mt.ps1 --version 1.21.1 --phase stop --force --purge-saves` ⇒ `MT_CLEANUP_SAVES: PURGED 2` / `MT_CLEANUP_RESULT: OK` / `MT_STOP: OK (1s) — 收停完成，无本流程残留进程`；`Get-CimInstance Win32_Process java.exe` 剩 3 个（Gradle daemon Zulu21 `15920` + Adoptium 17 worker `16556`/`2572`），**无客户端残留**。
+
+### 4.1ac 第二次复核（run `f93916e6`）三条处置 + 双线重跑（2026-10-27 16:58–17:12）—— 1.21.1 三案 + 1.20.1 一案全 PASS
+
+1. **复核来源**：`dsh_code_review` run `f93916e6-9fa2-4cf7-9b5d-77245b9f9e8c`（范围仅提交 `483c7924`），R2–R5 SUPPORTED、R1 部分成立，两条 actionable findings：
+   - **[P2] 注释宣称了未实现的取消保护**：`setUndercoverSource(...empty())` 仍在**同一次** `LivingDeathEvent` 派发内、处理器无 `priority` ⇒ 「移到 `triggerByKill` 之后」相对移动前只有在 `triggerByKill` 抛异常时才有区别；同优先级/更晚的取消（`event/EnderDiceHandler.java:158-169` 不死图腾）仍会在来源已清空后把玩家救活（只有 `ChipDamageHandler.java:133-145` 的 HIGHEST 取消会被 `event.isCanceled()` 挡住）。
+     ⇒ **落地方案 = 如实表述而不是硬改优先级**：两线 `item/InvestigationEventUtil.java` 的 javadoc 保留代码位置，理由改写为「结算抛异常时不白丢来源」，并新增「已知边界」四条（更高优先级取消 ⇒ 平台默认 `receiveCanceled=false`、本处理器不被投递，来源自然保留；同优先级/更晚取消会丢来源；当前不修的理由 = 隐匿调查/强化拒止的实际目标几乎都是怪物，怪物无保命手段；彻底兑现需降到 `EventPriority.LOWEST` 并确认排在所有保命处理器之后）。
+   - **[P3] `clean` 回显恒真**：`dEquip` 的失败是**返回值**（`no_curios` / `no_slot:<id>`）不是异常，`ModEffectRemoval.remove` 被拦回也不抛 ⇒ Curios 缺失时照样打印 `sign=cleared:dice=cleared:priv=removed`，而 D0 断言正锁这几个字段。
+     ⇒ 探针改为记录返回值 + 读回：`sign=eq:ok` / `dice=eq:ok`（失败即 `eq:no_curios` 等）、`priv=removed:fx=<0|1|-2>`（`fx` 是 `p.hasEffect(NARDIS_PRIVILEGE)` 的读回，`-2` 表示读抛出）；用例 D0 断言随之收紧为 `AP_D0_CLEAN:sign=eq:ok:dice=eq:ok:stage=1:priv=removed:fx=0:fields=0`。
+2. **又发现并修掉一个探针缺陷（本轮 FAIL 的唯一根因）**：`dDoTc` 原先篡改「第一个临时牌**栈**」，而临时牌 `stacksTo(16)` 可堆叠 ⇒ 整栈被 `tc.mark` 换成他人 UUID，清理时同栈两张一起掉（实测 `AP_D2_TC_PURGE:n=1:me=1` ⇒ `PURGE_V:ok=0`，用例 FAIL；第一次跑还是 `n=2`，**读数在 1/2 之间跳**才是真信号）。修法：拆单张副本（`st.copy()` + `setCount(1)`）→ 对副本 `tc.mark` → 原栈 `setCount(-1)` → `p.getInventory().add(single)`（owner 不同 ⇒ 1.20.1 不并栈）；读数行追加篡改后快照 `n2/me2/other2`，用例断言收紧为 `...tampered=1:priv=applied:fx_on0=1:n2=.*:me2=.*:other2=1`。
+3. **产物**（仅注释改动，jar 仍需重出以保持「源码 = 产物」）：neo `2,595,451 B` sha256 `E76C231749263703C78203843CD14F066A0A76B3470E786F0A9FCFD8B3978748`；forge prod `2,640,650 B` `F5417FDD6BEA22FB9AFF5F867030367C12192FBC9C15F4772A1B774BEEC3B0E9`；forge dev named `2,611,171 B` `A1E3BC014ED7B5F929DEF23F6C06F22780F5274DBEDD34406BE64625AE5F4407`。投放 `run/1.21.1/mods` ← neo prod、`run/1.20.1/mods` ← forge dev named，两处 `Get-FileHash` **MATCH**。
+4. **1.20.1 `DST-P0-1.20.1` ⇒ PASS 13/13**（`temp/case_dst_e.log`，冷启动后跑；先因上面的栈缺陷 FAIL 一次）：
+   - `AP_D1_IG:stage0=1:dice=ok:dmg=ok:hp=0:dead=1` + `AP_D1_IG_DONE:stage0=1:stage1=2` + `AP_D1_IG_V:ok=1` ⇒ 双罚修复在 1.20.1 成立；
+   - `AP_D2_TC_GRANT:granted=3:n=3:me=3:other=0:tampered=1:priv=applied:fx_on0=1:n2=3:me2=2:other2=1` ⇒ 单张篡改成立（**总量 3 不变，本人 2 / 他人 1**）；
+   - `AP_D2_TC_PURGE:n=2:me=2:other=0` + `AP_D2_TC_PURGE_V:ok=1` + `AP_D2_TC_DONE:n=0` + `AP_D2_TC_V:purge=1:nopriv=1`；
+   - `AP_D3_RP_PICK_V:ok=1` / `AP_D3_RP_BOUND:cards=5:barricades=0:items=1:owned=1:other=0:noowner=0:fields=1` / `AP_D3_RP_BOUND_V:ok=1` / `AP_D3_RP_DONE:cards=0:barricades=5:items=0:fields=0:use=FAIL` / `AP_D3_RP_V:lost=1:gate=1` ⇒ 强化拒止五规则仍成立；
+   - `AP_D0_CLEAN:sign=eq:ok:dice=eq:ok:stage=1:priv=removed:fx=0:fields=0:purged=2`（真读回）+ `AP_D8_SNAP:now=3573:hasSign=0:cards=0:barricades=0:items=0:owned=0:fields=0:temp=0:stage=1`。
+5. **1.21.1 三案全 PASS**（新世界，`temp/case_*_e.log`）：`UNDERCOVER-DOUBLE-1.21.1` / `REPULSION-SIGN-1.21.1` / `TEMPCARD-OWNER-1.21.1` 均 `MT_CASE_RESULT: PASS`。
+6. **收尾**：`mt.ps1 --version 1.21.1 --phase stop --force --purge-saves` ⇒ `MT_CLEANUP_SAVES: PURGED 1` / `MT_CLEANUP_RESULT: OK` / `MT_STOP: OK (1s) — 收停完成，无本流程残留进程`；`Get-CimInstance Win32_Process java.exe` 剩 3 个（Gradle daemon Zulu21 `15920` + Adoptium 17 worker `16556`/`2572`），**无客户端残留**。
+
+### 4.1ad 智能手表同源双触发 + 击杀奖励去重 + 1.20.1 立牌「被追踪 +5」挂点修正（2026-10-27 17:2x–18:2x）—— 双线实机 PASS
+
+1. **触发来源（用户报告）**：智能手表筹码与「隐匿调查」同一个 bug —— 法伤加成走独立真伤段时一次死亡派发两次 `LivingDeathEvent`。全面排查法伤结算链后确认，凡挂 `LivingDeathEvent` 的**击杀奖励**都受影响（两线各 5 处）。
+2. **代码落地（两线，共 22 文件）**：
+   - 新增 `combat/DeathTriggerGuard.java`（两线各 1，66 行）：`claim(LivingEntity, String channel)` 以 `UUID|channel` 为键，同一游戏刻（`SAME_DEATH_WINDOW_TICKS=1`）的第二次派发返回 false；带 `PRUNE_THRESHOLD=4096` / `PRUNE_KEEP_TICKS=400` 清理。
+   - 5 个击杀奖励处理器接入闸门（`SmartWatchChipItem` / `ElectricSwordChipItem` / `FlashlightChipItem` / `HaiqingSignItem`(weak_mark) / `BonnieSignItem`(sign_kill)）：闸门放在 isCanceled、阵营与资格筛选**之后**、发放奖励之前 —— 否则被取消或被筛掉的派发会白吃 claim。
+   - 真伤段自身不再吃「怪力乱神 +5」：`DamageEffectCardHandler` 暴露 `isApplyingTrueBonus()`，两线 `LinglingSignEvents` 的 +5 处理器在 `EXTRA_DAMAGE` 判定之后再拦这一段。
+3. **⭐ 实机新发现（既有 bug，非本批引入）：1.20.1 的「被追踪目标 +5」从来就没生效过。** 1.20.1 骰战处理器（`combat/DiceCombatEvents.java:274 onLivingDamagePre`，优先级 **NORMAL**）在 `LivingDamageEvent` 上以 `event.setAmount((float) finalDmg)`（`:822`）**覆盖式**写入自算终值；原挂点在 `LivingHurtEvent`（护甲之前、更早）⇒ 加上的 +5 被整段丢弃。而该被动的前置恰是「佩戴骰子 + 立牌」⇒ **骰战路径必然生效** ⇒ 等于从未生效。取证：临时插桩 `AP_HURTDBG` 显示闸门全真（`eq=true:trk=true:amt=1.0`），目标却只掉骰战自算的 3 点；改挂 `LivingDamageEvent`(**LOWEST**，排在骰战 NORMAL 之后) 后同一场景 16 对统计 diff 中位数 **= 5**。1.21.1 侧本来就挂 `LivingDamageEvent.Pre` + LOWEST，因此无此问题。
+4. **产物（2026-10-27 18:2x）**：neo `neoforge-1.21.1/build/libs/astral_dice-1.5.0-rc.4+neoforge_1.21.1.jar` **2,597,544 B** sha256 `FD3C8306A8EA26412EEAB5A25621C1FA4D4F929ACB290823BE6DF9D001492FC6`（与上一轮字节一致：本批未改 neo 代码路径）；forge prod **2,642,731 B** `79D3CF88A7ED9862B1DDB4B34FBE21DF69FBD602153D795AC22C21FDCD2477D3`；forge dev named **2,613,244 B** `71535C422D708D5A1995304C82EBD6695C6C69662345E397A11FCC95D25C26A6`。**四目标全部投放且 sha256 MATCH**：`run/1.21.1/mods`、`run/1.20.1/mods`、整合包「狐の航空学 Voxy Edition」、整合包「1.20.1-Forge 模组测试」。
+5. **1.21.1 实机 `NESTED-DOUBLE-1.21.1` ⇒ PASS**（29 步 / 9 断言）：`swread` = `{"ok":true,"cards":1}`（修前 2）；B 段 `{"n":16,"median":5,"near5":10,"near0":0,"marksOk":1,"trackedOk":1,"hasSign":true}`；C 段（卸立牌）`{"n":16,"median":0.5,"near0":7,"hasSign":false}`。伤害噪声的处理方式：同轮内每对「未追踪 / 被追踪」同 tick 各吃一发 `card_spell`，取 diff 中位数（均值会被骰战尖峰污染）。
+6. **1.20.1 实机 `DST-NESTED-1.20.1` ⇒ PASS 10/10**（34 步）：`AP_ND_NDSWREAD:cards=1:ok=1`；`AP_ND_NDMEAS:B:n=16:median=5:near5=7:tracked=1:marks=1:hasSign=1:eq=true`；`AP_ND_NDMEAS:C:n=16:median=0:near5=1:tracked=0:hasSign=0:eq=false`；`AP_ND_CLEAN:sign=eq:ok:dice=eq:ok`。修前同用例 B/C 段 median 都是 **0**（当时的断言只锁 tracked/marks/hasSign，属「结构绿」）。
+7. **测试资产**：`scripts/test/cases/NESTED-DOUBLE-1.21.1.json`（新）、`scripts/test/cases/DST-NESTED-1.20.1.json`（新，10 断言含两条中位数判据）、`scripts/test/resources/kubejs/1.20.1/server_scripts/astral_dst_probe.js` 新增 `ndsw` / `ndswread` / `ndb` / `ndmeasb` / `ndmeasc` / `ndc` 六个子命令。
+8. **收尾**：`mt.ps1 --version 1.20.1 --phase stop --force --purge-saves` ⇒ `MT_CLEANUP_SAVES: PURGED 1` / `MT_CLEANUP_RESULT: OK` / `MT_STOP: OK (1s) — 收停完成，无本流程残留进程`；`java.exe` 剩 4 个，逐条核命令行 = Gradle daemon（Zulu 21 ×2）+ Adoptium 17 编译 worker（×2），**无客户端残留**。
+9. **提交**：`59d69ce4`（22 文件 +?）；未 push、无 tag。
 ### 4.2 历史读数
 
 pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（含 4.8 pre.4 全量双线 10 跑 10 PASS、4.11–4.17 pre.5 各批、4.19 Jade 图标留白版）。
+
+### 4.1ae 攻击 / 受击链路全面排查 + 三批修复（2026-10-27 18:28–19:2x）—— 双线 `:classes` 通过，**未实机**
+
+1. **起因与产出**：`m20350`「执行代码测攻击/受击链路全面排查，找出仍存在的问题和隐患」→ 只读取证得出 N1–N14，落 `docs/features/attack-damage-chain-audit.md`（319 行，含 §0 速览表 / §1 两线派发顺序 / §2 五条目标不变量 / §3 逐项证据 / §7 批次落地与复核）；`m20514`「记录所有问题，派子代理分批修正，务必使两线处理链路统一；再开一路验证两端法伤链」→ 四路子代理：A（forge 骰战吸收与护盾口径 N1/N2/N3/N7/N8）、B（事件牌惩罚伤害 N4/N5）、C（`dice_damage` 冷却标签 + Papara 回血基数 N6/N9）、D（**只读**独立复核两端法伤链 → `docs/features/spell-damage-chain-verification.md`，706 行）。
+2. **批次 A（forge 为主，neo 仅 N7）**：`forge-1.20.1/.../combat/DiceCombatEvents.java:365` 新增 `settleDiceDamage(LivingEntity, LivingDamageEvent, float)` 作为**两条写终值路径的唯一出口**（玩家攻击 `:941`、生物近战 `:1224`），内含护盾钳制 `:371` 与「黄心按终值只扣一次」（`:376-389`，并对平台 `:1684` 的二次扣做 `+ toHealth` 补偿）；受击前在 `@SubscribeEvent(priority=HIGHEST) onLivingHurtRecordAbsorption(LivingHurtEvent)`（`:331-339`）用弱键表 `PRE_HURT_ABSORPTION`（`:301-302`）快照护盾与黄心余额（原因：平台 `:1669-1670` 会先按旧值扣一次，等到 `LivingDamageEvent` 再读护盾余额常已为 0）；补上生物近战路径**完全缺失**的弱印记 ×1.10（`:1216-1224`）；N7 在 forge `:1588-1598` / neo `:1478-1488` 加 `isInternalAoe() || isApplyingTrueBonus()` 闸门。
+3. **批次 B（双线）**：`event/EventEffects.java` 新增唯一出口 `hurtAsEventCardPenalty(ServerLevel, Player triggerer, Player target, float, String)`（neo `:568-578` / forge `:575-585`），三处惩罚伤害（-8 `learn_from_others` / 4 点 `world_collapse` / 2 点 `problem_delivery`）统一改走 `unreducible_damage` + 触发者归因 + `DamageNumberAggregator.Group.SPELL` + 机器行 `AP_EVENT_PENALTY`；连带 `learnFromOthersApply` / `afterDispatch` 增 `Player triggerer` 形参，`event/AstralEventDispatcher.java`（neo `:134` / forge `:133`）改传 `bonusFinal`。反向判据：两线 `setHealth(` 与 `damageSources().generic()` 在 `EventEffects` 内均为 0 处。
+4. **批次 C（双线）**：`resources/data/minecraft/tags/damage_type/bypasses_cooldown.json` 追加 `astral_dice:dice_damage`（两线字节相同，sha256 `d673d595…08055`）；neo `item/sign/PaparaSignItem.java` 由 `LivingDamageEvent.Pre` 改 `LivingDamageEvent.Post`，两线回血基数统一为「实际扣红心量」。
+5. **批次 D 复核 + Lead 订正（关键）**：D 的第一条结论成立 —— **法伤一次命中 = 两次 `hurt()`**（本体 + 嵌套 `true_damage` 加成段）⇒ 所有「每次受击」效果翻倍（新增 N15，属**平衡改动，待裁决**）；但 D 的「forge `LivingEntity.java:1684` 双扣吸收」判定经 Lead 复核 **REFUTED**：`setAbsorptionAmount` 在 `:2932-2938` 把负值钳到 0，故 `d > A` 时总消耗恰为 `min(d, A)`，与 neo 等价；按 D 的建议加「补偿」反而会给每次受击白送 `f1` 点吸收（已否决，勿落地）。
+6. **判据与状态**：双线合并编译 `:neoforge-1.21.1:classes :forge-1.20.1:classes` **EXIT 0**（各代理单独与 Lead 合并编译均通过）；`python -B tools/check_changelog_parity.py` ⇒ `CHANGELOG_PARITY: OK sections=26 entries=767/767`；**未实机**（D 给出的 C1–C8 判据依赖尚不存在的探针）；**待裁决清单**见 `docs/features/attack-damage-chain-audit.md` §7.4（N11 / N14 / N15 / N16 / N18 / N19 / N20 / N22 / N23 / N24），**登记不改** N17 / N21→E批 / N25 / N26。
+7. **批次 E（P2-5，两线）**：`isHostileAttack` 排除本模组自身的惩罚类伤害类型 —— neo `combat/DiceCombatEvents.java:1777-1786` / forge `:1907-1916`（文本 sha256 相同），`source.is(UNREDUCIBLE_DAMAGE) || source.is(CARD_COST)` ⇒ `false`，闸门置于 `getEntity()` 之前、3 个调用点零改动。理由：反噬与事件牌惩罚都走 `unreducible_damage` 且攻击者归属=原攻击者，不排除会让**同一次受击**再触发一遍受击被动（立牌 `onHurt` / `BufferShield` / Papara 汲取）。同批复核确认 D 的「forge 吸收双扣」为 REFUTED（见上条），两线编译 EXIT 0。
+8. **批次 F（P2 复核回归修复，forge 单线）**：把 settle 写回的「幻影吸收余额 H」显式化 —— `PHANTOM_ABSORPTION`（弱键 + gameTime）+ `phantomOf` / `withPhantomPeeled` / `compensateAbsorption`（`forge-1.20.1/.../combat/DiceCombatEvents.java:416-489`）；三处嵌套 hurt（额外加伤 `:1062`、大当家溅射 `:1131`、狂暴反噬 `:1717`）改为在真实余额上结算；`event/ChipDamageHandler.java:54-66` 用 `try/finally` 在四条减伤分支之后统一对账，`event/LinglingSignEvents.java:121` 与弱印记 `:1777` 同步。修掉复核 run `15212f5f` 的两条 P2（嵌套伤害被幻影吞掉 / 改金额后黄心白涨）。双线 `:classes` EXIT 0，neo 与 P1 零 diff，**未实机**。
+### 4.1af 法伤加成折叠为单次结算（方案 A）+ neo→forge 移植 mapping（2026-10-27 19:3x–20:2x，双线）—— 双线 `:classes` 通过，**未实机、未重出 jar**
+
+1. **裁决与前置**：用户 m20709 裁定 N15「必须改回单次结算」；两路只读验证产出 `docs/features/spell-single-hit-option-a.md`（折叠路径 0 可行 / 数值预补偿路径 1 判 REFUTED）与 `-option-b.md`（mixin 方案对 N15 无效）。用户 m20751 指定执行方案 A、`true_damage` 对齐「只绕过护甲」口径，并要求「以 neo 为基准写 forge mapping，后续双线先做 neo、再按 mapping 落 forge」。
+2. **第一轮订正（关键）**：初版折叠点放在 `LivingDamageEvent`（neo `onLivingDamagePre` / forge `onLivingDamage`），而两者都在**护甲与魔法吸收之后** ⇒ 加成不吃抗性 / 保护：抗性 II + 保护 IV 放大 **4.63×**、抗性 IV + 保护 IV 放大 **13.9×**（裸目标 ×1.0 不变）。折叠点**上移到护甲之前**。
+3. **最终落点（两线）**：neo `neoforge-1.21.1/src/main/java/com/merlinkitsune/astral_dice/event/DamageEffectCardHandler.java:73-74` `@SubscribeEvent(priority = EventPriority.HIGHEST) onLivingIncomingDamagePre(LivingIncomingDamageEvent)`，唯一写值 `:134 event.setAmount(event.getAmount() + (float) bonus)`；forge 同文件 `:66-67 onLivingHurtPre(LivingHurtEvent)` 与 `:122-128` 同一句。音效拆成独立 `onLivingDamageSound`（neo `LivingDamageEvent.Pre` `:157-158` / forge `LivingDamageEvent` `:152-153`），读数**不再** `+ bonus`。`combat/SpellDamageContext` 的事件字段类型随之改（neo `LivingIncomingDamageEvent` / forge `LivingHurtEvent`）。
+4. **连带删除闸门**：`APPLYING_TRUE_BONUS` + `isApplyingTrueBonus()` 与三处消费者（两线 `LinglingSignEvents` 的 +5、`DiceCombatEvents` 的 N7 狂暴反噬）—— 同一击不再有第二次 hurt，闸门失去判据。⚠️ **旧行为订正**：+5 从未变成 +10（那道闸门本就排除嵌套段，折叠前后都是 +5 一次）。
+5. **口径与风险**：乘性因子**仅对本体源自身不吃护甲的情形**（`astral_dice:card_spell`）与旧实现一致（×1.0 / ×0.216 / ×0.072）；本体源不在 `bypasses_armor` 内时加成改为吃护甲，属预期语义变更（详见 §5 第 19 条），真正修掉的是「吸收钳制、固定点数减伤、按次触发的受击被动、跳字与音效、第三方多次判定」各算两次。骰战覆盖不可达：法伤 `getDirectEntity() == null` 在 `forge-1.20.1/src/main/java/com/merlinkitsune/astral_dice/combat/DiceCombatEvents.java:552` 早退，另有 `:576` 近战闸门。
+6. **mapping 文档**：`docs/features/neo-to-forge-porting-mapping.md`（602 行 / 62,765 B；14 节 + 附录 A/B，36 张表、每节末「对齐检查清单」，陷阱 T-01…T-18、未验证 U-01…U-10）。三条头号差异：forge 改伤害金额只能在 `settleDiceDamage` 出口（`LivingHurtEvent` 段的钳制会被随后 `setAmount(终值)` 整段丢掉）；neo `MobEffectEvent.Expired` 可取消而 forge 不可；`ItemStack#consume` / `isSameItemSameComponents` / `DeferredHolder` 在 forge 都不存在。
+7. **判据**：双线 `:classes` `BUILD SUCCESSFUL`（8 tasks up-to-date）；javap 实测两线 `DamageEffectCardHandler` 类面只剩 `LIVING_PAGE_BIG_HIT_THRESHOLD` + `onLivingIncomingDamagePre`(neo)/`onLivingHurtPre`(forge) + `onLivingDamageSound`，`setAmount` 各 1 处 / `hurt` 0 处 / `trueDamage` 0 处；`isApplyingTrueBonus` 在 P0 两线只剩注释（P1 两线仍是活代码）；两线 16 个改动文件均 CRLF。**未实机、未重出 jar、四目标未投放**。
+
+### 4.1ag 折叠批三条裁决落地：AOE 计攻击行为 + 加成绕过护甲 + 连击保留 cooldown（2026-10-27 20:5x）—— 双线 `:classes` 通过，**未实机**
+
+1. **N14（AOE 命中也算）**：两线 `combat/DiceCombatEvents.java` 拆开原合并闸门 —— `if (counterDepth > 0) return;` 留在原位（反击链自算伤害仍整段早退），`if (isInternalAoe()) return;` 下移到「生物近战 / 玩家攻击」分支之前（forge :521 → :545 附近，neo :300 → :324 附近）⇒ 赐福 / 降神倒计时启动与隐匿解除对 AOE 的**每个被命中目标**都生效（按目标逐个计），骰战结算仍只对主目标发生。
+2. **法伤加成绕过护甲**：两线 `event/DamageEffectCardHandler.java` 新增 `foldBonusBypassingArmor(...)`，折叠行改为 `event.setAmount(foldBonusBypassingArmor(target, source, event.getAmount(), bonus));`。规则：源带 `bypasses_armor`（本仓全部 `astral_dice:card_spell`）或护甲 0 ⇒ 直接相加；否则护甲前二分求 x 使 `armor(x) = armor(base) + bonus`（`[0, 8*want]`，40 次）⇒ 加成等效绕过护甲，抗性 / 保护 / 吸收 / 受击倍率仍整段只算一次。数值回到与旧 `true_damage` 段一致（不再有「本体吃护甲时加成也吃」的下降）。
+3. **连击**：保留 cooldown 现状（不给加成单独 `bypasses_cooldown`），被无敌帧吞掉时加成与本体一起吞。
+
+**判据**：`gradlew.bat :neoforge-1.21.1:classes :forge-1.20.1:classes` **EXIT 0 / BUILD SUCCESSFUL in 3s / 8 actionable tasks: 2 executed, 6 up-to-date**；两线改动文件 CRLF、bareLF 0。**仍欠**：① 重出 jar + 四目标投放；② 实机验证 —— AOE 命中 N 目标时赐福倒计时只启动一次但隐匿对每个目标都解除、护甲 20 目标上加成仍按全额落地（对比无护甲目标的差值 = bonus）、连击被吞的可接受性；③ P1 两线未折叠。
+### 4.1ah 近战链路专项审计与修复（2026-10-27 21:0x–21:3x，P0 双线）—— 双线 `:classes` 通过，**未实机**
+
+用户指令：「继续验证近战攻击类是否有遗留问题（重点关注 forge 端），争取一次全部解决战斗/伤害类问题」。审计正本见 `docs/features/attack-damage-chain-audit.md` §7.9（本轮追加：7.9.1 平台事实 / 7.9.2 必修清单 / 7.9.3 登记不改 / 7.9.4 判据）。
+
+1. **最关键新证（F1 前提）**：`forge-1.20.1/build/moddev/artifacts/forge-1.20.1-47.4.10-sources.jar` 的 `net/minecraft/world/entity/player/Player.java:940-965` 是 `actuallyHurt` **覆写且不调 super** —— `:946-947` 扣吸收、`:948` 派发 `LivingDamageEvent`、`:954` 扣血，**没有** `LivingEntity.java:1684` 那次再扣吸收。⇒ 批次 F 的「写回 `A0-absorbedShould+H` 等平台再扣 H」对玩家不成立，幻影 H 永留黄心（A0=8、F=20 ⇒ 终态 12），`compensateAbsorption` 对玩家恒等 ⇒ 永远清不掉。
+2. **落地清单（两线对称，除 F1 为 forge 专属）**：
+   - **F1** `forge-1.20.1/.../combat/DiceCombatEvents.java` 的 `settleDiceDamage` 现返回 `float`，新增 `target instanceof Player` 分支：写 `expectedAfter`、`PHANTOM_ABSORPTION.remove`、`event.setAmount(toHealth)`、返回 `toHealth`；非玩家仍走原「写回 A0-absorbedShould+H + registerPhantom」。
+   - **F2** 两线新增 `public static boolean isDiceBattleSettledDamage(DamageSource, LivingEntity)`：`isInternalAoe()/isInCounterChain()` 早退 → `directEntity` 是玩家时要求「近战 且 非法伤 且 非自伤」，再按「有骰 ⇒ 赐福激活 / 无骰 ⇒ `isBlessingTarget`」；`directEntity` 是生物且目标是玩家 ⇒ true。`onWeakMarkDamage`、`event/LinglingSignEvents`、`item/card/FateGuidanceCardItem` 三处统一改用它（原判据只认「玩家+赐福+骰子+近战」，漏掉入口支持的无骰分支 ⇒ ×1.21 / 命运的指引 ×1.69）。
+   - **F3** 两线生物近战路径（`resolveMobMeleeAttack`）在终值前乘 `getDiceCurseRatio(target)` 并清零；`FateGuidanceCardItem` 的 `diceCombat` 改同源判据。
+   - **A3** 两线 `isHostileAttack` 排除清单加 `ModDamageTypes.EXTRA_DAMAGE`（与 `UNREDUCIBLE_DAMAGE` / `CARD_COST` 同处）。
+   - **A4** 两线玩家骰战路径在写终值前把「`LinglingSignManager.isEquipped(player) && isTrackedByAny(target)` ⇒ +5」折进去；`LinglingSignEvents` 加「`isDiceBattleSettledDamage` ⇒ 跳过」与「`getAmount()/getNewDamage() <= 0` ⇒ 不追加」。
+   - **A5** forge `PhantomBalance` 增 `expectedAfter`；`registerPhantom` 改 3 参；新增 `onServerTickReconcilePhantoms(TickEvent.ServerTickEvent)`（仅 END 相位，`actual > expectedAfter + 0.01F` 才收回）。
+   - **A6** 两线生物近战路径补 `if (MarkManager.getLevel(target) > 0) finalDmg += 1;`；neo 生物路径同时补弱印记 ×1.10（与 forge 已并入终值的口径对齐）。
+   - **F7** 两线骰战落地量 > 10 且 `getAlanaPassiveBonus > 0` ⇒ `AlanaSignItem.clearBonus`（`event/NewSignEvents` 的原判据保留给非骰战）。
+   - **D3** 两线 `item/sign/BaseSignItem.java` 的 `onHurt` javadoc 增「amount 口径」段：两线数值口径不同（forge 护甲/药水/吸收后、neo 护甲前），只用于开关判定，**禁止**数值计算。
+3. **其它小修**：forge `item/sign/PaparaSignItem.java` 的受击回血从 `LivingDamageEvent` 处理器改为 `settleBiteHeal(LivingDamageEvent)`，由 `event/ChipDamageHandler.java` 的 finally（`compensateAbsorption` 之后）显式调用 ⇒ 顺序确定；forge `combat/PlayerHostilityTrackerEvents` 删掉重复的 `if (event.isCanceled()) return;`。
+4. **端口化文档**：`docs/features/neo-to-forge-porting-mapping.md` 订正 5 处过期口径 —— §1.1 法伤行（两次 hurt → 折叠成单次、折叠点行号）、§1.2 「forge 吸收被扣两次」（标 REFUTED，改为幻影 H 复盘）、§1.3（标为历史）、§12 T-04、§13 U-09。
+5. **登记不改**：Papara 主动汲取回血仍用 `finalDmg`（lang 规格是「骰神赐福最终伤害的一半」）；F8（mob→player 不判敌对）、MELEE-06（+5 不限近战）、MELEE-07（熊猫人反击无 per-swing 去重）、F5 显示侧（`DamageNumberAggregator` 读中间值）均登记。 ⛔ 2026-10-27 21:5x 用户裁决已推翻其中 F8 / MELEE-06 / MELEE-07 三项，见 §4.1ai。
+6. **判据**：`gradlew.bat :neoforge-1.21.1:classes :forge-1.20.1:classes` ⇒ EXIT 0（nex 4 / forge 89 条既有 deprecation 警告）；**未实机、未重出 jar**。建议实机验证：F1 读黄心终态、F2 无骰×1.21、A4 气囊归零后是否仍 +5。
+
+
+### 4.1ai 近战三裁决落地：F8 不改 + MELEE-06 限定骰战 + MELEE-07 反击 1 刻去重（2026-10-27 21:5x，P0 双线）—— 双线 `:classes` 通过 + lang 门禁通过，**未实机**
+
+用户裁决（`m21480` 原话要点）：「F8 是正常机制，任何使用近战攻击带骰子的玩家一律算骰战（消耗防御牌，且被攻击方触发防御牌提供的防御力加成）；MELEE-06 需要修改限定必须为骰战（法术、技能等排除）；MELEE-07 执行去重（一次计算正确伤害），使用 1 tick。所有涉及反击的立牌/筹码一并修（因为共用同逻辑）」。审计正本同步追加 `docs/features/attack-damage-chain-audit.md` §7.10（§7.9.3 的三行登记项已按裁决逐行改写）。
+
+1. **F8（mob→player 不判敌对）· 不改**：`resolveMobMeleeAttack`（neo `combat/DiceCombatEvents.java:1087` / forge `:1379`）对所有生物生效，攻击力按 `starengine` 的 `combat/TargetBattleStats.java:40-46` 分类（HOSTILE 4 / NEUTRAL 3 / PASSIVE 0 / FRIENDLY 0），`opposed` 时扣防御牌耐久（neo `:1157` / forge `:1454`）—— 裁决认定为正常机制，代码零改动。
+2. **MELEE-06（立牌 +5 未限定）· 改为只限骰战**：删掉两线 `event/LinglingSignEvents.java` 的 +5 伤害处理器（neo 原 `onLivingDamagePre(LivingDamageEvent.Pre)` @LOWEST / forge 原 `onLivingDamage(LivingDamageEvent)` @LOWEST，含 forge 的 `compensateAbsorption` 调用），两文件随之清掉 6 个失效 import（现分别 76 / 82 行）；javadoc 与 `combat/DiceCombatEvents.java` 的 A4 注释同步改写为「这是**唯一**加点，`LinglingSignEvents` 已不再挂任何伤害事件」。+5 唯一落点 = 骰战终值（neo `:841-844` / forge `:1128-1130`，`isEquipped(player) && isTrackedByAny(target)` ⇒ `finalDmg += TRACKED_TARGET_BONUS_DAMAGE`，常量 neo `LinglingSignManager.java:68` / forge `:75` = 5.0F）；无骰但目标是「赐福合法目标」仍属骰战 ⇒ 照样 +5。
+3. **MELEE-06 文案**：两线三语（`zh_cn` / `en_us` / `ja_jp`）改 3 个键 `tooltip.astral_dice.sign.lingling_passive`、`astral_dice.guide.entry.lingling_sign.2`、`.3`，全部加「骰战」限定（en "In a dice battle …"、ja「ダイス戦で…」）；键数仍 1065/1065/1065。
+4. **MELEE-07（反击无 per-swing 去重）· 1 刻窗口去重，四出口共用**：`combat/DeathTriggerGuard.java` 新增 `SAME_SWING_WINDOW_TICKS = 1L`、表 `LAST_SWING`、`public static boolean claimPair(LivingEntity attacker, LivingEntity victim, String channel)`（key = `attacker|victim|channel`，同刻重复 ⇒ false，`LAST_SWING.size() > PRUNE_THRESHOLD` 触发 `prune`，`prune` 里同步淘汰超 `PRUNE_KEEP_TICKS` 的条目）；两线 `injectCounterDamage` 首段（`isInCounterChain()` 之后）加 `if (!DeathTriggerGuard.claimPair(attacker, player, "counter")) return;` ⇒ 熊猫人嘲讽（`onPandamanTauntCounter`）、枪匠破绽闪避（`onMosesBrokenDodge`）、鼠鼠护盾（`onRenShieldCounter`）、安全气囊（`AirbagChipItem.tryNegateFatal → counterAttacker`）四条出口共用同一把锁，全部立牌 / 筹码一并修好。
+5. **语义边界**：key 含受害者 UUID ⇒ 同一刻两个不同攻击者各自照常反击；`isInCounterChain()` 仍在最前 ⇒ 反击伤害（`dice_damage`）不会自我递归；`AirbagChipItem` 先置冷却，第二段本就被 `isOnCooldown` 挡掉（双重保险）。
+6. **行为面净变更**：骰战路径 +5 不变；非骰战（法伤 / 技能 / 远程 / 环境）从「+5」变为「不加」—— 本批唯一数值变更，已与三语文案同批落地。
+7. **判据**：`gradlew.bat :neoforge-1.21.1:classes :forge-1.20.1:classes` ⇒ EXIT 0（`temp/compile_melee70.log`，forge 89 / neo 4 条既有 deprecation 警告）；`pwsh -NoProfile -File tools/check_lang_sync.ps1` ⇒ exit 0，两线 `OK: zh_cn(1065) = en_us(1065) = ja_jp(1065)`；8 个 java + 6 个 lang 改写后 bareLF 全 0。**未实机、未重出 jar、未投放**；P1 两线未镜像。建议实机判据：① 法伤 / 远程击杀被吸附目标不再 +5；② 近战骰战打被吸附目标仍 +5；③ 被嘲讽单位同一次挥击的多段伤害只反击一次。
+
+### 4.1aj 近战批双线实机闭环 + F7 公共出口 / MELEE-04 回血基数修复（2026-10-27 22:1x–22:3x）
+
+用户裁决（m21607）：「走实机，验证所有改动」。
+
+1. **实机第一轮暴露两处缺口（本批新修）**
+   - **F7**（修女 `alana_sign` 被动「单次受击 >10 清空加成」）的清理原先只写在**玩家攻击**路径（forge `combat/DiceCombatEvents.java:1138-1141` / neo `:852-855`），而生物→玩家走 `resolveMobMeleeAttack`（forge `:1379-1456` / neo `:1087-1159`）直接调 `settleDiceDamage`，没有这段 ⇒ 1.20.1 实机见证「怪打 22 点、`bonus` 仍为 3」。修法：新增 `private static void applyAlanaBigHit(LivingEntity target, float applied)`（`target instanceof Player victim && applied > 10.0F && ModAttachments.getAlanaPassiveBonus(victim) > 0` ⇒ `AlanaSignItem.clearBonus(victim)`），forge 在 `settleDiceDamage` 的**三个 return 点**各调用一次并删掉玩家路径 inline 块；neo 在玩家路径（`landing = finalDmg - min(finalDmg, 吸收)` 后）与生物近战路径（`setNewDamage(finalDmg)` 后）各调用一次，helper 放 `resolveMobMeleeAttack` 末尾。
+   - **MELEE-04**（吸血鬼立牌 papara 攻击回血）原先用 `finalDmg`（settle 之前的值）⇒ 被护盾 / 黄心吃掉的部分也回血。forge 玩家路径 `Math.max(1, (int) finalDmg / 2)` → `(int) applied / 2`（`applied` = settle 返回的落地红心量）；neo → `landing / 2`。
+2. **产物与投放（2026-10-27 22:2x）**：neo `2,598,569 B` sha256 `35387D4BF62F9191E4936B41952653EFFF00793B0163E107BBADF5C072F059C6`；forge prod `2,647,447 B` `1FA57C6E821709D802EDB2C7B8AD62F35138DEAE997BFBA21300DB1A9428F72B`；forge dev named `2,618,039 B` `4AA4308B71420C406F3A5F65A431047FAF2C44D3DC6EC756D89190828EF26488`。四目标（`run/1.21.1` ← neo prod、`run/1.20.1` ← forge dev named、狐の航空学 Voxy Edition ← neo prod、1.20.1-Forge 模组测试 ← forge prod）逐处 `Get-FileHash` **MATCH**（脚本 `temp/build_deploy_final.ps1`）。
+3. **1.20.1 读数（AutoJS 服务端 eval；world=testworld）**：S1 MELEE-06 `{"tracked":1.0,"hasSign":1.0,"dU":1.0,"dT":1.0,"diff":0.0}`；S2 骰战 +5 统计 n=64 `meanDiff 5.25 / medianDiff 6.0`；S3 F1 `absAfter=0.0`、红心掉 6，A6 无标记 7 → 有标记 8，F3 不可测（未装神秘遗物+）；S4 F2 `ratio 1.0999984741210938`；S5 F7 修前 `bonusAfter=3` → 修后 `bonusAfter=0`（`dealt=22`）；S6 MELEE-07 `{"r1":true,"r2":false,"armB":1.0}`；S11 A5 `{"hpDelta":3.0,"absRightAfter":0.0}` → 700ms 后 `abs 0.0`；S12 MELEE-04 `{"mobHpDelta":3.0,"heal":1.0,"expectFixed":1.0}`。
+4. **1.21.1 读数**：四案全 PASS（`UNDERCOVER-DOUBLE` / `REPULSION-SIGN` / `TEMPCARD-OWNER` / `NESTED-DOUBLE`）；`NESTED-DOUBLE` B 段 `{"median":5,"near5":15,"hasSign":true}`、C 段 `{"median":0,"near5":2,"hasSign":false}`；F7 `22 → bonusAfter 0`；F2 `ratio 1.0999985`；MELEE-04 `{"mobHpDelta":4,"heal":2,"expectFixed":2}`；MELEE-06 `{"tracked":1,"hasSign":1,"dT":1,"dU":1}`。
+5. **1.20.1 用例**：`DST-P0-1.20.1` **PASS 13/13**；`DST-NESTED-1.20.1` 首轮 FAIL（唯一红点 `AP_ND_NDMEAS:B:median=[4-6]`）—— 根因是测量段仍打 `astral_dice:card_spell`（法伤），MELEE-06 之后 +5 只走骰战 ⇒ u=t=1、median 恒 0，**用例陈旧而非回归**；把 `dNdMeasureBody` 改成「主手 diamond_sword + `DICE_BLESSING` + `invulnerableTime=0` + `minecraft:player_attack`」后 PASS。1.21.1 的 `NESTED-DOUBLE` 两段 eval（`llmeas` / `nomeas`）同批改造。
+6. **收尾**：`MT_CLEANUP_SAVES: PURGED 1` / `MT_CLEANUP_RESULT: OK` / `MT_STOP: OK (1s)`；`Get-CimInstance Win32_Process java.exe` 无输出（无客户端 / daemon 残留）。
+7. **无法实机（如实登记，不得当已验证）**：A3（`extra_damage` 嵌套 hurt 二次触发受击被动）需 PvP 受害者；A5 的「第三方在 LivingDamageEvent 取消」路径不可模拟（只验无上偏）；F3 需装神秘遗物+；N14「AOE 按目标逐个计」无专项判据。
+
+### 4.1ak 神秘遗物 / 神秘遗物+ 联动复测（2026-10-27 22:4x–23:3x，用户 m21935）—— 1.21.1 三项 PASS、F3 现场不可触发、1.20.1 被 SRG/Mojmap 阻塞
+
+用户原话：「1.20.1部署enigmaticlegacy+enigmaticaddons，1.21.1部署enigmaticlegacyplus。执行神秘遗物/神秘遗物+的复测」
+
+1. **部署与可行性（先给结论）**
+   - **1.21.1（NeoForge：dev 与生产同为 Mojmap）可直接吃生产 jar**：`run/1.21.1/mods` ← `enigmaticlegacyplus-1.21.1-1.1.2.jar`（7,248,130 B）+ `caelus-neoforge-7.0.1+1.21.1.jar`（50,235 B）；`enigmaticdelicacy-1.21.1-1.0.0.jar` 因硬前置 `farmersdelight` 缺失撤除（`run/1.21.1/crash-reports/crash-2026-10-27_22.57.27-fml.txt`：`Mod enigmaticdelicacy requires farmersdelight 1.2 or above`）。`--phase env` EXIT 0（`MT_WORLD: OK — 世界重建`）、`--phase launch` EXIT 0，`latest.log` 载入 `Caelus API 7.0.1+1.21.1 (caelus)` 与 `EnigmaticLegacy+ 1.21.1-1.1.2 (enigmaticlegacyplus)`（另有其自身资源告警 `Unable to load model: 'enigmaticlegacy:item/the_acknowledgment'`，无害）。
+   - **1.20.1（Forge）dev 跑不了 enigmatic 生产 jar**：`--phase launch` **EXIT 2**，`run/1.20.1/logs/latest.log` FATAL =
+     `Mixin apply for mod (unknown) failed enigmaticaddons.mixins.json:legacy.MixinPermanentItemEntity from mod (unknown) -> com.aizistral.enigmaticlegacy.entities.PermanentItemEntity: … InvalidInjectionException Critical injection failure: @Inject annotation on tickMix could not find any targets matching 'Lcom/aizistral/enigmaticlegacy/entities/PermanentItemEntity;tick()V' … Using refmap enigmaticaddons.refmap.json`。
+     `javap -p` 实测该类在生产 jar 里是 **SRG `public void m_8119_()`**（无 `tick()`）⇒ **生产 SRG jar 丢进 dev（Mojmap）时，凡 mixin 第三方类（非 MC 类）必然找不到目标**。本仓既有口径同理：`forge-1.20.1/build.gradle:249-345` 的 kubejs / rhino / architectury / collective / JEI / Embaddium / FerriteCore / Carpet 全走 `modImplementation`（由 MDG 重映射成 dev 名），AutoJS 也因此另有 `AutoJS-forge-1.20.1-1.0.0-dev.jar`。
+     **三件已从 `run/1.20.1/mods` 撤回**（当前只剩 `astral_dice-1.5.0-rc.4+forge_1.20.1.jar` / `AutoJS-forge-1.20.1-1.0.0-dev.jar` / `starengine-forge-1.20.1-1.1.0.jar`）⇒ 1.20.1 复测路径待用户裁决（§5-17）。
+
+2. **诅咒点数矩阵（1.21.1，N=180/批，靶 pillager + `astral_dice:moses_broken`，主手 iron_sword，dice=golden_dice）—— PASS**
+   - 口径：落地 = **常数项 + f × 骰点**，用**步长**判 f（常数项随主手/会话在 1↔6 之间漂移，步长稳健）。读数：`curse`（戴戒指）= `{6.8:26,7.6:25,8.4:28,9.2:36,10.0:30,10.8:35}` mean 8.951 ⇒ 步长 **0.6**；`ack`（戒指 + 副手 `the_acknowledgment`）步长 **0.8**；`twist` / `bless` / `burst`（`MISAKI_BURST`）步长 **1.0**。
+   - 全部符合 `neoforge-1.21.1/src/main/java/com/merlinkitsune/astral_dice/combat/DiceCombatEvents.java:264-277` 的 `applyCurseToDicePoints`（`cursePenalty = 0.4`，持 `the_acknowledgment` 时再 `-0.2`；`MISAKI_BURST`/`the_twist`/`the_bless` 全额免疫）。
+   - 命名空间：1.21.1 的四件是 `enigmaticlegacyplus:cursed_ring / the_acknowledgment / the_twist / the_bless`，与 `DiceCombatEvents.java:84-87` 常量一致；`enigmaticlegacy:eldritch_pan` 在本线**不存在**（那是 1.20.1 legacy 的 id），1.21.1 的锅是 `enigmaticdelicacy:voracious_pan`。
+
+3. **诅咒之剑筹码（真 id = `astral_dice:cursed_sword_chip`，`item/ModItems.java:749`）五条判据 PASS**
+   - 装备后 `bonus=0 / trig=false / eq=true`；用**攻击触发赐福**（`/effect give` 不复位 triggered）⇒ `bless=true`。
+   - 击杀 1（`player_attack by Dev from Dev`，靶 `moses_broken`、hp=1）⇒ `bonus=1 trig=true`；**同周期第二次击杀 ⇒ bonus 仍 1**（每赐福周期一次）；`MER.remove` 后再次攻击 ⇒ `trig=false`（复位）；新周期击杀 ⇒ `bonus=2`；对 **maxHealth=10** 的目标击杀 ⇒ 仍 2（`>=20` 闸门生效）。
+   - 60 次输出：`{errs:0, mean:11.433, h:{"9":11,"10":11,"11":10,"12":8,"13":9,"14":11}}` ⇒ 落地 9..14 = `6(铁剑) + 2(bonus) + 1..6(骰点)`，**加成确实进入攻击力**（`combat/DiceCombatModifiers.java:586-592`）。
+   - 卸下用脚本 `setEquippedCurio(chip,0,air)` **不清零**（仍 `bonus=2`）：属 `item/CurioSlotUtil.java:181-189` 的 `isIntentionalUnequip` 口径 + Curios 9.5.1 的 `setEquippedCurio` 不触发 `onUnequip`（坑 8），**非产品缺陷**。
+
+4. **计时器守卫 vs 烈焰之核：机制 PASS，佩戴不可构造**
+   - `enigmaticlegacyplus:blazing_core`（烈焰之核；tooltip：`Any status effects applied to you tick down twice as fast, except Molten Heart`）属 **spellstone** 槽，而 `data/enigmaticlegacyplus/curios/slots/spellstone.json` 的 `size = 0`（`scroll` 同为 0；仅 `SpellstoneTableMenu$5` 里 `grow`）⇒ 裸 dev 世界无法合法佩戴，**现场不可构造**。
+   - 改用等价构造验证守卫的加速校正分支：`effect give Dev astral_dice:deepseek_fishing 20 0`（守卫记录 end = now+400）后，再以 `1 1`（20t、amp 1）覆盖 ⇒ `gt 28126 / dur 20`；1 秒后 `gt 28164 / dur 349`（预期 350）、2 秒后 `gt 28223 / dur 290`（预期 291）⇒ **守卫把被加速的剩余时长拉回 20 t/s 时间表**（`F:/MCProject/starengine_next/common/src/main/java/com/merlinkitsune/starengine/event/EffectTimerGuard.java:163-168`），即烈焰之核「tick 翻倍」会被抵消。
+
+5. **F3（七咒倍率）—— UNVERIFIED-LIVE（不得当已验证）**
+   - `minecraft:mob_attack by pillager` 15 次落地**恒 7**，`ModAttachments.getDiceCurseRatio(p)` 前后**恒 1**；戴/不戴 `cursed_ring` 完全一样。`EnigmaticHandler.isTheCursedOne(p)` 在**未戴戒指时也为 true**（EL+ 的「被诅咒者」是世界级状态，`isCurseBoosted=false`）。
+   - 旁证：同世界 `minecraft:generic`/`magic` 曾读到 2× 放大，复测**不可复现**（玩家 `generic 2` → Δ2；牛 `generic 4` → Δ4）；EL+ jar 内 `EnigmaticEventHandler.onAttack` 的放大只在**怪物跳劈暴击**分支。⇒ 放大发生在 `LivingIncomingDamageEvent` LOWEST **之后**，`FateGuidanceCardItem.java:110-141` 的 `ratio = current/original` 捕获恒 1，`resolveMobMeleeAttack` 的 `finalDmg *= curseRatio`（`DiceCombatEvents.java:1147-1151`）**现场不可达**。接线在、通路不通，只能登记（§5-18）。
+
+6. **未测项（写清原因，不作已验证）**：饕餮之锅 melee 识别 —— 1.21.1 需 `enigmaticdelicacy`（缺 FarmersDelight）、1.20.1 被 SRG 阻塞；1.20.1 的诅咒矩阵 / 诅咒之剑 / 治愈与 F7 交叉同样整批未跑。
+
+7. **收尾**：`--phase stop --force --purge-saves` ⇒ `MT_CLEANUP_SAVES: PURGED 1` / `MT_CLEANUP_RESULT: OK` / `MT_STOP: OK (1s)`；`java.exe` 残留 7 个**全部是 Gradle daemon/worker**（按命令行判 `client-like = 0`）；`run/1.21.1/mods` 的两个临时 jar 已删回原状。本轮**未改任何源码 / 文档代码面**，只做部署 + 探针（`temp/en1.js`…`temp/en38.js`）。
+
+### 4.1al 神秘遗物 1.20.1 复测（A 决策）+ 七咒倍率端到端证据（2026-10-27 23:5x–2026-10-28 00:2x）
+
+用户原话（m22452）：「1.20.1 按A决策补测，七咒倍率需要更强的证据验证，补测以上内容。另外派子代理独立验证所有特殊骰子（重点是紫晶骰子）」
+
+1. **A 决策落地（`forge-1.20.1/build.gradle`）**：新增三个测试用 `modImplementation`（默认开启，`-PtestEnigmatic=false` 可关，不进发货产物）——`curse.maven:enigmatic-legacy-336184:5600004`（EnigmaticLegacy-2.30.1）、`maven.modrinth:enigmatic-addons:8UpnBHv1`（enigmaticaddons-1.2.7）、`maven.modrinth:caelus:mRry0DgY`（caelus-forge-3.2.0+1.20.1）。判据：`:forge-1.20.1:dependencies --configuration runtimeClasspath` 三条均带 `(c)`；`:classes` BUILD SUCCESSFUL；1.20.1 dev 实机 `ModList.get().isLoaded()` ⇒ `enigmaticlegacy=true / enigmaticaddons=true / caelus=true`。
+
+2. **七咒倍率（F3）—— 修复后 1.20.1 端到端 PASS**
+   - **根因（实测链）**：旧捕获点 `onCurseOriginalCapture(LivingAttackEvent, HIGHEST)` 早于原版「按难度缩放受击伤害」。EASY 世界命令 10 点 → 缩放为 6（`amount/2+1`）→ 神秘遗物 `painMultiplier=200%` → 12；旧口径 `ratio = 12/10 = 1.2`，把 **0.6 的难度因子锁进了模组倍率**（HARD 下 ×1.5 会反向放大成 3.0）。临时 trace 三段读数：`stage=hurtHigh:amount=6.0` → `AP_CURSE_RATIO original=10.0 current=12.0 ratio=1.2` → `stage=damageNormal:amount=12.0`。
+   - **修复**：捕获处理器改为 `onCurseOriginalCapture(LivingHurtEvent, HIGHEST)`（基准 = 已过难度缩放、未过模组倍率），注释写死 10→6→12。
+   - **修复后常驻机器行（仅 `ratio>1` 输出，正常游玩零噪声）**：`AP_CURSE_RATIO:player=Dev:original=6.0:current=12.0:ratio=2.0`（3/3）；`AP_CURSE_APPLY:channel=mob:player=Dev:ratio=2.0:pre=6.0:post=12.0`（另 `pre=7.0:post=14.0`、`pre=4.0:post=8.0`）；受击落地 deltas `[12.0, 14.0, 8.0]` ⇒ 倍率真正作用在骰战终值上。
+   - **交叉取证**：EL 配置 `run/1.20.1/config/enigmaticlegacy-common.omniconf:816-817` `I:CursedRingPainModifier=200`；运行时 `CursedRing.painMultiplier.getValue().asModifier()=2.0`（`asMultiplier/asModifier = probability/100`）；字节码 `EnigmaticEventHandler` 在 `LivingHurtEvent` 内 `event.setAmount(event.getAmount() * CursedRing.painMultiplier.getValue().asModifier())`；无 `by` 实体的非骰战源（magic / mob_attack / generic）无戒 10 / 戴戒 20。
+   - **1.21.1 同源风险已由源码排除**：`neoforge-1.21.1/build/moddev/artifacts/neoforge-21.1.235-sources.jar` 的 `net/minecraft/world/entity/player/Player.java:936` 先 `scaleDamage(...)`，`:952` 才 `super.hurt(...)`（`LivingIncomingDamageEvent` 在 `super.hurt` 内派发）⇒ neo 的 `getOriginalAmount()` 本就是缩放后值，无需改。活体旁证：命令 12 点 `mob_attack` 落地 7（= `12/2+1`）。
+   - ⚠️ **1.21.1 的 `ratio>1` 仍抓不到**（EL+ 的放大不在 `LivingIncomingDamageEvent` 之前），§5-18(a) 结论不变；只是「是否需要同样修复」已排除。
+
+3. **诅咒点数矩阵（1.20.1，机制行 `AP_CURSE_PTS pre/post`，取证后已移除）**：戴戒 **×0.6**（`5→3` / `3→1.7999999999999998` / `4→2.4`）；戴戒 + 副手 `the_acknowledgment` **×0.8**（`4→3.2` / `6→4.8` / `5→4.0` / `3→2.4`）；副手 `the_twist` **×1.0**；`MISAKI_BURST` **×1.0**；无戒不输出（`hasEnigmaticCurse` false 早退）。与 `forge-1.20.1/src/main/java/com/merlinkitsune/astral_dice/combat/DiceCombatEvents.java:267-280`（`cursePenalty=0.4`、ack 再 `-0.2`、三件全额）逐条一致。**1.20.1 的 EL 2.30.1 没有 `the_bless`** ⇒ 该免疫分支在本线恒不命中（`DiceCombatEvents.java:85` 注释已自认）。
+
+4. **诅咒之剑筹码（1.20.1，`astral_dice:cursed_sword_chip`）四项判据 PASS**：初始 `bonus=1 / trig=false`；攻击触发赐福后击杀 pillager（2 击）⇒ `bonus=2 trig=true`；**同赐福周期**第二只 ⇒ 仍 2；清赐福重开周期再杀 ⇒ 3；`maxHealth=16` 的 spider ⇒ 仍 3 且 `trig` 复位（`>=20` 闸门）；卸下骰子后杀 ⇒ 无赐福、`bonus` 不变（`CursedSwordChipItem.isEquipped` 要求 `hasDiceEquipped`）。
+
+5. **饕餮之锅（`enigmaticlegacy:eldritch_pan`）—— 网关 PASS、端到端 UNVERIFIED-LIVE**
+   - `DiceCombatEvents.isMeleeWeaponAttack(p)` 持锅 = **true**（`MELEE_WEAPON_EXTRA_INCLUDES` 显式纳入，`DiceCombatEvents.java:2052-2060`）。
+   - 但锅经 `p.attack(target)` 或 `/damage <target> 12 minecraft:player_attack by Dev` 均 **0 伤害**：同场景铁剑 24（击杀）、弓 12、空手 12、牛对照「剑 10 / 锅 0」；赐福在/不在都一样 ⇒ **EL 侧自身抑制**，与本模组骰战无关。
+   - javap：`EldritchPan extends TieredItem implements Vanishable, ICursed, ICreativeTabMember`，静态 `Map<Player,Integer> HOLDING_DURATIONS` + 配置 `attackDamage=31.0 / attackSpeed=-3.2 / lifeSteal=0.15 / hungerSteal=2.0`；`HOLDING_DURATIONS` 实际用途是**饥饿机制**（`EnigmaticEventHandler.onPlayerTick` 主手持锅时累加并挂 `GROWING_HUNGER`），**不是**伤害闸门 ⇒ 0 伤害未落到具体分支，登记为 EL 侧未解。
+
+6. **崩溃（探针自伤，非产品缺陷）**：往 `EldritchPan.HOLDING_DURATIONS` 写 `put(player, 200)` 时 Rhino 数字是 `Double`，EL tick 里 `checkcast Integer` ⇒ `ClassCastException`（`EnigmaticEventHandler.onPlayerTick:1238`，`run/1.20.1/crash-reports/crash-2026-10-28_00.17.16-server.txt`，`Description: Ticking player`）。**勿再向 Java 泛型集合写 Rhino 数字**。
+
+7. **产物与收尾**：`:neoforge-1.21.1:build :forge-1.20.1:build` BUILD SUCCESSFUL ⇒ neo prod `2,599,283 B / 6FE1D2CD`、forge prod `2,648,157 B / 9327BDF4`、forge dev named `2,618,723 B / 2B051830`；四目标（根 `build/libs` / 子项目 `build/libs` / `run/<线>/mods` / 两个整合包）哈希核对一致（`run` 用 dev named、整合包用 prod SRG —— 既有口径）。`--phase stop --force --purge-saves` ⇒ `MT_CLEANUP_SAVES: PURGED 1` / `MT_CLEANUP_RESULT: OK` / `MT_STOP: OK (1s)`；1.21.1 `run/mods` 的两个临时 jar（legacyplus / caelus）已删。
+
+9. **复核（2026-10-28 00:3x–00:4x，`testworld` 重建后）**：`mt.ps1 --phase env` 重建世界 → `--phase launch` EXIT 0 → 客户端 `level=true / player=Dev`。探针 `temp/curse3.js`（`/damage Dev 4 minecraft:mob_attack by @e[tag=cur_mob,limit=1,sort=nearest]`）复现同一条链：`AP_CURSE_RATIO:player=Dev:original=3.0:current=6.0:ratio=2.0`（EASY 下 4→3 缩放后再 ×2）+ `AP_CURSE_APPLY:channel=mob` `pre=7.0:post=14.0` / `pre=10.0:post=20.0` / `pre=4.0:post=8.0` / `pre=9.0:post=18.0` ⇒ §4.1al-2 在**全新世界**上复现。同轮 `temp/en121_melee.js` 复验锅网关：`pan {meleeGate:true, dealt:0.0}` / `iron_sword {meleeGate:true, dealt:1.0}`（骰战 d6 低点）/ `bow` 与 `bare_hand` `{meleeGate:false, dealt:12.0}` ⇒ §4.1al-5「网关 PASS、端到端 0」不变。
+8. **骰子独立验证（子代理 46870f94，只读）**：报告 `docs/features/dice-special-verification.md`（13 个骰子逐个 SUPPORTED/REFUTED + Top5 疑似缺陷 + 5 条待裁决），紫晶骰子四条链已厘清。**未改任何代码**，等用户裁决（§5-19）。
+
+### 4.1am 骰子口径裁决落地 + 实机复验（2026-10-28 00:5x–01:0x）
+
+用户原话（m23070）：「黑曜石骰子 = -50% 爆炸伤害（防御力 +3 是真加防御力）；紫晶骰子现行行为正确；诡异骰子『立牌冷却 -50%』残留代码要清除；卡牌栏按骰子品质决定格数、与升星无关（升星只影响费用上限）。改完做一轮快速实机验证，之后今晚收工。」
+
+1. **卡牌栏改为按骰子品质固定（星级只影响费用上限）**：`item/dice/DiceTier.java` 的 record 扩为 `record DiceTier(String id, Supplier<Item> item, IntUnaryOperator chipBonus, int cardSlots)`；`item/dice/DiceCurioItem.java:57-60` 的 `getCardSlots(ItemStack)` 直接读 `DiceTierRegistry.get(stack).cardSlots()`（取不到才回退 `GameplayConstants.CARD_SLOTS_TOTAL`），**删除 `CARD_SLOTS_BY_STAR = {4,6,8,12}`**；`configStarLevel` 仅保留给费用上限（下界之星恒 3★）。
+2. **13 条注册（`item/ModItems.java:243-284`）**：cardSlots = dice 4 / golden 8 / glass 8 / diamond 10 / netherite 12 / emerald 10 / obsidian 10 / netherrack 8 / weird 10 / crimson 12 / amethyst 10 / ender 12 / nether_star 12；chipBonus 必须保持原偏移（s / 1+s / 1+s / 2+s / 3+s / 2+s / 2+s / 1+s / 2+s / 3+s / 2+s / 3+s / 4+s）—— 第一版补丁曾把 13 条 chipBonus 全部压成 `s -> s`，由 `temp/patch_dice_step4.mjs` 修回并逐行 diff 核对。
+3. **实机读数（1.21.1，探针 `temp/dice_cardslots.js`）**：`byTier` 13 条与上表逐条一致；`weirdCardSlots=10`；`cdNoWeird=3600 / cdWeird=3600 / hasWeirdEquipped=true` ⇒ 戴诡异骰子时立牌主动冷却 `WeirdDiceHandler.signCooldownTicks` 仍 3600 tick（180s），**「−50%」确已消失**。星级不变性未做活体（探针 JSON 化失败，见 §6-43），改由源码判据：`getCardSlots` 已完全不引用 starLevel。
+4. **诡异骰子「立牌冷却 −50%」残留清除（两线各 6 处）**：`item/sign/MegasSignItem.java`(1)、`MosesSignItem.java`(1)、`ParunanSignItem.java`(2)、`SherrySignItem.java`(2) 的 `if (WeirdDiceHandler.hasWeirdDice(player)) { ticks = Math.max(1, ticks / 2); }` 全部删除，并清掉随之空转的 import。
+5. **黑曜石骰子口径订正（注释层，行为未改）**：`ModItems.java` 注册注释不再自称「火焰 -70%」，改为「爆炸伤害 -50%、防御力 +3（真加防御力）」，与 `ObsidianDiceHandler.java:33/:35` 的 `IS_EXPLOSION` + `×0.5` 实现一致。
+6. **陈旧注释与文案同步**：`item/sign/BaseSignItem.java` 与 Bonnie / Haiqing / Ren / Teru / Zhao / Lulu / Parunan 七个立牌、`item/ChargeManager.java:19`、forge `LinglingSignItem.java:29` 的「含诡异骰子 -50% 与充能递减」统一改为「含充能封顶与额外电池筹码减成」；`item/dice/NetherStarDiceItem.java:18-19` 改为「卡牌栏 12 格由 T4 品阶固定，费用上限恒按 3★」；三语 lang（zh_cn / en_us / ja_jp × 两线）5 键（`astral_dice.guide.category.dice.desc` / `guide.entry.battle_dice.3` / `golden_dice.1` / `diamond_dice.1` / `netherite_dice.1`）改为「格数按品质、星级只影响费用上限」。
+7. **产物与投放**：`:neoforge-1.21.1:build :forge-1.20.1:build` BUILD SUCCESSFUL ⇒ neo rc.4 `2,599,237 B / 6225135E`、forge prod rc.4 `2,648,063 B / B3752EAE`、forge dev named `2,618,648 B / BD243190`；两个 P0 整合包（`D:\.minecraft\versions\狐の航空学 Voxy Edition\mods`、`D:\.minecraft\versions\1.20.1-Forge 模组测试\mods`）已覆盖为本次构建且哈希 MATCH，两侧库 jar 成对在位。
+8. **收尾**：`mt.ps1 --version 1.21.1 --phase stop --force --purge-saves` ⇒ `MT_CLEANUP_SAVES: PURGED 1` / `MT_CLEANUP_RESULT: OK` / `MT_STOP: OK (1s)`；`Get-Process java` = 9，全部 Gradle 守护/worker（2 × zulu-21 daemon + 7 × adoptium-17 worker），无 MC 客户端残留。
+9. **提交**：`45966455` `fix(dice): 卡牌栏格数改为按骰子品质固定,清除诡异骰子立牌冷却残留`（39 files, +136/-167）；工作树仅剩 `?? models/astral_anvil.bbmodel`。
+
+### 4.1an 两条裁决实机取证：玻璃骰子死亡销毁（现行实现，PASS）+ 饕餮之锅 0 伤害归因（EL「值得者」闸门，非本仓缺陷）（2026-10-28 12:0x–12:3x）
+
+用户原话（m23322）：「玻璃骰子裁决为销毁。饕餮之锅必须佩戴七咒才能有效」
+
+1. **玻璃骰子死亡销毁 = 现行实现，实机 PASS（无需改代码）**
+   - 源码：`item/dice/DiceCurioItem.java:300-317` 的 `removeGlassDiceOnDeath(Player)`（置空 dice 槽 → `ModSounds.GLASS_DICE_BROKEN` → chip 槽按 `CHIP_NO_DICE_SLOTS` 收缩 → `LOGGER.info("[Astral Dice] 玻璃骰子死亡丢失: {} 的玻璃骰子及其卡牌已移除")`）；唯一调用点 `event/PlayerLifecycleHandler.java:46`，位于 `@SubscribeEvent(priority = EventPriority.LOWEST) onPlayerDeathClearEffects(LivingDeathEvent)`，守卫为「非 Player / 客户端 / `event.isCanceled()`」三条。卡牌存在骰子物品的 `WEAPON_ENHANCEMENT` 组件里 ⇒ 骰子销毁即卡牌销毁。
+   - 实机读数（1.20.1 dev，AutoJS server eval，脚本 `temp/glass_final.js`）：装玻璃骰 + 隐身 ⇒ `before="dice=glass_dice cards=0 invis=true"`；`/kill Dev` 后**同一 tick 回读** `dead=true dice=EMPTY invis=false`；`run/1.20.1/logs/latest.log` 的 `[Astral Dice] 玻璃骰子死亡丢失: Dev 的玻璃骰子及其卡牌已移除` 计 3 处（12:23:08 / 12:24:23 / 12:26:5x，第三处即本轮）；重生后回读 `dice=EMPTY cards=0 chipSlots=0`。
+   - **前一轮「实机读数与源码矛盾」已定性为测量伪影**：脚本在「玩家已死但未重生」的旧 `ServerPlayer` 实例上写 / 读 curios，读到的是旧实例库存 ⇒ 看起来「没销毁」。修正口径：每次先取 `getPlayerList().getPlayers().get(0)` 并 `respawn` 后再读写，读数才有效。**结论：用户裁决①已是现行行为，不改代码。**
+2. **饕餮之锅（`enigmaticlegacy:eldritch_pan`）0 伤害 = EL 自己的「值得者」闸门**
+   - 隔离对照（`temp/pan7_cancel.js`，`/damage @e[type=minecraft:pillager,limit=1] 5 <type> by Dev`）：持剑 `player_attack=24` / `magic=2.5`；持锅 `player_attack=0` 而 **`magic=5` / `mob_attack=24` 都正常落地** ⇒ EL 的取消**只针对近战 `minecraft:player_attack` 源**，不是「手持锅就取消一切」。
+   - 正面对照（`temp/pan8_worthy.js`）：改前 `cursed=true worthy=false suffer=0.682`（`withCurses=10067 / without=4691`）；把 playtime capability 强改为 `setTimeWithCurses(1000000) / setTimeWithoutCurses(0)` ⇒ `worthy=true suffer=1`，**同一次持锅近战打满 24 点**。
+   - 字节码位置：`EnigmaticEventHandler.onEntityHurt(LivingHurtEvent)` 偏移 671–694（`ItemStack.is(EnigmaticItems.ELDRITCH_PAN)` → `SuperpositionHandler.isTheWorthyOne(Player)` → `setCanceled(true)`）；`isTheCursedOne` 全文只有 `hasCurio(player, CursedRing)`；`getSufferingFraction` = `getTimeWithCurses()/getTimeWithoutCurses()`；配置 `run/1.20.1/config/enigmaticlegacy-common.omniconf` 的 `D:CursedRingSuperCursedTime=0.995`。
+   - 结论：用户裁决②方向正确，但 EL 的真实门槛是**戴戒 + 受苦比例 ≥ 0.995（「值得者」）**；取消发生在 `LivingHurtEvent` ⇒ 我方 `LivingDamageEvent` 骰战入口**根本不执行**，锅 0 伤害**不是本仓缺陷**，`combat/DiceCombatEvents.java:2052-2054` 的 `MELEE_WEAPON_EXTRA_INCLUDES`（含两只锅）工作正常。**不改产品代码，CHANGELOG 不动。**
+3. **未覆盖**：1.21.1 的锅 `enigmaticdelicacy:voracious_pan` 未测（dev 缺 FarmersDelight 等依赖），登记 §5-Major-18(b)。
+4. **工具事实（可复用）**：本轮全部实机读数入口 = `node temp/eval.mjs server <js绝对路径> 25000`；AutoJS `eval_js` 在**该侧主线程同步执行**，故「kill 后同一 tick 回读」可作判据；取服用 `ServerLifecycleHooks.getCurrentServer()`；游戏 cwd 是 `run/1.20.1`，日志相对路径写 `logs/latest.log`。
+5. **收尾与工作树**：`mt.ps1 --version 1.20.1 --phase stop --force` ⇒ `MT_CLEANUP: 已收停 2 个本流程进程（范围：1.20.1）` / `MT_CLEANUP_RESULT: OK` / `MT_STOP: OK (1s) — 收停完成，无本流程残留进程` / `MT_CLEANUP_SAVES: KEPT（未指定 --purge-saves）`；`Get-Process java` 余 1 个（12:06 起的 Gradle 守护，非 MC 客户端）。测试期间临时注释掉的 `forge-1.20.1/build.gradle` 里 enigmaticaddons 那行**已还原**（`git status` 对该文件无改动）。
+### 4.1ao 1.21.1 复测闭环：玻璃骰死亡销毁 PASS + 饕餮之锅 0 伤害 = EL+「值得者」闸门 + 枪械裁决销账（2026-10-28 12:3x–12:5x）
+
+用户原话（m23942）：「1.21.1复测，枪械当然算远程（之前裁决过），但是默认被常量给禁用了，只有玩家修改配置文件后才能生效」
+
+1. **1.21.1 复测环境（一次性搭好，全程 AutoJS server eval）**
+   - `neoforge-1.21.1/build.gradle` 无任何 enigmatic / caelus / FarmersDelight 依赖 ⇒ 与 1.20.1 的 SRG/Mojmap 冲突不同，1.21.1 生产 jar 是 Mojmap，**直接拷进 `run/1.21.1/mods` 即可**（未改任何 build 文件）。本次拷入 4 个（源目录 `D:\.minecraft\versions\狐の航空学 Voxy Edition\mods`）：
+
+     | 文件 | 字节 |
+     |---|---|
+     | `[神秘遗物+] enigmaticlegacyplus-1.21.1-1.1.2.jar` | 7,248,130 |
+     | `caelus-neoforge-7.0.1+1.21.1.jar` | 50,235 |
+     | `enigmaticdelicacy-1.21.1-1.0.0.jar` | 833,880 |
+     | `[农夫乐事] FarmersDelight-1.21.1-1.3.4.jar` | 3,160,490 |
+
+   - `mt.ps1 --version 1.21.1 --phase env` OK（`MT_WORLD: OK`，`allowCommands=1 / keepInventory=true`）；`--phase launch` OK（脱离日志 `temp/mt_detached/mt_launch_20261028-123401.log`）；`node temp/mcp.mjs status "{}"` ⇒ server / client 均 `available`、1 玩家在线。
+   - `run/1.21.1/logs/latest.log`（35,852 行）计数：caelus / EnigmaticDelicacy / EnigmaticLegacy+ / Farmer's Delight 全部加载；**FATAL=0**、**ERROR=1**（第三方 EL+ 字幕缺失 `Missing subtitle translation{key='subtitle.enigmaticlegacy.cosmic_cake.restore'}`）、**WARN=165**（缺模型 11 行 —— `enigmaticlegacyplus:item/spirit_crystal`、`enigmaticdelicacy:item/e1|e2`、`enigmaticlegacyplus:item/ichor_charm`；**62 行 patchouli `Recipe astral_dice:<id>_chip (of type minecraft:crafting) not found`** —— 见 §5-Minor-25；余为 Sodium workarounds / JarJar / mixin refmap / 客户端 `Received passengers for unknown entity`）。
+   - 4 个第三方 jar **仍留在 `run/1.21.1/mods`**（供后续复测；`--phase env` 不会清它们，下次要「纯净 P0」时手工移除即可）。
+
+2. **玻璃骰子死亡销毁 = 1.21.1 实机 PASS（与 1.20.1 结论一致，不改代码）**
+   - 脚本 `temp/glass_211.js`（`node temp/eval.mjs server <绝对路径> 25000`）读数：
+     `{"who":"Dev","dead0":false,"diceAfterSet":"astral_dice:glass_dice","before":"dice=astral_dice:glass_dice invis=true","logBefore":0,"afterImmediate":"dead=true dice=EMPTY invis=false","logAfter":1}`
+   - 判读：`/kill` 后**同一 tick** 骰子槽清空、隐身清除，`run/1.21.1/logs/latest.log` 的 `玻璃骰子死亡丢失` 计数 0→1。实现仍为 `item/dice/DiceCurioItem.java:300 removeGlassDiceOnDeath`，调用点 `event/PlayerLifecycleHandler.java:45`（neo）/`:46`（forge）。
+
+3. **饕餮之锅（`enigmaticdelicacy:voracious_pan`）0 伤害 = EL+「值得者」闸门（非本仓缺陷）**
+   - id 对照：1.21.1 **没有** `enigmaticlegacy:eldritch_pan`（那是 1.20.1 的 EL 专属），锅在 `enigmaticdelicacy`；七咒之戒 = `enigmaticlegacyplus:cursed_ring`，槽 = `ring`（`data/curios/tags/item/ring.json` 含 cursed_ring）。
+   - 全矩阵（脚本 `temp/pan_matrix3.js`，靶子 pillager tag `pz7`，`/damage @e[type=minecraft:pillager,tag=pz7,limit=1] 5 minecraft:player_attack by Dev`）：
+     ```
+     worthyF=false diceCleared=minecraft:air diceSet=astral_dice:golden_dice worthyT=true
+     noDice:iron_sword=d1/hurt=10      | noDice:d:voracious_pan=d0/hurt=0
+     dice:iron_sword=d1/hurt=10        | dice:d:voracious_pan=d0/hurt=0
+     worthyDice:iron_sword=d1/hurt=10  | worthyDice:d:voracious_pan=d1/hurt=10
+     worthyNoDice:d:voracious_pan=d1/hurt=10
+     ```
+     ⇒ 与骰子无关（dice 槽空 / 装 `golden_dice` 结果相同）；`worthy=true` 时锅与铁剑同伤害。`d0/hurt=0` 是**事件被取消**的判据——`LivingEntity.hurt` 里 `if (CommonHooks.onEntityIncomingDamage(this, this.damageContainers.peek())) return false;`（`neoforge-21.1.235-sources.jar` 的 `LivingEntity.java`，已落 `temp/LivingEntity_1211.java`）取消即早退、`hurtTime` 不赋值；`hurtTime=10` 才是真实命中。
+   - 闸门 API（`auviotre.enigmatic.legacy.handlers.EnigmaticHandler`）：`isTheCursedOne(LivingEntity)` = 戴戒 **或** 持久标记 `SevenCursesBearing`；`isTheWorthyOne` = 阈值（`AbyssalHeart.abyssThreshold`，戴 `DIMNESS_CHARM` 时抬为 `2*阈值-1`）+ `isTheCursedOne` + `getSufferingFraction(entity) >= 阈值`。`getSufferingFraction` = `getTimeWithCurses()/getTimeWithoutCurses()`。
+   - **「戴戒」≠ 生效**（本轮最易踩的坑）：`CuriosApi.getCuriosInventory(p).get().getStacksHandler('ring')` → `setStackInSlot(0, Item.of('enigmaticlegacyplus:cursed_ring'))` 之后 `isTheCursedOne(p)` 仍为 **false**（直接写槽绕过 `CurioEquipEvent` 链路）。要让 `cursed=true`：`EnigmaticHandler.getPersistedData(p).putBoolean('SevenCursesBearing', true)`（读出的持久 NBT：`{CursedRingGift:1b,LastDeathLoc:{…},RedemptionBearing:0b,SevenCursesBearing:0b,UnwitnessedAmuletGift:1b}`）。
+   - 让 `worthy` 翻转（A/B 唯一自变量）：`var EA=Java.loadClass('auviotre.enigmatic.legacy.registries.EnigmaticAttachments'); var d=p.getData(EA.ENIGMATIC_DATA); d.setTimeWithCurses(1000000); d.setTimeWithoutCurses(0);` ⇒ `worthy=true / suffer=1`；反向 `setTimeWithCurses(10); setTimeWithoutCurses(1000000);` ⇒ `worthy=false`。原始读数 `cursed=false worthy=false suffer=0.154`，只设 `SevenCursesBearing` 后 `cursed=true worthy=false suffer=0.183` ⇒ **戒/标记都不够，必须苦难度达标**（与 1.20.1 的 `D:CursedRingSuperCursedTime=0.995` 同口径）。
+   - 武器矩阵佐证（同一靶子同一源）：`iron_sword / curse_blade / forbidden_grail / etherium_sword` 全部 `d24`；**`annihilating_sword` 与 `voracious_pan` 均 `d0/hurt=0`**，且 worthy=true 后两者同时恢复 ⇒ 同一套「价值判定」闸门；锅放**副手**也压制主手剑（`temp/pan_off.js` `d0/hurt=0`）⇒ 是「持有即判定」，不是「当武器才判定」。
+   - 静态排查（已排除，勿重复）：EL+ 1.21.1 全包**无任何类引用字符串 `voracious_pan`**；`EnigmaticEventHandler` 全类唯一一处 `setCanceled` 在 `onAttack(LivingIncomingDamageEvent)` 偏移 231–233，条件是 `Shulker && isCurseBoosted && isClosed && !BYPASSES_SHIELD`（与锅无关）；`VoraciousPan` 与 `VoraciousPan$Events` **无任何 cancel / setAmount**（`isTheWorthyOne` 只被 `PlayerTickEvent$Pre`（偏移 6）与 `onLivingDropsLowest`（偏移 29）引用）；EL+ 的 30 个 mixin 中只有 `entity/MixinPhantomSpawner` 提及 worthy/cancel；`abyssal_items` 标签只被 `AnnihilatingRecipe`/`ELItemTags`/JEI 用；本仓源码 `grep 'Worthy|worthy'` = **0 命中**，`voracious_pan` 只出现在 `combat/DiceCombatEvents.java:1754`（注释）与 `:1760`（`MELEE_WEAPON_EXTRA_INCLUDES` 声明）/ `:1762`（`enigmaticdelicacy:voracious_pan` 那一行）⇒ **取消点属第三方内部实现、静态未定位到具体类，但功能归因已被 A/B 钉死**。
+   - 结论：用户裁决②的方向正确，但真实门槛是**「值得者」= 七咒 + 苦难度达标**，不是「只要戴七咒」；锅 0 伤害**不是本仓缺陷**，我方锅近战识别（`MELEE_WEAPON_EXTRA_INCLUDES`）无误。**不改产品代码、CHANGELOG 不动。**
+
+4. **枪械裁决销账（用户 m23942）**：枪械**算远程**（不计骰战近战、不进法伤），且**默认被常量关闭**——`config/ModCommonConfig.java:95-99` 的 `ALLOW_FIREARM_DAMAGE = builder…define("allow_firearm_damage", false)`（两线同位置同默认），生效点 `combat/SpellDamageRegistry.java:131` `if (!GameplayConstants.ALLOW_FIREARM_DAMAGE && isFirearmDamage(source)) return false;`（`isFirearmDamage` 在 `:520-544`：伤害类型白名单 + 抛射物包名前缀 + `bullet|gun|firearm|cannon|shell|missile` 关键词 + 实体简单类名）；近战侧 `combat/DiceCombatEvents.java` 的 `isMeleeWeaponAttack`（neo `:1784` / forge `:2076`）排除 `ProjectileWeaponItem` / `BlockItem` / `isFirearmItem`。⇒ 现行实现**正是**「算远程 + 默认禁用、玩家改配置才生效」，**与裁决一致，无需改动**。
+
+5. **收尾与工作树**：`pwsh -NoProfile -File scripts\test\mt.ps1 --version 1.21.1 --phase stop --force` ⇒ `MT_CLEANUP: 已收停 2 个本流程进程（范围：1.21.1）` / `MT_CLEANUP_RESULT: OK` / `MT_STOP: OK (1s) — 收停完成，无本流程残留进程` / `MT_CLEANUP_SAVES: KEPT（未指定 --purge-saves）`；`Get-Process java` 余 1（12:06 起的 Gradle 守护）。本轮**零源码改动**，`git status --short -uall` 只有 `?? models/astral_anvil.bbmodel`。
+6. **独立复核（`dsh_code_review` run `07910dc8-755e-4aea-bd0b-58218cbd271d`，范围仅本提交）**：R1 源码行号 5/5 SUPPORTED、R2 两线对称 SUPPORTED、R3 文档内部一致性 SUPPORTED、R4 CRLF SUPPORTED、R5 引用完整性 SUPPORTED；唯一 [P2] = 第 1 条那句「只有缺模型 WARN、无 ERROR / FATAL」与日志实物不符（实测 ERROR=1 条第三方字幕缺失 + WARN=165 条，其中 62 条是筹码手册配方未命中）⇒ 已按实测改成计数口径，并把 62 条手册配方页问题登记为 §5-Minor-25。
+
+### 4.1ap 筹码手册条目改「获取途径说明」取代悬空配方页（2026-10-28，用户 m24344 裁决）
+
+1. **用户裁决（m24344 逐字）**：「帕秋莉手册问题：删掉这些 crafting 页 / 改成 spotlight + 说明「由筹码商店获得」」
+
+2. **根因（订正 §5-Minor-25 的旧取证）**：筹码配方**存在**，是 datagen 产物且带条件门禁 ——
+   - `neoforge-1.21.1/src/generated/resources/data/astral_dice/recipe/` 与 `forge-1.20.1/src/generated/resources/data/astral_dice/recipes/` 各 **108 个 json**，筹码配方形如 `{"neoforge:conditions":[{"type":"astral_dice:chip_recipes_enabled"}], …}`（forge 线为顶层 `conditions`）。
+   - 条件实现 `neoforge-1.21.1/src/main/java/com/merlinkitsune/astral_dice/recipe/condition/ChipRecipesEnabledCondition.java:44-47`（forge 线同名同位置）：`public boolean test(IContext context) { return ModCommonConfig.ENABLE_CHIP_RECIPES.get(); }`；注册 id 见 `:34` `ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, "chip_recipes_enabled")`。
+   - 默认值是 **false**：`config/ModCommonConfig.java:111`（两线同位置）`.define("enable_chip_recipes", false);`（`:28` 的类注释写「关闭时 61 枚筹码无法通过合成获得」，实测筹码数 68 —— 该注释偏旧，本轮未改）。
+   - ⇒ 默认配置下 **67 条**筹码配方（`*_chip`）整体不加载（另有 `blank_chip_duplicate` 产出 `blank_chip` 但**不受门禁**，仍可合成），手册里 62 条 `patchouli:crafting` 页因而解析不到配方，游戏内 `[patchouli/]: Recipe astral_dice:<id> (of type minecraft:crafting) not found`。
+   - §5-Minor-25 的旧取证「`data/astral_dice/recipe|recipes/` 没有任何 `*_chip` 配方 ⇒ 筹码只经商店获得」**只扫了 `src/main/resources/data`、漏了 generated**，故结论错。
+
+3. **改造（P0 两线 `assets/astral_dice/patchouli_books/astral_guide/en_us/entries/chips_*/`，各 67 个条目）**：
+   - 62 个条目的 crafting 页**原位替换**为 `{"type":"patchouli:text","text":"astral_dice.guide.chip_source.note"}`；
+   - 5 个原本没有 crafting 页的条目（`abyss_reagent_chip` / `flashlight_burst_chip` / `fortune_stick_chip` / `infinite_grid_chip` / `sensor_chip`）**追加**同一说明页 ⇒ 67/67 全部带说明；
+   - 三语新增键 `astral_dice.guide.chip_source.note`（`assets/astral_dice/lang/{zh_cn,en_us,ja_jp}.json`，插在 `astral_dice.guide.category.*` 之后）：
+     - zh_cn：`获取方式：在「筹码商店」与「筹码商人」交易获得（服务器开启筹码合成配方 enable_chip_recipes 后，也可在工作台合成）。`
+     - en_us：`Obtained by trading with a "Chip Trader" at the Chip Shop (also craftable at a crafting table when the server enables enable_chip_recipes).`
+     - ja_jp：`入手方法：「チップショップ」で「チップトレーダー」と取引して入手（サーバーでチップのクラフトレシピ enable_chip_recipes を有効にすると作業台でもクラフト可能）。`
+   - P1 两线（26.1.2 / fabric）**未动**（1.5.0 正式版前冻结）。
+
+4. **守门改造（`scripts/verify/verify_chip_acquisition.ps1`，+73 行）**：新增 `Get-GatedChipRecipes`（扫 generated + main 两处 recipe 目录，取 JSON 文本含 `chip_recipes_enabled` 的 result id）与 `Get-ManualNote`（扫 `en_us` 条目里 page `text == astral_dice.guide.chip_source.note`）；判定改三分支：`门禁配方 + 仍有 crafting 页` ⇒ 新告警「⚠️ 手册仍展示 crafting 页（配方默认关闭）」；`门禁配方 + 无说明页` ⇒ 「⚠️ 手册未说明筹码获取途径」；`非门禁 + 无 crafting 页` ⇒ 保留旧告警「⚠️ 手册未展示 crafting 页」。双版本对等性键表 4 → 6（+`stale_page` / `no_note`）。
+   - **变异测试（证明新判据非空转）**：对 `chips_charge/advanced_peripherals_chip.json` 删说明页 ⇒ 命中「未说明筹码获取途径」；注入 crafting 页 ⇒ 命中「仍展示 crafting 页」；还原后 `RESULT: PASS`（两次都只改单线，故同时对等性 FAIL，属预期）。**复核补强**：原实现把「未说明获取途径」判据写成了 `if ($craft.Contains($cid) -and -not $note.Contains($cid))`，门禁筹码的手册条目被整份删除/改名时会**两条判据同时静默**；已去掉该守卫（条目缺失即命中 `no_note`），并实测「删条目 ⇒ 命中未说明」、还原后零告警。
+
+5. **守门读数（P0 两线一致）**：
+   - `verify_chip_acquisition.ps1`：`筹码 68 | 有配方 68 | 传递可达 68` / `curios:chip 槽 67 | 创造栏覆盖 68/68` / **零告警** / 对等性 6 键全 `一致=True` / `RESULT: PASS（致命项 0）`（改造前有 `⚠️ 手册未展示 crafting 页 5`）。
+   - `python tools/audit_patchouli_keys.py`：四线引用 1826 处、**悬空 0 处**。
+   - `tools/check_lang_sync.ps1`：两线 `zh_cn / en_us / ja_jp` 各 **1066 keys 完全一致**（改造前 1065）；3 条 `[WARN] sign.dorothy_passive / sign.jill_active 结构标记不一致` 为改造前既有，与本批无关。
+   - `node temp/verify_chip_pages.mjs`（一次性校验）：两线 `entries=67 pages=142 noNote=0 stale=0`。
+
+6. **产物与投放**（`gradlew.bat :neoforge-1.21.1:build :forge-1.20.1:build -PdeployToPack`，BUILD SUCCESSFUL；`pushToRootBuild` / `pushToDevRun` / `pushToGame` 全触发；jar 内实测 `entries=67 clean_note=67`、三语均含新键）：
+
+   | 线（落点） | 文件 | 字节 | sha256 |
+   |---|---|---|---|
+   | neo（`build/libs` = `run/1.21.1/mods` = 整合包） | `astral_dice-1.5.0-rc.4+neoforge_1.21.1.jar` | 2,599,540 | `284a9fc00e5febbdeb5f2043d81ae81c8a1a29ba6b8d40aa71e66c730ad85af0` |
+   | forge（reobf，`build/libs` = 整合包） | `astral_dice-1.5.0-rc.4+forge_1.20.1.jar` | 2,648,371 | `ac1de3e9659e97882ad7fb2bfd39a2f57686e55677ce1f39f1489430b3bd820d` |
+   | forge（dev named，`run/1.20.1/mods`） | 同名 | 2,618,956 | `e311c0981069d6754ff8a16b359617f467b27a7ed1c0c1f8209f458313ee17d4` |
+
+   - neo 三处同哈希；forge 整合包与 `build/libs` 同哈希，`run/1.20.1/mods` 是 named dev jar（按 §6 坑 40 的既有口径，两者本就不同字节）。
+
+7. **整合包重名 jar 处置（本轮新坑）**：`D:\.minecraft\versions\狐の航空学 Voxy Edition\mods` 里原有用户改名过的 `[星之骰戏] astral_dice-1.5.0-rc.4+neoforge_1.21.1.jar`（2,589,686 B，10-26 19:40），而 `pushToGame` 只清理自己的命名 ⇒ 两者**同 mod id 并存**，NeoForge 会以重复 mod 拒绝启动。处置：删旧件、把新件改回同一 `[星之骰戏] ` 前缀名（哈希仍 `284a9fc0…`），整合包恢复「单一 mod jar + `starengine-neoforge-1.21.1-1.1.0.jar`（98,734 B）」。**该前缀是否为长期口径待用户确认**（1.20.1 整合包无前缀：`astral_dice-1.5.0-rc.4+forge_1.20.1.jar` 2,648,371 + `starengine-forge-1.20.1-1.1.0.jar` 103,605）。
+
+8. **本节无实机**：`[patchouli/]: Recipe … not found` 是否归零需用户下达实机后再记（判据：1.21.1 `run/1.21.1/logs/latest.log` 里该行计数 = 0）。
+9. **独立复核**：首轮 `dsh_code_review` run `80958f22` 判 R1–R4 / R7 SUPPORTED、R5 部分成立（[P2] 门禁筹码条目整份缺失时两条判据同时静默）、R6 部分成立（[P3] 把 67 条门禁配方写成 68 条）；两条均已修（提交 `23cf2c0e`，判据去掉 `$craft` 守卫 + 三处数字订正），复审 run `882f0bf3` 无 finding。**遗留口径说明**：`stale_page` / `no_note` 仍是 `isFatal=$false` 的告警项（脚本头既有契约「手册缺口仅告警」），只在**单线**缺失时由对等性判据判 FAIL，两线对称缺失仍 PASS —— 若将来要 CI 硬拦，需另立一条把 `stale_page` 提为致命项（待用户裁决）。
+
+### 4.1aq rc.5 收尾发布批：四线 bump + 筹码门禁致命化 + CF 两文件 + 1.21.1 实机（2026-10-28，用户下达实机与发布）
+
+1. **版本与提交**（本线口径仍称 `1.5.0`，`rc` 后缀只存在于构建名 / tag / 产物文件名）：四线 `mod_version` 全部 bump 到 **`1.5.0-rc.5+<后缀>`**（`neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1`），`starengine_version` 仍 **`1.1.0`**。三个提交：
+
+   | 提交 | message | 改动面 |
+   |---|---|---|
+   | `50e5e406` | `chore(release): 四线 mod_version bump 到 1.5.0-rc.5` | 四条线 `gradle.properties`（4 文件 +4/−4） |
+   | `1368b837` | `fix(verify,ci): 筹码获取途径守门 stale_page/no_note 升为致命项并接入 CI` | `scripts/verify/verify_chip_acquisition.ps1`（+11/−4）+ `.github/workflows/build.yml`（+8） |
+   | `79e3b183` | `docs(release): 1.5.0-rc.5 玩家发布说明 + CHANGELOG 补充` | `release/1.5.0-rc.5/` 三份（`PLAYER_CHANGELOG_ZH.md` 375 行 / `PLAYER_CHANGELOG.md` 382 行 / `PLAYER_CHANGELOG_MCMOD.html` 314 行）+ `CHANGELOG.md` / `CHANGELOG_ZH.md` 各 6 行（合计 5 文件 +1077/−6） |
+
+   - **HEAD = `79e3b183`**；已 push（`cce71efb..79e3b183  multi-main -> multi-main`，经 `-c http.proxy=http://127.0.0.1:7897`），推送后 `git rev-list --count origin/multi-main..HEAD` = **0**。
+   - 远端 tag 实读（`git ls-remote --tags --refs origin`）：`1.5.0-rc.1` / `1.5.0-rc.2` / `1.5.0-rc.3` / `1.5.0-rc.4` / **`1.5.0-rc.5`**，**无正式 `1.5.0` tag**；`refs/tags/1.5.0-rc.5` 是注解 tag（`db3b1796…`）指向 `79e3b183` ⇒ CI 已按 push 打成 tag。**GitHub Release 与附件未确认**（`gh` 未登录、公开 API 限流 403；见 §5-Major-20）。
+
+2. **构建产物**（2026-10-28 13:48，`gradlew.bat :neoforge-1.21.1:build :forge-1.20.1:build`，`BUILD SUCCESSFUL in 5s`）：
+
+   | 线（落点） | 文件 | 字节 | SHA-256 |
+   |---|---|---|---|
+   | neo（生产，Mojmap） | `neoforge-1.21.1/build/libs/astral_dice-1.5.0-rc.5+neoforge_1.21.1.jar` | 2,599,540 | `949560A7A6F8575343D988CD0B1D6B1A7502DABDEDBEBBE0D255EA859DE17775` |
+   | forge（reobf SRG，生产） | `forge-1.20.1/build/libs/astral_dice-1.5.0-rc.5+forge_1.20.1.jar` | 2,648,370 | `B54CE7F5BC7E78EAAFE06880B117E3FB0B36A15DDDB82D3AC3C0CBBE964BAFB1` |
+   | forge（dev named，不进发货面） | `forge-1.20.1/build/devlibs/astral_dice-1.5.0-rc.5+forge_1.20.1.jar` | 2,618,955 | `E8111544C8D9ACB065B8CF777A75181D3BA1017665DA9758779DFAB38E9A913A` |
+
+   - 打包判据：两件生产 jar 的 `META-INF/jarjar/` 条目 = **0**（库不内嵌，必须成对投放）；forge reobf 证据 `m_\d+_` **3132** 处 / `f_\d+_` **710** 处（对照 devlibs `m_` 66 / `f_` 0）⇒ 生产件确为 SRG 重映射产物。
+
+3. **部署（三处，逐处哈希）**：
+   - `run/1.21.1/mods`：rc.5 neo 件（哈希同上）+ `starengine-neoforge-1.21.1-1.1.0.jar`（98,734 B / `62C92595B012929D2FBA6098CC2D71E6AB2A9A14DDAAC52869E2BBEC6B476AC8`）。
+   - 整合包 A `D:\.minecraft\versions\狐の航空学 Voxy Edition\mods`：按用户裁决**删除** PCL 加前缀的旧件 `[星之骰戏] astral_dice-1.5.0-rc.4+neoforge_1.21.1.jar`（2,599,540 B / `284A9FC0…`）；现存 **510** 个 jar、`prefixed_count=0`、`astral_dice` 恰 1 份 + `starengine` 恰 1 份；全量 modId 扫描无第二份、无 jarjar 副本。
+   - 整合包 B `D:\.minecraft\versions\1.20.1-Forge 模组测试\mods`：`pushToGame` 已自动换 rc.5 forge 件（哈希同上）+ `starengine-forge-1.20.1-1.1.0.jar`（103,605 B / `73DA2E599E60DAB047E3640EB396F1DB6F6EEDD5A0DD95494AFDE471F43AF304`）。
+
+4. **实机（1.21.1 单次，用户明确下达；2026-10-28 13:51–13:55）**：
+   - 驱动（长驻相位走分离包装器，依据 `scripts/test/TESTING-SPEC.md:121-124`；**不跑 `--phase env`**，避免按清单重写 `run/1.21.1/mods` 覆盖已核验 jar）：
+     ```powershell
+     pwsh -NoProfile -File scripts\devtools\Start-MtDetached.ps1 -Script scripts\test\mt.ps1 -Out temp\mt_detached\tester1211_launch_20261028-1355.log -ScriptArgs --phase launch --version 1.21.1
+     ```
+   - 就绪原文：`MT_LAUNCH: OK (54s)`（已进入世界，quickplay=testworld）/ `MT_LAUNCH: OK — AutoJS 端点已就绪（http://127.0.0.1:25585/mcp，protocolVersion=2025-06-18）`。
+   - 判据（本批要证的那条）：`[patchouli/]: Recipe astral_dice:` 命中 = **0** —— 停机前 `latest.log`（5,733 行）与停机后（8,501 行）各测一次均 0，`debug.log` 亦 0。
+   - `[patchouli/]` 全量 **9** 行分类：`Files found in <n> μs` ×6、`preloaded 212 jsons` ×1、`Could not locate JEI keybindings` ×1（dev 无 JEI 的既存噪声）、`Sending reload packet to clients` ×1；**无 ERROR**。
+   - **假归零已排除三条**：① `run/1.21.1/config/astral_dice-common.toml` 的 `[chips] enable_chip_recipes = false`（配方确为关闭态）；② 运行时 AutoJS 读 `vazkii.patchouli.common.book.BookRegistry` 得 `{"bookCount":2,"found":true,"errored":false,"entries":164,"categories":15}`，与资源侧 **164** 个 entry json 对齐（手册真的加载了）；③ 同一 Patchouli 构建的改前归档 `debug-1.log.gz` / `debug-2.log.gz` / `2026-10-26-1.log.gz` 各有 **62** 条同类告警（旧基线一致）。
+   - 版本行（`run/1.21.1/logs/latest.log`）：`Astral Dice 1.5.0-rc.5+neoforge_1.21.1 (astral_dice)`（:24）、`StarEngine 1.1.0+neoforge_1.21.1 (starengine)`（:50）、`astral_dice (version 1.5.0-rc.4+neoforge_1.21.1 -> 1.5.0-rc.5+neoforge_1.21.1)`（:260）；**FATAL=0 / 缺强依赖=0 / Incompatible mods=0**。
+   - 收尾：`MT_CLEANUP_SAVES: PURGED 1` / `MT_CLEANUP_RESULT: OK` / `MT_STOP: OK (0s)`；仅剩 Gradle 守护 `java`，未杀用户进程。
+   - **销账**：§4.1ap-8 的「`[patchouli/]: Recipe … not found` 是否归零待实机」至此闭合；§5-Minor-25 同步销账。
+
+5. **守门致命化 + 变异自证 + CI 接入（`1368b837`）**：
+   - `scripts/verify/verify_chip_acquisition.ps1`：`stale_page` / `no_note` 由 `isFatal=$false` 升为 **`$true`**（输出标签随之改为 ❌），`no_page` 保持告警；逐线「无致命问题」判定条件同步补这两项；头部退出码契约改写。
+   - 变异自证：把 `…/chips_starlight/star_coin_hammer_chip.json` 的 `text` 改成 `astral_dice.guide.chip_source.note_BROKEN` ⇒ 输出 `❌ 手册未说明筹码获取途径 1: ['star_coin_hammer_chip']` / `RESULT: FAIL` / `exit 1`；还原后 `PASS`（文件与 HEAD 逐字节一致）。
+   - `.github/workflows/build.yml`：在 parity 步骤之后、Gradle 构建之前新增 `Check chip acquisition gate (P0)`，`run: pwsh -NoProfile -File scripts/verify/verify_chip_acquisition.ps1`。
+
+6. **CurseForge 发布（2026-10-28 13:5x，`--apply`，经代理）**：
+
+   | 项目 | 文件 | 大小 | fileID | version type |
+   |---|---|---|---|---|
+   | astral-dice `1662159` | `astral_dice-1.5.0-rc.5+neoforge_1.21.1.jar` | 2,599,540 B | `9349843` | **beta** |
+   | astral-dice `1662159` | `astral_dice-1.5.0-rc.5+forge_1.20.1.jar` | 2,648,370 B | `9349844` | **beta** |
+
+   - changelog 入参 = `release/1.5.0-rc.5/PLAYER_CHANGELOG.md`（**49,242 字符**，显式 `--changelog`）；relations 随同一次 POST：neo = `curios(309927)` + `starengine(1755415)` `requiredDependency`，forge 另加 `mixinbooster(980731)`。
+   - 上传时 `urllib` 被 Cloudflare 403、工具自动改走 `curl` 成功（既有回退通道）。
+   - **回读校验**：`edge.forgecdn.net/files/9349/843/…`（本机 `temp\cf_neo.jar`，2,599,540 B / `949560A7…`）与 `/9349/844/…`（`temp\cf_forge.jar`，2,648,370 B / `B54CE7F5…`）与本地构建件**逐字节同哈希**。
+   - 工具事实两条登记在 §5-Minor-26（`--changelog` 只认显式路径；多 jar = N 次 POST、非原子、不可幂等）。
+   - **GitHub Release 复核（2026-10-28 14:0x，curl 经代理 + 页面直读，避开 403 限流的 API）**：`/releases/expanded_assets/1.5.0-rc.5` 200，列出 `astral_dice-1.5.0-rc.5+neoforge_1.21.1.jar`（2,598,301 B / `c97ea383…`）与 `…+forge_1.20.1.jar`（2,647,158 B / `d4e48687…`），下载件 sha256 与页面一致。**与本地构建件的关系**：条目集完全相同（neo 2,011 / forge 2,027；`only_ci` = `only_lo` = 0），差异只有两类 —— (a) JSON 条目 CRLF vs LF（neo 302 / forge 296 条，CRLF 归一为 LF 后 0 差异）＝ CI 在 ubuntu 检出 LF、本机 Windows 工作树 CRLF；(b) forge 5 个网络/立牌类 `.class` 仅常量池序不同（`javap -p -c` 全文逐字相同）。`META-INF/jarjar/` = 0，`mods.toml` 版本 `1.5.0-rc.5+neoforge_1.21.1` / `1.5.0-rc.5+forge_1.20.1` ⇒ **Release 附件功能等价、可投放**。
+   - **重复发布幂等性实测（docs 提交 `c071c4d7` 触发，2026-10-28 14:44–14:46）**：tag `1.5.0-rc.5` 已存在 ⇒ CI 只走「Release 编辑说明 + `--clobber` 重传附件」分支，两件附件 sha256 与上一轮**完全一致**（neo `c97ea383…` / forge `d4e48687…`）⇒ 同源码两次构建字节一致（构建可复现），且发布线每次 push 都会刷新 Release 附件而不移动 tag。
+
+7. **本批不改源码**：改动面 = 四线 `gradle.properties` 的版本号、守门脚本、`.github/workflows/build.yml`、`release/1.5.0-rc.5/` 与两份 `CHANGELOG`；工作树 `git status --short -uall` 只剩 `?? models/astral_anvil.bbmodel`（用户素材，禁 add）。
 
 ## 5 遗留与欠账
 
@@ -592,6 +996,21 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 
 12. **GitHub Release 新规则：tag 只按 mod 版本（2026-10-25 用户裁决）**：tag **不得**按游戏平台命名（`fabric-1.5.0-rc.1` / `neoforge-…` 一律禁止）、禁止 `v` 前缀、禁止 `+加载器` 后缀；同一版本的**多平台 jar 放进同一个 Release**；带 `-rc` / `-pre` / `-alpha` / `-beta` 的版本**照样打 tag**（rc.1 与 rc.2 是两个版本），并标 `--prerelease` / `--latest=false`（只有正式版才 `--latest`）。落地：① 红线区〈子项目优先级与默认规则〉长行末尾追加「② tag 与 Release 命名红线」（`AGENTS-dsh.md` 与 `AGENTS-full.md` 同文、**行数不变** ⇒ `verify-split.py` 九项全 [OK]，红线区 12,723 → **13,404** 字符）；② `.github/workflows/build.yml`：`Read base version` 只剥 `+加载器` 后缀（保留 `-rc`）、守门正则改 `^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z][0-9A-Za-z.-]*)?$`、新增 `is_prerelease` 输出；`Create Git tag` **删掉**「版本含 `-` 就跳过」的分支（旧口径导致 rc/pre 永远没有 tag）；Release 步骤按 `is_prerelease` 传 `--prerelease --latest=false`（正式版 `--latest --prerelease=false`），附件仍是 P0 两 jar 挂在**同一个** Release。判据：`js-yaml` 解析 OK（`jobs=build` / `steps=18` / 无 tab / `tagTriggers=["[0-9]*"]` 能匹配 `1.5.0-rc.1`）。
 
+13. ~~强化拒止五规则（`6fcc756a`）与临时牌 owner（`51efba03`）未实机~~ → **已实机（2026-10-27，§4.1aa）**：1.21.1 `REPULSION-SIGN-1.21.1` / `TEMPCARD-OWNER-1.21.1` + 1.20.1 `DST-P0-1.20.1` 全 PASS。**仍欠**（只登记，不阻塞）：tooltip「所有者：」行的客户端渲染取证、规则④的跨容器（箱子 / AE2）搬运语义、死亡掉牌不误销毁、`/curios set` 类命令清槽是否等同主动卸下。
+
+14. **复核 findings 已闭环（2026-10-27，§4.1ab）**：`dsh_code_review` run `1e6e1c84` 的 3 条问题全部落地并双线重跑 —— 清空时序（改为结算后清空）、1.20.1 D2 恒绿（补真·女王特权 + 判据 `n>=2`）、探针无收尾（新增 `/astraldst clean`）。**仍欠**：本批新产物（neo `2,595,454 B` / forge prod `2,640,648 B` / dev named `2,611,172 B`）**只投了 `run/<线>/mods`**，两个 P0 整合包与根 `build/libs` 仍是 rc.4 旧构建；tooltip「所有者：」行渲染 / 跨容器搬运 / 死亡掉牌 / `/curios set` 清槽四项依旧未实机（同第 13 条）。
+
+15. **第二次复核（run `f93916e6`）已闭环（2026-10-27，§4.1ac）**：两条 findings 处置 —— (a) 清空时序的注释改为如实表述 + 登记「同优先级更晚取消会丢来源」的已知边界（彻底兑现需降 `EventPriority.LOWEST`）；(b) `clean` 回显改为记录 `dEquip` 返回值 + 读回 `hasEffect`。**同批修掉第三处探针缺陷**：临时牌可堆叠 ⇒ 篡改要拆单张副本（否则清理会多掉一张，读数在 1/2 间跳）。双线重跑：1.20.1 `DST-P0` 13/13 + 1.21.1 三案全 PASS。**仍欠**同第 13/14 条（整合包与根 `build/libs` 仍是 rc.4 旧构建；tooltip 渲染 / 跨容器 / 死亡掉牌 / `/curios set` 四项未实机）。
+16. **智能手表同源双触发 + 击杀奖励去重 + 1.20.1 立牌 +5 挂点已闭环（2026-10-27，§4.1ad）**：`DeathTriggerGuard`（两线）+ 5 处击杀奖励闸门 + 真伤段排除「怪力乱神 +5」+ forge 挂点从 `LivingHurtEvent` 改 `LivingDamageEvent(LOWEST)`。实机：1.21.1 `NESTED-DOUBLE` PASS、1.20.1 `DST-NESTED` PASS 10/10；四目标已投放且 sha256 MATCH。**复核**：`dsh_code_review` run `439bfc3c-374c-4a02-b6bb-b8727f24f59d`（范围仅提交 `59d69ce4`）R1–R5 **全 SUPPORTED**，无返工项；两条限定 —— ① `LAST_CLAIM` 的实际上限是「最近 400 刻内的 claim 条数」（`PRUNE_THRESHOLD=4096` 只触发清理、不是硬上限），② P1 两线（26.1.2 / fabric）同名处理器仍未接闸门（按「P0 双线」范围既定）。**仍欠**：智能手表双触发的客户端侧表现（发卡动画 / 提示）未单独取证。
+
+17. **神秘遗物 1.20.1 复测路径待用户裁决（2026-10-27，§4.1ak）** → **已闭环（2026-10-28 用户裁决「按 A 决策」，§4.1al-1）**：证据链已闭环 —— 生产 jar 是 SRG（`javap -p` 见 `m_8119_`），forge dev 是 Mojmap，因此 `enigmaticaddons` 的 mixin 在 dev 里 `could not find any targets matching '…tick()V'`、`--phase launch` EXIT 2。两条路径任选：(a) 给三件（`EnigmaticLegacy-2.30.1` / `enigmaticaddons-1.2.7` / `caelus-forge-3.2.0+1.20.1`）在 `forge-1.20.1/build.gradle` 加 `modImplementation`（测试用依赖，MDG 会重映射成 dev 名；属**测试资产改动**，须用户放行）；(b) 在真实整合包（生产 SRG 环境 = `D:\.minecraft\versions\1.20.1-Forge 模组测试`）里跑并接 AutoJS。**未裁决前 1.20.1 的神秘遗物联动一律视为未验证。**
+
+18. **神秘遗物+ 两处现场不可验证（2026-10-27，§4.1ak）** → **部分闭环（2026-10-28，§4.1al-2 / §4.1al-5）**：(a) **F3 七咒倍率** —— `ratio` 捕获（`FateGuidanceCardItem.java:110-141`，LOWEST）读到的恒为 1，因为 EL+ 的放大发生在更晚的事件/分支；要真验需改变捕获点（如改挂 `LivingDamageEvent`）或让 EL+ 在 LOWEST 之前放大，属**判据设计问题**而非代码缺陷，先登记不返工；(b) **饕餮之锅** —— 1.21.1 的锅在 `enigmaticdelicacy`（缺 FarmersDelight）、1.20.1 被 SRG 阻塞 ⇒ 两条线的锅 melee 识别（`DiceCombatEvents.java:2039-2041` 强制武器口径）均**未验证**。**2026-10-28 12:2x 更新（§4.1an）**：1.20.1 的锅已实机定案 —— 0 伤害是 EL 自己的「值得者」闸门（`isTheWorthyOne` = 戴戒 + 受苦比例 ≥ 0.995，在 `LivingHurtEvent` 里 `setCanceled(true)`，我方骰战入口根本不执行）；把受苦比例强改为 1 后同一挥击打满 24 点 ⇒ 我方锅 melee 识别**工作正常**。**2026-10-28 12:5x 1.21.1 已测（§4.1ao-3）**：1.21.1 的锅同样是 EL+ 的 `isTheWorthyOne`「值得者」闸门（`cursed_ring` 或持久标记 `SevenCursesBearing` **加上**苦难度达标；`d0/hurt=0` 即事件取消判据），worthy 翻转后与铁剑同伤害 ⇒ **两线的锅 melee 识别均已定案、均非本仓缺陷**。
+
+19. **骰子独立验证报告（2026-10-28，§4.1al-8）→ 已裁决并落地（§4.1am）**：`docs/features/dice-special-verification.md` 给出 13 个骰子逐个判定与 Top5 疑似缺陷 —— **P0-1** `ObsidianDiceHandler.java:33` 判的是 `IS_EXPLOSION`、`:35` 伤害 ×0.5，而全仓 `IS_FIRE` / lava 零命中 ⇒「火焰 -70%」零实现；**P0-2** `ObsidianDiceItem.java:27` DEFENSE_BONUS=3 经 `DiceCombatModifiers.java:198` 的 `1/0.30` 落成 **+10 护甲**（非 +6）；**P0-3** `starengine combat/SpellDamageRegistry.java:389-394` 紫晶「追加骰点」实为纯均匀 `nextInt(1,7)`，且本模组自产的 `CARD_SPELL` 也走该路径（多段法术线性叠加）；**P0-4** 卡牌栏口径冲突：`ModItems.java:167/:179/:185` 注释 4/5/6 vs `DiceCurioItem.java:43-46` `CARD_SLOTS_BY_STAR={4,6,8,12}`；**P0-5** weird 骰「立牌主动冷却 -50%」残留 4 类（Megas / Moses / Parunan / Sherry 各 `ticks = Math.max(1, ticks / 2)`，两线各 6 处）与 `WeirdDiceHandler.java:41` 的「已删除」注释矛盾。**五条待裁决**：卡牌栏以注释还是星档公式为准 / obsidian 应然是火焰还是爆炸 / 紫晶「骰点」= 独立 d6 还是骰战骰面 / 枪械是否算远程（`ALLOW_FIREARM_DAMAGE` 默认 false）/ 玻璃骰死亡丢卡牌应销毁还是落地。**2026-10-28 用户裁决并已落地（§4.1am）**：① **卡牌栏按骰子品质固定、与星级无关**（星级只影响费用上限）—— `DiceTier` 扩 `cardSlots`、`DiceCurioItem#getCardSlots` 改读品阶、`ModItems` 13 条注册逐条登记，实机 `byTier` 13 条核对通过；② **黑曜石骰子保持现有实现**（爆炸 -50% + 防御力 +3 真加防御力），只订正注释与 lang，不改成火焰；③ **紫晶骰子现行行为正确**（独立 d6 追加）—— 不改；④ **诡异骰子「立牌冷却 -50%」残留全部删除**（两线各 6 处），实机 3600 tick 不变。**2026-10-28 12:2x 第二条裁决已闭环（§4.1an 实机 PASS）**：玻璃骰死亡丢卡牌 = **销毁**，骰子物品自身携带的卡牌随之销毁（现行实现，无需改代码）；**第三条裁决已下并销账（2026-10-28 用户 m23942 + §4.1ao-4）**：枪械**算远程**，且默认由 `config/ModCommonConfig.java:95-99` 的 `ALLOW_FIREARM_DAMAGE`（`allow_firearm_damage = false`）关闭、玩家改配置后才计入；近战侧 `combat/DiceCombatEvents.java` 的 `isMeleeWeaponAttack`（neo `:1784` / forge `:2076`）亦排除 `ProjectileWeaponItem` / `BlockItem` / `isFirearmItem` ⇒ 现行实现与裁决一致，无需改动。**§5-19 的五条裁决至此全部闭环。**
+
+20. **rc.5 收尾批的三项欠账（2026-10-28，§4.1aq）**：① **GitHub Release 已确认（2026-10-28 14:0x 闭环，§4.1aq-6）** —— push `cce71efb..79e3b183` 触发 CI：tag `1.5.0-rc.5`（注解 `db3b1796…` → `79e3b183`）与 Release `Astral Dice 1.5.0-rc.5` 均存在；`releases/expanded_assets/1.5.0-rc.5` HTTP 200 列出两件附件并带原文 sha256（neo 2,598,301 B / `c97ea383…`、forge 2,647,158 B / `d4e48687…`），下载件哈希与页面一致；正文由 `release/<tag>/PLAYER_CHANGELOG_ZH.md` + `PLAYER_CHANGELOG.md` 生成；② **1.20.1 线未实机** —— 本批实机只跑 1.21.1（用户下达范围），forge 线只有构建 + 投放 + 哈希判据；③ P1 两线（`neoforge-26.1.2` / `fabric-1.20.1`）按「只发 P0」红线仍未验证 / 未移植。
+
 ### Minor
 
 1. `docs/handover-2026-10-24-member-detective.md` 等 Kimi 批次文档已入库，措辞按 2026-10-24 事实；后续改动若改变其中数字需回填。
@@ -617,6 +1036,22 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 14. **`1.5.0-rc.2` 版本已落盘（2026-10-25，§4.1o）**：四线 `mod_version = 1.5.0-rc.2+<后缀>`、`release/1.5.0-rc.2/` 三份玩家更新日志（版本串已换，内容 = rc.1 + 调酒师治疗按张数 + 【交际花】）、`README*.md` 版本列同步；P0 两线已重建并投放四目标（§2 产物现状）。**已 push（`13a45619`）**，CI 自动建 tag `1.5.0-rc.2` 并从 `release/1.5.0-rc.2/` 取正文发布 prerelease（实测页面 200，两个 P0 jar 均在附件里）。**实机未覆盖项见 §4.1o 末行**（真实按键施放 / 死亡重登 / 窗口内反复进出）。
 
 15. **`tools/curseforge-description.md` 已删除（2026-10-25，用户裁决）**：CF 项目说明已由用户**手动粘贴**到作者后台（`https://authors.curseforge.com/#/projects/1662159/description`），仓库内草稿（含本轮中英两版全文 + 一句话 Summary）随之删除，避免与线上正文双份漂移。**CF 的 Description 字段至今无法经 API 修改**（`.curseforge/token` 只是 legacy upload token，Core API 也没有该端点，见 `AGENTS-full.md:2294`），今后要改说明一律在 CF 作者后台直接改，仓库不再留副本。历史文档里对 `tools/curseforge-description.md` 的引用（`docs/AGENT-HANDOFF.md:106` / `:593` / `:617`、`docs/agent/AGENTS-full.md:4034`、`docs/prerelease-check-1.3.7-hotfix.md:48` / `:84`、`docs/handover-1.5.0-pre.5-main.md:654`）一律读作**历史记录**，文件本身已不存在。
+
+17. **攻击 / 受击链路排查与三批修复已落盘（2026-10-27，§4.1ae）**：审计正本 `docs/features/attack-damage-chain-audit.md`（N1–N26）+ 法伤链独立复核 `docs/features/spell-damage-chain-verification.md`；批次 A/B/C 已改两线源码并双线编译通过，批次 E（惩罚伤害不得触发受击被动）在跑。**仍欠**：① 全部改动**未实机**（D 的 C1–C8 判据依赖尚未实现的探针）；② 待裁决 N11 / N14 / N15 / N16 / N18 / N19 / N20 / N22 / N23 / N24；③ N25 = P1 两线 `bypasses_cooldown.json` 仍缺 `dice_damage`（四线一致性欠账，P1 不碰）；④ 批次 A 的已知限制：`settleDiceDamage` 之后再被 LOWEST（气囊归零 / 磨刀石 −N）改金额时，平台 `:1684` 的扣减量会与写入值不等（方向是「少消耗吸收」，绝不双扣，1.20.1 无 `LivingDamageEvent.Post` 无法补偿）。
+
+18. **法伤加成折叠（方案 A）已落盘，待实机 + 重出 jar（2026-10-27，§4.1af）**：双线 `:classes` 通过、javap 类面核对完成，但 **jar 未重出、四目标未投放、未实机**。**仍欠**：① 重出 P0 两线 jar 并投 `run/1.21.1` / `run/1.20.1` / 两个 P0 整合包；② 折叠后「一次命中只结算一次」的数值实机（跳字 / 音效档位 / 吸收钳制 / 固定点数减伤各一次）；③ N14（AOE 命中 N 目标时「按施放计一次」还是「按目标逐个计」）口径仍待用户裁决。
+
+19. **折叠批独立复核闭环（2026-10-27，§4.1af / §7.7）**：`dsh_code_review` 因范围过大（1 提交 + 23 文件）600s 超时 ⇒ 改两路只读复核（一次性 `subagent` + teammate `verify-opt-a`），R1–R7 结论一致。**已落地两条必须项**：① R5 窄风险 —— 两线 `combat/DiceCombatEvents.java` 近战闸门前加 `if (SpellDamageRegistry.isSpellDamage(source, directEntity)) return;`（拦第三方法术源 direct=玩家时被骰战覆盖）；② R6 口径订正 —— 折叠后加成随**本体源**标签走，`astral_dice:card_spell` 路径与旧实现逐位一致，本体源要吃护甲时加成改为同吃（护甲20/韧性8 约 ×0.30，**预期语义变更**），初稿「乘性因子完全不变」已按 R6 订正（audit §7.6 / option-a §7 / §0 第 30 条 / 本文件 §4.1af / CHANGELOG 双份）。连带订正 R4 文档口径（mapping `:56/:106/:472`、verification `:284/:459/:509` 标废止）与 R1/R2 注释（@HIGHEST vs @HIGH、forge 两个互斥派发点、两线四点不对称）。**仍欠**：① 重出 jar + 四目标投放 + 实机；② 两个待裁决点 —— N14（AOE 计数口径）、「加成随本体吃护甲 / 连击被无敌帧吞」是否接受；③ P1 两线未折叠。
+
+
+22. **近战链路批（2026-10-27，§4.1ah）待实机**：F1（forge 玩家黄心终态）/ F2（无骰赐福目标弱印记只乘一次）/ A4（气囊归零后不 +5、+5 不白烧充能）/ A5（第三方取消后幻影不残留）四项需实机读数；另本批**未重出 jar、未投放**（两个 P0 整合包与根 `build/libs` 仍是 rc.4 旧构建）。剩余登记项（F8 / MELEE-06 / MELEE-07 / F5 显示侧）与 N11 / N14 之前的裁决项一并见审计正本 §7.9.3。 独立复核（只读子代理）已核对平台前提并对 R1–R7 给判，六条建议修（N1 neo 修女被动改真落地量 / N2 生物路径 +1 上移到 victimFactor 之前 —— **mob→player 的这 1 点改为随实例倍率放大** / N3 D3 javadoc / N4 forge 判据 null 守卫与行号 / N5 Papara 空订阅清理 / N6 对账加「幻影量原封未动」校验）已全部落地，详见审计正本 §7.9.5。
+
+21. **折叠批三条裁决已落地、待实机（2026-10-27 20:5x，§4.1ag）**：N14「AOE 命中也算」⇒ 两线 `DiceCombatEvents` 把赐福/降神倒计时与隐匿解除提到 AOE 闸门之前（反击链 `counterDepth` 仍早退）；「加成必须绕过护甲」⇒ 两线 `DamageEffectCardHandler.foldBonusBypassingArmor(...)` 在护甲前预补偿（源带 `bypasses_armor` 或护甲 0 时直接相加），数值回到与旧 `true_damage` 段一致；「连击保留 cooldown」⇒ 不加 `bypasses_cooldown`。双线 `:classes` EXIT 0，**未实机、未重出 jar**。
+23. **近战三裁决批（2026-10-27，§4.1ai）待实机 + 未重出 jar**：三项需实机读数（法伤/远程打被吸附目标应无 +5、近战骰战应仍 +5、嘲讽目标同挥击多段只反击一次）；本批**未重出 jar、未投放**（两个 P0 整合包与根 `build/libs` 仍是 rc.4 旧构建）。
+
+24. **近战批实机闭环（2026-10-27，§4.1aj）**：§4.1ah / §4.1ai 全部落地项已双线实测；期间新修 F7 公共出口（生物→玩家骰战漏判）与 MELEE-04 回血基数（改用落地量），两线 jar 已重出并四目标投放。**仍欠**：A3（需 PvP）/ A5 第三方取消路径 / F3（需神秘遗物+）/ N14 专项判据 —— 四项只能代码级；P1 两线（`neoforge-26.1.2` / `fabric-1.20.1`）未折叠未镜像。
+25. ~~62 个筹码手册条目的 crafting 页指向不存在的配方~~ → **已修（2026-10-28，用户裁决 m24344「改成说明页」，落地与读数见 §4.1ap）**：62 个 `patchouli:crafting` 页原位换成 `{"type":"patchouli:text","text":"astral_dice.guide.chip_source.note"}`，5 个原本缺页的条目补同一说明页（两线各 67/67 带说明），三语新键写清「在筹码商店与筹码商人交易获得 / 服务器开启 `enable_chip_recipes` 后也可合成」。**根因订正**：筹码配方其实**存在**（`src/generated/resources/data/astral_dice/recipe`（neo）/ `recipes`（forge）各 108 个 json，带 `astral_dice:chip_recipes_enabled` 条件），旧取证只扫 `src/main/resources/data` 才误判「没有任何 `*_chip` 配方」；默认 `enable_chip_recipes=false`（`config/ModCommonConfig.java:111`，两线同位置）⇒ **67 条**筹码配方整体不加载（`blank_chip_duplicate` 不门禁），手册页才解析不到。守门 `scripts/verify/verify_chip_acquisition.ps1` 已加 `stale_page` / `no_note` 两判据并做过变异测试。**已销账（2026-10-28 实机，§4.1aq-4）**：1.21.1 `run/1.21.1/logs/latest.log` 的 `[patchouli/]: Recipe astral_dice:` 计数 = 0（停机前 5,733 行 / 停机后 8,501 行各测一次均 0），且 `stale_page` / `no_note` 已由 `1368b837` 升为致命项并接入 CI（§4.1aq-5）。
+26. **CF 上传工具两处事实（2026-10-28，§4.1aq-6）**：① `tools/curseforge_upload.py` **只认 `--changelog` 显式路径** —— rc 版本的 `pick_changelog` 用 `base = ver.split("-")[0]`，永远匹配不到 `release/1.5.0-rc.5/`（既有坑 28；本批按显式路径上传，正文 49,242 字符）；② **多 jar = N 次 POST、非原子、不可幂等** —— 两件上传中途失败会在 CF 留半批文件，重传须先在作者后台手删（本批 2/2 HTTP 200 一次过，回读哈希逐字节一致）。
 
 ## 6 坑（本批新增，后续继续追加）
 
@@ -658,6 +1093,47 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 28. **`pick_changelog` 对预发布版本解析失败 ⇒ 上传被 CF 400 拒（2026-10-26 实测）**：`tools/curseforge_upload.py:638` 的 `base = ver.split("-")[0]` 会把 `1.5.0-rc.2` 截成 `1.5.0`，于是去 `release/1.5.0/PLAYER_CHANGELOG.md` 找（不存在）⇒ 返回 `None`；`build_jobs` 里 `if job["_changelog"]:` 才写 `metadata["changelog"]`，字段直接缺失，CF 侧回 `HTTP 400 {"errorCode":1002,"errorMessage":"Error in field metadata: Required properties are missing from object: changelog."}`。dry-run 只打印「更新日志 = （无，留空）」且**不读文件**，所以计划态看不出来。**绕法**：显式 `--changelog release/<完整版本>/PLAYER_CHANGELOG.md`（本轮即此）。**未落地的修法（待裁决）**：`base` 改为「先按完整版本目录找，找不到再退回 `re.sub(r"-(?:alpha|beta|pre|rc).*$", "", ver)`」，或 `None` 时直接 `SystemExit` 报错而不是静默留空。29. **用 `JSON.stringify` 处理「从文件里直接截出来的 JSON 行子串」会把换行双转义（2026-10-26 实测）**：`lang` 行子串里的 `\n` 本来就是 JSON 转义，再套一层 `JSON.stringify` 会变成 `\\n`（值里是字面反斜杠+n），语言文件仍能 `JSON.parse`，守门全绿，但游戏里 tooltip 会直接显示 `\n`。正确做法：**先 `JSON.parse` 拿到真值**（已含真换行）再 `JSON.stringify` 回写；或用 `String.fromCharCode(92)` 拼转义再替换。实测误伤面：`12ef8102` 把 5 份 lang 的 `jill_active` 写成双转义，直到用户实机发现。守门补强建议：`grep` 一遍「双转义行数 = 0」当作 lang 改动的收尾判据。
 
 
+
+29. **1.20.1 线没有 AutoJS 通道 ⇒ 实机只能走 KubeJS 服务端探针，且改了命令体必须冷启动**（2026-10-27 实测，§4.1aa）：`mt_env.ps1 kubejs --version 1.20.1` 只同步脚本（`MT_KUBEJS: OK`），`/kubejs reload server_scripts` 会显示 `Loaded script …` 但**新命令不进 dispatcher**（`未知或不完整的命令`）、**闭包旧逻辑照旧跑** ⇒ 每次改探针都要 `--phase stop --force` + `--phase launch`（约 90s）。另外三处 Rhino 坑：`LivingEntity#hurt` 与 `Entity#getUUID()` 不可见（伤害走原版 `/damage … by @s`、UUID 走 `UUID.fromString(p.getStringUUID())`）；`ServerEvents.tick` 里 `getTickCount()` 会让异步任务静默不执行 ⇒ 放弃 tick 调度、改「一条命令一步 + 用例 wait 推进」；`ExclusiveCardUtil.ownerOf` 返回 `java.util.Optional<UUID>`，比较前必须 `.orElse(null)`（`TemporaryCardUtil.ownerOf` 才是裸 UUID）。
+
+30. **两个「读数全 0」的陷阱组合（2026-10-27 实测，§4.1ab）**：① `TemporaryCardUtil.grantNardisPrivilege(player)` **只发牌、不挂「女王特权」效果**（效果由 `NardisSignItem#handleUse` 另挂）⇒ 只调它再等一会儿，`tick` 的「无效果 ⇒ `purgeAll`」会把牌全清，任何 `n===me` 式判据都会**恒绿**；正解是显式 `addEffect(new MobEffectInstance(ModEffects.NARDIS_PRIVILEGE.get(), 12000, 0, false, false, true))` 并读回 `hasEffect` 再继续。② `ModAttachments.setInvestigationStage(player, n)` 内部是 `Math.max(1, value)` ⇒ **归零不可达**，探针「复位到 0」的读数会与随后实测的 1 不一致；断言要么锁 1，要么干脆不锁。
+
+31. **1.20.1 里在 `LivingHurtEvent` 给伤害做「加法」可能整段失效（2026-10-27 实测，§4.1ad）**：本线骰战处理器（`combat/DiceCombatEvents.java:274`，NORMAL）在 `LivingDamageEvent` 上以 `setAmount` **覆盖式**写入自算终值 ⇒ 任何更早发生的加法（`LivingHurtEvent` 阶段、护甲之前）都会被丢弃。症状：闸门全真、事件确实被调用，但目标掉血没有加成。凡「就在同一次伤害上做加法」的需求，1.20.1 一律挂 `LivingDamageEvent` 且优先级 **LOWEST**（排在骰战 NORMAL 之后），与 1.21.1 的 `LivingDamageEvent.Pre` + LOWEST 对齐。
+32. **1.20.1 dev 其实有 AutoJS 通道（订正坑 29）**：`run/1.20.1/mods` 里的 `AutoJS-forge-1.20.1-1.0.0-dev.jar` 会起端点，`mt.ps1 --phase launch` 日志直接打出 `MT_LAUNCH: OK — AutoJS 端点已就绪（http://127.0.0.1:25585/mcp, protocolVersion=2025-06-18）`（注意：`--phase env` 仍会打印 `MT_ENV_AUTOJS: 跳过`，两句话矛盾，以 launch 实测为准）。2026-10-27 实测 `eval_js`（server 侧）在 1.20.1 可用：`net.minecraftforge.server.ServerLifecycleHooks.getCurrentServer()` + `getCommands().performPrefixedCommand(...)` 可直跑命令，`diagnostics` 里能看到 KubeJS 与探针脚本的加载行。⇒ 1.20.1 快速迭代优先用 AutoJS eval（免冷启动），可断言的用例面仍走 KubeJS 探针。
+33. **整行 CJK 字符串做脚本锚点会静默失配（2026-10-27 实测，§4.1ai）**：用 `docs/features/attack-damage-chain-audit.md` §7.9.3 的表格整行当 python 锚点，匹配 0 次（全角括号 / 箭头 / 空格差异肉眼不可见）⇒ 表格与列表行一律改用**行首前缀**（`startswith`）定位 + 命中数断言；同理 `tools.read` 的 `offset` 超过文件行数会直接抛错（本轮 forge `LinglingSignEvents.java` 删完处理器只剩 82 行）。
+
+34. **语义改了，旧用例可能变假绿（2026-10-27 实测，§4.1aj）**：MELEE-06 把「+5」限定骰战后，两条既有用例的测量段仍在打 `astral_dice:card_spell`（法伤）⇒ 被吸附靶与普通靶都只掉 1、`diff` 恒 0 ⇒ B 段「median 4–6」红、C 段「median ≈0」绿，`near5` 同时失去意义。教训：**改判据语义的批次必须回看既有用例/探针的「量具」是否还分辨得出**（本例量具改成 `minecraft:player_attack` + 主手剑 + `DICE_BLESSING` + 每轮 `invulnerableTime = 0`）；1.20.1 探针改动后照例 `--phase stop --force` → `mt_env.ps1 kubejs --version 1.20.1` → `--phase launch` 冷启动。
+
+35. **Rhino 里 `ItemStack.is(Item)` 是歧义调用（2026-10-27 实测）**：`stack.is(core)` 直接抛 `EvaluatorException: The choice of Java method net.minecraft.world.item.ItemStack.is matching JavaScript argument types (…BlazingCore) is ambiguous; candidate methods are: boolean is(net.minecraft.world.item.Item) / boolean is(net.minecraft.core.HolderSet)` ⇒ 探针里一律改用 `String(stack.getItem()) === 'ns:id'` 比较；同理 `BuiltInRegistries.ITEM.get(...)` 用错 id 时返回 air 而**不报错**（本轮 `cursed_sword` 应为 `cursed_sword_chip`，导致整份探针静默全灭）—— 装备类探针**先回读槽位内容**再往下跑。
+
+36. **`ServerLevel.getGameTime()` 在 Rhino 里不可用（2026-10-27 实测）**：`level.getGameTime()` 抛 `TypeError: Cannot find function getGameTime in object ServerLevel[testworld]` ⇒ 需要 tick 时钟一律用 `server.getTickCount()`（`ServerLifecycleHooks.getCurrentServer()`）。
+
+37. **第三方「生产 jar 丢进 forge dev」＝ mixin 必崩（2026-10-27 实测，§4.1ak）**：Forge 1.20.1 生产是 SRG、dev 是 Mojmap ⇒ 若该模组的 mixin 目标是**第三方类**（refmap 不覆盖），`@Inject` 的 `method` 在生产 jar 里是 `m_xxxxx_` 名字，dev 里找不到 ⇒ `InvalidInjectionException` + 整局起不来。判据不是「能不能加载」，而是 `javap -p <生产 jar 内的目标类>` 看方法名是否 SRG；正解是走 `modImplementation` 让 MDG 重映射（本仓 kubejs/rhino/JEI 等既有先例）。
+
+38. **Rhino 的数字一律是 `Double`，写进 `Map<Player,Integer>` 会崩服**（2026-10-28 实测，§4.1al-6）：`EldritchPan.HOLDING_DURATIONS.put(player, 200)` 存的是 `Double`，EL 的 `EnigmaticEventHandler.onPlayerTick:1238` 做 `(Integer)` checkcast ⇒ `ClassCastException: class java.lang.Double cannot be cast to class java.lang.Integer`（`Description: Ticking player`，整局崩）。要写整形集合一律 `Java.loadClass('java.lang.Integer').valueOf(n)`。
+
+39. **`mt.ps1 --phase env` 会重建 `run/<线>/mods`，第三方测试 jar 必须在 env 之后再拷**（2026-10-28 实测）：先拷 `enigmaticlegacyplus` / `caelus` 再跑 `--phase env`，env 按清单重写 mods 目录，两件消失 ⇒ 探针里 `ModList.get().isLoaded(...)` 全 false、`setEquippedCurio` 返回 undefined。正确顺序：stop → env → 拷 jar → launch。
+
+40. **dev 运行的 jar 与整合包不是同一份**（2026-10-28 复核）：`pushToDevRun` 把 `forge-1.20.1/build/devlibs` 的 **Mojmap dev named** jar 推进 `run/<线>/mods`，`pushToGame` 才把 **reobf SRG 生产** jar 推进整合包。两者大小/哈希本来就不同（`2,618,723 / 2B051830` vs `2,648,157 / 9327BDF4`），别当「产物不一致」报缺陷；改完源码要实机必须跑 `pushToDevRun`（`:build` 会带）。
+
+41. **git bash 环境下写文件 / git 写操作可能被拒**（2026-10-28 实测）：`ops_bash`（git bash）里 node 写文件报 `EPERM: operation not permitted`，`git add` 报 `fatal: Unable to create '.git/index.lock': Permission denied`（无残留 lock、无 git 进程）⇒ 所有写文件与 git 写操作走 **pwsh**，bash 只做只读查询。
+42. **前置库 jar 也分 dev / prod，forge 线 `run/mods` 必须放 `devlibs` 那份**（2026-10-28 实测）：`F:\MCProject\starengine\build\libs\starengine-forge-1.20.1-1.1.0.jar` 是 **reobf SRG**（103,605 B），`F:\MCProject\starengine\forge-1.20.1\build\devlibs\starengine-forge-1.20.1-1.1.0.jar` 才是 **Mojmap dev named**（102,013 B，正是 `run/1.20.1/mods` 该放的那份）。误把 libs 那份塞进 dev run ⇒ 加载世界时 KubeJS 注册命令炸：`java.lang.NoSuchMethodError: 'com.mojang.brigadier.builder.LiteralArgumentBuilder net.minecraft.commands.Commands.m_82127_(java.lang.String)'`，栈为 `WorldLoader.load` → `WorldOpenFlows.loadWorldStem` → `QuickPlay.joinSingleplayerWorld`，客户端停在主菜单、AutoJS 只剩 `client` side（报 `Side 'server' is not registered in this game instance`）⇒ 看到这两个症状就先去比 `run/<forge 线>/mods` 里库 jar 与 `devlibs` 的大小/哈希。neo 线无此差别（1.21 生产即 Mojmap，98,734 B 两份一致）。
+43. **AutoJS 探针里构造 Java 记录/组件对象 ⇒ JSON 化阶段直接抛错**（2026-10-28 实测）：为给骰子栈写星级而构造 `WeaponEnhancement` 后，AutoJS 收尾抛 `WrappedException: Wrapped Unsure how to convert 'WeaponEnhancement[usedCost=0, maxCost=3, usedDefenseCost=0, maxDefenseCost=3, starLevel=0, appliedStones=[]]' to JSON! (autojs-eval#40)`（栈落在 `NativeJavaMethod.call`），即使返回值里已不含该对象 ⇒ 探针载荷只放 int / string / boolean；「星级不变」这类判据改用源码判据或命令路径，别在探针里构造组件记录。
+
+44. **AutoJS / Rhino 在 1.21.1 的 API 事实（2026-10-28 实测，探针必用）**：`InteractionHand` 字段是 `MAIN_HAND`/**`OFF_HAND`**（写 `OFFHAND` 报 `has no public instance field or method named "OFFHAND"`）；**`mob.hurt(DamageSource,float)` 调用不到**（`TypeError: Cannot find function hurt in object Pillager`）⇒ 伤害一律走 `/damage @e[type=…,tag=…,limit=1] <n> <dmgType> by Dev`，`DamageSource` 也没有 `getMsgId()`（要看源就把 ds 转成字符串）；未声明变量赋值报 `EvaluatorException: Assignment to undeclared variable p` ⇒ 必须 `var p=…`；给 `Item.of(...)` 传不存在的 id 抛 `KubeRuntimeException` 且**会穿透 JS try/catch 终止整次 eval** ⇒ 探测 id 先迭代 `BuiltInRegistries.ITEM.keySet()`；1.21.1 没有 `astral_dice:basic_dice`（用 `golden_dice` / `glass_dice` 等）；1.21.1 的 `/astralprobe …` 探针命令**不出任何读数**（`logs/kubejs/server.log` 无 AP_ 行）⇒ 直接写 curio 槽。
+45. **EL+ 的「值得者」不能靠写 curio 槽伪造成立**（2026-10-28 实测）：给 `dice` / `ring` 槽 `setStackInSlot` 写进物品之后 `isTheCursedOne` 仍 false（绕过 `CurioEquipEvent` 链路）；要造 `cursed=true` 用 `EnigmaticHandler.getPersistedData(p).putBoolean(SevenCursesBearing, true)`，要造 `worthy=true` 还要改苦难度：`var EA=Java.loadClass(auviotre.enigmatic.legacy.registries.EnigmaticAttachments); var d=p.getData(EA.ENIGMATIC_DATA); d.setTimeWithCurses(1000000); d.setTimeWithoutCurses(0);`。判「伤害是否被取消」只认 `hurtTime`：`d=0 && hurtTime=0` ⇒ 事件取消（`LivingEntity.hurt` 在 `CommonHooks.onEntityIncomingDamage` 返回 true 时直接 `return false`）。
+46. **jar 名带 `[中文] ` / `+`，解包与反编译都要绕**（2026-10-28 实测）：`Get-ChildItem -Filter` 带方括号的模式匹配不到这类 jar（`[ ]` 是通配语义）⇒ 用 `-File | Where-Object { $_.Name -match … }`；git bash 没有 `unzip` ⇒ 用 pwsh `System.IO.Compression.ZipFile`（`OpenRead` 列条目 / `ExtractToDirectory` 解包）；反编译直接 `javap -p -c -classpath "<jar路径>" <fqcn>` 可读 jar 内类，不必先解包。另：`1.21.1/logs/latest.log` 会被客户端 AP_PMFIX 探针逐条刷屏 ⇒ 读日志一律 grep 关键词，别只看尾部。
+
+47. **正则替换 CRLF 文本时 `\n` 会吃掉 `\r`，插入块带出 `\r\r\n`**（2026-10-28 实测，§4.1ap）：用 `replace(/\n([ \t]*)\{/g, nl + …)` 改写 CRLF 的 json 时，匹配只吃掉 `\r\n` 里的 `\n`，前一个 `\r` 留在原位，再拼上 `nl`（`\r\n`）就得到 `\r\r\n` —— JSON 仍能解析（孤立 `\r` 属合法空白），但 `git diff` 会把整个文件判成重写（实测 124 个手册条目全文件 diff）。修法：① 匹配式写 `\r?\n` 并由替换串统一补 `nl`；② 落盘前断言 `/\r\r\n/` 命中 0（本轮用 `temp/fix_stray_cr.mjs --apply` 事后修了 124 个文件）。
+
+48. **本宿主 `ops_bash`（git bash 子进程）的任何写文件操作都被拒**（2026-10-28 实测，接手必读）：`git add` 报 `fatal: Unable to create '.git/index.lock': Permission denied`，`Set-Content` / `Tee-Object` / `[System.IO.File]::Create` 一律 `UnauthorizedAccessException`（`%TEMP%` 与仓库 `temp/` 皆然），而**读操作正常** ⇒ 所有写操作（git 写、脚本落盘、Gradle）一律走**原生 `pwsh` 工具**或 write/edit 工具，bash 只做只读查询（与坑 41 同源；本条覆盖 git 写与 Gradle 调用，坑 41 只讲了 node 写文件与 `git add`）。
+
+49. **`mt.ps1` 的长驻相位必须用分离包装器启动，直呼会等整棵进程树至超时**（2026-10-28 实测）：`--phase launch` 会挂住到游戏退出，前台直呼会把 `run_code` / 工具的超时时间耗光。正解 = `scripts\devtools\Start-MtDetached.ps1 -Script scripts\test\mt.ps1 -Out temp\mt_detached\<tag>.log -ScriptArgs --phase launch --version 1.21.1`（依据 `scripts/test/TESTING-SPEC.md:121-124`）；纯实机取证**直接 `--phase launch`、不跑 `--phase env`** —— env 会按清单重写 `run/<线>/mods`（坑 39），把刚核验过哈希的 jar 换掉。
+
+50. **筹码配方门禁的实际配置键是 `[chips] enable_chip_recipes`，不是 `astral_dice:chip_recipes_enabled`**（2026-10-28 实测，§4.1aq-4）：实机取证看 `run/1.21.1/config/astral_dice-common.toml` 的 `[chips] enable_chip_recipes = false`；`astral_dice:chip_recipes_enabled` 是 datapack recipe condition 的 id（`src/generated` 里那 108 个配方 json 顶层的 condition），两者名字不同，别拿后者当「配方是否加载」的判据。
+
+51. **Patchouli 的书 id 不出现在 INFO 日志里**（2026-10-28 实测，§4.1aq-4）：`latest.log` 只打 `preloaded <n> jsons` / `Files found in <n> μs` 这类行，**没有** book id ⇒ 要证明手册真的加载了，必须用 AutoJS 读 `vazkii.patchouli.common.book.BookRegistry` 的 `INSTANCE.books`（该版本**没有** `getBook()`）；本批读数 `{"bookCount":2,"found":true,"errored":false,"entries":164,"categories":15}`，与资源侧 164 个 entry json 对齐。
+
 ## 7 关键路径（命令）
 
 ```powershell
@@ -687,4 +1163,12 @@ python tools\verify_hud_attack_parity.py
 # 测试台（实机须用户下达）
 pwsh -NoProfile -File F:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1 --version 1.20.1 --phase env
 pwsh -NoProfile -File F:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1 --version 1.20.1 --phase stop --force --purge-saves
+
+# 长驻相位：分离启动（scripts/test/TESTING-SPEC.md:121-124；不跑 --phase env，避免重写 run/<线>/mods）
+pwsh -NoProfile -File F:\MCProject\astral_dice_multiloader\scripts\devtools\Start-MtDetached.ps1 -Script scripts\test\mt.ps1 -Out temp\mt_detached\tester1211_launch_<yyyyMMdd-HHmm>.log -ScriptArgs --phase launch --version 1.21.1
+
+# 临时产物（temp/ 不入库）
+F:\MCProject\astral_dice_multiloader\temp\mt_detached\            # 分离启动日志 + .err（本批 tester1211_launch_20261028-1355.log 778 B / .err 0 B）
+F:\MCProject\astral_dice_multiloader\temp\cf_neo.jar              # CF 回读校验下载件（files/9349/843；2,599,540 B / 949560A7…）
+F:\MCProject\astral_dice_multiloader\temp\cf_forge.jar            # CF 回读校验下载件（files/9349/844；2,648,370 B / B54CE7F5…）
 ```

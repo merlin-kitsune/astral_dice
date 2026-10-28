@@ -119,7 +119,7 @@ public class LuluSignItem extends BaseSignItem {
             }
 
             // ── 4. 主动成功施加:开始玩家级冷却 ──────────────────────────────────────────
-            // 统一经 signCooldownTicks(含诡异骰子 -50% 与充能递减);门控路径不会走
+            // 统一经 signCooldownTicks(含充能封顶与额外电池筹码减成);门控路径不会走
             // BaseSignItem 第 6 步,故此处必须自己写。**同时**写 sign_active_max_cooldown:
             // 非门控路径原本就会写它,而电流核心的消耗档位分母读的正是它
             // ⇒ 只写冷却不写基准会让档位算错(迁移到门控时最容易漏的一步)。

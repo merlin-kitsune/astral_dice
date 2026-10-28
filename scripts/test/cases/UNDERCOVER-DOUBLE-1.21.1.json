@@ -1,0 +1,143 @@
+{
+  "case_id": "UNDERCOVER-DOUBLE-1.21.1",
+  "title": "隐匿调查双罚最小修复复验（1.21.1）",
+  "version": "1.21.1",
+  "channel": "autojs",
+  "target": "client",
+  "on_fail": "continue",
+  "description": "隐匿调查双罚最小修复复验：法伤（CARD_SPELL）加成段致死时应只触发一次 INVESTIGATION_KILL 事件、调查阶段只 +1",
+  "steps": [
+    {
+      "op": "note",
+      "text": "准备：创造模式、清 curios、装金骰子 + 忍术飞镖筹码（提供法伤 bonus）"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative"
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralshop curioreset IA"
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[type=!player,distance=..32]"
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/give @s astral_dice:golden_dice 1"
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe equipslot dice \"astral_dice:golden_dice\" IA"
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe equipslot chip \"astral_dice:ninja_star_chip\" IA"
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "code": "(function(){\nfunction collect(level, p, tag){\n  var LE = Java.loadClass('net.minecraft.world.entity.LivingEntity');\n  var box = p.getBoundingBox().inflate(48);\n  var list = level.getEntitiesOfClass(LE, box);\n  var out = [];\n  for (var i = 0; i < list.size(); i++) { var e = list.get(i); if (e.getTags().contains(tag)) { out.push(e); } }\n  return out;\n}\nfunction fireCount(){\n  var txt = AutoJS.read('logs/latest.log');\n  var lines = txt.split('\\n');\n  var n = 0;\n  for (var i = 0; i < lines.length; i++) { var L = lines[i]; if (L.indexOf('AP_EVENT_FIRE: id=') >= 0 && L.indexOf('src=INVESTIGATION_KILL') >= 0) { n++; } }\n  return n;\n}\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var server = SH.getCurrentServer();\n  if (server === null) { return { ok:false, reason:'no-server' }; }\n  var ps = server.getPlayerList().getPlayers();\n  if (ps.isEmpty()) { return { ok:false, reason:'no-player' }; }\n  var p = ps.get(0);\n  var MA = Java.loadClass('com.merlinkitsune.astral_dice.component.ModAttachments');\n  return { ok:true, fire:fireCount(), player:String(p.getGameProfile().getName()), stage:MA.getInvestigationStage(p) };\n})()",
+      "save_as": "base",
+      "timeout_ms": 10000
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "note",
+      "text": "召唤 2HP pillager 并施加隐匿调查 + 标记层数，再用 CARD_SPELL 打 1 点（bonus=标记层数会内层致死）"
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "code": "(function(){\nfunction collect(level, p, tag){\n  var LE = Java.loadClass('net.minecraft.world.entity.LivingEntity');\n  var box = p.getBoundingBox().inflate(48);\n  var list = level.getEntitiesOfClass(LE, box);\n  var out = [];\n  for (var i = 0; i < list.size(); i++) { var e = list.get(i); if (e.getTags().contains(tag)) { out.push(e); } }\n  return out;\n}\nfunction fireCount(){\n  var txt = AutoJS.read('logs/latest.log');\n  var lines = txt.split('\\n');\n  var n = 0;\n  for (var i = 0; i < lines.length; i++) { var L = lines[i]; if (L.indexOf('AP_EVENT_FIRE: id=') >= 0 && L.indexOf('src=INVESTIGATION_KILL') >= 0) { n++; } }\n  return n;\n}\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var server = SH.getCurrentServer();\n  var p = server.getPlayerList().getPlayers().get(0);\n  var level = p.level;\n  var old = collect(level, p, 'IA_TGT');\n  for (var i = 0; i < old.length; i++) { old[i].discard(); }\n  var ET = Java.loadClass('net.minecraft.world.entity.EntityType');\n  var ent = ET.PILLAGER.create(level);\n  if (ent === null) { return { ok:false, reason:'spawn-null' }; }\n  ent.setPos(p.getX() + 2.5, p.getY(), p.getZ() + 0.5);\n  ent.setNoAi(true);\n  ent.addTag('IA_TGT');\n  level.addFreshEntity(ent);\n  ent.setHealth(2.0);\n  var ME = Java.loadClass('com.merlinkitsune.astral_dice.effect.ModEffects');\n  var MEI = Java.loadClass('net.minecraft.world.effect.MobEffectInstance');\n  var eff = ME.UNDERCOVER_INVESTIGATION.get();\n  ent.addEffect(new MEI(eff, 1200, 0, false, false, true));\n  var MA = Java.loadClass('com.merlinkitsune.astral_dice.component.ModAttachments');\n  var Opt = Java.loadClass('java.util.Optional');\n  MA.setUndercoverSource(ent, Opt.of(p.uuid));\n  MA.setInvestigationStage(p, 1);\n  var MM = Java.loadClass('com.merlinkitsune.astral_dice.item.MarkManager');\n  MM.apply(ent);\n  var marks = MM.apply(ent);\n  return { ok:true, hp_before:ent.getHealth(), marks:marks, has_effect:ent.hasEffect(eff),\n           stage:MA.getInvestigationStage(p), alive_before:ent.isDeadOrDying() };\n})()",
+      "save_as": "hit",
+      "timeout_ms": 10000
+    },
+    {
+      "op": "note",
+      "text": "用原版 /damage 以 astral_dice:card_spell 打 1 点（Rhino 下 hurt/getUUID 不可调用）"
+    },
+    {
+      "op": "inject_command",
+      "command": "/damage @e[tag=IA_TGT,limit=1] 1 astral_dice:card_spell by @s"
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "wait",
+      "ms": 2800
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "code": "(function(){\nfunction collect(level, p, tag){\n  var LE = Java.loadClass('net.minecraft.world.entity.LivingEntity');\n  var box = p.getBoundingBox().inflate(48);\n  var list = level.getEntitiesOfClass(LE, box);\n  var out = [];\n  for (var i = 0; i < list.size(); i++) { var e = list.get(i); if (e.getTags().contains(tag)) { out.push(e); } }\n  return out;\n}\nfunction fireCount(){\n  var txt = AutoJS.read('logs/latest.log');\n  var lines = txt.split('\\n');\n  var n = 0;\n  for (var i = 0; i < lines.length; i++) { var L = lines[i]; if (L.indexOf('AP_EVENT_FIRE: id=') >= 0 && L.indexOf('src=INVESTIGATION_KILL') >= 0) { n++; } }\n  return n;\n}\n  var SH = Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks');\n  var server = SH.getCurrentServer();\n  var p = server.getPlayerList().getPlayers().get(0);\n  var level = p.level;\n  var MA = Java.loadClass('com.merlinkitsune.astral_dice.component.ModAttachments');\n  var ents = collect(level, p, 'IA_TGT');\n  var alive = 0; var srcLeft = 'none';\n  for (var i = 0; i < ents.length; i++) { if (!ents[i].isDeadOrDying()) { alive++; } srcLeft = String(MA.getUndercoverSource(ents[i])); }\n  return { ok:true, fire:fireCount(), stage:MA.getInvestigationStage(p), alive:alive, matched:ents.length, src_left:srcLeft };\n})()",
+      "save_as": "done",
+      "timeout_ms": 10000
+    }
+  ],
+  "asserts": [
+    {
+      "type": "state",
+      "from": "hit",
+      "expect": {
+        "ok": true,
+        "hp_before": 2,
+        "marks": {
+          "gte": 2
+        },
+        "has_effect": true,
+        "stage": 1,
+        "alive_before": false
+      }
+    },
+    {
+      "type": "state",
+      "from": "done",
+      "expect": {
+        "ok": true,
+        "stage": 2,
+        "alive": 0
+      }
+    },
+    {
+      "type": "log",
+      "pattern": "AP_EVENT_FIRE: id=astral_dice:investigation_stage:src=INVESTIGATION_KILL",
+      "scope": "case"
+    },
+    {
+      "type": "log",
+      "pattern": "AP_IA_EQUIP:chip:astral_dice:ninja_star_chip",
+      "scope": "case"
+    }
+  ]
+}

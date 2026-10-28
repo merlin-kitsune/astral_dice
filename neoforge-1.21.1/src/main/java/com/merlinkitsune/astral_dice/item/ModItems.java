@@ -194,7 +194,7 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(AstralRarities.epic())));
 
-    // 黑曜石骰子:与钻石骰子同阶(tag dice_t2),可由钻石骰子升级;基础防御力 +3(折算 +6 护甲),火焰伤害 -70%
+    // 黑曜石骰子:与钻石骰子同阶(tag dice_t2),可由钻石骰子升级;基础防御力 +3(真加防御力),受到的爆炸伤害 -50%
     public static final DeferredItem<Item> OBSIDIAN_DICE = registerItem("obsidian_dice",
             () -> new com.merlinkitsune.astral_dice.item.dice.ObsidianDiceItem(new Item.Properties()
                     .stacksTo(1)
@@ -206,7 +206,7 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(AstralRarities.rare())));
 
-    // 诡异骰子:与钻石骰子同阶(tag dice_t2),可由钻石骰子升级;立牌主动冷却 -50%,但战斗骰低点数(1-3)概率提升 50%
+    // 诡异骰子:与钻石骰子同阶(tag dice_t2),可由钻石骰子升级;战斗骰低点数(1-3)概率提升 50%,立牌主动技能结束后恢复 5 点生命值
     public static final DeferredItem<Item> WEIRD_DICE = registerItem("weird_dice",
             () -> new DiceCurioItem(new Item.Properties()
                     .stacksTo(1)
@@ -241,46 +241,46 @@ public class ModItems {
     // 重要:item 参数必须传 Supplier 延迟解析(() -> X.get()),禁止在静态初始化阶段调用
     //      DeferredHolder.get()——注册表未加载完成时会抛 IllegalStateException。
     static {
-        // 卡牌栏格数不再按品阶区分,仅由星级决定(见 DiceCurioItem.getCardSlots)
+        // 卡牌栏格数按品阶登记(第 4 参 cardSlots,与星级无关);星级只影响费用上限与赐福强度
         // 基础骰子:筹码栏 0★0/1★1/2★2/3★3
         DiceTierRegistry.register(new DiceTier("dice", () -> DICE.get(),
-                s -> s));
+                s -> s, 4));
         // 金骰子:筹码栏 0★1/1★2/2★3/3★4
         DiceTierRegistry.register(new DiceTier("golden_dice", () -> GOLDEN_DICE.get(),
-                s -> 1 + s));
+                s -> 1 + s, 8));
         // 玻璃骰子:与金骰子同阶(筹码栏 0★1/1★2/2★3/3★4)
         DiceTierRegistry.register(new DiceTier("glass_dice", () -> GLASS_DICE.get(),
-                s -> 1 + s));
+                s -> 1 + s, 8));
         // 钻石骰子:筹码栏 0★2/1★3/2★4/3★5
         DiceTierRegistry.register(new DiceTier("diamond_dice", () -> DIAMOND_DICE.get(),
-                s -> 2 + s));
+                s -> 2 + s, 10));
         // 合金骰子:筹码栏 0★3/1★4/2★5/3★6
         DiceTierRegistry.register(new DiceTier("netherite_dice", () -> NETHERITE_DICE.get(),
-                s -> 3 + s));
+                s -> 3 + s, 12));
         // 绿宝石骰子:与钻石骰子同阶(筹码栏 0★2/1★3/2★4/3★5)
         DiceTierRegistry.register(new DiceTier("emerald_dice", () -> EMERALD_DICE.get(),
-                s -> 2 + s));
+                s -> 2 + s, 10));
         // 黑曜石骰子:与钻石骰子同阶(筹码栏 0★2/1★3/2★4/3★5)
         DiceTierRegistry.register(new DiceTier("obsidian_dice", () -> OBSIDIAN_DICE.get(),
-                s -> 2 + s));
+                s -> 2 + s, 10));
         // 下界岩骰子:与金骰子同阶(筹码栏 0★1/1★2/2★3/3★4)
         DiceTierRegistry.register(new DiceTier("netherrack_dice", () -> NETHERRACK_DICE.get(),
-                s -> 1 + s));
+                s -> 1 + s, 8));
         // 诡异骰子:与钻石骰子同阶(筹码栏 0★2/1★3/2★4/3★5)
         DiceTierRegistry.register(new DiceTier("weird_dice", () -> WEIRD_DICE.get(),
-                s -> 2 + s));
+                s -> 2 + s, 10));
         // 绯红骰子:与下界合金骰子同阶(筹码栏 0★3/1★4/2★5/3★6)
         DiceTierRegistry.register(new DiceTier("crimson_dice", () -> CRIMSON_DICE.get(),
-                s -> 3 + s));
+                s -> 3 + s, 12));
         // 紫晶骰子:与钻石骰子同阶(筹码栏 0★2/1★3/2★4/3★5)
         DiceTierRegistry.register(new DiceTier("amethyst_dice", () -> AMETHYST_DICE.get(),
-                s -> 2 + s));
+                s -> 2 + s, 10));
         // 末影骰子:与下界合金骰子同阶(筹码栏 0★3/1★4/2★5/3★6)
         DiceTierRegistry.register(new DiceTier("ender_dice", () -> ENDER_DICE.get(),
-                s -> 3 + s));
+                s -> 3 + s, 12));
         // 下界之星骰子:T4 奇异品阶(筹码栏 0★4/1★5/2★6/3★7,比 T3 多 1 格)
         DiceTierRegistry.register(new DiceTier("nether_star_dice", () -> NETHER_STAR_DICE.get(),
-                s -> 4 + s));
+                s -> 4 + s, 12));
     }
 
     public static final DeferredItem<Item> ATTACK_CARD_MEDIUM = registerItem("attack_card_medium",

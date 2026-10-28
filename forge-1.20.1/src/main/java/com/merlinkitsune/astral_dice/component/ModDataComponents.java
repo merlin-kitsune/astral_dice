@@ -84,9 +84,19 @@ public class ModDataComponents {
     public static final ItemDataKey<Long> TEMPORARY_CARD_EXPIRES =
             ItemDataKey.create("temporary_card_expires", Codec.LONG);
 
+    // 临时牌的获得者 UUID(2026-10-27 用户裁决:临时牌只能由获得者持有与使用)。
+    // 未写入 NBT 前 get 返回 null = 无主(老存档)⇒ 按「非本人持有」清掉;纯服务端判定,客户端不读。
+    public static final ItemDataKey<UUID> TEMPORARY_CARD_OWNER =
+            ItemDataKey.create("temporary_card_owner", UUIDUtil.CODEC);
+
     // 专属效果牌:获得者 UUID(空表示尚未绑定,首次使用时绑定)
     public static final ItemDataKey<Optional<UUID>> OWNER_UUID =
             ItemDataKey.create("owner_uuid", UUIDUtil.CODEC.optionalFieldOf("id").codec());
+
+    // 专属物品:获得者显示名(2026-10-27)。tooltip 在客户端渲染,按 UUID 反查只认在线玩家,
+    // 故绑定时一并写名字;空串 = 未绑定 / 名字缺失(tooltip 显示「未知」)。
+    public static final ItemDataKey<String> OWNER_NAME =
+            ItemDataKey.create("owner_name", Codec.STRING);
 
     // 强化拒止物品形态(2026-10-25):回收进物品时带走的三份状态 —— 关联血量 / 已存活 tick / 已发放充能。
     // 1.20.1 由 ItemDataKey(ItemStack NBT)承载,随物品同步到客户端(据此画耐久条与 tooltip)。

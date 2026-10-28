@@ -7,7 +7,6 @@ import com.merlinkitsune.starengine.combat.HostileTargets;
 import com.merlinkitsune.astral_dice.combat.SherryThrowManager;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.SherryReasoningEffect;
-import com.merlinkitsune.astral_dice.event.WeirdDiceHandler;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.chip.CurrentCoreChipItem;
 import com.merlinkitsune.starengine.component.GameplayConstants;
@@ -203,7 +202,7 @@ public class SherrySignItem extends BaseSignItem {
 
     /**
      * 主动冷却 tick:佩戴时基础 {@value #ACTIVE_COOLDOWN_SECONDS} 秒 —— **与枪匠立牌同款链**
-     * (先按充能上限封顶,再按诡异骰子减半;低于充能上限 160 秒 ⇒ 有充能时不受影响)。
+     * (仅按充能上限封顶;低于充能上限 160 秒 ⇒ 有充能时不受影响)。
      */
     @Override
     protected int activeCooldownBaseTicks(Player player) {
@@ -211,15 +210,12 @@ public class SherrySignItem extends BaseSignItem {
                 ? ACTIVE_COOLDOWN_SECONDS * 20
                 : GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS;
         ticks = (int) ChargeManager.signCooldownTicks(player, ticks);
-        if (WeirdDiceHandler.hasWeirdDice(player)) {
-            ticks = Math.max(1, ticks / 2);
-        }
         return ticks;
     }
 
     /**
      * 同上,但**不折电池**:{@code signCooldownTicks} → {@code signCooldownTicksBase},
-     * 其余(isEquipped 三元 / 诡异骰子减半 / Math.max 夹底 / 兜底常量)**逐字保留**。
+     * 其余(isEquipped 三元 / Math.max 夹底 / 兜底常量)**逐字保留**。
      * 供 {@code sign_active_max_cooldown_base}(命运指引卡减半基准)使用。
      */
     @Override
@@ -228,9 +224,6 @@ public class SherrySignItem extends BaseSignItem {
                 ? ACTIVE_COOLDOWN_SECONDS * 20
                 : GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS;
         ticks = (int) ChargeManager.signCooldownTicksBase(player, ticks);
-        if (WeirdDiceHandler.hasWeirdDice(player)) {
-            ticks = Math.max(1, ticks / 2);
-        }
         return ticks;
     }
 

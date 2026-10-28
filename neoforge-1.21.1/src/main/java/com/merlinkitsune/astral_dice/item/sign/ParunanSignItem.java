@@ -1,6 +1,5 @@
 package com.merlinkitsune.astral_dice.item.sign;
 
-import com.merlinkitsune.astral_dice.event.WeirdDiceHandler;
 import com.merlinkitsune.astral_dice.item.ChargeManager;
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.astral_dice.item.ModItems;
@@ -18,7 +17,7 @@ import top.theillusivec4.curios.api.CuriosApi;
  * <h3>主动「网络购物」</h3>
  * 右键 / 立牌栏按键:**远程打开卡牌商店**界面(购买卡牌、星光兑换星币、向其他在线玩家转账星币
  * 全部在界面内完成),本身不施加任何效果、不消耗星光。玩家级冷却 {@value #ACTIVE_COOLDOWN_SECONDS} 秒
- * ——与其余立牌的冷却链同款(充能上限封顶 → 诡异骰子 -50%)。
+ * ——与其余立牌的冷却链同款(仅充能上限封顶)。
  *
  * <h3>被动「传奇商人」(2026-10-08 用户裁决,整条重写)</h3>
  * 五条内容**全部结算在** {@link com.merlinkitsune.astral_dice.shop.CardShopMenu}:
@@ -67,7 +66,7 @@ public class ParunanSignItem extends BaseSignItem {
 
     /**
      * 主动冷却 tick:佩戴时基础 {@value #ACTIVE_COOLDOWN_SECONDS} 秒 —— 与怪力侦探/枪匠立牌
-     * **同款链**(先按充能上限封顶,再按诡异骰子减半)。
+     * **同款链**(仅按充能上限封顶)。
      */
     @Override
     protected int activeCooldownBaseTicks(Player player) {
@@ -75,15 +74,12 @@ public class ParunanSignItem extends BaseSignItem {
                 ? ACTIVE_COOLDOWN_SECONDS * 20
                 : GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS;
         ticks = (int) ChargeManager.signCooldownTicks(player, ticks);
-        if (WeirdDiceHandler.hasWeirdDice(player)) {
-            ticks = Math.max(1, ticks / 2);
-        }
         return ticks;
     }
 
     /**
      * 同上,但**不折电池**:{@code signCooldownTicks} → {@code signCooldownTicksBase},
-     * 其余(isEquipped 三元 / 诡异骰子减半 / Math.max 夹底 / 兜底常量)**逐字保留**。
+     * 其余(isEquipped 三元 / Math.max 夹底 / 兜底常量)**逐字保留**。
      * 供 {@code sign_active_max_cooldown_base}(命运指引卡减半基准)使用。
      */
     @Override
@@ -92,9 +88,6 @@ public class ParunanSignItem extends BaseSignItem {
                 ? ACTIVE_COOLDOWN_SECONDS * 20
                 : GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS;
         ticks = (int) ChargeManager.signCooldownTicksBase(player, ticks);
-        if (WeirdDiceHandler.hasWeirdDice(player)) {
-            ticks = Math.max(1, ticks / 2);
-        }
         return ticks;
     }
 

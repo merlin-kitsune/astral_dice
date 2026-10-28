@@ -101,8 +101,31 @@ public final class InvestigationEventUtil {
 
 
     // 击杀"隐匿调查"目标 → 触发调查阶段事件(全局处理,不要求击杀者佩戴秘密侦探立牌)
+    //
+    // ⚠️ 幂等闸门(2026-10-27 修复「法伤链击杀触发两次」):
+    //   平台把 LivingDeathEvent 派发在 LivingEntity#die 的 `!dead` 守卫**之前**
+    //   (NeoForge CommonHooks.onLivingDeath / Forge ForgeHooks.onLivingDeath 均为 die() 首行),
+    //   而本模组仍有多条「嵌套 hurt」路径(额外加伤 extra_damage / 大当家溅射 / 狂暴反噬)——
+    //   内层 hurt 致死时内层 die() 先派发一次,返回后外层 hurt 仍会再 die() 一次 ⇒ 本处理器被调用两次
+    //   (调查阶段事件结算两次、阶段 +2、阶段效果与 actionbar 各两遍)。
+    //   (法伤加成段自 2026-10-27 起已折叠为单次结算,不再产生第二次 die(),但上述路径仍在,故闸门保留)
+    //   一次死亡只能算一次:结算完之后**立刻清空** undercover_source,第二次调用就在 isEmpty() 处返回。
+    //   清空语义与 onUndercoverRemoved 一致(目标已死,来源不再有意义)。
+    //
+    //   清空放在 triggerByKill **之后**的理由:结算过程若抛异常,来源不会被无谓消耗掉(下次仍可触发)。
+    //   放在 triggerByKill 之后**不影响幂等**:第二次派发发生在本处理器返回**之后**,那时来源已被清空。
+    //
+    //   已知边界(2026-10-27 复核如实登记):本处理器用**默认优先级**,所以
+    //   ① 更高优先级处理器先取消(如气囊 ChipDamageHandler,EventPriority.HIGHEST)→ 平台默认
+    //      receiveCanceled=false,本处理器根本不会被投递,来源自然保留 ⇒ 该场景是安全的;
+    //   ② 同优先级 / 更晚的取消会在来源已清空之后把实体救活 ⇒ 这只目标后续真实击杀不再触发调查阶段。
+    //      例:不死图腾(ChipDamageHandler 同批)与末影骰(EnderDiceHandler#onLivingDeath,无 priority
+    //      ⇒ 同为默认优先级,注册顺序决定先后)。当前不修:强化拒止/隐匿调查的实际目标几乎都是怪物,
+    //      怪物没有保命手段;若日后要彻底兑现「取消即不消耗」,应把本处理器降到 EventPriority.LOWEST
+    //      并确认排在所有保命处理器之后。
     @SubscribeEvent
     public static void onUndercoverInvestigationKill(LivingDeathEvent event) {
+        if (event.isCanceled()) return;
         LivingEntity target = event.getEntity();
         if (target.level().isClientSide()) return;
         if (!target.hasEffect(ModEffects.UNDERCOVER_INVESTIGATION)) return;
@@ -113,6 +136,8 @@ public final class InvestigationEventUtil {
         if (applier == null) return;
         int markLevel = MarkManager.getLevel(target);
         InvestigationEventUtil.triggerByKill(killer, applier, markLevel);
+        // 幂等闸门:结算完即清空来源,挡住同一死亡的第二次派发(见方法头注释;必须放在结算之后)
+        ModAttachments.setUndercoverSource(target, Optional.empty());
     }
 
 

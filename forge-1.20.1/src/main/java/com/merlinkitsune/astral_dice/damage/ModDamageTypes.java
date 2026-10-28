@@ -92,6 +92,8 @@ public class ModDamageTypes {
      * 创造模式下 {@code abilities.invulnerable} 亦会整体免疫。本类型登记于 {@code bypasses_cooldown}
      * ⇒ 无敌帧内照常结算，代价必定生效。
      *
+     * <p>⚠️ <b>2026-10-27 订正（审计 N6）</b>：上段「骰子伤害类型不在 {@code minecraft:tags/damage_type/bypasses_cooldown} 里」已不再成立 —— {@link #DICE_DAMAGE} 于本日登记该标签（依据：反击注入与绯红骰子掷 1 自伤都必须穿透受击无敌帧）；本类型与它的差别只剩 armor / enchantments / resistance 三项。相关审计正本：{@code docs/features/attack-damage-chain-audit.md} N6。</p>
+     *
      * <p>⚠️ <b>2026-10-02 口径变更（用户裁决）</b>：本类型**改为登记** {@code bypasses_armor} +
      * {@code bypasses_enchantments} + {@code bypasses_resistance} —— 旧口径（只登记 {@code bypasses_cooldown}、
      * 仍受护甲/抗性/保护减免）实测「代价极易被减伤抵消、形同虚设」，故改为**必须真扣 8 点**；

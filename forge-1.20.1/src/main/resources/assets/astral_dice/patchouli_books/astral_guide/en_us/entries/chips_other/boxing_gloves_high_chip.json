@@ -9,8 +9,8 @@
       "text": "astral_dice.guide.entry.boxing_gloves_high_chip.1"
     },
     {
-      "type": "patchouli:crafting",
-      "recipe": "astral_dice:boxing_gloves_high_chip"
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.chip_source.note"
     }
   ],
   "sortnum": 4

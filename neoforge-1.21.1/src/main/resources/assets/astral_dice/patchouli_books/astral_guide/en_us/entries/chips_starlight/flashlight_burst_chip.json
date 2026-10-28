@@ -7,6 +7,10 @@
       "type": "patchouli:spotlight",
       "item": "astral_dice:flashlight_burst_chip",
       "text": "astral_dice.guide.entry.flashlight_burst_chip.1"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.chip_source.note"
     }
   ],
   "sortnum": 9

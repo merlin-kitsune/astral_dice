@@ -16,14 +16,28 @@ public final class ExclusiveCardUtil {
     private ExclusiveCardUtil() {
     }
 
-    // 设置获得者
+    // 设置获得者(2026-10-27:连带写入显示名,供 tooltip 直接渲染)
     public static void setOwner(ItemStack stack, Player player) {
         ModDataComponents.OWNER_UUID.set(stack, Optional.of(player.getUUID()));
+        ModDataComponents.OWNER_NAME.set(stack, player.getGameProfile().getName());
+    }
+
+    // 获得者 UUID(空 = 尚未绑定)
+    public static Optional<UUID> ownerOf(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) return Optional.empty();
+        return ModDataComponents.OWNER_UUID.getOrDefault(stack, Optional.empty());
+    }
+
+    // 获得者显示名(空串 = 未绑定 / 名字缺失);**只用于 tooltip**,不参与任何判定
+    public static String ownerName(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) return "";
+        String name = ModDataComponents.OWNER_NAME.get(stack);
+        return name == null ? "" : name;
     }
 
     // 是否可用:无所有者则允许(首次使用时绑定),否则必须与所有者一致
     public static boolean canUse(Player player, ItemStack stack) {
-        Optional<UUID> owner = ModDataComponents.OWNER_UUID.getOrDefault(stack, Optional.empty());
+        Optional<UUID> owner = ownerOf(stack);
         return owner.isEmpty() || owner.get().equals(player.getUUID());
     }
 
@@ -38,10 +52,10 @@ public final class ExclusiveCardUtil {
                 || stack.is(ModItems.EFFECT_CARD_REPULSION.get());
     }
 
-    // 无所有者时绑定为当前使用者
+    // 无所有者时绑定为当前使用者(uuid + 显示名一起写)
     public static void bindIfAbsent(ItemStack stack, Player player) {
-        if (ModDataComponents.OWNER_UUID.getOrDefault(stack, Optional.empty()).isEmpty()) {
-            ModDataComponents.OWNER_UUID.set(stack, Optional.of(player.getUUID()));
+        if (ownerOf(stack).isEmpty()) {
+            setOwner(stack, player);
         }
     }
 }

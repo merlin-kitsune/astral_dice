@@ -11,6 +11,7 @@ import com.merlinkitsune.astral_dice.item.HealingManager;
 import com.merlinkitsune.astral_dice.item.StarLightManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.RepulsionItem;
+import com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil;
 import com.merlinkitsune.astral_dice.item.sign.JasmineSignItem;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -1298,6 +1299,13 @@ public class ModTooltipHandler {
                             RepulsionItem.getChargeGiven(stack),
                             com.merlinkitsune.astral_dice.entity.RepulsionEntity.MAX_CHARGE_STACKS)
                     .withStyle(ChatFormatting.GRAY));
+            // 2026-10-27 用户裁决：物品 tooltip 要标明所有者（名字在绑定 owner 时一并写入，所有者离线也读得到）
+            String ownerName = ExclusiveCardUtil.ownerName(stack);
+            tooltip.add(Component.translatable("tooltip.astral_dice.item.repulsion_owner_name",
+                                    ownerName.isEmpty()
+                                        ? Component.translatable("tooltip.astral_dice.item.repulsion_owner_unknown")
+                                        : Component.literal(ownerName))
+                     .withStyle(ChatFormatting.DARK_PURPLE));
             tooltip.add(Component.translatable("tooltip.astral_dice.item.repulsion_owner")
                     .withStyle(ChatFormatting.DARK_PURPLE));
         }

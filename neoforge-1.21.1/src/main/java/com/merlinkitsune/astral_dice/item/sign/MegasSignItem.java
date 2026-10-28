@@ -5,7 +5,6 @@ import com.merlinkitsune.starengine.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.combat.CardRegistry;
 import com.merlinkitsune.astral_dice.combat.OrbitalBombardmentManager;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
-import com.merlinkitsune.astral_dice.event.WeirdDiceHandler;
 import com.merlinkitsune.astral_dice.item.ChargeManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.card.RandomCardHandler;
@@ -166,16 +165,13 @@ public class MegasSignItem extends BaseSignItem {
     }
 
     /**
-     * 立牌主动冷却 tick：佩戴时基础 180 秒（与全局立牌主动冷却一致；先按充能上限封顶，再按诡异骰子减半）。
+     * 立牌主动冷却 tick：佩戴时基础 180 秒（与全局立牌主动冷却一致；仅按充能上限封顶）。
      */
     public static int signCooldownTicks(Player player) {
         int ticks = isEquipped(player)
                 ? ACTIVE_COOLDOWN_SECONDS * 20
                 : GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS;
         ticks = (int) ChargeManager.signCooldownTicks(player, ticks);
-        if (WeirdDiceHandler.hasWeirdDice(player)) {
-            ticks = Math.max(1, ticks / 2);
-        }
         return ticks;
     }
 

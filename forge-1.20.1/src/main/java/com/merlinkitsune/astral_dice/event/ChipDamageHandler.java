@@ -1,6 +1,7 @@
 package com.merlinkitsune.astral_dice.event;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
+import com.merlinkitsune.astral_dice.combat.DiceCombatEvents;
 import com.merlinkitsune.astral_dice.item.chip.AirbagChipItem;
 import com.merlinkitsune.astral_dice.item.RenShieldManager;
 import com.merlinkitsune.astral_dice.item.chip.WhetstoneChipItem;
@@ -50,12 +51,32 @@ public final class ChipDamageHandler {
         LivingEntity entity = event.getEntity();
         if (entity.level().isClientSide()) return;
         if (!(entity instanceof Player player)) return;
+        // 2026-10-27 批次F(P2-B):本处理器是「settle 之后改金额」的最后一站 —— 气囊归零 / 磨刀石 /
+        // 怪力侦探立牌 / 超天酱立牌四条分支都会改 event.getAmount()。骰战 settle 写回的吸收里含幻影 H,
+        // 金额被改后平台 :1684 的扣减量就不再等于 H(气囊归零时 :1681 整段跳过 ⇒ 黄心白涨 H)⇒ 必须在
+        // **所有出口**(含下面的早退)统一把吸收重对齐一次;无幻影登记时是 no-op。
+        try {
+            applyChipMitigation(player, event);
+        } finally {
+            DiceCombatEvents.compensateAbsorption(player, event.getAmount());
+            // F5(2026-10-27 近战审计):吸血鬼立牌「受击汲取」的回血基数必须是**最终**金额。
+            // 它原先是独立的 @LOWEST 监听器,与本处理器同档 ⇒ 先后取决于注册顺序,可能读到筹码减伤
+            // 之前/之后的中间值。改由本处理器(金额改动的最后一站)的 finally 显式调用,顺序确定。
+            com.merlinkitsune.astral_dice.item.sign.PaparaSignItem.settleBiteHeal(event);
+        }
+    }
 
+    /** 原 {@link #onLivingDamage} 的主体(2026-10-27 批次F 原样搬出,只为给它一个 finally 收尾点)。 */
+    private static void applyChipMitigation(Player player, LivingDamageEvent event) {
         float damage = event.getAmount();
         if (damage <= 0.0F) return;
 
-        // 鼠鼠护盾(ren)由 item/RenShieldManager#onRenShieldAbsorb 在 LivingHurtEvent 阶段钳制 ⇒ 本事件
-        // (吸收之后)拿到的伤害已经是 0;此处保留同一条守卫只为三线同形(将来若换锚点,顺序同样无关)。
+        // 鼠鼠护盾(ren):LOWEST 阶段若「仍有剩余护盾」,说明这一击已被护盾完整吃掉 => 无需再谈减伤。
+        // N1(2026-10-27)之后本守卫是**冗余但无害**的:骰战在 DiceCombatEvents(同类,@NORMAL)
+        // 里已按 RenShieldManager#remainingShieldAbsorption 钳制终值(等价 1.21.1 的
+        // LivingDamageEvent.Pre 锚点),护盾吃满时写入的金额恒为 0 => 上面 damage <= 0 已先行早退;
+        // 非骰战伤害仍由 RenShieldManager#onRenShieldAbsorb(LivingHurtEvent,护甲前)把平台金额钳到
+        // 剩余护盾,该钳制只改金额不改吸收余额 => 本行语义依然成立。保留它是为了三线同形与将来锚点变更。
         if (RenShieldManager.remainingShieldAbsorption(player) > 0.0F) return;
 
         // 虚空击杀优先级最高(用户裁决):掉入虚空的 out_of_world 伤害不得被保命阻止,
@@ -66,10 +87,12 @@ public final class ChipDamageHandler {
 
         // 安全气囊:致命伤害(伤害 ≥ 当前血量)时消耗 6 点充能使本次伤害无效。
         // 不排除「无视无敌」(bypasses_invulnerability)的伤害源:气囊必须始终有效(见类注释)。
-        // A6 口径(致命判定按**吸收(黄心)之后**)在本版本**天然达标**,无需换算:
+        // A6 口径(致命判定按**吸收(黄心)之后**)在本版本达标:
         // 1.20.1 的 LivingDamageEvent 由 ForgeHooks.onLivingDamage 在
         // forge-1.20.1-47.4.10 LivingEntity#actuallyHurt L1680 派发,晚于 L1669-1670 的吸收结算,
         // 传入的 damage 已是"吸收后仍会扣的生命值"⇒ 直接与生命值比较即为同一口径。
+        // N2(2026-10-27)之后骰战两条写终值路径也归到同一口径:DiceCombatEvents#settleDiceDamage
+        // 写入的金额 = F' - min(F', A0)(F' = 护盾钳制后的骰战终值,A0 = 护甲前的吸收余额)⇒ 本处读到的就是红心量。
         if (damage >= player.getHealth() && AirbagChipItem.tryNegateFatal(player, event.getSource())) {
             event.setAmount(0.0F);
             return;

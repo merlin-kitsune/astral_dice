@@ -19,6 +19,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
+import java.util.function.Predicate;
 
 /**
  * 「临时牌」统一工具类(绿洲女王立牌 nardis 主动「女王特权」)。
@@ -163,10 +165,63 @@ public final class TemporaryCardUtil {
         }
     }
 
-    /** 打上标记,并把到期刻对齐到「现在 + 效果剩余」(效果不在时按满时长兜底) */
+    /** 打上标记,并把到期刻对齐到「现在 + 效果剩余」(效果不在时按满时长兜底),获得者 = 该玩家 */
     public static void mark(Player player, ItemStack stack) {
+        if (player == null) return;
+        mark(player, stack, player.getUUID());
+    }
+
+    /**
+     * 打上标记,到期刻对齐「现在 + 效果剩余」,并写入**指定**获得者。
+     *
+     * <p>装配回环专用:卡牌栏卸下时由 {@code screen/CardInventoryMenu#loadFromDice} 重建物品栈,
+     * 那份获得者真值在 {@link AppliedStone#owner()} 里 —— 若这里沿用「当前玩家」,把骰子转手给
+     * 别人再卸下就能把别人的牌洗成自己的(2026-10-27 用户裁决要堵的正是这条路)。
+     */
+    public static void mark(Player player, ItemStack stack, UUID owner) {
         if (player == null || stack == null || stack.isEmpty()) return;
-        mark(stack, player.level().getGameTime() + remainingTicks(player));
+        mark(stack, player.level().getGameTime() + remainingTicks(player), owner);
+    }
+
+    /** 打上标记,并把到期刻与**获得者**一起写下({@code owner == null} ⇒ 清掉获得者 = 无主牌) */
+    public static void mark(ItemStack stack, long expiresAt, UUID owner) {
+        if (stack == null || stack.isEmpty()) return;
+        mark(stack, expiresAt);
+        if (owner != null) {
+            ModDataComponents.TEMPORARY_CARD_OWNER.set(stack, owner);
+        } else {
+            ModDataComponents.TEMPORARY_CARD_OWNER.remove(stack);
+        }
+    }
+
+    /** 该临时牌的获得者 UUID({@code null} = 无主:老存档 / 发放时没写) */
+    public static UUID ownerOf(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) return null;
+        return ModDataComponents.TEMPORARY_CARD_OWNER.get(stack);
+    }
+
+    /** 获得者 UUID 的字符串形态(空串 = 无主;用于 {@link AppliedStone#owner()} 透传) */
+    public static String ownerKeyOf(ItemStack stack) {
+        UUID owner = ownerOf(stack);
+        return owner == null ? "" : owner.toString();
+    }
+
+    /** 这张临时牌是否属于该玩家(无主牌不属于任何人) */
+    public static boolean isOwnedBy(ItemStack stack, Player player) {
+        if (player == null) return false;
+        UUID owner = ownerOf(stack);
+        return owner != null && owner.equals(player.getUUID());
+    }
+
+    /**
+     * 是否**非法持有**:是临时牌,但不是本玩家的(他人发放 / 他人经第三方存储转手 / 老存档无主牌)。
+     *
+     * <p>2026-10-27 用户裁决:临时牌只能由**获得者**持有与使用 —— 其他玩家即使自己也处于女王特权
+     * 状态,拿到别人的临时牌也一律到手即清除。全部「持有 / 使用」闸门(物品栏巡查 / 卡牌栏槽位 /
+     * 效果牌出牌 / 骰子装配巡查)都收敛到本判据。
+     */
+    public static boolean isIllegalHold(ItemStack stack, Player player) {
+        return isTemporary(stack) && !isOwnedBy(stack, player);
     }
 
     /** 女王特权的剩余 tick;效果不在时返回满时长({@link NardisPrivilegeEffect#DURATION_TICKS}) */
@@ -358,9 +413,11 @@ public final class TemporaryCardUtil {
         for (int i = 0; i < toGrant; i++) {
             ItemStack card = RandomCardHandler.randomCard(category);
             if (card.isEmpty()) break;
-            // 到期刻初值 = 现在 + 满时长;释放流程随后会用 realignExpiry 按效果实际剩余再写一次
+            // 到期刻初值与获得者 UUID 一起写下(2026-10-27 用户裁决:临时牌只能由获得者持有与使用);
+            // 释放流程随后会用 realignExpiry 按效果实际剩余再写一次到期刻(owner 不变)
             mark(card, player.level().getGameTime()
-                    + com.merlinkitsune.astral_dice.effect.NardisPrivilegeEffect.DURATION_TICKS);
+                    + com.merlinkitsune.astral_dice.effect.NardisPrivilegeEffect.DURATION_TICKS,
+                    player.getUUID());
             VitaminPillChipItem.giveCard(player, card);
             granted++;
         }
@@ -602,6 +659,16 @@ public final class TemporaryCardUtil {
 
     // 骰子已装配的临时牌:过滤 + 按被移除卡的费用重算 usedCost/usedDefenseCost(maxCost 不变)
     private static int purgeEquipped(Player player) {
+        return purgeEquippedWhere(player, stone -> stone.temporary());
+    }
+
+    /**
+     * 骰子已装配牌里满足 {@code match} 的项一律移除,费用重算口径与 {@link #purgeEquipped(Player)} 相同。
+     *
+     * <p>两条判据都走这里:① {@code temporary()}(效果结束 / 死亡 ⇒ 整体清空);
+     * ② {@link #purgeIllegalEquipped(Player)} 的「非本人持有」。
+     */
+    private static int purgeEquippedWhere(Player player, Predicate<AppliedStone> match) {
         ItemStack dice = findEquippedDice(player);
         if (dice.isEmpty()) return 0;
         WeaponEnhancement enh = ModDataComponents.WEAPON_ENHANCEMENT.getOrDefault(dice, WeaponEnhancement.EMPTY);
@@ -612,7 +679,7 @@ public final class TemporaryCardUtil {
         int freedDefenseCost = 0;
         int removed = 0;
         for (AppliedStone stone : stones) {
-            if (stone == null || !stone.temporary()) {
+            if (stone == null || !match.test(stone)) {
                 kept.add(stone);
                 continue;
             }
@@ -635,14 +702,90 @@ public final class TemporaryCardUtil {
         return removed;
     }
 
+    /** 骰子已装配里的一条记录是否仍属于该玩家(非临时牌恒合法;无主 / 他人 ⇒ 非法) */
+    public static boolean isLegalStoneOwner(AppliedStone stone, Player player) {
+        if (stone == null || !stone.temporary()) return true;
+        UUID owner = stone.ownerId();
+        return owner != null && player != null && owner.equals(player.getUUID());
+    }
+
+    /**
+     * 清掉「骰子已装配」里的**非本人**临时牌,返回移除张数(幂等)。
+     *
+     * <p>为什么装配态要单独一条:牌一旦装进骰子就**销毁了物品栈**,获得者只存在
+     * {@link AppliedStone#owner()} 里 ⇒ 物品栏巡查({@link #purgeIllegalHoldings(Player)})够不着它。
+     * 覆盖的三条路:① 他人经第三方存储把临时牌塞进你的骰子;② 洗白后又被别人卸下;
+     * ③ 老存档里没有 owner 的装配态牌。
+     */
+    public static int purgeIllegalEquipped(Player player) {
+        if (player == null || player.level().isClientSide) return 0;
+        try {
+            return purgeEquippedWhere(player, stone -> stone.temporary() && !isLegalStoneOwner(stone, player));
+        } catch (Throwable t) {
+            LOGGER.error("[Astral Dice][TemporaryCard] 清空骰子装配栏里非本人临时牌失败", t);
+            return 0;
+        }
+    }
+
+    /**
+     * 扫**玩家当前持有**的全部位置,清掉「非法持有」的临时牌
+     * (判据 = {@link #isIllegalHold(ItemStack, Player)}:他人发放 / 他人转手 / 老存档无主),
+     * 返回移除张数(幂等)。
+     *
+     * <p>扫描面 = 主物品栏 0..35 + 副手 + 鼠标光标 + 本模组卡牌栏(打开了才扫)。
+     * 获得者**本人**的牌一律不动 —— 与「无效果 ⇒ 整体清空」({@link #purgeAll(Player)})是两条独立收口:
+     * 那条管「本人的牌失去依附」,这条管「不是本人的牌」。
+     */
+    public static int purgeIllegalHoldings(Player player) {
+        if (player == null || player.level().isClientSide) return 0;
+        int removed = 0;
+        try {
+            List<ItemStack> items = player.getInventory().items;
+            for (int i = 0; i < items.size(); i++) {
+                ItemStack stack = items.get(i);
+                if (!isIllegalHold(stack, player)) continue;
+                removed += stack.getCount();
+                player.getInventory().setItem(i, ItemStack.EMPTY);
+            }
+            List<ItemStack> offhand = player.getInventory().offhand;
+            for (int i = 0; i < offhand.size(); i++) {
+                ItemStack stack = offhand.get(i);
+                if (!isIllegalHold(stack, player)) continue;
+                removed += stack.getCount();
+                offhand.set(i, ItemStack.EMPTY);
+            }
+            var menu = player.containerMenu;
+            if (menu != null) {
+                if (menu instanceof com.merlinkitsune.astral_dice.screen.CardInventoryMenu cardMenu) {
+                    removed += cardMenu.purgeIllegalCards();
+                }
+                ItemStack carried = menu.getCarried();
+                if (isIllegalHold(carried, player)) {
+                    removed += carried.getCount();
+                    menu.setCarried(ItemStack.EMPTY);
+                }
+            }
+        } catch (Throwable t) {
+            LOGGER.error("[Astral Dice][TemporaryCard] 清空非本人持有的临时牌失败", t);
+        }
+        if (removed > 0) {
+            LOGGER.debug("[Astral Dice][TemporaryCard] 清掉非本人临时牌: player={} removed={}",
+                    player.getName().getString(), removed);
+        }
+        return removed;
+    }
+
     /**
      * 玩家级 tick 自检(**幂等**,由 {@code event/PlayerTickEvents} 在 {@code % 20} 早退**之前**调用)。
      *
-     * <p>真值 = 原生效果实例 {@link ModEffects#NARDIS_PRIVILEGE};本方法只剩**一个**收口条件:
+     * <p>真值 = 原生效果实例 {@link ModEffects#NARDIS_PRIVILEGE};本方法有**两个**收口条件:
      * <ol>
      *   <li>「玩家身上/骰子里还有临时牌,但该玩家**没有**女王特权效果」⇒ 清空全部临时牌。
      *       效果自然到期、{@code /effect clear} 移除、离线到期后重登、异常残留**都会**走到这一条,
      *       因此不需要在任何其它地方补第二套清理逻辑(死亡路径另有一次显式清理,两者都幂等)。</li>
+     *   <li>「牌**不是本人的**(他人发放 / 他人经第三方存储转手 / 老存档无主),但它现在在**本人身上**」
+     *       ⇒ 只清这些牌({@link #purgeIllegalHoldings(Player)} / {@link #purgeIllegalEquipped(Player)}),
+     *       获得者本人的牌毫发无损(2026-10-27 用户裁决:临时牌只能由获得者持有与使用)。</li>
      * </ol>
      *
      * <p>⚠️ **反向分支已删除(2026-09-27 用户裁决)**:上一版为配合「冻结(使用中)」态加的
@@ -662,6 +805,8 @@ public final class TemporaryCardUtil {
             // 成本受控:每 20 tick 一次;下面"无效果 ⇒ 清空"那一条仍需**每 tick** 判定,不动。
             if (player.tickCount % 20 == 0) {
                 purgeOutOfPlace(player, player.level().getGameTime());
+                // 骰子已装配里的非本人临时牌:装配态不持有物品栈,只能按 AppliedStone#owner 判
+                purgeIllegalEquipped(player);
             }
             MobEffectInstance fx = player.getEffect(ModEffects.NARDIS_PRIVILEGE.get());
             if (fx == null) {
@@ -673,7 +818,9 @@ public final class TemporaryCardUtil {
                             player.getName().getString(), removed);
                 }
             }
-            // 效果还在 ⇒ 什么都不做(剩余时长由 EffectTimerGuard 与效果实例本身维持)
+            // 效果还在 ⇒ 只清「非本人持有」的临时牌(他人转手 / 老存档无主牌);
+            // 获得者本人的牌一律不动(剩余时长由 EffectTimerGuard 与效果实例本身维持)
+            purgeIllegalHoldings(player);
         } catch (Throwable t) {
             LOGGER.error("[Astral Dice][TemporaryCard] tick 自检失败", t);
         }

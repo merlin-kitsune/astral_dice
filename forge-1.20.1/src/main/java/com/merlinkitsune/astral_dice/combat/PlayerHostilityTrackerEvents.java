@@ -54,8 +54,6 @@ public final class PlayerHostilityTrackerEvents {
     public static void onLivingDamage(LivingDamageEvent event) {
         // 只记"确实成立的伤害":LivingDamageEvent 在 Forge 可取消(被取消 ⇒ 该伤害不生效)
         if (event.isCanceled()) return;
-        // 只记"确实成立的伤害":LivingDamageEvent 在 Forge 可取消(被取消 ⇒ 该伤害不生效)
-        if (event.isCanceled()) return;
         // 只记「**主动**攻击」:本模组内部的范围/波及伤害(大当家溅射、电击手套/定向爆破 AOE)与
         // 反击注入都不是主动攻击 —— 前者在 DiceCombatEvents.aoeDepth、后者在 counterDepth
         // 窗口内,一律不记录(否则溅射会"自建敌对立场"并互相升级:A 溅射 C ⇒ C 敌视 A ⇒ C 溅射 A ⇒ …)。

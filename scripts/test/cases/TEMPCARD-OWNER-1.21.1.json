@@ -1,0 +1,170 @@
+{
+  "case_id": "TEMPCARD-OWNER-1.21.1",
+  "title": "绿洲女王临时牌 owner UUID（本人绑定 / 他人即清 / 无特权即清）",
+  "version": "1.21.1",
+  "channel": "autojs",
+  "target": "client",
+  "on_fail": "continue",
+  "steps": [
+    {
+      "op": "note",
+      "text": "绿洲女王临时牌 owner UUID：本人绑定 / 他人篡改即清 / 无女王特权即清"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative"
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[type=!player,distance=..32]"
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardinuclear TC"
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardiprep TC clear"
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "code": "(function(){\nfunction J(n){return Java.loadClass(n);}\nfunction srv(){return J('net.neoforged.neoforge.server.ServerLifecycleHooks').getCurrentServer();}\nfunction P0(s){return s.getPlayerList().getPlayers().get(0);}\nvar TCU=J('com.merlinkitsune.astral_dice.item.card.TemporaryCardUtil');\nvar MDC=J('com.merlinkitsune.astral_dice.component.ModDataComponents');\nvar ME=J('com.merlinkitsune.astral_dice.effect.ModEffects');\nvar MER=J('com.merlinkitsune.starengine.event.ModEffectRemoval');\nvar OW=MDC.TEMPORARY_CARD_OWNER.get();\nfunction who(p,st){var o=null;try{o=TCU.ownerOf(st);}catch(e){return 'err';}if(o==null)return 'none';if(String(o)===String(p.uuid))return 'me';return 'other';}\nfunction scan(p){var list=p.getInventory().items;var n=0,me=0,other=0,non=0;var d=[];for(var i=0;i<list.size();i++){var st=list.get(i);if(st==null||st.isEmpty())continue;if(!TCU.isTemporary(st))continue;var c=st.getCount();var w=who(p,st);n+=c;if(w==='me')me+=c;else if(w==='none')non+=c;else if(w==='err')non=-999;else other+=c;d.push(i+'/'+c+'/'+w);}return {n_temp:n,me:me,other:other,non:non,detail:d.join(';')};}\n  var p=P0(srv());var fx=p.getEffect(ME.NARDIS_PRIVILEGE);var r=scan(p);r.ok=true;r.fx_on=(fx==null)?0:1;return r;\n})()",
+      "save_as": "base",
+      "timeout_ms": 10000
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardigive TC 3"
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "code": "(function(){\nfunction J(n){return Java.loadClass(n);}\nfunction srv(){return J('net.neoforged.neoforge.server.ServerLifecycleHooks').getCurrentServer();}\nfunction P0(s){return s.getPlayerList().getPlayers().get(0);}\nvar TCU=J('com.merlinkitsune.astral_dice.item.card.TemporaryCardUtil');\nvar MDC=J('com.merlinkitsune.astral_dice.component.ModDataComponents');\nvar ME=J('com.merlinkitsune.astral_dice.effect.ModEffects');\nvar MER=J('com.merlinkitsune.starengine.event.ModEffectRemoval');\nvar OW=MDC.TEMPORARY_CARD_OWNER.get();\nfunction who(p,st){var o=null;try{o=TCU.ownerOf(st);}catch(e){return 'err';}if(o==null)return 'none';if(String(o)===String(p.uuid))return 'me';return 'other';}\nfunction scan(p){var list=p.getInventory().items;var n=0,me=0,other=0,non=0;var d=[];for(var i=0;i<list.size();i++){var st=list.get(i);if(st==null||st.isEmpty())continue;if(!TCU.isTemporary(st))continue;var c=st.getCount();var w=who(p,st);n+=c;if(w==='me')me+=c;else if(w==='none')non+=c;else if(w==='err')non=-999;else other+=c;d.push(i+'/'+c+'/'+w);}return {n_temp:n,me:me,other:other,non:non,detail:d.join(';')};}\n  var p=P0(srv());var fx=p.getEffect(ME.NARDIS_PRIVILEGE);var r=scan(p);r.ok=true;r.fx_on=(fx==null)?0:1;return r;\n})()",
+      "save_as": "grant",
+      "timeout_ms": 10000
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "code": "(function(){\nfunction J(n){return Java.loadClass(n);}\nfunction srv(){return J('net.neoforged.neoforge.server.ServerLifecycleHooks').getCurrentServer();}\nfunction P0(s){return s.getPlayerList().getPlayers().get(0);}\nvar TCU=J('com.merlinkitsune.astral_dice.item.card.TemporaryCardUtil');\nvar MDC=J('com.merlinkitsune.astral_dice.component.ModDataComponents');\nvar ME=J('com.merlinkitsune.astral_dice.effect.ModEffects');\nvar MER=J('com.merlinkitsune.starengine.event.ModEffectRemoval');\nvar OW=MDC.TEMPORARY_CARD_OWNER.get();\nfunction who(p,st){var o=null;try{o=TCU.ownerOf(st);}catch(e){return 'err';}if(o==null)return 'none';if(String(o)===String(p.uuid))return 'me';return 'other';}\nfunction scan(p){var list=p.getInventory().items;var n=0,me=0,other=0,non=0;var d=[];for(var i=0;i<list.size();i++){var st=list.get(i);if(st==null||st.isEmpty())continue;if(!TCU.isTemporary(st))continue;var c=st.getCount();var w=who(p,st);n+=c;if(w==='me')me+=c;else if(w==='none')non+=c;else if(w==='err')non=-999;else other+=c;d.push(i+'/'+c+'/'+w);}return {n_temp:n,me:me,other:other,non:non,detail:d.join(';')};}\n  var p=P0(srv());var U=J('java.util.UUID');var foreign=U.randomUUID();\n  var list=p.getInventory().items;var idx=-1;var b=scan(p);\n  for(var i=0;i<list.size();i++){var st=list.get(i);if(st==null||st.isEmpty())continue;if(!TCU.isTemporary(st))continue;if(who(p,st)!=='me')continue;TCU.mark(st,99999999,foreign);idx=i;break;}\n  var a=scan(p);\n  return {ok:true,tampered:(idx>=0)?1:0,idx:idx,before_n:b.n_temp,after_n:a.n_temp,after_other:a.other,after_non:a.non,after_me:a.me};\n})()",
+      "save_as": "tamper",
+      "timeout_ms": 10000
+    },
+    {
+      "op": "wait",
+      "ms": 2600
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "code": "(function(){\nfunction J(n){return Java.loadClass(n);}\nfunction srv(){return J('net.neoforged.neoforge.server.ServerLifecycleHooks').getCurrentServer();}\nfunction P0(s){return s.getPlayerList().getPlayers().get(0);}\nvar TCU=J('com.merlinkitsune.astral_dice.item.card.TemporaryCardUtil');\nvar MDC=J('com.merlinkitsune.astral_dice.component.ModDataComponents');\nvar ME=J('com.merlinkitsune.astral_dice.effect.ModEffects');\nvar MER=J('com.merlinkitsune.starengine.event.ModEffectRemoval');\nvar OW=MDC.TEMPORARY_CARD_OWNER.get();\nfunction who(p,st){var o=null;try{o=TCU.ownerOf(st);}catch(e){return 'err';}if(o==null)return 'none';if(String(o)===String(p.uuid))return 'me';return 'other';}\nfunction scan(p){var list=p.getInventory().items;var n=0,me=0,other=0,non=0;var d=[];for(var i=0;i<list.size();i++){var st=list.get(i);if(st==null||st.isEmpty())continue;if(!TCU.isTemporary(st))continue;var c=st.getCount();var w=who(p,st);n+=c;if(w==='me')me+=c;else if(w==='none')non+=c;else if(w==='err')non=-999;else other+=c;d.push(i+'/'+c+'/'+w);}return {n_temp:n,me:me,other:other,non:non,detail:d.join(';')};}\n  var p=P0(srv());var fx=p.getEffect(ME.NARDIS_PRIVILEGE);var r=scan(p);r.ok=true;r.fx_on=(fx==null)?0:1;return r;\n})()",
+      "save_as": "afterTamper",
+      "timeout_ms": 10000
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "code": "(function(){\nfunction J(n){return Java.loadClass(n);}\nfunction srv(){return J('net.neoforged.neoforge.server.ServerLifecycleHooks').getCurrentServer();}\nfunction P0(s){return s.getPlayerList().getPlayers().get(0);}\nvar TCU=J('com.merlinkitsune.astral_dice.item.card.TemporaryCardUtil');\nvar MDC=J('com.merlinkitsune.astral_dice.component.ModDataComponents');\nvar ME=J('com.merlinkitsune.astral_dice.effect.ModEffects');\nvar MER=J('com.merlinkitsune.starengine.event.ModEffectRemoval');\nvar OW=MDC.TEMPORARY_CARD_OWNER.get();\nfunction who(p,st){var o=null;try{o=TCU.ownerOf(st);}catch(e){return 'err';}if(o==null)return 'none';if(String(o)===String(p.uuid))return 'me';return 'other';}\nfunction scan(p){var list=p.getInventory().items;var n=0,me=0,other=0,non=0;var d=[];for(var i=0;i<list.size();i++){var st=list.get(i);if(st==null||st.isEmpty())continue;if(!TCU.isTemporary(st))continue;var c=st.getCount();var w=who(p,st);n+=c;if(w==='me')me+=c;else if(w==='none')non+=c;else if(w==='err')non=-999;else other+=c;d.push(i+'/'+c+'/'+w);}return {n_temp:n,me:me,other:other,non:non,detail:d.join(';')};}\n  var p=P0(srv());var f0=p.getEffect(ME.NARDIS_PRIVILEGE);MER.remove(p,ME.NARDIS_PRIVILEGE);var f1=p.getEffect(ME.NARDIS_PRIVILEGE);var r=scan(p);return {ok:true,fx_before:(f0==null)?0:1,fx_on:(f1==null)?0:1,n_temp:r.n_temp};\n})()",
+      "save_as": "noPriv",
+      "timeout_ms": 10000
+    },
+    {
+      "op": "wait",
+      "ms": 2600
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "code": "(function(){\nfunction J(n){return Java.loadClass(n);}\nfunction srv(){return J('net.neoforged.neoforge.server.ServerLifecycleHooks').getCurrentServer();}\nfunction P0(s){return s.getPlayerList().getPlayers().get(0);}\nvar TCU=J('com.merlinkitsune.astral_dice.item.card.TemporaryCardUtil');\nvar MDC=J('com.merlinkitsune.astral_dice.component.ModDataComponents');\nvar ME=J('com.merlinkitsune.astral_dice.effect.ModEffects');\nvar MER=J('com.merlinkitsune.starengine.event.ModEffectRemoval');\nvar OW=MDC.TEMPORARY_CARD_OWNER.get();\nfunction who(p,st){var o=null;try{o=TCU.ownerOf(st);}catch(e){return 'err';}if(o==null)return 'none';if(String(o)===String(p.uuid))return 'me';return 'other';}\nfunction scan(p){var list=p.getInventory().items;var n=0,me=0,other=0,non=0;var d=[];for(var i=0;i<list.size();i++){var st=list.get(i);if(st==null||st.isEmpty())continue;if(!TCU.isTemporary(st))continue;var c=st.getCount();var w=who(p,st);n+=c;if(w==='me')me+=c;else if(w==='none')non+=c;else if(w==='err')non=-999;else other+=c;d.push(i+'/'+c+'/'+w);}return {n_temp:n,me:me,other:other,non:non,detail:d.join(';')};}\n  var p=P0(srv());var fx=p.getEffect(ME.NARDIS_PRIVILEGE);var r=scan(p);r.ok=true;r.fx_on=(fx==null)?0:1;return r;\n})()",
+      "save_as": "gone",
+      "timeout_ms": 10000
+    }
+  ],
+  "asserts": [
+    {
+      "op": "assert",
+      "type": "state",
+      "from": "base",
+      "expect": {
+        "n_temp": 0,
+        "fx_on": 0
+      }
+    },
+    {
+      "op": "assert",
+      "type": "state",
+      "from": "grant",
+      "expect": {
+        "n_temp": {
+          "gte": 3
+        },
+        "me": {
+          "gte": 3
+        },
+        "other": 0,
+        "non": 0
+      }
+    },
+    {
+      "op": "assert",
+      "type": "state",
+      "from": "tamper",
+      "expect": {
+        "tampered": 1,
+        "after_other": {
+          "gte": 1
+        }
+      }
+    },
+    {
+      "op": "assert",
+      "type": "state",
+      "from": "afterTamper",
+      "expect": {
+        "other": 0,
+        "non": 0,
+        "n_temp": {
+          "gte": 2
+        }
+      }
+    },
+    {
+      "op": "assert",
+      "type": "state",
+      "from": "noPriv",
+      "expect": {
+        "fx_before": 1,
+        "fx_on": 0
+      }
+    },
+    {
+      "op": "assert",
+      "type": "state",
+      "from": "gone",
+      "expect": {
+        "n_temp": 0
+      }
+    }
+  ]
+}

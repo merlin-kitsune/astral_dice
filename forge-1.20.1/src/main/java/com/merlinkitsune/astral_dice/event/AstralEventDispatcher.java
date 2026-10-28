@@ -130,7 +130,7 @@ public final class AstralEventDispatcher {
                 for (Player target : targetsFinal) {
                     event.effect().apply(lvl, bonusFinal, target, event, source, tierFinal);
                 }
-                EventEffects.afterDispatch(event, targetsFinal);
+                EventEffects.afterDispatch(bonusFinal, event, targetsFinal);
                 AstralEventSystem.applyEventBonus(bonusFinal, event.id().toString(), targetsFinal);
                 EventCardService.playTriggerSounds(targetsFinal, event);
                 LOGGER.info("AP_EVENT_FIRE: id={}:src={}:tier={}:targetsFinal={}", event.id(), source, tierFinal, targetsFinal.size());

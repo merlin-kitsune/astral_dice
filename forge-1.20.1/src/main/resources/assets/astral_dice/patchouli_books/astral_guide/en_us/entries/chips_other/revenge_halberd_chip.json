@@ -17,8 +17,8 @@
       "text": "astral_dice.guide.entry.revenge_halberd_chip.3"
     },
     {
-      "type": "patchouli:crafting",
-      "recipe": "astral_dice:revenge_halberd_chip"
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.chip_source.note"
     }
   ],
   "sortnum": 23
