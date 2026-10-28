@@ -4,6 +4,16 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 26.4-SNAPSHOT.2
+
+> The dev line picks up the `1.5.0-rc.5` content of the release line `multi-main` (reverse sync on 2026-10-28, 38 commits); the version number follows the bump-per-commit rule.
+
+### Engineering notes
+
+- Content sync: all 38 commits on `multi-main` since `cce71efb` (the rc.4 baseline) are merged - handbook chip entries switched to how-to-obtain notes (replacing dangling recipe pages that are not loaded by default), the chip-acquisition gate now treats `stale_page` / `no_note` as fatal and runs in CI, the historical melee / spell-damage / dice fixes, plus handover docs and release notes.
+- Version numbers: all four lines use `mod_version=26.4-SNAPSHOT.2+<platform>`; `starengine_version` stays `26.4-SNAPSHOT.1` (the library `next` branch is unchanged at `b78fe10`), and fabric keeps `starengine_version_range=>=26.4-SNAPSHOT.1`.
+- Five conflicts: the four `gradle.properties` keep the dev version numbers; `docs/agent/AGENTS-dsh.md` takes the release-line 62nd-batch row, corrected to `L3047–L4244` (`AGENTS-full.md` is 4,244 lines after the merge).
+- Nothing deleted: `multi-main` deleted 0 files since `cce71efb`; the tree-set check gives `extra` = 0 and `lost` = 1 (the release line renamed `handover-1.5.0-rc.1-main.md` to `handover-1.5.0-main.md`, as expected).
 ## 26.4-SNAPSHOT.1
 
 > From this version the dev line uses `<year>.<quarter>-SNAPSHOT.<n>` (2026-10-26 user decision; this build `26.4-SNAPSHOT.1`).

@@ -4,6 +4,16 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
+## 26.4-SNAPSHOT.2
+
+> dev 线承接发布线 `multi-main` 的 `1.5.0-rc.5` 内容（2026-10-28 反向同步，38 个提交），版本号按「每提交 +1」递增。
+
+### 工程口径
+
+- 内容同步：`multi-main` 自 `cce71efb`（rc.4 基线）以来的 38 个提交全部并入 —— 手册筹码条目改「获取途径说明」（取代默认不加载的悬空配方页）、筹码获取途径守门 `stale_page` / `no_note` 升为致命项并接入 CI、近战 / 法伤 / 骰战等历史修复、交接文档与发布说明。
+- 版本号：四线 `mod_version=26.4-SNAPSHOT.2+<平台>`；`starengine_version` 保持 `26.4-SNAPSHOT.1`（库 `next` 未变，仍为 `b78fe10`），fabric 的 `starengine_version_range` 同为 `>=26.4-SNAPSHOT.1`。
+- 冲突 5 处：四线 `gradle.properties` 取 dev 版本号；`docs/agent/AGENTS-dsh.md` 索引行取发布线第 62 条文案并订正为 `L3047–L4244`（合并后 `AGENTS-full.md` 4,244 行）。
+- 零删除：`multi-main` 自 `cce71efb` 以来 0 个文件删除；合并树集合比对 `extra` = 0、`lost` = 1（= 发布线把 `handover-1.5.0-rc.1-main.md` 改名为 `handover-1.5.0-main.md`，属预期）。
 ## 26.4-SNAPSHOT.1
 
 > dev 线自本版起版本号规则改为 `<年份>.<季度>-SNAPSHOT.<序号>`（2026-10-26 用户裁决，本次 `26.4-SNAPSHOT.1`）；
