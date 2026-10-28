@@ -49,6 +49,16 @@ public final class WeirdDiceHandler {
         if (roller == null || !hasWeirdDice(roller)) {
             return ThreadLocalRandom.current().nextInt(1, D6_FACES + 1);
         }
+        return rollWeightedD6();
+    }
+
+    /**
+     * 纯权重掷骰（不含佩戴判据）：1-3 面权重 ×{@link #LOW_FACE_WEIGHT}，4-6 面权重 1。
+     *
+     * <p>2026-10-28：玩家路径（{@link #rollD6(Player)}）与非玩家骰战能力
+     * （{@code combat.DiceCombatAbilities}）共用本方法，保证同一颗骰子的概率只有一份实现。
+     */
+    public static int rollWeightedD6() {
         // 总权重 = 3×3.0 + 3×1 = 12(P(低点数) = 9/12 = 75%)
         float total = 3 * LOW_FACE_WEIGHT + 3 * 1.0F;
         float r = ThreadLocalRandom.current().nextFloat() * total;

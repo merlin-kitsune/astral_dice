@@ -42,13 +42,25 @@ public final class WeirdDiceHandler {
     }
 
     /**
-     * 掷一枚战斗骰(d1-6):佩戴诡异骰子时低点数(1-3)权重 ×1.5,
+     * 掷一枚战斗骰(d1-6):佩戴诡异骰子时低点数(1-3)权重 ×{@link #LOW_FACE_WEIGHT}(= 3.0),
      * 未佩戴(或无玩家上下文)时为均匀分布。
+     *
+     * <p>低点数概率由 50%(3/6)升到 75%(9/12),**相对提升 50%**,与 tooltip 文案一致。
      */
     public static int rollD6(Player roller) {
         if (roller == null || !hasWeirdDice(roller)) {
             return ThreadLocalRandom.current().nextInt(1, D6_FACES + 1);
         }
+        return rollWeightedD6();
+    }
+
+    /**
+     * 纯权重掷骰（不含佩戴判据）：1-3 面权重 ×{@link #LOW_FACE_WEIGHT}，4-6 面权重 1。
+     *
+     * <p>2026-10-28：玩家路径（{@link #rollD6(Player)}）与非玩家骰战能力
+     * （{@code combat.DiceCombatAbilities}）共用本方法，保证同一颗骰子的概率只有一份实现。
+     */
+    public static int rollWeightedD6() {
         // 总权重 = 3×3.0 + 3×1 = 12(P(低点数) = 9/12 = 75%)
         float total = 3 * LOW_FACE_WEIGHT + 3 * 1.0F;
         float r = ThreadLocalRandom.current().nextFloat() * total;

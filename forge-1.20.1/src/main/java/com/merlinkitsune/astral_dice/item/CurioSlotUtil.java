@@ -86,6 +86,28 @@ public final class CurioSlotUtil {
     }
 
     /**
+     * 返回**第一个**满足条件的已装备饰品（副本）；未命中返回 {@link ItemStack#EMPTY}。
+     *
+     * <p>2026-10-28 新增：非玩家骰战的骰子能力注册表需要拿到实际物品栈（hasAnyCurioMatching
+     * 只返回 boolean），同时继续遵守「Curios 入口一律收敛到本类」的纪律。
+     */
+    public static ItemStack findFirstCurioMatching(LivingEntity entity, java.util.function.Predicate<ItemStack> predicate) {
+        var curios = CuriosCompat.getCuriosInventory(entity);
+        if (curios.isEmpty()) return ItemStack.EMPTY;
+        var curiosMap = curios.get().getCurios();
+        for (var key : curiosMap.keySet()) {
+            var stacks = curiosMap.get(key).getStacks();
+            for (int i = 0; i < stacks.getSlots(); i++) {
+                ItemStack s = stacks.getStackInSlot(i);
+                if (!s.isEmpty() && predicate.test(s)) {
+                    return s.copy();
+                }
+            }
+        }
+        return ItemStack.EMPTY;
+    }
+
+    /**
      * 遍历**指定饰品栏**（仅该 {@code slotId}）的非空槽位并执行动作（按槽序号升序）。
      *
      * <p>2026-10-12 新增（筹码商店移植）：筹码商店的「已拥有筹码」与「已装备流派计数」都要读筹码栏

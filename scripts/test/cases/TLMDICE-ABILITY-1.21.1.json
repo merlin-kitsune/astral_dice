@@ -1,0 +1,137 @@
+{
+  "case_id": "TLMDICE-ABILITY-1.21.1",
+  "title": "非玩家骰子能力注册表（DiceCombatAbilities）端到端取证",
+  "version": "1.21.1",
+  "target": {
+    "type": "feature",
+    "ref": "docs/features/tlmdice-participant-support.md"
+  },
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "准备：清场 + 固定时间/天气；探针会自动注册参与者并给劫掠者插骰子"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode survival"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamerule doDaylightCycle false"
+    },
+    {
+      "op": "inject_command",
+      "command": "/time set noon"
+    },
+    {
+      "op": "inject_command",
+      "command": "/weather clear"
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[type=!player,distance=..64]"
+    },
+    {
+      "op": "inject_command",
+      "command": "/effect give @s instant_health"
+    },
+    {
+      "op": "inject_command",
+      "command": "/tp @s ~ ~ ~ 0 0"
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "note",
+      "text": "执行能力注册表全链路：注册参与者 → 插骰子 → 能力恒 6/恒 1/越界 99 → 绯红内置能力 → 权重采样"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astraltlma run A1"
+    },
+    {
+      "op": "wait",
+      "ms": 2000
+    }
+  ],
+  "asserts": [
+    {
+      "type": "mixin"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "scope": "case",
+      "pattern": "AP_A1_A_SETUP:reg=ok:pred=1:part=1:slot=ok:prod=1:abl=(fn|adapter)"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "scope": "case",
+      "pattern": "AP_A1_A_FN:n=3:dmg=15,15,15:abl=(fn|adapter)"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "scope": "case",
+      "pattern": "AP_A1_A_CLR:n=8:min=[0-9]+:max=[0-9]+:in=8:lt=[1-8]"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "scope": "case",
+      "pattern": "AP_A1_A_ONE:dmg=10"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "scope": "case",
+      "pattern": "AP_A1_A_OOB:n=6:min=[0-9]+:max=[0-9]+:in=6"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "scope": "case",
+      "pattern": "AP_A1_A_CRIM:n=120:dmg10=[0-9]+:loss=[0-9.]+:rel=1:bad=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "scope": "case",
+      "pattern": "AP_A1_A_WD:n=600:mean=2.[0-9]+:low=0.7[0-9]*"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "scope": "case",
+      "pattern": "AP_A1_A_CD:n=600:mean=4.[0-9]+:high=0.7[0-9]*"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "scope": "case",
+      "pattern": "AP_A1_A_END:ok=1:cleared=1:pillager=0"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "scope": "case",
+      "pattern": "AP_[A-Z0-9]+_A_EX:"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "scope": "case",
+      "pattern": "Unknown or incomplete command|未知或不完整的命令"
+    }
+  ]
+}

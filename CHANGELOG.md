@@ -4,6 +4,19 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 26.4-SNAPSHOT.3
+
+> The dev line adds the mob-side dice battle participant API and the special-dice ability registry (2026-10-28); the version number follows the bump-per-commit rule.
+
+### Engineering notes
+
+- Mob-side dice battles accept explicit registrations only: `DiceCombatParticipants.registerExtraAttacker(String owner, Predicate<LivingEntity>)` is the single entry point, and with nothing registered `isParticipant` is always false, so mob-vs-player and mob-vs-mob hits resolve exactly as before (no config file, data pack, tag, command or auto-discovery path exists).
+- `resolveMobMeleeAttack` is generalized from `Player` to `LivingEntity` targets: a registered participant that attacks any living entity enters the dice battle (attack = `TargetBattleStats.baseAttack` + enchantment bonus + its own die; defense = the original player formula for players, `TargetBattleStats.baseDefense` + its own die otherwise), and `opposed` holds when either side carries a die.
+- Special dice can be registered for non-player holders: `DiceCombatAbilities.register(Predicate<ItemStack>, DiceRollAbility)` hands the ability a `RollContext` (holder, die, opponent, attackerSide, sides, defaultRoll); the `weird_dice` / `crimson_dice` weighting is built in, and an ability that throws or returns a value outside `1..sides` falls back to a plain d6.
+- Dice lookup on both sides is unified on `CurioSlotUtil.findFirstCurioMatching(LivingEntity, Predicate<ItemStack>)`; a participant that triggers the battle also receives the dice blessing on itself (2026-10-28 user decision), with the player-side conditions and parameters unchanged.
+- Verification: dev test bench on `1.21.1` - `TLMDICE-PARTICIPANT-1.21.1` 58/58 PASS and `TLMDICE-ABILITY-1.21.1` 26/26 PASS; `compileJava` is green on all four lines.
+- Version numbers: all four lines use `mod_version=26.4-SNAPSHOT.3+<platform>`; `starengine_version` stays `26.4-SNAPSHOT.1` (no library change in this batch).
+
 ## 26.4-SNAPSHOT.2
 
 > The dev line picks up the `1.5.0-rc.5` content of the release line `multi-main` (reverse sync on 2026-10-28, 38 commits); the version number follows the bump-per-commit rule.

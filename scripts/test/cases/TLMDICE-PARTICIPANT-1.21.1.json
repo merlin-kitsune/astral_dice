@@ -1,0 +1,273 @@
+{
+  "case_id": "TLMDICE-PARTICIPANT-1.21.1",
+  "title": "骰战参与者（DiceCombatParticipants）四态行为：未注册 / 注册生效 / 注册后稳定 / 撤销",
+  "version": "1.21.1",
+  "target": {
+    "type": "feature",
+    "ref": "dice-combat-participants"
+  },
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "目的：验证 2026-10-28 新增的「骰战参与者」入口闸门（neoforge-1.21.1 combat/DiceCombatParticipants + DiceCombatEvents.java:334-344）。\n\n四态（每态一条读数，顺序固定，缺一条即视为该态无证据）：\n  【D0】未注册 —— 劫掠者近战打牛，必须**不进入骰战**；\n  【D1】注册 —— JS 函数 / JavaAdapter 两条 Predicate 转换路径，读数里写明实际成功的那条；\n  【D2】注册后第 1 次 —— 必须进入骰战（damaged）；\n  【D3】注册后第 2 次 —— 必须 damaged 且 `same=1`（双方无骰点 ⇒ 骰战公式确定性输出，不得出现 1d6 随机）；\n  【D4/D5】撤销后再打 —— 必须回到未注册态。\n\n反假绿要点（写在读数里，不只靠断言）：\n  · `part=` = 探针**直接调用** DiceCombatParticipants.isParticipant(劫掠者) 的实测值（0/1），\n    把「闸门是否放行」与「血量是否变化」两件事解耦；\n  · `atk=` = 劫掠者 ATTACK_DAMAGE 属性值，用于解释原版伤害口径；\n  · `how=` 只在**判定器真的生效**（isParticipant(劫掠者)=1）时才记 fn/adapter，\n    仅「调用没抛异常」不算成功。\n\n判据口径（2026-10-28 实机校订）：「不结算」= 不进骰战公式，**不等于**目标不掉血 ——\n闸门未放行时 resolveMobMeleeAttack 不写值，原版 Mob#doHurtTarget 伤害照常落地。\n故 D0/D5 用数值判据：原版伤害 dmg=5 + part=0；注册态用骰战伤害 dmg=9 + part=1。\nD0/D5 的 dmg 必须同为 5（往返一致），D2/D3 必须同为 9（确定性、无 1d6）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode survival"
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamerule doDaylightCycle false"
+    },
+    {
+      "op": "inject_command",
+      "command": "/time set noon"
+    },
+    {
+      "op": "inject_command",
+      "command": "/weather clear"
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[type=!player,distance=..64]"
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/effect give @s minecraft:instant_health 1 9"
+    },
+    {
+      "op": "inject_command",
+      "command": "/tp @s ~ ~ ~ 0 0"
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "note",
+      "text": "【D0】未注册参与者：劫掠者近战打牛。判据 `AP_D0_TLMB:verdict=damaged` + `dmg=5`（原版伤害）+ `part=0`（未进骰战）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astraltlm tlmbattle D0"
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "note",
+      "text": "【D1】注册「劫掠者即骰战参与者」。判据 `AP_D1_TLMREG:how=(fn|adapter):ok=1` + `pillager=1:cow=0`（判定器生效且只认劫掠者）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astraltlm tlmreg D1"
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "note",
+      "text": "【D2】注册后第 1 次近战。判据 `AP_D2_TLMB:verdict=damaged` + `part=1`。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astraltlm tlmbattle D2"
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "note",
+      "text": "【D3】注册后第 2 次近战。判据 `verdict=damaged` + `same=1`（与 D2 的 dmg 完全相等 ⇒ 无 1d6 随机、双方骰点 0）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astraltlm tlmbattle D3"
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "note",
+      "text": "【D4】撤销注册（clearForTests）。判据 `AP_D4_TLMUNREG:ok=1` + `pillager=0`。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astraltlm tlmunreg D4"
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "note",
+      "text": "【D5】撤销后再打一次。判据 `AP_D5_TLMB:verdict=damaged` + `dmg=5`（与 D0 逐值相同）+ `part=0`（闸门已关回）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astraltlm tlmbattle D5"
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "note",
+      "text": "【D7】未注册态 + **玩家目标**（回归控制组）：劫掠者近战打玩家。判据 `AP_D7_TLMP:verdict=damaged` + `part=0`（未进骰战的参与者闸门）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astraltlm tlmpbattle D7"
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "note",
+      "text": "【D8】重新注册后再打**玩家**：判据 `AP_D8_TLMP:verdict=damaged` + `part=1` + `same=1`（与 D7 的 pdmg **完全相等** ⇒ 注册本身不扰动「生物打玩家」这条既有路径）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astraltlm tlmreg D8"
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/astraltlm tlmpbattle D8"
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astraltlm tlmend D9"
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    }
+  ],
+  "asserts": [
+    {
+      "type": "mixin"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "scope": "case",
+      "pattern": "AP_D0_TLMB:verdict=damaged:hp0=[^:]*:hp1=[^:]*:dmg=[^:]*:same=-?:part=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "scope": "case",
+      "pattern": "AP_D0_TLMB:verdict=damaged:hp0=20:hp1=15:dmg=5:same=-:part=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "scope": "case",
+      "pattern": "AP_D1_TLMREG:how=(fn|adapter):ok=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "scope": "case",
+      "pattern": "AP_D1_TLMREG:how=(fn|adapter):ok=1:pillager=1:cow=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "scope": "case",
+      "pattern": "AP_D2_TLMB:verdict=damaged"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "scope": "case",
+      "pattern": "AP_D2_TLMB:verdict=damaged:hp0=[^:]*:hp1=[^:]*:dmg=[^:]*:same=[01]:part=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "scope": "case",
+      "pattern": "AP_D3_TLMB:verdict=damaged:hp0=[^:]*:hp1=[^:]*:dmg=[^:]*:same=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "scope": "case",
+      "pattern": "AP_D4_TLMUNREG:ok=1:pillager=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "scope": "case",
+      "pattern": "AP_D5_TLMB:verdict=damaged:hp0=[^:]*:hp1=[^:]*:dmg=[^:]*:same=[01]:part=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "scope": "case",
+      "pattern": "AP_D5_TLMB:verdict=damaged:hp0=20:hp1=15:dmg=5:same=0:part=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "scope": "case",
+      "pattern": "AP_D7_TLMP:verdict=damaged:php0=[^:]*:php1=[^:]*:pdmg=[^:]*:same=0:part=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "scope": "case",
+      "pattern": "AP_D8_TLMP:verdict=damaged:php0=[^:]*:php1=[^:]*:pdmg=[^:]*:same=1:part=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "scope": "case",
+      "pattern": "AP_D9_TLMEND:ok=1"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "scope": "case",
+      "pattern": "AP_[A-Z0-9]+_EX:"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "scope": "case",
+      "pattern": "Unknown or incomplete command|未知或不完整的命令"
+    }
+  ]
+}

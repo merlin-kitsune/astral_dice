@@ -4,6 +4,19 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
+## 26.4-SNAPSHOT.3
+
+> dev 线新增 mob 侧骰战参与者接口与特殊骰能力注册表（2026-10-28），版本号按「每提交 +1」递增。
+
+### 工程口径
+
+- mob 侧骰战只认显式注册：唯一入口 `DiceCombatParticipants.registerExtraAttacker(String owner, Predicate<LivingEntity>)`；没有任何注册者时 `isParticipant` 恒 false，mob 打玩家 / mob 打 mob 的结算与改动前逐值一致（不存在配置文件、数据包、标签、命令、自动发现等旁路入口）。
+- `resolveMobMeleeAttack` 的目标类型由 `Player` 泛化为 `LivingEntity`：已注册参与者攻击任意生物都进入骰战（攻击 = `TargetBattleStats.baseAttack` + 附魔加成 + 自己的骰点；防御 = 玩家仍走原公式，非玩家用 `TargetBattleStats.baseDefense` + 自己的骰点），`opposed` 判据为任一方带骰。
+- 特殊骰可为非玩家持有者注册：`DiceCombatAbilities.register(Predicate<ItemStack>, DiceRollAbility)`，回调拿到 `RollContext`（holder / die / opponent / attackerSide / sides / defaultRoll）；`weird_dice` / `crimson_dice` 权重已内置，能力抛异常或返回值越界（不在 `1..sides`）时退回普通 d6。
+- 攻守双方取骰统一收敛到 `CurioSlotUtil.findFirstCurioMatching(LivingEntity, Predicate<ItemStack>)`；触发骰战的参与者同时在**自己身上**获得骰神赐福（2026-10-28 用户裁决），沿用玩家侧判定条件与参数。
+- 验证：dev 测试台 `1.21.1` —— `TLMDICE-PARTICIPANT-1.21.1` 58/58 PASS、`TLMDICE-ABILITY-1.21.1` 26/26 PASS；四线 `compileJava` 全绿。
+- 版本号：四线 `mod_version=26.4-SNAPSHOT.3+<平台>`；`starengine_version` 保持 `26.4-SNAPSHOT.1`（本批无库变更）。
+
 ## 26.4-SNAPSHOT.2
 
 > dev 线承接发布线 `multi-main` 的 `1.5.0-rc.5` 内容（2026-10-28 反向同步，38 个提交），版本号按「每提交 +1」递增。
