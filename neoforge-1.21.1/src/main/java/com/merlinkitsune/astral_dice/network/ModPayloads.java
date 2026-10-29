@@ -94,6 +94,13 @@ public class ModPayloads {
                 TargetSelectCancelPayload.STREAM_CODEC,
                 TargetSelectCancelPayload::handle
         );
+        // 目标选择会话:服务端强拆(事件动画窗 D5 / 服务端权威清场)→ 客户端退出选择模式,
+        // 否则客户端仍自认在选择模式、继续吞鼠标(攻击键)直到自己点击或本地超时
+        registrar.playToClient(
+                TargetSelectClosePayload.TYPE,
+                TargetSelectClosePayload.STREAM_CODEC,
+                TargetSelectClosePayload::handle
+        );
         registrar.playToServer(
                 StarCoinWalletPayload.TYPE,
                 StarCoinWalletPayload.STREAM_CODEC,
@@ -149,6 +156,12 @@ public class ModPayloads {
                 EventChoiceConfirmPayload.TYPE,
                 EventChoiceConfirmPayload.STREAM_CODEC,
                 EventChoiceConfirmPayload::handle
+        );
+        // 大侦探立牌主动技能:玩家在界面里按 ESC 放弃这次主动技能(会话 token;服务端撤销会话,不触发事件)
+        registrar.playToServer(
+                EventChoiceCancelPayload.TYPE,
+                EventChoiceCancelPayload.STREAM_CODEC,
+                EventChoiceCancelPayload::handle
         );
         // 大侦探立牌主动技能:服务端权威关闭选择界面(等待 1 秒后)
         registrar.playToClient(

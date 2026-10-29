@@ -380,6 +380,23 @@ public final class TargetSelectionClient {
         }
     }
 
+    /**
+     * 服务端单方面关闭选择会话（{@code ModNetwork.TargetSelectCloseMessage} 处理器调用，主线程）。
+     *
+     * <p>与 {@link #cancel(String)} 的区别：这是**服务端**已经拆了会话之后的通知，客户端只负责退出选择模式，
+     * **不再回发**取消包（否则会在服务端产生一条无主 token 的取消）。token 不匹配（本地已换成新会话）或本地
+     * 非活动 ⇒ 只记 debug 后忽略，绝不误关新会话。
+     */
+    public static void closeFromServer(int closeToken) {
+        if (!active || token != closeToken) {
+            LOGGER.debug("[Astral Dice][TargetSelectionClient] close ignored: token={} current={} active={}",
+                    closeToken, token, active);
+            return;
+        }
+        LOGGER.debug("[Astral Dice][TargetSelectionClient] close from server token={}", closeToken);
+        deactivate();
+    }
+
     private static void deactivate() {
         active = false;
         currentTarget = null;

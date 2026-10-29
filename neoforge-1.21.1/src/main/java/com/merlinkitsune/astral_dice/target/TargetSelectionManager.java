@@ -2,11 +2,13 @@ package com.merlinkitsune.astral_dice.target;
 import com.merlinkitsune.starengine.target.SelfTargetable;
 import com.merlinkitsune.starengine.target.HoldToSelect;
 
+import com.merlinkitsune.astral_dice.event.EventAnimationLock;
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.starengine.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.network.ActionBarPayload;
 import com.merlinkitsune.astral_dice.network.TargetSelectCancelPayload;
+import com.merlinkitsune.astral_dice.network.TargetSelectClosePayload;
 import com.merlinkitsune.astral_dice.network.TargetSelectConfirmPayload;
 import com.merlinkitsune.astral_dice.network.TargetSelectStartPayload;
 import net.minecraft.ChatFormatting;
@@ -185,6 +187,12 @@ public final class TargetSelectionManager {
      * @return 是否成功进入选择模式（动作未注册/目标不可用返回 false）
      */
     public static boolean start(ServerPlayer player, String actionId) {
+        // 2026-10-29 用户裁决 D4（兜底）：事件动画窗内一律不许开目标选择会话 ——
+        // 立牌 performSkill 与效果牌三处入口都各自先拦了，这里再兜一次，避免将来新增调用方绕过。
+        if (EventAnimationLock.isAnimating(player)) {
+            EventAnimationLock.notifyBlocked(player, "target_select_start");
+            return false;
+        }
         TargetSelectionAction action = TargetSelectionRegistry.get(actionId);
         if (action == null) {
             notifyActionBar(player, "msg.astral_dice.target_select.no_valid_action", ChatFormatting.RED);
@@ -315,6 +323,27 @@ public final class TargetSelectionManager {
                     player.getName().getString(), session.actionId);
         }
         LOGGER.debug("[Astral Dice][TargetSelection] cancel token={} player={}", token, player.getName().getString());
+    }
+
+    /**
+     * 服务端强制清场（2026-10-29 用户裁决 D5）：忽略 token，把该玩家**已打开**的会话直接作废 ——
+     * 不 {@code apply}、不恢复立牌门控流程（{@link SignSelectionGate#clear}）。
+     *
+     * <p>与 {@link #cancel(ServerPlayer, int)} 的区别：那条是「玩家主动取消」，对「手持即选择」会话会
+     * 落手持抑制闩；这里是动画窗强拆，**不落**抑制闩 —— 窗结束后 {@code tickHeldSelector} 自然重新开局，
+     * 否则玩家得先把牌移出主手才能再用（用户裁决 D4「窗结束即可用」）。
+     *
+     * <p>服务端清场后**必须**给该玩家回一个 {@link TargetSelectClosePayload}（2026-10-29 补齐）：否则
+     * 客户端 {@code TargetSelectionClient} 仍自认在选择模式、继续吞鼠标（攻击键被接管），直到玩家自己
+     * 点击或本地超时。带会话 token 下发，客户端只在 token 仍匹配时退出。
+     */
+    public static void cancel(ServerPlayer player, String reason) {
+        Session session = SESSIONS.remove(player.getUUID());
+        if (session == null) return;
+        SignSelectionGate.clear(player);
+        PacketDistributor.sendToPlayer(player, new TargetSelectClosePayload(session.token));
+        LOGGER.debug("[Astral Dice][TargetSelection] force-clear player={} action={} reason={}",
+                player.getName().getString(), session.actionId, reason);
     }
 
     /**

@@ -7,6 +7,9 @@ import com.merlinkitsune.astral_dice.network.EventChoiceCloseMessage;
 import com.merlinkitsune.astral_dice.network.EventChoiceStartMessage;
 import com.merlinkitsune.astral_dice.network.EventChoiceTickMessage;
 import com.merlinkitsune.astral_dice.network.ModNetwork;
+import com.merlinkitsune.starengine.component.GameplayConstants;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -98,6 +101,16 @@ public final class EventChoiceManager {
      *         （后者不重复开会话、不重复结算）
      */
     public static boolean start(ServerPlayer player) {
+        // 2026-10-29 用户裁决 D4（兜底）：事件卡动画窗口期内不得开选择界面 —— 否则界面会盖在弹卡动画之上，
+        // 玩家在动画尚未结算时确认，等于让「事件的选择」抢在「事件的效果」之前生效。
+        // 正常路径已由 BaseSignItem#performSkill 的同一判定拦下并提示，这里只兜「将来新增的调用方」。
+        if (EventAnimationLock.isAnimating(player)) {
+            LOGGER.info("AP_EVENT_ANIM: block:{}:{}", player.getGameProfile().getName(), "event_choice_start");
+            ModNetwork.sendToPlayer(player, new ModNetwork.ActionBarMessage(
+                    Component.translatable(EventAnimationLock.NOTICE_KEY).withStyle(ChatFormatting.RED),
+                    GameplayConstants.ACTIONBAR_DURATION_TICKS));
+            return false;
+        }
         // 闸门（2026-10-11 code_review 非阻塞项）：同玩家**已有未结算会话**时拒绝再次开启。
         // 否则二次按键会直接覆盖 SESSIONS 里的旧会话（旧会话的倒计时/强制结算从此失联），
         // 且客户端会连开两个选择界面。返回 false ⇒ 本次主动技能未开会话、不结算。
@@ -132,19 +145,12 @@ public final class EventChoiceManager {
         Session session = SESSIONS.get(player.getUUID());
         if (session == null || session.token != token || session.resolving >= 0) return;
         if (optionIndex < 0 || optionIndex >= OPTION_COUNT) return;
-        // ③ 全局闸门**只读**预判（2026-10-21）：闸门拒绝时**不能吞掉**玩家这一次选择。
-        //    顺序红线：canStart（只读，不消耗）→ SESSIONS.remove → trigger（内部照常 tryAcquire）。
-        //    禁止用 tryAcquire 预判 —— 它放行时会写掉一次占位（双获取，且第二次会把自己拒掉）。
-        //    OPTION_COUNT 固定为 2：索引 0/1 直接对应 firstEvent/secondEvent。
-        ResourceLocation pendingEvent = optionIndex == 0 ? session.firstEvent : session.secondEvent;
-        long gateTicks = gateDurationTicks(pendingEvent);
-        if (!GlobalEventGate.canStart(player, gateTicks)) {
-            GlobalEventGate.notifyBlocked(player, gateTicks);
-            LOGGER.info("AP_EVENT_CHOICE: confirm_blocked:{}:pick={}:event={}",
-                    token, optionIndex, pendingEvent);
-            // 会话**保留**（未 remove、resolving 未落）⇒ 玩家可再次确认；超时仍会强制第一个选项。
-            return;
-        }
+        // 2026-10-29 用户裁决 D1：此处**不再**查询全局事件闸门（原 canStart / notifyBlocked 预判已删除）。
+        // 理由：选择会话是「选中即生效」的主动技能，若被上一个事件的窗口拒掉，玩家看到的是
+        // 「界面已选、点了确认却毫无反应」，且会话还被保留 15 秒 —— 比直接拒绝更糟。
+        // 可接受副作用：本主动技能触发的事件**不占用**全服事件窗口，可与一个计时中的事件重叠；
+        // 占用窗口的只剩「事件卡」入口（见 AstralEventDispatcher ⑤ 段），这类主动技能的节流靠技能自身冷却。
+        // OPTION_COUNT 固定为 2：索引 0/1 直接对应 firstEvent/secondEvent。
         session.resolving = optionIndex;
         // ① 主动技能音效**不在此处重复播放**：2026-10-11 用户裁决改回「按技能键（使用立牌）瞬间即播」，
         //    由 FannySignItem#handleUse 经 BaseSignItem#performSkill 播放；确认时再播会叠一次。
@@ -163,20 +169,50 @@ public final class EventChoiceManager {
         AstralEventDispatcher.trigger(player, session.chosen(), AstralEventTrigger.ACTIVE_SKILL);
     }
 
+    /**
+     * C2S 取消入口（用户裁决 2026-10-29 D2：ESC 关闭界面 = 放弃这次主动技能）。
+     *
+     * <p>token 必须与会话一致且**尚未结算**；命中即丢弃会话、发关闭包（客户端据此关界面）、
+     * 触发**零个**事件、也不再下发倒计时。
+     *
+     * <p><b>关于冷却（2026-10-29 复核口径，与 neo 线同一措辞）</b>：ESC 取消只丢弃会话、不触发事件；
+     * 技能冷却 / 锁定由 {@code BaseSignItem#performSkill} 在**按下技能键那一刻**已写入，不因取消而回退
+     * （大侦探非选择器类，走的就是这条路径；选择器类技能的冷却则在确认后的 apply 里才写入）。
+     *
+     * <p>幂等：会话不存在 / token 不匹配 / 已结算（{@code resolving >= 0}）一律只记机器行后忽略 ——
+     * ESC 与服务端超时强制结算可能在同一 tick 竞态，迟到的取消包到这里时会话已经不在。
+     */
+    public static void cancel(ServerPlayer player, int token, String reason) {
+        Session session = SESSIONS.get(player.getUUID());
+        if (session == null || session.token != token || session.resolving >= 0) {
+            LOGGER.info("AP_EVENT_CHOICE: cancel_ignored:{}:player={}:reason={}",
+                    token, player.getGameProfile().getName(), reason);
+            return;
+        }
+        SESSIONS.remove(player.getUUID(), session);
+        ModNetwork.sendToPlayer(player, new EventChoiceCloseMessage(token));
+        LOGGER.info("AP_EVENT_CHOICE: cancel:{}:{}", token, reason);
+    }
+
+    /**
+     * 强制取消（不看 token；用户裁决 2026-10-29 D5：事件卡动画开始那一刻，玩家已开着的选择界面必须让位）。
+     *
+     * <p>与 {@link #cancel} 的区别只在入口：本方法由服务端内部场景（动画起锁）调用，那里只知道「该玩家」
+     * 而不知道会话 token。已结算（resolving >= 0）的会话不碰 —— 它的收尾由确认路径负责。
+     */
+    public static void cancelFor(ServerPlayer player, String reason) {
+        Session session = SESSIONS.get(player.getUUID());
+        if (session == null || session.resolving >= 0) return;
+        SESSIONS.remove(player.getUUID(), session);
+        ModNetwork.sendToPlayer(player, new EventChoiceCloseMessage(session.token));
+        LOGGER.info("AP_EVENT_CHOICE: cancel:{}:{}", session.token, reason);
+    }
+
     /** 强制触发第一个选项（超时 / 死亡 / 登出）：不播主动技能音效，直接关界面并走事件触发流程。 */
     private static void forceFirst(Player player, Session session, String reason) {
         if (session.resolving >= 0) return;   // 玩家已确认 ⇒ 尊重其选择（会话由确认路径收尾）
-        // ③ 全局闸门**只读**预判（2026-10-21，与 confirm 同一口径）：闸门拒绝 ⇒ 会话保留，
-        //    不 remove、不 trigger（这次强制不算被吞掉），由后续 tick / 超时重试在闸门放行后再结算。
-        if (player instanceof ServerPlayer gatePlayer) {
-            long gateTicks = gateDurationTicks(session.firstEvent);
-            if (!GlobalEventGate.canStart(gatePlayer, gateTicks)) {
-                GlobalEventGate.notifyBlocked(gatePlayer, gateTicks);
-                LOGGER.info("AP_EVENT_CHOICE: force_blocked:{}:reason={}:event={}",
-                        session.token, reason, session.firstEvent);
-                return;
-            }
-        }
+        // 2026-10-29 用户裁决 D1：强制结算（超时 / 死亡 / 登出）同样**不再**看全局闸门（口径同 confirm）。
+        // 旧实现会在闸门拒绝时保留会话，导致「已超时但会话仍活着」—— 玩家随后被 already_open 永久拦住。
         if (!SESSIONS.remove(player.getUUID(), session)) return;
         session.resolving = 0;
         if (!(player instanceof ServerPlayer serverPlayer)) return;
@@ -184,15 +220,6 @@ public final class EventChoiceManager {
         LOGGER.info("AP_EVENT_CHOICE: force:{}:pick=0:reason={}:event={}",
                 session.token, reason, session.firstEvent);
         AstralEventDispatcher.trigger(serverPlayer, session.firstEvent, AstralEventTrigger.ACTIVE_SKILL);
-    }
-
-    /**
-     * 闸门判定用的时长 = 该事件**原本传给** {@link AstralEventDispatcher#trigger} →
-     * {@link GlobalEventGate#tryAcquire} 的 {@code defaultDurationTicks}（不另造数字）。
-     * 未注册 ⇒ 0（与分发器「未注册即 warn 早退、不占闸门」口径一致）。
-     */
-    private static long gateDurationTicks(ResourceLocation eventId) {
-        return AstralEventRegistry.get(eventId).map(e -> (long) e.defaultDurationTicks()).orElse(0L);
     }
 
     /**
@@ -209,6 +236,13 @@ public final class EventChoiceManager {
         long remaining = session.expireTick - player.level().getGameTime();
         if (remaining <= 0L) {
             forceFirst(player, session, "timeout");
+            // 兜底（2026-10-29 D2/D5 同批）：过期判据成立之后**不得**再让会话留在表里。
+            // forceFirst 只在「已结算 / remove 竞态失败」两种情况不清会话，后者会让本分支每 tick 空转，
+            // 且玩家再按技能键会被 already_open 永久拦住（旧实现的「已超时但会话仍在」正是这种死角）。
+            if (SESSIONS.remove(player.getUUID(), session)) {
+                session.resolving = 0;
+                LOGGER.warn("AP_EVENT_CHOICE: expire_dropped:{}:reason=timeout", session.token);
+            }
             return;
         }
         if (!(player instanceof ServerPlayer serverPlayer)) return;

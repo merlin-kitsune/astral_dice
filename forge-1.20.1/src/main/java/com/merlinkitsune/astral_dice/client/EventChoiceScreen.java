@@ -1,6 +1,7 @@
 package com.merlinkitsune.astral_dice.client;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
+import com.merlinkitsune.astral_dice.network.EventChoiceCancelMessage;
 import com.merlinkitsune.astral_dice.network.EventChoiceConfirmMessage;
 import com.merlinkitsune.astral_dice.network.ModNetwork;
 import net.minecraft.client.gui.GuiGraphics;
@@ -29,8 +30,9 @@ import net.minecraft.resources.ResourceLocation;
  * 确认按钮三态 = fanny_skill_confirm / fanny_skill_confirm_highlight（指向）/ fanny_skill_confirm_push（按下）；
  * 必须**先选一个**再点确认才生效。
  *
- * <p>不暂停游戏、ESC 不可关闭：15 秒等待期由服务端 tick 驱动，客户端主动关界面不会结束会话
- * （结算由服务端 EventChoiceManager 权威决定）。
+ * <p>不暂停游戏、ESC 可关闭（2026-10-29 用户裁决 D2）：15 秒等待期由服务端 tick 驱动。未确认时关界面
+ * 等价于<b>取消这次主动技能</b>（C2S 取消包 → 服务端丢弃会话，不触发事件、不进技能冷却）；
+ * 已确认则什么都不发，结算仍由服务端 EventChoiceManager 权威决定。
  *
  * <p>平台差异（1.20.1）：{@link GuiGraphics#drawString} 只接受 **int** 坐标（1.21.1 才有 float 重载）；
  * 确认包走既有 {@link ModNetwork#sendToServer(Object)}（1.21.1 是 {@code PacketDistributor.sendToServer}）。
@@ -226,9 +228,22 @@ public class EventChoiceScreen extends Screen {
         return false;
     }
 
-    /** ESC 不可关闭：必须选一个（或等服务端强制结算）。 */
+    /** ESC 可关闭（2026-10-29 用户裁决 D2）：关界面 = 取消这次主动技能，服务端丢弃会话、不触发事件。 */
     @Override
     public boolean shouldCloseOnEsc() {
-        return false;
+        return true;
+    }
+
+    /**
+     * 关界面（ESC / 其他途径）：未确认时发 C2S 取消包；已确认则不发（结算由服务端权威推进）。
+     *
+     * <p>服务端没有收到取消包也不会卡死：15 秒到期后仍会强制结算第一个选项（{@code forceFirst}）。
+     */
+    @Override
+    public void onClose() {
+        if (!this.confirmed) {
+            ModNetwork.sendToServer(new EventChoiceCancelMessage(this.token));
+        }
+        super.onClose();
     }
 }

@@ -134,6 +134,16 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         //     actionId 为 null 的立牌(其余全部立牌)不走本分支,下方原流程逐字不变。
         String gatedActionId = sign.selectorActionId();
         if (gatedActionId != null) {
+            // 2026-10-29 用户裁决 D4(动画窗口,同日收窄):窗口期内**只**拦「会打开选择器/界面」的这条分支 ——
+            // 动画播放中不得再开第二个界面;handleUse 直通类立牌不受影响,照旧施放。
+            // 本类主动技能唯一的节流手段仍是技能自身冷却(D1:不查、也不占用全局事件窗口)。
+            if (player instanceof net.minecraft.server.level.ServerPlayer animPlayer
+                    && com.merlinkitsune.astral_dice.event.EventAnimationLock.isAnimating(animPlayer)) {
+                LOGGER.info("AP_EVENT_ANIM: block:{}:{}", player.getGameProfile().getName(), "sign_active_skill");
+                sendSignActionBarColored(player, ChatFormatting.RED,
+                        com.merlinkitsune.astral_dice.event.EventAnimationLock.NOTICE_KEY);
+                return;
+            }
             // 2.4 「选择器类」立牌的**前置拒绝**钩子(2026-09-27 新增,为教主立牌「降神生效中不可重复施放」):
             //     返回 false ⇒ 只发提示并立即返回 —— 不开选择会话、不发牌、不进冷却/锁定、不充能。
             //     缺省实现恒为 true ⇒ 其余立牌走与原流程逐字相同的分支。

@@ -66,9 +66,9 @@
   "astral_dice.guide.entry.candy_chip.1": "効果カードを 1 枚使用する毎に「治癒」+1 スタック、体力を 1 回復；体力が満タンの時、今回の出牌数 +1（今回の出牌中に最大 1 回）。",
   "astral_dice.guide.entry.card_shop": "カードショップ",
   "astral_dice.guide.entry.card_shop.1": "カードの購入、他のプレイヤーへの星貨の送金、自身の星光の星貨交換に使う。",
-  "astral_dice.guide.entry.card_trader.1": "村人の職業「カードトレーダー」。職業ブロックはカードショップ（無職の村人が職業ブロックを取ると転職する）。レベルに応じてエメラルドでカードを販売し（2-20 エメラルド、レベルが高いほど上質）、レベル 3 で「エメラルド 1 個 → スターコイン 1 枚」が解放される；エメラルドのダイスを装着しているとエメラルドの代わりにスターコインで支払え、20%% の割引を受ける。",
+  "astral_dice.guide.entry.card_trader.1": "村人の職業「カードトレーダー」。職業ブロックはカードショップ（無職の村人が職業ブロックを取ると転職する）。レベルに応じてエメラルドでカードを販売し（5-20 エメラルド、レベルが高いほど上質）、レベル 3 で「エメラルド 1 個 → スターコイン 1 枚」が解放される；エメラルドのダイスを装着しているとエメラルドの代わりにスターコインで 1:1 で支払える。",
   "astral_dice.guide.entry.chip_shop.1": "インターフェースを開くとスターコインでチップを購入できる：一度に 3 枚が陳列され、価格は 10 スターコインから購入毎に +5（上限 100）；購入後は 5:00 のクールダウンに入り、空白チップを投入すると再抽選を 1 回獲得し（上限 5 回）、購入クールダウンが解除される；投入自体にも 2:00 のクールダウンがある。",
-  "astral_dice.guide.entry.chip_trader.1": "村人の職業「チップトレーダー」。職業ブロックはチップショップ（無職の村人が職業ブロックを取ると転職する）。レベルに応じてエメラルドでチップを販売し（2-20 エメラルド、レベルが高いほど上質）、レベル 3 で「エメラルド 1 個 → スターコイン 1 枚」が解放される；エメラルドのダイスのスターコイン支払いと 20%% 割引も適用される。",
+  "astral_dice.guide.entry.chip_trader.1": "村人の職業「チップトレーダー」。職業ブロックはチップショップ（無職の村人が職業ブロックを取ると転職する）。レベルに応じてエメラルドでチップを販売し（20-64 エメラルド、レベルが高いほど上質）、レベル 3 で「エメラルド 1 個 → スターコイン 1 枚」が解放される；エメラルドのダイスによるスターコイン支払い（1:1）も適用される。",
   "astral_dice.guide.entry.cursed_sword_chip.1": "装備中は常に青の呪いを受ける：防具値 -20%%、防具強度 -50%%。",
   "astral_dice.guide.entry.cursed_sword_chip.2": "ダイス神の加護中、20 以上の体力を持つ敵対ターゲットを 1 体撃破する毎に攻撃力 +1（加護 1 回につき最大 1 回）、最大累計 +32；チップを外すとすべてのボーナスと青の呪いが解除される。",
   "astral_dice.guide.entry.cursed_sword_chip.3": "神秘の遺物+連動：このチップを装備中、千呪の巻物の呪いの数 +1。",
@@ -78,7 +78,7 @@
   "astral_dice.guide.entry.defense_card_large.1": "防御カード（大）：ダイス戦で 1~6 の防御力を提供する。",
   "astral_dice.guide.entry.defense_card_medium.1": "防御カード（中）：ダイス戦で 1~3 の防御力を提供する。",
   "astral_dice.guide.entry.diamond_dice.1": "ダイヤモンドのダイス。より高い品位で、より多くのチップスロットを解放する；カード欄の枠数はダイスの品位で決まる（攻防それぞれ 5、計 10 枠）ため、★とは無関係。",
-  "astral_dice.guide.entry.emerald_dice.1": "エメラルドのダイス。ダイヤモンドのダイスと同品位で、ダイヤモンドのダイスからアップグレードできる；装着すると村人との取引でエメラルドの代わりにスターコインを使用し、20%% の割引を受ける。",
+  "astral_dice.guide.entry.emerald_dice.1": "エメラルドのダイス。ダイヤモンドのダイスと同品位で、ダイヤモンドのダイスからアップグレードできる；装着すると村人との取引でエメラルドの代わりにスターコインを 1:1 で使用できる。",
   "astral_dice.guide.entry.event_drawer.1": "右クリックで 5 スターコインを支払い「奇妙なハテナ」を 1 枚購入できる。1 人につき 5:00 ごとに 1 回まで；スターコイン不足やクールダウン中は赤字で拒否される。レシピ：星盤 4 個とスターコイン 4 枚でダイヤモンドのダイス 1 個を囲む（3×3 の定形クラフト）。",
   "astral_dice.guide.entry.event_ticket.1": "右クリックで使用すると、公共イベントプールからイベントを 1 つランダムに抽選する；サバイバルでは 1 枚消費、クリエイティブでは消費しない（スタック上限 16）。抽選ボックスで 5 スターコインで購入して入手する。",
   "astral_dice.guide.entry.obsidian_dice.1": "黒曜石のダイス。ダイヤモンドのダイスと同品位で、ダイヤモンドのダイスからアップグレードできる；装着すると 3 の基本防御力を獲得し、受ける爆発ダメージが 50%% 減少する。",
@@ -652,7 +652,7 @@
   "tooltip.astral_dice.dice_desc_blessing": "ダイス神の加護 (%s)",
   "tooltip.astral_dice.dice_desc_middle": " | 加護中はダイス戦闘が発動 | ",
   "tooltip.astral_dice.dice_desc_suffix": "キーでカード欄を開いて設定",
-  "tooltip.astral_dice.emerald_dice_trade": "村人との取引でエメラルドの代わりにスターコインを使用し、§e20%%§2 の割引を受ける",
+  "tooltip.astral_dice.emerald_dice_trade": "村人との取引でエメラルドの代わりにスターコインで支払う（§e1:1§2）",
   "tooltip.astral_dice.ender_dice_totem": "致命ダメージを受けた時、不死のトーテムの効果が発動（クールダウン §95:00§6）",
   "tooltip.astral_dice.ender_dice_teleport": "エンダーのダイス自身またはバニラの不死のトーテムが発動した後、§e16§d ブロック以内の安全な地面へテレポート；水中ではテレポートは発動しない",
   "tooltip.astral_dice.ender_dice_rainwater": "雨の中/水中で受けるダメージ §c+40%%§r",
@@ -1064,5 +1064,6 @@
   "gui.astral_dice.card_choice.title_single_any": "カードを1枚選択",
   "gui.astral_dice.card_choice.title_triple_combat": "戦闘カードを3枚選択",
   "gui.astral_dice.card_choice.title_triple_effect": "効果カードを3枚選択",
-  "gui.astral_dice.card_choice.title_triple_any": "カードを3枚選択"
+  "gui.astral_dice.card_choice.title_triple_any": "カードを3枚選択",
+  "msg.astral_dice.event_animating": "イベント演出中です。少し待ってからお試しください。"
 }

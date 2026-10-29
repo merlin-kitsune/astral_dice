@@ -66,9 +66,9 @@
   "astral_dice.guide.entry.candy_chip.1": "Each effect card used grants +1 Healing layer and restores 1 health; at full health, this round's card slots +1 (at most once during the current play).",
   "astral_dice.guide.entry.card_shop": "Card Shop",
   "astral_dice.guide.entry.card_shop.1": "Used to buy cards, transfer Star Coins to other players, and exchange your own Starlight for Star Coins.",
-  "astral_dice.guide.entry.card_trader.1": "Villager profession \"Card Trader\"; its job site is the Card Shop (an unemployed villager takes it up there). Sells cards for Emeralds by level (2-20 Emeralds, better quality at higher levels) and unlocks \"1 Emerald → 1 Star Coin\" at level 3; while wearing the Emerald Die you can pay in Star Coins instead of Emeralds with a 20%% discount.",
+  "astral_dice.guide.entry.card_trader.1": "Villager profession \"Card Trader\"; its job site is the Card Shop (an unemployed villager takes it up there). Sells cards for Emeralds by level (5-20 Emeralds, better quality at higher levels) and unlocks \"1 Emerald → 1 Star Coin\" at level 3; while wearing the Emerald Die you can pay in Star Coins instead of Emeralds at a 1:1 rate.",
   "astral_dice.guide.entry.chip_shop.1": "Open the interface to buy chips with Star Coins: 3 are offered at a time and the price starts at 10 Star Coins, rising by 5 per purchase (capped at 100); buying puts you on a 5:00 cooldown, and inserting a Blank Chip grants 1 extra re-roll (cap 5) and clears the purchase cooldown; inserting has its own 2:00 cooldown.",
-  "astral_dice.guide.entry.chip_trader.1": "Villager profession \"Chip Trader\"; its job site is the Chip Shop (an unemployed villager takes it up there). Sells chips for Emeralds by level (2-20 Emeralds, better quality at higher levels) and unlocks \"1 Emerald → 1 Star Coin\" at level 3; the Emerald Die's Star Coin payment and 20%% discount apply here as well.",
+  "astral_dice.guide.entry.chip_trader.1": "Villager profession \"Chip Trader\"; its job site is the Chip Shop (an unemployed villager takes it up there). Sells chips for Emeralds by level (20-64 Emeralds, better quality at higher levels) and unlocks \"1 Emerald → 1 Star Coin\" at level 3; the Emerald Die's Star Coin payment at a 1:1 rate applies here as well.",
   "astral_dice.guide.entry.cursed_sword_chip.1": "While equipped you always suffer the Blue Curse: Armor -20%%, Armor Toughness -50%%.",
   "astral_dice.guide.entry.cursed_sword_chip.2": "During a Dice Blessing, killing a hostile with at least 20 HP grants +1 attack (at most 1 per blessing), up to +32; removing the chip clears all bonuses and the Blue Curse.",
   "astral_dice.guide.entry.cursed_sword_chip.3": "Enigmatic Legacy+ link: while equipped, the Scroll of a Thousand Curses' curse count +1.",
@@ -78,7 +78,7 @@
   "astral_dice.guide.entry.defense_card_large.1": "Defense Card (Large): grants 1~6 defense power in dice battles.",
   "astral_dice.guide.entry.defense_card_medium.1": "Defense Card (Medium): grants 1~3 defense power in dice battles.",
   "astral_dice.guide.entry.diamond_dice.1": "Diamond die. A higher tier that unlocks more chip slots; card slots are set by the die tier (5 per side, 10 total) and do not change with stars.",
-  "astral_dice.guide.entry.emerald_dice.1": "Emerald die. Same tier as the diamond die and upgradeable from it; while equipped, villager trades use Star Coins instead of Emeralds with a 20%% discount.",
+  "astral_dice.guide.entry.emerald_dice.1": "Emerald die. Same tier as the diamond die and upgradeable from it; while equipped, villager trades use Star Coins instead of Emeralds at a 1:1 rate.",
   "astral_dice.guide.entry.event_drawer.1": "Right-click to buy 1 Strange Question Mark for 5 Star Coins, limited to one purchase per 5:00 per player; too few Star Coins or an active cooldown is refused in red. Crafting recipe: 4 Star Plates and 4 Star Coins around 1 Diamond Dice (shaped 3×3).",
   "astral_dice.guide.entry.event_ticket.1": "Right-click to draw one random event from the public event pool; consumes 1 in Survival, none in Creative (stacks to 16). Bought from the Lottery Box for 5 Star Coins.",
   "astral_dice.guide.entry.obsidian_dice.1": "Obsidian die. Same tier as the diamond die and upgradeable from it; while equipped you gain 3 base defense and take 50%% less explosion damage.",
@@ -653,7 +653,7 @@
   "tooltip.astral_dice.dice_desc_blessing": "Dice Blessing (%s)",
   "tooltip.astral_dice.dice_desc_middle": " on attack | Activate Dice Combat during blessing | Press ",
   "tooltip.astral_dice.dice_desc_suffix": " to open card inventory",
-  "tooltip.astral_dice.emerald_dice_trade": "Uses Star Coins instead of Emeralds in villager trades, with a §e20%%§2 discount",
+  "tooltip.astral_dice.emerald_dice_trade": "Uses Star Coins instead of Emeralds in villager trades (§e1:1§2)",
   "tooltip.astral_dice.ender_dice_totem": "Survive lethal damage with a totem-of-undying effect (cooldown §95:00§6)",
   "tooltip.astral_dice.ender_dice_teleport": "After the Ender Die’s own or a vanilla Totem of Undying trigger, teleport to safe ground within §e16§d blocks; no teleport while in water",
   "tooltip.astral_dice.ender_dice_rainwater": "Damage taken in rain/underwater §c+40%%§r",
@@ -1065,5 +1065,6 @@
   "gui.astral_dice.card_choice.title_single_any": "Choose a Card",
   "gui.astral_dice.card_choice.title_triple_combat": "Choose Three Combat Cards",
   "gui.astral_dice.card_choice.title_triple_effect": "Choose Three Effect Cards",
-  "gui.astral_dice.card_choice.title_triple_any": "Choose Three Cards"
+  "gui.astral_dice.card_choice.title_triple_any": "Choose Three Cards",
+  "msg.astral_dice.event_animating": "An event animation is playing — please wait."
 }

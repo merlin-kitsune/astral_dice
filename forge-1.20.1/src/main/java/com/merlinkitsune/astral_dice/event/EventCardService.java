@@ -36,6 +36,13 @@ public final class EventCardService {
     public static final int CARD_ANIM_TICKS = 28;
     /** 动画播完 → 结算之间的**静默缓冲**（tick）：10t = 0.5s。这段时间屏幕上已无卡、效果也还没施加。 */
     public static final int SETTLE_BUFFER_TICKS = DELAY_TICKS - CARD_ANIM_TICKS;
+    /**
+     * 「奇怪的问号」使用后的冷却（tick）= 动画窗口 {@link #DELAY_TICKS} + 10 秒（用户裁决 2026-10-29 D3）。
+     *
+     * <p>为什么不是另写一个拍脑袋的数：窗口本身就是「卡在屏幕上、事件尚未结算」的那段；冷却从窗口结束起再
+     * 等 10 秒，玩家才可能在**结算之后**再抽一次。改动动画时长时冷却自动跟随，不会出现「卡还没结算就能再抽」。
+     */
+    public static final int QUESTION_COOLDOWN_TICKS = DELAY_TICKS + 20 * 10;
 
     private static final List<Pending> QUEUE = new ArrayList<>();
 
@@ -59,6 +66,16 @@ public final class EventCardService {
                         PacketDistributor.PLAYER.with(() -> sp),
                         new com.merlinkitsune.astral_dice.network.EventCardMessage(event.id(), event.defaultDurationTicks(), tier));
                 SoundPlayback.playTo(sp, ModSounds.EVENT_FADE_IN.get());
+                // 2026-10-29 用户裁决 D4/D5：弹卡这一刻起锁 —— 窗口期（= 本方法的 DELAY_TICKS）内任一入口
+                // 都不得再打开目标选择器 / 事件选择界面，也不得再抽事件卡；并强制取消**此刻已打开**的会话。
+                // 为什么必须在弹卡这一 tick 做：玩家确认选择 / 右键出牌与弹卡往往在同一 tick 内先后发生，
+                // 晚一个 tick 就可能「旧界面还开着、新事件已经在演」，确认动作会在动画尚未结算时抢先触发另一事件。
+                EventAnimationLock.begin(sp, DELAY_TICKS);
+                EventChoiceManager.cancelFor(sp, "animation");
+                // 目标选择器侧：用服务端强制取消重载（D5，与 neo 线同口径）—— 清会话但**不写**抑制闩，
+                // 动画窗结束后玩家仍手持效果牌时自然自动重开；若走旧 token 版 cancel 会写 HOLD_SUPPRESSED，
+                // 反而把「动画结束即可选」变成「必须先把牌移出主手」。
+                com.merlinkitsune.astral_dice.target.TargetSelectionManager.cancel(sp, "animation");
             }
         }
         QUEUE.add(new Pending(level, level.getGameTime() + DELAY_TICKS, action));

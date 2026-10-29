@@ -1,6 +1,7 @@
 package com.merlinkitsune.astral_dice.client;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
+import com.merlinkitsune.astral_dice.network.EventChoiceCancelPayload;
 import com.merlinkitsune.astral_dice.network.EventChoiceConfirmPayload;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
@@ -29,8 +30,11 @@ import net.neoforged.neoforge.network.PacketDistributor;
  * 确认按钮三态 = fanny_skill_confirm / fanny_skill_confirm_highlight（指向）/ fanny_skill_confirm_push（按下）；
  * 必须**先选一个**再点确认才生效。
  *
- * <p>不暂停游戏、ESC 不可关闭：15 秒等待期由服务端 tick 驱动，客户端主动关界面不会结束会话
- * （结算由服务端 EventChoiceManager 权威决定）。
+ * <p>不暂停游戏：15 秒等待期由服务端 tick 驱动，暂停会冻住服务端 tick 让等待期永不到期。
+ *
+ * <p><b>ESC = 取消这次主动技能</b>（2026-10-29 用户裁决 D2）：未确认时按 ESC 关界面并给服务端发
+ * {@link EventChoiceCancelPayload}，服务端撤销会话、不触发事件、不结算（该次技能等同未使用）；
+ * 已确认后按 ESC 只是关掉本地界面，不再发取消包（会话已进入结算，服务端照样关界面）。
  */
 public class EventChoiceScreen extends Screen {
     // ---- 参考图 images/shop/fanny_skill_preview.png（137x133）内的相对坐标 ----
@@ -223,9 +227,25 @@ public class EventChoiceScreen extends Screen {
         return false;
     }
 
-    /** ESC 不可关闭：必须选一个（或等服务端强制结算）。 */
+    /** ESC 可关闭（2026-10-29 用户裁决 D2）：关闭动作见 {@link #onClose()}，未确认即取消。 */
     @Override
     public boolean shouldCloseOnEsc() {
-        return false;
+        return true;
+    }
+
+    /**
+     * 界面关闭回调（ESC 关界面走这里，是本界面唯一的**玩家主动**取消入口）。
+     *
+     * <p>2026-10-29 用户裁决 D2：<b>未确认</b>就关闭 = 放弃这次大侦探主动技能 ⇒ 给服务端发取消包，
+     * 服务端按 token 撤会话、不触发任何事件、不结算。已确认（{@code confirmed}）时不再发 ——
+     * 服务端已进入结算流程；万一关界面路径也回调到这里，服务端对重复取消是幂等忽略的
+     * （见 {@code EventChoiceManager#cancel}）。
+     */
+    @Override
+    public void onClose() {
+        if (!this.confirmed) {
+            PacketDistributor.sendToServer(new EventChoiceCancelPayload(this.token));
+        }
+        super.onClose();
     }
 }

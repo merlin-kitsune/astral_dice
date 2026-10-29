@@ -2,7 +2,14 @@ package com.merlinkitsune.astral_dice.item;
 
 import com.merlinkitsune.astral_dice.event.AstralEventDispatcher;
 import com.merlinkitsune.astral_dice.event.AstralEventRegistry;
+import com.merlinkitsune.astral_dice.event.EventAnimationLock;
+import com.merlinkitsune.astral_dice.event.EventCardService;
+import com.merlinkitsune.astral_dice.network.ModNetwork;
 import com.merlinkitsune.astral_dice.event.api.AstralEvent;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
+import com.merlinkitsune.starengine.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.event.api.AstralEventTrigger;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
@@ -33,6 +40,15 @@ public class EventDrawItem extends Item {
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
         if (!level.isClientSide) {
+            // 2026-10-29 用户裁决 D4：事件动画播放中不得再抽事件（否则弹卡动画与结算互相覆盖）。
+            // 失败返回 ⇒ 不消耗卡牌；创造的「无所谓消耗」不改变这里的行为（D3 的冷却仍在下面按 started 施加）。
+            if (player instanceof ServerPlayer serverPlayer && EventAnimationLock.isAnimating(serverPlayer)) {
+                LOGGER.info("AP_EVENT_ANIM: block:{}:{}", serverPlayer.getGameProfile().getName(), "event_draw");
+                ModNetwork.sendToPlayer(serverPlayer, new ModNetwork.ActionBarMessage(
+                        Component.translatable(EventAnimationLock.NOTICE_KEY).withStyle(ChatFormatting.RED),
+                        GameplayConstants.ACTIONBAR_DURATION_TICKS));
+                return InteractionResultHolder.fail(stack);
+            }
             Optional<AstralEvent> drawn = AstralEventRegistry.drawRandom(player.getRandom(), player);
             if (drawn.isEmpty()) {
                 // Review Focus 1:公共池为空必须安全失败
@@ -43,6 +59,12 @@ public class EventDrawItem extends Item {
                 boolean started = AstralEventDispatcher.trigger(player, drawn.get().id(), AstralEventTrigger.ITEM_USE);
                 if (started && !player.getAbilities().instabuild) {
                     stack.shrink(1);
+                }
+                // 2026-10-29 用户裁决 D3：抽中的事件要播动画，抽卡物在「动画 38t + 10s」内不得再用。
+                // 常量与动画时长同源（EventCardService.QUESTION_COOLDOWN_TICKS），不写裸数字。
+                // 创造模式同样进冷却：与末影珍珠口径一致（创造只免消耗，不免冷却）。
+                if (started) {
+                    player.getCooldowns().addCooldown(this, EventCardService.QUESTION_COOLDOWN_TICKS);
                 }
             }
         }

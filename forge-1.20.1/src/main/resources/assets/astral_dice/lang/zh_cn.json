@@ -66,9 +66,9 @@
   "astral_dice.guide.entry.candy_chip.1": "每使用一张效果牌，+1 层治愈并恢复 1 点生命；生命值已满时，本轮出牌数 +1（当前出牌期间最多触发一次）。",
   "astral_dice.guide.entry.card_shop": "卡牌商店",
   "astral_dice.guide.entry.card_shop.1": "可用于购买卡牌、给其他玩家转账、将自身星光兑换星币。",
-  "astral_dice.guide.entry.card_trader.1": "村民职业「卡牌交易员」，工作站点为卡牌商店（无业村民认领后转职）。按等级用绿宝石出售卡牌（2-20 绿宝石，等级越高品质越好），第 3 级解锁「1 绿宝石 → 1 星币」；佩戴绿宝石骰子时可用星币代替绿宝石并享受 20%% 折扣。",
+  "astral_dice.guide.entry.card_trader.1": "村民职业「卡牌交易员」，工作站点为卡牌商店（无业村民认领后转职）。按等级用绿宝石出售卡牌（5-20 绿宝石，等级越高品质越好），第 3 级解锁「1 绿宝石 → 1 星币」；佩戴绿宝石骰子时可用星币按 1:1 代替绿宝石支付。",
   "astral_dice.guide.entry.chip_shop.1": "打开界面可用星币购买筹码：一次陈列 3 枚，价格从 10 星币起、每购买一次 +5（上限 100），购买后进入 5:00 冷却；投入空白筹码立即获得 1 次重抽（上限 5 次）并清除购买冷却；投入本身有 2:00 冷却。",
-  "astral_dice.guide.entry.chip_trader.1": "村民职业「筹码商人」，工作站点为筹码商店（无业村民认领后转职）。按等级用绿宝石出售筹码（2-20 绿宝石，等级越高品质越好），第 3 级解锁「1 绿宝石 → 1 星币」；佩戴绿宝石骰子时同样可用星币代替绿宝石并享受 20%% 折扣。",
+  "astral_dice.guide.entry.chip_trader.1": "村民职业「筹码商人」，工作站点为筹码商店（无业村民认领后转职）。按等级用绿宝石出售筹码（20-64 绿宝石，等级越高品质越好），第 3 级解锁「1 绿宝石 → 1 星币」；佩戴绿宝石骰子时同样可用星币按 1:1 代替绿宝石支付。",
   "astral_dice.guide.entry.cursed_sword_chip.1": "装备时始终受到青之诅咒：护甲 -20%%，盔甲韧性 -50%%。",
   "astral_dice.guide.entry.cursed_sword_chip.2": "骰神赐福期间，每击杀 1 个不少于 20 点生命值的敌对目标，攻击力 +1（每个赐福期间最多 1 次），最多累计 +32；移除筹码后清除所有加成与青之诅咒。",
   "astral_dice.guide.entry.cursed_sword_chip.3": "神秘遗物+联动：装备该筹码时，千咒卷轴的诅咒数量 +1。",
@@ -78,7 +78,7 @@
   "astral_dice.guide.entry.defense_card_large.1": "防御牌（大）：骰战中提供 1~6 点防御力。",
   "astral_dice.guide.entry.defense_card_medium.1": "防御牌（中）：骰战中提供 1~3 点防御力。",
   "astral_dice.guide.entry.diamond_dice.1": "钻石骰子。更高品阶，解锁更多筹码栏位；卡牌栏格数由骰子品质决定（攻防各 5，共 10 格），与星级无关。",
-  "astral_dice.guide.entry.emerald_dice.1": "绿宝石骰子。与钻石骰子同阶，可由钻石骰子升级；佩戴后与村民交易时用星币代替绿宝石，并享受 20%% 折扣。",
+  "astral_dice.guide.entry.emerald_dice.1": "绿宝石骰子。与钻石骰子同阶，可由钻石骰子升级；佩戴后与村民交易时按 1:1 用星币代替绿宝石支付。",
   "astral_dice.guide.entry.event_drawer.1": "右键花 5 星币购买 1 张「奇怪的问号」，每人每 5:00 限购一次；星币不足或冷却中会被红字拒绝。合成配方：4 块星盘与 4 枚星币围住 1 颗钻石骰子（3×3 有序合成）。",
   "astral_dice.guide.entry.event_ticket.1": "右键使用后，从公共事件池随机抽取一条事件；生存模式消耗 1 张、创造模式不消耗（可堆叠 16）。由抽奖盒花 5 星币购买获得。",
   "astral_dice.guide.entry.obsidian_dice.1": "黑曜石骰子。与钻石骰子同阶，可由钻石骰子升级；佩戴后获得 3 点基础防御力，且受到的爆炸伤害减少 50%%。",
@@ -653,7 +653,7 @@
   "tooltip.astral_dice.dice_desc_blessing": "骰神赐福 (%s)",
   "tooltip.astral_dice.dice_desc_middle": " | 赐福期间激活骰点战斗 | 按下",
   "tooltip.astral_dice.dice_desc_suffix": "键打开卡牌栏配置",
-  "tooltip.astral_dice.emerald_dice_trade": "与村民交易时用星币代替绿宝石，并享受 §e20%%§2 折扣",
+  "tooltip.astral_dice.emerald_dice_trade": "与村民交易时用星币代替绿宝石支付（§e1:1§2）",
   "tooltip.astral_dice.ender_dice_totem": "受到致命伤害时触发不死图腾效果（冷却 §95:00§6）",
   "tooltip.astral_dice.ender_dice_teleport": "末影骰子自身或原版不死图腾触发后，瞬移到 §e16§d 格内安全地面；在水中不会触发传送",
   "tooltip.astral_dice.ender_dice_rainwater": "雨中/水下受到的伤害 §c+40%%§r",
@@ -1066,5 +1066,6 @@
   "gui.astral_dice.card_choice.title_single_any": "选择一张卡牌",
   "gui.astral_dice.card_choice.title_triple_combat": "选择三张战斗牌",
   "gui.astral_dice.card_choice.title_triple_effect": "选择三张效果牌",
-  "gui.astral_dice.card_choice.title_triple_any": "选择三张卡牌"
+  "gui.astral_dice.card_choice.title_triple_any": "选择三张卡牌",
+  "msg.astral_dice.event_animating": "事件动画播放中，请稍后再试"
 }

@@ -93,6 +93,12 @@ public final class EventChoiceManager {
      *         （后者不重复开会话、不重复结算）
      */
     public static boolean start(ServerPlayer player) {
+        // 2026-10-29 用户裁决 D4：事件动画窗内禁止打开任何选择界面（大侦探立牌主动技能也不例外）。
+        // 拒绝理由与其它入口同源：EventAnimationLock 管机器行 + actionbar（1 秒节流）。
+        if (EventAnimationLock.isAnimating(player)) {
+            EventAnimationLock.notifyBlocked(player, "event_choice_start");
+            return false;
+        }
         // 闸门（2026-10-11 code_review 非阻塞项）：同玩家**已有未结算会话**时拒绝再次开启。
         // 否则二次按键会直接覆盖 SESSIONS 里的旧会话（旧会话的倒计时/强制结算从此失联），
         // 且客户端会连开两个选择界面。返回 false ⇒ 本次主动技能未开会话、不结算。
@@ -127,19 +133,12 @@ public final class EventChoiceManager {
         Session session = SESSIONS.get(player.getUUID());
         if (session == null || session.token != token || session.resolving >= 0) return;
         if (optionIndex < 0 || optionIndex >= OPTION_COUNT) return;
-        // ③ 全局闸门**只读**预判（2026-10-21）：闸门拒绝时**不能吞掉**玩家这一次选择。
-        //    顺序红线：canStart（只读，不消耗）→ SESSIONS.remove → trigger（内部照常 tryAcquire）。
-        //    禁止用 tryAcquire 预判 —— 它放行时会写掉一次占位（双获取，且第二次会把自己拒掉）。
+        // ③ 2026-10-29 用户裁决 D1（真解绑）：大侦探立牌主动技能全流程**不查也不占** GlobalEventGate ——
+        //    原「canStart 只读预判 + notifyBlocked」整段删除。副作用（已接受）：侦探事件生效期间
+        //    不占用全局事件窗口，可能与另一条计时事件在时间上重叠；节流改由技能自身冷却承担
+        //    （BaseSignItem#performSkill 的玩家级冷却 + 锁定态）。
+        //    顺序仍然只有一条：SESSIONS.remove → 发 Close → trigger（trigger 对 ACTIVE_SKILL 不再登记闸门）。
         //    OPTION_COUNT 固定为 2：索引 0/1 直接对应 firstEvent/secondEvent。
-        ResourceLocation pendingEvent = optionIndex == 0 ? session.firstEvent : session.secondEvent;
-        long gateTicks = gateDurationTicks(pendingEvent);
-        if (!GlobalEventGate.canStart(player, gateTicks)) {
-            GlobalEventGate.notifyBlocked(player, gateTicks);
-            LOGGER.info("AP_EVENT_CHOICE: confirm_blocked:{}:pick={}:event={}",
-                    token, optionIndex, pendingEvent);
-            // 会话**保留**（未 remove、resolving 未落）⇒ 玩家可再次确认；超时仍会强制第一个选项。
-            return;
-        }
         session.resolving = optionIndex;
         // ① 主动技能音效**不在此处重复播放**：2026-10-11 用户裁决改回「按技能键（使用立牌）瞬间即播」，
         //    由 FannySignItem#handleUse 经 BaseSignItem#performSkill 播放；确认时再播会叠一次。
@@ -161,17 +160,9 @@ public final class EventChoiceManager {
     /** 强制触发第一个选项（超时 / 死亡 / 登出）：不播主动技能音效，直接关界面并走事件触发流程。 */
     private static void forceFirst(Player player, Session session, String reason) {
         if (session.resolving >= 0) return;   // 玩家已确认 ⇒ 尊重其选择（会话由确认路径收尾）
-        // ③ 全局闸门**只读**预判（2026-10-21，与 confirm 同一口径）：闸门拒绝 ⇒ 会话保留，
-        //    不 remove、不 trigger（这次强制不算被吞掉），由后续 tick / 超时重试在闸门放行后再结算。
-        if (player instanceof ServerPlayer gatePlayer) {
-            long gateTicks = gateDurationTicks(session.firstEvent);
-            if (!GlobalEventGate.canStart(gatePlayer, gateTicks)) {
-                GlobalEventGate.notifyBlocked(gatePlayer, gateTicks);
-                LOGGER.info("AP_EVENT_CHOICE: force_blocked:{}:reason={}:event={}",
-                        session.token, reason, session.firstEvent);
-                return;
-            }
-        }
+        // ③ 2026-10-29 用户裁决 D1（真解绑）：全局闸门预判整段删除 —— 强制结算因此**必定**落盘，
+        //    「remaining <= 0 却 return、会话还留着」的路径不再存在（见 tick 的到点分支）。
+        //    副作用同 confirm：侦探事件不占用全局事件窗口，可能与另一条计时事件重叠。
         if (!SESSIONS.remove(player.getUUID(), session)) return;
         session.resolving = 0;
         if (!(player instanceof ServerPlayer serverPlayer)) return;
@@ -182,12 +173,40 @@ public final class EventChoiceManager {
     }
 
     /**
-     * 闸门判定用的时长 = 该事件**原本传给** {@link AstralEventDispatcher#trigger} →
-     * {@link GlobalEventGate#tryAcquire} 的 {@code defaultDurationTicks}（不另造数字）。
-     * 未注册 ⇒ 0（与分发器「未注册即 warn 早退、不占闸门」口径一致）。
+     * 客户端 ESC 取消（2026-10-29 用户裁决 D2）：<b>未确认</b>且 token 匹配 ⇒ 撤会话 + 关界面，
+     * **不触发**事件、不结算、不再下发倒计时；该次主动技能等同「未使用」（技能冷却由
+     * {@code BaseSignItem#performSkill} 在选择器/界面类路径上按既有口径决定，本方法不碰冷却）。
+     *
+     * <p>幂等：会话不存在 / token 不匹配 / 已结算（{@code resolving >= 0}）一律只记机器行后忽略 ——
+     * ESC 与服务端超时强制结算可能在同一 tick 竞态，迟到的取消包到这里时会话已经不在；
+     * 客户端在「已确认」状态下关界面也不再发包（见 {@code EventChoiceScreen#onClose}）。
+     *
+     * @param player 取消者
+     * @param token  会话 token（必须与当前会话一致）
+     * @param reason 机器行用的原因（客户端 ESC = {@code "esc"}）
      */
-    private static long gateDurationTicks(ResourceLocation eventId) {
-        return AstralEventRegistry.get(eventId).map(e -> (long) e.defaultDurationTicks()).orElse(0L);
+    public static void cancel(ServerPlayer player, int token, String reason) {
+        Session session = SESSIONS.get(player.getUUID());
+        if (session == null || session.token != token || session.resolving >= 0) {
+            LOGGER.info("AP_EVENT_CHOICE: cancel_ignored:{}:player={}:reason={}",
+                    token, player.getGameProfile().getName(), reason);
+            return;
+        }
+        SESSIONS.remove(player.getUUID(), session);
+        PacketDistributor.sendToPlayer(player, new EventChoiceClosePayload(token));
+        LOGGER.info("AP_EVENT_CHOICE: cancel:{}:{}", token, reason);
+    }
+
+    /**
+     * 服务端强制清场（2026-10-29 用户裁决 D5）：忽略 token，把该玩家**已打开**的会话直接作废。
+     * 供 {@code EventCardService#showThenRun} 在动画窗开始时调用 —— 不触发事件、不结算。
+     */
+    public static void cancelFor(ServerPlayer player, String reason) {
+        Session session = SESSIONS.get(player.getUUID());
+        if (session == null || session.resolving >= 0) return;
+        SESSIONS.remove(player.getUUID(), session);
+        PacketDistributor.sendToPlayer(player, new EventChoiceClosePayload(session.token));
+        LOGGER.info("AP_EVENT_CHOICE: cancel:{}:{}", session.token, reason);
     }
 
     /**
@@ -203,6 +222,8 @@ public final class EventChoiceManager {
         if (session == null || session.resolving >= 0) return;
         long remaining = session.expireTick - player.level().getGameTime();
         if (remaining <= 0L) {
+            // 2026-10-29 用户裁决 D1：forceFirst 不再有闸门拒绝分支 ⇒ 到点必定 remove + Close + trigger，
+            // 不会出现「remaining <= 0 却 return、会话仍在」的悬挂态。
             forceFirst(player, session, "timeout");
             return;
         }

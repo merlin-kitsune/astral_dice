@@ -13,10 +13,10 @@ import net.minecraft.world.item.trading.MerchantOffer;
 import net.minecraft.world.item.trading.MerchantOffers;
 
 /**
- * 绿宝石骰子交易能力(1.20.1):佩戴绿宝石骰子时,村民交易中的绿宝石费用改为星币支付,并享受 20% 折扣。
+ * 绿宝石骰子交易能力(1.20.1):佩戴绿宝石骰子时,村民交易中的绿宝石费用按 1:1 改为星币支付(等值替换)。
  *
  * <p>实现方式:在村民交易的关键路径(发送报价 / 报价匹配 / 自动放入 / 成交)上,用 {@link #CONTEXT}
- * 线程局部变量携带当前交易玩家;{@code MerchantOfferMixin} 在上下文中把绿宝石费用替换为星币并打折。
+ * 线程局部变量携带当前交易玩家;{@code MerchantOfferMixin} 在上下文中把绿宝石费用替换为星币(1:1)。
  */
 public final class EmeraldDiceTrade {
 
@@ -61,19 +61,14 @@ public final class EmeraldDiceTrade {
         return stack != null && !stack.isEmpty() && stack.is(Items.EMERALD);
     }
 
-    /** 绿宝石费用 → 星币费用(1:1),数量按 20% 折扣(至少 1)。非绿宝石费用原样返回。 */
+    /** 绿宝石费用 → 星币费用(1:1),数量保持不变(至少 1)。非绿宝石费用原样返回。 */
     public static ItemStack transform(ItemStack stack) {
         if (!isEmerald(stack)) return stack;
-        return new ItemStack(ModItems.STAR_COIN.get(), discount(stack.getCount()));
-    }
-
-    /** 20% 折扣(向下取整,至少 1)。 */
-    public static int discount(int count) {
-        return Math.max(1, (int) Math.floor(count * 0.8));
+        return new ItemStack(ModItems.STAR_COIN.get(), Math.max(1, stack.getCount()));
     }
 
     /**
-     * 为「发送给客户端的报价」构造一份费用已替换的副本(星币费用 + 20% 折扣)。
+     * 为「发送给客户端的报价」构造一份费用已替换的副本(星币费用,1:1)。
      *
      * <p>为什么必须改数据而不是只改取值:1.20.1 的数据包({@code ClientboundMerchantOffersPacket})
      * 直接持有村民本体的报价列表,而网络编码被投递到 Netty 事件循环后才执行(见 {@code Connection.sendPacket}
@@ -145,7 +140,7 @@ public final class EmeraldDiceTrade {
      * 按交易玩家过滤报价列表：佩戴绿宝石骰子时把「绿宝石 → 星币」兑换条目剔除。
      *
      * <p>为什么必须过滤：报价表是**村民级共享**的，而 MerchantOfferMixin 会把该玩家看到的绿宝石费用
-     * 换成星币并打折 —— 兑换条目留着就变成「用星币买星币」，可以凭空刷币。
+     * 换成星币(1:1) —— 兑换条目留着就退化成「用星币买星币」的空循环，仍应剔除。
      *
      * <p>返回值语义：null = 不需要过滤（调用方保留原列表，零行为差异）；否则返回一个**只包住原报价实例**
      * 的新列表（禁止深拷贝 —— 拷贝会脱离 maxUses/demand 的共享状态；深拷贝只由发包时的

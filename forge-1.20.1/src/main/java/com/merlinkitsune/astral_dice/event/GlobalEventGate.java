@@ -22,9 +22,10 @@ import java.util.UUID;
  * <p>语义：① 上一个事件仍在进行 ⇒ 拒绝；② 事件结束后再过 {@link #GAP_TICKS}t（1 秒）才允许下一个；
  * ③ 「进行中 + 结束后 1 秒」整段窗口都算不可开新事件。
  *
- * <p>落点：由 {@link AstralEventDispatcher} 在<b>事件卡使用入口</b>（{@code ITEM_USE} /
- * {@code ACTIVE_SKILL}）统一拦一次 —— 不在每个事件效果里各拦一次。击杀驱动的
- * {@code INVESTIGATION_KILL} 与外部 {@code CUSTOM} 不占用也不受此闸门约束。
+ * <p>落点：由 {@link AstralEventDispatcher} 在<b>事件卡使用入口</b>（{@code ITEM_USE}）统一拦一次 ——
+ * 不在每个事件效果里各拦一次。闸门只拦 {@code ITEM_USE}；{@code ACTIVE_SKILL}（大侦探）**不占用也不受约束**
+ * （2026-10-29 用户裁决 D1）。击杀驱动的 {@code INVESTIGATION_KILL} 与外部 {@code CUSTOM} 同样不占用、
+ * 也不受此闸门约束。
  *
  * <p>状态载体：静态字段（服务端全局单例），game time 口径来自 {@code player.serverLevel().getGameTime()}；
  * {@code ServerStoppingEvent} 时整体清空，避免换存档 / 重进后残留时间戳误锁。
