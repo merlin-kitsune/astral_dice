@@ -1118,9 +1118,20 @@ public class DiceCombatEvents {
 
         // 生物武器附魔:按原版 Mob#doHurtTarget —— f = modifyDamage(level, getWeaponItem(), target, source, f)
         // (**替换式**:返回的已是「属性值 + 附魔」的合成值,而非增量)。
-        double mobAttack = com.merlinkitsune.starengine.combat.TargetBattleStats.baseAttack(mob)
-                + enchantedMobAttack(mob, target, source)
-                + mobRoll;
+        // C1/C2 守卫(2026-10-29 骰战崩溃修复):生物没有 ATTACK_DAMAGE 属性时,原版 Mob#doHurtTarget 那条读取路径对它无意义
+        // —— 它的伤害来自脚本固定值(暮色九头蛇 HydraHeadContainer 直接 player.hurt(...))。此时用**本击的原版伤害**当攻击力代理。
+        // 代理口径(按源码核实,勿凭记忆):LivingEntity#hurt 在 :1152 用 **hurt() 的入参**构造 DamageContainer.originalDamage;
+        //   护甲减免(:1787)、抗性+保护减免(:1788)只写进 newDamage,LivingDamageEvent.Pre 在 :1789 才派发。
+        //   ⇒ event.getOriginalDamage() 是**尚未过护甲/抗性/保护**的攻击侧原值 ⇒ 下方 magicAbsorbFactor 必须**保留**
+        //   (抗性/保护恰好生效一次);若改用 getNewDamage() 当代理,护甲会被 playerDefense 二次计入 ——
+        //   正是 2026-09-26 裁决① 明令禁止的结构性缺陷。
+        AttributeInstance mobAttackAttr = mob.getAttribute(Attributes.ATTACK_DAMAGE);
+        boolean attrless = mobAttackAttr == null;
+        double attackPoints = attrless
+                ? (double) event.getOriginalDamage()
+                : (double) com.merlinkitsune.starengine.combat.TargetBattleStats.baseAttack(mob)
+                        + enchantedMobAttack(mob, target, source);
+        double mobAttack = attackPoints + mobRoll;
         double playerDefense = com.merlinkitsune.starengine.combat.CombatFormula.playerDefense(
                 com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.effectiveArmorPoints(target), target.getAttributeValue(Attributes.ARMOR_TOUGHNESS))
                 + playerRoll + defenseCardSum;
@@ -1129,6 +1140,9 @@ public class DiceCombatEvents {
                 .resolve(mobAttack, playerDefense);
         // 受击方(玩家)「抗性提升 + 保护附魔」乘算因子 —— 与「玩家→生物」路径**对称**应用
         // (2026-09-26 裁决①:两条路径必须用同一口径,不得一边丢弃、一边泄漏)。
+        // C2(2026-10-29 崩溃修复)定论:attrless 分支**同样要过这一乘**。代理值取的是 getOriginalDamage()
+        //   (未过护甲/抗性/保护的原值),而非 getNewDamage();若在此跳过,抗性/保护对本击是 0 次而非 1 次
+        //   = 完全不生效,属伤害机制破坏。抗性/保护在这一次乘算里恰好生效一次。
         finalDmg *= com.merlinkitsune.starengine.combat.VanillaMitigation.magicAbsorbFactor(
                 resistanceAmplifierOf(target), protectionPointsOf(target, source));
         // A6(2026-10-27 近战审计):生物近战路径漏了「目标身上有标记 ⇒ +1」 —— 判定与玩家路径同口径
@@ -1222,7 +1236,15 @@ public class DiceCombatEvents {
      * </pre>
      */
     private static double enchantedMobAttack(Mob mob, Entity target, DamageSource source) {
-        float base = (float) mob.getAttributeValue(Attributes.ATTACK_DAMAGE);
+        // 无 ATTACK_DAMAGE 属性的生物（如暮色九头蛇：伤害由 HydraHeadContainer 的脚本固定值直接出招）
+        // ⇒ 属性项按 0 计；外层 resolveMobMeleeAttack 已改走「原版伤害代理」（C2），正常不会走到这里。
+        //    源码依据：1.21.1 AttributeMap#getValue(:64-67) 在实例缺失时回落 AttributeSupplier#getValue(:26-28)，
+        //    后者查不到属性即抛 IllegalArgumentException(:19-21) —— 正是本次服务端崩溃的来源。
+        AttributeInstance mobAttackAttr = mob.getAttribute(Attributes.ATTACK_DAMAGE);
+        if (mobAttackAttr == null) {
+            return 0.0;
+        }
+        float base = (float) mobAttackAttr.getValue();
         if (!(mob.level() instanceof ServerLevel level)) {
             return base;
         }

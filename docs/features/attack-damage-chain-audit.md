@@ -34,6 +34,7 @@
 | N24 | P3 | 双线 | 惩罚伤害跳字组别 `SPELL`，语义上不是法术 | 登记（可选 `CARD_COST` 配色） | — |
 | N25 | P3 | P1 两线 | `neoforge-26.1.2` / `fabric-1.20.1` 的 `bypasses_cooldown.json` 未含 `dice_damage`（四线一致性欠账） | 登记（P1 不碰） | — |
 | N26 | P3 | 双线 | 仍无归因的伤害点：电磁炮雷击真伤、厄运 `true_damage`、大餐对亡灵 `magic()`、Sherry 兜底 `generic()` | 登记（部分已文档化） | — |
+| N27 | P1 | 四线（P0 双线 + P1 两线） | 无 `minecraft:generic.attack_damage` 属性的生物（如暮色九头蛇）近战命中玩家 ⇒ 旧代码无条件 `mob.getAttributeValue(...)` 抛 `IllegalArgumentException`，服务端 `Ticking entity` 整崩 | **已修**（C1 空值早退 + C2 本击原版伤害代理；四线代理口径按平台差异） | G |
 
 ## 1. 判据基石：两线伤害派发顺序不一样
 
@@ -560,3 +561,150 @@ MELEE-06 把 +5 限定骰战后，两条既有实机用例的测量段失效（�
 4. **N14「AOE 命中按目标逐个计攻击行为」**：语义已由 §7.8 落地，但未写专项判据。
 
 收尾：`mt.ps1 --version 1.21.1 --phase stop --force --purge-saves` ⇒ `MT_CLEANUP_SAVES: PURGED 1` / `MT_CLEANUP_RESULT: OK` / `MT_STOP: OK (1s)`；`Get-CimInstance Win32_Process java.exe` 无输出（无客户端 / daemon 残留）。
+
+### 7.12 attrless 生物近战崩溃修复（N27，C1 + C2，2026-10-29，四线：P0 双线 + P1 两线）
+
+> 本节按批次登记（同 §7.5 / §7.11 体例）；§3 的 N1–N26 逐项证据节未改动。
+
+**起因（玩家实测，本仓无原始日志）**：`rc.6` 服务端整崩，`Description: Ticking entity`。栈摘要如下 —— **栈本身未取证到原始日志**（本仓 `crash-reports/` 不存在；全仓 `*.log` / `*.txt` / `*.md` 文本检索 `Can't find attribute` 无命中），此处只作索引：
+
+```
+java.lang.IllegalArgumentException: Can't find attribute minecraft:generic.attack_damage
+  at AttributeSupplier.getAttributeInstance / LivingEntity.getAttributeValue
+  at DiceCombatEvents.enchantedMobAttack(DiceCombatEvents.java:1225)
+  at DiceCombatEvents.resolveMobMeleeAttack(...)
+  at DiceCombatEvents.onLivingDamagePre(...)
+  at ServerPlayer.hurt  <- twilightforest HydraHeadContainer.executeAttacks(:690)
+实体: twilightforest:hydra
+```
+
+栈里的 `DiceCombatEvents.java:1225` 与 `git show HEAD:neoforge-1.21.1/src/main/java/com/merlinkitsune/astral_dice/combat/DiceCombatEvents.java` 的旧读点**逐行吻合**（见下表），可作该栈的一次交叉印证。
+
+**触发条件**：任意「近战命中玩家、但属性表里没有 `minecraft:generic.attack_damage`」的生物命中即崩。暮色森林九头蛇属此类：它的伤害由 `HydraHeadContainer` 用**脚本固定值直接 `player.hurt(...)`** 出招，从不读属性表，因此 `AttributeMap` 里没有该属性的实例。
+
+**根因（源码已取证）**：生物近战路径无条件读属性值。1.21.1 侧链路 = `combat/DiceCombatEvents.java:1225`（HEAD 旧文本）`mob.getAttributeValue(Attributes.ATTACK_DAMAGE)` → `AttributeMap#getValue`（`AttributeMap.java:64-67`，实例缺失即回落 `supplier`）→ `AttributeSupplier#getValue`（`:26-28`）→ `getAttributeInstance`（`:19-21`）抛 `IllegalArgumentException("Can't find attribute " + attribute.getRegisteredName())`。1.20.1 同形：`AttributeMap.java:77-80` / `AttributeSupplier.java:27-28` / `:20-21`。26.1.2：`AttributeMap.java:58-61` / `AttributeSupplier.java:26-28` / `:19-20`。（三份均为 sources jar 实读；`AttributeSupplier#createInstance` 对缺失属性返回 `null` 而不抛 —— 这正是 C1 能用 `getAttribute(...)` 判空的原因。）
+
+**旧文本崩溃读点（`git show HEAD:` 实读，四线）**：
+
+| 线 | `文件:行号` | 旧形态 |
+|---|---|---|
+| `neoforge-1.21.1` | `combat/DiceCombatEvents.java:1225` | `float base = (float) mob.getAttributeValue(Attributes.ATTACK_DAMAGE);`（`enchantedMobAttack` 内） |
+| `forge-1.20.1` | `:1434` | `+ mob.getAttributeValue(Attributes.ATTACK_DAMAGE)`（`resolveMobMeleeAttack` 内联） |
+| `neoforge-26.1.2` | `:1118` | `resolveMobMeleeAttack` 内联读 |
+| `fabric-1.20.1` | `:1017` | `resolveMobMeleeAttack` 内联读 |
+
+后两行取自 `verify_dice_combat_attrless_guard_p1.py` 的反向对照断言 08 实跑输出；前两行取自同一 HEAD 快照的文本检索。
+
+**修复口径**：**C1（绝不崩）** = 先取可空 `AttributeInstance`，空则早退（或贡献 0），崩溃读点消失；**C2（不破坏伤害机制）** = 无属性生物改用**本击的原版伤害**当攻击力代理，其余公式项（`playerDefense`、`mobRoll` / `playerRoll`、`DiceBattleResolver.resolve`、标记 +1、`victimFactor`、诅咒倍率）一律不动。四线代理**不是**同一个量，逐线取证如下：
+
+| # | 线 | C1 落点 | C2 代理值 | `magicAbsorbFactor` | 已知限制 |
+|---|---|---|---|---|---|
+| 1 | `neoforge-1.21.1` | `combat/DiceCombatEvents.java:1128-1129`（`getAttribute` + `attrless` 旗标）、`:1243-1244`（`enchantedMobAttack` 内 `getAttribute` + `if (… == null) return 0.0`） | `event.getOriginalDamage()`（`:1130-1131`） | **保留**（`:1146`，无条件乘） | — |
+| 2 | `neoforge-26.1.2` | `:1073-1074`、`:1137-1138` | `event.getOriginalDamage()`（`:1076`） | **保留**（`:1092`） | — |
+| 3 | `forge-1.20.1` | `:1443-1444`（内联；`resolveMobMeleeAttack` 返回 `void`，无 `return 0.0` 可写 ⇒ 用 null 派生旗标 + 受旗标保护的解引用） | `event.getAmount()`（`:1445-1446`） | **跳过**（`if (!attrless)`，`:1461-1462`） | 对带伤害吸收 / 黄心的玩家，代理值偏低一档 |
+| 4 | `fabric-1.20.1` | `:1032-1033` | `event.getAmount() / max(victimFactor, 1.0)`（除零守卫 `:1041`、除法 `:1042`） | **保留**（`:1060`） | 依赖「`victimFactor` 先于 `actuallyHurt` 作用」的既有顺序 |
+
+**四线口径为什么不同 —— 派发点差异（逐条源码取证）**：
+
+1. `neoforge-1.21.1`：`LivingEntity#hurt` 在 `LivingEntity.java:1152` 用 **`hurt()` 的入参**构造 `new DamageContainer(source, amount)`；护甲减免 `:1787`、抗性 + 保护 `:1788` 只改写 `newDamage`；`LivingDamageEvent.Pre` 到 `:1789` 才派发；吸收扣减 `:1790-1792` 在其之后。⇒ `getOriginalDamage()` = **未经护甲 / 抗性 / 保护**的攻击侧原值。
+2. `neoforge-26.1.2`：同序，入口换成 `hurtServer`。`LivingEntity.java:1204`（`DamageContainer(source, damage)`）→ `:1988`（护甲）→ `:1989`（抗性 + 保护）→ `:1992`（`onLivingDamagePre`）→ `:2001`（吸收）。
+3. `forge-1.20.1`：`ForgeHooks#onLivingDamage` 在 `actuallyHurt` 的 `:1680` 派发，位置在护甲 `:1667` → 抗性 + 保护 `:1668` → 吸收扣减 `:1669-1670` **之后**；且 mob→player 实际走 `Player#actuallyHurt` 覆盖实现（`Player.java:940`；`ForgeHooks.onLivingHurt` `:942`、护甲/魔法 `:944-945`、扣吸收 `:946-947`、`onLivingDamage` `:948`，该实现**不再**第二次扣吸收）。⇒ `getAmount()` = **三步都已过**的终值。
+4. `fabric-1.20.1`：钩子载荷来自本仓自写兼容事件 `platform/event/entity/living/LivingDamageEvent.java:33`，由 `platform/PuzzlesBridges.java:96` 从 Puzzles Lib `LivingHurtCallback` 桥出；该回调的注入点是 `LivingEntity#actuallyHurt` 的 **HEAD**（同文件 `:40` 的 javadoc 表格行、`mixin/bridge/LivingHurtBridgeMixin.java:17-18` 的实测注释、`:44` 的注入目标）⇒ 载荷是**减免前**的形参（`PuzzlesBridges.java:57-58` 明写「拿到的 `MutableFloat` 是 `actuallyHurt` 的入参」）。但同一载荷在此之前已被 `event/EnderDiceHandler.java:147`（`@SubscribeEvent(priority = EventPriority.HIGH)`）在 `:152-153` 乘过 `applyVictimDamageModifiers(...)`；`platform/event/EventPriority.java:12-16` 的枚举序 `HIGHEST, HIGH, NORMAL, LOW, LOWEST` 配 `platform/event/LoaderBus.java:236` 的 `out.sort(...)` ⇒ **HIGH 先于 NORMAL**，而骰战派发点 `combat/DiceCombatEvents.java:221` 是 NORMAL（`:228-231` 把该倍率固化为 `victimFactor`、`:280` 传入 `resolveMobMeleeAttack`）⇒ 读到的是**已乘过倍率**的值，故代理要除回去（`:1041-1042`），随后 `:1062` 再乘一次 `victimFactor`、`:1063` `event.setAmount(finalDmg)` 写回。
+
+**实机验证（2026-10-30，`neoforge-1.21.1` 单线，测试台 `scripts/test/mt.ps1`）**：本批把 C1 + C2 搬到真机跑通，范围内**只有** `neoforge-1.21.1`（另三线见「未做」）。跑法为阶段化测试台的 `--phase build / env / launch / cases / report / stop`（含 `--purge-saves`）。用例是临时件 `scripts/test/cases/TMP-ATTRLESS-HYDRA-1.21.1.json`，**未入库**（`git status` 为 `??`；它依赖暮色森林第三方 jar，不进仓库）。
+
+**踩点手法（不需要装备骰子）**：不靠生物 AI 真打，用原版命令直接造「生物近战命中玩家」：
+
+```
+/damage @p 48 minecraft:mob_attack by @e[tag=tfhydra,limit=1]
+```
+
+原理：`DamageSource(Holder<DamageType>, @Nullable Entity entity)` 委托 `this(type, entity, entity)`（`net/minecraft/world/damagesource/DamageSource.java:52-54`）⇒ `getDirectEntity() == getEntity()`，因此绕开测试台对野怪的 NoAI 硬闸门也能命中 `resolveMobMeleeAttack`——该函数入口第一句就是 `if (source.getDirectEntity() != mob) return;`（`combat/DiceCombatEvents.java:1096`）。**不需要装备骰子**：`hasDice(target)`（`:1099`）只决定是否对骰，而 attrless 分支（`:1129-1131`）写在 `if (opposed)` 块**之外**，无条件执行。
+
+**实测读数（原样）**：
+
+| 组 | 实体 | `getAttribute(ATTACK_DAMAGE)` | 血量轨迹 | Δhp |
+|---|---|---|---|---|
+| 实验组 | `twilightforest:hydra` | `null`（attrless） | 200 → 154 | **Δhp_attrless = 46** |
+| 对照组 | `minecraft:zombie` | `3` | 200 → 195 | **Δhp_normal = 5** |
+
+判据：`40 ≤ Δhp_attrless ≤ 48` 且 `1 ≤ Δhp_normal ≤ 12`。两组输入同为 48 而结果差 ~9 倍 ⇒ 代理口径**没有**波及常规生物（僵尸仍走属性口径「敌对基础 4 + 属性 3 + 0 骰点 − playerDefense 2」≈ 5；若它也读到 ~46，说明口径写错，必须判 FAIL）。
+
+机器行（`--phase cases --case` / `--phase report` / `--phase stop --purge-saves` 的 stdout 原样）：
+
+- `MT_CASE_RESULT: TMP-ATTRLESS-HYDRA-1.21.1 = PASS`
+- `MT_ASSERT_CRASH: PASS — 无 crash-reports 目录`
+- `MT_ASSERT_ABSENT: PASS` ×2（`Can't find attribute`、`AttributeNotFound|NullPointerException.*attackDamage`）
+- `MT_ASSERT_STATE: PASS` ×13
+- `MT_STOP: OK (1s) — 收停完成，无本流程残留进程`；`MT_CLEANUP_SAVES: PURGED 1`
+
+用例 JSON 的 `asserts` 共 16 项（13 state + 1 crash + 2 absent，全 PASS；`mt_assert.ps1:1197` 的 `$tag = 'MT_ASSERT_' + $Kind.ToUpperInvariant()` 决定了标记按断言类型分通道，故 state 行是 13 条而不是 16 条）。
+
+**难度变量（代理值天然含难度倍率 —— 必须固定难度做断言）**：`net/minecraft/world/entity/player/Player.java` 的 `hurt(DamageSource, float)`（声明 `:922`）在 `:936` 就执行
+
+```java
+amount = Math.max(0.0F, source.type().scaling().getScalingFunction().scaleDamage(source, this, amount, this.level().getDifficulty()));
+```
+
+这一步在 `:952` 的 `super.hurt(source, amount)` **之前**，也就是早于 `LivingEntity#hurt` 里构造 `DamageContainer`（`LivingEntity.java:1152`）⇒ `getOriginalDamage()`（javadoc 在 `DamageContainer.java:70`：「the value passed into `LivingEntity#hurt(DamageSource, float)` before any modifications are made」）拿到的是**已按难度缩放**的值，不是命令里的字面量。默认缩放函数见 `IScalingFunction.java:25-35`：`EASY -> min(amount/2+1, amount)`、`NORMAL -> amount`、`HARD -> amount*1.5`、`PEACEFUL -> 0`。
+
+同一台机、同一输入序列的实测扫描（`/damage … 48 …` 换成不同输入值）：
+
+| 难度 | 输入 48 进 `getOriginalDamage()` 的值 | 实测 Δhp（扫描点 10 / 20 / 48 / 100） |
+|---|---|---|
+| EASY（dev 默认） | 25 | 10→4、20→9、48→23、100→49 |
+| NORMAL（本用例固定） | 48 | 10→8、48→46、100→98 |
+| 对照组僵尸 | 不受影响 | 三档难度下恒为 5 |
+
+EASY 逐点吻合 `amount/2+1 − playerDefense`（48 进事件时已是 25，25 − 2 = 23）；对照组恒 5 是因为它走属性口径、不吃本击伤害。⇒ **代理值天然含难度倍率，断言与回归必须在固定难度下做**（本用例固定 `/difficulty normal`）。这不是「修复只在 normal 下成立」——EASY / HARD 下代理同样有效，只是数值按缩放后的量走。
+
+**数值对账（46 的来历；此前推的 44 是估算误差）**：本机该状态下实测 `playerDefense = 2`（`AP_HUD def=2:atk=1:armor=0`），按本文件注释的公式（`combat/DiceCombatEvents.java:1086`：「最终伤害 = max(1, 攻击点 ×15%, 攻击点 − 防御力)」）⇒ `max(0.15×48, 48−2) × magicAbsorbFactor(0,0)=1.0 = 46`，与实测一致。此前文档 / 沟通里的 **44** 是把 `playerDefense` 估成 4 的结果 —— 属推算误差，**不是**代码差异。
+
+**两条必须如实记的弱项**：
+
+1. **`MT_REPORT: OK` 只代表 report 阶段命令成功**，不代表本轮通过：报告文件里的**汇总结论是 FAIL**（`1.21.1: ❌ FAIL（未通过）`），因为它按本轮世代（`20261020-130057`）聚合了 71 条历史批次条目，其中 `CC-*`（9 条）、`LINGLING-1.21.1`、`DEBT-*`（6 条）等旧条目仍带 FAIL / ERROR（23 FAIL + 1 ERROR）。本条用例在报告条目表里的结果是 **`PASS`**（`scripts/test/reports/20260926-230116/1.21.1/report.md`，测试台产物、gitignored）。
+2. **`MT_NOAI_AUDIT: PASS(无正面对照)` 是弱证据**：`heartbeats=17`、`mismatch=0` 看起来全绿，但本轮心跳里 `mobs` 全为 0（报告原文「`mobs>0` 有 0 行」）⇒ 它只证明收场后现场干净，**没有**对「带 AI 实体在场时的失配」构成正面对照。
+
+**测试台环境备注**：本地 `scripts/test/mt.conf`（gitignored，`.gitignore:55`）补了 AutoJS 端点三键；`mt.ps1` **没有** `--phase preflight`（该阶段只在全流程内由独立脚本 `scripts/test/mt_preflight.ps1` 执行，`Invoke-MtRunPhase` 对未知阶段直接 `MT_EXIT_ERROR`）；`--phase report` 与纯 `--case` 形式都需要 `--allow-auto` 才能过批量编排闸门。
+
+**判据出处（javadoc 原文，非记忆）**：
+
+- `net.neoforged.neoforge.common.damagesource.DamageContainer` 的 `getOriginalDamage()` 在 1.21.1（`:70`）与 26.1.2（`:73`）是同一句：`{@return the value passed into {@link LivingEntity#hurt(DamageSource, float)} before any modifications are made}`；同类的「The Damage Sequence」有序表（1.21.1 `:24-37` / 26.1.2 `:21-39`）明写 `Pre` 在 armor / magic / mob_effect 捕获之后、absorption 捕获之前。
+- `LivingDamageEvent.Pre` 类注释（1.21.1 `LivingDamageEvent.java:34-47`、26.1.2 `:34-47` 逐字相同）：「At this point armor, and potion modifiers have already been applied to the damage value and the entity. Absorption modifiers are handled after this event.」
+- forge：`LivingDamageEvent.java:13-31`，`:15` 原文「At this point armor, potion and absorption modifiers have already been applied to damage - this is FINAL value.」
+
+sources jar 清单（逐行实读，文件名省略版本内哈希）：`neoforge-1.21.1/build/moddev/artifacts/neoforge-21.1.235-sources.jar`、`forge-1.20.1/build/moddev/artifacts/forge-1.20.1-47.4.10-sources.jar`、`neoforge-26.1.2/build/moddev/artifacts/minecraft-patched-26.1.2.109-sources.jar`（NeoForge 本体类取自 `neoforge-26.1.2.109-sources.jar`，Gradle 模块缓存）。
+
+**与 2026-09-26 裁决① 的关系 —— 为什么不违反**：
+
+裁决① 的落地口径 = 「**移除** `getNewDamage()` 加项、改用 pre-mitigation 值 + 把保护/抗性改成乘算因子」，见 `docs/combat-vanilla-modifier-integration-plan.md:31`（§0.1 表首行「`getNewDamage()` 去留 → 采纳方案 A（移除）」）与 `:328`（§3.5 方案 A 行，结论「唯一数学正确的方案」）；代码里的引用点：1.21.1 `combat/DiceCombatEvents.java:805` / `:1087` / `:1127` / `:1142`，及另三线的同构注释（forge `:1112` / `:1399` / `:1458`、26.1.2 `:765` / `:1030` / `:1087`、fabric `:722` / `:983` / `:1056`）。
+
+本批**不违反**，因为每条线的代理值与它自己的派发点严格配对，抗性 / 保护在每条线上都恰好生效**一次**：
+
+- neo 两线取 `getOriginalDamage()` = **攻击侧原值**（没进过护甲 / 抗性 / 保护）⇒ `:1146` / `:1092` 的乘算把它们补上，恰好一次；
+- forge 取 `getAmount()` = **已含三步减免的终值** ⇒ `if (!attrless)` 跳过重乘，也恰好一次；
+- fabric 取 `actuallyHurt` 形参（减免前），扣掉已被乘过的 `victimFactor` 后，抗性 / 保护由 `:1060` 补一次。
+
+裁决① 禁止的是**另一件事**：拿 **`getNewDamage()`** 当代理。那会让护甲先折进代理值，再经 `playerDefense` 二次计入 —— 结构性双计。本批四线**没有一条**用 `getNewDamage()` 当代理，P0 门禁的断言 05 / 06（代理口径）与 07 / 08（配对，恰好一次）正是钉这一条。
+
+★ 由此派生一条维护约束：若把 fabric 的 `EnderDiceHandler` 从 `LivingHurtEvent`(HIGH) 改挂到 `LivingDamageEvent`，载荷就不再含 `victimFactor`，`:1041-1042` 的除法必须同步去掉，否则会少乘一次（反向的二次杠杆）。
+
+**守门（本轮实跑，两脚本均 `RESULT: PASS`）**：
+
+| 脚本 | 断言条数 | 覆盖点 | 对 `git show HEAD:` 旧文本 |
+|---|---|---|---|
+| `scripts/verify/verify_dice_combat_attrless_guard.py` | **10 条** | 崩溃读点消失 ×2 / neo `enchantedMobAttack` 空值早退 / forge null 派生旗标 + 受旗标保护的解引用 / 代理口径 ×2（PRE、POST）/ 配对「恰好一次」×2 / `magicAbsorbFactor` 仍在 ×2 | 同一 HEAD 快照 `--root` 跑：**8 / 10 判红**（`RESULT: FAIL`），旧读点命中 `neoforge-1.21.1/…/DiceCombatEvents.java:1225`、`forge-1.20.1/…/DiceCombatEvents.java:1434` |
+| `scripts/verify/verify_dice_combat_attrless_guard_p1.py` | **16 条硬断言**（每线 01–06 + 04b = 7 条，另 08 反向对照 1 条；09 行尾为 `WARN` 不计入判定） | 崩溃读点消失 / `attrless` 旗标 / 代理值（neo `getOriginalDamage`、fabric 除法带 `victimFactor > 0.0` 守卫）/ `magicAbsorbFactor` 未被 attrless 短路 / 早退先于任何取值 / 玩家侧读点未误伤 / 代码内判据注释锚点 | 断言 08 即反向对照，实跑 PASS ⇒ HEAD 文本确实含崩溃读点（26.1.2 `:1118`、fabric `:1017`）且无 `attrless` |
+
+两脚本都只做**语义 / 相对位置**断言（匹配前先剔除注释，避免旧写法藏在注释里骗过断言），不钉绝对行号。
+
+**已知限制 / 登记**：
+
+1. **forge 线**：对带伤害吸收（黄心）的玩家，`getAmount()` 已扣过吸收 ⇒ 代理值偏低一档；1.20.1 该钩子不暴露护甲前原值，没有「折回攻击侧」的可用量 —— 属平台限制，不是可修的口径选择。
+2. **fabric 线**：正确性依赖「`victimFactor` 在 `actuallyHurt` 之前乘入」这一既有顺序（见上），改挂事件必须同步改除法。
+3. 四线中**仅 `neoforge-1.21.1` 已实机验证**（九头蛇真机复现，2026-10-30，见上「实机验证」段）；其余三线未实机。本条按「**已修**（源码取证 + 守门全绿 + 1.21.1 单线实机）」登记，**不**为其余三线按「已实测」登记。
+
+**未做**：
+
+1. **实机验证**：**已做**，但仅 `neoforge-1.21.1` 单线（2026-10-30，见上「实机验证」段）；`forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1` 三线仍未实机 —— 口径差异见「修复口径」表，风险：forge 走 `getAmount()` 无代理原值、fabric 依赖 `victimFactor` 顺序。
+2. **构建**：四线 `compileJava` 已真跑通（`--no-build-cache`，`4 executed`，`BUILD SUCCESSFUL`；四个 `DiceCombatEvents.class` 尺寸与改前完全一致 51491 / 62843 / 56924 / 51567 ⇒ 行尾归一与新增分支零语义影响，89 条警告全为过时 API / 未检查操作、无 error）；但**没有**跑 `check`、全量 `build` 与 `jar` 产物，也没有跑另外三线实机。`scripts/verify/*.py` 仍是文本与语义静态判据，**不等于**编译通过。

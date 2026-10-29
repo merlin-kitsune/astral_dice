@@ -32,6 +32,7 @@ import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
@@ -980,9 +981,15 @@ public class DiceCombatEvents {
     // 防御力 = 玩家防御力公式 + 玩家防御骰点 + 战斗牌点数
     // 最终伤害 = max(1, 攻击点 ×15%, 攻击点 − 防御力);随后由 ChipDamageHandler(@LOWEST)做固定值减伤(可扣到 0)。
     // ⚠️ 2026-09-26 裁决①(方案 A):**移除**原先作为加项的 event.getAmount()。
-    //    1.20.1 的 LivingDamageEvent 在 actuallyHurt 内、护甲 → 抗性 → 保护三步减免**之后**派发 ⇒
-    //    该值当加项用等于①护甲被计入两次、②抗性/保护经它泄漏进攻击项 —— 属结构性缺陷,非取舍。
+    //    (2026-10-29 定位订正:本钩子 = Puzzles Lib LivingHurtCallback,@Inject 于
+    //     LivingEntity/Player#actuallyHurt 的 **HEAD**,载荷是实际进入 actuallyHurt 的形参 ——
+    //     此刻护甲/抗性/保护**尚未**应用(1.20.1 Player#actuallyHurt 体内其后才调
+    //     getDamageAfterArmorAbsorb / getDamageAfterMagicAbsorb);旧注释「三步减免之后」不成立。)
+    //    该值当**加项**用仍属结构缺陷:它是「整击伤害」而非「攻击力属性」,与 baseAttack + 属性值
+    //    重复计权,并把本击排除在骰战公式之外 —— 故裁决①本身不受上述订正影响。
     //    移除后生物攻击点回归「初始 + 属性值(含武器附魔)」的干净口径,抗性/保护改由受击方乘算因子表达。
+    //    例外:属性表无 ATTACK_DAMAGE 的生物(attrless)没有属性值可用,改用同一原版伤害当**代理**
+    //    (见下 attrless 分支);代理值同样未经三步减免 ⇒ magicAbsorbFactor 与 victimFactor 照旧各乘一次。
     private static void resolveMobMeleeAttack(Mob mob, Player target, LivingDamageEvent event,
                                               DamageSource source, double victimFactor) {
         if (mob.level().isClientSide() || target.level().isClientSide()) return;
@@ -1013,10 +1020,32 @@ public class DiceCombatEvents {
 
         // 生物武器附魔:按原版 Mob#doHurtTarget —— f += getDamageBonus(getMainHandItem(), 目标 MobType)
         // (1.20.1 是**绝对量**加法,与本侧玩家路径同款)。
-        double mobAttack = com.merlinkitsune.starengine.combat.TargetBattleStats.baseAttack(mob)
-                + mob.getAttributeValue(Attributes.ATTACK_DAMAGE)
-                + enchantDamageBonus(mob, target)
-                + mobRoll;
+        // ⚠️ 2026-10-29 修复(rc.6 崩溃 C1+C2):生物属性表里**可能没有** ATTACK_DAMAGE(如暮色九头蛇:
+        //    伤害由 twilightforest HydraHeadContainer 用固定值直接 player.hurt(...) 给出)。
+        //    旧写法 mob.getAttributeValue(ATTACK_DAMAGE) 落到 AttributeSupplier(1.20.1 版同处
+        //    "Can't find attribute ...")抛 IllegalArgumentException ⇒ 服务端 Ticking entity 整崩。
+        //    故先取 AttributeInstance 判空(AttributeSupplier#createInstance 对缺失属性返回 null,不抛):
+        //      · 有属性 ⇒ 原口径不变「初始攻击力 + 属性值 + 附魔加伤」;
+        //      · 无属性 ⇒ 用**本击原版伤害**当攻击力代理。
+        //    其余公式项(playerDefense、mobRoll/playerRoll、victimFactor、DiceBattleResolver.resolve、
+        //    后续跳数字与防御牌耐久)一律不动。
+        AttributeInstance mobAttackAttr = mob.getAttribute(Attributes.ATTACK_DAMAGE);
+        boolean attrless = mobAttackAttr == null;
+        double attackPoints;
+        if (attrless) {
+            // 代理值口径:本击原版伤害(**未经**护甲 → 抗性 → 保护三步减免)。
+            //   本钩子载荷来自 Puzzles Lib LivingHurtCallback(@Inject actuallyHurt HEAD),即 actuallyHurt
+            //   的形参 —— 护甲(getDamageAfterArmorAbsorb)与抗性/保护(getDamageAfterMagicAbsorb)都在
+            //   方法体内其后才做。但该形参已被 EnderDiceHandler(@HIGH,LivingHurtEvent,派发于 actuallyHurt
+            //   调用点)乘过受击侧倍率 ⇒ 先除回去,使下方 victimFactor 与 magicAbsorbFactor 各只生效一次。
+            double registered = victimFactor > 0.0 ? victimFactor : 1.0;
+            attackPoints = event.getAmount() / registered;
+        } else {
+            attackPoints = com.merlinkitsune.starengine.combat.TargetBattleStats.baseAttack(mob)
+                    + mobAttackAttr.getValue()
+                    + enchantDamageBonus(mob, target);
+        }
+        double mobAttack = attackPoints + mobRoll;
         double playerDefense = com.merlinkitsune.starengine.combat.CombatFormula.playerDefense(
                 target.getArmorValue(), target.getAttributeValue(Attributes.ARMOR_TOUGHNESS))
                 + playerRoll + defenseCardSum;
@@ -1025,6 +1054,9 @@ public class DiceCombatEvents {
                 .resolve(mobAttack, playerDefense);
         // 受击方(玩家)「抗性提升 + 保护附魔」乘算因子 —— 与「玩家→生物」路径**对称**应用
         // (2026-09-26 裁决①:两条路径必须用同一口径,不得一边丢弃、一边泄漏)。
+        // ⚠️ 2026-10-29 补充:无属性分支(attrless)的代理值同样**未经**护甲 → 抗性 → 保护三步减免
+        //    (载荷 = actuallyHurt 形参,护甲/抗性/保护在其后),故此处**不得**按 attrless 跳过 —— 否则
+        //    无属性生物的一击会整段免疫抗性与保护附魔。判据见 scripts/verify/verify_dice_combat_attrless_guard_p1.py。
         finalDmg *= com.merlinkitsune.starengine.combat.VanillaMitigation.magicAbsorbFactor(
                 resistanceAmplifierOf(target), protectionPointsOf(target, source));
         finalDmg *= (float) victimFactor;

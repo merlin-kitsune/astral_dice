@@ -1430,10 +1430,24 @@ public class DiceCombatEvents {
 
         // 生物武器附魔:按原版 Mob#doHurtTarget —— f += getDamageBonus(getMainHandItem(), 目标 MobType)
         // (1.20.1 是**绝对量**加法,与本侧玩家路径同款)。
-        double mobAttack = com.merlinkitsune.starengine.combat.TargetBattleStats.baseAttack(mob)
-                + mob.getAttributeValue(Attributes.ATTACK_DAMAGE)
-                + enchantDamageBonus(mob, target)
-                + mobRoll;
+        // C1/C2 守卫(2026-10-29 骰战崩溃修复):1.20.1 的 AttributeMap#getValue(:77-80) 在本实例缺失时回落
+        //   AttributeSupplier#getValue(:27-28) → getAttributeInstance(:18-25),查不到即抛
+        //   IllegalArgumentException("Can't find attribute ...") —— 与 1.21.1 同症状 ⇒ 无 ATTACK_DAMAGE 的生物
+        //   (暮色九头蛇 HydraHeadContainer 直接 player.hurt(...))近战打玩家必崩服。
+        // 本线**判定依据**(不是照抄 1.21.1):本钩子是 ForgeHooks#onLivingDamage 在 LivingEntity#actuallyHurt(:1680)
+        //   派发的事件,位置在 护甲(:1667 getDamageAfterArmorAbsorb) → 抗性+保护(:1668 getDamageAfterMagicAbsorb)
+        //   → 吸收扣减(:1669-1670) **之后**;LivingDamageEvent 类注释(:14-16)亦写明
+        //   "armor, potion and absorption modifiers have already been applied to damage - this is FINAL value"。
+        //   ⇒ event.getAmount() 是**已过三步**的终值 ⇒ 拿它当攻击力代理时,下方 magicAbsorbFactor 必须**跳过**,
+        //   否则抗性/保护二次减免(1.20.1 该钩子不暴露护甲前原值,没有「折回攻击侧」的可用量)。
+        AttributeInstance mobAttackAttr = mob.getAttribute(Attributes.ATTACK_DAMAGE);
+        boolean attrless = mobAttackAttr == null;
+        double attackPoints = attrless
+                ? (double) event.getAmount()
+                : (double) com.merlinkitsune.starengine.combat.TargetBattleStats.baseAttack(mob)
+                        + mobAttackAttr.getValue()
+                        + enchantDamageBonus(mob, target);
+        double mobAttack = attackPoints + mobRoll;
         double playerDefense = com.merlinkitsune.starengine.combat.CombatFormula.playerDefense(
                 com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.effectiveArmorPoints(target), target.getAttributeValue(Attributes.ARMOR_TOUGHNESS))
                 + playerRoll + defenseCardSum;
@@ -1442,8 +1456,12 @@ public class DiceCombatEvents {
                 .resolve(mobAttack, playerDefense);
         // 受击方(玩家)「抗性提升 + 保护附魔」乘算因子 —— 与「玩家→生物」路径**对称**应用
         // (2026-09-26 裁决①:两条路径必须用同一口径,不得一边丢弃、一边泄漏)。
-        finalDmg *= com.merlinkitsune.starengine.combat.VanillaMitigation.magicAbsorbFactor(
-                resistanceAmplifierOf(target), protectionPointsOf(target, source));
+        // C2(2026-10-29 崩溃修复):attrless 时**跳过** —— 代理值 event.getAmount() 已含抗性/保护(见上方判定依据),
+        //   再乘一次就是二次减免。其余链路(playerDefense/骰点/标记 +1/victimFactor/诅咒倍率)一律不动。
+        if (!attrless) {
+            finalDmg *= com.merlinkitsune.starengine.combat.VanillaMitigation.magicAbsorbFactor(
+                    resistanceAmplifierOf(target), protectionPointsOf(target, source));
+        }
         // A6(2026-10-27 近战审计):生物近战路径漏了「目标身上有标记 ⇒ +1」 —— 判定与玩家路径同口径
         //   (本文件玩家分支的 if (MarkManager.getLevel(target) > 0) finalDmg += 1)。
         //   位置也与玩家路径对齐:**victimFactor 之前**,故这个 +1 同样会被「同一伤害实例」的倍率放大

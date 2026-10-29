@@ -41,6 +41,7 @@ import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.entity.boss.wither.WitherBoss;
@@ -1060,9 +1061,22 @@ public class DiceCombatEvents {
 
         // 生物武器附魔:按原版 Mob#doHurtTarget —— dmg = modifyDamage(level, weaponItem, target, damageSource, dmg)
         // (**替换式**:返回的已是「属性值 + 附魔」的合成值,而非增量)。
-        double mobAttack = com.merlinkitsune.starengine.combat.TargetBattleStats.baseAttack(mob)
-                + enchantedMobAttack(mob, target, source)
-                + mobRoll;
+        // ⚠️ 2026-10-29 修复(rc.6 崩溃 C1+C2):生物属性表里**可能没有** ATTACK_DAMAGE(如暮色九头蛇:
+        //    伤害由 twilightforest HydraHeadContainer 用固定值直接 player.hurt(...) 给出)。
+        //    旧写法 mob.getAttributeValue(ATTACK_DAMAGE) 落到 AttributeSupplier(26.1.2 版 :19
+        //    "Can't find attribute ...")抛 IllegalArgumentException ⇒ 服务端 Ticking entity 整崩。
+        //    故先取 AttributeInstance 判空(AttributeSupplier#createInstance 对缺失属性返回 null,不抛):
+        //      · 有属性 ⇒ 原口径不变「初始攻击力(按目标类别) + 属性值经附魔链」;
+        //      · 无属性 ⇒ 用**本击原版伤害** event.getOriginalDamage() 当攻击力代理。
+        //    其余公式项(playerDefense、mobRoll/playerRoll、victimFactor、DiceBattleResolver.resolve、
+        //    后续跳数字与防御牌耐久)一律不动。
+        AttributeInstance mobAttackAttr = mob.getAttribute(Attributes.ATTACK_DAMAGE);
+        boolean attrless = mobAttackAttr == null;
+        double attackPoints = attrless
+                ? (double) event.getOriginalDamage()
+                : (double) com.merlinkitsune.starengine.combat.TargetBattleStats.baseAttack(mob)
+                        + enchantedMobAttack(mob, target, source);
+        double mobAttack = attackPoints + mobRoll;
         double playerDefense = com.merlinkitsune.starengine.combat.CombatFormula.playerDefense(
                 target.getArmorValue(), target.getAttributeValue(Attributes.ARMOR_TOUGHNESS))
                 + playerRoll + defenseCardSum;
@@ -1071,6 +1085,10 @@ public class DiceCombatEvents {
                 .resolve(mobAttack, playerDefense);
         // 受击方(玩家)「抗性提升 + 保护附魔」乘算因子 —— 与「玩家→生物」路径**对称**应用
         // (2026-09-26 裁决①:两条路径必须用同一口径,不得一边丢弃、一边泄漏)。
+        // ⚠️ 2026-10-29 补充:无属性分支(attrless)的代理值同样**未经**护甲 → 抗性 → 保护三步减免
+        //    (event.getOriginalDamage() = DamageContainer 构造时传入的 LivingEntity#hurtServer 原始形参,
+        //    见 26.1.2 反编译源 LivingEntity.java:1204),故此处**不得**按 attrless 跳过 —— 否则无属性
+        //    生物的一击会整段免疫抗性与保护附魔。判据见 scripts/verify/verify_dice_combat_attrless_guard_p1.py。
         finalDmg *= com.merlinkitsune.starengine.combat.VanillaMitigation.magicAbsorbFactor(
                 resistanceAmplifierOf(target), protectionPointsOf(target, source));
         finalDmg *= (float) victimFactor;
@@ -1115,7 +1133,12 @@ public class DiceCombatEvents {
      * 生物武器的**附魔后**攻击力（原版 {@code Mob#doHurtTarget} 的**替换式**换算）。
      */
     private static double enchantedMobAttack(Mob mob, Entity target, DamageSource source) {
-        float base = (float) mob.getAttributeValue(Attributes.ATTACK_DAMAGE);
+        // C1(2026-10-29 裁决):属性表缺 ATTACK_DAMAGE 时 getAttributeValue 会抛 IAE ⇒ 先取实例,空则贡献 0。
+        AttributeInstance mobAttackAttr = mob.getAttribute(Attributes.ATTACK_DAMAGE);
+        if (mobAttackAttr == null) {
+            return 0.0;
+        }
+        float base = (float) mobAttackAttr.getValue();
         if (!(mob.level() instanceof net.minecraft.server.level.ServerLevel level)) {
             return base;
         }
