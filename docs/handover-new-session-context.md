@@ -1,6 +1,6 @@
 # 新会话交接上下文（可整份贴给新会话）— 1.5.0
 
-你接手的是 MC 模组仓库 `F:\MCProject\astral_dice_multiloader`，分支 `multi-main`，版本 **1.5.0**（当前构建名 `1.5.0-rc.5+<后缀>`，rc 后缀只留在产物文件名/tag 里；前置库 `1.1.0` 正式版），Windows 原生环境（git bash 只承担 git；构建与测试台一律 PowerShell 7）。
+你接手的是 MC 模组仓库 `F:\MCProject\astral_dice_multiloader`，分支 `multi-main`，版本 **1.5.0**（当前构建名 `1.5.0-rc.6+<后缀>`，rc 后缀只留在产物文件名/tag 里；前置库 `1.1.0` 正式版），Windows 原生环境（git bash 只承担 git；构建与测试台一律 PowerShell 7）。
 
 ## 第 0 步：认领你自己的规则
 
@@ -17,7 +17,7 @@
 
 ```powershell
 git -C F:\MCProject\astral_dice_multiloader log -1 --oneline
-git -C F:\MCProject\astral_dice_multiloader status --short -uall     # 应只剩 ?? models/astral_anvil.bbmodel（用户素材，禁 add）
+git -C F:\MCProject\astral_dice_multiloader status --short -uall     # 当前应为 3 ??（`models/astral_anvil.bbmodel` 用户素材禁 add + `astral_batch3_probe.js` + `zz_screen_probe.py`；代码与 bump 已提交，未 push）
 Select-String -Path F:\MCProject\astral_dice_multiloader\*\gradle.properties -Pattern '^mod_version|^starengine_version'
 ```
 
@@ -26,11 +26,12 @@ Select-String -Path F:\MCProject\astral_dice_multiloader\*\gradle.properties -Pa
 ## 基本盘
 
 - 四子项目同树：`neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1`；交付面**只 P0** = 前两条，P1 两线在 `1.5.0` 正式版前不验证、不移植。
-- 版本：四线 `mod_version = 1.5.0-rc.5+<加载器后缀>`（**口径称 1.5.0**：rc 后缀仅存在于构建名 / 产物文件名 / tag；四线已于 2026-10-28 由 `50e5e406` bump 到 rc.5）；`starengine_version = 1.1.0`（**正式版**，前置库仓 `F:\MCProject\starengine` 提交 `16b48c4`）；jar 内硬前置 `[1.1.0,2.0.0)`（模板插值自动展开），`META-INF/jarjar/` 计数 0（库**不内嵌**，必须成对投放）。
-- 产物（2026-10-28 13:48 重建，含筹码手册获取途径说明；`gradlew.bat :neoforge-1.21.1:build :forge-1.20.1:build`，`BUILD SUCCESSFUL in 5s`）：`neoforge-1.21.1/build/libs/astral_dice-1.5.0-rc.5+neoforge_1.21.1.jar` **2,599,540 B / `949560A7A6F8575343D988CD0B1D6B1A7502DABDEDBEBBE0D255EA859DE17775`**；`forge-1.20.1/build/libs/…+forge_1.20.1.jar`（reobf）**2,648,370 B / `B54CE7F5BC7E78EAAFE06880B117E3FB0B36A15DDDB82D3AC3C0CBBE964BAFB1`**；`forge-1.20.1/build/devlibs/…+forge_1.20.1.jar`（dev named，`run/1.20.1/mods` 用这份）**2,618,955 B / `E8111544C8D9ACB065B8CF777A75181D3BA1017665DA9758779DFAB38E9A913A`**。四目标（`build/libs` / `run/<线>/mods` / 两个 P0 整合包）已同批覆盖且哈希 MATCH；两件生产 jar 的 `META-INF/jarjar/` 条目 = 0；**rc.5 两件已发 CurseForge**（`fileID 9349843` neo / `9349844` forge，version type = beta，回读哈希逐字节一致）。
-- 推送状态（2026-10-28 14:4x）：**已 push，`origin/multi-main..HEAD` = 0**（`cce71efb..79e3b183` + `79e3b183..c071c4d7`，经 `-c http.proxy=http://127.0.0.1:7897`）；HEAD = **`c071c4d7`**（收班文档批；其前三条 = `50e5e406` 四线 bump / `1368b837` 筹码守门致命化 + CI / `79e3b183` rc.5 玩家发布说明）；CI run `40645654862`（docs 提交）COMPLETED / SUCCESS 2m 14s，Release 附件 `--clobber` 重传后与上轮同哈希；远端 tag 实读 `1.5.0-rc.1` … `1.5.0-rc.5`，**无正式 `1.5.0` tag**，`1.5.0-rc.5` 已由 CI 生成（注解 tag `db3b1796…` → `79e3b183`）；**GitHub Release 已确认**（`1.5.0-rc.5`：neo 2,598,301 B / `c97ea383…`、forge 2,647,158 B / `d4e48687…`；与本地构建差异仅 CRLF / 常量池序）。push / tag 不再待放行。
+- 版本：四线 `mod_version = 1.5.0-rc.6+<加载器后缀>`（**口径称 1.5.0**：rc 后缀仅存在于构建名 / 产物文件名 / tag；四线已于 2026-10-29 由 `37f97dcf` bump 到 rc.6，rc.5 之后四批代码在 `463552b7`）；`starengine_version = 1.1.0`（**正式版**，前置库仓 `F:\MCProject\starengine` 提交 `16b48c4`）；jar 内硬前置 `[1.1.0,2.0.0)`（模板插值自动展开），`META-INF/jarjar/` 计数 0（库**不内嵌**，必须成对投放）。
+- 产物（2026-10-28 13:48 重建，含筹码手册获取途径说明；`gradlew.bat :neoforge-1.21.1:build :forge-1.20.1:build`，`BUILD SUCCESSFUL in 5s`）：`neoforge-1.21.1/build/libs/astral_dice-1.5.0-rc.5+neoforge_1.21.1.jar` **2,599,540 B / `949560A7A6F8575343D988CD0B1D6B1A7502DABDEDBEBBE0D255EA859DE17775`**；`forge-1.20.1/build/libs/…+forge_1.20.1.jar`（reobf）**2,648,370 B / `B54CE7F5BC7E78EAAFE06880B117E3FB0B36A15DDDB82D3AC3C0CBBE964BAFB1`**；`forge-1.20.1/build/devlibs/…+forge_1.20.1.jar`（dev named，`run/1.20.1/mods` 用这份）**2,618,955 B / `E8111544C8D9ACB065B8CF777A75181D3BA1017665DA9758779DFAB38E9A913A`**。四目标（`build/libs` / `run/<线>/mods` / 两个 P0 整合包）已同批覆盖且哈希 MATCH；两件生产 jar 的 `META-INF/jarjar/` 条目 = 0；**rc.5 两件已发 CurseForge**（`fileID 9349843` neo / `9349844` forge，version type = beta，回读哈希逐字节一致）。 **2026-10-29 14:53 另一次 neo 重建**（含三批未提交改动：事件三条 / 筹码 20-64 / 卡牌 5-20）⇒ `2,607,185 B` / `EF33A42641AE3F41F633EE1BDA417870B5641E0018F9442874C92DAB664C80EB`，已覆盖 `build/libs` 与 `run/1.21.1/mods`；**forge 未重建**（仍是 rc.5 旧件）⇒ 当前两线不同源，出包前必须重出 forge。
+- 推送状态（2026-10-28 14:4x，2026-10-29 15:4x 实读补）：**已 push，`origin/multi-main..HEAD` = 0**（`cce71efb..79e3b183` + `79e3b183..c071c4d7` + `c071c4d7..7c836185`，经 `-c http.proxy=http://127.0.0.1:7897`）；HEAD = **`7c836185`**（「docs(handover): 补记 docs 提交 push 与 CI run 126 幂等实测」；其前 = `50e5e406` 四线 bump / `1368b837` 筹码守门致命化 + CI / `79e3b183` rc.5 玩家发布说明）；CI run `40645654862`（docs 提交）COMPLETED / SUCCESS 2m 14s，Release 附件 `--clobber` 重传后与上轮同哈希；远端 tag 实读 `1.5.0-rc.1` … `1.5.0-rc.5`，**无正式 `1.5.0` tag**，`1.5.0-rc.5` 已由 CI 生成（注解 tag `db3b1796…` → `79e3b183`）；**GitHub Release 已确认**（`1.5.0-rc.5`：neo 2,598,301 B / `c97ea383…`、forge 2,647,158 B / `d4e48687…`；与本地构建差异仅 CRLF / 常量池序）。**2026-10-29 18:0x 实读：HEAD = `37f97dcf`（bump rc.6），本地新增两提交 `463552b7` + `37f97dcf`，`origin/multi-main..HEAD` = 2 —— 未 push，等用户放行**。
 - 构建：`JAVA_HOME=C:\Program Files\Zulu\zulu-21`；`.\gradlew.bat :<线>:classes|jar`；forge dev 必须 `build/devlibs` 的 **named** jar。
 - 测试台唯一入口：`pwsh -NoProfile -File scripts\test\mt.ps1 --version <线> --phase env|run|stop`；`--purge-saves` 会删 testworld；长驻相位（`--phase launch`）必须走 `scripts\devtools\Start-MtDetached.ps1` 分离启动，且纯实机取证不跑 `--phase env`（会重写 `run/<线>/mods`，见 handover §6-49）。
+- **未提交工作树（2026-10-29，先看这条）**：HEAD `7c836185` 之上有 **3 批未提交改动**（① 事件三条：侦探技能/全局事件计时器解绑 + ESC 取消事件选择 + 奇怪的问号 238t 冷却 + 38t 动画窗四类入口拦截 + 动画开始强拆会话；② 筹码商人 20-64 绿宝石；③ 卡牌商人 5-20 绿宝石）。**1.21.1 实机全 PASS**（2026-10-29 15:34–15:37，证据 `temp/tester1211_evidence/batch3_final_20261029-153740.log` + `batch3_star_eval_20261029-1538.txt`，详见 `docs/handover-1.5.0-main.md` §4.1ar）；**已提交 `463552b7`、未 push**；1.20.1 已于 2026-10-29 17:4x 补验全 PASS（§4.1as）；forge 新增网络包 id 27/28 ⇒ 两线必须同版本成对投放。
 
 ## 本批（2026-10-24）已落地
 
