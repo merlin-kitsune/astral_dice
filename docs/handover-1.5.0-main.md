@@ -9,7 +9,7 @@
 
 > **状态快照（2026-10-28 13:5x，接手先看这条）**：HEAD = **`79e3b183`**（`docs(release): 1.5.0-rc.5 玩家发布说明 + CHANGELOG 补充`）；**`origin/multi-main..HEAD` = 0**（已 push `cce71efb..79e3b183`），远端 `origin/multi-main` = `79e3b183`；**本批收班文档改动另成 docs 提交 `c071c4d7`（2026-10-28 14:4x 用户放行后已 push，`origin..HEAD` = 0；CI run `40645654862` = COMPLETED / SUCCESS，2m 14s）**；四线 `mod_version = 1.5.0-rc.5+<后缀>`、`starengine_version = 1.1.0`；远端 tag **无正式 `1.5.0`**，`1.5.0-rc.5` 已由 CI 生成（注解 tag `db3b1796…` → `79e3b183`）；**GitHub Release 已确认**（`1.5.0-rc.5`，附件 neo 2,598,301 B / `c97ea383…` + forge 2,647,158 B / `d4e48687…`，与本地构建仅 CRLF / 常量池序差异，§4.1aq-6）；**rc.5 两件已发 CurseForge**（fileID `9349843` / `9349844`，beta）；**1.21.1 实机通过**（`[patchouli/]: Recipe astral_dice:` 计数 = 0，§4.1aq-4）；工作树只剩 `?? models/astral_anvil.bbmodel`（用户素材，禁 add）。**下方各条是 2026-10-25～10-28 各批的历史速览，含「已 push / 已建 tag」等当时实况，不得当现状读**。
 
-`> **2026-10-29 增量（rc.6 发布批，本节记于 18:2x）**：四批改动已随 **`1.5.0-rc.6`** 落地 —— 代码提交 `463552b7`（事件三条 / 筹码 20-64 / 卡牌 5-20 / 绿宝石骰子 1:1，43 files +974/−194）、四线 bump `37f97dcf`（`mod_version = 1.5.0-rc.6+<后缀>`，`starengine_version = 1.1.0` 未动）、交接文档 `486a6dd9`、发布面 `3e9f1f9f`（两份 `CHANGELOG` + `release/1.5.0-rc.6/` 三件）。rc.6 构建（18:0x）：neo **2,607,086 B / `33cbbab0…`**、forge **2,655,492 B / `bb108a8d…`**，已推 `build/libs` / 两个 dev run / 两个整合包 mods（两线 jarjar 自检 0）；四批改动 1.21.1 与 1.20.1 实机全 PASS（§4.1ar / §4.1as，发布批见 §4.1at）。`origin/multi-main` = **`3e9f1f9f`**，`origin..HEAD` = 0；CI run **#128 SUCCESS**（3e9f1f9）。**未打 tag、未建 Release** —— `1.5.0-rc.6` tag 待用户放行（push tag 才触发 Release 与附件）；P1 两线仍是 0.8 折扣 + 旧 lang。
+`> **2026-10-29 增量（rc.6 发布批，本节记于 18:2x）**：四批改动已随 **`1.5.0-rc.6`** 落地 —— 代码提交 `463552b7`（事件三条 / 筹码 20-64 / 卡牌 5-20 / 绿宝石骰子 1:1，43 files +974/−194）、四线 bump `37f97dcf`（`mod_version = 1.5.0-rc.6+<后缀>`，`starengine_version = 1.1.0` 未动）、交接文档 `486a6dd9`、发布面 `3e9f1f9f`（两份 `CHANGELOG` + `release/1.5.0-rc.6/` 三件）。rc.6 构建（18:0x）：neo **2,607,086 B / `33cbbab0…`**、forge **2,655,492 B / `bb108a8d…`**，已推 `build/libs` / 两个 dev run / 两个整合包 mods（两线 jarjar 自检 0）；四批改动 1.21.1 与 1.20.1 实机全 PASS（§4.1ar / §4.1as，发布批见 §4.1at）。`origin/multi-main` = **`3e9f1f9f`**，`origin..HEAD` = 0；CI run **#128 SUCCESS**（3e9f1f9）。**tag / Release / CF 已齐（2026-10-29 20:4x 复核，§4.1au）**：`1.5.0-rc.6` tag 由 CI 的 auto-tag 步骤在 push `multi-main` 时**自动生成**（注解 tag `d6eceb6f…` → `3e9f1f9f`，无需手工打标）；Release `1.5.0-rc.6` 已含两件 P0 附件；CF 两件已发（fileID `9361839` / `9361840`，beta）；两个整合包 mods 已是 rc.6 且与构建件逐字节同哈希。P1 两线仍是 0.8 折扣 + 旧 lang。
 1. 分支 `multi-main`，HEAD = 本批提交（`release(rc.2): 1.5.0-rc.1 -> 1.5.0-rc.2`，含调酒师治疗按张数 + 多萝西【交际花】双版本实机）。**已 push + CI 自动建 tag**（2026-10-25 23:1x，用户下达「执行 push」）：`git push origin multi-main` ⇒ `8dcdb715..13a45619`，`rev-list --count origin/multi-main..HEAD` = **0**；CI（`.github/workflows/build.yml` 的 auto-tag 步骤）自动建注解 tag **`1.5.0-rc.2`**（指向 `13a45619`）并发布 prerelease（附件 = 刚构建的 P0 两个 rc.2 jar，正文取 `release/1.5.0-rc.2/`）。前置库仓 `origin..HEAD` = **0**。
 2. 四线 `mod_version = 1.5.0-rc.2+<加载器后缀>`；四线 `starengine_version = 1.1.0`（前置库同批由 `1.1.0-pre.2` 转**正式版**，库内 Java 源码零改动）；硬前置区间随之展开为 `[1.1.0,2.0.0)`。
 3. 本批收编 **Kimi 上一轮四批未提交改动**（member-detective / misaki 立牌 / 筹码商店刷新源 / 规则分派），并完成 **DSH 三语语言同步** + **地雷女备注区染色修复**。
@@ -1017,10 +1017,45 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 
 4. **提交与推送**：`3e9f1f9f`（docs(release)）→ `git -c http.proxy=http://127.0.0.1:7897 -c https.proxy=... push origin multi-main` ⇒ `7c836185..3e9f1f9f`，`PUSH_EXIT=0`；`git rev-list --left-right --count origin/multi-main...HEAD` = **0 / 0**；CI run **#128 = COMPLETED / SUCCESS**（提交 `3e9f1f9f`，页面读 `react-app.embeddedData`）。
 
-5. **未做 / 待放行**：① **未打 `1.5.0-rc.6` tag、未建 Release**（`.github/workflows/build.yml` 只在 tag push `[0-9]*` 时建 Release；tag 需用户明确放行，打 tag 后 CI 会把两件 P0 jar 放进同一 Release，正文取 `release/1.5.0-rc.6/`）；② **未上传 CurseForge**（rc.5 两件 fileID `9349843` / `9349844` 仍是 beta 旧版）；③ P1 两线（`neoforge-26.1.2` / `fabric-1.20.1`）仍保留 0.8 折扣与旧 lang，解冻后需同步；④ 卡牌价格硬下限未做；⑤ 探针 `star` 通道两处缺陷与 `zz_screen_probe.py` 处置仍未做（本轮星币 / 1:1 判据走 AutoJS eval）。
+5. **未做 / 待放行**：① ~~未打 `1.5.0-rc.6` tag、未建 Release~~ → **已完成**（tag 由 CI auto-tag 自动生成、Release 含两件 P0 附件，见 §4.1au-1；旧口径「只在 tag push 时建 Release」作废）；② ~~未上传 CurseForge~~ → **已上传**（fileID `9361839` / `9361840`，beta，见 §4.1au-3）；③ P1 两线（`neoforge-26.1.2` / `fabric-1.20.1`）仍保留 0.8 折扣与旧 lang，解冻后需同步；④ 卡牌价格硬下限未做；⑤ 探针 `star` 通道两处缺陷与 `zz_screen_probe.py` 处置仍未做（本轮星币 / 1:1 判据走 AutoJS eval）。
 
 6. **口径提醒**：`release/<版本>/` 是「累积到该版本」的玩家说明，不是单版差分（差分小节早已按用户裁决删除）；两份 `CHANGELOG` 与玩家说明面向不同读者，条目措辞允许不同但事实必须一致；改完后必须核 ① 三件版本号替换完整 ② CRLF/bareLF ③ 章节位置正确。
 
+### 4.1au `1.5.0-rc.6` 打标 / 整合包投放核对 / CurseForge 上传（2026-10-29 20:4x–20:5x，用户 m01569 下达）
+
+1. **tag 与 Release：CI 已自动完成，无需手工打标**
+   - `git fetch origin --tags --prune`（走代理）取回 `1.5.0-rc.5` / `1.5.0-rc.6` 两个远端 tag；`git ls-remote --tags origin`：`1.5.0-rc.6` = 注解 tag `d6eceb6ff289c17bb8882ab1050a831a6827f95d` → 提交 `3e9f1f9f2e5037f99db75215f1822bc394a2ec28`（HEAD 已在其后的 docs 提交 `2aaf5903`）。
+   - 机制：`.github/workflows/build.yml` 的 auto-tag 步骤在 push `multi-main` 且 base 形如 `x.y.z[-pre]` 时**自动** `git tag -a` + `git push origin` ⇒ 推 rc.6 提交时 tag 已生成；本地 `git tag --list` 为空只是未 fetch。**§4.1at-5① 的「tag 需用户放行」口径作废。**
+   - Release 取证（页面直读，绕开已限流的 API —— `api.github.com` 经代理仍 `HTTP 403 API rate limit exceeded for 103.147.200.11`，`gh` CLI 未登录）：`/releases/expanded_assets/1.5.0-rc.6` = 12,690 B，含 `astral_dice-1.5.0-rc.6+neoforge_1.21.1.jar` 与 `…+forge_1.20.1.jar`（各 3 次引用 ⇒ 两件附件在）；`releases.atom` 标题 `Astral Dice 1.5.0-rc.6`、`<updated>2026-10-29T10:18:46Z`；prerelease 由 workflow 代码保证（base 含 `-` ⇒ `--prerelease --latest=false`）。
+
+2. **整合包投放核对：两线均 rc.6，与构建件逐字节同哈希**
+
+   | 目标 | 文件 | 大小 (B) | sha256 首 16 |
+   |---|---|---|---|
+   | 整合包 A `D:\.minecraft\versions\狐の航空学 Voxy Edition\mods` | `astral_dice-1.5.0-rc.6+neoforge_1.21.1.jar` | 2,607,086 | `33CBBAB098C6AD1E` |
+   | 同上 | `starengine-neoforge-1.21.1-1.1.0.jar` | 98,734 | `62C92595B012929D` |
+   | 整合包 B `D:\.minecraft\versions\1.20.1-Forge 模组测试\mods` | `astral_dice-1.5.0-rc.6+forge_1.20.1.jar` | 2,655,492 | `BB108A8DC49A4F17` |
+   | 同上 | `starengine-forge-1.20.1-1.1.0.jar` | 103,605 | `73DA2E599E60DAB0` |
+   | dev run `run/1.21.1/mods` | `astral_dice-1.5.0-rc.6+neoforge_1.21.1.jar` | 2,607,086 | `33CBBAB098C6AD1E`（= neo `build/libs`） |
+   | `forge-1.20.1/build/libs` | `astral_dice-1.5.0-rc.6+forge_1.20.1.jar` | 2,655,492 | `BB108A8DC49A4F17`（= 整合包 B） |
+
+   - **`run/1.20.1/mods` 与整合包 B 不同哈希不是缺陷**：该处件 2,626,088 B / `04AE3B57…`，实测其字节码 `srg=` 计数为 **0**（mojmap dev jar），而 `build`/整合包件 `srg=21`（`ChipShopBlock`）/`srg=10`（`EventChoiceScreen`）为 reobf 生产 jar ⇒ `pushToDevRun` 投映射件、`pushToGame` 投 reobf 件，分工正确（neo 无 reobf，故两侧同哈希，同 §4.1as-2）。
+   - 两个整合包 mods 里**无残留旧版**（`pushToGame` 会删旧同名件）；`build/libs` 仍堆积 1.2.1…rc.5 历史 jar（未清理，非缺陷）。
+   - 取证脚本留在 `temp/`：`list_jars.ps1`、`jar_times.ps1`、`jar_inspect.py`、`jar_diff.py`、`jar_dbg.py`、`jar_srg.py`。
+
+3. **CurseForge 上传：成功（beta 渠道）**
+
+   | 项目 | 文件 | 大小 | fileID | version type |
+   |---|---|---|---|---|
+   | astral-dice `1662159` | `astral_dice-1.5.0-rc.6+neoforge_1.21.1.jar` | 2,607,086 B | `9361839` | **beta** |
+   | astral-dice `1662159` | `astral_dice-1.5.0-rc.6+forge_1.20.1.jar` | 2,655,492 B | `9361840` | **beta** |
+
+   - 先 `--dry-run` 复核计划：neo gameVersions `[9638,9639,11779,10150]`、forge `[9638,9639,9990,7498]`、type `beta`；**`pick_changelog` 对 rc 版本解析失败**（`1.5.0-rc.6`.split('-')[0] = `1.5.0` ⇒ 找 `release/1.5.0/…`，`tools/curseforge_upload.py:638-643`）⇒ 必须显式 `--changelog`（§5-Minor-26 既有登记）。
+   - 实跑：`python tools/curseforge_upload.py push --apply --proxy http://127.0.0.1:7897 --changelog release/1.5.0-rc.6/PLAYER_CHANGELOG.md --jar neoforge-1.21.1/build/libs/astral_dice-1.5.0-rc.6+neoforge_1.21.1.jar --jar forge-1.20.1/build/libs/astral_dice-1.5.0-rc.6+forge_1.20.1.jar` ⇒ `EXIT=0`，两件 `HTTP 200`（`[1]`/`[3]` 两轮 POST）；changelog 入参 51,546 字符（EN 版）。
+   - relations 随同一次 POST：neo = `curios(309927)` + `starengine(1755415)`；forge = 再加 `mixinbooster(980731)`，全部 `requiredDependency`。`urllib` 仍被 Cloudflare 403 ⇒ 自动走 `curl` 成功。
+   - **本次次源校验不可用（已定性，不是上传失败）**：① `api.cfwidget.com/1662159` 200 但 `download` 字段仍指 rc.5 `9349844`（`uploaded_at 2026-10-28T05:57:21.973Z`）⇒ 第三方索引滞后，符合预期；② `mediafilez.forgecdn.net` / `edge.forgecdn.net` 的 `/files/<4位>/<3位>/<urlencode 名>` 对新件（9361/839）**连已知 rc.5 件（9349/843）一起** HEAD 403 / GET 404 ⇒ 是 URL 形状或 CDN 侧拦截（新版 CDN 已不再接受该路径形状），不能作判据；③ `www.curseforge.com` 页面与其 `/api/v1/…/download`、`minecraft.curseforge.com/api/mods/…` 全部被 Cloudflare managed challenge 403（5,545–5,627 B）。⇒ 按 `docs/agent/AGENTS-full.md:4105`：「CF 判成功只看 Upload API 返回的 fileID」，本轮以 `9361839` / `9361840` 为准。
+
+4. **未做**：CF `update-info`（项目简介 / 分类，历次均未做）；`build/libs` 历史 jar 清理；rc.6 的 CF 页人工目视复核（Cloudflare 拦截，等用户侧打开）。
 ## 5 遗留与欠账
 
 ### Blocker

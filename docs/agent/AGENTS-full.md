@@ -4228,6 +4228,7 @@ python tools/verify_sign_display_names.py      # 期望 GATE: PASS
 - changelog 入参 `release/1.5.0-rc.5/PLAYER_CHANGELOG.md`（**49,242 字符**，显式 `--changelog`；rc 版本 `pick_changelog` 永远匹配不到该目录）；relations 随同一次 POST：neo = `curios(309927)` + `starengine(1755415)` `requiredDependency`，forge 另加 `mixinbooster(980731)`。
 - 上传通道：`urllib` 被 Cloudflare 403 ⇒ 自动走 `curl` 成功（`_curl_json` 回退仍是唯一可用链路）。
 - 回读校验：`edge.forgecdn.net/files/9349/843/…` 与 `/9349/844/…` 下载件 = 2,599,540 B / `949560A7…`、2,648,370 B / `B54CE7F5…`，与本地构建件逐字节同哈希（本机留档 `temp\cf_neo.jar` / `temp\cf_forge.jar`）。
+- **rc.6 补录（2026-10-29 20:5x）**：`1.5.0-rc.6` 两件同法 `--apply` 上传（显式 `--changelog release/1.5.0-rc.6/PLAYER_CHANGELOG.md`，51,546 字符）⇒ fileID neo **`9361839`**（2,607,086 B）/ forge **`9361840`**（2,655,492 B），渠道 **beta**，relations 同上。**本次无法 CDN 回读**：`mediafilez` / `edge.forgecdn.net` 的 `/files/<4位>/<3位>/<名>` 对新旧 fileID 一律 HEAD 403 / GET 404，`api.cfwidget.com/1662159` 仍指 rc.5 `9349844`（滞后）⇒ 按本文件 :4105 口径只认 Upload API fileID（正本 `docs/handover-1.5.0-main.md` §4.1au-3）。
 
 #### 62.7 坑（正本 §6 记为 48–51）
 
