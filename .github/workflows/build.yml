@@ -137,6 +137,32 @@ jobs:
         # 脚本内部对 P0 两线（neoforge-1.21.1 / forge-1.20.1）各跑一次并做双版本对等性校验。
         run: pwsh -NoProfile -File scripts/verify/verify_chip_acquisition.ps1
 
+      - name: Check event-choice & combat static gates
+        # 静态守门（2026-10-30）：事件二选一界面退出 / 首个事件可派发（neo+fabric）/ 事件计时器栈
+        # （neo/forge 两线各一）/ 骰战 attrless 守卫（P0 双线合并 + P1 双线合并）共 7 个脚本，全部为**纯标准库**
+        # Python，路径一律按**仓库根**相对（不 cd，与上面 PowerShell 守门同口径），逐个显式收 rc
+        # 后立即 exit —— 刻意不用 continue-on-error / `|| true` / 条件跳过，要的就是硬红。
+        run: |
+          set -euo pipefail
+          SCRIPTS=(
+            scripts/verify/verify_event_choice_exit.py
+            scripts/verify/verify_event_choice_first_event_dispatchable.py
+            scripts/verify/verify_event_choice_first_event_dispatchable_forge.py
+            scripts/verify/verify_event_timer_stack.py
+            scripts/verify/verify_event_timer_stack_forge.py
+            scripts/verify/verify_dice_combat_attrless_guard.py
+            scripts/verify/verify_dice_combat_attrless_guard_p1.py
+          )
+          for s in "${SCRIPTS[@]}"; do
+            rc=0
+            python "$s" || rc=$?
+            echo "== $s rc=$rc"
+            if [[ "$rc" -ne 0 ]]; then
+              echo "::error file=$s::static gate failed (rc=$rc)"
+              exit "$rc"
+            fi
+          done
+
       - name: Build with Gradle (all targets)
         # 根项目的 `build` 会级联构建 `settings.gradle` 中 include 的**全部**子项目 —— 现为四条线:
         # neoforge-1.21.1 / forge-1.20.1 / neoforge-26.1.2 / **fabric-1.20.1**（fabric 子项目已在
