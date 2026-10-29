@@ -296,6 +296,7 @@
   "enchantment.astral_dice.curse_marker": "Blue Curse",
 "entity.astral_dice.barricade": "Barricade",
   "entity.astral_dice.repulsion": "Reinforced Repulsion",
+  "entity.astral_dice.sykestentacle": "Tentacle",
   "entity.minecraft.villager.astral_dice.card_trader": "Card Trader",
   "entity.minecraft.villager.astral_dice.chip_trader": "Chip Trader",
   "gui.astral_dice.attack_cost": "Attack Cost: %s / %s",

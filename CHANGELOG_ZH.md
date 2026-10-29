@@ -4,6 +4,21 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
+## 26.4-SNAPSHOT.4
+
+> dev 线新增 GeckoLib 硬前置与动画实体 `astral_dice:sykestentacle`，并按 bbmodel 重导几何资源；版本号按「每提交 +1」递增。P1 两线本批**搁置**（见下）。
+
+### 工程口径
+
+- 前置：GeckoLib 升为**硬前置**（四线各自 `build.gradle` + 元数据区间；必须写 Modrinth **version id**，写版本号会解析到别的平台变体）：neo 1.21.1 `Grwn5rUB`（4.9.3）/`[4.9,5)`、forge 1.20.1 `aC5KMoNg`（4.8.4）/`[4.8,5)`、fabric 1.20.1 `SD2lOScS`（4.8.4）/`>=4.8.4`、26.1.2 `xfVfPcoC`（5.5.2）/`[5,6)`；不内嵌 JarJar，由玩家自备。
+- 实体：`astral_dice:sykestentacle`（无刷怪蛋、无自然生成）。`idle` 控制器常驻循环 `animation.tentacleidle`（4.11 s）；`action` 控制器 `triggerableAnim("attack", …thenPlay("animation.tentacleattack"))`（2.46 s），**受伤成功时**（`super.hurt` 返回 true）触发一次，播完回落 `idle`。
+- 几何重导（2026-10-29 用户裁决 A）：从 `models/sykestentacle/sykestentacle.bbmodel` 经 Blockbench MCP 重导 `models/sykestentacle/models/main.geo.json`。与旧文件的**唯一差异** = 新增空父骨 `bone`（`parent: root`、`pivot [0,0,0]`、无 cube，`bone2` 改为挂在它下面），共用 21 根骨逐值 0 处差异；旧 geo 缺这根骨会让新版 `animation.tentacleattack` 里那条 `bone` 轨被 GeckoLib **静默丢弃**（不报错、只是少一段运动）。
+- 动画不重写：重编译结果与 21:02 那份导出逐值比 —— `tentacleidle` 差 0、`tentacleattack` 最大 |Δ| = 1e-5（导出只保留 6 位有效数字），故动画源保持 21:02 版本。
+- 资源：四线 `geo/sykestentacle.geo.json` 51417 B 与 `animations/sykestentacle.animation.json` 93726 B（CRLF、裸 LF = 0、无 BOM），「CRLF→LF 归一化」sha256 与 `models/` 源相同（geo `9c7ceed1b811d089…`、anim `e26c5ec3c5a30811…`）；贴图 5647 B 逐字节同源。新增不变量：`动画骨名 ⊆ 几何骨名`（idle 21 / attack 22 对 geo 22，缺失集合为空）。
+- 验证（P0 两线）：`:neoforge-1.21.1:jar :forge-1.20.1:jar` BUILD SUCCESSFUL（11 tasks）；jar 内 `SykeTentacleEntity` / `SykeTentacleModel` / `SykeTentacleRenderer` 与三份资源齐全、`mods.toml` 含 `modId="geckolib"`；`scripts/verify/verify_resource_integrity.ps1` 1.21.1 / 1.20.1 均 **PASS**；`tools/check_lang_sync.ps1` **exit 0**（P0 各 1067 键三语一致）。
+- **P1 两线搁置（2026-10-29 用户裁决）**：本批只完成 P0 两线（`neoforge-1.21.1` + `forge-1.20.1`）；`neoforge-26.1.2` 与 `fabric-1.20.1` 的代码与资源已落盘但**不构建、不验证**，等上游把 1.5.0 完整移植进这两条线并合并 dev 后再跟进（移植映射见 `docs/compat-1.5.0-porting.md`）。**在移植完成前，这两线的缺功能属已知差异，不得当 bug 报。**
+- 欠账：实机未验（红线：默认不启动）；geo/anim 的 X 镜像取向仍只有静态结论（重导证明它不是导出过期，见 `docs/features/sykestentacle-animation-spec.md` §4 / §6.4）；根 `build/libs` 未刷新（本批只跑 `:jar`，未跑 `pushToRootBuild`）。
+- 版本号：四线 `mod_version=26.4-SNAPSHOT.4+<平台>`；`starengine_version` 保持 `26.4-SNAPSHOT.1`（本批无库变更，CI 库 ref 不动）。
 ## 26.4-SNAPSHOT.3
 
 > dev 线新增 mob 侧骰战参与者接口与特殊骰能力注册表（2026-10-28），版本号按「每提交 +1」递增。

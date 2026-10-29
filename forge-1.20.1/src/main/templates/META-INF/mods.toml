@@ -158,3 +158,15 @@ config="${mod_id}.jade.mixins.json"
     versionRange="[${starengine_version},27.0.0)"
     ordering="AFTER"
     side="BOTH"
+
+# GeckoLib(必须前置):1.20.1 Forge = GeckoLib 4.x(build.gradle 的 aC5KMoNg = mod 版本 4.8.4 的 forge 变体)。
+# 区间 [4.8,5):与构建坐标同一量级,覆盖 4.x 之后所有向后兼容版本;5.x 若二进制不兼容则判不满足、拦在加载前。
+# ⚠️ 本线同样**不能省略 versionRange**:原因与上方 starengine 块 2026-09-26 取证相同 ——
+#   FML 对本线的缺省区间取 IModInfo.UNBOUNDED(`ldc ""` 空 spec) ⇒ Maven VersionRange 无 restriction ⇒ 恒判不满足,
+#   启动即 "Missing or unsupported mandatory dependencies" 硬拒。
+[[dependencies.${mod_id}]]
+    modId="geckolib"
+    mandatory=true
+    versionRange="[4.8,5)"
+    ordering="AFTER"
+    side="BOTH"

@@ -54,6 +54,9 @@ public class ModClientEvents {
     public static void registerEntityRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerEntityRenderer(ModEntityTypes.BARRICADE.get(), BarricadeRenderer::new);
         event.registerEntityRenderer(ModEntityTypes.REPULSION.get(), RepulsionRenderer::new);
+        // Syke 触手(2026-10-29):GeckoLib 渲染器,**不**走 registerLayerDefinitions ——
+        // 几何来自 assets/astral_dice/geo/sykestentacle.geo.json,没有原版 LayerDefinition 可注册。
+        event.registerEntityRenderer(ModEntityTypes.SYKE_TENTACLE.get(), SykeTentacleRenderer::new);
     }
 
     /** 模型层定义：`astral_dice:barricade#main` ⇒ {@link BarricadeModel#createBodyLayer()}。 */

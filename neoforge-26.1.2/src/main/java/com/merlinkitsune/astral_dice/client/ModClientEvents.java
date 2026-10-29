@@ -1,6 +1,7 @@
 package com.merlinkitsune.astral_dice.client;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
+import com.merlinkitsune.astral_dice.entity.ModEntityTypes;
 import com.merlinkitsune.astral_dice.init.ModParticles;
 import com.merlinkitsune.astral_dice.screen.CardInventoryScreen;
 import com.merlinkitsune.astral_dice.screen.ModMenuTypes;
@@ -14,6 +15,7 @@ import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
@@ -95,6 +97,21 @@ public class ModClientEvents {
     public static void registerKeyMappings(RegisterKeyMappingsEvent event) {
         event.register(KeyBindingSetup.ACTIVATE_SIGN_KEY);
         event.register(KeyBindingSetup.OPEN_CARD_INVENTORY_KEY);
+    }
+
+    /**
+     * 自有实体渲染器注册（GeckoLib 5 的 Syke 触手）。
+     *
+     * <p>GeckoLib 的几何/贴图/动画来自 {@code assets/astral_dice/{geo,textures/entity,animations}/}，
+     * 渲染器本身只需把模型实例交给 {@code GeoEntityRenderer}；**不**走
+     * {@code EntityRenderersEvent.RegisterLayerDefinitions}（那是原版模型层的注册口，对本实体无效）。
+     *
+     * <p>本类带 {@code @EventBusSubscriber(Dist.CLIENT)}，专用服务端整体不加载，
+     * 故此处引用纯客户端的渲染器类是安全的（理由同 {@link #registerScreens}）。
+     */
+    @SubscribeEvent
+    public static void registerEntityRenderers(EntityRenderersEvent.RegisterRenderers event) {
+        event.registerEntityRenderer(ModEntityTypes.SYKE_TENTACLE.get(), SykeTentacleRenderer::new);
     }
 
     public static class DamageNumberOverlay implements GuiLayer {

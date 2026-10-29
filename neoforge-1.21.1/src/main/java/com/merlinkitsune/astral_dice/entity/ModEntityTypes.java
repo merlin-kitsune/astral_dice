@@ -51,6 +51,22 @@ public final class ModEntityTypes {
                     .clientTrackingRange(10)
                     .build("repulsion"));
 
+    /**
+     * Syke 触手（2026-10-29）：本仓第一个 GeckoLib 动画实体，同时作为另外三条加载器线的移植参考。
+     *
+     * <p>尺寸 {@code sized(2.6F, 3.0F)} 来自模型实测：底盘（触手最外圈）约 2.45 格宽、通高约 2.96 格，
+     * 向上取整并留少量余量，避免命中框比可见模型窄。{@code clientTrackingRange(10)} 与命中框同量级，
+     * 保证渲染距离内的客户端都收到该实体 —— 动画在客户端播放，追踪范围偏小会直接看不到。
+     *
+     * <p>{@code MobCategory.MISC} 与上面两个实体一致：不参与自然生成，也不进刷怪管控。
+     */
+    public static final DeferredHolder<EntityType<?>, EntityType<SykeTentacleEntity>> SYKE_TENTACLE =
+            ENTITY_TYPES.register("sykestentacle", () -> EntityType.Builder
+                    .of(SykeTentacleEntity::new, MobCategory.MISC)
+                    .sized(2.6F, 3.0F)
+                    .clientTrackingRange(10)
+                    .build("sykestentacle"));
+
     private ModEntityTypes() {
     }
 }

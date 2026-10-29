@@ -85,6 +85,7 @@ Astral Dice 是一个以骰子为核心的生存扩展。戴上骰子后，每�
 |---|---|
 | 必需，需单独安装 | **StarEngine**（mod id `starengine`，当前 **1.1.0**）。**NeoForge 1.21.1** 与 **Forge 1.20.1** 两线**不再内置**该库：请把 `starengine-neoforge-1.21.1-<版本>.jar` / `starengine-forge-1.20.1-<版本>.jar` 与本模组一起放进 `mods`，版本须与本构建编译时所用的一致。缺库会以「Missing or unsupported mandatory dependencies」拒绝启动。（NeoForge 26.1.2 与 Fabric 1.20.1 两线目前仍内置。） |
 | 必需 | Curios API：1.20.1 用 5.x，1.21.1 用 9+，26.1.2 用 15+。缺失或版本过旧会在依赖排序阶段被拒绝。这项前置由本模组声明，StarEngine 只在 Forge 侧把它当编译期依赖。 |
+| 必需 | **GeckoLib**：NeoForge 1.21.1 用 `[4.9,5)`，Forge 1.20.1 用 `[4.8,5)`，Fabric 1.20.1 用 `4.8.4+`，26.1.2 用 `[5,6)`。本模组含 GeckoLib 动画实体；缺失或超出区间会在依赖排序阶段被拒绝，GeckoLib 不会被内嵌进 jar。 |
 | 必需，仅 1.20.1 | Mixin 运行时二选一：**Mixin Booster 0.1.3 或更新**，或者 **Sinytra Connector**。整合包已带 Connector 时无需额外安装，因为 Connector 自带同一套运行时，Mixin Booster 会自动让位。两者都不在时模组拒绝启动，并提示安装方式。旧版 Mixin Booster 会被拒绝。 |
 | 必需，仅 fabric-1.20.1 | 另一套前置，见 [Fabric（1.20.1）前置一览](#fabric1201前置一览)。Curios 与 Mixin Booster 那条链在本线不适用。 |
 | 可选 | Bountiful、帕秋莉手册。 |
@@ -99,7 +100,8 @@ Astral Dice 是一个以骰子为核心的生存扩展。戴上骰子后，每�
 | 3 | Puzzles Lib（事件桥） | 8.1.33+，与第 4 项一起安装 |
 | 4 | Forge Config API Port | 8.0.3，Puzzles Lib 8.x 需要它 |
 | 5 | 饰品栏提供者，二选一 | Trinkets 3.7.2+ 或 Accessories 1.0.0-beta.48+ |
-| 6 | 可选 | 帕秋莉手册（游戏内手册） |
+| 6 | GeckoLib（动画实体） | 4.8.4+ |
+| 7 | 可选 | 帕秋莉手册（游戏内手册） |
 | 不适用 | 本线用不到 | Curios API、Mixin Booster、Sinytra Connector、Bountiful、Iron's Spells 'n Spellbooks |
 
 - 饰品栏是二选一。Fabric 的 `depends` 只有 AND 语义，所以 Trinkets 与 Accessories 都写在 `recommends` 下，模组自己在启动时检查，只有两者都不在时才拒绝启动。

@@ -4,6 +4,21 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 26.4-SNAPSHOT.4
+
+> The dev line adds a hard GeckoLib prerequisite and the animated entity `astral_dice:sykestentacle`, and re-exports the geometry from the bbmodel; the version number follows the bump-per-commit rule. The P1 lines are **shelved** for this batch (see below).
+
+### Engineering notes
+
+- Prerequisite: GeckoLib becomes a **hard** prerequisite (per-line `build.gradle` plus metadata range; the Modrinth **version id** must be used, a plain version number resolves to the wrong platform variant): neo 1.21.1 `Grwn5rUB` (4.9.3) / `[4.9,5)`, forge 1.20.1 `aC5KMoNg` (4.8.4) / `[4.8,5)`, fabric 1.20.1 `SD2lOScS` (4.8.4) / `>=4.8.4`, 26.1.2 `xfVfPcoC` (5.5.2) / `[5,6)`. It is not embedded via JarJar; players supply it.
+- Entity: `astral_dice:sykestentacle` (no spawn egg, no natural spawning). The `idle` controller loops `animation.tentacleidle` (4.11 s); the `action` controller uses `triggerableAnim("attack", …thenPlay("animation.tentacleattack"))` (2.46 s), fired **once when a hit lands** (`super.hurt` returns true) and falling back to `idle` when it ends.
+- Geometry re-export (2026-10-29 user decision A): `models/sykestentacle/models/main.geo.json` was re-exported from `models/sykestentacle/sykestentacle.bbmodel` via Blockbench MCP. The **only** difference from the old file is a new empty parent bone `bone` (`parent: root`, `pivot [0,0,0]`, no cubes; `bone2` now hangs under it); the 21 shared bones are value-for-value identical. The old geometry lacked that bone, so the `bone` track in the new `animation.tentacleattack` was **silently dropped** by GeckoLib (no error, just a missing motion segment).
+- Animations are not rewritten: the recompiled output differs from the 21:02 export by 0 for `tentacleidle` and at most |delta| = 1e-5 for `tentacleattack` (the export keeps six significant digits), so the animation source stays at the 21:02 version.
+- Assets: all four lines carry `geo/sykestentacle.geo.json` (51417 B) and `animations/sykestentacle.animation.json` (93726 B), CRLF with zero bare LF and no BOM; the CRLF-normalized sha256 matches the `models/` source (geo `9c7ceed1b811d089…`, anim `e26c5ec3c5a30811…`), and the texture is byte-identical (5647 B). New invariant: `animated bone names are a subset of geometry bone names` (idle 21 / attack 22 against 22 geometry bones, empty difference).
+- Verification (P0 lines only): `:neoforge-1.21.1:jar :forge-1.20.1:jar` BUILD SUCCESSFUL (11 tasks); both jars contain `SykeTentacleEntity` / `SykeTentacleModel` / `SykeTentacleRenderer` plus the three assets, and `mods.toml` declares `modId="geckolib"`; `scripts/verify/verify_resource_integrity.ps1` is **PASS** for 1.21.1 and 1.20.1; `tools/check_lang_sync.ps1` exits **0** (1067 keys per language on both P0 lines).
+- **P1 lines shelved (2026-10-29 user decision)**: only the P0 lines (`neoforge-1.21.1` + `forge-1.20.1`) are completed in this batch. `neoforge-26.1.2` and `fabric-1.20.1` have the code and assets on disk but are **not built and not verified**; they will be picked up after upstream fully ports 1.5.0 into those lines and merges dev (porting map: `docs/compat-1.5.0-porting.md`). **Until that port lands, missing features on those two lines are known differences, not bugs.**
+- Outstanding: no in-game verification (red line: never launch by default); the geo/anim X-mirror orientation still has a static-only verdict (the re-export proves it is not export staleness - see `docs/features/sykestentacle-animation-spec.md` sections 4 and 6.4); the root `build/libs` was not refreshed (only `:jar` ran, not `pushToRootBuild`).
+- Version numbers: all four lines use `mod_version=26.4-SNAPSHOT.4+<platform>`; `starengine_version` stays `26.4-SNAPSHOT.1` (no library change, so the CI library ref is untouched).
 ## 26.4-SNAPSHOT.3
 
 > The dev line adds the mob-side dice battle participant API and the special-dice ability registry (2026-10-28); the version number follows the bump-per-commit rule.

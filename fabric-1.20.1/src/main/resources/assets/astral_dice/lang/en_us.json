@@ -277,6 +277,7 @@
   "hud.astral_dice.target_select.tag.player": "Player",
   "hud.astral_dice.target_select.tag.teammate": "Teammate",
   "hud.astral_dice.target_select.target": "Target: %s (%s blocks)",
+  "entity.astral_dice.sykestentacle": "Tentacle",
   "item.astral_dice.amethyst_dice": "Amethyst Dice",
   "item.astral_dice.atm_chip": "ATM Machine",
   "item.astral_dice.attack_card_charge": "Charge",

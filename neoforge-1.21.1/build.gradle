@@ -181,6 +181,14 @@ dependencies {
     //      gradle.properties 的 starengine_version 一致(否则以「缺失必需前置」拒绝启动)。
     implementation "${starengine_group}:starengine-neoforge-1.21.1:${starengine_version}"
     implementation 'maven.modrinth:curios:yohfFbgD'
+    // GeckoLib(动画实体运行时库):本线的**硬前置** —— SykeTentacleEntity 直接 implements GeoEntity,
+    // 缺它会在实体类加载期 NoClassDefFoundError,故 implementation(编译期+dev 运行期)且写进 mods.toml required。
+    // 4.9.3:Java 21,要求 neoforge >= 21.1.150(本线 21.1.235 满足)。Modrinth Maven 的 `maven.modrinth`
+    // group 已由文件顶部的 exclusiveContent 接管,不需要新增仓库。
+    // 坐标必须用 Modrinth 的**版本 id**:同一个版本号 4.9.3 下挂着 fabric/neoforge/forge 三份文件,
+    // 写 `4.9.3` 会解析到 fabric 变体(geckolib-fabric-1.21.1-4.9.3.jar,只有 fabric.mod.json,NeoForge 加载不了)。
+    // Grwn5rUB = geckolib-neoforge-1.21.1-4.9.3.jar(sha1 5cfe835472a5c5457ae9ac192d9d7b317454d5ac)。
+    implementation 'maven.modrinth:geckolib:Grwn5rUB'
     // JEI(配方查看,测试环境用);19.39 系仍兼容本项目 neoforge 21.1.235(19.42+ 要求 ≥21.1.238)
     // 2026-09-17 起按统一口径改走 Curse Maven(原 `mezz.jei:jei-1.21.1-neoforge:19.39.0.372` 走官方 maven;
     // CF 文件 8512040 = `jei-1.21.1-neoforge-19.39.0.372.jar`,1572695 字节,与官方 maven 产物同尺寸)

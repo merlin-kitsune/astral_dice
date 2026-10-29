@@ -112,6 +112,17 @@ config="${mod_id}.jade.mixins.json"
     ordering="AFTER"
     side="BOTH"
 
+# GeckoLib(动画实体运行时库,必须的前置):SykeTentacleEntity 直接 implements GeoEntity,
+# 缺它在实体类加载期就是 NoClassDefFoundError ⇒ 与 curios 同档 required。
+# 区间 [4.9,5):与 build.gradle 的 `maven.modrinth:geckolib:Grwn5rUB`(= mod 版本 4.9.3 的 neoforge 变体)同一量级,
+# 5.x 可能二进制不兼容,故在加载前拦掉。
+[[dependencies.${mod_id}]]
+    modId="geckolib"
+    type="required"
+    versionRange="[4.9,5)"
+    ordering="AFTER"
+    side="BOTH"
+
 # 神秘遗物+ (Enigmatic Legacy+):可选联动,未安装时相关逻辑自动失效
 [[dependencies.${mod_id}]]
     modId="enigmaticlegacyplus"

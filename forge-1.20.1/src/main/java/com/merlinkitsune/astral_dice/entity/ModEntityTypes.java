@@ -62,6 +62,26 @@ public final class ModEntityTypes {
                     .clientTrackingRange(10)
                     .build("repulsion"));
 
+    /**
+     * Syke 触手（2026-10-29；2026-10-29 由 neoforge-1.21.1 蓝本移植到本线）：本仓第一个 GeckoLib 动画实体。
+     *
+     * <p>尺寸 {@code sized(2.6F, 3.0F)} 取自模型实测（底盘约 2.45 格宽、通高约 2.96 格）；
+     * {@code clientTrackingRange(10)} 与强化拒止同量级，保证 10 格内的客户端能追踪到该实体
+     * （受伤触发的攻击动画要广播给追踪者，追踪关系由该值决定）。
+     *
+     * <p>{@link MobCategory#MISC} 与路障 / 强化拒止一致：不是怪物、不参与自然生成与刷怪上限。
+     *
+     * <p><b>1.20.1 平台差异</b>：注册器类型是 {@code RegistryObject<EntityType<SykeTentacleEntity>>}
+     * （1.21.1 蓝本是 {@code DeferredHolder<EntityType<?>, EntityType<SykeTentacleEntity>>}）；
+     * {@code EntityType.Builder} 的构建链（{@code of / sized / clientTrackingRange / build}）两线同形。
+     */
+    public static final RegistryObject<EntityType<SykeTentacleEntity>> SYKE_TENTACLE =
+            ENTITY_TYPES.register("sykestentacle", () -> EntityType.Builder
+                    .of(SykeTentacleEntity::new, MobCategory.MISC)
+                    .sized(2.6F, 3.0F)
+                    .clientTrackingRange(10)
+                    .build("sykestentacle"));
+
     private ModEntityTypes() {
     }
 }

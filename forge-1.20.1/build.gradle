@@ -237,6 +237,11 @@ dependencies {
     modImplementation "${starengine_group}:starengine-forge-1.20.1:${starengine_version}"
     // Curios API(必须前置):1.20.1 Forge = Curios 5.x(IPQlZkz1 = 5.14.1+1.20.1 的 Modrinth 版本 id)
     modImplementation "maven.modrinth:curios:IPQlZkz1"
+    // GeckoLib(必须前置):1.20.1 Forge = GeckoLib 4.x(aC5KMoNg = 4.8.4+1.20.1 的 Modrinth 版本 id)
+    // ⚠️ 必须用 Modrinth 版本 id,不能写 `4.8.4` —— 同一版本号还会解析到 fabric 变体
+    //   (geckolib-fabric-1.20.1-4.8.4.jar,只有 fabric.mod.json,Forge 加载不了),见 neo 蓝本同款注释。
+    //   aC5KMoNg = geckolib-forge-1.20.1-4.8.4.jar(sha1 50e1407869ef0e909e3bdda9328b8bd7db03fdc0)。
+    modImplementation "maven.modrinth:geckolib:aC5KMoNg"
 
     // 帕秋莉手册(手册内容运行依赖):1.20.1 Forge 版本
     modImplementation "maven.modrinth:patchouli:1.20.1-85-forge"

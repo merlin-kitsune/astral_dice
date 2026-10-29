@@ -296,6 +296,7 @@
   "enchantment.astral_dice.curse_marker": "青之诅咒",
   "entity.astral_dice.barricade": "路障",
   "entity.astral_dice.repulsion": "强化拒止",
+  "entity.astral_dice.sykestentacle": "触手",
   "entity.minecraft.villager.astral_dice.card_trader": "卡牌交易员",
   "entity.minecraft.villager.astral_dice.chip_trader": "筹码商人",
   "gui.astral_dice.attack_cost": "攻击 Cost: %s / %s",

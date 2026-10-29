@@ -295,6 +295,7 @@
   "enchantment.astral_dice.curse_marker": "青の呪い",
   "entity.astral_dice.barricade": "バリケード",
   "entity.astral_dice.repulsion": "強化拒止",
+  "entity.astral_dice.sykestentacle": "触手",
   "entity.minecraft.villager.astral_dice.card_trader": "カードトレーダー",
   "entity.minecraft.villager.astral_dice.chip_trader": "チップトレーダー",
   "gui.astral_dice.attack_cost": "攻撃 Cost: %s / %s",

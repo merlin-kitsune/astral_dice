@@ -85,6 +85,7 @@ This section covers everything that shipped across the 1.5.0 pre-release and rel
 |---|---|
 | Required, install separately | **StarEngine** (mod id `starengine`, currently **1.1.0**). On **NeoForge 1.21.1** and **Forge 1.20.1** the library is **no longer bundled**: put `starengine-neoforge-1.21.1-<version>.jar` / `starengine-forge-1.20.1-<version>.jar` into `mods` next to this mod, at the same version this build was compiled against. A missing library fails startup with "Missing or unsupported mandatory dependencies". (The NeoForge 26.1.2 and Fabric 1.20.1 builds still embed it for now.) |
 | Required | Curios API: 5.x on 1.20.1, 9+ on 1.21.1, 15+ on 26.1.2. A missing or too-old Curios is rejected during dependency sorting. This requirement is declared by this mod; StarEngine only uses Curios as a compile-time dependency on the Forge side. |
+| Required | **GeckoLib**: `[4.9,5)` on NeoForge 1.21.1, `[4.8,5)` on Forge 1.20.1, `4.8.4+` on Fabric 1.20.1, `[5,6)` on 26.1.2. This mod ships GeckoLib-animated entities; a missing or out-of-range GeckoLib is rejected during dependency sorting. GeckoLib is never embedded in the jar. |
 | Required, 1.20.1 only | A Mixin runtime: either **Mixin Booster 0.1.3 or newer**, or **Sinytra Connector**. If the pack already ships Connector, nothing else is needed, because Connector bundles the same runtime and Mixin Booster steps aside. When neither is present the mod refuses to start and explains how to install one. An outdated Mixin Booster is rejected. |
 | Required, fabric-1.20.1 only | A different set, listed under [Fabric prerequisites](#fabric-1201-prerequisites). The Curios and Mixin Booster chain does not apply on this line. |
 | Optional | Bountiful, Patchouli. |
@@ -99,7 +100,8 @@ This section covers everything that shipped across the 1.5.0 pre-release and rel
 | 3 | Puzzles Lib (event bridge) | 8.1.33+, installed together with item 4 |
 | 4 | Forge Config API Port | 8.0.3, required by Puzzles Lib 8.x |
 | 5 | Accessory provider, either one | Trinkets 3.7.2+ or Accessories 1.0.0-beta.48+ |
-| 6 | Optional | Patchouli (in-game guide) |
+| 6 | GeckoLib (animated entity) | 4.8.4+ |
+| 7 | Optional | Patchouli (in-game guide) |
 | n/a | Not applicable on this line | Curios API, Mixin Booster, Sinytra Connector, Bountiful, Iron's Spells 'n Spellbooks |
 
 - The accessory provider is either-or. Fabric's `depends` block is AND-only, so Trinkets and Accessories are both declared under `recommends`, and the mod checks at startup, refusing to launch only when neither is present.

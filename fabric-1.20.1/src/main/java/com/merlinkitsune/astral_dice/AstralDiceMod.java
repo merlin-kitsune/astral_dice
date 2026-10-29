@@ -59,6 +59,9 @@ public class AstralDiceMod implements ModInitializer {
         // 战利品注入(FAPI LootTableEvents.MODIFY):替代 Forge 侧的 GLM + LootTableLoadEvent 两条通道
         com.merlinkitsune.astral_dice.loot.FabricLootInjector.register();
         commitRegistrations();
+        // 实体属性表(Fabric 侧没有 EntityAttributeCreationEvent,等价物是
+        // FabricDefaultAttributeRegistry)。⚠️ 必须在实体类型已提交之后,否则注册的是空气 id。
+        com.merlinkitsune.astral_dice.entity.ModEntityTypes.registerAttributes();
         // 自建配方序列化器(astral_dice:nbt_shaped;用于「指定药水」的 NBT 精确匹配)。
         // ⚠️ 必须在数据包加载之前 —— 否则带 astral_nbt 约束的两条配方会因找不到 serializer
         //    而整条加载失败(而不是退回宽松匹配)。onInitialize 全程早于 datapack 装载,故安全。
@@ -113,6 +116,7 @@ public class AstralDiceMod implements ModInitializer {
         com.merlinkitsune.astral_dice.init.ModCreativeTabs.CREATIVE_TABS.register(BUS);
         com.merlinkitsune.astral_dice.screen.ModMenuTypes.MENU_TYPES.register(BUS);
         com.merlinkitsune.astral_dice.init.ModParticles.PARTICLE_TYPES.register(BUS);
+        com.merlinkitsune.astral_dice.entity.ModEntityTypes.ENTITY_TYPES.register(BUS);
     }
 
     /**
