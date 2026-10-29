@@ -9,7 +9,7 @@
 
 > **状态快照（2026-10-28 13:5x，接手先看这条）**：HEAD = **`79e3b183`**（`docs(release): 1.5.0-rc.5 玩家发布说明 + CHANGELOG 补充`）；**`origin/multi-main..HEAD` = 0**（已 push `cce71efb..79e3b183`），远端 `origin/multi-main` = `79e3b183`；**本批收班文档改动另成 docs 提交 `c071c4d7`（2026-10-28 14:4x 用户放行后已 push，`origin..HEAD` = 0；CI run `40645654862` = COMPLETED / SUCCESS，2m 14s）**；四线 `mod_version = 1.5.0-rc.5+<后缀>`、`starengine_version = 1.1.0`；远端 tag **无正式 `1.5.0`**，`1.5.0-rc.5` 已由 CI 生成（注解 tag `db3b1796…` → `79e3b183`）；**GitHub Release 已确认**（`1.5.0-rc.5`，附件 neo 2,598,301 B / `c97ea383…` + forge 2,647,158 B / `d4e48687…`，与本地构建仅 CRLF / 常量池序差异，§4.1aq-6）；**rc.5 两件已发 CurseForge**（fileID `9349843` / `9349844`，beta）；**1.21.1 实机通过**（`[patchouli/]: Recipe astral_dice:` 计数 = 0，§4.1aq-4）；工作树只剩 `?? models/astral_anvil.bbmodel`（用户素材，禁 add）。**下方各条是 2026-10-25～10-28 各批的历史速览，含「已 push / 已建 tag」等当时实况，不得当现状读**。
 
-> **2026-10-29 增量（下午实机批，本节记于 15:4x）**：工作树另有 **3 批未提交改动**（事件三条：侦探技能与全局事件计时器解绑 / ESC 取消事件选择 / 奇怪的问号 238t 冷却 + 38t 动画窗四类入口拦截 + 动画开始强拆会话；筹码商人 20-64 绿宝石；卡牌商人 5-20 绿宝石）—— **1.21.1 实机全 PASS**（§4.1ar），**未 commit / 未 push**；**1.20.1 已于 17:4x 补验（D1–D5 / 价格 / 1:1）全 PASS**；2026-10-29 傍晚第 4 批「绿宝石骰子折扣移除改 1:1」双线实机 PASS（§4.1as）；四线 `mod_version` 已于 2026-10-29 18:0x bump 到 `1.5.0-rc.6+<后缀>`（`37f97dcf`），四批代码提交 `463552b7`，**未 push**。
+`> **2026-10-29 增量（rc.6 发布批，本节记于 18:2x）**：四批改动已随 **`1.5.0-rc.6`** 落地 —— 代码提交 `463552b7`（事件三条 / 筹码 20-64 / 卡牌 5-20 / 绿宝石骰子 1:1，43 files +974/−194）、四线 bump `37f97dcf`（`mod_version = 1.5.0-rc.6+<后缀>`，`starengine_version = 1.1.0` 未动）、交接文档 `486a6dd9`、发布面 `3e9f1f9f`（两份 `CHANGELOG` + `release/1.5.0-rc.6/` 三件）。rc.6 构建（18:0x）：neo **2,607,086 B / `33cbbab0…`**、forge **2,655,492 B / `bb108a8d…`**，已推 `build/libs` / 两个 dev run / 两个整合包 mods（两线 jarjar 自检 0）；四批改动 1.21.1 与 1.20.1 实机全 PASS（§4.1ar / §4.1as，发布批见 §4.1at）。`origin/multi-main` = **`3e9f1f9f`**，`origin..HEAD` = 0；CI run **#128 SUCCESS**（3e9f1f9）。**未打 tag、未建 Release** —— `1.5.0-rc.6` tag 待用户放行（push tag 才触发 Release 与附件）；P1 两线仍是 0.8 折扣 + 旧 lang。
 1. 分支 `multi-main`，HEAD = 本批提交（`release(rc.2): 1.5.0-rc.1 -> 1.5.0-rc.2`，含调酒师治疗按张数 + 多萝西【交际花】双版本实机）。**已 push + CI 自动建 tag**（2026-10-25 23:1x，用户下达「执行 push」）：`git push origin multi-main` ⇒ `8dcdb715..13a45619`，`rev-list --count origin/multi-main..HEAD` = **0**；CI（`.github/workflows/build.yml` 的 auto-tag 步骤）自动建注解 tag **`1.5.0-rc.2`**（指向 `13a45619`）并发布 prerelease（附件 = 刚构建的 P0 两个 rc.2 jar，正文取 `release/1.5.0-rc.2/`）。前置库仓 `origin..HEAD` = **0**。
 2. 四线 `mod_version = 1.5.0-rc.2+<加载器后缀>`；四线 `starengine_version = 1.1.0`（前置库同批由 `1.1.0-pre.2` 转**正式版**，库内 Java 源码零改动）；硬前置区间随之展开为 `[1.1.0,2.0.0)`。
 3. 本批收编 **Kimi 上一轮四批未提交改动**（member-detective / misaki 立牌 / 筹码商店刷新源 / 规则分派），并完成 **DSH 三语语言同步** + **地雷女备注区染色修复**。
@@ -1001,6 +1001,26 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 6. **收尾**：两线 `MT_CLEANUP_SAVES: PURGED 1` / `MT_CLEANUP_RESULT: OK` / `MT_STOP: OK`；`run/*/saves` 条目 0；无 crash-reports；未改产品代码 / 版本号，未动 P1 两线与 `.agent-locks`（提交与 bump 见 §5-22）。
 7. **偏差**：① 1.21.1 `MT_preflight-op: ERROR`（台架闸门：注入回读不到 `AP_OP_PERM`，实测 perm=4 可派发命令；1.20.1 走 chat-line 成功）；② 1.20.1 `MT_ENV_AUTOJS: 跳过 — 1.20.1 线未接入 AutoJS`，但 dev jar 与端点都在，全部判据走 AutoJS eval；③ AutoJS `logEval=true` 会把 eval 源码写进 latest.log ⇒ token 用正则取最后一处，D2 首轮曾读成 `NaN`；④ D4 首轮未装骰子被 `BaseSignItem` 总闸门短路（探针装配缺失，非产品缺陷），带骰子重跑后五项全中；⑤ forge 两件口径不同（dev 2,626,088 / 生产 2,655,492）属 `build.gradle` 既定，dev 运行吃 dev 件。
 
+### 4.1at `1.5.0-rc.6` 发布批：构建 / CHANGELOG / 玩家说明 / push（2026-10-29 17:5x–18:2x，用户 m01328 + m01377）
+
+1. **覆盖范围**：四批改动（事件三条 / 筹码商人 20-64 / 卡牌交易员 5-20 / 绿宝石骰子 1:1）随 `1.5.0-rc.6` 一次发布。用途：把已双线实机 PASS 的改动收成一个可发版本，并补齐玩家侧说明。
+
+2. **构建与投放**（`gradlew.bat :neoforge-1.21.1:build :forge-1.20.1:build`，`BUILD SUCCESSFUL in 4s`）：
+   - `build/libs/astral_dice-1.5.0-rc.6+neoforge_1.21.1.jar` = **2,607,086 B / sha256 `33cbbab098c6ad1e5f92a492cafdb44a078823aab8b78e9194962aff77cba7b1`**；
+   - `build/libs/astral_dice-1.5.0-rc.6+forge_1.20.1.jar` = **2,655,492 B / sha256 `bb108a8dc49a4f1784fe457cacce690b051dc5fa8dfa1a4b09a6d9606d6df8e8`**；
+   - 同批推送任务把两件刷到 `run/1.21.1/mods`、`run/1.20.1/mods`、整合包 `D:\.minecraft\versions\狐の航空学 Voxy Edition\mods` 与 `D:\.minecraft\versions\1.20.1-Forge 模组测试\mods`；两线 `pushToDevRun/pushToRootBuild` 的 jarjar 自检均为「无 `META-INF/jarjar/`」，整合包内已有独立库 `starengine-*-1.1.0.jar`（与 `starengine_version = 1.1.0` 成对）。
+
+3. **发布面文档**（提交 `3e9f1f9f`，5 files / +1123）：
+   - 两份 `CHANGELOG` 在 `## 1.5.0` 段尾各插 5 条 —— 内容与平衡性调整 3 条（村民交易价格重定 / 绿宝石骰子 1:1 / 奇怪的问号 238t 冷却）、已修复BUG 2 条（大侦探事件选择界面卡死 + ESC 取消 / 事件动画窗四类入口拦截 + 动画开始强拆会话）。
+   - 新建 `release/1.5.0-rc.6/` 三件（以 rc.5 三件为模板复制后改版本号 + 注入同批条目 + 已知问题补两条「旧村民缓存旧价」「声望与英雄之息仍可压低实付」）：`PLAYER_CHANGELOG_ZH.md` 50,771 B / `PLAYER_CHANGELOG.md` 52,746 B / `PLAYER_CHANGELOG_MCMOD.html` 53,069 B（HTML 为 MCMOD 手写标记 `[h1=]`/`[h2=]`，非脚本生成；md 均 CRLF、bareLF 0，HTML 保持 LF）。
+   - 顶部速览同步：ZH/EN 的「平衡」「修复」两条摘要补上本批要点；标题与两个 jar 文件名换成 `1.5.0-rc.6`（三件各 0 处 `1.5.0-rc.5` 残留）。
+
+4. **提交与推送**：`3e9f1f9f`（docs(release)）→ `git -c http.proxy=http://127.0.0.1:7897 -c https.proxy=... push origin multi-main` ⇒ `7c836185..3e9f1f9f`，`PUSH_EXIT=0`；`git rev-list --left-right --count origin/multi-main...HEAD` = **0 / 0**；CI run **#128 = COMPLETED / SUCCESS**（提交 `3e9f1f9f`，页面读 `react-app.embeddedData`）。
+
+5. **未做 / 待放行**：① **未打 `1.5.0-rc.6` tag、未建 Release**（`.github/workflows/build.yml` 只在 tag push `[0-9]*` 时建 Release；tag 需用户明确放行，打 tag 后 CI 会把两件 P0 jar 放进同一 Release，正文取 `release/1.5.0-rc.6/`）；② **未上传 CurseForge**（rc.5 两件 fileID `9349843` / `9349844` 仍是 beta 旧版）；③ P1 两线（`neoforge-26.1.2` / `fabric-1.20.1`）仍保留 0.8 折扣与旧 lang，解冻后需同步；④ 卡牌价格硬下限未做；⑤ 探针 `star` 通道两处缺陷与 `zz_screen_probe.py` 处置仍未做（本轮星币 / 1:1 判据走 AutoJS eval）。
+
+6. **口径提醒**：`release/<版本>/` 是「累积到该版本」的玩家说明，不是单版差分（差分小节早已按用户裁决删除）；两份 `CHANGELOG` 与玩家说明面向不同读者，条目措辞允许不同但事实必须一致；改完后必须核 ① 三件版本号替换完整 ② CRLF/bareLF ③ 章节位置正确。
+
 ## 5 遗留与欠账
 
 ### Blocker
@@ -1046,9 +1066,9 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 
 20. **rc.5 收尾批的三项欠账（2026-10-28，§4.1aq）**：① **GitHub Release 已确认（2026-10-28 14:0x 闭环，§4.1aq-6）** —— push `cce71efb..79e3b183` 触发 CI：tag `1.5.0-rc.5`（注解 `db3b1796…` → `79e3b183`）与 Release `Astral Dice 1.5.0-rc.5` 均存在；`releases/expanded_assets/1.5.0-rc.5` HTTP 200 列出两件附件并带原文 sha256（neo 2,598,301 B / `c97ea383…`、forge 2,647,158 B / `d4e48687…`），下载件哈希与页面一致；正文由 `release/<tag>/PLAYER_CHANGELOG_ZH.md` + `PLAYER_CHANGELOG.md` 生成；② **1.20.1 线未实机** —— 本批实机只跑 1.21.1（用户下达范围），forge 线只有构建 + 投放 + 哈希判据；③ P1 两线（`neoforge-26.1.2` / `fabric-1.20.1`）按「只发 P0」红线仍未验证 / 未移植。
 
-21. **三批未提交改动（事件三条 / 筹码 20-64 / 卡牌 5-20）1.21.1 实机全 PASS，仍未提交（2026-10-29，§4.1ar）**：工作树 = **32 M + 8 ??**（含新增探针 `scripts/test/resources/kubejs/1.21.1/server_scripts/astral_batch3_probe.js`、审查残留 `zz_screen_probe.py`、用户素材 `models/astral_anvil.bbmodel`），`git diff --shortstat` 32 files。**仍欠**：① ~~1.20.1 未实机~~ → **已完成（2026-10-29 17:4x，§4.1as）**（forge 新包 id 27/28 必须与 neo 同版本成对投放）；② ~~未 commit~~ → **已提交 `463552b7`，未 push**；③ 卡牌价格硬下限未做 —— 原版声望 / 英雄之息折扣可把实付压到 5 绿宝石以下（与筹码商人同口径，已在 javadoc 披露）；④ 探针 `star` 通道两处缺陷待改，星币判据目前只有 AutoJS eval 一条证据。
+21. **三批未提交改动（事件三条 / 筹码 20-64 / 卡牌 5-20）1.21.1 实机全 PASS，仍未提交（2026-10-29，§4.1ar）**：工作树 = **32 M + 8 ??**（含新增探针 `scripts/test/resources/kubejs/1.21.1/server_scripts/astral_batch3_probe.js`、审查残留 `zz_screen_probe.py`、用户素材 `models/astral_anvil.bbmodel`），`git diff --shortstat` 32 files。**仍欠**：① ~~1.20.1 未实机~~ → **已完成（2026-10-29 17:4x，§4.1as）**（forge 新包 id 27/28 必须与 neo 同版本成对投放）；② ~~未 commit~~ → **已提交 `463552b7` 并随 rc.6 push（`3e9f1f9f`，CI #128 SUCCESS，§4.1at）**；③ 卡牌价格硬下限未做 —— 原版声望 / 英雄之息折扣可把实付压到 5 绿宝石以下（与筹码商人同口径，已在 javadoc 披露）；④ 探针 `star` 通道两处缺陷待改，星币判据目前只有 AutoJS eval 一条证据。
 
-22. **第 4 批（绿宝石骰子 1:1）双线实机 PASS + 1.20.1 旧三批补验 PASS（2026-10-29 17:2x–17:4x，§4.1as）**：~~工作树 40 M + 8 ??~~ → **已提交 `463552b7`（43 files / +974 / −194，含 5 个新 java）+ `37f97dcf`（四线 bump `1.5.0-rc.6`），未 push**；工作树只剩 3 ??（用户素材 / 探针 / `zz_screen_probe.py`）。**仍欠**：① 卡牌硬下限未做（原版声望 / 英雄之息折扣可把实付压到 5 以下）；② P1 两线（26.1.2 / fabric）仍保留 0.8 折扣与旧 lang，解冻后需同步；③ 探针 `star` 通道两处缺陷未修（本轮星币 / 1:1 判据走 AutoJS eval）；④ 两份 `CHANGELOG` 与 `release/1.5.0-rc.6/` 玩家说明尚未写（发布时补）。
+22. **第 4 批（绿宝石骰子 1:1）双线实机 PASS + 1.20.1 旧三批补验 PASS（2026-10-29 17:2x–17:4x，§4.1as）**：~~工作树 40 M + 8 ??~~ → **已提交 `463552b7`（43 files / +974 / −194，含 5 个新 java）+ `37f97dcf`（四线 bump `1.5.0-rc.6`），**已随 rc.6 push（`3e9f1f9f`，CI #128 SUCCESS，§4.1at）**；工作树只剩 3 ??（用户素材 / 探针 / `zz_screen_probe.py`）。**仍欠**：① 卡牌硬下限未做（原版声望 / 英雄之息折扣可把实付压到 5 以下）；② P1 两线（26.1.2 / fabric）仍保留 0.8 折扣与旧 lang，解冻后需同步；③ 探针 `star` 通道两处缺陷未修（本轮星币 / 1:1 判据走 AutoJS eval）；④ ~~两份 `CHANGELOG` 与 `release/1.5.0-rc.6/` 玩家说明尚未写~~ → **已完成（`3e9f1f9f`，§4.1at）**。
 
 ### Minor
 
