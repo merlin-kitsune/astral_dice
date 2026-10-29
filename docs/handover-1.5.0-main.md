@@ -11,7 +11,8 @@
 
 `> **2026-10-29 增量（rc.6 发布批，本节记于 18:2x）**：四批改动已随 **`1.5.0-rc.6`** 落地 —— 代码提交 `463552b7`（事件三条 / 筹码 20-64 / 卡牌 5-20 / 绿宝石骰子 1:1，43 files +974/−194）、四线 bump `37f97dcf`（`mod_version = 1.5.0-rc.6+<后缀>`，`starengine_version = 1.1.0` 未动）、交接文档 `486a6dd9`、发布面 `3e9f1f9f`（两份 `CHANGELOG` + `release/1.5.0-rc.6/` 三件）。rc.6 构建（18:0x）：neo **2,607,086 B / `33cbbab0…`**、forge **2,655,492 B / `bb108a8d…`**，已推 `build/libs` / 两个 dev run / 两个整合包 mods（两线 jarjar 自检 0）；四批改动 1.21.1 与 1.20.1 实机全 PASS（§4.1ar / §4.1as，发布批见 §4.1at）。`origin/multi-main` = **`3e9f1f9f`**，`origin..HEAD` = 0；CI run **#128 SUCCESS**（3e9f1f9）。**tag / Release / CF 已齐（2026-10-29 20:4x 复核，§4.1au）**：`1.5.0-rc.6` tag 由 CI 的 auto-tag 步骤在 push `multi-main` 时**自动生成**（注解 tag `d6eceb6f…` → `3e9f1f9f`，无需手工打标）；Release `1.5.0-rc.6` 已含两件 P0 附件；CF 两件已发（fileID `9361839` / `9361840`，beta）；两个整合包 mods 已是 rc.6 且与构建件逐字节同哈希。P1 两线仍是 0.8 折扣 + 旧 lang。
 
-> **状态快照（2026-10-29 20:5x 收班 · 以这条为准）**：本地 HEAD = **`8a6f4bb6`**（`docs(handover): rc.6 tag/Release 复核 + 整合包投放核对 + CF fileID`），远端 `origin/multi-main` = **`2aaf5903`** ⇒ **本地领先 1 个 docs 提交、未 push（等用户放行）**；四线 `mod_version = 1.5.0-rc.6+<后缀>`、`starengine_version = 1.1.0`；远端 tag `1.5.0-rc.6` 已存在（CI auto-tag：注解 `d6eceb6f…` → `3e9f1f9f`），Release `1.5.0-rc.6` 两件 P0 附件在；CurseForge rc.6 两件已发（`9361839` / `9361840`，beta）；两个 P0 整合包 mods 已是 rc.6 且与构建件逐字节同哈希（§4.1au）；1.21.1 与 1.20.1 实机全 PASS（§4.1ar / §4.1as）；工作树 3 个未跟踪（`models/astral_anvil.bbmodel` 用户素材禁 add / `scripts/test/resources/kubejs/1.21.1/server_scripts/astral_batch3_probe.js` / `zz_screen_probe.py`）。**未 push / 无正式 `1.5.0` tag / CF `update-info` 未做 / P1 两线冻结。**
+> **状态快照（2026-10-29 20:5x 收班 · 历史快照）**：本地 HEAD = **`8a6f4bb6`**（`docs(handover): rc.6 tag/Release 复核 + 整合包投放核对 + CF fileID`），远端 `origin/multi-main` = **`2aaf5903`** ⇒ **本地领先 1 个 docs 提交、未 push（等用户放行）**；四线 `mod_version = 1.5.0-rc.6+<后缀>`、`starengine_version = 1.1.0`；远端 tag `1.5.0-rc.6` 已存在（CI auto-tag：注解 `d6eceb6f…` → `3e9f1f9f`），Release `1.5.0-rc.6` 两件 P0 附件在；CurseForge rc.6 两件已发（`9361839` / `9361840`，beta）；两个 P0 整合包 mods 已是 rc.6 且与构建件逐字节同哈希（§4.1au）；1.21.1 与 1.20.1 实机全 PASS（§4.1ar / §4.1as）；工作树 3 个未跟踪（`models/astral_anvil.bbmodel` 用户素材禁 add / `scripts/test/resources/kubejs/1.21.1/server_scripts/astral_batch3_probe.js` / `zz_screen_probe.py`）。**未 push / 无正式 `1.5.0` tag / CF `update-info` 未做 / P1 两线冻结。**
+> **状态快照（2026-10-30 00:5x 收班 · 以这条为准）**：本地 HEAD = **`6344e44c`**（`chore(release): rc.7 玩家侧说明 + 静态守门接入 CI，并修掉 p1 守门 08 的必然红`），远端 `origin/multi-main` = **`6344e44c`** ⇒ **`origin/multi-main..HEAD` = 0**（已 push，CI run `40914192974` = SUCCESS；上一提交 `58c51fd8` 的 run `40911839607` 亦 SUCCESS）；四线 `mod_version = 1.5.0-rc.7+<后缀>`、`starengine_version = 1.1.0`；远端 tag `1.5.0-rc.7`（注解 `ab8215d7…` → 提交 `58c51fd8`），Release `1.5.0-rc.7` prerelease 且**正文为中英双份玩家说明**（`release/1.5.0-rc.7/PLAYER_CHANGELOG_ZH.md` + `---` + `PLAYER_CHANGELOG.md`，8,687 字符）、两件附件**已覆盖为本地构建件**（neo 2,609,192 B / `122cedf8…`、forge 2,657,532 B / `cbe67b1c…`）；CurseForge rc.7 两件已发（`9363589` / `9363591`，beta）；两个 P0 整合包 mods 与 `build/libs` **逐字节同哈希**（§4.1av）；**本版只有 `neoforge-1.21.1` 实机 PASS**（九头蛇 Δhp 46 / 僵尸 Δhp 5），`forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1` **未实机**；工作树 4 个未跟踪：`models/astral_anvil.bbmodel`（**用户素材，禁 add**）、`scripts/test/cases/TMP-ATTRLESS-HYDRA-1.21.1.json`（实机临时用例，不入库）、`scripts/test/resources/kubejs/1.21.1/server_scripts/astral_batch3_probe.js`、`zz_screen_probe.py`。**无正式 `1.5.0` tag / CF `update-info` 未做 / P1 两线冻结 / 待办见 §5。**
 
 1. 分支 `multi-main`，HEAD = 本批提交（`release(rc.2): 1.5.0-rc.1 -> 1.5.0-rc.2`，含调酒师治疗按张数 + 多萝西【交际花】双版本实机）。**已 push + CI 自动建 tag**（2026-10-25 23:1x，用户下达「执行 push」）：`git push origin multi-main` ⇒ `8dcdb715..13a45619`，`rev-list --count origin/multi-main..HEAD` = **0**；CI（`.github/workflows/build.yml` 的 auto-tag 步骤）自动建注解 tag **`1.5.0-rc.2`**（指向 `13a45619`）并发布 prerelease（附件 = 刚构建的 P0 两个 rc.2 jar，正文取 `release/1.5.0-rc.2/`）。前置库仓 `origin..HEAD` = **0**。
 2. 四线 `mod_version = 1.5.0-rc.2+<加载器后缀>`；四线 `starengine_version = 1.1.0`（前置库同批由 `1.1.0-pre.2` 转**正式版**，库内 Java 源码零改动）；硬前置区间随之展开为 `[1.1.0,2.0.0)`。
@@ -1059,6 +1060,25 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
    - **本次次源校验不可用（已定性，不是上传失败）**：① `api.cfwidget.com/1662159` 200 但 `download` 字段仍指 rc.5 `9349844`（`uploaded_at 2026-10-28T05:57:21.973Z`）⇒ 第三方索引滞后，符合预期；② `mediafilez.forgecdn.net` / `edge.forgecdn.net` 的 `/files/<4位>/<3位>/<urlencode 名>` 对新件（9361/839）**连已知 rc.5 件（9349/843）一起** HEAD 403 / GET 404 ⇒ 是 URL 形状或 CDN 侧拦截（新版 CDN 已不再接受该路径形状），不能作判据；③ `www.curseforge.com` 页面与其 `/api/v1/…/download`、`minecraft.curseforge.com/api/mods/…` 全部被 Cloudflare managed challenge 403（5,545–5,627 B）。⇒ 按 `docs/agent/AGENTS-full.md:4105`：「CF 判成功只看 Upload API 返回的 fileID」，本轮以 `9361839` / `9361840` 为准。
 
 4. **未做**：CF `update-info`（项目简介 / 分类，历次均未做）；`build/libs` 历史 jar 清理；rc.6 的 CF 页人工目视复核（Cloudflare 拦截，等用户侧打开）。
+
+### 4.1av rc.7 修复批（2026-10-30）
+
+1. **三个提交的分工**（`multi-main` 上 `d91fa390` → `58c51fd8` → `6344e44c`，四线 `mod_version` 在第一批里就已 rc.6 → rc.7）：
+   - `d91fa390` 事件二选一：退出即强制触发首个事件 + ESC 两段式警告 + 计时器事件覆盖重置，31 files / +3029 / −72（含四线 `gradle.properties` 的 `mod_version` 一行改动）。
+   - `58c51fd8` 骰战 attrless 生物近战崩溃修复（N27），7 files / +1255 / −21。
+   - `6344e44c` rc.7 玩家侧说明 + 7 个静态守门接入 CI + `verify_dice_combat_attrless_guard_p1.py` 的 08 负向对照重写，4 files / +342 / −59。
+
+2. **attrless 守卫的判据口径（代理值 ↔ 派发点必须逐线配对）**：属性表里没有 `ATTACK_DAMAGE` 的生物（暮色九头蛇靠 `HydraHeadContainer` 固定值直接 `hurt` 玩家）不再抛 `IllegalArgumentException: Can't find attribute minecraft:generic.attack_damage`，改用「这一击实际打出的原版伤害」当攻击力代理；四条线的代理值来源与 `magicAbsorbFactor` 是否重乘严格配对，抗性 / 保护在每条线上恰好生效一次：
+   - `neoforge-1.21.1` / `neoforge-26.1.2`：代理取 `getOriginalDamage()`（减免前原值）⇒ **保留** `magicAbsorbFactor` 重乘（跳过会漏掉抗性与保护附魔）。
+   - `forge-1.20.1`：代理取 `getAmount()`（已过护甲 → 抗性 → 保护三步）⇒ **跳过**重乘（`if (!attrless)`）；已知代理值对带伤害吸收 / 黄心的玩家偏低一档，已登记。
+   - `fabric-1.20.1`：`actuallyHurt` 形参先**除以** `victimFactor`（`@HIGH` 已先乘过）再照旧重乘 `magicAbsorbFactor` × `victimFactor`。
+   - 仍不拿 `getNewDamage()` 当代理（不违反 2026-09-26 裁决①）；两个守门脚本只断言语义与相对位置、不钉绝对行号，08 的负向夹具改为内嵌 `d91fa390` 修复前片段（不再调 `git show`），干净检出也能跑红。
+
+3. **实机**：仅 `neoforge-1.21.1` 单线 PASS —— 九头蛇属袭 Δhp = **46**（200→154，判据 [40,48]）、对照僵尸 Δhp = **5**（200→195，判据 [1,12]），`MT_ASSERT_CRASH: PASS`、日志无 `Can't find attribute`；用例固定 normal 难度（`Player#hurt` 首行即做难度缩放，代理值天然含难度倍率）。**`forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1` 本版未实机**，四线只做到 `compileJava` 真跑通（`--no-build-cache`，四个 `DiceCombatEvents.class` 尺寸与改前一致）。
+
+4. **投放与 CF / Release 的对齐**：`neoforge-1.21.1/build/libs` = `run/1.21.1/mods` = 整合包 A = **2,609,192 B / `122cedf8…`**；`forge-1.20.1/build/libs` = 整合包 B = **2,657,532 B / `cbe67b1c…`**；`run/1.20.1/mods` 仍是 mojmap dev 件 **2,628,157 B / `23ee7a13…`**（与生产件哈希不同属 `pushToDevRun` / `pushToGame` 分工，非缺陷，同 §4.1au-2）。**「CI 构建件已被本地件覆盖」这一事实必须写明**：Release 两件附件是用 `gh release upload --clobber` 换成本地构建件的，附件回读的 sha256 与本地逐字节一致 ⇒ 后来者核对时以本地 sha256 为准，**不要**假定 CI 件与本地件内容相同；CurseForge 两件（`9363589` / `9363591`，beta）与 Release 同源。
+
+5. **已知缺口**：三线（`forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1`）未实机、P1 两线仍冻结；正式 `1.5.0` tag 未打、CF `update-info` 未做；`build/libs` 历史 jar 未清理。待办汇总见 §5。
 ## 5 遗留与欠账
 
 ### Blocker

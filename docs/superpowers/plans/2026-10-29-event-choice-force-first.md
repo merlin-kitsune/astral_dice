@@ -18,7 +18,7 @@
 - 包类不新增：复用 `EventChoiceCancelPayload` / `EventChoiceCancelMessage`，只改其 Javadoc 与服务端处理语义。
 - `cancelFor(...)`（服务端内部关屏，如确认后的动画锁）**必须保持不触发**任何事件。
 - 文件必须保持 LF 行尾（仓库口径），提交前 `git ls-files --eol` 复核。
-- 版本号本次不动（仍 `1.5.0-rc.6+<线>`）。
+- 版本号：计划定稿时四线仍是 `1.5.0-rc.6+<线>`，实际落地时同批 bump 到 `1.5.0-rc.7+<线>`（`d91fa390` 内含四线 `gradle.properties` 各一行改动）。
 
 ## Review Focus
 
