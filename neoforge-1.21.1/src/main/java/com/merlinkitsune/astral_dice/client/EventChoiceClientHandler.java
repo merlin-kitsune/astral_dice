@@ -45,10 +45,17 @@ public final class EventChoiceClientHandler {
         }
     }
 
-    /** 当前界面是本 token 的选择界面才关闭（避免误关玩家后来打开的其它界面）。 */
+    /**
+     * 当前界面是本 token 的选择界面才关闭（避免误关玩家后来打开的其它界面）。
+     *
+     * <p>关之前先打 {@code closedByServer} 标记：服务端自己发起的关屏不该再发退出意图
+     * （{@code EventChoiceScreen#removed()} 会读这个标记）。类型 + token 双重校验还挡掉了
+     * 换维度时把 {@code ReceivingLevelScreen} 等其它界面顶掉的情况。
+     */
     public static void closeIfToken(int token) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.screen instanceof EventChoiceScreen screen && screen.token() == token) {
+            screen.markClosedByServer();
             mc.setScreen(null);
         }
     }

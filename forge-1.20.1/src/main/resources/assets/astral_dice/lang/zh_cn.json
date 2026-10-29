@@ -1023,6 +1023,7 @@
   "effect.astral_dice.problem_delivery": "问题外卖",
   "effect.astral_dice.problem_delivery.description": "中毒与饥饿（0:15），15 秒内无法治疗",
   "gui.astral_dice.event_choice.title": "选择事件",
+  "message.astral_dice.event_choice.esc_warning": "退出会强制触发第一个事件，再次按下 Esc 退出",
   "jade.astral_dice.restock_countdown": "补货倒计时 §9%s§7",
   "jade.astral_dice.enter_countdown": "可进入倒计时 §9%s§7",
   "item.astral_dice.jill_sign": "调酒师立牌",

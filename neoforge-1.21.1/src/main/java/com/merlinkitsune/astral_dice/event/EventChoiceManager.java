@@ -107,7 +107,9 @@ public final class EventChoiceManager {
             LOGGER.warn("AP_EVENT_CHOICE: already_open:player={}", player.getGameProfile().getName());
             return false;
         }
-        List<AstralEvent> pool = AstralEventRegistry.publicPool(player);
+        // 2026-10-29 P1 修复：候选池改按**该来源可派发**口径构造（publicPool(Player, source)），
+        // 而不是只按「队内有秘密侦探」——候选里不允许出现本次派发必然失败的事件。
+        List<AstralEvent> pool = AstralEventRegistry.publicPool(player, AstralEventTrigger.ACTIVE_SKILL);
         if (pool.isEmpty()) {
             LOGGER.warn("AP_EVENT_CHOICE: pool_empty:player={}", player.getGameProfile().getName());
             return false;
@@ -160,41 +162,73 @@ public final class EventChoiceManager {
     /** 强制触发第一个选项（超时 / 死亡 / 登出）：不播主动技能音效，直接关界面并走事件触发流程。 */
     private static void forceFirst(Player player, Session session, String reason) {
         if (session.resolving >= 0) return;   // 玩家已确认 ⇒ 尊重其选择（会话由确认路径收尾）
+        // 2026-10-29 P2 修复：`instanceof ServerPlayer` 的类型判断提到 `SESSIONS.remove` **之前** ——
+        // 早退时不删会话、不置 resolving。原顺序（先删会话、再判类型）一旦在类型判断处早退，
+        // 会话已消失、resolving 已置 0，这次强制结算永久丢失且无法重试；幂等语义不变
+        // （resolving >= 0 与 remove 的 CAS 仍是两道闸门，日志行逐字不变）。
+        if (!(player instanceof ServerPlayer serverPlayer)) return;
         // ③ 2026-10-29 用户裁决 D1（真解绑）：全局闸门预判整段删除 —— 强制结算因此**必定**落盘，
         //    「remaining <= 0 却 return、会话还留着」的路径不再存在（见 tick 的到点分支）。
         //    副作用同 confirm：侦探事件不占用全局事件窗口，可能与另一条计时事件重叠。
         if (!SESSIONS.remove(player.getUUID(), session)) return;
         session.resolving = 0;
-        if (!(player instanceof ServerPlayer serverPlayer)) return;
         PacketDistributor.sendToPlayer(serverPlayer, new EventChoiceClosePayload(session.token));
+        // 2026-10-29 P1 修复：候选集是**打开界面那一刻**的快照，15 秒窗口内队内侦探可能已卸下立牌 /
+        // 离队，于是首选项到派发时已稳定失败（AP_EVENT_NO_DETECTIVE）—— 结算就白丢了。这里按
+        // **同一判据**（AstralEventRegistry#dispatchableFor）复核一次：首选项不可派发 ⇒ 改派屏上的
+        // 另一个选项；两个都不可派发才交回派发器按既有口径拒绝。不放宽任何派发条件（不伪造 tier、
+        // 不跨来源、不触发界面上没出现过的事件）。
+        ResourceLocation forced = firstDispatchable(serverPlayer, session);
         LOGGER.info("AP_EVENT_CHOICE: force:{}:pick=0:reason={}:event={}",
-                session.token, reason, session.firstEvent);
-        AstralEventDispatcher.trigger(serverPlayer, session.firstEvent, AstralEventTrigger.ACTIVE_SKILL);
+                session.token, reason, forced);
+        if (!forced.equals(session.firstEvent)) {
+            LOGGER.info("AP_EVENT_CHOICE: force_fallback:{}:from={}:to={}",
+                    session.token, session.firstEvent, forced);
+        }
+        AstralEventDispatcher.trigger(serverPlayer, forced, AstralEventTrigger.ACTIVE_SKILL);
     }
 
     /**
-     * 客户端 ESC 取消（2026-10-29 用户裁决 D2）：<b>未确认</b>且 token 匹配 ⇒ 撤会话 + 关界面，
-     * **不触发**事件、不结算、不再下发倒计时；该次主动技能等同「未使用」（技能冷却由
-     * {@code BaseSignItem#performSkill} 在选择器/界面类路径上按既有口径决定，本方法不碰冷却）。
+     * 强制结算实际派发的事件：优先首选项；首选项此刻已不可派发时退回**同一屏上的**第二个选项。
+     * 两者都不可派发 ⇒ 仍返回首选项（由派发器打既有 {@code AP_EVENT_NO_DETECTIVE} 机器行）。
+     */
+    private static ResourceLocation firstDispatchable(ServerPlayer player, Session session) {
+        if (isDispatchable(player, session.firstEvent)) return session.firstEvent;
+        if (isDispatchable(player, session.secondEvent)) return session.secondEvent;
+        return session.firstEvent;
+    }
+
+    /** 与候选池 / 派发器同源的可派发判定（来源固定为 {@link AstralEventTrigger#ACTIVE_SKILL}）。 */
+    private static boolean isDispatchable(ServerPlayer player, ResourceLocation eventId) {
+        return AstralEventRegistry.get(eventId)
+                .map(e -> AstralEventRegistry.dispatchableFor(player, e, AstralEventTrigger.ACTIVE_SKILL))
+                .orElse(false);
+    }
+
+    /**
+     * 客户端退出意图（2026-10-29 用户裁决 D1/D2）：<b>退出即结算</b> —— 玩家没选就退出了界面
+     * （ESC 两段式后的退出 / 被别的界面顶掉 / 换维度），一律按「强制第一个选项」结算，
+     * 而不是把这次主动技能白丢掉。
+     *
+     * <p>2026-10-29 用户裁决：任何形式的退出都强制触发第一个事件，故本方法改名并改为结算语义
+     * （原 {@code cancel} 只清会话 + 发 Close、不触发事件）；实现上直接转发 {@link #forceFirst}。
      *
      * <p>幂等：会话不存在 / token 不匹配 / 已结算（{@code resolving >= 0}）一律只记机器行后忽略 ——
-     * ESC 与服务端超时强制结算可能在同一 tick 竞态，迟到的取消包到这里时会话已经不在；
-     * 客户端在「已确认」状态下关界面也不再发包（见 {@code EventChoiceScreen#onClose}）。
+     * 退出包与服务端超时/死亡/登出的强制结算可能在同一 tick 竞态，迟到的退出包到这里时会话已经不在；
+     * 客户端在「已确认」或「服务端关屏」状态下关界面也不再发包（见 {@code EventChoiceScreen}）。
      *
-     * @param player 取消者
+     * @param player 退出者
      * @param token  会话 token（必须与当前会话一致）
-     * @param reason 机器行用的原因（客户端 ESC = {@code "esc"}）
+     * @param reason 机器行用的原因（客户端 ESC = {@code "esc"}，换维度 = {@code "dimension"}；原样透传）
      */
-    public static void cancel(ServerPlayer player, int token, String reason) {
+    public static void exitWithoutChoice(ServerPlayer player, int token, String reason) {
         Session session = SESSIONS.get(player.getUUID());
         if (session == null || session.token != token || session.resolving >= 0) {
             LOGGER.info("AP_EVENT_CHOICE: cancel_ignored:{}:player={}:reason={}",
                     token, player.getGameProfile().getName(), reason);
             return;
         }
-        SESSIONS.remove(player.getUUID(), session);
-        PacketDistributor.sendToPlayer(player, new EventChoiceClosePayload(token));
-        LOGGER.info("AP_EVENT_CHOICE: cancel:{}:{}", token, reason);
+        forceFirst(player, session, reason);
     }
 
     /**
@@ -257,5 +291,18 @@ public final class EventChoiceManager {
         Session session = SESSIONS.get(event.getEntity().getUUID());
         if (session == null) return;
         forceFirst(event.getEntity(), session, "logout");
+    }
+
+    /**
+     * 玩家换维度（传送门 / 跨维度 {@code /tp}）⇒ 强制第一个选项（2026-10-29 用户裁决 D1：
+     * 「任何形式的退出」包含换维度）。客户端被 {@code DimensionTransitionScreen} 顶掉时不一定来得及发
+     * 退出包，故服务端必须有这条钩子；与客户端 exit 意图靠 {@link #forceFirst} 的幂等去重。
+     */
+    @SubscribeEvent
+    public static void onPlayerChangedDimension(PlayerEvent.PlayerChangedDimensionEvent event) {
+        if (!(event.getEntity() instanceof ServerPlayer player)) return;
+        Session session = SESSIONS.get(player.getUUID());
+        if (session == null) return;
+        exitWithoutChoice(player, session.token, "dimension");
     }
 }

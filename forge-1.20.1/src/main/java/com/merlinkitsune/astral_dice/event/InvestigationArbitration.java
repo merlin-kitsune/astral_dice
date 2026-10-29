@@ -53,11 +53,33 @@ public final class InvestigationArbitration {
     }
 
     /**
+     * 「秘密侦探专属事件」对该玩家此刻是否<b>可派发</b> —— 候选池 / 派发器 / 强制结算兜底的<b>唯一</b>判据
+     * (2026-10-29 P1 修复)。
+     *
+     * <p>派发器 {@code AstralEventDispatcher#trigger} 在<b>无击杀者</b>的来源下要求
+     * {@link #pickHighestTier} 非空,否则打 {@code AP_EVENT_NO_DETECTIVE} 并 {@code return false}
+     * (白丢一次结算);而 {@code pickHighestTier} 本身即以本判据为前置。事件选择界面的候选池
+     * {@code AstralEventRegistry#publicPool(Player, AstralEventTrigger)} 与强制结算兜底
+     * {@code EventChoiceManager#forceFirst} 也调用本方法 —— 三处共用一个来源,杜绝
+     * 「候选里能选到、派发时必然失败」的口径漂移。
+     *
+     * @return 队内(含自己)至少有一名佩戴秘密侦探立牌的玩家
+     */
+    public static boolean canDispatchSecretOnly(Player triggerer) {
+        return teamHasSecretDetective(triggerer);
+    }
+
+    /**
      * 取阶段最高的秘密侦探;并列最高时随机抽一个。
      *
      * @return 抽中的侦探;队内没有任何秘密侦探时返回 {@link Optional#empty()}
      */
     public static Optional<Player> pickHighestTier(Player triggerer) {
+        // 2026-10-29 P1 修复:可派发判据与候选池**同源**(canDispatchSecretOnly) —— 派发器
+        // 「取不到侦探 ⇒ 白丢一次结算」的早退条件,从此就是候选过滤用的同一个函数。
+        if (!canDispatchSecretOnly(triggerer)) {
+            return Optional.empty();
+        }
         List<Player> detectives = teamDetectives(triggerer);
         if (detectives.isEmpty()) {
             return Optional.empty();

@@ -1022,6 +1022,7 @@
   "effect.astral_dice.problem_delivery": "Problem Delivery",
   "effect.astral_dice.problem_delivery.description": "Poison & Hunger (0:15), no healing for 15s",
   "gui.astral_dice.event_choice.title": "Choose Event",
+  "message.astral_dice.event_choice.esc_warning": "Leaving will force-trigger the first event. Press Esc again to leave.",
   "jade.astral_dice.restock_countdown": "Restock in §9%s§7",
   "jade.astral_dice.enter_countdown": "Available in §9%s§7",
   "item.astral_dice.jill_sign": "Jill Sign",

@@ -80,8 +80,41 @@ public final class AstralEventRegistry {
         ensureInit();
         return ORDER.stream()
                 .filter(e -> e.inPublicPool())
-                .filter(e -> !e.secretOnly() || InvestigationArbitration.teamHasSecretDetective(triggerer))
+                // 2026-10-29 P1 修复:判据收敛到 InvestigationArbitration#canDispatchSecretOnly —— 与派发器同源。
+                .filter(e -> !e.secretOnly() || InvestigationArbitration.canDispatchSecretOnly(triggerer))
                 .toList();
+    }
+
+    /**
+     * <b>事件选择界面</b>的候选池(2026-10-29 P1 修复):公共池 + 「该来源此刻<b>必然</b>可派发」。
+     *
+     * <p>不变量:<b>候选集 ⊆ 该玩家、该来源的可派发集</b> —— 候选里不允许出现本次派发必然失败的事件。
+     * 派发器 {@code AstralEventDispatcher#trigger} 的每条早退分支都有对应的候选侧判据:
+     * 未注册 id 不可能来自本注册表;触发来源由 {@link AstralEvent#allows} 过滤;秘密侦探专属事件由
+     * {@link InvestigationArbitration#canDispatchSecretOnly} 过滤。
+     *
+     * @param triggerer 打开选择界面的玩家(派发时仍是同一名玩家)
+     * @param source    本次派发将使用的来源(选择界面固定 {@code ACTIVE_SKILL})
+     */
+    public static List<AstralEvent> publicPool(Player triggerer, AstralEventTrigger source) {
+        ensureInit();
+        return ORDER.stream()
+                .filter(AstralEvent::inPublicPool)
+                .filter(e -> dispatchableFor(triggerer, e, source))
+                .toList();
+    }
+
+    /**
+     * 该事件对该玩家、该来源此刻是否<b>必然可派发</b>(= 派发器不会走
+     * {@code AP_EVENT_UNKNOWN} / {@code AP_EVENT_SRC_DENIED} / {@code AP_EVENT_NO_DETECTIVE})。
+     *
+     * <p>这是候选构造与强制结算兜底({@code EventChoiceManager#forceFirst})的<b>唯一</b>判据来源,
+     * 静态守门 {@code scripts/verify/verify_event_choice_first_event_dispatchable.py} 据此断言
+     * 「候选侧与派发侧同源」,而不是靠注释约定。
+     */
+    public static boolean dispatchableFor(Player triggerer, AstralEvent event, AstralEventTrigger source) {
+        return event.allows(source)
+                && (!event.secretOnly() || InvestigationArbitration.canDispatchSecretOnly(triggerer));
     }
 
     /**

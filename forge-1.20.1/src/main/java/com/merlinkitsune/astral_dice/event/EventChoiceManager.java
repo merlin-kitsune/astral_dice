@@ -119,7 +119,9 @@ public final class EventChoiceManager {
             LOGGER.warn("AP_EVENT_CHOICE: already_open:player={}", player.getGameProfile().getName());
             return false;
         }
-        List<AstralEvent> pool = AstralEventRegistry.publicPool(player);
+        // 2026-10-29 P1 修复：候选池改按**该来源可派发**口径构造（publicPool(Player, source)），
+        // 而不是只按「队内有秘密侦探」——候选里不允许出现本次派发必然失败的事件。
+        List<AstralEvent> pool = AstralEventRegistry.publicPool(player, AstralEventTrigger.ACTIVE_SKILL);
         if (pool.isEmpty()) {
             LOGGER.warn("AP_EVENT_CHOICE: pool_empty:player={}", player.getGameProfile().getName());
             return false;
@@ -170,34 +172,39 @@ public final class EventChoiceManager {
     }
 
     /**
-     * C2S 取消入口（用户裁决 2026-10-29 D2：ESC 关闭界面 = 放弃这次主动技能）。
+     * 客户端退出意图（2026-10-29 用户裁决 D1/D2）：<b>退出即结算</b> —— 玩家没选就退出了界面
+     * （ESC 两段式后的退出 / 被别的界面顶掉 / 换维度），一律按「强制第一个选项」结算，
+     * 而不是把这次主动技能白丢掉。
      *
-     * <p>token 必须与会话一致且**尚未结算**；命中即丢弃会话、发关闭包（客户端据此关界面）、
-     * 触发**零个**事件、也不再下发倒计时。
+     * <p>2026-10-29 用户裁决：任何形式的退出都强制触发第一个事件，故本方法由 {@code cancel} 改名并
+     * 改为结算语义（原名只清会话 + 发 Close、不触发事件）；实现上直接转发 {@link #forceFirst}。
      *
-     * <p><b>关于冷却（2026-10-29 复核口径，与 neo 线同一措辞）</b>：ESC 取消只丢弃会话、不触发事件；
-     * 技能冷却 / 锁定由 {@code BaseSignItem#performSkill} 在**按下技能键那一刻**已写入，不因取消而回退
+     * <p><b>关于冷却（2026-10-29 复核口径，与 neo 线同一措辞）</b>：技能冷却 / 锁定由
+     * {@code BaseSignItem#performSkill} 在**按下技能键那一刻**已写入，不因退出而回退
      * （大侦探非选择器类，走的就是这条路径；选择器类技能的冷却则在确认后的 apply 里才写入）。
      *
      * <p>幂等：会话不存在 / token 不匹配 / 已结算（{@code resolving >= 0}）一律只记机器行后忽略 ——
-     * ESC 与服务端超时强制结算可能在同一 tick 竞态，迟到的取消包到这里时会话已经不在。
+     * 退出包与服务端超时 / 死亡 / 登出的强制结算可能在同一 tick 竞态，迟到的退出包到这里时会话已经不在；
+     * 客户端在「已确认」或「服务端关屏」状态下关界面也不再发包（见 {@code EventChoiceScreen}）。
+     *
+     * @param player 退出者
+     * @param token  会话 token（必须与当前会话一致）
+     * @param reason 机器行用的原因（客户端 ESC = {@code "esc"}，换维度 = {@code "dimension"}；原样透传）
      */
-    public static void cancel(ServerPlayer player, int token, String reason) {
+    public static void exitWithoutChoice(ServerPlayer player, int token, String reason) {
         Session session = SESSIONS.get(player.getUUID());
         if (session == null || session.token != token || session.resolving >= 0) {
             LOGGER.info("AP_EVENT_CHOICE: cancel_ignored:{}:player={}:reason={}",
                     token, player.getGameProfile().getName(), reason);
             return;
         }
-        SESSIONS.remove(player.getUUID(), session);
-        ModNetwork.sendToPlayer(player, new EventChoiceCloseMessage(token));
-        LOGGER.info("AP_EVENT_CHOICE: cancel:{}:{}", token, reason);
+        forceFirst(player, session, reason);
     }
 
     /**
      * 强制取消（不看 token；用户裁决 2026-10-29 D5：事件卡动画开始那一刻，玩家已开着的选择界面必须让位）。
      *
-     * <p>与 {@link #cancel} 的区别只在入口：本方法由服务端内部场景（动画起锁）调用，那里只知道「该玩家」
+     * <p>与 {@link #exitWithoutChoice} 的区别只在入口：本方法由服务端内部场景（动画起锁）调用，那里只知道「该玩家」
      * 而不知道会话 token。已结算（resolving >= 0）的会话不碰 —— 它的收尾由确认路径负责。
      */
     public static void cancelFor(ServerPlayer player, String reason) {
@@ -211,15 +218,48 @@ public final class EventChoiceManager {
     /** 强制触发第一个选项（超时 / 死亡 / 登出）：不播主动技能音效，直接关界面并走事件触发流程。 */
     private static void forceFirst(Player player, Session session, String reason) {
         if (session.resolving >= 0) return;   // 玩家已确认 ⇒ 尊重其选择（会话由确认路径收尾）
+        // 2026-10-29 P2 修复：`instanceof ServerPlayer` 的类型判断提到 `SESSIONS.remove` **之前** ——
+        // 早退时不删会话、不置 resolving。原顺序（先删会话、再判类型）一旦在类型判断处早退，
+        // 会话已消失、resolving 已置 0，这次强制结算永久丢失且无法重试；幂等语义不变
+        // （resolving >= 0 与 remove 的 CAS 仍是两道闸门，日志行逐字不变）。
+        // ⚠️ 1.20.1 侧：`PlayerEvent.PlayerLoggedOutEvent#getEntity()` 返回的是 {@code Player}（不是
+        // ServerPlayer），登出路径正是靠这一处 instanceof 在**删会话之前**分流，故顺序不可互换。
+        if (!(player instanceof ServerPlayer serverPlayer)) return;
         // 2026-10-29 用户裁决 D1：强制结算（超时 / 死亡 / 登出）同样**不再**看全局闸门（口径同 confirm）。
         // 旧实现会在闸门拒绝时保留会话，导致「已超时但会话仍活着」—— 玩家随后被 already_open 永久拦住。
         if (!SESSIONS.remove(player.getUUID(), session)) return;
         session.resolving = 0;
-        if (!(player instanceof ServerPlayer serverPlayer)) return;
         ModNetwork.sendToPlayer(serverPlayer, new EventChoiceCloseMessage(session.token));
+        // 2026-10-29 P1 修复：候选集是**打开界面那一刻**的快照，15 秒窗口内队内侦探可能已卸下立牌 /
+        // 离队，于是首选项到派发时已稳定失败（AP_EVENT_NO_DETECTIVE）—— 结算就白丢了。这里按
+        // **同一判据**（AstralEventRegistry#dispatchableFor）复核一次：首选项不可派发 ⇒ 改派屏上的
+        // 另一个选项；两个都不可派发才交回派发器按既有口径拒绝。不放宽任何派发条件（不伪造 tier、
+        // 不跨来源、不触发界面上没出现过的事件）。
+        ResourceLocation forced = firstDispatchable(serverPlayer, session);
         LOGGER.info("AP_EVENT_CHOICE: force:{}:pick=0:reason={}:event={}",
-                session.token, reason, session.firstEvent);
-        AstralEventDispatcher.trigger(serverPlayer, session.firstEvent, AstralEventTrigger.ACTIVE_SKILL);
+                session.token, reason, forced);
+        if (!forced.equals(session.firstEvent)) {
+            LOGGER.info("AP_EVENT_CHOICE: force_fallback:{}:from={}:to={}",
+                    session.token, session.firstEvent, forced);
+        }
+        AstralEventDispatcher.trigger(serverPlayer, forced, AstralEventTrigger.ACTIVE_SKILL);
+    }
+
+    /**
+     * 强制结算实际派发的事件：优先首选项；首选项此刻已不可派发时退回**同一屏上的**第二个选项。
+     * 两者都不可派发 ⇒ 仍返回首选项（由派发器打既有 {@code AP_EVENT_NO_DETECTIVE} 机器行）。
+     */
+    private static ResourceLocation firstDispatchable(ServerPlayer player, Session session) {
+        if (isDispatchable(player, session.firstEvent)) return session.firstEvent;
+        if (isDispatchable(player, session.secondEvent)) return session.secondEvent;
+        return session.firstEvent;
+    }
+
+    /** 与候选池 / 派发器同源的可派发判定（来源固定为 {@link AstralEventTrigger#ACTIVE_SKILL}）。 */
+    private static boolean isDispatchable(ServerPlayer player, ResourceLocation eventId) {
+        return AstralEventRegistry.get(eventId)
+                .map(e -> AstralEventRegistry.dispatchableFor(player, e, AstralEventTrigger.ACTIVE_SKILL))
+                .orElse(false);
     }
 
     /**
@@ -276,5 +316,22 @@ public final class EventChoiceManager {
         Session session = SESSIONS.get(event.getEntity().getUUID());
         if (session == null) return;
         forceFirst(event.getEntity(), session, "logout");
+    }
+
+    /**
+     * 玩家换维度（传送门 / 跨维度 {@code /tp}）⇒ 强制第一个选项（2026-10-29 用户裁决 D1：
+     * 「任何形式的退出」包含换维度）。客户端被维度切换遮罩顶掉时不一定来得及发退出包，
+     * 故服务端必须有这条钩子；与客户端 exit 意图靠 {@link #forceFirst} 的幂等去重。
+     *
+     * <p>平台差异（1.20.1）：本监听器与同类既有监听器同写法 —— 类上已有
+     * {@code @Mod.EventBusSubscriber(modid = AstralDiceMod.MODID)}（默认 FORGE 总线），
+     * 换维度事件就在该总线上，故只加 {@link SubscribeEvent}，不加 {@code bus = ...}。
+     */
+    @SubscribeEvent
+    public static void onPlayerChangedDimension(PlayerEvent.PlayerChangedDimensionEvent event) {
+        if (!(event.getEntity() instanceof ServerPlayer player)) return;
+        Session session = SESSIONS.get(player.getUUID());
+        if (session == null) return;
+        exitWithoutChoice(player, session.token, "dimension");
     }
 }

@@ -1021,6 +1021,7 @@
   "effect.astral_dice.problem_delivery": "問題配達",
   "effect.astral_dice.problem_delivery.description": "毒と飢餓（0:15）、15 秒間治療不可",
   "gui.astral_dice.event_choice.title": "イベントを選択",
+  "message.astral_dice.event_choice.esc_warning": "終了すると最初のイベントが強制発動します。もう一度 Esc で終了します。",
   "jade.astral_dice.restock_countdown": "補充まで §9%s§7",
   "jade.astral_dice.enter_countdown": "利用可能まで §9%s§7",
   "astral_dice.guide.entry.deepseek_sign.2": "パッシブ「サボり中」：10秒間なにもしない（位置が変わらない）と「サボり」を得て、ダメージ・有害効果無効、モブに狙われない。取得後、移動が累計5秒に達すると解除。",

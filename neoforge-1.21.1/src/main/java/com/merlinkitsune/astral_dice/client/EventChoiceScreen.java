@@ -8,6 +8,7 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.network.PacketDistributor;
+import org.lwjgl.glfw.GLFW;
 
 /**
  * 大侦探立牌主动技能：<b>事件选择界面</b>（客户端 Screen，用户裁决 2026-10-10）。
@@ -32,9 +33,10 @@ import net.neoforged.neoforge.network.PacketDistributor;
  *
  * <p>不暂停游戏：15 秒等待期由服务端 tick 驱动，暂停会冻住服务端 tick 让等待期永不到期。
  *
- * <p><b>ESC = 取消这次主动技能</b>（2026-10-29 用户裁决 D2）：未确认时按 ESC 关界面并给服务端发
- * {@link EventChoiceCancelPayload}，服务端撤销会话、不触发事件、不结算（该次技能等同未使用）；
- * 已确认后按 ESC 只是关掉本地界面，不再发取消包（会话已进入结算，服务端照样关界面）。
+ * <p><b>ESC 两段式，退出即强制触发第一个事件</b>（2026-10-29 用户裁决 R1/R2）：第一次 ESC 只弹
+ * actionbar 警告（{@code message.astral_dice.event_choice.esc_warning}），第二次 ESC 关界面并把
+ * {@link EventChoiceCancelPayload} 当作「退出意图」发给服务端（服务端按强制第一个选项结算，不新增包类）；
+ * 已确认后关界面不再发（会话已进入结算）。被别的界面顶掉（换维度 / 死亡 / 断线）由 {@link #removed()} 补发同一意图。
  */
 public class EventChoiceScreen extends Screen {
     // ---- 参考图 images/shop/fanny_skill_preview.png（137x133）内的相对坐标 ----
@@ -83,6 +85,17 @@ public class EventChoiceScreen extends Screen {
     private int selectedIndex = -1;
     private boolean confirmPressed;
     private boolean confirmed;
+    /** ESC 两段式：第一次按下只弹 actionbar 警告（{@code true} = 已警告过）。 */
+    private boolean escalationWarned;
+    /**
+     * ESC 是否仍处于「按住」状态：原版会把 GLFW 的 REPEAT（{@code action==2}，按住 0.5s 后每帧一条）
+     * 也派发给 {@link #keyPressed}，靠本标记把它们吞掉，否则按住不放会立刻越过第二段。
+     */
+    private boolean escHeld;
+    /** 退出意图是否已发（同一会话只发一次，避免 ESC -> removed() 重复发）。 */
+    private boolean exitSent;
+    /** 服务端自己关的界面（{@code EventChoiceClientHandler#closeIfToken}）：此时 {@link #removed()} 不再发退出意图。 */
+    private boolean closedByServer;
 
     public EventChoiceScreen(int token, ResourceLocation firstEvent, ResourceLocation secondEvent,
                              int firstDurationTicks, int secondDurationTicks, int timeoutTicks) {
@@ -227,25 +240,117 @@ public class EventChoiceScreen extends Screen {
         return false;
     }
 
-    /** ESC 可关闭（2026-10-29 用户裁决 D2）：关闭动作见 {@link #onClose()}，未确认即取消。 */
+    /**
+     * ESC 两段式（2026-10-29 用户裁决 R2）：第一次只弹 actionbar 警告，第二次才真正退出。
+     *
+     * <p>本类的关闭开关恒为 {@code false}，原版因此不会替我们关界面，
+     * ESC 的全部行为都在这里（{@code Screen#keyPressed} 在关闭开关为 false 时
+     * 既不关窗也不给任何反馈，所以必须自己接管）；其它按键照常交给 {@code super}。
+     */
     @Override
-    public boolean shouldCloseOnEsc() {
-        return true;
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
+            // 2026-10-29 收口修复：点过确认、而服务端 Close 包还没回来的 1~2 tick 窗口里按 ESC，
+            // 结算已经发生，此时再弹「退出会强制触发第一个事件」与实际语义相反 ⇒ 原样交回 super。
+            // 不弹警告、不 requestExit、不发包（requestExit / onClose / removed 各自另有 confirmed 闸门）。
+            if (this.confirmed) {
+                return super.keyPressed(keyCode, scanCode, modifiers);
+            }
+            if (this.escHeld) {
+                // 同一次按住的 GLFW REPEAT ⇒ 吞掉，不算「第二次按下」
+                return true;
+            }
+            this.escHeld = true;
+            if (!this.escalationWarned) {
+                this.escalationWarned = true;
+                if (this.minecraft != null && this.minecraft.player != null) {
+                    this.minecraft.player.displayClientMessage(
+                            Component.translatable("message.astral_dice.event_choice.esc_warning"), true);
+                }
+                return true;
+            }
+            requestExit();
+            this.onClose();
+            return true;
+        }
+        return super.keyPressed(keyCode, scanCode, modifiers);
+    }
+
+    /** 松开 ESC 时复位「按住」标记，让下一次按下重新算作一次独立的按下。 */
+    @Override
+    public boolean keyReleased(int keyCode, int scanCode, int modifiers) {
+        if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
+            this.escHeld = false;
+            return true;
+        }
+        return super.keyReleased(keyCode, scanCode, modifiers);
     }
 
     /**
-     * 界面关闭回调（ESC 关界面走这里，是本界面唯一的**玩家主动**取消入口）。
+     * 窗口失焦兜底：失焦后 GLFW 不再派发按键回调，{@link #keyReleased} 收不到；而原版清键状态走的
+     * {@code KeyMapping.releaseAll()}（1.21.1 里唯一调用点是 {@code Minecraft#setScreen}）
+     * 同样不派发 {@code keyReleased}。于是 {@link #escHeld} 会卡在 {@code true}，
+     * 吞掉恢复焦点后的第一次 ESC 按下。这里每 tick 复查窗口焦点，失焦即复位标记。
+     */
+    @Override
+    public void tick() {
+        super.tick();
+        if (this.minecraft != null && !this.minecraft.isWindowActive()) {
+            // 失焦期间 GLFW 不投递按键回调（KeyMapping.releaseAll() 的唯一调用点是 Minecraft#setScreen，
+            // 与失焦无关），escHeld 会卡在 true；而回焦后若仍按住 ESC，REPEAT 会被当作一次 keyPressed。
+            // 因此这里把「已警告」一并复位，保证任何退出路径之前都刚刚显示过警告。
+            this.escHeld = false;
+            this.escalationWarned = false;
+        }
+    }
+
+    /** ESC 不再由原版直接关窗（2026-10-29 用户裁决 R2）：全部交给 {@link #keyPressed} 的两段式处理。 */
+    @Override
+    public boolean shouldCloseOnEsc() {
+        return false;
+    }
+
+    /**
+     * 界面关闭回调（ESC 第二次按下 / 原版关屏路径走这里，是本界面唯一的**玩家主动**退出入口）。
      *
-     * <p>2026-10-29 用户裁决 D2：<b>未确认</b>就关闭 = 放弃这次大侦探主动技能 ⇒ 给服务端发取消包，
-     * 服务端按 token 撤会话、不触发任何事件、不结算。已确认（{@code confirmed}）时不再发 ——
-     * 服务端已进入结算流程；万一关界面路径也回调到这里，服务端对重复取消是幂等忽略的
-     * （见 {@code EventChoiceManager#cancel}）。
+     * <p>2026-10-29 用户裁决 R1：<b>未确认</b>就退出 = 强制触发第一个事件 ⇒ 给服务端发退出意图
+     * （复用取消包，服务端语义见 {@code EventChoiceManager}）。已确认（{@code confirmed}）时不发 ——
+     * 服务端已进入结算流程；重复发送对服务端是幂等忽略的。
      */
     @Override
     public void onClose() {
         if (!this.confirmed) {
-            PacketDistributor.sendToServer(new EventChoiceCancelPayload(this.token));
+            requestExit();
         }
         super.onClose();
+    }
+
+    /**
+     * 界面被移除（含被别的 Screen 顶掉：换维度 / 死亡 / 断线 / 其它模组抢屏）。
+     *
+     * <p>这些路径拿不到 {@link #onClose()}，所以在这里补发退出意图（2026-10-29 用户裁决 R1
+     * 「任何形式的退出都强制触发第一个事件」）；服务端自己关的界面
+     * （{@code EventChoiceClientHandler#closeIfToken} -> {@link #markClosedByServer()}）除外。
+     */
+    @Override
+    public void removed() {
+        if (!this.confirmed && !this.exitSent && !this.closedByServer) {
+            requestExit();
+        }
+        super.removed();
+    }
+
+    /** 发退出意图（复用既有取消包，不新增包类）。幂等：已确认或已发过则直接返回。 */
+    private void requestExit() {
+        if (this.confirmed || this.exitSent) {
+            return;
+        }
+        this.exitSent = true;
+        PacketDistributor.sendToServer(new EventChoiceCancelPayload(this.token));
+    }
+
+    /** 服务端主动关屏：抑制 {@link #removed()} 里的退出意图（服务端已自行结算）。 */
+    public void markClosedByServer() {
+        this.closedByServer = true;
     }
 }
