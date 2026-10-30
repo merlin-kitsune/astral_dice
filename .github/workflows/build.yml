@@ -234,7 +234,9 @@ jobs:
         #   ② ref 本身就是 tag(tag push,或对 tag 手动 workflow_dispatch 补发):直接用 GITHUB_REF 的 tag。
         # 说明正文取自**玩家侧发布说明** `release/<tag>/PLAYER_CHANGELOG_ZH.md` + `PLAYER_CHANGELOG.md`
         # (中文在前、英文在后,中间插一条 `---`);两个文件都不存在时退回「附件清单」兜底并留 ::warning::。
-        # 已存在同名 Release 时改为「编辑说明 + --clobber 覆盖附件」,保证重复发布幂等、附件与最新构建一致。
+        # 已存在同名 Release 时:说明正文每次刷新(edit 覆盖),但附件**一旦发布即冻结** ——
+        # 只补传缺失的 jar,已有附件字节一律不覆盖(避免 CI 件悄悄替换人工核对/投放过的构建件,
+        # 否则 Release 与两个整合包 mods 的哈希会对不上)。⛔ 2026-10-30 用户裁决:去掉 --clobber。
         if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'push' && github.ref == 'refs/heads/multi-main' && steps.tag.outputs.tag != '')
         env:
           GH_TOKEN: ${{ github.token }}
@@ -285,10 +287,25 @@ jobs:
           else
             REL_KIND=(--latest --prerelease=false)
           fi
-          # 同一 tag 下只挂 P0 两线的多平台 jar（再次发布 = 覆盖，保证附件与最新构建一致）。
+          # 同一 tag 下只挂 P0 两线的多平台 jar。说明正文每次刷新,附件则冻结:
+          # 逐个核对已有附件名,只补传缺失的,绝不覆盖已有附件字节 —— 避免 CI 件悄悄替换
+          # 人工核对/投放过的构建件(否则 Release 与两个整合包 mods 的哈希会对不上)。
+          # ⛔ 2026-10-30 用户裁决:Release 附件一经发布即视为冻结,只有缺失的才补传。
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release edit "$TAG" --title "Astral Dice $TAG" --notes-file "$NOTES_FILE" "${REL_KIND[@]}"
-            gh release upload "$TAG" "${JARS[@]}" --clobber
+            # 已有附件名集合(每行一个)。用 $( ) 捕获而不是 mapfile + <(...):命令替换失败会让
+            # set -e 生效并中止本 step,而进程替换里的失败会被静默吞掉。
+            HAVE_ASSETS=$(gh release view "$TAG" --json assets --jq '.assets[].name')
+            for j in "${JARS[@]}"; do
+              name="${j##*/}"
+              # grep -Fxq:整行固定串匹配;命中=0 / 未命中=1,放在 if 条件里不会被 set -e 判失败。
+              if grep -Fxq -- "$name" <<< "$HAVE_ASSETS"; then
+                echo "::notice::asset already published, skip upload: $name"
+              else
+                echo "uploading missing asset: $name"
+                gh release upload "$TAG" "$j"
+              fi
+            done
           else
             gh release create "$TAG" \
               "${JARS[@]}" \
