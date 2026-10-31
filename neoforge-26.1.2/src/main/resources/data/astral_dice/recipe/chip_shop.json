@@ -7,18 +7,10 @@
     "HHH"
   ],
   "key": {
-    "G": {
-      "item": "minecraft:gold_ingot"
-    },
-    "P": {
-      "item": "astral_dice:star_plate"
-    },
-    "H": {
-      "item": "minecraft:polished_blackstone_bricks"
-    },
-    "K": {
-      "item": "astral_dice:blank_chip"
-    }
+    "G": "minecraft:gold_ingot",
+    "P": "astral_dice:star_plate",
+    "H": "minecraft:polished_blackstone_bricks",
+    "K": "astral_dice:blank_chip"
   },
   "result": {
     "id": "astral_dice:chip_shop",

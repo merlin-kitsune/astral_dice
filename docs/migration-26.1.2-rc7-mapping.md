@@ -647,3 +647,122 @@ datagen 把它投影成 JSON，职业注册只绑 `TradeSet` 的键。
 - 生成物自检：218 条 trade 全部含 `gives.id` / `wants.id` / `max_uses`；10 个 `trade_set` 的 `trades` 都能解析到同名标签；10 个标签里的 218 个值全部指向存在的 trade 条目 —— **0 悬空**。
 - `:neoforge-26.1.2:build` EXIT=0；jar 内 `data/astral_dice/{villager_trade,trade_set,tags/villager_trade}` 共 238 个文件。
 - 已知未验证：村民实际售卖需实机（未授权）。
+
+---
+
+## 15. 跨版本差异速查（供后续版本移植直接复用）
+
+本节把这次移植里**会再次遇到**的差异集中成表。目标不是记录「我改了什么」，而是记录
+「从 1.21.1 口径迁到 26.1.2 口径时，哪些东西变了、下次（26.x 再往上升）该先查什么」。
+
+### 15.1 被删除 / 被替换的入口（找不到符号时先查这张表）
+
+| 1.21.1 写法 | 26.1.2 替代 | 备注 |
+|---|---|---|
+| `VillagerTradesEvent` + `VillagerTrades.ItemListing` | 数据包 `villager_trade` / `trade_set` / `tags/villager_trade` | 事件挂载彻底消失，只能 datagen 产物 |
+| `VillagerTrades.TRADES` | `VillagerProfession#tradeSetsByLevel`（record 第 7 组件） | 职业注册时绑 `ResourceKey<TradeSet>` |
+| `BasicItemListing` / `MerchantOffer` 手工构造 | `VillagerTrade` + `TradeCost` + `ItemStackTemplate` | `MerchantOffer` 仍在，只用于菜单层 |
+| `@EventBusSubscriber(bus = EventBusSubscriber.Bus.MOD)` | 只留 `value()` / `modid()`，事件类型自动分流 | `AutomaticEventSubscriber` 按 `IModBusEvent` 判定 |
+| `GuiGraphics` | `GuiGraphicsExtractor` | `renderBg/renderLabels/render` → `extractBackground/extractLabels/extractRenderState` |
+| `RenderType`（`client.renderer`） | `client.renderer.rendertype.RenderType` | `blit` 必须带 `RenderPipeline` 首参 |
+| `EffectRenderingInventoryScreen` | `EffectsInInventory` | 状态效果栏 |
+| `PlayerFaceRenderer` | `PlayerFaceExtractor` | 玩家头像 |
+| `ClickType` | `ContainerInput` | 容器点击 |
+| `InteractionResultHolder` / `ItemInteractionResult` | `InteractionResult`（`SUCCESS` / `SUCCESS_SERVER` / `CONSUME` / `PASS`） | `sidedSuccess(b)` → `b ? SUCCESS : SUCCESS_SERVER` |
+| `MobSpawnType` | `EntitySpawnReason` | 包 `world.entity` |
+| `AnvilRepairEvent` | `AnvilCraftEvent.Post` | `setCost` → `setXpCost` |
+| `ResourceLocation` | `Identifier` | `ResourceKey#location()` → `identifier()` |
+| `ExistingFileHelper` | 已删除 | datagen 里不要再取它 |
+| `LightTexture.FULL_BRIGHT` | `LightCoordsUtil.FULL_BRIGHT` | |
+| `RenderSystem.setShaderColor` | 已删除 | 半透明改由 `RenderTypes` 决定 |
+| `RenderTooltipEvent.Color` | 已删除 | 档位边框染色本线无原生路径 |
+
+### 15.2 datagen 阶段的三条硬约束
+
+1. **不能构造 `ItemStack`**：`new ItemStack(anyItem)` 抛 `NullPointerException: Components not bound yet`
+   （组件绑定在 datagen 之后）。任何在 provider 里跑的代码都要走「只比 `Item` 引用」的路径
+   （例：`CardRegistry.itemToType(Item)` 重载）。同理 `stack.is(tag)` / `stack.getRarity()` 不可用。
+2. **方块必须先 `registerBlock`**：`BlockBehaviour.Properties.effectiveDrops` 要 `id`，
+   否则 `Block id not set`。
+3. **`ModelProvider` 会校验方块 blockstate**：注册表里每个方块本次都必须生成 blockstate，
+   否则 `Missing blockstate definitions for: [...]`。生成器接管的文件要从 `src/main/resources` 删掉，
+   否则 `processResources` 抛 duplicate entry。
+
+### 15.3 数据驱动交易的结构性限制（换版本时先确认是否仍成立）
+
+- `TradeSet` **没有权重字段**，抽取是 `HolderSet#getRandomElement` 等概率；`allow_duplicates` 只按条目去重、不比对内容。
+  ⇒ 想做「稀有度高 → 出现率低」，只能靠「把商品分到不同等级」这种粗粒度手段，不能靠权重。
+- 每个等级上架条数 = `TradeSet.amount`（本模组 2 条）。
+- 价格在数据里是**静态值**，不能按运行时状态（卡面点数、声望、队伍）现算 —— 所以本模组把
+  「档位下限 + 卡面点数」在 datagen 时算死。
+- `random_sequence` 是可选的，官方 JSON 会写，本模组不写（不参与战利品随机种子）。
+
+### 15.4 移植顺序建议（这次踩出来的）
+
+1. 先让 `compileJava` 归零（机械 API 迁移 + 结构性迁移分开提交，便于回滚）。
+2. 再同步 `resources`（贴图/模型/音效/data）。
+3. 最后跑双端 datagen（`runClientData` → `clientResources`、`runServerData` → `resources`，**不能合并成一次**，会互删产物）。
+4. 产物与上一版 `src/generated` 逐名对账，差异要么是新增内容、要么是陈旧残留（`HashCache` 会自动清理后者）。
+
+### 15.5 本线目前仍然「没有原生路径」的地方
+
+| 项 | 现状 | 影响 |
+|---|---|---|
+| 立牌半透明 alpha 强制 | `RenderSystem.setShaderColor` 删除，只剩 `RenderTypes.entityTranslucent` | 需实机确认观感 |
+| 卡片槽悬停高亮 | 26.1.2 槽高亮钩子私有化，回落到原版高亮 | 纯视觉 |
+| 档位边框染色 | `RenderTooltipEvent.Color` 删除，仅 `ModernUITooltipCompat` 承担 | 视觉 |
+| Iron's Spellbooks 联动 | 26.1.2 线整体移除（build.gradle 注明） | 功能缺省 |
+
+## §16 服务端数据包验证（2026-10-31 21:48–21:52 实跑）
+
+`./gradlew :neoforge-26.1.2:runServer`（JDK 25，专用服）连跑两轮，用于证明「数据包能被 26.1.2 真正解析」，而不只是 datagen 写出了文件。
+
+### 16.1 首轮 5 个解析失败（已修）
+
+| 文件 | 报错 | 26.1.2 口径 | 处置 |
+|---|---|---|---|
+| `data/astral_dice/recipe/{card_shop,chip_shop,event_drawer}.json` | `No key neoforge:ingredient_type in MapLike[...]` | 原料写成对象 `{"item": …}` 的旧 Ingredient 编解码已废，**字符串即 Ingredient**：物品 `"minecraft:stone"`、标签 `"#minecraft:logs"` | 把 `key` 里每个 `{"item": x}` → `"x"`、`{"tag": t}` → `"#t"` |
+| `data/astral_dice/recipe/suspicious_stew.json` | `Unknown registry key … recipe_serializer]: minecraft:crafting_special_suspiciousstew` | 该序列化器已删除（原版改为按花区分的 `suspicious_stew_from_*`） | 删除该配方与其 `advancement/recipes/misc/suspicious_stew.json` |
+| `data/neoforge/loot_modifiers/global_loot_modifiers.json` | `No key type in MapLike[{"replace":false,"entries":[...]}]` | **索引文件整体取消**：`LootModifierManager`（`net/neoforged/neoforge/common/loot/LootModifierManager.java`）现在 `SimpleJsonResourceReloadListener(IGlobalLootModifier.DIRECT_CODEC, FileToIdConverter.registry("loot_modifiers"))`，直接扫目录、每个文件就是一个 modifier | 删除索引文件；本模组自己的 `data/astral_dice/loot_modifiers/*.json` 无需改动（本就被正常加载） |
+
+第二轮 `runServer`：`Couldn't parse data file` **0 条**，`Done (0.120s)`。
+
+### 16.2 运行时实证（服务端 AutoJS，端点 `http://127.0.0.1:25585/mcp`）
+
+| 检查项 | 结果 |
+|---|---|
+| `Registries.TRADE_SET` 总量 | 78（原版 68 + 本模组 10） |
+| 本模组 trade set | `astral_dice:{card_trader,chip_trader}/level_{1..5}` **10/10 全在** |
+| 本模组 `Registries.VILLAGER_TRADE` | **218 条**（与 datagen 产物一致） |
+| 召唤 `astral_dice:card_trader` 3 级 | `Recipes` 2 条：9 绿宝石 → `astral_dice:effect_card_monster_brick` / `attack_card_meito`，`xp 10`、`maxUses 12` |
+| 召唤 `astral_dice:chip_trader` 5 级 | `Recipes` 2 条：16 绿宝石 → `effect_card_orbital_strike` / `effect_card_directional_blast`，`xp 30`、`maxUses 12` |
+
+### 16.3 26.1.2 交易语义（决定数据设计的关键）
+
+`Villager#updateTrades(ServerLevel)`（merged jar 源码 L811-821）只取**当前等级**的交易集：
+
+```java
+VillagerData data = this.getVillagerData();
+VillagerProfession profession = data.profession().value();
+ResourceKey<TradeSet> trades = profession.getTrades(data.level());
+if (trades != null) {
+    this.addOffersFromTradeSet(level, this.getOffers(), trades);
+```
+
+⇒ 每升一级才把该级的 `trade_set` **追加**进已有报价；不会一次性铺满 1..level。因此：
+
+- 每个 `level_<n>` 的 `amount` 是该级**新增**的报价条数（本项目 2），5 级村民最终 10 条；
+- 用 `/summon` 直接给 `level:5` 的村民**只有 2 条**（本级），这不是 bug；
+- 想验证全量需走「升级路径」或直接读注册表（本项目用后者）。
+
+### 16.4 复验命令（供后续批次复用）
+
+```bash
+# 1) 数据包能否被解析（0 条 "Couldn't parse data file" 即通过）
+JAVA_HOME=/usr/lib/jvm/java-25-openjdk-amd64 ./gradlew :neoforge-26.1.2:runServer --console=plain > temp/server-2612b.log 2>&1
+grep -c "Couldn't parse data file" temp/server-2612b.log
+
+# 2) 运行时读数（需服务端在跑；AutoJS 端点 25585）
+#    initialize 取 mcp-session-id → tools/call.name=eval_js, arguments.side=server
+#    注意：无全局 server，须 ServerLifecycleHooks.getCurrentServer()；无 Java.from；keySet 元素直接是 Identifier
+```

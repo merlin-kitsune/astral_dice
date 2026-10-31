@@ -7,15 +7,9 @@
     "MMM"
   ],
   "key": {
-    "T": {
-      "item": "minecraft:smooth_stone_slab"
-    },
-    "B": {
-      "item": "astral_dice:star_coin"
-    },
-    "M": {
-      "tag": "minecraft:logs"
-    }
+    "T": "minecraft:smooth_stone_slab",
+    "B": "astral_dice:star_coin",
+    "M": "#minecraft:logs"
   },
   "result": {
     "id": "astral_dice:card_shop",
