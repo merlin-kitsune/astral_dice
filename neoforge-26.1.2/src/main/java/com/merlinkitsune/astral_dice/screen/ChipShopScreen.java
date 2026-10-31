@@ -168,12 +168,12 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
     /** 标签框内文本的纵向内缩：框高 15、MC 墨迹行高 8 ⇒ +4 使墨迹（4..11）中心落在框中心 7.5 */
     private static final int LABEL_TEXT_DY = 4;
 
-    private static final int COLOR_TEXT = 0xFFFFFF;
-    private static final int COLOR_EMPTY = 0x808080;
+    private static final int COLOR_TEXT = 0xFFFFFFFF;
+    private static final int COLOR_EMPTY = 0xFF808080;
     /** 拒绝红闪的「红」相颜色（计划表 §4：余额不足闪花费文本、次数 0 闪剩余刷新次数文本） */
-    private static final int COLOR_DENY = 0xFF5555;
+    private static final int COLOR_DENY = 0xFFFF5555;
     /** 选中筹码格（被高亮）下方筹码名的颜色：黑色（2026-10-13；选中标记画在文字下层 ⇒ 黑字更清晰） */
-    private static final int COLOR_SELECTED_NAME = 0x000000;
+    private static final int COLOR_SELECTED_NAME = 0xFF000000;
     /**
      * 悬停筹码图标的灰色半透明覆盖层（与 {@code CardShopScreen.COLOR_ROW_HOVER} 同值 0x66AAAAAA、
      * 即 (170,170,170,α≈0x66)；2026-10-13 新增，对齐卡牌商店 / 转账界面的悬停指示）。

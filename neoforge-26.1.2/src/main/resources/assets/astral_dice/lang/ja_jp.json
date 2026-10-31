@@ -1089,5 +1089,8 @@
   "gui.astral_dice.card_choice.title_triple_any": "カードを3枚選択",
   "msg.astral_dice.event_animating": "イベント演出中です。少し待ってからお試しください。",
   "entity.astral_dice.villager.card_trader": "カード商人",
-  "entity.astral_dice.villager.chip_trader": "チップ商人"
+  "entity.astral_dice.villager.chip_trader": "チップ商人",
+  "item.astral_dice.card_shop": "カードショップ",
+  "item.astral_dice.chip_shop": "チップショップ",
+  "item.astral_dice.event_drawer": "イベントドロワー"
 }

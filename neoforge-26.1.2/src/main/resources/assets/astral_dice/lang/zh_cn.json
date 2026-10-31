@@ -1089,5 +1089,8 @@
   "gui.astral_dice.card_choice.title_triple_any": "选择三张卡牌",
   "msg.astral_dice.event_animating": "事件动画播放中，请稍后再试",
   "entity.astral_dice.villager.card_trader": "卡牌商人",
-  "entity.astral_dice.villager.chip_trader": "筹码商人"
+  "entity.astral_dice.villager.chip_trader": "筹码商人",
+  "item.astral_dice.card_shop": "卡牌商店",
+  "item.astral_dice.chip_shop": "筹码商店",
+  "item.astral_dice.event_drawer": "抽奖盒"
 }
