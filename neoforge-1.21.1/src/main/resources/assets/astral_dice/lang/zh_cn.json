@@ -1061,6 +1061,8 @@
   "item.astral_dice.dorothy_sign": "多萝西立牌",
   "item.astral_dice.jill_sign": "调酒师立牌",
   "jade.astral_dice.event_drawer_cost": "需要支付 §e%s§7 星币",
+  "config.jade.plugin_astral_dice.shop_cooldown": "商店冷却倒计时",
+  "config.jade.plugin_astral_dice.event_drawer_cost": "抽奖盒费用",
   "gui.astral_dice.card_choice.title_single_combat": "选择一张战斗牌",
   "gui.astral_dice.card_choice.title_single_effect": "选择一张效果牌",
   "gui.astral_dice.card_choice.title_single_any": "选择一张卡牌",

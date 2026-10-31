@@ -1061,6 +1061,8 @@
   "astral_dice.guide.entry.deepseek_sign.1": "Big Fat Fish Sign. Active \"Big Feast\": spend a random amount of 1-20 star coins capped by your balance, gain attack power and defense power equal to the actual cost for 2:00, then gain 3 random cards. Cannot be used without star coins.",
   "astral_dice.guide.entry.deepseek_sign.2": "Passive \"Slacking\": standing still for 10 seconds grants Fishing; while fishing you take no damage or harmful effects and mobs ignore you. Moving for a cumulative 5 seconds after gaining it ends it.",
   "jade.astral_dice.event_drawer_cost": "Cost: §e%s§7 star coins",
+  "config.jade.plugin_astral_dice.shop_cooldown": "Shop cooldown",
+  "config.jade.plugin_astral_dice.event_drawer_cost": "Event drawer cost",
   "gui.astral_dice.card_choice.title_single_combat": "Choose a Combat Card",
   "gui.astral_dice.card_choice.title_single_effect": "Choose an Effect Card",
   "gui.astral_dice.card_choice.title_single_any": "Choose a Card",

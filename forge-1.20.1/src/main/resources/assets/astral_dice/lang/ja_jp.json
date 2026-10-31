@@ -1060,6 +1060,8 @@
   "astral_dice.guide.entry.deepseek_sign.1": "大食い魚のスタンド。アクティブ「大食い」：残高を上限に1〜20スターナをランダムに消費し、実際の消費量と等量の攻撃力・防御力を2:00得て、ランダムにカード3枚を得る。スターナがないと使用できない。",
   "astral_dice.guide.entry.deepseek_sign.2": "パッシブ「サボり中」：10秒間なにもしない（位置が変わらない）と「サボり」を得て、ダメージ・有害効果無効、モブに狙われない。取得後、移動が累計5秒に達すると解除。",
   "jade.astral_dice.event_drawer_cost": "支払い: §e%s§7 スターナ",
+  "config.jade.plugin_astral_dice.shop_cooldown": "ショップのクールダウン",
+  "config.jade.plugin_astral_dice.event_drawer_cost": "抽選箱の費用",
   "gui.astral_dice.card_choice.title_single_combat": "戦闘カードを1枚選択",
   "gui.astral_dice.card_choice.title_single_effect": "効果カードを1枚選択",
   "gui.astral_dice.card_choice.title_single_any": "カードを1枚選択",

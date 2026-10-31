@@ -1060,6 +1060,8 @@
   "item.astral_dice.dorothy_sign": "ドロシーのスタンド",
   "item.astral_dice.jill_sign": "ジルのスタンド",
   "jade.astral_dice.event_drawer_cost": "支払い: §e%s§7 スターナ",
+  "config.jade.plugin_astral_dice.shop_cooldown": "ショップのクールダウン",
+  "config.jade.plugin_astral_dice.event_drawer_cost": "抽選箱の費用",
   "gui.astral_dice.card_choice.title_single_combat": "戦闘カードを1枚選択",
   "gui.astral_dice.card_choice.title_single_effect": "効果カードを1枚選択",
   "gui.astral_dice.card_choice.title_single_any": "カードを1枚選択",

@@ -1062,6 +1062,8 @@
   "astral_dice.guide.entry.deepseek_sign.1": "大肥鱼立牌。主动「大口干饭」：按当前余额随机消耗 1–20 星币，按实际消耗等量获得攻击力与防御力，持续 2:00，并随机获得 3 张卡牌；余额不足时无法使用。",
   "astral_dice.guide.entry.deepseek_sign.2": "被动「摸鱼中」：静止 10 秒后获得「摸鱼」，期间不会受到任何伤害与负面效果，也不会被怪物索敌；获得后累计移动 5 秒解除。",
   "jade.astral_dice.event_drawer_cost": "需要支付 §e%s§7 星币",
+  "config.jade.plugin_astral_dice.shop_cooldown": "商店冷却倒计时",
+  "config.jade.plugin_astral_dice.event_drawer_cost": "抽奖盒费用",
   "gui.astral_dice.card_choice.title_single_combat": "选择一张战斗牌",
   "gui.astral_dice.card_choice.title_single_effect": "选择一张效果牌",
   "gui.astral_dice.card_choice.title_single_any": "选择一张卡牌",

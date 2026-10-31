@@ -1061,6 +1061,8 @@
   "item.astral_dice.dorothy_sign": "Dorothy Sign",
   "item.astral_dice.jill_sign": "Jill Sign",
   "jade.astral_dice.event_drawer_cost": "Cost: §e%s§7 star coins",
+  "config.jade.plugin_astral_dice.shop_cooldown": "Shop cooldown",
+  "config.jade.plugin_astral_dice.event_drawer_cost": "Event drawer cost",
   "gui.astral_dice.card_choice.title_single_combat": "Choose a Combat Card",
   "gui.astral_dice.card_choice.title_single_effect": "Choose an Effect Card",
   "gui.astral_dice.card_choice.title_single_any": "Choose a Card",

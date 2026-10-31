@@ -22,3 +22,16 @@ tasks.named('wrapper', Wrapper).configure {
 //   ./gradlew :forge-1.20.1:build        # 1.20.1 Forge
 //   ./gradlew :neoforge-26.1.2:build     # 26.1.2 NeoForge
 //   ./gradlew :fabric-1.20.1:build       # 1.20.1 Fabric(第四条线,2026-10-01 并入本分支)
+
+
+// === 整合包（Minecraft 实例）根目录：全局唯一解析点 ===
+// 2026-10-31 起，Linux 宿主直接读 VM 共享盘 /mnt/hgfs/.minecraft（与 Windows 宿主的 D:/.minecraft 是同一批文件），
+// 不再依赖 Windows 盘符。解析顺序：环境变量 MC_HOME > /mnt/hgfs/.minecraft（存在即用）> Windows 传统路径 D:/.minecraft。
+// 各子项目一律用 rootProject.ext.mcHomePath 拼 `versions/<整合包目录>/mods`，禁止各自硬编码路径。
+def mcHomePath = System.getenv('MC_HOME')?.trim()
+if (!mcHomePath) {
+    def hgfsHome = new File('/mnt/hgfs/.minecraft')
+    mcHomePath = hgfsHome.isDirectory() ? hgfsHome.absolutePath : 'D:/.minecraft'
+}
+ext.mcHomePath = mcHomePath
+logger.lifecycle("整合包根目录 (MC_HOME): ${ext.mcHomePath}")
