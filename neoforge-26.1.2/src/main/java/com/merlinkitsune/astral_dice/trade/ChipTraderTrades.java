@@ -81,6 +81,31 @@ public final class ChipTraderTrades {
     /** 兑换条目所在的村民等级：老手（3 级）解锁。 */
     private static final int EXCHANGE_LEVEL = 3;
 
+        /** 26.1.2 的报价装载表：把 1-5 级的筹码池摊平成「每枚筹码 × 它所在的等级」的静态条目（同 CardTraderTrades）。 */
+    public static List<VillagerTradeEntry> tradeEntries() {
+        List<VillagerTradeEntry> entries = new ArrayList<>();
+        for (int level = 1; level <= 5; level++) {
+            for (ChipShopCatalog.Entry entry : poolFor(level)) {
+                entries.add(new VillagerTradeEntry(level, entry.item(), emeraldPriceFor(level, entry.tier()), CHIP_MAX_USES,
+                        VILLAGER_XP[level], CHIP_PRICE_MULTIPLIER));
+            }
+        }
+        return entries;
+    }
+
+    /** 「1 绿宝石 → 1 星币」兑换的静态条目（老手级解锁）。 */
+    public static VillagerTradeEntry exchangeEntry() {
+        return new VillagerTradeEntry(EXCHANGE_LEVEL, ModItems.STAR_COIN.get(), 1, EXCHANGE_MAX_USES, EXCHANGE_XP,
+                EXCHANGE_PRICE_MULTIPLIER);
+    }
+
+    /** 按品质档位在区间内等距取点（稀有 = 下限 / 史诗 = 中点 / 传奇 = 上限）。 */
+    static int emeraldPriceFor(int level, int tier) {
+        int minPrice = MIN_PRICE[level];
+        int span = MAX_PRICE[level] - minPrice;
+        int offset = Math.round(span * (tier - 1) / 2.0F);
+        return Math.max(minPrice, Math.min(MAX_PRICE[level], minPrice + offset));
+    }
     private ChipTraderTrades() {
     }
 

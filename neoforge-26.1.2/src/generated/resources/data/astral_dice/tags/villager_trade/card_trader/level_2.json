@@ -1,0 +1,24 @@
+{
+  "values": [
+    "astral_dice:card_trader/level_2/attack_card_medium",
+    "astral_dice:card_trader/level_2/attack_card_large",
+    "astral_dice:card_trader/level_2/attack_card_epic",
+    "astral_dice:card_trader/level_2/attack_card_shadow_strike",
+    "astral_dice:card_trader/level_2/defense_card_medium",
+    "astral_dice:card_trader/level_2/defense_card_large",
+    "astral_dice:card_trader/level_2/defense_card_epic",
+    "astral_dice:card_trader/level_2/effect_card_berserk",
+    "astral_dice:card_trader/level_2/effect_card_fight_poison_with_poison",
+    "astral_dice:card_trader/level_2/effect_card_monster_laser",
+    "astral_dice:card_trader/level_2/effect_card_chocolate_cake",
+    "astral_dice:card_trader/level_2/effect_card_you_have_i_have",
+    "astral_dice:card_trader/level_2/effect_card_barricade",
+    "astral_dice:card_trader/level_2/attack_card_meito",
+    "astral_dice:card_trader/level_2/effect_card_king_power",
+    "astral_dice:card_trader/level_2/effect_card_unwavering",
+    "astral_dice:card_trader/level_2/effect_card_monster_brick",
+    "astral_dice:card_trader/level_2/effect_card_hamburger",
+    "astral_dice:card_trader/level_2/effect_card_luxury_feast",
+    "astral_dice:card_trader/level_2/effect_card_express_delivery"
+  ]
+}

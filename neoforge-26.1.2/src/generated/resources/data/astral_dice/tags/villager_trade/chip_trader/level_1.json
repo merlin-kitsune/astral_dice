@@ -1,0 +1,23 @@
+{
+  "values": [
+    "astral_dice:chip_trader/level_1/atm_chip",
+    "astral_dice:chip_trader/level_1/bank_card_low_chip",
+    "astral_dice:chip_trader/level_1/eight_sided_dice_chip",
+    "astral_dice:chip_trader/level_1/buffer_shield_chip",
+    "astral_dice:chip_trader/level_1/medkit_emergency_chip",
+    "astral_dice:chip_trader/level_1/hand_fan_small_chip",
+    "astral_dice:chip_trader/level_1/marker_sprayer_chip",
+    "astral_dice:chip_trader/level_1/target_chip",
+    "astral_dice:chip_trader/level_1/electric_sword_chip",
+    "astral_dice:chip_trader/level_1/energy_recycler_chip",
+    "astral_dice:chip_trader/level_1/warp_engine_chip",
+    "astral_dice:chip_trader/level_1/bookmark_chip",
+    "astral_dice:chip_trader/level_1/boxing_gloves_low_chip",
+    "astral_dice:chip_trader/level_1/cursed_sword_chip",
+    "astral_dice:chip_trader/level_1/member_recommendation_chip",
+    "astral_dice:chip_trader/level_1/moto_helmet_low_chip",
+    "astral_dice:chip_trader/level_1/piggy_bank_chip",
+    "astral_dice:chip_trader/level_1/sandwich_low_chip",
+    "astral_dice:chip_trader/level_1/speed_skates_low_chip"
+  ]
+}

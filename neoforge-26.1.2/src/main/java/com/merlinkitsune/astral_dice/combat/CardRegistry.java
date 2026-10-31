@@ -167,6 +167,25 @@ public final class CardRegistry {
         return null;
     }
 
+    /**
+     * 物品 → 类型 id 的**不构造 ItemStack** 版本。
+     *
+     * <p>datagen 期 NeoForge 还没绑定物品组件，{@code new ItemStack(...)} 会抛
+     * {@code NullPointerException: Components not bound yet}，所以数据生成路径（村民交易定价）
+     * 必须走这个只比 {@link net.minecraft.world.item.Item} 引用的重载。
+     */
+    public static String itemToType(net.minecraft.world.item.Item item) {
+        if (item == null) {
+            return null;
+        }
+        for (CardType t : BY_ID.values()) {
+            if (t.item() != null && t.item() == item) {
+                return t.typeId();
+            }
+        }
+        return null;
+    }
+
     /** 类型 id → 物品;未知类型回退到攻击(中) */
     public static ItemStack typeToItem(String typeId) {
         CardType t = BY_ID.get(typeId);

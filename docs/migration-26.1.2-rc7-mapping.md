@@ -595,3 +595,55 @@
 - 生成器接管后，`src/main/resources` 里同名的 5 个手写文件必须删除（`blockstates/{barricade_collision,card_shop,chip_shop,event_drawer}.json`、`models/item/event_ticket.json`），否则 `processResources` 抛 `Entry … is a duplicate but no duplicate handling strategy has been set`。
 - 现状：`src/main/resources` 与两个生成根 **0 重叠**，全部 JSON 可解析。
 - `:neoforge-26.1.2:build` 成功；`build/libs/astral_dice-1.5.0-rc.7+neoforge_26.1.2.jar`（2.77 MB）内含 159 个 `items/*.json`、126 个 recipe、5 个 blockstates。
+
+---
+
+## 14. 村民交易：从事件挂载改为数据驱动（P6 尾巴）
+
+26.1.2 删掉了 `VillagerTradesEvent` / `VillagerTrades.ItemListing` / `BasicItemListing`，村民交易彻底变成数据包内容，
+所以本线**不可能**再靠事件往交易表里塞报价。改造分三块：报价仍由 `trade/` 下的构建器产出（单一事实源），
+datagen 把它投影成 JSON，职业注册只绑 `TradeSet` 的键。
+
+### 14.1 数据包三件套
+
+| 文件 | 作用 | 本模组产物 |
+|---|---|---|
+| `data/astral_dice/villager_trade/<职业>/level_<n>/<物品>.json` | 一条 `VillagerTrade`（wants / gives / max_uses / xp / reputation_discount） | **218 条**（card_trader 54、chip_trader 164） |
+| `data/astral_dice/tags/villager_trade/<职业>/level_<n>.json` | 该等级可随机到的报价集合 | 10 个（2 职业 × 5 级） |
+| `data/astral_dice/trade_set/<职业>/level_<n>.json` | `{"amount": 2.0, "trades": "#astral_dice:<职业>/level_<n>"}` | 10 个（同上） |
+
+`world/ModVillagerProfessions.tradeSets("<职业>")` 把 1-5 级各绑一个
+`ResourceKey.create(Registries.TRADE_SET, Identifier.fromNamespaceAndPath(MODID, "<职业>/level_<n>"))`。
+**只算 key、不碰物品注册表** —— 职业注册事件早于物品可查询的时点，在那里遍历卡池会撞 `unbound value`。
+
+### 14.2 定价与内容
+
+- 卡牌价 = 档位下限 + 该卡在 `CardRegistry` 的固定点数，夹在档位区间内且不低于 `MIN_EMERALD_PRICE`（1.21.1 的同一口径，只是从「运行时算」变成「datagen 时算成静态值」）。
+- 筹码价 = 按品质档位（稀有/史诗/传奇）在区间内等距取点。
+- 3 级（老手）额外固定一条 `emerald_to_star_coin`：1 绿宝石 → 1 星币，12 次、1 经验、声望倍率 0（倍率非 0 时卖完后 demand 会把价格抬到 2）。
+- 每级上架 2 条（`TradeSet.amount = 2`），与 1.21.1 的「每级最多 2 条」一致。
+- 佩戴绿宝石骰的玩家仍由 `EmeraldDiceTrade` 的三个 mixin（`MerchantContainerMixin` / `MerchantMenuMixin` / `MerchantOfferMixin`）在**菜单层**过滤 —— 数据驱动不影响这条链路。
+
+### 14.3 与原版的分布差异（已登记）
+
+`TradeSet` 只做**等概率**抽取（`AbstractVillager.addOffersFromItemListings` 走 `HolderSet#getRandomElement`），
+结构里没有权重字段；`allow_duplicates = false` 也只按条目去重、不比对报价内容。
+1.21.1 的加权抽卡（稀有 6 / 史诗 3 / 传奇 2）因此**无法在数据里表达**。
+由于每个等级内的档位是固定的（1 级只出稀有、3 级只出史诗、5 级只出传奇），只有 2 级与 4 级会混档，混档时改为等概率。
+用「同一张卡写多份 trade」伪造权重会让同一等级出现两条一模一样的报价，故放弃。
+
+### 14.4 datagen 期「不能构造 ItemStack」
+
+跑 `runServerData` 时连 `new ItemStack(Items.EMERALD)` 都会抛
+`NullPointerException: Components not bound yet`（`Holder$Reference.components`）—— NeoForge 26.1 的数据生成
+跑在物品组件绑定**之前**。因此凡是要在 datagen 路径上跑的代码都不能构造 `ItemStack`：
+
+- `CardTradeFilter.isSellable(ItemStack)`（`stack.is(tag)` + `stack.getRarity()`）在这条路径上不可用
+  ⇒ `CardTraderTrades.poolFor(level, false)` 跳过该兜底（卡池是 23 张人工策展卡，不含专属/巅峰/奇特；运行时路径仍带过滤）。
+- `CardRegistry.itemToType(ItemStack)` ⇒ 新增 `CardRegistry.itemToType(Item)` 重载，只比 `Item` 引用。
+
+### 14.5 校验
+
+- 生成物自检：218 条 trade 全部含 `gives.id` / `wants.id` / `max_uses`；10 个 `trade_set` 的 `trades` 都能解析到同名标签；10 个标签里的 218 个值全部指向存在的 trade 条目 —— **0 悬空**。
+- `:neoforge-26.1.2:build` EXIT=0；jar 内 `data/astral_dice/{villager_trade,trade_set,tags/villager_trade}` 共 238 个文件。
+- 已知未验证：村民实际售卖需实机（未授权）。

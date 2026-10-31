@@ -3,9 +3,13 @@ package com.merlinkitsune.astral_dice.world;
 import com.google.common.collect.ImmutableSet;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.entity.npc.villager.VillagerProfession;
+import net.minecraft.world.item.trading.TradeSet;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
@@ -22,7 +26,8 @@ import net.neoforged.neoforge.registries.DeferredRegister;
  * <p><b>26.1.2 API 变更</b>：职业与交易表都改成数据驱动。{@code VillagerProfession} 变成 record
  * （7 个组件，含 {@code name} Component 与 {@code tradeSetsByLevel}），{@code VillagerTradesEvent} 已删除，
  * 报价改由 {@code Registries.VILLAGER_TRADE} 的 {@code VillagerTrade} + {@code TradeSet} 数据包提供。
- * 本文件只保留职业注册（{@code tradeSetsByLevel} 暂为空），报价构建逻辑留在 {@code trade/} 下待 P6 挂载。
+ * 本文件只负责职业注册；{@code tradeSetsByLevel} 绑定到 datagen 生成的
+ * {@code data/astral_dice/trade_set/<职业>/level_<n>.json}，报价内容仍由 {@code trade/} 下的构建器产出。
  *
  * <p>筹码商人（{@code astral_dice:chip_trader}）同属本职业体系：工作站点 = 筹码商店
  * （{@code astral_dice:chip_shop}），交易表由 {@code trade/ChipTraderTrades} 填充；
@@ -48,9 +53,8 @@ public final class ModVillagerProfessions {
                     ImmutableSet.of(),
                     null,
                     // 26.1.2：交易表随职业一起变成数据驱动（Int2ObjectMap<ResourceKey<TradeSet>>）。
-                    // 现为空表 —— 本模组的报价改由 trade/CardTraderTrades / ChipTraderTrades 的构建器产出，
-                    // 真正的挂载（生成 TradeSet 数据或注册 Registries.VILLAGER_TRADE 条目）留待 P6。
-                    Int2ObjectMap.ofEntries()));
+                    // 1-5 级各绑一个数据包里的 TradeSet；具体报价见 datagen/ModVillagerTradeProvider。
+                    tradeSets("card_trader")));
 
     /** 筹码商人：工作站点 = 筹码商店，交易表见 {@code trade/ChipTraderTrades}。 */
     public static final DeferredHolder<VillagerProfession, VillagerProfession> CHIP_TRADER =
@@ -64,10 +68,25 @@ public final class ModVillagerProfessions {
                     ImmutableSet.of(),
                     null,
                     // 26.1.2：交易表随职业一起变成数据驱动（Int2ObjectMap<ResourceKey<TradeSet>>）。
-                    // 现为空表 —— 本模组的报价改由 trade/CardTraderTrades / ChipTraderTrades 的构建器产出，
-                    // 真正的挂载（生成 TradeSet 数据或注册 Registries.VILLAGER_TRADE 条目）留待 P6。
-                    Int2ObjectMap.ofEntries()));
+                    // 1-5 级各绑一个数据包里的 TradeSet；具体报价见 datagen/ModVillagerTradeProvider。
+                    tradeSets("card_trader")));
 
     private ModVillagerProfessions() {
+    }
+    /**
+     * 把 {@code 1-5} 级各绑到一个 {@code data/astral_dice/trade_set/<职业>/level_<n>.json}。
+     *
+     * <p>这里只算 {@link ResourceKey}，**不碰**任何物品注册表 —— 职业注册事件早于物品查询可用的时点，
+     * 若在此处遍历卡池（{@code DeferredHolder#get()}）会撞上「unbound value」。
+     * <p>对应 JSON 由 {@code datagen/ModVillagerTradeProvider} 生成；某一级若没有任何可售商品，
+     * 该提供器会直接报错而不是跳过，避免这里绑出指向空数据的 {@code TradeSet}。
+     */
+    private static Int2ObjectMap<ResourceKey<TradeSet>> tradeSets(String profession) {
+        Int2ObjectMap<ResourceKey<TradeSet>> byLevel = new Int2ObjectOpenHashMap<>();
+        for (int level = 1; level <= 5; level++) {
+            byLevel.put(level, ResourceKey.create(Registries.TRADE_SET,
+                    Identifier.fromNamespaceAndPath(AstralDiceMod.MODID, profession + "/level_" + level)));
+        }
+        return byLevel;
     }
 }

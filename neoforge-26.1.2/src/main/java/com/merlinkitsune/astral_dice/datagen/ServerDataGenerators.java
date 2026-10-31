@@ -6,7 +6,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.data.event.GatherDataEvent;
 
 /**
- * 服务端数据生成入口(配方 {@code data/astral_dice/recipe/*.json})。
+ * 服务端数据生成入口(配方 {@code data/astral_dice/recipe/*.json}、村民交易 {@code data/astral_dice/{villager_trade,tags/villager_trade,trade_set}/**})。
  *
  * <p><b>26.1.2 迁移说明</b>:26.1.x 起数据生成拆分为 {@code clientData}/{@code serverData} 两种运行类型,
  * 分别派发 {@link GatherDataEvent.Client} 与 {@link GatherDataEvent.Server};配方属于
@@ -19,5 +19,6 @@ public class ServerDataGenerators {
     @SubscribeEvent
     public static void gatherServerData(GatherDataEvent.Server event) {
         event.addProvider(new ModRecipeProvider.Runner(event.getGenerator().getPackOutput(), event.getLookupProvider()));
+        event.addProvider(new ModVillagerTradeProvider(event.getGenerator().getPackOutput(), event.getLookupProvider()));
     }
 }

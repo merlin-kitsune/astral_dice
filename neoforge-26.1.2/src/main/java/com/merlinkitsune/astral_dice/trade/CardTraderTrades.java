@@ -79,6 +79,41 @@ public final class CardTraderTrades {
     /** 兑换条目所在的村民等级：老手（3 级）解锁。 */
     private static final int EXCHANGE_LEVEL = 3;
 
+        /**
+     * 26.1.2 的报价装载表：把 1-5 级的卡池展开成「每张卡 × 它所在的等级」的静态条目。
+     *
+     * <p>原版每条 {@code VillagerTrade} 在数据包里有一份固定 JSON，价格不能按卡面点数在运行时算，
+     * 所以这里把 {@link #poolFor(int)} 的每一张卡连同它在该级的定价一并摊平成条目，
+     * 由 {@code datagen/ModVillagerTradeProvider} 写成 {@code data/astral_dice/villager_trade/card_trader/level_N/*.json}。
+     * 同一张稀有卡在 1 级和 2 级的价位不同，因此在两个等级下各有一份条目。
+     */
+    public static List<VillagerTradeEntry> tradeEntries() {
+        List<VillagerTradeEntry> entries = new ArrayList<>();
+        for (int level = 1; level <= 5; level++) {
+            // datagen 期没有组件绑定：见 poolFor(level, stackFilter) 的说明。
+            for (CardShopCatalog.PoolEntry entry : poolFor(level, false)) {
+                Item item = entry.item().get();
+                entries.add(new VillagerTradeEntry(level, item, emeraldPriceFor(level, item), CARD_MAX_USES,
+                        VILLAGER_XP[level], CARD_PRICE_MULTIPLIER));
+            }
+        }
+        return entries;
+    }
+
+    /** 「1 绿宝石 → 1 星币」兑换的静态条目（老手级解锁）。 */
+    public static VillagerTradeEntry exchangeEntry() {
+        return new VillagerTradeEntry(EXCHANGE_LEVEL, ModItems.STAR_COIN.get(), 1, EXCHANGE_MAX_USES, EXCHANGE_XP,
+                EXCHANGE_PRICE_MULTIPLIER);
+    }
+
+    /** 绿宝石价 = 档位下限 + 卡面固定点数，夹在档位区间内，且不低于 {@link #MIN_EMERALD_PRICE}。 */
+    static int emeraldPriceFor(int level, Item item) {
+        // 不构造 ItemStack：datagen 期组件未绑定（见 CardRegistry#itemToType(Item)）。
+        String typeId = CardRegistry.itemToType(item);
+        int points = typeId == null ? 0 : CardRegistry.maxRoll(typeId);
+        int price = Math.max(MIN_PRICE[level], Math.min(MAX_PRICE[level], MIN_PRICE[level] + points));
+        return Math.max(price, MIN_EMERALD_PRICE);
+    }
     private CardTraderTrades() {
     }
 
@@ -127,6 +162,21 @@ public final class CardTraderTrades {
 
     /** 取某一级的可售卡池：档位属于该级允许集 ∧ 通过 {@link CardTradeFilter#isSellable}（排除专属/巅峰/奇特）。 */
     private static List<CardShopCatalog.PoolEntry> poolFor(int level) {
+        return poolFor(level, true);
+    }
+
+    /**
+     * 同上，但可以跳过 {@link CardTradeFilter#isSellable}。
+     *
+     * <p><b>什么时候能跳</b>：datagen 期 {@code ItemStack} 根本构造不出来 ——
+     * NeoForge 26.1 的数据生成跑在组件绑定之前，任何 {@code new ItemStack(...)} 都会抛
+     * {@code NullPointerException: Components not bound yet}（实机日志 `temp/datagen-trades2.log`）。
+     * 而 {@code isSellable} 依赖 {@code stack.is(tag)} 与 {@code stack.getRarity()}，两者都要组件。
+     * <p><b>为什么这里跳了也安全</b>：卡池 {@code CardShopCatalog.POOL} 是 23 张人工策展的卡，
+     * 其中不含专属（{@code IS_EXCLUSIVE} 标签）/巅峰/奇特卡；{@code isSellable} 在这条路径上本就是兜底。
+     * 运行时路径（{@code listings()} / 商店抽卡）仍然带着它。
+     */
+    private static List<CardShopCatalog.PoolEntry> poolFor(int level, boolean stackFilter) {
         List<CardShopCatalog.Tier> tiers = LEVEL_TIERS.get(level);
         List<CardShopCatalog.PoolEntry> pool = new ArrayList<>();
         for (CardShopCatalog.PoolEntry entry : CardShopCatalog.entries()) {
@@ -134,7 +184,7 @@ public final class CardTraderTrades {
             if (tier == null || !tiers.contains(tier)) {
                 continue;
             }
-            if (!CardTradeFilter.isSellable(entry.item().get())) {
+            if (stackFilter && !CardTradeFilter.isSellable(entry.item().get())) {
                 continue;
             }
             pool.add(entry);
