@@ -1,0 +1,13 @@
+{
+  "name": "item.astral_dice.event_ticket",
+  "category": "astral_dice:materials",
+  "icon": "astral_dice:event_ticket",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:event_ticket",
+      "text": "astral_dice.guide.entry.event_ticket.1"
+    }
+  ],
+  "sortnum": 10
+}
