@@ -2,6 +2,9 @@ package com.merlinkitsune.astral_dice.client;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.init.ModParticles;
+import com.merlinkitsune.astral_dice.client.render.TraderVillagerRenderer;
+import net.minecraft.world.entity.EntityType;
+import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import com.merlinkitsune.astral_dice.screen.CardInventoryScreen;
 import com.merlinkitsune.astral_dice.screen.ModMenuTypes;
 import net.minecraft.client.DeltaTracker;
@@ -41,6 +44,16 @@ public class ModClientEvents {
     //     该项由**类初始化时的每个 invokedynamic 解析**触发(§5.4.3.6)⇒ 专用服务端启动即
     //     NoClassDefFoundError: CardInventoryScreen(除非它是纯服务端 mod,才会被 strip 掉)。
     //     与 forge-1.20.1 侧 ModClientEvents#onClientSetup 的写法保持对等。
+
+    /**
+     * 卡牌商人 / 筹码商人村民改用「关掉 hat + hat_rim」的村民模型；其余职业与幼年村民不变。
+     * 见 {@code TraderVillagerRenderer} 与 {@code TraderVillagerModel} 的类注释。
+     */
+    @SubscribeEvent
+    public static void registerTraderVillagerRenderer(EntityRenderersEvent.RegisterRenderers event) {
+        event.registerEntityRenderer(EntityType.VILLAGER, TraderVillagerRenderer::new);
+    }
+
     @SubscribeEvent
     public static void registerScreens(RegisterMenuScreensEvent event) {
         event.register(ModMenuTypes.CARD_INVENTORY.get(), CardInventoryScreen::new);
