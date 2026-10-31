@@ -1,6 +1,8 @@
 package com.merlinkitsune.astral_dice.event;
 
 
+import com.merlinkitsune.astral_dice.item.card.TemporaryCardUtil;
+import com.merlinkitsune.starengine.event.EffectTimerGuard;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.component.AppliedStone;
 import com.merlinkitsune.starengine.component.GameplayConstants;

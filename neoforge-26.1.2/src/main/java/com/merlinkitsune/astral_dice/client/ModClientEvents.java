@@ -66,6 +66,8 @@ public class ModClientEvents {
         event.registerAbove(VanillaGuiLayers.CROSSHAIR,
                 Identifier.fromNamespaceAndPath(AstralDiceMod.MODID, "target_select"),
                 TargetSelectOverlay.INSTANCE);
+        // 事件效果卡覆盖层（锚点 CROSSHAIR、id astral_dice:event_card，与 1.21.1 逐字对齐）
+        event.registerAbove(VanillaGuiLayers.CROSSHAIR, EventCardOverlay.LAYER_ID, EventCardOverlay.LAYER);
         event.registerAbove(VanillaGuiLayers.AIR_LEVEL,
                 Identifier.fromNamespaceAndPath(AstralDiceMod.MODID, "action_bar"),
                 ActionBarOverlay.INSTANCE);

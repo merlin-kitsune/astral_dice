@@ -1,5 +1,6 @@
 package com.merlinkitsune.astral_dice.screen;
 
+import net.minecraft.client.renderer.RenderPipelines;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.client.ChipShopClientState;
 import com.merlinkitsune.astral_dice.network.ChipShopBuyPayload;
@@ -220,9 +221,7 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
     private int chipNameMarqueeTick = 0;
 
     public ChipShopScreen(ChipShopMenu menu, Inventory inventory, Component title) {
-        super(menu, inventory, title);
-        this.imageWidth = GUI_WIDTH;
-        this.imageHeight = GUI_HEIGHT;
+        super(menu, inventory, title, GUI_WIDTH, GUI_HEIGHT);
         // 原版标题与物品栏标签一律挪到屏幕外（本屏标题由背景素材承担）
         this.titleLabelX = -10000;
         this.titleLabelY = -10000;
@@ -244,8 +243,8 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
      * 故这里在最后对**悬中的筹码格**调 {@code GuiGraphicsExtractor#renderTooltip(Font, ItemStack, int, int)}。
      */
     @Override
-    public void render(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
-        super.render(guiGraphics, mouseX, mouseY, partialTick);
+    public void extractRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
+        super.extractRenderState(guiGraphics, mouseX, mouseY, partialTick);
         renderChipTooltips(guiGraphics, mouseX, mouseY);
     }
 
@@ -269,11 +268,11 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
         if (ChipShopCatalog.byStack(stack).isEmpty()) {
             return;
         }
-        guiGraphics.renderTooltip(this.font, stack, mouseX, mouseY);
+        guiGraphics.setTooltipForNextFrame(this.font, stack, mouseX, mouseY);
     }
 
     @Override
-    protected void renderBg(GuiGraphicsExtractor guiGraphics, float partialTick, int mouseX, int mouseY) {
+    public void extractBackground(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
         // ① 背景
         blit(guiGraphics, tex(TEX_BG), 0, 0, GUI_WIDTH, GUI_HEIGHT);
         // ② 条带深底（frame_2）→ ③ 格轮廓（frame_1）
@@ -322,8 +321,8 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
             }
             int iconX = stripX(QUALITY_X[chip] + CHIP_ICON_OFF);
             int iconY = stripY(QUALITY_Y + CHIP_ICON_OFF);
-            guiGraphics.blit(entry.iconLocation(), iconX, iconY, CHIP_ICON_SIZE, CHIP_ICON_SIZE,
-                    0.0F, 0.0F, CHIP_ICON_SRC_SIZE, CHIP_ICON_SRC_SIZE,
+            guiGraphics.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, entry.iconLocation(),
+                    iconX, iconY, 0.0F, 0.0F, CHIP_ICON_SIZE, CHIP_ICON_SIZE,
                     CHIP_ICON_SRC_SIZE, CHIP_ICON_SRC_SIZE);
         }
     }
@@ -420,7 +419,7 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
         int x = stripX(LABEL_X[cell]);
         int y = stripY(LABEL_Y);
         guiGraphics.enableScissor(x, y, x + LABEL_W, y + LABEL_H);
-        guiGraphics.drawCenteredString(this.font, text, x + LABEL_W / 2, y + LABEL_TEXT_DY, color);
+        guiGraphics.centeredText(this.font, text, x + LABEL_W / 2, y + LABEL_TEXT_DY, color);
         guiGraphics.disableScissor();
     }
 
@@ -455,7 +454,7 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
         int drawX = overflow > 0
                 ? labelX + CHIP_NAME_INNER_X - chipNameOffset(overflow)   // 超宽：左对齐 + 相位滚动
                 : labelX + (LABEL_W - w) / 2;                             // 不超宽：居中（现状口径）
-        guiGraphics.drawString(this.font, name, drawX, labelY + LABEL_TEXT_DY, color, !selected);
+        guiGraphics.text(this.font, name, drawX, labelY + LABEL_TEXT_DY, color, !selected);
         guiGraphics.disableScissor();
     }
 
@@ -502,7 +501,7 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
         guiGraphics.enableScissor(x, y, x + LABEL_W, y + LABEL_H);
         blitSubAbs(guiGraphics, tex("star_coin_small.png"), groupX, y + LABEL_TEXT_DY,
                 COST_ICON_U, COST_ICON_V, COST_ICON_SIZE, COST_ICON_SIZE, COST_ICON_SRC);
-        guiGraphics.drawString(this.font, amount, groupX + COST_ICON_SIZE + COST_ICON_GAP,
+        guiGraphics.text(this.font, amount, groupX + COST_ICON_SIZE + COST_ICON_GAP,
                 y + LABEL_TEXT_DY, color, true);
         guiGraphics.disableScissor();
     }
@@ -510,9 +509,12 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
     // ────────────────────────────── 输入（规范 §5） ──────────────────────────────
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    public boolean mouseClicked(net.minecraft.client.input.MouseButtonEvent event, boolean doubleClick) {
+    double mouseX = event.x();
+    double mouseY = event.y();
+    int button = event.buttonInfo().button();
         if (button != 0) {
-            return super.mouseClicked(mouseX, mouseY, button);
+            return super.mouseClicked(event, doubleClick);
         }
         final int mx = (int) mouseX;
         final int my = (int) mouseY;
@@ -535,7 +537,7 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
             return true;
         }
         // ── ④ 其余一律交回原版：物品栏槽位照常交互；**点空白不清选**（本类没有清选分支） ──
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(event, doubleClick);
     }
 
     /**
@@ -551,7 +553,7 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
             return;
         }
         this.buyRequestCount++;
-        PacketDistributor.sendToServer(new ChipShopBuyPayload(chip));
+        net.neoforged.neoforge.client.network.ClientPacketDistributor.sendToServer(new ChipShopBuyPayload(chip));
     }
 
     /**
@@ -566,7 +568,7 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
             return;
         }
         this.refreshRequestCount++;
-        PacketDistributor.sendToServer(new ChipShopRefreshPayload());
+        net.neoforged.neoforge.client.network.ClientPacketDistributor.sendToServer(new ChipShopRefreshPayload());
     }
 
     /**
@@ -643,7 +645,7 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
 
     /** GUI 内相对坐标绘制整幅贴图 */
     private void blit(GuiGraphicsExtractor guiGraphics, Identifier texture, int x, int y, int w, int h) {
-        guiGraphics.blit(texture, this.leftPos + x, this.topPos + y, 0, 0.0F, 0.0F, w, h, w, h);
+        guiGraphics.blit(RenderPipelines.GUI_TEXTURED, texture, this.leftPos + x, this.topPos + y, 0.0F, 0.0F, w, h, w, h);
     }
 
     /** 条带内相对坐标绘制整幅贴图 */
@@ -657,7 +659,7 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
      */
     private static void blitSubAbs(GuiGraphicsExtractor guiGraphics, Identifier texture, int x, int y,
             int u, int v, int w, int h, int src) {
-        guiGraphics.blit(texture, x, y, 0, (float) u, (float) v, w, h, src, src);
+        guiGraphics.blit(RenderPipelines.GUI_TEXTURED, texture, x, y, (float) u, (float) v, w, h, src, src);
     }
 
     // ────────────────────────────── 只读探针（规范 §7；一律只读，绝不改状态） ──────────────────────────────

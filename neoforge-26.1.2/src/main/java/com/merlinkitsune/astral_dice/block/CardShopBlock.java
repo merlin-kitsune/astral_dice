@@ -76,6 +76,6 @@ public class CardShopBlock extends HorizontalDirectionalBlock {
         if (!level.isClientSide()) {
             CardShopOpener.open(player);
         }
-        return InteractionResult.sidedSuccess(level.isClientSide());
+        return level.isClientSide() ? InteractionResult.SUCCESS : InteractionResult.SUCCESS_SERVER;
     }
 }

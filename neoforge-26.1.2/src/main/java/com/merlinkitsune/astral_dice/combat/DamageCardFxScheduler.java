@@ -128,9 +128,6 @@ public final class DamageCardFxScheduler {
     /** 下落速度上限（格/tick）。 */
     private static final double BRICK_FALL_MAX_SPEED = 2.40D;
     /** 定向爆破的波及半径（格），与改造前的 AOE 口径一致。 */
-
-    /** 光束顶端相对目标头顶的高度（格）—— 视觉上「无限高」；客户端按两端点直接连一条线。 */
-    private static final double BEAM_HEIGHT = 96.0D;
     /** 激光线宽（格）。 */
     private static final float LASER_WIDTH = 0.05F;
     /** 轨道炮光柱宽度（格）。 */
@@ -630,7 +627,9 @@ public final class DamageCardFxScheduler {
         final boolean[] dealt = {false};
         final Runnable hit = () -> {
             DamageNumberAggregator.tag(target, source, DamageNumberAggregator.Group.SPELL);
-            dealt[0] = target.hurt(source, (float) Math.max(1, amount));
+            // 26.1.2：Entity#hurt 变成 final void（内部按端分流），需要「是否真的造成伤害」的返回值时
+            // 用 hurtOrSimulate（服务端等价于 hurtServer 的返回值）。
+            dealt[0] = target.hurtOrSimulate(source, (float) Math.max(1, amount));
         };
         // 三层窗口(均为「保存 / 恢复」式,与外层嵌套安全):
         //   beginAoe()/endAoe()      = 波及伤害不进骰战结算(深度计数,配对开窗);

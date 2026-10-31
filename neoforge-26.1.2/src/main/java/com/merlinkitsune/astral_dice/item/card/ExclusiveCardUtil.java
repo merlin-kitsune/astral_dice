@@ -19,7 +19,7 @@ public final class ExclusiveCardUtil {
     // 设置获得者(2026-10-27:连带写入显示名,供 tooltip 直接渲染)
     public static void setOwner(ItemStack stack, Player player) {
         stack.set(ModDataComponents.OWNER_UUID.get(), Optional.of(player.getUUID()));
-        stack.set(ModDataComponents.OWNER_NAME.get(), player.getGameProfile().getName());
+        stack.set(ModDataComponents.OWNER_NAME.get(), player.getGameProfile().name());
     }
 
     // 获得者 UUID(空 = 尚未绑定)

@@ -16,12 +16,12 @@ import net.minecraft.resources.Identifier;
  * 「Attempted to load class net/minecraft/client/gui/screens/Screen for invalid dist DEDICATED_SERVER」
  * 直接崩服（2026-10-11 实机确证）。
  *
- * <p>运行期 dist 判断（{@code FMLEnvironment.dist == Dist.CLIENT}）挡得住「执行」、**挡不住「符号解析」**：
+ * <p>运行期 dist 判断（{@code FMLEnvironment.getDist() == Dist.CLIENT}）挡得住「执行」、**挡不住「符号解析」**：
  * 与 {@code client/ClientKeyNames} 完全同一口径。把界面开关逻辑收到本类（只在 {@code client/} 包内、
  * 只有客户端会加载）之后，两个 payload 类的字节码里不再出现任何 {@code net.minecraft.client.*} 类型。
  *
  * <h2>调用约定</h2>
- * <p>调用方必须先做 dist 判断（{@code FMLEnvironment.dist == Dist.CLIENT}）再调用本类的方法 ——
+ * <p>调用方必须先做 dist 判断（{@code FMLEnvironment.getDist() == Dist.CLIENT}）再调用本类的方法 ——
  * 本类本身不重复判断，因为它一旦被加载就已经意味着类解析发生过了。
  */
 public final class EventChoiceClientHandler {

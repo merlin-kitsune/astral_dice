@@ -1105,7 +1105,7 @@ public class DiceCombatEvents {
     // 原版伤害修饰器接入(2026-09-26 裁决:方案 A + 分拆暴击 + 冷却 + 附魔 + 抗性/保护通道)
     // ⚠️ 26.1.2 与 1.21.1 线**不得互抄**:本侧的暴击失能项是 !isMobilityRestricted()
     //    (1.21.1 是 !hasEffect(MobEffects.BLINDNESS)),且抗性效果常量名为 MobEffects.RESISTANCE
-    //    (1.21.1 是 MobEffects.DAMAGE_RESISTANCE)。两者语义等价,但必须按各自映射写,否则编译不过。
+    //    (1.21.1 是 MobEffects.RESISTANCE)。两者语义等价,但必须按各自映射写,否则编译不过。
     // ============================================================================================
 
     /**
@@ -1483,7 +1483,49 @@ public class DiceCombatEvents {
     }
 
     // 玩家是否持有骰子(curio 骰子槽)
-    public static boolean attackerHasDiceCurio(Player player) {
+        // 神秘遗物+ 的七咒之戒/启示之证 ID(按物品 ID 识别,未安装该模组时全部返回 false)
+    private static final String ENIGMATIC_CURSED_RING = "enigmaticlegacyplus:cursed_ring";
+    private static final String ENIGMATIC_TWIST = "enigmaticlegacyplus:the_twist";
+    private static final String ENIGMATIC_BLESS = "enigmaticlegacyplus:the_bless";
+
+    // 检测玩家是否佩戴了七咒之戒(按物品 ID 识别,未安装该模组时返回 false)
+    public static boolean hasEnigmaticCurse(Player player) {
+        Item ring = BuiltInRegistries.ITEM.get(Identifier.parse(ENIGMATIC_CURSED_RING)).map(net.minecraft.core.Holder::value).orElse(Items.AIR);
+        if (ring == Items.AIR) return false;
+        var curios = CuriosApi.getCuriosInventory(player);
+        return curios.isPresent() && curios.get().findFirstCurio(s -> s.is(ring)).isPresent();
+    }
+
+    // 检测玩家是否手持指定神秘遗物+ 物品(如启示之证)
+    public static boolean isHoldingEnigmaticItem(Player player, String itemId) {
+        Item item = BuiltInRegistries.ITEM.get(Identifier.parse(itemId)).map(net.minecraft.core.Holder::value).orElse(Items.AIR);
+        if (item == Items.AIR) return false;
+        return player.getMainHandItem().is(item) || player.getOffhandItem().is(item);
+    }
+
+    /**
+     * 本次伤害是否由「骰战」结算产生(玩家持骰近战、或生物打玩家)。
+     *
+     * <p>26.1.2 平台差异：本方法与 {@link #hasEnigmaticCurse(Player)} 在合并时整段丢失，
+     * 现从 1.21.1 基准逐字移植；{@code SpellDamageRegistry}/${@code spellDamage} 判定沿用本线同名辅助。</p>
+     */
+    public static boolean isDiceBattleSettledDamage(DamageSource source, LivingEntity target) {
+        if (source == null || target == null) return false;
+        if (target.level().isClientSide()) return false;
+        if (isInternalAoe() || isInCounterChain()) return false;
+        Entity direct = source.getDirectEntity();
+        if (direct instanceof Player attacker) {
+            if (!isMeleeWeaponAttack(attacker)) return false;
+            if (SpellDamageRegistry.isSpellDamage(source, direct)) return false;
+            if (attacker == target) return false;
+            return attackerHasDiceCurio(attacker)
+                    ? attacker.hasEffect(ModEffects.DICE_BLESSING)
+                    : isBlessingTarget(target, attacker);
+        }
+        return direct instanceof Mob && target instanceof Player;
+    }
+
+public static boolean attackerHasDiceCurio(Player player) {
         var curios = CuriosApi.getCuriosInventory(player);
         return curios.isPresent() && curios.get().findFirstCurio(DiceCurioItem::isDiceItem).isPresent();
     }

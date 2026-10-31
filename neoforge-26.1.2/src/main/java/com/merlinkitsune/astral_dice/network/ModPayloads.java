@@ -1,5 +1,6 @@
 package com.merlinkitsune.astral_dice.network;
 
+import com.merlinkitsune.astral_dice.client.CardShopClientState;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.starengine.client.ActionBarManager;
 import com.merlinkitsune.astral_dice.client.DamageNumberStore;
@@ -29,6 +30,15 @@ public class ModPayloads {
                                 payload.x(), payload.y(), payload.z()))
         );
         // 光束 FX（激光 / 轨道炮）→ 客户端：服务端每 tick 下发一条已冻结两端点的光线，客户端只画不追实体。
+        // 事件效果卡（S2C）：客户端弹卡动画；事件结算由服务端延后执行（见 EventCardService）。
+        // 26.1.2 移植时该条被漏掉 ⇒ 覆盖层永远收不到卡，本处按 1.21.1 基准补回。
+        registrar.playToClient(
+                EventCardPayload.TYPE,
+                EventCardPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() ->
+                        com.merlinkitsune.astral_dice.client.EventCardOverlay.show(
+                                payload.eventId(), payload.durationTicks(), payload.tier()))
+        );
         registrar.playToClient(
                 BeamFxPayload.TYPE,
                 BeamFxPayload.STREAM_CODEC,

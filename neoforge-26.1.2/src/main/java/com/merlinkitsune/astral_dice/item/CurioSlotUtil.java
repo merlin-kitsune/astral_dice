@@ -190,4 +190,20 @@ public final class CurioSlotUtil {
         var curios = CuriosApi.getCuriosInventory(player);
         return curios.isPresent() && curios.get().findFirstCurio(DiceCurioItem::isDiceItem).isPresent();
     }
+
+    // 遍历指定 Curios 槽位的全部非空物品（26.1.2 平台差异：合并时丢失，按 1.21.1 基准补回）
+    public static void forEachCurioStack(net.minecraft.world.entity.LivingEntity entity, String slotId,
+                                         java.util.function.Consumer<ItemStack> action) {
+        var curios = CuriosApi.getCuriosInventory(entity);
+        if (curios.isEmpty()) return;
+        var handlerOpt = curios.get().getStacksHandler(slotId);
+        if (handlerOpt.isEmpty()) return;
+        var stacks = handlerOpt.get().getStacks();
+        for (int i = 0; i < stacks.getSlots(); i++) {
+            var s = stacks.getStackInSlot(i);
+            if (!s.isEmpty()) {
+                action.accept(s);
+            }
+        }
+    }
 }

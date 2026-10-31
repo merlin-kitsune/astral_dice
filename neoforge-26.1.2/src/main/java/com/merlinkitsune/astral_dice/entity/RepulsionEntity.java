@@ -7,7 +7,10 @@ import com.merlinkitsune.astral_dice.item.sign.LinglingSignManager;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.core.particles.ParticleTypes;
+import com.mojang.serialization.Codec;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
@@ -313,12 +316,9 @@ public class RepulsionEntity extends LivingEntity {
         return HumanoidArm.RIGHT;
     }
 
-    // ── 装备槽（{@link LivingEntity} 的三个抽象方法）：强化拒止没有装备 ─────────────
-
-    @Override
-    public Iterable<ItemStack> getArmorSlots() {
-        return List.of();
-    }
+    // ── 装备槽：强化拒止没有装备 ─────────────────────────────────────────────
+    // 26.1.2：LivingEntity#getArmorSlots() 已删除（装备改由 EquipmentUser 的
+    // getItemBySlot/setItemSlot 两个方法描述），故这里只保留后两个覆写。
 
     @Override
     public ItemStack getItemBySlot(EquipmentSlot slot) {
@@ -333,10 +333,12 @@ public class RepulsionEntity extends LivingEntity {
     // ── NBT ───────────────────────────────────────────────────────────────────
 
     @Override
-    public void addAdditionalSaveData(CompoundTag tag) {
-        super.addAdditionalSaveData(tag);
+    public void addAdditionalSaveData(ValueOutput output) {
+        super.addAdditionalSaveData(output);
+        // 26.1.2：存档读写从 CompoundTag 换成 ValueOutput/ValueInput（值对象 API）。
+        // 数组没有 putLongArray，改用 Codec.LONG_STREAM 原样存 long 流（UUID 仍是两个 long，语义不变）。
         if (this.createdAt != CREATED_AT_UNSET) {
-            tag.putLong(TAG_CREATED_AT, this.createdAt);
+            output.putLong(TAG_CREATED_AT, this.createdAt);
         }
         long[] ids = new long[this.trackedTargets.size() * 2];
         int i = 0;
@@ -344,39 +346,43 @@ public class RepulsionEntity extends LivingEntity {
             ids[i++] = id.getMostSignificantBits();
             ids[i++] = id.getLeastSignificantBits();
         }
-        tag.putLongArray(TAG_TARGETS, ids);
+        output.store(TAG_TARGETS, Codec.LONG_STREAM, java.util.Arrays.stream(ids));
         if (this.chargeGiven > 0) {
-            tag.putInt(TAG_CHARGE_GIVEN, this.chargeGiven);
+            output.putInt(TAG_CHARGE_GIVEN, this.chargeGiven);
         }
         if (this.meleeHits > 0) {
-            tag.putInt(TAG_MELEE_HITS, this.meleeHits);
+            output.putInt(TAG_MELEE_HITS, this.meleeHits);
         }
         if (this.ownerUUID != null) {
-            tag.putLongArray(TAG_OWNER, new long[] {
-                    this.ownerUUID.getMostSignificantBits(), this.ownerUUID.getLeastSignificantBits() });
+            output.store(TAG_OWNER, Codec.LONG_STREAM, java.util.stream.LongStream.of(
+                    this.ownerUUID.getMostSignificantBits(), this.ownerUUID.getLeastSignificantBits()));
         }
     }
 
     @Override
-    public void readAdditionalSaveData(CompoundTag tag) {
-        super.readAdditionalSaveData(tag);
-        if (tag.contains(TAG_CREATED_AT)) {
-            this.createdAt = tag.getLong(TAG_CREATED_AT);
+    public void readAdditionalSaveData(ValueInput input) {
+        super.readAdditionalSaveData(input);
+        // 26.1.2：ValueInput 的读取器返回 Optional；「键不存在」用 isPresent 判定（原 tag.contains）。
+        Optional<Long> createdAtRead = input.getLong(TAG_CREATED_AT);
+        if (createdAtRead.isPresent()) {
+            this.createdAt = createdAtRead.get();
         } else {
             // 老存档没有寿命字段：回填「当前 gameTime」⇒ 从加载这一刻重新计 20:00，不会被立刻销毁。
             this.createdAt = this.level().getGameTime();
         }
         this.trackedTargets.clear();
-        long[] ids = tag.getLongArray(TAG_TARGETS);
+        long[] ids = input.read(TAG_TARGETS, Codec.LONG_STREAM).map(java.util.stream.LongStream::toArray)
+                .orElseGet(() -> new long[0]);
         for (int i = 0; i + 1 < ids.length; i += 2) {
             this.trackedTargets.add(new UUID(ids[i], ids[i + 1]));
         }
         // 老存档没有该键 ⇒ 0（从 0 起算，已计过的目标会重新计，最多仍只发 5 点）
-        this.chargeGiven = Math.max(0, Math.min(MAX_CHARGE_STACKS, tag.getInt(TAG_CHARGE_GIVEN)));
+        this.chargeGiven = Math.max(0, Math.min(MAX_CHARGE_STACKS, input.getIntOr(TAG_CHARGE_GIVEN, 0)));
         this.chargedTargets.clear();
         // 老存档没有该键 ⇒ 0（回收进度从零开始，不影响既有耐久 / 寿命 / 充能语义）
-        this.meleeHits = Math.max(0, Math.min(MAX_MELEE_HITS, tag.getInt(TAG_MELEE_HITS)));
-        long[] owner = tag.getLongArray(TAG_OWNER);
+        this.meleeHits = Math.max(0, Math.min(MAX_MELEE_HITS, input.getIntOr(TAG_MELEE_HITS, 0)));
+        long[] owner = input.read(TAG_OWNER, Codec.LONG_STREAM).map(java.util.stream.LongStream::toArray)
+                .orElseGet(() -> new long[0]);
         this.ownerUUID = owner.length >= 2 ? new UUID(owner[0], owner[1]) : null;
     }
 
@@ -692,7 +698,7 @@ public class RepulsionEntity extends LivingEntity {
             //（永久到账、单座封顶 5、同一目标不重复计数、放置者离线则跳过；见 #awardCharge）
             this.awardCharge(mob.getUUID());
             // 0:10 = 200 tick、I 级（amplifier 0）；ambient=false、visible=true、showIcon=true
-            mob.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN,
+            mob.addEffect(new MobEffectInstance(MobEffects.SLOWNESS,
                     EFFECT_DURATION, 0, false, true, true));
             mob.addEffect(new MobEffectInstance(MobEffects.WEAKNESS,
                     EFFECT_DURATION, 0, false, true, true));
@@ -932,15 +938,17 @@ public class RepulsionEntity extends LivingEntity {
      * </ul>
      */
     @Override
-    public boolean hurt(DamageSource source, float amount) {
-        if (this.level().isClientSide()) return false;
+    public boolean hurtServer(ServerLevel level, DamageSource source, float amount) {
+        // 26.1.2：Entity#hurt 变成 final 的模板方法（客户端/服务端分流后调 hurtServer），
+        // 子类只能覆写 hurtServer；本实体原本就只在服务端处理伤害，故语义不变。
+        if (level.isClientSide()) return false;
         if (this.isRemoved() || this.isDeadOrDying()) return false;
         // 只认玩家本人（近战 / 扫击）；弹射物的 directEntity 是箭 / 三叉戟 / 子弹 ⇒ 不计
         if (!(source.getDirectEntity() instanceof Player player)) return false;
         // 只允许放置者本人回收（2026-10-25 用户裁决）：别人的强化拒止打不动、不计命中
         if (this.ownerUUID != null && !this.ownerUUID.equals(player.getUUID())) {
             player.sendOverlayMessage(Component.translatable(RepulsionItem.MSG_NOT_OWNER)
-                    .withStyle(ChatFormatting.RED), true);
+                    .withStyle(ChatFormatting.RED));
             return false;
         }
 
@@ -954,7 +962,7 @@ public class RepulsionEntity extends LivingEntity {
             return true;
         }
         player.sendOverlayMessage(Component.translatable(RepulsionItem.MSG_HIT, remaining)
-                .withStyle(ChatFormatting.YELLOW), true);
+                .withStyle(ChatFormatting.YELLOW));
         return true;
     }
 
@@ -989,7 +997,7 @@ public class RepulsionEntity extends LivingEntity {
 
         player.sendOverlayMessage(Component.translatable(RepulsionItem.MSG_RECOVERED,
                 RepulsionItem.getDurability(recovered), RepulsionItem.MAX_DURABILITY)
-                .withStyle(ChatFormatting.GREEN), true);
+                .withStyle(ChatFormatting.GREEN));
 
         this.releaseAllControls();
         this.trackedTargets.clear();
@@ -1005,10 +1013,10 @@ public class RepulsionEntity extends LivingEntity {
      */
     private static String ownerNameOf(UUID ownerId, Player fallback) {
         if (ownerId == null || fallback == null) return "";
-        if (ownerId.equals(fallback.getUUID())) return fallback.getGameProfile().getName();
+        if (ownerId.equals(fallback.getUUID())) return fallback.getGameProfile().name();
         if (fallback.level() instanceof ServerLevel serverLevel) {
             Player online = serverLevel.getServer().getPlayerList().getPlayer(ownerId);
-            if (online != null) return online.getGameProfile().getName();
+            if (online != null) return online.getGameProfile().name();
         }
         return "";
     }
@@ -1067,8 +1075,9 @@ public class RepulsionEntity extends LivingEntity {
      * <p>只影响「显式判死」这条路径；怪物 / 环境伤害仍走 {@link #hurt} 被拒 ⇒ 免疫口径不变。
      */
     @Override
-    public void kill() {
-        if (this.level().isClientSide()) return;
+    public void kill(ServerLevel level) {
+        // 26.1.2：Entity#kill 增加 ServerLevel 参数；语义不变（仍走自己的碎裂路径）。
+        if (level.isClientSide()) return;
         this.shatter();
     }
 
@@ -1103,7 +1112,8 @@ public class RepulsionEntity extends LivingEntity {
 
     /** 强化拒止不是战利品也不是经验来源（耐久耗尽即碎裂，不掉物品）。 */
     @Override
-    protected boolean shouldDropLoot() {
+    protected boolean shouldDropLoot(ServerLevel level) {
+        // 26.1.2：shouldDropLoot 增加 ServerLevel 参数。
         return false;
     }
 

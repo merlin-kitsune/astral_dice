@@ -292,7 +292,7 @@ public final class AstralPartyCommand {
         // 机器行：落 latest.log（不加颜色码、不走 lang key），供 scripts/test 的正则断言
         LOGGER.info("{}|type={}|killed={}|mode={}|radius={}|dim={}|x={}|y={}|z={}",
                 KILL_LOG_PREFIX, entityId, killed, radius < 0 ? ARG_ALL : "radius",
-                radius < 0 ? -1 : radius, level.dimension().location(),
+                radius < 0 ? -1 : radius, level.dimension().identifier(),
                 (int) Math.floor(source.getPosition().x),
                 (int) Math.floor(source.getPosition().y),
                 (int) Math.floor(source.getPosition().z));

@@ -263,7 +263,7 @@ public final class StarCoinWalletButtons {
      * 避免同时穿透到原版槽位（点击落在物品栏槽位区域之外时本不会被原版消费，
      * 但显式取消可让语义更干净、也不受未来原版改动影响）。
      *
-     * <p>Shift 判定走 {@code MouseButtonEvent#hasShiftDown()}（{@code InputWithModifiers} 的默认方法）——
+     * <p>Shift 判定走 {@code MouseButtonEvent#net.minecraft.client.gui.screens.Screen.hasShiftDown()}（{@code InputWithModifiers} 的默认方法）——
      * 26.1.2 已删除 {@code Screen.hasShiftDown()} 这个静态便捷入口，修饰键状态改为随输入事件一起传递
      * （{@code javap} 实证：{@code Screen} 无任何 {@code *Shift*} 成员）。
      *
@@ -283,7 +283,7 @@ public final class StarCoinWalletButtons {
             if (!hit.contains(mouseX, mouseY)) continue;
             StarCoinWalletActions.Action action = shift ? hit.shiftAction() : hit.primaryAction();
             if (action == null) return;
-            ClientPacketDistributor.sendToServer(new StarCoinWalletPayload(action.ordinal()));
+            net.neoforged.neoforge.client.network.ClientPacketDistributor.sendToServer(new StarCoinWalletPayload(action.ordinal()));
             event.setCanceled(true);
             return;
         }

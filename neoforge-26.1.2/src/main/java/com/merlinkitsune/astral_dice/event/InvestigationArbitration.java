@@ -36,10 +36,10 @@ public final class InvestigationArbitration {
         if (holdsDetectiveSign(triggerer)) {
             out.add(triggerer);
         }
-        if (triggerer.getServer() == null) {
+        if (triggerer.level().getServer() == null) {
             return out;
         }
-        for (net.minecraft.server.level.ServerPlayer other : triggerer.getServer().getPlayerList().getPlayers()) {
+        for (net.minecraft.server.level.ServerPlayer other : triggerer.level().getServer().getPlayerList().getPlayers()) {
             if (other != triggerer && holdsDetectiveSign(other) && PartyRelations.isSameTeam(triggerer, other)) {
                 out.add(other);
             }

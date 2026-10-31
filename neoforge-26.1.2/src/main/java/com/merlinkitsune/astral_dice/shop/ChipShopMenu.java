@@ -379,7 +379,7 @@ public class ChipShopMenu extends AbstractContainerMenu {
             dropped = false;
         } else {
             boolean hasRoom = false;
-            for (ItemStack slotStack : playerInventory.items) {
+            for (ItemStack slotStack : playerInventory.getNonEquipmentItems()) {
                 if (slotStack.isEmpty()) {
                     hasRoom = true;
                     break;

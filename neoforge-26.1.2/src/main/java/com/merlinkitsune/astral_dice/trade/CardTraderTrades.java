@@ -1,25 +1,18 @@
 package com.merlinkitsune.astral_dice.trade;
 
-import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.combat.CardRegistry;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.shop.CardShopCatalog;
 import com.merlinkitsune.astral_dice.shop.CardTradeFilter;
-import com.merlinkitsune.astral_dice.world.ModVillagerProfessions;
 import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.npc.VillagerTrades;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.trading.ItemCost;
 import net.minecraft.world.item.trading.MerchantOffer;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.common.BasicItemListing;
-import net.neoforged.neoforge.event.village.VillagerTradesEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,7 +42,6 @@ import org.slf4j.LoggerFactory;
  * （{@code TagsUpdatedEvent} 的 SERVER_DATA_LOAD），因此校验时数据包标签已绑定、
  * {@code CardRegistry.init()}（FMLCommonSetup）也早已执行（{@code itemToType} 可用）。
  */
-@EventBusSubscriber(modid = AstralDiceMod.MODID)
 public final class CardTraderTrades {
 
     private static final Logger LOGGER = LoggerFactory.getLogger("astral_dice/card_trader");
@@ -90,16 +82,24 @@ public final class CardTraderTrades {
     private CardTraderTrades() {
     }
 
-    @SubscribeEvent
-    public static void onVillagerTrades(VillagerTradesEvent event) {
-        if (event.getType() != ModVillagerProfessions.CARD_TRADER.get()) {
-            return;
-        }
-        // 报价表构建期的 fail-loud 校验（此刻数据包标签已绑定）
+    /**
+     * 构建 1-5 级全部卡牌报价。
+     *
+     * <p><b>26.1.2 行为差异</b>：{@code VillagerTradesEvent} / {@code VillagerTrades.ItemListing} /
+     * {@code BasicItemListing} 在 26.1.2 全部删除，村民交易改成数据驱动
+     * （{@code Registries.VILLAGER_TRADE} 的 {@code VillagerTrade} + {@code TradeSet} 数据包，
+     * 由 {@code VillagerProfession#tradeSetsByLevel} 绑定到职业等级）。
+     * 本类保留 1.21.1 的报价构建逻辑（常量表 → 分档卡池 → 加权抽卡 → 定价），做成**纯构建器**，
+     * 供 P6 的挂载层复用（挂载层需要生成 {@code villager_trade} JSON 或注册自定义 {@code VillagerTrade}）。
+     * <p>原来：服务端启动后由事件把报价写进 {@code VillagerTrades.TRADES}，村民立刻有货。
+     * 现在：本方法不会向任何职业写入报价，村民运行时**没有**本模组的交易项（P6 补齐）。
+     */
+    public static List<CardTraderListing> listings() {
+        // 报价表构建期的 fail-loud 校验（1.21.1 上由 VillagerTradesEvent 的数据包重载时机保证标签已绑定）
         CardTradeFilter.validateExclusiveTag();
         CardTradeFilter.validatePool("商店货架池", CardShopCatalog.entries());
 
-        int cardListings = 0;
+        List<CardTraderListing> listings = new ArrayList<>();
         for (int level = 1; level <= 5; level++) {
             List<CardShopCatalog.PoolEntry> pool = poolFor(level);
             CardTradeFilter.validatePool("卡牌交易员 L" + level + " 交易池", pool);
@@ -107,17 +107,22 @@ public final class CardTraderTrades {
                 LOGGER.error("[card_trader] 等级 {} 的可售卡池为空，该级不会上架任何卡牌报价！", level);
                 continue;
             }
-            event.getTrades().get(level)
-                    .add(new CardTraderListing(pool, MIN_PRICE[level], MAX_PRICE[level], VILLAGER_XP[level]));
-            cardListings++;
+            listings.add(new CardTraderListing(pool, MIN_PRICE[level], MAX_PRICE[level], VILLAGER_XP[level]));
         }
+        LOGGER.info("[card_trader] 交易表构建器就绪：卡牌 listing {} 条（26.1.2 数据驱动挂载待 P6）。", listings.size());
+        return listings;
+    }
 
-        // 老手级解锁「1 绿宝石 → 1 星币」；佩戴绿宝石骰子的玩家会在发包/结算路径上被过滤掉（见 EmeraldDiceTrade）
-        event.getTrades().get(EXCHANGE_LEVEL).add(new BasicItemListing(new ItemStack(Items.EMERALD),
-                new ItemStack(ModItems.STAR_COIN.get()), EXCHANGE_MAX_USES, EXCHANGE_XP, EXCHANGE_PRICE_MULTIPLIER));
-
-        LOGGER.info("[card_trader] 卡牌交易员交易表已注册：卡牌 listing {} 条 + 绿宝石兑星币 1 条（{} 级解锁）。",
-                cardListings, EXCHANGE_LEVEL);
+    /**
+     * 「1 绿宝石 → 1 星币」兑换条目（老手级解锁）。
+     *
+     * <p>26.1.2 用 {@link MerchantOffer} 直接构造，等价于 1.21.1 的
+     * {@code new BasicItemListing(new ItemStack(EMERALD), new ItemStack(STAR_COIN), 12, 1, 0.0F)}。
+     * 佩戴绿宝石骰子的玩家会在发包/结算路径上被过滤掉（见 {@code EmeraldDiceTrade}）。
+     */
+    public static MerchantOffer exchangeOffer() {
+        return new MerchantOffer(new ItemCost(Items.EMERALD, 1), new ItemStack(ModItems.STAR_COIN.get()),
+                EXCHANGE_MAX_USES, EXCHANGE_XP, EXCHANGE_PRICE_MULTIPLIER);
     }
 
     /** 取某一级的可售卡池：档位属于该级允许集 ∧ 通过 {@link CardTradeFilter#isSellable}（排除专属/巅峰/奇特）。 */
@@ -138,10 +143,9 @@ public final class CardTraderTrades {
     }
 
     /** 单个等级的卡牌报价：按池内权重抽一张可售卡，价格按卡面点数微调。 */
-    private record CardTraderListing(List<CardShopCatalog.PoolEntry> pool, int minPrice, int maxPrice, int villagerXp)
-            implements VillagerTrades.ItemListing {
+    public record CardTraderListing(List<CardShopCatalog.PoolEntry> pool, int minPrice, int maxPrice, int villagerXp) {
 
-        @Override
+        /** 抽一只并生成报价（签名与 1.21.1 的 {@code ItemListing#getOffer} 一致，便于 P6 挂载层直接复用）。 */
         public MerchantOffer getOffer(Entity trader, RandomSource random) {
             CardShopCatalog.PoolEntry picked = CardShopCatalog.pickWeighted(random, this.pool);
             if (picked == null) {

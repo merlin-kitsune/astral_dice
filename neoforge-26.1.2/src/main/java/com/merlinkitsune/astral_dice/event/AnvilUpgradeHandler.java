@@ -70,7 +70,7 @@ public class AnvilUpgradeHandler {
                 ));
         event.setOutput(output);
         event.setMaterialCost(req);
-        event.setCost(10);
+        event.setXpCost(10);
     }
 
     /**
@@ -115,7 +115,7 @@ public class AnvilUpgradeHandler {
         ChipShopState next = ChipShopState.get(player).withRefreshGranted();
         ChipShopState.store(player, next);
         LOGGER.info("[astral_dice] CHIP_SHOP_REFRESH_GRANTED player={} star={}->{} coins={} refreshes={}/{}",
-                player.getGameProfile().getName(), input.starLevel(), upgraded.starLevel(), right.getCount(),
+                player.getGameProfile().name(), input.starLevel(), upgraded.starLevel(), right.getCount(),
                 next.refreshesLeft(), ChipShopCatalog.REFRESH_MAX);
     }
 

@@ -1,10 +1,15 @@
 package com.merlinkitsune.astral_dice.item;
 
+import com.merlinkitsune.astral_dice.item.card.BarricadeCardItem;
+import com.merlinkitsune.astral_dice.item.card.RepulsionCardItem;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
+import com.merlinkitsune.astral_dice.block.ModBlocks;
+import com.merlinkitsune.astral_dice.item.EventDrawItem;
 import com.merlinkitsune.astral_dice.component.AppliedStone;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import com.merlinkitsune.starengine.item.AstralRarities;
 
+import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Rarity;
@@ -361,7 +366,7 @@ public class ModItems {
     // 路障(效果牌,2026-10-17):在视线命中的方块面上放一座路障(30 点耐久 / 6 格拉仇恨 / 栅栏级挡路)。
     // 实现形态 = 可见实体(entity/BarricadeEntity) + 隐形碰撞方块(block/BarricadeBlock)。品质:稀有
     public static final DeferredItem<Item> EFFECT_CARD_BARRICADE = registerItem("effect_card_barricade",
-            () -> new BarricadeCardItem(new Item.Properties()
+            props -> new BarricadeCardItem(props
                     .stacksTo(16)
                     .rarity(AstralRarities.rare())));
 
@@ -369,14 +374,14 @@ public class ModItems {
     // (50 点耐久 / 12 格吸附 / 持续 缓慢+虚弱 / 每 10 秒按吸附目标数扣耐久 <=5 / 不吸引仇恨 / 免疫怪物与环境伤害)。
     // 品质:奇特(bizarre;2026-10-22 用户裁决:专属牌一律奇特,原为史诗);专属牌:不进随机池、无配方、不进赏金池、仅获得者可用
     public static final DeferredItem<Item> EFFECT_CARD_REPULSION = registerItem("effect_card_repulsion",
-            () -> new RepulsionCardItem(new Item.Properties()
+            props -> new RepulsionCardItem(props
                     .stacksTo(16)
                     .rarity(AstralRarities.bizarre())));
     // 强化拒止(物品形态,2026-10-25 用户裁决):实体被玩家近战 5 次后回收成此物品 ——
     // 自带耐久(关联血量)/剩余寿命/已发放充能三份状态,再次放置即恢复(放置判据与效果牌共用)。
     // 品质与专属牌一致 = 奇特(bizarre);stacksTo(1):每件承载独立状态,不可堆叠
     public static final DeferredItem<Item> REPULSION = registerItem("repulsion",
-            () -> new RepulsionItem(new Item.Properties()
+            props -> new RepulsionItem(props
                     .stacksTo(1)
                     .rarity(AstralRarities.bizarre())));
 
@@ -856,7 +861,7 @@ public class ModItems {
 
     // 额外电池(史诗/无流派):装备时立牌主动技能冷却时间 -50%(纯查询加减成,卸下即失效)
     public static final DeferredItem<Item> EXTRA_BATTERY_CHIP = registerItem("extra_battery_chip",
-            () -> new ExtraBatteryChipItem(new Item.Properties()
+            props -> new ExtraBatteryChipItem(props
                     .stacksTo(1)
                     .rarity(AstralRarities.epic())));
 
@@ -1075,7 +1080,7 @@ public class ModItems {
      * <p><b>26.1.2 迁移说明(必须沿用本形式)</b>:NeoForge 26.1.x 起 {@code Item.Properties}
      * 必须携带物品 id({@code Item.Properties#setId(ResourceKey)}),而
      * {@code DeferredRegister.Items#register(String, Supplier)} <b>不会</b>自动注入 id ——
-     * 用旧写法({@code ITEMS.register(name, () -> new XxxItem(new Item.Properties()...))})
+     * 用旧写法({@code ITEMS.register(name, props -> new XxxItem(props...))})
      * 构造 {@code Item} 时会在注册阶段直接抛
      * {@code NullPointerException: Item id not set}(原版 {@code Item} 构造器经
      * {@code Item.Properties#itemIdOrThrow} 推导默认描述 id)。
@@ -1087,6 +1092,103 @@ public class ModItems {
      * <b>不要</b>再自己 {@code new Item.Properties()}(也不要用 {@code XxxItem::new} 方法引用形式 ——
      * 构造器带额外参数时会被逗号截断)。
      */
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 以下 16 项在 26.1.2 移植时从 1.21.1 的 ModItems 尾部缺失（整段未随合并进入），
+    // 但符号在 sign/ chip/ block/ datagen 等处仍被引用 ⇒ 按 1.21.1 原样补回，
+    // 只做 26.1.2 要求的形态迁移：props -> new X(props…) ⇒ props -> new X(props…)，
+    // 让 DeferredRegister.Items#registerItem 注入 Registries.ITEM 的 id（见文末 registerItem 注释）。
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    // 卡牌商店方块(物品形态):放置后右键打开「卡牌商店」界面（不可堆叠）
+    public static final DeferredItem<BlockItem> CARD_SHOP = registerItem("card_shop",
+            props -> new BlockItem(ModBlocks.CARD_SHOP.get(), props.stacksTo(1)));
+
+    // 筹码商店方块(物品形态):放置后右键打开「筹码商店」界面
+    public static final DeferredItem<BlockItem> CHIP_SHOP = registerItem("chip_shop",
+            props -> new BlockItem(ModBlocks.CHIP_SHOP.get(), props.stacksTo(1)));
+
+    // 抽奖盒方块(物品形态)
+    public static final DeferredItem<BlockItem> EVENT_DRAWER = registerItem("event_drawer",
+            props -> new BlockItem(ModBlocks.EVENT_DRAWER.get(), props.stacksTo(1)));
+
+    // 事件券:抽奖盒消耗品
+    public static final DeferredItem<Item> EVENT_TICKET = registerItem("event_ticket",
+            props -> new EventDrawItem(props
+                    .stacksTo(16)
+                    .rarity(Rarity.COMMON)));
+
+    // 手电筒-爆闪(传奇/星光):攻击未攻击过的敌对目标 +1 星光,每 2 层星光 +1 攻击伤害
+    public static final DeferredItem<Item> FLASHLIGHT_BURST_CHIP = registerItem("flashlight_burst_chip",
+            props -> new com.merlinkitsune.astral_dice.item.chip.FlashlightBurstChipItem(props
+                    .stacksTo(1)
+                    .rarity(AstralRarities.legendary())));
+
+    // 财运签(史诗/星光):骰神赐福期间首杀 ⇒ 自身与 16 格内友方随机 1~7 星光
+    public static final DeferredItem<Item> FORTUNE_STICK_CHIP = registerItem("fortune_stick_chip",
+            props -> new com.merlinkitsune.astral_dice.item.chip.FortuneStickChipItem(props
+                    .stacksTo(1)
+                    .rarity(AstralRarities.epic())));
+
+    // 试剂-深渊(史诗/治愈):治愈层数 +2,触发治愈回血时获得等量伤害吸收
+    public static final DeferredItem<Item> ABYSS_REAGENT_CHIP = registerItem("abyss_reagent_chip",
+            props -> new com.merlinkitsune.astral_dice.item.chip.AbyssReagentChipItem(props
+                    .stacksTo(1)
+                    .rarity(AstralRarities.epic())));
+
+    // 无线输电杆(史诗/充能):效果牌出牌数 +1,获得充能时周围 8 格友方各 +1 充能
+    public static final DeferredItem<Item> INFINITE_GRID_CHIP = registerItem("infinite_grid_chip",
+            props -> new com.merlinkitsune.astral_dice.item.chip.InfiniteGridChipItem(props
+                    .stacksTo(1)
+                    .rarity(AstralRarities.epic())));
+
+    // 感测装置(史诗/标记):目标每 3 层标记使其战斗骰点 -1(最多 -4),闪避成功给攻击者 1 层标记
+    public static final DeferredItem<Item> SENSOR_CHIP = registerItem("sensor_chip",
+            props -> new com.merlinkitsune.astral_dice.item.chip.SensorChipItem(props
+                    .stacksTo(1)
+                    .rarity(AstralRarities.epic())));
+
+    // 超天酱立牌(kangel,奇特):主动「网络天使」+ 被动「小天使请安」+ 备注「一心同体」
+    public static final DeferredItem<Item> KANGEL_SIGN = registerItem("kangel_sign",
+            props -> new com.merlinkitsune.astral_dice.item.sign.KangelSignItem(props
+                    .stacksTo(1)
+                    .rarity(AstralRarities.bizarre())));
+
+    // 地雷女立牌(ame,奇特):主动「感情过量摄入」+ 被动「无法承受的爱」+ 备注「一心同体」
+    public static final DeferredItem<Item> AME_SIGN = registerItem("ame_sign",
+            props -> new com.merlinkitsune.astral_dice.item.sign.AmeSignItem(props
+                    .stacksTo(1)
+                    .rarity(AstralRarities.bizarre())));
+
+    // 怪力乱神立牌(lingling,史诗):被动「拦截者」+ 主动「能量突击」
+    public static final DeferredItem<Item> LINGLING_SIGN = registerItem("lingling_sign",
+            props -> new com.merlinkitsune.astral_dice.item.sign.LinglingSignItem(props
+                    .stacksTo(1)
+                    .rarity(AstralRarities.epic())));
+
+    // 调酒师立牌(jill,奇特):被动「改变生活」/ 主动「调制人生」
+    public static final DeferredItem<Item> JILL_SIGN = registerItem("jill_sign",
+            props -> new com.merlinkitsune.astral_dice.item.sign.JillSignItem(props
+                    .stacksTo(1)
+                    .rarity(AstralRarities.bizarre())));
+
+    // 多萝西立牌(dorothy,奇特):被动「交际花」/ 主动「真正的我」
+    public static final DeferredItem<Item> DOROTHY_SIGN = registerItem("dorothy_sign",
+            props -> new com.merlinkitsune.astral_dice.item.sign.DorothySignItem(props
+                    .stacksTo(1)
+                    .rarity(AstralRarities.bizarre())));
+
+    // 修女立牌(alana,稀有):被动「鼓起勇气」/ 主动「铁处女」
+    public static final DeferredItem<Item> ALANA_SIGN = registerItem("alana_sign",
+            props -> new com.merlinkitsune.astral_dice.item.sign.AlanaSignItem(props
+                    .stacksTo(1)
+                    .rarity(AstralRarities.rare())));
+
+    // 大肥鱼立牌(deepseek,奇特,仅创造获得):被动「摸鱼中」/ 主动「大口干饭」
+    public static final DeferredItem<Item> DEEPSEEK_SIGN = registerItem("deepseek_sign",
+            props -> new com.merlinkitsune.astral_dice.item.sign.DeepseekSignItem(props
+                    .stacksTo(1)
+                    .rarity(AstralRarities.bizarre())));
+
     public static <T extends Item> DeferredItem<T> registerItem(String name,
             java.util.function.Function<Item.Properties, ? extends T> factory) {
         return ITEMS.registerItem(name, factory);
@@ -1095,5 +1197,15 @@ public class ModItems {
     // 判断物品栈是否为任意卡牌(战斗牌 + 效果牌;含专属牌)
     public static boolean isCardItem(ItemStack stack) {
         return stack.is(COMBAT_CARDS_TAG) || stack.is(EFFECT_CARDS_TAG);
+    }
+
+    /** 是否战斗牌（选卡界面 COMBAT 口径，2026-10-17）。 */
+    public static boolean isCombatCard(ItemStack stack) {
+        return stack.is(COMBAT_CARDS_TAG);
+    }
+
+    /** 是否效果牌（选卡界面 EFFECT 口径，2026-10-17）。 */
+    public static boolean isEffectCard(ItemStack stack) {
+        return stack.is(EFFECT_CARDS_TAG);
     }
 }

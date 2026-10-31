@@ -104,7 +104,7 @@ public class RepulsionCardItem extends BaseEffectCardItem {
         if (!LinglingSignManager.hasSign(player)) {
             if (!level.isClientSide()) {
                 player.sendOverlayMessage(
-                        Component.translatable(RepulsionItem.MSG_NEED_SIGN).withStyle(ChatFormatting.RED), true);
+                        Component.translatable(RepulsionItem.MSG_NEED_SIGN).withStyle(ChatFormatting.RED));
                 if (LinglingSignManager.isRepulsion(stack)) {
                     player.setItemInHand(hand, LinglingSignManager.toBarricade(stack));
                 }
@@ -114,7 +114,7 @@ public class RepulsionCardItem extends BaseEffectCardItem {
         if (resolvePlacement(level, player) == null) {
             if (!level.isClientSide()) {
                 player.sendOverlayMessage(
-                        Component.translatable(MSG_INVALID).withStyle(ChatFormatting.RED), true);
+                        Component.translatable(MSG_INVALID).withStyle(ChatFormatting.RED));
             }
             return InteractionResult.FAIL;
         }
@@ -133,12 +133,12 @@ public class RepulsionCardItem extends BaseEffectCardItem {
         BlockPos target = resolvePlacement(level, user);
         if (target == null) return;
 
-        RepulsionEntity repulsion = ModEntityTypes.REPULSION.get().create(level);
+        RepulsionEntity repulsion = ModEntityTypes.REPULSION.get().create(level, net.minecraft.world.entity.EntitySpawnReason.COMMAND);
         if (repulsion == null) return;
 
         // 朝向：90° 的倍数（本模型是竖直薄片，朝向决定「宽面」朝哪边；属观感选择）
         float yaw = Math.round(user.getYRot() / 90.0F) * 90.0F;
-        repulsion.moveTo(target.getX() + 0.5D, target.getY(), target.getZ() + 0.5D, yaw, 0.0F);
+        repulsion.snapTo(target.getX() + 0.5D, target.getY(), target.getZ() + 0.5D, yaw, 0.0F);
         repulsion.setYHeadRot(yaw);
         repulsion.yBodyRot = yaw;
         // §4.6 前置：记录放置者（怪力乱神立牌的额外充能层只统计「自己放置的」力场）；随实体 NBT 落盘
@@ -152,7 +152,7 @@ public class RepulsionCardItem extends BaseEffectCardItem {
         // 反馈：玻璃放置音 + 动作栏绿字
         SoundPlayback.playAt(level, target.getX() + 0.5D, target.getY() + 0.5D, target.getZ() + 0.5D,
                 SoundEvents.GLASS_PLACE);
-        user.sendOverlayMessage(Component.translatable(MSG_PLACED).withStyle(ChatFormatting.GREEN), true);
+        user.sendOverlayMessage(Component.translatable(MSG_PLACED).withStyle(ChatFormatting.GREEN));
     }
 
     /**

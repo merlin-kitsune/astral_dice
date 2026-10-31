@@ -26,7 +26,8 @@ public enum ShopCooldownClientProvider implements IBlockComponentProvider {
 
     @Override
     public void appendTooltip(ITooltip tooltip, BlockAccessor accessor, IPluginConfig config) {
-        long remaining = accessor.getServerData().getLong(ShopCooldownServerDataProvider.NBT_KEY);
+        // 26.1.2：CompoundTag#getLong 返回 Optional（NBT 读取器全面 Optional 化），缺键按 0 处理。
+        long remaining = accessor.getServerData().getLong(ShopCooldownServerDataProvider.NBT_KEY).orElse(0L);
         if (remaining <= 0L) {
             return;
         }

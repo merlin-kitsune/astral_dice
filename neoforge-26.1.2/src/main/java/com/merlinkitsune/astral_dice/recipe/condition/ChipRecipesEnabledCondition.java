@@ -21,12 +21,12 @@ import net.neoforged.neoforge.registries.RegisterEvent;
  * (⚠️ 21.1.235 已**没有** {@code IConditionSerializer} 类型 / {@code Keys.CONDITION_SERIALIZERS} 键,
  * 与旧文档口径不同,以实物为准)。
  *
- * <p>注册方式:本类自带 {@code @EventBusSubscriber(bus = MOD)} 注册钩子,经 {@link RegisterEvent} 直接把
+ * <p>注册方式:本类用 {@code @EventBusSubscriber}(26.1.2 已无 bus 参数,按事件类型自动分流到模组总线),经 {@link RegisterEvent} 直接把
  * 条件码塞进该注册表 —— 与 {@code DeferredRegister#register(IEventBus)} 走的是**同一条底层路径**
  * ({@code RegisterEvent#register}),但**无需改动主入口类 {@code AstralDiceMod}**,以免越出本次任务的
  * 「允许修改文件清单」边界。
  */
-@EventBusSubscriber(modid = AstralDiceMod.MODID, bus = EventBusSubscriber.Bus.MOD)
+@EventBusSubscriber(modid = AstralDiceMod.MODID)
 public final class ChipRecipesEnabledCondition implements ICondition {
 
     /** 注册 id(路径段 {@code chip_recipes_enabled})。 */

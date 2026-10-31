@@ -7,10 +7,11 @@ import com.merlinkitsune.astral_dice.event.EventCardService;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.gui.LayeredDraw;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
+import net.neoforged.neoforge.client.gui.GuiLayer;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -34,7 +35,7 @@ import java.util.List;
  * 卡在屏幕上（alpha > 0）的整段时间里，服务端**零效果 / 零伤害 / 零事件音效**。
  * 修复前的写法是「动画写死 1.4s + 服务端 38t 结算」，两套时钟各算一套、无法保证恒等关系。
  */
-public final class EventCardOverlay implements LayeredDraw.Layer {
+public final class EventCardOverlay implements GuiLayer {
     public static final Identifier LAYER_ID =
             Identifier.fromNamespaceAndPath(AstralDiceMod.MODID, "event_card");
     public static final EventCardOverlay LAYER = new EventCardOverlay();
@@ -133,45 +134,36 @@ public final class EventCardOverlay implements LayeredDraw.Layer {
                           float scale, float alpha) {
         Identifier icon = Identifier.fromNamespaceAndPath(card.eventId().getNamespace(),
                 "textures/gui/event/" + iconPath(card) + ".png");
-        g.pose().pushPose();
+        // 26.1.2：GUI 的 pose 是 JOML 的 Matrix3x2fStack（纯 2D），推栈/平移/缩放的
+        // 方法名分别是 pushMatrix/popMatrix 与两参 translate/scale（旧的 pushPose/三参版本已不存在）。
+        g.pose().pushMatrix();
         // 垂直对齐：FRAME_H 为奇数时 quad 中心天然低 0.5 GUI px（=2 物理 px @guiScale4）⇒ 上移半像素
         float yOff = (FRAME_H % 2 == 0) ? 0.0F : -0.5F;
-        g.pose().translate(centerX, centerY + yOff, 300.0F);
-        g.pose().scale(scale, scale, 1.0F);
+        g.pose().translate(centerX, centerY + yOff);
+        g.pose().scale(scale, scale);
         int x = -FRAME_W / 2;
         int y = -FRAME_H / 2;
         int a = Mth.clamp((int) (alpha * 255.0F), 0, 255);
+        // 26.1.2：blit 的颜色参数（ARGB）直接带 alpha ⇒ 不再需要 RenderSystem 着色 + flush 的旧套路。
+        int tint = (a << 24) | 0xFFFFFF;
         // ① 卡框（44×67）
-        // ⚠️ 实机连拍实测（2026-10-10）：GuiGraphicsExtractor#setColor 在本版本的 blit 路径**不生效**
-        // ⇒ 卡框与事件图完全不透明（看起来是「不透明弹出 + 只缩小 + 只文字渐隐」）。改为直接设 shader 颜色。
-        com.mojang.blaze3d.systems.RenderSystem.enableBlend();
-        // 先把**更早 layer 已排队但未 flush 的几何（含原版准星）以白色冲掉**，再给卡设 alpha；
-        // 否则 g.flush() 会把它们一起用卡的 alpha 画掉（淡入淡出期间准星会同步变淡）。
-        g.flush();
-        com.mojang.blaze3d.systems.RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, a / 255.0F);
-        g.blit(FRAME_TEX, x, y, 0.0F, 0.0F, FRAME_W, FRAME_H, FRAME_W, FRAME_H);
+        g.blit(RenderPipelines.GUI_TEXTURED, FRAME_TEX, x, y, 0.0F, 0.0F,
+                FRAME_W, FRAME_H, FRAME_W, FRAME_H, tint);
         // ② 事件图 64×64 → 38×38 贴 (3,3)（与商店卡牌同口径）
-        drawFaceCentered(g, icon, x, y);
-        // 1.21.1/1.20.1 的 GuiGraphicsExtractor 是**批处理**：shader 颜色在 flush 时生效 ⇒
-        // 必须在此处显式 flush，否则卡框/事件图会用后续文字的颜色（= 完全不透明）画出来。
-        g.flush();
+        drawFaceCentered(g, icon, x, y, tint);
         // ③ 文字（MC 字体、居中、随卡缩放）——名称按类型染色，计时器同色
-        // ⚠️ a < 4 时跳过文字：原版 net.minecraft.client.gui.Font#adjustColor 的
-        // `(color & -67108864) == 0` 会把 alpha≤3 的颜色强制改回 0xFF000000（完全不透明），
-        // 导致卡面贴图已淡出、卡名与计时器文字却残留。
+        // ⚠️ a < 4 时跳过文字：原版 Font#adjustColor 会把 alpha≤3 的颜色强制改回不透明。
         if (a >= 4) {
             AstralEvent ev = AstralEventRegistry.get(card.eventId()).orElse(null);
             int color = (ev == null ? 0xFFFFFF : ev.polarity().color().getColor()) | (a << 24);
             Component name = Component.translatable("event.astral_dice." + card.eventId().getPath() + ".name");
-            g.drawString(mc.font, name, x + FRAME_W / 2 - mc.font.width(name) / 2, y + NAME_Y_OFF, color, false);
+            g.text(mc.font, name, x + FRAME_W / 2 - mc.font.width(name) / 2, y + NAME_Y_OFF, color, false);
             if (card.durationTicks() > 0) {
                 Component timer = Component.literal(formatTicks(card.durationTicks()));
-                g.drawString(mc.font, timer, x + FRAME_W / 2 - mc.font.width(timer) / 2, y + TIME_Y_OFF, color, false);
+                g.text(mc.font, timer, x + FRAME_W / 2 - mc.font.width(timer) / 2, y + TIME_Y_OFF, color, false);
             }
         }
-        com.mojang.blaze3d.systems.RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
-        g.setColor(1.0F, 1.0F, 1.0F, 1.0F);
-        g.pose().popPose();
+        g.pose().popMatrix();
     }
 
     /**
@@ -189,22 +181,18 @@ public final class EventCardOverlay implements LayeredDraw.Layer {
         Identifier icon = Identifier.fromNamespaceAndPath(eventId.getNamespace(),
                 "textures/gui/event/" + iconPath(eventId, tier) + ".png");
         int a = 255;
-        com.mojang.blaze3d.systems.RenderSystem.enableBlend();
-        g.flush();
-        com.mojang.blaze3d.systems.RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
-        g.blit(frameTex, frameX, frameY, 0.0F, 0.0F, FRAME_W, FRAME_H, FRAME_W, FRAME_H);
-        drawFaceCentered(g, icon, frameX, frameY);
-        g.flush();
+        int tint = (a << 24) | 0xFFFFFF;
+        g.blit(RenderPipelines.GUI_TEXTURED, frameTex, frameX, frameY, 0.0F, 0.0F,
+                FRAME_W, FRAME_H, FRAME_W, FRAME_H, tint);
+        drawFaceCentered(g, icon, frameX, frameY, tint);
         AstralEvent ev = AstralEventRegistry.get(eventId).orElse(null);
         int color = (ev == null ? 0xFFFFFF : ev.polarity().color().getColor()) | (a << 24);
         Component name = Component.translatable("event.astral_dice." + eventId.getPath() + ".name");
-        g.drawString(mc.font, name, frameX + FRAME_W / 2 - mc.font.width(name) / 2, frameY + NAME_Y_OFF, color, false);
+        g.text(mc.font, name, frameX + FRAME_W / 2 - mc.font.width(name) / 2, frameY + NAME_Y_OFF, color, false);
         if (durationTicks > 0) {
             Component timer = Component.literal(formatTicks(durationTicks));
-            g.drawString(mc.font, timer, frameX + FRAME_W / 2 - mc.font.width(timer) / 2, frameY + TIME_Y_OFF, color, false);
+            g.text(mc.font, timer, frameX + FRAME_W / 2 - mc.font.width(timer) / 2, frameY + TIME_Y_OFF, color, false);
         }
-        com.mojang.blaze3d.systems.RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
-        g.setColor(1.0F, 1.0F, 1.0F, 1.0F);
     }
 
     /**
@@ -235,10 +223,11 @@ public final class EventCardOverlay implements LayeredDraw.Layer {
      * <p>为什么不能整张 64×64 直接缩放：卡面美术四周的透明边距**不对称**（实测
      * `world_collapse` 上 16 / 下 10、`crowded_passage` 左 2 / 右 4），整张画会让画面看着偏心。
      */
-    private static void drawFaceCentered(GuiGraphicsExtractor g, Identifier tex, int frameX, int frameY) {
+    private static void drawFaceCentered(GuiGraphicsExtractor g, Identifier tex, int frameX, int frameY, int tint) {
         int[] r = RECT_CACHE.computeIfAbsent(tex, EventCardOverlay::measureContent);
         if (r == null || r[2] <= 0 || r[3] <= 0) {
-            g.blit(tex, frameX + PANE_X, frameY + PANE_Y, 0.0F, 0.0F, PANE_W, PANE_H, 64, 64);
+            g.blit(RenderPipelines.GUI_TEXTURED, tex, frameX + PANE_X, frameY + PANE_Y, 0.0F, 0.0F,
+                    PANE_W, PANE_H, PANE_W, PANE_H, 64, 64, tint);
             return;
         }
         float s = Math.min(PANE_W / (float) r[2], PANE_H / (float) r[3]);
@@ -246,7 +235,8 @@ public final class EventCardOverlay implements LayeredDraw.Layer {
         int dh = Math.max(1, Math.round(r[3] * s));
         int dx = frameX + PANE_X + (PANE_W - dw) / 2;
         int dy = frameY + PANE_Y + (PANE_H - dh) / 2;
-        g.blit(tex, dx, dy, dw, dh, (float) r[0], (float) r[1], r[2], r[3], 64, 64);
+        g.blit(RenderPipelines.GUI_TEXTURED, tex, dx, dy, (float) r[0], (float) r[1],
+                dw, dh, r[2], r[3], 64, 64, tint);
     }
 
     /** 量测事件图的内容矩形（缓存一次）；失败返回 null。 */
@@ -261,7 +251,7 @@ public final class EventCardOverlay implements LayeredDraw.Layer {
             int minX = w, maxX = -1, minY = h, maxY = -1;
             for (int y = 0; y < h; y++) {
                 for (int x = 0; x < w; x++) {
-                    if (((img.getPixelRGBA(x, y) >>> 24) & 0xFF) > 8) {
+                    if (((img.getPixel(x, y) >>> 24) & 0xFF) > 8) {
                         if (x < minX) minX = x;
                         if (x > maxX) maxX = x;
                         if (y < minY) minY = y;

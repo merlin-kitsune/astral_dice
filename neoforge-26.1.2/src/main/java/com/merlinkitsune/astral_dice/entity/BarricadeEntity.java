@@ -4,8 +4,9 @@ import com.merlinkitsune.astral_dice.block.ModBlocks;
 import com.merlinkitsune.starengine.combat.EliteTargets;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
@@ -131,12 +132,9 @@ public class BarricadeEntity extends LivingEntity {
     }
 
 
-    // ── 装备槽（{@link LivingEntity} 的三个抽象方法）：路障没有装备 ─────────────────
-
-    @Override
-    public Iterable<ItemStack> getArmorSlots() {
-        return List.of();
-    }
+    // ── 装备槽：路障没有装备 ─────────────────────────────────────────────────
+    // 26.1.2：LivingEntity#getArmorSlots() 已删除（装备走 EquipmentUser 接口的
+    // getItemBySlot/setItemSlot 两个方法），故这里只保留后两个覆写。
 
     @Override
     public ItemStack getItemBySlot(EquipmentSlot slot) {
@@ -160,27 +158,30 @@ public class BarricadeEntity extends LivingEntity {
     }
 
     @Override
-    public void addAdditionalSaveData(CompoundTag tag) {
-        super.addAdditionalSaveData(tag);
+    public void addAdditionalSaveData(ValueOutput output) {
+        // 26.1.2：存档读写从 CompoundTag 换成 ValueOutput/ValueInput。
+        super.addAdditionalSaveData(output);
         if (this.createdAt != CREATED_AT_UNSET) {
-            tag.putLong(TAG_CREATED_AT, this.createdAt);
+            output.putLong(TAG_CREATED_AT, this.createdAt);
         }
         if (this.collisionPos != null) {
-            tag.putLong(TAG_BLOCK_POS, this.collisionPos.asLong());
+            output.putLong(TAG_BLOCK_POS, this.collisionPos.asLong());
         }
     }
 
     @Override
-    public void readAdditionalSaveData(CompoundTag tag) {
-        super.readAdditionalSaveData(tag);
-        if (tag.contains(TAG_CREATED_AT)) {
-            this.createdAt = tag.getLong(TAG_CREATED_AT);
+    public void readAdditionalSaveData(ValueInput input) {
+        super.readAdditionalSaveData(input);
+        java.util.Optional<Long> createdAtRead = input.getLong(TAG_CREATED_AT);
+        if (createdAtRead.isPresent()) {
+            this.createdAt = createdAtRead.get();
         } else {
             // 老存档没有寿命字段：回填「当前 gameTime」⇒ 从加载这一刻重新计 20:00，不会被立刻销毁。
             this.createdAt = this.level().getGameTime();
         }
-        if (tag.contains(TAG_BLOCK_POS)) {
-            this.collisionPos = BlockPos.of(tag.getLong(TAG_BLOCK_POS));
+        java.util.Optional<Long> blockPosRead = input.getLong(TAG_BLOCK_POS);
+        if (blockPosRead.isPresent()) {
+            this.collisionPos = BlockPos.of(blockPosRead.get());
             // 存档重载：首 tick 立刻校验方块是否还在（不在则自毁，见 tick）
             this.needsBlockCheck = true;
         }
@@ -280,8 +281,9 @@ public class BarricadeEntity extends LivingEntity {
      * 命中一律扣 {@link #DAMAGE_PER_HIT} 点，**与传入的 {@code amount} 无关**。
      */
     @Override
-    public boolean hurt(DamageSource source, float amount) {
-        if (this.level().isClientSide()) return false;
+    public boolean hurtServer(ServerLevel level, DamageSource source, float amount) {
+        // 26.1.2：Entity#hurt 变成 final 的模板方法，子类改覆写 hurtServer(ServerLevel, DamageSource, float)。
+        if (level.isClientSide()) return false;
         if (this.isRemoved() || this.isDeadOrDying()) return false;
         if (!(source.getEntity() instanceof LivingEntity)) return false;
 
@@ -345,7 +347,8 @@ public class BarricadeEntity extends LivingEntity {
 
     /** 路障不是战利品也不是经验来源（用户需求未要求掉落）。 */
     @Override
-    protected boolean shouldDropLoot() {
+    protected boolean shouldDropLoot(ServerLevel level) {
+        // 26.1.2：shouldDropLoot 增加 ServerLevel 参数（掉落物与环境相关）。
         return false;
     }
 
@@ -385,8 +388,9 @@ public class BarricadeEntity extends LivingEntity {
      * 无死亡动画）⇒ {@code /kill @e[type=astral_dice:barricade]} 可用。
      */
     @Override
-    public void kill() {
-        if (this.level().isClientSide()) return;
+    public void kill(ServerLevel level) {
+        // 26.1.2：Entity#kill 签名加了 ServerLevel；语义不变（仍转给 die）。
+        if (level.isClientSide()) return;
         this.die(this.damageSources().genericKill());
     }
 

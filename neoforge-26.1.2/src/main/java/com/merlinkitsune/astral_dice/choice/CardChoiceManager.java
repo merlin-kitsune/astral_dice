@@ -106,13 +106,13 @@ public final class CardChoiceManager {
         }
         if (slotCount != SLOTS_SINGLE && slotCount != SLOTS_TRIPLE) {
             LOGGER.warn("AP_CARD_CHOICE: reject:reason=bad_slot_count:player={}:slots={}",
-                    player.getGameProfile().getName(), slotCount);
+                    player.getGameProfile().name(), slotCount);
             return false;
         }
         Session existing = SESSIONS.get(player.getUUID());
         if (existing != null && !existing.resolved) {
             LOGGER.warn("AP_CARD_CHOICE: reject:reason=already_open:player={}:token={}",
-                    player.getGameProfile().getName(), existing.token);
+                    player.getGameProfile().name(), existing.token);
             return false;
         }
         Session session = new Session(token, slotCount, type, handler);
@@ -134,18 +134,18 @@ public final class CardChoiceManager {
             session.resolved = true;
             SESSIONS.remove(player.getUUID(), session);
             LOGGER.warn("AP_CARD_CHOICE: reject:reason=open_failed:player={}:token={}",
-                    player.getGameProfile().getName(), token, exception);
+                    player.getGameProfile().name(), token, exception);
             return false;
         }
         if (opened.isEmpty()) {
             SESSIONS.remove(player.getUUID(), session);
             session.resolved = true;
             LOGGER.warn("AP_CARD_CHOICE: reject:reason=open_failed:player={}:token={}",
-                    player.getGameProfile().getName(), token);
+                    player.getGameProfile().name(), token);
             return false;
         }
         LOGGER.info("AP_CARD_CHOICE: open:{}:player={}:slots={}:type={}:container={}",
-                token, player.getGameProfile().getName(), slotCount, type, opened.getAsInt());
+                token, player.getGameProfile().name(), slotCount, type, opened.getAsInt());
         return true;
     }
 
@@ -176,25 +176,25 @@ public final class CardChoiceManager {
         Session session = SESSIONS.get(player.getUUID());
         if (session == null || session.resolved || session.token != token) {
             LOGGER.warn("AP_CARD_CHOICE: confirm_ignored:reason=no_session:player={}:token={}",
-                    player.getGameProfile().getName(), token);
+                    player.getGameProfile().name(), token);
             return;
         }
         if (!(player.containerMenu instanceof CardChoiceMenu menu) || menu.token() != token) {
             LOGGER.warn("AP_CARD_CHOICE: confirm_ignored:reason=menu_mismatch:player={}:token={}",
-                    player.getGameProfile().getName(), token);
+                    player.getGameProfile().name(), token);
             return;
         }
         List<ItemStack> picked = menu.consumeSelection(player);
         if (picked.isEmpty()) {
             // 没放满 / 类型不符：保留界面与全部卡牌，零消耗
             LOGGER.info("AP_CARD_CHOICE: confirm_ignored:reason=incomplete:player={}:token={}:filled={}",
-                    player.getGameProfile().getName(), token, menu.filledSlots());
+                    player.getGameProfile().name(), token, menu.filledSlots());
             return;
         }
         session.resolved = true;
         SESSIONS.remove(player.getUUID(), session);
         LOGGER.info("AP_CARD_CHOICE: confirm:{}:player={}:slots={}:type={}:picked={}",
-                token, player.getGameProfile().getName(), session.slotCount, session.type, picked.size());
+                token, player.getGameProfile().name(), session.slotCount, session.type, picked.size());
         // token 作用域关闭（比只依赖 containerId 更稳；客户端找不到同 token 界面时是 no-op）
         PacketDistributor.sendToPlayer(player, new CardChoiceClosePayload(token));
         // 关菜单会触发 CardChoiceMenu#removed：只退回**未选中的余量**，已消耗的 1 张/槽不再回来
@@ -223,7 +223,7 @@ public final class CardChoiceManager {
         session.resolved = true;
         SESSIONS.remove(player.getUUID(), session);
         LOGGER.info("AP_CARD_CHOICE: abandon:{}:player={}:consumed=0", token,
-                player.getGameProfile().getName());
+                player.getGameProfile().name());
     }
 
     /**
@@ -252,7 +252,7 @@ public final class CardChoiceManager {
             return;
         }
         LOGGER.info("AP_CARD_CHOICE: death_cleanup:{}:player={}", session.token,
-                player.getGameProfile().getName());
+                player.getGameProfile().name());
         if (player.containerMenu instanceof CardChoiceMenu menu && menu.token() == session.token) {
             // 先关菜单：removed() 里 dying=true ⇒ 卡牌直接掉在死亡点，并 abandon 清会话
             player.closeContainer();
@@ -268,7 +268,7 @@ public final class CardChoiceManager {
         if (session != null) {
             session.resolved = true;
             LOGGER.info("AP_CARD_CHOICE: abandon:{}:player={}:reason=logout:consumed=0",
-                    session.token, event.getEntity().getGameProfile().getName());
+                    session.token, event.getEntity().getGameProfile().name());
         }
     }
 }

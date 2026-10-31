@@ -69,6 +69,14 @@ import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
  * 真龙形态图标 = 同一张图({@code textures/mob_effect/mamushi_dragon.png},逐字节相同)。
  */
 public class MamushiSignItem extends BaseSignItem {
+    /**
+     * 强制冷却截止刻（玩家 UUID → 绝对 gameTime）。
+     *
+     * <p>26.1.2 平台差异：1.21.1 基准没有「强制冷却」这条附件通道（本类在 26 线是先行实现），
+     * 故用本类静态表承载 —— **不跨存档/重连保留**（重登后强制冷却归零，其余冷却判定不受影响）。</p>
+     */
+    private static final java.util.Map<java.util.UUID, Long> FORCED_COOLDOWN = new java.util.concurrent.ConcurrentHashMap<>();
+
 
     // ══════════════════════════════════════════════════════════════════════════
     //  常量(规格 §1 冻结表;两线同名同值)
@@ -349,7 +357,7 @@ public class MamushiSignItem extends BaseSignItem {
     /** 强制冷却截止刻(绝对 gameTime;0 = 无)。供 {@code CurrentCoreChipItem#tryFinishCooldown} 拒绝判定 */
     public static long getForcedCooldownUntil(Player player) {
         if (player == null) return 0L;
-        return ModAttachments.getMamushiForcedCooldownUntil(player);
+        return FORCED_COOLDOWN.getOrDefault(player.getUUID(), 0L);
     }
 
     // ══════════════════════════════════════════════════════════════════════════
@@ -390,8 +398,7 @@ public class MamushiSignItem extends BaseSignItem {
             }
         }
         // ③ 强制冷却:释放当刻落笔(硬闸门,见 forcedCooldownUntil)
-        ModAttachments.setMamushiForcedCooldownUntil(player,
-                level.getGameTime() + ACTIVE_FORCED_COOLDOWN_TICKS);
+        FORCED_COOLDOWN.put(player.getUUID(), level.getGameTime() + ACTIVE_FORCED_COOLDOWN_TICKS);
         return InteractionResult.SUCCESS;
     }
 

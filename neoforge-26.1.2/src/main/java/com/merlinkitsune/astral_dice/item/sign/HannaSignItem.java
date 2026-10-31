@@ -260,9 +260,9 @@ public class HannaSignItem extends BaseSignItem {
         if (now >= ModAttachments.getHannaBlessingCooldownEnd(wearer)) {
             Player sherryWearer = nearest(nearby, wearer, p -> wearsSign(p, SHERRY_SIGN_ID));
             if (sherryWearer != null) {
-                PlayerEffectProtection.apply(sherryWearer, new MobEffectInstance(MobEffects.DAMAGE_BOOST,
+                PlayerEffectProtection.apply(sherryWearer, new MobEffectInstance(MobEffects.STRENGTH,
                         BLESSING_BUFF_TICKS, 1, false, true));
-                PlayerEffectProtection.apply(sherryWearer, new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE,
+                PlayerEffectProtection.apply(sherryWearer, new MobEffectInstance(MobEffects.RESISTANCE,
                         BLESSING_BUFF_TICKS, 0, false, true));
                 SherrySignItem.addLayers(sherryWearer, 1);
                 ModAttachments.setHannaBlessingCooldownEnd(wearer, now + PASSIVE_INTERVAL_TICKS);
@@ -279,7 +279,7 @@ public class HannaSignItem extends BaseSignItem {
                 addCraftLayers(wearer, 1);
                 if (isComplete(wearer)) {
                     // 已完成:额外 迅捷 II (1:00) + 3 星币
-                    PlayerEffectProtection.apply(friend, new MobEffectInstance(MobEffects.MOVEMENT_SPEED,
+                    PlayerEffectProtection.apply(friend, new MobEffectInstance(MobEffects.SPEED,
                             COMPLETE_BUFF_TICKS, 1, false, true));
                     giveCoins(friend, COIN_ON_COMPLETE);
                 }

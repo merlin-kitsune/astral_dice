@@ -26,7 +26,7 @@ import java.util.List;
  * </ul>
  *
  * <p><b>移动规则</b>：{@link #quickMoveStack} 双向（物品栏卡牌 → 第一个可放置的空卡槽；
- * 卡槽 → 物品栏）。屏幕层把「双击」翻译成原版 {@code ClickType.QUICK_MOVE}，
+ * 卡槽 → 物品栏）。屏幕层把「双击」翻译成原版 {@code ContainerInput.QUICK_MOVE}，
  * 因此本方法同时承担双击与 Shift+点击两条入口。
  * <p><b>数量口径</b>（spec §9-1「双击一次 → 卡槽出现 1 张」）：物品栏 → 卡槽方向**一次只搬 1 张**；
  * 卡槽每格上限 1 张，重复双击/Shift+点击才会继续填下一格。
@@ -246,7 +246,7 @@ public class CardChoiceMenu extends AbstractContainerMenu {
         }
 
         /**
-         * ⚠️ 必须为 true：原版在 {@code ClickType.QUICK_MOVE}（双击/Shift+点击）之前会检查
+         * ⚠️ 必须为 true：原版在 {@code ContainerInput.QUICK_MOVE}（双击/Shift+点击）之前会检查
          * {@code slot.mayPickup(player)}，恒 false 会让「双击取回」静默失效。
          * 本槽不涉及商店那种「白拿货」风险（槽里就是玩家自己的卡），允许光标直接取回同样合理。
          */

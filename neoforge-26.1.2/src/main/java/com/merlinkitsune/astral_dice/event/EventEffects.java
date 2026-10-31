@@ -1,5 +1,8 @@
 package com.merlinkitsune.astral_dice.event;
 
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.world.entity.monster.zombie.Zombie;
+import net.minecraft.world.entity.monster.skeleton.AbstractSkeleton;
 import com.merlinkitsune.astral_dice.combat.DamageNumberAggregator;
 import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
@@ -107,7 +110,7 @@ public final class EventEffects {
 
     public static void swiftStride(ServerLevel level, Player triggerer, Player target, AstralEvent event,
                                    AstralEventTrigger source, int tier) {
-        PlayerEffectProtection.apply(target, new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 2400, 1, false, true));
+        PlayerEffectProtection.apply(target, new MobEffectInstance(MobEffects.SPEED, 2400, 1, false, true));
         EventTimerStore.start(target, event.id(), 2400, null);
     }
 
@@ -197,7 +200,7 @@ public final class EventEffects {
         }
         int witch = 0;
         if (level.getRandom().nextFloat() < WAVE_WITCH_CHANCE) {
-            Mob mob = EntityType.WITCH.create(level);
+            Mob mob = EntityType.WITCH.create(level, net.minecraft.world.entity.EntitySpawnReason.COMMAND);
             if (mob != null && placeStormMob(level, player, mob)) witch++;
         }
         // 只有真的刷出怪才算「本区域已有一波」，否则同区第二个玩家还能补刷
@@ -213,7 +216,7 @@ public final class EventEffects {
             case 1 -> EntityType.SKELETON;
             default -> EntityType.SPIDER;
         };
-        return type.create(level);
+        return type.create(level, net.minecraft.world.entity.EntitySpawnReason.COMMAND);
     }
 
     /**
@@ -231,7 +234,7 @@ public final class EventEffects {
             double z = player.getZ() + Math.sin(angle) * dist;
             int y = findSpawnY(level, net.minecraft.util.Mth.floor(x), net.minecraft.util.Mth.floor(z), baseY);
             if (y == Integer.MIN_VALUE) continue;
-            mob.moveTo(x, y, z, level.getRandom().nextFloat() * 360.0F, 0.0F);
+            mob.snapTo(x, y, z, level.getRandom().nextFloat() * 360.0F, 0.0F);
             if (!level.noCollision(mob)) continue;
             if (!mob.checkSpawnObstruction(level)) continue;
             // ⚠️ 必须直接调 Mob#finalizeSpawn：走 EventHooks.finalizeMobSpawn 会重新派发 FinalizeSpawnEvent
@@ -249,11 +252,11 @@ public final class EventEffects {
     private static int findSpawnY(ServerLevel level, int x, int z, int baseY) {
         net.minecraft.core.BlockPos.MutableBlockPos pos = new net.minecraft.core.BlockPos.MutableBlockPos();
         for (int y = baseY + 4; y >= baseY - 4; y--) {
-            if (y <= level.getMinBuildHeight() || y >= level.getMaxBuildHeight() - 2) continue;
+            if (y <= level.getMinY() || y >= level.getMaxY() - 2) continue;
             if (isSpawnFloor(level, pos.set(x, y, z))) return y;
         }
         int surface = level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
-        if (surface <= level.getMinBuildHeight() || surface >= level.getMaxBuildHeight() - 2) return Integer.MIN_VALUE;
+        if (surface <= level.getMinY() || surface >= level.getMaxY() - 2) return Integer.MIN_VALUE;
         return isSpawnFloor(level, pos.set(x, surface, z)) ? surface : Integer.MIN_VALUE;
     }
 
@@ -265,8 +268,8 @@ public final class EventEffects {
 
     /** 僵尸 / 骷髅戴头盔（随机配装已有头部装备时不覆盖）；头盔不掉落，避免被刷成铁装备农场。 */
     private static void equipStormHelmet(Mob mob) {
-        if (!(mob instanceof net.minecraft.world.entity.monster.Zombie)
-                && !(mob instanceof net.minecraft.world.entity.monster.AbstractSkeleton)) {
+        if (!(mob instanceof net.minecraft.world.entity.monster.zombie.Zombie)
+                && !(mob instanceof net.minecraft.world.entity.monster.skeleton.AbstractSkeleton)) {
             return;
         }
         EquipmentSlot head = EquipmentSlot.HEAD;
@@ -276,7 +279,7 @@ public final class EventEffects {
         //    （0.04/tick × 均值 0.5 ⇒ 铁头盔 165 耐久约 6.9 分钟直射日光后碎掉、随即点燃）。
         //    标了 UNBREAKABLE 之后 ItemStack#isDamageableItem() 为假：既不扣耐久，flag 仍被置 false ⇒ 不点燃。
         helmet.set(net.minecraft.core.component.DataComponents.UNBREAKABLE,
-                new net.minecraft.world.item.component.Unbreakable(false));
+                net.minecraft.util.Unit.INSTANCE);
         mob.setItemSlot(head, helmet);
         mob.setDropChance(head, 0.0F);
     }
@@ -354,9 +357,10 @@ public final class EventEffects {
         if (!(event.getEntity() instanceof Mob mob)) return;
         if (!(mob instanceof Enemy)) return;
         if (!(mob.level() instanceof ServerLevel level)) return;
-        if (!level.isNight()) return;
+        // 26.1.2 平台差异：Level#isNight() 已删除，用天空暗度还原「夜晚」判据（原版 isNight = skyDarken > 4）。
+        if (level.getSkyDarken() <= 4) return;
         if (!hasStormWatcherNear(level, mob)) return;
-        net.minecraft.world.entity.Entity created = mob.getType().create(level);
+        net.minecraft.world.entity.Entity created = mob.getType().create(level, net.minecraft.world.entity.EntitySpawnReason.COMMAND);
         if (!(created instanceof Mob copy)) {
             if (created != null) created.discard();
             return;
@@ -373,7 +377,7 @@ public final class EventEffects {
         double[][] offsets = {{1.0D, 0.0D}, {-1.0D, 0.0D}, {0.0D, 1.0D}, {0.0D, -1.0D},
                               {1.0D, 1.0D}, {-1.0D, -1.0D}, {0.0D, 0.0D}};
         for (double[] offset : offsets) {
-            copy.moveTo(origin.getX() + offset[0], origin.getY(), origin.getZ() + offset[1],
+            copy.snapTo(origin.getX() + offset[0], origin.getY(), origin.getZ() + offset[1],
                     origin.getYRot(), origin.getXRot());
             if (!level.noCollision(copy)) continue;
             if (!copy.checkSpawnObstruction(level)) continue;
@@ -403,7 +407,7 @@ public final class EventEffects {
     public static void onPlayerTick(net.neoforged.neoforge.event.tick.PlayerTickEvent.Post event) {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
         // 事件效果卡：**每 tick** 检查到点结算（不加 10t 门控 ⇒ 消除结算时机漂移）
-        EventCardService.drain(player.serverLevel());
+        EventCardService.drain(player.level());
         sweepTimers(player);
     }
 
@@ -571,7 +575,8 @@ public final class EventEffects {
         Entity causing = triggerer != null ? triggerer : target;
         DamageSource source = ModDamageTypes.unreducibleDamage(level, causing);
         DamageNumberAggregator.tag(target, source, DamageNumberAggregator.Group.SPELL);
-        boolean applied = target.hurt(source, amount);
+        // 26.1.2：hurt 变 void，用 hurtOrSimulate 拿返回值。
+        boolean applied = target.hurtOrSimulate(source, amount);
         LOGGER.info("AP_EVENT_PENALTY: tag={}:target={}:causing={}:amount={}:hurt={}",
                 tag, target.getName().getString(), causing.getName().getString(), amount, applied);
         return applied;

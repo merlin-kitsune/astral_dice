@@ -28,7 +28,7 @@ import java.util.UUID;
  * 节流由技能自身冷却/锁定态承担）。击杀驱动的 {@code INVESTIGATION_KILL} 与外部 {@code CUSTOM}
  * 同样不占用也不受此闸门约束。
  *
- * <p>状态载体：静态字段（服务端全局单例），game time 口径来自 {@code player.serverLevel().getGameTime()}；
+ * <p>状态载体：静态字段（服务端全局单例），game time 口径来自 {@code player.level().getGameTime()}；
  * {@code ServerStoppingEvent} 时整体清空，避免换存档 / 重进后残留时间戳误锁。
  */
 @EventBusSubscriber(modid = AstralDiceMod.MODID)
@@ -69,20 +69,20 @@ public final class GlobalEventGate {
      * <p>⚠️ 本方法<b>只</b>比较 {@code now} 与 {@link #gateUntilGameTime}；{@code durationTicks}
      * 与 {@link #tryAcquire} 同签名（真正占用时才需要它），不参与判定。
      *
-     * <p>时间口径与 {@link #tryAcquire} 完全一致：{@code player.serverLevel().getGameTime()}。
+     * <p>时间口径与 {@link #tryAcquire} 完全一致：{@code player.level().getGameTime()}。
      *
      * @param player        触发者（必须为服务端玩家；调用方在服务端入口处调用）
      * @param durationTicks 事件的 {@code defaultDurationTicks}（本方法不使用，仅为与 tryAcquire 对齐）
      * @return true = 此刻可开新事件
      */
     public static synchronized boolean canStart(ServerPlayer player, long durationTicks) {
-        return isOpenAt(player.serverLevel().getGameTime());
+        return isOpenAt(player.level().getGameTime());
     }
 
     /**
      * 尝试占用全局事件闸门（允许 ⇒ 推进状态并返回 true；拒绝 ⇒ 返回 false 并（节流地）提示玩家）。
      *
-     * <p>时间口径**只取一个来源**：{@code player.serverLevel().getGameTime()}。各维度的 gameTime
+     * <p>时间口径**只取一个来源**：{@code player.level().getGameTime()}。各维度的 gameTime
      * 由同一个 server tick 推进（非主世界走 {@code DerivedLevelData} 委托主世界数据），
      * 因此跨维度比较不会错位；仍统一从「触发者的服务端关卡」取，避免同一处混用两种来源。
      *
@@ -96,7 +96,7 @@ public final class GlobalEventGate {
      * @param durationTicks 事件的 {@code defaultDurationTicks}（≤0 ⇒ 即刻结束，仍占满 GAP_TICKS）
      */
     public static synchronized boolean tryAcquire(ServerPlayer player, long durationTicks) {
-        ServerLevel level = player.serverLevel();
+        ServerLevel level = player.level();
         long now = level.getGameTime();
         if (!isOpenAt(now)) {
             notifyBlocked(player, durationTicks);
@@ -138,7 +138,7 @@ public final class GlobalEventGate {
      * @param durationTicks 与 {@link #tryAcquire} 同签名（提示只用剩余秒数，本参数不参与文案）
      */
     public static synchronized void notifyBlocked(ServerPlayer player, long durationTicks) {
-        long now = player.serverLevel().getGameTime();
+        long now = player.level().getGameTime();
         UUID id = player.getUUID();
         Long last = LAST_NOTICE_AT.get(id);
         if (last != null && now - last < NOTICE_INTERVAL_TICKS) return;

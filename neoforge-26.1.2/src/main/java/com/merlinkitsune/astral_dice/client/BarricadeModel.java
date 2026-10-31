@@ -1,10 +1,8 @@
 package com.merlinkitsune.astral_dice.client;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
-import com.merlinkitsune.astral_dice.entity.BarricadeEntity;
-import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.model.EntityModel;
+import net.minecraft.client.renderer.entity.state.EntityRenderState;
 import net.minecraft.client.model.geom.ModelLayerLocation;
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.model.geom.PartPose;
@@ -32,7 +30,7 @@ import net.minecraft.resources.Identifier;
  * <p><b>UV</b>：bbmodel 用盒子 UV（box_uv），A 占据贴图 0..42 × 0..15、B 占据 0..42 × 15..30，
  * 与 {@code texOffs(0,0)} / {@code texOffs(0,15)} 的盒子展开完全对应（20×14×1 的盒子）。
  */
-public class BarricadeModel extends EntityModel<BarricadeEntity> {
+public class BarricadeModel extends EntityModel<EntityRenderState> {
 
     /** 模型层 id：{@code astral_dice:barricade#main}。 */
     public static final ModelLayerLocation LAYER_LOCATION = new ModelLayerLocation(
@@ -41,11 +39,8 @@ public class BarricadeModel extends EntityModel<BarricadeEntity> {
     /** 22.5°（弧度）。 */
     private static final float TILT = (float) Math.toRadians(22.5D);
 
-    private final ModelPart root;
-
     public BarricadeModel(ModelPart root) {
-        super();
-        this.root = root;
+        super(root);
     }
 
     /**
@@ -71,15 +66,4 @@ public class BarricadeModel extends EntityModel<BarricadeEntity> {
         return LayerDefinition.create(mesh, 64, 64);
     }
 
-    /** 路障没有动画（不摆臂、不走动），姿态完全由 static 的 PartPose 决定。 */
-    @Override
-    public void setupAnim(BarricadeEntity entity, float limbSwing, float limbSwingAmount,
-                          float ageInTicks, float netHeadYaw, float headPitch) {
-    }
-
-    @Override
-    public void renderToBuffer(PoseStack poseStack, VertexConsumer buffer, int packedLight,
-                               int packedOverlay, int color) {
-        this.root.render(poseStack, buffer, packedLight, packedOverlay, color);
-    }
 }

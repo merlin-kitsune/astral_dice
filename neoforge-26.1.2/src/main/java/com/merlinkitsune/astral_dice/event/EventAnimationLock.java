@@ -31,7 +31,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * 服务端拿不到；而「窗内不允许起新会话」是服务端权威判定。{@link EventCardService} 的结算队列
  * 既不记玩家、也只有一条 action，故动画窗状态统一落在这里。
  *
- * <p>时间口径与 {@link GlobalEventGate} 完全一致：一律取 {@code player.serverLevel().getGameTime()}；
+ * <p>时间口径与 {@link GlobalEventGate} 完全一致：一律取 {@code player.level().getGameTime()}；
  * 整段状态在 {@code ServerStoppingEvent} 时清空（{@link #reset}），避免换存档 / 重进后残留时间戳误锁。
  * 线程安全同样照该线既有风格：{@code ConcurrentHashMap} + 全静态 {@code synchronized} 方法。
  */
@@ -62,16 +62,16 @@ public final class EventAnimationLock {
      */
     public static synchronized void begin(ServerPlayer player, int ticks) {
         if (ticks <= 0) return;
-        long until = player.serverLevel().getGameTime() + ticks;
+        long until = player.level().getGameTime() + ticks;
         ANIM_UNTIL.put(player.getUUID(), until);
-        LOGGER.info("AP_EVENT_ANIM: begin:{}:{}", player.getGameProfile().getName(), until);
+        LOGGER.info("AP_EVENT_ANIM: begin:{}:{}", player.getGameProfile().name(), until);
     }
 
     /** 该玩家此刻是否仍在动画窗内；过期条目顺手移除（不返回永久锁死的时间戳）。 */
     public static synchronized boolean isAnimating(ServerPlayer player) {
         Long until = ANIM_UNTIL.get(player.getUUID());
         if (until == null) return false;
-        long now = player.serverLevel().getGameTime();
+        long now = player.level().getGameTime();
         if (now < until) return true;
         ANIM_UNTIL.remove(player.getUUID(), until);
         return false;
@@ -81,7 +81,7 @@ public final class EventAnimationLock {
     public static synchronized void clear(ServerPlayer player) {
         boolean dirty = ANIM_UNTIL.remove(player.getUUID()) != null;
         LAST_NOTICE_AT.remove(player.getUUID());
-        if (dirty) LOGGER.info("AP_EVENT_ANIM: clear:{}", player.getGameProfile().getName());
+        if (dirty) LOGGER.info("AP_EVENT_ANIM: clear:{}", player.getGameProfile().name());
     }
 
     /** 服务器停止 / 切换存档时清空全部静态状态（照 {@link GlobalEventGate#reset} 的既有写法）。 */
@@ -103,12 +103,12 @@ public final class EventAnimationLock {
      *               event_choice_start / event_draw）
      */
     public static synchronized void notifyBlocked(ServerPlayer player, String action) {
-        long now = player.serverLevel().getGameTime();
+        long now = player.level().getGameTime();
         UUID id = player.getUUID();
         Long last = LAST_NOTICE_AT.get(id);
         if (last != null && now - last < NOTICE_INTERVAL_TICKS) return;
         LAST_NOTICE_AT.put(id, now);
-        LOGGER.info("AP_EVENT_ANIM: block:{}:{}", player.getGameProfile().getName(), action);
+        LOGGER.info("AP_EVENT_ANIM: block:{}:{}", player.getGameProfile().name(), action);
         PacketDistributor.sendToPlayer(player, new ActionBarPayload(
                 Component.translatable(NOTICE_KEY).withStyle(ChatFormatting.RED),
                 GameplayConstants.ACTIONBAR_DURATION_TICKS));

@@ -468,3 +468,100 @@
 | 波 | 提交 | 备注 |
 |---|---|---|
 | P1 | （待提交） | |
+
+## 11. 实读 API 差异（P2 阶段验证）
+
+以下全部由 `javap` 直接读 26.1.2 制品得出（`neoforge-26.1.2/build/moddev/artifacts/minecraft-patched-26.1.2.109-merged.jar`、
+`neoforge-26.1.2.109-universal.jar`、`loader-11.0.15.jar`），不是推测。
+
+### 11.1 编译期改名 / 搬迁（机械替换即可）
+
+| 1.21.1 | 26.1.2 | 备注 |
+|---|---|---|
+| `net.minecraft.world.inventory.ClickType` | `net.minecraft.world.inventory.ContainerInput` | 常量名不变（`QUICK_MOVE`/`PICKUP`/`SWAP`/`CLONE`/`THROW`） |
+| `net.minecraft.client.gui.components.PlayerFaceRenderer` | `...components.PlayerFaceExtractor` | 方法由 `draw(...)` 变 `extract(...)`，以 `javap` 为准 |
+| `net.minecraft.client.gui.screens.inventory.EffectRenderingInventoryScreen` | `...inventory.EffectsInInventory` | 原版药水效果渲染入口换名 |
+| `net.minecraft.client.resources.PlayerSkin` | `net.minecraft.world.entity.player.PlayerSkin` | 整个 record 搬包 |
+| `net.minecraft.Util` | `net.minecraft.util.Util` | 同上 |
+| `net.minecraft.client.renderer.RenderType` | `net.minecraft.client.renderer.rendertype.RenderType` | 包名多一级 `rendertype` |
+
+### 11.2 编译期签名变更（要改调用/覆写）
+
+| 1.21.1 | 26.1.2 | 说明 |
+|---|---|---|
+| `Entity.hurt(DamageSource,float)` | `boolean hurtServer(ServerLevel,DamageSource,float)` | 旧方法已 `final`，子类只能覆写 `hurtServer` |
+| `Entity.saveWithoutId(CompoundTag)` / `load(CompoundTag)` | `saveWithoutId(ValueOutput)` / `load(ValueInput)` | `ValueInput` 的 `getInt/getLong/getLongArray` 等返回 **Optional**，需要 `orElse(...)` |
+| `Player.sendOverlayMessage(int, Component)` | `sendOverlayMessage(Component)` | 只剩单参重载 |
+| `Screen.keyPressed(int,int,int)` / `keyReleased` | `keyPressed(KeyEvent)` / `keyReleased(KeyEvent)` | 字段用 `KeyEvent` 访问器 |
+| `Screen.mouseClicked(double,double,int)` / `mouseReleased` | `mouseClicked(MouseButtonEvent, boolean)` / `mouseReleased(MouseButtonEvent, boolean)` | 同上 |
+| `EntityModel<T extends Entity>` | `EntityModel<T extends EntityRenderState>` | 必须传 `ModelPart` 或 `(ModelPart, Function<Identifier,RenderType>)` |
+| `EntityRenderer<T>` | `EntityRenderer<T, S extends EntityRenderState>` | `createRenderState()` / `extractRenderState(entity,state,partial)` / `render(state,...)` |
+
+### 11.3 GUI 管线（结构性）
+
+`GuiGraphics` 在 26.1.2 **不存在**，换成 `net.minecraft.client.gui.GuiGraphicsExtractor`：
+
+- `renderBg(...)` → `extractBackground(GuiGraphicsExtractor, int, int, float)`
+- `renderLabels(...)` → `extractLabels(GuiGraphicsExtractor, int, int)`
+- `render(...)` → `extractRenderState(GuiGraphicsExtractor, int, int, float)`
+- `blit` 必须带 `RenderPipeline` 首参：`blit(RenderPipelines.GUI_TEXTURED, texture, x, y, 0.0F, 0.0F, w, h, w, h)`
+- `RenderStateShard` / `LayeredDraw` / `LightTexture` **全部删除**；`BeamFxRenderer`、`EventCardOverlay` 之类的自定义层要改用新的 render-state 管线或降级
+
+可编译样例：同线 `screen/CardInventoryScreen.java`（本次迁移前就能编译，写法可直接照抄）。
+
+### 11.4 模组总线（结构性）
+
+`loader-11.0.15` 的 `net/neoforged/fml/common/EventBusSubscriber.class` 只有 `Dist[] value()` 与 `String modid()`，**没有 `bus`**。
+`AutomaticEventSubscriber` 的字节码同时引用 `IModBusEvent` 与 `ModContainer.getEventBus()` ⇒ 现在按**事件类型自动分流**：
+订阅方法的事件实现 `IModBusEvent` 就挂模组总线，否则挂游戏总线。
+故写法统一为 `@EventBusSubscriber(modid = AstralDiceMod.MODID[, value = Dist.CLIENT])`，**不要**再写 `bus = ...`。
+
+### 11.5 村民交易（结构性）
+
+`VillagerTradesEvent` / `VillagerTrades` / `BasicItemListing` 在 26.1.2 均不存在，只剩 `TradeWithVillagerEvent` 与数据驱动
+`data/neoforge/data_maps/villager_profession/`。`trade/CardTraderTrades`、`trade/ChipTraderTrades` 需转成数据驱动，
+本次只保证编译（保留公开方法作为挂载点），运行时挂载留待 P6 资源与 datagen 波次。
+
+### 11.6 datagen（结构性）
+
+`net.neoforged.neoforge.common.data.ExistingFileHelper` 已删除，`GatherDataEvent` 仍在。
+`datagen/ModItemModelProvider` 已改为原版 `net.minecraft.client.data.models.ModelProvider`（`super(output, MODID)`），
+`DataGenerators.gatherData` 去掉 `event.getExistingFileHelper()` 及其传参。
+
+### 11.7 已确认的附件序列化约束
+
+`AttachmentType.Builder#serialize` 在 26.1.2 只接受 `MapCodec` / `IAttachmentSerializer`：
+所有 `<codec>` 必须写成 `<codec>.fieldOf("value")`（`ModAttachments.java` 30 处已统一包装）。
+
+## 12. 编译攻坚结果（P2 收尾）
+
+- 命令：`JAVA_HOME=/usr/lib/jvm/java-25-openjdk-amd64 ./gradlew :neoforge-26.1.2:compileJava --console=plain --no-build-cache --rerun-tasks`
+- 结果：**EXIT=0，0 条错误**，`build/classes/java/main` 产出 **545 个 .class**（删空后全新重编，非缓存命中）。
+- 规模：第二轮共 17 轮迭代（`temp/p2-compile1..17.log`），`91 files changed, 1171 insertions(+), 925 deletions(-)`。
+- 删除 3 个文件：`client/RarityTooltipFrame.java`（`RenderTooltipEvent.Color` 已删）、`datagen/DataGenerators.java`（拆成 `ClientDataGenerators`/`ServerDataGenerators`）、`mixin/client/EffectRenderingInventoryScreenMixin.java`（残留；正确版 `EffectsInInventoryMixin` 已在 `astral_dice.mixins.json:22`）。
+
+### 12.1 本轮补回的「合并截断」成员（编译能过 ≠ 功能在）
+
+从 1.21.1 逐字移植：`DiceCombatEvents.hasEnigmaticCurse/isHoldingEnigmaticItem/isDiceBattleSettledDamage`、
+`AstralEventSystem.applyEventBonus`、`CurioSlotUtil.forEachCurioStack`、`BaseSignItem.skipCooldownAfterLock`、
+`ModCommonConfig.ENABLE_CHIP_RECIPES`、`ParunanSignItem.isEquipped/ACTIVE_COOLDOWN_SECONDS`、`JasmineSignItem.DURATION_TICKS`、
+`ModItems` 的 16 个注册 + `isCombatCard/isEffectCard`。
+
+**注册表整块缺失（更危险，已补）**：`network/ModPayloads.java` 缺 `EventCardPayload` 的 `playToClient` 注册、
+`client/ModClientEvents.java` 缺 `registerAbove(VanillaGuiLayers.CROSSHAIR, EventCardOverlay.LAYER_ID, EventCardOverlay.LAYER)`
+——两者都会让「事件卡」在 26.1.2 上永远不显示，且编译期完全静默。
+
+### 12.2 已登记的行为差异 / 降级（后续 P6 或实机验证项）
+
+| # | 差异 | 原行为 → 现行为 | 处置 |
+|---|---|---|---|
+| 1 | 村民交易无货 | 1.21.1 用 `VillagerTradesEvent` 挂 `MerchantOffer` → 26.1.2 该 API 删除，现只留 `listings()` 素材与空交易表 | P6 改数据驱动 JSON（`Registries.VILLAGER_TRADE` + `TradeSet`），本批不猜写资源 |
+| 2 | 立牌半透明 alpha | `RenderSystem.setShaderColor` 删除 → 只剩 `AlphaContext` 栈 + `RenderTypes.entityTranslucent` | 需实机确认（`mixin/client/SignTranslucencyMixin`） |
+| 3 | 卡片槽悬停高亮 | 26.1.2 槽高亮钩子私有化 → 恢复原版高亮（纯视觉） | 接受 |
+| 4 | 档位边框染色 | `RenderTooltipEvent.Color` 删除 → 本线无原生路径，仅 `ModernUITooltipCompat`（装 Modern UI 时）承担 | 接受，文档已注明 |
+| 5 | 蛟龙立牌强制冷却不跨存档 | 原本走附件 → 改 `MamushiSignItem` 内静态 `ConcurrentHashMap<UUID,Long>` | 重登归零，登记为已知限制 |
+
+### 12.3 关键工具经验
+
+- **patched merged jar 里打包了原版 `.java` 源码**：解到临时目录直接 grep 比 `javap` 快一个数量级，是本轮定位 API 的主要手段。
+- 错误性质分三段演进：机械改名（1–6 轮）→ 包名/常量迁移（7–9 轮）→ **合并截断的成员缺失**（10–17 轮）。第三段必须回 1.21.1 取实现，不能自造语义。

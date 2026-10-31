@@ -73,19 +73,19 @@ public class EventDrawBlock extends Block {
             if (now < until) {
                 actionBar(player, ChatFormatting.RED, "msg.astral_dice.event_drawer_cooldown");
                 LOGGER.info("AP_EVENT_DRAWER: player={}:denied=cooldown:remain={}", name, until - now);
-                return InteractionResult.sidedSuccess(false);
+                return InteractionResult.SUCCESS_SERVER;
             }
             long before = StarEngineEconomy.isAvailable() ? StarEngineEconomy.getBalance(player) : -1L;
             if (!StarEngineEconomy.isAvailable() || !StarEngineEconomy.hasBalance(player, PRICE_STAR_COINS)) {
                 actionBar(player, ChatFormatting.RED, "msg.astral_dice.event_drawer_no_coin", PRICE_STAR_COINS);
                 LOGGER.info("AP_EVENT_DRAWER: player={}:denied=insufficient:bal={}", name, before);
-                return InteractionResult.sidedSuccess(false);
+                return InteractionResult.SUCCESS_SERVER;
             }
             if (!StarEngineEconomy.withdraw(player, PRICE_STAR_COINS)) {
                 // 防竞态:余额判定与扣款之间被第三方改动 ⇒ 与余额不足同口径拒绝
                 actionBar(player, ChatFormatting.RED, "msg.astral_dice.event_drawer_no_coin", PRICE_STAR_COINS);
                 LOGGER.info("AP_EVENT_DRAWER: player={}:denied=insufficient:bal={}", name, before);
-                return InteractionResult.sidedSuccess(false);
+                return InteractionResult.SUCCESS_SERVER;
             }
             ItemStack ticket = new ItemStack(ModItems.EVENT_TICKET.get());
             if (!player.getInventory().add(ticket)) {
@@ -99,7 +99,7 @@ public class EventDrawBlock extends Block {
             LOGGER.info("AP_EVENT_DRAWER: player={}:buy=ok:bal={}->{}", name, before,
                     StarEngineEconomy.getBalance(player));
         }
-        return InteractionResult.sidedSuccess(level.isClientSide());
+        return level.isClientSide() ? InteractionResult.SUCCESS : InteractionResult.SUCCESS_SERVER;
     }
 
     /**
@@ -119,7 +119,7 @@ public class EventDrawBlock extends Block {
             return super.useItemOn(stack, state, level, pos, player, hand, hitResult);
         }
         if (level.isClientSide()) {
-            return InteractionResult.sidedSuccess(true);
+            return InteractionResult.SUCCESS;
         }
         long now = level.getGameTime();
         long last = ModAttachments.getEventDrawerBlankInsertAt(player);
@@ -128,7 +128,7 @@ public class EventDrawBlock extends Block {
             actionBar(player, ChatFormatting.RED, "msg.astral_dice.chip_shop_blank_cooldown");
             LOGGER.info("AP_EVENT_DRAWER: player={}:blank_insert=denied:cooldown:remain={}",
                     player.getName().getString(), BLANK_INSERT_COOLDOWN_TICKS - (now - last));
-            return InteractionResult.sidedSuccess(false);
+            return InteractionResult.SUCCESS_SERVER;
         }
         stack.shrink(1);
         ModAttachments.setEventDrawerCooldownUntil(player, 0L);
@@ -136,7 +136,7 @@ public class EventDrawBlock extends Block {
         actionBar(player, ChatFormatting.GOLD, "msg.astral_dice.event_drawer_blank_insert");
         LOGGER.info("AP_EVENT_DRAWER: player={}:blank_insert=ok:reset=cooldown",
                 player.getName().getString());
-        return InteractionResult.sidedSuccess(false);
+        return InteractionResult.SUCCESS_SERVER;
     }
 
     /** actionbar 提示(红字拒绝 / 金色成功);非服务端玩家时静默跳过。 */

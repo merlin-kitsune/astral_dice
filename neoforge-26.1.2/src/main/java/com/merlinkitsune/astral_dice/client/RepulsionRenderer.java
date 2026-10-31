@@ -4,6 +4,7 @@ import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.entity.RepulsionEntity;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.entity.LivingEntityRenderer;
+import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
 import net.minecraft.resources.Identifier;
 
 /**
@@ -15,7 +16,7 @@ import net.minecraft.resources.Identifier;
  * <p>阴影半径 0.6：菱形头宽约 1.06 格，取略小于实体宽（1.6）的值；位移 / 朝向一律交给
  * {@code LivingEntityRenderer} 的默认实现（{@code yBodyRot} 由放置时写入 90° 的倍数）。
  */
-public class RepulsionRenderer extends LivingEntityRenderer<RepulsionEntity, RepulsionModel> {
+public class RepulsionRenderer extends LivingEntityRenderer<RepulsionEntity, LivingEntityRenderState, RepulsionModel> {
 
     public static final Identifier TEXTURE = Identifier.fromNamespaceAndPath(
             AstralDiceMod.MODID, "textures/entity/repulsion.png");
@@ -25,7 +26,19 @@ public class RepulsionRenderer extends LivingEntityRenderer<RepulsionEntity, Rep
     }
 
     @Override
-    public Identifier getTextureLocation(RepulsionEntity entity) {
+    public LivingEntityRenderState createRenderState() {
+        // 26.1.2：实体渲染改为「先抽取状态、再拿状态渲染」，渲染器必须给出自己的状态对象。
+        // 本实体没有任何额外渲染状态，直接用原版 LivingEntityRenderState。
+        return new LivingEntityRenderState();
+    }
+
+    @Override
+    public void extractRenderState(RepulsionEntity entity, LivingEntityRenderState state, float partialTicks) {
+        super.extractRenderState(entity, state, partialTicks);
+    }
+
+    @Override
+    public Identifier getTextureLocation(LivingEntityRenderState state) {
         return TEXTURE;
     }
 
@@ -37,7 +50,7 @@ public class RepulsionRenderer extends LivingEntityRenderer<RepulsionEntity, Rep
      * 实体名（形如「强化拒止」）。路障 / 强化拒止都不是生物，一律不显示名条。
      */
     @Override
-    protected boolean shouldShowName(RepulsionEntity entity) {
+    protected boolean shouldShowName(RepulsionEntity entity, double distanceToCameraSq) {
         return false;
     }
 }

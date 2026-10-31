@@ -25,6 +25,9 @@ import java.util.concurrent.ThreadLocalRandom;
 import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
 
 public class JasmineSignItem extends BaseSignItem {
+
+    /** 26.1.2 平台差异：常量随合并截断丢失，按 1.21.1 基准补回（2400t = 2 分钟）。 */
+    private static final int DURATION_TICKS = 2400;
     // 被动:每移动 300 米触发一次增益
     private static final float DISTANCE_THRESHOLD = 300f;
 
@@ -64,9 +67,9 @@ public class JasmineSignItem extends BaseSignItem {
             PlayerEffectProtection.apply(player, new MobEffectInstance(ModEffects.JASMINE_SWEEP, DURATION_TICKS, 0, false, false, true));
             // 随机获得以下任一效果(时长与主动技能同步 2 分钟)
             if (ThreadLocalRandom.current().nextBoolean()) {
-                PlayerEffectProtection.apply(player, new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, DURATION_TICKS, 0, false, true)); // 抗性提升 2 分钟
+                PlayerEffectProtection.apply(player, new MobEffectInstance(MobEffects.RESISTANCE, DURATION_TICKS, 0, false, true)); // 抗性提升 2 分钟
             } else {
-                PlayerEffectProtection.apply(player, new MobEffectInstance(MobEffects.DAMAGE_BOOST, DURATION_TICKS, 0, false, true)); // 力量 2 分钟
+                PlayerEffectProtection.apply(player, new MobEffectInstance(MobEffects.STRENGTH, DURATION_TICKS, 0, false, true)); // 力量 2 分钟
             }
         }
         return InteractionResult.SUCCESS;

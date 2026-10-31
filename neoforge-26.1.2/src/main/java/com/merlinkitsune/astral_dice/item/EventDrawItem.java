@@ -60,7 +60,7 @@ public class EventDrawItem extends Item {
                     // .QUESTION_COOLDOWN_TICKS = 动画窗 DELAY_TICKS + 10 秒）。走原版 ItemCooldowns，
                     // 服务端会自动同步客户端 ⇒ 物品栏转圈、冷却期内点不动。创造模式同样上冷却
                     // （与原版末影珍珠一致；用户裁决括号原文），消耗逻辑保持原有口径：只扣生存模式。
-                    player.getCooldowns().addCooldown(stack.getItem(), EventCardService.QUESTION_COOLDOWN_TICKS);
+                    player.getCooldowns().addCooldown(stack, EventCardService.QUESTION_COOLDOWN_TICKS);
                     if (!player.getAbilities().instabuild) {
                         stack.shrink(1);
                     }

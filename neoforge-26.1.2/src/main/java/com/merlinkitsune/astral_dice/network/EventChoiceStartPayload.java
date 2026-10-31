@@ -53,7 +53,7 @@ public record EventChoiceStartPayload(int token,
      */
     public static void handle(EventChoiceStartPayload payload, net.neoforged.neoforge.network.handling.IPayloadContext context) {
         context.enqueueWork(() -> {
-            if (net.neoforged.fml.loading.FMLEnvironment.dist == net.neoforged.api.distmarker.Dist.CLIENT) {
+            if (net.neoforged.fml.loading.FMLEnvironment.getDist() == net.neoforged.api.distmarker.Dist.CLIENT) {
                 com.merlinkitsune.astral_dice.client.EventChoiceClientHandler.open(
                         payload.token(), payload.firstEvent(), payload.secondEvent(),
                         payload.firstDurationTicks(), payload.secondDurationTicks(), payload.timeoutTicks());

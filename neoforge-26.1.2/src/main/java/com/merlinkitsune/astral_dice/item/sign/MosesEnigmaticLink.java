@@ -255,7 +255,7 @@ public final class MosesEnigmaticLink {
     // ── 第三方反射桥(不可用时静默停用) ───────────────────────────────────────
 
     private static Item soulCrystalItem() {
-        return BuiltInRegistries.ITEM.get(Identifier.parse(SOUL_CRYSTAL_ID));
+        return BuiltInRegistries.ITEM.get(Identifier.parse(SOUL_CRYSTAL_ID)).map(net.minecraft.core.Holder::value).orElse(net.minecraft.world.item.Items.AIR);
     }
 
     /**

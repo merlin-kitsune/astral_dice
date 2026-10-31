@@ -1,9 +1,10 @@
 package com.merlinkitsune.astral_dice.screen;
 
+import net.minecraft.client.renderer.RenderPipelines;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.network.CardChoiceConfirmPayload;
-import net.minecraft.Util;
+import net.minecraft.util.Util;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -11,7 +12,7 @@ import net.minecraft.locale.Language;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.inventory.ClickType;
+import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -31,7 +32,7 @@ import java.util.Map;
  * <ul>
  *   <li><b>单击</b> = 只记录按下相位，**不**交给原版（避免「按下即拿起」）；</li>
  *   <li><b>双击</b>（同一槽 {@value #DOUBLE_CLICK_MS}ms 内第二次按下）= 发原版
- *       {@code ClickType.QUICK_MOVE} ⇒ 服务端 {@link CardChoiceMenu#quickMoveStack} 双向搬牌；</li>
+ *       {@code ContainerInput.QUICK_MOVE} ⇒ 服务端 {@link CardChoiceMenu#quickMoveStack} 双向搬牌；</li>
  *   <li><b>拖动</b>：位移超过 {@value #DRAG_THRESHOLD}px 才升格，升格时才真正向服务端发
  *       {@code PICKUP} 把卡拿到光标上（跟手幽灵 = 原版携带物）；松手落点为空卡槽 ⇒ 放入，
  *       落空 / 类型不符 / 槽已占用 ⇒ 原路还原（再发一次 PICKUP 放回原槽）；</li>
@@ -113,9 +114,7 @@ public class CardChoiceScreen extends AbstractContainerScreen<CardChoiceMenu> {
     private final Map<Identifier, Boolean> faceCache = new HashMap<>();
 
     public CardChoiceScreen(CardChoiceMenu menu, Inventory inventory, Component title) {
-        super(menu, inventory, title);
-        this.imageWidth = GUI_WIDTH;
-        this.imageHeight = GUI_HEIGHT;
+        super(menu, inventory, title, GUI_WIDTH, GUI_HEIGHT);
         this.titleLabelX = -10000;
         this.titleLabelY = -10000;
         this.inventoryLabelX = -10000;
@@ -136,7 +135,7 @@ public class CardChoiceScreen extends AbstractContainerScreen<CardChoiceMenu> {
     // ────────────────────────────── 绘制 ──────────────────────────────
 
     @Override
-    protected void renderBg(GuiGraphicsExtractor guiGraphics, float partialTick, int mouseX, int mouseY) {
+    public void extractBackground(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
         // 卡面/卡名先画（在槽位物品与光标携带物之下），避免拖拽幽灵被卡面盖住
         for (int i = 0; i < this.menu.slotCount(); i++) {
             int x = cardX(i);
@@ -157,38 +156,33 @@ public class CardChoiceScreen extends AbstractContainerScreen<CardChoiceMenu> {
     }
 
     @Override
-    protected void renderLabels(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY) {
-        guiGraphics.drawCenteredString(this.font,
+    protected void extractLabels(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY) {
+        guiGraphics.centeredText(this.font,
                 Component.translatable(this.menu.type().titleKey(this.menu.slotCount())),
                 this.imageWidth / 2, TITLE_Y, COLOR_WHITE);
     }
 
     /** 卡槽由屏幕层自绘（隐藏坐标的原版渲染一律跳过）。 */
     @Override
-    protected void renderSlot(GuiGraphicsExtractor guiGraphics, Slot slot) {
+    protected void extractSlot(GuiGraphicsExtractor guiGraphics, Slot slot, int mouseX, int mouseY) {
         if (slot.index < this.menu.slotCount()) {
             return;
         }
-        super.renderSlot(guiGraphics, slot);
+        super.extractSlot(guiGraphics, slot, mouseX, mouseY);
     }
 
-    @Override
-    protected void renderSlotHighlight(GuiGraphicsExtractor guiGraphics, Slot slot, int mouseX, int mouseY, float partialTick) {
-        if (slot.index < this.menu.slotCount()) {
-            return;
-        }
-        super.renderSlotHighlight(guiGraphics, slot, mouseX, mouseY, partialTick);
-    }
+    // 26.1.2 平台差异：原版把槽高亮改为私有 extractSlotHighlightBack/Front，无法再按槽屏蔽，
+    // 故卡片槽会显示原版悬停高亮（纯视觉差异，不影响交互与数据）。
 
     @Override
-    public void render(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
-        super.render(guiGraphics, mouseX, mouseY, partialTick);
+    public void extractRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
+        super.extractRenderState(guiGraphics, mouseX, mouseY, partialTick);
         // 卡槽是隐藏坐标 ⇒ 原版不会给它出 tooltip，这里补一份（放满/未放满都可查看卡牌信息）
         int hovered = choiceSlotAt(mouseX, mouseY);
         if (hovered >= 0) {
             ItemStack stack = this.menu.getSlot(hovered).getItem();
             if (!stack.isEmpty()) {
-                guiGraphics.renderTooltip(this.font, stack, mouseX, mouseY);
+                guiGraphics.setTooltipForNextFrame(this.font, stack, mouseX, mouseY);
             }
         }
     }
@@ -200,7 +194,7 @@ public class CardChoiceScreen extends AbstractContainerScreen<CardChoiceMenu> {
     }
 
     private void blit(GuiGraphicsExtractor guiGraphics, Identifier texture, int x, int y, int w, int h) {
-        guiGraphics.blit(texture, this.leftPos + x, this.topPos + y, 0, 0.0F, 0.0F, w, h, w, h);
+        guiGraphics.blit(RenderPipelines.GUI_TEXTURED, texture, this.leftPos + x, this.topPos + y, 0.0F, 0.0F, w, h, w, h);
     }
 
     /** 卡面：astral_dice:textures/gui/shop/card/(物品注册名).png，64x64 整体等比缩放到 38x38。 */
@@ -210,15 +204,15 @@ public class CardChoiceScreen extends AbstractContainerScreen<CardChoiceMenu> {
                 "textures/gui/shop/card/" + id.getPath() + ".png");
         if (!faceExists(face)) {
             guiGraphics.fill(x, y, x + FACE_SIZE, y + FACE_SIZE, 0x66000000);
-            guiGraphics.drawCenteredString(this.font, "?", x + FACE_SIZE / 2, y + FACE_SIZE / 2 - 4, COLOR_GRAY);
+            guiGraphics.centeredText(this.font, "?", x + FACE_SIZE / 2, y + FACE_SIZE / 2 - 4, COLOR_GRAY);
             return;
         }
-        guiGraphics.pose().pushPose();
-        guiGraphics.pose().translate(x, y, 0.0F);
+        guiGraphics.pose().pushMatrix();
+        guiGraphics.pose().translate(x, y);
         float scale = FACE_SIZE / 64.0F;
-        guiGraphics.pose().scale(scale, scale, 1.0F);
-        guiGraphics.blit(face, 0, 0, 0, 0.0F, 0.0F, 64, 64, 64, 64);
-        guiGraphics.pose().popPose();
+        guiGraphics.pose().scale(scale, scale);
+        guiGraphics.blit(RenderPipelines.GUI_TEXTURED, face, 0, 0, 0.0F, 0.0F, 64, 64, 64, 64);
+        guiGraphics.pose().popMatrix();
     }
 
     private boolean faceExists(Identifier face) {
@@ -236,7 +230,7 @@ public class CardChoiceScreen extends AbstractContainerScreen<CardChoiceMenu> {
         int drawX = overflow > 0
                 ? frameX + NAME_BOX_X0 - marqueeOffset(overflow)
                 : frameX + NAME_CENTER_X_OFF - textWidth / 2;
-        guiGraphics.drawString(this.font, name, drawX, frameY + NAME_Y_OFF, COLOR_WHITE, false);
+        guiGraphics.text(this.font, name, drawX, frameY + NAME_Y_OFF, COLOR_WHITE, false);
         guiGraphics.disableScissor();
     }
 
@@ -288,15 +282,18 @@ public class CardChoiceScreen extends AbstractContainerScreen<CardChoiceMenu> {
     // ────────────────────────────── 输入 ──────────────────────────────
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    public boolean mouseClicked(net.minecraft.client.input.MouseButtonEvent event, boolean doubleClick) {
+    double mouseX = event.x();
+    double mouseY = event.y();
+    int button = event.buttonInfo().button();
         // 右键（button == 1）与创意模式「拾取」（默认中键、可改绑）= 原版另外两条「把物品拿到光标上」的路径：
         //   1.21.1 AbstractContainerScreen#mouseClicked：空光标 + button 0/1 ⇒ PICKUP；
-        //   空光标 + keyPickItem + player.hasInfiniteMaterials() ⇒ ClickType.CLONE
+        //   空光标 + keyPickItem + player.hasInfiniteMaterials() ⇒ ContainerInput.CLONE
         //   （1.20.1 同构，创意判定在服务端 doClick 的 getAbilities().instabuild 分支）。
         // 两条都要过与左键同一套类型过滤，否则类型不符的卡仍会被拿到光标上。
-        boolean pickItemClick = isPickItemClick(button);
+        boolean pickItemClick = isPickItemClick(event);
         if (button != 0 && button != 1 && !pickItemClick) {
-            return super.mouseClicked(mouseX, mouseY, button);
+            return super.mouseClicked(event, doubleClick);
         }
         if (button == 0) {
             leftDragHeld = true;
@@ -304,7 +301,7 @@ public class CardChoiceScreen extends AbstractContainerScreen<CardChoiceMenu> {
         // 确认按钮优先（仅放满后存在；只有左键响应）
         if (button == 0 && this.menu.isComplete()
                 && isHovering(CONFIRM_X, CONFIRM_Y, CONFIRM_W, CONFIRM_H, mouseX, mouseY)) {
-            PacketDistributor.sendToServer(new CardChoiceConfirmPayload(this.menu.token()));
+            net.neoforged.neoforge.client.network.ClientPacketDistributor.sendToServer(new CardChoiceConfirmPayload(this.menu.token()));
             resetGesture();
             lastClickSlot = -1;
             lastClickMillis = 0L;
@@ -335,16 +332,16 @@ public class CardChoiceScreen extends AbstractContainerScreen<CardChoiceMenu> {
         }
         // 右键 / 中键未命中类型过滤 ⇒ 原样交给原版（不触碰左键的双击 / 拖拽状态）
         if (button != 0) {
-            return super.mouseClicked(mouseX, mouseY, button);
+            return super.mouseClicked(event, doubleClick);
         }
         if (slot != null && this.menu.getCarried().isEmpty() && canStartGesture(slot)) {
             // Shift+点击 = 原版 QUICK_MOVE（与双击同一条服务端路径）
-            if (hasShiftDown()) {
+            if (event.hasShiftDown()) {
                 resetGesture();
                 lastClickSlot = -1;
                 lastClickMillis = 0L;
                 if (canSendClicks()) {
-                    this.slotClicked(slot, slot.index, 0, ClickType.QUICK_MOVE);
+                    this.slotClicked(slot, slot.index, 0, ContainerInput.QUICK_MOVE);
                 }
                 pressIntercepted = true;
                 return true;
@@ -356,7 +353,7 @@ public class CardChoiceScreen extends AbstractContainerScreen<CardChoiceMenu> {
                 lastClickMillis = 0L;
                 resetGesture();
                 if (canSendClicks()) {
-                    this.slotClicked(slot, slot.index, 0, ClickType.QUICK_MOVE);
+                    this.slotClicked(slot, slot.index, 0, ContainerInput.QUICK_MOVE);
                 }
                 pressIntercepted = true;
                 return true;
@@ -376,25 +373,28 @@ public class CardChoiceScreen extends AbstractContainerScreen<CardChoiceMenu> {
         lastClickSlot = -1;
         lastClickMillis = 0L;
         pressIntercepted = false;
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(event, doubleClick);
     }
 
     /**
-     * 本次按下是否会被原版当成「创意模式拾取」（{@code ClickType.CLONE}，默认中键、可在按键设置里改绑）。
+     * 本次按下是否会被原版当成「创意模式拾取」（{@code ContainerInput.CLONE}，默认中键、可在按键设置里改绑）。
      *
      * <p>1.21.1 的判定在 {@code AbstractContainerScreen#mouseClicked}（{@code keyPickItem} 命中鼠标键）
      * + 服务端 {@code AbstractContainerMenu#doClick}（{@code player.hasInfiniteMaterials()}）；
      * 这里两半一起判，保证「只有原版真会发 CLONE 的按下」才走本屏幕的过滤分支，非创意模式不受影响。
      */
-    private boolean isPickItemClick(int button) {
+    private boolean isPickItemClick(net.minecraft.client.input.MouseButtonEvent event) {
         return this.minecraft != null
                 && this.minecraft.player != null
                 && this.minecraft.player.hasInfiniteMaterials()
-                && this.minecraft.options.keyPickItem.matchesMouse(button);
+                && this.minecraft.options.keyPickItem.matchesMouse(event);
     }
 
     @Override
-    public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+    public boolean mouseDragged(net.minecraft.client.input.MouseButtonEvent event, double dragX, double dragY) {
+    double mouseX = event.x();
+    double mouseY = event.y();
+    int button = event.buttonInfo().button();
         if (button == 0 && pressedSlot >= 0) {
             if (!dragging) {
                 double dx = mouseX - pressX;
@@ -407,11 +407,14 @@ public class CardChoiceScreen extends AbstractContainerScreen<CardChoiceMenu> {
                 return true;
             }
         }
-        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+        return super.mouseDragged(event, dragX, dragY);
     }
 
     @Override
-    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+    public boolean mouseReleased(net.minecraft.client.input.MouseButtonEvent event) {
+    double mouseX = event.x();
+    double mouseY = event.y();
+    int button = event.buttonInfo().button();
         if (button == 0) {
             leftDragHeld = false;
             boolean intercepted = pressIntercepted;
@@ -425,7 +428,7 @@ public class CardChoiceScreen extends AbstractContainerScreen<CardChoiceMenu> {
                 return true;
             }
         }
-        return super.mouseReleased(mouseX, mouseY, button);
+        return super.mouseReleased(event);
     }
 
     @Override
@@ -455,7 +458,7 @@ public class CardChoiceScreen extends AbstractContainerScreen<CardChoiceMenu> {
             resetGesture();
             return;
         }
-        this.slotClicked(origin, origin.index, 0, ClickType.PICKUP);
+        this.slotClicked(origin, origin.index, 0, ContainerInput.PICKUP);
         pickedUp = !this.menu.getCarried().isEmpty();
         if (!pickedUp) {
             resetGesture();
@@ -472,7 +475,7 @@ public class CardChoiceScreen extends AbstractContainerScreen<CardChoiceMenu> {
                 // 类型不符的牌正常根本到不了光标上 —— 见 mouseClicked 的拒绝分支；此处保留判据作为防御，
                 // 保证任何来源的携带物都不会进错槽。
                 if (!target.hasItem() && this.menu.type().matches(this.menu.getCarried())) {
-                    this.slotClicked(target, target.index, 0, ClickType.PICKUP);
+                    this.slotClicked(target, target.index, 0, ContainerInput.PICKUP);
                     placed = target.hasItem();
                 }
             } else if (canAcceptCarried(target)) {
@@ -481,7 +484,7 @@ public class CardChoiceScreen extends AbstractContainerScreen<CardChoiceMenu> {
                 // ⇒ 不发包，直接走下方还原分支（落点为空槽 / 同种可叠时仍按原版合并）。
                 // 携带数减少即视为成功；余量留在光标上由原版处理。
                 int before = this.menu.getCarried().getCount();
-                this.slotClicked(target, target.index, 0, ClickType.PICKUP);
+                this.slotClicked(target, target.index, 0, ContainerInput.PICKUP);
                 placed = this.menu.getCarried().getCount() < before;
             }
         }
@@ -543,7 +546,7 @@ public class CardChoiceScreen extends AbstractContainerScreen<CardChoiceMenu> {
         }
         Slot origin = this.menu.slots.get(dragOrigin);
         if (origin != null && !origin.hasItem()) {
-            this.slotClicked(origin, origin.index, 0, ClickType.PICKUP);
+            this.slotClicked(origin, origin.index, 0, ContainerInput.PICKUP);
         }
     }
 

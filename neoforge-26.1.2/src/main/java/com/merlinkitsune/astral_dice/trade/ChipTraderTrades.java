@@ -1,22 +1,15 @@
 package com.merlinkitsune.astral_dice.trade;
 
-import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.shop.ChipShopCatalog;
-import com.merlinkitsune.astral_dice.world.ModVillagerProfessions;
 import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.npc.VillagerTrades;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.trading.ItemCost;
 import net.minecraft.world.item.trading.MerchantOffer;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.common.BasicItemListing;
-import net.neoforged.neoforge.event.village.VillagerTradesEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,7 +47,6 @@ import org.slf4j.LoggerFactory;
  * （含本 mod 的职业）各发一次该事件，并把结果写回 {@code VillagerTrades.TRADES}；触发时机是数据包重载
  * （{@code TagsUpdatedEvent} 的 SERVER_DATA_LOAD），因此校验时数据包标签已绑定。
  */
-@EventBusSubscriber(modid = AstralDiceMod.MODID)
 public final class ChipTraderTrades {
 
     private static final Logger LOGGER = LoggerFactory.getLogger("astral_dice/chip_trader");
@@ -92,29 +84,32 @@ public final class ChipTraderTrades {
     private ChipTraderTrades() {
     }
 
-    @SubscribeEvent
-    public static void onVillagerTrades(VillagerTradesEvent event) {
-        if (event.getType() != ModVillagerProfessions.CHIP_TRADER.get()) {
-            return;
-        }
-        int chipListings = 0;
+    /**
+     * 构建 1-5 级全部筹码报价。
+     *
+     * <p><b>26.1.2 行为差异</b>：同 {@code CardTraderTrades#listings()}——事件与
+     * {@code VillagerTrades.ItemListing} 已删除，交易改为数据驱动（{@code Registries.VILLAGER_TRADE}
+     * + {@code TradeSet}）。本方法只做**纯构建**，不写入任何职业；运行时挂载待 P6。
+     * <p>原来：事件把报价写进 {@code VillagerTrades.TRADES}，村民立刻有货；现在：没有本模组的交易项。
+     */
+    public static List<ChipTraderListing> listings() {
+        List<ChipTraderListing> listings = new ArrayList<>();
         for (int level = 1; level <= 5; level++) {
             List<ChipShopCatalog.Entry> pool = poolFor(level);
             if (pool.isEmpty()) {
                 LOGGER.error("[chip_trader] 等级 {} 的可售筹码池为空，该级不会上架任何筹码报价！", level);
                 continue;
             }
-            event.getTrades().get(level)
-                    .add(new ChipTraderListing(pool, MIN_PRICE[level], MAX_PRICE[level], VILLAGER_XP[level]));
-            chipListings++;
+            listings.add(new ChipTraderListing(pool, MIN_PRICE[level], MAX_PRICE[level], VILLAGER_XP[level]));
         }
+        LOGGER.info("[chip_trader] 交易表构建器就绪：筹码 listing {} 条（26.1.2 数据驱动挂载待 P6）。", listings.size());
+        return listings;
+    }
 
-        // 老手级解锁「1 绿宝石 → 1 星币」；佩戴绿宝石骰子的玩家会在发包/结算路径上被过滤掉（见 EmeraldDiceTrade）
-        event.getTrades().get(EXCHANGE_LEVEL).add(new BasicItemListing(new ItemStack(Items.EMERALD),
-                new ItemStack(ModItems.STAR_COIN.get()), EXCHANGE_MAX_USES, EXCHANGE_XP, EXCHANGE_PRICE_MULTIPLIER));
-
-        LOGGER.info("[chip_trader] 筹码商人交易表已注册：筹码 listing {} 条 + 绿宝石兑星币 1 条（{} 级解锁）。",
-                chipListings, EXCHANGE_LEVEL);
+    /** 「1 绿宝石 → 1 星币」兑换条目（老手级解锁）；26.1.2 用 {@link MerchantOffer} 直接构造，等价于原 {@code BasicItemListing}。 */
+    public static MerchantOffer exchangeOffer() {
+        return new MerchantOffer(new ItemCost(Items.EMERALD, 1), new ItemStack(ModItems.STAR_COIN.get()),
+                EXCHANGE_MAX_USES, EXCHANGE_XP, EXCHANGE_PRICE_MULTIPLIER);
     }
 
     /** 取某一级的可售筹码池：品质档位属于该级允许集（筹码无「可售性」过滤，全部可售）。 */
@@ -132,10 +127,9 @@ public final class ChipTraderTrades {
     }
 
     /** 单个等级的筹码报价：按品质权重抽一枚，价格按品质档位在区间内等距取点。 */
-    private record ChipTraderListing(List<ChipShopCatalog.Entry> pool, int minPrice, int maxPrice, int villagerXp)
-            implements VillagerTrades.ItemListing {
+    public record ChipTraderListing(List<ChipShopCatalog.Entry> pool, int minPrice, int maxPrice, int villagerXp) {
 
-        @Override
+        /** 抽一只并生成报价（签名与 1.21.1 的 {@code ItemListing#getOffer} 一致，便于 P6 挂载层直接复用）。 */
         public MerchantOffer getOffer(Entity trader, RandomSource random) {
             ChipShopCatalog.Entry picked = ChipShopCatalog.pickWeighted(random, this.pool);
             if (picked == null) {

@@ -124,7 +124,7 @@ public class RepulsionItem extends Item {
         if (!LinglingSignManager.hasSign(player)) {
             if (!level.isClientSide()) {
                 player.sendOverlayMessage(
-                        Component.translatable(MSG_NEED_SIGN).withStyle(ChatFormatting.RED), true);
+                        Component.translatable(MSG_NEED_SIGN).withStyle(ChatFormatting.RED));
             }
             return InteractionResult.FAIL;
         }
@@ -132,7 +132,7 @@ public class RepulsionItem extends Item {
         if (!ExclusiveCardUtil.canUse(player, stack)) {
             if (!level.isClientSide()) {
                 player.sendOverlayMessage(
-                        Component.translatable(MSG_NOT_OWNER).withStyle(ChatFormatting.RED), true);
+                        Component.translatable(MSG_NOT_OWNER).withStyle(ChatFormatting.RED));
             }
             return InteractionResult.FAIL;
         }
@@ -141,7 +141,7 @@ public class RepulsionItem extends Item {
         if (target == null) {
             if (!level.isClientSide()) {
                 player.sendOverlayMessage(
-                        Component.translatable(MSG_INVALID).withStyle(ChatFormatting.RED), true);
+                        Component.translatable(MSG_INVALID).withStyle(ChatFormatting.RED));
             }
             return InteractionResult.FAIL;
         }
@@ -154,12 +154,12 @@ public class RepulsionItem extends Item {
 
     /** 实际放置（**仅服务端**）：落位 / 朝向 / 状态恢复 / owner 登记 / 消耗 / 反馈。 */
     private static void place(Level level, Player player, ItemStack stack, BlockPos target) {
-        RepulsionEntity repulsion = ModEntityTypes.REPULSION.get().create(level);
+        RepulsionEntity repulsion = ModEntityTypes.REPULSION.get().create(level, net.minecraft.world.entity.EntitySpawnReason.COMMAND);
         if (repulsion == null) return;
 
         // 朝向：90° 的倍数（与效果牌一致；本模型是竖直薄片，朝向决定宽面朝哪边）
         float yaw = Math.round(player.getYRot() / 90.0F) * 90.0F;
-        repulsion.moveTo(target.getX() + 0.5D, target.getY(), target.getZ() + 0.5D, yaw, 0.0F);
+        repulsion.snapTo(target.getX() + 0.5D, target.getY(), target.getZ() + 0.5D, yaw, 0.0F);
         repulsion.setYHeadRot(yaw);
         repulsion.yBodyRot = yaw;
         // 状态恢复：血量 / 剩余寿命（按已存活 tick 折算）/ 已发放充能
@@ -177,7 +177,7 @@ public class RepulsionItem extends Item {
 
         SoundPlayback.playAt(level, target.getX() + 0.5D, target.getY() + 0.5D, target.getZ() + 0.5D,
                 SoundEvents.GLASS_PLACE);
-        player.sendOverlayMessage(Component.translatable(MSG_PLACED).withStyle(ChatFormatting.GREEN), true);
+        player.sendOverlayMessage(Component.translatable(MSG_PLACED).withStyle(ChatFormatting.GREEN));
     }
 
     // ── 耐久条（物品栏里显示关联血量；可见性/宽度/配色均按原版工具口径） ──────────

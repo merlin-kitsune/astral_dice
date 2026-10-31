@@ -1,5 +1,7 @@
 package com.merlinkitsune.astral_dice.item.sign;
 
+import com.merlinkitsune.starengine.event.EffectTimerGuard;
+import com.merlinkitsune.astral_dice.item.sign.SignEquipCheck;
 import top.theillusivec4.curios.api.SlotContext;
 
 import com.merlinkitsune.astral_dice.item.ChargeManager;
@@ -43,6 +45,15 @@ import top.theillusivec4.curios.api.CuriosApi;
  * (随机增益与锁定(生效中)态一并取消);2026-10-08 再按新裁决重写主动名与整条被动。
  */
 public class ParunanSignItem extends BaseSignItem {
+
+    /** 主动「网络购物」的玩家级冷却基数(秒)。 */
+    private static final int ACTIVE_COOLDOWN_SECONDS = 120;
+
+    /** 玩家是否佩戴经商立牌(未佩戴骰子 ⇒ 本件被动/主动一律不生效,数值保留)。 */
+    public static boolean isEquipped(Player player) {
+        return SignEquipCheck.isEquipped(player, ModItems.PARUNAN_SIGN.get());
+    }
+
 
     public ParunanSignItem(Properties properties) {
         super(properties);

@@ -1,23 +1,27 @@
 package com.merlinkitsune.astral_dice.client;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
-import com.mojang.blaze3d.vertex.DefaultVertexFormat;
+import com.mojang.blaze3d.pipeline.BlendFunction;
+import com.mojang.blaze3d.pipeline.ColorTargetState;
+import com.mojang.blaze3d.pipeline.DepthStencilState;
+import com.mojang.blaze3d.pipeline.RenderPipeline;
+import com.mojang.blaze3d.platform.CompareOp;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.LightTexture;
-import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderStateShard;
-import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.rendertype.RenderSetup;
+import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.resources.Identifier;
+import net.minecraft.util.LightCoordsUtil;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
-
+import net.neoforged.neoforge.client.event.RegisterRenderPipelinesEvent;
+import net.neoforged.neoforge.client.event.SubmitCustomGeometryEvent;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -50,8 +54,35 @@ public final class BeamFxRenderer {
     /** 信标贴图纵向平铺周期（格）：原版光柱每 8 格重复一次纹理。 */
     private static final double BEACON_V_TILE = 8.0D;
 
-    private static final RenderType LASER = createBeam("astral_dice_laser_beam", LASER_TEXTURE);
-    private static final RenderType BEACON = createBeam("astral_dice_orbital_beam", BEACON_TEXTURE);
+    /**
+     * 激光 pipeline：实体着色器 + **加色混合** + LEQUAL 深度测试 + **不写深度**、**关背面剔除**。
+     *
+     * <p>26.1.2 迁移：1.21.1 的 {@code RenderType.CompositeState} + {@code RenderStateShard.*} 在 26.1.2
+     * 已整体删除（{@code client/renderer/RenderStateShard.java} 不存在），通道改由
+     * 「{@code RenderPipeline} + {@code RenderType.create(name, RenderSetup)}」描述；
+     * 本类照 {@code client/RenShieldRenderer} 的同形写法（同一线已迁完的样板）。
+     */
+    private static final RenderPipeline LASER_PIPELINE = RenderPipeline.builder(RenderPipelines.ENTITY_SNIPPET)
+            .withLocation(Identifier.fromNamespaceAndPath(AstralDiceMod.MODID, "pipeline/laser_beam"))
+            .withShaderDefine("ALPHA_CUTOUT", 0.1F)
+            .withSampler("Sampler1")
+            .withColorTargetState(new ColorTargetState(BlendFunction.ADDITIVE))
+            .withDepthStencilState(new DepthStencilState(CompareOp.LESS_THAN_OR_EQUAL, false))
+            .withCull(false)
+            .build();
+
+    /** 轨道炮光柱 pipeline：与激光同一套状态（信标光柱是加色光柱，也不剔除、不写深度）。 */
+    private static final RenderPipeline BEACON_PIPELINE = RenderPipeline.builder(RenderPipelines.ENTITY_SNIPPET)
+            .withLocation(Identifier.fromNamespaceAndPath(AstralDiceMod.MODID, "pipeline/orbital_beam"))
+            .withShaderDefine("ALPHA_CUTOUT", 0.1F)
+            .withSampler("Sampler1")
+            .withColorTargetState(new ColorTargetState(BlendFunction.ADDITIVE))
+            .withDepthStencilState(new DepthStencilState(CompareOp.LESS_THAN_OR_EQUAL, false))
+            .withCull(false)
+            .build();
+
+    private static final RenderType LASER = createBeam("astral_dice_laser_beam", LASER_PIPELINE, LASER_TEXTURE);
+    private static final RenderType BEACON = createBeam("astral_dice_orbital_beam", BEACON_PIPELINE, BEACON_TEXTURE);
 
     /** 待绘制光束（expireTick = 收到时的游戏刻 + ttl）。 */
     private static final List<Beam> BEAMS = new ArrayList<>();
@@ -59,26 +90,22 @@ public final class BeamFxRenderer {
     private BeamFxRenderer() {
     }
 
-    private static RenderType createBeam(String name, Identifier texture) {
-        // 状态与 client/RenShieldRenderer 的 createDome 同一套(半透明实体着色器 + 不写深度)，
-        // 只多两条:不剔除(交叉四边形从背面也要可见) + 指定本光束自己的贴图。
-        return RenderType.create(
-                name,
-                DefaultVertexFormat.NEW_ENTITY,
-                VertexFormat.Mode.QUADS,
-                256,
-                false,
-                true,
-                RenderType.CompositeState.builder()
-                        .setShaderState(RenderStateShard.RENDERTYPE_ENTITY_TRANSLUCENT_SHADER)
-                        .setTextureState(new RenderStateShard.TextureStateShard(texture, false, false))
-                        .setTransparencyState(RenderStateShard.ADDITIVE_TRANSPARENCY)
-                        .setDepthTestState(RenderStateShard.LEQUAL_DEPTH_TEST)
-                        .setWriteMaskState(RenderStateShard.COLOR_WRITE)
-                        .setCullState(RenderStateShard.NO_CULL)
-                        .setLightmapState(RenderStateShard.LIGHTMAP)
-                        .setOverlayState(RenderStateShard.OVERLAY)
-                        .createCompositeState(false));
+    private static RenderType createBeam(String name, RenderPipeline pipeline, Identifier texture) {
+        // 贴图绑在 Sampler0 上（原 TextureStateShard 的等价物），lightmap + overlay 与原状态逐项对应。
+        return RenderType.create(name,
+                RenderSetup.builder(pipeline)
+                        .withTexture("Sampler0", texture)
+                        .useLightmap()
+                        .useOverlay()
+                        .bufferSize(256)
+                        .createRenderSetup());
+    }
+
+    /** 注册两个自有 pipeline（模组事件总线；与 {@code client/RenShieldRenderer} 同一做法）。 */
+    @SubscribeEvent
+    public static void onRegisterRenderPipelines(RegisterRenderPipelinesEvent event) {
+        event.registerPipeline(LASER_PIPELINE);
+        event.registerPipeline(BEACON_PIPELINE);
     }
 
     /**
@@ -104,42 +131,34 @@ public final class BeamFxRenderer {
     }
 
     @SubscribeEvent
-    public static void onRenderLevelStage(RenderLevelStageEvent event) {
-        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_ENTITIES) return;
+    public static void onSubmitCustomGeometry(SubmitCustomGeometryEvent event) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null) return;
+        PoseStack poseStack = event.getPoseStack();
+        if (poseStack == null) return;
+        SubmitNodeCollector collector = event.getSubmitNodeCollector();
+        if (collector == null) return;
         long now = mc.level.getGameTime();
         List<Beam> beams;
         synchronized (BEAMS) {
             BEAMS.removeIf(beam -> beam.expireTick < now);
-            // 列表为空 ⇒ 直接返回：不取 BufferSource、不碰任何 GL 状态
+            // 列表为空 ⇒ 直接返回：不提交任何自定义几何
             if (BEAMS.isEmpty()) return;
             beams = new ArrayList<>(BEAMS);
         }
-        PoseStack poseStack = event.getPoseStack();
-        if (poseStack == null) return;
 
-        Vec3 cam = event.getCamera().getPosition();
+        Vec3 cam = mc.gameRenderer.getMainCamera().position();
         poseStack.pushPose();
         poseStack.translate(-cam.x, -cam.y, -cam.z);
-        PoseStack.Pose pose = poseStack.last();
-
-        MultiBufferSource.BufferSource buffers = mc.renderBuffers().bufferSource();
-        boolean laserUsed = false;
-        boolean beaconUsed = false;
-        for (Beam beam : beams) {
-            if (beam.color == BEACON_COLOR) {
-                emitBeam(buffers.getBuffer(BEACON), pose, beam, cam, true);
-                beaconUsed = true;
-            } else {
-                emitBeam(buffers.getBuffer(LASER), pose, beam, cam, false);
-                laserUsed = true;
+        try {
+            for (Beam beam : beams) {
+                boolean beacon = beam.color == BEACON_COLOR;
+                collector.submitCustomGeometry(poseStack, beacon ? BEACON : LASER,
+                        (pose, buffer) -> emitBeam(buffer, pose, beam, cam, beacon));
             }
+        } finally {
+            poseStack.popPose();
         }
-        // 只对真正用过的批次 endBatch（没用过的批次调用会白白刷一次空批）
-        if (laserUsed) buffers.endBatch(LASER);
-        if (beaconUsed) buffers.endBatch(BEACON);
-        poseStack.popPose();
     }
 
     /**
@@ -198,7 +217,7 @@ public final class BeamFxRenderer {
                 .setColor(red, green, blue, alpha)
                 .setUv(u, v)
                 .setOverlay(OverlayTexture.NO_OVERLAY)
-                .setLight(LightTexture.FULL_BRIGHT)
+                .setLight(LightCoordsUtil.FULL_BRIGHT)
                 .setNormal((float) normal.x, (float) normal.y, (float) normal.z);
     }
 

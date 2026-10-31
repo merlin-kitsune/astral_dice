@@ -1,5 +1,6 @@
 package com.merlinkitsune.astral_dice.screen;
 
+import net.minecraft.client.renderer.RenderPipelines;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.client.CardShopClientState;
 import com.merlinkitsune.astral_dice.item.ModItems;
@@ -14,16 +15,16 @@ import com.merlinkitsune.astral_dice.resource.ResourceConversion;
 import com.merlinkitsune.astral_dice.shop.CardShopMenu;
 import com.merlinkitsune.starengine.economy.StarCoinWalletState;
 import net.minecraft.ChatFormatting;
-import net.minecraft.Util;
+import net.minecraft.util.Util;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.EditBox;
-import net.minecraft.client.gui.components.PlayerFaceRenderer;
+import net.minecraft.client.gui.components.PlayerFaceExtractor;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.client.resources.DefaultPlayerSkin;
-import net.minecraft.client.resources.PlayerSkin;
+import net.minecraft.world.entity.player.PlayerSkin;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.locale.Language;
 import net.minecraft.network.chat.Component;
@@ -433,9 +434,7 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
     private final Map<Identifier, Boolean> faceCache = new HashMap<>();
 
     public CardShopScreen(CardShopMenu menu, Inventory inventory, Component title) {
-        super(menu, inventory, title);
-        this.imageWidth = GUI_WIDTH;
-        this.imageHeight = GUI_HEIGHT;
+        super(menu, inventory, title, GUI_WIDTH, GUI_HEIGHT);
         this.titleLabelX = -10000;
         this.titleLabelY = -10000;
         this.inventoryLabelX = -10000;
@@ -456,7 +455,7 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
     }
 
     @Override
-    protected void renderBg(GuiGraphicsExtractor guiGraphics, float partialTick, int mouseX, int mouseY) {
+    public void extractBackground(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
         // 任务Q §1/§3 探针：本帧「转账视图隔离」计数从底图这一步起算（renderBg 恰好跑在容器槽位循环之前）
         this.lastSlotDraws = 0;
         this.lastSlotSkips = 0;
@@ -480,26 +479,21 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
      * （用户实报的「图标透传依旧存在」）。这里连物品栏一起跳过：转账面板是**完全独立**的一页。
      */
     @Override
-    protected void renderSlot(GuiGraphicsExtractor guiGraphics, Slot slot) {
+    protected void extractSlot(GuiGraphicsExtractor guiGraphics, Slot slot, int mouseX, int mouseY) {
         if (transferView) {
             this.lastSlotSkips++;
             return;
         }
         this.lastSlotDraws++;
-        super.renderSlot(guiGraphics, slot);
+        super.extractSlot(guiGraphics, slot, mouseX, mouseY);
     }
 
     /** 任务Q §3 覆写：转账视图下**不画槽位悬停高亮**（否则半透明白块会浮在暗化后的世界上）。 */
-    @Override
-    protected void renderSlotHighlight(GuiGraphicsExtractor guiGraphics, Slot slot, int mouseX, int mouseY, float partialTick) {
-        if (transferView) {
-            return;
-        }
-        super.renderSlotHighlight(guiGraphics, slot, mouseX, mouseY, partialTick);
-    }
+    // 26.1.2 平台差异：原版把槽高亮改为私有 extractSlotHighlightBack/Front，无法再按槽屏蔽，
+    // 故卡片槽会显示原版悬停高亮（纯视觉差异，不影响交互与数据）。
 
     @Override
-    protected void renderLabels(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY) {
+    protected void extractLabels(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY) {
         // 原版标签一律不画（标题与物品栏标签坐标已挪到屏幕外）
     }
 
@@ -544,10 +538,10 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
     }
 
     @Override
-    public void render(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
+    public void extractRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
         this.lastMouseX = mouseX;
         this.lastMouseY = mouseY;
-        super.render(guiGraphics, mouseX, mouseY, partialTick);
+        super.extractRenderState(guiGraphics, mouseX, mouseY, partialTick);
         // 任务P §2.3（用户报「转账界面显示时，下层商店文本、卡牌以及某些控件层级太高，会浮现到转账界面上」）：
         //   根因 = 主视图（标题/卡框/余额条/主按钮）画在本方法上半段、容器槽位物品由 super.render 画，
         //   二者都在**面板之前**；而面板底图 shop_transfer_bg.png 只有 107px 宽 —— 面板右列 34px
@@ -574,7 +568,7 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
         }
         if (!transferView) {
             // 转账视图下也不再画容器槽位的悬停 tooltip（否则会浮到转账面板之上）
-            this.renderTooltip(guiGraphics, mouseX, mouseY);
+            this.extractTooltip(guiGraphics, mouseX, mouseY);
         }
         renderShopTooltips(guiGraphics, mouseX, mouseY);
     }
@@ -596,7 +590,7 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
         } else {
             blit(guiGraphics, tex("shop_title.png"), TITLE_X, TITLE_Y, TITLE_W, TITLE_H);
         }
-        guiGraphics.drawCenteredString(this.font, Component.translatable("gui.astral_dice.card_shop"),
+        guiGraphics.centeredText(this.font, Component.translatable("gui.astral_dice.card_shop"),
                 this.leftPos + TITLE_CENTER_X, this.topPos + TITLE_TEXT_Y, COLOR_WHITE);
     }
 
@@ -670,11 +664,11 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
         }
         int x = (int) Math.round(dragCenterX) - 8;
         int y = (int) Math.round(dragCenterY) - 8;
-        guiGraphics.pose().pushPose();
-        guiGraphics.pose().translate(0.0F, 0.0F, 300.0F);
-        guiGraphics.renderItem(stack, x, y);
-        guiGraphics.renderItemDecorations(this.font, stack, x, y);
-        guiGraphics.pose().popPose();
+        guiGraphics.pose().pushMatrix();
+        guiGraphics.pose().translate(0.0F, 0.0F);
+        guiGraphics.item(stack, x, y);
+        guiGraphics.itemDecorations(this.font, stack, x, y);
+        guiGraphics.pose().popMatrix();
     }
 
     /**
@@ -722,15 +716,15 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
         if (!faceExists(face)) {
             // 缺素材 ⇒ 画占位（半透明底 + 问号），不崩
             guiGraphics.fill(x, y, x + FACE_SIZE, y + FACE_SIZE, 0x66000000);
-            guiGraphics.drawCenteredString(this.font, "?", x + FACE_SIZE / 2, y + FACE_SIZE / 2 - 4, COLOR_GRAY);
+            guiGraphics.centeredText(this.font, "?", x + FACE_SIZE / 2, y + FACE_SIZE / 2 - 4, COLOR_GRAY);
             return;
         }
-        guiGraphics.pose().pushPose();
-        guiGraphics.pose().translate(x, y, 0.0F);
+        guiGraphics.pose().pushMatrix();
+        guiGraphics.pose().translate(x, y);
         float scale = FACE_SIZE / 64.0F;
-        guiGraphics.pose().scale(scale, scale, 1.0F);
-        guiGraphics.blit(face, 0, 0, 0, 0.0F, 0.0F, 64, 64, 64, 64);
-        guiGraphics.pose().popPose();
+        guiGraphics.pose().scale(scale, scale);
+        guiGraphics.blit(RenderPipelines.GUI_TEXTURED, face, 0, 0, 0.0F, 0.0F, 64, 64, 64, 64);
+        guiGraphics.pose().popMatrix();
     }
 
     private boolean faceExists(Identifier face) {
@@ -760,7 +754,7 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
         int drawX = overflow > 0
                 ? frameX + NAME_BOX_X0 - marqueeOffset(overflow)   // 超宽：左对齐 + 共享相位滚动
                 : frameX + NAME_CENTER_X_OFF - textWidth / 2;      // 不超宽：居中（保持原样）
-        guiGraphics.drawString(this.font, name, drawX, frameY + NAME_Y_OFF, COLOR_WHITE, false);
+        guiGraphics.text(this.font, name, drawX, frameY + NAME_Y_OFF, COLOR_WHITE, false);
         guiGraphics.disableScissor();
     }
 
@@ -790,7 +784,7 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
         // 与玩家物品栏余额栏同口径（换算到条坐标）：右对齐锚点 +90、top +9、白字、无阴影（StarCoinWalletButtons#drawBalance）
         // 2026-10-09 §4：服务端下发「余额不足 / 背包已满」被拒信号后，数字红白交替闪 3 次（5t 一相，共 30t）
         int color = CardShopClientState.denyBlinkRed() ? COLOR_RED : COLOR_WHITE;
-        guiGraphics.drawString(this.font, text,
+        guiGraphics.text(this.font, text,
                 this.leftPos + BALANCE_X + BALANCE_TEXT_RIGHT - this.font.width(text),
                 this.topPos + BALANCE_Y + BALANCE_TEXT_DY, color, false);
     }
@@ -1154,9 +1148,9 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
         // 任务Q §2（用户：「不要在右侧加深灰色底」）：任务P §2.3 铺的 0xFF242424 遮罩**整行删除** ——
         //   现在 renderBg 在转账视图下根本不画商店底图、renderSlot 也不画槽位物品（见 renderBg），
         //   底色再无用武之地，右侧那圈深灰底与底图主色 (36,36,36) 无关，属于纯累赘。
-        guiGraphics.pose().pushPose();
-        guiGraphics.pose().translate((float) (this.leftPos + TP_X), (float) (this.topPos + TP_Y), 0.0F);
-        guiGraphics.pose().scale((float) TP_SCALE, (float) TP_SCALE, 1.0F);
+        guiGraphics.pose().pushMatrix();
+        guiGraphics.pose().translate((float) (this.leftPos + TP_X), (float) (this.topPos + TP_Y));
+        guiGraphics.pose().scale((float) TP_SCALE, (float) TP_SCALE);
         blitAbs(guiGraphics, tex("shop_transfer_bg.png"), 0, 0, TP_BG_W, TP_BG_H);
         // 搜索框 = 素材底图（右侧放大镜是刷新热区）+ 原版 EditBox 本体（无边框，只画文本与光标；
         //   控件本身在 popPose 之后统一单独绘制，见本方法末尾）
@@ -1174,7 +1168,7 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
             Component hint = Component.translatable("gui.astral_dice.card_shop.transfer_search_hint");
             this.lastPlaceholderX = TP_SEARCH_X + TP_SEARCH_FIELD_X;
             this.lastPlaceholderW = this.font.width(hint);
-            guiGraphics.drawString(this.font, hint, this.lastPlaceholderX,
+            guiGraphics.text(this.font, hint, this.lastPlaceholderX,
                     TP_SEARCH_Y + TP_SEARCH_FIELD_Y, COLOR_WHITE);
         } else {
             this.lastPlaceholderX = -1;
@@ -1204,7 +1198,7 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
             //   也正是用户报的「不居中」。锚 47 后该文案恰好占满行区（宽 90 ⇒ 2..92）。
             this.lastEmptyX = (TP_ROW_X + TP_ROW_RIGHT) / 2;
             this.lastEmptyW = this.font.width(empty);
-            guiGraphics.drawCenteredString(this.font, empty, this.lastEmptyX,
+            guiGraphics.centeredText(this.font, empty, this.lastEmptyX,
                     TP_ROW_Y0 + (TP_ROWS * TP_ROW_H) / 2 - 4, COLOR_GRAY);
         }
         for (int row = 0; row < TP_ROWS; row++) {
@@ -1239,7 +1233,7 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
         //   原来的 EditBox（setTextColor(COLOR_GOLD)）已整体删除 ⇒ 这里用 COLOR_WHITE 画权威值 transferAmount，
         //   数字即最终发出的数字，不存在「输入文本与权威值不一致」的可能。
         blitAbs(guiGraphics, tex("shop_transfer_limit.png"), TP_AMOUNT_X, TP_AMOUNT_Y, TP_AMOUNT_W, TP_AMOUNT_H);
-        guiGraphics.drawCenteredString(this.font, String.valueOf(this.transferAmount),
+        guiGraphics.centeredText(this.font, String.valueOf(this.transferAmount),
                 TP_AMOUNT_X + TP_AMOUNT_W / 2, TP_AMOUNT_Y + 3, COLOR_WHITE);
         // 四档 5/10/15/20：点击直接**决定**金额（当前档位金色；这 4 个按钮是唯一的金额来源）
         for (int i = 0; i < LIMITS.length; i++) {
@@ -1253,7 +1247,7 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
             //   数字 5/10/15/20（_1 后缀 = 同数字的按下态）⇒ 自绘数字是重复 HUD。当前档位仍可从右列
             //   金额显示框（只读白字，见上）读到。
         }
-        guiGraphics.pose().popPose();
+        guiGraphics.pose().popMatrix();
         // 两个原版控件在**屏幕坐标系**里绘制（各自绕自身原点按 TP_SCALE 缩放：控件矩形已在
         //   buildTransferWidgets 里按 tpX/tpY/tpS 换算成屏幕坐标，其内部文本/光标/贴图再缩放一次才对得上）。
         //   原先它们夹在面板绘制序列中间，现统一放到末尾 —— 两者都在各自的底图内，且与确认键(x≥109)、
@@ -1263,14 +1257,14 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
         if (transferScrollBar != null) {
             // 滚动条自身内部已带 TP_SCALE 缩放（见 TransferScrollBar#renderWidget）⇒ 这里不再套
             //   renderWidgetScaled，否则会放大 4 倍
-            transferScrollBar.render(guiGraphics, mouseX, mouseY, 0.0F);
+            transferScrollBar.extractRenderState(guiGraphics, mouseX, mouseY, 0.0F);
         }
     }
 
     /**
      * 名单单行（设计文档「行内布局」）：
      * 皮肤头像 16x16 @ (+6,+1)（脸 (8,8,8,8) + 帽子层 (40,8,8,8) 合成 — 即原版
-     * {@link PlayerFaceRenderer#draw}）· 玩家名白色 @ (+24,+0)（宽 42px：**禁止缩小字号**，超宽时左右滚动
+     * {@link PlayerFaceExtractor#draw}）· 玩家名白色 @ (+24,+0)（宽 42px：**禁止缩小字号**，超宽时左右滚动
      * marquee，见 {@link #marqueeOffset(int)}）· 星币标 7x7 @ (+24,+9)（{@code star_coin_small.png} 的
      * (3,3) 子区，与余额文本顶边对齐）· 余额金色 @ (+33,+9)（千分位）。
      * 悬停行画半透明灰底 (2,+0)-(78,+18)；选中行画 {@code shop_transfer_select.png}(13x12) @ (+66,+1)
@@ -1286,7 +1280,7 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
         if (!selected && tpHover(mouseX, mouseY, TP_ROW_X, rowY, TP_ROW_RIGHT - TP_ROW_X, TP_ROW_H)) {
             guiGraphics.fill(TP_ROW_X, rowY, TP_ROW_RIGHT, rowY + TP_ROW_H, COLOR_ROW_HOVER);
         }
-        PlayerFaceRenderer.draw(guiGraphics, transferSkin(entry.id()),
+        PlayerFaceExtractor.extractRenderState(guiGraphics, transferSkin(entry.id()),
                 TP_FACE_X, rowY + TP_FACE_Y_OFF, TP_FACE_SIZE);
         // 玩家名：**不缩字号、不截断**，超 42px ⇒ 按共享相位左右滚动（marquee，增补 §1）；用 scissor
         // 裁到名称列（面板内 x 24..66）⇒ 文字不会溢出到箭头/金额列，命中区与点击不受影响
@@ -1296,12 +1290,12 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
         // ⚠️ enableScissor **不吃 pose**（走原始屏幕坐标）⇒ 这里必须用 tpX()/tpY() 换回屏幕坐标
         guiGraphics.enableScissor(tpX(TP_NAME_X), tpY(rowY),
                 tpX(TP_NAME_X + TP_NAME_MAX_W), tpY(rowY + TP_ROW_H));
-        guiGraphics.drawString(this.font, name, TP_NAME_X - nameOffset,
+        guiGraphics.text(this.font, name, TP_NAME_X - nameOffset,
                 rowY, COLOR_WHITE, false);
         guiGraphics.disableScissor();
         blitSubAbs(guiGraphics, tex("star_coin_small.png"), TP_COIN_X, rowY + TP_COIN_Y_OFF,
                 TP_COIN_U, TP_COIN_U, TP_COIN_SIZE, TP_COIN_SIZE, TP_COIN_SRC);
-        guiGraphics.drawString(this.font, String.format(Locale.ROOT, "%,d", entry.balance()),
+        guiGraphics.text(this.font, String.format(Locale.ROOT, "%,d", entry.balance()),
                 TP_BALANCE_X, rowY + TP_BALANCE_Y_OFF, COLOR_GOLD, false);
         if (selected) {
             // 选中指示 = shop_transfer_select.png **原生 13x12** @ (66, rowY+1)：指向玩家名那一行
@@ -1356,15 +1350,15 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
                     }
                     lines.add(Component.translatable("gui.astral_dice.card_shop.price", this.menu.priceOf(i))
                             .withStyle(discounted ? ChatFormatting.GREEN : ChatFormatting.GOLD));
-                    guiGraphics.renderComponentTooltip(this.font, lines, mouseX, mouseY);
+                    guiGraphics.setTooltipForNextFrame(this.font, lines, java.util.Optional.empty(), mouseX, mouseY);
                 }
                 return;
             }
             if (isHovering(mouseX, mouseY, EXCHANGE_X, EXCHANGE_Y, BUTTON_SIZE, BUTTON_SIZE)) {
-                guiGraphics.renderTooltip(this.font,
+                guiGraphics.setTooltipForNextFrame(this.font,
                         Component.translatable("gui.astral_dice.card_shop.exchange_hint"), mouseX, mouseY);
             } else if (isHovering(mouseX, mouseY, TRANSFER_X, TRANSFER_Y, BUTTON_SIZE, BUTTON_SIZE)) {
-                guiGraphics.renderTooltip(this.font,
+                guiGraphics.setTooltipForNextFrame(this.font,
                         Component.translatable("gui.astral_dice.card_shop.transfer_hint"), mouseX, mouseY);
             }
             // BRIEF-P §0.2-1：沙漏是纯状态显示（不可点击）⇒ 其「解释行」tooltip 已删除。
@@ -1378,14 +1372,14 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
         if (tpHover(mouseX, mouseY, TP_SEARCH_X, TP_SEARCH_Y, TP_SEARCH_W, TP_SEARCH_H)) {
             // 搜索框素材右侧自带的放大镜 = 刷新名单热区；左侧才是搜索输入区
             boolean refreshZone = (mouseX - tpX(0)) >= (double) (TP_SEARCH_REFRESH_X * TP_SCALE);
-            guiGraphics.renderTooltip(this.font, Component.translatable(refreshZone
+            guiGraphics.setTooltipForNextFrame(this.font, Component.translatable(refreshZone
                     ? "gui.astral_dice.card_shop.transfer_refresh"
                     : "gui.astral_dice.card_shop.transfer_search_hint"), mouseX, mouseY);
         } else if (tpHover(mouseX, mouseY, TP_BACK_X, TP_BACK_Y, TP_BACK_W, TP_BACK_H)) {
-            guiGraphics.renderTooltip(this.font,
+            guiGraphics.setTooltipForNextFrame(this.font,
                     Component.translatable("gui.astral_dice.card_shop.transfer_back"), mouseX, mouseY);
         } else if (tpHover(mouseX, mouseY, TP_CONFIRM_X, TP_CONFIRM_Y, TP_CONFIRM_W, TP_CONFIRM_H)) {
-            guiGraphics.renderTooltip(this.font,
+            guiGraphics.setTooltipForNextFrame(this.font,
                     Component.translatable("gui.astral_dice.card_shop.transfer_confirm_hint"), mouseX, mouseY);
         }
     }
@@ -1393,11 +1387,14 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
     // ────────────────────────────── 输入 ──────────────────────────────
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    public boolean mouseClicked(net.minecraft.client.input.MouseButtonEvent event, boolean doubleClick) {
+    double mouseX = event.x();
+    double mouseY = event.y();
+    int button = event.buttonInfo().button();
         final int mx = (int) mouseX;
         final int my = (int) mouseY;
         if (button != 0) {
-            return super.mouseClicked(mouseX, mouseY, button);
+            return super.mouseClicked(event, doubleClick);
         }
         leftDragHeld = true;      // 任务M §8：左键真实按下（真人鼠标与真实屏幕事件派发都走这里）
         if (transferView) {
@@ -1414,13 +1411,13 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
                     this.sendButton(CardShopMenu.BUTTON_REFRESH_TRANSFER);
                 } else if (transferSearchBox != null) {
                     this.setFocused(transferSearchBox);
-                    transferSearchBox.mouseClicked(mouseX, mouseY, button);
+                    transferSearchBox.mouseClicked(event, doubleClick);
                 }
                 return true;
             }
             // 任务P §2.4：金额框已删除 ⇒ 本矩形**不再是 hit-test 目标**（点击只读金额显示框 = 点空白，
             //   落到方法末尾的 blurTransferWidgets()，不改金额、不聚焦任何控件）。
-            if (transferScrollBar != null && transferScrollBar.mouseClicked(mouseX, mouseY, button)) {
+            if (transferScrollBar != null && transferScrollBar.mouseClicked(event, doubleClick)) {
                 // 滚动条不抢输入焦点（否则 EditBox 的光标会消失）
                 this.setFocused(null);
                 return true;
@@ -1485,7 +1482,7 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
             openTransferView();
             return true;
         }
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(event, doubleClick);
     }
 
     /**
@@ -1510,7 +1507,7 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
             lastClickMillis = 0L;
             pressedIndex = -1;
             selectedIndex = frame;
-            net.neoforged.neoforge.network.PacketDistributor.sendToServer(
+            net.neoforged.neoforge.client.network.ClientPacketDistributor.sendToServer(
                     new CardShopBuyPayload(frame, CardShopMenu.QUICK_MOVE_SLOT));
             return;
         }
@@ -1547,9 +1544,12 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
     }
 
     @Override
-    public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+    public boolean mouseDragged(net.minecraft.client.input.MouseButtonEvent event, double dragX, double dragY) {
+    double mouseX = event.x();
+    double mouseY = event.y();
+    int button = event.buttonInfo().button();
         if (transferView && transferScrollBar != null && transferScrollBar.isHandleDragging()) {
-            return transferScrollBar.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+            return transferScrollBar.mouseDragged(event, dragX, dragY);
         }
         // 单击 → 拖拽的升格判定（2026-10-09 §3）：位移超过阈值才起拖，否则保持「单击选中」语义
         if (button == 0 && !transferView && dragIndex < 0 && pressedIndex >= 0) {
@@ -1564,13 +1564,16 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
             dragCenterY = mouseY;
             return true;
         }
-        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+        return super.mouseDragged(event, dragX, dragY);
     }
 
     @Override
-    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+    public boolean mouseReleased(net.minecraft.client.input.MouseButtonEvent event) {
+    double mouseX = event.x();
+    double mouseY = event.y();
+    int button = event.buttonInfo().button();
         if (transferView && transferScrollBar != null && transferScrollBar.isHandleDragging()) {
-            return transferScrollBar.mouseReleased(mouseX, mouseY, button);
+            return transferScrollBar.mouseReleased(event);
         }
         if (button == 0) {
             // 松开即结束本次「单击/双击/拖拽」手势（§3）：清按下态与一次性提示标记
@@ -1586,7 +1589,7 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
                 if (invIndex >= 0) {
                     if (canAcceptDrop(index, invIndex)) {
                         // 合法落点（空 / 同类卡 / 背包有可并入的同类栈）：只发购买意图，扣款与发货由服务端 handleBuy 决定
-                        net.neoforged.neoforge.network.PacketDistributor.sendToServer(
+                        net.neoforged.neoforge.client.network.ClientPacketDistributor.sendToServer(
                                 new CardShopBuyPayload(index, invIndex));
                     } else {
                         overlayMessage(Component.translatable("msg.astral_dice.card_shop_slot_occupied")
@@ -1597,7 +1600,7 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
             }
             return true;
         }
-        return super.mouseReleased(mouseX, mouseY, button);
+        return super.mouseReleased(event);
     }
 
     /**
@@ -1680,7 +1683,7 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
             }
             return;
         }
-        net.neoforged.neoforge.network.PacketDistributor.sendToServer(
+        net.neoforged.neoforge.client.network.ClientPacketDistributor.sendToServer(
                 new CardShopTransferPayload(original, transferAmount));
     }
 
@@ -1756,12 +1759,12 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
         if (widget == null || !widget.visible) {
             return;
         }
-        guiGraphics.pose().pushPose();
-        guiGraphics.pose().translate((float) widget.getX(), (float) widget.getY(), 0.0F);
-        guiGraphics.pose().scale((float) TP_SCALE, (float) TP_SCALE, 1.0F);
-        guiGraphics.pose().translate((float) (-widget.getX()), (float) (-widget.getY()), 0.0F);
-        widget.render(guiGraphics, mouseX, mouseY, 0.0F);
-        guiGraphics.pose().popPose();
+        guiGraphics.pose().pushMatrix();
+        guiGraphics.pose().translate((float) widget.getX(), (float) widget.getY());
+        guiGraphics.pose().scale((float) TP_SCALE, (float) TP_SCALE);
+        guiGraphics.pose().translate((float) (-widget.getX()), (float) (-widget.getY()));
+        widget.extractRenderState(guiGraphics, mouseX, mouseY, 0.0F);
+        guiGraphics.pose().popMatrix();
     }
 
     /** 命中的卡框索引（-1 = 没命中）；判定区 = 整个卡框 44x61（UI-DESIGN U4 建议口径） */
@@ -2014,7 +2017,10 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
      * （charTyped 同理：本类不覆写 ⇒ 默认派发给聚焦控件，输入不会被容器吞掉。）
      */
     @Override
-    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+    public boolean keyPressed(net.minecraft.client.input.KeyEvent event) {
+    int keyCode = event.key();
+    int scanCode = event.scancode();
+    int modifiers = event.modifiers();
         boolean textFocused = this.transferView
                 && (this.transferSearchBox != null && this.transferSearchBox.isFocused());
         // 输入框聚焦时按键**只交给 EditBox**、不再冒泡：AbstractContainerScreen.keyPressed 会在 super 返回 false
@@ -2023,11 +2029,11 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
         // 走 ContainerEventHandler 默认派发给焦点控件，所以字符照常输入。
         if (textFocused && keyCode != 256 && keyCode != 258) {
             if (this.getFocused() != null) {
-                this.getFocused().keyPressed(keyCode, scanCode, modifiers);
+                this.getFocused().keyPressed(event);
             }
             return true;
         }
-        return super.keyPressed(keyCode, scanCode, modifiers);
+        return super.keyPressed(event);
     }
 
     private void blit(GuiGraphicsExtractor guiGraphics, Identifier texture, int x, int y, int w, int h) {
@@ -2037,17 +2043,17 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
     /** 贴图子区绘制（u/v/w/h + 源图边长 src；坐标为面板内相对坐标） */
     private void blitSub(GuiGraphicsExtractor guiGraphics, Identifier texture, int x, int y,
             int u, int v, int w, int h, int src) {
-        guiGraphics.blit(texture, this.leftPos + x, this.topPos + y, 0, (float) u, (float) v, w, h, src, src);
+        guiGraphics.blit(RenderPipelines.GUI_TEXTURED, texture, this.leftPos + x, this.topPos + y, (float) u, (float) v, w, h, src, src);
     }
 
     private static void blitAbs(GuiGraphicsExtractor guiGraphics, Identifier texture, int x, int y, int w, int h) {
-        guiGraphics.blit(texture, x, y, 0, 0.0F, 0.0F, w, h, w, h);
+        guiGraphics.blit(RenderPipelines.GUI_TEXTURED, texture, x, y, 0.0F, 0.0F, w, h, w, h);
     }
 
     /** 贴图子区绘制的**绝对坐标**版本（不加 leftPos/topPos）：供已 pushPose 的面板局部坐标系使用 */
     private static void blitSubAbs(GuiGraphicsExtractor guiGraphics, Identifier texture, int x, int y,
             int u, int v, int w, int h, int src) {
-        guiGraphics.blit(texture, x, y, 0, (float) u, (float) v, w, h, src, src);
+        guiGraphics.blit(RenderPipelines.GUI_TEXTURED, texture, x, y, (float) u, (float) v, w, h, src, src);
     }
     /**
      * 转账列表的滚动条 —— 用**原版 {@link AbstractSliderButton} 逻辑**（拖拽手柄 / 点轨道翻页 / 滚轮逐行），
@@ -2106,26 +2112,28 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
 
         // AbstractSliderButton 在 1.21.1 把 renderWidget 提升为 public ⇒ 覆写也必须 public
         @Override
-        public void renderWidget(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
+        public void extractWidgetRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
             if (!this.visible) {
                 return;
             }
             // 任务N §1.2：绕控件左上角缩放 TP_SCALE 倍，内部一律用**面板局部设计坐标**绘制
             //   （TP_* 常量保持设计值）⇒ 宿主**不要**再对本控件套 renderWidgetScaled（会变 4 倍）。
-            guiGraphics.pose().pushPose();
-            guiGraphics.pose().translate((float) this.getX(), (float) this.getY(), 0.0F);
-            guiGraphics.pose().scale((float) TP_SCALE, (float) TP_SCALE, 1.0F);
+            guiGraphics.pose().pushMatrix();
+            guiGraphics.pose().translate((float) this.getX(), (float) this.getY());
+            guiGraphics.pose().scale((float) TP_SCALE, (float) TP_SCALE);
             blitAbs(guiGraphics, tex("shop_transfer_slide_rail.png"),
                     (TP_SLIDE_W - TP_RAIL_W) / 2, 0, TP_RAIL_W, TP_RAIL_H);
             int travel = TP_RAIL_H - TP_SLIDE_H;
             blitAbs(guiGraphics, tex("shop_transfer_slide_button.png"), 0,
                     (int) Math.round(travel * this.value), TP_SLIDE_W, TP_SLIDE_H);
-            guiGraphics.pose().popPose();
+            guiGraphics.pose().popMatrix();
         }
 
         /** 按在手柄上 ⇒ 进入拖拽；按在轨道上 ⇒ 与 MC 默认滑条同款「按页翻」（一次一屏 = TP_ROWS 行） */
         @Override
-        public void onClick(double mouseX, double mouseY) {
+        public void onClick(net.minecraft.client.input.MouseButtonEvent event, boolean doubleClick) {
+            double mouseX = event.x();
+            double mouseY = event.y();
             // 手柄命中一律按**屏幕像素**算（控件矩形已按 TP_SCALE 换算，不能再用设计值）
             final int handleH = TP_SLIDE_H * TP_SCALE;
             int handleY = this.getY() + (int) Math.round((this.getHeight() - handleH) * this.value);
@@ -2137,7 +2145,9 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
         }
 
         @Override
-        protected void onDrag(double mouseX, double mouseY, double dragX, double dragY) {
+        protected void onDrag(net.minecraft.client.input.MouseButtonEvent event, double dragX, double dragY) {
+            double mouseX = event.x();
+            double mouseY = event.y();
             if (!this.handleDragging) {
                 return;
             }
@@ -2149,7 +2159,7 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
         }
 
         @Override
-        public void onRelease(double mouseX, double mouseY) {
+        public void onRelease(net.minecraft.client.input.MouseButtonEvent event) {
             this.handleDragging = false;
         }
     }

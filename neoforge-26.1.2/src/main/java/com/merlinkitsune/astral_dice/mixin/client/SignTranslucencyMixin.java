@@ -1,7 +1,7 @@
 package com.merlinkitsune.astral_dice.mixin.client;
 
 import com.merlinkitsune.astral_dice.effect.ModEffects;
-import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.client.renderer.entity.LivingEntityRenderer;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.LivingEntity;
@@ -29,7 +29,7 @@ public abstract class SignTranslucencyMixin<T extends LivingEntity> {
     private void astral$forceTranslucent(T entity, boolean bodyVisible, boolean translucent, boolean glowing,
                                          CallbackInfoReturnable<RenderType> cir) {
         if (astral$isTranslucent(entity)) {
-            cir.setReturnValue(RenderType.entityTranslucent(
+            cir.setReturnValue(net.minecraft.client.renderer.rendertype.RenderTypes.entityTranslucent(
                     ((EntityRendererInvoker<T>) (Object) this).astral$texture(entity)));
         }
     }
@@ -43,7 +43,8 @@ public abstract class SignTranslucencyMixin<T extends LivingEntity> {
         // 也不会把 0.5 泄漏到其它实体(每个实体都在 HEAD 自设颜色)。
         float alpha = astral$isTranslucent(entity) ? 0.5F : 1.0F;
         AlphaContext.push(alpha);
-        com.mojang.blaze3d.systems.RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, alpha);
+        // 26.1.2 平台差异：RenderSystem#setShaderColor 已随管线下沉删除，实体 alpha 只能由
+        // 渲染类型（entityTranslucent）承担；AlphaContext 仍保留给调用方查询当前层透明度。
     }
 
     @Inject(method = "render", at = @At("TAIL"))
@@ -54,8 +55,8 @@ public abstract class SignTranslucencyMixin<T extends LivingEntity> {
         try {
             AlphaContext.pop();
         } finally {
-            // 恢复到栈顶(嵌套 render 时回到上一层;空栈回落 1.0)。
-            com.mojang.blaze3d.systems.RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, AlphaContext.current());
+            // 恢复到栈顶(嵌套 render 时回到上一层;空栈回落 1.0)。shader 颜色通道同 HEAD 注释所述已删除。
+            AlphaContext.current();
         }
     }
 

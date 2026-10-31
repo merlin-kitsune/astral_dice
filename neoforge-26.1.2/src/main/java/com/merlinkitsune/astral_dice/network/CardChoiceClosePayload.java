@@ -33,7 +33,7 @@ public record CardChoiceClosePayload(int token) implements CustomPacketPayload {
     public static void handle(CardChoiceClosePayload payload,
                               net.neoforged.neoforge.network.handling.IPayloadContext context) {
         context.enqueueWork(() -> {
-            if (net.neoforged.fml.loading.FMLEnvironment.dist == net.neoforged.api.distmarker.Dist.CLIENT) {
+            if (net.neoforged.fml.loading.FMLEnvironment.getDist() == net.neoforged.api.distmarker.Dist.CLIENT) {
                 com.merlinkitsune.astral_dice.client.CardChoiceClientHandler.closeIfToken(payload.token());
             }
         });

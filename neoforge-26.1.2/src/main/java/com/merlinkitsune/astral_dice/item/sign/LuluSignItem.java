@@ -58,7 +58,7 @@ import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
  * <h2>26.1.2 平台/线路差异（相对 1.21.1 基准）</h2>
  * <ol>
  *   <li><b>药水效果常量改名</b>（见 {@code docs/compat-26.1.2-neoforge.md} §2.2）：
- *       {@code MobEffects.HEAL → INSTANT_HEALTH}、{@code MobEffects.MOVEMENT_SLOWDOWN → SLOWNESS}。
+ *       {@code MobEffects.INSTANT_HEALTH → INSTANT_HEALTH}、{@code MobEffects.SLOWNESS → SLOWNESS}。
  *       数值/时长口径不变（瞬间治疗 1 tick、缓慢 {@value #SLOWDOWN_TICKS} tick）。</li>
  *   <li><b>实体包路径</b>：{@code world.entity.animal.Pig → world.entity.animal.pig.Pig}、
  *       {@code …animal.camel.Camel}、{@code …animal.horse.AbstractHorse → …animal.equine.AbstractHorse}
@@ -111,7 +111,7 @@ public class LuluSignItem extends BaseSignItem {
                 // 友情徽章:治疗者对**友方玩家**施加治疗时双方各 +2 治愈(自疗不触发,钩子内部自判)
                 FriendshipBadgeChipItem.onHealApplied(player, receiver);
             }
-            PlayerEffectProtection.apply(target, new MobEffectInstance(MobEffects.HEAL, 1, 0, false, true));
+            PlayerEffectProtection.apply(target, new MobEffectInstance(MobEffects.INSTANT_HEALTH, 1, 0, false, true));
 
             // ── 2. 范围能力(2026-09-28 起仅剩「敌对生物缓慢」):以**被指向的目标**为中心 ──────
             // 目标自身已吃到主体效果,故与旧实现排除施放者同构,这里排除目标本身。
@@ -122,7 +122,7 @@ public class LuluSignItem extends BaseSignItem {
                 if (PartyRelations.isHostileTo(player, entity)) {
                     // 敌对生物:缓慢 1:00
                     PlayerEffectProtection.apply(entity,
-                            new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, SLOWDOWN_TICKS, 0, false, true));
+                            new MobEffectInstance(MobEffects.SLOWNESS, SLOWDOWN_TICKS, 0, false, true));
                 }
             }
 

@@ -386,7 +386,7 @@ public final class TargetSelectionClient {
             int selfId = mc.player.getId();
             LOGGER.debug("[Astral Dice][TargetSelectionClient] self-confirm sent token={} target={}(self)",
                     token, selfId);
-            ClientPacketDistributor.sendToServer(new TargetSelectConfirmPayload(token, selfId));
+            net.neoforged.neoforge.client.network.ClientPacketDistributor.sendToServer(new TargetSelectConfirmPayload(token, selfId));
             deactivate();
             return;
         }
@@ -401,7 +401,7 @@ public final class TargetSelectionClient {
         int targetId = currentTarget.getId();
         LOGGER.debug("[Astral Dice][TargetSelectionClient] confirm sent token={} target={}({})",
                 token, targetId, currentTarget.getName().getString());
-        ClientPacketDistributor.sendToServer(new TargetSelectConfirmPayload(token, targetId));
+        net.neoforged.neoforge.client.network.ClientPacketDistributor.sendToServer(new TargetSelectConfirmPayload(token, targetId));
         deactivate();
     }
 
@@ -421,7 +421,7 @@ public final class TargetSelectionClient {
     public static void cancel(String reason) {
         if (!isActive()) return;
         LOGGER.debug("[Astral Dice][TargetSelectionClient] cancel token={} ({})", token, reason);
-        ClientPacketDistributor.sendToServer(new TargetSelectCancelPayload(token));
+        net.neoforged.neoforge.client.network.ClientPacketDistributor.sendToServer(new TargetSelectCancelPayload(token));
         deactivate();
         // 2026-09-22（用户要求「增加取消选择和超时的提示文本」）：原先只有 isUserCancel
         // 会给反馈 ⇒ **超时与第三方界面两条路径全程无提示**。现按事件分两键：

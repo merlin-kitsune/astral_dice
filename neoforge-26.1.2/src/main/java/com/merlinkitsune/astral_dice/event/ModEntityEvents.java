@@ -20,7 +20,7 @@ import net.neoforged.neoforge.event.entity.EntityAttributeCreationEvent;
  * {@code LivingEntity.createLivingAttributes()} 已带上全套基础属性
  * （移动速度、护甲、击退抗性…），这里只把最大生命从默认 20 覆写为 30。
  */
-@EventBusSubscriber(modid = AstralDiceMod.MODID, bus = EventBusSubscriber.Bus.MOD)
+@EventBusSubscriber(modid = AstralDiceMod.MODID)
 public final class ModEntityEvents {
 
     private ModEntityEvents() {

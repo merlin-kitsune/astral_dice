@@ -90,7 +90,7 @@ public class BarricadeCardItem extends BaseEffectCardItem {
         if (resolvePlacement(level, player) == null) {
             if (!level.isClientSide()) {
                 player.sendOverlayMessage(
-                        Component.translatable(MSG_INVALID).withStyle(ChatFormatting.RED), true);
+                        Component.translatable(MSG_INVALID).withStyle(ChatFormatting.RED));
             }
             return InteractionResult.FAIL;
         }
@@ -116,14 +116,14 @@ public class BarricadeCardItem extends BaseEffectCardItem {
         if (!level.setBlockAndUpdate(target, collision)) return;
 
         // ② 可见实体：方块中心，朝向沿世界轴对齐（墙面与轴线平行）
-        BarricadeEntity barricade = ModEntityTypes.BARRICADE.get().create(level);
+        BarricadeEntity barricade = ModEntityTypes.BARRICADE.get().create(level, net.minecraft.world.entity.EntitySpawnReason.COMMAND);
         if (barricade == null) {
             // 实体创建失败（类型未注册等）：把刚落的方块撤掉，绝不留一个"看不见的墙"
             level.removeBlock(target, false);
             return;
         }
         float yaw = Math.round(user.getYRot() / 180.0F) * 180.0F;
-        barricade.moveTo(target.getX() + 0.5D, target.getY(), target.getZ() + 0.5D, yaw, 0.0F);
+        barricade.snapTo(target.getX() + 0.5D, target.getY(), target.getZ() + 0.5D, yaw, 0.0F);
         barricade.setYHeadRot(yaw);
         barricade.yBodyRot = yaw;
         barricade.setCollisionPos(target);
@@ -136,7 +136,7 @@ public class BarricadeCardItem extends BaseEffectCardItem {
         // ③ 反馈：方块放置音 + 动作栏绿字
         SoundPlayback.playAt(level, target.getX() + 0.5D, target.getY() + 0.5D, target.getZ() + 0.5D,
                 SoundEvents.WOOD_PLACE);
-        user.sendOverlayMessage(Component.translatable(MSG_PLACED).withStyle(ChatFormatting.GREEN), true);
+        user.sendOverlayMessage(Component.translatable(MSG_PLACED).withStyle(ChatFormatting.GREEN));
     }
 
     /**

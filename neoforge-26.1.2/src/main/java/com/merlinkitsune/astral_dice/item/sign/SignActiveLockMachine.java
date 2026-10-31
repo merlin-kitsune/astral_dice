@@ -1,5 +1,6 @@
 package com.merlinkitsune.astral_dice.item.sign;
 
+import net.minecraft.world.item.Items;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
@@ -64,7 +65,7 @@ public final class SignActiveLockMachine {
     private static BaseSignItem lockSignItem(String signId) {
         Identifier id = Identifier.tryParse(signId);
         if (id == null) return null;
-        Item item = BuiltInRegistries.ITEM.get(id);
+        Item item = BuiltInRegistries.ITEM.get(id).map(net.minecraft.core.Holder::value).orElse(Items.AIR);
         return item instanceof BaseSignItem sign ? sign : null;
     }
 

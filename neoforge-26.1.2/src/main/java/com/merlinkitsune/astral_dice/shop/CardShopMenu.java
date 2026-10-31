@@ -595,12 +595,12 @@ public class CardShopMenu extends AbstractContainerMenu {
 
     /** 重发候选玩家名单（打开转账视图 / 点放大镜刷新 / 目标玩家已下线时；**转账成功后不重发**） */
     public void sendTransferCandidates(ServerPlayer owner) {
-        if (owner.getServer() == null) {
+        if (owner.level().getServer() == null) {
             return;
         }
         List<CardShopTransferListPayload.Entry> entries = new ArrayList<>();
         List<UUID> ids = new ArrayList<>();
-        for (ServerPlayer other : owner.getServer().getPlayerList().getPlayers()) {
+        for (ServerPlayer other : owner.level().getServer().getPlayerList().getPlayers()) {
             if (other == owner) {
                 continue;
             }
@@ -637,9 +637,9 @@ public class CardShopMenu extends AbstractContainerMenu {
         if (targetIndex < 0 || targetIndex >= candidateIds.size()) {
             return;
         }
-        ServerPlayer target = owner.getServer() == null
+        ServerPlayer target = owner.level().getServer() == null
                 ? null
-                : owner.getServer().getPlayerList().getPlayer(candidateIds.get(targetIndex));
+                : owner.level().getServer().getPlayerList().getPlayer(candidateIds.get(targetIndex));
         if (target == null || target == owner) {
             actionBar(owner, ChatFormatting.RED, "msg.astral_dice.card_shop_transfer_target_lost");
             sendTransferCandidates(owner);

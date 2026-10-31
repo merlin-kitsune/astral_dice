@@ -178,7 +178,7 @@ public final class LinglingSignManager {
     public static int convertBarricadesInInventory(Player player) {
         if (player == null || player.level().isClientSide()) return 0;
         int converted = 0;
-        List<ItemStack> items = player.getNonEquipmentItems();
+        List<ItemStack> items = player.getInventory().getNonEquipmentItems();
         for (int i = 0; i < items.size(); i++) {
             ItemStack stack = items.get(i);
             if (!isBarricade(stack)) continue;
@@ -343,7 +343,7 @@ public final class LinglingSignManager {
     public static void reconcileInventory(Player player) {
         if (player == null || player.level().isClientSide()) return;
         boolean attached = hasSign(player);
-        List<ItemStack> items = player.getNonEquipmentItems();
+        List<ItemStack> items = player.getInventory().getNonEquipmentItems();
         for (int i = 0; i < items.size(); i++) {
             ItemStack stack = items.get(i);
             if (isRepulsion(stack)) {
@@ -377,7 +377,7 @@ public final class LinglingSignManager {
         if (owner.isEmpty()) {
             ExclusiveCardUtil.setOwner(stack, player);
         } else if (owner.get().equals(player.getUUID()) && ExclusiveCardUtil.ownerName(stack).isEmpty()) {
-            stack.set(ModDataComponents.OWNER_NAME.get(), player.getGameProfile().getName());
+            stack.set(ModDataComponents.OWNER_NAME.get(), player.getGameProfile().name());
         }
     }
 
@@ -386,7 +386,7 @@ public final class LinglingSignManager {
         Optional<UUID> owner = ExclusiveCardUtil.ownerOf(stack);
         if (owner.isPresent() && owner.get().equals(player.getUUID())
                 && ExclusiveCardUtil.ownerName(stack).isEmpty()) {
-            stack.set(ModDataComponents.OWNER_NAME.get(), player.getGameProfile().getName());
+            stack.set(ModDataComponents.OWNER_NAME.get(), player.getGameProfile().name());
         }
     }
 
@@ -414,7 +414,7 @@ public final class LinglingSignManager {
     public static int convertRepulsionCardsToBarricade(Player player) {
         if (player == null || player.level().isClientSide()) return 0;
         int converted = 0;
-        List<ItemStack> items = player.getNonEquipmentItems();
+        List<ItemStack> items = player.getInventory().getNonEquipmentItems();
         for (int i = 0; i < items.size(); i++) {
             ItemStack stack = items.get(i);
             if (!isRepulsion(stack)) continue;
@@ -433,7 +433,7 @@ public final class LinglingSignManager {
     public static int destroyRepulsionItems(Player player) {
         if (player == null || player.level().isClientSide()) return 0;
         int destroyed = 0;
-        List<ItemStack> items = player.getNonEquipmentItems();
+        List<ItemStack> items = player.getInventory().getNonEquipmentItems();
         for (int i = 0; i < items.size(); i++) {
             ItemStack stack = items.get(i);
             if (!isRepulsionItem(stack)) continue;
@@ -456,7 +456,7 @@ public final class LinglingSignManager {
      */
     public static int destroyOwnedFields(Player player) {
         if (player == null || player.level().isClientSide()) return 0;
-        var server = player.getServer();
+        var server = player.level().getServer();
         if (server == null) return 0;
         UUID owner = player.getUUID();
         List<RepulsionEntity> doomed = new ArrayList<>();

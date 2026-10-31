@@ -753,19 +753,18 @@ public final class TemporaryCardUtil {
         if (player == null || player.level().isClientSide()) return 0;
         int removed = 0;
         try {
-            List<ItemStack> items = player.getNonEquipmentItems();
+            List<ItemStack> items = player.getInventory().getNonEquipmentItems();
             for (int i = 0; i < items.size(); i++) {
                 ItemStack stack = items.get(i);
                 if (!isIllegalHold(stack, player)) continue;
                 removed += stack.getCount();
                 player.getInventory().setItem(i, ItemStack.EMPTY);
             }
-            List<ItemStack> offhand = player.getInventory().offhand;
-            for (int i = 0; i < offhand.size(); i++) {
-                ItemStack stack = offhand.get(i);
-                if (!isIllegalHold(stack, player)) continue;
-                removed += stack.getCount();
-                offhand.set(i, ItemStack.EMPTY);
+            // 26.1.2 平台差异:Inventory#offhand 字段已删,副手槽并入 EntityEquipment。
+            ItemStack offhandStack = player.getInventory().getItem(Inventory.SLOT_OFFHAND);
+            if (isIllegalHold(offhandStack, player)) {
+                removed += offhandStack.getCount();
+                player.getInventory().setItem(Inventory.SLOT_OFFHAND, ItemStack.EMPTY);
             }
             var menu = player.containerMenu;
             if (menu != null) {

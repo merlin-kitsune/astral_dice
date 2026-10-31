@@ -2,6 +2,9 @@ package com.merlinkitsune.astral_dice.entity;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
 import net.neoforged.neoforge.registries.DeferredHolder;
@@ -35,7 +38,8 @@ public final class ModEntityTypes {
                     .of(BarricadeEntity::new, MobCategory.MISC)
                     .sized(1.2F, 2.0F)
                     .clientTrackingRange(8)
-                    .build("barricade"));
+                    .build(ResourceKey.create(Registries.ENTITY_TYPE,
+                            Identifier.fromNamespaceAndPath(AstralDiceMod.MODID, "barricade"))));
 
     /**
      * 强化拒止（2026-10-18 新效果牌「强化拒止」，属「怪力乱神」立牌；该立牌会在后续添加）。
@@ -49,7 +53,8 @@ public final class ModEntityTypes {
                     .of(RepulsionEntity::new, MobCategory.MISC)
                     .sized(1.6F, 2.4F)
                     .clientTrackingRange(10)
-                    .build("repulsion"));
+                    .build(ResourceKey.create(Registries.ENTITY_TYPE,
+                            Identifier.fromNamespaceAndPath(AstralDiceMod.MODID, "repulsion"))));
 
     private ModEntityTypes() {
     }

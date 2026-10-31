@@ -192,7 +192,7 @@ public class DorothySignItem extends BaseSignItem {
                 return;
             }
             player.teleportTo((net.minecraft.server.level.ServerLevel) other.level(), safe.getX() + 0.5D, safe.getY(), safe.getZ() + 0.5D,
-                    player.getYRot(), player.getXRot());
+                    java.util.Set.of(), player.getYRot(), player.getXRot(), false);
             long now = player.level().getGameTime();
             ModAttachments.setDorothyWindowEnd(player, now + WINDOW_TICKS);
             ModAttachments.clearDorothyPartners(player);

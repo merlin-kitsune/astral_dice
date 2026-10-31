@@ -65,7 +65,7 @@ import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
  *
  * <h2>26.1.2 平台差异（相对 1.21.1 基准，语义零差异）</h2>
  * <ol>
- *   <li><b>药水效果常量改名</b>:1.21.1 的 {@code MobEffects.DAMAGE_RESISTANCE} 在 26.1.2 名为
+ *   <li><b>药水效果常量改名</b>:1.21.1 的 {@code MobEffects.RESISTANCE} 在 26.1.2 名为
  *       {@code MobEffects.RESISTANCE}(见 26.1.2 既有 {@code item/card/UnwaveringCardItem.java:42}、
  *       {@code item/sign/JasmineSignItem.java:66});时长/放大器口径不变。</li>
  *   <li>其余逐字同形:{@code setAbsorptionAmount} 的 {@code [0, getMaxAbsorption()]} 钳制、
@@ -376,7 +376,7 @@ public final class RenShieldManager {
     private static void applyOrRefreshResistance(Player player, boolean force) {
         MobEffectInstance resistance = player.getEffect(MobEffects.RESISTANCE);
         if (resistance == null) {
-            PlayerEffectProtection.apply(player, new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE,
+            PlayerEffectProtection.apply(player, new MobEffectInstance(MobEffects.RESISTANCE,
                     RESISTANCE_DURATION_TICKS, 0, false, false, false));
             ModAttachments.setRenShieldOwnResistance(player, true);
             return;
@@ -384,7 +384,7 @@ public final class RenShieldManager {
         if (force) return;
         if (ModAttachments.isRenShieldOwnResistance(player)
                 && resistance.getDuration() <= RESISTANCE_REFRESH_THRESHOLD_TICKS) {
-            PlayerEffectProtection.apply(player, new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE,
+            PlayerEffectProtection.apply(player, new MobEffectInstance(MobEffects.RESISTANCE,
                     RESISTANCE_DURATION_TICKS, 0, false, false, false));
         }
     }
@@ -394,7 +394,7 @@ public final class RenShieldManager {
         if (!ModAttachments.isRenShieldOwnResistance(player)) return;
         MobEffectInstance resistance = player.getEffect(MobEffects.RESISTANCE);
         if (resistance != null && resistance.getAmplifier() == 0) {
-            PlayerEffectProtection.removeNow(player, MobEffects.DAMAGE_RESISTANCE);
+            PlayerEffectProtection.removeNow(player, MobEffects.RESISTANCE);
         }
         ModAttachments.setRenShieldOwnResistance(player, false);
     }

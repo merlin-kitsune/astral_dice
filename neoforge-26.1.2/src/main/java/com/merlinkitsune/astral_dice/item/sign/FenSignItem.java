@@ -99,7 +99,7 @@ public class FenSignItem extends BaseSignItem implements SignHooks.SplashBlessin
             // ambient=false, visible=false, showIcon=true —— **HUD 图标由 showIcon 决定、与 visible
             // 无关**(旧实参只写到第 5 参 `visible=true`,把图标开关误当成了 visible,于是平白产生
             // 漂浮粒子,玩家把它归因于养精蓄锐)。战斗爽那一处按用户裁决**有意保留粒子**(见上方注释)。
-            PlayerEffectProtection.apply(player, new MobEffectInstance(MobEffects.MOVEMENT_SPEED,
+            PlayerEffectProtection.apply(player, new MobEffectInstance(MobEffects.SPEED,
                     FRENZY_DURATION_TICKS, 0, false, false, true));
         }
         // 被动「心意相连」(风水师立牌 zhao):本立牌**使用主动技能**时,同队中装备风水师立牌的玩家

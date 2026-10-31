@@ -94,7 +94,7 @@ public class ChipShopBlock extends HorizontalDirectionalBlock {
         if (!level.isClientSide()) {
             ChipShopOpener.open(player);
         }
-        return InteractionResult.sidedSuccess(level.isClientSide());
+        return level.isClientSide() ? InteractionResult.SUCCESS : InteractionResult.SUCCESS_SERVER;
     }
 
     /**
@@ -118,7 +118,7 @@ public class ChipShopBlock extends HorizontalDirectionalBlock {
             return super.useItemOn(stack, state, level, pos, player, hand, hitResult);
         }
         if (level.isClientSide()) {
-            return InteractionResult.sidedSuccess(true);
+            return InteractionResult.SUCCESS;
         }
         long now = level.getGameTime();
         ChipShopState shopState = ChipShopState.get(player);
@@ -127,14 +127,14 @@ public class ChipShopBlock extends HorizontalDirectionalBlock {
             actionBar(player, ChatFormatting.RED, "msg.astral_dice.chip_shop_blank_cooldown");
             LOGGER.info("[astral_dice] CHIP_SHOP_BLANK_DENIED player={} reason=blank_cooldown last={} now={}",
                     player.getName().getString(), last, now);
-            return InteractionResult.sidedSuccess(false);
+            return InteractionResult.SUCCESS_SERVER;
         }
         stack.shrink(1);
         ChipShopState.store(player, shopState.withBlankInsert(now, shopState.refreshesLeft() + 1, 0L));
         actionBar(player, ChatFormatting.GOLD, "msg.astral_dice.chip_shop_blank_insert");
         LOGGER.info("[astral_dice] CHIP_SHOP_BLANK_INSERT player={} refreshes={} now={}",
                 player.getName().getString(), ChipShopState.get(player).refreshesLeft(), now);
-        return InteractionResult.sidedSuccess(false);
+        return InteractionResult.SUCCESS_SERVER;
     }
 
     /** actionbar 提示（红字拒绝 / 金色成功）；非服务端玩家时静默跳过 */

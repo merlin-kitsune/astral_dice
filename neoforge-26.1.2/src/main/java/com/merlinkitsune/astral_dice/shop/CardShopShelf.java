@@ -330,10 +330,11 @@ public record CardShopShelf(List<Identifier> items, List<Integer> prices, List<B
         if (hasParunan(player)) {
             return true;
         }
-        if (player.getServer() == null) {
+        // 26.1.2：Player#getServer() 已删除，改从所在维度取服务端实例。
+        if (player.level().getServer() == null) {
             return false;
         }
-        for (ServerPlayer other : player.getServer().getPlayerList().getPlayers()) {
+        for (ServerPlayer other : player.level().getServer().getPlayerList().getPlayers()) {
             if (other != player && hasParunan(other) && PartyRelations.isSameTeam(player, other)) {
                 return true;
             }

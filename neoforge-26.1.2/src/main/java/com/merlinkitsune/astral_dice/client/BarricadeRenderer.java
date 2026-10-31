@@ -4,6 +4,7 @@ import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.entity.BarricadeEntity;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.entity.LivingEntityRenderer;
+import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
 import net.minecraft.resources.Identifier;
 
 /**
@@ -15,7 +16,7 @@ import net.minecraft.resources.Identifier;
  * <p>阴影半径 0.5：路障宽约 1.25 格，阴影略窄于碰撞方块；位移/朝向一律交给
  * {@code LivingEntityRenderer} 的默认实现（{@code yBodyRot} 由实体放置时写死为 180° 的倍数）。
  */
-public class BarricadeRenderer extends LivingEntityRenderer<BarricadeEntity, BarricadeModel> {
+public class BarricadeRenderer extends LivingEntityRenderer<BarricadeEntity, LivingEntityRenderState, BarricadeModel> {
 
     public static final Identifier TEXTURE = Identifier.fromNamespaceAndPath(
             AstralDiceMod.MODID, "textures/entity/barricade.png");
@@ -25,7 +26,19 @@ public class BarricadeRenderer extends LivingEntityRenderer<BarricadeEntity, Bar
     }
 
     @Override
-    public Identifier getTextureLocation(BarricadeEntity entity) {
+    public LivingEntityRenderState createRenderState() {
+        // 26.1.2：实体渲染改为「先抽取状态、再拿状态渲染」，渲染器必须给出自己的状态对象。
+        // 本实体没有任何额外渲染状态，直接用原版 LivingEntityRenderState。
+        return new LivingEntityRenderState();
+    }
+
+    @Override
+    public void extractRenderState(BarricadeEntity entity, LivingEntityRenderState state, float partialTicks) {
+        super.extractRenderState(entity, state, partialTicks);
+    }
+
+    @Override
+    public Identifier getTextureLocation(LivingEntityRenderState state) {
         return TEXTURE;
     }
 
@@ -37,7 +50,7 @@ public class BarricadeRenderer extends LivingEntityRenderer<BarricadeEntity, Bar
      * 实体名（形如「强化拒止」）。路障 / 强化拒止都不是生物，一律不显示名条。
      */
     @Override
-    protected boolean shouldShowName(BarricadeEntity entity) {
+    protected boolean shouldShowName(BarricadeEntity entity, double distanceToCameraSq) {
         return false;
     }
 }

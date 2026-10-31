@@ -64,6 +64,7 @@ public final class ModCommonConfig {
      */
     public static final int ACTIONBAR_FADE_TICKS = 10;
     public static final ModConfigSpec.BooleanValue ENABLE_STAR_COIN_WALLET;
+    public static final ModConfigSpec.BooleanValue ENABLE_CHIP_RECIPES;
     public static final ModConfigSpec.BooleanValue DEPOSIT_STAR_COIN_ON_OBTAIN;
     public static final ModConfigSpec.IntValue STAR_COIN_WALLET_OFFSET_X;
     public static final ModConfigSpec.IntValue STAR_COIN_WALLET_OFFSET_Y;
@@ -110,6 +111,10 @@ public final class ModCommonConfig {
         // 面额口径固定为「1 星币 = 1、1 星币袋 = 9」(常量在 item/StarCoinCurrency,不开放配置)。
         // 余额本体由前置库 starengine 的 economy 账本承载(玩家持久化数据,不受死亡掉落影响)。
         builder.push("star_coin_wallet").comment("=== 星币钱包 ===");
+        // 筹码合成配方总开关(默认 false;关闭时 61 枚筹码无法通过合成获得)。26.1.2 平台差异:合并时丢失,按 1.21.1 基准补回。
+        ENABLE_CHIP_RECIPES = builder.comment("是否启用筹码合成配方(默认：false；关闭时 61 枚筹码无法通过合成获得)")
+                .define("enable_chip_recipes", false);
+
         ENABLE_STAR_COIN_WALLET = builder.comment("是否启用星币钱包(默认：true)",
                         "false = 物品栏不出现钱包按钮,星币/星币袋维持普通物品行为(与改动前一致);",
                         "true = 物品栏(生存/创造)左上角出现星币钱包按钮,点击可把物品栏与副手持有的",

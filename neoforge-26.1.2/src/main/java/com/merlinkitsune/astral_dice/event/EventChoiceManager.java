@@ -104,14 +104,14 @@ public final class EventChoiceManager {
         // 且客户端会连开两个选择界面。返回 false ⇒ 本次主动技能未开会话、不结算。
         Session existing = SESSIONS.get(player.getUUID());
         if (existing != null && existing.resolving < 0) {
-            LOGGER.warn("AP_EVENT_CHOICE: already_open:player={}", player.getGameProfile().getName());
+            LOGGER.warn("AP_EVENT_CHOICE: already_open:player={}", player.getGameProfile().name());
             return false;
         }
         // 2026-10-29 P1 修复：候选池改按**该来源可派发**口径构造（publicPool(Player, source)），
         // 而不是只按「队内有秘密侦探」——候选里不允许出现本次派发必然失败的事件。
         List<AstralEvent> pool = AstralEventRegistry.publicPool(player, AstralEventTrigger.ACTIVE_SKILL);
         if (pool.isEmpty()) {
-            LOGGER.warn("AP_EVENT_CHOICE: pool_empty:player={}", player.getGameProfile().getName());
+            LOGGER.warn("AP_EVENT_CHOICE: pool_empty:player={}", player.getGameProfile().name());
             return false;
         }
         // ⚠️ 两次**独立**抽取：用户裁决明确「两个选项允许相同、允许任意正/负/中性组合」⇒ 不去重、不洗牌平衡。
@@ -146,7 +146,7 @@ public final class EventChoiceManager {
         //    由 FannySignItem#handleUse 经 BaseSignItem#performSkill 播放；确认时再播会叠一次。
         LOGGER.info("AP_EVENT_CHOICE: confirm:{}:pick={}:event={}", token, optionIndex, session.chosen());
 
-        ServerLevel level = player.serverLevel();
+        ServerLevel level = player.level();
         // ② 确认后的**唯一**顺序（2026-10-11 口径，已不再含「确认时播音效」那一步）：
         //    等 1 秒 → 关界面 → 触发。主动技能音效已在**按下技能键那一刻**由
         //    FannySignItem#handleUse → BaseSignItem#performSkill 播出，此处不重复。
@@ -225,7 +225,7 @@ public final class EventChoiceManager {
         Session session = SESSIONS.get(player.getUUID());
         if (session == null || session.token != token || session.resolving >= 0) {
             LOGGER.info("AP_EVENT_CHOICE: cancel_ignored:{}:player={}:reason={}",
-                    token, player.getGameProfile().getName(), reason);
+                    token, player.getGameProfile().name(), reason);
             return;
         }
         forceFirst(player, session, reason);

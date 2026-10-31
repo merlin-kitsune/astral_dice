@@ -19,7 +19,7 @@ import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
  * <p><b>26.1.2 平台改写点</b>：26.1.2 的药水效果常量已改名（{@code MOVEMENT_SPEED → SPEED}、
  * {@code MOVEMENT_SLOWDOWN → SLOWNESS}、{@code HEAL → INSTANT_HEALTH} 等，见
  * {@code docs/compat-26.1.2-neoforge.md} §2.2），故本牌沿用 26.1.2 既有的
- * {@code MobEffects.SPEED}（1.21.1 侧写作 {@code MobEffects.MOVEMENT_SPEED}）——语义等价，
+ * {@code MobEffects.SPEED}（1.21.1 侧写作 {@code MobEffects.SPEED}）——语义等价，
  * 与 {@code EffectTimerGuard.apply} 的用法逐字一致。
  */
 public class ExpressDeliveryCardItem extends BaseEffectCardItem {
@@ -58,6 +58,6 @@ public class ExpressDeliveryCardItem extends BaseEffectCardItem {
 
     @Override
     protected void applyEffect(Level level, Player user, LivingEntity applyTo, ItemStack stack) {
-        PlayerEffectProtection.apply(applyTo, new MobEffectInstance(MobEffects.MOVEMENT_SPEED, DURATION_TICKS, 1, false, true));
+        PlayerEffectProtection.apply(applyTo, new MobEffectInstance(MobEffects.SPEED, DURATION_TICKS, 1, false, true));
     }
 }

@@ -1,10 +1,8 @@
 package com.merlinkitsune.astral_dice.client;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
-import com.merlinkitsune.astral_dice.entity.RepulsionEntity;
-import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.model.EntityModel;
+import net.minecraft.client.renderer.entity.state.EntityRenderState;
 import net.minecraft.client.model.geom.ModelLayerLocation;
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.model.geom.PartPose;
@@ -74,7 +72,7 @@ import net.minecraft.resources.Identifier;
  *       盒式 UV 的 {@code u+d / u+d+w} 递推仍按**方块尺寸**（12/12/2）算，矩形会缩到中间半幅而错位。</li>
  * </ul>
  */
-public class RepulsionModel extends EntityModel<RepulsionEntity> {
+public class RepulsionModel extends EntityModel<EntityRenderState> {
 
     /** 模型层 id：{@code astral_dice:repulsion#main}。 */
     public static final ModelLayerLocation LAYER_LOCATION = new ModelLayerLocation(
@@ -86,11 +84,8 @@ public class RepulsionModel extends EntityModel<RepulsionEntity> {
     /** bbmodel 的 +45°（绕 Z）⇒ 模型侧 −135°（比「取反」多 90°：叠加渲染期 scale(-1,-1,1) 后北面贴图才与 bbmodel 同向）。 */
     private static final float HEAD_TWIST = (float) Math.toRadians(45.0D);   // 2026-10-21 修正：牌面绕自身中心转 180°（cube 偏移取 -12,-12，见 createBodyLayer）
 
-    private final ModelPart root;
-
     public RepulsionModel(ModelPart root) {
-        super();
-        this.root = root;
+        super(root);
     }
 
     /**
@@ -118,15 +113,4 @@ public class RepulsionModel extends EntityModel<RepulsionEntity> {
         return LayerDefinition.create(mesh, 64, 64);
     }
 
-    /** 强化拒止没有动画（不摆臂、不走动），姿态完全由 static 的 PartPose 决定。 */
-    @Override
-    public void setupAnim(RepulsionEntity entity, float limbSwing, float limbSwingAmount,
-                          float ageInTicks, float netHeadYaw, float headPitch) {
-    }
-
-    @Override
-    public void renderToBuffer(PoseStack poseStack, VertexConsumer buffer, int packedLight,
-                               int packedOverlay, int color) {
-        this.root.render(poseStack, buffer, packedLight, packedOverlay, color);
-    }
 }

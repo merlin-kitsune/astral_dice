@@ -76,7 +76,7 @@ public class JillSignItem extends BaseSignItem {
     /** 背包里可用的卡牌数量（战斗牌 + 效果牌）。 */
     public static int countCards(Player player) {
         int count = 0;
-        for (ItemStack stack : player.getNonEquipmentItems()) {
+        for (ItemStack stack : player.getInventory().getNonEquipmentItems()) {
             if (ModItems.isCardItem(stack)) count += stack.getCount();
         }
         return count;
@@ -173,8 +173,8 @@ public class JillSignItem extends BaseSignItem {
         }
 
         if (allSame) {
-            PlayerEffectProtection.apply(caster, new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 1200, 1, false, true, true));
-            PlayerEffectProtection.apply(target, new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 1200, 1, false, true, true));
+            PlayerEffectProtection.apply(caster, new MobEffectInstance(MobEffects.SPEED, 1200, 1, false, true, true));
+            PlayerEffectProtection.apply(target, new MobEffectInstance(MobEffects.SPEED, 1200, 1, false, true, true));
         } else {
             StarEngineEconomy.deposit(caster, COIN_PER_PROC);
             StarEngineEconomy.deposit(target, COIN_PER_PROC);
@@ -224,7 +224,7 @@ public class JillSignItem extends BaseSignItem {
     private static Player resolveTarget(Player caster, String uuid) {
         try {
             UUID id = UUID.fromString(uuid);
-            return caster.getServer() == null ? null : caster.getServer().getPlayerList().getPlayer(id);
+            return caster.level().getServer() == null ? null : caster.level().getServer().getPlayerList().getPlayer(id);
         } catch (IllegalArgumentException ignored) {
             return null;
         }

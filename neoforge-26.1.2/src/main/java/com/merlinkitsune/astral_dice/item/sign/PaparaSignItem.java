@@ -84,7 +84,7 @@ public class PaparaSignItem extends BaseSignItem {
         //   且 Post#getNewDamage() 的 javadoc 原文即「the amount of health this entity lost during this sequence」。
         // ⇒ Post#getNewDamage() == f1 == 扣吸收后的实际红心伤害。旧口径读 Pre 的 getNewDamage() 发生在扣吸收之前,
         //   数值含吸收段(比实际扣血偏大),这正是两线回血基数不一致的根因。
-        int heal = Math.max(1, (int) event.getNewDamage() / 2);
+        int heal = Math.max(1, (int) event.getHealthDamage() / 2);
         player.heal(heal);
     }
 

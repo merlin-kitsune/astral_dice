@@ -37,7 +37,7 @@ public class ModRecipeProvider extends RecipeProvider {
                 .unlockedBy("has_quartz_block", has(Items.QUARTZ_BLOCK))
                 .save(output);
 
-        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.BLANK_SIGN.get())
+        ShapedRecipeBuilder.shaped(items, RecipeCategory.MISC, ModItems.BLANK_SIGN.get())
                 .pattern("SSS")
                 .pattern("SCS")
                 .pattern("SSS")
@@ -179,7 +179,7 @@ public class ModRecipeProvider extends RecipeProvider {
                 .save(output);
 
         // T3 强:护法立牌(钻石骰子 + 铁剑×2 + 红色染料×2 + 青色染料×2 + 星盘×1,有序,空白立牌置中,骰子置中下)
-        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.MISAKI_SIGN.get())
+        ShapedRecipeBuilder.shaped(items, RecipeCategory.MISC, ModItems.MISAKI_SIGN.get())
                 .pattern("RPR")
                 .pattern("IEI")
                 .pattern("CDC")
@@ -233,7 +233,7 @@ public class ModRecipeProvider extends RecipeProvider {
                 .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 紫色飞星(史诗/星光流派):第三行 = 星盘,第二行中 = 空白筹码,两侧 = 星币尘,第一行 = 紫水晶碎片
-        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.PURPLE_SHOOTING_STAR_CHIP.get())
+        ShapedRecipeBuilder.shaped(items, RecipeCategory.MISC, ModItems.PURPLE_SHOOTING_STAR_CHIP.get())
                 .pattern("XXX")
                 .pattern("DBD")
                 .pattern("PPP")
@@ -247,7 +247,7 @@ public class ModRecipeProvider extends RecipeProvider {
         // 金色飞星(传奇/星光流派):**进阶筹码** —— 走紫->金「通用升级」模板 RDR/DTD/GGG
         // (红石粉 / 钻石 / 上一等级 = 紫色飞星 / 黄金星盘),不再复用紫色飞星的基础图案。
         // ⚠️ 本筹码的进阶关系同时登记在 scripts/verify/ChipCommon.psm1 的 $UPGRADE 表中。
-        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.GOLDEN_SHOOTING_STAR_CHIP.get())
+        ShapedRecipeBuilder.shaped(items, RecipeCategory.MISC, ModItems.GOLDEN_SHOOTING_STAR_CHIP.get())
                 .pattern("RDR")
                 .pattern("DTD")
                 .pattern("GGG")
@@ -966,7 +966,7 @@ public class ModRecipeProvider extends RecipeProvider {
                 .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 无线输电杆:上排 铜锭·避雷针·铜锭｜中排 导电线材·空白筹码·导电线材｜下排 星盘·星盘·星盘 [史诗·充能]
-        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.INFINITE_GRID_CHIP.get())
+        ShapedRecipeBuilder.shaped(items, RecipeCategory.MISC, ModItems.INFINITE_GRID_CHIP.get())
                 .pattern("XLX")
                 .pattern("WBW")
                 .pattern("PPP")
@@ -993,7 +993,7 @@ public class ModRecipeProvider extends RecipeProvider {
                 .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 试剂-深渊:上排 海晶碎片·海洋之心·海晶碎片｜中排 再生试剂·空白筹码·再生试剂｜下排 星盘·星盘·星盘 [史诗·治愈]
-        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.ABYSS_REAGENT_CHIP.get())
+        ShapedRecipeBuilder.shaped(items, RecipeCategory.MISC, ModItems.ABYSS_REAGENT_CHIP.get())
                 .pattern("XLX")
                 .pattern("RBR")
                 .pattern("PPP")
@@ -1007,7 +1007,7 @@ public class ModRecipeProvider extends RecipeProvider {
 
         // --- 星光类 ---
         // 财运签:上排 竹子·纸·竹子｜中排 星币尘·空白筹码·星币尘｜下排 星盘·星盘·星盘 [史诗·星光]
-        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.FORTUNE_STICK_CHIP.get())
+        ShapedRecipeBuilder.shaped(items, RecipeCategory.MISC, ModItems.FORTUNE_STICK_CHIP.get())
                 .pattern("XLX")
                 .pattern("DBD")
                 .pattern("PPP")
@@ -1020,7 +1020,7 @@ public class ModRecipeProvider extends RecipeProvider {
                 .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 手电筒-爆闪:上排 荧石·红石灯·荧石｜中排 星币尘·空白筹码·星币尘｜下排 黄金星盘·黄金星盘·黄金星盘 [传奇·星光]
-        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.FLASHLIGHT_BURST_CHIP.get())
+        ShapedRecipeBuilder.shaped(items, RecipeCategory.MISC, ModItems.FLASHLIGHT_BURST_CHIP.get())
                 .pattern("XLX")
                 .pattern("DBD")
                 .pattern("GGG")
@@ -1034,7 +1034,7 @@ public class ModRecipeProvider extends RecipeProvider {
 
         // --- 标记类 ---
         // 感测装置:上排 阳光探测器·侦测器·阳光探测器｜中排 标记涂料·空白筹码·标记涂料｜下排 星盘·星盘·星盘 [史诗·标记]
-        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.SENSOR_CHIP.get())
+        ShapedRecipeBuilder.shaped(items, RecipeCategory.MISC, ModItems.SENSOR_CHIP.get())
                 .pattern("XLX")
                 .pattern("MBM")
                 .pattern("PPP")
@@ -1113,7 +1113,7 @@ public class ModRecipeProvider extends RecipeProvider {
                 .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
         // 额外电池:上排 铜锭·铜锭·铜锭｜中排 红石块·空白筹码·红石块｜下排 星盘·星盘·星盘 [史诗·无流派]
-        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.EXTRA_BATTERY_CHIP.get())
+        ShapedRecipeBuilder.shaped(items, RecipeCategory.MISC, ModItems.EXTRA_BATTERY_CHIP.get())
                 .pattern("XXX")
                 .pattern("WBW")
                 .pattern("PPP")
@@ -1336,7 +1336,7 @@ public class ModRecipeProvider extends RecipeProvider {
         // 本配方六个填料的格位与全部其它立牌均不复用,网格全局唯一
         // (守门:scripts/verify/verify_crafting_recipe_uniqueness.ps1)。
         // 调酒师立牌(jill,奇特):紫晶骰子 + 黄金星盘×2（PVP/GEG/WDW）
-        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.JILL_SIGN.get())
+        ShapedRecipeBuilder.shaped(items, RecipeCategory.MISC, ModItems.JILL_SIGN.get())
                 .pattern("PVP")
                 .pattern("GEG")
                 .pattern("WDW")
@@ -1349,7 +1349,7 @@ public class ModRecipeProvider extends RecipeProvider {
                 .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output);
         // 多萝西立牌(dorothy,奇特):紫晶骰子 + 黄金星盘×2（PHP/LEL/TDT）
-        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.DOROTHY_SIGN.get())
+        ShapedRecipeBuilder.shaped(items, RecipeCategory.MISC, ModItems.DOROTHY_SIGN.get())
                 .pattern("PHP")
                 .pattern("LEL")
                 .pattern("TDT")
@@ -1362,7 +1362,7 @@ public class ModRecipeProvider extends RecipeProvider {
                 .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output);
         // 修女立牌(alana,稀有):黄金骰子（SBS/CEC/IDI）
-        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.ALANA_SIGN.get())
+        ShapedRecipeBuilder.shaped(items, RecipeCategory.MISC, ModItems.ALANA_SIGN.get())
                 .pattern("SBS")
                 .pattern("CEC")
                 .pattern("IDI")
@@ -1374,7 +1374,7 @@ public class ModRecipeProvider extends RecipeProvider {
                 .define('D', ModItems.GOLDEN_DICE.get())
                 .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output);
-        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.SHERRY_SIGN.get())
+        ShapedRecipeBuilder.shaped(items, RecipeCategory.MISC, ModItems.SHERRY_SIGN.get())
                 .pattern("PBP")
                 .pattern("AEA")
                 .pattern("IDI")
@@ -1432,7 +1432,7 @@ public class ModRecipeProvider extends RecipeProvider {
         // W=白色羊毛×2、A=红石灯×2、E=空白立牌、D=紫晶骰子。
         // 与 sherry(PBP/AEA/IDI)、hanna(GQG/LEL/TDT)同档(黄金星盘 + 紫晶骰子),填充材料互不相同 ⇒
         // 网格与材料多重集全局唯一(守门:scripts/verify/verify_crafting_recipe_uniqueness.ps1)。
-        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.KANGEL_SIGN.get())
+        ShapedRecipeBuilder.shaped(items, RecipeCategory.MISC, ModItems.KANGEL_SIGN.get())
                 .pattern("GNG")
                 .pattern("WEW")
                 .pattern("ADA")
@@ -1449,7 +1449,7 @@ public class ModRecipeProvider extends RecipeProvider {
         // (G=黄金星盘×2、K=黑色羊毛、W=蜘蛛网×2、C=墨囊×2、E=空白立牌、D=紫晶骰子;
         //  空白立牌置中、骰子固定中下)
         // 2026-10-16 冻结规格(用户指定):「GKG/WEW/CDC」。
-        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.AME_SIGN.get())
+        ShapedRecipeBuilder.shaped(items, RecipeCategory.MISC, ModItems.AME_SIGN.get())
                 .pattern("GKG")
                 .pattern("WEW")
                 .pattern("CDC")
@@ -1465,7 +1465,7 @@ public class ModRecipeProvider extends RecipeProvider {
         // (P=星盘、D=导电线材、R=红石块、T=钻石骰子)
         // ⚠️ 例外登记:本配方与 AGENTS-full.md:1088「空白立牌固定 3×3 正中心 + 骰子固定中下且仅 1」
         //    冲突,按用户显式给出的 pattern 落地(用户指令优先);例外只对 lingling_sign 生效。
-        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.LINGLING_SIGN.get())
+        ShapedRecipeBuilder.shaped(items, RecipeCategory.MISC, ModItems.LINGLING_SIGN.get())
                 .pattern("PDP")
                 .pattern("DRD")
                 .pattern("PTP")
@@ -1477,5 +1477,26 @@ public class ModRecipeProvider extends RecipeProvider {
                 .save(output);
         // 符卡-福 / 符卡-祸:**无配方**(专属牌,仅由风水师立牌的被动「福祸相倚」与主动「白泽赐福」
         // 及「心意相连」发放,与活体书页/命运的指引等专属牌同一口径:不进随机池、不进合成表)。
+    }
+
+    /**
+     * 26.1.2 的数据生成运行器：{@code RecipeProvider.Runner} 在本版本是**抽象类**，
+     * 必须由模组实现 {@code createRecipeProvider} 与 {@code getName}；旧版直接把
+     * {@code RecipeProvider} 交给 {@code addProvider(PackOutput, CompletableFuture)} 的写法已不存在。
+     */
+    public static class Runner extends RecipeProvider.Runner {
+        public Runner(PackOutput output, java.util.concurrent.CompletableFuture<HolderLookup.Provider> registries) {
+            super(output, registries);
+        }
+
+        @Override
+        protected RecipeProvider createRecipeProvider(HolderLookup.Provider registries, RecipeOutput output) {
+            return new ModRecipeProvider(registries, output);
+        }
+
+        @Override
+        public String getName() {
+            return "Astral Dice Recipes";
+        }
     }
 }

@@ -147,7 +147,7 @@ public class CursedSwordChipItem extends BaseChipItem {
         BLUE_CURSE_LAST_WARN.put(player, now);
         player.sendOverlayMessage(net.minecraft.network.chat.Component
                 .translatable("msg.astral_dice.blue_curse_blocked")
-                .withStyle(net.minecraft.ChatFormatting.RED), true);
+                .withStyle(net.minecraft.ChatFormatting.RED));
     }
 
     // 诅咒之剑:每击杀 1 个不少于 20 血敌对目标,攻击力 +1(上限由配置决定)

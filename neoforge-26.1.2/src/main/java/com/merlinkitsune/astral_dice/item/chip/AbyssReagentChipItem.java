@@ -42,7 +42,7 @@ import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
  * {@code [0, getMaxAbsorption()]},而 {@code generic.max_absorption} 的**基础值是 0**
  * ({@code Attributes.java}: {@code RangedAttribute("generic.max_absorption", 0.0, 0.0, 2048.0)});
  * 原版吸收效果{@code MobEffects.ABSORPTION} 注册时挂了 {@code MAX_ABSORPTION += 4.0}(ADD_VALUE),
- * 且 {@code AttributeTemplate.create(level) = amount * (level + 1)} ⇒ **N 级 = 上限 4×(N+1)**。
+ * 且 {@code AttributeTemplate.create(level, net.minecraft.world.entity.EntitySpawnReason.COMMAND) = amount * (level + 1)} ⇒ **N 级 = 上限 4×(N+1)**。
  * 更关键的是 {@code AbsorptionMobEffect#onEffectStarted} 会**直接把数值顶到**
  * {@code max(当前, 4×(1+级))},而 {@code LivingEntity#addEffect} 里
  * {@code effectInstance.onEffectStarted(this)} 位于 if/else **之外** ⇒ **每次 addEffect 都会顶一次**。

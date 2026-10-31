@@ -134,7 +134,7 @@ public class ChipShopCategory implements IRecipeCategory<ChipShopRecipe> {
     @Override
     public void setRecipe(IRecipeLayoutBuilder builder, ChipShopRecipe recipe, IFocusGroup focuses) {
         // 催化剂：筹码商店方块本体（JEI 会据此把本类别挂到方块物品的「用途」页）
-        builder.addSlot(RecipeIngredientRole.CATALYST, SHOP_SLOT_X, SHOP_SLOT_Y)
+        builder.addSlot(RecipeIngredientRole.CRAFTING_STATION, SHOP_SLOT_X, SHOP_SLOT_Y)
                 .addItemStack(new ItemStack(ModBlocks.CHIP_SHOP.get()));
         // 输入：星币（交易用的货币）
         builder.addInputSlot(COIN_SLOT_X, COIN_SLOT_Y)
@@ -160,7 +160,7 @@ public class ChipShopCategory implements IRecipeCategory<ChipShopRecipe> {
         List<FormattedCharSequence> lines = font.split(text, TEXT_MAX_WIDTH);
         int lineStep = font.lineHeight + 2;
         for (int i = 0; i < lines.size(); i++) {
-            guiGraphics.drawString(font, lines.get(i), x, y + i * lineStep, TEXT_COLOR, false);
+            guiGraphics.text(font, lines.get(i), x, y + i * lineStep, TEXT_COLOR, false);
         }
     }
 }

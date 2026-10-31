@@ -46,10 +46,10 @@ public class MemberRecommendationChipItem extends BaseChipItem {
     // 统计玩家物品栏中的手牌数量(主背包 + 副手,按堆叠数量累加)
     private static int countHandCards(Player player) {
         int total = 0;
-        for (ItemStack stack : player.getNonEquipmentItems()) {
+        for (ItemStack stack : player.getInventory().getNonEquipmentItems()) {
             if (ModItems.isCardItem(stack)) total += stack.getCount();
         }
-        for (ItemStack stack : player.getInventory().offhand) {
+        for (ItemStack stack : player.getInventory().getNonEquipmentItems()) {
             if (ModItems.isCardItem(stack)) total += stack.getCount();
         }
         return total;

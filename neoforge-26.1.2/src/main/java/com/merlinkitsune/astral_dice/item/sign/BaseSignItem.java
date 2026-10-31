@@ -461,6 +461,16 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
      *
      * <p>缺省 0 = 无强制冷却(其余立牌行为逐字不变)。
      */
+    /**
+     * 锁定结束进入冷却时是否**跳过**冷却（缺省 false = 照常进冷却）。
+     *
+     * <p>26.1.2 平台差异：本钩子在合并时丢失，按 1.21.1 基准补回（当时无覆写者；
+     * 蛟龙立牌走「锁定 1:00 + 锁定结束无额外冷却」即覆写为 true）。</p>
+     */
+    protected boolean skipCooldownAfterLock() {
+        return false;
+    }
+
     protected long forcedCooldownUntil(Player player) {
         return 0L;
     }
