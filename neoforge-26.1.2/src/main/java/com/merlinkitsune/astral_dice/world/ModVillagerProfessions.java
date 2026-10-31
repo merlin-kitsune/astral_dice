@@ -69,7 +69,7 @@ public final class ModVillagerProfessions {
                     null,
                     // 26.1.2：交易表随职业一起变成数据驱动（Int2ObjectMap<ResourceKey<TradeSet>>）。
                     // 1-5 级各绑一个数据包里的 TradeSet；具体报价见 datagen/ModVillagerTradeProvider。
-                    tradeSets("card_trader")));
+                    tradeSets("chip_trader")));
 
     private ModVillagerProfessions() {
     }
