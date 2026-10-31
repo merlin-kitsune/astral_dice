@@ -25,13 +25,14 @@ tasks.named('wrapper', Wrapper).configure {
 
 
 // === 整合包（Minecraft 实例）根目录：全局唯一解析点 ===
-// 2026-10-31 起，Linux 宿主直接读 VM 共享盘 /mnt/hgfs/.minecraft（与 Windows 宿主的 D:/.minecraft 是同一批文件），
-// 不再依赖 Windows 盘符。解析顺序：环境变量 MC_HOME > /mnt/hgfs/.minecraft（存在即用）> Windows 传统路径 D:/.minecraft。
+// 2026-10-31 起改走原生 Linux 真机：Windows 的 D: 盘挂载在 /mnt/d（ntfs3），游戏根 = /mnt/d/.minecraft，
+// 与 Windows 宿主的 D:\.minecraft 是同一批文件；Windows 侧行为不变（/mnt/d 不存在时回落 D:/.minecraft）。
+// 解析顺序：环境变量 MC_HOME > /mnt/d/.minecraft（存在即用）> Windows 传统路径 D:/.minecraft。
 // 各子项目一律用 rootProject.ext.mcHomePath 拼 `versions/<整合包目录>/mods`，禁止各自硬编码路径。
 def mcHomePath = System.getenv('MC_HOME')?.trim()
 if (!mcHomePath) {
-    def hgfsHome = new File('/mnt/hgfs/.minecraft')
-    mcHomePath = hgfsHome.isDirectory() ? hgfsHome.absolutePath : 'D:/.minecraft'
+    def linuxHome = new File('/mnt/d/.minecraft')
+    mcHomePath = linuxHome.isDirectory() ? linuxHome.absolutePath : 'D:/.minecraft'
 }
 ext.mcHomePath = mcHomePath
 logger.lifecycle("整合包根目录 (MC_HOME): ${ext.mcHomePath}")
