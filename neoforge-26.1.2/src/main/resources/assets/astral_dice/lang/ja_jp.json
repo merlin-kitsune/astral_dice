@@ -1087,5 +1087,7 @@
   "gui.astral_dice.card_choice.title_triple_combat": "戦闘カードを3枚選択",
   "gui.astral_dice.card_choice.title_triple_effect": "効果カードを3枚選択",
   "gui.astral_dice.card_choice.title_triple_any": "カードを3枚選択",
-  "msg.astral_dice.event_animating": "イベント演出中です。少し待ってからお試しください。"
+  "msg.astral_dice.event_animating": "イベント演出中です。少し待ってからお試しください。",
+  "entity.astral_dice.villager.card_trader": "カード商人",
+  "entity.astral_dice.villager.chip_trader": "チップ商人"
 }

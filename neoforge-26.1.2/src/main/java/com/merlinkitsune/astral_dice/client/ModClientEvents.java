@@ -6,6 +6,9 @@ import com.merlinkitsune.astral_dice.client.render.TraderVillagerRenderer;
 import net.minecraft.world.entity.EntityType;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import com.merlinkitsune.astral_dice.screen.CardInventoryScreen;
+import com.merlinkitsune.astral_dice.screen.CardChoiceScreen;
+import com.merlinkitsune.astral_dice.screen.ChipShopScreen;
+import com.merlinkitsune.astral_dice.screen.CardShopScreen;
 import com.merlinkitsune.astral_dice.screen.ModMenuTypes;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
@@ -57,6 +60,9 @@ public class ModClientEvents {
     @SubscribeEvent
     public static void registerScreens(RegisterMenuScreensEvent event) {
         event.register(ModMenuTypes.CARD_INVENTORY.get(), CardInventoryScreen::new);
+        event.register(ModMenuTypes.CARD_SHOP.get(), CardShopScreen::new);
+        event.register(ModMenuTypes.CHIP_SHOP.get(), ChipShopScreen::new);
+        event.register(ModMenuTypes.CARD_CHOICE.get(), CardChoiceScreen::new);
     }
 
     /**
