@@ -62,7 +62,7 @@ public class TraderVillagerRenderer extends MobRenderer<Villager, VillagerRender
     public void submit(VillagerRenderState state, PoseStack poseStack, SubmitNodeCollector submitNodeCollector,
                        CameraRenderState camera) {
         VillagerModel previous = this.model;
-        this.model = state.isBaby ? this.babyModel : (isCardTrader(state.getVillagerData()) ? this.traderModel : this.vanillaModel);
+        this.model = state.isBaby ? this.babyModel : (isTrader(state.getVillagerData()) ? this.traderModel : this.vanillaModel);
         try {
             super.submit(state, poseStack, submitNodeCollector, camera);
         } finally {
@@ -70,18 +70,12 @@ public class TraderVillagerRenderer extends MobRenderer<Villager, VillagerRender
         }
     }
 
-    /**
-     * 只有「卡牌商人」用无帽模型：它的职业贴图把草帽画在 {@code hat} 盒上，而 Blockbench 源里没有帽子。
-     * 「筹码商人」的墨镜同样画在 {@code hat} 盒上，所以它必须继续用原版模型，否则墨镜会一起消失。
-     */
-    private static boolean isCardTrader(@Nullable VillagerData data) {
+    private static boolean isTrader(@Nullable VillagerData data) {
         if (data == null) {
             return false;
         }
         ResourceKey<VillagerProfession> key = data.profession().unwrapKey().orElse(null);
-        return key != null
-                && AstralDiceMod.MODID.equals(key.identifier().getNamespace())
-                && "card_trader".equals(key.identifier().getPath());
+        return key != null && AstralDiceMod.MODID.equals(key.identifier().getNamespace());
     }
 
     @Override
