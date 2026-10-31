@@ -1,6 +1,8 @@
 package com.merlinkitsune.astral_dice.client;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
+import com.merlinkitsune.astral_dice.client.render.TraderVillagerRenderer;
+import net.minecraft.world.entity.EntityType;
 import com.merlinkitsune.astral_dice.entity.ModEntityTypes;
 import com.merlinkitsune.astral_dice.init.ModParticles;
 import com.merlinkitsune.astral_dice.screen.CardInventoryScreen;
@@ -31,6 +33,16 @@ import org.joml.Vector4f;
 import com.merlinkitsune.starengine.client.ActionBarManager;
 @Mod.EventBusSubscriber(modid = AstralDiceMod.MODID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
 public class ModClientEvents {
+
+    /**
+     * 卡牌商人 / 筹码商人村民改用「关掉 hat + hat_rim」的村民模型；其余职业与幼年村民不变。
+     * 见 {@code TraderVillagerRenderer} / {@code TraderVillagerModel} 的类注释。
+     */
+    @SubscribeEvent
+    public static void registerTraderVillagerRenderer(EntityRenderersEvent.RegisterRenderers event) {
+        event.registerEntityRenderer(EntityType.VILLAGER, TraderVillagerRenderer::new);
+    }
+
 
     /**
      * 自发光「发光尘」的客户端 provider（飞星拖尾用）。贴图集合取原版 dust 的 {@code generic_0..generic_7}，

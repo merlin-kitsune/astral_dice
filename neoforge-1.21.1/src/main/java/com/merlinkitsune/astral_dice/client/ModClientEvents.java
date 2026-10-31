@@ -1,6 +1,8 @@
 package com.merlinkitsune.astral_dice.client;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
+import com.merlinkitsune.astral_dice.client.render.TraderVillagerRenderer;
+import net.minecraft.world.entity.EntityType;
 import com.merlinkitsune.astral_dice.entity.ModEntityTypes;
 import com.merlinkitsune.astral_dice.init.ModParticles;
 import com.merlinkitsune.astral_dice.screen.CardInventoryScreen;
@@ -31,6 +33,16 @@ import org.joml.Vector4f;
 import com.merlinkitsune.starengine.client.ActionBarManager;
 @EventBusSubscriber(modid = AstralDiceMod.MODID, value = Dist.CLIENT, bus = EventBusSubscriber.Bus.MOD)
 public class ModClientEvents {
+
+    /**
+     * 卡牌商人 / 筹码商人村民改用「关掉 hat + hat_rim」的村民模型；其余职业与幼年村民不变。
+     * 见 {@code TraderVillagerRenderer} / {@code TraderVillagerModel} 的类注释。
+     */
+    @SubscribeEvent
+    public static void registerTraderVillagerRenderer(EntityRenderersEvent.RegisterRenderers event) {
+        event.registerEntityRenderer(EntityType.VILLAGER, TraderVillagerRenderer::new);
+    }
+
 
     // 菜单界面注册:本类带 @EventBusSubscriber(Dist.CLIENT),**在专用服务端整体不会被加载**,
     // 故此处引用纯客户端的 CardInventoryScreen 是安全的。
