@@ -7,7 +7,6 @@ import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.starengine.effect.MosesBrokenEffect;
 import com.merlinkitsune.astral_dice.effect.WeaknessRevealEffect;
-import com.merlinkitsune.astral_dice.event.WeirdDiceHandler;
 import com.merlinkitsune.astral_dice.item.ChargeManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.chip.CurrentCoreChipItem;
@@ -74,6 +73,8 @@ public class MosesSignItem extends BaseSignItem {
                 // 主动成功施加:开始玩家级冷却(被动「精密技巧」120 秒)并计入「电流核心」充能
                 ModAttachments.setSignActiveCooldownEnd(player,
                         player.level().getGameTime() + signCooldownTicks(player));
+                // 冷却口径一致(2026-10-22 补):记录本次实际最大冷却,供「瞬时冷却」/减免换算剩余比例
+                ModAttachments.setSignActiveMaxCooldown(player, (long) (signCooldownTicks(player)));
                 CurrentCoreChipItem.onActiveSkillUsed(player);
                 LOGGER.debug("[Astral Dice][TargetSelection] moses_apply_broken applied to {}({}) by {}",
                         target.getId(), target.getName().getString(), player.getName().getString());
@@ -89,7 +90,7 @@ public class MosesSignItem extends BaseSignItem {
     protected void onCurioTick(SlotContext slotContext, ItemStack stack) {
         if (!(slotContext.entity() instanceof Player player)) return;
         if (player.level().isClientSide()) return;
-        // 防御力按弱点识破层数折算为真实护甲(1 防御力 = 2 护甲)
+        // 防御力按弱点识破层数折算为真实护甲(1 防御力 = 1÷护甲系数 护甲)
         DiceCombatModifiers.setDefenseArmorBonus(player, "moses_weakness_armor",
                 isEquipped(player) ? WeaknessRevealEffect.getStacks(player) : 0);
     }
@@ -129,16 +130,13 @@ public class MosesSignItem extends BaseSignItem {
 
     /**
      * 立牌主动冷却 tick:佩戴枪匠时基础 120 秒(低于充能上限 160 秒 ⇒ 有充能时不受影响);
-     * 先按充能上限封顶,再按诡异骰子减半。
+     * 仅按充能上限封顶。
      */
     public static int signCooldownTicks(Player player) {
         int ticks = isEquipped(player)
                 ? ACTIVE_COOLDOWN_SECONDS * 20
                 : GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS;
         ticks = (int) ChargeManager.signCooldownTicks(player, ticks);
-        if (WeirdDiceHandler.hasWeirdDice(player)) {
-            ticks = Math.max(1, ticks / 2);
-        }
         return ticks;
     }
 

@@ -52,6 +52,22 @@ public final class CurioSlotUtil {
      * Curios 入口各不相同(官方 API / 库 `CuriosCompat` / 模组 `compat.curios`)⇒ 统一收敛到
      * 本类,调用方(如 {@code ChargeManager})不再直接触碰 Curios API。
      */
+    /** 当前装备在**全部饰品槽**里的物品（副本，按槽位顺序；2026-10-21 死亡不掉落用）。 */
+    public static java.util.List<ItemStack> allEquipped(LivingEntity entity) {
+        java.util.List<ItemStack> out = new java.util.ArrayList<>();
+        var curios = CuriosApi.getCuriosInventory(entity);
+        if (curios.isEmpty()) return out;
+        var curiosMap = curios.get().getCurios();
+        for (var key : curiosMap.keySet()) {
+            var stacks = curiosMap.get(key).getStacks();
+            for (int i = 0; i < stacks.getSlots(); i++) {
+                ItemStack s = stacks.getStackInSlot(i);
+                if (!s.isEmpty()) out.add(s.copy());
+            }
+        }
+        return out;
+    }
+
     public static boolean hasAnyCurioMatching(LivingEntity entity, java.util.function.Predicate<ItemStack> predicate) {
         var curios = CuriosApi.getCuriosInventory(entity);
         if (curios.isEmpty()) return false;

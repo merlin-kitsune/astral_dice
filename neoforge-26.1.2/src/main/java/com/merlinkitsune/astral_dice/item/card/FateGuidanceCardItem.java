@@ -1,5 +1,6 @@
 package com.merlinkitsune.astral_dice.item.card;
 
+import com.merlinkitsune.starengine.component.GameplayConstants;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.Level;
@@ -15,6 +16,8 @@ import net.minecraft.world.item.ItemStack;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import net.neoforged.bus.api.SubscribeEvent;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * 命运的指引(专属功能效果牌,击杀带虚弱印记的目标获取)。
@@ -30,9 +33,13 @@ import net.neoforged.bus.api.SubscribeEvent;
 @EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class FateGuidanceCardItem extends BaseEffectCardItem {
 
+    // 七咒倍率机制证据通道(AP_CURSE_RATIO):仅在捕获到 >1 倍率时输出。
+    private static final Logger LOGGER = LoggerFactory.getLogger(FateGuidanceCardItem.class);
+
     public FateGuidanceCardItem(Properties properties) {
         super(properties);
     }
+
     @Override
     protected String cardTypeId() {
         return "fate_guidance";
@@ -57,16 +64,26 @@ public class FateGuidanceCardItem extends BaseEffectCardItem {
     }
 
     // 主动技能冷却时间减半(实时功能):冷却中则从剩余时间中扣除「本次冷却实际使用的最大冷却时长」的 50%
-    // (路线 A:减少量 = 起冷却时记录的 sign_active_max_cooldown ÷ 2,例:180 秒冷却减 90 秒、枪匠 120 秒冷却减 60 秒;
-    //  记录缺失时兜底回退旧行为——按通用最大值重算;玩家级冷却,不受立牌装卸影响)
+    // (路线 A:减少量 = 起冷却时记录的**未折电池**基准 sign_active_max_cooldown_base ÷ 2(缺失时回退
+    //  sign_active_max_cooldown),例:180 秒冷却减 90 秒;全都缺失时兜底按**运行期**未折电池基础值重算;
+    //  玩家级冷却,不受立牌装卸影响)
     // 第二批「三态化」:主动仍在**锁定(生效中)**态时冷却尚未起算(cdEnd == 0),此时把同一减半量
     // **累加进锁定减免池**,由锁定结束起冷却时一次性抵扣——不在这里改任何冷却数值。
     private static void reduceActiveSkillCooldown(Player player) {
         long now = player.level().getGameTime();
-        long maxCooldown = ModAttachments.getSignActiveMaxCooldown(player);
+        // 优先读「未折电池」基准:额外电池的 ×0.5 只作用于立牌主动冷却本身,不得把本卡的减半量一并砍半。
+        long maxCooldown = ModAttachments.getSignActiveMaxCooldownBase(player);
         if (maxCooldown <= 0) {
-            // 兜底:记录缺失(老存档/漏写路径)时按旧行为重算通用最大值
-            maxCooldown = com.merlinkitsune.astral_dice.event.WeirdDiceHandler.signCooldownTicks(player);
+            // 兼容回退：老存档没有 sign_active_max_cooldown_base 附件 ⇒ 退回电池折算后的记录(旧行为)。
+            maxCooldown = ModAttachments.getSignActiveMaxCooldown(player);
+        }
+        if (maxCooldown <= 0) {
+            // 兜底:记录缺失(老存档/漏写路径)时按**运行期**基础冷却值(未折电池)重算 ——
+            // 不走 WeirdDiceHandler.signCooldownTicks:那条链带「额外电池筹码 ×0.5」,
+            // 会把本卡的减半量一起砍掉(电池只作用于立牌主动冷却,不作用于本卡收益)。
+            // 运行期取值(不能冻结成 static final:GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS 可被 config 重算)。
+            maxCooldown = com.merlinkitsune.astral_dice.item.ChargeManager.signCooldownTicksBase(
+                    player, GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS);
         }
         long reduction = maxCooldown / 2;
         if (com.merlinkitsune.astral_dice.item.sign.BaseSignItem.isSignActiveLocked(player)) {
@@ -86,6 +103,51 @@ public class FateGuidanceCardItem extends BaseEffectCardItem {
     public static boolean isFateGuidanceActive(Player player) {
         long until = com.merlinkitsune.astral_dice.component.ModAttachments.getFateActiveUntil(player);
         return until > 0 && player.level().getGameTime() < until;
+    }
+
+
+    // 七咒第一诅咒处理:神秘遗物+ 模组(默认 NORMAL 优先级)先应用其配置/修正物品后的伤害倍率,
+    // 本处理器在 LOWEST 捕获该【实际倍率】(amount/original,动态适配 painMultiplier 配置、大地誓约、
+    // 救赎之戒转换等模组内修正),而非固化倍率。
+    // - 骰战攻击(攻击者赐福激活+骰子+近战):不修改模组倍率,仅捕获存至目标侧,由骰战最终伤害使用;
+    // - 非骰战攻击:命运的指引激活时按加幅减半(第一诅咒影响 -50%),未激活则保持模组倍率。
+    @SubscribeEvent(priority = net.neoforged.bus.api.EventPriority.LOWEST)
+    public static void onCurseMitigation(
+            net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent event) {
+        if (!(event.getEntity() instanceof Player player)) return;
+        if (player.level().isClientSide()) return;
+        if (!DiceCombatEvents.hasEnigmaticCurse(player)) {
+            // 未佩戴七咒(含已转换为救赎之戒):清理捕获,保持无倍率
+            com.merlinkitsune.astral_dice.component.ModAttachments.setDiceCurseRatio(player, 1.0f);
+            return;
+        }
+        float original = event.getOriginalAmount();
+        float current = event.getAmount();
+        float ratio = current > original ? current / original : 1.0f;
+
+        // 是否骰战攻击(骰战攻击的最终伤害由骰战接管,此处仅捕获倍率,不修改伤害链)
+        // F3(2026-10-27 近战审计):判据与骰战入口同源 —— 旧写法只认「玩家 + 赐福 + 骰子 + 近战」,
+        //   漏掉入口支持的无骰分支 ⇒ 该分支的半幅写入被骰战整段覆盖、ratio 又被清成 1.0(倍率丢失)。
+        boolean diceCombat = DiceCombatEvents.isDiceBattleSettledDamage(event.getSource(), player);
+        if (diceCombat) {
+            com.merlinkitsune.astral_dice.component.ModAttachments.setDiceCurseRatio(player, ratio);
+            // AP_CURSE_RATIO(机制证据,2026-10-27):仅当神秘遗物实际放大了本次伤害(ratio>1)时输出,
+            // 证明「模组倍率被捕获 / 捕获值多少」;正常游玩(未戴七咒)零噪声。
+            if (ratio > 1.0f) {
+                LOGGER.info("AP_CURSE_RATIO:player={}:original={}:current={}:ratio={}",
+                        player.getName().getString(), original, current, ratio);
+            }
+            return;
+        }
+
+        // 非骰战攻击:命运的指引激活时第一诅咒影响 -50%(加幅减半)
+        if (ratio > 1.0f
+                && event.getSource().getEntity() instanceof Player attacker2
+                && isFateGuidanceActive(attacker2)) {
+            event.setAmount(original + (current - original) * 0.5f);
+        }
+        // 非骰战攻击不产生骰战捕获,清理
+        com.merlinkitsune.astral_dice.component.ModAttachments.setDiceCurseRatio(player, 1.0f);
     }
 
 

@@ -1,6 +1,6 @@
 package com.merlinkitsune.astral_dice.item.sign;
 
-import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
+import com.merlinkitsune.starengine.event.EffectTimerGuard;
 import com.merlinkitsune.starengine.event.SignActiveTriggeredEvent;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -46,7 +46,7 @@ public class FannySignItem extends BaseSignItem {
         //   触发者有队伍 = 全队 ∪ 64 格内非队友;无队伍 = 全部无队伍玩家 ∪ 64 格内所有玩家。
         // ⚠️ 锁定(主动技能冷却)仍**只由触发者自己**的施加结果决定,广播给他人不影响冷却判定。
         long lockEnd = 0L;
-        for (Player target : com.merlinkitsune.astral_dice.combat.PartyRelations.collectEventTargets(
+        for (Player target : com.merlinkitsune.starengine.combat.PartyRelations.collectEventTargets(
                 player, com.merlinkitsune.astral_dice.event.AstralEventSystem.EVENT_TARGET_RADIUS)) {
             long applied = applyEventTo(target, roll);
             if (target == player) {

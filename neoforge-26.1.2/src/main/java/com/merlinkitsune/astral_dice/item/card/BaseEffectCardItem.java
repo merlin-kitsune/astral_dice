@@ -17,6 +17,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import com.merlinkitsune.astral_dice.audio.ModSounds;
 import com.merlinkitsune.astral_dice.audio.SoundPlayback;
+import com.merlinkitsune.astral_dice.event.EventAnimationLock;
 import com.merlinkitsune.astral_dice.item.chip.MagicTomeChipItem;
 import com.merlinkitsune.astral_dice.item.chip.CandyChipItem;
 import com.merlinkitsune.astral_dice.item.chip.SatelliteChipItem;
@@ -37,6 +38,8 @@ import com.merlinkitsune.starengine.target.TargetSelectionAction;
 import com.merlinkitsune.starengine.target.TargetSelectionRegistry;
 import com.merlinkitsune.starengine.target.TargetType;
 import net.neoforged.neoforge.network.PacketDistributor;
+import com.merlinkitsune.starengine.target.SelectorTargets;
+import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
 
 /**
  * 效果牌统一基类(不再区分"功能效果牌/伤害效果牌")。
@@ -78,7 +81,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
  * <h2>26.1.2 平台改写点（相对 {@code neoforge-1.21.1} 基准，语义零差异）</h2>
  * <ol>
  *   <li>{@code Item#use} 在 26.1.2 返回 {@link InteractionResult}（1.21.1 为
- *       {@code InteractionResultHolder<ItemStack>}）⇒ {@code use}/{@code useViaSelector} 的返回类型与
+ *       {@code InteractionResult}）⇒ {@code use}/{@code useViaSelector} 的返回类型与
  *       「客户端成功 = {@code SUCCESS} / 服务端成功 = {@code SUCCESS_SERVER}」写法按本线既有形态书写；</li>
  *   <li>{@code Level#isClientSide} 是**方法**（{@code isClientSide()}），不再是字段；</li>
  *   <li>客户端 actionbar 文案用 {@code Player#sendOverlayMessage(Component)}
@@ -196,7 +199,7 @@ public abstract class BaseEffectCardItem extends Item {
     protected void applyEffect(Level level, Player user, LivingEntity applyTo, ItemStack stack) {
         Holder<MobEffect> effect = getEffect();
         if (effect != null) {
-            applyTo.addEffect(new MobEffectInstance(effect, getEffectDuration(), 0, false, true));
+            PlayerEffectProtection.apply(applyTo, new MobEffectInstance(effect, getEffectDuration(), 0, false, true));
         }
     }
 
@@ -375,6 +378,9 @@ public abstract class BaseEffectCardItem extends Item {
      * {@link HoldToSelect#stillHeld} 判定负责关闭会话(此处只负责开)。
      */
     public static void tickHeldSelector(ServerPlayer player) {
+        // 2026-10-29 用户裁决 D4:事件动画窗内不自动开局 —— 静默跳过即可(留待下一 tick 重试),
+        // 窗结束那一 tick 自然重开,正好就是「窗结束即可用」;不落手持抑制闩,玩家无需换手。
+        if (EventAnimationLock.isAnimating(player)) return;
         if (TargetSelectionManager.isSelecting(player)) return;
         ItemStack stack = player.getMainHandItem();
         if (!(stack.getItem() instanceof BaseEffectCardItem card) || card.selectorActionId() == null) return;
@@ -391,7 +397,16 @@ public abstract class BaseEffectCardItem extends Item {
      */
     private static boolean tryStartSelector(BaseEffectCardItem card, ServerPlayer serverPlayer, ItemStack stack,
                                             String actionId) {
+        // 2026-10-29 用户裁决 D4:事件动画窗内不许开选择界面(按键兜底与手持即选择都收敛到这里)。
+        if (EventAnimationLock.isAnimating(serverPlayer)) {
+            EventAnimationLock.notifyBlocked(serverPlayer, "effect_card_selector");
+            return false;
+        }
         if (card.isExclusive() && !ExclusiveCardUtil.canUse(serverPlayer, stack)) {
+            return false;
+        }
+        // 临时牌(绿洲女王 nardis):只能由获得者出牌(2026-10-27 用户裁决)
+        if (TemporaryCardUtil.isIllegalHold(stack, serverPlayer)) {
             return false;
         }
         if (EffectCardPeriod.isBlocked(serverPlayer)) {
@@ -460,6 +475,11 @@ public abstract class BaseEffectCardItem extends Item {
         if (!(player instanceof ServerPlayer serverPlayer)) {
             return InteractionResult.FAIL;
         }
+        // 2026-10-29 用户裁决 D4:事件动画窗内按键兜底入口同样拦下(不消耗、不施效、不开会话)。
+        if (EventAnimationLock.isAnimating(serverPlayer)) {
+            EventAnimationLock.notifyBlocked(serverPlayer, "effect_card_selector");
+            return InteractionResult.FAIL;
+        }
         String actionId = selectorActionId();
         if (TargetSelectionManager.isSelecting(player) || !tryStartSelector(this, serverPlayer, stack, actionId)) {
             return InteractionResult.FAIL;
@@ -492,6 +512,10 @@ public abstract class BaseEffectCardItem extends Item {
     private boolean tryUseCard(Level level, Player player, LivingEntity applyTo, ItemStack stack) {
         // 专属牌:仅允许获得者使用
         if (isExclusive() && !ExclusiveCardUtil.canUse(player, stack)) {
+            return false;
+        }
+        // 临时牌(绿洲女王 nardis):只能由获得者使用(2026-10-27 用户裁决)
+        if (TemporaryCardUtil.isIllegalHold(stack, player)) {
             return false;
         }
         // 出牌锁:出牌数上限/冷却/效果待定任一阻止则失败

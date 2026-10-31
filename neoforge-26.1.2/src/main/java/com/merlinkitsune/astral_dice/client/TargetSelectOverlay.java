@@ -31,7 +31,7 @@ import org.slf4j.LoggerFactory;
  *       （26.1.2 的 {@code LayeredDraw} 整类已不存在；NeoForge 侧接口定义见
  *       {@code neoforge/client/gui/GuiLayer.java:12}，
  *       唯一抽象方法 {@code void render(GuiGraphicsExtractor, DeltaTracker)}）。</li>
- *   <li><b>绘制上下文</b>：{@code net.minecraft.client.gui.GuiGraphics} →
+ *   <li><b>绘制上下文</b>：{@code net.minecraft.client.gui.GuiGraphicsExtractor} →
  *       {@code net.minecraft.client.gui.GuiGraphicsExtractor}
  *       （26.1.2 的 GUI 也是两相：{@code Gui#extractRenderState} 收集 → 由 GUI 渲染状态统一落盘；
  *       见 {@code Gui.java:215-222}）。{@code guiWidth()/guiHeight()} 同名同义

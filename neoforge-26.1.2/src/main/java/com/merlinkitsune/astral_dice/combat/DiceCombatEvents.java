@@ -110,7 +110,7 @@ import com.merlinkitsune.astral_dice.item.RenShieldManager;
 import com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem;
 import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
 import com.merlinkitsune.astral_dice.item.card.FateGuidanceCardItem;
-import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
+import com.merlinkitsune.starengine.event.EffectTimerGuard;
 import com.merlinkitsune.astral_dice.item.sign.MamushiSignItem;
 import com.merlinkitsune.starengine.combat.HostileTargets;
 

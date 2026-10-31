@@ -3,7 +3,7 @@ package com.merlinkitsune.astral_dice.item;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 
 import com.merlinkitsune.astral_dice.effect.ModEffects;
-import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
+import com.merlinkitsune.starengine.event.EffectTimerGuard;
 import com.merlinkitsune.starengine.event.ModEffectRemoval;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.player.Player;

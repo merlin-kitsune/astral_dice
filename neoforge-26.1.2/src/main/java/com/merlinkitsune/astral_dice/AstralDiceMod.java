@@ -26,9 +26,21 @@ import com.merlinkitsune.astral_dice.combat.CardRegistry;
 @Mod(AstralDiceMod.MODID)
 public class AstralDiceMod {
     public static final String MODID = "astral_dice";
+    /** 必需前置库的 modId(见 templates/META-INF/neoforge.mods.toml 的 required 依赖项)。 */
+    private static final String STARENGINE_MODID = "starengine";
     private static final Logger LOGGER = LoggerFactory.getLogger(AstralDiceMod.class);
 
     public AstralDiceMod(IEventBus modEventBus, ModContainer modContainer) {
+        // ⚠️ StarEngine(前置库)**必需且不内置**(内嵌件已于 2026-10-20 移除):元数据层已声明 required + 版本区间,
+        //    此处再做一道**加载期**断言 —— 元数据被整合包改写 / 依赖解析被跳过时,否则会落到
+        //    NoClassDefFoundError 的半加载态,报错点远离真因。starengine 存在时本段只做一次 ModList 查询,
+        //    不打日志、不改注册顺序(零行为变化)。
+        if (!net.neoforged.fml.ModList.get().isLoaded(STARENGINE_MODID)) {
+            LOGGER.error("StarEngine（starengine）为必需前置，未检测到该模组，加载终止。"
+                    + "请把与 astral_dice 版本配对的 starengine-neoforge-1.21.1-<starengine_version>.jar 放入 mods/。"
+                    + "（下载指引占位：<待填写 —— 发布页 / 整合包说明>）");
+            throw new IllegalStateException("Missing required dependency: StarEngine (starengine)");
+        }
         // ⚠️ 不兼容模组黑名单(Magic Coins / SG-Economy)的检查**不能放在这里**:它是否拒绝取决于
         //    「星币钱包」开关(config/ModCommonConfig 的 enable_star_coin_wallet),而配置要到**本阶段之后**
         //    才加载(装载顺序:构造 -> 注册表初始化 -> Config loading),此处读配置会抛「配置尚未加载」。
@@ -139,7 +151,7 @@ public class AstralDiceMod {
             //    (GameplayConstants.applyConfig),此前的读数只是默认值,不是真实生效值。
             //    三个后端全是反射,契约不符时会静默退回原版计分板 —— 这条机器行让
             //    「装了 FTB Teams / OPAC 却没生效」在日志里一眼可断言(2026-10-01 新增)。
-            com.merlinkitsune.astral_dice.combat.PartyRelations.reportBackends();
+            com.merlinkitsune.starengine.combat.PartyRelations.reportBackends();
             // 卡牌类型注册表初始化(战斗牌定义集中管理)
             com.merlinkitsune.astral_dice.combat.CardRegistry.init();
             LOGGER.info("Astral Dice mod loaded.");

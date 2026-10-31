@@ -1,7 +1,6 @@
 package com.merlinkitsune.astral_dice.item.sign;
 
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
-import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
 
 import com.merlinkitsune.starengine.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.item.ChargeManager;
@@ -23,6 +22,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
+import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
 
 public class JasmineSignItem extends BaseSignItem {
     // 被动:每移动 300 米触发一次增益
@@ -41,7 +41,7 @@ public class JasmineSignItem extends BaseSignItem {
         if (player.level().isClientSide()) return;
         // 被动:移动距离累计
         tickJasmineWalk(player, stack);
-        // 防御力折算为真实护甲(1 防御力 = 2 护甲值;经 ARMOR 属性,骰战与原版伤害均生效)
+        // 防御力折算为真实护甲(1 防御力 = 1÷护甲系数 护甲值;经 ARMOR 属性,骰战与原版伤害均生效)
         com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.setDefenseArmorBonus(
                 player, "jasmine_def_armor", getDefenseBonus(stack));
     }
@@ -61,12 +61,12 @@ public class JasmineSignItem extends BaseSignItem {
     protected InteractionResult handleUse(Level level, Player player, ItemStack stack) {
         if (!level.isClientSide()) {
             // 主动:获得"清扫"效果 2 分钟(迅捷 + 护甲 -30%)
-            player.addEffect(new MobEffectInstance(ModEffects.JASMINE_SWEEP, 2400, 0, false, false, true));
+            PlayerEffectProtection.apply(player, new MobEffectInstance(ModEffects.JASMINE_SWEEP, DURATION_TICKS, 0, false, false, true));
             // 随机获得以下任一效果(时长与主动技能同步 2 分钟)
             if (ThreadLocalRandom.current().nextBoolean()) {
-                EffectTimerGuard.apply(player, new MobEffectInstance(MobEffects.RESISTANCE, 2400, 0, false, true)); // 抗性提升 2 分钟
+                PlayerEffectProtection.apply(player, new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, DURATION_TICKS, 0, false, true)); // 抗性提升 2 分钟
             } else {
-                EffectTimerGuard.apply(player, new MobEffectInstance(MobEffects.STRENGTH, 2400, 0, false, true)); // 力量 2 分钟
+                PlayerEffectProtection.apply(player, new MobEffectInstance(MobEffects.DAMAGE_BOOST, DURATION_TICKS, 0, false, true)); // 力量 2 分钟
             }
         }
         return InteractionResult.SUCCESS;

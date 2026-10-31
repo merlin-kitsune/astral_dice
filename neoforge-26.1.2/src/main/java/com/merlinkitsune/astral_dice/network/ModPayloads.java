@@ -28,6 +28,11 @@ public class ModPayloads {
                         DamageNumberStore.add(payload.entityId(), payload.bonusDamage(), payload.color(),
                                 payload.x(), payload.y(), payload.z()))
         );
+        // 光束 FX（激光 / 轨道炮）→ 客户端：服务端每 tick 下发一条已冻结两端点的光线，客户端只画不追实体。
+        registrar.playToClient(
+                BeamFxPayload.TYPE,
+                BeamFxPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() -> BeamFxPayload.handle(payload)));
         registrar.playToClient(
                 ActionBarPayload.TYPE,
                 ActionBarPayload.STREAM_CODEC,
@@ -74,15 +79,13 @@ public class ModPayloads {
                 TargetSelectCancelPayload.STREAM_CODEC,
                 TargetSelectCancelPayload::handle
         );
-        // === 星币钱包（26.1.2 冒烟测试 2026-09-22 补齐：原移植漏注册这两条）============
-        // 缺陷表现：`StarCoinBalanceSync` 在玩家登录/重生时会 `PacketDistributor.sendToPlayer`
-        // 一个未注册的载荷 ⇒ NeoForge 在网络层拒绝 ⇒ 服务端抛
-        //   "Payload astral_dice:star_coin_balance may not be sent to the client!"
-        // ⇒ 原版 `ServerConfigurationPacketListenerImpl` 报 `Couldn't place player in world`
-        // ⇒ 玩家被踢（`lost connection: 无效的玩家数据`）、单人服务器随即停机。
-        // 因为**登录即发包**，该缺陷是「必现、且表现为进不去世界」，不是只在用钱包时才出问题。
-        // 顺序与 1.21.1 基准 `neoforge-1.21.1/.../network/ModPayloads.java` 第 68-78 行逐条一致
-        // （注册顺序 = 网络同步顺序，不得随意插入）。
+        // 目标选择会话:服务端强拆(事件动画窗 D5 / 服务端权威清场)→ 客户端退出选择模式,
+        // 否则客户端仍自认在选择模式、继续吞鼠标(攻击键)直到自己点击或本地超时
+        registrar.playToClient(
+                TargetSelectClosePayload.TYPE,
+                TargetSelectClosePayload.STREAM_CODEC,
+                TargetSelectClosePayload::handle
+        );
         registrar.playToServer(
                 StarCoinWalletPayload.TYPE,
                 StarCoinWalletPayload.STREAM_CODEC,
@@ -101,6 +104,79 @@ public class ModPayloads {
                 RenShieldStatePayload.TYPE,
                 RenShieldStatePayload.STREAM_CODEC,
                 RenShieldStatePayload::handle
+        );
+        // 卡牌商店:候选玩家名单 → 客户端(打开/刷新转账视图时重发)
+        registrar.playToClient(
+                CardShopTransferListPayload.TYPE,
+                CardShopTransferListPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() ->
+                        CardShopClientState.setTransferCandidates(payload.entries()))
+        );
+        // 卡牌商店:二级转账界面确认(目标索引 + 金额)
+        registrar.playToServer(
+                CardShopTransferPayload.TYPE,
+                CardShopTransferPayload.STREAM_CODEC,
+                CardShopTransferPayload::handle
+        );
+        // 卡牌商店:拖拽购买(货架索引 + 目标物品栏格索引;targetSlot=-1 ⇒ 双击快速移入)
+        registrar.playToServer(
+                CardShopBuyPayload.TYPE,
+                CardShopBuyPayload.STREAM_CODEC,
+                CardShopBuyPayload::handle
+        );
+        // 卡牌商店:请求被拒信号(余额不足 / 物品栏已满 ⇒ 客户端钱包数字红白闪 3 次)
+        registrar.playToClient(
+                CardShopDenyPayload.TYPE,
+                CardShopDenyPayload.STREAM_CODEC,
+                CardShopDenyPayload::handle
+        );
+        // 大侦探立牌主动技能:事件选择界面(服务端下发 2 个候选事件 -> 客户端打开 Screen)
+        registrar.playToClient(
+                EventChoiceStartPayload.TYPE,
+                EventChoiceStartPayload.STREAM_CODEC,
+                EventChoiceStartPayload::handle
+        );
+        // 大侦探立牌主动技能:玩家在界面里点了确认(会话 token + 选中索引)
+        registrar.playToServer(
+                EventChoiceConfirmPayload.TYPE,
+                EventChoiceConfirmPayload.STREAM_CODEC,
+                EventChoiceConfirmPayload::handle
+        );
+        // 大侦探立牌主动技能:玩家在界面里按 ESC 放弃这次主动技能(会话 token;服务端撤销会话,不触发事件)
+        registrar.playToServer(
+                EventChoiceCancelPayload.TYPE,
+                EventChoiceCancelPayload.STREAM_CODEC,
+                EventChoiceCancelPayload::handle
+        );
+        // 大侦探立牌主动技能:服务端权威关闭选择界面(等待 1 秒后)
+        registrar.playToClient(
+                EventChoiceClosePayload.TYPE,
+                EventChoiceClosePayload.STREAM_CODEC,
+                EventChoiceClosePayload::handle
+        );
+        // 大侦探立牌主动技能:选择界面倒计时同步(服务端权威剩余 tick,剩余秒数变化时下发)
+        registrar.playToClient(
+                EventChoiceTickPayload.TYPE,
+                EventChoiceTickPayload.STREAM_CODEC,
+                EventChoiceTickPayload::handle
+        );
+        // 筹码商店:点确认按钮(候选格索引 0..2;服务端二次校验后扣款发货 —— 唯一购买入口)
+        registrar.playToServer(
+                ChipShopBuyPayload.TYPE,
+                ChipShopBuyPayload.STREAM_CODEC,
+                ChipShopBuyPayload::handle
+        );
+        // 筹码商店:点刷新按钮(消耗 1 次重抽;次数为 0 时服务端兜底拒绝)
+        registrar.playToServer(
+                ChipShopRefreshPayload.TYPE,
+                ChipShopRefreshPayload.STREAM_CODEC,
+                ChipShopRefreshPayload::handle
+        );
+        // 筹码商店:拒绝信号(服务端权威;客户端据 reason 红闪花费文本或 N/N 文本)
+        registrar.playToClient(
+                ChipShopDenyPayload.TYPE,
+                ChipShopDenyPayload.STREAM_CODEC,
+                ChipShopDenyPayload::handle
         );
     }
 }

@@ -1,17 +1,19 @@
 package com.merlinkitsune.astral_dice.item.sign;
 
+import net.minecraft.world.entity.player.Player;
+
+import org.slf4j.LoggerFactory;
+
+import org.slf4j.Logger;
+
 import com.merlinkitsune.starengine.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
-import net.minecraft.world.effect.MobEffectInstance;
-import net.minecraft.world.effect.MobEffects;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.ItemStack;
 import com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
 import com.merlinkitsune.astral_dice.network.ActionBarPayload;
-import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
+import com.merlinkitsune.starengine.event.EffectTimerGuard;
 import com.merlinkitsune.starengine.target.TargetSelectionAction;
 import com.merlinkitsune.astral_dice.target.TargetSelectionManager;
 import com.merlinkitsune.starengine.target.TargetSelectionRegistry;
@@ -29,9 +31,7 @@ import net.neoforged.neoforge.event.entity.living.MobEffectEvent;
 import net.minecraft.world.entity.LivingEntity;
 import java.util.Optional;
 import java.util.UUID;
-import net.neoforged.bus.api.SubscribeEvent;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
 
 /**
  * 占星师立牌(命名:haiqing)。
@@ -63,11 +63,13 @@ public class HaiqingSignItem extends BaseSignItem {
             public void apply(ServerPlayer player, LivingEntity target) {
                 // 施加"虚弱印记"5:00 + 虚弱效果,记录释放者(击杀后仅释放者获得奖励)
                 ModAttachments.setWeakMarkSource(target, Optional.of(player.getUUID()));
-                target.addEffect(new MobEffectInstance(ModEffects.WEAK_MARK, 6000, 0, false, true));
-                EffectTimerGuard.apply(target, new MobEffectInstance(MobEffects.WEAKNESS, 6000, 0, false, true));
-                // 主动成功施加:开始玩家级冷却(统一经 signCooldownTicks:含诡异骰子 -50% 与充能递减)
+                PlayerEffectProtection.apply(target, new MobEffectInstance(ModEffects.WEAK_MARK, 6000, 0, false, true));
+                PlayerEffectProtection.apply(target, new MobEffectInstance(MobEffects.WEAKNESS, 6000, 0, false, true));
+                // 主动成功施加:开始玩家级冷却(统一经 signCooldownTicks:含充能封顶与额外电池筹码减成)
                 ModAttachments.setSignActiveCooldownEnd(player,
                         player.level().getGameTime() + WeirdDiceHandler.signCooldownTicks(player));
+                // 冷却口径一致(2026-10-22 补):记录本次实际最大冷却,供「瞬时冷却」/减免换算剩余比例
+                ModAttachments.setSignActiveMaxCooldown(player, (long) (WeirdDiceHandler.signCooldownTicks(player)));
                 // 电流核心筹码:主动技能实际生效时充能 +1
                 CurrentCoreChipItem.onActiveSkillUsed(player);
                 PacketDistributor.sendToPlayer(player, new ActionBarPayload(
@@ -123,6 +125,9 @@ public class HaiqingSignItem extends BaseSignItem {
         if (target.level().isClientSide()) return;
         if (!target.hasEffect(ModEffects.WEAK_MARK)) return;
         Optional<UUID> source = ModAttachments.getWeakMarkSource(target);
+        // 同一次死亡的第二次派发不再重复结算：法伤加成 / 额外加伤都以**嵌套 hurt** 结算，致死时
+        // 内层 die() 与外层 die() 会各派发一次 LivingDeathEvent（平台把该事件挂在 !dead 守卫之前）。
+        if (!com.merlinkitsune.astral_dice.combat.DeathTriggerGuard.claim(event.getEntity(), "weak_mark")) return;
         if (source.isEmpty()) return;
         if (target.level().getPlayerByUUID(source.get()) instanceof Player applier) {
             // 只判定击杀者:非玩家击杀(如其它生物)时不发放「命运的指引」

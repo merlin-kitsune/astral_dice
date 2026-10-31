@@ -95,6 +95,7 @@ import com.merlinkitsune.astral_dice.item.chip.AirbagChipItem;
 import com.merlinkitsune.astral_dice.item.chip.RailgunChipItem;
 import com.merlinkitsune.astral_dice.item.chip.PrimordialCoreChipItem;
 import com.merlinkitsune.astral_dice.item.chip.WhetstoneChipItem;
+import com.merlinkitsune.astral_dice.item.chip.ExtraBatteryChipItem;
 import com.merlinkitsune.astral_dice.item.chip.NinjaStarChipItem;
 import com.merlinkitsune.astral_dice.item.chip.FlashlightChipItem;
 import com.merlinkitsune.astral_dice.item.sign.HannaSignItem;
@@ -183,13 +184,13 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(AstralRarities.legendary())));
 
-    // 绿宝石骰子:与钻石骰子同阶(tag dice_t2),可由钻石骰子升级;佩戴后村民交易绿宝石费用改为星币并享 20% 折扣
+    // 绿宝石骰子:与钻石骰子同阶(tag dice_t2),可由钻石骰子升级;佩戴后村民交易绿宝石费用按 1:1 改为星币
     public static final DeferredItem<Item> EMERALD_DICE = registerItem("emerald_dice",
             props -> new DiceCurioItem(props
                     .stacksTo(1)
                     .rarity(AstralRarities.epic())));
 
-    // 黑曜石骰子:与钻石骰子同阶(tag dice_t2),可由钻石骰子升级;基础防御力 +3(折算 +6 护甲),火焰伤害 -70%
+    // 黑曜石骰子:与钻石骰子同阶(tag dice_t2),可由钻石骰子升级;基础防御力 +3(真加防御力),受到的爆炸伤害 -50%
     public static final DeferredItem<Item> OBSIDIAN_DICE = registerItem("obsidian_dice",
             props -> new com.merlinkitsune.astral_dice.item.dice.ObsidianDiceItem(props
                     .stacksTo(1)
@@ -201,7 +202,7 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(AstralRarities.rare())));
 
-    // 诡异骰子:与钻石骰子同阶(tag dice_t2),可由钻石骰子升级;立牌主动冷却 -50%,但战斗骰低点数(1-3)概率提升 50%
+    // 诡异骰子:与钻石骰子同阶(tag dice_t2),可由钻石骰子升级;战斗骰低点数(1-3)概率提升 50%,立牌主动技能结束后恢复 5 点生命值
     public static final DeferredItem<Item> WEIRD_DICE = registerItem("weird_dice",
             props -> new DiceCurioItem(props
                     .stacksTo(1)
@@ -236,46 +237,46 @@ public class ModItems {
     // 重要:item 参数必须传 Supplier 延迟解析(() -> X.get()),禁止在静态初始化阶段调用
     //      DeferredHolder.get()——注册表未加载完成时会抛 IllegalStateException。
     static {
-        // 卡牌栏格数不再按品阶区分,仅由星级决定(见 DiceCurioItem.getCardSlots)
+        // 卡牌栏格数按品阶登记(第 4 参 cardSlots,与星级无关);星级只影响费用上限与赐福强度
         // 基础骰子:筹码栏 0★0/1★1/2★2/3★3
         DiceTierRegistry.register(new DiceTier("dice", () -> DICE.get(),
-                s -> s));
+                s -> s, 4));
         // 金骰子:筹码栏 0★1/1★2/2★3/3★4
         DiceTierRegistry.register(new DiceTier("golden_dice", () -> GOLDEN_DICE.get(),
-                s -> 1 + s));
+                s -> 1 + s, 8));
         // 玻璃骰子:与金骰子同阶(筹码栏 0★1/1★2/2★3/3★4)
         DiceTierRegistry.register(new DiceTier("glass_dice", () -> GLASS_DICE.get(),
-                s -> 1 + s));
+                s -> 1 + s, 8));
         // 钻石骰子:筹码栏 0★2/1★3/2★4/3★5
         DiceTierRegistry.register(new DiceTier("diamond_dice", () -> DIAMOND_DICE.get(),
-                s -> 2 + s));
+                s -> 2 + s, 10));
         // 合金骰子:筹码栏 0★3/1★4/2★5/3★6
         DiceTierRegistry.register(new DiceTier("netherite_dice", () -> NETHERITE_DICE.get(),
-                s -> 3 + s));
+                s -> 3 + s, 12));
         // 绿宝石骰子:与钻石骰子同阶(筹码栏 0★2/1★3/2★4/3★5)
         DiceTierRegistry.register(new DiceTier("emerald_dice", () -> EMERALD_DICE.get(),
-                s -> 2 + s));
+                s -> 2 + s, 10));
         // 黑曜石骰子:与钻石骰子同阶(筹码栏 0★2/1★3/2★4/3★5)
         DiceTierRegistry.register(new DiceTier("obsidian_dice", () -> OBSIDIAN_DICE.get(),
-                s -> 2 + s));
+                s -> 2 + s, 10));
         // 下界岩骰子:与金骰子同阶(筹码栏 0★1/1★2/2★3/3★4)
         DiceTierRegistry.register(new DiceTier("netherrack_dice", () -> NETHERRACK_DICE.get(),
-                s -> 1 + s));
+                s -> 1 + s, 8));
         // 诡异骰子:与钻石骰子同阶(筹码栏 0★2/1★3/2★4/3★5)
         DiceTierRegistry.register(new DiceTier("weird_dice", () -> WEIRD_DICE.get(),
-                s -> 2 + s));
+                s -> 2 + s, 10));
         // 绯红骰子:与下界合金骰子同阶(筹码栏 0★3/1★4/2★5/3★6)
         DiceTierRegistry.register(new DiceTier("crimson_dice", () -> CRIMSON_DICE.get(),
-                s -> 3 + s));
+                s -> 3 + s, 12));
         // 紫晶骰子:与钻石骰子同阶(筹码栏 0★2/1★3/2★4/3★5)
         DiceTierRegistry.register(new DiceTier("amethyst_dice", () -> AMETHYST_DICE.get(),
-                s -> 2 + s));
+                s -> 2 + s, 10));
         // 末影骰子:与下界合金骰子同阶(筹码栏 0★3/1★4/2★5/3★6)
         DiceTierRegistry.register(new DiceTier("ender_dice", () -> ENDER_DICE.get(),
-                s -> 3 + s));
+                s -> 3 + s, 12));
         // 下界之星骰子:T4 奇异品阶(筹码栏 0★4/1★5/2★6/3★7,比 T3 多 1 格)
         DiceTierRegistry.register(new DiceTier("nether_star_dice", () -> NETHER_STAR_DICE.get(),
-                s -> 4 + s));
+                s -> 4 + s, 12));
     }
 
     public static final DeferredItem<Item> ATTACK_CARD_MEDIUM = registerItem("attack_card_medium",
@@ -331,7 +332,7 @@ public class ModItems {
                     .component(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("bite")), "bite"));
 
     // 龙之咆哮(蛟龙立牌 mamushi 专属战斗牌):费用 3 / 耐久 5 / 定值攻击 +3。
-    // 命中使目标 缓慢 III 1:00 并减 4 点防御 1:00(见 MamushiSignItem.applyRoarDebuff);
+    // 命中使目标 缓慢 III 1:00 并怪物减 3.2 / 玩家减 2.4 点防御 1:00(见 MamushiSignItem.applyRoarDebuff);
     // 只能由处于真龙形态的蛟龙立牌佩戴者获得(主动发放 / 撕咬转换),无配方、不进任何池。
     public static final DeferredItem<Item> ATTACK_CARD_DRAGON_ROAR = registerItem("attack_card_dragon_roar",
             props -> new CardItem(props
@@ -356,6 +357,28 @@ public class ModItems {
                     .stacksTo(16)
                     .rarity(AstralRarities.rare())
                     .component(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("defense_epic")), "defense_epic"));
+
+    // 路障(效果牌,2026-10-17):在视线命中的方块面上放一座路障(30 点耐久 / 6 格拉仇恨 / 栅栏级挡路)。
+    // 实现形态 = 可见实体(entity/BarricadeEntity) + 隐形碰撞方块(block/BarricadeBlock)。品质:稀有
+    public static final DeferredItem<Item> EFFECT_CARD_BARRICADE = registerItem("effect_card_barricade",
+            () -> new BarricadeCardItem(new Item.Properties()
+                    .stacksTo(16)
+                    .rarity(AstralRarities.rare())));
+
+    // 强化拒止(专属效果牌,2026-10-18):在视线命中的方块面上放置一个实体「强化拒止」
+    // (50 点耐久 / 12 格吸附 / 持续 缓慢+虚弱 / 每 10 秒按吸附目标数扣耐久 <=5 / 不吸引仇恨 / 免疫怪物与环境伤害)。
+    // 品质:奇特(bizarre;2026-10-22 用户裁决:专属牌一律奇特,原为史诗);专属牌:不进随机池、无配方、不进赏金池、仅获得者可用
+    public static final DeferredItem<Item> EFFECT_CARD_REPULSION = registerItem("effect_card_repulsion",
+            () -> new RepulsionCardItem(new Item.Properties()
+                    .stacksTo(16)
+                    .rarity(AstralRarities.bizarre())));
+    // 强化拒止(物品形态,2026-10-25 用户裁决):实体被玩家近战 5 次后回收成此物品 ——
+    // 自带耐久(关联血量)/剩余寿命/已发放充能三份状态,再次放置即恢复(放置判据与效果牌共用)。
+    // 品质与专属牌一致 = 奇特(bizarre);stacksTo(1):每件承载独立状态,不可堆叠
+    public static final DeferredItem<Item> REPULSION = registerItem("repulsion",
+            () -> new RepulsionItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.bizarre())));
 
     public static final DeferredItem<Item> EFFECT_CARD_KING_POWER = registerItem("effect_card_king_power",
             props -> new EffectCardItem(props
@@ -430,7 +453,7 @@ public class ModItems {
     public static final DeferredItem<Item> MISAKI_SIGN = registerItem("misaki_sign",
             props -> new MisakiSignItem(props
                     .stacksTo(1)
-                    .rarity(AstralRarities.legendary())));
+                    .rarity(AstralRarities.epic())));
 
     public static final DeferredItem<Item> MIMI_SIGN = registerItem("mimi_sign",
             props -> new MimiSignItem(props
@@ -577,17 +600,17 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(AstralRarities.rare())));
 
-    // 银行卡-余额少:装备期间星光基础值 +4(下限)
+    // 银行卡-余额少:装备时发放星光 4(卸下按账本扣回,兑换成功后按佩戴补充)
     public static final DeferredItem<Item> BANK_CARD_LOW = registerItem("bank_card_low_chip",
             props -> new BankCardChipItem(props
                     .stacksTo(1)
-                    .rarity(AstralRarities.rare()), BankCardChipItem.BASE_LOW));
+                    .rarity(AstralRarities.rare()), BankCardChipItem.STARLIGHT_LOW));
 
-    // 银行卡-余额多:装备期间星光基础值 +7(下限)
+    // 银行卡-余额多:装备时发放星光 7(卸下按账本扣回,兑换成功后按佩戴补充)
     public static final DeferredItem<Item> BANK_CARD_HIGH = registerItem("bank_card_high_chip",
             props -> new BankCardChipItem(props
                     .stacksTo(1)
-                    .rarity(AstralRarities.epic()), BankCardChipItem.BASE_HIGH));
+                    .rarity(AstralRarities.epic()), BankCardChipItem.STARLIGHT_HIGH));
 
     // 银行卡-用不完:装备时星光 +3;每次骰神赐福结束后,自身及团队所有成员获得 3 星币
     public static final DeferredItem<Item> BANK_CARD_UNLIMITED = registerItem("bank_card_unlimited_chip",
@@ -830,6 +853,13 @@ public class ModItems {
             props -> new WhetstoneChipItem(props
                     .stacksTo(1)
                     .rarity(AstralRarities.epic())));
+
+    // 额外电池(史诗/无流派):装备时立牌主动技能冷却时间 -50%(纯查询加减成,卸下即失效)
+    public static final DeferredItem<Item> EXTRA_BATTERY_CHIP = registerItem("extra_battery_chip",
+            () -> new ExtraBatteryChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.epic())));
+
     // 紫色飞星(史诗):路过敌对目标 ⇒ 使其受到 1 点伤害并自身 +1 层「星光」;每 10 秒触发一次。
     // 与金色飞星共用同一冷却计时器(用户裁决);两枚共用 ShootingStarChipItem,差异全在执行器 ShootingStarManager。
     public static final DeferredItem<Item> PURPLE_SHOOTING_STAR_CHIP = registerItem("purple_shooting_star_chip",
@@ -852,7 +882,7 @@ public class ModItems {
     public static final DeferredItem<Item> FANNY_SIGN = registerItem("fanny_sign",
             props -> new FannySignItem(props
                     .stacksTo(1)
-                    .rarity(AstralRarities.epic())));
+                    .rarity(AstralRarities.rare())));
 
     public static final DeferredItem<Item> RIN_SIGN = registerItem("rin_sign",
             props -> new RinSignItem(props
@@ -868,7 +898,7 @@ public class ModItems {
     public static final DeferredItem<Item> HAIQING_SIGN = registerItem("haiqing_sign",
             props -> new HaiqingSignItem(props
                     .stacksTo(1)
-                    .rarity(AstralRarities.epic())));
+                    .rarity(AstralRarities.rare())));
 
     // 命运的指引(专属功能效果牌,击杀带虚弱印记的目标获取)
     public static final DeferredItem<Item> FATE_GUIDANCE_CARD = registerItem("effect_card_fate_guidance",

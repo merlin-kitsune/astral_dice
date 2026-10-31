@@ -109,11 +109,69 @@ public class ModDataComponents {
                     builder -> builder
                             .persistent(Codec.LONG));
 
+    /**
+     * 临时牌的**获得者 UUID**(2026-10-27 用户裁决:临时牌只能由获得者持有与使用)。
+     *
+     * <p>语义:发放时写入获得者;此后任何**其他**玩家(哪怕自己也处于女王特权状态)碰到这张牌都算
+     * 非法持有 ⇒ 到手即清除。获得者本人失去女王特权效果时,他自己的牌同样被清除 —— 那条由
+     * {@code TemporaryCardUtil#tick} 的「无效果 ⇒ 清空」承担,与本组件无关。
+     *
+     * <p>老存档里没有本组件的临时牌 = **无主牌**,一律按非法持有处理(寿命只有 3:00,
+     * 宁可清掉也不给洗白窗口)。
+     *
+     * <p>**必须** networkSynchronized(与 {@link #TEMPORARY_CARD_EXPIRES} 的「不上网」相反):
+     * 1.21.1 的 {@code Slot#mayPlace} 在客户端也会被 {@code MultiPlayerGameMode#handleInventoryMouseClick}
+     * 先行预测执行,若客户端读不到 owner 就会把**获得者本人**的临时牌拒绝在卡牌栏外(服务端放行 ⇒
+     * 一格延迟与视觉回弹)。owner 只是 UUID,上网成本可忽略,且本组件不上 tooltip。
+     */
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<UUID>> TEMPORARY_CARD_OWNER =
+            DATA_COMPONENTS.registerComponentType("temporary_card_owner",
+                    builder -> builder
+                            .persistent(UUIDUtil.CODEC)
+                            .networkSynchronized(UUIDUtil.STREAM_CODEC));
+
     // 专属效果牌:获得者 UUID(空表示尚未绑定,首次使用时绑定)
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<Optional<UUID>>> OWNER_UUID =
             DATA_COMPONENTS.registerComponentType("owner_uuid",
                     builder -> builder
                             .persistent(UUIDUtil.CODEC.optionalFieldOf("id").codec())
                             .networkSynchronized(ByteBufCodecs.optional(UUIDUtil.STREAM_CODEC)));
+
+    /**
+     * 专属物品的**获得者显示名**（2026-10-27 用户裁决：强化拒止物品 tooltip 要标明所有者）。
+     *
+     * <p>为什么不靠 UUID 现查：tooltip 在客户端渲染，按 UUID 反查只认**在线**玩家 ⇒ 所有者离线时
+     * 读不到名字。绑定 owner 的那一刻本体必然在线，顺手把名字写进物品，客户端直接读字符串即可。
+     */
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<String>> OWNER_NAME =
+            DATA_COMPONENTS.registerComponentType("owner_name",
+                    builder -> builder
+                            .persistent(Codec.STRING)
+                            .networkSynchronized(ByteBufCodecs.STRING_UTF8));
+
+    // ── 强化拒止（物品形态，2026-10-25 用户裁决）─────────────────────────────
+    // 实体被玩家近战 5 次后回收成物品（item/RepulsionItem），三份状态随物品走；客户端要画
+    // 耐久条与 tooltip ⇒ 三个都必须 networkSynchronized（否则客户端读到缺省值）。
+
+    /** 关联血量（0..50；缺省 50）。必须等于实体 MAX_HEALTH（event/ModEntityEvents 的 50.0D）。 */
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<Integer>> REPULSION_HEALTH =
+            DATA_COMPONENTS.registerComponentType("repulsion_health",
+                    builder -> builder
+                            .persistent(Codec.INT)
+                            .networkSynchronized(ByteBufCodecs.INT));
+
+    /** 已存活 tick（0..24000；缺省 0）。缺省 0 = 全新装置，总寿命见 RepulsionItem#LIFETIME_TICKS。 */
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<Integer>> REPULSION_AGE =
+            DATA_COMPONENTS.registerComponentType("repulsion_age",
+                    builder -> builder
+                            .persistent(Codec.INT)
+                            .networkSynchronized(ByteBufCodecs.INT));
+
+    /** 该座力场已**实际发放**给放置者的充能层数（0..5；缺省 0）。 */
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<Integer>> REPULSION_CHARGE =
+            DATA_COMPONENTS.registerComponentType("repulsion_charge",
+                    builder -> builder
+                            .persistent(Codec.INT)
+                            .networkSynchronized(ByteBufCodecs.INT));
 
 }

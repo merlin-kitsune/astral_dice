@@ -5,7 +5,7 @@ import com.merlinkitsune.starengine.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.combat.RenShieldVisibility;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
-import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
+import com.merlinkitsune.starengine.event.EffectTimerGuard;
 import com.merlinkitsune.astral_dice.item.sign.RenSignItem;
 import com.merlinkitsune.astral_dice.network.ActionBarPayload;
 import com.merlinkitsune.astral_dice.network.RenShieldStatePayload;
@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
 
 /**
  * 鼠鼠护盾(游戏大师立牌 ren)的服务端权威管理。
@@ -346,7 +347,7 @@ public final class RenShieldManager {
         }
         MobEffectInstance current = player.getEffect(ModEffects.REN_COUNTER);
         if (current == null || current.getDuration() <= SHIELD_REFRESH_THRESHOLD_TICKS) {
-            EffectTimerGuard.apply(player, counterInstance());
+            PlayerEffectProtection.apply(player, counterInstance());
         }
     }
 
@@ -375,7 +376,7 @@ public final class RenShieldManager {
     private static void applyOrRefreshResistance(Player player, boolean force) {
         MobEffectInstance resistance = player.getEffect(MobEffects.RESISTANCE);
         if (resistance == null) {
-            EffectTimerGuard.apply(player, new MobEffectInstance(MobEffects.RESISTANCE,
+            PlayerEffectProtection.apply(player, new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE,
                     RESISTANCE_DURATION_TICKS, 0, false, false, false));
             ModAttachments.setRenShieldOwnResistance(player, true);
             return;
@@ -383,7 +384,7 @@ public final class RenShieldManager {
         if (force) return;
         if (ModAttachments.isRenShieldOwnResistance(player)
                 && resistance.getDuration() <= RESISTANCE_REFRESH_THRESHOLD_TICKS) {
-            EffectTimerGuard.apply(player, new MobEffectInstance(MobEffects.RESISTANCE,
+            PlayerEffectProtection.apply(player, new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE,
                     RESISTANCE_DURATION_TICKS, 0, false, false, false));
         }
     }
@@ -393,7 +394,7 @@ public final class RenShieldManager {
         if (!ModAttachments.isRenShieldOwnResistance(player)) return;
         MobEffectInstance resistance = player.getEffect(MobEffects.RESISTANCE);
         if (resistance != null && resistance.getAmplifier() == 0) {
-            player.removeEffect(MobEffects.RESISTANCE);
+            PlayerEffectProtection.removeNow(player, MobEffects.DAMAGE_RESISTANCE);
         }
         ModAttachments.setRenShieldOwnResistance(player, false);
     }

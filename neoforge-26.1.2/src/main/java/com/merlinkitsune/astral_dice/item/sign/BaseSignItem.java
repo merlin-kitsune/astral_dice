@@ -135,11 +135,20 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         //     actionId 为 null 的立牌(其余全部立牌)不走本分支,下方原流程逐字不变。
         String gatedActionId = sign.selectorActionId();
         if (gatedActionId != null) {
-            // 2.4 「选择器类」立牌的**前置拒绝**钩子(2026-09-27,为教主立牌「降神生效中不可重复施放」):
+            if (!(player instanceof net.minecraft.server.level.ServerPlayer serverPlayer)) return;
+            // 1.5 2026-10-29 用户裁决 D4(按用户原话收窄):事件动画窗({@code EventCardService.DELAY_TICKS})内
+            //     禁止**会打开目标选择器/选择界面**的主动技能 —— 哨兵放在选择器分支内部,不带选择器的
+            //     handleUse 直通类技能在窗内照常可用。大侦探等事件选择界面由
+            //     {@code EventChoiceManager.start} 自己的动画窗守卫拦截(仍属选择界面类,仍被拦)。
+            //     窗结束后立即可用(EventAnimationLock 到点自动失效,无需清理)。
+            if (com.merlinkitsune.astral_dice.event.EventAnimationLock.isAnimating(serverPlayer)) {
+                com.merlinkitsune.astral_dice.event.EventAnimationLock.notifyBlocked(serverPlayer, "sign_active_skill");
+                return;
+            }
+            // 2.4 「选择器类」立牌的**前置拒绝**钩子(2026-09-27 新增,为教主立牌「降神生效中不可重复施放」):
             //     返回 false ⇒ 只发提示并立即返回 —— 不开选择会话、不发牌、不进冷却/锁定、不充能。
             //     缺省实现恒为 true ⇒ 其余立牌走与原流程逐字相同的分支。
             if (!sign.canBeginSelectorSession(player)) return;
-            if (!(player instanceof net.minecraft.server.level.ServerPlayer serverPlayer)) return;
             if (com.merlinkitsune.astral_dice.target.TargetSelectionManager.start(serverPlayer, gatedActionId)) {
                 com.merlinkitsune.starengine.target.SignSelectionGate.arm(player, gatedActionId, stack);
             }
@@ -167,26 +176,39 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         //    ⚠️ 判据用 isSelectingByKey:「手持即选择」会话不算「本次主动开了会话」,否则玩家握着效果牌
         //    放技能时会被误判 ⇒ 冷却/锁定与电流核心充能**全部不生效**。
         if (!com.merlinkitsune.astral_dice.target.TargetSelectionManager.isSelectingByKey(player)) {
-            // 诡异骰子:立牌主动冷却 -50%
-            // 强制冷却(规格 §3.4):forcedActiveCooldownTicks() > 0 的立牌(蛟龙立牌 mamushi)
-            // **直接使用该值**,完全不经过 WeirdDiceHandler.signCooldownTicks ⇒ 诡异骰子的 -50%、
-            // 充能封顶、命运的指引及其它任何减免一律无效(硬闸门同时在冷却判定侧生效)。
+            // 强制冷却(规格 §3.4):{@code forcedActiveCooldownTicks() > 0} 的立牌(当前无实现者)
+            // **直接使用该值**,完全不经过 WeirdDiceHandler.signCooldownTicks ⇒ 充能封顶、命运的指引及其它任何减免一律无效(硬闸门同时在冷却判定侧生效)。
             int forcedCooldown = sign.forcedActiveCooldownTicks();
             int signCooldownTicks = forcedCooldown > 0
                     ? forcedCooldown
                     : sign.activeCooldownBaseTicks(player);
-            if (sign.startActiveLockOnUse(player, now)) {
+            boolean enteredLock = sign.startActiveLockOnUse(player, now);
+            if (enteredLock) {
                 // ★ 本主动施加了"带时长效果/自身计时器"⇒ 进入锁定(生效中)态。
                 //   锁定期间**不写** sign_active_cooldown_end:冷却要等锁定结束才起(第 13 条:无空档);
                 //   但先把本次冷却基准写进 sign_active_max_cooldown,供锁定期间各减免方读它并累加进减免池。
                 ModAttachments.setSignActiveMaxCooldown(player, signCooldownTicks);
+                // 同处记录「未折电池」基准(命运指引卡减半用;电池只作用于立牌主动冷却本身)。
+                // ⚠️ 取的是**该立牌自身**的基础值(虚方法 no-battery 版),不能用全局常量 —— 否则
+                // Dorothy/Parunan/Sherry 等自定义基准的立牌会被写错(如 Dorothy 2400 被写成 3200/3600)。
+                ModAttachments.setSignActiveMaxCooldownBase(player, sign.activeCooldownBaseTicksNoBattery(player));
             } else {
                 ModAttachments.setSignActiveCooldownEnd(player, now + signCooldownTicks);
                 // 路线 A:记录本次冷却实际使用的最大冷却值,所有减免方一律读它(不再各自重算基准)
                 ModAttachments.setSignActiveMaxCooldown(player, signCooldownTicks);
+                // 同处记录「未折电池」基准(命运指引卡减半用;电池只作用于立牌主动冷却本身)。
+                // ⚠️ 取的是**该立牌自身**的基础值(虚方法 no-battery 版),不能用全局常量 —— 否则
+                // Dorothy/Parunan/Sherry 等自定义基准的立牌会被写错(如 Dorothy 2400 被写成 3200/3600)。
+                ModAttachments.setSignActiveMaxCooldownBase(player, sign.activeCooldownBaseTicksNoBattery(player));
             }
             // 电流核心筹码:主动技能实际生效时充能 +1(进入锁定时同样计一次;与是否立即起冷却无关)
             com.merlinkitsune.astral_dice.item.chip.CurrentCoreChipItem.onActiveSkillUsed(player);
+            // 诡异骰子(2026-10-20):主动技能**结束** ⇒ 获得 5 点治愈。
+            // 瞬时型立牌没有生效期 ⇒ 结束与施放完成同一刻;有生效期的立牌(enteredLock)
+            // 由 SignActiveLockMachine#endLockAndStartCooldown 在锁定寿终时结算,两条互斥。
+            if (!enteredLock) {
+                com.merlinkitsune.astral_dice.event.WeirdDiceHandler.onSignActiveEnded(player);
+            }
         }
     }
 
@@ -255,6 +277,11 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         com.merlinkitsune.starengine.event.SignActiveTriggeredEvent triggered =
                 new com.merlinkitsune.starengine.event.SignActiveTriggeredEvent(player, stack);
         net.neoforged.neoforge.common.NeoForge.EVENT_BUS.post(triggered);
+        // 诡异骰子(2026-10-20):目标选择器类立牌的主动在 apply 执行完毕后即「结束」⇒ 结算 5 点治愈。
+        // 若该次施放同时进入了锁定(生效中)态,则改由 SignActiveLockMachine 在锁定寿终时结算,此处跳过。
+        if (getSignActiveLockSignId(player).isEmpty()) {
+            com.merlinkitsune.astral_dice.event.WeirdDiceHandler.onSignActiveEnded(player);
+        }
     }
 
     // 立牌主动技能反馈统一发送入口(黄色;供立牌类注册的 SignActiveTriggeredEvent 处理器与 handleUse 调用)
@@ -329,7 +356,7 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
      * <b>且</b>本立牌的门控效果实例仍在 —— 后者只让锁定**提前**结束(如骇客被攻击破隐、
      * 效果被其它路径移除),外部把同一效果刷新得更长**不会**延长锁定(硬上界不随刷新重算)。
      *
-     * <p>效果严格按 20t/s 流动由 {@link com.merlinkitsune.astral_dice.event.EffectTimerGuard} 保证,
+     * <p>效果严格按 20t/s 流动由 {@link com.merlinkitsune.starengine.event.EffectTimerGuard} 保证,
      * 故效果实例的 {@code getDuration()} 即权威剩余时长;本判定**不硬编码任何时长表**,
      * 也**不复用** {@link com.merlinkitsune.astral_dice.item.card.EffectCardPeriod} 的
      * {@code EFFECT_PENDING_SOURCES}(那是"效果牌出牌锁"的语义域,与立牌主动无关)。
@@ -384,8 +411,8 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
      * 本立牌主动技能的**强制冷却**时长(tick)。
      *
      * <p>返回 {@code > 0} 时,{@link #performSkill} 第 6 步(冷却入账;规格 §3.4 记作第⑧步)
-     * **直接使用该值**,**不经过** {@code WeirdDiceHandler.signCooldownTicks} ⇒ 诡异骰子(-50%)、
-     * 充能封顶、命运的指引及其它任何减免一律无效(规格 §3.4 冻结口径;当前实现者:蛟龙立牌 mamushi = 1200)。
+     * **直接使用该值**,**不经过** {@code WeirdDiceHandler.signCooldownTicks} ⇒ 充能封顶、命运的指引及其它任何减免一律无效(规格 §3.4 冻结口径;当前无实现者 —— 蛟龙立牌 mamushi
+     * 已改为「锁定 1:00 + 锁定结束无额外冷却」,见 {@link #skipCooldownAfterLock()})。
      *
      * <p>缺省 0 = 无强制冷却(其余立牌走原流程,行为逐字不变)。
      */
@@ -396,7 +423,7 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
     /**
      * 本立牌主动技能的**基础冷却 tick**(仍受既有减免链影响)。
      *
-     * <p>缺省 = 全局口径 {@code WeirdDiceHandler.signCooldownTicks(player)}(含充能封顶、诡异骰子 −50%
+     * <p>缺省 = 全局口径 {@code WeirdDiceHandler.signCooldownTicks(player)}(含充能封顶、额外电池筹码
      * 等全部既有减免)⇒ **其余立牌行为逐字不变**。个别立牌需要**自己的基础值**时覆写本方法
      * (当前实现者:怪力侦探立牌 sherry = 120 秒,与枪匠立牌同款链)。
      *
@@ -405,6 +432,23 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
      */
     protected int activeCooldownBaseTicks(Player player) {
         return com.merlinkitsune.astral_dice.event.WeirdDiceHandler.signCooldownTicks(player);
+    }
+
+    /**
+     * 本立牌主动技能**基础冷却的「未折电池」版本**(tick)。
+     *
+     * <p>链路与 {@link #activeCooldownBaseTicks(Player)} **完全一致**(自定义基础值、充能封顶、
+     * 诡异骰子折算同名同序),仅跳过「额外电池筹码 ×0.5」这一步 —— 即把其中的
+     * {@code ChargeManager#signCooldownTicks} 换成 {@code ChargeManager#signCooldownTicksBase}。
+     * 覆写者(当前:Dorothy / Parunan / Sherry)必须与 {@code activeCooldownBaseTicks} 逐行镜像。
+     *
+     * <p>用途:与 {@code sign_active_max_cooldown} **同处**写入附件
+     * {@code sign_active_max_cooldown_base}(命运指引卡减半的基准)。电池只作用于立牌主动冷却本身,
+     * 不得连带砍掉本卡的减半收益。
+     */
+    protected int activeCooldownBaseTicksNoBattery(Player player) {
+        return (int) com.merlinkitsune.astral_dice.item.ChargeManager.signCooldownTicksBase(
+                player, com.merlinkitsune.starengine.component.GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS);
     }
 
     /**
@@ -586,6 +630,14 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
      * 佩戴本立牌的玩家被**敌对目标攻击**时触发(由 {@link #invokeHurtHooks} 分发,并在此统一过闸门)。
      * 环境伤害(摔落 / 仙人掌 / 着火 / 饥饿…)与自伤**不算**(2026-09-29 用户裁决)。
      * 子类覆写以实现受击类被动(如史莱姆立牌的受击 +1 治愈)。
+     *
+     * <p><b>{@code amount} 口径(2026-10-27 近战审计 D3;2026-10-27 复核订正)</b>:两条线**不同** ——
+     * 本线(neo)传的是 {@code LivingDamageEvent.Pre#getNewDamage()}(护甲 / 药水之后、**吸收之前**);
+     * forge 线传的是 {@code LivingDamageEvent#getAmount()}(护甲 / 药水 / 吸收已结算、骰战覆盖之前的平台值)。
+     * 另有闪避取消路径传入的是 {@code LivingAttackEvent} 的**未减免原始值**。
+     * 该数值只用于「是否受击」这类开关判定,<b>禁止</b>拿它做数值计算 —— 落地终值以骰战自算值为准
+     * (neo 是 {@code DiceCombatEvents#onLivingDamagePre} 写入的 setNewDamage;forge 是
+     * {@code DiceCombatEvents#settleDiceDamage} 的返回值,两者都已扣过吸收)。
      */
     protected void onHurt(Player player, DamageSource source, float amount) {
     }

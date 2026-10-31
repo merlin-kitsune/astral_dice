@@ -31,15 +31,15 @@ import net.neoforged.neoforge.client.network.ClientPacketDistributor;
  * 26.1.2（Mojang 2026 界面重组）删除了整个 retained-mode widget 体系，本类因此**整体重写**：
  * <table border="1">
  *   <tr><th>1.21.1 做法</th><th>26.1.2 现实</th><th>本类重写为</th></tr>
- *   <tr><td>{@code AbstractButton} 子类 + {@code renderWidget(GuiGraphics,...)}</td>
+ *   <tr><td>{@code AbstractButton} 子类 + {@code renderWidget(GuiGraphicsExtractor,...)}</td>
  *       <td>{@code AbstractButton}/{@code AbstractWidget} 已删除（{@code javap} 实证：{@code AbstractButton}
  *           无任何 {@code render*} 方法；{@code components} 包只剩 {@code events.*}）</td>
  *       <td>不建任何 widget，改在 {@link ScreenEvent.Render.Foreground} <b>即时模式</b>直接绘制</td></tr>
  *   <tr><td>{@code ScreenEvent.Init.Post#addListener(AbstractWidget)}</td>
  *       <td>{@code addListener} 现收 {@code GuiEventListener}；控件需自行实现命中测试</td>
  *       <td>改用 {@link ScreenEvent.MouseButtonPressed.Pre} 自算命中矩形</td></tr>
- *   <tr><td>{@code GuiGraphics.blit/drawString}</td>
- *       <td>{@code GuiGraphics} 已删除 ⇒ {@link GuiGraphicsExtractor}；{@code drawString} 改名 {@code text}</td>
+ *   <tr><td>{@code GuiGraphicsExtractor.blit/drawString}</td>
+ *       <td>{@code GuiGraphicsExtractor} 已删除 ⇒ {@link GuiGraphicsExtractor}；{@code drawString} 改名 {@code text}</td>
  *       <td>{@code extractor.blit(RenderPipeline,Identifier,x,y,u,v,w,h,texW,texH)}（同
  *           {@code screen/CardInventoryScreen} 的用法）/ {@code extractor.text(Font,String,IIIZ)}</td></tr>
  * </table>

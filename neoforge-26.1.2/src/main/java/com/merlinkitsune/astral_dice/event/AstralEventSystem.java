@@ -9,7 +9,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import top.theillusivec4.curios.api.CuriosApi;
 import com.merlinkitsune.starengine.event.EventTargetCollector;
-import com.merlinkitsune.astral_dice.combat.PartyRelations;
+import com.merlinkitsune.starengine.combat.PartyRelations;
 
 /**
  * 事件系统:事件触发后的统一附加效果。

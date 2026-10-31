@@ -24,7 +24,8 @@ import com.merlinkitsune.astral_dice.item.MarkManager;
 import com.merlinkitsune.astral_dice.item.StarLightManager;
 import com.merlinkitsune.astral_dice.item.sign.MisakiSignItem;
 import com.merlinkitsune.astral_dice.item.ModItems;
-import com.merlinkitsune.astral_dice.item.sign.PadmanSignItem;
+import com.merlinkitsune.astral_dice.item.RepulsionItem;
+import com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil;
 import com.merlinkitsune.astral_dice.item.sign.JasmineSignItem;
 import com.merlinkitsune.astral_dice.item.sign.LuluSignItem;
 import net.minecraft.ChatFormatting;
@@ -525,7 +526,7 @@ public class ModTooltipHandler {
                         .withStyle(ChatFormatting.GOLD));
             }
             if (stack.is(ModItems.WEIRD_DICE.get())) {
-                tooltip.add(tt("tooltip.astral_dice.weird_dice_cooldown")
+                tooltip.add(tt("tooltip.astral_dice.weird_dice_heal")
                         .withStyle(ChatFormatting.GREEN));
                 tooltip.add(tt("tooltip.astral_dice.weird_dice_lowroll")
                         .withStyle(ChatFormatting.RED));
@@ -1170,6 +1171,10 @@ public class ModTooltipHandler {
             tooltip.add(Component.empty());
             addChipLines(tooltip, "tooltip.astral_dice.chip.whetstone", ChatFormatting.GRAY);
         }
+        if (stack.is(ModItems.EXTRA_BATTERY_CHIP.get())) {
+            tooltip.add(Component.empty());
+            addChipLines(tooltip, "tooltip.astral_dice.chip.extra_battery", ChatFormatting.GRAY);
+        }
         if (stack.is(ModItems.PADMAN_SIGN.get())) {
             tooltip.add(Component.empty());
             addSignKeyHint(tooltip);
@@ -1283,6 +1288,50 @@ public class ModTooltipHandler {
             tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown",
                             effectCardCooldownSeconds(player))
                     .withStyle(ChatFormatting.RED));
+        }
+        if (stack.is(ModItems.EFFECT_CARD_BARRICADE.get())) {
+            // 2026-10-17 路障:三行 = 用法(右键方块面) / 挡路 + 拉仇恨 / 耐久(末行);
+            // 行内数值一律 §e(非时间数值着黄,见 AGENTS「tooltip 文案唯一基准」)
+            addCardLines(tooltip, "tooltip.astral_dice.card.barricade");
+            addEffectCardPlayCountTooltip(tooltip, player);
+            tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown",
+                            effectCardCooldownSeconds(player))
+                    .withStyle(ChatFormatting.RED));
+        }
+        if (stack.is(ModItems.EFFECT_CARD_REPULSION.get())) {
+            // 2026-10-18 强化拒止(专属效果牌):五行 = 用法(右键方块面) / 吸附 + 缓慢·虚弱 / 苦力怕不能自爆 / 不拉仇恨·免疫 / 耐久(末行);
+            // 行内数值着 §e(非时间数值)、时间着 §9(见 AGENTS「tooltip 文案唯一基准」)
+            addCardLines(tooltip, "tooltip.astral_dice.card.repulsion");
+            addEffectCardPlayCountTooltip(tooltip, player);
+            tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown",
+                            effectCardCooldownSeconds(player))
+                    .withStyle(ChatFormatting.RED));
+            tooltip.add(Component.translatable("tooltip.astral_dice.card.exclusive_owner")
+                    .withStyle(ChatFormatting.DARK_PURPLE));
+        }
+        if (stack.is(ModItems.REPULSION.get())) {
+            // 2026-10-25 强化拒止(物品形态):静态说明(三行) + 三份状态(耐久 / 剩余寿命 / 已提供充能)
+            // 行内数值着 §e、时间着 §9(见 AGENTS「tooltip 文案唯一基准」)
+            addCardLines(tooltip, "tooltip.astral_dice.item.repulsion");
+            tooltip.add(Component.translatable("tooltip.astral_dice.item.repulsion_durability",
+                            RepulsionItem.getDurability(stack), RepulsionItem.MAX_DURABILITY)
+                    .withStyle(ChatFormatting.GRAY));
+            tooltip.add(Component.translatable("tooltip.astral_dice.item.repulsion_lifetime",
+                            formatMmSs((int) ((RepulsionItem.getRemainingTicks(stack) + 19L) / 20L)))
+                    .withStyle(ChatFormatting.GRAY));
+            tooltip.add(Component.translatable("tooltip.astral_dice.item.repulsion_charge",
+                            RepulsionItem.getChargeGiven(stack),
+                            com.merlinkitsune.astral_dice.entity.RepulsionEntity.MAX_CHARGE_STACKS)
+                    .withStyle(ChatFormatting.GRAY));
+            // 2026-10-27 用户裁决：物品 tooltip 要标明所有者（名字在绑定 owner 时一并写入，所有者离线也读得到）
+            String ownerName = ExclusiveCardUtil.ownerName(stack);
+            tooltip.add(Component.translatable("tooltip.astral_dice.item.repulsion_owner_name",
+                                    ownerName.isEmpty()
+                                        ? Component.translatable("tooltip.astral_dice.item.repulsion_owner_unknown")
+                                        : Component.literal(ownerName))
+                     .withStyle(ChatFormatting.DARK_PURPLE));
+            tooltip.add(Component.translatable("tooltip.astral_dice.item.repulsion_owner")
+                    .withStyle(ChatFormatting.DARK_PURPLE));
         }
         if (stack.is(ModItems.HAIQING_SIGN.get())) {
             tooltip.add(Component.empty());
@@ -1543,6 +1592,76 @@ public class ModTooltipHandler {
             // 「模式类型 Player 是表达式类型 Player 的子类型」)。
             Player megasViewer = event.getEntity() instanceof Player mp ? mp : null;
             addSignCooldownRemaining(tooltip, megasViewer);
+        }
+        // 怪力乱神立牌(lingling):主动「能量突击」(瞬时:立即获得 1 张「强化拒止」+ 施加「能量突击」效果
+        // 1:00,期间每 10t 按**有效充能层数**(真实充能 + 吸附目标数,夹上限)刷新攻击力 / 移速修饰符)
+        // + 被动「拦截者」(首次装备发 2 张「强化拒止」;拾取 / 购买 / 手持的「路障」⇒「强化拒止」;
+        // 「强化拒止」每控制一个新目标提供 1 层额外充能,单座最多 5 层;攻击被吸附目标 +5 伤害,不分归属)
+        // + 备注「路障回流」(充能上限 20 层;手持「路障」自动转换、丢出的「强化拒止」落地变回「路障」)。
+        // 本立牌**无玩家级动态计数器**(有效层数已在主动动作栏播报,不重复进 tooltip),故只出
+        // 「按键提示 + 主动技能名/描述 + 被动技能名/描述 + 备注区 + 冷却行」五段;块末尾必须调 addSignCooldownRemaining。
+        if (stack.is(ModItems.LINGLING_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "能量突击");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.lingling_active");
+            addSignPassiveTitle(tooltip, "拦截者");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.lingling_passive");
+            // 备注区(浅紫 §d、无标题、无列表符号):补充口径统一放这里,按 spec §6.6 用 addSignNoteLines
+            tooltip.add(Component.empty());
+            addSignNoteLines(tooltip, "tooltip.astral_dice.sign.lingling_note");
+            // 独立变量名(同 megasViewer):避免与其它块的模式变量重名
+            Player linglingViewer = event.getEntity() instanceof Player llp ? llp : null;
+            addSignCooldownRemaining(tooltip, linglingViewer);
+        }
+        // 调酒师立牌(jill):主动「调制人生」(选目标玩家 + 选 3 张卡牌调制,按放置顺序依次对目标施加
+        // 效果,随后消耗卡牌并重新获得 3 张随机卡牌) + 被动「改变生活」(三张牌全部同类型 ⇒ 自身与
+        // 目标获得 迅捷 II 1:00,否则各得 3 星币)。本立牌**无玩家级动态计数器** ⇒ 只出「按键提示 +
+        // 主动技能名/描述 + 被动技能名/描述 + 冷却行」四段,块末尾必须调 addSignCooldownRemaining。
+        if (stack.is(ModItems.JILL_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "调制人生");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.jill_active");
+            addSignPassiveTitle(tooltip, "改变生活");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.jill_passive");
+            addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player jp ? jp : null);
+        }
+        // 多萝西立牌(dorothy):主动「真正的我」(传送到目标身边安全落点;1:00 内经过友方玩家使双方
+        // +1 攻击力,每 10 秒一次、每人一次;【温暖】满 5 层时消耗全部层数换取「当前防御力」点攻击力
+        // 1:00) + 被动「交际花」(每次有效治疗获得【温暖】:默认 +1 层,瞬间治疗 / 生命恢复按效果等级;
+        // 每层防御力 +1;路过友方玩家时双方恢复 2 点生命)。【温暖】层数已在效果栏展示,不重复进 tooltip。
+        if (stack.is(ModItems.DOROTHY_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "真正的我");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.dorothy_active");
+            addSignPassiveTitle(tooltip, "交际花");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.dorothy_passive");
+            addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player jp ? jp : null);
+        }
+        // 修女立牌(alana):主动「铁处女」(0:30 内免疫一切伤害与负面效果) + 被动「鼓起勇气」
+        // (每次骰神赐福 +5 攻击力;期间单次受击 >10 点立即移除全部加成;赐福结束始终移除)。
+        if (stack.is(ModItems.ALANA_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "铁处女");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.alana_active");
+            addSignPassiveTitle(tooltip, "鼓起勇气");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.alana_passive");
+            addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player jp ? jp : null);
+        }
+        // 大肥鱼立牌(deepseek,仅创造获得):主动「大口干饭」(按余额随机消耗 1-20 星币,按实际消耗
+        // 等量给攻/防 2:00,并发 3 张随机牌) + 被动「摸鱼中」(静止 10 秒 ⇒ 免伤/免负面/不被怪物索敌,
+        // 获得后累计移动 5 秒解除)。
+        if (stack.is(ModItems.DEEPSEEK_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "大口干饭");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.deepseek_active");
+            addSignPassiveTitle(tooltip, "摸鱼中");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.deepseek_passive");
+            addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player jp ? jp : null);
         }
         // 符卡-福 / 符卡-祸(风水师立牌专属效果牌);键名 = 规格 §2.6 冻结值
         // (tooltip.astral_dice.fu_card / tooltip.astral_dice.huo_card)

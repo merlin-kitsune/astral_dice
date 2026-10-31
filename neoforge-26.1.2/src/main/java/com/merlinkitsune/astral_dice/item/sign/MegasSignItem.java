@@ -5,7 +5,6 @@ import com.merlinkitsune.starengine.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.combat.CardRegistry;
 import com.merlinkitsune.astral_dice.combat.OrbitalBombardmentManager;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
-import com.merlinkitsune.astral_dice.event.WeirdDiceHandler;
 import com.merlinkitsune.astral_dice.item.ChargeManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.card.RandomCardHandler;
@@ -103,6 +102,8 @@ public class MegasSignItem extends BaseSignItem {
                 // 主动成功触发：开始玩家级冷却并计入「电流核心」充能
                 ModAttachments.setSignActiveCooldownEnd(player,
                         player.level().getGameTime() + signCooldownTicks(player));
+                // 冷却口径一致(2026-10-22 补):记录本次实际最大冷却,供「瞬时冷却」/减免换算剩余比例
+                ModAttachments.setSignActiveMaxCooldown(player, (long) (signCooldownTicks(player)));
                 CurrentCoreChipItem.onActiveSkillUsed(player);
                 // 玩家可见反馈(与其他立牌的专属提示同款;行为口径见
                 // TargetSelectionManager#confirm 的注释:actionbar 单槽位 ⇒ 这里发的会覆盖
@@ -170,16 +171,13 @@ public class MegasSignItem extends BaseSignItem {
     }
 
     /**
-     * 立牌主动冷却 tick：佩戴时基础 120 秒（与枪匠/怪力侦探同款链：先按充能上限封顶，再按诡异骰子减半）。
+     * 立牌主动冷却 tick：佩戴时基础 180 秒（与全局立牌主动冷却一致；仅按充能上限封顶）。
      */
     public static int signCooldownTicks(Player player) {
         int ticks = isEquipped(player)
                 ? ACTIVE_COOLDOWN_SECONDS * 20
                 : GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS;
         ticks = (int) ChargeManager.signCooldownTicks(player, ticks);
-        if (WeirdDiceHandler.hasWeirdDice(player)) {
-            ticks = Math.max(1, ticks / 2);
-        }
         return ticks;
     }
 

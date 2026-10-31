@@ -17,7 +17,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import java.util.Optional;
 
 /**
- * 在绿宝石骰子交易上下文中,把村民报价的绿宝石费用替换为星币并打 20% 折扣。
+ * 在绿宝石骰子交易上下文中,把村民报价的绿宝石费用替换为星币(1:1)。
  * 覆盖报价读取({@code getItemCostA/B})、实际费用({@code getCostA/B})与匹配判断({@code satisfiedBy}),
  * 使原版村民交易全流程(显示/自动放入/匹配/成交)直接使用星币。
  */
@@ -91,7 +91,7 @@ public abstract class MerchantOfferMixin {
 
     /**
      * 复制构造(仅由 {@code MerchantOffer#copy()} 调用)完成时,若正处于「向佩戴绿宝石骰子的玩家发送报价」
-     * 的交换窗口内,则把副本的两项费用替换为星币并打 20% 折扣。
+     * 的交换窗口内,则把副本的两项费用替换为星币(1:1)。
      *
      * <p>为什么必须在数据层改:{@code ClientboundMerchantOffersPacket} 构造时**同步**执行
      * {@code offers.copy()},但真正的网络编码被投递到 Netty 事件循环后才执行(见 1.21.1
