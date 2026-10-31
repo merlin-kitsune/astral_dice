@@ -122,7 +122,7 @@ pwsh 安装：`/home/kitsune/.local/powershell/pwsh`（7.6.9，linux-x64 tar.gz�
 
 ## 8. 已知限制与坑
 
-- **hgfs 共享盘慢**（`stat -f -c %T` = `fuseblk`）：Gradle 构建建议在本地盘做，或在 `--project-cache-dir` 指定本地缓存；`gradlew` 在 hgfs 上通常没有 `+x`（无碍：全部用 `bash ./gradlew`）。
+- **仓库在 NTFS（ntfs3）上，不再有 hgfs**（2026-10-31 迁到原生 Linux 真机）：`findmnt -n -o FSTYPE,SOURCE -T <repo>` ⇒ `ntfs3 /dev/nvme2n1p1`；`ln -s` / 硬链接 / `chmod +x` 实测可用，`write`/`edit` 工具可直接落盘。NTFS 仍比 ext4 慢：Gradle 缓存（`~/.gradle`，ext4 家目录）与 `build/`（NTFS）分居两盘，大临时文件优先 `/tmp/`。
 - **Gradle 并发位只有 1 个**：本目录三件套**从不**自动跑 Gradle；launch.sh 真实启动前请确认没有别的 agent 在构建（env.sh 的 `INFO: gradle` 行给出 daemon/wrapper 计数）。
 - **PID 文件写在 `run/<ver>/linux-run.pid`**（Lead 裁决）：与 Windows 台 `run/` 产物并存；`run/` 已被 git 忽略，不会污染提交。
 - **AutoJS 探活**：`GET <endpoint>/health` 三态（200=ONLINE / 000=DOWN / 其它=HTTP_ERROR）；`GET /mcp` 返回 405 是正常（无服务端 SSE）。
@@ -146,7 +146,7 @@ pwsh 安装：`/home/kitsune/.local/powershell/pwsh`（7.6.9，linux-x64 tar.gz�
 ### 9.1 env.sh（只读，全四线；2026-10-31 修假 WARN 后重跑）
 
 ```
-CHECK: repo=OK / mount=WARN(fuse.vmhgfs-fuse, source=vmhgfs-fuse) / gradlew=OK
+CHECK: repo=OK / mount=INFO(ntfs3, source=/dev/nvme2n1p1) / gradlew=OK
 CHECK: jdk_1.21.1=OK (21.0.12.1) / jdk_1.20.1=OK (17.0.20.1) / jdk_26.1.2=OK (25.0.4.1) / jdk_fabric-1.20.1=OK (17.0.20.1)
 CHECK: run_dir_*=OK（run/1.21.1, run/1.20.1, run/26.1.2, run/fabric-1.20.1 均存在）
 CHECK: autojs_jar_1.21.1=OK（AutoJS-neoforge-1.21.1-1.0.0.jar）
@@ -154,9 +154,11 @@ CHECK: autojs_jar_1.20.1=OK（AutoJS-forge-1.20.1-1.0.0-dev.jar）
 CHECK: autojs_jar_26.1.2=OK（AutoJS-neoforge-26.1-1.0.0.jar）
 CHECK: autojs_jar_fabric-1.20.1=OK（AutoJS-fabric-1.20.1-1.0.0.jar）
 CHECK: autojs_health=WARN（GET http://127.0.0.1:25585/health = 000 未运行）
-CHECK: residue=OK（/proc 扫描无客户端）/ conf_windows=WARN（mt.conf 含 D:/、C:/ 历史值）
-CHECK: cwd=OK / jdk_paths=OK / git_autocrlf=OK / locks_other=OK（仅 dsh.lock）
-ENV_RESULT: WARN — 0 项阻塞，3 项提示
+CHECK: residue=OK（/proc 扫描无客户端）/ conf_windows=INFO（mt.conf 含 D:/、C:/，Windows 台机器配置，Linux 侧忽略且不修改）
+CHECK: cwd=OK / repo_writable=OK（ntfs3）/ jdk_paths=OK / git_autocrlf=OK
+CHECK: pack_dirs=OK（/mnt/d/.minecraft，四线 mods 齐全）/ locks_other=OK（仅 dsh.lock，属本宿主）
+CHECK: locks_stale=OK（无陈旧锁；接管前曾有 PID=2103 陈旧锁，已按用户裁决接管）
+ENV_RESULT: WARN — 0 项阻塞，1 项提示（仅 autojs_health：游戏未启动）
 ```
 
 ### 9.2 launch.sh `--dry-run`（四线均验证；daemon JVM 统一 21，toolchain 按线）
@@ -211,8 +213,8 @@ LINUX_STOP: OK                                   EXIT=0   # 进程已消失
 ### 9.5 复核修订（2026-10-31，Lead 复核后）
 
 - **假 WARN ①（AutoJS jar 误报缺失）**：原用 `ls autojs*.jar` 大小写敏感匹配，而实际产物是 `AutoJS-<loader>-<ver>-<v>.jar`。改为大小写不敏感（`*[Aa][Uu][Tt][Oo][Jj][Ss]*.jar`），且只认以 `.jar` 结尾的文件（排除 `.jar.bak-*` / `.jar.reobf-*` 备份）。四线 run/mods 实测均有 jar（见 §9.1），不再误报。
-- **假 WARN ②（hgfs 挂载类型误报 fuseblk）**：`stat -f -c %T` 在 hgfs 上返回 `fuseblk`；改用 `findmnt -n -o FSTYPE,SOURCE -T <repo>` → 实测 `fuse.vmhgfs-fuse` / source=`vmhgfs-fuse`，与 `mount` 输出一致。
-- 修后重跑 `ENV_RESULT: WARN — 0 项阻塞，3 项提示`；剩余三条均为真实提示：hgfs 共享盘（I/O 慢）、AutoJS 端点未运行（游戏没起）、`mt.conf` 的 Windows 历史路径。
+- **假 WARN ②（挂载类型误报，VM 期）**：`stat -f -c %T` 在 hgfs 上返回 `fuseblk`，故改用 `findmnt -n -o FSTYPE,SOURCE -T <repo>`。**原生 Linux 下已无 hgfs**：同一命令在真机返回 `ntfs3 /dev/nvme2n1p1`，env.sh 走 `ntfs3|ntfs` 分支报 `INFO`（链接/硬链接实测可用）。
+- 修后（VM 期）重跑 `ENV_RESULT: WARN — 0 项阻塞，3 项提示`；迁到原生 Linux（2026-10-31）后同一命令只剩 1 条提示：AutoJS 端点未运行（游戏没起），见 §9.8。
 - 附带修复（Lead 批准后）：`launch.sh` 的 AutoJS 探活门槛同样改为大小写不敏感匹配（只认 `.jar` 结尾，排除 `.jar.bak-*`/`.jar.reobf-*`），并在 `AUTOJS: OK` 行输出命中的 jar 名；`stop.sh` 无 `autojs*.jar` 匹配（只按 pid 文件 / `/proc` cmdline 收停），无需改。
 
 ### 9.4 真实仓库空转
@@ -244,3 +246,15 @@ Dependency requires at least JVM runtime version 21. This build uses a Java 17 J
 - 实测读数（Lead 复核）：~97s 后 `GET /health` = `ok` HTTP 200；`status` = client `registered=true available=true state="client running, no world loaded"`。
 - 修正后 `launch.sh`：READY=AutoJS 客户端侧 `available=true`；输出 `LAUNCH: READY` + `health`/`status` 原文 + 游戏 PID；`LAUNCH: WORLD_READY` 降级为附加信息；新增 `--wait-world`；`--quickplay` 透传（配置已确认、传参未实机验证）。
 - 自检：`bash -n` 三脚本 OK；`--version 1.21.1 --dry-run` EXIT=0（daemon_jvm/toolchain/cmd/log/pid 字段齐全 + 新增 wait_world/autojs_jar/ready_by）。
+
+### 9.8 原生 Linux 真机迁移（2026-10-31）：路径与键名变更
+
+宿主从 VMware 虚拟机 + hgfs 共享盘迁到**原生 Linux 真机（双系统，与 Windows 共用一块 NTFS 盘）**，本目录随之调整：
+
+- **仓库路径**：`/mnt/f/MCProject/astral_dice_multiloader`（Windows `F:` 的原生挂载，ntfs3）；前置库 `/mnt/f/MCProject/starengine`。旧 `/mnt/hgfs/MCProject/...` 与 `~/Project/*` 四副本**全部作废**（`~/Project` 已不存在）。
+- **整合包根**：`/mnt/d/.minecraft`（Windows `D:` 的原生挂载）；`MC_HOME` 仍可覆盖。根 `build.gradle` 的 `mcHomePath` 解析顺序改为 `MC_HOME` > `/mnt/d/.minecraft` > `D:/.minecraft`。
+- **env.sh 键名变化**：`hgfs_writable` → **`repo_writable`**（`ntfs3/ext4/xfs/btrfs` 走 OK 并注明链接可用）；新增 **`locks_stale`**（按锁文件 `PID=` 做 `kill -0`，陈旧锁**只报不删**）；`mt.conf` 的 Windows 路径提示由 `WARN` 降为 `INFO`；`mount` 行新增 `ntfs3|ntfs` 分支。
+- **锁目录**：`/mnt/f/MCProject/.agent-locks`（与 Windows 同一目录）。
+- **实测（2026-10-31 17:5x，改后首跑）**：`ENV_RESULT: WARN — 0 项阻塞，1 项提示`；`pack_dirs=OK（整合包根=/mnt/d/.minecraft，四线目标 mods 目录齐全）`、`repo_writable=OK`、`locks_stale` 无陈旧锁、`gradle_daemon_jvm=OK`。
+- **未变**：daemon JVM 仍统一 21、toolchain 按线（17/21/25）、`stop.sh` 收停协议、`launch.sh` 以 AutoJS 判 READY、`run/<ver>/linux-run.pid` 协议。
+- 详细迁移实测与剩余 checklist 见 `docs/handover-2026-10-31-native-linux-migration.md`。

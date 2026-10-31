@@ -292,7 +292,7 @@ if [ -f "$REPO_ROOT/run/start-$VERSION.sh" ] && [ -x "$REPO_ROOT/run/start-$VERS
     START_SRC="run/start-$VERSION.sh（可执行，直接调用）"
 else
     if [ -f "$REPO_ROOT/run/start-$VERSION.sh" ]; then
-        echo "LAUNCH: WARN — run/start-$VERSION.sh 存在但无 +x，回退 gradlew（hgfs 常见）" >&2
+        echo "LAUNCH: WARN — run/start-$VERSION.sh 存在但无 +x，回退 gradlew（NTFS/FUSE 挂载常见）" >&2
     fi
     CMD=(bash ./gradlew ":$PROJECT:runClient" --console=plain)
     START_SRC="bash ./gradlew :$PROJECT:runClient --console=plain"

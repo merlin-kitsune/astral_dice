@@ -72,13 +72,13 @@ pwsh -NoProfile -File F:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1 -
 | `scripts/verify/verify_probe_class_refs.ps1` | 探针 javaclass 引用可解析（既有 1 红点 = 26.1.2 产物陈旧） |
 | `tools/verify_misaki_balance.py` · `verify_bonnie_active_order.py` · `verify_member_recommendation_hand_gate.py` | 2026-10-24 批次的三道专项判据 |
 
-## 6. 投放目标（成对：mod jar + `starengine-*-1.1.0-pre.2.jar`）
+## 6. 投放目标（成对：mod jar + `starengine-*-1.1.0.jar`）
 
-- 整合包根 = `/mnt/hgfs/.minecraft`（VM 共享盘；Windows 宿主同一批文件为 `D:\.minecraft`），由根 `build.gradle` 的 `mcHomePath` 统一解析（环境变量 `MC_HOME` 可覆盖；改后需 `--no-configuration-cache` 才刷新）
-- neo → `/mnt/hgfs/.minecraft/versions/狐の航空学 Voxy Edition/mods`
-- forge → `/mnt/hgfs/.minecraft/versions/1.20.1-Forge 模组测试/mods`
-- fabric → `/mnt/hgfs/.minecraft/versions/1.20.1-Fabric 模组测试/mods`
-- 26.1.2 → `/mnt/hgfs/.minecraft/versions/26.1.2-NeoForge 模组测试/mods`
+- 整合包根 = `/mnt/d/.minecraft`（Windows D: 盘的原生挂载 ntfs3；Windows 宿主同一批文件为 `D:\.minecraft`），由根 `build.gradle` 的 `mcHomePath` 统一解析（环境变量 `MC_HOME` 可覆盖；改后需 `--no-configuration-cache` 才刷新）
+- neo → `/mnt/d/.minecraft/versions/狐の航空学 Voxy Edition/mods`
+- forge → `/mnt/d/.minecraft/versions/1.20.1-Forge 模组测试/mods`
+- fabric → `/mnt/d/.minecraft/versions/1.20.1-Fabric 模组测试/mods`
+- 26.1.2 → `/mnt/d/.minecraft/versions/26.1.2-NeoForge 模组测试/mods`
 - dev → `run/1.21.1/mods` / `run/1.20.1/mods`（forge 用 named jar）
 
 缺库即启动失败 `Missing or unsupported mandatory dependencies`。投放后必须逐份核 sha256。
@@ -101,8 +101,8 @@ python3 -B docs/agent/verify-split.py                   # 规则守门
 
 - 前置：`starengine:1.1.0` 必须已发布到本机 mavenLocal（在兄弟仓 `starengine` 跑四线 `:publishToMavenLocal`，daemon 21）。
 - Linux 侧**不调用** `scripts/**/*.ps1`（52 个，Windows 测试台/守门脚本）；`scripts/test/mt.ps1`（19,384 行）整台不可移植，替代 = `scripts/test/linux/*.sh` + AutoJS `eval_js` + computer-use MCP。
-- 桌面/游戏注入通道：KDE Wayland 下 `computer-use-mcp`（DSH MCP serverName `computer-use`）截图/点击/键盘；游戏内用 AutoJS MCP（`http://127.0.0.1:25585/mcp`，serverName `autojs`）。
-- 迁移与现状：`docs/handover-2026-10-31-linux-vm-adoption.md`（含 VM hgfs 实测代价与 8 步迁移 checklist）；规则正本 `docs/agent/AGENTS-dsh-linux.md`；新会话入口 `docs/handover-new-session-context.md`。
+- 桌面/游戏注入通道：KDE Wayland 下 DSH MCP `computer-use-linux`（bin `~/.local/bin/computer-use-linux-mcp`，AT-SPI + KWin + Portal RemoteDesktop）截图/点击/键盘，`screen-ocr` 做屏幕 OCR；游戏内用 AutoJS HTTP 端点（`http://127.0.0.1:25585/mcp`，本会话未注册 MCP client，直接 curl 或临时注册）。
+- 迁移与现状：`docs/handover-2026-10-31-native-linux-migration.md`（原生 Linux 实测与路径重映射）；规则正本 `docs/agent/AGENTS-dsh-linux.md`；新会话入口 `docs/handover-new-session-context.md`。VM 时代文档（`docs/handover-2026-10-31-linux-vm-adoption.md`、`docs/handover-2026-10-31-local-disk-workspace.md`）只作历史。
 - 上面 §4/§6 的 `D:\...`、`pwsh`、`gradlew.bat` 命令属 **Windows 历史口径**，Linux 宿主不执行。
 
 ## 7. 交接文件

@@ -65,6 +65,9 @@
 
 ## 1 环境与路径
 
+> **2026-10-31 起宿主已从 VMware 虚拟机迁到原生 Linux 真机**：Linux 宿主读 `docs/agent/AGENTS-dsh-linux.md`，路径与命令见 `docs/handover-2026-10-31-native-linux-migration.md`（仓库在 `/mnt/f/MCProject/astral_dice_multiloader`，整合包根 `/mnt/d/.minecraft`，锁 `/mnt/f/MCProject/.agent-locks/`，`./gradlew` + JDK 21，测试台 `scripts/test/linux/{env,launch,stop}.sh`）。下面这一段 **Windows 原生口径继续对 Windows 宿主有效，不作废**。
+
+
 路径与命令**沿用 pre.5 正本 §1**（Windows 原生：git bash 的 `git`、`pwsh -NoProfile -File`、`JAVA_HOME=C:\Program Files\Zulu\zulu-21`、工作树直接 `gradlew.bat`、测试台 `scripts\test\mt.ps1`）。两条补充：
 
 - 仓库多了一整套**规则分派**文件：根 `AGENTS.md`（入口/红线/索引）· `docs/agent/AGENTS-kimi.md` · `docs/agent/AGENTS-dsh.md`（旧根逐字节留存 + 开头 DSH 段）· `docs/agent/PROJECT-REFERENCE.md`（工程拓扑）· `docs/agent/AGENT-SPLIT.md`（Codex/DSH 分工 + §六 Kimi 兼容）· `AGENTS-full.md`（逐批历史，未变）。
@@ -1205,6 +1208,33 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 理由：A 不动构建行为；B 改了投放目标，按 `scripts/test/TESTING-SPEC.md` 分级属「核心（定向最小冒烟）」侧，需要 `:classes` + 配置期 `MC_HOME` 打印一类最小验证。用户既有的 4 个未跟踪文件（含 `scripts/test/cases/TMP-ATTRLESS-HYDRA-1.21.1.json`）一律不入库，提交后必须仍是 `??`。
 
 **工程侧变更记录的去处**：按惯例「工程/工具/CI 类条目」写 `scripts/test/TESTING-SPEC.md` 附录 A。**本轮未追加** —— 该文件整份 CRLF（4,472 行 / 4,472 个 CR），用 LF 拼的锚点做插入会**静默不命中**（教训 19 / 21 的老坑），且 `write`/`edit` 都不便安全地混写 CRLF。如需补一条，建议在 Linux 侧用 python 按行插入后核 `\r` 计数。
+
+### 4.1ba 宿主迁移：VMware 虚拟机 → 原生 Linux 真机（2026-10-31 17:5x–18:1x，DSH on Linux）
+
+**背景**：用户 2026-10-31 把工作环境从 VMware 虚拟机（hgfs 共享盘 + `~/Project` 四副本）搬到**原生 Linux 真机（双系统，与 Windows 共用同一块 NTFS 盘）**。Windows 下的开发配置与资产**保持不变**（用户硬约束）。
+
+**结论**：环境已就绪，可原生构建；`ENV_RESULT: WARN — 0 项阻塞，1 项提示`（仅 AutoJS 未运行）。
+
+**改动（11 改 + 1 新增，均未提交）**
+- 构建：根 `build.gradle` 的 `mcHomePath` Linux 分支 `/mnt/hgfs/.minecraft` → `/mnt/d/.minecraft`（`MC_HOME` > Linux > `D:/.minecraft` 顺序不变，Windows 行为不变）；四线 `build.gradle` 仅注释里的投放根同步改。
+- 测试台：`scripts/test/linux/env.sh`（`ntfs3|ntfs` 分支、`hgfs_writable`→`repo_writable`、新增 `locks_stale`、`conf_windows` WARN→INFO、`mc_home=/mnt/d/.minecraft`、锁目录 `/mnt/f/MCProject/.agent-locks`）、`launch.sh` 一处文案、`scripts/test/linux/README.md`（§8/§9 口径 + 新增 §9.8）。
+- 工具：`scripts/dev/rsync-original.sh` 停用（默认 `exit 3`，仅 `ALLOW_LEGACY_HGFS_RSYNC=1` 可越过）；`run/start-{1.20.1,1.21.1,26.1.2}.sh` 注释改 NTFS（`run/` 被忽略，不入库）。
+- 规则/文档：`AGENTS.md`（仓路径、锁路径、索引、桌面通道）、`docs/agent/AGENTS-dsh-linux.md` **整篇重写为原生 Linux 口径**（361 行 / 45,641 B / 30,206 字符，LF；旧 376 行 / 56,608 B）、`docs/agent/PROJECT-REFERENCE.md`、`docs/handover-new-session-context.md`（整篇重写）、新增 `docs/handover-2026-10-31-native-linux-migration.md`、本节。
+
+**实测**
+- `./gradlew --version` → Gradle 9.2.1 / Launcher JVM 21.0.12.1 / Daemon JVM `java-21-openjdk-amd64` / Linux 7.0.0-42-generic（首次自举下载 ~130 MB dist 到 `~/.gradle`）。
+- starengine 四线 `publishToMavenLocal` 全部 `BUILD SUCCESSFUL`，`~/.m2/repository/com/merlinkitsune/starengine/*/1.1.0/` 四件齐。
+- `:neoforge-1.21.1:classes` 32s、`:forge-1.20.1:classes` 30s（**热缓存，非冷基线**），日志打印 `整合包根目录 (MC_HOME): /mnt/d/.minecraft`。
+- 出网：Central / aliyun / neoforged / github 全 200 ⇒ **不建 init.d 镜像**（与 4.1aw 的 VM 口径相反）。
+- 权限坑（本批两次踩到）：`docs/agent/` 与 `starengine/*/build/` 是 Windows 会话遗留的 `1001:1002` 属主目录，kitsune 不可写；绕法 = 写 `/tmp` 再 `cat >`、`mv build build.vmresidue-20261031` + `cp -a` 重建（保住 moddev 产物，未触发重新 decompile）。
+- 锁：接管陈旧 `dsh.lock`（`PID=2103` 已死）→ 改写为当前 DSH PID 26899（`TASK=native-linux-adoption`）；**陈旧锁只报不删**的裁决不变。
+
+**残留 / 未做**
+- `starengine/*/build.vmresidue-20261031/` 约 300 MB，删除需 root。
+- 冷构建耗时、真机 AutoJS、真机实机测试均**未验证**（`[[PENDING:build-time-native]]`、`[[PENDING:autojs-native]]`）。
+- 投放只验证到「根解析 + 四线 mods 目录齐全」，**未执行 `pushToGame`**（默认不部署）。
+- 本批未 commit / 未 push。
+
 
 ## 5 遗留与欠账
 

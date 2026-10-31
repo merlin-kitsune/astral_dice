@@ -1,6 +1,6 @@
 # Agent Instructions
 
-**本仓**：`F:\MCProject\astral_dice_multiloader`（Linux 宿主为同一份文件的 hgfs 视图：`/mnt/hgfs/MCProject/astral_dice_multiloader`）—— Minecraft 模组「Astral Dice」的多加载器工作树（四条线 `neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1`，同一工作树）。
+**本仓**：`F:\MCProject\astral_dice_multiloader`（原生 Linux 宿主为同一块 NTFS 盘的原生挂载：`/mnt/f/MCProject/astral_dice_multiloader`；无 hgfs）—— Minecraft 模组「Astral Dice」的多加载器工作树（四条线 `neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1`，同一工作树）。
 
 **本文件只是公共入口**：先按下面的分派认领自己的规则文件，再读共同红线，最后按需查索引。
 
@@ -25,7 +25,7 @@
 2. **默认不部署**：不复制 jar 到整合包、不上传 CurseForge、不改发布配置。
 3. **默认不 commit / push / 打 tag**：仅在用户明确要求时执行；任何远程 git 操作一律走本地代理 `http://127.0.0.1:7897`。
 4. **保护素材与他人改动**：`models/`、`images/`、`sound/` 属随时更新的素材目录；`git status` 里出现不属于自己的改动（含未跟踪文件）⇒ 立即停手并报告，不 `add` / `commit` / `stash` / `checkout`、不删文件。
-5. **互斥锁**：写文件或启动 Gradle 前检查 `F:/MCProject/.agent-locks/`（Linux：`/mnt/hgfs/MCProject/.agent-locks/`）；Kimi 用 `kimi.lock`、DSH 用 `dsh.lock`；尊重对方的活跃锁，结束只清理自己的锁。
+5. **互斥锁**：写文件或启动 Gradle 前检查 `F:/MCProject/.agent-locks/`（Linux：`/mnt/f/MCProject/.agent-locks/`）；Kimi 用 `kimi.lock`、DSH 用 `dsh.lock`；尊重对方的活跃锁，结束只清理自己的锁。
 6. **不代改他人职责**：模组源码 / 资源 / 版本号 / 依赖 / 发布配置的改动，按所属宿主的规则文件走。
 
 ## 三、按需文档索引
@@ -34,14 +34,14 @@
 |---|---|
 | 工程拓扑、四条线基线、目录职责、常用命令 | `docs/agent/PROJECT-REFERENCE.md` |
 | 当前接手 / 交班 | Kimi：`docs/handover-2026-10-24-kimi-takeover.md`；DSH：`docs/handover-*.md` 中最新一份 + `docs/handover-new-session-context.md` |
-| Linux（VM）适配与真机迁移 | `docs/handover-2026-10-31-linux-vm-adoption.md`（hgfs 实测代价 + 8 步迁移 checklist + 仓库外产物重建）；规则见 `docs/agent/AGENTS-dsh-linux.md` |
-| 本机盘工作副本 / 与 hgfs 原始路径同步 | `docs/handover-2026-10-31-local-disk-workspace.md`（4 个副本布局、worktree 指针修复、rsync 通道与纪律）；脚本 `scripts/dev/rsync-original.sh` |
+| Linux 真机适配与迁移（2026-10-31） | `docs/handover-2026-10-31-native-linux-migration.md`（原生 Linux 实测、盘符重映射、游戏测试资产接管 + 剩余 checklist）；规则见 `docs/agent/AGENTS-dsh-linux.md` |
+| NTFS 双系统工作树 / Windows 互操作 | `docs/handover-2026-10-31-native-linux-migration.md`（`/mnt/f` 同盘、大小写与换行口径、锁与并发）；旧副本同步脚本 `scripts/dev/rsync-original.sh` 已停用 |
 | 规则全文（逐批历史、领域规格） | `docs/agent/AGENTS-full.md`；标题→行号总表 `docs/agent/AGENTS-TOC.md` |
 | 宿主分工矩阵、互斥、冲突处理 | `docs/agent/AGENT-SPLIT.md` |
 | 立牌 / 物品的英文与日文命名（wiki 角色人名，禁机翻） | `docs/agent/AGENTS-full.md`〈立牌 / 物品英日命名规则〉（L4107 起）；权威表 `tools/sign_display_names.json`；门禁 `python tools/verify_sign_display_names.py` |
 | DSH 委派 runbook | `docs/agent/delegation-runbook.md` |
 | 规则库自身说明 | `docs/agent/README.md` |
 | Linux 测试台（bash） | `scripts/test/linux/README.md`（`env.sh` / `launch.sh` / `stop.sh`）；Linux 规则正本的〈测试台现状（Linux）〉一节 |
-| 桌面控制 / 游戏内注入通道 | `docs/agent/AGENTS-dsh-linux.md` 的〈桌面控制与实机通道（Wayland）〉与〈AutoJS 运行时通道〉；DSH MCP serverName `computer-use` / `autojs` |
+| 桌面控制 / 游戏内注入通道 | `docs/agent/AGENTS-dsh-linux.md` 的〈桌面控制与实机通道（Wayland）〉与〈AutoJS 运行时通道〉；DSH MCP serverName `computer-use-linux` / `screen-ocr`（AutoJS 走 HTTP，本机未注册 MCP） |
 
 > 本文件只放「分派 + 共同红线 + 索引」。宿主专用的工作方式（额度口径、委派细节、角色设定）、逐批历史与完整领域规格**都不放在这里**，一律留在各自的规则文件里，按需读取。

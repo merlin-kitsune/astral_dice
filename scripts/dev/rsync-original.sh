@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# 【2026-10-31 起停用】VMware hgfs 时代的「本机盘副本 ↔ 原始镜像」同步脚本。
+# 原生 Linux 真机上仓库正本就在 /mnt/f/MCProject（与 Windows F: 同一块盘、同一批文件），
+# 不存在 hgfs 镜像，也不需要 rsync；本脚本保留仅作历史，默认拒绝执行（见下方 guard）。
+# 如确需旧通道：ALLOW_LEGACY_HGFS_RSYNC=1 bash scripts/dev/rsync-original.sh ...
+#
 # 与「原始项目路径」（hgfs 镜像）同步内容。
 #
 # 用法：
@@ -29,6 +34,13 @@ case "$MODE" in
     exit 0 ;;
   *) echo "ERROR: 未知模式 '$MODE'（仅 pull | push | diff）" >&2; exit 2 ;;
 esac
+
+# 2026-10-31 原生 Linux 迁移后停用：本机即正本，无 hgfs 镜像；默认拒绝，避免写到不存在的路径。
+if [ "${ALLOW_LEGACY_HGFS_RSYNC:-0}" != "1" ]; then
+  echo "ERROR: rsync-original.sh 已停用——原生 Linux 下工作正本=/mnt/f/MCProject，不存在 hgfs 镜像。" >&2
+  echo "       历史说明见 docs/handover-2026-10-31-local-disk-workspace.md；确需旧通道请加 ALLOW_LEGACY_HGFS_RSYNC=1。" >&2
+  exit 3
+fi
 
 APPLY=0; DELETE=0
 for a in "$@"; do

@@ -107,7 +107,8 @@ else
     log_ok repo "仓库根正常：$REPO_ROOT"
 fi
 
-# 挂载类型：hgfs 上 stat -f 会误报 fuseblk，优先用 findmnt 取真实 FSTYPE/SOURCE。
+# 挂载类型：共享盘/网络盘上 stat -f 会误报，优先用 findmnt 取真实 FSTYPE/SOURCE。
+# 2026-10-31 原生 Linux 真机：仓库在 /mnt/f（ntfs3，Windows F: 同盘）；无 hgfs / 9p / fuse 共享盘。
 fs_type=""
 fs_src=""
 if command -v findmnt >/dev/null 2>&1; then
@@ -120,7 +121,9 @@ if [ -z "$fs_type" ]; then
 fi
 case "$fs_type" in
     *vmhgfs*|vmhgfs|hgfs|fuse*|9p*)
-        log_warn mount "文件系统=$fs_type source=$fs_src（共享盘，I/O 慢；Gradle 构建建议在本地盘）" ;;
+        log_warn mount "文件系统=$fs_type source=$fs_src（共享/网络盘，I/O 慢；Gradle 构建建议在本地盘）" ;;
+    ntfs3|ntfs)
+        log_info mount "文件系统=$fs_type source=$fs_src（Windows 同盘；符号链接/硬链接实测可用，注意 Windows 侧大小写不敏感）" ;;
     *)  log_info mount "文件系统=$fs_type source=$fs_src" ;;
 esac
 
@@ -128,7 +131,7 @@ if [ -f "$REPO_ROOT/gradlew" ]; then
     if [ -x "$REPO_ROOT/gradlew" ]; then
         log_ok gradlew "gradlew 可执行"
     else
-        log_warn gradlew "gradlew 无 +x（hgfs 常见）→ 请用 bash ./gradlew"
+        log_warn gradlew "gradlew 无 +x（NTFS/FUSE 挂载常见）→ 请用 bash ./gradlew"
     fi
     dist_url="$(grep -E '^distributionUrl=' "$REPO_ROOT/gradle/wrapper/gradle-wrapper.properties" 2>/dev/null | cut -d= -f2- | tr -d '\r')"
     log_info gradle_wrapper "distributionUrl=$dist_url"
@@ -238,7 +241,7 @@ for key in MT_PACK_MODS_NEOFORGE MT_PACK_MODS_FORGE MT_PACK_MODS_NEOFORGE_26_1_2
     fi
 done
 if [ -n "$win_vals" ]; then
-    log_warn conf_windows "mt.conf 含 Windows 专用路径（Linux 无效，仅作机器历史）：$win_vals"
+    log_info conf_windows "mt.conf 含 Windows 专用路径（Windows 测试台的机器配置，Linux 侧忽略且不修改）：$win_vals"
 else
     log_ok conf_windows "mt.conf 无 Windows 专用路径"
 fi
@@ -262,11 +265,16 @@ fi
 
 fs_type="$(findmnt -n -o FSTYPE -T "$REPO_ROOT" 2>/dev/null || true)"
 if [ ! -w "$REPO_ROOT" ]; then
-    log_fail hgfs_writable "仓库根不可写（检查挂载/权限）：$REPO_ROOT"
-elif [ -z "${fs_type##*vmhgfs*}" ]; then
-    log_warn hgfs_writable "仓库根在 hgfs 共享盘（$fs_type）：I/O 慢、不支持符号链接/硬链接；长期工作建议本机盘工作副本（见 docs/handover-2026-10-31-local-disk-workspace.md）"
+    log_fail repo_writable "仓库根不可写（检查挂载/权限）：$REPO_ROOT"
 else
-    log_ok hgfs_writable "仓库根可写，文件系统=${fs_type:-unknown}（非 hgfs；符号链接/硬链接可用性取决于该文件系统）"
+    case "$fs_type" in
+        ntfs3|ntfs|ext4|ext3|xfs|btrfs)
+            log_ok repo_writable "仓库根可写，文件系统=${fs_type:-unknown}（ntfs3 上 ln -s / 硬链接已实测可用）" ;;
+        *vmhgfs*|hgfs|fuse*|9p*)
+            log_warn repo_writable "仓库根在 $fs_type 上（共享/网络盘：I/O 慢、符号链接/硬链接可能不可用）" ;;
+        *)
+            log_ok repo_writable "仓库根可写，文件系统=${fs_type:-unknown}" ;;
+    esac
 fi
 
 jdk_missing=""
@@ -293,9 +301,9 @@ case "$autocrlf" in
     *)     log_warn git_autocrlf "core.autocrlf=$autocrlf（期望 true）" ;;
 esac
 
-mc_home="${MC_HOME:-/mnt/hgfs/.minecraft}"
+mc_home="${MC_HOME:-/mnt/d/.minecraft}"
 if [ ! -d "$mc_home" ]; then
-    log_warn pack_root "整合包根目录不存在：$mc_home（设 MC_HOME 或确认 hgfs 挂载）"
+    log_warn pack_root "整合包根目录不存在：$mc_home（设 MC_HOME，或确认 /mnt/d 已挂载）"
 else
     missing=""
     for p in "狐の航空学 Voxy Edition" "1.20.1-Forge 模组测试" "26.1.2-NeoForge 模组测试" "1.20.1-Fabric 模组测试"; do
@@ -308,19 +316,28 @@ else
     fi
 fi
 
-lock_dir="/mnt/hgfs/MCProject/.agent-locks"
+lock_dir="/mnt/f/MCProject/.agent-locks"
 if [ -d "$lock_dir" ]; then
     others=""
+    stale=""
     for f in "$lock_dir"/*.lock; do
         [ -e "$f" ] || continue
         b="$(basename "$f")"
+        lpid="$(sed -n 's/^PID=\([0-9][0-9]*\).*/\1/p' "$f" 2>/dev/null | head -n 1)"
+        if [ -n "$lpid" ] && ! kill -0 "$lpid" 2>/dev/null; then
+            stale="$stale $b(PID=$lpid 已退出)"
+            continue
+        fi
         [ "$b" = "dsh.lock" ] && continue
         others="$others $b"
     done
     if [ -n "$others" ]; then
         log_warn locks_other "其它 agent 锁活跃：$others（写文件/启动 Gradle 前先确认）"
     else
-        log_ok locks_other "无其它 agent 锁（仅 dsh.lock，属本宿主）"
+        log_ok locks_other "无其它 agent 活跃锁（dsh.lock 属本宿主）"
+    fi
+    if [ -n "$stale" ]; then
+        log_warn locks_stale "陈旧锁（持有进程已退出，不自行删除，报用户裁决）：$stale"
     fi
     log_info locks "锁目录 $lock_dir：$(ls -1 "$lock_dir" 2>/dev/null | tr '\n' ' ')"
 else
