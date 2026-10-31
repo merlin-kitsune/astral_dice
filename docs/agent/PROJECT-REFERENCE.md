@@ -74,11 +74,36 @@ pwsh -NoProfile -File F:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1 -
 
 ## 6. 投放目标（成对：mod jar + `starengine-*-1.1.0-pre.2.jar`）
 
-- neo → `D:\.minecraft\versions\狐の航空学 Voxy Edition\mods`
-- forge → `D:\.minecraft\versions\1.20.1-Forge 模组测试\mods`
-- dev → `run\1.21.1\mods` / `run\1.20.1\mods`（forge 用 named jar）
+- 整合包根 = `/mnt/hgfs/.minecraft`（VM 共享盘；Windows 宿主同一批文件为 `D:\.minecraft`），由根 `build.gradle` 的 `mcHomePath` 统一解析（环境变量 `MC_HOME` 可覆盖；改后需 `--no-configuration-cache` 才刷新）
+- neo → `/mnt/hgfs/.minecraft/versions/狐の航空学 Voxy Edition/mods`
+- forge → `/mnt/hgfs/.minecraft/versions/1.20.1-Forge 模组测试/mods`
+- fabric → `/mnt/hgfs/.minecraft/versions/1.20.1-Fabric 模组测试/mods`
+- 26.1.2 → `/mnt/hgfs/.minecraft/versions/26.1.2-NeoForge 模组测试/mods`
+- dev → `run/1.21.1/mods` / `run/1.20.1/mods`（forge 用 named jar）
 
 缺库即启动失败 `Missing or unsupported mandatory dependencies`。投放后必须逐份核 sha256。
+
+## 6.1 Linux 宿主（2026-10-31 起，取代 Windows 口径）
+
+仓库内一切路径**相对仓库根**书写；脚本用 `ROOT="$(cd "$(dirname "$0")/.." && pwd)"` 自解析，迁移到真实 Linux 后无需改写。
+
+```bash
+export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64     # 所有 gradlew 的 daemon JVM 必须 ≥21；子项目 toolchain 17/21/25 自动发现
+./gradlew :neoforge-1.21.1:classes --console=plain      # P0
+./gradlew :forge-1.20.1:classes   --console=plain       # P0
+./gradlew :neoforge-26.1.2:classes --console=plain --no-configuration-cache   # P1，该线必须关配置缓存
+./gradlew :forge-1.20.1:pushToDevRun --console=plain    # legacyforge dev 运行加载 run/1.20.1/mods/*.jar，改代码后必须重建
+bash scripts/test/linux/env.sh                          # 只读环境检查（ENV_RESULT: OK|WARN|FAIL）
+bash scripts/test/linux/launch.sh --version 1.21.1      # 就绪 = AutoJS /health 200 + status client available → LAUNCH: READY
+bash scripts/test/linux/stop.sh  --version 1.21.1       # 期望 LINUX_STOP: OK（无 java / net.minecraft 残留）
+python3 -B docs/agent/verify-split.py                   # 规则守门
+```
+
+- 前置：`starengine:1.1.0` 必须已发布到本机 mavenLocal（在兄弟仓 `starengine` 跑四线 `:publishToMavenLocal`，daemon 21）。
+- Linux 侧**不调用** `scripts/**/*.ps1`（52 个，Windows 测试台/守门脚本）；`scripts/test/mt.ps1`（19,384 行）整台不可移植，替代 = `scripts/test/linux/*.sh` + AutoJS `eval_js` + computer-use MCP。
+- 桌面/游戏注入通道：KDE Wayland 下 `computer-use-mcp`（DSH MCP serverName `computer-use`）截图/点击/键盘；游戏内用 AutoJS MCP（`http://127.0.0.1:25585/mcp`，serverName `autojs`）。
+- 迁移与现状：`docs/handover-2026-10-31-linux-vm-adoption.md`（含 VM hgfs 实测代价与 8 步迁移 checklist）；规则正本 `docs/agent/AGENTS-dsh-linux.md`；新会话入口 `docs/handover-new-session-context.md`。
+- 上面 §4/§6 的 `D:\...`、`pwsh`、`gradlew.bat` 命令属 **Windows 历史口径**，Linux 宿主不执行。
 
 ## 7. 交接文件
 
