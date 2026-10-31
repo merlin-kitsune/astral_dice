@@ -2,6 +2,10 @@ package com.merlinkitsune.astral_dice.client;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.init.ModParticles;
+import com.merlinkitsune.astral_dice.client.render.TraderStallModel;
+import com.merlinkitsune.astral_dice.client.render.TraderStallRenderer;
+import net.minecraft.world.entity.EntityType;
+import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import com.merlinkitsune.astral_dice.screen.CardInventoryScreen;
 import com.merlinkitsune.astral_dice.screen.ModMenuTypes;
 import net.minecraft.client.DeltaTracker;
@@ -44,6 +48,24 @@ public class ModClientEvents {
     @SubscribeEvent
     public static void registerScreens(RegisterMenuScreensEvent event) {
         event.register(ModMenuTypes.CARD_INVENTORY.get(), CardInventoryScreen::new);
+    }
+
+
+    /**
+     * 卡牌商人 / 筹码商人村民的「摊位」几何层。
+     *
+     * <p>背景：{@code models/cardshop_villager.bbmodel} 比 vanilla {@code VillagerModel} 多两件几何
+     * （柜台面板 8×4×4、-20° 遮阳棚平板），vanilla 渲染器画不出来，见 {@code TraderStallModel} 的类注释。
+     * 这里注册覆盖原版 {@code VillagerRenderer} 的子类；层内只对本模组职业生效，其它村民外观不变。
+     */
+    @SubscribeEvent
+    public static void registerLayerDefinitions(EntityRenderersEvent.RegisterLayerDefinitions event) {
+        event.registerLayerDefinition(TraderStallModel.LAYER, TraderStallModel::createBodyLayer);
+    }
+
+    @SubscribeEvent
+    public static void registerEntityRenderers(EntityRenderersEvent.RegisterRenderers event) {
+        event.registerEntityRenderer(EntityType.VILLAGER, TraderStallRenderer::new);
     }
 
     /**
