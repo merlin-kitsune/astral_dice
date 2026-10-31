@@ -1,5 +1,8 @@
 # 新会话上下文（原生 Linux 真机期）
 
+
+> **口径提示**：本文件描述**主线**（`multi-main` / 1.5.0-rc.7）。若你工作在 `multi-dev-next` 工作树（`/mnt/f/MCProject/astral_dice_multiloader-next`，2.0 线 / `26.4-SNAPSHOT.5`），版本号与库引脚以 `docs/handover-2026-10-31-dev-next-linux-sync.md` 为准。
+
 > **重写于 2026-10-31（宿主从 VMware 虚拟机迁到真机之后）**：替换旧的「当前是虚拟机 + hgfs + `~/Project` 四副本」口径。
 > **路径纪律**：仓库内文件一律写**相对仓库根的路径**（如 `docs/agent/AGENTS-dsh-linux.md`、`run/start-1.21.1.sh`）；宿主绝对路径只在迁移/附录章节登记。
 
@@ -29,7 +32,7 @@
 - **双系统、与 Windows 共用同一块 NTFS 盘**：`/mnt/f` = Windows `F:`、`/mnt/d` = `D:`、`/mnt/e` = `E:`、`/mnt/c` = `C:`（**只读**）；全部 `ntfs3` rw（除 c）。仓库就在 `/mnt/f/MCProject/astral_dice_multiloader`，**没有 hgfs、没有副本层**。
 - **`ln -s` / 硬链接 / `write`·`edit` 工具全部可用**（VM hgfs 的限制已消失）。
 - **Windows 会话遗留的 1001:1002 属主目录不可写**：`docs/agent/`（新建/删除会 `EACCES`，只能覆盖既有文件 ⇒ 写 `/tmp` 再 `cat >`）、`starengine/*/build/`（发布 pom 会失败 ⇒ `mv` 改名 + `cp -a` 重建，详见迁移文档 §4）。遇 `Permission denied` 先 `ls -ld`，**不要** chown/chmod。
-- 出网：Maven Central / aliyun / neoforged / github **全部 200 直连** ⇒ **不需要 `~/.gradle/init.d` 镜像**；git 全局无 `http.proxy`，远程操作按命令带 `-c http.proxy=http://127.0.0.1:7897`。
+- 出网：clash-verge-rev **TUN 模式**全局接管（`tun.enable=true` / `auto-route` / `198.18.0.1/30`）⇒ **直连，不带 `-c http.proxy=`**；Maven Central / aliyun / neoforged / github 均实测 200，**不需要 `~/.gradle/init.d` 镜像**。仓库 `.git/config` 里 `http(s).proxy=127.0.0.1:7897` 是与 Windows 共用的遗留项（**不要改**），要严格直连用 `git -c http.proxy= -c https.proxy=`；代理状态查 `http://127.0.0.1:9097`（Bearer secret 在 clash-verge 的 `config.yaml`）。
 - JDK：`/usr/lib/jvm/java-{17,21,25}-openjdk-amd64` 三套在位；**系统默认 java 是 21**（VM 期是 25）；所有 `./gradlew` 先 `export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64`。
 - 桌面通道：**`computer-use-linux` MCP**（KWin + portal；AT-SPI 可用）+ `screen-ocr` + `spectacle`；**无** `xdotool`/`wtype`/`wmctrl`/`grim`，`ydotool` 无 socket。
 - AutoJS：端点 `http://127.0.0.1:25585/mcp`（`GET /health` 探活）；**本机未注册 `autojs` MCP**，在 DSH 里用 `curl` 打 JSON-RPC。

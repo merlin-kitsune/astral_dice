@@ -101,6 +101,8 @@ export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
 
 ## 7 已知坑（本批实际踩到）
 
+> **2026-10-31 更新**：下列 1、4 两个属主坑已由用户授权 `sudo chown -R kitsune:kitsune` 修复（4 仓库 `uid 1001`/`gid 1002` 归零），残留目录也已清掉（7 个 `*.vmresidue-*` ≈ 478 MB、78 个 `*.foreign1001`、`temp/t122/stop1211_b.log` 1.1 GB）。下面保留原始症状与绕法，供 Windows 侧再导入文件时复发参考。
+
 1. **1001:1002 属主目录**：`docs/agent/`、`scripts/dev/`（worktree 内）与 `starengine_next/{forge-1.20.1,neoforge-1.21.1}/build` 属主不是 `kitsune` ⇒ git 无法在其中创建/删除文件，Gradle 也无法写 POM。绕法：**改名 + `cp -a` 复制回**（新目录属 kitsune，内容逐字节不变），无需 root；但留下的 `*.vmresidue-20261031/` 目录**删不掉**，需 root 清理。
 2. **CRLF/LF 混用**是本仓冲突放大器：dev 侧历史 blob 有 CRLF、main 侧是 LF。遇到「整文件冲突」先怀疑行尾，用 `git show :2:<path> | tr -d '\r'` 归一后再三路合并。
 3. **`run/` 被 gitignore**：`run/start-*.sh` 与 `run/*/mods` 都是本地资产，换树/换机必须重新投放（本批已复制 3 个启动脚本）。

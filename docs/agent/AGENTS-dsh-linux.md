@@ -47,8 +47,8 @@
 - 挂载实读：`/dev/nvme2n1p1 on /mnt/f type ntfs3 (rw,uid=1000,gid=1000,dmask=0077,fmask=0077,acl,iocharset=utf8,prealloc)`；`/mnt/d`（`/dev/nvme0n1p5`）同参数；`/mnt/c`（`/dev/nvme0n1p3`）为 `ro`；根 `/` 为 ext4（`/dev/sda2`）。
 - **链接与原子写实测（2026-10-31，`/mnt/f` 临时目录）**：`ln -s` **OK**、硬链接 **OK**、同目录 `mv` **OK**、`sed -i` **OK**、`python3 os.replace` 原子替换 **OK**、`chmod +x` 后可直接执行 **OK**。
   - ⇒ VM hgfs 上「不能用 `write`/`edit`（硬链接 EPERM）、只能 `cat > <<'EOF'`」的限制**已消失**：Linux 侧文本编辑可直接用 `write`/`edit` 工具，改完仍按〈命令执行规范〉做 `file` / `wc -l` 自检。
-- **目录权限的坑（本批实际踩到）**：`docs/agent/` 目录属主是 `1001:1002`、mode `755`，当前用户 `kitsune`(1000) **对目录无写权限** ⇒ 该目录下**不能新建/删除文件**（`write` 工具的 tmpdir+rename 会 `EACCES`），但**可以覆盖其中已属 kitsune 的既有文件**。新增 `docs/agent/*.md` 前先 `[ -w docs/agent ]`，不可写就用 `python3` 直接写目标文件或先报用户；**不要**为了绕开去 `chown`/`chmod`（需 root，且属 Windows 侧遗留 ACL）。
-- **同一坑的第二个面（`starengine` 构建树）**：`/mnt/f/MCProject/starengine/{neoforge-1.21.1,forge-1.20.1,fabric-1.20.1,neoforge-26.1.2}/build/` 也是 `1001:1002`/`755` ⇒ `publishToMavenLocal` 会报 `Could not write to file '.../build/publications/mavenJava/pom-default.xml'`（**四线同一处失败，不是依赖问题**）。绕法（无需 root）：`mv <line>/build <line>/build.vmresidue-<日期>` → `cp -a` 复制回新 `build/`（新目录属 kitsune，内容与 mtime 保留）⇒ Gradle 仍判 `createMinecraftArtifacts UP-TO-DATE`，**不会触发重新 decompile**；残留目录删除需 root，报告用户即可。
+- **目录属主坑（已修复，留作复发预案）**：2026-10-31 用户明确授权后，已对本机 4 个仓库（`astral_dice_multiloader` / `astral_dice_multiloader-next` / `starengine` / `starengine_next`）执行 `sudo chown -R kitsune:kitsune`，`uid 1001` / `gid 1002` 归零，并配好免密 sudo（`/etc/sudoers.d/90-kitsune-nopasswd`）。**历史症状**：`docs/agent/` 曾是 `1001:1002`/`755` ⇒ `kitsune`(1000) 对目录无写权限，`write` 的 tmpdir+rename 报 `EACCES`，只能覆盖已属自己的既有文件。**若复发**（从 Windows 侧新建/复制进来的文件可能带 Windows 侧 uid）：先 `stat -c '%u:%g %n' <路径>` 确认，再 `find <repo> -uid 1001` 列全，**报用户后再 chown**，不要自行扩大范围。
+- **同一坑的第二面（构建树写不进去）**：症状是 `publishToMavenLocal` 报 `Could not write to file '.../build/publications/mavenJava/pom-default.xml'`，或 Gradle 写 `build/reports/problems/problems-report.html` 时 `AccessDeniedException`（**多线同一处失败，不是依赖问题**）。构建树已随上面的 chown 修好；**无需 root 的应急绕法**仍是：`mv <line>/build <line>/build.vmresidue-<日期>` → `cp -a` 复制回 `build/`（新目录属自己，mtime 保留）⇒ `createMinecraftArtifacts` 仍判 `UP-TO-DATE`，不重新 decompile；这样留下的残留目录要 root 才能删（2026-10-31 已清掉 7 个、约 478 MB）。
 - **大小写**：Linux 的 ntfs3 视图**区分大小写**（`CaseTest.txt` 存在时 `casetest.txt` 不存在）；Windows 侧不区分。仓库 `core.ignorecase=true`（Windows 克隆遗留）⇒ **只改大小写的重命名**可能被 git 当成无改动；需要改名时用 `git mv` 并 `git status` 复核真实文件名。
 - **权限位不可信**：挂载带 `dmask=0077,fmask=0077,acl`，文件常显示 `700`/`600`；**不要**用权限位判断可执行性，`gradlew`/`*.sh` 直接试跑（`bash gradlew` 永远可用）。
 - **I/O 比 ext4 慢**：本机 ntfs3 的倍数**尚未系统实测**，不编数字；Gradle 缓存（`~/.gradle`，在 ext4 家目录）与 `build/`（在 NTFS）分居两盘。大临时文件优先 `/tmp/dsh-<session>/`。
@@ -94,7 +94,7 @@
   - ⇒ **不要创建 `~/.gradle/init.d/00-aliyun-central-mirror.gradle`**，也不要往仓库写镜像坐标；`~/.gradle/init.d/`、`~/.mc-mirror`、`~/.local/bin/neoforge-mirror-sync.sh` 不存在都是正常状态。
   - 首次构建前跑一次自检（坏了才动手，别预防性加镜像）：`curl -s -o /dev/null -w '%{http_code}\n' https://repo.maven.apache.org/maven2/org/jetbrains/annotations/26.0.2/annotations-26.0.2.pom` ⇒ 期望 **200**；若再 403，才按 `docs/handover-2026-10-31-linux-vm-adoption.md` §6 第 2 步临时启用 host 级镜像（不改仓库）。
 - **26.1.2 必须加 `--no-configuration-cache`**：`createMinecraftArtifacts` 的 `DefaultConfigurableFileCollection` 在配置缓存序列化阶段报 `error writing value of type …`（历史实测，与镜像无关）。
-- **构建耗时：热缓存已实测，冷构建仍未测**（`[[PENDING:build-time-native]]`）。2026-10-31 真机热缓存：`:neoforge-1.21.1:classes` 32s、`:forge-1.20.1:classes` 30s（含四线配置期，`createMinecraftArtifacts UP-TO-DATE`）；构建日志同时打印 `整合包根目录 (MC_HOME): /mnt/d/.minecraft`。已知条件：`build/moddev/artifacts` 里 Windows 时代的产物仍在（`forge-1.20.1-47.4.10-merged.jar`、`neoforge-21.1.235-merged.jar`、`neoforge-21.1.235-client-extra-aka-minecraft-resources.jar` 等实读存在）⇒ **可能**复用、省掉 decompile/patch；但 `~/.gradle` 为空 ⇒ 依赖要重下。**禁止**把 VM hgfs 的 `2m44s` 当本机基线，也禁止把 `12m23s` 的 decompile 当必然发生。
+- **构建耗时：热缓存已实测，冷构建仍未测**（`[[PENDING:build-time-native]]`）。2026-10-31 真机热缓存：`:neoforge-1.21.1:classes` 32s、`:forge-1.20.1:classes` 30s（含四线配置期，`createMinecraftArtifacts UP-TO-DATE`），日志同时打印 `整合包根目录 (MC_HOME): /mnt/d/.minecraft`。`build/moddev/artifacts` 里 Windows 时代产物仍在（`forge-1.20.1-47.4.10-merged.jar`、`neoforge-21.1.235-merged.jar` 等）⇒ 可复用、省掉 decompile；`~/.gradle` 已由本批重建。**禁止**把 VM 的 `2m44s` 当本机基线，也不得假定 `12m23s` decompile 必然发生。
 - 换线构建耗时与失败模式以**构建台账**为准（每次记录线 / 命令 / 耗时 / 结果），单次耗时不当 SLA。
 
 ### 6. 前置库 starengine（1.1.0，必须先进 mavenLocal）
@@ -123,8 +123,10 @@
   - **不要整份重写既有 `.md`**（会把 CRLF 全变 LF 造成假 diff）；新建文件用 LF 并如实报告编码。
   - **只改大小写**的重命名在 `core.ignorecase=true` 下可能被 git 忽略 ⇒ 用 `git mv` + `git status` 复核。
 - `git status` 里 **4 个用户未跟踪文件**（实读，**不得 add/commit/删除**）：`models/astral_anvil.bbmodel`、`scripts/test/cases/TMP-ATTRLESS-HYDRA-1.21.1.json`、`scripts/test/resources/kubejs/1.21.1/server_scripts/astral_batch3_probe.js`、`zz_screen_probe.py`。
-- **git 全局没有配代理**（2026-10-31 实读 `git config --global --get http.proxy` 退出 1）⇒ 远程操作按命令带：`git -c http.proxy=http://127.0.0.1:7897 -c https.proxy=http://127.0.0.1:7897 …`；直连 `github.com` 也是 200，代理不是硬前提，但**红线「远程 git 一律走本地代理」不变**。
-- **git hooks 在 Linux 上全部空转**：`.git/hooks/{post-commit,post-checkout,post-merge,post-rewrite}` 是三段探测版（PATH `pwsh` → `pwsh.exe` → `/mnt/c/.../pwsh.exe`），本机 PATH 无 pwsh（`/mnt/c` 里是 Windows PE，Linux 不可执行）⇒ 静默 `exit 0`，松散引用自愈脚本不执行。遇 `HEAD -> unknown revision` 先查 `git reflog`。提交前**手动**跑 `python3 -B docs/agent/verify-split.py`（四项 `[OK]`）与 `python3 tools/verify_sign_display_names.py`（`GATE: PASS`）。
+- **出网 = clash-verge-rev TUN 全局接管，直连**（2026-10-31 用户裁决 + 实读 `/configs`：`tun.enable=true`、`device=Meta`、`auto-route=true`、`inet4-address=198.18.0.1/30`，内核 mihomo `v1.19.32`）⇒ 远程 git **直接执行，不加 `-c http.proxy=…`**，也不要 `export *_proxy`（环境里本来就没有）。
+  - **仓库 `.git/config` 仍有 `http.proxy`/`https.proxy` = `http://127.0.0.1:7897`**（Windows 期遗留、与 Windows 共用，**不要改**）。7897 仍在听，走它也能通；要单条命令**严格直连**就 `git -c http.proxy= -c https.proxy= <子命令>` 覆盖，**不要** `git config --unset`。
+  - 查代理状态用 clash-verge-rev 外部控制：`curl -s -H 'Authorization: Bearer <secret>' http://127.0.0.1:9097/configs`（`/version` 看内核）；`secret` 取 `~/.local/share/io.github.clash-verge-rev.clash-verge-rev/config.yaml` 的 `secret:` 字段 —— **不要把明文 secret 写进仓库或日志**。`401 Unauthorized` 是 secret 不对，不代表断网。
+- **git hooks 在 Linux 上空转**：四个 hook 是三段 pwsh 探测版，本机 PATH 无 pwsh（`/mnt/c` 里是 Windows PE，不可执行）⇒ 静默 `exit 0`，松散引用自愈不执行；遇 `HEAD -> unknown revision` 先查 `git reflog`。提交前**手动**跑 `python3 -B docs/agent/verify-split.py`（四项 `[OK]`）与 `python3 tools/verify_sign_display_names.py`（`GATE: PASS`）。
 
 ### 8. 测试收尾必须关闭游戏进程（2026-10-18 裁决的 Linux 版）
 
@@ -198,7 +200,7 @@
 | 「相对路径陷阱」 | **不变且更严**：双系统同盘 + 多工作树共存，任何跨仓命令都必须绝对路径 |
 | 「分支归属纪律（禁止镜像/回填）」 | **不变**（宿主无关）；`~/Project` 副本层已不存在，不要按旧文档重建 |
 | 发布投放（整合包 `versions/<实例>/mods`） | Linux 宿主**可**投放：根 = `/mnt/d/.minecraft`（`MC_HOME` 可覆盖，根 `build.gradle` 的 `mcHomePath` 统一解析：`MC_HOME` > `/mnt/d/.minecraft` > `D:/.minecraft`）；Windows 宿主同一批文件在 `D:\.minecraft`。**「默认不部署」红线不变**（仅用户明确下达时跑 `pushToGame`/`build`） |
-| git 代理 `http://127.0.0.1:7897` | **口径不变**，但本机**未**配全局代理（实读）：远程操作按命令带 `-c http.proxy=… -c https.proxy=…`；连通性以 `git ls-remote` 实测为准 |
+| 出网 / git 代理 | **2026-10-31 用户裁决改写**：clash-verge-rev **TUN 模式**全局接管（`tun.enable=true` / `198.18.0.1/30`）⇒ **直连，不再带 `-c http.proxy=`**；仓库 `.git/config` 的 `http(s).proxy=127.0.0.1:7897` 与 Windows 共用、**不改**，严格直连用命令级 `-c http.proxy= -c https.proxy=`；状态查 `127.0.0.1:9097`（Bearer secret） |
 | 默认不 commit / push / 打 tag | **不变**（最严格红线） |
 | `models/` `images/` `sound/` 与 `run/` 内他人产物 | **不变**：出现不属于自己的改动 ⇒ 停手报告，不 add/commit/stash/checkout/删除 |
 | 「Windows 开发配置不可动」 | **新增（2026-10-31 用户硬约束）**：本机与 Windows 共用同一块盘；只改 Linux 侧需要的文件，不删 / 不改 Windows 专属配置（`mt.conf` 的 Windows 路径、`*.ps1`、`gradlew.bat`、`run/start-*.bat`、`.vscode` 的 `F:\` 配置一律保留原样） |
@@ -237,8 +239,9 @@
 
 ## Git 代理与操作规范
 
-- 代理：`http://127.0.0.1:7897`。本机**未配**全局 `http.proxy`/`https.proxy`（2026-10-31 实读）⇒ 远程操作按命令带 `git -c http.proxy=http://127.0.0.1:7897 -c https.proxy=http://127.0.0.1:7897 <子命令>`。
-  - 连通性实测（2026-10-31）：`curl -x http://127.0.0.1:7897 -o /dev/null -w "%{http_code}" https://github.com` ⇒ `200`；直连同为 `200`。Maven 侧不再需要代理绕过（Central 已 200）。
+- **出网走 TUN 直连（2026-10-31 用户裁决）**：clash-verge-rev 以 TUN 接管全部路由（实读 `/configs`：`tun.enable=true`、`device=Meta`、`auto-route=true`、`198.18.0.1/30`，内核 mihomo `v1.19.32`）⇒ **远程 git 直接跑，不加 `-c http.proxy=…`**，也不要 export `*_proxy`。
+  - 仓库 `.git/config` 仍有 `http.proxy`/`https.proxy` = `http://127.0.0.1:7897`（**Windows 共用配置，保留不动**）；`7897` 在听 ⇒ 走它也能通，严格直连用 `git -c http.proxy= -c https.proxy= <子命令>` 覆盖。
+  - 排障：`curl -s -H 'Authorization: Bearer <secret>' http://127.0.0.1:9097/configs` 确认 `tun.enable=true`（secret 见 `~/.local/share/io.github.clash-verge-rev.clash-verge-rev/config.yaml`）；`/version` 看内核；`401` 是 secret 问题不是断网。Maven 侧 Central / aliyun / neoforged 直连 200，不需要镜像也不需要代理。
 - 一律 `git -C /mnt/f/MCProject/astral_dice_multiloader <子命令>`；**默认不 commit / push / tag**，远程操作须用户明确要求。
 - 提交前 `git status --short -uall` 必须只剩用户未跟踪素材（4 个文件，见〈git〉）；有他人改动 ⇒ 停手报告。
 - `git add` 只加本轮明确产物；**禁止** `git add -A`、`git stash`、`git checkout --` 清别人的改动。

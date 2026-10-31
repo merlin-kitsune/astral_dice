@@ -75,7 +75,7 @@ export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64        # daemon 必须 ≥21
 # OS Linux 7.0.0-42-generic amd64；首次自举把 dist（约 130 MB）下到 ~/.gradle/wrapper/dists
 ```
 
-- 出网：`repo.maven.apache.org` 200、`maven.aliyun.com` 200、`maven.neoforged.net` 200、`github.com` 200（直连与 `-x http://127.0.0.1:7897` 都 200）⇒ **不建 init.d 镜像**。
+- 出网：`repo.maven.apache.org` 200、`maven.aliyun.com` 200、`maven.neoforged.net` 200、`github.com` 200 ⇒ **不建 init.d 镜像**；宿主的 clash-verge-rev 是 **TUN 模式**（`tun.enable=true`、`device=Meta`、`auto-route`、`198.18.0.1/30`，mihomo `v1.19.32`）⇒ **远程操作直连，不加 `-c http.proxy=`**（详见规则正本〈Git 代理与操作规范〉）。
 - starengine 四线发布（`publishToMavenLocal`，均 `BUILD SUCCESSFUL`，各约 1 s，因 `build/moddev` 产物被复制保留）：
 
   ```
