@@ -2,7 +2,6 @@ package com.merlinkitsune.astral_dice.client;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.init.ModParticles;
-import com.merlinkitsune.astral_dice.client.render.TraderVillagerRenderer;
 import com.merlinkitsune.astral_dice.entity.ModEntityTypes;
 import com.merlinkitsune.astral_dice.client.BarricadeRenderer;
 import com.merlinkitsune.astral_dice.client.RepulsionRenderer;
@@ -52,15 +51,6 @@ public class ModClientEvents {
     //     该项由**类初始化时的每个 invokedynamic 解析**触发(§5.4.3.6)⇒ 专用服务端启动即
     //     NoClassDefFoundError: CardInventoryScreen(除非它是纯服务端 mod,才会被 strip 掉)。
     //     与 forge-1.20.1 侧 ModClientEvents#onClientSetup 的写法保持对等。
-
-    /**
-     * 卡牌商人 / 筹码商人村民改用「关掉 hat + hat_rim」的村民模型；其余职业与幼年村民不变。
-     * 见 {@code TraderVillagerRenderer} 与 {@code TraderVillagerModel} 的类注释。
-     */
-    @SubscribeEvent
-    public static void registerTraderVillagerRenderer(EntityRenderersEvent.RegisterRenderers event) {
-        event.registerEntityRenderer(EntityType.VILLAGER, TraderVillagerRenderer::new);
-    }
 
     /** 路障 / 强化拒止实体渲染器（1.5.0 新增实体；合并时整块丢失，2026-11-01 补回）。 */
     @SubscribeEvent
