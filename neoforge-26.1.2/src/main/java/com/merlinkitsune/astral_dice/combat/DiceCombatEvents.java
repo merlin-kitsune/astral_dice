@@ -42,6 +42,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.entity.boss.wither.WitherBoss;
@@ -1486,7 +1487,11 @@ public class DiceCombatEvents {
         // 神秘遗物+ 的七咒之戒/启示之证 ID(按物品 ID 识别,未安装该模组时全部返回 false)
     private static final String ENIGMATIC_CURSED_RING = "enigmaticlegacyplus:cursed_ring";
     private static final String ENIGMATIC_TWIST = "enigmaticlegacyplus:the_twist";
+    private static final net.minecraft.resources.Identifier COOLDOWN_PROBE_ID =
+            net.minecraft.resources.Identifier.fromNamespaceAndPath(
+                    com.merlinkitsune.astral_dice.AstralDiceMod.MODID, "cooldown_probe");
     private static final String ENIGMATIC_BLESS = "enigmaticlegacyplus:the_bless";
+    private static final String ENIGMATIC_ACKNOWLEDGMENT = "enigmaticlegacyplus:the_acknowledgment";
 
     // 检测玩家是否佩戴了七咒之戒(按物品 ID 识别,未安装该模组时返回 false)
     public static boolean hasEnigmaticCurse(Player player) {
@@ -1984,5 +1989,93 @@ public static boolean attackerHasDiceCurio(Player player) {
         }
         return best;
     }
+    /**
+     * F7(2026-10-27 近战审计):修女(alana)被动「单次受击 >10 清空全部加成」的判定。
+     *
+     * <p>原判据挂在 {@code event/NewSignEvents}(非骰战)与玩家攻击路径上,读的是护甲前原版值;
+     * 骰战以自算终值覆盖式写入后该值已无意义(近战骰战下几乎永不触发)。故改为按<b>落地红心量</b>判定,
+     * 并放在两条骰战路径的共同出口:玩家攻击({@code event.setNewDamage} 之后)与生物近战
+     * ({@link #resolveMobMeleeAttack})。
+     *
+     * @param landing 落地红心量(= 终值 - min(终值, 吸收余额))
+     */
+    private static void applyAlanaBigHit(LivingEntity target, float landing) {
+        if (target instanceof Player victim && landing > 10.0F
+                && ModAttachments.getAlanaPassiveBonus(victim) > 0) {
+            com.merlinkitsune.astral_dice.item.sign.AlanaSignItem.clearBonus(victim);
+        }
+    }
+
+    // 七咒减益:对骰子/卡牌点数施加 -40%(手持启示之证再 -20%;护法爆发/倒转之启/恩惠之典完全免疫)。
+    // 用于攻击点数(骰点+卡牌)与闪避失败的"攻击点数最大值"结算。
+    private static double applyCurseToDicePoints(Player player, double points) {
+        if (points <= 0 || !hasEnigmaticCurse(player)) return points;
+        if (player.hasEffect(ModEffects.MISAKI_BURST)
+                || isHoldingEnigmaticItem(player, ENIGMATIC_TWIST)
+                || isHoldingEnigmaticItem(player, ENIGMATIC_BLESS)) {
+            // 爆发期间/持有免疫物品:不施加减益,造成全额点数
+            return points;
+        }
+        double cursePenalty = 0.4;
+        if (isHoldingEnigmaticItem(player, ENIGMATIC_ACKNOWLEDGMENT)) {
+            cursePenalty = Math.max(0, cursePenalty - 0.2);
+        }
+        return points * (1 - cursePenalty);
+    }
+
+    /**
+     * 骰战攻击冷却系数所用的 {@code getAttackStrengthScale(0.5F)} —— **已扣除「永动机」筹码的攻击速度贡献**。
+     *
+     * <p><b>为什么需要它(2026-10-15 修复的副作用)</b>:永动机以 {@code ATTACK_SPEED} 的
+     * {@code ADD_MULTIPLIED_TOTAL = 1.0}(属性终值 ×2)实现「原版近战攻击冷却 -50%」。原版蓄力系数
+     * {@code 0.2 + f2²·0.8} 只应反映**蓄力程度**,而攻速 ×2 会让**同一真实点击节奏**下的 f2 变大
+     * ⇒ 骰战基础段被这条修饰器顺带抬高(不只是挥得更快)。本方法把该修饰器的贡献临时扣除,
+     * 用**等价于「未装备永动机」的攻击速度**去求同一个原版公式 ⇒ 骰战系数只随真实蓄力时长变化。
+     *
+     * <p><b>为什么不按比例换算({@code f2 × AS'/AS})</b>:原版
+     * {@code getCurrentItemAttackStrengthDelay() = 20 / 攻击速度}(1.21.1 {@code Player.java:2105})、
+     * {@code getAttackStrengthScale} 对 {@code (ticker + 0.5) / delay} 取 clamp(同文件 2112-2113),
+     * 而 {@code attackStrengthTicker} 在 {@code Player#tick} 里**无上限自增**、只在 {@code attack()}
+     * 末尾清零(同文件 319 / 1414;1.20.1 同构:275 / 1274)⇒ 一旦 f2 被 clamp 到 1
+     * (很常见:真实点击间隔 ≥ 芯片冷却时长),ticker 信息已丢失,比例换算法只能给出
+     * 「等效值下限 0.5」的错误结果(等价于把永动机变成纯负收益)。故这里改为**在真实属性实例上
+     * 临时叠加一个抵消修饰器**({@code ADD_MULTIPLIED_TOTAL = 1/(1+a) − 1}),让原版公式自己算出
+     * 精确等价值,再用 {@code finally} 立刻移除、不留残留。
+     *
+     * <p>未装备永动机(属性实例上没有这条修饰器)时直接返回原版取值,零副作用。
+     *
+     * @return 扣除永动机攻击速度贡献后的 {@code getAttackStrengthScale(0.5F)};该值同时供
+     *         {@link #isVanillaCriticalHit} 与附魔增量缩放使用(与原版「同一个 f2 驱动三处」同构)
+     */
+    private static float diceBattleAttackStrengthScale(Player player) {
+        AttributeInstance speed = player.getAttribute(Attributes.ATTACK_SPEED);
+        if (speed == null) {
+            return player.getAttackStrengthScale(0.5F);
+        }
+        AttributeModifier chipModifier = speed.getModifier(PerpetualMotionChipItem.attackSpeedModifierId());
+        if (chipModifier == null) {
+            return player.getAttackStrengthScale(0.5F);
+        }
+        // 抵消项:把「本修饰器带来的 ×2」再乘回 1/2 ⇒ 属性终值 × (1 + counter) = 未装备永动机时的终值
+        double factor = 1.0D + chipModifier.amount();
+        if (factor <= 0.0D) {
+            return player.getAttackStrengthScale(0.5F);
+        }
+        double counter = 1.0D / factor - 1.0D;
+        if (counter == 0.0D) {
+            return player.getAttackStrengthScale(0.5F);
+        }
+        if (speed.getModifier(COOLDOWN_PROBE_ID) != null) {
+            speed.removeModifier(COOLDOWN_PROBE_ID);
+        }
+        speed.addTransientModifier(new AttributeModifier(COOLDOWN_PROBE_ID, counter,
+                AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
+        try {
+            return player.getAttackStrengthScale(0.5F);
+        } finally {
+            speed.removeModifier(COOLDOWN_PROBE_ID);
+        }
+    }
+
 
 }

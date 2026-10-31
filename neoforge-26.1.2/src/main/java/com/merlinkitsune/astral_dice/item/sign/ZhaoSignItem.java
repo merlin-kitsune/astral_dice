@@ -102,7 +102,7 @@ import com.merlinkitsune.starengine.combat.PartyRelations;
  * 主动效果图标复用同一张图({@code textures/mob_effect/zhao_blessing.png})。
  */
 @EventBusSubscriber(modid = AstralDiceMod.MODID)
-public class ZhaoSignItem extends BaseSignItem {
+public class ZhaoSignItem extends BaseSignItem implements SignHooks.DiceJudgmentRoll {
     private static final Logger LOGGER = LoggerFactory.getLogger(ZhaoSignItem.class);
 
     /** 主动技能的动作 id(注册表键;也是 actionbar 技能名 {@code msg.astral_dice.target_select.skill.<id>} 的来源) */
@@ -496,5 +496,10 @@ public class ZhaoSignItem extends BaseSignItem {
     /** 只读读数辅助(探针/调试用):当前是否满足"组队"这一前置(未组队 ⇒ 心意相连整体不生效) */
     public static boolean teamGateOpen(Player player) {
         return player != null && PartyRelations.hasTeam(player);
+    }    @Override
+    public String handleDiceRollResult(Player player, int dice) {
+        return onDiceRollResult(player, dice);
     }
+
+
 }

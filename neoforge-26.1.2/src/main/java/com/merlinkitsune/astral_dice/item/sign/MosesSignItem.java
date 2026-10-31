@@ -42,7 +42,8 @@ import top.theillusivec4.curios.api.SlotContext;
 // 故**不得**标注 @EventBusSubscriber —— NeoForge 26.1.2 对「无 @SubscribeEvent 方法的订阅者类」直接抛
 // IllegalArgumentException(class ... has no @SubscribeEvent methods, but register was called anyway),
 // 进而 Failed to register automatic subscribers 让模组构造失败(2026-09-17 实测崩线)。
-public class MosesSignItem extends BaseSignItem {
+public class MosesSignItem extends BaseSignItem
+        implements SignHooks.BrokenTargetAttack, SignHooks.DodgeCounter {
     private static final Logger LOGGER = LoggerFactory.getLogger(MosesSignItem.class);
 
     /** 主动冷却基础秒数(被动:120 秒) */
@@ -184,5 +185,17 @@ public class MosesSignItem extends BaseSignItem {
         if (!isEquipped(player)) return;
         WeaknessRevealEffect.addStacks(player, 1);
     }
+    @Override
+    public void handleAttackBrokenTarget(Player player, LivingEntity target) {
+        if (player == null || player.level().isClientSide()) return;
+        if (!isEquipped(player)) return;
+        onAttackBrokenTarget(player, target);
+    }
+
+    @Override
+    public void handleDodgeCounter(Player player, LivingEntity target) {
+        onDodgeCounter(player, target);
+    }
+
 
 }

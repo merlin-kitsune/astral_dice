@@ -3,6 +3,11 @@ package com.merlinkitsune.astral_dice.client;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.init.ModParticles;
 import com.merlinkitsune.astral_dice.client.render.TraderVillagerRenderer;
+import com.merlinkitsune.astral_dice.entity.ModEntityTypes;
+import com.merlinkitsune.astral_dice.client.BarricadeRenderer;
+import com.merlinkitsune.astral_dice.client.RepulsionRenderer;
+import com.merlinkitsune.astral_dice.client.BarricadeModel;
+import com.merlinkitsune.astral_dice.client.RepulsionModel;
 import net.minecraft.world.entity.EntityType;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import com.merlinkitsune.astral_dice.screen.CardInventoryScreen;
@@ -55,6 +60,20 @@ public class ModClientEvents {
     @SubscribeEvent
     public static void registerTraderVillagerRenderer(EntityRenderersEvent.RegisterRenderers event) {
         event.registerEntityRenderer(EntityType.VILLAGER, TraderVillagerRenderer::new);
+    }
+
+    /** 路障 / 强化拒止实体渲染器（1.5.0 新增实体；合并时整块丢失，2026-11-01 补回）。 */
+    @SubscribeEvent
+    public static void registerEntityRenderers(EntityRenderersEvent.RegisterRenderers event) {
+        event.registerEntityRenderer(ModEntityTypes.BARRICADE.get(), BarricadeRenderer::new);
+        event.registerEntityRenderer(ModEntityTypes.REPULSION.get(), RepulsionRenderer::new);
+    }
+
+    /** 模型层定义：`astral_dice:barricade#main` / `astral_dice:repulsion#main`。 */
+    @SubscribeEvent
+    public static void registerLayerDefinitions(EntityRenderersEvent.RegisterLayerDefinitions event) {
+        event.registerLayerDefinition(BarricadeModel.LAYER_LOCATION, BarricadeModel::createBodyLayer);
+        event.registerLayerDefinition(RepulsionModel.LAYER_LOCATION, RepulsionModel::createBodyLayer);
     }
 
     @SubscribeEvent

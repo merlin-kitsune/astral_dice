@@ -71,6 +71,20 @@ public final class RandomCardHandler {
         public static GiveoutScope aroundWithTeam(double range) {
             return new GiveoutScope(range, false, true, -1);
         }
+
+        /** 指定范围内的玩家与团队队友(不含自己,**最多最近 N 人**;N<0 表示不限) */
+        public static GiveoutScope aroundWithTeam(double range, int maxTargets) {
+            return new GiveoutScope(range, false, true, maxTargets);
+        }
+
+        /**
+         * 同维度全体玩家与团队队友(不含自己,**最多最近 N 人**;N<0 表示不限)。
+         * 真龙形态的「连锁反应」用此作用域:范围不再限制 ⇒ {@code range = -1}(全维度在线玩家),
+         * 团队判定仍生效(有队伍时队友优先并入),人数上限与次序照 {@code collectTargets}(距离升序)。
+         */
+        public static GiveoutScope wholeDimensionWithTeam(int maxTargets) {
+            return new GiveoutScope(-1, false, true, maxTargets);
+        }
     }
 
     // 专属牌注册表:随机发放强制排除(活体书页/命运的指引/未来的撕咬、龙之咆哮等)

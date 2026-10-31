@@ -297,6 +297,53 @@ public class PlayerLifecycleHandler {
 
     // 复活/换维度克隆:Curios 在 playerClone 里把旧档案交给新实体(保留筹码栏的永久修饰符),
     // 此处再按当前骰子对账一次,覆盖「克隆期间骰子槽瞬时为空」等状态。
+    // 立牌玩家级状态迁移(2026-10-19 B2):旧 10 个 sign_* 附件键 → sign_state 复合键。
+    // 优先级 HIGHEST:其余登录处理器(白泽赐福 / 降神 / 治愈 / 冷却相关)可能读立牌冷却,
+    // 迁移必须在它们之前落盘。幂等由 ModAttachments#migrateSignStateFromLegacy 保证
+    // (sign_state 非默认即早退,重复登录不会用旧值覆盖新值)。
+    @SubscribeEvent(priority = EventPriority.HIGHEST)
+    public static void onPlayerLoggedInMigrateSignState(
+            net.neoforged.neoforge.event.entity.player.PlayerEvent.PlayerLoggedInEvent event) {
+        if (!(event.getEntity() instanceof Player player)) return;
+        if (player.level().isClientSide()) return;
+        ModAttachments.migrateSignStateFromLegacy(player);
+    }
+
+    // 筹码栏位对账(2026-09-17):登录 / 数据包同步 / 复活克隆后按当前佩戴的骰子重算尺寸。
+    // 背景:Curios 的 onEquip 第 2 参是 prevStack(普通装备时为空栈),旧实现把它当骰子 ⇒ 目标恒为 0,
+    // 「装备即加筹码栏」整条路径是空操作,只能靠 curioTick 每 20 tick 兜底;而尺寸是存档里的修饰符,
+    // 一旦漂移(/curios reset 清掉修饰符、同步包丢失、旧存档残值)不会自愈,故必须主动对账。
+    @SubscribeEvent
+    public static void onPlayerLoggedInRefreshChipSlots(PlayerEvent.PlayerLoggedInEvent event) {
+        if (!(event.getEntity() instanceof Player player)) return;
+        if (player.level().isClientSide()) return;
+        DiceCurioItem.refreshChipSlotCount(player);
+        // 兜底复位（需求）：重生 / 重新进入时**仍未佩戴骰子** ⇒ 强制恢复无筹码栏的初始状态，
+        // 并把占位的筹码退回物品栏。与上面那条防御式对账互补（它绝不缩掉占用中的槽位）。
+        DiceCurioItem.enforceNoDiceState(player);
+        // 临时牌到期刻对齐:效果时长只在玩家在线时流逝,而到期刻是绝对 gameTime
+        // (多人服务器离线期间照走)⇒ 重登时按效果剩余重写一次,避免把仍然有效的牌判成过期。
+        com.merlinkitsune.astral_dice.item.card.TemporaryCardUtil.realignExpiry(player);
+        // 星币钱包余额条:登录时客户端缓存不可信(可能是上次会话残值) ⇒ 无条件重发一次
+        if (player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
+            com.merlinkitsune.astral_dice.economy.StarCoinBalanceSync.forceResend(serverPlayer);
+        }
+    }
+
+    // 数据包同步(进入世界 / 数据包重载):Curios 自己的处理器在 NORMAL 重建/同步栏位,
+    // 这里用 LOWEST 保证晚于它执行,看到的是同步完成后的最终状态。
+    @SubscribeEvent(priority = EventPriority.LOWEST)
+    public static void onDatapackSyncRefreshChipSlots(
+            net.neoforged.neoforge.event.OnDatapackSyncEvent event) {
+        if (event.getPlayer() != null) {
+            DiceCurioItem.refreshChipSlotCount(event.getPlayer());
+            return;
+        }
+        for (ServerPlayer player : event.getPlayerList().getPlayers()) {
+            DiceCurioItem.refreshChipSlotCount(player);
+        }
+    }
+
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void onPlayerCloneRefreshChipSlots(PlayerEvent.Clone event) {
         if (!(event.getEntity() instanceof Player player)) return;

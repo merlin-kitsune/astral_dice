@@ -65,7 +65,7 @@ import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
  * 死亡保留,故按未声明即不保留的既定口径处理(与「弱点识破」等未声明保留的附件一致)。
  */
 @EventBusSubscriber(modid = AstralDiceMod.MODID)
-public class HannaSignItem extends BaseSignItem {
+public class HannaSignItem extends BaseSignItem implements SignHooks.DiceRollResult {
 
     /** 立牌注册 id */
     public static final String SIGN_ID = AstralDiceMod.MODID + ":hanna_sign";
@@ -402,5 +402,10 @@ public class HannaSignItem extends BaseSignItem {
         if (!event.getItemStack().is(Items.ENDER_PEARL)) return;
         event.setCanceled(true);
         sendSignActionBarColored(player, net.minecraft.ChatFormatting.RED, "msg.astral_dice.hanna_no_pearl");
+    }    @Override
+    public void handleDiceRollResult(Player player, int dice) {
+        onDiceRollResult(player, dice);
     }
+
+
 }

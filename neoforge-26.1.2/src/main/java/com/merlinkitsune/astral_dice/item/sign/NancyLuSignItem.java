@@ -45,7 +45,7 @@ import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
  * - 按下主动本身不给攻击力加成,隐身自然到期而未攻击同样不给;不消耗任何卡牌。
  */
 @EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
-public class NancyLuSignItem extends BaseSignItem {
+public class NancyLuSignItem extends BaseSignItem implements SignHooks.BlessingEnded {
     public static final int PASSIVE_NONE = 0;
     public static final int PASSIVE_ATTACK = 1;
     public static final int PASSIVE_DEFENSE = 2;
@@ -298,5 +298,10 @@ public class NancyLuSignItem extends BaseSignItem {
             event.setCanceled(true);
         }
     }
+    @Override
+    public void handleDiceBlessingEnded(Player player) {
+        onDiceBlessingEnded(player);
+    }
+
 
 }
