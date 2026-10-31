@@ -432,7 +432,7 @@ tasks.withType(org.gradle.api.tasks.bundling.Jar).configureEach {
 // === 编译产物分发规则(与 1.21.1 分支保持同一任务面与同一推送标准;旧 jar 清理按版本后缀隔离)===
 // 默认行为:每次构建完成后自动推送到仓库根 run/1.20.1/mods(本机 runClient 调试)、
 // 仓库根目录 build/libs,并推送到整合包 mods 目录(删除旧版后复制新版)。
-// 整合包位置:D:/.minecraft/versions/1.20.1-Forge 模组测试/mods
+// 整合包位置: /mnt/d/.minecraft/versions/1.20.1-Forge 模组测试/mods（Windows 宿主同盘为 D:\.minecraft\…；MC_HOME 可覆盖）
 // (2026-09-29 修正:原指向 `1.20.1 模组测试`,该目录在本机**已不存在**(整合包目录被重命名为
 //  `1.20.1-Forge 模组测试`),于是 pushToGame 每次都只打印 "pack dir not found, skipped"
 //  而**静默不部署** —— 产物停在最后一次路径尚存在的时刻。现对齐现名;同批 26.1.2 侧同样修正。)
@@ -452,7 +452,8 @@ tasks.withType(org.gradle.api.tasks.bundling.Jar).configureEach {
 //   ⚠️ 用 -PdeployToPack 强推本 mod 时,务必确认整合包内**已有**独立的 starengine-*.jar 且与之配对
 //      (库为独立前置、不再内置;下方会读 starengine_version 检查,缺库告警)。
 def devRunModsDir = rootProject.file('run/1.20.1/mods')
-def packModsDir = file('D:/.minecraft/versions/1.20.1-Forge 模组测试/mods')
+// 整合包目录: 由根 build.gradle 的 mcHomePath 统一解析（MC_HOME > /mnt/d/.minecraft > D:/.minecraft）
+def packModsDir = new File(rootProject.ext.mcHomePath, 'versions/1.20.1-Forge 模组测试/mods')
 
 // --- 整合包推送的 git 分支守卫(配合上方约定) ---
 // 分支判定放在**执行期**(见 pushToGame 的 doLast),不做配置期求值:

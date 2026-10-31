@@ -29,16 +29,19 @@ import org.slf4j.LoggerFactory;
  * <p>落表（用户批准口径，价格为绿宝石）：
  * <pre>
  * 等级              上架卡牌               价格    出现权重
- * 新手 Novice(1)     稀有                   2-3     6
- * 学徒 Apprentice(2) 稀有 + 少量史诗         3-6     6 / 3
- * 老手 Journeyman(3) 史诗 + 绿宝石→星币 1:1  6-9     3（兑换为固定条目）
- * 专家 Expert(4)     史诗 / 传奇             9-14    3 / 2
- * 大师 Master(5)     传奇                   14-20   2
+ * 新手 Novice(1)     稀有                   5-6     6
+ * 学徒 Apprentice(2) 稀有 + 少量史诗         6-9     6 / 3
+ * 老手 Journeyman(3) 史诗 + 绿宝石→星币 1:1  9-12    3（兑换为固定条目）
+ * 专家 Expert(4)     史诗 / 传奇             12-16   3 / 2
+ * 大师 Master(5)     传奇                   16-20   2
  * </pre>
+ *
+ * <p>价格为绿宝石基础价（整体区间 5-20），佩戴绿宝石骰子时按 1:1 折算为星币（基础价 5 ⇒ 5 星币）；
+ * 原版声望/英雄之息折扣仍由原版结算，可能把实际支付压到基础价以下（与筹码商人同口径，不在本批处理）。
  *
  * <p>权重直接复用 {@link CardShopCatalog} 池内的 weight（稀有 6 / 史诗 3 / 传奇 2，与商店抽卡同一口径），
  * 抽卡走 {@link CardShopCatalog#pickWeighted}；价格 = 档位下限 + 该卡在 {@link CardRegistry} 的固定点数
- * （非战斗牌记 0），封顶档位上限。抽不到可售卡就返回 {@code null} —— 原版
+ * （非战斗牌记 0），封顶档位上限，并不低于 {@link #MIN_EMERALD_PRICE}。抽不到可售卡就返回 {@code null} —— 原版
  * {@code AbstractVillager#addOffersFromItemListings} 会继续抽下一条 listing（每级最多 2 条报价）。
  *
  * <p>本处理器挂在 {@code NeoForge.EVENT_BUS}（游戏总线）：{@code VillagerTradingManager} 对**每个已注册职业**
@@ -52,10 +55,13 @@ public final class CardTraderTrades {
     private static final Logger LOGGER = LoggerFactory.getLogger("astral_dice/card_trader");
 
     /** 每级价格下限（绿宝石），索引 = 村民等级 1-5。 */
-    private static final int[] MIN_PRICE = {0, 2, 3, 6, 9, 14};
+    private static final int[] MIN_PRICE = {0, 5, 6, 9, 12, 16};
 
     /** 每级价格上限（绿宝石），索引 = 村民等级 1-5。 */
-    private static final int[] MAX_PRICE = {0, 3, 6, 9, 14, 20};
+    private static final int[] MAX_PRICE = {0, 6, 9, 12, 16, 20};
+
+    /** 卡牌报价的绝对下限（绿宝石）：用户口径「最低售价不低于 5 绿宝石」；星币支付按 {@code EmeraldDiceTrade} 的 1:1 折算 ⇒ 最低 5 星币，满足「≥3 星币」口径。 */
+    private static final int MIN_EMERALD_PRICE = 5;
 
     /** 每级的职业经验（沿用原版「越高级给得越多」的梯度）。 */
     private static final int[] VILLAGER_XP = {0, 2, 5, 10, 15, 30};
@@ -155,7 +161,8 @@ public final class CardTraderTrades {
         private int priceFor(ItemStack stack) {
             String typeId = CardRegistry.itemToType(stack);
             int points = typeId == null ? 0 : CardRegistry.maxRoll(typeId);
-            return Math.max(this.minPrice, Math.min(this.maxPrice, this.minPrice + points));
+            int price = Math.max(this.minPrice, Math.min(this.maxPrice, this.minPrice + points));
+            return Math.max(price, MIN_EMERALD_PRICE);
         }
     }
 }

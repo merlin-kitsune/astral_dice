@@ -295,7 +295,7 @@ dependencies {
 // === 编译产物分发规则 ===
 // 默认行为:每次构建完成后自动推送到仓库根 run/1.21.1/mods(本机 runClient 调试)、
 // 仓库根目录 build/libs,并推送到整合包 mods 目录(删除旧版后复制新版)。
-// 整合包位置:D:/.minecraft/versions/狐の航空学 Voxy Edition/mods
+// 整合包位置: /mnt/d/.minecraft/versions/狐の航空学 Voxy Edition/mods（Windows 宿主同盘为 D:\.minecraft\…；MC_HOME 可覆盖）
 //
 // ⚠️ 约定(2026-09-12 起,同日修订为白名单):**只有发布线分支推送整合包。**
 //   判定依据是当前 git 分支(读 .git/HEAD,兼容普通仓库与 worktree),规则:
@@ -311,7 +311,8 @@ dependencies {
 //   ⚠️ 用 -PdeployToPack 强推本 mod 时,务必确认整合包内**已有**独立的 starengine-*.jar 且与之配对
 //      (库为独立前置、不再内置;下方会读 starengine_version 检查,缺库告警)。
 def devRunModsDir = rootProject.file('run/1.21.1/mods')
-def packModsDir = file('D:/.minecraft/versions/狐の航空学 Voxy Edition/mods')
+// 整合包目录: 由根 build.gradle 的 mcHomePath 统一解析（MC_HOME > /mnt/d/.minecraft > D:/.minecraft）
+def packModsDir = new File(rootProject.ext.mcHomePath, 'versions/狐の航空学 Voxy Edition/mods')
 
 // --- 整合包推送的 git 分支守卫(配合上方约定) ---
 // 分支判定放在**执行期**(见 pushToGame 的 doLast),不做配置期求值:

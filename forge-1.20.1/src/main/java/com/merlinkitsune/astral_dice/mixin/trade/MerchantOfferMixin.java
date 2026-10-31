@@ -14,7 +14,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * 1.20.1:在绿宝石骰子交易上下文中,把村民报价的绿宝石费用替换为星币并打 20% 折扣。
+ * 1.20.1:在绿宝石骰子交易上下文中,把村民报价的绿宝石费用替换为星币(1:1)。
  * 1.20.1 的 MerchantOffer 费用为 ItemStack(无 ItemCost 记录),故直接覆写 getBaseCostA/getCostA/getCostB/satisfiedBy。
  */
 @Mixin(MerchantOffer.class)

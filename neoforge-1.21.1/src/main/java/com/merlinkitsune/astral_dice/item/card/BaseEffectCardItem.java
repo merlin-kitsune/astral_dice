@@ -18,6 +18,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import com.merlinkitsune.astral_dice.audio.ModSounds;
 import com.merlinkitsune.astral_dice.audio.SoundPlayback;
+import com.merlinkitsune.astral_dice.event.EventAnimationLock;
 import com.merlinkitsune.astral_dice.item.chip.MagicTomeChipItem;
 import com.merlinkitsune.astral_dice.item.chip.CandyChipItem;
 import com.merlinkitsune.astral_dice.item.chip.SatelliteChipItem;
@@ -366,6 +367,9 @@ public abstract class BaseEffectCardItem extends Item {
      * {@link HoldToSelect#stillHeld} 判定负责关闭会话(此处只负责开)。
      */
     public static void tickHeldSelector(ServerPlayer player) {
+        // 2026-10-29 用户裁决 D4:事件动画窗内不自动开局 —— 静默跳过即可(留待下一 tick 重试),
+        // 窗结束那一 tick 自然重开,正好就是「窗结束即可用」;不落手持抑制闩,玩家无需换手。
+        if (EventAnimationLock.isAnimating(player)) return;
         if (TargetSelectionManager.isSelecting(player)) return;
         ItemStack stack = player.getMainHandItem();
         if (!(stack.getItem() instanceof BaseEffectCardItem card) || card.selectorActionId() == null) return;
@@ -382,6 +386,11 @@ public abstract class BaseEffectCardItem extends Item {
      */
     private static boolean tryStartSelector(BaseEffectCardItem card, ServerPlayer serverPlayer, ItemStack stack,
                                             String actionId) {
+        // 2026-10-29 用户裁决 D4:事件动画窗内不许开选择界面(按键兜底与手持即选择都收敛到这里)。
+        if (EventAnimationLock.isAnimating(serverPlayer)) {
+            EventAnimationLock.notifyBlocked(serverPlayer, "effect_card_selector");
+            return false;
+        }
         if (card.isExclusive() && !ExclusiveCardUtil.canUse(serverPlayer, stack)) {
             return false;
         }
@@ -454,6 +463,11 @@ public abstract class BaseEffectCardItem extends Item {
                     ? InteractionResultHolder.fail(stack) : InteractionResultHolder.success(stack);
         }
         if (!(player instanceof ServerPlayer serverPlayer)) {
+            return InteractionResultHolder.fail(stack);
+        }
+        // 2026-10-29 用户裁决 D4:事件动画窗内按键兜底入口同样拦下(不消耗、不施效、不开会话)。
+        if (EventAnimationLock.isAnimating(serverPlayer)) {
+            EventAnimationLock.notifyBlocked(serverPlayer, "effect_card_selector");
             return InteractionResultHolder.fail(stack);
         }
         String actionId = selectorActionId();

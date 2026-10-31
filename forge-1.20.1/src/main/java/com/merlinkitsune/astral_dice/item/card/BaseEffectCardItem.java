@@ -16,12 +16,15 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.merlinkitsune.astral_dice.audio.ModSounds;
 import com.merlinkitsune.astral_dice.audio.SoundPlayback;
 import com.merlinkitsune.astral_dice.item.chip.MagicTomeChipItem;
 import com.merlinkitsune.astral_dice.item.chip.CandyChipItem;
 import com.merlinkitsune.astral_dice.item.chip.SatelliteChipItem;
 import com.merlinkitsune.astral_dice.item.ModItems;
+import com.merlinkitsune.astral_dice.event.EventAnimationLock;
 import com.merlinkitsune.astral_dice.item.sign.FenSignItem;
 import com.merlinkitsune.astral_dice.item.sign.PandamanSignItem;
 import com.merlinkitsune.astral_dice.item.sign.JasmineSignItem;
@@ -78,6 +81,7 @@ import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
  * {@link #isDamageEffectCard 伤害效果牌}(2026-09-24 用户裁决第二版)。
  */
 public abstract class BaseEffectCardItem extends Item {
+    private static final Logger LOGGER = LoggerFactory.getLogger(BaseEffectCardItem.class);
 
     public BaseEffectCardItem(Properties properties) {
         super(properties);
@@ -365,6 +369,9 @@ public abstract class BaseEffectCardItem extends Item {
      * {@link HoldToSelect#stillHeld} 判定负责关闭会话(此处只负责开)。
      */
     public static void tickHeldSelector(ServerPlayer player) {
+        // 2026-10-29 用户裁决 D4:事件卡动画窗口期内不得自动开选择会话。本方法每 tick 调用,
+        // 故此处**静默**返回(不发 actionbar、不写日志)——玩家主动右键时的提示见 useViaSelector。
+        if (EventAnimationLock.isAnimating(player)) return;
         if (TargetSelectionManager.isSelecting(player)) return;
         ItemStack stack = player.getMainHandItem();
         if (!(stack.getItem() instanceof BaseEffectCardItem card) || card.selectorActionId() == null) return;
@@ -381,6 +388,13 @@ public abstract class BaseEffectCardItem extends Item {
      */
     private static boolean tryStartSelector(BaseEffectCardItem card, ServerPlayer serverPlayer, ItemStack stack,
                                             String actionId) {
+        // 2026-10-29 用户裁决 D4:动画窗口期内统一在开会话的门槛处拒绝并提示(本方法已被 hold-to-select 与
+        // 右键两条路径共用,故提示放在这里;tickHeldSelector 侧已提前静默拦下,不会每 tick 重复提示)。
+        if (EventAnimationLock.isAnimating(serverPlayer)) {
+            LOGGER.info("AP_EVENT_ANIM: block:{}:{}", serverPlayer.getGameProfile().getName(), "effect_card_selector");
+            sendActionBar(serverPlayer, EventAnimationLock.NOTICE_KEY);
+            return false;
+        }
         if (card.isExclusive() && !ExclusiveCardUtil.canUse(serverPlayer, stack)) {
             return false;
         }
@@ -457,6 +471,13 @@ public abstract class BaseEffectCardItem extends Item {
             return InteractionResultHolder.fail(stack);
         }
         String actionId = selectorActionId();
+        // 2026-10-29 用户裁决 D4:右键兜底路径同样在动画窗口期内拒绝并提示(与 tryStartSelector 同一口径,
+        // 这里先判一次是为了让「右键被挡」也有一条明确的 actionbar 反馈)。
+        if (EventAnimationLock.isAnimating(serverPlayer)) {
+            LOGGER.info("AP_EVENT_ANIM: block:{}:{}", serverPlayer.getGameProfile().getName(), "effect_card_selector");
+            sendActionBar(serverPlayer, EventAnimationLock.NOTICE_KEY);
+            return InteractionResultHolder.fail(stack);
+        }
         if (TargetSelectionManager.isSelecting(player) || !tryStartSelector(this, serverPlayer, stack, actionId)) {
             return InteractionResultHolder.fail(stack);
         }

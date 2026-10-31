@@ -17,8 +17,11 @@ import java.util.UUID;
  * <p>2026-10-10 用户裁决:计时器<b>每事件 × 每玩家独立</b>,重复触发<b>覆盖(重置)</b> ——
  * 因此这里是「玩家 → (事件 id → 到期刻)」两层的覆盖式写入,不做剩余时间叠加。
  *
- * <p>⚠️ 尚未接线:玩家登出清理未实现(本批无正式事件登记计时器,故当前无实际泄漏)。**一旦有正式事件带上
- * {@code defaultDurationTicks},必须接一条登出钩子清理该玩家的条目**(或复活 {@code forget(UUID)})。
+ * <p>⚠️ <b>已知泄漏:玩家登出后该 UUID 的条目会滞留。</b>本批之后 6 条带 {@code defaultDurationTicks > 0}
+ * 的事件都会经派发器逐目标 {@code start} 登记计时器,而{@link #clear} 在全仓**无调用点**、惰性到期又只由
+ * {@code EventEffects#onPlayerTick} 对**在线**玩家触发 —— 因此登出后 {@code EXPIRY} / {@code ON_EXPIRE}
+ * 里的条目没有任何人清理(待接 {@code PlayerLoggedOutEvent} 清理)。另: {@link #clear} **不回放**到期 hook,
+ * 将来若用它做登出清理,必须先决定是否回放(否则瞬态效果残留)。
  *
  * <p><b>惰性到期检测</b>:不新增 server tick 钩子,任何一次查询({@link #remaining}/{@link #isActive})
  * 发现已过期时,就地移除并打一次机器行 {@code AP_EVENT_TIMER: expired:<id>}。
@@ -52,6 +55,26 @@ public final class EventTimerStore {
      */
     public static long start(Player player, ResourceLocation eventId, int ticks,
                              java.util.function.Consumer<Player> onExpire) {
+        // 2026-10-29 需求 R3「允许事件叠加」= 覆盖 + 重置(docs/features/event-choice-force-first-spec.md §4.4):
+        // 同一 (玩家, 事件 id) 再次触发时,**先回放上一轮的撤销回调**把数值打回基线,再由下面的新登记
+        // 覆盖计时器与回调 —— 等价于「同一事件重复触发只生效一份、计时器重置」。
+        // ⚠️ 必须无条件执行(不得挪进下面 if (onExpire != null) 内):分发器 AstralEventDispatcher:130-136
+        //    在 effect.apply **之前**先调 2 参重载(onExpire=null)登记计时器,回放正好落在
+        //    「旧周期收尾、新周期尚未施加」;若挪到效果函数里,新状态会刚写上就被旧回调撤掉。
+        Map<ResourceLocation, java.util.function.Consumer<Player>> hooks = ON_EXPIRE.get(player.getUUID());
+        if (hooks != null) {
+            java.util.function.Consumer<Player> old = hooks.remove(eventId);
+            if (hooks.isEmpty()) {
+                ON_EXPIRE.remove(player.getUUID());
+            }
+            if (old != null) {
+                try {
+                    old.accept(player);
+                } catch (Exception ex) {
+                    LOGGER.warn("AP_EVENT_TIMER: revert_failed:{}:{}", eventId, ex.toString());
+                }
+            }
+        }
         if (onExpire != null) {
             ON_EXPIRE.computeIfAbsent(player.getUUID(), k -> new HashMap<>()).put(eventId, onExpire);
         }

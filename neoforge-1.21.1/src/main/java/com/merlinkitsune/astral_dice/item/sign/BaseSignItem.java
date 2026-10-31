@@ -133,11 +133,20 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         //     actionId 为 null 的立牌(其余全部立牌)不走本分支,下方原流程逐字不变。
         String gatedActionId = sign.selectorActionId();
         if (gatedActionId != null) {
+            if (!(player instanceof net.minecraft.server.level.ServerPlayer serverPlayer)) return;
+            // 1.5 2026-10-29 用户裁决 D4(按用户原话收窄):事件动画窗({@code EventCardService.DELAY_TICKS})内
+            //     禁止**会打开目标选择器/选择界面**的主动技能 —— 哨兵放在选择器分支内部,不带选择器的
+            //     handleUse 直通类技能在窗内照常可用。大侦探等事件选择界面由
+            //     {@code EventChoiceManager.start} 自己的动画窗守卫拦截(仍属选择界面类,仍被拦)。
+            //     窗结束后立即可用(EventAnimationLock 到点自动失效,无需清理)。
+            if (com.merlinkitsune.astral_dice.event.EventAnimationLock.isAnimating(serverPlayer)) {
+                com.merlinkitsune.astral_dice.event.EventAnimationLock.notifyBlocked(serverPlayer, "sign_active_skill");
+                return;
+            }
             // 2.4 「选择器类」立牌的**前置拒绝**钩子(2026-09-27 新增,为教主立牌「降神生效中不可重复施放」):
             //     返回 false ⇒ 只发提示并立即返回 —— 不开选择会话、不发牌、不进冷却/锁定、不充能。
             //     缺省实现恒为 true ⇒ 其余立牌走与原流程逐字相同的分支。
             if (!sign.canBeginSelectorSession(player)) return;
-            if (!(player instanceof net.minecraft.server.level.ServerPlayer serverPlayer)) return;
             if (com.merlinkitsune.astral_dice.target.TargetSelectionManager.start(serverPlayer, gatedActionId)) {
                 com.merlinkitsune.starengine.target.SignSelectionGate.arm(player, gatedActionId, stack);
             }

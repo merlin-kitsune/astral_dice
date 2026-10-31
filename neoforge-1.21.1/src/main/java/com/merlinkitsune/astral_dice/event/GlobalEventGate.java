@@ -22,9 +22,11 @@ import java.util.UUID;
  * <p>语义：① 上一个事件仍在进行 ⇒ 拒绝；② 事件结束后再过 {@link #GAP_TICKS}t（1 秒）才允许下一个；
  * ③ 「进行中 + 结束后 1 秒」整段窗口都算不可开新事件。
  *
- * <p>落点：由 {@link AstralEventDispatcher} 在<b>事件卡使用入口</b>（{@code ITEM_USE} /
- * {@code ACTIVE_SKILL}）统一拦一次 —— 不在每个事件效果里各拦一次。击杀驱动的
- * {@code INVESTIGATION_KILL} 与外部 {@code CUSTOM} 不占用也不受此闸门约束。
+ * <p>落点：由 {@link AstralEventDispatcher} 在<b>事件卡使用入口</b>（{@code ITEM_USE}）统一拦一次 ——
+ * 不在每个事件效果里各拦一次。闸门<b>只拦 {@code ITEM_USE}</b>；{@code ACTIVE_SKILL}（大侦探立牌）
+ * 既不占用也不受此闸门约束（2026-10-29 用户裁决 D1：侦探事件不占全局窗口，可与另一条计时事件重叠，
+ * 节流由技能自身冷却/锁定态承担）。击杀驱动的 {@code INVESTIGATION_KILL} 与外部 {@code CUSTOM}
+ * 同样不占用也不受此闸门约束。
  *
  * <p>状态载体：静态字段（服务端全局单例），game time 口径来自 {@code player.serverLevel().getGameTime()}；
  * {@code ServerStoppingEvent} 时整体清空，避免换存档 / 重进后残留时间戳误锁。
@@ -57,9 +59,12 @@ public final class GlobalEventGate {
     /**
      * <b>只读</b>判定：此刻是否允许开新事件（拒绝/允许都不写任何状态、不提示、不消耗）。
      *
-     * <p>用途（2026-10-21）：需要「先判后消耗」的调用方 —— 例如 {@code EventChoiceManager}
-     * 必须先确认闸门放行、再移除玩家的事件选择会话；若直接用 {@link #tryAcquire} 预判，
-     * 一旦放行就会写掉一次占位（双获取）。
+     * <p>用途（2026-10-21）：需要「先判后消耗」的调用方 —— 必须先确认闸门放行、再执行会消耗
+     * 一次占位的行为；若直接用 {@link #tryAcquire} 预判，一旦放行就会写掉一次占位（双获取）。
+     *
+     * <p>2026-10-29 用户裁决 D1：{@code EventChoiceManager} 的确认/{@code forceFirst} 已<b>解绑</b>
+     * 本闸门（不再预判、{@code ACTIVE_SKILL} 也不占用闸门），因此当前源码内暂无调用方 ——
+     * 保留本入口供后续 {@code ITEM_USE} 侧「先判后消耗」或诊断使用。
      *
      * <p>⚠️ 本方法<b>只</b>比较 {@code now} 与 {@link #gateUntilGameTime}；{@code durationTicks}
      * 与 {@link #tryAcquire} 同签名（真正占用时才需要它），不参与判定。
@@ -83,6 +88,9 @@ public final class GlobalEventGate {
      *
      * <p>2026-10-21 重构：拒绝判定先走只读的 {@link #canStart}（同一 {@code now} 口径），
      * 提示抽到 {@link #notifyBlocked}；语义与提示文案**逐字不变**。
+     *
+     * <p>2026-10-29 用户裁决 D1：本闸门<b>只用于 {@code ITEM_USE}</b>（事件卡使用入口）；
+     * {@code ACTIVE_SKILL}（大侦探立牌）不调用本方法、不占用也不受此闸门约束。
      *
      * @param player        触发者（必须为服务端玩家；调用方在服务端入口处调用）
      * @param durationTicks 事件的 {@code defaultDurationTicks}（≤0 ⇒ 即刻结束，仍占满 GAP_TICKS）

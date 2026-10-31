@@ -181,6 +181,13 @@ public final class TargetSelectionManager {
      * @return 是否成功进入选择模式（动作未注册/目标不可用返回 false）
      */
     public static boolean start(ServerPlayer player, String actionId) {
+        // 2026-10-29 用户裁决 D4(兜底):事件卡动画播放中不得开选择会话。各调用方(立牌 / 效果牌)已各自拦下,
+        // 这里再兜一层 —— 以后新增调用点也不必重复记得这条规则。
+        if (com.merlinkitsune.astral_dice.event.EventAnimationLock.isAnimating(player)) {
+            LOGGER.info("AP_EVENT_ANIM: block:{}:{}", player.getGameProfile().getName(), "target_select_start");
+            notifyActionBar(player, com.merlinkitsune.astral_dice.event.EventAnimationLock.NOTICE_KEY, ChatFormatting.RED);
+            return false;
+        }
         TargetSelectionAction action = TargetSelectionRegistry.get(actionId);
         if (action == null) {
             notifyActionBar(player, "msg.astral_dice.target_select.no_valid_action", ChatFormatting.RED);
@@ -289,6 +296,26 @@ public final class TargetSelectionManager {
         // 立牌主动技能前置门控(2026-09-17):由立牌登记的会话在**确认成功**后才恢复原流程剩余步骤
         // (风扇筹码发牌 + 立牌主动响应事件/默认提示);非立牌会话无记录 ⇒ 空操作。
         com.merlinkitsune.astral_dice.item.sign.BaseSignItem.resumeGatedActiveSkill(player, session.actionId);
+    }
+
+    /**
+     * 服务端强制取消（2026-10-29 用户裁决 D5：事件动画开始那一刻由服务端主动关掉已打开的选择会话）。
+     *
+     * <p>与 {@link #cancel(ServerPlayer, int)} 的差异：① 不校验 token（服务端内部调用，没有客户端回执可比）；
+     * ② **不写** {@link #HOLD_SUPPRESSED} 抑制闩 —— 动画窗结束后玩家仍手持效果牌时会自然自动重开界面，
+     * 与 neo 线口径一致（D5 两线行为必须相同）。
+     */
+    public static void cancel(ServerPlayer player, String reason) {
+        Session session = SESSIONS.get(player.getUUID());
+        if (session == null) return;
+        SESSIONS.remove(player.getUUID());
+        // P3-1（复核补）：客户端此刻可能仍停在选择模式（继续吞鼠标 / 左键仍当确认），必须收到关闭包才退出。
+        // token 匹配才生效，避免「动画窗内刚开的新会话」被旧包的关闭误关。
+        ModNetwork.sendToPlayer(player, new ModNetwork.TargetSelectCloseMessage(session.token));
+        // 该次主动等同未使用：立牌登记的门控记录一并清除（与 token 版一致）
+        SignSelectionGate.clear(player);
+        LOGGER.debug("[Astral Dice][TargetSelection] cancel server-side player={} action={} reason={}",
+                player.getName().getString(), session.actionId, reason);
     }
 
     /** 客户端取消（由 {@code ModNetwork.TargetSelectCancelMessage} 调用；token 不匹配时忽略） */

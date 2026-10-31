@@ -190,7 +190,7 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(AstralRarities.legendary())));
 
-    // 绿宝石骰子:与钻石骰子同阶(tag dice_t2),可由钻石骰子升级;佩戴后村民交易绿宝石费用改为星币并享 20% 折扣
+    // 绿宝石骰子:与钻石骰子同阶(tag dice_t2),可由钻石骰子升级;佩戴后村民交易绿宝石费用按 1:1 改为星币
     public static final RegistryObject<Item> EMERALD_DICE = registerItem("emerald_dice",
             () -> new DiceCurioItem(new Item.Properties()
                     .stacksTo(1)

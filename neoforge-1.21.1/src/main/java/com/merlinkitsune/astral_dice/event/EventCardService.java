@@ -36,6 +36,13 @@ public final class EventCardService {
     public static final int CARD_ANIM_TICKS = 28;
     /** 动画播完 → 结算之间的**静默缓冲**（tick）：10t = 0.5s。这段时间屏幕上已无卡、效果也还没施加。 */
     public static final int SETTLE_BUFFER_TICKS = DELAY_TICKS - CARD_ANIM_TICKS;
+    /**
+     * 奇怪的问号使用后的物品冷却（tick）：{@link #DELAY_TICKS}（动画窗 1.9s）+ 10s = 238t。
+     *
+     * <p>2026-10-29 用户裁决 D3：冷却基数 = 动画窗 + 10 秒，走原版 {@code ItemCooldowns}
+     * （服务端自动同步客户端 ⇒ 物品栏转圈、无法连点）。这是该值的**唯一来源**，物品类禁止写裸数字。
+     */
+    public static final int QUESTION_COOLDOWN_TICKS = DELAY_TICKS + 20 * 10;
 
     private static final List<Pending> QUEUE = new ArrayList<>();
 
@@ -55,6 +62,14 @@ public final class EventCardService {
                                    int tier, Consumer<ServerLevel> action) {
         for (var p : targets) {
             if (p instanceof ServerPlayer sp) {
+                // 2026-10-29 用户裁决 D4 / D5：动画窗开始的那一刻做两件事 ——
+                //   ① 该玩家进入「动画中」窗口（= DELAY_TICKS，覆盖弹卡 + 结算缓冲），窗内一切会打开
+                //      选择界面 / 目标选择器的主动技能与效果牌被 EventAnimationLock 拦下；
+                //   ② 强制清掉他**已经打开**的选择会话（事件选择 + 目标选择），这些会话在动画播放期间
+                //      不许结算、也不许继续操作（不触发事件、不扣卡、不施效）。
+                EventAnimationLock.begin(sp, DELAY_TICKS);
+                EventChoiceManager.cancelFor(sp, "animation");
+                com.merlinkitsune.astral_dice.target.TargetSelectionManager.cancel(sp, "animation");
                 PacketDistributor.sendToPlayer(sp, new EventCardPayload(event.id(), event.defaultDurationTicks(), tier));
                 SoundPlayback.playTo(sp, ModSounds.EVENT_FADE_IN.get());
             }

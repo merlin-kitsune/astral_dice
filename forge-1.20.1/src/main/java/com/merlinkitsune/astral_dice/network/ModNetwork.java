@@ -110,6 +110,14 @@ public final class ModNetwork {
         // **只能追加在末尾**：顺序即协议，插队会让旧客户端错包。
         CHANNEL.registerMessage(id++, BeamFxPayload.class,
                 BeamFxPayload::encode, BeamFxPayload::decode, BeamFxPayload::handle);
+        // 事件选择界面取消（2026-10-29 用户裁决 D2）：id 27 = C→S 只带会话 token（ESC 关闭即取消）。
+        // **只能追加在末尾**：顺序即协议，插队会让旧客户端错包。
+        CHANNEL.registerMessage(id++, EventChoiceCancelMessage.class,
+                EventChoiceCancelMessage::encode, EventChoiceCancelMessage::decode, EventChoiceCancelMessage::handle);
+        // 选择器会话服务端强拆（2026-10-29 用户裁决 D5 复核补，P3-1）：id 28 = S→C 只带会话 token，
+        // 客户端 token 匹配才退出选择模式。**只能追加在末尾**：顺序即协议，插队会让旧客户端错包。
+        CHANNEL.registerMessage(id++, TargetSelectCloseMessage.class,
+                TargetSelectCloseMessage::encode, TargetSelectCloseMessage::decode, TargetSelectCloseMessage::handle);
     }
 
     // === 发送助手(对应 1.21 PacketDistributor 静态方法) ===
@@ -449,6 +457,35 @@ public final class ModNetwork {
                     com.merlinkitsune.astral_dice.target.TargetSelectionManager.cancel(serverPlayer, msg.token);
                 }
             });
+            ctx.get().setPacketHandled(true);
+        }
+    }
+
+    /**
+     * 服务端单方面关闭选择会话(S→C,2026-10-29 D5 复核补)。
+     *
+     * <p>用途：{@code TargetSelectionManager.cancel(ServerPlayer, String)} 强拆会话(事件动画起锁)时通知
+     * 客户端立刻退出选择模式 —— 否则客户端仍处于选择态，继续吞鼠标/左键确认。客户端按 token 匹配才退出
+     * (会话已被新一次 start 覆盖时，旧包不得误关新会话)。
+     */
+    public static class TargetSelectCloseMessage {
+        private final int token;
+
+        public TargetSelectCloseMessage(int token) {
+            this.token = token;
+        }
+
+        public static void encode(TargetSelectCloseMessage msg, FriendlyByteBuf buf) {
+            buf.writeVarInt(msg.token);
+        }
+
+        public static TargetSelectCloseMessage decode(FriendlyByteBuf buf) {
+            return new TargetSelectCloseMessage(buf.readVarInt());
+        }
+
+        public static void handle(TargetSelectCloseMessage msg, Supplier<NetworkEvent.Context> ctx) {
+            ctx.get().enqueueWork(() ->
+                    com.merlinkitsune.astral_dice.client.TargetSelectionClient.closeFromServer(msg.token));
             ctx.get().setPacketHandled(true);
         }
     }

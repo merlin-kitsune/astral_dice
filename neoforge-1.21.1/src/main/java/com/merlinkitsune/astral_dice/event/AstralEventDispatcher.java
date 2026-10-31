@@ -26,8 +26,9 @@ import java.util.Set;
  * ④ 作用域:秘密侦探专属事件**收窄** —— 击杀且 {@code tier < 4} ⇒ {@code twoPlayers(击杀者, 标记施加者)};
  *    非击杀来源 ⇒ {@code twoPlayers(原触发者, 抽中的最高阶段侦探)};其余情形(含 {@code tier == 4})⇒
  *    非击杀来源 ⇒ {@code twoPlayers(原触发者, 抽中的最高阶段侦探)};其余情形(含 {@code tier == 4})⇒
- * ⑤ <b>全局硬间隔闸门</b>({@link GlobalEventGate}):仅事件卡入口({@code ITEM_USE} /
- *     {@code ACTIVE_SKILL})占用并受此闸门约束 —— 上一事件进行中或结束后 20t 内一律拒绝;
+ * ⑤ <b>全局硬间隔闸门</b>({@link GlobalEventGate}):<b>只拦</b>事件卡入口({@code ITEM_USE}) ——
+ *     上一事件进行中或结束后 20t 内一律拒绝;{@code ACTIVE_SKILL}(大侦探)不占用也不受此闸门约束
+ *     (2026-10-29 用户裁决 D1);
  * ⑥ 计时器(该事件登记了 {@code defaultDurationTicks} 时,对每个目标覆盖式 start)→ 逐目标施加效果 →
  *    收尾走既有「附加效果层」({@link AstralEventSystem#applyEventBonus});
  * 最后打机器行 {@code AP_EVENT_FIRE: …} 供测试断言。
@@ -105,10 +106,13 @@ public final class AstralEventDispatcher {
         } else {
             targets = PartyRelations.collectEventTargets(triggerer, event.radius());
         }
-        // ⑤ 全局硬间隔闸门(2026-10-21):「事件卡 / 立牌主动技能」这两条「开新事件」的入口
-        //    只在这里拦一次(不在各效果里重复拦)。击杀驱动的 INVESTIGATION_KILL 与外部 CUSTOM
-        //    不占用闸门,也不被闸门拒绝。
-        if ((source == AstralEventTrigger.ITEM_USE || source == AstralEventTrigger.ACTIVE_SKILL)
+        // ⑤ 全局硬间隔闸门(2026-10-21;2026-10-29 用户裁决 D1 收窄):**只**拦「事件卡使用」这一条入口
+        //    (ITEM_USE)。立牌主动技能(ACTIVE_SKILL)既不受此闸门约束、也**不占用**它 ——
+        //    否则玩家在 15 秒选择期里选完事件,还会被「上一个事件尚未结束」再挡一次,等于选择白做。
+        //    副作用(已知并接受):侦探事件生效期间不占全局事件窗口,可与另一条计时事件在时间上重叠;
+        //    节流改由技能自身冷却承担(BaseSignItem#performSkill 的玩家级冷却 + 锁定态)。
+        //    击杀驱动的 INVESTIGATION_KILL 与外部 CUSTOM 照旧不占用闸门,也不被闸门拒绝。
+        if (source == AstralEventTrigger.ITEM_USE
                 && triggerer instanceof ServerPlayer gatePlayer
                 && !GlobalEventGate.tryAcquire(gatePlayer, event.defaultDurationTicks())) {
             LOGGER.info("AP_EVENT_GATE_BLOCK: id={}:src={}", eventId, source);
