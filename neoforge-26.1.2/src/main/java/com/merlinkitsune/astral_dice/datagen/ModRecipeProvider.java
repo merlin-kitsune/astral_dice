@@ -1239,31 +1239,7 @@ public class ModRecipeProvider extends RecipeProvider {
         //    **合成不出来**（配方书里也看不到）。两个 provider 都是逐条硬编码，新增内容
         //    必须**两边同步**。
 
-        // 紫色飞星(史诗/星光流派):第三行 = 星盘,第二行中 = 空白筹码,两侧 = 星币尘,第一行 = 紫水晶碎片
-        ShapedRecipeBuilder.shaped(items, RecipeCategory.MISC, ModItems.PURPLE_SHOOTING_STAR_CHIP.get())
-                .pattern("XXX")
-                .pattern("DBD")
-                .pattern("PPP")
-                .define('X', Items.AMETHYST_SHARD)
-                .define('D', ModItems.STAR_COIN_DUST.get())
-                .define('B', ModItems.BLANK_CHIP.get())
-                .define('P', ModItems.STAR_PLATE.get())
-                .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
-                .save(output);
 
-        // 金色飞星(传奇/星光流派):**进阶筹码** —— 走紫->金「通用升级」模板 RDR/DTD/GGG
-        // (红石粉 / 钻石 / 上一等级 = 紫色飞星 / 黄金星盘),不再复用紫色飞星的基础图案。
-        // ⚠️ 本筹码的进阶关系同时登记在 scripts/verify/ChipCommon.psm1 的 $UPGRADE 表中。
-        ShapedRecipeBuilder.shaped(items, RecipeCategory.MISC, ModItems.GOLDEN_SHOOTING_STAR_CHIP.get())
-                .pattern("RDR")
-                .pattern("DTD")
-                .pattern("GGG")
-                .define('R', Items.REDSTONE)
-                .define('D', Items.DIAMOND)
-                .define('T', ModItems.PURPLE_SHOOTING_STAR_CHIP.get())
-                .define('G', ModItems.GOLDEN_STAR_PLATE.get())
-                .unlockedBy("has_purple_shooting_star_chip", has(ModItems.PURPLE_SHOOTING_STAR_CHIP.get()))
-                .save(output);
 
         // 风水师立牌(zhao,传奇):GCG/RER/ZPZ(G=金锭,C=指南针,E=空白立牌,R=红石块,
         // Z=钻石骰子,P=黄金星盘);与「大当家立牌」同为"钻石骰子 + 黄金星盘"档 → 传奇(UNCOMMON)

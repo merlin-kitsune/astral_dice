@@ -2,6 +2,12 @@ package com.merlinkitsune.astral_dice;
 
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
+import com.merlinkitsune.astral_dice.block.ModBlocks;
+import com.merlinkitsune.astral_dice.entity.ModEntityTypes;
+import com.merlinkitsune.astral_dice.world.ModPoiTypes;
+import com.merlinkitsune.astral_dice.world.ModVillagerProfessions;
+import com.merlinkitsune.astral_dice.component.SignTimerSourceAdapter;
+import com.merlinkitsune.starengine.event.EffectTimerGuard;
 import com.merlinkitsune.starengine.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.config.ModCommonConfig;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
@@ -54,6 +60,16 @@ public class AstralDiceMod {
         ModMenuTypes.MENU_TYPES.register(modEventBus);
         ModAttachments.ATTACHMENTS.register(modEventBus);
         ModParticles.PARTICLE_TYPES.register(modEventBus);
+        // 计时器守卫的存储 seam：库版 EffectTimerGuard 不持有 AttachmentType，计时表由本模组提供。
+        // 必须在**任何效果施加之前**注入（构造器 = CONSTRUCT，早于 CONFIG_LOAD / COMMON_SETUP），
+        // 否则守卫会用库内的退化实现（恒空表 ⇒ 不校正时长），且不报错、极难发现。
+        EffectTimerGuard.setTimerSource(new SignTimerSourceAdapter());
+        ModBlocks.BLOCKS.register(modEventBus);
+        ModPoiTypes.POI_TYPES.register(modEventBus);
+        ModVillagerProfessions.PROFESSIONS.register(modEventBus);
+        // 自有实体（2026-10-17「路障」）：实体类型由 ModEntityTypes 注册，属性由 event/ModEntityEvents
+        // 在 EntityAttributeCreationEvent 里补（唯一入口，漏注册会在实体创建时直接抛异常）
+        ModEntityTypes.ENTITY_TYPES.register(modEventBus);
         // 配置版本检查:旧版本配置文件先备份,再由 NeoForge 继承旧值写入新配置(仅公共配置;client 配置已移除)
         backupOldConfigIfNeeded("astral_dice-common.toml", ModCommonConfig.CONFIG_VERSION);
         modContainer.registerConfig(ModConfig.Type.COMMON, ModCommonConfig.SPEC);

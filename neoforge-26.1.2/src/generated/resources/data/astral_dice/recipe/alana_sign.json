@@ -1,0 +1,20 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": "minecraft:book",
+    "C": "minecraft:quartz",
+    "D": "astral_dice:golden_dice",
+    "E": "astral_dice:blank_sign",
+    "I": "minecraft:iron_ingot",
+    "S": "minecraft:stone_bricks"
+  },
+  "pattern": [
+    "SBS",
+    "CEC",
+    "IDI"
+  ],
+  "result": {
+    "id": "astral_dice:alana_sign"
+  }
+}

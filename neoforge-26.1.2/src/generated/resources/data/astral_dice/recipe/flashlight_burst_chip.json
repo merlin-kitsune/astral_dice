@@ -1,0 +1,24 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "astral_dice:chip_recipes_enabled"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": "astral_dice:blank_chip",
+    "D": "astral_dice:star_coin_dust",
+    "G": "astral_dice:golden_star_plate",
+    "L": "minecraft:redstone_lamp",
+    "X": "minecraft:glowstone"
+  },
+  "pattern": [
+    "XLX",
+    "DBD",
+    "GGG"
+  ],
+  "result": {
+    "id": "astral_dice:flashlight_burst_chip"
+  }
+}

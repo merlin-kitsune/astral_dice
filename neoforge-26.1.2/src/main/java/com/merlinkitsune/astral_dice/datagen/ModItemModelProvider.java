@@ -2,6 +2,9 @@ package com.merlinkitsune.astral_dice.datagen;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.item.ModItems;
+import com.merlinkitsune.astral_dice.block.ModBlocks;
+import net.minecraft.client.data.models.blockstates.MultiVariantGenerator;
+import net.minecraft.resources.Identifier;
 import net.minecraft.client.data.models.BlockModelGenerators;
 import net.minecraft.client.data.models.ItemModelGenerators;
 import net.minecraft.client.data.models.ModelProvider;
@@ -30,6 +33,9 @@ public class ModItemModelProvider extends ModelProvider {
 
     @Override
     protected void registerModels(BlockModelGenerators blockModels, ItemModelGenerators itemModels) {
+        registerBlockStates(blockModels);
+        registerBlockItemModels(blockModels);
+
         itemModels.generateFlatItem(ModItems.DICE.get(), ModelTemplates.FLAT_ITEM);
         itemModels.generateFlatItem(ModItems.GOLDEN_DICE.get(), ModelTemplates.FLAT_ITEM);
         itemModels.generateFlatItem(ModItems.GLASS_DICE.get(), ModelTemplates.FLAT_ITEM);
@@ -71,7 +77,6 @@ public class ModItemModelProvider extends ModelProvider {
         itemModels.generateFlatItem(ModItems.FLASHLIGHT_CHIP.get(), ModelTemplates.FLAT_ITEM);
         itemModels.generateFlatItem(ModItems.CUTTER_CHIP.get(), ModelTemplates.FLAT_ITEM);
         itemModels.generateFlatItem(ModItems.CUTTER_BLADE_CHIP.get(), ModelTemplates.FLAT_ITEM);
-        itemModels.generateFlatItem(ModItems.STAR_COIN.get(), ModelTemplates.FLAT_ITEM);
         itemModels.generateFlatItem(ModItems.STAR_COIN_BAG.get(), ModelTemplates.FLAT_ITEM);
         itemModels.generateFlatItem(ModItems.MONSTER_LASER_CARD.get(), ModelTemplates.FLAT_ITEM);
         itemModels.generateFlatItem(ModItems.MONSTER_BRICK_CARD.get(), ModelTemplates.FLAT_ITEM);
@@ -185,5 +190,35 @@ public class ModItemModelProvider extends ModelProvider {
         itemModels.generateFlatItem(ModItems.ABYSS_REAGENT_CHIP.get(), ModelTemplates.FLAT_ITEM);
         itemModels.generateFlatItem(ModItems.INFINITE_GRID_CHIP.get(), ModelTemplates.FLAT_ITEM);
         itemModels.generateFlatItem(ModItems.SENSOR_CHIP.get(), ModelTemplates.FLAT_ITEM);
+        itemModels.generateFlatItem(ModItems.EVENT_TICKET.get(), ModelTemplates.FLAT_ITEM);
+    }
+
+    private static Identifier id(String path) {
+        return Identifier.fromNamespaceAndPath(AstralDiceMod.MODID, path);
+    }
+
+    /**
+     * 方块状态：26.1.2 的 ModelProvider 会对注册表里每个方块做「是否生成了 blockstate」校验，
+     * 缺一个就抛 Missing blockstate definitions。这里把 4 个方块指向仓库中手写的自定义模型，
+     * 不生成新模型（这些模型是 Blockbench 产出的，不是 trivial cube）。
+     */
+    private void registerBlockStates(BlockModelGenerators blockModels) {
+        blockModels.blockStateOutput.accept(
+                MultiVariantGenerator.dispatch(ModBlocks.CARD_SHOP.get(), BlockModelGenerators.plainVariant(id("block/card_shop")))
+                        .with(BlockModelGenerators.ROTATION_HORIZONTAL_FACING));
+        blockModels.blockStateOutput.accept(
+                MultiVariantGenerator.dispatch(ModBlocks.CHIP_SHOP.get(), BlockModelGenerators.plainVariant(id("block/chip_shop")))
+                        .with(BlockModelGenerators.ROTATION_HORIZONTAL_FACING));
+        blockModels.blockStateOutput.accept(
+                BlockModelGenerators.createSimpleBlock(ModBlocks.EVENT_DRAWER.get(), BlockModelGenerators.plainVariant(id("block/event_drawer"))));
+        blockModels.blockStateOutput.accept(
+                BlockModelGenerators.createSimpleBlock(ModBlocks.BARRICADE_COLLISION.get(), BlockModelGenerators.plainVariant(id("block/barricade_collision"))));
+    }
+
+    /** 方块物品的 item 模型：父模型直接指向方块模型（与手写 models/item/*.json 一致）。 */
+    private void registerBlockItemModels(BlockModelGenerators blockModels) {
+        blockModels.registerSimpleItemModel(ModBlocks.CARD_SHOP.get(), id("block/card_shop"));
+        blockModels.registerSimpleItemModel(ModBlocks.CHIP_SHOP.get(), id("block/chip_shop"));
+        blockModels.registerSimpleItemModel(ModBlocks.EVENT_DRAWER.get(), id("block/event_drawer"));
     }
 }

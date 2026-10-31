@@ -565,3 +565,33 @@
 
 - **patched merged jar 里打包了原版 `.java` 源码**：解到临时目录直接 grep 比 `javap` 快一个数量级，是本轮定位 API 的主要手段。
 - 错误性质分三段演进：机械改名（1–6 轮）→ 包名/常量迁移（7–9 轮）→ **合并截断的成员缺失**（10–17 轮）。第三段必须回 1.21.1 取实现，不能自造语义。
+
+---
+
+## 13 数据生成（datagen）实测（2026-10-31 21:1x–21:2x）
+
+26.1.2 起资产与数据必须分两次运行，输出根也不同（`neoforge-26.1.2/build.gradle:15-31,90,155-160`）：
+
+| 任务 | 事件 | 输出根 | 本次产物 |
+|---|---|---|---|
+| `runClientData` | `GatherDataEvent.Client` | `src/generated/clientResources` | 316 文件：157 个 `items/*.json` 物品模型定义、154 个 `models/item/*.json`、4 个 blockstates |
+| `runServerData` | `GatherDataEvent.Server` | `src/generated/resources` | 217 文件：108 recipe、108 advancement、1 条数据 |
+
+产物与 1.21.1 的 `src/generated` **逐名对齐**（recipe 108=108、advancement 108=108、advancement/recipes/misc 107=107），无一条丢失。
+
+### 13.1 跑通前修掉的 4 个问题（都不是编译错误，全是运行期）
+
+1. **构造器漏注册 4 个 DeferredRegister**：`AstralDiceMod` 里 `ModBlocks.BLOCKS` / `ModPoiTypes.POI_TYPES` / `ModVillagerProfessions.PROFESSIONS` / `ModEntityTypes.ENTITY_TYPES` 四个 `.register(modEventBus)` 在批量合并时整体丢失（1.21.1 见 `AstralDiceMod.java:66-71`）。
+   症状：`NullPointerException: Trying to access unbound value: ResourceKey[minecraft:block / astral_dice:card_shop]` —— **方块注册表事件早已跑完，方块却从没进过注册表**。
+   顺带补回 `EffectTimerGuard.setTimerSource(new SignTimerSourceAdapter())`（漏了会让计时守卫走恒空表、不报错）。
+2. **方块必须用 `registerBlock`**：26.1.2 的 `BlockBehaviour.Properties.effectiveDrops` 需要 `id`，`BLOCKS.register(name, () -> new X(Properties.of()…))` 会抛 `NullPointerException: Block id not set`。
+   改为 `BLOCKS.<Block>registerBlock("card_shop", CardShopBlock::new, props -> props…)`（id 由 DeferredRegister 注入）。
+3. **模型提供器重复生成**：`ModItemModelProvider` 里 `ModItems.STAR_COIN` 出现两次 ⇒ `Duplicate model definition for astral_dice:item/star_coin`；`ModRecipeProvider` 里紫色/金色飞星各出现两次 ⇒ `Duplicate recipe astral_dice:purple_shooting_star_chip` / `…:golden_shooting_star_chip`。均为合并拼接副产物，保留带 `ChipRecipesEnabledCondition` 的一版、删掉 `.save(output)` 的旧版。
+4. **方块缺 blockstate 定义**：26.1.2 的 `ModelProvider` 会对注册表里每个方块校验「本次是否生成了 blockstate」，缺则 `Missing blockstate definitions for: [...]`。
+   在 `ModItemModelProvider` 里补 `registerBlockStates()`（4 个方块指向手写的 Blockbench 模型，`card_shop`/`chip_shop` 带 `ROTATION_HORIZONTAL_FACING`）与 `registerBlockItemModels()`（方块物品父模型指向方块模型）；另补 `event_ticket` 的 `generateFlatItem`。
+
+### 13.2 产物与手写资源的去重口径
+
+- 生成器接管后，`src/main/resources` 里同名的 5 个手写文件必须删除（`blockstates/{barricade_collision,card_shop,chip_shop,event_drawer}.json`、`models/item/event_ticket.json`），否则 `processResources` 抛 `Entry … is a duplicate but no duplicate handling strategy has been set`。
+- 现状：`src/main/resources` 与两个生成根 **0 重叠**，全部 JSON 可解析。
+- `:neoforge-26.1.2:build` 成功；`build/libs/astral_dice-1.5.0-rc.7+neoforge_26.1.2.jar`（2.77 MB）内含 159 个 `items/*.json`、126 个 recipe、5 个 blockstates。

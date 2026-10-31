@@ -1,4 +1,9 @@
 {
+  "neoforge:conditions": [
+    {
+      "type": "astral_dice:chip_recipes_enabled"
+    }
+  ],
   "parent": "minecraft:recipes/root",
   "criteria": {
     "has_hand_fan_small": {

@@ -1,0 +1,20 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "D": "astral_dice:amethyst_dice",
+    "E": "astral_dice:blank_sign",
+    "G": "minecraft:sugar",
+    "P": "astral_dice:golden_star_plate",
+    "V": "minecraft:glass_bottle",
+    "W": "minecraft:wheat"
+  },
+  "pattern": [
+    "PVP",
+    "GEG",
+    "WDW"
+  ],
+  "result": {
+    "id": "astral_dice:jill_sign"
+  }
+}
