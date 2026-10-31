@@ -23,7 +23,7 @@
 
 1. **默认不启动实机**：不自行开 dev 客户端、连拍、探针或用例；实机必须用户明确下达。
 2. **默认不部署**：不复制 jar 到整合包、不上传 CurseForge、不改发布配置。
-3. **默认不 commit / push / 打 tag**：仅在用户明确要求时执行；任何远程 git 操作一律走本地代理 `http://127.0.0.1:7897`。
+3. **默认不 commit / push / 打 tag**：仅在用户明确要求时执行；任何远程 git 操作一律走本地代理 `http://127.0.0.1:7897`（**Linux 真机例外**：clash-verge-rev 以 TUN 全局接管路由，直连即可，见 `docs/agent/AGENTS-dsh-linux.md`）。
 4. **保护素材与他人改动**：`models/`、`images/`、`sound/` 属随时更新的素材目录；`git status` 里出现不属于自己的改动（含未跟踪文件）⇒ 立即停手并报告，不 `add` / `commit` / `stash` / `checkout`、不删文件。
 5. **互斥锁**：写文件或启动 Gradle 前检查 `F:/MCProject/.agent-locks/`（Linux：`/mnt/f/MCProject/.agent-locks/`）；Kimi 用 `kimi.lock`、DSH 用 `dsh.lock`；尊重对方的活跃锁，结束只清理自己的锁。
 6. **不代改他人职责**：模组源码 / 资源 / 版本号 / 依赖 / 发布配置的改动，按所属宿主的规则文件走。
