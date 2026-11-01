@@ -1938,18 +1938,6 @@ public class ModAttachments {
                     .serialize(Codec.BOOL.fieldOf("value"))
                     .build());
 
-    /**
-     * 蛟龙立牌主动「连锁反应」的**强制冷却**截止刻(绝对 gameTime;0 = 无)。
-     *
-     * <p>这是**独立于** {@link #SIGN_ACTIVE_COOLDOWN_END} 的硬闸门(规格 §3.4):诡异骰子 / 充能 /
-     * 命运的指引 / 电流核心筹码等**一切**减免都不得缩短它;释放当刻由
-     * {@code MamushiSignItem#handleUse} 写 {@code now + 1200}。仅服务端判定,故不 {@code .sync()}。
-     */
-    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> MAMUSHI_FORCED_COOLDOWN_UNTIL =
-            ATTACHMENTS.register("mamushi_forced_cooldown_until", () -> AttachmentType.builder(() -> 0L)
-                    .serialize(Codec.LONG.fieldOf("value"))
-                    .build());
-
     /** 觉醒层数(缺省 0;不设上限:D4「不消耗、不回落,继续累加」) */
     public static int getMamushiAwakening(net.minecraft.world.entity.player.Player player) {
         return player.getData(MAMUSHI_AWAKENING.get());

@@ -14,14 +14,18 @@
     "trade.MerchantOfferMixin",
     "trade.MerchantResultSlotMixin",
     "trade.ServerPlayerMixin",
-    "PiglinAiMixin"
+    "PiglinAiMixin",
+    "HealOrHarmMobEffectMixin",
+    "RegenerationMobEffectMixin"
   ],
   "client": [
     "client.AstralUseItemGuardMixin",
     "client.LocalPlayerDropGuardMixin",
     "client.EffectsInInventoryMixin",
     "client.GuiMixin",
-    "client.LivingEntityOutlineCaptureMixin"
+    "client.LivingEntityOutlineCaptureMixin",
+    "client.LivingEntityRenderStateMixin",
+    "client.SignTranslucencyMixin"
   ],
   "injectors": {
     "defaultRequire": 1

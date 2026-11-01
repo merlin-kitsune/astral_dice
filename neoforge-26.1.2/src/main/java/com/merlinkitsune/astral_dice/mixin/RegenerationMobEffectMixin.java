@@ -1,6 +1,7 @@
 package com.merlinkitsune.astral_dice.mixin;
 
 import com.merlinkitsune.astral_dice.event.DorothyWarmthHealContext;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.LivingEntity;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -10,7 +11,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 /**
  * 多萝西被动：标记「生命恢复」的治疗来源与效果等级。
  *
- * <p>1.21.1 的生命恢复由包私有的 {@code RegenerationMobEffect} 实现，
+ * <p>生命恢复由包私有的 {@code RegenerationMobEffect} 实现（26.1.2 起签名多一个 {@code ServerLevel} 首参），
  * 类字面量在包外不可见 {@code (@Mixin(RegenerationMobEffect.class) 无法编译)}，
  * 因此用 {@code targets} 字符串指定目标。
  *
@@ -21,13 +22,13 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public abstract class RegenerationMobEffectMixin {
 
     @Inject(method = "applyEffectTick", at = @At("HEAD"))
-    private void astralDice$pushRegenerationHealSource(LivingEntity target, int amplifier,
+    private void astralDice$pushRegenerationHealSource(ServerLevel level, LivingEntity target, int amplifier,
                                                        CallbackInfoReturnable<Boolean> cir) {
         DorothyWarmthHealContext.push(DorothyWarmthHealContext.Kind.REGENERATION, amplifier + 1);
     }
 
     @Inject(method = "applyEffectTick", at = @At("RETURN"))
-    private void astralDice$popRegenerationHealSource(LivingEntity target, int amplifier,
+    private void astralDice$popRegenerationHealSource(ServerLevel level, LivingEntity target, int amplifier,
                                                       CallbackInfoReturnable<Boolean> cir) {
         DorothyWarmthHealContext.pop();
     }

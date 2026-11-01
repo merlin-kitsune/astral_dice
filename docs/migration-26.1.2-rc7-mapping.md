@@ -556,10 +556,10 @@
 | # | 差异 | 原行为 → 现行为 | 处置 |
 |---|---|---|---|
 | 1 | 村民交易无货 | 1.21.1 用 `VillagerTradesEvent` 挂 `MerchantOffer` → 26.1.2 该 API 删除，现只留 `listings()` 素材与空交易表 | P6 改数据驱动 JSON（`Registries.VILLAGER_TRADE` + `TradeSet`），本批不猜写资源 |
-| 2 | 立牌半透明 alpha | `RenderSystem.setShaderColor` 删除 → 只剩 `AlphaContext` 栈 + `RenderTypes.entityTranslucent` | 需实机确认（`mixin/client/SignTranslucencyMixin`） |
+| 2 | 立牌半透明 alpha | **已按 26.1.2 两段式重写**（2026-11-01）：①`extractRenderState` 末尾把「是否半透明」写进 render state（`client/render/TranslucentRenderState` + `mixin/client/LivingEntityRenderStateMixin` 的 `@Unique` 字段）；②`getRenderType` 命中时改用 `RenderTypes.entityTranslucent(texture)`；③`submit` HEAD/TAIL 维护 alpha 栈，并用 `@Redirect` 把 `ARGB.multiply(baseColor, getModelTint(state))` 的结果交给 `ARGB.multiplyAlpha(color, 0.5F)` | 已生效（实机 50% 透明，见 §17.5）；不再依赖已删除的 `render(...)` 与 `RenderSystem.setShaderColor` |
 | 3 | 卡片槽悬停高亮 | 26.1.2 槽高亮钩子私有化 → 恢复原版高亮（纯视觉） | 接受 |
 | 4 | 档位边框染色 | `RenderTooltipEvent.Color` 删除 → 本线无原生路径，仅 `ModernUITooltipCompat`（装 Modern UI 时）承担 | 接受，文档已注明 |
-| 5 | 蛟龙立牌强制冷却不跨存档 | 原本走附件 → 改 `MamushiSignItem` 内静态 `ConcurrentHashMap<UUID,Long>` | 重登归零，登记为已知限制 |
+| 5 | 蛟龙立牌强制冷却不跨存档 | ~~改静态 `ConcurrentHashMap<UUID,Long>`~~ → **已回归 1.21.1 实现**：`MamushiSignItem` 整文件用 1.21.1 版（`SignHooks.BiteBlessingTrigger/BlessingEnded/DragonRoar` + `BaseSignItem` 的 `sign_active_lock_*` 链路），死附件 `mamushi_forced_cooldown_until` 已删除 | 已解决（`9192a0bc`） |
 
 ### 12.3 关键工具经验
 
@@ -708,7 +708,7 @@ datagen 把它投影成 JSON，职业注册只绑 `TradeSet` 的键。
 
 | 项 | 现状 | 影响 |
 |---|---|---|
-| 立牌半透明 alpha 强制 | `RenderSystem.setShaderColor` 删除，只剩 `RenderTypes.entityTranslucent` | 需实机确认观感 |
+| ~~立牌半透明 alpha 强制~~ | 已用两段式方案实现（state 标记 + `entityTranslucent` + ARGB alpha） | 已解决，见 §12.2 #2 / §17.5 |
 | 卡片槽悬停高亮 | 26.1.2 槽高亮钩子私有化，回落到原版高亮 | 纯视觉 |
 | 档位边框染色 | `RenderTooltipEvent.Color` 删除，仅 `ModernUITooltipCompat` 承担 | 视觉 |
 | Iron's Spellbooks 联动 | 26.1.2 线整体移除（build.gradle 注明） | 功能缺省 |
@@ -766,3 +766,56 @@ grep -c "Couldn't parse data file" temp/server-2612b.log
 #    initialize 取 mcp-session-id → tools/call.name=eval_js, arguments.side=server
 #    注意：无全局 server，须 ServerLifecycleHooks.getCurrentServer()；无 Java.from；keySet 元素直接是 Identifier
 ```
+
+## §17 收尾一致性验证（2026-11-01 14:1x–14:3x，对 1.21.1 逐项比对）
+
+对新旧两线做了「文件集 → 方法集 → 注册表 → 资源 → 数据包 → 运行时」六层比对，结论与处置：
+
+### 17.1 已对齐（实读数字）
+
+| 维度 | 1.21.1 | 26.1.2 | 备注 |
+|---|---|---|---|
+| Java 文件 | 411 | 419 | 仅 1.21.1 有 4 个（`client/RarityTooltipFrame`、`datagen/DataGenerators`、`event/IronSpellbooksCompat`、`mixin/client/EffectRenderingInventoryScreenMixin`），均为本线有意移除/替换 |
+| 物品 / 方块 | 157 / 4 | 157 / 4 | — |
+| 效果 | 67 | 68 | +`railgun_ready`（26.1.2 专属，`PlayerTickEvents` 依赖） |
+| 附件 | 137 | 137 | 曾多出的 `mamushi_forced_cooldown_until` 已删 |
+| 实体 / 职业 / 创造页 | 2 / 2 / 1 | 2 / 2 / 1 | — |
+| Curios 标签 | 67 / 13 / 31 | 67 / 13 / 31 | chip / dice / stand |
+| lang | 1070 键 | 1094 键 | 26.1.2 是超集，仅 1.21.1 有 0 个 |
+| 贴图 / 音效 | 660 / 24 | 661 / 24 | 多 `railgun_ready.png` |
+| 配方 / 进度 | 108 / 108 | 108 / 108 | datagen 对账 |
+| loot_modifiers | 14 + 索引 | 14（目录扫描） | 每份自带 `type`，格式一致 |
+| `@SubscribeEvent` 文件 | 93 | 92 | 差异全部可解释（拆分/新增/删除，见方法集） |
+
+方法集比对 33 个文件有差异，逐条核对后**全部是框架改名**：`render→extractRenderState` / `render*→extract*`、`hurt→hurtServer`、`onRenderLevelStage→onSubmitCustomGeometry`、`getLightColor→getLightCoords`、`getArmorSlots`（1.21.1 本就返回空表）、`onVillagerTrades→listings()/tradeEntries()`、`codec/streamCodec→astral*`、`holder→trueHolder`。
+
+### 17.2 本轮修掉的 3 项（`9215b0f1` 之前的未提交批次 → 见 §17.4）
+
+1. **多萝西温暖失去效果等级**：`HealOrHarmMobEffectMixin` / `RegenerationMobEffectMixin` 文件在、配置里没注册，且签名停留在 1.21.1（26.1.2 的 `applyInstantenousEffect` / `applyEffectTick` 都多了 `ServerLevel` 首参）。已移植签名 + 注册 ⇒ 运行时启动无 mixin 报错。
+2. **死文件** `mixin/fixes/LivingEntityDamageContainerMixin.java`（1.21.1 的 JVMDowngrader 兜底，26.1.2 无对应 config 与目标类）删除。
+3. **死附件 + 过期注释**：`ModAttachments.MAMUSHI_FORCED_COOLDOWN_UNTIL` 及其在 `AstralPartyCommand` 的说明整段移除（该机制已随 `9192a0bc` 回到 `BaseSignItem` 的 `sign_active_lock_*`）。
+
+### 17.3 唯一仍未对齐项
+
+立牌半透明（§12.2 #2）：26.1.2 的实体渲染是 `extractRenderState → submit(...)` 两段式，`render(...)` 与 `RenderSystem.setShaderColor` 都没了，原 Mixin 注入点消失。**注册即启动崩**（实测 `Critical injection failure … could not find any targets matching 'render'`），故保持未注册，并在文件头写明改造方向。要恢复该特性需要：改注入 `submit`、改 `getRenderType(S,boolean,boolean,boolean)`、用 `LivingEntityRenderState` 携带「是否半透明」，且 alpha 只能靠渲染管线而非着色器颜色——属独立任务。
+
+### 17.4 验证方式（可复用）
+
+- 静态：`python3` 脚本对两线做文件集/方法集/注册表/资源比对（本次临时脚本思路见本节表格口径）。
+- 门禁：`:neoforge-26.1.2:compileJava` EXIT=0；`tools/check_lang_sync.py` 四线 OK（26.1.2 en_us=1094）；`docs/agent/verify-split.py` 全部通过。
+- 运行时：**改了 mixin 必须重启客户端看日志**——`grep "Mixin apply for mod astral_dice failed"` ≠ 0 就是启动期注入失败；本次正是靠这条抓到了 SignTranslucencyMixin 的问题。
+- 启动环境：`XAUTHORITY` 取自 `pgrep -af Xwayland | sed -n 's/.*-auth \([^ ]*\).*/\1/p'`（**每次登录都会变**，写死会导致 `glfwInit failed`）。
+
+### 17.5 立牌半透明在 26.1.2 的实现（2026-11-01）
+
+26.1.2 的实体渲染是两段式，透明度不再是「着色器颜色」，而是 `submitNodeCollector.submitModel(...)` 的 ARGB 顶点色。
+落地方式（三个落点 + 一个数据载体）：
+
+| 环节 | 位置 | 做法 |
+|---|---|---|
+| 判定 | `mixin/client/SignTranslucencyMixin#astral$markTranslucent` | `extractRenderState` TAIL：`entity instanceof Player` 且带 `ALANA_IRON_MAIDEN` / `DEEPSEEK_FISHING` ⇒ 写 state 标记 |
+| 载体 | `client/render/TranslucentRenderState` + `mixin/client/LivingEntityRenderStateMixin` | 给原版 `LivingEntityRenderState` 挂 `@Unique boolean`；**接口不能放在 `...astral_dice.mixin` 包下**（Mixin 只允许该包内放 `@Mixin` 类，否则 `IllegalClassLoadError`） |
+| 渲染类型 | `getRenderType` HEAD（cancellable） | 命中时返回 `RenderTypes.entityTranslucent(getTextureLocation(state))`，否则原版 cutout 会做 alpha 测试、半透明被裁掉 |
+| 透明度 | `submit` HEAD/TAIL + `@Redirect` | 维护 `AlphaContext` 栈；把 `ARGB.multiply(baseColor, getModelTint(state))` 的结果再 `ARGB.multiplyAlpha(color, 0.5F)` |
+
+验证：`:neoforge-26.1.2:build` EXIT=0；实机 `/effect give @p astral_dice:alana_iron_maiden` 后第三人称可见草地透过身体（截图 `temp/t02/translucent-on-2612.png`），启动日志 `Mixin apply for mod astral_dice failed` = 0。
