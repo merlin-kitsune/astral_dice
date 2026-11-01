@@ -7,10 +7,6 @@
       "type": "patchouli:spotlight",
       "item": "astral_dice:effect_card_king_power",
       "text": "astral_dice.guide.entry.effect_card_king_power.1"
-    },
-    {
-      "type": "patchouli:crafting",
-      "recipe": "astral_dice:effect_card_king_power"
     }
   ],
   "sortnum": 0

@@ -9,7 +9,6 @@ import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import com.merlinkitsune.astral_dice.component.WeaponEnhancement;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.item.RenShieldManager;
-import com.merlinkitsune.astral_dice.item.sign.ParunanSignItem;
 import com.merlinkitsune.astral_dice.item.sign.BaseSignItem;
 import com.merlinkitsune.astral_dice.item.sign.MosesSignItem;
 import com.merlinkitsune.astral_dice.item.sign.PandamanSignItem;
@@ -45,14 +44,19 @@ import net.minecraft.tags.DamageTypeTags;
 import com.merlinkitsune.astral_dice.platform.event.entity.living.LivingAttackEvent;
 import com.merlinkitsune.astral_dice.platform.event.entity.living.LivingChangeTargetEvent;
 import com.merlinkitsune.astral_dice.platform.event.entity.living.LivingDamageEvent;
+import com.merlinkitsune.astral_dice.platform.event.entity.living.LivingHurtEvent;
 import com.merlinkitsune.astral_dice.platform.event.entity.living.MobEffectEvent;
 import com.merlinkitsune.astral_dice.platform.event.TickEvent;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.WeakHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 
 import com.merlinkitsune.astral_dice.item.chip.PerpetualMotionChipItem;
@@ -61,12 +65,191 @@ import com.merlinkitsune.astral_dice.item.chip.BufferShieldChipItem;
 import com.merlinkitsune.astral_dice.combat.DiceCombatContext;
 import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
 import com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem;
+import com.merlinkitsune.astral_dice.item.sign.AlanaSignItem;
+import com.merlinkitsune.astral_dice.component.SignAttachments;
 import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
 import com.merlinkitsune.astral_dice.item.card.FateGuidanceCardItem;
 import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
 import com.merlinkitsune.starengine.combat.HostileTargets;
 
 public class DiceCombatEvents {
+
+    // ============================================================================================
+    // 骰战吸收结算(N1 护盾钳制 / N2 吸收只扣一次)——移植自 forge-1.20.1 同名文件(批次 D-10)
+    // --------------------------------------------------------------------------------------------
+    // ⚠️ 平台差异(改这段之前必读):
+    //   forge 侧的 LivingDamageEvent 派发在 LivingEntity#actuallyHurt 内部、「平台已扣过一次吸收」之后
+    //   (forge 反编译源 LivingEntity.java:1669 与 :1684 两段扣减),所以 forge 才需要整套补偿:
+    //   settleDiceDamage 回写吸收余额 + registerPhantom 登记幻影 + withPhantomPeeled 在嵌套 hurt 前剥掉
+    //   + onServerTickReconcilePhantoms 每 tick 校正。
+    //   本线的 LivingDamageEvent 由 Puzzles Lib 的 LIVING_HURT 回调桥接,注入点在 actuallyHurt 的**方法入口**
+    //   (护甲 / 抗性 / 吸收之前,字节码取证见 platform/PuzzlesBridges.java 与本批 B20B 报告),平台只会在事件
+    //   **之后**扣一次吸收 ⇒ 吸收本来就不会被双扣,幻影机制在本线没有病根;硬搬只会人为虚高 / 二次扣减
+    //   (即引入新 bug)⇒ registerPhantom / phantomOf / withPhantomPeeled **不移植**,裁决登记见 B20B 报告。
+    //   本线真正缺的两件事由本段补齐:
+    //     ① 鼠鼠护盾(RenShieldManager)在 LivingHurtEvent 上的金额钳制会被骰战 setAmount 整段覆盖
+    //        ⇒ 用受击前快照里的 shield 在 settle 出口重新钳一次;
+    //     ② 修女(Alana)被动「单次受击 >10 清空加成」的判定点随 settle 通道一起缺失。
+    // ============================================================================================
+
+    /**
+     * 受击前快照表:把「护甲前、扣吸收前」的余额跨「LivingHurtEvent → LivingDamageEvent」这一段传值。
+     * 键用弱引用 + 并发包装(与 forge 同形),避免实体卸载/GC 后残留。
+     */
+    private static final Map<LivingEntity, PreHurtSnapshot> PRE_HURT_ABSORPTION =
+            Collections.synchronizedMap(new WeakHashMap<>());
+
+    /**
+     * 一次受击的快照。
+     * <ul>
+     *   <li>{@code absorption} 记录点的吸收余额(黄心总量,含护盾);</li>
+     *   <li>{@code shield} 记录点的「鼠鼠护盾剩余黄心」(非玩家恒为 0);</li>
+     *   <li>{@code gameTime} 记录点的世界时间——本线用它把「跨 tick 的陈旧快照」判废
+     *       (forge 侧由 phantomOf 的 gameTime 比较承担同一职责)。</li>
+     * </ul>
+     */
+    private static final class PreHurtSnapshot {
+        final float absorption;
+        final float shield;
+        final long gameTime;
+
+        PreHurtSnapshot(float absorption, float shield, long gameTime) {
+            this.absorption = absorption;
+            this.shield = shield;
+            this.gameTime = gameTime;
+        }
+    }
+
+    /**
+     * N2 记录点:在 {@code LivingHurtEvent} 上记录本击的「吸收余额 + 护盾剩余」。
+     *
+     * <p>本线该事件由 {@code mixin/bridge/LivingHurtBridgeMixin} 在 {@code LivingEntity#hurt} 调用
+     * {@code actuallyHurt} 的那一处派发 ⇒ 位置与 forge 的 {@code ForgeHooks.onLivingHurt} 等价,此刻吸收尚未扣,
+     * 取到的 {@code getAbsorptionAmount()} 就是 A0。优先级 HIGHEST:早于同事件上
+     * {@code RenShieldManager#onRenShieldAbsorb}(LOWEST,它只改金额不动余额,记录先后对取值无影响,
+     * 但固定在最先便于阅读)。
+     */
+    @SubscribeEvent(priority = EventPriority.HIGHEST)
+    public static void onLivingHurtRecordAbsorption(LivingHurtEvent event) {
+        LivingEntity target = event.getEntity();
+        if (target == null || target.level().isClientSide()) return;
+        float shield = target instanceof Player defender
+                ? RenShieldManager.remainingShieldAbsorption(defender)
+                : 0.0F;
+        PRE_HURT_ABSORPTION.put(target, new PreHurtSnapshot(
+                target.getAbsorptionAmount(), shield, target.level().getGameTime()));
+    }
+
+    /**
+     * 取出并清除本次受击的快照;拿不到(或被别的路径清掉)时用当前值兜底重建,
+     * 保证 settle 永远有值可用(与 forge 同形的兜底)。
+     */
+    private static PreHurtSnapshot consumePreHurtAbsorption(LivingEntity target) {
+        PreHurtSnapshot recorded = PRE_HURT_ABSORPTION.remove(target);
+        long now = target.level().getGameTime();
+        if (recorded == null || recorded.gameTime != now) {
+            float shield = target instanceof Player defender
+                    ? RenShieldManager.remainingShieldAbsorption(defender)
+                    : 0.0F;
+            return new PreHurtSnapshot(target.getAbsorptionAmount(), shield, now);
+        }
+        return recorded;
+    }
+
+    /**
+     * N1 + N2:骰战写终值前的**唯一出口**(玩家攻击 / 生物近战两条路径都必须走它)。
+     *
+     * <p>本线口径(与 forge 的差别只有「不回写吸收余额、不登记幻影」这一处,理由见本段顶部注释):
+     * <ol>
+     *   <li><b>N1 护盾钳制</b>:这一击的伤害不得超过记录点「鼠鼠护盾剩余黄心」——
+     *       {@code RenShieldManager#onRenShieldAbsorb} 的钳制写在 {@code LivingHurtEvent} 上,
+     *       而骰战在更晚的 {@code LivingDamageEvent} 上 setAmount 会把它整段覆盖,故在此重新钳一次。
+     *       与 RenShieldManager 自身 javadoc 同口径:平台之后还会再减护甲,
+     *       护盾这一击消耗得略少(严格更保守,绝不漏血)。</li>
+     *   <li><b>N2 终值</b>:只写 {@code event.setAmount(damage)},不回写吸收余额——平台会在事件之后
+     *       按最终金额扣一次吸收({@code f1 = max(dmg - A0, 0)}),这正是 forge 想要却拿不到的时序。</li>
+     *   <li><b>F7 修女被动</b>:落在红心上的量({@code toHealth})交给 {@link #applyAlanaBigHit}。</li>
+     * </ol>
+     *
+     * @return 落到**红心**上的那一段(已扣掉吸收),供调用方/数字显示参考
+     */
+    private static float settleDiceDamage(LivingEntity target, LivingDamageEvent event, float finalDamage) {
+        float damage = finalDamage;
+        if (damage <= 0.0F) {
+            event.setAmount(0.0F);
+            applyAlanaBigHit(target, 0.0F);
+            return 0.0F;
+        }
+        PreHurtSnapshot snapshot = consumePreHurtAbsorption(target);
+        // N1:鼠鼠护盾钳制(forge 同款,本线口径见方法注释)
+        if (snapshot.shield > 0.0F && damage > snapshot.shield) {
+            damage = snapshot.shield;
+        }
+        // N2:吸收只在这里「算」、不在「写」——实际扣减交给平台在事件之后做一次
+        float absorptionBefore = Math.max(0.0F, snapshot.absorption);
+        float absorbedShould = Math.min(damage, absorptionBefore);
+        float toHealth = damage - absorbedShould;
+        event.setAmount(damage);
+        // F7:修女被动一律在公共出口判(见 applyAlanaBigHit)
+        applyAlanaBigHit(target, toHealth);
+        return toHealth;
+    }
+
+    /**
+     * F7(近战审计):修女(Alana)被动「单次受击 >10 点则清空被动加成」。
+     *
+     * <p>判定放在两条骰战路径的**共同出口** {@link #settleDiceDamage},而不是各自的公式里,
+     * 以免某条路径漏判。本线无 {@code ModAttachments#getAlanaPassiveBonus},
+     * 被动层数记在 {@code SignAttachments#getAlanaPassiveBonus}。
+     */
+    private static void applyAlanaBigHit(LivingEntity target, float applied) {
+        if (target instanceof Player victim
+                && applied > 10.0F
+                && SignAttachments.getAlanaPassiveBonus(victim) > 0) {
+            AlanaSignItem.clearBonus(victim);
+        }
+    }
+
+    /**
+     * 本击出口统一失效快照(forge 侧同名方法负责「剥幻影 + 重新登记幻影余额」,
+     * 本线无幻影 ⇒ 等价体就是清掉本击快照,保证不残留到下一击)。
+     *
+     * <p>由 {@code event/ChipDamageHandler#onLivingDamage} 的 finally 段调用,见本批 B20B 报告。
+     * {@code finalAmount} 不参与本线算术,保留形参是为了两条线**同名同签名**(便于逐行对照)。
+     */
+    public static void compensateAbsorption(LivingEntity target, float finalAmount) {
+        if (target == null || target.level().isClientSide()) return;
+        PRE_HURT_ABSORPTION.remove(target);
+    }
+
+    /**
+     * 每 tick 清扫陈旧快照(forge 同名方法负责「幻影被平台原样退还」的校正)。
+     *
+     * <p>本线等价职责:本击的快照若跨了 tick 还没被 consume(例如事件被取消、实体死亡、
+     * 或根本没走到骰战出口),其 gameTime 已不符,留着无害但会占弱引用表 ⇒ 这里清掉,
+     * 与 {@link #consumePreHurtAbsorption} 的「跨 tick 视为无登记」判据一致。
+     */
+    @SubscribeEvent
+    public static void onServerTickReconcilePhantoms(TickEvent.ServerTickEvent event) {
+        if (event.phase != TickEvent.Phase.END) return;
+        if (PRE_HURT_ABSORPTION.isEmpty()) return;
+        synchronized (PRE_HURT_ABSORPTION) {
+            Iterator<Map.Entry<LivingEntity, PreHurtSnapshot>> iterator =
+                    PRE_HURT_ABSORPTION.entrySet().iterator();
+            while (iterator.hasNext()) {
+                Map.Entry<LivingEntity, PreHurtSnapshot> entry = iterator.next();
+                LivingEntity target = entry.getKey();
+                PreHurtSnapshot recorded = entry.getValue();
+                if (target == null || target.isRemoved() || target.level().isClientSide()) {
+                    iterator.remove();
+                    continue;
+                }
+                if (recorded == null || recorded.gameTime != target.level().getGameTime()) {
+                    iterator.remove();
+                }
+            }
+        }
+    }
 
     /**
      * 玩家侧闪避判定开关:当前 false(玩家侧闪避已移除,目标未佩戴骰子时直接进入常规防御结算)。
@@ -283,6 +466,12 @@ public class DiceCombatEvents {
         }
         if (target == player) return;
 
+        // 手电筒-爆闪筹码:攻击「该玩家未攻击过的目标(玩家×目标判重)」⇒ +1 星光
+        // (去重载体 = 该玩家自己的玩家级附件 flashlight_burst_targets;目标须为敌对)。
+        // 位置:在「骰神赐福 / 近战武器」闸门**之前** ⇒ 不要求触发赐福、不要求主手持近战武器;
+        // 但上方 `directEntity instanceof Player` 闸门已保证「这一击的直接来源就是该玩家本人」。
+        com.merlinkitsune.astral_dice.item.chip.FlashlightBurstChipItem.onAttack(player, target);
+
         // 电磁炮筹码:对敌对目标发起攻击时消耗 6 层充能,延迟 1 秒对目标 3 格内敌对目标降下雷击。
         // ⚠️ **触发限「该玩家本人的近战武器攻击」**（2026-10-01 用户裁决）：判据见
         //    {@link #isPlayerMeleeAttack} —— 排除任意非近战 / 非玩家自身的攻击、荆棘与其它反伤
@@ -342,6 +531,8 @@ public class DiceCombatEvents {
             ModAttachments.setDefenseCardConsumedThisBlessing(player, false);
             // 新赐福周期:重置诅咒之剑“本次赐福已触发”标记
             ModAttachments.setCursedSwordBlessingTriggered(player, false);
+            // 新赐福周期:重置财运签“本次赐福已触发”标记(与诅咒之剑同批同处复位,每赐福周期一次)
+            ModAttachments.setFortuneStickBlessingClaimed(player, false);
             // 玩家对玩家:若被攻击方也佩戴骰子,则同时触发其骰神赐福(双方都拥有骰子时)
             if (target instanceof Player targetPlayer) {
                 var targetCurios = CuriosApi.getCuriosInventory(targetPlayer);
@@ -353,6 +544,8 @@ public class DiceCombatEvents {
                                 GameplayConstants.DICE_BLESSING_DURATION_TICKS, 0, false, false, true));
                         ModAttachments.setDefenseCardConsumedThisBlessing(targetPlayer, false);
                         ModAttachments.setCursedSwordBlessingTriggered(targetPlayer, false);
+                        // 财运签“本次赐福已触发”标记(被攻击方同一赐福周期口径)
+                        ModAttachments.setFortuneStickBlessingClaimed(targetPlayer, false);
                     }
                 }
             }
@@ -398,6 +591,9 @@ public class DiceCombatEvents {
             com.merlinkitsune.astral_dice.item.chip.MemberRecommendationChipItem.onBlessingStart(player);
             // 大当家立牌:触发骰神赐福 → 记录触发时刻;养精蓄锐满层则消耗 2 层并置位本次攻击的溅射
             fenSplashArmed = com.merlinkitsune.astral_dice.item.sign.FenSignItem.onBlessingTriggered(player);
+            // 阿兰娜立牌:触发骰神赐福 → 被动攻击 +5(主线由立牌钩子分发层派发到 AlanaSignItem;
+            // 本线为直调风格、已无注册式分发层,故在此显式调用静态入口,语义与主线 fireBlessingTriggered 一致)
+            com.merlinkitsune.astral_dice.item.sign.AlanaSignItem.onBlessingTriggered(player);
             // 蛟龙立牌(mamushi)专属战斗牌「撕咬」:触发骰神赐福时,每张**装备中**的撕咬 +1 层觉醒并锁存加成
             MamushiSignItem.onDiceBlessingTriggered(player);
             // 治愈体系:触发骰神赐福 → 医疗箱加点(先)+ 按当前治愈点×2 回血(后)。
@@ -506,13 +702,8 @@ public class DiceCombatEvents {
             com.merlinkitsune.astral_dice.item.sign.HannaSignItem.onDiceRollResult(player, baseDice);
         }
 
-        // 经商立牌(parunan):触发骰神赐福后立即获得 触发时骰点*2 的星光
-        if (triggeredBlessing && attackerCurios.isPresent()) {
-            var parunanResult = attackerCurios.get().findFirstCurio(s -> s.is(ModItems.PARUNAN_SIGN.get()));
-            if (parunanResult.isPresent()) {
-                ParunanSignItem.gainStarlightOnBlessing(player, baseDice);
-            }
-        }
+        // ⚠️ 2026-10-08 用户裁决「重写经商立牌被动」:原「触发骰神赐福后立即获得 骰点×2 星光」已移除
+        // (被动「传奇商人」改为商店/兑换向的五条内容,见 shop/CardShopMenu 与 AGENTS 立牌技能表)。
 
         // 占星师立牌被动:骰神赐福期间骰点=6 时立即获得 6 星币
         if (!player.level().isClientSide() && baseDice == 6 && attackerCurios.isPresent()) {
@@ -564,8 +755,10 @@ public class DiceCombatEvents {
         //   if (crit) f *= 1.5                                       ← ★ 只乘基础段
         //   f += f1                                                  ← 附魔加伤加在暴击之后
         // 骰战逐段照搬:基础段吃冷却与暴击;附魔加伤两者都不吃;骰点与卡牌作为**其后**的加项,同样不吃暴击。
+        // ⚠️ 2026-10-15 修复(永动机攻速副作用):上面这个 f2 取自 diceBattleAttackStrengthScale(player),
+        // 已扣除「永动机」筹码 ATTACK_SPEED ×2 的贡献 —— 否则同一点击节奏下 f2 被顺带抬高,骰战基础段虚高。
         double rawAttackDamage = player.getAttributeValue(Attributes.ATTACK_DAMAGE);
-        float attackCooldown = player.getAttackStrengthScale(0.5F);
+        float attackCooldown = diceBattleAttackStrengthScale(player);
         double attackPower = rawAttackDamage * (0.2 + attackCooldown * attackCooldown * 0.8);
         for (var modifier : com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.attackModifiers()) {
             attackPower = modifier.apply(ctx, attackPower);
@@ -645,6 +838,9 @@ public class DiceCombatEvents {
                     // 对骰成立后双方各掷 1d6,但**不**因此触发骰神赐福。
                     // 特殊骰子掷骰(防御方:诡异骰子低点数偏置,绯红骰子高点数偏置)
                     defenseBaseDice = rollCombatDie(targetPlayer);
+                    // 感测装置筹码:目标每 3 层标记 ⇒ **其**战斗骰点 -1(最多 -4,下限 0;攻击方骰点不受影响)
+                    defenseBaseDice = com.merlinkitsune.astral_dice.item.chip.SensorChipItem
+                            .reduceTargetDice(player, targetPlayer, defenseBaseDice);
                     // 防御卡掷骰由注册表防御修饰器执行(读 ctx.targetEnhancement,写 ctx.defenseCardSum)
                     ItemStack targetDice = targetDiceResult.get().stack();
                     WeaponEnhancement targetEnh = ModDataComponents.WEAPON_ENHANCEMENT.get(targetDice);
@@ -664,6 +860,9 @@ public class DiceCombatEvents {
             } else {
                 defenseBaseDice = ThreadLocalRandom.current().nextInt(1, 7);
             }
+            // 感测装置筹码:目标每 3 层标记 ⇒ **其**战斗骰点 -1(最多 -4,下限 0;攻击方骰点不受影响)
+            defenseBaseDice = com.merlinkitsune.astral_dice.item.chip.SensorChipItem
+                    .reduceTargetDice(player, target, defenseBaseDice);
         }
 
         double finalDmg;
@@ -681,17 +880,19 @@ public class DiceCombatEvents {
                     modifierDefense = modifier.apply(ctx, modifierDefense);
                 }
 
-                // 效果牌/立牌/筹码的防御力已折算为真实护甲(1 防御力 = 2 护甲值,
-                // 见 DiceCombatModifiers.setDefenseArmorBonus),getArmorValue() 已包含;
-                // modifierDefense 恒为 0(仅防御卡掷骰写入 ctx.defenseCardSum 作为防御点直接加入)。
+                // 效果牌/立牌/筹码的防御力已折算为真实护甲(1 防御力 = 1 ÷ 阵营护甲系数 护甲值,
+                // 见 DiceCombatModifiers.setDefenseArmorBonus),effectiveArmorPoints 已包含;
+                // modifierDefense 恒为 0(仅防御卡掷骰写入 ctx.defenseCardSum 作为防御点直接加入),
+                // 仍按目标阵营折算后并入有效护甲(与 forge 逐字同式)。
                 // === 玩家与生物公式分离(2026-09-26 用户裁决) ===
                 // · 护甲 20 硬上限**两侧一律移除**;
-                // · 护甲取**属性终值**(getArmorValue()) ⇒ 状态效果与第三方模组(如七咒之戒)修饰
-                //   完毕后的真实值先参与换算,本模组**不再二次换算**(最大模组兼容性);
-                // · 玩家:4 + 护甲×0.30 + 0.85×韧性;
+                // · 护甲取**属性终值**(effectiveArmorPoints = ARMOR 的 double 值,不用 floor 的 getArmorValue())
+                //   ⇒ 状态效果与第三方模组(如七咒之戒)修饰完毕后的真实值先参与换算,本模组**不再二次换算**;
+                // · 玩家:2 + 护甲×0.30 + 0.85×韧性;
                 // · 生物:初始值(敌对 0 / 中立 0 / 被动 0 / 友好 0) + 护甲×0.40 + 1.0×韧性,最终取整。
                 //   ↑ 两式均取自库 CombatFormula,本模组不再内联系数(2.0.0-SNAPSHOT.2 起)。
-                double effectiveArmor = Math.max(0, target.getArmorValue() + modifierDefense * 2.0);
+                double effectiveArmor = Math.max(0, DiceCombatModifiers.effectiveArmorPoints(target)
+                        + DiceCombatModifiers.armorValueForDefensePoints(modifierDefense, target instanceof Player));
                 double toughness = target.getAttributeValue(Attributes.ARMOR_TOUGHNESS);
                 if (target instanceof Player) {
                     defensePower = com.merlinkitsune.starengine.combat.CombatFormula
@@ -706,7 +907,7 @@ public class DiceCombatEvents {
             }
 
             // 上班族立牌:攻击骰为 6 时无视目标防御力——按本模组「目标防御力」口径
-            // (与贯穿之铳同一公式:4 + 护甲×0.30 + 0.85×韧性;护甲已包含由防御力折算而来的部分)
+            // (与贯穿之铳同一公式:2 + 护甲×0.30 + 0.85×韧性;护甲已包含由防御力折算而来的部分)
             // 整项不计入防御,但保留目标的防御骰与防御牌加成。
             if (ctx.padmanDefBypass && !skipDefense) {
                 defensePower = defenseBaseDice + ctx.defenseCardSum;
@@ -755,7 +956,9 @@ public class DiceCombatEvents {
         // 注:victimFactor 可能已被上面的七咒 ratio 规则(P2-C8)置为 1.0,避免与 ratio 链路重复计。
         finalDmg *= victimFactor;
 
-        event.setAmount((float) finalDmg);
+        // N1 + N2:护盾钳制 + 吸收按终值只扣一次(两条写终值路径的唯一出口,见 settleDiceDamage)
+        // applied 保留命名(与 forge :1158 同形):语义 = 落到红心上的量;此处后续逻辑(跳字/耐久)尚未消费它
+        float applied = settleDiceDamage(target, event, (float) finalDmg);
         // 跳数字不再在此直发(2026-09-26):登记组别,由 DamageNumberAggregator 在**伤害管线终值**
         // (LivingDamageEvent#getAmount() = 实际扣血量)上取值,并与本 tick 同目标的其它
         // 攻击力类伤害累加成一个**总值**后一次性下发。
@@ -1047,7 +1250,7 @@ public class DiceCombatEvents {
         }
         double mobAttack = attackPoints + mobRoll;
         double playerDefense = com.merlinkitsune.starengine.combat.CombatFormula.playerDefense(
-                target.getArmorValue(), target.getAttributeValue(Attributes.ARMOR_TOUGHNESS))
+                DiceCombatModifiers.effectiveArmorPoints(target), target.getAttributeValue(Attributes.ARMOR_TOUGHNESS))
                 + playerRoll + defenseCardSum;
 
         float finalDmg = com.merlinkitsune.starengine.combat.DiceBattleResolver
@@ -1060,7 +1263,8 @@ public class DiceCombatEvents {
         finalDmg *= com.merlinkitsune.starengine.combat.VanillaMitigation.magicAbsorbFactor(
                 resistanceAmplifierOf(target), protectionPointsOf(target, source));
         finalDmg *= (float) victimFactor;
-        event.setAmount(finalDmg);
+        // N1 + N2:与玩家攻击路径同一出口(见 settleDiceDamage)
+        settleDiceDamage(target, event, finalDmg);
         // 跳数字:与玩家攻击同一出口(登记组别,由 DamageNumberAggregator 在管线终值上取值)
         DamageNumberAggregator.tag(target, source, DamageNumberAggregator.Group.ATTACK);
         // 防御牌耐久:每次受到骰战攻击,防御方装备的所有防御牌各扣 1 点(仅在对骰成立时)
@@ -1091,6 +1295,73 @@ public class DiceCombatEvents {
                 : net.minecraft.world.entity.MobType.UNDEFINED;
         return net.minecraft.world.item.enchantment.EnchantmentHelper
                 .getDamageBonus(attacker.getMainHandItem(), mobType);
+    }
+
+    /**
+     * 冷却探针专用的属性修饰器 id(仅在本类内部瞬时挂载/移除,不落到任何物品上)。
+     * <p>1.20.1 的属性修饰器以 UUID 标识;此处的取值按固定字符串派生,
+     * 独立于任何真实筹码,避免与玩家属性上既有修饰器撞 id
+     * (撞 id 会让 {@code addTransientModifier} 抛
+     * {@code IllegalArgumentException: Modifier is already applied on this attribute!})。
+     */
+    private static final UUID COOLDOWN_PROBE_ID = UUID.nameUUIDFromBytes(
+            "astral_dice:dice_battle_cooldown_probe".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+
+    /**
+     * 骰战攻击冷却系数所用的 {@code getAttackStrengthScale(0.5F)} —— **已扣除「永动机」筹码的攻击速度贡献**。
+     *
+     * <p><b>为什么需要它(2026-10-15 修复的副作用)</b>:永动机以 {@code ATTACK_SPEED} 的
+     * {@code MULTIPLY_TOTAL = 1.0}(属性终值 ×2)实现「原版近战攻击冷却 -50%」。原版蓄力系数
+     * {@code 0.2 + f2²·0.8} 只应反映**蓄力程度**,而攻速 ×2 会让**同一真实点击节奏**下的 f2 变大
+     * ⇒ 骰战基础段被这条修饰器顺带抬高(不只是挥得更快)。本方法把该修饰器的贡献临时扣除,
+     * 用**等价于「未装备永动机」的攻击速度**去求同一个原版公式 ⇒ 骰战系数只随真实蓄力时长变化。
+     *
+     * <p><b>为什么不按比例换算({@code f2 × AS'/AS})</b>:原版
+     * {@code getCurrentItemAttackStrengthDelay() = 20 / 攻击速度}(1.20.1 {@code Player.java:2004-2005})、
+     * {@code getAttackStrengthScale} 对 {@code (ticker + 0.5) / delay} 取 clamp(同文件 2011-2012),
+     * 而 {@code attackStrengthTicker} 在 {@code Player#tick} 里**无上限自增**、只在 {@code attack()}
+     * 末尾清零 ⇒ 一旦 f2 被 clamp 到 1(很常见:真实点击间隔 ≥ 芯片冷却时长),ticker 信息已丢失,
+     * 比例换算法只能给出「等效值下限 0.5」的错误结果(等价于把永动机变成纯负收益)。故这里改为
+     * **在真实属性实例上临时叠加一个抵消修饰器**({@code MULTIPLY_TOTAL = 1/(1+a) − 1}),让原版公式
+     * 自己算出精确等价值,再用 {@code finally} 立刻移除、不留残留。
+     *
+     * <p>未装备永动机(属性实例上没有这条修饰器)时直接返回原版取值,零副作用。
+     * <p>⚠️ 平台差异:fabric 线走 Trinkets/Curios 兼容层,但属性侧仍是原版
+     * {@code AttributeInstance#addTransientModifier}/{@code removeModifier(UUID)},与本方法一致。
+     *
+     * @return 扣除永动机攻击速度贡献后的 {@code getAttackStrengthScale(0.5F)};该值同时供
+     *         {@link #isVanillaCriticalHit} 与附魔加伤缩放使用(与原版「同一个 f2 驱动三处」同构)
+     */
+    private static float diceBattleAttackStrengthScale(Player player) {
+        AttributeInstance speed = player.getAttribute(Attributes.ATTACK_SPEED);
+        if (speed == null) {
+            return player.getAttackStrengthScale(0.5F);
+        }
+        net.minecraft.world.entity.ai.attributes.AttributeModifier chipModifier =
+                speed.getModifier(PerpetualMotionChipItem.attackSpeedModifierId());
+        if (chipModifier == null) {
+            return player.getAttackStrengthScale(0.5F);
+        }
+        // 抵消项:把「本修饰器带来的 ×2」再乘回 1/2 ⇒ 属性终值 × (1 + counter) = 未装备永动机时的终值
+        double factor = 1.0D + chipModifier.getAmount();
+        if (factor <= 0.0D) {
+            return player.getAttackStrengthScale(0.5F);
+        }
+        double counter = 1.0D / factor - 1.0D;
+        if (counter == 0.0D) {
+            return player.getAttackStrengthScale(0.5F);
+        }
+        if (speed.getModifier(COOLDOWN_PROBE_ID) != null) {
+            speed.removeModifier(COOLDOWN_PROBE_ID);
+        }
+        speed.addTransientModifier(new net.minecraft.world.entity.ai.attributes.AttributeModifier(
+                COOLDOWN_PROBE_ID, "astral_dice:dice_battle_cooldown_probe", counter,
+                net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation.MULTIPLY_TOTAL));
+        try {
+            return player.getAttackStrengthScale(0.5F);
+        } finally {
+            speed.removeModifier(COOLDOWN_PROBE_ID);
+        }
     }
 
     /**
@@ -1411,11 +1682,9 @@ public class DiceCombatEvents {
         LivingEntity target = event.getEntity();
         if (target.level().isClientSide()) return;
         if (!target.hasEffect(ModEffects.WEAK_MARK.get())) return;
-        // 骰战攻击(攻击者赐福激活 + 佩戴骰子 + 近战):虚弱印记倍率已并入骰战结算,跳过以免双重应用
-        if (event.getSource().getEntity() instanceof Player attacker
-                && attacker.hasEffect(ModEffects.DICE_BLESSING.get())
-                && attackerHasDiceCurio(attacker)
-                && isMeleeWeaponAttack(attacker)) {
+        // 骰战路径(玩家赐福近战,含无骰子但目标属于骰战适用目标的那一支)的倍率已并入骰战终值,
+        // 跳过以免双重应用。判据与写终值处同源,见 isDiceBattleSettledDamage(N8)。
+        if (isDiceBattleSettledDamage(event.getSource(), target)) {
             return;
         }
         float multiplier = 1.10f;
@@ -1424,6 +1693,44 @@ public class DiceCombatEvents {
             multiplier += 0.20f;
         }
         event.setAmount(event.getAmount() * multiplier);
+    }
+
+    /**
+     * 「这次伤害是否由骰战结算写出终值」—— {@link #onWeakMarkDamage} 的跳过去重判据（N8）。
+     *
+     * <p>判定顺序与 {@link #onLivingDamagePre} 的入口分流**逐条同源**（forge-1.20.1 的同名方法同形），
+     * 所以返回 {@code true} 等价于「该伤害的虚弱印记倍率已经在写终值处乘过」，本事件必须跳过。
+     *
+     * <h2>本线差异（与 forge-1.20.1 不同，理由=同源而非照抄）</h2>
+     * <ul>
+     *   <li><b>法伤子句缺失</b>：forge 还有一条 {@code SpellDamageRegistry.isSpellDamage(source, direct)}
+     *       排除，因为 forge 的入口先有一道法伤闸门把法术挡在骰战之外。本线入口<b>没有</b>那道闸门
+     *       ⇒ 只要主手持近战武器，法术伤害也会走骰战结算、并在终值里乘过虚弱印记 ⇒ 此处必须跳过；
+     *       照抄 forge 那条会造成**双重应用**。</li>
+     *   <li><b>生物→玩家近战返回 false</b>（forge 返回 {@code direct instanceof Mob && target instanceof Player}）：
+     *       forge 的生物近战路径已把虚弱印记并入终值（{@code resolveMobMeleeAttack} 内），本线的
+     *       {@code resolveMobMeleeAttack} **没有**这一步 ⇒ 生物打玩家的 +10% 仍由本事件提供；
+     *       此处若返回 {@code true}，会让「带虚弱印记的玩家挨生物近战」整段丢掉 +10%（回归）。</li>
+     * </ul>
+     * <p>⚠️ 这两条都是「本线终值折叠点比 forge 少」的症状登记：等本线补齐「入口法伤闸门」与
+     * 「生物近战路径的虚弱印记折叠」之后，本方法应改回与 forge 逐条同形。
+     */
+    private static boolean isDiceBattleSettledDamage(DamageSource source, LivingEntity target) {
+        if (source == null || target == null) return false;
+        if (target.level().isClientSide()) return false;
+        // 本模组内部 AOE(顺劈/溅射/法伤波及)与反击链:入口在分流前直接 return,不进骰战 ⇒ 未折叠
+        if (isInternalAoe() || isInCounterChain()) return false;
+        Entity direct = source.getDirectEntity();
+        if (direct instanceof Player attacker) {
+            if (!isMeleeWeaponAttack(attacker)) return false;
+            if (attacker == target) return false;
+            // 与入口的骰战适用闸门同源:有骰子槽 ⇒ 要求骰神赐福;无骰子 ⇒ 要求目标属于骰战适用目标
+            if (attackerHasDiceCurio(attacker)) {
+                return attacker.hasEffect(ModEffects.DICE_BLESSING.get());
+            }
+            return isBlessingTarget(target, attacker);
+        }
+        return false;
     }
 
     // 玩家是否持有骰子(curio 骰子槽)
@@ -1699,6 +2006,12 @@ public class DiceCombatEvents {
         if (!target.level().isClientSide() && target instanceof Player player) {
             BaseSignItem.invokeHurtHooks(player, event.getSource(), event.getAmount());
             com.merlinkitsune.astral_dice.item.chip.BufferShieldChipItem.onHurt(player, event.getSource(), event.getAmount());
+            // 感测装置筹码:闪避成功 ⇒ 攻击者获得 1 层标记。本方法是**全部闪避来源**的统一取消入口
+            // (枪匠破绽 / 肾上腺素闪避 / 魔女漂浮闪避)⇒ 挂在此处即全覆盖;
+            // 守卫 isInCounterChain:反击链中的伤害不参与(与破绽闪避 / 嘲讽反击 / 鼠鼠反击同一递归截断)。
+            if (!isInCounterChain()) {
+                com.merlinkitsune.astral_dice.item.chip.SensorChipItem.onDodgeSuccess(player, event.getSource());
+            }
         }
     }
 

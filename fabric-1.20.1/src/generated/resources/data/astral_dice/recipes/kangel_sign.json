@@ -1,0 +1,33 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "A": {
+      "item": "minecraft:redstone_lamp"
+    },
+    "D": {
+      "item": "astral_dice:amethyst_dice"
+    },
+    "E": {
+      "item": "astral_dice:blank_sign"
+    },
+    "G": {
+      "item": "astral_dice:golden_star_plate"
+    },
+    "N": {
+      "item": "minecraft:note_block"
+    },
+    "W": {
+      "item": "minecraft:white_wool"
+    }
+  },
+  "pattern": [
+    "GNG",
+    "WEW",
+    "ADA"
+  ],
+  "result": {
+    "item": "astral_dice:kangel_sign"
+  },
+  "show_notification": true
+}

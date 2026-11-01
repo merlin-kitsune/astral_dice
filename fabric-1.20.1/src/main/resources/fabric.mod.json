@@ -20,12 +20,20 @@
     ],
     "fabric-datagen": [
       "com.merlinkitsune.astral_dice.datagen.AstralDataGenerator"
+    ],
+    "jade": [
+      "com.merlinkitsune.astral_dice.compat.jade.AstralDiceJadePlugin"
+    ],
+    "jei_mod_plugin": [
+      "com.merlinkitsune.astral_dice.compat.jei.CardShopJeiPlugin",
+      "com.merlinkitsune.astral_dice.compat.jei.ChipShopJeiPlugin"
     ]
   },
   "accessWidener": "astral_dice.accesswidener",
   "mixins": [
     "astral_dice.mixins.json",
-    "astral_dice.jade.mixins.json"
+    "astral_dice.jade.mixins.json",
+    "astral_dice.trinkets.mixins.json"
   ],
   "depends": {
     "fabricloader": ">=${loader_version}",
@@ -38,6 +46,7 @@
   "recommends": {
     "trinkets": ">=${trinkets_version}",
     "accessories": "${accessories_version_range}",
-    "patchouli": "*"
+    "patchouli": "*",
+    "jei": ">=15.62.0"
   }
 }

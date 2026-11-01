@@ -6,6 +6,7 @@ import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import com.merlinkitsune.astral_dice.platform.event.entity.item.ItemTossEvent;
+import com.merlinkitsune.astral_dice.platform.event.entity.player.EntityItemPickupEvent;
 import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,6 +37,13 @@ import org.slf4j.LoggerFactory;
  * 事件类与订阅注解来自 Forge({@code com.merlinkitsune.astral_dice.platform.event.entity.item.ItemTossEvent} /
  * {@code @Mod.EventBusSubscriber});{@code getEntity()}/{@code getPlayer()}/{@code setCanceled}
  * 的语义与 1.21.1 的 NeoForge {@code ItemTossEvent} **逐条相同**。
+ *
+ * <p><b>LIMITATION(fabric 拾取路径)</b>:Forge 的 {@code EntityItemPickupEvent} 可取消;
+ * fabric 侧走 Puzzles Lib 的 {@code PlayerEvents.ITEM_PICKUP} 回调,其返回值为 {@code void}
+ * (只通知、不可取消,见 {@code platform/PuzzlesBridges#installPlayers})⇒ {@link #onItemPickup}
+ * 的 {@code setCanceled(true)} 在本线**没有总线层面的取消语义**,真正的效果来自紧随其后的
+ * {@code itemEntity.setItem(ItemStack.EMPTY)} + {@code discard()}(世界里的那张牌被清空并移除)。
+ * 若要严格对齐 Forge 的「入包前拦截」,需自写 {@code ItemEntity#playerTouch} 的 mixin。
  */
 public class TemporaryCardEvents {
     private static final Logger LOGGER = LoggerFactory.getLogger(TemporaryCardEvents.class);
@@ -57,5 +65,31 @@ public class TemporaryCardEvents {
             LOGGER.warn("[Astral Dice][TemporaryCard] 背包放不下,临时牌已销毁(不落地): player={} item={}",
                     player.getName().getString(), toReturn);
         }
+    }
+
+    /**
+     * 拾取即清(2026-10-27 用户裁决:临时牌只能由获得者持有)。
+     *
+     * <p>1.20.1 的 {@code EntityItemPickupEvent} 在**入包之前**派发(见本类 §4.2 时序说明),
+     * 但**只清空实体上的栈是不够的**:{@code ItemEntity#playerTouch} 在事件返回前已经把
+     * {@code getItem()} 取进了局部变量 {@code itemstack},后续 {@code entity.getInventory().add(itemstack)}
+     * 用的仍是那份引用 ⇒ 必须同时取消事件(取消后 {@code playerTouch} 直接返回 -1,既不进背包也不记
+     * {@code ITEM_PICKED_UP} 统计)。因此本处理器先取消、再清空栈 + {@code discard()}:无主 / 他人的
+     * 临时牌既入不了包,也不在世界里留一张看得见摸不到的牌。获得者本人拾取自己的牌不受影响。
+     */
+    @SubscribeEvent
+    public static void onItemPickup(EntityItemPickupEvent event) {
+        Player player = event.getEntity();
+        if (player == null || player.level().isClientSide()) return;
+        ItemEntity itemEntity = event.getItem();
+        if (itemEntity == null) return;
+        ItemStack picked = itemEntity.getItem();
+        if (!TemporaryCardUtil.isIllegalHold(picked, player)) return;
+        // 先取消:playerTouch 已在事件前把栈取进局部变量,不取消就会照样入包(见方法 javadoc)
+        event.setCanceled(true);
+        itemEntity.setItem(ItemStack.EMPTY);
+        itemEntity.discard();
+        LOGGER.debug("[Astral Dice][TemporaryCard] 拾取到非本人临时牌,已就地销毁: player={} item={}",
+                player.getName().getString(), picked);
     }
 }

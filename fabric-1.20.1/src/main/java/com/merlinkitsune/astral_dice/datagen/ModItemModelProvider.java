@@ -165,7 +165,14 @@ public class ModItemModelProvider extends FabricModelProvider {
         generators.generateFlatItem(ModItems.RAILGUN_CHIP.get(), ModelTemplates.FLAT_ITEM);
         generators.generateFlatItem(ModItems.PRIMORDIAL_CORE_CHIP.get(), ModelTemplates.FLAT_ITEM);
         generators.generateFlatItem(ModItems.WHETSTONE_CHIP.get(), ModelTemplates.FLAT_ITEM);
+        generators.generateFlatItem(ModItems.EXTRA_BATTERY_CHIP.get(), ModelTemplates.FLAT_ITEM);
         generators.generateFlatItem(ModItems.PURPLE_SHOOTING_STAR_CHIP.get(), ModelTemplates.FLAT_ITEM);
         generators.generateFlatItem(ModItems.GOLDEN_SHOOTING_STAR_CHIP.get(), ModelTemplates.FLAT_ITEM);
+        generators.generateFlatItem(ModItems.FLASHLIGHT_BURST_CHIP.get(), ModelTemplates.FLAT_ITEM);
+        generators.generateFlatItem(ModItems.FORTUNE_STICK_CHIP.get(), ModelTemplates.FLAT_ITEM);
+        generators.generateFlatItem(ModItems.ABYSS_REAGENT_CHIP.get(), ModelTemplates.FLAT_ITEM);
+        generators.generateFlatItem(ModItems.INFINITE_GRID_CHIP.get(), ModelTemplates.FLAT_ITEM);
+        generators.generateFlatItem(ModItems.SENSOR_CHIP.get(), ModelTemplates.FLAT_ITEM);
+        generators.generateFlatItem(ModItems.EVENT_TICKET.get(), ModelTemplates.FLAT_ITEM);
     }
 }

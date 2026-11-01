@@ -13,8 +13,8 @@
       "text": "astral_dice.guide.entry.current_core_chip.2"
     },
     {
-      "type": "patchouli:crafting",
-      "recipe": "astral_dice:current_core_chip"
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.chip_source.note"
     }
   ],
   "sortnum": 4

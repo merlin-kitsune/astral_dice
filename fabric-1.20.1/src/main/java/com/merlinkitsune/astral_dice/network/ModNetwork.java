@@ -14,6 +14,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 
 import java.util.List;
+import java.util.UUID;
 import java.util.function.Supplier;
 import net.minecraft.world.entity.LivingEntity;
 
@@ -63,6 +64,69 @@ public final class ModNetwork {
                 StarCoinBalanceMessage::encode, StarCoinBalanceMessage::decode, StarCoinBalanceMessage::handle);
         CHANNEL.registerMessage(id++, RenShieldStateMessage.class,
                 RenShieldStateMessage::encode, RenShieldStateMessage::decode, RenShieldStateMessage::handle);
+        // 筹码商店 + 光束 FX（1.20.1 移植，基线 forge-1.20.1 同名文件）：
+        // id 12 = C→S 购买第 N 个候选、id 13 = C→S 刷新候选、id 14 = S→C 拒绝信号、
+        // id 15 = S→C 一条已冻结两端点的光线（激光 / 轨道炮）。
+        // 四条一律**追加在末尾**，不得插进既有 payload 的顺序里（顺序即协议，改序会让旧客户端错包）；
+        // 四条之间的**相对顺序**与 forge-1.20.1 的 id 21/22/23/26 严格一致（对照表见
+        // porting/fabric-1.20.1/B1-NETWORK-REPORT.md §3）。
+        CHANNEL.registerMessage(id++, ChipShopBuyPayload.class,
+                ChipShopBuyPayload::encode, ChipShopBuyPayload::decode, ChipShopBuyPayload::handle);
+        CHANNEL.registerMessage(id++, ChipShopRefreshPayload.class,
+                ChipShopRefreshPayload::encode, ChipShopRefreshPayload::decode, ChipShopRefreshPayload::handle);
+        CHANNEL.registerMessage(id++, ChipShopDenyPayload.class,
+                ChipShopDenyPayload::encode, ChipShopDenyPayload::decode, ChipShopDenyPayload::handle);
+        CHANNEL.registerMessage(id++, BeamFxPayload.class,
+                BeamFxPayload::encode, BeamFxPayload::decode, BeamFxPayload::handle);
+        // 卡牌商店四条（基线 forge-1.20.1 同文件 id 12/13/14/15，此处 append 成 16/17/18/19）：
+        // 16 = S→C 可转账玩家名单、17 = C→S 确认转账、18 = C→S 拖拽购买、19 = S→C 拒绝信号。
+        // 顺序即协议：四条之间保持与 forge 相同的相对顺序，且一律追加在末尾。
+        CHANNEL.registerMessage(id++, CardShopTransferListMessage.class,
+                CardShopTransferListMessage::encode, CardShopTransferListMessage::decode, CardShopTransferListMessage::handle);
+        CHANNEL.registerMessage(id++, CardShopTransferMessage.class,
+                CardShopTransferMessage::encode, CardShopTransferMessage::decode, CardShopTransferMessage::handle);
+        CHANNEL.registerMessage(id++, CardShopBuyMessage.class,
+                CardShopBuyMessage::encode, CardShopBuyMessage::decode, CardShopBuyMessage::handle);
+        CHANNEL.registerMessage(id++, CardShopDenyMessage.class,
+                CardShopDenyMessage::encode, CardShopDenyMessage::decode, CardShopDenyMessage::handle);
+        // 选卡两条（基线 forge-1.20.1 同文件 id 24/25，此处 append 成 20/21）：20 = C→S 确认选卡、21 = S→C 关闭界面。
+        CHANNEL.registerMessage(id++, CardChoiceConfirmMessage.class,
+                CardChoiceConfirmMessage::encode, CardChoiceConfirmMessage::decode, CardChoiceConfirmMessage::handle);
+        CHANNEL.registerMessage(id++, CardChoiceCloseMessage.class,
+                CardChoiceCloseMessage::encode, CardChoiceCloseMessage::decode, CardChoiceCloseMessage::handle);
+        // 事件系统六条（基线 forge-1.20.1 同文件 id 16/17/18/19/20 与 27，此处 append 成 22..27）：
+        // 22 = S→C 事件效果卡、23 = S→C 打开事件选择界面、24 = C→S 确认所选选项、
+        // 25 = S→C 关闭事件选择界面、26 = S→C 倒计时同步、27 = C→S 退出界面（退出即结算）。
+        // 顺序 = 蓝本 forge ModNetwork.register() 的 id 顺序（16 < 17 < 18 < 19 < 20 < 27）；
+        // 顺序即协议：六条一律追加在末尾，不得插进既有 payload 的顺序里（插队会让旧客户端错包）。
+        CHANNEL.registerMessage(id++, EventCardMessage.class,
+                EventCardMessage::encode, EventCardMessage::decode, EventCardMessage::handle);
+        CHANNEL.registerMessage(id++, EventChoiceStartMessage.class,
+                EventChoiceStartMessage::encode, EventChoiceStartMessage::decode, EventChoiceStartMessage::handle);
+        CHANNEL.registerMessage(id++, EventChoiceConfirmMessage.class,
+                EventChoiceConfirmMessage::encode, EventChoiceConfirmMessage::decode, EventChoiceConfirmMessage::handle);
+        CHANNEL.registerMessage(id++, EventChoiceCloseMessage.class,
+                EventChoiceCloseMessage::encode, EventChoiceCloseMessage::decode, EventChoiceCloseMessage::handle);
+        CHANNEL.registerMessage(id++, EventChoiceTickMessage.class,
+                EventChoiceTickMessage::encode, EventChoiceTickMessage::decode, EventChoiceTickMessage::handle);
+        CHANNEL.registerMessage(id++, EventChoiceCancelMessage.class,
+                EventChoiceCancelMessage::encode, EventChoiceCancelMessage::decode, EventChoiceCancelMessage::handle);
+        // 版本握手两条（B22）：28 = S→C 本端互通号、29 = C→S 对端互通号。
+        // forge 侧同一语义由 FML 登录握手 + NetworkRegistry 的两个谓词承担（见
+        // porting/fabric-1.20.1/B22-VERSION-HANDSHAKE-REPORT.md）；Fabric 无该机制，
+        // 由 VersionHandshake 在登录后首包驱动（两端各调一次 VersionGate.accepts，失配即断开）。
+        // 顺序即协议：两条一律追加在末尾，不得抢占既有 0..27。
+        CHANNEL.registerMessage(id++, VersionProbeMessage.class,
+                VersionProbeMessage::encode, VersionProbeMessage::decode, VersionProbeMessage::handle);
+        CHANNEL.registerMessage(id++, VersionReplyMessage.class,
+                VersionReplyMessage::encode, VersionReplyMessage::decode, VersionReplyMessage::handle);
+        // 选择器会话服务端强拆（缺陷 C-2，2026-11-01 补齐）：30 = S→C 只带会话 token，
+        // 客户端 token 匹配才退出选择模式。基线 forge-1.20.1 同文件把它登记为其第 29 条 payload（id 28）。
+        // **只能追加在末尾**：顺序即协议；插在 TargetSelect 三件套（id 5/6/7）之后会让既有 id 8..29
+        // 全部顺移、旧客户端错包，故本线追加为 id 30。与 forge 的差异仅协议序号，字段序列逐字节同构。
+        CHANNEL.registerMessage(id++, TargetSelectCloseMessage.class,
+                TargetSelectCloseMessage::encode, TargetSelectCloseMessage::decode, TargetSelectCloseMessage::handle);
+        VersionHandshake.install();
     }
 
     // === 发送助手(对应 1.21 PacketDistributor 静态方法) ===
@@ -406,6 +470,38 @@ public final class ModNetwork {
         }
     }
 
+    /**
+     * 服务端单方面关闭选择会话(S→C,缺陷 C-2 补齐,与 forge-1.20.1 :462-490 逐行等价)。
+     *
+     * <p>用途：{@code TargetSelectionManager.cancel(ServerPlayer, String)} 强拆会话(事件动画起锁)时通知
+     * 客户端立刻退出选择模式 —— 否则客户端仍处于选择态，继续吞鼠标/左键确认。客户端按 token 匹配才退出
+     * (会话已被新一次 start 覆盖时，旧包不得误关新会话)。
+     *
+     * <p>方向与 {@link TargetSelectCancelMessage} 相反：那条是客户端主动取消(C→S),本条是服务端已拆完会话
+     * 之后的纯通知(S→C),客户端收到后**不回发**取消包。字段序列与 forge 同构(writeVarInt/readVarInt of token)。
+     */
+    public static class TargetSelectCloseMessage {
+        private final int token;
+
+        public TargetSelectCloseMessage(int token) {
+            this.token = token;
+        }
+
+        public static void encode(TargetSelectCloseMessage msg, FriendlyByteBuf buf) {
+            buf.writeVarInt(msg.token);
+        }
+
+        public static TargetSelectCloseMessage decode(FriendlyByteBuf buf) {
+            return new TargetSelectCloseMessage(buf.readVarInt());
+        }
+
+        public static void handle(TargetSelectCloseMessage msg, Supplier<NetworkEvent.Context> ctx) {
+            ctx.get().enqueueWork(() ->
+                    com.merlinkitsune.astral_dice.client.TargetSelectionClient.closeFromServer(msg.token));
+            ctx.get().setPacketHandled(true);
+        }
+    }
+
     // === 末影骰子不死图腾动画(S→C) ===
 
     public static class EnderDieTotemMessage {
@@ -552,6 +648,147 @@ public final class ModNetwork {
                 }
                 com.merlinkitsune.astral_dice.combat.RenShieldVisibility.replaceAll(ids);
             });
+            ctx.get().setPacketHandled(true);
+        }
+    }
+
+    /**
+     * 卡牌商店 S→C「转账候选名单」：全服在线玩家(UUID + 玩家名 + 星币余额)。
+     *
+     * <p>基线 forge-1.20.1 同文件同名内部类(协议 id 12)；本线追加为 id 16。
+     * **顺序即协议**：本类及其后三类之间的相对顺序与 forge 完全一致(list → transfer → buy → deny)。
+     *
+     * <p>落点：{@code CardShopClientState#setTransferCandidates(List)} —— 存的是**完整名单**，
+     * 下标即转账载荷的目标下标；界面侧的搜索过滤绝不下发过滤后行号。
+     */
+    public static class CardShopTransferListMessage {
+        /** 一名候选:{@code id} = 玩家 UUID、{@code name} = 显示名、{@code balance} = 星币余额 */
+        public record Entry(UUID id, String name, long balance) {
+        }
+
+        private final List<Entry> entries;
+
+        public CardShopTransferListMessage(List<Entry> entries) {
+            this.entries = List.copyOf(entries);
+        }
+
+        public static void encode(CardShopTransferListMessage msg, FriendlyByteBuf buf) {
+            buf.writeCollection(msg.entries, (buf1, entry) -> {
+                buf1.writeUUID(entry.id());
+                buf1.writeUtf(entry.name());
+                buf1.writeVarLong(entry.balance());
+            });
+        }
+
+        public static CardShopTransferListMessage decode(FriendlyByteBuf buf) {
+            return new CardShopTransferListMessage(buf.readList(
+                    buf1 -> new Entry(buf1.readUUID(), buf1.readUtf(), buf1.readVarLong())));
+        }
+
+        public static void handle(CardShopTransferListMessage msg, Supplier<NetworkEvent.Context> ctx) {
+            ctx.get().enqueueWork(() ->
+                    com.merlinkitsune.astral_dice.client.CardShopClientState.setTransferCandidates(msg.entries));
+            ctx.get().setPacketHandled(true);
+        }
+    }
+
+    /**
+     * 卡牌商店 C→S「确认转账」(索引取 {@link CardShopTransferListMessage} 的同序名单)。
+     *
+     * <p>金额只允许 5..20；服务端在 {@code shop/CardShopMenu#handleTransfer} 内二次校验
+     * (菜单归属、60 秒玩家级冷却、目标有效性与余额)，本包不做任何结算、
+     * 也**不信任客户端传来的数值**。
+     */
+    public static class CardShopTransferMessage {
+        private final int targetIndex;
+        private final int amount;
+
+        public CardShopTransferMessage(int targetIndex, int amount) {
+            this.targetIndex = targetIndex;
+            this.amount = amount;
+        }
+
+        public static void encode(CardShopTransferMessage msg, FriendlyByteBuf buf) {
+            buf.writeVarInt(msg.targetIndex);
+            buf.writeVarInt(msg.amount);
+        }
+
+        public static CardShopTransferMessage decode(FriendlyByteBuf buf) {
+            return new CardShopTransferMessage(buf.readVarInt(), buf.readVarInt());
+        }
+
+        public static void handle(CardShopTransferMessage msg, Supplier<NetworkEvent.Context> ctx) {
+            ctx.get().enqueueWork(() -> {
+                ServerPlayer serverPlayer = ctx.get().getSender();
+                if (serverPlayer != null
+                        && serverPlayer.containerMenu instanceof com.merlinkitsune.astral_dice.shop.CardShopMenu menu) {
+                    menu.handleTransfer(serverPlayer, msg.targetIndex, msg.amount);
+                }
+            });
+            ctx.get().setPacketHandled(true);
+        }
+    }
+
+    /**
+     * 卡牌商店 C→S「拖拽购买」:玩家把货架第 {@code shelfIndex} 格的卡面拖到玩家物品栏
+     * 第 {@code targetSlot} 格并松手时发送({@code targetSlot == -1} = 双击快速移入)。
+     *
+     * <p>价格、限购、目标格占用、余额与扣款一律由服务端 {@code CardShopMenu#handleBuy} 现算并二次校验
+     * (**忽略客户端任何数值**)。
+     */
+    public static class CardShopBuyMessage {
+        private final int shelfIndex;
+        private final int targetSlot;
+
+        public CardShopBuyMessage(int shelfIndex, int targetSlot) {
+            this.shelfIndex = shelfIndex;
+            this.targetSlot = targetSlot;
+        }
+
+        public static void encode(CardShopBuyMessage msg, FriendlyByteBuf buf) {
+            buf.writeVarInt(msg.shelfIndex);
+            buf.writeVarInt(msg.targetSlot);
+        }
+
+        public static CardShopBuyMessage decode(FriendlyByteBuf buf) {
+            return new CardShopBuyMessage(buf.readVarInt(), buf.readVarInt());
+        }
+
+        public static void handle(CardShopBuyMessage msg, Supplier<NetworkEvent.Context> ctx) {
+            ctx.get().enqueueWork(() -> {
+                ServerPlayer serverPlayer = ctx.get().getSender();
+                if (serverPlayer != null
+                        && serverPlayer.containerMenu instanceof com.merlinkitsune.astral_dice.shop.CardShopMenu menu) {
+                    menu.handleBuy(serverPlayer, msg.shelfIndex, msg.targetSlot);
+                }
+            });
+            ctx.get().setPacketHandled(true);
+        }
+    }
+
+    /**
+     * 卡牌商店 S→C「本次请求被拒」+ 原因码({@code DENY_NO_COIN} / {@code DENY_INVENTORY_FULL})。
+     *
+     * <p>客户端落点 {@code CardShopClientState#notifyDeny(int)}：起 30t 红白交替闪烁，服务端为唯一权威。
+     */
+    public static class CardShopDenyMessage {
+        private final int reason;
+
+        public CardShopDenyMessage(int reason) {
+            this.reason = reason;
+        }
+
+        public static void encode(CardShopDenyMessage msg, FriendlyByteBuf buf) {
+            buf.writeVarInt(msg.reason);
+        }
+
+        public static CardShopDenyMessage decode(FriendlyByteBuf buf) {
+            return new CardShopDenyMessage(buf.readVarInt());
+        }
+
+        public static void handle(CardShopDenyMessage msg, Supplier<NetworkEvent.Context> ctx) {
+            ctx.get().enqueueWork(() ->
+                    com.merlinkitsune.astral_dice.client.CardShopClientState.notifyDeny(msg.reason));
             ctx.get().setPacketHandled(true);
         }
     }

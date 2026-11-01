@@ -85,6 +85,14 @@ public final class FabricBridges {
         ServerLifecycleEvents.SERVER_STOPPING.register(server ->
                 com.merlinkitsune.astral_dice.AstralDiceMod.LOGGER.info(
                         "[Astral Dice] 事件派发统计(关服){}", LoaderBus.INSTANCE.dispatchReport()));
+        // 事件体系静态状态清零(B2-2)：GlobalEventGate / EventAnimationLock 的到期刻都是 **game time 绝对值**,
+        // 单人「退出存档 → 换存档」后新存档的 gameTime 可能仍小于旧值 ⇒ 不清零会让事件卡被永久锁死。
+        // forge 侧靠 @Mod.EventBusSubscriber 订阅 ServerStoppingEvent;本线**没有**该事件垫片(全仓零命中),
+        // 故按上面两行的先例直挂 FAPI —— 不新建事件类、不走 LoaderBus(事件类不存在,走总线既多余又易漏派发)。
+        ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
+            com.merlinkitsune.astral_dice.event.GlobalEventGate.reset();
+            com.merlinkitsune.astral_dice.event.EventAnimationLock.reset();
+        });
         // ⚠️ 再加一个「开局 600 tick 后」的取样点:开发/冒烟环境常常是**强杀进程**收尾
         //    (拿不到 SERVER_STOPPING),没有这个取样点就永远看不到报告。
         //    判据:ServerTickEvent 必须为正数 —— 它与所有其它事件走同一条 post 路径,

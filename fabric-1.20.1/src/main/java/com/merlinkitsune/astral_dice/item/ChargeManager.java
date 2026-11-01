@@ -16,7 +16,7 @@ import java.util.UUID;
  * 流派固定效果(与层数多少无关):拥有至少 1 层充能时,
  * 立牌主动冷却至多 160 秒、效果牌冷却至多 20 秒 —— 把**基础值**封顶
  * (2026-09-25 改口径,取代旧的「-20% 比例减免」);封顶之后再由调用方叠加
- * 其它减免(诡异骰子 -50% 等)。已在进行的倒计时不受影响(只在开始冷却时取值)。
+ * 其它减免(额外电池筹码等)。已在进行的倒计时不受影响(只在开始冷却时取值)。
  * 无防御力/护甲加成。
  */
 public final class ChargeManager {
@@ -38,7 +38,7 @@ public final class ChargeManager {
      *
      * <p>⚠️ 名单与筹码 tooltip 调用 {@code addChargeCounter} 的那批**同源**(共 10 枚):
      * 飞行引擎 / 能量回收器 / 电流剑 / 高级外设 / 永动机 / 电流核心 / 电击手套 / 安全气囊 /
-     * 电磁炮 / 原初核心。**新增充能类筹码时必须在此登记**,否则「未装备筹码 ⇒ 隐藏充能图标」
+     * 电磁炮 / 原初核心 / 无线输电杆。**新增充能类筹码时必须在此登记**,否则「未装备筹码 ⇒ 隐藏充能图标」
      * 的判定会漏(该筹码的持有者会看不到图标)。
      */
     private static boolean isChargeChipItem(net.minecraft.world.item.Item item) {
@@ -51,7 +51,8 @@ public final class ChargeManager {
                 || item instanceof com.merlinkitsune.astral_dice.item.chip.ElectricGloveChipItem
                 || item instanceof com.merlinkitsune.astral_dice.item.chip.AirbagChipItem
                 || item instanceof com.merlinkitsune.astral_dice.item.chip.RailgunChipItem
-                || item instanceof com.merlinkitsune.astral_dice.item.chip.PrimordialCoreChipItem;
+                || item instanceof com.merlinkitsune.astral_dice.item.chip.PrimordialCoreChipItem
+                || item instanceof com.merlinkitsune.astral_dice.item.chip.InfiniteGridChipItem;
     }
 
     /**
@@ -70,9 +71,22 @@ public final class ChargeManager {
         return ChargeEffect.getStacks(player);
     }
 
-    /** 增加充能层数,返回增加后的层数 */
+    /**
+     * 增加充能层数,返回增加后的层数。
+     *
+     * <p>层数**实际增加**时挂钩「获得充能」回调({@code InfiniteGridChipItem#onChargeGained}):
+     * 佩戴「无线输电杆」筹码的玩家按本次实际增加量向周围友方玩家广播充能。
+     * 与 {@link #consume} 挂钩 {@link EmpowerManager#onChargeConsumed} 的手法对称 ——
+     * 只在 gained ≥ 1 时触发(已到上限 / 客户端侧 gained 为 0 ⇒ 不触发),一次调用只发放一次。
+     */
     public static int addStacks(Player player, int stacks) {
-        return ChargeEffect.addStacks(player, stacks);
+        int before = ChargeEffect.getStacks(player);
+        int total = ChargeEffect.addStacks(player, stacks);
+        int gained = total - before;
+        if (gained > 0) {
+            com.merlinkitsune.astral_dice.item.chip.InfiniteGridChipItem.onChargeGained(player, gained);
+        }
+        return total;
     }
 
     /** 减少 1 层 */
@@ -104,10 +118,30 @@ public final class ChargeManager {
      * ({@link GameplayConstants#CHARGE_SIGN_COOLDOWN_CAP_SECONDS})。
      *
      * <p>2026-09-25 改口径:取代旧的「有充能即 -20%」比例减免。封顶只作用于**基础值**,
-     * 之后由调用方继续叠加其它减免(诡异骰子 -50%、枪匠「精密技巧」的 120 秒基础值等);
+     * 之后由调用方继续叠加其它减免(额外电池筹码 ×0.5、枪匠「精密技巧」的 120 秒基础值等);
      * 基础值本就低于上限时保持原值。**已在进行的倒计时不受影响** —— 本方法只在开始冷却时取值。
      */
     public static long signCooldownTicks(Player player, long baseTicks) {
+        long capped = capByCharge(player, baseTicks, GameplayConstants.CHARGE_SIGN_COOLDOWN_CAP_SECONDS);
+        // 额外电池筹码:立牌主动技能冷却 -50%(纯查询 ⇒ 卸下后下一次开冷却自动恢复原值)。
+        // ⚠️ 作用域硬边界:只作用于「立牌主动技能冷却」,不得套到效果牌 / 抽奖盒 / 商店等其它冷却路径
+        //    (2026-10-21 用户裁决;同口径见 forge-1.20.1 ChargeManager)。
+        return com.merlinkitsune.astral_dice.item.chip.ExtraBatteryChipItem
+                .applySignActiveCooldownReduction(player, capped);
+    }
+
+    /**
+     * **立牌主动技能**冷却 tick —— <b>不含「额外电池筹码 ×0.5」折算</b>的基准值。
+     *
+     * <p>取值链与 {@link #signCooldownTicks(Player, long)} 完全一致:
+     * {@code baseTicks} → 「有充能时封顶 {@value GameplayConstants#CHARGE_SIGN_COOLDOWN_CAP_SECONDS} 秒」,
+     * 唯独**跳过**最后一步 {@code ExtraBatteryChipItem#applySignActiveCooldownReduction}。
+     *
+     * <p>用途:附件 {@code sign_active_max_cooldown_base}(命运指引卡减半时的基准)——
+     * 电池只作用于立牌主动冷却本身,不得连带砍掉本卡的减半收益。
+     * 作用域同为「立牌主动技能冷却」,其它冷却禁止调用(2026-10-21 用户裁决)。
+     */
+    public static long signCooldownTicksBase(Player player, long baseTicks) {
         return capByCharge(player, baseTicks, GameplayConstants.CHARGE_SIGN_COOLDOWN_CAP_SECONDS);
     }
 

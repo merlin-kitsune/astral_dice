@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "PSP",
+    "SDS",
+    "PSP"
+  ],
+  "key": {
+    "P": {
+      "item": "astral_dice:star_plate"
+    },
+    "S": {
+      "item": "astral_dice:star_coin"
+    },
+    "D": {
+      "item": "astral_dice:diamond_dice"
+    }
+  },
+  "result": {
+    "item": "astral_dice:event_drawer",
+    "count": 1
+  }
+}

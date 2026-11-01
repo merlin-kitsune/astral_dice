@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 import net.fabricmc.api.EnvType;
@@ -36,7 +37,8 @@ import net.minecraft.server.level.ServerPlayer;
  * 语义与 Forge 一致 ⇒ 12 个 handler 的方法体不用改。
  *
  * <p>⚠️ 与 Forge 的差异(已登记):Forge 的通道版本号由 FML 登录握手交换并校验;
- * Fabric 侧无该机制,版本判定改由本模组的显式握手包承担(见 {@code VersionGate} 的调用点)。
+ * Fabric 侧无该机制,版本判定改由本模组的显式握手包承担(见 {@link VersionHandshake},
+ * 协议 id 28/29,两端各调一次 {@code VersionGate.accepts})。
  */
 public final class SimpleChannel {
 
@@ -54,17 +56,52 @@ public final class SimpleChannel {
     }
 
     private final ResourceLocation id;
+    private final Supplier<String> versionSupplier;
+    private final Predicate<String> clientAcceptedVersions;
+    private final Predicate<String> serverAcceptedVersions;
     private final Map<Integer, MessageType<?>> byId = new HashMap<>();
     private final Map<Class<?>, Integer> byClass = new HashMap<>();
 
     SimpleChannel(ResourceLocation id) {
+        this(id, null, null, null);
+    }
+
+    /**
+     * 带版本声明的通道(对齐 Forge {@code NetworkRegistry.newSimpleChannel} 的三参数形态)。
+     *
+     * <p>⚠️ 与 Forge 的差异:Forge 由 FML 登录握手交换 {@code versionSupplier} 的取值并喂给两个谓词,
+     * 任一端谓词不通过即断开登录;Fabric 无该机制 ⇒ 本类只**保存声明**(不再丢弃参数),
+     * 判定由 {@link VersionHandshake} 的显式握手包驱动(两端各调一次 {@code VersionGate.accepts})。
+     */
+    SimpleChannel(ResourceLocation id,
+                  Supplier<String> versionSupplier,
+                  Predicate<String> clientAcceptedVersions,
+                  Predicate<String> serverAcceptedVersions) {
         this.id = id;
+        this.versionSupplier = versionSupplier;
+        this.clientAcceptedVersions = clientAcceptedVersions;
+        this.serverAcceptedVersions = serverAcceptedVersions;
         installReceivers();
     }
 
     /** 通道标识(Fabric 侧即一个 ResourceLocation;Forge 侧为通道名)。 */
     public ResourceLocation getId() {
         return id;
+    }
+
+    /** 通道声明的协议版本号(= {@code NetworkRegistry.newSimpleChannel} 的 versionSupplier 取值)。 */
+    public String protocolVersion() {
+        return versionSupplier == null ? "" : versionSupplier.get();
+    }
+
+    /** 通道声明的「客户端接受的远端版本」谓词(未声明时为 null)。 */
+    public Predicate<String> clientAcceptedVersions() {
+        return clientAcceptedVersions;
+    }
+
+    /** 通道声明的「服务端接受的远端版本」谓词(未声明时为 null)。 */
+    public Predicate<String> serverAcceptedVersions() {
+        return serverAcceptedVersions;
     }
 
     /** 登记一种消息(与 Forge 同名同参)。 */

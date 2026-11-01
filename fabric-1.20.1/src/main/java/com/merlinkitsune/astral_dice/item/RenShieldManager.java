@@ -394,12 +394,36 @@ public final class RenShieldManager {
      * 原版吸收只吃「能吃的部分」（5 黄心挡不住一发 200 伤害里的 190），故必须在这里钳制。
      *
      * <p><b>⚠️ 平台差异（锚点与 1.21.1 不同，原因是事件时序）</b>：1.21.1 用
-     * {@code LivingDamageEvent.Pre}（护甲之后、吸收之前）；本线**只能**用 {@code LivingHurtEvent} ——
-     * 它由 {@code ForgeHooks.onLivingHurt} 在 {@code LivingEntity#actuallyHurt}（forge-1.20.1-47.4.10
-     * 混淆名 {@code m_6475_}）的**最开头**派发，而吸收结算（{@code m_6103_}）在同一方法内、晚于它；
-     * 本线的 {@code LivingDamageEvent} 则派发在**吸收之后**（那时红心已经掉过，见
-     * {@code event/ChipDamageHandler} 的类注释），故不可用。
-     * 代价 = 钳制值还会被护甲再减一次 ⇒ **护盾这一击消耗得比 1.21.1 略少**（严格更保守，绝不漏血）。
+     * {@code LivingDamageEvent.Pre}（护甲之后、吸收之前）；本线**没有**等价事件 ——
+     * 本线可挂的两个伤害事件都在护甲 / 抗性 / 吸收**之前**派发：
+     * <ul>
+     *   <li>{@code LivingHurtEvent}（本方法所挂）—— 由 {@code mixin/bridge/LivingHurtBridgeMixin}
+     *       用 MixinExtras {@code @WrapOperation} 包裹 {@code LivingEntity#hurt} 里对
+     *       {@code actuallyHurt(DamageSource,float)} 的那一次调用，在**调用之前**派发；
+     *       载荷 = 即将传给 {@code actuallyHurt} 的实参。</li>
+     *   <li>{@code LivingDamageEvent} —— 由 {@code platform/PuzzlesBridges} 从 Puzzles Lib 的
+     *       {@code LivingHurtCallback} 桥出，而该回调注入在 {@code LivingEntity#actuallyHurt} 的
+     *       <b>HEAD</b>（{@code isInvulnerableTo} 之后、方法体其余部分之前）。</li>
+     * </ul>
+     * ⇒ <b>本线该事件在护甲 / 抗性 / 吸收之前派发</b>：1.20.1 的 {@code actuallyHurt} 是在**方法体内**
+     * 才依次做 {@code getDamageAfterArmorAbsorb} → {@code getDamageAfterMagicAbsorb} → 吸收扣减
+     * （{@code getAbsorptionAmount} / {@code setAbsorptionAmount}）⇒ HEAD 与 hurt() 处拿到的
+     * 都是**未扣减**的原始值。<b>若按「吸收之后」的语义使用本事件（或本线的
+     * {@code LivingDamageEvent}），读到的是未扣减值。</b>
+     * <p>⚠️ 别拿 {@code platform/event/entity/living/LivingDamageEvent} 的类注释当时序依据 ——
+     * 它（与 {@code LivingHurtEvent} 一样）是照抄 Forge 的原文，那几行「armor, potion and
+     * absorption modifiers have already been applied … FINAL value」描述的是 **Forge 的**事件时序，
+     * 在本线不成立。
+     *
+     * <p><b>取证锚点</b>（1.20.1 合并 jar，Mojang 映射，{@code javap -p -c}）：
+     * {@code LivingEntity#actuallyHurt} 字节码偏移 0-8 只有 {@code isInvulnerableTo} + 早退；
+     * 护甲 = 偏移 12 的 {@code getDamageAfterArmorAbsorb}；抗性/保护 = 偏移 19 的
+     * {@code getDamageAfterMagicAbsorb}；吸收 = 偏移 25-45 与 133-140。
+     * Puzzles 的 {@code LivingHurtCallback} 注入点 = {@code @At} 的 HEAD（偏移 0 之前）。
+     *
+     * <p>代价 = 钳制值还会被护甲再减一次 ⇒ **护盾这一击消耗得比 1.21.1 略少**（严格更保守，绝不漏血）。
+     * 另：骰战会在更晚的 {@code LivingDamageEvent} 上 {@code setAmount} 覆盖本钳制 ⇒ 已由
+     * {@code combat/DiceCombatEvents#settleDiceDamage} 的 N1 段重新钳一次（见该方法的注释）。
      * 优先级 {@link EventPriority#LOWEST}：本线同事件上只有 {@code EnderDiceHandler}（HIGH）。
      */
     @SubscribeEvent(priority = EventPriority.LOWEST)

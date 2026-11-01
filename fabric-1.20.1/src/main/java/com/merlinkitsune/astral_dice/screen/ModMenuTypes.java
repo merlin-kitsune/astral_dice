@@ -19,6 +19,21 @@ public class ModMenuTypes {
     public static final RegistryObject<MenuType<CardInventoryMenu>> CARD_INVENTORY = MENU_TYPES.register("card_inventory",
             () -> new MenuType<>(CardInventoryMenu::new, FeatureFlags.DEFAULT_FLAGS));
 
+    /** 卡牌商店菜单（逻辑批已完整实现；见 shop/CardShopMenu）。 */
+    public static final RegistryObject<MenuType<com.merlinkitsune.astral_dice.shop.CardShopMenu>> CARD_SHOP =
+            MENU_TYPES.register("card_shop",
+                    () -> new MenuType<>(com.merlinkitsune.astral_dice.shop.CardShopMenu::new, FeatureFlags.DEFAULT_FLAGS));
+
+    /** 筹码商店菜单（逻辑批已完整实现；见 shop/ChipShopMenu）。 */
+    public static final RegistryObject<MenuType<com.merlinkitsune.astral_dice.shop.ChipShopMenu>> CHIP_SHOP =
+            MENU_TYPES.register("chip_shop",
+                    () -> new MenuType<>(com.merlinkitsune.astral_dice.shop.ChipShopMenu::new, FeatureFlags.DEFAULT_FLAGS));
+
+    /** 选卡界面（B1-SCREEN-CHOICE）：带 extra data（token/slotCount/type），必须用 Fabric 的 ExtendedScreenHandlerType。 */
+    public static final RegistryObject<MenuType<CardChoiceMenu>> CARD_CHOICE = MENU_TYPES.register("card_choice",
+            () -> new net.fabricmc.fabric.api.screenhandler.v1.ExtendedScreenHandlerType<CardChoiceMenu>(
+                    CardChoiceMenu::new));
+
     /** 服务端打开卡牌栏(原 OpenCardInventoryPayload 的服务端逻辑;需佩戴骰子)。 */
     public static void openCardInventory(ServerPlayer serverPlayer) {
         var curios = CuriosApi.getCuriosInventory(serverPlayer);

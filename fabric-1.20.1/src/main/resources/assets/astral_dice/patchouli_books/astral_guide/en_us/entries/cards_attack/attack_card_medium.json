@@ -7,10 +7,6 @@
       "type": "patchouli:spotlight",
       "item": "astral_dice:attack_card_medium",
       "text": "astral_dice.guide.entry.attack_card_medium.1"
-    },
-    {
-      "type": "patchouli:crafting",
-      "recipe": "astral_dice:attack_card_medium"
     }
   ],
   "sortnum": 0

@@ -75,9 +75,12 @@ public class WhetstoneChipItem extends BaseChipItem {
     /**
      * 受到伤害时计算修正后的伤害。
      *
-     * <p>⚠️ 入参 {@code damage} 必须是**「吸收(黄心)之后仍会扣的生命」**(2026-09-24 用户裁决):
-     * 1.20.1 的 {@code LivingDamageEvent} 天然派发于吸收之后;1.21.1 / 26.1.2 的 {@code Pre} 在吸收**之前**,
-     * 由 {@code ChipDamageHandler} 先换算再传入(否则带黄心时会被**过度削减**)。
+     * <p>⚠️ 本方法约定入参 {@code damage} 是**「护甲与吸收(黄心)之后仍会扣的生命」**(2026-09-24 用户裁决):
+     * 该约定源自 forge-1.20.1 线(该线事件在吸收之后派发);1.21.1 / 26.1.2 的 {@code Pre} 在吸收**之前**,
+     * 由 {@code ChipDamageHandler} 先换算再传入(否则带黄心时会被**过度削减**)。但**本线(fabric-1.20.1)不满足该约定**:
+     * 事件由 Puzzles 的 {@code LivingEntityFabricMixin#actuallyHurt}({@code @Inject(at=@At("HEAD"))})在偏移 0 派发,
+     * 护甲(偏移 12 {@code getDamageAfterArmorAbsorb})与吸收(25-45)全在其后;唯一调用点
+     * {@code ChipDamageHandler} 直接传入 {@code event.getAmount()},未做任何换算 ⇒ 实际拿到的是原始入参。
      *
      * <p>佩戴且生命值为 50% 或更低 → -2;生命值 > 1 时伤害被限制为不超过(剩余生命值 - 1),
      * 保证不会被一次伤害击倒(至少保留 1 点生命值;该保命能力带 1:00 冷却,见 {@link #GUARD_COOLDOWN_TICKS})。

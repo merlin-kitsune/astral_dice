@@ -288,6 +288,30 @@ public final class TargetSelectionManager {
         com.merlinkitsune.astral_dice.item.sign.BaseSignItem.resumeGatedActiveSkill(player, session.actionId);
     }
 
+    /**
+     * 服务端强制取消（2026-10-29 用户裁决 D5：事件动画开始那一刻由服务端主动关掉已打开的选择会话）。
+     *
+     * <p>2026-11-01 补齐（缺陷 C-2）：本线原先缺这个重载，{@code event/EventCardService} 只能借
+     * 「测试辅助清场入口」顶替，后果是「不发关闭包 ⇒ 客户端可能仍停在选择模式
+     * （吞鼠标 / 左键被当确认）」。实现与 forge-1.20.1 {@code TargetSelectionManager.java:302-316} 逐行等价。
+     *
+     * <p>与 {@link #cancel(ServerPlayer, int)} 的差异：① 不校验 token（服务端内部调用，没有客户端回执可比）；
+     * ② **不写** {@link #HOLD_SUPPRESSED} 抑制闩 —— 动画窗结束后玩家仍手持效果牌时会自然自动重开界面，
+     * 与 neo 线口径一致（D5 两线行为必须相同）。
+     */
+    public static void cancel(ServerPlayer player, String reason) {
+        Session session = SESSIONS.get(player.getUUID());
+        if (session == null) return;
+        SESSIONS.remove(player.getUUID());
+        // P3-1（复核补）：客户端此刻可能仍停在选择模式（继续吞鼠标 / 左键仍当确认），必须收到关闭包才退出。
+        // token 匹配才生效，避免「动画窗内刚开的新会话」被旧包的关闭误关。
+        ModNetwork.sendToPlayer(player, new ModNetwork.TargetSelectCloseMessage(session.token));
+        // 该次主动等同未使用：立牌登记的门控记录一并清除（与 token 版一致）
+        SignSelectionGate.clear(player);
+        LOGGER.debug("[Astral Dice][TargetSelection] cancel server-side player={} action={} reason={}",
+                player.getName().getString(), session.actionId, reason);
+    }
+
     /** 客户端取消（由 {@code ModNetwork.TargetSelectCancelMessage} 调用；token 不匹配时忽略） */
     public static void cancel(ServerPlayer player, int token) {
         Session session = SESSIONS.get(player.getUUID());

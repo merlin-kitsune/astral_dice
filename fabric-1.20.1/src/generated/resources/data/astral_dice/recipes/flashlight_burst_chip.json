@@ -1,0 +1,30 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "astral_dice:blank_chip"
+    },
+    "D": {
+      "item": "astral_dice:star_coin_dust"
+    },
+    "G": {
+      "item": "astral_dice:golden_star_plate"
+    },
+    "L": {
+      "item": "minecraft:redstone_lamp"
+    },
+    "X": {
+      "item": "minecraft:glowstone"
+    }
+  },
+  "pattern": [
+    "XLX",
+    "DBD",
+    "GGG"
+  ],
+  "result": {
+    "item": "astral_dice:flashlight_burst_chip"
+  },
+  "show_notification": true
+}

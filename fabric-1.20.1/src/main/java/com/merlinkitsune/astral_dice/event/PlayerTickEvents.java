@@ -5,9 +5,9 @@ import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.item.ChargeManager;
 import com.merlinkitsune.astral_dice.item.chip.AdrenalineChipItem;
+import com.merlinkitsune.astral_dice.item.chip.AirbagChipItem;
 import com.merlinkitsune.astral_dice.item.chip.CursedSwordChipItem;
 import com.merlinkitsune.astral_dice.item.chip.ElectricSwordChipItem;
-import com.merlinkitsune.astral_dice.item.chip.RailgunChipItem;
 import com.merlinkitsune.astral_dice.item.chip.WhetstoneChipItem;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.item.sign.BaseSignItem;
@@ -31,6 +31,8 @@ public class PlayerTickEvents {
     public static void onPlayerTickPre(TickEvent.PlayerTickEvent event) {
         Player player = event.player;
         if (player.level().isClientSide()) return;
+        // 玩家侧效果保护:外部清除后下一 tick 补回(未声明可清除者一律不受外部影响,2026-10-23 裁决)
+        PlayerEffectProtection.tick(player);
         EffectTimerGuard.tick(player);
         // 立牌"待命"等待器已随目标选择器并入而移除(2026-09-17:主线 → dev-next 合并裁决),原先在此的
         // BaseSignItem.tickSignReadyTimeout(player) 不再存在;立牌主动的冷却门槛改由
@@ -40,6 +42,12 @@ public class PlayerTickEvents {
         // ② 其余立牌门控计时器跑完 ⇒ 必起冷却(无空档);与立牌是否仍在饰品槽无关。
         // (本方法每 tick 被 START/END 两个阶段各调用一次,迁移逻辑幂等)
         BaseSignItem.tickSignActiveLock(player);
+        // B4-SIGNS:大肥鱼立牌(deepseek)主动「大口干饭」攻/防加成与被动「摸鱼」的到期清理。
+        // 与 forge-1.20.1 同位置(同在本方法的 BaseSignItem.tickSignActiveLock 之后):本方法每 tick 被
+        // START/END 两个阶段各调用一次 ⇒ tickBuff 内部以「结束刻归零后早退」保证幂等。
+        // 注意**不加** diceGated 闸门 —— 与 forge 一致;加成到期清理必须在摘下骰子后照常跑,
+        // 否则未佩戴骰子期间到期会把攻击/防御修饰器永久留在属性上。
+        com.merlinkitsune.astral_dice.item.sign.DeepseekSignItem.tickBuff(player);
     }
 
     // 计时器守卫:本模组自定义效果被成功施加时记录结束时刻(有限时长效果;无限时长效果不记录)
@@ -60,10 +68,11 @@ public class PlayerTickEvents {
         //       故未佩戴骰子时条件为假 ⇒ 图标被正常移除,而累计数值仍保留在附件/物品数据上。
         updateCutterEffect(player);
         updateChipBonusIndicators(player);
+        updateChipCooldownIndicators(player);
         RevengeHalberdChipItem.updateDisplayEffect(player);
-        // 复仇之戟:防御力折算为真实护甲(1 防御力 = 2 护甲值)
+        // 复仇之戟:防御力折算为真实护甲(1 防御力 = 1÷护甲系数 护甲值)
         if (!diceGated) RevengeHalberdChipItem.updateArmorBonus(player);
-        // 原初核心:赋能层数折算为真实护甲(1 防御力 = 2 护甲值)
+        // 原初核心:赋能层数折算为真实护甲(1 防御力 = 1÷护甲系数 护甲值)
         if (!diceGated) com.merlinkitsune.astral_dice.item.chip.PrimordialCoreChipItem.updateArmorBonus(player);
         // 效果牌「手持即选择」(2026-09-25 用户裁决):主手持有选择器类效果牌 ⇒ 自动开启目标选择会话
         // (门槛与按键兜底同源;移出手持的收官在 TargetSelectionManager.tick 侧,reason=released)
@@ -95,17 +104,25 @@ public class PlayerTickEvents {
         // ⚠️ Forge 每 tick 派发 START+END 两次 ⇒ tick 会被调两遍;幂等由「有效果 / 无临时牌即早退」保证
         //    (第二遍在清空后自然早退,不会重复扣 usedCost/usedDefenseCost)。
         TemporaryCardUtil.tick(player);
-        // 充能状态图标的可见性(2026-10-03 用户裁决):未装备任何**充能类筹码**时隐藏 HUD 图标,
-        // 装备回筹码后恢复。前置 hasCharge 早退 ⇒ 没有充能的玩家零开销;showIcon 未变时
-        // setIconVisibility 内部直接 return,不会每 tick 重建效果实例。
+        // 2026-10-21 用户裁决:删除「未装备充能类筹码时隐藏图标」的闸门 —— 有充能就显示。
+        // 前置 hasCharge 早退 ⇒ 没有充能的玩家零开销;showIcon 未变时 setIconVisibility 内部直接 return。
         if (com.merlinkitsune.astral_dice.item.ChargeManager.hasCharge(player)) {
-            com.merlinkitsune.astral_dice.effect.ChargeEffect.setIconVisibility(
-                    player, com.merlinkitsune.astral_dice.item.ChargeManager.isChargeChipEquipped(player));
+            com.merlinkitsune.astral_dice.effect.ChargeEffect.setIconVisibility(player, true);
         }
         // 人偶师立牌(hanna)「幻想千金」/「挚友祝福」:路过友方玩家的判定。
         // 两条被动各有独立的 1:00 冷却 ⇒ 冷却内只读两个 long 即早退,每 tick 调用安全;
         // 放在 % 20 早退**之前**,避免"擦身而过只停留几拍"被 20 tick 采样漏掉。
         if (!diceGated) com.merlinkitsune.astral_dice.item.sign.HannaSignItem.tickPassing(player);
+        // 怪力乱神立牌(lingling)被动:每 10t 一次(§4.4 手持路障转换节流 / §4.6 额外充能层重算 /
+        // §5 实时修饰器刷新)。放在 % 20 早退**之前**;方法本身幂等(本事件每 tick 派发两次)。
+        // 立牌依附对账（2026-10-27 用户裁决）：每 10t 让「强化拒止卡牌 / 物品」与立牌在位状态一致。
+        // 与骰子闸门无关 —— 立牌离身就是失去依附，换骰子不算。
+        if (player.tickCount % 10 == 0) {
+            com.merlinkitsune.astral_dice.item.sign.LinglingSignManager.reconcileInventory(player);
+        }
+        if (!diceGated && player.tickCount % 10 == 0) {
+            com.merlinkitsune.astral_dice.item.sign.LinglingSignManager.tickPassive(player);
+        }
         if (player.tickCount % 20 != 0) return;
         // 历史常驻时长残留归一(旧存档里的 Integer.MAX_VALUE 递减值 ⇒ ∞);见方法 javadoc
         normalizeLegacyInfiniteDurations(player);
@@ -160,9 +177,12 @@ public class PlayerTickEvents {
      * 与 {@link #updateCutterEffect} 同一范式，同属 {@code !diceGated} 分支 ——
      * 未佩戴骰子时这些筹码的功能一律不生效，图标随之熄灭。
      *
-     * <p>6 枚的判据各自取「加成真的 > 0」那一档，与各自的攻击修饰器同源：
+     * <p>5 枚的判据各自取「加成真的 > 0」那一档，与各自的攻击修饰器同源：
      * 磨刀石/肾上腺素 = 低血阈值；诅咒之剑 = 累计加成 > 0；
-     * 电流剑 = 充能 ≥ 4（每 4 点 +1）；电磁炮 = 充能 ≥ 6（+5 生效，"就位"）。
+     * 电流剑 = 充能 ≥ 4（每 4 点 +1）。
+     *
+     * <p>2026-10-22 用户裁决：**电磁炮的「就位」指示器已删除**（充能 ≥ 6 时不再挂图标），
+     * 故本方法由 6 枚降为 5 枚。
      */
     private static void updateChipBonusIndicators(Player player) {
         refreshIndicatorInfinite(player, ModEffects.WHETSTONE_READY.get(),
@@ -177,9 +197,6 @@ public class PlayerTickEvents {
         refreshIndicatorInfinite(player, ModEffects.ELECTRIC_SWORD_READY.get(),
                 ElectricSwordChipItem.isEquipped(player)
                         && ChargeManager.getStacks(player) >= ElectricSwordChipItem.CHARGE_PER_ATTACK);
-        refreshIndicatorInfinite(player, ModEffects.RAILGUN_READY.get(),
-                RailgunChipItem.isEquipped(player)
-                        && ChargeManager.getStacks(player) >= RailgunChipItem.CHARGE_REQUIRED);
     }
 
     /**
@@ -187,8 +204,8 @@ public class PlayerTickEvents {
      *
      * <p>⚠️ **仅供「自身条件型」指示器使用**:这类指示器的存在与否完全由玩家自身状态决定、
      * 与任何计时器无关,故用 ∞ 常驻。当前调用方 = 美工刀-初级/锋利、手电筒-强光、
-     * 以及 {@link #updateChipBonusIndicators} 的 6 枚(磨刀石 / 肾上腺素两档 / 诅咒之剑 /
-     * 电流剑 / 电磁炮)。
+     * 以及 {@link #updateChipBonusIndicators} 的 5 枚(磨刀石 / 肾上腺素两档 / 诅咒之剑 /
+     * 电流剑)。
      *
      * <p>2026-10-01 用户裁决后,**伤害增加型筹码的指示器一律无限时长**(可生效即常驻),
      * 因此原先的「有限时长版」{@code refreshIndicator}(5 秒倒计时)已无调用方,随之删除;
@@ -203,6 +220,52 @@ public class PlayerTickEvents {
             }
         } else if (player.hasEffect(effect)) {
             ModEffectRemoval.remove(player, effect);
+        }
+    }
+
+    private static final int REMAINING_TOLERANCE = 40;
+
+    /**
+     * 筹码「保命」冷却的倒计时指示器（2026-10-22 用户裁决）。
+     *
+     * <p>口径：磨刀石 / 安全气囊的**保命**一旦真的触发就进入 1:00 冷却，此时在效果面板上显示
+     * **同名**（磨刀石 / 安全气囊）的倒计时图标，时长 = 剩余冷却 tick —— 玩家不用记时间。
+     * 与 {@link #updateChipBonusIndicators} 的 ∞「生效中」指示器**并存**：低血时既有 ∞ 的
+     * 「加成生效中」，也有带倒计时的「保命冷却中」，靠有没有跳动的数字区分。
+     *
+     * <p>为什么不在触发点直接 addEffect 一次了事：冷却自然结束、筹码被卸下、骰子被摘、
+     * 玩家死亡/重登（效果实例被清而附件里的冷却仍在）等路径都要有人收尾，单点施加必漏 ⇒
+     * 统一在这里每 tick 以「附件里的冷却结束刻」为准同步，与本类其它指示器同一范式
+     * （**不能**放进 {@code !diceGated} 分支：卸下骰子后就没有人负责移除图标了）。
+     */
+    private static void updateChipCooldownIndicators(Player player) {
+        refreshIndicatorRemaining(player, ModEffects.WHETSTONE_GUARD_CD.get(),
+                WhetstoneChipItem.isEquipped(player), ModAttachments.getWhetstoneGuardCooldownEnd(player));
+        refreshIndicatorRemaining(player, ModEffects.AIRBAG_GUARD_CD.get(),
+                AirbagChipItem.isEquipped(player), ModAttachments.getAirbagCooldownEnd(player));
+    }
+
+    /**
+     * 倒计时指示器：效果时长 = {@code endTick - now}（剩余冷却）。
+     *
+     * <p>不需要显示（筹码未佩戴 / 骰子未佩戴 / 冷却已结束）⇒ 移除；
+     * 需要显示但实例缺失（首次触发 / 重登后实例丢了）⇒ 按剩余冷却补一次；
+     * 已有实例时只在**偏差超过 {@value #REMAINING_TOLERANCE} tick** 才重施加 ——
+     * 原版效果自己按 tick 递减，与剩余冷却天然同步，无需每 tick 发包。
+     */
+    private static void refreshIndicatorRemaining(Player player,
+                                                 net.minecraft.world.effect.MobEffect effect,
+                                                 boolean equipped, long endTick) {
+        long remaining = endTick - player.level().getGameTime();
+        if (!equipped || remaining <= 0) {
+            if (player.hasEffect(effect)) ModEffectRemoval.remove(player, effect);
+            return;
+        }
+        // 原版时长是 int；设计上冷却最长 1:00 = 1200 tick，这里仍截断一次以防附件被写坏成天文数字
+        int duration = (int) Math.min(remaining, (long) Integer.MAX_VALUE - 1);
+        MobEffectInstance current = player.getEffect(effect);
+        if (current == null || Math.abs(current.getDuration() - duration) > REMAINING_TOLERANCE) {
+            player.addEffect(new MobEffectInstance(effect, duration, 0, false, true, true));
         }
     }
 

@@ -1,0 +1,622 @@
+package com.merlinkitsune.astral_dice.event;
+
+import com.merlinkitsune.astral_dice.combat.DamageNumberAggregator;
+import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
+import com.merlinkitsune.astral_dice.component.ModAttachments;
+import com.merlinkitsune.astral_dice.damage.ModDamageTypes;
+import com.merlinkitsune.astral_dice.event.api.AstralEvent;
+import com.merlinkitsune.astral_dice.event.api.AstralEventTrigger;
+import com.merlinkitsune.astral_dice.item.ModItems;
+import com.merlinkitsune.astral_dice.item.card.RandomCardHandler;
+import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
+import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
+import com.merlinkitsune.astral_dice.platform.event.TickEvent;
+import com.merlinkitsune.astral_dice.platform.event.entity.living.LivingHealEvent;
+import com.merlinkitsune.astral_dice.platform.event.entity.living.MobSpawnEvent;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.MobSpawnType;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.monster.Enemy;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.phys.AABB;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+/**
+ * 12 个事件的**具体效果**（2026-10-10 用户逐条清单；作用对象由分发器按「64 格 ∪ 团队」或收窄口径给出）。
+ *
+ * <p>口径与暂缓项（如实登记，待用户补充细节）：
+ * <ul>
+ *   <li>「攻击力 / 防御力」按本模组口径映射：攻击力 = `Attributes.ATTACK_DAMAGE` 的 ADD_VALUE（与 `NetherStarDiceItem` 同款），
+ *       防御力 = {@link DiceCombatModifiers#setDefenseArmorBonus}（1 防御 = 1÷护甲系数 护甲）。</li>
+ *   <li>带时长的效果用 {@link EventTimerStore} 登记（覆盖/重置语义）；**属性增益是瞬态修饰符**，
+ *       到期由计时器回调移除，**不跨重登持久**。</li>
+ *   <li>**状态指示器（取 images 同名图标）与「屏蔽中毒/饥饿指示器、显示专用指示器」暂缓** ——
+ *       需客户端 HUD + 服务端→客户端同步，等用户补充细节后再做。</li>
+ * </ul>
+ *
+ * <p><b>⚠️ fabric-1.20.1 注册（本线没有 {@code @Mod.EventBusSubscriber}）</b>：
+ * 本类在 forge 蓝本靠类注解 `@net.minecraftforge.fml.common.Mod.EventBusSubscriber` 自动注册；
+ * 本线的注解**不参与任何注册**，必须由主 Agent 在 {@code AstralDiceMod.registerListeners} 里显式写：
+ * {@code LoaderBus.INSTANCE.register(EventEffects.class);}
+ * 漏这一行 ⇒ {@link #onPlayerTick} 永不派发 ⇒ 弹卡后**永不结算**（编译、启动日志全绿，静默失效）。
+ */
+public final class EventEffects {
+    private static final Logger LOGGER = LoggerFactory.getLogger(EventEffects.class);
+
+    private static final String ATK_KEY_PREFIX = "event_atk_";
+
+    private EventEffects() {
+    }
+
+    // ────────────────────────── 属性增益工具 ──────────────────────────
+
+    /** 施加/覆盖一个瞬态攻击力修饰符；amount <= 0 表示移除。 */
+    private static void setAttack(Player player, String key, double amount) {
+        AttributeInstance attr = player.getAttribute(Attributes.ATTACK_DAMAGE);
+        if (attr == null) return;
+        // ⚠️ 平台差异:1.20.1 的修饰符以 **UUID** 为键(1.21.1 已改为 ResourceLocation)⇒ 由稳定 key 派生 UUID
+        java.util.UUID id = modifierId(key);
+        AttributeModifier existing = attr.getModifier(id);
+        if (amount <= 0) {
+            if (existing != null) attr.removeModifier(id);
+            return;
+        }
+        if (existing == null || existing.getAmount() != amount) {
+            attr.removeModifier(id);
+            attr.addTransientModifier(new AttributeModifier(id, key, amount, AttributeModifier.Operation.ADDITION));
+        }
+    }
+
+    /** 由稳定 key 派生修饰符 UUID(1.20.1 口径)。 */
+    private static java.util.UUID modifierId(String key) {
+        return java.util.UUID.nameUUIDFromBytes(("astral_dice:" + key).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    }
+
+    /** 给生物加一个瞬态攻击力/护甲修饰符(敌对生物用;key 需稳定以便到期移除)。 */
+    private static void setMobAttribute(LivingEntity mob, String key, net.minecraft.world.entity.ai.attributes.Attribute attribute, double amount) {
+        AttributeInstance attr = mob.getAttribute(attribute);
+        if (attr == null) return;
+        java.util.UUID id = modifierId(key);
+        AttributeModifier existing = attr.getModifier(id);
+        if (amount <= 0) {
+            if (existing != null) attr.removeModifier(id);
+            return;
+        }
+        if (existing == null || existing.getAmount() != amount) {
+            attr.removeModifier(id);
+            attr.addTransientModifier(new AttributeModifier(id, key, amount, AttributeModifier.Operation.ADDITION));
+        }
+    }
+
+    // ────────────────────────── 1. 红温警告:攻击力+5,3:00 ──────────────────────────
+
+    public static void redHeatWarning(ServerLevel level, Player triggerer, Player target, AstralEvent event,
+                                      AstralEventTrigger source, int tier) {
+        // 指示器（用户裁决 1/2）：同名图标的自有 MobEffect ⇒ 原版效果 HUD 双端同步显示
+        target.addEffect(new MobEffectInstance(com.merlinkitsune.astral_dice.effect.ModEffects.RED_HEAT_WARNING.get(),
+                3600, 0, false, false, true));
+        setAttack(target, ATK_KEY_PREFIX + "red_heat_warning", 5.0D);
+        EventTimerStore.start(target, event.id(), 3600, p -> setAttack(p, ATK_KEY_PREFIX + "red_heat_warning", 0));
+    }
+
+    // ────────────────────────── 2. 疾行:迅捷 II (2:00) ──────────────────────────
+
+    public static void swiftStride(ServerLevel level, Player triggerer, Player target, AstralEvent event,
+                                   AstralEventTrigger source, int tier) {
+        PlayerEffectProtection.apply(target, new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 2400, 1, false, true));
+        EventTimerStore.start(target, event.id(), 2400, null);
+    }
+
+    // ────────────────────────── 3. 雷暴将至:1 张随机卡牌 + 立即刷一波怪 + 范围内敌对生物攻防 +2,2:00（夜间刷怪 ×2） ──────────────
+
+    public static void stormApproaching(ServerLevel level, Player triggerer, Player target, AstralEvent event,
+                                        AstralEventTrigger source, int tier) {
+        // 指示器（用户裁决 1/2）：雷暴将至也会在效果栏显示同名图标；同时作为「夜间刷怪 ×2」钩子的门禁
+        target.addEffect(new MobEffectInstance(com.merlinkitsune.astral_dice.effect.ModEffects.STORM_APPROACHING.get(),
+                2400, 0, false, false, true));
+        RandomCardHandler.giveCardTo(target, RandomCardHandler.CardCategory.ALL);
+        // 用户裁决 2026-10-23：触发瞬间在**玩家附近立即刷一波怪**（5–7 只僵尸/骷髅/蜘蛛 + 小概率女巫）。
+        // 放在取 box 之前 ⇒ 这一波怪同样吃到 +2 攻 / +5 护甲的雷暴增益，并在到期回调里一并撤销。
+        spawnStormWave(level, target);
+        AABB box = triggerer.getBoundingBox().inflate(event.radius());
+        List<LivingEntity> mobs = new ArrayList<>();
+        for (LivingEntity e : level.getEntitiesOfClass(LivingEntity.class, box)) {
+            if (e instanceof Enemy) mobs.add(e);
+        }
+        for (LivingEntity mob : mobs) {
+            // 攻击力 +2;防御力 +2(1 防御 = 1/生物护甲系数 ⇒ +5 护甲),持续 2:00 后由计时器回调移除
+            setMobAttribute(mob, "event_storm_atk", Attributes.ATTACK_DAMAGE, 2.0D);
+            setMobAttribute(mob, "event_storm_def", Attributes.ARMOR,
+                    2 * DiceCombatModifiers.MOB_ARMOR_PER_DEFENSE);
+        }
+        EventTimerStore.start(target, event.id(), 2400, p -> {
+            for (LivingEntity mob : mobs) {
+                setMobAttribute(mob, "event_storm_atk", Attributes.ATTACK_DAMAGE, 0);
+                setMobAttribute(mob, "event_storm_def", Attributes.ARMOR, 0);
+            }
+        });
+        LOGGER.info("AP_EVENT_EFFECT: storm_approaching:mobs={}:nightSpawnX2=hook", mobs.size());
+    }
+
+    // ────────────────────────── 3b. 雷暴将至：立即刷一波怪（用户裁决 2026-10-23） ──────────────────────────
+
+    /** 一波怪的数量区间（含端点）。 */
+    private static final int WAVE_MIN = 5;
+    private static final int WAVE_MAX = 7;
+    /** 落点环形：距玩家 8–16 格。 */
+    private static final double WAVE_RING_MIN = 8.0D;
+    private static final double WAVE_RING_MAX = 16.0D;
+    /** 同区域判定半径：玩家 32 格内若有其他玩家，该区域只刷一波。 */
+    private static final double WAVE_CLUSTER_RADIUS = 32.0D;
+    /** 追加女巫的概率。 */
+    private static final float WAVE_WITCH_CHANCE = 0.15F;
+    /** 单只怪找落点的最大尝试次数。 */
+    private static final int WAVE_PLACE_TRIES = 12;
+
+    /** 本次分发（同一 gameTime）内已刷出的波心；跨 tick 自动清空。 */
+    private static long waveTick = Long.MIN_VALUE;
+    private static final List<WaveOrigin> WAVE_ORIGINS = new ArrayList<>();
+
+    /** 波心：维度 + 坐标。只按坐标聚类会把不同维度里恰好接近的两个玩家判成同一区域（复核 P3，2026-10-23）。 */
+    private record WaveOrigin(net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> dim,
+                              net.minecraft.world.phys.Vec3 pos) {
+    }
+
+    /**
+     * 在玩家附近刷一波敌怪：5–7 只（僵尸 / 骷髅 / 蜘蛛等概率），另按 {@link #WAVE_WITCH_CHANCE} 追加 1 只女巫。
+     *
+     * <p>去重口径（用户裁决 2026-10-23）：玩家半径 32 格内若有其他玩家，则该区域只刷一波 ⇒
+     * 同一次事件分发里，与已刷波心相距 ≤32 格的玩家直接跳过（多目标事件不会叠出两波）。
+     *
+     * <p>僵尸与骷髅一律戴头盔：原版 {@code Zombie#aiStep} / {@code AbstractSkeleton#aiStep}
+     * 只按 HEAD 槽是否为空决定要不要点燃，戴头盔即不在白天燃烧。
+     */
+    private static void spawnStormWave(ServerLevel level, Player player) {
+        long now = level.getGameTime();
+        if (now != waveTick) {
+            waveTick = now;
+            WAVE_ORIGINS.clear();
+        }
+        for (WaveOrigin origin : WAVE_ORIGINS) {
+            if (!origin.dim().equals(level.dimension())) continue;
+            if (origin.pos().distanceToSqr(player.position()) <= WAVE_CLUSTER_RADIUS * WAVE_CLUSTER_RADIUS) {
+                LOGGER.info("AP_EVENT_EFFECT: storm_wave_skip:player={}:reason=nearby_wave", player.getName().getString());
+                return;
+            }
+        }
+        int want = WAVE_MIN + level.getRandom().nextInt(WAVE_MAX - WAVE_MIN + 1);
+        int placed = 0;
+        for (int i = 0; i < want; i++) {
+            Mob mob = createWaveMob(level);
+            if (mob == null) continue;
+            if (placeStormMob(level, player, mob)) placed++;
+        }
+        int witch = 0;
+        if (level.getRandom().nextFloat() < WAVE_WITCH_CHANCE) {
+            Mob mob = EntityType.WITCH.create(level);
+            if (mob != null && placeStormMob(level, player, mob)) witch++;
+        }
+        // 只有真的刷出怪才算「本区域已有一波」，否则同区第二个玩家还能补刷
+        if (placed + witch > 0) WAVE_ORIGINS.add(new WaveOrigin(level.dimension(), player.position()));
+        LOGGER.info("AP_EVENT_EFFECT: storm_wave:player={}:want={}:placed={}:witch={}",
+                player.getName().getString(), want, placed, witch);
+    }
+
+    /** 候选怪：僵尸 / 骷髅 / 蜘蛛（用户裁决 2026-10-23 只允许这三种）。 */
+    private static Mob createWaveMob(ServerLevel level) {
+        EntityType<? extends Mob> type = switch (level.getRandom().nextInt(3)) {
+            case 0 -> EntityType.ZOMBIE;
+            case 1 -> EntityType.SKELETON;
+            default -> EntityType.SPIDER;
+        };
+        return type.create(level);
+    }
+
+    /**
+     * 在玩家 8–16 格环形内找一个合法落点（无碰撞 + 脚下实心 + 生成阻塞检查），
+     * 再补 {@code finalizeSpawn}（装备 / 幼年 / 属性等原生初始化）与头盔；全部尝试失败则丢弃并返回 false。
+     *
+     * <p>纵向优先取玩家所在高度附近（±4 格），找不到才退到该列地表 —— 洞穴 / 下界基地里也能刷在玩家身边。
+     */
+    private static boolean placeStormMob(ServerLevel level, Player player, Mob mob) {
+        int baseY = net.minecraft.util.Mth.floor(player.getY());
+        for (int attempt = 0; attempt < WAVE_PLACE_TRIES; attempt++) {
+            double angle = level.getRandom().nextDouble() * (Math.PI * 2.0D);
+            double dist = WAVE_RING_MIN + level.getRandom().nextDouble() * (WAVE_RING_MAX - WAVE_RING_MIN);
+            double x = player.getX() + Math.cos(angle) * dist;
+            double z = player.getZ() + Math.sin(angle) * dist;
+            int y = findSpawnY(level, net.minecraft.util.Mth.floor(x), net.minecraft.util.Mth.floor(z), baseY);
+            if (y == Integer.MIN_VALUE) continue;
+            mob.moveTo(x, y, z, level.getRandom().nextFloat() * 360.0F, 0.0F);
+            if (!level.noCollision(mob)) continue;
+            if (!mob.checkSpawnObstruction(level)) continue;
+            // ⚠️ 必须直接调 Mob#finalizeSpawn：走 EventHooks.finalizeMobSpawn 会重新派发 FinalizeSpawnEvent
+            //    ⇒ 命中本类的「夜间刷怪 ×2」钩子，无限翻倍（复制体还会再复制）。
+            mob.finalizeSpawn(level, level.getCurrentDifficultyAt(mob.blockPosition()), MobSpawnType.NATURAL, null, null);
+            equipStormHelmet(mob);
+            if (level.addFreshEntity(mob)) return true;
+            break;
+        }
+        mob.discard();
+        return false;
+    }
+
+    /** [baseY-4, baseY+4] 由高到低找「本格空气 + 脚下非空气」；该列都不行再退到地表。找不到返回 {@link Integer#MIN_VALUE}。 */
+    private static int findSpawnY(ServerLevel level, int x, int z, int baseY) {
+        net.minecraft.core.BlockPos.MutableBlockPos pos = new net.minecraft.core.BlockPos.MutableBlockPos();
+        for (int y = baseY + 4; y >= baseY - 4; y--) {
+            if (y <= level.getMinBuildHeight() || y >= level.getMaxBuildHeight() - 2) continue;
+            if (isSpawnFloor(level, pos.set(x, y, z))) return y;
+        }
+        int surface = level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
+        if (surface <= level.getMinBuildHeight() || surface >= level.getMaxBuildHeight() - 2) return Integer.MIN_VALUE;
+        return isSpawnFloor(level, pos.set(x, surface, z)) ? surface : Integer.MIN_VALUE;
+    }
+
+    /** 落点判定：本格是空气、脚下不是空气（水面 / 岩浆 / 树叶上方都算不合格的地面由下游 noCollision 再筛）。 */
+    private static boolean isSpawnFloor(ServerLevel level, net.minecraft.core.BlockPos pos) {
+        if (!level.isEmptyBlock(pos)) return false;
+        return !level.isEmptyBlock(pos.below());
+    }
+
+    /** 僵尸 / 骷髅戴头盔（随机配装已有头部装备时不覆盖）；头盔不掉落，避免被刷成铁装备农场。 */
+    private static void equipStormHelmet(Mob mob) {
+        if (!(mob instanceof net.minecraft.world.entity.monster.Zombie)
+                && !(mob instanceof net.minecraft.world.entity.monster.AbstractSkeleton)) {
+            return;
+        }
+        EquipmentSlot head = EquipmentSlot.HEAD;
+        if (!mob.getItemBySlot(head).isEmpty()) return;
+        ItemStack helmet = new ItemStack(Items.IRON_HELMET);
+        // ⚠️ 必须标不可破坏：原版 Zombie#aiStep / AbstractSkeleton#aiStep 在日光点燃判定命中时会给头盔扣耐久
+        //    （0.04/tick × 均值 0.5 ⇒ 铁头盔 165 耐久约 6.9 分钟直射日光后碎掉、随即点燃）。
+        //    1.20.1 的 Unbreakable 仍是 NBT 布尔：ItemStack#isDamageableItem() 遇它为假 ⇒ 不扣耐久且不点燃。
+        helmet.getOrCreateTag().putBoolean("Unbreakable", true);
+        mob.setItemSlot(head, helmet);
+        mob.setDropChance(head, 0.0F);
+    }
+
+    // ────────────────────────── 4. 取长补短：血量最低者 +8、最高者 -8（集合层结算） ──────────────────────────
+
+    /**
+     * 集合层结算（由 {@link AstralEventDispatcher} 在逐目标施加之后调用）：
+     * 取受影响玩家中生命值**最低**者 +8、**最高**者 -8（均以 0 为下限）。
+     * 2026-10-27（N4 修复）：-8 **不再是 setHealth 旁路**，改走正常伤害管线（见
+     * {@link #hurtAsEventCardPenalty}）⇒ 会派发伤害事件、可致死、带触发者归因。
+     * 若受影响集合只有一人，只按最低结算（+8），不扣血。
+     */
+    public static void learnFromOthersApply(Player triggerer, List<Player> targets) {
+        if (targets.isEmpty()) return;
+        Player lowest = null;
+        Player highest = null;
+        List<Player> group = List.copyOf(targets);
+        for (Player p : group) {
+            if (lowest == null || p.getHealth() < lowest.getHealth()) lowest = p;
+            if (highest == null || p.getHealth() > highest.getHealth()) highest = p;
+        }
+        if (lowest == null || highest == null) return;
+        // 用户裁决 2026-10-10：**先治疗、1 秒后再伤害**；无论受影响人数（哪怕只有一人也先 +8 再 −8）。
+        final Player healed = lowest;
+        final Player damaged = highest;
+        healed.heal(8.0F);
+        LOGGER.info("AP_EVENT_EFFECT: learn_from_others:heal={}", healed.getName().getString());
+        if (healed.level() instanceof ServerLevel lvl) {
+            EventCardService.schedule(lvl, 20, l -> {
+                if (damaged.isAlive()) {
+                    // 2026-10-27（N4 修复）：惩罚性扣血一律走 hurt() 正常管线，不再 setHealth 直改
+                    // （类型 / 归因 / 跳字口径见 hurtAsEventCardPenalty）。
+                    hurtAsEventCardPenalty(l, triggerer, damaged, 8.0F, "learn_from_others");
+                    LOGGER.info("AP_EVENT_EFFECT: learn_from_others:damage={}", damaged.getName().getString());
+                }
+            });
+        }
+        LOGGER.info("AP_EVENT_EFFECT: learn_from_others:low={}:high={}", lowest.getName().getString(),
+                (group.size() == 1 || lowest == highest ? "-" : highest.getName().getString()));
+    }
+
+    /**
+     * 分发器后置钩子：处理需要「整个受影响集合」才能结算的事件（目前只有取长补短）。
+     *
+     * @param triggerer 事件触发者，作为惩罚伤害的 causing entity（{@code EventCardService} 的
+     *                  延迟回调里仍持调用当下的实体引用；离线也安全，只影响归因）
+     */
+    public static void afterDispatch(Player triggerer, AstralEvent event, List<Player> targets) {
+        if (AstralEventIds.LEARN_FROM_OTHERS.equals(event.id())) {
+            learnFromOthersApply(triggerer, targets);
+        }
+    }
+
+    // ────────────────────────── 「雷暴将至」夜间刷怪数量 ×2（用户裁决 3；2026-10-23 修复口径） ──────────────────────────
+
+    /*
+     * 2026-11-01（D-09 / B17A）已接通：本线自建了 Forge 同形事件
+     * {@link MobSpawnEvent.FinalizeSpawn}，由 {@code mixin/bridge/MobFinalizeSpawnBridgeMixin}
+     * 在 {@code Mob#finalizeSpawn} 的 HEAD 派发（Forge 侧该事件由 transformer 在调用点注入，
+     * 同样先于 finalizeSpawn —— 取证见该 mixin 的类注释与 B17A 报告）。
+     * ⚠️ 复制体的 finalizeSpawn 由 {@link #placeStormCopy} 直接调用，mixin 的 ThreadLocal 重入闸
+     * 会掐掉二次派发 ⇒ 不会无限翻倍（Forge 侧靠「直接调 Mob#finalizeSpawn」达成同一效果）。
+     */
+    @SubscribeEvent
+    public static void onFinalizeSpawn(MobSpawnEvent.FinalizeSpawn event) {
+        if (event.getSpawnType() != MobSpawnType.NATURAL) return;
+        if (event.isCanceled() || event.isSpawnCancelled()) return;
+        // 1.20.1 的 MobSpawnEvent.FinalizeSpawn#getEntity() 已声明为 Mob ⇒ 直接 instanceof Enemy 判定
+        Mob mob = event.getEntity();
+        if (!(mob instanceof Enemy)) return;
+        if (!(mob.level() instanceof ServerLevel level)) return;
+        if (!level.isNight()) return;
+        if (!hasStormWatcherNear(level, mob)) return;
+        Entity created = mob.getType().create(level);
+        if (!(created instanceof Mob copy)) {
+            if (created != null) created.discard();
+            return;
+        }
+        if (!placeStormCopy(level, mob, copy)) {
+            copy.discard();
+            return;
+        }
+        LOGGER.info("AP_EVENT_EFFECT: storm_night_spawn_x2:type={}", mob.getType());
+    }
+
+    /** 在原生成点附近（含原位共 7 个候选）找合法落点，并补 finalizeSpawn 后入世；全部不合法返回 false。 */
+    private static boolean placeStormCopy(ServerLevel level, Mob origin, Mob copy) {
+        double[][] offsets = {{1.0D, 0.0D}, {-1.0D, 0.0D}, {0.0D, 1.0D}, {0.0D, -1.0D},
+                              {1.0D, 1.0D}, {-1.0D, -1.0D}, {0.0D, 0.0D}};
+        for (double[] offset : offsets) {
+            copy.moveTo(origin.getX() + offset[0], origin.getY(), origin.getZ() + offset[1],
+                    origin.getYRot(), origin.getXRot());
+            if (!level.noCollision(copy)) continue;
+            if (!copy.checkSpawnObstruction(level)) continue;
+            // 直接调 Mob#finalizeSpawn：本桥注入点就在该方法里，复制体的这次调用由 mixin 的
+            // ThreadLocal 重入闸抑制派发 ⇒ 不会递归翻倍（Forge 侧同理由「不走 EventHooks」保证）
+            copy.finalizeSpawn(level, level.getCurrentDifficultyAt(copy.blockPosition()), MobSpawnType.NATURAL, null, null);
+            if (level.addFreshEntity(copy)) return true;
+        }
+        return false;
+    }
+
+    /** 附近（64 格内）是否有玩家正处于「雷暴将至」状态。 */
+    private static boolean hasStormWatcherNear(ServerLevel level, LivingEntity mob) {
+        for (Player p : level.getEntitiesOfClass(Player.class, mob.getBoundingBox().inflate(64.0D))) {
+            if (p.hasEffect(com.merlinkitsune.astral_dice.effect.ModEffects.STORM_APPROACHING.get())) return true;
+        }
+        return false;
+    }
+
+    // ────────────────────────── 计时器惰性到期(每 10 tick) ──────────────────────────
+
+    /**
+     * 服务端玩家 tick:每 10 tick 做一次**惰性到期检测** —— 到期回调(撤销属性增益、解除治疗封锁)在此触发。
+     *
+     * <p>平台差异:1.20.1 是 {@code TickEvent.PlayerTickEvent}(需判 {@code phase == END}),1.21.1 是 {@code PlayerTickEvent.Post}。
+     * 本线 {@code platform/FabricBridges.java} 只派发 END 相位 ⇒ 判据恒真，但**必须保留**（防止将来桥改成 START+END）。
+     */
+    @SubscribeEvent
+    public static void onPlayerTick(TickEvent.PlayerTickEvent event) {
+        if (event.phase != TickEvent.Phase.END) return;
+        if (!(event.player instanceof ServerPlayer player)) return;
+        // 事件效果卡：**每 tick** 检查到点结算（不加 10t 门控 ⇒ 消除结算时机漂移）
+        EventCardService.drain(player.serverLevel());
+        sweepTimers(player);
+    }
+
+    private static void sweepTimers(ServerPlayer player) {
+        if (player.tickCount % 10 != 0) return;
+        for (ResourceLocation id : EventTimerStore.activeEventIds(player)) {
+            EventTimerStore.remaining(player, id);
+        }
+    }
+
+    // ────────────────────────── 治疗失效拦截（问题外卖 15s） ──────────────────────────
+
+    @SubscribeEvent
+    public static void onHeal(LivingHealEvent event) {
+        if (event.getEntity() instanceof Player player && isHealBlocked(player)) {
+            event.setCanceled(true);
+        }
+    }
+
+    // ────────────────────────── 5. 商店大酬宾:商店出售卡牌 +2,5:00 ──────────────────────────
+
+    public static void shopBonanza(ServerLevel level, Player triggerer, Player target, AstralEvent event,
+                                   AstralEventTrigger source, int tier) {
+        long now = level.getGameTime();
+        ModAttachments.setShopPromotionUntil(target, now + 6000);
+        LOGGER.info("AP_EVENT_EFFECT: shop_bonanza:until={}", now + 6000);
+    }
+
+    // ────────────────────────── 6. 手牌抹杀:随机丢弃物品栏里一张随机卡牌 ──────────────────────────
+
+    public static void handErasure(ServerLevel level, Player triggerer, Player target, AstralEvent event,
+                                   AstralEventTrigger source, int tier) {
+        List<Integer> cardSlots = new ArrayList<>();
+        for (int i = 0; i < target.getInventory().getContainerSize(); i++) {
+            if (ModItems.isCardItem(target.getInventory().getItem(i))) cardSlots.add(i);
+        }
+        if (cardSlots.isEmpty()) {
+            LOGGER.info("AP_EVENT_EFFECT: hand_erasure:no_card:target={}", target.getName().getString());
+            return;
+        }
+        int slot = cardSlots.get(target.getRandom().nextInt(cardSlots.size()));
+        // 用户裁决 2026-10-10：抹杀 = 手牌**直接消失**（不再丢到地上）
+        // 2026-10-21 修正：一次只抹掉 **1 张**。卡牌可堆叠（CardItem = stacksTo(16)），
+        // 旧写法 removeItemNoUpdate(slot) 会把命中槽的**整栈**一次性清空（用户报“丢 1 张却整组消失”）。
+        ItemStack stack = target.getInventory().getItem(slot);
+        if (stack.isEmpty()) return;
+        ItemStack erased = stack.copy();
+        stack.shrink(1);
+        if (stack.isEmpty()) {
+            target.getInventory().setItem(slot, ItemStack.EMPTY);
+        } else {
+            target.getInventory().setChanged();
+        }
+        LOGGER.info("AP_EVENT_EFFECT: hand_erasure:erased={}:remaining={}:target={}",
+                erased.getItem(), stack.getCount(), target.getName().getString());
+    }
+
+    // ────────────────────────── 7. 天崩地裂:立即 4 点伤害 ──────────────────────────
+
+    public static void worldCollapse(ServerLevel level, Player triggerer, Player target, AstralEvent event,
+                                     AstralEventTrigger source, int tier) {
+        // N5：4 点惩罚改走带归因的惩罚型类型（与 -8 / 2 点同一口径，见 hurtAsEventCardPenalty）。
+        hurtAsEventCardPenalty(level, triggerer, target, 4.0F, "world_collapse");
+    }
+
+    // ────────────────────────── 8. 天降之物:1 张随机卡牌 + 3 星币 ──────────────────────────
+
+    public static void giftFromSky(ServerLevel level, Player triggerer, Player target, AstralEvent event,
+                                   AstralEventTrigger source, int tier) {
+        RandomCardHandler.giveCardTo(target, RandomCardHandler.CardCategory.ALL);
+        // 2026-10-11 用户裁决：**直接复用本仓「玩家收入星币」的既有代码路径**，不自造钱包分支。
+        // 漏斗链路：ResourceConversion#giveItem → StarCoinCurrency#tryAbsorbIntoWallet
+        //   → StarEngineEconomy#deposit（入账）+ StarCoinBalanceSync#notifyChanged（立即推余额）；
+        // 「获得即入钱包」关闭 / 账本不可用时，漏斗内部自动回退物品栏（满则掉落）。
+        giveCoins(target, 3);
+        LOGGER.info("AP_EVENT_EFFECT: gift_from_sky:plus=3:target={}", target.getName().getString());
+    }
+
+    // ────────────────────────── 9. 天使降临:4 点治疗 ──────────────────────────
+
+    public static void angelDescent(ServerLevel level, Player triggerer, Player target, AstralEvent event,
+                                    AstralEventTrigger source, int tier) {
+        target.heal(4.0F);
+    }
+
+    // ────────────────────────── 10. 问题外卖:2 伤害 + 中毒/饥饿(0:15) + 15s 治疗失效 ──────────────────────────
+
+    public static void problemDelivery(ServerLevel level, Player triggerer, Player target, AstralEvent event,
+                                       AstralEventTrigger source, int tier) {
+        // N5：2 点惩罚改走带归因的惩罚型类型（与 -8 / 4 点同一口径，见 hurtAsEventCardPenalty）。
+        hurtAsEventCardPenalty(level, triggerer, target, 2.0F, "problem_delivery");
+        // 专用指示器（用户裁决 1/2）。注:原生中毒/饥饿以 visible=false 施加 ⇒ **HUD 侧已隐藏**;
+        // 但物品栏「效果」面板走 isVisibleInInventory(默认 true) ⇒ 该面板仍会显示两行,待补客户端 mixin。
+        PlayerEffectProtection.apply(target, new MobEffectInstance(com.merlinkitsune.astral_dice.effect.ModEffects.PROBLEM_DELIVERY.get(),
+                300, 0, false, false, true));
+        PlayerEffectProtection.apply(target, new MobEffectInstance(MobEffects.POISON, 300, 0, false, false));
+        PlayerEffectProtection.apply(target, new MobEffectInstance(MobEffects.HUNGER, 300, 0, false, false));
+        setHealBlocked(target, true);
+        EventTimerStore.start(target, event.id(), 300, p -> setHealBlocked(p, false));
+        LOGGER.info("AP_EVENT_EFFECT: problem_delivery:healBlocked=true:target={}", target.getName().getString());
+    }
+
+    // ────────────────────────── 11. 拥挤通道:所有受影响玩家被传送到触发者位置 ──────────────────────────
+
+    public static void crowdedPassage(ServerLevel level, Player triggerer, Player target, AstralEvent event,
+                                      AstralEventTrigger source, int tier) {
+        if (target == triggerer) return;   // 触发者本身不动
+        target.teleportTo(triggerer.getX(), triggerer.getY(), triggerer.getZ());
+        LOGGER.info("AP_EVENT_EFFECT: crowded_passage:moved={}", target.getName().getString());
+    }
+
+    // ────────────────────────── 12. 战斗爽:2 张「攻击-特大」 ──────────────────────────
+
+    public static void battleFrenzy(ServerLevel level, Player triggerer, Player target, AstralEvent event,
+                                    AstralEventTrigger source, int tier) {
+        for (int i = 0; i < 2; i++) {
+            VitaminPillChipItem.giveCard(target, new ItemStack(ModItems.ATTACK_CARD_EPIC.get()));
+        }
+    }
+
+    // ────────────────────────── 事件牌惩罚伤害：唯一口径（N4 / N5，2026-10-27） ──────────────────────────
+
+    /**
+     * 事件牌「惩罚性扣血」的**唯一出口**。三处点数（-8 / 4 / 2）全部走这里 ⇒ 类型与归因不可能漂移。
+     *
+     * <p><b>为什么是这个伤害类型</b>（{@code astral_dice:unreducible_damage}，数据见
+     * {@code data/minecraft/tags/damage_type/*.json}，两线逐字节一致）：
+     * <ul>
+     *   <li>在 {@code bypasses_armor} / {@code bypasses_enchantments} / {@code bypasses_resistance} 内
+     *       ⇒ 护甲值 / 盔甲韧性 / 保护类附魔 / 抗性提升**全部跳过**。事件牌惩罚是「明码标价的点数」，
+     *       若被减伤削成 2、4 点就不叫惩罚（旧实现 {@code damageSources().generic} 会被全部削减）；</li>
+     *   <li>在 {@code bypasses_cooldown} 内 ⇒ 不受 0.5s（10t）受击无敌帧约束。原版
+     *       {@code LivingEntity#hurt} 在 {@code invulnerableTime > 10.0F && !source.is(BYPASSES_COOLDOWN)}
+     *       且 {@code amount <= lastHurt} 时**直接 return false** ⇒ 旧实现在战斗中可能整段被吞；</li>
+     *   <li>**不**在 {@code bypasses_invulnerability} 内 ⇒ 创造模式 / 重生无敌期照旧免疫（与
+     *       {@code astral_dice:card_cost} 同口径；原版 {@code Player#hurt} 的 {@code abilities.invulnerable}
+     *       判定独立于此，先于任何减伤）；</li>
+     *   <li>走 {@code hurt(...)} 而非 {@code setHealth} ⇒ 派发完整伤害事件链（受伤反馈 / 护盾类保命
+     *       钩子 / 死亡 {@code LivingDeathEvent}）。旧实现直接把血量改小，不派发伤害事件、也不调
+     *       {@code die()}（原版 {@code die()} 只由 {@code hurt()} 与 {@code handleEntityEvent(3)} 触发）
+     *       ⇒ 打到 0 血不死，掉进 {@code tickDeath()} 异常路径。</li>
+     * </ul>
+     *
+     * <p><b>归因</b>：用「直接伤害实体 = {@code null}、击杀归属 = 事件触发者」的形状
+     * （{@link com.merlinkitsune.astral_dice.damage.ModDamageTypes#unreducibleDamage}）。直接实体
+     * **刻意**留空 —— 事件牌伤害不该被任何「玩家/生物近战攻击」判定当成一次真刀真枪的命中（否则会重走
+     * 骰战、触发立牌受击被动）；而击杀归属与跳字收件人都认 causing，故保留触发者。
+     *
+     * <p><b>null 兜底</b>：{@code level == null} / {@code target == null} / {@code amount <= 0} 直接 return；
+     * {@code triggerer == null}（外部 CUSTOM 触发，或延迟结算期间触发者已离线）时回落到**受害者本人**
+     * 作 causing —— {@code DamageSource} 构造本身允许 causing 为 null，但用受害者自己可保住「有归因」这一档，
+     * 且不会把伤害记到别人头上。<b>不会 NPE</b>。
+     *
+     * <p><b>跳字</b>：显式 {@link com.merlinkitsune.astral_dice.combat.DamageNumberAggregator#tag} 登记为
+     * SPELL（绿）—— 该聚合器的类型回落表只认 dice / extra / card_spell / skill 四种，
+     * {@code unreducible_damage} 不登记就**不会显示**；这是本入口唯一需要额外补的一步。
+     *
+     * @param amount 惩罚点数（8 / 4 / 2）
+     * @param tag    机器行标记，仅用于日志取证
+     * @return {@code hurt(...)} 的返回值（false = 被免疫 / 无敌帧拒绝）
+     */
+    private static boolean hurtAsEventCardPenalty(ServerLevel level, Player triggerer, Player target,
+                                                  float amount, String tag) {
+        if (level == null || target == null || amount <= 0.0F) return false;
+        Entity causing = triggerer != null ? triggerer : target;
+        DamageSource source = ModDamageTypes.unreducibleDamage(level, causing);
+        DamageNumberAggregator.tag(target, source, DamageNumberAggregator.Group.SPELL);
+        boolean applied = target.hurt(source, amount);
+        LOGGER.info("AP_EVENT_PENALTY: tag={}:target={}:causing={}:amount={}:hurt={}",
+                tag, target.getName().getString(), causing.getName().getString(), amount, applied);
+        return applied;
+    }
+
+    // ────────────────────────── 工具 ──────────────────────────
+
+    /**
+     * 发星币：**唯一走全模组中央漏斗** {@link com.merlinkitsune.astral_dice.resource.ResourceConversion#giveItem}
+     * （= 既有「玩家收入星币」路径）。
+     *
+     * <p>漏斗内部：钱包启用且「获得即入钱包」打开 ⇒
+     * {@code tryAbsorbIntoWallet} 折算进钱包（{@code StarEngineEconomy#deposit} 入账 +
+     * {@code StarCoinBalanceSync#notifyChanged} 立即同步余额），物品栏**不**新增星币物品；
+     * 否则回退 {@code getInventory().add}（满则掉落）。禁止各处再直接 {@code getInventory().add}。
+     */
+    private static void giveCoins(Player player, int count) {
+        com.merlinkitsune.astral_dice.resource.ResourceConversion.giveItem(
+                player, new ItemStack(ModItems.STAR_COIN.get(), count));
+    }
+
+    /** 治疗失效标记(15 秒;由 {@link #onHeal} 拦截)。 */
+    private static final java.util.Set<UUID> HEAL_BLOCKED = new java.util.HashSet<>();
+
+    static void setHealBlocked(Player player, boolean blocked) {
+        if (blocked) {
+            HEAL_BLOCKED.add(player.getUUID());
+        } else {
+            HEAL_BLOCKED.remove(player.getUUID());
+        }
+    }
+
+    public static boolean isHealBlocked(Player player) {
+        return HEAL_BLOCKED.contains(player.getUUID());
+    }
+}

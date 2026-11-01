@@ -1,6 +1,7 @@
 package com.merlinkitsune.astral_dice.mixin.trade;
 
 import com.merlinkitsune.astral_dice.trade.EmeraldDiceTrade;
+import com.merlinkitsune.astral_dice.trade.MerchantOfferRawAccess;
 import net.minecraft.nbt.NbtUtils;
 import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemStack;
@@ -17,7 +18,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  * 1.20.1 的 MerchantOffer 费用为 ItemStack(无 ItemCost 记录),故直接覆写 getBaseCostA/getCostA/getCostB/satisfiedBy。
  */
 @Mixin(MerchantOffer.class)
-public abstract class MerchantOfferMixin {
+public abstract class MerchantOfferMixin implements MerchantOfferRawAccess {
 
     @Shadow @Final private ItemStack baseCostA;
     @Shadow @Final private ItemStack costB;
@@ -79,5 +80,17 @@ public abstract class MerchantOfferMixin {
         }
         return ItemStack.isSameItem(itemstack, cost)
                 && (!cost.hasTag() || itemstack.hasTag() && NbtUtils.compareNbt(cost.getTag(), itemstack.getTag(), false));
+    }
+
+    /**
+     * 软接口实现：把**原始费用 A** 暴露给 {@code trade/MerchantOfferRawAccess} 的调用方。
+     *
+     * <p>必须走 {@code this.baseCostA} 字段本身 —— 本类上面已把 {@link #astralDice$getBaseCostA} 注入到
+     * getBaseCostA 并会在互换上下文里返回星币，靠取值器拿不到原值。字段为 {@code @Final} 且本方法只读，
+     * 不改变任何报价状态。
+     */
+    @Override
+    public ItemStack astralDice$rawCostA() {
+        return this.baseCostA;
     }
 }

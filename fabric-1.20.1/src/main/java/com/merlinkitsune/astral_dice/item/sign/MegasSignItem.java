@@ -5,7 +5,6 @@ import com.merlinkitsune.starengine.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.combat.CardRegistry;
 import com.merlinkitsune.astral_dice.combat.OrbitalBombardmentManager;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
-import com.merlinkitsune.astral_dice.event.WeirdDiceHandler;
 import com.merlinkitsune.astral_dice.item.ChargeManager;
 import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 import com.merlinkitsune.astral_dice.item.ModItems;
@@ -166,16 +165,16 @@ public class MegasSignItem extends BaseSignItem {
     }
 
     /**
-     * 立牌主动冷却 tick：佩戴时基础 120 秒（与枪匠/怪力侦探同款链：先按充能上限封顶，再按诡异骰子减半）。
+     * 立牌主动冷却 tick：佩戴时基础 120 秒（与枪匠/怪力侦探同款链：仅按充能上限封顶）。
+     *
+     * <p>2026-10-21 用户裁决:诡异骰子的立牌主动冷却 -50% 已删除(见 {@code WeirdDiceHandler#signCooldownTicks}),
+     * 本方法随之只保留充能封顶 + 额外电池筹码两段链,与 forge 线逐行一致。
      */
     public static int signCooldownTicks(Player player) {
         int ticks = isEquipped(player)
                 ? ACTIVE_COOLDOWN_SECONDS * 20
                 : GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS;
         ticks = (int) ChargeManager.signCooldownTicks(player, ticks);
-        if (WeirdDiceHandler.hasWeirdDice(player)) {
-            ticks = Math.max(1, ticks / 2);
-        }
         return ticks;
     }
 

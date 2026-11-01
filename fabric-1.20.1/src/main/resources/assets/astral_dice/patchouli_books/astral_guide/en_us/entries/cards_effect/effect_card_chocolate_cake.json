@@ -7,10 +7,6 @@
       "type": "patchouli:spotlight",
       "item": "astral_dice:effect_card_chocolate_cake",
       "text": "astral_dice.guide.entry.effect_card_chocolate_cake.1"
-    },
-    {
-      "type": "patchouli:crafting",
-      "recipe": "astral_dice:effect_card_chocolate_cake"
     }
   ],
   "sortnum": 4

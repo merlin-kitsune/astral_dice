@@ -174,24 +174,41 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
             //   时长本身无效 —— 闸门由第 1 步的 forcedCooldownUntil 覆盖,不依赖本笔入账)。
             //   缺省实现恒为 0 ⇒ 其余立牌走下方基础冷却。
             // ★ 基础冷却(2026-09-21 怪力侦探立牌 sherry):activeCooldownBaseTicks = **自定义基础值、
-            //   仍走既有减免链**(缺省实现 = WeirdDiceHandler.signCooldownTicks 的诡异骰子 −50% 原口径)
+            //   仍走既有减免链**(缺省实现 = WeirdDiceHandler.signCooldownTicks 的充能封顶 + 额外电池筹码口径)
             //   ⇒ 未覆写者与改动前逐字相同。
             int forced = sign.forcedActiveCooldownTicks();
             int signCooldownTicks = forced > 0
                     ? forced
                     : sign.activeCooldownBaseTicks(player);
-            if (sign.startActiveLockOnUse(player, now)) {
+            boolean enteredLock = sign.startActiveLockOnUse(player, now);
+            if (enteredLock) {
                 // ★ 本主动施加了"带时长效果/自身计时器"⇒ 进入锁定(生效中)态。
                 //   锁定期间**不写** sign_active_cooldown_end:冷却要等锁定结束才起(第 13 条:无空档);
                 //   但先把本次冷却基准写进 sign_active_max_cooldown,供锁定期间各减免方读它并累加进减免池。
                 ModAttachments.setSignActiveMaxCooldown(player, signCooldownTicks);
+                // 同处记录「未折电池」基准(命运指引卡减半用;电池只作用于立牌主动冷却本身)。
+                // ⚠️ 取的是**该立牌自身**的基础值(虚方法 no-battery 版),不能用全局常量 —— 否则
+                // Dorothy/Parunan/Sherry 等自定义基准的立牌会被写错(如 Dorothy 2400 被写成 3200/3600)。
+                com.merlinkitsune.astral_dice.component.SignAttachments.setSignActiveMaxCooldownBase(
+                        player, sign.activeCooldownBaseTicksNoBattery(player));
             } else {
                 ModAttachments.setSignActiveCooldownEnd(player, now + signCooldownTicks);
                 // 路线 A:记录本次冷却实际使用的最大冷却值,所有减免方一律读它(不再各自重算基准)
                 ModAttachments.setSignActiveMaxCooldown(player, signCooldownTicks);
+                // 同处记录「未折电池」基准(命运指引卡减半用;电池只作用于立牌主动冷却本身)。
+                // ⚠️ 取的是**该立牌自身**的基础值(虚方法 no-battery 版),不能用全局常量 —— 否则
+                // Dorothy/Parunan/Sherry 等自定义基准的立牌会被写错(如 Dorothy 2400 被写成 3200/3600)。
+                com.merlinkitsune.astral_dice.component.SignAttachments.setSignActiveMaxCooldownBase(
+                        player, sign.activeCooldownBaseTicksNoBattery(player));
             }
             // 电流核心筹码:主动技能实际生效时充能 +1(进入锁定时同样计一次;与是否立即起冷却无关)
             com.merlinkitsune.astral_dice.item.chip.CurrentCoreChipItem.onActiveSkillUsed(player);
+            // 诡异骰子(2026-10-20):主动技能**结束** ⇒ 恢复 5 点生命值。
+            // 瞬时型立牌没有生效期 ⇒ 结束与施放完成同一刻;有生效期的立牌(enteredLock)
+            // 由 endLockAndStartCooldown 在锁定寿终时结算,两条互斥。
+            if (!enteredLock) {
+                com.merlinkitsune.astral_dice.event.WeirdDiceHandler.onSignActiveEnded(player);
+            }
         }
     }
 
@@ -223,6 +240,13 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
      */
     protected static void playSkillUseSound(Player player) {
         if (player == null) return;
+        // 机器行：主动技能音效「按下即时播放」的唯一打点（2026-10-11 用户裁决）。
+        // 实机判据：按技能键 ⇒ 本行出现一次；随后在事件选择界面点确认 ⇒ **不再**新增本行。
+        // 格式与 forge / neoforge 两线逐字一致（测试台断言锚点，勿改）：
+        //   AP_SIGN_SOUND: skill_use:player=<玩家名>:pos=<x>,<y>,<z>
+        LOGGER.info("AP_SIGN_SOUND: skill_use:player={}:pos={},{},{}",
+                player.getName().getString(),
+                (int) player.getX(), (int) player.getY(), (int) player.getZ());
         com.merlinkitsune.astral_dice.audio.SoundPlayback.playAt(player.level(),
                 player.getX(), player.getY(), player.getZ(),
                 com.merlinkitsune.astral_dice.audio.ModSounds.SKILL_USE.get());
@@ -260,6 +284,11 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         com.merlinkitsune.starengine.event.SignActiveTriggeredEvent triggered =
                 new com.merlinkitsune.starengine.event.SignActiveTriggeredEvent(player, stack);
         com.merlinkitsune.astral_dice.platform.event.LoaderBus.INSTANCE.postEvent(triggered);
+        // 诡异骰子(2026-10-20):目标选择器类立牌的主动**结束**点 = 确认目标并 apply 完毕之后。
+        // 若该次施放同时进入了锁定态,结算改由 endLockAndStartCooldown 在锁定寿终时执行(互斥)。
+        if (getSignActiveLockSignId(player).isEmpty()) {
+            com.merlinkitsune.astral_dice.event.WeirdDiceHandler.onSignActiveEnded(player);
+        }
     }
 
     // 立牌主动技能反馈统一发送入口(黄色;供立牌类注册的 SignActiveTriggeredEvent 处理器与 handleUse 调用)
@@ -403,7 +432,7 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
     /**
      * 本立牌主动技能的**基础冷却 tick**(仍受既有减免链影响)。
      *
-     * <p>缺省 = 全局口径 {@code WeirdDiceHandler.signCooldownTicks(player)}(含充能封顶、诡异骰子 −50%
+     * <p>缺省 = 全局口径 {@code WeirdDiceHandler.signCooldownTicks(player)}(含充能封顶、额外电池筹码
      * 等全部既有减免)⇒ **其余立牌行为逐字不变**。个别立牌需要**自己的基础值**时覆写本方法
      * (当前实现者:怪力侦探立牌 sherry = 120 秒,与枪匠立牌同款链)。
      *
@@ -415,6 +444,25 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
      */
     protected int activeCooldownBaseTicks(Player player) {
         return com.merlinkitsune.astral_dice.event.WeirdDiceHandler.signCooldownTicks(player);
+    }
+
+    /**
+     * 本立牌主动技能**基础冷却的「未折电池」版本**(tick)。
+     *
+     * <p>链路与 {@link #activeCooldownBaseTicks(Player)} **完全一致**(自定义基础值、充能封顶、
+     * 诡异骰子折算同名同序),仅跳过「额外电池筹码 ×0.5」这一步 —— 即把其中的
+     * {@code ChargeManager#signCooldownTicks} 换成 {@code ChargeManager#signCooldownTicksBase}。
+     * 覆写者(forge 线:Dorothy / Parunan / Sherry;本线现为 Dorothy / Sherry ——
+     * Parunan 的覆写尚未移植,见 porting/fabric-1.20.1/B4-FOLLOWUP-REPORT.md)必须与
+     * {@code activeCooldownBaseTicks} 逐行镜像。
+     *
+     * <p>用途:与 {@code sign_active_max_cooldown} **同处**写入附件
+     * {@code sign_active_max_cooldown_base}(命运指引卡减半的基准)。电池只作用于立牌主动冷却本身,
+     * 不得连带砍掉本卡的减半收益。
+     */
+    protected int activeCooldownBaseTicksNoBattery(Player player) {
+        return (int) com.merlinkitsune.astral_dice.item.ChargeManager.signCooldownTicksBase(
+                player, com.merlinkitsune.starengine.component.GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS);
     }
 
     /**
@@ -458,11 +506,23 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
      */
     private static void endLockAndStartCooldown(Player player) {
         long now = player.level().getGameTime();
+        BaseSignItem lockSign = lockSignItem(getSignActiveLockSignId(player));
         long base = ModAttachments.getSignActiveMaxCooldown(player);
         long pool = ModAttachments.getSignActiveReductionPool(player);
         long effective = Math.max(0L, base - pool);
+        // 同处把「未折电池」基准改写成同一算式的结果(基础值换成**该立牌**的 no-battery 版本,
+        // 减去同一个 pool、Math.max(0,...) 兜底):命运指引卡只读 sign_active_max_cooldown_base,
+        // 必须与 sign_active_max_cooldown 同源同步,否则锁定期入池的减免与基准脱节。
+        // 立牌实例解析失败(理论上不发生)时退回锁定起点记录的基准值。
+        // ⚠️ forge 侧此处还有 skipCooldownAfterLock() 分支(蛟龙免冷却);本线无该锁定态口径
+        //    (本线蛟龙走 forcedActiveCooldownTicks / forcedCooldownUntil),故不搬此分支。
+        long baseNoBattery = lockSign != null
+                ? lockSign.activeCooldownBaseTicksNoBattery(player)
+                : com.merlinkitsune.astral_dice.component.SignAttachments.getSignActiveMaxCooldownBase(player);
+        long effectiveBase = Math.max(0L, baseNoBattery - pool);
         ModAttachments.setSignActiveCooldownEnd(player, now + effective);
         ModAttachments.setSignActiveMaxCooldown(player, effective);
+        com.merlinkitsune.astral_dice.component.SignAttachments.setSignActiveMaxCooldownBase(player, effectiveBase);
         ModAttachments.setSignActiveReductionPool(player, 0L);
         ModAttachments.setSignActiveLockSign(player, "");
         ModAttachments.setSignActiveLockEnd(player, 0L);
@@ -471,6 +531,9 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         // 解锁即清零离线补偿基准:下一次锁定由 beginActiveLock 重新落笔,避免"本次锁定结束刻"被
         // 之后某次 tick 当成离线起点算出巨大 gap(冷却是墙钟语义,不参与补偿,故此处一并归零)。
         ModAttachments.setSignActiveLockLastSeen(player, 0L);
+        // 诡异骰子(2026-10-20):主动技能**结束**(锁定态寿终 = 技能效果真正到期)⇒ 恢复 5 点生命值。
+        // 此时冷却刚入账,但结算口径是「生效期结束」而不是「冷却开始」——本方法是锁定态唯一出口。
+        com.merlinkitsune.astral_dice.event.WeirdDiceHandler.onSignActiveEnded(player);
     }
 
     /**

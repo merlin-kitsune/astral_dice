@@ -40,7 +40,7 @@ public class DragonRoarBreakEffect extends MobEffect {
     /** 效果时长:1:00 = 1200 tick(规格 §1 效果表 {@code ROAR_DEBUFF_TICKS}) */
     public static final int DURATION_TICKS = 1200;
 
-    /** 护甲修正量:−8 护甲 = −4 点防御力(1 防御力 = 2 护甲值) */
+    /** 护甲修正量:−8 护甲 ≈ −2.4 点防御力(玩家侧 1 防御力 = 1÷0.30 ≈ 3.33 护甲值) */
     public static final double ARMOR_DELTA = -8.0;
 
     /** 修饰器 id(语义名 {@code astral_dice:dragon_roar_break_armor} 的 UUIDv5;两线同值) */

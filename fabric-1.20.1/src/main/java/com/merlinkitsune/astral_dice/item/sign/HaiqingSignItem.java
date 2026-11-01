@@ -64,7 +64,7 @@ public class HaiqingSignItem extends BaseSignItem {
                 ModAttachments.setWeakMarkSource(target, Optional.of(player.getUUID()));
                 target.addEffect(new MobEffectInstance(ModEffects.WEAK_MARK.get(), 6000, 0, false, true));
                 EffectTimerGuard.apply(target, new MobEffectInstance(MobEffects.WEAKNESS, 6000, 0, false, true));
-                // 主动成功施加:开始玩家级冷却(统一经 signCooldownTicks:含诡异骰子 -50% 与充能递减)
+                // 主动成功施加:开始玩家级冷却(统一经 signCooldownTicks:含充能封顶与额外电池筹码减成)
                 ModAttachments.setSignActiveCooldownEnd(player,
                         player.level().getGameTime() + WeirdDiceHandler.signCooldownTicks(player));
                 // 电流核心筹码:主动技能实际生效时充能 +1

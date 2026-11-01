@@ -1,0 +1,281 @@
+package com.merlinkitsune.astral_dice.client;
+
+import com.merlinkitsune.astral_dice.AstralDiceMod;
+import com.merlinkitsune.astral_dice.event.AstralEventRegistry;
+import com.merlinkitsune.astral_dice.event.EventCardService;
+import com.merlinkitsune.astral_dice.event.api.AstralEvent;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.Mth;
+import com.merlinkitsune.astral_dice.platform.client.gui.overlay.IGuiOverlay;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/** 事件效果卡覆盖层（fabric：1:1 移植自 forge-1.20.1 同名文件，2026-11-01）。口径与 1.21.1 版一致：同一 pose 内画
+ *  卡框 44×67 + 事件图 38×38 贴 (3,3) + MC 字体两行居中文字 ⇒ 框/图/文字随整卡同步缩放。
+ *
+ *  <p><b>平台差异（fabric-1.20.1）只有两处</b>，其余方法体与 forge 蓝本逐字一致：
+ *  <ol>
+ *    <li>覆盖层接口：Forge 的同名 {@code IGuiOverlay} 接口 ⇒ 本线垫片
+ *        {@link com.merlinkitsune.astral_dice.platform.client.gui.overlay.IGuiOverlay}
+ *        （方法签名 {@code render(ForgeGui, GuiGraphics, float, int, int)} 同形，故 {@link #OVERLAY} 的
+ *        lambda 逐字不动；lambda 形参类型由目标类型推断，不需要 import {@code ForgeGui}）。
+ *        真正的逐帧派发在 {@code FabricClientBridges}（{@code HudRenderCallback}），注册入口仍是
+ *        {@code client/ModClientEvents#registerGuiOverlays}。</li>
+ *    <li>1.20.1 的 merged jar <b>没有</b> {@code (ns, path)} 两参静态工厂（Forge 侧是补丁加回来的）
+ *        ⇒ 本线一律改写为 {@code new ResourceLocation(ns, path)}，
+ *        共 4 处（本文件全部 ResourceLocation 构造点），语义逐字等价。</li>
+ *  </ol>
+ *  渲染 API（{@code GuiGraphics} / {@code RenderSystem} / {@code NativeImage}）在 1.20.1 两加载器下同源，
+ *  故坐标常量、颜色值、flush 时序、{@code a >= 4} 的文字跳过口径**一律照抄**，未作任何调整。 */
+public final class EventCardOverlay {
+    public static final ResourceLocation LAYER_ID =
+            new ResourceLocation(AstralDiceMod.MODID, "event_card");
+
+    /** 事件卡框宽（公开：事件选择界面按同口径命中判定/排布）。 */
+    public static final int FRAME_W = 44;
+    /** 事件卡框高（公开：事件选择界面按同口径命中判定/排布）。 */
+    public static final int FRAME_H = 67;
+    private static final int PANE_X = 2;      // 图片格实测（card_frame.png: x=2..41）
+    private static final int PANE_Y = 2;      // y=2..40
+    private static final int PANE_W = 40;
+    private static final int PANE_H = 39;
+
+
+    private static final int NAME_Y_OFF = 45;   // 文字格 y=42..64 内居中
+    private static final int TIME_Y_OFF = 54;
+    private static final long IN_MS = 200L;    // 进场（用户裁决 2026-10-10：渐入 0.2s）
+    private static final long OUT_MS = 200L;   // 收起（用户裁决：渐出 0.2s）
+    /**
+     * **卡片可见窗口** = 服务端 {@link EventCardService#CARD_ANIM_TICKS} 刻 × 50ms = 28t = 1.4s。
+     *
+     * <p>与服务端结算刻同源（都从 {@link EventCardService#DELAY_TICKS} 推导），不再写死数字。
+     */
+    private static final long ANIM_MS = EventCardService.CARD_ANIM_TICKS * 50L;
+    /** 停留 = 可见窗口 - 进场 - 收起（随 {@link #ANIM_MS} 自动推导，不再写死 1.0s）。 */
+    private static final long HOLD_MS = ANIM_MS - IN_MS - OUT_MS;
+    /**
+     * 卡实例的存活上限 = <b>服务端唯一结算点</b> {@link EventCardService#DELAY_TICKS} 刻 × 50ms（1.9s）。
+     *
+     * <p>动画在 {@link #ANIM_MS}（1.4s）就播完（alpha 已归零），这里只是把**已不可见**的实例丢掉；
+     * 留到结算刻才丢，是为了让 {@link EventCardService#SETTLE_BUFFER_TICKS} 刻（0.5s）的静默窗口
+     * 对玩家与服务端是同一个。
+     */
+    private static final long TOTAL_MS = EventCardService.DELAY_TICKS * 50L;
+    /** 收起阶段的**终点缩放**：用户裁决「淡出 = 缩小淡出」（原实现写成放大淡出，方向错了）。 */
+    private static final float OUT_END_SCALE = 0.8F;
+    private static final ResourceLocation FRAME_TEX =
+            new ResourceLocation(AstralDiceMod.MODID, "textures/gui/event/card_frame.png");
+
+    private static final List<Card> CARDS = new ArrayList<>();
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(EventCardOverlay.class);
+
+    private EventCardOverlay() {
+    }
+
+    private record Card(ResourceLocation eventId, int durationTicks, int tier, long startMs) {
+    }
+
+    public static void show(ResourceLocation eventId, int durationTicks, int tier) {
+        CARDS.add(new Card(eventId, durationTicks, tier, System.currentTimeMillis()));
+        // 机器行（客户端时间轴取证）:与服务端 AP_EVENT_CARD: shown:<id>:exec_at=<tick> 配对，
+        // 用于断言「卡可见窗口（show → hide）严格短于服务端 38t 结算」。
+        LOGGER.info("AP_EVENT_CARD_CLIENT: show:{}:tier={}:anim_ms={}:total_ms={}",
+                eventId, tier, ANIM_MS, TOTAL_MS);
+    }
+
+    /** 供 ModClientEvents#registerGuiOverlays 注册（fabric 侧经 IGuiOverlay 垫片，签名同形）。 */
+    public static final IGuiOverlay OVERLAY = (gui, g, partialTick, width, height) -> render(g);
+
+    private static void render(GuiGraphics g) {
+        if (CARDS.isEmpty()) return;
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null || mc.options.hideGui) { CARDS.clear(); return; }
+        long now = System.currentTimeMillis();
+        CARDS.removeIf(c -> {
+            if (now - c.startMs() < TOTAL_MS) return false;
+            LOGGER.info("AP_EVENT_CARD_CLIENT: hide:{}:alive_ms={}", c.eventId(), now - c.startMs());
+            return true;
+        });
+        int sw = g.guiWidth();
+        int sh = g.guiHeight();
+        for (int i = 0; i < CARDS.size(); i++) {
+            Card card = CARDS.get(i);
+            long t = now - card.startMs();
+            float scale; float alpha;
+            if (t < IN_MS) {
+                float p = t / (float) IN_MS;
+                scale = 0.775F + 0.225F * p; alpha = p;
+            } else if (t < IN_MS + HOLD_MS) {
+                scale = 1.0F; alpha = 1.0F;
+            } else {
+                // 收起阶段（t ∈ [IN+HOLD, ANIM_MS]）；此后 p 夹到 1 ⇒ alpha=0、scale=OUT_END_SCALE，
+                // 卡在 [ANIM_MS, TOTAL_MS) 这段缓冲里已经不可见（不夹会让 alpha 变成负数）。
+                float p = Mth.clamp((t - IN_MS - HOLD_MS) / (float) OUT_MS, 0.0F, 1.0F);
+                scale = 1.0F - (1.0F - OUT_END_SCALE) * p; alpha = 1.0F - p;
+            }
+            drawCard(g, mc, card, sw / 2, sh / 2 + i * 76, scale, alpha);
+        }
+    }
+
+    private static void drawCard(GuiGraphics g, Minecraft mc, Card card, int centerX, int centerY,
+                                 float scale, float alpha) {
+        ResourceLocation icon = new ResourceLocation(card.eventId().getNamespace(),
+                "textures/gui/event/" + iconPath(card) + ".png");
+        g.pose().pushPose();
+        // 垂直对齐：FRAME_H 为奇数时 quad 中心天然低 0.5 GUI px（=2 物理 px @guiScale4）⇒ 上移半像素
+        float yOff = (FRAME_H % 2 == 0) ? 0.0F : -0.5F;
+        g.pose().translate(centerX, centerY + yOff, 300.0F);
+        g.pose().scale(scale, scale, 1.0F);
+        int x = -FRAME_W / 2;
+        int y = -FRAME_H / 2;
+        int a = Mth.clamp((int) (alpha * 255.0F), 0, 255);
+        // ⚠️ 实机连拍实测（2026-10-10）：GuiGraphics#setColor 在本版本的 blit 路径**不生效**
+        // ⇒ 卡框与事件图完全不透明（看起来是「不透明弹出 + 只缩小 + 只文字渐隐」）。改为直接设 shader 颜色。
+        com.mojang.blaze3d.systems.RenderSystem.enableBlend();
+        // 先把**更早 layer 已排队但未 flush 的几何（含原版准星）以白色冲掉**，再给卡设 alpha；
+        // 否则 g.flush() 会把它们一起用卡的 alpha 画掉（淡入淡出期间准星会同步变淡）。
+        g.flush();
+        com.mojang.blaze3d.systems.RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, a / 255.0F);
+        g.blit(FRAME_TEX, x, y, 0, 0, FRAME_W, FRAME_H, FRAME_W, FRAME_H);
+        drawFaceCentered(g, icon, x, y);
+        // 1.21.1/1.20.1 的 GuiGraphics 是**批处理**：shader 颜色在 flush 时生效 ⇒
+        // 必须在此处显式 flush，否则卡框/事件图会用后续文字的颜色（= 完全不透明）画出来。
+        g.flush();
+        // BUG1 修复：原版 Font#adjustColor 把 alpha ≤ 3 的颜色强制改回完全不透明
+        //（1.20.1 net/minecraft/client/gui/Font.java:113-115 `(color & -67108864) == 0 ? color | -16777216 : color`）
+        // ⇒ 淡出末段与 [ANIM_MS, TOTAL_MS) 缓冲窗（a=0）内卡面已消失，文字却被拉回全不透明而残留。
+        // a < 4 时文字本就低于 2% 不透明度、视觉不可见，直接跳过名称与计时器绘制（贴图绘制逐字不动）。
+        if (a >= 4) {
+            AstralEvent ev = AstralEventRegistry.get(card.eventId()).orElse(null);
+            int color = (ev == null ? 0xFFFFFF : ev.polarity().color().getColor()) | (a << 24);
+            Component name = Component.translatable("event.astral_dice." + card.eventId().getPath() + ".name");
+            g.drawString(mc.font, name, x + FRAME_W / 2 - mc.font.width(name) / 2, y + NAME_Y_OFF, color, false);
+            if (card.durationTicks() > 0) {
+                Component timer = Component.literal(formatTicks(card.durationTicks()));
+                g.drawString(mc.font, timer, x + FRAME_W / 2 - mc.font.width(timer) / 2, y + TIME_Y_OFF, color, false);
+            }
+        }
+        com.mojang.blaze3d.systems.RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
+        g.setColor(1.0F, 1.0F, 1.0F, 1.0F);
+        g.pose().popPose();
+    }
+
+    /**
+     * 把一张事件卡画在**屏幕绝对坐标** (frameX, frameY)（左上角）——供事件选择界面复用。
+     *
+     * <p>与 {@link #drawCard} 逐字同源（同一套「框架图 + 事件图标 + MC 字体文本」口径），
+     * 只去掉「居中 + 缩放 + 淡入淡出」那层变换（选择界面里的卡是静止、不缩放的）。
+     *
+     * @param frameTex 卡框底图：默认 {@code textures/gui/shop/fanny_skill_event.png}；
+     *                 鼠标指向 / 单击选中后传 {@code ..._select.png}
+     */
+    public static void drawCardAt(GuiGraphics g, Minecraft mc, ResourceLocation frameTex,
+                                  ResourceLocation eventId, int durationTicks, int tier,
+                                  int frameX, int frameY) {
+        ResourceLocation icon = new ResourceLocation(eventId.getNamespace(),
+                "textures/gui/event/" + iconPath(eventId, tier) + ".png");
+        int a = 255;
+        com.mojang.blaze3d.systems.RenderSystem.enableBlend();
+        g.flush();
+        com.mojang.blaze3d.systems.RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
+        g.blit(frameTex, frameX, frameY, 0.0F, 0.0F, FRAME_W, FRAME_H, FRAME_W, FRAME_H);
+        drawFaceCentered(g, icon, frameX, frameY);
+        g.flush();
+        AstralEvent ev = AstralEventRegistry.get(eventId).orElse(null);
+        int color = (ev == null ? 0xFFFFFF : ev.polarity().color().getColor()) | (a << 24);
+        Component name = Component.translatable("event.astral_dice." + eventId.getPath() + ".name");
+        g.drawString(mc.font, name, frameX + FRAME_W / 2 - mc.font.width(name) / 2, frameY + NAME_Y_OFF, color, false);
+        if (durationTicks > 0) {
+            Component timer = Component.literal(formatTicks(durationTicks));
+            g.drawString(mc.font, timer, frameX + FRAME_W / 2 - mc.font.width(timer) / 2, frameY + TIME_Y_OFF, color, false);
+        }
+        com.mojang.blaze3d.systems.RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
+        g.setColor(1.0F, 1.0F, 1.0F, 1.0F);
+    }
+
+    /**
+     * 图标路径（公开版：供事件选择界面在**没有 Card 实例**时复用）：
+     * **阶级 > 0 时取 id 加 _suffix**（「调查阶段」4 张分阶图 _1/_2/_3/_revelation），否则取原名。
+     */
+    public static String iconPath(ResourceLocation eventId, int tier) {
+        String base = eventId.getPath();
+        if (tier > 0) {
+            String suffix = com.merlinkitsune.astral_dice.event.api.AstralEventTier.of(tier).iconSuffix();
+            if (suffix != null && !suffix.isEmpty()) return base + "_" + suffix;
+        }
+        return base;
+    }
+
+    private static String formatTicks(int ticks) {
+        int total = Math.max(0, ticks) / 20;
+        return String.format("%d:%02d", total / 60, total % 60);
+    }
+    // ────────────────────── 事件图「按内容居中」绘制（2026-10-10 修正） ──────────────────────
+
+    /** 事件图的内容矩形缓存（x,y,w,h；来自 alpha>8 的 bbox）。 */
+    private static final java.util.Map<ResourceLocation, int[]> RECT_CACHE = new java.util.HashMap<>();
+
+    /**
+     * 把事件图**按可见内容**居中并等比适配卡框的图片格。
+     *
+     * <p>为什么不能整张 64×64 直接缩放：卡面美术四周的透明边距**不对称**（实测
+     * `world_collapse` 上 16 / 下 10、`crowded_passage` 左 2 / 右 4），整张画会让画面看着偏心。
+     */
+    private static void drawFaceCentered(GuiGraphics g, ResourceLocation tex, int frameX, int frameY) {
+        int[] r = RECT_CACHE.computeIfAbsent(tex, EventCardOverlay::measureContent);
+        if (r == null || r[2] <= 0 || r[3] <= 0) {
+            g.blit(tex, frameX + PANE_X, frameY + PANE_Y, 0.0F, 0.0F, PANE_W, PANE_H, 64, 64);
+            return;
+        }
+        float s = Math.min(PANE_W / (float) r[2], PANE_H / (float) r[3]);
+        int dw = Math.max(1, Math.round(r[2] * s));
+        int dh = Math.max(1, Math.round(r[3] * s));
+        int dx = frameX + PANE_X + (PANE_W - dw) / 2;
+        int dy = frameY + PANE_Y + (PANE_H - dh) / 2;
+        g.blit(tex, dx, dy, dw, dh, (float) r[0], (float) r[1], r[2], r[3], 64, 64);
+    }
+
+    /** 量测事件图的内容矩形（缓存一次）；失败返回 null。 */
+    private static int[] measureContent(ResourceLocation tex) {
+        var mc = Minecraft.getInstance();
+        if (mc == null) return null;
+        var res = mc.getResourceManager().getResource(tex);
+        if (res.isEmpty()) return null;
+        try (var in = res.get().open()) {
+            var img = com.mojang.blaze3d.platform.NativeImage.read(in);
+            int w = img.getWidth(), h = img.getHeight();
+            int minX = w, maxX = -1, minY = h, maxY = -1;
+            for (int y = 0; y < h; y++) {
+                for (int x = 0; x < w; x++) {
+                    if (((img.getPixelRGBA(x, y) >>> 24) & 0xFF) > 8) {
+                        if (x < minX) minX = x;
+                        if (x > maxX) maxX = x;
+                        if (y < minY) minY = y;
+                        if (y > maxY) maxY = y;
+                    }
+                }
+            }
+            img.close();
+            if (maxX < 0) return null;
+            return new int[] { minX, minY, maxX - minX + 1, maxY - minY + 1 };
+        } catch (Exception ex) {
+            return null;
+        }
+    }
+    /**
+     * 图标路径：**阶级 > 0 时取 `<id>_<suffix>`**（「调查阶段」一条事件 4 张分阶图：
+     * `_1 / _2 / _3 / _revelation`），否则取 `<id>`（用户裁决 2026-10-10：它与其他事件触发方式一致，
+     * 仅图标随阶级切换）。
+     */
+    private static String iconPath(Card card) {
+        return iconPath(card.eventId(), card.tier());
+    }
+}

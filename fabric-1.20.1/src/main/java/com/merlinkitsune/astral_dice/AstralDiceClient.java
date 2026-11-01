@@ -31,6 +31,10 @@ public class AstralDiceClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
+        // 激光/轨道炮客户端光束(B1-NETWORK):forge 靠 @Mod.EventBusSubscriber(mid, CLIENT) 自动订阅,
+        // Fabric 无自动订阅 ⇒ 必须显式登记;漏登记的可观测症状 = SubscriptionAudit.verifyClientSide()
+        // 点名该类「带 @SubscribeEvent 却从未登记」,且光束不显示、不报错。列表按类名字母序,本行在前。
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.client.BeamFxRenderer.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.client.ClientKeyNames.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.client.ClientSessionEvents.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.client.ClientTickHandler.class);
@@ -74,6 +78,10 @@ public class AstralDiceClient implements ClientModInitializer {
         // 元素才被加载 ⇒ 「只等到主菜单」的冒烟测不到。设
         //   -Dastral_dice.preloadClasses=<逗号分隔类名>
         // 可把这些类**提前到启动期**加载，让缺陷当场爆出来。
+        // B0 实体渲染器(EntityRenderersEvent.RegisterRenderers / RegisterLayerDefinitions 的等价物)。
+        // ⚠️ 只能调用一次:registerModelLayer 内部是 Map.putIfAbsent + 重复即抛 IllegalArgumentException。
+        com.merlinkitsune.astral_dice.client.EntityRenderers.bootstrapClient();
+
         preloadClassesForSmokeTest();
 
         AstralDiceMod.LOGGER.info("Astral Dice client initialized.");

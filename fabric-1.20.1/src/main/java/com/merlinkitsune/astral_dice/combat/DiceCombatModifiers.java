@@ -15,6 +15,7 @@ import com.merlinkitsune.astral_dice.item.chip.ElectricSwordChipItem;
 import com.merlinkitsune.astral_dice.item.chip.AdvancedPeripheralsChipItem;
 import com.merlinkitsune.astral_dice.item.chip.CutterChipItem;
 import com.merlinkitsune.astral_dice.item.chip.CutterBladeChipItem;
+import com.merlinkitsune.astral_dice.item.chip.EagleScopeChipItem;
 import com.merlinkitsune.astral_dice.item.sign.FenSignItem;
 import com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem;
 import com.merlinkitsune.astral_dice.item.sign.MosesSignItem;
@@ -56,7 +57,7 @@ import com.merlinkitsune.starengine.combat.HostileTargets;
  *
  * 防御力规范(必须遵守):**仅战斗牌(防御牌)参与骰战防御修饰器**(只有防御牌数值是区间变动,
  * 由 {@link CardRegistry} 掷骰);效果牌/立牌/筹码提供的防御力一律折算为真实护甲
- * (1 防御力 = 2 护甲值),经 {@link #setDefenseArmorBonus} 挂到玩家 ARMOR 属性——
+ * (1 防御力 = 1 ÷ 阵营护甲系数 的护甲值),经 {@link #setDefenseArmorBonus} 挂到玩家 ARMOR 属性——
  * 骰战经护甲项(护甲×0.30,取自库 CombatFormula)自动计入,原版伤害管线(骰战伤害无穿透标志)同样按真实护甲减伤。
  *
  * 附属内容(新立牌/筹码/效果/联动)实现 {@link AttackPowerModifier} / {@link DefensePowerModifier}
@@ -192,15 +193,53 @@ public final class DiceCombatModifiers {
         return victim != null && victim == instanceVictim ? instanceFactor : 1.0;
     }
 
+    /** 1 点防御力折算到玩家 ARMOR 属性的护甲值(= 1 ÷ 玩家护甲系数;2026-10-25 口径修正)。 */
+    public static final double PLAYER_ARMOR_PER_DEFENSE = 1.0 / com.merlinkitsune.starengine.combat.CombatFormula.PLAYER_ARMOR_COEF;
+    /** 1 点防御力折算到生物 ARMOR 属性的护甲值(= 1 ÷ 生物护甲系数)。 */
+    public static final double MOB_ARMOR_PER_DEFENSE = 1.0 / com.merlinkitsune.starengine.combat.CombatFormula.MOB_ARMOR_COEF;
+
     /**
-     * 效果牌/立牌/筹码的防御力统一按「防御力点数 × 2.0」折算为真实护甲值。
+     * 防御力点数 → 原版护甲值。玩家与生物两侧的护甲系数不同(0.30 / 0.40),必须分开换算,
+     * 否则「防御力 +X」落到骰战防御力上只剩 X × 护甲系数 × 折算比。
+     */
+    public static double armorValueForDefensePoints(double defensePoints, boolean playerSide) {
+        return defensePoints * (playerSide ? PLAYER_ARMOR_PER_DEFENSE : MOB_ARMOR_PER_DEFENSE);
+    }
+
+    /** 原版护甲值 → 防御力点数({@link #armorValueForDefensePoints} 的逆运算;反向换算的唯一入口)。 */
+    public static double defensePointsForArmor(double armor, boolean playerSide) {
+        return armor * (playerSide
+                ? com.merlinkitsune.starengine.combat.CombatFormula.PLAYER_ARMOR_COEF
+                : com.merlinkitsune.starengine.combat.CombatFormula.MOB_ARMOR_COEF);
+    }
+
+    /** 同上,按实体是否 Player 自动选阵营系数(用于目标可能是怪物的调用点)。 */
+    public static double armorValueForDefensePoints(double defensePoints, net.minecraft.world.entity.LivingEntity entity) {
+        return armorValueForDefensePoints(defensePoints, entity instanceof Player);
+    }
+
+    /**
+     * **有效护甲**(防御力换算与骰战结算的唯一读法):取 ARMOR 属性的 double 终值。
+     *
+     * <p>不能用 {@code LivingEntity#getArmorValue()}:它是 {@code Mth.floor(ARMOR)},而本模组
+     * 折算出的护甲常带小数(如「防御力 +8」= 26.6667 护甲)⇒ 先截断会让防御力少算 1 点
+     * (2 + 26 x 0.30 = 9.8 ⇒ 9,而非 10;2026-10-25 实机暴露)。护甲上限已移除,不需要再钳制。
+     */
+    public static double effectiveArmorPoints(net.minecraft.world.entity.LivingEntity entity) {
+        if (entity == null) return 0.0D;
+        return Math.max(0.0D, entity.getAttributeValue(Attributes.ARMOR));
+    }
+
+    /**
+     * 效果牌/立牌/筹码的防御力统一按「1 防御力 = 1 ÷ 阵营护甲系数 护甲值」折算为真实护甲值
+     * (见 {@link #armorValueForDefensePoints})。
      * 通过瞬态 ARMOR 属性修饰器施加:仅当数值变化时才增删(避免每 tick 属性同步)。
      * 数值 ≤ 0 时移除修饰器(护甲属性下限 0,负防御自然失效)。
      *
-     * <p>⚠️ <b>折算系数口径提示(待裁决,本版未改)</b>:2.0 是旧防御公式「2 + 护甲÷2」的遗留 ——
-     * 当时 2 点护甲恰等于 1 点防御力。现公式已改为「4 + 护甲×0.30 + 0.85×韧性」,
-     * 2 点护甲只兑现 0.6 点防御力 ⇒ 传入的 {@code defensePoints} 实际只落地 <b>60%</b>。
-     * 是否把系数改为「1 ÷ 玩家护甲系数(0.30)≈ 3.333」由用户裁决。
+     * <p><b>口径修正(2026-10-25 用户裁决)</b>:旧实现按固定「×2.0 护甲」折算 —— 那只是旧防御公式「2 + 护甲÷2」的遗留
+     * (当时 2 护甲恰 = 1 防御力)。公式改为「2 + 护甲×0.30 + 0.85×韧性」后,同一折算只兑现 60% 的
+     * {@code defensePoints} ⇒ 文案「防御力 +X」与实机读数不符(数值口径失真)。现按系数倒数换算:
+     * 玩家 +X 防御力落 +X 防御力(≈3.33X 护甲),生物按 0.40 系数(2.5X 护甲)。
      */
     public static void setDefenseArmorBonus(Player player, String modifierKey, int defensePoints) {
         if (player == null || player.level().isClientSide()) return;
@@ -208,7 +247,7 @@ public final class DiceCombatModifiers {
         if (attr == null) return;
         java.util.UUID id = java.util.UUID.nameUUIDFromBytes(
                 (AstralDiceMod.MODID + ":" + modifierKey).getBytes(java.nio.charset.StandardCharsets.UTF_8));
-        double armor = defensePoints * 2.0;
+        double armor = armorValueForDefensePoints(defensePoints, true);
         AttributeModifier existing = attr.getModifier(id);
         if (armor <= 0) {
             if (existing != null) attr.removeModifier(id);
@@ -218,6 +257,27 @@ public final class DiceCombatModifiers {
             attr.removeModifier(id);
             attr.addTransientModifier(new AttributeModifier(id, "astral_dice:" + modifierKey, armor,
                     AttributeModifier.Operation.ADDITION));
+        }
+    }
+
+    /**
+     * 同 {@link #setDefenseArmorBonus(Player, String, int)},但接受任意生物
+     * (forge 蓝本用于「雷暴将至」给范围内敌对生物 +2 防御力;本线该效果走直接 ARMOR 写入,此处保留等价入口)。
+     */
+    public static void setDefenseArmorBonus(net.minecraft.world.entity.LivingEntity entity, String modifierKey, int defensePoints) {
+        if (entity == null || entity.level().isClientSide()) return;
+        net.minecraft.world.entity.ai.attributes.AttributeInstance attr = entity.getAttribute(Attributes.ARMOR);
+        if (attr == null) return;
+        java.util.UUID id = java.util.UUID.nameUUIDFromBytes((AstralDiceMod.MODID + ":" + modifierKey).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        double armor = armorValueForDefensePoints(defensePoints, entity instanceof Player);
+        if (armor <= 0) {
+            if (attr.getModifier(id) != null) attr.removeModifier(id);
+            return;
+        }
+        var existing = attr.getModifier(id);
+        if (existing == null || existing.getAmount() != armor) {
+            attr.removeModifier(id);
+            attr.addTransientModifier(new net.minecraft.world.entity.ai.attributes.AttributeModifier(id, modifierKey, armor, net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation.ADDITION));
         }
     }
 
@@ -353,11 +413,13 @@ public final class DiceCombatModifiers {
             return healing * copies;
         });
 
-        // === 内置:普通瞄具/鹰眼瞄具(攻击力+2;骰神赐福期间攻击时施加 1 层标记 / 按标记层数×2 加攻击力) ===
+        // === 内置:普通瞄具/鹰眼瞄具(攻击力+2;骰神赐福期间攻击时施加 1 层标记) ===
         // ⚠️ 2026-09-24 用户裁决:「瞄具类攻击实际上受**骰神赐福门控** —— 不按骰神赐福模式攻击目标
-        //   (近战类)则不应该触发」⇒ 标记与鹰眼的 ×2 都要求 `DICE_BLESSING` 生效;
+        //   (近战类)则不应该触发」⇒ 标记与鹰眼的加成都要求 `DICE_BLESSING` 生效;
         //   普通瞄具的固定 +2 仍**无条件**(与 tooltip 同源:「攻击力 +2。骰神赐福期间攻击时对目标施加 1 层标记」)。
         //   旧实现只判「是否佩戴」⇒ 未处于赐福期间也会施加标记/加成,与文案不符,本次补齐门控。
+        // ⚠️ 2026-10-15 用户裁决:**鹰眼瞄具的加成已从本修饰器移出**(攻击力通道 → 额外加伤通道,
+        //   见下方同件筹码的专属块)—— 本处只负责「施加 1 层标记」与「记录命中前的标记层数」。
         registerAttackModifier((ctx, ap) -> {
             if (ctx.attacker.level().isClientSide()) return ap;
             // ⚠️ 本线(forge)必须 .get():此处 ModEffects 暴露的是 RegistryObject,hasEffect 只收 MobEffect 实例;
@@ -369,12 +431,27 @@ public final class DiceCombatModifiers {
             }
             if (hasCurio(ctx.attacker, ModItems.EAGLE_SCOPE_CHIP.get())) {
                 if (blessed) {
-                    int markLevel = MarkManager.getLevel(ctx.target);
-                    ap += markLevel * 2;
+                    // 2026-10-15:加伤不再进攻击力 —— 这里只记录**命中前**的层数(必须在下方
+                    // MarkManager.apply 之前读,否则会读到本次新施加的那 1 层),供额外加伤修饰器消费。
+                    ctx.eagleScopeMarkLevel = MarkManager.getLevel(ctx.target);
                     if (ctx.event != null) MarkManager.apply(ctx.target);
                 }
             }
             return ap;
+        });
+
+        // === 额外加伤:鹰眼瞄具(对带标记目标 + 标记层数 ×2 点攻击伤害) ===
+        // 2026-10-15 用户裁决:原「本次战斗 ap += 标记层数×2」走的是**攻击力**通道(会被暴击 ×1.5
+        // 放大、并参与骰战「攻击点 − 防御点」的差值结算),现改为与手电筒-爆闪同款的**额外加伤**
+        // 独立结算(`astral_dice:extra_damage` 单次伤害实例,命中落地后施加)。
+        // 数值口径不变:层数取**命中前**的层数(由上方瞄具攻击修饰器在 MarkManager.apply 之前写入 ctx)。
+        // ⚠️ 附带结果(如实登记):该加伤自此**不进反击伤害** —— injectCounterDamage 只汇总攻击修饰器,
+        //    不消费额外加伤(与手电筒-爆闪/强光/美工刀等既有额外加伤一致)。
+        registerExtraDamageModifier(ctx -> {
+            if (ctx.attacker.level().isClientSide()) return 0;
+            if (ctx.eagleScopeMarkLevel <= 0) return 0;
+            if (!hasCurio(ctx.attacker, ModItems.EAGLE_SCOPE_CHIP.get())) return 0;
+            return ctx.eagleScopeMarkLevel * EagleScopeChipItem.DAMAGE_PER_MARK;
         });
 
         // === 内置:标靶(攻击力+1) ===
@@ -390,6 +467,16 @@ public final class DiceCombatModifiers {
         registerExtraDamageModifier(ctx -> {
             if (!hasCurio(ctx.attacker, ModItems.FLASHLIGHT_CHIP.get())) return 0;
             return StarLightManager.get(ctx.attacker) / 4;
+        });
+
+        // === 额外加伤:手电筒-爆闪(每 2 层星光 +1 点) ===
+        // ⚠️ 与上方「手电筒-强光」同走**额外加伤**通道,**不得**并进 attackModifiers() 的攻击力:
+        //    2026-09-25 用户裁决 —— 星光加伤并入攻击力会污染「攻击力快照」(教主降神狐光基数被连带放大);
+        //    FlashlightBurstChipItem#extraDamage 的类内 javadoc 亦已写死「结算见 DiceCombatModifiers 额外加伤修饰器」。
+        // 装备判定走 FlashlightBurstChipItem#isEquipped(含 hasDiceEquipped 总闸门,与上方强光同款)。
+        registerExtraDamageModifier(ctx -> {
+            if (ctx.attacker.level().isClientSide()) return 0;
+            return com.merlinkitsune.astral_dice.item.chip.FlashlightBurstChipItem.extraDamage(ctx.attacker);
         });
 
         // === 内置:电流剑(每 4 点充能 +1 攻击力) ===
@@ -681,7 +768,7 @@ public final class DiceCombatModifiers {
 
         // === 内置:防御卡掷骰(收集结果写入上下文;目标无骰子时 targetEnhancement 为 null,结果 0)。
         // 防御力规范:骰战防御修饰器仅保留战斗防御牌(区间变动);效果牌/立牌/筹码的防御力
-        // 统一折算为真实护甲(1 防御力 = 2 护甲值),由各自 tick 经 setDefenseArmorBonus 挂到 ARMOR 属性,
+        // 统一折算为真实护甲(1 防御力 = 1÷护甲系数 护甲值),由各自 tick 经 setDefenseArmorBonus 挂到 ARMOR 属性,
         // 骰战经护甲项自动计入(见 DiceCombatEvents 防御结算) ===
         registerDefenseModifier((ctx, dp) -> {
             int sum = 0;
@@ -754,10 +841,10 @@ public final class DiceCombatModifiers {
     }
 
     /**
-     * 玩家的**防御力**(与 GUI/tooltip 同源的口径):{@code 4 + 有效护甲×0.30 + 0.85×盔甲韧性}。
+     * 玩家的**防御力**(与 GUI/tooltip 同源的口径):{@code 2 + 有效护甲×0.30 + 0.85×盔甲韧性}。
      *
-     * <p>效果牌/立牌/筹码的防御力都已折算为**真实护甲**(1 防御 = 2 护甲值,见
-     * {@link #setDefenseArmorBonus}),故 {@code getArmorValue()} 已包含它们 ⇒ 本方法自动反映
+     * <p>效果牌/立牌/筹码的防御力都已折算为**真实护甲**(1 防御 = 1 ÷ 护甲系数 护甲值,见
+     * {@link #setDefenseArmorBonus}),故 {@link #effectiveArmorPoints} 已包含它们 ⇒ 本方法自动反映
      * 「当前实际防御力」。与 {@link #getDisplayDefenseRange} 的基础项逐字同源。
      */
     public static int defensePowerOf(Player player) {
@@ -770,7 +857,7 @@ public final class DiceCombatModifiers {
                 enhancement = ModDataComponents.WEAPON_ENHANCEMENT.getOrDefault(r.get().stack(), WeaponEnhancement.EMPTY);
             }
         }
-        return (int) Math.floor(defensePowerBase(player, enhancement));
+        return (int) Math.floor(defensePowerBase(player, enhancement) + 1.0E-6D);
     }
 
     /**
@@ -893,7 +980,7 @@ public final class DiceCombatModifiers {
         return ids;
     }
 
-    /** 防御力基础值(4 + 护甲×0.30 + 0.85×韧性,取自库 CombatFormula);{@link #getDisplayDefenseRange} 与 {@link #defensePowerOf} 共用 */
+    /** 防御力基础值(2 + 护甲×0.30 + 0.85×韧性,取自库 CombatFormula);{@link #getDisplayDefenseRange} 与 {@link #defensePowerOf} 共用 */
     private static double defensePowerBase(Player player, WeaponEnhancement enhancement) {
         if (enhancement == null) enhancement = WeaponEnhancement.EMPTY;
         DiceCombatContext ctx = new DiceCombatContext(
@@ -903,11 +990,12 @@ public final class DiceCombatModifiers {
         for (DefensePowerModifier modifier : defenseModifiers()) {
             modifierDefense = modifier.apply(ctx, modifierDefense);
         }
-        // 效果牌/立牌/筹码的防御力已折算为真实护甲(1 防御力 = 2 护甲值,见 setDefenseArmorBonus),
-        // getArmorValue() 已包含其瞬态修饰器;此处 modifierDefense 恒为 0(仅防御卡掷骰写 ctx.defenseCardSum)
+        // 效果牌/立牌/筹码的防御力已折算为真实护甲(1 防御力 = 1 ÷ 护甲系数 护甲值,见 setDefenseArmorBonus),
+        // effectiveArmorPoints 已包含其瞬态修饰器(取 ARMOR 的 double 终值,不用 floor 的 getArmorValue());
+        // modifierDefense 在本线恒为 0(仅防御卡掷骰写 ctx.defenseCardSum),保留折算入口以与 forge 同构。
         // ⚠️ 护甲 20 硬上限已于 2026-09-26 移除;公式下沉至库 CombatFormula,与骰战结算**同源**,
         //    避免「HUD/tooltip 一个值、结算另一个值」的漂移。
-        double effectiveArmor = Math.max(0, player.getArmorValue() + modifierDefense * 2.0);
+        double effectiveArmor = Math.max(0, effectiveArmorPoints(player) + armorValueForDefensePoints(modifierDefense, true));
         double toughness = player.getAttributeValue(Attributes.ARMOR_TOUGHNESS);
         return com.merlinkitsune.starengine.combat.CombatFormula.playerDefense(effectiveArmor, toughness);
     }

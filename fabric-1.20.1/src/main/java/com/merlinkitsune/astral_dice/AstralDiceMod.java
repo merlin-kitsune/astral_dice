@@ -55,10 +55,22 @@ public class AstralDiceMod implements ModInitializer {
         //    **静默丢弃**全部持久化值(实测一次登录丢 33 个键,含 guide_book_given
         //    ⇒ 手册每次登录补发一本)。详见 ModAttachments#ensureRegistered 与 KI-F17。
         com.merlinkitsune.astral_dice.component.ModAttachments.ensureRegistered();
+        // 同上理由:筹码商店的持久键内联在 ChipShopState 里(B1-CHIPSHOP),其静态初始化同样是惰性的。
+        // 不在初始化期触发 ⇒ 玩家 NBT 反序列化时注册表里没有 chip_shop_state,
+        // Fabric 逐条 "Unknown attachment type ... skipping" **静默丢弃**(冷却/刷新次数全丢)。
+        com.merlinkitsune.astral_dice.shop.ChipShopState.CHIP_SHOP_STATE.name();
         FabricBridges.installEarly();
         // 战利品注入(FAPI LootTableEvents.MODIFY):替代 Forge 侧的 GLM + LootTableLoadEvent 两条通道
         com.merlinkitsune.astral_dice.loot.FabricLootInjector.register();
         commitRegistrations();
+        // B0 平台注册链(顺序敏感):POI 建 BlockState→PoiType 映射表依赖方块已注册;
+        // 职业依赖 POI 的 ResourceKey 存在;交易表依赖职业已 commit(否则 RegistryObject.get() 抛异常)。
+        com.merlinkitsune.astral_dice.world.ModVillagerProfessions.bootstrap();
+        com.merlinkitsune.astral_dice.world.ModPoiTypes.bootstrap();
+        com.merlinkitsune.astral_dice.trade.CardTraderTrades.register();
+        com.merlinkitsune.astral_dice.trade.ChipTraderTrades.register();
+        // 实体属性:Fabric 无 EntityAttributeCreationEvent,改走 FabricDefaultAttributeRegistry。
+        com.merlinkitsune.astral_dice.event.ModEntityEvents.bootstrap();
         // 自建配方序列化器(astral_dice:nbt_shaped;用于「指定药水」的 NBT 精确匹配)。
         // ⚠️ 必须在数据包加载之前 —— 否则带 astral_nbt 约束的两条配方会因找不到 serializer
         //    而整条加载失败(而不是退回宽松匹配)。onInitialize 全程早于 datapack 装载,故安全。
@@ -105,6 +117,9 @@ public class AstralDiceMod implements ModInitializer {
 
     /** 逐个提交 DeferredRegister(声明面与 Forge 侧构造器一致)。 */
     private static void commitRegistrations() {
+        // ⚠️ 方块必须最先注册:ModItems 里的 BlockItem 供应商在 commit 时会读 ModBlocks.X.get(),
+        //    方块尚未绑定会抛 IllegalStateException(而不是静默失败)。
+        com.merlinkitsune.astral_dice.block.ModBlocks.BLOCKS.register(BUS);
         com.merlinkitsune.astral_dice.item.ModItems.ITEMS.register(BUS);
         com.merlinkitsune.astral_dice.effect.ModEffects.EFFECTS.register(BUS);
         com.merlinkitsune.astral_dice.audio.ModSounds.SOUNDS.register(BUS);
@@ -113,6 +128,7 @@ public class AstralDiceMod implements ModInitializer {
         com.merlinkitsune.astral_dice.init.ModCreativeTabs.CREATIVE_TABS.register(BUS);
         com.merlinkitsune.astral_dice.screen.ModMenuTypes.MENU_TYPES.register(BUS);
         com.merlinkitsune.astral_dice.init.ModParticles.PARTICLE_TYPES.register(BUS);
+        com.merlinkitsune.astral_dice.entity.ModEntityTypes.ENTITY_TYPES.register(BUS);
     }
 
     /**
@@ -132,37 +148,72 @@ public class AstralDiceMod implements ModInitializer {
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.command.AstralPartyCommand.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.economy.StarCoinPickupHandler.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.event.AnvilUpgradeHandler.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.event.BarricadeAggroHandler.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.event.ChipDamageHandler.class);
+        // B2-8 批次:死亡保底 —— onPlayerDrops(LivingDropsEvent, LOWEST) 决定「死亡不掉落饰品」、
+        // onPlayerClone(PlayerEvent.Clone) 决定「重生时放回饰品」;漏登记 = 两条都静默失效(饰品掉落且不归还)。
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.event.CurioDeathKeepHandler.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.event.DamageEffectCardHandler.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.event.EnderDiceHandler.class);
+        // B2-8 批次:弹卡动画锁 —— onPlayerDeath(LivingDeathEvent)/onPlayerLogout(PlayerLoggedOutEvent) 解除锁定;
+        // 漏登记 = 玩家在弹卡窗口内死亡或掉线后操作被永久冻结(只有重启服务端才恢复)。
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.event.EventAnimationLock.class);
+        // B2-8 批次:事件牌选卡会话 —— onPlayerTick(END) 推进 15s 等待期并超时结算,
+        // 死亡/登出/换维度各有一条强制结算兜底;漏登记 = 等待期永不推进、兜底全失效。
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.event.EventChoiceManager.class);
+        // B2-8 批次:事件牌结算 —— onPlayerTick 每 tick 驱动 EventCardService.drain + 定时器清扫,
+        // onHeal(LivingHealEvent) 拦「本次治疗被禁止」的场合;漏登记 = 弹卡后永不结算(卡面挂死)。
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.event.EventEffects.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.event.FirstLootChestHandler.class);
+        // B4-SIGNS 批次:立牌事件的宿主类(forge 由 @Mod.EventBusSubscriber 自动订阅)
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.event.LinglingSignEvents.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.event.LivingPageFlightScheduler.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.event.LootInjectionHandler.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.event.ModEffectEvents.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.event.ModTooltipHandler.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.event.NetherrackDiceHandler.class);
+        // B4-SIGNS 批次:铁处女/摸鱼免伤、多萝西温暖叠层、修女被动清除的宿主类
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.event.NewSignEvents.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.event.ObsidianDiceHandler.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.event.PlayerLifecycleHandler.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.event.PlayerTickEvents.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.event.RailgunStrikeScheduler.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.event.RepulsionCreeperGuard.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.event.RepulsionTeleportGuard.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.event.TemporaryCardEvents.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.InvestigationEventUtil.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.MarkManager.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.RenShieldManager.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.card.FateGuidanceCardItem.class);
+        // 筹码事件钩子(B1-CHIPS-WIRING):AbyssReagentChipItem 带 @SubscribeEvent onPlayerDeath ⇒ 必须显式登记。
+        // 受击充能(2026-10-15 用户裁决):AirbagChipItem 带 @SubscribeEvent onIncomingDamage(LivingHurtEvent)
+        // ⇒ 必须显式登记;漏登记 = 受击不再攒充能(静默失效,编译与构建都不报错)。
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.chip.AirbagChipItem.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.chip.AbyssReagentChipItem.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.chip.AdrenalineChipItem.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.chip.CursedSwordChipItem.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.chip.ElectricSwordChipItem.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.chip.FlashlightChipItem.class);
+        // 同上:FortuneStickChipItem 带 @SubscribeEvent onHostileKill ⇒ 必须显式登记。
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.chip.FortuneStickChipItem.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.chip.FriendshipBadgeChipItem.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.chip.SmartWatchChipItem.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.chip.WarpEngineChipItem.class);
+        // B4-SIGNS 批次:以下 5 个立牌类自身带 @SubscribeEvent,XenForge 的订阅者注解在本线不存在
+        // ⇒ 必须逐类显式登记;漏登记 = 编译通过、相关被动/伤害钩子永不触发。
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.AlanaSignItem.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.AmeSignItem.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.BonnieSignItem.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.FannySignItem.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.DeepseekSignItem.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.DorothySignItem.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.HaiqingSignItem.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.HannaSignItem.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.JillSignItem.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.KangelSignItem.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.KomachiSignItem.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.LinglingSignItem.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.MimiSignItem.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.NardisSignItem.class);
@@ -171,6 +222,11 @@ public class AstralDiceMod implements ModInitializer {
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.SherrySignItem.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.TeruSignItem.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.ZhaoSignItem.class);
+        // 卡牌商店货架周期(B1-CARDSHOP):forge 靠 @Mod.EventBusSubscriber 自动订阅,Fabric 必须显式登记;
+        // 漏登记 = 换牌/补差全部静默停摆(不报错,只是货架永不刷新)。
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.shop.CardShopCycleTicker.class);
+        // 选卡会话的死亡/掉线兜底（LoaderBus 不递归内部类，必须显式登记；漏登记 = 兜底静默失效）
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.choice.CardChoiceManager.class);
         // ⚠️ 本类自身的处理器(见 onCommonSetup)。必须**注册本类**而不是某个接口 ——
         //    2026-09-29 修:此处原为 `register(IEventBus.class)`,而 IEventBus 是接口、不含任何
         //    @SubscribeEvent 方法 ⇒ 扫描结果为空集;叠加 onCommonSetup 当时是**实例方法**

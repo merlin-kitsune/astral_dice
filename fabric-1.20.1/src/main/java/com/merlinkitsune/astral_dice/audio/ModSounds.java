@@ -8,7 +8,7 @@ import com.merlinkitsune.astral_dice.platform.registry.DeferredRegister;
 import com.merlinkitsune.astral_dice.platform.registry.RegistryObject;
 
 /**
- * 本模组自定义音效的**注册表**（15 条）。
+ * 本模组自定义音效的**注册表**（23 条）。
  *
  * <p>每条音效由两部分组成，缺一不可：
  * <ol>
@@ -95,6 +95,32 @@ public final class ModSounds {
 
     /** 定向爆破**命中**（在爆炸位置播放）。源素材 {@code blast.wav}。 */
     public static final RegistryObject<SoundEvent> DIRECTIONAL_BLAST_HIT = register("directional_blast_hit");
+
+    // ── 事件音效（事件效果卡；与 forge-1.20.1 同名同 id，资源 = assets/astral_dice/sounds/<id>.ogg） ──
+
+    /** 事件卡「天降之物」：受影响玩家**获得奖励**时（只发给本人）。 */
+    public static final RegistryObject<SoundEvent> EVENT_BONUS = register("event_bonus");
+
+    /** 事件卡「天崩地裂」（全体受伤）／「取长补短」（受伤方）判定后。 */
+    public static final RegistryObject<SoundEvent> EVENT_DAMAGE = register("event_damage");
+
+    /** 事件卡**发放**：受影响玩家收到弹卡包时（淡入）。 */
+    public static final RegistryObject<SoundEvent> EVENT_FADE_IN = register("event_fade_in");
+
+    /** 事件卡**结算收尾**（淡出）。与 forge 同 id 登记；当前两侧均无调用点，属预留。 */
+    public static final RegistryObject<SoundEvent> EVENT_FADE_OUT = register("event_fade_out");
+
+    /** 事件卡「天使降临」／「取长补短」（治疗方）判定后。 */
+    public static final RegistryObject<SoundEvent> EVENT_HEAL = register("event_heal");
+
+    /** 事件卡「问题外卖」：中毒效果生效时。 */
+    public static final RegistryObject<SoundEvent> EVENT_POISONING = register("event_poisoning");
+
+    /** 事件卡**持续计时**（逐 tick 提示）。与 forge 同 id 登记；当前两侧均无调用点，属预留。 */
+    public static final RegistryObject<SoundEvent> EVENT_TICK = register("event_tick");
+
+    /** 事件卡「拥挤通道」：传送完成时。 */
+    public static final RegistryObject<SoundEvent> EVENT_TRANSPORT = register("event_transport");
 
 
     private ModSounds() {
