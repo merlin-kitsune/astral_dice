@@ -28,7 +28,9 @@
     "client.EffectRenderingInventoryScreenMixin",
     "client.GuiMixin",
     "client.SignTranslucencyMixin",
-    "client.EntityRendererInvoker"
+    "client.EntityRendererInvoker",
+    "client.DispatcherAlphaMixin",
+    "client.RenderTypeAlphaMixin"
   ],
   "injectors": {
     "defaultRequire": 1
