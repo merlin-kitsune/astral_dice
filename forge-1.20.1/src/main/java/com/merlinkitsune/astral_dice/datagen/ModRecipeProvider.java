@@ -1053,7 +1053,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
                 .save(chipOutput);
 
-        // 试剂-深渊:上排 海晶碎片·海洋之心·海晶碎片｜中排 再生试剂·空白筹码·再生试剂｜下排 星盘·星盘·星盘 [史诗·治愈]
+        // 深渊试剂:上排 海晶碎片·海洋之心·海晶碎片｜中排 再生试剂·空白筹码·再生试剂｜下排 星盘·星盘·星盘 [史诗·治愈]
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.ABYSS_REAGENT_CHIP.get())
                 .pattern("XLX")
                 .pattern("RBR")

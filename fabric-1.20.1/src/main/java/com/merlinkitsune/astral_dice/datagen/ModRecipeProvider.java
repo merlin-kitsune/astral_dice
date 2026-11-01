@@ -44,65 +44,6 @@ public class ModRecipeProvider extends FabricRecipeProvider {
                 .unlockedBy("has_quartz_block", has(Items.QUARTZ_BLOCK))
                 .save(output::accept);
 
-        // 攻击(中):1 铁剑 + 1 星币
-        ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ModItems.ATTACK_CARD_MEDIUM.get())
-                .requires(Items.IRON_SWORD)
-                .requires(ModItems.STAR_COIN.get())
-                .unlockedBy("has_star_coin", has(ModItems.STAR_COIN.get()))
-                .save(output::accept);
-
-        // 防御(中):1 盾牌 + 1 星币
-        ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ModItems.DEFENSE_CARD_MEDIUM.get())
-                .requires(Items.SHIELD)
-                .requires(ModItems.STAR_COIN.get())
-                .unlockedBy("has_star_coin", has(ModItems.STAR_COIN.get()))
-                .save(output::accept);
-
-        // 暗影突袭:1 铁剑 + 1 星币 + 1 铁锭
-        ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ModItems.ATTACK_CARD_SHADOW_STRIKE.get())
-                .requires(Items.IRON_SWORD)
-                .requires(ModItems.STAR_COIN.get())
-                .requires(Items.IRON_INGOT)
-                .unlockedBy("has_star_coin", has(ModItems.STAR_COIN.get()))
-                .save(output::accept);
-
-        // 名刀嘎呜切:1 钻石 + 3 星币
-        ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ModItems.ATTACK_CARD_MEITO.get())
-                .requires(Items.DIAMOND)
-                .requires(ModItems.STAR_COIN.get(), 3)
-                .unlockedBy("has_star_coin", has(ModItems.STAR_COIN.get()))
-                .save(output::accept);
-
-        // 蓄力:1 红石块 + 3 星盘
-        ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ModItems.ATTACK_CARD_CHARGE.get())
-                .requires(Items.REDSTONE_BLOCK)
-                .requires(ModItems.STAR_PLATE.get(), 3)
-                .unlockedBy("has_star_plate", has(ModItems.STAR_PLATE.get()))
-                .save(output::accept);
-
-        // 岿然不动:1 金锭 + 1 盾牌 + 1 星币
-        ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ModItems.EFFECT_CARD_UNWAVERING.get())
-                .requires(Items.GOLD_INGOT)
-                .requires(Items.SHIELD)
-                .requires(ModItems.STAR_COIN.get())
-                .unlockedBy("has_star_coin", has(ModItems.STAR_COIN.get()))
-                .save(output::accept);
-
-        // 以毒攻毒:1 红色蘑菇 + 1 星盘
-        // 2026-09-23 用户裁决「只保留红蘑菇和星盘」⇒ 移除谜之炖菜与兔子脚(无序配方,材料多重集随之变化)
-        ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ModItems.EFFECT_CARD_FIGHT_POISON_WITH_POISON.get())
-                .requires(Items.RED_MUSHROOM)
-                .requires(ModItems.STAR_PLATE.get())
-                .unlockedBy("has_star_plate", has(ModItems.STAR_PLATE.get()))
-                .save(output::accept);
-
-        // 狂暴:1 火药 + 1 星币
-        ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ModItems.EFFECT_CARD_BERSERK.get())
-                .requires(Items.GUNPOWDER)
-                .requires(ModItems.STAR_COIN.get())
-                .unlockedBy("has_star_coin", has(ModItems.STAR_COIN.get()))
-                .save(output::accept);
-
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.BLANK_SIGN.get())
                 .pattern("SSS")
                 .pattern("SCS")
@@ -244,14 +185,14 @@ public class ModRecipeProvider extends FabricRecipeProvider {
                 .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output::accept);
 
-        // T4 极强:护法立牌(钻石骰子 + 铁剑×2 + 红色染料×2 + 青色染料×2 + 黄金星盘×1,有序,空白立牌置中,骰子置中下)
+        // T4 极强:护法立牌(钻石骰子 + 铁剑×2 + 红色染料×2 + 青色染料×2 + 星盘×1,有序,空白立牌置中,骰子置中下)
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.MISAKI_SIGN.get())
                 .pattern("RPR")
                 .pattern("IEI")
                 .pattern("CDC")
                 .define('E', ModItems.BLANK_SIGN.get())
                 .define('R', Items.RED_DYE)
-                .define('P', ModItems.GOLDEN_STAR_PLATE.get())
+                .define('P', ModItems.STAR_PLATE.get())
                 .define('I', Items.IRON_SWORD)
                 .define('C', Items.CYAN_DYE)
                 .define('D', ModItems.DIAMOND_DICE.get())
@@ -270,13 +211,6 @@ public class ModRecipeProvider extends FabricRecipeProvider {
                 .define('A', Items.GOLDEN_APPLE)
                 .define('D', ModItems.NETHERITE_DICE.get())
                 .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
-                .save(output::accept);
-
-        // 王之力:1 钻石剑 + 1 星币
-        ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ModItems.EFFECT_CARD_KING_POWER.get())
-                .requires(Items.DIAMOND_SWORD)
-                .requires(ModItems.STAR_COIN.get())
-                .unlockedBy("has_star_coin", has(ModItems.STAR_COIN.get()))
                 .save(output::accept);
 
         // 美工刀-初级:上排 铁剑·金苹果·铁剑｜中排 再生试剂·空白筹码·再生试剂｜下排 星盘·星盘·星盘 [史诗·治愈]
@@ -330,36 +264,6 @@ public class ModRecipeProvider extends FabricRecipeProvider {
                 .define('G', ModItems.GOLDEN_STAR_PLATE.get())
                 .unlockedBy("has_purple_shooting_star_chip", has(ModItems.PURPLE_SHOOTING_STAR_CHIP.get()))
                 .save(output::accept);
-
-        ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ModItems.ATTACK_CARD_LARGE.get())
-                .requires(ModItems.ATTACK_CARD_MEDIUM.get())
-                .requires(ModItems.ATTACK_CARD_MEDIUM.get())
-                .requires(ModItems.STAR_COIN.get(), 2)
-                .unlockedBy("has_card_medium", has(ModItems.ATTACK_CARD_MEDIUM.get()))
-                .save(output::accept, new ResourceLocation(AstralDiceMod.MODID, "attack_card_large_from_medium"));
-
-        // 攻击(特大):2 攻击(大) + 3 星币
-        ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ModItems.ATTACK_CARD_EPIC.get())
-                .requires(ModItems.ATTACK_CARD_LARGE.get())
-                .requires(ModItems.ATTACK_CARD_LARGE.get())
-                .requires(ModItems.STAR_COIN.get(), 3)
-                .unlockedBy("has_card_large", has(ModItems.ATTACK_CARD_LARGE.get()))
-                .save(output::accept, new ResourceLocation(AstralDiceMod.MODID, "attack_card_epic_from_large"));
-
-        ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ModItems.DEFENSE_CARD_LARGE.get())
-                .requires(ModItems.DEFENSE_CARD_MEDIUM.get())
-                .requires(ModItems.DEFENSE_CARD_MEDIUM.get())
-                .requires(ModItems.STAR_COIN.get(), 2)
-                .unlockedBy("has_defense_medium", has(ModItems.DEFENSE_CARD_MEDIUM.get()))
-                .save(output::accept, new ResourceLocation(AstralDiceMod.MODID, "defense_card_large_from_medium"));
-
-        // 防御(特大):2 防御(大) + 3 星币
-        ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ModItems.DEFENSE_CARD_EPIC.get())
-                .requires(ModItems.DEFENSE_CARD_LARGE.get())
-                .requires(ModItems.DEFENSE_CARD_LARGE.get())
-                .requires(ModItems.STAR_COIN.get(), 3)
-                .unlockedBy("has_defense_large", has(ModItems.DEFENSE_CARD_LARGE.get()))
-                .save(output::accept, new ResourceLocation(AstralDiceMod.MODID, "defense_card_epic_from_large"));
 
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.BLANK_CHIP.get(), 2)
                 .pattern("SBS")
@@ -494,39 +398,6 @@ public class ModRecipeProvider extends FabricRecipeProvider {
         // 注:黄金骰子/钻石骰子/下界合金骰子使用自定义配方类型 astral_dice:dice_upgrade
         //     (升级时继承骰子 WeaponEnhancement 配置),配方定义在
         //     src/main/resources/data/astral_dice/recipe/(golden_dice.json / diamond_dice.json / netherite_dice.json),此处不生成。
-
-        // === 伤害效果牌 ===
-        // 对怪激光(+4):1 纸 + 1 红石粉 + 1 星币
-        ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ModItems.MONSTER_LASER_CARD.get())
-                .requires(Items.PAPER)
-                .requires(Items.REDSTONE)
-                .requires(ModItems.STAR_COIN.get())
-                .unlockedBy("has_star_coin", has(ModItems.STAR_COIN.get()))
-                .save(output::accept);
-
-        // 对怪板砖(+6):1 纸 + 1 tag=c:bricks + 1 星币
-        ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ModItems.MONSTER_BRICK_CARD.get())
-                .requires(Items.PAPER)
-                .requires(net.minecraft.world.item.crafting.Ingredient.of(BRICKS_TAG))
-                .requires(ModItems.STAR_COIN.get())
-                .unlockedBy("has_bricks", has(BRICKS_TAG))
-                .save(output::accept);
-
-        // 轨道炮(+8):1 纸 + 1 望远镜 + 1 星盘
-        ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ModItems.ORBITAL_STRIKE_CARD.get())
-                .requires(Items.PAPER)
-                .requires(Items.SPYGLASS)
-                .requires(ModItems.STAR_PLATE.get())
-                .unlockedBy("has_star_plate", has(ModItems.STAR_PLATE.get()))
-                .save(output::accept);
-
-        // 定向爆破(+5 AOE):1 望远镜 + 2 TNT + 1 星盘(无序)
-        ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ModItems.DIRECTIONAL_BLAST_CARD.get())
-                .requires(Items.SPYGLASS)
-                .requires(Items.TNT, 2)
-                .requires(ModItems.STAR_PLATE.get())
-                .unlockedBy("has_star_plate", has(ModItems.STAR_PLATE.get()))
-                .save(output::accept);
 
         // === 筹码(均含空白筹码) ===
         // 美工刀-锋利:紫->金(通用升级)
@@ -1100,6 +971,19 @@ public class ModRecipeProvider extends FabricRecipeProvider {
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
                 .save(output::accept);
 
+        // 无线输电杆:上排 铜锭·避雷针·铜锭｜中排 导电线材·空白筹码·导电线材｜下排 星盘·星盘·星盘 [史诗·充能]
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.INFINITE_GRID_CHIP.get())
+                .pattern("XLX")
+                .pattern("WBW")
+                .pattern("PPP")
+                .define('X', Items.COPPER_INGOT)
+                .define('L', Items.LIGHTNING_ROD)
+                .define('W', ModItems.CONDUCTIVE_WIRE.get())
+                .define('B', ModItems.BLANK_CHIP.get())
+                .define('P', ModItems.STAR_PLATE.get())
+                .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
+                .save(output::accept);
+
         // --- 治愈类 ---
         // 大碗炖肉:上排 碗·牛排·碗｜中排 再生试剂·空白筹码·再生试剂｜下排 黄金星盘·黄金星盘·黄金星盘 [传奇·治愈]
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.BIG_BOWL_STEW_CHIP.get())
@@ -1111,6 +995,60 @@ public class ModRecipeProvider extends FabricRecipeProvider {
                 .define('R', ModItems.REGENERATION_REAGENT.get())
                 .define('B', ModItems.BLANK_CHIP.get())
                 .define('G', ModItems.GOLDEN_STAR_PLATE.get())
+                .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
+                .save(output::accept);
+
+        // 深渊试剂:上排 海晶碎片·海洋之心·海晶碎片｜中排 再生试剂·空白筹码·再生试剂｜下排 星盘·星盘·星盘 [史诗·治愈]
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.ABYSS_REAGENT_CHIP.get())
+                .pattern("XLX")
+                .pattern("RBR")
+                .pattern("PPP")
+                .define('X', Items.PRISMARINE_SHARD)
+                .define('L', Items.HEART_OF_THE_SEA)
+                .define('R', ModItems.REGENERATION_REAGENT.get())
+                .define('B', ModItems.BLANK_CHIP.get())
+                .define('P', ModItems.STAR_PLATE.get())
+                .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
+                .save(output::accept);
+
+        // --- 星光类 ---
+        // 财运签:上排 竹子·纸·竹子｜中排 星币尘·空白筹码·星币尘｜下排 星盘·星盘·星盘 [史诗·星光]
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.FORTUNE_STICK_CHIP.get())
+                .pattern("XLX")
+                .pattern("DBD")
+                .pattern("PPP")
+                .define('X', Items.BAMBOO)
+                .define('L', Items.PAPER)
+                .define('D', ModItems.STAR_COIN_DUST.get())
+                .define('B', ModItems.BLANK_CHIP.get())
+                .define('P', ModItems.STAR_PLATE.get())
+                .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
+                .save(output::accept);
+
+        // 手电筒-爆闪:上排 荧石·红石灯·荧石｜中排 星币尘·空白筹码·星币尘｜下排 黄金星盘·黄金星盘·黄金星盘 [传奇·星光]
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.FLASHLIGHT_BURST_CHIP.get())
+                .pattern("XLX")
+                .pattern("DBD")
+                .pattern("GGG")
+                .define('X', Items.GLOWSTONE)
+                .define('L', Items.REDSTONE_LAMP)
+                .define('D', ModItems.STAR_COIN_DUST.get())
+                .define('B', ModItems.BLANK_CHIP.get())
+                .define('G', ModItems.GOLDEN_STAR_PLATE.get())
+                .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
+                .save(output::accept);
+
+        // --- 标记类 ---
+        // 感测装置:上排 阳光探测器·侦测器·阳光探测器｜中排 标记涂料·空白筹码·标记涂料｜下排 星盘·星盘·星盘 [史诗·标记]
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.SENSOR_CHIP.get())
+                .pattern("XLX")
+                .pattern("MBM")
+                .pattern("PPP")
+                .define('X', Items.DAYLIGHT_DETECTOR)
+                .define('L', Items.OBSERVER)
+                .define('M', ModItems.MARK_PAINT.get())
+                .define('B', ModItems.BLANK_CHIP.get())
+                .define('P', ModItems.STAR_PLATE.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
                 .save(output::accept);
 
@@ -1180,45 +1118,16 @@ public class ModRecipeProvider extends FabricRecipeProvider {
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
                 .save(output::accept);
 
-        // === 新效果牌(治疗/互动;shape:星币居中,mod 物品在中轴) ===
-        // 巧克力蛋糕:1 可可豆 + 1 鸡蛋 + 1 糖 + 1 星币(无序)
-        ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ModItems.CHOCOLATE_CAKE.get())
-                .requires(Items.COCOA_BEANS)
-                .requires(Items.EGG)
-                .requires(Items.SUGAR)
-                .requires(ModItems.STAR_COIN.get())
-                .unlockedBy("has_star_coin", has(ModItems.STAR_COIN.get()))
-                .save(output::accept);
-
-        // 汉堡:1 面包 + 1 牛排 + 2 星币(无序)
-        ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ModItems.HAMBURGER.get())
-                .requires(Items.BREAD)
-                .requires(Items.COOKED_BEEF)
-                .requires(ModItems.STAR_COIN.get(), 2)
-                .unlockedBy("has_star_coin", has(ModItems.STAR_COIN.get()))
-                .save(output::accept);
-
-        // 奢华大餐:1 金胡萝卜 + 1 闪烁的西瓜片 + 2 星币(无序)
-        ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ModItems.LUXURY_FEAST.get())
-                .requires(Items.GOLDEN_CARROT)
-                .requires(Items.GLISTERING_MELON_SLICE)
-                .requires(ModItems.STAR_COIN.get(), 2)
-                .unlockedBy("has_star_coin", has(ModItems.STAR_COIN.get()))
-                .save(output::accept);
-
-        // 你有我有:2 绿宝石 + 2 星币(无序)
-        ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ModItems.YOU_HAVE_I_HAVE.get())
-                .requires(Items.EMERALD, 2)
-                .requires(ModItems.STAR_COIN.get(), 2)
-                .unlockedBy("has_star_coin", has(ModItems.STAR_COIN.get()))
-                .save(output::accept);
-
-        // 加急加快:1 荧石粉 + 2 下界石英 + 1 星盘(无序)
-        ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ModItems.EXPRESS_DELIVERY.get())
-                .requires(Items.GLOWSTONE_DUST)
-                .requires(Items.QUARTZ, 2)
-                .requires(ModItems.STAR_PLATE.get())
-                .unlockedBy("has_star_plate", has(ModItems.STAR_PLATE.get()))
+        // 额外电池:上排 铜锭·铜锭·铜锭｜中排 红石块·空白筹码·红石块｜下排 星盘·星盘·星盘 [史诗·无流派]
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.EXTRA_BATTERY_CHIP.get())
+                .pattern("XXX")
+                .pattern("WBW")
+                .pattern("PPP")
+                .define('X', Items.COPPER_INGOT)
+                .define('W', Items.REDSTONE_BLOCK)
+                .define('B', ModItems.BLANK_CHIP.get())
+                .define('P', ModItems.STAR_PLATE.get())
+                .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
                 .save(output::accept);
 
         // 大当家立牌:空白立牌 + 钻石骰子 + 红石块×4 + 金块×1 + 黄金星盘×2(有序,空白立牌置中,骰子置中下)
@@ -1449,6 +1358,96 @@ public class ModRecipeProvider extends FabricRecipeProvider {
                 .define('X', Items.NETHERITE_BLOCK)
                 .define('G', ModItems.GOLDEN_STAR_PLATE.get())
                 .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
+                .save(output::accept);
+        // === 补齐(2026-11-02):以下 6 个立牌此前只有 generated 资源、未进本方提供器 ===
+        // 现象:alana / ame / dorothy / jill / kangel / lingling 六个立牌的配方 JSON 存在,
+        //       但 recipes/misc/<id>_sign.json(配方书解锁进度)缺失 —— datagen 从未生成过它们。
+        // 修法:按 forge-1.20.1 侧既有实现逐条搬回本方提供器,让 datagen 同时产出配方与进度;
+        //       生成结果与既有 recipe JSON 逐字节一致(仅补出 6 个 advancement)。
+
+        // 立牌 alana:SBS/CEC/IDI(S=石砖、B=书、C=下界石英、E=空白立牌、I=铁锭、D=黄金骰子)
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.ALANA_SIGN.get())
+                .pattern("SBS")
+                .pattern("CEC")
+                .pattern("IDI")
+                .define('S', Items.STONE_BRICKS)
+                .define('B', Items.BOOK)
+                .define('C', Items.QUARTZ)
+                .define('E', ModItems.BLANK_SIGN.get())
+                .define('I', Items.IRON_INGOT)
+                .define('D', ModItems.GOLDEN_DICE.get())
+                .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
+                .save(output::accept);
+
+        // 立牌 jill:PVP/GEG/WDW(P=黄金星盘、V=玻璃瓶、G=糖、E=空白立牌、W=小麦、D=紫晶骰子)
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.JILL_SIGN.get())
+                .pattern("PVP")
+                .pattern("GEG")
+                .pattern("WDW")
+                .define('P', ModItems.GOLDEN_STAR_PLATE.get())
+                .define('V', Items.GLASS_BOTTLE)
+                .define('G', Items.SUGAR)
+                .define('W', Items.WHEAT)
+                .define('E', ModItems.BLANK_SIGN.get())
+                .define('D', ModItems.AMETHYST_DICE.get())
+                .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
+                .save(output::accept);
+
+        // 立牌 dorothy:PHP/LEL/TDT(P=黄金星盘、H=蜂蜜瓶、L=再生试剂、E=空白立牌、T=面包、D=紫晶骰子)
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.DOROTHY_SIGN.get())
+                .pattern("PHP")
+                .pattern("LEL")
+                .pattern("TDT")
+                .define('P', ModItems.GOLDEN_STAR_PLATE.get())
+                .define('H', Items.HONEY_BOTTLE)
+                .define('L', ModItems.REGENERATION_REAGENT.get())
+                .define('T', Items.BREAD)
+                .define('E', ModItems.BLANK_SIGN.get())
+                .define('D', ModItems.AMETHYST_DICE.get())
+                .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
+                .save(output::accept);
+
+        // 超天酱立牌(kangel,奇特):GNG/WEW/ADA
+        // (G=黄金星盘×2、N=音符盒、W=白色羊毛×2、A=红石灯×2、E=空白立牌、D=紫晶骰子)
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.KANGEL_SIGN.get())
+                .pattern("GNG")
+                .pattern("WEW")
+                .pattern("ADA")
+                .define('E', ModItems.BLANK_SIGN.get())
+                .define('G', ModItems.GOLDEN_STAR_PLATE.get())
+                .define('N', Items.NOTE_BLOCK)
+                .define('W', Items.WHITE_WOOL)
+                .define('A', Items.REDSTONE_LAMP)
+                .define('D', ModItems.AMETHYST_DICE.get())
+                .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
+                .save(output::accept);
+
+        // 地雷女立牌(ame,奇特):GKG/WEW/CDC
+        // (G=黄金星盘×2、K=黑色羊毛、W=蜘蛛网×2、C=墨囊×2、E=空白立牌、D=紫晶骰子)
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.AME_SIGN.get())
+                .pattern("GKG")
+                .pattern("WEW")
+                .pattern("CDC")
+                .define('E', ModItems.BLANK_SIGN.get())
+                .define('G', ModItems.GOLDEN_STAR_PLATE.get())
+                .define('K', Items.BLACK_WOOL)
+                .define('W', Items.COBWEB)
+                .define('C', Items.INK_SAC)
+                .define('D', ModItems.AMETHYST_DICE.get())
+                .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
+                .save(output::accept);
+
+        // 怪力乱神立牌(lingling,史诗):PDP/DRD/PTP
+        // (P=星盘×6、D=导电线材×2、R=红石块、T=钻石骰子;空白立牌不用,规格 §3 明写)
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.LINGLING_SIGN.get())
+                .pattern("PDP")
+                .pattern("DRD")
+                .pattern("PTP")
+                .define('P', ModItems.STAR_PLATE.get())
+                .define('D', ModItems.CONDUCTIVE_WIRE.get())
+                .define('R', Items.REDSTONE_BLOCK)
+                .define('T', ModItems.DIAMOND_DICE.get())
+                .unlockedBy("has_conductive_wire", has(ModItems.CONDUCTIVE_WIRE.get()))
                 .save(output::accept);
         // 符卡-福 / 符卡-祸:**无配方**(专属牌,仅由风水师立牌的被动「福祸相倚」与主动「白泽赐福」
         // 及「心意相连」发放,与活体书页/命运的指引等专属牌同一口径:不进随机池、不进合成表)。

@@ -1129,7 +1129,7 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(AstralRarities.epic())));
 
-    // 试剂-深渊(史诗/治愈):治愈层数 +2,触发治愈回血时获得等量伤害吸收
+    // 深渊试剂(史诗/治愈):治愈层数 +2,触发治愈回血时获得等量伤害吸收
     public static final DeferredItem<Item> ABYSS_REAGENT_CHIP = registerItem("abyss_reagent_chip",
             props -> new com.merlinkitsune.astral_dice.item.chip.AbyssReagentChipItem(props
                     .stacksTo(1)

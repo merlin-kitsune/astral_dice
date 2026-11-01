@@ -270,7 +270,12 @@ public final class HealingManager {
     private static void triggerHealing(Player player) {
         int total = getPoints(player);
         if (total > 0) {
-            player.heal(total * 2);
+            float requested = total * 2;
+            // 有效治疗量必须在 heal **之前**求值(heal 会写入生命值);口径照 forge 同位置写法。
+            float missing = Math.max(0.0F, player.getMaxHealth() - player.getHealth());
+            float effective = Math.min(requested, missing);
+            player.heal(requested);
+            com.merlinkitsune.astral_dice.item.chip.AbyssReagentChipItem.onHealingTriggered(player, effective);
         }
         ModAttachments.setHealingTimerEnd(player,
                 player.level().getGameTime() + (long) HEALING_TIMER_SECONDS * 20L);
@@ -279,6 +284,16 @@ public final class HealingManager {
     /** 追加所有筹码提供的初始治愈点(仅在触发治愈效果条件时调用) */
     private static void addChipPoints(Player player) {
         addMedkitPoints(player);
+        addAbyssReagentPoints(player);
+    }
+
+    /**
+     * 装备的「深渊试剂」在**触发骰神赐福**与**每 1:00 治愈结算**两条入口各 +2 治愈点
+     * (与医疗箱同口径,加点时机同 {@link #addMedkitPoints},受 {@link #HEALING_POINT_CAP} 上限约束)。
+     */
+    private static void addAbyssReagentPoints(Player player) {
+        if (!com.merlinkitsune.astral_dice.item.chip.AbyssReagentChipItem.isEquipped(player)) return;
+        add(player, com.merlinkitsune.astral_dice.item.chip.AbyssReagentChipItem.BOON_POINTS);
     }
 
     /** 装备的医疗箱筹码触发赐福加点(紧急 +1、完备 +3,可叠加,受上限) */

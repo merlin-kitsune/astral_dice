@@ -912,7 +912,7 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(AstralRarities.epic())));
 
-    // 试剂-深渊(史诗/治愈):装备时治愈层数 +2(卸下 -2);触发治愈回血时获得「有效治疗量 ×2」的伤害吸收。
+    // 深渊试剂(史诗/治愈):装备时治愈层数 +2(卸下 -2);触发治愈回血时获得「有效治疗量 ×2」的伤害吸收。
     public static final RegistryObject<Item> ABYSS_REAGENT_CHIP = registerItem("abyss_reagent_chip",
             () -> new AbyssReagentChipItem(new Item.Properties()
                     .stacksTo(1)

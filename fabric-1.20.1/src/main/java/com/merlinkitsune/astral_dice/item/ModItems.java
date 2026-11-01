@@ -1,10 +1,12 @@
 package com.merlinkitsune.astral_dice.item;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
+import com.merlinkitsune.astral_dice.block.ModBlocks;
 import com.merlinkitsune.astral_dice.component.AppliedStone;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import com.merlinkitsune.starengine.item.AstralRarities;
 
+import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Rarity;
@@ -77,6 +79,8 @@ import com.merlinkitsune.astral_dice.item.sign.MisakiSignItem;
 import com.merlinkitsune.astral_dice.item.card.MonsterLaserCardItem;
 import com.merlinkitsune.astral_dice.item.chip.BankCardUnlimitedChipItem;
 import com.merlinkitsune.astral_dice.item.card.FateGuidanceCardItem;
+import com.merlinkitsune.astral_dice.item.card.BarricadeCardItem;
+import com.merlinkitsune.astral_dice.item.card.RepulsionCardItem;
 import com.merlinkitsune.astral_dice.item.chip.MedkitEmergencyChipItem;
 import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
 import com.merlinkitsune.astral_dice.item.sign.PadmanSignItem;
@@ -105,6 +109,12 @@ import com.merlinkitsune.astral_dice.item.chip.PrimordialCoreChipItem;
 import com.merlinkitsune.astral_dice.item.chip.WhetstoneChipItem;
 import com.merlinkitsune.astral_dice.item.chip.NinjaStarChipItem;
 import com.merlinkitsune.astral_dice.item.chip.FlashlightChipItem;
+import com.merlinkitsune.astral_dice.item.chip.FlashlightBurstChipItem;
+import com.merlinkitsune.astral_dice.item.chip.FortuneStickChipItem;
+import com.merlinkitsune.astral_dice.item.chip.AbyssReagentChipItem;
+import com.merlinkitsune.astral_dice.item.chip.InfiniteGridChipItem;
+import com.merlinkitsune.astral_dice.item.chip.SensorChipItem;
+import com.merlinkitsune.astral_dice.item.chip.ExtraBatteryChipItem;
 
 public class ModItems {
     public static final DeferredRegister<Item> ITEMS = DeferredRegister.create(net.minecraft.core.registries.Registries.ITEM, AstralDiceMod.MODID);
@@ -176,7 +186,7 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(AstralRarities.legendary())));
 
-    // 绿宝石骰子:与钻石骰子同阶(tag dice_t2),可由钻石骰子升级;佩戴后村民交易绿宝石费用改为星币并享 20% 折扣
+    // 绿宝石骰子:与钻石骰子同阶(tag dice_t2),可由钻石骰子升级;佩戴后村民交易绿宝石费用按 1:1 改为星币
     public static final RegistryObject<Item> EMERALD_DICE = registerItem("emerald_dice",
             () -> new DiceCurioItem(new Item.Properties()
                     .stacksTo(1)
@@ -194,7 +204,7 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(AstralRarities.rare())));
 
-    // 诡异骰子:与钻石骰子同阶(tag dice_t2),可由钻石骰子升级;立牌主动冷却 -50%,但战斗骰低点数(1-3)概率提升 50%
+    // 诡异骰子:与钻石骰子同阶(tag dice_t2),可由钻石骰子升级;战斗骰低点数(1-3)概率提升 50%,立牌主动技能结束后恢复 5 点生命值
     public static final RegistryObject<Item> WEIRD_DICE = registerItem("weird_dice",
             () -> new DiceCurioItem(new Item.Properties()
                     .stacksTo(1)
@@ -229,46 +239,47 @@ public class ModItems {
     // 重要:item 参数必须传 Supplier 延迟解析(() -> X.get()),禁止在静态初始化阶段调用
     //      DeferredHolder.get()——注册表未加载完成时会抛 IllegalStateException。
     static {
-        // 卡牌栏格数不再按品阶区分,仅由星级决定(见 DiceCurioItem.getCardSlots)
+        // 卡牌栏格数按品阶登记(第 4 参 cardSlots,与星级无关);星级只影响费用上限与赐福强度
+        // 对齐 forge-1.20.1/src/main/java/com/merlinkitsune/astral_dice/item/ModItems.java:246
         // 基础骰子:筹码栏 0★0/1★1/2★2/3★3
         DiceTierRegistry.register(new DiceTier("dice", () -> DICE.get(),
-                s -> s));
+                s -> s, 4));
         // 金骰子:筹码栏 0★1/1★2/2★3/3★4
         DiceTierRegistry.register(new DiceTier("golden_dice", () -> GOLDEN_DICE.get(),
-                s -> 1 + s));
+                s -> 1 + s, 8));
         // 玻璃骰子:与金骰子同阶(筹码栏 0★1/1★2/2★3/3★4)
         DiceTierRegistry.register(new DiceTier("glass_dice", () -> GLASS_DICE.get(),
-                s -> 1 + s));
+                s -> 1 + s, 8));
         // 钻石骰子:筹码栏 0★2/1★3/2★4/3★5
         DiceTierRegistry.register(new DiceTier("diamond_dice", () -> DIAMOND_DICE.get(),
-                s -> 2 + s));
+                s -> 2 + s, 10));
         // 合金骰子:筹码栏 0★3/1★4/2★5/3★6
         DiceTierRegistry.register(new DiceTier("netherite_dice", () -> NETHERITE_DICE.get(),
-                s -> 3 + s));
+                s -> 3 + s, 12));
         // 绿宝石骰子:与钻石骰子同阶(筹码栏 0★2/1★3/2★4/3★5)
         DiceTierRegistry.register(new DiceTier("emerald_dice", () -> EMERALD_DICE.get(),
-                s -> 2 + s));
+                s -> 2 + s, 10));
         // 黑曜石骰子:与钻石骰子同阶(筹码栏 0★2/1★3/2★4/3★5)
         DiceTierRegistry.register(new DiceTier("obsidian_dice", () -> OBSIDIAN_DICE.get(),
-                s -> 2 + s));
+                s -> 2 + s, 10));
         // 下界岩骰子:与金骰子同阶(筹码栏 0★1/1★2/2★3/3★4)
         DiceTierRegistry.register(new DiceTier("netherrack_dice", () -> NETHERRACK_DICE.get(),
-                s -> 1 + s));
+                s -> 1 + s, 8));
         // 诡异骰子:与钻石骰子同阶(筹码栏 0★2/1★3/2★4/3★5)
         DiceTierRegistry.register(new DiceTier("weird_dice", () -> WEIRD_DICE.get(),
-                s -> 2 + s));
+                s -> 2 + s, 10));
         // 绯红骰子:与下界合金骰子同阶(筹码栏 0★3/1★4/2★5/3★6)
         DiceTierRegistry.register(new DiceTier("crimson_dice", () -> CRIMSON_DICE.get(),
-                s -> 3 + s));
+                s -> 3 + s, 12));
         // 紫晶骰子:与钻石骰子同阶(筹码栏 0★2/1★3/2★4/3★5)
         DiceTierRegistry.register(new DiceTier("amethyst_dice", () -> AMETHYST_DICE.get(),
-                s -> 2 + s));
+                s -> 2 + s, 10));
         // 末影骰子:与下界合金骰子同阶(筹码栏 0★3/1★4/2★5/3★6)
         DiceTierRegistry.register(new DiceTier("ender_dice", () -> ENDER_DICE.get(),
-                s -> 3 + s));
+                s -> 3 + s, 12));
         // 下界之星骰子:T4 奇异品阶(筹码栏 0★4/1★5/2★6/3★7,比 T3 多 1 格)
         DiceTierRegistry.register(new DiceTier("nether_star_dice", () -> NETHER_STAR_DICE.get(),
-                s -> 4 + s));
+                s -> 4 + s, 12));
     }
 
     public static final RegistryObject<Item> ATTACK_CARD_MEDIUM = registerItem("attack_card_medium",
@@ -567,17 +578,17 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(AstralRarities.rare())));
 
-    // 银行卡-余额少:装备期间星光基础值 +4(下限)
+    // 银行卡-余额少:装备时发放星光 4(卸下按账本扣回,兑换成功后按佩戴补充)
     public static final RegistryObject<Item> BANK_CARD_LOW = registerItem("bank_card_low_chip",
             () -> new BankCardChipItem(new Item.Properties()
                     .stacksTo(1)
-                    .rarity(AstralRarities.rare()), BankCardChipItem.BASE_LOW));
+                    .rarity(AstralRarities.rare()), BankCardChipItem.STARLIGHT_LOW));
 
-    // 银行卡-余额多:装备期间星光基础值 +7(下限)
+    // 银行卡-余额多:装备时发放星光 7(卸下按账本扣回,兑换成功后按佩戴补充)
     public static final RegistryObject<Item> BANK_CARD_HIGH = registerItem("bank_card_high_chip",
             () -> new BankCardChipItem(new Item.Properties()
                     .stacksTo(1)
-                    .rarity(AstralRarities.epic()), BankCardChipItem.BASE_HIGH));
+                    .rarity(AstralRarities.epic()), BankCardChipItem.STARLIGHT_HIGH));
 
     // 银行卡-用不完:装备时星光 +3;每次骰神赐福结束后,自身及团队所有成员获得 3 星币
     public static final RegistryObject<Item> BANK_CARD_UNLIMITED = registerItem("bank_card_unlimited_chip",
@@ -821,6 +832,12 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(AstralRarities.epic())));
 
+    // 额外电池(史诗/无流派):装备时立牌主动技能冷却时间 -50%(纯查询加减成,卸下即失效)
+    public static final RegistryObject<Item> EXTRA_BATTERY_CHIP = registerItem("extra_battery_chip",
+            () -> new ExtraBatteryChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.epic())));
+
     // 紫色飞星(史诗):路过敌对目标 ⇒ 使其受到 1 点伤害并自身 +1 层「星光」;每 10 秒触发一次。
     // 与金色飞星共用同一冷却计时器(用户裁决);两枚共用 ShootingStarChipItem,差异全在执行器 ShootingStarManager。
     public static final RegistryObject<Item> PURPLE_SHOOTING_STAR_CHIP = registerItem("purple_shooting_star_chip",
@@ -833,6 +850,38 @@ public class ModItems {
             () -> new ShootingStarChipItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(AstralRarities.legendary())));
+
+    // 手电筒-爆闪(传奇/星光):攻击「该玩家未攻击过的目标(玩家×目标判重)」⇒ +1 星光(玩家级附件,上限 256,满则停发;目标须敌对);
+    // 每 2 层星光 +1 点攻击伤害(额外加伤通道)。
+    public static final RegistryObject<Item> FLASHLIGHT_BURST_CHIP = registerItem("flashlight_burst_chip",
+            () -> new FlashlightBurstChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.legendary())));
+
+    // 财运签(史诗/星光):骰神赐福期间击杀第一只怪物 ⇒ 自身 + 16 格内友方各随机获得 1~7 点星光
+    // (每赐福周期一次;星光越多越容易抽到小号)。
+    public static final RegistryObject<Item> FORTUNE_STICK_CHIP = registerItem("fortune_stick_chip",
+            () -> new FortuneStickChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.epic())));
+
+    // 深渊试剂(史诗/治愈):装备时治愈层数 +2(卸下 -2);触发治愈回血时获得「有效治疗量 ×2」的伤害吸收。
+    public static final RegistryObject<Item> ABYSS_REAGENT_CHIP = registerItem("abyss_reagent_chip",
+            () -> new AbyssReagentChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.epic())));
+
+    // 无线输电杆(史诗/充能):效果牌出牌数 +1;每次获得充能时使周围 8 格内其他友方玩家各 +1 充能。
+    public static final RegistryObject<Item> INFINITE_GRID_CHIP = registerItem("infinite_grid_chip",
+            () -> new InfiniteGridChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.epic())));
+
+    // 感测装置(史诗/标记):攻击的目标每 3 层标记使其战斗骰点 -1(最多 -4);闪避成功后给攻击者 1 层标记。
+    public static final RegistryObject<Item> SENSOR_CHIP = registerItem("sensor_chip",
+            () -> new SensorChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.epic())));
 
     public static final RegistryObject<Item> PADMAN_SIGN = registerItem("padman_sign",
             () -> new PadmanSignItem(new Item.Properties()
@@ -1026,6 +1075,99 @@ public class ModItems {
                     .stacksTo(16)
                     .rarity(AstralRarities.bizarre())));
 
+    // 卡牌商店方块物品(右键方块开店;1.20.1 无 DeferredBlock,方块物品按 1.20.1 规范用 BlockItem 手工登记)
+    // ⚠️ 2026-10-14:三个商店方块(卡牌商店 / 筹码商店 / 抽奖盒)一律**不可堆叠** ⇒ 全部改用
+    //    registerItem + new BlockItem(…, new Item.Properties().stacksTo(1))(registerSimpleBlockItem 不接受属性)。
+    // ⚠️ fabric-1.20.1:方块注册器是 platform.registry.DeferredRegister,其 supplier 在 commit 阶段才求值
+    //    ⇒ AstralDiceMod#commitRegistrations() 里 **BLOCKS 必须排在 ITEMS 之前**,否则 ModBlocks.X.get() 抛异常。
+    public static final RegistryObject<Item> CARD_SHOP = registerItem("card_shop",
+            () -> new BlockItem(ModBlocks.CARD_SHOP.get(), new Item.Properties().stacksTo(1)));
+
+    // 筹码商店方块物品(右键方块开店;与卡牌商店同款)
+    public static final RegistryObject<Item> CHIP_SHOP = registerItem("chip_shop",
+            () -> new BlockItem(ModBlocks.CHIP_SHOP.get(), new Item.Properties().stacksTo(1)));
+
+    /** 奇怪的问号(2026-10-10 事件体系重写):使用后抽一条事件(ITEM_USE),生存消耗 1 张。 */
+    public static final RegistryObject<Item> EVENT_TICKET = registerItem("event_ticket",
+            () -> new EventDrawItem(new Item.Properties()
+                    .stacksTo(16)
+                    .rarity(Rarity.COMMON)));
+
+    /** 抽奖盒(物品形态):放置后右键花 5 星币购买一张奇怪的问号(2026-10-14 起为售卖机,不再直接抽事件)。 */
+    public static final RegistryObject<Item> EVENT_DRAWER = registerItem("event_drawer",
+            () -> new BlockItem(ModBlocks.EVENT_DRAWER.get(), new Item.Properties().stacksTo(1)));
+
+    // 路障(效果牌,2026-10-17;2026-10-17 移植到本线):在视线命中的方块面上放一座路障
+    // (30 点耐久 / 6 格拉仇恨 / 栅栏级挡路)。实现形态 = 可见实体(entity/BarricadeEntity)
+    // + 隐形碰撞方块(block/BarricadeBlock)。品质:稀有
+    public static final RegistryObject<Item> EFFECT_CARD_BARRICADE = registerItem("effect_card_barricade",
+            () -> new BarricadeCardItem(new Item.Properties()
+                    .stacksTo(16)
+                    .rarity(AstralRarities.rare())));
+
+    // 强化拒止(专属效果牌,2026-10-18;2026-10-18 移植到本线):在视线命中的方块面上放置一个实体
+    // 「强化拒止」(50 点耐久 / 12 格吸附 / 持续 缓慢+虚弱 / 每 10 秒按吸附目标数扣耐久 <=5 /
+    // 不吸引仇恨 / 免疫怪物与环境伤害)。品质:奇特(bizarre;2026-10-22 用户裁决:专属牌一律奇特,原为史诗);专属牌:不进随机池、无配方、不进赏金池、仅获得者可用
+    public static final RegistryObject<Item> EFFECT_CARD_REPULSION = registerItem("effect_card_repulsion",
+            () -> new RepulsionCardItem(new Item.Properties()
+                    .stacksTo(16)
+                    .rarity(AstralRarities.bizarre())));
+
+    // 强化拒止（**物品形态**,2026-10-25 用户裁决）:玩家对已放置的强化拒止近战命中 5 次 ⇒ 实体回收成
+    // 本物品(不是效果牌),带走三份状态(关联血量 / 已存活 tick / 已发放充能);再次放置即恢复(放置判据
+    // 与效果牌完全一致,共用 item/RepulsionPlacement)。品质与专属牌一致 = 奇特;专属语义同样保留。
+    public static final RegistryObject<Item> REPULSION = registerItem("repulsion",
+            () -> new RepulsionItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.bizarre())));
+
+    // ── B4-SIGNS 批次：2026-10-19 新批 4 个立牌 + 2026-09-25 的 3 个（kangel / ame / lingling）──
+    // 追加在既有登记之后，不改动、不重排任何既有行。
+    // 品质与栈数逐条对齐 forge-1.20.1/src/main/java/com/merlinkitsune/astral_dice/item/ModItems.java
+    // L1105-1145 的蓝本（kangel/ame/deepseek/jill/dorothy = 奇特，lingling = 史诗，alana = 稀有）。
+
+    // 超天酱立牌(命名:kangel,奇特):主动「网络天使」+ 被动「小天使请安」+ 备注「一心同体」。
+    public static final RegistryObject<Item> KANGEL_SIGN = registerItem("kangel_sign",
+            () -> new com.merlinkitsune.astral_dice.item.sign.KangelSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.bizarre())));
+
+    // 地雷女立牌(命名:ame,奇特):主动「感情过量摄入」+ 被动「无法承受的爱」+ 备注「一心同体」。
+    public static final RegistryObject<Item> AME_SIGN = registerItem("ame_sign",
+            () -> new com.merlinkitsune.astral_dice.item.sign.AmeSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.bizarre())));
+
+    // 怪力乱神立牌(命名:lingling,史诗):主动「能量突击」+ 被动「拦截者」。
+    public static final RegistryObject<Item> LINGLING_SIGN = registerItem("lingling_sign",
+            () -> new com.merlinkitsune.astral_dice.item.sign.LinglingSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.epic())));
+
+    // 吉尔立牌(命名:jill,奇特):主动「调酒」目标选择器（攻/防/效果牌计票结账）。
+    public static final RegistryObject<Item> JILL_SIGN = registerItem("jill_sign",
+            () -> new com.merlinkitsune.astral_dice.item.sign.JillSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.bizarre())));
+
+    // 多萝西立牌(命名:dorothy,奇特):主动「羁绊」传送到目标身边，被动「温暖」叠层加护甲。
+    public static final RegistryObject<Item> DOROTHY_SIGN = registerItem("dorothy_sign",
+            () -> new com.merlinkitsune.astral_dice.item.sign.DorothySignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.bizarre())));
+
+    // 阿兰娜立牌(命名:alana,稀有):主动「铁处女」无敌 30 秒，被动「勇气」累加攻击力。
+    public static final RegistryObject<Item> ALANA_SIGN = registerItem("alana_sign",
+            () -> new com.merlinkitsune.astral_dice.item.sign.AlanaSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.rare())));
+
+    // 大肥鱼立牌(命名:deepseek,奇特):主动「睡大觉」随机攻击/防御加成 + 3 张卡;被动「摸鱼」静止 10 秒后隐身。
+    public static final RegistryObject<Item> DEEPSEEK_SIGN = registerItem("deepseek_sign",
+            () -> new com.merlinkitsune.astral_dice.item.sign.DeepseekSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.bizarre())));
+
     public static <T extends Item> RegistryObject<T> registerItem(String name, Supplier<T> itemSupplier) {
         return ITEMS.register(name, itemSupplier);
     }
@@ -1033,5 +1175,15 @@ public class ModItems {
     // 判断物品栈是否为任意卡牌(战斗牌 + 效果牌;含专属牌)
     public static boolean isCardItem(ItemStack stack) {
         return stack.is(COMBAT_CARDS_TAG) || stack.is(EFFECT_CARDS_TAG);
+    }
+
+    /** 是否战斗牌（选卡界面 COMBAT 口径，与 forge-1.20.1 ModItems:1193 逐字等价）。 */
+    public static boolean isCombatCard(ItemStack stack) {
+        return stack.is(COMBAT_CARDS_TAG);
+    }
+
+    /** 是否效果牌（选卡界面 EFFECT 口径，与 forge-1.20.1 ModItems:1198 逐字等价）。 */
+    public static boolean isEffectCard(ItemStack stack) {
+        return stack.is(EFFECT_CARDS_TAG);
     }
 }
