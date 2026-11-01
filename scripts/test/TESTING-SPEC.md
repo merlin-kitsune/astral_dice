@@ -4472,3 +4472,61 @@ mt.ps1 --version 线 --phase stop 关闭测试实例（gradle 守护进程保留
 - **2026-10-26 · tooltip 取证探针加两张物品（`PMF_ITEMS` 增补）**：`scripts/test/resources/kubejs/1.21.1/client_scripts/astral_pmfix_client.js` 与 `scripts/test/resources/kubejs/1.20.1/client_scripts/astral_pmfix_client.js` 各加两项 —— `moto` = `astral_dice:moto_helmet_high_chip`（带属性的筹码，用于回归 Curios 属性段标题 `curios.modifiers.<槽位>` 是否已翻译）、`jill` = `astral_dice:jill_sign`（多行 tooltip，用于回归换行是否被二次转义）。读数形如 `AP_PMFIX|tip|moto|i=5|strip=佩戴筹码时：|END`（落 `run/<线>/logs/latest.log`）；1.21.1 还可直接用 AutoJS `side=client` 调 `Screen.getTooltipFromItem(mc, stack)` 取同一份行文本。
 
 - **2026-10-31 · Linux（VM）适配批：整合包投放根改 `mcHomePath` 解析 + 规则正本 / 测试台 Linux 化**：变更面（Windows 宿主 2026-10-31 14:5x 复核，文件级清单见 `docs/handover-1.5.0-main.md` §4.1az）—— ① 根 `build.gradle` 新增唯一解析点 `ext.mcHomePath`（`MC_HOME` → `/mnt/hgfs/.minecraft` → `D:/.minecraft` 回退）+ 配置期 `logger.lifecycle(\"整合包根目录 (MC_HOME): …\")`，四线 `packModsDir = new File(rootProject.ext.mcHomePath, 'versions/<实例>/mods')`（`neoforge-1.21.1/build.gradle:307`、`forge-1.20.1/build.gradle:451`、`neoforge-26.1.2/build.gradle:312`、`fabric-1.20.1/build.gradle:323`），`pushToDevRun` 不动；② Jade 插件配置键两线补齐（`config.jade.plugin_astral_dice.shop_cooldown` / `…event_drawer_cost`，四线键数 neo 1,068→1,070 与 forge 对齐）；③ 规则正本 `docs/agent/AGENTS-dsh-linux.md`（376 行 / 56,608 B）+ 两份 10-31 交接 + `docs/handover-new-session-context.md` 重写 + `docs/agent/PROJECT-REFERENCE.md` 的 Linux 命令块；④ 新增 `scripts/dev/rsync-original.sh` 与 `scripts/test/linux/{env,launch,stop}.sh` + `README.md`（bash 测试台）。**分级**：`build.gradle` 的行为性改动属「核心（定向最小冒烟）」，但本改**只改 `pushToGame` 的投放基址**、不改变任何编译产物内容 ⇒ 最小冒烟 = `:classes` + 配置期 `MC_HOME` 打印行 + 四个投放目标 `exists`。**判据（已跑）**：Linux 侧 `-I` 探针（§4.1ay）`mcHomePath=/mnt/hgfs/.minecraft`、四目标 `exists=true`、`MC_HOME` 覆盖生效；Windows 侧静态判定（`F:\mnt` 不存在 ⇒ 回退 `D:/.minecraft`，四个实例 `mods` 目录各 1 个 `astral_dice*` jar）+ `python docs/agent/verify-split.py` 四节 `[OK]`、`pwsh -NoProfile -File tools/check_lang_sync.ps1` EXIT 0（neo 1,070 / forge 1,070 / 26.1.2 836 / fabric 844）、4 个 bash 脚本 `bash -n` OK。**未做 / 缺口**：Windows 侧 `gradlew` 因 `C:\Users\xmace\.gradle\wrapper\dists\gradle-9.2.1-bin\…\gradle-9.2.1-bin.zip.lck` 被占（`Access denied`，无残留 java 进程）未跑通 ⇒ 配置期打印行与 `pushToGame` 目标解析**未实测**；未实机（红线）；`tools/check_lang_sync.ps1` 只比同线内 zh↔en↔ja、**不跨线比较**（坑 54），跨线键不对称需人工对齐。**取消项**：实机验收、真实 `pushToGame` 投放（均需用户点名）。
+
+- **2026-11-02 · §7B fabric-1.20.1 实机批次登记（LT0–LT7）**：首次把第四条线（`fabric-1.20.1`）纳入**实机排期**，并把条目从「散装 9 + 8 条旧命名」整理为**按批次登记**。本节的唯一职责是「登记 + 判据 + 跑法」，不改产品源码、不改既有三线口径。
+
+  **边界**：① 只覆盖 `fabric-1.20.1`（26.1.2 已另行移交，U9 只登记不执行）；② 启动动作**永远交回用户终端**（沙箱/子进程起游戏会因 Low IL 删不掉 `run/<side>/.fabric/processedMods` 旧 remap 缓存而 `AccessDeniedException`）；③ 本轮不动 `WIRING-TODO.md` / `ALIGNMENT-AUDIT-2026-11-01.md` 的既有结论，只把它们的「待实机」项落成条目。
+
+  **四条取证通道**（条目表里的「通道」列只取这四个代号）：
+
+  | 代号 | 通道 | 机制 | 能判什么 / 不能判什么 |
+  |---|---|---|---|
+  | `CH-R` | 机判（RCON） | `mt.sh --phase cases --case <json>` → `inject_command` → 服务端 `latest.log` 正则 | 能判「机器行出现 / 命令可执行 / 产物符号在位」；**不能**判数值关系（日志断言无比较运算） |
+  | `CH-A` | AutoJS | 会话内 `mcp__autojs__eval_js`（fabric 的 AutoJS 是 `-PautojsTestMod=1` 条件依赖） | 能读任意运行时状态；**不能**写进 case JSON（bash 侧 `eval_js/await_state/mcp_status` 恒判 `BLOCKED`） |
+  | `CH-M` | 人工视觉 | 截图 + 人眼，同坐标 / 同 yaw·pitch / 同距离 / 同时间码 | 能判观感；不能当作可复跑判据 |
+  | `CH-S` | 静态预检 | grep / `javap` / 开 jar 核符号 | 能提前把「实现根本不存在」的条目判 `BLOCKED`，避免实机空跑 |
+
+  **环境矩阵**（`run` 根为 `fabric-1.20.1/run/<side>`，与三线的 `run/<版本>` 不同）：
+
+  | 轮 | env | 配置 | 覆盖批次 |
+  |---|---|---|---|
+  | R1 | C1 | 仅服务端 + RCON（`enable-rcon=true` / `rcon.port=25575`） | LT0 |
+  | R2 | C2 | 服务端 + dev 客户端（同版本进服） | LT2 / LT3 / LT4 / LT5 |
+  | R3 | C3 | `-PtestTrinkets=false`（只 Accessories） | LT1 |
+  | R4 | C4 | `-PtestAccessories=false`（只 Trinkets） | LT1 |
+  | R5 | C5 | C2 + 旧客户端 jar `astral_dice-1.3.7-alpha.2+fabric_1.20.1.jar` | LT7 反向侧 |
+
+  **批次登记表**（`机判条目` 列由 `scripts/test/win/live.sh` 内嵌，改表必须同步改脚本 `mt_live_batch_cases`）：
+
+  | 批次 | 范围 | env | 默认侧 | 通道 | 机判条目 | 人工要点 |
+  |---|---|---|---|---|---|---|
+  | `LT0` | 冷启动 / 注册面 / 无异常扫描 | C1 | server | `CH-R`+`CH-S` | `LT-ENTITY-SWEEP` | 加载器无异常、注册面计数（157 物品 / 4 方块 / 67 效果）、无 crash-report |
+  | `LT1` | 饰品后端三态与槽位（U3–U6） | C2/C3/C4 | client | `CH-A`+`CH-M` | —（纯人工） | 换骰子槽位即时 resize、蹲右键落点、死亡保留、双源并存读写归属 |
+  | `LT2` | 出牌锁 / 骰战 / 防御折算 | C2 | server | `CH-R`+`CH-A` | `LT-DUMP-BASELINE`、`LT-RESET-CARDLOCK`、`LT-CLEAREFFECT-BY-DUMP` | 锁四态、防御 1:1、伤害数字只发造成者 |
+  | `LT3` | 事件体系（抽卡/选择/计时/动画窗） | C2 | client | `CH-R`+`CH-A`+`CH-M` | —（纯人工） | `AP_EVENT_*` 族齐全；U7 动画窗内左键不被吞 |
+  | `LT4` | 商店 / 村民 / 交易 | C2 | client | `CH-M`+`CH-A` | —（纯人工） | 卡牌/筹码商店开窗与扣款、两位交易员村民、JEI 类别 |
+  | `LT5` | 立牌（7 位新 + 基类 + 半透明） | C2 | server | `CH-A`+`CH-M` | `LT-SIGN-COOLDOWN-FINISH` | 主动技、`SignTranslucencyMixin`、免疫 HARMFUL（已登记缺口） |
+  | `LT6` | 轨道炮 / 激光 FX 四线对照（U1/U2） | C2 + 两 P0 线各一轮 | client | `CH-M` | —（纯人工截图） | 光柱宽度占比、`BEACON_V_TILE=8.0` 纵向平铺、颜色 `0xFFCF4A` / `0xFF2626`、连续开火去重 |
+  | `LT7` | 网络与版本闸门（U8） | C2 / C5 | server | `CH-R` | `LT-VERSION-GATE-LIVE` | C5 反向应见 `AP_NET_VERSION_REJECT`（本条目只覆盖同版本 OK 侧） |
+
+  **新增机判条目**（`scripts/test/cases/*-fabric-1.20.1.json`，已逐条过 `pwsh -File scripts/test/mt_case.ps1 validate`）：`LT-DUMP-BASELINE`、`LT-RESET-CARDLOCK`、`LT-SIGN-COOLDOWN-FINISH`、`LT-CLEAREFFECT-BY-DUMP`、`LT-ENTITY-SWEEP`、`LT-VERSION-GATE-LIVE`。与既有 16 条 fabric 条目并存（BOOT-READY / CLIENT-BOOT / JAR-ASSETS / …）。
+
+  ⚠️ **日志窗口纪律（本轮最大的假绿来源）**：bash 版 fabric 条目运行时对 `fabric-1.20.1/run/<side>/logs/latest.log` 做**整文件匹配**，没有时间窗。⇒ ① 每批开跑前必须轮转该文件（`live.sh` 在「实例未在跑」时自动 `mv latest.log latest.log.live-<ts>`，实例已在跑则**拒跑**并提示先 `stop --force`，除非显式 `--allow-stale-log`）；② `absent` 断言也不能表达「清除后应消失」（历史行仍在），这类判据一律走 `CH-A`/人工。
+
+  **判据词典（只锚原始值）**：`APDUMP|LOCKRAW|<键>=<值>`（`game_time` / `effect_card_cooldown_end` / `effect_card_play_count` / `effect_card_bonus_plays` / `living_page_cycle_bonus` / `max_allowed` / `remaining_block_ticks`）、`APDUMP|SIGN|<键>=<值>`（9 键）、`APDUMP|EFFECTS|effect=<全限定 id>|amplifier=<0 基>|duration=<tick>`、`APDUMP|PENDING|source=<id>|effect=|is_active=|remaining=`；**禁止作落点**：`APDUMP|LOCKDERIVED|*` 与 `APDUMP|SIGN|is_sign_active_locked`（行尾带 `|assert=forbidden`，是判定入口不是原始值）。版本闸门族：`AP_NET_VERSION_JOIN` / `_OK` / `_REJECT` / `_ABSENT`（`_REJECT` 唯一断开场景；旧口径 `REJECT remote=ABSENT` 已不存在）。
+
+  **跑法**（bash 驱动，dry-run 先看）与机器行：
+
+  ```bash
+  bash scripts/test/win/live.sh --batch LT0 --dry-run            # 只打印，不启动
+  bash scripts/test/win/live.sh --batch LT2 --allow-auto         # 非 dry-run 需 --allow-auto
+  bash scripts/test/win/live.sh --batch all --allow-auto --stop-after
+  ```
+
+  退出码沿用主测试台：`0=OK / 1=FAIL / 2=用法或闸门 / 11=BLOCKED(preflight) / 12=TIMEOUT / 130=中断`；机器行 `MT_LIVE_BATCH:` / `MT_LIVE_CASE:` / `MT_LIVE_MANUAL:` / `MT_LIVE_LOGROT:` / `MT_LIVE_ABORT:` / `MT_LIVE: OK|FAIL|DRY`。未知批次 `exit 2`；任一机判条目非 0 立即打印 `MT_LIVE_ABORT` 并中止该批（不继续跑后面的条目）。
+
+  **静态预检结论（本轮 `CH-S`，落进条目「静态预检」列）**：已闭环 —— 三座桥（`MobFinalizeSpawnBridgeMixin` / `ExplosionStartBridgeMixin` / `EnderPearlTeleportBridgeMixin`）、事件核心 LoaderBus 登记、网络 id 0–30（31 条）、`EventCardOverlay` 注册、`event_drawer` 两附件键、`compat/jei` 进编译期、防御折算常量（`DiceCombatModifiers.PLAYER_ARMOR_PER_DEFENSE` / `MOB_ARMOR_PER_DEFENSE`）。**未闭环（条目里写 `BLOCKED(原因)` + 进「候选产品缺陷」）**：① `MobEffectEvent.Applicable` 在 fabric 全仓**无派发点** ⇒ 立牌「免疫 HARMFUL」静默无效；② `component/SignAttachments.java` 仍与 `ModAttachments` 并存 ⇒ 玩家数据键双事实源（非实机可判，须代码批次收口）。
+
+  **主清单**：逐条目的六要素（前置 / 驱动 / 判据 / 通道 / 环境）+ 静态预检结论见 `porting/fabric-1.20.1/LIVE-TEST-LIST-2026-11-02.md`（54 条，LT0–LT7）；本节只登记批次、通道、判据口径与跑法，不重复条目正文。
+
+  **记录目录**：`scripts/test/reports/<date>-fabric-1.5.0-live/`（每轮一份，含批次表快照、`MT_LIVE_*` 行、失败条目的 `MT_CASE_LOG` 末几行）。本轮只登记，不产报告 —— 实机须用户点名。

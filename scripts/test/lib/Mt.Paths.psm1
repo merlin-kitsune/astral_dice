@@ -27,11 +27,20 @@ Import-Module (Join-Path $PSScriptRoot 'Mt.Conf.psm1')
 
 # ── 版本表（与 paths.sh / mt_paths.py 必须一致）──────────────────────────
 # 26.1.2 = 第三条线(multi-26.1.2-neoforge 分支新增;MC 26.1.2 / NeoForge 26.1.2.x / Java 25)。
+# fabric-1.20.1 = 第四条线(2026-11 登记;MC 1.20.1 / Fabric Loader / Java 17)。
+#   「三处一致」的实际对应关系（登记时逐处核过；本模块之外的其余两处均已不存在）：
+#     · scripts/test/lib/paths.sh 与 scripts/test/lib/mt_paths.py 已随 92fbeaf 删除（见文件头）
+#       ⇒ powershell 侧只剩本模块这一处版本表，没有第三处需要同步。
+#     · bash 侧的等价事实源是 scripts/test/win/lib/common.sh:26 MT_ALL_VERSIONS、:36 mt_subproject、
+#       :46 mt_loader、:55 mt_toolchain；两边改一处必须同时改另一处（内容必须逐项相等）。
+#     · fabric 的**双 run 根**（client / server）与 Gradle 任务名的等价实现见
+#       scripts/test/win/lib/fabric.sh:61-123（mt_fab_run_root / mt_fab_run_label / mt_fab_gradle_task），
+#       本模块的 Get-MtRunRoot / Get-MtRunLabel 与之同义。
 # 顺序有意保持「1.21.1 在前」:mt.ps1 的门控流程以 1.21.1 → 1.20.1 的既有顺序为准,
-# 新版本追加在末尾,不改变原有咬合关系。
-$script:VERSIONS = @('1.21.1', '1.20.1', '26.1.2')
-$script:LOADER = @{ '1.21.1' = 'neoforge'; '1.20.1' = 'forge'; '26.1.2' = 'neoforge' }
-$script:SUBPROJECT = @{ '1.21.1' = 'neoforge-1.21.1'; '1.20.1' = 'forge-1.20.1'; '26.1.2' = 'neoforge-26.1.2' }
+# 新版本追加在末尾,不改变原有咬合关系（fabric-1.20.1 因此排在 26.1.2 之后，未插进既有咬合段）。
+$script:VERSIONS = @('1.21.1', '1.20.1', '26.1.2', 'fabric-1.20.1')
+$script:LOADER = @{ '1.21.1' = 'neoforge'; '1.20.1' = 'forge'; '26.1.2' = 'neoforge'; 'fabric-1.20.1' = 'fabric' }
+$script:SUBPROJECT = @{ '1.21.1' = 'neoforge-1.21.1'; '1.20.1' = 'forge-1.20.1'; '26.1.2' = 'neoforge-26.1.2'; 'fabric-1.20.1' = 'fabric-1.20.1' }
 $script:WORLD_NAME = 'testworld'
 $script:SHOTS_MANIFEST = '.mt_shots.json'
 
@@ -46,13 +55,106 @@ $script:CONF_FILE = Join-Path $script:TEST_DIR 'mt.conf'
 $script:RUNS_FILE = Join-Path (Join-Path $script:TEST_DIR 'cases') '.mt_active_run'
 
 # 机器本地配置缺失时的内置默认值（与 mt_paths.py 的 _DEFAULT_PACK_MODS 一致）
+# fabric-1.20.1 的对应实例目录同样存在（D:\.minecraft\versions\1.20.1-Fabric 模组测试\mods）；
+# 覆盖键名 = MT_PACK_MODS_FABRIC（写进 mt.conf 即可覆盖，缺键时用这里的默认值）。
+# ⚠️ 没有这一条时，Get-MtPaths 的 confKey switch 会把 fabric 落到 default 分支拿到
+#    MT_PACK_MODS_FORGE ⇒ mt_env / mt_preflight 会把 **Forge 整合包的 mods** 当成 fabric 的兼容模组源
+#    （Loom 侧的兼容模组由 fabric-1.20.1/build.gradle 提供，与整合包无关）。
 $script:DEFAULT_PACK_MODS = @{
     '1.21.1' = 'D:\.minecraft\versions\狐の航空学 Voxy Edition\mods'
     '1.20.1' = 'D:\.minecraft\versions\1.20.1-Forge 模组测试\mods'
     '26.1.2' = 'D:\.minecraft\versions\26.1.2-NeoForge 模组测试\mods'
+    'fabric-1.20.1' = 'D:\.minecraft\versions\1.20.1-Fabric 模组测试\mods'
 }
 
 $script:CONF = Get-MtConf -Path $script:CONF_FILE
+
+# ── fabric-1.20.1 的**双 run 根**（与 bash 侧 fabric.sh:61-123 同义）──────────────
+# 另三线的 run 根是 <repo>/run/<版本> 一个目录；fabric 线**不是**：Loom 的 dev run 被拆成
+#   <repo>/fabric-1.20.1/run/client 与 <repo>/fabric-1.20.1/run/server
+# 两个独立目录（见 scripts/test/win/lib/fabric.sh 的 mt_fab_side_dir / mt_fab_log_path 与
+# scripts/test/fabric/README.md）。日志 / 存档 / mods 落在各自 side 的 run 根下 ⇒ 本模块必须能
+# 按 side 解析，否则 client 用例会拿 server 的 latest.log 去判 PASS（静默假绿）。
+#
+# side 的解析优先级与 bash 完全一致（fabric.sh:402 用 `${MT_SIDE:-}`，默认 MT_FAB_DEFAULT_SIDE=client）：
+#   显式 -Side  >  环境变量 MT_SIDE  >  默认 'client'
+# 另三线没有 side 概念，Resolve-MtSide 恒返回 ''，run 根与既有语义一字不变。
+$script:FABRIC_VERSION = 'fabric-1.20.1'
+$script:FABRIC_SIDES = @('client', 'server')
+$script:FABRIC_DEFAULT_SIDE = 'client'
+
+function Get-MtSides { $script:FABRIC_SIDES }
+function Get-MtFabricVersion { $script:FABRIC_VERSION }
+
+function Resolve-MtSide {
+    <#
+    .SYNOPSIS
+        fabric 线把 side 解析成 client / server；另三线恒返回 ''（无 side 概念）。
+
+    .NOTES
+        非法 side 一律 **throw**（不静默回落默认值）：写错 side 只会读到另一个 side 的日志，
+        断言随之在错的证据上判 PASS/FAIL —— 这正是「静默失败」，必须在校验期就炸出来。
+        典型非法值：'both'（bash 的 env/stop 阶段接受它，但它不对应任何单个 run 目录）。
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$Version,
+        [AllowEmptyString()][string]$Side = ''
+    )
+
+    if ($Version -ne $script:FABRIC_VERSION) { return '' }
+    $s = if ($Side) { $Side } elseif ($env:MT_SIDE) { $env:MT_SIDE } else { $script:FABRIC_DEFAULT_SIDE }
+    # ⚠️ 必须显式归一成小写：`-contains` / `-notcontains` 对字符串是**大小写不敏感**的，
+    #    直接拿 'Server' 去比会「校验通过」但拼出 run\Server（大小写错位的目录/标记）。
+    $s = ([string]$s).Trim().ToLowerInvariant()
+    if ($script:FABRIC_SIDES -notcontains $s) {
+        throw ("未知 side {0}（{1} 只支持：{2}）" -f $s, $Version, ($script:FABRIC_SIDES -join ' / '))
+    }
+    return $s
+}
+
+function Get-MtRunRoot {
+    <#
+    .SYNOPSIS
+        版本的 run 根：fabric ⇒ <repo>/fabric-1.20.1/run/<side>；另三线 ⇒ <repo>/run/<版本>。
+
+    .NOTES
+        这是「双 run 根」的唯一拼装点（bash 侧对应 fabric.sh:90-100 mt_fabric_run_root）。
+        Get-MtPaths 只调用本函数，调用方（40 处）一律读 $Paths.run_dir，不得自行拼目录。
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$Version,
+        [AllowEmptyString()][string]$Side = ''
+    )
+
+    if ($Version -eq $script:FABRIC_VERSION) {
+        $sideDir = Resolve-MtSide -Version $Version -Side $Side
+        $subRoot = Join-Path (Join-Path $script:ROOT $script:SUBPROJECT[$Version]) 'run'
+        return (Join-Path $subRoot $sideDir)
+    }
+    return (Join-Path (Join-Path $script:ROOT 'run') $Version)
+}
+
+function Get-MtRunLabel {
+    <#
+    .SYNOPSIS
+        人读的 run 根标签：fabric ⇒ 'fabric-1.20.1/run/<side>'；另三线 ⇒ 'run/<版本>'。
+    .NOTES
+        与 bash 的 mt_fab_run_label（fabric.sh:103-112）逐字同形，用于机器行/报告回显。
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$Version,
+        [AllowEmptyString()][string]$Side = ''
+    )
+
+    if ($Version -eq $script:FABRIC_VERSION) {
+        $sideDir = Resolve-MtSide -Version $Version -Side $Side
+        return ('{0}/run/{1}' -f $script:SUBPROJECT[$Version], $sideDir)
+    }
+    return ('run/{0}' -f $Version)
+}
 
 function Get-MtVersions { $script:VERSIONS }
 function Get-MtTestDir { $script:TEST_DIR }
@@ -83,23 +185,36 @@ function Get-MtPaths {
     <#
     .SYNOPSIS
         返回某个版本的完整路径集（字段名与 python Paths 对象一致）。
+
+    .PARAMETER Side
+        只对 fabric-1.20.1 有意义（client / server 两个 run 根）；缺省走
+        Resolve-MtSide 的三级解析（-Side > $env:MT_SIDE > 'client'）。另三线传入无害、被忽略。
     #>
     [CmdletBinding()]
-    param([Parameter(Mandatory)][string]$Version)
+    param(
+        [Parameter(Mandatory)][string]$Version,
+        [AllowEmptyString()][string]$Side = ''
+    )
 
     if ($script:VERSIONS -notcontains $Version) {
         throw "未知版本 $Version（可选：$($script:VERSIONS -join ' / ')）"
     }
 
     $root = $script:ROOT
-    $runDir = Join-Path (Join-Path $root 'run') $Version
+    # 双 run 根：fabric 按 side 解析（<repo>/fabric-1.20.1/run/client|server），
+    # 另三线仍是 <repo>/run/<版本> 单目录（Get-MtRunRoot 内部区分，语义未变）。
+    $sideName = Resolve-MtSide -Version $Version -Side $Side
+    $runDir = Get-MtRunRoot -Version $Version -Side $Side
     $logsDir = Join-Path $runDir 'logs'
     $shopsDir = Join-Path $runDir 'screenshots'
 
     # 26.1.2 用独立配置键 MT_PACK_MODS_NEOFORGE_26_1_2(不改动既有两键的语义)
+    # fabric-1.20.1 同样用独立键 MT_PACK_MODS_FABRIC：**必须显式列出**，否则会落进 default
+    # 分支拿到 forge 的整合包 mods 目录（fabric 的兼容模组来自 build.gradle 的 Loom 依赖）。
     $confKey = switch ($Version) {
         '1.21.1' { 'MT_PACK_MODS_NEOFORGE' }
         '26.1.2' { 'MT_PACK_MODS_NEOFORGE_26_1_2' }
+        'fabric-1.20.1' { 'MT_PACK_MODS_FABRIC' }
         default  { 'MT_PACK_MODS_FORGE' }
     }
     $rawPack = if ($script:CONF.ContainsKey($confKey)) { $script:CONF[$confKey] } else { $script:DEFAULT_PACK_MODS[$Version] }
@@ -111,6 +226,10 @@ function Get-MtPaths {
         loader          = $script:LOADER[$Version]
         subproject      = $script:SUBPROJECT[$Version]
         root            = $root
+        # side 只对 fabric 有值（client/server），另三线为 ''；run_label 与 bash 的
+        # mt_fab_run_label 同形（'fabric-1.20.1/run/client' vs 'run/1.21.1'），只用于回显。
+        side            = $sideName
+        run_label       = (Get-MtRunLabel -Version $Version -Side $Side)
         run_dir         = $runDir
         mods_dir        = Join-Path $runDir 'mods'
         saves_dir       = Join-Path $runDir 'saves'
@@ -152,6 +271,11 @@ function Get-MtProcessMarkers {
     [CmdletBinding()]
     param([Parameter(Mandatory)][psobject]$Paths)
 
+    # fabric 线的 run 根在子项目内（fabric-1.20.1/run/<side>），既不是 'run\<版本>' 也不是
+    # 别的线的目录形态 ⇒ 用子项目相对标记 + 解析后的绝对 run 根；另三线保持原样（一字不变）。
+    if ([string]$Paths.version -eq $script:FABRIC_VERSION) {
+        return @(":$($Paths.subproject):", "$($script:SUBPROJECT[$Paths.version])\run\$($Paths.side)", [string]$Paths.run_dir)
+    }
     return @(":$($Paths.subproject):", "run\$($Paths.version)", [string]$Paths.run_dir)
 }
 
@@ -164,21 +288,79 @@ function Get-MtShotsManifest {
     return (Join-Path $Paths.shot_dir $script:SHOTS_MANIFEST)
 }
 
+function ConvertTo-MtShotsCluster {
+    <#
+    .SYNOPSIS
+        把「清单文件里读到的任意形态」归一化成集群哈希表（run_id + shots 两键齐全）。
+
+    .DESCRIPTION
+        B1 根因（2026-11-02 判据审计）：
+          1) 清单文件内容是顶层空数组 `[]` 时，ConvertFrom-Json -AsHashtable 得到空数组；
+             `return (<空数组>)` 会被 PowerShell 展开成「零个对象输出」⇒ 调用方拿到 $null。
+          2) 文件内容是 `null`、或对象形态但 shots 键缺失/为 null 时，下游 .ContainsKey 也走不通。
+          3) 后果链：Add-MtShot 拿 $null 调 .ContainsKey 抛错 → 被 Mt.Channel.psm1 的 catch 静默吞掉
+             （截图全部无 tag 登记）→ Get-MtCurrentShots 同样空引用，冒到 mt_case.ps1 的 vision 断言，
+             整轮 ERROR。
+
+        因此三种「空形态」（[] / $null / shots 键为空或缺失）一律归一化成空集群；其它非字典形态
+        （字符串、数字、被未来改动弄坏的形状）同样退回空集群 —— 闸门在这里，不在每个调用点。
+    #>
+    [CmdletBinding()]
+    param([AllowNull()][psobject]$Value)
+
+    $empty = @{ run_id = ''; shots = @() }
+    if ($null -eq $Value) { return $empty }
+
+    # 顶层空数组（[] 的唯一合法解析结果）——注意非空数组仍然取首元素，兼容「包了一层的清单」。
+    if ($Value -is [System.Array]) {
+        $arr = @($Value)
+        if ($arr.Count -eq 0) { return $empty }
+        $Value = $arr[0]
+        if ($null -eq $Value) { return $empty }
+    }
+
+    if ($Value -isnot [System.Collections.IDictionary]) { return $empty }
+
+    $cluster = @{ run_id = ''; shots = @() }
+    try {
+        if ($Value.Contains('run_id') -and $null -ne $Value['run_id']) {
+            $cluster['run_id'] = [string]$Value['run_id']
+        }
+        if ($Value.Contains('shots') -and $null -ne $Value['shots']) {
+            $cluster['shots'] = @($Value['shots'])
+        }
+    } catch {
+        return $empty
+    }
+    return $cluster
+}
+
 function Get-MtShots {
     <#
     .SYNOPSIS
-        读取当前世代截图清单；无清单或损坏时返回 @{}（与 python read_shots 同义）。
+        读取当前世代截图清单，**保证返回集群哈希表**（run_id + shots）。无清单 / 损坏 / 空形态
+        一律返回空集群 —— 与 python read_shots 的「返回 dict」语义同义。
+
+    .NOTES
+        2026-11-02（B1）：旧实现 `return (Get-Content ... | ConvertFrom-Json -AsHashtable)` 在清单为
+        顶层空数组时因 PowerShell 的数组展开返回 $null，导致截图登记被静默丢弃、vision 断言空引用。
+        现在一律经 ConvertTo-MtShotsCluster 归一化，且**不返回裸数组**（裸 @() 会被展开成零输出）。
+        消费者只用 .ContainsKey('shots') / ['shots'] / ['run_id'] 这类键访问，空集群同样满足。
     #>
     [CmdletBinding()]
     param([Parameter(Mandatory)][psobject]$Paths)
 
     $manifest = Get-MtShotsManifest -Paths $Paths
-    if (-not (Test-Path -LiteralPath $manifest -PathType Leaf)) { return @{} }
-    try {
-        return (Get-Content -LiteralPath $manifest -Raw -Encoding UTF8 | ConvertFrom-Json -AsHashtable)
-    } catch {
-        return @{}
+    if (-not (Test-Path -LiteralPath $manifest -PathType Leaf)) {
+        return @{ run_id = ''; shots = @() }
     }
+    $parsed = $null
+    try {
+        $parsed = Get-Content -LiteralPath $manifest -Raw -Encoding UTF8 | ConvertFrom-Json -AsHashtable
+    } catch {
+        return @{ run_id = ''; shots = @() }
+    }
+    return (ConvertTo-MtShotsCluster -Value $parsed)
 }
 
 function Add-MtShot {
@@ -191,16 +373,30 @@ function Add-MtShot {
         [Parameter(Mandatory)][psobject]$Paths,
         [Parameter(Mandatory)][string]$FilePath,
         [Parameter(Mandatory)][string]$Tag,
-        [Parameter(Mandatory)][string]$RunId
+        [Parameter(Mandatory)][string]$RunId,
+        # 取证补充字段（可选，缺省写空串）：mode=f2/f5/... 、path=截图绝对路径、ts=登记时刻（unix 秒）。
+        # ts 是「登记时刻」而不是「文件生成时刻」——判据侧不得把 ts 当作截图新鲜度依据，
+        # 文件新鲜度一律看 PNG 自身的 LastWriteTime（见 mt_case.ps1 的 vision 断言）。
+        [string]$Mode = '',
+        [string]$Path = ''
     )
 
     $data = Get-MtShots -Paths $Paths
+    # B1 兜底（2026-11-02）：Get-MtShots 已保证返回集群，但调用点不再假设它 —— 拿到 $null /
+    # 非字典（历史清单、未来回归）时自建空集群，绝不 .ContainsKey 空引用；shots 为 null 也补成空。
+    if ($null -eq $data -or $data -isnot [System.Collections.IDictionary]) {
+        $data = @{ run_id = ''; shots = @() }
+    } elseif ($null -eq $data['shots']) {
+        $data['shots'] = @()
+    }
     if (-not $data.ContainsKey('run_id') -or $data['run_id'] -ne $RunId) {
         $data = @{ run_id = $RunId; shots = @() }
     }
     $shots = @($data['shots']) + ,([ordered]@{
             file = [System.IO.Path]::GetFileName($FilePath)
             tag  = $Tag
+            mode = $Mode
+            path = $Path
             ts   = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() / 1000.0
         })
     $data['shots'] = $shots
@@ -224,10 +420,20 @@ function Get-MtCurrentShots {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][psobject]$Paths,
-        [Parameter(Mandatory)][string]$RunId
+        [Parameter(Mandatory)][string]$RunId,
+        # 新鲜度下限（unix 秒，0=不过滤=旧行为）。判据侧（vision 断言）必须显式传本用例窗口起点，
+        # 否则 run_id 粘性的历史条目会被当成「本轮刚产出」的证据（2026-11-02 审计 D2/S6）。
+        # ⚠️ 默认 0 是硬约束：mt_capture.ps1 的 prune 用本函数算 keepSet，默认收紧会扩大删除面。
+        [double]$SinceUnix = 0
     )
 
     $data = Get-MtShots -Paths $Paths
+    # B1 兜底（2026-11-02）：与 Add-MtShot 同口径 —— 空形态归一化成空集群，绝不空引用。
+    if ($null -eq $data -or $data -isnot [System.Collections.IDictionary]) {
+        $data = @{ run_id = ''; shots = @() }
+    } elseif ($null -eq $data['shots']) {
+        $data['shots'] = @()
+    }
     if ($data.ContainsKey('run_id') -and $data['run_id'] -eq $RunId) {
         # ⚠️ 必须按文件名**去重**：python 侧是 `names = {s["file"] for s in shots}`（set）。
         #    清单里同一个文件被登记两次时（本机 run/1.20.1 的清单里
@@ -239,13 +445,19 @@ function Get-MtCurrentShots {
             $name = [string]$s['file']
             if (-not $seen.Add($name)) { continue }
             $f = Join-Path $Paths.shot_dir $name
-            if (Test-Path -LiteralPath $f -PathType Leaf) { $out += (Get-Item -LiteralPath $f) }
+            if (Test-Path -LiteralPath $f -PathType Leaf) {
+                $item = Get-Item -LiteralPath $f
+                if ($SinceUnix -gt 0 -and
+                    ($item.LastWriteTime.ToFileTime() / 10000000.0 - 11644473600) -lt $SinceUnix) { continue }
+                $out += $item
+            }
         }
         if ($out.Count -gt 0) { return @($out | Sort-Object LastWriteTime) }
     }
 
     # 回落：以运行开始时间为界，取最新连续一批
     $start = Get-MtRunStartTs -RunId $RunId
+    if ($SinceUnix -gt 0 -and $SinceUnix -gt $start) { $start = $SinceUnix }
     if (-not (Test-Path -LiteralPath $Paths.shot_dir)) { return @() }
     $fresh = @(Get-ChildItem -LiteralPath $Paths.shot_dir -Filter '*.png' -File |
             Where-Object { $_.LastWriteTime.ToFileTime() / 10000000.0 - 11644473600 -ge $start })
@@ -613,10 +825,11 @@ function Repair-MtTestKeyBindings {
 }
 
 Export-ModuleMember -Function @(
-    'Get-MtVersions', 'Get-MtTestDir', 'Get-MtRoot', 'Get-MtConfFile', 'Get-MtRunsFile',
+    'Get-MtVersions', 'Get-MtSides', 'Get-MtFabricVersion', 'Resolve-MtSide', 'Get-MtRunRoot', 'Get-MtRunLabel',
+    'Get-MtTestDir', 'Get-MtRoot', 'Get-MtConfFile', 'Get-MtRunsFile',
     'Get-MtConf', 'Get-MtWorldName', 'Assert-MtVersion', 'Get-MtPaths',
     'Get-MtProcessMarkers', 'Get-MtShotsManifest', 'Get-MtShots', 'Add-MtShot',
-    'Get-MtCurrentShots', 'New-MtRunId', 'Get-MtActiveRunId', 'Get-MtRunStartTs',
+    'ConvertTo-MtShotsCluster', 'Get-MtCurrentShots', 'New-MtRunId', 'Get-MtActiveRunId', 'Get-MtRunStartTs',
     'Get-MtReportsDir', 'ConvertTo-MtJson',
     'Get-MtProgressFile', 'Set-MtProgress', 'Get-MtProgress',
     'Get-MtPauseOnLostFocus', 'Set-MtPauseOnLostFocus',

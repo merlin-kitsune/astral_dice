@@ -1,0 +1,34 @@
+{
+  "case_id": "SIGN-ATTR-fabric-1.20.1",
+  "title": "立牌属性：25 个立牌物品类全部打进产物 jar（item/sign/*SignItem.class >= 25），并且立牌注册入口与属性相关类在位。立牌的数值属性需要运行时读数，本条守「类集合完整」这一可离线验证的事实。",
+  "version": "fabric-1.20.1",
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "jar_stats",
+      "save_as": "jar"
+    }
+  ],
+  "assert": [
+    {
+      "type": "bytecode",
+      "pattern": "item/sign/[A-Za-z]+SignItem\\.class$"
+    },
+    {
+      "type": "bytecode",
+      "pattern": "item/sign/MegasSignItem\\.class$"
+    },
+    {
+      "type": "bytecode",
+      "pattern": "item/sign/FenSignItem\\.class$"
+    },
+    {
+      "type": "jar",
+      "from": "jar",
+      "signs_min": 25
+    },
+    {
+      "type": "crash"
+    }
+  ]
+}

@@ -946,6 +946,17 @@ function Test-MtClientProcess {
     #   必须一并识别，否则 26.1.2 客户端的兜底判定恒为 false。
     #   注意用**全限定名**匹配：`net.neoforged.fml.startup.DataClient`（datagen 运行）
     #   不含该子串，不会被误认成客户端。
+    # 路径③（2026-11-02 新增，fabric-1.20.1 专属）：Loom dev 启动的客户端主类是
+    #   net.fabricmc.devlaunchinjector.Main（或 net.fabricmc.loader.impl.launch.knot.KnotClient），
+    #   命令行**不含** net.minecraft.client.main.Main，也不含 ':fabric-1.20.1:' 与 run\client
+    #   （Gradle 任务选择器只在 wrapper 命令行里，客户端 JVM 里没有）⇒ 旧两条路径对 fabric 恒 false，
+    #   用例会在客户端明明活着时判「无法确认本次运行曾成功启动」而整轮 ERROR（2026-11-02 实机复现）。
+    #   判据同等严格：-Dfabric.dli.env=client（Loom 注入的侧标记）+ 子项目名 + dev 主类，三项同时命中。
+    if ($CommandLine.Contains('-Dfabric.dli.env=client') -and
+        $CommandLine.Contains('fabric-1.20.1') -and
+        ($CommandLine.Contains('net.fabricmc.devlaunchinjector.Main') -or
+         $CommandLine.Contains('net.fabricmc.loader.impl.launch.knot.KnotClient'))) { return $true }
+
     $isClientEntry = $CommandLine.Contains('net.minecraft.client.main.Main') -or
                      $CommandLine.Contains('bootstraplauncher') -or
                      $CommandLine.Contains('net.neoforged.fml.startup.Client')

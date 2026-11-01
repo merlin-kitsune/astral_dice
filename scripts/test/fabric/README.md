@@ -3,6 +3,18 @@
 > 自包含的第四条线测试台。**不修改、不依赖** `scripts/test/mt*.ps1` + `lib/Mt.*.psm1` + `cases/*.json`  
 > 那一套生产线资产（那套是 NeoForge 1.21.1 / Forge 1.20.1 / NeoForge 26.1.2 三线的口径）。  
 > 一律 PowerShell 7（`pwsh`）；禁用 Windows PowerShell 5.1（见 `AGENTS.md`「命令执行规范」）。
+> **2026-11-01 登记更新（本页 §1/§3 的「不依赖生产线」口径已被部分取代，以此段为准）**
+>
+> 1. **fabric-1.20.1 已正式登记进 PowerShell 生产线**：`scripts/test/lib/Mt.Paths.psm1` 的
+>    `VERSIONS` / `LOADER` / `SUBPROJECT` 三表含 fabric，run 根按 side 解析成
+>    `fabric-1.20.1/run/{client,server}`（其它三线仍是 `run/<版本>` 单目录）；`mt.ps1` 新增
+>    `--side client|server`（只对 fabric 有效，经 `MT_SIDE` 传给全部子进程）。
+> 2. **用例已迁到正式目录**：规范位置 = `scripts/test/cases/<CASE>-fabric-1.20.1.json`（16 条）。
+>    本目录 `cases/FAB-*.json` **保留仅作历史**，不再被执行；逐条映射见 §11.1。
+> 3. **bash 编排层已有原生 fabric 实现**（`scripts/test/win/mt.sh` + `lib/fabric.sh`），本目录的
+>    10 个 `ft_*.ps1` 属**遗产层**（判定见 §11.3）；4 个探针脚本仍是活资产（见 §11.4）。
+>
+> 登记前 / 后对照、零回归判据与删除清单见 `porting/fabric-1.20.1/TEST-ASSET-REGISTRY.md`。
 
 
 
@@ -1008,3 +1020,85 @@ M2 钉住 fabric 的两条 `hasEffect` 早退判据。期望 `GATE: PASS (22 项
   `reports/`，见 `.gitignore`）、仓库根 `temp/`（子进程日志）、以及 fabric 的运行目录
   （`fabric-1.20.1/run/**`，仅 `ft_env --mode install/--enable-rcon/--install-probe`、`ft_launch`、
   `ft_stop --purge-saves` 会写；默认的 `verify` / 读数类脚本**只读**）。
+
+---
+
+## 11. 资产登记与遗产界定（2026-11-01）
+
+本节是任务「fabric-1.20.1 正式登记进测试台 + 测试资产整理」的落点。判据类命令见
+`porting/fabric-1.20.1/TEST-ASSET-REGISTRY.md`（可机器复跑）。
+
+### 11.1 用例迁移映射表（8 条遗留 → 正式目录）
+
+迁移时统一做的字段变换（原始文件不动，见 §11.2）：
+
+| 项 | 遗留（`cases/FAB-*.json`，pwsh 时代） | 正式（`scripts/test/cases/*-fabric-1.20.1.json`） |
+| --- | --- | --- |
+| `version` | 无（bash 运行器要求 `version == fabric-1.20.1`，故遗留文件**跑不了**） | `"fabric-1.20.1"` |
+| `side` | 有（client/server） | 保留（`mt_case.ps1` 校验取值并透传 `Get-MtPaths -Side`） |
+| `window` | 有（case/whole） | 删除；原 `whole` 改为每条 `log`/`absent` 断言的 `"scope": "whole"` |
+| `inject_command.channel` | 有（rcon） | 删除（bash 运行器只读 `command`，pwsh 原语表字段封闭） |
+| `jar` 断言前置 | 无 `jar_stats` 步 | 补 `{"op":"jar_stats","save_as":"jar"}`（否则断言取不到状态） |
+| `case_id` | `FAB-*` | 与文件名同名（`<CASE>-fabric-1.20.1`） |
+
+| 遗留 `cases/FAB-*.json` | 正式用例 | 判定 | 独有覆盖 |
+| --- | --- | --- | --- |
+| `FAB-BOOT-EMBED` | `BOOT-EMBED-fabric-1.20.1.json` | **已迁移** | `Loader mods` 清单里出现 `- starengine`（证明 Loom `include(...)` 的内嵌 jar 真被加载） |
+| `FAB-CATCHUP-PARITY` | `CATCHUP-PARITY-fabric-1.20.1.json` | **已迁移** | `AP_CATCHUP_ENV/MELEE/RANGE/CONC/LEGACY` 五条机器行（FakePlayer 驱动，无需真人） |
+| `FAB-CLIENT-BOOT` | `CLIENT-BOOT-fabric-1.20.1.json` | **已迁移** | 客户端事件桥/注册桥/订阅审计中文机器行（新 `PLATFORM-BRIDGE` 只验字节码，不验运行时读数） |
+| `FAB-INJECT-ROUNDTRIP` | `INJECT-ROUNDTRIP-fabric-1.20.1.json` | **已迁移** | RCON 注入往返端到端（`/say` 的控制台回声锚点） |
+| `FAB-JAR-ASSETS` | `JAR-ASSETS-fabric-1.20.1.json` | **已迁移** | `bountiful_max=0`（本条线**不得**出现 `data/bountiful`），其余四项与 `CARD-CHIP-UI`/`JAR-RESOURCE`/`TRINKET-BACKEND` 重叠 |
+| `FAB-PARTY-BACKENDS` | `PARTY-BACKENDS-fabric-1.20.1.json` | **已迁移** | `AP_FAB_PARTY` 三后端接入状态行（反射失败是静默缺陷） |
+| `FAB-Q2Q3-INVARIANTS` | `Q2Q3-INVARIANTS-fabric-1.20.1.json` | **已迁移** | `AP_CATCHUP_EFFREM` / `AP_CATCHUP_MEDKIT`（效果移除拦截 + 医疗箱不刷血） |
+| `FAB-DISPATCH-BASIC` | **不迁入** | **保留 legacy（唯一覆盖暂缺工具链）** | 断言类型 `dispatch_tick` / `dispatch_fired` / `dispatch_zero_absent` 与步骤 `wait_for` **仅存在于本目录的 pwsh 遗产层**（`ft_assert.ps1` / `ft_case.ps1`），bash 运行器（`lib/fabric.sh` 的 `eval_assert`）与 `mt_case.ps1` 都**没有**实现 ⇒ 迁进正式目录会恒 `BLOCKED` 或校验不过 = 假绿。它断言的三条基础事件在 `TICK-DISPATCH-fabric-1.20.1.json`（字节码面）有部分覆盖，**运行时派发读数仍需用 `ft_dispatchreport.ps1` 手动取证** |
+
+→ 正式目录现有 fabric 用例 **16 条** = 既有 9 条（`BOOT-READY` / `CARD-CHIP-UI` / `CURIOS-SLOT-SIZING` / `JAR-RESOURCE` / `PLATFORM-BRIDGE` / `SIGN-ATTR` / `TICK-DISPATCH` / `TRINKET-BACKEND` / `VERSION-GATE`）+ 本次迁入 7 条。
+
+### 11.2 遗留文件为什么不删
+
+* 「静默删掉还有唯一覆盖的用例」是本仓明令禁止的：`FAB-DISPATCH-BASIC` 的运行时派发读数（`ServerTickEvent > 0` 这类「桥装了但事件从不触发」的唯一护栏）在现行 bash/pwsh 断言集里**没有等价实现**，删掉就等于永久失去该能力。
+* 其余 7 条虽然已有正式副本，保留原文的价值是**判据原文**（每条 `note` 里写着 2026-10-01/10-04 的实跑读数与踩坑），新版只是指向它们，不复制全文。
+* 因此 `cases/FAB-*.json` 不进入任何执行路径：bash 运行器只 glob `scripts/test/cases/*-fabric-1.20.1.json`（`lib/fabric.sh:609`）；pwsh 侧用例目录同理。
+
+### 11.3 pwsh 遗产判定表（10 个 `ft_*.ps1`）
+
+判据口径：「bash 已等价实现」= bash 编排层（`scripts/test/win/mt.sh` + `lib/{common,phases,fabric}.sh` + `env.sh`/`launch.sh`/`stop.sh`）有同语义实现；「仍被引用」= 仓库里有非本目录的执行引用；「独有能力」= 两侧均无等价物。
+
+| 文件 | 职责 | bash 等价实现 | 判定 | 依据 / 缺口 |
+| --- | --- | --- | --- | --- |
+| `ft.ps1` | 阶段编排入口（build/env/launch/stop/case/report）+ 批量闸门 | `mt.sh` 参数解析 + `lib/phases.sh:452 mt_run_phase` | **纯遗产（等价）** | 仅被本目录 README/docs 提及，无代码引用；`--phase` 集合与闸门语义已在 bash 复刻 |
+| `ft_build.ps1` | `gradlew :fabric-1.20.1:build` + **开包核对（jar ↔ 磁盘源对照）** | `lib/phases.sh:266 mt_phase_build`（只跑构建）；jar 计数由 `lib/fabric.sh:484-501 jar_stats` + `cases` 的 `jar` 断言覆盖 | **部分独有** | bash 只统计**jar 内**条目数，**不做**「磁盘 `src/generated/resources` 数量 ↔ 产物数量」对照（该对照是 2026-10 漏抄 `srcDir` 事故的护栏） |
+| `ft_env.ps1` | 目录骨架/eula/前置可得性 + `--enable-rcon` 写 `server.properties` + **`--install-probe` 把探针拷进 `run/<side>/kubejs/`** | `lib/phases.sh:250 mt_phase_env` + `env.sh`（只**检查**：`fab_server_properties` / `fab_rcon` 读数，`lib/fabric.sh:193-216`） | **独有能力（bash 缺口）** | bash **既不写 `server.properties`、也不安装探针**；`CATCHUP-PARITY`/`Q2Q3-INVARIANTS` 依赖探针已在 `run/server/kubejs/server_scripts/`（KubeJS 只在冷启动加载 ⇒ 安装必须重启） |
+| `ft_launch.ps1` | 起 `:fabric-1.20.1:runServer\|runClient` + 就绪轮询（文件身份锚点）+ launch 窗口冻结 + `--gradle-arg` 透传 | `lib/phases.sh:289 mt_phase_launch` + `lib/fabric.sh:342 mt_fab_phase_launch` + `launch.sh` | **纯遗产（等价）** | 就绪行 `lib/fabric.sh:36-38` 与 `ft_launch.ps1:131` 同值；bash 侧 `-P` 透传走 `MT_GRADLE_EXTRA_ARGS` |
+| `ft_stop.ps1` | 状态文件 PID 树 + CIM 扫 `devlaunchinjector`，只杀本线；`--purge-saves` | `lib/phases.sh:326 mt_phase_stop` + `stop.sh`（含 `--version`/side 解析） | **纯遗产（等价）** | `stop.sh:154,197,206,209` 已按 fabric 双 run 目录匹配进程 |
+| `ft_inject.ps1` | RCON 单通道注入（同步回显 `AP_FAB_INJECT_RESP`） | `lib/fabric.sh:224 mt_rcon_exec` + `cases` 运行器的 `inject_command\|rcon` op（`lib/fabric.sh:695`） | **纯遗产（等价）** | `kubejs` 通道两侧都已显式失败（D3 的结论已写进 bash 注释） |
+| `ft_assert.ps1` | 断言引擎：`snapshot`/`log`/`absent`/`case` + **`dispatch_*` 三型** + 窗口 `case\|launch\|whole` | `lib/fabric.sh:527-603 eval_assert`（log/absent/crash/kubejs/mixin/jar/bytecode/state）+ `mt_assert.ps1` | **部分独有** | `dispatch_tick` / `dispatch_fired` / `dispatch_zero_absent` 与 `snapshot --window` 的窗口冻结在 bash **和** pwsh 生产线都**没有**；这也是 `FAB-DISPATCH-BASIC` 无法迁入的唯一原因 |
+| `ft_case.ps1` | 单条用例运行器（`note`/`snapshot`/注入/**`wait_for`**），无进度信标 | `lib/fabric.sh:398-753 mt_fab_cases_run`（内嵌 python 断言引擎） | **部分独有** | bash 无 `wait_for`（用固定 `wait` ⇒ 「等待条件未满足」会被误读成断言失败，见 §7.3/D5）；`window` 冻结机制 bash 无（bash 读整份 `latest.log`） |
+| `ft_dispatchreport.ps1` | 抽取 `LoaderBus#dispatchReport()`，把 0 次派发的事件类单独列出 | **无** | **独有能力（保留）** | bash/pwsh 生产线均无派发报告解析器；`FAB-DISPATCH-BASIC` 保留 legacy 后，这条人工取证路径是唯一能拿到「派发 = 0」读数的方式 |
+| `ft_prod.ps1` | 生产映射冒烟：在**真实整合包实例**（`D:\.minecraft\versions\1.20.1-Fabric 模组测试`）启动一次并按四类判据裁决，含 `-PreloadClasses` 类预加载 | **无** | **独有能力（保留）** | bash `prod_smoke.py` 只服务生产线口径（`scripts/test/prod_smoke.py`），不覆盖 fabric 实例映射；该脚本只读整合包、不写 |
+
+### 11.4 探针脚本（4 个 `.js`，全部保留）
+
+| 文件 | 用途 | 引用面（实测） | 判定 |
+| --- | --- | --- | --- |
+| `astral_catchup_probe.js` | `/astralcatchup {env,melee,range,conc,legacydur,effremove,medkit}` 读数探针（FakePlayer 驱动，无需真人） | `cases/CATCHUP-PARITY-fabric-1.20.1.json`、`cases/Q2Q3-INVARIANTS-fabric-1.20.1.json`、本 README §7.2.7/§7.2.8、`KNOWN-ISSUES.md` | **活资产（用例依赖）** |
+| `astral_fabric_curio_probe.js` | 饰品后端取证（Trinkets ↔ Accessories 等价性，`/astralfab …`） | 本 README §2/§7.2.6 | **活资产（独有能力）** |
+| `astral_gs_probe.js` | 全局/服务端读数探针（与 catchup 探针共享 IIFE 纪律） | 本 README、`KNOWN-ISSUES.md`、`cases/CATCHUP-PARITY-*` 的判据说明 | **活资产（独有能力）** |
+| `event_bridge_probe.js` | 人工取证（造僵尸/伤害/效果区分「桥没接」与「确实没发生」） | `ft_env.ps1:36,152-153`（`--install-probe` 的默认脚本）、`scripts/test/TESTING-SPEC.md` | **活资产（被遗产层引用）** |
+
+→ **无零引用纯遗产**：10 个 `ft_*.ps1` 里 5 个已被 bash 等价覆盖但**仍有独有/取证价值**，故本轮**不移动任何文件**（`legacy/` 子目录本轮不建）。若后续要裁撤，最安全的候选是 `ft.ps1`（纯派发器，零代码引用）——但需先确认 `ft_launch/ft_env/...` 全部退役，否则会断链。
+
+### 11.5 迁移后怎么跑（不启动游戏的部分）
+
+```bash
+# ① pwsh 侧全量用例校验（解析 + 白名单 + 断言字段封闭；273 条应全绿）
+pwsh -NoProfile -NonInteractive -File scripts/test/win/logs/_baseline/validate-all-cases.ps1
+
+# ② bash 侧 fabric 用例清单解析（dry-run 只计数、不执行、不启动游戏）
+bash scripts/test/win/mt.sh --version fabric-1.20.1 --side server --phase cases --allow-auto --dry-run
+
+# ③ 单条用例（真正执行，需先 build 且 side 对应的游戏在跑）
+bash scripts/test/win/mt.sh --version fabric-1.20.1 --side server --phase cases \
+  --case scripts/test/cases/CATCHUP-PARITY-fabric-1.20.1.json --allow-auto
+pwsh -File scripts/test/mt.ps1 --version fabric-1.20.1 --side server --case cases/CATCHUP-PARITY-fabric-1.20.1.json
+```

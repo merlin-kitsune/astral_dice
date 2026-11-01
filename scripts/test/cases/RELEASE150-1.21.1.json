@@ -1,0 +1,305 @@
+{
+  "case_id": "RELEASE150-1.21.1",
+  "title": "发布验收 1.5.0 · NeoForge 1.21.1",
+  "version": "1.21.1",
+  "target": {
+    "type": "release",
+    "ref": "1.5.0"
+  },
+  "channel": "autojs",
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "【发布验收 1.5.0 · 1.21.1】通道 = autojs（无需窗口焦点；四线 run/<版本>/mods 里都有 AutoJS-*.jar，fabric 线需 --enable-autojs / -PautojsTestMod=1 才注入 AutoJS）。\n为什么不是 kubejs 原生通道：截图必须由客户端 AutoJS 走 Screenshot.grab，且 26.1.2 / fabric 线没有 astral_shop_probe.js（/astralshop 只在 1.20.1+1.21.1 存在），所以统一改成 Java 直调，四线同一套步骤。\n\n模拟玩家数据：inject_command 摆出确定状态（gamemode / clear / effect clear / tp / time / xp / effect give / give x4），随后 eval_js(side=server) 打一行机器可读日志\n[REL150] ver=1.21.1 gamemode=… pos=x,y,z hp=… food=… xp=… arm=… slotted=… chips=… item=… dim=… modver=…\n（字段取自 AutoJS.state()；必须服务端求值——客户端分支的 gameMode 会退化成 \"client\"）。断言逐字段用 type=log 命中该行：gamemode / pos / hp / item / xp / slotted / chips / modver。\n改名验收：astral_dice:abyss_reagent_chip - 客户端 eval 读显示名 getHoverName() 与 tooltip 行 Screen.getTooltipFromItem（内部派发 ItemTooltipEvent，模组加的行会出现），断言显示名 ∈ {深渊试剂, Abyss Reagent}（1.21.1 / 1.20.1 / 26.1.2 客户端 locale=zh_cn，fabric 客户端 locale=en_us）。"
+    },
+    {
+      "op": "note",
+      "text": "选择器口径：本用例所有 inject_command 走 AutoJS.command()，实测其服务端实现是 Commands.performPrefixedCommand(server.createCommandSourceStack(), cmd)（字节码取证：AutoJS-neoforge-1.21.1-1.0.0.jar 内 AutoJSVanilla.runCommand 调 MinecraftServer.createCommandSourceStack），命令源是**控制台**而非玩家，所以 /gamemode、/give、/xp、/effect、/clear、/tp 的目标一律写 @a，不得写 @s（@s 在控制台源下解析不到玩家，命令会静默失败，日志里只留一条 No player was found 之类的话术）。相应地 absent 断言把「No player was found / 没有找到玩家 / No entity was found / 没有与选择器匹配的实体」一并纳入，让命令源错配表现为显式 FAIL，而不是后续字段断言的神秘不匹配。"
+    },
+    {
+      "op": "note",
+      "text": "截图取证（3 张，op:screenshot mode=f2，落 run/<版本>/screenshots/ 并登记 .mt_shots.json）：\n  1) abyss_reagent_tooltip — 背包界面 + 光标按槽位定位（InventoryScreen 打开后用 scr.getMenu().slots 遍历找到持有 astral_dice:abyss_reagent_chip 的槽位，面板原点取 lx=floor((w-195)/2) / ty=floor((h-136)/2)，GUI 坐标 = 原点 + 槽位 x/y + 8，再乘 mc.getWindow().getGuiScale() 换成窗口像素移动系统光标 —— 不是按生存栏布局硬算坐标；2026-11-02 订正旧 note）；光标定位 try/catch 尽力而为，tooltip 的内容已由 [REL150] tip i=… text=… 机器行单独作证，截图只作视觉留档；\n  2) chip_shop_ui — ChipShopState.store(p, EMPTY) 清冷却后 ChipShopOpener.open(p)，成功则服务端日志出现 [astral_dice] CHIP_SHOP_OPEN player=…，客户端 screen 类名断言为 ChipShopScreen；\n  3) release150_guide — 帕秋莉手册 astral_dice:astral_guide 尽力打开（mod 源码无 PatchouliAPI 引用，打开失败不作 PASS 判据，只留档 + vision 备注）。\n回归面：骰子 / 卡牌 / 筹码 / 立牌四条注册树断言（astral_dice:dice、astral_dice:attack_card_medium、astral_dice:abyss_reagent_chip、astral_dice:jill_sign）+ type=jar 完整性阈值 + 启动期版本行（scope=whole，启动期事实必须整文件窗口）+ type=crash。\n「jar 名含 1.5.0」：type=jar 没有文件名字段（字段集封闭：models_min/recipes_min/trinkets_min/entries_min/signs_min/bountiful_max/embed_max/embed_lib），因此等价由三处保证：本用例的 modver=1.5.0+、启动期版本行（启动期模组清单行 Astral Dice <版本> (astral_dice)，run/1.21.1/logs/latest.log:24 实测同一格式）、runbook 里 build/libs 的 astral_dice-1.5.0*.jar 门禁命令。"
+    },
+    {
+      "op": "jar_stats",
+      "save_as": "jar"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative @a",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @a",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/effect clear @a",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/tp @a 100 120 100 0 0",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/time set 1000",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/xp set @a 30 levels",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/effect give @a minecraft:speed 600 1 true",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/give @a astral_dice:abyss_reagent_chip 3",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/give @a astral_dice:dice 1",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/give @a astral_dice:attack_card_medium 1",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/give @a astral_dice:jill_sign 1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "code": "(function () {\n  var st = JSON.parse(AutoJS.state());\n  var inv = AutoJS.inventory(AutoJS.player());\n  var slotted = 0, chips = 0;\n  for (var i = 0; i < inv.length; i++) {\n    if (!inv[i].isEmpty()) { slotted++; }\n    if (String(inv[i]).indexOf('astral_dice:abyss_reagent_chip') >= 0) { chips += inv[i].getCount(); }\n  }\n  var held = String(st.held);\n  var itemId = held.replace(/^[0-9]+ /, '');\n  var pos = st.pos;\n  var line = '[REL150] ver=1.21.1 gamemode=' + st.gameMode\n    + ' pos=' + Math.floor(pos[0]) + ',' + Math.floor(pos[1]) + ',' + Math.floor(pos[2])\n    + ' hp=' + Math.round(st.health)\n    + ' food=' + st.food\n    + ' xp=' + st.xpLevel\n    + ' arm=' + st.armor\n    + ' slotted=' + slotted\n    + ' chips=' + chips\n    + ' item=' + itemId\n    + ' dim=' + st.dimension\n    + ' modver=' + String(AutoJS.modVersion('astral_dice'));\n  console.info(line);\n  return line;\n})()",
+      "timeout_ms": 20000,
+      "save_as": "state"
+    },
+    {
+      "op": "eval_js",
+      "side": "client",
+      "code": "(function () {\n  var mc = Java.loadClass('net.minecraft.client.Minecraft').getInstance();\n  var ItemStack = Java.loadClass('net.minecraft.world.item.ItemStack');\n  var Screen = Java.loadClass('net.minecraft.client.gui.screens.Screen');\n  var Component = Java.loadClass('net.minecraft.network.chat.Component');\n  var Reg = Java.loadClass('net.minecraft.core.registries.BuiltInRegistries');\n  var ID = 'astral_dice:abyss_reagent_chip';\n  var item = AutoJS.item(ID);\n  var stack = new ItemStack(item);\n  var name = String(stack.getHoverName().getString());\n  var count = 0;\n  try {\n    var inv = mc.player.getInventory();\n    for (var k = 0; k < inv.getContainerSize(); k++) {\n      var s = inv.getItem(k);\n      if (!s.isEmpty() && String(Reg.ITEM.getKey(s.getItem())) === ID) { count += s.getCount(); }\n    }\n  } catch (e2) { count = -1; }\n  var lines = [];\n  var path = 'screen';\n  try {\n    var tip = Screen.getTooltipFromItem(mc, stack);\n    for (var i = 0; i < tip.size(); i++) { lines.push(String(tip.get(i).getString())); }\n  } catch (e1) {\n    path = 'hoverName';\n    lines.push(name);\n  }\n  console.info('[REL150] chip id=' + ID + ' count=' + count + ' name=' + name + ' tipn=' + lines.length + ' path=' + path);\n  for (var j = 0; j < lines.length; j++) { console.info('[REL150] tip i=' + j + ' text=' + lines[j]); }\n  var guide = String(Component.translatable('astral_dice.guide.entry.abyss_reagent_chip.1').getString());\n  console.info('[REL150] guide key=astral_dice.guide.entry.abyss_reagent_chip.1 text=' + guide);\n  return { ok: true, name: name, count: count, tipn: lines.length, path: path };\n})()",
+      "timeout_ms": 20000,
+      "save_as": "chip"
+    },
+    {
+      "op": "eval_js",
+      "side": "client",
+      "code": "(function () {\n  var mc = Java.loadClass('net.minecraft.client.Minecraft').getInstance();\n  var InvScreen = Java.loadClass('net.minecraft.client.gui.screens.inventory.InventoryScreen');\n  var Reg = Java.loadClass('net.minecraft.core.registries.BuiltInRegistries');\n  var ID = 'astral_dice:abyss_reagent_chip';\n  var out = { ok: false, open: 0, slot: -1, guiX: 0, guiY: 0, winX: 0, winY: 0 };\n  try {\n    mc.setScreen(new InvScreen(mc.player));\n    var scr = mc.screen;\n    out.open = 1;\n    var w = scr.width, h = scr.height;\n    var lx = Math.floor((w - 195) / 2), ty = Math.floor((h - 136) / 2);\n    var slots = scr.getMenu().slots;\n    var sx = 0, sy = 0;\n    for (var i = 0; i < slots.size(); i++) {\n      var st = slots.get(i).getItem();\n      if (!st.isEmpty() && String(Reg.ITEM.getKey(st.getItem())) === ID) {\n        out.slot = i; sx = slots.get(i).x + 8; sy = slots.get(i).y + 8; break;\n      }\n    }\n    out.guiX = Math.round(lx + sx); out.guiY = Math.round(ty + sy);\n    var scale = mc.getWindow().getGuiScale();\n    out.winX = Math.round(out.guiX * scale); out.winY = Math.round(out.guiY * scale);\n    out.ok = true;\n    console.info('[REL150] inventory open=1 hover=' + out.guiX + ',' + out.guiY + ' slot=' + out.slot + ' win=' + out.winX + ',' + out.winY);\n  } catch (e0) {\n    out.err = String(e0);\n    console.info('[REL150] inventory open=0 hover=skip err=' + e0);\n  }\n  return out;\n})()",
+      "timeout_ms": 20000,
+      "save_as": "hover"
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "screenshot",
+      "tag": "abyss_reagent_tooltip",
+      "mode": "f2"
+    },
+    {
+      "op": "eval_js",
+      "side": "client",
+      "code": "(function () { var mc = Java.loadClass('net.minecraft.client.Minecraft').getInstance(); mc.setScreen(null); console.info('[REL150] screen_closed=1'); return 'closed'; })()",
+      "timeout_ms": 20000,
+      "save_as": "closed"
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "code": "(function () {\n  var St = Java.loadClass('com.merlinkitsune.astral_dice.shop.ChipShopState');\n  var Op = Java.loadClass('com.merlinkitsune.astral_dice.shop.ChipShopOpener');\n  var p = AutoJS.player();\n  var out = 'show=skip';\n  try { St.store(p, St.EMPTY); out = 'show=reset'; } catch (e1) { out = 'show=skip'; }\n  Op.open(p);\n  console.info('[REL150] shop_open invoked=1 ' + out);\n  return out;\n})()",
+      "timeout_ms": 20000,
+      "save_as": "shop"
+    },
+    {
+      "op": "wait",
+      "ms": 1400
+    },
+    {
+      "op": "eval_js",
+      "side": "client",
+      "code": "(function () {\n  var mc = Java.loadClass('net.minecraft.client.Minecraft').getInstance();\n  var s = mc.screen;\n  var n = (s === null) ? 'none' : String(s).replace(/@[0-9a-fA-F]+$/, '');\n  console.info('[REL150] screen=' + n);\n  return { ok: true, screen: n };\n})()",
+      "timeout_ms": 20000,
+      "save_as": "screen"
+    },
+    {
+      "op": "screenshot",
+      "tag": "chip_shop_ui",
+      "mode": "f2"
+    },
+    {
+      "op": "eval_js",
+      "side": "client",
+      "code": "(function () {\n  var out = 'skip';\n  try {\n    var API = Java.loadClass('vazkii.patchouli.api.PatchouliAPI');\n    var RL = Java.loadClass('net.minecraft.resources.ResourceLocation');\n    API.get().openBookGUI(RL.fromNamespaceAndPath('astral_dice', 'astral_guide'));\n    out = 'ok';\n  } catch (e1) { out = 'ERR:' + e1; }\n  console.info('[REL150] guide_open=' + out);\n  return out;\n})()",
+      "timeout_ms": 20000,
+      "save_as": "guide"
+    },
+    {
+      "op": "wait",
+      "ms": 1400
+    },
+    {
+      "op": "screenshot",
+      "tag": "release150_guide",
+      "mode": "f2"
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "code": "(function () {\n  var ItemStack = Java.loadClass('net.minecraft.world.item.ItemStack');\n  var ids = ['dice', 'attack_card_medium', 'abyss_reagent_chip', 'jill_sign'];\n  for (var i = 0; i < ids.length; i++) {\n    var it = AutoJS.item('astral_dice:' + ids[i]);\n    var ok = (it === null) ? 0 : 1;\n    var nm = '-';\n    if (ok === 1) { nm = String(new ItemStack(it).getHoverName().getString()); }\n    console.info('[REL150] sys id=astral_dice:' + ids[i] + ' ok=' + ok + ' name=' + nm);\n  }\n  return 'sys';\n})()",
+      "timeout_ms": 20000,
+      "save_as": "sys"
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "scope": "whole",
+      "pattern": "Astral Dice 1\\.5\\.0\\+neoforge_1\\.21\\.1"
+    },
+    {
+      "type": "log",
+      "pattern": "\\[REL150\\] ver=1\\.21\\.1 gamemode=creative "
+    },
+    {
+      "type": "log",
+      "pattern": "\\[REL150\\] ver=1\\.21\\.1 .* pos=100,-?[0-9]+,100 "
+    },
+    {
+      "type": "log",
+      "pattern": "\\[REL150\\] ver=1\\.21\\.1 .* hp=20 "
+    },
+    {
+      "type": "log",
+      "pattern": "\\[REL150\\] ver=1\\.21\\.1 .* item=astral_dice:abyss_reagent_chip"
+    },
+    {
+      "type": "log",
+      "pattern": "\\[REL150\\] ver=1\\.21\\.1 .* xp=30 "
+    },
+    {
+      "type": "log",
+      "pattern": "\\[REL150\\] .* slotted=[1-9][0-9]* "
+    },
+    {
+      "type": "log",
+      "pattern": "\\[REL150\\] .* chips=3 "
+    },
+    {
+      "type": "log",
+      "pattern": "\\[REL150\\] .* modver=1\\.5\\.0\\+"
+    },
+    {
+      "type": "log",
+      "pattern": "\\[REL150\\] chip id=astral_dice:abyss_reagent_chip count=3 name=(深渊试剂|Abyss Reagent) "
+    },
+    {
+      "type": "log",
+      "pattern": "\\[REL150\\] tip i=0 text=.+"
+    },
+    {
+      "type": "log",
+      "pattern": "\\[REL150\\] guide key=astral_dice\\.guide\\.entry\\.abyss_reagent_chip\\.1 text=.+"
+    },
+    {
+      "type": "log",
+      "pattern": "\\[REL150\\] inventory open=1"
+    },
+    {
+      "type": "log",
+      "pattern": "CHIP_SHOP_OPEN player="
+    },
+    {
+      "type": "log",
+      "pattern": "\\[REL150\\] screen=\\S*ChipShopScreen"
+    },
+    {
+      "type": "log",
+      "pattern": "\\[REL150\\] sys id=astral_dice:dice ok=1"
+    },
+    {
+      "type": "log",
+      "pattern": "\\[REL150\\] sys id=astral_dice:attack_card_medium ok=1"
+    },
+    {
+      "type": "log",
+      "pattern": "\\[REL150\\] sys id=astral_dice:abyss_reagent_chip ok=1"
+    },
+    {
+      "type": "log",
+      "pattern": "\\[REL150\\] sys id=astral_dice:jill_sign ok=1"
+    },
+    {
+      "type": "eval",
+      "from": "state",
+      "expect": {
+        "regex": "\\[REL150\\] ver=\\S+ gamemode=creative pos=100,-?[0-9]+,100 hp=20 .*item=astral_dice:abyss_reagent_chip"
+      }
+    },
+    {
+      "type": "eval",
+      "from": "chip",
+      "expect": {
+        "name": {
+          "regex": "^(深渊试剂|Abyss Reagent)"
+        }
+      },
+      "note": "value is an object {ok,name,count,tipn,path}; regex applies to the name field"
+    },
+    {
+      "type": "eval",
+      "from": "screen",
+      "expect": {
+        "screen": {
+          "regex": "ChipShopScreen$"
+        }
+      },
+      "note": "value is an object {ok,screen}; regex applies to the screen field"
+    },
+    {
+      "type": "absent",
+      "pattern": "Unknown or incomplete command|未知或不完整的命令|No player was found|没有找到玩家|No entity was found|没有与选择器匹配的实体"
+    },
+    {
+      "type": "jar",
+      "from": "jar",
+      "models_min": 120,
+      "signs_min": 25,
+      "entries_min": 1700
+    },
+    {
+      "type": "crash"
+    },
+    {
+      "type": "vision",
+      "image": "abyss_reagent_tooltip",
+      "question": "画面里是否看得到物品提示框（tooltip）或背包界面？只回答「看到了」或「没看到」，并用一句话说明画面主体。"
+    },
+    {
+      "type": "vision",
+      "image": "chip_shop_ui",
+      "question": "画面是否是筹码商店/容器界面（而不是普通世界画面）？只回答「是商店」或「不是商店」。"
+    }
+  ]
+}

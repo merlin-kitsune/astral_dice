@@ -1,0 +1,48 @@
+{
+  "case_id": "LT-SIGN-COOLDOWN-FINISH-fabric-1.20.1",
+  "title": "LT5：立牌玩家级冷却收尾命令可用（只把 sign_active_cooldown_end 写成当前时刻，不碰锁定态与 mamushi 硬闸门）。日志通道只能证明「命令可执行且 dump 仍完整」；冷却到期的数值关系（cooldown_end 与 game_time 的差 <= 5 tick）属派生判定，按清单走 CH-A/人工读数，不在本条断言。",
+  "version": "fabric-1.20.1",
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "前置：dev 客户端已进服；latest.log 本轮已轮转"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralparty finishsigncooldown @a"
+    },
+    {
+      "op": "wait",
+      "ms": 300
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralparty dump @a"
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    }
+  ],
+  "assert": [
+    {
+      "type": "log",
+      "pattern": "APDUMP\\|SIGN\\|sign_active_cooldown_end=\\d+"
+    },
+    {
+      "type": "log",
+      "pattern": "APDUMP\\|SIGN\\|sign_active_max_cooldown=\\d+"
+    },
+    {
+      "type": "log",
+      "pattern": "APDUMP\\|HEAD\\|"
+    },
+    {
+      "type": "crash"
+    },
+    {
+      "type": "mixin"
+    }
+  ]
+}

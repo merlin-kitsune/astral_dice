@@ -1,0 +1,37 @@
+{
+  "case_id": "CURIOS-SLOT-SIZING-fabric-1.20.1",
+  "title": "饰品槽位动态尺寸：槽位工具类与饰品数据同时在位（item/CurioSlotUtil 字节码 + data/trinkets/*.json >= 8），且运行期不出现槽位相关异常。尺寸计算是运行期行为，这里只锚「实现与数据在位 + 无异常」，具体数值留给 AutoJS/RCON 扩展条目。",
+  "version": "fabric-1.20.1",
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "槽位尺寸实际值需要运行时读数（AutoJS 或 RCON 探针）；本条守的是实现/数据在位与无异常这两个客观前提。"
+    },
+    {
+      "op": "jar_stats",
+      "save_as": "jar"
+    }
+  ],
+  "assert": [
+    {
+      "type": "bytecode",
+      "pattern": "item/CurioSlotUtil\\.class$"
+    },
+    {
+      "type": "jar",
+      "from": "jar",
+      "trinkets_min": 8
+    },
+    {
+      "type": "absent",
+      "pattern": "IndexOutOfBoundsException: Index .* out of bounds for length"
+    },
+    {
+      "type": "mixin"
+    },
+    {
+      "type": "crash"
+    }
+  ]
+}

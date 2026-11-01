@@ -1,0 +1,39 @@
+{
+  "case_id": "CARD-CHIP-UI-fabric-1.20.1",
+  "title": "卡牌/筹码界面与物品：卡牌背包界面类在位（screen/CardInventoryScreen）、筹码物品族在位（item/chip/*ChipItem.class）、物品模型 >= 100、中英文本地化文件都在 jar 里。商店界面尚未在 fabric 线实现，本条不假设它存在（避免把不存在的功能写成恒红条目）。",
+  "version": "fabric-1.20.1",
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "jar_stats",
+      "save_as": "jar"
+    }
+  ],
+  "assert": [
+    {
+      "type": "bytecode",
+      "pattern": "screen/CardInventoryScreen\\.class$"
+    },
+    {
+      "type": "bytecode",
+      "pattern": "item/chip/[A-Za-z0-9]+ChipItem\\.class$"
+    },
+    {
+      "type": "bytecode",
+      "pattern": "assets/astral_dice/lang/(en_us|zh_cn)\\.json"
+    },
+    {
+      "type": "jar",
+      "from": "jar",
+      "models_min": 100
+    },
+    {
+      "type": "jar",
+      "from": "jar",
+      "recipes_min": 120
+    },
+    {
+      "type": "crash"
+    }
+  ]
+}

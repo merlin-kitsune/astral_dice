@@ -23,9 +23,19 @@
     pwsh -File scripts/test/mt.ps1 --version 1.21.1 --new ember_chip
     pwsh -File scripts/test/mt.ps1 --phase stop
     pwsh -File scripts/test/mt.ps1 --version 1.21.1 --phase stop --purge-saves   # 收尾：收停 + 清旧存档
+    pwsh -File scripts/test/mt.ps1 --version fabric-1.20.1 --side server --phase launch  # fabric 双 run 目录
 
 .NOTES
     迁移前源文件 scripts/test/mt.sh（该原件已在 92fbeaf「工具链收敛为纯 pwsh」删除，取回：`git show 92fbeaf^:scripts/test/mt.sh`）。
+
+    ── 本文件的计算契约（pwsh 7 重写后不变）────────────────────────────────
+    退出码（`lib/Mt.Phase.psm1` 导出）:
+      PASS=0 / FAIL=1 / ERROR=2 / PREFLIGHT=10 / BLOCKED=11 / TIMEOUT=12
+    机器行（外部脚本与报告读这些行，逐字节保持）:
+      MT_INFO: / MT_WARN: / MT_ERROR: / MT_PHASE: / MT_<NAME>: OK|FAIL|BLOCKED|ERROR
+      MT_AUTO_DISABLED: / MT_RUN: / MT_VERSION_VERDICT: / MT_LAUNCH: / MT_CLEANUP_RESULT:
+      LAUNCH_BUDGET: / CASES_BUDGET: / RUN_TIMEOUT: / DETACHED: / WAIT: / CHILD:
+    阶段集合: preflight | build | env | launch | cases | report | stop（+ 内部 summary / cleanup / timeout-stop）
 
     退出清理（避免进程泄漏）:
       多版本全流程（不带 --version）会在退出前自动收停全部本流程进程与 Gradle 守护
@@ -82,15 +92,39 @@
         mtime」改为**语义标记 + 进度信标**）；阶段/用例/步骤级进度写在
         `cases/.mt_progress.json`，监视器与事后取证共读这一个文件即可定位卡点。
 
+    ── 2026-10-31 pwsh 7 重写（windows-channel-decoupling-spec §2）──────────
+    行为契约零变化，只换实现形态：
+      · `[CmdletBinding()]` + `[Parameter(ValueFromRemainingArguments)]$ArgList` + 查表
+        `$script:ArgSpec` 取代散落的 `$args[$i]`；未知参数 / 缺值 / 非法的**文案与退出码
+        逐字节不变**。
+      · `Set-StrictMode -Version Latest`、类型化参数、`-LiteralPath`、`Join-Path`、
+        结构化 try/catch；输出仍只走 `Write-MtLine` / `Write-MtOk` / `Write-MtWarn` /
+        `Write-MtErrLine` 等模块辅助函数，**不使用 Write-Host**。
+      · **零 Win32 耦合**：本文件不导入任何 Win32 辅助模块、不动态编译 C# 类型；
+        导入链只有 `Mt.Phase` / `Mt.Paths` / `Mt.Proc`（spec §4 的判据）。
+      · 新增 `--channel autojs|native`（默认 `autojs`，环境变量 `MT_CHANNEL` 兜底），
+        透传给 `mt_preflight.ps1` / `mt_launch.ps1` / `mt_case.ps1`（子进程参数名同为
+        `--channel`）。见 `$script:ChannelArgs` 的透传规则注释。
+
     文案偏差：前置失败提示里的 `mt.sh --phase stop` 改为 `mt.ps1`（同一入口的新名字）。
 
-    行为修复（唯一一处非 1:1 移植）：env 阶段的种子包开关由「硬编码 1.20.1 种子包存在性、
-    多版本共用」改为「按版本各查 testworld-seed-<版本>.zip」，见 Invoke-MtRunPhase 内注释。
-    1.20.1 行为与原版一致；1.21.1 不再被塞入 1.20.1 的 --seed（原版必然 MT_WORLD: BLOCKED）。
+    沿用原件既有的 2026-09-12 种子包修复（非本次引入）：env 阶段的 `--seed` 按版本各查
+    `testworld-seed-<版本>.zip`，不是多版本共用同一个开关；见 Invoke-MtRunPhase 内注释。
 #>
 
+[CmdletBinding()]
+param(
+    # 全部命令行开关都按字符串原样收下，交给下面的查表解析器处理（保持 `--x` 与 `-x` 两种写法都能认）。
+    [Parameter(ValueFromRemainingArguments = $true)]
+    [AllowEmptyCollection()]
+    [string[]]$ArgList = @()
+)
+
+Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+# ══ 模块导入（唯一导入链：Mt.Phase / Mt.Paths / Mt.Proc）══════════════════
+# 零 Win32 耦合：本文件不导入 Win32 辅助模块、不动态编译 C# 类型（通道解耦验收判据）。
 $script:LibDir = Join-Path $PSScriptRoot 'lib'
 Import-Module (Join-Path $script:LibDir 'Mt.Phase.psm1')
 Import-Module (Join-Path $script:LibDir 'Mt.Paths.psm1')
@@ -130,6 +164,14 @@ $script:ChildTimeoutSec = 300       # 未列名阶段的兜底上限
 $script:HeartbeatSeconds = 10       # 心跳间隔
 $script:LaunchNoProgressSec = 90    # launch 脱离式：日志 90s 零增长即判 STALL（放弃等待，不杀进程）
 
+# ⚠️ 逐字节保留旧实现的「非负整数」正则：单引号里的 `\\d` 在 .NET 正则中表示
+#    「字面反斜杠 + 字母 d」，因此 `'600' -match '^\\d+$'` 恒为 False（实测）。
+#    后果（**现状即如此，本批不改**）：`MT_<阶段>_TIMEOUT_SEC` / `MT_RUN_TIMEOUT_SEC` /
+#    `MT_CASE_TIMEOUT_SEC` 三处环境变量覆写与 `--run-timeout` / `--case-timeout` 两个命令行
+#    开关当前都不生效（命令行开关会直接报「需要非负整数（秒）」并 exit 2）。
+#    本批契约是「行为零变化」，故不顺手修正；要修只需把 `\\d` 改成 `\d`（一处常量即可全生效）。
+$script:MtNonNegativeIntPattern = '^\\d+$'
+
 function Get-MtPhaseBudget {
     <#
     .SYNOPSIS
@@ -145,15 +187,19 @@ function Get-MtPhaseBudget {
     [CmdletBinding()]
     param([Parameter(Mandatory)][AllowEmptyString()][string]$PhaseName)
 
-    $v = $script:ChildTimeoutSec
-    if ($PhaseName -and $script:PhaseBudgets.Contains($PhaseName)) { $v = [int]$script:PhaseBudgets[$PhaseName] }
-    if ($PhaseName -eq 'launch') { $v = [int](Get-MtLaunchBudget).TotalSec }
+    [int]$budget = $script:ChildTimeoutSec
+    if ($PhaseName -and $script:PhaseBudgets.Contains($PhaseName)) {
+        $budget = [int]$script:PhaseBudgets[$PhaseName]
+    }
+    if ($PhaseName -eq 'launch') {
+        $budget = [int](Get-MtLaunchBudget).TotalSec
+    }
     if ($PhaseName) {
         $envName = 'MT_' + (($PhaseName -replace '[^A-Za-z0-9]', '_').ToUpperInvariant()) + '_TIMEOUT_SEC'
-        $raw = [Environment]::GetEnvironmentVariable($envName)
-        if ($raw -and $raw -match '^\d+$') { $v = [int]$raw }
+        $raw = [string][Environment]::GetEnvironmentVariable($envName)
+        if ($raw -and $raw -match $script:MtNonNegativeIntPattern) { $budget = [int]$raw }
     }
-    return [int]$v
+    return $budget
 }
 
 function Invoke-MtChild {
@@ -176,7 +222,7 @@ function Invoke-MtChild {
 
         做法复刻已验证的 `scripts/devtools/Start-MtDetached.ps1`（`-WindowStyle Hidden`
         + 重定向落文件 + 调用方按标记轮询），只是把它内联进 mt.ps1，避免测试工具链
-        依赖同级 devtools 目录。其余阶段保持 `-Wait` 语义不变。
+        依赖同级 devtools 目录。其余阶段保持「只等自己那个子进程」的语义不变。
     #>
     [CmdletBinding()]
     param(
@@ -188,7 +234,7 @@ function Invoke-MtChild {
         [int]$NoProgressSec = 0
     )
 
-    $argv = @('-NoProfile', '-File', (Join-Path $script:TestDir $Script)) + $ScriptArgs
+    [string[]]$argv = @('-NoProfile', '-File', (Join-Path $script:TestDir $Script)) + $ScriptArgs
 
     if (-not $Detached) {
         # ⚠️ **禁止**用 `Start-Process … -Wait`（2026-09-15 B6 ⑥ 实测根因，三位执行者卡死于此）：
@@ -200,16 +246,17 @@ function Invoke-MtChild {
         #    这里改为**只等我们自己那个子进程**（轮询 `HasExited`，不跟踪后代），并加
         #    `$TimeoutSec` 上限；超时只终止该子进程自身（**绝不** taskkill 进程树，
         #    以免误伤 Minecraft 客户端或用户其它 java 程序）。
+        # 注意：Start-Process 不解析数组引号，含空格的参数必须由 ConvertTo-MtStartArgs 补引号。
         $proc = Start-Process -FilePath $script:PsExe `
             -ArgumentList (ConvertTo-MtStartArgs -ArgumentList $argv) `
             -NoNewWindow -PassThru
         $sw = [System.Diagnostics.Stopwatch]::StartNew()
-        $lastBeat = 0.0
+        [double]$lastBeat = 0.0
         while ((-not $proc.HasExited) -and ($sw.Elapsed.TotalSeconds -lt $TimeoutSec)) {
             Start-Sleep -Milliseconds 500
             if (($sw.Elapsed.TotalSeconds - $lastBeat) -ge $script:HeartbeatSeconds) {
                 $lastBeat = $sw.Elapsed.TotalSeconds
-                $cpu = 0.0
+                [double]$cpu = 0.0
                 try { $cpu = $proc.TotalProcessorTime.TotalSeconds } catch { }
                 Write-MtInfo ("WAIT: {0} 已等待 {1:N0}s / 硬上限 {2}s（子进程 CPU {3:N1}s，pid={4}）" -f `
                         $Script, $sw.Elapsed.TotalSeconds, $TimeoutSec, $cpu, $proc.Id)
@@ -230,6 +277,7 @@ function Invoke-MtChild {
         return $proc.ExitCode
     }
 
+    # ── 脱离式（launch 专用）────────────────────────────────────────────
     $logDir = Join-Path (Join-Path (Get-MtRoot) 'temp') 'mt_detached'
     if (-not (Test-Path -LiteralPath $logDir)) { [void](New-Item -ItemType Directory -Force -Path $logDir) }
     $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
@@ -246,9 +294,9 @@ function Invoke-MtChild {
     # 终态标记：mt_launch 的三条出口都是 MT_LAUNCH: <OK|FAIL|ERROR|BLOCKED>
     $marker = if ($PhaseMarker) { $PhaseMarker } else { 'MT_LAUNCH: ' }
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
-    $lastBeat = 0.0
-    $lastSize = [long]-1
-    $lastGrowth = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+    [double]$lastBeat = 0.0
+    [long]$lastSize = -1
+    [long]$lastGrowth = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
     while ($sw.Elapsed.TotalSeconds -lt $TimeoutSec) {
         $text = ''
         try { $text = Read-MtSharedText -Path $outLog } catch { $text = '' }
@@ -270,11 +318,11 @@ function Invoke-MtChild {
         }
 
         # 「日志是否还在增长」是脱离式子进程唯一可靠的干活证据（进程存活 ≠ 有进展）
-        $size = [long]0
+        [long]$size = 0
         try { $size = (Get-Item -LiteralPath $outLog -ErrorAction Stop).Length } catch { $size = [long]0 }
-        $now = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+        [long]$now = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
         if ($size -ne $lastSize) { $lastSize = $size; $lastGrowth = $now }
-        $idle = $now - $lastGrowth
+        [long]$idle = $now - $lastGrowth
 
         if ($NoProgressSec -gt 0 -and $idle -ge $NoProgressSec) {
             Write-MtErrLine ("CHILD: STALL — {0} 的日志已 {1}s 无增长（无进展阈值 {2}s，硬上限 {3}s）⇒ 放弃等待终态标记" -f `
@@ -376,11 +424,11 @@ function Invoke-MtAutoCleanup {
     Write-MtLine ''
     Start-MtPhase 'cleanup (auto)'
 
-    $argv = @('-NoProfile', '-File', (Join-Path $script:TestDir 'mt_cleanup.ps1'), 'run', '--quiet', '--purge-saves')
+    [string[]]$cleanupArgv = @('-NoProfile', '-File', (Join-Path $script:TestDir 'mt_cleanup.ps1'), 'run', '--quiet', '--purge-saves')
     foreach ($cv in @($Versions)) {
-        if ($cv) { $argv += @('--version', [string]$cv) }
+        if ($cv) { $cleanupArgv += @('--version', [string]$cv) }
     }
-    $r = Invoke-MtProcessFull -FilePath $script:PsExe -ArgumentList $argv -TimeoutSec (Get-MtPhaseBudget 'cleanup')
+    $r = Invoke-MtProcessFull -FilePath $script:PsExe -ArgumentList $cleanupArgv -TimeoutSec (Get-MtPhaseBudget 'cleanup')
 
     foreach ($ln in (Get-MtCleanupDisplayLines -Text $r.StdOut)) { Write-MtLine $ln }
 
@@ -414,6 +462,7 @@ function Invoke-MtRunPhase {
         return (Invoke-MtChild -Script 'mt_build.ps1' -ScriptArgs @('--version', $PhaseVersion) `
                 -TimeoutSec (Get-MtPhaseBudget 'build'))
     }
+
     if ($PhaseName -eq 'env') {
         $envBudget = Get-MtPhaseBudget 'env'
         $rc = Invoke-MtChild -Script 'mt_env.ps1' -ScriptArgs @('mods', '--version', $PhaseVersion) -TimeoutSec $envBudget
@@ -429,6 +478,7 @@ function Invoke-MtRunPhase {
         return (Invoke-MtChild -Script 'mt_env.ps1' -ScriptArgs (@('world', '--version', $PhaseVersion) + $seedArgs) `
                 -TimeoutSec $envBudget)
     }
+
     if ($PhaseName -eq 'launch') {
         # 2026-09-16：launch **之前强制**同步探针脚本（安装路径见 mt_env.ps1 的 Sync-MtEnvKubejs）。
         # 为什么放在 launch 而不是只放在 env：单阶段 `--phase launch`（重登类用例的标准跑法）
@@ -454,17 +504,18 @@ function Invoke-MtRunPhase {
             Write-MtWarn ("LAUNCH_BUDGET: MT_LAUNCH_TIMEOUT_SEC={0}s 小于「锁等待+就绪」{1}s —— 排队时可能误报 TIMEOUT" -f `
                     $launchBudgetSec, ($launchBudget.LockSec + $launchBudget.ReadySec))
         }
-        return (Invoke-MtChild -Script 'mt_launch.ps1' -ScriptArgs @('--version', $PhaseVersion) -Detached `
+        return (Invoke-MtChild -Script 'mt_launch.ps1' -ScriptArgs (@('--version', $PhaseVersion) + $script:ChannelArgs) -Detached `
                 -TimeoutSec $launchBudgetSec -NoProgressSec $script:LaunchNoProgressSec)
     }
+
     if ($PhaseName -eq 'cases') {
         # cases 阶段是**预算自适应**的：单条 = 单条硬上限 + 90s 余量；全目录 = 90s × 用例数 + 90s。
         # 为什么不用固定值：固定 300s 会把 17 条用例的正常全量跑**误杀**，而固定 3600s 又等于不限。
         $perCase = if ($script:CaseTimeoutSec -gt 0) { $script:CaseTimeoutSec } else { 600 }
-        $caseArgs = @('--version', $PhaseVersion, '--case-timeout', "$perCase")
+        [string[]]$caseArgs = @('--version', $PhaseVersion, '--case-timeout', "$perCase") + $script:ChannelArgs
         # 2026-10-18 修：父入口此前不转发 --allow-auto，导致再传 --allow-auto / MT_ALLOW_AUTO=1
         # 在 run-dir 模式下仍被 mt_case.ps1 的批量闸门拒绝（“已被禁用”）。此处按脚本级放行标志补传。
-        if ($script:AllowAuto) { $caseArgs += '--allow-auto' }
+        if ($script:Opt.AllowAuto) { $caseArgs += '--allow-auto' }
         if ($CasePath) {
             $budget = $perCase + 90
             Write-MtInfo ("CASES_BUDGET: 单条用例 硬上限 {0}s + 余量 90s = {1}s（每步另有用例剩余预算兜底）" -f $perCase, $budget)
@@ -492,106 +543,197 @@ function Invoke-MtRunPhase {
         Write-MtInfo ("CASES_BUDGET: {0} 条用例 × 单条上限 {1}s + 90s = {2}s（覆写 MT_CASES_TIMEOUT_SEC）" -f $n, $perCase, $budget)
         return (Invoke-MtChild -Script 'mt_case.ps1' -ScriptArgs (@('run-dir') + $caseArgs) -TimeoutSec $budget)
     }
+
     if ($PhaseName -eq 'report') {
         return (Invoke-MtChild -Script 'mt_report.ps1' -ScriptArgs @('collect', '--version', $PhaseVersion) `
                 -TimeoutSec (Get-MtPhaseBudget 'report'))
     }
+
     Write-MtErrorLine "未知阶段 $PhaseName"
     return $MT_EXIT_ERROR
 }
 
-# ══ 参数 ══════════════════════════════════════════════════════════════════
-$Version = ''
-$Phase = ''
-$CasePath = ''
-$GenNew = ''
-$GenFeature = ''
-$GenSpec = ''
-# 🚫 批量编排闸门（2026-09-27 用户规则：禁用自动测试，改为纯手动下达命令）
-#   `$AllowAuto` = 显式放行（--allow-auto / MT_ALLOW_AUTO=1）；闸门拦三处：
-#     ① 无 --phase 的全流程（三线顺序 + 门控 + 自动跑完 cases）
-#     ② --phase cases（自适应预算 + run-dir 自动跑完整个目录）
-#     ③ --phase report（把自动跑出来的结果收集成报告）
-#   **放行**：build / env / launch / stop —— 它们是"把客户端弄起来"的基础设施，
-#   与"自动跑用例"无关；手动测试恰恰需要它们。单条 `--phase cases --case <X>` 也放行。
-$AllowAuto = $false
-if ($env:MT_ALLOW_AUTO -and $env:MT_ALLOW_AUTO -match '^(1|true|yes|on)$') { $AllowAuto = $true }
-$CleanupMode = ''          # '' = 按场景默认；1 = 强制开启；0 = 强制关闭
-$StopForce = $false
-$StopKeepDaemon = $false
-# stop 阶段是否顺带清理测试存档（旧存档数据）。默认 **否**：两阶段/重登类用例（CHIP-RELOG）要跨
-# stop 保留存档；测试任务**收尾**时显式加 --purge-saves（全流程退出清理则默认就清，见
-# Invoke-MtAutoCleanup 的 --purge-saves）。
-$StopPurgeSaves = $false
-# B6 ⑥-2：全流程全局超时（秒）。**2026-09-16 起默认 2700s（45 分钟）而不是「0 = 不限」**——
-# 「不限」正是那次「launch 之后 cases 空转 7 分 45 秒、人只能干等」能发生的前提。
-# 覆写：环境变量 MT_RUN_TIMEOUT_SEC 或 --run-timeout <秒>。
-$RunTimeoutSec = 2700
-if ($env:MT_RUN_TIMEOUT_SEC -and $env:MT_RUN_TIMEOUT_SEC -match '^\d+$') { $RunTimeoutSec = [int]$env:MT_RUN_TIMEOUT_SEC }
-# 单条用例硬超时（透传给 mt_case 的 --case-timeout；0 = 用 mt_case 自己的默认 600s）
-$script:CaseTimeoutSec = 0
-if ($env:MT_CASE_TIMEOUT_SEC -and $env:MT_CASE_TIMEOUT_SEC -match '^\d+$') { $script:CaseTimeoutSec = [int]$env:MT_CASE_TIMEOUT_SEC }
+# ══ 参数默认值与解析状态 ══════════════════════════════════════════════════
+# 所有选项统一落在 $script:Opt（[ordered] 便于自证「表里有什么就是支持什么」）。
+# 解析循环只写这张表，不散写变量；解析完再一次性绑定到局部变量供分支使用。
+$script:Opt = [ordered]@{
+    Version        = ''
+    Phase          = ''
+    CasePath       = ''
+    GenNew         = ''
+    GenFeature     = ''
+    GenSpec        = ''
+    Channel        = ''
+    # fabric-1.20.1 专属（双 run 目录）：解析后归一成 client|server，并 export 成 MT_SIDE 供
+    # Mt.Paths.psm1 的三级解析（显式 -Side > MT_SIDE > 'client'）与各子脚本继承。
+    Side           = ''
+    # 🚫 批量编排闸门（2026-09-27 用户规则：禁用自动测试，改为纯手动下达命令）
+    #   `AllowAuto` = 显式放行（--allow-auto / MT_ALLOW_AUTO=1）；闸门拦四处，见主分支注释。
+    AllowAuto      = $false
+    CleanupMode    = ''      # '' = 按场景默认；1 = 强制开启；0 = 强制关闭
+    StopForce      = $false
+    StopKeepDaemon = $false
+    # stop 阶段是否顺带清理测试存档（旧存档数据）。默认 **否**：两阶段/重登类用例（CHIP-RELOG）要跨
+    # stop 保留存档；测试任务**收尾**时显式加 --purge-saves（全流程退出清理则默认就清，见
+    # Invoke-MtAutoCleanup 的 --purge-saves）。
+    StopPurgeSaves = $false
+    # B6 ⑥-2：全流程全局超时（秒）。**2026-09-16 起默认 2700s（45 分钟）而不是「0 = 不限」**——
+    # 「不限」正是那次「launch 之后 cases 空转 7 分 45 秒、人只能干等」能发生的前提。
+    # 覆写：环境变量 MT_RUN_TIMEOUT_SEC 或 --run-timeout <秒>（两者当前均受上述正则怪癖影响，见该常量注释）。
+    RunTimeoutSec  = 2700
+    # 单条用例硬超时（透传给 mt_case 的 --case-timeout；0 = 用 mt_case 自己的默认 600s）
+    CaseTimeoutSec = 0
+}
 
-$ShowHelp = $false
+if ($env:MT_ALLOW_AUTO -and $env:MT_ALLOW_AUTO -match '^(1|true|yes|on)$') { $script:Opt.AllowAuto = $true }
+if ($env:MT_RUN_TIMEOUT_SEC -and $env:MT_RUN_TIMEOUT_SEC -match $script:MtNonNegativeIntPattern) {
+    $script:Opt.RunTimeoutSec = [int]$env:MT_RUN_TIMEOUT_SEC
+}
+if ($env:MT_CASE_TIMEOUT_SEC -and $env:MT_CASE_TIMEOUT_SEC -match $script:MtNonNegativeIntPattern) {
+    $script:Opt.CaseTimeoutSec = [int]$env:MT_CASE_TIMEOUT_SEC
+}
+
+# ══ 参数查表（--开关 → 解析行为）══════════════════════════════════════════
+# Kind:  Value  = 需要一个值（缺少 → Missing 文案 + 退出码 2；Pattern 不匹配 → Invalid 文案 + 退出码 2）
+#        Switch = 无值开关，把 Key 置为 SetValue
+#        Help   = 打印用法块后退出 0
+# Key/SetValue 指向 $script:Opt 的键；键名只此一处，解析循环里不再出现开关名。
+$script:ArgSpec = [ordered]@{
+    # ── 取值类 ───────────────────────────────────────────────────────────
+    'version'            = [pscustomobject]@{ Kind = 'Value'; Key = 'Version'; Missing = '缺少 --version 的值' }
+    'phase'              = [pscustomobject]@{ Kind = 'Value'; Key = 'Phase'; Missing = '缺少 --phase 的值' }
+    'case'               = [pscustomobject]@{ Kind = 'Value'; Key = 'CasePath'; Missing = '缺少 --case 的值' }
+    'new'                = [pscustomobject]@{ Kind = 'Value'; Key = 'GenNew'; Missing = '缺少 --new 的值' }
+    'feature'            = [pscustomobject]@{ Kind = 'Value'; Key = 'GenFeature'; Missing = '缺少 --feature 的值' }
+    'spec'               = [pscustomobject]@{ Kind = 'Value'; Key = 'GenSpec'; Missing = '缺少 --spec 的值' }
+    'channel'            = [pscustomobject]@{ Kind = 'Value'; Key = 'Channel'; Missing = '缺少 --channel 的值' }
+    'side'               = [pscustomobject]@{ Kind = 'Value'; Key = 'Side'; Missing = '缺少 --side 的值' }
+    'run-timeout'        = [pscustomobject]@{
+        Kind = 'Value'; Key = 'RunTimeoutSec'; Missing = '缺少 --run-timeout 的值'
+        Pattern = $script:MtNonNegativeIntPattern; Invalid = '--run-timeout 需要非负整数（秒）'
+    }
+    'case-timeout'       = [pscustomobject]@{
+        Kind = 'Value'; Key = 'CaseTimeoutSec'; Missing = '缺少 --case-timeout 的值'
+        Pattern = $script:MtNonNegativeIntPattern; Invalid = '--case-timeout 需要非负整数（秒）'
+    }
+    # ── 开关类 ───────────────────────────────────────────────────────────
+    'cleanup-on-exit'    = [pscustomobject]@{ Kind = 'Switch'; Key = 'CleanupMode'; SetValue = '1' }
+    'no-cleanup-on-exit' = [pscustomobject]@{ Kind = 'Switch'; Key = 'CleanupMode'; SetValue = '0' }
+    'force'              = [pscustomobject]@{ Kind = 'Switch'; Key = 'StopForce'; SetValue = $true }
+    'keep-daemon'        = [pscustomobject]@{ Kind = 'Switch'; Key = 'StopKeepDaemon'; SetValue = $true }
+    'purge-saves'        = [pscustomobject]@{ Kind = 'Switch'; Key = 'StopPurgeSaves'; SetValue = $true }
+    'keep-saves'         = [pscustomobject]@{ Kind = 'Switch'; Key = 'StopPurgeSaves'; SetValue = $false }
+    'allow-auto'         = [pscustomobject]@{ Kind = 'Switch'; Key = 'AllowAuto'; SetValue = $true }
+    # ── 帮助（-h / --help；与 bash 版 sed -n '2,25p' 等价）──────────────
+    'h'                  = [pscustomobject]@{ Kind = 'Help' }
+    'help'               = [pscustomobject]@{ Kind = 'Help' }
+}
+
+# ══ 参数解析（表驱动）══════════════════════════════════════════════════════
 $i = 0
-while ($i -lt $args.Count) {
-    $tok = [string]$args[$i]
+while ($i -lt $ArgList.Count) {
+    $tok = [string]$ArgList[$i]
+    # 与旧实现同一归一化：去掉全部前导 `-` 再小写 ⇒ `--version` / `-Version` / `--version` 同一键。
     $key = $tok.TrimStart('-').ToLowerInvariant()
-    if ($key -eq 'version') {
-        if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --version 的值'; exit $MT_EXIT_ERROR }
-        $Version = [string]$args[$i + 1]; $i += 2
-    } elseif ($key -eq 'phase') {
-        if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --phase 的值'; exit $MT_EXIT_ERROR }
-        $Phase = [string]$args[$i + 1]; $i += 2
-    } elseif ($key -eq 'case') {
-        if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --case 的值'; exit $MT_EXIT_ERROR }
-        $CasePath = [string]$args[$i + 1]; $i += 2
-    } elseif ($key -eq 'new') {
-        if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --new 的值'; exit $MT_EXIT_ERROR }
-        $GenNew = [string]$args[$i + 1]; $i += 2
-    } elseif ($key -eq 'feature') {
-        if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --feature 的值'; exit $MT_EXIT_ERROR }
-        $GenFeature = [string]$args[$i + 1]; $i += 2
-    } elseif ($key -eq 'spec') {
-        if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --spec 的值'; exit $MT_EXIT_ERROR }
-        $GenSpec = [string]$args[$i + 1]; $i += 2
-    } elseif ($key -eq 'cleanup-on-exit') {
-        $CleanupMode = '1'; $i++
-    } elseif ($key -eq 'no-cleanup-on-exit') {
-        $CleanupMode = '0'; $i++
-    } elseif ($key -eq 'run-timeout') {
-        if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --run-timeout 的值'; exit $MT_EXIT_ERROR }
-        if ([string]$args[$i + 1] -notmatch '^\d+$') { Write-MtErrorLine '--run-timeout 需要非负整数（秒）'; exit $MT_EXIT_ERROR }
-        $RunTimeoutSec = [int]$args[$i + 1]; $i += 2
-    } elseif ($key -eq 'case-timeout') {
-        if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --case-timeout 的值'; exit $MT_EXIT_ERROR }
-        if ([string]$args[$i + 1] -notmatch '^\d+$') { Write-MtErrorLine '--case-timeout 需要非负整数（秒）'; exit $MT_EXIT_ERROR }
-        $script:CaseTimeoutSec = [int]$args[$i + 1]; $i += 2
-    } elseif ($key -eq 'force') {
-        $StopForce = $true; $i++
-    } elseif ($key -eq 'keep-daemon') {
-        $StopKeepDaemon = $true; $i++
-    } elseif ($key -eq 'purge-saves') {
-        $StopPurgeSaves = $true; $i++
-    } elseif ($key -eq 'keep-saves') {
-        $StopPurgeSaves = $false; $i++
-    } elseif ($key -eq 'allow-auto') {
-        # 🚫 批量编排闸门显式放行（仅排查/对照用）；与 MT_ALLOW_AUTO=1 等价
-        $AllowAuto = $true; $i++
-    } elseif ($key -eq 'h' -or $key -eq 'help') {
-        $ShowHelp = $true; $i++
-    } else {
+    if (-not $script:ArgSpec.Contains($key)) {
         Write-MtErrorLine "未知参数 $tok"; exit $MT_EXIT_ERROR
+    }
+    $spec = $script:ArgSpec[$key]
+    switch ([string]$spec.Kind) {
+        'Help' {
+            # 与旧实现一致：遇到 -h/--help **立刻**打印用法并退出 0（其后的参数不再解析）。
+            # 窗口 = 文件第 2..26 行（原 `sed -n '2,23p'` 于 2026-09-17 放宽到 24 行，正好到 .EXAMPLE 结束；
+            # 2026-11-01 因新增一条 fabric --side 示例再 +1 行，仍以 .EXAMPLE 末行为界）。
+            foreach ($ln in @(Get-Content -LiteralPath $PSCommandPath | Select-Object -Skip 1 -First 25)) {
+                Write-MtLine ([string]$ln)
+            }
+            exit $MT_EXIT_PASS
+        }
+        'Switch' {
+            $script:Opt[$spec.Key] = $spec.SetValue
+        }
+        'Value' {
+            if (($i + 1) -ge $ArgList.Count) {
+                Write-MtErrorLine $spec.Missing; exit $MT_EXIT_ERROR
+            }
+            $raw = [string]$ArgList[$i + 1]
+            if ((@($spec.PSObject.Properties.Name) -contains 'Pattern') -and ($raw -notmatch $spec.Pattern)) {
+                Write-MtErrorLine $spec.Invalid; exit $MT_EXIT_ERROR
+            }
+            $script:Opt[$spec.Key] = $raw
+            $i++
+        }
+        default {
+            Write-MtErrorLine "未知参数 $tok"; exit $MT_EXIT_ERROR
+        }
+    }
+    $i++
+}
+
+# ── 绑定到局部变量（解析完成；后续分支只读局部变量）──────────────────────
+$Version = [string]$script:Opt.Version
+$Phase = [string]$script:Opt.Phase
+$CasePath = [string]$script:Opt.CasePath
+$GenNew = [string]$script:Opt.GenNew
+$GenFeature = [string]$script:Opt.GenFeature
+$GenSpec = [string]$script:Opt.GenSpec
+$AllowAuto = [bool]$script:Opt.AllowAuto
+$CleanupMode = [string]$script:Opt.CleanupMode
+$StopForce = [bool]$script:Opt.StopForce
+$StopKeepDaemon = [bool]$script:Opt.StopKeepDaemon
+$StopPurgeSaves = [bool]$script:Opt.StopPurgeSaves
+$RunTimeoutSec = [int]$script:Opt.RunTimeoutSec
+$script:CaseTimeoutSec = [int]$script:Opt.CaseTimeoutSec
+
+# ══ 通道解耦（windows-channel-decoupling-spec §2）══════════════════════════
+# 解析顺序：显式 --channel > 环境变量 MT_CHANNEL > 默认 autojs（与 lib/Mt.Channel.psm1 的
+# Get-MtChannelMode 同一口径；本文件不导入该模块 —— 通道层零耦合只允许 Phase/Paths/Proc，
+# 且此处只做「取值校验 + 透传」，不需要任何通道实现）。
+$Channel = [string]$script:Opt.Channel
+$channelRaw = $Channel
+if (-not $channelRaw) { $channelRaw = [string]$env:MT_CHANNEL }
+if (-not $channelRaw) {
+    $Channel = 'autojs'
+} else {
+    $Channel = $channelRaw.Trim().ToLowerInvariant()
+    if ($Channel -ne 'autojs' -and $Channel -ne 'native') {
+        Write-MtErrorLine ("--channel 需要 autojs 或 native（收到：{0}）" -f $channelRaw)
+        exit $MT_EXIT_ERROR
     }
 }
 
-if ($ShowHelp) {
-    # 对应 bash 的 `sed -n '2,23p' "$0"`；2026-09-17 起示例多一行（--phase stop --purge-saves），
-    # 故窗口由 22 行放宽到 24 行（= 文件第 2..25 行，正好到 .EXAMPLE 块结束）。
-    foreach ($ln in @(Get-Content -LiteralPath $PSCommandPath | Select-Object -Skip 1 -First 24)) {
-        Write-MtLine ([string]$ln)
+# 透传给 mt_preflight / mt_launch / mt_case 的参数片段（子进程参数名同为 --channel）。
+# ⚠️ 默认值 autojs 与三个子脚本各自的默认值**完全相同** ⇒ 省略参数即等价，
+#    因此在子脚本尚未实现 --channel 的过渡期，默认路径不会被"未知参数"打挂；
+#    native 走后端不同，必须显式透传（子脚本必须支持 --channel，见 spec §3）。
+$script:ChannelArgs = [string[]]@()
+if ($Channel -ne 'autojs') {
+    $script:ChannelArgs = @('--channel', $Channel)
+    Write-MtInfo ("CHANNEL: mode={0}（透传给 mt_preflight / mt_launch / mt_case）" -f $Channel)
+}
+
+# ══ fabric-1.20.1 的 side 选择（2026-11-01 登记）════════════════════════════
+# 语义与 bash 编排层逐条一致（scripts/test/win/mt.sh:136-158）：
+#   ① 只有 fabric-1.20.1 有**双 run 目录**（<子项目>/run/client 与 /run/server），
+#      另三线是单目录 run/<版本> ⇒ 对它们传 --side 一律报错（避免「以为切了侧」的静默偏差）；
+#   ② 取值只接受 client / server（大小写不敏感，归一成小写后 export）；
+#   ③ 不传 ⇒ 不设 MT_SIDE ⇒ Mt.Paths.Resolve-MtSide 落到默认 'client'（与 bash 的
+#      MT_FAB_DEFAULT_SIDE 一致）。
+# 为什么用环境变量而不改 $script:ChannelArgs：side 由 Mt.Paths.psm1 在**每个进程内**统一解析
+# （全仓 Get-MtPaths 的 40 处调用点都只传 -Version），环境变量能让父进程自己的 Get-MtPaths 与
+# 全部子进程（mt_preflight / mt_launch / mt_case / mt_assert …）看到同一个 side，且不新增参数面。
+$Side = ([string]$script:Opt.Side).Trim().ToLowerInvariant()
+if ($Side) {
+    if ($Version -ne 'fabric-1.20.1') {
+        Write-MtErrorLine ("--side 只对 fabric-1.20.1 有意义（收到 --version {0}；其它三线是单 run 目录 run/<版本>）" -f $(if ($Version) { $Version } else { '<未指定>' }))
+        exit $MT_EXIT_ERROR
     }
-    exit 0
+    if ($Side -ne 'client' -and $Side -ne 'server') {
+        Write-MtErrorLine ("--side 需要 client 或 server（收到：{0}）" -f [string]$script:Opt.Side)
+        exit $MT_EXIT_ERROR
+    }
+    $env:MT_SIDE = $Side
+    Write-MtInfo ("SIDE: {0}（fabric-1.20.1 运行目录 {1}/run/{0}）" -f $Side, 'fabric-1.20.1')
 }
 
 # 显式开关优先于任何场景默认（放在分支之前，stop / 生成条目等早退路径同样生效）
@@ -669,7 +811,7 @@ try {
     # 测试任务**收尾**用：`--phase stop --purge-saves`（收停测试端 + 清掉旧存档，
     # 避免游戏进程与旧世界长期驻留）。中途的 stop（重登/两阶段用例）**不要**加该开关。
     if ($Phase -eq 'stop') {
-        $stopArgs = @()
+        [string[]]$stopArgs = @()
         if ($Version) { $stopArgs = @('--version', $Version) } else { $stopArgs = @('--all') }
         if ($StopForce) { $stopArgs += '--force' }
         if ($StopKeepDaemon) { $stopArgs += '--keep-daemon' }
@@ -707,11 +849,19 @@ try {
     # 1.20.1 立刻被记成 `GATED` 而**根本没跑** —— 与 `--version` 的语义完全相反。
     # 现在:指定单版本 ⇒ 只跑该版本、不做跨版本门控（门控的前提是"多版本顺序执行",
     # 单版本时不存在"上一个版本");未指定 ⇒ 沿用三版本顺序 + 门控的原行为。
-    $flowVersions = if ($Version) { @($Version) } else { @(Get-MtVersions) }
+    # 2026-11-01（fabric 登记裁决）：**pwsh 侧默认多线全流程排除 fabric-1.20.1**。
+    # 理由：mt_env.ps1 / mt_loadergate.ps1 尚未按 fabric 适配（稳态模组期望表仍是 1.21.1/1.20.1/26.1.2
+    # 三条 NeoForge/Forge 口径，对 fabric 会给出假 BLOCKED —— 实测 `--version fabric-1.20.1 --side server --phase env`
+    # 打出 `MT_MODS: BLOCKED — 整合包缺少 *sodium-neoforge*0.8.13*.jar, *iris-neoforge*…`）。
+    # fabric 的阶段实现以 bash 侧 scripts/test/win/lib/fabric.sh 为准（原生实现、不委托 pwsh）。
+    # ⇒ fabric 全流程入口：bash scripts/test/win/mt.sh --version fabric-1.20.1 --side server --allow-auto
+    # 单版本 `--version fabric-1.20.1` 的 pwsh 调用仍允许（登记已生效），只是阶段实现以 bash 为权威。
+    $pwshFlowExcludes = @('fabric-1.20.1')
+    $flowVersions = if ($Version) { @($Version) } else { @(Get-MtVersions | Where-Object { $pwshFlowExcludes -notcontains $_ }) }
     $multiVersion = -not [bool]$Version
 
     # B6 ⑥-2：全局运行预算（只对全流程生效；单阶段模式不适用）
-    $runDeadline = if ($RunTimeoutSec -gt 0) { [DateTimeOffset]::UtcNow.ToUnixTimeSeconds() + $RunTimeoutSec } else { [long]0 }
+    [long]$runDeadline = if ($RunTimeoutSec -gt 0) { [DateTimeOffset]::UtcNow.ToUnixTimeSeconds() + $RunTimeoutSec } else { [long]0 }
     if ($RunTimeoutSec -gt 0) {
         Write-MtInfo ("RUN_TIMEOUT: {0}s（超时即 --phase stop --force 收停，退出码 {1}）" -f $RunTimeoutSec, $MT_EXIT_TIMEOUT)
     }
@@ -721,7 +871,8 @@ try {
     # D4-2（2026-10-17）：**只检查本次真正要跑的线**。旧实现无条件 `--all` ⇒
     # `mt.ps1 --version 1.20.1` 也会去扫 1.21.1 的遗留进程并自动收停，两条线无法并行
     # （实测双线排队约 1 小时）。多线顺序全流程（无 --version）仍用 --all。
-    $preflightArgs = if ($Version) { @('--version', $Version) } else { @('--all') }
+    [string[]]$preflightArgs = if ($Version) { @('--version', $Version) } else { @('--all') }
+    $preflightArgs += $script:ChannelArgs
     $rc = Invoke-MtChild -Script 'mt_preflight.ps1' -ScriptArgs $preflightArgs -TimeoutSec (Get-MtPhaseBudget 'preflight')
     if ($rc -ne 0) {
         Write-MtErrLine 'MT_RUN: ABORT（前置失败）'
@@ -768,8 +919,6 @@ try {
         if ($vrc -eq 0) {
             Start-MtPhase 'env'
             $vrc = Invoke-MtRunPhase -PhaseVersion $v -PhaseName 'env'
-            # BLOCKED 单列：B6 ④ 的 OP / dump 前置闸门返回 MT_EXIT_BLOCKED(11)，它是前置欠缺，
-            # 不是产品缺陷 —— 报告里必须看得出来
             $r = if ($vrc -eq 0) { 'PASS' } elseif ($vrc -eq $MT_EXIT_BLOCKED) { 'BLOCKED' } elseif ($vrc -eq $MT_EXIT_TIMEOUT) { 'TIMEOUT' } else { 'FAIL' }
             [void](Invoke-MtChild -Script 'mt_report.ps1' -ScriptArgs @('mark', '--version', $v, '--phase', 'env', '--result', $r))
         }
@@ -777,8 +926,6 @@ try {
         if ($vrc -eq 0) {
             Start-MtPhase 'launch'
             $vrc = Invoke-MtRunPhase -PhaseVersion $v -PhaseName 'launch'
-            # BLOCKED 单列：B6 ④ 的 OP / dump 前置闸门返回 MT_EXIT_BLOCKED(11)，它是前置欠缺，
-            # 不是产品缺陷 —— 报告里必须看得出来
             $r = if ($vrc -eq 0) { 'PASS' } elseif ($vrc -eq $MT_EXIT_BLOCKED) { 'BLOCKED' } elseif ($vrc -eq $MT_EXIT_TIMEOUT) { 'TIMEOUT' } else { 'FAIL' }
             [void](Invoke-MtChild -Script 'mt_report.ps1' -ScriptArgs @('mark', '--version', $v, '--phase', 'launch', '--result', $r))
             # launch 基线：此后 `mixin` 断言与报告摘要读 `launch_offsets`；

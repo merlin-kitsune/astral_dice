@@ -1,0 +1,300 @@
+{
+  "case_id": "RELEASE150-1.20.1",
+  "title": "发布验收 1.5.0 · Forge 1.20.1",
+  "version": "1.20.1",
+  "target": {
+    "type": "release",
+    "ref": "1.5.0"
+  },
+  "channel": "autojs",
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "【发布验收 1.5.0 · 1.20.1】通道 = autojs（无需窗口焦点；四线 run/<版本>/mods 里都有 AutoJS-*.jar，fabric 线需 --enable-autojs / -PautojsTestMod=1 才注入 AutoJS）。\n为什么不是 kubejs 原生通道：截图必须由客户端 AutoJS 走 Screenshot.grab，且 26.1.2 / fabric 线没有 astral_shop_probe.js（/astralshop 只在 1.20.1+1.21.1 存在），所以统一改成 Java 直调，四线同一套步骤。\n\n模拟玩家数据：inject_command 摆出确定状态（gamemode / clear / effect clear / tp / time / xp / effect give / give x4），随后 eval_js(side=server) 打一行机器可读日志\n[REL150] ver=1.20.1 gamemode=… pos=x,y,z hp=… food=… xp=… arm=… slotted=… chips=… item=… dim=… modver=…\n（字段取自 AutoJS.state()；必须服务端求值——客户端分支的 gameMode 会退化成 \"client\"）。断言逐字段用 type=log 命中该行：gamemode / pos / hp / item / xp / slotted / chips / modver。\n改名验收：astral_dice:abyss_reagent_chip - 客户端 eval 读显示名 getHoverName() 与 tooltip 行 Screen.getTooltipFromItem（内部派发 ItemTooltipEvent，模组加的行会出现），断言显示名 ∈ {深渊试剂, Abyss Reagent}（1.21.1 / 1.20.1 / 26.1.2 客户端 locale=zh_cn，fabric 客户端 locale=en_us）。"
+    },
+    {
+      "op": "note",
+      "text": "选择器口径：本用例所有 inject_command 走 AutoJS.command()，实测其服务端实现是 Commands.performPrefixedCommand(server.createCommandSourceStack(), cmd)（字节码取证：AutoJS-neoforge-1.21.1-1.0.0.jar 内 AutoJSVanilla.runCommand 调 MinecraftServer.createCommandSourceStack），命令源是**控制台**而非玩家，所以 /gamemode、/give、/xp、/effect、/clear、/tp 的目标一律写 @a，不得写 @s（@s 在控制台源下解析不到玩家，命令会静默失败，日志里只留一条 No player was found 之类的话术）。相应地 absent 断言把「No player was found / 没有找到玩家 / No entity was found / 没有与选择器匹配的实体」一并纳入，让命令源错配表现为显式 FAIL，而不是后续字段断言的神秘不匹配。"
+    },
+    {
+      "op": "note",
+      "text": "截图取证（3 张，op:screenshot mode=f2，落 run/<版本>/screenshots/ 并登记 .mt_shots.json）：\n  1) abyss_reagent_tooltip — 背包界面 + 光标尽力定位到快捷栏首格（筹码被给到第 0 格；实现在 1.20.1 是 InventoryScreen 打开后反射读父类 leftPos/topPos，取 lx+17 / ty+151，读不到就退到 GUI 屏幕中心，再反射写 MouseHandler 的 xpos/ypos 并调用 scr.mouseMoved —— 是「尽力定位」，不保证命中具体槽位）；光标定位 try/catch 尽力而为，tooltip 的内容已由 [REL150] tip i=… text=… 机器行单独作证，截图只作视觉留档；\n  2) chip_shop_ui — ChipShopState.store(p, EMPTY) 清冷却后 ChipShopOpener.open(p)，成功则服务端日志出现 [astral_dice] CHIP_SHOP_OPEN player=…，客户端 screen 类名断言为 ChipShopScreen；\n  3) release150_guide — 帕秋莉手册 astral_dice:astral_guide 尽力打开（mod 源码无 PatchouliAPI 引用，打开失败不作 PASS 判据，只留档 + vision 备注）。\n回归面：骰子 / 卡牌 / 筹码 / 立牌四条注册树断言（astral_dice:dice、astral_dice:attack_card_medium、astral_dice:abyss_reagent_chip、astral_dice:jill_sign）+ type=jar 完整性阈值 + 启动期版本行（scope=whole，启动期事实必须整文件窗口）+ type=crash。\n「jar 名含 1.5.0」：type=jar 没有文件名字段（字段集封闭：models_min/recipes_min/trinkets_min/entries_min/signs_min/bountiful_max/embed_max/embed_lib），因此等价由三处保证：本用例的 modver=1.5.0+、启动期版本行（本线没有 Mod List 段，版本行来自版本互通门槛：run/1.20.1/logs/latest.log:375 实测 [Astral Dice] 版本互通门槛(Version Gate):mod_version=1.5.0+forge_1.20.1 → 网络互通号=1.5 —— 2026-11-02 订正：旧稿把行号记成 L144、版本记成 1.5.0-rc.7，L144 实为 Arc3D 的 OpenGL driver 行，全日志无 rc.7）、runbook 里 build/libs 的 astral_dice-1.5.0*.jar 门禁命令。"
+    },
+    {
+      "op": "jar_stats",
+      "save_as": "jar"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative @a",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @a",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/effect clear @a",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/tp @a 100 120 100 0 0",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/time set 1000",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/xp set @a 30 levels",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/effect give @a minecraft:speed 600 1 true",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/give @a astral_dice:abyss_reagent_chip 3",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/give @a astral_dice:dice 1",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/give @a astral_dice:attack_card_medium 1",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/give @a astral_dice:jill_sign 1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "code": "(function () {\n  var st = JSON.parse(AutoJS.state());\n  var p = AutoJS.player();\n  var inv = AutoJS.inventory(p);\n  var slotted = 0, chips = 0;\n  for (var i = 0; i < inv.length; i++) {\n    if (!inv[i].isEmpty()) { slotted++; }\n    if (String(AutoJS.id(inv[i])) === 'astral_dice:abyss_reagent_chip') { chips += inv[i].getCount(); }\n  }\n  var itemId = String(AutoJS.id(AutoJS.held(p)));\n  var pos = st.pos;\n  var line = '[REL150] ver=1.20.1 gamemode=' + st.gameMode\n    + ' pos=' + Math.floor(pos[0]) + ',' + Math.floor(pos[1]) + ',' + Math.floor(pos[2])\n    + ' hp=' + Math.round(st.health)\n    + ' food=' + st.food\n    + ' xp=' + st.xpLevel\n    + ' arm=' + st.armor\n    + ' slotted=' + slotted\n    + ' chips=' + chips\n    + ' item=' + itemId\n    + ' dim=' + st.dimension\n    + ' modver=' + String(AutoJS.modVersion('astral_dice'));\n  console.info(line);\n  return line;\n})()",
+      "timeout_ms": 20000,
+      "save_as": "state"
+    },
+    {
+      "op": "eval_js",
+      "side": "client",
+      "code": "(function () {\n  var mc = Java.loadClass('net.minecraft.client.Minecraft').getInstance();\n  var ItemStack = Java.loadClass('net.minecraft.world.item.ItemStack');\n  var Screen = Java.loadClass('net.minecraft.client.gui.screens.Screen');\n  var Component = Java.loadClass('net.minecraft.network.chat.Component');\n  var item = AutoJS.item('astral_dice:abyss_reagent_chip');\n  var stack = null;\n  var total = 0;\n  try {\n    var inv = mc.player.getInventory();\n    for (var i = 0; i < inv.getContainerSize(); i++) {\n      var s = inv.getItem(i);\n      if (!s.isEmpty() && String(AutoJS.id(s)) === 'astral_dice:abyss_reagent_chip') {\n        total += s.getCount();\n        if (stack === null) { stack = s; }\n      }\n    }\n  } catch (e0) { }\n  if (stack === null) { stack = new ItemStack(item); total = stack.getCount(); }\n  var sid = 'astral_dice:abyss_reagent_chip';\n  try { sid = String(AutoJS.id(stack)); } catch (e9) { }\n  var name = String(stack.getHoverName().getString());\n  var lines = [];\n  var path = 'screen';\n  try {\n    var tip = Screen.getTooltipFromItem(mc, stack);\n    for (var i2 = 0; i2 < tip.size(); i2++) { lines.push(String(tip.get(i2).getString())); }\n  } catch (e1) {\n    path = 'hoverName';\n    lines.push(name);\n  }\n  console.info('[REL150] chip id=' + sid + ' count=' + total + ' name=' + name + ' tipn=' + lines.length + ' path=' + path);\n  for (var j = 0; j < lines.length; j++) { console.info('[REL150] tip i=' + j + ' text=' + lines[j]); }\n  var guide = String(Component.translatable('astral_dice.guide.entry.abyss_reagent_chip.1').getString());\n  console.info('[REL150] guide key=astral_dice.guide.entry.abyss_reagent_chip.1 text=' + guide);\n  return name;\n})()",
+      "timeout_ms": 20000,
+      "save_as": "chip"
+    },
+    {
+      "op": "eval_js",
+      "side": "client",
+      "code": "(function () {\n  // ── RELEASE150-1.20.1 step18（hover v2）：槽位遍历定位「深渊试剂」并把鼠标放到该槽中心 ──\n  // 根因（lead 判 FAIL）：旧实现写死 x = lx + 17; y = ty + 151，且 leftPos/topPos 用\n  // getClass().getSuperclass().getDeclaredField('leftPos') 取 —— 1.20.1 的 InventoryScreen\n  // 直接父类是 AbstractRecipeBookScreen，leftPos 声明在祖父 AbstractContainerScreen，\n  // 于是 NoSuchFieldException ⇒ lx=ty=0 ⇒ 屏幕中心兜底 ⇒ 悬停到画面中心的随机物品\n  // （旧图：创造物品栏 + 云杉木活板门）。\n  // 本脚本：对每个成员先试 SRG 名再试 Mojmap 名，并沿父类链找声明类；\n  // 坐标 = leftPos + slot.x + 8 / topPos + slot.y + 8；鼠标写回用 MouseHandler 的\n  // xpos/ypos（1.20.1 生产运行时 = f_91507_ / f_91508_，窗口像素）——AbstractContainerScreen.render\n  // 每帧用 Minecraft 由 xpos/ypos 换算出的 GUI 坐标重算 hoveredSlot（源码 render(...) 147-148 行），\n  // 所以写这两个字段是 1.20.1 唯一可靠的“移动鼠标”手段（mouseMoved / glfwSetCursorPos 无效）。\n  var mc = Java.loadClass('net.minecraft.client.Minecraft').getInstance();\n  var InvScreen = Java.loadClass('net.minecraft.client.gui.screens.inventory.InventoryScreen');\n  var ID = 'astral_dice:abyss_reagent_chip';\n  var probe = [];\n\n  function clsName(o) { try { return String(o.getClass().getName()); } catch (e) { return '?'; } }\n\n  function fieldOf(obj, srg, named) {\n    if (obj === null || obj === undefined) { return null; }\n    var cls = null;\n    try { cls = obj.getClass(); } catch (e) { return null; }\n    var names = [srg, named];\n    var depth = 0;\n    while (cls !== null && depth < 8) {\n      for (var i = 0; i < names.length; i++) {\n        if (!names[i]) { continue; }\n        try { var f = cls.getDeclaredField(names[i]); f.setAccessible(true); return f; } catch (e) { }\n      }\n      try { cls = cls.getSuperclass(); } catch (e) { cls = null; }\n      depth++;\n    }\n    return null;\n  }\n  function getInt(obj, srg, named) {\n    var f = fieldOf(obj, srg, named);\n    if (f === null) { return null; }\n    try { return f.getInt(obj); } catch (e) { return null; }\n  }\n  function getObj(obj, srg, named) {\n    var f = fieldOf(obj, srg, named);\n    if (f === null) { return null; }\n    try { return f.get(obj); } catch (e) { return null; }\n  }\n  function setNum(obj, srg, named, v) {\n    var f = fieldOf(obj, srg, named);\n    if (f === null) { return false; }\n    try { f.setDouble(obj, v); return true; } catch (e) { return false; }\n  }\n  function call0(obj, srg, named) {\n    if (obj === null || obj === undefined) { return null; }\n    var cls = null;\n    try { cls = obj.getClass(); } catch (e) { return null; }\n    var names = [srg, named];\n    var depth = 0;\n    while (cls !== null && depth < 8) {\n      for (var i = 0; i < names.length; i++) {\n        if (!names[i]) { continue; }\n        try { var m = cls.getDeclaredMethod(names[i]); m.setAccessible(true); return m.invoke(obj); } catch (e) { }\n      }\n      try { cls = cls.getSuperclass(); } catch (e) { cls = null; }\n      depth++;\n    }\n    return null;\n  }\n\n  // ── 1) 让面前是「生存背包」容器界面（创造界面也能遍历，但格子不在可见页时无法悬停）──\n  var scr = null;\n  try { scr = mc.screen; } catch (e) { scr = null; }\n  var scr0 = (scr === null) ? 'null' : clsName(scr);\n  var mode = 'existing';\n  if (scr === null || scr0.indexOf('Screen') < 0 || scr0.indexOf('CreativeModeInventoryScreen') >= 0) {\n    try { mc.setScreen(null); } catch (e0) { }\n    try { mc.setScreen(new InvScreen(mc.player)); mode = 'opened_inventory'; } catch (e1) { probe.push('setScreen_err=' + e1); }\n    try { scr = mc.screen; } catch (e2) { scr = null; }\n    var scA = (scr === null) ? 'null' : clsName(scr);\n    if (scA.indexOf('Creative') >= 0) {\n      try { mc.setScreen(new InvScreen(mc.player)); mode = mode + '+retry'; } catch (e3) { probe.push('setScreen_retry_err=' + e3); }\n      try { scr = mc.screen; } catch (e4) { scr = null; }\n    }\n  }\n\n  // ── 2) 玩家背包（用于判定 slot.container 是否指向它）──\n  var plInv = null;\n  try { plInv = mc.player.getInventory(); } catch (e5) { plInv = null; }\n  var plCls = (plInv === null) ? '?' : clsName(plInv);\n  var plSize = -1;\n  try { plSize = plInv.getContainerSize(); } catch (e6) { plSize = -1; }\n\n  function scan(screen) {\n    if (screen === null) { return null; }\n    var menu = null;\n    try { menu = screen.getMenu(); } catch (e7) { menu = null; }\n    if (menu === null) { menu = call0(screen, 'm_6262_', 'getMenu'); }\n    if (menu === null) { probe.push('menu=null scr=' + clsName(screen)); return null; }\n    var slots = getObj(menu, 'f_38839_', 'slots');\n    if (slots === null) { probe.push('slots_field=null menu=' + clsName(menu)); return null; }\n    var n = 0;\n    try { n = slots.size(); } catch (e8) { n = 0; }\n    probe.push('nslots=' + n + ' menu=' + clsName(menu));\n    var hit = null;\n    var seen = 0;\n    for (var i = 0; i < n; i++) {\n      var slot = null;\n      try { slot = slots.get(i); } catch (e9) { continue; }\n      if (slot === null) { continue; }\n      var st = call0(slot, 'm_7993_', 'getItem');\n      if (st === null) { try { st = slot.getItem(); } catch (e10) { st = null; } }\n      if (st === null) { continue; }\n      var empty = true;\n      var em = call0(st, 'm_41619_', 'isEmpty');\n      if (em !== null) { empty = !!em; } else { try { empty = !!st.isEmpty(); } catch (e11) { empty = true; } }\n      if (empty) { continue; }\n      var sid = '';\n      try { sid = String(AutoJS.id(st)); } catch (e12) { sid = ''; }\n      if (sid !== ID) {\n        // 兜底：AutoJS.id 在客户端分支不可用时，直接走注册表取 id\n        try {\n          var itm = call0(st, 'm_41720_', 'getItem');\n          var Reg0 = Java.loadClass('net.minecraft.core.registries.BuiltInRegistries');\n          sid = String(Reg0.ITEM.getKey(itm));\n        } catch (e12b) { sid = sid || ''; }\n      }\n      if (sid !== ID) { continue; }\n      var c = getObj(slot, 'f_40218_', 'container');\n      var cCls = clsName(c);\n      var cSize = -1;\n      try { cSize = c.getContainerSize(); } catch (e13) { cSize = -1; }\n      var sameInv = (c !== null && plInv !== null) && ((cCls === plCls) || (plSize > 0 && cSize === plSize));\n      var sxv = getInt(slot, 'f_40220_', 'x');\n      var syv = getInt(slot, 'f_40221_', 'y');\n      if (seen < 6) {\n        probe.push('slot#' + i + ' id=' + sid + ' playerInv=' + (sameInv ? 1 : 0) + ' xy=' + sxv + ',' + syv + ' c=' + cCls + ' csize=' + cSize);\n        seen++;\n      }\n      if (hit === null && sameInv) { hit = { idx: i, slot: slot, sx: sxv, sy: syv }; }\n    }\n    return hit;\n  }\n\n  var hit = scan(scr);\n\n  // ── 3) 兜底一：再开一次生存背包 ──\n  if (hit === null) {\n    try { mc.setScreen(new InvScreen(mc.player)); mode = mode + '+rescan'; } catch (e14) { probe.push('setScreen3_err=' + e14); }\n    try { scr = mc.screen; } catch (e15) { scr = null; }\n    hit = scan(scr);\n  }\n  // ── 4) 兜底二：把筹码补进快捷栏第 0 格再扫（用例 /give 3 已给，这里只补位，不增计数）──\n  if (hit === null && plInv !== null) {\n    try {\n      var ItemStack = Java.loadClass('net.minecraft.world.item.ItemStack');\n      var item = AutoJS.item(ID);\n      plInv.setItem(0, new ItemStack(item, 3));\n      probe.push('last_resort_hotbar0=set');\n      hit = scan(scr);\n    } catch (e16) { probe.push('last_resort_err=' + e16); }\n  }\n\n  // ── 5) 坐标：GUI = leftPos + slot.x + 8 / topPos + slot.y + 8；鼠标字段是窗口像素 ──\n  var scrNow = null;\n  try { scrNow = mc.screen; } catch (e17) { scrNow = scr; }\n  var scrCls = (scrNow === null) ? 'null' : clsName(scrNow);\n  var lx = getInt(scrNow, 'f_97735_', 'leftPos');\n  var ty = getInt(scrNow, 'f_97736_', 'topPos');\n  var scale = 1;\n  var guiW = 0, screenW = 0;\n  try { scale = mc.getWindow().getGuiScale(); } catch (e18) { scale = 1; }\n  if (!scale) { scale = 1; }\n  try { guiW = mc.getWindow().getGuiScaledWidth(); screenW = mc.getWindow().getScreenWidth(); } catch (e19) { }\n  var out = 'open=1 hover=skip slot=-1 lx=' + lx + ' ty=' + ty + ' scale=' + scale + ' scr=' + scrCls + ' scr0=' + scr0 + ' mode=' + mode;\n  if (hit !== null && lx !== null && ty !== null) {\n    var guiX = lx + hit.sx + 8;\n    var guiY = ty + hit.sy + 8;\n    var winX = Math.round(guiX * scale);\n    var winY = Math.round(guiY * scale);\n    var mh = null;\n    try { mh = mc.mouseHandler; } catch (e20) { mh = getObj(mc, 'f_91067_', 'mouseHandler'); }\n    var okX = setNum(mh, 'f_91507_', 'xpos', winX);\n    var okY = setNum(mh, 'f_91508_', 'ypos', winY);\n    try { scrNow.mouseMoved(guiX, guiY); } catch (e21) { }\n    var predX = 0, predY = 0;\n    if (screenW > 0 && guiW > 0) { predX = Math.round(winX * guiW / screenW); predY = Math.round(winY * guiW / screenW); }\n    out = 'open=1 hover=' + Math.round(guiX) + ',' + Math.round(guiY) +\n      ' slot=' + hit.idx + ' sxy=' + hit.sx + ',' + hit.sy + ' lx=' + lx + ' ty=' + ty +\n      ' scale=' + scale + ' win=' + winX + ',' + winY + ' write=' + (okX ? 1 : 0) + (okY ? 1 : 0) +\n      ' pred=' + predX + ',' + predY + ' scr=' + scrCls + ' scr0=' + scr0 + ' mode=' + mode;\n  }\n  console.info('[REL150] hover probe ' + probe.join(' | '));\n  console.info('[REL150] inventory ' + out);\n  return out;\n})()",
+      "timeout_ms": 20000,
+      "save_as": "hover"
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "screenshot",
+      "tag": "abyss_reagent_tooltip",
+      "mode": "f2"
+    },
+    {
+      "op": "eval_js",
+      "side": "client",
+      "code": "(function () { var mc = Java.loadClass('net.minecraft.client.Minecraft').getInstance(); mc.setScreen(null); console.info('[REL150] screen_closed=1'); return 'closed'; })()",
+      "timeout_ms": 20000,
+      "save_as": "closed"
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "code": "(function () {\n  var St = Java.loadClass('com.merlinkitsune.astral_dice.shop.ChipShopState');\n  var Op = Java.loadClass('com.merlinkitsune.astral_dice.shop.ChipShopOpener');\n  var p = AutoJS.player();\n  var out = 'show=skip';\n  try { St.store(p, St.EMPTY); out = 'show=reset'; } catch (e1) { out = 'show=skip'; }\n  Op.open(p);\n  console.info('[REL150] shop_open invoked=1 ' + out);\n  return out;\n})()",
+      "timeout_ms": 20000,
+      "save_as": "shop"
+    },
+    {
+      "op": "wait",
+      "ms": 1400
+    },
+    {
+      "op": "eval_js",
+      "side": "client",
+      "code": "(function () {\n  var mc = Java.loadClass('net.minecraft.client.Minecraft').getInstance();\n  var s = mc.screen;\n  var n = (s === null) ? 'none' : String(s.getClass().getName());\n  console.info('[REL150] screen=' + n);\n  return n;\n})()",
+      "timeout_ms": 20000,
+      "save_as": "screen"
+    },
+    {
+      "op": "screenshot",
+      "tag": "chip_shop_ui",
+      "mode": "f2"
+    },
+    {
+      "op": "eval_js",
+      "side": "client",
+      "code": "(function () {\n  var out = 'skip';\n  try {\n    var API = Java.loadClass('vazkii.patchouli.api.PatchouliAPI');\n    var RL = Java.loadClass('net.minecraft.resources.ResourceLocation');\n    API.get().openBookGUI(RL.fromNamespaceAndPath('astral_dice', 'astral_guide'));\n    out = 'ok';\n  } catch (e1) { out = 'ERR:' + e1; }\n  console.info('[REL150] guide_open=' + out);\n  return out;\n})()",
+      "timeout_ms": 20000,
+      "save_as": "guide"
+    },
+    {
+      "op": "wait",
+      "ms": 1400
+    },
+    {
+      "op": "screenshot",
+      "tag": "release150_guide",
+      "mode": "f2"
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "code": "(function () {\n  var ItemStack = Java.loadClass('net.minecraft.world.item.ItemStack');\n  var ids = ['dice', 'attack_card_medium', 'abyss_reagent_chip', 'jill_sign'];\n  for (var i = 0; i < ids.length; i++) {\n    var it = AutoJS.item('astral_dice:' + ids[i]);\n    var ok = (it === null) ? 0 : 1;\n    var nm = '-';\n    if (ok === 1) { nm = String(new ItemStack(it).getHoverName().getString()); }\n    console.info('[REL150] sys id=astral_dice:' + ids[i] + ' ok=' + ok + ' name=' + nm);\n  }\n  return 'sys';\n})()",
+      "timeout_ms": 20000,
+      "save_as": "sys"
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "scope": "whole",
+      "pattern": "mod_version=1\\.5\\.0\\+forge_1\\.20\\.1"
+    },
+    {
+      "type": "log",
+      "pattern": "\\[REL150\\] ver=1\\.20\\.1 gamemode=creative "
+    },
+    {
+      "type": "log",
+      "pattern": "\\[REL150\\] ver=1\\.20\\.1 .* pos=100,-?[0-9]+,100 "
+    },
+    {
+      "type": "log",
+      "pattern": "\\[REL150\\] ver=1\\.20\\.1 .* hp=20 "
+    },
+    {
+      "type": "log",
+      "pattern": "\\[REL150\\] ver=1\\.20\\.1 .* item=astral_dice:abyss_reagent_chip"
+    },
+    {
+      "type": "log",
+      "pattern": "\\[REL150\\] ver=1\\.20\\.1 .* xp=30 "
+    },
+    {
+      "type": "log",
+      "pattern": "\\[REL150\\] .* slotted=[1-9][0-9]* "
+    },
+    {
+      "type": "log",
+      "pattern": "\\[REL150\\] .* chips=3 "
+    },
+    {
+      "type": "log",
+      "pattern": "\\[REL150\\] .* modver=1\\.5\\.0\\+"
+    },
+    {
+      "type": "log",
+      "pattern": "\\[REL150\\] chip id=astral_dice:abyss_reagent_chip count=3 name=(深渊试剂|Abyss Reagent) "
+    },
+    {
+      "type": "log",
+      "pattern": "\\[REL150\\] tip i=0 text=.+"
+    },
+    {
+      "type": "log",
+      "pattern": "\\[REL150\\] guide key=astral_dice\\.guide\\.entry\\.abyss_reagent_chip\\.1 text=.+"
+    },
+    {
+      "type": "log",
+      "pattern": "\\[REL150\\] inventory open=1"
+    },
+    {
+      "type": "log",
+      "pattern": "CHIP_SHOP_OPEN player="
+    },
+    {
+      "type": "log",
+      "pattern": "\\[REL150\\] screen=\\S*ChipShopScreen"
+    },
+    {
+      "type": "log",
+      "pattern": "\\[REL150\\] sys id=astral_dice:dice ok=1"
+    },
+    {
+      "type": "log",
+      "pattern": "\\[REL150\\] sys id=astral_dice:attack_card_medium ok=1"
+    },
+    {
+      "type": "log",
+      "pattern": "\\[REL150\\] sys id=astral_dice:abyss_reagent_chip ok=1"
+    },
+    {
+      "type": "log",
+      "pattern": "\\[REL150\\] sys id=astral_dice:jill_sign ok=1"
+    },
+    {
+      "type": "eval",
+      "from": "state",
+      "expect": {
+        "regex": "\\[REL150\\] ver=\\S+ gamemode=creative pos=100,-?[0-9]+,100 hp=20 .*item=astral_dice:abyss_reagent_chip"
+      }
+    },
+    {
+      "type": "eval",
+      "from": "chip",
+      "expect": {
+        "regex": "^[\"]?(深渊试剂|Abyss Reagent)[\"]?$"
+      }
+    },
+    {
+      "type": "eval",
+      "from": "screen",
+      "expect": {
+        "regex": "ChipShopScreen[\"]?$"
+      }
+    },
+    {
+      "type": "absent",
+      "pattern": "Unknown or incomplete command|未知或不完整的命令|No player was found|没有找到玩家|No entity was found|没有与选择器匹配的实体"
+    },
+    {
+      "type": "jar",
+      "from": "jar",
+      "models_min": 120,
+      "recipes_min": 100,
+      "signs_min": 25,
+      "entries_min": 1700
+    },
+    {
+      "type": "crash"
+    },
+    {
+      "type": "vision",
+      "image": "abyss_reagent_tooltip",
+      "question": "画面里是否看得到物品提示框（tooltip）或背包界面？只回答「看到了」或「没看到」，并用一句话说明画面主体。"
+    },
+    {
+      "type": "vision",
+      "image": "chip_shop_ui",
+      "question": "画面是否是筹码商店/容器界面（而不是普通世界画面）？只回答「是商店」或「不是商店」。"
+    }
+  ]
+}

@@ -106,6 +106,110 @@ $script:CasesDir = Join-Path $script:TestDir 'cases'
 $script:PsExe = (Get-Process -Id $PID).Path
 $script:TAG_UTF8 = [System.Text.UTF8Encoding]::new($false, $false)
 
+# ── 测试通道（autojs / native；契约 docs/features/windows-channel-decoupling-spec.md）──
+# 口径：native 模式下本文件的注入类原语**行为与改造前逐字节一致**（仍调 mt_inject.ps1 /
+# mt_capture.ps1，argv 一个字节都不改）；autojs 模式下改走 lib/Mt.Channel.psm1（AutoJS eval_js），
+# 不需要前台窗口 / 键盘布局 / 鼠标独占。
+# autojs 下无法等价表达的 op 记 **DELEGATED**：它既不是 FAIL 也不是 ERROR（不参与 $worst 升级），
+# 作为**独立步骤结果**落进 MT_CASE 报告（marks 里显示为 →VIS），并计入降级计数
+# `MT_CHANNEL: delegated_count=<n>`。降级在报告里可见，但不把整轮判成失败。
+$script:ChannelRequested = ''
+$script:ChannelMode = ''
+$script:ChannelModuleReady = $false
+$script:ChannelDelegatedTotal = 0
+
+function Import-MtChannelModule {
+    <#
+    .SYNOPSIS
+        惰性导入 lib/Mt.Channel.psm1。
+
+    .NOTES
+        **不带 -Force**：见 :95 那条注释（-Force 会先卸载 Mt.Paths，把它导出的函数一起摘掉）。
+        失败只报一次并返回 $false —— 通道模块缺失不该把整个用例台打死。
+    #>
+    [CmdletBinding()]
+    param()
+
+    if ($script:ChannelModuleReady) { return $true }
+    try {
+        Import-Module (Join-Path $script:LibDir 'Mt.Channel.psm1')
+        $script:ChannelModuleReady = $true
+        return $true
+    } catch {
+        Write-MtErrLine ("MT_CHANNEL: ERROR — 通道模块加载失败：{0}" -f $_.Exception.Message)
+        return $false
+    }
+}
+
+function Get-MtCaseChannelMode {
+    <#
+    .SYNOPSIS
+        本进程的通道模式（首次调用解析并缓存；非法值 throw，由调用方转成用法错误）。
+    #>
+    [CmdletBinding()]
+    param()
+
+    if ($script:ChannelMode) { return $script:ChannelMode }
+    [void](Import-MtChannelModule)
+    $script:ChannelMode = Get-MtChannelMode -Requested $script:ChannelRequested
+    return $script:ChannelMode
+}
+
+function ConvertTo-MtCaseChannelPair {
+    <#
+    .SYNOPSIS
+        把通道模块的返回对象（Status / Channel / Detail）翻成用例步骤二元组。
+
+    .NOTES
+        映射：OK → PASS；DELEGATED → DELEGATED（≠ 失败，见文件头通道段）；ERROR →
+        BLOCKED（仅当 detail 带 endpoint=unavailable，即通道本身不可用）否则 ERROR。
+    #>
+    [CmdletBinding()]
+    param([AllowNull()]$Result, [AllowEmptyString()][string]$Label = '')
+
+    $status = ''
+    $chan = ''
+    $detail = ''
+    if ($null -ne $Result) {
+        $status = [string]$Result.Status
+        $chan = [string]$Result.Channel
+        $detail = [string]$Result.Detail
+    }
+    $pre = if ($Label) { ($Label + ' | ') } else { '' }
+    $body = ('{0}channel={1} {2}' -f $pre, $chan, $detail)
+    switch ($status) {
+        'OK' { return (New-MtPair 'PASS' $body) }
+        'DELEGATED' { return (New-MtPair 'DELEGATED' $body) }
+        'ERROR' {
+            if ($detail -match 'endpoint=unavailable') { return (New-MtPair 'BLOCKED' $body) }
+            return (New-MtPair 'ERROR' $body)
+        }
+        default { return (New-MtPair 'ERROR' ("通道返回了未知状态 '{0}'（{1}）" -f $status, $body)) }
+    }
+}
+
+function Register-MtCaseShotFailure {
+    <#
+    .SYNOPSIS
+        登记「本用例内某张截图没有产出有效证据」（tag → 原因），供 vision 断言直接判 BLOCKED。
+
+    .NOTES
+        2026-11-02 判据修复（需求 3）：截图 op 失败/未产出文件时，若只是让 op 自己记 DELEGATED/ERROR，
+        对应 vision 断言仍可能匹配到**上一轮**的旧 PNG 而判 PASS —— 于是「截图失败」被静默吞掉。
+        这里把失败按 tag 记进本用例作用域，vision 一见到该 tag 的登记就 BLOCKED 并回显原因。
+    #>
+    [CmdletBinding()]
+    param(
+        [AllowEmptyString()][string]$Tag = '',
+        [AllowEmptyString()][string]$Reason = ''
+    )
+
+    $t = ([string]$Tag).Trim()
+    if (-not $t) { return }
+    if ($null -eq $script:CaseShotFailures) { $script:CaseShotFailures = @{} }
+    $script:CaseShotFailures[$t] = [string]$Reason
+}
+
 # ── 封闭原语表（与 python PRIMITIVES 同键同集合）──────────────────────────
 $script:Primitives = [ordered]@{
     'inject_key'     = @('key', 'hold_ms', 'no_esc')
@@ -131,9 +235,17 @@ $script:Primitives = [ordered]@{
     'eval_js'        = @('side', 'code', 'script', 'args', 'save_as', 'timeout_ms', 'expect')
     'await_state'    = @('side', 'code', 'script', 'args', 'timeout_ms', 'interval_ms')
     'mcp_status'     = @('timeout_ms', 'save_as')
+    # 2026-11-01（fabric-1.20.1）：离线 jar 统计 —— 读 <子项目>/build/libs 下最新产物 jar 的条目名，
+    # 把计数结果存进用例作用域（save_as 缺省 'jar'），供断言 type=jar 取数。
+    # 契约与 bash 层 scripts/test/win/lib/fabric.sh 的 op `jar_stats` 相同（那边只吃 save_as）。
+    'jar_stats'      = @('save_as')
     'note'           = @('text')
 }
-$script:AssertTypes = @('log', 'absent', 'crash', 'kubejs', 'mixin', 'vision', 'eval', 'state')
+# 2026-11-01（fabric-1.20.1 登记）：后三种是 bash 层 fabric 运行器**已有**的离线 jar 断言族
+# （scripts/test/win/lib/fabric.sh:527-603 的 bytecode / bytecode_absent / jar 分支）。
+# PowerShell 侧此前没有 ⇒ 9 条 cases/*-fabric-1.20.1.json 既校验不过、也无法执行。
+# 另三线与既有用例零影响：不写这些 type 就一次也走不到。
+$script:AssertTypes = @('log', 'absent', 'crash', 'kubejs', 'mixin', 'vision', 'eval', 'state', 'jar', 'bytecode', 'bytecode_absent')
 
 # ── AutoJS 通道（2026-10-18；需求书 docs/features/autojs-test-harness-spec.md §3/§4）──────
 # `channel` 是**用例级**开关，缺省 = `kubejs`（legacy 用例与改造前逐字节一致）。只有
@@ -142,6 +254,14 @@ $script:AssertTypes = @('log', 'absent', 'crash', 'kubejs', 'mixin', 'vision', '
 $script:CaseChannels = @('autojs', 'kubejs')
 $script:CaseChannel = 'kubejs'                  # 当前用例的通道（Invoke-MtCaseRun 设置）
 $script:CaseScope = @{}                         # 当前用例的 save_as 作用域（跨步骤共享）
+# ── 判据修复 2026-11-02：截图证据的时效/失败登记（vision 断言用）──────────────────
+# CaseWindowStartUnix = 本用例断言窗口起点（unix 秒）。vision 断言要求 PNG 的 mtime ≥ 该值，
+#   否则「拿上一轮的旧图判 PASS」（D2/S6）。
+# CaseShotFailures   = 本用例内失败的截图（tag → 原因）。截图 op 未产出文件时登记，vision 见到即 BLOCKED，
+#   否则「截图失败 + 旧图仍在」会被静默判成通过（需求 3）。
+$script:CaseWindowStartUnix = 0.0
+$script:CaseShotFailures = @{}
+
 $script:AutoJsSides = @('auto', 'server', 'client')
 $script:AutoJsStepTimeoutMs = 15000             # eval_js / await_state 的 timeout_ms 缺省
 $script:AutoJsAwaitIntervalMs = 250             # await_state 的 interval_ms 缺省
@@ -1186,6 +1306,37 @@ function Test-MtAutoJsStepFields {
     return , $errs
 }
 
+function Get-MtCaseAsserts {
+    <#
+    .SYNOPSIS
+        取用例的断言清单：单数 `assert` 优先（fabric-1.20.1 那一批遗留用例的写法），否则 `asserts`。
+
+    .NOTES
+        与 bash 层逐字同义（scripts/test/win/lib/fabric.sh:654 的
+        `list(case.get('assert') or case.get('asserts') or [])`）：单数键非空即用它。
+        ⚠️ 校验期（Test-MtCaseValid）与执行期（Invoke-MtCaseRun）**必须共用**这一个函数：
+        只改校验期会得到「校验通过、却跑 0 条断言」的假绿（比校验失败更危险）。
+    #>
+    [CmdletBinding()]
+    param([AllowNull()]$Case)
+
+    # ⚠️ 不能写成 `@(Get-MtMapValue ...)` 直接判 Count：键不存在时它是 `@($null)`，
+    #    Count 仍为 1（PowerShell 的数组字面量包含 $null），于是「没有 assert 键」的用例会被
+    #    当成「有一条 $null 断言」⇒ 报出「断言 0: 未知类型 'None'」。必须显式剔掉 $null。
+    $list = @()
+    foreach ($src in @('assert', 'asserts')) {
+        foreach ($x in @(Get-MtMapValue -Map $Case -Key $src)) {
+            if ($null -ne $x) { $list += $x }
+        }
+        if ($list.Count -gt 0) { break }
+    }
+    # 返回**普通数组**（不要 `return , $list`）：本函数的所有调用点都是 `@(Get-MtCaseAsserts ...)`，
+    # 而一元逗号会把数组当成**单个对象**输出 ⇒ `@(...)` 得到「数组套数组」，$asserts[0] 变成整表，
+    # 于是每条用例都报 `断言 0: 未知类型 'None'`（本文件里 `return , $errs` 的写法只适用于
+    # 不用 @() 包裹的调用点，这里不适用）。
+    return $list
+}
+
 function Test-MtCaseValid {
     <#
     .SYNOPSIS
@@ -1232,8 +1383,21 @@ function Test-MtCaseValid {
     foreach ($s in $steps) {
         if ((Get-MtMapValue -Map $s -Key 'op') -eq 'assert') { $inlineAssert = $true; break }
     }
-    if (-not (Test-MtTruthyValue (Get-MtMapValue -Map $Case -Key 'asserts')) -and -not $inlineAssert) {
+    # 2026-11-01（fabric-1.20.1）：断言清单统一走 Get-MtCaseAsserts —— 单数 `assert` 与复数
+    # `asserts` 等价（执行期用同一个函数取，见 Invoke-MtCaseRun），否则会出现「校验通过但零断言」。
+    if (@(Get-MtCaseAsserts -Case $Case).Count -eq 0 -and -not $inlineAssert) {
         $errs += '条目没有任何断言（asserts 或内联 assert 步骤）'
+    }
+
+    # ── 用例级 side（2026-11-01，fabric-1.20.1 的双 run 目录）────────────────────────
+    # fabric 线的 run 根是 <子项目>/run/<side>（client 与 server 各一套，见 Mt.Paths.psm1 的
+    # Get-MtRunRoot）；另三线没有 side 概念，但**允许该键存在** —— Resolve-MtSide 对非 fabric
+    # 版本恒返回 ''，故另三线既有用例（无该键）零改动。这里只校验取值，避免拼出 run\Both 之类。
+    $sideRaw = Get-MtMapValue -Map $Case -Key 'side'
+    if ($null -ne $sideRaw -and ([string]$sideRaw).Trim() -ne '') {
+        if (@('client', 'server') -notcontains ([string]$sideRaw).Trim().ToLowerInvariant()) {
+            $errs += ("用例 side 非法：'{0}'（只接受 client / server）" -f [string]$sideRaw)
+        }
     }
 
     for ($i = 0; $i -lt $steps.Count; $i++) {
@@ -1325,7 +1489,7 @@ function Test-MtCaseValid {
         }
     }
 
-    $asserts = @(Get-MtMapValue -Map $Case -Key 'asserts' -Default @())
+    $asserts = @(Get-MtCaseAsserts -Case $Case)
     for ($i = 0; $i -lt $asserts.Count; $i++) {
         $a = $asserts[$i]
         $at = [string](Get-MtMapValue -Map $a -Key 'type')
@@ -1334,6 +1498,38 @@ function Test-MtCaseValid {
         }
         if ($at -eq 'log' -and -not (Test-MtTruthyValue (Get-MtMapValue -Map $a -Key 'pattern'))) {
             $errs += ("断言 {0}: log 断言缺少 pattern" -f $i)
+        }
+        # ── 离线 jar 断言族（2026-11-01；字段封闭与判据集合对齐 bash fabric.sh:527-603）──────
+        # bash 侧对未知字段返回 None ⇒ BLOCKED（不静默通过）；这里提前到校验期拦下，跑起来之前就报。
+        if ($at -eq 'jar') {
+            if ($a -is [System.Collections.IDictionary]) {
+                $jarAllowed = @('type', 'from', 'scope', 'models_min', 'recipes_min', 'trinkets_min', 'entries_min', 'signs_min', 'bountiful_max', 'embed_max', 'embed_lib')
+                $badJar = @()
+                foreach ($k in $a.Keys) { if ($jarAllowed -notcontains [string]$k) { $badJar += [string]$k } }
+                if ($badJar.Count -gt 0) {
+                    $errs += ("断言 {0}: jar 含非法字段 {1}" -f $i, (ConvertTo-MtPySortedListRepr -Items $badJar))
+                }
+            }
+            $crit = 0
+            foreach ($k in @('models_min', 'recipes_min', 'trinkets_min', 'entries_min', 'signs_min', 'bountiful_max', 'embed_max')) {
+                if ($null -ne (Get-MtMapValue -Map $a -Key $k)) { $crit++ }
+            }
+            if ($crit -eq 0 -and $null -eq (Get-MtMapValue -Map $a -Key 'embed_lib')) {
+                $errs += ("断言 {0}: jar 断言没有任何判据（models_min / recipes_min / trinkets_min / entries_min / signs_min / bountiful_max / embed_max / embed_lib）" -f $i)
+            }
+        }
+        if ($at -eq 'bytecode' -or $at -eq 'bytecode_absent') {
+            if (-not (Test-MtTruthyValue (Get-MtMapValue -Map $a -Key 'pattern'))) {
+                $errs += ("断言 {0}: {1} 断言缺少 pattern" -f $i, $at)
+            }
+            if ($a -is [System.Collections.IDictionary]) {
+                $bcAllowed = @('type', 'pattern', 'from', 'scope')
+                $badBc = @()
+                foreach ($k in $a.Keys) { if ($bcAllowed -notcontains [string]$k) { $badBc += [string]$k } }
+                if ($badBc.Count -gt 0) {
+                    $errs += ("断言 {0}: {1} 含非法字段 {2}" -f $i, $at, (ConvertTo-MtPySortedListRepr -Items $badBc))
+                }
+            }
         }
         # ── AutoJS 通道断言（2026-10-18）───────────────────────────────────────────
         if ($at -eq 'eval' -or $at -eq 'state') {
@@ -1454,6 +1650,90 @@ function Get-MtVerdict {
 }
 
 # ── 断言 ──────────────────────────────────────────────────────────────────
+function Get-MtCaseJarEntries {
+    <#
+    .SYNOPSIS
+        取本版本产物 jar 的条目全名清单（离线读 zip：不启游戏、不跑 gradle）。
+
+    .NOTES
+        逐步镜像 bash 层 scripts/test/win/lib/fabric.sh:455-483：
+          - jar 目录 = <repo>/<subproject>/build/libs（Sources.subproject 唯一来源，不另拼版本目录）；
+          - 候选 = `astral_dice-*.jar`，排除 -(sources|dev|slim).jar；
+          - 取 mtime 最新的一条。
+        找不到（目录不存在 / 无候选 / zip 打不开）一律返回 $null —— 调用方据此判 BLOCKED 或 FAIL，
+        **绝不**返回空清单冒充「0 命中」（那会让 bytecode_absent 恒 PASS）。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][psobject]$Paths)
+
+    $jarDir = Join-Path (Join-Path (Join-Path ([string]$Paths.root) ([string]$Paths.subproject)) 'build') 'libs'
+    if (-not (Test-Path -LiteralPath $jarDir -PathType Container)) { return $null }
+    $cand = @()
+    foreach ($f in @(Get-ChildItem -LiteralPath $jarDir -File -Filter 'astral_dice-*.jar' -ErrorAction SilentlyContinue)) {
+        if ([string]$f.Name -match '-(sources|dev|slim)\.jar$') { continue }
+        $cand += $f
+    }
+    if ($cand.Count -eq 0) { return $null }
+    $pick = @($cand | Sort-Object -Property LastWriteTimeUtc -Descending)[0]
+    $names = @()
+    try {
+        Add-Type -AssemblyName System.IO.Compression.FileSystem -ErrorAction SilentlyContinue
+        $zip = [System.IO.Compression.ZipFile]::OpenRead([string]$pick.FullName)
+        try {
+            foreach ($e in $zip.Entries) { $names += [string]$e.FullName }
+        } finally { $zip.Dispose() }
+    } catch {
+        return $null
+    }
+    return [pscustomobject]@{ jar = [string]$pick.Name; path = [string]$pick.FullName; names = $names }
+}
+
+function Get-MtCaseJarStats {
+    <#
+    .SYNOPSIS
+        统计产物 jar 的条目分类计数（供 op jar_stats 与断言 type=jar 使用）。
+
+    .NOTES
+        逐字段对齐 bash 层 scripts/test/win/lib/fabric.sh:484-501 的 jar_stats()：
+          entries   = 全部条目数；
+          models    = assets/astral_dice/models/item/**/*.json；
+          recipes   = data/astral_dice/recipes/**/*.json ∪ data/astral_dice/recipe/**/*.json
+                      （1.20.1 复数目录 / 1.21+ 单数目录都数；见下方实现处的 2026-11-02 口径修复）；
+          trinkets  = data/trinkets/**/*.json；
+          bountiful = data/bountiful/**/*.json；
+          embed     = META-INF/jars/*.jar（Loom include 的内嵌前置）；
+          signs     = item/sign/<名字>SignItem.class（正则同 bash）。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][psobject]$Paths)
+
+    $entry = Get-MtCaseJarEntries -Paths $Paths
+    if ($null -eq $entry) { return $null }
+    $models = 0; $recipes = 0; $trinkets = 0; $bountiful = 0; $embed = 0; $signs = 0
+    foreach ($n in @($entry.names)) {
+        $t = [string]$n
+        if ($t.StartsWith('assets/astral_dice/models/item/') -and $t.EndsWith('.json')) { $models++ }
+        # 口径修复 2026-11-02：1.20.1（Forge）用 data/<ns>/recipes/（复数），1.21+ 改成
+        # data/<ns>/recipe/（单数）——旧实现只数复数目录，于是 neo 三线 recipes 恒为 0（D6）。
+        # 两个目录都数：不同加载器/版本各自的目录布局都覆盖到，阈值本身不放宽。
+        if ($t.EndsWith('.json') -and ($t.StartsWith('data/astral_dice/recipes/') -or $t.StartsWith('data/astral_dice/recipe/'))) { $recipes++ }
+        if ($t.StartsWith('data/trinkets/') -and $t.EndsWith('.json')) { $trinkets++ }
+        if ($t.StartsWith('data/bountiful/') -and $t.EndsWith('.json')) { $bountiful++ }
+        if ($t.StartsWith('META-INF/jars/') -and $t.EndsWith('.jar')) { $embed++ }
+        if ($t -match 'item/sign/[A-Za-z]+SignItem\.class$') { $signs++ }
+    }
+    return [ordered]@{
+        jar       = [string]$entry.jar
+        entries   = @($entry.names).Count
+        models    = $models
+        recipes   = $recipes
+        trinkets  = $trinkets
+        bountiful = $bountiful
+        embed     = $embed
+        signs     = $signs
+    }
+}
+
 function Invoke-MtCaseAssert {
     <#
     .SYNOPSIS
@@ -1498,6 +1778,14 @@ function Invoke-MtCaseAssert {
     }
     if ($t -eq 'crash') {
         $r = Invoke-MtCaseChild -Script 'mt_assert.ps1' -ScriptArgs @('crash', '--version', $Paths.version)
+        # 2026-11-02（D4）：crash-reports 目录不存在 ⇒ mt_assert.ps1 打 INCONCLUSIVE（exit 0）。
+        # 若不识别这一行，exit 0 会被 Get-MtVerdict 翻成 PASS ⇒ 弱证据冒充通过。
+        # 这里改成步骤状态 INCONCLUSIVE（只影响该步显示，不进 $worst 升级链，故不影响整轮汇总）。
+        $incLine = ''
+        foreach ($ln in @(([string]$r.StdOut) -split "`n")) {
+            if (([string]$ln).Trim().StartsWith('MT_ASSERT_CRASH: INCONCLUSIVE')) { $incLine = ([string]$ln).Trim(); break }
+        }
+        if ($incLine) { return (New-MtPair 'INCONCLUSIVE' $incLine) }
         return (Get-MtVerdict -ExitCode $r.ExitCode -Result $r)
     }
     if ($t -eq 'kubejs') {
@@ -1584,14 +1872,96 @@ function Invoke-MtCaseAssert {
         })
         return $pair
     }
+    # ── 离线 jar 断言族（2026-11-01；镜像 bash 层 fabric.sh:527-603）─────────────────────
+    # 三个分支都**不碰游戏进程**：只读 <子项目>/build/libs 下的产物 jar 条目名。
+    # 判定口径与 bash 逐条一致：
+    #   jar              → 从用例作用域取 op=jar_stats 的结果，逐判据比 >= / <= / 布尔；
+    #   bytecode         → pattern 对条目名 re.search，≥1 命中 PASS；
+    #   bytecode_absent  → 零命中 PASS；
+    #   取不到 jar / 作用域没有该键 ⇒ FAIL（不是 BLOCKED：这是「用例自身写错或没建构建」的
+    #   产品侧事实，必须显式红出来；只有 bash 侧 op=jar_stats 找不到 jar 才是 BLOCKED）。
+    if ($t -eq 'jar') {
+        $key = [string](Get-MtMapValue -Map $Assert -Key 'from' -Default '')
+        if (-not $key) { $key = 'jar' }
+        if (-not $script:CaseScope.ContainsKey($key)) {
+            return (New-MtPair 'FAIL' ("jar-state-missing（用例里需先有 op=jar_stats 存成 '{0}'）" -f $key))
+        }
+        $st = $script:CaseScope[$key]
+        $okParts = @()
+        $badParts = @()
+        $minMap = [ordered]@{ models_min = 'models'; recipes_min = 'recipes'; trinkets_min = 'trinkets'; entries_min = 'entries'; signs_min = 'signs' }
+        foreach ($k in @($minMap.Keys)) {
+            $raw = Get-MtMapValue -Map $Assert -Key $k
+            if ($null -eq $raw) { continue }
+            $need = [int]$raw
+            $have = [int](Get-MtMapValue -Map $st -Key $minMap[$k] -Default 0)
+            if ($have -ge $need) { $okParts += ("{0}={1}>={2}" -f $minMap[$k], $have, $need) }
+            else { $badParts += ("{0}={1}<{2}" -f $minMap[$k], $have, $need) }
+        }
+        $maxMap = [ordered]@{ bountiful_max = 'bountiful'; embed_max = 'embed' }
+        foreach ($k in @($maxMap.Keys)) {
+            $raw = Get-MtMapValue -Map $Assert -Key $k
+            if ($null -eq $raw) { continue }
+            $cap = [int]$raw
+            $have = [int](Get-MtMapValue -Map $st -Key $maxMap[$k] -Default 0)
+            if ($have -le $cap) { $okParts += ("{0}={1}<={2}" -f $maxMap[$k], $have, $cap) }
+            else { $badParts += ("{0}={1}>{2}" -f $maxMap[$k], $have, $cap) }
+        }
+        $embedRaw = Get-MtMapValue -Map $Assert -Key 'embed_lib'
+        if ($null -ne $embedRaw) {
+            $want = Test-MtTruthyValue $embedRaw
+            $have = ([int](Get-MtMapValue -Map $st -Key 'embed' -Default 0)) -gt 0
+            if ($want -eq $have) { $okParts += ("embed_lib={0}" -f $have) }
+            else { $badParts += ("embed_lib={0}（期望 {1}）" -f $have, $want) }
+        }
+        $detail = ("jar={0} {1}" -f (Get-MtMapValue -Map $st -Key 'jar'), (@($okParts + $badParts) -join ' '))
+        if ($badParts.Count -gt 0) { return (New-MtPair 'FAIL' $detail) }
+        return (New-MtPair 'PASS' $detail)
+    }
+    if ($t -eq 'bytecode' -or $t -eq 'bytecode_absent') {
+        $entry = Get-MtCaseJarEntries -Paths $Paths
+        $libsDir = Join-Path (Join-Path (Join-Path ([string]$Paths.root) ([string]$Paths.subproject)) 'build') 'libs'
+        if ($null -eq $entry) {
+            return (New-MtPair 'FAIL' ("{0}:no-jar（先跑 --phase build；{1} 下无 astral_dice-*.jar）" -f $t, $libsDir))
+        }
+        $pat = [string](Get-MtMapValue -Map $Assert -Key 'pattern')
+        $hits = @()
+        foreach ($n in @($entry.names)) { if ([string]$n -match $pat) { $hits += [string]$n } }
+        $detail = ("jar={0} pattern={1} hits={2}" -f $entry.jar, (ConvertTo-MtPyText $pat), $hits.Count)
+        if ($hits.Count -gt 0) { $detail += (' ' + (@($hits | Select-Object -First 3) -join ',')) }
+        if ($t -eq 'bytecode') {
+            if ($hits.Count -gt 0) { return (New-MtPair 'PASS' $detail) }
+            return (New-MtPair 'FAIL' $detail)
+        }
+        if ($hits.Count -eq 0) { return (New-MtPair 'PASS' $detail) }
+        return (New-MtPair 'FAIL' $detail)
+    }
+
     if ($t -eq 'vision') {
         # image 可以是「截图文件名」,也可以是截图 op 登记过的 **tag** —— 用例普遍写 tag,
         # 早期实现直接拿 tag 去和文件名比对,导致所有 vision 断言恒为 BLOCKED(已在
         # 2026-09-12 真机暴露)。此处统一解析成当前世代内的真实文件,并把绝对路径
         # 回填进 detail,判定方才拿得到可读的图。
         $want = Get-MtMapValue -Map $Assert -Key 'image'
+
+        # ── 2026-11-02 判据修复（需求 2 / 需求 3）：vision 必须有「本轮」的强证据 ──────────
+        # 旧实现只比对「清单里有没有这个 tag」+「文件在不在」，于是上一轮的旧 PNG 只要还在
+        # run/<ver>/screenshots/ 且清单条目没被清掉，就会让本轮 vision 判通过（D2/S6）。
+        # 现在四条硬约束（缺一条即 BLOCKED，绝不放行成通过）：
+        #   ① 本用例截图 op 没有该 tag 的失败登记（截图本身必须成功产出）；
+        #   ② PNG 文件真实存在；
+        #   ③ 大小 ≥ 20480 B（小于 2 万字节基本是空帧/纯背景，视觉模型无判据）；
+        #   ④ mtime ≥ 本用例窗口起点（= 本轮产物，不是历史遗留）。
+        if ((Test-MtTruthyValue $want) -and ($script:CaseShotFailures -is [hashtable]) -and
+            $script:CaseShotFailures.ContainsKey([string]$want)) {
+            $why = [string]$script:CaseShotFailures[[string]$want]
+            return (New-MtPair 'BLOCKED' ("截图 {0} 本轮未产出证据：{1}" -f (ConvertTo-MtPyRepr $want), $why))
+        }
+
         $names = @()
-        foreach ($s in @(Get-MtCurrentShots -Paths $Paths -RunId $RunId)) { $names += [string]$s.Name }
+        # 传 -SinceUnix：把早于本用例窗口起点的历史条目挡在「当前世代」之外。
+        # （-SinceUnix 默认 0 = 旧行为，故 mt_capture prune 的删除面不变。）
+        foreach ($s in @(Get-MtCurrentShots -Paths $Paths -RunId $RunId -SinceUnix $script:CaseWindowStartUnix)) { $names += [string]$s.Name }
 
         $byTag = [ordered]@{}
         $shotsData = Get-MtShots -Paths $Paths
@@ -1619,8 +1989,23 @@ function Invoke-MtCaseAssert {
         if ($null -eq $target) {
             return (New-MtPair 'BLOCKED' 'vision 断言未指定 image')
         }
+        $shotPath = Join-Path $Paths.shot_dir $target
+        if (-not (Test-Path -LiteralPath $shotPath -PathType Leaf)) {
+            return (New-MtPair 'BLOCKED' ("截图文件不存在：{0}" -f $shotPath))
+        }
+        $shotInfo = Get-Item -LiteralPath $shotPath
+        if ([long]$shotInfo.Length -lt 20480) {
+            return (New-MtPair 'BLOCKED' ("截图文件过小（{0} B < 20480 B，视为无效/空帧）：{1}" -f $shotInfo.Length, $shotPath))
+        }
+        if ($script:CaseWindowStartUnix -gt 0) {
+            $shotUnix = $shotInfo.LastWriteTime.ToFileTime() / 10000000.0 - 11644473600
+            if ($shotUnix -lt $script:CaseWindowStartUnix) {
+                $winIso = ([DateTimeOffset]::FromUnixTimeMilliseconds([long]($script:CaseWindowStartUnix * 1000))).LocalDateTime.ToString('yyyy-MM-dd HH:mm:ss.fff')
+                return (New-MtPair 'BLOCKED' ("截图不是本轮产物（mtime={0:yyyy-MM-dd HH:mm:ss.fff} 早于用例窗口起点 {1}）：{2}" -f $shotInfo.LastWriteTime, $winIso, $shotPath))
+            }
+        }
         $question = Get-MtMapValue -Map $Assert -Key 'question' -Default '请判定截图中的视觉断言是否成立'
-        return (New-MtPair 'DELEGATED' ("VISION_PATH={0} | {1}" -f (Join-Path $Paths.shot_dir $target), $question))
+        return (New-MtPair 'DELEGATED' ("VISION_PATH={0} | {1}" -f $shotPath, $question))
     }
     return (New-MtPair 'ERROR' "未实现的断言类型 $t")
 }
@@ -1645,6 +2030,18 @@ function Invoke-MtCaseOp {
     $op = [string](Get-MtMapValue -Map $Step -Key 'op')
 
     if ($op -eq 'inject_key') {
+        # autojs 通道：按键走 AutoJS 映射表（契约 §1.1）；native 保持原 mt_inject.ps1 路径。
+        if ((Get-MtCaseChannelMode) -eq 'autojs') {
+            try {
+                $rKey = Send-MtChannelKey -Version $Paths.version `
+                    -Key (ConvertTo-MtPyText (Get-MtMapValue -Map $Step -Key 'key')) `
+                    -HoldMs ([int](Get-MtMapValue -Map $Step -Key 'hold_ms' -Default 0)) `
+                    -NoEsc:(Test-MtTruthyValue (Get-MtMapValue -Map $Step -Key 'no_esc'))
+                return (ConvertTo-MtCaseChannelPair -Result $rKey -Label 'inject_key')
+            } catch {
+                return (New-MtPair 'ERROR' ('MT_CHANNEL 调用失败：' + $_.Exception.Message))
+            }
+        }
         $argv = @('key', '--key', (ConvertTo-MtPyText (Get-MtMapValue -Map $Step -Key 'key')), '--version', $Paths.version)
         if (Test-MtTruthyValue (Get-MtMapValue -Map $Step -Key 'no_esc')) {
             # t18：声明层字段必须真的传到注入器 —— 否则「用例写了 no_esc」与「注入器收到
@@ -1663,6 +2060,19 @@ function Invoke-MtCaseOp {
     }
 
     if ($op -eq 'inject_mouse') {
+        # autojs 通道：左键=准星攻击/挖掘、右键=use()、-Shift=crouch 包裹（契约 §1.1）；
+        # native 保持原 mt_inject.ps1 路径。
+        if ((Get-MtCaseChannelMode) -eq 'autojs') {
+            try {
+                $rMouse = Send-MtChannelMouse -Version $Paths.version `
+                    -Button (ConvertTo-MtPyText (Get-MtMapValue -Map $Step -Key 'button')) `
+                    -HoldMs ([int](Get-MtMapValue -Map $Step -Key 'hold_ms' -Default 0)) `
+                    -Shift:(Test-MtTruthyValue (Get-MtMapValue -Map $Step -Key 'shift'))
+                return (ConvertTo-MtCaseChannelPair -Result $rMouse -Label 'inject_mouse')
+            } catch {
+                return (New-MtPair 'ERROR' ('MT_CHANNEL 调用失败：' + $_.Exception.Message))
+            }
+        }
         # 与 inject_key 同构：字段名沿用 python 侧 snake_case（button/shift/hold_ms），
         # 子脚本参数按 PowerShell 拼法传（-Shift / -HoldMs，见文件头「无法 1:1 复刻之处」第 1 条）。
         $argv = @('mouse', '--button', (ConvertTo-MtPyText (Get-MtMapValue -Map $Step -Key 'button')), '--version', $Paths.version)
@@ -1685,6 +2095,16 @@ function Invoke-MtCaseOp {
     }
 
     if ($op -eq 'inject_command') {
+        # autojs 通道：服务端三级探测链（契约 §1.1b）；native 保持原 mt_inject.ps1 路径。
+        if ((Get-MtCaseChannelMode) -eq 'autojs') {
+            try {
+                $rCmd = Send-MtChannelCommand -Version $Paths.version `
+                    -Command (ConvertTo-MtPyText (Get-MtMapValue -Map $Step -Key 'command'))
+                return (ConvertTo-MtCaseChannelPair -Result $rCmd -Label 'inject_command')
+            } catch {
+                return (New-MtPair 'ERROR' ('MT_CHANNEL 调用失败：' + $_.Exception.Message))
+            }
+        }
         $argv = @('cmd', '--command', (ConvertTo-MtPyText (Get-MtMapValue -Map $Step -Key 'command')), '--version', $Paths.version)
         if (Test-MtTruthyValue (Get-MtMapValue -Map $Step -Key 'no_esc')) {
             # python 传 --no-esc；同上看第 1 条
@@ -1698,13 +2118,50 @@ function Invoke-MtCaseOp {
     }
 
     if ($op -eq 'kubejs_reload') {
-        [void](Invoke-MtCaseChild -Script 'mt_inject.ps1' -ScriptArgs @(
-                'cmd', '--command', '/kubejs reload server-scripts', '--version', $Paths.version))
+        # autojs 通道：一次 reload_scripts（契约 §1.1）。
+        # ⚠️ 改造前的 native 分支用 `[void](…)` 把子进程返回码整段吞掉 ⇒ 热重载**恒 PASS**
+        #    （端点挂了、脚本报错、注入器超时全都洗成绿灯）。本次改造把 rc 收起来参与判定。
+        if ((Get-MtCaseChannelMode) -eq 'autojs') {
+            if (-not (Import-MtChannelModule)) {
+                return (New-MtPair 'ERROR' 'KUBEJS_RELOAD: 通道模块不可用，无法热重载')
+            }
+            if (-not (Get-Command -Name 'Invoke-MtAutoJsReload' -ErrorAction SilentlyContinue)) {
+                return (New-MtPair 'ERROR' 'KUBEJS_RELOAD: Mt.AutoJs.psm1 未加载')
+            }
+            try {
+                $rReload = Invoke-MtAutoJsReload -Side 'server'
+            } catch {
+                return (New-MtPair 'ERROR' ('KUBEJS_RELOAD: reload_scripts 抛异常 — ' + $_.Exception.Message))
+            }
+            if ([bool]$rReload.Ok) {
+                Write-MtLine 'MT_CHANNEL: op=reload channel=autojs status=ok detail=reload_scripts side=server'
+                return (New-MtPair 'PASS' 'KUBEJS_RELOAD: reload_scripts ok（side=server）')
+            }
+            $rErr = [string]$rReload.Error
+            if (-not $rErr) { $rErr = 'reload_scripts 返回 Ok=false' }
+            Write-MtLine ("MT_CHANNEL: op=reload channel=autojs status=error detail={0}" -f ($rErr -replace "\r?\n", ' '))
+            $tail = if ($rErr -match '(?i)传输层|initialize 失败|HTTP \d|connect|拒绝|连不上|refused|timed out|超时') { 'BLOCKED' } else { 'ERROR' }
+            return (New-MtPair $tail ('KUBEJS_RELOAD: reload_scripts 失败 — ' + $rErr))
+        }
+
+        # native 通道：原路径（两个命令各注一次），但**收集返回码**——任一非 0 即失败。
+        $reloadRcs = @()
+        $r1 = Invoke-MtCaseChild -Script 'mt_inject.ps1' -ScriptArgs @(
+                'cmd', '--command', '/kubejs reload server-scripts', '--version', $Paths.version)
+        $reloadRcs += ('/kubejs reload server-scripts rc={0}' -f [string]$r1.ExitCode)
         Start-Sleep -Milliseconds 1000
-        [void](Invoke-MtCaseChild -Script 'mt_inject.ps1' -ScriptArgs @(
-                'cmd', '--command', '/reload', '--version', $Paths.version))
+        $r2 = Invoke-MtCaseChild -Script 'mt_inject.ps1' -ScriptArgs @(
+                'cmd', '--command', '/reload', '--version', $Paths.version)
+        $reloadRcs += ('/reload rc={0}' -f [string]$r2.ExitCode)
         Start-Sleep -Milliseconds 2000
-        return (New-MtPair 'PASS' '已热重载 KubeJS 脚本')
+        $rcText = ($reloadRcs -join ' ')
+        if ($r1.TimedOut -or $r2.TimedOut) {
+            return (New-MtPair 'TIMEOUT' ('KUBEJS_RELOAD: 注入超时（{0}）' -f $rcText))
+        }
+        if (($r1.ExitCode -ne 0) -or ($r2.ExitCode -ne 0)) {
+            return (New-MtPair 'ERROR' ('KUBEJS_RELOAD: 注入返回码非 0（{0}）' -f $rcText))
+        }
+        return (New-MtPair 'PASS' ('已热重载 KubeJS 脚本（{0}）' -f $rcText))
     }
 
     if ($op -eq 'wait') {
@@ -1714,6 +2171,28 @@ function Invoke-MtCaseOp {
     }
 
     if ($op -eq 'screenshot') {
+        # autojs 通道：客户端 Screenshot.grab 落到 run/<ver>/screenshots/<tag>.png（契约 §1.1）。
+        # native 保持原 mt_capture.ps1 路径（含 --crop-to-window / F2 重试等既有语义）。
+        # ⚠ 2026-11-02（需求 3）：本 op 未产出文件（DELEGATED/ERROR/BLOCKED/FAIL/TIMEOUT）时，
+        #   必须把「该 tag 本轮没有证据」登记下来，否则后续 vision 断言会拿旧图判 PASS。
+        $shotTag = ConvertTo-MtPyText (Get-MtMapValue -Map $Step -Key 'tag')
+        if ((Get-MtCaseChannelMode) -eq 'autojs') {
+            try {
+                $rShot = Invoke-MtChannelShot -Version $Paths.version `
+                    -Tag $shotTag `
+                    -Mode (Get-MtMapValue -Map $Step -Key 'mode' -Default 'f2') `
+                    -Crop:(Test-MtTruthyValue (Get-MtMapValue -Map $Step -Key 'crop' -Default $false))
+                $pairShot = ConvertTo-MtCaseChannelPair -Result $rShot -Label 'screenshot'
+                if ([string]$pairShot[0] -ne 'PASS') {
+                    Register-MtCaseShotFailure -Tag $shotTag -Reason ([string]$pairShot[1])
+                }
+                return $pairShot
+            } catch {
+                $exMsg = 'MT_CHANNEL 调用失败：' + $_.Exception.Message
+                Register-MtCaseShotFailure -Tag $shotTag -Reason $exMsg
+                return (New-MtPair 'ERROR' $exMsg)
+            }
+        }
         $shotArgs = @(
             'capture', '--version', $Paths.version,
             '--tag', (ConvertTo-MtPyText (Get-MtMapValue -Map $Step -Key 'tag')),
@@ -1728,7 +2207,26 @@ function Invoke-MtCaseOp {
         $r = Invoke-MtCaseChild -Script 'mt_capture.ps1' -ScriptArgs $shotArgs
         $text = if ($r.StdOut) { [string]$r.StdOut } else { [string]$r.StdErr }
         $oc = if ($r.TimedOut) { 'TIMEOUT' } elseif ($r.ExitCode -eq 0) { 'PASS' } else { 'ERROR' }
-        return (New-MtPair $oc (Get-MtTail -Text $text -FromTextMode))
+        $tail = Get-MtTail -Text $text -FromTextMode
+        # 同上（需求 3）：native 通道失败/超时也要登记，vision 不得靠旧图过关。
+        if ($oc -ne 'PASS') { Register-MtCaseShotFailure -Tag $shotTag -Reason ([string]$tail) }
+        return (New-MtPair $oc $tail)
+    }
+
+    # ── 离线 jar 统计（2026-11-01；与 bash 层 op `jar_stats` 同一契约）──────────────────────
+    # 找不到产物 jar ⇒ BLOCKED（文案与 bash fabric.sh 的「找不到产物 jar（先跑 --phase build）」同义）：
+    # 这是「本轮还没构建」的工具链事实，不是产品失败。
+    if ($op -eq 'jar_stats') {
+        $st = Get-MtCaseJarStats -Paths $Paths
+        $libsDir = Join-Path (Join-Path (Join-Path ([string]$Paths.root) ([string]$Paths.subproject)) 'build') 'libs'
+        if ($null -eq $st) {
+            return (New-MtPair 'BLOCKED' ("找不到产物 jar（先跑 --phase build）：{0}" -f $libsDir))
+        }
+        $saveAs = [string](Get-MtMapValue -Map $Step -Key 'save_as' -Default '')
+        if (-not $saveAs) { $saveAs = 'jar' }
+        $script:CaseScope[$saveAs] = $st
+        return (New-MtPair 'NOTE' ("save_as={0} jar={1} entries={2} models={3} recipes={4} trinkets={5} bountiful={6} embed={7} signs={8}" -f `
+                $saveAs, $st.jar, $st.entries, $st.models, $st.recipes, $st.trinkets, $st.bountiful, $st.embed, $st.signs))
     }
 
     if ($op -eq 'assert') {
@@ -1860,10 +2358,12 @@ function Get-MtCaseClientStatus {
         读取本版本客户端存活状态；工具链缺该能力时返回 $null（fail-open，绝不因此中断用例）。
     #>
     [CmdletBinding()]
-    param([Parameter(Mandatory)][string]$Version)
+    param([Parameter(Mandatory)][string]$Version, [AllowEmptyString()][string]$Side = '')
 
     if (-not (Get-Command Get-MtClientStatus -ErrorAction SilentlyContinue)) { return $null }
-    try { return (Get-MtClientStatus -Paths (Get-MtPaths -Version $Version)) } catch { return $null }
+    # 2026-11-01：-Side 透传给 Get-MtPaths（fabric 双 run 目录 ⇒ 日志/run 根按 side 解析；
+    # 另三线 Resolve-MtSide 恒返回 ''，故这里传什么都不改变既有路径）。
+    try { return (Get-MtClientStatus -Paths (Get-MtPaths -Version $Version -Side $Side)) } catch { return $null }
 }
 
 function Get-MtLogTailText {
@@ -2315,7 +2815,13 @@ function Invoke-MtCaseRun {
         Write-MtLine ("CASE_CHANNEL: {0} channel=autojs（eval 通道，端点 {1}）" -f $caseId, (Get-MtAutoJsEndpointUrl))
     }
 
-    $p = Get-MtPaths -Version $Version
+    # ── 用例级 side（2026-11-01；fabric-1.20.1 的双 run 目录）────────────────────────────
+    # 用例顶层 side 缺省 '' ⇒ 由 Mt.Paths.Resolve-MtSide 的三级解析兜底（显式 -Side > $env:MT_SIDE
+    # > 'client'）；另三线该参数被忽略，run 根仍是一字未改的 run/<版本>。
+    $sideRaw = Get-MtMapValue -Map $case -Key 'side' -Default ''
+    $caseSide = ''
+    if ($null -ne $sideRaw -and ([string]$sideRaw).Trim()) { $caseSide = ([string]$sideRaw).Trim().ToLowerInvariant() }
+    $p = Get-MtPaths -Version $Version -Side $caseSide
     Write-MtLine ''
     Write-MtLine ("--- MT_CASE: {0} — {1} ---" -f $caseId, (Get-MtMapValue -Map $case -Key 'title'))
     # ── 状态校验（2026-09-13 新增；此前完全没有，客户端崩掉后仍会刷一屏 PASS）──────────
@@ -2324,9 +2830,16 @@ function Invoke-MtCaseRun {
     $rawSteps = @(Get-MtMapValue -Map $case -Key 'steps' -Default @())
     $needsClient = @($rawSteps | Where-Object {
             $o = [string](Get-MtMapValue -Map $_ -Key 'op')
-            $o -like 'inject*' -or $o -eq 'screenshot'
+            if ($o -like 'inject*' -or $o -eq 'screenshot') { return $true }
+            # 2026-11-01 通道改造：autojs 通道下「客户端侧的 eval / 热重载 / 端点探活」同样要求
+            # 客户端在跑 —— 否则那一大批 eval 用例会**失去客户端存活校验**（端点明明是空的，
+            # 结论却只能说成「读不到」，而不是「客户端根本没起来」）。kubejs 通道零变化。
+            if ($script:CaseChannel -ne 'autojs') { return $false }
+            if ($o -eq 'kubejs_reload' -or $o -eq 'mcp_status') { return $true }
+            if ($o -eq 'eval_js') { return ([string](Get-MtMapValue -Map $_ -Key 'side' -Default '') -eq 'client') }
+            return $false
         }).Count -gt 0
-    $clientStart = if ($needsClient) { Get-MtCaseClientStatus -Version $Version } else { $null }
+    $clientStart = if ($needsClient) { Get-MtCaseClientStatus -Version $Version -Side $caseSide } else { $null }
     if ($needsClient -and $null -ne $clientStart -and -not $clientStart.Alive) {
         # ── 2026-09-19 用户规则（AGENTS 变更分级第 14 条 / TESTING-SPEC §12.3 第 5 条）──────
         #   ⚠️ t38（2026-09-19 实跑误报修复）：**不得**只看「客户端不在运行 + 非收停在途」就判
@@ -2388,7 +2901,8 @@ function Invoke-MtCaseRun {
         $steps += [ordered]@{ op = 'kubejs_reload' }
     }
     $steps += @(Get-MtMapValue -Map $case -Key 'steps' -Default @())
-    foreach ($a in @(Get-MtMapValue -Map $case -Key 'asserts' -Default @())) {
+    # 断言清单走 Get-MtCaseAsserts（与校验期同一函数：单数 assert / 复数 asserts 等价）
+    foreach ($a in @(Get-MtCaseAsserts -Case $case)) {
         # python: {"op": "assert", **a} —— a 里的 "op" 会覆盖前者，故这里也先写后覆盖
         $merged = [ordered]@{ op = 'assert' }
         if ($a -is [System.Collections.IDictionary]) {
@@ -2422,6 +2936,16 @@ function Invoke-MtCaseRun {
     # 偏移不再依赖"调用方记得补快照"，而是由用例执行器每条自己写。
     #
     # 失败即 ERROR，绝不静默沿用陈旧偏移（那会退化成"窗口跨用例"，正是本次要修的东西）。
+    # ── 2026-11-02（需求 2）：本用例的证据时间基准 ────────────────────────────
+    # vision 断言要求 PNG 的 mtime ≥ 这个时刻（= 本用例开始时刻），否则「上一轮的旧图」
+    # 会被当成本轮证据。注意**不能用** .mt_active_run 的 run_id 还原来算：active_run 是
+    # 粘性的（只写不删、跨用例不轮换），它的秒级时间戳与本用例开始的时刻可以差很远。
+    # 这里取在窗口快照**之前**，所以「本用例内的任何文件写入」都必然 ≥ 它。
+    $script:CaseShotFailures = @{}
+    $script:CaseWindowStartUnix = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() / 1000.0
+    Write-MtInfo ("CASE_EVIDENCE_WINDOW: {0} 截图证据窗口起点 {1}" -f $caseId,
+        ([DateTimeOffset]::FromUnixTimeMilliseconds([long]($script:CaseWindowStartUnix * 1000))).LocalDateTime.ToString('yyyy-MM-dd HH:mm:ss.fff'))
+
     $winChild = Invoke-MtCaseChild -Script 'mt_assert.ps1' -ScriptArgs @('snapshot', '--window', 'case', '--version', $Version)
     if ($winChild.ExitCode -ne 0) {
         Write-MtErrLine ("MT_CASE_WINDOW: ERROR — {0} 无法建立本用例窗口（mt_assert snapshot 退出码 {1}）" -f `
@@ -2437,9 +2961,13 @@ function Invoke-MtCaseRun {
     $marks = @{
         'PASS' = 'PASS'; 'FAIL' = 'FAIL'; 'BLOCKED' = 'BLOCK'; 'ERROR' = 'ERROR'
         'SKIP' = 'SKIP'; 'NOTE' = 'note'; 'DELEGATED' = '→VIS'; 'TIMEOUT' = 'TIMEOUT'
+        # 2026-11-02（D4）：crash 断言在「crash-reports 目录不存在」时只记不可判，
+        # 既不冒充 PASS 也不算 FAIL —— 它不进下面的 $worst 升级链（只影响该步显示）。
+        'INCONCLUSIVE' = 'INCONCL'
     }
 
     $timeline = @()
+    $delegatedSteps = 0
     $worst = 'PASS'
     $timedOut = $false
     try {
@@ -2467,6 +2995,8 @@ function Invoke-MtCaseRun {
             $pair = Invoke-MtCaseOp -Paths $p -Step $step -RunId $RunId
             $outcome = [string]$pair[0]
             $detail = [string]$pair[1]
+            # 通道降级计数（≠ 失败）：DELEGATED 由 marks 表显示成 →VIS，且**不**参与 $worst 升级。
+            if ($outcome -eq 'DELEGATED') { $delegatedSteps++ }
             # AutoJS 通道：本步若登记了新的 eval 记录 ⇒ 立刻落盘（用例崩/被杀也不丢证据，
             # mt_report 只读这份结构化 JSON，绝不重跑游戏）。legacy 用例恒为 $false，零开销。
             if ($script:AutoJsCaseDirty) {
@@ -2517,7 +3047,7 @@ function Invoke-MtCaseRun {
     #   （`absent` + `crash` 两条），也不自动重启。
     $expectCrash = Test-MtTruthyValue (Get-MtMapValue -Map $case -Key 'expect_crash' -Default $false)
     if ($needsClient -and $null -ne $clientStart) {
-        $clientEnd = Get-MtCaseClientStatus -Version $Version
+        $clientEnd = Get-MtCaseClientStatus -Version $Version -Side $caseSide
         $newCrash = ($null -ne $clientEnd) -and ($clientEnd.CrashCount -gt $clientStart.CrashCount)
         $died = ($null -ne $clientEnd) -and $clientStart.Alive -and (-not $clientEnd.Alive)
         if ($newCrash -or $died) {
@@ -2563,6 +3093,11 @@ function Invoke-MtCaseRun {
         }
     }
     Write-MtLine ("MT_CASE_RESULT: {0} = {1}" -f $caseId, $worst)
+    if ($delegatedSteps -gt 0) {
+        $script:ChannelDelegatedTotal += $delegatedSteps
+        # 用例级降级计数（契约 §1.3）：**另起一行**，绝不混进 MT_CASE_RESULT 的取值域。
+        Write-MtLine ("MT_CHANNEL: delegated_count={0}" -f $delegatedSteps)
+    }
 
     # on_fail=keep_game_running：失败时保留游戏现场供取证。
     # 落一个标记文件，供流程退出清理判断 —— 否则「自动杀进程」会在失败瞬间
@@ -2627,6 +3162,14 @@ function Invoke-MtCaseRunCommand {
     )
 
     $runId = Get-MtActiveRunId
+    # 通道模式在这里**先解析一次**：非法取值 / 模块缺失就地转成用法错误，而不是跑到第一条
+    # 用例时才炸（`MT_CHANNEL: mode=…` 机器行也因此一定出现在输出的最前面）。
+    try {
+        [void](Get-MtCaseChannelMode)
+    } catch {
+        Write-MtErrLine ("MT_CHANNEL: ERROR — {0}" -f $_.Exception.Message)
+        return $MT_EXIT_ERROR
+    }
     if ($Command -eq 'run') {
         $files = @(Resolve-MtCasePath -Spec $CasePath)
     } else {
@@ -2684,6 +3227,10 @@ function Invoke-MtCaseRunCommand {
 
     Write-MtLine ''
     Write-MtLine ("MT_CASES_SUMMARY: {0}" -f ($summary -join ', '))
+    if ($script:ChannelDelegatedTotal -gt 0) {
+        # 整轮降级合计（契约 §1.3）：autojs 通道下有多少个步骤被降级，一眼可见。
+        Write-MtLine ("MT_CHANNEL: delegated_count={0}" -f $script:ChannelDelegatedTotal)
+    }
     if ($script:UserTerminated) {
         Write-MtErrLine ("MT_USER_TERMINATED: version={0} 本次运行已中止（剩余用例未执行、客户端未被自动重启）—— 等待用户指令后再决定是否复跑" -f $Version)
     }
@@ -2737,6 +3284,11 @@ if ($MyInvocation.InvocationName -ne '.') {
         } elseif ($key -eq 'dir') {
             if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --dir 的值'; exit $MT_EXIT_ERROR }
             $Dir = [string]$args[$i + 1]; $i += 2
+        } elseif ($key -eq 'channel') {
+            # 测试通道（契约 §1）：autojs（默认，走 AutoJS）| native（走 mt_inject / mt_capture）。
+            # 优先级与模块一致：CLI > 环境变量 MT_CHANNEL > 默认 autojs。
+            if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --channel 的值'; exit $MT_EXIT_ERROR }
+            $script:ChannelRequested = [string]$args[$i + 1]; $i += 2
         } elseif ($key -eq 'allow-auto') {
             # 显式放行闸门（仅排查/对照用）；与 MT_ALLOW_AUTO=1 等价
             $AllowAuto = $true; $i++

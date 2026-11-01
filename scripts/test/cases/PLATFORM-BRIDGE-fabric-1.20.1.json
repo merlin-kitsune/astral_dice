@@ -1,0 +1,40 @@
+{
+  "case_id": "PLATFORM-BRIDGE-fabric-1.20.1",
+  "title": "平台事件桥：实体/玩家事件桥类在产物里（platform/event/entity/living/*），客户端无渲染类泄漏进服务端（客户端桥只在 client 包），启动后客户端桥安装行出现（仅 client 侧）。替代原「路障/拒止实体」条目——fabric 线没有该实体，写死会得到恒红条目，故以真实存在的平台桥取证。",
+  "version": "fabric-1.20.1",
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "服务端专有崩法之一是客户端类泄漏：这里用「客户端桥类只在 platform/client 下」+ 「启动行不含 NoClassDefFoundError」两条硬事实守。"
+    },
+    {
+      "op": "jar_stats",
+      "save_as": "jar"
+    }
+  ],
+  "assert": [
+    {
+      "type": "bytecode",
+      "pattern": "platform/event/entity/living/[A-Za-z]+\\.class$"
+    },
+    {
+      "type": "bytecode",
+      "pattern": "platform/client/FabricClientBridges\\.class$"
+    },
+    {
+      "type": "absent",
+      "pattern": "Attempted to load class .* for invalid side"
+    },
+    {
+      "type": "absent",
+      "pattern": "NoClassDefFoundError: net/minecraft/client"
+    },
+    {
+      "type": "crash"
+    },
+    {
+      "type": "mixin"
+    }
+  ]
+}

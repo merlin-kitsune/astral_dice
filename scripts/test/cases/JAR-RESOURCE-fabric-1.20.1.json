@@ -1,0 +1,39 @@
+{
+  "case_id": "JAR-RESOURCE-fabric-1.20.1",
+  "title": "产物 JAR 资源完整：条目总数 >= 1500、物品模型 >= 130、配方 >= 130、内嵌库 jar 在位、fabric.mod.json 与 mixin 配置都在包里。这是发布前的最低完整性门槛，全部离线可判。",
+  "version": "fabric-1.20.1",
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "jar_stats",
+      "save_as": "jar"
+    }
+  ],
+  "assert": [
+    {
+      "type": "jar",
+      "from": "jar",
+      "entries_min": 1500,
+      "models_min": 130,
+      "recipes_min": 130,
+      "embed_lib": true,
+      "signs_min": 25
+    },
+    {
+      "type": "bytecode",
+      "pattern": "^fabric\\.mod\\.json$"
+    },
+    {
+      "type": "bytecode",
+      "pattern": "astral_dice\\.mixins\\.json$"
+    },
+    {
+      "type": "bytecode",
+      "pattern": "astral_dice\\.accesswidener$"
+    },
+    {
+      "type": "bytecode",
+      "pattern": "META-INF/jars/.*\\.jar$"
+    }
+  ]
+}

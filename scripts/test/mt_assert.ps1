@@ -402,6 +402,135 @@ function Test-MtLogMissing {
     return $true
 }
 
+function Test-MtPlatformLine {
+    <#
+    .SYNOPSIS
+        判断一行是否是**平台输出行**（SLF4J/日志框架真的写出来的那一行），用于把「回显行」剔出证据面。
+
+    .NOTES
+        S2 强证据形状（三种判据，任一成立即算平台输出行；顺序 = 原口径优先，后两条只增不减）：
+          · 判据一（neo / forge）：行首 `[时间戳]` + `[线程/LEVEL]` + 可选 `[来源]` + 冒号；
+          · 判据二（fabric）：行首 `[时间戳]` + `[线程/LEVEL]` + **圆括号来源** `(KubeJS Server)`（无冒号也认）；
+          · 判据三（FabricLoader 模组清单纯数据续行）：`<TAB>- <modid> <version>`（无时间戳，见下）。
+        反例（2026-11-02 审计实测，都必须判为**非**平台行）：
+          · KubeJS 把 eval 源码整行回显：`  console.info([REL150] guide key=... + guide);`（两空格缩进、无时间戳）
+          · FML 的模组清单纯数据续行：`<TAB><TAB>Astral Dice 1.5.0+neoforge_1.21.1 (astral_dice)`（双 Tab + 大写名 + 括号 modid）
+          · 异常栈帧 / mixin 续行（无时间戳前缀）
+        前两类行都可能在正文里带出断言 pattern，把「源码里写了这句」误判成「运行期真的发生了」。
+
+        ⚠️ 还有第三类（2026-11-02 实测补充）：**平台行形状但载荷是 eval 源码**。AutoJS-Mcp 会把
+        整段 eval 源码当成一条自己的日志写出去，例如
+          `[0211月2026 03:04:09.692] [AutoJS-Mcp/INFO] [AutoJS/Eval/]: [client] JSON.stringify(((function(args){ ... console.info('[REL150] screen_closed=1') ...`)
+        单看行首是标准平台行，但载荷是脚本正文 —— 拿 /console\.info/ 这类 pattern 去断言会命中它。
+        这类行由 Test-MtEvalSourceEcho 单独识别（见下），在 log 断言里记为 weakest，凑不成强证据。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][AllowEmptyString()][string]$Line)
+
+    if (-not $Line) { return $false }
+
+    # 判据一（neo / forge 形状，原严格口径优先）：[<时间戳>] [<线程>/<LEVEL>] 之后允许可选 [<来源>]，再跟冒号
+    if ([regex]::IsMatch($Line, '^\uFEFF?\[[^\]]+\]\s*\[[^\]]+/[A-Za-z]+\](\s*\[[^\]]*\])?\s*:')) { return $true }
+
+    # 判据二（fabric 形状，2026-11-02 实测补充，只增不减）：
+    #   fabric 侧 SLF4J 把**来源名放进圆括号**，而且**没有** neoforge/forge 那个「来源之后跟冒号」的分隔符，
+    #   所以判据一只认冒号形状时，会把真·平台输出行整批判成 echo。实测三种真实形状
+    #   （fabric-1.20.1/run/client/logs/latest.log，都是模组/脚本真跑出来的结果行）：
+    #     [05:51:33] [Server thread/INFO] (KubeJS Server) autojs-eval#23: [REL150] ver=fabric-1.20.1 ...
+    #     [05:51:33] [Render thread/INFO] (KubeJS Client) autojs-eval#19: [REL150] tip i=0 text=...
+    #     [05:51:35] [Server thread/INFO] (ChipShopOpener) [astral_dice] CHIP_SHOP_OPEN player=...
+    #   => 判据二只要求「行首 [时间戳] + [线程/LEVEL] + 圆括号来源」，来源之后跟什么都算正文
+    #      (`源) 正文` / `源) xxx#23: 正文` / `源) [astral_dice] 正文` 三种都要认，故**不**要求冒号)。
+    #
+    #   ⚠ 这样会不会顺手把「AutoJS 的 eval 源码回显」也放行成强证据？不会：
+    #     AutoJS-Mcp 的源码回显行确实也长成这个形状（来源 = (AutoJS/Eval)），但它由
+    #     Test-MtEvalSourceEcho 按**来源名 AutoJS/Eval**单独认出（见下，fabric 形状已一并纳入该函数），
+    #     命中即记 platform-source-echo = 弱证据：mt_assert.ps1 的 log 断言里
+    #     $isStrong = (-not $isSourceEcho) -and (Test-MtPlatformLine ...)，源码回显永远凑不成 PASS 证据。
+    #     判据二本身也放不进「缩进续行 / 栈帧 / Tab 缩进的模组清单行」-- 它们行首没有 [时间戳] [线程/LEVEL]。
+    if ([regex]::IsMatch($Line, '^\uFEFF?\[[^\]]+\]\s*\[[^\]]+/[A-Za-z]+\]\s*\([^)]+\)')) { return $true }
+
+    # 判据三（FabricLoader 模组清单续行，2026-11-02 实测补充，只增不减）：
+    #   FabricLoader 把**整份模组清单当成一条日志消息**写出去，续行因此**没有自己的时间戳**，
+    #   形状是「一个 Tab + '- ' + modid + 空格 + version」。实测字节
+    #   （fabric-1.20.1/run/client/logs/latest.log:2 起，`cat -A` 可见行首为 ^I）：
+    #     [05:49:55] [main/INFO] (FabricLoader) Loading 87 mods:
+    #     <TAB>- astral_dice 1.5.0+fabric_1.20.1
+    #   这是加载器自己打的**平台事实**（模组真的装上了、版本真的是这个），不是脚本回显，
+    #   而且 fabric 线「启动期模组清单行」这一条断言只有这一个通道可取证（其余三条线没有这条断言）。
+    #   => 判据三只认「单个 Tab + '- modid version'」这一种续行形状。
+    #      ⚠ 双 Tab 的 FML 清单纯数据行（`<TAB><TAB>Astral Dice 1.5.0+neoforge_1.21.1 (astral_dice)`）、
+    #     两空格缩进的脚本回显（`  console.info([REL150] ...)`）、异常栈帧（`<TAB>at ...`）都**不**满足该形状，
+    #     仍然算 echo（见本文件 Test-MtPlatformLine 的 .NOTES 反例清单）。
+    if ([regex]::IsMatch($Line, '^\t- [A-Za-z0-9_.\-]+ \S+\s*$')) { return $true }
+
+    return $false
+}
+
+function Test-MtEvalSourceEcho {
+    <#
+    .SYNOPSIS
+        判断一行是否是「平台行形状、但载荷是 eval 源码」的回显（AutoJS-Mcp 的 [AutoJS/Eval/] 包装行）。
+
+    .NOTES
+        判据取自实测日志：这类行总是 `[AutoJS/Eval/]: [<side>] JSON.stringify(((` 开头，后面是送去执行的
+        脚本正文；与之对照，**真证据**是执行后由模组/KubeJS 打出来的结果行，例如
+          `[0211月2026 03:04:08.057] [Server thread/INFO] [KubeJS Server/]: autojs-eval#23: [REL150] ver=1.21.1 …`
+        （载荷是运行期值，不是源码）。
+        判据分两条（2026-11-02 补充 fabric 形状，只增不减）：
+          · neo / forge：来源名 + ']:' 分隔符 + 载荷标记 `JSON.stringify((`  -> 判回显
+          · fabric：来源名写成圆括号 `(AutoJS/Eval)`、无 ']:'、载荷就是脚本正文本身 -> 同样判回显
+        都只认「AutoJS/Eval 这个来源名（或它的载荷标记）」，不按关键词扫正文，避免误杀普通日志。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][AllowEmptyString()][string]$Line)
+
+    if (-not $Line) { return $false }
+
+    # 判据一（neo / forge 形状，原口径）：'[AutoJS/Eval/]: [client] JSON.stringify(( ...'
+    if ([regex]::IsMatch($Line, '\[AutoJS/Eval/\]\s*:.*JSON\.stringify\(\(', [System.Text.RegularExpressions.RegexOptions]::None)) { return $true }
+
+    # 判据二（fabric 形状，2026-11-02 实测补充）：来源名同样是 AutoJS/Eval 标记，但换成圆括号、**没有** ']:' 分隔符，
+    #   载荷是送执行的脚本正文本身（没有 JSON.stringify(( 前缀）。实测行：
+    #     [05:51:31] [AutoJS-Mcp/INFO] (AutoJS/Eval) [server] (function(){ AutoJS.command("/clear @a"); return "autojs_command"; })()
+    #   判据只看来源名 'AutoJS/Eval' -- 这个来源名本身就是回显通道（AutoJS-Mcp 用它把脚本正文写进日志），
+    #   而真证据行由模组来源打出，实测为 (KubeJS Server) / (KubeJS Client) / (AstralDice) / (astral_dice/chip_trader) 等。
+    return [regex]::IsMatch($Line, '\(AutoJS/Eval/?\)')
+}
+
+function Show-MtHitLines {
+    <#
+    .SYNOPSIS
+        打印逐行命中明细（行号 + 行内容 + 强/弱标记），供取证；最多 limit 行。
+
+    .NOTES
+        与 Show-MtHits 的区别：这里拿到的是**已经逐行匹配过**的结果对象（Line/Text/Strong），
+        不再重复求值正则，因此『命中行数』与『打印出来的行』必然一致（S1 逐物理行口径）。
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][AllowEmptyCollection()][object[]]$Hits,
+        [int]$Limit = 10
+    )
+
+    $shown = 0
+    foreach ($h in @($Hits)) {
+        $s = ([string]$h.Text).Trim()
+        if ($s.Length -gt 160) { $s = $s.Substring(0, 160) }
+        # 优先用显式 Kind（platform / platform-source-echo / echo），否则退回 Strong 布尔口径。
+        # ⚠️ 不要写成 `$h.PSObject.Properties['Kind'] -and [string]$h.Kind`：PSPropertyInfo 直接参与
+        #    -and 会抛「Argument types do not match」（2026-11-02 实测），必须显式两步判断。
+        $kind = if ($h.Strong) { 'platform' } else { 'echo/weak' }
+        if ($null -ne $h.PSObject.Properties['Kind']) {
+            $kindText = [string]$h.Kind
+            if ($kindText) { $kind = $kindText }
+        }
+        Write-MtLine ('    L{0} [{1}] {2}' -f $h.Line, $kind, $s)
+        $shown++
+        if ($shown -ge $Limit) { break }
+    }
+}
+
 function Show-MtHits {
     <#
     .SYNOPSIS
@@ -591,13 +720,42 @@ function Invoke-MtAssertLog {
     $offsetUsed = [long]$delta[2]
     $fid = Get-MtAssertFidelity -Delta $delta
     $pat = New-MtRegex -Pattern $PatternText
-    $hits = $pat.Matches($text).Count
+    # ── S1/S2 口径（2026-11-02 判据修复）：逐**物理行**匹配，并只认**平台输出行**为强证据 ──
+    # 旧实现（本函数此前那行）：`$hits = $pat.Matches($text).Count` —— 对整段增量文本求值，
+    # 两个后果：① 跨行/重叠的命中被糊成一个数字（无法取证，也数不出实际证据条数）；
+    # ② KubeJS 会把 eval 源码整行**回显**进日志（形状：`  console.info([REL150] ... )`），
+    #    源码本身就命中断言 ⇒ 实测 1.21.1 #12/#13、1.20.1 #12 各计 2 次命中而真证据只有 1 条。
+    # 现口径：命中行必须形如 `[<时间戳>] [<线程>/LEVEL>] [<来源>]:` 才算强证据；
+    # 只有回显/续行命中 ⇒ 记 FAIL(SOURCE_ECHO)，**不得**记 PASS。
+    $hitLines = New-Object System.Collections.Generic.List[object]
+    $strongHits = 0
+    $lnNo = 0
+    foreach ($rawLine in @($text -split "`n")) {
+        $lnNo++
+        $line = $rawLine.TrimEnd("`r")
+        if (-not $pat.IsMatch($line)) { continue }
+        # 三类：platform（强证据）/ platform-source-echo（平台行形状但载荷是 eval 源码）/ echo（缩进续行）
+        $isSourceEcho = Test-MtEvalSourceEcho -Line $line
+        $isStrong = (-not $isSourceEcho) -and (Test-MtPlatformLine -Line $line)
+        $kind = if ($isStrong) { 'platform' } elseif ($isSourceEcho) { 'platform-source-echo' } else { 'echo' }
+        if ($isStrong) { $strongHits++ }
+        [void]$hitLines.Add([pscustomobject]@{ Line = $lnNo; Text = $line; Strong = $isStrong; Kind = $kind })
+    }
+        # ⚠️ 2026-11-02 实测（本机 PowerShell 7.6）：对 List[object] 用 @($list) 会抛
+        #    「Argument types do not match」——所以下面打印明细必须传 $hitLines.ToArray()。
+    $hits = $hitLines.Count
     $label = "$Source`:$name@${offsetUsed}B(win=$winUsed$(Get-MtWindowTag -Info $winInfo))"
 
-    if ($hits -gt 0) {
-        Write-MtLine "MT_ASSERT_LOG: PASS — /$PatternText/ 命中 $hits 次（$label）"
-        Show-MtHits -Pattern $pat -Text $text
+    if ($hits -gt 0 -and $strongHits -gt 0) {
+        Write-MtLine "MT_ASSERT_LOG: PASS — /$PatternText/ 命中 $hits 行（平台输出行 $strongHits 行）（$label）"
+        Show-MtHitLines -Hits ($hitLines.ToArray())
         return 0
+    }
+    if ($hits -gt 0) {
+        # 只有回显行 / 续行命中：源码里写了 ≠ 运行期发生了 ⇒ 不构成证据
+        Write-MtLine "MT_ASSERT_LOG: FAIL(SOURCE_ECHO) — /$PatternText/ 命中 $hits 行但无一是平台输出行（回显/续行/平台行内的 eval 源码载荷都不构成证据）（$label）"
+        Show-MtHitLines -Hits ($hitLines.ToArray())
+        return 1
     }
     if ($fid.Inconclusive) {
         # t39：窗口**确证缺内容** ⇒ 未命中不是产品结论，记「不可判（非 FAIL）」
@@ -677,7 +835,14 @@ function Invoke-MtAssertCrash {
     }
 
     if (-not (Test-Path -LiteralPath $p.crash_dir -PathType Container)) {
-        Write-MtLine 'MT_ASSERT_CRASH: PASS — 无 crash-reports 目录'
+        # ⚠ 弱证据修复（D4）：**「目录不存在」≠「目录存在且无新增」**。
+        # 旧实现这里直接 PASS —— 但「本轮从未建立 crash-reports」说明取证面缺失，
+        # 不能据此断言「无崩溃」（1.21.1 实测就属这一种：run/1.21.1/crash-reports 从不生成）。
+        # 新口径：记 INCONCLUSIVE（stdout 具名行 + WARN + exit 0，与既有 INCONCLUSIVE 通道一致），
+        # 既不算 PASS 也不算 FAIL；mt_case 侧会把这一行映射成步骤状态 INCONCLUSIVE。
+        Write-MtLine ('MT_ASSERT_CRASH: INCONCLUSIVE — crash-reports 目录不存在（{0}）' -f $p.crash_dir)
+        Write-MtLine '    「目录不存在」≠「目录存在且无新增」：本轮从未建立崩溃报告目录 ⇒ 无法断言无崩溃（不记 PASS）。'
+        Write-MtWarn 'MT_ASSERT_INCONCLUSIVE: WARN — crash-reports 目录不存在 ⇒ 本条记为不可判（不计 PASS / 不计 FAIL），需人工确认该线是否会写 crash-reports'
         return 0
     }
 

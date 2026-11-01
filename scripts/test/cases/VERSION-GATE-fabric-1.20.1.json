@@ -1,0 +1,29 @@
+{
+  "case_id": "VERSION-GATE-fabric-1.20.1",
+  "title": "版本互通门槛：network/VersionGate 在产物里，且启动日志没有出现版本门槛拒绝行；每条线的网络互通号必须与 mod_version 一致，否则会得到「连不上」而不是可读报错。",
+  "version": "fabric-1.20.1",
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "jar_stats",
+      "save_as": "jar"
+    }
+  ],
+  "assert": [
+    {
+      "type": "bytecode",
+      "pattern": "network/VersionGate\\.class$"
+    },
+    {
+      "type": "log",
+      "pattern": "\\[Astral Dice\\] 版本互通门槛\\(Version Gate\\):mod_version="
+    },
+    {
+      "type": "absent",
+      "pattern": "版本互通门槛.*(不兼容|拒绝)"
+    },
+    {
+      "type": "crash"
+    }
+  ]
+}
