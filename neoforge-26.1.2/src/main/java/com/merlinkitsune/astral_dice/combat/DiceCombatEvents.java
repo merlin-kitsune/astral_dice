@@ -23,6 +23,7 @@ import com.merlinkitsune.astral_dice.item.InvestigationEventUtil;
 import com.merlinkitsune.astral_dice.item.MarkManager;
 import com.merlinkitsune.astral_dice.item.StarLightManager;
 import com.merlinkitsune.astral_dice.item.sign.MisakiSignItem;
+import com.merlinkitsune.astral_dice.item.sign.SignHookDispatcher;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.event.WeirdDiceHandler;
 import com.merlinkitsune.astral_dice.event.CrimsonDiceHandler;
@@ -361,9 +362,9 @@ public class DiceCombatEvents {
             // 枪匠立牌被动:攻击已带"破绽"的目标,每次攻击获得 1 层(2026-10-02 起)弱点识破
             // 触发条件与骰神赐福完全一致:近战武器(外层已判定)+ isBlessingTarget(外层已判定),
             // 因此不再额外限制"普通敌对生物"。
-            if (MosesSignItem.isEquipped(player) && target.hasEffect(ModEffects.MOSES_BROKEN)) {
-                MosesSignItem.onAttackBrokenTarget(player, target);
-            }
+            // 佩戴闸门(handleAttackBrokenTarget)与破绽闸门(onAttackBrokenTarget)都在 MosesSignItem 内部 ——
+            // 与 1.21.1 主线同形:此处不再重复写 isEquipped / hasEffect,避免两处口径漂移。
+            SignHookDispatcher.fireAttackBrokenTarget(player, target);
         }
 
         // 本次攻击是否触发了骰神赐福(与赐福触发逻辑一致:仅在未拥有赐福时触发;同一挥击命中多目标也仅触发一次)
@@ -438,11 +439,11 @@ public class DiceCombatEvents {
             // 会员推荐信筹码:触发骰神赐福时,获得一张随机卡牌
             com.merlinkitsune.astral_dice.item.chip.MemberRecommendationChipItem.onBlessingStart(player);
             // 大当家立牌:触发骰神赐福 → 记录触发时刻;养精蓄锐满层则消耗 2 层并置位本次攻击的溅射
-            fenSplashArmed = com.merlinkitsune.astral_dice.item.sign.FenSignItem.onBlessingTriggered(player);
+            fenSplashArmed = SignHookDispatcher.fireBlessingTriggered(player);
             // 蛟龙立牌(mamushi)「撕咬」:装备的每张撕咬 +1 层觉醒并锁存撕咬加成(赐福结束时清锁存)。
             // 必须置于本触发块内(即位于下方攻击力修饰器链求值之前):锁存置位与层数增长都要在
             // 本次攻击生效范围内(裁决 4:加成实时取 min(觉醒,4))。
-            MamushiSignItem.onDiceBlessingTriggered(player);
+            SignHookDispatcher.fireDiceBlessingTriggered(player);
             // 治愈体系:触发骰神赐福 → 医疗箱加点(先)+ 按当前治愈点×2 回血(后)。
             // 置于触发块末尾,确保晚于本事件内所有影响治愈点数量的效果(立牌受击钩子/缓冲盾牌在前部已执行)
             com.merlinkitsune.astral_dice.item.HealingManager.onBlessingTriggered(player);
@@ -539,7 +540,7 @@ public class DiceCombatEvents {
         // 同 DiceCombatModifiers#instanceVictim 口径)防重复发牌。
         if (!player.level().isClientSide()
                 && com.merlinkitsune.astral_dice.item.sign.ZhaoSignItem.tryClaimDiceJudgment(player)) {
-            com.merlinkitsune.astral_dice.item.sign.ZhaoSignItem.onDiceRollResult(player, baseDice);
+            SignHookDispatcher.fireDiceJudgmentRoll(player, baseDice);
         }
 
         // 人偶师立牌(hanna)「幻想千金」:战斗骰点 = 6 ⇒ 佩戴者获得 1 星币。
@@ -547,7 +548,7 @@ public class DiceCombatEvents {
         // 同一挥击命中多个目标会多次进入本处,第二次起被冷却挡下(与 zhao 的实例内 claim 同一目的,
         // 但 hanna 用真冷却而非静态槽位,因为它的上限就是"1 分钟一次")。
         if (!player.level().isClientSide()) {
-            com.merlinkitsune.astral_dice.item.sign.HannaSignItem.onDiceRollResult(player, baseDice);
+            SignHookDispatcher.fireDiceRollResult(player, baseDice);
         }
 
         // 经商立牌(parunan):触发骰神赐福后立即获得 触发时骰点*2 的星光
@@ -832,8 +833,9 @@ public class DiceCombatEvents {
         // 蛟龙立牌(mamushi)「龙之咆哮」:命中时对**本次伤害的受击者**施加 缓慢 III 1:00 +
         // 破防(ARMOR -8 = 减 4 点防御)1:00;重复命中刷新时长、不叠层(D8)。
         // 条件 = 攻击方骰子卡牌栏装备了任意张 dragon_roar(与赐福触发块同源口径)。
-        if (!player.level().isClientSide() && MamushiSignItem.countEquippedType(player, "dragon_roar") > 0) {
-            MamushiSignItem.applyRoarDebuff(target);
+        if (!player.level().isClientSide()) {
+            // 蛟龙立牌:原「骰子卡牌栏装备了 dragon_roar」闸门已下沉到 MamushiSignItem#handleDragonRoar
+            SignHookDispatcher.fireDragonRoar(player, target);
         }
         // 电磁炮:以本次骰战最终伤害回填雷击伤害(50%)
         com.merlinkitsune.astral_dice.item.chip.RailgunChipItem.applyFinalDamage(railgunStrike, (float) finalDmg);
@@ -854,7 +856,7 @@ public class DiceCombatEvents {
         // 只打敌对目标(**无友伤**)、不破坏方块,命中仍附带爆炸粒子与音效(视觉表现与伤害类型无关)。
         // 递归保护:溅射伤害不进入骰战结算(aoeDepth 统一闸门),避免二次触发赐福/互相引爆。
         if (!player.level().isClientSide() && fenSplashArmed) {
-            com.merlinkitsune.astral_dice.item.sign.FenSignItem.consumeSplashCost(player);
+            SignHookDispatcher.fireSplashCost(player);
             beginAoe();
             try {
                 // 下限取立牌常量(5 点),高于全局"按比例不足 1 时按 1 计"的兜底
@@ -1278,9 +1280,9 @@ public class DiceCombatEvents {
         // 大碗炖肉筹码:赐福结束后,16 格范围内所有友方目标 +1 治愈并恢复 2 点生命值
         com.merlinkitsune.astral_dice.item.chip.BigBowlStewChipItem.onBlessingEnd(player);
         // 骇客立牌:赐福结束刷新被动(攻击/防御,覆盖旧类型)
-        NancyLuSignItem.onDiceBlessingEnded(player);
-        // 蛟龙立牌(mamushi)「撕咬」:赐福结束清除撕咬加成锁存(加成 = min(觉醒,4) 至此失效)
-        MamushiSignItem.onDiceBlessingEnded(player);
+        // 蛟龙立牌(mamushi)「撕咬」:赐福结束清除撕咬加成锁存(加成 = min(觉醒,4) 至此失效)。
+        // 两者统一走立牌钩子分发(按玩家当前装备的立牌 instanceof 派发,新增立牌无需改本文件)。
+        SignHookDispatcher.fireDiceBlessingEnded(player);
         // 枪匠「弱点识破」/ 怪力侦探「推理时间」的减层**自 2026-09-30 起不再挂在本事件上**:
         //   两者改为**独立的 1 分钟计时器**(各自效果自然到期时扣 1 层并重置计时),见 onPassiveStackExpired。
 
@@ -1826,7 +1828,7 @@ public static boolean attackerHasDiceCurio(Player player) {
         // 闪避本次攻击(最前置取消)
         applyDodgeCancel(event);
         // 获得弱点识破并标记该目标已闪避(每次都给 +1 层(2026-10-02 起))
-        MosesSignItem.onDodgeCounter(player, attacker);
+        SignHookDispatcher.fireDodgeCounter(player, attacker);
         // 单次反击伤害注入(不进入反击效果/层数体系)
         injectCounterDamage(player, attacker);
     }

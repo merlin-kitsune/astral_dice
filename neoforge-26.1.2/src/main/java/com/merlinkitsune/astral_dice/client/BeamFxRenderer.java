@@ -29,7 +29,7 @@ import java.util.List;
  * 「激光 / 轨道炮」光束的**客户端世界空间渲染器**（1.21.1 / NeoForge）。
  *
  * <h2>为什么不用粒子</h2>
- * 旧实现每 tick 在 {@code [head, head + 96]} 的竖直区间撒 {@code BEAM_PARTICLES} 枚发光尘，
+ * 旧实现每 tick 在 {@code [head, head + 96]} 的竖直区间撒 84 枚发光尘，
  * 观感是「一根糊起来的尘柱」而不是光线。现在服务端每 tick 只下发一条
  * {@link com.merlinkitsune.astral_dice.network.BeamFxPayload}（两端点 + 颜色 + 线宽 + ttl），
  * 客户端在 {@code Stage.AFTER_ENTITIES} 用**交叉四边形**（billboard，面向相机 ± 垂直方向各一片）

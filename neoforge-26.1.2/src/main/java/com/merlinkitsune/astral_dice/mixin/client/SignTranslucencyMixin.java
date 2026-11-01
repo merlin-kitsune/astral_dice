@@ -1,5 +1,6 @@
 package com.merlinkitsune.astral_dice.mixin.client;
 
+import com.merlinkitsune.astral_dice.client.render.AlphaContext;
 import com.merlinkitsune.astral_dice.client.render.TranslucentRenderState;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -101,26 +102,4 @@ public abstract class SignTranslucencyMixin<T extends LivingEntity, S extends Li
         return alpha >= 1.0F ? color : ARGB.multiplyAlpha(color, alpha);
     }
 
-    /** 渲染期间共享的透明度栈（渲染线程单线程使用；HEAD push / TAIL pop）。 */
-    public static final class AlphaContext {
-
-        private static final java.util.ArrayDeque<Float> STACK = new java.util.ArrayDeque<>();
-
-        private AlphaContext() {
-        }
-
-        static void push(float alpha) {
-            STACK.push(alpha);
-        }
-
-        static void pop() {
-            if (!STACK.isEmpty()) {
-                STACK.pop();
-            }
-        }
-
-        static float current() {
-            return STACK.isEmpty() ? 1.0F : STACK.peek();
-        }
-    }
 }

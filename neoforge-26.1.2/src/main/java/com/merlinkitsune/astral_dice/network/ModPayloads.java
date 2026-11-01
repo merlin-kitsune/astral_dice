@@ -96,6 +96,17 @@ public class ModPayloads {
                 TargetSelectClosePayload.STREAM_CODEC,
                 TargetSelectClosePayload::handle
         );
+        // 2026-11-01 补齐:卡牌选择确认(C→S)/服务端权威关闭(S→C)两条通道(此前有类、有发送点却从未注册)。
+        registrar.playToServer(
+                CardChoiceConfirmPayload.TYPE,
+                CardChoiceConfirmPayload.STREAM_CODEC,
+                CardChoiceConfirmPayload::handle
+        );
+        registrar.playToClient(
+                CardChoiceClosePayload.TYPE,
+                CardChoiceClosePayload.STREAM_CODEC,
+                CardChoiceClosePayload::handle
+        );
         registrar.playToServer(
                 StarCoinWalletPayload.TYPE,
                 StarCoinWalletPayload.STREAM_CODEC,

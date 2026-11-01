@@ -110,8 +110,6 @@ public final class DamageCardFxScheduler {
 
     /** 光束粒子柱高度（格）—— 视觉上「无限高」。 */
     private static final double BEAM_HEIGHT = 96.0D;
-    /** 光束每 tick 粒子数。 */
-    private static final int BEAM_PARTICLES = 84;
     /** 砖头边长（格）：{@value #BRICK_SCALE} 格 ≈ 僵尸头部尺寸（成年僵尸的头部是 8/16 格立方 ⇒ 边长 0.5 格）。
      *  2026-10-07 20:47 用户 m02524 裁决「红砖看起来太大了，请缩小到约等于僵尸头大小（是生物，不是那个僵尸的头物品）」。
      *  ⇒ 旧口径（把砖头放大到包住整只僵尸）作废。 */
