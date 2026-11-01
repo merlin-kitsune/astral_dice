@@ -30,13 +30,13 @@ Astral Dice is a survival expansion built around dice. Equip a dice and every me
 
 ## What's new in 1.5.0
 
-This section covers everything that shipped across the 1.5.0 pre-release and release-candidate builds. Per-build detail lives in [CHANGELOG.md](CHANGELOG.md).
+This section covers everything in the 1.5.0 stable release, including what the earlier 1.5.0 pre-release and release-candidate builds shipped. Entry-by-entry detail lives in [CHANGELOG.md](CHANGELOG.md).
 
 **New content**
 
 - **Six new signs.** KAngel and Ame (Bizarre quality, with their shared "One Body, One Soul" team note), plus Bartender, Dorothy, Sister and Big Fat Fish.
 - **Two new effect cards.** Barricade (a 30-durability visible entity with a fence-height collision block that pulls aggro onto itself) and Reinforced Repulsion (exclusive, 100 durability, clamps hostile targets to a 8-block aura with Slowness and Weakness).
-- **New chips.** Flashlight - Burst, Fortune Stick, Reagent - Abyss, Wireless Transmission Pole and Sensor Device.
+- **New chips.** Flashlight - Burst, Fortune Stick, Abyss Reagent, Wireless Transmission Pole and Sensor Device.
 - **Card Shop and Chip Shop blocks**, each acting as a villager job site, so villagers can become Card Traders and Chip Traders and sell cards or chips by level.
 - **Event system rewritten**, with a unified name, icon, type, tier and scope model, per-event timers, and twelve new events (Red-Heat Warning, Swift Stride, Storm Approaching, Learn from Others, Shop Bonanza, Hand Erasure, World Collapse, Gift from the Sky, Angel Descent, Problem Delivery, Crowded Passage, Battle Frenzy). The Strange Question Mark item and the Lottery Box block draw events on demand.
 - **New combat stat bars** for Defense and Attack Power, drawn on the vanilla armor bar row.
@@ -64,20 +64,21 @@ This section covers everything that shipped across the 1.5.0 pre-release and rel
 - Five new custom sound effects plus one rewritten, and the 179-sprite Iron Elden Ring particle library.
 - Event cards animate in, hold and fade out over a single server-timed sequence, and the detective signpost opens an event choice screen with a 15-second countdown.
 - Firearm damage is no longer misread as ranged or magic damage. Laser and explosion damage are in the damage table. Living Page stacking is fixed. The Modern UI rarity frame uses the right colour. The Medkit chip no longer refills health on relog or dimension change. Two sign rarities in the guidebook are corrected.
+The Abyss Reagent chip is named consistently now: display name, tooltip and every guide/handbook reference use Abyss Reagent (ja_jp: 深淵試薬).
 - Forge dev runs need `-Dmixin.config=astral_dice.jade.mixins.json`, because dev does not read `mods.toml`.
 
 ## Supported versions
 
 | Support | Subproject | Minecraft | Loader | Java | Version | Patchouli |
 |---|---|---|---|---|---|---|
-| ✅ | `neoforge-1.21.1` | 1.21.1 | NeoForge 21.1.235 | 21 | 1.5.0-rc.2 | ✅ |
-| ✅ | `forge-1.20.1` | 1.20.1 | Forge 47.4.10 | 17 | 1.5.0-rc.2 | ✅ |
-| ✅ | `neoforge-26.1.2` | 26.1.2 | NeoForge 26.1.2.109 | 25 | 1.5.0-rc.2 | ✅ |
-| ✅ | `fabric-1.20.1` | 1.20.1 | Fabric Loader 0.19.5 | 17 | 1.5.0-rc.2 | ✅ |
+| ✅ | `neoforge-1.21.1` | 1.21.1 | NeoForge 21.1.235 | 21 | 1.5.0 | ✅ |
+| ✅ | `forge-1.20.1` | 1.20.1 | Forge 47.4.10 | 17 | 1.5.0 | ✅ |
+| ✅ | `neoforge-26.1.2` | 26.1.2 | NeoForge 26.1.2.109 | 25 | 1.5.0 | ✅ |
+| ✅ | `fabric-1.20.1` | 1.20.1 | Fabric Loader 0.19.5 | 17 | 1.5.0 | ✅ |
 
-- `neoforge-1.21.1` and `forge-1.20.1` are the release lines. They stay at feature parity, and both jars ship with every GitHub Release.
-- `neoforge-26.1.2` is the migration line. It never gets its own tag or Release; its jar ships as a third attachment on the release lines' Release, because CI builds all lines together (`.github/workflows/build.yml`). There is no Iron's Spells 'n Spellbooks integration here, since upstream ships no 26.1.x build.
-- `fabric-1.20.1` is the Fabric port line (added 2026-09-29, merged into `multi-main` on 2026-10-01). It publishes as its own pre-release and is never bundled into the release lines' Release. It has its own prerequisite set and no Curios, Bountiful or Iron's Spells integration.
+- **All four lines are release lines.** `neoforge-1.21.1`, `forge-1.20.1`, `neoforge-26.1.2` and `fabric-1.20.1` stay at feature parity; every GitHub Release carries all four jars, tagged with the bare base version (this release: `1.5.0`) and published as a stable release. CI builds every line in one run (`.github/workflows/build.yml`).
+- `neoforge-26.1.2` is the 26.1.x migration line. It ships in the same batch as the other three, as an attachment on the same Release, and never gets its own tag. There is no Iron's Spells 'n Spellbooks integration here, since upstream ships no 26.1.x build.
+- `fabric-1.20.1` is the Fabric port line (added 2026-09-29, merged into `multi-main` on 2026-10-01) and has been a stable release line since 1.5.0: same Release and same tag as the other three. It has its own prerequisite set (see [Fabric prerequisites](#fabric-1201-prerequisites)), no Curios, Bountiful or Iron's Spells integration, and the four recipe-mechanism differences listed under "Platform & Compatibility" in [CHANGELOG.md](CHANGELOG.md).
 
 ## Dependencies
 
@@ -92,15 +93,17 @@ This section covers everything that shipped across the 1.5.0 pre-release and rel
 
 ### Fabric (1.20.1) prerequisites
 
-| # | Requirement | Version |
-|---|---|---|
+| # | Requirement | Version | Declaration in `fabric.mod.json` |
+|---|---|---|---|
 | 1 | Fabric Loader | 0.19.5+ (0.19.x) |
 | 2 | Fabric API | 0.92.12 for 1.20.1 |
-| 3 | Puzzles Lib (event bridge) | 8.1.33+, installed together with item 4 |
-| 4 | Forge Config API Port | 8.0.3, required by Puzzles Lib 8.x |
-| 5 | Accessory provider, either one | Trinkets 3.7.2+ or Accessories 1.0.0-beta.48+ |
-| 6 | Optional | Patchouli (in-game guide) |
-| n/a | Not applicable on this line | Curios API, Mixin Booster, Sinytra Connector, Bountiful, Iron's Spells 'n Spellbooks |
+| 3 | Fabric Data Attachment API | shipped with Fabric API | `depends`: `fabric-data-attachment-api-v1` (any version) |
+| 4 | Puzzles Lib (event bridge) | 8.1.33+, installed together with item 5 | `depends`: `puzzleslib >=8.1.33` |
+| 5 | Forge Config API Port | 8.0.3, required by Puzzles Lib 8.x | not declared directly; pulled in by Puzzles Lib 8.x |
+| 6 | StarEngine | 1.1.0 | `depends`: `starengine >=1.1.0`; **already bundled** on this line (Loom `include`), nothing to install |
+| 7 | Accessory provider, either one | Trinkets 3.7.2+ or Accessories 1.0.0-beta.48+ | both under `recommends`, checked at startup |
+| 8 | Optional | Patchouli (in-game guide), JEI 15.62.0+ | both under `recommends` |
+| n/a | Not applicable on this line | - | Curios API, Mixin Booster, Sinytra Connector, Bountiful, Iron's Spells 'n Spellbooks |
 
 - The accessory provider is either-or. Fabric's `depends` block is AND-only, so Trinkets and Accessories are both declared under `recommends`, and the mod checks at startup, refusing to launch only when neither is present.
 - The CurseForge store listing declares Trinkets as required and Accessories as optional. That is a store-page declaration only; `fabric.mod.json` keeps both as recommendations, so an Accessories-only setup still starts.
@@ -109,10 +112,10 @@ This section covers everything that shipped across the 1.5.0 pre-release and rel
 
 ## Download
 
-- **GitHub Releases**: [merlin-kitsune/astral_dice/releases](https://github.com/merlin-kitsune/astral_dice/releases). Each release carries three jars: the two release lines plus the 26.1.2 jar.
-- **Fabric port line**: published as its own `fabric-<version>` pre-release, marked as a pre-release and never as "latest", carrying only its own jar.
-- **CurseForge**: the builds go to the main project (`astral-dice`, project id `1662159`). StarEngine has its own project (`starengine`, id `1755415`); on **NeoForge 1.21.1** and **Forge 1.20.1** it is not bundled, so players must install that separate jar themselves (the 26.1.2 and Fabric builds still embed it). Version numbers keep the `+<loader>_<MC>` suffix (for example `1.5.0-rc.2+neoforge_1.21.1`), and the release channel follows the version suffix. Modrinth publishing was permanently dropped on 2026-10-23; CurseForge is the only store channel.
-- **Build artefacts**: `astral_dice-<version>+neoforge_1.21.1.jar`, `+forge_1.20.1.jar`, `+neoforge_26.1.2.jar` and `+fabric_1.20.1.jar`, each under its subproject's `build/libs/`. GitHub Release tags use the bare base version, while the Fabric line uses a `fabric-<version>` pre-release tag.
+- **GitHub Releases**: [merlin-kitsune/astral_dice/releases](https://github.com/merlin-kitsune/astral_dice/releases). Every Release carries all four jars: one each for `neoforge_1.21.1`, `forge_1.20.1`, `neoforge_26.1.2` and `fabric_1.20.1`.
+- **Tag rule**: the tag is always the bare base version (this release: `1.5.0`) - no `v` prefix, no platform prefix, no loader suffix. All four jars belong to that one Release, published as a stable release (not a pre-release). The Fabric line no longer publishes a separate pre-release and no longer takes its own tag.
+- **CurseForge**: the builds go to the main project (`astral-dice`, project id `1662159`). StarEngine has its own project (`starengine`, id `1755415`); on **NeoForge 1.21.1** and **Forge 1.20.1** it is not bundled, so players must install that separate jar themselves (the 26.1.2 and Fabric builds still embed it). Version numbers keep the `+<loader>_<MC>` suffix (for example `1.5.0+neoforge_1.21.1`), and the release channel follows the version suffix. Modrinth publishing was permanently dropped on 2026-10-23; CurseForge is the only store channel.
+- **Build artefacts**: `astral_dice-1.5.0+neoforge_1.21.1.jar`, `astral_dice-1.5.0+forge_1.20.1.jar`, `astral_dice-1.5.0+neoforge_26.1.2.jar` and `astral_dice-1.5.0+fabric_1.20.1.jar`, each under its subproject's `build/libs/`; the version inside each jar matches the file name (1.5.0).
 
 ## Build
 

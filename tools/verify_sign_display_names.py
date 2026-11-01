@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-'''立牌英日命名门禁（P0 两线：neoforge-1.21.1 / forge-1.20.1）。
+'''立牌英日命名门禁（三线：neoforge-1.21.1 / forge-1.20.1 / fabric-1.20.1）。
 
 规则（2026-10-26 用户裁决，见 docs/agent/AGENTS-full.md〈立牌 / 物品英日命名规则〉）：
   - EN 立牌名 = "<wiki 英文页名> Sign"，JA = "<wiki nameJapanese>のスタンド"；
@@ -15,7 +15,7 @@ import json, os, re, sys
 
 W = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TABLE = os.path.join(W, 'tools', 'sign_display_names.json')
-LINES = ['neoforge-1.21.1', 'forge-1.20.1']
+LINES = ['neoforge-1.21.1', 'forge-1.20.1', 'fabric-1.20.1']
 
 # 旧职称（英文）—— 只禁止它们紧接 "sign" 的形态，避免误伤 Boss 敌人 / Ninja Star / Healing Slime / Legendary Merchant 等既有专名
 EN_LEGACY = ['Secret Detective', 'Great Detective', 'Boss', 'Astrologer', 'Sweeper', 'Ninja', 'Slime',

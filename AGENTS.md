@@ -42,6 +42,6 @@
 | DSH 委派 runbook | `docs/agent/delegation-runbook.md` |
 | 规则库自身说明 | `docs/agent/README.md` |
 | Linux 测试台（bash） | `scripts/test/linux/README.md`（`env.sh` / `launch.sh` / `stop.sh`）；Linux 规则正本的〈测试台现状（Linux）〉一节 |
-| 桌面控制 / 游戏内注入通道 | `docs/agent/AGENTS-dsh-linux.md` 的〈桌面控制与实机通道（Wayland）〉与〈AutoJS 运行时通道〉；DSH MCP serverName `computer-use-linux` / `screen-ocr`（AutoJS 走 HTTP，本机未注册 MCP） |
+| 桌面控制 / 游戏内注入通道 | `docs/agent/AGENTS-dsh-linux.md` 的〈桌面控制与实机通道（Wayland）〉与〈AutoJS 运行时通道〉；DSH MCP serverName `computer-use-linux` / `screen-ocr` / `autojs`（2026-10-31 已注册，端点没起时 disconnected 属环境问题） |
 
 > 本文件只放「分派 + 共同红线 + 索引」。宿主专用的工作方式（额度口径、委派细节、角色设定）、逐批历史与完整领域规格**都不放在这里**，一律留在各自的规则文件里，按需读取。

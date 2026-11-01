@@ -69,6 +69,13 @@ LANG_DIR = os.path.join(ASSETS, 'lang')
 # 已知的正当例外：物品模型里有、但不属于 ModItems 注册的物品
 EXTRA_MODEL_ALLOW = {'astral_guide'}
 
+# 创意标签闭环的**基线一致**白名单（不是「本线缺陷」，别当噪音删掉）：
+#   fabric 的 ModCreativeTabs 只有 EFFECT_CARD_REPULSION、没有 ModItems.REPULSION，
+#   而 neoforge-1.21.1(ModCreativeTabs.java:87) / forge-1.20.1(:88) 也**同样**只有
+#   EFFECT_CARD_REPULSION ⇒ 三方同款口径，本线不算缺失。
+#   ⚠️ 若基线将来补齐（三条线都把 REPULSION 放进创造栏），这里要同步删掉，否则会漏报回归。
+CREATIVE_TAB_BASELINE_OMISSIONS = {'repulsion'}
+
 # 手册里允许缺键的键（每条都要写明理由，否则视为缺陷）
 LANG_KEY_ALLOW = {
     # 2026-09-29：`teru_sign.3` 曾在此（条目 3 页 / lang 2 键）—— 已按下列依据补齐，故移出白名单：
@@ -103,18 +110,103 @@ def registered_item_ids():
     return ids, text
 
 
+def registered_block_ids():
+    """ModBlocks 注册的方块 id。
+
+    方块物品(BlockItem)按原版惯例**不设** textures/item/<id>.png —— 它的贴图在
+    textures/block/<id>.png,由 blockstates + models/block 间接引用。故这类 id 的贴图闭环
+    改判「blockstates / models/block / textures/block 三件在位」,而不是硬套物品贴图。
+    """
+    path = os.path.join(SRC, 'block', 'ModBlocks.java')
+    if not os.path.isfile(path):
+        return set()
+    text = open(path, encoding='utf-8').read()
+    return set(re.findall(r'register\(\s*"([a-z0-9_]+)"', text))
+
+
+GRADLE_PROPS = os.path.join(FABRIC, 'gradle.properties')
+
+
+def jar_declared_version(jar_path):
+    """读 jar 内 fabric.mod.json 的 version；读不到 / 不是合法 json 时返回 None。"""
+    try:
+        with zipfile.ZipFile(jar_path) as jar:
+            raw = jar.read('fabric.mod.json')
+        return json.loads(raw.decode('utf-8')).get('version')
+    except Exception:
+        return None
+
+
+def gradle_mod_version():
+    """读 fabric-1.20.1/gradle.properties 的 mod_version；读不到返回 None。"""
+    if not os.path.isfile(GRADLE_PROPS):
+        return None
+    with open(GRADLE_PROPS, encoding='utf-8') as fh:
+        for line in fh:
+            line = line.strip()
+            if line.startswith('mod_version='):
+                return line.split('=', 1)[1].strip()
+    return None
+
+
+def source_asset_names():
+    """src/main/resources 与 src/generated/resources 合并后的资源相对路径集合（并集）。
+
+    只在「jar 版本与 mod_version 不符」时启用：build/libs 里的旧产物会把大批**已经在源码里**
+    的模型 / 贴图判成缺失（实测 2026-11-01：jar 1.3.7-alpha.2 vs mod_version 1.5.0-rc.7 ⇒
+    固定 3 条假 FAIL）。main 与 generated 的同名文件各自算一条，判定「在不在」只看并集，
+    所以谁优先都不影响结论。
+    """
+    paths = set()
+    for base in ('main', 'generated'):
+        root = os.path.join(FABRIC, 'src', base, 'resources')
+        if not os.path.isdir(root):
+            continue
+        for dirpath, _, filenames in os.walk(root):
+            for name in filenames:
+                full = os.path.join(dirpath, name)
+                paths.add(os.path.relpath(full, root).replace('\\', '/'))
+    return paths
+
+
 def check_items(jar_path, failures):
     ids, _ = registered_item_ids()
-    with zipfile.ZipFile(jar_path) as jar:
-        names = jar.namelist()
+    block_ids = registered_block_ids() # 这些是方块物品,贴图闭环另行判定
+    # 判据的**事实源**先分档：产物可能落后于源码（实测 2026-11-01 的 build/libs 仍是
+    # 1.3.7-alpha.2，而 mod_version 已到 1.5.0-rc.7）⇒ 此时拿 jar 判「缺模型 / 缺贴图」
+    # 必是假 FAIL。版本一致才照旧读 jar；不一致改扫源码资源目录。
+    # ⚠️ 两种模式下**失败消息文本完全一致**，只有数据源不同（下游比对依赖原文）。
+    jar_version, mod_version = jar_declared_version(jar_path), gradle_mod_version()
+    if jar_version is None or mod_version is None:
+        print('[!] 读不到 jar 内 fabric.mod.json 的 version 或 gradle.properties 的 '
+              'mod_version，改为扫描源码资源目录')
+        names = source_asset_names()
+    elif jar_version != mod_version:
+        print('[!] build/libs 内 jar 版本 %s 与 mod_version %s 不符，改为扫描源码资源目录'
+              % (jar_version, mod_version))
+        names = source_asset_names()
+    else:
+        with zipfile.ZipFile(jar_path) as jar:
+            names = set(jar.namelist())
     models = {os.path.basename(n)[:-5] for n in names
               if n.startswith('assets/astral_dice/models/item/') and n.endswith('.json')}
     textures = {os.path.basename(n)[:-4] for n in names
                 if n.startswith('assets/astral_dice/textures/item/') and n.endswith('.png')}
+    block_items = ids & block_ids
     miss_m = sorted(ids - models)
-    miss_t = sorted(ids - textures)
+    miss_t = sorted(ids - textures - block_items)
     extra = sorted(models - ids - EXTRA_MODEL_ALLOW)
-    print('[1] 物品闭环: 注册 %d / 模型 %d / 贴图 %d' % (len(ids), len(models), len(textures)))
+    print('[1] 物品闭环: 注册 %d (方块物品 %d) / 模型 %d / 贴图 %d (方块贴图另计)'
+          % (len(ids), len(block_items), len(models), len(textures)))
+    bs_miss = sorted(b for b in block_items
+                     if 'assets/astral_dice/blockstates/%s.json' % b not in names)
+    bm_miss = sorted(b for b in block_items
+                     if 'assets/astral_dice/models/block/%s.json' % b not in names)
+    bt_miss = sorted(b for b in block_items
+                     if 'assets/astral_dice/textures/block/%s.png' % b not in names)
+    if bs_miss or bm_miss or bt_miss:
+        failures.append('方块物品资源不全(blockstate=%s / model=%s / texture=%s)'
+                        % (bs_miss, bm_miss, bt_miss))
     if miss_m:
         failures.append('缺模型(紫黑格): %s' % miss_m)
     if miss_t:
@@ -213,8 +305,21 @@ def check_lang(failures):
     for dirpath, _, filenames in os.walk(SRC):
         for name in filenames:
             if name.endswith('.java'):
-                literals |= set(key_re.findall(open(os.path.join(dirpath, name),
-                                                    encoding='utf-8').read()))
+                text = open(os.path.join(dirpath, name), encoding='utf-8').read()
+                for m in key_re.finditer(text):
+                    key = m.group(1)
+                    tail = text[m.end():m.end() + 24].lstrip()
+                    # 字符串字面量若是**拼接前缀**就不是真实 lang 键，一律跳过（真键由其它字面量给出）：
+                    #  ① 以 _ 结尾：choice/CardChoiceType.java:59 写的就是
+                    #     "gui.astral_dice.card_choice.title_" + (slotCount == 1 ? "single_" : "triple_") + ...
+                    #     —— 真键是 title_<single|triple>_<combat|effect|any>（6 键，lang 里齐全）。
+                    #  ② 紧接字符串拼接号 +：event/ModTooltipHandler.java:436 写的就是
+                    #     "tooltip.astral_dice.dice_face." + stone.type()
+                    #     —— 真键是 dice_face.<medium|large|epic>（lang 里齐全）。
+                    # 两处半截前缀都不可能出现在 lang 里 ⇒ 不过滤就是必然误报。
+                    if (key.endswith('_') or key.endswith('.')) and tail.startswith('+'):
+                        continue
+                    literals.add(key)
     for name, table in langs.items():
         miss = sorted(k for k in literals if k not in table)
         if miss:
@@ -272,8 +377,13 @@ def check_creative_tabs(failures):
         return
     fields = set(re.findall(r'ModItems\.([A-Z0-9_]+)', open(path, encoding='utf-8').read()))
     covered = {field2id[f] for f in fields if f in field2id}
-    missing = sorted(ids - covered)
+    uncovered = ids - covered
+    exempt = sorted(uncovered & CREATIVE_TAB_BASELINE_OMISSIONS)
+    missing = sorted(uncovered - CREATIVE_TAB_BASELINE_OMISSIONS)
     print('[7] 创意标签覆盖: %d/%d' % (len(covered), len(ids)))
+    if exempt:
+        # 已登记的基线一致项：**打印出来但不算失败**，避免「白名单 = 静默掩盖」
+        print('    已知与基线一致（不阻塞）: %s' % exempt)
     if missing:
         failures.append('不在创造栏的物品: %s' % missing)
 
