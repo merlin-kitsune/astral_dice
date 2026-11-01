@@ -1,0 +1,15 @@
+{
+  "required": false,
+  "minVersion": "0.8",
+  "package": "com.merlinkitsune.astral_dice.mixin.client.ysm",
+  "compatibilityLevel": "JAVA_25",
+  "plugin": "com.merlinkitsune.astral_dice.mixin.AstralYsmMixinPlugin",
+  "client": [
+    "YsmEntityRenderDispatcherMixin",
+    "YsmGeometryMixin",
+    "YsmRenderTypeMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

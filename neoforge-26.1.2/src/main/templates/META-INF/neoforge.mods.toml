@@ -68,6 +68,15 @@ config="${mod_id}.mixins.json"
 [[mixins]]
 config="${mod_id}.jade.mixins.json"
 
+# YSM(Yes Steve Model) 渲染兼容(2026-11-01,仅 26.1.2):把本模组「立牌半透明」从原版接缝延伸到 YSM 接管的那部分。
+# 落点全是**原版**接缝:EntityRenderDispatcher#submit(开 alpha 窗口)、
+# SubmitNodeCollection#submitCustomGeometry(逐顶点乘 alpha)、RenderTypes#entityCutout(换 blend 管线)。
+# 禁止改成 hook YSM 内部类 —— 它的类名/方法名全是混淆标识符,升版即断。
+# 独立配置:required=false(目标漂移只降级 WARN,不阻断启动,理由同上面的 Jade 段);
+# 加载闸门由 plugin AstralYsmMixinPlugin 提供 —— YSM 不在场时整组 mixin 不应用,结构性零影响。
+[[mixins]]
+config="${mod_id}.ysm.mixins.json"
+
 # The [[accessTransformers]] block allows you to declare where your AT file is.
 # If this block is omitted, a fallback attempt will be made to load an AT from META-INF/accesstransformer.cfg
 #[[accessTransformers]]
