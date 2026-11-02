@@ -262,9 +262,12 @@ jobs:
         # 已存在同名 Release 时:说明正文每次刷新(edit 覆盖),但附件**一旦发布即冻结** ——
         # 只补传缺失的 jar,已有附件字节一律不覆盖(避免 CI 件悄悄替换人工核对/投放过的构建件,
         # 否则 Release 与两个整合包 mods 的哈希会对不上)。⛔ 2026-10-30 用户裁决:去掉 --clobber。
+        # 例外(2026-11-02 用户指令「同 tag 重发」):提交信息带 [republish-assets] 时走下方一次性重发通道。
         if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'push' && github.ref == 'refs/heads/multi-main' && steps.tag.outputs.tag != '')
         env:
           GH_TOKEN: ${{ github.token }}
+          # 仅分支 push 事件带 head_commit；tag push 为空 ⇒ 不会触发下方重发通道。
+          HEAD_COMMIT_MSG: ${{ github.event.head_commit.message }}
         run: |
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then
             TAG="${GITHUB_REF#refs/tags/}"
@@ -395,6 +398,21 @@ jobs:
             # 已有附件名集合(每行一个)。用 $( ) 捕获而不是 mapfile + <(...):命令替换失败会让
             # set -e 生效并中止本 step,而进程替换里的失败会被静默吞掉。
             HAVE_ASSETS=$(gh release view "$TAG" --json assets --jq '.assets[].name')
+            # 2026-11-02 用户指令「同 tag 重发 Release」的一次性放行通道：
+            #   默认口径仍是 2026-10-30 裁决的「附件冻结，只补缺失」；只有推送提交信息里
+            #   显式带 [republish-assets] 时，才先删同名旧附件再上传本次构建。
+            #   该标记只存在于提交信息里，不落任何仓内状态 ⇒ 天然一次性，后续构建自动回到冻结口径。
+            REPUBLISH=0
+            if [[ "${HEAD_COMMIT_MSG:-}" == *"[republish-assets]"* ]]; then REPUBLISH=1; fi
+            if [[ "$REPUBLISH" == "1" ]]; then
+              echo "::notice::republish marker found in commit message - replacing existing assets"
+              while IFS= read -r name; do
+                [[ -z "$name" ]] && continue
+                echo "deleting existing asset: $name"
+                gh release delete-asset "$TAG" "$name" --yes
+              done <<< "$HAVE_ASSETS"
+              HAVE_ASSETS=""
+            fi
             for j in "${JARS[@]}"; do
               name="${j##*/}"
               # grep -Fxq:整行固定串匹配;命中=0 / 未命中=1,放在 if 条件里不会被 set -e 判失败。
