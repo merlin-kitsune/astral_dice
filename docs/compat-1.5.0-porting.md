@@ -43,7 +43,7 @@ done
 # 创造模式扣卡两线一致性（P0 现状）
 grep -rn "shrink(1)" forge-1.20.1/src/main/java/com/merlinkitsune/astral_dice/item/card/ \
   forge-1.20.1/src/main/java/com/merlinkitsune/astral_dice/screen/CardChoiceMenu.java
-# 防御力折算 1:1 守门（D1–D8；D8 打印 P1 旧折算残留处数，正常应各 5 处）
+# 防御力折算 1:1 守门（D1–D8；D8 打印 P1 旧折算残留处数：fabric-1.20.1 已于 B15 归零，neoforge-26.1.2 仍 1 处）
 python tools/verify_defense_unit_parity.py
 ```
 
@@ -54,3 +54,5 @@ python tools/verify_defense_unit_parity.py
 3. 26.1.2 的 `ChipShopCategory` 等 JEI 类须按该线 JEI 版本重取 API；Fabric 的 JEI 走 `fabric-api` 变体，不可照搬 Forge 侧注册。
 
 4. **防御力折算 1:1（2026-10-25 P0 已修）**：P0 两线已全部改为「防御力点数 ÷ 库护甲系数」的单一入口；**P1 两线仍是旧的 `× 2.0` 折算（各 5 处）**，`python tools/verify_defense_unit_parity.py` 的 D8 项只统计、不判 FAIL。移植时必须同步落地（否则 P1 的「防御力 +X」仍只兑现 60% / 80%），并连带把该线 12 份指南 lang（四线 × 三语）的「4 + 护甲×0.30」改成「2 + 护甲×0.30」与「1 防御力 = 1÷护甲系数 护甲值」。
+
+5. **防御力折算 1:1 — fabric-1.20.1 已落地（2026-11-01，审计 D-06/B15）**：fabric 线按 forge 1:1 移植 `armorValueForDefensePoints(double, boolean)` / `armorValueForDefensePoints(double, LivingEntity)` / `defensePointsForArmor(double, boolean)` / `effectiveArmorPoints(LivingEntity)` 与两个 `*_ARMOR_PER_DEFENSE` 常量，删除全部 `× 2.0`（D8 读数 7 → 0）；骰战与 `defensePowerBase` 的护甲改读 `effectiveArmorPoints`（不再用 `Mth.floor` 的 `getArmorValue()`），`defensePowerOf` 补 `+ 1.0E-6D`；三语 lang 的 `astral_dice.guide.entry.battle_dice.2` 复核已是「2 + 护甲×0.30 … 1÷护甲系数（3.33 / 2.5）」，与 forge 逐字一致，**lang 无需改动**。细节见 `porting/fabric-1.20.1/B15-DEFENSE-PARITY-REPORT.md`。

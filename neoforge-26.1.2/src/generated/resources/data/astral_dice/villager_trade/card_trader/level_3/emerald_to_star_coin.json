@@ -1,0 +1,9 @@
+{
+  "gives": {
+    "id": "astral_dice:star_coin"
+  },
+  "max_uses": 12.0,
+  "wants": {
+    "id": "minecraft:emerald"
+  }
+}

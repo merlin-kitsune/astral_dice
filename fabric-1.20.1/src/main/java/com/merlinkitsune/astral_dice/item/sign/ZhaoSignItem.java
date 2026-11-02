@@ -163,7 +163,7 @@ public class ZhaoSignItem extends BaseSignItem {
         @Override
         public void apply(ServerPlayer player, LivingEntity target) {
             if (!applyBlessing(player, target)) return;
-            // 主动成功施效:开始玩家级冷却(统一经 signCooldownTicks:含诡异骰子 -50% 与充能递减)
+            // 主动成功施效:开始玩家级冷却(统一经 signCooldownTicks:含充能封顶与额外电池筹码减成)
             ModAttachments.setSignActiveCooldownEnd(player,
                     player.level().getGameTime() + WeirdDiceHandler.signCooldownTicks(player));
             // 电流核心筹码:主动技能实际生效时充能 +1

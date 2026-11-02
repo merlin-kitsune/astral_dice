@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "TTT",
+    "BBB",
+    "MMM"
+  ],
+  "key": {
+    "T": "minecraft:smooth_stone_slab",
+    "B": "astral_dice:star_coin",
+    "M": "#minecraft:logs"
+  },
+  "result": {
+    "id": "astral_dice:card_shop",
+    "count": 1
+  }
+}

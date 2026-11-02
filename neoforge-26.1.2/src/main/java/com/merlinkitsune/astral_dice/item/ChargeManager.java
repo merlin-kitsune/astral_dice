@@ -16,7 +16,7 @@ import java.util.UUID;
  * 流派固定效果(与层数多少无关):拥有至少 1 层充能时,
  * 立牌主动冷却至多 160 秒、效果牌冷却至多 20 秒 —— 把**基础值**封顶
  * (2026-09-25 改口径,取代旧的「-20% 比例减免」);封顶之后再由调用方叠加
- * 其它减免(诡异骰子 -50% 等)。已在进行的倒计时不受影响(只在开始冷却时取值)。
+ * 其它减免(额外电池筹码等)。已在进行的倒计时不受影响(只在开始冷却时取值)。
  * 无防御力/护甲加成。
  */
 public final class ChargeManager {
@@ -100,14 +100,45 @@ public final class ChargeManager {
     }
 
     /**
-     * 立牌主动技能冷却 tick:拥有充能时把**基础值**封顶为 160 秒
-     * ({@link GameplayConstants#CHARGE_SIGN_COOLDOWN_CAP_SECONDS})。
+     * **立牌主动技能**冷却 tick。
      *
-     * <p>2026-09-25 改口径:取代旧的「有充能即 -20%」比例减免。封顶只作用于**基础值**,
-     * 之后由调用方继续叠加其它减免(诡异骰子 -50%、枪匠「精密技巧」的 120 秒基础值等);
-     * 基础值本就低于上限时保持原值。**已在进行的倒计时不受影响** —— 本方法只在开始冷却时取值。
+     * <p><b>作用域硬边界</b>:本方法只服务「立牌主动技能冷却」这一个量。抽奖盒、筹码商店、
+     * 卡牌商店转账、效果牌等任何其它冷却<b>禁止</b>调用本方法(2026-10-21 用户裁决)。
+     *
+     * <p>取值链(逐段作用,全部只在「开始冷却」时取一次):
+     * <ol>
+     *   <li>基础值 {@code baseTicks}(调用方传入;缺省 = {@code GameplayConstants#SIGN_ACTIVE_COOLDOWN_TICKS} = 180 秒);</li>
+     *   <li>拥有充能时把**基础值**封顶为 {@value GameplayConstants#CHARGE_SIGN_COOLDOWN_CAP_SECONDS} 秒
+     *       —— {@link #capByCharge}(2026-09-25 改口径,取代旧的「有充能即 -20%」);基础值本就低于上限时保持原值;</li>
+     *   <li>「额外电池筹码」×{@code ExtraBatteryChipItem#COOLDOWN_MULTIPLIER}(= 0.5,纯查询,
+     *       未佩戴 / 未装骰子时原样返回)—— {@code ExtraBatteryChipItem#applySignActiveCooldownReduction};</li>
+     *   <li>调用方再自行叠加的减免(如 megas / moses / parunan / sherry 仍各自按诡异骰子再折 ×0.5)。</li>
+     * </ol>
+     *
+     * <p><b>已在进行的倒计时不受影响</b> —— 本方法只在开始冷却时取值。
      */
     public static long signCooldownTicks(Player player, long baseTicks) {
+        long capped = capByCharge(player, baseTicks, GameplayConstants.CHARGE_SIGN_COOLDOWN_CAP_SECONDS);
+        // 额外电池筹码(史诗/无流派,2026-10-20):立牌主动技能冷却 -50%。
+        // 作用域硬约束(2026-10-21):只允许立牌主动冷却走这条;抽奖盒 / 筹码商店 /
+        // 任何其它 *CooldownUntil / *CooldownEnd 一律禁止调用本折算。
+        // 纯查询 ⇒ 卸下 / 失效后下一次开冷却自动恢复原值;已入账的倒计时不受影响。
+        return com.merlinkitsune.astral_dice.item.chip.ExtraBatteryChipItem
+                .applySignActiveCooldownReduction(player, capped);
+    }
+
+    /**
+     * **立牌主动技能**冷却 tick —— <b>不含「额外电池筹码 ×0.5」折算</b>的基准值。
+     *
+     * <p>取值链与 {@link #signCooldownTicks(Player, long)} 完全一致:
+     * {@code baseTicks} → 「有充能时封顶 {@value GameplayConstants#CHARGE_SIGN_COOLDOWN_CAP_SECONDS} 秒」,
+     * 唯独**跳过**最后一步 {@code ExtraBatteryChipItem#applySignActiveCooldownReduction}。
+     *
+     * <p>用途:附件 {@code sign_active_max_cooldown_base}(命运指引卡减半时的基准)——
+     * 电池只作用于立牌主动冷却本身,不得连带砍掉本卡的减半收益。
+     * 作用域同为「立牌主动技能冷却」,其它冷却禁止调用(2026-10-21 用户裁决)。
+     */
+    public static long signCooldownTicksBase(Player player, long baseTicks) {
         return capByCharge(player, baseTicks, GameplayConstants.CHARGE_SIGN_COOLDOWN_CAP_SECONDS);
     }
 

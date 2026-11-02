@@ -24,7 +24,7 @@
 | starengine | **1.1.0，四线制品已发布进本机 `~/.m2`**（`publishToMavenLocal` 四条均 `BUILD SUCCESSFUL`） |
 | 整合包根 | `/mnt/d/.minecraft`（`MC_HOME` 可覆盖；根 `build.gradle` 的 `mcHomePath` 解析：`MC_HOME` > `/mnt/d/.minecraft` > `D:/.minecraft`） |
 | 可构建性 | `:neoforge-1.21.1:classes` 32s / `:forge-1.20.1:classes` 30s（热缓存，**不是冷基线**）均 `BUILD SUCCESSFUL` |
-| 工作树 | 本批 13 改 + 1 新增，**未 commit / 未 push**（见 §5） |
+| 工作树 | 本批已提交：`464e29f8`（规则/文档）、`06fef75a`（投放根）、`d0a084b8`（TUN 直连 + 属主口径）；**未 push** |
 
 ## 2 环境（原生 Linux 真机，不是虚拟机）
 
@@ -65,7 +65,7 @@ bash scripts/test/linux/stop.sh  --all
 - 键名变更：`hgfs_writable` → `repo_writable`；新增 `locks_stale`；`conf_windows` 降为 INFO。
 - Windows 的 `mt.ps1`（约 19.4k 行）在 Linux **整台不可移植且不调用**；未复刻：进程防撞锁、世界清场、OP/禁 AI 闸门、`mt_inject`/`mt_ime`/`mt_capture`。替代：游戏内 **AutoJS `eval_js`**，GUI 级 **`computer-use-linux`**。
 
-## 5 当前工作树（未提交，2026-10-31 18:1x）
+## 5 本批改动清单（2026-10-31 18:1x 落地，19:5x 已提交）
 
 ```
  M AGENTS.md                                   # 分派/红线/索引改原生 Linux
@@ -119,7 +119,7 @@ bash scripts/test/linux/env.sh                             # 环境体检
 8. `scripts/test/mt.conf` 仍是 Windows 历史路径（`env.sh` 只报 INFO，不阻断、不修改）。
 9. **`-next` 2.0 线**需要 `starengine 26.4-SNAPSHOT.1`（本机 `~/.m2` 只有 1.1.0），暂不能正式配置。
 10. **`pushToGame` 未实跑**：投放根已指向 `/mnt/d/.minecraft`，但只验证到「解析正确 + 目录齐全」，真正投放属「默认不部署」，需用户明确下达。
-11. 本批**未提交**（等用户裁决）。
+11. 本批**已提交**（`464e29f8` / `06fef75a` / `d0a084b8`），仍未 push。
 
 ## 8 纪律红线（本批踩过的坑，必须遵守）
 

@@ -1,0 +1,32 @@
+{
+  "fabric:load_conditions": [
+    {
+      "condition": "astral_dice:chip_recipes_enabled"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "astral_dice:blank_chip"
+    },
+    "P": {
+      "item": "astral_dice:star_plate"
+    },
+    "W": {
+      "item": "minecraft:redstone_block"
+    },
+    "X": {
+      "item": "minecraft:copper_ingot"
+    }
+  },
+  "pattern": [
+    "XXX",
+    "WBW",
+    "PPP"
+  ],
+  "result": {
+    "item": "astral_dice:extra_battery_chip"
+  },
+  "show_notification": true
+}

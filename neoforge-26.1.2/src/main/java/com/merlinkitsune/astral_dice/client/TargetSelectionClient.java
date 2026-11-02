@@ -35,7 +35,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
-import com.merlinkitsune.astral_dice.combat.PartyRelations;
+import com.merlinkitsune.starengine.combat.PartyRelations;
 
 /**
  * 目标选择器客户端状态机（第一人称 UX，**Create 强力胶式按键语义**）。
@@ -386,7 +386,7 @@ public final class TargetSelectionClient {
             int selfId = mc.player.getId();
             LOGGER.debug("[Astral Dice][TargetSelectionClient] self-confirm sent token={} target={}(self)",
                     token, selfId);
-            ClientPacketDistributor.sendToServer(new TargetSelectConfirmPayload(token, selfId));
+            net.neoforged.neoforge.client.network.ClientPacketDistributor.sendToServer(new TargetSelectConfirmPayload(token, selfId));
             deactivate();
             return;
         }
@@ -401,7 +401,7 @@ public final class TargetSelectionClient {
         int targetId = currentTarget.getId();
         LOGGER.debug("[Astral Dice][TargetSelectionClient] confirm sent token={} target={}({})",
                 token, targetId, currentTarget.getName().getString());
-        ClientPacketDistributor.sendToServer(new TargetSelectConfirmPayload(token, targetId));
+        net.neoforged.neoforge.client.network.ClientPacketDistributor.sendToServer(new TargetSelectConfirmPayload(token, targetId));
         deactivate();
     }
 
@@ -421,7 +421,7 @@ public final class TargetSelectionClient {
     public static void cancel(String reason) {
         if (!isActive()) return;
         LOGGER.debug("[Astral Dice][TargetSelectionClient] cancel token={} ({})", token, reason);
-        ClientPacketDistributor.sendToServer(new TargetSelectCancelPayload(token));
+        net.neoforged.neoforge.client.network.ClientPacketDistributor.sendToServer(new TargetSelectCancelPayload(token));
         deactivate();
         // 2026-09-22（用户要求「增加取消选择和超时的提示文本」）：原先只有 isUserCancel
         // 会给反馈 ⇒ **超时与第三方界面两条路径全程无提示**。现按事件分两键：
@@ -432,6 +432,26 @@ public final class TargetSelectionClient {
         } else {
             showPrompt(Component.translatable("msg.astral_dice.target_select.cancelled"));
         }
+    }
+
+    /**
+     * 服务端强拆会话 → 客户端退出选择模式（{@code TargetSelectClosePayload} 处理器调用，主线程）。
+     *
+     * <p>与 {@link #cancel(String)} 的区别：那条是**玩家主动**取消，要回发 C2S 取消包并弹 actionbar；
+     * 这里是服务端已经清场（事件动画窗开始等），客户端只需本地退出，**不**回包、不弹提示（提示由
+     * 触发方负责，见 {@code EventAnimationLock#notifyBlocked}）。
+     *
+     * <p>token 不匹配（会话已被新会话顶替 / 早已自然结束）时忽略，避免迟到的关闭包误关新会话。
+     */
+    public static void forceClose(int sessionToken, String reason) {
+        if (!active) return;
+        if (token != sessionToken) {
+            LOGGER.debug("[Astral Dice][TargetSelectionClient] force-close ignored: token_mismatch current={} closed={} ({})",
+                    token, sessionToken, reason);
+            return;
+        }
+        LOGGER.debug("[Astral Dice][TargetSelectionClient] force-close token={} ({})", token, reason);
+        deactivate();
     }
 
     private static void deactivate() {

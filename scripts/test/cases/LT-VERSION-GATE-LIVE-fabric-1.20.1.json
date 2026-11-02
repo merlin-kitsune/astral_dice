@@ -1,0 +1,44 @@
+{
+  "case_id": "LT-VERSION-GATE-LIVE-fabric-1.20.1",
+  "title": "LT7：版本握手在真实进服路径上跑通（JOIN -> OK 两族机器行），证明 VersionHandshake 注册与谓词声明都在位。C5 环境（旧客户端 1.3.7-alpha.2）应反过来看到 REJECT 而非 OK，那条按清单走人工读日志，本条目只覆盖「同版本放行」这一侧。",
+  "version": "fabric-1.20.1",
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "前置：dev 客户端已用同版本进服（握手在登录后极短窗口内完成，通常早于本轮命令）"
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralparty dump @a"
+    },
+    {
+      "op": "wait",
+      "ms": 300
+    }
+  ],
+  "assert": [
+    {
+      "type": "log",
+      "pattern": "AP_NET_VERSION_JOIN: player="
+    },
+    {
+      "type": "log",
+      "pattern": "AP_NET_VERSION_OK: player="
+    },
+    {
+      "type": "absent",
+      "pattern": "AP_NET_VERSION_SELFCHECK_FAIL"
+    },
+    {
+      "type": "crash"
+    },
+    {
+      "type": "mixin"
+    }
+  ]
+}

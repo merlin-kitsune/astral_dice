@@ -90,14 +90,6 @@ public class CurrentCoreChipItem extends BaseChipItem {
         // (该分支判定在冷却分支之前,故正常路径下根本走不到这里;此处仅为纵深防御)
         if (com.merlinkitsune.astral_dice.item.sign.BaseSignItem.isSignActiveLocked(player)) return FINISH_NONE;
         if (!isEquipped(player)) return FINISH_NONE;
-        // 蛟龙立牌(mamushi)强制冷却(规格 §3.4):佩戴该立牌且仍在强制冷却窗口内 ⇒ **拒绝**,
-        // 不触发、不扣充能,提示走本立牌的专属文案(该窗口内连"消耗充能立即完成冷却"也不允许)。
-        // 正常路径下 performSkill 的强制冷却分支已在冷却判定处提前返回,本处为纵深防御。
-        if (com.merlinkitsune.astral_dice.item.sign.MamushiSignItem.isEquipped(player)
-                && now < com.merlinkitsune.astral_dice.item.sign.MamushiSignItem.getForcedCooldownUntil(player)) {
-            sendActionBar(player, ChatFormatting.RED, "msg.astral_dice.mamushi_cooldown_locked");
-            return FINISH_NOT_ENOUGH;
-        }
         long remaining = cooldownEnd - now;
         if (remaining <= 0) return FINISH_NONE;
         // 路线 A:档位分母取起冷却时记录的"本次冷却实际使用的最大冷却"(记录缺失时回退硬编码 180 秒)
@@ -112,6 +104,8 @@ public class CurrentCoreChipItem extends BaseChipItem {
         // 立即完成冷却:结束时刻置为当前时刻(后续判定 now < cdEnd 不再成立),并让"本次最大冷却"记录随冷却一起失效
         ModAttachments.setSignActiveCooldownEnd(player, now);
         ModAttachments.setSignActiveMaxCooldown(player, 0);
+        // 同处清「未折电池」基准:否则下一轮命运指引卡会读到上一轮残留的基准值。
+        ModAttachments.setSignActiveMaxCooldownBase(player, 0L);
         sendActionBar(player, ChatFormatting.YELLOW, "hud.astral_dice.current_core_finish", cost);
         return FINISH_DONE;
     }

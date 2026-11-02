@@ -60,14 +60,14 @@ public class KeyBindingSetup {
                 // ESC 菜单承担 —— 主动技能的释放权完全归玩家。
                 // ⚠️ 服务端仍有自己的闸门:BaseSignItem#performSkill 第 2 步对「按键开启的」会话
                 //    直接 return(防重复进入);「手持即选择」会话不在其列 ⇒ 手持效果牌时按键照常生效。
-                ClientPacketDistributor.sendToServer(new SignActivatePayload());
+                net.neoforged.neoforge.client.network.ClientPacketDistributor.sendToServer(new SignActivatePayload());
             }
             while (OPEN_CARD_INVENTORY_KEY.consumeClick()) {
                 // 2026-10-03「按键收口」:卡牌栏键不再被「手持即选择」会话吞掉 —— 该类会话**本来就不因
                 // 开界面而取消**(见 TargetSelectionClient#onScreenOpening),吞掉它两者自相矛盾;
                 // 按键开启的立牌会话照旧不放行(它一开界面就取消,让 H 生效只会白丢会话)。
                 if (!TargetSelectionClient.isActive() || TargetSelectionClient.isHoldToSelect()) {
-                    ClientPacketDistributor.sendToServer(new OpenCardInventoryPayload());
+                    net.neoforged.neoforge.client.network.ClientPacketDistributor.sendToServer(new OpenCardInventoryPayload());
                 }
             }
         }

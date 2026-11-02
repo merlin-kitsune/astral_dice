@@ -1,0 +1,48 @@
+{
+  "case_id": "LT-RESET-CARDLOCK-fabric-1.20.1",
+  "title": "LT2：/astralparty resetcardlock 把出牌锁①②无条件归零（forceResetRound 只做 4 个轮次附件的赋值，幂等），随后 dump 的 LOCKRAW 三键必须读成 0。用于出牌锁/骰战批次的前置复位，也是 resetcardcooldown 别名同实现的旁证。",
+  "version": "fabric-1.20.1",
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "前置：dev 客户端已进服；latest.log 本轮已轮转"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralparty resetcardlock @a"
+    },
+    {
+      "op": "wait",
+      "ms": 300
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralparty dump @a"
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    }
+  ],
+  "assert": [
+    {
+      "type": "log",
+      "pattern": "APDUMP\\|LOCKRAW\\|effect_card_play_count=0"
+    },
+    {
+      "type": "log",
+      "pattern": "APDUMP\\|LOCKRAW\\|effect_card_bonus_plays=0"
+    },
+    {
+      "type": "log",
+      "pattern": "APDUMP\\|LOCKRAW\\|effect_card_cooldown_end=0"
+    },
+    {
+      "type": "crash"
+    },
+    {
+      "type": "mixin"
+    }
+  ]
+}

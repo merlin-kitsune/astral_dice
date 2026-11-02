@@ -34,6 +34,46 @@
       "astral_dice:effect_card_use"
     ]
   },
+  "event_bonus": {
+    "sounds": [
+      "astral_dice:event_bonus"
+    ]
+  },
+  "event_damage": {
+    "sounds": [
+      "astral_dice:event_damage"
+    ]
+  },
+  "event_fade_in": {
+    "sounds": [
+      "astral_dice:event_fade_in"
+    ]
+  },
+  "event_fade_out": {
+    "sounds": [
+      "astral_dice:event_fade_out"
+    ]
+  },
+  "event_heal": {
+    "sounds": [
+      "astral_dice:event_heal"
+    ]
+  },
+  "event_poisoning": {
+    "sounds": [
+      "astral_dice:event_poisoning"
+    ]
+  },
+  "event_tick": {
+    "sounds": [
+      "astral_dice:event_tick"
+    ]
+  },
+  "event_transport": {
+    "sounds": [
+      "astral_dice:event_transport"
+    ]
+  },
   "skill_use": {
     "sounds": [
       "astral_dice:skill_use"

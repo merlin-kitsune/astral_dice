@@ -14,6 +14,7 @@ import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.bus.api.EventPriority;
+import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
 
 /**
  * 吸血鬼立牌(命名:papara)。
@@ -32,7 +33,7 @@ public class PaparaSignItem extends BaseSignItem {
             return InteractionResult.SUCCESS;
         }
         // 主动:获得"汲取"效果 3:00(visible=true 使效果图标在 HUD 正常显示)
-        player.addEffect(new MobEffectInstance(ModEffects.PAPARA_BITE, 3600, 0, false, true, true));
+        PlayerEffectProtection.apply(player, new MobEffectInstance(ModEffects.PAPARA_BITE, 3600, 0, false, true, true));
         return InteractionResult.SUCCESS;
     }
 
@@ -69,14 +70,21 @@ public class PaparaSignItem extends BaseSignItem {
 
     // 吸血鬼立牌(papara)主动"汲取":受伤时恢复单次受到伤害的一半生命(取整,至少 1 点)
     @SubscribeEvent(priority = EventPriority.LOWEST)
-    public static void onPaparaBiteHurtHeal(LivingDamageEvent.Pre event) {
+    public static void onPaparaBiteHurtHeal(LivingDamageEvent.Post event) {
         if (!(event.getEntity() instanceof Player player)) return;
         if (player.level().isClientSide()) return;
         if (!player.hasEffect(ModEffects.PAPARA_BITE)) return;
         // 2026-09-29 用户裁决:只有**敌对目标**的攻击才回血(环境伤害与自伤不算)
         if (!com.merlinkitsune.astral_dice.combat.DiceCombatEvents
                 .isHostileAttack(player, event.getSource())) return;
-        int heal = Math.max(1, (int) event.getNewDamage() / 2);
+        // 阶段口径(N9,2026-10-27 两线统一):读 Post 阶段,与 forge 侧 LivingDamageEvent#getAmount() 同义 ——
+        // 都是「本次命中实际扣掉的红心量」。neo 侧取证(sources jar,net/minecraft/world/entity/LivingEntity.java#actuallyHurt):
+        //   :1789 onLivingDamagePre → :1790 setReduction(ABSORPTION, min(absorption, damage))(此步才扣吸收)
+        //   → :1793 f1 = container.getNewDamage() → :1801 setHealth(getHealth() - f1) → :1805 onLivingDamagePost;
+        //   且 Post#getNewDamage() 的 javadoc 原文即「the amount of health this entity lost during this sequence」。
+        // ⇒ Post#getNewDamage() == f1 == 扣吸收后的实际红心伤害。旧口径读 Pre 的 getNewDamage() 发生在扣吸收之前,
+        //   数值含吸收段(比实际扣血偏大),这正是两线回血基数不一致的根因。
+        int heal = Math.max(1, (int) event.getHealthDamage() / 2);
         player.heal(heal);
     }
 

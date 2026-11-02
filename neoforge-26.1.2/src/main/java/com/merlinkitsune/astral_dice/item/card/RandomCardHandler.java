@@ -14,7 +14,7 @@ import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
-import com.merlinkitsune.astral_dice.combat.PartyRelations;
+import com.merlinkitsune.starengine.combat.PartyRelations;
 
 /**
  * 随机卡牌处理类:随机卡牌的类型筛选、专属牌强制排除与向其他玩家发放的统一逻辑。
@@ -70,6 +70,20 @@ public final class RandomCardHandler {
         /** 指定范围内的玩家与团队队友(不含自己,不限人数) */
         public static GiveoutScope aroundWithTeam(double range) {
             return new GiveoutScope(range, false, true, -1);
+        }
+
+        /** 指定范围内的玩家与团队队友(不含自己,**最多最近 N 人**;N<0 表示不限) */
+        public static GiveoutScope aroundWithTeam(double range, int maxTargets) {
+            return new GiveoutScope(range, false, true, maxTargets);
+        }
+
+        /**
+         * 同维度全体玩家与团队队友(不含自己,**最多最近 N 人**;N<0 表示不限)。
+         * 真龙形态的「连锁反应」用此作用域:范围不再限制 ⇒ {@code range = -1}(全维度在线玩家),
+         * 团队判定仍生效(有队伍时队友优先并入),人数上限与次序照 {@code collectTargets}(距离升序)。
+         */
+        public static GiveoutScope wholeDimensionWithTeam(int maxTargets) {
+            return new GiveoutScope(-1, false, true, maxTargets);
         }
     }
 

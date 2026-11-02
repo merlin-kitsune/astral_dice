@@ -1,0 +1,32 @@
+{
+  "case_id": "LT-TRINKETS-BOUNDS-fabric-1.20.1",
+  "title": "Trinkets 筹码栏运行期缩容越界保护：mixin/trinkets/TrinketInventoryBoundsMixin 在位，且不出现「越界索引」崩溃行。实机依据 2026-11-02：缩容 4→1（防御式）与 4→0（强制复位）都会让玩家背包菜单里的旧 Slot 索引越界，ServerPlayer.tick -> broadcastChanges -> Slot.getItem -> TrinketInventory.getItem 抛 ArrayIndexOutOfBoundsException 直接崩服。",
+  "version": "fabric-1.20.1",
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "本条只锚「保护 mixin 在位 + 运行期无越界崩溃」；缩容的数值行为由 AutoJS 实测（T4 骰子=4 格、卸下防御式保留 1 格、强制复位归 0 并退回背包）。"
+    },
+    {
+      "op": "jar_stats",
+      "save_as": "jar"
+    }
+  ],
+  "assert": [
+    {
+      "type": "bytecode",
+      "pattern": "mixin/trinkets/TrinketInventoryBoundsMixin\\.class$"
+    },
+    {
+      "type": "mixin"
+    },
+    {
+      "type": "absent",
+      "pattern": "ArrayIndexOutOfBoundsException: Index .* out of bounds for length"
+    },
+    {
+      "type": "crash"
+    }
+  ]
+}

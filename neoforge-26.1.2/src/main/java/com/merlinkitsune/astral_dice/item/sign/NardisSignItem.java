@@ -9,7 +9,7 @@ import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import com.merlinkitsune.astral_dice.component.WeaponEnhancement;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.effect.NardisPrivilegeEffect;
-import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
+import com.merlinkitsune.starengine.event.EffectTimerGuard;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.card.TemporaryCardUtil;
 import com.merlinkitsune.starengine.event.ModEffectRemoval;
@@ -22,6 +22,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import top.theillusivec4.curios.api.CuriosApi;
 import top.theillusivec4.curios.api.SlotContext;
+import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
 
 /**
  * 绿洲女王立牌(nardis,稀有 RARE)。
@@ -35,7 +36,7 @@ import top.theillusivec4.curios.api.SlotContext;
  *       实战({@code attackPowerOf})与 tooltip/GUI({@code getDisplayAttackRange})同源,
  *       不需要第二条链路;</li>
  *   <li>防御力:防御修饰器链**不读** {@code appliedStones},故按仓库统一口径折算为真实护甲
- *       (1 防御力 = 2 护甲值),由 {@link #onCurioTick} **每 tick 现算现写**到 ARMOR 属性
+ *       (1 防御力 = 1÷护甲系数 护甲值),由 {@link #onCurioTick} **每 tick 现算现写**到 ARMOR 属性
  *       ({@link DiceCombatModifiers#setDefenseArmorBonus}),卸下时清零
  *       (写法与扫地机 jasmine 同款);</li>
  *   <li>临时牌**同样计入**(它就是一张普通战斗牌,只是被标记);临时牌被清空时加成自然同时回落
@@ -107,7 +108,7 @@ public class NardisSignItem extends BaseSignItem {
      *   <li>攻击力:{@code combat/DiceCombatModifiers} 的攻击修饰器
      *       ({@code BONUS_PER_CARD × countStones(enh, false)});</li>
      *   <li>防御力:{@link #onCurioTick} 传给 {@link DiceCombatModifiers#setDefenseArmorBonus}
-     *       的**防御力点数**({@code BONUS_PER_CARD × 已装配防御牌张数};1 防御力 = 2 护甲值)。</li>
+     *       的**防御力点数**({@code BONUS_PER_CARD × 已装配防御牌张数};1 防御力 = 1÷护甲系数 护甲值)。</li>
      * </ul>
      */
     public static final int BONUS_PER_CARD = 2;
@@ -221,7 +222,7 @@ public class NardisSignItem extends BaseSignItem {
             player.forceAddEffect(refreshed, null);
         } else {
             // 首次释放 ⇒ 常规施加(与既有实现一致)
-            EffectTimerGuard.apply(player, refreshed);
+            PlayerEffectProtection.apply(player, refreshed);
         }
         if (player.hasEffect(ModEffects.NARDIS_PRIVILEGE)) {
             // 守卫记账同步:forceAddEffect 不抛 MobEffectEvent.Added,不显式写就会被守卫按旧 endTick 裁回去
@@ -246,7 +247,7 @@ public class NardisSignItem extends BaseSignItem {
         if (!(slotContext.entity() instanceof Player player)) return;
         if (player.level().isClientSide()) return;
         // 防御力 +2/防御牌(每张牌加成 = BONUS_PER_CARD 常量):折算为真实护甲
-        // (1 防御力 = 2 护甲值;经 ARMOR 属性,骰战与原版伤害均生效)。
+        // (1 防御力 = 1÷护甲系数 护甲值;经 ARMOR 属性,骰战与原版伤害均生效)。
         // 现算现写:装配/卸下卡牌后最迟下一 tick 生效,不需要任何缓存或附件。
         DiceCombatModifiers.setDefenseArmorBonus(player, DEFENSE_ARMOR_KEY,
                 BONUS_PER_CARD * equippedDefenseCardCount(player));

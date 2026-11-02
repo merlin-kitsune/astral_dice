@@ -8,10 +8,15 @@ import net.minecraft.resources.ResourceLocation;
 /**
  * 通道工厂(对齐 Forge 的 {@code network.NetworkRegistry})。
  *
- * <p>Forge 的三个谓词参数(客户端/服务端接受的远端版本)由 FML 登录握手驱动;
- * Fabric 侧没有该机制 ⇒ 这些谓词**在此只做保留**,真正的版本互通判定由本模组的
- * 显式握手包承担(见 {@code VersionGate} 与 {@code network/ModNetwork} 的调用点)。
- * 保留参数是为了让 {@code ModNetwork} 的声明面零改动。
+ * <p>Forge 的三个参数由 FML 登录握手驱动:{@code versionSupplier} 的值在登录阶段双向交换,
+ * 两端的谓词各判一次,任一端不通过即断开连接。
+ *
+ * <p>Fabric 没有这套机制 ⇒ 三个参数**原样交给** {@link SimpleChannel} 保存(旧实现直接丢弃,
+ * 使版本门成为死代码):版本串作为握手包上线上报的值,两个谓词用于启动自检;
+ * 真正的运行时判定由本模组的显式握手包承担
+ * ({@code com.merlinkitsune.astral_dice.network.VersionHandshake},协议 id 28/29,
+ * 两端各调一次 {@code VersionGate.accepts})。
+ * 保留参数形态是为了让 {@code ModNetwork} 的声明面与 forge 逐字一致。
  */
 public final class NetworkRegistry {
 
@@ -19,7 +24,7 @@ public final class NetworkRegistry {
                                                  Supplier<String> versionSupplier,
                                                  Predicate<String> clientAcceptedVersions,
                                                  Predicate<String> serverAcceptedVersions) {
-        return new SimpleChannel(name);
+        return new SimpleChannel(name, versionSupplier, clientAcceptedVersions, serverAcceptedVersions);
     }
 
     private NetworkRegistry() {

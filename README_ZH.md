@@ -30,13 +30,13 @@ Astral Dice 是一个以骰子为核心的生存扩展。戴上骰子后，每�
 
 ## 1.5.0 更新内容
 
-本节覆盖 1.5.0 全部预发布（pre）与候选（rc）构建已交付的内容，单个构建的明细见 [CHANGELOG.md](CHANGELOG.md)。
+本节覆盖 1.5.0 正式版的全部内容（含 1.5.0 各预发布与候选构建已交付的部分），逐条明细见 [CHANGELOG.md](CHANGELOG.md)。
 
 **新增内容**
 
 - **六张新立牌。** 超天酱与地雷女（奇特品质，备注「一心同体」写明两人的队伍联动），以及调酒师、多萝西、修女、大肥鱼。
 - **两张新效果牌。** 路障（30 点耐久的可见实体，配一个栅栏高度的碰撞方块，会把仇恨拉到自己身上）与强化拒止（专属牌，100 点耐久，把敌对目标钳制在 8 格光环内并施加缓慢与虚弱）。
-- **新筹码。** 手电筒-爆闪、财运签、试剂-深渊、无线输电杆、感测装置。
+- **新筹码。** 手电筒-爆闪、财运签、深渊试剂、无线输电杆、感测装置。
 - **卡牌商店与筹码商店两个方块**，各自可当村民工作站点，村民因此能转职为卡牌交易员与筹码商人，按等级出售卡牌或筹码。
 - **事件系统重写**，统一了名称、图标、类型、档位与作用范围模型，加入逐事件计时器，并新增 12 个事件（红温警告、疾行、雷暴将至、取长补短、商店大酬宾、手牌抹杀、天崩地裂、天降之物、天使降临、问题外卖、拥挤通道、战斗爽）。「奇怪的问号」物品与抽奖盒方块可以按需抽取事件。
 - **两条新的战斗数值条**：防御力与攻击力，画在原版护甲条所在的那一行上。
@@ -64,26 +64,27 @@ Astral Dice 是一个以骰子为核心的生存扩展。戴上骰子后，每�
 - 新增五条自定义音效、重写一条，另有 179 张贴图的铁-艾尔登法环粒子库。
 - 事件牌在一个服务端计时序列里依次淡入、停留、淡出；大侦探立牌会打开带 15 秒倒计时的事件选择界面。
 - 枪械伤害不再被当成远程或魔法伤害；激光与爆炸伤害补进伤害表；活体书页的堆叠已修；「现代化 UI」的稀有度边框改用正确颜色；医疗箱筹码不再在重登或切换维度时回血；手册里两枚立牌的稀有度已改正。
+- 筹码「深渊试剂」的名称与英 / 日译名一并统一（Abyss Reagent / 深淵試薬），tooltip、图鉴与手册条目同步。
 - Forge 侧开发环境需要 `-Dmixin.config=astral_dice.jade.mixins.json`，因为 dev 不读 `mods.toml`。
 
 ## 支持版本
 
 | 支持 | 子项目 | Minecraft | 加载器 | Java | 版本 | 帕秋莉手册 |
 |---|---|---|---|---|---|---|
-| ✅ | `neoforge-1.21.1` | 1.21.1 | NeoForge 21.1.235 | 21 | 1.5.0-rc.2 | ✅ |
-| ✅ | `forge-1.20.1` | 1.20.1 | Forge 47.4.10 | 17 | 1.5.0-rc.2 | ✅ |
-| ✅ | `neoforge-26.1.2` | 26.1.2 | NeoForge 26.1.2.109 | 25 | 1.5.0-rc.2 | ✅ |
-| ✅ | `fabric-1.20.1` | 1.20.1 | Fabric Loader 0.19.5 | 17 | 1.5.0-rc.2 | ✅ |
+| ✅ | `neoforge-1.21.1` | 1.21.1 | NeoForge 21.1.235 | 21 | 1.5.0 | ✅ |
+| ✅ | `forge-1.20.1` | 1.20.1 | Forge 47.4.10 | 17 | 1.5.0 | ✅ |
+| ✅ | `neoforge-26.1.2` | 26.1.2 | NeoForge 26.1.2.109 | 25 | 1.5.0 | ✅ |
+| ✅ | `fabric-1.20.1` | 1.20.1 | Fabric Loader 0.19.5 | 17 | 1.5.0 | ✅ |
 
-- `neoforge-1.21.1` 与 `forge-1.20.1` 是发布线：两条线保持功能对等，两个 jar 都随每个 GitHub Release 发布。
-- `neoforge-26.1.2` 是迁移线：不单独打 tag，也不单独发 Release，它的 jar 作为第三个附件挂在发布线的 Release 上（CI 会把全部线一起构建，见 `.github/workflows/build.yml`）。上游没有 26.1.x 构建，因此这条线没有 Iron's Spells 'n Spellbooks 联动。
-- `fabric-1.20.1` 是 Fabric 移植线（2026-09-29 加入，2026-10-01 并入 `multi-main`）：单独以预发布形式发布，绝不混进发布线的 Release。它有一套自己的前置，并且没有 Curios、Bountiful 与 Iron's Spells 联动。
+- **四条线都是正式发布线**：`neoforge-1.21.1`、`forge-1.20.1`、`neoforge-26.1.2` 与 `fabric-1.20.1` 保持功能对等；每个 GitHub Release 同时带上这四个 jar，tag 用不带后缀的基础版本号（本版为 `1.5.0`），发布类型是正式版。CI 一次构建全部线（`.github/workflows/build.yml`）。
+- `neoforge-26.1.2` 是 26.1.x 迁移线：与另外三条线同批发布、作为同一个 Release 的附件，不单独打 tag。上游没有 26.1.x 构建，因此这条线没有 Iron's Spells 'n Spellbooks 联动。
+- `fabric-1.20.1` 是 Fabric 移植线（2026-09-29 加入，2026-10-01 并入 `multi-main`），自 1.5.0 起纳入正式发布：与其余三条线同一个 Release、同一个 tag。它有一套自己的前置（见下文「Fabric（1.20.1）前置一览」），没有 Curios、Bountiful 与 Iron's Spells 联动；配方机制上的四处平台差异见 [CHANGELOG.md](CHANGELOG.md) 的「平台与兼容性」。
 
 ## 前置依赖
 
 | 依赖 | 要求 |
 |---|---|
-| 必需，需单独安装 | **StarEngine**（mod id `starengine`，当前 **1.1.0**）。**NeoForge 1.21.1** 与 **Forge 1.20.1** 两线**不再内置**该库：请把 `starengine-neoforge-1.21.1-<版本>.jar` / `starengine-forge-1.20.1-<版本>.jar` 与本模组一起放进 `mods`，版本须与本构建编译时所用的一致。缺库会以「Missing or unsupported mandatory dependencies」拒绝启动。（NeoForge 26.1.2 与 Fabric 1.20.1 两线目前仍内置。） |
+| 必需，需单独安装 | **StarEngine**（mod id `starengine`，当前 **26.4-SNAPSHOT.1**）。**四条发布线全部不再内置**该库，玩家需自行为自己那条线装上对应的库 jar：`starengine-neoforge-1.21.1-26.4-SNAPSHOT.1.jar`（NeoForge 1.21.1）/ `starengine-forge-1.20.1-26.4-SNAPSHOT.1.jar`（Forge 1.20.1）/ `starengine-neoforge-26.1.2-26.4-SNAPSHOT.1.jar`（NeoForge 26.1.2）/ `starengine-fabric-1.20.1-26.4-SNAPSHOT.1.jar`（Fabric 1.20.1），与本模组一起放进 `mods`，版本须与本构建编译时所用的一致；下载源是 CurseForge 上的 StarEngine 项目（id `1755415`）。版本区间：NeoForge 两线在 `neoforge.mods.toml` 里声明 `versionRange="[26.4-SNAPSHOT.1,27.0.0)"`，Forge 线在 `mods.toml` 里声明同一区间，Fabric 线在 `fabric.mod.json` 的 `depends.starengine` 里声明 `>=26.4-SNAPSHOT.1 <27.0.0`（与前者等价）；缺库或版本越出区间都会以「Missing or unsupported mandatory dependencies」拒绝启动。 |
 | 必需 | Curios API：1.20.1 用 5.x，1.21.1 用 9+，26.1.2 用 15+。缺失或版本过旧会在依赖排序阶段被拒绝。这项前置由本模组声明，StarEngine 只在 Forge 侧把它当编译期依赖。 |
 | 必需 | **GeckoLib**：NeoForge 1.21.1 用 `[4.9,5)`，Forge 1.20.1 用 `[4.8,5)`，Fabric 1.20.1 用 `4.8.4+`，26.1.2 用 `[5,6)`。本模组含 GeckoLib 动画实体；缺失或超出区间会在依赖排序阶段被拒绝，GeckoLib 不会被内嵌进 jar。 |
 | 必需，仅 1.20.1 | Mixin 运行时二选一：**Mixin Booster 0.1.3 或更新**，或者 **Sinytra Connector**。整合包已带 Connector 时无需额外安装，因为 Connector 自带同一套运行时，Mixin Booster 会自动让位。两者都不在时模组拒绝启动，并提示安装方式。旧版 Mixin Booster 会被拒绝。 |
@@ -93,16 +94,18 @@ Astral Dice 是一个以骰子为核心的生存扩展。戴上骰子后，每�
 
 ### Fabric（1.20.1）前置一览
 
-| # | 前置 | 版本 |
-|---|---|---|
+| # | 前置 | 版本 | `fabric.mod.json` 里的声明 |
+|---|---|---|---|
 | 1 | Fabric Loader | 0.19.5+（0.19.x） |
 | 2 | Fabric API | 1.20.1 用 0.92.12 |
-| 3 | Puzzles Lib（事件桥） | 8.1.33+，与第 4 项一起安装 |
-| 4 | Forge Config API Port | 8.0.3，Puzzles Lib 8.x 需要它 |
-| 5 | 饰品栏提供者，二选一 | Trinkets 3.7.2+ 或 Accessories 1.0.0-beta.48+ |
-| 6 | GeckoLib（动画实体） | 4.8.4+ |
-| 7 | 可选 | 帕秋莉手册（游戏内手册） |
-| 不适用 | 本线用不到 | Curios API、Mixin Booster、Sinytra Connector、Bountiful、Iron's Spells 'n Spellbooks |
+| 3 | Fabric Data Attachment API | 随 Fabric API 提供 | `depends`：`fabric-data-attachment-api-v1`（任意版本） |
+| 4 | Puzzles Lib（事件桥） | 8.1.33+，与第 5 项一起安装 | `depends`：`puzzleslib >=8.1.33` |
+| 5 | Forge Config API Port | 8.0.3，Puzzles Lib 8.x 需要它 | 不单独声明，由 Puzzles Lib 8.x 连带要求 |
+| 6 | StarEngine | 26.4-SNAPSHOT.1 | `depends`：`starengine >=26.4-SNAPSHOT.1 <27.0.0`；本线**不再内嵌**（Loom `include` 已移除），必须单独安装 `starengine-fabric-1.20.1-26.4-SNAPSHOT.1.jar`（CurseForge 项目 id `1755415`） |
+| 7 | GeckoLib（动画实体） | 4.8.4+ | `depends`：`geckolib >=4.8.4` |
+| 8 | 饰品栏提供者，二选一 | Trinkets 3.7.2+ 或 Accessories 1.0.0-beta.48+ | 两者都在 `recommends`，启动时自检 |
+| 9 | 可选 | 帕秋莉手册（游戏内手册）、JEI 15.62.0+ | 两者都在 `recommends` |
+| 不适用 | 本线用不到 | — | Curios API、Mixin Booster、Sinytra Connector、Bountiful、Iron's Spells 'n Spellbooks |
 
 - 饰品栏是二选一。Fabric 的 `depends` 只有 AND 语义，所以 Trinkets 与 Accessories 都写在 `recommends` 下，模组自己在启动时检查，只有两者都不在时才拒绝启动。
 - CurseForge 的商店页把 Trinkets 记为必需、Accessories 记为可选。这只是商店页上的声明，`fabric.mod.json` 仍把两者当推荐，只装 Accessories 的环境照样能启动。
@@ -111,10 +114,10 @@ Astral Dice 是一个以骰子为核心的生存扩展。戴上骰子后，每�
 
 ## 下载
 
-- **GitHub Releases**：[merlin-kitsune/astral_dice/releases](https://github.com/merlin-kitsune/astral_dice/releases)。每个 Release 带三个 jar：两条发布线加上 26.1.2 的 jar。
-- **Fabric 移植线**：以单独的 `fabric-<版本>` 预发布形式发布，标记为 pre-release，不占「最新」，只带它自己那一个 jar。
-- **CurseForge**：构建发布到主项目（`astral-dice`，project id `1662159`）。StarEngine 有独立项目（`starengine`，id `1755415`）；**NeoForge 1.21.1** 与 **Forge 1.20.1** 不再内置该库，玩家需自行安装那份独立 jar（26.1.2 与 Fabric 两线目前仍内置）。版本号保留 `+<加载器>_<MC版本>` 后缀（例如 `1.5.0-rc.2+neoforge_1.21.1`），发布渠道由版本后缀决定。Modrinth 发布链路已于 2026-10-23 永久移除，唯一商店通道是 CurseForge。
-- **构建产物**：`astral_dice-<版本>+neoforge_1.21.1.jar`、`+forge_1.20.1.jar`、`+neoforge_26.1.2.jar`、`+fabric_1.20.1.jar`，各自位于对应子项目的 `build/libs/` 下。GitHub Release 的 tag 用不带后缀的基础版本号，Fabric 线则用 `fabric-<版本>` 预发布 tag。
+- **GitHub Releases**：[merlin-kitsune/astral_dice/releases](https://github.com/merlin-kitsune/astral_dice/releases)。每个 Release 同时带四个 jar：`neoforge_1.21.1`、`forge_1.20.1`、`neoforge_26.1.2` 与 `fabric_1.20.1` 各一个。
+- **标签规则**：tag 一律使用不带后缀的基础版本号（本版 `1.5.0`）——不加 `v` 前缀、不加平台前缀、不加加载器后缀。四个 jar 同属这一个 Release，发布类型为正式版（非 prerelease）。Fabric 线不再单独发预发布，也不再占用独立 tag。
+- **CurseForge**：构建发布到主项目（`astral-dice`，project id `1662159`）。StarEngine 有独立项目（`starengine`，id `1755415`）；**四条线全部不再内置**该库，玩家需自行安装对应平台的那份独立 jar：`starengine-neoforge-1.21.1-26.4-SNAPSHOT.1.jar` / `starengine-forge-1.20.1-26.4-SNAPSHOT.1.jar` / `starengine-neoforge-26.1.2-26.4-SNAPSHOT.1.jar` / `starengine-fabric-1.20.1-26.4-SNAPSHOT.1.jar`。版本号保留 `+<加载器>_<MC版本>` 后缀（例如 `1.5.0+neoforge_1.21.1`），发布渠道由版本后缀决定。Modrinth 发布链路已于 2026-10-23 永久移除，唯一商店通道是 CurseForge。
+- **构建产物**：`astral_dice-1.5.0+neoforge_1.21.1.jar`、`astral_dice-1.5.0+forge_1.20.1.jar`、`astral_dice-1.5.0+neoforge_26.1.2.jar`、`astral_dice-1.5.0+fabric_1.20.1.jar`，各自位于对应子项目的 `build/libs/` 下；jar 内元数据版本与文件名同号（1.5.0）。
 
 ## 构建
 

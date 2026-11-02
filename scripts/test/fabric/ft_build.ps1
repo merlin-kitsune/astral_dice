@@ -20,8 +20,8 @@
       · data/bountiful/**                       jar_count == 0（bountiful 不是本线前置；实测源里也没有）
       · data/trinkets/**                        jar_count ≥ 磁盘 src/main/resources/data/trinkets 数量
                                                 （替代 Forge 侧 Curios 的饰品数据，见 build.gradle:91-92）
-      · META-INF/jars/*.jar                     非空，且含 starengine（Loom 的 include ⇒ JarJar，
-                                                依据 build.gradle:85-89 与 :378-407 的内嵌自检）
+      · META-INF/jars/*.jar                     **为空**（2026-11-02 外部前置化：Loom include 已撤除，
+                                                库改为独立外部 jar；依据 build.gradle 外置前置自检）
 
     机器可读读数行（前缀 AP_FAB_）：
       AP_FAB_JAR:          name=<...> bytes=<n> entries=<n>
@@ -224,15 +224,15 @@ Write-FtLine ("AP_FAB_EMBED: count={0} jars={1}" -f $st.EmbedJars.Count, ($st.Em
 
 $libName = ''
 foreach ($n in $st.EmbedJars) { if ($n -like 'starengine*') { $libName = $n } }
-$okEmbed = ($st.EmbedJars.Count -gt 0 -and $libName -ne '')
-Write-FtLine ("AP_FAB_EMBED_LIB: name=starengine present={0}" -f $okEmbed.ToString().ToLowerInvariant())
+$okEmbed = ($st.EmbedJars.Count -eq 0)
+Write-FtLine ("AP_FAB_EMBED_LIB: name=starengine expected=false present={0}" -f ($libName -ne '').ToString().ToLowerInvariant())
 
 $failed = @()
 if (-not $okModels) { $failed += "models($($st.Models)<$($st.SrcModels))" }
 if (-not $okRecipes) { $failed += "recipes($($st.Recipes)<$($st.SrcRecipes))" }
 if (-not $okBountiful) { $failed += "bountiful($($st.Bountiful)!=0)" }
 if (-not $okTrinkets) { $failed += "trinkets($($st.Trinkets) vs src $($st.SrcTrinkets))" }
-if (-not $okEmbed) { $failed += "embed($($st.EmbedJars.Count))" }
+if (-not $okEmbed) { $failed += "embed(should0,got$($st.EmbedJars.Count))" }
 
 if ($failed.Count -gt 0) {
     Write-FtLine ("AP_FAB_BUILD: FAIL (reason={0})" -f ($failed -join ';'))

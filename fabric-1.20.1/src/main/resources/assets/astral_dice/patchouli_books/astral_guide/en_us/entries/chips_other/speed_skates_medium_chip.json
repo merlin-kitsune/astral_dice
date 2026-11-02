@@ -9,8 +9,8 @@
       "text": "astral_dice.guide.entry.speed_skates_medium_chip.1"
     },
     {
-      "type": "patchouli:crafting",
-      "recipe": "astral_dice:speed_skates_medium_chip"
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.chip_source.note"
     }
   ],
   "sortnum": 6

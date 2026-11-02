@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "GPG",
+    "HKH",
+    "HHH"
+  ],
+  "key": {
+    "G": {
+      "item": "minecraft:gold_ingot"
+    },
+    "P": {
+      "item": "astral_dice:star_plate"
+    },
+    "H": {
+      "item": "minecraft:polished_blackstone_bricks"
+    },
+    "K": {
+      "item": "astral_dice:blank_chip"
+    }
+  },
+  "result": {
+    "item": "astral_dice:chip_shop",
+    "count": 1
+  }
+}

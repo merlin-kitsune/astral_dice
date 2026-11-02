@@ -98,10 +98,35 @@
 
 版本号 / 加载器 / MC 版本一律**从 jar 文件名解析**（``astral_dice-<版本>+<加载器>_<MC版本>.jar``），
 release 类型由版本号里的 ``-alpha`` / ``-beta`` / ``-rc`` 后缀决定（无后缀 ⇒ release）。
-可用 ``--mc-version`` / ``--loader`` / ``--release-type`` / ``--display-name`` 显式覆盖。
+可用 ``--mc-version`` / ``--loader`` / ``--release-type`` 显式覆盖。
 
-发布说明默认取 ``release/<基础版本>/PLAYER_CHANGELOG.md``（英文，面向 CurseForge 国际社区）；
-不存在时退回 ``PLAYER_CHANGELOG_ZH.md``；也可用 ``--changelog <文件>`` 显式指定。
+站点显示名（**2026-11-02 用户规则**）默认**自动推导**为
+``Astral Dice <版本> (<加载器> <MC>)``：版本号不带 ``+<加载器>_<MC>`` 后缀，加载器写
+``Fabric`` / ``Forge`` / ``NeoForge``（不是 jar 名里的小写 ``fabric`` / ``forge`` / ``neoforge``）：
+
+    astral_dice-1.5.0+fabric_1.20.1.jar        ⇒ Astral Dice 1.5.0 (Fabric 1.20.1)
+    astral_dice-1.5.0+neoforge_1.21.1.jar      ⇒ Astral Dice 1.5.0 (NeoForge 1.21.1)
+    astral_dice-1.5.0+forge_1.20.1.jar         ⇒ Astral Dice 1.5.0 (Forge 1.20.1)
+    astral_dice-1.5.0+neoforge_26.1.2.jar      ⇒ Astral Dice 1.5.0 (NeoForge 26.1.2)
+    astral_dice-1.5.0-hotfix+fabric_1.20.1.jar ⇒ Astral Dice 1.5.0-hotfix (Fabric 1.20.1)
+
+``--display-name`` 仍可显式覆盖（给了就用给的，作用于本次全部 jar）。
+库产物（``starengine-<平台>-<版本>.jar``，推到库项目）不套用这套命名，仍用 jar 文件名。
+
+发布说明（**2026-11-02 用户规则**）**只对主线版本默认附带**：版本号形如 ``X.Y.0`` 且不含
+``-`` 后缀（即不是补丁 / hotfix / 预发布）时，自动取
+``release/<基础版本>/PLAYER_CHANGELOG.md``（英文，面向 CurseForge 国际社区），
+不存在时退回 ``PLAYER_CHANGELOG_ZH.md``。**小版本更新（``1.5.1`` / ``1.5.0-hotfix`` /
+``-rc`` / ``-beta`` / ``-alpha`` 等）默认不在 CF 写 changelog** —— metadata 里
+``changelog`` 与 ``changelogType`` 两个字段都不出现。覆盖方式：``--changelog <文件>``
+手动指定（任何版本都附）；``--no-changelog`` 强制不附（与 ``--changelog`` 互斥）。
+
+dry-run 会把这两条判定各打一行，便于核对：
+
+    DISPLAY: Astral Dice 1.5.0-hotfix (Fabric 1.20.1)
+    CHANGELOG: skip (小版本更新不写 CF changelog: ver=1.5.0-hotfix, 用户 2026-11-02 规则)
+    # 或
+    CHANGELOG: attach release/1.5.0/PLAYER_CHANGELOG.md (主线版本)
 
 =====================================================================
 CurseForge 上传 API 要点（2026-09-30 实测）
@@ -185,6 +210,10 @@ UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
 JAR_RE = re.compile(r"^astral_dice-(?P<ver>[^+]+)\+(?P<loader>[a-z]+)_(?P<mc>.+)\.jar$")
 # StarEngine 库产物: starengine-<平台>-<版本>.jar（平台含 MC 版本，如 neoforge-1.21.1）
 LIB_JAR_RE = re.compile(r"^starengine-(?P<loader>neoforge|forge|fabric)-(?P<mc>\d+\.\d+(?:\.\d+)?)-(?P<ver>.+)\.jar$")
+# 站点显示名里的加载器写法（2026-11-02 用户规则）：jar 名是小写，站点显示名要规范大小写。
+LOADER_DISPLAY_LABELS = {"fabric": "Fabric", "forge": "Forge", "neoforge": "NeoForge"}
+# 主线版本判定（2026-11-02 用户规则）：X.Y.0 且不含 "-" 后缀（补丁 / hotfix / 预发布都算小版本）。
+MAINLINE_VERSION_RE = re.compile(r"^\d+\.\d+\.0$")
 CACHE_DAYS = 7
 # CurseForge 官方文档给出的 relation type 全集（没有 include 这一项）。
 RELATION_TYPES = ("requiredDependency", "optionalDependency", "embeddedLibrary", "incompatible", "tool")
@@ -568,6 +597,15 @@ def rel_display(p):
         return p
 
 
+def display_path(p):
+    """展示用路径：统一成正斜杠。
+
+    rel_display 在 Windows 上按 os.sep 渲染成反斜杠（str(Path) 的默认行为），而文档与
+    dry-run 样本一律写正斜杠 —— 同一个路径，这里只为输出口径一致、跨宿主可比。
+    """
+    return str(rel_display(p)).replace("\\", "/")
+
+
 def find_line(binding, key=None, loader=None, mc=None):
     """在 `tools/curseforge.json` 的 lines 里定位一条线：优先用 `key`，否则按 loader+mc 唯一匹配。"""
     lines = binding.get("lines") or []
@@ -641,6 +679,73 @@ def pick_changelog(ver, explicit):
         if p.is_file():
             return p
     return None
+
+
+def loader_display_label(loader):
+    """加载器显示名：fabric→Fabric / forge→Forge / neoforge→NeoForge；未知值回落为「首字母大写」。
+
+    ⚠️ 只对已知三个做规范映射；未知值走 ``key[:1].upper() + key[1:]``（保留其余原样），
+    不用 ``str.capitalize()`` —— 后者会把 ``neoForge`` 之类的中间大小写也抹平，
+    而未知加载器本来就没有权威写法，抹平只会更失真。
+    """
+    key = str(loader or "").strip()
+    if key.lower() in LOADER_DISPLAY_LABELS:
+        return LOADER_DISPLAY_LABELS[key.lower()]
+    return key[:1].upper() + key[1:]
+
+
+def default_display_name(ver, loader, mc):
+    """推导 CF 站点显示名：``Astral Dice <版本> (<加载器> <MC>)``（2026-11-02 用户规则）。
+
+    口径正本（样例即验收标准）：
+        astral_dice-1.5.0+fabric_1.20.1.jar        ⇒ Astral Dice 1.5.0 (Fabric 1.20.1)
+        astral_dice-1.5.0+neoforge_1.21.1.jar      ⇒ Astral Dice 1.5.0 (NeoForge 1.21.1)
+        astral_dice-1.5.0+forge_1.20.1.jar         ⇒ Astral Dice 1.5.0 (Forge 1.20.1)
+        astral_dice-1.5.0+neoforge_26.1.2.jar      ⇒ Astral Dice 1.5.0 (NeoForge 26.1.2)
+        astral_dice-1.5.0-hotfix+fabric_1.20.1.jar ⇒ Astral Dice 1.5.0-hotfix (Fabric 1.20.1)
+
+    ``ver`` 用 parse_jar 解析出的版本（**不含** ``+<加载器>_<MC>`` 后缀）。
+    ``--display-name`` 显式给了就以它为准（见 build_jobs / upload_metadata）。
+    """
+    return "Astral Dice %s (%s %s)" % (ver, loader_display_label(loader), mc)
+
+
+def is_mainline_version(ver):
+    """主线版本判定（2026-11-02 用户规则）：``X.Y.0`` 且不含 ``-`` 后缀 ⇒ 默认附带 changelog。
+
+    其它一律算小版本（补丁 / hotfix / 预发布）：
+        ``1.5.1``、``1.6.2``、``1.5.0-hotfix``、``1.3.7-beta.2``、``1.3.7-rc1`` ……
+    ⇒ 默认**不**在 CF 写 changelog。
+    """
+    return bool(MAINLINE_VERSION_RE.match(str(ver or "").strip()))
+
+
+def decide_changelog(ver, explicit, disabled=False):
+    """决定本次是否附带 changelog，返回 ``(Path 或 None, 打印用说明行)``。
+
+    规则（2026-11-02 用户规则，优先级从上到下）：
+      1. ``--no-changelog`` ⇒ 强制不附（与 ``--changelog`` 互斥，同时给直接报错）；
+      2. ``--changelog <文件>`` ⇒ 用户手动指定，任何版本都附（文件不存在仍报错）；
+      3. 主线版本（见 is_mainline_version）⇒ 自动取
+         ``release/<基础版本>/PLAYER_CHANGELOG*.md``；
+      4. 其它（小版本：补丁 / hotfix / 预发布）⇒ **不附** —— metadata 里
+         ``changelog`` 与 ``changelogType`` 两个字段都不出现。
+    """
+    if disabled and explicit:
+        raise SystemExit("[ERR] --no-changelog 与 --changelog 冲突：二者只能选一个")
+    if disabled:
+        return None, "CHANGELOG: skip (--no-changelog 强制不附 changelog)"
+    if explicit:
+        p = pick_changelog(ver, explicit)  # 内含「文件不存在就 SystemExit」
+        return p, "CHANGELOG: attach %s (显式 --changelog)" % display_path(p)
+    if is_mainline_version(ver):
+        p = pick_changelog(ver, None)
+        if p is not None:
+            return p, "CHANGELOG: attach %s (主线版本)" % display_path(p)
+        return None, ("CHANGELOG: skip (主线版本，但没有 release/%s/PLAYER_CHANGELOG*.md)"
+                      % str(ver).split("-")[0])
+    return None, ("CHANGELOG: skip (小版本更新不写 CF changelog: ver=%s, 用户 2026-11-02 规则)"
+                  % ver)
 
 
 # ---------------------------------------------------------------- 版本表（离线规划）
@@ -964,36 +1069,53 @@ def build_jobs(args, binding, cat, offline):
         ids, detail = plan_ids(cat, mc, loader, offline)
         line = find_line(binding, key=args.line, loader=loader, mc=mc)
         rel = relations_payload(line, disabled=args.no_relations)
+        # 显示名（2026-11-02 用户规则）：--display-name 优先；否则按
+        # 「Astral Dice <版本> (<加载器> <MC>)」自动推导。库产物不套用这套口径
+        # （它推到库项目，命名与模组发布件不同），保留 jar 文件名。
+        if args.display_name:
+            display = args.display_name
+        elif is_lib_jar(jar.name):
+            display = jar.name
+        else:
+            display = default_display_name(ver, loader, mc)
+        # changelog 策略（2026-11-02 用户规则）：只有主线版本默认附带；小版本不写。
+        changelog, changelog_line = decide_changelog(
+            ver, args.changelog, getattr(args, "no_changelog", False))
         jobs.append({"jar": jar, "ver": ver, "loader": loader, "mc": mc,
                      "releaseType": rtype, "gameVersions": ids, "_detail": detail,
                      "_line": (line or {}).get("key"), "_relations": rel,
-                     "_changelog": pick_changelog(ver, args.changelog)})
+                     "display": display, "_changelog": changelog,
+                     "_changelog_line": changelog_line})
     return jobs
 
 
 def print_jobs_plan(jobs):
     for j in jobs:
         cl = j["_changelog"]
-        if cl:
-            cl_desc = f"{rel_display(cl)}（{len(_read_text(cl))} 字符）"
-        else:
-            cl_desc = "（无，留空）"
         print(f"  {j['jar'].name}")
         print(f"    版本 {j['ver']} | {j['loader']} | MC {j['mc']} | 类型 {j['releaseType']}")
+        # 两条判定各打一行：dry-run 的验收依据（2026-11-02 用户规则）。
+        print(f"    DISPLAY: {j['display']}")
+        print(f"    {j['_changelog_line']}")
+        if cl:
+            print(f"    更新日志 = {display_path(cl)}（{len(_read_text(cl))} 字符）")
         print(f"    gameVersions = {j['gameVersions']}  {j['_detail']}")
-        print(f"    更新日志 = {cl_desc}")
         print(f"    relations = {describe_relations(j['_relations'])}"
               + (f"  [{j['_line']}]" if j.get("_line") else "  [未匹配到该线]"))
 
 
 def upload_metadata(args, job):
     metadata = {
-        "displayName": args.display_name or job["jar"].name,
+        # 显示名：--display-name 优先；否则用 build_jobs 里推导好的
+        # 「Astral Dice <版本> (<加载器> <MC>)」（2026-11-02 用户规则）。
+        "displayName": args.display_name or job.get("display") or job["jar"].name,
         "releaseType": job["releaseType"],
         "gameVersions": job["gameVersions"],
-        "changelogType": args.changelog_type,
     }
     if job["_changelog"]:
+        # changelogType 只在**真附带** changelog 时出现：小版本不写 CF changelog
+        # ⇒ changelog 与 changelogType 两个字段都不发（2026-11-02 用户规则）。
+        metadata["changelogType"] = args.changelog_type
         metadata["changelog"] = _read_text(job["_changelog"])
     if job.get("_relations"):
         metadata["relations"] = job["_relations"]
@@ -1159,9 +1281,15 @@ def build_push_parser():
         epilog=PUSH_EPILOG)
     p.add_argument("--jar", action="append", metavar="PATH", required=True,
                    help="要上传的 jar（可重复；相对路径按当前目录解析）")
-    p.add_argument("--changelog", help="更新日志文件（默认自动取 release/<版本>/PLAYER_CHANGELOG*.md）")
+    p.add_argument("--changelog",
+                   help="更新日志文件（给了就任何版本都附）；默认只对主线版本 X.Y.0 自动取 "
+                        "release/<版本>/PLAYER_CHANGELOG*.md，小版本（补丁/hotfix/预发布）默认不写")
     p.add_argument("--changelog-type", default="markdown", choices=["markdown", "html", "text"])
-    p.add_argument("--display-name", help="站点显示名（默认 = jar 文件名）")
+    p.add_argument("--no-changelog", action="store_true",
+                   help="强制不附带 changelog（覆盖主线版本的默认附带；与 --changelog 互斥）")
+    p.add_argument("--display-name",
+                   help="站点显示名（默认自动推导为 'Astral Dice <版本> (<加载器> <MC>)'，"
+                        "如 Astral Dice 1.5.0 (Fabric 1.20.1)）")
     p.add_argument("--mc-version", help="覆盖从文件名解析出的 MC 版本")
     p.add_argument("--loader", help="覆盖从文件名解析出的加载器（如 neoforge / forge）")
     p.add_argument("--release-type", choices=["release", "beta", "alpha"],
@@ -1278,9 +1406,15 @@ def build_legacy_parser():
         epilog=LEGACY_EPILOG)
     ap.add_argument("--jar", action="append", metavar="PATH",
                     help="要上传的 jar（可重复；相对路径按当前目录解析）。--update-file 模式下可省略")
-    ap.add_argument("--changelog", help="更新日志文件（默认自动取 release/<版本>/PLAYER_CHANGELOG*.md）")
+    ap.add_argument("--changelog",
+                    help="更新日志文件（给了就任何版本都附）；默认只对主线版本 X.Y.0 自动取 "
+                         "release/<版本>/PLAYER_CHANGELOG*.md，小版本（补丁/hotfix/预发布）默认不写")
     ap.add_argument("--changelog-type", default="markdown", choices=["markdown", "html", "text"])
-    ap.add_argument("--display-name", help="站点显示名（默认 = jar 文件名）")
+    ap.add_argument("--no-changelog", action="store_true",
+                    help="强制不附带 changelog（覆盖主线版本的默认附带；与 --changelog 互斥）")
+    ap.add_argument("--display-name",
+                    help="站点显示名（默认自动推导为 'Astral Dice <版本> (<加载器> <MC>)'，"
+                         "如 Astral Dice 1.5.0 (Fabric 1.20.1)）")
     ap.add_argument("--mc-version", help="覆盖从文件名解析出的 MC 版本")
     ap.add_argument("--loader", help="覆盖从文件名解析出的加载器（如 neoforge / forge）")
     ap.add_argument("--release-type", choices=["release", "beta", "alpha"],

@@ -1,0 +1,24 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "astral_dice:chip_recipes_enabled"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": "astral_dice:blank_chip",
+    "L": "minecraft:lightning_rod",
+    "P": "astral_dice:star_plate",
+    "W": "astral_dice:conductive_wire",
+    "X": "minecraft:copper_ingot"
+  },
+  "pattern": [
+    "XLX",
+    "WBW",
+    "PPP"
+  ],
+  "result": {
+    "id": "astral_dice:infinite_grid_chip"
+  }
+}

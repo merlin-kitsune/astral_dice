@@ -29,7 +29,7 @@ import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
  * 1. 继承本类,覆写业务钩子(如 `curioTick` / `onChipUnequip`);
  *    「**装备时**」的逻辑直接覆写 `ICurioItem#onEquip`——本类**没有**
  *    `onChipEquip` 这个钩子(旧 javadoc 误引用了一个不存在的方法,已于 2026-10-01 订正);
- *    参考 `MedkitEmergencyChipItem#onEquip` 与 `AtmChipItem#onEquip`。
+ *    参考 `MedkitEmergencyChipItem#onEquip`(⚠️ 2026-10-08:原示例 `AtmChipItem#onEquip` 已随 ATM 机筹码重写而删除)。
  * 2. 战斗/资源加成统一注册到对应修饰器注册表(DiceCombatModifiers / SpellDamageRegistry / EffectCardPeriod),
  *    不要散落硬编码在事件类中。
  */
@@ -68,8 +68,19 @@ public abstract class BaseChipItem extends Item implements ICurioItem {
      */
     // 1.20.1 AttributeModifier 以 UUID 标识(按本物品注册名+后缀稳定派生,对应 1.21 的 ResourceLocation id)
     protected java.util.UUID attributeModifierId(String suffix) {
+        return attributeModifierId(this, suffix);
+    }
+
+    /**
+     * {@link #attributeModifierId(String)} 的**静态版**:按物品注册名派生**同一条**修饰器 id
+     * (UUID,与实例版逐字节同源)。
+     * <p>外部需要「按物品反查本筹码加到实体属性上的那条修饰器」时**必须**走本方法 ——
+     * 不得另抄一份 id 拼装规则:两处一旦漂移,"按 id 查修饰器"会静默查空(不报错、只是行为不对)。
+     * <p>⚠️ 只可在**注册完成之后**调用(内部读 {@code BuiltInRegistries.ITEM}),不得做成静态常量。
+     */
+    public static java.util.UUID attributeModifierId(net.minecraft.world.item.Item item, String suffix) {
         net.minecraft.resources.ResourceLocation key =
-                net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(this);
+                net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(item);
         return java.util.UUID.nameUUIDFromBytes(
                 (com.merlinkitsune.astral_dice.AstralDiceMod.MODID + ":chip_" + key.getPath() + "_" + suffix)
                         .getBytes(java.nio.charset.StandardCharsets.UTF_8));

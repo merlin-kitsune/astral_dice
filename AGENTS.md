@@ -27,6 +27,7 @@
 4. **保护素材与他人改动**：`models/`、`images/`、`sound/` 属随时更新的素材目录；`git status` 里出现不属于自己的改动（含未跟踪文件）⇒ 立即停手并报告，不 `add` / `commit` / `stash` / `checkout`、不删文件。
 5. **互斥锁**：写文件或启动 Gradle 前检查 `F:/MCProject/.agent-locks/`（Linux：`/mnt/f/MCProject/.agent-locks/`）；Kimi 用 `kimi.lock`、DSH 用 `dsh.lock`；尊重对方的活跃锁，结束只清理自己的锁。
 6. **不代改他人职责**：模组源码 / 资源 / 版本号 / 依赖 / 发布配置的改动，按所属宿主的规则文件走。
+7. **没有详细测试就没有发布版本**：未完成本地详细测试与实机冒烟取证的版本一律不得作为发布版本；生产版本的 push / tag / Release / CurseForge 上传必须是整条流程的最后一步（2026-11-02 用户裁决）。
 
 ## 三、按需文档索引
 
@@ -38,10 +39,10 @@
 | NTFS 双系统工作树 / Windows 互操作 | `docs/handover-2026-10-31-native-linux-migration.md`（`/mnt/f` 同盘、大小写与换行口径、锁与并发）；旧副本同步脚本 `scripts/dev/rsync-original.sh` 已停用 |
 | 规则全文（逐批历史、领域规格） | `docs/agent/AGENTS-full.md`；标题→行号总表 `docs/agent/AGENTS-TOC.md` |
 | 宿主分工矩阵、互斥、冲突处理 | `docs/agent/AGENT-SPLIT.md` |
-| 立牌 / 物品的英文与日文命名（wiki 角色人名，禁机翻） | `docs/agent/AGENTS-full.md`〈立牌 / 物品英日命名规则〉（L4107 起）；权威表 `tools/sign_display_names.json`；门禁 `python tools/verify_sign_display_names.py` |
+| 立牌 / 物品的英文与日文命名（wiki 角色人名，禁机翻） | `docs/agent/AGENTS-full.md`〈立牌 / 物品英日命名规则〉（L4116 起）；权威表 `tools/sign_display_names.json`；门禁 `python tools/verify_sign_display_names.py` |
 | DSH 委派 runbook | `docs/agent/delegation-runbook.md` |
 | 规则库自身说明 | `docs/agent/README.md` |
 | Linux 测试台（bash） | `scripts/test/linux/README.md`（`env.sh` / `launch.sh` / `stop.sh`）；Linux 规则正本的〈测试台现状（Linux）〉一节 |
-| 桌面控制 / 游戏内注入通道 | `docs/agent/AGENTS-dsh-linux.md` 的〈桌面控制与实机通道（Wayland）〉与〈AutoJS 运行时通道〉；DSH MCP serverName `computer-use-linux` / `screen-ocr`（AutoJS 走 HTTP，本机未注册 MCP） |
+| 桌面控制 / 游戏内注入通道 | `docs/agent/AGENTS-dsh-linux.md` 的〈桌面控制与实机通道（Wayland）〉与〈AutoJS 运行时通道〉；DSH MCP serverName `computer-use-linux` / `screen-ocr` / `autojs`（2026-10-31 已注册，端点没起时 disconnected 属环境问题） |
 
 > 本文件只放「分派 + 共同红线 + 索引」。宿主专用的工作方式（额度口径、委派细节、角色设定）、逐批历史与完整领域规格**都不放在这里**，一律留在各自的规则文件里，按需读取。

@@ -1,0 +1,47 @@
+{
+  "case_id": "TRINKET-BACKEND-fabric-1.20.1",
+  "title": "饰品双后端三态：① Curios 兼容层字节码在位（compat/curios/TrinketBridge、CuriosApi、ICurioItem）；② Trinkets 侧数据在位（data/trinkets/*.json >= 8）；③ 三态下都不许出现 NoClassDefFoundError / ClassNotFoundException（缺前置必须降级而不是崩）。判据锚字节码条目名与日志行，不锚渲染结果。",
+  "version": "fabric-1.20.1",
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "三态 = Curios 在 / Trinkets 在 / 两者都缺；本条只验「代码与数据在位」和「缺前置不崩」两条客观事实，装没装由 env 阶段报。"
+    },
+    {
+      "op": "jar_stats",
+      "save_as": "jar"
+    }
+  ],
+  "assert": [
+    {
+      "type": "bytecode",
+      "pattern": "compat/curios/TrinketBridge\\.class$"
+    },
+    {
+      "type": "bytecode",
+      "pattern": "compat/curios/CuriosApi\\.class$"
+    },
+    {
+      "type": "bytecode",
+      "pattern": "compat/curios/ICurioItem\\.class$"
+    },
+    {
+      "type": "jar",
+      "from": "jar",
+      "trinkets_min": 8,
+      "signs_min": 25
+    },
+    {
+      "type": "absent",
+      "pattern": "NoClassDefFoundError: com/merlinkitsune/astral_dice/compat/curios"
+    },
+    {
+      "type": "absent",
+      "pattern": "ClassNotFoundException: com/merlinkitsune/astral_dice/compat/curios"
+    },
+    {
+      "type": "crash"
+    }
+  ]
+}

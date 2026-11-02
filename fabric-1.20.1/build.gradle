@@ -1,5 +1,5 @@
 // Astral Dice / Fabric 1.20.1 子项目
-// Java 17 · Mojang 官方映射(officialMojangMappings)· Fabric Loom 1.14.10
+// Java 17 · Mojang 官方映射(officialMojangMappings)· Fabric Loom 1.17.21(需 Gradle >= 9.5.0,JDK21 可用)
 //
 // 基准 = forge-1.20.1(1.3.2-hotfix)的源码;加载器层整体替换:
 //   装饰品栏  Curios 5.14.1            -> Trinkets 3.7.2
@@ -11,7 +11,7 @@
 plugins {
     id 'java-library'
     id 'maven-publish'
-    id 'fabric-loom' version '1.14.10'
+    id 'fabric-loom' version '1.17.21'
     id 'idea'
 }
 
@@ -82,11 +82,12 @@ dependencies {
         modRuntimeOnly "maven.modrinth:forge-config-api-port:${forgeconfigapiport_mr_version}"
     }
 
-    // ── 前置库(跨仓硬前置;JarJar 内嵌,替代 Forge 侧的 jarJar) ────────────────
-    // ⚠️ 库必须先 :fabric-1.20.1:publishToMavenLocal。include(...) 会把库 jar 嵌进产物
-    //    (等价于 Forge 侧的 jarJar),玩家无需单独安装;整合包里也不应再放独立库 jar。
+    // ── 前置库(跨仓硬前置;独立外部 jar，与另三线同口径) ─────────────
+    // ⚠️ 库必须先 :fabric-1.20.1:publishToMavenLocal。
+    // ⚠️ 2026-11-02 用户裁决:库**不再内嵌**(Loom include 已撤除),玩家/整合包必须自行把
+    //    starengine-fabric-1.20.1-<starengine_version>.jar 放进 mods;版本下限由 fabric.mod.json 的
+    //    depends.starengine 表达(${lib_version_range}, 见 gradle.properties)。
     modImplementation "${libGroup}:starengine-fabric-1.20.1:${libVersion}"
-    include "${libGroup}:starengine-fabric-1.20.1:${libVersion}"
 
     // ── 饰品栏提供方之一:Trinkets(替代 Curios;本线的原始移植目标) ──────────
     // ⚠️ 2026-09-29 用户裁决:Trinkets 与 Accessories **二选一**即可 ⇒ 由「硬前置」改为**软前置**:
@@ -176,9 +177,20 @@ dependencies {
     //    `required:false` + 字符串 `targets` ⇒ Jade 缺席时整条 mixin 静默跳过、不影响启动。
     //    Modrinth version id `ahavHbAT` = `Jade-1.20-Fabric-11.13.3.jar`（与 forge 线 11.13.3 同版）。
     modImplementation "maven.modrinth:jade:ahavHbAT"
-    // ⚠️ JEI 15.62.0.216 的 fabric 产物由 **Loom 1.17.20** 构建 ⇒ 被 Loom 1.14.10 的
-    //    「Mod was built with a newer version of Loom」门禁拒绝(实测)。JEI 不参与编译,
-    //    故改为**运行时手工投放**:把 jei-1.20.1-fabric-15.62.0.216.jar 放进 run/server/mods/ 与 run/client/mods/。
+    // JEI(物品/配方查看器;compat/jei 适配层的编译期依赖)
+    // 历史:JEI 15.62.0.216 的 fabric 产物由 **Loom 1.17.20** 构建,曾被本线的 Loom 1.14.10
+    //   以「Mod was built with a newer version of Loom」门禁拒绝,故只作 modRuntimeOnly 手工投放。
+    //   2026-11-01 本线 Loom 升至 1.17.21:门禁只比 major.minor 两段(1.17 vs 1.17 相等即放行),恢复为编译期依赖。
+    //   注意 1.18.x 起强制 Gradle 9.7 + JVM 25,本线固定 JDK21 故不跟。
+    // 坐标:Modrinth version id `pQiaGCAN` = jei-1.20.1-fabric-15.62.0.216.jar
+    //   (与 gradle.properties 的 jei_version=15.62.0.216 同版;forge 变体 id 是 p5jzDqhi,别混用)。
+    modImplementation "maven.modrinth:jei:pQiaGCAN"
+    // JEI 15.62.0.216 的**硬依赖** mezzconfig（mod id `mezz_config`，Modrinth 项目 `7tEfOcA7`）：
+    //   Loader 解析阶段是 HARD_DEP（`[0.6.3,1.0.0)`），缺它 dev runServer/runClient 直接死在
+    //   FabricLoader Resolution（2026-11-01 实机 launch 首跑即踩）。
+    //   仅 dev 运行期需要：本模组代码不引用、不 jarJar、也不写进 fabric.mod.json。
+    //   坐标：Modrinth version id `f1hgxQ9M` = MezzConfig 0.6.10（1.20.1 / fabric）。
+    modRuntimeOnly "maven.modrinth:mezzconfig:f1hgxQ9M"
     modRuntimeOnly "maven.modrinth:carpet:K0Wj117C"
     // KubeJS(测试探针用,与 forge 侧 2001.6.5-build.26 对齐)
     // ⚠️ KubeJS 声明 architectury >= 9.1.12 硬依赖 ⇒ 必须一并投放,否则 Loader 解析阶段硬拒。
@@ -189,8 +201,8 @@ dependencies {
     // AutoJS 实机测试库（仅 dev 运行期；CI/普通构建不解析）
     // 由 scripts/test/tools/publish_autojs_maven.ps1 发布到 mavenLocal（见本文件 :47 的 mavenLocal()）。
     // 条件守卫：默认关闭 => 没有本地产物时普通构建 / CI 不解析该坐标。
-    // Loom 1.14.10 的 mod* 配置对带 fabric.mod.json 的依赖做 intermediary->named；AutoJS 产物
-    //    manifest `Fabric-Loom-Version=1.10.5`，低于本仓 1.14.10，不触发 built-with-newer-Loom 门禁。
+    // Loom 的 mod* 配置对带 fabric.mod.json 的依赖做 intermediary->named；AutoJS 产物
+    //    manifest `Fabric-Loom-Version=1.10.5`，低于本仓 1.19.3，不触发 built-with-newer-Loom 门禁。
     // 必须 modRuntimeOnly（不写成 modImplementation）：本模组代码不引用 AutoJS；也不 jarJar。
     if (providers.gradleProperty('autojsTestMod').orNull == '1') {
         modRuntimeOnly 'cc.sighs.autojs:AutoJS-fabric-1.20.1:1.0.0'
@@ -198,7 +210,8 @@ dependencies {
 }
 
 loom {
-    // ⚠️ interfaceInjection.enableDependencyInterfaceInjection 保持**开启**(Loom 1.14 的既有行为),
+    // ⚠️ interfaceInjection.enableDependencyInterfaceInjection 保持**开启**(Loom 1.14 起的既有行为;
+    //    1.19.3 未变:构造函数里对 enableDependencyInterfaceInjection 调 convention(true),javap 实证),
     //    虽然它会被 Accessories 的 custom.loom:injected_interfaces 顺手利用
     //    (把 AccessoriesAPIAccess 注入 LivingEntity、把 AbstractButtonExtension 注入 AbstractButton)。
     //    不能关:本模组的 FabricLootInjector 依赖 **Fabric API 自己的注入**
@@ -207,7 +220,7 @@ loom {
     //    ⇒ 接入 Accessories 带来的编译期污染改为在**源码侧**消化:见
     //      client/gui/StarCoinWalletButtons$WalletButton#getRenderingEvent 的说明。
     accessWidenerPath = file('src/main/resources/astral_dice.accesswidener')
-    // ⚠️ Loom 1.14 起 Mixin 注解处理器**默认关闭**;`mixin { }` 配置会被告警要求移除。
+    // ⚠️ Loom 1.14 起(含 1.19.3)Mixin 注解处理器**默认关闭**;`mixin { }` 配置会被告警要求移除。
     //    refmap 由 Loom 在 remapJar 阶段依据 mixin 配置自动生成(见 P0 验证步骤)。
     runs {
         client {
@@ -220,7 +233,14 @@ loom {
             // ⚠️ 注意 API **不通用**:ModDevGradle/ForgeGradle 是 `programArgument`(单数名词),
             //    Fabric Loom 是 `programArg`/`programArgs` —— 照抄另三线的写法会在配置期直接报
             //    "Could not find method programArgument()"(实测 2026-09-29)。
-            if (project.hasProperty('quickplay')) {
+            // 自动化测试(2026-11-02 加):gradlew runClient -PquickplayMultiplayer=127.0.0.1:25565
+            //   直接加入指定服务器。原有的 -Pquickplay 只支持单机世界(--quickPlaySingleplayer)，
+            //   而 LT 实机批次里大量条目需要真玩家在线(/astralparty dump @a 之类会回 No player was found)，
+            //   没有这条参数就只能靠人手点菜单。两个参数互斥，同时给时以 multiplayer 为准。
+            if (project.hasProperty('quickplayMultiplayer')) {
+                programArg '--quickPlayMultiplayer'
+                programArg project.findProperty('quickplayMultiplayer')
+            } else if (project.hasProperty('quickplay')) {
                 programArg '--quickPlaySingleplayer'
                 programArg project.findProperty('quickplay')
             }
@@ -455,21 +475,21 @@ tasks.register('pushToGame') {
         }
         logger.lifecycle("pushToGame: " + deployJar(jarFile, packModsDir))
 
-        // --- 内嵌前置自检:库已随本 mod 内嵌(Loom 的 include ⇒ META-INF/jars/*.jar),
-        //     整合包里**不应**再单独放库 jar ---
-        // Fabric Loader 的 Jar-in-Jar 按 modId 识别同源件:顶层 mod 列表里若已有同名 mod,
-        // 内嵌副本会被丢弃(只打一条 WARN)⇒ 独立 jar 版本更旧时会**盖掉**内嵌版本,
-        // 表现为 NoSuchMethodError / NoClassDefFoundError。此处只告警,不阻断构建。
+        // --- 外置前置自检:库**不再内嵌**(2026-11-02 用户裁决),产物里不应有 META-INF/jars/*.jar,
+        //     整合包里**必须**有独立的 starengine jar ---
+        // 库现为四线统一的外部硬前置:fabric.mod.json 的 depends.starengine 携带版本区间
+        // [${libVersionLocked},2.0.0),缺少库或版本不符时 Loader 会以「缺少必需前置」拒绝启动。
+        // 此处只告警,不阻断构建。
         def zf = new java.util.zip.ZipFile(jarFile)
         try {
             def entries = zf.entries().toList()
             def nested = entries.findAll {
                 it.name.startsWith('META-INF/jars/') && it.name.endsWith('.jar')
             }*.name
-            if (nested.isEmpty()) {
-                logger.warn("pushToGame: 产物 ${jarFile.name} 内未发现 META-INF/jars/(Loom 的 include 配置未生效?)")
+            if (!nested.isEmpty()) {
+                logger.warn("pushToGame: 产物 ${jarFile.name} 仍内嵌 META-INF/jars/(已改为外置前置, 请确认 Loom include 已移除)")
             } else {
-                logger.lifecycle("pushToGame: 内嵌前置自检 OK — ${nested.join(', ')}")
+                logger.lifecycle("pushToGame: 外置前置自检 OK — 产物内无内嵌库")
             }
         } finally {
             zf.close()
@@ -479,10 +499,29 @@ tasks.register('pushToGame') {
                 f.isFile() && f.name.startsWith('starengine-') && f.name.endsWith('.jar')
             } ?: []
             if (libJars) {
-                logger.warn("pushToGame: 整合包内仍存在独立的 starengine jar ${libJars*.name} —— " +
-                        "库现已内嵌进本 mod,独立 jar 会被优先采用并盖掉内嵌版本(${libVersionLocked});建议删除")
+                logger.lifecycle("pushToGame: 整合包内独立库 jar ${libJars*.name}(外置前置口径, 需与引脚 ${libVersionLocked} 匹配)")
             } else {
-                logger.lifecycle("pushToGame: 整合包内无独立库 jar(符合内嵌口径)")
+                logger.warn("pushToGame: 整合包内**缺少**独立的 starengine jar —— " +
+                        "库现为外部硬前置, 必须放入 starengine-fabric-1.20.1-${libVersionLocked}.jar, 否则游戏以缺前置拒绝启动")
+            }
+        }
+    }
+}
+
+// 2026-11-02: dev run 强制 JDK 21（不改产物字节码，仅改运行期 JVM）。
+// 根因（实测，非推测）：fabric-loader 0.19.5 内置 tinyremapper 0.15 的 OutputConsumerPath
+// 用 `FileSystemReference.openJar(path, create=true).isReadOnly()` 判定可写性；
+// JDK 17 的 zipfs 在目标 jar **尚不存在**时把 readOnly 推成 true（探针实测 JDK17 isReadOnly=true、
+// JDK21 isReadOnly=false，同一 fabric-loader jar、同一路径）⇒ 运行期重映射必然抛
+// `java.io.IOException: the jar file ... can't be written`。
+// 触发面仅限「需要运行期重映射的 mod」= run/{server,client}/mods 里的 astral_embedded-*.jar
+// （tools/loom_embedded_jars.py 投放的内嵌库），删掉它们会缺 puzzlesaccessapi 启动失败。
+// 产物 compileJava 仍按 toolchain 17 出 Java 17 字节码，仅 runClient/runServer/runDatagen 换 JVM。
+tasks.configureEach { t ->
+    if (t.name == 'runClient' || t.name == 'runServer' || t.name == 'runDatagen') {
+        if (t.hasProperty('javaLauncher')) {
+            t.javaLauncher = javaToolchains.launcherFor {
+                languageVersion = JavaLanguageVersion.of(21)
             }
         }
     }

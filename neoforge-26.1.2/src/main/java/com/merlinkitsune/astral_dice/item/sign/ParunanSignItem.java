@@ -1,7 +1,16 @@
 package com.merlinkitsune.astral_dice.item.sign;
 
-import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
+import com.merlinkitsune.starengine.event.EffectTimerGuard;
+import com.merlinkitsune.astral_dice.item.sign.SignEquipCheck;
+import top.theillusivec4.curios.api.SlotContext;
 
+import com.merlinkitsune.astral_dice.item.ChargeManager;
+import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
+import com.merlinkitsune.astral_dice.item.ModItems;
+import com.merlinkitsune.astral_dice.item.StarLightManager;
+import com.merlinkitsune.astral_dice.resource.ResourceConversion;
+import java.util.concurrent.ThreadLocalRandom;
+import com.merlinkitsune.astral_dice.shop.CardShopOpener;
 import com.merlinkitsune.starengine.component.GameplayConstants;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -9,13 +18,43 @@ import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import top.theillusivec4.curios.api.SlotContext;
+import top.theillusivec4.curios.api.CuriosApi;
 
-import java.util.concurrent.ThreadLocalRandom;
-import com.merlinkitsune.astral_dice.resource.ResourceConversion;
-import com.merlinkitsune.astral_dice.item.StarLightManager;
-
+/**
+ * 经商立牌(parunan,史诗)。
+ *
+ * <h3>主动「网络购物」</h3>
+ * 右键 / 立牌栏按键:**远程打开卡牌商店**界面(购买卡牌、星光兑换星币、向其他在线玩家转账星币
+ * 全部在界面内完成),本身不施加任何效果、不消耗星光。玩家级冷却 {@value #ACTIVE_COOLDOWN_SECONDS} 秒
+ * ——与其余立牌的冷却链同款(仅充能上限封顶)。
+ *
+ * <h3>被动「传奇商人」(2026-10-08 用户裁决,整条重写)</h3>
+ * 五条内容**全部结算在** {@link com.merlinkitsune.astral_dice.shop.CardShopMenu}:
+ * <ol>
+ *   <li>每次进入商店时获得 1 星币(**仅佩戴者本人**);</li>
+ *   <li>自身与团队成员的商店中可购买战斗牌数量 +1(**全队光环**);</li>
+ *   <li>自身与团队成员进入商店后,每张牌有 10% 概率降至 1 星币(**全队光环**);</li>
+ *   <li>转账后使当前商店内第一张未降价卡牌降至 1 星币(**仅佩戴者本人**);</li>
+ *   <li>星光兑换额外获得 50% 收入(**仅佩戴者本人**;截断后不足 1 枚时至少 +1)。</li>
+ * </ol>
+ *
+ * <p>⚠️ 旧被动「每 60 秒 +1 星光 / 触发骰神赐福时获得首次骰点 ×2 星光」与
+ * {@code gainStarlightOnBlessing} 已按同一次用户裁决**整条移除**,本类不再产出星光。
+ *
+ * <p>沿革:2026-10-06 用户裁决把原主动「星光兑换 + 三选一随机增益」整体迁入卡牌商店
+ * (随机增益与锁定(生效中)态一并取消);2026-10-08 再按新裁决重写主动名与整条被动。
+ */
 public class ParunanSignItem extends BaseSignItem {
+
+    /** 主动「网络购物」的玩家级冷却基数(秒)。 */
+    private static final int ACTIVE_COOLDOWN_SECONDS = 120;
+
+    /** 玩家是否佩戴经商立牌(未佩戴骰子 ⇒ 本件被动/主动一律不生效,数值保留)。 */
+    public static boolean isEquipped(Player player) {
+        return SignEquipCheck.isEquipped(player, ModItems.PARUNAN_SIGN.get());
+    }
+
+
     public ParunanSignItem(Properties properties) {
         super(properties);
     }
@@ -72,23 +111,31 @@ public class ParunanSignItem extends BaseSignItem {
         return InteractionResult.SUCCESS;
     }
 
-    // 主动施加的三选一效果(饱和/幸运/村庄英雄):锁定(生效中)态的门控效果来源
-    private static final java.util.List<net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect>> LOCK_GATE_EFFECTS =
-            java.util.List.of(MobEffects.SATURATION, MobEffects.LUCK, MobEffects.HERO_OF_THE_VILLAGE);
-
-    // 第二批「三态化」:锁定已在 handleUse 内登记(仅当本次实际施加成功);此处只回答"是否已进入锁定"
+    /**
+     * 主动冷却 tick:佩戴时基础 {@value #ACTIVE_COOLDOWN_SECONDS} 秒 —— 与怪力侦探/枪匠立牌
+     * **同款链**(仅按充能上限封顶)。
+     */
     @Override
-    protected boolean startActiveLockOnUse(Player player, long now) {
-        return isSignActiveLocked(player);
+    protected int activeCooldownBaseTicks(Player player) {
+        int ticks = isEquipped(player)
+                ? ACTIVE_COOLDOWN_SECONDS * 20
+                : GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS;
+        ticks = (int) ChargeManager.signCooldownTicks(player, ticks);
+        return ticks;
     }
 
-    // 门控效果实例仍在:效果被外力提前移除(如牛奶桶)时锁定提前结束(硬上界不延长)
+    /**
+     * 同上,但**不折电池**:{@code signCooldownTicks} → {@code signCooldownTicksBase},
+     * 其余(isEquipped 三元 / Math.max 夹底 / 兜底常量)**逐字保留**。
+     * 供 {@code sign_active_max_cooldown_base}(命运指引卡减半基准)使用。
+     */
     @Override
-    protected boolean isGateEffectActive(Player player) {
-        for (net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect> effect : LOCK_GATE_EFFECTS) {
-            if (player.hasEffect(effect)) return true;
-        }
-        return false;
+    protected int activeCooldownBaseTicksNoBattery(Player player) {
+        int ticks = isEquipped(player)
+                ? ACTIVE_COOLDOWN_SECONDS * 20
+                : GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS;
+        ticks = (int) ChargeManager.signCooldownTicksBase(player, ticks);
+        return ticks;
     }
 
     // 触发骰神赐福后立即获得 骰点*2 星光(上限由 StarLightManager 统一管理)

@@ -54,7 +54,23 @@
 - Loader gate: the starengine `versionRange` upper bound in both P0 `mods.toml` files moves `2.0.0` -> `27.0.0` (under the new scheme the leading digit is the year, so only a breaking change bumps it).
 - CI: the library checkout `ref` in `.github/workflows/build.yml` is pinned to library `next` commit `b78fe10` (the `next` branch must be pushed first, otherwise that step fails).
 
-## 1.5.0
+## 1.5.0-hotfix (2026-11-02)
+
+### Bug Fixes
+
+- **Fixed: the `enable_chip_recipes` switch on Fabric 1.20.1 had no effect** — the switch was read by the code,
+  but the chip recipes carried no condition block at all, so all 67 chip recipes were always registered no
+  matter how the option was set; the chip recipes are now gated by Fabric official resource condition
+  (`fabric:load_conditions`), with their 67 matching advancements gated the same way, and the option takes
+  effect after a restart.
+
+### Player-facing changes
+
+- **The Fabric 1.20.1 build is now versioned `1.5.0-hotfix`** — only this line moves to a hotfix number; the
+  other three lines (NeoForge 1.21.1 / Forge 1.20.1 / NeoForge 26.1.2) stay at `1.5.0`. The interop version is
+  still `1.5`, so it can still play together with the three 1.5.0 lines.
+
+## 1.5.0 (2026-11-02)
 
 ### New Content
 
@@ -87,13 +103,28 @@
   icons, same shapes as vanilla), matching the other three lines; mobs still show their vanilla armor value.
   **Without Jade nothing changes** (no extra dependency is required of players).
 
-- **StarEngine is no longer bundled (NeoForge 1.21.1 / Forge 1.20.1)**: the `jarJar` embedding was removed from
-  both release lines, so the shipped jars no longer contain `META-INF/jarjar/`. StarEngine (`starengine`,
-  **1.1.0**) is now a **standalone prerequisite** that must be installed in `mods` at the same version this
-  build was compiled against; a missing library fails startup with "Missing or unsupported mandatory dependencies".
+- **StarEngine is no longer bundled (all four lines)**: the `jarJar` embedding was removed from every release
+  line, so none of the shipped jars contains `META-INF/jarjar/` any more; the NeoForge 26.1.2 `jarJar` block and
+  the Fabric 1.20.1 Loom `include` were dropped as well. StarEngine (`starengine`, **1.1.0**) is now a
+  **standalone prerequisite** that must be installed in `mods` at the same version this build was compiled
+  against (`starengine-neoforge-1.21.1-1.1.0.jar` / `starengine-forge-1.20.1-1.1.0.jar` /
+  `starengine-neoforge-26.1.2-1.1.0.jar` / `starengine-fabric-1.20.1-1.1.0.jar`, CurseForge project 1755415);
+  a missing or out-of-range library fails startup with "Missing or unsupported mandatory dependencies".
   The compile-time and dev-run dependencies are unchanged (`implementation` / `modImplementation`), and
-  `mods.toml` still declares `starengine` as a required dependency. The NeoForge 26.1.2 and Fabric 1.20.1 builds
-  still embed the library for now.
+  `mods.toml` / `fabric.mod.json` still declare `starengine` as a required dependency
+  (`versionRange="[1.1.0,2.0.0)"` on the two NeoForge lines, `>=1.1.0 <2.0.0` on the Fabric line).
+
+- **1.5.0 ships all four platform lines as a stable release at once**: the `neoforge_1.21.1` / `forge_1.20.1` / `neoforge_26.1.2` / `fabric_1.20.1` jars share one GitHub Release, tagged with the bare version `1.5.0` and published as a stable release (not a pre-release).
+
+- **StarEngine is a plain external dependency on all four lines (build side)**: `jarJar` was removed from the
+  NeoForge 26.1.2 build and the Loom `include` from the Fabric 1.20.1 build; both now only warn when the
+  produced jar still contains `META-INF/jarjar/` (NeoForge) or `META-INF/jars/` (Fabric).
+  `neoforge-26.1.2/build.gradle` gained `starengine_version` in its `generateModMetadata` `replaceProperties`,
+  so `neoforge.mods.toml` renders `versionRange="[1.1.0,2.0.0)"`; the Fabric line tightened
+  `starengine_version_range` in `gradle.properties` from `>=1.1.0` to `>=1.1.0 <2.0.0`. The Fabric build also
+  warns when the target modpack has no standalone `starengine` jar. Verified jars:
+  `astral_dice-1.5.0+neoforge_26.1.2.jar` (2,793,318 B, no `META-INF/jarjar/`) and
+  `astral_dice-1.5.0+fabric_1.20.1.jar` (2,938,085 B, no `META-INF/jars/`).
 
 #### Input & UI
 
@@ -193,11 +224,11 @@
   **1 every 30 minutes** (**it keeps ticking while you are not in the shop**); at zero the refresh button
   **only flashes red and sends nothing**.
   You **cannot open the shop** when you **already own every chip** or have **no free inventory slot** (a message explains which).
-- **Five new chips: Flashlight - Burst / Fortune Stick / Reagent - Abyss / Wireless Transmission Pole / Sensor Device** (2026-10-15; this batch lands on the two P0 lines `neoforge-1.21.1` and `forge-1.20.1` — `neoforge-26.1.2` and `fabric-1.20.1` follow in a later batch, so both P0 lines' chip pools grow **61 → 66** (Rare 19 / Epic 28 / Legendary 19)):
+- **Five new chips: Flashlight - Burst / Fortune Stick / Abyss Reagent / Wireless Transmission Pole / Sensor Device** (2026-10-15; this batch lands on the two P0 lines `neoforge-1.21.1` and `forge-1.20.1` — `neoforge-26.1.2` and `fabric-1.20.1` follow in a later batch, so both P0 lines' chip pools grow **61 → 66** (Rare 19 / Epic 28 / Legendary 19)):
   **The crafting recipes for all five are not implemented yet** (`ModRecipeProvider` and the recipe resources are untouched in this batch, so `verify_chip_recipes` / `verify_chip_acquisition` reporting a missing recipe for them is expected; suggested recipes are in the last five rows of `docs/chip-recipe-plan.md`):
   - **Flashlight - Burst** (Legendary / Starlight) - attacking a **hostile** target this player has never attacked grants +1 Starlight (deduplication is **per player × target**, so different wearers each earn their own credit; capped at 256 tracked targets, after which nothing more is granted); every 2 layers of Starlight grant +1 Attack Damage.
   - **Fortune Stick** (Epic / Starlight) - during Dice Blessing, the first **monster** kill makes the wearer and friendly players within 16 blocks gain 1-7 Starlight each (once per Blessing cycle).
-  - **Reagent - Abyss** (Epic / Healing) - on equip, +2 healing layers (-2 on unequip); triggering healing grants damage absorption (yellow hearts) equal to effective healing × 2; triggering a Dice Blessing and each 1:00 healing settlement now each grant **+2** healing layers (same arrangement as the Medkits).
+  - **Abyss Reagent** (Epic / Healing) - on equip, +2 healing layers (-2 on unequip); triggering healing grants damage absorption (yellow hearts) equal to effective healing × 2; triggering a Dice Blessing and each 1:00 healing settlement now each grant **+2** healing layers (same arrangement as the Medkits).
   - **Wireless Transmission Pole** (Epic / Charge) - effect card play count +1; each time charge is gained, other friendly players within 8 blocks each gain +1 charge.
   - **Sensor Device** (Epic / Mark) - every 3 Mark layers on an attacked target lower that target's combat dice by 1 (up to -4); a successful dodge applies 1 Mark layer to the attacker.
   ⚠️ **The Chip Shop has no discount path at all** (the Membership Recommendation chip only cheapens the Card Shop), and its screen **draws no title text**.
@@ -568,7 +599,9 @@
     without raising dice-battle attack power (swing speed still doubles; with or without the chip, the same charging rhythm yields
     an identical dice-battle attack-power coefficient).
   - **Bookmark** - damage bonus for damage effect cards **+1 → +2**.
-  - (**Reagent - Abyss** / **Sensor Device** / **Airbag** adjustments are folded into their own entries in this version.)
+  - (**Abyss Reagent** / **Sensor Device** / **Airbag** adjustments are folded into their own entries in this version.)
+
+- **"Abyss Reagent" name unified** (2026-11-02, all four lines): the display name, tooltip and every guide/handbook reference now read "Abyss Reagent" (zh_cn: `深渊试剂`, ja_jp: `深淵試薬`) instead of the old compound form.
 
 #### Platform & Compatibility
 
@@ -610,7 +643,9 @@
 
 ### Bug Fixes
 
-- **Five chip recipes were missing**: Flashlight - Burst, Fortune Stick, Reagent - Abyss, Wireless Transmission Pole and Sensor Device now have shaped recipes on both P0 lines (their school materials follow the existing charge / healing / mark / starlight patterns).
+- **Fabric 1.20.1: the seven new signs showed no tooltip**: the Fabric tooltip handler only matched 25 signs while the other three lines match 32, so alana / ame / deepseek / dorothy / jill / kangel / lingling rendered the item name alone - no active skill, no passive, no numbers. All seven now render their full tooltip again, including the KAngel fan counter and the Ame love-layer counter.
+
+- **Five chip recipes were missing**: Flashlight - Burst, Fortune Stick, Abyss Reagent, Wireless Transmission Pole and Sensor Device now have shaped recipes on both P0 lines (their school materials follow the existing charge / healing / mark / starlight patterns).
 
 - **Spell damage bonuses are now folded into the same damage instance instead of landing as a second, nested hit** (user ruling 2026-10-27 "must go back to a single settlement"; both P0 lines): the bonus used to be applied by dealing an extra `true_damage` hit inside the Pre phase of damage resolution, so one spell hit walked through "being hit" twice - absorption clamping, flat chip mitigation (Airbag / Whetstone / Detective / ChouTianJiang), the weak-mark multiplier, per-hit passives, damage numbers and hit sounds all resolved twice, and third-party mods captured two separate hits. The bonus now joins the **same damage instance before armour** (1.21.1 hooks `LivingIncomingDamageEvent`, 1.20.1 hooks `LivingHurtEvent`, both at the highest priority), settling exactly once through the identical pipeline (armour / resistance / Protection / absorption / incoming-damage multipliers / chip mitigation). **Numbers**: spell damage that goes through `astral_dice:card_spell` (every P0 damage card and spell) is exactly what it was before (neither that source nor the old `true_damage` respects armour), and Protection IV plus Resistance II / IV still keeps the 0.216 / 0.072 multipliers. The bonus now follows the **source of the incoming hit**, though - if that source is reduced by armour (melee, arrows, some third-party spell types), the bonus is reduced by the same armour pass and lands lower than before (roughly x0.30 with armour 20 / toughness 8); that is the intended consequence of sharing the pipeline. On combo hits the bonus can also be swallowed together with the base hit by the invulnerability window (the old bonus source had `bypasses_cooldown` and always landed); What changes is everything that used to be counted twice. The now-dead re-entry guards were removed, and `docs/features/neo-to-forge-porting-mapping.md` was added as the neo-to-forge porting baseline.
 - **Spell damage bonuses now bypass armour while sharing every other stage, and AOE hits count as attack behaviour** (user ruling 2026-10-27; both P0 lines): once the bonus was folded into the same hit, a base source that armour reduces (melee, arrows, some third-party spell types) also dragged the bonus down. The handler now pre-compensates before the armour pass (it solves for the amount whose post-armour value equals "post-armour base + bonus"), so the bonus effectively bypasses armour while resistance / Protection / absorption / incoming-damage multipliers still apply exactly once - matching the numbers of the old stand-alone true-damage hit. When the base source already bypasses armour (every damage card and spell in this mod) the amount is simply added, with no extra work. In the same batch the blessing/descent countdown start and the detective concealment break moved ahead of the AOE gate, so **every target an AOE touches counts as one attack** (counter-chain damage still returns early), while dice-battle settlement still only happens for the primary target. Combo hits keep sharing the base hit's cooldown behaviour (no separate cooldown bypass).
@@ -714,6 +749,8 @@
   the position is fixed at the moment the damage resolves and sent by the server; the existing drift-and-fade
   effect is kept, with an added **±30° random spread** so simultaneous numbers no longer overlap exactly.
 
+- **A mob with no `attack_damage` entry in its attribute map crashed the whole server when it hit a player** (2026-11-02, all four lines, fixed): the attack value was read without checking that the attribute exists, so the hit threw (visible as `Ticking entity`); the check now runs first and a missing attribute counts as 0.
+
 #### Platform & Compatibility
 
 - **Fixed Forge 1.20.1 being completely unable to start because the library dependency declared no version
@@ -769,6 +806,8 @@
   pixels matching those color values at that position (zero such pixels in the same scene before the fix).
 - **Aligned the Forge 1.20.1 `AP_EVENT_FIRE` machine-line key** (2026-10-13, 1.20.1 only): this line's event dispatch log wrote the last field as `targets=`, which did not match the 1.21.1 blueprint / NeoForge lines and the test contract (`targetsFinal=`) - so the 1.20.1 event cases could not match that line. It now reads `targetsFinal=`, making both lines byte-identical (no player-visible change).
 
+- **Fabric 1.20.1 was missing 6 signs’ recipe-book unlocks, and the Misaki Sign recipe had the wrong ingredient** (2026-11-02, fixed): alana / ame / dorothy / jill / kangel / lingling had no `advancements/recipes/misc/*_sign.json` on that line, so their recipes were reachable only through JEI and the handbook and never appeared in the recipe book; the Misaki Sign now uses `star_plate` instead of `golden_star_plate`, matching the other three lines.
+
 #### Text & Handbook
 
 - **Fixed the uncolored damage number on the four damage effect cards, plus a permanently-zero "Ranged and Magic Damage Boost" line**
@@ -800,7 +839,7 @@
   laser colour, the beam duration or the thrown prop - they keep only "aim at a hostile target: deals X spell damage". Those
   details remain fully documented in the guide book (the guide is the detailed reference). Directional Blast keeps its
   "6 blocks" radius information and is unchanged.
-- **"Reagent - Abyss" description loses its bracketed notes** (2026-10-15, all three languages): the item tooltip and guide
+- **"Abyss Reagent" description loses its bracketed notes** (2026-10-15, all three languages): the item tooltip and guide
   entry drop the "(lose 2 on unequip)", "(yellow hearts)" and "at least 2 points when effective healing is below 1" notes and
   keep only the main body - +2 healing layers on equip, and damage absorption equal to effective healing x2 when healing
   triggers (mechanics and numbers are unchanged; only the extra notes are gone).
@@ -842,6 +881,21 @@
 - **The Great Detective’s skill picker froze during global events** (reported 2026-10-29, both P0 lines): the event-choice screen is now fully decoupled from the global-event timer — it opens normally while an event animation or another event is running, confirming applies immediately, and the countdown is no longer locked by the event gate. In the same pass the event gate was narrowed to item use only, so active skills no longer claim it. ESC now means **cancel the skill**: the screen closes, nothing triggers and no cooldown starts (a new C2S cancel packet removes the session after checking its token); previously ESC did nothing.
 
 - **Selectors are blocked while an event animation plays** (2026-10-29, both P0 lines): during the 38-tick animation window, active skills and effect cards that need a target selector or a screen are rejected with “An event animation is playing — please wait.” (direct-target sign skills are unaffected). Starting an animation also force-closes any open target-selection or event-choice screen without triggering or resolving anything (a new S2C close packet makes the client drop the screen and release the mouse), so nothing pops up and grabs the cursor once the animation ends.
+
+- **NeoForge 26.1.2’s creative tab was missing 2 Mamushi Sign exclusive combat cards** (2026-11-02, fixed): `attack_card_bite` (Bite) and `attack_card_dragon_roar` (Dragon’s Roar) could only be granted by the Mamushi Sign’s skills and had no creative-tab entry; they are now listed.
+
+### Platform differences and known issues
+
+- **The Waystones integration on NeoForge 26.1.2 now registers through Balm’s event channel and is verified live** (2026-11-02; corrects the earlier conclusion in this batch): the cross-dimension teleport mark that the Warp Engine chip and Waystone teleports share is installed there, so a teleport-stone teleport is settled as a “Waystone teleport” - a same-dimension teleport charges the Warp Engine and grants Speed, and a cross-dimension one runs the Waystone path, matching NeoForge 1.21.1 / Forge 1.20.1 / Fabric 1.20.1 (1.21.1 and 26.1.2 both log `[Astral Dice] Waystone teleport integration enabled for 跃迁引擎.` at INFO).
+  Why the NeoForge event bus cannot be used (an implementation note, not a defect): Waystones 26.1.2 raises its teleport events as Balm bound custom events (`net.blay09.mods.waystones.api.event.WaystoneTeleportEvent$Before/$Prepare/$After/$Complete` and `WaystoneTeleportEntityEvent$Post`, generated by `Balmstrap.createBoundCustomEvent`), whose abstract superclass chain has `java.lang.Object` as its direct parent, and NeoForge `bus-8.0.5` `EventBus.validateAbstractChain(EventBus.java:301)` rejects exactly that shape with `IllegalArgumentException: Abstract event class ... has a non-abstract superclass class java.lang.Object.`; no `NeoForge.EVENT_BUS` listener for those events can register.
+  The correct channel is the `public static final BidirectionalEventMapper<Consumer<X>> EVENT` field these event classes carry: `BidirectionalEventMapper` implements `net.blay09.mods.balm.platform.event.EventMapper`, and its `register(TCallback)` is Balm’s registration entry point.
+  Implementation here: `neoforge-26.1.2/src/main/java/com/merlinkitsune/astral_dice/event/WaystoneWarpCompat.java` `registerWaystoneTeleportEvent` (:161) first resolves the mapper through `findBalmEventMapper` (:180, reflecting the static `EVENT` field and checking the interface name), calls `EventMapper.register(...)` when found (:205 / :223), and only falls back to `NeoForge.EVENT_BUS.addListener(...)` (:169-172) otherwise; `isPlatformUnregistrable` (:127) only demotes the failure to DEBUG when the platform really cannot register it. The candidate chain `TELEPORT_PRE_EVENT_CANDIDATES` (:49) probes `$Pre` -> `$Before` -> `$Prepare`; 1.21.1’s `$Pre` has no such `EVENT` field and keeps using `NeoForge.EVENT_BUS` (`WaystoneWarpCompat.java:92-94`), so one file serves both generations.
+  Live evidence: `run/26.1.2/prodgame/logs/latest.log:525` (NeoForge 26.1.2.109, build 2,879,891 B / sha256 `0a069d24…a80fcd`) reads `[0211月2026 05:42:39.922] [modloading-worker-0/INFO] [com.merlinkitsune.astral_dice.event.WaystoneWarpCompat/]: [Astral Dice] Waystone teleport integration enabled for 跃迁引擎.`; that run logs no `Failed to register Waystone` and no `not registrable`.
+
+### Engineering
+
+- **The 26.1.2 live acceptance ran on a reduced mod set** (engineering record only, no player-visible change): the tested set was **106 mods** (including `waystones-neoforge-26.1.2-26.1.2.16`, `rhino` and `better-advanced-tooltips`), with `mru` and `sounds` excluded because the test bench runs NeoForge **26.1.2.109** while `mru`’s `neoforge.mods.toml` requires **>= 26.1.2.114**; `sounds` shares `mru`’s origin and was excluded with it. `astral_dice` itself was not affected by the exclusion, but coexistence with those two mods on 26.1.2 stays unverified (see `docs/porting/MAPPING-1.5.0.md` section 6).
+  The `RELEASE150-26.1.2` case was **PASS** (25 machine assertions + 2 vision assertions) on build 2,879,891 B / sha256 `0a069d24…a80fcd`; the Waystone linkage logged INFO at line 525 of that run (see the entry above).
 
 ### Licensing
 

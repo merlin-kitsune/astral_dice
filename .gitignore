@@ -105,3 +105,6 @@ scripts/test/cases/.mt_*.json
 run/*/mt_launch.log
 run/*/.mt_launch.pid
 temp/
+
+# bash test harness runtime logs (added 2026-11-02)
+scripts/test/win/logs/

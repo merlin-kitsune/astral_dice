@@ -1,6 +1,7 @@
 package com.merlinkitsune.astral_dice.component;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
+import com.merlinkitsune.astral_dice.shop.CardShopShelf;
 import com.mojang.serialization.Codec;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.server.level.ServerPlayer;
@@ -117,6 +118,35 @@ public class ModAttachments {
 
     public static void setLuluLastHurtTick(net.minecraft.world.entity.player.Player player, long value) {
         LULU_LAST_HURT_TICK.set(player, value);
+    }
+
+    // 抽奖盒(event_drawer):上次购买后的冷却结束时刻(level.getGameTime() + 6000,即 5:00;
+    // now < until 表示冷却中,0 = 无冷却)。写入与判定都在服务端;.sync() 只为与 1.21.1 的
+    // .sync(ByteBufCodecs.VAR_LONG) 等价(本仓对 EFFECT_CARD_COOLDOWN_END 亦两线同口径地同步)。
+    public static final AttachedDataKey<Long> EVENT_DRAWER_COOLDOWN_UNTIL =
+            register(AttachedDataKey.builder("event_drawer_cooldown_until", Codec.LONG, () -> 0L).sync().build());
+
+    public static long getEventDrawerCooldownUntil(net.minecraft.world.entity.player.Player player) {
+        return EVENT_DRAWER_COOLDOWN_UNTIL.get(player);
+    }
+
+    public static void setEventDrawerCooldownUntil(net.minecraft.world.entity.player.Player player, long value) {
+        EVENT_DRAWER_COOLDOWN_UNTIL.set(player, value);
+    }
+
+    // 抽奖盒(event_drawer):上次**投入空白筹码**的时刻(level.getGameTime();0 = 从未投入)。
+    // 用途 = 投入间隔(2400t = 2:00,与筹码商店 ChipShopBlock#BLANK_INSERT_COOLDOWN_TICKS 同口径),
+    // 0 兼作「从未投入」哨兵 ⇒ 首次投入不参与冷却判定。判定只在服务端 ⇒ **不 .sync()**、
+    // 也不进 SYNCED_KEYS 登录快照(客户端不需要读它)。
+    public static final AttachedDataKey<Long> EVENT_DRAWER_BLANK_INSERT_AT =
+            register(AttachedDataKey.builder("event_drawer_blank_insert_at", Codec.LONG, () -> 0L).build());
+
+    public static long getEventDrawerBlankInsertAt(net.minecraft.world.entity.player.Player player) {
+        return EVENT_DRAWER_BLANK_INSERT_AT.get(player);
+    }
+
+    public static void setEventDrawerBlankInsertAt(net.minecraft.world.entity.player.Player player, long value) {
+        EVENT_DRAWER_BLANK_INSERT_AT.set(player, value);
     }
 
     // 治愈点数(玩家级共享资源的单一数值池):由医疗箱(赐福触发时加点)/史莱姆立牌被动/主动/
@@ -344,6 +374,55 @@ public class ModAttachments {
 
     public static void setMosesDodgeCounterRewarded(net.minecraft.world.entity.LivingEntity entity, boolean value) {
         MOSES_DODGE_COUNTER_REWARDED.set(entity, value);
+    }
+
+    // 手电筒-爆闪筹码:**该玩家**已发放过星光的**目标 UUID 集**(逗号分隔;**玩家级**附件)。
+    // 判重粒度 = **玩家 × 目标**:同一目标对不同佩戴者各可发放一次。
+    // 读写方 = FlashlightBurstChipItem#onAttack,记录上限见该类 MAX_TRACKED_TARGETS(满则不再发放)。
+    public static final AttachedDataKey<String> FLASHLIGHT_BURST_TARGETS =
+            register(AttachedDataKey.builder("flashlight_burst_targets", Codec.STRING, () -> "").build());
+
+    public static String getFlashlightBurstTargets(net.minecraft.world.entity.player.Player player) {
+        return FLASHLIGHT_BURST_TARGETS.get(player);
+    }
+
+    public static void setFlashlightBurstTargets(net.minecraft.world.entity.player.Player player, String value) {
+        FLASHLIGHT_BURST_TARGETS.set(player, value == null ? "" : value);
+    }
+
+    // 财运签筹码:当前骰神赐福周期是否已发放过(玩家级,每个赐福周期一次)。
+    // 由 DiceCombatEvents 在**骰神赐福新周期开始处**复位,由 FortuneStickChipItem#onHostileKill 置位。
+    public static final AttachedDataKey<Boolean> FORTUNE_STICK_BLESSING_CLAIMED =
+            register(AttachedDataKey.builder("fortune_stick_blessing_claimed", Codec.BOOL, () -> false).build());
+
+    public static boolean isFortuneStickBlessingClaimed(net.minecraft.world.entity.player.Player player) {
+        return FORTUNE_STICK_BLESSING_CLAIMED.get(player);
+    }
+
+    public static void setFortuneStickBlessingClaimed(net.minecraft.world.entity.player.Player player, boolean value) {
+        FORTUNE_STICK_BLESSING_CLAIMED.set(player, value);
+    }
+
+    // 深渊试剂筹码:「装备时 +2 治愈点」的装备会话闸门(玩家级,持久化)。
+    // ⚠️ 为什么必须持久化:Curios 只持久化 stacks、**不持久化 previousStacks** ⇒ 登录 / 重生 / 切维度后
+    //    首 tick 的 prevStack 恒为空栈而槽里有物品,Curios 把这判成一次装备变化并**重放 onEquip**
+    //    (与医疗箱 GRANT_BIT / StarLightManager GRANT_BIT 同一根因)⇒ "空槽守卫"挡不住,会重复加分。
+    // 申领 = 真的新装上;释放 = 卸下 / 死亡。
+    public static final AttachedDataKey<Boolean> ABYSS_REAGENT_GRANTED =
+            register(AttachedDataKey.builder("abyss_reagent_granted", Codec.BOOL, () -> false).build());
+
+    /** 申领装备闸门:未申领过则置位并返回 true,已申领过(重复 onEquip / Curios 重放)返回 false。 */
+    public static boolean claimAbyssReagentGrant(net.minecraft.world.entity.player.Player player) {
+        if (ABYSS_REAGENT_GRANTED.get(player)) return false;
+        ABYSS_REAGENT_GRANTED.set(player, true);
+        return true;
+    }
+
+    /** 释放装备闸门(卸下 / 死亡时调用,与 {@link #claimAbyssReagentGrant} 配对)。 */
+    public static void releaseAbyssReagentGrant(net.minecraft.world.entity.player.Player player) {
+        if (ABYSS_REAGENT_GRANTED.get(player)) {
+            ABYSS_REAGENT_GRANTED.set(player, false);
+        }
     }
 
     public static Optional<UUID> getUndercoverSource(net.minecraft.world.entity.LivingEntity entity) {
@@ -990,6 +1069,16 @@ public class ModAttachments {
             register(AttachedDataKey.builder("airbag_cooldown_end", Codec.LONG, () -> 0L).sync().build());
 
     /**
+     * 安全气囊:**受击充能**冷却结束时刻(15 秒;0 表示无冷却;2026-10-15 用户裁决追加能力)。
+     *
+     * <p>⚠️ 与「保命无效化」的 {@link #AIRBAG_COOLDOWN_END}(1:00)**完全独立**:两条能力各自计时,
+     * 互不干扰(保命冷却中照样能靠受击攒充能,反之亦然)。仅服务端使用,不 {@code .sync()}、
+     * 不进 {@code SYNCED_KEYS}。
+     */
+    public static final AttachedDataKey<Long> AIRBAG_HIT_CHARGE_COOLDOWN_END =
+            register(AttachedDataKey.builder("airbag_hit_charge_cooldown_end", Codec.LONG, () -> 0L).build());
+
+    /**
      * 磨刀石「保留 1 血」（不可被一次伤害击倒）的**触发冷却结束时刻**（1:00；0 表示无冷却）。
      *
      * <p>2026-09-24 用户裁决：该保命能力此前**无冷却**，而它的生效条件与安全气囊的「致命伤害」完全
@@ -1049,6 +1138,14 @@ public class ModAttachments {
         AIRBAG_COOLDOWN_END.set(player, Math.max(0, value));
     }
 
+    public static long getAirbagHitChargeCooldownEnd(net.minecraft.world.entity.player.Player player) {
+        return AIRBAG_HIT_CHARGE_COOLDOWN_END.get(player);
+    }
+
+    public static void setAirbagHitChargeCooldownEnd(net.minecraft.world.entity.player.Player player, long value) {
+        AIRBAG_HIT_CHARGE_COOLDOWN_END.set(player, Math.max(0, value));
+    }
+
     public static long getWhetstoneGuardCooldownEnd(net.minecraft.world.entity.player.Player player) {
         return WHETSTONE_GUARD_COOLDOWN_END.get(player);
     }
@@ -1100,7 +1197,7 @@ public class ModAttachments {
     /**
      * 强制冷却**硬闸门**(纯服务端):释放当刻写 {@code now + MamushiSignItem.ACTIVE_FORCED_COOLDOWN_TICKS}。
      *
-     * <p>与 {@code sign_active_cooldown_end} 并存但语义不同:后者可被诡异骰子/电流核心等减免,
+     * <p>与 {@code sign_active_cooldown_end} 并存但语义不同:后者可被电流核心等减免,
      * 前者**不接受任何减免**(规格 §3.4)。不 {@code .sync()}、不加入 {@code SYNCED_KEYS}。
      */
     public static final AttachedDataKey<Long> MAMUSHI_FORCED_COOLDOWN_UNTIL =
@@ -1310,6 +1407,10 @@ public class ModAttachments {
             SYNCED_KEYS.add(NANCY_LU_PASSIVE_TYPE);
             // 蛟龙立牌(mamushi):仅觉醒层数需客户端可见(tooltip 计数行);另两键纯服务端
             SYNCED_KEYS.add(MAMUSHI_AWAKENING);
+            // 卡牌商店:二级转账冷却(客户端 Jade 悬浮框读补货倒计时,必须同步)
+            SYNCED_KEYS.add(SHOP_TRANSFER_COOLDOWN_END);
+            // 抽奖盒:购买后冷却(客户端 Jade 悬浮框读可进入倒计时,必须同步)
+            SYNCED_KEYS.add(EVENT_DRAWER_COOLDOWN_UNTIL);
         }
         return SYNCED_KEYS;
     }
@@ -1703,6 +1804,55 @@ public class ModAttachments {
     public static void setTeruEquipWatermark(net.minecraft.world.entity.player.Player player, String value) {
         TERU_EQUIP_WATERMARK.set(player, value == null ? "" : value);
     }
+
+    // ===== 卡牌商店(1.20.1 移植,对应 forge-1.20.1 同名键;纯增量追加,不改既有键) =====
+
+    // 卡牌商店「商店大酬宾」窗口的结束时刻(玩家级;0 = 未生效)。仅服务端使用(开店抽池时读一次),
+    // 故**不 .sync()、不加入 SYNCED_KEYS**。
+    public static final AttachedDataKey<Long> SHOP_PROMOTION_UNTIL =
+            register(AttachedDataKey.builder("shop_promotion_until", Codec.LONG, () -> 0L).build());
+
+    public static long getShopPromotionUntil(Player player) {
+        return SHOP_PROMOTION_UNTIL.get(player);
+    }
+
+    public static void setShopPromotionUntil(Player player, long value) {
+        SHOP_PROMOTION_UNTIL.set(player, value);
+    }
+
+    // 卡牌商店「二级转账」的玩家级冷却结束时刻(gameTime;0 = 无冷却)。
+    // 客户端除菜单 DataSlot 外,还要在 **Jade 悬浮框**显示「补货倒计时」(方块无 BlockEntity ⇒
+    // 1.20.1 的 Jade 不收服务端数据,只能读同步值)⇒ 本条 **.sync()** 并进 SYNCED_KEYS
+    // (登录/重生/切维度时补发快照)。只同步一个 long,开销可忽略。
+    public static final AttachedDataKey<Long> SHOP_TRANSFER_COOLDOWN_END =
+            register(AttachedDataKey.builder("shop_transfer_cooldown_end", Codec.LONG, () -> 0L).sync().build());
+
+    public static long getShopTransferCooldownEnd(Player player) {
+        return SHOP_TRANSFER_COOLDOWN_END.get(player);
+    }
+
+    public static void setShopTransferCooldownEnd(Player player, long value) {
+        SHOP_TRANSFER_COOLDOWN_END.set(player, value);
+    }
+
+    // 卡牌商店「本轮已经转账过」:买牌 / 星光兑换不锁转账,只有本轮真的转过账才锁,到点换架时清零。
+    // 只服务端权威 + 菜单 DataSlot[9] 同步 ⇒ **不** .sync()、不进 SYNCED_KEYS。
+    public static final AttachedDataKey<Boolean> SHOP_TRANSFER_USED =
+            register(AttachedDataKey.builder("shop_transfer_used", Codec.BOOL, () -> Boolean.FALSE).build());
+
+    public static boolean isShopTransferUsed(Player player) {
+        return SHOP_TRANSFER_USED.get(player);
+    }
+
+    public static void setShopTransferUsed(Player player, boolean value) {
+        SHOP_TRANSFER_USED.set(player, value);
+    }
+
+    // 卡牌商店:货架存档。货架随玩家存档持久化,只有「沙漏归 0」那一刻(shop/CardShopCycleTicker)
+    // 或大酬宾事件才会重抽覆写,开店只读(shop/CardShopShelf)。仅服务端使用,不同步客户端
+    // ⇒ 不 .sync()、不加入 SYNCED_KEYS。
+    public static final AttachedDataKey<CardShopShelf> SHOP_SHELF =
+            register(AttachedDataKey.builder("shop_shelf", CardShopShelf.CODEC, () -> CardShopShelf.EMPTY).build());
 
     private ModAttachments() {
     }

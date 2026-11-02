@@ -63,6 +63,71 @@ Import-Module (Join-Path $script:LibDir 'Mt.Proc.psm1')
 
 Initialize-MtConsole
 
+# ── 测试通道（2026-11-01 通道解耦；契约 docs/features/windows-channel-decoupling-spec.md）──────
+# 本文件只有三处「把命令送进游戏」：opprobe 前置探针 / preclean 清场 / immediate_respawn 硬闸门。
+# 通道模式 = CLI `--channel` > 环境变量 MT_CHANNEL > 默认 autojs（解析规则全在 Mt.Channel.psm1）：
+#   autojs ⇒ Send-MtChannelCommand（AutoJS 三级探测链；1.20.1 没装 AutoJS ⇒ DELEGATED，命令没送达）；
+#   native ⇒ 原样调 mt_inject.ps1 的 cmd 模式（argv 与改造前逐字节一致）。
+# 失败语义**不变**：opprobe 读不到读数仍是 ERROR / preclean 仍只 WARN / gamerule 仍硬失败。
+$script:ChannelRequested = ''
+$script:ChannelModuleReady = $false
+
+function Import-MtLaunchChannelModule {
+    <#
+    .SYNOPSIS
+        惰性加载 Mt.Channel.psm1（**不带 -Force**：本文件不拥有该模块的语义）。
+    #>
+    if ($script:ChannelModuleReady) { return $true }
+    try {
+        Import-Module (Join-Path $script:LibDir 'Mt.Channel.psm1')
+        $script:ChannelModuleReady = $true
+        return $true
+    } catch {
+        Write-MtErrLine ("MT_CHANNEL: ERROR — 通道模块加载失败：{0}" -f $_.Exception.Message)
+        return $false
+    }
+}
+
+function Resolve-MtLaunchChannelMode {
+    <#
+    .SYNOPSIS
+        解析本次运行的通道（autojs | native）；非法取值抛异常，由调用点转成用法错误。
+    #>
+    if (-not (Import-MtLaunchChannelModule)) { throw 'Mt.Channel.psm1 不可用' }
+    return (Get-MtChannelMode -Requested $script:ChannelRequested)
+}
+
+function Invoke-MtLaunchChannelCommand {
+    <#
+    .SYNOPSIS
+        下发一条命令，返回与 mt_inject.ps1 同构的返回码。
+    .DESCRIPTION
+        Rc 语义：0 = 命令被接受；3 = 通道降级（DELEGATED，命令**没有**真的送达游戏）；
+        其它 = 硬件/工具链失败。调用点按各自既有口径处理（preclean 只 WARN，
+        gamerule 硬失败，opprobe 以回读读数为准）。
+    #>
+    param(
+        [Parameter(Mandatory)][string]$Version,
+        [Parameter(Mandatory)][string]$Command,
+        [Parameter(Mandatory)][string]$ChannelMode,
+        [Parameter(Mandatory)][string]$PsExe,
+        [Parameter(Mandatory)][string]$TestDir,
+        [int]$TimeoutSec = 120
+    )
+    if ($ChannelMode -eq 'autojs') {
+        $chanR = Send-MtChannelCommand -Version $Version -Command $Command
+        $chanStatus = [string]$chanR.Status
+        $chanRc = 1
+        if ($chanStatus -eq 'OK') { $chanRc = 0 }
+        elseif ($chanStatus -eq 'DELEGATED') { $chanRc = 3 }
+        return [pscustomobject]@{ Rc = $chanRc; Detail = [string]$chanR.Detail; Channel = 'autojs' }
+    }
+    $injR = Invoke-MtChildProcess -FilePath $PsExe -TimeoutSec $TimeoutSec -ArgumentList @(
+        '-NoProfile', '-File', (Join-Path $TestDir 'mt_inject.ps1'),
+        'cmd', '--command', $Command, '--version', $Version)
+    return [pscustomobject]@{ Rc = [int]$injR.ExitCode; Detail = 'mt_inject.ps1'; Channel = 'native' }
+}
+
 function Sync-MtProbeScripts {
     <#
     .SYNOPSIS
@@ -175,6 +240,7 @@ function Invoke-MtLaunchOpPreflight {
         [Parameter(Mandatory)][string]$Version,
         [Parameter(Mandatory)][string]$PsExe,
         [Parameter(Mandatory)][string]$TestDir,
+        [Parameter(Mandatory)][string]$ChannelMode,
         [Parameter(Mandatory)][psobject]$Paths
     )
 
@@ -217,13 +283,22 @@ function Invoke-MtLaunchOpPreflight {
     $overallDeadline = (Get-Date).AddSeconds(20)
     for ($attempt = 1; $attempt -le $attemptsMax; $attempt++) {
         if ((Get-Date) -ge $overallDeadline) { break }
-        $injectArgs = @('-NoProfile', '-File', (Join-Path $TestDir 'mt_inject.ps1'), 'cmd',
-            '--command', '/astralprobe opprobe', '--version', $Version)
-        if ($attempt -eq 1) { $injectArgs += '-NoEsc' }
-        # 子进程统一走 Invoke-MtChildProcess（Windows 原生：Start-Process -NoNewWindow -PassThru +
-        #    Process.ExitCode + 超时强杀；不依赖 `$LASTEXITCODE`，见 Mt.Proc.psm1 该函数说明）。
-        $injectR = Invoke-MtChildProcess -FilePath $PsExe -ArgumentList $injectArgs -TimeoutSec 120
-        $rcs += $injectR.ExitCode
+        if ($ChannelMode -eq 'autojs') {
+            # autojs 通道：命令走 AutoJS 三级探测链。判据不变 —— 仍是下面回读 latest.log 里的
+            # AP_OP_PERM 读数（探针读数是**游戏内**事实，与命令怎么送进去无关）。
+            $chanSnd = Invoke-MtLaunchChannelCommand -Version $Version -Command '/astralprobe opprobe' `
+                -ChannelMode $ChannelMode -PsExe $PsExe -TestDir $TestDir
+            $injectRc = [int]$chanSnd.Rc
+        } else {
+            $injectArgs = @('-NoProfile', '-File', (Join-Path $TestDir 'mt_inject.ps1'), 'cmd',
+                '--command', '/astralprobe opprobe', '--version', $Version)
+            if ($attempt -eq 1) { $injectArgs += '-NoEsc' }
+            # 子进程统一走 Invoke-MtChildProcess（Windows 原生：Start-Process -NoNewWindow -PassThru +
+            #    Process.ExitCode + 超时强杀；不依赖 `$LASTEXITCODE`，见 Mt.Proc.psm1 该函数说明）。
+            $injectR = Invoke-MtChildProcess -FilePath $PsExe -ArgumentList $injectArgs -TimeoutSec 120
+            $injectRc = [int]$injectR.ExitCode
+        }
+        $rcs += $injectRc
         $pollUntil = (Get-Date).AddSeconds(4)
         while ((Get-Date) -lt $pollUntil) {
             $tPoll = ''
@@ -305,6 +380,10 @@ if ($MyInvocation.InvocationName -ne '.') {
             if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --version 的值'; exit $MT_EXIT_ERROR }
             $Version = [string]$args[$i + 1]
             $i += 2
+        } elseif ($key -eq 'channel') {
+            # 测试通道（契约 §1）：autojs（默认）| native。非法取值在下面的解析处统一失败。
+            if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --channel 的值'; exit $MT_EXIT_ERROR }
+            $script:ChannelRequested = [string]$args[$i + 1]; $i += 2
         } elseif ($key -eq 'no-preclean') {
             $NoPreclean = $true
             $i += 1
@@ -320,6 +399,13 @@ if ($MyInvocation.InvocationName -ne '.') {
     $root = Get-MtRoot
     $testDir = $PSScriptRoot
     $psExe = (Get-Process -Id $PID).Path
+    # 通道模式先解析一次：非法取值就地转成用法错误，`MT_CHANNEL: mode=…` 也因此落在输出最前面。
+    try {
+        $channelMode = Resolve-MtLaunchChannelMode
+    } catch {
+        Write-MtErrorLine ("MT_CHANNEL: ERROR — {0}" -f $_.Exception.Message)
+        exit $MT_EXIT_ERROR
+    }
     $world = Get-MtWorldName
 
     Start-MtPhase "launch ($Version)"
@@ -838,7 +924,7 @@ if ($MyInvocation.InvocationName -ne '.') {
     # ── B6 ④：cases 阶段的前置闸门（只读 OP 断言 + /astralparty dump 可用性）──────────────
     # 前置不足 ⇒ BLOCKED；探针/dump 不可用 ⇒ ERROR。两者都在用例之前收口，绝不静默降级。
     # 刻意**不**新开阶段头：阶段仍是 launch，`MT_LAUNCH: OK (elapsed)` 的计时口径不变。
-    $opInfo = Invoke-MtLaunchOpPreflight -Version $Version -PsExe $psExe -TestDir $testDir -Paths $p
+    $opInfo = Invoke-MtLaunchOpPreflight -Version $Version -PsExe $psExe -TestDir $testDir -Paths $p -ChannelMode $channelMode
     if ($opInfo.Code -eq 'BLOCKED') {
         Write-MtBlocked 'preflight-op' $opInfo.Detail
         exit $MT_EXIT_BLOCKED
@@ -862,10 +948,9 @@ if ($MyInvocation.InvocationName -ne '.') {
         $precleanCmd = '/kill @e[type=!player,distance=..128]'
         $precleanRc = @()
         foreach ($precleanAttempt in 1..2) {
-            $precleanR = Invoke-MtChildProcess -FilePath $psExe -TimeoutSec 120 -ArgumentList @(
-                '-NoProfile', '-File', (Join-Path $testDir 'mt_inject.ps1'),
-                'cmd', '--command', $precleanCmd, '--version', $Version)
-            $precleanRc += $precleanR.ExitCode
+            $precleanSnd = Invoke-MtLaunchChannelCommand -Version $Version -Command $precleanCmd `
+                -ChannelMode $channelMode -PsExe $psExe -TestDir $testDir
+            $precleanRc += [int]$precleanSnd.Rc
             Start-Sleep -Milliseconds 600
         }
         if (@($precleanRc | Where-Object { $_ -ne 0 }).Count -eq 0) {
@@ -914,13 +999,16 @@ if ($MyInvocation.InvocationName -ne '.') {
         $immRule = if ($Version -eq '26.1.2') { 'immediate_respawn' } else { 'doImmediateRespawn' }
         $immCmd = "/gamerule $immRule true"
         $immRc = @()
+        $immVia = ''
         foreach ($immAttempt in 1..2) {
             # P3/D4-5（2026-10-17）：本闸门以**日志回显**自证，注入子进程的退出码必须可靠 —— 统一走
             #    Invoke-MtChildProcess（Start-Process + Process.ExitCode + 超时），不读 `$LASTEXITCODE`。
-            $immR = Invoke-MtChildProcess -FilePath $psExe -TimeoutSec 120 -ArgumentList @(
-                '-NoProfile', '-File', (Join-Path $testDir 'mt_inject.ps1'),
-                'cmd', '--command', $immCmd, '--version', $Version)
-            $immRc += $immR.ExitCode
+            #    2026-11-01 通道解耦：下发改由 Invoke-MtLaunchChannelCommand 统一处理，native 分支
+            #    内部仍是上面这条 mt_inject.ps1 子进程调用（逐字节未改），autojs 分支走探测链。
+            $immSnd = Invoke-MtLaunchChannelCommand -Version $Version -Command $immCmd `
+                -ChannelMode $channelMode -PsExe $psExe -TestDir $testDir
+            $immRc += [int]$immSnd.Rc
+            if ([string]$immSnd.Detail -match 'cmd_via=') { $immVia = [string]$immSnd.Detail }
             Start-Sleep -Milliseconds 600
         }
         $immEv = 'not-found'
@@ -948,6 +1036,13 @@ if ($MyInvocation.InvocationName -ne '.') {
             })
         if (@($immLines | Where-Object { ($_ -match '设为|now set to') -and ($_ -match 'true') }).Count -gt 0) {
             $immEv = 'i18n:set:true'
+        }
+        if (($immEv -eq 'not-found') -and ($channelMode -eq 'autojs') -and $immVia) {
+            # autojs 通道：探测链第 1/2 级走的是**服务端命令源**，回显不一定带 [CHAT] 前缀，
+            # 于是上面那套 i18n 回显判据可能永远匹配不到。这里补一条**等价强度**的证据：
+            # 探测链确认「命令被服务端接受并执行完」，记成 channel:cmd_via=<name>。
+            # 不是放宽闸门 —— 仍要求真的有服务端 acknowledgement，只是换了一种回显载体。
+            $immEv = ('channel:' + ($immVia -replace '\s+', ' '))
         }
         if ($immEv -eq 'not-found') {
             Write-MtErrLine ("MT_LAUNCH: ERROR — 未确认「{0}=true」（测试环境硬性要求，注入返回码 {1}）；死亡后客户端会停在死亡界面、其后所有聊天注入被吞 ⇒ 拒绝继续。确认原版回显（中/英）或显式设 MT_ALLOW_NO_IMMEDIATE_RESPAWN=1" -f $immRule, ($immRc -join '/'))

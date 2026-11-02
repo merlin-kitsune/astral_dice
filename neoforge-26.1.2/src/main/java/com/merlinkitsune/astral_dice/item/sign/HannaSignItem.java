@@ -1,5 +1,7 @@
 package com.merlinkitsune.astral_dice.item.sign;
 
+import top.theillusivec4.curios.api.SlotContext;
+
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.combat.DiceCombatEvents;
@@ -9,7 +11,7 @@ import com.merlinkitsune.astral_dice.effect.HannaDollCraftEffect;
 import com.merlinkitsune.astral_dice.effect.HannaFloatEffect;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.item.ModItems;
-import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
+import com.merlinkitsune.starengine.event.EffectTimerGuard;
 import com.merlinkitsune.starengine.event.ModEffectRemoval;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageTypes;
@@ -29,7 +31,8 @@ import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import top.theillusivec4.curios.api.CuriosApi;
 
 import java.util.List;
-import com.merlinkitsune.astral_dice.combat.PartyRelations;
+import com.merlinkitsune.starengine.combat.PartyRelations;
+import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
 
 /**
  * 人偶师立牌(hanna,稀有)。
@@ -59,10 +62,10 @@ import com.merlinkitsune.astral_dice.combat.PartyRelations;
  *
  * <p><b>层数真值在附件 {@code ModAttachments#HANNA_DOLL_CRAFT_LAYERS}</b>,效果实例只是 HUD 镜像
  * (图标 = 立牌同图 + 层数,照「狐光」「推理时间」同款写法)。**不跨死亡保留** —— 技能原文未声明
- * 死亡保留,故按未声明即不保留的既定口径处理(与「剑气」「弱点识破」一致)。
+ * 死亡保留,故按未声明即不保留的既定口径处理(与「弱点识破」等未声明保留的附件一致)。
  */
 @EventBusSubscriber(modid = AstralDiceMod.MODID)
-public class HannaSignItem extends BaseSignItem {
+public class HannaSignItem extends BaseSignItem implements SignHooks.DiceRollResult {
 
     /** 立牌注册 id */
     public static final String SIGN_ID = AstralDiceMod.MODID + ":hanna_sign";
@@ -203,7 +206,7 @@ public class HannaSignItem extends BaseSignItem {
             return InteractionResult.SUCCESS;
         }
         // 有限时长效果经 EffectTimerGuard 记账 ⇒ HUD 计时器严格 20 t/s(照 ExpressDeliveryCardItem 同款)
-        EffectTimerGuard.apply(player, new MobEffectInstance(ModEffects.HANNA_FLOAT,
+        PlayerEffectProtection.apply(player, new MobEffectInstance(ModEffects.HANNA_FLOAT,
                 HannaFloatEffect.DURATION_TICKS, 0, false, true, true));
         sendSignActionBar(player, "msg.astral_dice.hanna_float");
         return InteractionResult.SUCCESS;
@@ -257,9 +260,9 @@ public class HannaSignItem extends BaseSignItem {
         if (now >= ModAttachments.getHannaBlessingCooldownEnd(wearer)) {
             Player sherryWearer = nearest(nearby, wearer, p -> wearsSign(p, SHERRY_SIGN_ID));
             if (sherryWearer != null) {
-                EffectTimerGuard.apply(sherryWearer, new MobEffectInstance(MobEffects.STRENGTH,
+                PlayerEffectProtection.apply(sherryWearer, new MobEffectInstance(MobEffects.STRENGTH,
                         BLESSING_BUFF_TICKS, 1, false, true));
-                EffectTimerGuard.apply(sherryWearer, new MobEffectInstance(MobEffects.RESISTANCE,
+                PlayerEffectProtection.apply(sherryWearer, new MobEffectInstance(MobEffects.RESISTANCE,
                         BLESSING_BUFF_TICKS, 0, false, true));
                 SherrySignItem.addLayers(sherryWearer, 1);
                 ModAttachments.setHannaBlessingCooldownEnd(wearer, now + PASSIVE_INTERVAL_TICKS);
@@ -276,7 +279,7 @@ public class HannaSignItem extends BaseSignItem {
                 addCraftLayers(wearer, 1);
                 if (isComplete(wearer)) {
                     // 已完成:额外 迅捷 II (1:00) + 3 星币
-                    EffectTimerGuard.apply(friend, new MobEffectInstance(MobEffects.SPEED,
+                    PlayerEffectProtection.apply(friend, new MobEffectInstance(MobEffects.SPEED,
                             COMPLETE_BUFF_TICKS, 1, false, true));
                     giveCoins(friend, COIN_ON_COMPLETE);
                 }
@@ -399,5 +402,10 @@ public class HannaSignItem extends BaseSignItem {
         if (!event.getItemStack().is(Items.ENDER_PEARL)) return;
         event.setCanceled(true);
         sendSignActionBarColored(player, net.minecraft.ChatFormatting.RED, "msg.astral_dice.hanna_no_pearl");
+    }    @Override
+    public void handleDiceRollResult(Player player, int dice) {
+        onDiceRollResult(player, dice);
     }
+
+
 }

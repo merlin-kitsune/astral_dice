@@ -68,6 +68,15 @@ config="${mod_id}.mixins.json"
 [[mixins]]
 config="${mod_id}.jade.mixins.json"
 
+# YSM(Yes Steve Model) 渲染兼容(2026-11-01,仅 26.1.2):把本模组「立牌半透明」从原版接缝延伸到 YSM 接管的那部分。
+# 落点全是**原版**接缝:EntityRenderDispatcher#submit(开 alpha 窗口)、
+# SubmitNodeCollection#submitCustomGeometry(逐顶点乘 alpha)、RenderTypes#entityCutout(换 blend 管线)。
+# 禁止改成 hook YSM 内部类 —— 它的类名/方法名全是混淆标识符,升版即断。
+# 独立配置:required=false(目标漂移只降级 WARN,不阻断启动,理由同上面的 Jade 段);
+# 加载闸门由 plugin AstralYsmMixinPlugin 提供 —— YSM 不在场时整组 mixin 不应用,结构性零影响。
+[[mixins]]
+config="${mod_id}.ysm.mixins.json"
+
 # The [[accessTransformers]] block allows you to declare where your AT file is.
 # If this block is omitted, a fallback attempt will be made to load an AT from META-INF/accesstransformer.cfg
 #[[accessTransformers]]
@@ -127,13 +136,15 @@ config="${mod_id}.jade.mixins.json"
 
 # StarEngine Lib(必须前置):效果/事件/通用组件的共享实现所在库。
 # 本模组绝大多数共享逻辑已下沉至该库,缺失将导致 NoClassDefFoundError,故为 required。
-# ⚠️ 2026-09-25 起**不再声明 versionRange**:库版本区间规则已移除,版本要求只由 gradle.properties 的
-#   starengine_version 一个量表达。省略 versionRange 时 FML 取 UNBOUNDED(实测对任意版本均判满足),
-#   本段仍按「**必须存在**」校验 —— 库随本模组内嵌(JarJar),内嵌副本就是满足它的那个 mod。
+# ⚠️ 2026-11-02 用户裁决:四线统一为**独立外部前置**(库**不再内嵌**),玩家/整合包必须自行安装
+#   starengine-neoforge-26.1.2-<starengine_version>.jar。因此恢复**版本下界**
+#   dev-next 线的库版本方案是 <year>.<quarter>-SNAPSHOT.<n>(当前 26.4-SNAPSHOT.1),故上界取
+#   27.0.0 而非主线 1.x 线的 2.0.0 —— 26.4 大于 2.0,照抄 2.0.0 会让区间恒不满足。
 [[dependencies.${mod_id}]]
     modId="starengine"
     type="required"
     ordering="AFTER"
+    versionRange="[${starengine_version},27.0.0)"
     side="BOTH"
 
 # GeckoLib(必须的前置):Syke 触手实体的几何/动画/渲染全部由它驱动,缺失时装载阶段即

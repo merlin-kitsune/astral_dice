@@ -12,11 +12,13 @@
     "PlayerItemDropGuardMixin",
     "server.ServerPlayerDropGuardMixin",
     "bridge.LivingHurtBridgeMixin",
+    "bridge.MobFinalizeSpawnBridgeMixin",
     "bridge.LivingUseTotemBridgeMixin",
     "bridge.ItemCraftedBridgeMixin",
     "bridge.ProjectileImpactBridgeMixin",
     "bridge.EnderPearlTeleportBridgeMixin",
     "bridge.EntityDimensionTravelBridgeMixin",
+    "bridge.ExplosionStartBridgeMixin",
     "bridge.ServerPlayerDimensionTravelBridgeMixin",
     "bridge.PlayerAttackBridgeMixin",
     "bridge.LivingHealBridgeMixin",
@@ -32,7 +34,9 @@
     "trade.MerchantMenuMixin",
     "trade.MerchantOfferMixin",
     "trade.MerchantResultSlotMixin",
-    "trade.ServerPlayerMixin"
+    "trade.ServerPlayerMixin",
+    "HealOrHarmMobEffectMixin",
+    "RegenerationMobEffectMixin"
   ],
   "client": [
     "client.AstralUseItemGuardMixin",
@@ -40,6 +44,8 @@
     "client.EffectRenderingInventoryScreenMixin",
     "client.GuiMixin",
     "client.ArmorBarCancelMixin",
+    "client.SignTranslucencyMixin",
+    "client.EntityRendererInvoker",
     "bridge.ScreenInvokerMixin",
     "bridge.ClientMouseBridgeMixin",
     "bridge.ClientScreenBridgeMixin",

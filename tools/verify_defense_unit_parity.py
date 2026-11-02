@@ -54,8 +54,9 @@ D9 护甲读数不得用 floor 值(2026-10-25 实机暴露的 off-by-one)
    D9-c DiceCombatEvents 骰战 effectiveArmor 走 effectiveArmorPoints(target)
    D9-d combat/*.java 与 PiercingGunChipItem 里不得再出现 .getArmorValue() 调用
         （getArmorValue = Mth.floor(ARMOR)，会把 26.6667 截成 26 ⇒ 「防御力 +8」只兑现 +7）
-D8 P1 两线(neoforge-26.1.2 / fabric-1.20.1)欠账登记可见性
-   只统计、不判 FAIL；读数必须与 docs/compat-1.5.0-porting.md 的登记一致(逐线打印)
+D8 旧折算字面量按线判定(2026-11-01 收紧，用户裁决)
+   neoforge-1.21.1 / forge-1.20.1 / fabric-1.20.1：命中数 > 0 即 FAIL(逐处打印文件:行)
+   neoforge-26.1.2：P1 线待修，保持只统计 + 打印 WARN，不判 FAIL(不得把整条守门弄红)
 
 用法
 ----
@@ -92,6 +93,7 @@ LANGS = ("en_us.json", "zh_cn.json", "ja_jp.json")
 PKG = "com/merlinkitsune/astral_dice"
 
 failures: list[str] = []
+warnings: list[str] = []  # 只告警不判红（D8 的 P1 待修线）
 rows: list[tuple[str, str, str]] = []  # (id, status, detail)
 
 
@@ -282,19 +284,38 @@ def check_d7(verbose: bool) -> None:
             print("\n".join(offenders))
 
 
-# ------------------------------------------------------- D8 P1 欠账可见性
+# ------------------------------------------ D8 旧折算字面量逐线判定(已收紧)
+# 2026-11-01 用户裁决：fabric 线已归零、neo-26.1.2 仍 1 处 ⇒ 不再「只统计」。
+# 三条线(含 fabric)命中数 > 0 即 FAIL 并指出文件:行；neo-26.1.2 属 P1 待修，只统计 + WARN。
+D8_ENFORCED = ("neoforge-1.21.1", "forge-1.20.1", "fabric-1.20.1")
+D8_WARN_ONLY = ("neoforge-26.1.2",)
+
+
 def report_d8() -> None:
-    for line, base in P1.items():
-        if not (base / "java").is_dir():
+    bases = dict(P0)
+    bases.update(P1)
+    for line in D8_ENFORCED + D8_WARN_ONLY:
+        base = bases.get(line)
+        if base is None or not (base / "java").is_dir():
             record(f"D8[{line}]", True, "线不存在或不含 src/main/java（跳过）")
             continue
         n_legacy = 0
+        offenders: list[str] = []
         for f in java_files(base):
             text = read_text(f)
             for pat in LEGACY_LITERALS:
                 n_legacy += len(re.findall(pat, text))
-        record(f"D8[{line}]", True,
-               f"P1 未移植（旧折算命中 {n_legacy} 处）—— 必须登记在 docs/compat-1.5.0-porting.md，不作为本批 FAIL")
+            for i, src in enumerate(text.splitlines(), 1):
+                if any(re.search(pat, src) for pat in LEGACY_LITERALS):
+                    offenders.append(f"{f.relative_to(ROOT)}:{i}: {src.strip()}")
+        if line in D8_WARN_ONLY:
+            warnings.append(f"D8[{line}] P1 线待修（旧折算命中 {n_legacy} 处）"
+                            f"—— 只统计不判 FAIL，须登记在 docs/compat-1.5.0-porting.md")
+            record(f"D8[{line}]", True, f"WARN 只统计：旧折算命中 {n_legacy} 处（P1 待修，不计入 GATE）")
+        else:
+            record(f"D8[{line}]", n_legacy == 0,
+                   "旧折算字面量 0 处" if n_legacy == 0
+                   else f"{n_legacy} 处旧折算(×2.0 口径，应为系数倒数): " + " | ".join(offenders[:5]))
 
 
 # ------------------------------------------------------------- 数值自检表
@@ -367,6 +388,8 @@ def main() -> int:
 
     for cid, status, detail in rows:
         print(f"[{status}] {cid}  {detail}")
+    for w in warnings:
+        print(f"WARN: {w}")
     for line in numeric_table():
         print(line)
 

@@ -87,6 +87,21 @@ public class VitaminPillChipItem extends BaseChipItem {
         HealingManager.add(player, HEALING_POINTS_PER_CARD * amount);
     }
 
+    /**
+     * 通用入口：任意来源(合成 / 掉落 / 商店购买 / 命令发放)玩家获得卡牌时调用。
+     * 治愈 +1/张(经 {@link #onCardGained(Player, int)}，**不**触发看板娘立牌 mimi 被动)
+     * + 照 forge 语义追加看板娘立牌(teru)「攻击牌获得」被动。
+     *
+     * <p>与 {@link #giveCard} 的区别：giveCard 是**本筹码自己发放**的卡(走 receiver 路径 + mamushi 被动)，
+     * 且不调 teru；notifyCardObtained 只做「已经获得」的事后通知，1:1 对应 forge 的同名方法。
+     */
+    public static void notifyCardObtained(Player player, ItemStack card) {
+        if (player == null || player.level().isClientSide()) return;
+        if (card == null || card.isEmpty() || !ModItems.isCardItem(card)) return;
+        onCardGained(player, card.getCount());
+        com.merlinkitsune.astral_dice.item.sign.TeruSignItem.onAttackCardGained(player, card);
+    }
+
     // 维生素药丸:通过合成卡牌获得时触发(合成战斗牌同时触发看板娘立牌被动)
     @SubscribeEvent
     public static void onCardCrafted(PlayerEvent.ItemCraftedEvent event) {

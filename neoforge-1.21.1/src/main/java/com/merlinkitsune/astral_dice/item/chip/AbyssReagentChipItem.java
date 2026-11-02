@@ -17,7 +17,7 @@ import top.theillusivec4.curios.api.SlotContext;
 import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
 
 /**
- * 试剂-深渊筹码(史诗 / 治愈)。
+ * 深渊试剂筹码(史诗 / 治愈)。
  *
  * <ul>
  *   <li><b>装备时治愈层数 +2</b>,卸下 -2(「卸除即扣除」);

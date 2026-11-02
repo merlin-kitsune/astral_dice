@@ -10,7 +10,7 @@ import net.minecraft.client.KeyMapping;
  * {@code Dist}，且 {@code ItemTooltipEvent} 在专用服务端也会派发）。若它在自己的方法体里直接
  * {@code KeyBindingSetup.ACTIVATE_SIGN_KEY}，该字段的**声明类型**（{@code net.minecraft.client.KeyMapping}）
  * 就会出现在 {@code ModTooltipHandler} 的常量池里 —— 而
- * {@code FMLEnvironment.dist == Dist.CLIENT} 这类**运行期**判断挡得住「执行」、**挡不住「符号解析」**：
+ * {@code FMLEnvironment.getDist() == Dist.CLIENT} 这类**运行期**判断挡得住「执行」、**挡不住「符号解析」**：
  * {@code getstatic} 的字段声明类型须在方法被调用时解析，{@code catch (Throwable)} 只包住执行、不包住解析。
  * 也就是说，那种写法是「靠 JIT 内联时机」才侥幸能跑，不是保证。
  *
@@ -18,7 +18,7 @@ import net.minecraft.client.KeyMapping;
  * {@code ModTooltipHandler} 调用的只是本类的方法名，字节码里不再出现任何客户端类型。
  *
  * <h2>调用约定</h2>
- * <p>调用方必须先做 dist 判断（{@code FMLEnvironment.dist == Dist.CLIENT}）再调用本类的方法 ——
+ * <p>调用方必须先做 dist 判断（{@code FMLEnvironment.getDist() == Dist.CLIENT}）再调用本类的方法 ——
  * 本类本身不重复判断，因为它一旦被加载就已经意味着类解析发生过了，判断放这里没有意义。
  * 提供 {@link #activateSignKey()} / {@link #cardInventoryKeyName()} 两个方法；
  * 服务端侧的回退字面量（{@code "J"} / {@code "H"}）留在各自的调用方，不在本类里兜底。

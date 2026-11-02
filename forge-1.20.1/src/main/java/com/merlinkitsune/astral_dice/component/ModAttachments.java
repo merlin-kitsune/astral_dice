@@ -381,7 +381,7 @@ public class ModAttachments {
         FORTUNE_STICK_BLESSING_CLAIMED.set(player, value);
     }
 
-    // 试剂-深渊筹码:「装备时 +2 治愈点」的装备会话闸门(玩家级,持久化)。
+    // 深渊试剂筹码:「装备时 +2 治愈点」的装备会话闸门(玩家级,持久化)。
     // ⚠️ 为什么必须持久化:Curios 只持久化 stacks、**不持久化 previousStacks** ⇒ 登录 / 重生 / 切维度后
     //    首 tick 的 prevStack 恒为空栈而槽里有物品,Curios 把这判成一次装备变化并**重放 onEquip**
     //    (与医疗箱 GRANT_BIT / StarLightManager GRANT_BIT 同一根因)⇒ "空槽守卫"挡不住,会重复加分。

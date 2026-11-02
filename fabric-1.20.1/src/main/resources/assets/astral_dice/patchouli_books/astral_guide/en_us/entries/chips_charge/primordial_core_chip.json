@@ -9,8 +9,8 @@
       "text": "astral_dice.guide.entry.primordial_core_chip.1"
     },
     {
-      "type": "patchouli:crafting",
-      "recipe": "astral_dice:primordial_core_chip"
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.chip_source.note"
     }
   ],
   "sortnum": 9

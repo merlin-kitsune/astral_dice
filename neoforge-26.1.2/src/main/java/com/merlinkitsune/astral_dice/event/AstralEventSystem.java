@@ -9,7 +9,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import top.theillusivec4.curios.api.CuriosApi;
 import com.merlinkitsune.starengine.event.EventTargetCollector;
-import com.merlinkitsune.astral_dice.combat.PartyRelations;
+import com.merlinkitsune.starengine.combat.PartyRelations;
 
 /**
  * 事件系统:事件触发后的统一附加效果。
@@ -24,6 +24,18 @@ public final class AstralEventSystem {
     public static final double EVENT_TARGET_RADIUS = 64.0D;
 
     // 事件触发后的统一附加效果:立牌被动(如大侦探 +3 星币)与调查员立牌联动
+    /**
+     * 附加效果层入口：由 {@link AstralEventDispatcher} 在算好作用域后调用，
+     * 语义与 {@link #onEventTriggered} 完全一致 —— 立牌增益 + 调查员立牌被动。
+     *
+     * <p>26.1.2 平台差异：本方法在合并时丢失，按 1.21.1 基准逐字补回。</p>
+     */
+    public static void applyEventBonus(Player triggerer, String eventId, java.util.List<Player> targets) {
+        if (triggerer.level().isClientSide()) return;
+        applySignBuffs(targets);
+        applyRinSignPassive(triggerer, eventId, targets);
+    }
+
     public static void onEventTriggered(Player triggerer, String eventId) {
         if (triggerer.level().isClientSide()) return;
         // 2026-10-03 用户裁决:事件效果按「队伍 + 64 格」广播(口径见 PartyRelations#collectEventTargets)——

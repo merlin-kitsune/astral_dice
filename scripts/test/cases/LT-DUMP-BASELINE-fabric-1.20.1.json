@@ -1,0 +1,52 @@
+{
+  "case_id": "LT-DUMP-BASELINE-fabric-1.20.1",
+  "title": "LT0/基线：/astralparty dump 在真实服务端可用，且六组机器行全部落进 latest.log。前提：有 dev 客户端已进服（@a 需解析到至少一名玩家），服务端 RCON 已就绪。断言只锚原始值组（LOCKRAW/SIGN/EFFECTS/PENDING），LOCKDERIVED 与 is_sign_active_locked 因行尾带 |assert=forbidden 不作落点。",
+  "version": "fabric-1.20.1",
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "前置：dev 客户端已进服；latest.log 已在本轮启动前轮转（live.sh 负责），否则整文件匹配会被历史行满足"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralparty dump @a"
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    }
+  ],
+  "assert": [
+    {
+      "type": "log",
+      "pattern": "APDUMP\\|HEAD\\|"
+    },
+    {
+      "type": "log",
+      "pattern": "APDUMP\\|LOCKRAW\\|game_time=\\d+"
+    },
+    {
+      "type": "log",
+      "pattern": "APDUMP\\|LOCKRAW\\|max_allowed=\\d+"
+    },
+    {
+      "type": "log",
+      "pattern": "APDUMP\\|SIGN\\|sign_active_cooldown_end=\\d+"
+    },
+    {
+      "type": "log",
+      "pattern": "APDUMP\\|SIGN\\|sign_active_max_cooldown=\\d+"
+    },
+    {
+      "type": "log",
+      "pattern": "APDUMP\\|PENDING\\|source="
+    },
+    {
+      "type": "crash"
+    },
+    {
+      "type": "mixin"
+    }
+  ]
+}

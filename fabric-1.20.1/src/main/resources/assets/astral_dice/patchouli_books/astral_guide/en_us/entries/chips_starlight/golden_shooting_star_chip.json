@@ -9,8 +9,8 @@
       "text": "astral_dice.guide.entry.golden_shooting_star_chip.1"
     },
     {
-      "type": "patchouli:crafting",
-      "recipe": "astral_dice:golden_shooting_star_chip"
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.chip_source.note"
     }
   ],
   "sortnum": 8

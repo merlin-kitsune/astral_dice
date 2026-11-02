@@ -5,8 +5,8 @@
 （按「📍 生效红线区」小节与 AGENTS-full.md L2–L120 逐字比对；按「| L121–L… |」行号索引判连续覆盖）
 在新结构下必然 IndexError / 恒 FAIL ⇒ 换成与结构无关的四项：
   1. 全文快照：AGENTS-full.md 保序包含拆分前备份（不丢行、不乱序）；
-     + 红线区的**新落点**（docs/agent/AGENTS-dsh.md 标记块）与快照 L2–L120 仍逐字一致；
-  2. 结构完整：宿主分派表 4 个宿主 / 共同安全红线 1–6 条 / 按需文档索引节；
+     + 红线区的**新落点**（docs/agent/AGENTS-dsh.md 标记块）与快照 L2–L129 仍逐字一致；
+  2. 结构完整：宿主分派表 4 个宿主 / 共同安全红线 1–7 条 / 按需文档索引节；
   3. 引用有效：AGENTS.md 里引用的 docs/**.md 必须真实存在（默认只 WARN，--strict 才 FAIL）；
   4. 体量 + 驻留规则：AGENTS.md < 32K 字符；AGENTS-dsh.md 仍含用户裁决的 using-superpowers 段。
 
@@ -99,13 +99,15 @@ check('快照行数 ≥ 3480', norm(FULL).count('\n') >= 3480, f'lines={norm(FUL
 # 2026-10-24：根 AGENTS.md 已瘦身为「宿主分派」文件，原「生效红线区（快照 L1–L120 逐字）」整块
 # 已迁到 docs/agent/AGENTS-dsh.md（起始标记：## 📍 生效红线区；结束标记：<!-- END 生效红线区）。
 # 老脚本第 2 项守的「红线区 == 快照 L2–L120 逐字」不能丢，这里按新落点原样续守。
+# 2026-11-02：dsh 侧红线区内新增整节「## 发布流程硬规则（2026-11-02 用户裁决，强制）」（+9 行）并同步进
+# AGENTS-full.md，故比较区间的下界随之后移 L2–L120 → L2–L129（判据仍是逐字节相等，未放宽）。
 _dsh = norm(DSH)
 _dl = _dsh.split('\n')
-_exp = '\n'.join(norm(FULL).split('\n')[1:120]).strip('\n')
+_exp = '\n'.join(norm(FULL).split('\n')[1:129]).strip('\n')
 _s = next((i + 1 for i, l in enumerate(_dl) if l.startswith('## 📍 生效红线区')), None)
 _e = next((i for i, l in enumerate(_dl) if l.startswith('<!-- END 生效红线区')), None)
 _act = '\n'.join(_dl[_s:_e]).strip('\n') if (_s is not None and _e is not None and _e > _s) else None
-check('AGENTS-dsh.md 生效红线区块与 AGENTS-full.md L2–L120 逐字一致', _act == _exp,
+check('AGENTS-dsh.md 生效红线区块与 AGENTS-full.md L2–L129 逐字一致', _act == _exp,
       f'红线区 {len(_act):,} 字符' if _act is not None else '红线区标记缺失（## 📍 生效红线区 / <!-- END 生效红线区）')
 
 print('== 2. AGENTS.md 结构完整（宿主分派 / 共同红线 / 按需索引）==')
@@ -118,10 +120,11 @@ check('宿主分派表含 4 个宿主（' + ' / '.join(want_hosts) + '）',
 
 bolds = re.findall(r'^(\d+)\.\s+\*\*(.+?)\*\*', ag, re.M)
 nums = [int(n) for n, _ in bolds]
-want_red = ['默认不启动实机', '默认不部署', '默认不 commit', '保护素材与他人改动', '互斥锁', '不代改他人职责']
+want_red = ['默认不启动实机', '默认不部署', '默认不 commit', '保护素材与他人改动', '互斥锁', '不代改他人职责',
+            '没有详细测试就没有发布版本']
 hit = [w for w in want_red if any(w in t for _, t in bolds)]
 miss_red = [w for w in want_red if w not in hit]
-check('共同安全红线 1–6 条齐全且编号连续', nums == [1, 2, 3, 4, 5, 6] and not miss_red,
+check('共同安全红线 1–7 条齐全且编号连续', nums == [1, 2, 3, 4, 5, 6, 7] and not miss_red,
       f'编号={nums} / 命中 {len(hit)}/{len(want_red)} 条关键词' + (f' / 缺={miss_red}' if miss_red else ''))
 
 HEAD_IDX = '## 三、按需文档索引'

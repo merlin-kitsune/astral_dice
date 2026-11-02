@@ -3,6 +3,7 @@ package com.merlinkitsune.astral_dice.event;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.item.chip.AirbagChipItem;
 import com.merlinkitsune.astral_dice.item.RenShieldManager;
+import com.merlinkitsune.astral_dice.combat.DiceCombatEvents;
 import com.merlinkitsune.astral_dice.item.chip.WhetstoneChipItem;
 import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.LivingEntity;
@@ -19,15 +20,17 @@ import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
  *   <li>磨刀石:低血量时受到伤害 -2;血量大于 1 点时伤害不超过剩余血量(不可被一次击倒)。</li>
  * </ul>
  *
- * 统一在 {@link LivingDamageEvent} 处理:该阶段护甲/药水减免已结算、生命扣减尚未发生,
- * 可直接改写最终伤害值(设置 0 即完全无效化)。
+ * 统一在 {@link LivingDamageEvent} 处理:生命扣减尚未发生,可直接改写伤害值(设置 0 即完全无效化);
+ * <b>但本线该事件在护甲/吸收之前派发</b>(fabric 锚点见下),载荷是 {@code actuallyHurt} 的**原始入参**,
+ * 不是「护甲与黄心结算之后」的最终值 —— 以「最终伤害」为口径的判定都要按此重看。
  *
  * <p><b>安全气囊对「无视无敌」的伤害源同样生效(2026-09-15 用户裁决)</b>:不再按
- * {@code DamageTypeTags.BYPASSES_INVULNERABILITY} 排除。原版源码依据:本事件由
- * {@code ForgeHooks.onLivingDamage} 在 {@code LivingEntity#actuallyHurt} 内派发,
- * 且 {@code actuallyHurt} 的 {@code isInvulnerableTo} 前置判定对 bypasses_invulnerability
- * 的伤害源为假 → 事件照常派发;把最终伤害改成 0 后 {@code if (f1 != 0.0F)} 分支跳过扣血,
- * 与普通致命伤完全等价。故 {@code /kill}(generic_kill)与其它模组的真伤都会在气囊前止步。
+ * {@code DamageTypeTags.BYPASSES_INVULNERABILITY} 排除。本线依据:事件由 Puzzles Lib 8.1.33 的
+ * {@code LivingEntityFabricMixin#actuallyHurt}({@code @Inject(method="actuallyHurt", at=@At("HEAD"))})
+ * 派发,该处理器先判 {@code isInvulnerableTo}(intermediary {@code method_5679})再派发,而它对
+ * bypasses_invulnerability 的伤害源为假 ⇒ 事件照常派发;改 0 后 {@code actuallyHurt} 在偏移
+ * 107-113({@code fload_2};{@code fconst_0};{@code fcmpl};{@code ifne 114} 不成立即 {@code return})跳过扣血,
+ * 与普通致命伤等价,故 {@code /kill} 与其它模组的真伤都会在气囊前止步。
  * <b>虚空伤害(out_of_world)例外</b>(用户裁决):虚空击杀优先级最高,气囊与磨刀石一律不阻止
  * (见 {@link #onLivingDamage})。另有 {@link #onLivingDeath} 兜底:绕过伤害管线直接致死时仍由气囊接管。
  *
@@ -49,6 +52,25 @@ public final class ChipDamageHandler {
         if (entity.level().isClientSide()) return;
         if (!(entity instanceof Player player)) return;
 
+        // N2 收口(批次 D-10):本处理器有 4 个早退点,若把「本击受击快照失效」写在各出口上,
+        // 早晚漏一个 ⇒ 统一放进 finally,与 forge-1.20.1 同名文件(:49-67)同形。
+        // 早退点全表(行号为本次改动后的本文件):①伤害<=0 ②护盾剩余>0 ③虚空伤害 ④安全气囊生效;
+        // 另加「正常走完」一条 —— 五条出口都会经过 finally。
+        try {
+            applyChipMitigation(player, event);
+        } finally {
+            // 与 forge 的差别:forge 这里还有 PaparaSignItem.settleBiteHeal(event);
+            // 本线的咬合回血走独立的 @SubscribeEvent(priority=LOWEST) onPaparaBiteHurtHeal,
+            // 不挂在本 finally 内(见 B20B 报告)。
+            DiceCombatEvents.compensateAbsorption(player, event.getAmount());
+        }
+    }
+
+    /**
+     * 筹码受击侧主体(原 onLivingDamage 的内联体逐行搬出,批次 D-10)。
+     * 早退点全部落在调用方的 try 内 ⇒ 由 finally 统一收口。
+     */
+    private static void applyChipMitigation(Player player, LivingDamageEvent event) {
         float damage = event.getAmount();
         if (damage <= 0.0F) return;
 
@@ -64,10 +86,17 @@ public final class ChipDamageHandler {
 
         // 安全气囊:致命伤害(伤害 ≥ 当前血量)时消耗 6 点充能使本次伤害无效。
         // 不排除「无视无敌」(bypasses_invulnerability)的伤害源:气囊必须始终有效(见类注释)。
-        // A6 口径(致命判定按**吸收(黄心)之后**)在本版本**天然达标**,无需换算:
-        // 1.20.1 的 LivingDamageEvent 由 ForgeHooks.onLivingDamage 在
-        // forge-1.20.1-47.4.10 LivingEntity#actuallyHurt L1680 派发,晚于 L1669-1670 的吸收结算,
-        // 传入的 damage 已是"吸收后仍会扣的生命值"⇒ 直接与生命值比较即为同一口径。
+        // A6 口径(致命判定按**吸收(黄心)之后**)在本线**并不天然成立**:下面的 damage 是
+        // actuallyHurt 的原始入参 —— 事件由 Puzzles 的 LivingEntityFabricMixin#actuallyHurt
+        // (@Inject(method="actuallyHurt", at=@At("HEAD")))在偏移 0 派发,而护甲(偏移 12
+        // getDamageAfterArmorAbsorb)、魔抗(19 getDamageAfterMagicAbsorb)、吸收(25-45)全在其后
+        // ⇒ 此处与生命值比较的是护甲/吸收**之前**的原始值,本线不做换算。
+        // ⚠️ 本线平台注(批次 D-10 取证):本线该事件由 Puzzles 的 LIVING_HURT
+        //    回调桥接(platform/PuzzlesBridges.java:100-112),注入点在 actuallyHurt 的**方法入口**,
+        //    载荷是护甲 / 抗性 / 吸收**之前**的原始入参(字节码:fuzs.puzzleslib.mixin.LivingEntityFabricMixin
+        //    的 actuallyHurt 处理器先判 isInvulnerableTo 再派发,偏移 0-54)⇒「致命判定天然按吸收之后」
+        //    在本线**并不成立**;此处沿用本线既有口径(与骰战两条写终值路径同一口径),
+        //    该平台差异的完整取证与后续处理建议登记在 B20B 报告。
         if (damage >= player.getHealth() && AirbagChipItem.tryNegateFatal(player, event.getSource())) {
             event.setAmount(0.0F);
             return;

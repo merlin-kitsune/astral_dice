@@ -1,0 +1,40 @@
+{
+  "case_id": "TICK-DISPATCH-fabric-1.20.1",
+  "title": "事件分发（tick 通道）：服务端/客户端 tick 桥与调度器字节码在位（event/PlayerTickEvents、platform/event/TickEvent、event/RailgunStrikeScheduler），且不出现 tick 异常刷屏或 mixin 注入失败。tick 级数值断言需要 tick 采样器（AutoJS/KubeJS），本条只守分发实现与无异常。",
+  "version": "fabric-1.20.1",
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "tick 采样属于运行期取证，需要 AutoJS（-PautojsTestMod=1）或 KubeJS；本环境默认只有 RCON，故不写恒 BLOCKED 的采样步骤。"
+    },
+    {
+      "op": "jar_stats",
+      "save_as": "jar"
+    }
+  ],
+  "assert": [
+    {
+      "type": "bytecode",
+      "pattern": "event/PlayerTickEvents\\.class$"
+    },
+    {
+      "type": "bytecode",
+      "pattern": "platform/event/TickEvent\\.class$"
+    },
+    {
+      "type": "bytecode",
+      "pattern": "event/RailgunStrikeScheduler\\.class$"
+    },
+    {
+      "type": "absent",
+      "pattern": "Exception ticking"
+    },
+    {
+      "type": "mixin"
+    },
+    {
+      "type": "crash"
+    }
+  ]
+}

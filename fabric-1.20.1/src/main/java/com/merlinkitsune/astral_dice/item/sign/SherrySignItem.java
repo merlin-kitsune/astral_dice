@@ -7,7 +7,6 @@ import com.merlinkitsune.starengine.combat.HostileTargets;
 import com.merlinkitsune.astral_dice.combat.SherryThrowManager;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.SherryReasoningEffect;
-import com.merlinkitsune.astral_dice.event.WeirdDiceHandler;
 import com.merlinkitsune.astral_dice.item.ChargeManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.starengine.component.GameplayConstants;
@@ -214,7 +213,7 @@ public class SherrySignItem extends BaseSignItem {
 
     /**
      * 主动冷却 tick:佩戴时基础 {@value #ACTIVE_COOLDOWN_SECONDS} 秒 —— **与枪匠立牌同款链**
-     * (先按充能上限封顶,再按诡异骰子减半;低于充能上限 160 秒 ⇒ 有充能时不受影响)。
+     * (仅按充能上限封顶;低于充能上限 160 秒 ⇒ 有充能时不受影响)。
      */
     @Override
     protected int activeCooldownBaseTicks(Player player) {
@@ -222,9 +221,20 @@ public class SherrySignItem extends BaseSignItem {
                 ? ACTIVE_COOLDOWN_SECONDS * 20
                 : GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS;
         ticks = (int) ChargeManager.signCooldownTicks(player, ticks);
-        if (WeirdDiceHandler.hasWeirdDice(player)) {
-            ticks = Math.max(1, ticks / 2);
-        }
+        return ticks;
+    }
+
+    /**
+     * 同上,但**不折电池**:{@code signCooldownTicks} → {@code signCooldownTicksBase},
+     * 其余({@code isEquipped} 三元 / 兜底常量)**逐字保留**。
+     * 供 {@code sign_active_max_cooldown_base}(命运指引卡减半基准)使用。
+     */
+    @Override
+    protected int activeCooldownBaseTicksNoBattery(Player player) {
+        int ticks = isEquipped(player)
+                ? ACTIVE_COOLDOWN_SECONDS * 20
+                : GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS;
+        ticks = (int) ChargeManager.signCooldownTicksBase(player, ticks);
         return ticks;
     }
 
@@ -504,9 +514,10 @@ public class SherrySignItem extends BaseSignItem {
      * <p>只认 {@code getDirectEntity()} 是玩家本人的近战 —— 弹射物、法术、AOE 与环境伤害一律不计
      * (与「每攻击一个」的语义一致;本模组既有的「玩家近战」判据同款)。
      *
-     * <p>挂点 = {@code LivingDamageEvent}(护甲/附魔减免之后),对应 1.21.1 的
-     * {@code LivingDamageEvent.Pre};残余平台差异(1.20.1 在吸收结算之后派发)对本判定无影响
-     * —— 这里只读实体与伤害源,不看伤害数值。
+     * <p>挂点 = {@code LivingDamageEvent},与 1.21.1 的 {@code LivingDamageEvent.Pre} 同名对应;
+     * 本线该事件由 Puzzles 的 {@code LivingEntityFabricMixin#actuallyHurt}({@code @Inject(at=@At("HEAD"))})
+     * 在护甲(偏移 12)/魔抗(19)/吸收(25-45)**之前**派发,载荷是原始入参而不是「护甲之后」的值
+     * —— 对本判定无影响:这里只读实体与伤害源,不看伤害数值。
      */
     @SubscribeEvent(priority = EventPriority.NORMAL)
     public static void onAttackHostile(LivingDamageEvent event) {

@@ -84,9 +84,28 @@ public class ModDataComponents {
     public static final ItemDataKey<Long> TEMPORARY_CARD_EXPIRES =
             ItemDataKey.create("temporary_card_expires", Codec.LONG);
 
+    // 临时牌的获得者 UUID(2026-10-27 用户裁决:临时牌只能由获得者持有与使用)。
+    // 未写入 NBT 前 get 返回 null = 无主(老存档)⇒ 按「非本人持有」清掉;纯服务端判定,客户端不读。
+    public static final ItemDataKey<UUID> TEMPORARY_CARD_OWNER =
+            ItemDataKey.create("temporary_card_owner", UUIDUtil.CODEC);
+
     // 专属效果牌:获得者 UUID(空表示尚未绑定,首次使用时绑定)
     public static final ItemDataKey<Optional<UUID>> OWNER_UUID =
             ItemDataKey.create("owner_uuid", UUIDUtil.CODEC.optionalFieldOf("id").codec());
+
+    // 专属效果牌的获得者显示名（tooltip 侧重渲染；空串 = 未绑定）
+    public static final ItemDataKey<String> OWNER_NAME =
+            ItemDataKey.create("owner_name", Codec.STRING);
+
+    // 回收进物品的三份力场状态：耐久 / 已存活 tick / 已发放充能
+    public static final ItemDataKey<Integer> REPULSION_HEALTH =
+            ItemDataKey.create("repulsion_health", Codec.INT);
+
+    public static final ItemDataKey<Integer> REPULSION_AGE =
+            ItemDataKey.create("repulsion_age", Codec.INT);
+
+    public static final ItemDataKey<Integer> REPULSION_CHARGE =
+            ItemDataKey.create("repulsion_charge", Codec.INT);
 
 
 

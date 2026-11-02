@@ -37,7 +37,7 @@ import top.theillusivec4.curios.api.CuriosApi;
 
 import java.util.ArrayList;
 import java.util.List;
-import com.merlinkitsune.astral_dice.combat.PartyRelations;
+import com.merlinkitsune.starengine.combat.PartyRelations;
 
 /**
  * 风水师立牌(全局命名 {@code zhao};传奇品质)。
@@ -102,7 +102,7 @@ import com.merlinkitsune.astral_dice.combat.PartyRelations;
  * 主动效果图标复用同一张图({@code textures/mob_effect/zhao_blessing.png})。
  */
 @EventBusSubscriber(modid = AstralDiceMod.MODID)
-public class ZhaoSignItem extends BaseSignItem {
+public class ZhaoSignItem extends BaseSignItem implements SignHooks.DiceJudgmentRoll {
     private static final Logger LOGGER = LoggerFactory.getLogger(ZhaoSignItem.class);
 
     /** 主动技能的动作 id(注册表键;也是 actionbar 技能名 {@code msg.astral_dice.target_select.skill.<id>} 的来源) */
@@ -153,9 +153,11 @@ public class ZhaoSignItem extends BaseSignItem {
         @Override
         public void apply(ServerPlayer player, LivingEntity target) {
             if (!applyBlessing(player, target)) return;
-            // 主动成功施效:开始玩家级冷却(统一经 signCooldownTicks:含诡异骰子 -50% 与充能递减)
+            // 主动成功施效:开始玩家级冷却(统一经 signCooldownTicks:含充能封顶与额外电池筹码减成)
             ModAttachments.setSignActiveCooldownEnd(player,
                     player.level().getGameTime() + WeirdDiceHandler.signCooldownTicks(player));
+            // 冷却口径一致(2026-10-22 补):记录本次实际最大冷却,供「瞬时冷却」/减免换算剩余比例
+            ModAttachments.setSignActiveMaxCooldown(player, (long) (WeirdDiceHandler.signCooldownTicks(player)));
             // 电流核心筹码:主动技能实际生效时充能 +1
             CurrentCoreChipItem.onActiveSkillUsed(player);
             LOGGER.debug("[Astral Dice][TargetSelection] {} applied to {}({}) by {} self={}",
@@ -494,5 +496,10 @@ public class ZhaoSignItem extends BaseSignItem {
     /** 只读读数辅助(探针/调试用):当前是否满足"组队"这一前置(未组队 ⇒ 心意相连整体不生效) */
     public static boolean teamGateOpen(Player player) {
         return player != null && PartyRelations.hasTeam(player);
+    }    @Override
+    public String handleDiceRollResult(Player player, int dice) {
+        return onDiceRollResult(player, dice);
     }
+
+
 }

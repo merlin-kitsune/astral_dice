@@ -2,7 +2,6 @@ package com.merlinkitsune.astral_dice.item.sign;
 
 import com.merlinkitsune.starengine.combat.HostileTargets;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
-import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
 import com.merlinkitsune.astral_dice.event.WeirdDiceHandler;
 import com.merlinkitsune.astral_dice.item.HealingManager;
 import com.merlinkitsune.astral_dice.item.chip.CurrentCoreChipItem;
@@ -27,7 +26,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
-import com.merlinkitsune.astral_dice.combat.PartyRelations;
+import com.merlinkitsune.starengine.combat.PartyRelations;
+import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
 
 /**
  * 史莱姆立牌。
@@ -58,7 +58,7 @@ import com.merlinkitsune.astral_dice.combat.PartyRelations;
  * <h2>26.1.2 平台/线路差异（相对 1.21.1 基准）</h2>
  * <ol>
  *   <li><b>药水效果常量改名</b>（见 {@code docs/compat-26.1.2-neoforge.md} §2.2）：
- *       {@code MobEffects.HEAL → INSTANT_HEALTH}、{@code MobEffects.MOVEMENT_SLOWDOWN → SLOWNESS}。
+ *       {@code MobEffects.INSTANT_HEALTH → INSTANT_HEALTH}、{@code MobEffects.SLOWNESS → SLOWNESS}。
  *       数值/时长口径不变（瞬间治疗 1 tick、缓慢 {@value #SLOWDOWN_TICKS} tick）。</li>
  *   <li><b>实体包路径</b>：{@code world.entity.animal.Pig → world.entity.animal.pig.Pig}、
  *       {@code …animal.camel.Camel}、{@code …animal.horse.AbstractHorse → …animal.equine.AbstractHorse}
@@ -73,6 +73,12 @@ public class LuluSignItem extends BaseSignItem {
 
     /** 缓慢时长(60 秒;与旧行为同值,不引入新常量) */
     private static final int SLOWDOWN_TICKS = 1200;
+
+    /** 受击被动冷却(15 秒 = 300 tick;防止被围攻时治愈点数暴涨;2026-10-22 用户裁决:由 20 tick 放宽到 300 tick) */
+    private static final int HURT_COOLDOWN_TICKS = 300;
+
+    /** 主动技能冷却减免(10 秒 = 200 tick;绝对量,与最大冷却无关) */
+    private static final long COOLDOWN_REDUCTION_TICKS = 200L;
 
     /**
      * 主动「治愈粘液」:选任意玩家(或右键对自身)⇒ 主体治愈施加到该目标,两项范围能力以该目标为中心。
@@ -105,7 +111,7 @@ public class LuluSignItem extends BaseSignItem {
                 // 友情徽章:治疗者对**友方玩家**施加治疗时双方各 +2 治愈(自疗不触发,钩子内部自判)
                 FriendshipBadgeChipItem.onHealApplied(player, receiver);
             }
-            target.addEffect(new MobEffectInstance(MobEffects.INSTANT_HEALTH, 1, 0, false, true));
+            PlayerEffectProtection.apply(target, new MobEffectInstance(MobEffects.INSTANT_HEALTH, 1, 0, false, true));
 
             // ── 2. 范围能力(2026-09-28 起仅剩「敌对生物缓慢」):以**被指向的目标**为中心 ──────
             // 目标自身已吃到主体效果,故与旧实现排除施放者同构,这里排除目标本身。
@@ -115,13 +121,13 @@ public class LuluSignItem extends BaseSignItem {
             for (LivingEntity entity : nearby) {
                 if (PartyRelations.isHostileTo(player, entity)) {
                     // 敌对生物:缓慢 1:00
-                    EffectTimerGuard.apply(entity,
+                    PlayerEffectProtection.apply(entity,
                             new MobEffectInstance(MobEffects.SLOWNESS, SLOWDOWN_TICKS, 0, false, true));
                 }
             }
 
             // ── 4. 主动成功施加:开始玩家级冷却 ──────────────────────────────────────────
-            // 统一经 signCooldownTicks(含诡异骰子 -50% 与充能递减);门控路径不会走
+            // 统一经 signCooldownTicks(含充能封顶与额外电池筹码减成);门控路径不会走
             // BaseSignItem 第 6 步,故此处必须自己写。**同时**写 sign_active_max_cooldown:
             // 非门控路径原本就会写它,而电流核心的消耗档位分母读的正是它
             // ⇒ 只写冷却不写基准会让档位算错(迁移到门控时最容易漏的一步)。
@@ -129,6 +135,10 @@ public class LuluSignItem extends BaseSignItem {
             int cooldown = WeirdDiceHandler.signCooldownTicks(player);
             ModAttachments.setSignActiveCooldownEnd(player, now + cooldown);
             ModAttachments.setSignActiveMaxCooldown(player, cooldown);
+            // 同处配对写「未折电池」基准(与 BaseSignItem 的写入点同一口径;漏写会让命运指引卡读到旧值)。
+            ModAttachments.setSignActiveMaxCooldownBase(player,
+                    com.merlinkitsune.astral_dice.item.ChargeManager.signCooldownTicksBase(player,
+                            com.merlinkitsune.starengine.component.GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS));
             // 电流核心筹码:主动技能实际生效时充能 +1
             CurrentCoreChipItem.onActiveSkillUsed(player);
 
@@ -163,7 +173,7 @@ public class LuluSignItem extends BaseSignItem {
     // 2026-09-29 用户裁决:只有**敌对目标**的攻击触发 —— 环境伤害(摔落/仙人掌/着火…)与自伤不再算数;
     // 闸门在 BaseSignItem#invokeHurtHooks 分发处,本类无需自判。
     // 与骰神赐福的玩家攻击链路相互独立。
-    // 受击 +1 有 1 秒冷却(20 tick),防止被围攻时治愈点数暴涨。
+    // 受击 +1 有 15 秒冷却(300 tick),防止被围攻时治愈点数暴涨(2026-10-22 用户裁决放宽)。
     @Override
     protected void onHurt(Player player, DamageSource source, float amount) {
         long nowTick = player.level().getGameTime();

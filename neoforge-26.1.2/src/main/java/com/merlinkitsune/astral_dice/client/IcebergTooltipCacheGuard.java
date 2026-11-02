@@ -86,13 +86,13 @@ import org.slf4j.LoggerFactory;
  * ⇒ 必须卡在**同一次 tooltip 渲染之前**。各线的落点：
  * <ul>
  *   <li>NeoForge / Forge：本类的 {@code RenderTooltipEvent.Pre} 订阅 —— 它在
- *       {@code GuiGraphics#renderTooltipInternal} 的**第一条语句**触发
- *       （1.21.1 源码 `GuiGraphics.java:1495`），早于 `RenderTooltipEvent.Color`（同文件 `:1516`）
+ *       {@code GuiGraphicsExtractor#renderTooltipInternal} 的**第一条语句**触发
+ *       （1.21.1 源码 `GuiGraphicsExtractor.java:1495`），早于 `RenderTooltipEvent.Color`（同文件 `:1516`）
  *       与真正的绘制（`:1517`）；</li>
  *   <li>26.1.2：同一事件，落点 {@code GuiGraphicsExtractor#tooltip}（源码 `:1148`）——
  *       ⚠️ 注意 Iceberg 1.4.1.1 的**方法头**注入在它之前，这正是「必须跳过被管理态」的原因；</li>
  *   <li>Fabric 1.20.1：本线没有该事件的派发源，改由 {@code ClientTooltipBridgeMixin} 在
- *       {@code GuiGraphics#renderTooltipInternal} 的 `HEAD` 直接调用 {@link #reset()}。</li>
+ *       {@code GuiGraphicsExtractor#renderTooltipInternal} 的 `HEAD` 直接调用 {@link #reset()}。</li>
  * </ul>
  *
  * <h2>⚠️ 边界与安全</h2>

@@ -2,6 +2,7 @@ package com.merlinkitsune.astral_dice.platform;
 
 import com.merlinkitsune.astral_dice.platform.event.AnvilUpdateEvent;
 import com.merlinkitsune.astral_dice.platform.event.LoaderBus;
+import com.merlinkitsune.astral_dice.platform.event.entity.player.AnvilRepairEvent;
 import com.merlinkitsune.astral_dice.platform.event.entity.living.LivingChangeTargetEvent;
 import com.merlinkitsune.astral_dice.platform.event.entity.living.LivingDamageEvent;
 import com.merlinkitsune.astral_dice.platform.event.entity.living.LivingDeathEvent;
@@ -17,6 +18,7 @@ import fuzs.puzzleslib.api.event.v1.entity.living.LivingDeathCallback;
 import fuzs.puzzleslib.api.event.v1.entity.living.LivingDropsCallback;
 import fuzs.puzzleslib.api.event.v1.entity.living.LivingHurtCallback;
 import fuzs.puzzleslib.api.event.v1.entity.living.MobEffectEvents;
+import fuzs.puzzleslib.api.event.v1.entity.player.AnvilRepairCallback;
 import fuzs.puzzleslib.api.event.v1.entity.player.AnvilUpdateCallback;
 import fuzs.puzzleslib.api.event.v1.entity.player.PlayerEvents;
 import fuzs.puzzleslib.api.event.v1.level.BlockEvents;
@@ -52,6 +54,8 @@ import net.minecraft.world.item.ItemStack;
  *       <td>{@link MobEffectEvent}.{@code Added} / {@code Remove} / {@code Expired}</td></tr>
  *   <tr><td>{@code LivingChangeTargetCallback}</td><td>{@code Mob#setTarget}</td>
  *       <td>{@link LivingChangeTargetEvent}（targetType = {@code MOB_TARGET}）</td></tr>
+ *   <tr><td>{@code AnvilRepairCallback}</td><td>{@code AnvilMenu#onTake}（Container#setItem 之前）</td>
+ *       <td>{@link AnvilRepairEvent}（取走成品；{@code breakChance} 可改并写回）</td></tr>
  * </table>
  *
  * <p>⚠️ <b>{@code LivingHurtCallback} 的名字有误导性</b>：它拿到的 {@code MutableFloat}
@@ -84,7 +88,7 @@ public final class PuzzlesBridges {
         // 取证:桥装没装必须能从日志看出来 —— 「代码在但没接上」是本项目踩过的最大一类坑
         //(见 AstralDiceMod 里 install() 从未被调用那一处)。
         com.merlinkitsune.astral_dice.AstralDiceMod.LOGGER.info(
-                "[Astral Dice] Puzzles 事件桥已安装:伤害/死亡/掉落/目标/效果×3/方块/克隆/拾取/铁砧");
+                "[Astral Dice] Puzzles 事件桥已安装:伤害/死亡/掉落/目标/效果×3/方块/克隆/拾取/铁砧×2");
     }
 
     // ------------------------------------------------------------------
@@ -218,8 +222,29 @@ public final class PuzzlesBridges {
                 output.accept(produced);
                 xpCost.accept(event.getCost());
                 materialCost.accept(event.getMaterialCost());
+                // ⚠️ 这里必须回 **interrupt 类**结果(ALLOW)，不能是 PASS：
+                //    Puzzles 的 AnvilMenuFabricMixin#createResult 开头是 `if (result.isPass()) return;`
+                //    —— PASS = 不干预、直接放行原版，上面写进 MutableValue/MutableInt 的
+                //    output / cost / materialCost **全部被丢弃**。实测后果：铁砧升星在 fabric 线
+                //    根本不产出成品（点击无反应、输入不被消耗）。
+                //    ALLOW = interrupt + true，才会走到 `resultSlots.setItem(0, output.get())`
+                //    并写回 cost / repairItemCountCost。
+                return EventResult.ALLOW;
             }
             return EventResult.PASS;
+        });
+
+        // ── AnvilRepairEvent ← AnvilRepairCallback ──（void 回调，无取消语义）
+        // Forge 的 AnvilRepairEvent 在「玩家真的取走成品」时派发一次（ForgeHooks.onAnvilRepair，
+        // 位于 AnvilMenu#onTake 里扣材料 / 清空输入槽之前）。Puzzles 的注入点是
+        // AnvilMenuFabricMixin#onTake$0（Container#setItem 之前），语义位置一致；
+        // 其 onTake$1 再用 MutableFloat 的**终值**判铁砧损坏 ⇒ 这里把事件改过的 breakChance 写回。
+        AnvilRepairCallback.EVENT.register((player, left, right, output, breakChance) -> {
+            AnvilRepairEvent event = new AnvilRepairEvent(player, left, right, output);
+            LoaderBus.INSTANCE.post(event);
+            if (event.getBreakChance() != breakChance.getAsFloat()) {
+                breakChance.accept(event.getBreakChance());
+            }
         });
     }
 

@@ -23,9 +23,13 @@ import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.minecraft.client.KeyMapping;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.Renderable;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.narration.NarratableEntry;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.util.Mth;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 
 /**
  * <b>客户端事件桥</b> —— 把 Fabric API 的客户端回调转成自建事件并派发。
@@ -128,10 +132,15 @@ public final class FabricClientBridges {
         List<RegisterGuiOverlaysEvent.Entry> overlays = List.copyOf(overlayEvent.getEntries());
         HudRenderCallback.EVENT.register((guiGraphics, tickDelta) -> {
             // 每帧复位两列高度累加量(对齐 Forge 的 ForgeGui#render 开头把二者置 39 的做法):
-            // 原版已画掉「血量行」与「饱食行/空气行」,故起点不是 39 —— 见 ForgeGui 类头。
-            // ⚠️ 本模组的战斗数值 HUD(client/CombatPowerHud)依赖它定位,且会**先读后增**;
-            //    复位必须发生在其 render 之前。
-            ForgeGui.INSTANCE.leftHeight = ForgeGui.RESET_LEFT;
+            // 左列 = **按原版心排数复算的种子**(不是常量 49):原版护甲行 = (H-39) - (心排数-1)*行距 - 10
+            //   ⇒ 距底偏移 = 39 + (心排数-1)*行距 + 10;单排心 49、两排心(吸收心) 59。
+            //   写死 49 时,吸收心那一排(画在 height-49)会被防御条整排盖掉。
+            //   复算公式与逐行取证见 ForgeGui#leftSeed。
+            // 右列 = 「饱食行 + 气泡行」都算上的上限 ⇒ 59。
+            // ⚠️ 右列的真实基准由战斗数值 HUD(client/CombatPowerHud#airRowShown)按**本帧原版是否
+            //    画气泡行**再定(49 或 59),它会把 base + 行高写回 rightHeight;故这里的复位必须
+            //    发生在它的 render 之前。详见 ForgeGui 类头。
+            ForgeGui.INSTANCE.leftHeight = leftSeedOfCameraPlayer();
             ForgeGui.INSTANCE.rightHeight = ForgeGui.RESET_RIGHT;
             for (RegisterGuiOverlaysEvent.Entry entry : overlays) {
                 entry.overlay().render(ForgeGui.INSTANCE, guiGraphics, tickDelta,
@@ -141,6 +150,29 @@ public final class FabricClientBridges {
 
         AstralDiceMod.LOGGER.info("[Astral Dice] 客户端注册桥:按键 {} 个 / 粒子 {} 个 / HUD 覆盖层 {} 个",
                 keyEvent.getKeys().size(), particleEvent.getEntries().size(), overlays.size());
+    }
+
+    /**
+     * 本帧左列种子 —— 取**相机玩家**的属性复算原版心排数(见 {@link ForgeGui#leftSeed})。
+     *
+     * <p>用相机实体而不是 {@code Minecraft#player}:原版 {@code Gui#getCameraPlayer} 取的就是
+     * {@code minecraft.getCameraEntity()},旁观 / 第三人称下二者可能不是同一个实体,
+     * 防御条必须与原版护甲行对齐。
+     *
+     * <p>取不到相机玩家时(主菜单、切换维度的那一帧)防御条自身也不会画
+     * ({@code CombatPowerHud#renderTarget} 同样返回 {@code null}),这里退回「单排心 20 点、无吸收」
+     * 的种子(= 49),只为让字段保持定义良好的值。
+     */
+    private static int leftSeedOfCameraPlayer() {
+        if (!(Minecraft.getInstance().getCameraEntity() instanceof LocalPlayer player)) {
+            return ForgeGui.leftSeed(20.0F, 20, 20, 0.0F);
+        }
+        // 原版 :843 的 i = Mth.ceil(getHealth())::868 的 max() 里用的是**取整后**的血量,别直接传 float
+        int health = Mth.ceil(player.getHealth());
+        // displayHealth(Gui.java:139 的 protected 字段)本线读不到 ⇒ 传 health 自身,
+        // 差异窗口见 ForgeGui#leftSeed 的 @param displayHealth
+        return ForgeGui.leftSeed((float) player.getAttributeValue(Attributes.MAX_HEALTH),
+                health, health, player.getAbsorptionAmount());
     }
 
     /** {@code RegisterParticleProvidersEvent} 的条目 → FAPI 的 {@code ParticleFactoryRegistry}。 */

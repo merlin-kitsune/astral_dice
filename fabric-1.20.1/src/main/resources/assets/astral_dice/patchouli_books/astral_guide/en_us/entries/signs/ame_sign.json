@@ -1,0 +1,25 @@
+{
+  "name": "item.astral_dice.ame_sign",
+  "category": "astral_dice:signs",
+  "icon": "astral_dice:ame_sign",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:ame_sign",
+      "text": "astral_dice.guide.entry.ame_sign.1"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.ame_sign.2"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.ame_sign.3"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:ame_sign"
+    }
+  ],
+  "sortnum": 25
+}

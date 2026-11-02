@@ -8,6 +8,7 @@ import net.minecraft.world.entity.player.Player;
 import com.merlinkitsune.astral_dice.platform.event.EventPriority;
 import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
 import com.merlinkitsune.astral_dice.platform.event.entity.living.MobEffectEvent;
+import com.merlinkitsune.astral_dice.platform.event.entity.player.PlayerEvent;
 
 import com.merlinkitsune.starengine.event.ModEffectRemoval;
 public class ModEffectEvents {
@@ -17,8 +18,13 @@ public class ModEffectEvents {
         // 本模组内部移除(ModEffectRemoval)/计时器守卫的强制移除(时长校正)放行
         if (ModEffectRemoval.isInternal()) return;
         if (EffectTimerGuard.isForcedRemoval()) return;
-        // 死亡时允许清除,保证死亡后效果状态能正常重置
-        if (event.getEntity().isDeadOrDying()) return;
+        // 死亡时允许清除,保证死亡后效果状态能正常重置(同时丢弃保护记录,不跨生命周期补回)
+        if (event.getEntity().isDeadOrDying()) {
+            if (event.getEntity() instanceof Player deadPlayer) {
+                PlayerEffectProtection.clear(deadPlayer);
+            }
+            return;
+        }
         MobEffectInstance effect = event.getEffectInstance();
         if (effect == null || effect.getEffect() == null) return;
         // ① 生物类目标(非玩家)允许清除自身效果(2026-09-30 用户裁决):
@@ -78,6 +84,39 @@ public class ModEffectEvents {
         MobEffectInstance instance = event.getEffectInstance();
         if (instance == null || instance.getEffect() == null) return;
         EffectTimerGuard.forget(player, net.minecraft.core.registries.BuiltInRegistries.MOB_EFFECT.getKey(instance.getEffect()).toString());
+    }
+
+    // 玩家离线:丢弃保护记录(重登后效果由存档恢复,无需跨会话补回),避免长时间运行下按 UUID 累积
+    // 派发源:platform/FabricBridges#installPlayerLifecycle(PlayerLoggedOutEvent,本线自建桥)
+    @SubscribeEvent
+    public static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
+        PlayerEffectProtection.clear(event.getEntity());
+    }
+    // 死亡重生 / 跨维度克隆(2026-10-23 复核 P3):原版死亡**不派发** MobEffectEvent.Remove
+    // (ServerPlayer#restoreFrom 不复制效果)、PlayerLifecycleHandler 只清本模组那 11 个效果,
+    // 因此若玩家只带「经 apply 施加的原版效果」死亡,快照会残留到 endTick+40 并与补回通道同源造成「陈旧时长复活」。
+    // Clone 在重生/换维度时对新实体触发,按 UUID 清场即可(两者 UUID 相同)。
+    // 派发源:platform/PuzzlesBridges(PlayerEvents.Copy → PlayerEvent.Clone)
+    @SubscribeEvent
+    public static void onPlayerClone(PlayerEvent.Clone event) {
+        PlayerEffectProtection.clear(event.getEntity());
+    }
+    // 外部清除的补回入口(2026-10-23 用户裁决):玩家侧效果「除非被声明可清除,否则不受任何外部影响」。
+    // 原版命名空间的效果无法按实例取消(MobEffectEvent.Remove 只带效果类型;按类型取消会连玩家自己喝的
+    // 同类药水一起锁住 = 牛奶失效),因此这里在取消判定之后,把「本模组施加、且未声明可清除」的效果
+    // 排进下一 tick 的补回队列(见 PlayerEffectProtection)。
+    // ⚠️ 必须是 LOWEST:前置处理器(HIGH)一旦取消,就说明效果没被移除,不该补回。
+    @SubscribeEvent(priority = EventPriority.LOWEST)
+    public static void onExternalRemovalRestore(MobEffectEvent.Remove event) {
+        if (event.isCanceled()) return;
+        if (event.getEntity().level().isClientSide()) return;
+        if (ModEffectRemoval.isInternal()) return;
+        if (EffectTimerGuard.isForcedRemoval()) return;
+        if (!(event.getEntity() instanceof Player player)) return;
+        if (player.isDeadOrDying()) return;
+        MobEffectInstance effect = event.getEffectInstance();
+        if (effect == null || effect.getEffect() == null) return;
+        PlayerEffectProtection.onExternalRemoval(player, net.minecraft.core.registries.BuiltInRegistries.MOB_EFFECT.getKey(effect.getEffect()).toString());
     }
 
 }

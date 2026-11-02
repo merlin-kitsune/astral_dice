@@ -1,13 +1,14 @@
 // SHERRY_AIM_PATCH 2026-09-22（怪力侦探：法伤结算 / 准星落点 / 隔墙过滤 / 落地冻结）
 package com.merlinkitsune.astral_dice.item.sign;
 
+import top.theillusivec4.curios.api.SlotContext;
+
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.starengine.combat.HostileTargets;
 import com.merlinkitsune.astral_dice.combat.SherryThrowManager;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.SherryReasoningEffect;
-import com.merlinkitsune.astral_dice.event.WeirdDiceHandler;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.chip.CurrentCoreChipItem;
 import com.merlinkitsune.starengine.component.GameplayConstants;
@@ -32,7 +33,7 @@ import top.theillusivec4.curios.api.CuriosApi;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import com.merlinkitsune.astral_dice.combat.PartyRelations;
+import com.merlinkitsune.starengine.combat.PartyRelations;
 
 /**
  * 怪力侦探立牌(sherry,史诗)。
@@ -208,7 +209,7 @@ public class SherrySignItem extends BaseSignItem {
 
     /**
      * 主动冷却 tick:佩戴时基础 {@value #ACTIVE_COOLDOWN_SECONDS} 秒 —— **与枪匠立牌同款链**
-     * (先按充能上限封顶,再按诡异骰子减半;低于充能上限 160 秒 ⇒ 有充能时不受影响)。
+     * (仅按充能上限封顶;低于充能上限 160 秒 ⇒ 有充能时不受影响)。
      */
     @Override
     protected int activeCooldownBaseTicks(Player player) {
@@ -216,9 +217,20 @@ public class SherrySignItem extends BaseSignItem {
                 ? ACTIVE_COOLDOWN_SECONDS * 20
                 : GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS;
         ticks = (int) ChargeManager.signCooldownTicks(player, ticks);
-        if (WeirdDiceHandler.hasWeirdDice(player)) {
-            ticks = Math.max(1, ticks / 2);
-        }
+        return ticks;
+    }
+
+    /**
+     * 同上,但**不折电池**:{@code signCooldownTicks} → {@code signCooldownTicksBase},
+     * 其余(isEquipped 三元 / Math.max 夹底 / 兜底常量)**逐字保留**。
+     * 供 {@code sign_active_max_cooldown_base}(命运指引卡减半基准)使用。
+     */
+    @Override
+    protected int activeCooldownBaseTicksNoBattery(Player player) {
+        int ticks = isEquipped(player)
+                ? ACTIVE_COOLDOWN_SECONDS * 20
+                : GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS;
+        ticks = (int) ChargeManager.signCooldownTicksBase(player, ticks);
         return ticks;
     }
 

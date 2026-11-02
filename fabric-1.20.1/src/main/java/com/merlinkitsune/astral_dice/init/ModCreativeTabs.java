@@ -80,6 +80,11 @@ public class ModCreativeTabs {
                 output.accept(ModItems.YOU_HAVE_I_HAVE.get());
                 output.accept(ModItems.EXPRESS_DELIVERY.get());
                 output.accept(ModItems.FATE_GUIDANCE_CARD.get());
+                output.accept(ModItems.EFFECT_CARD_BARRICADE.get());
+                output.accept(ModItems.EFFECT_CARD_REPULSION.get());
+                // 强化拒止（repulsion）不列入创造栏：2026-10-25 用户裁决从创造栏与 JEI 隐藏。
+                //   理由：JEI 的物品列表直接取自创造栏 displayItems（见本方法末尾注释），故这一处移除即同时从 JEI 消失。
+                //   物品本体仍注册：强化拒止实体死亡时照常掉落（entity/RepulsionEntity），效果牌 effect_card_repulsion 不受影响。
                 // 风水师立牌专属符卡(专属绑定获得者的效果牌)
                 output.accept(ModItems.FU_CARD.get());
                 output.accept(ModItems.HUO_CARD.get());
@@ -117,9 +122,25 @@ public class ModCreativeTabs {
                 output.accept(ModItems.MEGAS_SIGN.get());
                 output.accept(ModItems.SHERRY_SIGN.get());
                 output.accept(ModItems.HANNA_SIGN.get());
+                // ── B4-SIGNS 批次（2026-10-19 新批 4 个 + 3 个早期立牌）：只在既有条目之后追加，
+                //    不重排上方任何既有行。上方 RARE/EPIC/「传奇 UNCOMMON」三个分组标题本身已与物品
+                //    实际品质不符（例 HANNA_SIGN / MEGAS_SIGN 在 forge 蓝本里是奇特），
+                //    见 B4-SIGNS-REPORT「需裁决」。
+                // 稀有 RARE
+                output.accept(ModItems.ALANA_SIGN.get());
+                // 史诗 EPIC
+                output.accept(ModItems.LINGLING_SIGN.get());
+                // 奇特 BIZARRE
+                output.accept(ModItems.KANGEL_SIGN.get());
+                output.accept(ModItems.AME_SIGN.get());
+                output.accept(ModItems.JILL_SIGN.get());
+                output.accept(ModItems.DOROTHY_SIGN.get());
+                // deepseek 为本模组原创角色（未出现在 Wiki「Characters」页），排在立牌末尾
+                output.accept(ModItems.DEEPSEEK_SIGN.get());
                 // 筹码
                 // === 星光类 ===
                 output.accept(ModItems.FLASHLIGHT_CHIP.get());
+                output.accept(ModItems.FORTUNE_STICK_CHIP.get());
                 output.accept(ModItems.EIGHT_SIDED_DICE.get());
                 output.accept(ModItems.ATM.get());
                 output.accept(ModItems.BANK_CARD_LOW.get());
@@ -127,11 +148,13 @@ public class ModCreativeTabs {
                 output.accept(ModItems.BANK_CARD_UNLIMITED.get());
                 output.accept(ModItems.STAR_COIN_HAMMER.get());
                 output.accept(ModItems.PURPLE_SHOOTING_STAR_CHIP.get());
+                output.accept(ModItems.FLASHLIGHT_BURST_CHIP.get());
                 output.accept(ModItems.GOLDEN_SHOOTING_STAR_CHIP.get());
                 // === 治愈类 ===
                 output.accept(ModItems.MEDKIT_EMERGENCY_CHIP.get());
                 output.accept(ModItems.MEDKIT_COMPLETE_CHIP.get());
                 output.accept(ModItems.VITAMIN_PILL_CHIP.get());
+                output.accept(ModItems.ABYSS_REAGENT_CHIP.get());
                 output.accept(ModItems.CUTTER_CHIP.get());
                 output.accept(ModItems.CUTTER_BLADE_CHIP.get());
                 output.accept(ModItems.BUFFER_SHIELD.get());
@@ -140,6 +163,7 @@ public class ModCreativeTabs {
                 output.accept(ModItems.BIG_BOWL_STEW_CHIP.get());
                 // === 标记类 ===
                 output.accept(ModItems.SCOPE_CHIP.get());
+                output.accept(ModItems.SENSOR_CHIP.get());
                 output.accept(ModItems.EAGLE_SCOPE_CHIP.get());
                 output.accept(ModItems.TARGET_CHIP.get());
                 output.accept(ModItems.MARKER_SPRAYER_CHIP.get());
@@ -151,6 +175,7 @@ public class ModCreativeTabs {
                 output.accept(ModItems.WARP_ENGINE_CHIP.get());
                 output.accept(ModItems.ENERGY_RECYCLER.get());
                 output.accept(ModItems.ELECTRIC_SWORD.get());
+                output.accept(ModItems.INFINITE_GRID_CHIP.get());
                 output.accept(ModItems.ADVANCED_PERIPHERALS.get());
                 output.accept(ModItems.CURRENT_CORE_CHIP.get());
                 output.accept(ModItems.ELECTRIC_GLOVE_CHIP.get());
@@ -181,9 +206,17 @@ public class ModCreativeTabs {
                 output.accept(ModItems.PIGGY_BANK_CHIP.get());
                 output.accept(ModItems.SMART_WATCH_CHIP.get());
                 output.accept(ModItems.WHETSTONE_CHIP.get());
+                output.accept(ModItems.EXTRA_BATTERY_CHIP.get());
                 output.accept(ModItems.SATELLITE_CHIP.get());
                 output.accept(ModItems.CURSED_SWORD.get());
                 output.accept(ModItems.REVENGE_HALBERD.get());
                 output.accept(ModItems.PIERCING_GUN.get());
+                // 任务S §4（2026-10-10 用户裁决）：卡牌商店移到本栏**最后**（旧口径「提到最前」已被推翻）。
+                // JEI 物品列表顺序取自创造栏（IngredientSorterComparators.getCreativeMenuComparator），
+                // 因此这里一并决定了 JEI 里卡牌商店的位置。
+                output.accept(ModItems.EVENT_TICKET.get());
+                output.accept(ModItems.EVENT_DRAWER.get());
+                output.accept(ModItems.CARD_SHOP.get());
+                output.accept(ModItems.CHIP_SHOP.get());
             }).build());
 }

@@ -25,6 +25,21 @@ public final class AstralEventSystem {
     /** 事件效果的作用半径(格)。2026-10-03 用户裁决:取代旧口径的「32 格 + 仅队友」。 */
     public static final double EVENT_TARGET_RADIUS = 64.0D;
 
+    /**
+     * 附加效果层入口(2026-10-10 事件体系重写):由 {@link AstralEventDispatcher} 在算好作用域后调用,
+     * 语义与 {@link #onEventTriggered} 一致 —— 立牌增益 + 调查员立牌被动。
+     *
+     * <p><b>fabric-1.20.1 补丁(B2-CORE)</b>:本线此前只有 private {@code applySignBuffs}(:44) 与
+     * {@code applyRinSignPassive}(:57/:68/:83),缺这个 public 入口,而 {@code AstralEventDispatcher}
+     * 的派发回调要调它(forge 蓝本 :34)。这是两条线共有的公开契约,补回;不得改成只调
+     * {@code applyRinSignPassive} —— 那样会丢掉 {@code applySignBuffs} 的大侦探立牌 +3 星币(见 B2-EVENT-RECON R7)。
+     */
+    public static void applyEventBonus(Player triggerer, String eventId, java.util.List<Player> targets) {
+        if (triggerer.level().isClientSide()) return;
+        applySignBuffs(targets);
+        applyRinSignPassive(triggerer, eventId, targets);
+    }
+
     // 事件触发后的统一附加效果:立牌被动(如大侦探 +3 星币)与调查员立牌联动
     public static void onEventTriggered(Player triggerer, String eventId) {
         if (triggerer.level().isClientSide()) return;

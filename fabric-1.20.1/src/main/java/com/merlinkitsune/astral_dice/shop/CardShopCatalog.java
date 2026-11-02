@@ -1,0 +1,238 @@
+package com.merlinkitsune.astral_dice.shop;
+
+import com.merlinkitsune.astral_dice.AstralDiceMod;
+import com.merlinkitsune.astral_dice.item.ModItems;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.Items;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.function.Supplier;
+
+/**
+ * 卡牌商店的货架抽池与定价口径（2026-10-04 v3 计划，用户批准）。
+ *
+ * <p><b>抽池</b>：23 张已实装卡牌，权重按稀有度逐张加权、**不重复抽**（同一货架不会出现两张同名卡）：
+ * rare = {@value #WEIGHT_RARE} / epic = {@value #WEIGHT_EPIC} / legendary = {@value #WEIGHT_LEGENDARY}
+ * ⇒ 单格边际概率 ≈ 稀有 74.3% / 史诗 20.0% / 传奇 5.7%。
+ *
+ * <p><b>星级门槛</b>：{@code attack_card_charge} 的 {@link PoolEntry#minStarLevel()} = {@value #CHARGE_MIN_STAR_LEVEL}，
+ * 抽池前先按玩家骰子星级过滤 —— 门槛判定**只在开店抽池那一刻**做一次（D11）。
+ *
+ * <p><b>格子数</b>= 基础 {@value #BASE_SLOTS} + 「商店大酬宾」事件 {@value #PROMOTION_BONUS_SLOTS}
+ * + 团队内有经商立牌玩家 {@value #TEAM_BONUS_SLOTS}（后者**只出战斗牌**，且同样计入星级门槛）。
+ *
+ * <p><b>价格</b>：基础 {@value #BASE_PRICE} 星币；团队内有经商立牌玩家时每张各有
+ * {@code 10%} 概率降为 {@value #DISCOUNT_PRICE} 星币（D2/用户追加口径）。
+ *
+ * <p><b>Fabric 1.20.1 移植</b>：本类为**纯数据/纯算法**，与 1.20.1 Forge 版、1.21.1 NeoForge 版逐字相同；
+ * 物品延迟解析走 {@code Supplier<? extends Item>}，调用点为 {@code ModItems.X::get}（三线一致）。
+ * 唯一差异见 {@link #byItemId(String)} 的说明（1 张牌在 fabric 线的 {@code ModItems} 尚未实装）。
+ */
+public final class CardShopCatalog {
+
+    public static final int BASE_SLOTS = 3;
+    public static final int PROMOTION_BONUS_SLOTS = 2;
+    public static final int TEAM_BONUS_SLOTS = 1;
+    public static final int MAX_SLOTS = BASE_SLOTS + PROMOTION_BONUS_SLOTS + TEAM_BONUS_SLOTS;
+
+    public static final int BASE_PRICE = 3;
+    public static final int DISCOUNT_PRICE = 1;
+    /** 团队有经商立牌时，每张牌降价到 {@link #DISCOUNT_PRICE} 的概率 */
+    public static final float DISCOUNT_CHANCE = 0.10F;
+
+    /** 「蓄力」(attack_card_charge) 出现所需的最低骰子星级 */
+    public static final int CHARGE_MIN_STAR_LEVEL = 2;
+
+    /** 稀有度权重（可调；见类头边际概率） */
+    public static final int WEIGHT_RARE = 6;
+    public static final int WEIGHT_EPIC = 3;
+    public static final int WEIGHT_LEGENDARY = 2;
+
+    /**
+     * 抽池条目。
+     *
+     * @param item         卡牌物品（延迟解析，注册期不取 .get()）
+     * @param weight       加权随机权重
+     * @param combat       是否「战斗牌」（{@code attack_card_*} + {@code defense_card_*}）
+     * @param minStarLevel 出现所需的最低骰子星级（0 = 无门槛）
+     */
+    public record PoolEntry(Supplier<? extends Item> item, int weight, boolean combat, int minStarLevel) {}
+
+    private static final List<PoolEntry> POOL = List.of(
+            // ── 稀有（rare，权重 6）× 13 ─────────────────────────────────────
+            new PoolEntry(ModItems.ATTACK_CARD_MEDIUM::get, WEIGHT_RARE, true, 0),
+            new PoolEntry(ModItems.ATTACK_CARD_LARGE::get, WEIGHT_RARE, true, 0),
+            new PoolEntry(ModItems.ATTACK_CARD_EPIC::get, WEIGHT_RARE, true, 0),
+            new PoolEntry(ModItems.ATTACK_CARD_SHADOW_STRIKE::get, WEIGHT_RARE, true, 0),
+            new PoolEntry(ModItems.DEFENSE_CARD_MEDIUM::get, WEIGHT_RARE, true, 0),
+            new PoolEntry(ModItems.DEFENSE_CARD_LARGE::get, WEIGHT_RARE, true, 0),
+            new PoolEntry(ModItems.DEFENSE_CARD_EPIC::get, WEIGHT_RARE, true, 0),
+            new PoolEntry(ModItems.EFFECT_CARD_BERSERK::get, WEIGHT_RARE, false, 0),
+            new PoolEntry(ModItems.EFFECT_CARD_FIGHT_POISON_WITH_POISON::get, WEIGHT_RARE, false, 0),
+            new PoolEntry(ModItems.MONSTER_LASER_CARD::get, WEIGHT_RARE, false, 0),
+            new PoolEntry(ModItems.CHOCOLATE_CAKE::get, WEIGHT_RARE, false, 0),
+            new PoolEntry(ModItems.YOU_HAVE_I_HAVE::get, WEIGHT_RARE, false, 0),
+            new PoolEntry(byItemId("effect_card_barricade"), WEIGHT_RARE, false, 0),
+            // ── 史诗（epic，权重 3）× 7 ──────────────────────────────────────
+            new PoolEntry(ModItems.ATTACK_CARD_MEITO::get, WEIGHT_EPIC, true, 0),
+            new PoolEntry(ModItems.EFFECT_CARD_KING_POWER::get, WEIGHT_EPIC, false, 0),
+            new PoolEntry(ModItems.EFFECT_CARD_UNWAVERING::get, WEIGHT_EPIC, false, 0),
+            new PoolEntry(ModItems.MONSTER_BRICK_CARD::get, WEIGHT_EPIC, false, 0),
+            new PoolEntry(ModItems.HAMBURGER::get, WEIGHT_EPIC, false, 0),
+            new PoolEntry(ModItems.LUXURY_FEAST::get, WEIGHT_EPIC, false, 0),
+            new PoolEntry(ModItems.EXPRESS_DELIVERY::get, WEIGHT_EPIC, false, 0),
+            // ── 传奇（legendary，权重 2）× 3 ────────────────────────────────
+            new PoolEntry(ModItems.ATTACK_CARD_CHARGE::get, WEIGHT_LEGENDARY, true, CHARGE_MIN_STAR_LEVEL),
+            new PoolEntry(ModItems.ORBITAL_STRIKE_CARD::get, WEIGHT_LEGENDARY, false, 0),
+            new PoolEntry(ModItems.DIRECTIONAL_BLAST_CARD::get, WEIGHT_LEGENDARY, false, 0)
+    );
+
+    private CardShopCatalog() {}
+
+    /**
+     * 按物品注册 id 延迟解析 {@code ModItems} 条目 —— **仅用于 1 张 fabric 线尚未实装的卡牌**。
+     *
+     * <p>为什么不用 {@code ModItems.EFFECT_CARD_BARRICADE::get}：该常量在 fabric 线的
+     * {@code item/ModItems.java} 里**尚不存在**（forge / neo 两线都有，属物品批次的缺口）；
+     * 本类若直接引用会让整条线编译不过。改走注册表按 id 查（{@code astral_dice:effect_card_barricade}），
+     * 语义完全等价（同样是「延迟解析、注册期不取值」），且物品批次把该常量实装后**本类无需再改**
+     * ——只要注册 id 相同就会自动解析到真物品。物品缺失期间退化为 {@code minecraft:air}
+     * （与 {@code ChipShopCatalog.Entry#item()} 的降级口径一致，不抛异常）。
+     */
+    private static Supplier<? extends Item> byItemId(String path) {
+        return () -> BuiltInRegistries.ITEM
+                .getOptional(new ResourceLocation(AstralDiceMod.MODID, path))
+                .orElse(Items.AIR);
+    }
+
+    /** 按星级门槛过滤后的可选池（每次抽池现算，门槛只用开店那一刻的星级） */
+    public static List<PoolEntry> availableEntries(int starLevel) {
+        List<PoolEntry> available = new ArrayList<>();
+        for (PoolEntry entry : POOL) {
+            if (starLevel >= entry.minStarLevel()) {
+                available.add(entry);
+            }
+        }
+        return available;
+    }
+
+    /**
+     * 抽出一个货架（顺序 = 基础格 → 促销格 → 团队战斗牌格；不重复）。
+     *
+     * @param random     随机源
+     * @param starLevel  当前骰子星级
+     * @param teamBonus  团队内是否有经商立牌玩家（额外 1 张**战斗牌**）
+     * @param promotion  是否处于「商店大酬宾」窗口（额外 {@value #PROMOTION_BONUS_SLOTS} 张）
+     */
+    public static List<Item> rollShelf(RandomSource random, int starLevel, boolean teamBonus, boolean promotion) {
+        List<PoolEntry> available = availableEntries(starLevel);
+        List<Item> shelf = new ArrayList<>();
+        for (int i = 0; i < BASE_SLOTS; i++) {
+            drawInto(random, available, shelf);
+        }
+        if (promotion) {
+            for (int i = 0; i < PROMOTION_BONUS_SLOTS; i++) {
+                drawInto(random, available, shelf);
+            }
+        }
+        if (teamBonus) {
+            // 团队加成的这一张**只从战斗牌里抽**，且必须是已通过星级门槛的牌
+            List<PoolEntry> combat = new ArrayList<>();
+            for (PoolEntry entry : available) {
+                if (entry.combat()) {
+                    combat.add(entry);
+                }
+            }
+            drawInto(random, combat, shelf);
+        }
+        return shelf;
+    }
+
+    /** 卡池档位 —— 与池内权重常量一一对应（稀有 6 / 史诗 3 / 传奇 2）。 */
+    /**
+     * 任务U′「补差额牌」用：从池里**另抽** count 张（排除 exclude 里已有的物品）。
+     *
+     * <p>只给 {@code CardShopShelf#topUp} 补促销格 / 团队加成格用 ⇒ 与 {@code rollShelf} 同口径
+     * （星级门槛 + 促销/团队加成），但**不重复已在本架的卡**，且不返回价格（调用方自行算价）。
+     */
+    public static List<Item> drawAdditional(RandomSource random, int starLevel, boolean combatOnly, int count,
+                                            Collection<ResourceLocation> exclude) {
+        if (count <= 0) {
+            return List.of();
+        }
+        List<PoolEntry> available = availableEntries(starLevel);
+        if (combatOnly) {
+            available.removeIf(entry -> !entry.combat());
+        }
+        if (!exclude.isEmpty()) {
+            available.removeIf(entry -> exclude.contains(BuiltInRegistries.ITEM.getKey(entry.item().get())));
+        }
+        List<Item> out = new ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            drawInto(random, available, out);
+        }
+        return out;
+    }
+
+    public enum Tier { RARE, EPIC, LEGENDARY }
+
+    /** 卡池只读视图（村民交易表复用同一份池子与权重，不另造第二套分级）。 */
+    public static List<PoolEntry> entries() {
+        return POOL;
+    }
+
+    /** 由池内权重反查档位 —— 直接复用商店抽卡的权重口径；权重不是三档常量时返回 null。 */
+    public static Tier tierOf(PoolEntry entry) {
+        if (entry == null) {
+            return null;
+        }
+        return switch (entry.weight()) {
+            case WEIGHT_RARE -> Tier.RARE;
+            case WEIGHT_EPIC -> Tier.EPIC;
+            case WEIGHT_LEGENDARY -> Tier.LEGENDARY;
+            default -> null;
+        };
+    }
+
+    /** 按权重抽一张（不修改传入列表）—— 商店货架与村民交易共用同一套抽卡口径。 */
+    public static PoolEntry pickWeighted(RandomSource random, List<PoolEntry> pool) {
+        return drawWeighted(random, pool);
+    }
+
+    private static void drawInto(RandomSource random, List<PoolEntry> pool, List<Item> out) {
+        PoolEntry picked = drawWeighted(random, pool);
+        if (picked == null) {
+            return;
+        }
+        pool.remove(picked);
+        out.add(picked.item().get());
+    }
+
+    private static PoolEntry drawWeighted(RandomSource random, List<PoolEntry> pool) {
+        if (pool.isEmpty()) {
+            return null;
+        }
+        int total = 0;
+        for (PoolEntry entry : pool) {
+            total += entry.weight();
+        }
+        int roll = random.nextInt(total);
+        for (PoolEntry entry : pool) {
+            roll -= entry.weight();
+            if (roll < 0) {
+                return entry;
+            }
+        }
+        return pool.get(pool.size() - 1);
+    }
+
+    /** 该张牌是否降价（只有团队有经商立牌时才会调用） */
+    public static boolean rollDiscount(RandomSource random) {
+        return random.nextFloat() < DISCOUNT_CHANCE;
+    }
+}

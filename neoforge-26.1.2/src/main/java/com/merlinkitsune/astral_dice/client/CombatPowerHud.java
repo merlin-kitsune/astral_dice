@@ -55,7 +55,7 @@ import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
  * 本仓三线统一为「图标 + 数字」以对齐 1.20.1 分支的既有形态）。
  *
  * <h2>与 M1（1.21.1）/ F2（forge 1.20.1）的差异</h2>
- * 本类为 26.1.2 专用写法：**没有 {@code GuiGraphics}**，一律用 {@code GuiGraphicsExtractor} +
+ * 本类为 26.1.2 专用写法：**没有 {@code GuiGraphicsExtractor}**，一律用 {@code GuiGraphicsExtractor} +
  * {@code RenderPipelines.GUI_TEXTURED} + {@code Identifier}；图层接口是 {@code GuiLayer}
  * 而非 {@code LayeredDraw.Layer}；{@code text(...)} 的颜色**必须是 ARGB**
  * （alpha=0 会被整段丢弃，与本仓 26.1.2 钱包控件的实测结论一致）。三份**不得互相照抄**。

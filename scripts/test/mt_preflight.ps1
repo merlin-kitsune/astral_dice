@@ -31,11 +31,74 @@ $script:LibDir = Join-Path $PSScriptRoot 'lib'
 Import-Module (Join-Path $script:LibDir 'Mt.Phase.psm1')
 Import-Module (Join-Path $script:LibDir 'Mt.Paths.psm1')
 Import-Module (Join-Path $script:LibDir 'Mt.Proc.psm1')
-Import-Module (Join-Path $script:LibDir 'Mt.Win32.psm1')
+# ⚠️ 2026-11-01 通道解耦（契约 §3）：Mt.Win32.psm1（P/Invoke：GetActiveWindow / 键盘布局 KLID /
+#    扫描码投递）**不再**在文件头无条件导入 —— autojs 通道下本流程一行 Win32 都不该碰。
+#    改为惰性导入：只有 native 通道走到「输入法布局」这项检查时才真的加载（见 Test-MtPreflightIme）。
 
 Initialize-MtConsole
 
 $script:ExitPreflight = 10
+# ── 测试通道（契约 docs/features/windows-channel-decoupling-spec.md §1 / §3）──
+# 解析规则与其余三个台脚本完全一致：CLI `--channel` > 环境变量 MT_CHANNEL > 默认 autojs。
+$script:ChannelRequested = ''
+$script:ChannelMode = ''
+$script:ChannelModeError = ''
+$script:ChannelModuleReady = $false
+$script:Win32ModuleReady = $false
+
+function Import-MtPreflightChannelModule {
+    <#
+    .SYNOPSIS
+        惰性加载 Mt.Channel.psm1（不带 -Force）。
+    #>
+    if ($script:ChannelModuleReady) { return $true }
+    try {
+        Import-Module (Join-Path $script:LibDir 'Mt.Channel.psm1')
+        $script:ChannelModuleReady = $true
+        return $true
+    } catch {
+        Write-MtErrLine ("MT_CHANNEL: ERROR — 通道模块加载失败：{0}" -f $_.Exception.Message)
+        return $false
+    }
+}
+
+function Resolve-MtPreflightChannelMode {
+    <#
+    .SYNOPSIS
+        解析并缓存本次运行的通道（autojs | native）。
+    .NOTES
+        刻意**不抛**：解析失败时退回 native（保守 —— 闸门宁可多跑，不可静默放宽），
+        错误文本记进 $script:ChannelModeError，由 Invoke-MtPreflightAll 决定是否判失败。
+    #>
+    if ($script:ChannelMode) { return $script:ChannelMode }
+    if (Import-MtPreflightChannelModule) {
+        try {
+            $script:ChannelMode = [string](Get-MtChannelMode -Requested $script:ChannelRequested)
+        } catch {
+            $script:ChannelModeError = $_.Exception.Message
+            $script:ChannelMode = 'native'
+        }
+    } else {
+        $script:ChannelMode = 'native'
+    }
+    return $script:ChannelMode
+}
+
+function Import-MtPreflightWin32Module {
+    <#
+    .SYNOPSIS
+        惰性加载 Mt.Win32.psm1（只在 native 通道需要）。
+    #>
+    if ($script:Win32ModuleReady) { return $true }
+    try {
+        Import-Module (Join-Path $script:LibDir 'Mt.Win32.psm1')
+        $script:Win32ModuleReady = $true
+        return $true
+    } catch {
+        Write-MtErrLine ("MT_PREFLIGHT: ERROR — Mt.Win32.psm1 加载失败：{0}" -f $_.Exception.Message)
+        return $false
+    }
+}
 # 分支**不再是前置门槛**(2026-09-17 用户裁决:「移除二重验证白名单，允许该分支执行」)。
 # 本流程在任何分支上都可运行;这里保留一份「发布线分支」清单,只用于回显与告警标注,
 # **不参与任何判定**(判定恒为放行,见 Get-MtPreflightBranch)。
@@ -89,6 +152,17 @@ function Test-MtPreflightIme {
     #>
     [CmdletBinding()]
     param()
+
+    # 2026-11-01 通道解耦：en-US 扫描码布局是 **mt_inject.ps1 的**前置（它用美式扫描码投递按键）。
+    # autojs 通道不投递任何真实按键（走 AutoJS.use()/attack()/mine() 这层游戏内助手），
+    # 因此这项检查在 autojs 下**不成立也不拦停**，只留一行说明；也正因如此，本项检查的
+    # Win32 依赖被改成惰性导入 —— autojs 下这条路径一行 P/Invoke 都不碰。
+    if ((Resolve-MtPreflightChannelMode) -ne 'native') {
+        return , @($true, 'autojs 通道：不投递真实按键，en-US 扫描码布局与本检查无关（MT_CHANNEL: mode=autojs）')
+    }
+    if (-not (Import-MtPreflightWin32Module)) {
+        return , @($false, 'Mt.Win32.psm1 不可用 —— native 通道需要它读取当前线程的键盘布局（KLID）')
+    }
 
     $cur = Get-MtLangIdOfThread -ThreadId 0
     if (-not (Test-MtEnUsLayoutAvailable)) {
@@ -583,6 +657,15 @@ function Invoke-MtPreflightAll {
     $root = (Get-MtPaths -Version $Versions[0]).root
     $gradlewExists = Test-Path -LiteralPath (Join-Path $root 'gradlew') -PathType Leaf
 
+    # 通道解析（契约 §1）：在任何检查之前解析一次 —— `MT_CHANNEL: mode=…` 因此落在输出最前面；
+    # 非法取值（如 --channel foo）在这里就地判失败，不让它散落到各项检查里变成一屏假绿。
+    $script:ChannelModeError = ''
+    [void](Resolve-MtPreflightChannelMode)
+    if ($script:ChannelModeError) {
+        Write-MtErrLine ("MT_CHANNEL: ERROR — {0}" -f $script:ChannelModeError)
+        return $MT_EXIT_ERROR
+    }
+
     $checks = [System.Collections.Generic.List[object]]::new()
     $checks.Add([pscustomobject]@{ Name = '分支'; Pair = (Get-MtPreflightBranch -Root $root) })
     $checks.Add([pscustomobject]@{ Name = '输入法'; Pair = (Test-MtPreflightIme) })
@@ -659,6 +742,10 @@ if ($MyInvocation.InvocationName -ne '.') {
             $Version = [string]$args[$i + 1]; $i += 2
         } elseif ($key -eq 'all') {
             $All = $true; $i++
+        } elseif ($key -eq 'channel') {
+            # 测试通道（契约 §1）：autojs（默认）| native。非法取值在下面统一失败。
+            if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --channel 的值'; exit $MT_EXIT_ERROR }
+            $script:ChannelRequested = [string]$args[$i + 1]; $i += 2
         } elseif ($key -eq 'json') {
             # JSON 模式在 python 侧同样只是走 run_all（结构化输出未实现），保持一致
             $i++

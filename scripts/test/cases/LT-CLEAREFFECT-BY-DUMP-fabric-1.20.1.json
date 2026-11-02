@@ -1,0 +1,48 @@
+{
+  "case_id": "LT-CLEAREFFECT-BY-DUMP-fabric-1.20.1",
+  "title": "LT2：本模组效果的可施加与可倾倒（/effect give 注入 lingling_surge 后 dump 的 EFFECTS 行必须带 effect/amplifier/duration 三字段），并顺带执行 cleareffect 证明清除入口可运行。注意：日志断言是整文件匹配，「清除后该行应消失」无法用 absent 表达（历史行仍在），那条判据走 CH-A 读玩家效果。",
+  "version": "fabric-1.20.1",
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "前置：dev 客户端已进服；latest.log 本轮已轮转"
+    },
+    {
+      "op": "inject_command",
+      "command": "/effect give @a astral_dice:lingling_surge 60 0"
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralparty dump @a"
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralparty cleareffect @a"
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    }
+  ],
+  "assert": [
+    {
+      "type": "log",
+      "pattern": "APDUMP\\|EFFECTS\\|effect=astral_dice:lingling_surge\\|amplifier=0\\|duration=\\d+"
+    },
+    {
+      "type": "crash"
+    },
+    {
+      "type": "mixin"
+    }
+  ]
+}

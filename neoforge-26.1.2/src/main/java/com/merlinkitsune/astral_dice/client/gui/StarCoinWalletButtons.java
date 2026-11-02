@@ -31,15 +31,15 @@ import net.neoforged.neoforge.client.network.ClientPacketDistributor;
  * 26.1.2（Mojang 2026 界面重组）删除了整个 retained-mode widget 体系，本类因此**整体重写**：
  * <table border="1">
  *   <tr><th>1.21.1 做法</th><th>26.1.2 现实</th><th>本类重写为</th></tr>
- *   <tr><td>{@code AbstractButton} 子类 + {@code renderWidget(GuiGraphics,...)}</td>
+ *   <tr><td>{@code AbstractButton} 子类 + {@code renderWidget(GuiGraphicsExtractor,...)}</td>
  *       <td>{@code AbstractButton}/{@code AbstractWidget} 已删除（{@code javap} 实证：{@code AbstractButton}
  *           无任何 {@code render*} 方法；{@code components} 包只剩 {@code events.*}）</td>
  *       <td>不建任何 widget，改在 {@link ScreenEvent.Render.Foreground} <b>即时模式</b>直接绘制</td></tr>
  *   <tr><td>{@code ScreenEvent.Init.Post#addListener(AbstractWidget)}</td>
  *       <td>{@code addListener} 现收 {@code GuiEventListener}；控件需自行实现命中测试</td>
  *       <td>改用 {@link ScreenEvent.MouseButtonPressed.Pre} 自算命中矩形</td></tr>
- *   <tr><td>{@code GuiGraphics.blit/drawString}</td>
- *       <td>{@code GuiGraphics} 已删除 ⇒ {@link GuiGraphicsExtractor}；{@code drawString} 改名 {@code text}</td>
+ *   <tr><td>{@code GuiGraphicsExtractor.blit/drawString}</td>
+ *       <td>{@code GuiGraphicsExtractor} 已删除 ⇒ {@link GuiGraphicsExtractor}；{@code drawString} 改名 {@code text}</td>
  *       <td>{@code extractor.blit(RenderPipeline,Identifier,x,y,u,v,w,h,texW,texH)}（同
  *           {@code screen/CardInventoryScreen} 的用法）/ {@code extractor.text(Font,String,IIIZ)}</td></tr>
  * </table>
@@ -263,7 +263,7 @@ public final class StarCoinWalletButtons {
      * 避免同时穿透到原版槽位（点击落在物品栏槽位区域之外时本不会被原版消费，
      * 但显式取消可让语义更干净、也不受未来原版改动影响）。
      *
-     * <p>Shift 判定走 {@code MouseButtonEvent#hasShiftDown()}（{@code InputWithModifiers} 的默认方法）——
+     * <p>Shift 判定走 {@code MouseButtonEvent#net.minecraft.client.gui.screens.Screen.hasShiftDown()}（{@code InputWithModifiers} 的默认方法）——
      * 26.1.2 已删除 {@code Screen.hasShiftDown()} 这个静态便捷入口，修饰键状态改为随输入事件一起传递
      * （{@code javap} 实证：{@code Screen} 无任何 {@code *Shift*} 成员）。
      *
@@ -283,7 +283,7 @@ public final class StarCoinWalletButtons {
             if (!hit.contains(mouseX, mouseY)) continue;
             StarCoinWalletActions.Action action = shift ? hit.shiftAction() : hit.primaryAction();
             if (action == null) return;
-            ClientPacketDistributor.sendToServer(new StarCoinWalletPayload(action.ordinal()));
+            net.neoforged.neoforge.client.network.ClientPacketDistributor.sendToServer(new StarCoinWalletPayload(action.ordinal()));
             event.setCanceled(true);
             return;
         }

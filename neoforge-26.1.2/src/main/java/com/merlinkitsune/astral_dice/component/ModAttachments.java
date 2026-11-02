@@ -10,17 +10,26 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 import net.neoforged.neoforge.registries.NeoForgeRegistries;
 
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import com.merlinkitsune.astral_dice.item.HealingManager;
 import com.merlinkitsune.astral_dice.item.sign.FenSignItem;
+import com.merlinkitsune.astral_dice.shop.CardShopShelf;
+import com.merlinkitsune.astral_dice.shop.ChipShopState;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ModAttachments {
     // ⚠️ 26.1.2 迁移:NeoForge 的 AttachmentType.Builder#serialize 已**只接受 MapCodec<T> 或
-    // IAttachmentSerializer<T>**(旧的 Codec<T> 重载被删),故本文件所有 `.serialize(<codec>)` 一律包成
+    // IAttachmentSerializer<T>**(旧的 Codec<T> 重载被删),故本文件所有 `.serialize(<codec>.fieldOf("value"))` 一律包成
     // `<codec>.fieldOf("value")` —— 序列化形状由「裸值」变为「{value: <值>}」。
     // 26.1.2 是新版本线,不存在需要兼容的旧存档;1.21.1 侧写法保持原样(两侧不共享源码)。
+    private static final Logger LOGGER = LoggerFactory.getLogger(ModAttachments.class);
+
     public static final DeferredRegister<AttachmentType<?>> ATTACHMENTS =
             DeferredRegister.create(NeoForgeRegistries.ATTACHMENT_TYPES, AstralDiceMod.MODID);
 
@@ -119,6 +128,38 @@ public class ModAttachments {
 
     public static void setLuluLastHurtTick(net.minecraft.world.entity.player.Player player, long value) {
         player.setData(LULU_LAST_HURT_TICK.get(), value);
+    }
+
+    // 抽奖盒(event_drawer):上次购买后的冷却结束时刻(level.getGameTime() + 6000,即 5:00;
+    // now < until 表示冷却中,0 = 无冷却)。判定在服务端,随 .sync 下发供客户端预检/显示。
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> EVENT_DRAWER_COOLDOWN_UNTIL =
+            ATTACHMENTS.register("event_drawer_cooldown_until", () -> AttachmentType.builder(() -> 0L)
+                    .serialize(Codec.LONG.fieldOf("value"))
+                    .sync(ByteBufCodecs.VAR_LONG)
+                    .build());
+
+    public static long getEventDrawerCooldownUntil(net.minecraft.world.entity.player.Player player) {
+        return player.getData(EVENT_DRAWER_COOLDOWN_UNTIL.get());
+    }
+
+    public static void setEventDrawerCooldownUntil(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(EVENT_DRAWER_COOLDOWN_UNTIL.get(), value);
+    }
+
+    // 抽奖盒(event_drawer):上次**投入空白筹码**的时刻(level.getGameTime();0 = 从未投入)。
+    // 用途 = 投入间隔(2400t = 2:00,与筹码商店 ChipShopBlock#BLANK_INSERT_COOLDOWN_TICKS 同口径),
+    // 0 兼作「从未投入」哨兵 ⇒ 首次投入不参与冷却判定。判定只在服务端,故**不 .sync**。
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> EVENT_DRAWER_BLANK_INSERT_AT =
+            ATTACHMENTS.register("event_drawer_blank_insert_at", () -> AttachmentType.builder(() -> 0L)
+                    .serialize(Codec.LONG.fieldOf("value"))
+                    .build());
+
+    public static long getEventDrawerBlankInsertAt(net.minecraft.world.entity.player.Player player) {
+        return player.getData(EVENT_DRAWER_BLANK_INSERT_AT.get());
+    }
+
+    public static void setEventDrawerBlankInsertAt(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(EVENT_DRAWER_BLANK_INSERT_AT.get(), value);
     }
 
     // 治愈点数(玩家级共享资源的单一数值池):由医疗箱(赐福触发时加点)/史莱姆立牌被动/主动/
@@ -376,6 +417,65 @@ public class ModAttachments {
         entity.setData(MOSES_DODGE_COUNTER_REWARDED.get(), value);
     }
 
+    // 手电筒-爆闪筹码:**该玩家**已发放过星光的**目标 UUID 集**(逗号分隔;**玩家级**附件)。
+    // 判重粒度 = **玩家 × 目标**:同一目标对不同佩戴者各可发放一次(旧口径的**目标实体级**附件
+    // 已随本次改动删除 —— 它让目标被**任何**玩家首次攻击后即置位,后出手的佩戴者拿不到)。
+    // 写法沿用同族的玩家级字符串集口径(见 {@link #FLASHLIGHT_GRANTED_TARGETS} / {@link #SHERRY_REASONING_TARGETS});
+    // 读写方 = FlashlightBurstChipItem#onAttack,记录上限见该类 MAX_TRACKED_TARGETS(满则不再发放)。
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<String>> FLASHLIGHT_BURST_TARGETS =
+            ATTACHMENTS.register("flashlight_burst_targets", () -> AttachmentType.builder(() -> "")
+                    .serialize(Codec.STRING.fieldOf("value"))
+                    .build());
+
+    public static String getFlashlightBurstTargets(net.minecraft.world.entity.player.Player player) {
+        return player.getData(FLASHLIGHT_BURST_TARGETS.get());
+    }
+
+    public static void setFlashlightBurstTargets(net.minecraft.world.entity.player.Player player, String value) {
+        player.setData(FLASHLIGHT_BURST_TARGETS.get(), value == null ? "" : value);
+    }
+
+    // 财运签筹码:当前骰神赐福周期是否已发放过(玩家级,每个赐福周期一次)。
+    // 由 DiceCombatEvents 在**骰神赐福新周期开始处**复位(与 cursed_sword_blessing_triggered 同批同处复位),
+    // 由 FortuneStickChipItem#onHostileKill 置位(照 CursedSwordChipItem 的「每赐福周期一次」先例)。
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Boolean>> FORTUNE_STICK_BLESSING_CLAIMED =
+            ATTACHMENTS.register("fortune_stick_blessing_claimed", () -> AttachmentType.builder(() -> false)
+                    .serialize(Codec.BOOL.fieldOf("value"))
+                    .build());
+
+    public static boolean isFortuneStickBlessingClaimed(net.minecraft.world.entity.player.Player player) {
+        return player.getData(FORTUNE_STICK_BLESSING_CLAIMED.get());
+    }
+
+    public static void setFortuneStickBlessingClaimed(net.minecraft.world.entity.player.Player player, boolean value) {
+        player.setData(FORTUNE_STICK_BLESSING_CLAIMED.get(), value);
+    }
+
+    // 深渊试剂筹码:「装备时 +2 治愈点」的装备会话闸门(玩家级,持久化)。
+    // ⚠️ 为什么必须持久化:Curios 只持久化 stacks、**不持久化 previousStacks** ⇒ 登录 / 重生 / 切维度后
+    //    首 tick 的 prevStack 恒为空栈而槽里有物品,Curios 把这判成一次装备变化并**重放 onEquip**
+    //    (与医疗箱 GRANT_BIT / StarLightManager GRANT_BIT 同一根因)⇒ "空槽守卫"挡不住,会重复加分。
+    // 申领 = 真的新装上;释放 = 卸下 / 死亡(死亡时 HealingManager.clear 已把治愈点清零,
+    // 重生后由 Curios 重放 onEquip 重新发放,故这里释放即可)。
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Boolean>> ABYSS_REAGENT_GRANTED =
+            ATTACHMENTS.register("abyss_reagent_granted", () -> AttachmentType.builder(() -> false)
+                    .serialize(Codec.BOOL.fieldOf("value"))
+                    .build());
+
+    /** 申领装备闸门:未申领过则置位并返回 true,已申领过(重复 onEquip / Curios 重放)返回 false。 */
+    public static boolean claimAbyssReagentGrant(net.minecraft.world.entity.player.Player player) {
+        if (player.getData(ABYSS_REAGENT_GRANTED.get())) return false;
+        player.setData(ABYSS_REAGENT_GRANTED.get(), true);
+        return true;
+    }
+
+    /** 释放装备闸门(卸下 / 死亡时调用,与 {@link #claimAbyssReagentGrant} 配对)。 */
+    public static void releaseAbyssReagentGrant(net.minecraft.world.entity.player.Player player) {
+        if (player.getData(ABYSS_REAGENT_GRANTED.get())) {
+            player.setData(ABYSS_REAGENT_GRANTED.get(), false);
+        }
+    }
+
     public static Optional<UUID> getUndercoverSource(net.minecraft.world.entity.LivingEntity entity) {
         return entity.getData(UNDERCOVER_SOURCE.get());
     }
@@ -408,7 +508,67 @@ public class ModAttachments {
         player.setData(EIGHT_SIDED_ROLL_ACCUM.get(), value);
     }
 
-    // 立牌主动技能冷却结束时刻(玩家级,不受立牌装卸影响;0 表示无冷却)
+    // ===== 立牌玩家级状态复合键 sign_state(2026-10-19 B2)=====
+    // 原先 10 个独立键(sign_active_* / sign_ready_*)折叠为一条记录,字段同名同类型、默认值逐一相同
+    // ⇒ 数值语义 / 判定顺序 / 键名大小写均无变化。旧 10 键**仍注册**(见下方,禁止删除):
+    // 只用于登录时的一次性折叠迁移(migrateSignStateFromLegacy),迁移之后所有读写点(即下面这些
+    // get*/set* 包装器)一律走本键 ⇒ 调用点零改动。
+    // 同步:客户端读的是 cooldown_end(tooltip 倒计时) —— 但**并非只有它同步**:遗留键 sign_ready_type /
+    // sign_ready_expire 也各自 .sync()(见下方遗留注册,已 @Deprecated 但仍同步)。
+    // 复合键整体同步后这 3 个字段语义不变,其余字段客户端本来就不读。
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<SignState>> SIGN_STATE =
+            ATTACHMENTS.register("sign_state", () -> AttachmentType.builder(() -> SignState.EMPTY)
+                    .serialize(SignState.CODEC.fieldOf("value"))
+                    .sync(SignState.STREAM_CODEC)
+                    .build());
+
+    private static SignState signState(net.minecraft.world.entity.player.Player player) {
+        SignState state = player.getData(SIGN_STATE.get());
+        return state == null ? SignState.EMPTY : state;
+    }
+
+    private static void updateSignState(net.minecraft.world.entity.player.Player player,
+                                        java.util.function.UnaryOperator<SignState> update) {
+        SignState current = signState(player);
+        SignState next = update.apply(current);
+        // 值未变则不写(等价于旧实现"写同一个值",但省掉无谓的存档/同步开销)
+        if (!next.equals(current)) {
+            player.setData(SIGN_STATE.get(), next);
+        }
+    }
+
+    /**
+     * 登录迁移(幂等):旧 10 键 → {@code sign_state}。
+     *
+     * <p>判据 = 「{@code sign_state} 仍是默认值」且「旧 10 键中至少一个非默认」。
+     * 迁移后旧键**不删除、不清写**(旧存档仍可读;且值保持原样作为历史留痕),
+     * 幂等由「{@code sign_state} 非默认即早退」保证 —— 重复登录不会用旧值覆盖新值。
+     *
+     * <p>只在服务端执行;日志格式固定 {@code AP_SIGN_STATE_MIGRATED:player=<名字>:from=legacy}。
+     */
+    public static void migrateSignStateFromLegacy(net.minecraft.world.entity.player.Player player) {
+        if (player == null || player.level().isClientSide()) return;
+        if (!SignState.EMPTY.equals(signState(player))) return;
+        // 注意:这里必须**直接读旧键**(不能走上面的 get* 包装器,它们已改为读 sign_state)
+        String legacyLockSign = player.getData(SIGN_ACTIVE_LOCK_SIGN.get());
+        SignState legacy = new SignState(
+                player.getData(SIGN_ACTIVE_COOLDOWN_END.get()),
+                player.getData(SIGN_ACTIVE_MAX_COOLDOWN.get()),
+                legacyLockSign == null ? "" : legacyLockSign,
+                player.getData(SIGN_ACTIVE_LOCK_END.get()),
+                player.getData(SIGN_ACTIVE_REDUCTION_POOL.get()),
+                player.getData(SIGN_ACTIVE_LOCK_GRACE_END.get()),
+                player.getData(SIGN_ACTIVE_LOCK_PLAYED.get()),
+                player.getData(SIGN_ACTIVE_LOCK_LAST_SEEN.get()),
+                player.getData(SIGN_READY_TYPE.get()),
+                player.getData(SIGN_READY_EXPIRE.get()));
+        if (SignState.EMPTY.equals(legacy)) return;
+        player.setData(SIGN_STATE.get(), legacy);
+        LOGGER.info("AP_SIGN_STATE_MIGRATED:player={}:from=legacy", player.getGameProfile().name());
+    }
+
+    // 立牌主动技能冷却结束时刻(玩家级,不受立牌装卸影响;0 表示无冷却)。
+    // 注册保留(旧存档可读 + 迁移来源);读写一律走 sign_state。
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> SIGN_ACTIVE_COOLDOWN_END =
             ATTACHMENTS.register("sign_active_cooldown_end", () -> AttachmentType.builder(() -> 0L)
                     .serialize(Codec.LONG.fieldOf("value"))
@@ -416,12 +576,81 @@ public class ModAttachments {
                     .build());
 
     public static long getSignActiveCooldownEnd(net.minecraft.world.entity.player.Player player) {
-        return player.getData(SIGN_ACTIVE_COOLDOWN_END.get());
+        return signState(player).sign_active_cooldown_end();
     }
 
     public static void setSignActiveCooldownEnd(net.minecraft.world.entity.player.Player player, long value) {
-        player.setData(SIGN_ACTIVE_COOLDOWN_END.get(), value);
+        updateSignState(player, state -> state.withSignActiveCooldownEnd(value));
     }
+
+    // 卡牌商店:大酬宾促销窗口结束时刻(gameTime 绝对值;0/已过期 = 不在促销期)
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> SHOP_PROMOTION_UNTIL =
+            ATTACHMENTS.register("shop_promotion_until", () -> AttachmentType.builder(() -> 0L)
+                    .serialize(Codec.LONG.fieldOf("value"))
+                    .build());
+
+    public static long getShopPromotionUntil(net.minecraft.world.entity.player.Player player) {
+        return player.getData(SHOP_PROMOTION_UNTIL.get());
+    }
+
+    public static void setShopPromotionUntil(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(SHOP_PROMOTION_UNTIL.get(), value);
+    }
+
+    // 卡牌商店:二级转账的玩家级冷却结束时刻(gameTime;60 秒;跨界面/跨商店保留)
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> SHOP_TRANSFER_COOLDOWN_END =
+            ATTACHMENTS.register("shop_transfer_cooldown_end", () -> AttachmentType.builder(() -> 0L)
+                    .serialize(Codec.LONG.fieldOf("value"))
+                    .build());
+
+    public static long getShopTransferCooldownEnd(net.minecraft.world.entity.player.Player player) {
+        return player.getData(SHOP_TRANSFER_COOLDOWN_END.get());
+    }
+
+    public static void setShopTransferCooldownEnd(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(SHOP_TRANSFER_COOLDOWN_END.get(), value);
+    }
+
+    // 卡牌商店:「本轮已经转账过」(2026-10-26 用户裁决:买牌 / 星光兑换只开换架周期,**不**锁转账;
+    // 转账锁独立成这一位 —— 只有本轮真的转过账才锁,到点换架时随周期一起清零)。
+    // 仅服务端权威;客户端经菜单 DataSlot[9] 同步读,不在玩家附件层 .sync()。
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Boolean>> SHOP_TRANSFER_USED =
+            ATTACHMENTS.register("shop_transfer_used", () -> AttachmentType.builder(() -> Boolean.FALSE)
+                    .serialize(Codec.BOOL.fieldOf("value"))
+                    .build());
+
+    public static boolean isShopTransferUsed(net.minecraft.world.entity.player.Player player) {
+        return player.getData(SHOP_TRANSFER_USED.get());
+    }
+
+    public static void setShopTransferUsed(net.minecraft.world.entity.player.Player player, boolean value) {
+        player.setData(SHOP_TRANSFER_USED.get(), value);
+    }
+
+    // 卡牌商店:货架存档(任务O §1.3,2026-10-09 用户裁决「重新进店不得刷新卡牌」)。改造前货架只活在菜单字段里,
+    // 开店时无条件重抽 ⇒ 关店再开店就换一批;现在货架落在这里(随玩家存档持久化),只有「沙漏归 0」那一刻
+    // (服务端 tick: shop/CardShopCycleTicker)或大酬宾事件才会重抽覆写,开店只读(shop/CardShopShelf)。
+    // 仅服务端使用,不同步客户端(客户端照旧靠货架槽位同步读同一批卡)。
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<CardShopShelf>> SHOP_SHELF =
+            ATTACHMENTS.register("shop_shelf", () -> AttachmentType.builder(() -> CardShopShelf.EMPTY)
+                    .serialize(CardShopShelf.CODEC.fieldOf("value"))
+                    .build());
+
+    // 筹码商店:候选与运行态存档(2026-10-12 用户裁决 Q9/R16「未购买退出 ⇒ 候选逐字不变」)。
+    // 与 SHOP_SHELF 完全同型:菜单只读、重抽入口只有三处(shop/ChipShopOpener#ensureOffers 的进店补抽、
+    // ChipShopMenu#handleRefresh、购买成功)。
+    // 刷新次数**不再随时间自动恢复**(2026-10-24 用户裁决,原时间驱动的自动恢复 ticker 已整个删除);
+    // 现有两条来源 = 铁砧取走升星成品(event/AnvilUpgradeHandler#onAnvilRepair 授予 1 次)
+    // + 方块投入空白筹码(ChipShopBlock)。
+    // .copyOnDeath() 依据:死亡若回默认值就等于「自动补满到初值」,与「死亡也不能把状态重置」冲突;
+    // 同时保证旧存档里已攒下的次数(可能 > 初值)跨死亡保留。forge-1.20.1 侧对应 AstralData 的 kept 白名单。
+    // 仅服务端使用,不同步客户端(客户端靠菜单隐藏槽位读同一批候选 + DataSlot 读价格/次数/品质码)。
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<ChipShopState>> CHIP_SHOP_STATE =
+            ATTACHMENTS.register("chip_shop_state", () -> AttachmentType.builder(() -> ChipShopState.EMPTY)
+                    .serialize(ChipShopState.CODEC.fieldOf("value"))
+                    .copyOnDeath()
+                    .build());
+
 
     // 立牌主动技能"本次冷却实际使用的最大冷却 tick"(路线 A:所有减免方一律读它作基准,不再各自重算;
     // 0 表示缺失/无冷却,减免方回退旧行为;仅服务端使用,无需同步客户端)。
@@ -434,11 +663,28 @@ public class ModAttachments {
                     .build());
 
     public static long getSignActiveMaxCooldown(net.minecraft.world.entity.player.Player player) {
-        return player.getData(SIGN_ACTIVE_MAX_COOLDOWN.get());
+        return signState(player).sign_active_max_cooldown();
     }
 
     public static void setSignActiveMaxCooldown(net.minecraft.world.entity.player.Player player, long value) {
-        player.setData(SIGN_ACTIVE_MAX_COOLDOWN.get(), value);
+        updateSignState(player, state -> state.withSignActiveMaxCooldown(value));
+    }
+
+    // 立牌主动技能「本次冷却基准的**未折电池**版本」:与 SIGN_ACTIVE_MAX_COOLDOWN 在同一处写入,
+    // 值取自 {@code ChargeManager#signCooldownTicksBase}(充能封顶后的基础值,跳过「额外电池筹码 ×0.5」)。
+    // 用途 = 命运指引卡把「最大冷却」减半时的基准 —— 电池只作用于立牌主动冷却本身,
+    // 不得连带砍掉本卡的减半收益。仅服务端使用,故不 .sync()(0 = 缺失,读取方按老存档回退)。
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> SIGN_ACTIVE_MAX_COOLDOWN_BASE =
+            ATTACHMENTS.register("sign_active_max_cooldown_base", () -> AttachmentType.builder(() -> 0L)
+                    .serialize(Codec.LONG.fieldOf("value"))
+                    .build());
+
+    public static long getSignActiveMaxCooldownBase(net.minecraft.world.entity.player.Player player) {
+        return player.getData(SIGN_ACTIVE_MAX_COOLDOWN_BASE.get());
+    }
+
+    public static void setSignActiveMaxCooldownBase(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(SIGN_ACTIVE_MAX_COOLDOWN_BASE.get(), value);
     }
 
     // ===== 立牌主动技能"三态化"(可用 / 锁定-生效中 / 冷却)的玩家级状态 =====
@@ -478,47 +724,48 @@ public class ModAttachments {
                     .build());
 
     public static String getSignActiveLockSign(net.minecraft.world.entity.player.Player player) {
-        return player.getData(SIGN_ACTIVE_LOCK_SIGN.get());
+        return signState(player).sign_active_lock_sign();
     }
 
     public static void setSignActiveLockSign(net.minecraft.world.entity.player.Player player, String value) {
-        player.setData(SIGN_ACTIVE_LOCK_SIGN.get(), value == null ? "" : value);
+        updateSignState(player, state -> state.withSignActiveLockSign(value == null ? "" : value));
     }
 
     public static long getSignActiveLockEnd(net.minecraft.world.entity.player.Player player) {
-        return player.getData(SIGN_ACTIVE_LOCK_END.get());
+        return signState(player).sign_active_lock_end();
     }
 
     public static void setSignActiveLockEnd(net.minecraft.world.entity.player.Player player, long value) {
-        player.setData(SIGN_ACTIVE_LOCK_END.get(), value);
+        updateSignState(player, state -> state.withSignActiveLockEnd(value));
     }
 
     public static long getSignActiveReductionPool(net.minecraft.world.entity.player.Player player) {
-        return player.getData(SIGN_ACTIVE_REDUCTION_POOL.get());
+        return signState(player).sign_active_reduction_pool();
     }
 
     public static void setSignActiveReductionPool(net.minecraft.world.entity.player.Player player, long value) {
-        player.setData(SIGN_ACTIVE_REDUCTION_POOL.get(), Math.max(0L, value));
+        updateSignState(player, state -> state.withSignActiveReductionPool(Math.max(0L, value)));
     }
 
     public static void addSignActiveReductionPool(net.minecraft.world.entity.player.Player player, long delta) {
-        setSignActiveReductionPool(player, player.getData(SIGN_ACTIVE_REDUCTION_POOL.get()) + delta);
+        updateSignState(player, state -> state.withSignActiveReductionPool(
+                Math.max(0L, state.sign_active_reduction_pool() + delta)));
     }
 
     public static long getSignActiveLockGraceEnd(net.minecraft.world.entity.player.Player player) {
-        return player.getData(SIGN_ACTIVE_LOCK_GRACE_END.get());
+        return signState(player).sign_active_lock_grace_end();
     }
 
     public static void setSignActiveLockGraceEnd(net.minecraft.world.entity.player.Player player, long value) {
-        player.setData(SIGN_ACTIVE_LOCK_GRACE_END.get(), value);
+        updateSignState(player, state -> state.withSignActiveLockGraceEnd(value));
     }
 
     public static boolean getSignActiveLockPlayed(net.minecraft.world.entity.player.Player player) {
-        return player.getData(SIGN_ACTIVE_LOCK_PLAYED.get());
+        return signState(player).sign_active_lock_played();
     }
 
     public static void setSignActiveLockPlayed(net.minecraft.world.entity.player.Player player, boolean value) {
-        player.setData(SIGN_ACTIVE_LOCK_PLAYED.get(), value);
+        updateSignState(player, state -> state.withSignActiveLockPlayed(value));
     }
 
     // 锁定态的"离线补偿基准":本方法最后一次见到该玩家的 gameTime(0 = 无锁定/宽限计时,不参与补偿)。
@@ -535,11 +782,11 @@ public class ModAttachments {
                     .build());
 
     public static long getSignActiveLockLastSeen(net.minecraft.world.entity.player.Player player) {
-        return player.getData(SIGN_ACTIVE_LOCK_LAST_SEEN.get());
+        return signState(player).sign_active_lock_last_seen();
     }
 
     public static void setSignActiveLockLastSeen(net.minecraft.world.entity.player.Player player, long value) {
-        player.setData(SIGN_ACTIVE_LOCK_LAST_SEEN.get(), value);
+        updateSignState(player, state -> state.withSignActiveLockLastSeen(value));
     }
 
     // 末影骰子:不死图腾效果冷却结束时刻(玩家级,0 表示未进入冷却)
@@ -589,25 +836,25 @@ public class ModAttachments {
     /** @deprecated 已废弃,由目标选择器会话替代;禁止新代码使用 */
     @Deprecated
     public static int getSignReadyType(net.minecraft.world.entity.player.Player player) {
-        return player.getData(SIGN_READY_TYPE.get());
+        return signState(player).sign_ready_type();
     }
 
     /** @deprecated 已废弃,由目标选择器会话替代;禁止新代码使用 */
     @Deprecated
     public static void setSignReadyType(net.minecraft.world.entity.player.Player player, int value) {
-        player.setData(SIGN_READY_TYPE.get(), value);
+        updateSignState(player, state -> state.withSignReadyType(value));
     }
 
     /** @deprecated 已废弃,由目标选择器会话替代;禁止新代码使用 */
     @Deprecated
     public static long getSignReadyExpire(net.minecraft.world.entity.player.Player player) {
-        return player.getData(SIGN_READY_EXPIRE.get());
+        return signState(player).sign_ready_expire();
     }
 
     /** @deprecated 已废弃,由目标选择器会话替代;禁止新代码使用 */
     @Deprecated
     public static void setSignReadyExpire(net.minecraft.world.entity.player.Player player, long value) {
-        player.setData(SIGN_READY_EXPIRE.get(), value);
+        updateSignState(player, state -> state.withSignReadyExpire(value));
     }
 
     // 效果牌出牌周期计时相关
@@ -637,14 +884,16 @@ public class ModAttachments {
 
     // === 新筹码附件(魔法箭袋/缓冲盾牌/星币锤) ===
 
-    // 魔法箭袋筹码:是否已记录"第一张使用的效果牌"(一次触发周期内)
+    // 魔法箭袋筹码:是否已记录"本次使用的效果牌"(一次触发周期内)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Boolean>> MAGIC_QUIVER_TRACKING =
             ATTACHMENTS.register("magic_quiver_tracking", () -> AttachmentType.builder(() -> false)
                     .serialize(Codec.BOOL.fieldOf("value"))
                     .build());
 
-    // 魔法箭袋筹码:记录的第一张使用的效果牌类型(king_power/berserk/unwavering)
-    public static final DeferredHolder<AttachmentType<?>, AttachmentType<String>> MAGIC_QUIVER_FIRST_CARD =
+    // 魔法箭袋筹码:记录的**本次使用**的效果牌类型(living_page/railgun/... 由 cardTypeId 给出)
+    // ⚠️ 附件注册 id 仍为历史名 `magic_quiver_first_card`(2026-10-15 语义由「第一张」改为
+    //    「本次使用的那张」,刻意**不改 key** 以保留既有存档中的值)。
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<String>> MAGIC_QUIVER_LAST_CARD =
             ATTACHMENTS.register("magic_quiver_first_card", () -> AttachmentType.builder(() -> "")
                     .serialize(Codec.STRING.fieldOf("value"))
                     .build());
@@ -796,12 +1045,12 @@ public class ModAttachments {
         player.setData(MAGIC_QUIVER_TRACKING.get(), value);
     }
 
-    public static String getMagicQuiverFirstCard(net.minecraft.world.entity.player.Player player) {
-        return player.getData(MAGIC_QUIVER_FIRST_CARD.get());
+    public static String getMagicQuiverLastCard(net.minecraft.world.entity.player.Player player) {
+        return player.getData(MAGIC_QUIVER_LAST_CARD.get());
     }
 
-    public static void setMagicQuiverFirstCard(net.minecraft.world.entity.player.Player player, String value) {
-        player.setData(MAGIC_QUIVER_FIRST_CARD.get(), value);
+    public static void setMagicQuiverLastCard(net.minecraft.world.entity.player.Player player, String value) {
+        player.setData(MAGIC_QUIVER_LAST_CARD.get(), value);
     }
 
     public static long getMagicQuiverCooldownEnd(net.minecraft.world.entity.player.Player player) {
@@ -1067,13 +1316,13 @@ public class ModAttachments {
     // 计时器守卫:本模组有时长效果的结束时刻记录(效果注册名 → 结束 tick + 重施加参数)。
     // 仅服务端使用,序列化持久化;由 EffectTimerGuard 维护,保证效果严格按 20t/s 流动。
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Map<String,
-            com.merlinkitsune.astral_dice.event.EffectTimerGuard.TimerEntry>>> EFFECT_TIMER_ENDS =
+            com.merlinkitsune.starengine.event.EffectTimerGuard.TimerEntry>>> EFFECT_TIMER_ENDS =
             ATTACHMENTS.register("effect_timer_ends",
                     () -> AttachmentType.<Map<String,
-                            com.merlinkitsune.astral_dice.event.EffectTimerGuard.TimerEntry>>builder(
+                            com.merlinkitsune.starengine.event.EffectTimerGuard.TimerEntry>>builder(
                                     () -> new HashMap<>())
                             .serialize(Codec.unboundedMap(Codec.STRING,
-                                    com.merlinkitsune.astral_dice.event.EffectTimerGuard.TimerEntry.CODEC).fieldOf("value"))
+                                    com.merlinkitsune.starengine.event.EffectTimerGuard.TimerEntry.CODEC).fieldOf("value"))
                             .build());
 
     // === 新筹码:原初核心 / 电击手套 / 安全气囊 ===
@@ -1095,6 +1344,17 @@ public class ModAttachments {
             ATTACHMENTS.register("airbag_cooldown_end", () -> AttachmentType.builder(() -> 0L)
                     .serialize(Codec.LONG.fieldOf("value"))
                     .sync(ByteBufCodecs.VAR_LONG)
+                    .build());
+
+    /**
+     * 安全气囊:**受击充能**冷却结束时刻(15 秒;0 表示无冷却;2026-10-15 用户裁决追加能力)。
+     *
+     * <p>⚠️ 与「保命无效化」的 {@link #AIRBAG_COOLDOWN_END}(1:00)**完全独立**:两条能力各自计时,
+     * 互不干扰(保命冷却中照样能靠受击攒充能,反之亦然)。仅服务端使用,不 {@code .sync()}。
+     */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> AIRBAG_HIT_CHARGE_COOLDOWN_END =
+            ATTACHMENTS.register("airbag_hit_charge_cooldown_end", () -> AttachmentType.builder(() -> 0L)
+                    .serialize(Codec.LONG.fieldOf("value"))
                     .build());
 
     /**
@@ -1170,6 +1430,14 @@ public class ModAttachments {
         player.setData(AIRBAG_COOLDOWN_END.get(), Math.max(0, value));
     }
 
+    public static long getAirbagHitChargeCooldownEnd(net.minecraft.world.entity.player.Player player) {
+        return player.getData(AIRBAG_HIT_CHARGE_COOLDOWN_END.get());
+    }
+
+    public static void setAirbagHitChargeCooldownEnd(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(AIRBAG_HIT_CHARGE_COOLDOWN_END.get(), Math.max(0, value));
+    }
+
     public static long getWhetstoneGuardCooldownEnd(net.minecraft.world.entity.player.Player player) {
         return player.getData(WHETSTONE_GUARD_COOLDOWN_END.get());
     }
@@ -1221,7 +1489,7 @@ public class ModAttachments {
     // ══════════════════════════════════════════════════════════════════════════
     //  风水师立牌(zhao)/符卡-福·祸 本批新增的玩家级状态(2026-09-26)
     //  键名与口径 = docs/features/fengshui-sign-spec.md §9.1(**冻结**)。
-    //  同步策略:五个键一律**只** .serialize(...),**不** .sync(...) —— 它们的读取方全在服务端
+    //  同步策略:五个键一律**只** .serialize(....fieldOf("value")),**不** .sync(...) —— 它们的读取方全在服务端
     //  (玩家级 tick 的状态机/周期伤害、骰战攻击修饰器),玩家可见载体是**效果实例**(由原版效果
     //  同步包呈现),故不额外写包(同口径先例见下方 zhao_prev_blessing 的"仅服务端使用,无需同步")。
     // ══════════════════════════════════════════════════════════════════════════
@@ -1443,7 +1711,7 @@ public class ModAttachments {
         player.setData(TERU_DESCENT_ATK_BONUS.get(), Math.max(0, value));
     }
 
-    /** 降神给施法者的**防御力加成快照** = ⌊目标防御力 × 50%⌋(消费点 = setDefenseArmorBonus,1 防御 = 2 护甲) */
+    /** 降神给施法者的**防御力加成快照** = ⌊目标防御力 × 50%⌋(消费点 = setDefenseArmorBonus,1 防御 = 1÷护甲系数 护甲) */
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> TERU_DESCENT_DEF_BONUS =
             ATTACHMENTS.register("teru_descent_def_bonus", () -> AttachmentType.builder(() -> 0)
                     .serialize(Codec.INT.fieldOf("value"))
@@ -1641,7 +1909,6 @@ public class ModAttachments {
     //    (死亡不重置;与 rin_pages 同口径,另在 DeathPreservedBonuses 存第 3 槽位兜底
     //     —— 死亡时立牌先掉出 ⇒ Curios 轮询先触发 clearSignData 清零,早于克隆复制);
     //  - mamushi_bite_bonus_active:boolean,**不**同步(判定与消费全在服务端骰战链路);
-    //  - mamushi_forced_cooldown_until:long,**不**同步(服务端强制冷却硬闸门,客户端不显示)。
     // ══════════════════════════════════════════════════════════════════════════
 
     /**
@@ -1671,18 +1938,6 @@ public class ModAttachments {
                     .serialize(Codec.BOOL.fieldOf("value"))
                     .build());
 
-    /**
-     * 蛟龙立牌主动「连锁反应」的**强制冷却**截止刻(绝对 gameTime;0 = 无)。
-     *
-     * <p>这是**独立于** {@link #SIGN_ACTIVE_COOLDOWN_END} 的硬闸门(规格 §3.4):诡异骰子 / 充能 /
-     * 命运的指引 / 电流核心筹码等**一切**减免都不得缩短它;释放当刻由
-     * {@code MamushiSignItem#handleUse} 写 {@code now + 1200}。仅服务端判定,故不 {@code .sync()}。
-     */
-    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> MAMUSHI_FORCED_COOLDOWN_UNTIL =
-            ATTACHMENTS.register("mamushi_forced_cooldown_until", () -> AttachmentType.builder(() -> 0L)
-                    .serialize(Codec.LONG.fieldOf("value"))
-                    .build());
-
     /** 觉醒层数(缺省 0;不设上限:D4「不消耗、不回落,继续累加」) */
     public static int getMamushiAwakening(net.minecraft.world.entity.player.Player player) {
         return player.getData(MAMUSHI_AWAKENING.get());
@@ -1700,15 +1955,6 @@ public class ModAttachments {
 
     public static void setMamushiBiteBonusActive(net.minecraft.world.entity.player.Player player, boolean value) {
         player.setData(MAMUSHI_BITE_BONUS_ACTIVE.get(), value);
-    }
-
-    /** 强制冷却截止刻(绝对 gameTime;0 = 无强制冷却) */
-    public static long getMamushiForcedCooldownUntil(net.minecraft.world.entity.player.Player player) {
-        return player.getData(MAMUSHI_FORCED_COOLDOWN_UNTIL.get());
-    }
-
-    public static void setMamushiForcedCooldownUntil(net.minecraft.world.entity.player.Player player, long value) {
-        player.setData(MAMUSHI_FORCED_COOLDOWN_UNTIL.get(), Math.max(0L, value));
     }
 
     /**
@@ -1769,7 +2015,7 @@ public class ModAttachments {
      * <b>不 {@code .sync()}</b> —— 客户端 tooltip 的层数计数器读的是**已同步的效果实例**,不读本键。
      *
      * <p><b>不跨死亡保留</b>:技能原文未声明死亡保留 ⇒ 按"未声明即不保留"的既定口径处理
-     * (照「剑气」「弱点识破」),故**不**加 {@code .copyOnDeath()}、也不进 1.20.1 的白名单。
+     * (同「弱点识破」等未声明死亡保留的附件),故**不**加 {@code .copyOnDeath()}、也不进 1.20.1 的白名单。
      */
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> HANNA_DOLL_CRAFT_LAYERS =
             ATTACHMENTS.register("hanna_doll_craft_layers", () -> AttachmentType.builder(() -> 0)
@@ -1864,5 +2110,335 @@ public class ModAttachments {
 
     public static void setMegasResupplyNextTick(net.minecraft.world.entity.player.Player player, long value) {
         player.setData(MEGAS_RESUPPLY_NEXT_TICK.get(), Math.max(0L, value));
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  超天酱立牌(kangel)+ 地雷女立牌(ame)（2026-10-16 冻结规格）
+    // ══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * 超天酱立牌(kangel)被动「小天使请安」的**粉丝数真值**(0..10,上限见
+     * {@code KangelSignItem#MAX_FANS})。
+     *
+     * <p><b>必须带 {@code .copyOnDeath()}</b>:用户要求「粉丝数永久有效,且死亡后不会清空。
+     * 即使目标被击杀,其拥有的粉丝数一样保留」(玩家拆卸立牌后重置为 0)。目标被击杀**不**减少计数
+     * (计数只随「新目标首次登记」增长)。
+     *
+     * <p><b>需 {@code .sync()}</b>:客户端 tooltip 的计数器行读它(与 sherry 推理时间「读已同步效果」
+     * 的口径不同 —— 本立牌同时把粉丝数镜像成 {@code kangel_fan} 效果图标,但**计数器行**取附件真值,
+     * 由 {@code ModTooltipHandler} 在客户端直接读)。
+     */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> KANGEL_FAN_COUNT =
+            ATTACHMENTS.register("kangel_fan_count", () -> AttachmentType.builder(() -> 0)
+                    .serialize(Codec.INT.fieldOf("value"))
+                    .copyOnDeath()
+                    .sync(ByteBufCodecs.INT)
+                    .build());
+
+    public static int getKangelFanCount(net.minecraft.world.entity.player.Player player) {
+        return player.getData(KANGEL_FAN_COUNT.get());
+    }
+
+    public static void setKangelFanCount(net.minecraft.world.entity.player.Player player, int value) {
+        player.setData(KANGEL_FAN_COUNT.get(), Math.max(0, value));
+    }
+
+    /**
+     * **已登记目标 UUID 集**(逗号分隔) —— 「每个目标对每个超天酱玩家只计 1 个粉丝」的唯一判据。
+     *
+     * <p>写法与寿命都沿用 {@link #SHERRY_REASONING_TARGETS} 的字符串集口径(超
+     * {@code KangelSignItem#MAX_TRACKED_TARGETS} 按最旧淘汰);**卸下立牌即清空**。
+     * <b>跨死亡保留</b>(用户原话「粉丝数永久有效,且死亡后不会清空」⇒ 与计数同寿命)。
+     * 不 {@code .sync()}:仅服务端判定,客户端不读。
+     */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<String>> KANGEL_FAN_TARGETS =
+            ATTACHMENTS.register("kangel_fan_targets", () -> AttachmentType.builder(() -> "")
+                    .serialize(Codec.STRING.fieldOf("value"))
+                    .copyOnDeath()
+                    .build());
+
+    public static String getKangelFanTargets(net.minecraft.world.entity.player.Player player) {
+        return player.getData(KANGEL_FAN_TARGETS.get());
+    }
+
+    public static void setKangelFanTargets(net.minecraft.world.entity.player.Player player, String value) {
+        player.setData(KANGEL_FAN_TARGETS.get(), value == null ? "" : value);
+    }
+
+    /**
+     * 地雷女立牌(ame)「爱」**层数真值**(0..上限)。**跨死亡保留**(用户原话「爱层数死亡后不会清空」);
+     * **卸下清零**(见 {@code AmeSignItem#clearSignData})。层数的 HUD 显示走
+     * {@code effect/AmeLoveEffect} 的镜像效果(层数 = {@code amplifier + 1},无限时长)。
+     * <b>需 {@code .sync()}</b>:客户端 tooltip 的「爱：当前/上限」计数器行读它。
+     */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> AME_LOVE_LAYERS =
+            ATTACHMENTS.register("ame_love_layers", () -> AttachmentType.builder(() -> 0)
+                    .serialize(Codec.INT.fieldOf("value"))
+                    .copyOnDeath()
+                    .sync(ByteBufCodecs.INT)
+                    .build());
+
+    public static int getAmeLoveLayers(net.minecraft.world.entity.player.Player player) {
+        return player.getData(AME_LOVE_LAYERS.get());
+    }
+
+    public static void setAmeLoveLayers(net.minecraft.world.entity.player.Player player, int value) {
+        player.setData(AME_LOVE_LAYERS.get(), Math.max(0, value));
+    }
+
+    /**
+     * 地雷女立牌(ame)「爱」的**层数上限**(默认 {@code AmeSignItem#AME_LOVE_CAP_DEFAULT} = 4;
+     * 主动「感情过量摄入」自然到期后 +1,最高 {@code AmeSignItem#AME_LOVE_CAP_MAX} = 32)。
+     * **跨死亡保留**;**卸下清零**回默认值。需 {@code .sync()}(同 {@link #AME_LOVE_LAYERS} 的计数器行)。
+     */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> AME_LOVE_CAP =
+            ATTACHMENTS.register("ame_love_cap", () -> AttachmentType.builder(() -> 4)
+                    .serialize(Codec.INT.fieldOf("value"))
+                    .copyOnDeath()
+                    .sync(ByteBufCodecs.INT)
+                    .build());
+
+    public static int getAmeLoveCap(net.minecraft.world.entity.player.Player player) {
+        return player.getData(AME_LOVE_CAP.get());
+    }
+
+    public static void setAmeLoveCap(net.minecraft.world.entity.player.Player player, int value) {
+        player.setData(AME_LOVE_CAP.get(), Math.max(1, value));
+    }
+
+    /**
+     * 地雷女立牌(ame)「爱」获得闸门的**下次可获层刻**(绝对 gameTime;0 = 无闸门)。
+     * 每 {@code AmeSignItem#LOVE_GAIN_INTERVAL_TICKS}(= 30 秒)最多 1 层,
+     * **该闸门同时约束一心同体供给方送入的层数**。不跨死亡(重生后闸门归零 ⇒ 立刻可再获 1 层);
+     * 不 {@code .sync()}(仅服务端判定,客户端不读)。
+     */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> AME_LOVE_GAIN_CD_END =
+            ATTACHMENTS.register("ame_love_gain_cd_end", () -> AttachmentType.builder(() -> 0L)
+                    .serialize(Codec.LONG.fieldOf("value"))
+                    .build());
+
+    public static long getAmeLoveGainCdEnd(net.minecraft.world.entity.player.Player player) {
+        return player.getData(AME_LOVE_GAIN_CD_END.get());
+    }
+
+    public static void setAmeLoveGainCdEnd(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(AME_LOVE_GAIN_CD_END.get(), Math.max(0L, value));
+    }
+
+    /**
+     * 怪力乱神立牌(lingling)「拦截者」的**首次装备发放标记**(§4.1):
+     * {@code true} = 该玩家已享受过一次「首次装备发 2 张强化拒止」。
+     * 不 {@code .sync()}(仅服务端判定);**必须 {@code copyOnDeath}**(§4.1「一生一次」跨死亡保留)。
+     * **不得**改用 {@code StarLightManager.claimEquipGrant} —— 那条链卸下会 release ⇒ 可刷。
+     */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Boolean>> LINGLING_GRANTED =
+            ATTACHMENTS.register("lingling_granted", () -> AttachmentType.builder(() -> false)
+                    .serialize(Codec.BOOL.fieldOf("value"))
+                    .copyOnDeath()
+                    .build());
+
+    public static boolean isLinglingGranted(net.minecraft.world.entity.player.Player player) {
+        return player.getData(LINGLING_GRANTED.get());
+    }
+
+    public static void setLinglingGranted(net.minecraft.world.entity.player.Player player, boolean value) {
+        player.setData(LINGLING_GRANTED.get(), value);
+    }
+
+    // ── 本批 4 个新立牌的玩家级状态（键原由 NewSignAttachments 内联至此，id/默认值/同步标记逐字不变）──
+    /** 调酒师：目标选择确认后暂存的目标 UUID（空串 = 无）。选卡取消即清空。 */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<String>> JILL_PENDING_TARGET =
+            ATTACHMENTS.register("jill_pending_target", () -> AttachmentType.builder(() -> "")
+                    .serialize(Codec.STRING.fieldOf("value")).build());
+
+    /** 调酒师：主动 buff 受惠目标 UUID（空串 = 无；到期/卸下清除）。 */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<String>> JILL_BUFF_TARGET =
+            ATTACHMENTS.register("jill_buff_target", () -> AttachmentType.builder(() -> "")
+                    .serialize(Codec.STRING.fieldOf("value")).build());
+
+    /** 调酒师：主动 buff 到期刻（绝对 gameTime；0 = 无）。 */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> JILL_BUFF_END =
+            ATTACHMENTS.register("jill_buff_end", () -> AttachmentType.builder(() -> 0L)
+                    .serialize(Codec.LONG.fieldOf("value")).build());
+
+    /** 多萝西：主动窗口结束刻（0 = 无窗口）。 */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> DOROTHY_WINDOW_END =
+            ATTACHMENTS.register("dorothy_window_end", () -> AttachmentType.builder(() -> 0L)
+                    .serialize(Codec.LONG.fieldOf("value")).sync(ByteBufCodecs.VAR_LONG).build());
+
+    /** 多萝西：窗口内已结算「每人一次」的友方玩家 UUID（"uuid,uuid" 逗号分隔；每次主动施放与窗口结束时清零）。 */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<String>> DOROTHY_PARTNERS_ONCE =
+            ATTACHMENTS.register("dorothy_partners_once", () -> AttachmentType.builder(() -> "")
+                    .serialize(Codec.STRING.fieldOf("value")).build());
+
+    /** 多萝西：当前攻击加成总量（窗口内每人 1 点 + 满层转化值）。 */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> DOROTHY_ATTACK_BONUS =
+            ATTACHMENTS.register("dorothy_attack_bonus", () -> AttachmentType.builder(() -> 0)
+                    .serialize(Codec.INT.fieldOf("value")).sync(ByteBufCodecs.VAR_INT).build());
+
+    /** 多萝西：被动回血的冷却结束刻。 */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> DOROTHY_HEAL_COOLDOWN_END =
+            ATTACHMENTS.register("dorothy_heal_cooldown_end", () -> AttachmentType.builder(() -> 0L)
+                    .serialize(Codec.LONG.fieldOf("value")).build());
+
+    /** 修女：被动累计攻击加成。 */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> ALANA_PASSIVE_BONUS =
+            ATTACHMENTS.register("alana_passive_bonus", () -> AttachmentType.builder(() -> 0)
+                    .serialize(Codec.INT.fieldOf("value")).sync(ByteBufCodecs.VAR_INT).build());
+
+    /** 大肥鱼：上一 tick 的精确位置快照（x,y,z；空 = 尚无快照）。仅内存态：登录/重登后重建快照。 */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<List<Double>>> DEEPSEEK_LAST_POS =
+            ATTACHMENTS.register("deepseek_last_pos", () -> AttachmentType.builder(() -> List.<Double>of())
+                    .build());
+
+    /** 大肥鱼：摸鱼中累计的移动 tick（满 100 解除摸鱼；中途停下不清零）。仅内存态。 */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> DEEPSEEK_MOVE_TICKS =
+            ATTACHMENTS.register("deepseek_move_ticks", () -> AttachmentType.builder(() -> 0)
+                    .build());
+
+    /** 大肥鱼：主动攻/防加成结束刻（0 = 无加成）。仅内存态：与瞬态攻/防修饰符同寿命。 */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> DEEPSEEK_BUFF_END =
+            ATTACHMENTS.register("deepseek_buff_end", () -> AttachmentType.builder(() -> 0L)
+                    .build());
+
+    /** 大肥鱼：上一次 Curio tick 的 gameTime（0 = 尚未记录）。仅内存态：检测 tick 中断。 */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> DEEPSEEK_LAST_TICK =
+            ATTACHMENTS.register("deepseek_last_tick", () -> AttachmentType.builder(() -> 0L)
+                    .build());
+
+    /** 大肥鱼：静止起始刻。 */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> DEEPSEEK_IDLE_SINCE =
+            ATTACHMENTS.register("deepseek_idle_since", () -> AttachmentType.builder(() -> 0L)
+                    .serialize(Codec.LONG.fieldOf("value")).build());
+
+    public static String getJillPendingTarget(net.minecraft.world.entity.player.Player player) {
+        return player.getData(JILL_PENDING_TARGET.get());
+    }
+
+    public static void setJillPendingTarget(net.minecraft.world.entity.player.Player player, String value) {
+        player.setData(JILL_PENDING_TARGET.get(), value == null ? "" : value);
+    }
+
+    public static String getJillBuffTarget(net.minecraft.world.entity.player.Player player) {
+        return player.getData(JILL_BUFF_TARGET.get());
+    }
+
+    public static void setJillBuffTarget(net.minecraft.world.entity.player.Player player, String value) {
+        player.setData(JILL_BUFF_TARGET.get(), value == null ? "" : value);
+    }
+
+    public static long getJillBuffEnd(net.minecraft.world.entity.player.Player player) {
+        return player.getData(JILL_BUFF_END.get());
+    }
+
+    public static void setJillBuffEnd(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(JILL_BUFF_END.get(), value);
+    }
+
+    public static long getDorothyWindowEnd(net.minecraft.world.entity.player.Player player) {
+        return player.getData(DOROTHY_WINDOW_END.get());
+    }
+
+    public static void setDorothyWindowEnd(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(DOROTHY_WINDOW_END.get(), value);
+    }
+
+    public static int getDorothyAttackBonus(net.minecraft.world.entity.player.Player player) {
+        return player.getData(DOROTHY_ATTACK_BONUS.get());
+    }
+
+    public static void setDorothyAttackBonus(net.minecraft.world.entity.player.Player player, int value) {
+        player.setData(DOROTHY_ATTACK_BONUS.get(), Math.max(0, value));
+    }
+
+    public static void addDorothyAttackBonus(net.minecraft.world.entity.player.Player player, int delta) {
+        setDorothyAttackBonus(player, getDorothyAttackBonus(player) + delta);
+    }
+
+    public static long getDorothyHealCooldownEnd(net.minecraft.world.entity.player.Player player) {
+        return player.getData(DOROTHY_HEAL_COOLDOWN_END.get());
+    }
+
+    public static void setDorothyHealCooldownEnd(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(DOROTHY_HEAL_COOLDOWN_END.get(), value);
+    }
+
+    public static void clearDorothyPartners(net.minecraft.world.entity.player.Player player) {
+        player.setData(DOROTHY_PARTNERS_ONCE.get(), "");
+    }
+
+    /**
+     * 返回 true 表示该友方玩家本窗口首次结算（每人每窗口一次）。
+     *
+     * <p>2026-10-25 用户裁决：删掉 10 秒节流 —— 「每人每窗口一次」本身已足够防刷（多萝西自己叠层，
+     * 不会出现反复刷的情况）；队友拿到的攻击力改由【交际花】效果承载（固定 1:00，与窗口解耦）。
+     */
+    public static boolean tryTriggerDorothyPartner(net.minecraft.world.entity.player.Player player, UUID other) {
+        String key = other.toString();
+        String onceRaw = player.getData(DOROTHY_PARTNERS_ONCE.get());
+        java.util.Set<String> once = new java.util.LinkedHashSet<>();
+        if (onceRaw != null && !onceRaw.isEmpty()) {
+            for (String part : onceRaw.split(",")) {
+                if (!part.isEmpty()) once.add(part);
+            }
+        }
+        // 每人一次：本窗口已结算过该队友 ⇒ 拒绝（窗口重置时 clearDorothyPartners 清零）
+        if (once.contains(key)) return false;
+        once.add(key);
+        StringBuilder onceSb = new StringBuilder();
+        for (String p : once) {
+            if (onceSb.length() > 0) onceSb.append(',');
+            onceSb.append(p);
+        }
+        player.setData(DOROTHY_PARTNERS_ONCE.get(), onceSb.toString());
+        return true;
+    }
+
+    public static int getAlanaPassiveBonus(net.minecraft.world.entity.player.Player player) {
+        return player.getData(ALANA_PASSIVE_BONUS.get());
+    }
+
+    public static void setAlanaPassiveBonus(net.minecraft.world.entity.player.Player player, int value) {
+        player.setData(ALANA_PASSIVE_BONUS.get(), Math.max(0, value));
+    }
+
+    public static List<Double> getDeepseekLastPos(net.minecraft.world.entity.player.Player player) {
+        return player.getData(DEEPSEEK_LAST_POS.get());
+    }
+
+    public static void setDeepseekLastPos(net.minecraft.world.entity.player.Player player, List<Double> value) {
+        player.setData(DEEPSEEK_LAST_POS.get(), value == null ? List.<Double>of() : value);
+    }
+
+    public static int getDeepseekMoveTicks(net.minecraft.world.entity.player.Player player) {
+        return player.getData(DEEPSEEK_MOVE_TICKS.get());
+    }
+
+    public static void setDeepseekMoveTicks(net.minecraft.world.entity.player.Player player, int value) {
+        player.setData(DEEPSEEK_MOVE_TICKS.get(), Math.max(0, value));
+    }
+
+    public static long getDeepseekBuffEnd(net.minecraft.world.entity.player.Player player) {
+        return player.getData(DEEPSEEK_BUFF_END.get());
+    }
+
+    public static void setDeepseekBuffEnd(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(DEEPSEEK_BUFF_END.get(), value);
+    }
+
+    public static long getDeepseekLastTick(net.minecraft.world.entity.player.Player player) {
+        return player.getData(DEEPSEEK_LAST_TICK.get());
+    }
+
+    public static void setDeepseekLastTick(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(DEEPSEEK_LAST_TICK.get(), value);
+    }
+
+    public static long getDeepseekIdleSince(net.minecraft.world.entity.player.Player player) {
+        return player.getData(DEEPSEEK_IDLE_SINCE.get());
+    }
+
+    public static void setDeepseekIdleSince(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(DEEPSEEK_IDLE_SINCE.get(), value);
     }
 }

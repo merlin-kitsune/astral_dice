@@ -29,15 +29,15 @@ public class DamageEffectCardHandler {
     /** 活体书页命中的「重击」音效门槛:本次**完整伤害**(与 HUD 跳字同值) >= 该值即播 bighit。 */
     private static final int LIVING_PAGE_BIG_HIT_THRESHOLD = 8;
 
-    // ⚠️ 事件时机必须与 1.21.1 对齐(2026-09-15 用户裁决修补 KI-5「电击手套 AOE 基准跨版本」):
-    // 1.21.1 挂在 LivingDamageEvent.Pre(**护甲/附魔减免之后**),而 1.20.1 原先挂 LivingHurtEvent
-    // (**护甲前**,LivingEntity.java:1665 早于 :1667-1668 的护甲减免)⇒ 同一发法伤在 1.20.1 上
-    // 会以「护甲前原始值」为基准做 3 格 AOE 波及,带甲目标周围多打一截。
-    // 按 AGENTS.md「伤害事件映射」的既定口径(LivingDamageEvent.Pre ↔ 1.20.1 LivingDamageEvent,
-    // 即**护甲之后**),此处改挂 LivingDamageEvent;`SpellDamageContext.event` 的类型随之同步。
-    // 残余(平台固有,已在 AGENTS.md 记录):1.20.1 的 LivingDamageEvent 在**吸收结算之后**
-    // (吸收 :1669-1670 早于派发 :1680),1.21.1 的 Pre 在**吸收之前**(:1789 早于 :1790-1792),
-    // 故目标带吸收(黄心)时两版本基准仍会有差异——普通目标无吸收,实际影响可忽略。
+    // ⚠️ 事件时机(B27 订正本线事实;2026-09-15 用户裁决修补 KI-5「电击手套 AOE 基准跨版本」):
+    // 本处挂在 LivingDamageEvent,与 1.21.1 的 LivingDamageEvent.Pre 同名对应。但本次改挂
+    // **不会**让本线拿到「护甲之后」的值:该事件由 Puzzles Lib 8.1.33 的
+    // fuzs.puzzleslib.mixin.LivingEntityFabricMixin#actuallyHurt(@Inject(at=@At("HEAD"))) 在
+    // actuallyHurt 偏移 0 派发,而护甲(偏移 12 getDamageAfterArmorAbsorb)、魔抗(19
+    // getDamageAfterMagicAbsorb)、吸收(25-45)全在方法体内、注入点之后 ⇒ 载荷仍是护甲与吸收
+    // **之前**的原始入参。桥接处见 platform/PuzzlesBridges.java:99-110。
+    // 残余(平台固有,已登记 B27 报告):本线基准比 1.21.1 Pre 还早一层(护甲前),
+    // 带甲或带吸收(黄心)的目标都会有差;本处只改挂点,不引入换算。
     @SubscribeEvent(priority = EventPriority.NORMAL)
     public static void onLivingDamagePre(LivingDamageEvent event) {
         LivingEntity target = event.getEntity();
@@ -70,8 +70,8 @@ public class DamageEffectCardHandler {
         // 独立结算:直接伤害实体为空 + 击杀归属施法者(与旧 explosion(null, player) 同形状,
         // 不会被本模组或其它模组当成"玩家的直接攻击"重走骰战)。
         // 2026-09-26:本处原有的「HUD 数显 = getAmount() + bonus」直发已移除 —— 显示值**同源**,
-        // 但改由 combat/DamageNumberAggregator 在伤害管线终值(本线 = LivingDamageEvent#getAmount(),
-        // 已是吸收之后的最终值)上取,并与基础伤害累加成一个法伤总值。
+        // 但改由 combat/DamageNumberAggregator 取(本线 = LivingDamageEvent#getAmount();该值在
+        // 护甲/吸收**之前**,不是「吸收之后的最终值」,见上方挂点说明)并与基础伤害累加。
         if (bonus > 0 && !APPLYING_TRUE_BONUS.get()) {
             // ① 本次命中的**基础伤害**也归入法伤组。必须显式登记:这条命中绝大多数是**原版**伤害源
             //    (箭矢 arrow / 投掷物 / 其它模组法术),聚合器的类型回落认不出来。

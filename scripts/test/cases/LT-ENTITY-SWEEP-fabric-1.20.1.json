@@ -1,0 +1,64 @@
+{
+  "case_id": "LT-ENTITY-SWEEP-fabric-1.20.1",
+  "title": "LT3：两个自定义实体可被 /summon（astral_dice:barricade / astral_dice:repulsion 的注册 id 与构建链有效），并且 killbarricade/killrepulsion all 扫尾入口可运行。实体是否真的消失属运行时状态，走 CH-A（level.getEntities）判定；本条锚定「实体类在产物 jar 内 + 命令链不炸」这两个可离线/可日志验证的事实。",
+  "version": "fabric-1.20.1",
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "前置：dev 客户端已进服（实体在 0 100 0 处生成，离玩家很远，不影响玩法）"
+    },
+    {
+      "op": "inject_command",
+      "command": "/summon astral_dice:barricade 0 100 0"
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/summon astral_dice:repulsion 0 100 0"
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralparty killbarricade all"
+    },
+    {
+      "op": "wait",
+      "ms": 300
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralparty killrepulsion all"
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    }
+  ],
+  "assert": [
+    {
+      "type": "bytecode",
+      "pattern": "entity/(Barricade|Repulsion)Entity\\.class$"
+    },
+    {
+      "type": "bytecode",
+      "pattern": "client/BarricadeRenderer\\.class$"
+    },
+    {
+      "type": "bytecode",
+      "pattern": "client/RepulsionRenderer\\.class$"
+    },
+    {
+      "type": "crash"
+    },
+    {
+      "type": "mixin"
+    }
+  ]
+}

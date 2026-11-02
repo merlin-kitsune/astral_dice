@@ -2,7 +2,10 @@ package com.merlinkitsune.astral_dice.client;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.init.ModParticles;
+import com.merlinkitsune.astral_dice.screen.CardChoiceScreen;
 import com.merlinkitsune.astral_dice.screen.CardInventoryScreen;
+import com.merlinkitsune.astral_dice.screen.CardShopScreen;
+import com.merlinkitsune.astral_dice.screen.ChipShopScreen;
 import com.merlinkitsune.astral_dice.screen.ModMenuTypes;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -36,6 +39,9 @@ public class ModClientEvents {
 
     @SubscribeEvent
     public static void registerGuiOverlays(RegisterGuiOverlaysEvent event) {
+        // 事件效果卡(B2-6,1:1 移植自 forge-1.20.1 同名注册):接在准星之上(瞬时动画,不遮准星本身)。
+        // 注册顺序与 forge 蓝本一致 —— event_card 排在 damage_number 之前。
+        event.registerAbove(VanillaGuiOverlay.CROSSHAIR.id(), "event_card", EventCardOverlay.OVERLAY);
         // 1.20.1:registerAbove 的 id 参数是纯 path,Forge 自动拼 modid 前缀
         event.registerAbove(VanillaGuiOverlay.CROSSHAIR.id(),
                 "damage_number", DamageNumberOverlay.INSTANCE);
@@ -54,9 +60,16 @@ public class ModClientEvents {
 
     @SubscribeEvent
     public static void onClientSetup(FMLClientSetupEvent event) {
-        event.enqueueWork(() ->
-                net.minecraft.client.gui.screens.MenuScreens.register(
-                        ModMenuTypes.CARD_INVENTORY.get(), CardInventoryScreen::new));
+        event.enqueueWork(() -> {
+            net.minecraft.client.gui.screens.MenuScreens.register(
+                    ModMenuTypes.CARD_INVENTORY.get(), CardInventoryScreen::new);
+            net.minecraft.client.gui.screens.MenuScreens.register(
+                    ModMenuTypes.CHIP_SHOP.get(), ChipShopScreen::new);
+            net.minecraft.client.gui.screens.MenuScreens.register(
+                    ModMenuTypes.CARD_SHOP.get(), CardShopScreen::new);
+            net.minecraft.client.gui.screens.MenuScreens.register(
+                    ModMenuTypes.CARD_CHOICE.get(), CardChoiceScreen::new);
+        });
     }
 
     public static class ActionBarOverlay implements IGuiOverlay {

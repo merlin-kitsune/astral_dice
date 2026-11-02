@@ -3,7 +3,7 @@ package com.merlinkitsune.astral_dice.item;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 
 import com.merlinkitsune.astral_dice.effect.ModEffects;
-import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
+import com.merlinkitsune.starengine.event.EffectTimerGuard;
 import com.merlinkitsune.starengine.event.ModEffectRemoval;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.player.Player;
@@ -374,5 +374,17 @@ public final class HealingManager {
         if (existing != null) {
             EffectTimerGuard.record(player, instance);
         }
+    }    /**
+     * 装备的深渊试剂在**触发骰神赐福**与**每 1:00 治愈结算**两条入口各 +2 治愈点
+     * (2026-10-15 用户裁决「与医疗箱同口径」;加点时机与 {@link #addMedkitPoints} 完全一致,
+     * 受 {@link #HEALING_POINT_CAP} 上限约束)。
+     * <p>⚠️ 卸下时的 -2 仍走 {@code spend(2)} 的**名义值**口径(不做按账本回撤),与医疗箱不同 ——
+     * 见 {@code AbyssReagentChipItem} 类头的取舍说明。
+     */
+    private static void addAbyssReagentPoints(Player player) {
+        if (!com.merlinkitsune.astral_dice.item.chip.AbyssReagentChipItem.isEquipped(player)) return;
+        add(player, com.merlinkitsune.astral_dice.item.chip.AbyssReagentChipItem.BOON_POINTS);
     }
+
+
 }

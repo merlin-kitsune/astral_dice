@@ -3,7 +3,17 @@ package com.merlinkitsune.astral_dice.client;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.entity.ModEntityTypes;
 import com.merlinkitsune.astral_dice.init.ModParticles;
+import com.merlinkitsune.astral_dice.entity.ModEntityTypes;
+import com.merlinkitsune.astral_dice.client.BarricadeRenderer;
+import com.merlinkitsune.astral_dice.client.RepulsionRenderer;
+import com.merlinkitsune.astral_dice.client.BarricadeModel;
+import com.merlinkitsune.astral_dice.client.RepulsionModel;
+import net.minecraft.world.entity.EntityType;
+import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import com.merlinkitsune.astral_dice.screen.CardInventoryScreen;
+import com.merlinkitsune.astral_dice.screen.CardChoiceScreen;
+import com.merlinkitsune.astral_dice.screen.ChipShopScreen;
+import com.merlinkitsune.astral_dice.screen.CardShopScreen;
 import com.merlinkitsune.astral_dice.screen.ModMenuTypes;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
@@ -43,9 +53,35 @@ public class ModClientEvents {
     //     该项由**类初始化时的每个 invokedynamic 解析**触发(§5.4.3.6)⇒ 专用服务端启动即
     //     NoClassDefFoundError: CardInventoryScreen(除非它是纯服务端 mod,才会被 strip 掉)。
     //     与 forge-1.20.1 侧 ModClientEvents#onClientSetup 的写法保持对等。
+
+    /**
+     * 自有实体渲染器注册。
+     *
+     * <p>路障 / 强化拒止（1.5.0 新增实体；合并时整块丢失，2026-11-01 补回），
+     * 以及 GeckoLib 5 的 Syke 触手（26.4 dev 线新增）。
+     */
+    @SubscribeEvent
+    public static void registerEntityRenderers(EntityRenderersEvent.RegisterRenderers event) {
+        event.registerEntityRenderer(ModEntityTypes.BARRICADE.get(), BarricadeRenderer::new);
+        event.registerEntityRenderer(ModEntityTypes.REPULSION.get(), RepulsionRenderer::new);
+        // GeckoLib 的几何/贴图/动画来自 assets/astral_dice/{geo,textures/entity,animations}/，渲染器只需把模型实例交给 GeoEntityRenderer；
+        // **不** 走 EntityRenderersEvent.RegisterLayerDefinitions（那是原版模型层的注册口，对本实体无效）。
+        event.registerEntityRenderer(ModEntityTypes.SYKE_TENTACLE.get(), SykeTentacleRenderer::new);
+    }
+
+    /** 模型层定义：`astral_dice:barricade#main` / `astral_dice:repulsion#main`。 */
+    @SubscribeEvent
+    public static void registerLayerDefinitions(EntityRenderersEvent.RegisterLayerDefinitions event) {
+        event.registerLayerDefinition(BarricadeModel.LAYER_LOCATION, BarricadeModel::createBodyLayer);
+        event.registerLayerDefinition(RepulsionModel.LAYER_LOCATION, RepulsionModel::createBodyLayer);
+    }
+
     @SubscribeEvent
     public static void registerScreens(RegisterMenuScreensEvent event) {
         event.register(ModMenuTypes.CARD_INVENTORY.get(), CardInventoryScreen::new);
+        event.register(ModMenuTypes.CARD_SHOP.get(), CardShopScreen::new);
+        event.register(ModMenuTypes.CHIP_SHOP.get(), ChipShopScreen::new);
+        event.register(ModMenuTypes.CARD_CHOICE.get(), CardChoiceScreen::new);
     }
 
     /**
@@ -68,6 +104,8 @@ public class ModClientEvents {
         event.registerAbove(VanillaGuiLayers.CROSSHAIR,
                 Identifier.fromNamespaceAndPath(AstralDiceMod.MODID, "target_select"),
                 TargetSelectOverlay.INSTANCE);
+        // 事件效果卡覆盖层（锚点 CROSSHAIR、id astral_dice:event_card，与 1.21.1 逐字对齐）
+        event.registerAbove(VanillaGuiLayers.CROSSHAIR, EventCardOverlay.LAYER_ID, EventCardOverlay.LAYER);
         event.registerAbove(VanillaGuiLayers.AIR_LEVEL,
                 Identifier.fromNamespaceAndPath(AstralDiceMod.MODID, "action_bar"),
                 ActionBarOverlay.INSTANCE);
@@ -97,21 +135,6 @@ public class ModClientEvents {
     public static void registerKeyMappings(RegisterKeyMappingsEvent event) {
         event.register(KeyBindingSetup.ACTIVATE_SIGN_KEY);
         event.register(KeyBindingSetup.OPEN_CARD_INVENTORY_KEY);
-    }
-
-    /**
-     * 自有实体渲染器注册（GeckoLib 5 的 Syke 触手）。
-     *
-     * <p>GeckoLib 的几何/贴图/动画来自 {@code assets/astral_dice/{geo,textures/entity,animations}/}，
-     * 渲染器本身只需把模型实例交给 {@code GeoEntityRenderer}；**不**走
-     * {@code EntityRenderersEvent.RegisterLayerDefinitions}（那是原版模型层的注册口，对本实体无效）。
-     *
-     * <p>本类带 {@code @EventBusSubscriber(Dist.CLIENT)}，专用服务端整体不加载，
-     * 故此处引用纯客户端的渲染器类是安全的（理由同 {@link #registerScreens}）。
-     */
-    @SubscribeEvent
-    public static void registerEntityRenderers(EntityRenderersEvent.RegisterRenderers event) {
-        event.registerEntityRenderer(ModEntityTypes.SYKE_TENTACLE.get(), SykeTentacleRenderer::new);
     }
 
     public static class DamageNumberOverlay implements GuiLayer {

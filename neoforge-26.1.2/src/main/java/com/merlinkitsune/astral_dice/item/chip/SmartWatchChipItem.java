@@ -11,7 +11,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
 import top.theillusivec4.curios.api.CuriosApi;
-import com.merlinkitsune.astral_dice.combat.PartyRelations;
+import com.merlinkitsune.starengine.combat.PartyRelations;
 
 /**
  * 智能手表筹码:物品栏中卡牌数量不足 {@link #CARD_THRESHOLD} 张时,
@@ -54,6 +54,9 @@ public class SmartWatchChipItem extends BaseChipItem {
         // 先取击杀者再判定敌对:视者 = 击杀者(全局敌对玩家规则)
         if (!(event.getSource().getEntity() instanceof Player killer)) return;
         if (!PartyRelations.isHostileTo(killer, event.getEntity())) return;
+        // 同一次死亡的第二次派发不再重复结算：法伤加成 / 额外加伤都以**嵌套 hurt** 结算，致死时
+        // 内层 die() 与外层 die() 会各派发一次 LivingDeathEvent（平台把该事件挂在 !dead 守卫之前）。
+        if (!com.merlinkitsune.astral_dice.combat.DeathTriggerGuard.claim(event.getEntity(), "smart_watch")) return;
         onHostileKilled(killer);
     }
 

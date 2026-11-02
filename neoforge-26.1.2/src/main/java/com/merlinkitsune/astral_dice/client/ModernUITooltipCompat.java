@@ -50,7 +50,7 @@ import org.slf4j.LoggerFactory;
  * <h2>根因链（对 {@code ModernUI-NeoForge-26.1.2-3.13.0.5-universal.jar} 的实物 jar 反汇编）</h2>
  * <ol>
  *   <li>它的两个 mixin 配置（{@code mixins.modernui-neoforge.json} / {@code mixins.modernui-textmc.json}）
- *       里**没有任何 tooltip / GuiGraphics 注入**（{@code mixins} 数组为空）；</li>
+ *       里**没有任何 tooltip / GuiGraphicsExtractor 注入**（{@code mixins} 数组为空）；</li>
  *   <li>它改为**订阅平台事件**（如上 {@code UIManagerForge}），并以 {@code setCanceled(true)} 掐掉原版绘制；</li>
  *   <li>⇒ 现代提示框开启时，原版 {@code GuiGraphicsExtractor} 的 tooltip 绘制在派发阶段即被取消，
  *       任何「按原版路径写色」的方案都不会被执行到；</li>

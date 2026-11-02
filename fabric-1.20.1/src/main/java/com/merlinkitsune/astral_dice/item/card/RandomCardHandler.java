@@ -111,6 +111,7 @@ public final class RandomCardHandler {
         // 当前专属效果牌(注册引用,运行时解析,避免静态初始化 .get())
         registerExclusiveCard(ModItems.LIVING_PAGE);   // 活体书页(调查员立牌专属-伤害)
         registerExclusiveCard(ModItems.FATE_GUIDANCE_CARD); // 命运的指引(专属-功能)
+    registerExclusiveCard(ModItems.EFFECT_CARD_REPULSION); // 强化拒止(专属-功能)
         registerExclusiveCard(ModItems.FU_CARD);       // 符卡-福(风水师立牌专属:绑定获得者)
         registerExclusiveCard(ModItems.HUO_CARD);      // 符卡-祸(风水师立牌专属:绑定获得者)
         // 蛟龙立牌(mamushi)的两张专属战斗牌:同样绑定获得者(仅获得者可装备),且不入任何随机池
