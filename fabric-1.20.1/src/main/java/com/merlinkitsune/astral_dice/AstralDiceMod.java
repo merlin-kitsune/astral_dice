@@ -3,6 +3,7 @@ package com.merlinkitsune.astral_dice;
 import com.merlinkitsune.astral_dice.compat.curios.TrinketBridge;
 import com.merlinkitsune.astral_dice.config.ModCommonConfig;
 import com.merlinkitsune.astral_dice.init.ModCompatibilityCheck;
+import com.merlinkitsune.astral_dice.recipe.condition.ChipRecipesEnabledCondition;
 import com.merlinkitsune.astral_dice.platform.FabricBridges;
 import com.merlinkitsune.astral_dice.platform.event.LoaderBus;
 import com.merlinkitsune.astral_dice.platform.fml.event.lifecycle.FMLCommonSetupEvent;
@@ -105,6 +106,12 @@ public class AstralDiceMod implements ModInitializer {
         //  反射不兼容时 init 自身 try/catch 兜底,不会影响启动)。
         com.merlinkitsune.astral_dice.event.WaystoneWarpCompat.init();
         setupConfig();
+        // 筹码配方开关条件(需求 1):把 astral_dice:chip_recipes_enabled 注册进
+        // fabric-resource-conditions-api-v1 的注册表。位置要求 = 任何数据包加载之前;
+        // onInitialize 是客户端与专用服务器都会执行、且早于 datapack 装载的唯一合适时机。
+        // 不能挪进 AstralDiceClient —— 专用服务器上未注册 => 67 + 67 个带条件的 JSON
+        // 会因 Unknown condition 被 fail-closed 静默丢弃(只有一条 WARN)。
+        ChipRecipesEnabledCondition.register();
         // 通用初始化(Forge 的 FMLCommonSetupEvent 等价物)
         BUS.post(new FMLCommonSetupEvent());
         // 订阅类审计(服务端视角):扫描本包下带 @SubscribeEvent 的类,列出「带注解却从未登记」的

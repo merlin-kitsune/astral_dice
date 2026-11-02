@@ -4,6 +4,22 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 1.5.0-hotfix (2026-11-02)
+
+### Bug Fixes
+
+- **Fixed: the `enable_chip_recipes` switch on Fabric 1.20.1 had no effect** — the switch was read by the code,
+  but the chip recipes carried no condition block at all, so all 67 chip recipes were always registered no
+  matter how the option was set; the chip recipes are now gated by Fabric official resource condition
+  (`fabric:load_conditions`), with their 67 matching advancements gated the same way, and the option takes
+  effect after a restart.
+
+### Player-facing changes
+
+- **The Fabric 1.20.1 build is now versioned `1.5.0-hotfix`** — only this line moves to a hotfix number; the
+  other three lines (NeoForge 1.21.1 / Forge 1.20.1 / NeoForge 26.1.2) stay at `1.5.0`. The interop version is
+  still `1.5`, so it can still play together with the three 1.5.0 lines.
+
 ## 1.5.0 (2026-11-02)
 
 ### New Content

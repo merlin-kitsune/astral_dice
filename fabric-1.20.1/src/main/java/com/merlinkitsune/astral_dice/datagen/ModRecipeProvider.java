@@ -2,6 +2,7 @@ package com.merlinkitsune.astral_dice.datagen;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.item.ModItems;
+import com.merlinkitsune.astral_dice.recipe.condition.ChipRecipesEnabledCondition;
 import net.minecraft.core.HolderLookup;
 import net.fabricmc.fabric.api.datagen.v1.FabricDataOutput;
 import net.minecraft.data.recipes.RecipeCategory;
@@ -34,7 +35,16 @@ public class ModRecipeProvider extends FabricRecipeProvider {
     //    protected),写成 protected 会报「无法覆盖…正在尝试分配更低的访问权限」。
     //    签名本身与 Forge 侧**逐字一致** ⇒ 1560 行配方代码零改动。
     @Override
-    public void buildRecipes(Consumer<FinishedRecipe> output) {
+    public void buildRecipes(Consumer<FinishedRecipe> rawOutput) {
+        // 筹码配方门控(需求 1):只有 id 以 "_chip" 结尾的配方挂 astral_dice:chip_recipes_enabled 条件。
+        // 判据必须按 id,不能按产出物 —— blank_chip 的产出物是筹码,但它被显式命名成
+        // blank_chip_duplicate(见本文件 :276 的 .save(output::accept, new ResourceLocation(...))),
+        // 按产出物判定会多门控 1 条(68 != 67),按 id 判定恰好 67 条,与 forge-1.20.1 /
+        // neoforge-1.21.1 / neoforge-26.1.2 三条对照线的集合逐字一致。
+        // 不能改成给 output 重新赋值:下面 102 处 .save(output::accept) 是捕获 output 的 lambda,
+        // 捕获变量必须 effectively-final(重新赋值会让 102 处一起编译失败)。
+        Consumer<FinishedRecipe> gated = withConditions(rawOutput, ChipRecipesEnabledCondition.INSTANCE);
+        Consumer<FinishedRecipe> output = r -> (r.getId().getPath().endsWith("_chip") ? gated : rawOutput).accept(r);
         ShapedRecipeBuilder.shaped(RecipeCategory.TOOLS, ModItems.DICE.get())
                 .pattern("RRR")
                 .pattern("RQR")

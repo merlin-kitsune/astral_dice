@@ -1,4 +1,9 @@
 {
+  "fabric:load_conditions": [
+    {
+      "condition": "astral_dice:chip_recipes_enabled"
+    }
+  ],
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
