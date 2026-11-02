@@ -11,7 +11,7 @@
   "steps": [
     {
       "op": "note",
-      "text": "【发布验收 1.5.0 · 1.21.1】通道 = autojs（无需窗口焦点；四线 run/<版本>/mods 里都有 AutoJS-*.jar，fabric 线需 --enable-autojs / -PautojsTestMod=1 才注入 AutoJS）。\n为什么不是 kubejs 原生通道：截图必须由客户端 AutoJS 走 Screenshot.grab，且 26.1.2 / fabric 线没有 astral_shop_probe.js（/astralshop 只在 1.20.1+1.21.1 存在），所以统一改成 Java 直调，四线同一套步骤。\n\n模拟玩家数据：inject_command 摆出确定状态（gamemode / clear / effect clear / tp / time / xp / effect give / give x4），随后 eval_js(side=server) 打一行机器可读日志\n[REL150] ver=1.21.1 gamemode=… pos=x,y,z hp=… food=… xp=… arm=… slotted=… chips=… item=… dim=… modver=…\n（字段取自 AutoJS.state()；必须服务端求值——客户端分支的 gameMode 会退化成 \"client\"）。断言逐字段用 type=log 命中该行：gamemode / pos / hp / item / xp / slotted / chips / modver。\n改名验收：astral_dice:abyss_reagent_chip - 客户端 eval 读显示名 getHoverName() 与 tooltip 行 Screen.getTooltipFromItem（内部派发 ItemTooltipEvent，模组加的行会出现），断言显示名 ∈ {深渊试剂, Abyss Reagent}（1.21.1 / 1.20.1 / 26.1.2 客户端 locale=zh_cn，fabric 客户端 locale=en_us）。"
+      "text": "【发布验收 1.5.0 · 1.21.1】通道 = autojs（无需窗口焦点；四线 run/<版本>/mods 里都有 AutoJS-*.jar，fabric 线需 --enable-autojs / -PautojsTestMod=1 才注入 AutoJS）。\n为什么不是 kubejs 原生通道：截图必须由客户端 AutoJS 走 Screenshot.grab，且 26.1.2 / fabric 线没有 astral_shop_probe.js（/astralshop 只在 1.20.1+1.21.1 存在），所以统一改成 Java 直调，四线同一套步骤。\n\n模拟玩家数据：inject_command 摆出确定状态（gamemode / clear / effect clear / tp / time / xp / give 试剂 x2 / item replace weapon.mainhand x1），随后 eval_js(side=server) 打一行机器可读日志\n[REL150] ver=1.21.1 gamemode=… pos=x,y,z hp=… food=… xp=… arm=… slotted=… chips=… item=… dim=… modver=…\n（字段取自 AutoJS.state()；必须服务端求值——客户端分支的 gameMode 会退化成 \"client\"）。断言逐字段用 type=log 命中该行：gamemode / pos / hp / item / xp / slotted / chips / modver。\n改名验收：astral_dice:abyss_reagent_chip - 客户端 eval 读显示名 getHoverName() 与 tooltip 行 Screen.getTooltipFromItem（内部派发 ItemTooltipEvent，模组加的行会出现），断言显示名 ∈ {深渊试剂, Abyss Reagent}（1.21.1 / 1.20.1 / 26.1.2 客户端 locale=zh_cn，fabric 客户端 locale=en_us）。\n\n2026-11-02 修正 item=minecraft:air（两轮取证定案）：① /give 把试剂塞进背包（/clear 后落在快捷栏 0/1/2 号槽），而玩家选中槽是 6 号、为空；探针 item= 读 AutoJS.state().held = 手持/选中槽 ⇒ 恒为 minecraft:air。② 试剂 maxStackSize=1（实测 new ItemStack(item).getMaxStackSize()=1），所以 /item replace … with 该物品 + count=3 会被原版拒绝，而 AutoJS.command() 把错误吞掉（返回 undefined、日志无任何报错行）⇒ 上一版「count=3 写入选中槽」静默无效。本版改法：/give 试剂 x2（两叠各 1，落在 0/1 号槽）+ /item replace entity @a weapon.mainhand with 试剂 x1（1.21.1 源码：SlotRanges weapon.mainhand → Player#setItemSlot(MAINHAND) → inventory.items.set(inventory.selected, stack)，即写入当前选中槽）⇒ 试剂总数 3、选中槽 1 个 ⇒ item=astral_dice:abyss_reagent_chip 与 chips=3 同时成立。原 /effect give minecraft:speed 那一步腾给试剂 give（速度效果无任何断言，仅状态点缀）。"
     },
     {
       "op": "note",
@@ -57,12 +57,12 @@
     },
     {
       "op": "inject_command",
-      "command": "/effect give @a minecraft:speed 600 1 true",
+      "command": "/give @a astral_dice:abyss_reagent_chip 2",
       "no_esc": true
     },
     {
       "op": "inject_command",
-      "command": "/give @a astral_dice:abyss_reagent_chip 3",
+      "command": "/item replace entity @a weapon.mainhand with astral_dice:abyss_reagent_chip 1",
       "no_esc": true
     },
     {
@@ -101,7 +101,7 @@
     {
       "op": "eval_js",
       "side": "client",
-      "code": "(function () {\n  var mc = Java.loadClass('net.minecraft.client.Minecraft').getInstance();\n  var InvScreen = Java.loadClass('net.minecraft.client.gui.screens.inventory.InventoryScreen');\n  var Reg = Java.loadClass('net.minecraft.core.registries.BuiltInRegistries');\n  var ID = 'astral_dice:abyss_reagent_chip';\n  var out = { ok: false, open: 0, slot: -1, guiX: 0, guiY: 0, winX: 0, winY: 0 };\n  try {\n    mc.setScreen(new InvScreen(mc.player));\n    var scr = mc.screen;\n    out.open = 1;\n    var w = scr.width, h = scr.height;\n    var lx = Math.floor((w - 195) / 2), ty = Math.floor((h - 136) / 2);\n    var slots = scr.getMenu().slots;\n    var sx = 0, sy = 0;\n    for (var i = 0; i < slots.size(); i++) {\n      var st = slots.get(i).getItem();\n      if (!st.isEmpty() && String(Reg.ITEM.getKey(st.getItem())) === ID) {\n        out.slot = i; sx = slots.get(i).x + 8; sy = slots.get(i).y + 8; break;\n      }\n    }\n    out.guiX = Math.round(lx + sx); out.guiY = Math.round(ty + sy);\n    var scale = mc.getWindow().getGuiScale();\n    out.winX = Math.round(out.guiX * scale); out.winY = Math.round(out.guiY * scale);\n    out.ok = true;\n    console.info('[REL150] inventory open=1 hover=' + out.guiX + ',' + out.guiY + ' slot=' + out.slot + ' win=' + out.winX + ',' + out.winY);\n  } catch (e0) {\n    out.err = String(e0);\n    console.info('[REL150] inventory open=0 hover=skip err=' + e0);\n  }\n  return out;\n})()",
+      "code": "(function () {\n  var mc = Java.loadClass('net.minecraft.client.Minecraft').getInstance();\n  var InvScreen = Java.loadClass('net.minecraft.client.gui.screens.inventory.InventoryScreen');\n  var Reg = Java.loadClass('net.minecraft.core.registries.BuiltInRegistries');\n  var GLFW = Java.loadClass('org.lwjgl.glfw.GLFW');\n  var ID = 'astral_dice:abyss_reagent_chip';\n  var out = { ok: false, open: 0, slot: -1, guiX: 0, guiY: 0, winX: 0, winY: 0, creative: 0, glfw: 0 };\n  try {\n    mc.setScreen(new InvScreen(mc.player));\n    var scr = mc.screen;\n    out.open = 1;\n    out.creative = (String(scr).indexOf('CreativeModeInventoryScreen') >= 0) ? 1 : 0;\n    var lx = -1, ty = -1;\n    try {\n      var c = scr.getClass();\n      var guard = 0;\n      while (c != null && String(c.getName()).indexOf('AbstractContainerScreen') < 0 && guard < 12) { c = c.getSuperclass(); guard++; }\n      var fx = c.getDeclaredField('leftPos'); fx.setAccessible(true); lx = fx.getInt(scr);\n      var fy = c.getDeclaredField('topPos'); fy.setAccessible(true); ty = fy.getInt(scr);\n    } catch (e9) { out.reflErr = String(e9); }\n    var slots = scr.getMenu().slots;\n    var sx = -1, sy = -1;\n    for (var i = 0; i < slots.size(); i++) {\n      var st = slots.get(i).getItem();\n      if (!st.isEmpty() && String(Reg.ITEM.getKey(st.getItem())) === ID) { out.slot = i; sx = slots.get(i).x + 8; sy = slots.get(i).y + 8; break; }\n    }\n    if (sx < 0) { sx = 16; sy = (out.creative === 1) ? 120 : 150; }\n    if (lx < 0) { var gw = mc.getWindow().getGuiScaledWidth(), gh = mc.getWindow().getGuiScaledHeight();\n      var iw = (out.creative === 1) ? 195 : 176, ih = (out.creative === 1) ? 136 : 166;\n      lx = Math.floor((gw - iw) / 2); ty = Math.floor((gh - ih) / 2); }\n    out.guiX = Math.round(lx + sx); out.guiY = Math.round(ty + sy);\n    var scale = mc.getWindow().getGuiScale();\n    out.winX = Math.round(out.guiX * scale); out.winY = Math.round(out.guiY * scale);\n    try { var gctx = GLFW.glfwGetCurrentContext(); GLFW.glfwShowWindow(gctx); GLFW.glfwFocusWindow(gctx); GLFW.glfwSetCursorPos(gctx, out.winX, out.winY); out.glfw = 1; } catch (e4) { out.glfwErr = String(e4); }\n    try { var mh = mc.mouseHandler;\n      var f1 = mh.getClass().getDeclaredField('xpos'); f1.setAccessible(true); f1.setDouble(mh, out.guiX);\n      var f2 = mh.getClass().getDeclaredField('ypos'); f2.setAccessible(true); f2.setDouble(mh, out.guiY);\n    } catch (e2) { out.mhErr = String(e2); }\n    try { scr.mouseMoved(out.guiX, out.guiY); } catch (e3) { out.mmErr = String(e3); }\n    out.ok = true;\n    console.info('[REL150] inventory open=1 hover=' + out.guiX + ',' + out.guiY + ' slot=' + out.slot + ' creative=' + out.creative + ' glfw=' + out.glfw + ' win=' + out.winX + ',' + out.winY);\n  } catch (e0) {\n    out.err = String(e0);\n    console.info('[REL150] inventory open=0 hover=skip err=' + e0);\n  }\n  return out;\n})()",
       "timeout_ms": 20000,
       "save_as": "hover"
     },
@@ -176,7 +176,8 @@
     {
       "type": "log",
       "scope": "whole",
-      "pattern": "Astral Dice 1\\.5\\.0\\+neoforge_1\\.21\\.1"
+      "pattern": "^\\[[^\\]]+\\]\\s*\\[[^\\]]+/[A-Za-z]+\\]\\s*\\[astral_dice-version-gate/\\]\\s*:.*\\(Version Gate\\):mod_version=1\\.5\\.0\\+neoforge_1\\.21\\.1\\b",
+      "note": "2026-11-02 改判据目标（与 26.1.2 线同一写法）：旧 pattern 在 1.21.1 上只命中 FML Mod List 的缩进续行（TAB+TAB 前缀、无时间戳）⇒ 平台行判据视为回显，记 FAIL(SOURCE_ECHO)。本 pattern 自带平台行前缀（时间戳 + [线程/级别] + [astral_dice-version-gate/]:），只认 [Astral Dice] 版本互通门槛(Version Gate):mod_version=<完整版本串> 这一行；仍是启动期事实 ⇒ 保留 scope=whole。两向实证于旧日志 run/1.21.1/logs/latest.log：旧 pattern=FAIL(SOURCE_ECHO) 命中 L821 回显行；新 pattern=PASS 命中 L6115 平台行。"
     },
     {
       "type": "log",
