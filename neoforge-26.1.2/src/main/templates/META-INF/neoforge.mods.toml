@@ -136,11 +136,12 @@ config="${mod_id}.ysm.mixins.json"
 
 # StarEngine Lib(必须前置):效果/事件/通用组件的共享实现所在库。
 # 本模组绝大多数共享逻辑已下沉至该库,缺失将导致 NoClassDefFoundError,故为 required。
-# ⚠️ 2026-09-25 起**不再声明 versionRange**:库版本区间规则已移除,版本要求只由 gradle.properties 的
-#   starengine_version 一个量表达。省略 versionRange 时 FML 取 UNBOUNDED(实测对任意版本均判满足),
-#   本段仍按「**必须存在**」校验 —— 库随本模组内嵌(JarJar),内嵌副本就是满足它的那个 mod。
+# ⚠️ 2026-11-02 用户裁决:四线统一为**独立外部前置**(库**不再内嵌**),玩家/整合包必须自行安装
+#   starengine-neoforge-26.1.2-<starengine_version>.jar。因此恢复**版本下界**
+#   [${starengine_version},2.0.0)(与 1.21.1 线同形;上界 2.0.0 阻断库的 2.x 不兼容升级)。
 [[dependencies.${mod_id}]]
     modId="starengine"
     type="required"
     ordering="AFTER"
+    versionRange="[${starengine_version},2.0.0)"
     side="BOTH"

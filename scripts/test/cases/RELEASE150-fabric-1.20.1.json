@@ -294,7 +294,7 @@
       "recipes_min": 100,
       "signs_min": 25,
       "trinkets_min": 6,
-      "embed_lib": true,
+      "embed_max": 0,
       "entries_min": 1800
     },
     {

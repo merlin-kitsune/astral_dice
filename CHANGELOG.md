@@ -37,15 +37,28 @@
   icons, same shapes as vanilla), matching the other three lines; mobs still show their vanilla armor value.
   **Without Jade nothing changes** (no extra dependency is required of players).
 
-- **StarEngine is no longer bundled (NeoForge 1.21.1 / Forge 1.20.1)**: the `jarJar` embedding was removed from
-  both release lines, so the shipped jars no longer contain `META-INF/jarjar/`. StarEngine (`starengine`,
-  **1.1.0**) is now a **standalone prerequisite** that must be installed in `mods` at the same version this
-  build was compiled against; a missing library fails startup with "Missing or unsupported mandatory dependencies".
+- **StarEngine is no longer bundled (all four lines)**: the `jarJar` embedding was removed from every release
+  line, so none of the shipped jars contains `META-INF/jarjar/` any more; the NeoForge 26.1.2 `jarJar` block and
+  the Fabric 1.20.1 Loom `include` were dropped as well. StarEngine (`starengine`, **1.1.0**) is now a
+  **standalone prerequisite** that must be installed in `mods` at the same version this build was compiled
+  against (`starengine-neoforge-1.21.1-1.1.0.jar` / `starengine-forge-1.20.1-1.1.0.jar` /
+  `starengine-neoforge-26.1.2-1.1.0.jar` / `starengine-fabric-1.20.1-1.1.0.jar`, CurseForge project 1755415);
+  a missing or out-of-range library fails startup with "Missing or unsupported mandatory dependencies".
   The compile-time and dev-run dependencies are unchanged (`implementation` / `modImplementation`), and
-  `mods.toml` still declares `starengine` as a required dependency. The NeoForge 26.1.2 and Fabric 1.20.1 builds
-  still embed the library for now.
+  `mods.toml` / `fabric.mod.json` still declare `starengine` as a required dependency
+  (`versionRange="[1.1.0,2.0.0)"` on the two NeoForge lines, `>=1.1.0 <2.0.0` on the Fabric line).
 
 - **1.5.0 ships all four platform lines as a stable release at once**: the `neoforge_1.21.1` / `forge_1.20.1` / `neoforge_26.1.2` / `fabric_1.20.1` jars share one GitHub Release, tagged with the bare version `1.5.0` and published as a stable release (not a pre-release).
+
+- **StarEngine is a plain external dependency on all four lines (build side)**: `jarJar` was removed from the
+  NeoForge 26.1.2 build and the Loom `include` from the Fabric 1.20.1 build; both now only warn when the
+  produced jar still contains `META-INF/jarjar/` (NeoForge) or `META-INF/jars/` (Fabric).
+  `neoforge-26.1.2/build.gradle` gained `starengine_version` in its `generateModMetadata` `replaceProperties`,
+  so `neoforge.mods.toml` renders `versionRange="[1.1.0,2.0.0)"`; the Fabric line tightened
+  `starengine_version_range` in `gradle.properties` from `>=1.1.0` to `>=1.1.0 <2.0.0`. The Fabric build also
+  warns when the target modpack has no standalone `starengine` jar. Verified jars:
+  `astral_dice-1.5.0+neoforge_26.1.2.jar` (2,793,318 B, no `META-INF/jarjar/`) and
+  `astral_dice-1.5.0+fabric_1.20.1.jar` (2,938,085 B, no `META-INF/jars/`).
 
 #### Input & UI
 

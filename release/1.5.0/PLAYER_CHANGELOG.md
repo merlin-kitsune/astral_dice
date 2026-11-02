@@ -27,10 +27,16 @@ The final stretch was four things: one guaranteed server crash fixed, the Abyss 
 
 ## Installation and requirements (read first)
 
-- **StarEngine is no longer bundled** (NeoForge 1.21.1 / Forge 1.20.1): the shipped jars no longer contain `META-INF/jarjar/`.
-  StarEngine (modId `starengine`, **1.1.0**) is now a **separate dependency** — download the `starengine-<loader>-1.1.0.jar`
-  for your loader and drop it into `mods`. The version must match the one the mod was built against; if it is missing
-  the game refuses to start with “Missing or unsupported mandatory dependencies” — check the library jar first.
+- **StarEngine is no longer bundled - true for all four lines**: none of the four shipped jars contains the library any more
+  (the NeoForge 26.1.2 `jarJar` block and the Fabric 1.20.1 Loom `include` were removed as well, so neither `META-INF/jarjar/`
+  nor `META-INF/jars/` is left). StarEngine (modId `starengine`, **1.1.0**) is now a **separate dependency on every line**:
+  put the jar for your loader into `mods` - NeoForge 1.21.1 uses `starengine-neoforge-1.21.1-1.1.0.jar`, Forge 1.20.1 uses
+  `starengine-forge-1.20.1-1.1.0.jar`, NeoForge 26.1.2 uses `starengine-neoforge-26.1.2-1.1.0.jar`, and Fabric 1.20.1 uses
+  `starengine-fabric-1.20.1-1.1.0.jar` (download source: the StarEngine project on CurseForge, id 1755415).
+  **Players who have been running the embedded library need to do nothing** - older versions ship it and keep working;
+  only from 1.5.0 must the library jar be placed in `mods` separately. Version range: `[1.1.0,2.0.0)` on the two NeoForge
+  lines, `>=1.1.0 <2.0.0` on the Fabric line (equivalent); a missing or out-of-range library refuses to start with
+  "Missing or unsupported mandatory dependencies" - if you see that, check whether the library jar is installed and in range.
 - Mixin runtime for 1.20.1: **Mixin Booster ≥0.1.3** or **Sinytra Connector** — either one, not both.
 - **Cards can no longer be crafted**: all 22 card recipes were removed. Cards now come from the Card Shop, the Card Trader,
   dice, and signs.

@@ -35,14 +35,24 @@
   本模组的**防御力**（图标为本模组**满 / 半 / 空**三态盾形图，与原版外观同形），与另三条线一致；
   生物仍显示其原版护甲值。**未装 Jade 时一切照旧**（不产生额外前置要求）。
 
-- **不再内置 StarEngine（NeoForge 1.21.1 / Forge 1.20.1）**：两条发布线已删除 `jarJar` 内嵌，
-  发货 jar 内不再含 `META-INF/jarjar/`。StarEngine（`starengine`，**1.1.0**）改为**独立前置**，
-  必须自行安装到 `mods`，且版本要与本构建编译时所用的一致；缺库会以
-  「Missing or unsupported mandatory dependencies」拒绝启动。编译期与 dev 运行期依赖不变
-  （`implementation` / `modImplementation`），`mods.toml` 仍把 `starengine` 声明为必需前置。
-  NeoForge 26.1.2 与 Fabric 1.20.1 两条线目前仍内置该库。
+- **不再内置 StarEngine（四条线全部适用）**：四条发布线都已删除内嵌库，发货 jar 内不再含
+  `META-INF/jarjar/`；NeoForge 26.1.2 的 `jarJar` 与 Fabric 1.20.1 的 Loom `include` 亦一并撤除。
+  StarEngine（`starengine`，**1.1.0**）改为**独立前置**，必须自行安装到 `mods`，且版本要与本构建编译时
+  所用的一致（`starengine-neoforge-1.21.1-1.1.0.jar` / `starengine-forge-1.20.1-1.1.0.jar` /
+  `starengine-neoforge-26.1.2-1.1.0.jar` / `starengine-fabric-1.20.1-1.1.0.jar`，CurseForge 项目 1755415）；
+  缺库或版本越界会以「Missing or unsupported mandatory dependencies」拒绝启动。编译期与 dev 运行期依赖不变
+  （`implementation` / `modImplementation`），`mods.toml` / `fabric.mod.json` 仍把 `starengine` 声明为必需前置
+  （NeoForge 两线 `versionRange="[1.1.0,2.0.0)"`，Fabric 线 `>=1.1.0 <2.0.0`）。
 
 - **1.5.0 是四条平台线的同时正式发布**：`neoforge_1.21.1` / `forge_1.20.1` / `neoforge_26.1.2` / `fabric_1.20.1` 四个 jar 挂在同一个 GitHub Release 上，tag 为不带后缀的 `1.5.0`，发布类型为正式版（非 prerelease）。
+
+- **四条线的 StarEngine 一律作为普通外部依赖（构建侧）**：NeoForge 26.1.2 构建移除 `jarJar`、Fabric 1.20.1
+  构建移除 Loom `include`；两边自检反转为「产物仍含 `META-INF/jarjar/`（NeoForge）或 `META-INF/jars/`
+  （Fabric）才告警」。`neoforge-26.1.2/build.gradle` 的 `generateModMetadata` `replaceProperties` 新增
+  `starengine_version`，使 `neoforge.mods.toml` 能展开出 `versionRange="[1.1.0,2.0.0)"`；Fabric 线把
+  `gradle.properties` 的 `starengine_version_range` 由 `>=1.1.0` 收紧为 `>=1.1.0 <2.0.0`。Fabric 构建另加
+  「整合包里缺独立 `starengine` jar」告警。实测产物：`astral_dice-1.5.0+neoforge_26.1.2.jar`（2,793,318 B，
+  无 `META-INF/jarjar/`）与 `astral_dice-1.5.0+fabric_1.20.1.jar`（2,938,085 B，无 `META-INF/jars/`）。
 
 #### 输入与界面
 

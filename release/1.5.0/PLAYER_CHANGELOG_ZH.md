@@ -27,10 +27,15 @@
 
 ## 安装与前置（必读）
 
-- **本版起 StarEngine 不再内嵌**（NeoForge 1.21.1 / Forge 1.20.1）：发货 jar 里已删除内嵌库
-  （jar 内不再含 `META-INF/jarjar/`），StarEngine（modId `starengine`，**1.1.0**）改为**独立前置**，
-  必须自己下载对应加载器的 `starengine-<加载器>-1.1.0.jar` 放进 `mods`。版本需与本体构建时一致；
-  缺库会以「Missing or unsupported mandatory dependencies」拒绝启动 —— 看到这句话先检查库 jar 是否漏装。
+- **本版起 StarEngine 不再内嵌（四条线全部适用）**：四个发货 jar 里都已删除内嵌库 —— NeoForge 26.1.2 的
+  `jarJar` 与 Fabric 1.20.1 的 Loom `include` 一并撤除，jar 内不再含 `META-INF/jarjar/` 或 `META-INF/jars/`，
+  StarEngine（modId `starengine`，**1.1.0**）在四条线上都改为**独立前置**。请按自己那条线下装一个库 jar 放进 `mods`：
+  NeoForge 1.21.1 用 `starengine-neoforge-1.21.1-1.1.0.jar`、Forge 1.20.1 用 `starengine-forge-1.20.1-1.1.0.jar`、
+  NeoForge 26.1.2 用 `starengine-neoforge-26.1.2-1.1.0.jar`、Fabric 1.20.1 用 `starengine-fabric-1.20.1-1.1.0.jar`
+  （下载源：CurseForge 的 StarEngine 项目，id 1755415）。**一直用旧版内嵌库的玩家不用做任何事** —— 旧版本自带库、
+  照旧能进游戏；从 1.5.0 起才必须把库 jar 单独放进 `mods`。版本区间：NeoForge 两线 `[1.1.0,2.0.0)`、
+  Fabric 线 `>=1.1.0 <2.0.0`（等价）；缺库或版本越界会以「Missing or unsupported mandatory dependencies」拒绝启动 ——
+  看到这句话先检查库 jar 是否漏装、版本是否落在区间内。
 - 1.20.1 的 Mixin 运行时：**Mixin Booster ≥0.1.3** 或 **Sinytra Connector**，**二选一**即可。
 - **卡牌不再能合成**：22 条卡牌合成配方已移除，卡牌改为通过卡牌商店 / 卡牌交易员 / 骰子与立牌等方式获得。
 - 1.3.7 及以前的存档可以直接升级；商店、事件、村民等新内容都是新增内容，不会改写旧存档里的物品。

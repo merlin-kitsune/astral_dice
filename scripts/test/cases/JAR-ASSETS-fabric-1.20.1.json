@@ -21,7 +21,7 @@
       "recipes_min": 118,
       "bountiful_max": 0,
       "trinkets_min": 8,
-      "embed_lib": true
+      "embed_max": 0
     }
   ]
 }

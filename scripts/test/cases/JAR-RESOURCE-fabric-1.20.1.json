@@ -16,7 +16,7 @@
       "entries_min": 1500,
       "models_min": 130,
       "recipes_min": 130,
-      "embed_lib": true,
+      "embed_max": 0,
       "signs_min": 25
     },
     {
