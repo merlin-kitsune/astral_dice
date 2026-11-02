@@ -1525,6 +1525,95 @@ public class ModTooltipHandler {
             // (neo 1.21.1/26.1.2 返回 Entity 故需 instanceof)；本线既有立牌分支均直接传入。
             addSignCooldownRemaining(tooltip, event.getEntity());
         }
+        // 2026-11-02 补:本线缺该立牌 tooltip 分支(与 forge-1.20.1 同源对齐)
+        if (stack.is(ModItems.KANGEL_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "tooltip.astral_dice.sign.kangel.active");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.kangel_active");
+            addSignPassiveTitle(tooltip, "tooltip.astral_dice.sign.kangel.passive");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.kangel_passive");
+            // 「备注」一段:与「超天酱」同排,单独注释(灰色,无标题)
+            tooltip.add(Component.empty());
+            addSignNoteLines(tooltip, "tooltip.astral_dice.sign.kangel_note");
+            if (player != null) {
+                addSignCounter(tooltip, "tooltip.astral_dice.sign.kangel_fans",
+                        com.merlinkitsune.astral_dice.component.SignAttachments.getKangelFanCount(player),
+                        com.merlinkitsune.astral_dice.item.sign.KangelSignItem.MAX_FANS);
+            }
+            addSignCooldownRemaining(tooltip, event.getEntity());
+        }
+        // 2026-11-02 补:本线缺该立牌 tooltip 分支(与 forge-1.20.1 同源对齐)
+        if (stack.is(ModItems.AME_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "tooltip.astral_dice.sign.ame.active");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.ame_active");
+            addSignPassiveTitle(tooltip, "tooltip.astral_dice.sign.ame.passive");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.ame_passive");
+            // 「备注」一段:与「超天酱」同排,单独注释(灰色,无标题)
+            tooltip.add(Component.empty());
+            addSignNoteLines(tooltip, "tooltip.astral_dice.sign.ame_note");
+            if (player != null) {
+                addSignCounter(tooltip, "tooltip.astral_dice.sign.ame_love_layers",
+                        com.merlinkitsune.astral_dice.component.SignAttachments.getAmeLoveLayers(player),
+                        com.merlinkitsune.astral_dice.item.sign.AmeSignItem.getLoveCap(player));
+            }
+            addSignCooldownRemaining(tooltip, event.getEntity());
+        }
+        // 2026-11-02 补:本线缺该立牌 tooltip 分支(与 forge-1.20.1 同源对齐)
+        if (stack.is(ModItems.LINGLING_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "tooltip.astral_dice.sign.lingling.active");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.lingling_active");
+            addSignPassiveTitle(tooltip, "tooltip.astral_dice.sign.lingling.passive");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.lingling_passive");
+            // 「备注」一段(浅灰 无标题):与其它立牌同排
+            tooltip.add(Component.empty());
+            addSignNoteLines(tooltip, "tooltip.astral_dice.sign.lingling_note");
+            addSignCooldownRemaining(tooltip, event.getEntity());
+        }
+        // 2026-11-02 补:本线缺该立牌 tooltip 分支(与 forge-1.20.1 同源对齐)
+        if (stack.is(ModItems.JILL_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "tooltip.astral_dice.sign.jill.active");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.jill_active");
+            addSignPassiveTitle(tooltip, "tooltip.astral_dice.sign.jill.passive");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.jill_passive");
+            addSignCooldownRemaining(tooltip, event.getEntity());
+        }
+        // 2026-11-02 补:本线缺该立牌 tooltip 分支(与 forge-1.20.1 同源对齐)
+        if (stack.is(ModItems.DOROTHY_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "tooltip.astral_dice.sign.dorothy.active");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.dorothy_active");
+            addSignPassiveTitle(tooltip, "tooltip.astral_dice.sign.dorothy.passive");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.dorothy_passive");
+            addSignCooldownRemaining(tooltip, event.getEntity());
+        }
+        // 2026-11-02 补:本线缺该立牌 tooltip 分支(与 forge-1.20.1 同源对齐)
+        if (stack.is(ModItems.ALANA_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "tooltip.astral_dice.sign.alana.active");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.alana_active");
+            addSignPassiveTitle(tooltip, "tooltip.astral_dice.sign.alana.passive");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.alana_passive");
+            addSignCooldownRemaining(tooltip, event.getEntity());
+        }
+        // 2026-11-02 补:本线缺该立牌 tooltip 分支(与 forge-1.20.1 同源对齐)
+        if (stack.is(ModItems.DEEPSEEK_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "tooltip.astral_dice.sign.deepseek.active");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.deepseek_active");
+            addSignPassiveTitle(tooltip, "tooltip.astral_dice.sign.deepseek.passive");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.deepseek_passive");
+            addSignCooldownRemaining(tooltip, event.getEntity());
+        }
         // 蛟龙立牌(mamushi)专属战斗牌:撕咬(费用 2 / 耐久 1 / 定值 +3)与
         // 龙之咆哮(费用 3 / 耐久 5 / 定值 +3;命中施加 缓慢 III 1:00 + 破防 1:00)。
         // 费用行 = 既有战斗牌的既有写法;描述行走规格 §4 冻结键 tooltip.astral_dice.card.bite / .dragon_roar
