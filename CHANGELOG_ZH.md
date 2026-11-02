@@ -4,6 +4,24 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
+## 26.4-SNAPSHOT.6
+
+> 开发线吸收主线 `1.5.0` + `1.5.0-hotfix`（共 40 个提交），并把自己的版本号加一，以便与合并前的开发版区分。本线引脚不变：四线均为 `26.4-SNAPSHOT.6+<line>`，StarEngine 仍钉 `26.4-SNAPSHOT.1`。
+
+### 吸收自主线
+
+- **反同步（40 个提交）**：到 tag `1.5.0`（`6fe38138`）为止的 36 个提交，加上到 `9adfd9f3`（`1.5.0-hotfix`）的 4 个后续提交，以 `--no-ff` 合并。四棵树校验 `extra = 0` / `suspicious = 0`；合并后不再携带的 91 个文件全部是主线在各线 `src/generated` 下的合法删除。首轮合并漏掉的两个发布说明文件（`release/1.5.0-hotfix/`）已按字节原样补回。
+- **Fabric 1.20.1 筹码配方门控**：67 条筹码配方与其 67 条进度改由 `fabric:load_conditions` 经 `ChipRecipesEnabledCondition` 门控，注册点放在 `onInitialize`（早于任何数据包装载），因此 `enable_chip_recipes` 开关重启后真实生效。
+- **P1 两线的实体集合**：本线的动画实体 `astral_dice:sykestentacle` 与主线的 `astral_dice:barricade` / `astral_dice:repulsion` 并存。实体类型、属性注册、渲染器与模组入口在 NeoForge 26.1.2 与 Fabric 1.20.1 上人工收口；26.1.2 上重复出现的 `registerEntityRenderers` 方法（真实合并缺陷）已合并为一处。
+- **文档与规则**：主线规则更新随合进入（`docs/agent/AGENTS-dsh.md` 新增发布时序红线），并带入 `release/1.5.0-hotfix/` 玩家更新日志与 1.5.0 发布文档集。
+
+### 本线
+
+- 四线 `mod_version` 由 `26.4-SNAPSHOT.5` 升至 `26.4-SNAPSHOT.6`，使合并后的开发版与既有开发版可区分。
+- 合并过程守住版本纪律：逐线都不接受主线的 `1.5.0` / `1.5.0-hotfix` 号；StarEngine 仍钉 `26.4-SNAPSHOT.1`，声明区间 `[26.4-SNAPSHOT.1,27.0.0)`（Fabric：`>=26.4-SNAPSHOT.1 <27.0.0`）。
+- StarEngine 在四线均为**外部前置**：四个 `build.gradle` 内已无 `jarJar(...)` 与内嵌指令，产物 jar 内也不含 `starengine` 条目与 `META-INF/jarjar` 目录。
+- 合并后守门：`tools/check_lang_sync.py` 四线 `[OK]`，`tools/check_changelog_parity.py` 报 `CHANGELOG_PARITY: OK`，四线均 `BUILD SUCCESSFUL`，产物为 `astral_dice-26.4-SNAPSHOT.6+<line>.jar`。
+
 ## 26.4-SNAPSHOT.4
 
 > dev 线新增 GeckoLib 硬前置与动画实体 `astral_dice:sykestentacle`，并按 bbmodel 重导几何资源；版本号按「每提交 +1」递增。P1 两线本批**搁置**（见下）。

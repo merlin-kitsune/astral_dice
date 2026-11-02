@@ -4,6 +4,24 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 26.4-SNAPSHOT.6
+
+> The dev line absorbs mainline `1.5.0` + `1.5.0-hotfix` (40 commits) and bumps its own version so the merged build is distinguishable. The dev pin set is unchanged: all four lines stay on `26.4-SNAPSHOT.6+<line>`, StarEngine stays pinned to `26.4-SNAPSHOT.1`.
+
+### Merged from mainline
+
+- **Reverse sync (40 commits)**: everything up to tag `1.5.0` (`6fe38138`) plus the 4 follow-up commits up to `9adfd9f3` (`1.5.0-hotfix`), merged with `--no-ff`. The four-tree check reports `extra = 0` / `suspicious = 0`; the 91 files the merge no longer carries are all legitimate upstream deletions under each line's `src/generated` tree. Two release-note files (`release/1.5.0-hotfix/`) that the first merge pass dropped were restored byte-identically.
+- **Fabric 1.20.1 chip recipe gating**: the 67 chip recipes and their 67 advancements are now gated by `fabric:load_conditions` through `ChipRecipesEnabledCondition`, registered in `onInitialize` (before any datapack load), so the `enable_chip_recipes` switch actually takes effect after a restart.
+- **Entity sets on the two P1 lines**: this line's animated entity `astral_dice:sykestentacle` now coexists with upstream `astral_dice:barricade` / `astral_dice:repulsion`. Entity types, attribute registration, renderers and the mod entry point were resolved by hand on NeoForge 26.1.2 and Fabric 1.20.1; a duplicated `registerEntityRenderers` method on 26.1.2 (a real merge defect) was folded into one.
+- **Docs and rules**: upstream rule updates carried over (`docs/agent/AGENTS-dsh.md` gains the release-timing red lines), together with the `release/1.5.0-hotfix/` player changelogs and the 1.5.0 release documentation set.
+
+### This line
+
+- `mod_version` bumped `26.4-SNAPSHOT.5` to `26.4-SNAPSHOT.6` on all four lines, so a merged dev build is distinguishable from earlier dev builds.
+- Version discipline held through the merge: no line accepts the upstream `1.5.0` / `1.5.0-hotfix` numbers, and StarEngine remains pinned to `26.4-SNAPSHOT.1` with declaration range `[26.4-SNAPSHOT.1,27.0.0)` (Fabric: `>=26.4-SNAPSHOT.1 <27.0.0`).
+- StarEngine stays an **external prerequisite** on every line: no `jarJar(...)` and no `include` embed directive remains in the four `build.gradle` files, and no built jar carries a `starengine` entry or a `META-INF/jarjar` directory.
+- Gates after the merge: `tools/check_lang_sync.py` reports `[OK]` on all four lines, `tools/check_changelog_parity.py` reports `CHANGELOG_PARITY: OK`, and all four lines build `BUILD SUCCESSFUL` with jars `astral_dice-26.4-SNAPSHOT.6+<line>.jar`.
+
 ## 26.4-SNAPSHOT.4
 
 > The dev line adds a hard GeckoLib prerequisite and the animated entity `astral_dice:sykestentacle`, and re-exports the geometry from the bbmodel; the version number follows the bump-per-commit rule. The P1 lines are **shelved** for this batch (see below).
