@@ -117,8 +117,11 @@ release 类型由版本号里的 ``-alpha`` / ``-beta`` / ``-rc`` 后缀决定�
 ``-`` 后缀（即不是补丁 / hotfix / 预发布）时，自动取
 ``release/<基础版本>/PLAYER_CHANGELOG.md``（英文，面向 CurseForge 国际社区），
 不存在时退回 ``PLAYER_CHANGELOG_ZH.md``。**小版本更新（``1.5.1`` / ``1.5.0-hotfix`` /
-``-rc`` / ``-beta`` / ``-alpha`` 等）默认不在 CF 写 changelog** —— metadata 里
-``changelog`` 与 ``changelogType`` 两个字段都不出现。覆盖方式：``--changelog <文件>``
+``-rc`` / ``-beta`` / ``-alpha`` 等）默认不在 CF 写 changelog** —— 这里的「不写」指
+**不写内容**，不是**不发字段**：``changelog`` 是 CurseForge v1 上传接口的**必填**字段
+（漏发会确定性 400 ``Required properties are missing from object: changelog``），
+所以字段照发、值为空串（**不得**塞版本号 / 日期 / 占位文字），``changelogType``
+按脚本既有默认照发。覆盖方式：``--changelog <文件>``
 手动指定（任何版本都附）；``--no-changelog`` 强制不附（与 ``--changelog`` 互斥）。
 
 dry-run 会把这两条判定各打一行，便于核对：
@@ -728,8 +731,9 @@ def decide_changelog(ver, explicit, disabled=False):
       2. ``--changelog <文件>`` ⇒ 用户手动指定，任何版本都附（文件不存在仍报错）；
       3. 主线版本（见 is_mainline_version）⇒ 自动取
          ``release/<基础版本>/PLAYER_CHANGELOG*.md``；
-      4. 其它（小版本：补丁 / hotfix / 预发布）⇒ **不附** —— metadata 里
-         ``changelog`` 与 ``changelogType`` 两个字段都不出现。
+      4. 其它（小版本：补丁 / hotfix / 预发布）⇒ **不附内容** —— metadata 里
+         ``changelog`` 字段仍必发（CF v1 必填，漏发 400），值为空串 ``""``；
+         ``changelogType`` 按既有默认照发。
     """
     if disabled and explicit:
         raise SystemExit("[ERR] --no-changelog 与 --changelog 冲突：二者只能选一个")
@@ -1113,10 +1117,17 @@ def upload_metadata(args, job):
         "gameVersions": job["gameVersions"],
     }
     if job["_changelog"]:
-        # changelogType 只在**真附带** changelog 时出现：小版本不写 CF changelog
-        # ⇒ changelog 与 changelogType 两个字段都不发（2026-11-02 用户规则）。
+        # 真附带：changelogType + 文件内容（字节不变）。
         metadata["changelogType"] = args.changelog_type
         metadata["changelog"] = _read_text(job["_changelog"])
+    else:
+        # 小版本不写 CF changelog（2026-11-02 用户规则）= **不写内容**，不是**不发字段**：
+        # CurseForge v1 上传接口把 metadata.changelog 当必填字段，漏发会确定性 400
+        # （errorCode 1002 "Required properties are missing from object: changelog"，
+        #  2026-11-02 实测）⇒ 字段照发，内容必须是空串：不得塞版本号 / 日期 /
+        # "no changelog" 之类占位文字。
+        metadata["changelogType"] = args.changelog_type
+        metadata["changelog"] = ""
     if job.get("_relations"):
         metadata["relations"] = job["_relations"]
     if args.manual_release:
