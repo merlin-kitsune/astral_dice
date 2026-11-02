@@ -29,6 +29,19 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    # 并发保护（2026-11-02 新增，针对 #144/#145 那类「同一个 Release 被两个 run 同时 delete/upload」的红）：
+    #   ⚠️ GitHub 的 concurrency 只能挂在 **job** 或 **workflow** 上，没有 step 级语法 ⇒ 只能挂在 build 上。
+    #   代价：同一个 ref 的多次运行会被**串行**（不同 ref 之间并行不受影响）——这是「不打断正在跑的发布」
+    #   与「同一 Release 只被一个 run 写」的必然代价；cancel-in-progress: false 保证**不杀掉**在跑的那次。
+    #   ⚠️ **已知边界**：github.ref 在「分支 push」与「tag push」上不同 ⇒ 同一个提交的
+    #   「multi-main push + 手工 tag push」（正是 #144/#145 的形状）不会被本组收敛（recon §P1 已指出）。
+    #   那一类跨 ref 竞态由 Release step 的三处容错兜住：delete-asset 容忍 404、republish 通道用
+    #   --clobber、冻结通道「上传撞名 ⇒ 确认附件确实已存在即视为成功」（**绝不覆盖**已有字节）。
+    #   若要绝对串行，只能把 group 改成固定名（如 release-${{ github.repository }}，代价是整条流水线
+    #   串行）或把 Release 拆成独立 job —— 两者都会改变运行结构，本次不做（见报告「未验证项/已知限制」）。
+    concurrency:
+      group: release-${{ github.ref }}
+      cancel-in-progress: false
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -192,10 +205,135 @@ jobs:
           name: astral_dice-jars-fabric
           path: fabric-1.20.1/build/libs/astral_dice-*.jar
 
-      - name: Read base version
+      - name: Report per-line mod_version (consistency gate - mixed = warn, missing mod_version = fail)
         id: version
+        # 2026-11-02 新增（四线混版修复）。职责有二：
+        #   ① 把四线各自读到的 mod_version 与「是否统一」打成一张表（VERSIONS: unified=1/0 + 每线一行），
+        #      版本树长什么样一眼可见，不必等 Release step 的 missing jar 再反向推断；
+        #   ② 输出 unified，供 Create Git tag 的门禁使用（混版 ⇒ 不打 tag）。
+        # ⛔ 本 step 对**混版**提交永不失败：混版 exit 1 就等于让「小版本 / hotfix 提交」继续红，
+        #    与发布口径（见下）相悖。但 2026-11-02 复查后补了一条**确实要红**的判据（其余照旧）：
+        #      · 任意一条**在场**线读不到 `mod_version`（文件在、`mod_version=` 键缺失或为空）
+        #        ⇒ ::error:: 点名该线 + exit 1 —— 空版本不是「该 ref 没这条线」，不能静默跳过；
+        #      · 「统一版本但某线缺 jar」仍留在 Release step 内部（那里才有 missing jar 判定）；
+        #      · 「ref 上没有任何子项目」也仍由 Release step 判红。
+        # unified 的判据与下方 Release step **同一口径**（两处都按 mod_version 去掉 + 之后的部分比较、
+        #    都用独立布尔量判「基准是否已设过」、都把空 mod_version 当异常），改动需两边同步。
         run: |
-          VERSION=$(grep '^mod_version=' neoforge-1.21.1/gradle.properties | cut -d'=' -f2)
+          # 顺序与下方 Release step 的 LINES 数组一致；格式 线名|子项目目录。
+          LINES=(
+            "neoforge-1.21.1|neoforge-1.21.1"
+            "forge-1.20.1|forge-1.20.1"
+            "neoforge-26.1.2|neoforge-26.1.2"
+            "fabric-1.20.1|fabric-1.20.1"
+          )
+          declare -a T_LINE=() T_VER=() T_BASE=() T_STATE=()
+          for entry in "${LINES[@]}"; do
+            line="${entry%%|*}"
+            proj="${entry##*|}"
+            props="$proj/gradle.properties"
+            line_ver=""
+            line_state=""    # absent / present / noversion —— 三态必须分开，见下
+            # ⛔ 2026-11-02 复查修复：两个语义不同的分支必须**拆开**，不能再混成一个 `[[ -z ... ]]` 判断：
+            #   ① absent    —— 该 ref 的提交里本来就没有这个子项目（老 tag 上 fabric / 26.1.2 目录确实不存在）
+            #                  ⇒ 与 Release step 的 git cat-file 判据同口径，**跳过、不判红**（本 step 只看工作区，故用 -f）；
+            #   ② noversion —— **文件在、但 `mod_version=` 键缺失或为空** ⇒ **异常**（不是「没这条线」），
+            #                  由本步（一致性门禁）在构建早期 ::error:: + exit 1 暴露（见下方 BAD_VERSION）。
+            #   旧写法把 ② 也当成 ① 跳过 ⇒ 空版本不进 unified ⇒ Report 可能判 unified=1（打 tag），
+            #   而 Release step 那边空 base 会把「基准是否已设过」的哨兵带偏、判成混版 exit 0（不发 Release）
+            #   ⇒ 同一棵树上出现「有 tag 没 Release」。
+            if [[ ! -f "$props" ]]; then
+              line_state="absent"
+            else
+              raw=$(grep -m1 '^mod_version=' "$props" || true)
+              line_ver="${raw#*=}"
+              line_ver="${line_ver%$'\r'}"   # 万一 properties 是 CRLF，别把 \r 带进版本串
+            fi
+            if [[ "$line_state" != "absent" ]]; then
+              if [[ -z "$line_ver" ]]; then
+                line_state="noversion"
+              else
+                line_state="present"
+              fi
+            fi
+            T_LINE+=("$line")
+            T_VER+=("$line_ver")
+            T_STATE+=("$line_state")
+            if [[ -n "$line_ver" ]]; then
+              T_BASE+=("${line_ver%%+*}")
+            else
+              T_BASE+=("")
+            fi
+          done
+          # unified：**在场**的每条线，mod_version 去掉 + 之后必须完全一致。
+          #   只看在场线，是为了保住老的「该 ref 上本来就没有某子项目」豁免（否则老 tag 会被误判成混版）。
+          UNIFIED=1
+          REF_BASE=""
+          REF_SET=0        # 独立布尔量：基准是否**已设过**（不看值是否为空；两处同口径）
+          PRESENT=0
+          BAD_VERSION=()   # 在场线里读不到 mod_version 的线名
+          for i in "${!T_LINE[@]}"; do
+            st="${T_STATE[$i]}"
+            # 只有「该 ref 上本来就没有这个子项目」才跳过；缺键（noversion）不参与 unified 计算，
+            #   而是收集起来点名判红 —— 「混版」与「读不到版本」是两件事，不能合并处理。
+            if [[ "$st" == "absent" ]]; then
+              continue
+            fi
+            if [[ "$st" == "noversion" ]]; then
+              BAD_VERSION+=("${T_LINE[$i]}")
+              continue
+            fi
+            # ⛔ 基准判据用**独立布尔量**，不能靠 `[[ -z "$REF_BASE" ]]` 当哨兵：一旦首条在场线的
+            #    base 恰为空串，REF_BASE 永远是空 ⇒ 后面任何非空 base 都「不等」⇒ 被静默判成混版。
+            #    空值现在根本走不到这里（上方已摘进 BAD_VERSION）。
+            if [[ "$REF_SET" -eq 0 ]]; then
+              REF_BASE="${T_BASE[$i]}"
+              REF_SET=1
+            fi
+            if [[ "${T_BASE[$i]}" != "$REF_BASE" ]]; then
+              UNIFIED=0
+            fi
+            PRESENT=$((PRESENT + 1))
+          done
+          if [[ "$PRESENT" -eq 0 ]]; then
+            UNIFIED=0
+          fi
+          echo "VERSIONS: unified=$UNIFIED"
+          for i in "${!T_LINE[@]}"; do
+            case "${T_STATE[$i]}" in
+              absent)
+                printf '  %-16s mod_version=(absent at this ref)\n' "${T_LINE[$i]}" ;;
+              noversion)
+                printf '  %-16s mod_version=**MISSING KEY** (gradle.properties exists but has no mod_version= line)\n' "${T_LINE[$i]}" ;;
+              *)
+                printf '  %-16s mod_version=%-32s base=%s\n' "${T_LINE[$i]}" "${T_VER[$i]}" "${T_BASE[$i]}" ;;
+            esac
+          done
+          # 任意一条**在场**线读不到 mod_version ⇒ 异常（不是缺席、也不是混版）⇒ 本一致性门禁直接判红，
+          # 让问题在构建早期就暴露，而不是留到 Release step 里被当成混版静默跳过。
+          if [[ ${#BAD_VERSION[@]} -gt 0 ]]; then
+            for bad_line in "${BAD_VERSION[@]}"; do
+              echo "::error::mod_version missing/empty for $bad_line: gradle.properties exists but has no mod_version= key"
+            done
+            echo "::error::aborting: ${#BAD_VERSION[@]} present line(s) without a readable mod_version (${BAD_VERSION[*]}) - unreadable version is NOT 'line absent at this ref'"
+            exit 1
+          fi
+          if [[ "$UNIFIED" -eq 1 ]]; then
+            echo "  => all present lines share base $REF_BASE - unified mainline version"
+          else
+            echo "  => bases differ - mixed / line-specific version: GitHub Release will be SKIPPED (CurseForge only)"
+            echo "::notice::mixed per-line mod_version - the Release step will skip publication (see its output)"
+          fi
+          echo "unified=$UNIFIED" >> "$GITHUB_OUTPUT"
+          # 参考版本：tag / base / prerelease / skip_tag 的推导沿用旧口径 —— 取**第一条可读**的线
+          #   （数组首项即 neoforge-1.21.1）。四线统一时它就是四线共同的基版本，行为与改前一致。
+          VERSION=""
+          for i in "${!T_LINE[@]}"; do
+            if [[ -n "${T_VER[$i]}" ]]; then
+              VERSION="${T_VER[$i]}"
+              break
+            fi
+          done
           # tag = **mod 版本本身**,只剥掉 `+加载器_<mc>` 后缀(`1.5.0-rc.1+neoforge_1.21.1` → `1.5.0-rc.1`)。
           # ⛔ 2026-10-25 用户裁决：tag 不得按游戏平台命名(`fabric-…` / `neoforge-…` 一律禁止),
           #    也不得为了「稳定版才打 tag」而吞掉 `-rc` / `-pre` —— rc.1 与 rc.2 是两个不同版本,各打各的 tag。
@@ -203,6 +341,11 @@ jobs:
           BASE=${VERSION%%+*}
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "base=$BASE" >> "$GITHUB_OUTPUT"
+          # 逐线版本也写成 output（便于人工核对 / 后续步骤引用）；键名把 - 与 . 换成 _。
+          for i in "${!T_LINE[@]}"; do
+            key=$(printf '%s' "${T_LINE[$i]}" | tr -c 'A-Za-z0-9' '_')
+            echo "mv_${key}=${T_VER[$i]}" >> "$GITHUB_OUTPUT"
+          done
           # 预发布判定（显式判据，2026-11-02 复核后收紧）：满足任一条即标 prerelease。
           #   ① `BASE`（已剥掉 `+后缀`）里出现 `-` —— 覆盖 `1.5.0-rc.1` / `1.5.0-pre.6` / `1.5.0-hotfix`；
           #   ② 整个 `VERSION`（**含** `+后缀` 段）里出现 prerelease 词 rc / pre / alpha / beta / snapshot。
@@ -233,7 +376,10 @@ jobs:
         # 仅在发布线分支(multi-main)自动打 tag:tag = 基础版本号(去掉 -rc/-pre 与 +后缀),如 1.1.3。
         # ⚠️ 该分支推送时若 mod_version 不含 '-',会自动建 tag;Release 由**同一 job 的下一步**直接发布。
         # 不再依赖「tag push 触发 Release」:GITHUB_TOKEN 推送的 tag 不会再触发本 workflow。
-        if: github.event_name == 'push' && github.ref == 'refs/heads/multi-main' && steps.version.outputs.skip_tag == '0'
+        # ⛔ 2026-11-02：**混版不打 tag**（unified == '1' 才算）。理由：混版按口径只发 CF、不建 Release，
+        #   而 tag 是 Release 的身份 —— 给一个 hotfix 提交建出 1.5.0，之后 tag 只会被「已存在则复用」
+        #   （tag 永不移动），会让下一次真正统一的发布挂到错误的提交上。故 tag 与 Release 同进同退。
+        if: github.event_name == 'push' && github.ref == 'refs/heads/multi-main' && steps.version.outputs.skip_tag == '0' && steps.version.outputs.unified == '1'
         run: |
           # ⛔ 2026-10-25 用户裁决：tag **只按 mod 版本**建，`-rc` / `-pre` 也必须建（不同 rc 是不同版本）。
           #    平台名不得出现在 tag 里；多平台 jar 由下一步放进同一个 Release。
@@ -263,7 +409,9 @@ jobs:
         # 只补传缺失的 jar,已有附件字节一律不覆盖(避免 CI 件悄悄替换人工核对/投放过的构建件,
         # 否则 Release 与两个整合包 mods 的哈希会对不上)。⛔ 2026-10-30 用户裁决:去掉 --clobber。
         # 例外(2026-11-02 用户指令「同 tag 重发」):提交信息带 [republish-assets] 时走下方一次性重发通道。
-        if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'push' && github.ref == 'refs/heads/multi-main' && steps.tag.outputs.tag != '')
+        # 混版时上一步 Create Git tag 会被跳过（outputs.tag 为空），但本 step **仍要进来**：
+        #   它要在日志里打印混版说明并 exit 0（判绿）。故 if 里显式放行 unified != '1'。
+        if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'push' && github.ref == 'refs/heads/multi-main' && (steps.version.outputs.unified != '1' || steps.tag.outputs.tag != ''))
         env:
           GH_TOKEN: ${{ github.token }}
           # 仅分支 push 事件带 head_commit；tag push 为空 ⇒ 不会触发下方重发通道。
@@ -275,12 +423,21 @@ jobs:
             TAG="${{ steps.tag.outputs.tag }}"
           fi
           echo "publishing release for tag: $TAG"
-          # 版本基准：tag 名 = BASE；产物文件名里的版本段也是 BASE 起头（见下方收紧的 glob）。
-          BASE="${{ steps.version.outputs.base }}"
+          # 版本基准：tag 名 = BASE（tag 名仍由上方版本步骤推导，本步不改 tag 命名口径）。
+          # ⛔ 2026-11-02 修复（四线混版必红）：这里**不再**取一个共用 BASE 去套四条线。
+          #   旧写法（把版本步骤的 base 输出赋给 BASE）只反映 neoforge-1.21.1 一个线的版本，
+          #   却被拿来给四线套同一个 glob ⇒ 只要某条线自己升了小版本（如 fabric 的 1.5.0-hotfix），
+          #   那条线必定 missing jar ⇒ exit 1（#146/#147 正是此形状）。
+          #   现在改为**逐线读自己的 mod_version、按各自完整产物名定位**（见下方两遍循环），
+          #   版本偏移不再致命；四线版本不一致时整步按「混版只发 CF」口径**跳过 Release 并 exit 0**。
           # 附件 = 四线 jar（2026-11-02 用户裁决，取代 2026-10-25「附件只放 P0 两线」）：
           #   四线（neoforge-1.21.1 / forge-1.20.1 / neoforge-26.1.2 / fabric-1.20.1）**全部硬校验**，
           #   任何一条线缺件 ⇒ ::error:: + exit 1 —— 不再有「静默缺席、Release 照样成功」的侥幸。
           #   唯一豁免见下：**该 ref 的提交里本来就没有这个子项目**（老 tag 上 fabric / 26.1.2 目录不存在）。
+          #   📌 口径正本：`docs/agent/AGENTS-dsh.md`〈📍 生效红线区 —— 原文逐字〉里那条
+          #      「**2026-11-02 用户裁决（取代本条后半）**」—— 旧红线「P1 两线…禁止上传、禁止建 Release/tag、
+          #      禁止作为 P0 Release 的附件」的后半已被该裁决取代（CF 侧仍保留 `--allow-p1` 显式放行闸门）。
+          #      改本段口径前先读那里，两处必须一致（这里与文档互相引用）。
           # 每线三元组：`线名|子项目目录|优先级`。
           LINES=(
             "neoforge-1.21.1|neoforge-1.21.1|P0"
@@ -305,8 +462,11 @@ jobs:
             echo "::error::commit $SHA is not in the local object database — cannot resolve subproject presence"
             exit 1
           fi
-          JARS=()
-          MISSING=()
+          # ---- 第 1 遍：把**在场各线自己的** mod_version 读出来 -----------------------------
+          #   修复要点：逐线读自己的版本，不再从 neoforge-1.21.1 取一个 BASE 复用给四线。
+          #   读的是**提交对象**（"$SHA:$props"）而不是工作区文件：与上面的在场判据同源，
+          #   保证「用的版本号」和「判的提交」是同一个；老 tag 上不存在的子项目也不会凭空冒出。
+          declare -a P_LINE=() P_PROJ=() P_PRIO=() P_VER=()
           for entry in "${LINES[@]}"; do
             line="${entry%%|*}"
             rest="${entry#*|}"
@@ -317,28 +477,99 @@ jobs:
               echo "::warning::skipping $line (subproject not present at this ref)"
               continue
             fi
-            # 产物名 = astral_dice-<mod_version>.jar，mod_version 形如 `1.5.0+neoforge_1.21.1`。
-            # 用 BASE（已剥掉 +后缀）收紧 glob ⇒ 只命中**本版本**的 jar。⛔ 不能退回
-            #   `astral_dice-*.jar`：build/libs 从不清理，实测 neoforge-26.1.2/build/libs 同时躺着
-            #   1.2.1~1.5.0 共 14 个 jar，松散 glob 会把历次旧 jar 一并塞进本次 Release。
-            # 未命中时 glob 保持字面量 ⇒ `[[ -f ]]` 为假 ⇒ 计 0。
-            hits=()
-            for j in "$proj"/build/libs/astral_dice-"$BASE"+*.jar; do
-              if [[ -f "$j" ]]; then hits+=("$j"); fi
+            raw_ver=$(git cat-file -p "${SHA}:${props}" | grep -m1 '^mod_version=' || true)
+            line_ver="${raw_ver#*=}"
+            line_ver="${line_ver%$'\r'}"   # properties 若是 CRLF，别把 \r 带进版本串
+            P_LINE+=("$line"); P_PROJ+=("$proj"); P_PRIO+=("$prio"); P_VER+=("$line_ver")
+          done
+          # ---- 混版判定：各线 mod_version 去掉 +之后 是否完全一致 ---------------------------
+          #   发布口径（2026-11-02 用户裁决，决定本段全部行为）：
+          #     · 主线版本：四线统一 X.Y.0                                  => tag + GitHub Release + CF；
+          #     · 小版本 / hotfix：只有某线升号（例：只有 fabric 是 1.5.0-hotfix）=> **只发 CF，不建 Release**。
+          #   故混版提交**不该变红、也不该产出 Release**：打印说明后 exit 0 收工。
+          #   判据只看**在场线**（老 tag 上本来就缺的子项目照旧豁免），与上方
+          #   "Report per-line mod_version" 步骤的 unified 口径一致（两处改动需同步）。
+          echo "per-line versions (present at $SHA):"
+          UNIFIED=1
+          REF_BASE=""
+          REF_SET=0        # 独立布尔量：基准是否**已设过**（不看值是否为空；⛔ 不可再拿 [[ -z $REF_BASE ]] 当哨兵）
+          EMPTY_VER=()     # 在场线里读不到 mod_version 的「线名|props」——独立收集，下面点名判红
+          for i in "${!P_LINE[@]}"; do
+            v="${P_VER[$i]}"
+            b="${v%%+*}"
+            printf '  %-16s mod_version=%-34s base=%s\n' "${P_LINE[$i]}" "$v" "$b"
+            if [[ -z "$v" ]]; then
+              EMPTY_VER+=("${P_LINE[$i]}|${P_PROJ[$i]}/gradle.properties")
+            fi
+            # ⛔ 2026-11-02 复查修复：基准判据必须是**独立布尔量**，不能拿 `[[ -z "$REF_BASE" ]]` 当哨兵。
+            #    旧写法在「第一条在场线读出的 base 恰为空串」（该线 mod_version 缺键）时，永远认为
+            #    基准还没设过 ⇒ 之后任何非空 base 都「不等」⇒ UNIFIED=0 ⇒ 走混版 exit 0（静默判绿），
+            #    下方「cannot read mod_version」分支永远走不到；而上方 Report 一致性门禁却可能判
+            #    unified=1 并打出 tag ⇒ 同一棵树上出现「有 tag 没 Release」。
+            #    现在：空值根本不参与 unified 计算，而是进 EMPTY_VER，由下方防御分支判红。
+            if [[ "$REF_SET" -eq 0 ]]; then
+              REF_BASE="$b"
+              REF_SET=1
+            fi
+            if [[ "$b" != "$REF_BASE" ]]; then UNIFIED=0; fi
+          done
+          if [[ ${#P_LINE[@]} -eq 0 ]]; then
+            echo "::error::no subproject found at this ref - nothing to publish"
+            exit 1
+          fi
+          # 防御分支（与 Report 一致性门禁同一口径）：任意一条**在场**线读不到 mod_version ⇒ 异常 ⇒ 判红。
+          #   正常流程里 Report step 更早就 exit 1 了；这里保留是为了「即便前面那道门禁被跳过 / 被改坏」，
+          #   本步也绝不把空版本当成「该线缺席」而静默判绿（旧行为正是这条路）。
+          if [[ ${#EMPTY_VER[@]} -gt 0 ]]; then
+            for entry in "${EMPTY_VER[@]}"; do
+              echo "::error::cannot read mod_version for ${entry%%|*}: ${entry#*|} has no mod_version line"
             done
-            if [[ ${#hits[@]} -eq 0 ]]; then
-              echo "::error::missing jar for $line: $proj/build/libs/astral_dice-$BASE+*.jar"
-              # 顺带把该目录实际有什么打出来，便于一眼定位（目录不存在时由 || true 兜住）
-              ls -1 "$proj/build/libs" 2>/dev/null | sed 's/^/    present: /' || true
+            echo "::error::aborting release: ${#EMPTY_VER[@]} present line(s) without a readable mod_version (${EMPTY_VER[*]}) - refusing to treat an unreadable version as a mixed-version build"
+            exit 1
+          fi
+          if [[ "$UNIFIED" != "1" ]]; then
+            echo "::notice::mixed per-line mod_version detected - SKIPPING GitHub Release (by policy)"
+            echo "  四线 mod_version 去掉 + 之后不一致 ⇒ 这是**小版本 / hotfix 提交**（只有部分加载器线升号）。"
+            echo "  按 2026-11-02 发布口径："
+            echo "    · 小版本 / hotfix 只发 CurseForge，**不建 GitHub Release**；"
+            echo "    · 只有四线统一的主线版本才建 GitHub Release（tag 名取基版本号）。"
+            echo "  所以本 step 不做任何发布动作：不建 Release、不上传资产、不删资产，直接判绿。"
+            echo "  等四线 mod_version 对齐成同一个 base 后再推一次，即可正常出 Release。"
+            echo "release skipped: mixed versions (see above). exiting 0 on purpose."
+            exit 0
+          fi
+          echo "all present lines share base $REF_BASE - unified mainline version, publishing release"
+          # ---- 第 2 遍：按**各线自己的完整产物名**定位 jar ---------------------------------
+          JARS=()
+          MISSING=()
+          for i in "${!P_LINE[@]}"; do
+            line="${P_LINE[$i]}"
+            proj="${P_PROJ[$i]}"
+            prio="${P_PRIO[$i]}"
+            ver="${P_VER[$i]}"
+            if [[ -z "$ver" ]]; then
+              # 第二道防线（2026-11-02 复查）：上方 EMPTY_VER 已按「异常」判红；此处保留，
+              # 防止将来那段被改坏后，空版本又悄悄落到 missing jar 的语义里被放过。
+              echo "::error::cannot read mod_version for $line: $proj/gradle.properties has no mod_version line"
               MISSING+=("$line")
-            elif [[ ${#hits[@]} -gt 1 ]]; then
-              # 同版本命中多个 = 产物目录不干净（例如混入 -sources.jar）：宁可报错，也不猜哪一个是交付件。
-              echo "::error::ambiguous jars for $line (expected 1, got ${#hits[@]})"
-              printf '    present: %s\n' "${hits[@]##*/}"
-              MISSING+=("$line")
+              continue
+            fi
+            # 产物名 = astral_dice-<该线自己的 mod_version>.jar ⇒ 用**精确文件名**定位，不再用 glob：
+            #   ① 版本偏移致命性消失：fabric 是 1.5.0-hotfix 时就找 astral_dice-1.5.0-hotfix+fabric_1.20.1.jar；
+            #   ② 不会误命中历次旧 jar（build/libs 从不清理，实测 neoforge-26.1.2/build/libs 躺着
+            #      1.2.1~1.5.0 共 14 个 jar），也不会把 -sources.jar 之类算成「同版本多命中」。
+            #   ⛔ 仍不退回 astral_dice-*.jar：那样会把历次旧 jar 一并塞进本次 Release。
+            jar="$proj/build/libs/astral_dice-$ver.jar"
+            if [[ -f "$jar" ]]; then
+              JARS+=("$jar")
+              echo "jar ok ($prio) $line: $(basename "$jar")"
             else
-              JARS+=("${hits[0]}")
-              echo "jar ok ($prio) $line: ${hits[0]##*/}"
+              echo "::error::missing jar for $line: $jar"
+              # 顺带把该目录实际有什么打出来，便于一眼定位（目录不存在时由 || true 兜住）；
+              # 同时按该线自己的 base 列出「同 base 的候选」，区分「版本偏移」与「真没构建出来」。
+              ls -1 "$proj/build/libs" 2>/dev/null | sed 's/^/    present: /' || true
+              ls -1 "$proj"/build/libs/astral_dice-"${ver%%+*}"*.jar 2>/dev/null | sed 's/^/    same-base candidate: /' || true
+              MISSING+=("$line")
             fi
           done
           if [[ ${#MISSING[@]} -gt 0 ]]; then
@@ -409,7 +640,12 @@ jobs:
               while IFS= read -r name; do
                 [[ -z "$name" ]] && continue
                 echo "deleting existing asset: $name"
-                gh release delete-asset "$TAG" "$name" --yes
+                # 容忍「已经不存在」：并发 run 可能刚把它删掉，或该名从来不在（HAVE_ASSETS 是快照）。
+                # 旧写法无任何容错 ⇒ 一次 404 就让整步 exit 1（#144 正是死在这条通道里）。
+                # 只对「删除」放水，且失败一律留 ::warning::，不静默吞掉真正的权限/网络错误。
+                if ! gh release delete-asset "$TAG" "$name" --yes; then
+                  echo "::warning::could not delete asset $name (already gone, or a concurrent run removed it) - continuing"
+                fi
               done <<< "$HAVE_ASSETS"
               HAVE_ASSETS=""
             fi
@@ -418,9 +654,27 @@ jobs:
               # grep -Fxq:整行固定串匹配;命中=0 / 未命中=1,放在 if 条件里不会被 set -e 判失败。
               if grep -Fxq -- "$name" <<< "$HAVE_ASSETS"; then
                 echo "::notice::asset already published, skip upload: $name"
+              elif [[ "$REPUBLISH" == "1" ]]; then
+                # 重发通道（提交信息带 [republish-assets]）：同名旧附件上面已逐个删过；
+                # 这里加 --clobber 兜住并发 run 在「删完到上传」这段窗口里刚重建的同名附件，
+                # 否则 upload 会以「already exists」失败 ⇒ 又一次莫名其妙的红（#144 形状）。
+                # ⚠️ --clobber **只在本通道**使用；冻结口径那支仍绝不覆盖已有字节。
+                echo "uploading asset (republish channel, --clobber): $name"
+                gh release upload "$TAG" "$j" --clobber
               else
                 echo "uploading missing asset: $name"
-                gh release upload "$TAG" "$j"
+                # 冻结口径：**不加 --clobber**，绝不覆盖已有附件字节（2026-10-30 用户裁决）。
+                # 但并发 run 可能刚抢先上传了同名附件 ⇒ 上传失败后先确认附件是否确实已存在：
+                #   确已存在 = 对方赢了这场竞态，warn 后继续（附件仍是本次构建件，且未被覆盖）；
+                #   确实不在 = 真失败 ⇒ exit 1（仍不许静默放过）。
+                if ! gh release upload "$TAG" "$j"; then
+                  if gh release view "$TAG" --json assets --jq '.assets[].name' 2>/dev/null | grep -Fxq -- "$name"; then
+                    echo "::warning::upload of $name lost a race but the asset exists now - treating as published (bytes NOT overwritten)"
+                  else
+                    echo "::error::failed to upload $name and it is still absent from the release"
+                    exit 1
+                  fi
+                fi
               fi
             done
           else
