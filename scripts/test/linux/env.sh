@@ -98,7 +98,7 @@ conf_get() {
 
 # ── 1. 仓库与挂载 ───────────────────────────────────────────────────────────
 missing=""
-for f in settings.gradle gradlew gradle/wrapper/gradle-wrapper.jar scripts/test/mt.ps1; do
+for f in settings.gradle gradlew gradle/wrapper/gradle-wrapper.jar scripts/test/win/mt.sh; do
     [ -f "$REPO_ROOT/$f" ] || missing="$missing $f"
 done
 if [ -n "$missing" ]; then

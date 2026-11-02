@@ -146,15 +146,3 @@ config="${mod_id}.ysm.mixins.json"
     ordering="AFTER"
     versionRange="[${starengine_version},27.0.0)"
     side="BOTH"
-
-# GeckoLib(必须的前置):Syke 触手实体的几何/动画/渲染全部由它驱动,缺失时装载阶段即
-# NoClassDefFoundError(com.geckolib.*),故 required。写法与 1.21.1 线同一口径(不内嵌 JarJar,由玩家自备)。
-# 版本区间取 5.x 一整代:本线的代码全部按 5.5.2 的 javap 实证签名书写(见 entity/SykeTentacleEntity 类头),
-# 而 v4(software.bernie.geckolib.*)与本线源码不兼容,故上界锁 6 以拒绝跨大版本混装。
-# ⚠️ 区间手写、不取 gradle.properties:本目录是 Groovy 模板展开区,刻意不在此引入新的花括号变量。
-[[dependencies.${mod_id}]]
-    modId="geckolib"
-    type="required"
-    versionRange="[5,6)"
-    ordering="AFTER"
-    side="BOTH"

@@ -1,5 +1,12 @@
 # fabric-1.20.1 线测试台（`scripts/test/fabric/`）
 
+> ## ⚠️ 2026-11-02 状态：本目录的 `ft_*.ps1` 已全部废弃删除（PowerShell 全局禁用）
+>
+> **唯一入口改为 bash 层**：`bash scripts/test/win/mt.sh --version fabric-1.20.1 --phase <env|build|launch|cases|report|stop>`
+> （分派实现见 `scripts/test/win/lib/fabric.sh`，判据与机器行口径见 `docs/features/devnext-bash-testbed-decisions.md`）。
+> 本页下面的 `pwsh -File scripts/test/fabric/ft_*.ps1 ...` 命令**均为历史记录，已不可执行**，保留仅为溯源；
+> 能力损失与处置登记见 `docs/features/devnext-pwsh-retirement-register.md`。
+
 > 自包含的第四条线测试台。**不修改、不依赖** `scripts/test/mt*.ps1` + `lib/Mt.*.psm1` + `cases/*.json`  
 > 那一套生产线资产（那套是 NeoForge 1.21.1 / Forge 1.20.1 / NeoForge 26.1.2 三线的口径）。  
 > 一律 PowerShell 7（`pwsh`）；禁用 Windows PowerShell 5.1（见 `AGENTS.md`「命令执行规范」）。

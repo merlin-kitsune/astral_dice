@@ -34,7 +34,7 @@ repositories {
     // 见 AGENTS.md「模组依赖添加规则(统一口径)」:第三方**模组**(含其附属/前置模组)工件只允许来自
     // Curse Maven 与 Modrinth Maven。`exclusiveContent` 同时做两件事:① 声明该仓库;② 把这两个 group
     // 从**其它所有仓库**中排除 ⇒ 任何 `curse.maven:` / `maven.modrinth:` 坐标都**不可能**从别处解析。
-    // 这是依赖解析期的硬约束,与 `tools/check_mod_sources.ps1` 的静态守门(阶段 P 会跑)互补。
+    // 这是依赖解析期的硬约束,与 `tools/check_mod_sources.py` 的静态守门(阶段 P 会跑)互补。
     // ⚠️ 副作用:本地镜像仓库 `.oss-basemod-repo` 里镜像的 Modrinth 工件不再参与解析(离线时需联网到 api.modrinth.com)。
     exclusiveContent {
         forRepository { maven { url 'https://www.cursemaven.com' } }
@@ -224,7 +224,7 @@ repositories {
     // 本地兜底仓库(内容是 Modrinth Maven 坐标的镜像缓存)
     maven { url "${projectDir}/.oss-basemod-repo" }
     // 统一口径的两个模组来源仓库已在文件顶部声明过一次(Gradle 的项目级仓库是累加的),
-    // 此处不再重复声明 —— 重复声明会让「统一口径」失真(由 tools/check_mod_sources.ps1 守门)。
+    // 此处不再重复声明 —— 重复声明会让「统一口径」失真(由 tools/check_mod_sources.py 守门)。
 }
 dependencies {
     // StarEngine Lib(**独立前置**,必须由玩家/整合包单独安装):效果/事件/目标选择/通用组件等共享逻辑所在库。

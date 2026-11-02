@@ -74,13 +74,13 @@ printf 'INFO: session — Windows 测试台 env.sh %s（git bash/MSYS2；repo=%s
 # ── 1. 仓库与文件集 ───────────────────────────────────────────────────────
 missing=""
 for f in settings.gradle gradlew.bat gradle/wrapper/gradle-wrapper.jar \
-         scripts/test/mt.ps1 scripts/test/win/env.sh scripts/test/win/lib/common.sh; do
+         scripts/test/win/mt.sh scripts/test/win/env.sh scripts/test/win/lib/common.sh; do
     [ -f "$MT_REPO_ROOT/$f" ] || missing="$missing $f"
 done
 if [ -n "$missing" ]; then
     mt_fail repo "仓库根 $MT_REPO_ROOT 缺失:$missing"
 else
-    mt_ok repo "仓库根正常：$MT_REPO_ROOT（settings.gradle / gradlew.bat / wrapper jar / mt.ps1 齐全）"
+    mt_ok repo "仓库根正常：$MT_REPO_ROOT（settings.gradle / gradlew.bat / wrapper jar / mt.sh 齐全）"
 fi
 
 git_top="$(git -C "$MT_REPO_ROOT" rev-parse --show-toplevel 2>/dev/null | head -n 1 | tr -d '\r')"
@@ -444,10 +444,11 @@ else
     mt_warn tmp "\$TEMP(=${TEMP:-<空>}，AppData\\Local\\Temp 的挂载点) 与 run/.mt-tmp 均不可写；AutoJS 探测不受影响（纯管道解析），仅影响将来需要落盘临时文件的扩展"
 fi
 
+# PowerShell **解释器**（不是测试资产）：pwsh 7 或系统自带 5.1，只用于 CIM 进程命令行判线。
 if pwsh_ver="$(mt_pwsh '$PSVersionTable.PSVersion.ToString()' 2>/dev/null | tr -d '\r' | head -n 1)" && [ -n "$pwsh_ver" ]; then
-    mt_ok pwsh "pwsh $pwsh_ver（$(command -v pwsh)）；CIM 判线依赖它"
+    mt_ok pwsh "PowerShell 内核 $pwsh_ver（$(mt_pwsh_exe)）；CIM 判线依赖它（非测试资产，.ps1 已全部废弃）"
 else
-    mt_fail pwsh "pwsh 不可用（Windows 侧无法做 CIM 进程判线；安装 PowerShell 7 或设 MT_PWSH_EXE）"
+    mt_fail pwsh "找不到 PowerShell 解释器（pwsh 与 %SystemRoot%/System32/WindowsPowerShell/v1.0/powershell.exe 都不可用）—— 无法做 CIM 进程判线；设 MT_PWSH_EXE 指定解释器"
 fi
 
 tool_list=""

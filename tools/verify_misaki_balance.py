@@ -27,7 +27,7 @@
 
 ## 范围
 只查 P0 两线；P1（neoforge-26.1.2 / fabric-1.20.1）**不在本任务范围**，明确不检查
-（P0/P1 分歧由 scripts/verify/verify_bountiful_pools.ps1 报出，属已知既有红）。
+（P0/P1 分歧由 scripts/verify/verify_bountiful_pools.py 报出，属已知既有红）。
 
 退出码：0 全部通过 / 1 存在违规 / 2 无法判定（文件或方法无法定位）。
 

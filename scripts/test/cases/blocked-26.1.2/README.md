@@ -81,5 +81,5 @@ NeoForge 的 `net.neoforged.neoforge.common.util.FakePlayer`，而它**不进 `P
 3. 在探针里自建 bot 通道（`FakePlayerFactory` 造 `ServerPlayer` **并注册进 `PlayerList`**）
    —— 但这会让探针不再是「与另两线逐字同尺」，**必须同步登记为口径差异**。
 
-> 复测入口：`pwsh -File scripts/test/mt.ps1 --version 26.1.2 --phase env`（已设
+> 复测入口：`bash scripts/test/win/mt.sh --version 26.1.2 --phase env`（已设
 > `MT_CARPET_VIA_CONNECTOR=1` 时）→ 看 `MT_WORLD` 是否还 BLOCKED。

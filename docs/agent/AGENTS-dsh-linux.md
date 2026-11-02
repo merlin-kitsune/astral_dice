@@ -225,9 +225,9 @@
 7. **开发流程**：改 → 编译 → 静态守门 → 实机（获授权后）→ 复核（分级 a–e）→ 收尾关进程。
 8. **派子代理一律屏蔽人格注入**（免人设句原文带，见〈代理协作契约 B〉）。
 
-## 命令执行规范（bash，替代 Windows 版 PowerShell 规范）
+## 命令执行规范（bash；Windows 宿主同一套 bash 口径，见 `docs/agent/AGENTS-dsh.md`〈⚙️ 环境与工具链口径〉）
 
-1. **一律 bash**（`SHELL=/bin/bash`，实读）；脚本首行 `#!/usr/bin/env bash` + `set -euo pipefail`。**禁止**再写 PowerShell / `.ps1` 结论性命令（系统 PATH 无 pwsh；`*.ps1` 是 Windows 历史工具，Linux 侧不调用）。
+1. **一律 bash**（`SHELL=/bin/bash`，实读）；脚本首行 `#!/usr/bin/env bash` + `set -euo pipefail`。**禁止**再写 PowerShell / `.ps1` 结论性命令（系统 PATH 无 pwsh；`*.ps1` 是 Windows 历史工具，Linux 侧不调用）。**不再新增** `.ps1` / `.psm1`（pwsh 测试资产已按 `docs/features/devnext-pwsh-retirement-register.md` 退役；Windows 侧同一口径，入口 `bash scripts/test/win/mt.sh`）。
 2. **禁止 `bash -c` 塞多行/嵌套引号**：多行逻辑落 `temp/tNN/<name>.sh`，显式 `bash /绝对路径/...sh` 执行，`tNN` = 本轮批次号（不入库）。
 3. **长命令给超时**：`timeout --signal=TERM 300s <cmd>`；超时是独立结论（TIMEOUT ≠ FAIL ≠ ERROR）。长流程另落日志。
 4. **后台任务**：`setsid bash /绝对路径/x.sh > temp/tNN/x.log 2>&1 &`，PID 记 `temp/tNN/x.pid`；禁止无日志裸跑；收尾按进程组杀 `kill -TERM -- -<PGID>`。
@@ -253,7 +253,7 @@
 - 工具面：`get_app_state` / `screenshot` / `list_windows` / `focused_window` / `activate_window` / `click` / `scroll` / `drag` / `type_text` / `press_key` / `set_value` / `perform_action` / `move_window` / `resize_window`；配 `mcp__screen-ocr__ocr_screen|ocr_find|ocr_image` 做屏幕文字定位（比纯坐标稳）。
 - **本机缺的输入工具**（实读，不要假设存在）：`xdotool`、`wtype`、`wmctrl`、`grim`、`kdotool` **未安装**；`ydotool` 已装但**没有 socket**（`/run/user/1000/.ydotool_socket` 不存在），不要用它。`spectacle` 已装（`/usr/bin/spectacle`），可做 KDE 原生截图兜底：`spectacle -b -n -a -o /tmp/mc-world.png`。
 - **GUI 级驱动只在需要时用**：文字/坐标注入优先 `computer-use-linux` 的语义选择器（role/name），退而用坐标；坐标以**返回截图的 `coordinate_width/height`** 为准（可能被降采样），不要拿物理分辨率换算。
-- **驱动优先级（2026-10-31 沿用）**：游戏内输入/状态读写**首选 AutoJS `eval_js`**（脚本上下文直接操作，绕过窗口焦点问题）；GUI 级（建世界、开关菜单）用 `computer-use-linux` / `spectacle` + OCR；`mt_inject.ps1`（SendInput / PostMessage）是 **Windows-only**，Linux 无等价实现。
+- **驱动优先级（2026-10-31 沿用）**：游戏内输入/状态读写**首选 AutoJS `eval_js`**（脚本上下文直接操作，绕过窗口焦点问题）；GUI 级（建世界、开关菜单）用 `computer-use-linux` / `spectacle` + OCR；Windows 侧的 `scripts/test/mt_inject.py`（ctypes user32 注入；原 `mt_inject.ps1` 的替代物，旧件仅作溯源）是 **Windows-only**，Linux 无等价实现。
 - 游戏窗口是 **X11（XWayland）窗口**，`xwininfo -root -tree | grep -i minecraft` 可核对标题/几何；**GLFW 不暴露 AT-SPI**，`list_windows` 里可能看不到 MC —— 看不到就走整屏截图 + 坐标，不要卡在这里。
 - 截图证据一律落 `temp/tNN/`（不入库）；不得用固定外部目录。
 
@@ -279,7 +279,7 @@
 
 ## 🧪 测试台现状（Linux）
 
-- Windows 测试台规模（实读）：`scripts/test/mt.ps1` 851 行，入口 `mt.ps1 --phase <preflight|build|env|launch|cases|report|stop>`；全部 PowerShell 合计约 19,384 行。**整台不可移植**，且按红线**不改它**；Linux 侧只用 bash 台。
+- Windows 测试台（**迁移前实读快照 = 历史记录；现行执行口径见上**）：原 `scripts/test/mt.ps1` 851 行，入口 `mt.ps1 --phase <preflight|build|env|launch|cases|report|stop>`；全部 PowerShell 合计约 19,384 行。**整台不可移植**，且按红线**不改它**（该 pwsh 台已按 `docs/features/devnext-pwsh-retirement-register.md` 退役，仅作溯源）。Windows 侧现行入口 = `bash scripts/test/win/mt.sh --phase <preflight|env|build|launch|cases|report|stop>`（bash 由 MSYS2 / git bash 提供）；Linux 侧只用 bash 台。
 - **Linux 测试入口 = `scripts/test/linux/{env,launch,stop}.sh`**（bash，零 pwsh 依赖；`scripts/test/linux/README.md` 为完整操作说明）：
   - `env.sh [--version <线>] [--quiet]`：**只读**环境检查（仓库/挂载、各线 JDK 与 `run/`、`mods/` 与 autojs·rhino jar、AutoJS `/health`、客户端残留、锁、Gradle 守护）；机器行 `CHECK: <key>=OK|WARN|FAIL` + 收尾 `ENV_RESULT: OK|WARN|FAIL`；退出码 `0` 无 FAIL / `1` 有 FAIL / `2` 用法错误。
     - 2026-10-31 真机首跑（本批改路径前）：`ENV_RESULT: WARN — 0 项阻塞，3 项提示`；改后重跑见 `docs/handover-2026-10-31-native-linux-migration.md`。

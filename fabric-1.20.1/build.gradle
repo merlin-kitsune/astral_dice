@@ -147,13 +147,6 @@ dependencies {
     // ── Patchouli(Fabric 版;手册是本模组的核心引导,首个版本即纳入) ─────────
     modImplementation "maven.modrinth:patchouli:nm6fiGRx"
 
-    // ── GeckoLib(Fabric 版;动画实体 sykestentacle 的硬前置) ────────────────
-    // ⚠️ 坐标必须用 **Modrinth version id**(SD2lOScS = geckolib-fabric-1.20.1-4.8.4),
-    //    不能写版本号 "4.8.4" —— 那样会解析到同一版本号下的**别的加载器变体**
-    //    (实测 neoforge 侧写 4.9.3 会拿到 fabric jar,故那条先例也钉 version id)。
-    //    写进 fabric.mod.json 的 depends(>=4.8.4)⇒ 是硬前置,不进 JarJar。
-    modImplementation "maven.modrinth:geckolib:SD2lOScS"
-
     // ── 运行时/测试环境依赖(仅 dev runtime;不进发货产物) ──────────────────
     // 用户要求的测试环境三件套 + 渲染栈
     // ⚠️ Sodium 0.5.x 在 **dev 环境**要求 LWJGL 3.3.2(1.20.1 自带 3.3.1),

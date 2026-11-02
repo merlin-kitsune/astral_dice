@@ -2,9 +2,11 @@
 # ============================================================================
 # scripts/test/win/mt.sh — Astral Dice 测试台 · bash 编排层（P1 契约层）
 #
-# 对外契约与 scripts/test/mt.ps1 等价：同一套开关 / 同一套阶段 / 同一套退出码 /
-# 同一族机器行。与 pwsh 的差异集中在「过渡期委托」：cases / report / preflight
-# 仍调 pwsh，并在输出打一行 MT_DEPRECATED（见 docs/features/bash-first-test-flow-plan.md）。
+# 全 bash/python 实现，**不依赖任何 .ps1 资产**（旧 pwsh 测试台已整体废弃删除）。
+#   env/build/launch/stop        → bash（scripts/test/win/*.sh + lib/*.sh）
+#   cases/report/preflight       → python（scripts/test/lib/mt_case.py / mt_report.py / mt_preflight.py）
+# 机器行、退出码、开关面与旧 pwsh 版逐字对齐；差异只有「能力缺口记 BLOCKED(11)」这一条：
+#   native 注入通道（窗口定位 / user32 合成输入）随 pwsh 资产删除而失效，见 phases.sh 的 launch 阶段。
 #
 # 阶段：env | build | launch | cases | report | stop（另接受 preflight，P2 迁移）
 #
@@ -193,8 +195,8 @@ if [ "$ALLOW_AUTO" != 1 ]; then
             printf '  当前规则：「纯手动下达命令」——逐条注入、逐条看读数、逐步决策。\n'
             printf '  放行的阶段：build / env / launch / stop（把客户端弄起来/收停所需的基础设施）\n'
             printf '  单条执行：bash scripts/test/win/mt.sh --version <ver> --phase cases --case scripts/test/cases/<CASE>.json\n'
-            printf '  直接注入：pwsh -File scripts/test/mt_inject.ps1 cmd --command "/astralprobe ..."\n'
-            printf '  手动读数：pwsh -File scripts/test/mt_assert.ps1 log --version <ver> --pattern "<正则>"\n'
+            printf '  直接注入：python scripts/test/mt_inject.py cmd --command "/astralprobe ..."\n'
+            printf '  手动读数：python scripts/test/mt_assert.py log --version <ver> --pattern "<正则>"\n'
             printf '  临时放行：追加 --allow-auto（或设 MT_ALLOW_AUTO=1）\n'
         } >&2
         exit 2

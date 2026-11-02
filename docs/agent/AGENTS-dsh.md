@@ -13,15 +13,15 @@
 ## ⚙️ 环境与工具链口径（Windows 原生，优先级高于本文件其余测试 / 环境条款）
 
 1. **一台机器、一种工作流**：DSH 直接在本机 Windows 工作树上动手 —— 没有第二个运行环境，也没有路径转译层。
-2. **测试台唯一口径 = PowerShell 7**：所有测试脚本都是 `.ps1`，一律 `pwsh -NoProfile -File <绝对路径>` 执行；不写 `.sh`，不用 Windows PowerShell 5.1。
-3. **编译**：在 `F:\MCProject\astral_dice_multiloader` 执行 `gradlew.bat :<线>:classes|jar`。
-4. **实机**：`pwsh -NoProfile -File F:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1 --version <线> --phase <env|run|stop>`。
+2. **测试台唯一口径 = bash + python**：Windows 宿主上的 bash 由 **MSYS2 / git bash** 提供（不要求 WSL），Linux 宿主用原生 bash；测试入口一律 `bash scripts/test/win/mt.sh --version <线> --phase <env|build|launch|cases|report|stop>`（Linux：`bash scripts/test/linux/{env,launch,stop}.sh`），静态守门一律 `python scripts/verify/*.py` / `python tools/*.py`。**不再新增 `.ps1` / `.psm1`**：既有 pwsh 测试资产一律作废，退役登记 `docs/features/devnext-pwsh-retirement-register.md`，文档与脚本里的 `.ps1` 引用只作溯源、不作执行口径。
+3. **编译**：在**当前工作树根**执行 `./gradlew :<线>:classes|jar`（本分支工作树 = `F:\MCProject\astral_dice_multiloader-next`；主线工作树 = `F:\MCProject\astral_dice_multiloader`，两者不要混用）。
+4. **实机**：`bash scripts/test/win/mt.sh --version <线> --phase <env|launch|stop>`（在工作树根执行；Windows 宿主经 MSYS2 / git bash，Linux 宿主见 `docs/agent/AGENTS-dsh-linux.md`〈测试台现状（Linux）〉）。
 5. **产物投放**：以工作树 `build\libs` 为唯一来源，按线复制到 `run\<1.21.1|1.20.1|26.1.2|fabric-1.20.1>\mods`，或**成对**投放两个 P0 整合包（`astral_dice-*.jar` + `starengine-*-<库版本>.jar`）；投完必须核 `Get-FileHash`，别把同名当新构建。
 6. **git**：一律用 git bash 的 `git`，命令写全 `git -C F:\MCProject\<工作树> <子命令>`，或先 `cd` 进工作树。
 7. **JDK**：`JAVA_HOME=C:\Program Files\Zulu\zulu-21`（21.0.12）；`forge-1.20.1` 的 toolchain 17 由 Gradle 从 `%USERPROFILE%\.gradle\jdks` 取（已缓存 Adoptium 17.0.20），不要手改。
-8. **测试收尾必须自动关闭游戏进程（2026-10-18 用户裁决）**：任何测试轮次（单条 / 全量 / 中断 / 失败）结束后，必须执行 `pwsh -NoProfile -File scripts\test\mt.ps1 --version <线> --phase stop --force`，并在交付报告里贴出 `MT_STOP: OK` 原文 + 「无本流程 java 客户端残留」的核对结果（`Get-Process java` 计数）。**禁止**让 Minecraft 客户端无人观察地驻留 —— 它持续占用 CPU/GPU 并污染下一轮冷启动的前置状态。唯一例外：用例 `on_fail=keep_game_running` 落了 `.mt_keep_alive-<版本>` 的取证现场，此时在报告里说明保留原因与路径，取证完成后立即 `--phase stop --force`。
+8. **测试收尾必须自动关闭游戏进程（2026-10-18 用户裁决）**：任何测试轮次（单条 / 全量 / 中断 / 失败）结束后，必须执行 `bash scripts/test/win/mt.sh --version <线> --phase stop --force`，并在交付报告里贴出 `WIN_STOP: OK` 原文 + 「无本流程 java 客户端残留」的核对结果（`ps -W | grep -ci java` 计数；pwsh 台旧行为 `MT_STOP: OK`，仅作溯源）。**禁止**让 Minecraft 客户端无人观察地驻留 —— 它持续占用 CPU/GPU 并污染下一轮冷启动的前置状态。唯一例外：用例 `on_fail=keep_game_running` 落了 `.mt_keep_alive-<版本>` 的取证现场，此时在报告里说明保留原因与路径，取证完成后立即 `--phase stop --force`。
 
-> 红线区〈命令执行规范〉里那段「默认 shell 是 PowerShell 5.1」的旧背景不适用于 DSH —— 本宿主的 `pwsh` 一律是 PowerShell 7，直接按该节的规则执行即可。
+> 红线区〈命令执行规范（Shell）〉是拆分时逐字留存的**历史原文**（PowerShell 7 执行器约束，正本在 `docs/agent/AGENTS-full.md`，本节不动它）：DSH 现行执行口径以本节〈⚙️ 环境与工具链口径〉为准 —— **bash 由 MSYS2 / git bash 提供，禁止用 `cmd.exe` 批处理替代**（`.bat` 只保留 `gradlew.bat` / `run/Start-<线>.bat` 这类既有启动件），也不再新增 `.ps1` / `.psm1`。红线区内其余 PowerShell / `.ps1` 示例（`check_lang_sync.ps1`、`ft_env.ps1`、`mt.ps1` 收尾命令等）同属历史原文，**一律按本节执行**。
 
 
 ## 下沉到 StarEngine 的判定规则 —— 必须遵守（2026-10-19 用户裁决）
@@ -56,8 +56,8 @@
 **依据**：成本主要来自**主线程重复上下文**（每多一次工具往返 ≈ 把整份上下文再送一遍），子代理只承担一次性工作 ⇒ 硬指标针对「主 Agent 的动作数」，不针对「思考」。
 
 1. **硬指标：主 Agent 每个用户回合的请求数 ≤ 6** —— 多一次工具往返 ≈ 把整份主上下文再送一遍。
-2. **主 Agent 除「写计划 / 派活 / 验收 / 提交」外不得亲自执行任何动作**：`bash` / `pwsh` / `read` / `grep`、
-   跑 `gradlew`、跑 `mt.ps1`、`git` 取证命令、"我再验一遍" **一律不执行** ——
+2. **主 Agent 除「写计划 / 派活 / 验收 / 提交」外不得亲自执行任何动作**：`bash` / `python` / `read` / `grep`、
+   跑 `gradlew`、跑 `bash scripts/test/win/mt.sh`、`git` 取证命令、"我再验一遍" **一律不执行** ——
    扩展为**不亲自跑任何命令**（要证据就派子代理，验收只看它回报的产物）。
 3. **一次派发 + 一次等待**：`wait_agent` 用长超时（≥600s）一次到位；**禁止轮询**（`list_agents` / `job_list` / 反复 `wait_agent` 探进度）
    —— 每次轮询 ≈ 一次主 Agent 全上下文请求。子代理（`subagent` / `subagent_fork`）完成由**运行时通知**，更不要自己轮询。
@@ -151,6 +151,8 @@
 4. **数据源与拉取**：`https://astralparty.miraheze.org/w/api.php?action=parse&page=<英文页名>&prop=wikitext&format=json&formatversion=2` ⇒ `parse.title` = EN 名、wikitext 里的 `nameJapanese` = JA 名；拉取/校验一律用 `python tools/sign_names_from_wiki.py`（`--write` 写回表，`--proxy http://127.0.0.1:7897` 走代理）。`wiki.biligame.com/starengine` 只作中文校核，非首页请求返回反爬 HTML，**不能**当数据源。
 5. **门禁**：`python tools/verify_sign_display_names.py` ⇒ 必须 `GATE: PASS`（P0 两线 31 个 `item.astral_dice.<id>_sign` 与权威表逐字一致 + 无 `<旧职称> Sign` 残留 + JA 无 `超天酱/地雷女/怪力乱神`）。
 6. **新增立牌时**：按 id 找 wiki 页 → 写进权威表 → 改两线 `en_us.json` / `ja_jp.json` → 跑门禁 → 再提交。
+
+> ⚠️ **执行口径提示**：下方红线区整块是拆分时的逐字历史原文（正本 `docs/agent/AGENTS-full.md` L2–L129；其中 `pwsh` 命令、`.ps1` 台账、`check_lang_sync.ps1`、`ft_env.ps1`、`mt.ps1` 等均为历史示例，受 `docs/agent/verify-split.py` 项 1b 的**逐字比对**约束、不随执行口径更新）。DSH 现行执行口径见本文件前部〈⚙️ 环境与工具链口径〉第 2 / 4 条 = **bash（Windows 经 MSYS2 / git bash）+ python**，红线区内与之冲突的表述**一律以该节为准**。
 
 ## 📍 生效红线区 —— 原文逐字（`docs/agent/AGENTS-full.md` L2–L129；原文 H1 由本文件 H1 取代）
 

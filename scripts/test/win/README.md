@@ -5,14 +5,14 @@
 
 一句话边界：**这里是 Windows 测试台的 bash 侧实现**——
 
-- `mt.sh`（+ `lib/phases.sh`）= **默认编排入口**，与 `scripts/test/mt.ps1` 同一套开关 / 阶段 / 退出码 / 机器行；
+- `mt.sh`（+ `lib/phases.sh`）= **唯一编排入口**（开关 / 阶段 / 退出码 / 机器行沿用原 pwsh 台的契约，那份 pwsh 台已退役）；
 - `env.sh` / `launch.sh` / `stop.sh` = 三个可单跑的阶段脚本（体检 / 拉起 / 收停）；
-- 用例与断言的**执行器**仍在 pwsh（`mt_case.ps1` / `mt_report.ps1` 等），过渡期由 `mt.sh` 委托并打 `MT_DEPRECATED:`，迁移路线见 `docs/features/bash-first-test-flow-plan.md`。
+- 用例 / 断言 / 报告 / 预检的**执行器 = python**（`scripts/test/lib/mt_case.py`、`scripts/test/mt_assert.py`、`scripts/test/mt_report.py`、`scripts/test/mt_preflight.py`），由 `mt.sh` 直接调用，**不经过 pwsh**；pwsh 测试资产已按 `docs/features/devnext-pwsh-retirement-register.md` 全量退役。
 
 ```
 scripts/test/win/
 ├── mt.sh            # 默认编排入口：--version / --phase / --case / --channel / --allow-auto / --dry-run
-├── lib/phases.sh    # 阶段实现（env/build/launch/cases/report/stop/preflight）+ 过渡期 pwsh 委托
+├── lib/phases.sh    # 阶段实现（env/build/launch/cases/report/stop/preflight）+ python 执行器分派
 ├── lib/common.sh    # 版本表 / 机器行 / CIM 判线 / taskkill / AutoJS 探测 / 路径与 JDK 发现
 ├── env.sh           # 只读体检：逐项 CHECK: → 收尾 ENV_RESULT:，退出码 0/1/2
 ├── launch.sh        # --version <v>：cmd //c gradlew.bat :<子项目>:runClient → 轮询就绪 → LAUNCH: READY
@@ -22,7 +22,7 @@ scripts/test/win/
 ```
 
 > 写域纪律：本目录**只读**复用 `scripts/test/mt.conf` 与 `run/<v>/**` 的现状，
-> 不改 `scripts/test/linux/**`、不改任何 `.ps1` 的内容（只调用）、不改 `mt.conf`。
+> 不改 `scripts/test/linux/**`、不改 `mt.conf`、不新增 `.ps1` / `.psm1`（pwsh 资产已退役）。
 
 ---
 
@@ -166,18 +166,23 @@ bash scripts/test/win/stop.sh --version 26.1.2 --stop-daemon
 3. **世界就绪**：marker 命中 → 另打 `LAUNCH: WORLD_READY`。Windows 侧默认带
    `-Pquickplay=testworld`（build.gradle 四线已配置），所以正常情况下两者会一起出现。
 
-## 7. 与 pwsh 主入口 `scripts/test/mt.ps1` 的分工（2026-11-01 更新：bash 反向编排 pwsh）
+## 7. 执行器构成（2026-11-02：全 bash + python，pwsh 资产已退役）
 
-| 维度 | `scripts/test/win/mt.sh`（bash 默认入口） | `scripts/test/mt.ps1`（pwsh 入口，过渡期并存） |
+| 层 | 实现 | 说明 |
 |---|---|---|
-| 定位 | **默认编排层**：`preflight → 逐版本 build/env/launch/cases → report → stop → summary` | 原全流程测试台，行为契约的参照实现 |
-| 用例 / 断言执行 | 委托 pwsh（`mt_case.ps1` / `mt_report.ps1` / `mt_preflight.ps1`），打 `MT_DEPRECATED:` | 原生 |
-| 实机注入 | 不做任何 GUI 注入；launch 只走 AutoJS `/health` + `tools/call status` | `--channel autojs` 默认零 GUI 注入；`native` 才动 `Mt.Win32` |
-| 预算 / 心跳 / 看门狗 | P1 只打印数字，不掐表（P4 补 `watchdog`） | 有（`PhaseBudgets` / 10s 心跳 / 90s STALL） |
-| 版本表 | 四线齐全（含 `fabric-1.20.1`） | `Mt.Paths.psm1` 的 `$VERSIONS` 三线（缺 fabric） |
+| 编排 | `mt.sh` + `lib/phases.sh` | `preflight → 逐版本 build/env/launch/cases → report → stop → summary` |
+| 阶段 | `env.sh` / `launch.sh` / `stop.sh` / `lib/fabric.sh` | 可单跑；fabric 四阶段全是 bash 原生 |
+| 用例 / 断言 / 报告 / 预检 | `scripts/test/lib/mt_case.py`、`scripts/test/mt_assert.py`、`scripts/test/mt_report.py`、`scripts/test/mt_preflight.py`、`scripts/test/mt_inject.py` | 由 `phases.sh` 的 `mt_phase_py_file` 直接调用 |
+| 进程 / 窗口定位 | `scripts/test/lib/mt_ps.py` + `lib/common.sh` 的 `mt_pwsh` | 只依赖 PowerShell **解释器**做 CIM 查询（不是测试资产）；无解释器 ⇒ ERROR(2)，不静默降级 |
 
-**调用方向（单向）**：`mt.sh` → `pwsh …`。反向不成立 —— `mt.ps1` 不知道本目录存在，也不调用任何 `.sh`。
-淘汰节奏见 `docs/features/bash-first-test-flow-plan.md`：S0 默认路径不再经过 pwsh → S1 打 deprecated → S2 无默认引用 → S3 物理删除；当前基线 `grep -rn '\.ps1' scripts/test/win/ | wc -l` = 59 行（P4 收尾后才是 S2 验收时点）。
+**调用方向**：`mt.sh` → `python …`。没有任何一层再调用 `.ps1` / `.psm1`（可执行引用判据见退役登记 §5）。
+
+**能力变化（相对退役前的 pwsh 台）**：
+- `launch --channel native` 现记 `BLOCKED(11)`：GUI 窗口定位 / 合成输入原先由 `mt_launch.ps1` + `Mt.Win32.psm1` 提供。
+  底层键鼠通道已由 `scripts/test/mt_inject.py`（ctypes 直调 `user32.SendInput`）重建，是否接回 native 通道待裁决。
+- `vision` 类断言（截图比对）记 `BLOCKED(11)`：截图通道自检件 `selftest_shot_channel.ps1` 随退役删除。
+
+迁移/退役的完整口径、能力损失登记与等价性证据：`docs/features/devnext-pwsh-retirement-register.md`。
 
 ## 8. 本机实测记录（2026-11-01，Windows 原生 + git bash UCRT64）
 

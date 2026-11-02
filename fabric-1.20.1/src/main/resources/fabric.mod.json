@@ -41,8 +41,7 @@
     "fabric-api": "*",
     "fabric-data-attachment-api-v1": "*",
     "puzzleslib": "${puzzleslib_version_range}",
-    "starengine": "${lib_version_range}",
-    "geckolib": ">=4.8.4"
+    "starengine": "${lib_version_range}"
   },
   "recommends": {
     "trinkets": ">=${trinkets_version}",

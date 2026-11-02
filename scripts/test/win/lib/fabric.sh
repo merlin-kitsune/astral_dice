@@ -742,7 +742,7 @@ for path in cases:
             verdict, why = 'BLOCKED', '%s 需要 AutoJS（当前 AutoJS=%s；fabric 的 AutoJS 是 -PautojsTestMod=1 条件依赖）' % (op, autojs)
             break
         if op in ('screenshot', 'kubejs_reload'):
-            verdict, why = 'BLOCKED', '%s 在 bash 侧未实现（旧通道见 scripts/test/fabric/ft_inject.ps1）' % op
+            verdict, why = 'BLOCKED', '%s 在 bash/python 侧未实现（旧 pwsh 通道 ft_inject.ps1 已废弃删除；能力缺口登记见 docs/features/devnext-bash-testbed-decisions.md）' % op
             break
         if op == 'assert':
             res, detail = eval_assert(step, state)

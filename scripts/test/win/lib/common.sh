@@ -158,19 +158,26 @@ mt_winstop_err() { printf 'WIN_STOP: %s\n' "$*" >&2; }
 mt_purge()   { printf 'PURGE: %s\n' "$*"; }
 mt_detail()  { printf '  %s\n' "$*"; }
 
-# ── pwsh / 外部工具 ───────────────────────────────────────────────────────
-mt_pwsh() {
+# ── PowerShell 内核 / 外部工具 ────────────────────────────────────────────
+# 用途仅限「宿主能力」：CIM(Win32_Process) 取进程命令行做按线判线（bash 无等价物）。
+# ⚠️ 这不是测试资产——scripts/ 下 .ps1 已全部废弃，这里调的是 PowerShell **解释器**：
+#   ① pwsh 7（若装了） ② 系统自带 Windows PowerShell 5.1（Win10/11 恒有）。
+# MT_PWSH_EXE 可直接钉死解释器（反向判据「没有解释器必须 ERROR」用它自证）。
+mt_pwsh_exe() {
     local exe="${MT_PWSH_EXE:-}"
-    if [ -z "$exe" ]; then
-        if command -v pwsh >/dev/null 2>&1; then
-            exe="$(command -v pwsh)"
-        elif [ -x "/c/Program Files/PowerShell/7/pwsh.exe" ]; then
-            exe="/c/Program Files/PowerShell/7/pwsh.exe"
-        else
-            return 127
-        fi
-        MT_PWSH_EXE="$exe"
+    if [ -n "$exe" ]; then printf '%s' "$exe"; return 0; fi
+    if command -v pwsh >/dev/null 2>&1; then exe="$(command -v pwsh)"
+    elif [ -x "/c/Program Files/PowerShell/7/pwsh.exe" ]; then exe="/c/Program Files/PowerShell/7/pwsh.exe"
+    elif [ -x "/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe" ]; then exe="/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe"
+    else return 127
     fi
+    MT_PWSH_EXE="$exe"
+    printf '%s' "$exe"
+}
+
+mt_pwsh() {
+    local exe
+    exe="$(mt_pwsh_exe 2>/dev/null)" || return 127
     "$exe" -NoProfile -NonInteractive -Command "$1"
 }
 
