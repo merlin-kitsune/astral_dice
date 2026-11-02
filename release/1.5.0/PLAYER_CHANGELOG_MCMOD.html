@@ -292,6 +292,7 @@
 
 [h2=六、BUG 修复]
 <ul>
+<li><b>1.20.1 Fabric 新立牌提示框空白</b>：fabric 线的提示框处理只匹配 25 张立牌，其余三线匹配 32 张，因此后加的 alana / ame / deepseek / dorothy / jill / kangel / lingling 七张立牌此前只显示物品名，没有主动技能、被动技能与任何数值。现已全部补齐（含 KAngel 的粉丝计数与 Ame 的爱意层数计数），七张立牌的提示框均已恢复完整显示。</li>
 <li><b>1.20.1 启动直接失败（Forge）</b>：本体的 StarEngine 版本区间原先写成了星号，Maven 把它解析成空区间 ⇒containsVersion() 恒为 false、所有 1.20.1 玩家必现「Missing or unsupported mandatory dependencies」，现已改为显式区间。</li>
 <li><b>1.20.1 上 Jade 联动导致崩服</b>：Jade 的 mixin 处理器在 1.20.1 的 Mixin 0.8.5 下不能是 static（校验直接抛异常），已改回实例方法。</li>
 <li><b>Architectury tooltip 常量注入冲突崩溃</b>：改掉常量注入点，改为包裹绘制调用，装配工具链不再互相打架。</li>

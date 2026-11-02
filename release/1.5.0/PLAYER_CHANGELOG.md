@@ -331,6 +331,8 @@ The final stretch was four things: one guaranteed server crash fixed, the Abyss 
 
 ## Bug fixes
 
+- **Fabric 1.20.1: the seven new signs showed no tooltip**: the Fabric tooltip handler only matched 25 signs while the other three lines match 32, so alana / ame / deepseek / dorothy / jill / kangel / lingling rendered the item name alone - no active skill, no passive, no numbers. All seven now render their full tooltip again, including the KAngel fan counter and the Ame love-layer counter.
+
 - **1.20.1 refused to start (Forge)**: the StarEngine version range was written as a star, which Maven parses as an empty range ⇒
   `containsVersion()` was always false and every 1.20.1 player hit “Missing or unsupported mandatory dependencies”. Now an explicit range.
 - **Jade crash on 1.20.1**: Jade's mixin handlers cannot be `static` under Mixin 0.8.5 (validation throws), changed back to instance methods.
