@@ -37,8 +37,8 @@ MODITEMS_REL = 'src/main/java/com/merlinkitsune/astral_dice/item/ModItems.java'
 POOL_REL = 'src/main/resources/data/bountiful/bounty_pools/bountiful/'
 DECREE_REL = 'src/main/resources/data/bountiful/bounty_decrees/bountiful/astral.json'
 
-REG = re.compile(r'registerItem\("([a-z0-9_]+)"')
-RAR = re.compile(r'rarity\(AstralRarities\.([a-z]+)\(\)\)')
+REG = re.compile(r'(?:registerItem|ITEMS\.register)\("([a-z0-9_]+)"')
+RAR = re.compile(r'rarity\((?:[A-Za-z_][A-Za-z0-9_]*\.)*AstralRarities\.([a-z]+)\(\)\)')
 
 DICE = ['dice', 'golden_dice', 'glass_dice', 'netherrack_dice', 'diamond_dice',
         'emerald_dice', 'obsidian_dice', 'weird_dice', 'amethyst_dice',
