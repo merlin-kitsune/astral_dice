@@ -25,8 +25,9 @@
 
 通道事实（不静默放行）：
   · channel=autojs 的 inject_command ⇒ 真实现（三级探测链，见 mt_channel.py）
-  · channel=kubejs 的 inject_command / inject_key / inject_mouse / screenshot ⇒ BLOCKED：
-    native 注入与截图通道（mt_inject.ps1 / mt_capture.ps1）随 pwsh 删除，python 侧无 Win32 通道
+  · channel=kubejs 的 inject_command / inject_key / inject_mouse ⇒ 真实现（委托
+    scripts/test/mt_inject.py，即 ctypes 直调 user32.SendInput 的 python 通道）
+  · screenshot 两通道都 ⇒ BLOCKED：截图通道（mt_capture.ps1）随 pwsh 删除，python 侧无等价物
   · 产物 jar 缺失 ⇒ op=jar_stats 记 BLOCKED（工具链事实）；bytecode 断言按 pwsh 口径记 FAIL
 
 用法：
@@ -42,6 +43,7 @@ import glob
 import json
 import os
 import re
+import subprocess
 import sys
 import time
 from datetime import datetime
@@ -85,6 +87,20 @@ JAR_CRITERIA = set(JAR_MIN_MAP) | set(JAR_MAX_MAP) | {"embed_lib"}
 
 class Blocked(Exception):
     pass
+
+
+def safe_print(line: str) -> None:
+    """控制台编码（GBK/UTF-8）无关的打印：先按 utf-8 输出，失败再降级为可替换字符。
+
+    Windows 中文控制台默认 GBK，直接 print 含 '⇒' / '—' 等字符会抛
+    UnicodeEncodeError 并让整个用例以 rc=1 崩掉（2026-11-02 实测）。
+    """
+    try:
+        print(line, flush=True)
+    except UnicodeEncodeError:
+        enc = getattr(sys.stdout, "encoding", None) or "utf-8"
+        sys.stdout.write(line.encode(enc, "replace").decode(enc, "replace") + "\n")
+        sys.stdout.flush()
 
 
 # ── 期望值匹配 ────────────────────────────────────────────────────────────
@@ -356,7 +372,7 @@ class Runner:
 
     def say(self, line: str):
         if self.verbose:
-            print(line, flush=True)
+            safe_print(line)
 
     def _time_left(self) -> float:
         return self.deadline - time.monotonic()
@@ -415,10 +431,20 @@ class Runner:
             raise Blocked(
                 "screenshot 通道未移植：AutoJS Screenshot.grab（Mt.Channel）与 native mt_capture.ps1 均随 pwsh "
                 "删除，python 侧没有截图通道；vision 断言因此恒为 BLOCKED，需由截图/启动块补齐后再启用")
-        elif op in ("inject_key", "inject_mouse"):
-            raise Blocked(
-                f"{op} 通道未移植：pwsh 走 mt_inject.ps1（Win32 SendInput）/ AutoJS 键鼠 JS，"
-                f"python 侧无等价通道（需由启动块补齐）")
+        elif op == "inject_key":
+            argv = ["--key", str(step.get("key", ""))]
+            if step.get("hold_ms"):
+                argv += ["--hold-ms", str(int(step["hold_ms"]))]
+            if step.get("no_esc"):
+                argv.append("--no-esc")
+            self._native_inject("key", argv, "inject_key")
+        elif op == "inject_mouse":
+            argv = ["--button", str(step.get("button", "left"))]
+            if step.get("shift"):
+                argv.append("--shift")
+            if step.get("hold_ms"):
+                argv += ["--hold-ms", str(int(step["hold_ms"]))]
+            self._native_inject("mouse", argv, "inject_mouse")
         else:  # validate 已挡，防御性
             raise Blocked(f"未实现原语 {op}")
 
@@ -510,13 +536,40 @@ class Runner:
         self.records.append({"op": "jar_stats", "outcome": "NOTE", "detail": detail})
         self.say("      jar_stats: " + detail)
 
+    # ── native 注入通道（ctypes SendInput，实现在 scripts/test/mt_inject.py）──────
+    def _native_inject(self, sub: str, argv: list, label: str):
+        script = os.path.join(self.repo_root, "scripts", "test", "mt_inject.py")
+        if not os.path.exists(script):
+            raise Blocked(f"{label} 的 native 注入器缺失：{script}")
+        cmd = [sys.executable, script, sub] + list(argv)
+        if self.version:
+            cmd += ["--version", str(self.version)]
+        try:
+            proc = subprocess.run(cmd, cwd=self.repo_root, capture_output=True, text=True,
+                                  encoding="utf-8", errors="replace", timeout=180)
+        except OSError as exc:
+            raise Blocked(f"{label} native 注入器无法启动：{exc}")
+        blob = ((proc.stdout or "") + (proc.stderr or "")).strip()
+        lines = [ln for ln in blob.splitlines() if ln.strip()]
+        tail = " | ".join(lines[-2:])[:300] if lines else ""
+        outcome = {0: "PASS", 1: "FAIL"}.get(proc.returncode, "ERROR")
+        self.records.append({"op": label, "outcome": outcome, "detail": tail})
+        if proc.returncode == 0:
+            self.say("      " + label + ": PASS " + tail)
+            return
+        if proc.returncode == 2:
+            raise Blocked(f"{label} 无法判定（native 注入器 rc=2）：{tail[:200]}")
+        self.errors.append(f"{label} 失败（rc={proc.returncode}）：{tail[:200]}")
+
     # ── AutoJS 命令通道（三级探测链；pwsh Send-MtChannelCommand 等价）──────────────
     def _do_inject_command(self, step: dict):
         cmd = step.get("command", "")
         if self.doc.get("channel", "kubejs") != "autojs":
-            raise Blocked(
-                "inject_command 在 channel=kubejs 下走 native 注入通道（mt_inject.ps1 / Win32 SendInput），"
-                "该通道随 pwsh 测试资产删除，python 侧无等价实现（需由启动块补齐）")
+            argv = ["--command", str(cmd)]
+            if step.get("no_esc"):
+                argv.append("--no-esc")
+            self._native_inject("cmd", argv, "inject_command")
+            return
         res = self.injector.command(cmd, side=step.get("side", "server") or "server")
         status = res["status"]
         self.records.append({"op": "inject_command", "outcome": status.upper(), "detail": res["detail"]})
@@ -575,7 +628,20 @@ class Runner:
             src = a.get("source", "latest")
             offset, degraded, unclear = self._window_offset(src, scope)
             text = read_log(self.run_dir, src, offset)
-            hit = bool(re.search(pattern, text)) if pattern else False
+            # 行尾归一：read_log 保留原字节，latest.log 是 CRLF ⇒ 行尾 '\r' 会让 '(:|\n|$)' 的 $ 锚点失配
+            # （2026-11-02 实测：HOSTILE-TARGETS-1.20.1 的 AP_H1_HT 断言恒 FAIL，单跑 mt_assert 却 PASS）
+            text_norm = text.replace("\r\n", "\n").replace("\r", "\n")
+            hit = bool(re.search(pattern, text_norm)) if pattern else False
+            # 日志有 flush 延迟：log 断言首读未命中时做有限重读（命中即停）。
+            # 2026-11-02 实测：HOSTILE-TARGETS-1.20.1 的 AP_H1_HT 聚合行与同批其它行同毫秒写入，
+            # 但首条断言在读之前落盘未刷出 ⇒ 判 FAIL；隔几秒单跑同一断言即 PASS（纯时序）。
+            if t == "log" and pattern and not hit and not unclear:
+                for _ in range(4):
+                    time.sleep(0.4)
+                    text_norm = read_log(self.run_dir, src, offset).replace("\r\n", "\n").replace("\r", "\n")
+                    if re.search(pattern, text_norm):
+                        hit = True
+                        break
             ok = hit if t == "log" else not hit
             detail = (f"{t} /{pattern}/ source={a.get('source','latest')} window={scope} hit={hit}"
                       + (f"；实际起点 {offset}B" if offset else "")

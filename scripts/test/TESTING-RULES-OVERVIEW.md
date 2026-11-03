@@ -33,6 +33,13 @@
 | ~~从 WSL 驱动~~ | **不再支持**。历史三条事实（2026-10-13～17，只作知识）：① `/mnt/f`（9p）上 Gradle 慢 ≈275×，`:classes` 冷跑 9m22s、forge 冷管线连吃 3×570s 超时；② WSL interop 起的 pwsh 里 `& <exe>` **静默不执行**子进程（`$LASTEXITCODE` 不创建），曾把 `doImmediateRespawn` 闸门误报成 `MT_LAUNCH: ERROR`（D4-5）；③ WSL 默认不透传 Windows PATH |
 | git hook | 共享 `.git/hooks/{post-commit,post-checkout,post-merge,post-rewrite}` 按 `PATH pwsh` → `PATH pwsh.exe` → `/mnt/c/Program Files/PowerShell/7/pwsh.exe` 探测；Windows 侧命中第一条；全找不到**静默 `exit 0`**，从不让提交失败或刷屏 |
 
+### 2.2 存档基准：一律超平坦（2026-11-02 用户裁决）
+
+- **主世界必须是 `minecraft:flat`**；只能由专用服务端生成（`python scripts/test/mt_env.py world --version <v>`），禁止交互式建世界与非超平坦种子包。
+- 机器判据：`level.dat` 的 `Data.WorldGenSettings.dimensions."minecraft:overworld".generator.type == minecraft:flat`；下界/末地仍为 `noise`。
+- 取不到 generator 也拒绝（`MT_WORLD: BLOCKED`，退出码 11）—— 宁可报错也不能拿随机地形跑断言。
+
+---
 ## 3. 唯一入口与阶段
 
 ### 3.1 🚫 现行规则：禁用批量编排，改为纯手动下达命令（2026-09-27 用户裁决）

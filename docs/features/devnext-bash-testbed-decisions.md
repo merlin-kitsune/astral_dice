@@ -111,3 +111,159 @@ pwsh 侧定义：`scripts/test/lib/Mt.Phase.psm1:29-36`；bash 侧同名常量�
 **判据口径修订**：原定「`scripts/test/win/` 里 `.ps1`/`.psm1` 出现次数 = 0」不可达也不该达 —— 剩余 43 处（linux 侧 5 处）全是注释里的历史行号引用（「对齐 mt.ps1:783-790」这类），保留有溯源价值。改为 **0 可执行引用**：`pwsh -File`、`mt_phase_pwsh_file`、`mt_phase_deprecated` 三类命中数归 0。
 
 **残余依赖（不是测试资产）**：CIM 进程命令行判线仍要 PowerShell 解释器（bash 无等价物），口径见 `docs/features/devnext-pwsh-retirement-register.md` §3；若要彻底去掉，需 python + ctypes 读 PEB 或引入 psutil（本机当前**没有** psutil）。
+
+## 9. 实机回归（2026-11-02 深夜）暴露并修掉的五个测试台缺陷
+
+首轮「全线快速实机」按新 bash 流程跑，四线各暴露一类**测试台自身**问题（非产品缺陷），逐条落盘：
+
+| # | 症状 | 根因 | 修法 |
+|---|---|---|---|
+| 1 | kubejs 通道用例恒 BLOCKED：「native 注入通道随 pwsh 资产删除，python 侧无等价实现」 | `scripts/test/lib/mt_case.py` 的 `inject_key`/`inject_mouse`/`inject_command` 仍按旧口径 raise Blocked，而 `scripts/test/mt_inject.py`（ctypes 直调 user32.SendInput）早已存在 ⇒ **有实现没接线** | `mt_case.py` 新增 `_native_inject()`：`[sys.executable, mt_inject.py, <子命令>] + argv + --version <线>`；rc 0 PASS / rc 2 Blocked / 其它记 FAIL |
+| 2 | 接线后 cases 阶段直接崩 `UnicodeEncodeError: 'gbk' codec can't encode '⇒'` | `say()` 的 `print()` 在 GBK 控制台遇不可编码字符 | 新增 `safe_print()`：捕获 UnicodeEncodeError 后按 `sys.stdout.encoding` 用 `replace` 重编码 |
+| 3 | `AP_H1_HT:…(:\n|$)` 这类以 `$` 结尾的断言**恒 FAIL**，而单跑 `mt_assert.py log` 却 PASS | `mt_case.read_log()` 保留原字节，Windows `latest.log` 是 CRLF ⇒ 行尾 `\r` 让 `$` 失配（`mt_assert.py` 自己做了归一，所以两边不同） | `log`/`absent` 分支统一 `text.replace("\r\n","\n").replace("\r","\n")`；另加「未命中时 4×0.4s 重读」抗日志落盘延迟 |
+| 4 | 1.20.1 启动 `FileNotFoundException: logs\latest.log (拒绝访问)` | Gradle 自动供应的 `~/.gradle/jdks/eclipse_adoptium-17-amd64-windows.2` 带 `Mandatory Label\Low Mandatory Level`（沙箱残留）⇒ 其 java 进程是 Low IL，写不动 Medium 的 run 目录 | 已改用 `temp/p0/jdk17/jdk-17.0.20.1+1`；测试台新增 `MT_GRADLE_PRE_ARGS`（参数必须落在任务名**之前**，Gradle 只从命令行前段取 `-D`） |
+| 5 | fabric 启动 `NoClassDefFoundError: com/eliotlash/mclib/math/IValue` → GeckoLib `JsonUtil` 初始化失败 | GeckoLib fabric 变体把 mclib 作为 **nested jar**（`META-INF/jars/mclib-20.jar`）内嵌，而 Loom 重映射会剥掉 `fabric.mod.json` 的 `jars` 声明 ⇒ dev 环境缺 mclib | **仓库内已有专用工具**：`python tools/loom_embedded_jars.py --apply`（写入 `run/{server,client}/mods`，dry-run 会打出 `NEED mclib-20.jar id=com_eliotlash_mclib_mclib <- geckolib-…jar`）。P1 线新增 GeckoLib 之后必须重跑一次 |
+
+**操作提示**：`run/` 与 `fabric-1.20.1/run/` 都在 `.gitignore` 里，上述第 5 条的产物不随仓库走 ⇒ 换机器 / 清缓存后要重新 `--apply`。
+
+## 10 fabric-1.20.1 测试环境与另三线对齐（Sodium + Iris + 光影，2026-11-03）
+
+**用户口径**（m02714）：「为 fabric 1.20.1 补充测试环境缺失的模组（与其他线对齐，包括光影）」。
+
+### 10.1 缺口盘点（实读）
+
+| 线 | run/mods 关键件 | 光影包 |
+|---|---|---|
+| neoforge-1.21.1 | sodium 0.8.13 + iris 1.8.14-beta.1 + immediatelyfast 1.6.14 + kubejs/rhino + carpet + modernfix + ferritecore + collective + superflat | ✅ ComplementaryReimagined_r5.9.3 |
+| neoforge-26.1.2 | sodium 0.9.2 + iris 1.11.4 + kubejs/rhino + ferritecore + collective + superflat | ✅ 同上 |
+| forge-1.20.1 | 社区优化栈（无 Sodium/Iris，1.20.1 Forge 侧无对应产品） | ✅ 同上 |
+| **fabric-1.20.1（改前）** | 只有 8 个 `astral_embedded-*` + endec/gson/netty/fiber/puzzlesaccessapi | ❌ **无 shaderpacks/** |
+
+根因不是「没写依赖」而是「被开关关掉」：`fabric-1.20.1/build.gradle` 早有 sodium/indium，被
+`if (providers.gradleProperty('testSodium').getOrElse('true') != 'false')` 包住，而测试台长期用
+`MT_TEST_SODIUM=false` 透传 `-PtestSodium=false`——因为带着 Sodium 启动必崩（见 10.3 第 1 条）。
+
+### 10.2 落地清单
+
+1. `fabric-1.20.1/build.gradle`：在 kubejs/rhino 之后新增「渲染栈对齐」块 ——
+   `iris:s5eFLITc`（1.7.6+mc1.20.1，硬依赖 sodium ⇒ 与 testSodium 同进同出）、
+   `immediatelyfast:iwYUrQJO`（1.5.5）、`superflat-world-no-slimes:I6QPoepF`（1.20.1-3.7）、
+   `collective:SIqDV2gB`（1.20.1-8.73，superflat 的硬依赖）。
+2. `fabric-1.20.1/build.gradle` 末尾新增 **LWJGL 钉版**块：启用 Sodium 时把 `org.lwjgl:*` 的
+   `*runtimeClasspath` 解析版本钉到 **3.3.1**。
+3. 光影包投放改为**可复现**：新增 `tools/fetch_shaderpacks.py`（纯标准库）
+   —— `python tools/fetch_shaderpacks.py --run-dir fabric-1.20.1/run/client`，
+   校验 zip 内含 `shaders/`、已存在即幂等秒退；机器行 `SHADERPACK: OK|NEED|FAIL` +
+   `SHADERPACK_RESULT: OK|FAIL`。下载源 = Modrinth project `HVnmMxH1`（Complementary
+   Shaders - Reimagined）version `Bqen1mJX` = r5.9.3，**实测 553,397 B 且 sha256 与既有三线文件全等**
+   （`fed6c879e732cf7f…`）。
+4. `fabric-1.20.1/run/client/config/iris.properties`：`enableShaders=true`、
+   `shaderPack=ComplementaryReimagined_r5.9.3.zip`、`maxShadowRenderDistance=32`、`colorSpace=SRGB`
+   （照抄 `run/1.21.1/config/iris.properties` 口径）。
+
+### 10.3 带 Sodium 启动踩出来的三层坑（按顺序，缺一层都起不来）
+
+| # | 症状（日志原文） | 根因 | 修法 |
+|---|---|---|---|
+| 1 | `(Sodium-EarlyDriverScanner) The game failed to start because the currently active LWJGL version is not compatible` / `Installed version: 3.3.2-snapshot` / `Required version: 3.3.1` | Sodium 0.5.x 只认 LWJGL **3.3.1**（= 1.20.1 自带），而 Loom 的 dev runtime 带 **3.3.2-snapshot**；文件里旧的注释把方向写反了（写「需要 3.3.2」），照写的钉版反而必崩 | 钉版值改 **3.3.1**，并订正那段历史注释 |
+| 2 | `(ImmediatelyFast) Failed to initialize Iris compatibility …` → `NoClassDefFoundError: net/lenni0451/reflect/accessor/FieldAccessor`，进程死在 `Window.<init>` | ImmediatelyFast 1.5.x 的 Iris 兼容层要 `net.lenni0451:Reflect`，而 Iris **1.8.x 才内嵌**它；1.20.1 的 Iris 最高 1.7.6 ⇒ 没人提供 | `python tools/loom_embedded_jars.py --side client --apply`（会从 IF 的 nested jar 挖出 `Reflect-1.6.2.jar`，版本与 IF 自带一致；**不要**手写坐标，会抢类） |
+| 3 | `(Iris) loadExternalShaderpack` → `NoClassDefFoundError: org/anarres/cpp/PreprocessorListener` | Iris 1.7.6 把 `jcpp-1.4.14` / `antlr4-runtime-4.13.1` / `glsl-transformer-2.0.1` 作为 nested jar 内嵌，Loom dev 下同样拿不到 | 同上，一条 `--apply` 一起补齐（本次 `written=12`） |
+
+### 10.4 验收读数（2026-11-03 00:12–00:14 实跑）
+
+- `MT_LAUNCH: OK (25s)`、`LAUNCH: WORLD_READY`、`game_pid=38240`、AutoJS `health=ok`。
+- 加载栈实测：`sodium 0.5.13+mc1.20.1`、`iris 1.7.6+mc1.20.1`、`immediatelyfast 1.5.5+1.20.4`、
+  `collective 8.73`、`superflatworldnoslimes 3.7`、`architectury 9.2.14`、`kubejs`、`rhino`、
+  `fabric-api 0.92.12`，共 95 个 mod。
+- 光影生效证据：`[Render thread/INFO] (Iris) Using shaderpack: ComplementaryReimagined_r5.9.3.zip`
+  + `Iris.createPipeline` / `IrisRenderingPipeline.<init>` 实际执行（`CustomUniforms` 的告警是该光影包
+  自定义 uniform 在 Iris 1.7.6 下的已知静默降级，不影响管线建立）。
+- 用例回归（带渲染栈）：`BOOT-READY-fabric-1.20.1` = **PASS**、`JAR-ASSETS-fabric-1.20.1` = **PASS**
+  （`jar=astral_dice-26.4-SNAPSHOT.6+fabric_1.20.1.jar models=158 recipes=125 embed=0`）。
+- 收停：`MT_STOP: OK (0s)`，四线范围无残留 java。
+
+### 10.5 换机 / 清缓存后的最小重建顺序
+
+```bash
+python tools/loom_embedded_jars.py --side client --apply      # mclib / jcpp / antlr / glsl-transformer / Reflect …
+python tools/fetch_shaderpacks.py --run-dir fabric-1.20.1/run/client
+bash scripts/test/win/mt.sh --version fabric-1.20.1 --side client --phase launch   # 不再需要 MT_TEST_SODIUM=false
+```
+
+### 10.6 仍存的能力缺口
+
+- ~~`mt_capture.py capture --mode f2` 在 fabric 上定位不到游戏窗口~~ —— **2026-11-03 下午已修**（见 §11.3）。
+- ~~fabric 仍没有测试世界（`NO_WORLD`）~~ —— **2026-11-03 下午已修**（见 §11.1/§11.2，`testworld` 现为 `minecraft:flat`）。
+
+## 11 fabric-1.20.1 测试环境第二轮补齐（2026-11-03 下午，全部实跑验证）
+
+### 11.1 `mt_env world` 在 fabric 上生成的是 noise 世界（分侧 run 目录错位）
+
+- 症状：`python scripts/test/mt_env.py world --version fabric-1.20.1 --timeout 900` 起服务端后 12 分钟不判定完成，
+  且落盘世界是 `minecraft:noise`（违反本线超平坦基准）。
+- 根因：`scripts/test/mt_env.py cmd_world()` 用 `mc.get_paths(version)` 的单一 `run_dir`，
+  而 `scripts/test/lib/mt_compat.py:186 run_root()` 对 fabric **按 side 分目录**
+  （`fabric-1.20.1/run/client` vs `run/server`），`get_paths(version)` 默认 side=client
+  ⇒ `server.properties`（含 `level-type=flat` / `level-name=testworld`）写进了 client 目录，
+  服务端仍按自己的 `run/server/server.properties`（`level-type=minecraft:normal`）生成。
+- 修法：`cmd_world` 对 fabric 显式取 `srv = mc.get_paths(version, "server")`，写属性、盯
+  `srv.latest_log` 的 `Done (`、判崩溃报告、停进程、搬存档（`srv.server_world` → `paths.client_world`）
+  全部走服务端目录；另加「停进程后最多 24×2s 轮询确认退净 + 搬档前删 `session.lock` + 3 次重试 +
+  成功后 rmtree 源目录」，因为 runServer 会持有 `testworld/session.lock`（实测 `WinError 33`）。
+
+### 11.2 fabric 服务端进程杀不掉（stop 变成 no-op）
+
+- 症状：世界生成结束后 `runServer` 的 java 仍在（2.7 GB），`tasklist` 有残留、存档被锁。
+- 根因：`mt_compat.test_pipeline_process()` 的判据只认
+  「gradle-wrapper.jar + `:fabric-1.20.1:run`」或「`net.neoforged.devlaunch.Main`」；
+  fabric dev 服务端的命令行是 `net.fabricmc.devlaunchinjector.Main` + `.gradle/loom-cache/projects/.../launch.cfg`，
+  两条都不命中 ⇒ `stop_version_processes` 对该进程永远返回 0。
+- 修法：`process_markers()` 对 fabric 追加 `fabric.dli.env=<side>` 标记（side 收窄，不跨侧误杀），
+  且 `test_pipeline_process()` 认 `net.fabricmc.devlaunchinjector.Main`。
+
+### 11.3 fabric 窗口定位（截图取证）
+
+- 根因：`mt_capture.find_window()` 的回落分支要求 `version` 整串出现在窗口标题里，
+  而 fabric 线的窗口标题是 `Minecraft* 1.20.1`、`version` 是 `fabric-1.20.1` ⇒ 永不命中，
+  于是回落整屏抓图（抓到桌面）。
+- 修法：回落判据改用「版本尾段」（`fabric-1.20.1` → `1.20.1`），仍只在**唯一候选**时接受。
+- 验收：`python scripts/test/mt_capture.py capture --version fabric-1.20.1 --tag mods-verify --mode f2`
+  ⇒ `MT_CAPTURE: OK — 2026-11-03_13.45.21.png … attempt=1`（1920×1080，画面确为游戏内超平坦世界）。
+
+### 11.4 测试环境模组补齐（用户 2026-11-03 要求）
+
+`fabric-1.20.1/build.gradle` 新增（全部 `modRuntimeOnly`，不进发货产物）：
+
+| 模组 | 坐标（Modrinth version id） | 备注 |
+|---|---|---|
+| ModMenu 7.2.2 | `maven.modrinth:modmenu:lEkperf6` | 无声明依赖 |
+| Carpet-Fixes 1.20-1.16.1 | `maven.modrinth:carpet-fixes:NBCnBGZj` | 硬依赖 `carpet`（已在） |
+| Debugify 1.20.1+2.0 | `maven.modrinth:debugify:6XDJoCks` | 硬依赖 `yacl` |
+| YACL 3.1.0+1.20 | `maven.modrinth:yacl:CgwTUAR2` | 按 Debugify 声明值钉版（不追 3.6.x） |
+| conditional-mixin 0.6.5 | `com.github.Fallen-Breath.conditional-mixin:conditional-mixin-fabric:0.6.5` | Carpet-Fixes 的 `conditional-mixin: "*"` 硬依赖；不在 Modrinth，走 `https://maven.fallenbreath.me/jitpack`（repositories 已加） |
+
+三处坑（都实测踩过）：
+
+1. **conditional-mixin 的聚合坐标不能用**：`com.github.Fallen-Breath:conditional-mixin:0.6.5` 的 POM 同时依赖
+   common/fabric/forge/neoforge 四个子件，Gradle 按 variant 选中 `conditional-mixin-neoforge`
+   （class 版本 65 = Java 21）⇒ 本线 JDK17 报
+   `only compatible with JVM runtime version 21 or newer`。必须写 **fabric 子工件**（class 版本 52，自带 `fabric.mod.json`）。
+2. **Debugify 缺 yacl 会在 Loader Resolution 阶段硬拒**（`mod resolution failed`），不是运行时才炸。
+3. **Carpet-Fixes 缺 conditional-mixin 症状**：`模组 'Carpet Fixes' (carpet-fixes) 1.20-1.16.1 需要 conditional-mixin 的 任意版本，但没有安装它`。
+
+Indium（用户点名要求的 Sodium ↔ Fabric Rendering API 兼容层）**本就在** `build.gradle:168`（testSodium 块内），
+本轮在启动日志里复验到 `indium 1.0.36+mc1.20.1` 实际加载。
+
+### 11.5 验收读数（2026-11-03 13:43–13:46 实跑）
+
+- 世界：`python temp/p0/world_gen_probe.py` ⇒ 四线全 FLAT，`WORLD_GEN_PROBE_RESULT: OK`（fabric 由 NOISE 转 FLAT）。
+- 启动：`bash scripts/test/win/launch.sh --version fabric-1.20.1 --side client --quickplay testworld --enable-autojs`
+  ⇒ `LAUNCH: READY` + `LAUNCH: WORLD_READY`（AutoJS client available=true，game_pid=22024）。
+- mod 清单：`Loading 104 mods`，其中 `carpet 1.4.112+v230608` / `carpet-fixes 1.20-1.16.1` /
+  `conditional-mixin 0.6.5` / `debugify 1.20.1+2.0` / `indium 1.0.36+mc1.20.1` / `modmenu 7.2.2`
+  （仅剩 EMI/REI/amecs 之类**未安装**的可选 mixin 目标 ClassNotFound 警告，属正常）。
+- 用例：`BOOT-READY-fabric-1.20.1 = OK`、`JAR-ASSETS-fabric-1.20.1 = OK`（注意 `--case` 要传**完整相对路径**，
+  只传用例名会被当文件名 ⇒ `No such file or directory`）。
+- 收停：`WIN_STOP: OK — 四线范围内无本 repo 的 Minecraft 客户端`。
+
+

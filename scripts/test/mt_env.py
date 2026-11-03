@@ -301,6 +301,89 @@ def level_data_version(level_dat):
     return int(entry[1])
 
 
+GEN_FLAT = "minecraft:flat"
+
+
+def world_generator(level_dat):
+    """返回主世界 generator type（取不到返回 ""）。
+
+    规则来源：2026-11-02 用户裁决「建立存档一律使用超平坦」。
+    路径：level.dat -> Data.WorldGenSettings.dimensions."minecraft:overworld".generator.type
+    下界/末地仍是 minecraft:noise，属正常，只看主世界。
+    """
+    try:
+        tag, _name, payload = nbt_read(level_dat)
+    except (OSError, EOFError, NbtError, struct.error):
+        return ""
+    if tag != TAG_COMPOUND or not isinstance(payload, dict):
+        return ""
+    data = payload.get("Data")
+    if not isinstance(data, (tuple, list)) or len(data) != 2 or not isinstance(data[1], dict):
+        return ""
+    settings = data[1].get("WorldGenSettings")
+    if not isinstance(settings, (tuple, list)) or len(settings) != 2 or not isinstance(settings[1], dict):
+        return ""
+    dims = settings[1].get("dimensions")
+    if not isinstance(dims, (tuple, list)) or len(dims) != 2 or not isinstance(dims[1], dict):
+        return ""
+    overworld = dims[1].get("minecraft:overworld")
+    if not isinstance(overworld, (tuple, list)) or len(overworld) != 2 or not isinstance(overworld[1], dict):
+        return ""
+    gen = overworld[1].get("generator")
+    if not isinstance(gen, (tuple, list)) or len(gen) != 2:
+        return ""
+    if isinstance(gen[1], str):
+        return gen[1]
+    if not isinstance(gen[1], dict):
+        return ""
+    entry = gen[1].get("type")
+    if not isinstance(entry, (tuple, list)) or len(entry) != 2 or not isinstance(entry[1], str):
+        return ""
+    return entry[1]
+
+
+def server_properties_level_type(world_dir):
+    """26.x 回退判据：从 <run>/server.properties 读 level-type（取不到返回 ""）。
+
+    背景（2026-11-02 实测）：26.1.2 的 level.dat **不再存 WorldGenSettings**
+    （19 个键里没有任何 world/gen/dim 相关键，主世界数据整体搬到
+    dimensions/<dim>/ 下），因此老路径必然「无法判定」。而 mt_env 自己生成世界时
+    会写 server.properties: level-type=flat ⇒ 用该值作为 26.x 的判据。
+    """
+    run_dir = os.path.dirname(os.path.dirname(os.path.abspath(world_dir)))
+    prop = os.path.join(run_dir, "server.properties")
+    try:
+        with open(prop, "r", encoding="utf-8", errors="replace") as fh:
+            for line in fh:
+                line = line.strip()
+                if line.startswith("level-type="):
+                    return line.split("=", 1)[1].strip()
+    except OSError:
+        return ""
+    return ""
+
+
+def require_flat_world(level_dat, source):
+    """超平坦规范闸门：返回 "" 表示合规，否则返回要打的 BLOCKED 行。"""
+    gen = world_generator(level_dat)
+    if gen == GEN_FLAT:
+        return ""
+    if not gen:
+        # 26.x：level.dat 无 WorldGenSettings ⇒ 回退到 server.properties 的 level-type
+        lt = server_properties_level_type(os.path.dirname(os.path.abspath(level_dat)))
+        if lt in ("flat", GEN_FLAT):
+            _wd = os.path.dirname(os.path.abspath(level_dat))
+            _run = os.path.dirname(os.path.dirname(_wd))
+            print("MT_WORLD: 说明 — 26.x 的 level.dat 不含 WorldGenSettings，"
+                  "按 " + os.path.join(os.path.basename(_run), "server.properties")
+                  + " 的 level-type=" + lt + " 判定为超平坦")
+            return ""
+    shown = gen if gen else "无法判定（level.dat 里没有 generator.type）"
+    return ("MT_WORLD: BLOCKED — " + source + " 的主世界 generator=" + shown
+            + "，不符合「建立存档一律使用超平坦」规范（2026-11-02 用户裁决）；"
+            + "请用 python scripts/test/mt_env.py world --version <v> 由专用服务端重建")
+
+
 def write_rule_keep_inventory(world_dir, level_dat):
     """返回 (ok, 原因)。幂等：已经是 1b 就不重写（避免 mtime 抖动与半写文件）。"""
     if not os.path.isdir(world_dir):
@@ -760,6 +843,9 @@ def _read_text(path):
 
 def cmd_world(version, seed, timeout):
     paths = mc.get_paths(version)
+    # fabric 的 run 目录按 client / server 分侧（mt_compat.run_root），而 get_paths 默认 side=client：
+    # 服务端生成世界必须用 side=server 的目录写 server.properties、盯日志、搬存档。
+    srv = mc.get_paths(version, "server") if version == "fabric-1.20.1" else paths
     if seed:
         if not _restore_seed(version, paths):
             mc.write_mt_line("MT_WORLD: BLOCKED — 未找到种子包 resources/testworld-seed-"
@@ -776,8 +862,12 @@ def cmd_world(version, seed, timeout):
         if err:
             mc.write_mt_line("MT_WORLD: BLOCKED — " + err)
             return EXIT_BLOCKED
-        mc.write_mt_line("MT_WORLD: OK — 种子快恢复（allowCommands=1, keepInventory=true） "
-                         + paths.client_world)
+        bad = require_flat_world(level_dat, "种子包 testworld-seed-" + version + ".zip 恢复出的世界")
+        if bad:
+            mc.write_mt_line(bad)
+            return EXIT_BLOCKED
+        mc.write_mt_line("MT_WORLD: OK — 种子快恢复（allowCommands=1, keepInventory=true, "
+                         "generator=" + GEN_FLAT + "） " + paths.client_world)
         return EXIT_PASS
 
     shutil.rmtree(paths.client_world, ignore_errors=True)
@@ -787,14 +877,14 @@ def cmd_world(version, seed, timeout):
     except OSError as exc:
         mc.write_mt_error_line("创建 saves 目录失败：" + str(exc))
         return EXIT_ERROR
-    if os.path.isfile(paths.latest_log):
+    if os.path.isfile(srv.latest_log):
         try:
-            os.remove(paths.latest_log)
+            os.remove(srv.latest_log)
         except OSError:
             pass
     try:
-        os.makedirs(paths.run_dir, exist_ok=True)
-        with open(os.path.join(paths.run_dir, "server.properties"), "w",
+        os.makedirs(srv.run_dir, exist_ok=True)
+        with open(os.path.join(srv.run_dir, "server.properties"), "w",
                   encoding="ascii", errors="replace", newline="\n") as fh:
             fh.write("\n".join(SERVER_PROPS) + "\n")
     except OSError as exc:
@@ -802,8 +892,8 @@ def cmd_world(version, seed, timeout):
         return EXIT_ERROR
     set_pause_on_lost_focus(paths, False)
 
-    moved = _move_aside_client_mods(paths)
-    baseline = _crash_reports(paths)
+    moved = _move_aside_client_mods(srv)
+    baseline = _crash_reports(srv)
     cmd = _server_cmd(paths, paths.task_server)
     if not cmd:
         _restore_moved(moved)
@@ -811,7 +901,7 @@ def cmd_world(version, seed, timeout):
         return EXIT_BLOCKED
     done = False
     crashed = ""
-    log_path = os.path.join(paths.run_dir, "mt_server_gen.log")
+    log_path = os.path.join(srv.run_dir, "mt_server_gen.log")
     proc = None
     try:
         log_handle = open(log_path, "wb")
@@ -829,12 +919,12 @@ def cmd_world(version, seed, timeout):
         deadline = time.time() + max(1, timeout)
         while time.time() < deadline:
             time.sleep(5)
-            if os.path.isfile(paths.latest_log):
-                text = _read_text(paths.latest_log)
+            if os.path.isfile(srv.latest_log):
+                text = _read_text(srv.latest_log)
                 if "Done (" in text:
                     done = True
                     break
-            fresh = _crash_reports(paths) - baseline
+            fresh = _crash_reports(srv) - baseline
             if fresh:
                 crashed = sorted(fresh)[0]
                 mc.write_mt_line("MT_WORLD: FAIL — 生成世界期间产生崩溃报告（" + crashed + "）")
@@ -843,16 +933,34 @@ def cmd_world(version, seed, timeout):
                 break
     finally:
         log_handle.close()
-        mc.stop_version_processes(paths, quiet=True)
+        # 服务端退出要等一下再搬档：runServer 的 java 进程会持有 testworld/session.lock，
+        # 未退净就 move 会撞 WinError 33（2026-11-03 实测），且异步退出时 stop 可能一次命不中。
+        for _ in range(24):
+            if not mc.stop_version_processes(srv, quiet=True):
+                break
+            time.sleep(2)
         _restore_moved(moved)
         time.sleep(3)
 
-    if os.path.isdir(paths.server_world):
+    if os.path.isdir(srv.server_world):
         shutil.rmtree(paths.client_world, ignore_errors=True)
+        # session.lock 是 Windows 上的独占锁残留：搬档前先摘掉，避免整个目录 move 失败。
         try:
-            shutil.move(paths.server_world, paths.client_world)
-        except OSError as exc:
-            mc.write_mt_warn("MT_WARN: 移动服务端存档失败：" + str(exc))
+            os.remove(os.path.join(srv.server_world, "session.lock"))
+        except OSError:
+            pass
+        moved_ok = False
+        for attempt in range(3):
+            try:
+                shutil.move(srv.server_world, paths.client_world)
+                moved_ok = True
+                break
+            except OSError as exc:
+                if attempt == 2:
+                    mc.write_mt_warn("MT_WARN: 移动服务端存档失败：" + str(exc))
+                time.sleep(3)
+        if moved_ok:
+            shutil.rmtree(srv.server_world, ignore_errors=True)
     level_dat = os.path.join(paths.client_world, "level.dat")
     if not done or not os.path.isfile(level_dat):
         if crashed:
@@ -866,8 +974,12 @@ def cmd_world(version, seed, timeout):
     if err:
         mc.write_mt_line("MT_WORLD: BLOCKED — " + err)
         return EXIT_BLOCKED
-    mc.write_mt_line("MT_WORLD: OK — 世界重建（allowCommands=1, keepInventory=true） "
-                     + paths.client_world)
+    bad = require_flat_world(level_dat, "服务端生成的世界")
+    if bad:
+        mc.write_mt_line(bad)
+        return EXIT_BLOCKED
+    mc.write_mt_line("MT_WORLD: OK — 世界重建（allowCommands=1, keepInventory=true, "
+                     "generator=" + GEN_FLAT + "） " + paths.client_world)
     return EXIT_PASS
 
 

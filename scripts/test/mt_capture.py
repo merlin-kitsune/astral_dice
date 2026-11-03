@@ -245,7 +245,15 @@ def find_window(version):
     if len(matched) == 1:
         return matched[0][0]
     if not matched and len(candidates) == 1:
-        if version.lower() in candidates[0][2].lower():
+        # 窗口标题里只有**游戏版本**，没有整条线的名字：
+        # fabric 线的窗口标题是 "Minecraft* 1.20.1"，而 version 是 "fabric-1.20.1"，
+        # 直接比全串永远命中不了（2026-11-03 实测：mt_capture 每次都回落整屏抓图）。
+        # 故回落判据用「版本尾段」（fabric-1.20.1 → 1.20.1），仍只在唯一候选时使用。
+        title = candidates[0][2].lower()
+        tokens = [version.lower()]
+        if "-" in version:
+            tokens.append(version.rsplit("-", 1)[-1].lower())
+        if any(t and t in title for t in tokens):
             return candidates[0][0]
     return 0
 

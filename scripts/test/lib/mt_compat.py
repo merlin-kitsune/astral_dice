@@ -240,10 +240,15 @@ def get_paths(version, side=""):
 
 def process_markers(paths):
     if paths.version == "fabric-1.20.1":
+        # fabric 的 dev 进程命令行里既没有 ":fabric-1.20.1:" 也常常没有 run/<side> 路径
+        # （Loom 用 .gradle/loom-cache/projects/<sub>/launch.cfg）；
+        # side=server 的 java 只有 "fabric.dli.env=server"，故按 side 追加 dli 标记，
+        # 否则 stop 命不中、runServer 会一直活着锁住 testworld/session.lock（2026-11-03 实测）。
         return [
             ":" + paths.subproject + ":",
             SUBPROJECT[paths.version] + BSL + "run" + BSL + paths.side,
             paths.run_dir,
+            "fabric.dli.env=" + paths.side,
         ]
     return [":" + paths.subproject + ":", "run" + BSL + paths.version, paths.run_dir]
 
@@ -652,6 +657,28 @@ def _command_line_win32(pid):
         kernel32.CloseHandle(ctypes.c_void_p(handle))
 
 
+def _java_rows_via_mt_ps():
+    """降级来源：mt_ps.java_rows()（wmic CSV → PowerShell CIM 取命令行）。
+
+    Toolhelp 快照本身拿不到命令行；本机实测 _command_line_win32 对**所有** java 进程
+    都返回 ""（空），于是 test_pipeline_process 的证据判定恒 False ⇒
+    stop_version_processes 静默变成 no-op（世界生成后服务端残留、端口被占、
+    下一条线的 launch 被 BLOCKED）。所以命令行全空时必须改走这里。
+    """
+    try:
+        from . import mt_ps  # 延迟导入，避免与 mt_compat 初始化顺序耦合
+        rows = mt_ps.java_rows()
+    except Exception:
+        return []
+    out = []
+    for row in rows:
+        try:
+            out.append({"pid": int(row["pid"]), "command_line": row.get("cmdline") or ""})
+        except (KeyError, TypeError, ValueError):
+            continue
+    return out
+
+
 def list_java_processes():
     """Get-JavaProcesses：java.exe 的 [{pid, command_line}]。
 
@@ -699,6 +726,10 @@ def list_java_processes():
                         }
                     )
                 ok = kernel32.Process32NextW(ctypes.c_void_p(snapshot), ctypes.byref(entry))
+            if not any(str(row.get("command_line") or "") for row in found):
+                alt = _java_rows_via_mt_ps()
+                if any(str(row.get("command_line") or "") for row in alt):
+                    return alt
             return found
         finally:
             kernel32.CloseHandle(ctypes.c_void_p(snapshot))
@@ -749,6 +780,12 @@ def test_pipeline_process(paths, pid, command_line):
     if "gradle-wrapper.jar" in command_line and (":" + paths.subproject + ":run") in command_line:
         return True
     if "net.neoforged.devlaunch.Main" in command_line:
+        return True
+    # fabric 的 dev runServer 走 devlaunchinjector（既没有 gradle-wrapper.jar 的 run 任务标记，
+    # 也不是 neoforge devlaunch）⇒ 上面两条都落空，stop_version_processes 对 fabric 服务端
+    # 静默变成 no-op（2026-11-03 实测：世界生成完成后 runServer 仍活着，占端口 + 锁存档）。
+    # 这里的 evidence 判定已经按 side 收窄（fabric.dli.env=<side>），不会跨侧误杀。
+    if "net.fabricmc.devlaunchinjector.Main" in command_line:
         return True
     return False
 

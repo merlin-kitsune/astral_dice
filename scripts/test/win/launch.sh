@@ -75,6 +75,11 @@ usage() {
                                  但拿不到 PID，且本机沙箱下实测 start/b 会阻塞）
   --dry-run         只打印将执行的命令与判定依据，不启动任何进程
 
+环境变量（仅 fabric-1.20.1 有意义）：
+  MT_TEST_SODIUM=false  透传 -PtestSodium=false（fabric 的 Sodium/Iris 是条件依赖，
+                        版本不匹配会让客户端崩；手工验证时把它关掉，见
+                        docs/handover-1.5.0-main.md §6-7）。未设置 = 不传，行为不变。
+
 就绪：AutoJS health=ok + status(client available=true) → READY；
       日志 marker 命中 → 另打 WORLD_READY；无 AutoJS jar 或 MT_ALLOW_NO_AUTOJS=1 时 marker 可兜底。
 USAGE
@@ -245,15 +250,34 @@ else
     cim_ok=0
 fi
 
+# 额外 Gradle 前置参数（MT_GRADLE_PRE_ARGS，形如 -Dorg.gradle.java.installations.paths=...）：
+# 必须落在任务名之前（Gradle 只从命令行前段取 -D）。用于规避本机环境问题——例如
+# 缓存里某个 auto-detect 到的 JDK 带 Low 完整性标签，用它拉起的游戏进程写不了 run/<v>/logs
+# （2026-11-02 实测：1.20.1 报 logs\latest.log 拒绝访问，1.21.1 正常）。
+PRE_ARGS=""
+[ -n "${MT_GRADLE_PRE_ARGS:-}" ] && PRE_ARGS="${MT_GRADLE_PRE_ARGS} "
 CMD_DESC=""
 if [ -n "$QUICKPLAY" ]; then
-    CMD_DESC="gradlew.bat :$PROJECT:$Gradle_TASK --console=plain -Pquickplay=$QUICKPLAY"
+    CMD_DESC="gradlew.bat ${PRE_ARGS}:$PROJECT:$Gradle_TASK --console=plain -Pquickplay=$QUICKPLAY"
 else
-    CMD_DESC="gradlew.bat :$PROJECT:$Gradle_TASK --console=plain"
+    CMD_DESC="gradlew.bat ${PRE_ARGS}:$PROJECT:$Gradle_TASK --console=plain"
 fi
 # fabric 默认**不带** -PautojsTestMod（AutoJS 是条件依赖，默认注入通道是 RCON）；
 # 只有显式 --enable-autojs 时才追加；其它三线 AJ_ARG 恒为空 ⇒ 命令逐字节不变。
 [ -n "$AJ_ARG" ] && CMD_DESC="$CMD_DESC $AJ_ARG"
+# fabric 条件依赖里的 Sodium/Iris：版本不匹配会崩客户端，手工验证时用 MT_TEST_SODIUM=false 关掉。
+# 其它三线传了必报错（那三线没有 testSodium 属性，静默忽略会让人误以为生效）。
+SODIUM_ARG=""
+if [ -n "${MT_TEST_SODIUM:-}" ]; then
+    if ! mt_is_fabric "$VERSION"; then
+        echo "用法错误：MT_TEST_SODIUM 只对 fabric-1.20.1 生效（$VERSION 没有 testSodium 属性）" >&2
+        exit 2
+    fi
+    case "$MT_TEST_SODIUM" in
+        true|false) SODIUM_ARG="-PtestSodium=$MT_TEST_SODIUM"; CMD_DESC="$CMD_DESC $SODIUM_ARG" ;;
+        *) echo "用法错误：MT_TEST_SODIUM 只接受 true | false（收到：$MT_TEST_SODIUM）" >&2; exit 2 ;;
+    esac
+fi
 TS="$(date +%Y%m%d-%H%M%S)"
 LOG="$LOG_DIR/$VERSION-$TS.log"
 
@@ -272,6 +296,7 @@ if [ "$DRY" = 1 ]; then
     mt_detail "timeout      = ${TIMEOUT}s（等 AutoJS 客户端侧 READY）"
     mt_detail "wait_world   = ${WAIT_WORLD}s（READY 后额外等世界 marker，0=不等）"
     mt_detail "autojs_jar   = ${aj_n} 个${aj_names}"
+    mt_detail "test_sodium  = ${SODIUM_ARG:-<未传>}（fabric 条件依赖 Sodium/Iris 的开关）"
     mt_detail "autojs_line  = autojs_deployed=$autojs_deployed / probe_enabled=$probe_enabled / marker_fallback=$marker_fallback / fabric_injected=$fab_aj_injected（MT_ALLOW_NO_AUTOJS=$allow_no_autojs；判据：$MODS_LABEL 里 AutoJS jar 是否在位$( [ "$fab_aj_injected" = 1 ] && printf '，或 fabric 已由 -PautojsTestMod=1 注入' )）"
     mt_detail "ready_by     = $ready_by"
     mt_detail "world_marker = $(launch_marker_name)"

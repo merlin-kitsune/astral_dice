@@ -125,6 +125,29 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --phase <p> --version <v>
 
 ---
 
+### 3.9 存档基准：一律超平坦（2026-11-02 用户裁决，强制）
+
+> **规则原文**：「修订测试规范：建立存档一律使用超平坦，避免随机种子对地形的影响」。
+
+| 项 | 规定 |
+|---|---|
+| 主世界 generator | **必须是 `minecraft:flat`**；`minecraft:noise`（默认随机地形）一律不合规 |
+| 生成方式 | 只能由**专用服务端**生成：`python scripts/test/mt_env.py world --version <v>`（内部写 `server.properties` 的 `level-type=flat` + `generator-settings=`，生成后把服务端世界搬进 `run/<v>/saves/testworld`） |
+| 禁止 | 交互式建世界、`--quickplay` 隐式建世界、从非超平坦种子包恢复 |
+| 种子包 | `--seed` 分支也必须是超平坦；不是就拒绝（BLOCKED），不得「先跑起来再说」 |
+| 机器判据 | 读 `saves/testworld/level.dat` 的 `Data.WorldGenSettings.dimensions."minecraft:overworld".generator.type`，面上就要是 `minecraft:flat`；下界 / 末地仍为 `minecraft:noise`（正常）。**26.x 例外**（2026-11-02 实测）：26.1.2 的 `level.dat` 不再保存 `WorldGenSettings`（19 个键里没有任何 world/gen/dim 键，主世界数据整体迁到 `dimensions/<dim>/`）⇒ 回退读 `<run>/server.properties` 的 `level-type`，为 `flat` / `minecraft:flat` 即判合规并打印说明行 |
+| fail-closed | 取不到 generator（结构变了 / 解析失败）一律当作「不合规」报 `MT_WORLD: BLOCKED`（退出码 11），**不得默认通过** |
+
+为什么（实测根因）2026-11-02 排查：`run/1.21.1/saves/testworld/level.dat` 里 `minecraft:noise`×3 / `minecraft:flat`×0 —— 那是交互式建出来的随机地形；而 `run/1.20.1` 的是 `flat`×1 + `noise`×2（下界/末地），合规。地形不同会直接污染落地/距离/实体刷新类断言（`self`、`bolt_delta`、落点、装备架场）。
+
+核验命令（只读）：
+```bash
+python scripts/test/mt_env.py world --version <v>          # 重建（服务端生成超平坦）
+python temp/p0/world_gen_probe.py run/<v>/saves/testworld # 只读打印 generator.type
+```
+
+---
+
 ## 4. 测试顺序与门控
 
 | 顺序 | 版本 | 子项目 | 执行条件 | 结论要求 |

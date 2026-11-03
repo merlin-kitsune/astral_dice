@@ -567,7 +567,10 @@ mt_aj_probe() {
         2>/dev/null || true)"
     code="$(printf '%s' "$resp" | sed -n 's/.*__MT_CODE__\([0-9][0-9][0-9]\).*/\1/p' | tail -n 1)"
     [ "${code:-000}" = "200" ] || return 1
-    body="$(printf '%s' "$resp" | mt_strip_headers)"
+    # curl 的 -w 尾巴会跟在响应正文后面（"__MT_CODE__200"），mt_strip_headers 只去
+    # HTTP 头不去它 ⇒ 不剥掉的话 json.loads 必定失败，probe 恒 return 1（2026-11-02 实测：
+    # launch 就绪判据永远拿不到 AutoJS，一直等到 600s 超时 exit 12）。
+    body="$(printf '%s' "$resp" | mt_strip_headers | sed '/^__MT_CODE__[0-9][0-9][0-9]\r*$/d')"
     if detail="$(printf '%s' "$body" | mt_aj_parse_status -)"; then
         printf 'health=%s %s\n' "$hb" "$detail"
         return 0
