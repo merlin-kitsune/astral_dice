@@ -51,6 +51,9 @@ repositories {
     // ⚠️ 仅 **编译期** 需要:Trinkets 3.7.2 的 TrinketComponent 继承 CCA 的 ComponentV3
     //    (javap 实证),javac 解析 TrinketsApi 签名时必须能加载 CCA 类型。见 dependencies 注释。
     maven { url 'https://maven.ladysnake.org/releases' }
+    // conditional-mixin（Carpet-Fixes 1.20 的**硬依赖** mod id `conditional-mixin`）不在 Modrinth，
+    //   由上游作者 Fallen-Breath 的 jitpack 代理 maven 提供；只给 dev 运行期的 Carpet-Fixes 用。
+    maven { url 'https://maven.fallenbreath.me/jitpack' }
 
     // 依赖解析硬约束:模组工件只允许来自 Modrinth Maven(与另三线「只走 curse/modrinth」的口径一致)
     exclusiveContent {
@@ -147,13 +150,22 @@ dependencies {
     // ── Patchouli(Fabric 版;手册是本模组的核心引导,首个版本即纳入) ─────────
     modImplementation "maven.modrinth:patchouli:nm6fiGRx"
 
+    // ── GeckoLib(Fabric 版;动画实体 sykestentacle 的硬前置) ────────────────
+    // ⚠️ 坐标必须用 **Modrinth version id**(SD2lOScS = geckolib-fabric-1.20.1-4.8.4),
+    //    不能写版本号 "4.8.4" —— 那样会解析到同一版本号下的**别的加载器变体**
+    //    (实测 neoforge 侧写 4.9.3 会拿到 fabric jar,故那条先例也钉 version id)。
+    //    写进 fabric.mod.json 的 depends(>=4.8.4)⇒ 是硬前置,不进 JarJar。
+    modImplementation "maven.modrinth:geckolib:SD2lOScS"
+
     // ── 运行时/测试环境依赖(仅 dev runtime;不进发货产物) ──────────────────
     // 用户要求的测试环境三件套 + 渲染栈
-    // ⚠️ Sodium 0.5.x 在 **dev 环境**要求 LWJGL 3.3.2(1.20.1 自带 3.3.1),
-    //    否则客户端启动即 "The game failed to start because the currently active
-    //    LWJGL version is not compatible"(实测 2026-09-29)。要跑 Sodium 需另加
-    //    resolutionStrategy 强制 org.lwjgl:*:3.3.2;本轮只验证本模组自身时用
-    //    `-PtestSodium=false` 临时排除,避免为了跑一次 GUI 验证去动 LWJGL。
+    // ⚠️ Sodium 0.5.x 在 **dev 环境**要求 LWJGL **3.3.1**(= 1.20.1 自带版本),
+    //    而 Loom 的 dev runtime 会带进来 **3.3.2-snapshot**,于是客户端启动即
+    //    "The game failed to start because the currently active LWJGL version is
+    //    not compatible"(2026-09-29 首见,2026-11-03 实测日志
+    //    `Installed version: 3.3.2-snapshot / Required version: 3.3.1`)。
+    //    要跑 Sodium 必须把 org.lwjgl:* 钉回 3.3.1(文件末尾有对应的
+    //    resolutionStrategy 块);只想验证本模组自身时仍可用 `-PtestSodium=false`。
     if (providers.gradleProperty('testSodium').getOrElse('true') != 'false') {
         modRuntimeOnly "maven.modrinth:sodium:OihdIimA"
         modRuntimeOnly "maven.modrinth:indium:nQHYSjxO"
@@ -190,6 +202,58 @@ dependencies {
     modRuntimeOnly "maven.modrinth:architectury-api:${architectury_mr_version}"
     modRuntimeOnly "maven.modrinth:kubejs:Pu0Ygbq6"
     modRuntimeOnly "maven.modrinth:rhino:MLIu0Tct"
+
+    // ── 渲染栈对齐(2026-11-03 用户要求:fabric 测试环境与 1.21.1 / 26.1.2 对齐,含光影) ──
+    // 缺口实测(2026-11-02 实机):另三线 run/mods 都有 Sodium + Iris + 光影包(ComplementaryReimagined_r5.9.3.zip),
+    // 而本线只有 sodium(被 testSodium=false 关掉)+ 一套"轻量优化"(lithium/starlight/modernfix/ferritecore)。
+    // ⇒ 逐项补齐下面三项 + LWJGL 钉版 + 光影包(见 scripts/test/resources/shaderpacks/)。
+    //
+    // Iris(Fabric;光影加载器):Modrinth version id `s5eFLITc` = iris-1.7.6+mc1.20.1.jar
+    //   硬依赖 Sodium(>=0.5) ⇒ 与上面 testSodium 开关同进同出,关掉 sodium 时本项也要关。
+    if (providers.gradleProperty('testSodium').getOrElse('true') != 'false') {
+        modRuntimeOnly "maven.modrinth:iris:s5eFLITc"
+    }
+    // ImmediatelyFast(Fabric;1.21.1 线的同款渲染优化)version id `iwYUrQJO` = 1.5.5,game_versions 含 1.20.1
+    modRuntimeOnly "maven.modrinth:immediatelyfast:iwYUrQJO"
+    // ⚠️ ImmediatelyFast 1.5.x 的 **Iris 兼容层**依赖 `net.lenni0451:Reflect`（Iris 1.8.x 才把它
+    //    内嵌进 jar；本线 1.20.1 的 Iris 最高只到 1.7.6 ⇒ 没人提供这枚类库）。
+    //    缺它的实测症状（2026-11-03）：窗口初始化阶段抛
+    //    `NoClassDefFoundError: net/lenni0451/reflect/accessor/FieldAccessor`
+    //    （栈顶 ImmediatelyFast.IrisCompat.init），进程直接死在 Window.<init>。
+    //    处置：不手写坐标，交给仓内既有 `python tools/loom_embedded_jars.py --side client --apply`
+    //    统一抽取（它会从 immediatelyfast 的 nested jar 里挖出 `Reflect-1.6.2.jar`，
+    //    版本正好与 IF 自带的一致；手写 1.5.0 反而会与它抢同一批类）。
+    // Superflat World No Slimes + 其硬依赖 Collective（超平坦测试世界里刷史莱姆会污染实体计数类断言）
+    //   坐标 id 均为 Modrinth version id: I6QPoepF = 1.20.1-3.7-fabric+forge+neo；SIqDV2gB = collective 1.20.1-8.73
+    modRuntimeOnly "maven.modrinth:superflat-world-no-slimes:I6QPoepF"
+    modRuntimeOnly "maven.modrinth:collective:SIqDV2gB"
+
+    // ── 用户 2026-11-03 追加的测试环境三件套（仅 dev runtime） ──────────────
+    // ModMenu：mod 列表 GUI（查 mod id / 版本 / 冲突时用）。7.2.2 无声明依赖（Fabric API 本工程已带）。
+    //   Modrinth version id `lEkperf6` = modmenu-7.2.2.jar
+    modRuntimeOnly "maven.modrinth:modmenu:lEkperf6"
+    // Carpet-Fixes：Carpet 的 bug 修正集（假人/区块加载相关的原版行为偏差会污染断言）。
+    //   **硬依赖 Carpet**（上面 `carpet:K0Wj117C` 已投放，mod id `carpet`，Modrinth 项目 TQTTVgYE）。
+    //   Modrinth version id `NBCnBGZj` = carpet-fixes-1.20-1.16.1.jar
+    modRuntimeOnly "maven.modrinth:carpet-fixes:NBCnBGZj"
+    //   ↑ carpet-fixes 的 fabric.mod.json 还有 **conditional-mixin: "*"** 硬依赖
+    //     （2026-11-03 实测：缺它服务端在 Loader Resolution 阶段直接
+    //      "模组 'Carpet Fixes' (carpet-fixes) 1.20-1.16.1 需要 conditional-mixin 的 任意版本，但没有安装它"）。
+    //     该库不在 Modrinth，走作者 jitpack 代理（repositories 里已加），0.6.5 是当前 release。
+    //   ⚠️ 必须取 **fabric 子工件**：0.6.5 是多加载器聚合发布，
+    //      `com.github.Fallen-Breath:conditional-mixin:0.6.5` 的 POM 会同时拉
+    //      common/fabric/forge/neoforge 四个子件，Gradle 按 variant 选到
+    //      `conditional-mixin-neoforge:0.6.5`（class 版本 65 = Java 21）⇒ 本线 JDK17
+    //      直接 "only compatible with JVM runtime version 21 or newer"。
+    //      fabric 子件是本线唯一需要的那一枚（class 版本 52，含 fabric.mod.json id=conditional-mixin）。
+    modRuntimeOnly "com.github.Fallen-Breath.conditional-mixin:conditional-mixin-fabric:0.6.5"
+    // Debugify：客户端/服务端 bug 修正 + 诊断报告（1.20.1 分支版本号 1.20.1+2.0）。
+    //   ⚠️ fabric.mod.json 声明 **required** 依赖 yacl ⇒ 缺它 Loader 解析阶段硬拒。
+    //   其声明的依赖版本是 YACL 3.1.0+1.20（version id `CgwTUAR2`），按声明值钉住，
+    //   不追最新的 3.6.x（Debugify 2.0 是编译在 3.1.0 上的，跨 minor 有 API 漂移风险）。
+    //   Modrinth version id `6XDJoCks` = Debugify-1.20.1+2.0.jar
+    modRuntimeOnly "maven.modrinth:debugify:6XDJoCks"
+    modRuntimeOnly "maven.modrinth:yacl:CgwTUAR2"
 
     // AutoJS 实机测试库（仅 dev 运行期；CI/普通构建不解析）
     // 由 scripts/test/tools/publish_autojs_maven.ps1 发布到 mavenLocal（见本文件 :47 的 mavenLocal()）。
@@ -533,3 +597,23 @@ idea {
         downloadJavadoc = true
     }
 }
+
+// ── LWJGL 钉版(2026-11-03;Sodium/光影对齐的**前置条件**) ──────────────────────
+// 事实:Sodium 0.5.x(fabric 1.20.1)只认 LWJGL **3.3.1**,而 Loom 的 dev runtime 带的是
+//   **3.3.2-snapshot** ⇒ 不钉版直接启动会报 "The game failed to start because the
+//   currently active LWJGL version is not compatible"(实测 Installed=3.3.2-snapshot /
+//   Required=3.3.1)。这也是本线长期用 -PtestSodium=false 的根因。
+// 做法:只在启用 Sodium 时,把所有 *runtimeClasspath 配置里的 org.lwjgl:* 钉回 3.3.1
+//   (natives 一并抬,版本在 maven central 都有);-PtestSodium=false 时完全不介入。
+if (providers.gradleProperty('testSodium').getOrElse('true') != 'false') {
+    configurations.configureEach { cfg ->
+        if (cfg.name.toLowerCase(java.util.Locale.ROOT).endsWith('runtimeclasspath')) {
+            cfg.resolutionStrategy.eachDependency { details ->
+                if (details.requested.group == 'org.lwjgl') {
+                    details.useVersion('3.3.1')
+                }
+            }
+        }
+    }
+}
+
