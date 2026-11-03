@@ -22,6 +22,9 @@ import net.minecraft.world.entity.MobCategory;
  *       属性表来自 {@code DefaultAttributes}，该注册表负责填充它）。</li>
  * </ul>
  *
+ * <p>2026-10-29 新增 GeckoLib 动画实体 {@code sykestentacle}（属性同样由
+ * {@link com.merlinkitsune.astral_dice.event.ModEntityEvents} 登记，本类不写属性代码）。
+ *
  * <p><b>1.20.1 Fabric 平台差异</b>（相对 forge-1.20.1 / neoforge-1.21.1 蓝本）：
  * 注册器用本仓自建 shim {@code com.merlinkitsune.astral_dice.platform.registry.DeferredRegister}
  * 加 {@code net.minecraft.core.registries.Registries.ENTITY_TYPE} 资源键，与 {@code block/ModBlocks} /
@@ -60,6 +63,20 @@ public final class ModEntityTypes {
                     .sized(1.6F, 2.4F)
                     .clientTrackingRange(10)
                     .build("repulsion"));
+
+    /**
+     * {@code astral_dice:sykestentacle} —— GeckoLib 动画实体（纯展示体，无 AI；
+     * 2026-10-29 于本线新增，2026-11-01 随主线合并保留）。
+     *
+     * <p>尺寸 {@code sized(2.6F, 3.0F)} 依据模型实测（底盘约 2.45 格宽、通高约 2.96 格）；
+     * {@code clientTrackingRange(10)} 与 1.21.1 蓝本一致。
+     */
+    public static final RegistryObject<EntityType<SykeTentacleEntity>> SYKE_TENTACLE =
+            ENTITY_TYPES.register("sykestentacle", () -> EntityType.Builder
+                    .of(SykeTentacleEntity::new, MobCategory.MISC)
+                    .sized(2.6F, 3.0F)
+                    .clientTrackingRange(10)
+                    .build("sykestentacle"));
 
     private ModEntityTypes() {
     }

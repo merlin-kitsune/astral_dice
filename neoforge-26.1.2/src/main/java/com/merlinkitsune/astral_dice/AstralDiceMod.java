@@ -11,6 +11,7 @@ import com.merlinkitsune.starengine.event.EffectTimerGuard;
 import com.merlinkitsune.starengine.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.config.ModCommonConfig;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
+import com.merlinkitsune.astral_dice.entity.ModEntityTypes;
 import com.merlinkitsune.astral_dice.init.ModCreativeTabs;
 import com.merlinkitsune.astral_dice.init.ModParticles;
 import com.merlinkitsune.astral_dice.item.ModItems;

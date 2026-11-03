@@ -84,6 +84,28 @@ public final class CurioSlotUtil {
         return false;
     }
 
+    /**
+     * 返回**第一个**满足条件的已装备饰品（副本）；未命中返回 {@link ItemStack#EMPTY}。
+     *
+     * <p>2026-10-28 新增：非玩家骰战的骰子能力注册表需要拿到实际物品栈（hasAnyCurioMatching
+     * 只返回 boolean），同时继续遵守「Curios 入口一律收敛到本类」的纪律。
+     */
+    public static ItemStack findFirstCurioMatching(LivingEntity entity, java.util.function.Predicate<ItemStack> predicate) {
+        var curios = CuriosApi.getCuriosInventory(entity);
+        if (curios.isEmpty()) return ItemStack.EMPTY;
+        var curiosMap = curios.get().getCurios();
+        for (var key : curiosMap.keySet()) {
+            var stacks = curiosMap.get(key).getStacks();
+            for (int i = 0; i < stacks.getSlots(); i++) {
+                ItemStack s = stacks.getStackInSlot(i);
+                if (!s.isEmpty() && predicate.test(s)) {
+                    return s.copy();
+                }
+            }
+        }
+        return ItemStack.EMPTY;
+    }
+
     // 下蹲右键自动装备:将手中物品放入指定饰品栏的第一个空槽位(仅服务端执行)
     public static InteractionResult tryAutoEquip(Player player, ItemStack stack, String slotId) {
         if (player.level().isClientSide()) {

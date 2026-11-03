@@ -253,6 +253,7 @@
   "effect.astral_dice.unwavering.description": "Defense §e+4§7, up to §e3§7 stacks; grants Resistance II, lasts §93:00§r",
   "effect.astral_dice.weak_mark": "Weak Mark",
   "enchantment.astral_dice.curse_marker": "Blue Curse",
+  "entity.astral_dice.sykestentacle": "Tentacle",
   "gui.astral_dice.attack_cost": "Attack Cost: %s / %s",
   "gui.astral_dice.card_inventory": "Card Inventory",
   "gui.astral_dice.card_inventory.locked": "Cannot change cards during Dice Blessing",

@@ -686,12 +686,12 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
     }
 
     /**
-     * 路障卡物品的**延迟解析** —— 仅用于 1 张 fabric 线尚未实装的卡牌（同 {@code shop/CardShopCatalog#byItemId} 口径）。
+     * 路障卡物品的**延迟解析** —— 按注册 id 查 {@code effect_card_barricade}（同 {@code shop/CardShopCatalog#byItemId} 口径）。
      *
-     * <p>为什么不用 {@code ModItems.EFFECT_CARD_BARRICADE}：该常量在 fabric 线的 {@code item/ModItems.java} 里
-     * <b>尚不存在</b>（forge / neo 两线都有，属物品批次的缺口）；本类若直接引用会让整条线编译不过。
-     * 改走注册表按 id 查（{@code astral_dice:effect_card_barricade}），语义完全等价（同样是「延迟解析、注册期不取值」），
-     * 且物品批次把该常量实装后<b>本类无需再改</b>——只要注册 id 相同就会自动解析到真物品。
+     * <p>{@code ModItems.EFFECT_CARD_BARRICADE} 已在 fabric 线的 {@code item/ModItems.java} 注册（当前 :1103），
+     * 原先「该常量尚不存在、直接引用会编译不过」的前提已不成立。本方法仍按注册 id 查表
+     * （{@code astral_dice:effect_card_barricade}），语义与直接引用该常量等价（同为「延迟解析、注册期不取值」），
+     * 因此保留原实现。
      * 物品缺失期间退化为 {@code minecraft:air}：下文 {@code stack.is(air)} 恒 false ⇒ {@link #displayStack}
      * 原样返回（与「没有该物品就没有这条视觉替换」等价，不抛异常）。
      */

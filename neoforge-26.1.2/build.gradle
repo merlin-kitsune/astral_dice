@@ -217,6 +217,10 @@ dependencies {
     // Curios API(必须的前置):15.0.0+26.1.2(Modrinth version id dRnRThvD)
     // 其 mods.toml 声明 neoforge [26.1.0.0,),故本模组的 curios 门槛同步升至 [15,)
     implementation 'maven.modrinth:curios:dRnRThvD'
+    // GeckoLib(必须的前置):5.5.2 for NeoForge 26.1.2(Modrinth version id xfVfPcoC)
+    // 与另两线同一口径:写 version id 而非版本号——同一版本号的 neo/fabric 变体并存于 Modrinth,
+    // 写 `5.5.2` 会解析到非 neo 变体文件;此处钉住 neoforge 变体。不内嵌(jarJar),由玩家自备。
+    implementation 'maven.modrinth:geckolib:xfVfPcoC'
     // 帕秋莉手册(可选):26.1-94-beta(Modrinth version id 2CsnFLom)
     implementation 'maven.modrinth:patchouli:2CsnFLom'
     // JEI(配方查看,测试环境用);26.1.2 线 29.37.0.99

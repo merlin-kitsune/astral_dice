@@ -9,12 +9,18 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.EntityAttributeCreationEvent;
 
 /**
- * 自有实体的**属性**注册（2026-10-17「路障」引入）。
+ * 自有实体的**属性**注册（2026-10-17「路障」引入；2026-10-18「强化拒止」、2026-10-29「Syke 触手」随后并入）。
  *
- * <p>1.21.1 的实体属性表由 {@code DefaultAttributes} 保存，唯一填充入口是
- * {@link EntityAttributeCreationEvent}（Mod 总线）。**漏注册的后果**：实体一创建就在
+ * <p>26.1.2 的实体属性表由 {@code DefaultAttributes} 保存，唯一填充入口是
+ * {@link EntityAttributeCreationEvent}（模组总线）。**漏注册的后果**：实体一创建就在
  * {@code new AttributeMap(DefaultAttributes.getSupplier(type))} 处抛异常 ⇒ 生成即崩，
  * 因此本类是「路障能放下」的必要条件，不是可选优化。
+ *
+ * <p>⚠️ 平台事实（javap 实证）：{@link EntityAttributeCreationEvent} 是**模组总线**事件
+ * （{@code implements IModBusEvent}），而 26.1.2 的 {@code @EventBusSubscriber} 只剩
+ * {@code value()/modid()}（FML 11.0.15 已删 {@code bus()}），静态 {@code @SubscribeEvent}
+ * 方法一律视为模组总线订阅 ⇒ 本类只写 {@code modid} 即可，不得照抄 1.21.1 的
+ * {@code bus = EventBusSubscriber.Bus.MOD}。
  *
  * <p>路障：{@code MAX_HEALTH = 30}（用户需求「路障本身30点耐久」）。
  * {@code LivingEntity.createLivingAttributes()} 已带上全套基础属性
@@ -39,6 +45,14 @@ public final class ModEntityEvents {
         event.put(ModEntityTypes.REPULSION.get(),
                 LivingEntity.createLivingAttributes()
                         .add(Attributes.MAX_HEALTH, 50.0D)
+                        .build());
+
+        // Syke 触手(2026-10-29):20 点生命 + 击退抗性 1.0(= 完全免疫击退,触手是长在地上的)。
+        // 它没有 AI / 掉落 / 生成规则,属性仅用于「能被打、会掉血、受伤播攻击动画」这条最小链路。
+        event.put(ModEntityTypes.SYKE_TENTACLE.get(),
+                LivingEntity.createLivingAttributes()
+                        .add(Attributes.MAX_HEALTH, 20.0D)
+                        .add(Attributes.KNOCKBACK_RESISTANCE, 1.0D)
                         .build());
     }
 }

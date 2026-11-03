@@ -59,6 +59,9 @@ public class ModItemModelProvider extends FabricModelProvider {
         generators.generateFlatItem(ModItems.EFFECT_CARD_BERSERK.get(), ModelTemplates.FLAT_ITEM);
         generators.generateFlatItem(ModItems.EFFECT_CARD_UNWAVERING.get(), ModelTemplates.FLAT_ITEM);
         generators.generateFlatItem(ModItems.EFFECT_CARD_FIGHT_POISON_WITH_POISON.get(), ModelTemplates.FLAT_ITEM);
+        generators.generateFlatItem(ModItems.EFFECT_CARD_BARRICADE.get(), ModelTemplates.FLAT_ITEM);
+        generators.generateFlatItem(ModItems.EFFECT_CARD_REPULSION.get(), ModelTemplates.FLAT_ITEM);
+        generators.generateFlatItem(ModItems.REPULSION.get(), ModelTemplates.FLAT_ITEM);
         generators.generateFlatItem(ModItems.BLANK_SIGN.get(), ModelTemplates.FLAT_ITEM);
         generators.generateFlatItem(ModItems.PARUNAN_SIGN.get(), ModelTemplates.FLAT_ITEM);
         generators.generateFlatItem(ModItems.JASMINE_SIGN.get(), ModelTemplates.FLAT_ITEM);
@@ -114,7 +117,14 @@ public class ModItemModelProvider extends FabricModelProvider {
         generators.generateFlatItem(ModItems.MAMUSHI_SIGN.get(), ModelTemplates.FLAT_ITEM);
         generators.generateFlatItem(ModItems.SHERRY_SIGN.get(), ModelTemplates.FLAT_ITEM);
         generators.generateFlatItem(ModItems.HANNA_SIGN.get(), ModelTemplates.FLAT_ITEM);
+        generators.generateFlatItem(ModItems.KANGEL_SIGN.get(), ModelTemplates.FLAT_ITEM);
+        generators.generateFlatItem(ModItems.AME_SIGN.get(), ModelTemplates.FLAT_ITEM);
         generators.generateFlatItem(ModItems.MEGAS_SIGN.get(), ModelTemplates.FLAT_ITEM);
+        generators.generateFlatItem(ModItems.LINGLING_SIGN.get(), ModelTemplates.FLAT_ITEM);
+        generators.generateFlatItem(ModItems.JILL_SIGN.get(), ModelTemplates.FLAT_ITEM);
+        generators.generateFlatItem(ModItems.DOROTHY_SIGN.get(), ModelTemplates.FLAT_ITEM);
+        generators.generateFlatItem(ModItems.ALANA_SIGN.get(), ModelTemplates.FLAT_ITEM);
+        generators.generateFlatItem(ModItems.DEEPSEEK_SIGN.get(), ModelTemplates.FLAT_ITEM);
         generators.generateFlatItem(ModItems.FU_CARD.get(), ModelTemplates.FLAT_ITEM);
         generators.generateFlatItem(ModItems.HUO_CARD.get(), ModelTemplates.FLAT_ITEM);
         generators.generateFlatItem(ModItems.CHOCOLATE_CAKE.get(), ModelTemplates.FLAT_ITEM);

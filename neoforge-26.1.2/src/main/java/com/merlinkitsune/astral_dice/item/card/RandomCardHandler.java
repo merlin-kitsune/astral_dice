@@ -23,7 +23,7 @@ import com.merlinkitsune.starengine.combat.PartyRelations;
  * - 卡牌类别:{@link CardCategory#ALL}(全部)/ {@link CardCategory#BATTLE}(仅战斗牌:攻击+防御)/
  *   {@link CardCategory#EFFECT}(仅效果牌:功能+伤害)。
  * - 专属牌强制排除:通过 {@link #registerExclusiveCard} 注册的卡牌不会出现在任何随机池中
- *   (当前:活体书页、命运的指引;未来:撕咬、龙之咆哮等专属战斗牌)。
+ *   (当前:活体书页、命运的指引、符卡-福/祸、撕咬、龙之咆哮、强化拒止)。
  * - 发放逻辑:统一走 {@link #giveCards},作用域(范围/团队/发放人数/是否含自己)由
  *   {@link GiveoutScope} 描述;后续角色/卡牌能力(如蛟龙立牌赠卡)复用本类。
  */
@@ -87,7 +87,7 @@ public final class RandomCardHandler {
         }
     }
 
-    // 专属牌注册表:随机发放强制排除(活体书页/命运的指引/未来的撕咬、龙之咆哮等)
+    // 专属牌注册表:随机发放强制排除(活体书页/命运的指引/符卡-福祸/撕咬/龙之咆哮)
     // 存储 DeferredItem 引用,isExclusive 时延迟解析——避免静态初始化阶段调用 .get()
     private static final Set<net.neoforged.neoforge.registries.DeferredItem<net.minecraft.world.item.Item>> EXCLUSIVE_CARDS =
             new HashSet<>();
@@ -118,6 +118,8 @@ public final class RandomCardHandler {
         registerExclusiveCard(ModItems.HUO_CARD);      // 符卡-祸(风水师立牌专属:绑定获得者)
         registerExclusiveCard(ModItems.ATTACK_CARD_BITE);        // 撕咬
         registerExclusiveCard(ModItems.ATTACK_CARD_DRAGON_ROAR); // 龙之咆哮
+        // 怪力乱神立牌专属效果牌(2026-10-18):只能由该立牌(后续添加)发放,不进任何随机池
+        registerExclusiveCard(ModItems.EFFECT_CARD_REPULSION); // 强化拒止
     }
 
     // === 卡牌池 ===
@@ -156,7 +158,8 @@ public final class RandomCardHandler {
                 ModItems.HAMBURGER.get(),
                 ModItems.LUXURY_FEAST.get(),
                 ModItems.YOU_HAVE_I_HAVE.get(),
-                ModItems.EXPRESS_DELIVERY.get());
+                ModItems.EXPRESS_DELIVERY.get(),
+                ModItems.EFFECT_CARD_BARRICADE.get());
     }
 
     /**
