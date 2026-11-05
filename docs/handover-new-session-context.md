@@ -19,9 +19,9 @@
 | 项 | 值 |
 |---|---|
 | 分支 / HEAD | `multi-main` / `c31d36f6` |
-| 版本 | 四线 `mod_version = 1.5.0-rc.7+<加载器后缀>` |
+| 版本 | 各线 `mod_version = 1.5.0-rc.7+<加载器后缀>` |
 | Gradle | wrapper **9.2.1**（aliyun 镜像），**daemon JVM 统一 JDK 21**；`~/.gradle` 已由本批重建 |
-| starengine | **1.1.0，四线制品已发布进本机 `~/.m2`**（`publishToMavenLocal` 四条均 `BUILD SUCCESSFUL`） |
+| starengine | **1.1.0，各线制品已发布进本机 `~/.m2`**（`publishToMavenLocal` 四条均 `BUILD SUCCESSFUL`） |
 | 整合包根 | `/mnt/d/.minecraft`（`MC_HOME` 可覆盖；根 `build.gradle` 的 `mcHomePath` 解析：`MC_HOME` > `/mnt/d/.minecraft` > `D:/.minecraft`） |
 | 可构建性 | `:neoforge-1.21.1:classes` 32s / `:forge-1.20.1:classes` 30s（热缓存，**不是冷基线**）均 `BUILD SUCCESSFUL` |
 | 工作树 | 本批已提交：`464e29f8`（规则/文档）、`06fef75a`（投放根）、`d0a084b8`（TUN 直连 + 属主口径）；**未 push** |
@@ -47,7 +47,7 @@
 | `neoforge-26.1.2` (P1) | NeoForge 26.1.2.109 / 26.1.2 | 25 | `run/26.1.2` | `:classes` ✅（需 `--no-configuration-cache`）、实机停在 KubeJS 报错屏 |
 | `fabric-1.20.1` (P1) | Fabric 0.19.5 + FAPI 0.92.12 | 17 | `run/fabric-1.20.1` | `:classes` ✅、**dev 启动失败**（Sodium/LWJGL） |
 
-- 构建依赖 `starengine:1.1.0` 走 `mavenLocal()`；四线制品在 `~/.m2/repository/com/merlinkitsune/starengine/*/1.1.0/`。
+- 构建依赖 `starengine:1.1.0` 走 `mavenLocal()`；各线制品在 `~/.m2/repository/com/merlinkitsune/starengine/*/1.1.0/`。
 - 投放目标：`狐の航空学 Voxy Edition`(1.21.1) / `1.20.1-Forge 模组测试` / `26.1.2-NeoForge 模组测试` / `1.20.1-Fabric 模组测试`，均在 `/mnt/d/.minecraft/versions/<实例>/mods`。
 
 ## 4 Linux 测试台（取代 Windows 的 `scripts/test/mt.ps1`）
@@ -127,7 +127,7 @@ bash scripts/test/linux/env.sh                             # 环境体检
 - 禁止裸 `pkill -f`（会杀别的 MC 实例）；脚本一律 `/proc/<pid>/cwd` + cmdline 精确匹配。
 - **脚本运行中不要编辑它**：bash 按字节流重解析，可能把启动脚本再跑一遍。
 - `legacyforge` dev 运行加载 `run/1.20.1/mods/*.jar` ⇒ 改 java/资源后必须 `:forge-1.20.1:pushToDevRun`。
-- 26.1.2 构建必须 `--no-configuration-cache`；四线 gradle daemon 必须 ≥JDK 21。
+- 26.1.2 构建必须 `--no-configuration-cache`；各线 gradle daemon 必须 ≥JDK 21。
 - **同一时间只允许一个 gradle**（全队一个并发位）；动工作树或起 gradle 前查 `.agent-locks/`。
 - **不破坏 Windows 侧**：`*.ps1` / `*.bat` / `gradlew.bat` / `mt.conf` / `.vscode` / `run/*.bat` 一律保留原样；不删、不改、不「顺手清理」。
 - 权限坑：`docs/agent/` 与 `starengine/*/build/` 是 1001 属主目录，**不停留去找 chown**，用文档里的绕法。

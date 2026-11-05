@@ -2,7 +2,7 @@
 
 > **本文口径**：仓库内文件一律用**相对路径**（相对仓库根，如 `docs/agent/AGENTS-dsh-linux.md`、`run/start-1.21.1.sh`），脚本自解析仓库根；只有「附录 A 绝对路径快照」登记宿主绝对路径。
 > **本文的定位**：2026-10-31 13:2x 用户把 4 个工作副本（Astral Dice 两线 + StarEngine 两线）从 hgfs 共享盘复制到 **VM 本机虚拟磁盘**，后续开发在本机盘进行；hgfs 上的原始目录保留为**镜像/同步通道**。本文记录新布局、已做的修复、rsync 通道用法、以及两副本的纪律。
-> 前置交接（VM 环境、hgfs 实测代价、三线实机证据、真机迁移清单）仍有效：`docs/handover-2026-10-31-linux-vm-adoption.md（已删除 2026-11-05）`。
+> 前置交接（VM 环境、hgfs 实测代价、当时各线实机证据、真机迁移清单）仍有效：`docs/handover-2026-10-31-linux-vm-adoption.md（已删除 2026-11-05）`。
 
 ## 0 一句话现状
 
@@ -12,8 +12,8 @@
 
 | 副本（本机盘） | 分支 / HEAD | 版本 | 体量 | 角色 |
 |---|---|---|---|---|
-| `~/Project/astral_dice_multiloader` | `multi-main` / `7c44cfbf`（2026-10-30） | 四线 `1.5.0-rc.7+*`；starengine 1.1.0 | 4.6 G（`run/` 2.1 G、`.gradle` 168 M、`build` 124 M） | **P0 主线工作副本（正本）** |
-| `~/Project/astral_dice_multiloader-next` | `multi-dev-next` / `a5291f2e`（2026-10-29） | 四线 `26.4-SNAPSHOT.4+*` | 21 G | 2.0 开发线（worktree，见 §2.1） |
+| `~/Project/astral_dice_multiloader` | `multi-main` / `7c44cfbf`（2026-10-30） | 各线 `1.5.0-rc.7+*`；starengine 1.1.0 | 4.6 G（`run/` 2.1 G、`.gradle` 168 M、`build` 124 M） | **P0 主线工作副本（正本）** |
+| `~/Project/astral_dice_multiloader-next` | `multi-dev-next` / `a5291f2e`（2026-10-29） | 各线 `26.4-SNAPSHOT.4+*` | 21 G | 2.0 开发线（worktree，见 §2.1） |
 | `~/Project/starengine` | `main` / `16b48c4`（2026-10-25） | 1.1.0 | 863 M | 库 1.1 线（本仓构建的 mavenLocal 来源） |
 | `~/Project/starengine_next` | `next` / `1b02b80`（2026-10-27） | 26.4-SNAPSHOT.1 | 331 M | 库 2.0 线（worktree，见 §2.1） |
 
@@ -67,7 +67,7 @@ hgfs 上的工作树是 CRLF、index 是 LF。在 hgfs 上此前已给主仓设�
 2. `./gradlew :neoforge-1.21.1:classes --console=plain` → **`BUILD SUCCESSFUL in 57s`**（`4 actionable tasks: 3 executed, 1 from cache`，Configuration cache entry stored）。复制过来的 `neoforge-1.21.1/build/moddev/artifacts/`（`neoforge-21.1.235-*.jar` 等）被直接复用，没有重跑 MDG decompile。
 3. `bash scripts/test/linux/env.sh` → `ENV_RESULT: WARN — 0 项阻塞，2 项提示`（提示 = AutoJS 未启动 `health=000`、`scripts/test/mt.conf` 的 Windows 历史路径）。修了脚本里一处过时判断：现在按 `findmnt` 实测文件系统类型输出，本机盘显示 `hgfs_writable=OK — 文件系统=ext4`，不再硬编码 hgfs 文案。
 4. `bash scripts/test/linux/launch.sh --version 1.21.1 --dry-run` → 解析出的 `start_source=run/start-1.21.1.sh`、`cmd=/home/kitsune/Project/astral_dice_multiloader/run/start-1.21.1.sh`、日志/pid 文件都在新根下 ⇒ 启动脚本的 `ROOT="$(cd "$(dirname "$0")/.." && pwd)"` 相对根解析在新位置成立，无需改脚本。
-5. 整合包部署根目录切换（2026-10-31 13:5x）：根 `build.gradle` 新增 `ext.mcHomePath`（`MC_HOME` → `/mnt/hgfs/.minecraft` → Windows `D:/.minecraft`），四线 `packModsDir` 改用它；Gradle 探针实测 `mcHomePath=/mnt/hgfs/.minecraft`，四条 `versions/<实例>/mods` 全部 `exists=true`；`MC_HOME` 覆盖实测生效；`:neoforge-1.21.1:classes` 配置全绿（541ms，缓存命中）。**同一改动已同步到 `-next` 2.0 线**（5 个 build 文件，探针同样通过；该线正常配置需 26.4 starengine 制品，本机暂缺）。未跑真实 `pushToGame`（默认不部署）。
+5. 整合包部署根目录切换（2026-10-31 13:5x）：根 `build.gradle` 新增 `ext.mcHomePath`（`MC_HOME` → `/mnt/hgfs/.minecraft` → Windows `D:/.minecraft`），各线 `packModsDir` 改用它；Gradle 探针实测 `mcHomePath=/mnt/hgfs/.minecraft`，四条 `versions/<实例>/mods` 全部 `exists=true`；`MC_HOME` 覆盖实测生效；`:neoforge-1.21.1:classes` 配置全绿（541ms，缓存命中）。**同一改动已同步到 `-next` 2.0 线**（5 个 build 文件，探针同样通过；该线正常配置需 26.4 starengine 制品，本机暂缺）。未跑真实 `pushToGame`（默认不部署）。
 6. `git status --short -uall`（主仓，18 行）= 7 个已跟踪改动（`AGENTS.md`、`docs/agent/PROJECT-REFERENCE.md`、`docs/handover-1.5.0-main.md`、`docs/handover-new-session-context.md`、3 个 1.20.1 lang）+ 新增 `docs/agent/AGENTS-dsh-linux.md`、`docs/handover-2026-10-31-*.md`、`scripts/dev/rsync-original.sh`、`scripts/test/linux/*` + 用户既有 4 个未跟踪文件。
 
 > 实机启动（`launch.sh` 真正拉起游戏）本次**没有**跑——规则仍是「实机须用户明确下达」；dry-run 已证明路径/参数正确。

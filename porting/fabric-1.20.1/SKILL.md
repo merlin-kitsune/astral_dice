@@ -6,14 +6,14 @@ description: 《星之骰戏》(astral_dice) forge-1.20.1 → fabric-1.20.1 移�
 # astral_dice forge-1.20.1 → fabric-1.20.1 移植执行手册
 
 > ⚠️ **2026-10-01 状态变更（先读这条）**：本线已随 `multi-main` 一并**并入开发线 `multi-dev-next`**，
-> 开发线现为**四线同仓**（`neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` / **`fabric-1.20.1`**），
-> 且 fabric 线功能已补齐到与三线对等。
+> 开发线现为**各线同仓**（`neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` / **`fabric-1.20.1`**），
+> 且 fabric 线功能已补齐到与非 fabric 线对等。
 > ⇒ 本文所有 `astral_dice_multiloader` / `astral_dice_multiloader_fabric` 路径**一律改指开发线工作树**
 > `F:\MCProject\astral_dice_multiloader-next`；
 > `ref/`（10 个上游参考源克隆件，约 76 MB）**已复制到开发线树根** `astral_dice_multiloader-next/ref/`
 > （`.gitignore` 排除 `ref/`）⇒ 无需重新克隆；确需重建时按 `VERSION_PINS.md`。
 > 其余口径（版本钉值、API 对照、平台差异）**不变**；但**版本号口径已变** —— 本线不再是带 `-alpha.x` 的
-> 独立移植线，而是与四线同号的 **`2.0.0-SNAPSHOT.19+fabric_1.20.1`**（前置库 = `2.0.0-SNAPSHOT.8`，
+> 独立移植线，而是与各线同号的 **`2.0.0-SNAPSHOT.19+fabric_1.20.1`**（前置库 = `2.0.0-SNAPSHOT.8`，
 > 库的 fabric 平台已并入库 `next` 分支）。
 > 本次并入的侦察结论、作业清单与平台适配决策见同目录 `RECON-AND-PLAN.md`。
 
@@ -25,7 +25,7 @@ description: 《星之骰戏》(astral_dice) forge-1.20.1 → fabric-1.20.1 移�
 
 1. **命名映射 = Mojang 官方映射**（`loom.officialMojangMappings()`）——原版类/成员名与 forge 侧**完全一致**，禁改原版引用；只改加载器层（Curios/Forge 事件/Capability/SimpleChannel/GLM/DeferredRegister/mods.toml 等）。
 2. **前置替换**：Curios → **Trinkets 3.7.2**（`dev.emi.trinkets.api`）；Capability/ModAttachments → **Cardinal Components 5.2.3**（`dev.onyxstudios.cca.api.v3`）。
-3. **库先行**：`starengine_lib-fabric-1.20.1` 必须先于消费方 P0 完成 build + `publishToMavenLocal`（lib_version 四线同号 bump → **1.0.6**），消费方 CI 同提交改库 S继续移植HA。
+3. **库先行**：`starengine_lib-fabric-1.20.1` 必须先于消费方 P0 完成 build + `publishToMavenLocal`（lib_version 各线同号 bump → **1.0.6**），消费方 CI 同提交改库 S继续移植HA。
 4. **版本全部钉死**（见 VERSION_PINS.md）；fabric-loader **0.19.5**、fabric-loom **1.14.10**（wrapper Gradle 9.2.1 不带升）、fabric-api **0.92.12+1.20.1**、Java toolchain **17**。
 5. **Loom 运行 JVM 21+、编译 toolchain 17** —— 跑 `gradlew` 用 `JAVA_HOME=C://Program Files\Zulu\zulu-21`；不要用 Java 17 跑 gradlew（Loom 会报错）。
 6. **每阶段有可机读判据**，绿了才进下一阶段；🚨 任一阶段出现「换汤不换药的假绿」（编译绿但运行期静默失效）必须停下来取证。
@@ -41,7 +41,7 @@ description: 《星之骰戏》(astral_dice) forge-1.20.1 → fabric-1.20.1 移�
 | 文件                                   | 内容要点                                                                                                                                                                                                                                                                                              |
 | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `fabric-1.20.1/build.gradle`         | `id 'fabric-loom' version '1.14.10'` + Java 17 toolchain + `loom.officialMojangMappings()` + `modImplementation "net.fabricmc:fabric-loader:0.19.5"` + `sourceSets.main.java.srcDir('../common/src/main/java')` + 发布 **remapJar**（artifactId `starengine_lib-fabric-1.20.1`）；publishing mavenJava |
-| `fabric-1.20.1/gradle.properties`    | `lib_version=1.0.6`、`mod_version=1.0.6+fabric_1.20.1`（四线同号）                                                                                                                                                                                                                                       |
+| `fabric-1.20.1/gradle.properties`    | `lib_version=1.0.6`、`mod_version=1.0.6+fabric_1.20.1`（各线同号）                                                                                                                                                                                                                                       |
 | `src/main/resources/fabric.mod.json` | id `starengine_lib`；entrypoints.main；depends 仅 fabricloader/minecraft(+fabric-api)；**不声明 trinkets**                                                                                                                                                                                               |
 | `StarEngineLib.java`                 | `implements ModInitializer`，`onInitialize` 内 `FabricEconomyStorage.install()`                                                                                                                                                                                                                     |
 | `platform/LoaderEvent.java`          | 空 abstract 类                                                                                                                                                                                                                                                                                      |
@@ -53,7 +53,7 @@ description: 《星之骰戏》(astral_dice) forge-1.20.1 → fabric-1.20.1 移�
 | `item/TrinketsCompat.java`           | 3 方法等价物（对齐 `CuriosCompat`）；`modCompileOnly` trinkets；库不声明前置                                                                                                                                                                                                                                       |
 | `component/ItemDataKey.java`         | 照 forge 版逐字复制                                                                                                                                                                                                                                                                                     |
 
-→ `./gradlew :fabric-1.20.1:build` + `./gradlew :fabric-1.20.1:publishToMavenLocal` → 四线 CHANGELOG 段头 + 提交 → 消费方 CI 同提交改库 SHA。
+→ `./gradlew :fabric-1.20.1:build` + `./gradlew :fabric-1.20.1:publishToMavenLocal` → 各线 CHANGELOG 段头 + 提交 → 消费方 CI 同提交改库 SHA。
 
 ### 1.1 消费方 P0 骨架
 

@@ -1,6 +1,6 @@
 # 日语本地化（ja_jp）— 交付与口径
 
-> 2026-09-22 建立。三线（`neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2`）各一份 `lang/ja_jp.json`（**805 键**）。
+> 2026-09-22 建立。各线（`neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2`）各一份 `lang/ja_jp.json`（**805 键**）。
 > 权威规范见 `AGENTS.md` 的「语言文件同步规范 → 日语（ja_jp）本地化」小节。
 
 ## 一、交付物
@@ -34,7 +34,7 @@
 5. **结构标记逐字保留**：染色码（`§e/§9/§7/§r/§c/§f`）、`%%` 转义、格式符（`%s/%d/%1$s`）、换行结构。
    脚本对**各线自己的中文原文**断言「换行数 / `§` 数 / `%` 数」全等。
 
-## 三、三线的原文差异（日语必须跟着各自的线）
+## 三、各线的原文差异（日语必须跟着各自的线）
 
 | 键 | 差异 |
 |---|---|
@@ -42,14 +42,14 @@
 | `tooltip.astral_dice.chip.energy_recycler`、`guide.entry.energy_recycler_chip.1` | **26.1.2** 多「单 tick 位移过大视为传送，不累计」 |
 | `tooltip.astral_dice.sign.moses_passive` | **26.1.2** 多一行「装备时，主动技能冷却时间减为 120 秒」 |
 
-⇒ 全部写进 `gen_ja_lang.py` 的 `OVERRIDE`，**不能三线共用一份**。
+⇒ 全部写进 `gen_ja_lang.py` 的 `OVERRIDE`，**不能各线共用一份**。
 
 ## 四、校验结果（2026-09-22）
 
-- `gen_ja_lang.py --check`：三线各 **805/805 键覆盖**；换行/`§`/`%` 不一致 **0 条**。
-- `tools/check_lang_sync.ps1`：三线 `OK`、**0 WARN**、退出码 0（即 zh/en/ja 三方 key 一致 + 无裸 `%`）。
+- `gen_ja_lang.py --check`：各线各 **805/805 键覆盖**；换行/`§`/`%` 不一致 **0 条**。
+- `tools/check_lang_sync.ps1`：各线 `OK`、**0 WARN**、退出码 0（即 zh/en/ja 三方 key 一致 + 无裸 `%`）。
 - **反例验证**：临时植入裸 `%` ⇒ `[FAIL] …(ja): 含未转义字面百分号` + rc=1；删一个键 ⇒ `[FAIL] … 缺失于 ja_jp.json` + rc=1。
-- **构建**：三线 `MT_BUILD: OK`；开 jar 核对 —— 各 jar 内 `ja_jp.json` **805 键**、抽查文案正确。
+- **构建**：各线 `MT_BUILD: OK`；开 jar 核对 —— 各 jar 内 `ja_jp.json` **805 键**、抽查文案正确。
 - **实机取证**（1.21.1 切 `lang:ja_jp`）：
   - 命令反馈：`1 名のプレイヤーの状態をダンプしました。機械可読行はログ (latest.log) を参照`（= `msg.astral_dice.command.*.dump.summary` 译文，逐字）；
   - 手册物品名：`Devに[レンのルールブック]を1個与えました`（= `astral_dice.guide.name`）；

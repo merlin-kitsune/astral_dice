@@ -41,7 +41,7 @@
 
 ---
 
-## 3. 四线功能差异清单（相对 `neoforge-1.21.1` 基准）
+## 3. 各线功能差异清单（相对 `neoforge-1.21.1` 基准）
 
 ### 3.0 `neoforge-1.21.1`（P0 · 基准）— 无差异
 
@@ -72,8 +72,8 @@
 | F19 | Iron / Ars / Goety 白名单为 **damage-type 字符串**（版本无关）；FTB / OPAC / 女仆走反射 | ②③ | 已落地 | `SpellDamageRegistry` / `PartyRelations` |
 | F20 | 其它 API：`AttributeModifier(UUID,String,double,Operation)`；`ADDITION/MULTIPLY_TOTAL`；`FoodProperties.getSaturationModifier()`；`ItemStack.consume` → `shrink`；`AbstractContainerScreen.renderSlot` **私有**（卡牌栏「大卡缩放」退化为常规大小，**视觉差异**）；`mouseScrolled` 3 参；`LivingChangeTargetEvent.getNewTarget()`；`NbtOps` 在 `net.minecraft.nbt`；`ForgeGui`/`IGuiOverlay`/`VanillaGuiOverlay` 在 `client.gui.overlay` | ①② | 已落地 | 各调用点 |
 | F21 | 持久化走 Forge Capability / `Entity#getPersistentData()`（**Forge 补丁方法**，原版无） | ② | 已落地 | `component/*` / `EliteTargets` |
-| F22 | 常驻效果时长归一（旧存档 `MAX_VALUE` 递减残留 ⇒ 界面显示超长而非 ∞） | —（跨线同源） | **已落地**（三线同批；判据 `PlayerTickEvents#normalizeLegacyInfiniteDurations`） | 同左 |
-| F23 | Modern UI 提示框边框兼容（`ModernUITooltipCompat`） | ② | **已落地四线**（P0 两线 + `fabric-1.20.1` + `neoforge-26.1.2`；26.1.2 于 2026-10-04 补落，见 N16） | `client/ModernUITooltipCompat` |
+| F22 | 常驻效果时长归一（旧存档 `MAX_VALUE` 递减残留 ⇒ 界面显示超长而非 ∞） | —（跨线同源） | **已落地**（P0 同批；`neoforge-26.1.2` 亦已落地，见 `neoforge-26.1.2/src/main/java/com/merlinkitsune/astral_dice/event/PlayerTickEvents.java:221`；判据 `PlayerTickEvents#normalizeLegacyInfiniteDurations`） | 同左 |
+| F23 | Modern UI 提示框边框兼容（`ModernUITooltipCompat`） | ② | **已落地各线**（P0 两线 + `fabric-1.20.1` + `neoforge-26.1.2`；26.1.2 于 2026-10-04 补落，见 N16） | `client/ModernUITooltipCompat` |
 
 > 完整平台差异（含 33 处查找 API 机械替换、§8 无需处理项、§8.5 编译循环发现的补充差异）见 `docs/compat-1.20.1-forge.md`。
 
@@ -156,19 +156,19 @@
 | # | 问题 | 状态 | 判据 / 落点 |
 |---|---|---|---|
 | P1-B-1 | **Modern UI 提示框兼容未做** —— fabric 端确有 Modern UI；需先下载 **fabric 版** Modern UI jar 取证其描边 API（类名/字段可能与 Forge 分支不同），再照两线 `ModernUITooltipCompat` 结构实现 + `modernui_tooltip_frame_compat` 开关 | ✅ **已完成**（2026-10-04）：Fabric 版 jar 取证 → `ModernUITooltipCompat` + mixin 接线 + 配置开关 | `porting/fabric-1.20.1/FABRIC-DIFFS.md` §4 |
-| P1-B-2 | **近战黑名单缺「非武器工具」四项** —— fabric `DiceCombatEvents#isMeleeWeaponAttack` **无** `Items.{SHEARS,FISHING_ROD,FLINT_AND_STEEL,BRUSH}` 排除（实测 grep 命中 0；另三线各 1 处） | ✅ **已完成**（2026-10-04）：四项排除已补，与 forge 同函数逐行一致 | 同左 |
+| P1-B-2 | **近战黑名单缺「非武器工具」四项** —— fabric `DiceCombatEvents#isMeleeWeaponAttack` **无** `Items.{SHEARS,FISHING_ROD,FLINT_AND_STEEL,BRUSH}` 排除（实测 grep 命中 0；其余非 fabric 线各 1 处） | ✅ **已完成**（2026-10-04）：四项排除已补，与 forge 同函数逐行一致 | 同左 |
 | P1-B-3 | **fabric 无测试探针**（`/astralprobe` 系列）⇒ 本线改动无法实机验证 | ✅ **已完成**（2026-10-04）：新增 `/astralcatchup` 探针 + `FAB-CATCHUP-PARITY` 用例（零前置、无人值守） | `porting/fabric-1.20.1/CATCHUP-PROGRESS-2026-10-04.md（已删除 2026-11-05）` §9 |
 | P1-B-4 | **KI-E3：三个守门脚本不含 fabric**（`audit_mixin_injection` / `check_lang_sync` / `audit_actionbar`）⇒ 该线三面对应面**无自动守门**，须人工核验 | ✅ **已闭环**（2026-10-04，KI-E3 结案）：三守门 `LINES` 均含 fabric，实测 0 违规 | `KNOWN-ISSUES.md` KI-E3 |
-| P1-B-5 | **KI-F24②：`DiceCombatEvents#onLivingDamagePre` 结构分叉** —— fabric 把 `directEntity instanceof Player` 闸门提到计时器逻辑**之前** ⇒ 白泽赐福 / 降神计时器在 fabric 只认**近战**，三线按「任意攻击」启表 | ✅ **已对齐 P0**（2026-10-04）：计时器块前移 + 改用 `source.getEntity()`，与 forge 逐行一致 | `KNOWN-ISSUES.md` KI-F24 |
+| P1-B-5 | **KI-F24②：`DiceCombatEvents#onLivingDamagePre` 结构分叉** —— fabric 把 `directEntity instanceof Player` 闸门提到计时器逻辑**之前** ⇒ 白泽赐福 / 降神计时器在 fabric 只认**近战**，非 fabric 线按「任意攻击」启表 | ✅ **已对齐 P0**（2026-10-04）：计时器块前移 + 改用 `source.getEntity()`，与 forge 逐行一致 | `KNOWN-ISSUES.md` KI-F24 |
 | P1-B-6 | KI-F24① `concealment` 整条特性缺失 | **已闭环**（追平批 5） | 同左（本表标注闭环） |
-| P1-B-7 | 四线共有待裁决：**KI-F8**（`hanna_sign.3` / `sherry_sign.3` 档位词与代码稀有度不符）；**KI-G2 已于 2026-10-04 闭环**（用户裁决撤掉重登 / 切维度两个触发点，四线同批；实机 `FAB-Q2Q3-INVARIANTS` 6/6）⇒ 移入 `KNOWN-ISSUES.md` §1.1 | 待裁决（仅 KI-F8） | `KNOWN-ISSUES.md` §1.1 / F 组 |
+| P1-B-7 | 各线共有待裁决：**KI-F8**（`hanna_sign.3` / `sherry_sign.3` 档位词与代码稀有度不符）；**KI-G2 已于 2026-10-04 闭环**（用户裁决撤掉重登 / 切维度两个触发点，各线同批；实机 `FAB-Q2Q3-INVARIANTS` 6/6）⇒ 移入 `KNOWN-ISSUES.md` §1.1 | 待裁决（仅 KI-F8） | `KNOWN-ISSUES.md` §1.1 / F 组 |
 | P1-B-8 | **KI-F4：重写构建脚本漏搬 `sourceSets.srcDir('src/generated/resources')`** ⇒ 生成资源不进产物（编译期 + 启动期均无感）⇒ 改构建脚本后**必须开包核对资源条目数** | 缺陷模式已固化 | `KNOWN-ISSUES.md` KI-F4 |
 | P1-B-9 | 跨加载器**存档不互通**（附件/Capability；Trinkets/Accessories ↔ Curios） | 平台差异，**不修补** | `KNOWN-ISSUES.md` KI-F2 |
 | P1-B-10 | `verify_fabric_assets.py` 白名单现为空（8 项闭环）；新增白名单项必须写「为何不能修 + 需谁裁决」 | 纪律 | 同左 |
 
 ---
 
-## 5. 移植作业的固定收尾动作（四线通用）
+## 5. 移植作业的固定收尾动作（各线通用）
 
 1. **构建**：目标线 `build` SUCCESSFUL（⚠️ 构建日志须用 **Python `subprocess` 直捕 stderr 再 `decode`**，别走管道；本机 PowerShell 工具回显失效 ⇒ 输出 `*> 文件` 落盘再读）。
 2. **产物三件套**：jar 时间戳 + **开包 `javap` 核符号** + 资源条目核对（fabric 尤须）。
@@ -184,10 +184,10 @@
 
 | 日期 | 变更 |
 |---|---|
-| 2026-10-04 | 建档：按用户裁决「重新划分优先级等级」建立跨版本差异总表（四线功能差异 + 各平台待解决问题），配套 `AGENTS.md`「版本优先级与跨线移植纪律」与 `porting/fabric-1.20.1/FABRIC-DIFFS.md`。 |
+| 2026-10-04 | 建档：按用户裁决「重新划分优先级等级」建立跨版本差异总表（各线功能差异 + 各平台待解决问题），配套 `AGENTS.md`「版本优先级与跨线移植纪律」与 `porting/fabric-1.20.1/FABRIC-DIFFS.md`。 |
 | 2026-10-04 | **fabric P1-B-1~B-5 全部闭环**（Modern UI 兼容 / 近战黑名单 / `onLivingDamagePre` 对齐 / 三守门纳入 fabric / 追平探针）。§4.3 状态列已更新。 |
 | 2026-10-04 | **26.1.2 联动口径收紧（二次清理）**：删除「26.1.2 属 NeoForge 端口 ⇒ Iron 联动必须保留」的全部声明；按「平台不存在即移除、无例外」撤回 Iron 反射版（N13 改为整项移除）；并清理神秘遗物+ 残留（4 个 guide 手册页 + 对应 lang 键 + `mods.toml` 的 `enigmaticlegacyplus` 依赖）。 |
-| 2026-10-04 | **Modern UI 兼容落到第四线（N16 更正）**：核实 Modern UI **有 26.1.2 neoforge 构建**、其接管链与 1.21.1 同构 ⇒ 新增 `neoforge-26.1.2` 的 `client/ModernUITooltipCompat`（该线唯一的档位边框染色途径）+ 配置开关；F23 状态由「已落地三条线」改为「已落地四线」。 |
-| 2026-10-04 | **本表按主线 `multi-main` 版本重算合并 + 状态刷新**：合并 `multi-main` 对 `.gitignore` / `AGENTS.md`（fabric 九项规则块、提示框边框 Iceberg/TO 段、`multi-main` 推送白名单、发布规范 `-hotfix` 订正）/ `KNOWN-ISSUES.md`（§0 第 4 条「已修项清理、未修项禁删」、§5 改名并入 §1.1、KI-M1/M5/D2/G1/F1·F2·F3·F5~F19/F20/E3 移入 §1.1）的更新；同时刷新四线「当前版本」矩阵为实测值（1.21.1 / 1.20.1 = **1.3.7**、26.1.2 = **1.3.7-beta.1**、fabric = **1.3.7-alpha.1**；开发线 `multi-dev-next` = **2.0.0-SNAPSHOT.24**）。**优先级模型未变**（仍为 2026-10-04 裁决的 P0 = 1.21.1 + 1.20.1 / P1 = 26.1.2 + fabric）；仅修正 P1-B-7（KI-G2 已闭环）。 |
-| 2026-10-05 | **1.3.7-hotfix：主动技能键退出目标选择器（四线）+ ActionBar 随状态条上抬（仅 NeoForge 两线，新增 N17）**。J 键不再按会话分流（改由 `tools/verify_selector_key_ownership.py` 钉住）；库 `ActionBarManager` 在 neo 两平台改读 `Gui.leftHeight/rightHeight`，1.20.1 两平台保持固定 ⇒ 库 `1.0.12`。 |
+| 2026-10-04 | **Modern UI 兼容落到 P1 线（N16 更正）**：核实 Modern UI **有 26.1.2 neoforge 构建**、其接管链与 1.21.1 同构 ⇒ 新增 `neoforge-26.1.2` 的 `client/ModernUITooltipCompat`（该线唯一的档位边框染色途径）+ 配置开关；F23 状态由「已落地非 fabric 线」改为「已落地各线」。 |
+| 2026-10-04 | **本表按主线 `multi-main` 版本重算合并 + 状态刷新**：合并 `multi-main` 对 `.gitignore` / `AGENTS.md`（fabric 九项规则块、提示框边框 Iceberg/TO 段、`multi-main` 推送白名单、发布规范 `-hotfix` 订正）/ `KNOWN-ISSUES.md`（§0 第 4 条「已修项清理、未修项禁删」、§5 改名并入 §1.1、KI-M1/M5/D2/G1/F1·F2·F3·F5~F19/F20/E3 移入 §1.1）的更新；同时刷新各线「当前版本」矩阵为实测值（1.21.1 / 1.20.1 = **1.3.7**、26.1.2 = **1.3.7-beta.1**、fabric = **1.3.7-alpha.1**；开发线 `multi-dev-next` = **2.0.0-SNAPSHOT.24**）。**优先级模型未变**（仍为 2026-10-04 裁决的 P0 = 1.21.1 + 1.20.1 / P1 = 26.1.2 + fabric）；仅修正 P1-B-7（KI-G2 已闭环）。 |
+| 2026-10-05 | **1.3.7-hotfix：主动技能键退出目标选择器（各线）+ ActionBar 随状态条上抬（仅 NeoForge 两线，新增 N17）**。J 键不再按会话分流（改由 `tools/verify_selector_key_ownership.py` 钉住）；库 `ActionBarManager` 在 neo 两平台改读 `Gui.leftHeight/rightHeight`，1.20.1 两平台保持固定 ⇒ 库 `1.0.12`。 |
 | 2026-10-06 | **反向合并发布线 `multi-main` 最新更改（7 提交）到开发线**：① 采纳发布线的 `aoeProcessing` 布尔 → **`aoeDepth` 深度计数**（`beginAoe()/endAoe()`）并**全量退役旧布尔**（开发线独有的 `DamageCardFxScheduler` ×2 / `HuoCardItem` ×1 一并迁移）；② 采纳发布线的主动技能键退出目标选择器 + `tools/verify_selector_key_ownership.py`；③ 新增守门 `tools/verify_aoe_spread_invariants.py`（期望表与 A4 白名单已按开发线架构同步）；④ 库 `starengine_lib` `2.0.0-SNAPSHOT.11` → **`.12`**（移植发布线 `1.0.12` 的 ActionBar 动态 yShift）；⑤ 两份 CHANGELOG 并入发布线的 `## 1.3.7-hotfix` 段（含其 `### 工程` 的 `1.0.11 → 1.0.12` 条目）。开发线版本 `2.0.0-SNAPSHOT.27` → **`.28`**。 ⚠️ 库 `next` 的该提交**尚未 push**（消费方 CI ref 已钉它）。**同日跟进**：① 并入发布线随后新增的纯文档提交 `103937df`（`docs/AGENT-HANDOFF.md（已删除 2026-11-05）`，0 行 src）；② 按独立复核意见给新守门补 **A6**（A4 白名单放宽的补偿断言：手套修饰器准入判据 + 去重/重入闸门四入口 + 含第二条枚举的白名单文件必须调 `markCardSplashHit`，已过变异测试）⇒ 版本 `.28` → **`.29`**。 |

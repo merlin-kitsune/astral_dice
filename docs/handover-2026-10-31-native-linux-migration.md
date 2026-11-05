@@ -6,7 +6,7 @@
 
 ## 0 一句话结论
 
-同一份仓库（`/mnt/f/MCProject/astral_dice_multiloader`，Windows 侧 `F:\MCProject\astral_dice_multiloader`）在原生 Ubuntu 26.04.1 真机上 **可自举构建**：Gradle 9.2.1 wrapper 落地 → starengine 1.1.0 四线发布进本机 `~/.m2` → `:neoforge-1.21.1:classes` 与 `:forge-1.20.1:classes` 均 `BUILD SUCCESSFUL`；`env.sh` 只剩 1 条预期提示（AutoJS 未运行）。
+同一份仓库（`/mnt/f/MCProject/astral_dice_multiloader`，Windows 侧 `F:\MCProject\astral_dice_multiloader`）在原生 Ubuntu 26.04.1 真机上 **可自举构建**：Gradle 9.2.1 wrapper 落地 → starengine 1.1.0 各线发布进本机 `~/.m2` → `:neoforge-1.21.1:classes` 与 `:forge-1.20.1:classes` 均 `BUILD SUCCESSFUL`；`env.sh` 只剩 1 条预期提示（AutoJS 未运行）。
 
 ## 1 宿主实读（与 VM 的差别）
 
@@ -40,7 +40,7 @@
 ## 3 本批改动清单（11 改 + 1 新增）
 
 1. **`build.gradle`**（根）：`mcHomePath` 的 Linux 分支由 `/mnt/hgfs/.minecraft` 改为 `/mnt/d/.minecraft`，仍保持 `MC_HOME` > Linux 路径 > `D:/.minecraft` 的解析顺序 ⇒ Windows 侧行为不变。实跑验证：构建日志打印 `整合包根目录 (MC_HOME): /mnt/d/.minecraft`。
-2. **四线 `build.gradle`**（`neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1`）：`packModsDir` 注释里的 `/mnt/hgfs/.minecraft` 全部改指 `/mnt/d/.minecraft`；逻辑不动。
+2. **各线 `build.gradle`**（`neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1`）：`packModsDir` 注释里的 `/mnt/hgfs/.minecraft` 全部改指 `/mnt/d/.minecraft`；逻辑不动。
 3. **`scripts/test/linux/env.sh`**：新增 `ntfs3|ntfs` 挂载分支；可写检查键 `hgfs_writable` → **`repo_writable`**；`conf_windows` 由 WARN 降为 INFO；`mc_home` 默认 `/mnt/d/.minecraft`；锁目录改 `/mnt/f/MCProject/.agent-locks`；新增 **`locks_stale`**（按锁文件 `PID=` 做 `kill -0`，陈旧锁只报不删）。
 4. **`scripts/test/linux/launch.sh`**：一处 `（hgfs 常见）` 文案改 `（NTFS/FUSE 挂载常见）`。
 5. **`run/start-{1.20.1,1.21.1,26.1.2}.sh`**：注释 `hgfs 上` → `NTFS(/mnt/f) 上`（`run/` 被 `.gitignore` 忽略，不入库）。
@@ -61,22 +61,22 @@
 - **权限位不可信**：挂载带 `dmask=0077,fmask=0077,acl`，文件常显示 `700`/`600`。
 - **⚠ Windows 会话遗留的 1001:1002 属主目录**（本批真实踩到两次，且会复发）：
   - `docs/agent/` 目录属主 `1001:1002`、`755` ⇒ 当前 `kitsune`(1000) **不能在该目录新建/删除文件**，但**可覆盖其中已属 kitsune 的既有文件**。`write` 工具的「临时目录 + rename」会 `EACCES` ⇒ 绕法：写到 `/tmp/...` 再 `cat … > docs/agent/<file>`。
-  - `starengine` 四个子项目的 `build/` 树同样是 `1001:1002` ⇒ `publishToMavenLocal` 报 `Could not write to file '.../build/publications/mavenJava/pom-default.xml'`（**四线全挂在同一处**，不是依赖问题）。
-  - 绕法（无需 root）：`mv <line>/build <line>/build.vmresidue-20261031`（改名只需父目录可写）→ `cp -a` 复制回新 `build/`（新目录属 kitsune，内容/mtime 保留）⇒ 之后 Gradle 判定 `createMinecraftArtifacts UP-TO-DATE`，**没有触发重新 decompile**，四线发布合计 4 秒完成。
+  - `starengine` 四个子项目的 `build/` 树同样是 `1001:1002` ⇒ `publishToMavenLocal` 报 `Could not write to file '.../build/publications/mavenJava/pom-default.xml'`（**各线全挂在同一处**，不是依赖问题）。
+  - 绕法（无需 root）：`mv <line>/build <line>/build.vmresidue-20261031`（改名只需父目录可写）→ `cp -a` 复制回新 `build/`（新目录属 kitsune，内容/mtime 保留）⇒ 之后 Gradle 判定 `createMinecraftArtifacts UP-TO-DATE`，**没有触发重新 decompile**，各线发布合计 4 秒完成。
   - 残留：`starengine/{neoforge-1.21.1,forge-1.20.1,fabric-1.20.1,neoforge-26.1.2}/build.vmresidue-20261031/` 共约 300 MB，**删除需 root**（属主 1001 的目录内条目不可 unlink）。要么保留、要么用户授权 `sudo chown -R kitsune:kitsune` 后清理。
   - 经验：遇到 `Permission denied` 先 `ls -ld` 看属主；**不要** chown/chmod（需 root，且动的是 Windows ACL 映射）。
 
 ## 5 构建自举实测（本批）
 
 ```bash
-export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64        # daemon 必须 ≥21，四线统一
+export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64        # daemon 必须 ≥21，各线统一
 ./gradlew --version
 # Gradle 9.2.1 / Launcher JVM 21.0.12.1 / Daemon JVM /usr/lib/jvm/java-21-openjdk-amd64
 # OS Linux 7.0.0-42-generic amd64；首次自举把 dist（约 130 MB）下到 ~/.gradle/wrapper/dists
 ```
 
 - 出网：`repo.maven.apache.org` 200、`maven.aliyun.com` 200、`maven.neoforged.net` 200、`github.com` 200 ⇒ **不建 init.d 镜像**；宿主的 clash-verge-rev 是 **TUN 模式**（`tun.enable=true`、`device=Meta`、`auto-route`、`198.18.0.1/30`，mihomo `v1.19.32`）⇒ **远程操作直连，不加 `-c http.proxy=`**（详见规则正本〈Git 代理与操作规范〉）。
-- starengine 四线发布（`publishToMavenLocal`，均 `BUILD SUCCESSFUL`，各约 1 s，因 `build/moddev` 产物被复制保留）：
+- starengine 各线发布（`publishToMavenLocal`，均 `BUILD SUCCESSFUL`，各约 1 s，因 `build/moddev` 产物被复制保留）：
 
   ```
   ~/.m2/repository/com/merlinkitsune/starengine/starengine-neoforge-1.21.1/1.1.0/{jar,pom,module}
@@ -88,7 +88,7 @@ export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64        # daemon 必须 ≥21
 - 主仓编译（daemon 21，热缓存）：
 
   ```
-  ./gradlew :neoforge-1.21.1:classes  --console=plain   → BUILD SUCCESSFUL in 32s（EXIT=0，含配置四线）
+  ./gradlew :neoforge-1.21.1:classes  --console=plain   → BUILD SUCCESSFUL in 32s（EXIT=0，含配置各线）
   ./gradlew :forge-1.20.1:classes     --console=plain   → BUILD SUCCESSFUL in 30s（EXIT=0）
   ```
   期间打印 `整合包根目录 (MC_HOME): /mnt/d/.minecraft` ⇒ 投放根解析已指向原生路径。
@@ -103,7 +103,7 @@ export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64        # daemon 必须 ≥21
 
 ## 7 游戏测试资产接管（`/mnt/d/.minecraft`）
 
-`versions/` 实读 6 个实例；四线投放目标与当前 jar 版本：
+`versions/` 实读 6 个实例；各线投放目标与当前 jar 版本：
 
 | 线 | 投放实例（`versions/<实例>/mods`） | mods 数 | 现有 astral_dice / starengine |
 |---|---|---|---|
@@ -112,7 +112,7 @@ export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64        # daemon 必须 ≥21
 | `neoforge-26.1.2` | `26.1.2-NeoForge 模组测试` | 95 | `astral_dice-1.3.7-beta.2+neoforge_26.1.2.jar`（**旧版，缺 starengine jar**） |
 | `fabric-1.20.1` | `1.20.1-Fabric 模组测试` | 45 | `astral_dice-1.3.7-alpha.2+fabric_1.20.1.jar`（旧版） |
 
-- 另两个实例：`狐の航空学`（496 mods）、`狐の航空学 低配优化版`（464 mods，含 1.5.0-rc.4 jar）——非四线默认目标，未动。
+- 另两个实例：`狐の航空学`（496 mods）、`狐の航空学 低配优化版`（464 mods，含 1.5.0-rc.4 jar）——非各线默认目标，未动。
 - `env.sh` 断言 `pack_dirs=OK — 整合包根=/mnt/d/.minecraft，四线目标 mods 目录齐全`。
 - **未部署**：本批只做「路径解析 + 目录可达」，**没有** `pushToGame` / `build` 投放（红线：默认不部署，需用户明确下达）。26.1.2 实例里的旧 jar 属既有遗留，未清理。
 
@@ -121,7 +121,7 @@ export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64        # daemon 必须 ≥21
 ```
 CHECK: repo=OK / mount=INFO(ntfs3, /dev/nvme2n1p1) / gradlew=OK
 CHECK: jdk_1.21.1=OK(21.0.12.1) / jdk_1.20.1=OK(17.0.20.1) / jdk_26.1.2=OK(25.0.4.1) / jdk_fabric-1.20.1=OK(17.0.20.1)
-CHECK: autojs_jar_*=OK（四线均有 AutoJS jar）/ autojs_health=WARN（000，游戏未启动）
+CHECK: autojs_jar_*=OK（各线均有 AutoJS jar）/ autojs_health=WARN（000，游戏未启动）
 CHECK: residue=OK / conf_windows=INFO（mt.conf 的 D:/、C:/ 属 Windows 台配置，Linux 忽略不改）
 CHECK: cwd=OK / repo_writable=OK（ntfs3）/ jdk_paths=OK / gradle_daemon_jvm=OK
 CHECK: git_autocrlf=OK / pack_dirs=OK / locks_other=OK（仅 dsh.lock，属本宿主）
@@ -134,7 +134,7 @@ ENV_RESULT: WARN — 0 项阻塞，1 项提示（仅 autojs_health：游戏未�
 
 ## 9 剩余 checklist / 未验证
 
-1. `[[PENDING:build-time-native]]` 冷构建（含首次 decompile）耗时未测 —— 要测就删/移 `build/moddev` 后单线跑一次，**别在四线同时跑**。
+1. `[[PENDING:build-time-native]]` 冷构建（含首次 decompile）耗时未测 —— 要测就删/移 `build/moddev` 后单线跑一次，**别在各线同时跑**。
 2. `[[PENDING:autojs-native]]` 真机 AutoJS 未复测（端点、`Minecraft` 类加载方式、端口占用）；本机 **未注册 `autojs` MCP**，只能用 `curl` 打 JSON-RPC。
 3. 桌面注入：`computer-use-linux` 的 screenshot 走 portal，状态 `unverified`，首次截图可能弹授权；`xdotool`/`wtype`/`wmctrl`/`grim` 缺失，`ydotool` 无 socket，**不要**假设可用。
 4. `starengine/*/build.vmresidue-20261031/`（约 300 MB）需 root 才能删。

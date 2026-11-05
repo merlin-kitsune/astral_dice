@@ -23,7 +23,7 @@ git -C F:/MCProject/astral_dice_multiloader-next rev-list --left-right --count o
 | 工作树 | `F:/MCProject/astral_dice_multiloader-next` | `F:/MCProject/astral_dice_multiloader` |
 | 分支 | `multi-dev-next` | `multi-main` |
 | HEAD | **`7efefac5`** | **`6fe38138`**（= tag `1.5.0`） |
-| 版本 | 四线 `26.4-SNAPSHOT.5+<line>` | 四线 `1.5.0+<line>` |
+| 版本 | 各线 `26.4-SNAPSHOT.5+<line>` | 各线 `1.5.0+<line>` |
 | StarEngine | `26.4-SNAPSHOT.1`（fabric 另有 `starengine_version_range=>=26.4-SNAPSHOT.1`） | `1.1.0`，**外部前置**（区间 `[1.1.0,2.0.0)` / `>=1.1.0 <2.0.0`） |
 | 工作树状态 | 干净，未跟踪只有：`models/astral_anvil.bbmodel`、`models/sykestentacle/`（他人资产，勿动）**+ 本文件本身** | 大量**他人**未提交改动（`docs/agent/*` 等），勿 add / commit |
 | 相对位置 | 领先主线 **8** 提交 / 落后主线 **36** 提交 | — |
@@ -45,12 +45,12 @@ git -C F:/MCProject/astral_dice_multiloader-next rev-list --left-right --count o
 ## 3 主线待吸收的 36 个提交（按主题分组）
 
 **A. 版本与文本（本线的「相同改动」也要再验一遍）**
-- `ae4c5187` 四线 `mod_version=1.5.0`（去测试后缀）。
+- `ae4c5187` 各线 `mod_version=1.5.0`（去测试后缀）。
 - `054b1a4e` **改名**：`试剂-深渊` → `深渊试剂`，同时把立牌技能名从 Java 字面量搬进 lang 键（`tooltip.astral_dice.sign.<id>.active|passive`）。
 - `e7ee78a9` Java 注释跟随新名。
 
-**B. 四线与 26.1.2 收尾**
-- `c47ad8a3` **fabric-1.20.1 第四条线落地**（移植 / compat / datagen / assets）。本线 fabric 是 rc.7 之前的旧快照：`386` 个 java 文件 vs 主线 `525`。
+**B. 各线与 26.1.2 收尾**
+- `c47ad8a3` **fabric-1.20.1 线落地**（移植 / compat / datagen / assets）。本线 fabric 是 rc.7 之前的旧快照：`386` 个 java 文件 vs 主线 `525`。
 - `12de194e` 26.1.2 事件音效、Balm 通路点事件、补回两张蛟龙战斗牌。
 - `8c905578` 立牌半透明渲染（n21 / forge 两线）。
 - `fd990c15` + `9192a0bc` + `c3757626` + `31103af8` + `e9504696` + `e2a5ebf4` 等 26.1.2 补齐批（本线 n26 `280` java 文件 vs 主线 `426`）。
@@ -60,7 +60,7 @@ git -C F:/MCProject/astral_dice_multiloader-next rev-list --left-right --count o
 - 本线现状仍是内嵌：`neoforge-26.1.2/build.gradle:221` 有 `jarJar(...)`、`fabric-1.20.1/build.gradle:89` 有 `include "..."` ⇒ 合并必须让**删除**生效，并把本线自己的 `starengine_version`（`26.4-SNAPSHOT.1`）接进新的区间写法。
 
 **D. CI 与发布通道**
-- `3bb6a819` 四线 jar 硬校验 + prerelease 显式判定。
+- `3bb6a819` 各线 jar 硬校验 + prerelease 显式判定。
 - `276f5c2e` Release 资产一次性重发通道（提交信息带 `[republish-assets]` 才删同名附件重传）。
 
 **E. 测试台与用例**
@@ -85,8 +85,8 @@ done
 |---|---|---|---|
 | 立牌分支数 n21 / forge / n26 / fabric | **31 / 31 / 24 / 24** | 31 / 31 / 31 / 31 | n26 与 fabric 各缺 **7** 张新立牌（alana / ame / deepseek / dorothy / jill / kangel / lingling） |
 | java 文件数 n21 / forge / n26 / fabric | 416 / 408 / **280** / **386** | 414 / 406 / 426 / 525 | n26 与 fabric 明显滞后 |
-| 旧名「试剂-深渊」 | **仅** n21 / forge 两线仍在（`neoforge-1.21.1/.../zh_cn.json:380`、`forge-1.20.1/.../zh_cn.json:386`）；n26 / fabric 该键**根本不存在**（见下行） | 四线 0 命中 | 改名未吸收（两线） |
-| `abyss_reagent` 引用 | n21 / forge 各 26 处；**n26 / fabric 全 0**（物品与治愈体系在这两线整条未合入，不是改名问题） | 四线齐备 | 内容缺口，合并后自然补齐 |
+| 旧名「试剂-深渊」 | **仅** n21 / forge 两线仍在（`neoforge-1.21.1/.../zh_cn.json:380`、`forge-1.20.1/.../zh_cn.json:386`）；n26 / fabric 该键**根本不存在**（见下行） | 各线 0 命中 | 改名未吸收（两线） |
+| `abyss_reagent` 引用 | n21 / forge 各 26 处；**n26 / fabric 全 0**（物品与治愈体系在这两线整条未合入，不是改名问题） | 各线齐备 | 内容缺口，合并后自然补齐 |
 | 内嵌库 | `neoforge-26.1.2/build.gradle:221` `jarJar(...)`；`fabric-1.20.1/build.gradle:89` `include "..."` | 0 命中（外置前置） | 方向相反，见 §3-C |
 | 发布验收用例 | `scripts/test/cases/*.json` 共 **258** 个，`RELEASE150-*.json` **0** 个 | **283** 个，含 4 个 `RELEASE150-*` | 用例未吸收 |
 
@@ -98,7 +98,7 @@ done
 2. **四棵树比对定基线**（本仓惯用判据）：合并后 `HEAD` 的文件集合必须满足 `HEAD == ours ∪ theirs`，`extra` / `lost` 双空。本仓删除单文件在 NTFS 上曾有病理慢（单文件约 80ms、极端 26 分钟；此为历史经验、未留书面记录，无法二次取证），批量删除型合并优先走 plumbing 剧本（`merge-tree --write-tree` + 临时索引 + `commit-tree` + 只 checkout 变化文件）。
 3. **合并**：`git merge --no-ff origin/multi-main`（从 `multi-dev-next` 上做），冲突热点与处置见下表。
 4. **版本纪律（合并后立刻验）**：四行 `^mod_version` 必须仍是 `26.4-SNAPSHOT.5+<line>`；`starengine_version` 必须仍是 `26.4-SNAPSHOT.1`。主线带进来的是 `1.5.0` / `1.1.0`，**不许覆盖本线**。
-5. **构建**：四线各 `build` 一次；fabric 线 `-x pushToGame` 以免往整合包乱写。
+5. **构建**：各线均 `build` 一次；fabric 线 `-x pushToGame` 以免往整合包乱写。
 6. **跑 §6 的 9 条复核**，全绿才 push。
 
 | 冲突热点 | 本线应保留 | 应吃进主线 |
@@ -114,12 +114,12 @@ done
 
 | # | 判据 | 通过线 |
 |---|---|---|
-| 1 | 立牌 tooltip 分支数 | 四线均 **31** |
+| 1 | 立牌 tooltip 分支数 | 各线均 **31** |
 | 2 | 旧名「试剂-深渊」 | `grep -rl --include=*.json --include=*.java 试剂-深渊 */src` = 0 |
 | 3 | 内嵌库 | `jarJar(` / `include "` 在 n26 / fabric `build.gradle` 0 命中；产物 jar 内 `META-INF/jarjar/`、`META-INF/jars/*.jar` 无 starengine |
-| 4 | 语言文件 | `python tools/check_lang_sync.py` 四线 `[OK]`（主线读数 1142 / 1142 / 1166 / 1151，本线会因新内容更高） |
+| 4 | 语言文件 | `python tools/check_lang_sync.py` 各线 `[OK]`（主线读数 1142 / 1142 / 1166 / 1151，本线会因新内容更高） |
 | 5 | changelog 对等 | `python tools/check_changelog_parity.py` ⇒ `CHANGELOG_PARITY: OK`，sections / entries 两侧相等 |
-| 6 | 四线构建 | 四条线 `build` 各自 BUILD SUCCESSFUL，jar 落在 `<line>/build/libs/` 且在仓根 `build/libs/` |
+| 6 | 各线构建 | 各线 `build` 各自 BUILD SUCCESSFUL，jar 落在 `<line>/build/libs/` 且在仓根 `build/libs/` |
 | 7 | fabric 客户端 | 直接 `gradlew :fabric-1.20.1:runClient --console=plain -PautojsTestMod=1 -PtestSodium=false -Pquickplay=testworld`（`launch.sh` **不透传** `-PtestSodium=false`，而 Sodium 版本不匹配会崩） |
 | 8 | 26.1.2 启动 | 只能走 production 形态 `python run/26.1.2/.tmp/prodlaunch.py --quickplay testworld --log <log>`（dev/userdev 形态必触发 YSM err54）。**该路径只在主线树存在**，dev-next 需先合并或自行补引导器 |
 | 9 | 用例合法性 | `pwsh -File scripts/test/mt_case.ps1 validate --case <json>` ⇒ `MT_VALIDATE: OK` |
@@ -144,7 +144,7 @@ done
 - 上传 P1 两线（26.1.2 / fabric）必须 `--allow-p1`，否则脚本判 BLOCKED；库 jar 会自动改道到库项目 `1755415` 并自动 `--no-relations`。
 
 **实机 / 测试台**
-- AutoJS 端点 `25585` 在脚本里**四线硬编码**（`mt_launch.ps1:1094`(主线) / `:999`(dev)；`mt_assert.ps1:140`(两树同)；`mt_case.ps1:269`(主线) / `:149`(dev)）⇒ **同一时刻只能一条线占着**；`25585` / `25565` 被占时**绝不能 launch**，否则注入打进别人那台游戏，产生跨线污染的假绿。
+- AutoJS 端点 `25585` 在脚本里**各线硬编码**（`mt_launch.ps1:1094`(主线) / `:999`(dev)；`mt_assert.ps1:140`(两树同)；`mt_case.ps1:269`(主线) / `:149`(dev)）⇒ **同一时刻只能一条线占着**；`25585` / `25565` 被占时**绝不能 launch**，否则注入打进别人那台游戏，产生跨线污染的假绿。
 - AutoJS 的 `command()` 走 `MinecraftServer.createCommandSourceStack()` ⇒ `@s` 解析成 console、没有玩家，**选择器一律 `@a`**。
 - `--phase preflight` 不是合法单阶段（`mt.ps1:552`(主线) / `:499`(dev) 不认），正确入口是 `scripts/test/mt_preflight.ps1 --version <线>`；`-?` 是陷阱，要 `--help`。
 - `mt_env.ps1 world` 默认 180s（`Invoke-MtEnvWorld [int]$Timeout = 180`），大世界易 BLOCKED；`mt.ps1:478`(主线) / `:429`(dev) 调它时**不转发 `--timeout`**，需要时直接跑 `mt_env.ps1 world --version <线> --timeout 900`。

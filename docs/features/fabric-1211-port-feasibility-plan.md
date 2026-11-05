@@ -2,7 +2,7 @@
 
 > **触发**：用户 2026-11-03 裁决「增加新版本 fabric-1.21.1，与 fabric-1.20.1 同平台，游戏版本升级为 1.21.1，先建移植可行方案」；用户 2026-11-04 指示「重写打开之前的 1.21.1 fabric 移植计划」。
 > **状态**：**执行计划**。仓内仍无任何 fabric-1.21.1 文件（`glob "fabric-1.21.1/**"` = **0 路径**），本文件不建工程、不构建、不起游戏。
-> **与 v1 的关系**：v1 勘察稿（2026-11-03，36,338 B）已原样归档到 `docs/features/archive/fabric-1211-port-feasibility-plan-v1.md`。v2 重写的是**结论与步骤**；v1 逐条实读的取证表（1.21.1 语义差计数、数据包目录对照、四线硬编码骨架）保留在本文 §13，未删。
+> **与 v1 的关系**：v1 勘察稿（2026-11-03，36,338 B）已原样归档到 `docs/features/archive/fabric-1211-port-feasibility-plan-v1.md`。v2 重写的是**结论与步骤**；v1 逐条实读的取证表（1.21.1 语义差计数、数据包目录对照、各线硬编码骨架）保留在本文 §13，未删。
 > **数字口径**：标 **v2 实读** = 2026-11-04 本会话命令输出；标 **v1 实读** = 2026-11-03 快照，**实施前必须复算**（本仓「事实源原则」）。
 
 ## 0 本次重写改了什么（v1 → v2）
@@ -12,7 +12,7 @@
 | **取数通道** | 未决：AutoJS 无 fabric-1.21.1 产物，CraftTweaker 待评（v1 §10 待拍板 1） | **已定**：AutoJS 自带 **Rhino 内核**为唯一主通道；CraftTweaker **否决**（§8.3）。风险 R1/R2 **关闭** |
 | **AutoJS 产物** | 仓内 vendor 只有 forge-1.20.1 / fabric-1.20.1 / neoforge-1.21.1 / neoforge-26.1 | 已有 `scripts/test/resources/mods/autojs/AutoJS-fabric-1.21.1-1.0.0.jar`（sha256 `f498cf4a9d8df3a26554d09b09ce615eb2badba08120964460703677c4822fa3`），PROVENANCE 有登记 |
 | **上游 target** | 「需要新克隆 + 新 target，约 1 个工作包」 | 上游 `F:/MCProject/AutoJS/targets/fabric-1.21.1` **已存在并构建成功**，其钉版可作本仓的对照证据（§6.2） |
-| **版本线** | 假设 `26.4-SNAPSHOT.5` | 四线现行 **`26.4-SNAPSHOT.6+<line>`**（n21 `gradle.properties:38`、fabric `gradle.properties:29`，v2 实读） |
+| **版本线** | 假设 `26.4-SNAPSHOT.5` | 各线现行 **`26.4-SNAPSHOT.6+<line>`**（n21 `gradle.properties:38`、fabric `gradle.properties:29`，v2 实读） |
 | **测试台** | 按 pwsh 口径列改造点 | pwsh **已废弃**，口径 = `scripts/test/win/*.sh` + `scripts/test/mt_*.py`（§9 按此重列） |
 | **依赖钉版** | 2026-11-03 Modrinth 实查 | **2026-11-04 19:2x 代理恢复后已逐项复验**（25 个 slug 全通过，见 §6.4）：除 **Collective 8.75 → 8.77**（`JsrQpNp7` → `qSQaLB3S`）外，其余与 11-03 快照完全一致 |
 | **Loom 版本** | 「必须抬到 1.19.3」 | **改为**「先沿用仓内 1.17.21（`fabric-1.20.1/build.gradle:14`），失败再抬」——AutoJS 的 1.21.1 target 用 **Loom 1.10.5 + Gradle 8.14.4** 也构建成功（`targets/fabric-1.21.1/build.gradle:8`、wrapper 实读），说明 1.21.1 对 Loom 版本不挑 |
@@ -20,7 +20,7 @@
 ## 1 一句话执行结论
 
 **可行，且蓝本已确定**：以 `neoforge-1.21.1` 的 **419 个业务文件**为蓝本（它的原版 API 天然是 1.21.1），只把**平台层**换成镜像 NeoForge 21.1 的 Fabric shim；机制（LoaderBus + Bridges + bridge mixin）整体照抄 `fabric-1.20.1`。
-真正的**新增工作四块**：① 平台层 shim（约 85 类，其中约 30 类是真新语义）；② `starengine` 出**第 5 个平台产物** `starengine-fabric-1.21.1`（含 GeckoLib vendor 的 fabric 根）；③ 测试台四线→五线扩表；④ 4 个 KubeJS 探针改写成 AutoJS 原生脚本。
+真正的**新增工作四块**：① 平台层 shim（约 85 类，其中约 30 类是真新语义）；② `starengine` 出**第 5 个平台产物** `starengine-fabric-1.21.1`（含 GeckoLib vendor 的 fabric 根）；③ 测试台扩表到各线；④ 4 个 KubeJS 探针改写成 AutoJS 原生脚本。
 **不许做的事**：① 不从 `fabric-1.20.1` 往上搬（等于重做一遍 1.20.1→1.21.1 迁移）；② 不引 Architectury 重构架构；③ **P5（注册与服务端跑通）之前不宣布「可用」**。
 
 ## 2 事实基线（v2 实读，2026-11-04）
@@ -86,9 +86,9 @@ fabric-1.21.1/
   src/generated/resources/       # 蓝本 n21（371 文件，1.21.1 格式正确）
 ```
 
-命名纪律（与四线一致）：
+命名纪律（与各线一致）：
 - 子项目目录 / `run/` 标签 / 测试台 `--version` 值 **一律 `fabric-1.21.1`**。
-- `mod_version=26.4-SNAPSHOT.<n>+fabric_1.21.1`（`<n>` 与四线**同号递增**，全平台同版）。
+- `mod_version=26.4-SNAPSHOT.<n>+fabric_1.21.1`（`<n>` 与各线**同号递增**，全平台同版）。
 - 产物名 `astral_dice-26.4-SNAPSHOT.<n>+fabric_1.21.1.jar`（`archivesName='astral_dice'`，与 fabric-1.20.1 同形）。
 
 ## 5 平台层映射（NeoForge 21.1 → platform.*）
@@ -142,7 +142,7 @@ rhino_version_range=[2101,)
 | 项 | 本仓 fabric-1.20.1 | AutoJS 的 fabric-1.21.1 target | 新线取法 |
 |---|---|---|---|
 | Loom | 1.17.21 | 1.10.5（`build.gradle:8`） | **先沿用 1.17.21**；若 `loom` 报 1.21.1 不支持再抬 1.19.x |
-| Gradle wrapper | 9.2.1 | 8.14.4 | 沿用本仓 9.2.1（同一 wrapper 已在四线跑通） |
+| Gradle wrapper | 9.2.1 | 8.14.4 | 沿用本仓 9.2.1（同一 wrapper 已在各线跑通） |
 | Java toolchain | 17 | 21 | **21**（MC 1.21.1 硬要求） |
 
 ### 6.3 依赖表（**2026-11-04 19:2x 逐项复验通过**，口径 = `game_versions=["1.21.1"]` + `loaders=["fabric"]`）
@@ -220,7 +220,7 @@ PY
 | **P6 网络与版本门禁** | payload 注册 + `VersionGate` 握手 | 用例 `INJECT-ROUNDTRIP-fabric-1.21.1`、`VERSION-GATE-fabric-1.21.1` 绿 | P5 |
 | **P7 客户端渲染** | GUI 图层、立牌半透明、tooltip 框色、粒子 provider、光影栈 | `mt_capture` 截图非空（**注意 §9 的窗口定位坑**）；立牌 tooltip 分支数 = **31** | P6 |
 | **P8 GeckoLib 前置** | `starengine` 新平台 `starengine-fabric-1.21.1`（Loom）+ vendored GeckoLib 的 **fabric 根**；消费方接该产物 | 触手实体渲染 + `triggerAnim` 攻击动画（与 1.21.1 neoforge 同一判据：summon +`attack` ⇒ hp 掉 1）；jar 内无 jarjar | P1（可并行） |
-| **P9 测试台与治理** | 五线扩表、用例克隆、`porting/CROSS-VERSION-DIFFS.md` 加行、AGENTS 口径 | `python scripts/test/mt_preflight.py --version fabric-1.21.1` = `MT_PREFLIGHT: OK`；`BOOT-READY`/`JAR-ASSETS` 绿；门禁三绿 | P7 |
+| **P9 测试台与治理** | 各线扩表、用例克隆、`porting/CROSS-VERSION-DIFFS.md` 加行、AGENTS 口径 | `python scripts/test/mt_preflight.py --version fabric-1.21.1` = `MT_PREFLIGHT: OK`；`BOOT-READY`/`JAR-ASSETS` 绿；门禁三绿 | P7 |
 
 **排序**：P0→P1→P2→P3→P4→P5 是串行硬依赖；P8（GeckoLib/starengine 第 5 平台）应在 P5 之后（它需要能构建的消费方来验），但可与 P6/P7 并行；P9 收尾。
 
@@ -239,7 +239,7 @@ PY
 
 - 不装 KubeJS 时 AutoJS 用**自带 Rhino 内核**，脚本是**普通 JavaScript**（不是 KubeJS 的 `ServerEvents` 那一套）。
 - Rhino 在 1.21.1 fabric 上是多加载器单 jar（`2101.2.8-build.91`），AutoJS 侧声明 `rhino [2101,) required`。
-- ⇒ 新线**不需要第二个脚本引擎**，取数通道与另四线一致（都是 AutoJS HTTP `25585`）。
+- ⇒ 新线**不需要第二个脚本引擎**，取数通道与其余各线一致（都是 AutoJS HTTP `25585`）。
 
 ### 8.3 CraftTweaker 为什么不采用（结论 + 理由）
 
@@ -258,7 +258,7 @@ PY
 
 **红线**：探针改写**只换宿主通道，不换机器行契约**（`scripts/test/mt_assert.py` 与用例里的 `expect` 都按机器行匹配）。
 
-## 9 测试台五线改造（bash + python 口径，pwsh 已废弃）
+## 9 测试台各线改造（bash + python 口径，pwsh 已废弃）
 
 | 位置 | 现状 | 改法 |
 |---|---|---|
@@ -266,11 +266,11 @@ PY
 | `scripts/test/lib/mt_paths.py` `VERSIONS` / `SUBPROJECT` / `LOADER` | 四元组 | 同上 |
 | `scripts/test/lib/mt_ps.py` / `mt_ime.py` 的 choices | 四元组 | 同上 |
 | **`mt_ps.py` `_MARKER_ORDER`** | `("fabric-1.20.1","1.21.1","26.1.2","1.20.1")` | **`fabric-1.21.1` 会被 `1.21.1` 吞** ⇒ 新串必须排在 `1.21.1` 之前；`mt_compat.py` 里 6 处 `"fabric-1.20.1"` 字面量分支泛化成 `fabric-*` |
-| `scripts/test/win/lib/common.sh` `MT_ALL_VERSIONS` / subproject / loader / **java 主版本** / autojs | 四线；fabric-1.20.1→17 | **fabric-1.21.1 → 21** |
+| `scripts/test/win/lib/common.sh` `MT_ALL_VERSIONS` / subproject / loader / **java 主版本** / autojs | 未含 `fabric-1.21.1`；fabric-1.20.1→17 | **fabric-1.21.1 → 21** |
 | `scripts/test/win/lib/fabric.sh`（17 处 `fabric-1.20.1` 字面量） | 只认 1.20.1 | 泛化 `fabric-*` 或加分支（**AutoJS 状态文件 `.mt_autojs_injected` 分侧写入逻辑**在这一层） |
 | `win/{mt,env,launch,stop,live}.sh`、`phases.sh` | 字面量分支 | 同上 |
-| `tools/*.py` 的 `LINES`/`SUBPROJECTS` 常量（`check_lang_sync.py`、`verify_tag_parity.py`、`gen_particle_library.py`、`verify_effect_icons.py`、`loom_embedded_jars.py`、`unpack_nested_mod_jars.py`、`fetch_shaderpacks.py` 等） | 四线 | 加第五线 |
-| `.github/workflows/build.yml` 的 lang-sync 守卫 / 产物 / 验证矩阵 / Release glob | 四线 | 加第五线（守卫写 `hashFiles(...)!=''`） |
+| `tools/*.py` 的 `LINES`/`SUBPROJECTS` 常量（`check_lang_sync.py`、`verify_tag_parity.py`、`gen_particle_library.py`、`verify_effect_icons.py`、`loom_embedded_jars.py`、`unpack_nested_mod_jars.py`、`fetch_shaderpacks.py` 等） | 未含 `fabric-1.21.1` | 加 `fabric-1.21.1` |
+| `.github/workflows/build.yml` 的 lang-sync 守卫 / 产物 / 验证矩阵 / Release glob | 未含 `fabric-1.21.1` | 加 `fabric-1.21.1`（守卫写 `hashFiles(...)!=''`） |
 | `scripts/test/cases/*-fabric-1.20.1.json` | 一批 | 克隆为 `*-fabric-1.21.1`（含 JSON 内 `"version"` 字段） |
 
 **四条前置坑（都已踩过，别再踩）**：
@@ -409,6 +409,6 @@ PY
 
 `fabric-1.21.1/run/datagen/logs/debug.log`（Mixin 0.8.7，Env=SERVER）里能看到 `Mixing ... into ...` 成功记录：`LivingHurtBridgeMixin`、`ItemTossBridgeMixin`、`LivingUseItemFinishBridgeMixin`、`ExplosionStartBridgeMixin`、全部 container mixin、`ServerPlayerDimensionTravelBridgeMixin`、`MobFinalizeSpawnBridgeMixin` —— **无任何 `InvalidInjectionException`**。jade（client 列表）与 trinkets（目标类 datagen 期未加载）只在静态层面通过，需客户端启动日志才能补证。
 
-### 14.10 五线整构建（本轮收尾）
+### 14.10 各线整构建（本轮收尾）
 
-`./gradlew build -x test`（五条线全量）⇒ **BUILD SUCCESSFUL**；仓根 `build/libs/` 现有五件：`astral_dice-26.4-SNAPSHOT.6+{neoforge_1.21.1, forge_1.20.1, neoforge_26.1.2, fabric_1.20.1, fabric_1.21.1}.jar`（2,663,131 / 2,712,182 / 2,840,878 / 2,994,607 / 2,994,174 B）。
+`./gradlew build -x test`（各线全量）⇒ **BUILD SUCCESSFUL**；仓根 `build/libs/` 现有五件：`astral_dice-26.4-SNAPSHOT.6+{neoforge_1.21.1, forge_1.20.1, neoforge_26.1.2, fabric_1.20.1, fabric_1.21.1}.jar`（2,663,131 / 2,712,182 / 2,840,878 / 2,994,607 / 2,994,174 B）。

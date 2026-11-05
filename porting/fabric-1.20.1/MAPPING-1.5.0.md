@@ -10,10 +10,10 @@
 
 | 项 | 值 | 取证方式 |
 |---|---|---|
-| 仓库 | `F:\MCProject\astral_dice_multiloader`（四线单仓） | 工作目录 |
+| 仓库 | `F:\MCProject\astral_dice_multiloader`（各线单仓） | 工作目录 |
 | 分支 | `multi-main` | `git rev-parse --abbrev-ref HEAD` |
 | HEAD | `fd990c15` | `git rev-parse --short HEAD` |
-| 四线目录 | `neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1` | 目录枚举 |
+| 各线目录 | `neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1` | 目录枚举 |
 | fabric mod_version | `1.5.0-rc.7+fabric_1.20.1` | `fabric-1.20.1/gradle.properties` |
 | 未提交改动 | 存在且非本文档产生，全程未触碰 | `git status --porcelain` |
 
@@ -320,7 +320,7 @@ git diff --no-index --numstat -- forge-1.20.1/src/main/java/com/merlinkitsune/as
 | `network/*Payload.java`（24 个）+ `network/ModPayloads.java` | `PayloadRegistrar` + `CustomPacketPayload` record + `StreamCodec` | `platform/network/SimpleChannel` 的内部消息类 + `PacketDistributor.Target` | `neo/.../network/ModPayloads.java:13` `import net.neoforged.neoforge.network.registration.PayloadRegistrar`、`:22` `event.registrar(VersionGate.interopVersion())`；`fabric/.../platform/network/SimpleChannel.java`(172L) `registerMessage(int,Class,..)` |
 | `fixes/DamageStackSanitizer.java` | NeoForge 专用伤害栈修复（上游 bug） | 无对应；1.20.1 无该 bug 通道 | 文件名与所在目录 `fixes/`；forge/fabric 两线均无 `fixes/` 目录 |
 | `fixes/NeoForgeFixesLog.java` | 同样是 neo 专用修复日志 | 无对应 | 同上 |
-| `mixin/fixes/LivingEntityDamageContainerMixin.java` | 修 `LivingEntity` 的 DamageContainer（1.21.1 专有内部结构） | 无对应；1.20.1 无 `DamageContainer` | 同名 mixin 在 neo26 线也不存在（实测四线比对结论） |
+| `mixin/fixes/LivingEntityDamageContainerMixin.java` | 修 `LivingEntity` 的 DamageContainer（1.21.1 专有内部结构） | 无对应；1.20.1 无 `DamageContainer` | 同名 mixin 在 neo26 线也不存在（实测各线比对结论） |
 | `client/EffectTooltipDescriptions.java` | 客户端 tooltip 描述拼装 | 由 `event/ModTooltipHandler.java` 直接产出（fabric 已有该类，缺的是内容，见 §3 第 8 项） | 两线 `event/ModTooltipHandler.java` 均存在 |
 | `compat/jade/ShopCooldownServerDataProvider.java` | Jade 服务端数据提供器（`IServerDataProvider`） | 需在 fabric 的 `compat/jade/` 补同类（缺类为 0 时该行不适用） | 该文件仅 neo 线存在；fabric `compat/jade/` 现有 3 个文件 |
 | `mixin/jade/DisplayHelperArmorIconMixin.java` | Jade 护甲图标显示修补 | fabric 改为 `mixin/jade/ArmorElementIconMixin` + `ArmorValueProviderMixin`（两线口径不同：fabric 用 `@Inject` 而非 `@Redirect`） | `git diff --no-index` 对 `mixin/jade/ArmorElementIconMixin.java` 结果为 `+28/-53`（无同名 neo 文件，改走 forge 口径） |
@@ -411,9 +411,9 @@ git diff --no-index --numstat -- forge-1.20.1/src/main/java/com/merlinkitsune/as
 | 战利品表目录 | `data/astral_dice/loot_table/`（单数） | `data/astral_dice/loot_tables/`（复数） | `loot_tables/`（复数）—— 已存在 4 个 | 实测：neo `loot_table/`=7、forge `loot_tables/`=7、fabric `loot_tables/`=4 |
 | 战利品修饰器 | —（1.21 无 GLM） | `data/astral_dice/loot_modifiers/`（12 个 `star_plate_*.json`） | **无该目录**；改由 `loot/FabricLootInjector.java` 直注 `LootTable.Builder#pool` | 目录实测 + `build.gradle` loom `interfaceInjection` 注释 |
 | 槽位图标 | `assets/astral_dice/textures/slot/empty_{dice,chip,stand}_slot.png` | 同 neo | `assets/astral_dice/textures/gui/slot/empty_{dice,chip,stand}_slot.png`（fabric 现有 3 张） | fabric 有 `textures/gui/slot/*.png` 3 张，**无** `textures/slot/` |
-| 数据目录命名空间 | `assets/astral_dice/patchouli_books/**` | 同 | 同（**在 assets 下，不在 data 下**） | 目录实测：三线均有 `assets/astral_dice/patchouli_books` |
+| 数据目录命名空间 | `assets/astral_dice/patchouli_books/**` | 同 | 同（**在 assets 下，不在 data 下**） | 目录实测：非 fabric 线均有 `assets/astral_dice/patchouli_books` |
 | 村民职业纹理 | `assets/astral_dice/textures/entity/villager/profession/{card_trader,chip_trader}.png` | 同 | 同（fabric 缺 2 张） | §4.1 |
-| 粒子定义 | `assets/astral_dice/particles/*.json`（179 变体） | 同 | 同（四线一致，无需改） | 实测 textures/particle 179 四线相同 |
+| 粒子定义 | `assets/astral_dice/particles/*.json`（179 变体） | 同 | 同（各线一致，无需改） | 实测 textures/particle 179 各线相同 |
 
 ### 2.8 数据生成
 
@@ -447,7 +447,7 @@ git diff --no-index --numstat -- forge-1.20.1/src/main/java/com/merlinkitsune/as
 | 其中内容有差异（`diff` 非空） | **181** | 与任务书「181 个与 forge 不一致」一致 |
 | 仅在 forge 线存在（同路径） | 144 | `git diff --no-index` 的 only-in-forge |
 | 仅在 fabric 线存在（同路径） | 121 | 同上 only-in-fabric |
-| 参照系补充 | `neoφ ∩ forgeφ ∩ fabφ` = 250；四线全共有 = 248 | 集合运算 |
+| 参照系补充 | `neoφ ∩ forgeφ ∩ fabφ` = 250；各线全共有 = 248 | 集合运算 |
 
 差异行数 = `numstat` 的 `+` 与 `−` 之和（见 §0.3）。「任务书参考」列原样保留任务书给的数字，**与本表实测值不同属口径/快照差异**，不一并修正。
 
@@ -920,7 +920,7 @@ grep -rn "net\.minecraftforge\|net\.neoforged" neoforge-1.21.1/src/main/java | w
 | B-4 | `client/ModernUITooltipCompat` 在 fabric 是否会接管 ModernUI tooltip 边框 | fabric 用 `beginRender/endRender`（mixin 桥）替代 Forge 事件，静态比对只能看到方法名更换，**渲染结果无法静态判定** | 实机 + ModernUI 环境截图 |
 | B-5 | `item/sign/FannySignItem` 两套立牌框架是否等价 | fabric 多出 12 个方法（applyEventTo/applyTimed/giveRandomEffectCard/giveCoins…），forge 版对应能力可能写在别的类里；未做逐方法语义配对 | 对读 forge 侧立牌基类 + 实机发放测试 |
 | B-6 | `event/LootInjectionHandler`（缺 `onLootTableLoad`）与 `loot/FabricLootInjector` 是否等价 | fabric 无 `loot_modifiers/`，13 个 GLM 改由 Java 直注；「自有命名空间早退」这一保护在 fabric 是否有等价实现未验证 | 读 `loot/FabricLootInjector.java` 全文 + 13 个 GLM 的落点比对 |
-| B-7 | `network/VersionGate` 互通号在三条线上是否同值 | 只确认了 fabric `VersionGate.java:41-42,62` 的实现位置，未与 forge/neo 的生成规则逐行比对 | 三线 `VersionGate` 对读 |
+| B-7 | `network/VersionGate` 互通号在各线上是否同值 | 只确认了 fabric `VersionGate.java:41-42,62` 的实现位置，未与 forge/neo 的生成规则逐行比对 | 非 fabric 线 `VersionGate` 对读 |
 | B-8 | 事件触发/效果施加是否有可断言的机器行 | 本轮只确认了启动/饰品/版本门的机器行（§5 引用），事件与效果的施加点日志未逐条核 | `grep -rn "LOGGER.info"` 于 `event/`、`effect/` 后确认 |
 | B-9 | `BarricadeEntity`(447 行)/`RepulsionEntity`(1115 行) 在 1.20.1 的逐方法签名 | 未逐方法对照 1.20.1 `LivingEntity` 的 `tick/aiStep/defineSynchedData/addAdditionalSaveData` 签名；这类重写必须逐签名核 | 与 1.20.1 反编译源逐方法对读 |
 | B-10 | `ExplosionEvent` / `VillagerTradesEvent` 新事件的注入点 | fabric `platform/event/` 无这两个事件，需新写事件类 + bridge mixin；**具体注入哪个原版方法（`Explosion.finalizeExplosion` / `Villager.getOffers`）需要按 1.20.1 字节码取证** | `javap` 1.20.1 目标类 + `audit_mixin_injection.py` |

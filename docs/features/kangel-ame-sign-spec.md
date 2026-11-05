@@ -139,7 +139,7 @@
 - `scripts/verify/verify_crafting_recipe_uniqueness.ps1`：两条新配方 0 碰撞；
 - `tools/verify_effect_icons.py`：3 新效果图标覆盖；
 - `tools/audit_patchouli_keys.py`、`tools/check_lang_sync.ps1`、`scripts/audit/tooltip_color_audit.ps1`、`verify_bountiful_pools.ps1`（回归）、`scripts/verify/verify_resource_integrity.ps1`。
-- 版本号四线同步 bump（.127 → .128，含未改动的 P1 两线）；两份 CHANGELOG 各 +1 条；AGENTS.md 立牌/效果/lang 计数**实测后订正**。
+- 版本号各线同步 bump（.127 → .128，含未改动的 P1 两线）；两份 CHANGELOG 各 +1 条；AGENTS.md 立牌/效果/lang 计数**实测后订正**。
 
 ## 8. 假定（用户未指定，按既有口径锁定）
 

@@ -6,7 +6,7 @@
 ## 0 为什么删得掉：pwsh 版本来就是 python/bash 原件的移植
 
 `git show --stat 92fbeaf` = 「chore(scripts)!: W9 删除 28 个 bash/python 原件（工具链收敛为纯 pwsh）」。
-⇒ 这一轮是**反向移植**：`git show 92fbeaf^:<path>` 取回原件，按现状（`scripts/test/lib/mt_paths.py` 等新模块的签名、四线版本表、机器行契约）适配后落盘，再删 .ps1。
+⇒ 这一轮是**反向移植**：`git show 92fbeaf^:<path>` 取回原件，按现状（`scripts/test/lib/mt_paths.py` 等新模块的签名、各线版本表、机器行契约）适配后落盘，再删 .ps1。
 
 ## 1 不可动摇的契约（替代物必须逐字保持）
 
@@ -118,7 +118,7 @@
 - 跨线 `ModItems` 不一致：`card_shop` / `chip_shop` / `event_drawer` 只在 forge-1.20.1 与 neoforge-26.1.2 有，**n21 没有**（属 P0 内部不一致，该修）
 - `astral_rews.json` 缺条目：n21/forge 各缺 `alana_sign`、`extra_battery_chip`；**26.1.2 缺 9 条**（属 P1 滞后，按口径只移植不擅动）
 - rarity 映射错误：`fanny_sign` / `haiqing_sign` 判成 RARE（应 EPIC）；26.1.2 `misaki_sign` LEGENDARY→EPIC
-- 四条线 `astral_rews.json` md5 不一致；卡牌标签仅 n21 有 `effect_card_barricade` / `effect_card_repulsion`
+- 各线 `astral_rews.json` md5 不一致；卡牌标签仅 n21 有 `effect_card_barricade` / `effect_card_repulsion`
 
 `python scripts/verify/verify_sign_registration.py` 同样**结论一致地红**（py 与 ps1 归一化输出逐字节相同，rc 均 1）：
 - `FAIL [neoforge-26.1.2] registered=32 signs=25 stand=31` —— `data/astral_dice/tags/item/signs.json` 只有 25 项，缺 alana / ame / deepseek / dorothy / jill / kangel / lingling 七张立牌；
@@ -159,7 +159,7 @@
 | `scripts/verify/verify_bountiful_pools.py` | **1** | 就地红 11 项（§4） |
 | `scripts/verify/verify_sign_registration.py` | **1** | 就地红 2 条线（§4） |
 | `scripts/verify/verify_forge_loader_gate.py` | **2** | 无法判定：fmlloader POM 不在缓存（§4） |
-| `tools/check_lang_sync.py` | 0 | 四线 `[OK]`，en_us=1143/1143/1167/1152 |
+| `tools/check_lang_sync.py` | 0 | 各线 `[OK]`，en_us=1143/1143/1167/1152 |
 | `tools/check_mod_sources.py` | 0 | `MOD_SOURCE_GATE: OK violations=0 exceptions=1 infos=0` |
 | `tools/check_changelog_parity.py` | 0 | `CHANGELOG_PARITY: OK sections=32 entries=822/822` |
 
@@ -183,7 +183,7 @@
 
 **新增的两条反假绿守卫（唯一允许「py 比 ps1 多」的地方，都复用脚本已有状态词）**：
 1. `verify_crafting_recipe_uniqueness.py`：配方文件数为 0 ⇒ `RECIPE_UNIQ: ERROR …` + rc=2（ps1 是 vacuous PASS rc=0）。
-2. `verify_probe_class_refs.py`：三线参与判据的 `loadClass` 总数为 0 ⇒ `RESULT: ERROR（无法判定）…拒绝 vacuous PASS` + rc=2（ps1 是 PASS rc=0）。
+2. `verify_probe_class_refs.py`：各线参与判据的 `loadClass` 总数为 0 ⇒ `RESULT: ERROR（无法判定）…拒绝 vacuous PASS` + rc=2（ps1 是 PASS rc=0）。
 
 **已知正当差异（非逻辑）**：`verify_event_registry.py` / `verify_probe_class_refs.py` 的 ps1 用 `Write-Host` 未 pin 编码，本机重定向时落 GBK；py 一律 UTF-8，强制 UTF-8 控制台下两边原始字节相同。`verify_chip_shop_ui.py:1273-1274` 的 `CHIPUI_NEXT:` 提示行**有意**改为 `bash scripts/test/win/mt.sh …`（父代理裁定：py 不应再打印一条本分支正在删除的命令）。
 
@@ -222,7 +222,7 @@
 | 可执行 `pwsh -File` 引用（*.sh / *.py / *.yml） | **0** |
 | `bash -n` | 13 文件 / 0 失败 |
 | `py_compile` 全量 | **90 文件 / 0 失败** |
-| 11 条常规门禁 | 全 `[OK]`：lang_sync 四线键集一致 · mod_sources `violations=0 exceptions=1` · changelog `sections=32 entries=822/822` · chip_acq PASS · chip_recipes ALL OK · recipe_uniq OK · event_reg OK · probe_refs PASS · res_integrity PASS · bount_excl ALL CLEAR · chip_ui `CHIPUI_TOTAL_FAIL: 0` |
+| 11 条常规门禁 | 全 `[OK]`：lang_sync 各线键集一致 · mod_sources `violations=0 exceptions=1` · changelog `sections=32 entries=822/822` · chip_acq PASS · chip_recipes ALL OK · recipe_uniq OK · event_reg OK · probe_refs PASS · res_integrity PASS · bount_excl ALL CLEAR · chip_ui `CHIPUI_TOTAL_FAIL: 0` |
 | `mt_case validate` | `files=297 errors=0` |
 | `mt_preflight --all` | `MT_PREFLIGHT: OK — 21 项全部满足（1.21.1, 1.20.1, 26.1.2, fabric-1.20.1）` |
 | 已知就地红（回显、不判失败） | bountiful_pools rc=1（11 项）· sign_registration rc=1（2 条线）· forge_loader_gate rc=2（无法判定）· content_library rc=1（1.2.0 冻结快照，**非常规门禁**） |

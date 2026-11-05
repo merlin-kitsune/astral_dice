@@ -110,7 +110,7 @@
 
 控制器常量在实体类里是 `CONTROLLER_IDLE = "idle"` / `CONTROLLER_ACTION = "action"` / `ANIM_IDLE = "animation.tentacleidle"` / `ANIM_ATTACK = "animation.tentacleattack"`，与第 1 节的调用规则一一对应；动画 ID 保留 `animation.` 前缀（anim json 里的键名就是这个全名）。
 
-### 6.2 资源落点（四线同一套）
+### 6.2 资源落点（各线同一套）
 
 | 资源 | 路径 |
 |---|---|

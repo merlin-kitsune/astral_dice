@@ -7,14 +7,14 @@
 > 本页下面的 `pwsh -File scripts/test/fabric/ft_*.ps1 ...` 命令**均为历史记录，已不可执行**，保留仅为溯源；
 > 能力损失与处置登记见 `docs/features/devnext-pwsh-retirement-register.md`。
 
-> 自包含的第四条线测试台。**不修改、不依赖** `scripts/test/mt*.ps1` + `lib/Mt.*.psm1` + `cases/*.json`  
-> 那一套生产线资产（那套是 NeoForge 1.21.1 / Forge 1.20.1 / NeoForge 26.1.2 三线的口径）。  
+> 自包含的 P1 线测试台。**不修改、不依赖** `scripts/test/mt*.ps1` + `lib/Mt.*.psm1` + `cases/*.json`  
+> 那一套生产线资产（那套是 NeoForge 1.21.1 / Forge 1.20.1 / NeoForge 26.1.2 各线的口径）。  
 > 一律 PowerShell 7（`pwsh`）；禁用 Windows PowerShell 5.1（见 `AGENTS.md`「命令执行规范」）。
 > **2026-11-01 登记更新（本页 §1/§3 的「不依赖生产线」口径已被部分取代，以此段为准）**
 >
 > 1. **fabric-1.20.1 已正式登记进 PowerShell 生产线**：`scripts/test/lib/Mt.Paths.psm1` 的
 >    `VERSIONS` / `LOADER` / `SUBPROJECT` 三表含 fabric，run 根按 side 解析成
->    `fabric-1.20.1/run/{client,server}`（其它三线仍是 `run/<版本>` 单目录）；`mt.ps1` 新增
+>    `fabric-1.20.1/run/{client,server}`（其它各线仍是 `run/<版本>` 单目录）；`mt.ps1` 新增
 >    `--side client|server`（只对 fabric 有效，经 `MT_SIDE` 传给全部子进程）。
 > 2. **用例已迁到正式目录**：规范位置 = `scripts/test/cases/<CASE>-fabric-1.20.1.json`（16 条）。
 >    本目录 `cases/FAB-*.json` **保留仅作历史**，不再被执行；逐条映射见 §11.1。
@@ -43,10 +43,10 @@
 | 输入注入   | Win32 `PostMessage` 键鼠（`mt_inject.ps1` + `Mt.Win32.psm1`，依赖 en-US 键盘布局与窗口线程输入法） | 本台面向**服务端命令**：**RCON（唯一通道）**                                                                                                                                                                                                                | 客户端 GUI 键鼠注入本台未覆盖（缺口，见 §8）                                 |
 | 日志窗口   | 文件身份锚点（ctime + 头部指纹 + 长度）                                                       | **同口径**（`Get-FtLogAnchor`）—— 因为 latest.log **每次冷启动都被 log4j 轮转**，纯字节偏移游标在每次启动都失效（实测缺陷，见 §7.4）                                                                                                                                                | 旧实现用「启动前字节长度」当游标 ⇒ 每次启动必然假超时                               |
 | 日志读取   | 文件空闲时读（可 `ReadAllBytes`）                                                        | **必须共享读写打开**（`FileShare.ReadWrite`）—— 游戏运行时 latest.log 被独占，`File.ReadAllBytes`（share=Read）**每次**都抛「being used by another process」（实测缺陷，见 §7.4）                                                                                              | 不共享打开 ⇒「服务端还活着时读日志」全线不可用                                   |
-| 批量编排闸门 | `mt.ps1` / `mt_case.ps1` / `mt_watchdog.ps1`（三处 + watchdog）                     | `ft.ps1` / `ft_case.ps1` / `ft_launch.ps1 --side both`                                                                                                                                                                                      | 闸门维度不同：fabric 单版本 ⇒「三线顺序」与 `watchdog -Action stop` **N/A** |
+| 批量编排闸门 | `mt.ps1` / `mt_case.ps1` / `mt_watchdog.ps1`（三处 + watchdog）                     | `ft.ps1` / `ft_case.ps1` / `ft_launch.ps1 --side both`                                                                                                                                                                                      | 闸门维度不同：fabric 单版本 ⇒「各线顺序」与 `watchdog -Action stop` **N/A** |
 
-**从第一性看**：生产线测试台的每一个共享函数（`Mt.Paths` 的版本→子项目映射、`Mt.Phase` 的三线门控、  
-`mt_env` 的前置清单、`mt_launch` 的窗口/输入法/禁 AI 闸门、`mt_case` 的进度信标）都把「三线 + Forge 语义」  
+**从第一性看**：生产线测试台的每一个共享函数（`Mt.Paths` 的版本→子项目映射、`Mt.Phase` 的各线门控、  
+`mt_env` 的前置清单、`mt_launch` 的窗口/输入法/禁 AI 闸门、`mt_case` 的进度信标）都把「各线 + Forge 语义」  
 写死在参数面与路径面上。复用等于把错误的假设带进来，比另写一套更贵。
 
 ---
@@ -134,9 +134,9 @@ pwsh -NoProfile -File scripts/test/fabric/ft_stop.ps1 --side client
 | `--phase case` 无 `--case`（走目录批量）                   | `ft.ps1`        | `mt.ps1 --phase cases` 无 `--case`             |
 | `--phase report`（收集自动跑出来的结果）                       | `ft.ps1`        | `mt.ps1 --phase report`                       |
 | `ft_case.ps1 run` 无 `--case`、`ft_case.ps1 run-dir` | `ft_case.ps1`   | `mt_case.ps1 run-dir`                         |
-| `ft_launch.ps1 --side both`（顺序起两条实例）               | `ft_launch.ps1` | `mt.ps1 --phase <p>` 无 `--version`（三线顺序）      |
+| `ft_launch.ps1 --side both`（顺序起两条实例）               | `ft_launch.ps1` | `mt.ps1 --phase <p>` 无 `--version`（各线顺序）      |
 | —（N/A）                                             | —               | `mt_watchdog.ps1 -Action stop`：本台不提供 watchdog |
-| —（N/A）                                             | —               | 三线顺序：fabric 只有一条线，无此维度                        |
+| —（N/A）                                             | —               | 各线顺序：fabric 只有一条线，无此维度                        |
 
 **放行**：`--phase build / env / launch / stop`、`--phase case --case <X>`、`ft_case.ps1 run --case <X>`、  
 `ft_case.ps1 validate`、`ft_case.ps1 list`、以及手动读数/注入类（`ft_inject` / `ft_assert` / `ft_dispatchreport`）。
@@ -306,7 +306,7 @@ pwsh -NoProfile -Command "$errs=$null; [void][System.Management.Automation.Langu
 | B | L 启动客户端（经编排入口 + `--gradle-arg -PtestSodium=false`） | 0 | **12.4s** | `Sound engine started cursor=23794` |
 | B | `FAB-CLIENT-BOOT` | 0 | 0.8s | 8/8 PASS |
 | B | 收停客户端 | 0 | 2.5s | 无残留 |
-| C | lang 三语键一致性（本线 lang 目录） | 0 | — | `zh_cn/en_us/ja_jp 各 829 key 完全一致`（1 条**既有** WARN：`nancy_lu_active` 结构标记，三线一致、非本次引入） |
+| C | lang 三语键一致性（本线 lang 目录） | 0 | — | `zh_cn/en_us/ja_jp 各 829 key 完全一致`（1 条**既有** WARN：`nancy_lu_active` 结构标记，各线一致、非本次引入） |
 | C | 工具链语法门（`scripts/` + `tools/` 全量） | 0 | — | `53 个文件，解析失败 0` |
 | C | 模组来源统一口径 | 0 | — | `MOD_SOURCE_GATE: OK violations=0 exceptions=0` |
 | C | 本线资源 / 注册闭环（7 项） | 0 | — | `=== PASS: 7 项闭环全部通过 ===` |

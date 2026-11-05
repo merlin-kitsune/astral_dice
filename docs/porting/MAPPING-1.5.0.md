@@ -1,6 +1,6 @@
 # Astral Dice 1.5.0 跨加载器 Mapping 文档
 
-> 文档类型：权威 mapping（四线对照）／ 唯一产物
+> 文档类型：权威 mapping（各线对照）／ 唯一产物
 > 生成日期：2026-11-02
 > 工作树：`F:/MCProject/astral_dice_multiloader`（分支 `multi-main`）
 > 取证方式：**只读**工作树源码 + grep + git（未构建、未运行、未反编译、未实机）
@@ -11,13 +11,13 @@
 - **行号为实读快照**（2026-11-02，分支 `multi-main`）。改代码后行号会漂移，结论以**文件 + 符号名**为准。
 - **无法判定**一律显式写「无法判定（原因）」，不用推测填补。
 - 旧报告与工作树冲突时**以工作树为准**，冲突处在 §4.3 集中登记「旧报告已过时」。
-- **工作树状态按实测时点快照登记**（订正批次实测：2026-11-02T06:20+0800，`HEAD = 33fe2f5e`，2026-11-02 06:11；`git status --porcelain=v1` 按状态列分类 = **0 D / 4 M / 279 ??**（4 个修改项 = `.github/workflows/build.yml` + 3 处 `docs/**`：`docs/agent/AGENTS-dsh-linux.md`、`docs/agent/AGENTS-full.md`、`docs/archive/card-recipes-2026-10-09/README.md`，**均非本文档改动**；279 条未跟踪含 13 条目录条目）。这批未提交改动**不是本文档产生的**，本文件是本次唯一写入。该组数字是**提交完成后的时点快照**：`fd990c15`（2026-11-01 14:42）之后已再落 9 个提交（含 `c47ad8a3` fabric 第四线落盘、`12de194e` n26 两张蛟龙战斗牌回补），当时的批量删除/修改已被收掉，所以「删除 / 修改 / 未跟踪」只对上述时点成立，**引用前必须重跑** `git -C F:/MCProject/astral_dice_multiloader rev-parse --short HEAD` 与 `git status --porcelain=v1`。凡涉及 `src/generated/**` 的**文件计数**，本文按同一时点快照登记（§1.5）；判定性结论（如某配方缺解锁）一律以**符号/文件名集合**为准，不以计数为准。详见 §1.5。
+- **工作树状态按实测时点快照登记**（订正批次实测：2026-11-02T06:20+0800，`HEAD = 33fe2f5e`，2026-11-02 06:11；`git status --porcelain=v1` 按状态列分类 = **0 D / 4 M / 279 ??**（4 个修改项 = `.github/workflows/build.yml` + 3 处 `docs/**`：`docs/agent/AGENTS-dsh-linux.md`、`docs/agent/AGENTS-full.md`、`docs/archive/card-recipes-2026-10-09/README.md`，**均非本文档改动**；279 条未跟踪含 13 条目录条目）。这批未提交改动**不是本文档产生的**，本文件是本次唯一写入。该组数字是**提交完成后的时点快照**：`fd990c15`（2026-11-01 14:42）之后已再落 9 个提交（含 `c47ad8a3` fabric 线落盘、`12de194e` n26 两张蛟龙战斗牌回补），当时的批量删除/修改已被收掉，所以「删除 / 修改 / 未跟踪」只对上述时点成立，**引用前必须重跑** `git -C F:/MCProject/astral_dice_multiloader rev-parse --short HEAD` 与 `git status --porcelain=v1`。凡涉及 `src/generated/**` 的**文件计数**，本文按同一时点快照登记（§1.5）；判定性结论（如某配方缺解锁）一律以**符号/文件名集合**为准，不以计数为准。详见 §1.5。
 
 ---
 
 ## 1. 口径与范围
 
-### 1.1 四条线与版本事实
+### 1.1 各线与版本事实
 
 | 线 | MC | 加载器 | Java / 平台 | 版本号 | 证据 |
 |---|---|---|---|---|---|
@@ -26,14 +26,14 @@
 | 对照 ② `neoforge-26.1.2` | 26.1.2 | NeoForge 26.1.2.109 | `JAVA_25`（mixin 级） | `1.5.0+neoforge_26.1.2` | `neoforge-26.1.2/gradle.properties:17`、`:23`、`:28`、`:54`；`neoforge-26.1.2/src/main/resources/astral_dice.mixins.json:5` |
 | 对照 ③ `fabric-1.20.1` | 1.20.1 | Fabric Loader 0.19.5（+ Fabric API、PuzzlesLib 8.1.33） | Java 17（`JAVA_17`） | `1.5.0+fabric_1.20.1` | `fabric-1.20.1/gradle.properties:10`、`:17`、`:29`、`:72`；`fabric-1.20.1/src/main/resources/astral_dice.mixins.json:5` |
 
-代码面规模（旧审计快照，其 `HEAD` 记为 `fd990c15`，见 `porting/fabric-1.20.1/ALIGNMENT-AUDIT-2026-11-01.md` §1）：`.java` 文件数当时记为 **411 / 403 / 426 / 526**（该组实为当时**工作树**口径）；**当前实测（HEAD `33fe2f5e`，`git ls-tree -r --name-only HEAD` 计数）= 414 / 406 / 426 / 525**（n121 / forge / n26 / fabric 顺序恒定，后文同）。fabric 多出的量主要在 `platform/**` 自建镜像层与 `mixin/bridge/**`（20 个桥 mixin）；fabric 由 380 增至 525 是 `c47ad8a3`（第四线落盘）一次性并入的结果。
+代码面规模（旧审计快照，其 `HEAD` 记为 `fd990c15`，见 `porting/fabric-1.20.1/ALIGNMENT-AUDIT-2026-11-01.md` §1）：`.java` 文件数当时记为 **411 / 403 / 426 / 526**（该组实为当时**工作树**口径）；**当前实测（HEAD `33fe2f5e`，`git ls-tree -r --name-only HEAD` 计数）= 414 / 406 / 426 / 525**（n121 / forge / n26 / fabric 顺序恒定，后文同）。fabric 多出的量主要在 `platform/**` 自建镜像层与 `mixin/bridge/**`（20 个桥 mixin）；fabric 由 380 增至 525 是 `c47ad8a3`（fabric 线落盘）一次性并入的结果。
 
 ### 1.2 「同功能」判定口径
 
 同一功能在两条线上记为「同功能」，必须**三项同时成立**：
 
 1. **玩家可见行为一致**：同一触发条件、同一结算次序、同一可见反馈（HUD / 提示 / 数值）。反例：fabric 上 `enable_chip_recipes=false` 不移除筹码配方（§5.1③），不是同功能。
-2. **注册 id 一致**：`ResourceLocation` 命名空间与路径全等（物品 / 方块 / 效果 / payload / 附件键 / 配方 id）。例证：四线都有名为 `player_starlight` 的玩家附件键（`neoforge-1.21.1/.../component/ModAttachments.java:32-33` 与 `fabric-1.20.1/.../component/ModAttachments.java:64`）。
+2. **注册 id 一致**：`ResourceLocation` 命名空间与路径全等（物品 / 方块 / 效果 / payload / 附件键 / 配方 id）。例证：各线都有名为 `player_starlight` 的玩家附件键（`neoforge-1.21.1/.../component/ModAttachments.java:32-33` 与 `fabric-1.20.1/.../component/ModAttachments.java:64`）。
 3. **数据契约一致**：同一批 JSON 的**路径 + 字段语义**一致，或存在已声明的等价替代通道（例如 fabric 用 FAPI `LootTableEvents.MODIFY` 替代 GLM，但注入的内容语义必须可对齐）。
 
 只有 2、3 成立而 1 不可静态判定时，标「**待验证**」，进 §6。
@@ -45,7 +45,7 @@
 | **等价映射** | 同一 API 概念换名/换包/换代，语义不变 | `LivingIncomingDamageEvent` → `LivingHurtEvent` 之外的同名镜像、`RegistryObject` → `DeferredItem` |
 | **平台替代** | 概念无对应物，用平台机制重建且**行为口径已对齐（或被声明为不同）** | fabric 的 `LoaderBus` 反射派发、`SimpleChannel` shim、FAPI 附件 |
 | **裁剪** | 该线**故意不实现**（依赖不可用/版本删除） | n26 删 Iron's Spells 段、fabric 不实现 GLM |
-| **缺失** | 该线**本该有但当前没有** | forge/fabric 缺 Jade 冷却 provider（R-08）。**历史项（已关闭）**：n26 曾缺 2 个战斗牌常量，2026-11-02 由 `12de194e` 补回，现四线对等（§4.2 P-5①） |
+| **缺失** | 该线**本该有但当前没有** | forge/fabric 缺 Jade 冷却 provider（R-08）。**历史项（已关闭）**：n26 曾缺 2 个战斗牌常量，2026-11-02 由 `12de194e` 补回，现各线对等（§4.2 P-5①） |
 | **待验证** | 静态证据不足，或行为只在运行时成立 | U1–U9（§4.2） |
 
 ### 1.4 取证边界（本文件的硬约束）
@@ -59,18 +59,18 @@
 ### 1.5 工作树状态与数值口径（必读）
 
 - 本文件的**判定性结论**（同功能/差异/缺失）来自**符号、调用点、数据文件名集合**，与工作树是否脏无关。
-- **计数类数值**按**实测时点快照**登记（本批次：2026-11-02T06:20+0800，HEAD `33fe2f5e`）。上一版按「工作树 / HEAD `fd990c15`」双口径登记，是因为当时 `src/generated/**` 的 datagen 清理与 fabric 第四线文件**尚未提交**；`c47ad8a3`（fabric 第四线落盘）及其后提交已把这批文件全部入库 ⇒ **现在工作树与 HEAD 在数据文件计数上一致**，双口径已无必要（差别只剩 `.cache` 未入库 blob，见 §5.1①）。
+- **计数类数值**按**实测时点快照**登记（本批次：2026-11-02T06:20+0800，HEAD `33fe2f5e`）。上一版按「工作树 / HEAD `fd990c15`」双口径登记，是因为当时 `src/generated/**` 的 datagen 清理与 fabric 线文件**尚未提交**；`c47ad8a3`（fabric 线落盘）及其后提交已把这批文件全部入库 ⇒ **现在工作树与 HEAD 在数据文件计数上一致**，双口径已无必要（差别只剩 `.cache` 未入库 blob，见 §5.1①）。
 
-| 指标（时点快照 HEAD `33fe2f5e`；四线 = n121 / forge / n26 / fabric） | 入库（HEAD） | 磁盘（工作树） |
+| 指标（时点快照 HEAD `33fe2f5e`；各线 = n121 / forge / n26 / fabric） | 入库（HEAD） | 磁盘（工作树） |
 |---|---|---|
 | 配方文件数（n121/n26 目录名为 `recipe`，forge/fabric 为 `recipes`） | 108 / 108 / 108 / 108 | 108 / 108 / 108 / 108 |
 | 立牌配方（`*_sign`） | 31 / 31 / 31 / 31 | 31 / 31 / 31 / 31 |
 | 立牌解锁 advancement（`*_sign`） | 31 / 31 / 31 / 31 | 31 / 31 / 31 / 31 |
 | advancement 总数 | 108 / 108 / 108 / 108 | 108 / 108 / 108 / 108 |
-| 生成资源文件数（`src/generated/**`；n26 含 `clientResources/` 315 个，其余三线仅 `resources/`） | 369 / 369 / 769 / 370 | 371 / 371 / 772 / 370 |
+| 生成资源文件数（`src/generated/**`；n26 含 `clientResources/` 315 个，其余各线仅 `resources/`） | 369 / 369 / 769 / 370 | 371 / 371 / 772 / 370 |
 | 效果图标 `textures/mob_effect` | 67 / 67 / 68 / 67 | 67 / 67 / 68 / 67 |
 
-> 结论：上一版的「立牌解锁缺 6 个」与「fabric 配方多 10 个 / advancement 多 16 个」都是 `fd990c15` 时点上**未提交 datagen 清理**造成的口径差，**不是 1.5.0 的差异项**。这批文件已随 `c47ad8a3` 落盘，四线在配方 / 立牌配方 / 立牌解锁 / advancement 总数上**逐项相等**，`R-02` 因此关闭（见 §4.1）。当前唯一的数据文件差是 `.cache` blob（磁盘比入库各多 2 / 2 / 3 / 0 个，不进 jar，见 §5.1①）。
+> 结论：上一版的「立牌解锁缺 6 个」与「fabric 配方多 10 个 / advancement 多 16 个」都是 `fd990c15` 时点上**未提交 datagen 清理**造成的口径差，**不是 1.5.0 的差异项**。这批文件已随 `c47ad8a3` 落盘，各线在配方 / 立牌配方 / 立牌解锁 / advancement 总数上**逐项相等**，`R-02` 因此关闭（见 §4.1）。当前唯一的数据文件差是 `.cache` blob（磁盘比入库各多 2 / 2 / 3 / 0 个，不进 jar，见 §5.1①）。
 
 ---
 
@@ -96,22 +96,22 @@
 | 14 | 附件/能力注册时机 | 由 `AstralDiceMod.java:60`（`ModAttachments.ITEMS/ATTACHMENTS.register`）在 mod 构造期完成 | 同（`:57-80` 批量注册） | 同（`AstralDiceMod.java:54-72`） | 必须在玩家数据反序列化**之前**（`ModAttachments#ensureRegistered()`，见 `porting/CROSS-VERSION-DIFFS.md` B5）；工作树内未逐行复核调用点 | 待验证（fabric 时序） |
 | 15 | 配置系统 | `ModConfigSpec`（`config/ModCommonConfig.java:4`）；字段 `SPEC`（`:33`）、`GIVE_GUIDE_BOOK_ON_FIRST_JOIN`（`:35`）、`ALLOW_FIREARM_DAMAGE`（`:36`）；`neoforge-1.21.1/.../ModCommonConfig.java:11-12` 注明与 Forge 版不通用、不可下沉共享库 | `ForgeConfigSpec`（`config/ModCommonConfig.java:4`），字段位置同上 | 同基准（`:4`、`:33`、`:35`、`:36`） | **自建 shim** `platform.config.ForgeConfigSpec`（`config/ModCommonConfig.java:3`；类文件 `platform/config/ForgeConfigSpec.java`），字段 `:32`、`:34`、`:35` | fabric 平台替代 / forge、n26 等价映射 |
 | 16 | 村民交易 | 事件注册：`trade/{CardTraderTrades, ChipTraderTrades, EmeraldDiceTrade}.java` + `shop/CardTradeFilter.java` + `mixin/trade/{MerchantContainerMixin, MerchantMenuMixin, MerchantOfferMixin, ServerPlayerMixin}.java`（`VillagerTradesEvent`） | 同基准形态（`VillagerTradesEvent` 14 处、`TradeOffer` 同构） | **数据驱动**：`VillagerTradesEvent` 已删（`datagen/ModVillagerTradeProvider.java:31` 注释），改 `data/<ns>/villager_trade/<职业>/<等级>/<名字>.json`（`:34`；provider `:49`、`:57`、`:64`、`:79`）+ `trade/VillagerTradeEntry.java`；产物目录 `generated/data/astral_dice/villager_trade` 与 `tags/villager_trade`（仅本线） | 同基准形态（`VillagerTradesEvent` 2 处、`TradeOffer` 10 处） | n26 平台替代（事件被删除）；forge/fabric 等价映射 |
-| 17 | 帕秋莉手册 | `maven.modrinth:patchouli:1.21.1-93-neoforge`（`neoforge-1.21.1/build.gradle:275`）；资产 `assets/astral_dice/patchouli_books/astral_guide/{en_us,zh_cn}` + 数据 `data/astral_dice/patchouli_books/astral_guide` | `1.20.1-85-forge`（`forge-1.20.1/build.gradle:242`），目录同形 | `maven.modrinth:patchouli:2CsnFLom`（`neoforge-26.1.2/build.gradle:226`），目录同形 | `patchouli_version=1.20.1-85-FABRIC`（`fabric-1.20.1/gradle.properties:81`）；目录同形，且**独有** `data/astral_dice/patchouli_books` 侧条目目录（另三线仅基础目录） | 等价映射（目录同形、版本不同）；fabric 数据侧多一层的用途待验证 |
+| 17 | 帕秋莉手册 | `maven.modrinth:patchouli:1.21.1-93-neoforge`（`neoforge-1.21.1/build.gradle:275`）；资产 `assets/astral_dice/patchouli_books/astral_guide/{en_us,zh_cn}` + 数据 `data/astral_dice/patchouli_books/astral_guide` | `1.20.1-85-forge`（`forge-1.20.1/build.gradle:242`），目录同形 | `maven.modrinth:patchouli:2CsnFLom`（`neoforge-26.1.2/build.gradle:226`），目录同形 | `patchouli_version=1.20.1-85-FABRIC`（`fabric-1.20.1/gradle.properties:81`）；目录同形，且**独有** `data/astral_dice/patchouli_books` 侧条目目录（其余非 fabric 线仅基础目录） | 等价映射（目录同形、版本不同）；fabric 数据侧多一层的用途待验证 |
 | 18 | 资源与语言 | lang 键 **1142**（zh/en/ja 三语同数） | 键集合与基准**0 差**（1142） | **1166**：比基准多 **24** 键（列表见 §5.2），核心为 `railgun_ready`、`entity.astral_dice.villager.*`、`card_shop/chip_shop/event_drawer`、`fanny_event.1-11` | **1151**：比基准多 **9** 键 —— 7 个槽位名 `accessories.slot.{chip,dice,stand}`、`accessories.slot_group.astral_dice`、`trinkets.slot.astral_dice.{chip,dice,stand}`，另 2 个为 `entity.minecraft.villager.{card_trader,chip_trader}`；**无缺失键** | 等价映射 + n26 新增（内容面） |
 | 19 | 模型与渲染（HUD 图层） | `RegisterGuiLayersEvent` + `RenderGuiLayerEvent.Pre`（`client/ModClientEvents.java:22`、`:77`、`:78`/`:81`/`:84`/`:91`/`:92`/`:95`；`client/CombatPowerHud.java:19-20`、`:32`） | `IGuiOverlay` + `ForgeGui` + `RenderGuiOverlayEvent`（`client/CombatPowerHud.java:16`、`:60`、`:116`、`:126`；`client/EventCardOverlay.java:12`） | `GuiLayer` + `RenderGuiLayerEvent.Pre` + `RenderPipelines.GUI_TEXTURED` + `Identifier`（`client/ModClientEvents.java:27`、`:88-98`；`client/CombatPowerHud.java:20-21`、`:59`） | 注册事件为自建镜像，**逐帧渲染走 `HudRenderCallback`**（`platform/client/event/RegisterGuiOverlaysEvent.java:16`；`client/CombatPowerHud.java:31`；`client/EventCardOverlay.java:29`） | 等价映射（neo 两线换代）/ 平台替代（forge、fabric） |
 | 20 | 资源根组成 | `assets/astral_dice/{blockstates, lang, models, particles, patchouli_books, sounds, sounds.json, textures, tooltipoverhaul}` | 同基准（含 `blockstates`、`models`） | 同基准 + **独有 `assets/astral_dice/items/**`**（26.x 硬需求）+ 第二生成根 `src/generated/clientResources` | 同基准（`items/` 无；生成资源单根、无 `.cache`） | n26 平台替代（资源契约）/ fabric 等价映射 |
 | 21 | Jade 兼容 | 4 个 provider：`compat/jade/{AstralDiceJadePlugin, EventDrawerCostProvider, ShopCooldownClientProvider, ShopCooldownServerDataProvider}`；`astral_dice.jade.mixins.json` client = `[ArmorValueProviderMixin, DisplayHelperArmorIconMixin]` | **缺** `ShopCooldownServerDataProvider`（3 个）；jade mixin client = `[ArmorValueProviderMixin, **ArmorElementIconMixin**]`（与 fabric **完全相同**；Jade 11.13.3 内部类不同名） | 4 个（同基准） | **缺** `ShopCooldownServerDataProvider`（3 个）；jade mixin client = `[ArmorValueProviderMixin, **ArmorElementIconMixin**]`（Jade 11.13.3 内部类不同名） | forge/fabric **缺失**（服务端冷却数据源）；Jade mixin 按 **MC 世代**分叉而非按加载器 —— forge 与 fabric 同为 `ArmorElementIconMixin`，n121/n26 才是 `DisplayHelperArmorIconMixin`（§4.1 R-04 已订正） |
-| 22 | 维度与结构 | 无 | 无 | 无 | 无 | 等价映射（四线均无实现；`data` 下无 `worldgen/`、`dimension/`，src 无 `StructureType`/`DimensionType` 引用） |
+| 22 | 维度与结构 | 无 | 无 | 无 | 无 | 等价映射（各线均无实现；`data` 下无 `worldgen/`、`dimension/`，src 无 `StructureType`/`DimensionType` 引用） |
 | 23 | 战利品注入 | GLM：`data/astral_dice/loot_modifiers/*.json` **14** 个 + `LootModifier` 代码通道 | **13** 个 JSON；`LootModifier` 命中 24 | **14** 个 JSON；`LootModifier` 命中 0（走 n26 数据中心化通道） | **0** 个 GLM 目录 ⇒ FAPI `LootTableEvents.MODIFY`（`event/LootInjectionHandler.java:31`、`:59`；`loot/FabricLootInjector.java`；入口注释 `AstralDiceMod.java:63`） | fabric 平台替代 / forge、n26 等价映射（数量差 1 见 §5.2 待核） |
 | 24 | Tacz/枪械类识别 | `combat/DiceCombatEvents.java:1759`（`isFirearmItem`），modId 名单 `:1734` 含 `tacz`，调用点 `:1824` | `:2047` / `:2022` / `:2112` | `:1597` / `:1572` / `:1660` | `:1798` / `:1773`（注释「永恒枪械工坊：零 + 其 1.21.1 NeoForge 非官方移植，两个 jar 同 modId」）/ `:1860` | 等价映射（纯字符串识别，无编译期依赖） |
 | 25 | FTB Teams / OpenPAC 友军判定 | **无**：`ftbteams`/`openpac` grep 命中 0 | **无**：grep 命中 0 | `combat/PartyRelations.java`（`:43` 注释「不能编译期依赖」），`Class.forName` 反射 `:411-415`、`:550-552` | `combat/PartyRelations.java`（`:42` 同注释），反射 `:401-405`、`:540-542` | 基准/forge **缺失**（仅 2 线有）；n26/fabric 平台替代（反射）。**旧报告 F19「forge 走反射」已过时**（§4.3） |
 | 26 | YSM（Yes Steve Model） | 无（ysm 文件 0） | 无（0） | **独有** 3 个 java + `astral_dice.ysm.mixins.json`（`plugin=...AstralYsmMixinPlugin`，`client=[YsmEntityRenderDispatcherMixin, YsmGeometryMixin, YsmRenderTypeMixin]`，`defaultRequire=1`）+ `client/render/ysm/YsmRenderContext.java:76` | 无（0） | n26 新增能力（非基准功能，不构成缺失） |
-| 27 | Bountiful | 仅注释/池名提及（`item/ModItems.java`、`client/ClientAlpha.java`） | 同（1 处命中） | 同（1 处） | 同（1 处） | 等价映射（四线均无代码级联动） |
+| 27 | Bountiful | 仅注释/池名提及（`item/ModItems.java`、`client/ClientAlpha.java`） | 同（1 处命中） | 同（1 处） | 同（1 处） | 等价映射（各线均无代码级联动） |
 | 28 | 状态效果注册 | `effect/ModEffects.java` 注册 67 项；`assets/astral_dice/textures/mob_effect/` 67 张 | 67 / 67 | **68 / 68**：多注册 `railgun_ready`（`effect/ModEffects.java:157-158`，`ChipReadyEffect` 0x81D4FA；lang 键 `effect.astral_dice.railgun_ready` 亦仅本线） | 67 / 67（`railgun_ready.png` 在本线**不存在**，`find` 命中 0；`effect/ModEffects.java:141` 注释「别再按 forge-1.20.1 旧版本补回 `railgun_ready`」） | n26 新增/反向差异（§4.2 P-5②，仍待裁决） |
 | 29 | 枚举扩展（如自定义 Rarity） | `META-INF/enumextensions.json`（实测存在） | **无**该文件（`ls` → No such file） | 有（同基准） | **无**该文件；稀有度走共享库 `com.merlinkitsune.starengine.item.Rarity`（`client/ChipShopClientState.java:4`、`:26` 注释「不在本类里写 `==` 链」） | forge/fabric 替代路径（fabric 用库内枚举，非原版枚举扩展）⇒ forge 侧落点待验证 |
 | 30 | 平台层规模与裁剪 | 无 `platform/**` 层 | 无 | 无 | `platform/**`（registry / config / network / event / client / item / fml 自建镜像）+ `mixin/bridge/**` 20 个桥 mixin + `compat/curios/**`（`CuriosApi`/`ICurioItem`/`TrinketBridge`）；`.java` 总数 526 vs 基准 411 | fabric 平台替代（结构性） |
 | 31 | 跃迁引擎 × Waystone（传送石碑）传送联动 | 反射注册三件套：`...WaystoneTeleportEvent$Pre`（`event/WaystoneWarpCompat.java:46`）、`WaystoneTeleportEntityEvent$Post`（`:48`）、`...WaystoneTeleportEvent$Complete`（`:50`），成功后打 INFO「Waystone teleport integration enabled」（`:53`）；`addListener(Class, Consumer)`（`:93-94`） | 同基准（同文件 `:41`、`:46`/`:48`/`:50`、`:53`；`addListener` 4 参带优先级 `:95-97`） | 经 Balm 事件通道注册（同一文件 `WaystoneWarpCompat.java`）：`registerWaystoneTeleportEvent`（`:161`）先经 `findBalmEventMapper`（`:180`，反射读事件的静态 `EVENT` 字段并判定接口名 `net.blay09.mods.balm.platform.event.EventMapper`）取到 `BidirectionalEventMapper`，命中即调 `EventMapper.register(...)`（`:205` / `:223`），未命中才回退 `NeoForge.EVENT_BUS.addListener(...)`（`:169-172`）；候选类链 `TELEPORT_PRE_EVENT_CANDIDATES`（`:49` = `$Pre` → `$Before` → `$Prepare`）、`isPlatformUnregistrable(Throwable)`（`:127`）仅在该平台确实不可注册时把失败从 WARN 降为 DEBUG；成功路径打 INFO「Waystone teleport integration enabled」（`:71`）。为什么不走 NeoForge 总线：Balm bound custom event（`Balmstrap.createBoundCustomEvent` 生成）的抽象父类链以 `java.lang.Object` 为直接父，被 NeoForge `bus-8.0.5` 的 `EventBus.validateAbstractChain(EventBus.java:301)` 拒绝 —— 该平台已由 Balm 通道接管，与基准线行为一致 | 同基准（同文件 `:41`、`:46`/`:48`/`:50`、`:53`；`:95-97`） | **平台替代**（26.1.2 改走 Balm 事件通道注册；行为与基准线一致，机制与实测见 §4.1 R-17） |
-| 32 | 库分发形态（StarEngine 前置） | **外置**：产物不含 `META-INF/jarjar/`（`build.gradle:354-359` 自检口径为「必须无 jarjar」）；`neoforge.mods.toml:144` 声明 `versionRange="[\${starengine_version},2.0.0)"` | **外置**：同口径自检 `build.gradle:616-621`；`mods.toml:158` 同一 `versionRange` | **2026-11-02 改为外置**：移除 `jarJar(...)`，自检反转为「产物里仍出现 `META-INF/jarjar/` 才告警」（`build.gradle:357-379`，判定块 `:364-367`）；`build.gradle:254` 的 `replaceProperties` 新增 `starengine_version`；`neoforge.mods.toml:146` 新增 `versionRange="[\${starengine_version},2.0.0)"` | **2026-11-02 改为外置**：移除 Loom `include(...)`，自检反转为「产物里仍出现 `META-INF/jars/` 才告警」（`build.gradle:471-489`），并新增「整合包里缺少独立 starengine jar」告警（`:490-500`）；`gradle.properties:42` 区间由 `>=1.1.0` 收紧为 `>=1.1.0 <2.0.0`，经 `build.gradle:302` 展开进 `fabric.mod.json:44` 的 `depends.starengine` | **等价映射**（2026-11-02 统一外置，四线一致） |
+| 32 | 库分发形态（StarEngine 前置） | **外置**：产物不含 `META-INF/jarjar/`（`build.gradle:354-359` 自检口径为「必须无 jarjar」）；`neoforge.mods.toml:144` 声明 `versionRange="[\${starengine_version},2.0.0)"` | **外置**：同口径自检 `build.gradle:616-621`；`mods.toml:158` 同一 `versionRange` | **2026-11-02 改为外置**：移除 `jarJar(...)`，自检反转为「产物里仍出现 `META-INF/jarjar/` 才告警」（`build.gradle:357-379`，判定块 `:364-367`）；`build.gradle:254` 的 `replaceProperties` 新增 `starengine_version`；`neoforge.mods.toml:146` 新增 `versionRange="[\${starengine_version},2.0.0)"` | **2026-11-02 改为外置**：移除 Loom `include(...)`，自检反转为「产物里仍出现 `META-INF/jars/` 才告警」（`build.gradle:471-489`），并新增「整合包里缺少独立 starengine jar」告警（`:490-500`）；`gradle.properties:42` 区间由 `>=1.1.0` 收紧为 `>=1.1.0 <2.0.0`，经 `build.gradle:302` 展开进 `fabric.mod.json:44` 的 `depends.starengine` | **等价映射**（2026-11-02 统一外置，各线一致） |
 
 ### 2.1 需要额外说明的四条
 
@@ -127,7 +127,7 @@
 
 ## 3. 等价映射速查表
 
-> 用于「基准线写了一行，另外三线怎么落地」。每行只给**最小可用落点**；复杂语义差异看 §2、§4。
+> 用于「基准线写了一行，其余各线怎么落地」。每行只给**最小可用落点**；复杂语义差异看 §2、§4。
 
 | # | 概念 | neoforge-1.21.1（基准） | forge-1.20.1 | neoforge-26.1.2 | fabric-1.20.1 |
 |---|---|---|---|---|---|
@@ -167,12 +167,12 @@
 
 | 编号 | 差异 | 影响 | 需同步? | 证据（文件:行号） |
 |---|---|---|---|---|
-| R-01 | fabric 的 chip 配方**无条件块**，另三线各有 **67 个配方 + 67 个 advancement**（合计 134 个文件）带 `chip_recipes_enabled` 条件 | 玩家在 fabric 上把 `enable_chip_recipes` 关掉**不会**移除筹码配方；另三线会 | **是**（要么补机制，要么在文档/配置说明里声明 fabric 不支持） | 条件文件计数：配方 67/67/67/0、advancement 67/67/67/0（旧记「134 个配方」是把两类相加后的重复计数）；`fabric-1.20.1/src/generated/resources/data/astral_dice/recipes/airbag_chip.json`（head 无 `conditions`）；`recipe/condition/ChipRecipesEnabledCondition.java:14-18`、`:52-65`、`:70+` |
-| R-02 | **已关闭**（曾：fabric 的立牌解锁 advancement 只有 **25** 个，另三线各 **31** 个；缺 `advancements/recipes/misc/{alana,ame,dorothy,jill,kangel,lingling}_sign.json`） | 曾使这 6 个立牌配方不自动进配方书（仍可合成、JEI 可见）；现已四线对等 | 否（已关闭） | 实测（HEAD `33fe2f5e`）：四线 `src/generated/**/advancements` 下 `*_sign.json` 均 **31**，配方侧同为 31/31/31/31；关闭于 `c47ad8a3`（fabric 第四线落盘，6 个解锁文件入库），`fd990c15` 上实测确为 31/31/31/25 |
-| R-03 | fabric 生成资源**无 `.cache`** | 不影响玩家（不进 jar）；影响 datagen 增量与产物可复现 | 否（工程面）/ 建议在 build 文档标注 | `fabric-1.20.1/build.gradle:29`、`:37-40`（`exclude("**/.cache")`）；四线 `git ls-files` 对 `.cache` 命中均为 0 |
-| R-04 | Jade mixin 目标按 **MC 世代**分叉，**不是按加载器分**：forge 与 fabric **同为** `ArmorElementIconMixin`（都是 1.20.1 + Jade 11.13.3），n121 与 n26 才是 `DisplayHelperArmorIconMixin` | 1.20.1 世代 Jade 的 `ArmorElement#render` 走 `IconUI` 硬编码 UV（`DisplayHelper.renderIcon`），1.21 世代改为 sprite ⇒ 升级 Jade 时 **forge 与 fabric 会同时**静默失配 | **是**（升级 Jade 必查，且两条 1.20.1 线要一起查） | 四线 `src/main/resources/astral_dice.jade.mixins.json` 的 `client` 数组实测：n121/n26 = `[ArmorValueProviderMixin, DisplayHelperArmorIconMixin]`，**forge/fabric = `[ArmorValueProviderMixin, ArmorElementIconMixin]`**；版本依据 `forge-1.20.1/build.gradle:276`（`Jade-1.20.1-Forge-11.13.3.jar`）与 `fabric-1.20.1/gradle.properties:87`（`jade_version=11.13.3`）；fabric 的 `mixin/jade/ArmorElementIconMixin.java` 头注释自述「与 forge 线相同」 |
-| R-05 | **已关闭**（曾：n26 缺 2 个战斗牌常量 `ATTACK_CARD_BITE` / `ATTACK_CARD_DRAGON_ROAR`） | 曾少两张「蛟龙立牌(mamushi)专属战斗牌」的创造栏条目；现与基准线对等 | 否（已关闭） | 修复于 `12de194e`（2026-11-02 06:10，restore two dragon cards）：`neoforge-26.1.2/.../init/ModCreativeTabs.java:67`（注释）→ `:68` `ATTACK_CARD_BITE` → `:69` `ATTACK_CARD_DRAGON_ROAR` → `:70`「// 防御牌」；常量 `neoforge-26.1.2/.../item/ModItems.java:333`、`:342`。四线 `grep -rn` 计数 = `ATTACK_CARD_BITE` **10/10/10/10**、`ATTACK_CARD_DRAGON_ROAR` **9/9/9/9** |
-| R-06 | n26 多注册 `railgun_ready` 效果（68 vs 67），lang 键仅本线有 | 内容面反向差（另三线无该效果） | 待裁决（保留 or 三线补齐） | `neoforge-26.1.2/.../effect/ModEffects.java:157-158`；`fabric-1.20.1/.../effect/ModEffects.java:141` 明确禁止补回；图标 67/67/**68**/67 |
+| R-01 | fabric 的 chip 配方**无条件块**，其余非 fabric 线各有 **67 个配方 + 67 个 advancement**（合计 134 个文件）带 `chip_recipes_enabled` 条件 | 玩家在 fabric 上把 `enable_chip_recipes` 关掉**不会**移除筹码配方；其余非 fabric 线会 | **是**（要么补机制，要么在文档/配置说明里声明 fabric 不支持） | 条件文件计数：配方 67/67/67/0、advancement 67/67/67/0（旧记「134 个配方」是把两类相加后的重复计数）；`fabric-1.20.1/src/generated/resources/data/astral_dice/recipes/airbag_chip.json`（head 无 `conditions`）；`recipe/condition/ChipRecipesEnabledCondition.java:14-18`、`:52-65`、`:70+` |
+| R-02 | **已关闭**（曾：fabric 的立牌解锁 advancement 只有 **25** 个，其余非 fabric 线各 **31** 个；缺 `advancements/recipes/misc/{alana,ame,dorothy,jill,kangel,lingling}_sign.json`） | 曾使这 6 个立牌配方不自动进配方书（仍可合成、JEI 可见）；现已各线对等 | 否（已关闭） | 实测（HEAD `33fe2f5e`）：各线 `src/generated/**/advancements` 下 `*_sign.json` 均 **31**，配方侧同为 31/31/31/31；关闭于 `c47ad8a3`（fabric 线落盘，6 个解锁文件入库），`fd990c15` 上实测确为 31/31/31/25 |
+| R-03 | fabric 生成资源**无 `.cache`** | 不影响玩家（不进 jar）；影响 datagen 增量与产物可复现 | 否（工程面）/ 建议在 build 文档标注 | `fabric-1.20.1/build.gradle:29`、`:37-40`（`exclude("**/.cache")`）；各线 `git ls-files` 对 `.cache` 命中均为 0 |
+| R-04 | Jade mixin 目标按 **MC 世代**分叉，**不是按加载器分**：forge 与 fabric **同为** `ArmorElementIconMixin`（都是 1.20.1 + Jade 11.13.3），n121 与 n26 才是 `DisplayHelperArmorIconMixin` | 1.20.1 世代 Jade 的 `ArmorElement#render` 走 `IconUI` 硬编码 UV（`DisplayHelper.renderIcon`），1.21 世代改为 sprite ⇒ 升级 Jade 时 **forge 与 fabric 会同时**静默失配 | **是**（升级 Jade 必查，且两条 1.20.1 线要一起查） | 各线 `src/main/resources/astral_dice.jade.mixins.json` 的 `client` 数组实测：n121/n26 = `[ArmorValueProviderMixin, DisplayHelperArmorIconMixin]`，**forge/fabric = `[ArmorValueProviderMixin, ArmorElementIconMixin]`**；版本依据 `forge-1.20.1/build.gradle:276`（`Jade-1.20.1-Forge-11.13.3.jar`）与 `fabric-1.20.1/gradle.properties:87`（`jade_version=11.13.3`）；fabric 的 `mixin/jade/ArmorElementIconMixin.java` 头注释自述「与 forge 线相同」 |
+| R-05 | **已关闭**（曾：n26 缺 2 个战斗牌常量 `ATTACK_CARD_BITE` / `ATTACK_CARD_DRAGON_ROAR`） | 曾少两张「蛟龙立牌(mamushi)专属战斗牌」的创造栏条目；现与基准线对等 | 否（已关闭） | 修复于 `12de194e`（2026-11-02 06:10，restore two dragon cards）：`neoforge-26.1.2/.../init/ModCreativeTabs.java:67`（注释）→ `:68` `ATTACK_CARD_BITE` → `:69` `ATTACK_CARD_DRAGON_ROAR` → `:70`「// 防御牌」；常量 `neoforge-26.1.2/.../item/ModItems.java:333`、`:342`。各线 `grep -rn` 计数 = `ATTACK_CARD_BITE` **10/10/10/10**、`ATTACK_CARD_DRAGON_ROAR` **9/9/9/9** |
+| R-06 | n26 多注册 `railgun_ready` 效果（68 vs 67），lang 键仅本线有 | 内容面反向差（其余各线无该效果） | 待裁决（保留 or 其余各线补齐） | `neoforge-26.1.2/.../effect/ModEffects.java:157-158`；`fabric-1.20.1/.../effect/ModEffects.java:141` 明确禁止补回；图标 67/67/**68**/67 |
 | R-07 | n26 村民交易改为数据驱动，`VillagerTradesEvent` 在上游已删 | 交易内容改动**只能改数据文件**；沿用事件写法在该线不生效 | **是**（跨线同步交易时） | `neoforge-26.1.2/.../datagen/ModVillagerTradeProvider.java:31-34`、`:49`、`:64`、`:79`；产物 `generated/data/astral_dice/villager_trade` 仅本线 |
 | R-08 | forge 与 fabric 缺 Jade `ShopCooldownServerDataProvider` | 商店冷却的**服务端数据源**缺失 ⇒ 客户端显示可能退化为无冷却/静态值 | **是**（行为面，需实测确认退化程度） | n121 与 n26 各 4 个 `compat/jade/*`；forge 与 fabric 各 3 个（无该 provider） |
 | R-09 | fabric 把 `LivingHurtEvent` 语义交由自写 mixin 承担（`LivingEntity#hurt`） | 注入点漂移（MC 更新/其它 mixin 冲突）会让**所有伤害相关逻辑**静默失效，而非报错 | **是**（每次升 MC 版本必验） | `platform/PuzzlesBridges.java:37-42`、`:61-66`；`mixin/bridge/LivingHurtBridgeMixin.java` |
@@ -181,10 +181,10 @@
 | R-12 | forge 的 `@SubscribeEvent` 成员不得 `private`；`@Mod.EventBusSubscriber` 只扫顶层类 | 静默不注册 | **是**（新增订阅者时） | `porting/CROSS-VERSION-DIFFS.md` F4（旧报告口径，工作树逐条未复核） |
 | R-13 | fabric 存档布局与 forge **不兼容**（FAPI 附件段 vs `ForgeData → astral_data`） | 跨线换包会丢玩家附件数据 | 无需改代码，需在迁移/升级说明中声明 | `fabric-1.20.1/.../component/AttachedDataKey.java:47-49` |
 | R-14 | fabric 饰品后端三选一（Trinkets / Accessories），`TrinketBridge` 在 Trinkets 缺席时**直接返回** | Accessories 后端下部分 Curios 语义可能不生效（静默） | **是**（需实机验证两个后端各一遍） | `compat/curios/TrinketBridge.java:51`、`:65`；`compat/curios/CuriosApi.java:267` |
-| R-15 | n26 独有 `assets/astral_dice/items/**` 与 `clientResources` 生成根 | 新增物品时该线必须补 `items/<id>.json`，否则模型缺失（另三线不需要） | **是**（新增物品时） | `neoforge-26.1.2/src/main/resources/assets/astral_dice/items/`（仅本线存在）；`src/generated/clientResources`（仅本线） |
+| R-15 | n26 独有 `assets/astral_dice/items/**` 与 `clientResources` 生成根 | 新增物品时该线必须补 `items/<id>.json`，否则模型缺失（其余各线不需要） | **是**（新增物品时） | `neoforge-26.1.2/src/main/resources/assets/astral_dice/items/`（仅本线存在）；`src/generated/clientResources`（仅本线） |
 | R-16 | 基准线与 n26 有 `META-INF/enumextensions.json`，forge 与 fabric **无** | 新增「原版枚举扩展」类内容（自定义稀有度等）在 forge/fabric 上落点不同 | 待验证（forge 落点未逐行核对；fabric 已知走库内 `starengine.item.Rarity`） | `neoforge-1.21.1/src/main/resources/META-INF/enumextensions.json`、`neoforge-26.1.2/...`（存在）；forge/fabric `ls` → No such file；`fabric-1.20.1/.../client/ChipShopClientState.java:4` |
 | R-17 | **26.1.2 的「跃迁引擎 × 传送石碑」联动已通过 Balm 事件通道注册成功（2026-11-02 收口，上一批「该联动不可用」的判定已作废）** | 无玩家可见差异：26.1.2 上同维度传送照常给充能与迅捷、跨维度传送照常按 Waystone 结算（`isPendingAndClear` 正常翻转），与基准线一致 | 否 | 机制（实现差异记录，非缺陷）：事件类自带 `public static final BidirectionalEventMapper<Consumer<X>> EVENT`，`BidirectionalEventMapper` 实现 `net.blay09.mods.balm.platform.event.EventMapper`，其 `register(TCallback)` 才是 Balm 注册入口；故不走 `NeoForge.EVENT_BUS`（其 `EventBus.validateAbstractChain(EventBus.java:301)` 会因「抽象父类链以 `java.lang.Object` 为直接父」抛 `IllegalArgumentException: Abstract event class ... has a non-abstract superclass class java.lang.Object.`）。证据（当前工作树）：`neoforge-26.1.2/src/main/java/com/merlinkitsune/astral_dice/event/WaystoneWarpCompat.java:161`（`registerWaystoneTeleportEvent`）、`:180`（`findBalmEventMapper` 反射读 `EVENT`）、`:205` / `:223`（`EventMapper.register`）、`:169-172`（回退总线）、`:49`（候选链）、`:127`（`isPlatformUnregistrable`）、`:71`（成功 INFO）；1.21.1 仍走总线 `WaystoneWarpCompat.java:92-94`。实测：`run/26.1.2/prodgame/logs/latest.log:525` = `[0211月2026 05:42:39.922] [modloading-worker-0/INFO] [com.merlinkitsune.astral_dice.event.WaystoneWarpCompat/]: [Astral Dice] Waystone teleport integration enabled for 跃迁引擎.`（NeoForge 26.1.2.109） |
-| R-18 | **2026-11-02 库分发形态统一为「外置前置」，四线一致**：四条线产物都不再内嵌 StarEngine（n121 / forge 此前已完成，n26 的 `jarJar` 与 fabric 的 Loom `include` 本批撤除）；版本区间为 NeoForge 两线 `[1.1.0,2.0.0)`、fabric 线 `>=1.1.0 <2.0.0`（等价） | 玩家与整合包必须单独放置对应平台的 starengine jar，缺库或越界会以「Missing or unsupported mandatory dependencies」拒绝启动；四份库产物互不通用，不能跨线复用 | 否（四线一致，无跨线差异需同步） | 证据（当前工作树）：`neoforge-26.1.2/build.gradle:364-367`（自检已反转为「出现 META-INF/jarjar/ 才告警」）、`:254`（`replaceProperties` 新增 `starengine_version`）、`neoforge-26.1.2/src/main/templates/META-INF/neoforge.mods.toml:146`；`fabric-1.20.1/build.gradle:87`（裁决注释）、`:302`、`:471-489`、`:490-500`；`fabric-1.20.1/gradle.properties:40`、`:42`；`fabric-1.20.1/src/main/resources/fabric.mod.json:44`；`neoforge-1.21.1/src/main/templates/META-INF/neoforge.mods.toml:144`、`forge-1.20.1/src/main/templates/META-INF/mods.toml:158` |
+| R-18 | **2026-11-02 库分发形态统一为「外置前置」，各线一致**：各线产物都不再内嵌 StarEngine（n121 / forge 此前已完成，n26 的 `jarJar` 与 fabric 的 Loom `include` 本批撤除）；版本区间为 NeoForge 两线 `[1.1.0,2.0.0)`、fabric 线 `>=1.1.0 <2.0.0`（等价） | 玩家与整合包必须单独放置对应平台的 starengine jar，缺库或越界会以「Missing or unsupported mandatory dependencies」拒绝启动；四份库产物互不通用，不能跨线复用 | 否（各线一致，无跨线差异需同步） | 证据（当前工作树）：`neoforge-26.1.2/build.gradle:364-367`（自检已反转为「出现 META-INF/jarjar/ 才告警」）、`:254`（`replaceProperties` 新增 `starengine_version`）、`neoforge-26.1.2/src/main/templates/META-INF/neoforge.mods.toml:146`；`fabric-1.20.1/build.gradle:87`（裁决注释）、`:302`、`:471-489`、`:490-500`；`fabric-1.20.1/gradle.properties:40`、`:42`；`fabric-1.20.1/src/main/resources/fabric.mod.json:44`；`neoforge-1.21.1/src/main/templates/META-INF/neoforge.mods.toml:144`、`forge-1.20.1/src/main/templates/META-INF/mods.toml:158` |
 
 ### 4.2 fabric 三个未收口项 + P-5 的当前真实状态
 
@@ -202,10 +202,10 @@
 
 P-5 原文只写「n26 内容面差额」。复核后它是**两条独立差额**，都不是平台差异：
 
-1. **P-5①（已关闭）n26 曾缺 2 个战斗牌常量** —— 2026-11-02 复核：`neoforge-26.1.2/.../init/ModCreativeTabs.java` 现为 `:67` 注释「蛟龙立牌(mamushi)专属战斗牌」→ `:68` `ATTACK_CARD_BITE` → `:69` `ATTACK_CARD_DRAGON_ROAR` → `:70`「// 防御牌」，常量定义在 `item/ModItems.java:333`、`:342`。四线 `grep -rn` 计数已对等：`ATTACK_CARD_BITE` 10/10/**10**/10、`ATTACK_CARD_DRAGON_ROAR` 9/9/**9**/9（n121/forge/n26/fabric）。**关闭提交** `12de194e`（fix(26.1.2) restore two dragon cards，2026-11-02 06:10，为当前 HEAD `33fe2f5e` 的祖先，merge-base --is-ancestor 通过；该提交对本文件正好 3 +++）。**历史说明**：`fd990c15` 时点 n26 确实缺这两行（当时计数 9 与 8），本条曾是真实差异，现由提交关闭，**不再需要裁决**。
-2. **P-5②（仍待裁决）n26 多注册 `railgun_ready` 效果**：`effect/ModEffects.java:157-158`（`EFFECTS.register(railgun_ready, () -> new ChipReadyEffect(0x81D4FA))`），效果总数 **68 vs 67**，图标 `textures/mob_effect/railgun_ready.png` 仅 n26 有（其余三线 `find` 命中 0），lang 键 `effect.astral_dice.railgun_ready` 仅本线存在；`fabric-1.20.1/.../effect/ModEffects.java:141` 有一条反向纪律注释（「别再按 forge-1.20.1 旧版本补回 `railgun_ready`」）。注意：`ChipReadyEffect.java` 与 `RailgunChipItem.java` 四线**都有**，缺的只是注册项本身。
+1. **P-5①（已关闭）n26 曾缺 2 个战斗牌常量** —— 2026-11-02 复核：`neoforge-26.1.2/.../init/ModCreativeTabs.java` 现为 `:67` 注释「蛟龙立牌(mamushi)专属战斗牌」→ `:68` `ATTACK_CARD_BITE` → `:69` `ATTACK_CARD_DRAGON_ROAR` → `:70`「// 防御牌」，常量定义在 `item/ModItems.java:333`、`:342`。各线 `grep -rn` 计数已对等：`ATTACK_CARD_BITE` 10/10/**10**/10、`ATTACK_CARD_DRAGON_ROAR` 9/9/**9**/9（n121/forge/n26/fabric）。**关闭提交** `12de194e`（fix(26.1.2) restore two dragon cards，2026-11-02 06:10，为当前 HEAD `33fe2f5e` 的祖先，merge-base --is-ancestor 通过；该提交对本文件正好 3 +++）。**历史说明**：`fd990c15` 时点 n26 确实缺这两行（当时计数 9 与 8），本条曾是真实差异，现由提交关闭，**不再需要裁决**。
+2. **P-5②（仍待裁决）n26 多注册 `railgun_ready` 效果**：`effect/ModEffects.java:157-158`（`EFFECTS.register(railgun_ready, () -> new ChipReadyEffect(0x81D4FA))`），效果总数 **68 vs 67**，图标 `textures/mob_effect/railgun_ready.png` 仅 n26 有（其余各线 `find` 命中 0），lang 键 `effect.astral_dice.railgun_ready` 仅本线存在；`fabric-1.20.1/.../effect/ModEffects.java:141` 有一条反向纪律注释（「别再按 forge-1.20.1 旧版本补回 `railgun_ready`」）。注意：`ChipReadyEffect.java` 与 `RailgunChipItem.java` 各线**都有**，缺的只是注册项本身。
 
-⇒ **仍需裁决的问题（只剩 ②）**：`railgun_ready` 是「另三线补齐」还是「n26 删除」。属内容决策，静态无法判定哪边是期望态。（原问题里的「n26 是否补齐 2 个战斗牌」一半已由 `12de194e` 关闭。）
+⇒ **仍需裁决的问题（只剩 ②）**：`railgun_ready` 是「其余各线补齐」还是「n26 删除」。属内容决策，静态无法判定哪边是期望态。（原问题里的「n26 是否补齐 2 个战斗牌」一半已由 `12de194e` 关闭。）
 
 #### U1–U9（哪些只能靠实机验证）
 
@@ -244,8 +244,8 @@ P-5 原文只写「n26 内容面差额」。复核后它是**两条独立差额*
 | 项 | 基准线（n121 / forge / n26） | fabric | 精确差异 | 是否影响玩家 |
 |---|---|---|---|---|
 | ① datagen `.cache` | `src/generated/resources/.cache` 存在（n26 另有 `clientResources/.cache`）；`git ls-files` 对 `.cache` 命中 0（即**未入库**） | 无任何 `.cache`（对 `src` 全量 find 命中 0） | FAPI 1.20.1 datagen 不产出 cache 文件；且 `build.gradle:40` 主动 `exclude("**/.cache")`，而 `:37-40` 注释承认 `exclude` 模式相对各 srcDir 根解析、`src/generated/**/.cache` 永不命中 ⇒ 本地可能残留、CI 不残留 | **否**（cache 不进 jar）。影响的是「增量 datagen 与产物可复现」这一工程面 |
-| ② 立牌配方与其解锁 advancement | 立牌配方 31 个、解锁 31 个（forge / n26 同） | **31 / 31（与基准线对等，已关闭）** | `fd990c15` 时 fabric 只有 25 个立牌配方 + 25 个解锁（缺 `advancements/recipes/misc/{alana,ame,dorothy,jill,kangel,lingling}_sign.json` 及其配方）；这批文件随 `c47ad8a3` 落盘，HEAD `33fe2f5e` 实测 31/31 | **否（已关闭）**：6 个立牌配方与其解锁均已存在，四线一致 |
-| ③ chip 配方 `conditions` | `neoforge:conditions`（n121/n26）或 `conditions`（forge，无命名空间）—— 各 **67 个配方 + 67 个 advancement**（合计 134 个文件）使用 `astral_dice:chip_recipes_enabled` | 生成物**完全无条件块**（0 个配方、0 个 advancement） | 配方名集合四线一致（108 个 recipe json，diff 为空）⇒ 差异只在条件块 | **是（功能配置失效）**：fabric 上 `enable_chip_recipes=false` 不移除筹码配方 |
+| ② 立牌配方与其解锁 advancement | 立牌配方 31 个、解锁 31 个（forge / n26 同） | **31 / 31（与基准线对等，已关闭）** | `fd990c15` 时 fabric 只有 25 个立牌配方 + 25 个解锁（缺 `advancements/recipes/misc/{alana,ame,dorothy,jill,kangel,lingling}_sign.json` 及其配方）；这批文件随 `c47ad8a3` 落盘，HEAD `33fe2f5e` 实测 31/31 | **否（已关闭）**：6 个立牌配方与其解锁均已存在，各线一致 |
+| ③ chip 配方 `conditions` | `neoforge:conditions`（n121/n26）或 `conditions`（forge，无命名空间）—— 各 **67 个配方 + 67 个 advancement**（合计 134 个文件）使用 `astral_dice:chip_recipes_enabled` | 生成物**完全无条件块**（0 个配方、0 个 advancement） | 配方名集合各线一致（108 个 recipe json，diff 为空）⇒ 差异只在条件块 | **是（功能配置失效）**：fabric 上 `enable_chip_recipes=false` 不移除筹码配方 |
 
 补充（chip 条件在 fabric 侧的落点）：`recipe/condition/ChipRecipesEnabledCondition.java:14-18` 自述「占位重写…Fabric 1.20.1 没有任何对应机制（原版 `RecipeManager` 不支持外部条件；`ResourceCondition` 是 1.21.2+）」；`:52-65` 的 `isEnabled()` 读 `ModCommonConfig.ENABLE_CHIP_RECIPES` 但**无调用方**；`:70+` 的 `register()` 为空 + `TODO(CHIP-RECIPES-MECHANISM)`。⇒ 若要收口，需要机制层方案（自定义配方类型/过滤器/加载期剔除），不是改 JSON 能解决的。
 
@@ -254,7 +254,7 @@ P-5 原文只写「n26 内容面差额」。复核后它是**两条独立差额*
 | 面 | 基准线 | forge | n26 | fabric | 性质 / 玩家影响 |
 |---|---|---|---|---|---|
 | 数据目录命名 | `advancement/ recipe/ loot_table/`（单数） | `advancements/ recipes/ loot_tables/` | 同基准 | `advancements/ recipes/ loot_tables/` | MC 版本差异；数据包作者可见，玩家无感 |
-| 饰品标签目录 | `data/curios/tags/item/*.json` + `data/astral_dice/curios/**` | `data/curios/tags/items/*.json` | 同基准 | `data/curios/tags/items/*`（占位）+ `data/trinkets/**` + `data/astral_dice/accessories/**` | 契约不同（§2.1①）；改槽位定义时四线不同文件 |
+| 饰品标签目录 | `data/curios/tags/item/*.json` + `data/astral_dice/curios/**` | `data/curios/tags/items/*.json` | 同基准 | `data/curios/tags/items/*`（占位）+ `data/trinkets/**` + `data/astral_dice/accessories/**` | 契约不同（§2.1①）；改槽位定义时各线不同文件 |
 | 战利品注入目录 | `loot_modifiers/` 14 个 | 13 个 | 14 个 | **无该目录** | forge 少 1 个与 n121 的差**未逐条对齐**（无法判定：差的是哪项未定位）⇒ 列入 §6 |
 | 村民交易数据 | 无（事件注册） | 无 | `data/astral_dice/villager_trade/**` + `tags/villager_trade/**` | 无 | n26 结构换代；交易内容改动必须改数据 |
 | 物品模型声明 | `models/item/<id>.json` | 同 | **另需** `assets/astral_dice/items/<id>.json` | 同基准 | n26 硬需求（R-15） |
@@ -267,7 +267,7 @@ P-5 原文只写「n26 内容面差额」。复核后它是**两条独立差额*
 | 差异 | 玩家可见? | 说明 |
 |---|---|---|
 | chip 条件失效（R-01） | **是** | 配置项失效；是否有人用该配置属产品面 |
-| 立牌解锁缺 6 个（R-02，**已关闭**） | 否（现四线均 31/31） | `c47ad8a3` 已补齐；`fd990c15` 时点曾需在配方书里手动搜索 |
+| 立牌解锁缺 6 个（R-02，**已关闭**） | 否（现各线均 31/31） | `c47ad8a3` 已补齐；`fd990c15` 时点曾需在配方书里手动搜索 |
 | `.cache` 缺失（R-03） | 否 | 纯工程面 |
 | 数据目录单复数（§5.2） | 否（对玩家） | 对数据包/整合包作者可见 |
 | 饰品槽位数据契约（§2.1①） | 是（槽位数/生效规则） | 需实机核 U3/U4 |
@@ -295,7 +295,7 @@ P-5 原文只写「n26 内容面差额」。复核后它是**两条独立差额*
 | 11 | fabric 附件注册是否真的早于玩家数据反序列化（B5） | 调用点未逐行定位 | 加载既有存档并读附件值；或装调试打印 | R-14 |
 | 12 | forge 线「原版枚举扩展」的实际落点 | 无 `enumextensions.json`，代码面未逐行核对 | 搜 forge 线自定义 Rarity 的构造点 | R-16 |
 | 13 | Jade 冷却 provider 缺失的实际表现（R-08） | 退化程度取决于 Jade provider 的兜底 | forge/fabric 各看一次商店冷却显示 | R-08 |
-| 14 | n26 `railgun_ready` 与另三线筹码机制的等价性（R-06） | 注册项在、语义未核 | n26 触发筹码就绪效果并与基准线对照提示 | R-06 |
+| 14 | n26 `railgun_ready` 与其余各线筹码机制的等价性（R-06） | 注册项在、语义未核 | n26 触发筹码就绪效果并与基准线对照提示 | R-06 |
 | 15 | 工作树 0 D / 4 M / 279 ??（时点快照 HEAD `33fe2f5e`）的归属与去向 | 「是否 lead 正在进行的 datagen 清理」无法从代码判定；本次实测已无删除项（0 D），4 个修改项为 `.github/workflows/build.yml` 与 3 处 `docs/**`（`docs/agent/AGENTS-dsh-linux.md`、`docs/agent/AGENTS-full.md`、`docs/archive/card-recipes-2026-10-09/README.md`），本文档未触碰任何此类改动 | 由 lead 确认这 4 处修改（含 `.github/workflows/build.yml`）与 279 条未跟踪项的意图；数据面已随 `c47ad8a3` 落盘，§5.1② 因此关闭 | §1.5 / §5.1② |
 | 16 | 26.1.2 上 `mru` / `sounds` 与 astral_dice 能否共存（本轮实机验收把它们排除在外） | 测试台 NeoForge 为 26.1.2.109，而 `mru` 的 `neoforge.mods.toml` 要求 ≥ 26.1.2.114，两者无法同台；共存冲突无法静态判定 | 把 NeoForge 升到 ≥ 26.1.2.114 后，用「玩家实例 + `mru` + `sounds`」启动一次并核对加载日志；顺带确认 Waystone 联动仍打 INFO「Waystone teleport integration enabled」（R-17 已收口，不应出现 WARN/DEBUG 降级） | R-17 / §6.1 |
 
@@ -315,17 +315,17 @@ P-5 原文只写「n26 内容面差额」。复核后它是**两条独立差额*
 
 ## 附录 A：本文件引用到的关键文件清单
 
-**入口与注册**：`neoforge-1.21.1/.../AstralDiceMod.java`、`forge-1.20.1/.../AstralDiceMod.java`、`neoforge-26.1.2/.../AstralDiceMod.java`、`fabric-1.20.1/.../AstralDiceMod.java`、四线 `item/ModItems.java`、四线 `init/ModCreativeTabs.java`。
+**入口与注册**：`neoforge-1.21.1/.../AstralDiceMod.java`、`forge-1.20.1/.../AstralDiceMod.java`、`neoforge-26.1.2/.../AstralDiceMod.java`、`fabric-1.20.1/.../AstralDiceMod.java`、各线 `item/ModItems.java`、各线 `init/ModCreativeTabs.java`。
 
-**事件与桥**：`fabric-1.20.1/.../platform/event/LoaderBus.java`、`platform/FabricBridges.java`、`platform/PuzzlesBridges.java`、`mixin/bridge/LivingHurtBridgeMixin.java`、`platform/event/SubscriptionAudit.java`；四线 `combat/DiceCombatEvents.java`。
+**事件与桥**：`fabric-1.20.1/.../platform/event/LoaderBus.java`、`platform/FabricBridges.java`、`platform/PuzzlesBridges.java`、`mixin/bridge/LivingHurtBridgeMixin.java`、`platform/event/SubscriptionAudit.java`；各线 `combat/DiceCombatEvents.java`。
 
 **网络**：`neoforge-1.21.1/.../network/ModPayloads.java`、`neoforge-26.1.2/.../network/ModPayloads.java`、`forge-1.20.1/.../network/ModNetwork.java`、`fabric-1.20.1/.../network/ModNetwork.java`、`fabric-1.20.1/.../platform/network/SimpleChannel.java`。
 
-**持久化/配置**：四线 `component/`（`ModAttachments.java`、forge 侧 `AstralData.java` / `AttachedDataKey.java` / `ModCapabilities.java` / `ModDataComponents.java`、fabric 侧 `AttachedDataKey.java` / `SignAttachments.java` / `DeathPreservedBonuses.java`）、四线 `config/ModCommonConfig.java`、`fabric-1.20.1/.../platform/config/ForgeConfigSpec.java`。
+**持久化/配置**：各线 `component/`（`ModAttachments.java`、forge 侧 `AstralData.java` / `AttachedDataKey.java` / `ModCapabilities.java` / `ModDataComponents.java`、fabric 侧 `AttachedDataKey.java` / `SignAttachments.java` / `DeathPreservedBonuses.java`）、各线 `config/ModCommonConfig.java`、`fabric-1.20.1/.../platform/config/ForgeConfigSpec.java`。
 
 **数据生成**：`neoforge-1.21.1/.../datagen/{DataGenerators, ClientDataGenerators}.java`、`neoforge-26.1.2/.../datagen/ModVillagerTradeProvider.java`、`fabric-1.20.1/.../datagen/AstralDataGenerator.java`、`fabric-1.20.1/build.gradle`。
 
-**资源与 mixin 配置**：四线 `src/main/resources/astral_dice*.mixins.json`、`META-INF/enumextensions.json`（仅 neo 两线）、`src/generated/**`。
+**资源与 mixin 配置**：各线 `src/main/resources/astral_dice*.mixins.json`、`META-INF/enumextensions.json`（仅 neo 两线）、`src/generated/**`。
 
 **旧报告（历史，冲突处见 §4.3）**：`porting/CROSS-VERSION-DIFFS.md`、`porting/fabric-1.20.1/{MAPPING-1.5.0, ALIGNMENT-AUDIT-2026-11-01, API_CHEATSHEET, B3-SIGNHOOK-DEADCODE-REPORT, LIVE-TEST-LIST-2026-11-02}.md`、`porting/neo-26.1.2/P1-DEFECT-REPAIR-CONTEXT.md`、`docs/compat-*.md`。
 

@@ -1,4 +1,4 @@
-# MC 26.1.2 / NeoForge 26.1.2.109 迁移文档（第三条线）
+# MC 26.1.2 / NeoForge 26.1.2.109 迁移文档（P1 线）
 
 > 适用子项目：`neoforge-26.1.2`（**2026-09-17 起已并入主线**：原本的独立 worktree `F:\MCProject\astral_dice_multiloader-26.1.2` / 分支 `multi-26.1.2-neoforge` 已合并进 `multi-1.20.1-1.21.1`，现行工作目录即主线根目录，第三子项目与之同树）
 > 迁移基线：主线 `multi-1.20.1-1.21.1` 的 `1.2.1`（commit `fda8ca9`）
@@ -232,7 +232,7 @@ src/generated/clientResources/   ← runClientData（assets/…：items 123 + mo
 直接喂给 `text(...)` ⇒ 该覆盖层的文字在本线上**恒不可见**（静默不画、不报错）。
 已改为显式 ARGB：`0xFF55FF55` / `0xFFFF5555` / `0xFFFFFF55`。
 **这是本线专属的平台差异**（1.21.1 的 `Font#adjustColor`「alpha 为 0 视为不透明」兜底已被本版本移除，
-另三线无此缺陷且**不加 alpha**）；判据 = 传给 `text(...)` 的 color 其 `ARGB.alpha(color) != 0`。
+其余各线无此缺陷且**不加 alpha**）；判据 = 传给 `text(...)` 的 color 其 `ARGB.alpha(color) != 0`。
 `client/TargetSelectionHighlighter` 只取 RGB 分量描棱柱，取值与行为均不受影响。
 
 
@@ -263,10 +263,10 @@ src/generated/clientResources/   ← runClientData（assets/…：items 123 + mo
 **C. 迁移遗漏的另一类：「半移植」不只在方法体** —— `StarCoinBalanceSync.tick` 没有进 26.1.2 的
 `PlayerTickEvents`：1.21.1 / 1.20.1 每玩家 tick 都有 `StarCoinBalanceSync.tick(player)`
 （1 秒节流 + 值变化才发包），本线只剩 `PlayerLifecycleHandler` 的 `forceResend`（登录 / 重生一次）
-⇒ **余额条进世界后再不刷新**。已补回；同时三线新增 `StarCoinBalanceSync.notifyChanged(player)`：
+⇒ **余额条进世界后再不刷新**。已补回；同时非 fabric 线新增 `StarCoinBalanceSync.notifyChanged(player)`：
 **本模组自己**的余额写入点（存入 / 取出 / 拾取吸收 / 发币漏斗）执行完**立即**回推，
 1 秒轮询退回为「兜底」（覆盖第三方模组、库的 `/starcoin` 命令、直接写账本）。
-判据：`grep -c "StarCoinBalanceSync.tick" */src/main/java/.../event/PlayerTickEvents.java` 三线均应为 1。
+判据：`grep -c "StarCoinBalanceSync.tick" */src/main/java/.../event/PlayerTickEvents.java` 非 fabric 线均应为 1。
 
 ---
 
@@ -341,7 +341,7 @@ src/generated/clientResources/   ← runClientData（assets/…：items 123 + mo
    `resources/kubejs/26.1.2/server_scripts/astral_bugfix_probe.js`（992,013 B / 16,608 行，提供 `/astralprobe` 子命令；同目录另有 6 个专项探针，
    `client_scripts` 另有 `astral_dnum_diag.js` / `astral_wallet_vision.js`）。早期登记的 `resources/kubejs/26.1.2/server_scripts/astral_probe.js`
    **在本仓任何 `resources/kubejs/<版本>/` 下都不存在**（`mt_assert.ps1:128` / `:525`、`mt_env.ps1:1030`、`Mt.Paths.psm1:128` 里的 astral_probe 指的是
-   已移除的 `run/<版本>/astral_probe.log` 通道，与该脚本无关）。三线探针规模现为 1.21.1 = 968,242 B / 16,278 行、1.20.1 = 962,454 B / 16,212 行、
+   已移除的 `run/<版本>/astral_probe.log` 通道，与该脚本无关）。非 fabric 线探针规模现为 1.21.1 = 968,242 B / 16,278 行、1.20.1 = 962,454 B / 16,212 行、
    26.1.2 = 992,013 B / 16,608 行 ⇒ **规模已对齐**。
    忍者/骇客/电磁炮/法伤口径/牌桌锁 等**条目级**覆盖差异仍需逐条核对（规模对齐不等于逐条对等）。
 2. **`opprobe` 的 `level` 读数退化为 `-1`**（`getProfilePermissions(NameAndId)` 在 Rhino 下取不到；

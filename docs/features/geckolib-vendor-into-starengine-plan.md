@@ -1,15 +1,15 @@
-# GeckoLib 核心下沉到 StarEngine（四线内嵌 + 对外 API）实施方案
+# GeckoLib 核心下沉到 StarEngine（各线内嵌 + 对外 API）实施方案
 
 ## 0. 结论先行
 
-把 GeckoLib 的动画/渲染核心（除 example 包、网络层、mixin 外）源码级【包名重定位】后搬进 F:/MCProject/starengine_next，由 starengine 的四个平台子项目各自编译进 starengine-*.jar；消费方 astral_dice_multiloader-next 的四条线全部卸掉 GeckoLib 依赖与硬前置声明，改用 starengine 提供的同名 API（命名空间已重定位），并保留 triggerAnim 的服务端→追踪客户端同步语义（由 starengine 自己实现的网络 SPI 承担）。
+把 GeckoLib 的动画/渲染核心（除 example 包、网络层、mixin 外）源码级【包名重定位】后搬进 F:/MCProject/starengine_next，由 starengine 的四个平台子项目各自编译进 starengine-*.jar；消费方 astral_dice_multiloader-next 的各线全部卸掉 GeckoLib 依赖与硬前置声明，改用 starengine 提供的同名 API（命名空间已重定位），并保留 triggerAnim 的服务端→追踪客户端同步语义（由 starengine 自己实现的网络 SPI 承担）。
 
 为什么必须重定位包名（而不是原包名塞进 starengine）：原包名（v4 software.bernie.geckolib、v5 com.geckolib）与玩家自装的真 GeckoLib FQN 相同，同 classpath 下会【同名类先到先得 + 两份 mixin config 同名被静默跳过】，版本错位时还会 NoSuchMethodError / VerifyError。重定位后二者是两套互不干扰的类，玩家装不装 GeckoLib 都不影响本模组，其他模组想用 GeckoLib 也能照装 —— 这是最大兼容性的唯一安全形态。
 
 ## 1. 目标与非目标
 
 ### 目标
-1. 四条线（neoforge-1.21.1 / forge-1.20.1 / fabric-1.20.1 / neoforge-26.1.2）的模组 jar 不再需要玩家安装 GeckoLib；mods.toml / neoforge.mods.toml / fabric.mod.json 里的 geckolib 依赖块全部删除。
+1. 各线（neoforge-1.21.1 / forge-1.20.1 / fabric-1.20.1 / neoforge-26.1.2）的模组 jar 不再需要玩家安装 GeckoLib；mods.toml / neoforge.mods.toml / fabric.mod.json 里的 geckolib 依赖块全部删除。
 2. 动画 API 成为 starengine 的公开契约，供 TLMDice、ADExtra（未来的生物模组）直接 compileOnly starengine 使用；API 形态与上游一致（GeoEntity / AnimatableInstanceCache / AnimationController / RawAnimation / PlayState / GeoModel / GeoEntityRenderer / GeckoLibUtil），只换包名。
 3. 现有 SykeTentacleEntity 的 idle + 受伤触发 attack 动画行为逐字保持（含服务端触发→客户端播放的同步）。
 4. 玩家同装真 GeckoLib（任意版本）不崩、不冲突、不抢类。
@@ -17,7 +17,7 @@
 ### 非目标（明确不做）
 - 不做 jarJar / include 内嵌（本仓门禁禁止 META-INF/jarjar/* 与 META-INF/jars/*.jar）。
 - 不搬 example 包、不搬网络层、不搬 mixin（mixin 按 §6 的最小必要集例外机制处理，默认一条不装）。
-- 不支持四条线之外的 MC 版本；不做上游同步自动化（只做一次性 pin + 指纹记录）。
+- 不支持各线之外的 MC 版本；不做上游同步自动化（只做一次性 pin + 指纹记录）。
 - 不动 CurseForge、不改发布通道、不动 models/ 下他人资产。
 
 ## 2. 事实基线（已实读，方案建立在此之上）
@@ -99,7 +99,7 @@ API 兼容层：GeoEntity#triggerAnim(controller, anim) 保持原签名（消费
 每线 7 处、共 28 处改动：
 1. build.gradle：删除 GeckoLib 依赖行（n21 :191、forge :244、fabric :158、n26 :223）。
 2. src/main/templates/META-INF/{mods.toml,neoforge.mods.toml}：删除 modId=geckolib 依赖块（n21 :120、forge :170、n26 :156）；fabric 无 geckolib depends，核对 fabric.mod.json 的 depends 是否只剩 starengine 区间。
-3. 四线 gradle.properties：starengine_version 由 26.4-SNAPSHOT.1 → 26.4-SNAPSHOT.2；fabric 的 starengine_version_range 同步 >=26.4-SNAPSHOT.2。
+3. 各线 gradle.properties：starengine_version 由 26.4-SNAPSHOT.1 → 26.4-SNAPSHOT.2；fabric 的 starengine_version_range 同步 >=26.4-SNAPSHOT.2。
 4. 12 个 java 文件的 import 全量替换（software.bernie.geckolib → com.merlinkitsune.starengine.geckolib；n26 的 com.geckolib → com.merlinkitsune.starengine.geckolib5）。
 5. SykeTentacleEntity 的【同步：triggerAnim 走 GeckoLib 自己的网络通道】注释改写为 starengine AnimationSync 的说明（该说法不再成立，注释必须跟代码一致）。
 6. 文档：docs/features/ 新增一节，记录【GeckoLib 已下沉 starengine、玩家不再需要安装】+ 版本契约 + 回滚方法。
@@ -138,9 +138,9 @@ API 兼容层：GeoEntity#triggerAnim(controller, anim) 保持原签名（消费
 
 ### Phase 5 — 消费方迁移与构建
 - 按 §7 改 28 处 + 12 个 java 文件。
-- 闸门：四线 build 全绿；产物 jar 扫包：software/bernie、com/geckolib、META-INF/jarjar/*、META-INF/jars/*.jar == 0。
+- 闸门：各线 build 全绿；产物 jar 扫包：software/bernie、com/geckolib、META-INF/jarjar/*、META-INF/jars/*.jar == 0。
 
-### Phase 6 — 实机与共存验证（四条线各一轮）
+### Phase 6 — 实机与共存验证（各线各一轮）
 1. 自足性：玩家侧不装 GeckoLib，实体可见 + idle + 受伤 attack + 客户端可见。
 2. 共存性：把真 GeckoLib 4.9.3 / 4.8.4 / 5.5.2 的 jar 塞进 run/*/mods，同样操作，要求不崩、不抢类、动画照播（日志里应同时出现 geckolib 模组加载行与 starengine 动画行）。
 3. 记录读数：Loading N mods、starengine 版本行、动画观察截图（scripts/test/mt_capture.py）。
@@ -158,7 +158,7 @@ API 兼容层：GeoEntity#triggerAnim(controller, anim) 保持原签名（消费
 | v5 渲染强依赖 mixin（EntityRenderState 接口注入）| n26 实体不出渲染 | §6 例外机制，只补 2 条 mixin + interface_injections.json |
 | 1.20.1 4.8.4 的 mclib 有 Molang 表达式解析的运行时耦合 | forge/fabric 1.20.1 动画解析失败 | 一并 vendor mclib（69 class，重定位）；若仍有反射/字符串引用，按运行期报错点补 |
 | facade 重定向后 triggerAnim 语义与上游偏差 | 动画触发不同步 | Phase 3 显式断言；必要时在 consumer 侧补自有 TriggerAnimPayload（消费方已有网络体系，成本低） |
-| 上游代码体量大（约 700+ 文件、5–6 万行）| 仓体积与编译时间上升 | 只编本平台目录；不做四线共享避免 MC API 串味；编译时间在 Phase 2 实测记录 |
+| 上游代码体量大（约 700+ 文件、5–6 万行）| 仓体积与编译时间上升 | 只编本平台目录；不做各线共享避免 MC API 串味；编译时间在 Phase 2 实测记录 |
 | 3 条 MC 版本的 vanilla API 差异引发编译风暴 | Phase 2 工期不可控 | 分线推进，每线单独闸门；先 1.20.1（两平台同源）验证方法，再复制到 1.21.1 / 26.1.2 |
 
 回滚：git revert starengine 侧提交 → publishToMavenLocal 重出 26.4-SNAPSHOT.1 → 消费方恢复 4 处依赖行 / 4 处依赖块 / 12 个 java import 与 pins（用 tools/rollback_geckolib_vendor.sh 固化，避免手改）。
@@ -171,13 +171,13 @@ API 兼容层：GeoEntity#triggerAnim(controller, anim) 保持原签名（消费
 
 ## 12. 执行顺序建议（若批准）
 
-Phase 0 → 1 → 2(仅 neoforge-1.21.1 单线跑通) → 用户验收 → 2(其余三线) → 3 → 4 → 5 → 6 → 7
+Phase 0 → 1 → 2(仅 neoforge-1.21.1 单线跑通) → 用户验收 → 2(其余各线) → 3 → 4 → 5 → 6 → 7
 
-## 13. 实施记录（2026-11-03，四线全部落地并实机验证）
+## 13. 实施记录（2026-11-03，各线全部落地并实机验证）
 
 > 本文件原为计划稿；本节记录实际执行结果与偏差，供后续接手直接对照实物。
 
-### 13.1 四线状态（全部已过实机）
+### 13.1 各线状态（全部已过实机）
 
 | 线 | starengine 产物 | vendor 规模 | AT/AW | 实机结论 |
 |---|---|---|---|---|

@@ -8,7 +8,7 @@
 
 **可行，但不要从 fabric-1.20.1 往上搬**：应当以 `neoforge-1.21.1` 的 419 个业务文件为蓝本（它的原版 API 天然是 1.21.1），只把**平台层**换成一套新的 Fabric shim（镜像 NeoForge 21.1 API，机制照抄 fabric-1.20.1 的 LoaderBus + FabricBridges 做法）。
 量化依据：419 个文件里 **277 个完全不 import 平台 API**（可近乎逐字复制），**142 个** import NeoForge，其中 **79 个**用到「NeoForge 21.1 特有语义」（必须逐个改写），剩下 63 个是 1:1 的包名替换。
-真正的新增工作是三块：① 平台层 shim（约 85 个类，其中 ~55 可复用 fabric-1.20.1 现成件、~30 重写）；② starengine 要出 **第 5 个平台产物** `starengine-fabric-1.21.1`（含 GeckoLib vendor 的 fabric 根）；③ 测试台四线→五线的版本表扩展 + AutoJS fabric-1.21.1 产物缺失问题。
+真正的新增工作是三块：① 平台层 shim（约 85 个类，其中 ~55 可复用 fabric-1.20.1 现成件、~30 重写）；② starengine 要出 **第 5 个平台产物** `starengine-fabric-1.21.1`（含 GeckoLib vendor 的 fabric 根）；③ 测试台版本表扩到各线 + AutoJS fabric-1.21.1 产物缺失问题。
 
 ## 1 事实基线（实读）
 
@@ -16,7 +16,7 @@
 
 | 项 | 值 |
 |---|---|
-| `settings.gradle` | include 四线：`neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1`；注释明确「每个 MC 版本+加载器 一个自包含子项目，不使用 common 源码子项目」 |
+| `settings.gradle` | include 各线：`neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1`；注释明确「每个 MC 版本+加载器 一个自包含子项目，不使用 common 源码子项目」 |
 | 根 `gradle.properties` | 只有 `org.gradle.*`（jvmargs -Xmx3G、daemon/parallel/caching/configuration-cache=true），无版本号属性 |
 | `git grep "fabric-1\.21\.1"` | **0 命中** ⇒ 仓内没有任何既存 fabric-1.21.1 痕迹，是全新线 |
 
@@ -127,7 +127,7 @@ fabric-1.21.1/
 | **P5 网络与版本门禁** | payload 注册 + 版本握手（`VersionGate`） | 用例 `INJECT-ROUNDTRIP-fabric-1.21.1`、`VERSION-GATE-fabric-1.21.1` 绿 |
 | **P6 客户端渲染** | GUI 图层、签牌半透明、tooltip 框色、粒子 provider | `mt_capture` 截图非空；立牌 tooltip 分支数 = 31 |
 | **P7 GeckoLib 前置** | starengine 新平台 `starengine-fabric-1.21.1`（Loom）+ vendored GeckoLib 的 **fabric 根**（上游 1.21.1 分支有 `fabric/` 8 个 java）；消费方接该产物 | 触手实体渲染 + `triggerAnim` 攻击动画（与 1.21.1 neoforge 同一判据）；jar 内无 jarjar |
-| **P8 测试台与治理** | VERSIONS 四线→五线、用例库 `-fabric-1.21.1` 克隆、CROSS-VERSION-DIFFS 新增一行、AGENTS 口径 | `MT_PREFLIGHT: OK`；`BOOT-READY`/`JAR-ASSETS` 绿；门禁三绿（lang / tag / changelog） |
+| **P8 测试台与治理** | VERSIONS 扩到各线、用例库 `-fabric-1.21.1` 克隆、CROSS-VERSION-DIFFS 新增一行、AGENTS 口径 | `MT_PREFLIGHT: OK`；`BOOT-READY`/`JAR-ASSETS` 绿；门禁三绿（lang / tag / changelog） |
 
 ## 6 依赖可得性（Modrinth 实查，2026-11-03；game_versions=1.21.1, loader=fabric）
 
@@ -163,7 +163,7 @@ fabric-1.21.1/
 | Carpet-Fixes | — | — | ❌ 无 1.21.1 |
 | StarLight | — | — | ❌ 无 1.21.1（1.21 起由原版/其他件覆盖） |
 
-## 7 测试台改造清单（四线 → 五线）
+## 7 测试台改造清单（扩到各线）
 
 | 位置 | 现状 | 改法 |
 |---|---|---|
@@ -175,7 +175,7 @@ fabric-1.21.1/
 | `scripts/test/win/lib/common.sh:26 MT_ALL_VERSIONS`、`:38-41` subproject、`:48-50` loader、`:57-60` **java 主版本**、`:73` autojs | fabric-1.20.1→17 | 加分支；**fabric-1.21.1 → 21** |
 | `scripts/test/win/lib/fabric.sh:30-31`（17 处 `fabric-1.20.1` 字面量） | 只认 1.20.1 | 泛化成 `fabric-*` 或加分支 |
 | `launch.sh:55/65/132/148/220/273`、`phases.sh:148`、`live.sh:58`、`env.sh`/`stop.sh`/`mt.sh` | 字面量 | 同上 |
-| `scripts/verify/verify_tag_parity.py`、`verify_dice_combat_attrless_guard_p1.py`、`verify_sign_registration.py`、`scripts/audit/tooltip_color_audit.py:44`、`scripts/devtools/unpack_nested_mod_jars.py:71-89` | 四线 | 加第五线 |
+| `scripts/verify/verify_tag_parity.py`、`verify_dice_combat_attrless_guard_p1.py`、`verify_sign_registration.py`、`scripts/audit/tooltip_color_audit.py:44`、`scripts/devtools/unpack_nested_mod_jars.py:71-89` | 未含 `fabric-1.21.1` | 加 `fabric-1.21.1` |
 | `scripts/test/cases/*-fabric-1.20.1.json` | 一批 fabric 用例 | 克隆为 `*-fabric-1.21.1`（含 JSON 内 `"version"` 字段），按 1.21.1 语义复核断言 |
 
 ## 8 风险与缓解
@@ -195,9 +195,9 @@ fabric-1.21.1/
 
 ## 9 版本与治理口径
 
-- 版本号：`mod_version=26.4-SNAPSHOT.<n>+fabric_1.21.1`，`<n>` 与其余四线同步递增（本仓纪律：全平台同号）。
+- 版本号：`mod_version=26.4-SNAPSHOT.<n>+fabric_1.21.1`，`<n>` 与其余各线同步递增（本仓纪律：全平台同号）。
 - StarEngine：必须新增 `starengine-fabric-1.21.1` 产物（`lib_version=26.4-SNAPSHOT.<n>`），消费方 `starengine_version` 引脚 + `starengine_version_range=>=26.4-SNAPSHOT.<n> <27.0.0`（Fabric 谓词写法）。
-- 门禁：`check_lang_sync.py`（新线三语键数一致）、`verify_tag_parity.py`、`check_changelog_parity.py` 全部要把第五线纳入。
+- 门禁：`check_lang_sync.py`（新线三语键数一致）、`verify_tag_parity.py`、`check_changelog_parity.py` 全部要把 `fabric-1.21.1` 纳入。
 - 治理文档：`porting/CROSS-VERSION-DIFFS.md` 增加「fabric-1.21.1 = P0 同侪（与 n21 同 MC 版本，代码蓝本 = n21，平台蓝本 = fabric-1.20.1）」并新增 F/B 混合差异段。
 
 ## 10 待拍板（4 问）
@@ -258,7 +258,7 @@ fabric-1.21.1/
 - `scripts/test/fabric/astral_catchup_probe.js:10` 记载「KubeJS 各 server_scripts 共享全局作用域」⇒ 探针是 KubeJS 脚本。
 - 结论：KubeJS 缺席 ⇒ `scripts/test/fabric/` 那 8 个 FAB-* 用例 + 4 个探针在新线**整条不可用**，不是「改个配置」能绕的。
 
-### 12.5 四线硬编码的完整骨架（比 §7 更细）
+### 12.5 各线硬编码的完整骨架（比 §7 更细）
 - `mt_compat.py`：`VERSIONS:49`、`LOADER:51-56`、`SUBPROJECT:58-63`、`DEFAULT_PACK_MODS:65-70`（fabric 项 = `"1.20.1-Fabric 模组测试"`）、`CONF_KEYS:72-76` + `CONF_KEY_DEFAULT:77`；另有 **6 处把 `"fabric-1.20.1"` 当字面量的分支**：`175 resolve_side` / `189 run_root` / `195 run_label` / `242-251 process_markers`（追加 `fabric.dli.env=<side>`）/ `748-752 cmdline 识别`（devlaunchinjector、KnotClient）/ `788 stop 侧`。
 - `mt_paths.py`：`VERSIONS:26`、`SUBPROJECT:27-32`、`LOADER:33`；`:36-39` 的 `RECIPES_PREFIXES` 已同时含 `recipes/` 与 `recipe/`（路径层已为 1.21 预留）。
 - shell：`linux/env.sh:32/62-63/71-72/309`、`linux/launch.sh:61,95,101-102,138,149`、`linux/stop.sh:16,30`；`mt_env.py:60 GAMERULE_FILE_VERSION="26.1.2"`、`:848`。

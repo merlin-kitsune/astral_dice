@@ -1,23 +1,23 @@
 # 交接正本 — 1.5.0（multi-main）
 
-> **版本口径（2026-10-28 用户裁决）**：本线一律称 **1.5.0**，不再带 `rc` 后缀；本文件已由 `docs/handover-1.5.0-rc.1-main.md` 改名为 **`docs/handover-1.5.0-main.md`**。**历史记录一律不改写真名** —— 正文里出现的 `1.5.0-rc.1`…`1.5.0-rc.4`、产物文件名、tag / CurseForge / GitHub Release 编号都是当时实况；代码侧四线 `gradle.properties` 现为 **`1.5.0-rc.5+<后缀>`**（2026-10-28 提交 `50e5e406` bump，见 §4.1aq-1），正式版发布那一轮才落成 `1.5.0+<后缀>`。
+> **版本口径（2026-10-28 用户裁决）**：本线一律称 **1.5.0**，不再带 `rc` 后缀；本文件已由 `docs/handover-1.5.0-rc.1-main.md` 改名为 **`docs/handover-1.5.0-main.md`**。**历史记录一律不改写真名** —— 正文里出现的 `1.5.0-rc.1`…`1.5.0-rc.4`、产物文件名、tag / CurseForge / GitHub Release 编号都是当时实况；代码侧各线 `gradle.properties` 现为 **`1.5.0-rc.5+<后缀>`**（2026-10-28 提交 `50e5e406` bump，见 §4.1aq-1），正式版发布那一轮才落成 `1.5.0+<后缀>`。
 >
 > **本文件自 `1.5.0-rc.1`（2026-10-25）起继续为滚动交接正本**（原 `docs/handover-1.5.0-pre.6-main.md` 于同批 `git mv` 改名；pre.6 的批次、实机读数、遗留与坑**原样保留在本文档内**，不另建文件）。pre.5 及更早的批次一律回 `docs/handover-1.5.0-pre.5-main.md（已删除 2026-11-05）`（§0 速览 / §3 批次表 / §4 实机读数 / §5 遗留 / §6 坑 / §7 路径）。
-> 数字均为 2026-10-24 快照；**开工先实读** `git log -1 --oneline` + `git status --short -uall` + 四线 `gradle.properties`。
+> 数字均为 2026-10-24 快照；**开工先实读** `git log -1 --oneline` + `git status --short -uall` + 各线 `gradle.properties`。
 
 ## 0 速览（一屏）
 
-> **状态快照（2026-10-28 13:5x，接手先看这条）**：HEAD = **`79e3b183`**（`docs(release): 1.5.0-rc.5 玩家发布说明 + CHANGELOG 补充`）；**`origin/multi-main..HEAD` = 0**（已 push `cce71efb..79e3b183`），远端 `origin/multi-main` = `79e3b183`；**本批收班文档改动另成 docs 提交 `c071c4d7`（2026-10-28 14:4x 用户放行后已 push，`origin..HEAD` = 0；CI run `40645654862` = COMPLETED / SUCCESS，2m 14s）**；四线 `mod_version = 1.5.0-rc.5+<后缀>`、`starengine_version = 1.1.0`；远端 tag **无正式 `1.5.0`**，`1.5.0-rc.5` 已由 CI 生成（注解 tag `db3b1796…` → `79e3b183`）；**GitHub Release 已确认**（`1.5.0-rc.5`，附件 neo 2,598,301 B / `c97ea383…` + forge 2,647,158 B / `d4e48687…`，与本地构建仅 CRLF / 常量池序差异，§4.1aq-6）；**rc.5 两件已发 CurseForge**（fileID `9349843` / `9349844`，beta）；**1.21.1 实机通过**（`[patchouli/]: Recipe astral_dice:` 计数 = 0，§4.1aq-4）；工作树只剩 `?? models/astral_anvil.bbmodel`（用户素材，禁 add）。**下方各条是 2026-10-25～10-28 各批的历史速览，含「已 push / 已建 tag」等当时实况，不得当现状读**。
+> **状态快照（2026-10-28 13:5x，接手先看这条）**：HEAD = **`79e3b183`**（`docs(release): 1.5.0-rc.5 玩家发布说明 + CHANGELOG 补充`）；**`origin/multi-main..HEAD` = 0**（已 push `cce71efb..79e3b183`），远端 `origin/multi-main` = `79e3b183`；**本批收班文档改动另成 docs 提交 `c071c4d7`（2026-10-28 14:4x 用户放行后已 push，`origin..HEAD` = 0；CI run `40645654862` = COMPLETED / SUCCESS，2m 14s）**；各线 `mod_version = 1.5.0-rc.5+<后缀>`、`starengine_version = 1.1.0`；远端 tag **无正式 `1.5.0`**，`1.5.0-rc.5` 已由 CI 生成（注解 tag `db3b1796…` → `79e3b183`）；**GitHub Release 已确认**（`1.5.0-rc.5`，附件 neo 2,598,301 B / `c97ea383…` + forge 2,647,158 B / `d4e48687…`，与本地构建仅 CRLF / 常量池序差异，§4.1aq-6）；**rc.5 两件已发 CurseForge**（fileID `9349843` / `9349844`，beta）；**1.21.1 实机通过**（`[patchouli/]: Recipe astral_dice:` 计数 = 0，§4.1aq-4）；工作树只剩 `?? models/astral_anvil.bbmodel`（用户素材，禁 add）。**下方各条是 2026-10-25～10-28 各批的历史速览，含「已 push / 已建 tag」等当时实况，不得当现状读**。
 
-> **2026-10-29 增量（rc.6 发布批，本节记于 18:2x）**：四批改动已随 **`1.5.0-rc.6`** 落地 —— 代码提交 `463552b7`（事件三条 / 筹码 20-64 / 卡牌 5-20 / 绿宝石骰子 1:1，43 files +974/−194）、四线 bump `37f97dcf`（`mod_version = 1.5.0-rc.6+<后缀>`，`starengine_version = 1.1.0` 未动）、交接文档 `486a6dd9`、发布面 `3e9f1f9f`（两份 `CHANGELOG` + `release/1.5.0-rc.6/` 三件）。rc.6 构建（18:0x）：neo **2,607,086 B / `33cbbab0…`**、forge **2,655,492 B / `bb108a8d…`**，已推 `build/libs` / 两个 dev run / 两个整合包 mods（两线 jarjar 自检 0）；四批改动 1.21.1 与 1.20.1 实机全 PASS（§4.1ar / §4.1as，发布批见 §4.1at）。`origin/multi-main` = **`3e9f1f9f`**，`origin..HEAD` = 0；CI run **#128 SUCCESS**（3e9f1f9）。**tag / Release / CF 已齐（2026-10-29 20:4x 复核，§4.1au）**：`1.5.0-rc.6` tag 由 CI 的 auto-tag 步骤在 push `multi-main` 时**自动生成**（注解 tag `d6eceb6f…` → `3e9f1f9f`，无需手工打标）；Release `1.5.0-rc.6` 已含两件 P0 附件；CF 两件已发（fileID `9361839` / `9361840`，beta）；两个整合包 mods 已是 rc.6 且与构建件逐字节同哈希。P1 两线仍是 0.8 折扣 + 旧 lang。
+> **2026-10-29 增量（rc.6 发布批，本节记于 18:2x）**：四批改动已随 **`1.5.0-rc.6`** 落地 —— 代码提交 `463552b7`（事件三条 / 筹码 20-64 / 卡牌 5-20 / 绿宝石骰子 1:1，43 files +974/−194）、各线 bump `37f97dcf`（`mod_version = 1.5.0-rc.6+<后缀>`，`starengine_version = 1.1.0` 未动）、交接文档 `486a6dd9`、发布面 `3e9f1f9f`（两份 `CHANGELOG` + `release/1.5.0-rc.6/` 三件）。rc.6 构建（18:0x）：neo **2,607,086 B / `33cbbab0…`**、forge **2,655,492 B / `bb108a8d…`**，已推 `build/libs` / 两个 dev run / 两个整合包 mods（两线 jarjar 自检 0）；四批改动 1.21.1 与 1.20.1 实机全 PASS（§4.1ar / §4.1as，发布批见 §4.1at）。`origin/multi-main` = **`3e9f1f9f`**，`origin..HEAD` = 0；CI run **#128 SUCCESS**（3e9f1f9）。**tag / Release / CF 已齐（2026-10-29 20:4x 复核，§4.1au）**：`1.5.0-rc.6` tag 由 CI 的 auto-tag 步骤在 push `multi-main` 时**自动生成**（注解 tag `d6eceb6f…` → `3e9f1f9f`，无需手工打标）；Release `1.5.0-rc.6` 已含两件 P0 附件；CF 两件已发（fileID `9361839` / `9361840`，beta）；两个整合包 mods 已是 rc.6 且与构建件逐字节同哈希。P1 两线仍是 0.8 折扣 + 旧 lang。
 
-> **状态快照（2026-10-29 20:5x 收班 · 历史快照）**：本地 HEAD = **`8a6f4bb6`**（`docs(handover): rc.6 tag/Release 复核 + 整合包投放核对 + CF fileID`），远端 `origin/multi-main` = **`2aaf5903`** ⇒ **本地领先 1 个 docs 提交、未 push（等用户放行）**；四线 `mod_version = 1.5.0-rc.6+<后缀>`、`starengine_version = 1.1.0`；远端 tag `1.5.0-rc.6` 已存在（CI auto-tag：注解 `d6eceb6f…` → `3e9f1f9f`），Release `1.5.0-rc.6` 两件 P0 附件在；CurseForge rc.6 两件已发（`9361839` / `9361840`，beta）；两个 P0 整合包 mods 已是 rc.6 且与构建件逐字节同哈希（§4.1au）；1.21.1 与 1.20.1 实机全 PASS（§4.1ar / §4.1as）；工作树 3 个未跟踪（`models/astral_anvil.bbmodel` 用户素材禁 add / `scripts/test/resources/kubejs/1.21.1/server_scripts/astral_batch3_probe.js` / `zz_screen_probe.py`）。**未 push / 无正式 `1.5.0` tag / CF `update-info` 未做 / P1 两线冻结。**
-> **状态快照（2026-10-30 00:5x 收班 · 历史快照）**：本地 HEAD = **`6344e44c`**（`chore(release): rc.7 玩家侧说明 + 静态守门接入 CI，并修掉 p1 守门 08 的必然红`），远端 `origin/multi-main` = **`6344e44c`** ⇒ **`origin/multi-main..HEAD` = 0**（已 push，CI run `40914192974` = SUCCESS；上一提交 `58c51fd8` 的 run `40911839607` 亦 SUCCESS）；四线 `mod_version = 1.5.0-rc.7+<后缀>`、`starengine_version = 1.1.0`；远端 tag `1.5.0-rc.7`（注解 `ab8215d7…` → 提交 `58c51fd8`），Release `1.5.0-rc.7` prerelease 且**正文为中英双份玩家说明**（`release/1.5.0-rc.7/PLAYER_CHANGELOG_ZH.md` + `---` + `PLAYER_CHANGELOG.md`，8,687 字符）、两件附件**已覆盖为本地构建件**（neo 2,609,192 B / `122cedf8…`、forge 2,657,532 B / `cbe67b1c…`）；CurseForge rc.7 两件已发（`9363589` / `9363591`，beta）；两个 P0 整合包 mods 与 `build/libs` **逐字节同哈希**（§4.1av）；**本版只有 `neoforge-1.21.1` 实机 PASS**（九头蛇 Δhp 46 / 僵尸 Δhp 5），`forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1` **未实机**；工作树 4 个未跟踪：`models/astral_anvil.bbmodel`（**用户素材，禁 add**）、`scripts/test/cases/TMP-ATTRLESS-HYDRA-1.21.1.json`（实机临时用例，不入库）、`scripts/test/resources/kubejs/1.21.1/server_scripts/astral_batch3_probe.js`、`zz_screen_probe.py`。**无正式 `1.5.0` tag / CF `update-info` 未做 / P1 两线冻结 / 待办见 §5。**
+> **状态快照（2026-10-29 20:5x 收班 · 历史快照）**：本地 HEAD = **`8a6f4bb6`**（`docs(handover): rc.6 tag/Release 复核 + 整合包投放核对 + CF fileID`），远端 `origin/multi-main` = **`2aaf5903`** ⇒ **本地领先 1 个 docs 提交、未 push（等用户放行）**；各线 `mod_version = 1.5.0-rc.6+<后缀>`、`starengine_version = 1.1.0`；远端 tag `1.5.0-rc.6` 已存在（CI auto-tag：注解 `d6eceb6f…` → `3e9f1f9f`），Release `1.5.0-rc.6` 两件 P0 附件在；CurseForge rc.6 两件已发（`9361839` / `9361840`，beta）；两个 P0 整合包 mods 已是 rc.6 且与构建件逐字节同哈希（§4.1au）；1.21.1 与 1.20.1 实机全 PASS（§4.1ar / §4.1as）；工作树 3 个未跟踪（`models/astral_anvil.bbmodel` 用户素材禁 add / `scripts/test/resources/kubejs/1.21.1/server_scripts/astral_batch3_probe.js` / `zz_screen_probe.py`）。**未 push / 无正式 `1.5.0` tag / CF `update-info` 未做 / P1 两线冻结。**
+> **状态快照（2026-10-30 00:5x 收班 · 历史快照）**：本地 HEAD = **`6344e44c`**（`chore(release): rc.7 玩家侧说明 + 静态守门接入 CI，并修掉 p1 守门 08 的必然红`），远端 `origin/multi-main` = **`6344e44c`** ⇒ **`origin/multi-main..HEAD` = 0**（已 push，CI run `40914192974` = SUCCESS；上一提交 `58c51fd8` 的 run `40911839607` 亦 SUCCESS）；各线 `mod_version = 1.5.0-rc.7+<后缀>`、`starengine_version = 1.1.0`；远端 tag `1.5.0-rc.7`（注解 `ab8215d7…` → 提交 `58c51fd8`），Release `1.5.0-rc.7` prerelease 且**正文为中英双份玩家说明**（`release/1.5.0-rc.7/PLAYER_CHANGELOG_ZH.md` + `---` + `PLAYER_CHANGELOG.md`，8,687 字符）、两件附件**已覆盖为本地构建件**（neo 2,609,192 B / `122cedf8…`、forge 2,657,532 B / `cbe67b1c…`）；CurseForge rc.7 两件已发（`9363589` / `9363591`，beta）；两个 P0 整合包 mods 与 `build/libs` **逐字节同哈希**（§4.1av）；**本版只有 `neoforge-1.21.1` 实机 PASS**（九头蛇 Δhp 46 / 僵尸 Δhp 5），`forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1` **未实机**；工作树 4 个未跟踪：`models/astral_anvil.bbmodel`（**用户素材，禁 add**）、`scripts/test/cases/TMP-ATTRLESS-HYDRA-1.21.1.json`（实机临时用例，不入库）、`scripts/test/resources/kubejs/1.21.1/server_scripts/astral_batch3_probe.js`、`zz_screen_probe.py`。**无正式 `1.5.0` tag / CF `update-info` 未做 / P1 两线冻结 / 待办见 §5。**
 
-> **状态快照（2026-10-31 14:5x 收班 · 以这条为准）**：本地 HEAD = **`7c44cfbf`**、远端 `origin/multi-main` = **`7c44cfbf`** ⇒ **`origin/multi-main..HEAD` = 0**；四线 `mod_version = 1.5.0-rc.7+<后缀>`、`starengine_version = 1.1.0`；**工作树里有一批来自 Linux/VM 会话的未提交改动 = 12 M + 9 ??**（`git diff --shortstat` = `12 files changed, 295 insertions(+), 95 deletions(-)`；文件级清单与验收见 §4.1az，叙述见 §4.1aw~§4.1ay）——**本轮（Windows 宿主）只做只读盘点 + 文档收口，未改任何代码或构建配置**；这批的主体是：5 个 `build.gradle` 把整合包投放根改成 `rootProject.ext.mcHomePath`（`MC_HOME` → `/mnt/hgfs/.minecraft` → `D:/.minecraft` 回退）、`forge-1.20.1` 三语各 +2 条 Jade 插件键、`docs/agent/AGENTS-dsh-linux.md`（Linux 规则正本，376 行 / 56,608 B）与两份 10-31 交接、`scripts/dev/rsync-original.sh` + `scripts/test/linux/{env,launch,stop}.sh` 与 README；**本批未 commit、未 push**（用户 14:53 已裁决「拆两个提交 / 补 neo Jade 键 / autocrlf 不管 / 补附录 A」；后两项已落地，提交因本会话无 git 写权限未执行，见 §4.1az「提交方案」）；用户既有 4 个未跟踪（`models/astral_anvil.bbmodel`、`scripts/test/cases/TMP-ATTRLESS-HYDRA-1.21.1.json`、`astral_batch3_probe.js`、`zz_screen_probe.py`）禁动；**仓库本地 `core.autocrlf = true`（本批新设）**，见 §6 坑 52；本轮守门：`python docs/agent/verify-split.py` 四节全 `[OK]`、`pwsh -NoProfile -File tools/check_lang_sync.ps1` EXIT 0（neo 1,068 / forge 1,070 / 26.1.2 836 / fabric 844 键）、4 个 bash 脚本 `bash -n` 全 OK、9 个新文件全 LF（`\r`=0）；**未实跑**：`gradlew`（wrapper 锁 `gradle-9.2.1-bin.zip.lck` 被占 ⇒ `Access denied`）与任何 `pushToGame`；**发布面未变**：tag `1.5.0-rc.7` / Release 两件附件（`122cedf8…` / `cbe67b1c…`）/ CF `9363589` + `9363591` 均为 rc.7 成果（细节见 §4.1au~§4.1av）；**Jade 两条键已两线对齐**（本轮补 1.21.1 三语各 2 条，两线均 1,070 键）；**两个提交未创建**（`git add` 报 `.git/index.lock: Permission denied`，脚本 `temp/commit-2026-10-31.sh` 待在可写终端执行）。
+> **状态快照（2026-10-31 14:5x 收班 · 以这条为准）**：本地 HEAD = **`7c44cfbf`**、远端 `origin/multi-main` = **`7c44cfbf`** ⇒ **`origin/multi-main..HEAD` = 0**；各线 `mod_version = 1.5.0-rc.7+<后缀>`、`starengine_version = 1.1.0`；**工作树里有一批来自 Linux/VM 会话的未提交改动 = 12 M + 9 ??**（`git diff --shortstat` = `12 files changed, 295 insertions(+), 95 deletions(-)`；文件级清单与验收见 §4.1az，叙述见 §4.1aw~§4.1ay）——**本轮（Windows 宿主）只做只读盘点 + 文档收口，未改任何代码或构建配置**；这批的主体是：5 个 `build.gradle` 把整合包投放根改成 `rootProject.ext.mcHomePath`（`MC_HOME` → `/mnt/hgfs/.minecraft` → `D:/.minecraft` 回退）、`forge-1.20.1` 三语各 +2 条 Jade 插件键、`docs/agent/AGENTS-dsh-linux.md`（Linux 规则正本，376 行 / 56,608 B）与两份 10-31 交接、`scripts/dev/rsync-original.sh` + `scripts/test/linux/{env,launch,stop}.sh` 与 README；**本批未 commit、未 push**（用户 14:53 已裁决「拆两个提交 / 补 neo Jade 键 / autocrlf 不管 / 补附录 A」；后两项已落地，提交因本会话无 git 写权限未执行，见 §4.1az「提交方案」）；用户既有 4 个未跟踪（`models/astral_anvil.bbmodel`、`scripts/test/cases/TMP-ATTRLESS-HYDRA-1.21.1.json`、`astral_batch3_probe.js`、`zz_screen_probe.py`）禁动；**仓库本地 `core.autocrlf = true`（本批新设）**，见 §6 坑 52；本轮守门：`python docs/agent/verify-split.py` 四节全 `[OK]`、`pwsh -NoProfile -File tools/check_lang_sync.ps1` EXIT 0（neo 1,068 / forge 1,070 / 26.1.2 836 / fabric 844 键）、4 个 bash 脚本 `bash -n` 全 OK、9 个新文件全 LF（`\r`=0）；**未实跑**：`gradlew`（wrapper 锁 `gradle-9.2.1-bin.zip.lck` 被占 ⇒ `Access denied`）与任何 `pushToGame`；**发布面未变**：tag `1.5.0-rc.7` / Release 两件附件（`122cedf8…` / `cbe67b1c…`）/ CF `9363589` + `9363591` 均为 rc.7 成果（细节见 §4.1au~§4.1av）；**Jade 两条键已两线对齐**（本轮补 1.21.1 三语各 2 条，两线均 1,070 键）；**两个提交未创建**（`git add` 报 `.git/index.lock: Permission denied`，脚本 `temp/commit-2026-10-31.sh` 待在可写终端执行）。
 
 1. 分支 `multi-main`，HEAD = 本批提交（`release(rc.2): 1.5.0-rc.1 -> 1.5.0-rc.2`，含调酒师治疗按张数 + 多萝西【交际花】双版本实机）。**已 push + CI 自动建 tag**（2026-10-25 23:1x，用户下达「执行 push」）：`git push origin multi-main` ⇒ `8dcdb715..13a45619`，`rev-list --count origin/multi-main..HEAD` = **0**；CI（`.github/workflows/build.yml` 的 auto-tag 步骤）自动建注解 tag **`1.5.0-rc.2`**（指向 `13a45619`）并发布 prerelease（附件 = 刚构建的 P0 两个 rc.2 jar，正文取 `release/1.5.0-rc.2/`）。前置库仓 `origin..HEAD` = **0**。
-2. 四线 `mod_version = 1.5.0-rc.2+<加载器后缀>`；四线 `starengine_version = 1.1.0`（前置库同批由 `1.1.0-pre.2` 转**正式版**，库内 Java 源码零改动）；硬前置区间随之展开为 `[1.1.0,2.0.0)`。
+2. 各线 `mod_version = 1.5.0-rc.2+<加载器后缀>`；各线 `starengine_version = 1.1.0`（前置库同批由 `1.1.0-pre.2` 转**正式版**，库内 Java 源码零改动）；硬前置区间随之展开为 `[1.1.0,2.0.0)`。
 3. 本批收编 **Kimi 上一轮四批未提交改动**（member-detective / misaki 立牌 / 筹码商店刷新源 / 规则分派），并完成 **DSH 三语语言同步** + **地雷女备注区染色修复**。
 4. 判据：P0 两线 `:classes` `BUILD SUCCESSFUL in 4s`；`check_lang_sync` EXIT=0；`audit_patchouli_keys` 悬空 0；`verify-split` EXIT=0；三道专项 python 判据 PASS 26/12/14；`verify_chip_shop_ui` `CHIPUI_TOTAL_FAIL: 0`。
 5. **rc.1 产物已重建并投放**（2026-10-25 15:3x，`:neoforge-1.21.1:build :forge-1.20.1:build` 触发 `pushToDevRun/pushToGame/pushToRootBuild`）——四个目标（`run/1.21.1/mods`、`run/1.20.1/mods`=dev named、两个 P0 整合包）逐处 sha256 **MATCH**；**前置库 jar 成对换成 `1.1.0`**（四处旧 `1.1.0-pre.2` 已删），读数见 §2 与 §4.1f。
@@ -41,12 +41,12 @@
 19. **玩家日志去掉「相对上一版的变化」+ 怪力乱神手册条目去掉配方（2026-10-26 12:2x，§4.1s）**：`release/1.5.0-rc.2/` 三份的 delta 小节**整节删除**（ZH 17 行 / EN 20 行 / MCMOD 8 行，MCMOD 节号随之重排为一～八）；`astral_dice.guide.entry.lingling_sign.3` 末尾「配方：星盘 ×4 + 导电线材 ×4 + 红石块 + 钻石骰子（史诗档）。」在三语 × P0 两线删除（配方由 Patchouli `recipe` 页承载）。两条口径已写进 `AGENTS-full.md`。
 20. **撤回「全效果牌不给迅捷 / 不给星币」例外（2026-10-26 13:0x，§4.1t）**：该规则由 `e193e6eb`（2026-10-24，本代理会话）擅自引入，用户声明从未要求 ⇒ 代码两线 `if (allSame)` / `} else`、javadoc、6 份 lang 12 处文案、守门 JIL-2 与被动文案规则同批撤回；`classes` 两线 BUILD SUCCESSFUL 37s + `GATE: PASS (833)` + `check_lang_sync` exit 0。产物未重建，无实机。
 21. **tooltip 精简口径建立（保留黑箱）+ 调酒师主动技能 tooltip 精简（2026-10-26 13:2x，§4.1u）**：按用户本地改法（228→148 字符，只留「效果牌：目标恢复 §e2§7 点生命」）建立〈tooltip 精简原则〉—— tooltip 只写「做什么」不写「怎么算」；同一口径同步 `neoforge-1.21.1` + `forge-1.20.1` × 三语共 6 份 lang（P1 两线无该键）；守门 `verify_sign_balance_changes.py` 新增精简口径判据（PASS 839 项，变异测试能挡回潮）。手册是否同口径、chips 两处「计时器」是否精简待裁决。
-22. **1.5.0-rc.3 发布收口（2026-10-26 13:2x–13:4x，§4.1v）**：四线 `mod_version` → `1.5.0-rc.3+后缀`（`starengine_version=1.1.0` 未动）；技术 CHANGELOG 中英各 +6 行、`release/1.5.0-rc.3/` 三份玩家说明；P0 两线 `build` 成功（neo 2,588,530 B / forge 2,633,363 B，`META-INF/jarjar/`=0）；提交 `14eb54ab` 已 push；CI 建 tag `1.5.0-rc.3` 并发 **prerelease** Release（两个附件）；CurseForge 两线 **beta** 已上传（neo `9330278` / forge `9330279`，ForgeCDN 字节数吹策相等）。
+22. **1.5.0-rc.3 发布收口（2026-10-26 13:2x–13:4x，§4.1v）**：各线 `mod_version` → `1.5.0-rc.3+后缀`（`starengine_version=1.1.0` 未动）；技术 CHANGELOG 中英各 +6 行、`release/1.5.0-rc.3/` 三份玩家说明；P0 两线 `build` 成功（neo 2,588,530 B / forge 2,633,363 B，`META-INF/jarjar/`=0）；提交 `14eb54ab` 已 push；CI 建 tag `1.5.0-rc.3` 并发 **prerelease** Release（两个附件）；CurseForge 两线 **beta** 已上传（neo `9330278` / forge `9330279`，ForgeCDN 字节数吹策相等）。
 23. **双版本 tooltip 全面检查 + 三处修复（2026-10-26 17:1x，§4.1w）**：CF 上 rc.3 两件经下载比对确认是 13:28 修复前的坏构建（neo 2,588,530 B b086b984 / forge 2,633,363 B 79fc4b5e）；补齐 Curios 自定义槽位 curios.modifiers.{chip,dice,stand} 三语（P0 每线 1,059→1,062 键）、恢复被 b7b26f82 附带回退的多萝西主动技能中文；两条线实机复验「佩戴筹码时：」已解析、调酒师提示框无字面换行转义；新产物 neo 2,588,650 B 43e56966 / forge 2,633,448 B 6731d798。CF 坏件尚未处理（删后重传 vs bump rc.4 待裁决）。
 
 24. **1.5.0-rc.3 重发（CF 重传 + tag 重指，2026-10-26 17:1x–17:2x，§4.1x）**：用户手工删除 CF 旧件后重传 —— neo `fileID=9331458` / forge `9331459`，ForgeCDN `Content-Length` 与本地修复版逐字节相等（2,588,650 / 2,633,448）；push `7e6bcaaf` 后 CI 把 Release 附件换成修复版（neo 2,587,457 B `70bc35c3` / forge 2,632,291 B `c44e11e0`，开包核 1,062 键 / 三语无字面转义 / `curios.modifiers` 齐全 / 多萝西「交际花」在）；`tag 1.5.0-rc.3` 由 `14eb54ab` 经 `--force-with-lease` 重指到 `7e6bcaaf`（安全网禁删除/强推远端 ref）。**GitHub Release 对象未删除重建**（`gh` 未登录、无 token），若需新对象须用户 UI 删或给 token。
 25. **卡牌商店「买牌后转账被锁」修复（2026-10-26 18:1x–18:4x，§4.1y）**：换架周期与转账锁原先共用一个计时器 ⇒ 买牌即锁转账。现拆成独立玩家级标记 `shop_transfer_used`（菜单第 10 个 DataSlot 同步，成功转账才置位、换架即清零），星光兑换仍看周期。**双版本实机**：1.21.1 `SHOP-L-1.21.1` **PASS**（66 断言 0 FAIL，买牌后 `used=0` / 周期内 `view=1:ready=1` / 周期内转账 `applied=1` 后才 `used=1`）；1.20.1 `SHOP-GUI-1.20.1` **79 PASS**、相关 4 条断言全转 PASS（`cdBefore=4668` 时转账成功、同轮第二次 `applied=0`、转账不再开新周期 `deltaMid=0`、换架后 `used=0`），3 条 FAIL 系陈旧期望（卡池 22→实际 23）与 `run/1.20.1/mods` 无 JEI 的环境缺口。
-26. **1.5.0-rc.4 发布收口（2026-10-26 19:3x–19:5x，§4.1z）**：四线 `mod_version` → `1.5.0-rc.4+后缀`；`SHOP-GUI-1.20.1` 三条陈旧断言订正（卡池 22→23、JEI 允许 `cls=null`）；`release/1.5.0-rc.4/` 三份玩家说明（含买牌不再锁转账、筹码属性标题缺键、字面换行转义等四条 BUG 修复）；构建 neo 2,589,686 B `2aa82aed` / forge 2,634,452 B `cc387ca6`（jarjar=0、三语 1,062 键、转义 0）；守门五项全绿；提交 `84e1938b` 已 push；CI 建 tag `1.5.0-rc.4`（tag 对象 `cafc9509`，`^{}`=`84e1938b`）并**新建独立 prerelease Release**（附件 neo 2,588,493 B / forge 2,633,295 B，开包核为修复版）；CF 两线 beta 上传成功（neo `fileID=9332423` / forge `9332424`，HTTP 200），`mediafilez` 前端暂 403 但 `edge.forgecdn.net` 200 且字节数与本地相等。
+26. **1.5.0-rc.4 发布收口（2026-10-26 19:3x–19:5x，§4.1z）**：各线 `mod_version` → `1.5.0-rc.4+后缀`；`SHOP-GUI-1.20.1` 三条陈旧断言订正（卡池 22→23、JEI 允许 `cls=null`）；`release/1.5.0-rc.4/` 三份玩家说明（含买牌不再锁转账、筹码属性标题缺键、字面换行转义等四条 BUG 修复）；构建 neo 2,589,686 B `2aa82aed` / forge 2,634,452 B `cc387ca6`（jarjar=0、三语 1,062 键、转义 0）；守门五项全绿；提交 `84e1938b` 已 push；CI 建 tag `1.5.0-rc.4`（tag 对象 `cafc9509`，`^{}`=`84e1938b`）并**新建独立 prerelease Release**（附件 neo 2,588,493 B / forge 2,633,295 B，开包核为修复版）；CF 两线 beta 上传成功（neo `fileID=9332423` / forge `9332424`，HTTP 200），`mediafilez` 前端暂 403 但 `edge.forgecdn.net` 200 且字节数与本地相等。
 
 
 27. **三批欠账实机全 PASS（2026-10-27 15:39–16:16，§4.1aa）**：修复本体 = 隐匿调查法伤击杀双罚（`InvestigationEventUtil` 幂等闸门）**+ 之前两批未实机的 `6fcc756a` 强化拒止五规则、`51efba03` 临时牌 owner**，均已实机取证 —— 1.21.1 三案（`UNDERCOVER-DOUBLE` 4/4、`REPULSION-SIGN`、`TEMPCARD-OWNER` 6/6）+ 1.20.1 一案（`DST-P0-1.20.1` 10/10，走新建 KubeJS 探针 `/astraldst`，1.20.1 无 AutoJS 通道）。未覆盖项（tooltip 所有者行渲染 / 跨容器搬运 / 死亡掉牌不误销毁 / 命令级清槽）已在 §4.1aa 第 6 条如实登记。提交 **`59b14e10` + `052934cd`**，本地未 push（`origin/multi-main..HEAD` = **4**：`6fcc756a` / `51efba03` / `59b14e10` / `052934cd`），无新 tag；`build/libs` 已重建为 rc.4 号（2,595,450 / 2,640,648 B），**未上传 CF、未发版**。
@@ -81,7 +81,7 @@
 | forge `mod_version` | `1.5.0-rc.2+forge_1.20.1` | `forge-1.20.1/gradle.properties` |
 | 26.1.2 `mod_version` | `1.5.0-rc.2+neoforge_26.1.2`（源码 bump，**P1 不构建不验证**） | `neoforge-26.1.2/gradle.properties` |
 | fabric `mod_version` | `1.5.0-rc.2+fabric_1.20.1`（源码 bump，**P1 不构建不验证**） | `fabric-1.20.1/gradle.properties` |
-| `starengine_version` | `1.1.0`（四线，**正式版**）；fabric 另有 `starengine_version_range=>=1.1.0` | 各线 `gradle.properties` |
+| `starengine_version` | `1.1.0`（各线，**正式版**）；fabric 另有 `starengine_version_range=>=1.1.0` | 各线 `gradle.properties` |
 | 硬前置区间 | `[1.1.0,2.0.0)`（模板插值 `[${starengine_version},2.0.0)`，改 `gradle.properties` 一处即随动）；`META-INF/jarjar/` 计数 **0** | `neoforge-1.21.1/src/main/templates/META-INF/neoforge.mods.toml:143` · `forge-1.20.1/src/main/templates/META-INF/mods.toml:157` |
 
 **产物现状（2026-10-25 21:3x 重建，`1.5.0-rc.2`；源码 = rc.1 + 调酒师治疗按张数 + 多萝西【交际花】）**：
@@ -113,13 +113,13 @@ forge dev named 102,013 B / `e280aeab6c4b37c43468f7cce32a8bf64c70b6bdbcd2203f6c5
 | 本文件所在提交（追加） | docs(handover)：强化拒止双版本实机 7 项判据 + 实机侧方法可见性坑 | 本文件 §4.1c / §5-8 / §0-6 |
 | 本文件所在提交 | docs：Kimi 交接单 + 工程参考 + pre.6 正本 + 新会话上下文 | `docs/handover-2026-10-24-kimi-takeover.md` · `docs/agent/PROJECT-REFERENCE.md` · 本文件 · `docs/handover-new-session-context.md` |
 | `16b48c4`（**前置库仓** `F:\MCProject\starengine`） | release(lib)：`1.1.0-pre.2` → **`1.1.0`** 正式版（8 文件 +63/−32） | 四子项目 `gradle.properties`（`lib_version` / `mod_version`）· `README.md`/`README_ZH.md`（坐标表 + 依赖示例 + 当前版本）· `CHANGELOG.md`/`CHANGELOG_ZH.md` 新增 `## 1.1.0` 小节 · 四平台 `publishToMavenLocal` |
-| 本文件所在提交（追加） | release(rc.1)：`1.5.0-pre.6` → **`1.5.0-rc.1`** + 前置库坐标 `1.1.0` | 四线 `gradle.properties`（`mod_version` / `starengine_version` / fabric `starengine_version_range`）· 两线 toml 模板注释（预发布期「不要写 `[1.1.0,2.0.0)`」改成正式版口径）· `.github/workflows/build.yml:105` 库 ref SHA `6d2a96d…`→`16b48c4…` · `README*.md`（版本列 `1.5.0-pre.5`→`rc.1`、库版本 `1.1.0`）· `CHANGELOG*.md`（库版本串）· 本文件 `git mv` pre.6→rc.1 + §0/§2/§3/§4.1f · `docs/handover-new-session-context.md` · 5 处旧文件名引用 |
+| 本文件所在提交（追加） | release(rc.1)：`1.5.0-pre.6` → **`1.5.0-rc.1`** + 前置库坐标 `1.1.0` | 各线 `gradle.properties`（`mod_version` / `starengine_version` / fabric `starengine_version_range`）· 两线 toml 模板注释（预发布期「不要写 `[1.1.0,2.0.0)`」改成正式版口径）· `.github/workflows/build.yml:105` 库 ref SHA `6d2a96d…`→`16b48c4…` · `README*.md`（版本列 `1.5.0-pre.5`→`rc.1`、库版本 `1.1.0`）· `CHANGELOG*.md`（库版本串）· 本文件 `git mv` pre.6→rc.1 + §0/§2/§3/§4.1f · `docs/handover-new-session-context.md` · 5 处旧文件名引用 |
 | 本文件所在提交（追加） | feat(hud)：攻击力显示口径统一（4 文件 + 新增守门脚本） | 两线 `combat/DiceCombatContext`（+`displaySnapshot`）· 两线 `combat/DiceCombatModifiers`（`skipOnClient` 收敛 23/24 处模板守卫 · 攻击卡在显示口径下不掷 · `attackPowerBase` 5 参重载）· 新增 `tools/verify_hud_attack_parity.py`（H1–H6，`GATE: PASS (21 项)`） |
 | 本文件所在提交（追加） | feat(shop)：护法立牌减费卡面（8 文件 +228/−6） | 两线 `screen/CardShopScreen#cardFaceTexture`（非名刀/未佩戴/素材缺失回退原图）· 两线 `textures/gui/shop/card/attack_card_meito_discount.png`（904 B）· `tools/verify_meito_discount_face.py`（D1-D6）· CHANGELOG 双文件 · 本文件 §0-12 / §4.1k / §5-Minor 7 |
 
 | `6ee75a34` | docs(release)：1.5.0-rc.1 玩家更新日志（中英，2 文件 +460/−0） | `release/1.5.0-rc.1/PLAYER_CHANGELOG_ZH.md`（1.3.7→1.5.0 全量：安装与前置 / 新增内容 / 战斗系统重做 / 平衡与数值 / BUG 修复 / 文案与手册 / 许可变更）+ 英文镜像 |
 | 本文件所在提交（追加） | chore(tools)+docs：CF 关系补 starengine + 发布收口 | `tools/curseforge.json`（P0 两线 +`starengine(1755415)=requiredDependency`）· 本文件 §0-13/14 · §4.1l · §3 两行 · §5-Minor 8 · §6 坑 23/24 |
-| `50e5e406` | chore(release)：四线 `mod_version` bump 到 `1.5.0-rc.5`（4 文件 +4/−4） | 四条线 `gradle.properties`（`starengine_version` 仍 `1.1.0`）· 本文件 §4.1aq-1 |
+| `50e5e406` | chore(release)：四线 `mod_version` bump 到 `1.5.0-rc.5`（4 文件 +4/−4） | 各线 `gradle.properties`（`starengine_version` 仍 `1.1.0`）· 本文件 §4.1aq-1 |
 | `1368b837` | fix(verify,ci)：筹码获取途径守门 `stale_page` / `no_note` 升为致命项并接入 CI（2 文件 +15/−4） | `scripts/verify/verify_chip_acquisition.ps1`（`isFatal=$true` · ❌ 标签 · 逐线条件补两项 · 退出码契约）· `.github/workflows/build.yml` 新增 `Check chip acquisition gate (P0)`（+8 行）· §4.1aq-5 |
 | `79e3b183` | docs(release)：1.5.0-rc.5 玩家发布说明 + CHANGELOG 补充（5 文件 +1077/−6） | `release/1.5.0-rc.5/PLAYER_CHANGELOG_ZH.md`（375 行）/ `PLAYER_CHANGELOG.md`（382 行）/ `PLAYER_CHANGELOG_MCMOD.html`（314 行）· `CHANGELOG.md` / `CHANGELOG_ZH.md` 各 6 行 · §4.1aq-6 |
 
@@ -131,7 +131,7 @@ forge dev named 102,013 B / `e280aeab6c4b37c43468f7cce32a8bf64c70b6bdbcd2203f6c5
 4. **筹码商店刷新源（Kimi）**：两线删 `shop/ChipShopRegenTicker.java`；`needsReroll` 去 `diceKey`；`withRefreshGranted()`（不重置、封顶 5）；唯一授予点 `event/AnvilUpgradeHandler`（取走升星成品 +1；升星花费 0/1/2★=15/20/25 与 preview 共用）；死亡保留 neo `.copyOnDeath()` + forge `AstralData` 白名单 `ModAttachments.CHIP_SHOP_STATE.name()`；`verify_chip_shop_ui.ps1` 加 G18c..G18h。
 5. **三语语言同步（DSH，用户 m07951/m08212 下达）**：用户手改 39 条（38 `tooltip.*` + `msg.astral_dice.card_shop_no_starlight`）为权威；按新语义改写 21 条 `astral_dice.guide.entry.*` 手册正文；`zh_cn.json` 同步到 forge 线（按 forge 自身键序只换 60 个值，**禁止整文件复制**）；`en_us.json`/`ja_jp.json` 两线各 60 键重译，格式保真 234/234 §码 · `%%` 10/10 · `%s` 6/6 · \n 39/39 · `" | "` 3/3。
 6. **`tooltip.astral_dice.sign.ame_note` 染色（DSH）**：备注区底色 `§d`（`event/ModTooltipHandler#addSignNoteLines`），补 7 对染色（`§e` 数值 / `§9` 时间 / `§d` 回落），正文未改（仅删一多余空格）；6 文件（两线 × 三语）。`tooltip_color_audit` 中 `ame_note` 40 → 0。
-7. **版本 bump（DSH）**：四线 `mod_version` → `1.5.0-pre.6`。
+7. **版本 bump（DSH）**：各线 `mod_version` → `1.5.0-pre.6`。
 
 ## 4 实机读数
 
@@ -271,7 +271,7 @@ forge dev named 102,013 B / `e280aeab6c4b37c43468f7cce32a8bf64c70b6bdbcd2203f6c5
 
 落点：两线同一个 `effect_card_repulsion.json`（3 → 5 页，两线文件逐字节相同）+ 两线 × 三语 lang 各 +2 键（`astral_dice.guide.entry.effect_card_repulsion.4` / `.5`）⇒ P0 键数 1058 → **1060**。
 
-判据（2026-10-25 15:5x）：`python tools/audit_patchouli_keys.py` ⇒ 四线引用 **1698** 处 / 悬空 **0**（EXIT 0）；`check_lang_sync.ps1` EXIT 0（P0 各 **1060** 键一致，P1 836 / 844 未受影响，3 条既有 WARN 照旧）；`tooltip_color_audit` 仍 **144 处 / 9 键**（本批不新增 tooltip）；`verify-split.py` 8 项 `[OK]`；两线 `build` EXIT 0 并按四目标投放，开 jar 核：条目 page `type` 计数 **5**、spotlight 的 item 为 `astral_dice:repulsion`、`zh_cn.json` 命中 `effect_card_repulsion.4` / `.5`，四目标 sha256 全 MATCH。
+判据（2026-10-25 15:5x）：`python tools/audit_patchouli_keys.py` ⇒ 各线引用 **1698** 处 / 悬空 **0**（EXIT 0）；`check_lang_sync.ps1` EXIT 0（P0 各 **1060** 键一致，P1 836 / 844 未受影响，3 条既有 WARN 照旧）；`tooltip_color_audit` 仍 **144 处 / 9 键**（本批不新增 tooltip）；`verify-split.py` 8 项 `[OK]`；两线 `build` EXIT 0 并按四目标投放，开 jar 核：条目 page `type` 计数 **5**、spotlight 的 item 为 `astral_dice:repulsion`、`zh_cn.json` 命中 `effect_card_repulsion.4` / `.5`，四目标 sha256 全 MATCH。
 
 产物（15:5x 重建）：neo **2,586,610 B** `4686ec6de2b637d22f8a9688e87c88180dad36f9f68f6d8a5a522714a8c53fb4`；forge reobf **2,631,683 B** `dbccaf2c16112681fe9e36494072021662ec0d119952401a52e4aeebb2535cd0`；forge dev **2,602,214 B** `19bff3310bb540beb7f2a74b6aa673e22eaac04458723d5a45f34741ffca2e45`。
 
@@ -287,10 +287,10 @@ forge dev named 102,013 B / `e280aeab6c4b37c43468f7cce32a8bf64c70b6bdbcd2203f6c5
 
 **mod 侧**
 
-- 四线 `mod_version = 1.5.0-rc.1+<后缀>`；四线 `starengine_version = 1.1.0`；fabric `starengine_version_range=>=1.1.0`。
+- 各线 `mod_version = 1.5.0-rc.1+<后缀>`；各线 `starengine_version = 1.1.0`；fabric `starengine_version_range=>=1.1.0`。
 - 硬前置区间由模板插值自动成为 `[1.1.0,2.0.0)`（两线 toml 的 `versionRange="[${starengine_version},2.0.0)"` 未改字面量）；两线模板注释里「⚠️ 不要写成 `[1.1.0,2.0.0)`」的**预发布期禁令**改为正式版口径（保留历史原因：`ComparableVersion` 把未知限定符 `pre` 排在正式版之后，预发布件会污染下界判定）。
-- `.github/workflows/build.yml:105` 库 `ref` 由 `6d2a96df…`（pre.2）改为 `16b48c413d92bcd830d97c0a80b0df4e0c47ba6c`（1.1.0），注释同步（与四线 `starengine_version` 同提交更新）。
-- `README*.md`：四线版本列 `1.5.0-pre.5` → `1.5.0-rc.1`（4 行/文件）、库版本 `1.1.0-pre.2` → `1.1.0`；`CHANGELOG.md:38` / `CHANGELOG_ZH.md:35` 的库版本串同步。
+- `.github/workflows/build.yml:105` 库 `ref` 由 `6d2a96df…`（pre.2）改为 `16b48c413d92bcd830d97c0a80b0df4e0c47ba6c`（1.1.0），注释同步（与各线 `starengine_version` 同提交更新）。
+- `README*.md`：各线版本列 `1.5.0-pre.5` → `1.5.0-rc.1`（4 行/文件）、库版本 `1.1.0-pre.2` → `1.1.0`；`CHANGELOG.md:38` / `CHANGELOG_ZH.md:35` 的库版本串同步。
 
 **打包 / 投放判据**
 
@@ -337,7 +337,7 @@ forge dev named 102,013 B / `e280aeab6c4b37c43468f7cce32a8bf64c70b6bdbcd2203f6c5
 ### 4.1h 防御力口径修正（2026-10-25）—— 静态判据全绿，**已重建产物并双版本实机（见 §4.1i）**
 
 - **用户裁决**：先解防御口径问题，再跑实机。依据 `docs/agent/AGENTS-full.md:584-613`〈平衡性红线〉——「任何使既有数值口径失真的实现」属恶性 BUG，必须当批修复，不得按「设计取舍 / 已知限制 / 待裁决」放过。
-- **两个失真点**：① **折算写死 `× 2.0`**：所有「防御力 +X」的来源都按 `X × 2.0` 加护甲，经 0.30 / 0.40 系数后只兑现 **0.6X（玩家）/ 0.8X（怪物）**；根因是旧公式「2 + 护甲÷2」时代的换算（2026-09-26 系数 0.5 → 0.30 时未同步）。② **指南基数 4 vs 代码 2**：库 `CombatFormula.PLAYER_BASE_DEFENSE = 2.0`（注释：2026-10-21 用户裁决，2 点 = 1 面盾），而 12 份指南 lang（四线 × 三语）仍写「玩家 防御 = 4 + 护甲×0.30」。
+- **两个失真点**：① **折算写死 `× 2.0`**：所有「防御力 +X」的来源都按 `X × 2.0` 加护甲，经 0.30 / 0.40 系数后只兑现 **0.6X（玩家）/ 0.8X（怪物）**；根因是旧公式「2 + 护甲÷2」时代的换算（2026-09-26 系数 0.5 → 0.30 时未同步）。② **指南基数 4 vs 代码 2**：库 `CombatFormula.PLAYER_BASE_DEFENSE = 2.0`（注释：2026-10-21 用户裁决，2 点 = 1 面盾），而 12 份指南 lang（各线 × 三语）仍写「玩家 防御 = 4 + 护甲×0.30」。
 - **修法（单一真值）**：两线 `combat/DiceCombatModifiers.java` 新增 `PLAYER_ARMOR_PER_DEFENSE = 1.0 / CombatFormula.PLAYER_ARMOR_COEF`（≈3.333）、`MOB_ARMOR_PER_DEFENSE = 1.0 / CombatFormula.MOB_ARMOR_COEF`（2.5）、`armorValueForDefensePoints(points, side|entity)` 与反函数 `defensePointsForArmor(armor, side)`；10 处站点全部改走它（两个 `setDefenseArmorBonus`、`defensePowerBase`、`defensePowerOf`（floor 带 `+1.0E-6D` 浮点尘埃容差）、骰战 `effectiveArmor`、摩托头盔、黑曜石骰、多萝西暖意、Jill 防御牌、雷暴将至生物护甲）。多萝西主动技读「当前防御力」原来写死 `armor / 2.0`，改为 `defensePointsForArmor(armor, true)`（保留 `getAttributeValue` 取 double，避免 `getArmorValue()` 先取整丢 0.2 点）。注释口径同步归一 51 组（两线各 ~21 文件）；12 份指南 lang 改 2 基数 + 「1 防御力 = 1÷护甲系数 护甲值（玩家约 3.33、怪物 2.5）」。
 - **库不动**：`CombatFormula` 的系数与基数都是现成 public 常量 ⇒ 库无改动、无版本 bump。
 - **判据（实跑）**：`python tools/verify_defense_unit_parity.py` ⇒ `GATE: PASS（34 项全部满足）`（D1 旧字面量 0 处 / D2 折算常量同源 / D3 defensePower* 走折算 / D4 骰战 / D5 五处站点 / D6 12 份 lang / D7 ARMOR 写点白名单 / D8 P1 只统计）；数值自检「玩家 +2 防御力 ⇒ +6.6667 护甲 ⇒ 折算回 2.0000」；`git grep` 两线旧字面量 `defensePoints * 2.0|modifierDefense * 2.0|defense * 4.0D|stacks * 2.0D` = 0 命中；`gradlew.bat :neoforge-1.21.1:classes :forge-1.20.1:classes` ⇒ `BUILD_EXIT=0`（仅既有 deprecation 警告）。
@@ -364,7 +364,7 @@ forge dev named 102,013 B / `e280aeab6c4b37c43468f7cce32a8bf64c70b6bdbcd2203f6c5
   | `D:\.minecraft\versions\1.20.1-Forge 模组测试\mods`（forge **reobf**） | 2,632,435 | `AD987CC7A64DF8043B50EF388A456DE938BFD4330A5E6123275C4E465F8BB106` | True |
 
   构建：`gradlew.bat :neoforge-1.21.1:build :forge-1.20.1:build --console=plain` ⇒ `BUILD SUCCESSFUL in 7s`，六条 `pushTo{Game,DevRun,RootBuild}` 全命中；库 jar 成对在位（`starengine-neoforge-1.21.1-1.1.0.jar` / `starengine-forge-1.20.1-1.1.0.jar`）。
-- **守门（实跑）**：`python tools/verify_defense_unit_parity.py` ⇒ `GATE: PASS（42 项全部满足）`（新增 **D9** 四项：入口存在且读 `getAttributeValue(Attributes.ARMOR)` / `defensePowerBase` 走它 / 骰战走它 / `combat/**` 与穿甲枪里 `getArmorValue()` 调用 0 处）；`python tools/verify_hud_attack_parity.py` ⇒ `GATE: PASS (21 项全部满足)`；`pwsh tools/check_lang_sync.ps1` ⇒ EXIT 0（四线键集一致）；`python docs/agent/verify-split.py` ⇒ 全部通过；`pwsh scripts/audit/tooltip_color_audit.ps1` ⇒ 仍 **144 处**（既有基线债，用户已裁决路障不动）。
+- **守门（实跑）**：`python tools/verify_defense_unit_parity.py` ⇒ `GATE: PASS（42 项全部满足）`（新增 **D9** 四项：入口存在且读 `getAttributeValue(Attributes.ARMOR)` / `defensePowerBase` 走它 / 骰战走它 / `combat/**` 与穿甲枪里 `getArmorValue()` 调用 0 处）；`python tools/verify_hud_attack_parity.py` ⇒ `GATE: PASS (21 项全部满足)`；`pwsh tools/check_lang_sync.ps1` ⇒ EXIT 0（各线键集一致）；`python docs/agent/verify-split.py` ⇒ 全部通过；`pwsh scripts/audit/tooltip_color_audit.ps1` ⇒ 仍 **144 处**（既有基线债，用户已裁决路障不动）。
 - **仍未实机 / 未做**：§5-Major 5 的 8 条「代码与文案不符」（2026-10-25 用户裁决「不管（黑箱）」⇒ 不修、不再列待办）、§5-Minor 3 `misaki_sign` datagen 逐字节对等（下次 `runData` 后 diff）、P1 两线未移植。
 - **本轮坑补充**：① 1.21.1 客户端未停就 launch 1.20.1 ⇒ 25585 端口冲突 + `MT_INJECT_FOCUS: FAIL — 目标窗口无法置前台`（§6 坑 15），必须先对另一线 `--phase stop --force`；② `/astralprobe equipslot` 在两条线都不落槽，装备类实验一律走 Curios API；③ 1.21.1 的 Curios 9.5.1 写入槽位后需 1–2 tick 再读（§6 坑 8），本轮客户端读数前已 sleep 1.5–1.8 s。
 
@@ -419,7 +419,7 @@ forge dev named 102,013 B / `e280aeab6c4b37c43468f7cce32a8bf64c70b6bdbcd2203f6c5
 - **改动**：两线 `item/sign/JillSignItem.java` 改 `target.heal(HEAL_AMOUNT * effect)`（1 张 2 点 / 3 张 6 点），保留 `if (effect > 0)` 守卫与「全效果牌不给计时器/图标」分支；~~仍为**一次** heal ⇒ 治疗事件只触发 1 次（多萝西「温暖」只 +1 层、赵赐福溢出/治疗失效事件各只结算一次）~~ ⛔ **2026-10-26 用户裁决订正为「逐张各结算 1 次 `heal(2)`」**（3 张 = 3 次 = 6 点），多萝西「温暖」按次数叠层（+3 层）、下游各结算三次（详见 **§4.1r**）。javadoc / 常量注释 / 行内注释同步。forge 线同形（仅 `Operation.ADDITION` 与 `JILL_MIXED.get()` 的平台差异）。
 - **文案六处 + 三份玩家日志 + 两份 CHANGELOG**：`tooltip.astral_dice.sign.jill_active`（JIL-L1）与 `astral_dice.guide.entry.jill_sign.1`（JIL-L2）在 neo/forge × zh_cn/en_us/ja_jp 共 6 份 lang 里改为「每张效果牌 2 点、按张数叠加（3 张共 6 点）」；ja 另把 `jill_sign.2` 的「固定回復のみ」改成「回復のみ」、en 的 "only the flat heal" 改成 "only the heal"；`release/1.5.0-rc.1/PLAYER_CHANGELOG_ZH.md` / `PLAYER_CHANGELOG.md` / `PLAYER_CHANGELOG_MCMOD.html` 同句订正；`CHANGELOG_ZH.md`（`#### 立牌与技能`）与 `CHANGELOG.md`（`#### Signs & Skills`）各追加 1 条。
 - **守门同步**：`tools/verify_sign_balance_changes.py` 的 JIL-1 由「固定治疗 `target.heal(HEAL_AMOUNT)`」改为「按张数叠加 `target.heal(HEAL_AMOUNT * effect)`」并新增 forbid 旧写法；`jill_lang_specs()` 三语 req/forbid 换成「每张 2 点 / 按张数叠加 / stacks per card / 枚数分加算」，旧文案「固定 2 点」「不按张数叠加」「flat 2」「枚数分ではない」列入 forbid。
-- **判据（实测）**：`python tools/verify_sign_balance_changes.py` = `GATE: PASS (760 项全部满足)`；`python tools/verify_defense_unit_parity.py` = `GATE: PASS（42 项）`；`pwsh -NoProfile -File tools/check_lang_sync.ps1` exit 0（四线 key 全一致：1,060 / 1,060 / 836 / 844）；`python -B docs/agent/verify-split.py` 8 项全 `[OK]`；`gradlew.bat :neoforge-1.21.1:classes :forge-1.20.1:classes` **BUILD SUCCESSFUL**。⚠️ `jill_active` 的既有结构标记 WARN（彩色码计数 zh 16 / en 12）**HEAD 就已存在**（HEAD 为 zh 14 / en 10，本轮两语各 +2，差值不变），非本轮引入。
+- **判据（实测）**：`python tools/verify_sign_balance_changes.py` = `GATE: PASS (760 项全部满足)`；`python tools/verify_defense_unit_parity.py` = `GATE: PASS（42 项）`；`pwsh -NoProfile -File tools/check_lang_sync.ps1` exit 0（各线 key 全一致：1,060 / 1,060 / 836 / 844）；`python -B docs/agent/verify-split.py` 8 项全 `[OK]`；`gradlew.bat :neoforge-1.21.1:classes :forge-1.20.1:classes` **BUILD SUCCESSFUL**。⚠️ `jill_active` 的既有结构标记 WARN（彩色码计数 zh 16 / en 12）**HEAD 就已存在**（HEAD 为 zh 14 / en 10，本轮两语各 +2，差值不变），非本轮引入。
 - **同轮多萝西只读取证（未改代码）**：队友那 1 点攻击力**没有状态效果**，只是瞬态属性修饰符 `astral_dice:dorothy_partner_attack`（`ATTACK_DAMAGE` +1 / `ADD_VALUE` / `addTransientModifier`，无图标、不进效果栏、死亡重登即丢）；**有效期 = 施放者主动窗口结束**（`WINDOW_TICKS = 1200` = 1:00，`DorothySignItem.java:35`），**不是「获得后 1:00」** ⇒ 只有施放瞬间触发的队友才吃满 1:00，越晚触发剩得越少；`applyTempAttack(...)` 的 `until` 形参未被使用（`DorothySignItem.java:144-148`），清理全靠施放者 `onCurioTick` 的窗口结束分支（`:123-134` → `clearPartnerBuffs` `:151-160`）与 `onUnequip`；唯一可见状态效果 = **温暖 `astral_dice:dorothy_warmth`**（被动叠层，与本加成无关）。⚠️ 本段是**改动前**的只读结论，随后用户裁决改为【交际花】效果 ⇒ 现状见 **§4.1n**。
 
 ### 4.1n 多萝西立牌队友加成改为状态效果【交际花】+ 删除触发节流（2026-10-25 21:1x–21:4x）—— 静态判据全绿，**本条无实机**
@@ -431,7 +431,7 @@ forge dev named 102,013 B / `e280aeab6c4b37c43468f7cce32a8bf64c70b6bdbcd2203f6c5
 - **删节流**：`ModAttachments` 删除 `DOROTHY_PARTNERS`（uuid=tick 节流表）与 `dorothyPartnerUuids`，`tryTriggerDorothyPartner` 收敛为 `(Player, UUID)` 只保留「每人每窗口一次」；`DorothySignItem` 删 `DOROTHY_THROTTLE_TICKS`、`applyTempAttack`、`clearPartnerBuffs` 与 `"dorothy_partner_attack"` 修饰符 key。被动「每 10 秒回 2 血」（`PASSIVE_HEAL_COOLDOWN = 200`）**不动**。
 - **文案**：6 份 lang（两线 × zh_cn/en_us/ja_jp）新增 `effect.astral_dice.dorothy_socialite`（交际花 / Socialite / 社交家）+ `.description`，并改写 `tooltip.astral_dice.sign.dorothy_active`（→ 自身 +1 攻仍受 1:00 窗口、队友走【交际花】固定 1:00 与窗口无关）与 `astral_dice.guide.entry.dorothy_sign.1`（同口径，去掉「每 10 秒一次」）。被动两条键（`dorothy_passive` / `dorothy_sign.2`）未动。
 - **守门**：`tools/verify_sign_balance_changes.py` 新增 DOR-4 组（效果类存在 + `DURATION_TICKS = 1200` + `ATTACK_BONUS = 1` + 属性修饰符 key/UUID + `ModEffects` 注册 + 2 处 `applySocialite(other)` + 两参 `tryTriggerDorothyPartner` + 图标存在 + 旧的 `DOROTHY_THROTTLE_TICKS`/`dorothy_partner_attack`/`applyTempAttack`/`clearPartnerBuffs`/`DOROTHY_PARTNERS`/`dorothyPartnerUuids` 全部 forbid），docstring 同步；`docs/agent/AGENTS-full.md` 效果计数行按实测订正为 **67 / 67 / 53 / 53**。
-- **判据（实测）**：`gradlew.bat :neoforge-1.21.1:classes :forge-1.20.1:classes` **BUILD SUCCESSFUL**；`python tools/verify_sign_balance_changes.py` = `GATE: PASS (801 项全部满足)`（变异测试：移走 forge 图标 ⇒ `FAIL DOR-4 [forge-1.20.1] 缺少图标…` / `GATE: FAIL (1 项 / 共 180)`，证明 DOR-4 非空转）；`python tools/verify_effect_icons.py` = `RESULT: PASS`（四线 240 个注册、覆盖 100%，P0 两线各 `registered=67 covered=67 missing=0`）；`pwsh -NoProfile -File tools/check_lang_sync.ps1` exit 0（四线 key 全一致，P0 两线各 **1,062** 键；`dorothy_passive` / `jill_active` 三条 WARN 为既有彩色码计数差）；`python -B docs/agent/verify-split.py` 8 项全 `[OK]`（AGENTS-full 4,085 行 / 红线区 13,404 字符 / AGENTS-dsh 25,915 字符）。
+- **判据（实测）**：`gradlew.bat :neoforge-1.21.1:classes :forge-1.20.1:classes` **BUILD SUCCESSFUL**；`python tools/verify_sign_balance_changes.py` = `GATE: PASS (801 项全部满足)`（变异测试：移走 forge 图标 ⇒ `FAIL DOR-4 [forge-1.20.1] 缺少图标…` / `GATE: FAIL (1 项 / 共 180)`，证明 DOR-4 非空转）；`python tools/verify_effect_icons.py` = `RESULT: PASS`（各线 240 个注册、覆盖 100%，P0 两线各 `registered=67 covered=67 missing=0`）；`pwsh -NoProfile -File tools/check_lang_sync.ps1` exit 0（各线 key 全一致，P0 两线各 **1,062** 键；`dorothy_passive` / `jill_active` 三条 WARN 为既有彩色码计数差）；`python -B docs/agent/verify-split.py` 8 项全 `[OK]`（AGENTS-full 4,085 行 / 红线区 13,404 字符 / AGENTS-dsh 25,915 字符）。
 - **文档**：`CHANGELOG_ZH.md`（`#### 立牌与技能`）与 `CHANGELOG.md`（`#### Signs & Skills`）各追加 1 条；`release/1.5.0-rc.1/PLAYER_CHANGELOG_ZH.md` / `PLAYER_CHANGELOG.md` / `PLAYER_CHANGELOG_MCMOD.html` 的「多萝西立牌 · 主动」段同句订正。
 - **P1 两线未移植**（26.1.2 / fabric 均无 `DorothySignItem`）⇒ 本项无 P1 欠账。
 
@@ -518,7 +518,7 @@ forge dev named 102,013 B / `e280aeab6c4b37c43468f7cce32a8bf64c70b6bdbcd2203f6c5
 
 ### 4.1v 1.5.0-rc.3 发布全链（2026-10-26 13:25–13:29 用户裁决：「更新到rc.3，执行推送+上传cf」）
 
-- **bump**：四线 `gradle.properties` `mod_version=1.5.0-rc.2+<后缀>` → `1.5.0-rc.3+<后缀>`（各 1 处）；`starengine_version=1.1.0` 与 CI 里 StarEngine checkout `16b48c4` 未动（两者同提交前提仍满足）。
+- **bump**：各线 `gradle.properties` `mod_version=1.5.0-rc.2+<后缀>` → `1.5.0-rc.3+<后缀>`（各 1 处）；`starengine_version=1.1.0` 与 CI 里 StarEngine checkout `16b48c4` 未动（两者同提交前提仍满足）。
 - **技术 CHANGELOG**：`CHANGELOG_ZH.md` / `CHANGELOG.md` 各 +6 行（立牌与技能：撤回「全效果牌」例外；文案与手册：tooltip 精简口径 + 手册不重复配方）；`check_changelog_parity.py` ⇒ `CHANGELOG_PARITY: OK sections=26 entries=754/754`（仅两条历史 WARN P2）。
 - **玩家侧说明**：`release/1.5.0-rc.3/` 三份从 rc.2 整份复制后就地改口径（版本串 ZH/EN 各 4 处、MCMOD 3 处）+ 新增两条内容；读数 = ZH **37,971 B / 346 CRLF / 裸 LF 0**、EN **38,102 B / 354 CRLF / 裸 LF 0**、MCMOD **40,569 B / 290 行 LF-only**（html 本来就是 LF）；仍**无**「相对上一版的变化」小节（预发布口径）。
 - **P0 构建**：`gradlew.bat :neoforge-1.21.1:build :forge-1.20.1:build`（JAVA_HOME=Zulu 21）**BUILD SUCCESSFUL in 6s**（17 tasks / 13 executed）；neo `astral_dice-1.5.0-rc.3+neoforge_1.21.1.jar` **2,588,530 B** sha256 `b086b984419a4152441700a9f523e9e9681db28c563504d94e9c50f7ee05787c`；forge `astral_dice-1.5.0-rc.3+forge_1.20.1.jar` **2,633,363 B** sha256 `79fc4b5ed231e1a6d8f267cb5f5b345ecccb9dd6977cbb91dd8ad3fd8051ace9`；两 jar 内 `META-INF/jarjar/` 条目均 **0**。投放由 Gradle 任务自动完成（pushToDevRun / pushToGame 两个整合包 / pushToRootBuild）。
@@ -533,7 +533,7 @@ forge dev named 102,013 B / `e280aeab6c4b37c43468f7cce32a8bf64c70b6bdbcd2203f6c5
 
 - **用户反馈（m16667）**：「有人反馈 neoforge 版也有相同问题，但是我本地的版本正常，怀疑你上传 CF 上传的有问题的版本，请全面检查双版本 tooltip」+ 截图（forge 摩托头盔·高级筹码提示框里原样显示 `curios.modifiers.chip`）。
 - **CF 坏构建取证**：从 mediafilez 下载两件 —— neo `https://mediafilez.forgecdn.net/files/9330/278/…` = **2,588,530 B / sha256 `b086b984419a4152441700a9f523e9e9681db28c563504d94e9c50f7ee05787c`**，forge `…/9330/279/…` = **2,633,363 B / sha256 `79fc4b5ed231e1a6d8f267cb5f5b345ecccb9dd6977cbb91dd8ad3fd8051ace9`** —— 与 13:28 **修复前**的本地构建逐字节相同 ⇒ CF fileID `9330278` / `9330279` 上架的仍是带双转义的坏件（1.20.1 三语 / 1.21.1 英日受影响）。
-- **本地 12 份 lang 全量审计**（`temp/lang_audit.py`，四线 × 三语）：值内字面「反斜杠 + n」**0**、非法 § 码 **0**、控制字符 **0**、三语换行数不一致 **0**；仅两条 § 数量差且合法（`tooltip.astral_dice.sign.dorothy_passive` zh10/en10/ja14、`tooltip.astral_dice.sign.jill_active` zh14/en10/ja10 —— 中日文额外给前段数字着色）。
+- **本地 12 份 lang 全量审计**（`temp/lang_audit.py`，各线 × 三语）：值内字面「反斜杠 + n」**0**、非法 § 码 **0**、控制字符 **0**、三语换行数不一致 **0**；仅两条 § 数量差且合法（`tooltip.astral_dice.sign.dorothy_passive` zh10/en10/ja14、`tooltip.astral_dice.sign.jill_active` zh14/en10/ja10 —— 中日文额外给前段数字着色）。
 - **真缺陷 1（截图那条）= Curios 自定义槽位缺 `curios.modifiers.*` 翻译键**：Curios 用 `curios.modifiers.<slotId>` 作属性段标题键，查不到就回退显示原始键名；本模组三个自定义槽位此前只有 `curios.identifier.{chip,dice,stand}`，`curios.modifiers.*` **一个都没有**。已补齐 6 份 lang（锚点行 `"curios.identifier.stand"` 之后插入）：zh `佩戴筹码时：` / `佩戴骰子时：` / `佩戴立牌时：`，en `When worn as chip:` / `… dice:` / `… sign:`，ja `チップとして着用した場合:` / `ダイスとして着用した場合:` / `スタンドとして着用した場合:`。键数 **1,059 → 1,062**（P0 每线）。Java 侧 key 全量扫描（404 候选）确认无其他缺键（2 条为前缀拼接误报）。
 - **真缺陷 2 = 多萝西主动技能中文被回退（我自己造成）**：`tooltip.astral_dice.sign.dorothy_active` 的 neo `zh_cn` 值在 `b7b26f82`（撤回调酒师例外那批）里被附带改成 `85c9d2f6` 之前的旧文本（丢掉【交际花】说明与计时括注）。逐提交按 key 审计（`temp/audit_lang_commits.py`）确认**只此一处**附带损害；已恢复为 `b7b26f82^` 的值并断言与 forge 现值逐字相等（`neo==forge now: True`）。
 - **真缺陷 3 复核**：`jill_active` 的双转义已由 `b83a7435` 修掉，本批在 jar 内复核「三语双转义 = 0」。
@@ -577,7 +577,7 @@ forge dev named 102,013 B / `e280aeab6c4b37c43468f7cce32a8bf64c70b6bdbcd2203f6c5
 ### 4.1z 1.5.0-rc.4 发布收口（2026-10-26 19:3x–19:5x，用户裁决「bump到rc.4，修复陈旧断言，随后push（并上传CF）」）
 
 1. **陈旧断言订正（`scripts/test/cases/SHOP-GUI-1.20.1.json`，3 处各 1 次命中）**：`AP_PO0_POOL:n=22:` → `n=23:`、`AP_VP0_VPLAN:…:poolSize=22` → `poolSize=23`（实测 POOLENTRY 23 条）、JEI 分类断言改为 `AP_CSC:evt=jei:(cat=ok:uid=astral_dice:card_shop:recipes=23:excluded=none|cls=null|rt=null):` —— 即「有 JEI 时 23 条配方，无 JEI 时走 `cls=null` 分支」（`run/1.20.1/mods` 只有 astral_dice / AutoJS / starengine 三件，无 JEI）。脚本 `temp/patch_stale_1201.py`。
-2. **版本 bump（四线各 1 处）**：`mod_version` `1.5.0-rc.3+<后缀>` → `1.5.0-rc.4+neoforge_1.21.1` / `+forge_1.20.1` / `+neoforge_26.1.2` / `+fabric_1.20.1`；`starengine_version = 1.1.0` 未动（CI 的库 ref 未变）。脚本 `temp/bump_rc4.py`。
+2. **版本 bump（各线各 1 处）**：`mod_version` `1.5.0-rc.3+<后缀>` → `1.5.0-rc.4+neoforge_1.21.1` / `+forge_1.20.1` / `+neoforge_26.1.2` / `+fabric_1.20.1`；`starengine_version = 1.1.0` 未动（CI 的库 ref 未变）。脚本 `temp/bump_rc4.py`。
 3. **`release/1.5.0-rc.4/` 三份玩家侧说明**（脚本 `temp/gen_rc4_notes.py`：从 rc.3 复制 → 版本串全替换 → 追加本批 BUG 修复四条）：`PLAYER_CHANGELOG_ZH.md` 39,093 B / 352 CRLF / bare 0、`PLAYER_CHANGELOG.md` 39,342 B / 359 CRLF / bare 0、`PLAYER_CHANGELOG_MCMOD.html` 41,217 B / 290 行 LF-only；三条新增条目 = 买牌不再锁转账 / 筹码属性标题缺键（`curios.modifiers.{chip,dice,stand}` 三语）/ 部分提示框字面换行转义 + 多萝西中文回退；顺手修掉 rc.3 ZH 里被并行的两条 bullet（`…。- **调酒师立牌被动` 粘连），rc.4 三份内已无 `rc.3` 字样。按〈预发布不写 delta 章节〉口径，rc.4 三份也没有「相对 rc.3 的变化」小节。
 4. **构建 P0 rc.4**（`gradlew.bat :neoforge-1.21.1:build :forge-1.20.1:build`，JAVA_HOME=Zulu 21）**BUILD SUCCESSFUL in 6s**（日志 `temp/build_rc4.log`，`EXIT=0`）：
    - neo `neoforge-1.21.1/build/libs/astral_dice-1.5.0-rc.4+neoforge_1.21.1.jar` **2,589,686 B / sha256 `2aa82aedd6bb7a570d67423a3904978701374129fcf5a52e5fddb0895b5ff242`**
@@ -896,7 +896,7 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md（已删
 
 5. **守门读数（P0 两线一致）**：
    - `verify_chip_acquisition.ps1`：`筹码 68 | 有配方 68 | 传递可达 68` / `curios:chip 槽 67 | 创造栏覆盖 68/68` / **零告警** / 对等性 6 键全 `一致=True` / `RESULT: PASS（致命项 0）`（改造前有 `⚠️ 手册未展示 crafting 页 5`）。
-   - `python tools/audit_patchouli_keys.py`：四线引用 1826 处、**悬空 0 处**。
+   - `python tools/audit_patchouli_keys.py`：各线引用 1826 处、**悬空 0 处**。
    - `tools/check_lang_sync.ps1`：两线 `zh_cn / en_us / ja_jp` 各 **1066 keys 完全一致**（改造前 1065）；3 条 `[WARN] sign.dorothy_passive / sign.jill_active 结构标记不一致` 为改造前既有，与本批无关。
    - `node temp/verify_chip_pages.mjs`（一次性校验）：两线 `entries=67 pages=142 noNote=0 stale=0`。
 
@@ -915,13 +915,13 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md（已删
 8. **本节无实机**：`[patchouli/]: Recipe … not found` 是否归零需用户下达实机后再记（判据：1.21.1 `run/1.21.1/logs/latest.log` 里该行计数 = 0）。
 9. **独立复核**：首轮 `dsh_code_review` run `80958f22` 判 R1–R4 / R7 SUPPORTED、R5 部分成立（[P2] 门禁筹码条目整份缺失时两条判据同时静默）、R6 部分成立（[P3] 把 67 条门禁配方写成 68 条）；两条均已修（提交 `23cf2c0e`，判据去掉 `$craft` 守卫 + 三处数字订正），复审 run `882f0bf3` 无 finding。**遗留口径说明**：`stale_page` / `no_note` 仍是 `isFatal=$false` 的告警项（脚本头既有契约「手册缺口仅告警」），只在**单线**缺失时由对等性判据判 FAIL，两线对称缺失仍 PASS —— 若将来要 CI 硬拦，需另立一条把 `stale_page` 提为致命项（待用户裁决）。
 
-### 4.1aq rc.5 收尾发布批：四线 bump + 筹码门禁致命化 + CF 两文件 + 1.21.1 实机（2026-10-28，用户下达实机与发布）
+### 4.1aq rc.5 收尾发布批：各线 bump + 筹码门禁致命化 + CF 两文件 + 1.21.1 实机（2026-10-28，用户下达实机与发布）
 
-1. **版本与提交**（本线口径仍称 `1.5.0`，`rc` 后缀只存在于构建名 / tag / 产物文件名）：四线 `mod_version` 全部 bump 到 **`1.5.0-rc.5+<后缀>`**（`neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1`），`starengine_version` 仍 **`1.1.0`**。三个提交：
+1. **版本与提交**（本线口径仍称 `1.5.0`，`rc` 后缀只存在于构建名 / tag / 产物文件名）：各线 `mod_version` 全部 bump 到 **`1.5.0-rc.5+<后缀>`**（`neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1`），`starengine_version` 仍 **`1.1.0`**。三个提交：
 
    | 提交 | message | 改动面 |
    |---|---|---|
-   | `50e5e406` | `chore(release): 四线 mod_version bump 到 1.5.0-rc.5` | 四条线 `gradle.properties`（4 文件 +4/−4） |
+   | `50e5e406` | `chore(release): 四线 mod_version bump 到 1.5.0-rc.5` | 各线 `gradle.properties`（4 文件 +4/−4） |
    | `1368b837` | `fix(verify,ci): 筹码获取途径守门 stale_page/no_note 升为致命项并接入 CI` | `scripts/verify/verify_chip_acquisition.ps1`（+11/−4）+ `.github/workflows/build.yml`（+8） |
    | `79e3b183` | `docs(release): 1.5.0-rc.5 玩家发布说明 + CHANGELOG 补充` | `release/1.5.0-rc.5/` 三份（`PLAYER_CHANGELOG_ZH.md` 375 行 / `PLAYER_CHANGELOG.md` 382 行 / `PLAYER_CHANGELOG_MCMOD.html` 314 行）+ `CHANGELOG.md` / `CHANGELOG_ZH.md` 各 6 行（合计 5 文件 +1077/−6） |
 
@@ -975,7 +975,7 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md（已删
    - **GitHub Release 复核（2026-10-28 14:0x，curl 经代理 + 页面直读，避开 403 限流的 API）**：`/releases/expanded_assets/1.5.0-rc.5` 200，列出 `astral_dice-1.5.0-rc.5+neoforge_1.21.1.jar`（2,598,301 B / `c97ea383…`）与 `…+forge_1.20.1.jar`（2,647,158 B / `d4e48687…`），下载件 sha256 与页面一致。**与本地构建件的关系**：条目集完全相同（neo 2,011 / forge 2,027；`only_ci` = `only_lo` = 0），差异只有两类 —— (a) JSON 条目 CRLF vs LF（neo 302 / forge 296 条，CRLF 归一为 LF 后 0 差异）＝ CI 在 ubuntu 检出 LF、本机 Windows 工作树 CRLF；(b) forge 5 个网络/立牌类 `.class` 仅常量池序不同（`javap -p -c` 全文逐字相同）。`META-INF/jarjar/` = 0，`mods.toml` 版本 `1.5.0-rc.5+neoforge_1.21.1` / `1.5.0-rc.5+forge_1.20.1` ⇒ **Release 附件功能等价、可投放**。
    - **重复发布幂等性实测（docs 提交 `c071c4d7` 触发，2026-10-28 14:44–14:46）**：tag `1.5.0-rc.5` 已存在 ⇒ CI 只走「Release 编辑说明 + `--clobber` 重传附件」分支，两件附件 sha256 与上一轮**完全一致**（neo `c97ea383…` / forge `d4e48687…`）⇒ 同源码两次构建字节一致（构建可复现），且发布线每次 push 都会刷新 Release 附件而不移动 tag。
 
-7. **本批不改源码**：改动面 = 四线 `gradle.properties` 的版本号、守门脚本、`.github/workflows/build.yml`、`release/1.5.0-rc.5/` 与两份 `CHANGELOG`；工作树 `git status --short -uall` 只剩 `?? models/astral_anvil.bbmodel`（用户素材，禁 add）。
+7. **本批不改源码**：改动面 = 各线 `gradle.properties` 的版本号、守门脚本、`.github/workflows/build.yml`、`release/1.5.0-rc.5/` 与两份 `CHANGELOG`；工作树 `git status --short -uall` 只剩 `?? models/astral_anvil.bbmodel`（用户素材，禁 add）。
 
 ### 4.1ar 三批未提交改动（事件三条 / 筹码价 / 卡牌价）1.21.1 实机闭环（2026-10-29 14:38–15:40，用户 m00856 下达）
 
@@ -1068,22 +1068,22 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md（已删
 
 ### 4.1av rc.7 修复批（2026-10-30）
 
-1. **三个提交的分工**（`multi-main` 上 `d91fa390` → `58c51fd8` → `6344e44c`，四线 `mod_version` 在第一批里就已 rc.6 → rc.7）：
-   - `d91fa390` 事件二选一：退出即强制触发首个事件 + ESC 两段式警告 + 计时器事件覆盖重置，31 files / +3029 / −72（含四线 `gradle.properties` 的 `mod_version` 一行改动）。
+1. **三个提交的分工**（`multi-main` 上 `d91fa390` → `58c51fd8` → `6344e44c`，各线 `mod_version` 在第一批里就已 rc.6 → rc.7）：
+   - `d91fa390` 事件二选一：退出即强制触发首个事件 + ESC 两段式警告 + 计时器事件覆盖重置，31 files / +3029 / −72（含各线 `gradle.properties` 的 `mod_version` 一行改动）。
    - `58c51fd8` 骰战 attrless 生物近战崩溃修复（N27），7 files / +1255 / −21。
    - `6344e44c` rc.7 玩家侧说明 + 7 个静态守门接入 CI + `verify_dice_combat_attrless_guard_p1.py` 的 08 负向对照重写，4 files / +342 / −59。
 
-2. **attrless 守卫的判据口径（代理值 ↔ 派发点必须逐线配对）**：属性表里没有 `ATTACK_DAMAGE` 的生物（暮色九头蛇靠 `HydraHeadContainer` 固定值直接 `hurt` 玩家）不再抛 `IllegalArgumentException: Can't find attribute minecraft:generic.attack_damage`，改用「这一击实际打出的原版伤害」当攻击力代理；四条线的代理值来源与 `magicAbsorbFactor` 是否重乘严格配对，抗性 / 保护在每条线上恰好生效一次：
+2. **attrless 守卫的判据口径（代理值 ↔ 派发点必须逐线配对）**：属性表里没有 `ATTACK_DAMAGE` 的生物（暮色九头蛇靠 `HydraHeadContainer` 固定值直接 `hurt` 玩家）不再抛 `IllegalArgumentException: Can't find attribute minecraft:generic.attack_damage`，改用「这一击实际打出的原版伤害」当攻击力代理；各线的代理值来源与 `magicAbsorbFactor` 是否重乘严格配对，抗性 / 保护在每条线上恰好生效一次：
    - `neoforge-1.21.1` / `neoforge-26.1.2`：代理取 `getOriginalDamage()`（减免前原值）⇒ **保留** `magicAbsorbFactor` 重乘（跳过会漏掉抗性与保护附魔）。
    - `forge-1.20.1`：代理取 `getAmount()`（已过护甲 → 抗性 → 保护三步）⇒ **跳过**重乘（`if (!attrless)`）；已知代理值对带伤害吸收 / 黄心的玩家偏低一档，已登记。
    - `fabric-1.20.1`：`actuallyHurt` 形参先**除以** `victimFactor`（`@HIGH` 已先乘过）再照旧重乘 `magicAbsorbFactor` × `victimFactor`。
    - 仍不拿 `getNewDamage()` 当代理（不违反 2026-09-26 裁决①）；两个守门脚本只断言语义与相对位置、不钉绝对行号，08 的负向夹具改为内嵌 `d91fa390` 修复前片段（不再调 `git show`），干净检出也能跑红。
 
-3. **实机**：仅 `neoforge-1.21.1` 单线 PASS —— 九头蛇属袭 Δhp = **46**（200→154，判据 [40,48]）、对照僵尸 Δhp = **5**（200→195，判据 [1,12]），`MT_ASSERT_CRASH: PASS`、日志无 `Can't find attribute`；用例固定 normal 难度（`Player#hurt` 首行即做难度缩放，代理值天然含难度倍率）。**`forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1` 本版未实机**，四线只做到 `compileJava` 真跑通（`--no-build-cache`，四个 `DiceCombatEvents.class` 尺寸与改前一致）。
+3. **实机**：仅 `neoforge-1.21.1` 单线 PASS —— 九头蛇属袭 Δhp = **46**（200→154，判据 [40,48]）、对照僵尸 Δhp = **5**（200→195，判据 [1,12]），`MT_ASSERT_CRASH: PASS`、日志无 `Can't find attribute`；用例固定 normal 难度（`Player#hurt` 首行即做难度缩放，代理值天然含难度倍率）。**`forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1` 本版未实机**，各线只做到 `compileJava` 真跑通（`--no-build-cache`，四个 `DiceCombatEvents.class` 尺寸与改前一致）。
 
 4. **投放与 CF / Release 的对齐**：`neoforge-1.21.1/build/libs` = `run/1.21.1/mods` = 整合包 A = **2,609,192 B / `122cedf8…`**；`forge-1.20.1/build/libs` = 整合包 B = **2,657,532 B / `cbe67b1c…`**；`run/1.20.1/mods` 仍是 mojmap dev 件 **2,628,157 B / `23ee7a13…`**（与生产件哈希不同属 `pushToDevRun` / `pushToGame` 分工，非缺陷，同 §4.1au-2）。**「CI 构建件已被本地件覆盖」这一事实必须写明**：Release 两件附件是用 `gh release upload --clobber` 换成本地构建件的，附件回读的 sha256 与本地逐字节一致 ⇒ 后来者核对时以本地 sha256 为准，**不要**假定 CI 件与本地件内容相同；CurseForge 两件（`9363589` / `9363591`，beta）与 Release 同源。　**2026-10-30 起不再需要这一步**：`build.yml` 的 Release 步骤已改成「附件已存在即跳过上传」（先 `gh release view --json assets` 比对文件名，命中打 `::notice::` 跳过，缺的才 `gh release upload`，不再 `--clobber`）⇒ 后续 push 只刷新说明正文、不再覆盖已发布字节；实测 CI run `40990881077`（提交 `141d16b8`）日志两行 `asset already published, skip upload`、0 次 upload，附件 sha256 覆盖前后不变。
 
-5. **已知缺口**：三线（`forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1`）未实机、P1 两线仍冻结；正式 `1.5.0` tag 未打、CF `update-info` 未做；`build/libs` 历史 jar 未清理。待办汇总见 §5。
+5. **已知缺口**：`forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1` 均未实机、P1 两线仍冻结；正式 `1.5.0` tag 未打、CF `update-info` 未做；`build/libs` 历史 jar 未清理。待办汇总见 §5。
 6. **2026-10-30 收尾清理（已做）**：`neoforge-1.21.1/build/libs` 与 `forge-1.20.1/build/libs` 里 **43 个历史 jar（1.2.1 … rc.5，共 92 MB）已删**，只留 `rc.6` + `rc.7` 两对（既是上一发布、也是回滚点）；`temp/tf_jar_removed_20261030/`（实机用的暮色森林 27,154,121 B 暂存副本）已删，D 盘原件仍在；`scripts/test/mt.conf`（gitignored，含 AutoJS 端点三键）保留，后续实机还要用。`temp/` 下其余历史草稿（609 MB / 1562 项，gitignored）**未清**，属跨会话累积，需另行裁决。
 ### 4.1aw Linux（VM）适配批（2026-10-31，用户 m00002 → m00797 → m00876）
 
@@ -1103,9 +1103,9 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md（已删
 **实测结果**：
 
 1. Gradle：wrapper 9.2.1（aliyun 镜像）在 Linux 跑通；**daemon JVM 必须 ≥21**（Loom 1.14.10 在 17 上直接崩，反例原文 `Dependency requires at least JVM runtime version 21. This build uses a Java 17 JVM.`）；子项目 toolchain 17/21/25 由 Gradle 自动发现。
-2. starengine 1.1.0 四线制品已发布到本机 mavenLocal（98,734 / 103,605 / 112,634 / 98,970 B）；首次各线 MDG decompile+patch 约 12–13 min，之后走缓存。
+2. starengine 1.1.0 各线制品已发布到本机 mavenLocal（98,734 / 103,605 / 112,634 / 98,970 B）；首次各线 MDG decompile+patch 约 12–13 min，之后走缓存。
 3. 构建：`:neoforge-1.21.1:classes` 2m44s（534 class）；`:forge-1.20.1:classes` 2m9s（558 class）；`:neoforge-26.1.2:classes` 46–59s，**必须 `--no-configuration-cache`**（`createMinecraftArtifacts` 的 `DefaultConfigurableFileCollection` 序列化报错）。
-4. 实机：1.21.1 / 1.20.1 / 26.1.2 三线均 `LAUNCH: READY`（AutoJS `/health`=200 + client available），`Game took` 分别 18.113s / 20.971s / 15.236s，均 `LINUX_STOP: OK` 干净收停；三线窗口都是 X11 窗口 ⇒ 在 Wayland 会话下走 XWayland。
+4. 实机：1.21.1 / 1.20.1 / 26.1.2 均 `LAUNCH: READY`（AutoJS `/health`=200 + client available），`Game took` 分别 18.113s / 20.971s / 15.236s，均 `LINUX_STOP: OK` 干净收停；三个窗口都是 X11 窗口 ⇒ 在 Wayland 会话下走 XWayland。
 5. fabric-1.20.1 dev 启动**失败**：Sodium `EarlyDriverScanner` 要 LWJGL 3.3.1，Loom dev runtime 给 3.3.2-snapshot（P1，与 Linux 无关）。
 6. 26.1.2 虽能到标题屏，但停在 `KubeJSErrorScreen`：`astral_wallet_vision.js#38` 报 `StarCoinWalletState: Class could not be found`，而 starengine jar 内确有该类 ⇒ KubeJS Rhino 类加载器看不到 jarJar/嵌套 jar（P1）。
 7. Windows 测试台结论：`scripts/test/mt.ps1`（19,384 行）在 Linux 只能跑「参数/闸门/退出码/纯文件检查/AutoJS HTTP 客户端」子集，`user32.dll` P/Invoke、`taskkill`、`Get-CimInstance`、`cmd.exe /c gradlew.bat`、GBK 控制台、`D:` 盘路径全部不可移植 ⇒ Linux 侧改用 `scripts/test/linux/*.sh`，不调用任何 `.ps1`。
@@ -1117,7 +1117,7 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md（已删
 
 **遗留（§5 同步登记）**：fabric dev 启动（Sodium/LWJGL）、26.1.2 KubeJS 类加载、本机 Maven Central 403、`scripts/test/mt.conf` 仍含 Windows 历史路径、VM→真实 Linux 迁移未执行、本批未提交。
 
-**事实源**：hgfs 实测数据（`dd` 932 MB/s vs 2.7 GB/s、500 小文件 0.39s vs <0.01s、`ln -s` `Operation not supported`、硬链接 `EPERM ... link`）、三线启动截图与 `latest.log`、`python3 -B docs/agent/verify-split.py` 全 [OK] 等细节都在 `docs/handover-2026-10-31-linux-vm-adoption.md（已删除 2026-11-05）`，本条目只记结论与指针。
+**事实源**：hgfs 实测数据（`dd` 932 MB/s vs 2.7 GB/s、500 小文件 0.39s vs <0.01s、`ln -s` `Operation not supported`、硬链接 `EPERM ... link`）、当时各线启动截图与 `latest.log`、`python3 -B docs/agent/verify-split.py` 全 [OK] 等细节都在 `docs/handover-2026-10-31-linux-vm-adoption.md（已删除 2026-11-05）`，本条目只记结论与指针。
 
 ### 4.1ax 本机盘工作副本与 rsync 通道（2026-10-31 13:2x）
 
@@ -1144,15 +1144,15 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md（已删
 
 **用户要求**：整合包游戏环境目录改为 `/mnt/hgfs/.minecraft/`，各版本都在 `versions/` 下。
 
-**实测**：`/mnt/hgfs/.minecraft/versions/` 现有 6 个实例目录，四条线对应的 `mods` 子目录全部存在——`狐の航空学 Voxy Edition`（1.21.1）、`1.20.1-Forge 模组测试`、`26.1.2-NeoForge 模组测试`、`1.20.1-Fabric 模组测试`（另有 `狐の航空学`、`狐の航空学 低配优化版` 两个非本仓目标）。
+**实测**：`/mnt/hgfs/.minecraft/versions/` 现有 6 个实例目录，各线对应的 `mods` 子目录全部存在——`狐の航空学 Voxy Edition`（1.21.1）、`1.20.1-Forge 模组测试`、`26.1.2-NeoForge 模组测试`、`1.20.1-Fabric 模组测试`（另有 `狐の航空学`、`狐の航空学 低配优化版` 两个非本仓目标）。
 
 **代码改动**（5 个文件，CRLF 保持）：
 - 根 `build.gradle` 新增唯一解析点 `ext.mcHomePath`：顺序 `MC_HOME` 环境变量 → `/mnt/hgfs/.minecraft`（存在即用）→ Windows 传统 `D:/.minecraft`；配置期打印 `整合包根目录 (MC_HOME): …`。
-- 四线 `build.gradle` 的 `packModsDir` 由 `file('D:/.minecraft/versions/<包>/mods')` 改为 `new File(rootProject.ext.mcHomePath, 'versions/<包>/mods')`；相关注释与 `ls …` 排查指引同步改为 hgfs 路径。
+- 各线 `build.gradle` 的 `packModsDir` 由 `file('D:/.minecraft/versions/<包>/mods')` 改为 `new File(rootProject.ext.mcHomePath, 'versions/<包>/mods')`；相关注释与 `ls …` 排查指引同步改为 hgfs 路径。
 
 **验证**：临时 init 探针（`gradlew -I /tmp/probe-mc.gradle :neoforge-1.21.1:help`）⇒ `mcHomePath=/mnt/hgfs/.minecraft`，四条 `versions/<实例>/mods` 全部 `exists=true`；`MC_HOME=/tmp/no-such-mc` 探针 ⇒ 覆盖生效；`:neoforge-1.21.1:classes` 配置全绿（541ms，configuration cache 命中）。**未执行真实 `pushToGame`**（默认不部署红线；本次只验证路径与配置）。
 
-**同批同步到 2.0 开发线（用户 m01088）**：`~/Project/astral_dice_multiloader-next`（`multi-dev-next`）的 5 个 build 文件已按同一口径修改（根 `mcHomePath` + 四线 `packModsDir`，仍 CRLF）。探针实测 `mcHomePath=/mnt/hgfs/.minecraft`、四目标 `exists=true`、`MC_HOME` 覆盖生效。该线正常配置需要 `starengine 26.4-SNAPSHOT.1` 制品（本机 `~/.m2` 只有 1.1.0），故探针用 `-Pstarengine_version=1.1.0 -Pstarengine_version_range='>=1.1.0'` 临时覆盖才跑通；普通 `help` 仍会因缺 26.4 制品 + 当前 fabricmc/neoforged TLS 抖动失败（与本次路径改动无关）。5 个文件已按内容同步到 `astral_dice_multiloader-next` 的 hgfs 镜像（sha256 MATCH），**未 commit**。
+**同批同步到 2.0 开发线（用户 m01088）**：`~/Project/astral_dice_multiloader-next`（`multi-dev-next`）的 5 个 build 文件已按同一口径修改（根 `mcHomePath` + 各线 `packModsDir`，仍 CRLF）。探针实测 `mcHomePath=/mnt/hgfs/.minecraft`、四目标 `exists=true`、`MC_HOME` 覆盖生效。该线正常配置需要 `starengine 26.4-SNAPSHOT.1` 制品（本机 `~/.m2` 只有 1.1.0），故探针用 `-Pstarengine_version=1.1.0 -Pstarengine_version_range='>=1.1.0'` 临时覆盖才跑通；普通 `help` 仍会因缺 26.4 制品 + 当前 fabricmc/neoforged TLS 抖动失败（与本次路径改动无关）。5 个文件已按内容同步到 `astral_dice_multiloader-next` 的 hgfs 镜像（sha256 MATCH），**未 commit**。
 
 **注意**：①只影响 `pushToGame` 目标，`pushToDevRun` 仍写仓库根 `run/<线>/mods`；②保留 Windows 回退 `D:/.minecraft`，避免 Kimi/Windows 侧失效；③`MC_HOME` 是配置期输入，改后需 `--no-configuration-cache` 或清缓存；④`scripts/test/` 的 Windows 测试台仍写 `D:\.minecraft\…`（Windows 宿主同一批文件），Linux bash 测试台不读取它们。
 
@@ -1216,14 +1216,14 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md（已删
 **结论**：环境已就绪，可原生构建；`ENV_RESULT: WARN — 0 项阻塞，1 项提示`（仅 AutoJS 未运行）。
 
 **改动（11 改 + 1 新增，均未提交）**
-- 构建：根 `build.gradle` 的 `mcHomePath` Linux 分支 `/mnt/hgfs/.minecraft` → `/mnt/d/.minecraft`（`MC_HOME` > Linux > `D:/.minecraft` 顺序不变，Windows 行为不变）；四线 `build.gradle` 仅注释里的投放根同步改。
+- 构建：根 `build.gradle` 的 `mcHomePath` Linux 分支 `/mnt/hgfs/.minecraft` → `/mnt/d/.minecraft`（`MC_HOME` > Linux > `D:/.minecraft` 顺序不变，Windows 行为不变）；各线 `build.gradle` 仅注释里的投放根同步改。
 - 测试台：`scripts/test/linux/env.sh`（`ntfs3|ntfs` 分支、`hgfs_writable`→`repo_writable`、新增 `locks_stale`、`conf_windows` WARN→INFO、`mc_home=/mnt/d/.minecraft`、锁目录 `/mnt/f/MCProject/.agent-locks`）、`launch.sh` 一处文案、`scripts/test/linux/README.md`（§8/§9 口径 + 新增 §9.8）。
 - 工具：`scripts/dev/rsync-original.sh` 停用（默认 `exit 3`，仅 `ALLOW_LEGACY_HGFS_RSYNC=1` 可越过）；`run/start-{1.20.1,1.21.1,26.1.2}.sh` 注释改 NTFS（`run/` 被忽略，不入库）。
 - 规则/文档：`AGENTS.md`（仓路径、锁路径、索引、桌面通道）、`docs/agent/AGENTS-dsh-linux.md` **整篇重写为原生 Linux 口径**（361 行 / 45,641 B / 30,206 字符，LF；旧 376 行 / 56,608 B）、`docs/agent/PROJECT-REFERENCE.md`、`docs/handover-new-session-context.md`（整篇重写）、新增 `docs/handover-2026-10-31-native-linux-migration.md`、本节。
 
 **实测**
 - `./gradlew --version` → Gradle 9.2.1 / Launcher JVM 21.0.12.1 / Daemon JVM `java-21-openjdk-amd64` / Linux 7.0.0-42-generic（首次自举下载 ~130 MB dist 到 `~/.gradle`）。
-- starengine 四线 `publishToMavenLocal` 全部 `BUILD SUCCESSFUL`，`~/.m2/repository/com/merlinkitsune/starengine/*/1.1.0/` 四件齐。
+- starengine 各线 `publishToMavenLocal` 全部 `BUILD SUCCESSFUL`，`~/.m2/repository/com/merlinkitsune/starengine/*/1.1.0/` 四件齐。
 - `:neoforge-1.21.1:classes` 32s、`:forge-1.20.1:classes` 30s（**热缓存，非冷基线**），日志打印 `整合包根目录 (MC_HOME): /mnt/d/.minecraft`。
 - 出网：Central / aliyun / neoforged / github 全 200 ⇒ **不建 init.d 镜像**（与 4.1aw 的 VM 口径相反）。
 - 权限坑（本批两次踩到）：`docs/agent/` 与 `starengine/*/build/` 是 Windows 会话遗留的 `1001:1002` 属主目录，kitsune 不可写；绕法 = 写 `/tmp` 再 `cat >`、`mv build build.vmresidue-20261031` + `cp -a` 重建（保住 moddev 产物，未触发重新 decompile）。
@@ -1232,7 +1232,7 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md（已删
 **残留 / 未做**
 - `starengine/*/build.vmresidue-20261031/` 约 300 MB，删除需 root。
 - 冷构建耗时、真机 AutoJS、真机实机测试均**未验证**（`[[PENDING:build-time-native]]`、`[[PENDING:autojs-native]]`）。
-- 投放只验证到「根解析 + 四线 mods 目录齐全」，**未执行 `pushToGame`**（默认不部署）。
+- 投放只验证到「根解析 + 各线 mods 目录齐全」，**未执行 `pushToGame`**（默认不部署）。
 - 本批未 commit / 未 push。
 
 
@@ -1283,18 +1283,18 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md（已删
 
 21. **三批未提交改动（事件三条 / 筹码 20-64 / 卡牌 5-20）1.21.1 实机全 PASS，仍未提交（2026-10-29，§4.1ar）**：工作树 = **32 M + 8 ??**（含新增探针 `scripts/test/resources/kubejs/1.21.1/server_scripts/astral_batch3_probe.js`、审查残留 `zz_screen_probe.py`、用户素材 `models/astral_anvil.bbmodel`），`git diff --shortstat` 32 files。**仍欠**：① ~~1.20.1 未实机~~ → **已完成（2026-10-29 17:4x，§4.1as）**（forge 新包 id 27/28 必须与 neo 同版本成对投放）；② ~~未 commit~~ → **已提交 `463552b7` 并随 rc.6 push（`3e9f1f9f`，CI #128 SUCCESS，§4.1at）**；③ 卡牌价格硬下限未做 —— 原版声望 / 英雄之息折扣可把实付压到 5 绿宝石以下（与筹码商人同口径，已在 javadoc 披露）；④ 探针 `star` 通道两处缺陷待改，星币判据目前只有 AutoJS eval 一条证据。
 
-22. **第 4 批（绿宝石骰子 1:1）双线实机 PASS + 1.20.1 旧三批补验 PASS（2026-10-29 17:2x–17:4x，§4.1as）**：~~工作树 40 M + 8 ??~~ → **已提交 `463552b7`（43 files / +974 / −194，含 5 个新 java）+ `37f97dcf`（四线 bump `1.5.0-rc.6`），**已随 rc.6 push（`3e9f1f9f`，CI #128 SUCCESS，§4.1at）**；工作树只剩 3 ??（用户素材 / 探针 / `zz_screen_probe.py`）。**仍欠**：① 卡牌硬下限未做（原版声望 / 英雄之息折扣可把实付压到 5 以下）；② P1 两线（26.1.2 / fabric）仍保留 0.8 折扣与旧 lang，解冻后需同步；③ 探针 `star` 通道两处缺陷未修（本轮星币 / 1:1 判据走 AutoJS eval）；④ ~~两份 `CHANGELOG` 与 `release/1.5.0-rc.6/` 玩家说明尚未写~~ → **已完成（`3e9f1f9f`，§4.1at）**。
+22. **第 4 批（绿宝石骰子 1:1）双线实机 PASS + 1.20.1 旧三批补验 PASS（2026-10-29 17:2x–17:4x，§4.1as）**：~~工作树 40 M + 8 ??~~ → **已提交 `463552b7`（43 files / +974 / −194，含 5 个新 java）+ `37f97dcf`（各线 bump `1.5.0-rc.6`），**已随 rc.6 push（`3e9f1f9f`，CI #128 SUCCESS，§4.1at）**；工作树只剩 3 ??（用户素材 / 探针 / `zz_screen_probe.py`）。**仍欠**：① 卡牌硬下限未做（原版声望 / 英雄之息折扣可把实付压到 5 以下）；② P1 两线（26.1.2 / fabric）仍保留 0.8 折扣与旧 lang，解冻后需同步；③ 探针 `star` 通道两处缺陷未修（本轮星币 / 1:1 判据走 AutoJS eval）；④ ~~两份 `CHANGELOG` 与 `release/1.5.0-rc.6/` 玩家说明尚未写~~ → **已完成（`3e9f1f9f`，§4.1at）**。
 
 23. **Linux（VM）适配批遗留（2026-10-31，§4.1aw）**：①`fabric-1.20.1` dev 启动失败 —— Sodium `EarlyDriverScanner` 要 LWJGL 3.3.1，Loom dev runtime 给 3.3.2-snapshot（与 Linux 无关，P1）；②`neoforge-26.1.2` 能到标题屏但停在 `KubeJSErrorScreen`，`astral_wallet_vision.js#38` 报 `Failed to load Java class 'com.merlinkitsune.starenginelib.economy.StarCoinWalletState'`，而 starengine jar 内确有该类 ⇒ KubeJS Rhino 看不到 jarJar/嵌套 jar（P1）；③本机 Maven Central 对本出口 IP 403，靠 `~/.gradle/init.d/00-aliyun-central-mirror.gradle` 在仓库创建瞬间改写 URL 绕过，换机需重测；④`scripts/test/mt.conf` 仍含 Windows 历史路径（Linux 脚本只读取少量键，`env.sh` 报 WARN 不阻断）。
-24. **VM → 真实 Linux 迁移未执行（2026-10-31 用户 m00876 明确方向）**：当前仓库在 VMware hgfs 上，实测写 64 MiB 932 MB/s（本机盘 2.7 GB/s）、建 500 小文件 0.39 s（<0.01 s）、`ln -s` 报 `Operation not supported`、硬链接 `EPERM`；迁移目的即消除这些限制。8 步迁移清单（拷贝含被忽略的 `run/`、工具链、starengine 发布、三线构建、测试台自检、DSH MCP 重建、8 条复验、迁移后清理）见 `docs/handover-2026-10-31-linux-vm-adoption.md（已删除 2026-11-05）` §6。
+24. **VM → 真实 Linux 迁移未执行（2026-10-31 用户 m00876 明确方向）**：当前仓库在 VMware hgfs 上，实测写 64 MiB 932 MB/s（本机盘 2.7 GB/s）、建 500 小文件 0.39 s（<0.01 s）、`ln -s` 报 `Operation not supported`、硬链接 `EPERM`；迁移目的即消除这些限制。8 步迁移清单（拷贝含被忽略的 `run/`、工具链、starengine 发布、各线构建、测试台自检、DSH MCP 重建、8 条复验、迁移后清理）见 `docs/handover-2026-10-31-linux-vm-adoption.md（已删除 2026-11-05）` §6。
 25. **Linux 适配批改动全部未提交（2026-10-31，用户未放行 commit）**：` M AGENTS.md`、3 个 ` M forge-1.20.1/.../lang/*.json`、`?? docs/agent/AGENTS-dsh-linux.md`、`?? docs/handover-2026-10-31-linux-vm-adoption.md（已删除 2026-11-05）`、`?? scripts/test/linux/*`（详见 §4.1aw 工作树清单与 `docs/handover-new-session-context.md` §5）。用户既有 4 个未跟踪文件未改动。
 26. **Windows 测试台在 Linux 的处置口径（2026-10-31，§4.1aw-7）**：`scripts/test/mt.ps1`（851 行）+ 19 个模块共 19,384 行 PowerShell **全部保留但不调用**（`user32.dll` P/Invoke、`taskkill`、`Get-CimInstance`、`cmd.exe /c gradlew.bat`、GBK 控制台、`D:` 盘路径不可移植）；Linux 侧以 `scripts/test/linux/{env,launch,stop}.sh` 为准。未复刻：进程防撞锁、测试前世界清场、OP/禁 AI 闸门、`mt_inject`（PostMessage 键鼠）、`mt_ime`、`mt_capture`；替代通道 = AutoJS `eval_js`（游戏内）+ computer-use MCP（GUI 级）。
 
 27. **本机盘工作副本仍待提交（2026-10-31 13:2x，§4.1ax）**：4 个副本已复制到 `~/Project/`（ext4）并修好 worktree 指针与 autocrlf；相关文档/脚本**未 commit**。与 hgfs 原始镜像的 `rsync push` **已执行**（9 项，sha256 抽查 MATCH；复跑 dry-run 幂等）。再次整体复制到其它机器时，§4.1ax 的 4 个 worktree 指针文件需重做修复。
 
-28. **整合包部署目标切换未实跑（2026-10-31 13:5x，§4.1ay）**：四线 `packModsDir` 已指向 `/mnt/hgfs/.minecraft/versions/<实例>/mods`（`MC_HOME` 可覆盖，Windows 回退 `D:/.minecraft`），主仓与 `-next` 2.0 线同批生效；Gradle 探针与配置验证通过，但**未真正跑过 `pushToGame`**、**未 commit**。下次实际投放前先确认目标包内 starengine 与 mod 成对，再按白名单/`-PdeployToPack` 执行；`-next` 线还缺 26.4 starengine 制品，配置期需先发布该库或临时覆盖版本。
+28. **整合包部署目标切换未实跑（2026-10-31 13:5x，§4.1ay）**：各线 `packModsDir` 已指向 `/mnt/hgfs/.minecraft/versions/<实例>/mods`（`MC_HOME` 可覆盖，Windows 回退 `D:/.minecraft`），主仓与 `-next` 2.0 线同批生效；Gradle 探针与配置验证通过，但**未真正跑过 `pushToGame`**、**未 commit**。下次实际投放前先确认目标包内 starengine 与 mod 成对，再按白名单/`-PdeployToPack` 执行；`-next` 线还缺 26.4 starengine 制品，配置期需先发布该库或临时覆盖版本。
 
-29. **本批在 Windows 宿主无法完整验证；Major 25 的工作树清单已过期（2026-10-31 14:5x，§4.1az）**：真实改动面 = `git diff --shortstat` 的 12 files +295/−95 加 9 个新文件（Major 25 只列了 `AGENTS.md` + 3 个 lang + 几个 `??`，缺 5 个 `build.gradle` 与 2 份文档改动 ⇒ 以 §4.1az 清单为准，25 按「不改写历史条目」保留）。`verify-split` / `check_lang_sync` / `bash -n` 全绿，但本轮 `gradlew` 因 wrapper 锁被占未跑通 ⇒ `mcHomePath` 的配置期输出、四线 `pushToGame` 的目标解析在 Windows 侧**没有实测**（只有静态判定 + 四目录各 1 jar 的存在性）。要补实测：先确认没有残留 java/gradle 进程，再 `.\gradlew.bat :neoforge-1.21.1:help --offline` 看 `整合包根目录 (MC_HOME): …`。
+29. **本批在 Windows 宿主无法完整验证；Major 25 的工作树清单已过期（2026-10-31 14:5x，§4.1az）**：真实改动面 = `git diff --shortstat` 的 12 files +295/−95 加 9 个新文件（Major 25 只列了 `AGENTS.md` + 3 个 lang + 几个 `??`，缺 5 个 `build.gradle` 与 2 份文档改动 ⇒ 以 §4.1az 清单为准，25 按「不改写历史条目」保留）。`verify-split` / `check_lang_sync` / `bash -n` 全绿，但本轮 `gradlew` 因 wrapper 锁被占未跑通 ⇒ `mcHomePath` 的配置期输出、各线 `pushToGame` 的目标解析在 Windows 侧**没有实测**（只有静态判定 + 四目录各 1 jar 的存在性）。要补实测：先确认没有残留 java/gradle 进程，再 `.\gradlew.bat :neoforge-1.21.1:help --offline` 看 `整合包根目录 (MC_HOME): …`。
 
 30. **Jade 插件翻译键已两线对齐（2026-10-31 14:5x 修，待提交）**：用户裁决「补」后，已把 `config.jade.plugin_astral_dice.shop_cooldown` / `…event_drawer_cost` 两条 × 三语按各文件现有键序插进 `neoforge-1.21.1/src/main/resources/assets/astral_dice/lang/{zh_cn,en_us,ja_jp}.json`（紧跟 `jade.astral_dice.event_drawer_cost` 之后，与 forge 同位置）。判据：三份 JSON 全部可解析、`\r`=0、键数 1,068 → **1,070**；`check_lang_sync.ps1` 复跑 EXIT 0（neo 1,070 / forge 1,070 / 26.1.2 836 / fabric 844）。若 1.21.1 的 Jade 版本不读这两个键，代价只是多两条无用键。**改动未提交**（本会话无 git 写权限，见 §4.1az 提交方案）。
 
@@ -1310,7 +1310,7 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md（已删
     - **P1 两线未移植**（26.1.2 / fabric）—— 2026-10-25 用户裁决「继续欠着，等把正式版做完了再考虑移植的事」（§5-Major 6）。
 
 6. **创造栏收尾仅落 P0 两线**（2026-10-25，§4.1j）：P1（`neoforge-26.1.2` / `fabric-1.20.1`）的 `ModCreativeTabs.java` 仍列出强化拒止物品、筹码仍是旧顺序。⚠️ 移植时必须**同批调整** `tools/verify_fabric_assets.py` 第 7 项（`check_creative_tabs`：要求「所有注册物品都在创造栏」——与本条的隐藏口径相反，只对 fabric 线生效，暂未改）。
-7. **护法减费卡面仅落 P0 两线**（2026-10-25，§4.1k）：P1（`neoforge-26.1.2` / `fabric-1.20.1`）的 `CardShopScreen` 没有 `cardFaceTexture` 分支、也没有 `attack_card_meito_discount.png` ⇒ 那两线仍显示原卡面（4 点）。移植时同批拷贴图 + 抄 `cardFaceTexture`（fabric 用 `new ResourceLocation(...)` 口径，26.1.2 按其 API 复核），并把 `tools/verify_meito_discount_face.py` 的 D2/D3/D4 扩到四线。
+7. **护法减费卡面仅落 P0 两线**（2026-10-25，§4.1k）：P1（`neoforge-26.1.2` / `fabric-1.20.1`）的 `CardShopScreen` 没有 `cardFaceTexture` 分支、也没有 `attack_card_meito_discount.png` ⇒ 那两线仍显示原卡面（4 点）。移植时同批拷贴图 + 抄 `cardFaceTexture`（fabric 用 `new ResourceLocation(...)` 口径，26.1.2 按其 API 复核），并把 `tools/verify_meito_discount_face.py` 的 D2/D3/D4 扩到各线。
 
 8. **CF 关系口径变更（2026-10-25，§4.1l）**：`tools/curseforge.json` 的 P0 两线（`neoforge_1.21.1` / `forge_1.20.1`）新增 `starengine(1755415)=requiredDependency`（lib 自 1.1.0 起不再内嵌）；P1 两线（26.1.2 / fabric）**未加**（它们仍内嵌库 jar）—— 若日后 P1 也改为独立前置，必须同批补登，否则同样缺库起不来。
 9. **玩家版更新日志已整份重写（2026-10-25 19:4x，提交 `e185595c`）**：`release/1.5.0-rc.1/PLAYER_CHANGELOG_ZH.md`（287 行 / 30,207 B）与 `PLAYER_CHANGELOG.md`（293 行 / 30,349 B）按 `CHANGELOG_ZH.md` / `CHANGELOG.md` 的 1.5.0 段（L7–L773 / L7–L953）逐条重写，补齐卡牌商店与筹码商店全部经济参数、村民价格表、15% 伤害下限、跳字红绿口径、星币/星盘掉落、16 件配方换料、看板娘 25→100、筹码商店 5:00 冷却与空白筹码解冷却、抽奖盒 5 星币/5:00 等；删除全部 P1（26.1.2 / fabric）陈述；修正 `Bank Card-Restless` → `Bank Card-Unlimited`。重传走 CI（tag `1.5.0-rc.1` 已存在 ⇒ `gh release edit --notes-file` + `upload --clobber`）：run `40190519908` 全绿，Release `updated_at` 11:51:59Z、正文 43,140 字符、附件两份 rc.1 jar 已覆盖。
@@ -1320,11 +1320,11 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md（已删
 12. **调酒师治疗口径 = 逐张各结算 1 次 `heal(2)`**（2026-10-25 落地「按张数叠加」，2026-10-26 用户裁决**订正结算方式**，§4.1r）：`JillSignItem#resolve` 里 `for (int i = 0; i < effect; i++) target.heal(HEAL_AMOUNT);`（`HEAL_AMOUNT = 2.0F`）—— 3 张 = **3 次治疗 = 6 点**，**不是**合并成一次 `heal(6)`。因此治疗事件按张数各触发一次：多萝西「温暖」按次数叠层（3 张 = **+3 层**），「赵赐福溢出」「治疗失效事件」等下游各结算三次。同批已改：两线 `JillSignItem` 的 javadoc / 常量注释 / 行内注释、`tools/verify_sign_balance_changes.py` 的 JIL-1（require for 循环体里的 `target.heal(HEAL_AMOUNT)`、forbid `target.heal(HEAL_AMOUNT * effect)`）、六份 lang 的 `tooltip.astral_dice.sign.jill_active` + `astral_dice.guide.entry.jill_sign.1`、两份 CHANGELOG、rc.2 三份玩家日志。⚠️ **`1.5.0-rc.2` 已发布产物仍是旧的「合并一次」口径**（已 push + 自动 tag + 上传 CF），本修正只能进下一版。P1 两线（26.1.2 / fabric）**没有** `JillSignItem`，本项无需登记移植欠账。
 13. **多萝西队友加成 = 状态效果【交际花】，不再是瞬态修饰符**（2026-10-25，§4.1n）：唯一事实源改为 `DorothySocialiteEffect` 自带的 `ATTACK_DAMAGE +1` 修饰符，**固定 1:00、从获得时起算、与主动窗口解耦**；窗口结束不回收、重复获得只刷时长。旧的 `dorothy_partner_attack` 修饰符、`applyTempAttack`、`clearPartnerBuffs`、`DOROTHY_PARTNERS` 节流表均已删除（§5 里若有旧描述按本条读）。P1 两线无该立牌，无移植欠账。
 
-14. **`1.5.0-rc.2` 版本已落盘（2026-10-25，§4.1o）**：四线 `mod_version = 1.5.0-rc.2+<后缀>`、`release/1.5.0-rc.2/` 三份玩家更新日志（版本串已换，内容 = rc.1 + 调酒师治疗按张数 + 【交际花】）、`README*.md` 版本列同步；P0 两线已重建并投放四目标（§2 产物现状）。**已 push（`13a45619`）**，CI 自动建 tag `1.5.0-rc.2` 并从 `release/1.5.0-rc.2/` 取正文发布 prerelease（实测页面 200，两个 P0 jar 均在附件里）。**实机未覆盖项见 §4.1o 末行**（真实按键施放 / 死亡重登 / 窗口内反复进出）。
+14. **`1.5.0-rc.2` 版本已落盘（2026-10-25，§4.1o）**：各线 `mod_version = 1.5.0-rc.2+<后缀>`、`release/1.5.0-rc.2/` 三份玩家更新日志（版本串已换，内容 = rc.1 + 调酒师治疗按张数 + 【交际花】）、`README*.md` 版本列同步；P0 两线已重建并投放四目标（§2 产物现状）。**已 push（`13a45619`）**，CI 自动建 tag `1.5.0-rc.2` 并从 `release/1.5.0-rc.2/` 取正文发布 prerelease（实测页面 200，两个 P0 jar 均在附件里）。**实机未覆盖项见 §4.1o 末行**（真实按键施放 / 死亡重登 / 窗口内反复进出）。
 
 15. **`tools/curseforge-description.md` 已删除（2026-10-25，用户裁决）**：CF 项目说明已由用户**手动粘贴**到作者后台（`https://authors.curseforge.com/#/projects/1662159/description`），仓库内草稿（含本轮中英两版全文 + 一句话 Summary）随之删除，避免与线上正文双份漂移。**CF 的 Description 字段至今无法经 API 修改**（`.curseforge/token` 只是 legacy upload token，Core API 也没有该端点，见 `AGENTS-full.md:2294`），今后要改说明一律在 CF 作者后台直接改，仓库不再留副本。历史文档里对 `tools/curseforge-description.md` 的引用（`docs/AGENT-HANDOFF.md（已删除 2026-11-05）:106` / `:593` / `:617`、`docs/agent/AGENTS-full.md:4034`、`docs/prerelease-check-1.3.7-hotfix.md（已删除 2026-11-05）:48` / `:84`、`docs/handover-1.5.0-pre.5-main.md（已删除 2026-11-05）:654`）一律读作**历史记录**，文件本身已不存在。
 
-17. **攻击 / 受击链路排查与三批修复已落盘（2026-10-27，§4.1ae）**：审计正本 `docs/features/attack-damage-chain-audit.md`（N1–N26）+ 法伤链独立复核 `docs/features/spell-damage-chain-verification.md`；批次 A/B/C 已改两线源码并双线编译通过，批次 E（惩罚伤害不得触发受击被动）在跑。**仍欠**：① 全部改动**未实机**（D 的 C1–C8 判据依赖尚未实现的探针）；② 待裁决 N11 / N14 / N15 / N16 / N18 / N19 / N20 / N22 / N23 / N24；③ N25 = P1 两线 `bypasses_cooldown.json` 仍缺 `dice_damage`（四线一致性欠账，P1 不碰）；④ 批次 A 的已知限制：`settleDiceDamage` 之后再被 LOWEST（气囊归零 / 磨刀石 −N）改金额时，平台 `:1684` 的扣减量会与写入值不等（方向是「少消耗吸收」，绝不双扣，1.20.1 无 `LivingDamageEvent.Post` 无法补偿）。
+17. **攻击 / 受击链路排查与三批修复已落盘（2026-10-27，§4.1ae）**：审计正本 `docs/features/attack-damage-chain-audit.md`（N1–N26）+ 法伤链独立复核 `docs/features/spell-damage-chain-verification.md`；批次 A/B/C 已改两线源码并双线编译通过，批次 E（惩罚伤害不得触发受击被动）在跑。**仍欠**：① 全部改动**未实机**（D 的 C1–C8 判据依赖尚未实现的探针）；② 待裁决 N11 / N14 / N15 / N16 / N18 / N19 / N20 / N22 / N23 / N24；③ N25 = P1 两线 `bypasses_cooldown.json` 仍缺 `dice_damage`（各线一致性欠账，P1 不碰）；④ 批次 A 的已知限制：`settleDiceDamage` 之后再被 LOWEST（气囊归零 / 磨刀石 −N）改金额时，平台 `:1684` 的扣减量会与写入值不等（方向是「少消耗吸收」，绝不双扣，1.20.1 无 `LivingDamageEvent.Post` 无法补偿）。
 
 18. **法伤加成折叠（方案 A）已落盘，待实机 + 重出 jar（2026-10-27，§4.1af）**：双线 `:classes` 通过、javap 类面核对完成，但 **jar 未重出、四目标未投放、未实机**。**仍欠**：① 重出 P0 两线 jar 并投 `run/1.21.1` / `run/1.20.1` / 两个 P0 整合包；② 折叠后「一次命中只结算一次」的数值实机（跳字 / 音效档位 / 吸收钳制 / 固定点数减伤各一次）；③ N14（AOE 命中 N 目标时「按施放计一次」还是「按目标逐个计」）口径仍待用户裁决。
 
@@ -1427,7 +1427,7 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md（已删
 
 53. **`new File('/mnt/hgfs/…')` 在 Windows 上解析成「当前盘符根」**（2026-10-31 实测）：Windows 侧 `new File('/mnt/hgfs/.minecraft').isDirectory()` 判的是 `<当前盘>:\mnt\hgfs\.minecraft`（cwd 在 `F:` ⇒ `F:\mnt\hgfs\.minecraft`）。回退之所以成立，纯粹因为 `F:\mnt` 不存在；**一旦有人在这块盘根建出 `\mnt\hgfs\.minecraft`，Windows 构建就会把 jar 静默投到那个「假 hgfs」目录**。缓解：构建日志里扫一眼配置期那行 `整合包根目录 (MC_HOME): …`；要根治就把探测收进 `if (System.getProperty('os.name').toLowerCase().contains('linux'))`。
 
-54. **`tools/check_lang_sync.ps1` 只做「同线内 zh↔en↔ja」，不跨线比较**（2026-10-31 实测）：脚本头注释写明口径 = 每线「`zh_cn` 与 `en_us` key 集合一致、`ja_jp` 以 `zh_cn` 为基线、字面 `%` 未转义即 FAIL」。所以「forge 补了两条 Jade 键、neo 没补」这类跨线不对称**永远不会判红**——四线键数 1,068 / 1,070 / 836 / 844 全绿。凡「两线都该有的键」必须在提交前手工对齐，或另写跨线判据。
+54. **`tools/check_lang_sync.ps1` 只做「同线内 zh↔en↔ja」，不跨线比较**（2026-10-31 实测）：脚本头注释写明口径 = 每线「`zh_cn` 与 `en_us` key 集合一致、`ja_jp` 以 `zh_cn` 为基线、字面 `%` 未转义即 FAIL」。所以「forge 补了两条 Jade 键、neo 没补」这类跨线不对称**永远不会判红**——各线键数 1,068 / 1,070 / 836 / 844 全绿。凡「两线都该有的键」必须在提交前手工对齐，或另写跨线判据。
 
 ## 7 关键路径（命令）
 

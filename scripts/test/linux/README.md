@@ -8,7 +8,7 @@
 
 1. **Windows 测试台不能在 Linux 直接运行**：19,384 行 pwsh 代码在 pwsh 7.6.9 下**语法可解析**、参数解析与「禁用自动测试」闸门**可跑通**，但任何触达 Win32 API / Windows 进程模型的路径都失败（证据见 §4）。核心阻塞点是 `lib/Mt.Win32.psm1`（user32 P/Invoke）与 `mt_inject.ps1`（键盘/鼠标注入），其次 `taskkill` / `cmd.exe` / `Get-CimInstance`。
 2. **Linux 侧已落地三件套**：
-   - `env.sh`：只读环境体检（四线 toolchain JDK + daemon JVM、run 目录/模组、AutoJS 三态探活、客户端残留、Gradle 进程、锁、git autocrlf）。**实测通过**（`ENV_RESULT: WARN`, exit 0）。
+   - `env.sh`：只读环境体检（各线 toolchain JDK + daemon JVM、run 目录/模组、AutoJS 三态探活、客户端残留、Gradle 进程、锁、git autocrlf）。**实测通过**（`ENV_RESULT: WARN`, exit 0）。
    - `launch.sh`：启动 `runClient` 并轮询就绪标志（优先 `run/start-<ver>.sh`，否则 `bash ./gradlew :<line>:runClient --console=plain`）。**只做过 `--dry-run`**，真实启动由 Lead 在 task-1 完成后统一验证（避免与 gradle-launcher 抢全队唯一的 Gradle 并发位）。
    - `stop.sh`：按 `run/<ver>/linux-run.pid` 进程组 + `/proc` 扫描收停，`LINUX_STOP: OK|RESIDUAL`。**两条 kill 路径均以假仓库实测通过**（§9.3）。
 3. **不可移植的测试能力**：`mt_case.ps1`（用例编排）/`mt_assert.ps1`（断言）/`mt_report.ps1`/`mt_watchdog.ps1` 都建立在「Windows 进程 + 键盘注入 + 窗口」之上，Linux 侧不复刻；替代路径是 **AutoJS HTTP 通道**（`docs/features/autojs-testing-flow.md（已删除 2026-11-05）` 六步流程），它不需要键鼠注入。详见 §6、§7。
@@ -40,7 +40,7 @@ scripts/test/linux/stop.sh --all --force
 scripts/test/linux/stop.sh --version 1.21.1 --purge-saves   # 删测试世界（saves/* 与 run/<ver>/*/level.dat）
 ```
 
-线路映射（Gradle daemon JVM 四线统一 **JDK 21**；子项目 toolchain 由 Gradle 自动发现）：
+线路映射（Gradle daemon JVM 各线统一 **JDK 21**；子项目 toolchain 由 Gradle 自动发现）：
 
 | `--version` | Gradle 子项目 | daemon JVM（统一） | toolchain（自动发现） |
 |---|---|---|---|
@@ -115,7 +115,7 @@ pwsh 安装：`/home/kitsune/.local/powershell/pwsh`（7.6.9，linux-x64 tar.gz�
 ## 7. 残余 Windows-only 能力与建议（按优先级）
 
 1. **P0 已解决**：Linux 上「起客户端 / 探活 / 收停」闭环 → 本目录三件套。
-2. **P1 建议**：把 AutoJS 通道作为 Linux 侧唯一「用例执行臂」——`docs/features/autojs-testing-flow.md（已删除 2026-11-05）` 六步流程 + 本仓 `autojs` skill；不需要键鼠，`stop.sh` 负责收尾。四条线的 `run/<ver>/mods` **均已就位 AutoJS jar**（env.sh 四线报 OK，见 §9.1）；换线/重装后仍建议先跑 env.sh 复核。
+2. **P1 建议**：把 AutoJS 通道作为 Linux 侧唯一「用例执行臂」——`docs/features/autojs-testing-flow.md（已删除 2026-11-05）` 六步流程 + 本仓 `autojs` skill；不需要键鼠，`stop.sh` 负责收尾。各线的 `run/<ver>/mods` **均已就位 AutoJS jar**（env.sh 各线报 OK，见 §9.1）；换线/重装后仍建议先跑 env.sh 复核。
 3. **P2 建议**：若必须保留「键鼠注入级」用例（GUI 拖拽/按键序列），改走 task-2 的 Wayland computer-use MCP（`act` 的 keyboard/pointer）；不要复活 `mt_inject` 的 user32 代码。
 4. **P3 建议**：`mt_ime`/`mt_capture`/`Mt.Win32` 保持 Windows-only，不强行移植；Linux 截图用 `grim` 即可。
 5. **不建议**：把 19k 行 pwsh 整体「去 Win32 化」——收益低（真正难替换的只有注入/窗口/IME 三块），且会把 Windows 侧稳定流程置于风险中。
@@ -139,11 +139,11 @@ pwsh 安装：`/home/kitsune/.local/powershell/pwsh`（7.6.9，linux-x64 tar.gz�
   - 主判据：`health`==200 **且** MCP `initialize` + `tools/call status` 报 `sides[]` 中 `side=="client"` 且 `available=true` → `LAUNCH: READY`，exit 0。
   - 日志 marker 只作附加信息：命中时额外打 `LAUNCH: WORLD_READY`，**不作为 READY 必要条件**；`--wait-world <秒>`（默认 0）可在 READY 后额外等它。
   - `MT_ALLOW_NO_AUTOJS=1`：允许 AutoJS 未就绪时用日志 marker 兜底判 READY；`run/<ver>/mods` 无 AutoJS jar 的线也自动允许 marker 兜底。两套都没有 → AutoJS 通道从未响应 health 则 exit 2，否则 exit 12。
-- **需要世界的用例**：用 `--quickplay <世界名>`（build.gradle 四线已实现 `-Pquickplay`：1.21.1/1.20.1/fabric 映射 `--quickPlaySingleplayer <名>`，26.1.2 必须等号形式 `--quickPlaySingleplayer=<名>`；launch.sh 经 `run/start-*.sh` 的 `"$@"` 透传或直接附给 gradlew，**本脚本传参未实机验证**），或先在标题画面用 AutoJS `eval_js` 建/开世界（见 `docs/features/autojs-testing-flow.md（已删除 2026-11-05）`）。
+- **需要世界的用例**：用 `--quickplay <世界名>`（build.gradle 各线已实现 `-Pquickplay`：1.21.1/1.20.1/fabric 映射 `--quickPlaySingleplayer <名>`，26.1.2 必须等号形式 `--quickPlaySingleplayer=<名>`；launch.sh 经 `run/start-*.sh` 的 `"$@"` 透传或直接附给 gradlew，**本脚本传参未实机验证**），或先在标题画面用 AutoJS `eval_js` 建/开世界（见 `docs/features/autojs-testing-flow.md（已删除 2026-11-05）`）。
 
 ## 9. 实测记录（2026-10-31）
 
-### 9.1 env.sh（只读，全四线；2026-10-31 修假 WARN 后重跑）
+### 9.1 env.sh（只读，各线全量；2026-10-31 修假 WARN 后重跑）
 
 ```
 CHECK: repo=OK / mount=INFO(ntfs3, source=/dev/nvme2n1p1) / gradlew=OK
@@ -156,19 +156,19 @@ CHECK: autojs_jar_fabric-1.20.1=OK（AutoJS-fabric-1.20.1-1.0.0.jar）
 CHECK: autojs_health=WARN（GET http://127.0.0.1:25585/health = 000 未运行）
 CHECK: residue=OK（/proc 扫描无客户端）/ conf_windows=INFO（mt.conf 含 D:/、C:/，Windows 台机器配置，Linux 侧忽略且不修改）
 CHECK: cwd=OK / repo_writable=OK（ntfs3）/ jdk_paths=OK / git_autocrlf=OK
-CHECK: pack_dirs=OK（/mnt/d/.minecraft，四线 mods 齐全）/ locks_other=OK（仅 dsh.lock，属本宿主）
+CHECK: pack_dirs=OK（/mnt/d/.minecraft，各线 mods 齐全）/ locks_other=OK（仅 dsh.lock，属本宿主）
 CHECK: locks_stale=OK（无陈旧锁；接管前曾有 PID=2103 陈旧锁，已按用户裁决接管）
 ENV_RESULT: WARN — 0 项阻塞，1 项提示（仅 autojs_health：游戏未启动）
 ```
 
-### 9.2 launch.sh `--dry-run`（四线均验证；daemon JVM 统一 21，toolchain 按线）
+### 9.2 launch.sh `--dry-run`（各线均验证；daemon JVM 统一 21，toolchain 按线）
 
 `1.20.1`（forge，start.sh 已由 gradle-launcher 产出 → 直接调用）：
 ```
 LAUNCH: DRY-RUN — 未启动任何进程
   version      = 1.20.1
   project      = :forge-1.20.1
-  daemon_jvm   = /usr/lib/jvm/java-21-openjdk-amd64（Gradle daemon JVM，需 ≥21；四线统一）
+  daemon_jvm   = /usr/lib/jvm/java-21-openjdk-amd64（Gradle daemon JVM，需 ≥21；各线统一）
   toolchain    = 17（Gradle 自动发现，本机需在位）
   start_source = run/start-1.20.1.sh（可执行，直接调用）
   log          = scripts/test/linux/logs/1.20.1-<ts>.log
@@ -212,7 +212,7 @@ LINUX_STOP: OK                                   EXIT=0   # 进程已消失
 
 ### 9.5 复核修订（2026-10-31，Lead 复核后）
 
-- **假 WARN ①（AutoJS jar 误报缺失）**：原用 `ls autojs*.jar` 大小写敏感匹配，而实际产物是 `AutoJS-<loader>-<ver>-<v>.jar`。改为大小写不敏感（`*[Aa][Uu][Tt][Oo][Jj][Ss]*.jar`），且只认以 `.jar` 结尾的文件（排除 `.jar.bak-*` / `.jar.reobf-*` 备份）。四线 run/mods 实测均有 jar（见 §9.1），不再误报。
+- **假 WARN ①（AutoJS jar 误报缺失）**：原用 `ls autojs*.jar` 大小写敏感匹配，而实际产物是 `AutoJS-<loader>-<ver>-<v>.jar`。改为大小写不敏感（`*[Aa][Uu][Tt][Oo][Jj][Ss]*.jar`），且只认以 `.jar` 结尾的文件（排除 `.jar.bak-*` / `.jar.reobf-*` 备份）。各线 run/mods 实测均有 jar（见 §9.1），不再误报。
 - **假 WARN ②（挂载类型误报，VM 期）**：`stat -f -c %T` 在 hgfs 上返回 `fuseblk`，故改用 `findmnt -n -o FSTYPE,SOURCE -T <repo>`。**原生 Linux 下已无 hgfs**：同一命令在真机返回 `ntfs3 /dev/nvme2n1p1`，env.sh 走 `ntfs3|ntfs` 分支报 `INFO`（链接/硬链接实测可用）。
 - 修后（VM 期）重跑 `ENV_RESULT: WARN — 0 项阻塞，3 项提示`；迁到原生 Linux（2026-10-31）后同一命令只剩 1 条提示：AutoJS 端点未运行（游戏没起），见 §9.8。
 - 附带修复（Lead 批准后）：`launch.sh` 的 AutoJS 探活门槛同样改为大小写不敏感匹配（只认 `.jar` 结尾，排除 `.jar.bak-*`/`.jar.reobf-*`），并在 `AUTOJS: OK` 行输出命中的 jar 名；`stop.sh` 无 `autojs*.jar` 匹配（只按 pid 文件 / `/proc` cmdline 收停），无需改。
@@ -233,11 +233,11 @@ Could not resolve net.fabricmc:fabric-loom:1.14.10
 Dependency requires at least JVM runtime version 21. This build uses a Java 17 JVM.
 ```
 
-且本仓 `settings.gradle` 四线全 include，任何一条线的 Gradle 命令都会走到 `Configure project :fabric-1.20.1`，因此 **daemon JVM 必须 ≥21，不能按线切 17**；子项目 toolchain（17/21/25）由 Gradle 自动发现。
+且本仓 `settings.gradle` 各线全 include，任何一条线的 Gradle 命令都会走到 `Configure project :fabric-1.20.1`，因此 **daemon JVM 必须 ≥21，不能按线切 17**；子项目 toolchain（17/21/25）由 Gradle 自动发现。
 
 修正：
 - `launch.sh`：删掉按线 `JAVA_HOME` 表，统一 `DAEMON_JDK=/usr/lib/jvm/java-21-openjdk-amd64`（可用 `MT_GRADLE_DAEMON_JAVA_HOME` 覆盖）；`--dry-run` 输出 `daemon_jvm` + `toolchain` 两行；回退 gradlew 路径注入该 21。`run/start-<ver>.sh` 存在时会被其内部 `JAVA_HOME` 覆盖（以其为准；`start-1.20.1.sh` 内部 `DEFAULT_JDK` 由 gradle-launcher 一并改为 21）。
-- `env.sh`：四线 `jdk_*` 判据改为「本线 toolchain=X 且本机 X 在位」；新增 `gradle_daemon_jvm=OK/FAIL` 检查（21 在位，四线统一）。
+- `env.sh`：各线 `jdk_*` 判据改为「本线 toolchain=X 且本机 X 在位」；新增 `gradle_daemon_jvm=OK/FAIL` 检查（21 在位，各线统一）。
 - 验证：`bash -n` 三脚本 OK；`launch.sh --version 1.20.1 --dry-run` / `26.1.2 --dry-run` 均 EXIT=0 且显示 `daemon_jvm=…21…`、`toolchain=17/25`；`env.sh` EXIT=0 → `CHECK: gradle_daemon_jvm=OK`、`ENV_RESULT: WARN（0 阻塞，3 提示）`不变。
 
 ### 9.7 Linux 就绪判据修正（2026-10-31，Lead 1.21.1 实机后）
@@ -255,6 +255,6 @@ Dependency requires at least JVM runtime version 21. This build uses a Java 17 J
 - **整合包根**：`/mnt/d/.minecraft`（Windows `D:` 的原生挂载）；`MC_HOME` 仍可覆盖。根 `build.gradle` 的 `mcHomePath` 解析顺序改为 `MC_HOME` > `/mnt/d/.minecraft` > `D:/.minecraft`。
 - **env.sh 键名变化**：`hgfs_writable` → **`repo_writable`**（`ntfs3/ext4/xfs/btrfs` 走 OK 并注明链接可用）；新增 **`locks_stale`**（按锁文件 `PID=` 做 `kill -0`，陈旧锁**只报不删**）；`mt.conf` 的 Windows 路径提示由 `WARN` 降为 `INFO`；`mount` 行新增 `ntfs3|ntfs` 分支。
 - **锁目录**：`/mnt/f/MCProject/.agent-locks`（与 Windows 同一目录）。
-- **实测（2026-10-31 17:5x，改后首跑）**：`ENV_RESULT: WARN — 0 项阻塞，1 项提示`；`pack_dirs=OK（整合包根=/mnt/d/.minecraft，四线目标 mods 目录齐全）`、`repo_writable=OK`、`locks_stale` 无陈旧锁、`gradle_daemon_jvm=OK`。
+- **实测（2026-10-31 17:5x，改后首跑）**：`ENV_RESULT: WARN — 0 项阻塞，1 项提示`；`pack_dirs=OK（整合包根=/mnt/d/.minecraft，各线目标 mods 目录齐全）`、`repo_writable=OK`、`locks_stale` 无陈旧锁、`gradle_daemon_jvm=OK`。
 - **未变**：daemon JVM 仍统一 21、toolchain 按线（17/21/25）、`stop.sh` 收停协议、`launch.sh` 以 AutoJS 判 READY、`run/<ver>/linux-run.pid` 协议。
 - 详细迁移实测与剩余 checklist 见 `docs/handover-2026-10-31-native-linux-migration.md`。

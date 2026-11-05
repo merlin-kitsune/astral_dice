@@ -48,7 +48,7 @@
 5. 防守骰：防守方有骰 ⇒ 走能力注册表；否则 0。
 6. 攻击力 = `TargetBattleStats.baseAttack(mob)` + 本线既有附魔合成项 + 攻击骰。
 7. 防御力：目标是玩家 ⇒ 本线原公式（护甲 + 韧性 + 防御骰 + 防御牌点数）；非玩家 ⇒ `TargetBattleStats.baseDefense(target)` + 防守骰（**不再叠护甲/韧性**，避免二次计入）。
-8. 结算：`DiceBattleResolver.resolve` → `magicAbsorbFactor` → 标记 `+1` → `victimFactor` → 虚弱印记 ×1.10 → 七咒倍率（**仅玩家目标**）→ 写回（四线各自 API）。
+8. 结算：`DiceBattleResolver.resolve` → `magicAbsorbFactor` → 标记 `+1` → `victimFactor` → 虚弱印记 ×1.10 → 七咒倍率（**仅玩家目标**）→ 写回（各线各自 API）。
 9. 出口：伤害数字组别 `ATTACK`；对骰成立时扣防御牌耐久（非玩家目标空转）；参与者带骰且满足条件 ⇒ 给**参与者自己**上骰神赐福。
 
 ## 4. 回归红线
@@ -57,7 +57,7 @@
 - 「不结算 ≠ 不掉血」：未注册时原版 `doHurtTarget` 伤害照常落地，测试判据必须是数值口径而非「血量不变」。
 - 玩家攻击链、修饰器链、立牌钩子、筹码触发**零改动**。
 
-## 5. 四线差异（实现侧）
+## 5. 各线差异（实现侧）
 
 | | neoforge-1.21.1 | forge-1.20.1 | neoforge-26.1.2 | fabric-1.20.1 |
 |---|---|---|---|---|
@@ -112,7 +112,7 @@ DiceCombatAbilities.register(
 - 非玩家没有 `WeaponEnhancement`、筹码栏、战斗牌：相关数值恒 0，防御牌点数按 0 计。
 - 26.1.2 / fabric 两线仅有编译与静态证据，**未实机验证**。
 
-## 9. 代码锚点（四线）
+## 9. 代码锚点（各线）
 
 | | neo-1.21.1 | forge-1.20.1 | neo-26.1.2 | fabric-1.20.1 |
 |---|---|---|---|---|

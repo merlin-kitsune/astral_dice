@@ -5,7 +5,7 @@
 
 ## 0. 一句话现状
 
-四线已 bump 到 `1.5.0-pre.6`；Kimi 上一轮（`member-detective` / `misaki` / `筹码商店刷新源` / `规则分派`）的 47 个文件**已由 DSH 收编提交**，DSH 另完成三语语言同步与 `ame_note` 染色修复，全部已 commit、**未 push**。P0 两线编译绿、守门全绿；`build/libs` 与整合包**仍是 pre.5 产物**（本批未重建 jar）。
+各线已 bump 到 `1.5.0-pre.6`；Kimi 上一轮（`member-detective` / `misaki` / `筹码商店刷新源` / `规则分派`）的 47 个文件**已由 DSH 收编提交**，DSH 另完成三语语言同步与 `ame_note` 染色修复，全部已 commit、**未 push**。P0 两线编译绿、守门全绿；`build/libs` 与整合包**仍是 pre.5 产物**（本批未重建 jar）。
 
 ## 1. 必读顺序（实读，不凭记忆）
 
@@ -34,14 +34,14 @@
    - `zh_cn.json` 同步到 `forge-1.20.1`：**按 forge 自身键序只替换 60 个值**（不许整文件复制 —— forge 键序在 index 955 起与 neo 分叉：`block.astral_dice.barricade_collision` vs `block.astral_dice.chip_shop`，且 forge 有 6 行缺 2 空格缩进、保留用户删掉的 1 个空行）。
    - `en_us.json` / `ja_jp.json` 两线各 **60 键**重译，格式保真逐键校验：§ 码 234/234（相对位置一致）、`%%` 10/10、`%s` 6/6、\n 39/39、`" | "` 3/3。
 2. **`tooltip.astral_dice.sign.ame_note`（地雷女立牌备注区）染色修复**：备注区由 `event/ModTooltipHandler.java` 的 `addSignNoteLines` 强制 `§d` 底色（并把行内 `§7` 替换成 `§d`），原 7 处数值/时间是裸文本 ⇒ 补 `§e`（数值）/ `§9`（时间）/ `§d`（回落），**正文一字未改**（仅删「层数 +1 ，」逗号前多余空格）。6 个文件（两线 × 三语）。
-3. **版本 bump**：四线 `mod_version = 1.5.0-pre.6+<加载器后缀>`；`starengine_version` 仍 `1.1.0-pre.2`。
+3. **版本 bump**：各线 `mod_version = 1.5.0-pre.6+<加载器后缀>`；`starengine_version` 仍 `1.1.0-pre.2`。
 
 ## 3. 判据读数（2026-10-24 13:3x 实测，可直接复跑）
 
 | 命令 | 读数 |
 |---|---|
 | `gradlew.bat :neoforge-1.21.1:classes :forge-1.20.1:classes` | `BUILD SUCCESSFUL in 4s`，EXIT=0 |
-| `pwsh -NoProfile -File tools\check_lang_sync.ps1` | EXIT=0；四线 key 全一致（1046 / 1046 / 836 / 844）；**3 条既有 WARN**（`dorothy_passive` zh 10 vs ja 14 颜色码、`jill_active` zh 14 vs en/ja 10） |
+| `pwsh -NoProfile -File tools\check_lang_sync.ps1` | EXIT=0；各线 key 全一致（1046 / 1046 / 836 / 844）；**3 条既有 WARN**（`dorothy_passive` zh 10 vs ja 14 颜色码、`jill_active` zh 14 vs en/ja 10） |
 | `python tools/audit_patchouli_keys.py` | 引用 1,694 处，悬空 **0** |
 | `python docs/agent/verify-split.py` | EXIT=0（四项 [OK]；若 docs 指针缺失只判 WARN，`--strict` 才致命） |
 | `python tools/verify_misaki_balance.py` / `verify_bonnie_active_order.py` / `verify_member_recommendation_hand_gate.py` | PASS 26 / 12 / 14 项 |

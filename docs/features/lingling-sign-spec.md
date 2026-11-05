@@ -112,7 +112,7 @@ P T P
 7. 标签：`data/curios/tags/item/stand.json`、`data/astral_dice/tags/item/signs.json`。
 8. 赏金池：`data/bountiful/bounty_pools/astral_rews.json`（参照 `diamond_dice` :33-42，unitWorth 7500）。
 9. 帕秋莉手册：`astral_dice.guide.entry.lingling.N` 页（键必须被 `tools/audit_patchouli_keys.py` 认可）。
-10. 效果图标：32×32 + 既有生成器；`tools/verify_effect_icons.py` 四线必须通过；AGENTS 效果清单计数**实测后订正**（不得在旧数字上 +1）。
+10. 效果图标：32×32 + 既有生成器；`tools/verify_effect_icons.py` 各线必须通过；AGENTS 效果清单计数**实测后订正**（不得在旧数字上 +1）。
 
 ## 7. 创造栏解绑（用户 2026-10-18 裁决：可合成 + 创造栏始终可见）
 
@@ -132,7 +132,7 @@ pwsh -NoProfile -File scripts/audit/tooltip_color_audit.ps1
 pwsh -NoProfile -File scripts/verify/verify_crafting_recipe_uniqueness.ps1
 pwsh -NoProfile -File scripts/verify/verify_event_registry.ps1
 ```
-外加 `./gradlew :neoforge-1.21.1:classes`（及 forge 线）编译通过；`verify_effect_icons.py` 四线通过。
+外加 `./gradlew :neoforge-1.21.1:classes`（及 forge 线）编译通过；`verify_effect_icons.py` 各线通过。
 
 > 状态（2026-10-18）：`forge-1.20.1` 移植完成 —— `lingling_surge` 已落地（效果数 1.20.1 = 61，两 P0 线 id 集合一致）。守门实测（本机）：`verify_resource_integrity.ps1` PASS、`check_lang_sync.ps1` OK、`verify_effect_icons.py` PASS（forge 61/61）、`verify_rarity_consistency.py` PASS、`audit_patchouli_keys.py` 悬空 0、`verify_crafting_recipe_uniqueness.ps1` collisions=0、`verify_event_registry.ps1` OK。两项**既有**偏差与本立牌无关、不在本批范围（均已实测对照 HEAD 基线）：① `verify_bountiful_pools.ps1` 6 项致命偏差（HEAD 基线 7 项，本批消灭了 2 条 lingling 相关项）—— 余项全部来自 1.20.1 独有的 `card_shop`/`chip_shop`/`event_drawer` 与 P1 线 26.1.2 尚未移植的 10 个条目（含 `ame_sign`/`kangel_sign`）；P0 两线的 `astral_rews.json` 已逐字节一致（md5 `c86d449c…`）。② `audit/tooltip_color_audit.ps1` 64 处违规（HEAD 基线同为 64，且无一条命中 lingling 键）。**本规格无「forge 待移植」遗留待办**。
 

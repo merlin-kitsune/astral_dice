@@ -189,7 +189,7 @@
 | 手册文本 | `:102-103`（`astral_dice.guide.entry.fen_sign.1/2`） | `astral_dice.guide.entry.zhao_sign.{1..n}`、`astral_dice.guide.entry.fu_card.1`/`huo_card.1` |
 
 **同步纪律（有工具证据，不靠猜）**：`tools/check_lang_sync.ps1` 的比对单位是**每个子项目自己的 zh ↔ en 键集**
-（`:418-430` 计算 `missingInEn` / `extraInEn`；`:499` 依次扫描三线的 lang 目录）
+（`:418-430` 计算 `missingInEn` / `extraInEn`；`:499` 依次扫描各线的 lang 目录）
 ⇒ **新增中英键即可，不需要也不允许为对齐 key 集去改被冻结的 26.1.2**。
 另外 `lang/*.json` 属 `TESTING-SPEC.md:27` 的「非核心」范围（仅需构建 + `check_lang_sync`）。
 
@@ -686,7 +686,7 @@ for (Player ally : EventTargetCollector.collectTeamPlayers(triggerer)) {
 | 2 | 效果注册（**id 集有差**） | `neoforge-26.1.2/.../effect/ModEffects.java` 的 `EFFECTS.register(` 命中 **32** 处，而 1.21.1 同文件 **34** 处 ⇒ 迁移时必须先按 `AGENTS.md` 的「效果注册条目」口径核对 id 集 |
 | 3 | 附件（平台形态不同） | 26.1.2 走 NeoForge `AttachmentType`（与 1.21.1 同类）；1.20.1 才是 `AttachedDataKey` |
 | 4 | **两段式数据生成（必经）** | `neoforge-26.1.2/.../datagen/{ClientDataGenerators,ServerDataGenerators,ModItemModelProvider,ModRecipeProvider}.java` + 双输出根 `src/generated/{resources,clientResources}`（见 `AGENTS.md` 26.1.2 速记第 2 条）；物品模型另有 1.21.4+ 的 `assets/<ns>/items/<id>.json` 硬需求（`src/generated/clientResources/assets/astral_dice/items/*.json` 现存） |
-| 5 | 语言键 | 26.1.2 `lang/zh_cn.json` 现 685 行 = 1.21.1 685 行；新增键需三线各自 zh↔en 一致（`tools/check_lang_sync.ps1:499`） |
+| 5 | 语言键 | 26.1.2 `lang/zh_cn.json` 现 685 行 = 1.21.1 685 行；新增键需各线各自 zh↔en 一致（`tools/check_lang_sync.ps1:499`） |
 | 6 | 长矛近战判定 | `ItemTags.SPEARS` **只在 26.1.2 线存在**（`AGENTS.md` 26.1.2 速记第 10 条）⇒ 若本批触碰 `isMeleeWeaponAttack`（`combat/DiceCombatEvents.java:973-981`），迁移时**不得**把 26.1.2 版本回移 |
 | 7 | 立牌主动门控（`BaseSignItem` 第 2.5 步） | 26.1.2 现有 18 个立牌类，需确认门控分支与新选择器 API 一致 |
 
@@ -1067,7 +1067,7 @@ for (Player ally : EventTargetCollector.collectTeamPlayers(triggerer)) {
 
 > 供两条实现线**照表施工**、供 26.1.2 解冻后**按行迁移核对**；每行都是实测 / 只读证据，不是推测。
 
-### 15.1 同一能力在三线的落点差异
+### 15.1 同一能力在各线的落点差异
 
 | 能力 | `neoforge-1.21.1`（v121） | `forge-1.20.1`（v120） | `neoforge-26.1.2`（冻结，只登记） |
 |---|---|---|---|
@@ -1084,7 +1084,7 @@ for (Player ally : EventTargetCollector.collectTeamPlayers(triggerer)) {
 | 效果注册 id 集 | `effect/ModEffects.java` 的 `EFFECTS.register(` 命中 **34** 处 | 与 1.21.1 逐条镜像 | **32** 处 ⇒ 迁移前必须先核对 id 集（§11 第 2 项） |
 | 数据生成 | 单段 `runData`；物品模型由 `basicItem(...)` 生成到 `src/generated/resources/assets/.../models/item/` | 同 1.21.1（`forge-1.20.1/.../datagen/`），另有 reobf / `pushToDevRun` 产物差异（见 `AGENTS.md`） | **两段式** `runClientData` + `runServerData` + 双输出根（§11 第 4 项） |
 | 目标选择器基础设施 | `target/` 包（5 类）+ 库 `starenginelib/target/`，**两发布线一致** | 同左（`forge-1.20.1/.../target/` 5 类） | 需核对立牌门控分支与选择器 API（§11 第 7 项） |
-| 语言键同步单位 | 每子项目**自身** zh↔en 键集相等（`tools/check_lang_sync.ps1:418-430`，三线依次扫描 `:499`）⇒ **新增中英两键即可，不得为对齐去改被冻结的 26.1.2** | 同左 | 同左（解冻后随迁移一起补） |
+| 语言键同步单位 | 每子项目**自身** zh↔en 键集相等（`tools/check_lang_sync.ps1:418-430`，各线依次扫描 `:499`）⇒ **新增中英两键即可，不得为对齐去改被冻结的 26.1.2** | 同左 | 同左（解冻后随迁移一起补） |
 
 ### 15.2 行号基准（**读本文件任何 `文件:行号` 之前必读**）
 

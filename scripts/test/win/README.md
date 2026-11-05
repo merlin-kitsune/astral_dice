@@ -34,7 +34,7 @@ scripts/test/win/
 | `cmd //c start "" /B cmd /c "…"` 在本机**阻塞**（6s 超时仍未返回） | `launch.sh` 默认 `--launch-mode bg`（bash 后台 + `cmd //c gradlew.bat`，可拿 PID）；`start` 只是保留的备选 |
 | `taskkill //PID …` 的**退出码不可靠**（找不到进程也常返回 0，且输出是 GBK 乱码） | 收停**一律用 CIM 复核**判定残留，不采信 taskkill 的 rc |
 | 全仓只有一个 Gradle 并发位，daemon JVM **必须 ≥ 21** | `launch.sh` 找不到 ≥21 的 JDK 就 `LAUNCH: BLOCKED`(11)，绝不用 17 硬起 |
-| `run/1.20.1/mods`、`run/fabric-1.20.1/mods` 里实际躺着 `AutoJS-*.jar` | 2026-11-01 用户裁决：AutoJS 就绪判据**放宽至所有版本**，按「本线 `run/<版本>/mods` 里 `AutoJS-*.jar` 是否在位」判定（四线实测都在位 ⇒ 四线全部纳入 AutoJS 主判据；无 jar 的线自动退回日志 marker） |
+| `run/1.20.1/mods`、`run/fabric-1.20.1/mods` 里实际躺着 `AutoJS-*.jar` | 2026-11-01 用户裁决：AutoJS 就绪判据**放宽至所有版本**，按「本线 `run/<版本>/mods` 里 `AutoJS-*.jar` 是否在位」判定（各线实测都在位 ⇒ 各线全部纳入 AutoJS 主判据；无 jar 的线自动退回日志 marker） |
 | bash 在本机会话里对 `scripts/test/**`、`run/**` 的写入可能被 ACL/沙箱拒 | `env.sh` 的 `write_targets` 会 WARN；`launch.sh` 建不了日志目录就直接 `ERROR`(2) 明说，不静默降级 |
 
 ---
@@ -112,7 +112,7 @@ bash scripts/test/win/mt.sh --version 1.21.1 --phase build --dry-run   # 只看�
 bash scripts/test/win/mt.sh --version 26.1.2 --phase launch
 bash scripts/test/win/mt.sh --version 1.21.1 --phase cases --case scripts/test/cases/X-1.21.1.json
 bash scripts/test/win/mt.sh --version 1.21.1 --phase stop --purge-saves
-bash scripts/test/win/mt.sh --allow-auto          # 全流程（四线顺序 + 1.21.1 门控）
+bash scripts/test/win/mt.sh --allow-auto          # 全流程（各线顺序 + 1.21.1 门控）
 
 # 1) 只读体检（随时可跑；不碰进程、不写文件）
 bash scripts/test/win/env.sh
@@ -127,13 +127,13 @@ bash scripts/test/win/launch.sh --version 26.1.2 --timeout 900 --wait-world 120
 bash scripts/test/win/launch.sh --version 1.20.1 --no-quickplay    # 停标题画面，只等 marker
 
 # 4) 收停 / 清场
-bash scripts/test/win/stop.sh --dry-run                  # 缺省 = 四线全扫，只报告
+bash scripts/test/win/stop.sh --dry-run                  # 缺省 = 各线全扫，只报告
 bash scripts/test/win/stop.sh --version 1.21.1
 bash scripts/test/win/stop.sh --all --purge-saves        # 收停 + 清测试世界存档
 bash scripts/test/win/stop.sh --version 26.1.2 --stop-daemon
 ```
 
-线路映射（四线齐全；`Mt.Paths.psm1` 的 `$VERSIONS` 目前只有三条，本目录补齐 fabric）：
+线路映射（各线齐全；`Mt.Paths.psm1` 的 `$VERSIONS` 目前只有三条，本目录补齐 fabric）：
 
 | `--version` | Gradle 子项目 | 加载器 | toolchain | AutoJS 就绪判据 |
 |---|---|---|---|---|
@@ -162,9 +162,9 @@ bash scripts/test/win/stop.sh --version 26.1.2 --stop-daemon
    在 `result.content[].text` 的 JSON 里找 `sides[]`，要求 `side=="client"` 且 `available==true`。
 2. **兜底（日志 marker）**：`1.21.1 / 1.20.1 / fabric-1.20.1` = `Total time to load game and open world was`；
    `26.1.2` = `logged in with entity id` 且 `Loaded <N> advancements`。
-   兜底恒可用（`marker_fallback=1`）。AutoJS 为主判据时，marker 只有在端点**从头到尾没响应**（`health_seen=0`）时才允许提前收工；端点有响应就继续等 `status(client available=true)`——否则放宽规则反而会制造「四线一律 READY-by-marker」的假绿。
+   兜底恒可用（`marker_fallback=1`）。AutoJS 为主判据时，marker 只有在端点**从头到尾没响应**（`health_seen=0`）时才允许提前收工；端点有响应就继续等 `status(client available=true)`——否则放宽规则反而会制造「各线一律 READY-by-marker」的假绿。
 3. **世界就绪**：marker 命中 → 另打 `LAUNCH: WORLD_READY`。Windows 侧默认带
-   `-Pquickplay=testworld`（build.gradle 四线已配置），所以正常情况下两者会一起出现。
+   `-Pquickplay=testworld`（build.gradle 各线已配置），所以正常情况下两者会一起出现。
 
 ## 7. 执行器构成（2026-11-02：全 bash + python，pwsh 资产已退役）
 
@@ -217,10 +217,10 @@ bash scripts/test/win/stop.sh --version 26.1.2 --stop-daemon
 
 ## 10. 1.20.1 Fabric 线（双 run 目录 + RCON 通道）
 
-fabric 线与前三线有**两处结构差异**，用法据此分叉：
+fabric 线与其余各线有**两处结构差异**，用法据此分叉：
 
-1. **run 目录是双份**：`fabric-1.20.1/run/client` 与 `fabric-1.20.1/run/server`（前三线是单目录 `run/<版本>`）。
-   ⇒ 必须用 `--side client|server` 指定一侧；不带时默认 `client`。其它三线传 `--side` 会被明确拒绝（`exit 2`）。
+1. **run 目录是双份**：`fabric-1.20.1/run/client` 与 `fabric-1.20.1/run/server`（其余各线是单目录 `run/<版本>`）。
+   ⇒ 必须用 `--side client|server` 指定一侧；不带时默认 `client`。其它各线传 `--side` 会被明确拒绝（`exit 2`）。
 2. **AutoJS 是条件依赖**：`fabric-1.20.1/build.gradle:182-190` 只在 `-PautojsTestMod=1` 时挂 `modRuntimeOnly`。
    ⇒ launch **默认不带**该开关；显式加 `--enable-autojs`（或环境变量 `MT_FAB_AUTOJS=1`）才会追加 `-PautojsTestMod=1`。
    未开启时注入/读数回退 **RCON**（`127.0.0.1:25575`，密码 `astralft`，见 `fabric-1.20.1/run/server/server.properties`），

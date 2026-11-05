@@ -12,7 +12,7 @@
 | native 启动通道 | 不重写 user32；改走 AutoJS 通道（能力走 HTTP，不走窗口注入） | 用户「全删」口径 |
 | 机器行 | `MT_CASE_RESULT: <case> = PASS|FAIL|ERROR|BLOCKED|TIMEOUT` 与退出码 0/1/2/11/12 **逐字不变** | 迁移纪律 |
 | 能力缺失 | 一律 BLOCKED(11)，**不得**假绿 | 迁移纪律 |
-| 版本 | 四线已 bump 到 `26.4-SNAPSHOT.6` | 用户 m00426 |
+| 版本 | 各线已 bump 到 `26.4-SNAPSHOT.6` | 用户 m00426 |
 
 ## 2 共享契约（迁移时必须逐字对齐）
 
@@ -114,7 +114,7 @@ pwsh 侧定义：`scripts/test/lib/Mt.Phase.psm1:29-36`；bash 侧同名常量�
 
 ## 9. 实机回归（2026-11-02 深夜）暴露并修掉的五个测试台缺陷
 
-首轮「全线快速实机」按新 bash 流程跑，四线各暴露一类**测试台自身**问题（非产品缺陷），逐条落盘：
+首轮「全线快速实机」按新 bash 流程跑，各线各暴露一类**测试台自身**问题（非产品缺陷），逐条落盘：
 
 | # | 症状 | 根因 | 修法 |
 |---|---|---|---|
@@ -126,7 +126,7 @@ pwsh 侧定义：`scripts/test/lib/Mt.Phase.psm1:29-36`；bash 侧同名常量�
 
 **操作提示**：`run/` 与 `fabric-1.20.1/run/` 都在 `.gitignore` 里，上述第 5 条的产物不随仓库走 ⇒ 换机器 / 清缓存后要重新 `--apply`。
 
-## 10 fabric-1.20.1 测试环境与另三线对齐（Sodium + Iris + 光影，2026-11-03）
+## 10 fabric-1.20.1 测试环境与其余各线对齐（Sodium + Iris + 光影，2026-11-03）
 
 **用户口径**（m02714）：「为 fabric 1.20.1 补充测试环境缺失的模组（与其他线对齐，包括光影）」。
 
@@ -155,7 +155,7 @@ pwsh 侧定义：`scripts/test/lib/Mt.Phase.psm1:29-36`；bash 侧同名常量�
    —— `python tools/fetch_shaderpacks.py --run-dir fabric-1.20.1/run/client`，
    校验 zip 内含 `shaders/`、已存在即幂等秒退；机器行 `SHADERPACK: OK|NEED|FAIL` +
    `SHADERPACK_RESULT: OK|FAIL`。下载源 = Modrinth project `HVnmMxH1`（Complementary
-   Shaders - Reimagined）version `Bqen1mJX` = r5.9.3，**实测 553,397 B 且 sha256 与既有三线文件全等**
+   Shaders - Reimagined）version `Bqen1mJX` = r5.9.3，**实测 553,397 B 且 sha256 与既有各线文件全等**
    （`fed6c879e732cf7f…`）。
 4. `fabric-1.20.1/run/client/config/iris.properties`：`enableShaders=true`、
    `shaderPack=ComplementaryReimagined_r5.9.3.zip`、`maxShadowRenderDistance=32`、`colorSpace=SRGB`
@@ -180,7 +180,7 @@ pwsh 侧定义：`scripts/test/lib/Mt.Phase.psm1:29-36`；bash 侧同名常量�
   自定义 uniform 在 Iris 1.7.6 下的已知静默降级，不影响管线建立）。
 - 用例回归（带渲染栈）：`BOOT-READY-fabric-1.20.1` = **PASS**、`JAR-ASSETS-fabric-1.20.1` = **PASS**
   （`jar=astral_dice-26.4-SNAPSHOT.6+fabric_1.20.1.jar models=158 recipes=125 embed=0`）。
-- 收停：`MT_STOP: OK (0s)`，四线范围无残留 java。
+- 收停：`MT_STOP: OK (0s)`，各线范围无残留 java。
 
 ### 10.5 换机 / 清缓存后的最小重建顺序
 
@@ -256,7 +256,7 @@ Indium（用户点名要求的 Sodium ↔ Fabric Rendering API 兼容层）**本
 
 ### 11.5 验收读数（2026-11-03 13:43–13:46 实跑）
 
-- 世界：`python temp/p0/world_gen_probe.py` ⇒ 四线全 FLAT，`WORLD_GEN_PROBE_RESULT: OK`（fabric 由 NOISE 转 FLAT）。
+- 世界：`python temp/p0/world_gen_probe.py` ⇒ 各线全 FLAT，`WORLD_GEN_PROBE_RESULT: OK`（fabric 由 NOISE 转 FLAT）。
 - 启动：`bash scripts/test/win/launch.sh --version fabric-1.20.1 --side client --quickplay testworld --enable-autojs`
   ⇒ `LAUNCH: READY` + `LAUNCH: WORLD_READY`（AutoJS client available=true，game_pid=22024）。
 - mod 清单：`Loading 104 mods`，其中 `carpet 1.4.112+v230608` / `carpet-fixes 1.20-1.16.1` /
@@ -264,9 +264,9 @@ Indium（用户点名要求的 Sodium ↔ Fabric Rendering API 兼容层）**本
   （仅剩 EMI/REI/amecs 之类**未安装**的可选 mixin 目标 ClassNotFound 警告，属正常）。
 - 用例：`BOOT-READY-fabric-1.20.1 = OK`、`JAR-ASSETS-fabric-1.20.1 = OK`（注意 `--case` 要传**完整相对路径**，
   只传用例名会被当文件名 ⇒ `No such file or directory`）。
-- 收停：`WIN_STOP: OK — 四线范围内无本 repo 的 Minecraft 客户端`。
+- 收停：`WIN_STOP: OK — 各线范围内无本 repo 的 Minecraft 客户端`。
 
-## 12 四线 AutoJS / KubeJS / 测试台 mod 全量追新（2026-11-03 夜，全部实机验证）
+## 12 各线 AutoJS / KubeJS / 测试台 mod 全量追新（2026-11-03 夜，全部实机验证）
 
 用户裁决（原话）：「先更新所有测试台AutoJS、KubeJS版本」；「测试台其他mod，除26.1.2的sodium保持0.9.2版本外，其他所有mod（包括sodium）都更新到最新公开版本」。
 
@@ -280,7 +280,7 @@ Indium（用户点名要求的 Sodium ↔ Fabric Rendering API 兼容层）**本
 | fabric-1.20.1 | JEI `pQiaGCAN` → `bTwbXhIB`（15.74.0.234，`fabric.mod.json` 的 jei 区间同步 `>=15.74.0`）；collective → `w5c5YvXl`；yacl `CgwTUAR2` → `dvS5DjUA`（3.6.6）；accessories `A7wwzJ0e` → `mee7rWXz`（beta.49，**解除原「1.20.1 已停更」钉死**）；puzzles-lib `N8gFdljq` → `QSW0oJPl`（8.1.36） |
 
 **JEI 的新硬前置 mezz_config**：19.70 / 15.74 / 29.53 三个变体的 `mods.toml` / `neoforge.mods.toml` 都写了
-`mezz_config [0.6.10,1.0.0) required`，缺失即 Loader 硬拒 ⇒ 三条线各补一个 `mezzconfig` 引脚
+`mezz_config [0.6.10,1.0.0) required`，缺失即 Loader 硬拒 ⇒ 各线各补一个 `mezzconfig` 引脚
 （1.20.1-fabric 原本就有 `mezzconfig:0.6.10`，未动）。
 **26.1.2 的 sodium 保持 0.9.2**（用户点名），其余 sodium（1.21.1 = 0.8.13、fabric = 0.5.13）本身已是最新。
 
@@ -328,7 +328,7 @@ Indium（用户点名要求的 Sodium ↔ Fabric Rendering API 兼容层）**本
    服务端/客户端读控制器走 `e.getAnimatableInstanceCache().getManagerForId(id).getAnimationControllers()`（v4 API）。
 4. **`Java.loadClass('int')` 不合法**（Class could not be found）——反射取原语参数时别这么写。
 
-### 12.5 验收读数（2026-11-03 20:37–20:55，四线各一次实机）
+### 12.5 验收读数（2026-11-03 20:37–20:55，各线各一次实机）
 
 | 线 | 读数（`ModList` / `FabricLoader` 实读） |
 |---|---|
@@ -342,15 +342,15 @@ Indium（用户点名要求的 Sodium ↔ Fabric Rendering API 兼容层）**本
 - 1.20.1 forge：client `action = TRANSITIONING | trig=true`；截图 `run/1.20.1/screenshots/2026-11-03_20.50.51.png`。
 - fabric-1.20.1：client `idle RUNNING animation.tentacleidle` / `action RUNNING animation.tentacleattack trig=true`；
   截图 `fabric-1.20.1/run/client/screenshots/2026-11-03_20.54.27.png`。
-- 四线 `python scripts/test/mt_preflight.py --version <线>` ⇒ `MT_PREFLIGHT: OK — 9 项全部满足`。
+- 各线 `python scripts/test/mt_preflight.py --version <线>` ⇒ `MT_PREFLIGHT: OK — 9 项全部满足`。
 
 ### 12.6 未做 / 待裁决
 
 - `starengine` 四平台仍是 `26.4-SNAPSHOT.1`（本轮未动库）。
-- 本轮所有改动（四线 pin、AutoJS 工具与 vendor jar、`tools/loom_embedded_jars.py` 投放物）**未 commit / 未 push**。
+- 本轮所有改动（各线 pin、AutoJS 工具与 vendor jar、`tools/loom_embedded_jars.py` 投放物）**未 commit / 未 push**。
 - fabric-1.21.1 线按用户指示继续搁置。
 
-## 13 options.txt 的两个致命缺省（2026-11-05，fabric-1.21.1 首启踩出，五线通用）
+## 13 options.txt 的两个致命缺省（2026-11-05，fabric-1.21.1 首启踩出，各线通用）
 
 测试台会给 `run/<线>/options.txt` 做三件事：强制窗口、禁失焦暂停、把潜行/冲刺绑定改回期望值。三个写入函数都在「文件不存在或只有几行」时会**新建一个空壳文件**（`_read_lines(path) or []` 之后追加），于是踩出两个坑：
 

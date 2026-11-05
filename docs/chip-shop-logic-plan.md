@@ -1,7 +1,7 @@
 # 筹码商店买卖逻辑 · 设计计划表 v2（已按裁决更新 · 待开工确认）
 
 > **状态：设计已定稿冻结，暂不开工**（2026-10-12 用户原话：「不需要画标题，先纪录，暂时不开工」）。Q1–Q17 已**全部裁决完毕**（逐条见 §11，无残余项）；本表为最终方案，**开工令由用户下达**，届时按 §12 实施。
-> 实现范围 = 两 P0 线 `neoforge-1.21.1` + `forge-1.20.1`（同批同号）；提交时随实现升版（四线同号，两份 CHANGELOG；实现批以其时最新号为准继续递增）。
+> 实现范围 = 两 P0 线 `neoforge-1.21.1` + `forge-1.20.1`（同批同号）；提交时随实现升版（各线同号，两份 CHANGELOG；实现批以其时最新号为准继续递增）。
 > 上游文档：`docs/chip-shop-ui-spec.md`（界面骨架，.86 已落地）；本批的模板来源 = 卡牌商店（`shop/CardShopCatalog.java`、`shop/CardShopShelf.java`、`shop/CardShopMenu.java`、`shop/CardShopCycleTicker.java`、`network/CardShopBuyPayload.java`、`client/CardShopClientState.java`）——**架构照抄，只在「候选抽取 / 价格曲线 / 刷新恢复 / 候选落盘 / 方块入口」上新增**。
 > 界面骨架现状（.86，本批不改）：`screen/ChipShopScreen.java`、`client/ChipShopClientState.java`、`shop/ChipShopMenu.java`；绘制坐标与冻结常量一律不动（`docs/chip-shop-ui-spec.md` §3）。
 
@@ -295,6 +295,6 @@ roll(player, reason):                     # reason = ENTER_FIRST | REFRESH | POS
 | T7 | `forge-1.20.1` 同批移植（逐文件，按 §10 差异改写） | `forge-1.20.1/**` 对应路径 | T1–T6 |
 
 - 派发纪律（2026-10-12 新流程）：**T1–T6 由主 Agent 亲自编写**（基准线 `neoforge-1.21.1`）→ `code_review` 一次性独立会话复核 → 修完后**派子代理做独立功能审查**（`:<线>:classes` 编译 / 守门脚本 / 与需求逐字对账）→ **确认无误后**才派子代理做 **T7 `forge-1.20.1` 移植** → 移植线再 `code_review` + **另派一个独立子代理**功能审查。子代理单任务、用完即弃（硬规则第 1 条），优先派 DeepSeek；复核/审查发现的问题交**新**子代理改进（连续 3 次不到位 ⇒ 主 Agent 亲自重写）。
-- 收尾：`:<线>:classes` 编译 + 守门 + `verify_resource_integrity` + 两份 CHANGELOG + 四线版本随批递增 + 本地提交（不 push）；实机按第 5 条等你下达。
+- 收尾：`:<线>:classes` 编译 + 守门 + `verify_resource_integrity` + 两份 CHANGELOG + 各线版本随批递增 + 本地提交（不 push）；实机按第 5 条等你下达。
 
 > 审核方式：Q1–Q17 **已全部裁决并落定在本表；本表冻结待开工令**（用户 2026-10-12：「暂时不开工」）。开工时按 §12：T1–T6 由主 Agent 亲自编写基准线 → `code_review` → 独立子代理功能审查 → 确认无误后派子代理移植 `forge-1.20.1` → 再 `code_review` + 另一个独立子代理功能审查。

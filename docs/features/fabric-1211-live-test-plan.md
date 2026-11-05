@@ -9,7 +9,7 @@
 |---|---|---|
 | 产物 | `fabric-1.21.1/build/libs/astral_dice-26.4-SNAPSHOT.6+fabric_1.21.1.jar` = 2,994,223 B / 2331 条目 / 809 class | 不动 |
 | 客户端 | **已跑通**（2026-11-05 12:59 首启、13:48 回退版复验、18:36 本轮 L0 取证）：超平坦世界、85 mods、iris 1.8.8 光影生效、截图三张（§10.2 / §12.3） | 阶段 B 只差用例化（L0 已补，见 §13） |
-| 测试台 | **不具备跑第五线的能力**（版本表四线、fabric 车道常量写死 1.20.1、`mt_env.py` 无 fabric 分支） | **阶段 A：本阶段唯一目标 = 让它可用** |
+| 测试台 | **不具备跑 `fabric-1.21.1` 的能力**（版本表未含 `fabric-1.21.1`、fabric 车道常量写死 1.20.1、`mt_env.py` 无 fabric 分支） | **阶段 A：本阶段唯一目标 = 让它可用** |
 | 饰品后端 | 代码里同时有 Trinkets / Accessories 双后端（11 文件 / 122 处引用） | **只保 Trinkets**；Accessories + ACL 进黑名单（§2） |
 | 用例 | **L0 三条已落盘并实跑 PASS**（2026-11-05，§13）；其余 26 条为 0 | **3 / 29**；L1–L5 + 专属按手写 autojs 重写（§5） |
 | 实机 | 阶段 B 的启动与 L0 已执行（用户已放行首启与用例跑动） | 阶段 C 的 L1–L5 仍等放行 |
@@ -59,7 +59,7 @@
 
 | # | 文件 | 现状 | 要做的事 |
 |---|---|---|---|
-| B1 | `scripts/test/lib/mt_paths.py` | `:26` 四线 VERSIONS；`:118` fabric 分侧 run 目录判断 | 增 `fabric-1.21.1`；fabric 侧判定改「以 `fabric-` 开头」 |
+| B1 | `scripts/test/lib/mt_paths.py` | `:26` VERSIONS 未含 `fabric-1.21.1`；`:118` fabric 分侧 run 目录判断 | 增 `fabric-1.21.1`；fabric 侧判定改「以 `fabric-` 开头」 |
 | B2 | `scripts/test/lib/mt_compat.py` | `:49,54-62` 版本表/子项目映射；`:69` fabric 组；`:175,189,195,242` 分支；`:748-788` 进程判据 | 同上；进程判据已按 `fabric.dli.env` 判侧，保持通用 |
 | B3 | `scripts/test/lib/mt_ps.py` | `:49-62` VERSIONS；`:62` `_MARKER_ORDER` | 增线；**`fabric-1.21.1` 必须排在 `1.21.1` 之前**（子串陷阱） |
 | B4 | `scripts/test/win/lib/common.sh` | `:26` 版本列表；`:38-62` 版本→子项目/run 目录 | 增线；fabric 判定改前缀 |
@@ -69,18 +69,18 @@
 | B8 | `scripts/test/win/launch.sh` | `:210-227` AutoJS artifact 名写死 + 重复即 BLOCKED | 按版本拼 artifact 名；判据保留 |
 | B9 | `scripts/test/win/env.sh` | `:163-300` fabric 双 run 目录 + RCON | 前缀判定；RCON 段只对真有 RCON 的线生效 |
 | B10 | `scripts/test/mt_env.py` | `:696-760` `cmd_mods` 无 fabric 分支；`:848` world fabric 判定等值 | 加 fabric 分支；world 判定改前缀 |
-| B11 | `scripts/test/mt_capture.py` | `:91` 用法串只列四线（功能侧早已按 `mt_paths.VERSIONS` 工作）；`:249-251` 窗口标题回落 | 增线；`fabric-1.21.1` 回落成 `1.21.1`；**用法串已于 2026-11-05 补齐第五线**（提示文字，非功能） |
-| B12 | `tools/check_lang_sync.py` | `:26` 只认四线 | 增第五线 |
+| B11 | `scripts/test/mt_capture.py` | `:91` 用法串未列 `fabric-1.21.1`（功能侧早已按 `mt_paths.VERSIONS` 工作）；`:249-251` 窗口标题回落 | 增线；`fabric-1.21.1` 回落成 `1.21.1`；**用法串已于 2026-11-05 补齐 `fabric-1.21.1`**（提示文字，非功能） |
+| B12 | `tools/check_lang_sync.py` | `:26` 未认 `fabric-1.21.1` | 增 `fabric-1.21.1` |
 | B13 | `tools/fetch_shaderpacks.py` | `:40-45` `RUN_DIRS` | 增 `fabric-1.21.1/run/client` |
 | B14 | `tools/verify_fabric_assets.py` | `:140-147` 写死读 1.20.1；`:179-187` 版本不符**静默降级扫源码** | 按 `--subproject` 参数化；版本不符必须 **FAIL** |
-| B15 | `tools/verify_sign_display_names.py` | `:18` 只三线（连 26.1.2 都没） | 补第五线或显式声明不适用并写原因 |
+| B15 | `tools/verify_sign_display_names.py` | `:18` 未含 `neoforge-26.1.2` / `fabric-1.21.1`（连 26.1.2 都没） | 补 `fabric-1.21.1` 或显式声明不适用并写原因 |
 
 **阶段 A 完成判据**：
 1. `mt.sh --version fabric-1.21.1` 的版本解析不抛 `KeyError`；
 2. `python scripts/test/mt_preflight.py --version fabric-1.21.1` ⇒ 9 项全满足（不要求启动游戏）；
-3. 四线回归：`mt_preflight.py --version <四线>` 仍全 OK（证明参数化没打坏老线）；
+3. 各线回归：`mt_preflight.py --version <线>` 仍全 OK（证明参数化没打坏老线）；
 4. `verify_fabric_assets.py --subproject fabric-1.21.1 --jar <产物>` ⇒ PASS 且输出**不含**「改为扫描源码资源目录」；
-5. 五线 `check_lang_sync.py` / `check_changelog_parity.py` / `verify_sign_display_names.py` 全绿。
+5. 各线 `check_lang_sync.py` / `check_changelog_parity.py` / `verify_sign_display_names.py` 全绿。
 
 ## §4 运行期环境（E1–E10）
 
@@ -135,15 +135,15 @@ v1 的 `ACCESSORIES-ONLY` / `DUAL-BACKEND` 两条**删除**（后端只剩一个
 
 | 阶段 | 内容 | 出口判据 | 预算 |
 |---|---|---|---|
-| **A 测试台可用** | B1–B15 + E1 mod 装配接线 + §2 的 Trinkets-only 代码改动 + 五线构建 | §3 五条判据全绿；`./gradlew build -x test` BUILD SUCCESSFUL | 3–5h |
+| **A 测试台可用** | B1–B15 + E1 mod 装配接线 + §2 的 Trinkets-only 代码改动 + 各线构建 | §3 五条判据全绿；`./gradlew build -x test` BUILD SUCCESSFUL | 3–5h |
 | B 首启与 L0 | `runClient` 首启、世界就绪、L0 三条 | 3 条 PASS、日志无 `astral_dice` 帧异常 | 40–60min |
-| C 用例扩面 | L1–L5 + 专属 + 另四线回归 | 29 条按批次 PASS；四线回归不退化 | 3–4h |
+| C 用例扩面 | L1–L5 + 专属 + 其余各线回归 | 29 条按批次 PASS；各线回归不退化 | 3–4h |
 
 全程串行（25585 / 25565 互斥），每轮结束 `bash scripts/test/win/mt.sh --version <线> --phase stop --purge-saves`。
 
 ## §7 风险
 - R1–R12（v1 保留）：进程判据、AutoJS 双份、LWJGL 钉版、分侧目录、端口互斥、世界锁、光影包、Loom 内嵌件、门禁假绿、用例 glob、日志路径、收停残留。
-- **R13 参数化打坏老线**：前缀判定可能让老线匹配变宽。判据 = 阶段 A 第 3 条（四线 preflight 回归）。
+- **R13 参数化打坏老线**：前缀判定可能让老线匹配变宽。判据 = 阶段 A 第 3 条（各线 preflight 回归）。
 - **R14 删 Accessories 时残留引用**：11 文件 122 处，删漏一处即编译失败或运行期 `NoClassDefFoundError`。判据 = `grep -rn accessories fabric-1.21.1/src` 命中 0 + `compileJava` 非 UP-TO-DATE。
 
 ## §8 记录位置
@@ -180,7 +180,7 @@ v1 的 `ACCESSORIES-ONLY` / `DUAL-BACKEND` 两条**删除**（后端只剩一个
 | 本模组 | `AP_FAB_ACCESSORY_PROVIDER: OK (trinkets=true accessories=false acl=false)`、`AP_FAB_ATTACHMENTS: 附件键已注册 119 个`、`Astral Dice mod loaded.`、Jade 插件加载成功 |
 | 实体与动画 | client 侧 `sendCommand("summon astral_dice:sykestentacle")` ⇒ 实体渲染正常（GeckoLib 动画姿态 + 地面装饰贴图）；截图 `fabric-1.21.1/run/client/screenshots/2026-11-05_13.00.28.png` |
 | 测试台 | `MT_PREFLIGHT: OK — 9 项全部满足（fabric-1.21.1）`；`MT_DEBUG: pause-lock=on / keybinds=OK / shaders=enableShaders=true`；`MT_CAPTURE: OK`（`--mode f2`） |
-| 收停 | `WIN_STOP: OK — 四线范围内无本 repo 的 Minecraft 客户端` |
+| 收停 | `WIN_STOP: OK — 各线范围内无本 repo 的 Minecraft 客户端` |
 
 ### 10.3 仍未收口的点
 1. **`--mode window` 对 GL 窗口只能抓到白屏**（`PrintWindow` 拿不到 OpenGL 后缓冲）⇒ fabric 线视觉取证一律用 `--mode f2`（游戏内 F2 落盘 + `.mt_shots.json` 世代映射）。
@@ -478,7 +478,7 @@ ItemEntityEvents.TOUCH.register((player, itemEntity) -> {
 | 原条目 | 订正 |
 |---|---|
 | 14.5-1 玩家侧骰子闪避整体关闭 | **有意为之**（用户裁决），不是缺陷，保留 `PLAYER_DODGE_ENABLED = false` |
-| 14.5-2 「无 firewall 类」 | 措辞错误：三线实现同构，都在 `NancyLuSignItem`（`ENDER_PEARL_IMMUNE_TICKS = 20`），`grep -rn 'Firewall' */src` = 0 命中属正常 |
+| 14.5-2 「无 firewall 类」 | 措辞错误：各线实现同构，都在 `NancyLuSignItem`（`ENDER_PEARL_IMMUNE_TICKS = 20`），`grep -rn 'Firewall' */src` = 0 命中属正常 |
 | 14.5-3 `CardItem` 无 `use()` | **设计如此**：卡牌靠骰子卡槽在战斗结算里消耗；右键把卡插进空骰子槽属正常路径（用户裁决） |
 | 14.5-4 拾取桥通知式、可能双份 | **已关闭并修复**（15.1）：真实表现是「不入账」，不是「刷钱」；换 TOUCH 接线后入账 3、背包 0 |
 | 14.5-5 / 14.5-6 | 用户裁决「先不动」，保留登记 |

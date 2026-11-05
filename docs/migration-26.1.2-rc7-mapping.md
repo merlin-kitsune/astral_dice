@@ -802,7 +802,7 @@ grep -c "Couldn't parse data file" temp/server-2612b.log
 ### 17.4 验证方式（可复用）
 
 - 静态：`python3` 脚本对两线做文件集/方法集/注册表/资源比对（本次临时脚本思路见本节表格口径）。
-- 门禁：`:neoforge-26.1.2:compileJava` EXIT=0；`tools/check_lang_sync.py` 四线 OK（26.1.2 en_us=1094）；`docs/agent/verify-split.py` 全部通过。
+- 门禁：`:neoforge-26.1.2:compileJava` EXIT=0；`tools/check_lang_sync.py` 各线 OK（26.1.2 en_us=1094）；`docs/agent/verify-split.py` 全部通过。
 - 运行时：**改了 mixin 必须重启客户端看日志**——`grep "Mixin apply for mod astral_dice failed"` ≠ 0 就是启动期注入失败；本次正是靠这条抓到了 SignTranslucencyMixin 的问题。
 - 启动环境：`XAUTHORITY` 取自 `pgrep -af Xwayland | sed -n 's/.*-auth \([^ ]*\).*/\1/p'`（**每次登录都会变**，写死会导致 `glfwInit failed`）。
 
