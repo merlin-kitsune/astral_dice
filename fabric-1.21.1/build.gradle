@@ -106,13 +106,22 @@ dependencies {
         modRuntimeOnly "maven.modrinth:rhino:${rhino_mr_version}"
     }
 
-    // ── 测试台运行期 mod(2026-11-05 用户裁决的 12 项) ──────────────────────
+    // ── 测试台运行期 mod(2026-11-05 用户裁决 12 项 + 同日补充) ────────────────
     // jade / puzzles-lib / forge-config-api-port 已在上方按运行期钉版接入;
     // 这里补齐渲染栈、性能与 JEI(含它的 required 依赖 mezz-config)。
-    // 1.21.1 不再需要 indium;carpet / debugify / yacl / modmenu 不在裁决表内。
+    // 2026-11-05 补充:modmenu(测试环境查看已装模组)+ 它的 required 依赖 cloth-config;
+    //   sodium / iris 按用户要求回到 1.21.1 最新公开版(sodium 0.8.13 / iris 1.8.14-beta.1)。
     if (providers.gradleProperty('testMods').orNull != 'false') {
         modRuntimeOnly "maven.modrinth:sodium:${sodium_mr_version}"
-        modRuntimeOnly "maven.modrinth:iris:${iris_mr_version}"
+        // iris 单独一档开关:1.8.14-beta.1 的 MixinLevelRenderer 用**无描述符**的中间名引用
+        // (@At target 只有 Lnet/minecraft/class_761;method_22714),dev 映射下 Mixin 解析
+        // @ModifyArg 时 target 描述符为 null ⇒ NullPointerException 直接把客户端打死。
+        // 生产环境用同一份 jar 没问题(那时不做 intermediary→named 重映射),所以这是
+        // **dev 环境限定**的上游缺陷。需要光影渲染取证时走生产形态,或临时
+        // -PtestIris=false 让测试台其余 11 项照常启动。
+        if (providers.gradleProperty('testIris').orNull != 'false') {
+            modRuntimeOnly "maven.modrinth:iris:${iris_mr_version}"
+        }
         modRuntimeOnly "maven.modrinth:immediatelyfast:${immediatelyfast_mr_version}"
         modRuntimeOnly "maven.modrinth:lithium:${lithium_mr_version}"
         modRuntimeOnly "maven.modrinth:ferrite-core:${ferritecore_mr_version}"
@@ -121,6 +130,8 @@ dependencies {
         modRuntimeOnly "maven.modrinth:modernfix:${modernfix_mr_version}"
         modRuntimeOnly "maven.modrinth:jei:${jei_mr_version}"
         modRuntimeOnly "maven.modrinth:mezzconfig:${mezzconfig_mr_version}"
+        modRuntimeOnly "maven.modrinth:modmenu:${modmenu_mr_version}"
+        modRuntimeOnly "maven.modrinth:cloth-config:${clothconfig_mr_version}"
     }
 }
 

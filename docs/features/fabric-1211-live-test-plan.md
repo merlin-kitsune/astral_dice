@@ -186,3 +186,99 @@ v1 的 `ACCESSORIES-ONLY` / `DUAL-BACKEND` 两条**删除**（后端只剩一个
 2. **用例文件仍为 0**：`scripts/test/cases/*-fabric-1.21.1.json` 尚未编写，阶段 C 的 29 条待写。
 3. `MT_CAPTURE` 打出的 run_id 沿用旧世代（`20260921-191522`），不影响 F2 实际落盘路径，但阶段 C 前应核一次 `.mt_active_run` 的生成逻辑。
 
+
+## §11 sodium / iris 升到最新 + modmenu 接入（2026-11-05 13:38，用户裁决）
+
+### 11.1 用户原话与解释
+
+> 需要在fabric环境中补充modmenu模组（以用于验证测试环境下mod安装情况）。另外fabric-1.21.1的sodium版本不是0.8.13，iris不是1.8.14-beta。需要将这2个mod更新到最新版本
+
+即：把 §10.1-3 里为绕开 dev 崩溃而临时降下来的 **sodium 0.6.13 / iris 1.8.8** 升回 1.21.1 的 Modrinth 最新公开版，并新增 modmenu（含其硬依赖 cloth-config）。
+
+### 11.2 钉版（Modrinth 实读，经代理 127.0.0.1:7897）
+
+| mod | 版本 | version id | 说明 |
+|---|---|---|---|
+| sodium | `mc1.21.1-0.8.13-fabric` | `SMxNOGZ6` | 2026-08-28 release，1.21.1 fabric 最新 |
+| iris | `1.8.14-beta.1+1.21.1-fabric` | `bAo1Qhte` | Modrinth version_type=release；required 依赖 sodium |
+| modmenu | `11.0.5` | `6lgOkclV` | required 依赖 fabric-api + cloth-config |
+| cloth-config | `15.0.140+fabric` | `HpMb5wGb` | modmenu 硬依赖，必须同批装 |
+
+落点：`fabric-1.21.1/gradle.properties`（`sodium_*` / `iris_*` 改写，新增 `modmenu_*` / `clothconfig_*`）、`fabric-1.21.1/build.gradle` testMods 块（iris 单独一档 `testIris` 开关，其余九项 + modmenu + cloth-config 同组）。
+
+### 11.3 §10.1 第 3 条已被本节取代
+
+`iris 1.8.8 + sodium 0.6.13` 不再是钉版组合；保留在 §10.1 只作历史。新的组合是「最新钉版 + dev 默认关 iris」（见 11.5）。
+
+### 11.4 iris 1.8.14-beta.1 在 Loom dev 下必崩（复现与取证）
+
+- 崩溃报告：`fabric-1.21.1/run/client/crash-reports/crash-2026-11-05_13.39.57-client.txt`
+- 链路：`Could not execute entrypoint stage 'client' … provided by 'sodium' at 'net.caffeinemc.mods.sodium.fabric.SodiumFabricMod'` → `ExceptionInInitializerError at net.fabricmc.fabric.api.renderer.v1.material.BlendMode.<clinit>` → `Mixin transformation of net.minecraft.client.renderer.LevelRenderer failed` → `MixinApplyError: Mixin [mixins.iris.json:MixinLevelRenderer from mod iris] … FAILED during APPLY` → `InvalidMixinException: Unexpected NullPointerException parsing @ModifyArg annotation on iris$writeRainAndSnowToDepthBuffer [INJECT_PREPARE_LEGACY … -> Parse -> Parse Selectors]`
+- 根因：iris jar 常量池 #436 = `Lnet/minecraft/class_761;method_22714`，**方法引用不带描述符**；dev 的 intermediary→named 重映射器在 desc=null 处 NPE。`iris.refmap.json` 本身完整（含 `Lnet/minecraft/client/renderer/LevelRenderer;renderSnowAndRain(Lcom/mojang/blaze3d/vertex/PoseStack;Lorg/joml/Matrix4f;Lorg/joml/Matrix4f;FDDD)V`）⇒ 是**注解侧缺描述符**，不可逆。
+- 判定：**dev 环境限定的上游缺陷**，与本模组无关；生产形态（jar 直装、无 dev 重映射）不受影响。可绕路径已排除：Loom 1.17.21 / Gradle 9.5.1 / mixin 0.8.7 均已是当前上限（抬 Loom 1.18.2 需 Gradle ≥9.7 + 构建 JVM 25，见移植计划 §6）。
+
+### 11.5 两道开关
+
+| 层 | 开关 | 默认 | 语义 |
+|---|---|---|---|
+| gradle | `fabric-1.21.1/build.gradle` testMods 块 `testIris` | 开（`!= 'false'` 即装） | 关掉即不把 iris 放进运行期 classpath |
+| 编排 | `scripts/test/win/launch.sh` 环境变量 `MT_TEST_IRIS` | **`false` ⇒ 追加 `-PtestIris=false`** | 只对 fabric 线生效；`MT_TEST_IRIS=true` 才带 iris；其它值报用法错误 exit 2 |
+
+设计意图：**钉版保持最新（用户要求），但 dev 测试台默认不装 iris**，否则每次 `launch.sh` 都会崩在 Mixin 应用阶段。需要复现光影/iris 侧问题时显式 `MT_TEST_IRIS=true`。
+
+### 11.6 验收读数（2026-11-05 13:41 与 13:43 两次启动，均走新开关默认值）
+
+- 第一次（手工 `MT_GRADLE_PRE_ARGS=-PtestIris=false`）：`LAUNCH: READY` + `LAUNCH: WORLD_READY`，`game_pid=171236`，日志 `scripts/test/win/logs/fabric-1.21.1-20261105-134152.log`。
+- 第二次（**不再手工传参**，验证 launch.sh 新默认）：命令行实读 `cmd //c gradlew.bat :fabric-1.21.1:runClient --console=plain -Pquickplay=testworld -PautojsTestMod=1 -PtestIris=false`，`LAUNCH: READY` + `LAUNCH: WORLD_READY`，`game_pid=172328`，日志 `scripts/test/win/logs/fabric-1.21.1-20261105-134329.log`。
+- 两轮 `Loading 84 mods:` 实测：**sodium 0.8.13+mc1.21.1**、**modmenu 11.0.5**、**cloth-config 15.0.140**、jei 19.56.0.441、trinkets 3.10.0、lithium 0.15.4+mc1.21.1、ferritecore 7.0.3、immediatelyfast 1.6.15+1.21.1、modernfix 5.25.1+mc1.21.1、collective 8.77、superflatworldnoslimes 3.7；iris 如期不在列表。
+- `InvalidMixinException|MixinApplyError|Failed to load` 命中 **0**；`Reference map 'astral_dice.refmap.json' … could not be read` 属 dev 常规告警。
+- AutoJS client：`FabricLoader.getInstance().getAllMods().size()` = **84**，`screen` = null（在世界内）。
+
+### 11.7 modmenu 用途验证（用户目的是「验证测试环境下 mod 安装情况」）
+
+- 用 AutoJS 客户端侧 SetScreen 打开 `com.terraformersmc.modmenu.gui.ModsScreen(null)`，`Minecraft.getInstance().screen` 回读为 `com.terraformersmc.modmenu.gui.ModsScreen@…`。
+- 截图：`fabric-1.21.1/run/client/screenshots/2026-11-05_13.44.08.png`（`MT_CAPTURE: OK`，mode=f2，attempt=1）。界面实测：标题「模组」、计数「当前显示 18 个模组和 14 个前置模组」、列表首项 `antlr4-runtime 前置 v4.13.1`、第二项 **Astral Dice**（描述为 Fabric 1.21.1 移植线文案）、其后 AutoJS / Cardinal Components API / Cloth Config v15 / Collective / core / Fabric API / Fabric Loader / FerriteCore / fiber / Forge Config API Port …，并显示「将文件拖放至此窗口以添加模组」「打开模组文件夹」。
+- 口径：modmenu 只列**用户可见模组 + 前置**，fabric-api 的数十个子模块不计入计数，所以 18+14 ≠ 84；这是 modmenu 的正常收窄，不是缺件。
+
+### 11.8 未收口
+
+1. **光影渲染取证**：dev 下 iris 不可用 ⇒ 只能在生产形态（jar 直装）或临时回退 iris 1.8.8 + sodium 0.6.13 时验证。取哪条路径待用户裁决。
+2. modmenu 目前只作人工/截图验证；若要进用例，需要新增 autojs 通道的 `*-fabric-1.21.1.json`（当前该线用例仍为 0 条）。
+
+## §12 裁决「回退」：sodium/iris 回到 dev 可跑配对（2026-11-05 13:46，同轮收尾）
+
+### 12.1 裁决与解释
+
+用户在 §11 交付后回复「回退」⇒ 取 §11.8 的选项 ②：**临时回退 iris 1.8.8 + sodium 0.6.13**，保住 dev 环境的光影取证能力；modmenu / cloth-config 保留（与 iris 无关）。
+
+### 12.2 落盘改动
+
+| 文件 | 改动 |
+|---|---|
+| `fabric-1.21.1/gradle.properties` | `sodium_version=mc1.21.1-0.6.13-fabric` / `sodium_mr_version=u1OEbNKx`、`iris_version=1.8.8+1.21.1` / `iris_mr_version=zsoi0dso`（= 提交 `59f58b99` 里的原值，回退即恢复这一组）；注释改写为「已升过一次最新版 → 实测 dev 必崩 → 用户裁决回退」，并留上游缺陷的完整记述 |
+| `scripts/test/win/launch.sh` | `MT_TEST_IRIS` 默认值由 `false` 改回 **`true`（即默认装 iris，不再自动追加 -PtestIris=false）**；仅显式 `MT_TEST_IRIS=false` 才排除。注释改为指向 §11 的取证 |
+
+`bash -n scripts/test/win/launch.sh` OK；行尾 CRLF 0 / bareLF 522 / bareCR 0。
+
+### 12.3 验收读数（2026-11-05 13:46–13:48，三次启动）
+
+| # | 目的 | 读数 |
+|---|---|---|
+| 1 | 回退后首启 | 命令行 `cmd //c gradlew.bat :fabric-1.21.1:runClient --console=plain -Pquickplay=testworld -PautojsTestMod=1`（**无** -PtestIris），`LAUNCH: READY` + `LAUNCH: WORLD_READY`，`game_pid=73324`，日志 `scripts/test/win/logs/fabric-1.21.1-20261105-134634.log`：`Loading 85 mods:` 含 **iris 1.8.8+mc1.21.1** / **sodium 0.6.13+mc1.21.1** / modmenu 11.0.5 / cloth-config 15.0.140；`(Iris) Using shaderpack: ComplementaryReimagined_r5.9.3.zip`；`InvalidMixinException|MixinApplyError|Failed to load` = **0** |
+| 2 | 顺带查世界 | 发现当时 `saves/testworld` 是 **`minecraft:noise`**（level.dat 内 flat=0 / noise=5）⇒ 违反超平坦规范，已 `python scripts/test/mt_env.py world --version fabric-1.21.1` 重建（`MT_WORLD: OK — generator=minecraft:flat`；注意该子命令**没有** `--force`，传了会 `MT_ERROR: 未知参数 --force` exit 2） |
+| 3 | 回退 + 平坦世界复验 | `LAUNCH: READY` + `LAUNCH: WORLD_READY`，`game_pid=79588`，日志 `scripts/test/win/logs/fabric-1.21.1-20261105-134750.log`：`Loading 85 mods:` + `Using shaderpack: ComplementaryReimagined_r5.9.3.zip`，错误计数 0；AutoJS client `fps=119`、`screen=null`、`dim=minecraft:overworld`、`held=1 astral_dice:*` |
+
+截图（均 `MT_CAPTURE: OK`，mode=f2）：
+- `fabric-1.21.1/run/client/screenshots/2026-11-05_13.47.04.png` —— 回退后含光影（当时世界仍是 noise 地形，湖水/植被正常上光）。
+- `fabric-1.21.1/run/client/screenshots/2026-11-05_13.48.18.png` —— 重建超平坦后：日出天光、大气雾、远景村庄剪影、平滑草地，光影链路完整。
+
+### 12.4 与 §11 的口径关系（不要混读）
+
+- §11.5/§11.6 记录的「dev 默认 `-PtestIris=false`」**已被本节 12.2 覆盖**：现行默认是**装 iris**。
+- §11 的上游缺陷记述（iris 1.8.14-beta.1 在 dev 必崩、refmap 完整但注解缺描述符）**仍然成立**，现在它是「为什么必须停在 1.8.8」的依据。
+- §11.7 的 modmenu 接入与验证不受影响（截图 `2026-11-05_13.44.08.png`）。
+
+### 12.5 遗留
+
+1. 升级到 iris 0.8.x/sodium 最新只在**生产形态**可行；若哪天要在 dev 里验 iris 新版，必须先解决其注解缺描述符问题（只能等上游，或自己重打 jar 补描述符）。
+2. `fabric-1.21.1` 用例仍为 0 条（`scripts/test/cases/*-fabric-1.21.1.json`），光影/modmenu 目前都是人工读数 + 截图取证。

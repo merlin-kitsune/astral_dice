@@ -280,6 +280,17 @@ if [ -n "${MT_TEST_SODIUM:-}" ]; then
         *) echo "用法错误：MT_TEST_SODIUM 只接受 true | false（收到：$MT_TEST_SODIUM）" >&2; exit 2 ;;
     esac
 fi
+# fabric 条件依赖里的 Iris（光影）：默认**装**（钉版 iris 1.8.8 + sodium 0.6.13，dev 可跑）。
+# 需要临时排除时才 MT_TEST_IRIS=false（例：排查 sodium 渲染栈、或临时把钉版改回
+# iris 1.8.14-beta.1 —— 那个版本在 dev 必崩，取证见
+# docs/features/fabric-1211-live-test-plan.md §11）。其它四线没有 testIris 属性，传了必报错。
+if mt_is_fabric "$VERSION"; then
+    case "${MT_TEST_IRIS:-true}" in
+        true) : ;;
+        false) IRIS_ARG="-PtestIris=false"; CMD_DESC="$CMD_DESC $IRIS_ARG" ;;
+        *) echo "用法错误：MT_TEST_IRIS 只接受 true | false（收到：$MT_TEST_IRIS）" >&2; exit 2 ;;
+    esac
+fi
 TS="$(date +%Y%m%d-%H%M%S)"
 LOG="$LOG_DIR/$VERSION-$TS.log"
 
