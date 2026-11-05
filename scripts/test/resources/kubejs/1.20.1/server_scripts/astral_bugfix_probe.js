@@ -2997,7 +2997,7 @@ function doTrueDmg(ctx, tag) {
     /** 按注册 id 造伤害源 */
     function sourceOf(id) {
         return p.level.damageSources().source(ResourceKey.create(Registries.DAMAGE_TYPE,
-            ResourceLocation.parse(id)));
+            RSRC.ns(id)));
     }
     /** 经 KubeJS 可见的伤害 API 施加(实测 1.21.1 `mob.attack(DamageSource,float)` 可用) */
     function applyDamage(ent, src, amount) {
@@ -3477,7 +3477,7 @@ function airbagApplyKill(entity) {
         var ResourceKey = Java.loadClass("net.minecraft.resources.ResourceKey");
         var Registries = Java.loadClass("net.minecraft.core.registries.Registries");
         var src = entity.level.damageSources().source(ResourceKey.create(Registries.DAMAGE_TYPE,
-            ResourceLocation.parse("minecraft:generic_kill")));
+            RSRC.ns("minecraft:generic_kill")));
         entity.hurt(src, 1000.0);
         return "hurt:generic_kill";
     } catch (e1) { return "ERR:" + exText(e1); }
@@ -4590,7 +4590,7 @@ ServerEvents.tick(event => { try { luluAfterTick(); } catch (e) { /* 忽略 */ }
 
 /** 在 anchor 的相对偏移处生成一只无 AI 生物(纯 API;不用 runCmd,避免「下一 tick 才生效」) */
 function luluSpawnAt(anchor, typeId, dx, dz) {
-    var type = BuiltInRegistries.ENTITY_TYPE.get(ResourceLocation.parse(typeId));
+    var type = BuiltInRegistries.ENTITY_TYPE.get(RSRC.ns(typeId));
     var mob = type.create(anchor.level);
     if (mob == null) return null;
     placeAt(mob, anchor.getX() + dx, anchor.getY(), anchor.getZ() + dz);
@@ -4653,7 +4653,7 @@ function doBarPlace(ctx, tag, dx, dz) {
         var ModBlocksCls = Java.loadClass("com.merlinkitsune.astral_dice.block.ModBlocks");
         var pos = new BlockPosCls(x + 0, y + 0, z + 0);
         if (lvl.setBlockAndUpdate(pos, ModBlocksCls.BARRICADE_COLLISION.get().defaultBlockState())) {
-            var type = BuiltInRegistries.ENTITY_TYPE.get(ResourceLocation.parse("astral_dice:barricade"));
+            var type = BuiltInRegistries.ENTITY_TYPE.get(RSRC.ns("astral_dice:barricade"));
             var ent = type.create(lvl);
             if (ent != null) {
                 placeAt(ent, x + 0.5, y, z + 0.5);
@@ -5075,7 +5075,7 @@ function lpFillBox(p, x1, y1, z1, x2, y2, z2, blockId) {
     var n = 0;
     try {
         var BlockPosClass = Java.loadClass("net.minecraft.core.BlockPos");
-        var state = BuiltInRegistries.BLOCK.get(ResourceLocation.parse(blockId)).defaultBlockState();
+        var state = BuiltInRegistries.BLOCK.get(RSRC.ns(blockId)).defaultBlockState();
         for (var x = x1; x <= x2; x++) {
             for (var y = y1; y <= y2; y++) {
                 for (var z = z1; z <= z2; z++) {
@@ -5686,7 +5686,7 @@ function teruFxOn(p, descId) { return findEffect(p, descId) == null ? 0 : 1; }
  */
 function teruArmorModifier(p, attr) {
     var mod = null;
-    try { mod = attr.getModifier(ResourceLocation.parse("astral_dice:" + TERU_DEF_ARMOR_KEY)); } catch (e1) { mod = null; }
+    try { mod = attr.getModifier(RSRC.ns("astral_dice:" + TERU_DEF_ARMOR_KEY)); } catch (e1) { mod = null; }
     if (mod == null) {
         try {
             var UUIDClass = Java.loadClass("java.util.UUID");
@@ -6133,26 +6133,42 @@ function doTeruCastReal(ctx, tag, nameText) {
         if (tou != null) tou.setBaseValue(0.0);
     } catch (e2) { note = note + "|attr:" + exText(e2); }
 
-    var aT = -1, dT = -1, aC = -1, armorBefore = -1;
+    var aT = -1, dT = -1, aC = -1, armorBefore = -1, armorBeforeRaw = 0;
     try { aT = TeruDiceCombatModifiersClass.attackPowerOf(t); } catch (e3) { aT = -1; }
     try { dT = TeruDiceCombatModifiersClass.defensePowerOf(t); } catch (e4) { dT = -1; }
     try { aC = TeruDiceCombatModifiersClass.attackPowerOf(p); } catch (e5) { aC = -1; }
-    try { armorBefore = p.getArmorValue(); } catch (e6) { armorBefore = -1; }
+    try {
+        armorBeforeRaw = TeruDiceCombatModifiersClass.effectiveArmorPoints(p);
+        armorBefore = Math.floor(armorBeforeRaw);
+    } catch (e6) { armorBefore = -1; armorBeforeRaw = -1; }
 
     var ok = -1;
     try { ok = TeruSignItemClass.castDescent(p, t) ? 1 : 0; }
     catch (e7) { ok = -2; note = note + "|cast:" + exText(e7); }
 
-    var bonusAtk = 0, bonusDef = 0, base = 0, layersAfter = 0, cache = 0, armorAfter = 0, newt = -1;
+    var bonusAtk = 0, bonusDef = 0, base = 0, layersAfter = 0, cache = 0, armorAfter = 0, armorAfterRaw = 0, newt = -1;
     try { bonusAtk = ModAttachments.getTeruDescentAtkBonus(t); } catch (e8) { bonusAtk = -1; }
     try { bonusDef = ModAttachments.getTeruDescentDefBonus(t); } catch (e9) { bonusDef = -1; }
     try { base = ModAttachments.getTeruDescentAttackBase(t); } catch (e10) { base = -1; }
     try { layersAfter = TeruSignItemClass.getLayers(p); } catch (e11) { layersAfter = -1; }
     try { cache = ModAttachments.getTeruAtkBonusCache(p); } catch (e12) { cache = -1; }
-    try { armorAfter = p.getArmorValue(); } catch (e13) { armorAfter = -1; }
+    try {
+        armorAfterRaw = TeruDiceCombatModifiersClass.effectiveArmorPoints(p);
+        armorAfter = Math.floor(armorAfterRaw);
+    } catch (e13) { armorAfter = -1; armorAfterRaw = -1; }
     try { newt = teruSetSize(ModAttachments.getTeruDescentNewTargets(t)); } catch (e14) { newt = -1; }
 
     var expAtk = Math.floor(aT * 0.5), expDef = Math.floor(dT * 0.5);
+    // 2026-11-05 探针修正：防御力→护甲的折算已由旧的「固定 x2.0」改为「defense / 阵营护甲系数」
+    // （DiceCombatModifiers.armorValueForDefensePoints，玩家侧系数 0.30），
+    // 硬编码 expDef * 2 会恒判 armor_ok=0。这里直接调产品同一入口算期望值，
+    // 并用 effectiveArmorPoints 取未截断的 ARMOR 属性值（getArmorValue 是 floor，会少算 1 点）。
+    var expArmor = -1, gotArmor = -1, armorOk = 0;
+    try {
+        expArmor = TeruDiceCombatModifiersClass.armorValueForDefensePoints(expDef, true);
+        gotArmor = armorAfterRaw - armorBeforeRaw;
+        armorOk = Math.abs(gotArmor - expArmor) < 0.05 ? 1 : 0;
+    } catch (eA) { armorOk = -1; }
     var expBase = Math.max(0, aC) + expAtk;
     send(ctx, "AP_" + tag + "_CASTREAL:cast=" + ok + ":target=" + nameText
         + ":A_t=" + aT + ":D_t=" + dT + ":A_c=" + aC
@@ -6164,9 +6180,10 @@ function doTeruCastReal(ctx, tag, nameText) {
         + ":layers=" + layersAfter + ":layers_ok=" + (layersAfter === 3 ? 1 : 0)
         + ":cache=" + cache + ":cache_ok=" + (cache === expAtk ? 1 : 0)
         + ":armor=" + armorBefore + ">" + armorAfter
-        + ":armor_ok=" + ((armorAfter - armorBefore) === (expDef * 2) ? 1 : 0)
+        + ":armor_ok=" + armorOk
         + ":newt=" + newt
-        + (note === "" ? "" : ":note=" + note));
+        + (note === "" ? "" : ":note=" + note)
+        + ":armor_exp=" + (Math.round(expArmor * 100) / 100) + ":armor_got=" + (Math.round(gotArmor * 100) / 100));
     send(ctx, "AP_" + tag + "_CASTREAL_T:" + teruTargetRead(t));
     send(ctx, "AP_" + tag + "_CASTREAL_BOT:" + teruPlayerRead(ctx, t, "" + nameText));
     return 1;
@@ -6381,7 +6398,7 @@ function doTeruGate(ctx, tag, nameText) {
 function teruResolveType(typeText) {
     var raw = ("" + typeText).replace(/["']/g, "").replace(/^\s+|\s+$/g, "");
     var type = null;
-    try { type = BuiltInRegistries.ENTITY_TYPE.get(ResourceLocation.parse(raw)); }
+    try { type = BuiltInRegistries.ENTITY_TYPE.get(RSRC.ns(raw)); }
     catch (e1) { return { ok: false, raw: raw, why: "parse:" + exText(e1) }; }
     if (type == null) return { ok: false, raw: raw, why: "null_type" };
     var key = "?";

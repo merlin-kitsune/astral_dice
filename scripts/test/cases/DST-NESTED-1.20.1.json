@@ -142,7 +142,7 @@
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_ND_NDMEAS:B:n=16:median=[4-6]:"
+      "pattern": "AP_ND_NDMEAS:B:n=16:.*med5=1:"
     },
     {
       "type": "log",
@@ -157,7 +157,7 @@
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_ND_NDMEAS:C:.*median=0:"
+      "pattern": "AP_ND_NDMEAS:C:.*med0=1:.*near5=[0-6]:.*tracked=0:.*hasSign=0"
     },
     {
       "type": "log",

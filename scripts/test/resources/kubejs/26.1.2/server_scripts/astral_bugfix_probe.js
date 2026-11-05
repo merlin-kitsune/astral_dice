@@ -6322,26 +6322,42 @@ function doTeruCastReal(ctx, tag, nameText) {
         if (tou != null) tou.setBaseValue(0.0);
     } catch (e2) { note = note + "|attr:" + exText(e2); }
 
-    var aT = -1, dT = -1, aC = -1, armorBefore = -1;
+    var aT = -1, dT = -1, aC = -1, armorBefore = -1, armorBeforeRaw = 0;
     try { aT = TeruDiceCombatModifiersClass.attackPowerOf(t); } catch (e3) { aT = -1; }
     try { dT = TeruDiceCombatModifiersClass.defensePowerOf(t); } catch (e4) { dT = -1; }
     try { aC = TeruDiceCombatModifiersClass.attackPowerOf(p); } catch (e5) { aC = -1; }
-    try { armorBefore = p.getArmorValue(); } catch (e6) { armorBefore = -1; }
+    try {
+        armorBeforeRaw = TeruDiceCombatModifiersClass.effectiveArmorPoints(p);
+        armorBefore = Math.floor(armorBeforeRaw);
+    } catch (e6) { armorBefore = -1; armorBeforeRaw = -1; }
 
     var ok = -1;
     try { ok = TeruSignItemClass.castDescent(p, t) ? 1 : 0; }
     catch (e7) { ok = -2; note = note + "|cast:" + exText(e7); }
 
-    var bonusAtk = 0, bonusDef = 0, base = 0, layersAfter = 0, cache = 0, armorAfter = 0, newt = -1;
+    var bonusAtk = 0, bonusDef = 0, base = 0, layersAfter = 0, cache = 0, armorAfter = 0, armorAfterRaw = 0, newt = -1;
     try { bonusAtk = ModAttachments.getTeruDescentAtkBonus(t); } catch (e8) { bonusAtk = -1; }
     try { bonusDef = ModAttachments.getTeruDescentDefBonus(t); } catch (e9) { bonusDef = -1; }
     try { base = ModAttachments.getTeruDescentAttackBase(t); } catch (e10) { base = -1; }
     try { layersAfter = TeruSignItemClass.getLayers(p); } catch (e11) { layersAfter = -1; }
     try { cache = ModAttachments.getTeruAtkBonusCache(p); } catch (e12) { cache = -1; }
-    try { armorAfter = p.getArmorValue(); } catch (e13) { armorAfter = -1; }
+    try {
+        armorAfterRaw = TeruDiceCombatModifiersClass.effectiveArmorPoints(p);
+        armorAfter = Math.floor(armorAfterRaw);
+    } catch (e13) { armorAfter = -1; armorAfterRaw = -1; }
     try { newt = teruSetSize(ModAttachments.getTeruDescentNewTargets(t)); } catch (e14) { newt = -1; }
 
     var expAtk = Math.floor(aT * 0.5), expDef = Math.floor(dT * 0.5);
+    // 2026-11-05 探针修正：防御力→护甲的折算已由旧的「固定 x2.0」改为「defense / 阵营护甲系数」
+    // （DiceCombatModifiers.armorValueForDefensePoints，玩家侧系数 0.30），
+    // 硬编码 expDef * 2 会恒判 armor_ok=0。这里直接调产品同一入口算期望值，
+    // 并用 effectiveArmorPoints 取未截断的 ARMOR 属性值（getArmorValue 是 floor，会少算 1 点）。
+    var expArmor = -1, gotArmor = -1, armorOk = 0;
+    try {
+        expArmor = TeruDiceCombatModifiersClass.armorValueForDefensePoints(expDef, true);
+        gotArmor = armorAfterRaw - armorBeforeRaw;
+        armorOk = Math.abs(gotArmor - expArmor) < 0.05 ? 1 : 0;
+    } catch (eA) { armorOk = -1; }
     var expBase = Math.max(0, aC) + expAtk;
     send(ctx, "AP_" + tag + "_CASTREAL:cast=" + ok + ":target=" + nameText
         + ":A_t=" + aT + ":D_t=" + dT + ":A_c=" + aC
@@ -6353,9 +6369,10 @@ function doTeruCastReal(ctx, tag, nameText) {
         + ":layers=" + layersAfter + ":layers_ok=" + (layersAfter === 3 ? 1 : 0)
         + ":cache=" + cache + ":cache_ok=" + (cache === expAtk ? 1 : 0)
         + ":armor=" + armorBefore + ">" + armorAfter
-        + ":armor_ok=" + ((armorAfter - armorBefore) === (expDef * 2) ? 1 : 0)
+        + ":armor_ok=" + armorOk
         + ":newt=" + newt
-        + (note === "" ? "" : ":note=" + note));
+        + (note === "" ? "" : ":note=" + note)
+        + ":armor_exp=" + (Math.round(expArmor * 100) / 100) + ":armor_got=" + (Math.round(gotArmor * 100) / 100));
     send(ctx, "AP_" + tag + "_CASTREAL_T:" + teruTargetRead(t));
     send(ctx, "AP_" + tag + "_CASTREAL_BOT:" + teruPlayerRead(ctx, t, "" + nameText));
     return 1;
