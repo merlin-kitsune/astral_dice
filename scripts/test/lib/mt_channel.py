@@ -3,12 +3,17 @@
 
 把 pwsh 版 scripts/test/lib/Mt.Channel.psm1 的 **命令注入通道**语义等价搬到 python：
 
-  Send-MtChannelCommand（Mt.Channel.psm1:500-580）三级探测链，逐级尝试、首级成功即记住：
-    1) autojs_command    side=server  (function(){ AutoJS.command(L); return "autojs_command"; })()
-    2) perform_prefixed  side=server  (function(){ var s = server; var c = s.getCommands();
+  命令通道 = 三级探测链，逐级尝试、首级成功即记住（2026-11-05 Step 1 起**客户端优先**）：
+    1) send_command      side=client  (function(){ Client.getConnection().sendCommand(L); return "send_command"; })()
+       —— 玩家自身聊天通道：命令以**玩家身份**在服务端执行，@s/@p 正常解析，且完全不碰键鼠/窗口焦点。
+    2) autojs_command    side=server  (function(){ AutoJS.command(L); return "autojs_command"; })()
+       —— 服务端 console 源(createCommandSourceStack())：@s 解析成 console、没有玩家，只能写 @a。
+    3) perform_prefixed  side=server  (function(){ var s = server; var c = s.getCommands();
                                          return String(c.performPrefixedCommand(s.createCommandSourceStack(), L)); })()
-    3) send_command      side=client  (function(){ Client.getConnection().sendCommand(L); return "send_command"; })()
+       —— 与 2) 同源（同一个 command source），保留只为兜住个别 API 差异。
   其中 L 是**合法的 JS 字符串字面量**（JSON 转义规则与 JS 一致），杜绝命令拼接注入。
+  链序可用环境变量 MT_CHANNEL_ORDER=client-first|server-first 覆盖，默认 client-first：
+  用例里 @s 共 667 处 / 225 个用例，server-first 会让它们静默失效（console 没有 @s）。
 
 判据（与 pwsh 逐条对齐）：
   · 空命令（Trim 后）⇒ status=ERROR / command_empty
@@ -103,19 +108,42 @@ def autojs_deployed(version: str, side: str = "server", root: str | None = None)
     return False
 
 
-def plan(command: str, side: str = "server") -> list[tuple[str, str, str]]:
-    """探测链（名字, 求值侧, 代码）。side=client 时只有第 3 级。"""
-    lit = js_literal(command)
-    tiers: list[tuple[str, str, str]] = []
+def chain_order() -> str:
+    """探测链顺序：client-first（默认）| server-first。非法值按默认，不抛。"""
+    raw = str(os.environ.get("MT_CHANNEL_ORDER") or "client-first").strip().lower()
+    if raw in ("server-first", "server", "console"):
+        return "server-first"
+    return "client-first"
+
+
+def plan(command: str, side: str = "server",
+         order: str | None = None) -> list[tuple[str, str, str]]:
+    """探测链（名字, 求值侧, 代码）。side=client 时只有客户端那一级。
+
+    默认 client-first：客户端 sendCommand 以**玩家身份**执行，@s 有效、不占键鼠、不要求窗口前台。
+    server-first 只留给「必须 console 源」的个别场景（此时 @s 解析成 console，用例得写 @a）。
+    """
+    # 客户端通道走 ServerboundChatCommand 包，包体是**不带前导 / 的命令文本**；
+    # 带 / 会被服务端当成未知命令（2026-11-05 实测：/astraldst snap D9 → 未知或不完整的命令，
+    # astraldst snap D8 → AP_D8_SNAP）。用例里的命令普遍带 /（旧键鼠通道要求），故此处归一化。
+    cmd = str(command or "").strip()
+    if cmd.startswith("/"):
+        cmd = cmd[1:]
+    lit = js_literal(cmd)
+    client_tier = ("send_command", "client",
+                   '(function(){ Client.getConnection().sendCommand(' + lit + '); return "send_command"; })()')
+    server_tiers: list[tuple[str, str, str]] = []
     if side == "server":
-        tiers.append(("autojs_command", "server",
-                      '(function(){ AutoJS.command(' + lit + '); return "autojs_command"; })()'))
-        tiers.append(("perform_prefixed", "server",
-                      '(function(){ var s = server; var c = s.getCommands(); '
-                      'return String(c.performPrefixedCommand(s.createCommandSourceStack(), ' + lit + ')); })()'))
-    tiers.append(("send_command", "client",
-                  '(function(){ Client.getConnection().sendCommand(' + lit + '); return "send_command"; })()'))
-    return tiers
+        server_tiers = [
+            ("autojs_command", "server",
+             '(function(){ AutoJS.command(' + lit + '); return "autojs_command"; })()'),
+            ("perform_prefixed", "server",
+             '(function(){ var s = server; var c = s.getCommands(); '
+             'return String(c.performPrefixedCommand(s.createCommandSourceStack(), ' + lit + ')); })()'),
+        ]
+    if (order or chain_order()) == "server-first":
+        return server_tiers + [client_tier]
+    return [client_tier] + server_tiers
 
 
 class Injector:
@@ -126,7 +154,7 @@ class Injector:
         self.version = version
         self.root = root
         self.emit = emit or (lambda line: None)
-        self.probe_cache: dict[tuple[str, str], str] = {}
+        self.probe_cache: dict[tuple[str, str, str], str] = {}
 
     def _run_line(self, status: str, detail: str):
         one = re.sub(r"\s+", " ", str(detail or "")).strip()
@@ -134,7 +162,8 @@ class Injector:
             one = one[:299] + "…"
         self.emit(f"MT_CHANNEL: op=command channel=autojs status={status} detail={one}")
 
-    def command(self, command, side: str = "server", timeout_ms: int = 20000) -> dict:
+    def command(self, command, side: str = "server", timeout_ms: int = 20000,
+                order: str | None = None) -> dict:
         cmd = str(command or "").strip()
         if not cmd:
             self._run_line(ERROR, "command_empty：命令为空")
@@ -145,9 +174,10 @@ class Injector:
             self._run_line(DELEGATED, detail)
             return {"status": DELEGATED, "detail": detail}
 
-        key = (self.version, side)
+        order_key = order or chain_order()
+        key = (self.version, side, order_key)
         cached = self.probe_cache.get(key)
-        tiers = plan(cmd, side)
+        tiers = plan(cmd, side, order_key)
         if cached:
             tiers = sorted(tiers, key=lambda t: 0 if t[0] == cached else 1)
         errors = []

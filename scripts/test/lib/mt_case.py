@@ -24,9 +24,12 @@
   · vision —— 截图 + 语义判定，python 侧无等价物 ⇒ 记 BLOCKED(11)（不是 PASS，也不是 FAIL）
 
 通道事实（不静默放行）：
-  · channel=autojs 的 inject_command ⇒ 真实现（三级探测链，见 mt_channel.py）
-  · channel=kubejs 的 inject_command / inject_key / inject_mouse ⇒ 真实现（委托
-    scripts/test/mt_inject.py，即 ctypes 直调 user32.SendInput 的 python 通道）
+  · inject_command ⇒ 2026-11-05 Step 1 起**默认走 AutoJS 通道**（三级探测链，见 mt_channel.py：
+    客户端 sendCommand 优先 = 玩家身份、@s 有效、不占键鼠也不要求窗口前台），与用例 channel 无关；
+    该通道不可用（缺 AutoJS jar / 三级全败）才回退 scripts/test/mt_inject.py 的键鼠注入，并留 MT_CASE_WARN。
+    显式回到键鼠注入：环境变量 MT_INJECT_MODE=native，或步内 "via": "native"。
+  · inject_key / inject_mouse ⇒ 恒委托 scripts/test/mt_inject.py（ctypes 直调 user32.SendInput）；
+    只有**真正验证输入路径**（键位绑定、ESC 关屏之类）的用例才该用它们。
   · screenshot 两通道都 ⇒ BLOCKED：截图通道（mt_capture.ps1）随 pwsh 删除，python 侧无等价物
   · 产物 jar 缺失 ⇒ op=jar_stats 记 BLOCKED（工具链事实）；bytecode 断言按 pwsh 口径记 FAIL
 
@@ -62,7 +65,7 @@ PRIMITIVES = {
     "assert": {"active": True, "fields": {"type", "pattern", "source", "image", "question", "from", "code", "side", "expect"}},
     "wait": {"active": True, "fields": {"ms"}, "deprecated": "固定睡眠已退役，仅作迁移期兼容"},
     # ↓ 已迁移：AutoJS 通道下可用（pwsh 同口径；仅 kubejs_reload 退役）
-    "inject_command": {"active": True, "fields": {"command", "no_esc"}},
+    "inject_command": {"active": True, "fields": {"command", "no_esc", "via", "side"}},
     "inject_key": {"active": True, "fields": {"key", "hold_ms", "no_esc"}},
     "inject_mouse": {"active": True, "fields": {"button", "shift", "hold_ms", "no_esc"}},
     "screenshot": {"active": True, "fields": {"tag", "mode", "crop"}},
@@ -561,29 +564,59 @@ class Runner:
             raise Blocked(f"{label} 无法判定（native 注入器 rc=2）：{tail[:200]}")
         self.errors.append(f"{label} 失败（rc={proc.returncode}）：{tail[:200]}")
 
-    # ── AutoJS 命令通道（三级探测链；pwsh Send-MtChannelCommand 等价）──────────────
+    # ── 命令注入：AutoJS 客户端优先链（Step 1）/ 键鼠注入器（显式回退）─────────────
+    def _inject_mode(self, step: dict) -> str:
+        """步内 via > 环境变量 MT_INJECT_MODE > autojs（默认）。
+
+        autojs = AutoJS 命令通道（客户端 sendCommand 优先，玩家身份、不占键鼠）；
+        native = 旧键鼠注入器（ctypes user32.SendInput），只给显式回退用。
+        """
+        raw = str(step.get("via") or os.environ.get("MT_INJECT_MODE") or "autojs").strip().lower()
+        if raw in ("autojs", "auto"):
+            return "autojs"
+        if raw in ("native", "keyboard", "inject"):
+            return "native"
+        raise Blocked("inject_command：未知 via=" + repr(raw) + "（只接受 autojs / native）")
+
+    def _native_command(self, step: dict):
+        # sendinput 传输是「原样打字」，不带前导 / 会被当成聊天内容发送，
+        # 而 mt_inject.py 仍会打 MT_INJECT_CMD 并返回 0（2026-11-05 实测的静默假绿）
+        raw = str(step.get("command", "")).strip()
+        text = raw if raw.startswith("/") else "/" + raw
+        argv = ["--command", text]
+        if step.get("no_esc"):
+            argv.append("--no-esc")
+        self._native_inject("cmd", argv, "inject_command")
+
     def _do_inject_command(self, step: dict):
         cmd = step.get("command", "")
-        if self.doc.get("channel", "kubejs") != "autojs":
-            argv = ["--command", str(cmd)]
-            if step.get("no_esc"):
-                argv.append("--no-esc")
-            self._native_inject("cmd", argv, "inject_command")
+        if self._inject_mode(step) == "native":
+            self._native_command(step)
             return
         res = self.injector.command(cmd, side=step.get("side", "server") or "server")
         status = res["status"]
-        self.records.append({"op": "inject_command", "outcome": status.upper(), "detail": res["detail"]})
+        detail = str(res.get("detail") or "")
         if status == mt_channel.OK:
-            self.say("      inject_command: PASS " + res["detail"])
+            self.records.append({"op": "inject_command", "outcome": "PASS", "detail": detail})
+            self.say("      inject_command: PASS " + detail)
             return
-        if status == mt_channel.DELEGATED:
-            # 通道降级 ≠ 失败：单独计数，不升级用例结论（契约 §1.3）
+        if "endpoint=unavailable" in detail:
+            self.records.append({"op": "inject_command", "outcome": "ERROR", "detail": detail})
+            raise Blocked("inject_command 端点不可用：" + detail[:200])
+        if status == mt_channel.ERROR:
+            self.records.append({"op": "inject_command", "outcome": "ERROR", "detail": detail})
+            self.errors.append("inject_command 失败：" + detail[:200])
+            return
+        # DELEGATED = AutoJS 通道不可用（缺 jar / 三级全败）：回退键鼠注入，但必须留痕
+        native = os.path.join(self.repo_root, "scripts", "test", "mt_inject.py")
+        if not os.path.exists(native):
+            self.records.append({"op": "inject_command", "outcome": "DELEGATED", "detail": detail})
             self.delegated_steps += 1
-            self.say("      inject_command: →VIS（通道降级，不参与判定）" + " " + res["detail"])
+            self.say("      inject_command: →VIS（通道降级，不参与判定）" + " " + detail)
             return
-        if "endpoint=unavailable" in res["detail"]:
-            raise Blocked("inject_command 端点不可用：" + res["detail"][:200])
-        self.errors.append("inject_command 失败：" + res["detail"][:200])
+        self.warnings.append("inject_command 回退 native 键鼠注入器：" + detail[:160])
+        self.say("      inject_command: →NATIVE（AutoJS 通道不可用，回退键鼠注入）" + " " + detail[:160])
+        self._native_command(step)
 
     def _do_inline_assert(self, step: dict):
         self._assert_one(step, inline=True)

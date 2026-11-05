@@ -1,0 +1,33 @@
+{
+  "case_id": "STEP1-VIA-NATIVE-1.20.1",
+  "title": "Step1 回退面：步内 via=native 强制走键鼠注入",
+  "version": "1.20.1",
+  "channel": "autojs",
+  "on_fail": "continue",
+  "steps": [
+    {
+      "op": "note",
+      "text": "验证 via=native 绕过 AutoJS 直落 mt_inject.py（键鼠），用于保留真输入语义。"
+    },
+    {
+      "op": "inject_command",
+      "command": "effect give @s minecraft:glowing 5 0",
+      "via": "native"
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "mode": "bool",
+      "code": "(function(){var p=AutoJS.players()[0];return p.hasEffect(Java.loadClass(\"net.minecraft.world.effect.MobEffects\").GLOWING);})()",
+      "save_as": "after"
+    }
+  ],
+  "asserts": [
+    {
+      "type": "state",
+      "name": "native-command-applied",
+      "from": "after",
+      "expect": true
+    }
+  ]
+}

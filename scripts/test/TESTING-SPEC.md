@@ -85,13 +85,25 @@ python scripts/test/lib/mt_case.py audit --cases-dir scripts/test/cases [--versi
 | `eval_js` | `side` `code` `script` `args` `save_as` `timeout_ms` `mode` `expect` | 可用 | `side` ∈ `auto`/`server`/`client`；`code` **不得以顶层 `return ` 开头**（改 IIFE） |
 | `await_state` | `side` `code` `script` `args` `timeout_ms` `interval_ms` | 可用 | 轮询到条件成立或超时 |
 | `assert` | `type` `pattern` `source` `image` `question` `from` `code` `side` `expect` | 可用 | 见 §5 |
-| `inject_command` | `command` `no_esc` | 可用 | 原版命令注入；`@s` 会解析成 console，**选择器一律 `@a`** |
+| `inject_command` | `command` `no_esc` `via` `side` | 可用 | 原版命令注入；**默认**走 AutoJS 客户端 `sendCommand`（玩家身份，`@s` 有效、不占键鼠）；`via: "native"` 才落键鼠注入器。详见 §4.1 |
 | `inject_key` | `key` `hold_ms` `no_esc` | 可用 | 键位须与产品绑定一致（绑定漂移会让用例假失败） |
 | `inject_mouse` | `button` `shift` `hold_ms` `no_esc` | 可用 | |
 | `screenshot` | `tag` `mode` `crop` | 表内但**恒 BLOCKED** | python 侧无截图通道（`mt_case.py:430-433` `raise Blocked`）；视觉取证改用客户端探针自截图 + debug 通道 |
 | `jar_stats` | `save_as` | 可用 | 产物 jar 统计；jar 缺失记 BLOCKED |
 | `wait` | `ms` | 退役（仍可跑） | 固定睡眠；`audit` 计入 `fixed_wait_steps`，新用例改用 `await_state` |
 | `kubejs_reload` | — | 废除 | `channel=autojs` 下出现即 `validate` 报错 |
+
+### 4.1 命令通道（2026-11-05 Step 1：AutoJS 客户端优先）
+
+```
+mt_channel.plan(): [ send_command(client) ] + [ autojs_command(server console), perform_prefixed(server console) ]
+```
+
+- **默认 client-first**：命令以玩家身份执行，因此用例里的 `@s` 与玩家上下文全部成立（旧键鼠通道时代全仓有 667 处 `@s` / 225 个用例）。客户端一级走 `Client.getConnection().sendCommand(...)`（`ServerboundChatCommand` 包体**不带前导 `/`**，`mt_channel.py` 已归一化；用例里写不写 `/` 都行）。
+- **server-first 仅作诊断**：`MT_CHANNEL_ORDER=server-first|server|console` 把 console 两级提到前面。console 源没有玩家，`@s` 会静默无效（`effect clear @s` 不生效），**此时必须写 `@a`**。
+- **`via` 字段**（步级）：`autojs`（默认，等同不写）| `native`（落 `scripts/test/mt_inject.py` 键鼠注入）。`MT_INJECT_MODE=native` 是整轮环境级同义开关（优先级：`via` > `MT_INJECT_MODE` > `autojs`）。
+- **native 回退面**：AutoJS 通道 `DELEGATED`（缺 jar / 三级全败）时自动回退键鼠注入并记 `MT_CASE_WARN`；`endpoint=unavailable` 判 BLOCKED（不是 FAIL）。native 侧会自动补前导 `/`（`mt_case.py:_native_command`）：**少了 `/` 会被当成聊天内容发送，而 `mt_inject.py` 仍打 `MT_INJECT_CMD` 并返回 0**（2026-11-05 实测的静默假绿）。
+- 通道回归用例：`STEP1-SMOKE-1.20.1.json`（客户端优先 + `@s` 判据）、`STEP1-VIA-NATIVE-1.20.1.json`（`via=native` 回退面）。
 
 ## 5. 断言（`ASSERT_TYPES`，共 11 种）
 

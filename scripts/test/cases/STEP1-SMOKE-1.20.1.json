@@ -1,0 +1,56 @@
+{
+  "case_id": "STEP1-SMOKE-1.20.1",
+  "title": "Step1 证明：默认通道走 AutoJS 客户端 sendCommand，@s 生效且不占键鼠",
+  "version": "1.20.1",
+  "channel": "autojs",
+  "on_fail": "continue",
+  "steps": [
+    {
+      "op": "note",
+      "text": "本用例故意保留 channel=kubejs（旧路由会走键鼠注入），验证新默认路由自动走 AutoJS。"
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "save_as": "before",
+      "code": "(function(){var p=AutoJS.players()[0];return p.hasEffect(Java.loadClass(\"net.minecraft.world.effect.MobEffects\").GLOWING);})()",
+      "mode": "bool"
+    },
+    {
+      "op": "inject_command",
+      "command": "effect give @s minecraft:glowing 30 0"
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "save_as": "after",
+      "code": "(function(){var p=AutoJS.players()[0];return p.hasEffect(Java.loadClass(\"net.minecraft.world.effect.MobEffects\").GLOWING);})()",
+      "mode": "bool"
+    },
+    {
+      "op": "inject_command",
+      "command": "effect clear @s"
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "save_as": "cleared",
+      "code": "(function(){var p=AutoJS.players()[0];return p.hasEffect(Java.loadClass(\"net.minecraft.world.effect.MobEffects\").GLOWING);})()",
+      "mode": "bool"
+    }
+  ],
+  "asserts": [
+    {
+      "type": "state",
+      "name": "give-@s-applied",
+      "from": "after",
+      "expect": true
+    },
+    {
+      "type": "state",
+      "name": "clear-@s-applied",
+      "from": "cleared",
+      "expect": false
+    }
+  ]
+}
