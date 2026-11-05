@@ -46,20 +46,25 @@ import shutil
 import subprocess
 import sys
 
-VERSIONS = ("1.21.1", "1.20.1", "26.1.2", "fabric-1.20.1")
+VERSIONS = ("1.21.1", "1.20.1", "26.1.2", "fabric-1.20.1", "fabric-1.21.1")
 
 SUBPROJECT = {
     "1.21.1": "neoforge-1.21.1",
     "1.20.1": "forge-1.20.1",
     "26.1.2": "neoforge-26.1.2",
     "fabric-1.20.1": "fabric-1.20.1",
+    "fabric-1.21.1": "fabric-1.21.1",
 }
 
-FABRIC_VERSION = "fabric-1.20.1"
+FABRIC_VERSIONS = ("fabric-1.20.1", "fabric-1.21.1")
+
+
+def is_fabric(version):
+    return str(version or "").strip().startswith("fabric-")
 BSL = "\\"
 
-# 裁判线顺序：fabric 先判，避免 "1.20.1" 与 "fabric-1.20.1" 互相吞吃。
-_MARKER_ORDER = ("fabric-1.20.1", "1.21.1", "26.1.2", "1.20.1")
+# 裁判线顺序：两条 fabric 必须先判（"1.20.1"/"1.21.1" 都是 "fabric-x" 的子串），再判裸版本号。
+_MARKER_ORDER = ("fabric-1.20.1", "fabric-1.21.1", "1.21.1", "26.1.2", "1.20.1")
 
 CIM_SCRIPT = (
     "$ErrorActionPreference = 'Stop'; "
@@ -152,7 +157,7 @@ def markers_for(version, side=""):
     if version not in SUBPROJECT:
         return []
     sub = SUBPROJECT[version]
-    if version == FABRIC_VERSION:
+    if is_fabric(version):
         out = [":" + sub + ":"]
         sides = [str(side).strip()] if str(side or "").strip() in ("client", "server", "both") else ["client", "server"]
         for one in sides:

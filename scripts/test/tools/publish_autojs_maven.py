@@ -11,6 +11,7 @@
 发布坐标（Gradle 侧由 -PautojsTestMod=1 条件启用）:
     cc.sighs.autojs:AutoJS-forge-1.20.1:1.0.0
     cc.sighs.autojs:AutoJS-fabric-1.20.1:1.0.0
+    cc.sighs.autojs:AutoJS-fabric-1.21.1:1.0.0
 
 目标目录:
     <m2>/cc/sighs/autojs/<artifactId>/1.0.0/<artifactId>-1.0.0.{jar,pom}
@@ -52,7 +53,9 @@ ARTIFACTS = [
         "id": "AutoJS-forge-1.20.1",
         "loader": "forge",
         "jar": "AutoJS-forge-1.20.1-1.0.0.jar",
-        "build": "temp/AutoJS-src/targets/forge-1.20.1/build/libs/AutoJS-forge-1.20.1-1.0.0.jar",
+        "build": ["temp/AutoJS-src/targets/forge-1.20.1/build/libs/AutoJS-forge-1.20.1-1.0.0.jar",
+                  "../AutoJS/targets/forge-1.20.1/build/libs/AutoJS-forge-1.20.1-1.0.0.jar"],
+        "mc": "1.20.1",
         "ns": "srg",
         "remap": "ModDevGradle legacyforge: modRuntimeOnly 解析期 SRG->named",
     },
@@ -60,9 +63,21 @@ ARTIFACTS = [
         "id": "AutoJS-fabric-1.20.1",
         "loader": "fabric",
         "jar": "AutoJS-fabric-1.20.1-1.0.0.jar",
-        "build": "temp/AutoJS-src/targets/fabric-1.20.1/build/libs/AutoJS-fabric-1.20.1-1.0.0.jar",
+        "build": ["temp/AutoJS-src/targets/fabric-1.20.1/build/libs/AutoJS-fabric-1.20.1-1.0.0.jar",
+                  "../AutoJS/targets/fabric-1.20.1/build/libs/AutoJS-fabric-1.20.1-1.0.0.jar"],
+        "mc": "1.20.1",
         "ns": "intermediary",
         "remap": "Fabric Loom: modRuntimeOnly 解析期 intermediary->named",
+    },
+    {
+        "id": "AutoJS-fabric-1.21.1",
+        "loader": "fabric",
+        "jar": "AutoJS-fabric-1.21.1-1.0.0.jar",
+        "build": ["../AutoJS/targets/fabric-1.21.1/build/libs/AutoJS-fabric-1.21.1-1.0.0.jar",
+                  "temp/AutoJS-1211-probe/targets/fabric-1.21.1/build/libs/AutoJS-fabric-1.21.1-1.0.0.jar"],
+        "mc": "1.21.1",
+        "ns": "intermediary",
+        "remap": "Fabric Loom: modRuntimeOnly 解析期 intermediary->named（依赖 rhino 2101 多加载器单 jar）",
     },
 ]
 
@@ -83,8 +98,8 @@ POM_TEMPLATE = """<?xml version="1.0" encoding="UTF-8"?>
   <version>1.0.0</version>
   <packaging>jar</packaging>
 
-  <name>AutoJS (@LOADER@-1.20.1)</name>
-  <description>AutoJS 实机测试库（@LOADER@ / Minecraft 1.20.1）。本工件由 scripts/test/tools/publish_autojs_maven.py 从本地构建产物发布到 mavenLocal，不是 Curse/Modrinth 发布件。</description>
+  <name>AutoJS (@LOADER@-@MC@)</name>
+  <description>AutoJS 实机测试库（@LOADER@ / Minecraft @MC@）。本工件由 scripts/test/tools/publish_autojs_maven.py 从本地构建产物发布到 mavenLocal，不是 Curse/Modrinth 发布件。</description>
   <url>@UPSTREAM@</url>
 
   <licenses>
@@ -105,7 +120,7 @@ POM_TEMPLATE = """<?xml version="1.0" encoding="UTF-8"?>
   <properties>
     <autojs.distribution>local-maven-only</autojs.distribution>
     <autojs.release-channel>not-curse-or-modrinth</autojs.release-channel>
-    <autojs.minecraft.version>1.20.1</autojs.minecraft.version>
+    <autojs.minecraft.version>@MC@</autojs.minecraft.version>
     <autojs.loader>@LOADER@</autojs.loader>
     <autojs.bytecode.namespace>@NS@</autojs.bytecode.namespace>
     <autojs.remap-at-resolve>@REMAP@</autojs.remap-at-resolve>
@@ -131,6 +146,7 @@ def make_pom(a):
         POM_TEMPLATE
         .replace("@ID@", a["id"])
         .replace("@LOADER@", a["loader"])
+        .replace("@MC@", a["mc"])
         .replace("@NS@", a["ns"])
         .replace("@REMAP@", a["remap"])
         .replace("@UPSTREAM@", UPSTREAM)
@@ -193,7 +209,16 @@ def main():
     for art in ARTIFACTS:
         coord = GROUP + ":" + art["id"] + ":" + VERSION
         vendor_path = os.path.join(root, VENDOR_REL, art["jar"])
-        build_path = os.path.join(root, art["build"])
+        candidates = art["build"] if isinstance(art["build"], list) else [art["build"]]
+        build_path = None
+        for rel in candidates:
+            cand = rel if os.path.isabs(rel) else os.path.abspath(os.path.join(root, rel))
+            if os.path.isfile(cand):
+                build_path = cand
+                break
+        if build_path is None:
+            first = candidates[0]
+            build_path = first if os.path.isabs(first) else os.path.abspath(os.path.join(root, first))
         target_dir = os.path.join(m2, "cc", "sighs", "autojs", art["id"], VERSION)
         target_jar = os.path.join(target_dir, art["id"] + "-" + VERSION + ".jar")
         target_pom = os.path.join(target_dir, art["id"] + "-" + VERSION + ".pom")
@@ -222,7 +247,7 @@ def main():
                 if not os.path.isfile(build_path):
                     raise RuntimeError(
                         "缺少源 jar：vendor 副本与构建产物都不存在（"
-                        + VENDOR_REL + "/" + art["jar"] + " / " + art["build"] + "）")
+                        + VENDOR_REL + "/" + art["jar"] + " / " + " | ".join(candidates) + "）")
                 vdir = os.path.dirname(vendor_path)
                 if vdir and not os.path.isdir(vdir):
                     os.makedirs(vdir, exist_ok=True)
@@ -262,7 +287,9 @@ def main():
             records.append({
                 "coord": coord,
                 "vendor": VENDOR_REL + "/" + art["jar"],
-                "build": art["build"],
+                "build": (os.path.relpath(build_path, root).replace(os.sep, "/")
+                          if os.path.abspath(build_path).startswith(os.path.abspath(root))
+                          else build_path),
                 "hash": src_hash,
                 "remap": art["remap"],
             })

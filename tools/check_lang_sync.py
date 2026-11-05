@@ -23,7 +23,8 @@ import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-LINES = ["neoforge-1.21.1", "forge-1.20.1", "neoforge-26.1.2", "fabric-1.20.1"]
+LINES = ["neoforge-1.21.1", "forge-1.20.1", "neoforge-26.1.2", "fabric-1.20.1",
+         "fabric-1.21.1"]
 LANGS = ["zh_cn", "en_us", "ja_jp"]
 LANG_REL = os.path.join("src", "main", "resources", "assets", "astral_dice", "lang")
 

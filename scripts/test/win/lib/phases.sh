@@ -138,7 +138,7 @@ mt_phase_require_version() {
     return "$MT_EXIT_ERROR"
 }
 
-# ── 四线项目名映射（mt.ps1 的 build 阶段等价物）───────────────────────────
+# ── 五线项目名映射（mt.ps1 的 build 阶段等价物）───────────────────────────
 # 与 lib/common.sh 的 mt_subproject 必须一致；mt_phase_assert_mapping 负责自证。
 mt_phase_subproject() {
     case "${1:-}" in
@@ -146,11 +146,12 @@ mt_phase_subproject() {
         1.20.1)        printf '%s' 'forge-1.20.1' ;;
         26.1.2)        printf '%s' 'neoforge-26.1.2' ;;
         fabric-1.20.1) printf '%s' 'fabric-1.20.1' ;;
+        fabric-1.21.1) printf '%s' 'fabric-1.21.1' ;;
         *) return 1 ;;
     esac
 }
 
-# 自证：本文件的映射表 == common.sh 的映射表（四线逐条比对）。dry-run 与 build 阶段都会调。
+# 自证：本文件的映射表 == common.sh 的映射表（版本表逐条比对）。dry-run 与 build 阶段都会调。
 mt_phase_assert_mapping() {
     local v a b bad=0
     for v in $MT_ALL_VERSIONS; do
@@ -256,7 +257,7 @@ mt_phase_launch() {
     local v="${1:-}" rc
     mt_phase_require_version "$v" || return $?
     mt_phase_require_repo || return $?
-    # fabric-1.20.1：走 fabric.sh 的 bash 实现（双 run 目录 + 按侧就绪 marker），不委托 pwsh
+    # fabric 线（fabric-*）：走 fabric.sh 的 bash 实现（双 run 目录 + 按侧就绪 marker），不委托 pwsh
     if mt_is_fabric "$v"; then
         mt_fab_phase_launch "$v"
         return $?
@@ -316,7 +317,7 @@ mt_phase_stop() {
 # ══ 阶段：cases（已改接 python lib/mt_case.py）════════════════════════════
 mt_phase_cases() {
     local v="${1:-}" casepath="${2:-}" rc percase budget
-    # fabric-1.20.1：bash 原生解析 scripts/test/cases/*-fabric-1.20.1.json，不委托 mt_case.py
+    # fabric 线（fabric-*）：bash 原生解析 scripts/test/cases/*-<当前 fabric 版本>.json，不委托 mt_case.py
     if mt_is_fabric "$v"; then
         mt_fab_phase_cases "$v" "$casepath"
         return $?
@@ -364,7 +365,7 @@ mt_phase_cases() {
 # ══ 阶段：report（已改接 python mt_report.py collect）═══════════════════════
 mt_phase_report() {
     local v="${1:-}" verdict="${2:-}" rc
-    # fabric-1.20.1：bash 原生汇总，不委托 mt_report.py
+    # fabric 线（fabric-*）：bash 原生汇总，不委托 mt_report.py
     if mt_is_fabric "$v"; then
         mt_fab_phase_report "$v" "$verdict"
         return $?
@@ -392,7 +393,7 @@ mt_phase_report_mark() {
 }
 
 mt_phase_report_summary() {
-    # fabric-1.20.1：bash 原生 SUMMARY.md（旧 pwsh 报告脚本没有 fabric 分支）
+    # fabric 线（fabric-*）：bash 原生 SUMMARY.md（旧 pwsh 报告脚本没有 fabric 分支）
     if mt_is_fabric "${1:-}"; then mt_fab_report_summary "${1:-}"; return $?; fi
     [ "${MT_DRY_RUN:-0}" = 1 ] && { mt_phase_dry 'python -u scripts/test/mt_report.py summary'; return 0; }
     mt_phase_py_file 'mt_report.py' summary
@@ -403,7 +404,7 @@ mt_phase_preflight() {
     local v="${1:-}" rc
     local -a args
     if [ -n "$v" ]; then args=(--version "$v"); else args=(--all); fi
-    # fabric-1.20.1：bash 原生前置检查（子项目 / 双 run 目录 / gradlew / python / RCON），不委托通用前置检查
+    # fabric 线（fabric-*）：bash 原生前置检查（子项目 / 双 run 目录 / gradlew / python / RCON），不委托通用前置检查
     if [ -n "$v" ] && mt_is_fabric "$v"; then mt_fab_phase_preflight "$v"; return $?; fi
     [ "${MT_CHANNEL:-autojs}" != "autojs" ] && args+=(--channel "$MT_CHANNEL")
     mt_phase_require_repo || return $?
@@ -424,6 +425,8 @@ mt_run_phase() {
         mt_phase_err "未知阶段 $phase"
         return "$MT_EXIT_ERROR"
     }
+    # fabric 线：把本次版本写进 fabric 库的全局（fabric-1.20.1 / fabric-1.21.1 ⇒ 各自的 run 目录与 AutoJS 制品名）
+    mt_fab_set_version "$v" || true
     mt_phase_begin "$phase"
     case "$phase" in
         env)       mt_phase_env "$v" ;;

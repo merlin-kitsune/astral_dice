@@ -7,13 +7,13 @@ import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import software.bernie.geckolib.animatable.GeoEntity;
-import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache;
-import software.bernie.geckolib.core.animation.AnimatableManager;
-import software.bernie.geckolib.core.animation.AnimationController;
-import software.bernie.geckolib.core.animation.RawAnimation;
-import software.bernie.geckolib.core.object.PlayState;
-import software.bernie.geckolib.util.GeckoLibUtil;
+import com.merlinkitsune.starengine.geckolib.animatable.GeoEntity;
+import com.merlinkitsune.starengine.geckolib.core.animatable.instance.AnimatableInstanceCache;
+import com.merlinkitsune.starengine.geckolib.core.animation.AnimatableManager;
+import com.merlinkitsune.starengine.geckolib.core.animation.AnimationController;
+import com.merlinkitsune.starengine.geckolib.core.animation.RawAnimation;
+import com.merlinkitsune.starengine.geckolib.core.object.PlayState;
+import com.merlinkitsune.starengine.geckolib.util.GeckoLibUtil;
 
 import java.util.List;
 

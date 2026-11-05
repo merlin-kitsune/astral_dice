@@ -60,7 +60,11 @@ _astral_heal_stdio()
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
-FABRIC = os.path.join(REPO, 'fabric-1.20.1')
+# 2026-11-05: 本脚本原把路径写死成 fabric-1.20.1。拿 fabric-1.21.1 的产物来跑会先报
+# 'jar 版本与 mod_version 不符' 再静默改扫源码目录并照样 PASS -- 那是跨线假绿。
+# 现在按 --subproject 绑定路径，jar 版本不符一律 FAIL（--allow-stale-jar 才降级诊断）。
+SUB = 'fabric-1.20.1'
+FABRIC = os.path.join(REPO, SUB)
 SRC = os.path.join(FABRIC, 'src', 'main', 'java', 'com', 'merlinkitsune', 'astral_dice')
 RES = os.path.join(FABRIC, 'src', 'main', 'resources')
 ASSETS = os.path.join(RES, 'assets', 'astral_dice')
@@ -126,6 +130,17 @@ def registered_block_ids():
 
 GRADLE_PROPS = os.path.join(FABRIC, 'gradle.properties')
 
+def bind_subproject(name):
+    # 把全部路径常量重绑到 name 指定的子项目（五条线共用同一套资源闭环判据）
+    global SUB, FABRIC, SRC, RES, ASSETS, LANG_DIR, GRADLE_PROPS
+    SUB = name
+    FABRIC = os.path.join(REPO, name)
+    SRC = os.path.join(FABRIC, 'src', 'main', 'java', 'com', 'merlinkitsune', 'astral_dice')
+    RES = os.path.join(FABRIC, 'src', 'main', 'resources')
+    ASSETS = os.path.join(RES, 'assets', 'astral_dice')
+    LANG_DIR = os.path.join(ASSETS, 'lang')
+    GRADLE_PROPS = os.path.join(FABRIC, 'gradle.properties')
+
 
 def jar_declared_version(jar_path):
     """读 jar 内 fabric.mod.json 的 version；读不到 / 不是合法 json 时返回 None。"""
@@ -178,12 +193,19 @@ def check_items(jar_path, failures):
     # ⚠️ 两种模式下**失败消息文本完全一致**，只有数据源不同（下游比对依赖原文）。
     jar_version, mod_version = jar_declared_version(jar_path), gradle_mod_version()
     if jar_version is None or mod_version is None:
+        # 读不到版本 => 无法确认判据对象，登记 FAIL（源码扫描只为继续产出诊断）
         print('[!] 读不到 jar 内 fabric.mod.json 的 version 或 gradle.properties 的 '
-              'mod_version，改为扫描源码资源目录')
+              'mod_version —— 源码目录仅用于继续产出诊断，已登记为 FAIL')
+        failures.append('读不到产物 jar 的 version 或 ' + SUB + '/gradle.properties 的 '
+                        'mod_version，无法确认判据对象')
         names = source_asset_names()
     elif jar_version != mod_version:
-        print('[!] build/libs 内 jar 版本 %s 与 mod_version %s 不符，改为扫描源码资源目录'
-              % (jar_version, mod_version))
+        # 版本不符 = 拿别线的产物判本线；源码扫描不得升级为通过（2026-11-05 实测的假绿）
+        print('[!] build/libs 内 jar 版本 %s 与 %s 的 mod_version %s 不符 —— '
+              '已登记为 FAIL（源码目录仅用于继续产出诊断）' % (jar_version, SUB, mod_version))
+        failures.append('产物 jar 版本 %s 与 %s/gradle.properties 的 mod_version %s 不符 —— '
+                        '先重建该线再跑本门禁（禁止跨线降级判绿）'
+                        % (jar_version, SUB, mod_version))
         names = source_asset_names()
     else:
         with zipfile.ZipFile(jar_path) as jar:
@@ -444,11 +466,14 @@ def check_slot_icons(failures):
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument('--jar', default=None, help='产物 jar 路径（默认取 build/libs 最新）')
+    parser.add_argument('--subproject', default='fabric-1.20.1',
+                        help='子项目目录名：fabric-1.20.1 | fabric-1.21.1（默认 fabric-1.20.1）')
     args = parser.parse_args()
 
+    bind_subproject(args.subproject)
     jar_path = find_jar(args.jar)
     if not jar_path or not os.path.isfile(jar_path):
-        print('找不到产物 jar —— 先跑一次 gradlew :fabric-1.20.1:build')
+        print('找不到产物 jar —— 先跑一次 gradlew :%s:build' % SUB)
         return 2
     print('jar = %s' % os.path.relpath(jar_path, REPO))
     print()

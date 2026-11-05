@@ -501,6 +501,16 @@ def set_fullscreen_disabled(paths):
     lines = _read_lines(path) or []
     kept = [ln for ln in lines if not ln.strip().lower().startswith("fullscreen:")]
     kept.append("fullscreen:false")
+    # 2026-11-05：手工新建的 options.txt 若缺 onboardAccessibility，1.21.1 客户端会停在
+    # "辅助功能引导"界面（AccessibilityOnboardingScreen）而永不加载世界，比全屏更致命。
+    # 这里与全屏一起补写，避免"空 options → 引导页 → quickplay 静默失效"。
+    if not any(ln.strip().lower().startswith("onboardaccessibility:") for ln in kept):
+        kept.append("onboardAccessibility:false")
+    # 2026-11-05：NeoForge 线的 options.txt 会把带修饰键的绑定写成 "key.keyboard.o:CONTROL"，
+    # 原版/fabric 的 InputConstants.getKey 会 NumberFormatException 并整份 options 放弃加载。
+    # 复制跨线 options 或人工改写后统一在这里清掉这类行（游戏内会以默认绑定重建）。
+    kept = [ln for ln in kept
+            if not (ln.strip().lower().startswith("key_") and ln.strip().count(":") > 1)]
     _write_ascii(path, kept)
     return False
 
@@ -702,7 +712,20 @@ def cmd_mods(version):
         mc.write_mt_error_line("创建 mods 目录失败：" + str(exc))
         return EXIT_ERROR
 
-    if version == "1.20.1":
+    if mc.is_fabric(version):
+        # fabric 车道（1.20.1 / 1.21.1）：渲染栈与测试台 mod 一律由该线的 build.gradle 提供，
+        # 不走整合包同步；AutoJS 走 mavenLocal 的运行期 classpath（-PautojsTestMod=1），
+        # 因此 mods/ 里**不得**再出现 AutoJS-*.jar（重复注册会崩，2026-11-03 实测）。
+        names = os.listdir(paths.mods_dir) if os.path.isdir(paths.mods_dir) else []
+        dup = [n for n in names if n.lower().startswith("autojs-") and n.lower().endswith(".jar")]
+        if dup:
+            mc.write_mt_line("MT_MODS: BLOCKED — fabric 的 AutoJS 由 mavenLocal classpath 注入，"
+                             "mods/ 内不得再放同名 jar（重复注册会崩）：" + ", ".join(dup))
+            return EXIT_BLOCKED
+        mc.write_mt_line("MT_MODS: OK — " + version + " 渲染栈与测试台 mod 由 build.gradle 提供；"
+                         "AutoJS 走 mavenLocal classpath（mods/ 无重复件）；mods/ 现有 "
+                         + str(len(names)) + " 个 jar")
+    elif version == "1.20.1":
         if not os.path.isdir(paths.pack_mods_dir):
             mc.write_mt_line("MT_MODS: BLOCKED — 生产环境目录不存在 " + paths.pack_mods_dir)
             return EXIT_BLOCKED
@@ -845,7 +868,7 @@ def cmd_world(version, seed, timeout):
     paths = mc.get_paths(version)
     # fabric 的 run 目录按 client / server 分侧（mt_compat.run_root），而 get_paths 默认 side=client：
     # 服务端生成世界必须用 side=server 的目录写 server.properties、盯日志、搬存档。
-    srv = mc.get_paths(version, "server") if version == "fabric-1.20.1" else paths
+    srv = mc.get_paths(version, "server") if mc.is_fabric(version) else paths
     if seed:
         if not _restore_seed(version, paths):
             mc.write_mt_line("MT_WORLD: BLOCKED — 未找到种子包 resources/testworld-seed-"
@@ -889,6 +912,16 @@ def cmd_world(version, seed, timeout):
             fh.write("\n".join(SERVER_PROPS) + "\n")
     except OSError as exc:
         mc.write_mt_error_line("写 server.properties 失败：" + str(exc))
+        return EXIT_ERROR
+    # 专用服务端首启必须自带 eula.txt（2026-11-05 补：fabric-1.21.1 是全新 run/server，
+    # 之前没人在这个目录点过 EULA => "You need to agree to the EULA" 直接退出，
+    # 表现为 MT_WORLD: BLOCKED — 世界未在时限内生成）。
+    try:
+        with open(os.path.join(srv.run_dir, "eula.txt"), "w",
+                  encoding="ascii", errors="replace", newline="\n") as fh:
+            fh.write("#By changing the setting below to TRUE you are indicating your agreement to our EULA (https://aka.ms/MinecraftEULA).\neula=true\n")
+    except OSError as exc:
+        mc.write_mt_error_line("写 eula.txt 失败：" + str(exc))
         return EXIT_ERROR
     set_pause_on_lost_focus(paths, False)
 
@@ -1116,7 +1149,7 @@ def usage():
         "  debug    options.txt 三项诊断与修复（--pause-lock / --keybinds / --shaders）",
         "",
         "选项:",
-        "  --version <v>             必填：1.21.1 | 1.20.1 | 26.1.2 | fabric-1.20.1",
+        "  --version <v>             必填：1.21.1 | 1.20.1 | 26.1.2 | fabric-1.20.1 | fabric-1.21.1",
         "  --seed                    world 用种子包快恢复（需要 resources/testworld-seed-<v>.zip）",
         "  --state <on|off|status>   shaders 用（默认 status）",
         "  --shaders <on|off|status>  debug 用（默认 status）",

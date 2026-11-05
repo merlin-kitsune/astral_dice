@@ -41,13 +41,12 @@
     "fabric-api": "*",
     "fabric-data-attachment-api-v1": "*",
     "puzzleslib": "${puzzleslib_version_range}",
-    "starengine": "${lib_version_range}",
-    "geckolib": ">=4.8.4"
+    "starengine": "${lib_version_range}"
   },
   "recommends": {
     "trinkets": ">=${trinkets_version}",
     "accessories": "${accessories_version_range}",
     "patchouli": "*",
-    "jei": ">=15.62.0"
+    "jei": ">=15.74.0"
   }
 }

@@ -78,10 +78,14 @@ _astral_heal_stdio()
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SUBPROJECT = "fabric-1.20.1"
+# 运行目录根：默认 "run"（= <project>/run/<side>/mods），由 --run-root 覆盖。
+RUN_ROOT = "run"
 # Loom 把重映射后的依赖放在**仓库根**的 .gradle/loom-cache（不是子项目里），实测于 2026-10-01。
 LOOM_REMAPPED = os.path.join(ROOT, ".gradle", "loom-cache", "remapped_mods", "remapped")
 # 本工具投放的清单（放在 run 目录隔壁，便于 --clean 精确回收，不误删他人手工投放的 jar）
 MANIFEST_NAME = ".astral_embedded_jars.json"
+# 非 None 时只扫这些宿主 jar（由 --hosts-from 指定）
+HOSTS = None
 
 
 def fmj_id(zf: zipfile.ZipFile):
@@ -97,13 +101,48 @@ def fmj_id(zf: zipfile.ZipFile):
     return j.get("id"), j.get("version")
 
 
+def fmj_provides(zf: zipfile.ZipFile):
+    """读 fabric.mod.json 的 provides（内嵌件常以 provides 冒充真实 mod，会造成 UNIQUE_ID 冲突）。"""
+    try:
+        j = json.loads(zf.read("fabric.mod.json").decode("utf-8"))
+    except Exception:
+        return ()
+    p = j.get("provides") or ()
+    return tuple(x for x in p if isinstance(x, str))
+
+
 def iter_loom_jars():
     if not os.path.isdir(LOOM_REMAPPED):
         return
+    root_nc = os.path.normcase(os.path.abspath(LOOM_REMAPPED))
     for dirpath, _dirs, files in os.walk(LOOM_REMAPPED):
         for f in files:
-            if f.endswith(".jar") and not f.endswith("-sources.jar"):
-                yield os.path.join(dirpath, f)
+            if not (f.endswith(".jar") and not f.endswith("-sources.jar")):
+                continue
+            p = os.path.join(dirpath, f)
+            if HOSTS is not None:
+                # 只认「本线运行期真实 classpath」上的宿主 jar（两条 fabric 线共用
+                # 一棵 loom-cache，不限定就会把别的线的宿主件一起扫进来）。
+                if os.path.normcase(os.path.abspath(p)) not in HOSTS:
+                    continue
+            yield p
+
+
+def load_hosts_from_argfile(path: str):
+    """从 Loom 生成的 run 参数文件里取 -classpath，返回归一化后的 jar 路径集合。"""
+    with open(path, "r", encoding="utf-8", errors="replace") as f:
+        text = f.read()
+    lines = text.splitlines()
+    cp = ""
+    for i, ln in enumerate(lines):
+        if ln.strip() == "-classpath" and i + 1 < len(lines):
+            cp = lines[i + 1]
+            break
+    if not cp:
+        raise SystemExit("HOSTS_FROM: 未在 %s 里找到 -classpath" % path)
+    entries = cp.split(";") if ";" in cp else cp.split(os.pathsep)
+    return {os.path.normcase(os.path.abspath(e)) for e in entries
+            if e.strip().lower().endswith(".jar")}
 
 
 def collect_classpath_ids():
@@ -120,8 +159,14 @@ def collect_classpath_ids():
     return ids
 
 
-def collect_embedded():
-    """[(宿主 jar 路径, 包内路径, mod id, version, 原始字节)]"""
+def collect_embedded(cp_ids=None):
+    """[(宿主 jar 路径, 包内路径, mod id, version, 原始字节)]
+
+    跳过两类内嵌件：① 自身 id 已在 classpath 上（重复投放会撞 UNIQUE_ID）；
+    ② provides 里有 id 已在 classpath 上（典型：accessories 内嵌 owo-sentinel 声明
+    provides=[owo, owo-lib]，而 owo-lib 本体就在 classpath ⇒ Fabric Loader 0.20.1
+    直接判 UNIQUE_ID owo 并拒绝启动）。这两种情形由平台侧已经提供的件接管。"""
+    cp_ids = cp_ids or {}
     out = []
     for p in iter_loom_jars():
         try:
@@ -135,8 +180,11 @@ def collect_embedded():
                     try:
                         with zipfile.ZipFile(io.BytesIO(data)) as zz:
                             mid, ver = fmj_id(zz)
+                            provs = fmj_provides(zz)
                     except Exception:
-                        mid, ver = None, None
+                        mid, ver, provs = None, None, ()
+                    if mid in cp_ids or any(x in cp_ids for x in provs):
+                        continue
                     out.append((p, n, mid, ver, data))
         except Exception:
             continue
@@ -144,7 +192,7 @@ def collect_embedded():
 
 
 def side_mods(side: str) -> str:
-    return os.path.join(ROOT, SUBPROJECT, "run", side, "mods")
+    return os.path.join(ROOT, SUBPROJECT, RUN_ROOT, side, "mods")
 
 
 def load_manifest(mods_dir: str):
@@ -164,14 +212,28 @@ def save_manifest(mods_dir: str, m: dict):
 
 
 def main() -> int:
+    global SUBPROJECT, RUN_ROOT, HOSTS
     ap = argparse.ArgumentParser(description="补齐 Loom dev 环境被剥离的 JiJ 内嵌库")
     ap.add_argument("--apply", action="store_true", help="真正投放（默认只报告）")
-    ap.add_argument("--side", choices=["server", "client", "both"], default="both")
+    ap.add_argument("--side", choices=["server", "client", "both", "datagen"], default="both")
+    ap.add_argument("--project", default=SUBPROJECT,
+                    help="子项目目录名（默认 fabric-1.20.1）；如 fabric-1.21.1")
+    ap.add_argument("--run-root", dest="run_root", default="run",
+                    help="运行目录根（默认 run）")
     ap.add_argument("--clean", action="store_true", help="按清单回收此前投放的文件")
+    ap.add_argument("--hosts-from", dest="hosts_from", default=None,
+                    help="只从该 Loom run 参数文件（如 build/loom-cache/argFiles/runDatagen）"
+                         "列出的宿主 jar 采集内嵌库；多线共用 cache 时必须指定")
     args = ap.parse_args()
 
+    SUBPROJECT = args.project
+    RUN_ROOT = args.run_root
+    if args.hosts_from:
+        HOSTS = load_hosts_from_argfile(args.hosts_from)
+        print("AP_LOOM_HOSTS: from=%s jars=%d" % (args.hosts_from, len(HOSTS)))
+
     cp_ids = collect_classpath_ids()
-    embedded = collect_embedded()
+    embedded = collect_embedded(cp_ids)
 
     need = []
     skipped_dup = []

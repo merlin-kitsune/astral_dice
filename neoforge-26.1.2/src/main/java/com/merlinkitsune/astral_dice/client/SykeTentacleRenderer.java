@@ -1,6 +1,6 @@
 package com.merlinkitsune.astral_dice.client;
 
-import com.geckolib.renderer.GeoEntityRenderer;
+import com.merlinkitsune.starengine.geckolib.renderer.GeoEntityRenderer;
 import com.merlinkitsune.astral_dice.entity.SykeTentacleEntity;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;

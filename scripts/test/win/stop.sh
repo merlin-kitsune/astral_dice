@@ -149,6 +149,9 @@ kill_pid() {
 
 for v in $TARGETS; do
     project="$(mt_subproject "$v")"
+    # fabric 线的 run 目录由全局 MT_FAB_SUBPROJECT 决定，裸调本脚本时必须先按本次版本切过来，
+    # 否则 pidfile / AutoJS 状态文件会落到另一条 fabric 线的目录里(2026-11-05 实测遗漏)。
+    mt_fab_set_version "$v" || true
     run_dir="$MT_REPO_ROOT/run/$v"
     # fabric-1.20.1 是双 run 目录（<子项目>/run/<client|server>）：pidfile 每侧各一个，
     # 另外旧 pwsh 测试台在 scripts/test/fabric/.ft_launch_state.json 里也记了 PID。

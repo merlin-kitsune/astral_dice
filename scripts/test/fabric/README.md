@@ -124,7 +124,7 @@ pwsh -NoProfile -File scripts/test/fabric/ft_stop.ps1 --side client
 
 ## 4. 批量编排闸门（与生产线同构）
 
-规则来源：`scripts/test/TESTING-RULES-OVERVIEW.md` §3.1（2026-09-27 用户裁决「禁用自动测试，改为纯手动下达命令」）。  
+规则来源：`scripts/test/TESTING-RULES-OVERVIEW.md（已删除 2026-11-05）` §3.1（2026-09-27 用户裁决「禁用自动测试，改为纯手动下达命令」）。  
 实现：`lib/Ft.Common.psm1` 的 `Assert-FtAutoGate` —— 拦截时 **stderr 首行 `MT_AUTO_DISABLED: …`、退出码 2**；  
 临放行开关 **`--allow-auto`** 或环境变量 **`MT_ALLOW_AUTO=1`**（与生产线同形）。
 
@@ -986,7 +986,7 @@ M2 钉住 fabric 的两条 `hasEffect` 早退判据。期望 `GATE: PASS (22 项
 | 前置清单 | `fabric-1.20.1/build.gradle:65-158`、`fabric-1.20.1/gradle.properties`、`src/main/resources/fabric.mod.json:29-40` |
 | 产物分发三落点与白名单 | `fabric-1.20.1/build.gradle:226-416` |
 | 退出码表 | `scripts/test/lib/Mt.Phase.psm1:29-36` |
-| 闸门口径 | `scripts/test/TESTING-RULES-OVERVIEW.md` §3.1、§3.2、§10 |
+| 闸门口径 | `scripts/test/TESTING-RULES-OVERVIEW.md（已删除 2026-11-05）` §3.1、§3.2、§10 |
 | `LoaderBus#dispatchReport()` 格式 | `fabric-1.20.1/src/main/java/.../platform/event/LoaderBus.java:67-89` |
 | 派发统计打印点（关服 / 开局 600 tick） | `.../platform/FabricBridges.java:81-104` |
 | tick → 事件派发路径 | `.../platform/FabricBridges.java:107-137` |

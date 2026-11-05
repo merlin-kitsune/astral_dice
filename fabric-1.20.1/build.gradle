@@ -150,12 +150,9 @@ dependencies {
     // ── Patchouli(Fabric 版;手册是本模组的核心引导,首个版本即纳入) ─────────
     modImplementation "maven.modrinth:patchouli:nm6fiGRx"
 
-    // ── GeckoLib(Fabric 版;动画实体 sykestentacle 的硬前置) ────────────────
-    // ⚠️ 坐标必须用 **Modrinth version id**(SD2lOScS = geckolib-fabric-1.20.1-4.8.4),
-    //    不能写版本号 "4.8.4" —— 那样会解析到同一版本号下的**别的加载器变体**
-    //    (实测 neoforge 侧写 4.9.3 会拿到 fabric jar,故那条先例也钉 version id)。
-    //    写进 fabric.mod.json 的 depends(>=4.8.4)⇒ 是硬前置,不进 JarJar。
-    modImplementation "maven.modrinth:geckolib:SD2lOScS"
+    // ── GeckoLib 核心已 vendor 进 starengine(2026-11-03,源码级非 JarJar) ──
+    //    fabric 变体随库分发(含 geckolib.aw 的 access widener,已写进库的 fabric.mod.json)⇒
+    //    本线不再声明 geckolib 前置,也不需要 Modrinth 的 geckolib 坐标。
 
     // ── 运行时/测试环境依赖(仅 dev runtime;不进发货产物) ──────────────────
     // 用户要求的测试环境三件套 + 渲染栈
@@ -187,9 +184,11 @@ dependencies {
     //   以「Mod was built with a newer version of Loom」门禁拒绝,故只作 modRuntimeOnly 手工投放。
     //   2026-11-01 本线 Loom 升至 1.17.21:门禁只比 major.minor 两段(1.17 vs 1.17 相等即放行),恢复为编译期依赖。
     //   注意 1.18.x 起强制 Gradle 9.7 + JVM 25,本线固定 JDK21 故不跟。
-    // 坐标:Modrinth version id `pQiaGCAN` = jei-1.20.1-fabric-15.62.0.216.jar
+    // JEI(物品/配方查看器;compat/jei 适配层的编译期依赖)。
     //   (与 gradle.properties 的 jei_version=15.62.0.216 同版;forge 变体 id 是 p5jzDqhi,别混用)。
-    modImplementation "maven.modrinth:jei:pQiaGCAN"
+    // 坐标:Modrinth version id bTwbXhIB = jei-1.20.1-fabric-15.74.0.234.jar(最新公开版,2026-11-03 升级);
+    //   与 gradle.properties 的 jei_version=15.74.0.234 同版;forge 变体 id 是 6E4ps2ER,别混用。
+    modImplementation "maven.modrinth:jei:bTwbXhIB"
     // JEI 15.62.0.216 的**硬依赖** mezzconfig（mod id `mezz_config`，Modrinth 项目 `7tEfOcA7`）：
     //   Loader 解析阶段是 HARD_DEP（`[0.6.3,1.0.0)`），缺它 dev runServer/runClient 直接死在
     //   FabricLoader Resolution（2026-11-01 实机 launch 首跑即踩）。
@@ -226,7 +225,7 @@ dependencies {
     // Superflat World No Slimes + 其硬依赖 Collective（超平坦测试世界里刷史莱姆会污染实体计数类断言）
     //   坐标 id 均为 Modrinth version id: I6QPoepF = 1.20.1-3.7-fabric+forge+neo；SIqDV2gB = collective 1.20.1-8.73
     modRuntimeOnly "maven.modrinth:superflat-world-no-slimes:I6QPoepF"
-    modRuntimeOnly "maven.modrinth:collective:SIqDV2gB"
+    modRuntimeOnly "maven.modrinth:collective:w5c5YvXl"   // 1.20.1-8.75 (2026-11-03 从 8.73 升级)
 
     // ── 用户 2026-11-03 追加的测试环境三件套（仅 dev runtime） ──────────────
     // ModMenu：mod 列表 GUI（查 mod id / 版本 / 冲突时用）。7.2.2 无声明依赖（Fabric API 本工程已带）。
@@ -249,11 +248,11 @@ dependencies {
     modRuntimeOnly "com.github.Fallen-Breath.conditional-mixin:conditional-mixin-fabric:0.6.5"
     // Debugify：客户端/服务端 bug 修正 + 诊断报告（1.20.1 分支版本号 1.20.1+2.0）。
     //   ⚠️ fabric.mod.json 声明 **required** 依赖 yacl ⇒ 缺它 Loader 解析阶段硬拒。
-    //   其声明的依赖版本是 YACL 3.1.0+1.20（version id `CgwTUAR2`），按声明值钉住，
-    //   不追最新的 3.6.x（Debugify 2.0 是编译在 3.1.0 上的，跨 minor 有 API 漂移风险）。
+    //   (Debugify 的 depends 只要求 *,YACL 3.x 对小版本保持向后兼容;启动实测见测试台决策文档)。
+    //   原按 Debugify 声明值钉在 YACL 3.1.0;2026-11-03 按「测试台追最新公开版」升到 3.6.6+1.20.1
     //   Modrinth version id `6XDJoCks` = Debugify-1.20.1+2.0.jar
     modRuntimeOnly "maven.modrinth:debugify:6XDJoCks"
-    modRuntimeOnly "maven.modrinth:yacl:CgwTUAR2"
+    modRuntimeOnly "maven.modrinth:yacl:dvS5DjUA"   // 3.6.6+1.20.1 (2026-11-03 从 3.1.0 升级)
 
     // AutoJS 实机测试库（仅 dev 运行期；CI/普通构建不解析）
     // 由 scripts/test/tools/publish_autojs_maven.ps1 发布到 mavenLocal（见本文件 :47 的 mavenLocal()）。

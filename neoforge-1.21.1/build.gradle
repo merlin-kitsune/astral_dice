@@ -181,18 +181,20 @@ dependencies {
     //      gradle.properties 的 starengine_version 一致(否则以「缺失必需前置」拒绝启动)。
     implementation "${starengine_group}:starengine-neoforge-1.21.1:${starengine_version}"
     implementation 'maven.modrinth:curios:yohfFbgD'
-    // GeckoLib(动画实体运行时库):本线的**硬前置** —— SykeTentacleEntity 直接 implements GeoEntity,
-    // 缺它会在实体类加载期 NoClassDefFoundError,故 implementation(编译期+dev 运行期)且写进 mods.toml required。
-    // 4.9.3:Java 21,要求 neoforge >= 21.1.150(本线 21.1.235 满足)。Modrinth Maven 的 `maven.modrinth`
-    // group 已由文件顶部的 exclusiveContent 接管,不需要新增仓库。
-    // 坐标必须用 Modrinth 的**版本 id**:同一个版本号 4.9.3 下挂着 fabric/neoforge/forge 三份文件,
-    // 写 `4.9.3` 会解析到 fabric 变体(geckolib-fabric-1.21.1-4.9.3.jar,只有 fabric.mod.json,NeoForge 加载不了)。
-    // Grwn5rUB = geckolib-neoforge-1.21.1-4.9.3.jar(sha1 5cfe835472a5c5457ae9ac192d9d7b317454d5ac)。
-    implementation 'maven.modrinth:geckolib:Grwn5rUB'
-    // JEI(配方查看,测试环境用);19.39 系仍兼容本项目 neoforge 21.1.235(19.42+ 要求 ≥21.1.238)
-    // 2026-09-17 起按统一口径改走 Curse Maven(原 `mezz.jei:jei-1.21.1-neoforge:19.39.0.372` 走官方 maven;
+    // GeckoLib(动画实体运行时库):自 2026-11-03 起**不再作为外部依赖** —— 其核心已 vendor 进 starengine
+    // (com.merlinkitsune.starengine.geckolib.*,由 starengine 仓 tools/vendor_geckolib.py 从上游 1.21.1
+    // 分支生成),随 starengine 一起进类路径。因此这里既不需要 implementation,mods.toml 也不再声明
+    // geckolib 前置。迁移史:曾写 maven.modrinth:geckolib:Grwn5rUB (= 4.9.3 neoforge 变体,
+    // sha1 5cfe8354…)作硬前置。
+    // JEI(配方查看,测试环境用)。2026-11-03 升到 19.70.0.469(最新公开版):该版硬要求
+    // neoforge [21.1.238,) ⇒ 本线 neo_version 已同步抬到 21.1.265,并新增硬前置 mezz_config。
     // CF 文件 8512040 = `jei-1.21.1-neoforge-19.39.0.372.jar`,1572695 字节,与官方 maven 产物同尺寸)
-    implementation "curse.maven:jei-238222:8512040"
+    // Modrinth version id 1vC6z8wV = jei-1.21.1-neoforge-19.70.0.469.jar (4784333 B)。
+    implementation "maven.modrinth:jei:1vC6z8wV"
+    // MezzConfig:JEI 19.70 起的**硬前置**(mod id mezz_config,Modrinth 项目 7tEfOcA7);
+    //   version id sL7Ghaz1 = mezz_config-1.21.1-neoforge-0.6.10-standalone.jar。
+    //   仅 dev 用:本模组代码不引用,也不写进 mods.toml 依赖。
+    implementation "maven.modrinth:mezzconfig:sL7Ghaz1"
     // Jade(方块/实体信息 HUD;2026-09-19 用户要求「所有测试环境增加 jei 和 jade 模组,用于用户侧物品和效果检查」):
     // 测试环境用,不进发货产物。Modrinth Maven 的 version id eYz2YBGT = `Jade-1.21.1-NeoForge-15.10.6.jar`
     // (726853 B),与本线整合包内现有 `[玉 🔍] Jade-1.21.1-NeoForge-15.10.6.jar` **同版**,避免 dev run 与整合包行为不一致。

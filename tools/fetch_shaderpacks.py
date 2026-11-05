@@ -42,6 +42,7 @@ RUN_DIRS = [
     "run/1.20.1",
     "run/26.1.2",
     "fabric-1.20.1/run/client",
+    "fabric-1.21.1/run/client",
 ]
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 

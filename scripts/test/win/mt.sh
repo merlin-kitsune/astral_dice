@@ -18,9 +18,11 @@
 #   bash scripts/test/win/mt.sh --version 1.21.1 --phase report
 #   bash scripts/test/win/mt.sh --version 1.21.1 --phase stop --purge-saves
 #   bash scripts/test/win/mt.sh --version 1.21.1 --phase build --dry-run   # 只看将执行什么
-#   bash scripts/test/win/mt.sh --allow-auto    # 全流程（四线顺序 + 1.21.1 门控）
+#   bash scripts/test/win/mt.sh --allow-auto    # 全流程（五线顺序 + 1.21.1 门控）
 #   bash scripts/test/win/mt.sh --version fabric-1.20.1 --side server --phase launch  # fabric 双 run 目录
+#   bash scripts/test/win/mt.sh --version fabric-1.21.1 --side server --phase launch  # 同上（fabric 1.21.1 线）
 #   bash scripts/test/win/mt.sh --version fabric-1.20.1 --enable-autojs --phase launch # 显式开 -PautojsTestMod=1
+#   bash scripts/test/win/mt.sh --version fabric-1.21.1 --enable-autojs --phase launch # 同上（fabric 1.21.1 线）
 #
 # 退出码：0=OK 1=FAIL 2=用法错误/ERROR 10=PREFLIGHT 11=BLOCKED 12=TIMEOUT 130=中断
 # 机器行：MT_ERROR: / MT_INFO: / MT_WARN: / MT_PHASE: / MT_AUTO_DISABLED: / MT_RUN: /
@@ -45,15 +47,15 @@ if [ -z "$MT_REPO_ROOT" ]; then
 fi
 export MT_REPO_ROOT
 
-usage() { sed -n '2,30p' "$0"; }
+usage() { sed -n '2,32p' "$0"; }
 
 # ── 选项默认值（对齐 mt.ps1:558-582 的 $script:Opt 表）─────────────────────
 OPT_VERSION=""
 OPT_PHASE=""
 OPT_CASE=""
 OPT_CHANNEL=""
-OPT_SIDE=""               # 仅 fabric-1.20.1：client|server（其它线传了报错）
-OPT_FAB_AUTOJS=""         # 仅 fabric-1.20.1：1=显式开 -PautojsTestMod=1，0=显式关
+OPT_SIDE=""               # 仅 fabric 线（fabric-*）：client|server（其它线传了报错）
+OPT_FAB_AUTOJS=""         # 仅 fabric 线（fabric-*）：1=显式开 -PautojsTestMod=1，0=显式关
 OPT_ALLOW_AUTO=0
 OPT_FORCE=0
 OPT_KEEP_DAEMON=0
@@ -133,15 +135,17 @@ if [ -n "$OPT_VERSION" ]; then
         printf 'MT_ERROR: 未知版本 %s（可选：%s）\n' "$OPT_VERSION" "$MT_ALL_VERSIONS" >&2
         exit 2
     fi
+    # fabric 线：把 --version 的 fabric 子项目写进 fabric 库全局（run 目录 / AutoJS 制品名跟着版本走）
+    mt_fab_set_version "$OPT_VERSION" || true
 fi
 
-# ── fabric-1.20.1 专属开关（--side / --enable-autojs）──────────────────────
+# ── fabric 线专属开关（--side / --enable-autojs；按 fabric-* 前缀判定）──────
 # 语义：只有 fabric 线有「双 run 目录」和「条件 AutoJS」，其它三线传这两个开关一律报错，
 #   避免「以为切了侧 / 以为开了 AutoJS」而实际没生效的静默偏差。
 MT_SIDE=""
 if [ -n "$OPT_SIDE" ]; then
     if ! mt_is_fabric "$OPT_VERSION"; then
-        printf 'MT_ERROR: --side 只对 fabric-1.20.1 有意义（收到 --version %s；其它三线是单 run 目录 run/<版本>）\n' "${OPT_VERSION:-<未指定>}" >&2
+        printf 'MT_ERROR: --side 只对 fabric 线（fabric-<mcver>）有意义（收到 --version %s；其它三线是单 run 目录 run/<版本>）\n' "${OPT_VERSION:-<未指定>}" >&2
         exit 2
     fi
     if ! mt_fab_side_valid "$OPT_SIDE"; then
@@ -152,7 +156,7 @@ if [ -n "$OPT_SIDE" ]; then
 fi
 if [ -n "$OPT_FAB_AUTOJS" ]; then
     if ! mt_is_fabric "$OPT_VERSION"; then
-        printf 'MT_ERROR: --enable-autojs/--disable-autojs 只对 fabric-1.20.1 有意义（收到 --version %s）\n' "${OPT_VERSION:-<未指定>}" >&2
+        printf 'MT_ERROR: --enable-autojs/--disable-autojs 只对 fabric 线（fabric-<mcver>）有意义（收到 --version %s）\n' "${OPT_VERSION:-<未指定>}" >&2
         exit 2
     fi
     MT_FAB_AUTOJS="$OPT_FAB_AUTOJS"

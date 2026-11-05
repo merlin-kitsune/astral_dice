@@ -9,6 +9,7 @@
   1.20.1        -> forge-1.20.1      (forge)
   26.1.2        -> neoforge-26.1.2   (neoforge)
   fabric-1.20.1 -> fabric-1.20.1     (fabric)
+  fabric-1.21.1 -> fabric-1.21.1     (fabric；2026-11-05 并入，第五条线)
 
 产物定位口径（与 pwsh Get-MtCaseJarEntries 逐条对齐）：
   · 只在 <repo>/<subproject>/build/libs 下找，不做版本目录拼接
@@ -23,14 +24,24 @@ import os
 import re
 import zipfile
 
-VERSIONS = ("1.21.1", "1.20.1", "26.1.2", "fabric-1.20.1")
+VERSIONS = ("1.21.1", "1.20.1", "26.1.2", "fabric-1.20.1", "fabric-1.21.1")
+# ⚠️ 顺序陷阱：字符串 "1.21.1" 是 "fabric-1.21.1" 的子串。任何按子串/前缀匹配版本的代码
+# 必须先判 fabric-* 再判裸版本号（本文件用精确等值，不依赖顺序；mt_ps._MARKER_ORDER 靠顺序）。
 SUBPROJECT = {
     "1.21.1": "neoforge-1.21.1",
     "1.20.1": "forge-1.20.1",
     "26.1.2": "neoforge-26.1.2",
     "fabric-1.20.1": "fabric-1.20.1",
+    "fabric-1.21.1": "fabric-1.21.1",
 }
-LOADER = {"1.21.1": "neoforge", "1.20.1": "forge", "26.1.2": "neoforge", "fabric-1.20.1": "fabric"}
+LOADER = {"1.21.1": "neoforge", "1.20.1": "forge", "26.1.2": "neoforge",
+          "fabric-1.20.1": "fabric", "fabric-1.21.1": "fabric"}
+FABRIC_VERSIONS = ("fabric-1.20.1", "fabric-1.21.1")
+
+
+def is_fabric(version: str) -> bool:
+    """fabric 车道判定：按前缀，不按等值（第五线起两条 fabric）。"""
+    return str(version or "").strip().startswith("fabric-")
 JAR_GLOB = "astral_dice-*.jar"
 JAR_EXCLUDE = re.compile(r"-(sources|dev|slim)\.jar$")
 
@@ -115,7 +126,7 @@ def run_dir(version: str, side: str | None = None, root: str | None = None) -> s
     """run 根：fabric 双 run 目录 <sub>/run/<side>；另三线 run/<版本>。"""
     base = root or repo_root()
     sub = subproject(version)
-    if version == "fabric-1.20.1":
+    if is_fabric(version):
         return os.path.join(base, sub, "run", (side or "server").strip() or "server")
     return os.path.join(base, "run", version)
 

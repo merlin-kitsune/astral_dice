@@ -3,7 +3,7 @@ package com.merlinkitsune.astral_dice.client;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.entity.SykeTentacleEntity;
 import net.minecraft.resources.ResourceLocation;
-import software.bernie.geckolib.model.GeoModel;
+import com.merlinkitsune.starengine.geckolib.model.GeoModel;
 
 /**
  * Syke 触手的 GeckoLib 模型（2026-10-29；2026-10-29 由 neoforge-1.21.1 蓝本移植到本线）：

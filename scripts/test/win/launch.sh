@@ -12,7 +12,7 @@
 #                                   [--kill-on-timeout] [--log-dir DIR]
 #                                   [--launch-mode bg|start] [--dry-run]
 #                                   [--side client|server] [--enable-autojs]
-#   --side / --enable-autojs 只对 fabric-1.20.1 有效（双 run 目录 + 条件 AutoJS）；
+#   --side / --enable-autojs 只对 fabric 线（fabric-<mcver>）有效（双 run 目录 + 条件 AutoJS）；
 #   其它三线传了报错。--enable-autojs 等价 export MT_FAB_AUTOJS=1（带 -PautojsTestMod=1）。
 #
 # 就绪判据（与 Linux 相同顺序）：
@@ -52,7 +52,7 @@ QUICKPLAY="${MT_LAUNCH_QUICKPLAY:-testworld}"
 KILL_ON_TIMEOUT=0
 DRY=0
 LAUNCH_MODE="${MT_WIN_LAUNCH_MODE:-bg}"
-SIDE="${MT_SIDE:-}"        # 仅 fabric-1.20.1：client|server（其它线必须留空）
+SIDE="${MT_SIDE:-}"        # 仅 fabric 线（fabric-*）：client|server（其它线必须留空）
 
 usage() {
     cat <<'USAGE'
@@ -62,7 +62,7 @@ usage() {
                                   [--kill-on-timeout] [--log-dir DIR]
                                   [--launch-mode bg|start] [--dry-run]
 
-  --version <ver>   1.21.1 | 1.20.1 | 26.1.2 | fabric-1.20.1（必填）
+  --version <ver>   1.21.1 | 1.20.1 | 26.1.2 | fabric-1.20.1 | fabric-1.21.1（必填）
   --timeout <sec>   等 AutoJS 客户端侧就绪的上限，默认 600
   --wait-world <秒> READY 后再等世界 marker 的秒数，默认 0=不额外等
   --quickplay <名>  透传 -Pquickplay=<名>（默认 testworld；build.gradle 四线已配置）
@@ -75,7 +75,7 @@ usage() {
                                  但拿不到 PID，且本机沙箱下实测 start/b 会阻塞）
   --dry-run         只打印将执行的命令与判定依据，不启动任何进程
 
-环境变量（仅 fabric-1.20.1 有意义）：
+环境变量（仅 fabric 线有意义）：
   MT_TEST_SODIUM=false  透传 -PtestSodium=false（fabric 的 Sodium/Iris 是条件依赖，
                         版本不匹配会让客户端崩；手工验证时把它关掉，见
                         docs/handover-1.5.0-main.md §6-7）。未设置 = 不传，行为不变。
@@ -119,6 +119,8 @@ if ! mt_is_version "$VERSION"; then
     echo "用法错误：未知 --version $VERSION（可选 $MT_ALL_VERSIONS）" >&2
     exit 2
 fi
+# fabric 线：把本次版本写进 fabric 库全局（run 目录 / AutoJS 制品名跟着版本走）
+mt_fab_set_version "$VERSION" || true
 case "$TIMEOUT" in ''|*[!0-9]*) echo "用法错误：--timeout 必须是整数秒" >&2; exit 2 ;; esac
 case "$WAIT_WORLD" in ''|*[!0-9]*) echo "用法错误：--wait-world 必须是整数秒（0=不等）" >&2; exit 2 ;; esac
 case "$LAUNCH_MODE" in
@@ -129,7 +131,7 @@ esac
 PROJECT="$(mt_subproject "$VERSION")"
 TOOLCHAIN_VER="$(mt_toolchain "$VERSION")"
 
-# ── fabric-1.20.1：双 run 目录 + 条件 AutoJS（其它三线走原来的单目录）──────
+# ── fabric 线：双 run 目录 + 条件 AutoJS（其它三线走原来的单目录）──────────
 # 三线：仓库根/run/<版本>，客户端固定 :<子项目>:runClient。
 # fabric：<子项目>/run/<client|server>，任务按侧选 runClient / runServer；
 #   -PautojsTestMod=1 只在显式 --enable-autojs（或 MT_FAB_AUTOJS=1）时才带。
@@ -145,7 +147,7 @@ if mt_is_fabric "$VERSION"; then
     AJ_ARG="$(mt_fab_gradle_autojs_arg "$FAB_SIDE")"
 else
     if [ -n "$SIDE" ]; then
-        echo "用法错误：--side 只对 fabric-1.20.1 有效（其它三线是单 run 目录 run/<版本>；收到 --version $VERSION）" >&2
+        echo "用法错误：--side 只对 fabric 线（fabric-<mcver>）有效（其它三线是单 run 目录 run/<版本>；收到 --version $VERSION）" >&2
         exit 2
     fi
     RUN_DIR="$MT_REPO_ROOT/run/$VERSION"
@@ -204,7 +206,7 @@ allow_no_autojs="${MT_ALLOW_NO_AUTOJS:-0}"
 # 2026-11-01 用户裁决：AutoJS 就绪判据放宽至所有版本 —— 不再按版本白名单（原 mt_line_has_autojs）。
 # 2026-11-02 fabric 例外：fabric 的 AutoJS 是**条件依赖**，由 -PautojsTestMod=1 以 modRuntimeOnly 注入
 #   运行期 classpath，**永远不进 run/<side>/mods**（制品是 intermediary 命名空间，手放进 mods 会
-#   NoSuchMethodError；见 scripts/test/TESTING-RULES-OVERVIEW.md:191 规则 6）。
+#   NoSuchMethodError；见 scripts/test/TESTING-RULES-OVERVIEW.md（已删除 2026-11-05）:191 规则 6）。
 #   ⇒ fabric 侧的就绪判据 = 「mods 里 AutoJS jar 在位」**或**「本次启动已注入（AJ_ARG 非空）」。
 fab_aj_injected=0
 if mt_is_fabric "$VERSION" && [ "${FAB_SIDE:-}" = "client" ] && [ -n "$AJ_ARG" ] && [ "$allow_no_autojs" != "1" ]; then
@@ -217,7 +219,7 @@ if mt_is_fabric "$VERSION" && [ "${aj_n:-0}" -gt 0 ] && [ -n "$AJ_ARG" ]; then
 fi
 if [ "${aj_n:-0}" -gt 0 ] || [ "$fab_aj_injected" = 1 ]; then autojs_deployed=1; else autojs_deployed=0; fi
 if [ "$fab_aj_injected" = 1 ]; then
-    aj_names="${aj_names}（fabric：$AJ_ARG → AutoJS-fabric-1.20.1-1.0.0.jar 走 mavenLocal 运行期 classpath，不在 mods/）"
+    aj_names="${aj_names}（fabric：$AJ_ARG → AutoJS-${MT_FABRIC_VERSION}-1.0.0.jar 走 mavenLocal 运行期 classpath，不在 mods/）"
 fi
 # 有 jar（或 fabric 已注入）→ AutoJS 为主判据；都没有（或 MT_ALLOW_NO_AUTOJS=1）→ 纯 marker。
 # 只在主判据生效时才真的去探 MCP（否则白等 5s 一轮）。
@@ -270,7 +272,7 @@ fi
 SODIUM_ARG=""
 if [ -n "${MT_TEST_SODIUM:-}" ]; then
     if ! mt_is_fabric "$VERSION"; then
-        echo "用法错误：MT_TEST_SODIUM 只对 fabric-1.20.1 生效（$VERSION 没有 testSodium 属性）" >&2
+        echo "用法错误：MT_TEST_SODIUM 只对 fabric 线（fabric-<mcver>）生效（$VERSION 没有 testSodium 属性）" >&2
         exit 2
     fi
     case "$MT_TEST_SODIUM" in

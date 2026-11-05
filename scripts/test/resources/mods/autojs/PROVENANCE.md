@@ -55,3 +55,21 @@
   jar 内按 SRG 名调用 MC 的类会抛 `NoSuchMethodError`；`Error` 不被 MCP 的 `catch(Exception)` 兜住，
   故表现为启动期硬失败。取证：reobf jar 362 处 `m_xxxxx_` 调用点，devlibs jar 0 处。
 
+
+### AutoJS Maven 分发记录（publish_autojs_maven.py）
+
+由 scripts/test/tools/publish_autojs_maven.py 写入（本地 mavenLocal 分发；**不是** Curse/Modrinth 发布件）。
+
+- `cc.sighs.autojs:AutoJS-forge-1.20.1:1.0.0`
+  - jar: `scripts/test/resources/mods/autojs/AutoJS-forge-1.20.1-1.0.0.jar`（SHA256 `3fc90d40204d87aae097016a99cce3eb0f9a497a62c2f4113bd3e15dd3680987`）
+  - 构建来源: `temp/AutoJS-src/targets/forge-1.20.1/build/libs/AutoJS-forge-1.20.1-1.0.0.jar`
+  - 装载方式: ModDevGradle legacyforge: modRuntimeOnly 解析期 SRG->named
+- `cc.sighs.autojs:AutoJS-fabric-1.20.1:1.0.0`
+  - jar: `scripts/test/resources/mods/autojs/AutoJS-fabric-1.20.1-1.0.0.jar`（SHA256 `66fc361f4a030bc43bf152d29cbc24ca0860bb8d86d46ee71127fc83c661cda6`）
+  - 构建来源: `temp/AutoJS-src/targets/fabric-1.20.1/build/libs/AutoJS-fabric-1.20.1-1.0.0.jar`
+  - 装载方式: Fabric Loom: modRuntimeOnly 解析期 intermediary->named
+- `cc.sighs.autojs:AutoJS-fabric-1.21.1:1.0.0`
+  - jar: `scripts/test/resources/mods/autojs/AutoJS-fabric-1.21.1-1.0.0.jar`（SHA256 `f498cf4a9d8df3a26554d09b09ce615eb2badba08120964460703677c4822fa3`）
+  - 构建来源: `F:\MCProject\AutoJS\targets\fabric-1.21.1\build\libs\AutoJS-fabric-1.21.1-1.0.0.jar`
+  - 装载方式: Fabric Loom: modRuntimeOnly 解析期 intermediary->named（依赖 rhino 2101 多加载器单 jar）
+

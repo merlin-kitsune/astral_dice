@@ -1,7 +1,7 @@
 package com.merlinkitsune.astral_dice.client;
 
-import com.geckolib.model.GeoModel;
-import com.geckolib.renderer.base.GeoRenderState;
+import com.merlinkitsune.starengine.geckolib.model.GeoModel;
+import com.merlinkitsune.starengine.geckolib.renderer.base.GeoRenderState;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.entity.SykeTentacleEntity;
 import net.minecraft.resources.Identifier;
@@ -9,12 +9,15 @@ import net.minecraft.resources.Identifier;
 /**
  * Syke 触手的 GeckoLib 模型（26.1.2 线，GeckoLib 5.5.2）：只负责把「渲染态 → 三个资源路径」映射出来。
  *
- * <p>三个路径与 {@code models/sykestentacle/} 下的源文件一一对应，命名空间统一取
- * {@link AstralDiceMod#MODID}：
+ * <p><b>v5 的资源根换了</b>（源码实证 {@code cache/GeckoLibResources.java}：{@code ANIMATIONS_PATH =
+ * starengine:geckolib/animations}、{@code MODELS_PATH = starengine:geckolib/models}）：
+ * 模型/动画必须放在 {@code assets/<ns>/geckolib/models/} 与 {@code assets/<ns>/geckolib/animations/}
+ * 下，标识符则是剥掉 {@code geckolib/models|animations} 前缀与 {@code .geo|.animation.json} 后缀之后的
+ * {@code astral_dice:sykestentacle}（v4 的 {@code geo/…}、{@code animations/…} 目录 v5 根本不扫）。
  * <ul>
- *   <li>{@code geo/sykestentacle.geo.json} ← {@code models/main.geo.json}</li>
- *   <li>{@code textures/entity/sykestentacle.png} ← {@code textures/texture.png}</li>
- *   <li>{@code animations/sykestentacle.animation.json} ← {@code animations/default.animation.json}</li>
+ *   <li>{@code geckolib/models/sykestentacle.geo.json} ← {@code models/main.geo.json}</li>
+ *   <li>{@code textures/entity/sykestentacle.png} ← {@code textures/texture.png}（贴图路径 v5 未变）</li>
+ *   <li>{@code geckolib/animations/sykestentacle.animation.json} ← {@code animations/default.animation.json}</li>
  * </ul>
  *
  * <p><b>v5 与 v4 的签名差异</b>（javap 实证，实装 {@code geckolib-xfVfPcoC.jar}）：
@@ -29,13 +32,13 @@ import net.minecraft.resources.Identifier;
 public class SykeTentacleModel extends GeoModel<SykeTentacleEntity> {
 
     private static final Identifier MODEL_LOCATION = Identifier.fromNamespaceAndPath(
-            AstralDiceMod.MODID, "geo/sykestentacle.geo.json");
+            AstralDiceMod.MODID, "sykestentacle");
 
     private static final Identifier TEXTURE_LOCATION = Identifier.fromNamespaceAndPath(
             AstralDiceMod.MODID, "textures/entity/sykestentacle.png");
 
     private static final Identifier ANIMATION_LOCATION = Identifier.fromNamespaceAndPath(
-            AstralDiceMod.MODID, "animations/sykestentacle.animation.json");
+            AstralDiceMod.MODID, "sykestentacle");
 
     @Override
     public Identifier getModelResource(GeoRenderState renderState) {

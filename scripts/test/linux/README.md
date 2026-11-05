@@ -11,7 +11,7 @@
    - `env.sh`：只读环境体检（四线 toolchain JDK + daemon JVM、run 目录/模组、AutoJS 三态探活、客户端残留、Gradle 进程、锁、git autocrlf）。**实测通过**（`ENV_RESULT: WARN`, exit 0）。
    - `launch.sh`：启动 `runClient` 并轮询就绪标志（优先 `run/start-<ver>.sh`，否则 `bash ./gradlew :<line>:runClient --console=plain`）。**只做过 `--dry-run`**，真实启动由 Lead 在 task-1 完成后统一验证（避免与 gradle-launcher 抢全队唯一的 Gradle 并发位）。
    - `stop.sh`：按 `run/<ver>/linux-run.pid` 进程组 + `/proc` 扫描收停，`LINUX_STOP: OK|RESIDUAL`。**两条 kill 路径均以假仓库实测通过**（§9.3）。
-3. **不可移植的测试能力**：`mt_case.ps1`（用例编排）/`mt_assert.ps1`（断言）/`mt_report.ps1`/`mt_watchdog.ps1` 都建立在「Windows 进程 + 键盘注入 + 窗口」之上，Linux 侧不复刻；替代路径是 **AutoJS HTTP 通道**（`docs/features/autojs-testing-flow.md` 六步流程），它不需要键鼠注入。详见 §6、§7。
+3. **不可移植的测试能力**：`mt_case.ps1`（用例编排）/`mt_assert.ps1`（断言）/`mt_report.ps1`/`mt_watchdog.ps1` 都建立在「Windows 进程 + 键盘注入 + 窗口」之上，Linux 侧不复刻；替代路径是 **AutoJS HTTP 通道**（`docs/features/autojs-testing-flow.md（已删除 2026-11-05）` 六步流程），它不需要键鼠注入。详见 §6、§7。
 
 ## 1. 文件
 
@@ -115,7 +115,7 @@ pwsh 安装：`/home/kitsune/.local/powershell/pwsh`（7.6.9，linux-x64 tar.gz�
 ## 7. 残余 Windows-only 能力与建议（按优先级）
 
 1. **P0 已解决**：Linux 上「起客户端 / 探活 / 收停」闭环 → 本目录三件套。
-2. **P1 建议**：把 AutoJS 通道作为 Linux 侧唯一「用例执行臂」——`docs/features/autojs-testing-flow.md` 六步流程 + 本仓 `autojs` skill；不需要键鼠，`stop.sh` 负责收尾。四条线的 `run/<ver>/mods` **均已就位 AutoJS jar**（env.sh 四线报 OK，见 §9.1）；换线/重装后仍建议先跑 env.sh 复核。
+2. **P1 建议**：把 AutoJS 通道作为 Linux 侧唯一「用例执行臂」——`docs/features/autojs-testing-flow.md（已删除 2026-11-05）` 六步流程 + 本仓 `autojs` skill；不需要键鼠，`stop.sh` 负责收尾。四条线的 `run/<ver>/mods` **均已就位 AutoJS jar**（env.sh 四线报 OK，见 §9.1）；换线/重装后仍建议先跑 env.sh 复核。
 3. **P2 建议**：若必须保留「键鼠注入级」用例（GUI 拖拽/按键序列），改走 task-2 的 Wayland computer-use MCP（`act` 的 keyboard/pointer）；不要复活 `mt_inject` 的 user32 代码。
 4. **P3 建议**：`mt_ime`/`mt_capture`/`Mt.Win32` 保持 Windows-only，不强行移植；Linux 截图用 `grim` 即可。
 5. **不建议**：把 19k 行 pwsh 整体「去 Win32 化」——收益低（真正难替换的只有注入/窗口/IME 三块），且会把 Windows 侧稳定流程置于风险中。
@@ -139,7 +139,7 @@ pwsh 安装：`/home/kitsune/.local/powershell/pwsh`（7.6.9，linux-x64 tar.gz�
   - 主判据：`health`==200 **且** MCP `initialize` + `tools/call status` 报 `sides[]` 中 `side=="client"` 且 `available=true` → `LAUNCH: READY`，exit 0。
   - 日志 marker 只作附加信息：命中时额外打 `LAUNCH: WORLD_READY`，**不作为 READY 必要条件**；`--wait-world <秒>`（默认 0）可在 READY 后额外等它。
   - `MT_ALLOW_NO_AUTOJS=1`：允许 AutoJS 未就绪时用日志 marker 兜底判 READY；`run/<ver>/mods` 无 AutoJS jar 的线也自动允许 marker 兜底。两套都没有 → AutoJS 通道从未响应 health 则 exit 2，否则 exit 12。
-- **需要世界的用例**：用 `--quickplay <世界名>`（build.gradle 四线已实现 `-Pquickplay`：1.21.1/1.20.1/fabric 映射 `--quickPlaySingleplayer <名>`，26.1.2 必须等号形式 `--quickPlaySingleplayer=<名>`；launch.sh 经 `run/start-*.sh` 的 `"$@"` 透传或直接附给 gradlew，**本脚本传参未实机验证**），或先在标题画面用 AutoJS `eval_js` 建/开世界（见 `docs/features/autojs-testing-flow.md`）。
+- **需要世界的用例**：用 `--quickplay <世界名>`（build.gradle 四线已实现 `-Pquickplay`：1.21.1/1.20.1/fabric 映射 `--quickPlaySingleplayer <名>`，26.1.2 必须等号形式 `--quickPlaySingleplayer=<名>`；launch.sh 经 `run/start-*.sh` 的 `"$@"` 透传或直接附给 gradlew，**本脚本传参未实机验证**），或先在标题画面用 AutoJS `eval_js` 建/开世界（见 `docs/features/autojs-testing-flow.md（已删除 2026-11-05）`）。
 
 ## 9. 实测记录（2026-10-31）
 

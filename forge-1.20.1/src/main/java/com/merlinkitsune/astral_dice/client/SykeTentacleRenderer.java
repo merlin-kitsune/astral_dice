@@ -2,7 +2,7 @@ package com.merlinkitsune.astral_dice.client;
 
 import com.merlinkitsune.astral_dice.entity.SykeTentacleEntity;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
-import software.bernie.geckolib.renderer.GeoEntityRenderer;
+import com.merlinkitsune.starengine.geckolib.renderer.GeoEntityRenderer;
 
 /**
  * Syke 触手渲染器（2026-10-29；2026-10-29 由 neoforge-1.21.1 蓝本移植到本线）：

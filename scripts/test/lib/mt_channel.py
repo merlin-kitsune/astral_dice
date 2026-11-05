@@ -89,14 +89,14 @@ def transport_error(text) -> bool:
 def autojs_deployed(version: str, side: str = "server", root: str | None = None) -> bool:
     """本线 run 目录是否有 AutoJS jar，或 fabric 线本次启动是否真的注入了 AutoJS。"""
     try:
-        sides = [side] if version != "fabric-1.20.1" else ["server", "client"]
+        sides = ["server", "client"] if mt_paths.is_fabric(version) else [side]
         for s in sides:
             mods = mt_paths.mods_dir(version, s, root)
             if os.path.isdir(mods):
                 if any(f.startswith("AutoJS-") and f.endswith(".jar") for f in os.listdir(mods)):
                     return True
             flag = mt_paths.fabric_injected_flag(version, s, root)
-            if version == "fabric-1.20.1" and os.path.isfile(flag):
+            if mt_paths.is_fabric(version) and os.path.isfile(flag):
                 return True
     except KeyError:
         return False

@@ -15,7 +15,7 @@ import json, os, re, sys
 
 W = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TABLE = os.path.join(W, 'tools', 'sign_display_names.json')
-LINES = ['neoforge-1.21.1', 'forge-1.20.1', 'fabric-1.20.1']
+LINES = ['neoforge-1.21.1', 'forge-1.20.1', 'fabric-1.20.1', 'fabric-1.21.1']
 
 # 旧职称（英文）—— 只禁止它们紧接 "sign" 的形态，避免误伤 Boss 敌人 / Ninja Star / Healing Slime / Legendary Merchant 等既有专名
 EN_LEGACY = ['Secret Detective', 'Great Detective', 'Boss', 'Astrologer', 'Sweeper', 'Ninja', 'Slime',

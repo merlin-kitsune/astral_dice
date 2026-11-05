@@ -22,8 +22,8 @@
 
 MT_COMMON_VERSION="1.0.0-win"
 
-# ── 版本表（四线齐全；注意 Mt.Paths.psm1 的 $VERSIONS 至今只有三条线）───────
-MT_ALL_VERSIONS="1.21.1 1.20.1 26.1.2 fabric-1.20.1"
+# ── 版本表（五线齐全；注意 Mt.Paths.psm1 的 $VERSIONS 至今只有三条线）───────
+MT_ALL_VERSIONS="1.21.1 1.20.1 26.1.2 fabric-1.20.1 fabric-1.21.1"
 MT_WORLD_NAME="testworld"
 
 mt_all_versions() { printf '%s' "$MT_ALL_VERSIONS"; }
@@ -39,6 +39,7 @@ mt_subproject() {
         1.20.1)        printf '%s' 'forge-1.20.1' ;;
         26.1.2)        printf '%s' 'neoforge-26.1.2' ;;
         fabric-1.20.1) printf '%s' 'fabric-1.20.1' ;;
+        fabric-1.21.1) printf '%s' 'fabric-1.21.1' ;;
         *) return 1 ;;
     esac
 }
@@ -48,6 +49,7 @@ mt_loader() {
         1.21.1|26.1.2) printf '%s' 'neoforge' ;;
         1.20.1)        printf '%s' 'forge' ;;
         fabric-1.20.1) printf '%s' 'fabric' ;;
+        fabric-1.21.1) printf '%s' 'fabric' ;;
         *) return 1 ;;
     esac
 }
@@ -58,24 +60,25 @@ mt_toolchain() {
         1.20.1)        printf '%s' '17' ;;
         26.1.2)        printf '%s' '25' ;;
         fabric-1.20.1) printf '%s' '17' ;;
+        fabric-1.21.1) printf '%s' '21' ;;
         *) return 1 ;;
     esac
 }
 
 # AutoJS 只投放 1.21.1 与 26.1.2；1.20.1 的 runClient 没有 AutoJS mod。
-# fabric-1.20.1 不同：它是**条件依赖**（fabric-1.20.1/build.gradle:182-190 只在
+# fabric 线不同：它是**条件依赖**（各 fabric 线的 build.gradle 的 autojsTestMod 开关只在
 #   -PautojsTestMod=1 时才 modRuntimeOnly 引入 AutoJS），所以这里不写死 false：
 #   交给 mt_fab_autojs_enabled 实测；未开启时**显式**说明回退 RCON（127.0.0.1:25575），
 #   绝不静默返回 false（静默 false 会让上层把「没装 AutoJS」误判成「永远不可用」）。
 mt_line_has_autojs() {
     case "${1:-}" in
         1.21.1|26.1.2) return 0 ;;
-        fabric-1.20.1)
+        fabric-*)
             if mt_fab_autojs_enabled "${MT_SIDE:-}"; then
                 return 0
             fi
-            printf 'MT_WARN: fabric-1.20.1 无 AutoJS（-PautojsTestMod 未开启，见 fabric-1.20.1/build.gradle:182-190）→ 回退 RCON（127.0.0.1:%s）\n' \
-                "$(mt_fab_rcon_port)" >&2
+            printf 'MT_WARN: %s 无 AutoJS（-PautojsTestMod 未开启，见 %s/build.gradle 的 autojsTestMod 开关）→ 回退 RCON（127.0.0.1:%s）\n' \
+                "$1" "$1" "$(mt_fab_rcon_port)" >&2
             return 1
             ;;
         *) return 1 ;;
@@ -264,16 +267,19 @@ mt_cmdline_matches_version() {
     case "$lc" in *"$needle"*) return 0 ;; esac
     case "$lc" in *"run/$v"*) return 0 ;; esac
     case "$lc" in *"run\\$v"*) return 0 ;; esac
-    # fabric-1.20.1 是双 run 目录 fabric-1.20.1/run/<client|server>，路径里没有版本号，
+    # fabric 线是双 run 目录 <fabric-子项目>/run/<client|server>，路径里没有独立版本号，
     # 所以上面的 run/<版本> needle 命中不了；改为「子项目名 + run + client|server」兜底匹配，
     # 避免在双引号内写反斜杠字面量（\ 在 double-quote 里是转义，曾把行尾引号吃掉导致解析错）。
-    case "$lc" in *"$MT_FAB_SUBPROJECT"*run*client*) return 0 ;; esac
-    case "$lc" in *"$MT_FAB_SUBPROJECT"*run*server*) return 0 ;; esac
-    case "$lc" in
-        *"$MT_FAB_SUBPROJECT"*)
-            case "$lc" in *runclient*|*runserver*) return 0 ;; esac
-            ;;
-    esac
+    # 只在 fabric 线走这段兜底，且用本版本自己的子项目名（避免 fabric-1.21.1 借到 fabric-1.20.1 的路径）。
+    if mt_is_fabric "$v"; then
+        case "$lc" in *"$sub"*run*client*) return 0 ;; esac
+        case "$lc" in *"$sub"*run*server*) return 0 ;; esac
+        case "$lc" in
+            *"$sub"*)
+                case "$lc" in *runclient*|*runserver*) return 0 ;; esac
+                ;;
+        esac
+    fi
 
     return 1
 }
@@ -627,7 +633,7 @@ mt_log_marker_name() {
     esac
 }
 
-# ── fabric-1.20.1 库（双 run 目录 / 条件 AutoJS / RCON）─────────────────────
+# ── fabric 线库（fabric-<mcver>：双 run 目录 / 条件 AutoJS / RCON）─────────
 # 反向包含：fabric.sh 只调用本文件里的函数，自己不 source 本文件，所以不会循环；
 # 由本文件末尾统一 source，mt.sh / env.sh / launch.sh / stop.sh / phases.sh 都能拿到。
 if [ -z "${MT_FABRIC_LIB_LOADED:-}" ]; then

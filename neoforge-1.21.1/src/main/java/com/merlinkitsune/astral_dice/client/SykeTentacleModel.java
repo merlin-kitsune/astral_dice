@@ -3,7 +3,7 @@ package com.merlinkitsune.astral_dice.client;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.entity.SykeTentacleEntity;
 import net.minecraft.resources.ResourceLocation;
-import software.bernie.geckolib.model.GeoModel;
+import com.merlinkitsune.starengine.geckolib.model.GeoModel;
 
 /**
  * Syke 触手的 GeckoLib 模型（2026-10-29）：只负责把「实体 → 三个资源路径」映射出来。

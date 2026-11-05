@@ -40,7 +40,7 @@ usage() {
 用法：
   bash scripts/test/win/env.sh [--version <ver>] [--quiet]
 
-  --version <ver>  1.21.1 | 1.20.1 | 26.1.2 | fabric-1.20.1（默认全部四条线）
+  --version <ver>  1.21.1 | 1.20.1 | 26.1.2 | fabric-1.20.1 | fabric-1.21.1（默认全部五条线）
   --quiet, -q      不打印 INFO 行（只留 CHECK 与 ENV_RESULT）
   -h, --help       本用法
 
@@ -157,11 +157,12 @@ for v in $VERSIONS; do
     proj="$(mt_subproject "$v")" || { mt_fail "version_$v" "未知版本"; continue; }
     toolchain_ver="$(mt_toolchain "$v")"
     run_dir="$MT_REPO_ROOT/run/$v"
-    # fabric-1.20.1 是双 run 目录（<子项目>/run/<client|server>）；其它三线仍是单目录。
+    # fabric 线是双 run 目录（<fabric-子项目>/run/<client|server>）；其它三线仍是单目录。
     # check_dirs 是「本条线要检查的 run 目录」列表，下面所有检查都按它循环。
     check_dirs="$run_dir"
     if mt_is_fabric "$v"; then
-        check_dirs="$MT_REPO_ROOT/$v/run/client $MT_REPO_ROOT/$v/run/server"
+        mt_fab_set_version "$v" || true
+        check_dirs="$MT_REPO_ROOT/$MT_FAB_SUBPROJECT/run/client $MT_REPO_ROOT/$MT_FAB_SUBPROJECT/run/server"
         run_dir="$(mt_fab_side_dir client)"
         mt_info "run_layout_$v" "fabric 双 run 目录：$(mt_fab_run_label "$v" client) | $(mt_fab_run_label "$v" server)（--side 切换；RCON 127.0.0.1:$(mt_fab_rcon_port)）"
     fi
@@ -274,7 +275,8 @@ for v in $VERSIONS; do
     aj_where=""
     scan_dirs="$MT_REPO_ROOT/run/$v"
     if mt_is_fabric "$v"; then
-        scan_dirs="$MT_REPO_ROOT/$v/run/client $MT_REPO_ROOT/$v/run/server"
+        mt_fab_set_version "$v" || true
+        scan_dirs="$MT_REPO_ROOT/$MT_FAB_SUBPROJECT/run/client $MT_REPO_ROOT/$MT_FAB_SUBPROJECT/run/server"
     fi
     for sd in $scan_dirs; do
         n="$(mt_autojs_jar_count "$sd" 2>/dev/null || true)"
@@ -293,13 +295,18 @@ for v in $VERSIONS; do
     fi
 done
 
-# ── 7b. fabric-1.20.1 的 RCON 通道（AutoJS 是条件依赖；未开启时注入/断言全靠它）──
+# ── 7b. fabric 线的 RCON 通道（AutoJS 是条件依赖；未开启时注入/断言全靠它）────
+# 前缀判定：「1.21.1」是「fabric-1.21.1」的子串，故先判 fabric-*；
+# 多条 fabric 线并存时取 $VERSIONS 里的第一条（全流程只探这一条，逐条双探走 mt.sh 单线调用）。
 case " $VERSIONS " in
-    *" fabric-1.20.1 "*)
+    *" fabric-"*)
+        for _mtv in $VERSIONS; do
+            case "$_mtv" in fabric-*) mt_fab_set_version "$_mtv" && break ;; esac
+        done
         fab_srv_dir="$(mt_fab_side_dir server)"
         fab_props="$fab_srv_dir/server.properties"
         if [ ! -d "$fab_srv_dir" ]; then
-            mt_warn fab_run_server "${fab_srv_dir#$MT_REPO_ROOT/} 不存在（首次 :fabric-1.20.1:runServer 后由 Gradle 创建；RCON 配置也落在这个目录）"
+            mt_warn fab_run_server "${fab_srv_dir#$MT_REPO_ROOT/} 不存在（首次 :${MT_FAB_SUBPROJECT}:runServer 后由 Gradle 创建；RCON 配置也落在这个目录）"
         elif [ ! -f "$fab_props" ]; then
             mt_warn fab_server_properties "${fab_props#$MT_REPO_ROOT/} 不存在（先完整启动一次服务端才会生成）"
         else
@@ -315,7 +322,7 @@ case " $VERSIONS " in
                 *)
                     mt_warn fab_rcon "enable-rcon=$rcon_enable（需要 true 才有 RCON 通道）" ;;
             esac
-            mt_info fab_channel "注入通道判定：autojs=$rcon_mode（fabric 的 AutoJS 是条件依赖，见 fabric-1.20.1/build.gradle:182-190，不开 -PautojsTestMod 就只有 RCON）"
+            mt_info fab_channel "注入通道判定：autojs=$rcon_mode（fabric 的 AutoJS 是条件依赖，见 $MT_FAB_SUBPROJECT/build.gradle 的 autojsTestMod 开关，不开 -PautojsTestMod 就只有 RCON）"
             if mt_have netstat; then
                 if mt_rcon_probe "$rcon_port"; then
                     mt_ok fab_rcon_port "TCP 127.0.0.1:$rcon_port 可达（服务端在跑且 RCON 已监听）"

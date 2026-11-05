@@ -217,20 +217,25 @@ dependencies {
     // Curios API(必须的前置):15.0.0+26.1.2(Modrinth version id dRnRThvD)
     // 其 mods.toml 声明 neoforge [26.1.0.0,),故本模组的 curios 门槛同步升至 [15,)
     implementation 'maven.modrinth:curios:dRnRThvD'
-    // GeckoLib(必须的前置):5.5.2 for NeoForge 26.1.2(Modrinth version id xfVfPcoC)
-    // 与另两线同一口径:写 version id 而非版本号——同一版本号的 neo/fabric 变体并存于 Modrinth,
-    // 写 `5.5.2` 会解析到非 neo 变体文件;此处钉住 neoforge 变体。不内嵌(jarJar),由玩家自备。
-    implementation 'maven.modrinth:geckolib:xfVfPcoC'
+    // GeckoLib 核心自 2026-11-03 起 **vendor 进 starengine**(源码级,非 JarJar):
+    //   v5 的渲染栈(GeoRenderState / interface_injections)随库分发 ⇒ 本线不再声明
+    //   GeckoLib 前置,也不需要 Modrinth 的 geckolib 坐标。
     // 帕秋莉手册(可选):26.1-94-beta(Modrinth version id 2CsnFLom)
     implementation 'maven.modrinth:patchouli:2CsnFLom'
     // JEI(配方查看,测试环境用);26.1.2 线 29.37.0.99
-    // 2026-09-17 起按统一口径改走 Curse Maven(CF 文件 8886511 = `jei-26.1.2-neoforge-29.37.0.99.jar`,1908683 字节)
-    implementation "curse.maven:jei-238222:8886511"
+    // JEI(配方查看,测试环境用;2026-11-03 从 Curse Maven 坐标改回 Modrinth version id):
+    // 2026-11-03 升到 29.53.0.115(最新公开版):硬要求 neoforge [26.1.2.99,)(本线 26.1.2.126 OK)
+    // 与 mezz_config [0.6.10,1.0.0)(mod id mezz_config,见下一条硬前置)。
+    // Modrinth version id 60HrmNPh = jei-26.1.2-neoforge-29.53.0.115.jar (4796265 B)。
+    implementation "maven.modrinth:jei:60HrmNPh"
+    // MezzConfig:JEI 新的**硬前置**(Modrinth 项目 7tEfOcA7);
+    //   version id 5mEMrzgT = mezz_config-26.1.2-neoforge-0.6.10-standalone.jar。仅 dev 用。
+    implementation "maven.modrinth:mezzconfig:5mEMrzgT"
     // Jade(方块/实体信息 HUD;2026-09-19 用户要求「所有测试环境增加 jei 和 jade 模组,用于用户侧物品和效果检查」):
     // 测试环境用,不进发货产物。Modrinth Maven 的 version id 5jKeKXwB = `Jade-mc26.1-NeoForge-26.1.11.jar`
     // (1030012 B 的 primary 文件;game_versions = 26.1/26.1.1/26.1.2),与本线整合包内现有
     // `[玉 🔍] Jade-mc26.1-NeoForge-26.1.11.jar` **同版**。⚠️ 该 version 另有 `-sources.jar` 次文件,坐标为 primary。
-    implementation "maven.modrinth:jade:5jKeKXwB"
+    implementation "maven.modrinth:jade:Pr1h4azo"   // 26.1.12+neoforge (2026-11-03 从 26.1.11 升级)
     // Mixin:26.1.2 的 NeoForge 运行时自带 Mixin(Fabric 分支 0.17.3+mixin.0.8.7),
     // 编译期仅需注解类;NeoForge 编译/运行同为 Mojmap,无需 refmap。
     compileOnly 'net.fabricmc:sponge-mixin:0.17.3+mixin.0.8.7'

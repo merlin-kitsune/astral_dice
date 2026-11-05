@@ -1,12 +1,12 @@
 package com.merlinkitsune.astral_dice.entity;
 
-import com.geckolib.animatable.GeoEntity;
-import com.geckolib.animatable.instance.AnimatableInstanceCache;
-import com.geckolib.animatable.manager.AnimatableManager;
-import com.geckolib.animation.AnimationController;
-import com.geckolib.animation.RawAnimation;
-import com.geckolib.animation.object.PlayState;
-import com.geckolib.util.GeckoLibUtil;
+import com.merlinkitsune.starengine.geckolib.animatable.GeoEntity;
+import com.merlinkitsune.starengine.geckolib.animatable.instance.AnimatableInstanceCache;
+import com.merlinkitsune.starengine.geckolib.animatable.manager.AnimatableManager;
+import com.merlinkitsune.starengine.geckolib.animation.AnimationController;
+import com.merlinkitsune.starengine.geckolib.animation.RawAnimation;
+import com.merlinkitsune.starengine.geckolib.animation.object.PlayState;
+import com.merlinkitsune.starengine.geckolib.util.GeckoLibUtil;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.EntityType;

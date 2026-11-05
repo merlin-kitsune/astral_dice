@@ -46,13 +46,19 @@ RUNS_FILE = os.path.join(TEST_DIR, "cases", ".mt_active_run")
 WORLD_NAME = "testworld"
 SHOTS_MANIFEST = ".mt_shots.json"
 
-VERSIONS = ("1.21.1", "1.20.1", "26.1.2", "fabric-1.20.1")
+VERSIONS = ("1.21.1", "1.20.1", "26.1.2", "fabric-1.20.1", "fabric-1.21.1")
+
+# fabric 车道（2026-11-05 起两条）：判定一律走前缀，不要用等值。
+def is_fabric(version):
+    return str(version or "").strip().startswith("fabric-")
+
 
 LOADER = {
     "1.21.1": "neoforge",
     "1.20.1": "forge",
     "26.1.2": "neoforge",
     "fabric-1.20.1": "fabric",
+    "fabric-1.21.1": "fabric",
 }
 
 SUBPROJECT = {
@@ -60,6 +66,7 @@ SUBPROJECT = {
     "1.20.1": "forge-1.20.1",
     "26.1.2": "neoforge-26.1.2",
     "fabric-1.20.1": "fabric-1.20.1",
+    "fabric-1.21.1": "fabric-1.21.1",
 }
 
 DEFAULT_PACK_MODS = {
@@ -67,12 +74,15 @@ DEFAULT_PACK_MODS = {
     "1.20.1": "D:" + BSL + ".minecraft" + BSL + "versions" + BSL + "1.20.1-Forge 模组测试" + BSL + "mods",
     "26.1.2": "D:" + BSL + ".minecraft" + BSL + "versions" + BSL + "26.1.2-NeoForge 模组测试" + BSL + "mods",
     "fabric-1.20.1": "D:" + BSL + ".minecraft" + BSL + "versions" + BSL + "1.20.1-Fabric 模组测试" + BSL + "mods",
+    # 占位：整合包侧尚未建 1.21.1-Fabric 版本目录（阶段 A 不投放）。真投放前先建目录或写 mt.conf 的 MT_PACK_MODS_FABRIC_1_21_1。
+    "fabric-1.21.1": "D:" + BSL + ".minecraft" + BSL + "versions" + BSL + "1.21.1-Fabric 模组测试" + BSL + "mods",
 }
 
 CONF_KEYS = {
     "1.21.1": "MT_PACK_MODS_NEOFORGE",
     "26.1.2": "MT_PACK_MODS_NEOFORGE_26_1_2",
     "fabric-1.20.1": "MT_PACK_MODS_FABRIC",
+    "fabric-1.21.1": "MT_PACK_MODS_FABRIC_1_21_1",
 }
 CONF_KEY_DEFAULT = "MT_PACK_MODS_FORGE"
 
@@ -172,7 +182,7 @@ def assert_version(version):
 
 
 def resolve_side(version, side=""):
-    if version != "fabric-1.20.1":
+    if not is_fabric(version):
         return ""
     value = side if side else os.environ.get("MT_SIDE", "")
     if not value:
@@ -186,13 +196,13 @@ def resolve_side(version, side=""):
 def run_root(version, side=""):
     if version not in VERSIONS:
         raise ValueError("未知版本 " + str(version))
-    if version == "fabric-1.20.1":
+    if is_fabric(version):
         return os.path.join(os.path.join(ROOT, SUBPROJECT[version]), "run", resolve_side(version, side))
     return os.path.join(os.path.join(ROOT, "run"), version)
 
 
 def run_label(version, side=""):
-    if version == "fabric-1.20.1":
+    if is_fabric(version):
         return SUBPROJECT[version] + "/run/" + resolve_side(version, side)
     return "run/" + version
 
@@ -239,8 +249,8 @@ def get_paths(version, side=""):
 
 
 def process_markers(paths):
-    if paths.version == "fabric-1.20.1":
-        # fabric 的 dev 进程命令行里既没有 ":fabric-1.20.1:" 也常常没有 run/<side> 路径
+    if is_fabric(paths.version):
+        # fabric 的 dev 进程命令行里既没有 ":<子项目>:" 也常常没有 run/<side> 路径
         # （Loom 用 .gradle/loom-cache/projects/<sub>/launch.cfg）；
         # side=server 的 java 只有 "fabric.dli.env=server"，故按 side 追加 dli 标记，
         # 否则 stop 命不中、runServer 会一直活着锁住 testworld/session.lock（2026-11-03 实测）。
@@ -746,7 +756,7 @@ def test_client_process(paths, pid, command_line):
         return True
     if (
         "-Dfabric.dli.env=client" in command_line
-        and "fabric-1.20.1" in command_line
+        and paths.subproject in command_line
         and (
             "net.fabricmc.devlaunchinjector.Main" in command_line
             or "net.fabricmc.loader.impl.launch.knot.KnotClient" in command_line
