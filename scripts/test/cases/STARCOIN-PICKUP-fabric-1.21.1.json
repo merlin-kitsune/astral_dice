@@ -1,0 +1,92 @@
+{
+  "case_id": "STARCOIN-PICKUP-fabric-1.21.1",
+  "title": "星币拾取入账：世界里 3 枚星币被玩家拾取后应当只入账 3（余额 +3、背包携带值 0），不得出现「既进背包又进钱包」的双份；证据：fabric-1.21.1/src/main/java/com/merlinkitsune/astral_dice/economy/StarCoinPickupHandler.java:31-42 + StarCoinCurrency.java:200-214（tryAbsorbIntoWallet 里 stack.setCount(0)）+ platform/PuzzlesBridges.java:210-224（TOUCH 在 playerTouch HEAD 派发；PICKUP 在 Inventory#add 之后、栈已清空）",
+  "version": "fabric-1.21.1",
+  "channel": "autojs",
+  "side": "server",
+  "on_fail": "continue",
+  "steps": [
+    {
+      "op": "note",
+      "text": "本用例补 WALLET-STARCOIN 刻意绕开的那条路径：走真实拾取（summon item 实体让玩家自动捡起），而不是 /give。判据是「余额增量 + 背包携带值 == 掉落面额」，任何大于就说明拾取路径产生了双份。2026-11-05 修复前，fabric 线因 PICKUP 回调在 Inventory#add 之后触发、实体栈已被合并清空（实测 count=0），导致余额增量恒 0、物品照常进包；现已换成 ItemEntityEvents.TOUCH（playerTouch HEAD），本用例同时是那条回归的守卫。"
+    },
+    {
+      "op": "mcp_status",
+      "save_as": "mcp"
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "mode": "json",
+      "save_as": "setup",
+      "code": "(function(){\n  var P = AutoJS.players()[0];\n  var Econ = Java.loadClass('com.merlinkitsune.starengine.economy.StarEngineEconomy');\n  var SCC = Java.loadClass('com.merlinkitsune.astral_dice.economy.StarCoinCurrency');\n  AutoJS.command('kill @e[type=!player,distance=..48]');\n  AutoJS.command('clear @a');\n  AutoJS.command('effect clear @a');\n  var original = Econ.getBalance(P);\n  AutoJS.write('astral_test_pickup.txt', String(original));\n  var gm = String(P.gameMode.getGameModeForPlayer());\n  AutoJS.write('astral_test_pickup_gm.txt', gm);\n  Econ.setBalance(P, 0);\n  AutoJS.command('gamemode survival @a');\n  var out = { autoDeposit: SCC.isAutoDepositEnabled(), walletEnabled: SCC.isWalletEnabled(), storageAvailable: Econ.isAvailable(), balanceBefore: Econ.getBalance(P), carriedBefore: SCC.countCarriedValue(P), originalGameMode: gm, gameModeNow: String(P.gameMode.getGameModeForPlayer()) };\n  AutoJS.command('execute at @a run summon minecraft:item ~ ~0.5 ~ {Item:{id:\"astral_dice:star_coin\",count:3}}');\n  return out;\n})()",
+      "timeout_ms": 60000
+    },
+    {
+      "op": "await_state",
+      "side": "server",
+      "timeout_ms": 20000,
+      "interval_ms": 250,
+      "code": "(function(){\n  var P = AutoJS.players()[0];\n  var Econ = Java.loadClass('com.merlinkitsune.starengine.economy.StarEngineEconomy');\n  var SCC = Java.loadClass('com.merlinkitsune.astral_dice.economy.StarCoinCurrency');\n  return Econ.getBalance(P) >= 3 || SCC.countCarriedValue(P) >= 3;\n})()"
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "mode": "json",
+      "save_as": "after",
+      "code": "(function(){\n  var P = AutoJS.players()[0];\n  var Econ = Java.loadClass('com.merlinkitsune.starengine.economy.StarEngineEconomy');\n  var SCC = Java.loadClass('com.merlinkitsune.astral_dice.economy.StarCoinCurrency');\n  var out = {};\n  out.balanceAfter = Econ.getBalance(P);\n  out.balanceDelta = out.balanceAfter - 0;\n  out.carriedAfter = SCC.countCarriedValue(P);\n  out.totalGained = out.balanceDelta + out.carriedAfter;\n  var it = AutoJS.level().getAllEntities().iterator();\n  var coins = 0, items = 0;\n  while (it.hasNext()) {\n    var e = it.next();\n    if (!(e instanceof Java.loadClass('net.minecraft.world.entity.item.ItemEntity'))) continue;\n    items++;\n    var st = e.getItem();\n    if (String(st.getItem()) !== 'star_coin') continue;\n    coins += st.getCount();\n  }\n  out.looseCoinItems = coins;\n  out.looseItemEntities = items;\n  return out;\n})()",
+      "timeout_ms": 60000
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "mode": "json",
+      "save_as": "restored",
+      "code": "(function(){\n  var P = AutoJS.players()[0];\n  var Econ = Java.loadClass('com.merlinkitsune.starengine.economy.StarEngineEconomy');\n  var SCC = Java.loadClass('com.merlinkitsune.astral_dice.economy.StarCoinCurrency');\n  var want = Number(AutoJS.read('astral_test_pickup.txt'));\n  Econ.setBalance(P, want);\n  AutoJS.command('kill @e[type=!player,distance=..48]');\n  AutoJS.command('clear @a');\n  var out = {};\n  out.balanceRestored = (Econ.getBalance(P) === want);\n  out.carriedFinal = SCC.countCarriedValue(P);\n  return out;\n})()",
+      "timeout_ms": 60000
+    }
+  ],
+  "asserts": [
+    {
+      "type": "state",
+      "name": "mcp_ok",
+      "from": "mcp",
+      "expect": {
+        "Ok": true
+      }
+    },
+    {
+      "type": "state",
+      "name": "setup_prerequisites",
+      "from": "setup",
+      "expect": {
+        "autoDeposit": true,
+        "walletEnabled": true,
+        "storageAvailable": true,
+        "balanceBefore": 0,
+        "carriedBefore": 0,
+        "gameModeNow": "SURVIVAL"
+      }
+    },
+    {
+      "type": "state",
+      "name": "no_duplicate_on_pickup",
+      "from": "after",
+      "expect": {
+        "balanceDelta": 3,
+        "carriedAfter": 0,
+        "totalGained": 3,
+        "looseCoinItems": 0
+      }
+    },
+    {
+      "type": "state",
+      "name": "restore_ok",
+      "from": "restored",
+      "expect": {
+        "balanceRestored": true,
+        "carriedFinal": 0
+      }
+    }
+  ]
+}

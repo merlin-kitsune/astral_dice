@@ -1,0 +1,55 @@
+{
+  "case_id": "TRINKET-SLOT-LANG-fabric-1.21.1",
+  "title": "饰品槽名本地化：astral_dice 的三个 Trinkets 槽（chip/dice/stand）必须解析成真实词条，不得回落成原始键 trinkets.slot.astral_dice.*；证据：trinkets 3.10.0 的 SlotType#getTranslation 用 trinkets.slot.<group>.<name> 构词，该 Component 由 trinkets 自带 ItemStackMixin 渲染进物品 tooltip（\"Equippable in the X trinket slot\"）",
+  "version": "fabric-1.21.1",
+  "channel": "autojs",
+  "side": "client",
+  "on_fail": "continue",
+  "steps": [
+    {
+      "op": "note",
+      "text": "2026-11-05 用户反馈「Trinket 插槽缺少 tooltip 文本」。本用例直接读运行期 SlotType 的译文 Component（正是 Trinkets 渲染 tooltip 用的那个），比截图更稳；实现依据：trinkets 3.10.0 SlotType#getTranslation 的 makeConcatWithConstants 拼接为 trinkets.slot.<group>.<name>，三个键已写入 zh_cn/en_us/ja_jp。"
+    },
+    {
+      "op": "mcp_status",
+      "save_as": "mcp"
+    },
+    {
+      "op": "eval_js",
+      "side": "client",
+      "mode": "json",
+      "save_as": "lang",
+      "timeout_ms": 60000,
+      "code": "(function(){\n  var TA = Java.loadClass('dev.emi.trinkets.api.TrinketsApi');\n  var MC = Java.loadClass('net.minecraft.client.Minecraft');\n  var P = MC.getInstance().player;\n  var map = TA.getPlayerSlots(P);\n  var out = { slots: 0 };\n  var it = map.entrySet().iterator();\n  while (it.hasNext()) {\n    var g = it.next().getValue();\n    var it2 = g.getSlots().entrySet().iterator();\n    while (it2.hasNext()) {\n      var st = it2.next().getValue();\n      var key = String(st.getGroup()) + '.' + String(st.getName());\n      out[key] = String(st.getTranslation().getString());\n      out.slots = out.slots + 1;\n    }\n  }\n  return out;\n})()"
+    }
+  ],
+  "asserts": [
+    {
+      "type": "state",
+      "name": "mcp_ok",
+      "from": "mcp",
+      "expect": {
+        "Ok": true
+      }
+    },
+    {
+      "type": "state",
+      "name": "slot_lang_resolved",
+      "from": "lang",
+      "expect": {
+        "slots": {
+          "gte": 3
+        },
+        "astral_dice.chip": {
+          "regex": "^(?!trinkets\\.slot\\.).+"
+        },
+        "astral_dice.dice": {
+          "regex": "^(?!trinkets\\.slot\\.).+"
+        },
+        "astral_dice.stand": {
+          "regex": "^(?!trinkets\\.slot\\.).+"
+        }
+      }
+    }
+  ]
+}

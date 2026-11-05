@@ -207,12 +207,20 @@ public final class PuzzlesBridges {
         PlayerCopyEvents.COPY.register((newPlayer, oldPlayer, wasDeath) ->
                 LoaderBus.INSTANCE.post(new PlayerEvent.Clone(newPlayer, oldPlayer, wasDeath)));
 
-        // ⚠️ Puzzles 的 ItemPickup 是 void(只通知、不可取消)。Forge 的 EntityItemPickupEvent
-        //    可取消(取消 = 不拾取)。本模组当前唯一的消费方(economy/StarCoinPickupHandler)
-        //    只做「拾取后入账」，不取消 ⇒ 此处按通知语义接线；若将来需要取消拾取，
-        //    必须改走自写 mixin（Puzzles 无能力）。已在 PORT_STATUS_HANDOVER 登记。
-        ItemEntityEvents.PICKUP.register((player, itemEntity, stack) ->
-                LoaderBus.INSTANCE.post(new EntityItemPickupEvent(player, itemEntity)));
+        // ── EntityItemPickupEvent ← ItemEntityEvents.TOUCH（2026-11-05 换接线） ──
+        // 为什么不是 PICKUP：Puzzles 的 PICKUP 回调在 `Inventory#add` **之后**、`Player#take` 之前触发，
+        // 此时 `ItemEntity#getItem()` 已被原版合并**清空**（实测 count=0），消费方读到的永远是空栈
+        // ⇒ 星币「获得即入钱包」在 fabric 线静默失效（neo 线同一场景入账 3，fabric 线入账 0、物品照常进包）。
+        // TOUCH 是 `playerTouch` 的 HEAD 注入，早于任何消费 ⇒ 语义与 Forge/Neo 的
+        // `EntityItemPickupEvent`（入包之前、可取消）对齐。
+        // 取消语义：TOUCH 的回调返回 EventResult —— INTERRUPT 才会 `CallbackInfo.cancel()`。
+        // 本模组唯一会取消的消费方是 economy/StarCoinPickupHandler（它自己 discard 掉实体），
+        // 其余消费方（LinglingSignEvents / TemporaryCardEvents）只改掉落物内容、不取消。
+        ItemEntityEvents.TOUCH.register((player, itemEntity) -> {
+            EntityItemPickupEvent event = new EntityItemPickupEvent(player, itemEntity);
+            LoaderBus.INSTANCE.post(event);
+            return event.isCanceled() ? EventResult.DENY : EventResult.PASS;
+        });
 
         // ── AnvilUpdateEvent ← AnvilUpdateCallback ──
         // Forge 语义：事件被取消 ⇒ 无输出；否则 output 非空 ⇒ 用事件给的 output/cost/materialCost；

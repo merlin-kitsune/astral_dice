@@ -401,3 +401,90 @@ bash scripts/test/win/mt.sh --version fabric-1.21.1 --phase stop --force
 2. **E8 RCON 仍未验证**（`env.sh` 的 RCON 段只探第一条 fabric 线）。
 3. 视觉取证通道仍缺：`screenshot` 原语恒 BLOCKED，像素级断言（半透明、HUD 数值、粒子外观）待通道恢复后补。
 4. 上述 14.5 的 1–6 条未改代码，需用户裁决后另开批次。
+
+
+## 15. 2026-11-05 追补：星币拾取桥换接线 + 饰品槽 tooltip（用户裁决落地）
+
+> 本节对应 m10345 的五条裁决：① 玩家侧闪避关闭＝有意为之（不改）② 让我核 1.21.1 侧珍珠免疫实现（已核，见 15.4）③ 右键插入空骰子槽属正常（不改）④ 补测拾取（15.1 + 15.3）⑤ ChargeManager / TrinketBridge 语义先不动。另加一条用户新反馈：Trinket 插槽缺少 tooltip 文本（15.2）。
+
+### 15.1 星币拾取：`ItemEntityEvents.PICKUP` → `ItemEntityEvents.TOUCH`
+
+**症状**：fabric 线世界里 3 枚星币被玩家拾取后，余额增量为 **0**、物品照常进背包；同一条 summon 探针在 `neoforge-1.21.1` 上是 `bal=3 / carried=0` ⇒ 真实功能缺口，不是判据问题。
+
+**取证链（四步排除法，全部实跑）**：
+
+| # | 实验 | 读数 | 排除掉的可能 |
+|---|---|---|---|
+| 1 | 手动 `StarCoinCurrency.tryAbsorbIntoWallet(P, stack3)` | `absorbed=true, before=0, after=3, stackLeft=0` | 经济层 / 账本不可用 |
+| 2 | 手动 `LoaderBus.INSTANCE.post(new EntityItemPickupEvent(P, ent))` | `canceled=true, before=0, after=5` | 事件总线 / `StarCoinPickupHandler` 没注册 |
+| 3 | 手动 `FabricPlayerEvents.ITEM_PICKUP.invoker().onItemPickup(P, ent, stack4)` | `before=5 → after=9` | Puzzles 回调对象与我们的桥不是同一个 |
+| 4 | 在桥里加临时日志 `[probe] PICKUP bridge fired count={}` 并重编重跑 | 日志读出 **`count=0`** | —— 直接指向回调时机 |
+
+**根因**（`fabric-1.21.1/run/client/.mixin.out` 导出的 `ItemEntity.class` + `javap -c`）：Puzzles 对 `ItemEntity#playerTouch` 的两处注入顺序是
+
+```
+handler$0 (HEAD, offset 34)        ← TOUCH 在这里派发，栈还完整
+Inventory#add(stack)        (112)  ← 原版把栈合并进背包，实体上的栈被清空
+ifeq 168                           ← 加不进去就跳过
+handler$1                   (127)  ← PICKUP 在这里派发，此时 getCount() 已经是 0
+Player#take                 (130)
+if (stack.isEmpty()) discard
+```
+
+⇒ `PICKUP` 回调里 `itemEntity.getItem()` 永远为空栈，`StarCoinCurrency.isCurrency(empty)` 为 false，处理器静默 return，**入账被跳过**。原先注释写的「ItemPickup 是 void、只通知、不可取消」既说错了可取消性，也漏掉了这个时机问题。
+
+**修法**（`fabric-1.21.1/src/main/java/com/merlinkitsune/astral_dice/platform/PuzzlesBridges.java:210-224`）：
+
+```java
+ItemEntityEvents.TOUCH.register((player, itemEntity) -> {
+    EntityItemPickupEvent event = new EntityItemPickupEvent(player, itemEntity);
+    LoaderBus.INSTANCE.post(event);
+    return event.isCanceled() ? EventResult.DENY : EventResult.PASS;
+});
+```
+
+- `TOUCH` 是 `playerTouch` 的 HEAD 注入，早于任何消费 ⇒ 语义与 Forge/Neo 的 `EntityItemPickupEvent`（入包之前、可取消）对齐。
+- `EventResult` 是 `PASS / INTERRUPT / ALLOW / DENY` 四值枚举，只有 `INTERRUPT` 会 `CallbackInfo.cancel()`；`DENY` = interrupt + false ⇒ 取消原版拾取且不代劳。
+- 消费方影响：本模组只有 `economy/StarCoinPickupHandler` 会取消（它自己 `discard()` 实体）；`event/LinglingSignEvents.java:44-66` 与 `event/TemporaryCardEvents` 只改掉落物内容、不取消 ⇒ 换接线不会吞掉它们。
+- 改动后 `STARCOIN-PICKUP` 用例从 `balanceDelta: 0.0 != 3` 转为 **PASS**，且 `carriedAfter=0 / looseCoinItems=0`（没有双份）。
+
+**调试方法备忘（下次要复现别重走）**：`JAVA_TOOL_OPTIONS='-Dmixin.debug.export=true'` 会让 `launch.sh` 探测不到 Gradle daemon JVM（`LAUNCH: BLOCKED — 未找到 Gradle daemon JVM（需 ≥21）`）⇒ 只能改 `loom { runs { client { vmArg ... } } }` 用 `-P` 属性开关触发。
+
+### 15.2 饰品槽 tooltip：三个 lang 键 × 三语
+
+**机制**（trinkets 3.10.0 实装取证）：`dev/emi/trinkets/api/SlotType#getTranslation()` 用 `makeConcatWithConstants` 拼出 `trinkets.slot.<group>.<name>` 再 `Component.translatable(...)`；全 jar 里只有 trinkets 自带的 `mixin/ItemStackMixin` 消费它（物品 tooltip 的「Equippable in the X trinket slot」行）。本线槽目录 `fabric-1.21.1/src/main/resources/data/trinkets/slots/astral_dice/{chip,dice,stand}.json` ⇒ group=`astral_dice`、name=`chip|dice|stand`。
+
+**落盘**：`fabric-1.21.1/src/main/resources/assets/astral_dice/lang/{zh_cn,en_us,ja_jp}.json` 各 3 键（zh_cn 筹码 / 骰子 / 立牌，en_us Chip / Dice / Stand，ja_jp チップ / ダイス / スタンド）；三份 lang 1143 → **1146** 键。
+
+**运行期证明**（活客户端，`TrinketsApi.getPlayerSlots(player)` 遍历 `SlotType#getTranslation().getString()`）：
+
+```
+{ "astral_dice.chip": "筹码", "astral_dice.dice": "骰子", "astral_dice.stand": "立牌" }
+```
+
+对照：故意查一个不存在的键 `trinkets.slot.astral_dice.nonexistent` 返回的是**原始键**（未解析），说明上面三条不是兜底假绿。门禁 `python tools/check_lang_sync.py --line fabric-1.21.1` ⇒ `[OK] zh_cn=1146 en_us=1146 ja_jp=1146 键集一致`。
+
+### 15.3 用例变动（新增两条，全量 31 条）
+
+| 用例 | 覆盖 | 关键判据 |
+|---|---|---|
+| `STARCOIN-PICKUP-fabric-1.21.1` | 真实拾取路径（summon 掉落物让玩家自动捡），补 `WALLET-STARCOIN` 走 `/give + depositAll` 绕开的那条 | `balanceDelta=3` / `carriedAfter=0` / `totalGained=3` / `looseCoinItems=0` + 恢复原状 |
+| `TRINKET-SLOT-LANG-fabric-1.21.1` | 三个饰品槽的运行期译名 | 三个键的值都不匹配 `^trinkets\.slot\.`（= 真解析了），`slots>=3` |
+
+读法：`STARCOIN-PICKUP` 的 setup 会先记录原余额与原游戏模式（写 `astral_test_pickup.txt` / `astral_test_pickup_gm.txt`）并切 survival（创造模式 `isImmuneToDamage` 恒真，拾取判定不成立），measure 之后原样恢复。
+
+### 15.4 对 §14.5 的订正
+
+| 原条目 | 订正 |
+|---|---|
+| 14.5-1 玩家侧骰子闪避整体关闭 | **有意为之**（用户裁决），不是缺陷，保留 `PLAYER_DODGE_ENABLED = false` |
+| 14.5-2 「无 firewall 类」 | 措辞错误：三线实现同构，都在 `NancyLuSignItem`（`ENDER_PEARL_IMMUNE_TICKS = 20`），`grep -rn 'Firewall' */src` = 0 命中属正常 |
+| 14.5-3 `CardItem` 无 `use()` | **设计如此**：卡牌靠骰子卡槽在战斗结算里消耗；右键把卡插进空骰子槽属正常路径（用户裁决） |
+| 14.5-4 拾取桥通知式、可能双份 | **已关闭并修复**（15.1）：真实表现是「不入账」，不是「刷钱」；换 TOUCH 接线后入账 3、背包 0 |
+| 14.5-5 / 14.5-6 | 用户裁决「先不动」，保留登记 |
+
+### 15.5 遗留
+
+1. 饰品槽 tooltip 只做了**译名层**运行期证明（`SlotType#getTranslation`），没做悬停截图（`screenshot` 原语仍恒 BLOCKED）；等视觉通道恢复后可补一条视觉用例。
+2. `TemporaryCardEvents.onItemPickup` 与 `LinglingSignEvents.onItemPickup` 换接线后未单独跑用例（本轮只由全量 31 条回归间接覆盖，二者本就没有专属用例）。
+3. 视觉取证通道缺、E8 RCON 未验两条沿用 §14.6。
