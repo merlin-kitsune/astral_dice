@@ -20,7 +20,7 @@
 - **物理机**：`systemd-detect-virt` = `none`，DMI `MS-7E59` / `Micro-Star International Co., Ltd.`；**不是 VMware / WSL / 容器**。
 - 发行版 `Ubuntu 26.04.1 LTS`（`VERSION_CODENAME=resolute`），内核 `7.0.0-42-generic`；用户 `kitsune`，登录 shell `/bin/bash`。
 - 桌面 = **KDE Plasma**，会话类型 **Wayland**：`XDG_SESSION_TYPE=wayland`、`WAYLAND_DISPLAY=wayland-0`、`DISPLAY=:0`、`XDG_RUNTIME_DIR=/run/user/1000`。
-- **XWayland 是 MC 的硬前提**：MC 1.20.1 / 1.21.1 / 26.1.2 的 GLFW 只有 X11 后端，Wayland 会话下 `DISPLAY=:0` 必须存在（`run/start-*.sh` 在其为空时直接 `exit 1`；三线窗口在 VM 期实测都是 X11 窗口，真机沿用同一结论）。
+- **XWayland 是 MC 的硬前提**：MC 1.20.1 / 1.21.1 / 26.1.2 的 GLFW 只有 X11 后端，Wayland 会话下 `DISPLAY=:0` 必须存在（`run/start-*.sh` 在其为空时直接 `exit 1`；各线窗口在 VM 期实测都是 X11 窗口，真机沿用同一结论）。
 - **双系统互操作是本机的新前提**：本机 Linux 与 Windows 交替启动，共用同一块 NTFS 盘（Windows `F:` = `/mnt/f`，`D:` = `/mnt/d`）。用户硬约束（2026-10-31）：**Windows 下的开发配置与资产不可改**——本文件所有动作只动 Linux 侧、只动仓库内该动的文件。
 - 无 SELinux / AppArmor 前提；**没有** hgfs、9p、WSL、`~/Project`。
 
@@ -59,7 +59,7 @@
 - `/usr/lib/jvm/` 实读有 `java-17-openjdk-amd64`、`java-21-openjdk-amd64`、`java-25-openjdk-amd64`。
 - **系统默认 `/usr/bin/java` = `openjdk 21.0.12.1 2026-08-18`**（2026-10-31 真机实读；**VM 期默认是 25，已变**——不要沿用旧文档的 25 口径）。
 - **Gradle daemon JVM 必须 ≥ 21：本仓所有 `./gradlew …` 一律先 `export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64`**。
-- 反例证据（VM 期实测，机制未变）：`JAVA_HOME=…java-17 ./gradlew :fabric-1.20.1:publishToMavenLocal` 配置期失败：`Could not resolve net.fabricmc:fabric-loom:1.14.10` → `Dependency requires at least JVM runtime version 21. This build uses a Java 17 JVM.`；`settings.gradle` 无条件 include 四线，故连 `:forge-1.20.1` 也会在 `Configure project :fabric-1.20.1` 崩。
+- 反例证据（VM 期实测，机制未变）：`JAVA_HOME=…java-17 ./gradlew :fabric-1.20.1:publishToMavenLocal` 配置期失败：`Could not resolve net.fabricmc:fabric-loom:1.14.10` → `Dependency requires at least JVM runtime version 21. This build uses a Java 17 JVM.`；`settings.gradle` 无条件 include 各线，故连 `:forge-1.20.1` 也会在 `Configure project :fabric-1.20.1` 崩。
 - 下表是各子项目的 **`java.toolchain.languageVersion` 编译目标**，**不是 daemon 选择依据**（daemon 固定 21，Gradle 自动选对应 JDK 编译）：
 
 | 子项目 | 工具链 Java | 依据 |
@@ -70,7 +70,7 @@
 | `fabric-1.20.1` | 17 | `fabric-1.20.1/build.gradle:25` `of(17)` |
 
 - toolchain 由 `settings.gradle` 的 `org.gradle.toolchains.foojay-resolver-convention` 1.0.0 解析；**优先本机 `/usr/lib/jvm`**，foojay 仅在本机缺该版本时才下载。策略：**以显式 `JAVA_HOME` 为主**，不把自动下载当默认兜底；本机三套 JDK 已在位。
-- **不要**按线把 `JAVA_HOME` 切成 17 去跑 gradle（17 会崩在 loom classpath）；**统一 21** 作 daemon，四线构建与实机共同验证过（25 亦可跑，不作默认）。
+- **不要**按线把 `JAVA_HOME` 切成 17 去跑 gradle（17 会崩在 loom classpath）；**统一 21** 作 daemon，各线构建与实机共同验证过（25 亦可跑，不作默认）。
 - **wrapper 自检（本批实跑通过）**：`JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 ./gradlew --version` ⇒ `Gradle 9.2.1` / `Launcher JVM: 21.0.12.1` / `Daemon JVM: /usr/lib/jvm/java-21-openjdk-amd64` / `OS: Linux 7.0.0-42-generic amd64`。
 
 ### 5. Gradle（唯一构建入口）
@@ -94,14 +94,14 @@
   - ⇒ **不要创建 `~/.gradle/init.d/00-aliyun-central-mirror.gradle`**，也不要往仓库写镜像坐标；`~/.gradle/init.d/`、`~/.mc-mirror`、`~/.local/bin/neoforge-mirror-sync.sh` 不存在都是正常状态。
   - 首次构建前跑一次自检（坏了才动手，别预防性加镜像）：`curl -s -o /dev/null -w '%{http_code}\n' https://repo.maven.apache.org/maven2/org/jetbrains/annotations/26.0.2/annotations-26.0.2.pom` ⇒ 期望 **200**；若再 403，才按 `docs/handover-2026-10-31-linux-vm-adoption.md（已删除 2026-11-05）` §6 第 2 步临时启用 host 级镜像（不改仓库）。
 - **26.1.2 必须加 `--no-configuration-cache`**：`createMinecraftArtifacts` 的 `DefaultConfigurableFileCollection` 在配置缓存序列化阶段报 `error writing value of type …`（历史实测，与镜像无关）。
-- **构建耗时：热缓存已实测，冷构建仍未测**（`[[PENDING:build-time-native]]`）。2026-10-31 真机热缓存：`:neoforge-1.21.1:classes` 32s、`:forge-1.20.1:classes` 30s（含四线配置期，`createMinecraftArtifacts UP-TO-DATE`），日志同时打印 `整合包根目录 (MC_HOME): /mnt/d/.minecraft`。`build/moddev/artifacts` 里 Windows 时代产物仍在（`forge-1.20.1-47.4.10-merged.jar`、`neoforge-21.1.235-merged.jar` 等）⇒ 可复用、省掉 decompile；`~/.gradle` 已由本批重建。**禁止**把 VM 的 `2m44s` 当本机基线，也不得假定 `12m23s` decompile 必然发生。
+- **构建耗时：热缓存已实测，冷构建仍未测**（`[[PENDING:build-time-native]]`）。2026-10-31 真机热缓存：`:neoforge-1.21.1:classes` 32s、`:forge-1.20.1:classes` 30s（含各线配置期，`createMinecraftArtifacts UP-TO-DATE`），日志同时打印 `整合包根目录 (MC_HOME): /mnt/d/.minecraft`。`build/moddev/artifacts` 里 Windows 时代产物仍在（`forge-1.20.1-47.4.10-merged.jar`、`neoforge-21.1.235-merged.jar` 等）⇒ 可复用、省掉 decompile；`~/.gradle` 已由本批重建。**禁止**把 VM 的 `2m44s` 当本机基线，也不得假定 `12m23s` decompile 必然发生。
 - 换线构建耗时与失败模式以**构建台账**为准（每次记录线 / 命令 / 耗时 / 结果），单次耗时不当 SLA。
 
 ### 6. 前置库 starengine（1.1.0，必须先进 mavenLocal）
 
-- 四线 `gradle.properties` 实读：`starengine_group=com.merlinkitsune.starengine`、`starengine_version=1.1.0`（fabric 另有 `starengine_version_range=>=1.1.0`）；四线 `build.gradle` 均含 `mavenLocal()`（neo `:30` / forge `:29` / neo26 `:39` / fabric `:47`）。
+- 各线 `gradle.properties` 实读：`starengine_group=com.merlinkitsune.starengine`、`starengine_version=1.1.0`（fabric 另有 `starengine_version_range=>=1.1.0`）；各线 `build.gradle` 均含 `mavenLocal()`（neo `:30` / forge `:29` / neo26 `:39` / fabric `:47`）。
 - 正确顺序：先在 `/mnt/f/MCProject/starengine`（独立仓，自带 gradlew 与四平台子项目）发布到**本机** mavenLocal，再构建本仓。缺哪条线的制品，哪条线就解析失败（`Could not resolve com.merlinkitsune.starengine:...`）。
-- **本机 mavenLocal 当前为空**（2026-10-31 真机实读：`~/.m2` 不存在）⇒ **首次必须自己发布四条线**，否则四线全部卡在配置期。starengine 仓的 `build/libs` 里已有 1.1.0 jar（fabric 112,634 B / forge 103,605 B，2026-10-31 02:0x 构建），但那是 `build/libs`，**不等于** mavenLocal 已有制品。
+- **本机 mavenLocal 当前为空**（2026-10-31 真机实读：`~/.m2` 不存在）⇒ **首次必须自己发布各线**，否则各线全部卡在配置期。starengine 仓的 `build/libs` 里已有 1.1.0 jar（fabric 112,634 B / forge 103,605 B，2026-10-31 02:0x 构建），但那是 `build/libs`，**不等于** mavenLocal 已有制品。
 - 发布命令（daemon JVM 必须 21）：
   ```bash
   cd /mnt/f/MCProject/starengine
@@ -111,7 +111,7 @@
   ./gradlew :fabric-1.20.1:publishToMavenLocal   --console=plain
   ./gradlew :neoforge-26.1.2:publishToMavenLocal --console=plain
   ```
-  本机首次已发布成功（2026-10-31，四线 `BUILD SUCCESSFUL`，各约 1s——因为 Windows 时代的 `build/moddev` 产物被 `cp -a` 保留，未重新 decompile；若 `build/` 被清空，首次会触发 decompile+patch，VM 量级 12m23s / 12m46s）。发布完成的判据：`ls ~/.m2/repository/com/merlinkitsune/starengine/*/1.1.0/` 四件齐（jar + pom + module）。
+  本机首次已发布成功（2026-10-31，各线 `BUILD SUCCESSFUL`，各约 1s——因为 Windows 时代的 `build/moddev` 产物被 `cp -a` 保留，未重新 decompile；若 `build/` 被清空，首次会触发 decompile+patch，VM 量级 12m23s / 12m46s）。发布完成的判据：`ls ~/.m2/repository/com/merlinkitsune/starengine/*/1.1.0/` 四件齐（jar + pom + module）。
 - **若解析失败属环境问题（BLOCKED），不是产品缺陷。**
 
 ### 7. git（真实工作树 + autocrlf + 无全局代理）
@@ -175,9 +175,9 @@
 3. `docs/agent/AGENTS-full.md` 末尾「待办交接各批」—— **只追加**，不改旧条。
 4. `docs/handover-<版本>-<主题>.md` —— 单批专题（本批：`docs/handover-2026-10-31-native-linux-migration.md`）。
 - ⛔ `docs/AGENT-HANDOFF.md（已删除 2026-11-05）` **不是现状**，只作历史参考。
-- **接手顺序**：`git status --short -uall` + `git log --oneline -1` → 四线 `gradle.properties` 的 `mod_version` → handover §0/§5 → 按 §7 取路径。
+- **接手顺序**：`git status --short -uall` + `git log --oneline -1` → 各线 `gradle.properties` 的 `mod_version` → handover §0/§5 → 按 §7 取路径。
 - **交班 6 义务**（其中一项必做）：`python3 -B docs/agent/verify-split.py` 四项全 `[OK]`。
-- 事实源快照会落后：2026-10-31 实读四线 `mod_version` 已是 `1.5.0-rc.7+<后缀>`（`neoforge_1.21.1` / `forge_1.20.1` / `neoforge_26.1.2` / `fabric_1.20.1`）—— 这类数字**一律实读覆盖**。
+- 事实源快照会落后：2026-10-31 实读各线 `mod_version` 已是 `1.5.0-rc.7+<后缀>`（`neoforge_1.21.1` / `forge_1.20.1` / `neoforge_26.1.2` / `fabric_1.20.1`）—— 这类数字**一律实读覆盖**。
 
 ## 📌 本文件的定位与自检
 
@@ -315,7 +315,7 @@
 ## 交接与事实源（Linux 侧）
 
 - 四层事实源见〈代理协作契约 C〉；每轮收尾更新 `docs/handover-1.5.0-main.md` §4/§5 + `docs/handover-new-session-context.md`。
-- 接手先实读：`git -C <工作树> status --short -uall`、`git log --oneline -1`、四线 `mod_version`、`~/.m2` 是否有 `com.merlinkitsune`（决定能否直接构建）、`.agent-locks/` 状态、`findmnt -T` 的文件系统类型。
+- 接手先实读：`git -C <工作树> status --short -uall`、`git log --oneline -1`、各线 `mod_version`、`~/.m2` 是否有 `com.merlinkitsune`（决定能否直接构建）、`.agent-locks/` 状态、`findmnt -T` 的文件系统类型。
 - 报告「已完成」前必须有一次实跑证据（命令 + 原文输出片段），不接受「应该可以」。
 - **本批专题**：`docs/handover-2026-10-31-native-linux-migration.md` —— 原生 Linux 真机实测（挂载/工具链/出网/链接语义）、VM→真机路径重映射、游戏测试资产接管、以及剩余 checklist。
 - **相对路径纪律**：交接文档、仓库内脚本、规则文本一律相对仓库根书写（脚本用 `ROOT="$(cd "$(dirname "$0")/.." && pwd)"` 自解析）；宿主绝对路径只允许出现在专题交接文档的附录快照里。
@@ -353,7 +353,7 @@
 | Windows 原生规则（历史正本） | `docs/agent/AGENTS-dsh.md` |
 | 原生 Linux 迁移实测与 checklist | `docs/handover-2026-10-31-native-linux-migration.md` |
 | VM 时代历史（hgfs 代价 / 本机盘副本） | `docs/handover-2026-10-31-linux-vm-adoption.md（已删除 2026-11-05）` · `docs/handover-2026-10-31-local-disk-workspace.md` |
-| 工程拓扑 / 四线基线 / 构建耗时台账 | `docs/agent/PROJECT-REFERENCE.md` |
+| 工程拓扑 / 各线基线 / 构建耗时台账 | `docs/agent/PROJECT-REFERENCE.md` |
 | 委派操作手册（模板/失败模式） | `docs/agent/delegation-runbook.md` |
 | 测试流程与规则总览（Windows-only 实现） | `scripts/test/TESTING-RULES-OVERVIEW.md（已删除 2026-11-05）` |
 | Linux 测试台操作说明 | `scripts/test/linux/README.md` |

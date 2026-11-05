@@ -13,14 +13,14 @@
 
 1. `git -C F:/MCProject/astral_dice_multiloader status --short -uall` + `git -C ... log -1 --oneline`：确认分支、HEAD、是否有他人未提交改动。
 2. 读 `docs/handover-2026-10-24-kimi-takeover.md`（Kimi 当前接手正本）；再用 `ls docs/handover-*` 找最新一份，与 `docs/handover-new-session-context.md` 交叉核对。
-3. 读 `docs/agent/PROJECT-REFERENCE.md`（当前工程参考：拓扑、四线基线、目录职责、常用命令）。
+3. 读 `docs/agent/PROJECT-REFERENCE.md`（当前工程参考：拓扑、各线基线、目录职责、常用命令）。
 4. 要具体规则 ⇒ 在 `docs/agent/AGENTS-full.md` 里**按标题名检索**（`grep -n '^#' docs/agent/AGENTS-full.md`，行号总表见 `docs/agent/AGENTS-TOC.md`），只取命中区间 `sed -n '<a>,<b>p'`。
 5. 若第 2 / 3 步的两份 Kimi 文档尚未创建（后续任务才落盘）：改读 `docs/handover-new-session-context.md` 与 `docs/handover-*.md` 最新一份，并在回报里点明缺哪份。
 6. 不信文档里的版本号 / 行号 / 计数（都是快照）；文档与工作树冲突时以工作树为准，并如实点出差异。
 
 ## 2. 工作树与分支归属
 
-- 两棵常驻树：主线 `F:\MCProject\astral_dice_multiloader`（`multi-main`，四条线同树）；开发线 `F:\MCProject\astral_dice_multiloader-next`（`multi-dev-next`）。
+- 两棵常驻树：主线 `F:\MCProject\astral_dice_multiloader`（`multi-main`，各线同树）；开发线 `F:\MCProject\astral_dice_multiloader-next`（`multi-dev-next`）。
 - 任务属于哪个分支就**只在那个树的绝对路径**上改；禁止镜像 / 回填 / 同步到另一棵树。
 - 跨树写文件一律**绝对路径**（`F:/MCProject/...`），不依赖进程 cwd —— 相对路径会静默落到主会话 cwd（历史事故：一条 0 字节用例文件落错树）。
 - 收尾对**另一棵树**跑一次 `git status --short`，确认没有落错文件。
@@ -109,7 +109,7 @@
 
 - 每进入**新版本 / 新批次**，**新建**一份交接文档：`docs/handover-<版本或日期>-<主题>.md`（当前 Kimi 接手掌：`docs/handover-2026-10-24-kimi-takeover.md`）。
 - **禁止**把旧交接文档改名、覆盖或原地重写来「变成新的」：旧文件是历史证据，只允许追加，不得改写既有结论。
-- 交班至少覆盖：日期 / 分支 / HEAD / 四线 `mod_version` / 工作树残留 / 已完成 / 遗留（销账或新增，**禁止静默删**）/ 新坑 / 关键路径。
+- 交班至少覆盖：日期 / 分支 / HEAD / 各线 `mod_version` / 工作树残留 / 已完成 / 遗留（销账或新增，**禁止静默删**）/ 新坑 / 关键路径。
 - 未实机的欠账、无法测度的判据、与规格不一致（REFUTED）的差异**如实登记**。
 - 引用交接写「§号 + 标题」，不写死行号（行号会漂移）。
 

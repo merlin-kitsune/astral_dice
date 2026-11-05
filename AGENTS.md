@@ -1,6 +1,6 @@
 # Agent Instructions
 
-**本仓**：`F:\MCProject\astral_dice_multiloader`（原生 Linux 宿主为同一块 NTFS 盘的原生挂载：`/mnt/f/MCProject/astral_dice_multiloader`；无 hgfs）—— Minecraft 模组「Astral Dice」的多加载器工作树（四条线 `neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1`，同一工作树）。
+**本仓**：`F:\MCProject\astral_dice_multiloader`（原生 Linux 宿主为同一块 NTFS 盘的原生挂载：`/mnt/f/MCProject/astral_dice_multiloader`；无 hgfs）—— Minecraft 模组「Astral Dice」的多加载器工作树（各线 `neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1`，同一工作树）。
 
 **本文件只是公共入口**：先按下面的分派认领自己的规则文件，再读共同红线，最后按需查索引。
 
@@ -33,7 +33,7 @@
 
 | 需要什么 | 去哪里 |
 |---|---|
-| 工程拓扑、四条线基线、目录职责、常用命令 | `docs/agent/PROJECT-REFERENCE.md` |
+| 工程拓扑、各线基线、目录职责、常用命令 | `docs/agent/PROJECT-REFERENCE.md` |
 | 当前接手 / 交班 | Kimi：`docs/handover-2026-10-24-kimi-takeover.md`；DSH：`docs/handover-*.md` 中最新一份 + `docs/handover-new-session-context.md` |
 | Linux 真机适配与迁移（2026-10-31） | `docs/handover-2026-10-31-native-linux-migration.md`（原生 Linux 实测、盘符重映射、游戏测试资产接管 + 剩余 checklist）；规则见 `docs/agent/AGENTS-dsh-linux.md` |
 | NTFS 双系统工作树 / Windows 互操作 | `docs/handover-2026-10-31-native-linux-migration.md`（`/mnt/f` 同盘、大小写与换行口径、锁与并发）；旧副本同步脚本 `scripts/dev/rsync-original.sh` 已停用 |

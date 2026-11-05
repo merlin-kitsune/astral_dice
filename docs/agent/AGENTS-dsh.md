@@ -119,7 +119,7 @@
 
 **接手（新会话）顺序 —— 一律实读，不信文档里的数字**：
 1. `git -C <工作树绝对路径> status --short -uall` + `git log -1 --oneline`（分支 / HEAD / 未提交改动）；
-2. 四线 `gradle.properties` 的 `mod_version`（文档里的 .1xx 只是快照，可能已落后）；
+2. 各线 `gradle.properties` 的 `mod_version`（文档里的 .1xx 只是快照，可能已落后）；
 3. 读正本 `docs/handover-1.5.0-main.md` 的 §0 / §5，再按 §7 取路径；
 4. 要某批细节 ⇒ 用主题名在 `docs/agent/AGENTS-full.md` 检索「待办交接」第 N 条（标题 + 行号总表见 `docs/agent/AGENTS-TOC.md`）。
 
@@ -156,7 +156,7 @@
 
 ## 📍 生效红线区 —— 原文逐字（`docs/agent/AGENTS-full.md` L2–L129；原文 H1 由本文件 H1 取代）
 
-> **子项目优先级与默认规则(必须遵守,2026-10-04 用户裁决重新划级)**:⛔ **本条原「三条生产线同批实施（含 26.1.2）」的口径已作废** —— 现行**两级优先模型**见下方「## 版本优先级与跨线移植纪律」:**P0 最高 = `neoforge-1.21.1` + `forge-1.20.1`**（功能一致、同批、优先）;**P1 次要 = `neoforge-26.1.2` + `fabric-1.20.1`**（待 P0 完成后移植）。以下为旧文存档 —— 所有功能/修复默认**同步修改三个版本**(`neoforge-1.21.1` + `forge-1.20.1` + `neoforge-26.1.2` —— 这三条是**生产线**),三线保持功能对等(无法对等的项必须按平台差异逐条登记,见 `docs/compat-26.1.2-neoforge.md`;**不再存在"只同步两个版本"的口径**);⚠️ **第四条线 `fabric-1.20.1`(Fabric 移植线)不在本「同批实施」约束内** —— 它由用户按批次单独下达移植任务,规则边界见下方「第四条线(`fabric-1.20.1`)的规则边界」;每次改动完成后由代理**自动本地提交**并**自动部署到整合包**(随 `gradlew build` 触发,**四条线各自推往自己的整合包**:`狐の航空学 Voxy Edition` / `1.20.1-Forge 模组测试` / `26.1.2-NeoForge 模组测试` / `1.20.1-Fabric 模组测试`),但**默认不执行 `git push`**。⛔ **发布投放红线（必须遵守,2026-10-25 用户裁决,优先级高于本条其余表述）**：**除非用户在当次任务里明确点名要求，否则默认只上传/发布 P0 两线（`neoforge-1.21.1` + `forge-1.20.1`）的产物** —— 涵盖 CurseForge / Modrinth / GitHub Release 与 tag / 任何对外分发渠道；**P1 两线（`neoforge-26.1.2` + `fabric-1.20.1`）从未获授权移植，其编译产物一律视为不可用** ⇒ 禁止上传、禁止建 Release/tag、禁止作为 P0 Release 的附件、禁止对外交付；需要 P1 发布时必须由用户逐次点名下达。 **2026-11-02 用户裁决（取代本条后半）**：四线 jar 允许放入同一个 GitHub Release（按版本号打 tag、全部正式版）；CF 侧 `fabric` / `neoforge-26.1.2` 仍受 `--allow-p1` 显式放行闸门约束（保留为防误传互锁），上传时必须显式加该参数。**② tag 与 Release 命名红线（同批裁决,强制）**：GitHub Release 的 tag **只按 mod 版本**创建（例 `1.5.0`、`1.5.0-rc.1`、`1.5.0-pre.6`）—— **禁止**按游戏平台建 tag（`fabric-1.5.0-rc.1`、`neoforge-…` 一律禁止）、禁止 `v` 前缀、禁止 `+加载器` 后缀；**同一版本的多平台 jar 必须放进同一个 Release**（现为 P0 两线 `neoforge-1.21.1` + `forge-1.20.1`，各自 jar 作同一 Release 的附件）；带 `-rc` / `-pre` / `-alpha` / `-beta` 的版本一律标 prerelease、不占 latest。**③ 发布时序红线（2026-11-02 用户裁决，强制）**：**未经详细测试（含实机冒烟）的版本一律不得作为发布版本**；**生产版本的发布动作必须是整条流程的最后一步** —— 固定顺序为「构建 → 本地详细测试 / 实机冒烟取证 → 审核项全过 → 才允许 push / tag / Release / CurseForge 上传」。在测试结论齐全之前执行的任何对外发布动作都算违规，发现即回滚或下架并记录。
+> **子项目优先级与默认规则(必须遵守,2026-11-05 用户裁决重新划级)**:⛔ **原「三条生产线同批实施（含 26.1.2）」「四线同号」等旧口径已全部作废** —— 现行**两级优先模型**见下方「## 版本优先级与跨线移植纪律」:**P0 最高 = `forge-1.20.1` + `neoforge-1.21.1`**（新功能、修复、平衡、文案一律**先落这两条线**,两线保持功能对等,无法对等的项按平台差异逐条登记,见 `docs/compat-1.20.1-forge.md`）;**P1 = `fabric-1.20.1` + `fabric-1.21.1` + `neoforge-26.1.2`**（⛔ **只有 P0 新功能落盘无误且经过详尽测试后,由用户裁决才可向 P1 落盘,代理不得擅自决定**;各线规则边界见下方各自小节）;每次改动完成后由代理**自动本地提交**并**自动部署到整合包**(随 `gradlew build` 触发,**各线各自推往自己的测试实例**:`狐の航空学 Voxy Edition` / `1.20.1-Forge 模组测试` / `26.1.2-NeoForge 模组测试` / `1.20.1-Fabric 模组测试`),但**默认不执行 `git push`**。⛔ **发布投放红线（必须遵守,2026-10-25 用户裁决,优先级高于本条其余表述）**：**除非用户在当次任务里明确点名要求，否则默认只上传/发布 P0 两线（`neoforge-1.21.1` + `forge-1.20.1`）的产物** —— 涵盖 CurseForge / Modrinth / GitHub Release 与 tag / 任何对外分发渠道；**P1 三线（`fabric-1.20.1` + `fabric-1.21.1` + `neoforge-26.1.2`）的编译产物一律视为不可用** ⇒ 禁止上传、禁止建 Release/tag、禁止作为 P0 Release 的附件、禁止对外交付；需要 P1 发布时必须由用户逐次点名下达。 **2026-11-02 用户裁决（取代本条后半）**：各线 jar 允许放入同一个 GitHub Release（按版本号打 tag、全部正式版）；CF 侧 `fabric` / `neoforge-26.1.2` 仍受 `--allow-p1` 显式放行闸门约束（保留为防误传互锁），上传时必须显式加该参数。**② tag 与 Release 命名红线（同批裁决,强制）**：GitHub Release 的 tag **只按 mod 版本**创建（例 `1.5.0`、`1.5.0-rc.1`、`1.5.0-pre.6`）—— **禁止**按游戏平台建 tag（`fabric-1.5.0-rc.1`、`neoforge-…` 一律禁止）、禁止 `v` 前缀、禁止 `+加载器` 后缀；**同一版本的多平台 jar 必须放进同一个 Release**（现为 P0 两线 `neoforge-1.21.1` + `forge-1.20.1`，各自 jar 作同一 Release 的附件）；带 `-rc` / `-pre` / `-alpha` / `-beta` 的版本一律标 prerelease、不占 latest。**③ 发布时序红线（2026-11-02 用户裁决，强制）**：**未经详细测试（含实机冒烟）的版本一律不得作为发布版本**；**生产版本的发布动作必须是整条流程的最后一步** —— 固定顺序为「构建 → 本地详细测试 / 实机冒烟取证 → 审核项全过 → 才允许 push / tag / Release / CurseForge 上传」。在测试结论齐全之前执行的任何对外发布动作都算违规，发现即回滚或下架并记录。
 
 ## 发布流程硬规则（2026-11-02 用户裁决，强制）
 
@@ -170,8 +170,8 @@
 项目基线:
 - 主线子项目 `neoforge-1.21.1`:MC 1.21.1 / NeoForge 21.1.235 / Java 21 / ModDevGradle(`net.neoforged.moddev` 2.0.141)
 - 移植子项目 `forge-1.20.1`:MC 1.20.1 / Forge 1.20.1-47.4.10 / Java 17 / ModDevGradle LegacyForge(`net.neoforged.moddev.legacyforge` 2.0.144)
-- 第三条线 `neoforge-26.1.2`:MC 26.1.2 / NeoForge 26.1.2.109 / Java 25 / ModDevGradle 2.0.147;由 1.21.1 源码整体迁移,差异见 `docs/compat-26.1.2-neoforge.md`。**2026-09-17 起已并入主线目录**(原独立 worktree `F:\MCProject\astral_dice_multiloader-26.1.2` / 分支 `multi-26.1.2-neoforge` 已合并进 `multi-1.20.1-1.21.1`,现行工作目录即主线根目录,四子项目同树)。
-- 第四条线 `fabric-1.20.1`:MC 1.20.1 / Fabric Loader 0.19.5 + Fabric API 0.92.12 / Java 17 / Fabric Loom(`fabric-loom`);由 `forge-1.20.1` 的 1.3.2-hotfix 源码整体移植(**加载器层整体替换**:Curios→Trinkets(+Accessories 软依赖) · Capability→Fabric API 附件 · Forge EventBus→自建 `LoaderBus`+Puzzles Lib/FAPI 回调/mixin · GLM→`LootTableEvents.MODIFY`),裁剪项与平台差异见 `porting/fabric-1.20.1/VERSION_PINS.md`、`KNOWN-ISSUES.md` §9。**2026-10-01 已并入主线目录**(原独立 worktree `F:\MCProject\astral_dice_multiloader_fabric` / 分支 `1.20.1-fabric` 已合并进 `multi-main` 并**已删除本地 worktree 与分支**（⚠️ **远端分支 `origin/1.20.1-fabric` 的删除需 push，尚未执行**，待用户放行；删除本地分支前已取证其 tip `a89487ac` 是 `multi-main` 的祖先、独有提交 0 个），四条线同一工作树)。⚠️ **本线 dev 环境有一个必须先做的前置**：Loom 重映射第三方 mod 时会剥离产物的 `fabric.mod.json` 的 `jars` 声明 ⇒ 自带内嵌库的 mod（Puzzles Lib / Accessories / Patchouli / Cloth Config / KubeJS）在 dev 里**全部起不来**（`HARD_DEP_NO_CANDIDATE` / `NoClassDefFoundError`）。跑任何 fabric dev 运行前先执行 `python tools/loom_embedded_jars.py --apply`（把内嵌库按 id 去重投放到 `run/<side>/mods/`，靠 Loom 的 `fabric.remapClasspathFile` 运行时重映射生效）；**换 `-PtestTrinkets` / `-PtestAccessories` 后必须重跑**。详见 `KNOWN-ISSUES.md` §9 **KI-F23**。
+- P1 线 `neoforge-26.1.2`:MC 26.1.2 / NeoForge 26.1.2.109 / Java 25 / ModDevGradle 2.0.147;由 1.21.1 源码整体迁移,差异见 `docs/compat-26.1.2-neoforge.md`。**2026-09-17 起已并入主线目录**(原独立 worktree `F:\MCProject\astral_dice_multiloader-26.1.2` / 分支 `multi-26.1.2-neoforge` 已合并进 `multi-1.20.1-1.21.1`,现行工作目录即主线根目录,四子项目同树)。
+- P1 线 `fabric-1.20.1`:MC 1.20.1 / Fabric Loader 0.19.5 + Fabric API 0.92.12 / Java 17 / Fabric Loom(`fabric-loom`);由 `forge-1.20.1` 的 1.3.2-hotfix 源码整体移植(**加载器层整体替换**:Curios→Trinkets(+Accessories 软依赖) · Capability→Fabric API 附件 · Forge EventBus→自建 `LoaderBus`+Puzzles Lib/FAPI 回调/mixin · GLM→`LootTableEvents.MODIFY`),裁剪项与平台差异见 `porting/fabric-1.20.1/VERSION_PINS.md`、`KNOWN-ISSUES.md` §9。**2026-10-01 已并入主线目录**(原独立 worktree `F:\MCProject\astral_dice_multiloader_fabric` / 分支 `1.20.1-fabric` 已合并进 `multi-main` 并**已删除本地 worktree 与分支**（⚠️ **远端分支 `origin/1.20.1-fabric` 的删除需 push，尚未执行**，待用户放行；删除本地分支前已取证其 tip `a89487ac` 是 `multi-main` 的祖先、独有提交 0 个），各线同一工作树)。⚠️ **本线 dev 环境有一个必须先做的前置**：Loom 重映射第三方 mod 时会剥离产物的 `fabric.mod.json` 的 `jars` 声明 ⇒ 自带内嵌库的 mod（Puzzles Lib / Accessories / Patchouli / Cloth Config / KubeJS）在 dev 里**全部起不来**（`HARD_DEP_NO_CANDIDATE` / `NoClassDefFoundError`）。跑任何 fabric dev 运行前先执行 `python tools/loom_embedded_jars.py --apply`（把内嵌库按 id 去重投放到 `run/<side>/mods/`，靠 Loom 的 `fabric.remapClasspathFile` 运行时重映射生效）；**换 `-PtestTrinkets` / `-PtestAccessories` 后必须重跑**。详见 `KNOWN-ISSUES.md` §9 **KI-F23**。
 - Base package/group: com.merlinkitsune.astral_dice;各子项目产物名均为 `astral_dice-<版本>.jar`,版本号自带加载器后缀(1.21.1 带 `+neoforge_1.21.1`,1.20.1 带 `+forge_1.20.1`,26.1.2 带 `+neoforge_26.1.2`,fabric 1.20.1 带 `+fabric_1.20.1`,下划线分隔)。
 
 When extending this workspace:
@@ -187,7 +187,7 @@ When extending this workspace:
 本仓存在**同级的多个 git worktree**，它们的磁盘路径与「会话工作目录」经常不一致，踩过一次真实事故（改动被写到另一个工作树），故固化两条硬规则：
 
 1. **分支归属纪律（禁止镜像/回填）**：任务只属于哪个分支，就**只在那个工作树的磁盘路径**上处理，**禁止**把改动「镜像/回填/同步」到另一个工作树。
-   - 当前两个常驻工作树：**主线** `F:\MCProject\astral_dice_multiloader`（分支 `multi-main`，含**四条线** —— 三条生产线 + `fabric-1.20.1` 移植线，属**封包**状态）与 **2.0.0 开发线** `F:\MCProject\astral_dice_multiloader-next`（分支 `multi-dev-next`）。**fabric 的原独立工作树 `F:\MCProject\astral_dice_multiloader_fabric` 已于 2026-10-01 移除**（分支并入 `multi-main`，故本仓现只余上述两棵常驻树）。
+   - 当前两个常驻工作树：**主线** `F:\MCProject\astral_dice_multiloader`（分支 `multi-main`，含**各线**（P0 两线 + P1 三线），属**封包**状态）与 **2.0.0 开发线** `F:\MCProject\astral_dice_multiloader-next`（分支 `multi-dev-next`）。**fabric 的原独立工作树 `F:\MCProject\astral_dice_multiloader_fabric` 已于 2026-10-01 移除**（分支并入 `multi-main`，故本仓现只余上述两棵常驻树）。
    - dev 分支的任务（如目标选择器改造与其工具链改动）**只能**在 `-next` 工作树落地；主线的 `scripts/test/**` 等文件**必须保持封包版本**（改动若必须进主线，须由用户在主线工作树内单独裁决，不由 dev 任务顺带推送）。
    - 核验方式（收尾必做）：`git -C F:\MCProject\astral_dice_multiloader status --short --untracked-files=all` 除 `?? .agent-teams/**` 与 `models/` / `images/` / `sound/` 三处素材目录下的未跟踪 / 改动文件（2026-10-22 用户裁决：随时更新，见 `AGENTS-full.md` 第 50 条）外**必须无输出**；`git -C F:\MCProject\astral_dice_multiloader rev-parse --short HEAD` 必须仍是收尾前的封包提交。**所有 git 命令一律带 `-C <工作树绝对路径>`**，不要依赖 cwd。
 2. **相对路径陷阱（必须用绝对路径）**：.NET / `System.IO` / 多数文件 API 的**相对路径按进程 cwd 解析**，而本会话的进程 cwd 往往是**主线工作树** —— 于是「写一个 `scripts/test/cases/xxx.json`」会静默落到**主线**（实测事故：一条 0 字节用例文件落在主线，事后删除复原）。
@@ -206,7 +206,7 @@ When extending this workspace:
 
 - 任何**代码 / 资源改动**（新增、修复、重构、批量替换）提交前；
 - 任何**发布动作**之后（打 tag、建 Release、上传 CurseForge、部署到整合包）；
-- 任何**批量或跨线**改动（三线同改、跨工作树、批量改 lang / 手册 / 配方 / 资源）；
+- 任何**批量或跨线**改动（各线同改、跨工作树、批量改 lang / 手册 / 配方 / 资源）；
 - 任何**结论型交付**（审计报告、「该缺陷不存在」、「两线已对等」、「已全部覆盖」）；
 - 用户明确要求复核时。
 
