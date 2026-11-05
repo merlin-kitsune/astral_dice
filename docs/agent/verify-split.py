@@ -65,6 +65,29 @@ def seq_contains(sub_lines, sup_lines):
     rewritten = sum(1 for i in unmatched if i in rewritten_idx)
     return missing, disorder, rewritten, added
 
+# 2026-11-05（用户裁决 B 档）：〈自动化测试流程〉整章按 bash + python 口径重写，旧快照里该章内容
+# 已被用户批准的整章替换取代 ⇒ 快照比对前**两侧都剥掉该章**，其余章节仍按「保序包含」严格判定。
+# 目的不变：防丢其它规则；排除范围最小化并公开打印，不隐藏。
+CHAP_PREFIXES = ('## 自动化测试流程（Automated Testing）',)
+# 终止哨兵用**下一章标题**而不是「任意 ## 」—— 新章内部含有多个 ## 级小节（0. 阅读指引 … 17. 注意事项），
+# 用「任意 ## 」会把同章后半段留进比对，制造假缺失。
+CHAP_ENDS = ('## NeoForge 上游 BUG 补丁（neoforge_fixes）',)
+def strip_chapter(lines):
+    out, skip, dropped = [], False, 0
+    for l in lines:
+        if not skip and any(l.startswith(p) for p in CHAP_PREFIXES):
+            skip, dropped = True, dropped + 1
+            continue
+        if skip:
+            if any(l.startswith(p) for p in CHAP_ENDS):
+                skip = False
+                out.append(l)
+            else:
+                dropped += 1
+            continue
+        out.append(l)
+    return out, dropped
+
 ok = True
 warns = 0
 def check(name, cond, extra=''):
@@ -84,8 +107,13 @@ if bak:
     # 拆分前备份的每一行按序在 AGENTS-full.md 中有交代（缺失 / 乱序 均为 0 才 OK；
     # 原地改写行数只作报告 —— 合规订正会更新行内数字/说明，不构成「丢行」）。
     # ⚠ AGENTS.md.bak-a-plan-* 与 AGENTS.md.bak-slim-* 是回滚工件，字节不许变。
-    n_missing, n_disorder, n_rewritten, n_added = seq_contains(norm(bak[-1]).split('\n'),
-                                                              norm(FULL).split('\n'))
+    _bak_all, _full_all = norm(bak[-1]).split('\n'), norm(FULL).split('\n')
+    _bak, _drop_bak = strip_chapter(_bak_all)
+    _full, _drop_full = strip_chapter(_full_all)
+    if _drop_bak or _drop_full:
+        print(f'  [NOTE] 〈自动化测试流程〉整章已按 2026-11-05 用户裁决改写，快照比对已排除该章'
+              f'（备份 {_drop_bak} 行 / 快照 {_drop_full} 行；其余章节判据未放宽）')
+    n_missing, n_disorder, n_rewritten, n_added = seq_contains(_bak, _full)
     check(f'docs/agent/AGENTS-full.md 保序包含拆分前备份（{os.path.basename(bak[-1])}；缺失/乱序 = 0）',
           n_missing == 0 and n_disorder == 0,
           f'缺失行数={n_missing} / 乱序行数={n_disorder}'

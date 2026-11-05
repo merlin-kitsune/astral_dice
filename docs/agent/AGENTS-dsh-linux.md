@@ -4,7 +4,7 @@
 > **冲突裁决**：同一宿主上两份文件冲突 ⇒ **Linux 宿主以本文件为准**，Windows 宿主以 `docs/agent/AGENTS-dsh.md` 为准；共同红线以根 `AGENTS.md` 为准。
 > **红线原文不复制**：红线区逐字原文的唯一副本在 `docs/agent/AGENTS-dsh.md`〈📍 生效红线区〉（`docs/agent/verify-split.py` 项 1b 拿它和 `docs/agent/AGENTS-full.md` L2–L120 逐字比对）。本文件只给 **Linux 下的替换/补充口径**，复制第二份会让红线两处漂移。
 > **事实源原则**：本文数字均为 **2026-10-31 实读快照**；宿主版本、路径、构建命令、日志路径一律以**实读命令**为准，文档只是当次快照。`[[PENDING:…]]` = 尚无实测依据，**不得**当已验证结论引用，也不得据此施工。
-> **🚚 2026-10-31 迁移批（本文件本轮改写的原因）**：宿主已从 **VMware 虚拟机 + hgfs 共享盘** 迁到 **原生 Linux 真机（双系统，与 Windows 共用同一块 NTFS 盘）**。旧的 `/mnt/hgfs/*`、`~/Project` 四副本、`rsync-original.sh` 通道、`computer-use`(mirsella)/`autojs` MCP 口径**全部作废**，一律以本文件为准；VM 时代文档只作历史（`docs/handover-2026-10-31-linux-vm-adoption.md`、`docs/handover-2026-10-31-local-disk-workspace.md`）。迁移实测见 `docs/handover-2026-10-31-native-linux-migration.md`。
+> **🚚 2026-10-31 迁移批（本文件本轮改写的原因）**：宿主已从 **VMware 虚拟机 + hgfs 共享盘** 迁到 **原生 Linux 真机（双系统，与 Windows 共用同一块 NTFS 盘）**。旧的 `/mnt/hgfs/*`、`~/Project` 四副本、`rsync-original.sh` 通道、`computer-use`(mirsella)/`autojs` MCP 口径**全部作废**，一律以本文件为准；VM 时代文档只作历史（`docs/handover-2026-10-31-linux-vm-adoption.md（已删除 2026-11-05）`、`docs/handover-2026-10-31-local-disk-workspace.md`）。迁移实测见 `docs/handover-2026-10-31-native-linux-migration.md`。
 
 ## 🚀 会话启动第一步：加载 using-superpowers（2026-10-24 用户裁决，每次会话必做）
 
@@ -92,7 +92,7 @@
 - **依赖镜像：真机已不需要 aliyun init.d**（本批最重要的出网变化）：
   - 2026-10-31 真机实测：Central / aliyun / neoforged / github **全部 200**（`annotations-26.0.2.pom` 实拉）。**VM 期的 Central 403 封禁不存在了。**
   - ⇒ **不要创建 `~/.gradle/init.d/00-aliyun-central-mirror.gradle`**，也不要往仓库写镜像坐标；`~/.gradle/init.d/`、`~/.mc-mirror`、`~/.local/bin/neoforge-mirror-sync.sh` 不存在都是正常状态。
-  - 首次构建前跑一次自检（坏了才动手，别预防性加镜像）：`curl -s -o /dev/null -w '%{http_code}\n' https://repo.maven.apache.org/maven2/org/jetbrains/annotations/26.0.2/annotations-26.0.2.pom` ⇒ 期望 **200**；若再 403，才按 `docs/handover-2026-10-31-linux-vm-adoption.md` §6 第 2 步临时启用 host 级镜像（不改仓库）。
+  - 首次构建前跑一次自检（坏了才动手，别预防性加镜像）：`curl -s -o /dev/null -w '%{http_code}\n' https://repo.maven.apache.org/maven2/org/jetbrains/annotations/26.0.2/annotations-26.0.2.pom` ⇒ 期望 **200**；若再 403，才按 `docs/handover-2026-10-31-linux-vm-adoption.md（已删除 2026-11-05）` §6 第 2 步临时启用 host 级镜像（不改仓库）。
 - **26.1.2 必须加 `--no-configuration-cache`**：`createMinecraftArtifacts` 的 `DefaultConfigurableFileCollection` 在配置缓存序列化阶段报 `error writing value of type …`（历史实测，与镜像无关）。
 - **构建耗时：热缓存已实测，冷构建仍未测**（`[[PENDING:build-time-native]]`）。2026-10-31 真机热缓存：`:neoforge-1.21.1:classes` 32s、`:forge-1.20.1:classes` 30s（含四线配置期，`createMinecraftArtifacts UP-TO-DATE`），日志同时打印 `整合包根目录 (MC_HOME): /mnt/d/.minecraft`。`build/moddev/artifacts` 里 Windows 时代产物仍在（`forge-1.20.1-47.4.10-merged.jar`、`neoforge-21.1.235-merged.jar` 等）⇒ 可复用、省掉 decompile；`~/.gradle` 已由本批重建。**禁止**把 VM 的 `2m44s` 当本机基线，也不得假定 `12m23s` decompile 必然发生。
 - 换线构建耗时与失败模式以**构建台账**为准（每次记录线 / 命令 / 耗时 / 结果），单次耗时不当 SLA。
@@ -174,7 +174,7 @@
 2. `docs/handover-new-session-context.md` —— 新会话寒暄提示词。
 3. `docs/agent/AGENTS-full.md` 末尾「待办交接各批」—— **只追加**，不改旧条。
 4. `docs/handover-<版本>-<主题>.md` —— 单批专题（本批：`docs/handover-2026-10-31-native-linux-migration.md`）。
-- ⛔ `docs/AGENT-HANDOFF.md` **不是现状**，只作历史参考。
+- ⛔ `docs/AGENT-HANDOFF.md（已删除 2026-11-05）` **不是现状**，只作历史参考。
 - **接手顺序**：`git status --short -uall` + `git log --oneline -1` → 四线 `gradle.properties` 的 `mod_version` → handover §0/§5 → 按 §7 取路径。
 - **交班 6 义务**（其中一项必做）：`python3 -B docs/agent/verify-split.py` 四项全 `[OK]`。
 - 事实源快照会落后：2026-10-31 实读四线 `mod_version` 已是 `1.5.0-rc.7+<后缀>`（`neoforge_1.21.1` / `forge_1.20.1` / `neoforge_26.1.2` / `fabric_1.20.1`）—— 这类数字**一律实读覆盖**。
@@ -259,7 +259,7 @@
 
 ## AutoJS 运行时通道（Linux 侧口径）
 
-> 详细契约见 `docs/features/autojs-test-harness-spec.md`；操作口径见 `docs/features/autojs-testing-flow.md`。本节只定规则。
+> 详细契约见 `docs/features/autojs-test-harness-spec.md（已删除 2026-11-05）`；操作口径见 `docs/features/autojs-testing-flow.md（已删除 2026-11-05）`。本节只定规则。
 
 - 端点：Streamable HTTP `POST http://127.0.0.1:25585/mcp`，默认 bind `127.0.0.1`；探活 `GET /health` 期望 `200`：
 
@@ -352,12 +352,12 @@
 |---|---|
 | Windows 原生规则（历史正本） | `docs/agent/AGENTS-dsh.md` |
 | 原生 Linux 迁移实测与 checklist | `docs/handover-2026-10-31-native-linux-migration.md` |
-| VM 时代历史（hgfs 代价 / 本机盘副本） | `docs/handover-2026-10-31-linux-vm-adoption.md` · `docs/handover-2026-10-31-local-disk-workspace.md` |
+| VM 时代历史（hgfs 代价 / 本机盘副本） | `docs/handover-2026-10-31-linux-vm-adoption.md（已删除 2026-11-05）` · `docs/handover-2026-10-31-local-disk-workspace.md` |
 | 工程拓扑 / 四线基线 / 构建耗时台账 | `docs/agent/PROJECT-REFERENCE.md` |
 | 委派操作手册（模板/失败模式） | `docs/agent/delegation-runbook.md` |
-| 测试流程与规则总览（Windows-only 实现） | `scripts/test/TESTING-RULES-OVERVIEW.md` |
+| 测试流程与规则总览（Windows-only 实现） | `scripts/test/TESTING-RULES-OVERVIEW.md（已删除 2026-11-05）` |
 | Linux 测试台操作说明 | `scripts/test/linux/README.md` |
-| AutoJS 通道契约 | `docs/features/autojs-test-harness-spec.md` · `docs/features/autojs-testing-flow.md` |
+| AutoJS 通道契约 | `docs/features/autojs-test-harness-spec.md（已删除 2026-11-05）` · `docs/features/autojs-testing-flow.md（已删除 2026-11-05）` |
 | 规则库自身说明 | `docs/agent/README.md` |
 
 - 维护约定：① 每次必读的红线 → 写根 `AGENTS.md` 红线区并同步 `AGENTS-full.md`；② 情境规则 → 追加 `AGENTS-full.md` 并更新 `AGENTS-TOC.md` 与本索引；③ 本文件体量上限 **~30K 字符**（超了拆索引 + 子代理读取），改完跑 `python3 -B docs/agent/verify-split.py`；④ 长驻外部内容走索引 + 子代理读取，不塞进主会话。

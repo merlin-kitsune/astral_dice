@@ -1,6 +1,6 @@
 # P2 — §B 数值修饰器(乘法 / 加法 / 覆盖)第二轮只读审计
 
-> 范围:仅 §B。载荷清单 = `docs/execution-order-checklist.md` §B(B1~B6);
+> 范围:仅 §B。载荷清单 = `docs/execution-order-checklist.md（已删除 2026-11-05）` §B(B1~B6);
 > 配套第一轮扫描 `docs/interaction-audit-1.2.1.md`(其 §B/A3、§J 索引为本报告的起点)。
 > 纪律:每条结论 = `文件:行号` + 代码原文(A = `neoforge-1.21.1` / B = `forge-1.20.1`)+ 可达性 +
 > 最小实机验证步骤 + 严重度(blocker/high/medium/low)。不可达路径不列为缺陷。

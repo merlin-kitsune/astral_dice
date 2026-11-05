@@ -15,7 +15,7 @@
 - 主线子项目 `neoforge-1.21.1`:MC 1.21.1 / NeoForge 21.1.235 / Java 21 / ModDevGradle(`net.neoforged.moddev` 2.0.141)
 - 移植子项目 `forge-1.20.1`:MC 1.20.1 / Forge 1.20.1-47.4.10 / Java 17 / ModDevGradle LegacyForge(`net.neoforged.moddev.legacyforge` 2.0.144)
 - 第三条线 `neoforge-26.1.2`:MC 26.1.2 / NeoForge 26.1.2.109 / Java 25 / ModDevGradle 2.0.147;由 1.21.1 源码整体迁移,差异见 `docs/compat-26.1.2-neoforge.md`。**2026-09-17 起已并入主线目录**(原独立 worktree `F:\MCProject\astral_dice_multiloader-26.1.2` / 分支 `multi-26.1.2-neoforge` 已合并进 `multi-1.20.1-1.21.1`,现行工作目录即主线根目录,四子项目同树)。
-- 第四条线 `fabric-1.20.1`:MC 1.20.1 / Fabric Loader 0.19.5 + Fabric API 0.92.12 / Java 17 / Fabric Loom(`fabric-loom`);由 `forge-1.20.1` 的 1.3.2-hotfix 源码整体移植(**加载器层整体替换**:Curios→Trinkets(+Accessories 软依赖) · Capability→Fabric API 附件 · Forge EventBus→自建 `LoaderBus`+Puzzles Lib/FAPI 回调/mixin · GLM→`LootTableEvents.MODIFY`),裁剪项与平台差异见 `porting/fabric-1.20.1/VERSION_PINS.md`、`KNOWN-ISSUES.md` §9。**2026-10-01 已并入主线目录**(原独立 worktree `F:\MCProject\astral_dice_multiloader_fabric` / 分支 `1.20.1-fabric` 已合并进 `multi-main` 并**已删除本地 worktree 与分支**（⚠️ **远端分支 `origin/1.20.1-fabric` 的删除需 push，尚未执行**，待用户放行；删除本地分支前已取证其 tip `a89487ac` 是 `multi-main` 的祖先、独有提交 0 个），四条线同一工作树)。⚠️ **本线 dev 环境有一个必须先做的前置**：Loom 重映射第三方 mod 时会剥离产物的 `fabric.mod.json` 的 `jars` 声明 ⇒ 自带内嵌库的 mod（Puzzles Lib / Accessories / Patchouli / Cloth Config / KubeJS）在 dev 里**全部起不来**（`HARD_DEP_NO_CANDIDATE` / `NoClassDefFoundError`）。跑任何 fabric dev 运行前先执行 `pwsh -NoProfile -File scripts/test/fabric/ft_env.ps1 --side both --install-embedded`（= `python tools/loom_embedded_jars.py --apply`，把内嵌库按 id 去重投放到 `run/<side>/mods/`，靠 Loom 的 `fabric.remapClasspathFile` 运行时重映射生效）；**换 `-PtestTrinkets` / `-PtestAccessories` 后必须重跑**。详见 `KNOWN-ISSUES.md` §9 **KI-F23**。
+- 第四条线 `fabric-1.20.1`:MC 1.20.1 / Fabric Loader 0.19.5 + Fabric API 0.92.12 / Java 17 / Fabric Loom(`fabric-loom`);由 `forge-1.20.1` 的 1.3.2-hotfix 源码整体移植(**加载器层整体替换**:Curios→Trinkets(+Accessories 软依赖) · Capability→Fabric API 附件 · Forge EventBus→自建 `LoaderBus`+Puzzles Lib/FAPI 回调/mixin · GLM→`LootTableEvents.MODIFY`),裁剪项与平台差异见 `porting/fabric-1.20.1/VERSION_PINS.md`、`KNOWN-ISSUES.md` §9。**2026-10-01 已并入主线目录**(原独立 worktree `F:\MCProject\astral_dice_multiloader_fabric` / 分支 `1.20.1-fabric` 已合并进 `multi-main` 并**已删除本地 worktree 与分支**（⚠️ **远端分支 `origin/1.20.1-fabric` 的删除需 push，尚未执行**，待用户放行；删除本地分支前已取证其 tip `a89487ac` 是 `multi-main` 的祖先、独有提交 0 个），四条线同一工作树)。⚠️ **本线 dev 环境有一个必须先做的前置**：Loom 重映射第三方 mod 时会剥离产物的 `fabric.mod.json` 的 `jars` 声明 ⇒ 自带内嵌库的 mod（Puzzles Lib / Accessories / Patchouli / Cloth Config / KubeJS）在 dev 里**全部起不来**（`HARD_DEP_NO_CANDIDATE` / `NoClassDefFoundError`）。跑任何 fabric dev 运行前先执行 `python tools/loom_embedded_jars.py --apply`（把内嵌库按 id 去重投放到 `run/<side>/mods/`，靠 Loom 的 `fabric.remapClasspathFile` 运行时重映射生效）；**换 `-PtestTrinkets` / `-PtestAccessories` 后必须重跑**。详见 `KNOWN-ISSUES.md` §9 **KI-F23**。
 - Base package/group: com.merlinkitsune.astral_dice;各子项目产物名均为 `astral_dice-<版本>.jar`,版本号自带加载器后缀(1.21.1 带 `+neoforge_1.21.1`,1.20.1 带 `+forge_1.20.1`,26.1.2 带 `+neoforge_26.1.2`,fabric 1.20.1 带 `+fabric_1.20.1`,下划线分隔)。
 
 When extending this workspace:
@@ -74,7 +74,7 @@ When extending this workspace:
 
 ### 与既有守门的关系（两层都要，不得互相替代）
 
-- **第一层 = 机器判据**：`scripts/verify/**`、`tools/audit_*.py`、`tools/check_lang_sync.ps1` 等守门脚本，可重复、可回归。
+- **第一层 = 机器判据**：`scripts/verify/**`、`tools/audit_*.py`、`tools/check_lang_sync.py` 等守门脚本，可重复、可回归。
 - **第二层 = 二次验证**：专治第一层覆盖不到的遗漏 —— **判据本身有漏**（实例：手册悬空键
   `guide.entry.special_effects.6` / `guide.entry.teru_sign.3` 长期**无任何门禁**，直到 2026-10-01 才补上
   `tools/audit_patchouli_keys.py`）、**守门跑错范围 / 跑错工作树**、**报告与实物不符**、**声称已改而实际未落盘**。
@@ -87,33 +87,33 @@ When extending this workspace:
 2. **测试与演示一律使用非亡灵生物**：游戏内实机测试、连拍演示、探针靶子**不得**用僵尸等亡灵生物（undead），
    一律改用**非亡灵**生物（如 minecraft:pillager、minecraft:cow）。原因：亡灵受治疗 / 伤害反转等特殊规则影响，
    会污染 FX / 伤害 / 音效类判据；历史脚本中以 zombie 为靶的写法一律视为待替换。
-3. **测试流程结束后必须关闭测试用游戏实例**：收尾时执行 pwsh -File scripts/test/mt.ps1 --version 线 --phase stop，
-   确认 MT_STOP: OK 且无本流程 java 客户端残留（gradle 守护进程保留属正常）；禁止让客户端无人观察地驻留 ——
+3. **测试流程结束后必须关闭测试用游戏实例**：收尾时执行 bash scripts/test/win/mt.sh --version 线 --phase stop，
+   确认 WIN_STOP: OK 且无本流程 java 客户端残留（gradle 守护进程保留属正常；旧口径标记 `MT_STOP` 仅作溯源）；禁止让客户端无人观察地驻留 ——
    它会持续占用 CPU / GPU、污染下一次冷启动前置状态，并让 enableShaders 之类的运行期状态被意外持久化。
-   **收尾一律带 `--purge-saves`**（2026-10-08 用户裁决：每轮实机验证后清理旧存档）：标准收尾命令 = `pwsh -File scripts/test/mt.ps1 --version <线> --phase stop --purge-saves`，成功判据 = `MT_CLEANUP_SAVES: PURGED <n>` + `MT_CLEANUP_RESULT: OK`；`.mt_keep_alive` 存在时只提示、保留取证现场。收尾同时**删除本轮注入的临时探针**（`run/<线>/kubejs/**` 的一次性测试脚本，以及源码侧 `scripts/test/resources/kubejs/**` 的临时探针），并在交付报告里贴 `git status --short -uall` 原文（2026-10-11 用户交接裁决）。
+   **收尾一律带 `--purge-saves`**（2026-10-08 用户裁决：每轮实机验证后清理旧存档）：标准收尾命令 = `bash scripts/test/win/mt.sh --version <线> --phase stop --purge-saves`，成功判据 = `MT_CLEANUP_SAVES: PURGED <n>` + `MT_CLEANUP_RESULT: OK`；`.mt_keep_alive` 存在时只提示、保留取证现场。收尾同时**删除本轮注入的临时探针**（`run/<线>/kubejs/**` 的一次性测试脚本，以及源码侧 `scripts/test/resources/kubejs/**` 的临时探针），并在交付报告里贴 `git status --short -uall` 原文（2026-10-11 用户交接裁决）。
 
 4. **二次验证（复核）一律改用 DSH 原生代码审查（插件 `@michengai/dsh-code-review`，工具 `dsh_code_review`），不再派 subagent / teammate**：每次复核 = **一次性独立会话、不复用**；
    调用 `dsh_code_review({ input })` 把「复核对象（提交或文件范围，用自然语言写清）+ 背景 + 逐项判据（R1..Rn）+ 输出要求（判定 SUPPORTED / REFUTED / 部分成立 + 逐字证据 文件:行号 + 未验证项 + 最小修法）」**一次性写全**进 `input`（会话干净，不给它沿用上下文的机会；该工具不解析 CLI 选项）。代码修改仍按第 1 条（每任务一个新 subagent、单任务、用完即弃）；复核不再由 subagent 承担。 ⚠️ **区分两件事**：本条约束的是**复核（二次验证，执行方 = `dsh_code_review`）**；**功能审查 / 功能验证**（静态取证、`:<线>:classes` 编译、`scripts/verify/**` 守门脚本、与需求逐字对账）自 2026-10-12 起按第 7 条**由一次性独立子代理**执行 —— 两者不得互相替代（**复核不派 subagent，功能审查必须派 subagent**）。
 
 5. **实机验证必须由用户在提示词中明确下达**（2026-10-08 用户裁决）：默认情况下 agent 只做**代码功能验证** —— 静态取证与逐字对账、`:<线>:classes` 编译、`dsh_code_review`、`scripts/verify/**` 守门脚本、用例 JSON 与文档的一致性/行尾核对；**不得**自行启动 dev 客户端跑实机、连拍、探针或用例。用户明确要求实机时才执行，且收尾按第 3 条带 `--purge-saves`；未实机的欠账如实登记在交付报告里，等用户点名下指令再补。
 
-6. **改动后旧实机证据一律作废，先停旧实例再测新构建（2026-10-11 用户交接裁决）**：任何代码 / 资源改动落地后，此前一切实机读数与截图立即失效，不得作为新构建的验收依据；测新构建前必须先 `mt.ps1 --phase stop` 停掉旧实例（禁止在旧实例上叠加新构建 —— `run/<线>/mods` 的 jar 会被旧进程持有且内容是旧代码）。
+6. **改动后旧实机证据一律作废，先停旧实例再测新构建（2026-10-11 用户交接裁决）**：任何代码 / 资源改动落地后，此前一切实机读数与截图立即失效，不得作为新构建的验收依据；测新构建前必须先 `bash scripts/test/win/mt.sh --version <线> --phase stop` 停掉旧实例（禁止在旧实例上叠加新构建 —— `run/<线>/mods` 的 jar 会被旧进程持有且内容是旧代码）。
 7. **开发操作流程（2026-10-12 用户裁决，取代 2026-10-11 版本；同日二次裁决修订②③⑤⑥⑧：所有代码编写一律通过向 Subagent 下达写代码命令完成，主 Agent 只负责规划 / 派活 / 验收 / 提交，不亲自编写任何代码）**：① 新功能先写**开发需求 / 设计计划**；② **P0 基准线 `neoforge-1.21.1` 的实现派子代理编写**（一次性、单任务、brief 自包含；主 Agent 不亲自写主线实现）；③ 子代理交付后由主 Agent 验收并按需自测（`:<线>:classes` 编译 / `scripts/verify/**` 守门脚本）；④ 完成后用 `dsh_code_review` 复核；⑤ 复核问题派新子代理修完后，**派子代理做独立功能审查**（静态取证、编译、守门脚本、与需求逐字对账）；⑥ 主 Agent 逐条回应审查结论、缺陷**派新子代理修复**，**全部确认无误后**才派子代理做 `forge-1.20.1` 移植（按 `docs/compat-1.20.1-forge.md` 差异映射）；⑦ 移植线再走一次 `dsh_code_review` 复核 + **另派一个独立子代理**做功能审查；⑧ 子代理模型**固定且只能用** `deepseek-official/deepseek-flash`（= DeepSeek-V4.1-Flash；2026-10-22 用户裁决：不得改派更强 / 其它 provider 的 model），仍受第 1 条「一个子代理一个任务、用完即弃」约束；复核 / 审查发现的问题交**新**子代理改进，**连续 3 次仍改不到位 ⇒ 报用户拍板**。⑨ **复核分级（2026-10-13 用户裁决）**：a) **非代码改动**（文档 / 规则 / 版本号 / CHANGELOG / 配置注释等）只做 `dsh_code_review`，免子代理功能复验；b) **小规模代码修正**（口径 / 字符串 / 数值 / 显示内容等简单修改）只做 `dsh_code_review`，除非用户另行下达指令，不执行子代理功能复验；c) **新功能请求**：`dsh_code_review` 后由主 Agent 按改动规模自判功能复验范围（全量 / 部分 / 不做），判断依据如实写进交付报告；d) **大型功能变更或新增**执行**全量**功能复核；e) **实机测试仍须用户明确许可**——无法仅靠功能复核确认的结果，必须向用户说明情况并请求其下达实机测试。**代码与二进制都无法确认是否符合需求时，必须询问用户是否实机测试**（用户明确下达才做，流程见第 5 条，收尾按第 3 条）；必须用户决策的问题或难以实现的功能**交用户拍板**，不得擅自取舍。
 8. **派子代理一律屏蔽人格注入（2026-10-22 用户裁决）**：所有 `subagent` / `subagent_fork` / `spawn_teammate` 的 brief 里，除职业声明外**必须原文加一句**「**不要使用任何人设 / 角色扮演 / 语气修饰 / 昵称自称，按你的职业身份以中性技术口吻输出**」；**审查 / 取证类任务必须用全新上下文的 `subagent`**（`subagent_fork` 会连同带人设的对话一起继承；**复核不在此列** —— 复核一律走 `dsh_code_review`，见第 4 条）。子代理回报里出现人格化表达（自称、卖萌、情绪表演）即视为**交付不合规**，主 Agent 应要求重发中性版结论；理由：人设会稀释证据密度，与「只给证据、不给情绪结论」的复核口径直接冲突。本条第 ① 句同样适用于 `spawn_teammate` 的初始 prompt 与后续 `send_message` 改需求。
 
-## 命令执行规范（Shell）— 必须遵守（2026-09-19 用户裁决）
+## 命令执行规范（Shell）— 必须遵守（2026-09-19 裁决；2026-11-04 用户裁决整体改写）
 
-**一律使用 PowerShell 7（`pwsh`）；禁止使用 Windows PowerShell 5.1。**
+**本项目只允许通过 `ops_bash` 调用工具：一切命令在 `run_code` 里用 `tools.ops_bash(...)` 执行。PowerShell 7（`pwsh`）与 `.ps1` / `.psm1` 口径已整体作废（原文已删除，勿再引用、勿新增）。**
 
-- **背景（实测）**：本代理工具的默认 shell 是 **Windows PowerShell 5.1**（`$PSVersionTable.PSVersion` = 5.1.x），而本仓全部工具链脚本与 AGENTS 示例均按 **pwsh 7**（当前 7.6.6）编写。5.1 下的差异会**静默改变行为或直接报错**：① `if` / `switch` **不能作表达式**（`(if ($x) { … } else { … })` 报「术语 'if' 不会被识别为 cmdlet…」，实测踩中）；② 不支持三元 `? :`、`??`、`?.`；③ `ConvertFrom-Json -AsHashtable`、`-Depth`、`Test-Json` 等参数缺失或语义不同；④ 默认编码、`$PSNativeCommandUseErrorActionPreference`、`&&`/`||` 等行为不同。
+- **背景（实测）**：本代理的命令通道是 `run_code` → `tools.ops_bash(...)`；Windows 宿主的 bash 由 **MSYS2 / git bash** 提供，原生 Linux 宿主用系统 bash。旧口径「一律 PowerShell 7 + `pwsh -NoProfile -File`」是 2026-09-19 的临时裁决，现已废止。
 - **规则**：
-  1. 多行或含 `if` 表达式 / 三元 / PS7 专用参数的命令，**一律落盘为 `.ps1` 再用 pwsh 跑**：`pwsh -NoProfile -File <绝对路径>`（脚本放 `temp/tNN/`，绝对路径，见「工作树与路径纪律」）。
-  2. 单行命令用 `pwsh -NoProfile -Command '…'`。
-  3. **禁止**直接用工具默认 shell 跑 PowerShell 代码（尤其上述语法）。
-  4. 调用本仓脚本（`scripts/test/*.ps1`、`tools/*.ps1`、`scripts/devtools/*.ps1`、`scripts/maintenance/*.ps1`）**必须**显式写 `pwsh -NoProfile -File …`；文档与交付说明里的示例同样写 `pwsh`。
-   5. **批处理（.bat）空参必须守卫（2026-10-11 用户交接裁决）**：`for %%A in (%*) do (` 在无参时会展开成 `for %%A in () do (` ⇒ 语法错误、窗口闪退；解析参数前一律先 `if not "%~1"==""` 守卫。
-   6. **手动启动脚本只做启动，禁止前置判断（2026-10-11 用户交接裁决）**：`run/Start-<线>.bat`（用户双击自测）= `chcp 65001` → `cd` → `gradlew :<线>:runClient` → `pause` 六行；**禁止**加版本号比对等任何前置判断（曾比对 `gradle.properties` 引脚与 `mods` 内 jar 名 ⇒ 每次升版都 FAIL，用户裁决只保留启动）。
-- **自查**：报错里出现「术语 'if' 不会被识别为 cmdlet / 函数 / 脚本文件」＝ 用了 5.1，按本条改用 pwsh 重跑；发现任何 AGENTS/文档示例写裸 `powershell` 或省略 `pwsh` 前缀的，一并改正。
+  1. 命令一律写成 **bash 形态**：`./gradlew :<线>:<task>`、`bash scripts/test/win/mt.sh …`、`python tools/xxx.py`、`git -C <工作树> …`；路径用 POSIX 形态（`/f/MCProject/...`），不要写 `F:` 反斜杠路径。
+  2. 多行 / 含引号 / 含 `$` 的命令**先落盘成脚本再跑**：`bash temp/xxx.sh`、`python temp/xxx.py`（脚本放 `temp/`，见「工作树与路径纪律」）；`ops_bash` 会拒掉不可解析的内联串（`analysis.strict-unparseable`）。
+  3. 本仓既有 `.ps1` / `.psm1` **一律作废**：不执行、不新增、不据此改写文档；退役登记见 `docs/features/devnext-pwsh-retirement-register.md`，文档里残留的 `.ps1` 引用只作历史溯源。
+  4. 测试台唯一入口 = `bash scripts/test/win/mt.sh --version <线> --phase <env|build|launch|cases|report|stop>`（Linux：`bash scripts/test/linux/{env,launch,stop}.sh`）；守门脚本 = `python tools/*.py` / `bash scripts/verify/*.sh`。
+  5. **双击启动件只作启动**：`gradlew.bat` / `run/Start-<线>.bat` 是用户手工双击的既有文件，不纳入命令执行口径；命令行启动一律 `./gradlew :<线>:runClient`（`.bat` 的空参守卫规则仍只针对这两个文件）。
+  6. 命令失败先看**第一条因果错误**（`BUILD FAILED` 之前的 `Caused by:` / `error:` 行），不要拿最后一次运行的尾部输出当结论。
+- **自查**：命令里出现 `pwsh` / `powershell` / `-File xxx.ps1` ⇒ 立即改成 bash / python 等价物；`ops_bash` 返回 `exit 2` 多为测试台门禁拦下（缺 `--version` / 缺 `--phase` / `cases` 缺 `--case`），按脚本 usage 补参数重跑。
 
 ## Git 代理规范（Git Proxy）— 必须遵守
 
@@ -589,7 +589,7 @@ When extending this workspace:
 - **2026-09-19 裁决**：26.1.2 纳入主线，「同步修改」约束三个版本（26.1.2 不再是低优先级移植线）。**⛔ 已于 2026-10-04 作废**。
 - **2026-09-29 裁决**：fabric 为移植线，不在「三线同批」约束内（其九项边界见「多版本子项目矩阵」节）。**仍有效**（fabric 现为 P1）。
 - **2026-10-04 裁决（现行）**：重新划级为 **P0 = `neoforge-1.21.1` + `forge-1.20.1`**（必须功能一致、最高优先级更新）、**P1 = `neoforge-26.1.2` + `fabric-1.20.1`**（待 P0 完成后分别向上 / 向下移植）；P1 中缺联动模组的线按「平台存在性」排除不存在的联动，**无例外**（2026-10-04 二次清理：26.1.2 的 Iron 联动亦已按此口径移除）。
-- **2026-10-29 裁决（P1 批次搁置）**：`neoforge-26.1.2` 与 `fabric-1.20.1` 两条 P1 线**暂设为搁置线** —— 批次只完成 P0 两线（`neoforge-1.21.1` + `forge-1.20.1`，构建与守门照旧）；P1 的代码与资源可以随批落盘，但**不构建、不验证、不发布**。等上游把 1.5.0 完整移植进这两条线并合并 `dev` 之后，再由用户下达跟进（本节两级模型本身不变，只是 P1 的移植作业暂停排队）。本批留痕见 `docs/handover-2026-10-29-sykestentacle.md` §5。
+- **2026-10-29 裁决（P1 批次搁置）**：`neoforge-26.1.2` 与 `fabric-1.20.1` 两条 P1 线**暂设为搁置线** —— 批次只完成 P0 两线（`neoforge-1.21.1` + `forge-1.20.1`，构建与守门照旧）；P1 的代码与资源可以随批落盘，但**不构建、不验证、不发布**。等上游把 1.5.0 完整移植进这两条线并合并 `dev` 之后，再由用户下达跟进（本节两级模型本身不变，只是 P1 的移植作业暂停排队）。本批留痕见 `docs/handover-2026-10-29-sykestentacle.md（已删除 2026-11-05）` §5。
 
 ## 平衡性红线（2026-10-04 用户裁决）— 必须遵守
 
@@ -634,12 +634,12 @@ When extending this workspace:
 2. **同一模组跨线同源**:同一模组在 1.20.1 与 1.21.1 必须来自同一来源(现状:Curios / Patchouli / Iron's Spellbooks / mixinbooster / modernfix / **Jade → Modrinth Maven**;**JEI / Architectury API / KubeJS / Rhino / Collective / Superflat No Slimes / Embeddium / Oculus → Curse Maven**)。只有目标 MC 版本在某来源确实没有构建时才允许分叉,并在 build.gradle 注释里写明理由。
 3. **dev 编译 vs 生产运行**:build.gradle 的声明只服务**开发/编译**(1.20.1 走 `modImplementation`/`modCompileOnly` 由 MDG 重映射;1.21.1 / 26.1.2 走 `implementation`/`compileOnly`,NeoForge 侧无 reobf);生产由整合包提供同一模组,**不得**把整合包 jar 复制进仓库或 `run/mods` 当依赖。
 4. **硬前置必须进同一套闸门**(与下方「加载器版本门槛」「版本互通门槛」同一体系):若某模组是**运行期硬前置**(缺失会让本模组不报错却静默失效,如 1.20.1 的 `mixinbooster`),必须
-   ① 在对应 `mods.toml`/`neoforge.mods.toml` 的依赖段声明 `mandatory=true` + **钉死 `versionRange`**(现状:1.20.1 `forge`/`minecraft`/`curios [5,6)`;1.21.1 `neoforge [21.1,21.2)`/`curios [9,)`;26.1.2 `neoforge [26.1.0.0,26.2)`/`curios [15,)`;⚠️ 1.20.1 的 `mixinbooster` 自 2026-09-29 起**不再是 `mandatory=true`**,走 ③),**并且** ② 纳入**独立的离线加载器门槛守门脚本** —— **现行唯一执行体 = `scripts/verify/verify_forge_loader_gate.ps1`**(2026-09-19 用户裁决「将 1.20.1 加载器版本门槛 / Mixin Booster 硬前置**单独置于独立脚本**」);它**不挂 `scripts/test` 用例链**:零 `Import-Module scripts/test/lib/*`、不读写 `run/**`、不读 `cases/*.json`。旧形态(`scripts/test/mt_loadergate.ps1` + `cases/LOADER-GATE-FORGE-1.20.1.json`,读数落 `run/1.20.1/logs/loadergate.log`)已按用户指令**废弃并删除**,取证与恢复口径见 `scripts/test/TESTING-SPEC.md` 附录 A 续 28。
-   ③ **(2026-09-29 新增)两个「运行期硬前置」提供同一能力且互斥时,必须改为 `mandatory=false` + 运行时门控**:先例 = 1.20.1 的 `mixinbooster` ↔ Sinytra Connector(`connectormod`)。Sinytra Connector 自带同一套 Mixin 运行时,**Booster 会在自己的 `MixinTransformationService` 里主动让位**(实机日志 `[mixin-booster/]: Disabling Mixin Booster in favor of Connector`)⇒ `mixinbooster` 这个 mod 条目**根本不会注册**;此时声明式 `mandatory=true` 会把「另一条同样合法的路」判成缺失,FML 在依赖排序阶段以 `Missing or unsupported mandatory dependencies: Mod ID 'mixinbooster' ... Actual version '[MISSING]'` 硬拒 —— **玩家即使正确安装了 Mixin Booster 也进不去游戏**(2026-09-29 BMC4/Better MC 玩家实测报告定位)。写法三件套:①`mandatory=false`(**保留** `versionRange="[0.1.3,)"`:Booster 在场但版本过低仍是静默失效,必须继续报错);②运行时门控类 —— **现行唯一实现 = `forge-1.20.1/src/main/java/com/merlinkitsune/astral_dice/init/MixinRuntimeGate.java`**,在 `FMLCommonSetupEvent` 同步判定「A 或 B 至少一个」,皆无则抛 `ModLoadingException` 逐条上屏;③守门脚本补「门控在位」断言(`verify_forge_loader_gate.ps1` 的 **S2b**:门控源文件存在 + 产物 jar 内该 class 常量池含 `mixinbooster` 与 `connectormod` **两个** modId + 主类 `AstralDiceMod.class` 含调用点 = 真被调用,不是空壳类)。
-   ⚠️ **当前只有 1.20.1 有该独立门槛脚本**(`scripts/verify/verify_forge_loader_gate.ps1`):1.21.1 / 26.1.2 侧**新增硬前置前必须先补同形态独立脚本**(同一写法:门控声明三段一致 + 离线判定器复刻 FML 实际比对实现 + `AP_*` 读数 + 退出码 0/1/2),不得只改 toml 了事。
+   ① 在对应 `mods.toml`/`neoforge.mods.toml` 的依赖段声明 `mandatory=true` + **钉死 `versionRange`**(现状:1.20.1 `forge`/`minecraft`/`curios [5,6)`;1.21.1 `neoforge [21.1,21.2)`/`curios [9,)`;26.1.2 `neoforge [26.1.0.0,26.2)`/`curios [15,)`;⚠️ 1.20.1 的 `mixinbooster` 自 2026-09-29 起**不再是 `mandatory=true`**,走 ③),**并且** ② 纳入**独立的离线加载器门槛守门脚本** —— **现行唯一执行体 = `scripts/verify/verify_forge_loader_gate.py`**(2026-09-19 用户裁决「将 1.20.1 加载器版本门槛 / Mixin Booster 硬前置**单独置于独立脚本**」);它**不挂 `scripts/test` 用例链**:零 `Import-Module scripts/test/lib/*`、不读写 `run/**`、不读 `cases/*.json`。旧形态(`scripts/test/mt_loadergate.ps1` + `cases/LOADER-GATE-FORGE-1.20.1.json`,读数落 `run/1.20.1/logs/loadergate.log`)已按用户指令**废弃并删除**,取证与恢复口径见 `scripts/test/TESTING-SPEC.md` 附录 A 续 28。
+   ③ **(2026-09-29 新增)两个「运行期硬前置」提供同一能力且互斥时,必须改为 `mandatory=false` + 运行时门控**:先例 = 1.20.1 的 `mixinbooster` ↔ Sinytra Connector(`connectormod`)。Sinytra Connector 自带同一套 Mixin 运行时,**Booster 会在自己的 `MixinTransformationService` 里主动让位**(实机日志 `[mixin-booster/]: Disabling Mixin Booster in favor of Connector`)⇒ `mixinbooster` 这个 mod 条目**根本不会注册**;此时声明式 `mandatory=true` 会把「另一条同样合法的路」判成缺失,FML 在依赖排序阶段以 `Missing or unsupported mandatory dependencies: Mod ID 'mixinbooster' ... Actual version '[MISSING]'` 硬拒 —— **玩家即使正确安装了 Mixin Booster 也进不去游戏**(2026-09-29 BMC4/Better MC 玩家实测报告定位)。写法三件套:①`mandatory=false`(**保留** `versionRange="[0.1.3,)"`:Booster 在场但版本过低仍是静默失效,必须继续报错);②运行时门控类 —— **现行唯一实现 = `forge-1.20.1/src/main/java/com/merlinkitsune/astral_dice/init/MixinRuntimeGate.java`**,在 `FMLCommonSetupEvent` 同步判定「A 或 B 至少一个」,皆无则抛 `ModLoadingException` 逐条上屏;③守门脚本补「门控在位」断言(`verify_forge_loader_gate.py` 的 **S2b**:门控源文件存在 + 产物 jar 内该 class 常量池含 `mixinbooster` 与 `connectormod` **两个** modId + 主类 `AstralDiceMod.class` 含调用点 = 真被调用,不是空壳类)。
+   ⚠️ **当前只有 1.20.1 有该独立门槛脚本**(`scripts/verify/verify_forge_loader_gate.py`):1.21.1 / 26.1.2 侧**新增硬前置前必须先补同形态独立脚本**(同一写法:门控声明三段一致 + 离线判定器复刻 FML 实际比对实现 + `AP_*` 读数 + 退出码 0/1/2),不得只改 toml 了事。
    ⚠️ 门槛必须在 **FML 依赖排序阶段**拒绝不合格环境,不得依赖「先加载再在代码里检查」——mixin 变换早于 mod 构造器。
    ⚠️ **(2026-09-29 例外,仅限上条 ③ 的互斥硬前置)** 「二选一」关系无法用声明式表达(Forge FML 的 `[[dependencies]]` 只有 mandatory/optional 两态、不支持 OR,`type="incompatible"` 又是 NeoForge 专有),只能退到运行时门控;此时口径变成:**拒绝点从「FML 依赖排序」后移到「本模组 COMMON_SETUP」,承诺不变** —— 玩家仍然进不去游戏、仍会看到原文提示,不会带着「Mixin 静默失效」的状态进入世界。残留差异(必须知情):在「两者皆无」的环境里,Mixin 变换确实**已经**发生且已静默失效(门控无法回退已完成的类变换),门控只是兜住「让这种环境进不去游戏」这一层。⛔ **不得把这条例外扩大到普通硬前置**(如 `curios`):它们没有互斥对象,继续留在 FML 依赖排序阶段拒绝。
-5. **守门(唯一实现)**:`pwsh -NoProfile -File tools/check_mod_sources.ps1` —— 同时挂在阶段 P(`scripts/test/mt_preflight.ps1` 的「模组来源」一项)与 `scripts/test/TESTING-SPEC.md` §9 静态守门。它检查:**R1** 两个发布线都声明了 Curse + Modrinth 两个仓库且同一文件内不得重复声明;**R1b(对三条线全部生效)** 用了 `curse.maven:` / `maven.modrinth:` 坐标就必须声明对应仓库(2026-09-17 实测踩坑:26.1.2 缺 Curse Maven 仓库时用它取 JEI 直接 `BUILD FAILED`);**R2** 模组坐标只能是这两个来源、**实际命中**的本地 jar 兜底一律 FAIL、库按 `$LibraryGroups` 白名单放行;**R3** 未被引用的本地 jar 只回显。**官方 maven 的模组例外当前为空**(`$ModExceptions = @{}`;原 `mezz.jei` / `dev.architectury` 已于 2026-09-17 迁到 Curse Maven);将来若必须临时用官方 maven,须在 `$ModExceptions` 登记(每轮以 `[EXC]` 行回显,不允许静默),新增库同理登记到 `$LibraryGroups` 并写明理由。
+5. **守门(唯一实现)**:`python tools/check_mod_sources.py` —— 同时挂在阶段 P(`scripts/test/mt_preflight.py` 的「模组来源」一项)与 `scripts/test/TESTING-SPEC.md` §9 静态守门。它检查:**R1** 两个发布线都声明了 Curse + Modrinth 两个仓库且同一文件内不得重复声明;**R1b(对三条线全部生效)** 用了 `curse.maven:` / `maven.modrinth:` 坐标就必须声明对应仓库(2026-09-17 实测踩坑:26.1.2 缺 Curse Maven 仓库时用它取 JEI 直接 `BUILD FAILED`);**R2** 模组坐标只能是这两个来源、**实际命中**的本地 jar 兜底一律 FAIL、库按 `$LibraryGroups` 白名单放行;**R3** 未被引用的本地 jar 只回显。**官方 maven 的模组例外当前为空**(`$ModExceptions = @{}`;原 `mezz.jei` / `dev.architectury` 已于 2026-09-17 迁到 Curse Maven);将来若必须临时用官方 maven,须在 `$ModExceptions` 登记(每轮以 `[EXC]` 行回显,不允许静默),新增库同理登记到 `$LibraryGroups` 并写明理由。
 6. **换源必须给等价性证据**:把模组从其它来源改到 Curse/Modrinth Maven 时,必须给出**可核验的等价性证据**并真跑一次依赖解析/编译:
    - 官方 maven **与 CF/Modrinth 提供同一个文件**时 → 直接比 `SHA1`(逐字节相同)。先例:JEI 三个版本(1.20.1 / 1.21.1 / 26.1.2)改 Curse Maven 后解析到的 jar sha1 与官方 maven 逐一相同(`7f64b7f8…` / `6e703a82…` / `2c3ee3d2…`);1.21.1 的 Iron's Spellbooks 由 `base-mod-compile-libs/irons_spellbooks.jar` 换成 `maven.modrinth:irons-spells-n-spellbooks:RtvqnbKi`(sha1 `09907e3b4bfdabd7f1f44bfd25aa6432183f39bb`、13874139 字节,同哈希)。
    - 双方提供的是**不同形态的产物**(如 CF 生产 jar ↔ 官方 maven dev jar)时 → 必须证明 **MDG 重映射后的产物等价**:Architectury API 由 `dev.architectury:architectury-forge:9.2.14` 改为 `curse.maven:architectury-api-419699:5137938` 后,两个来源经 MDG 重映射得到的 jar **482/482 条目逐条 CRC32 相同、382 个 class 名集合零差异**,且 `:forge-1.20.1:compileJava` 保持 `UP-TO-DATE`(编译期 ABI 指纹未变)。
@@ -756,16 +756,16 @@ When extending this workspace:
 7. **两个新效果**:`zhao_blessing`(白泽赐福,`effect/ZhaoBlessingEffect`,BENEFICIAL、常驻 `Integer.MAX_VALUE`、移除走前置库 `ModEffectRemoval`)/`misfortune`(厄运,`effect/MisfortuneEffect`,HARMFUL、层数镜像)—— 26.1.2 侧效果注册 **32 → 34**;`ModEffects` 两条注册照 1.21.1 同形抄写(该线包装类型与 1.21.1 相同)。
 8. **7 个玩家附件键**(与 1.21.1 逐字同名同型):`zhao_blessing_active` / `zhao_blessing_skip_cycles` / `zhao_prev_blessing` / `zhao_overflow_bonus`(Int) / `zhao_overflow_remainder`(Float) / `huo_card_next_damage_tick`(Long) / `fu_card_cycle_bonus`(**唯一需 `.sync`**)。26.1.2 与 1.21.1 同用 `AttachmentType`,写法照 1.21.1 内联 `.sync` 即可。
 9. **行为代码(10 个文件,按 1.21.1 为语义基准抄写 + 差异映射)**:`item/sign/ZhaoSignItem`(主动 `TargetSelectionAction` + `SelfTargetable`、下降沿状态机、溢出回收、福祸相倚、心意相连)、`item/card/FuCardItem` / `HuoCardItem`、`item/sign/FenSignItem`(`addRecharge` + 心意相连调用)、`event/PlayerTickEvents`(每 tick `tickBlessing` + 每 20 tick `HuoCardItem#tick`)、`event/PlayerLifecycleHandler`(死亡段 / 重登段)、`event/ModTooltipHandler`(三块 tooltip)、`combat/DiceCombatEvents`(骰点定稿后的挂点 + `tryClaimDiceJudgment` 守卫)、`combat/DiceCombatModifiers`(溢出攻击力加算项)、`item/card/EffectCardPeriod`(`grantFuCardBonusPlay` + `getMaxAllowed` 的 `extra` + `clearRoundBonuses` 归零)、`item/card/{RandomCardHandler,ExclusiveCardUtil}`(专属注册与拒绝)。
-10. **数据与文案**:lang 新增键(**每条发布线各 32 键 × 2 语言** = 本批功能 31 键 + 1 条探针辅助文案 `command.astral_dice.astralparty.dump.summary`;31 键的分布 = `item.*` 3 / `effect.*` 4(含 2 条 `.description`) / `msg.*` 9(含 3 条 `target_select.skill.*` 技能名) / `tooltip.*` 8 / `astral_dice.guide.entry.*` 7)、帕秋莉手册 `entries/{signs/zhao_sign,cards_effect/{fu_card,huo_card}}.json`、以及**赏金池同口径**(`astral_rews.json` 两张既有专属牌出池、`zhao_sign`/`fu_card`/`huo_card` 不入池 —— 迁移后必须复跑 `scripts/verify/verify_bountiful_pools.ps1 -Root <该线工作树>`)。
+10. **数据与文案**:lang 新增键(**每条发布线各 32 键 × 2 语言** = 本批功能 31 键 + 1 条探针辅助文案 `command.astral_dice.astralparty.dump.summary`;31 键的分布 = `item.*` 3 / `effect.*` 4(含 2 条 `.description`) / `msg.*` 9(含 3 条 `target_select.skill.*` 技能名) / `tooltip.*` 8 / `astral_dice.guide.entry.*` 7)、帕秋莉手册 `entries/{signs/zhao_sign,cards_effect/{fu_card,huo_card}}.json`、以及**赏金池同口径**(`astral_rews.json` 两张既有专属牌出池、`zhao_sign`/`fu_card`/`huo_card` 不入池 —— 迁移后必须复跑 `scripts/verify/verify_bountiful_pools.py -Root <该线工作树>`)。
 11. **测试资产**:探针 `zhao*` 段 **25 条命令**(`zhauprep/zhauread/zhaureg/zhaogive/zhaosethuo/zhaoclear/zhaocast/zhaogate/zhaobless/zhaosign/zhaodice/zhaodedup/zhaoheal/zhaoseq/zhaofu/zhaohuotick/zhaohuobox/zhaodrop/zhaocard/zhaoplay/zhaohand/zhaofx/zhaolife/zhaolink/zhaonuclear`;两条发布线的该段**逐字节相同**,迁移时照抄即可)+ 用例 26.1.2 twin(发布线本批为两条:**`ZHAO-SIGN` = 142 步/50 断言**、**`FUHUO-CARD` = 137 步/46 断言**;按 §13.2 做三侧读数 diff)。⚠️ 26.1.2 侧适配三件事(详见 `AGENTS.md` 的《风水师立牌（zhao）…双人测试流程》段踩坑 1–3):① 凡命令体末尾 `return` 读数变量的处理器都要改成 `return 1;`,否则 `Cannot convert rc=ok to int` 且异常逃出 `guard`;② 顶层 `var`/`function` 不得与既有声明重名(重复声明 ⇒ 整脚本加载失败、命令全无);③ 效果判定用 `findEffect(p, "<id>")` 字符串匹配,禁用 `hasEffect(ModEffects.X)`(该线注册表强转异常连 `guard` 都捕不到);④ 实例方法必须调在实例上(`stack.getItem().playFromSelector(...)`)。
 12. **未对齐项一并带上**:t4 的 VER-01(两线英文卡名分歧:冻结值 = `Blessing / Misfortune Talisman`,1.20.1 现为 `Fortune / Misfortune Talisman Card`)、VER-02(1.20.1 手册缺半句)、VER-03(`countFu` 是否含副手)、VER-04(1.20.1 丢弃被拒无 actionbar 反馈)在迁移前若未在发布线统一,**迁移时必须按统一后的口径落线**;若仍不统一,则按平台差异逐条登记理由(见 `AGENTS.md` 实现契约第 12 条与附录 A 续 25)。
 13. **绿洲女王立牌(nardis)+ 临时牌机制(2026-09-27 本批;26.1.2 侧**未改动任何文件**,以下为待迁移项)**:① **物品** `nardis_sign`(稀有 = `ASTRAL_DICE_RARE`)在 `item/ModItems` + `init/ModCreativeTabs`(RARE 段)+ `datagen/ModItemModelProvider` + `datagen/ModRecipeProvider`(**黄金骰子无星盘档**,shape 照 `padman_sign` 的 `WYW/TET/TDT`,立牌骰子固定中下)+ 生成物 `recipe/nardis_sign.json` 与 `advancement/recipes/misc/nardis_sign.json`(26.1.2 侧目录名为 `recipe/`+`advancement/` 且**另需** `src/generated/clientResources/assets/astral_dice/items/nardis_sign.json` 物品模型定义);② **效果** `nardis_privilege`(女王特权,`effect/NardisPrivilegeEffect`,BENEFICIAL、**有限时长 3600 tick**;注册后该线效果数 **36 → 37**;图标 `textures/mob_effect/nardis_privilege.png` 从立牌贴图**逐字节复制**);③ **新数据组件** `temporary_card`(Boolean;1.20.1 走 `ItemDataKey`、1.21.1 走 `DataComponentType`)+ **`component/AppliedStone` 增第 3 分量 `boolean temporary`**(CODEC 用 `optionalFieldOf("temporary", false)` 保老存档兼容;1.21.1 另有 STREAM_CODEC 追加列);④ **临时牌机制的行为代码**(两线各一套,语义必须一致):`item/card/TemporaryCardUtil`(标记读写/`grantRandom`/两类计数/`purgeAll`/tick 自检/唯一容器拦截判据 `isPlacementBlocked`,以及**物品面唯一判据** `glint(stack, vanillaGlint)` 与 `fitsInsideContainer(stack, vanillaAllows)`)、`item/card/TemporaryCardPermissiveSlot`(标记接口,卡牌栏槽实现)、**牌的两个根类各覆写一次同一对方法**(牌池含战斗牌与效果牌,而 `CardItem extends Item` 与 `BaseEffectCardItem abstract extends Item` **无共同父类** ⇒ 接口 default 会被类方法压住、无法只写一处):`CardItem`(`isFoil` 单层光效 + `onDroppedByPlayer` 拒绝丢弃 + 1.21.1 的 stack-aware `canFitInsideContainerItems(ItemStack)`)与 `BaseEffectCardItem`(`isFoil` + 1.21.1 的 `canFitInsideContainerItems(ItemStack)`;**2026-09-27 R1/R2 修复**:此前两者都缺 ⇒ 临时**效果牌**既无光效、又能经潜影盒 GUI 槽/收纳袋/组件容器进箱并永久留存,而 1.20.1 因五个 mixin 判据与物品类别无关故无此缺口;覆写体只允许委托上面两个方法,禁止在覆写里另写条件以免再次漂移)、`event/TemporaryCardEvents`(`ItemTossEvent` 取消 + 尽力退还)、`event/PlayerTickEvents`(在 `% 20` 早退**前**调 `TemporaryCardUtil.tick`)、`event/PlayerLifecycleHandler`(死亡段 `purgeAll` + 移除效果,**必须在掉落之前**)、`screen/CardInventoryMenu`(装配双向透传 `temporary`)、`combat/DiceCombatModifiers`(攻击修饰器 + 防御折算调用)、**`combat/DiceCombatEvents` 的耐久重建两处必须透传 `stone.temporary()`**(否则临时牌扣一次耐久就被"洗"成永久牌);⚠️ **2026-09-24 补(三线)**:上述「不可丢弃」原先只做在**服务端** ⇒ 客户端 Q 键会把牌"吃掉"(本地移除 + 服务端静默拒绝 + 无槽位校正包 ⇒ 表现为「牌消失、无掉落物」),容器界面内 Q(`THROW`)则先摘出槽位再「尽力退还」(满包即销毁)。现补 `mixin/client/LocalPlayerDropGuardMixin`(客户端 `LocalPlayer#drop(Z)Z` HEAD,判据同源)、`mixin/container/ContainerClickGuardMixin`(`AbstractContainerMenu#clicked` HEAD,含 `PICKUP`+`-999` 拖出)、`BaseEffectCardItem#onDroppedByPlayer`(与 `CardItem` 对称);`purgeAll` 增补「打开的卡牌栏容器 + 光标栈」两段。⚠️ **26.1.2 半移植缺口已一并补齐**:`CardInventoryMenu` 两个卡牌槽此前**未实现** `TemporaryCardPermissiveSlot`(⇒ 该线临时牌根本无法装备)+ 装配双向**未透传** `temporary` + 该线 `DiceCombatEvents` 耐久重建两处**未透传** `stone.temporary()`。⚠️ **2026-09-24 第二批(自毁机制 + tooltip,三线)**:第三方容器拦不住(判据见下条⑤之后的实测)→ 新增组件 `temporary_card_expires` + `TemporaryCardUtil#purgeOutOfPlace`(每 20 tick 清「非白名单槽位」与「附近 16 格地面掉落物」)+ `realignExpiry`(发放 / 再次释放 / 登录三处对齐);tooltip 增黄字提示行 `tooltip.astral_dice.temporary_card`(lang 811 → **812**)。⑤ **容器拦截 mixin**:两线都要 `Slot#mayPlace` + `AbstractContainerMenu#moveItemStackTo`;1.20.1 **额外**需要 `ShulkerBoxSlot#mayPlace`、`ShulkerBoxBlockEntity#canPlaceItemThroughFace`、`BundleItem#add`(该线没有 stack-aware `canFitInsideContainerItems`,禁覆写类型级版本),26.1.2 需按该线 API 重新确认(若已有 stack-aware 钩子则只需前两个);⑥ **玩家附件**:**不新增任何键**(HUD 计时器 = 原生效果实例;临时性 = 物品标记 + `AppliedStone.temporary`)⇒ 附件计数 78/80 与 1.20.1 的 `SYNCED_KEYS` **均不变**;⑦ **文案**:lang 9 键(`item.astral_dice.nardis_sign`、`effect.astral_dice.nardis_privilege`(+`.description`)、`msg.astral_dice.nardis_active`、`tooltip.astral_dice.sign.nardis_active` / `nardis_passive`、`astral_dice.guide.entry.nardis_sign.{1,2,3}`)+ 手册 `entries/signs/nardis_sign.json`;⑧ **测试资产**(2026-09-27 两线实机 **4/4 用例 PASS**):探针 `nardi*` 段(两发布线**逐字节相同**;其中骰子组件读写走**双形态容错助手** `nardiEnhOf`/`nardiSetEnh`,以兼容 1.20.1 的 `ItemDataKey` 形态;**写组件必须走 `dice.set(key.get(), jsObject)` 且值先转 KubeJS 可 JSON 化的 JS 对象** —— 详见 `TESTING-SPEC.md` 附录 A 本条)+ 命令面 `nardiarm`/`nardiarmclear`(被动装配栏)、`nardiguard <tag> <effect|attack>`(R1/R2 回归:光效 + 栈级/行为面容器的只读取证)、`nardiuseup`/`nardiinv`(把临时牌消耗到 0 / 精确控制主物品栏可用格数,供冻结-解冻与安全门用例)、`nardiequip <tag> <chip|teru>`(筹码/教主立牌脚手架)、`nardilockback <tag> [keep|noeffect]`(F1 回归专用:只把 `sign_active_lock_end` 写到**过去**(`max(1, now-200)`,其余锁定键与冷却一概不动)再显式驱动产品的 `tickSignActiveLock`,`keep`=效果与牌保持/`noeffect`=先经内部通道移除效果作对照 —— 单机无法自然复现「多人在线离线跨越 gameTime」;**冻结机械撤回后本命令无用例使用,保留为通用锁定硬上界脚手架**)、`nardicd <tag>`(只写 `sign_active_cooldown_end = 0`,用于「复位冷却后再释放」,避免用作用域过大的 `reset`)+ 用例 `NARDIS-SIGN-{1.21.1,1.20.1}.json`(各 **177 步/68 断言**,M1–M8;历史:首轮 126/49 → 冻结轮 155/60 → 本轮重写)与 `NARDIS-TEMP-GUARD-{1.21.1,1.20.1}.json`(各 19 步/9 断言);迁移后按 §13.2 做三侧读数 diff。
 14. **客户端输入放行修复(手持效果牌时 ESC 菜单按键全部失效,2026-09-27 本批;26.1.2 侧**未改动文件**,但同一 BUG 在该线**仍然存在** ⇒ 迁移时**必须**补同一行守卫)**:根因 = 1.21.1 `client/TargetSelectionClient#onMouseButton(InputEvent.MouseButton.Pre)` 在会话激活时**无条件** `event.setCanceled(true)`,而原版 `MouseHandler#onPress` 把该 hook 放在 `if (screen == null) … else screen.mouseClicked(…)` **之前且不看 screen 是否为空**(实测 1.21.1 `MouseHandler.java:87` → `ClientHooks.java:667-669`;1.20.1 `MouseHandler.java:81` → `ForgeHooksClient.java:721-723`)⇒ 取消即 `return`,界面收不到点击;平时不暴露是因为 `onScreenOpening` 开界面时会取消会话,但**「手持即选择」(`holdToSelect`,效果牌走这条)被刻意豁免**、`ChatScreen` 也豁免 ⇒ 会话存活时暂停菜单点不动。修复 = `onMouseButton` **首行**加 `if (Minecraft.getInstance().screen != null) return;`(两线同位置各 +1 行;界面打开时鼠标/滚轮交回界面、不再执行会话动作、也不再弹 `effect_card_burst_full`;关界面后会话照旧继续)。同类隐患已逐条排查为「无需修」:`onMouseScroll` 只在 `screen == null` 分支派发、`startUseItem` 注入点被 `overlay == null && screen == null` 包住、渲染/KeyBinding 类不碰输入、全仓只有该文件订阅输入事件。26.1.2 的同构代码在该线 `client/TargetSelectionClient.java`(约 `:680`/`:719` 的 `event.setCanceled(true)`)。
 15. **绿洲女王 nardis 语义变更(2026-09-27 用户裁决,晚于提交 `8e59e923` 的实现;迁移时**必须按新语义**,勿照旧实现)**:⚠️ **本条第 ①–⑦ 与紧随其后的「实现落点」「F1 修复」整段描述的是当日更早的「冻结(使用中)」方案 —— 该方案已于同日晚些时候被用户推翻;一切以本条末尾的【最终语义(2026-09-27 终版)】为准。** 原文保留仅为追溯:① **给牌构成**由「3 张随机(`CardCategory.ALL`)」改为 **2 张战斗牌 + 1 张效果牌**(战斗池 `CardCategory.BATTLE` 攻击+防御**混合随机 2 张**、效果池 `CardCategory.EFFECT` 随机 1 张;专属牌继续排除;仍走 `VitaminPillChipItem.giveCard` 漏斗;放不下就少发、绝不落地);② **新增冻结**:恢复立牌**统一锁定态** —— 临时牌被全部用光或 3:00 到期之前主动技能处于「使用中」**不可再释放**,反馈照搬其它立牌(提示「使用中」+ 剩余时间);③ **解冻先到者**:牌被全部用光 ⇒ 立刻解冻**并同时移除 `nardis_privilege` 效果**(HUD 计时器消失;防抖要求见下),3:00 到期 ⇒ 清空剩余临时牌后解冻;④ **冷却与冻结并行**:释放当刻即开始玩家级冷却(默认 180 秒,沿用既有减免机制),解冻时**不再追加**新冷却 ⇒ 解冻后冷却已过即可立即再释放;⑤「先清空旧临时牌再发新的」降级为**安全网**(正常玩法被冻结挡住,仅在效果被外力移除等异常情形生效),**不得删除**;⑥ **防抖硬约束**:`TemporaryCardUtil.tick` 的「无效果⇒清临时牌」与新增的「无临时牌⇒移除效果并解冻」互为逆操作,必须保证不会每 tick 反复增删效果、也不会在释放当刻发牌未完时被误判为 0 张而自我解冻。**实现落点(2026-09-27 两线同批落地)**:`TemporaryCardUtil` 增 `GRANT_BATTLE_COUNT=2`/`GRANT_EFFECT_COUNT=1` 与 `grantNardisPrivilege(Player)`(战斗牌**先发**、两类各自重算空槽)+通用漏斗 `grantRandom(Player, CardCategory, int)`(**2 参重载 `grantRandom(Player,int)`=`ALL` 必须保留** —— 探针 `nardigive` 直接调它,删了会打断测试资产);解冻(a) 写在 `TemporaryCardUtil.tick` 尾段(`fx==null && !hasCards ⇒ return` / `hasCards ⇒ return` / `fx.getDuration() >= DURATION_TICKS ⇒ return` 三重防抖后才 `ModEffectRemoval.remove` —— **直接 `player.removeEffect(...)` 不可用**,`astral_dice:*` 会被拦截);安全门写在 `NardisSignItem#handleUse` 客户端早退之后、`purgeAll` 之前(`countFreeSlots(player) < TemporaryCardUtil.MIN_FREE_SLOTS_TO_CAST` ⇒ `sendSignActionBar(player, "msg.astral_dice.nardis_inventory_full")` + `InteractionResultHolder.fail` ⇒ 不冷却/不施效果/不冻结/不发牌/不清旧牌;**阈值 `MIN_FREE_SLOTS_TO_CAST = 3`(2026-09-27 用户**二次**裁决,由当日更早放宽的 2 回调;当前值 = 3)** —— 沿革:原为 3 ⇒ 当日曾放宽为 2(唯一理由「卡牌 `stacksTo(64)` 可堆叠 ⇒ 同 id 临时牌并进一格,2 格也收得下 3 张」)⇒ 该放宽仅短暂生效、随后因卡牌堆叠一度取消而**回调为 3** ⇒ 卡牌堆叠**已恢复**(见下),理由重新成立,但用户裁决**维持 3**(语义更稳:任何随机结果都发满一整套);现语义 = 主物品栏空槽 `< 3` ⇒ **拒绝释放**(零消耗:不冷却、不施效果、不发牌、不清既有临时牌),门槛通过时空槽必然够发满一整套 2 战斗 + 1 效果 ⇒ `grantRandom` 的「少发、绝不落地」在正常情况下不可达(仅安全网);三线 × 三语 `msg.astral_dice.nardis_inventory_full` 同步为「需要 3 个空格 / 3 free slots needed / 3 スロット必要」;⚠️ 改动该常量**必须**联动这 9 份 lang 与探针 `nardiinv` 的 `fill` 缺省 reserve(= 阈值),并按新边界重写引用「空槽 2 ⇒ 允许」的用例断言;**`NARDIS-SIGN-*` / `NARDIS-TEMP-GUARD-*` 用例文件在 1.3.1 锁版交付清理(`bbbbc102`)时已移出仓库**,当前 `scripts/test/cases/` 下无 nardis 用例,门槛面由本批新增的 `NARDIS-GATE-<ver>.json` 承担)**发放顺序保持战斗牌优先、各张独立重算空槽**(放不满就少发、绝不落地);冻结三件套 = `NardisSignItem` 覆写 `startActiveLockOnUse`(读回 `instance.getDuration()` 写 `beginActiveLock(player, SIGN_ID, now + dur)`)/`isGateEffectActive`/`cooldownRunsDuringLock=true`。**`BaseSignItem` 唯一结构性改动** = 新增 `protected boolean cooldownRunsDuringLock(Player)`(**默认 `false` = 既有串行语义,其余立牌逐字不变**)并把 `endLockAndStartCooldown` 拆出 2 参私有重载(`cooldownAlreadyRunning` 为真时解锁**只从剩余冷却里抵扣一次减免池、不追加新冷却`,为假时原实现逐字保留);解锁时经 `lockSignItem(signId)` 反查注册表(与 `isSignActiveLocked` 同一路径,解析失败按 `false` 兜底=旧行为)。**新 lang 键**(两线 `zh_cn`/`en_us` 各 +1,键数 736 → **737**):`msg.astral_dice.nardis_inventory_full` = 「物品栏空间不足（需要 2 个空格），无法获得临时牌」/「Not enough inventory space (2 free slots needed) - cannot gain temporary cards」;提示走既有立牌反馈通道 `sendSignActionBar`(黄字 ActionBarPayload),**不是**裸 `displayClientMessage`。**已登记的三条推论(不修)**:① 卡牌物品 `stacksTo(64)` **可堆叠**(2026-09-27 曾短暂取消、同日已恢复):若门槛放宽为 2,恰好 2 格时两张战斗牌同 id(约 `1/9`)会并进一格、余下 1 格收下效果牌 ⇒ 3 张全放得下;随机到**不同**牌时则只有 `grantRandom` 的「少发、绝不落地」截断 ⇒ 恰好 2 格时常见结果是只发 2 张(无效果牌) —— 正是为避免这种不确定性,用户裁决**门槛维持 3**;② 解锁时若冷却已过完,冻结期累计的 `sign_active_reduction_pool` **作废**(纯减法口径的必然结果,结转需新附件);③ `cooldown_end` 是绝对 gameTime 而效果时长离线冻结 ⇒ 长时间离线后重登可能出现「冷却已过、冻结尚存」(并行语义的必然推论)。**文案同步(同批,仅 lang 4 文件)**:`effect.astral_dice.nardis_privilege.description`、`tooltip.astral_dice.sign.nardis_active`(第 1 行与第 4 行)、`astral_dice.guide.entry.nardis_sign.1/.3` 里「3 张随机(全部战斗与效果牌)」与「效果生效中再次释放先清空旧牌再发 3 张」的旧描述必须改成「2 战斗 + 1 效果」与「用光或结束后才能再次释放 + 使用中不可释放 + 空位不足(<3)则阻止释放」;patchouli 的 `entries/signs/nardis_sign.json` 只引用 lang 键、**无字面文案**,不用改。**F1 修复(2026-09-27,由 R2 独立只读验证发现)**:锁定硬上界 `sign_active_lock_end` 与 `sign_active_cooldown_end` 都是**绝对 gameTime**,而门控效果 `nardis_privilege` 的时长**只在服务器运行且玩家在线时流逝**(实体不 tick ⇒ 效果时长离线冻结;`EffectTimerGuard` 的绝对记录又在 `PlayerLoggedInEvent` 被 `clear`)⇒ **多人服务器**上「离线时长 > 剩余冻结时长」后重登时,上界与冷却双双已过、而效果与临时牌都还在 ⇒ 冻结提前结束、冷却被归零(`remaining = max(0, cdEnd-now) = 0`)、且该路径**不清剩余临时牌** = 一次免费刷新(单人存档因「停客户端=停服务器」不暴露)。修复 = `BaseSignItem` 新增**默认 `-1`** 的钩子 `protected int gateEffectRemainingTicks(Player)`,并在 `tickSignActiveLock` 的非忍者分支、`isSignActiveLocked` **之前**插入 `realignLockEndToGateEffect(...)`(`lockEnd<=0 || now<lockEnd` 早退 → 解析立牌 → `remaining<=0` 早退(**默认立牌在此短路,写操作永不执行** → 其它立牌含忍者逐字不变,仅解冻那一拍多一次查表)→ `!isGateEffectActive` 早退 → `setSignActiveLockEnd(now + remaining)`);nardis 覆写返回 `nardis_privilege` 的 `getDuration()`。对齐**单调向后、同 tick 幂等**(写完即 `now<lockEnd`,forge START/END 两遍调用第二遍早退;附件不 `.sync()` 故无网络包)。**两条语义后果(契约直接推论)**:① nardis 从此**「外部刷新效果不延长锁定」不再成立**(刷新后下一次对齐会把冻结延到与效果一致),其余立牌仍保留该性质;② 在线自然到期那一拍守卫会按 1 tick 重施加效果 ⇒ 解冻**推迟 1 tick(50ms)**,不抖动。⚠️ **26.1.2 有同一缺陷**(该线 `BaseSignItem.java:257` 同样的 `lockEnd` 早退)⇒ 迁移时必须一并补。**已登记不修(R2 报告 F2–F8,已逐条判定)**:F2 = 1.20.1 只靠 5 个 mixin,对**第三方**模组里覆写 `mayPlace` 且不调 super 的槽无效(平台固有限制、非本批引入,该线 mixin 注释已自认);F3 = `countFreeSlots` 只数主物品栏,而 `Inventory#add` 还能并入副手 ⇒ 门槛只会更保守(少发,不会落地);F4 = 鼠标光标上的临时牌不计入 9 张上限(**2026-09-24 起 `purgeAll` 已覆盖光标栈与「打开的卡牌栏容器」⇒ 死亡/到期不会再漏掉这两处的牌**);F5 = 冻结使 `isSignActiveLocked()` 为真,**翻转**若干冷却减免消费者的分支(`FateGuidanceCardItem`/`JasmineSignItem`/`LuluSignItem` 由「立即扣减运行中冷却」改为「入池」),默认常量下(nardis 冷却基准 ≤ 冻结时长,两者同 3600t)解锁时 `remaining ≡ 0`、池抵扣为空操作 ⇒ **代数等价、无可观察回归**;F7 = 第三方否决效果时可能「吃冷却 + 3 张牌被下一拍清掉」,原版玩家 `canBeAffected` 恒真故不可达;F8 = 防抖那一拍不可达(安全门保证发满)。**F6 裁决(用户 2026-09-27)**:**冻结期「电流核心」整段失效符合本意、不改** —— 它是既有锁定态框架对**所有**立牌的既有行为(`performSkill` 第 0 步锁定拒绝在冷却分支之前;`CurrentCoreChipItem` 另有第二道同判据纵深防御),与立牌种类无关,不为 nardis 开特例。另:jasmine/fen/misaki/nancylu/papara/parunan/fanny 等「效果时长型硬上界」立牌在多人服务器上有**同类**墙钟漂移(冻结提前结束),但影响面不同(无清牌问题、冷却本就串行),按最小改动**未扩展**;新钩子已就位,如需可逐个覆写。**【最终语义(2026-09-27 终版,以本段为准;上文 ①–⑦ 与 F1 段均已作废)】**:① **不进入冻结** —— 主动技能**删掉全部锁定态覆写**(`startActiveLockOnUse`/`isGateEffectActive`/`cooldownRunsDuringLock`/`gateEffectRemainingTicks` 四个一个不留)⇒ 回到普通立牌路径,**释放当刻即开始玩家级冷却(默认 180 秒,可减免)**,效果生效期间可再次释放,只受冷却限制;② **再次释放不清空旧临时牌**(释放路径里的 `purgeAll` 删除;`purgeAll` 现共**三处**合法调用:死亡清理 `PlayerLifecycleHandler`、**卸下立牌 `NardisSignItem#clearSignData`(2026-09-27 用户裁决「卸除即清理」)**、`TemporaryCardUtil.tick` 的「无效果⇒清牌」安全网),每次再发一整套 **2 战斗 + 1 效果**并**叠加**;③ **每次释放把 `nardis_privilege` 有效期重置为 3600 tick**;④ **牌被用光不再提前结束效果**(`tick` 的「无牌⇒移除效果」分支与其 `getDuration() >= DURATION_TICKS` 防抖一并删除);⑤ **临时牌上限 9 张**:`MAX_TEMPORARY_CARDS = 9`,`current = countTemporaryTotal(player)`(= 物品栏 0..35 含主手 + 副手,按数量 + 骰子 `weapon_enhancement.appliedStones` 中 `temporary()` 条数),`current >= 9` ⇒ 拒绝(新键 `msg.astral_dice.nardis_card_limit`,**零消耗**),否则发放**夹取到上限**(`budget = 9 − current`,战斗牌 `min(2,budget)`、效果牌 `min(min(1), budget−已发战斗牌)`)⇒ **总数永不超 9**;判据顺序 =**冷却 → 上限 → 物品栏空位(`MIN_FREE_SLOTS_TO_CAST = 3`)**;⑥ **产品侧为冻结加的整台机械已全部撤回**:`BaseSignItem` 用 `git checkout c8a5e220~1 -- <两线路径>` 还原,`git diff c8a5e220~1 -- <BaseSignItem>` **必须为空**(即与冻结机制引入前逐字一致,其它立牌零回归面)。**效果时长重置的确定性手段(关键,勿退回旧写法)**:效果已存在 ⇒ `player.forceAddEffect(全新 3600 实例, null)`(**无条件替换实例**,不经 vanilla `update` 合并 ⇒ 剩余必然 3600;与客户端处理 `ClientboundUpdateMobEffectPacket` 同一 API ⇒ HUD 同步)+ **显式 `EffectTimerGuard.record(player, refreshed)`**(因 `forceAddEffect` **不发** `MobEffectEvent.Added`,而记账钩子挂在该事件上);效果不存在 ⇒ 常规 `EffectTimerGuard.apply`。**为什么必须显式 record**:守卫记**绝对结束刻**并取 `max(prev.endTick, now+duration)`,其 `tick` 会把「实际剩余 > 预期 + `CLAMP_TOLERANCE`(=20)」**裁回**预期 ⇒ 只 `forceAddEffect` 不 `record` 会被下一拍裁回旧值(实测 3531,即旧版 `apply` 的失败形态)。全程**不移除**效果 ⇒ `tick` 的「无效果⇒清牌」无窗口;重登时 `EffectTimerGuard.clear` 已清账,效果带存档剩余时长回来。**已登记口径边界(本批不改)**:`current` **不含鼠标光标** `containerMenu.getCarried()`(把临时牌提在鼠标上时不计入 9 张、也不被 `purgeAll` 清理;与 R2 的 F4 同一处),亦不含末影箱/护甲槽/地面掉落物;`current` **含已装配到骰子的**。**26.1.2 状态(2026-09-27 实测更正)**:⚠️ 此处原记「该线仍是旧行为(且无 9 张上限)」——**已过时**。实测:该线 `TemporaryCardUtil` 已含 `GRANT_BATTLE_COUNT=2`/`GRANT_EFFECT_COUNT=1`/`MAX_TEMPORARY_CARDS=9`/`MIN_FREE_SLOTS_TO_CAST=3` 与 `grantNardisPrivilege`,且本批新增的 `NARDIS-GATE-26.1.2` 实机 **PASS**(空槽 2 ⇒ 拒绝且零消耗 `cd_unchanged=1:granted=0:n_fx_on=0`;空槽 3 ⇒ `granted=3:t_battle=2:t_effect=1:n_fx_on=1:cool=3600`)⇒ **本段最终语义三线已一致**;仍待办 = 迁移清单第 14 条(ESC 输入放行)。
 16. **立牌锁定态「离线时钟漂移」修复(2026-09-27,两线;26.1.2 **未改动**,迁移时必须一并带走)**:① 新玩家附件 `sign_active_lock_last_seen`(long,**服务端专用、不 `.sync()`**;1.21.1 走 `AttachmentType.serialize(Codec.LONG)`、1.20.1 走 `AttachedDataKey`(**不得** `.inMemory()`,且**不进** `SYNCED_KEYS`))+ get/set 包装;② `BaseSignItem.beginActiveLock` 末尾落笔 `lastSeen = gameTime`、`endLockAndStartCooldown` 末尾清零;③ `tickSignActiveLock` **步骤 0**(客户端早退之后、`signId` 读取与任何 `return` 之前):`gap = now − lastSeen`,`gap > 1` 时把 `sign_active_lock_end` 与 `sign_active_lock_grace_end`(各自 `> 0` 时)各 `+= gap`;随后仅在取值变化时刷新 `lastSeen`(无锁定/无宽限 ⇒ 0)。**四条硬约束(改错就会出事故)**:ⓐ **`gap > 1` 才补偿** —— 写成 `gap > 0` 会每拍自我延长、锁定永不解;ⓑ **补偿必须早于 `isSignActiveLocked` 判定与任何早退**;ⓒ **绝不补偿 `sign_active_cooldown_end`**(冷却照旧离线也流逝,这是既有预期);ⓓ **必须确认该附件随玩家存档持久化**(1.21.1 `Entity.saveWithoutId` 的 `neoforge:attachments`;1.20.1 `AstralData.persistentStore`→`ForgeCaps`;与 `sign_active_lock_end` 同链,不持久化则整个方案失效)。⇒ 一次覆盖 `fen`/`jasmine`/`misaki`/`papara`/`parunan`/`fanny`/`nancy_lu` 的硬上界 **与忍者宽限**(忍者从此是「**在线** 1:00」而非「墙钟 1:00」)。④ **`nancy_lu` 同源残留 3 处**(必须一起迁移):`onCurioTick` 到期 sweep 取 `max(nancy_lu_hidden_until, sign_active_lock_end)`(**决定性** —— 不修则重登后 1 tick 内清掉隐身实例,而隐身正是该三态锁定的门控效果,补偿好的锁定会被一起打死)、`onAttackWhileHidden` 与 `isHidden` 改读 `isSignActiveLocked`、`isHiddenClient` 去掉绝对刻比较(改「键非零 + `hasEffect(INVISIBILITY)`」)。⑤ 调试 dump 加只读行 `sign_active_lock_last_seen`(`AstralPartyCommand` 的 `DUMP_GROUP_SIGN`,仅用于实测取证持久化)。⑥ **已登记不修**:`nancy_lu_active_bonus_until`(2400t;离线跨越后会在隐身仍在时提前清掉主动加成与 `NANCY_LU_HACK`,方向为玩家不利、无利用面;其截止刻与锁定上界**不同长** ⇒ 「取 max / 读已补偿锁定态」两法皆无效,通用修法需耦合或加新键,**不值当**)、`nancy_lu_ender_pearl_immune_until`(20t 战斗内短窗口)。⑦ **测试侧待办**:`LOCK-OFFLINE-{1.21.1,1.20.1}`(L1–L7)+ `resetActiveLock` 补第 6 个键 + 所有直接写 `sign_active_lock_end` 的脚手架补写 `lastSeen = now`;历史用例 `NANCY-LU-CLOAK` 的 `doNancyExpire` 若复活需把硬上界对齐到同一过去刻。⚠️ **本修复的游戏内验证按用户指示延后**(代码已两线落地并构建通过,实机读数待补)。
-17. **蛟龙立牌(mamushi)资产与注册 + 三组「配方网格重合」修复(2026-09-27,两线;26.1.2 **未改动任何文件**,迁移时必须一并带走)**:① **物品** `mamushi_sign`(蛟龙立牌,传奇 = 物品层 `ASTRAL_DICE_LEGENDARY`;本仓「传奇」用的就是 `UNCOMMON`)、类 `item/sign/MamushiSignItem`(**只有 javadoc + 构造器**:未覆写 `handleUse`、无被动钩子 ⇒ 主动走 `BaseSignItem` 默认实现「WARN + `InteractionResultHolder.fail`」,**技能(主动/被动)与专属卡牌「撕咬」/「龙之咆哮」由同日第二批落地 —— 见下条 18**(本条只覆盖资产与注册,是第一前置;当时本类确实只有 javadoc + 构造器);注册面 = `item/ModItems`(NARDIS_SIGN 之后)、`init/ModCreativeTabs`(传奇段)、`datagen/ModItemModelProvider`、`datagen/ModRecipeProvider`、`data/astral_dice/tags/item/signs.json`(该线为 `tags/items/`)、`data/curios/tags/item/stand.json`(同上)、手册 `entries/signs/mamushi_sign.json`(**只有 `patchouli:crafting` 一页,无 spotlight/text 占位页**;`sortnum`=20)、lang 只加物品名 `item.astral_dice.mamushi_sign`(「蛟龙立牌」/「Mamushi Sign」,两线各 **739/739**)、贴图 `textures/item/mamushi_sign.png`(自 `images/蛟龙立牌.png` 逐字节复制,两线同 sha256 `35711E2F…`,32×32)。② **配方** = 「钻石骰子 + 黄金星盘」传奇档,但**不得与 `fen_sign` 同表** ⇒ `SPS/SES/GDG`(S=**海晶灯**〔2026-09-23 由海晶碎片改〕、P=金块、E=空白立牌、G=黄金星盘×2、D=钻石骰子);空白立牌置中、骰子固定中下。③ **同批修复三组配方网格重合**(2026-09-27 用户裁决「三组一起拆开」):`teru_sign` 改 `GCG/LEL/ZPZ`(**荧石**×2〔2026-09-23 由荧石粉改〕,原与 zhao 同为 `GCG/RER/ZPZ`)、`nardis_sign` 改 `CYC/TET/TDT`(仙人掌×2,原与 padman 同为 `WYW/TET/TDT`)、`mamushi_sign` 用 `SPS/SES/GDG`(原照抄 fen ⇒ 同格);`zhao_sign` / `padman_sign` / `fen_sign` **保持原样**。判据与后果见上文「新增立牌时的要求」第 6 条末段。④ **新增静态守门** `scripts/verify/verify_crafting_recipe_uniqueness.ps1`(已进 `TESTING-SPEC.md` §9;shaped 按「裁剪四周全空行/列后的 3×3 单元格矩阵」判重、shapeless 按材料多重集判重、并做 shaped↔shapeless 交叉判定;**必须在 `runData` 之后跑**);两线 `runData` 后期望读数 `shaped=91 shapeless=27 collisions=0`(2026-09-21 怪力侦探批 87 → 88、人偶师批 88 → 89、飞星批 89 → **91**;26.1.2 当时为 `shaped=83`,该线尚无 zhao/teru/nardis/mamushi/sherry/hanna;⚠️ **2026-09-23 复核:三线均已 `shaped=91 shapeless=27 collisions=0`** —— 26.1.2 已补齐这些立牌,上句的 83 已过时)。⑤ **技能与两张专属战斗牌已于同日落地**(本条只覆盖资产与注册,是其前置;完整语义/落点见下条 18)。⑥ **同批补漏(静态守门发现)**:上一批 nardis 漏登记的**赏金板奖励池**条目已补 —— `nardis_sign`(稀有 RARE)写入 `data/bountiful/bounty_pools/bountiful/astral_rews.json`(`rarity=RARE`、`unitWorth=1400`,与同为黄金骰子档的 `lulu_sign` 一致;条目追加在 `ren_sign` 之后 = `ModItems` 注册序;两线文件**逐字节相同**、MD5 `EA5F23A2…` 改后仍相同);**蛟龙 mamushi(传奇 UNCOMMON)按规则不进任何池**(`teru`/`zhao` 同为传奇亦不入池)。修复前 `verify_bountiful_pools.ps1` 两线各报 `缺失条目(1): ['nardis_sign']`,修复后 `RESULT: ALL OK`。
+17. **蛟龙立牌(mamushi)资产与注册 + 三组「配方网格重合」修复(2026-09-27,两线;26.1.2 **未改动任何文件**,迁移时必须一并带走)**:① **物品** `mamushi_sign`(蛟龙立牌,传奇 = 物品层 `ASTRAL_DICE_LEGENDARY`;本仓「传奇」用的就是 `UNCOMMON`)、类 `item/sign/MamushiSignItem`(**只有 javadoc + 构造器**:未覆写 `handleUse`、无被动钩子 ⇒ 主动走 `BaseSignItem` 默认实现「WARN + `InteractionResultHolder.fail`」,**技能(主动/被动)与专属卡牌「撕咬」/「龙之咆哮」由同日第二批落地 —— 见下条 18**(本条只覆盖资产与注册,是第一前置;当时本类确实只有 javadoc + 构造器);注册面 = `item/ModItems`(NARDIS_SIGN 之后)、`init/ModCreativeTabs`(传奇段)、`datagen/ModItemModelProvider`、`datagen/ModRecipeProvider`、`data/astral_dice/tags/item/signs.json`(该线为 `tags/items/`)、`data/curios/tags/item/stand.json`(同上)、手册 `entries/signs/mamushi_sign.json`(**只有 `patchouli:crafting` 一页,无 spotlight/text 占位页**;`sortnum`=20)、lang 只加物品名 `item.astral_dice.mamushi_sign`(「蛟龙立牌」/「Mamushi Sign」,两线各 **739/739**)、贴图 `textures/item/mamushi_sign.png`(自 `images/蛟龙立牌.png` 逐字节复制,两线同 sha256 `35711E2F…`,32×32)。② **配方** = 「钻石骰子 + 黄金星盘」传奇档,但**不得与 `fen_sign` 同表** ⇒ `SPS/SES/GDG`(S=**海晶灯**〔2026-09-23 由海晶碎片改〕、P=金块、E=空白立牌、G=黄金星盘×2、D=钻石骰子);空白立牌置中、骰子固定中下。③ **同批修复三组配方网格重合**(2026-09-27 用户裁决「三组一起拆开」):`teru_sign` 改 `GCG/LEL/ZPZ`(**荧石**×2〔2026-09-23 由荧石粉改〕,原与 zhao 同为 `GCG/RER/ZPZ`)、`nardis_sign` 改 `CYC/TET/TDT`(仙人掌×2,原与 padman 同为 `WYW/TET/TDT`)、`mamushi_sign` 用 `SPS/SES/GDG`(原照抄 fen ⇒ 同格);`zhao_sign` / `padman_sign` / `fen_sign` **保持原样**。判据与后果见上文「新增立牌时的要求」第 6 条末段。④ **新增静态守门** `scripts/verify/verify_crafting_recipe_uniqueness.py`(已进 `TESTING-SPEC.md` §9;shaped 按「裁剪四周全空行/列后的 3×3 单元格矩阵」判重、shapeless 按材料多重集判重、并做 shaped↔shapeless 交叉判定;**必须在 `runData` 之后跑**);两线 `runData` 后期望读数 `shaped=91 shapeless=27 collisions=0`(2026-09-21 怪力侦探批 87 → 88、人偶师批 88 → 89、飞星批 89 → **91**;26.1.2 当时为 `shaped=83`,该线尚无 zhao/teru/nardis/mamushi/sherry/hanna;⚠️ **2026-09-23 复核:三线均已 `shaped=91 shapeless=27 collisions=0`** —— 26.1.2 已补齐这些立牌,上句的 83 已过时)。⑤ **技能与两张专属战斗牌已于同日落地**(本条只覆盖资产与注册,是其前置;完整语义/落点见下条 18)。⑥ **同批补漏(静态守门发现)**:上一批 nardis 漏登记的**赏金板奖励池**条目已补 —— `nardis_sign`(稀有 RARE)写入 `data/bountiful/bounty_pools/bountiful/astral_rews.json`(`rarity=RARE`、`unitWorth=1400`,与同为黄金骰子档的 `lulu_sign` 一致;条目追加在 `ren_sign` 之后 = `ModItems` 注册序;两线文件**逐字节相同**、MD5 `EA5F23A2…` 改后仍相同);**蛟龙 mamushi(传奇 UNCOMMON)按规则不进任何池**(`teru`/`zhao` 同为传奇亦不入池)。修复前 `verify_bountiful_pools.py` 两线各报 `缺失条目(1): ['nardis_sign']`,修复后 `RESULT: ALL OK`。
 18. **蛟龙立牌技能 · 觉醒/真龙形态 · 连锁反应 · 撕咬/龙之咆哮(2026-09-27 同日第二批;26.1.2 侧**未改动任何文件**,迁移时必须一并带走)**:① **4 项用户裁决** —— 觉醒按**受益人数**计(同一发牌事件内按受益人去重、单次封顶 3 层;自己给自己发牌不计)/ 多张撕咬**每张各 +1 层**(加成恒 `min(觉醒,4)` 且**实时**)/ 真龙形态的「取消范围限制」= **同维度全体**(仍 32 人上限 + 距离升序)/ 撕咬加成**实时**非快照。② **2 个新效果** `mamushi_dragon`(真龙形态,常驻 `Integer.MAX_VALUE` + tick `refresh`,图标逐字节复制立牌贴图)、`dragon_roar_break`(破防,`ARMOR` 属性修饰器 **-8** = 减 4 点防御,1:00,图标逐字节复制「龙之咆哮」卡牌贴图)。③ **3 个新附件键** `mamushi_awakening`(int,**sync** + `copyOnDeath`)/`mamushi_bite_bonus_active`(bool)/`mamushi_forced_cooldown_until`(long) + `DeathPreservedBonuses` 第 3 槽位 + 1.20.1 `AstralData#onPlayerClone` 白名单(1.20.1 synced 29 → 30)。④ **发牌漏斗加 giver(唯一挂点)**:`VitaminPillChipItem.giveCard(Player giver, Player receiver, ItemStack card)` 重载,成功入包分支调 `MamushiSignItem.onCardGivenToOther`;`RandomCardHandler.giveCards`/`giveCardTo` 与 `YouHaveIHaveCardItem` 改传 giver;`GiveoutScope.maxTargets >= 0` 由 `Collections.shuffle` 随机抽样改为**距离升序取最近 N**,新增 `aroundWithTeam(range,maxTargets)` / `wholeDimensionWithTeam(maxTargets)` 工厂(**保留 API,当前零调用**)。⚠️ **主动技能的目标集合在 R1 复核后被改为「自管」——迁移时必须按修正后的语义实现,勿照 `GiveoutScope` 旧写法**:`MamushiSignItem.collectActiveTargets(Player wearer, boolean dragon)` = 严格**同维度** → 排除自己 → **有队伍只取同队**(`EventTargetCollector.hasAnyTeam` + `collectTeamPlayers`,库侧可能含其它维度队友 ⇒ 仍按维度过滤)/ **未组队不做队伍过滤**(自己取 `ServerLevel.players()`,**不得**使用库的「无队伍 ⇒ 全服在线」回退)→ 距离 ≤ 12(**真龙形态不限**)→ 距离升序(UUID 平局)→ **排序后**截断 32。原写法 `aroundWithTeam(12)` 的语义是「12 格内全部玩家 ∪ 队友不限距离」,会让**非队友**与**超距队友**也拿到牌,与用户原文「12 格内所有**友方队友**」不符。**同批另修**:无主(缺 `owner_uuid`)撕咬 → 龙之咆哮的归属,两线统一为**绑定转换者**(有主时原样保留)。⑤ **强制冷却**:`BaseSignItem` 新增 `forcedActiveCooldownTicks()`(绕过 `WeirdDiceHandler`,直接把 `max_cooldown` 与 `cooldown_end` 写成 1200)与 `forcedCooldownUntil()`(**硬闸门,早于电流核心判定**);`CurrentCoreChipItem` 对 mamushi 返回 `FINISH_NOT_ENOUGH` 并提示 `msg.astral_dice.mamushi_cooldown_locked`(该分支属纵深防御)。⑥ **两张专属战斗牌**:`attack_card_bite`(费用 2/耐久 1/定值 +3)、`attack_card_dragon_roar`(费用 3/耐久 5/定值 +3 + 命中施加缓慢 III 与破防),`CardRegistry` 必须**同时**补 `defaultUses` 与 `minRoll`/`maxRoll` 分支(漏 `defaultUses` 会静默回退成 10 次);⚠️ **专属守门是既有缺口** —— `CardItem` 原本**没有任何** owner 检查,本批在 `CardInventoryMenu` 攻击/防御两个 `mayPlace` 加 `isExclusive && !canUse ⇒ false`,并把两牌加入 `ExclusiveCardUtil.isExclusive` 硬编码列表、`is_exclusive.json` 标签与 `registerExclusiveCard`(**不进 `attackCards()` ⇒ 天然不在随机池**、无配方、不入赏金池)。⑦ **文案**:两份 CHANGELOG 各 +3 条(立牌 1 + 两张牌 2),中英 **372:372**;lang 两线 **760/760** 且跨线键集 diff = 0、本批键取值逐字一致;三份手册条目两线 SHA256 相同。⑧ **本轮验证**:两线 `runData` 生成两张卡模型(`written: 2`);两线 `mt_build` OK;`tooltip_color_audit` 仅剩既有 12 处 teru `50%`;`verify_crafting_recipe_uniqueness` 仍 0 重合;`check_lang_sync` 三线 OK。⑨ **未做(如实登记)**:游戏内行为验证(用户已延后)、探针与用例、26.1.2 迁移。
-19. **怪力侦探立牌(sherry)资产 · 技能 · 投掷飞行(2026-09-21;两线已落地,26.1.2 侧**未改动任何文件**,迁移时必须一并带走)**:① **物品** `sherry_sign`(怪力侦探立牌,史诗 = 物品层 `ASTRAL_DICE_EPIC`;英文名 **`Sherry Sign`** 按角色名而非称号直译 —— 用户裁决)、类 `item/sign/SherrySignItem extends BaseSignItem`(覆写 `handleUse` / `activeCooldownBaseTicks` / `onCurioTick` / `clearSignData`,并在本类上挂一个带 `@EventBusSubscriber` 的 `@SubscribeEvent` 订阅器 —— 「侦探出击」计层);注册面 = `item/ModItems`(`MAMUSHI_SIGN` 之后)+ `init/ModCreativeTabs` + `datagen/ModItemModelProvider` + `datagen/ModRecipeProvider` + `data/astral_dice/tags/{item|items}/signs.json` + `data/curios/tags/{item|items}/stand.json` + 手册 `entries/signs/sherry_sign.json`(**spotlight + text×2 + crafting 四页**,`sortnum`=21)+ lang 11 键 + 贴图两张。② **配方** = 「钻石骰子 + 黄金星盘」史诗档 ⇒ `PBP/AEA/IDI`(P=黄金星盘×2、B=书、E=空白立牌、A=铁砧、I=铁块、D=钻石骰子);**⚠️ 2026-09-25 用户裁决:D 由钻石骰子改紫晶骰子(网格不变 ⇒ 与 moses/nancy_lu 的同档关系作废)**;空白立牌置中、骰子固定中下;六个填料的格位与同档 `moses`(`GPG/TCT/PZP`)/`nancy_lu`(`YFY/BLW/PZP`)及全部其它立牌**均不复用**,须保持 `verify_crafting_recipe_uniqueness.ps1` **0 重合**。③ **效果** `sherry_reasoning`(推理时间;层数真值在附件、效果只作 HUD 镜像(层数 = `amplifier + 1`)、BENEFICIAL、`Integer.MAX_VALUE`、图标 `textures/mob_effect/sherry_reasoning.png` **从立牌贴图逐字节复制**;注册后两发布线效果数 **39 → 40**)。④ **附件键 1 个** `sherry_reasoning_layers`(int,**不 `.sync()`**;1.21.1 `.copyOnDeath()`、1.20.1 进 `AstralData#onPlayerClone` 白名单 **+** `DeathPreservedBonuses` **第 4 槽位**(立牌掉落触发的 `onUnequip → clearSignData` 会抢先清零,两层缺一不可)—— 客户端 tooltip 的层数计数器读的是**已同步的效果实例**,不读本键 ⇒ 故本键不进 `SYNCED_KEYS`);玩家级附件计数 1.21.1 **81 → 82**、1.20.1 **83 → 84**,1.20.1 synced 键**不变**(30)。⑤ **三处挂点**:`combat/DiceCombatModifiers` 追加攻击修饰器(实时读层数,每层 +1)、`event/ChipDamageHandler` 在 LOWEST 阶段追加**纯减伤**(层数 + 挚友守护,**刻意不带磨刀石/安全气囊的「不可致死保护」**)、`combat/DiceCombatEvents` 赐福结束段调 `SherrySignItem#onDiceBlessingEnded`。⑥ **`BaseSignItem` 结构性改动**:新增 `protected int activeCooldownBaseTicks(Player)`(**缺省 = `WeirdDiceHandler.signCooldownTicks(player)`,其余立牌逐字不变**),并把冷却段的取值改为 `forced > 0 ? forced : activeCooldownBaseTicks(player)`;与 `forcedActiveCooldownTicks()` 的分工 = 「自定义基础值、仍走减免链」↔ 「强制值、不受任何减免」。⑦ **投掷执行器** `combat/SherryThrowManager`(新增):逐 tick 水平线性插值 + `ARC_HEIGHT × 4t(1−t)` 抛物线;**飞行期 `setNoAi(true)`、每 tick 归零 `fallDistance`**(避免原版坠落伤害)、落点那一 tick 恢复原 AI 并结算 `2 + bonus` 点伤害 + `MarkManager.apply`;作业表按 `ResourceKey<Level>` 取 `ServerLevel`、**服务端内存态不持久化**;平台差异 = 1.21.1 `ServerTickEvent.Post` ↔ 1.20.1 `TickEvent.ServerTickEvent` + `phase == END` 早退(照 `event/LivingPageFlightScheduler`)。⑧ **「挚友守护」按注册 id 字符串匹配 `astral_dice:hanna_sign`**(人偶师立牌尚未落地 ⇒ 不引用 `ModItems.HANNA_SIGN` 以免编译期依赖;hanna 落地后被动**自动生效**,迁移时保持该写法)。⑨ **赏金板**:sherry(史诗 EPIC ⇒ 非传奇)**必须进** `astral_rews.json`(`rarity=EPIC`、`unitWorth=3400`,与同档 `moses`/`nancy_lu` 一致;条目追加在 `nardis_sign` 之后 = `ModItems` 注册序;两线文件**逐字节相同**、sha256 `C3F19D72…`)。⑩ **文案**:lang 两线 **771/771**、跨线键集逐字一致;手册 `entries/signs/sherry_sign.json` 两线 sha256 相同;两份 CHANGELOG 各 +1 条(中英条目数与顺序一致)。⑪ **本轮验证**:两线 `runData` 各 `written: 3`(模型 1 + 配方 1 + 进度 1);两线 `mt_build` OK;`check_lang_sync` 两线 exit=0;`tooltip_color_audit` PASS(0);`verify_crafting_recipe_uniqueness` / `verify_bountiful_pools` 全绿。⑫ **未做(如实登记)**:游戏内行为验证(用户已延后)、探针与用例、26.1.2 迁移。
+19. **怪力侦探立牌(sherry)资产 · 技能 · 投掷飞行(2026-09-21;两线已落地,26.1.2 侧**未改动任何文件**,迁移时必须一并带走)**:① **物品** `sherry_sign`(怪力侦探立牌,史诗 = 物品层 `ASTRAL_DICE_EPIC`;英文名 **`Sherry Sign`** 按角色名而非称号直译 —— 用户裁决)、类 `item/sign/SherrySignItem extends BaseSignItem`(覆写 `handleUse` / `activeCooldownBaseTicks` / `onCurioTick` / `clearSignData`,并在本类上挂一个带 `@EventBusSubscriber` 的 `@SubscribeEvent` 订阅器 —— 「侦探出击」计层);注册面 = `item/ModItems`(`MAMUSHI_SIGN` 之后)+ `init/ModCreativeTabs` + `datagen/ModItemModelProvider` + `datagen/ModRecipeProvider` + `data/astral_dice/tags/{item|items}/signs.json` + `data/curios/tags/{item|items}/stand.json` + 手册 `entries/signs/sherry_sign.json`(**spotlight + text×2 + crafting 四页**,`sortnum`=21)+ lang 11 键 + 贴图两张。② **配方** = 「钻石骰子 + 黄金星盘」史诗档 ⇒ `PBP/AEA/IDI`(P=黄金星盘×2、B=书、E=空白立牌、A=铁砧、I=铁块、D=钻石骰子);**⚠️ 2026-09-25 用户裁决:D 由钻石骰子改紫晶骰子(网格不变 ⇒ 与 moses/nancy_lu 的同档关系作废)**;空白立牌置中、骰子固定中下;六个填料的格位与同档 `moses`(`GPG/TCT/PZP`)/`nancy_lu`(`YFY/BLW/PZP`)及全部其它立牌**均不复用**,须保持 `verify_crafting_recipe_uniqueness.py` **0 重合**。③ **效果** `sherry_reasoning`(推理时间;层数真值在附件、效果只作 HUD 镜像(层数 = `amplifier + 1`)、BENEFICIAL、`Integer.MAX_VALUE`、图标 `textures/mob_effect/sherry_reasoning.png` **从立牌贴图逐字节复制**;注册后两发布线效果数 **39 → 40**)。④ **附件键 1 个** `sherry_reasoning_layers`(int,**不 `.sync()`**;1.21.1 `.copyOnDeath()`、1.20.1 进 `AstralData#onPlayerClone` 白名单 **+** `DeathPreservedBonuses` **第 4 槽位**(立牌掉落触发的 `onUnequip → clearSignData` 会抢先清零,两层缺一不可)—— 客户端 tooltip 的层数计数器读的是**已同步的效果实例**,不读本键 ⇒ 故本键不进 `SYNCED_KEYS`);玩家级附件计数 1.21.1 **81 → 82**、1.20.1 **83 → 84**,1.20.1 synced 键**不变**(30)。⑤ **三处挂点**:`combat/DiceCombatModifiers` 追加攻击修饰器(实时读层数,每层 +1)、`event/ChipDamageHandler` 在 LOWEST 阶段追加**纯减伤**(层数 + 挚友守护,**刻意不带磨刀石/安全气囊的「不可致死保护」**)、`combat/DiceCombatEvents` 赐福结束段调 `SherrySignItem#onDiceBlessingEnded`。⑥ **`BaseSignItem` 结构性改动**:新增 `protected int activeCooldownBaseTicks(Player)`(**缺省 = `WeirdDiceHandler.signCooldownTicks(player)`,其余立牌逐字不变**),并把冷却段的取值改为 `forced > 0 ? forced : activeCooldownBaseTicks(player)`;与 `forcedActiveCooldownTicks()` 的分工 = 「自定义基础值、仍走减免链」↔ 「强制值、不受任何减免」。⑦ **投掷执行器** `combat/SherryThrowManager`(新增):逐 tick 水平线性插值 + `ARC_HEIGHT × 4t(1−t)` 抛物线;**飞行期 `setNoAi(true)`、每 tick 归零 `fallDistance`**(避免原版坠落伤害)、落点那一 tick 恢复原 AI 并结算 `2 + bonus` 点伤害 + `MarkManager.apply`;作业表按 `ResourceKey<Level>` 取 `ServerLevel`、**服务端内存态不持久化**;平台差异 = 1.21.1 `ServerTickEvent.Post` ↔ 1.20.1 `TickEvent.ServerTickEvent` + `phase == END` 早退(照 `event/LivingPageFlightScheduler`)。⑧ **「挚友守护」按注册 id 字符串匹配 `astral_dice:hanna_sign`**(人偶师立牌尚未落地 ⇒ 不引用 `ModItems.HANNA_SIGN` 以免编译期依赖;hanna 落地后被动**自动生效**,迁移时保持该写法)。⑨ **赏金板**:sherry(史诗 EPIC ⇒ 非传奇)**必须进** `astral_rews.json`(`rarity=EPIC`、`unitWorth=3400`,与同档 `moses`/`nancy_lu` 一致;条目追加在 `nardis_sign` 之后 = `ModItems` 注册序;两线文件**逐字节相同**、sha256 `C3F19D72…`)。⑩ **文案**:lang 两线 **771/771**、跨线键集逐字一致;手册 `entries/signs/sherry_sign.json` 两线 sha256 相同;两份 CHANGELOG 各 +1 条(中英条目数与顺序一致)。⑪ **本轮验证**:两线 `runData` 各 `written: 3`(模型 1 + 配方 1 + 进度 1);两线 `mt_build` OK;`check_lang_sync` 两线 exit=0;`tooltip_color_audit` PASS(0);`verify_crafting_recipe_uniqueness` / `verify_bountiful_pools` 全绿。⑫ **未做(如实登记)**:游戏内行为验证(用户已延后)、探针与用例、26.1.2 迁移。
 20. **人偶师立牌(hanna)资产 · 技能 · 路过判定(2026-09-21;两线已落地,26.1.2 侧**未改动任何文件**,迁移时必须一并带走)**:① **物品** `hanna_sign`(人偶师立牌,稀有 = `ASTRAL_DICE_RARE`;英文名 **`Hanna Sign`** 按角色名定 —— 与 `Sherry Sign`/`Mamushi Sign` 同风格,**同时把 sherry 侧两处英文引用由 `Puppeteer Sign` 改为 `Hanna Sign`**:`tooltip.astral_dice.sign.sherry_passive` 与 `astral_dice.guide.entry.sherry_sign.2`)、类 `item/sign/HannaSignItem extends BaseSignItem`(覆写 `handleUse`/`onCurioTick`/`clearSignData` + 两个 `@SubscribeEvent`:掉落免疫与近战闪避走 `LivingIncomingDamageEvent`[neo]/`LivingAttackEvent`[forge],末影珍珠拦截走 `PlayerInteractEvent.RightClickItem`;骰点钩子由 `DiceCombatEvents` 显式调用);注册面 = `ModItems`(`SHERRY_SIGN` 之后)+ `ModCreativeTabs` + 两个 datagen provider + `signs.json` + `curios stand.json` + 手册 `entries/signs/hanna_sign.json`(**spotlight + text×2 + crafting**,`sortnum`=22)+ lang 19 键 + 贴图 4 张(`textures/item/hanna_sign.png` ← `images/人偶师立牌.png`;`textures/mob_effect/hanna_doll_craft.png` ← `images/人偶制作.png`;`hanna_doll_complete.png` ← `images/人偶完成.png`;**`hanna_float.png` 复用立牌图**)。**本批同时解答了「待办交接」§3 第 5 条的待裁决项**:`人偶完成.png`/`人偶制作.png` = 「人偶制作」(层数镜像)与「人偶完成」(完成态)两个**效果的图标**。② **配方** = 「黄金骰子(无星盘)」稀有档 ⇒ `SQS/LEL/TDT`(S=线、Q=白色羊毛、L=皮革、E=空白立牌、T=木棍、D=黄金骰子);**⚠️ 2026-09-25 用户裁决:两个线位改黄金星盘、D 由黄金骰子改紫晶骰子 ⇒ `GQG/LEL/TDT`(原「黄金骰子(无星盘)」档作废)**;空白立牌置中、骰子固定中下;与同档 `lulu`(`SZS/ZCZ/SDS`)/`padman`(`WYW/TET/TDT`)/`nardis`(`CYC/TET/TDT`)及全部其它立牌**格位与材料多重集均不同**,两线 `verify_crafting_recipe_uniqueness` 期望 `shaped=91 collisions=0`(26.1.2 为 83)。③ **3 个新效果**:`hanna_doll_craft`(人偶制作;层数镜像,真值在附件、**0..6 永不为 7**,达 7 时由立牌归零并转挂完成态)、`hanna_doll_complete`(人偶完成;无限时长常驻状态,卸下立牌时移除)、`hanna_float`(魔女漂浮;**有限时长 1200 tick**,`MOVEMENT_SPEED` +20% —— ⚠️ **平台差异**:neo `ADD_MULTIPLIED_TOTAL` + ResourceLocation id ↔ forge `MULTIPLY_TOTAL` + **UUIDv5 字符串** id `aef19f28-557c-564f-bb6c-e72d5f6926d9`(=`uuid5(NAMESPACE_URL,"astral_dice:hanna_float_speed")`,生成口径同 `jasmine_sweep_speed`);注册后两发布线效果数 **40 → 43**)。④ **4 个新附件键**:`hanna_doll_craft_layers`(int)/`hanna_doll_complete`(boolean)/`hanna_fantasy_cooldown_end`(long)/`hanna_blessing_cooldown_end`(long) —— 均 **不 `.sync()`**;**均不跨死亡保留**(技能原文未声明 ⇒ 不占 `DeathPreservedBonuses` 槽位、不进 1.20.1 白名单);玩家级附件计数 1.21.1 **82 → 86**、1.20.1 **84 → 88**。⑤ **两处挂点**:`PlayerTickEvents` 的 `onPlayerTick(Post)` 在 **`% 20` 早退之前**调 `HannaSignItem.tickPassing`(路过判定,两条被动各有独立 1:00 冷却,冷却内只读两个 long 即早退)、`DiceCombatEvents` 骰点定稿处(zhao 之后)调 `HannaSignItem.onDiceRollResult`。⑥ **闪避的平台差异**:neo 走 `applyDodgeCancel(LivingIncomingDamageEvent)`,forge 走 `applyDodgeCancel(LivingAttackEvent)` 且**必须**补 `DiceCombatEvents#isImmuneToDamage` 一步复刻 1.21.1 的事件阶段(照 `onMosesBrokenDodge`);两线都先判 `isInCounterChain()` 防递归。⑦ **赏金板**:hanna(稀有 RARE ⇒ 非传奇)**必须进** `astral_rews.json`(`rarity=RARE`、`unitWorth=1400`,与同为黄金骰子档的 `lulu`/`nardis` 一致;条目追加在 `sherry_sign` 之后;两线逐字节相同)。⑧ **文案**:lang 两线 **790/790**;`+20%`/`-100%` 必须写成 **`+20%%`/`-100%%`**(ⓘ 实测坑:批量把 `%` 转 `%%` 时**会误伤已转义的 `+20%%`** ⇒ 变成 `+20%%%`,替换必须避免匹配已转义形式);手册条目两线 sha256 相同;两份 CHANGELOG 各 +1 条。⑨ **本轮验证**:两线 `runData` 各 `written: 3`;两线 `mt_build` OK;`check_lang_sync` 两线 exit=0;`tooltip_color_audit` PASS(0);`verify_crafting_recipe_uniqueness` `shaped=91 collisions=0`;`verify_bountiful_pools` `rews 94 ALL OK`;开 jar 核对 4 类 + 6 资源 + 配方 + 790 键 + 贴图 sha。⑩ **未做(如实登记)**:游戏内行为验证(用户已延后)、探针与用例、26.1.2 迁移。
 21. **紫色飞星 / 金色飞星筹码 + 飞星粒子 FX(2026-09-21;三线均已落地)**:① **物品** `purple_shooting_star_chip`(紫色飞星,史诗 = `ASTRAL_DICE_EPIC`)/`golden_shooting_star_chip`(金色飞星,传奇 = 物品层 `ASTRAL_DICE_LEGENDARY`);两枚**共用同一物品类** `item/chip/ShootingStarChipItem`(只覆写 `curioTick` 转交执行器 —— 二者差异全在执行器,且触发必须共享冷却,**不能拆两份实现**);注册面 = `item/ModItems`(WHETSTONE_CHIP 之后)+`init/ModCreativeTabs`(**星光类**段 = STAR_COIN_HAMMER 之后)+`datagen/ModItemModelProvider`+`datagen/ModRecipeProvider`+`data/astral_dice/tags/{item|items}/chips.json`+`data/curios/tags/{item|items}/chip.json`+手册 `entries/chips_starlight/{purple,golden}_shooting_star_chip.json`(**spotlight+crafting 两页**,`sortnum`=7/8)+lang 7 键+贴图两张(`textures/item/{purple,golden}_shooting_star_chip.png` ← `images/紫色飞星.png`、`images/金色飞星.png`)。② **新执行器** `combat/ShootingStarManager`(两线各一套,**语义逐字等价**):触发检测挂在筹码 `curioTick`(每 tick;共享冷却 200 tick,**首次触发即写入** ⇒ 两枚同时装备时重复调用**幂等**)、粒子下落走服务端 tick 调度(1.21.1 `ServerTickEvent.Post` ↔ 1.20.1 `TickEvent.ServerTickEvent`+`phase == END`,照 `LivingPageFlightScheduler`)。判定:半径 **3 格**取最近合格目标、「敌对」= `HostileTargets.isHostile(viewer, target)` **再收窄掉「未被激怒的中立生物」**（用户 2026-09-24 裁决「飞星应当只对敌对目标生效」；判据 `ShootingStarManager#isStarTarget`，**有意收窄、非绕过入口** —— 详见「敌对目标」纪律段的第二处豁免)。③ **时序**:粒子起点 = 目标**头顶(碰撞箱上沿)**正上方「行程」处(行程 = 旧口径 × **3.6** = 历史 1.2 × 高度 3)、下落 **10 tick(0.5 秒)**、**落到那一 tick 才结算伤害**;两枚同时装备时紫色先落(t=0→10)、金色在**第一束命中后隔 10 tick** 开始(t=20→30)。⚠️ **2026-09-24 用户裁决调整为「高度提升 3 倍、下落速度加快到 6 倍、双飞星间隔加快到 2 倍」**(改前:行程 ×1.2、20 tick、间隔 20 tick;`FALL_DISTANCE_MULTIPLIER` = 3.6、`FALL_TICKS` = 10、`VOLLEY_GAP_TICKS` = 10)。**粒子**复用「活体书页」轨迹参数(间距 0.45 / 每步 2 粒 / `FLASH` 命中爆闪),但把**不可染色**的 `END_ROD` 换成**可染色且自发光**的自有粒子 `astral_dice:glowing_dust`(选项 `particle/GlowingDustOptions`、客户端 `client/GlowingDustParticle`:覆写光照为全亮 `15728880` + 渲染类型改半透明混合;紫 `0.70,0.42,1.00` / 金 `1.00,0.82,0.29`,scale 1.2)。⚠️ 该粒子的接线段 = `init/ModParticles`(三线同构)+`assets/astral_dice/particles/glowing_dust.json`(贴图取原版 `generic_0..generic_7`)+`client/ModClientEvents#registerParticleProviders`(三线)+主入口注册 —— 漏任一处 = 客户端没有 provider(退回原版未发光 dust 或紫黑方块)。④ **新工具类** `combat/EliteTargets`(**精英/Boss 判定唯一入口**,与 `HostileTargets` 正交 —— 前者判立场后者判强度档位):**血量 > 40 或 护甲 > 20**(用户裁决阈值),或 `BossEntityUtil.isBossEntity`(`c:bosses`/boss 血条),或**神化(Apotheosis)持久化 NBT** 的 `apoth.boss`(`Invader.BOSS_KEY`)/`apoth.miniboss`(`Elite.MINIBOSS_KEY`) —— **不硬依赖 Apotheosis**(未安装则键恒不存在 ⇒ 恒 false);两线均经 `Entity#getPersistentData()` 读取(1.20.1 落 `ForgeData`、1.21.1 落 `NeoForgeData`,**调用面一致**故无需分平台)。⑤ **附件 1 键** `shooting_star_cooldown_end`(long,**不 `.sync()`**、**不跨死亡保留** ⇒ 不进 1.20.1 白名单/`DeathPreservedBonuses`);玩家级附件计数 1.21.1 **86 → 87**、1.20.1 **88 → 89**。⑥ **「星光」复用既有** `item/StarLightManager`(+1 层),**不新建效果**(用户明确:计时器不创建效果,只在 tooltip 显示剩余秒数 —— 见 `ModTooltipHandler.addShootingStarCooldown`)。⑦ **配方**(非进阶 / 「星光」流派):紫色 = `XXX/DBD/PPP`(X=紫水晶碎片、D=星币尘、B=空白筹码、P=星盘)、金色 = `XXX/DBD/GGG`(X=荧石粉、G=黄金星盘);两线 `verify_crafting_recipe_uniqueness` 期望 `shaped=91 collisions=0`(飞星批 89 → **91**)。⑧ **赏金板**:紫色飞星(史诗 EPIC)**必须进** `astral_rews.json`(`rarity=EPIC`、`unitWorth=2800`;条目追加在 `whetstone_chip` 之后 = `ModItems` 注册序);金色飞星为**传奇 UNCOMMON ⇒ 不进任何池**(与星币锤/电磁炮同口径)。⑨ **文案**:lang 两线 **797/797**;两份 CHANGELOG 各 +1 条。⑩ **未做(如实登记)**:游戏内行为验证(用户已延后)、探针与用例、26.1.2 迁移。
 
@@ -804,7 +804,7 @@ When extending this workspace:
    ⚠️ **2026-09-27 起**：②的「跑用例」在**执行方式上**受批量编排闸门约束（§第 5 条）——「定向最小冒烟」仍按本节判定**该跑哪些**，但落地时逐条发（`--case <X>` 或 `mt_inject.ps1 cmd`），不再用 `run-dir` / 全流程一次性跑完。这是**用户可见性**上的收紧，不改变本节的分级判据。7. **禁止「顺路一起改」与「分批补线」**：不得以某条线更快为由先把该线改完、另两条线留待以后（同批必须三线对齐）；确需分步时必须由用户明确裁决，并把未落地的那条线登记为**阻塞项**（不是「以后再说」）。
 
 ### forge-1.20.1 子项目关键差异速记(相对 neoforge-1.21.1)
-- **Mixin Booster 是硬前置:未安装 → 直接拒绝启动(2026-09-15 固化,不得删除)**:Forge 1.20.1 的 FML **没有 Mixin 集成**,Sponge Mixin 0.8.5 完全由 `mixinbooster`(Modrinth `mixinbooster`,纯 ModLauncher 服务 jar,内嵌 `fabric-mixin.jar`;模组条目与版本号由自带 `IModLocator` 读 jar 根 `mixinbooster_version.txt` 得到,实装 `0.1.3+1.20.1`,实机 debug.log:`Found valid mod file transmog-mod.jar with {mixinbooster} mods - versions {0.1.3+1.20.1}`)提供——**缺它时本模组不报任何错、全部 Mixin 静默失效**,故必须在 FML **依赖排序阶段**硬拒。三处必须同时保持:① `templates/META-INF/mods.toml` 的 `[[dependencies.${mod_id}]]` 段 `modId="mixinbooster"` + `mandatory=true` + `versionRange="[0.1.3,)"` + `ordering="AFTER"` + `side="BOTH"`(**禁止**写成 `"*"`/省略:旧版本前置同样静默失效);② `build.gradle` 的 `modImplementation "maven.modrinth:mixinbooster:rOaAYvZPZ"`(dev 运行时);③ 防回归执行体 = **独立脚本** `pwsh -NoProfile -File scripts/verify/verify_forge_loader_gate.ps1`(自包含:零 `Import-Module scripts/test/lib/*`、不读写 `run/**`、不读 `cases/*.json`;`-Root` 缺省由 `$PSScriptRoot` 上两级派生 ⇒ 任意 cwd 下都校验**同一棵树**;判据 S1..S6 与读数前缀 `AP_LG_*` 沿用旧执行体,末行为 `AP_LG_VERDICT:…:range_only=1:overall=0|1|2`;退出码 **0 = 门槛成立 / 1 = 明确偏差(逐条 `LG_FAIL:<key>`)/ 2 = 无法判定(`LG_UNDECIDABLE:<key>` + `LG_REMEDY:<key>:<命令>`),且**明确偏差优先于无法判定**(`LG_FAIL` 非空即 1,即使并存 `LG_UNDECIDABLE`)**;`-SkipArtifacts` 只跳过「生成资源 + 产物 jar」两段、模板段仍查,并显式回显 `artifacts=skipped`;真树基线 `exit 0`)。旧形态(`scripts/test/mt_loadergate.ps1` + `scripts/test/cases/LOADER-GATE-FORGE-1.20.1.json`)已按用户指令废弃并删除,见 `TESTING-SPEC.md` 附录 A 续 28。拒绝文案 = FML 原生 `Missing or unsupported mandatory dependencies:` + Mod ID / Requested by / Expected range / Actual version。⚠️ **1.20.1 的依赖段不支持 `reason` 字段**(实测 `ModInfo$ModVersion` 构造器常量池只读 modId/mandatory/versionRange/ordering/side/referralUrl;`reason` 是 NeoForge 的字段),写了也不会显示给用户。
+- **Mixin Booster 是硬前置:未安装 → 直接拒绝启动(2026-09-15 固化,不得删除)**:Forge 1.20.1 的 FML **没有 Mixin 集成**,Sponge Mixin 0.8.5 完全由 `mixinbooster`(Modrinth `mixinbooster`,纯 ModLauncher 服务 jar,内嵌 `fabric-mixin.jar`;模组条目与版本号由自带 `IModLocator` 读 jar 根 `mixinbooster_version.txt` 得到,实装 `0.1.3+1.20.1`,实机 debug.log:`Found valid mod file transmog-mod.jar with {mixinbooster} mods - versions {0.1.3+1.20.1}`)提供——**缺它时本模组不报任何错、全部 Mixin 静默失效**,故必须在 FML **依赖排序阶段**硬拒。三处必须同时保持:① `templates/META-INF/mods.toml` 的 `[[dependencies.${mod_id}]]` 段 `modId="mixinbooster"` + `mandatory=true` + `versionRange="[0.1.3,)"` + `ordering="AFTER"` + `side="BOTH"`(**禁止**写成 `"*"`/省略:旧版本前置同样静默失效);② `build.gradle` 的 `modImplementation "maven.modrinth:mixinbooster:rOaAYvZPZ"`(dev 运行时);③ 防回归执行体 = **独立脚本** `python scripts/verify/verify_forge_loader_gate.py`(自包含:零 `Import-Module scripts/test/lib/*`、不读写 `run/**`、不读 `cases/*.json`;`-Root` 缺省由 `$PSScriptRoot` 上两级派生 ⇒ 任意 cwd 下都校验**同一棵树**;判据 S1..S6 与读数前缀 `AP_LG_*` 沿用旧执行体,末行为 `AP_LG_VERDICT:…:range_only=1:overall=0|1|2`;退出码 **0 = 门槛成立 / 1 = 明确偏差(逐条 `LG_FAIL:<key>`)/ 2 = 无法判定(`LG_UNDECIDABLE:<key>` + `LG_REMEDY:<key>:<命令>`),且**明确偏差优先于无法判定**(`LG_FAIL` 非空即 1,即使并存 `LG_UNDECIDABLE`)**;`-SkipArtifacts` 只跳过「生成资源 + 产物 jar」两段、模板段仍查,并显式回显 `artifacts=skipped`;真树基线 `exit 0`)。旧形态(`scripts/test/mt_loadergate.ps1` + `scripts/test/cases/LOADER-GATE-FORGE-1.20.1.json`)已按用户指令废弃并删除,见 `TESTING-SPEC.md` 附录 A 续 28。拒绝文案 = FML 原生 `Missing or unsupported mandatory dependencies:` + Mod ID / Requested by / Expected range / Actual version。⚠️ **1.20.1 的依赖段不支持 `reason` 字段**(实测 `ModInfo$ModVersion` 构造器常量池只读 modId/mandatory/versionRange/ordering/side/referralUrl;`reason` 是 NeoForge 的字段),写了也不会显示给用户。
 - 无数据组件/附件 API:物品数据走 `component/ItemDataKey`(ItemStack NBT),玩家数据走 `component/AttachedDataKey`(AstralData Capability;30 个 synced 键经 `ModNetwork.AttachmentSyncMessage` 同步(完整清单以 `component/ModAttachments.java` 的 `SYNCED_KEYS` 为准,含 `LIVING_PAGE_CYCLE_BONUS`/`FU_CARD_CYCLE_BONUS`/`EMPOWER_DECAY_AT`/`ELECTRIC_GLOVE_AOE`/`AIRBAG_COOLDOWN_END`/`RAILGUN_COOLDOWN_END` 等)。`ModDataComponents`/`ModAttachments` 常量名与 getX/setX 包装器签名与 1.21 分支一致。
 - **伤害事件映射(2026-09-15 校正,旧写法作废)**:`LivingIncomingDamageEvent` ↔ 1.20.1 `LivingAttackEvent`(**减伤前**、可取消);**`LivingDamageEvent.Pre` ↔ 1.20.1 `LivingDamageEvent`(护甲 + 附魔减免之后)**。1.20.1 侧另在 `LivingAttackEvent`(HIGHEST 记原始值)+ `LivingHurtEvent`(LOWEST 读当前伤害)组合还原 original/current 语义(见 `FateGuidanceCardItem.onCurseMitigation`)。⚠️ 旧写「`LivingDamageEvent.Pre` → `LivingHurtEvent`」是**错误映射**:1.20.1 的 `LivingHurtEvent` 派发于**护甲前**(`LivingEntity.java:1665`,早于 `:1667-1668` 的护甲/附魔减免),在 1.21.1 **没有对应事件**(NeoForge `CommonHooks` 无 `onLivingHurt`)。**吸收(黄心)阶段两版本相反**:1.20.1 的 `LivingDamageEvent` 在**吸收之后**(吸收 `:1669-1670` 早于派发 `:1680`),1.21.1 的 `LivingDamageEvent.Pre` 在**吸收之前**(`:1789` 早于 `:1790-1792`)。**法伤主链路必须按本映射挂事件(2026-09-15 用户裁决,必须遵守)**:`event/DamageEffectCardHandler` 在 1.21.1 挂 `LivingDamageEvent.Pre`、1.20.1 挂 `LivingDamageEvent`,其 `combat/SpellDamageContext.event` 的类型随之同步(1.20.1 曾挂 `LivingHurtEvent = 护甲前`,导致**电击手套 3 格 AOE 以「护甲前原始值」为基准**、带甲目标周围多打一截 —— 已按本口径统一,取证见 `docs/scan2/P2-numeric-modifiers.md` 的 `P2-C7`);**禁止**再把 1.20.1 的法伤主链路挂回 `LivingHurtEvent`。残余(平台固有):目标带**吸收(黄心)**时两侧基准仍有差(1.20.1 在吸收后派发、1.21.1 在吸收前),普通目标无吸收故实际影响可忽略。
 - Curios:槽位经 FMLCommonSetup IMC 注册(`SlotTypeMessage`,dice=1/stand=1/chip=0);`CuriosApi.getCuriosInventory` 返回 LazyOptional,统一经 `item/CuriosCompat` 包装为 Optional。
@@ -902,7 +902,7 @@ When extending this workspace:
 > 撕咬 / 龙之咆哮 = **奇特**(`bizarre`,沿用「专属牌 = 奇特」惯例,同日经用户确认保留 —— 不得改成稀有)。
 > ⛔ **2026-10-22 用户裁决（专属牌品质总则）**：所有**专属牌**（`neoforge-1.21.1/src/main/resources/data/astral_dice/tags/item/is_exclusive.json` 内登记的物品）一律 **奇特**（`AstralRarities.bizarre()`）；该标签当前 7 项 = 活体书页 / 命运的指引 / 福 / 祸 / 撕咬 / 龙之咆哮 / 强化拒止，2026-10-22 全部已对齐（强化拒止原 `epic` 在此批改为 `bizarre`）。新增专属牌**先定奇特档**再注册；改档必须同步该牌的规格文档 / CHANGELOG / P1 两线移植清单（§「效果牌」一览表若尚未收录该牌 —— 强化拒止与路障目前都不在表内，属既有缺行 —— 先补行或只做前两项，**不得**以「表中无行可改」跳过文案同步）。
 > ⚠️ 改战斗牌(或任何入池物品)的品质**必须**同步三线赏金池 `astral_rews.json` 的 `"rarity"` 字段 ——
-> 守门 `scripts/verify/verify_bountiful_pools.ps1` 按「物品档位 ↔ 数据层 rarity」映射逐项比对,漏改即红。
+> 守门 `scripts/verify/verify_bountiful_pools.py` 按「物品档位 ↔ 数据层 rarity」映射逐项比对,漏改即红。
 
 > **随机数战斗牌的掷骰口径(2026-09-26 用户裁决)— 必须遵守**:随机点数战斗牌(攻击-中/大/特大、防御-中/大/特大、
 > 名刀)一律**单次**掷骰,实现**唯一入口** = `combat/DiceCombatModifiers.rollDiceDescending(int min, int max)`
@@ -1097,10 +1097,10 @@ When extending this workspace:
 2. 类名 `XxxSignItem extends BaseSignItem`，物品注册名 `xxx_sign`。
 3. 关联的效果注册 id / 数据组件 id / 附件 id 一律以该 id 为前缀（如 `xxx_burst`、`xxx_sign_stacks`）。
 4. 纹理图标文件名与效果注册 id 一致（`textures/mob_effect/xxx_*.png`）。
-5. lang 中物品/效果/tooltip key 使用该 id。**新立牌文案里的字面百分号必须写成 `%%`**（如 `§e50%%§7`）：立牌 tooltip 经 `ModTooltipHandler.translationString` 无条件 `String.format`，裸 `%` 会让**把鼠标指向该立牌就崩客户端**（2026-09-21 教主立牌 `teru_active` 即因此崩过，见「语言文件同步规范」）；写完跑 `pwsh -NoProfile -File tools/check_lang_sync.ps1` 确认退出码 0。
+5. lang 中物品/效果/tooltip key 使用该 id。**新立牌文案里的字面百分号必须写成 `%%`**（如 `§e50%%§7`）：立牌 tooltip 经 `ModTooltipHandler.translationString` 无条件 `String.format`，裸 `%` 会让**把鼠标指向该立牌就崩客户端**（2026-09-21 教主立牌 `teru_active` 即因此崩过，见「语言文件同步规范」）；写完跑 `python tools/check_lang_sync.py` 确认退出码 0。
 6. 在 `ModItems` 注册、`ModCreativeTabs` 加入创造栏、`datagen/ModItemModelProvider` 加入模型、`datagen/ModRecipeProvider` 加入配方、`curios/tags/item/stand.json` 加入标签、**`astral_dice:signs` 汇总标签（`data/astral_dice/tags/item/signs.json`）**加入标签（新增立牌必须进汇总标签，否则图鉴/联动按标签检索时会漏）。
    - **配方统一使用 shape(`ShapedRecipeBuilder`)**:空白立牌/空白筹码(升级配方为上一级物品)始终在 3×3 **中央**;立牌骰子固定**中下**且只能 1 个;**非进阶**筹码基础配方中星币/星盘固定**最下一排**;原版材料对称填充;空槽用空格,禁止用 `_`。进阶筹码不适用本条,一律走「通用升级」模板(见「筹码一览 → 筹码配方规范」)。
-   - **配方网格必须全局唯一(2026-09-27 用户裁决「三组一起拆开」,必须遵守)**:两条「形状 + 材料完全相同、只有产出不同」的配方里,**原版合成台只会产出其中一条** —— `RecipeManager#getRecipeFor`(`RecipeManager.java:94-104`)取 `byType(CRAFTING)` 中**第一条** `matches()` 命中的配方,而 `byType` 是 `ImmutableMultimap`,其顺序来自 `SimpleJsonResourceReloadListener#prepare` 的 **`HashMap` 迭代序**(`SimpleJsonResourceReloadListener.java:32`)⇒ 另一条**永远合不出来**(连 JEI 里点它,合成台给的也是赢家)。⇒ **同档立牌不得照抄另一立牌的整张合成表**,填充材料必须换成该立牌专属材料(且该材料在同类配方中未被同格位使用);新增/改写配方后必须跑 `pwsh -NoProfile -File scripts/verify/verify_crafting_recipe_uniqueness.ps1`(⚠️ **必须在 `runData` 之后**,只看生成目录 + 手写目录)并保持 **0 重合**;该脚本已挂进 `scripts/test/TESTING-SPEC.md` §9 静态守门清单。**已修的三组实例**:`zhao_sign` 保留 `GCG/RER/ZPZ` ⇒ `teru_sign` 改 `GCG/LEL/ZPZ`(**荧石**;2026-09-23 由荧石粉改)、`padman_sign` 保留 `WYW/TET/TDT` ⇒ `nardis_sign` 改 `CYC/TET/TDT`(仙人掌)、`fen_sign` 保留 `RPR/RER/GDG` ⇒ `mamushi_sign` 改 `SPS/SES/GDG`(**海晶灯**;2026-09-23 由海晶碎片改)。
+   - **配方网格必须全局唯一(2026-09-27 用户裁决「三组一起拆开」,必须遵守)**:两条「形状 + 材料完全相同、只有产出不同」的配方里,**原版合成台只会产出其中一条** —— `RecipeManager#getRecipeFor`(`RecipeManager.java:94-104`)取 `byType(CRAFTING)` 中**第一条** `matches()` 命中的配方,而 `byType` 是 `ImmutableMultimap`,其顺序来自 `SimpleJsonResourceReloadListener#prepare` 的 **`HashMap` 迭代序**(`SimpleJsonResourceReloadListener.java:32`)⇒ 另一条**永远合不出来**(连 JEI 里点它,合成台给的也是赢家)。⇒ **同档立牌不得照抄另一立牌的整张合成表**,填充材料必须换成该立牌专属材料(且该材料在同类配方中未被同格位使用);新增/改写配方后必须跑 `python scripts/verify/verify_crafting_recipe_uniqueness.py`(⚠️ **必须在 `runData` 之后**,只看生成目录 + 手写目录)并保持 **0 重合**;该脚本已挂进 `scripts/test/TESTING-SPEC.md` §9 静态守门清单。**已修的三组实例**:`zhao_sign` 保留 `GCG/RER/ZPZ` ⇒ `teru_sign` 改 `GCG/LEL/ZPZ`(**荧石**;2026-09-23 由荧石粉改)、`padman_sign` 保留 `WYW/TET/TDT` ⇒ `nardis_sign` 改 `CYC/TET/TDT`(仙人掌)、`fen_sign` 保留 `RPR/RER/GDG` ⇒ `mamushi_sign` 改 `SPS/SES/GDG`(**海晶灯**;2026-09-23 由海晶碎片改)。
 7. **禁止**将中文名直译为英文标识符（如把"护法"写成 guardian、"扫地机"写成 sweeper）——一律使用约定 id。
 8. 若立牌有专属卡牌/事件等联动，专属卡注册到 `RandomCardHandler.registerExclusiveCard`；事件的**统一附加效果**(触发后 +星币/给牌等)接入 `AstralEventSystem.onEventTriggered`(事件本体由立牌自行实现，2026-09-12 起已无事件类型注册表)。
 9. 需指定目标的技能(占星师/秘密侦探/枪匠)在**当前主线**用"待命"等待器(`SIGN_READY_TYPE`/`SIGN_READY_EXPIRE` 附件 + `haiqing_ready`/`bonnie_ready`/`moses_ready` 提示效果,等待期内攻击目标即释放);**2.0.0 开发线(`multi-dev-next` / `wt/2.0.0-vnext`)**已改为注册 `TargetSelectionAction` 到 `TargetSelectionRegistry` 并经 `TargetSelectionManager.start` 进入目标选择模式(见「目标选择器规范」)。按所在分支选择实现,勿混用两套。
@@ -1435,7 +1435,7 @@ When extending this workspace:
   1. **实现**:`event/ModTooltipHandler.addChargeCounter(tooltip, player)`(共享辅助方法,内部走 `addSignCounter`;`player` 为空自动跳过)。每个充能筹码的 `stack.is(...)` 分支在其 `addChipLines` 描述之后各调用一次。
   2. **lang key(中英成对)**:`tooltip.astral_dice.chip.charge` —— 中文 `"当前充能：§e%s§7 / §e%s§r"`、英文 `"Current Charge: §e%s§7 / §e%s§r"`。
   3. **参数与顺序**:`ChargeManager.getStacks(player)`(当前层数)在前、`GameplayConstants.CHARGE_MAX_STACKS`(上限 20)在后,顺序不得颠倒。
-  4. **排版与配色(统一格式)**:位于该筹码 tooltip **末尾**,前置一个空行(`addSignCounter` 自动插入),即「描述(可多行)→ 空行 → `当前充能: X / 20`」;标签「当前充能」为普通灰 `§7`、数值为黄 `§e`、` / ` 分隔符为灰、行尾以 `§r` 完整复位(实测两版本 zh/en 行尾均为 `§r`;`§r` 位于值串末尾、不影响显示,`scripts/audit/tooltip_color_audit.ps1` 的 R0 规则不判违规)。
+  4. **排版与配色(统一格式)**:位于该筹码 tooltip **末尾**,前置一个空行(`addSignCounter` 自动插入),即「描述(可多行)→ 空行 → `当前充能: X / 20`」;标签「当前充能」为普通灰 `§7`、数值为黄 `§e`、` / ` 分隔符为灰、行尾以 `§r` 完整复位(实测两版本 zh/en 行尾均为 `§r`;`§r` 位于值串末尾、不影响显示,`scripts/audit/tooltip_color_audit.py` 的 R0 规则不判违规)。
   5. **禁止**:省略计数器、改标签文字、改颜色或分隔符、把上限改成配置项或硬编码非 `CHARGE_MAX_STACKS` 的值、为单个筹码另写一份计数器。
 - **死亡不丢失**:`PlayerLifecycleHandler` 死亡前调用 `ChargeManager.preserveOnDeath`、重生时 `restoreAfterDeath` 恢复层数(内存态 `UUID → 层数` 映射;`clearDeathPreserved` 为登出/异常路径兜底)。
 - **冷却接入点**:立牌主动入口经 `WeirdDiceHandler.signCooldownTicks` 与 `MosesSignItem.signCooldownTicks` 调用 `ChargeManager.signCooldownTicks`(**先封顶、再按诡异骰子减半**);效果牌入口在 `item/card/EffectCardPeriod` 设置冷却处与 `ModTooltipHandler.effectCardCooldownSeconds` 统一调用 `ChargeManager.effectCardCooldownTicks`。**新增立牌主动/效果牌冷却入口时必须走这些方法**,否则充能上限不生效。
@@ -1620,7 +1620,7 @@ When extending this workspace:
 6. **三语 + P0 两线同批**：zh 改完必须同批改 `en_us` / `ja_jp`（键集一致、行结构与染色位置一致）；P0 = `neoforge-1.21.1` + `forge-1.20.1` 同批；P1 两线（26.1.2 / fabric）待用户下达。
 7. **手册分档（Patchouli）**：`astral_dice.guide.entry.*` 是查阅面，允许比 tooltip 详细（可以写「怎么算」），但同样禁止把内部实现细节写成玩家文案。⚠️ 2026-10-26 **只**精简了 tooltip，手册条目是否同口径**待用户裁决**（欠账见交接正本 §5）。
 8. **自检三问**：① 这句删掉，玩家会玩不出来吗？（不会 ⇒ 删）② 这句在解释内部实现吗？（是 ⇒ 删）③ 超了行数预算吗？（超 ⇒ 先删解释）。
-9. **守门**：`python -B tools/verify_sign_balance_changes.py` 对 4 个受裁决角色（dorothy / jill / deepseek / nancy）的 **tooltip 键**按精简口径检查（关键事实必须出现 + 黑名单措辞不得复活）；**手册键仍按详细口径**检查。染色另跑 `scripts/audit/tooltip_color_audit.ps1`。
+9. **守门**：`python -B tools/verify_sign_balance_changes.py` 对 4 个受裁决角色（dorothy / jill / deepseek / nancy）的 **tooltip 键**按精简口径检查（关键事实必须出现 + 黑名单措辞不得复活）；**手册键仍按详细口径**检查。染色另跑 `scripts/audit/tooltip_color_audit.py`。
 落地流程、实现细节词表与校验见技能 `astral-dice-tooltip-optimizer`；染色另见 `tooltip-color-rules`。
 
 ## 动作栏（ActionBar）口径 — 必须遵守（2026-09-29 成文）
@@ -1639,7 +1639,7 @@ When extending this workspace:
 5. **`withStyle` 在 `MutableComponent` 上，不在 `Component` 接口上**：写法只能是「`Component.translatable(...).withStyle(...)`」（`translatable` 返回 `MutableComponent`）。把样式套在**形参类型为 `Component`** 的变量上会编译失败（`符号: 方法 withStyle(ChatFormatting)` 位置: 类型为Component的变量）⇒ 需要着色的 helper 其形参类型要写 `MutableComponent`，或把着色放到调用点。
 6. **取证**：动作栏是客户端可见状态，服务端探针判不了；改动的可断言面 = 语言键存在性（三线 × 三语）+ `msg`/`hud` 前缀值内 `§` 计数为 **0** + 开 jar 核对。
    守门脚本：**`python tools/audit_actionbar.py`（退出码 0 = 通过）** —— 一次跑齐三条硬约束（值内禁 `§` / 键三线×三语齐 / 原版覆盖层通道白名单），实现要点：扫「helper 名并集 + 直接构造 + 原版通道」三类落点、**先去注释再扫**（否则 26.1.2 javadoc 里的 `{@code sendOverlayMessage(...)}` 会误报）、**排除以 `.` 结尾的动态拼接键**（`"msg.astral_dice.fanny_event." + roll`）；新增动作栏 helper 必须登记进该脚本的 `HELPERS`，否则其调用点的键会被漏扫（假绿）。键数由脚本自行报告，**规范里不写死数字**（各分支键数不同，写死必然漂移）。
-   另跑 `tools/check_lang_sync.ps1`（0 = 通过，注意它走 `[Console]::Out.Write` ⇒ 须 `[Console]::SetOut([StringWriter])` 捕获）与 `scripts/audit/tooltip_color_audit.ps1`。
+   另跑 `python -B tools/check_lang_sync.py`（0 = 通过，stdout 直接读）与 `python -B scripts/audit/tooltip_color_audit.py`。
 
 7. **位置与时长（2026-10-03 用户裁决，必须遵守）**：模组动作栏的文字基线取 **`guiHeight-68`**（与原版 actionbar 同高）。
    原版 hotbar **物品名提示**固定在 `guiHeight-59` 且随护甲/血量行上移；此前本模组写 `58` ⇒ 二者**仅差 1px**，
@@ -1663,19 +1663,19 @@ When extending this workspace:
 
 - 语言文件位于 `src/main/resources/assets/astral_dice/lang/`:`zh_cn.json`(中文)、`en_us.json`(英文)与 `ja_jp.json`(日语,2026-09-22 起三线各一份);三者 key 必须一一对应(**以 `zh_cn.json` 为基线**)。
 - **每次手动修改 `zh_cn.json` 必须同步修改 `en_us.json`**:同一 lang key 的中英文本保持对应(内容、换行结构、占位符 `%s`/`%%`、彩色代码 § 尽量一致)。
-- **lang 值中的字面百分号必须写成 `%%`（2026-09-21 已实机崩溃，红线）**:单个 `%` 经 `I18n.get`/`String.format` 会抛异常 —— 在**帕秋莉手册文本**路径上显示 `Format error: ...`，在**本模组自己的 tooltip 组装路径**上（`ModTooltipHandler.translationString` 无条件 `String.format`，事件链上无人接异常）**直接崩客户端**。实测：1.21.1 把鼠标指向创造物品栏里的「教主立牌」即崩（`UnknownFormatConversionException: Conversion = '§'`，`tooltip.astral_dice.sign.teru_active` 的 `§e50%§7`，见 `run/1.21.1/crash-reports/crash-2026-09-21_15.12.05-client.txt`）。⚠️ **裸 `%` 有两种抛错形态**：`%` 后跟 `§`/中文 → `UnknownFormatConversionException`；`%` 后跟「空格 + 字母」（英文文案 `50% of …`）会被解析成「带空格标志的 `%o`」→ `MissingFormatArgumentException`。两种都必须按 `%%` 修。`check_lang_sync.ps1` 对未转义的单 `%` **输出 `[FAIL]` 且退出码 1**（2026-09-21 由 WARN 升为 FAIL，因为它是必然的客户端崩溃源）；`translationString` 另有 `escapeStrayPercents` 兜底（把非法 `%` 就地转义），故第三方资源包改坏 lang 也只会显示字面 `%`，不再崩游戏。⚠️ **加固范围**：全仓「对 lang 值做 `String.format`」只有 `translationString` 一个站（三线各一份），2026-09-21 只加固了**发布线两处**（1.21.1 + 1.20.1）；**`neoforge-26.1.2` 的 `ModTooltipHandler.translationString`（约 `:240`）仍未加固** —— 该线今天不会崩（lang 内 0 个裸 `%`），但其新文案再写裸 `%` 仍会崩客户端 ⇒ **登记为待办**，按三线优先级待发布线内容完成后迁移（迁移 = 把发布线那段 `VALID_PERCENT` + `escapeStrayPercents` 原样搬过去，改动仅限该方法）。**该加固仍在待办（本轮未做）。**⚠️ 白名单 `%(?:%|\d+\$[sdbfxoeg]|[sdbfxoeg])` 是**刻意收窄**的集合（与闸门逐字一致，本仓只用 `%s`）：要引入 `%-5s`/`%02d`/`%.2f`/`%S`/`%n` 这类 Java 合法写法，**必须同时扩代码白名单与 `check_lang_sync.ps1` 的扫描口径**，否则会被闸门判为违规、或被代码转义成字面量。
+- **lang 值中的字面百分号必须写成 `%%`（2026-09-21 已实机崩溃，红线）**:单个 `%` 经 `I18n.get`/`String.format` 会抛异常 —— 在**帕秋莉手册文本**路径上显示 `Format error: ...`，在**本模组自己的 tooltip 组装路径**上（`ModTooltipHandler.translationString` 无条件 `String.format`，事件链上无人接异常）**直接崩客户端**。实测：1.21.1 把鼠标指向创造物品栏里的「教主立牌」即崩（`UnknownFormatConversionException: Conversion = '§'`，`tooltip.astral_dice.sign.teru_active` 的 `§e50%§7`，见 `run/1.21.1/crash-reports/crash-2026-09-21_15.12.05-client.txt`）。⚠️ **裸 `%` 有两种抛错形态**：`%` 后跟 `§`/中文 → `UnknownFormatConversionException`；`%` 后跟「空格 + 字母」（英文文案 `50% of …`）会被解析成「带空格标志的 `%o`」→ `MissingFormatArgumentException`。两种都必须按 `%%` 修。`check_lang_sync.py` 对未转义的单 `%` **输出 `[FAIL]` 且退出码 1**（2026-09-21 由 WARN 升为 FAIL，因为它是必然的客户端崩溃源）；`translationString` 另有 `escapeStrayPercents` 兜底（把非法 `%` 就地转义），故第三方资源包改坏 lang 也只会显示字面 `%`，不再崩游戏。⚠️ **加固范围**：全仓「对 lang 值做 `String.format`」只有 `translationString` 一个站（三线各一份），2026-09-21 只加固了**发布线两处**（1.21.1 + 1.20.1）；**`neoforge-26.1.2` 的 `ModTooltipHandler.translationString`（约 `:240`）仍未加固** —— 该线今天不会崩（lang 内 0 个裸 `%`），但其新文案再写裸 `%` 仍会崩客户端 ⇒ **登记为待办**，按三线优先级待发布线内容完成后迁移（迁移 = 把发布线那段 `VALID_PERCENT` + `escapeStrayPercents` 原样搬过去，改动仅限该方法）。**该加固仍在待办（本轮未做）。**⚠️ 白名单 `%(?:%|\d+\$[sdbfxoeg]|[sdbfxoeg])` 是**刻意收窄**的集合（与闸门逐字一致，本仓只用 `%s`）：要引入 `%-5s`/`%02d`/`%.2f`/`%S`/`%n` 这类 Java 合法写法，**必须同时扩代码白名单与 `check_lang_sync.py` 的扫描口径**，否则会被闸门判为违规、或被代码转义成字面量。
 - 新增/删除 lang key 时两侧必须同步新增/删除;禁止只改一侧。
 - **三线的 lang 默认保持一致**(便于对照维护);允许的差异只有「某条描述依赖版本专有的原版内容」——已登记一处:(a) 复仇之戟 `tooltip.astral_dice.chip.revenge_halberd` 与 `guide.entry.revenge_halberd_chip.{1,2}`:1.20.1 缺 6 个 1.21 新增效果,见「筹码一览 → 无流派 → 复仇之戟」;新增差异必须同步登记到 AGENTS.md,禁止随手分叉。
 - ⚠️ 上述差异**在日语侧同样存在**,翻译时不能三线共用一份:`temp/ja/gen_ja_lang.py` 的 `OVERRIDE` 已按线覆盖这些键。
 - ⚠️ **对齐不变量:三线 × 三语共 805 键逐键一致、取值 diff = 0(2026-09-23 `/astralparty finishsigncooldown` +2)(2026-09-22 怪力侦探批 +1:`msg.astral_dice.sherry_bad_ground`)(2026-09-22 复核;原 805 —— 当日交付清理删掉了只服务于已删测试钩子的 3 条 `msg.astral_dice.target_select.skill.test_echo_{player,enemy,living}`)**。比对必须**逐键比取值**,不能只比键集 —— 26.1.2 的 lang 早期用「缺键就补」的方式同步,**已有键的取值从不回改**,于是单侧漂移会只增不减。当日已据此删除 26.1.2 单侧多出的 3 处**实现细节注释**(属「多余注释」,一律不进 tooltip / 手册):(a) `energy_recycler` 的「单 tick 位移过大视为传送,不累计」(`tooltip.astral_dice.chip.energy_recycler` 与 `guide.entry.energy_recycler_chip.1`);(b) `tooltip.astral_dice.sign.moses_passive` 的首行「装备时,主动技能冷却时间减为 120 秒」—— 该被动(「精密技巧」,`MosesSignItem.ACTIVE_COOLDOWN_SECONDS = 120`)**照旧生效**,只是不进 tooltip(tooltip 唯一基准 = 玩家原文)。配套删除了 `temp/ja/gen_ja_lang.py` 的 `neoforge-26.1.2` 覆盖块(**不要加回来**,否则重跑会把注释写回 ja);该脚本现只剩 `forge-1.20.1` 覆盖块。⚠️ **键序仍未对齐**(不影响运行,JSON 对象无序):26.1.2 把 `hud.astral_dice.target_select.*`(6 键)与 `msg.astral_dice.target_select.*`(38 键)两段放在文件后段,1.20.1 / 1.21.1 放在中段 ⇒ 逐行 `diff` 仍不干净;若要收口需**同时**重排线的 `en_us.json` 并重跑日语生成器(ja 的键序派生自各线 zh 的键序)。
-- 修改后必须运行同步检查:`pwsh -NoProfile -File tools/check_lang_sync.ps1 -LangDir <子项目>/src/main/resources/assets/astral_dice/lang`(对被修改的子项目执行;key 不一致退出码非 0);CI(build.yml)在构建前也会自动对**三个子项目**(`neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2`,三线各一步)执行该检查,key 不一致会导致 CI 失败。
-- 🚨 **删除 lang 键之前，必须先查「谁在引用它」——尤其帕秋莉手册**（2026-10-01 实测缺陷）：本仓已有**两处**「删了 lang 键、手册页没跟着删」的事故 —— `guide.entry.special_effects.6`（随「效果待定」机制取消而删）与 `guide.entry.teru_sign.3`（随「手册无效注释全面清理」而删），两处都使**游戏内手册页直接显示原始键名**（`astral_dice.guide.entry.*`）。⚠️ **`tools/check_lang_sync.ps1` 查不出这类问题**（它只比三语之间的键集，不负责「手册引用 ⊆ lang」）。⇒ 删键前先 `grep -rn "<键名>" */src/main/resources/assets/astral_dice/patchouli_books/`，删完后跑 **`python tools/audit_patchouli_keys.py`**（三线手册引用 ⊆ 同线三语 lang；0 = 通过）。
+- 修改后必须运行同步检查:`python tools/check_lang_sync.py -LangDir <子项目>/src/main/resources/assets/astral_dice/lang`(对被修改的子项目执行;key 不一致退出码非 0);CI(build.yml)在构建前也会自动对**三个子项目**(`neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2`,三线各一步)执行该检查,key 不一致会导致 CI 失败。
+- 🚨 **删除 lang 键之前，必须先查「谁在引用它」——尤其帕秋莉手册**（2026-10-01 实测缺陷）：本仓已有**两处**「删了 lang 键、手册页没跟着删」的事故 —— `guide.entry.special_effects.6`（随「效果待定」机制取消而删）与 `guide.entry.teru_sign.3`（随「手册无效注释全面清理」而删），两处都使**游戏内手册页直接显示原始键名**（`astral_dice.guide.entry.*`）。⚠️ **`tools/check_lang_sync.py` 查不出这类问题**（它只比三语之间的键集，不负责「手册引用 ⊆ lang」）。⇒ 删键前先 `grep -rn "<键名>" */src/main/resources/assets/astral_dice/patchouli_books/`，删完后跑 **`python tools/audit_patchouli_keys.py`**（三线手册引用 ⊆ 同线三语 lang；0 = 通过）。
 - **默认自动本地提交、不推送 GitHub**:每次改动完成后由代理自动执行本地提交(见「子项目修改默认规则」),但**不执行 `git push`**。
 
 ### 日语（ja_jp）本地化 — 2026-09-22 起三线各一份
 
 - **文件**：三线 `lang/ja_jp.json`（各 **803 键**；2026-09-22 怪力侦探批后基线，原 802 → 更早 805），**以 `zh_cn.json` 为基线**（键集必须完全一致）。`key.categories.astral_dice`（1.20.1/1.21.1）与 `key.category.astral_dice.main`（26.1.2）是**预期平台差异键**，各线各留其一。
-- **守门**：`tools/check_lang_sync.ps1` **已扩展**为「zh 基线 + `en_us` + 可选 `ja_jp`」——ja 的 key 集合与**未转义字面 `%`** 同口径判 `[FAIL]`（`%` 是崩溃红线，见上条），结构标记差异仅 `[WARN]`；ja 不存在时工具行为与旧版完全一致。**已做反例验证**（临时植入裸 `%` / 删一个键 ⇒ 均 `[FAIL]` + 退出码 1）。
+- **守门**：`tools/check_lang_sync.py` **已扩展**为「zh 基线 + `en_us` + 可选 `ja_jp`」——ja 的 key 集合与**未转义字面 `%`** 同口径判 `[FAIL]`（`%` 是崩溃红线，见上条），结构标记差异仅 `[WARN]`；ja 不存在时工具行为与旧版完全一致。**已做反例验证**（临时植入裸 `%` / 删一个键 ⇒ 均 `[FAIL]` + 退出码 1）。
 - **生成方式**：`temp/ja/gen_ja_lang.py`（**逐行定点写，禁 `json.dump` 整写**；UTF-8 无 BOM / CRLF / 2 空格缩进 / 每 key 独占行 / 末尾换行）；翻译数据在 `temp/ja/t_*.py`。脚本自带三道校验：键集覆盖、换行数/`§`/`%` 与**各线自己的中文原文**守恒。
 - **专有名词一律取官方日语名**（《星引擎派对》英文名 Astral Party，**日服 2025-05-20 开服**，日文名「アストラルパーティー」）：角色 / 世界术语 / 有官方名的筹码。术语表与来源见 `docs/i18n/`：`ja-terms.json`（机器可读）、`ja-glossary.md`（角色与世界术语）、`ja-items.md`（物品）。**权威源 = B站《吉星派对》wiki 的结构化 `日文名` 字段 + 日服玩家实测文章**（note.com）；⚠️ wiki.gg 的日文名有 3 处复制错误（Fen/Padman/Mimi 被写成同一个名），不可采信。
 - **「立牌」= `スタンド`**（2026-09-22 用户裁决：沿用原有名词，**不用**「看板／支架」）；「看板娘」这一角色直接用其官方日语名 **ミミ**。立牌名统一 = `<角色官方日语名>のスタンド`（如 `jasmine_sign` → ジャスミンのスタンド、`mimi_sign` → ミミのスタンド、`blank_sign` → 空白のスタンド）。
@@ -1835,7 +1835,7 @@ When extending this workspace:
           ⚠️ 与 TO/Iceberg 不同,它**没有任何资源包级扩展点**(`MuiModApi` 里没有 tooltip 相关 API)⇒ 只能走状态注入。
         · ✅ **范围:四线均已落地(2026-10-04 收口)** —— 1.21.1 / 1.20.1 / fabric 三线**有** `client/RarityTooltipFrame`(原生路径写 `RenderTooltipEvent.Color` 的 borderStart/End);**26.1.2** 的平台只提供 `RenderTooltipEvent.Texture`(贴图 id)、**没有颜色事件**(1.21.1 的 `Color` 已被取代),但 Modern UI 是**自绘**(实测有 26.1.2 构建,`UIManagerForge` 的接管链与 1.21.1 同构)⇒ 该线改走同一个 `client/ModernUITooltipCompat`(对接 Modern UI 自身的 `sStrokeColor`),是**该线唯一的档位边框染色途径**。⚠️ 判据教训:**「平台有无某事件」≠「第三方模组是否影响本模组」** —— 第三方自绘时不经过平台事件,必须看它自己的接管链(下载实物 jar + `javap`)。
   - ⚠️ **附魔不再升档**:原版「附魔升一档」的 switch 只覆盖原版 4 档,自有档走 `default` 原样返回(三线一致,可接受)。
-  - ⚠️ **解析面耦合(改语法必改)**:`scripts/verify/ChipCommon.psm1` 与 `scripts/verify/verify_bountiful_pools.ps1`
+  - ⚠️ **解析面耦合(改语法必改)**:`scripts/verify/ChipCommon.psm1` 与 `scripts/verify/verify_bountiful_pools.py`
     **正则解析 `ModItems` 的 `.rarity(...)`** 推断档位(前者决定进阶配方模板,后者核对赏金池数据层 rarity)⇒ 调用语法一变必须同步
     「正则 + 大写档名归一 + 表键(`UNCOMMON`→`LEGENDARY`)」,否则闸门按 COMMON 计算 ⇒ **假红/假绿**。
   - **赏金数据层**:稀有 → `RARE`、史诗 → `EPIC`、传奇 → `LEGENDARY`、普通 → `COMMON`(一一对应);
@@ -2022,7 +2022,7 @@ When extending this workspace:
   - `bounty_pools/bountiful/astral_rews.json`:可兑换奖励池(**astral_objs ∪ 全部卡牌 ∪ 非「不进池档」筹码 ∪ 非「不进池档」立牌 —— 专属牌除外**);
   - `bounty_pools/bountiful/astral_currency.json`:填充货币池(**`currency: true`**;星币/袋装星币/星盘/黄金星盘,供「奖励价值不足时补齐差额」—— 见「奖励机制」段);
   - `bounty_decrees/bountiful/astral.json`:悬赏令(objectives=`astral_objs`, rewards=`astral_rews`)。
-- **入池判定(闭集规则)**——`scripts/verify/verify_bountiful_pools.ps1` 是唯一守门(0 = 一致):
+- **入池判定(闭集规则)**——`scripts/verify/verify_bountiful_pools.py` 是唯一守门(0 = 一致):
   - `objs` = 非「不进池档」骰子 + 货币 4 项(`star_coin`/`star_coin_bag`/`star_plate`/`golden_star_plate`);
   - `rews` = `objs` + 全部卡牌(**卡牌同样受 `$EXCLUDED_TIERS` 档位约束，且专属牌一律除外** —— 「卡牌不受档位限制」是 2026-09-26 前的旧口径)+ 非「不进池档」筹码 + 非「不进池档」立牌;
   - ⚠️ **「不进池档」= 巅峰(`ASTRAL_DICE_PINNACLE`) + 奇特(`ASTRAL_DICE_BIZARRE`)** —— 这两档的**骰子/筹码/立牌**一律不进任何池
@@ -2040,7 +2040,7 @@ When extending this workspace:
   - 卡牌:中 300、稀有 1500~1800、史诗 4000~6000、传奇 9000~10000;筹码:稀有 1200~1500、史诗 3500~4500;立牌:稀有 1200~1600、史诗 3500~4500;**传奇筹码/立牌 10000**。
   - ⚠️ **2026-09-28 卡牌品阶重排后的 `unitWorth` 待裁决项**:本轮把 9 张卡下调档位(攻击/防御-中·特大 + 狂暴/以毒攻毒/你有我有 → 蓝;王之力 金→紫),但**未同步调整 `unitWorth`** —— 那是独立的赏金经济数值,用户本轮只要求改档位 ⇒ 按本条「同品质价值带」这 9 条**已越带**:
     `attack_card_medium` / `defense_card_medium` = 300(蓝带应 1500~1800);`attack_card_epic` / `defense_card_epic` / `effect_card_you_have_i_have` = 4600、`effect_card_fight_poison_with_poison` = 5000、`effect_card_berserk` = 5400(蓝带应 1500~1800);`effect_card_king_power` = 9500(紫带应 4000~6000)。
-    `verify_bountiful_pools.ps1` **不校验「档位 ↔ `unitWorth`」**(只校验池集合、数据层 rarity 映射与价值平衡式)⇒ 三线仍 **ALL OK**,故这是**约定层面的偏差、不是守门失败**。待裁决:① 保持现值(赏金收益不变);② 按新档位重映射 `unitWorth`(会改变赏金收益)。
+    `verify_bountiful_pools.py` **不校验「档位 ↔ `unitWorth`」**(只校验池集合、数据层 rarity 映射与价值平衡式)⇒ 三线仍 **ALL OK**,故这是**约定层面的偏差、不是守门失败**。待裁决:① 保持现值(赏金收益不变);② 按新档位重映射 `unitWorth`(会改变赏金收益)。
   - ⚠️ 2026-09-25 重排(用户裁决「每档价值带不重叠、材料品质与兑换物品质对应」):卡牌/筹码/立牌价值带按「每档不重叠、与骰子品质对齐」整体重排——原卡牌稀有 600~1800/史诗 1500~4500/传奇 2000~6500、筹码史诗 2400~3400、立牌史诗 1600~3500 与骰子带严重重叠,导致「材料品质↔兑换物品质」脱钩(传奇材料骰子 24000 可能换到传奇卡牌 2000,倒挂 12 倍)。
 - **价值平衡式**(必须保持,Bountiful 加载时校验,违反会告警 `top value rewards cannot be matched`):
   `astral_objs` 最高价值条目(1 条,`amount.max × unitWorth`) ≥ `astral_rews` 最高价值(2 条之和) × 0.9。当前:传奇骰子(objs)24000 ≥ (传奇骰子 12000 + 传奇骰子 12000) × 0.9 = 21600 ✓(重排后卡牌最高 10000、筹码/立牌 10000 均未超过传奇骰子 12000)。
@@ -2282,7 +2282,7 @@ When extending this workspace:
 3. 整合包根目录不存在时（如 CI 环境）`pushToGame` 自动跳过并仅输出警告，不影响构建。⚠️ 因此**静默不部署**是最容易发生的形态，且**本类缺口已实测复发两次**：① 26.1.2 侧长期指向并不存在的 `D:\.minecraft\versions\26.1.2-NeoForge_26.1.2.109`；② **2026-09-29 实测** —— 1.20.1 与 26.1.2 两侧**同时**指向已不存在的 `1.20.1 模组测试` / `26.1.2 模组测试`（整合包目录已被重命名为带平台后缀的 `1.20.1-Forge 模组测试` / `26.1.2-NeoForge 模组测试`），产物停在上次路径尚存在的时刻。⇒ **`packModsDir` 禁止凭命名规则推测**：换机、整合包改名或新开子项目后，必须 `ls D:/.minecraft/versions/` 核对**本机实测存在**的目录名，并在构建日志里确认出现 `pushToGame: pushed … -> <目标>` 一行（两条线都要各看一遍——只改一侧是常见疏漏），**不得只看 `BUILD SUCCESSFUL`**。
 4. forge-1.20.1 子项目产物分两级：`pushToDevRun` 取 `build/devlibs` 未重混淆 jar（dev 环境 Mojmap 名），`pushToGame` 取 `build/libs` 重混淆 jar（生产 SRG 名），推错方向会 `NoSuchFieldError`——不要改动该取值逻辑。
 5. **禁止自动启动 runClient / 冒烟测试（自动化测试流程子配置例外）**：无流程的手动 runClient / 冒烟测试一律禁止，游戏内验证默认由用户手动运行；**仅当经「自动化测试流程（Automated Testing）」子配置（见下方章节）启动的自动化 runClient 允许**，且必须按该流程执行并产出报告。
-   **⚠️ 2026-09-27 用户裁决——进一步收紧：禁用批量编排，改为纯手动下达命令。** 测试台保留「单条用例执行」与「手动命令注入」两种能力，**禁掉一切自动批量编排**。落地形式 = **运行时闸门**（可开关恢复，改动可逆可审计），拦截清单与放行清单见 `scripts/test/TESTING-RULES-OVERVIEW.md` §3.1。要点：
+   **⚠️ 2026-09-27 用户裁决——进一步收紧：禁用批量编排，改为纯手动下达命令。** 测试台保留「单条用例执行」与「手动命令注入」两种能力，**禁掉一切自动批量编排**。落地形式 = **运行时闸门**（可开关恢复，改动可逆可审计），拦截清单与放行清单见 `scripts/test/TESTING-RULES-OVERVIEW.md（已删除 2026-11-05）` §3.1。要点：
 
    | 被拦 | 触发形态 | 拒因 |
    |---|---|---|
@@ -2310,7 +2310,7 @@ When extending this workspace:
 完成一个新版本的功能/修复后，由代理自动执行（无需用户逐项指示）：
 1. 更新两个更新日志文件（`CHANGELOG_ZH.md` + `CHANGELOG.md`，条目一一对应）；
 2. 递增**四个**子项目 `gradle.properties` 的 `mod_version`（`deploy.ps1 -Target neoforge|forge` 可自动递增 `x.y-SNAPSHOT.N` / `x.y.z-rcN` / `x.y.z`，或用 `-Version` 显式指定；四线保持同号，后缀各自为 `+neoforge_1.21.1` / `+forge_1.20.1` / `+neoforge_26.1.2` / `+fabric_1.20.1`；⚠️ `deploy.ps1` **只存在于发布线（`multi-main`）树根**（2026-10-06 实测 8824 B）；本工作树若无此文件，以其实际为准）；
-3. 若改过 lang 文件，分别对**四个**子项目跑 `pwsh -NoProfile -File tools/check_lang_sync.ps1 -LangDir <子项目>/src/main/resources/assets/astral_dice/lang`；
+3. 若改过 lang 文件，分别对**四个**子项目跑 `python tools/check_lang_sync.py -LangDir <子项目>/src/main/resources/assets/astral_dice/lang`；
 4. `gradlew build` 同时编译并部署**四个**版本(fabric-1.20.1 与另三线同规则)——`pushToDevRun` / `pushToRootBuild` / `pushToGame`(整合包) 均默认随 build 自动触发（整合包推送仅发布线分支执行，本流程即运行在发布线上；失败则回滚版本号，不提交）；
 5. **自动本地提交**（`deploy.ps1` 自动提交 `release: v<版本>`，或手工 `chore: bump version to X.Y.Z` 等），**默认不执行 `git push`**。
 
@@ -2351,614 +2351,531 @@ When extending this workspace:
 
 - **已删除**：`tools/modrinth_upload.py`、`tools/modrinth.json`；`tools/update_store_page.py` 的 Modrinth PATCH 分支（现只保留 CurseForge 的计划打印）；`.modrinth/` 本地凭据目录仍被 `.gitignore` 忽略（本地缓存，不是发布链路）。
 - **CI 现状（已实测）**：`.github/workflows/build.yml` 里 `modrinth` / `curseforge` 关键字命中各 **0** —— 只有 tag + 两个 GitHub Release 步骤；上方原文里「末步 `Publish to Modrinth`」在本仓**当前工作树中不存在**（历史描述）。
-- **保留（不是发布链路，禁止误删）**：`maven.modrinth:` **依赖源**（四线 `build.gradle` 共 43 处）、`scripts/test/mt_env.ps1` 的测试模组下载、`tools/check_mod_sources.ps1` 与 `scripts/verify/verify_probe_class_refs.ps1` 的 Maven 源校验、`ref/**` 参考源。
+- **保留（不是发布链路，禁止误删）**：`maven.modrinth:` **依赖源**（四线 `build.gradle` 共 43 处）、`scripts/test/mt_env.ps1` 的测试模组下载、`tools/check_mod_sources.py` 与 `scripts/verify/verify_probe_class_refs.py` 的 Maven 源校验、`ref/**` 参考源。
 - **历史 id（只作考古，禁止再用）**：主项目 `5xDtrJ8X`、库项目 `2dIXA5wO`；「版本标题统一 = `<namePrefix> <基础版本>`」「`version_type` 由版本后缀派生」等 Modrinth 侧口径随链路一并作废。
 - **现行唯一商店发布通道 = CurseForge**：`tools/curseforge_upload.py`（子命令 `push` / `update-info`，默认 dry-run，`--apply` 才写）。⚠️ 2026-10-23 实测：python urllib 打 `minecraft.curseforge.com/api/**` 会被 Cloudflare 按 **TLS/HTTP 指纹**拦成恒 403「Just a moment...」，而 `curl.exe` 直连 200 ⇒ 该脚本已内置 curl 回退（`--noproxy *` 直连优先、代理兜底；多部分表单必须 `-F "metadata=<tmpfile"`，内联 JSON 会被判 400）。
 - **发布后核对**：`api.cfwidget.com/minecraft/mc-mods/<slug>` 有缓存延迟（实测新上传件立刻查仍只显示旧件），判据以 Upload API 返回的 `fileId` + 稍后复查为准。
 
 ## 自动化测试流程（Automated Testing）— 必须遵守（子配置）
-> ⚠️ **2026-10-18 通道变更（用户指令）：实机测试的运行时求值主通道 = AutoJS（MCP，`http://127.0.0.1:25585/mcp`），KubeJS 注入降为 legacy。** 新用例一律 `"channel": "autojs"`（`eval_js` / `await_state` / `mcp_status` 原语 + `eval` / `state` 断言）；端点没起记 **BLOCKED** 而非 FAIL。**mixin / crash / 禁 AI 审计 / vision 四类日志判据不得用 eval 取代**。规范正本：`scripts/test/TESTING-SPEC.md` §7A、`scripts/test/TESTING-RULES-OVERVIEW.md` §15；存量用例迁移欠账：`docs/features/autojs-legacy-debt.md`。
 
-### 测试资产清零与重建（2026-09-20 用户指令清零；此后按批次重建，现行有效）
+> **2026-11-05 重写**：本章已按现行 **bash + python** 测试台整体重写（Windows 侧跑在 MSYS2 / Git Bash，Linux 侧原生 bash）。旧 PowerShell 资产（`scripts/test/mt.ps1`、`scripts/test/lib/Mt.*.psm1`、`scripts/verify|devtools|tools` 下的 `.ps1`/`.psm1`）已于 2026-11-04 **全部退役并删除**，退役登记见 `docs/features/devnext-pwsh-retirement-register.md`。本章不再包含任何可执行的 pwsh 命令；凡见到 `mt.ps1` / `-File` / `-Version` 一类写法，一律当作**历史溯源**，不是现行入口。
+>
+> **调用约束**：本项目只允许通过 `ops_bash` 调用工具（见〈命令执行规范（Shell）〉）。禁止用 PowerShell 7 执行任何测试命令。
 
-> 用户指令原文：「执行项目与AGENTS自检：清理所有测试项，已进行或未进行的测试项全部作废并删除，删除所有插针和测试项脚本，包括游戏环境中插入的kubejs脚本。保留测试规则，由用户对测试流程和规则进行核验，将完整的测试流程和规则向用户完整展示。」
+> ⚠️ **2026-10-18 通道变更（用户指令）：实机测试的运行时求值主通道 = AutoJS（MCP，`http://127.0.0.1:25585/mcp`），KubeJS 注入降为 legacy。** 新用例一律 `"channel": "autojs"`（`eval_js` / `await_state` / `mcp_status` 原语 + `eval` / `state` 断言）；端点没起记 **BLOCKED** 而非 FAIL。**mixin / crash / 禁 AI 审计 / vision 四类日志判据不得用 eval 取代**。规范正本：`scripts/test/TESTING-SPEC.md` §7A、`scripts/test/TESTING-RULES-OVERVIEW.md（已删除 2026-11-05）` §15；存量用例迁移欠账：`docs/features/autojs-legacy-debt.md`。
 
-**已删除（主树 `multi-1.20.1-1.21.1` 与工作树 `multi-dev-next` 两处同步执行）**
+### 0. 三分钟上手（唯一入口）
 
-- 全部测试条目：`scripts/test/cases/*.json`（含 `.mt_*` 运行态）——清零时在册 0 条（**此后各批次已重建**，现行数量以 `scripts/test/cases/` 实测为准）；
-- 全部探针与测试脚本（源码侧）：`scripts/test/resources/kubejs/<版本>/server_scripts/astral_*.js`；
-- 游戏环境内已注入的副本：`run/<版本>/kubejs/{server_scripts,startup_scripts}/astral_*.js`；
-- 历史测试报告：`scripts/test/reports/<运行id>/`（保留模板 `_template.md`）；
-- 会话期测试证据：`temp/` 下的测试证据目录与日志。删除清单：`temp/cleanup-manifest-20260920-*.txt`。
+```bash
+# 单阶段（最常用；--version 缺省 = 按登记顺序逐条跑）
+bash scripts/test/win/mt.sh --version 1.21.1 --phase env        # 阶段 E：装兼容模组 + 重建世界
+bash scripts/test/win/mt.sh --version 1.21.1 --phase build      # 阶段 B：gradlew :<子项目>:classes + 产物校验
+bash scripts/test/win/mt.sh --version 1.21.1 --phase launch     # 阶段 L：起客户端 + 等就绪 + 进世界
+bash scripts/test/win/mt.sh --version 1.21.1 --phase cases --case scripts/test/cases/X-1.21.1.json
+bash scripts/test/win/mt.sh --version 1.21.1 --phase report     # 阶段 R：收集证据 + 出结论
+bash scripts/test/win/mt.sh --version 1.21.1 --phase stop --force --purge-saves   # 收停 + 清存档
 
-**结论效力**：2026-09-20 之前的一切自动化 / 游戏内测试结论**全部作废**，不得作为验收依据；本文件下文与 `TESTING-SPEC.md` 中出现的用例名、探针命令与读数一律只作历史记录。
+# 全流程（四线顺序 + 门控；--allow-auto 过批量闸门）
+bash scripts/test/win/mt.sh --allow-auto
 
-**保留（供用户核验）**：测试流程实现与规则文本原样保留；2026-09-21 起用户已逐批授权重建用例与探针。
+# fabric 双 run 目录 / 显式开 AutoJS 注入
+bash scripts/test/win/mt.sh --version fabric-1.20.1 --side server --phase launch
+bash scripts/test/win/mt.sh --version fabric-1.20.1 --enable-autojs --phase launch
 
-**可运行性（2026-10-11 订正）**：用例与探针已随各批次重建，`--phase cases` / `--phase launch` 照常可用；本段「清零」仅作废 2026-09-20 之前的测试结论，之后重建资产的实测读数照常有效（改动后旧证据仍按〈子代理与测试环境硬规则〉第 6 条作废）。
+# 只看会执行什么（不启动任何进程）
+bash scripts/test/win/mt.sh --version 1.21.1 --phase build --dry-run
+```
 
-**完整展示**：`scripts/test/TESTING-RULES-OVERVIEW.md`（2026-09-20 生成）。
+**登记版本**（`scripts/test/lib/mt_paths.py:26` `VERSIONS`，顺序即批量顺序）：`1.21.1` → `1.20.1` → `26.1.2` → `fabric-1.20.1`。**默认测试端 = 1.21.1**，日常验证一律显式 `--version 1.21.1`；26.1.2 只在平台差异专项（图形 / 渲染栈 / 26.1.2 专属 API）时使用。`fabric-1.21.1` 尚未接入本编排（该线是新移植线，实机入口待接入后再写进本表）。
 
-- ⚠️ **测试环境必须窗口模式**（2026-09-21 实测 + 用户裁决）：`run/<版本>/options.txt` 的
-  `fullscreen` 必须为 `false`。全屏会让 `mt_inject` 的键鼠注入**完全送不到**（全屏切换换窗口句柄/焦点），
-  launch 阶段硬闸门 `MT_preflight-op` 因此稳定 FAIL —— 症状极具迷惑性：脚本自发的 tick 心跳
-  （`AP_NOAI`）照常出现在 `latest.log`，唯独「注入命令」没有任何 `AP_*` 回应，极易误诊为「探针未加载」。
-  已由 `mt_env.ps1` 的 `Invoke-MtWindowedEnforce`（→ `Set-MtFullscreenDisabled`）在**冷启动之前**幂等强制。
-- ⚠️ **冒烟测试结束后直接杀死游戏进程**（2026-09-21 用户裁决）：不得让 runClient 驻留。
-  用例**不得**设 `on_fail=keep_game_running`（该值会落 `.mt_keep_alive`，使 `--phase stop` 只提示不执行、
-  现场保留成常驻进程）；标准收尾仍是 `mt.ps1 --version <V> --phase stop --purge-saves`。
+**退出码（全台统一，脚本只用这一套）**：
 
-针对**三个子项目**（**三线同级、都必须跑**；执行顺序 `neoforge-1.21.1` → `forge-1.20.1` → `neoforge-26.1.2`，逐线出结论）的客户端渲染/输入类功能，以及任意**新增内容**与**用户指定内容**的真实游戏自动化验证。经本流程启动的自动化 `runClient` 属于「编译产物上传规则」第 5 条的**例外**；无流程的手动冒烟仍禁止。
+| 退出码 | 含义 |
+|---|---|
+| `0` | OK |
+| `1` | FAIL（断言 / 构建 / 收尾失败） |
+| `2` | 用法错误或执行器 ERROR |
+| `10` | PREFLIGHT（前置检查不通过） |
+| `11` | BLOCKED（环境/能力缺失，本机无法判定，不放行） |
+| `12` | TIMEOUT（到预算上限） |
+| `130` | 中断（Ctrl-C） |
 
-- **测试分支（任意分支均可，2026-09-17 用户裁决「移除二重验证白名单，允许该分支执行」）**：分支**不再是前置门槛** —— 阶段 P 的分支检查已由强断言改为**信息性回显 + WARN**（发布线 `multi-1.20.1-1.21.1` 直接回显分支名；其它分支如 `multi-dev-next` 回显实际分支名并给 WARN 说明），**一律放行、不拦停**。报告「分支」一栏取运行时的实际分支名（读取失败回落 `unknown`），不再写死发布线。其余前置断言（输入法 / 遗留进程 / MCP 二进制 / 模组来源闸门 / Gradle 包装器 / 兼容栈 / run 可写）**逐条保留、一项未减**。
-- **脚本语言**：全流程为纯 **PowerShell 7（pwsh）**，不使用 bash / python。平台特异的输入注入集中在 `mt_inject.ps1` / `mt_ime.ps1` 内以 P/Invoke 实现，工具链为 Windows-only（历史上的 bash + python 版本已于 2026-09-12 全部移除；旧脚本归档包见 `docs/archive/legacy_scripts_20260912.zip`）。
-- **「长按」类回归必须真的按住，且必须有对照步（2026-09-14 实测教训，必须遵守）**：`mt_inject.ps1 key -Key rclick -HoldMs N` 曾**静默忽略** `-HoldMs`（始终 down→100ms→up 的单击），于是「长按右键」类用例走不到原版 4 tick 自动重复分支，用**单击也能"通过"**——判据形同虚设。现已按 `w` 键同口径实现按住语义（`-HoldMs 0` 保留旧行为，输出行回显按住时长）。凡结论依赖"重复触发"的用例，必须附一条**对照步**证明重复真的发生（如生存模式投 16 枚鸡蛋长按 3 秒后必须只剩 1 枚；创造模式下物品不消耗，**不能**用作对照）。
+**机器行族（供报告与断言消费，勿改格式串）**：`MT_ERROR:` / `MT_INFO:` / `MT_WARN:` / `MT_PHASE:` / `MT_RUN:` / `MT_VERSION_VERDICT:` / `MT_AUTO_DISABLED:` / `MT_DEPRECATED:`（旧 pwsh 委托标记，P2–P4 后已无产出）/ `MT_<阶段>: OK|FAIL|BLOCKED|TIMEOUT|ERROR`。收停另有 `WIN_STOP: OK`（`scripts/test/win/lib/common.sh:156` 的 `mt_winstop()`），**不是**旧口径的 `MT_STOP: OK`。
 
-### 变更分级与验证口径（2026-09-19 用户裁决）— 必须遵守
-> 📌 2026-09-20 登记（S9）：本节为开发线 `multi-dev-next` 专属口径，发布线 AGENTS.md 无对应节；是否回移待用户裁决。
+**四个批量闸门（2026-09-27 规则，逐字保留）**：① 无 `--phase` 的全流程；② `--phase cases` 未带 `--case`；③ `--phase report`；④ 无 `--version` 的单阶段 —— 一律拦下并 `exit 2`，除非显式 `--allow-auto`。这不是防呆，是防「无意识跑满四条线把机器占住」。
 
-> **核心口径（2026-09-19 二次裁决修订 —— 用户要求「减少非首要测试项目，将代码变更不直接影响的模块测试推迟或取消，仅执行最小测试」）**：
-> ① **非核心功能修改不执行冒烟测试**（= 不启动游戏、不跑 `scripts/test` 的自动化流程）。
-> ② **核心修改默认只跑「定向最小冒烟」**：**只运行与该改动直接触及的模块相对应的用例**；**与改动无直接关系的模块一律不在本批运行**（默认**取消**并在附录 A 登记，**不计入未完成/遗留项**；确实需要的才登记为**推迟**并写明触发条件）。
-> ③ 判据是「改动是否触及**运行期行为**」，**不是文件扩展名**；**「不影响」必须举证**（见下方第 7 条），**拿不准的按更高一级处理**（宁可多跑）。
+### 1. 测试资产清账（2026-09-20 清零结论仍有效）
+
+> 用户指令原文：「执行项目与AGENTS自检：清理所有测试项，已进行或未进行的测试项全部作废并删除……保留测试规则……将完整的测试流程和规则向用户完整展示。」
+
+- **2026-09-20 之前的一切自动化 / 游戏内测试结论全部作废**，不得作为验收依据；本章与 `TESTING-SPEC.md` 里出现的旧用例名与旧读数一律只作历史记录。
+- 「清零」只作废旧结论 —— 用例与探针已随各批次重建，`--phase cases` / `--phase launch` 照常可用；**重建后的实测读数照常有效**（改动后旧证据仍按〈子代理与测试环境硬规则〉第 6 条作废）。
+- 现行用例清单以 `scripts/test/cases/*.json` 实测为准；规范正本 `scripts/test/TESTING-SPEC.md`；规则总览 `scripts/test/TESTING-RULES-OVERVIEW.md（已删除 2026-11-05）`。
+
+- ⚠️ **测试环境必须窗口模式**（2026-09-21 实测 + 用户裁决）：`run/<版本>/options.txt` 的 `fullscreen` 必须为 `false`。全屏会让键鼠注入**完全送不到**（全屏切换换窗口句柄 / 焦点），launch 阶段硬闸门因此稳定 FAIL —— 症状极具迷惑性：脚本自发的 tick 心跳照常出现在 `latest.log`，唯独「注入命令」没有任何回应，极易误诊为「探针未加载」。env 阶段在**冷启动之前**幂等强制（`scripts/test/win/lib/common.sh` 的窗口化强制逻辑）。
+- ⚠️ **冒烟测试结束后直接杀死游戏进程**（2026-09-21 用户裁决）：不得让 runClient 驻留。用例**不得**设 `on_fail=keep_game_running` —— 现行 bash 收停链路（`win/stop.sh`）**并不读取** `cases/.mt_keep_alive-<版本>` 标记，设了它只会让现场悄悄留成常驻进程（标记只有 `mt_preflight.py` 的前置检查会看见并报 FAIL）；标准收尾仍是 `mt.sh --version <V> --phase stop --purge-saves`。
+- **测试分支（任意分支均可，2026-09-17 用户裁决）**：分支**不再是前置门槛** —— 阶段 P 的分支检查只作**信息性回显 + WARN**，一律放行、不拦停。报告「分支」一栏取运行时实际分支名（读失败回落 `unknown`）。其余前置断言（输入法 / 遗留进程 / 模组来源闸门 / Gradle 包装器 / 兼容栈 / run 可写）**逐条保留、一项未减**。
+- **「长按」类回归必须真的按住，且必须有对照步（2026-09-14 实测教训）**：旧注入器曾**静默忽略** hold 时长（始终 down→100ms→up），于是「长按右键」类用例走不到原版自动重复分支，用单击也能「通过」——判据形同虚设。现行 `scripts/test/mt_inject.py` 用 `--hold-ms` 表达按住（`--hold-ms 0` = 保留单击行为，输出行回显按住时长）。凡结论依赖「重复触发」的用例，必须附一条**对照步**证明重复真的发生（如生存模式投 16 枚鸡蛋、长按 3 秒后必须只剩 1 枚；创造模式下物品不消耗，**不能**用作对照）。
+
+### 2. 变更分级与验证口径（2026-09-19 用户裁决）— 必须遵守
+
+> **核心口径（2026-09-19 二次裁决 —— 用户要求「减少非首要测试项目……仅执行最小测试」）**：
+> ① **非核心功能修改不执行冒烟测试**（不启动游戏、不跑 `scripts/test` 的自动化流程）。
+> ② **核心修改默认只跑「定向最小冒烟」**：只运行与该改动直接触及的模块对应的用例；与改动无直接关系的模块一律本批**取消**（不计入未完成/遗留项）。
+> ③ 判据是「改动是否触及**运行期行为**」，**不是文件扩展名**；「不影响」必须举证；拿不准按更高一级处理。
 
 | 级别 | 典型改动 | 必需验证（缺一不可） | 不执行 |
 |---|---|---|---|
-| **非核心** | ① 工具链/脚本：`scripts/**`、`tools/**`；② 纯文本与文案：`**/lang/*.json`、tooltip 文案（lang 键值、卡牌/立牌 tooltip 行）、帕秋莉手册内容（`**/patchouli_books/**`）；③ 文档：`*.md`（`AGENTS.md` / `CHANGELOG*` / `TESTING-SPEC.md` 等）、`docs/**`；④ 代码注释 / javadoc；⑤ 测试夹具：`scripts/test/resources/**`、`scripts/test/cases/**` | 受影响子项目 `gradlew build`（随 build 的 `pushToDevRun` / `pushToRootBuild` / `pushToGame` 链不变）+ 相关**静态**闸门（`scripts/devtools/Test-MtSyntax.ps1`；改过 lang 必跑 `tools/check_lang_sync.ps1`）+ 自动本地提交 | **冒烟测试 / 游戏内自动化流程一律不跑**：阶段 L（`--phase launch`）、阶段 C（`--phase cases`）、`mt.ps1` 全流程。⚠️ 注：**改过 `scripts/test/**` 自身**（含工具链）属工具链类，`Test-MtSyntax.ps1` 的 `PARSE-OK` 与闸门自检（`MT_AUTO_DISABLED` 拒/放行各若干项）即为其静态验证，**不因此启动游戏** |
-| **核心（默认 → 定向最小冒烟）** | 玩法逻辑与数值、网络与协议、存档/同步、注册表与数据组件、mixin、客户端渲染与输入、**数据包内容**（`src/main/resources/data/**`：配方 / 伤害类型 / 标签 / 战利品 / 进度）、`build.gradle` 的行为性改动 | ① 构建；② **只跑与该改动直接相关的用例**（映射与举证见下方第 7 条；已迁移 26.1.2 的内容按 §13.2 只对**该改动相关**的读数做比对）；③ 一旦启动游戏，**必须**通过 `mt_launch` 固有的启动期硬闸门（noai 生物 AI / 史莱姆压制 / preflight 各项），**不得**以「最小测试」为由跳过 | **与改动无直接关系的模块用例**（本批取消并登记；确需者按第 8 条登记为推迟） |
-| **完整冒烟（例外 —— 命中即必须跑全清单）** | ① **发版 / Release 批次**；② **跨模块公共路径**（共享前置库 `starengine_lib`、注册表与数据组件结构、网络协议、存档/读档结构、全局伤害结算出入口如 `DiceCombatEvents`）；③ **门槛类规则自身改动**（版本互通门槛、加载器门槛、mixin 目标串、`mods.toml` / `neoforge.mods.toml` 的依赖区间）；④ **用户显式要求**；⑤ **26.1.2 迁移 / 三线一致性验收批次** | 构建 + 本规范全流程（阶段 L + 阶段 C **全清单**，按下方「测试顺序」表三线各一遍，逐线出结论） | — |
+| **非核心** | ① 工具链/脚本：`scripts/**`、`tools/**`；② 纯文本与文案：`**/lang/*.json`、tooltip 文案、帕秋莉手册内容；③ 文档：`*.md`、`docs/**`；④ 代码注释 / javadoc；⑤ 测试夹具：`scripts/test/resources/**`、`scripts/test/cases/**` | 受影响子项目 `gradlew build`（随 build 的 `pushToDevRun` / `pushToRootBuild` / `pushToGame` 链不变）+ 相关**静态**闸门（改过 lang 必跑 `python tools/check_lang_sync.py`；改过测试台本身跑「语法与守门自检」见下）+ 自动本地提交 | **冒烟测试 / 游戏内自动化流程一律不跑**：阶段 L、阶段 C、`mt.sh` 全流程 |
+| **核心（默认 → 定向最小冒烟）** | 玩法逻辑与数值、网络与协议、存档/同步、注册表与数据组件、mixin、客户端渲染与输入、**数据包内容**（`src/main/resources/data/**`）、`build.gradle` 的行为性改动 | ① 构建；② 只跑与该改动直接相关的用例（举证见第 7 条）；③ 一旦启动游戏，**必须**通过启动期硬闸门（noai 生物 AI / 史莱姆压制 / preflight 各项），不得以「最小测试」为由跳过 | 与改动无直接关系的模块用例（本批取消并登记） |
+| **完整冒烟（例外 —— 命中即必须跑全清单）** | ① 发版 / Release 批次；② 跨模块公共路径（共享前置库 `starengine`、注册表与数据组件结构、网络协议、存档/读档结构、全局伤害结算出入口）；③ 门槛类规则自身改动（版本互通门槛、加载器门槛、mixin 目标串、`mods.toml` / `neoforge.mods.toml` 依赖区间）；④ 用户显式要求；⑤ 版本迁移 / 多线一致性验收批次 | 构建 + 本规范全流程（阶段 L + 阶段 C 全清单，按「测试顺序」逐线各一遍，逐线出结论） | — |
+
 **边界与例外（必须遵守）**：
 
-1. **同一提交内以最高级别为准**：非核心改动与核心改动在同一批（同一 commit）时，整批按**核心**处理。
-2. **`assets/**/lang/*.json` 与 `**/patchouli_books/**` 属非核心，`src/main/resources/data/**` 属核心** —— 前两者只改玩家可见**文本**（语言条目、手册正文），后者直接改玩法（配方 / 伤害类型 / 标签 / 掉落 / 进度）；**不得**按扩展名一刀切。
+1. **同一提交内以最高级别为准**：非核心改动与核心改动在同一批时，整批按**核心**处理。
+2. **`assets/**/lang/*.json` 与 `**/patchouli_books/**` 属非核心，`src/main/resources/data/**` 属核心** —— 前两者只改玩家可见文本，后者直接改玩法；**不得**按扩展名一刀切。
 3. **tooltip 属非核心**（用户明确列入）：只改 tooltip 文案/染色时免冒烟；但 tooltip 若是**用户指定要验证**的内容，则按「用户指定内容」走自动化流程。
-4. **注释 / javadoc 属非核心**，且「只改注释 ⇒ 类字节不变 ⇒ Gradle 报 `…:jar UP-TO-DATE`」是**正常结果**（见上方「前置库配对」条），`Start-SelfTest.ps1` 已按 UP-TO-DATE 放行；**不要**为了「让 jar 时间戳变新」而 `clean` 重编。
-5. **免冒烟 ≠ 免验证**：非核心改动仍必须**构建通过 + 静态闸门全绿**（`TESTING-SPEC.md` §9），并且不得据此跳过 CHANGELOG 同步、双版本对等等既有约定。
-6. **等级可自查**：`pwsh -NoProfile -File scripts/test/mt_scope.ps1`（缺省读工作区变更，另有 `--staged` / `--paths <相对路径…>`）按本表回显级别与「必需验证 / 跳过项 / 何时必须升级为完整冒烟」。该脚本**只读、只建议**（退出码恒 0），与本节冲突时**以本节为准**。
-7. **「不影响」的举证责任（2026-09-19 新增，必须遵守）**：要把某模块排除在最小集之外，必须给出**可证伪的影响面证据** —— 至少是「改动的入口符号 → 全仓调用点/消费点**双侧枚举** → 与用例的映射」。只有枚举结果为空、或全部落在同一模块内时，才允许只跑该模块的用例。**禁止**用「大概不影响」「以前也没坏」来缩小范围；**拿不准就按高一级**（必要时直接按完整冒烟）。**先例（可照抄的做法）**：`allow_firearm_damage` 只改 `SpellDamageRegistry.isSpellDamage()` 的第一道判定，实测该函数在两条发布线**各只有 2 个消费点**（`DamageEffectCardHandler` / `SatelliteChipItem`）⇒ 最小集只取覆盖这两条路径与相邻结算的 7 条用例（`SPELL-TRUE-DAMAGE` / `RAILGUN`×3 / `HOSTILE-TARGET-NEUTRAL` / `LIVING-PAGE` / `CARD-SELECTOR`），其余用例本批**取消**。
-8. **取消 vs 推迟（必须写进批次记录）**：默认是**取消**本批运行，并在附录 A 记一行「按最小测试规则未运行 ×N（与改动无关）」，**不计入未完成/遗留项**；只有当某项在可预见窗口内确实需要时（即将发版 / 下一批会触及该模块 / 用户点名）才登记为**推迟**，并写明触发条件。**禁止**把「取消」写成「遗留问题」反复追讨。
-9. **最小集 ≠ 免验证**：`gradlew build` + §9 静态闸门照旧必跑；启动期硬闸门（noai / slimeguard / preflight）属 `mt_launch` 的一部分，**不得**跳过。改动触及**共享前置库**或**跨模块公共路径**时，直接按「完整冒烟」那一行处理。
-10. **二重验证不因本条缩减**：用户要求二重验证时，**第一轮「独立代码验证」照旧完整**（与用例数量无关）；只有**第二轮游戏内验证**按本条的定向最小集执行。
-11. **非核心改动不写「未做游戏内验证」为遗留项**：按本条免冒烟的批次，交付说明里只写「按变更分级（非核心）未执行冒烟」，**不再**列为待办或未完成事项。
-12. **构建与冒烟测试一律由主 agent 执行，禁止放进 subagent（2026-09-19 用户裁决，必须遵守）**：`scripts/test` 的阶段 P / B / E / L / C / R（含 `mt_build`、`gradlew build`、`--phase launch`、`--phase cases`、`mt.ps1` 全流程）**必须**由主 agent 亲自执行 —— 目的是让**改动与测试过程对用户可见**。subagent 只负责**代码修改**（读码/改码/自检），**不得**运行构建或任何游戏内流程；三线代码全部改完后由主 agent 统一构建三线、跑静态闸门与（核心改动）三线冒烟。构建失败时**优先**把错误回报给该文件所属 subagent 修，其已结束或连续两次未修好时主 agent 可接手，并在交付说明里记明接手原因。 ⛔ **2026-10-12 口径修订**：本条中「subagent 只负责**代码修改**（读码/改码/自检）…三线代码全部改完后由主 agent 统一构建三线」的**前半段作废**（现行见〈子代理与测试环境硬规则〉第 7 条：P0 基准线 `neoforge-1.21.1` 的实现同样派子代理（2026-10-12 二次裁决：主 Agent 不亲自写代码），子代理承担**实现、功能审查**与 P1/移植）；**「构建与冒烟测试一律由主 agent 亲自执行」部分继续有效**。
-### 测试顺序（必须遵守）
-> 📌 2026-09-20 登记（S9）：开发线工作树的 AGENTS.md 另有「变更分级与验证口径（2026-09-19 用户裁决）」节为本线专属，本文件未收录；规则文件对等性证据见 `temp/rules-parity-20260920.md`。
+4. **注释 / javadoc 属非核心**，且「只改注释 ⇒ 类字节不变 ⇒ Gradle 报 `…:jar UP-TO-DATE`」是**正常结果**，**不要**为了「让 jar 时间戳变新」而 `clean` 重编。
+5. **免冒烟 ≠ 免验证**：非核心改动仍必须**构建通过 + 静态闸门全绿**，且不得据此跳过 CHANGELOG 同步、多线对等等既有约定。
+6. **静态闸门与等级自查（2026-11-05 重订）**：静态闸门 = `python -B tools/check_lang_sync.py`（改过 lang）、`python -B tools/gen_agents_toc.py --check`（改过 `docs/agent/AGENTS-full.md` 的标题）、`bash -n scripts/test/win/*.sh scripts/test/win/lib/*.sh`（改过 bash）、`python -m py_compile`（改过 python）—— 全部为**不启动游戏**的自检。**变更分级自查脚本已退役**（原 `scripts/test/mt_scope.ps1` 随 pwsh 资产删除，按 2026-11-05 用户裁决「直接退役，后续按需求另写」），当前**无自动判级器**：**级别由执行者按本表人工判定并在批次记录里写明依据**。
+7. **「不影响」的举证责任（2026-09-19 新增，必须遵守）**：要把某模块排除在最小集之外，必须给出**可证伪的影响面证据** —— 至少是「改动的入口符号 → 全仓调用点/消费点**双侧枚举** → 与用例的映射」。只有枚举结果为空、或全部落在同一模块内时，才允许只跑该模块的用例。**禁止**用「大概不影响」「以前也没坏」来缩小范围；**拿不准就按高一级**。**先例（可照抄）**：`allow_firearm_damage` 只改 `SpellDamageRegistry.isSpellDamage()` 的第一道判定，实测该函数在两条发布线各只有 2 个消费点（`DamageEffectCardHandler` / `SatelliteChipItem`）⇒ 最小集只取覆盖这两条路径与相邻结算的 7 条用例，其余本批**取消**。
+8. **取消 vs 推迟（必须写进批次记录）**：默认是**取消**本批运行，并在附录 A 记一行「按最小测试规则未运行 ×N（与改动无关）」；只有当某项在可预见窗口内确实需要时才登记为**推迟**并写明触发条件。**禁止**把「取消」写成「遗留问题」反复追讨。
+9. **最小集 ≠ 免验证**：`gradlew build` + 静态闸门照旧必跑；启动期硬闸门（noai / slimeguard / preflight）属 launch 阶段的一部分，**不得**跳过。改动触及**共享前置库**或**跨模块公共路径**时，直接按「完整冒烟」处理。
+10. **二重验证不因本条缩减**：用户要求二重验证时，第一轮「独立代码验证」照旧完整（与用例数量无关）；只有第二轮游戏内验证按本条定向最小集执行。
+11. **非核心改动不写「未做游戏内验证」为遗留项**：交付说明里只写「按变更分级（非核心）未执行冒烟」，**不再**列为待办或未完成事项。
+12. **构建与冒烟测试一律由主 agent 执行，禁止放进 subagent（2026-09-19 用户裁决）**：阶段 P / B / E / L / C / R（含 `gradlew build`、`--phase launch`、`--phase cases`、`mt.sh` 全流程）**必须**由主 agent 亲自执行 —— 目的是让改动与测试过程对用户可见。subagent 只负责代码修改与代码侧复核，**不得**运行构建或任何游戏内流程。构建失败时优先把错误回报给该文件所属 subagent 修，其已结束或连续两次未修好时主 agent 可接手，并在交付说明里记明接手原因。⛔ **2026-10-12 口径修订**：本条「subagent 只负责代码修改……由主 agent 统一构建」的**前半段作废**（现行见〈子代理与测试环境硬规则〉第 7 条：P0 基准线的实现同样派子代理），**「构建与冒烟测试一律由主 agent 亲自执行」部分继续有效**。
+
+### 3. 测试顺序（必须遵守）
 
 | 顺序 | 版本 | 子项目 | 执行条件 | 结论要求 |
 |---|---|---|---|---|
 | 1 | `1.21.1` | `neoforge-1.21.1` | 前置检查通过 | 独立给出 PASS / FAIL |
 | 2 | `1.20.1` | `forge-1.20.1` | **1.21.1 判定 PASS**（门控） | 独立给出 PASS / FAIL |
+| 3 | `26.1.2` / `fabric-1.20.1` | 同名子项目 | 平台差异专项或用户指定时单独跑 | 独立给出 PASS / FAIL |
 
 - 1.21.1 未通过时，1.20.1 记为 `GATED`（因门控未执行），报告中显式标注为「未执行」而非「失败」——避免用未运行的版本污染结论。
-- 两版本结论与综合结论汇总在 `scripts/test/reports/<运行id>/SUMMARY.md`；每版本明细在同级 `<版本>/report.md`。
-- 退出码：两版本均通过 `0`；任一版本失败 `1`；综合报告未全部通过同样返回 `1`。
+- 结论汇总在 `scripts/test/reports/<运行id>/SUMMARY.md`；每版本明细在同级 `<版本>/report.md`。
+- 退出码：全部通过 `0`；任一版本失败 `1`；综合报告未全部通过同样返回 `1`。
 
-### 测试前清场（Pre-Test Field Cleanup）— 必须遵守
+### 4. 测试前清场（Pre-Test Field Cleanup）— 必须遵守
 
-**时机**：每次冷启动**进入世界之后、运行任何条目之前**做一次即可（同一会话内跑多条时，只需在第一条之前做；用例之间不必重复）。
+**时机**：每次冷启动**进入世界之后、运行任何条目之前**做一次即可（同一会话内跑多条时只在第一条之前做；用例之间不必重复）。
 
-**落地方式（2026-09-15 用户裁决）**：由 `mt_launch.ps1` 在检测到「已进入世界」后**自动执行** —— 默认连发两次 `/kill @e[type=!player,distance=..128]`（间隔 600ms；注入通道偶发丢失，见 `scripts/test/TESTING-SPEC.md` §10-17），并在日志打印 `MT_PRECLEAN: OK — …/SKIPPED/WARN` 供报告核对。**跳过用 `--no-preclean`**，仅限「必须保留世界实体」的特殊取证。
+**落地方式**：现行 bash 编排**不再自动清场**（旧 pwsh 的 `--preclean` 与 `MT_PRECLEAN` 机器行随资产删除一并消失，见 6.2 的「无替代」清单）。清场改为**用例内动作**：由条目在 setup 步骤里 `inject_command ""` 发 `/kill @e[type=!player,distance=..128]`（连发两次、间隔 ≥600ms），或由执行者手工发一次。**不要**指望 launch 阶段替你清场。
 
 手工补做（或换机制）时二选一：
 
-1. **`/kill` 清场**：`/kill @e[type=!player,distance=..128]`（清玩家 128 格内的非玩家实体：残留靶、散落物、常驻敌对生物）；去掉 `distance=..128` 即清全图。
-2. **难度切换清场**：`/difficulty peaceful` → 等 **≥1 秒**（敌对生物立即消失）→ `/difficulty <原难度>`。本仓库测试世界的难度是 **`easy`**（由 `mt_env.ps1` 生成 `server.properties` 写入），切回时不要凭记忆写别的值。
+1. **`/kill` 清场**：`/kill @e[type=!player,distance=..128]`（清玩家 128 格内的非玩家实体）；去掉 `distance=..128` 即清全图。
+2. **难度切换清场**：`/difficulty peaceful` → 等 **≥1 秒**（敌对生物立即消失）→ `/difficulty <原难度>`。本仓库测试世界的难度是 **`easy`**（由 env 阶段写 `server.properties`），切回时不要凭记忆写别的值。
 
-**为什么必须做**：`AP_*` 读数里有两类是**世界级差值**，会被任何残留实体污染 —— `self`（施放者 HP 的原始差值，**不区分伤害来源**）与 `bolt_delta`（**全局**雷击生成计数器的差值）。实测 1.20.1 testworld 里一只**常驻蜘蛛**在 `forced_survival` 下近战玩家，使一次 read 内 `php` 掉 6 点、`self` 非 0，一度被误判成「电磁炮雷击打到自己」（见 `scripts/test/TESTING-SPEC.md` §8.2-1 与 §10-18）。
+**为什么必须做**：`AP_*` 读数里有两类是**世界级差值**，会被任何残留实体污染 —— `self`（施放者 HP 原始差值，不区分伤害来源）与 `bolt_delta`（全局雷击生成计数器差值）。实测 1.20.1 testworld 里一只常驻蜘蛛在 `forced_survival` 下近战玩家，使一次 read 内 `php` 掉 6 点、`self` 非 0，一度被误判成「电磁炮雷击打到自己」。
 
 **禁止事项**：
 
 - **禁止**在用例的两次读数**之间**清场（会改变 `bolt_delta` 基线，前后读数不可比）；清场只能发生在**用例自身 setup 之前**。
-- 因此**不要**把清场写成用例内部的固定步骤：`/kill @e[type=!player]` 会连**掉落物 / 展示框 / 盔甲架**一起删。需要保留实体的用例改用**距离限定**或**难度切换**。
-- 1.21.1 的命令在 **tick 末**才生效（1.20.1 立即生效）：清场后必须 `wait ≥500ms` 再摆靶 / 读基线，且**不要**在同一 tick 里「清场 + 摆靶」。
+- **不要**把清场写成用例内部固定步骤：`/kill @e[type=!player]` 会连掉落物 / 展示框 / 盔甲架一起删。需要保留实体的用例改用**距离限定**或**难度切换**。
+- 1.21.1 的命令在 **tick 末**才生效（1.20.1 立即生效）：清场后必须 `wait ≥500ms` 再摆靶 / 读基线，**不要**在同一 tick 里「清场 + 摆靶」。
 - 用难度切换法时**必须切回原难度**（`easy`），否则会改变敌对生物伤害与刷新行为，污染后续用例。
 
-### 测试后收尾（Post-Test Teardown：关闭测试端 + 清理旧存档）— 必须遵守
+### 5. 测试后收尾（Post-Test Teardown：关闭测试端 + 清理旧存档）— 必须遵守
 
-> **2026-09-17 用户规则**：测试任务完成后**关闭测试端**并**清理旧存档数据**，**避免游戏进程长时间驻留**。
-
-**标准收尾命令（分步执行路线的必做动作）**：
+> **2026-09-17 用户规则**：测试任务完成后**关闭测试端**并**清理旧存档数据**，避免游戏进程长时间驻留。
 
 ```bash
-pwsh -NoProfile -File scripts/test/mt.ps1 --version <版本> --phase stop --purge-saves
+# 标准收尾（分步路线的必做动作）
+bash scripts/test/win/mt.sh --version <版本> --phase stop --purge-saves
+
+# 其它直调（实现层，注意二者不是同一套实现）
+python scripts/test/mt_cleanup.py status                    # 只看残留：0=干净 / 1=有残留 / 11=无法枚举（Windows 缺失）
+bash scripts/test/win/stop.sh --all --purge-saves           # 四条线全收（--version 与 --all 互斥）
 ```
 
-等价直调：`mt_cleanup.ps1 run --version <版本> --purge-saves`（或 `mt_stop.ps1 --version <版本> --purge-saves`）。
+- **全流程**（`mt.sh --allow-auto`，不带 `--phase`）**已自动收尾**：每个版本跑完都会 `mt_phase_stop`（`scripts/test/win/mt.sh:308`），最终统一走 `win/stop.sh`。**没有**额外的退出钩子层 —— `mt.sh:228` 明写「P1 简化点：不做全局 `--run-timeout` 预算、不做退出清理」，`trap` 只退编排层、**不动游戏进程**。
+- **分步执行**（`--phase launch` / `--phase cases` …）：单阶段默认**不**清理（客户端要跨阶段存活），故**最后一次读数之后必须显式跑收尾命令** —— 这是硬性纪律，不是建议。
+- **清理范围**（只动 `run/<版本>/` 内的世界目录，绝不碰 run 之外，也绝不碰种子包 `scripts/test/resources/testworld-seed-<版本>.zip`）：① `run/<版本>/saves/<世界名>`（客户端读取位置）；② `run/<版本>/<世界名>`（服务端生成世界的中间位置）；③ `run/<版本>/saves/` 下其它含 `level.dat` 的历史遗留世界（逐个回显后删除）。fabric 线另有 `fabric-1.20.1/run/<client|server>` 双侧目录。删除结果回显 `PURGE: removed <N>` / `PURGE: would-remove`（`--dry-run`）；python 手工链路（`mt_cleanup.py --purge-saves`）另打 `MT_CLEANUP_SAVES: PURGED <N>` / `KEPT`。
+- **为什么删得起**：与阶段 E「每次开新的自动化测试都必须重建世界」同源 —— 旧存档本来就必须重建，留着只会掩盖「忘了跑 env 世界重建」，还白占磁盘。
+- ⚠️ **两阶段/重登类用例（`CHIP-RELOG-*`）中途的 stop 禁止加 `--purge-saves`**：那类流程是 `saveall` → `stop`（**保留存档**）→ `launch` 读回，删了就没得读。故 `--phase stop` **默认不清理**，只有显式 `--purge-saves` 才清。
+- **失败取证标记（契约缺口，已知）**：`.mt_keep_alive` 的「只提示不执行」语义**目前只在 `mt_preflight.py` 与 `mt_cleanup.py` 里成立** —— 前置检查看见标记会判 FAIL 并给出原因，python 收停会 SKIP；但**显式 `--phase stop` 走的是 `win/stop.sh`，它不读标记、`--force` 也只是空赋值**（`stop.sh:37`、`:72`，`phases.sh:304-306` 还会打 `MT_INFO: STOP: --force 在 bash 侧是 no-op`）。⇒ 需要保留现场时**不要**跑 `--phase stop`，改用 `python scripts/test/mt_cleanup.py run --version <V>`；取证完 `--purge-saves --force` 释放。该缺口已登记，后续按需求补齐为 bash 侧读标记。
+- **不要在测试任务之间留着客户端**：进入世界后若长时间不再读数，进程会一直驻留（占内存/显卡，且下一次 launch 的前置检查可能因此中止）。这与「前置检查自动收停遗留进程」是两道互补保险，不能互相替代。
+- **收停是异步的**：`TerminateProcess` 返回 ≠ 进程已从进程表消失。`win/stop.sh` 用 `--grace`（默认 10 秒）在判残留前复核；慢退出的客户端否则会被误报 `WIN_STOP: RESIDUAL` / 退出码 1。python 手工链路 `mt_cleanup.py` 固定 `SETTLE_SECONDS = 20.0`（步长 0.5）。
+- **收停范围覆盖「专用服务端 / 数据生成 / run 任务包装器」**：判据有**两套实现**（不共用一个单点）—— bash 侧 `scripts/test/win/lib/common.sh:259-279` 的 `mt_cmdline_matches_version`（命令行含 `:<子项目>:` 或 `run/<v>` / `run\<v>`，fabric 另加 `run*client|server` 兜底）；python 侧 `scripts/test/lib/mt_compat.py:742-790` 的 `test_client_process` / `test_pipeline_process`（窗口标题含版本号，或 fabric `devlaunchinjector` / `KnotClient`，加 `gradle-wrapper.jar` + 运行入口）。⚠️ **只认 `run` 家族选择器** —— `:neoforge-1.21.1:build` 之类的构建任务不属于测试流程，**绝不能杀**（构建中途被收停会毁产物）。
 
-- **全流程**（`mt.ps1 --version <版本>`，不带 `--phase`）**已自动收尾**：退出清理走 `mt_cleanup.ps1 run --quiet --purge-saves`，即「收停本流程进程 + 清掉测试存档」一步到位，无需手工补命令。
-- **分步执行**（`--phase launch` / `--phase cases` …）：单阶段默认**不**清理（客户端要跨阶段存活），故**最后一次读数之后必须显式跑上面的收尾命令**——这是硬性纪律，不是建议。
-- **清理范围**（只动 `run/<版本>/` 内的世界目录，绝不碰 `run` 之外、也绝不碰种子包 `resources/testworld-seed-<版本>.zip`）：
-  1. `run/<版本>/saves/<世界名>`（客户端读取位置，`Mt.Paths.client_world`）；
-  2. `run/<版本>/<世界名>`（`runServer` 生成世界的中间位置，`Mt.Paths.server_world`）；
-  3. `run/<版本>/saves/` 下**其它**含 `level.dat` 的历史遗留世界目录（逐个回显后删除）。
-  删除结果以机器可读行 `MT_CLEANUP_SAVES: PURGED <N>` / `MT_CLEANUP_SAVES: KEPT（未指定 --purge-saves）` 回显，便于报告核对。
-- **为什么删得起**：与阶段 E「**每次开新的自动化测试都必须重建世界**，不接受复用上一轮存档」同源——旧存档本来就必须重建，留着只会掩盖「忘了 `mt_env world`」，还白占磁盘。
-- ⚠️ **两阶段/重登类用例（`CHIP-RELOG-*`）中途的 `stop` 禁止加 `--purge-saves`**：那类流程是 `saveall` → `stop`（**保留存档**）→ `launch` 读回，删了存档就没得读。故 `--phase stop` **默认不清理**，只有显式 `--purge-saves` 才清（`--keep-saves` 可显式写回默认）。
-- **失败取证优先**：`.mt_keep_alive` 标记存在时（条目 `on_fail=keep_game_running`），进程收停与存档清理**都只提示、不执行**，现场留给取证；取证完用 `--phase stop --force --purge-saves` 释放。
-- **不要在测试任务之间留着客户端**：进入世界后若长时间不再读数，游戏进程会一直驻留（占内存/显卡，且下一次 `launch` 的前置检查可能因此中止）——**任务结束即收尾**；这与「前置检查会自动收停遗留进程」是两道互补的保险，不能互相替代。
-- **收停是异步的**：`TerminateProcess` 返回 ≠ 进程已从进程表消失，故 `mt_cleanup` 在判残留前会**最多等 20 秒**再复核（否则慢退出的客户端会被误报成 `RESIDUAL`/退出码 1）。
-- **收停范围覆盖「专用服务端 / 数据生成 / run 任务包装器」（2026-09-17 实测缺口）**：旧判据只认**客户端入口** ⇒ `mt_env world`（或两段式数据生成）起的 `runServer` 包装器与服务端 JVM **永远杀不掉**；实测跑完 env 后两者双双存活，且孙进程仍持有父进程 stdout 句柄，把 `mt.ps1 --phase env` **卡死**（子进程早已退出、父进程一直等）。现由 `Mt.Proc.psm1` 的 `Test-MtPipelineProcess` 统一判定（① 客户端沿用最严格判定；② 含 `gradle-wrapper.jar` 且含 `:<子项目>:run` 的包装器；③ 入口 `net.neoforged.devlaunch.Main` 的本版本 JVM），`mt_cleanup` 的「收停后自检」也改用同一判据（否则既杀不掉也检不出）。⚠️ **只认 `run` 家族选择器**——`:neoforge-1.21.1:build` / `:neoforge-26.1.2:build` 之类的构建任务不属于测试流程，**绝不能杀**（构建中途被收停会毁产物）。
+### 6. 工具链（`scripts/test/`；脚本入库，仅 `mt.conf`、`reports/*`、`cases/.mt_*` 为本地忽略的运行时产物）
 
-### 工具链（`scripts/test/`；脚本本身入库，仅 `mt.conf`、`reports/*`、`cases/.mt_*` 为本地忽略的运行时产物）
-⚠️ **默认测试端 = 1.21.1**（2026-10-07 用户裁决「将默认测试端改回 1.21.1」）：`Mt.Paths.psm1` 的 `$script:VERSIONS = @('1.21.1', '1.20.1', '26.1.2')` 以 1.21.1 为首，不带 `--version` 时 `mt.ps1` 按该顺序对三线批量执行同一阶段；`Start-SelfTest.ps1` 的 `$Version` 默认值也是 1.21.1。**日常验证一律显式 `--version 1.21.1`**，26.1.2 只在平台差异专项（图形/渲染栈/26.1.2 专属 API）时使用。
+#### 6.1 三层分工（2026-11-04 定稿）
 
-#### 脚本职责
+| 层 | 位置 | 职责 | 现行实现 |
+|---|---|---|---|
+| 编排层 | `scripts/test/win/mt.sh` | 唯一入口：阶段路由、版本顺序与门控、批量闸门、退出码归一、`--allow-auto` | **bash 原生** |
+| 阶段层 | `scripts/test/win/{env,build,launch,stop,live}.sh` + `lib/{common,phases,fabric}.sh` | 装模组 / 建世界 / 起客户端 / 等就绪 / 收停 / fabric 双目录与实机批次编排 | **bash 原生** |
+| 能力层 | `scripts/test/mt_*.py` + `scripts/test/lib/mt_*.py` | 前置检查、构建守护、注入、断言、用例执行、截图、报告、清理、条目生成 | **python 原生** |
+
+> 与旧 pwsh 台的关系：机器行、退出码、开关面**逐字对齐**；唯一差异是「能力缺口记 BLOCKED(11)」——`--channel native`（窗口定位 / user32 合成输入）随 pwsh 资产删除而失效，见 6.2 与第 9 节。
+
+#### 6.2 脚本职责（现行实现）
 
 | 脚本 | 语言 | 职责 | 不做什么 |
 |---|---|---|---|
-| `mt.ps1` | pwsh | **唯一入口**：阶段编排、版本顺序与门控、结果汇总 | 不含任何断言逻辑 |
-| `lib/Mt.Phase.psm1` | pwsh | 阶段标记（`MT_*` 单行输出）、计时、退出码常量 | 无副作用 |
-| `lib/Mt.Paths.psm1` | pwsh | 唯一路径/版本来源；**截图世代清单**读写；**进程判据**单点；含 `mt.conf` 解析（`Mt.Conf.psm1`） | 无副作用 |
-| `lib/Mt.Proc.psm1` | pwsh | 外部命令执行助手：原始字节取回 + UTF-8 容错解码；后台进程/日志重定向；按版本精确收停 | 不含流程逻辑 |
-| `lib/Mt.Win32.psm1` | pwsh | Win32 API 封装(窗口/前台/输入) | 不含流程逻辑 |
-| `mt_preflight.ps1` | pwsh | 前置检查（分支/输入法可用性/遗留进程/注入通道 MCP 二进制/模组来源口径/Gradle 包装器/兼容栈/可写性/**前置库配对**） | 不启动任何游戏进程 |
-| `mt_build.ps1` | pwsh | Gradle 构建守护：超时、`BUILD SUCCESSFUL` 识别、产物 jar 校验、重试 | 不做部署决策 |
-| `mt_env.ps1` | pwsh | `mods` 装兼容模组 / `world` 重建世界（含原生 NBT 改写）/ `kill` 按版本精确停进程 | 不做功能断言 |
-| `mt_launch.ps1` | pwsh | 启动 `runClient`、轮询就绪日志、兼容栈信号、**测试前清场**（`/kill @e[type=!player,distance=..128]` ×2，`--no-preclean` 跳过） | 不定义测试条目 |
-| `mt_inject.ps1` | pwsh | 输入注入（ctypes/PostMessage）；**注入前自动切目标窗口为 en-US**；非 Windows 降级 MCP | 不做断言 |
-| `mt_ime.ps1` | pwsh | 输入法管理：列出布局、校验 en-US 可用、**按窗口线程切换输入法**（`set_window_us` / `selftest`） | 不改系统全局默认输入法 |
-| `mt_cleanup.ps1` | pwsh | **退出清理唯一实现**：收停本流程进程 + `gradlew --stop`；尊重失败取证标记 | 不杀非本流程进程 |
-| `mt_stop.ps1` | pwsh | 阶段 D 显式收停入口(与 mt_cleanup 共用实现) | 不杀非本流程进程 |
-| `mt_capture.ps1` | pwsh | 截图采集 + 世代登记；`list` / `prune` | 不判定像素内容 |
-| `mt_assert.ps1` | pwsh | 断言引擎：增量日志标记、反向断言、崩溃、KubeJS、Mixin | 不发起动作、不做视觉判定 |
-| `mt_case.ps1` | pwsh | 条目执行器（封闭原语）+ 条目 schema 校验 | 不生成条目、不做视觉判定 |
-| `mt_gen_case.ps1` | pwsh | 条目生成器（**子技能**）：三态输入 → 条目文件 | 不执行、不启动游戏 |
-| `mt_report.ps1` | pwsh | 证据收集、单版本报告、版本结论汇总 | 不替代人工判断 |
-| `mt_scope.ps1` | pwsh | **变更分级自查**（非核心 / 核心）：按「变更分级与验证口径」白名单给级别并回显必需验证 / 跳过项；`--staged` / `--paths <…>` / 缺省工作区 | **只读、只建议**（退出码恒 0，不拦停、不代替判定） |
-| `mt.conf` | — | 机器本地路径（整合包 mods 源、注入通道 MCP 二进制）；解释器项（`MT_PYTHON`/`MT_NODE`）已随迁移作废 | 不含流程逻辑 |
-| `ref-repro.ps1` | pwsh | 松散引用复现用脚本(不入流程) | 不含流程逻辑 |
-| `TESTING-SPEC.md` | — | 测试条目 schema 规范 | 不含流程逻辑 |
+| `scripts/test/win/mt.sh` | bash | **唯一入口**：阶段编排、版本顺序与门控、结果汇总、批量闸门 | 不含任何断言逻辑 |
+| `scripts/test/win/lib/phases.sh` | bash | 阶段实现与委托表；`cases` 阶段对 fabric 走 bash 原生解析，其余委托 `lib/mt_case.py` | 不定义条目 schema |
+| `scripts/test/win/lib/common.sh` | bash | 机器行 / 退出码常量 / 进程与端口判据 / 收停（`mt_winstop()`）/ 窗口化强制 | 无流程决策 |
+| `scripts/test/win/lib/fabric.sh` | bash | fabric 线双 run 目录（`--side client|server`）、Loom 内嵌件补齐、Sodium 条件依赖开关 | 不碰其它线 |
+| `scripts/test/win/{env,launch,stop,live}.sh` | bash | 阶段 E / L / D / 实机批次编排 | 不做断言 |
+| `scripts/test/mt_preflight.py` | python | 前置检查（分支/输入法/遗留进程/模组来源/Gradle 包装器/兼容栈/可写性/前置库配对） | 不启动游戏进程 |
+| `scripts/test/mt_env.py` / `win/env.sh` | python + bash | `mods` 装兼容模组（含渲染栈与光影）/ `world` 重建世界（含 NBT 改写）/ `shaders` / `debug` | 不做功能断言 |
+| `scripts/test/win/launch.sh` | bash | 起 `runClient`、轮询就绪（AutoJS 探活为主、日志 marker 兜底）、兼容栈信号输出 | 不定义测试条目（**没有** `mt_launch.py`，launch 全在 bash） |
+| `scripts/test/mt_inject.py` | python | 输入注入（`--hold-ms` 长按语义；注入前把目标窗口线程切 en-US） | 不做断言 |
+| `scripts/test/lib/mt_ime.py` | python | 输入法：列出布局、校验 en-US 可用、按窗口线程切换（`list` / `selftest` / `status`） | 不改系统全局默认输入法 |
+| `scripts/test/mt_cleanup.py` | python | 手工收停链路：收停本流程进程 + `gradlew --stop`，**尊重失败取证标记**、`--force` 才清标记 | ⚠️ **无编排层调用方**（`--phase stop` 走 `win/stop.sh`）；不要把「它没被调用」误读成「没有收停」 |
+| `scripts/test/mt_capture.py` | python | 截图采集 + 世代登记；`list` / `prune` | 不判定像素内容 |
+| `scripts/test/mt_assert.py` | python | 断言引擎：增量日志标记、反向断言、崩溃、KubeJS、Mixin | 不发起动作、不做视觉判定 |
+| `scripts/test/lib/mt_case.py` | python | 条目执行器（封闭原语）+ schema 校验（`validate` / `audit` / `run`） | 不生成条目、不做视觉判定 |
+| `scripts/test/mt_gen_case.py` | python | 条目生成器（子技能）：三态输入 → 条目文件 | 不执行、不启动游戏 |
+| `scripts/test/mt_report.py` | python | 证据收集、单版本报告、版本结论汇总（`mark` / `collect` / `summary`） | 不替代人工判断 |
+| `scripts/test/lib/mt_autojs.py` | python | AutoJS MCP 客户端：TCP→`initialize`→`tools/call status` 三段探活；`eval_js`（自动 `JSON.stringify` / `!!()`）；HTTP 4xx 自动重握手一次 | 不承载业务断言（`eval_js` / `await_state` / `mcp_status` 是 `mt_case.py` 的**用例原语**，不是本模块方法） |
+| `scripts/test/lib/mt_channel.py` / `mt_compat.py` / `mt_paths.py` / `mt_ps.py` | python | 通道选择、兼容栈信号、路径与进程标记单点、进程/窗口原语 | 不含流程逻辑 |
+| `scripts/test/mt.conf` | — | 机器本地路径（整合包 mods 源）；**不含解释器项**（`MT_PYTHON` / `MT_NODE` 已随迁移作废） | 不含流程逻辑 |
+| `scripts/test/TESTING-SPEC.md` | — | 测试条目 schema 规范 | 不含流程逻辑 |
 
-#### 调用顺序
+**已退役 / 无替代（2026-11-05 用户裁决「直接退役，后续按需求另写」）**：变更分级自查、看门狗、加载器门槛独立脚本、`ChipCommon` 模块、松散引用修复脚本 —— 旧 pwsh 实现已删除，**当前无等价物**；需要时按新需求重写为 python，不在本章承诺。
+
+#### 6.3 调用顺序
 
 ```
-mt.ps1
- ├─ mt_preflight.ps1 --all ................ 前置检查（失败即中止，退出码 10）
- └─ for 版本 in 1.21.1 → 1.20.1:            （1.20.1 受门控）
-     ├─ mt_build.ps1      --version <v> .... 构建 + 产物校验
-     ├─ mt_env.ps1        mods   --version <v>
-     ├─ mt_env.ps1        world  --version <v> [--seed]
-     ├─ mt_launch.ps1     --version <v> .... 进入世界 + /publish
-     ├─ mt_assert.ps1     snapshot --version <v> --window launch|case|whole  ← 写判定窗口起点
-     ├─ mt_case.ps1       run-dir  --version <v>（或 run --case <文件>）
-     │    └─ 逐条目调用 mt_inject.ps1 / mt_capture.ps1 / mt_assert.ps1
-     ├─ mt_report.ps1     collect --version <v> --verdict <PASS|FAIL>
-     └─ mt_stop.ps1       --version <v>
- ├─ mt_report.ps1 summary ................... 两版本结论 + 综合结论
- └─ mt_cleanup.ps1 run ................... 退出清理（trap 兜底，Ctrl-C 也覆盖）
+mt.sh
+ ├─ python scripts/test/mt_preflight.py --version <v>|--all ... 前置检查（失败即中止，退出码 10）
+ └─ for 版本 in 1.21.1 → 1.20.1 → 26.1.2 → fabric-1.20.1:   （1.20.1 受 1.21.1 门控）
+     ├─ win/env.sh       --version <v> ....... 装模组 / 重建世界（python mt_env.py 实现）
+     ├─ win/mt.sh --version <v> --phase build .. gradlew :<子项目>:classes + 产物校验
+     ├─ win/launch.sh    --version <v> ...... 起 runClient + 等就绪 + 进世界 + 清场
+     ├─ lib/mt_case.py   run --run-dir … .... 逐条执行（内调 mt_inject.py / mt_assert.py；截图原语当前 BLOCKED）
+     ├─ mt_report.py     collect --version <v> --verdict <PASS|FAIL>
+     ├─ win/stop.sh      --version <v> --purge-saves ... 收停（与 cleanup 不共用实现）
+ ├─ python scripts/test/mt_report.py summary ... 各版本结论 + 综合结论
+ └─ （无退出钩子：trap 只退编排层，游戏进程由各版本 stop 阶段收）
 ```
 
-> `mt_stop.ps1` 与 `mt_cleanup.ps1 run` **共用同一实现**：前者是显式入口（阶段 D），后者是退出钩子；不存在两套收停逻辑。
+> 收停有两套**独立**实现：`win/stop.sh` 是编排链路上的唯一入口（阶段 D 与全流程收尾都用它），`mt_cleanup.py run` 是**手工链路**（尊重失败取证标记，无调用方）。两者不共用代码，改动时**必须两边都看**。
 
-#### 两条跨语言约定（改脚本前必读）
+#### 6.4 契约：机器行 / 退出码 / 编码与行尾
 
-这两个坑都是实测踩到过的，症状是「看起来环境坏了」，实际是调用方式问题。改动工具链时务必保持这两条约定：
+- **机器行是一等接口**：报告、断言、对外汇报都只认 `MT_*` / `WIN_*` / `AP_*` 机器行，**不解析人类可读叙述**。新增机器行必须写进本节表格与 `TESTING-SPEC.md`。
+- **退出码单一来源**：`scripts/test/win/lib/common.sh` 与 `scripts/test/lib/mt_paths.py` 常量；python 侧不得自定义新码。
+- **编码**：Windows 下一律 `PYTHONIOENCODING=utf-8` 跑 python 脚本（本机默认 cp936 会把中文写成 GBK）；bash 侧输出 UTF-8 无 BOM。
+- **行尾**：`scripts/test` 下 `.sh` / `.py` 一律 **LF**；`run/<版本>` 内的日志与配置保持游戏自己的口径（`options.txt` 等为 LF，`server.properties` 按生成器写出），不要手工改行尾「对齐」。
+- **路径**：一律用仓库相对路径进脚本；脚本内部换算绝对路径走 `scripts/test/lib/mt_paths.py`（唯一路径来源）。**不要**在命令里手写 `F:\` / `/mnt/f/` 前缀 —— 双宿主（Windows MSYS2 / 原生 Linux）都要能跑。
 
-**1) 路径 — 一律用原生 Windows 路径，不依赖任何 shell 的 cwd**
+#### 6.5 收停、清理与端口互斥
 
-工具链已全部是 pwsh（Windows-only），**不再经过 Git Bash/MSYS**，因此历史上那条
-「POSIX 路径被 MSYS 转写成 `F:\f\...`」的坑不会再出现（该坑对应的是已删除的 bash 层）。
-现行约定：
+自动化测试最容易留下的后患是**残留进程**：dev 客户端没关、Gradle 守护一直挂着，下一次运行就撞上前置检查的「遗留进程」。现行实现有两条**互不共用代码**的收停路径：
 
-- 路径的唯一来源是 `lib/Mt.Paths.psm1` 的 `Get-MtPaths`（原生 Windows 形式）；
-  内部一律 `Join-Path` / `[System.IO.Path]::GetDirectoryName`，
-  **不要**用 `Split-Path -LiteralPath … -Parent`（pwsh 7 里是参数集冲突，直接抛异常）；
-- 条目路径参数（`--case` / `--dir`）由 `mt_case.ps1` 内部解析：相对路径按 `scripts/test/` 解释，
-  也接受裸名（`--case SMOKE-TOOLCHAIN`），因此**从任意 cwd 调用都成立**；
-- 子进程若需要特定工作目录（gradle 一律要在仓库根跑），显式传
-  `-WorkingDirectory (Get-MtRoot)`，不要靠调用方碰巧在根目录。
+| 路径 | 入口 | 何时用 | 行为 |
+|---|---|---|---|
+| **编排链路（唯一自动路径）** | `scripts/test/win/stop.sh`（`--phase stop` 与全流程收尾都走它，`mt.sh:208` / `:308`） | 每轮结束、全流程收尾 | 按进程判据收停本流程进程 → `--grace`（默认 10s）复核残留 → `--purge-saves` 清存档 → `--stop-daemon` 停守护；打 `WIN_STOP: …` / `PURGE: …` |
+| **手工链路** | `python scripts/test/mt_cleanup.py status\|run` | 需要「尊重失败取证标记」或只想看残留时 | 读 `cases/.mt_keep_alive-<版本>`（存在即 SKIP 并保留现场）、`--force` 才清标记、固定 `SETTLE_SECONDS = 20.0` 复核；打 `MT_CLEANUP*` |
 
-**2) 输出与进程 — 三条硬约定**
+⚠️ **没有全局退出钩子**：`mt.sh:228` 明确写着「P1 简化点：不做全局 `--run-timeout` 预算、不做退出清理」，`trap` 只退编排层、**不动游戏进程**。⇒ 分步执行（`--phase launch` / `--phase cases`）时**最后一次读数之后必须自己跑收停命令**，这是硬纪律。
 
-- **编码**：每个入口脚本的**第一行逻辑**必须是 `Initialize-MtConsole`（把控制台 I/O 固定为
-  UTF-8 无 BOM）；否则本机（cp936）下 `[Console]::Out` 会把中文写成 GBK。
-- **换行**：面向观众的文本一律走 `Write-MtLine` / `Write-MtErrLine`（**显式 LF**），
-  **禁止** `Write-Output` / `Write-Host` / `echo`，也**禁止** `[Environment]::NewLine`（那是 CRLF）。
-  python 侧的 CRLF 是解释器副产物，比对器会折行归一 —— 不要把 CRLF 当成"契约"对齐。
-- **取回子进程输出**：统一经 `lib/Mt.Proc.psm1` 的 `Invoke-MtProcess*`（以**原始字节**取回再按
-  UTF-8 容错解码）。判定标记（子项目名、run 目录、PID）都是 ASCII，替换字符不影响匹配。
-  读正在被写入的日志用 `Read-MtSharedText`（内部 `FileShare::ReadWrite`）。
-  后台跑 gradle 用 `Start-MtProcessToFile`：它把**真实文件句柄**给子进程（不是管道），
-  且 `-MergeStderr` 复刻 `> log 2>&1` —— Gradle 把 `BUILD FAILED` 写在 **stderr**，
-  拆成两个文件会让「编译失败」退化成「本轮未见构建结果」（已实测踩到）。
+⚠️ **`.mt_keep_alive` 与 `--force` 在 bash 链路是失效的**（已知契约缺口）：`scripts/test/win/**` 里没有任何读取点，`stop.sh --force` 只赋值不分支，`phases.sh:304-306` 还会打印 `MT_INFO: STOP: --force 在 bash 侧是 no-op`。需要保留现场时**不要**跑 `--phase stop`，改用 `mt_cleanup.py run --version <V>`。
 
-另有三条 pwsh 语言级坑（都在共享模块注释里写明，改工具链前务必看一眼）：
+**端口互斥（必须遵守）**：
 
-- 共享模块（`lib/Mt.*.psm1`）**不得用 `Import-Module -Force`**：它会卸载重载被引模块，
-  从而摘掉调用方脚本作用域里已导入的函数（Import-Module 自身不报错，后续调用才炸）；
-- `return $collection` 会被 PowerShell **展开成流**（单元素退化成标量）→ 整体返回集合要写 `return , $x`；
-- `@{ }` / `[ordered]@{ }` 键名**大小写不敏感**（NBT 里 `Version` 与 `version` 是两个键，
-  用它会静默吞掉一个）→ 需要区分大小写时用 Ordinal 的 `OrderedDictionary`。
+- AutoJS 端点 **`25585`** 在测试台脚本里是**硬编码**的（`scripts/test/win/lib/common.sh:433-437`，可被 `MT_AUTOJS_ENDPOINT` 或 `mt.conf` 覆盖）⇒ **同一时刻只能有一条线占着它**。
+- **`25585` / `25565` 被占用时绝不能 launch**：注入会打进别人那台游戏，产生**跨线污染的假绿**（结论看似通过，实际测的是另一个版本）。launch 前置必须记 `BLOCKED(11)` 而不是重试。
+- fabric-1.20.1 还有**第三个端口**：RCON `127.0.0.1:25575`（口令 `astralft`，`scripts/test/win/lib/fabric.sh:16-17`）—— 该线**默认走 RCON 注入**，AutoJS 是条件依赖（`--enable-autojs` 才注入）。
+- 每轮结束必须 `mt.sh --version <线> --phase stop --purge-saves` 放端口；启动前可 `python scripts/test/mt_cleanup.py status` 自查。
+- 看端口：`bash -c "netstat -ano | grep -E ':25585|:25565|:25575'"`（MSYS2 自带 netstat）。
 
-#### 退出清理（避免进程泄漏）
-
-自动化测试最容易留下的后患是**残留进程**：dev 客户端没关、Gradle 守护一直挂着，下一次运行就撞上前置检查的「遗留进程」而中止。清理因此做成**两道**，互为补充：
-
-**第一道 — 退出钩子**（正常结束 / 失败 / 中断）：
-
-- **实现单点**：`mt_cleanup.ps1`。`mt.ps1` 的 `trap … EXIT/INT/TERM`、`mt.ps1 --phase stop`、`mt_stop.ps1` 三个入口都调它，不复制逻辑；
-- **收停范围**（只碰本流程自己的东西）：
-  - 本流程的 dev 客户端 / Gradle 任务进程 —— 判据为 `Paths.process_markers`（gradle 任务选择器 + run 目录），**不会**误杀 IDE 语言服务器或用户自己的客户端；
-  - Gradle 守护进程 —— 用 `gradlew --stop` 优雅停止，**不用** `taskkill /IM gradle.exe`（那会连用户其它项目的 Gradle 一起杀）；
-- **默认开关**：全流程**默认开**（`--no-cleanup-on-exit` 可关）；单阶段**默认关**，因为 `launch → cases` 是分步执行的，需要客户端在两步之间保持存活（`--cleanup-on-exit` 可强制开）；
-- **不破坏失败取证**：条目 `on_fail=keep_game_running` 失败时会落 `cases/.mt_keep_alive` 标记（记录失败原因与时间）。标记存在时清理**只提示不杀进程**，否则「自动清理」会在失败瞬间销毁现场。取证完成后用 `--phase stop --force`（`--force` 才会清除标记）；
-- **收停后自检**：清理结束会再扫一遍，仍有本流程进程则以非 0 退出并列出 PID —— 清理不撒谎。
-
-**第二道 — 启动前兜底**（阶段 P 内，实测必需）：
-
-> ⚠️ **`trap` 在 MSYS/Git Bash 下并不可靠**，这不是推测而是实测结论：投 `SIGTERM` 会让 bash **直接终止、不执行钩子**（`timeout -s TERM` 实测：日志里没有 cleanup 段、进程仍在）；Windows 上还有任务管理器强杀、直接关控制台窗口等根本不经过 `trap` 的路径。
-> **只靠第一道就等于把「进程泄漏」交给运气。** 故必须有第二道：
-
-阶段 P 的「遗留进程」检查改为**先自动清理、清不掉才阻塞**：
-
-- 检出**本流程**遗留进程 → 直接调 `mt_cleanup.run_cleanup()` 收停，收停干净则该项记 `OK` 并注明「已自动收停 N 个（退出钩子失效时的兜底）」——**不影响本次结论**；
-- 收停后仍有残留 → `FAIL`（权限/顽固进程），提示手工 `--phase stop`；
-- `.mt_keep_alive` 取证标记存在 → **不自动清理**，`FAIL` 并提示用 `--force` 显式释放（保护失败现场）；
-- 用户自己的整合包客户端 → 仍只是提示，不阻塞（判据同前）。
-
-这样泄漏最多只影响**一次**运行的干净度，不会跨运行累积。
-
-```bash
-pwsh -NoProfile -File scripts/test/mt.ps1 --phase stop                        # 显式收停（尊重 keep_alive）
-pwsh -NoProfile -File scripts/test/mt.ps1 --phase stop --force                # 强制收停并清除取证标记
-pwsh -NoProfile -File scripts/test/mt.ps1 --phase stop --keep-daemon          # 保 Gradle 热态，只收停客户端
-pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --phase stop       # 只收停某版本
-pwsh -NoProfile -File scripts/test/mt_cleanup.ps1 status                    # 只看残留（0=干净 / 1=有残留）
-pwsh -NoProfile -File scripts/test/mt_cleanup.ps1 run --keep-daemon         # 同上，直接调实现
-```
-
----
-
-### 阶段 P — 前置检查
+### 7. 阶段 P — 前置检查
 
 **前置条件**：无（本阶段自行校验环境）。
 
-**执行命令**：
 ```bash
-pwsh -NoProfile -File scripts/test/mt.ps1                              # 全流程时自动执行
-pwsh -NoProfile -File scripts/test/mt_preflight.ps1 --all            # 单独执行
+# 全流程时自动执行；单独执行：
+python scripts/test/mt_preflight.py --version 1.21.1
+python scripts/test/mt_preflight.py --all --channel autojs
 ```
 
-**预期结果**：逐项打印 `[OK  ]`，末行 `MT_PREFLIGHT: OK — N 项全部满足`。检查项 = **6 个全局项**（当前分支、输入法（**en-US 布局是否可用**，非「当前是否已是 en-US」）、遗留进程、注入通道 MCP 二进制、模组来源统一口径、`gradlew` 是否存在）+ **每个版本 3 项**（兼容栈、run 目录可写性、**前置库配对**）⇒ 单版本 **9 项**、`--all`（三条线）**15 项**。
+**检查项（条目名与顺序写死在 `scripts/test/mt_preflight.py:483-493`）**：**5 个全局项** + **每个版本 4 项** ⇒ 单版本 **9 项**、`--all`（四条线）**21 项**。
 
-**「前置库配对」一项（2026-09-19 新增，与 `run/Start-<版本>.bat` 同口径，必须遵守）**：`run/<版本>/mods` 内的 `starengine_lib-*.jar` 必须**恰 1 份**且文件名以 `-<该线 gradle.properties 的 starengine_lib_version>.jar` 结尾；**缺 jar 放行**（dev 运行的库由 Gradle `implementation` 放进 runtimeClasspath，`run/mods` 那份只为人手启动路径自足），**版本不一致一律 FAIL**（exit 10）并回显修复命令。原因：本批实测出现过「库版本由 `.10` 升到 `.11`、`run/mods` 仍是 `.10`」的漂移 —— 三个 `Start-*.bat` 因此拒绝启动，而工具链零感知、照常跑测试（实测 FML 的 `UniqueModListBuilder` 按版本取**最新**，故旧 jar 未污染读数，但环境已不一致）。**库版本一升就必须重新成对部署**：`pwsh -NoProfile -File scripts/devtools/Start-SelfTest.ps1 -Version <版本>`（该脚本的时间戳闸门已支持 Gradle 的合法 `…:jar UP-TO-DATE`，见 `scripts/test/TESTING-SPEC.md` 附录 A「2026-09-19（续）」条）。
-
-**「遗留进程」一项的判定边界（区分两类，不能混为一谈）**：
-
-| 情形 | 判定 | 说明 |
+| 范围 | 项 | 判定 |
 |---|---|---|
-| 本流程自己的进程遗留（dev 客户端 / Gradle 任务），**无取证标记** | **OK（自动收停后继续）** | 命令行匹配 gradle 任务选择器（`:neoforge-1.21.1:`）或 run 目录；检出即自动 `mt_cleanup.run_cleanup()` 收停，收停干净则不阻塞本次运行，仅在结论里注明「已自动收停 N 个」。这是**退出钩子失效时的兜底**（见「退出清理」） |
-| 同上，**但 `.mt_keep_alive` 取证标记在场** | **FAIL** | 现场是失败时故意留的，不自动销毁；须 `pwsh -NoProfile -File scripts/test/mt.ps1 --phase stop --force` 显式释放 |
-| 自动收停后仍有本流程进程 | **FAIL** | 权限或顽固进程；手工 `--phase stop` 后检查 |
-| `gradle.exe` 包装器进程 | **FAIL** | 归属不确定（可能是用户其它项目/IDE 的构建），不自动强杀，提示 `--phase stop` |
-| 其它 Minecraft 客户端（用户自己开着的整合包） | **OK（仅提示）** | 不阻塞：注入通道已按版本锁定窗口（见阶段 C），不会投错；只提示显存占用 |
+| 全局 | `分支` | `git rev-parse --abbrev-ref HEAD`；非发布线只 **WARN 不拦停** |
+| 全局 | `输入法` | **仅 native 通道实质检查**（`mt_ime.langid_of_thread` + en-US 可用性）；`autojs` 通道直接 OK |
+| 全局 | `AutoJS 通道` | 端点 health / 工具面 / 逐线 jar 与 provenance sha256（`MT_PREFLIGHT_AUTOJS: <STATE>`） |
+| 全局 | `模组来源` | 转调 `tools/check_mod_sources.py` 并解析 `MOD_SOURCE_GATE:` 行；闸门不复制逻辑 |
+| 全局 | `Gradle 包装器` | `os.path.isfile(<root>/gradlew)` |
+| 每版本 | `遗留进程 <v>` | 枚举 + 本流程判据；命中后**先自动收停**（`mc.stop_version_processes(…, quiet=True)`，回显「自动收停中…」；存在失败取证标记时按设计保留现场不动），**收停后仍残留**才 **FAIL 并列 PID + 给 `--phase stop` 建议**；收停成功判 OK 并回显「已自动收停 N 个」 |
+| 每版本 | `兼容栈 <v>` | 读该线依赖区间 / 加载器门槛 |
+| 每版本 | `run 可写 <v>` | 目标 run 目录可写性探测 |
+| 每版本 | `前置库配对 <v>` | `gradle.properties` 的库引脚与配对规则（`run/<v>/mods` 内 `starengine-*.jar` 必须恰 1 份且版本后缀一致；**缺 jar 放行**、**版本不一致 FAIL**） |
 
-> 三条判据都是踩过坑后收紧的，别改回去：
-> ① 判据**不用裸子项目名**（`neoforge-1.21.1` 同时是仓库目录名，会把 IDE 语言服务器等只是引用了该目录的进程一起命中，`mt_stop` 就会误杀）；
-> ② 判据**不把用户自己的客户端当遗留** —— 那会在用户只是开着自己的整合包时误报阻塞，让人白折腾；
-> ③ **本流程遗留先自动收停而不是直接 FAIL** —— 因为退出钩子在 MSYS 下不可靠，「清不掉就阻塞」会让旧泄漏反复堵死新运行。
-> 具体标记由 `lib/Mt.Paths.psm1` 的 `Paths.process_markers` 单点给出，`mt_env` 与 `mt_preflight` 共用，避免两侧判据漂移。
+**输出与三态优先级**：每项一行 `  [OK  ] <名字>: <详情>`（`mark` 只有 `OK  ` / `WARN` / `FAIL` / `BLOCKED` 四态）；末行三选一 —— `MT_PREFLIGHT: FAIL — n 项不满足`（exit **10**）→ `MT_PREFLIGHT: BLOCKED — n 项能力缺失`（exit **11**）→ `MT_PREFLIGHT: OK — n 项全部满足`（exit 0）；WARN 不阻塞。
 
-**失败处理**：输出 `MT_PREFLIGHT: FAIL — …` 并以退出码 `10` 中止，**不触达游戏**。前置失败不计入功能缺陷。逐项修法：
+**能力缺失不得伪装 PASS**：枚举不了进程（非 Windows 分支缺失）、跑不了模组来源闸门、探不到 AutoJS 端点 —— 一律记 BLOCKED(11)，**绝不**静默跳过或当 0 个进程。
+
+**失败处理**（输出即中止，**不触达游戏**；前置失败不计功能缺陷）：
 
 | 失败项 | 处理 |
 |---|---|
-| 分支（仅告警、不拦停） | 无需处理：任何分支都可运行本流程；非发布线分支只在阶段 P 回显 WARN，报告按实际分支名标注（2026-09-17 用户裁决「移除二重验证白名单，允许该分支执行」——已不再是失败项） |
-| en-US 布局不可用 | 在 Windows「语言和区域」中安装英语(美国)键盘（**只需可用**，不必设为当前输入法——注入前会自动切目标窗口） |
-| 本流程遗留 + 取证标记在场 | 取证完成后 `pwsh -NoProfile -File scripts/test/mt.ps1 --phase stop --force`（会一并清除标记） |
-| 自动收停后仍残留 / `gradle.exe` 在跑 | `pwsh -NoProfile -File scripts/test/mt.ps1 --phase stop`，仍不行则检查权限或用任务管理器结束 |
-| 整合包缺少兼容模组 | 检查 `D:\.minecraft\versions\...` 对应 mods 目录 |
-| run 目录不可写 | 检查磁盘/权限 |
+| 分支（仅 WARN） | 无需处理：任何分支都可运行，报告按实际分支名标注 |
+| 输入法（native 通道） | 在 Windows「语言和区域」安装英语(美国)键盘（**只需可用**，不必设为当前输入法）；autojs 通道此项恒 OK |
+| 遗留进程（**自动收停后仍残留**） | 按回显 PID 跑 `mt.sh --version <V> --phase stop`；`RESIDUAL` 仍在则查权限（收停失败多为权限受限或进程枚举被挡） |
+| 遗留进程 + 失败取证标记 | 该标记会让判定带原因 FAIL：确认取证已完成后 `mt_cleanup.py run --version <V> --force` 释放 |
+| 模组来源闸门 | 按 `tools/check_mod_sources.py` 的回显修正来源（整合包 mods 目录口径） |
+| 兼容栈 / run 可写 | 检查 `mt.conf` 指向的整合包与磁盘权限 |
+| 前置库配对 | 按回显的期望版本号重新部署 `run/<V>/mods` 内的库 jar，或把 `gradle.properties` 的引脚订正 |
 
-### 阶段 B — 构建
+#### 7.1 阶段 B — 构建
 
-**前置条件**：阶段 P 通过。
+**前置条件**：阶段 P 通过。**实际动作**：`cmd //c gradlew.bat :<子项目>:classes`（`scripts/test/win/lib/phases.sh:232-252`）—— 是**编译校验**，不是打 jar；出包要另外跑 `./gradlew build`。
 
-**执行命令**：
 ```bash
-pwsh -NoProfile -File scripts/test/mt_build.ps1 --version 1.21.1 [--timeout 60] [--retries 3]
+bash scripts/test/win/mt.sh --version 1.21.1 --phase build [--dry-run]
 ```
 
-**预期结果**：`MT_BUILD: OK`，且 `neoforge-1.21.1/build/libs`（或 `forge-1.20.1/build/libs`）下产物 jar 修改时间晚于本次构建开始。
+**预期结果**：`MT_BUILD: OK`。**失败处理**：`MT_BUILD: FAIL` → 打印末 15 行日志并以退出码 `2` 中止（编排层错误，不是产品结论）；失败则回滚版本号、不提交（依〈新版本发布流程〉）。
 
-**失败处理**：超时先看输出是否已含 `BUILD SUCCESSFUL`（构建完成但进程未退出，按产物时间戳判定为成功）；否则强杀进程树、按产物时间戳判定是否实际完成并重试，最多 3 次。`BUILD FAILED` 时打印末 15 行日志并以退出码 `2` 中止。**失败则回滚版本号、不提交**（依「新版本发布流程」）。
-
-### 阶段 E — 环境装配
+#### 7.2 阶段 E — 环境装配
 
 **前置条件**：阶段 B 通过。
 
-**执行命令**：
 ```bash
-pwsh -NoProfile -File scripts/test/mt_env.ps1 mods  --version 1.21.1
-pwsh -NoProfile -File scripts/test/mt_env.ps1 world --version 1.20.1 [--seed]
+bash scripts/test/win/mt.sh --version 1.21.1 --phase env
+bash scripts/test/win/env.sh                 # 直调：不给 --version = 四线全查（18 组检查，末行 ENV_RESULT: OK|WARN|FAIL）
+python scripts/test/mt_env.py world --version 1.20.1 --timeout 900   # 大世界易超时，直调并放长预算
+python scripts/test/mt_env.py mods  --version 1.21.1                  # 只查模组就位
 ```
 
-**预期结果**：`MT_MODS: OK` 与 `MT_WORLD: OK — 世界重建并设 AllowCommands=1, keepInventory=true`（两条世界规则均须在 `MT_WORLD` 行内回显，缺一即视为阶段 E 未通过）。
+**预期结果**：`MT_MODS: OK` 与 `MT_WORLD: OK — …`（两条世界规则须在行内回显）。
 
 **行为要点（必须遵守）**：
-- **1.21.1**：从整合包复制 **Sodium `sodium-neoforge-0.8.13+mc1.21.1.jar` + Iris `iris-neoforge-1.8.14-beta.1+mc1.21.1.jar` + ModernFix `modernfix-neoforge-5.27.26+mc1.21.1.jar`** 到 `run/1.21.1/mods/`（幂等，按修改时间判断是否需要复制）。ModernFix 提供启动加载时间日志，供阶段 L 判定加载完成。
-- **1.20.1**：dev run **不安装渲染模组**（Embeddium/Oculus 的 mixin refmap 在 MDG mojmap 命名下无法解析，会导致 Mixin apply failed）；本阶段只校验用户生产环境渲染栈就绪。因此 1.20.1 的渲染兼容性属**生产环境人工验证项**，不在 dev 自动化范围内。
-- **26.1.2（2026-09-17 起）**：dev run 安装**渲染栈 + 光影**用于光影兼容性测试 —— Sodium `mc26.1.2-0.9.2-neoforge` + Iris `1.11.4+26.1-neoforge` + 光影包 Complementary Shaders - Reimagined `r5.9.3`（置于 `run/26.1.2/shaderpacks/`）（2026-10-07 用户裁决：本分支所有测试环境光影由 Unbound 换为 Reimagined r5.9.3；本地已手动替换，工具链钉版同步）。三者**一律经 Modrinth Maven**（`https://api.modrinth.com/maven/maven/modrinth/<slug>/<version>/<file>`）下载并做**体积 + SHA1 双校验**（缓存 `temp/probe_mods/26.1.2/`），**禁止**改用 GitHub Release/其它 CDN 直链（2026-09-17 用户裁决）。
-  ⚠️ **光影默认关闭**（`run/26.1.2/config/iris.properties` 写 `enableShaders=false`），且**并非「光影不能用」**：2026-10-07 在**全最新环境**（Sodium `mc26.1.2-0.9.2-neoforge` + Iris `1.11.4+26.1-neoforge` + Complementary Unbound `r5.9.3`）下实测，光影开启进世界**不崩**、`TEX` / `DIAG` / `ECON` / `DAMAGE-NUMBER` / `WALLET-GUI` / `TARGETSEL-OVERLAY` 六条用例全 PASS（同期 `MODERNUI-26.1.2` 因未装 Modern UI 前置模组 FAIL，属环境依赖、非图形缺陷）、客户端存活 ≥6 分钟（16:24 轮约 9 分钟、16:38 电池轮 ≥7.5 分钟）、`crash-reports` 为该轮 0 个（现存 1 份来自 16:47 人为校验恢复实验）、图形无缺失（目标棱柱 ≈18.5k px 照画）；**原本的「元凶是 Sodium 0.9.2、降到 0.9.1 即恢复」口径已作废**（见下条）。**崩溃的真正开关是原版 dev-only 断言** `GlRenderPass.VALIDATION = SharedConstants.IS_RUNNING_IN_IDE && !Boolean.getBoolean("neoforge.disableGlValidation")`（`GlRenderPass.java:25`；抛错点 `GlCommandEncoder.java:531`）——2026-10-07 把 `neoforge-26.1.2/build.gradle` 的 `-Dneoforge.disableGlValidation=true` 临时注释（恢复校验）后，**Sodium 0.9.2 与 0.9.1 同样立刻崩**（`crash-2026-10-07_16.33.43-client.txt`（39385 B；已被后续 launch 的崩溃目录清理删除）/ `crash-2026-10-07_16.47.06-client.txt`（39380 B、sha256 273EF245…），栈逐帧相同（前者现已不可复核）、帧上 mixin 全归 Iris、本模组帧 0 个）；生产环境 `IS_RUNNING_IN_IDE=false` ⇒ **永不触发**（代价 = 缺失 sampler 被静默跳过）。详见 `KNOWN-ISSUES.md` KI-D1 的「2026-10-07 复验」段。**2026-10-07 用户裁决后，26.1.2 不再由工具链强制写 `enableShaders`**：`mt_env.ps1` 的 `Install-MtRenderStack` 对本线只写 `shaderPack`（1.21.1 / 1.20.1 仍写 `enableShaders=true`），开/关都由测试自行决定 —— 未启用时 `SHADERS=disabled` 是正常状态、不报 WARN；需要时用 `mt_env.ps1 shaders --version 26.1.2 --state on`。`mt_launch` 回显 `SODIUM_LOADED` / `IRIS_LOADED` / `SHADERS=… pack=…` / `SHADERPACK_LOADED=…`，`SHADER-VISION-26.1.2` 是这条经验的**回归守卫**（换 Sodium/Iris 版本后必须复跑）。
-- **世界重建**：删除旧存档 → 写 `server.properties`（超平坦/创造/`allow-cheats`/`max-players=2`）→ 取消失焦暂停 → `runServer` 生成（180 秒上限）→ 停服 → 世界迁移到 `run/<版本>/saves/testworld` → **原生 NBT 改写 `level.dat`**。
-- **测试世界规则（必须，两条路径都要满足）**：
-  1. `Data.allowCommands=1`（TAG_Byte）—— 单人存档的「允许命令」由该字段决定，服务器生成的世界默认不写；
-  2. **`Data.GameRules.keepInventory="true"`（TAG_String）** —— 用例会主动击杀/被击杀（僵尸靶子、雷击、骰战反伤），死亡掉物会污染后续用例的背包基线与世界实体，故**任何新建或恢复的测试世界都必须开启 keepInventory**（原 `GameRules` 复合标签缺失时按 Ordinal 比较器新建；NBT 键大小写敏感，禁止用 `[ordered]@{}`）。
-3. **`mobGriefing=false`（2026-09-14 新增，必须）** —— 测试世界里**实体爆炸会真的挖坑**：当晚自然刷新的苦力怕（或电磁炮雷击充能出的闪电苦力怕）在探针靶场附近自爆，`run/1.21.1` 测试世界留下一处爆炸坑（`mobGriefing=true` 时的实测）。探针自己生成的靶子虽已 `setNoAi(true)`（可用 `/data get entity <sel> NoAI` 复核），但**自然刷新的生物不受探针控制**，故任何测试世界一律先把 `mobGriefing` 关掉再跑用例。4. **`doFireTick`（建议关闭）** —— 电磁炮的雷击沿用原版闪电行为会**点燃地面**，`doFireTick=true` 时火会蔓延烧毁植被（这是原版行为，不是本模组的破坏方块；模组源码内**没有任何** `Level#explode`/`destroyBlock`/`setBlock` 调用）。⚠️ **2026-09-19 复核（只登记、未改）**：上面第 3 款（`mobGriefing=false`）**当前没有任何代码执行方** —— 全仓扫描只有注释/文档命中，`mt_env` 只写 `keepInventory` 一个键；且 1.20.1 的**种子基线** `scripts/test/resources/testworld-seed-1.20.1.zip` 内的 `level.dat` 实测 `mobGriefing=true`（当轮走种子快恢复路径，恢复后的世界实况同为 true；见 `temp/t74/world-gamerules.ps1`）。紧随本段的 `MT_WORLD: BLOCKED` 硬闸门**只覆盖第 1、2 条**（`allowCommands` / `keepInventory`），第 3 款不在其中。该款原本防的风险（会主动接近并自爆的苦力怕）现已由 2026-09-18 的 **noai 硬闸门**（`mt_launch` 要求 128 格内 `mobs == noai`）从上游覆盖，火势由各用例自带的取证前清理关掉（1.20.1/1.21.1 用 `doFireTick false`、26.1.2 用 `fire_spread_radius_around_player 0`）。**「补执行方」还是「改措辞」待用户裁决**，取证与两个候选方案见 `scripts/test/TESTING-SPEC.md` 续 21。
-  两条规则任一未能写入时，`mt_env world` 报 `MT_WORLD: BLOCKED` 并以退出码 `11` 结束，**不得**带着缺规则的存档继续跑用例。
-- **1.20.1 优先走种子快恢复**：`scripts/test/resources/testworld-seed-1.20.1.zip` 存在时直接解压恢复（恢复后同样强制写入上面两条规则），规避 dev `runServer` 的渲染模组崩溃问题。
-- 生成世界期间**临时移出纯客户端模组**（sodium/iris/embeddium/oculus/IMBlocker），完成后恢复。
+
+- **模组就位判据已改口径**：`mt_env.py mods` 不再「下载安装」，而是**检查要求的 jar 是否已就位**，缺即 `BLOCKED(11)`（原 pwsh 的 `Install-*` 安装器**未复原**）。渲染栈 / 光影包 / 优化模组 / 史莱姆压制 / AutoJS 的落位改由**各线 `build.gradle` 与人工投放**保证；缺件请按回显补齐，不要指望工具链替你下载。
+- **兼容栈（渲染）**：1.21.1 走 Sodium + Iris + ModernFix；26.1.2 走 Sodium `mc26.1.2-0.9.2-neoforge` + Iris + 光影包；fabric-1.20.1 走 `build.gradle` 的条件依赖（Sodium / Iris / Indium，`MT_TEST_SODIUM=false` 可关，Loom 内嵌件缺失按 6.2 的 `fabric.sh` 补齐）；1.20.1 的 dev run **不装** Embeddium / Oculus（mixin refmap 在 MDG mojmap 命名下无法解析 ⇒ Mixin apply failed），渲染兼容性属**生产环境人工验证项**。
+- **光影包必须就位**：`ComplementaryReimagined_r5.9.3.zip` 落位 `run/<V>/shaderpacks/`（fabric 为 `fabric-1.20.1/run/client/shaderpacks/`），可用 `python tools/fetch_shaderpacks.py --all-lines` 补齐（机器行 `SHADERPACK: OK|NEED|FAIL`）。**26.1.2 起不再由工具链强制写 `enableShaders`**：只写 `shaderPack`，开/关由测试自行决定，未启用时 `SHADERS=disabled` 属正常；需要时 `mt_env.py shaders --version 26.1.2 --state on`。
+- **世界重建**：删除旧存档 → 写 `server.properties`（超平坦 / 创造 / `allow-cheats` / `max-players=2`）→ 取消失焦暂停 → 生成世界（默认 180 秒上限，`--timeout` 放长）→ 停服 → 迁移到 `run/<版本>/saves/testworld` → **原生 NBT 改写 `level.dat`**。
+- **测试世界规则（必须，两条都要满足）**：① `Data.allowCommands=1`（TAG_Byte，单人存档的「允许命令」由它决定）；② **`Data.GameRules.keepInventory="true"`（TAG_String）** —— 用例会主动击杀/被击杀，死亡掉物会污染背包基线与世界实体。NBT 键**大小写敏感**。任一写不进时 `MT_WORLD: BLOCKED` 并退出 `11`，**不得**带缺规则的存档继续跑。
+- **`mobGriefing=false` / `doFireTick`（2026-09-19 复核登记，仍待裁决）**：该风险（会接近并自爆的苦力怕 / 雷击点火蔓延）现由 **noai 硬闸门**（launch 要求 128 格内 `mobs == noai`）与用例自带取证前清理覆盖；「补执行方」还是「改措辞」待用户裁决。
+- **1.20.1 优先走种子快恢复**：`scripts/test/resources/testworld-seed-1.20.1.zip` 存在时直接解压恢复（恢复后同样强制写入上面两条规则），规避 dev 世界生成的渲染栈崩溃。
 - **强制规则**：每次开新的自动化测试都必须重建世界，不接受复用上一轮存档。
 
-**失败处理**：`MT_WORLD: BLOCKED`（世界未在时限内生成）→ 检查 `run/<版本>/logs/latest.log` 与 `crash-reports`；退出码 `11`。`MT_MODS: BLOCKED`（源目录缺失）→ 修正 `mt.conf` 中的 `MT_PACK_MODS_*` 或整合包内容。
-
-### 阶段 L — 启动与就绪
+#### 7.3 阶段 L — 启动与就绪
 
 **前置条件**：阶段 E 通过（`run/<版本>/saves/testworld/level.dat` 存在）。
 
-**执行命令**：
 ```bash
-pwsh -NoProfile -File scripts/test/mt_launch.ps1 --version 1.21.1 [--no-publish] [--no-preclean]
+bash scripts/test/win/mt.sh   --version 1.21.1 --phase launch --timeout 600
+bash scripts/test/win/launch.sh --version 1.21.1 --launch-mode bg --timeout 600 --quickplay testworld
+bash scripts/test/win/launch.sh --version fabric-1.20.1 --side client --enable-autojs
 ```
 
-**预期结果**：末行 `MT_LAUNCH: OK — 已进入世界（quickplay=testworld）`。
+| 开关 | 默认 | 说明 |
+|---|---|---|
+| `--version <v>` | **必填** | 缺即 `exit 2` |
+| `--timeout <sec>` | `MT_LAUNCH_READY_TIMEOUT_SEC` 或 **600** | 等 AutoJS 客户端就绪的预算 |
+| `--wait-world <sec>` | `MT_LAUNCH_WAIT_WORLD_SEC` 或 0 | 进世界后的额外等待 |
+| `--quickplay <世界>` / `--no-quickplay` | `testworld` | 直进测试世界 |
+| `--launch-mode bg\|start` | `bg` | 后台脱离式启动（**不要**用等待整棵进程树的方式） |
+| `--side client\|server` | 仅 fabric | 双 run 目录 |
+| `--enable-autojs` / `--disable-autojs` | 仅 fabric | 追加 `-PautojsTestMod=1` |
+| `--kill-on-timeout` / `--log-dir <dir>` / `--dry-run` | 关 / `$WIN_DIR/logs` / — | 见 `launch.sh:99-109` |
 
-**就绪判据（必须遵守）**：清空 `latest.log` 与 `crash-reports` 后，基础等待 **30 秒**，随后轮询 `run/<版本>/logs/latest.log` 中 ModernFix 的加载完成日志 **`Total time to load game and open world was`**；未出现则**每 15 秒复检**，180 秒上限。出现崩溃报告或进程退出即判失败。
+**预期结果**：`MT_LAUNCH: OK (NNs)`。**就绪判据是三段式探活**：`initialize` → `notifications/initialized` → `tools/call status`，并要求客户端侧 `available=true`（`scripts/test/win/lib/common.sh:533-579`、`launch.sh:475`）；日志 marker（ModernFix 的 `Total time to load game and open world was`）**只在**无 AutoJS jar 或 `MT_ALLOW_NO_AUTOJS=1` 时兜底。崩溃报告或进程退出即判失败。pidfile 落 `run/<版本>/win-run.pid`。
 
-**进入世界后同阶段完成**：
-1. 输出兼容栈信号（1.21.1：`SODIUM_LOADED` / `IRIS_LOADED`；26.1.2：`KUBEJS_LOADED` / `RHINO_LOADED` / `SODIUM_LOADED` / `IRIS_LOADED` / `SHADERS=… pack=…` / `SHADERPACK_LOADED=…`；1.20.1：`EMBEDDIUM_LOADED` / `OCULUS_LOADED`，dev run 预期为 false）；
-2. **窗口搬移规则已全局移除（2026-09-17 用户裁决：「全局移除移动游戏窗口到第二屏幕的规则」）**：此前本步骤会把测试客户端搬到**显示器 #1（第二屏）**并把客户区固定成 **1920x1080**（`MT_WINDOW:` 行；由 `--monitor` / `--size` 两个参数控制），现**不再**做任何搬移或改尺寸 —— 客户端窗口的位置与大小完全由系统与游戏自身决定。随之删除：`mt_launch.ps1` 的这两个参数、搬移代码块与对 `lib/Mt.Win32.psm1` 的导入；`lib/Mt.Win32.psm1` 的 `Get-MtMonitors` / `Move-MtWindowToMonitor` 两个函数及其导出项（它们只服务该规则，仓库内已无调用方）。日志里不再有 `MT_WINDOW:` 读数。
-   需要窗口矩形的工具不受影响：`mt_capture` 的 `crop` 与 `mt_inject` 的坐标映射继续用保留的 `Find-MtMinecraftWindow` / `Get-MtWindowRect` / `Get-MtClientRect`。**禁止把该规则（含「默认搬到第二屏」的隐式默认）加回来。**
+**进入世界后同阶段完成**：输出兼容栈信号（1.21.1 `SODIUM_LOADED` / `IRIS_LOADED`；26.1.2 另加 `KUBEJS_LOADED` / `SHADERS=` / `SHADERPACK_LOADED=`；1.20.1 dev run 预期 `EMBEDDIUM_LOADED=false`；fabric 另加 `SODIUM_LOADED` / `IRIS_LOADED`）。
 
-### 全局测试规则（测试环境硬性要求，2026-09-17 用户裁决）— 必须遵守
+**测试前清场（不再自动）**：旧 pwsh 台的 `--no-preclean` 与 `MT_PRECLEAN:` **在 bash 编排里不存在**（`scripts/test/win` 全无 preclean 字样）。清场当作**用例 setup 动作**（见第 4 节），别等 launch 替你做。
 
-> 本节四条规则对**三条线**（1.21.1 / 1.20.1 / 26.1.2）同时生效，由 `scripts/test` 工具链强制执行；
-> 任一条不满足时该轮测试**无效**（`MT_MODS: BLOCKED` / `MT_LAUNCH: ERROR`），**禁止**静默降级或手工绕过。
+**窗口搬移规则已全局移除（2026-09-17 用户裁决）**：不再把客户端搬到第二屏、不再固定 1920x1080，日志里不再有 `MT_WINDOW:` 读数。**禁止把该规则（含「默认搬到第二屏」的隐式默认）加回来。** 需要窗口矩形的工具（截图裁剪 / 注入坐标映射）继续用保留下来的窗口定位原语（`mt_capture.py --hwnd`、`mt_inject.py --hwnd`）。
 
-1. **测试环境必须装齐「反干扰 + 优化 + 探针宿主」三类模组**（`pwsh -File scripts/test/mt_env.ps1 mods --version <V>` 幂等落位）：
-   - **史莱姆压制（服务端/运行期，硬闸门）**：`superflat-world-no-slimes` + 其 required 前置 `collective`。超平坦测试世界 y<40 处处是史莱姆区块（实测同一位置 128 格内 103 只史莱姆）⇒ 会污染实体类读数。**1.20.1 例外**：它由 `forge-1.20.1/build.gradle` 的 `modImplementation` 提供，**不得**再放进 `run/1.20.1/mods`（会被 FML 判重复模组）。launch 侧判据 = 已加载模组清单行里的 modId（**版本相关**，统一走 `mt_launch.ps1` 的 `Test-MtModLoaded`）：`1.21.1`/`26.1.2`（NeoForge）取 latest.log 的 `显示名 版本 (modId)` 即 `(superflatworldnoslimes)` / `(collective)`；**`1.20.1`（Forge）没有括号清单行**，改取 `logs/debug.log` 的 `Found valid mod file … with {modId} mods - versions {…}` 即 `{superflatworldnoslimes}` / `{collective}`（2026-09-17 实测踩坑：1.20.1 沿用括号判据 ⇒ 把**已装载**的模组判成缺失、`MT_LAUNCH: ERROR`）。缺则 `MT_LAUNCH: ERROR`（确需对照实验时设 `MT_ALLOW_NO_SLIMEGUARD=1`）。
-   - **优化类（兼容性验证对象）**：`FerriteCore`（26.1.2 另有 `ModernFix`）三条线全装，坐标一律 Modrinth Maven 且版本 id 钉死。`mt_launch` 回显 `FERRITECORE_LOADED` / `MODERNFIX_LOADED` / `IMMEDIATELYFAST_LOADED`（缺装载只 WARN，但要看得见）。**`ImmediatelyFast` 在 1.20.1 上装不了 —— 已实测定位、属上游硬冲突，不是配置问题**：IF 的 1.20.1 构建只有 1.2.0~1.2.4，其 `IrisCompat.init()` 第 0 条指令就 `Class.forName("net.coderbot.iris.vertices.ImmediateState")`（**Iris 1.6 包名**），而 1.20.1 的光影加载器 Oculus 1.8.0 基于 Iris 1.7+（`net.irisshaders.iris`）⇒ 探测到 oculus 就无条件调用、**无配置项可跳过**，模组构造期 `ClassNotFoundException` 直接终止客户端（`runClient` exit -1）。⇒ 与「光影包必须默认启用」二选一，当前取舍 = **保光影**，1.20.1 线回显 `IMMEDIATELYFAST_LOADED=false` WARN 并记明原因（改用 Oculus 1.7.0 可两边都满足，但须先经用户裁决并复跑 SHADER-VISION）。
-   - **探针宿主（1.21.1）**：`KubeJS` + `Rhino` + `Architectury API`（由 `mt_env` 从整合包复制；1.20.1 的 KubeJS 走 build.gradle，26.1.2 的走 `Install-MtProbeRuntime` 下载）。**缺 KubeJS ⇒ `MT_ASSERT_KUBEJS: BLOCKED`、`/astralprobe` 不存在、`MT_preflight-op` ERROR** —— 这是「探针脚本已改但读数全无」的根因形态。
-   - **查看类（2026-09-19 用户要求「所有测试环境增加 jei 和 jade 模组,用于用户侧物品和效果检查」）**：`JEI`（物品/配方/用途查看）+ `Jade`（方块与实体信息 HUD）三条线全装，**均为测试环境依赖、不进发货产物**，一律走各线 `build.gradle`（与 JEI 既有做法一致，**不**放进 `run/<版本>/mods`）：`neoforge-1.21.1` / `neoforge-26.1.2` 用 `implementation`，**`forge-1.20.1` 必须用 `modImplementation`**（MDG LegacyForge 需在解析期重映射，直接塞原版坐标系 jar 会崩）。坐标与版本**必须与各线整合包内现有 jar 同版**（避免 dev run 与整合包行为不一致）：1.21.1 `curse.maven:jei-238222:8512040`(19.39.0.372) + `maven.modrinth:jade:eYz2YBGT`(15.10.6+neoforge)；1.20.1 `curse.maven:jei-238222:8778011`(15.56.0.205) + `maven.modrinth:jade:xJQHCmWJ`(11.13.3+forge)；26.1.2 `curse.maven:jei-238222:8886511`(29.37.0.99) + `maven.modrinth:jade:5jKeKXwB`(26.1.11+neoforge，game_versions 含 26.1.2)。**Jade 的 `client_side`/`server_side` 均为 `optional`** ⇒ 不属「纯客户端模组」，**不需要**进 `Invoke-MtEnvWorld` 的移出名单（与 ImmediatelyFast 相反）；两者都**不是**硬前置，**禁止**写进 `mods.toml`/`neoforge.mods.toml` 的依赖段，也**不得**纳入加载器门槛用例。
-2. **光影包必须就位且默认启用**（2026-09-17 用户要求「游戏环境缺少光影包，添加光影包并设置默认启用」）：`mt_env.ps1 mods` 把 `ComplementaryReimagined_r5.9.3.zip` 落位 `run/<V>/shaderpacks/`，并把光影加载器的配置写成 `shaderPack=ComplementaryReimagined_r5.9.3.zip` + **`enableShaders=true`**（**路径按版本取**，见 `Get-MtIrisConfigFile`：Iris 线 = `config/iris.properties`，**1.20.1 的 Oculus = `config/oculus.properties`** —— 2026-09-17 实测该线根本没有 `iris.properties`）。**三条线都生效**（2026-09-17 复验：1.20.1 的渲染栈 Embeddium + Oculus 由 `forge-1.20.1/build.gradle` 的 `modImplementation` 提供，dev run 里实测 `EMBEDDIUM_LOADED=true` / `OCULUS_LOADED=true` 且进世界后打印 `Using shaderpack: ComplementaryReimagined_r5.9.3.zip`；1.21.1 Sodium + Iris、26.1.2 渲染栈由 `mt_env` 下载）。launch 侧回显 `SHADERS=enabled pack=…` + `SHADERPACK_LOADED=true`（**版本相关**：1.20.1/1.21.1 读 latest.log 的 `Using shaderpack:` 行——⚠️ 该行**出现在进入世界之后**，必须放在已进世界的闸门里判；26.1.2 读 `config/iris.properties` 的 `enableShaders`）。需要「关光影冷启动」的用例（`SHADER-VISION-26.1.2` 步骤 0）必须自己显式执行 `mt_env.ps1 shaders --state off`，不依赖默认值。
-3. **禁止游戏失焦打开 ESC 菜单**（2026-09-17 用户裁决）：`mt_launch` 在**每次冷启动之前**强制把 `run/<V>/options.txt` 的 `pauseOnLostFocus` 写成 `false` 并回显 `PAUSE_LOCK: on` —— 失焦暂停会让后台注入（`mt_inject`）与截图（`mt_capture`）全部失效，还会把暂停菜单顶在画面上。统一查询/手改入口 = **新增的全局调试命令** `pwsh -File scripts/test/mt_env.ps1 debug --version <V> [--pause-lock on|off|status] [--shaders on|off|status] [--keybinds status|repair]`（不带开关即回显各项目前状态）。**据本条删除测试流程里不必要的 Esc 按键**：`mt_inject` 的 `Esc→Tab→Enter` 归一化在「pause-lock 生效 + `-NoEsc`」时**一律跳过**并回显 `ESC_SKIP: …`；只有真正需要清空**容器/聊天**界面时才去掉 `-NoEsc`（Esc 是唯一能关容器的安全键，该场景行为不变）。
-4. **游戏进程捕获/等待时长必须严格受控**（2026-09-17 用户裁决「严格控制系统进程捕获时长」）：所有等待都有硬上限且**必须回显耗时**，禁止无限等待 ——
+**能力缺口（必须明示）**：`--channel native` 随 pwsh 资产删除而失效 —— NeoForge/Forge 三线在 launch 阶段直接 `BLOCKED(11)` 并打印原因（`phases.sh:266-272`）；⚠️ **fabric-1.20.1 不受这段拦截**（`phases.sh:260-263` 提前 `return` 到 `mt_fab_phase_launch`，`fabric.sh` 内无 channel 分支）⇒ 该线传 `--channel native` 会**静默按 fabric 自身链路启动**，不要以为它被拦住了。另：**编排层 `mt.sh` 只接受 `autojs|native`**（`mt.sh:107-110`，传 `kubejs` 直接 `MT_ERROR` + exit 2）；`kubejs` 只在阶段 `cases` 由 `phases.sh:344-348` 透传给用例执行器（legacy 通道），详见第 12 节。
+
+**失败处理**：`MT_LAUNCH: BLOCKED`（未在时限内就绪）→ 查 `run/<版本>/win-run.log` 末 30 行，退出码 `11`；检测到崩溃报告 → 退出码 `2`，进 `crash-reports` 定位。
+
+> **快照点与断言窗口**：阶段 L 成功后记 `latest.log` / `debug.log` / `kubejs/server.log` 的**字节游标**与 crash 基线并冻结为 `launch_offsets`；阶段 C 的**每条用例开始**再刷新 `case` 窗口 ⇒ 断言窗口是「自本用例起」，而不是「自 launch 起」（旧写法会让前序用例把断言喂饱 ⇒ 假 PASS，实测命中数随用例递增 14→28→…→126）。用例可用 `assert.scope` 显式切换：`case`（缺省）/ `launch` / `whole`；非法值在 `validate` 阶段即被拦下。**`mixin` 断言固定读 launch 窗口**（跟随 case 会退化成恒真），`crash` 基线亦随每条用例刷新。⚠️ **反向断言注意**：`absent` 收窄后只检测本用例窗口 —— 凡「文本不是本用例产生」（尤其启动/数据包解码期文本）的反向断言**必须显式写 `scope: whole`**，否则会静默丢掉启动期覆盖。
+
+### 8. 全局测试规则（测试环境硬性要求，2026-09-17 用户裁决）— 必须遵守
+
+> 本节规则对所有登记版本同时生效；任一条不满足时该轮测试**无效**（`MT_MODS: BLOCKED` / `MT_LAUNCH: ERROR`），**禁止**静默降级或手工绕过。
+
+1. **测试环境必须装齐「反干扰 + 优化 + 探针宿主」三类模组**（jar 由 `build.gradle` 与人手投放保证，`mt_env.py mods` 只校验就位）：
+   - **史莱姆压制（硬闸门）**：`superflat-world-no-slimes` + 其 required 前置 `collective`。超平坦世界 y<40 处处是史莱姆区块（实测同一位置 128 格内 103 只）⇒ 会污染实体类读数。**1.20.1 例外**：由 `forge-1.20.1/build.gradle` 的 `modImplementation` 提供，**不得**再放进 `run/1.20.1/mods`（会被判重复模组）。判据 = latest.log 已加载模组清单行里的 modId（**版本相关**）：NeoForge 线取 `显示名 版本 (modId)`；**Forge 线没有括号清单行**，改取 `logs/debug.log` 的 `Found valid mod file … with {modId} mods - versions {…}`（沿用括号判据会把已装载判成缺失）。缺则 `MT_LAUNCH: ERROR`。
+   - **优化类（兼容性验证对象）**：`FerriteCore`（26.1.2 另有 `ModernFix`）按现行引脚装，坐标一律 Modrinth Maven、版本 id 钉死；launch 回显 `FERRITECORE_LOADED` / `MODERNFIX_LOADED` / `IMMEDIATELYFAST_LOADED`（缺装载只 WARN，但要看得见）。**`ImmediatelyFast` 在 1.20.1 的 forge 线装不了** —— 上游硬冲突：IF 1.20.1 构建 `IrisCompat.init()` 第 0 条指令就 `Class.forName("net.coderbot.iris.vertices.ImmediateState")`（Iris 1.6 包名），而该线光影加载器 Oculus 基于 Iris 1.7+ ⇒ 构造期 `ClassNotFoundException` 直接终止客户端。**fabric-1.20.1 例外**：改用 Iris 1.7.6 + ImmediatelyFast 1.5.5（同族 API 已对齐），可正常装载。
+   - **探针宿主**：`KubeJS` + `Rhino`（NeoForge 线另加 `Architectury API`）。**AutoJS 通道自带 Rhino 内核、不需要 KubeJS**；但 legacy `kubejs` 通道与 `/astralprobe` 命令仍依赖它 —— 缺 KubeJS ⇒ legacy 断言 `BLOCKED`、`/astralprobe` 不存在。
+   - **查看类（2026-09-19 用户要求）**：`JEI` + `Jade` 各线全装，**均为测试环境依赖、不进发货产物**，一律走各线 `build.gradle`：neo 线用 `implementation`，**`forge-1.20.1` 必须用 `modImplementation`**（LegacyForge 需解析期重映射，直接塞原版坐标系 jar 会崩）。坐标与版本**必须与整合包内现有 jar 同版**。Jade 两侧均 `optional` ⇒ 不属「纯客户端模组」，**不需要**进世界生成期移出名单；两者都**不是**硬前置，**禁止**写进 `mods.toml` / `neoforge.mods.toml` 依赖段，也**不得**纳入加载器门槛用例。
+2. **光影包必须就位且默认启用**（26.1.2 起例外，见 7.2）：路径按版本取 —— Iris 线 = `config/iris.properties`，**1.20.1 的 Oculus = `config/oculus.properties`**（该线根本没有 `iris.properties`）。launch 回显 `SHADERS=enabled pack=…` + `SHADERPACK_LOADED=true`（**版本相关**：1.20.1/1.21.1 读 latest.log 的 `Using shaderpack:` 行，⚠️ 该行**出现在进入世界之后**，必须放在已进世界的闸门里判；26.1.2 读 `config/iris.properties` 的 `enableShaders`）。需要「关光影冷启动」的用例必须自己显式 `mt_env.py shaders --state off`，不依赖默认值。
+3. **禁止游戏失焦打开 ESC 菜单**（2026-09-17 用户裁决）：launch 在**每次冷启动之前**强制把 `run/<V>/options.txt` 的 `pauseOnLostFocus` 写成 `false` 并回显 `PAUSE_LOCK: on` —— 失焦暂停会让后台注入与截图全部失效，还会把暂停菜单顶在画面上。统一入口：`python scripts/test/mt_env.py debug --version <V> [--pause-lock on|off|status] [--shaders on|off|status] [--keybinds status|repair]`。**据本条删除测试流程里不必要的 Esc 按键**：注入器在「pause-lock 生效 + `--no-esc`」时一律跳过；只有真要清空容器/聊天界面时才去掉 `--no-esc`。
+4. **游戏进程捕获/等待时长必须严格受控**：所有等待都有硬上限且**必须回显耗时**，禁止无限等待 ——
+
    | 环节 | 硬上限 | 回显 |
    |---|---|---|
-   | 进入世界就绪（launch） | 180s（`MT_LAUNCH_READY_TIMEOUT_SEC` 覆写，≥30） | `READY_WAIT: budget=…` + `MT_TIMING: world-ready=…s` |
-   | launch 子进程终态标记 | 180s（`MT_LAUNCH_TIMEOUT_SEC`）；日志 90s 零增长即判 STALL | `CHILD: STALL` / `CHILD: TIMEOUT` |
-   | env / build / preflight | 240s / 300s / 120s | 同上 |
-   | 单条用例 | 180s（`--case-timeout`） | 该条记 TIMEOUT 后继续跑下一条 |
-   **取消固定空等**：launch 就绪等待不再先 `Start-Sleep 30`，改为**立即 3s 轮询**（实测省下约 30s 纯等待；读日志是纯文件读）。
-   **调用方约定**：长驻阶段（launch）若被外层管道捕获（如 `| Select-Object`）必须改成文件重定向（`*> 文件`）——否则整条链路要等长驻子进程放开 stdout 句柄，表现为「launch 早已 `MT_LAUNCH: OK`，命令行却迟迟不返回」。
+   | 进入世界就绪（launch） | **600s**（`--timeout` / `MT_LAUNCH_READY_TIMEOUT_SEC`） | `MT_LAUNCH: OK (NNs)` |
+   | 单条用例 | `--case-timeout`，编排层缺省 **600s**（`MT_CASE_TIMEOUT_SEC`，`phases.sh:326-349`） | `MT_CASE_RESULT: … = TIMEOUT` 后继续下一条 |
+   | 单阶段 / 全局预算 | **编排层未实现**（`--run-timeout`、`MT_<阶段>_TIMEOUT_SEC` 命中即 `MT_ERROR` + `exit 2`，`mt.sh:86-88`、`:228`） | 分步执行 + 外层作业超时自己兜 |
 
-5. **注入按键语义依赖的绑定不得漂移（潜行/冲刺不变量，2026-09-19 实测踩坑）**：工具链以**真实按键注入**表达语义（`mt_inject.ps1 mouse --button right --shift` ⇒ 真实 `SendInput(LEFT SHIFT)`），而游戏侧读的是 `options.keyShift`（潜行）**当前的绑定** —— 两者只有在绑定未被改动时才等价。实测 `run/1.21.1/options.txt` 的 sneak/sprint 被**换绑**（`key_key.sneak:key.keyboard.left.control` + `key_key.sprint:key.keyboard.left.shift`）后，「右键 + 潜行 = 取消」的 `SELECTOR-KEYS` 用例注入的 LEFT SHIFT 被游戏当成**冲刺** ⇒ 客户端一直走「右键 = 自用提示」分支，断言 `key=right_sneak action=cancel` **稳定失败**（同日连续 3 次），而绑定未变的 1.20.1 同一用例全绿 —— 是**环境漂移**而非被测代码缺陷。处置：env 阶段（`mt_env.ps1 mods`）幂等修回并回显 `MT_KEYBINDS: OK` / `MT_KEYBINDS: REPAIRED <旧值→新值>`；查询/手工修复入口 `pwsh -File scripts/test/mt_env.ps1 debug --version <V> --keybinds status|repair`。**禁止**把「shift/潜行类用例失败」先归因于被测代码 —— 先跑该 `status` 查询核对绑定。
+   ⚠️ **调用方约定**：长驻阶段（launch）若被外层管道捕获必须改成文件重定向 —— 否则整条链路要等长驻子进程放开 stdout 句柄，表现为「launch 早已 `MT_LAUNCH: OK`，命令行却迟迟不返回」。
+5. **注入按键语义依赖的绑定不得漂移（潜行/冲刺不变量，2026-09-19 实测踩坑）**：工具链以**真实按键注入**表达语义（右键 + 潜行 ⇒ 真实 `SendInput(LEFT SHIFT)`），而游戏侧读的是 `options.keyShift`（潜行）**当前绑定** —— 两者只有在绑定未改动时才等价。实测 `run/1.21.1/options.txt` 的 sneak/sprint 被换绑后，「右键 + 潜行 = 取消」的用例注入的 LEFT SHIFT 被当成**冲刺** ⇒ 客户端一直走「右键 = 自用提示」分支，断言**稳定失败**，而绑定未变的 1.20.1 同一用例全绿 —— 是**环境漂移**而非被测代码缺陷。处置：env 阶段幂等修回并回显 `MT_KEYBINDS: OK` / `MT_KEYBINDS: REPAIRED <旧值→新值>`。**禁止**把「shift/潜行类用例失败」先归因于被测代码。
+6. **瞬间效果（instant mob effect）在「下一 tick」结算 —— 涉及治疗的判据必须延后读数（2026-09-19 实测确立）**：`MobEffects.HEAL` 经 `LivingEntity#addEffect` **只把实例放进 `activeEffects`**，真正回血发生在**下一 tick**（`MobEffectInstance#tick → MobEffect#applyEffectTick`）。⇒ 同一 tick 读 `getHealth()` **必然读到旧值**，会把「瞬间治疗已生效」写成假 FAIL。**口径**：凡判据依赖「一次性回血 / 瞬间治疗效果」，读数一律排到 **≥1 tick 之后**（本仓先例 = 探针的 `AP_<tag>_AFTER:delay=2:` 行，由 `ServerEvents.tick` 回调落 latest.log）。同一类坑的另一面：**不要用「按类型搜索取靶」** —— 实机两轮实测该匹配不可靠（取到过施放者自己、`minecraft:spider` 一条也匹配不到），取靶应由 setup 命令**发布句柄**、判据只读句柄。
 
-6. **瞬间效果（instant mob effect）在「下一 tick」结算 —— 涉及治疗的判据必须延后读数（2026-09-19 实测确立）**：`MobEffects.HEAL`（原版 `minecraft:instant_health`；两发布线字段名均为 `HEAL`）经 `LivingEntity#addEffect` **只把实例放进 `activeEffects`**，真正回血发生在**下一 tick** 的 `MobEffectInstance#tick → MobEffect#applyEffectTick`（`InstantenousMobEffect` 的 `shouldApplyEffectTickThisTick` / 1.20.1 的 `isDurationEffectTick` 均为 `duration >= 1`；**两线的 `addEffect` 都没有 instant 分支**，原版 `/effect give … instant_health` 走的也是这条路径）。⇒ 在**同一 tick**（如命令体末尾）读 `getHealth()` **必然读到旧值**，会把「瞬间治疗已生效」写成假 FAIL。现场铁证（1.21.1）：`/data get entity @s Health` 在施放前 = `12.0f` → 施放同 tick 仍 `12.0f` → **下一 tick** `16.0f`（同批的猪 `6.0f → 10.0f`）。**口径**：凡判据依赖「一次性回血 / 瞬间治疗效果」的用例，读数一律**排到 ≥1 tick 之后**（本仓先例 = `luluprep`/`luluactive`/`luluanchor` 的 `AP_<tag>_AFTER:delay=2:` 行，由 `ServerEvents.tick` 回调经 `emitTo` 落 latest.log）；命令体同 tick 只报**同步可读**项（会话 / 冷却 / 治愈点数 / 非瞬间效果）。同一类坑的另一面：**不要用「按类型搜索（`typeIdOf(entity) == minecraft:xxx`）取靶」** —— 实机两轮实测该匹配不可靠（取到过施放者自己、`minecraft:spider` 一条也匹配不到），取靶应由 setup 命令**发布句柄**、判据只读句柄（见 `KNOWN-ISSUES.md` KI-E2）。
+### 9. 阶段 C — 测试条目
 
-3. 校验 KubeJS `run/<版本>/logs/kubejs/server.log` 为 **0 errors**（进入世界后第一步）。
-
-**失败处理**：`MT_LAUNCH: BLOCKED`（未在时限内进入世界）→ 查看 `run/<版本>/runclient_launch.log` 末 30 行；退出码 `11`。检测到崩溃报告 → 退出码 `2`，进 `crash-reports` 定位。
-
-> **快照点与断言窗口（B7 起）**：阶段 L 成功后由 `mt_assert.ps1 snapshot --window launch` 记录 `latest.log` / `debug.log` / `kubejs/server.log` 的**字节游标**与 crash 基线，并把这组游标**冻结**为 `launch_offsets`；阶段 C 的**每条用例开始**再由 `mt_case.ps1` 写 `snapshot --window case` 刷新当前窗口 ⇒ 断言窗口是「**自本用例起**」，而不是旧的「自 launch 起」（旧写法会让前序用例把断言喂饱 ⇒ 假 PASS，B6 实测 `APDUMP|LOCKRAW|` 命中数随用例递增 14→28→…→126）。用例可用 `assert.scope` 显式切换：`case`（缺省）/ `launch`（读 `launch_offsets`）/ `whole`（整文件）；非法值在 `validate` 阶段即被拦下。**`mixin` 断言固定读 launch 窗口**（跟随 case 会退化成恒真），`crash` 基线亦随每条用例刷新。⚠️ **反向断言注意**：`absent` 的旧语义是「整文件不得出现」，收窄后只检测本用例窗口 —— 凡「文本不是本用例产生」（尤其启动/数据包解码期文本，如 `Could not decode GlobalLootModifier`）的反向断言**必须显式写 `scope: whole`**，否则会静默丢掉启动期覆盖。详见 `scripts/test/TESTING-SPEC.md` 的「断言窗口」段。
-
-### 阶段 C — 测试条目
-
-**前置条件**：阶段 L 通过且已记录快照点。
-
-**执行命令**：
-```bash
-pwsh -NoProfile -File scripts/test/mt_case.ps1 run-dir --version 1.21.1            # 执行全部适用条目
-pwsh -NoProfile -File scripts/test/mt_case.ps1 run     --version 1.21.1 --case cases/XXX.json
-pwsh -NoProfile -File scripts/test/mt_case.ps1 run     --version 1.21.1 --case XXX       # 裸名亦可
-pwsh -NoProfile -File scripts/test/mt_case.ps1 validate --case cases/XXX.json      # 只校验不执行
-```
-
-> `--case` / `--dir` 的相对路径按 `scripts/test/` 解析（不是按 cwd），并接受裸名（自动补 `.json` 并在 `cases/` 下查找），因此从仓库根或任意目录调用都成立。
-
-**窗口锁定（注入前置）**：所有注入都会带上 `--version`，`mt_inject.ps1` 据此只认命令行匹配该版本 dev run 的窗口。
-用户自己的整合包客户端同时开着也不会投错；**若存在多个候选且无法唯一确定，注入直接报错退出，而不是"取第一个"** —— 投错窗口会产生「看起来通过」的假结论。
-
-**输入法自动切换（免手动，改自旧版硬前置）**：旧流程要求「测试前手工把系统输入法切成英语(美国)」，靠人记住，忘一次就会按键串扰。
-现在改为**注入前自动切目标窗口**，由 `mt_ime.ps1` 实现：
-
-- 切换作用域是**目标窗口所在线程**（`WM_INPUTLANGCHANGEREQUEST`，失败则 `AttachThreadInput` + `ActivateKeyboardLayout` 兜底），
-  **不改系统全局默认输入法**（不动 `SPI_SETDEFAULTINPUTLANG`）——所以不影响用户在别处的中文输入；
-- 效果只在该游戏进程存活期间有效，**进程退出即自动回到系统原输入法**，无遗留状态；
-- 注入时会校验切换结果，失败则**拒绝注入并报错**（`as-is` 模式可显式跳过，仅用于排障）；
-- 前置检查因此只要求「en-US 布局**可用**」，不再要求「当前输入法已是 en-US」——zh-CN 是当前输入法也能直接跑。
+**前置条件**：阶段 L 通过（客户端已进世界、读数通道就绪）。
 
 ```bash
-pwsh -NoProfile -File scripts/test/mt_ime.ps1 list        # 列出可用布局 + en-US 可用性
-pwsh -NoProfile -File scripts/test/mt_ime.ps1 selftest    # 跨进程自检：切成功 / 宿主自观测 / 本进程不受影响
-pwsh -NoProfile -File scripts/test/mt_ime.ps1 status      # 当前前台窗口的语言状态
+bash scripts/test/win/mt.sh --version 1.21.1 --phase cases --case scripts/test/cases/X-1.21.1.json
+# 直调用例执行器（--run-dir 必填；编排层会自动补 --version / --case-timeout / --run-dir）
+python scripts/test/lib/mt_case.py run --version 1.21.1 --run-dir run/1.21.1 --case <id|path> --channel autojs
+python scripts/test/lib/mt_case.py validate --cases-dir scripts/test/cases    # 只校验，不执行
+python scripts/test/lib/mt_case.py audit  --cases-dir scripts/test/cases      # 清单 + 判定率
 ```
 
-> 自检是**跨进程**的：父进程切换子进程窗口，由子进程自己打印线程语言变化，并同时断言父进程（即"现有功能"）输入语言**未被改动**——避免"切了别人的键盘布局"这类副作用。
+**机器行**：每条开始 `MT_CASE_BEGIN: <case_id> (channel=…)`，结束 `MT_CASE_RESULT: <case_id> = PASS|FAIL|BLOCKED|TIMEOUT`（取值域由 `mt_case.py:811-813` 逐字对齐，**另起** `MT_CASE_DETAIL:` / `MT_CASE_WARN:` / `MT_CHANNEL: delegated_count=N` 不混入结果行）；全部结束时 `MT_CASE_SUMMARY: total=N pass=N nonpass=N`。fabric-1.20.1 走 bash 原生解析，另打 `MT_CASE_RCON:` / `MT_CASE_LOG:` / `MT_CASES: total=… ok=… fail=… blocked=…`。
 
-**条目文件（Case Spec）**：`scripts/test/cases/*.json`，字段为 `case_id` / `title` / `version` / `target` / `fixtures` / `steps` / `asserts` / `evidence` / `on_fail`。`version` 与当前执行版本不符的条目自动 `SKIP`。
+**单条失败不终止后续**（条目相互独立）。
 
-**动作原语表（封闭，不允许自造 `op`）**：
+**动作原语（封闭集，`mt_case.py:57-72`；写错即 `validate` 报错）**：
 
-| `op` | 作用 | 关键字段 |
+| 原语 | 关键参数 | 说明 |
 |---|---|---|
-| `inject_key` | 注入按键/鼠标 | `key`（attack/rclick/shift-rclick/j/h/t/e/escape/enter/f2/f3/w/1-9）、`hold_ms` |
-| `inject_command` | 注入斜杠命令 | `command`、`no_esc`（目标选择激活期必须为 true） |
-| `kubejs_reload` | 热重载 KubeJS（`/kubejs reload server-scripts` + `/reload`） | — |
-| `wait` | 显式等待 | `ms` |
-| `screenshot` | 截图并登记当前世代 | `tag`、`mode`（f2/window） |
-| `assert` | 内联断言 | 同下表断言字段 |
-| `note` | 写入报告时间线的人工观察点 | `text` |
+| `mcp_status` | — | AutoJS 端点探活 |
+| `eval_js` | `code` / `side`（auto\|server\|client） | 求值；只取最后一个表达式 ⇒ 代码须是 IIFE |
+| `await_state` | `code` / `timeout` | 轮询直到为真 |
+| `inject_key` | `key` | 真实按键注入 |
+| `inject_command` | `command` / `no_esc` | 聊天命令（不带前导 `/`） |
+| `inject_mouse` | `button` / `notches` | 鼠标点击与滚轮 |
+| `jar_stats` | `path` 等 | 读产物 jar 统计（条目 / 类数 / 资源） |
+| `wait` | `ms` | **已退役**（新条目不要用；节奏改用 `await_state`） |
+| `screenshot` | `tag` / `mode` | ⚠️ **当前恒 BLOCKED(11)**：`mt_case.py:430-433` 直接 `raise Blocked("screenshot 通道未移植")` |
+| `assert` | 见下表 | 取数判定 |
+| `note` | `text` | 只写进报告，不判定 |
 
-**断言类型**：
+> `kubejs_reload` 已显式废除（`{"active": False}`），autojs 通道里出现即校验报错。
 
-| 类型 | 判定者 | 说明 |
+**断言类型（11 种，`mt_case.py:73-74`）**：`log` / `absent` / `crash` / `kubejs` / `mixin` / `vision` / `eval` / `state` / `jar` / `bytecode` / `bytecode_absent`。
+
+| 类型 | 判定 | 说明 |
 |---|---|---|
-| `log` | 脚本 | 增量区间内正则命中（`pattern`、可选 `source=latest\|debug`） |
-| `absent` | 脚本 | 增量区间内**不得**出现（用于「旧机制无残留」类） |
-| `crash` | 脚本 | 无**本次新增**崩溃报告（快照基线 + 运行开始时间双重判定；旧世代残留不计入） |
-| `kubejs` | 脚本 | `kubejs/server.log` 为 0 errors |
-| `mixin` | 脚本 | 增量区间无 Mixin apply failed |
-| `vision` | **视觉模型** | 只产出提问请求；脚本不解析像素 |
+| `log` | 正向（数量 / 正则） | 读日志窗口内的标记 |
+| `absent` | 反向 | 用例窗口内**不得**出现；跨启动期文本必须 `scope: whole` |
+| `crash` | 崩溃 | 用例期间新增 `crash-reports` 即 FAIL |
+| `kubejs` | 探针读数 | `/astralprobe` 等命令返回值 |
+| `mixin` | 注入完整性 | 固定读 launch 窗口，`InvalidInjectionException` 即 FAIL |
+| `vision` | 画面 | 依赖 `screenshot` 原语 ⇒ **当前恒 BLOCKED(11)**；恢复后也只产出提问、不自动判 PASS |
+| `eval` / `state` | 运行时求值 | AutoJS `eval_js` / `await_state` 的判据形态 |
+| `jar` / `bytecode` / `bytecode_absent` | 产物与字节码 | 读 jar 条目 / 类常量池，不需起游戏 |
 
-**预期结果**：每条目输出 `MT_CASE_RESULT: <id> = PASS|FAIL|BLOCKED|ERROR|SKIP`，末尾 `MT_CASES_SUMMARY: …`。单条失败**不阻断**后续条目。
+**失败处理**：`FAIL` = 真实缺陷（取证后按〈新版本发布流程〉修）；`BLOCKED` = 依赖缺失（**不得**计功能缺陷，补齐后重跑）；`TIMEOUT` = 单条超预算（`--case-timeout`，编排层缺省 600s），记 TIMEOUT 后继续；`MT_CASE_WARN` 表示结果落盘失败（证据缺失，要补）。
 
-**失败处理**：
-- `FAIL` — 断言不通过，按真实缺陷处理；`on_fail: keep_game_running` 时保留游戏现场便于取证：会落 `cases/.mt_keep_alive` 标记（内容为失败原因），退出清理据此**不杀游戏进程**，取证完用 `pwsh -NoProfile -File scripts/test/mt.ps1 --phase stop --force` 释放；
-- `BLOCKED` — 依赖缺失（KubeJS 日志缺失、注入找不到窗口等），先修环境再复跑，**不得计为功能缺陷**；
-- `ERROR` — 执行器异常（未知原语、条目 schema 非法、注入找不到窗口）；条目被拒绝执行，不产生半执行状态。
+**窗口锁定**：注入动作一律带 `--version`；同版本出现多个候选窗口且无法唯一确定时**报错退出**，不取第一个（`mt_inject.py --hwnd` 可显式指定）。
 
-### 阶段 R — 报告与结论
+**输入法**：注入前把**目标窗口线程**的输入法切到 en-US（`scripts/test/lib/mt_ime.py`，作用域 = 目标窗口线程的 `WM_INPUTLANGCHANGEREQUEST`；失败用 `AttachThreadInput` + `ActivateKeyboardLayout` 兜底）；**不改系统默认输入法**，进程退出自动复原。注入时校验失败即拒绝注入（ERROR）；`--layout as-is` 仅排障。
 
-**前置条件**：阶段 C 执行完毕（即使有失败也要收尾）。
+**条目文件字段**：`case_id` / `title` / `version` / `target` / `fixtures` / `steps` / `asserts` / `evidence` / `on_fail` / `channel`；`version` 与目标不符时自动 `SKIP`，`channel` 缺省按 `kubejs`（legacy）解析，新条目一律显式写 `autojs`。
 
-**执行命令**：
+### 10. 阶段 R — 报告与结论
+
+**前置条件**：阶段 C 完成（无论成败）。
+
 ```bash
-pwsh -NoProfile -File scripts/test/mt_report.ps1 collect --version 1.21.1 --verdict PASS
-pwsh -NoProfile -File scripts/test/mt_report.ps1 summary
+python scripts/test/mt_report.py mark    --version 1.21.1 --case <id> --result PASS
+python scripts/test/mt_report.py collect --version 1.21.1 --verdict PASS
+python scripts/test/mt_report.py summary
 ```
 
-**预期结果**：
-- `scripts/test/reports/<运行id>/<版本>/report.md` — 含**明确的通过/失败结论**、阶段结果表、条目结果表、增量日志标记、崩溃/异常（区分基线与新增）、证据索引、复跑命令；
-- `scripts/test/reports/<运行id>/SUMMARY.md` — 两版本各自结论 + 综合结论。
+**预期结果**：`MT_REPORT: OK — <path>（结论 <verdict>）`；产出 `scripts/test/reports/<run_id>/<版本>/report.md` 与 `reports/<run_id>/SUMMARY.md`（`mt_report.py:12-13`）。
 
-**失败处理**：报告为收尾动作，失败不影响结论判定；若证据缺失（如 `runclient_launch.log` 不存在）在报告中标注为缺失而非静默跳过。
+**失败处理**：`MT_REPORT: ERROR` 出现在生物 AI 禁用审计未通过时（测试环境硬性要求，先修环境）；报告生成失败**不影响测试结论**，但**证据缺失要显式标注**，不静默跳过。
 
----
+### 11. 截图识别规则（必须遵守）
 
-### 截图识别规则（必须遵守）
+- **入口**：`python scripts/test/mt_capture.py capture --version <v> --tag <tag> [--mode f2|window] [--crop-to-window]`。
+- **不用固定目录环境变量**：路径按版本推导，产物为 `run/<版本>/screenshots/<tag>_<run_id>.png`，清单 `run/<版本>/screenshots/.mt_shots.json`。
+- **只识别当前世代**：世代由 `cases/.mt_active_run` 记录，`prune` 只留当前世代；不得 glob 整个目录（会把上一轮残留当本轮证据）。
+- **两种模式**：`f2` = 向游戏窗口投递 F2（默认 3 次重试、每次等 10s，失败降级 `window`）；`window` = GDI 抓屏（DPI 已按 PER_MONITOR_AWARE_V2 处理）。
+- **机器行与退出码**：`MT_CAPTURE: OK|WARN|ERROR`；0 = 成功 / 2 = 参数错或抓取失败。非 Windows 记 ERROR，**不假装成功**。
+- ⚠️ **`--keep <n>` 只解析不使用**（与旧 ps1 已知缺陷一致），清理请用 `prune`；⚠️ **用例级截图未接入**：`mt_case` 的 `screenshot` 原语恒 BLOCKED ⇒ 现阶段截图只能作为**人工取证**，不能当 `vision` 断言的证据。
 
-- **不使用任何固定截图目录的环境变量配置**。截图路径由 `lib/Mt.Paths.psm1` 按版本推导，且每次运行分配唯一运行 id。
-- **只识别当前（最新）生成的截图**：截图在采集时登记进**当前运行的世代清单**（`run/<版本>/screenshots/.mt_shots.json`）；断言与报告一律经 `current_shots(run_id)` 取图。上一世代的残留图片不会被当作本次证据。
-- 需要清场时执行 `pwsh -NoProfile -File scripts/test/mt_capture.ps1 prune --version <版本>`，只保留当前世代。
-- 视觉断言若引用的截图不属于当前世代，判定为 `BLOCKED`（证据不可信）而非 `FAIL`。
+### 12. 桌面驱动与游戏内注入（AutoJS 优先）
 
-### 桌面驱动通道（2026-10-18 换血）
+| 用途 | 通道 | 说明 |
+|---|---|---|
+| **游戏内读数 / 铸作 / GUI 驱动（最高优先级）** | **AutoJS** | 端点 `http://127.0.0.1:25585/mcp`；自带 Rhino 内核、**不需要 KubeJS**；新用例 `"channel": "autojs"`；端点没起记 **BLOCKED** |
+| 游戏内按键语义 | `mt_inject.py` | SendInput 扫描码；文本用 `KEYEVENTF_UNICODE` 整串发送（不按 `/`）；注入前把目标窗口线程切 en-US |
+| fabric-1.20.1 注入 | **RCON**（默认）/ AutoJS（可选） | 缺省 RCON `127.0.0.1:25575`、口令 `astralft`（常量在 `fabric.sh:34-35`，且会**优先读 `server.properties` 的 `rcon.port` / `rcon.password`**，`fabric.sh:254-264`）；要 AutoJS 必须 `--enable-autojs` |
+| KubeJS | legacy 通道 | 只在 AutoJS 不覆盖的探针命令上使用；**不得**用它替代 mixin / crash / 审计判据 |
+| 窗口外 UI / 对照取证 | DSH `dsh-computer-use` 插件 | **不用于**游戏内镜头与攻击（GLFW 抓取光标下不可靠） |
+| `--channel native` | **已失效** | 随 pwsh 资产删除 ⇒ launch 记 `BLOCKED(11)` |
+| mineflayer bot | **已移除（2026-09-14）** | 原版协议进不了 Forge/NeoForge 服务器（NeoForge 配置期直接拒、Forge `Channels [astral_dice:main,patchouli:main,curios:main] rejected vanilla connections`）⇒ 只保留单客户端 + 注入 |
 
-| 通道 | 服务 | 用途 | 边界 |
+**mixin / crash / 禁 AI 审计 / vision 四类判据不得用 AutoJS eval 取代**：那四类必须走日志与报告通道。
+
+### 13. 环境与兼容栈速查
+
+| 版本 | run 目录 | 加载器 | 备注 |
 |---|---|---|---|
-| 注入通道 | `mt_inject.ps1`（SendInput/PostMessage） | 游戏内按键、鼠标、斜杠命令 | 注入前自动把**目标窗口线程**切为 en-US（`mt_ime.ps1`），无需手动改系统输入法；非 Windows 平台不支持（测试链已收敛到仅 Windows） |
-| 桌面驱动 | DSH `dsh-computer-use` 插件（`computer_use_activate` → 截图 / 点击 / 键盘 / 窗口激活；技能 `computer-use`） | 窗口外 UI 操作、对照取证、人工协助式恢复 | **不用于**游戏内镜头与攻击（GLFW 抓取光标下不可靠） |
+| 1.21.1 | `run/1.21.1` | NeoForge | 默认测试端 |
+| 1.20.1 | `run/1.20.1` | Forge | dev run 不装 Embeddium / Oculus |
+| 26.1.2 | `run/26.1.2` | NeoForge | Sodium 固定 `0.9.2` |
+| fabric-1.20.1 | `fabric-1.20.1/run/client`、`…/run/server` | Fabric | 默认 RCON 注入；渲染栈走 build.gradle 条件依赖 |
+| fabric-1.21.1 | `fabric-1.21.1/run/{client,server}` | Fabric | **尚未接入编排**（`mt_paths.py:26` 未登记） |
 
-> **2026-10-18 用户裁决（历史）**：移除 `computer-control-mcp` 的键鼠逻辑，桌面操作统一改用 DSH 的 `dsh-computer-use` 插件。落地改动：`scripts/test` 删除 `mt_preflight.ps1` 的 `Test-MtPreflightMcpBinary` 与阶段 P 的「MCP 二进制」检查项、`mt.conf(.example)` 删除 `MT_MCP_BIN` 键；DSH profile `cordis.patch.yml` 里 `mcp-computer-control` 置 `disabled`。**游戏内输入仍只走 `mt_inject.ps1`**（GLFW 窗口收不到合成点击）。
+- **环境自检**：`bash scripts/test/win/env.sh`（不给 `--version` = 四线全查）的 **18 组检查**（repo / git_root / fs / gradlew / conf / java / 逐线 JDK-run-mods-autojs / AutoJS 端点与健康 / fabric RCON / 残留 / 可写 / git autocrlf / 锁 / gradle 守护 / tmp / tools / 整合包目录），末行 `ENV_RESULT: OK|WARN|FAIL`，退出码 0/1/2。
+- 测试世界 `testworld`：超平坦 / 创造 / 允许命令 / `keepInventory=true`；光影包 `ComplementaryReimagined_r5.9.3.zip`（`tools/fetch_shaderpacks.py` 补齐）。
+- DEBUG 标记读 `logs/debug.log`（dev 形态 DEBUG 行不进 `latest.log`）。
+- **1.20.1 Mixin 依赖二选一**：Mixin Booster（`mixinbooster [0.1.3,)`）或 Sinytra Connector，`mandatory=false` + `init/MixinRuntimeGate` 门控（2026-09-29 起）；**必须有 refmap** —— 它只重映射字节码引用、不翻译注解选择器，缺 refmap 的生产 reobf jar 启动即 FATAL。
 
-> **mineflayer bot（minecraft-mcp-server / `LLMBot`）已于 2026-09-14 彻底移除**，连同其调用规范一并下架：
-> 阶段 L 的 `/publish 25565`、条目原语 `mcp_call`、断言类型 `mcp`、会话层回填协议
-> （`cases/.mcp-pending.json` ↔ `cases/.mcp-results.json`）与「双人条目需先验证 `BOT_JOINED`」的要求**全部不再存在**。
-> 移除原因（实机取证）：原版协议的 bot **无法加入** Forge/NeoForge 服务器 ——
-> NeoForge 1.21.1 在配置阶段直接拒绝（`你正在尝试连接一个安装了NeoForge的服务器…`）；
-> Forge 1.20.1 由 `NetworkRegistry` 判定
-> `Channels [astral_dice:main,patchouli:main,curios:main] rejected vanilla connections` 后断开
-> （任一通道不放行 vanilla 即整台服务器不放行，非本模组可修）。
-> 因此**全部用例只保留单客户端 + 输入注入**这一条驱动路径；需要服务端侧读写时改用探针命令经游戏内聊天注入。
+### 14. KubeJS 辅助命令（权威数值出口）
 
-### 环境与兼容栈速查
+供 `log` / `kubejs` 断言取数，一条命令一个可断言的机器行：
 
-| 项目 | 1.21.1 | 1.20.1 |
-|---|---|---|
-| dev 实例 | 仓库根 `run/1.21.1`（NeoForge 21.1.235） | 仓库根 `run/1.20.1`（Forge 47.4.10） |
-| 测试世界 | `testworld`（超平坦/创造/允许命令/`keepInventory=true`） | 同左（支持种子快恢复，恢复后重新写回两条世界规则） |
-| 兼容模组 | Sodium + Iris + ModernFix（dev 安装） | Embeddium + Oculus（**仅生产环境验证**） |
-| 光影 | `ComplementaryReimagined_r5.9.3.zip`（`config/iris.properties`） | 同文件（`config/oculus.properties` + `iris.properties`） |
-| 渲染兼容断言 | `SODIUM_LOADED` / `IRIS_LOADED` | dev 不适用（见阶段 E） |
-| DEBUG 标记 | `run/1.21.1/logs/debug.log` | `run/1.20.1/logs/debug.log` |
-| KubeJS | `run/1.21.1/kubejs/server_scripts/` | `run/1.20.1/kubejs/server_scripts/`（`ResourceLocation(...)` 替代 `.parse`） |
-| Mixin 差异 | MDG + refmap（注解选择器翻译） | **Mixin 运行时二选一**（Mixin Booster `mixinbooster [0.1.3,)` **或** Sinytra Connector `connectormod`；`mandatory=false` + `init/MixinRuntimeGate` 门控，2026-09-29 起）**+ refmap**：两者只重映射**字节码引用**、**不翻译注解选择器**，缺 refmap 时生产 reobf jar 启动即 FATAL（见「forge-1.20.1 子项目关键差异速记」） |
+| 命令 | 用途 |
+|---|---|
+| `/astraldice_ts_count <半径>` | 半径内实体计数 |
+| `/astraldice_ts_present <实体id> <半径>` | 存在性（0/1） |
+| `/astraldice_ts_equip <sign>` | 装备指定立牌 |
+| `/astraldice_ts_clearcd` | 清冷却 |
+| `/astraltest equip <0-3>` / `/astraltest slotcheck0..3` | 1.20.1 专用槽位读数 |
 
-**KubeJS 辅助命令（权威数值出口，供 `log` 断言使用）**：
-- 1.21.1 / 1.20.1：`/astraldice_ts_count <半径>`、`/astraldice_ts_present <实体id> <半径>`、`/astraldice_ts_equip <sign>`、`/astraldice_ts_clearcd`；
-- 1.20.1 另有 `/astraltest equip <0-3>`、`/astraltest slotcheck0..3`（骰子星级 → 卡牌格数）。
-- Rhino 硬坑：命令注册必须在 `ServerEvents.commandRegistry` 回调内；每个执行体提为顶层命名函数且函数内一律用 `var`（否则 redeclaration）；用 `Java.loadClass`（非 `Java.type`）与 `sendFailure`；修改后执行 `/kubejs reload server-scripts` + `/reload` 即可热载，无需重启游戏。
+**前置**：`/astralparty` 与 `/astralprobe dumpstate` 需权限级 2（单人 quickplay 集成服实测 `hasPermissions(2)=1`、`level=4`），不满足记 `BLOCKED(11)`；**禁止**降低 `requires` 或加后门。
 
-### 新增内容 / 用户指定内容的测试（子技能）
-
-为**新增内容**（新物品、筹码、立牌、配方、效果牌）或**用户指定内容**生成测试条目时，由子技能 `mt_gen_case.ps1` 产出条目文件，**插在环境创建与清理之间的阶段 C**，复用阶段 P/B/E/L/R 不变：
+### 15. 新增内容 / 用户指定内容的测试（子技能）
 
 ```bash
-# 规范驱动：按内容类别套用 AGENTS 对应「必须遵守」条款生成断言
-pwsh -NoProfile -File scripts/test/mt_gen_case.ps1 --version 1.21.1 --new <注册id>
-# 回归驱动：从 CHANGELOG_ZH.md 找该功能条目，抽可复现步骤
-pwsh -NoProfile -File scripts/test/mt_gen_case.ps1 --version 1.21.1 --feature <功能名>
-# 描述驱动：用户自然语言描述
-pwsh -NoProfile -File scripts/test/mt_gen_case.ps1 --version 1.21.1 --spec "<描述>"
-
-# 生成后按常规流程执行（也可一步完成）
-pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --new <注册id>
+python scripts/test/mt_gen_case.py --version 1.21.1 --new <注册id>
+python scripts/test/mt_gen_case.py --version 1.21.1 --feature <功能名>
+python scripts/test/mt_gen_case.py --version 1.21.1 --spec "<自然语言描述>"
 ```
 
-**约束**：
-- 生成器**不执行、不启动游戏、不修改环境脚本**；产出物在物理上只是阶段 C 的一部分，无法触及前后两端；
-- 生成结果**必须通过 schema 校验**（未知原语、非法字段、无断言一律拒绝落盘）；
-- **断言优先级**：可机械判定的（`log`/`absent`/`crash`/`kubejs`/`mixin`）优先；无法机械判定的在报告中标注需人工复核；不得用像素级硬编码判定；
-- 自检条目 `cases/SMOKE-TOOLCHAIN.json` 可在无游戏环境下验证执行器与断言链路。
+**约束**：生成器**不执行、不启动游戏**（`MT_GEN: OK|ERROR`、`MT_GEN_NEXT: 执行 …` 提示下一步）；产物必须过 schema（未知原语 / 非法字段 / 无断言一律**拒绝落盘**）；断言优先级 = 可机械判定优先，无法机械判定的标注「人工复核」（**禁**像素级硬编码）；`SMOKE-TOOLCHAIN.json` 可在无游戏环境下自检工具链。
 
-### 注意事项
+### 16. 超时预算与进度可见性
 
-- **输入法无需手动切换**（两版本通用）：注入通道按美式键盘布局投递虚拟键码/扫描码，`mt_inject.ps1` 会在注入前把**目标游戏窗口所在线程**切为 en-US（`mt_ime.ps1`），进程退出即自动复原、不影响用户其它程序的输入语言。旧版「测试前先手工切系统输入法」的硬前置**已取消**；前置检查只校验 en-US 布局**可用**。IMBlocker 已从两版本测试环境移除。
-- 失焦暂停必须关闭（`pauseOnLostFocus:false`，阶段 E 处理）。
-- 游戏内瞄准通过把生物传送到固定朝向（+Z）的准星正前方实现；**桌面工具的鼠标移动不用于游戏内镜头**（GLFW 抓取光标下不可靠）。
-- **注入器默认通道 = 真实 SendInput（2026-09-13 已修复并实机验证，必须遵守）**：`mt_inject.ps1` 默认走 `sendinput`（按键按**扫描码** `SendInput`，文本按 `KEYEVENTF_UNICODE` 整串输入，**不按 `/` 键**）；`--transport postmessage` 只用于排查。**历史误判已作废**：早先记录的「PostMessage 按键被 GLFW 丢弃」「按 `/` 键会把游戏顶进暂停菜单」两条**都不成立**（PostMessage 的 WM_KEYDOWN 确实被游戏接受——当时正是它把暂停菜单顶开的；`/` 那条是在「菜单已被顶开」的前提下取的观测）。**真实根因（变量遮蔽）**：入口第 106/109 行设的 `$script:Transport='sendinput'` / `$script:EscNormalize=$false`，被入口解析段的顶层同名变量 `$Transport=''` / `$EscNormalize=$false` **覆盖成空串**——脚本顶层 `$X` 与 `$script:X` **是同一个变量**。于是 `$script:Transport -ne 'sendinput'` 成立 ⇒ ① 实际落进 postmessage 分支（文本走 `WM_CHAR`）；② `$escNormalize` 恒为 **`$true`**，每条命令注入前先发一次 Esc 把暂停菜单顶开（`Minecraft.pause=true` → `IntegratedServer` 停止 tick，日志 `Saving and pausing game...`），后续按键与命令全部丢进菜单，而脚本仍打印 `MT_INJECT_CMD` 成功 ⇒ **断言「未命中」而 KUBEJS / crash / mixin 断言全绿**的假失败。已修复：CLI 解析变量改名 `TransportArg` / `EscNormalizeArg`，并实机验证裸跑 `mt_inject.ps1 cmd --command "/astralprobe blastbonus SC10"` **零新增** `Saving and pausing`、`AP_SC10_*` 正常命中。**新增入口变量时务必带 `Arg` 后缀，禁止与 `$script:` 默认值同名。**
-- **注入前置断言保留**：每次注入前 `Assert-MtInjectForeground`（`ShowWindow(SW_RESTORE)` + `BringWindowToTop` + `AttachThreadInput` + `SetForegroundWindow`，重试 3 次仍失败即 `exit 2`，不静默通过）；`sendinput` 通道**不做**界面归一化（每条命令末尾的 Enter 已把聊天关掉），`--esc-normalize` 仅供排查。
-- **用例失败取证优先看「有无输出」**：若某条探针命令的 `AP_*` 读数一条都没有（而 KUBEJS/CRASH/MIXIN 断言全绿），先怀疑注入通道/游戏暂停，不要先怀疑模组 —— 用 DSH `dsh-computer-use` 插件发一次真实按键或截图验证现场。
-- **「注入没反应」的正确排查顺序（2026-09-13 更正，别再从「焦点」入手）**：实测在 `GetForegroundWindow()` 命中游戏 hwnd 时，注入的 **Esc / F3+P / T / 整串文本全部生效**，因此**不再**断言「前台却无键盘焦点 ⇒ 按键被静默丢弃」（该说法已被上面那条变量遮蔽根因取代）。按此顺序排查：① **先看注入时刻日志有没有 `Saving and pausing game...`** —— 一出现就说明有 Esc 被发出、暂停菜单已顶开，后续按键与命令必然全部丢失（这正是历史批量失败的**唯一已知原因**）；② 确认 `run/<版本>/options.txt` 里 `pauseOnLostFocus:false`（`mt_env.ps1` 阶段 E 自动写入；若为 true，`GameRenderer.render` 会在 `!isWindowActive()` 持续 500ms 后 `pauseGame`，把世界停住）；③ 仍怀疑输入通道时，用 DSH `dsh-computer-use` 插件的真实点击/按键做对照，或直接跑 `SMOKE-TOOLCHAIN` 用例分辨「工具链问题」与「产品问题」。注入前 `SetForegroundWindow` **并** `SetFocus`（附加前台线程后调用）继续保留，但它是**加固**，不是「不做就必然失效」的开关。
-- 测试流程**必须串行**：本流程独占 `runClient`，前置检查会拒绝在已有实例运行时启动（不抢占、不并行两版本）。
-- **进程泄漏已被自动化拦截**：退出时（正常 / 失败 / Ctrl-C）自动收停本流程进程与 Gradle 守护（详见「退出清理」）。手工收停用 `--phase stop`；失败取证保留的现场要用 `--phase stop --force` 释放，否则会一直堵住下一次前置检查。
-- `AGENTS.md` **自 2026-09-15 起已纳入版本库**（`.gitignore` 中的排除项已移除，随提交进入本仓库；是否推送 GitHub 仍按「仅在用户明确要求时执行」）；`scripts/` 下脚本本身入库，仅 `scripts/test/mt.conf`、`scripts/test/reports/*`、`scripts/test/cases/.mt_*` 为本地忽略的运行时产物（与现有 gitignore 一致）；git 网络操作仍须经代理。
-- 具体用例清单（功能 TC、立牌 S 系列等）以 `scripts/test/cases/` 下的条目文件与 `scripts/test/reports/` 下的历史报告为准；旧版 PowerShell 脚本归档包 `legacy_scripts_20260912.zip`（含 MANIFEST 与逐文件 sha256，可解压取回）已于 2026-09-15 从 `temp/` 移出至 `docs/archive/`，仅供追溯。
-- **仓库内 `.ps1` 共 52 个 / `.psm1` 共 8 个（2026-10-20 实测；⚠️ 2026-10-06 旧文记作 48 / 7、2026-09-26 记作 33 / 6，其后新增多个闸门与测试脚本已漂移）—— 复算命令（勿依赖本数字；并发会话在途改动会使数字漂移 ⇒ 一律以复算命令为准）：`(Get-ChildItem -Recurse -File -Include '*.ps1','*.psm1' | Where-Object { $_.FullName -notmatch '\\(\.git|build|temp|run)\\' }).Count`（⛔ ~~WSL 侧等价：`find . -name '*.ps1' -not -path './.git/*' -not -path '*/build/*' -not -path '*/temp/*' -not -path '*/run/*' | wc -l`~~ **2026-10-22 作废**：Windows 原生环境无 WSL，勿用；只用上面的 PowerShell 复算命令）**：按顶层目录**实测分解** —— `.ps1` 52 = 根 `deploy.ps1` 1（**实测存在，已计入**）+ `scripts/test` 31（`scripts/test/*.ps1` 19 + `scripts/test/fabric/` 10 个 `ft*.ps1` + `scripts/test/tools/` 2）+ `scripts/verify` 11（含 `verify_forge_loader_gate.ps1`）+ `scripts/devtools` 4 + `scripts/audit` 1（`tooltip_color_audit.ps1`）+ `scripts/maintenance` 1（`repair-loose-refs.ps1`）+ `tools` 3；旧文「根 `deploy.ps1` 只存在于发布线树 / 本 dev 树 `Test-Path deploy.ps1` = False」的说法**已作废**。旧执行体 `scripts/test/mt_loadergate.ps1` 已于 2026-09-26 删除 ⇒ 与本轮新增的独立门槛脚本**净变化 0**。不要删；`.psm1` 8 = `scripts/test/lib/*.psm1` 6 个（含 `Mt.AutoJs.psm1`）+ `scripts/test/fabric/lib/Ft.Common.psm1` 1 个 + `scripts/verify/ChipCommon.psm1` 1 个。迁移期比对器 `scripts/devtools/Compare-MtOutput.ps1` 已于 2026-09-15 删除（它比对的 python/bash 原件自 `92fbeaf` 起已不存在）；旧测试 `.ps1` 归档包在 `docs/archive/legacy_scripts_20260912.zip`。
-- `scripts/test/TESTING-SPEC.md` 是测试条目 schema 规范；旧功能流程文档 `scripts/test/FLOW_1.20.1_functional.md` 已于 2026-09-12 删除（`git show 57d337f^:scripts/test/FLOW_1.20.1_functional.md` 可取回；归档包内不含此文档），实际执行一律以本章节为准。
+**卡死根因**（历史教训，仍然成立）：早期用「等整棵进程树」—— Gradle 守护是子进程，等它就等于等一个永不退出的父进程，实测卡过 7分45秒。现行口径：**长驻阶段脱离式启动（`--launch-mode bg`）+ 轮询终态标记**。
 
-### 测试流程超时与看门狗（Test Timeout & Watchdog）— 必须遵守
+**现行预算（真实实现，别照抄旧表）**：
 
-**卡死根因（2026-09-15 实测取证并已修复）**：`mt.ps1` 的 `Invoke-MtChild` 曾以 `Start-Process -NoNewWindow -PassThru -Wait` 启动子阶段，而 `-Wait` 会等待**整棵进程树**；`mt_build` 新起的 **Gradle 守护进程是其后代且长期存活** ⇒ **全流程会永久卡在 `build` 相位**（曾导致 3 位执行者先后挂死）。修复方式：需要长期驻留的阶段（launch / 会派生守护进程的 build）**改为脱离式启动 + 轮询终态标记**，不再用 `-Wait` 等树。
+| 层级 | 变量 / 开关 | 现状 |
+|---|---|---|
+| launch 就绪 | `--timeout` / `MT_LAUNCH_READY_TIMEOUT_SEC` | **600s**，已实现 |
+| launch 进世界 | `--wait-world` / `MT_LAUNCH_WAIT_WORLD_SEC` | 缺省 0，已实现 |
+| 单条用例 | `--case-timeout` / `MT_CASE_TIMEOUT_SEC` | 编排层缺省 **600s**，已实现 |
+| 单阶段 / 全局 | `--run-timeout`、`MT_<阶段>_TIMEOUT_SEC` | **未实现**：命中即 `MT_ERROR` + `exit 2`（`mt.sh:86-88`、`:228`） |
+| 停滞心跳 | `MT_WAIT:`（10s）/ `cases/.mt_progress.json` | **未实现**（仅存在于旧文档与 `TESTING-SPEC.md` 历史段） |
 
-**分层硬预算（2026-09-16 收紧；默认值必须知道）**：
+⇒ 结论：**现无外部看门狗、无全局预算、无进度信标**。分步执行时由调用方（人或外层作业）自己设超时；`TIMEOUT` 只能从单条用例结果行看到。原 `mt_watchdog.ps1` 已按 2026-11-05 裁决**退役**，后续按需求另写 python 版，本章不承诺。
 
-| 层 | 开关 | 默认 | 行为 |
-|---|---|---|---|
-| 单条用例 | `MT_CASE_TIMEOUT_SEC` / `--case-timeout` | **180 s** | 超时记为**独立状态 `TIMEOUT`**（与 `FAIL`=断言不满足、`ERROR`=跑不起来**严格区分**），**继续跑下一条**，不整体挂住；退出码 **12** |
-| 单阶段 | `MT_<阶段>_TIMEOUT_SEC` | preflight 120 / build 300 / env 240 / launch 180 / report 90 / stop 150 / cleanup 180（秒） | 到点即终止**本流程那个**子进程并打印卡点；**绝不动进程树** |
-| cases 阶段 | `MT_CASES_TIMEOUT_SEC` | 单条 = 单条上限+90 s；`run-dir` = 90 s×用例数+90 s | 阶段开始时打印 `CASES_BUDGET:` 实际预算 |
-| 全局运行 | `mt.ps1 --run-timeout <秒>` | **2700 s**（旧默认「0 = 不限」已废除） | 超时走 `--phase stop --force` 收停，报告写 `TIMEOUT` |
-| 外部看门狗 | `scripts/test/mt_watchdog.ps1` | — | 见下 |
+**禁止**用文件大小 / mtime 或 DEBUG 行当存活证据（ModernFix 空闲时每分钟仍写 `Worker-ResourceReload-N shutdown`）；收停只由 `--phase stop` 执行，**禁止** `taskkill` 任意 java 进程（判据见 6.5）。
 
-**等待期可见性（2026-09-16 新增，长流程必读）**：
-- `MT_WAIT:` 心跳每 10 s 一行（脚本 / 已等待 / 硬上限 / 子进程 CPU 或日志字节数与最后增长时刻）；
-- 进度信标 `cases/.mt_progress.json`：**每次阶段、每条用例、每个步骤开跑前**落盘
-  `{phase, version, case, step_index, step_total, op, detail, ts}`（原子写）。**卡点定位只看这一个文件**；
-- launch 走脱离式并额外判定「日志 90 s 零增长 ⇒ `CHILD: STALL`」（进程存活 ≠ 有进展）。
-- ⚠️ **后台/长任务禁止用会缓冲的管道**：`pwsh … | Select-Object -Last N` 会把子进程输出缓冲到命令结束，
-  作业一旦被截断**整段日志消失**（2026-09-16 实测踩坑，导致一次 7 分 45 秒事故事后无法归因）。
-  后台跑一律 `*> <文件>` 落盘后再读文件。
+### 17. 注意事项
 
-**`scripts/test/mt_watchdog.ps1` 用法**：`-Version <1.21.1|1.20.1>`、`-StallSeconds <int>`（默认 **180**）、`-WarnSeconds <int>`（默认 `min(90, Stall/2)`）、`-PollSeconds <int>`（默认 10）、`-IdleExitSeconds <int>`（默认 60）、`-Action <report|stop>`（默认 `report`）。
-
-- **进展判据（2026-09-16 重写，旧判据已作废）**：① **进度信标 `cases/.mt_progress.json` 的内容**（最强；阶段/用例/步骤都会刷新它）；② `.mt_run_state.json`、`.mt_snapshot.json`、`.mt_active_run`、活动报告目录下的文件；③ `latest.log` **与** `runclient_launch.log` 尾部的**语义标记**（`[CHAT]`、`AP_*:`、**`MT_*` 驱动进展行**、`Saving and pausing`、`logged in/out`、`joined/left the game`、`KubeJS Server/`）。
-  ⚠️ **禁止**再把「日志文件大小/mtime」或 DEBUG 行当进展：实测游戏空闲时 ModernFix 仍**每分钟**写一条 `Worker-ResourceReload-N shutdown`，旧判据因此一路误报 `ALIVE（有进展）`，把一次 7 分 45 秒的空转完全掩盖。
-  ⚠️ `MT_*` 那一族**必须**保留：launch 阶段 `latest.log` 长时间只有 DEBUG 噪声，真正的进展只在 `runclient_launch.log` 里。
-
-- 定期输出 `MT_WATCHDOG: ALIVE t=<秒> step=<阶段 用例 步/总 op> │ marker=<最后语义标记> │ client=alive|none driver=<驱动进程数>（停滞 <秒>）` **心跳**（供人/代理判断存活，不要用"干等"代替）；
-- 停滞达 `-WarnSeconds` ⇒ `MT_WATCHDOG: WARN` + 卡点取证（**提前预警，不退出**）；达 `-StallSeconds` ⇒ `MT_WATCHDOG: STALL` + 完整取证（进度信标原文 + 客户端/驱动进程存活 + 日志尾部），`-Action stop` 时经 `mt_stop` 收停；**退出码 42** 表示「检出停滞」。
-  ⚠️ **只有客户端阶段（launch/cases）才自动收停**：preflight/build/env/report/stop 本来就没有客户端，在那里收停只会误杀一次正常构建（实测踩过）。
-- 「驱动进程与客户端都已退出且再无进展」达 `-IdleExitSeconds` ⇒ **退出 0**（旧版会以莫名退出码结束，容易被误读成故障）。
-- **安全红线**：watchdog **只经 `mt.ps1 --phase stop` 收停**，**禁止**自己 `taskkill` 任意 java 进程（尤其**绝不可误杀用户其它 java 程序**）。
-
-**KubeJS 探针安装（2026-09-16 起自动化）**：`pwsh -File scripts/test/mt_env.ps1 kubejs --version <版本>` 按**内容哈希**把
-`scripts/test/resources/kubejs/<版本>/**` 同步到 `run/<版本>/kubejs/**`；`mt_env.ps1 mods` 顺带执行，`mt.ps1 --phase launch` 启动前**强制**执行（失败即 `BLOCKED(11)`）。
-⚠️ 此前**没有任何脚本**负责这一步（只写在文档里、实际靠手工拷贝）⇒ 实测出现过「run 目录 218 KB / 模板 229.7 KB、哈希不一致」的静默漂移：用例照样注入 `/astralprobe <新命令>`，而游戏侧**没有那条命令**，所有断言只会读不到读数。探针**命令**的改动仍需**冷启动**才生效（`/kubejs reload server-scripts` 不重绑已注册命令的 lambda）。
-
-**纪律（必须遵守）**：
-
-1. **任何「启动客户端 + 跑用例」的长流程，必须由 `mt_watchdog.ps1` 包裹，或至少设置 `MT_CASE_TIMEOUT_SEC`**；禁止无超时地等待客户端标记。
-2. 需要长期驻留 / 会派生守护进程的阶段一律**脱离式启动**，不得用 `-Wait` 等整棵进程树。
-3. **遇到 `TIMEOUT` 或 `STALL` 时**：先读 `cases/.mt_progress.json`（卡在第几阶段/哪条用例/第几步/什么 op）与 watchdog 的取证块定位，再决定是否重跑；**不要盲目重试整轮**（这正是先前反复挂死的原因）。
-4. 判断"是否还活着"应当看**进度信标与语义标记心跳行**，而不是单纯等待、也不是只看进程是否存活。
-5. **任何后台任务超过 5 分钟没有任何响应，立即终止并检查状态**（用户 2026-09-16 裁决）：先 `job_output`/读日志文件确认卡点，再按第 3 条定位；**禁止**继续干等。
-6. **客户端进程判据（2026-09-16 实测）**：1.21.1 dev 客户端主类是 `net.minecraft.client.main.Main`，而 **1.20.1 dev 客户端主类是 `net.neoforged.devlaunch.Main`** —— 只按前者筛查会**漏判 1.20.1 的残留客户端**（进而出现「明明有客户端却报无」或反过来重复启动被 `BLOCKED(rc=2)` 拦下）。判定一律用脚本内的 `Get-MtProcessMarkers`（gradle 任务选择器 + run 目录），**不要**自己按主类名 grep。
-
-**OP 前提（测试命令可用性）**：`/astralparty` 与 `/astralprobe dumpstate` 需要**权限级 2**；测试环境实测 `hasPermissions(2)=1`、`level=4`（单人 quickplay 集成服）。不满足时 preflight 报 **`BLOCKED(11)`**（探针/dump 不可用报 `ERROR(2)`）。**禁止**为测试降低 `requires` 门槛或加后门 —— 测试必须走真实 OP 路径。已知缺口：非 OP 的**否定面**在单人环境无法覆盖。
-
-**`mt.ps1 --version` 语义**：全流程分支**已尊重 `--version`**（指定单版本时只跑该版本、不做跨版本门控）；此前忽略该参数、恒受 1.21.1 门控的行为已修正。
+1. **注入器默认 `sendinput`**（扫描码；文本用 `KEYEVENTF_UNICODE` 整串，**不按 `/`**）。历史两条误判作废：「PostMessage 被 GLFW 丢弃」「按 / 会顶开暂停」。真根因是**变量遮蔽** —— 旧 pwsh 注入器的 `$script:Transport` 被同名顶层变量覆盖成空串 ⇒ 落进 postmessage 分支、Esc 归一化恒真 ⇒ 每条命令先发 Esc 顶开暂停菜单，日志出现 `Saving and pausing game...`、后续输入全丢而脚本仍打成功。**教训**：新增入口变量一律带 `Arg` 后缀（已写入 python 侧命名约定）。
+2. **「注入没反应」的排查顺序**：① 注入那一刻日志有无 `Saving and pausing game...` ② `options.txt` 的 `pauseOnLostFocus:false` ③ 用桌面插件真实点击做对照，或跑 `SMOKE-TOOLCHAIN` 区分工具链问题与产品问题。
+3. **游戏内瞄准**：把生物传送到固定朝向（+Z）的准星正前方，桌面鼠标**不用于**镜头。
+4. **必须串行**：runClient 独占（见 6.5 的端口互斥）。
+5. **产物与忽略项**：`scripts/test/mt.conf`、`reports/*`、`cases/.mt_*` 是本地忽略产物；`AGENTS.md` 自 2026-09-15 起入库。
+6. **旧 pwsh 资产**：归档包 `docs/archive/legacy_scripts_20260912.zip`；仓内 `.ps1` / `.psm1` 现计 **0 / 0**（2026-11-04 全部删除，退役登记见 `docs/features/devnext-pwsh-retirement-register.md`）。
+7. **文档欠账（已知，待补）**：`scripts/test/TESTING-SPEC.md` 与 `scripts/test/TESTING-RULES-OVERVIEW.md（已删除 2026-11-05）` 仍是 pwsh 口径（watchdog / `mt_scope` / `mt_loadergate` / 顺序 gate），与现行实现对不上；以本章与源码为准。
 
 ## NeoForge 上游 BUG 补丁（neoforge_fixes）— 必须遵守
 
@@ -2973,7 +2890,7 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --new <注册id>
 - **未来三情形(按运行时 `sponge-mixin 0.15.2+mixin.0.8.7` 与 FML `loader 4.0.42` 源码逐条核验)**:① 上游只补 `pop`(结构不变)⇒ 照常注入、0 次 pop,行为正确,只多一行存活日志;② 上游重命名/重构 `hurt`(如 26.x 的 `hurtServer`)⇒ 注入器 `require = 0` 静默跳过,**连 WARN 都没有**,启动正常;③ 上游删除 `damageContainers` 字段 ⇒ `@Shadow` 失败被 per-mixin try/catch 吞掉,`config.isRequired()==false` ⇒ `ErrorAction.WARN`,仅一条 `Mixin apply for mod astral_dice failed …` WARN,启动正常(补丁不生效)。**三者都不会导致启动失败**。`require = 0` 是必需项:`requiredCallbackCount>0` 时抛 `InvalidInjectionException`,该异常发生在 `preApply` 阶段、**不受 `required:false` 保护**。
 
 **验证与回归纪律（必须）**:
-- 语义:`pwsh -NoProfile -File tools/run_mixin_stack_sanitizer_test.ps1`(纯 Java 10/10:未修复补 1 次 / backport 后 0 次 / 嵌套逐层 / null 与哨兵边界 / 两个正常出口 0 次 / 绝不低弹 / 配对失同步 no-op / 存活日志每 JVM 一次)。
+- 语义:`python tools/run_mixin_stack_sanitizer_test.py`(纯 Java 10/10:未修复补 1 次 / backport 后 0 次 / 嵌套逐层 / null 与哨兵边界 / 两个正常出口 0 次 / 绝不低弹 / 配对失同步 no-op / 存活日志每 JVM 一次)。
 - 游戏内:冷启动进入世界后 `run/1.21.1/logs/latest.log` **必须出现** `[astral_dice/neoforge_fixes] DamageContainer leak patch active (first hurt: entryDepth=…, beforeRestore=…, popped=…)`;增量区间**不得**有 `Mixin apply failed`(阶段断言已覆盖后者)。
 - **该存活日志是「补丁活着」的唯一正面证据**:`required: false` 的代价是上游重构时补丁会**静默失效**(情形②连 WARN 都没有),因此**升级 NeoForge 版本后必须重新 grep 这行**;日志缺席 = 补丁已失效,须重新评估。**禁止**为了让失败更显眼而把它改成 `required: true` 交付——那会让未来一次上游重构直接变成启动崩溃。
 - 临时排障:本地把该配置临时改为 `"required": true` 跑一次冷启动,任何 apply 级问题会立刻以 `MixinApplyError` 暴露;确认后**必须改回 `false`**。
@@ -3174,7 +3091,7 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --new <注册id>
 |---|---|---|
 | 1.21.1 实现 + 构建 + datagen | ✅ | `MT_BUILD: OK`；jar 含 3 新类 + 3 贴图 + 手册 + 模型 + 配方 |
 | 1.20.1 实现 + 构建 + datagen | ✅ | 同上（平台写法差异见规格 §2.2） |
-| 语言键 15 个 × 4 文件 | ✅ | `tools/check_lang_sync.ps1` 退出 0（三线各自「zh_cn ↔ en_us key 完全一致」） |
+| 语言键 15 个 × 4 文件 | ✅ | `tools/check_lang_sync.py` 退出 0（三线各自「zh_cn ↔ en_us key 完全一致」） |
 | 文档 | ✅ | `docs/features/teru-sign-spec.md`、两份 CHANGELOG（各 +1 条，同一分类） |
 | **游戏内行为验证** | ✅ **双侧全绿** | 3 条 teru 用例 + 1 条选择器门控回归用例，**两线各 4/4 PASS**（1.21.1：91+53+83+43 断言；1.20.1：91+53+83+43），无 `_ERR`/`_EX`、KubeJS 0 错误、无崩溃报告。命令：`pwsh -File scripts/test/mt.ps1 --version <V> --phase cases --case cases/<用例>.json` |
 | 顺带修复（**drive-by**） | ✅ | 本树两线 `build.gradle` 的 `exclude("src/generated/**/.cache")` 改为相对模式 `exclude("**/.cache")`（原写法永不命中 ⇒ 产物 jar 带 3 条 `.cache` 条目、本地与 CI 字节不一致）；修复后两线 `build/libs/*.jar` 的 `.cache` 条目 = **0** |
@@ -3248,7 +3165,7 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --new <注册id>
 7. 手册：`assets/astral_dice/patchouli_books/astral_guide/en_us/entries/signs/<id>.json`（**手册只有 `en_us` 目录**，中英由 lang 键 `astral_dice.guide.entry.*` 承担；现有 signs 目录 **26** 条,2026-10-16 实测）。
 8. 若新建效果：`effect/ModEffects`（两线现各 **59** 个,2026-10-16 实测）+ `textures/mob_effect/<effect>.png`（无专用图时按取材规则复用载体物品图）+ lang `effect.*`。
 9. 若新增玩家附件：`component/ModAttachments`（1.21.1 视需要 `.sync()`；**1.20.1 新增同步键必须同时进 `SYNCED_KEYS`**）并更新 AGENTS.md 的附件计数（2026-10-16 实测口径 = 注册声明计数：1.21.1 `ATTACHMENTS.register` = **120** / 1.20.1 `AttachedDataKey` 声明 = **122**）。
-10. 赏金池：复跑 `pwsh -File scripts/verify/verify_bountiful_pools.ps1 -Root <该线工作树>`；明星牌入池/出池口径待裁决。
+10. 赏金池：复跑 `python scripts/verify/verify_bountiful_pools.py -Root <该线工作树>`；明星牌入池/出池口径待裁决。
 11. AGENTS.md 三处表：**立牌技能表**、**立牌品质表**、效果/附件/数据组件清单；`neoforge-26.1.2` 迁移清单追加迁移项（见 §4）。
 
 **B. 每张战斗牌**
@@ -3282,7 +3199,7 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --new <注册id>
 
 - **Rhino 侧**（探针）：顶层 `var`/`function` 重复声明 ⇒ 整脚本加载失败；实例方法必须调在实例上；1.20.1 的 `ModEffects.X` 是 `RegistryObject`，判效果必须 `findEffect(p,"<id>")`。
 - **断言侧**：读数必须按实际字段顺序写正则；`zhaocard` 类成对读数用 `before>after`。
-- **测试工具侧**：全目录 `--phase cases` 会给另一版本条目写 `SKIP` 记账，`report.md` 自动判定把非 `PASS` 全判 ❌；且其预算是固定 `90+90×用例数`，`MT_CASES_TIMEOUT_SEC` 管不到 ⇒ 一律逐条 `--case` 单跑，必要时用 `mt_report.ps1 collect --version <V> --verdict PASS` 重算并留痕（详见 zhao 测试流程段）。
+- **测试工具侧**：全目录 `--phase cases` 会给另一版本条目写 `SKIP` 记账，`report.md` 自动判定把非 `PASS` 全判 ❌；且其预算是固定 `90+90×用例数`，`MT_CASES_TIMEOUT_SEC` 管不到 ⇒ 一律逐条 `--case` 单跑，必要时用 `mt_report.py collect --version <V> --verdict PASS` 重算并留痕（详见 zhao 测试流程段）。
 - **数据生成**：改资源前必须按「Gradle 构建守护规则」第 7 条移开 `run/<V>/mods` 里的旧产物 jar，否则 `runData` 静默用旧代码；两发布线 `exclude("**/.cache")` 口径不得回退。
 - **26.1.2 后续落地（P1）**：该线纳入主线，但⛔ **2026-10-12 起「与本批同批落地」的口径已作废** —— 现行 **P1 次要优先级**（见「## 版本优先级与跨线移植纪律」）：P0 两线（`neoforge-1.21.1` + `forge-1.20.1`）同批，26.1.2 待 P0 完成后移植（实施方式见〈子代理与测试环境硬规则〉第 7 条：P0 基准线派子代理编写、再经 `dsh_code_review` 与子代理功能审查后移植）。确有不落该线的例外时，必须在本清单追加迁移项。
 
@@ -3382,7 +3299,7 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --new <注册id>
 - 逐条：`ZHAO-SIGN`（192 步 / 142 步 + 50 断言 / **0 FAIL**）、`FUHUO-CARD`（183 步 / 137 + 46 / **0 FAIL**）＋ 5 条回归 `BOT-2P`、`LULU-SIGN`、`TERU-EXTRA-ATTACK`、`TERU-HUGUANG-ANTIFARM`、`TERU-SIGN` 全 **PASS**；两线收尾闸门一致：`CARPET_LOADED=true`、`MT_ASSERT_KUBEJS: PASS — server.log 0 errors`、`MT_ASSERT_CRASH: PASS — 无 crash-reports`。
 - 报告：`scripts/test/reports/20260920-114651/1.21.1/report.md` 与 `.../1.20.1/report.md`，结论均 **✅ PASS**。
 - ⚠️ **「全目录跑」与报告自动判定互相打架（本批实测踩到，两条工具层坑）**：
-  1. `--phase cases`（不带 `--case`，即 run-dir）会给**另一版本**的条目写 `SKIP` 记账；而 `report.md` 的自动判定是「`cases` 字典里非 `PASS` 即 ❌」（`mt_report.ps1` 的 `$allPass` 只判 `-ne 'PASS'`），`SKIP` 因此把整版判失败（`SUMMARY.md` 侧判据反而容忍 `SKIP` —— 两处口径不一致）。实测形态：`phases` 为空、7 条真用例全 `PASS`，`report.md` 仍给 ❌。**混用「全目录跑」与「`--case` 单跑」后**用编排器接口重算并留痕：`pwsh -File scripts/test/mt_report.ps1 collect --version <V> --verdict PASS`（本批 1.21.1 即按此重算；单跑 `--case` 不写 `SKIP`，所以 1.20.1 走自动路径就是 PASS）。
+  1. `--phase cases`（不带 `--case`，即 run-dir）会给**另一版本**的条目写 `SKIP` 记账；而 `report.md` 的自动判定是「`cases` 字典里非 `PASS` 即 ❌」（`mt_report.py` 的 `$allPass` 只判 `-ne 'PASS'`），`SKIP` 因此把整版判失败（`SUMMARY.md` 侧判据反而容忍 `SKIP` —— 两处口径不一致）。实测形态：`phases` 为空、7 条真用例全 `PASS`，`report.md` 仍给 ❌。**混用「全目录跑」与「`--case` 单跑」后**用编排器接口重算并留痕：`python scripts/test/mt_report.py collect --version <V> --verdict PASS`（本批 1.21.1 即按此重算；单跑 `--case` 不写 `SKIP`，所以 1.20.1 走自动路径就是 PASS）。
   2. 全目录跑的**预算公式是固定的 `90 + 90×用例数`（7 条 = 720s）**，`MT_CASES_TIMEOUT_SEC` 只影响外层阶段预算、**管不到内层**该公式；7 条重用例（实测 ≈140s/条）必然超预算被截断，**剩余用例直接不再执行**（本批实测两次，都在第 5 条之后被杀，`TERU-SIGN`/`ZHAO-SIGN` 从未轮到）⇒ 复核请逐条 `--case` 单跑。
 
 ### 未覆盖（如实登记）
@@ -3447,7 +3364,7 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --new <注册id>
 
 ### 未覆盖（如实登记）
 
-① **客户端路径**（服务端探针判不了）：真龙形态与破防的**效果图标**、tooltip 文案与染色、觉醒行 `觉醒：%s/%s` 的实际显示、actionbar 文案（`msg.astral_dice.mamushi_*`）、创造栏/手册渲染 —— 走 `mt_capture.ps1` 截图人工判读或静态键名核对；② **伤害跳字**是 S2C 客户端包 ⇒ 数值落地一律用「实体实扣血量 + `DiceCombatModifiers.attackPowerOf` 差值」两条客观读数替代；③ **32 人截断**只有常量断言（现场起不了 32 人）；④ **跨维度 / 同队过滤**只覆盖「未组队 + 同维度 + 距离 ≤12」分支（bot 全同维度未组队）；⑤ `isAlive()` 过滤与「三条队伍开关全关 + 玩家仍有队伍 ⇒ 空集」边界未构造；⑥ **「命中触发 ⇒ 破防」端到端链**受探针装配能力限制（见踩坑 7/8）—— 目前用 `mamuroar apply`（同一份产品代码）取证。
+① **客户端路径**（服务端探针判不了）：真龙形态与破防的**效果图标**、tooltip 文案与染色、觉醒行 `觉醒：%s/%s` 的实际显示、actionbar 文案（`msg.astral_dice.mamushi_*`）、创造栏/手册渲染 —— 走 `mt_capture.py` 截图人工判读或静态键名核对；② **伤害跳字**是 S2C 客户端包 ⇒ 数值落地一律用「实体实扣血量 + `DiceCombatModifiers.attackPowerOf` 差值」两条客观读数替代；③ **32 人截断**只有常量断言（现场起不了 32 人）；④ **跨维度 / 同队过滤**只覆盖「未组队 + 同维度 + 距离 ≤12」分支（bot 全同维度未组队）；⑤ `isAlive()` 过滤与「三条队伍开关全关 + 玩家仍有队伍 ⇒ 空集」边界未构造；⑥ **「命中触发 ⇒ 破防」端到端链**受探针装配能力限制（见踩坑 7/8）—— 目前用 `mamuroar apply`（同一份产品代码）取证。
 
 ### 踩坑（本批实测，写用例必看）
 
@@ -3520,7 +3437,7 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --new <注册id>
 ⑤ **状态指示器不显示**（用户裁决）—— 不得为事件新增任何 HUD/解释性文本。
 ⑥ 大侦探立牌的主动技能已**清空待重做**（原 11 项随机事件删除）；秘密侦探「调查阶段」保留原行为（1200t 隐匿、阶段 II 起调查增益），只换分发入口。
 ⑦ 抽事件的两条入口**独立注册**：物品 `astral_dice:event_ticket`（`ITEM_USE`，生存消耗 1）与方块 `astral_dice:event_drawer`（`BLOCK_USE`，可重复）；公共池为空必须安全失败（只 warn，不崩）。
-⑧ 守门：两线 `scripts/verify/verify_event_registry.ps1`（id 唯一 / 三语键齐 / 图标存在 / 调查阶段 4 张阶级图 / 字面量散落 warn）+ `tools/check_lang_sync.ps1`；**临时测试事件（`event/AstralEventTestFixtures.java` 等）只允许短期插入，验证后必须整体删除并留删除证据**。
+⑧ 守门：两线 `scripts/verify/verify_event_registry.py`（id 唯一 / 三语键齐 / 图标存在 / 调查阶段 4 张阶级图 / 字面量散落 warn）+ `tools/check_lang_sync.py`；**临时测试事件（`event/AstralEventTestFixtures.java` 等）只允许短期插入，验证后必须整体删除并留删除证据**。
 
 
 32. **事件体系补丁（2026-10-10 第二次裁决，改「调查阶段」前必读）**：① **先触发当前阶级、触发之后再升阶**（`AstralEventDispatcher` 里升阶写在触发与日志之后；首杀 = 阶级 I）；② **击杀路径作用对象**：`tier < 4` ⇒ **只有 {该标记的施加者, 击杀者}**；`tier == 4（真相揭露）` ⇒ 恢复常规 64 格 ∪ 团队；③ **无击杀者的其它来源**：取同队**阶段最高**的秘密侦探（`InvestigationArbitration.pickHighestTier`），**并列最高 ⇒ 随机抽一名并使其成为该事件的触发者**，作用对象 = {原触发者, 该侦探}（机器行 `AP_EVENT_TIER_PICK` 可追溯）；④ **已带 `UNDERCOVER_INVESTIGATION` 的目标不可再被任何人施加**（服务端闸门 + 选择器标签 `hud.astral_dice.target_select.tag.undercover`，**不发 ActionBar**）；⑤ **池闸门**：`investigation_stage` 静态在池内，但 `publicPool(Player)` 要求**该玩家团队内有秘密侦探**才可能抽到（队内没有时该事件永不出现）；⑥ **阶段效果广播（64 格 ∪ 团队）保持原样** —— 收窄的只是「事件代码」的作用对象。
@@ -3536,9 +3453,9 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --new <注册id>
 
 36. **立牌批验证闭环 + 选卡界面 + Jade 倒计时（2026-10-17）**：⛔ **勿据本条的「已完成」推断实机已验收** —— 本批两项实机仍为欠账（见 ⑥）。交接基线：分支 `multi-dev-next`，HEAD = **`b63ed1bf`**，四线 `mod_version` 均为 `2.0.0-SNAPSHOT.128+<后缀>`，**全部提交仅本地、未 push**。① **本批提交链（`git log --oneline`，时间正序）**：`17634b80`（feat 超天酱 kangel / 地雷女 ame 立牌，见第 35 条）→ `029b4e0e`（实机验证 1.21.1 全 5 例 PASS + 1.20.1 抽查；报告 `docs/reports/kame-sign-2026-10-16-2.0.0-SNAPSHOT.128.md`，该轮抓到「单次自然到期结算 3 次」**FAIL** 与 1.20.1 `teamN=0` **无法判定**）→ `6e06cf4c`（`ame_overdose` 自然到期结算幂等修复：根因 = `MobEffectEvent.Expired` 内镜像改写 `activeEffects` 触发原版 `tickEffects` 的 `iterator.remove()` **CME**，且被原版 `catch` **静默吞掉** ⇒ 该实例本拍不移除、`Expired` 逐拍重发；修法 = Expired 只用 `MapMaker().weakKeys()` 身份键**幂等登记一次**，改在服务端 tick 末尾结算（1.21.1 `ServerTickEvent.Post` / 1.20.1 `TickEvent.ServerTickEvent` + `phase == END`））→ `fcd2e882`（该修复两线实机复测 PASS；报告 `docs/reports/kame-ame-expire-idempotent-2026-10-17-2.0.0-SNAPSHOT.128.md`）→ `5695832e`（`kangel_fan` 拆双效果 id：`kangel_fan` 只保留**目标标记**真值（是否粉丝 / −1 减伤唯一判据），新增 `kangel_fan_indicator`（BENEFICIAL、无限时长、等级 = 粉丝数）只作**佩戴者 HUD 计数镜像**；修超天酱互殴误判 −1 与「计数镜像（先移除再施加）清掉他人标记」两条 PvP 缺陷；两线效果数 59 → **60**）→ `a904e667`（拆双 id 回归 + 1.20.1 一心同体实机，两线 PASS；报告 `docs/reports/kame-sign-pvp-2026-10-17-2.0.0-SNAPSHOT.128.md`）→ `914861b7`（图标归属**对调**：`kangel_fan_indicator` = `images/粉丝.png` 原图逐字节复制，`kangel_fan` = 金色描边版；生成器 `tools/gen_kangel_fan_indicator_texture.py` 带 `EXPECTED_SHA1` + `--check`）→ `f12f5df8`（Jade 商店冷却倒计时，见 ④）→ `c4ed57cc` + `c86027e0` + `cda0b3df` + `b63ed1bf`（选卡界面通用组件 + 两轮审查修复，见 ③）。② **实机闭环状态**：10-16 报告的两项遗留**均已闭环** —— 「结算 3 次」FAIL 由 `6e06cf4c` 修复、`fcd2e882` 两线复测 PASS（4 项判据全 PASS，`ConcurrentModificationException` 0 处）；「1.20.1 `teamN=0`」在 `a904e667` 轮**定位为非产品缺陷**（见 ⑤），1.20.1 一心同体 `tm=2` 复现 PASS（该轮 1.20.1 抽查 B1/B2/B3/B4 + 减伤判据，B5 客户端 HUD 与 B6 死亡重建未跑）。证据目录 `temp/kame-20261017/{1.21.1,1.20.1}/`（`latest.log` / `kubejs_server.log` / `client.log` / `sha256.txt`，`temp/` 不入库）。③ **选卡界面组件（P0 两线，本批只做通用组件、不接具体技能）**：入口 `CardChoiceManager.start(player, slotCount, CardChoiceType, handler)`（服务端权威菜单路线，`slotCount` ∈ {1,3}，`CardChoiceType` = `COMBAT / EFFECT / ANY`）；放满才渲染确认按钮、Esc 零消耗、死亡掉牌（落死亡点）+ 会话清理、掉线兜底、1.20.1 打开失败回读 `player.containerMenu` 判 `reject:reason=open_failed`；冻结规格 `docs/features/card-choice-screen-spec.md`（§9 实机用例 8 条、§10 审查 P1/P2/P3、§11 第三轮「1 中 + 3 低」、§8/§8.1 未做与已知边界）。④ **Jade 商店冷却倒计时（P0 两线）**：卡牌商店悬浮框追加「补货倒计时 §9M:SS§7」（二级转账冷却 60 s），筹码商店 / 抽奖盒追加「可进入倒计时 §9M:SS§7」（各 5:00），`M:SS` 秒**向上取整**（`(ticks+19)/20`，与 `CardShopMenu#computeTransferCooldownSeconds` 同口径），**仅剩余 > 0 时显示**；`neoforge-1.21.1` 走 `IServerDataProvider`（Jade 15.10.6 对 BlockEntity = null 照常调用），`forge-1.20.1` 因 Jade 11.13.3 的 `registerBlockDataProvider` 只收 `Class<? extends BlockEntity>` 且三块**均无 BE** ⇒ 改客户端读**已同步附件**（`SHOP_TRANSFER_COOLDOWN_END` / `CHIP_SHOP_STATE` 补 `.sync()` 并进 `SYNCED_KEYS`，`EVENT_DRAWER_COOLDOWN_UNTIL` 补进 `SYNCED_KEYS`）；两线各一个 `compat/jade/` 包（`AstralDiceJadePlugin` / `ShopCooldownClientProvider` / 仅 neo 有 `ShopCooldownServerDataProvider`），**不写** `mods.toml` 依赖、未装 Jade 自动降级；规格 `docs/features/jade-shop-cooldown-spec.md`（§5 实机用例 5 条、§6 已知边界）。⑤ **1.20.1 一心同体双人测试根因（已定位，替换 10-16 报告的「bot 前缀 / `getTeam()` 不可见」猜想）**：Carpet 假人的**真实 profile 名大小写**与 `/team join` 输入不一致（实测 `AP_JT_TEAM:who=Fake3:profileName=FAKE3:joined=blue` ⇒ `getTeam()` 为 null、`PartyRelations.collectTeamPlayers` 返回 0），**不是**「bot 前缀不可见」；修法 = 按 `getGameProfile().getName()` 的真实名入队。**用户裁决：假人一律用非 bot 前缀用户名**（本轮 `Fake1`/`Fake2`… 实测 `tm=2`）。⑥ **待办：实机验证欠账 ×2 —— 均须用户明确下达才可执行（AGENTS 第 5 条），未做即不得声称验收**：(a) **选卡界面实机** —— 用例 = `docs/features/card-choice-screen-spec.md` **§9**（8 条：双击放入/取回、拖回、类型过滤、未满无按钮、放满确认、Esc 零消耗、拖到已占用格原路还原、开界面死亡掉牌 + 重生后可再次打开）；(b) **Jade 三店倒计时悬浮框实机** —— 用例 = `docs/features/jade-shop-cooldown-spec.md` **§5**（5 条：卡牌店补货倒计时逐秒递减、筹码店/抽奖盒可进入倒计时、无冷却时无该行、未装 Jade 正常启动）。⚠️ **对账差异（如实登记）**：`docs/reports/` 下**没有** Jade 的独立交付报告文件（现有三份均为 kame 实机报告）⇒ 这项实机的**唯一用例来源就是 spec §5**，交接时勿引用不存在的报告。⑦ **搁置（等用户下达批次）**：P1 两线（`neoforge-26.1.2` / `fabric-1.20.1`）移植 —— **立牌批 + 选卡界面 + Jade 倒计时三项均未移植**（按「两级优先模型」，勿擅自开工）；`models/` 下两个未跟踪 `.bbmodel`（`models/强化拒止 - Converted.bbmodel`、`models/路障 - Converted.bbmodel`）**归属未定**；既有红（非本批）：`tooltip_color_audit` **64 处**、`verify_bountiful_pools` **6 项**。⑧ **遗留观察（已登记、不阻塞）**：(a) **观众模式能打开选卡界面，但点击被服务端丢弃**（`ServerGamePacketListenerImpl#handleContainerClick` 对 spectator 只 `sendAllDataToRemote()`）⇒ 放不进卡、点不了确认，只能手动 Esc 关闭（零消耗、零回调）；如要挡住，可在 `CardChoiceManager#start` 入口按 `isSpectator()` 直接返回失败（spec §8.1 明记**本批未做**，勿视为缺陷）；(b) **`PlayerTossEvent` / `ItemTossEvent` 被其它 mod 取消时掉落物蒸发的理论边界**：临时牌守卫 `event/TemporaryCardEvents.java` 在事件取消后自行「尽力退还」，但取消**不会**把物品退回背包（javadoc 原文 "will not prevent them being removed from the inventory"），背包满即**直接销毁**；若他 mod 同时取消/抢占同一条抛掷链，存在掉落物蒸发／双不落地的理论边界 —— **纯代码推论，未实机取证**。⑨ **推送与工作树**：全部提交**未 push**（推送须用户明确要求，且经代理 `http://127.0.0.1:7897`）；`git status --short -uall` 余 **6 行既有未跟踪残留**（4 × `%SystemDrive%/…/*.db` + 2 × `models/*.bbmodel`）—— **勿提交、勿删除**；WSL 下 `.git/hooks/post-commit` 报 `pwsh: not found` 属**非致命**（提交本身已成功，hook 未执行）。
 
-37. **选卡界面+Jade 双线实机验证闭环与 4 项修复（2026-10-17 晚）**：交接基线：分支 `multi-dev-next`，HEAD 链 `f7ee13e0`（第 36 条交接文档）→ `96352433`（双线首测报告 + 11 个用例文件）→ `71e38e43`（产品修复）→ `2cb56b13`（Jade 构建开关）→ `b05ce817`（mt 工具链 + 回归报告/用例），**HEAD = `b05ce817`**；另有本轮 pwsh 健壮性改动**仍在工作区未提交**（见 ⑥-b）。四线 `mod_version` 仍为 `2.0.0-SNAPSHOT.128+<后缀>`；**全部提交仅本地、未 push**（`git status -sb` = `ahead 323`）。① **双线实机首测（`96352433`）**：用例 = 选卡界面 `docs/features/card-choice-screen-spec.md` §9（8 条）+ Jade `docs/features/jade-shop-cooldown-spec.md` §5（5 条）；报告两份 —— `docs/reports/card-choice-jade-2026-10-17-2.0.0-SNAPSHOT.128.md`（`neoforge-1.21.1`：§9 **7 PASS + §9-3 部分成立**，Jade §5 **4 PASS + J5 无法判定**）与 `docs/reports/card-choice-jade-forge-1.20.1-2026-10-17-2.0.0-SNAPSHOT.128.md`（`forge-1.20.1`：§9 **7 PASS + C3 原地还原 FAIL**，J1–J4 PASS、**J5 未执行**）。② **首轮暴露 4 类问题（两线报告 D 编号不同，按现象归并；勿按单一编号引用）**：(a) **类型过滤「原地还原」不成立** —— 「不进卡槽」成立，但卡仍被原版 `PICKUP` 拿到光标：neo §5-D1（左键单击/双击）、forge §5-D2（拖动松手 `carried=effect_card_berserkx3`）；(b) **一次双击填满全部空卡槽** —— forge §5-D1 实测 `put_filled=3`；修复前两线 `CardChoiceMenu#quickMoveStack` **逐字同源**（均 `moveItemStackTo(整栈, 0, slotCount, false)`）⇒ **同一缺陷、非 forge 独有**（`71e38e43` 的行内注释亦记「forge 线实测 `put_filled=3`」）；(c) **J5「未装 Jade 启动」无法验证** —— neo §5-D4 / forge §5-D5（Jade 是 Gradle **无条件运行时依赖**，`run/<线>/mods` 无 Jade 文件，构造缺席环境必须改构建）；(d) **mt 工具链** —— `preflight-op` 进世界后注入竞态（neo §5-D2：4/4 失败、手工重注立即成功）+ **两线 dev 客户端不能共存**（forge §5-D4 / neo §9.8-D4-4：同刻 `glfw.dll` 原生崩溃 `EXCEPTION_ACCESS_VIOLATION`，该轮 7 次 `USER_TERMINATED`）+ 从 WSL 起 pwsh 时 `& <exe>` 子进程 stdout/退出码丢失（neo §9.8-D4-5）。另登记非阻塞项：neo §5-D5（筹码店「空白筹码投入⇒冷却清零」真实交互未跑）、§5-D6（复用旧世界把上一轮掉落物算进 drops）、forge §5-D3（探针回调 `List.copyOf` 在 Rhino 读不到逐项 id，只有 `picked=3` 间接证据）。③ **修复（用户指令「全修」；`71e38e43` + `2cb56b13` + `b05ce817`）**：`71e38e43` **产品修复（两线对等）** —— 类型过滤拒绝扩展到**左键 / 右键 / 创意模式拾取键**三个按下入口（`isPickItemClick` = `keyPickItem.matchesMouse(button)` + 创意判定 `hasInfiniteMaterials()` / `getAbilities().instabuild`；命中即吞、不发包、不进拖动；右键/中键只吞按下、不置 `pressIntercepted`），`quickMoveStack` 的「物品栏→卡槽」改为**一次只搬 1 张**（`copyWithCount(1)` + `return EMPTY`，阻断原版 QUICK_MOVE 的 while 复调），并同步 `card-choice-screen-spec.md` §9-3 新口径与 §12 第四轮小修登记；`2cb56b13` 新增 **`-PtestJade=false`** 运行时排除开关（两线：`compileOnly` 恒在编译类路径 + 条件 `runtimeOnly`，不影响发货产物、不写 `mods.toml`/JarJar）；`b05ce817` **mt 工具链** —— preflight-op「聊天就绪等待 + 注入后回读 + 重试」、失败取证标记**按线隔离**（`.mt_keep_alive-<版本>` + 兼容旧无后缀）+ **启动段全机锁**（`Enter-MtLaunchLock`）、launch 预算**联动 900s**（锁等待 600 + 就绪 180 + 余量 120）、构建守卫**只读恢复**（`mt_preflight.ps1` 本线 `:sub:` 包装器检测）、`--force` **清除全部**取证标记、启动锁 **TOCTOU**（先 rename 抢占再复核 token）与**锁龄边界**（`max(StaleSec, 就绪预算+60)`）修复；同提交带双线回归报告追加与 6 个新用例文件 + 2 个改写（`CC-RIGHTCLICK` / `CC-DBLCLICK` / `CC-FILTER` / `JADE-NOJADE`，两线）。中间经**一轮独立复核**（spec §12 记「评审 R1 部分成立」，登记「1 中 + 1 低」⇒ **小范围返工**：补齐右键 / 中键拦截 + 清理 `quickMoveStack` 未使用变量）。④ **回归结果（`b05ce817` 报告 §9 / R0）**：**两线全部 PASS** —— neo：`CC-FILTER`（25 步 / 15 断言）、`CC-RIGHTCLICK`（27 步 / 17 断言）、`CC-DBLCLICK`（5 张栈双击只入 1 张）、`CC-OCCUPIED`（§9-7 未误伤）+ **J5 无 Jade 启动**（`logs-nojade/latest.log` Mod List 0 处 jade、`0 ERROR/FATAL`、0 crash-reports）；forge：R1–R10（含 `-PtestJade=false` 正常进世界、4 张 / 2 张栈双击只入 1 张、右键 / 中键 / 非卡物品原版语义）。`preflight-op`：neo 三次干净启动均**首次注入即 OK**，当日全部 `mt_launch` 日志 `PREFLIGHT_OP_RETRY` = **0**；forge 11 次冷启动中 **9 次首次即 OK**（余 1 次在 preflight 前被 GLFW 崩溃打断、1 次是嵌套 `&` 子进程未执行），不再需要手工重注。⑤ **待用户裁决（逐条，未擅自取舍）**：(a) **D4-4 未修** —— 两线 dev 客户端**运行期共存**仍互撞 `glfw.dll` 原生崩溃（驱动级；启动锁只护「spawn → 进世界」，已进世界的客户端仍会被另一线启动杀死）⇒ 是否升级为**会话级互斥**（= 回到串行）或**分机**执行；(b) **Shift+点击现在也一次只搬 1 张** —— 与双击共用 `QUICK_MOVE → quickMoveStack` 路径（`CardChoiceScreen` 注释明写），spec 只规定双击语义、未规定 Shift 语义 ⇒ 是否符合预期；(c) **键盘改绑的拾取键未拦截** —— 屏幕只重写 `mouseClicked`，**未重写 `keyPressed`**，spec §9-3 也只写「改绑到其他鼠标键」⇒ 键盘绑定的 `keyPickItem`（`CLONE`）仍可能把类型不符的卡拿到光标上（**代码推论，未实机取证**）；(d) **`mt_loadergate` 既有 FAIL** —— `scripts/test/mt_loadergate.ps1:278` 要求 `mixinbooster` 三段 `mandatory=true`，而 `forge-1.20.1/src/main/templates/META-INF/mods.toml:131` 自 `34e8f7cfb`（2026-09-29，Sinytra Connector 共存）起**故意**为 `mandatory=false` ⇒ 门禁口径与设计冲突，**本批改动前就存在**；(e) **范围外同类 `& <exe>` 写法残留**：`scripts/test/fabric/ft_launch.ps1:137`（`& cmd.exe /c …`）与 `scripts/verify/**`（如 `verify_forge_loader_gate.ps1:794/803/806` 的 `& $javac` / `& $java`）—— 注意 `verify_chip_acquisition.ps1` 的 `& $walk` 是**函数调用**，不属同类。⑥ ⛔ **【2026-10-22 用户裁决：本段整段失效，仅作历史背景，勿据以施工 —— 工具链已回 Windows 原生，取代口径见第 38 条】** **WSL 环境新知（本会话实测；已写入 `scripts/test/TESTING-RULES-OVERVIEW.md` §2.1）**：(a) **`pwsh.exe` 不在 WSL PATH**（实测 `command -v pwsh.exe` 空；`C:\Program Files\PowerShell\7\pwsh.exe` 存在）⇒ 一律写全路径，禁止用 Linux 侧 pwsh 跑本仓脚本；(b) **从 WSL 起的 pwsh 里 `& <exe>` 静默不执行子进程**（无 stdout、`$LASTEXITCODE` 不被创建）⇒ 新原语 **`Invoke-MtChildProcess`**（`scripts/test/lib/Mt.Proc.psm1:184`，`Start-Process -NoNewWindow -PassThru` + `Process.ExitCode`；`-Capture` 落临时文件回读），已接入 `mt_launch` / `mt_stop` / `mt_loadergate` 等；**该批改动尚未提交**（工作区 M：`TESTING-RULES-OVERVIEW.md` / `lib/Mt.Proc.psm1` / `mt_capture.ps1` / `mt_ime.ps1` / `mt_launch.ps1` / `mt_loadergate.ps1` / `mt_preflight.ps1` / `mt_stop.ps1`）；(c) **git hook 四件套**（`post-commit` / `post-checkout` / `post-merge` / `post-rewrite`，位于**共享** `astral_dice_multiloader/.git/hooks`、**未跟踪**）已加 **pwsh 三级探测**（PATH `pwsh` → PATH `pwsh.exe` → `/mnt/c/Program Files/PowerShell/7/pwsh.exe`）+ **WSL 经 `cmd.exe` 中转**（Windows 版 pwsh 读不到 `/mnt/f/…`，先用 `wslpath -w` 翻译）+ 全找不到**静默 `exit 0`**；原文件备份为同目录 `*.bak-20261017`。⑦ **继续有效的旧账（与第 36 条同口径，勿重复立项）**：P1 两线（`neoforge-26.1.2` / `fabric-1.20.1`）移植**仍搁置**（立牌批 + 选卡界面 + Jade 倒计时三项均未移植）；`models/` 下两个未跟踪 `.bbmodel`（`强化拒止 - Converted.bbmodel`、`路障 - Converted.bbmodel`）**归属未定**；既有红（非本批）：`tooltip_color_audit` **64 处**、`verify_bountiful_pools` **6 项**；全部提交**未 push**（推送须用户明确要求，且经代理 `http://127.0.0.1:7897`）。
+37. **选卡界面+Jade 双线实机验证闭环与 4 项修复（2026-10-17 晚）**：交接基线：分支 `multi-dev-next`，HEAD 链 `f7ee13e0`（第 36 条交接文档）→ `96352433`（双线首测报告 + 11 个用例文件）→ `71e38e43`（产品修复）→ `2cb56b13`（Jade 构建开关）→ `b05ce817`（mt 工具链 + 回归报告/用例），**HEAD = `b05ce817`**；另有本轮 pwsh 健壮性改动**仍在工作区未提交**（见 ⑥-b）。四线 `mod_version` 仍为 `2.0.0-SNAPSHOT.128+<后缀>`；**全部提交仅本地、未 push**（`git status -sb` = `ahead 323`）。① **双线实机首测（`96352433`）**：用例 = 选卡界面 `docs/features/card-choice-screen-spec.md` §9（8 条）+ Jade `docs/features/jade-shop-cooldown-spec.md` §5（5 条）；报告两份 —— `docs/reports/card-choice-jade-2026-10-17-2.0.0-SNAPSHOT.128.md`（`neoforge-1.21.1`：§9 **7 PASS + §9-3 部分成立**，Jade §5 **4 PASS + J5 无法判定**）与 `docs/reports/card-choice-jade-forge-1.20.1-2026-10-17-2.0.0-SNAPSHOT.128.md`（`forge-1.20.1`：§9 **7 PASS + C3 原地还原 FAIL**，J1–J4 PASS、**J5 未执行**）。② **首轮暴露 4 类问题（两线报告 D 编号不同，按现象归并；勿按单一编号引用）**：(a) **类型过滤「原地还原」不成立** —— 「不进卡槽」成立，但卡仍被原版 `PICKUP` 拿到光标：neo §5-D1（左键单击/双击）、forge §5-D2（拖动松手 `carried=effect_card_berserkx3`）；(b) **一次双击填满全部空卡槽** —— forge §5-D1 实测 `put_filled=3`；修复前两线 `CardChoiceMenu#quickMoveStack` **逐字同源**（均 `moveItemStackTo(整栈, 0, slotCount, false)`）⇒ **同一缺陷、非 forge 独有**（`71e38e43` 的行内注释亦记「forge 线实测 `put_filled=3`」）；(c) **J5「未装 Jade 启动」无法验证** —— neo §5-D4 / forge §5-D5（Jade 是 Gradle **无条件运行时依赖**，`run/<线>/mods` 无 Jade 文件，构造缺席环境必须改构建）；(d) **mt 工具链** —— `preflight-op` 进世界后注入竞态（neo §5-D2：4/4 失败、手工重注立即成功）+ **两线 dev 客户端不能共存**（forge §5-D4 / neo §9.8-D4-4：同刻 `glfw.dll` 原生崩溃 `EXCEPTION_ACCESS_VIOLATION`，该轮 7 次 `USER_TERMINATED`）+ 从 WSL 起 pwsh 时 `& <exe>` 子进程 stdout/退出码丢失（neo §9.8-D4-5）。另登记非阻塞项：neo §5-D5（筹码店「空白筹码投入⇒冷却清零」真实交互未跑）、§5-D6（复用旧世界把上一轮掉落物算进 drops）、forge §5-D3（探针回调 `List.copyOf` 在 Rhino 读不到逐项 id，只有 `picked=3` 间接证据）。③ **修复（用户指令「全修」；`71e38e43` + `2cb56b13` + `b05ce817`）**：`71e38e43` **产品修复（两线对等）** —— 类型过滤拒绝扩展到**左键 / 右键 / 创意模式拾取键**三个按下入口（`isPickItemClick` = `keyPickItem.matchesMouse(button)` + 创意判定 `hasInfiniteMaterials()` / `getAbilities().instabuild`；命中即吞、不发包、不进拖动；右键/中键只吞按下、不置 `pressIntercepted`），`quickMoveStack` 的「物品栏→卡槽」改为**一次只搬 1 张**（`copyWithCount(1)` + `return EMPTY`，阻断原版 QUICK_MOVE 的 while 复调），并同步 `card-choice-screen-spec.md` §9-3 新口径与 §12 第四轮小修登记；`2cb56b13` 新增 **`-PtestJade=false`** 运行时排除开关（两线：`compileOnly` 恒在编译类路径 + 条件 `runtimeOnly`，不影响发货产物、不写 `mods.toml`/JarJar）；`b05ce817` **mt 工具链** —— preflight-op「聊天就绪等待 + 注入后回读 + 重试」、失败取证标记**按线隔离**（`.mt_keep_alive-<版本>` + 兼容旧无后缀）+ **启动段全机锁**（`Enter-MtLaunchLock`）、launch 预算**联动 900s**（锁等待 600 + 就绪 180 + 余量 120）、构建守卫**只读恢复**（`mt_preflight.py` 本线 `:sub:` 包装器检测）、`--force` **清除全部**取证标记、启动锁 **TOCTOU**（先 rename 抢占再复核 token）与**锁龄边界**（`max(StaleSec, 就绪预算+60)`）修复；同提交带双线回归报告追加与 6 个新用例文件 + 2 个改写（`CC-RIGHTCLICK` / `CC-DBLCLICK` / `CC-FILTER` / `JADE-NOJADE`，两线）。中间经**一轮独立复核**（spec §12 记「评审 R1 部分成立」，登记「1 中 + 1 低」⇒ **小范围返工**：补齐右键 / 中键拦截 + 清理 `quickMoveStack` 未使用变量）。④ **回归结果（`b05ce817` 报告 §9 / R0）**：**两线全部 PASS** —— neo：`CC-FILTER`（25 步 / 15 断言）、`CC-RIGHTCLICK`（27 步 / 17 断言）、`CC-DBLCLICK`（5 张栈双击只入 1 张）、`CC-OCCUPIED`（§9-7 未误伤）+ **J5 无 Jade 启动**（`logs-nojade/latest.log` Mod List 0 处 jade、`0 ERROR/FATAL`、0 crash-reports）；forge：R1–R10（含 `-PtestJade=false` 正常进世界、4 张 / 2 张栈双击只入 1 张、右键 / 中键 / 非卡物品原版语义）。`preflight-op`：neo 三次干净启动均**首次注入即 OK**，当日全部 `mt_launch` 日志 `PREFLIGHT_OP_RETRY` = **0**；forge 11 次冷启动中 **9 次首次即 OK**（余 1 次在 preflight 前被 GLFW 崩溃打断、1 次是嵌套 `&` 子进程未执行），不再需要手工重注。⑤ **待用户裁决（逐条，未擅自取舍）**：(a) **D4-4 未修** —— 两线 dev 客户端**运行期共存**仍互撞 `glfw.dll` 原生崩溃（驱动级；启动锁只护「spawn → 进世界」，已进世界的客户端仍会被另一线启动杀死）⇒ 是否升级为**会话级互斥**（= 回到串行）或**分机**执行；(b) **Shift+点击现在也一次只搬 1 张** —— 与双击共用 `QUICK_MOVE → quickMoveStack` 路径（`CardChoiceScreen` 注释明写），spec 只规定双击语义、未规定 Shift 语义 ⇒ 是否符合预期；(c) **键盘改绑的拾取键未拦截** —— 屏幕只重写 `mouseClicked`，**未重写 `keyPressed`**，spec §9-3 也只写「改绑到其他鼠标键」⇒ 键盘绑定的 `keyPickItem`（`CLONE`）仍可能把类型不符的卡拿到光标上（**代码推论，未实机取证**）；(d) **`mt_loadergate` 既有 FAIL** —— `scripts/test/mt_loadergate.ps1:278` 要求 `mixinbooster` 三段 `mandatory=true`，而 `forge-1.20.1/src/main/templates/META-INF/mods.toml:131` 自 `34e8f7cfb`（2026-09-29，Sinytra Connector 共存）起**故意**为 `mandatory=false` ⇒ 门禁口径与设计冲突，**本批改动前就存在**；(e) **范围外同类 `& <exe>` 写法残留**：`scripts/test/fabric/ft_launch.ps1:137`（`& cmd.exe /c …`）与 `scripts/verify/**`（如 `verify_forge_loader_gate.py:794/803/806` 的 `& $javac` / `& $java`）—— 注意 `verify_chip_acquisition.py` 的 `& $walk` 是**函数调用**，不属同类。⑥ ⛔ **【2026-10-22 用户裁决：本段整段失效，仅作历史背景，勿据以施工 —— 工具链已回 Windows 原生，取代口径见第 38 条】** **WSL 环境新知（本会话实测；已写入 `scripts/test/TESTING-RULES-OVERVIEW.md（已删除 2026-11-05）` §2.1）**：(a) **`pwsh.exe` 不在 WSL PATH**（实测 `command -v pwsh.exe` 空；`C:\Program Files\PowerShell\7\pwsh.exe` 存在）⇒ 一律写全路径，禁止用 Linux 侧 pwsh 跑本仓脚本；(b) **从 WSL 起的 pwsh 里 `& <exe>` 静默不执行子进程**（无 stdout、`$LASTEXITCODE` 不被创建）⇒ 新原语 **`Invoke-MtChildProcess`**（`scripts/test/lib/Mt.Proc.psm1:184`，`Start-Process -NoNewWindow -PassThru` + `Process.ExitCode`；`-Capture` 落临时文件回读），已接入 `mt_launch` / `mt_stop` / `mt_loadergate` 等；**该批改动尚未提交**（工作区 M：`TESTING-RULES-OVERVIEW.md` / `lib/Mt.Proc.psm1` / `mt_capture.py` / `mt_ime.ps1` / `mt_launch.ps1` / `mt_loadergate.ps1` / `mt_preflight.py` / `mt_stop.ps1`）；(c) **git hook 四件套**（`post-commit` / `post-checkout` / `post-merge` / `post-rewrite`，位于**共享** `astral_dice_multiloader/.git/hooks`、**未跟踪**）已加 **pwsh 三级探测**（PATH `pwsh` → PATH `pwsh.exe` → `/mnt/c/Program Files/PowerShell/7/pwsh.exe`）+ **WSL 经 `cmd.exe` 中转**（Windows 版 pwsh 读不到 `/mnt/f/…`，先用 `wslpath -w` 翻译）+ 全找不到**静默 `exit 0`**；原文件备份为同目录 `*.bak-20261017`。⑦ **继续有效的旧账（与第 36 条同口径，勿重复立项）**：P1 两线（`neoforge-26.1.2` / `fabric-1.20.1`）移植**仍搁置**（立牌批 + 选卡界面 + Jade 倒计时三项均未移植）；`models/` 下两个未跟踪 `.bbmodel`（`强化拒止 - Converted.bbmodel`、`路障 - Converted.bbmodel`）**归属未定**；既有红（非本批）：`tooltip_color_audit` **64 处**、`verify_bountiful_pools` **6 项**；全部提交**未 push**（推送须用户明确要求，且经代理 `http://127.0.0.1:7897`）。
 
-38. **工具链回 Windows 原生（2026-10-17 深夜；取代第 37 条 ⑥ 的「WSL 驱动」口径）**：交接基线：分支 `multi-dev-next`，HEAD = `61968fc5`（第 37 条 + 索引同步），四线 `mod_version` 仍 `2.0.0-SNAPSHOT.128+<后缀>`；全部提交仅本地、**未 push**。① **动作（Windows 上用原生 pwsh 7 接手后一次性收敛，与 92fbeaf「工具链收敛为纯 pwsh」同一目标；2026-10-13 的 WSL 回退口径作废）**：(a) **删除** WSL 专属构建入口 `scripts/test/mt_build.sh`（取回：`git show 71f15929:scripts/test/mt_build.sh`）；(b) **重写** `docs/handover-new-session-context.md` 为 Windows 口径 —— §0 改为「位置与自证 / 纯 pwsh 工具链」，WSL 三条硬事实降级为 §0.2「历史知识（不要据此施工）」，铁律 ⑦ 由「跨环境纪律（Linux 侧）」改为「工具链纪律（Windows 原生）」；(c) `scripts/test/TESTING-RULES-OVERVIEW.md` §2.1 由「从 WSL 驱动工具链」改为「**工具链运行环境（Windows 原生，唯一支持）**」，WSL 三条事实折成一行历史；(d) `docs/agent/AGENTS-full.md`〈Gradle 构建守护规则〉第 6 条由「WSL 回退」改为「**构建一律 Windows 原生**（`mt_build.ps1` 唯一入口，`mt_build.sh` 已删）」；(e) `docs/handover-2.0.0-dev-next.md` 顶部「新会话提示词 / 环境口径」两行同步；(f) `mt_launch` / `mt_stop` / `mt_loadergate` / `mt_capture` / `mt_ime` / `mt_preflight` 与 `lib/Mt.Proc.psm1` / `mt_build.ps1` 的 **WSL 归因注释**改为 Windows 原生表述，**零行为改动**；`Invoke-MtChildProcess` **保留**并升格为统一子进程原语（`Process.ExitCode` + 可选 `-TimeoutSec` 强杀，不读 `$LASTEXITCODE`）。② **Windows 侧实测证据（本会话、全部原生 pwsh 7）**：语法门 `scripts/devtools/Test-MtSyntax.ps1` ⇒ `RESULT: 104 个文件（ps1/psm1=57 / js=47），解析失败 0 个，跳过 0 个`；构建 `mt_build.ps1` 三线 ⇒ `MT_BUILD: OK (1s)`（`neoforge-1.21.1`，输出含 BUILD SUCCESSFUL 且产物存在）/ `MT_BUILD: OK (23s)`（`forge-1.20.1`）/ `MT_BUILD: OK (3s)`（`neoforge-26.1.2`，产物已更新）；守门 `scripts/verify/verify_chip_shop_ui.ps1` ⇒ `CHIPUI_TOTAL_FAIL: 0` / `CHIPUI_RESULT: OK`；`tools/check_lang_sync.ps1 -LangDir neoforge-1.21.1/src/main/resources/assets/astral_dice/lang` ⇒ `OK: zh_cn.json(974 keys) 与 en_us.json(974 keys) key 完全一致；ja_jp.json(974 keys)…`（另含既有 `tooltip.astral_dice.chip.perpetual_motion` 结构标记 WARN，改动前即有）。③ **未做与边界（如实登记）**：**未跑实机**（`mt.ps1 --phase env/launch/cases`，须用户下达）；`.git/hooks` 四件套仍是第 37 条 ⑥-c 的**探测版**（Windows 侧命中 `PATH pwsh` 第一条，行为不变；未回退成 2026-09-12 的纯 Windows 版）；fabric 线仍走 `scripts/test/fabric/ft_build.ps1`（`mt_build.ps1` 不认该线）；第 37 条 ⑤ 的待裁决项（两线 dev 客户端共存互撞 `glfw.dll`、Shift+点击、键盘拾取键、`mt_loadergate` 既有 FAIL）与 ⑦ 的 P1 移植搁置**均未变动**。
+38. **工具链回 Windows 原生（2026-10-17 深夜；取代第 37 条 ⑥ 的「WSL 驱动」口径）**：交接基线：分支 `multi-dev-next`，HEAD = `61968fc5`（第 37 条 + 索引同步），四线 `mod_version` 仍 `2.0.0-SNAPSHOT.128+<后缀>`；全部提交仅本地、**未 push**。① **动作（Windows 上用原生 pwsh 7 接手后一次性收敛，与 92fbeaf「工具链收敛为纯 pwsh」同一目标；2026-10-13 的 WSL 回退口径作废）**：(a) **删除** WSL 专属构建入口 `scripts/test/mt_build.sh`（取回：`git show 71f15929:scripts/test/mt_build.sh`）；(b) **重写** `docs/handover-new-session-context.md` 为 Windows 口径 —— §0 改为「位置与自证 / 纯 pwsh 工具链」，WSL 三条硬事实降级为 §0.2「历史知识（不要据此施工）」，铁律 ⑦ 由「跨环境纪律（Linux 侧）」改为「工具链纪律（Windows 原生）」；(c) `scripts/test/TESTING-RULES-OVERVIEW.md（已删除 2026-11-05）` §2.1 由「从 WSL 驱动工具链」改为「**工具链运行环境（Windows 原生，唯一支持）**」，WSL 三条事实折成一行历史；(d) `docs/agent/AGENTS-full.md`〈Gradle 构建守护规则〉第 6 条由「WSL 回退」改为「**构建一律 Windows 原生**（`mt_build.ps1` 唯一入口，`mt_build.sh` 已删）」；(e) `docs/handover-2.0.0-dev-next.md` 顶部「新会话提示词 / 环境口径」两行同步；(f) `mt_launch` / `mt_stop` / `mt_loadergate` / `mt_capture` / `mt_ime` / `mt_preflight` 与 `lib/Mt.Proc.psm1` / `mt_build.ps1` 的 **WSL 归因注释**改为 Windows 原生表述，**零行为改动**；`Invoke-MtChildProcess` **保留**并升格为统一子进程原语（`Process.ExitCode` + 可选 `-TimeoutSec` 强杀，不读 `$LASTEXITCODE`）。② **Windows 侧实测证据（本会话、全部原生 pwsh 7）**：语法门 `scripts/devtools/Test-MtSyntax.ps1` ⇒ `RESULT: 104 个文件（ps1/psm1=57 / js=47），解析失败 0 个，跳过 0 个`；构建 `mt_build.ps1` 三线 ⇒ `MT_BUILD: OK (1s)`（`neoforge-1.21.1`，输出含 BUILD SUCCESSFUL 且产物存在）/ `MT_BUILD: OK (23s)`（`forge-1.20.1`）/ `MT_BUILD: OK (3s)`（`neoforge-26.1.2`，产物已更新）；守门 `scripts/verify/verify_chip_shop_ui.py` ⇒ `CHIPUI_TOTAL_FAIL: 0` / `CHIPUI_RESULT: OK`；`tools/check_lang_sync.py -LangDir neoforge-1.21.1/src/main/resources/assets/astral_dice/lang` ⇒ `OK: zh_cn.json(974 keys) 与 en_us.json(974 keys) key 完全一致；ja_jp.json(974 keys)…`（另含既有 `tooltip.astral_dice.chip.perpetual_motion` 结构标记 WARN，改动前即有）。③ **未做与边界（如实登记）**：**未跑实机**（`mt.ps1 --phase env/launch/cases`，须用户下达）；`.git/hooks` 四件套仍是第 37 条 ⑥-c 的**探测版**（Windows 侧命中 `PATH pwsh` 第一条，行为不变；未回退成 2026-09-12 的纯 Windows 版）；fabric 线仍走 `scripts/test/fabric/ft_build.ps1`（`mt_build.ps1` 不认该线）；第 37 条 ⑤ 的待裁决项（两线 dev 客户端共存互撞 `glfw.dll`、Shift+点击、键盘拾取键、`mt_loadergate` 既有 FAIL）与 ⑦ 的 P1 移植搁置**均未变动**。
 
 ④ **复核回填（2026-10-17 深夜；复核对象 `2f27175b`）**：`code_review` 实例在 `protocol-correction` 循环后卡死（20 checkpoints 后连续多次等待约 6 分钟无进展、无终态）⇒ 按第 14 条**立即改派一次性独立子代理**复核，R1–R7 判定 = R1/R2/R4/R5/R6/R7 SUPPORTED、R3 部分成立。已按复核结论改正：`handover-new-session-context.md` §0.2 行尾句**沿用旧版错误**（实测 `neoforge-1.21.1` 的 Java = crlf 315 / lf 41 / mixed 2、`AGENTS.md` = LF、`docs/handover-1.3.0.md` = w/crlf）⇒ 改为「逐文件以 `git ls-files --eol` 实测为准」并附实测数；`ahead 323` 改为「随提交递增、以实测为准」。复核另报的两个 tracked `AGENTS.md.bak-*` 过时陈述（回滚快照要求逐字节一致）与第 37 条 ⑥-b「尚未提交」（实物已在 `95b29313` 落地）**均不回填**，理由记录于此。
 
@@ -3550,7 +3467,7 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --new <注册id>
 
 ## ⛔ WSL 口径失效对照（2026-10-22 用户裁决，仅存历史）
 
-> **背景**：DSH 改为 Windows 原生作业（git bash 只承担 git，测试台一律 PowerShell 7），下述 WSL 专用条款**全部失效**，出现在旧文里只当历史背景，**不得据以施工**。源条款位置：`AGENTS.md` 开头「## ⛔ 回滚裁决」块（原 1–5 条）、全局 `~/.codex` 规则、以及本文件〈Gradlew 构建守护规则〉第 6 条与第 37 条 ⑥（已就地标注失效）。
+> **背景**：DSH 改为 Windows 原生作业（当时口径：git bash 只承担 git、测试台一律 PowerShell 7；⛔ 该 pwsh 测试台已于 2026-11-04 整体作废为 bash + python），下述 WSL 专用条款**全部失效**，出现在旧文里只当历史背景，**不得据以施工**。源条款位置：`AGENTS.md` 开头「## ⛔ 回滚裁决」块（原 1–5 条）、全局 `~/.codex` 规则、以及本文件〈Gradlew 构建守护规则〉第 6 条与第 37 条 ⑥（已就地标注失效）。
 
 | WSL 条款（原文位置：AGENTS.md 回滚裁决 / 全局 `~/.codex` 规则） | 现行 Windows 口径（2026-10-22 起） |
 |---|---|
@@ -3558,7 +3475,7 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --new <注册id>
 | `/opt/zulu` + `use-jdk` 切换 JDK | JDK = `C:\Program Files\Zulu\zulu-21`（21.0.12）；`forge-1.20.1` 的 toolchain 17 由 Gradle 从 `%USERPROFILE%\.gradle\jdks` 取（已缓存 Adoptium 17.0.20），不要手改 |
 | `rsync` 到 `~/work/adm-*` 副本再编译 | 副本口径**作废**：直接在 `F:\MCProject\astral_dice_multiloader` 工作树跑 `gradlew.bat :<线>:classes|jar`，产物与提交同源 |
 | WSL git 对 worktree 报 `not a git repository` 的变通（`--git-dir=` / 改走 `cmd.exe`） | **该问题不存在**：git 一律用 git bash 的 `git`，写 `git -C F:\MCProject\<工作树> <子命令>` 或先 `cd` 进工作树 |
-| 「bash 里没有 pwsh / 只能 `sh` 跑测试」类兼容说明 | **作废**：测试台一律 `pwsh -NoProfile -File <绝对路径>.ps1`；bash 只承担 git |
+| 「bash 里没有 pwsh / 只能 `sh` 跑测试」类兼容说明 | ⛔ 本行已于 2026-11-04 反转（原文「测试台一律 `pwsh -NoProfile -File <绝对路径>.ps1`」作废）：测试台现为 `bash scripts/test/win/mt.sh` + `python scripts/test/mt_*.py` |
 
 补充说明：
 1. 上表 5 条已改写进 `AGENTS.md` 开头「## ⛔ 回滚裁决」块（现为 1–6 条，另加收尾第 7 条）；本文件末尾只保留此对照表作历史记录。
@@ -3633,8 +3550,8 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --new <注册id>
     ⑤ **11 个筹码类状态效果图标换无边框素材**（P0 两线各 11 张 `textures/mob_effect/*.png`）：`cutter_ready` / `cutter_blade_ready` / `electric_sword_ready` / `railgun_ready` / `adrenaline_ready` / `adrenaline_high_ready` / `flashlight_ready` / `whetstone_ready` / `cursed_sword_ready` / `magic_tome_count` / `revenge_halberd` ← `images/shop/unbord_chips/<中文名>.png`（32×32）。工具 = `tools/gen_chip_effect_icons.py`（`--apply` / `--check`）+ 清单 `tools/chip_effect_icon_map.json`（11 条，**守门唯一事实源**）。
     ⑥ 版本与文案：四线 `gradle.properties` 的 `mod_version` 升 `1.5.0-pre.4`（`neoforge-1.21.1:37` / `forge-1.20.1:41` / `neoforge-26.1.2:54` / `fabric-1.20.1:29`），`starengine_version` 不动；`README.md` / `README_ZH.md` 各 5 处版本串；两份 CHANGELOG 各 3 处改写 + 2 条新条目。
     **产物（`gradlew.bat :neoforge-1.21.1:jar :forge-1.20.1:jar`，BUILD SUCCESSFUL）**：neo `2,556,723 B` `7198cc75a559514e1f982074dae7d8f4a875845491fc6a7409ee47daa03c7878`；forge reobf `2,602,280 B` `fbb776271b8fa3b7189c3d5c810282c58b0de1b0db042b7affe03825c0139227`；forge dev named `2,572,814 B` `6a445c8fa2451b394e05c9228279e1c579d18d5c3006f29caacaa2ec35cf5cba`。投放 **4 处**（`run/1.21.1/mods` = reobf、`run/1.20.1/mods` = named dev jar、两个 P0 整合包 = reobf），逐处 sha256 MATCH，旧 pre.3 已删。
-    **判据（全绿）**：`python tools/gen_chip_effect_icons.py --check` ⇒ `effects=22 misses=0 unaligned=0`（exit 0）；`python tools/verify_effect_icons.py` ⇒ `RESULT: PASS`（四线 65/65/53/53）；`pwsh -NoProfile -File tools/check_lang_sync.ps1` ⇒ exit 0（P0 两线 zh/en/ja 各 **1045** 键一致）；jar 内 `javap`：neo `RepulsionEntity` 含 `hurt` / `getHurtSound` / `die` / **`kill()`**，`BarricadeEntity` 含 `die` / **`kill()`** / `remove(RemovalReason)`，forge reobf 对应 SRG `m_6469_` / `m_7975_` / `m_6667_` / **`m_6074_`**（kill）/ `m_142687_`；11 张图标与源文件 md5 全等。
-    **坑（新增）**：`ja_jp.json` 也必须补 key（`check_lang_sync.ps1` 核三语，只补 zh/en 直接 FAIL）；脚本化插 key 别塞成同一行（JSON 合法但 diff/grep 漏）；效果图标守门**必须靠清单**，纯「图标像素 == 筹码物品图」启发式在素材被覆盖后永远空跑绿。
+    **判据（全绿）**：`python tools/gen_chip_effect_icons.py --check` ⇒ `effects=22 misses=0 unaligned=0`（exit 0）；`python tools/verify_effect_icons.py` ⇒ `RESULT: PASS`（四线 65/65/53/53）；`python tools/check_lang_sync.py` ⇒ exit 0（P0 两线 zh/en/ja 各 **1045** 键一致）；jar 内 `javap`：neo `RepulsionEntity` 含 `hurt` / `getHurtSound` / `die` / **`kill()`**，`BarricadeEntity` 含 `die` / **`kill()`** / `remove(RemovalReason)`，forge reobf 对应 SRG `m_6469_` / `m_7975_` / `m_6667_` / **`m_6074_`**（kill）/ `m_142687_`；11 张图标与源文件 md5 全等。
+    **坑（新增）**：`ja_jp.json` 也必须补 key（`check_lang_sync.py` 核三语，只补 zh/en 直接 FAIL）；脚本化插 key 别塞成同一行（JSON 合法但 diff/grep 漏）；效果图标守门**必须靠清单**，纯「图标像素 == 筹码物品图」启发式在素材被覆盖后永远空跑绿。
     **未做（如实登记）**：pre.4 的拆除口径**未实机**（需玩家实砍 + 目视死亡观感，待用户下达）；P1 两线（26.1.2 / fabric）的筹码效果图标仍是带边框版；未 push、无 tag。
     **交接文档**：`docs/handover-1.5.0-pre.3-main.md` → **`docs/handover-1.5.0-pre.4-main.md`**、`docs/handover-1.5.0-pre.3-modpack.md` → **`docs/handover-1.5.0-pre.4-modpack.md`**（`git mv` 保历史），引用同步 `docs/agent/AGENT-SPLIT.md:40` 与 `docs/handover-new-session-context.md`（3 处）。
 44. **史莱姆立牌被动改为「每 15 秒最多触发一次」（2026-10-22 用户裁决）**：用户要求 tooltip 被动描述末尾补「每 15 秒触发一次」，实读发现实现是 **1 秒**（`HURT_COOLDOWN_TICKS = 20`）⇒ 报差异后用户选「实现也改成 15 秒」。落点：
@@ -3642,7 +3559,7 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --new <注册id>
     ② P0 两线 × zh_cn/en_us/ja_jp：`tooltip.astral_dice.sign.lulu_passive` 末尾各追加一行（`每 §915 秒§7 触发一次§r` / `§7at most once per §915s§r` / `§915 秒§7 に 1 回のみ発動§r`）、`astral_dice.guide.entry.lulu_sign.2` 句末补括注（每 15 秒最多触发一次）；
     ③ 本文件 L986 立牌技能一览 lulu 行被动列订正为「受到**敌对目标攻击** +1 治愈，主动技能冷却 -10 秒；**每 15 秒最多触发一次**（300 tick；原 20 tick）」（顺带订正原文误写的「受到伤害」）；
     ④ 两份 CHANGELOG 各 1 条（写在 `#### 平台与兼容性` / `#### Platform & Compatibility` 之前）。
-    判据：`gradlew.bat :neoforge-1.21.1:jar :forge-1.20.1:jar` BUILD SUCCESSFUL；`javap -p -c -constants` 命中 `private static final int HURT_COOLDOWN_TICKS = 300;` 且 `onHurt` 在；jar 内三语 tooltip/手册文本核对通过；`tools/check_lang_sync.ps1` exit 0（P0 三语各 **1,045** 键一致）；`scripts/audit/tooltip_color_audit.ps1` **174 处 = 基线 174 处**（用 `git archive HEAD` 导出副本复跑同数，命中项无 `lulu_passive`）。
+    判据：`gradlew.bat :neoforge-1.21.1:jar :forge-1.20.1:jar` BUILD SUCCESSFUL；`javap -p -c -constants` 命中 `private static final int HURT_COOLDOWN_TICKS = 300;` 且 `onHurt` 在；jar 内三语 tooltip/手册文本核对通过；`tools/check_lang_sync.py` exit 0（P0 三语各 **1,045** 键一致）；`scripts/audit/tooltip_color_audit.py` **174 处 = 基线 174 处**（用 `git archive HEAD` 导出副本复跑同数，命中项无 `lulu_passive`）。
     坑：多行 tooltip 追加带色句子必须三语 **§ 数相等**，否则 `check_lang_sync` 报「结构标记不一致」（详见 `docs/handover-1.5.0-pre.4-main.md` §6 坑 15）。
     未做：P1 两线（26.1.2 `LuluSignItem.java:170` / fabric `:161` 内联 20）仍 1 秒且文案未改（欠账，随 P1 批次）；**无实机读数**（「15 秒内只吃一次受击」属计时行为，待用户下达实机）。
 45. **派子代理一律屏蔽人格注入（2026-10-22 用户裁决）**：红线区〈子代理与测试环境硬规则〉新增第 8 条，`AGENTS.md` 与 `docs/agent/AGENTS-full.md` 同批逐字落地（红线区两文件必须字节一致）。口径：
@@ -3661,15 +3578,15 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --new <注册id>
      ② **丢框根因**：提交 `fe4aa05f`（2026-10-21「筹码无边框图标」批）本意只换图标的**素材**，却把 `neoforge-1.21.1` / `forge-1.20.1` 的 `screen/ChipShopScreen` 里 `TEX_QUALITY_1/2/3` 常量、`qualityTex(int)` 助手与 `renderOffers` 的品质外框 blit 一起删了；三张 28×28 描边环 `assets/astral_dice/textures/gui/shop/chipshop_quality_{1,2,3}.png` 一直都在（无需补美术）。
      ③ **恢复绘制**：`renderOffers` 里 `int frame = ChipShopClientState.qualityCode(chip)` 优先（DataSlot 码）→ `frame <= 0` 退 `qualityFrameIndexOf(stack)` → `frame != QUALITY_FRAME_NONE` 才 `blitStrip(guiGraphics, tex(qualityTex(frame)), QUALITY_X[chip], QUALITY_Y, QUALITY_SIZE, QUALITY_SIZE)`；`qualityTex` 1→`TEX_QUALITY_1`、2→`TEX_QUALITY_2`、其它→`TEX_QUALITY_3`；24×24 图标仍内缩 `CHIP_ICON_OFF`（`(QUALITY_SIZE - CHIP_ICON_SIZE) / 2`）。`client/ChipShopClientState:24`、`shop/ChipShopCatalog` javadoc 同步口径。
      ④ **钱包音效**：`shop/CardShopMenu#handleBuy` 成功尾段（`actionBar(... "msg.astral_dice.card_shop_bought" ...)` 之后）补 `SoundPlayback.playTo(buyer, ModSounds.WALLET_DEPOSIT.get())`；拒绝/失败分支不响（既有先例 = `block/EventDrawBlock` 抽奖盒购买成功、同文件转账成功）。
-     ⑤ **守门口径反转**：`scripts/verify/verify_chip_shop_ui.ps1` 的 G2b 由「断言不画外框」改成**正向**（5 条 `$frameNeed` + `qualityTex` 方法体三档映射正则 + 输出行 `CHIPUI_FRAME`），`$drawnTexNames` 恢复全部 13 张；`scripts/verify/mutate_chip_shop_ui.ps1` 的 M38（neo 挖掉绘制入口）/ M39（forge `frame == 2` → `frame == 9`）同步反转。
-     判据：`verify_chip_shop_ui.ps1` ⇒ 两线 `CHIPUI_ASSETS: 13/13` / `CHIPUI_LAYOUT: 31/31` / `CHIPUI_TOTAL_FAIL: 0` / `CHIPUI_RESULT: OK`；`mutate_chip_shop_ui.ps1` ⇒ `MUT_TOTAL: 39，判红 39` / `MUT_RESULT: OK`（**先建 `temp\t87`**，否则报 `Could not find a part of the path ...\temp\t87\mutation.log`）；`gradlew.bat :neoforge-1.21.1:jar :forge-1.20.1:jar` BUILD SUCCESSFUL（18:32）⇒ neo `2,558,631 B` `742132dd…` / forge `2,604,187 B` `4b984008…` / devlibs `2,574,721 B` `8f81e4c3…`，4 处投放 sha256 全 MATCH；`javap -p -c` 两线 `CardShopMenu` 的 `SoundPlayback.playTo` 与 `WALLET_DEPOSIT` 各 2 次（原转账 + 新购买），`ChipShopScreen` 的 `qualityTex` 2 / `qualityCode` 4 / `blitStrip` 7。
+     ⑤ **守门口径反转**：`scripts/verify/verify_chip_shop_ui.py` 的 G2b 由「断言不画外框」改成**正向**（5 条 `$frameNeed` + `qualityTex` 方法体三档映射正则 + 输出行 `CHIPUI_FRAME`），`$drawnTexNames` 恢复全部 13 张；`scripts/verify/mutate_chip_shop_ui.ps1` 的 M38（neo 挖掉绘制入口）/ M39（forge `frame == 2` → `frame == 9`）同步反转。
+     判据：`verify_chip_shop_ui.py` ⇒ 两线 `CHIPUI_ASSETS: 13/13` / `CHIPUI_LAYOUT: 31/31` / `CHIPUI_TOTAL_FAIL: 0` / `CHIPUI_RESULT: OK`；`mutate_chip_shop_ui.ps1` ⇒ `MUT_TOTAL: 39，判红 39` / `MUT_RESULT: OK`（**先建 `temp\t87`**，否则报 `Could not find a part of the path ...\temp\t87\mutation.log`）；`gradlew.bat :neoforge-1.21.1:jar :forge-1.20.1:jar` BUILD SUCCESSFUL（18:32）⇒ neo `2,558,631 B` `742132dd…` / forge `2,604,187 B` `4b984008…` / devlibs `2,574,721 B` `8f81e4c3…`，4 处投放 sha256 全 MATCH；`javap -p -c` 两线 `CardShopMenu` 的 `SoundPlayback.playTo` 与 `WALLET_DEPOSIT` 各 2 次（原转账 + 新购买），`ChipShopScreen` 的 `qualityTex` 2 / `qualityCode` 4 / `blitStrip` 7。
      ⑥ **坑（新）**：反向断言守门对「用户可见的既有行为」会变成假绿（外框被误删时它照样全绿）⇒ 特性回归类守门必须正向；变异套件单跑 2–4 分钟，`run_code` 默认 120s 打断会把变异留在源码里（本批残留 `if (chip > 0) {`，已改回 `if (chip >= 0) {`）。
      ⑦ **未做（如实登记）**：**无实机读数**（三色外框观感 / 购买音效待用户下达）；P1 两线（26.1.2 / fabric）未移植本批。
 49. **pre.4 全量实机测试（2026-10-22 19:00–19:40，用户下达「pre.4 以上所有更改全部做一遍实机测试并输出报告」）**：① 范围 = pre.4 落地的全部改动（强化拒止可拆 / `/kill` / `/astralparty killbarricade|killrepulsion` / 11 个筹码效果图标换无边框 / 史莱姆立牌被动 15 秒 / 电击手套命中 FX / 筹码商店三色品质外框恢复 / 卡牌购买钱包音效）；**P0 两条线各 10 条用例 = 9 条机器判据 PASS + 1 条截图取证**（4 条新用例 × 2 线 + 6 条回归）——`PRE4-CHIPSHOP-FRAME-*` 的 `assert/vision` 在 `scripts/test/mt_case.ps1:1623` 是 **DELEGATED**（`:2439` 标 `→VIS`），不判红绿；产品源码**零改动**。
      ② **新增的探针能力（测试资产，两线各一份）**：`scripts/test/resources/kubejs/<线>/server_scripts/astral_fixbatch_probe.js` 加 `/astralfixbatch hurtby <tag>`（现场造 NoAI 掠夺者 → 施加一次怪物近战伤害 → 同 tick 读 `heal/last/now/since/hp` → 攻击者立刻 discard；伤害链 `p.damage` → `p.attack` → `mob.doHurtTarget` → `mob.attack`，`api=`/`tried=` 全落机器行）与 `fbxDoLuluHealRead` 的 `now` 改用既有 `fbxNow(p)`（`p.level.getGameTime()` 在 Rhino 下取到 -1）；`scripts/test/resources/kubejs/<线>/server_scripts/astral_bugfix_probe.js` 加 `/astralprobe barplace <tag> <dx> <dz>`（复刻 `item/card/BarricadeCardItem#applyEffect`：落 `ModBlocks.BARRICADE_COLLISION` → `create` → `placeAt(x+0.5,y,z+0.5)` → `setCollisionPos` → `addFreshEntity`）并给 `doLuluPrep` 补装金骰子（`putInSlot(p,"dice",…,0)`，骰子总闸门 `BaseSignItem#performSkill:84-90`）。
      ③ **首轮 3 条红全部定性为「测试资产陈旧/缺能力」，不是 pre.4 回归**：(a) `PRE4-BARR-KILL` —— 裸 `/summon astral_dice:barricade` 的实体在 `BarricadeEntity#tick` 首段 `if (collisionPos == null) { discard(); return; }` 自毁 ⇒ `killed=0` 恒真，改走 `barplace`；(b) `PRE4-LULU-15S` —— 探针读 `now=-1`（`getGameTime()` 派发失败）且玩家被怪打死（附件清零）⇒ 改 `fbxNow` + 保命 regeneration + `/effect clear @s`；(c) `LULU-SIGN` —— 两条断言还要求「友方 pig 被瞬间治疗 6→10」，该能力已在 **2026-09-28 用户裁决**删除（`LuluSignItem` javadoc 与 `apply()` 逐字可查），且该用例自 **2026-10-01** 骰子闸门（`3c8f0d36`）起就开不出会话 ⇒ 断言改 `pig_hp=6->6`、prep 补骰子。
      ④ **判据读数**：强化拒止 `AP_FX_RP1R_REP_READ:n=1` → 怪物近战 `RP2R:n=1` → 玩家 999 点 `RP3R:n=0` → `/kill` 后 `RP4R:n=0` → `AFTERM|type=repulsion|killed=2|mode=all` / `killed=1|mode=radius|radius=8`；路障 `AP_B1_BARR:placed=1:n=1` / `AP_B2_BARR:placed=1:n=2` → `AFTERM|type=barricade|killed=2|mode=all`、重建后 `/kill @e[type=astral_dice:barricade]` ⇒ `killed=0`（已由 `kill()` 覆写接管）、`killbarricade 8` ⇒ `killed=1`；15 秒冷却 `LL1 heal=1:since=0` → `LL2 heal=1:since=132`（300 tick 闸门挡住）→ `LL3 heal=2:since=0`（1.20.1 同形 `since=131`）；收尾 `MT_STOP: OK` / `MT_CLEANUP_SAVES: PURGED 1` / `MT_CLEANUP_RESULT: OK`，`Get-Process java` 仅 3 个 Gradle 守护。
-     ⑤ **判据边界（如实登记）**：观感类（火花像不像电 / 音效音量音调 / 图标美术 / 碎裂粒子 / 死亡动画帧）**无字节判据**，机器行只证明「结算发生 / 实体同 tick 消失」；卡牌购买钱包音效只到「购买路径确实调了 `SoundPlayback`」（`javap` 2 次 + `CHIP-CLIENT-BUY` 回归）；三色外框只有截图（vision = DELEGATED，机器判据在静态守门 `verify_chip_shop_ui.ps1` 的 G2b）。P1 两线按用户口径不测。复核（`dsh_code_review` run `5f2955ef-125c-420b-8f5b-498d03d206df`）R1/R2/R4–R7 SUPPORTED、R3 部分成立，两处 finding 已修：vision=DELEGATED 的 PASS 口径（坑 27）与 `LULU-SIGN-*` 残留「友方 6→10」文案；改过的 4 条用例双线重跑全 PASS。
+     ⑤ **判据边界（如实登记）**：观感类（火花像不像电 / 音效音量音调 / 图标美术 / 碎裂粒子 / 死亡动画帧）**无字节判据**，机器行只证明「结算发生 / 实体同 tick 消失」；卡牌购买钱包音效只到「购买路径确实调了 `SoundPlayback`」（`javap` 2 次 + `CHIP-CLIENT-BUY` 回归）；三色外框只有截图（vision = DELEGATED，机器判据在静态守门 `verify_chip_shop_ui.py` 的 G2b）。P1 两线按用户口径不测。复核（`dsh_code_review` run `5f2955ef-125c-420b-8f5b-498d03d206df`）R1/R2/R4–R7 SUPPORTED、R3 部分成立，两处 finding 已修：vision=DELEGATED 的 PASS 口径（坑 27）与 `LULU-SIGN-*` 残留「友方 6→10」文案；改过的 4 条用例双线重跑全 PASS。
      ⑥ **新增三条测试坑（正本 §6 坑 23–26）**：`ServerPlayer#hurt` 在 Rhino 下派发不到（`TypeError: … It is not a function, it is "boolean"`，声明在 `LivingEntity`）且 **1.20.1 没有 `/damage` 命令**（1.20.2 才进原版）⇒ 两线共用的玩家受伤用例必须走 `hurtby` 链；裸 summon 路障必自毁；陈旧用例会把「规格已变」误报成回归；长效增益用例必须 `/effect clear @s` 否则污染后续用例（实测把 `hp=12->16` 顶成 `20->20`）。
 50. **`models/` / `images/` / `sound/` 是随时更新的素材目录（2026-10-22 用户裁决）**：① 用户原话「`astral_anvil.bbmodel` 是用户下一步更新准备用的素材，不要乱动。models、images、sound 这 3 个目录随时更新。有新文件是正常的。」
      ② **仓库事实**：`models/` 有 7 个已跟踪 `*.bbmodel`（cardshop / cardshop_villager / chipshop / chipshop_villager / eventblock / `强化拒止 - Converted` / `路障 - Converted`），`models/astral_anvil.bbmodel` 是**未跟踪的用户素材**；`images/`（324 文件）与 `sound/`（24 文件）由 `.gitignore:63`（`images/`）/ `.gitignore:67`（`sound/`）**整目录忽略** ⇒ `git status --short -uall` 里本就不会出现它们，看不到属正常。
@@ -3705,9 +3622,9 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --new <注册id>
 - 因此本批**产品源码零改动**；若仍有卡顿需要真实场景（位置 / 朝向 / 光影 / 是否多人 / F3 读数）。
 - dev 侧两轮加压（Iris + Sodium + Complementary；再叠 voxy + particular）同样复现不出卡顿。
 
-**判据（全绿，静态）**：`:neoforge-1.21.1:classes :forge-1.20.1:classes` 与 `:jar` + `:pushToRootBuild` BUILD SUCCESSFUL；`python tools/verify_effect_icons.py` 四线 66/66/53/53 PASS；`python tools/gen_chip_effect_icons.py --check` effects=24 misses=0；`pwsh -NoProfile -File tools/check_lang_sync.ps1` P0 三语各 **1046 keys** exit 0；jar 内 `META-INF/jarjar/` = 0、`ClientFrameProbe` / `AP_FP_` **0 残留**、新图标在位、`railgun_ready.png` 0；四处投放 sha256 全 MATCH。
+**判据（全绿，静态）**：`:neoforge-1.21.1:classes :forge-1.20.1:classes` 与 `:jar` + `:pushToRootBuild` BUILD SUCCESSFUL；`python tools/verify_effect_icons.py` 四线 66/66/53/53 PASS；`python tools/gen_chip_effect_icons.py --check` effects=24 misses=0；`python tools/check_lang_sync.py` P0 三语各 **1046 keys** exit 0；jar 内 `META-INF/jarjar/` = 0、`ClientFrameProbe` / `AP_FP_` **0 残留**、新图标在位、`railgun_ready.png` 0；四处投放 sha256 全 MATCH。
 
-**四条新坑**（详见 `docs/handover-1.5.0-pre.5-main.md` §6 坑 29–32）：① 还原被插桩文件不能用 `git show … | Set-Content`（PowerShell 管道把多行塌成 1 行）⇒ node 取字节；② 整合包内不能用 kubejs tick 脚本驱动命令序列（该包无 AutoJS；`ServerEvents.tick` 版本会静默不执行、无报错）⇒ 聊天框手打 + `execute as @a at @s run` 前缀；③ PCL2 冷启动约 3 分钟、标题屏「退出游戏」单击不稳、进程核对要用 `Win32_Process` 的 `CommandLine` 匹配 `net.minecraft.client.main.Main`、双屏拼接时左屏虚拟 x 为负；④ 判「某特效是不是卡顿源」必须做**全帧**基线对比，只看特效可见窗口会把进世界 churn 算到特效头上。
+**四条新坑**（详见 `docs/handover-1.5.0-pre.5-main.md（已删除 2026-11-05）` §6 坑 29–32）：① 还原被插桩文件不能用 `git show … | Set-Content`（PowerShell 管道把多行塌成 1 行）⇒ node 取字节；② 整合包内不能用 kubejs tick 脚本驱动命令序列（该包无 AutoJS；`ServerEvents.tick` 版本会静默不执行、无报错）⇒ 聊天框手打 + `execute as @a at @s run` 前缀；③ PCL2 冷启动约 3 分钟、标题屏「退出游戏」单击不稳、进程核对要用 `Win32_Process` 的 `CommandLine` 匹配 `net.minecraft.client.main.Main`、双屏拼接时左屏虚拟 x 为负；④ 判「某特效是不是卡顿源」必须做**全帧**基线对比，只看特效可见窗口会把进世界 churn 算到特效头上。
 
 
 
@@ -3824,7 +3741,7 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --new <注册id>
 - 修法（像素级）：图标本体画在 **9×9 画布的左上 8×8**，**第 9 列与第 9 行全透明（alpha 0）** ⇒ forge 裁 8×8 拿到完整图标、neo/HUD 多出的 1 px 是透明 padding，相邻不再叠描边，视觉宽度回到 8 px。
 - 对照图：`temp/jade-size/jade-armor-row-compare.png`（1288×700，仅作取证，temp 不入库）。
 
-### 55.6 判据命令
+### 55.6 判据命令（⛔ 历史命令：pwsh 已废弃，仅供溯源）
 ```powershell
 # 用例（需先 launch；村民带 AI 要用 MT_ALLOW_MOB_AI=1 起服）
 $env:MT_ALLOW_MOB_AI='1'
@@ -3863,7 +3780,7 @@ pwsh -NoProfile -File scripts\test\mt.ps1 --version 1.20.1 --phase stop --force 
 - 已在交付报告提示：GPL 与 Minecraft 闭源映射 / Mojang EULA 的兼容性存在社区争议；GPL 要求随二进制提供源码，本仓每个 tag 的树即源码（可自证）。
 - P1 两线（`neoforge-26.1.2` / `fabric-1.20.1`）元数据已同步改，但按规则不为其重建 / 不验证。
 
-### 56.6 判据命令
+### 56.6 判据命令（⛔ 历史命令：pwsh 已废弃，仅供溯源）
 
 ```powershell
 # LICENSE 正文自证（应回显 GNU GENERAL PUBLIC LICENSE / Version 3, 29 June 2007 / END OF TERMS AND CONDITIONS）
@@ -3887,7 +3804,7 @@ python docs/agent/verify-split.py
 - `LICENSE-MIT` **删除**（`git rm`）。该文件只存在于提交 `7e4e4f17`，需要时从该提交取回。
 - `LICENSE` §2 改为：「That grant is irrevocable and cannot be withdrawn; the MIT text for those versions is the LICENSE file at the corresponding release tag (for example the `1.3.7` or `fabric-1.3.7-alpha.2` tags of this repository). This working tree no longer ships a separate MIT file…」。
 - `LICENSE` §1 末尾新增一段：前置库 StarEngine（`https://github.com/merlin-kitsune/StarEngine`）是**独立项目**、同为 GPL-3.0-only、**不由本文件重新授权**；仍以 JarJar 内嵌它的平台线按同一许可内嵌。
-- 引用清理 9 处：`README.md:133` / `README_ZH.md:133` / `CHANGELOG.md:693` / `CHANGELOG_ZH.md:561` 的「原文逐字保存在 [LICENSE-MIT]」改为「见对应发布 tag 的 `LICENSE`；本工作树不再单独保留 MIT 文本」；`docs/handover-1.5.0-pre.5-main.md` §0-23、§5-35 ②③⑦ 与 `docs/handover-new-session-context.md` 第 19 条同步改写。
+- 引用清理 9 处：`README.md:133` / `README_ZH.md:133` / `CHANGELOG.md:693` / `CHANGELOG_ZH.md:561` 的「原文逐字保存在 [LICENSE-MIT]」改为「见对应发布 tag 的 `LICENSE`；本工作树不再单独保留 MIT 文本」；`docs/handover-1.5.0-pre.5-main.md（已删除 2026-11-05）` §0-23、§5-35 ②③⑦ 与 `docs/handover-new-session-context.md` 第 19 条同步改写。
 - **≤1.3.7 仍 MIT 的授权不变**（不可撤回），只是不再随工作树附带独立 MIT 文本。
 
 ### 57.3 前置库仓（`F:\MCProject\starengine`，分支 `main`，独立仓库）
@@ -3898,7 +3815,7 @@ python docs/agent/verify-split.py
 - 文档：`README.md:326` / `README_ZH.md:324` §License 改写；两份 CHANGELOG 的 `2.0.0-SNAPSHOT.15` 未发布段各加〈许可 / Licensing〉条目。
 - 提交 `c545b75`（10 文件 +732/−28；原 `c545b75` 已 `--amend` 补 §2 的 tag 边界）。**未 push、未重建产物**：mavenLocal 与整合包里的 `starengine-*-1.1.0-pre.2.jar` 内 `mods.toml` 仍写 `MIT License`。
 
-### 57.4 判据命令
+### 57.4 判据命令（⛔ 历史命令：pwsh 已废弃，仅供溯源）
 
 ```powershell
 # 本仓：MIT 文件已无、引用只剩历史描述
@@ -3991,7 +3908,7 @@ python docs/agent/verify-split.py
 - 网络走仓库级 `http.proxy` / `https.proxy` = `http://127.0.0.1:7897`（Git 代理规范）；
 - **均不打 tag**（`1.5.0-pre.3` / `pre.4` / `pre.5` 仍无）；后续 push / 打 tag 仍需用户逐次放行。
 
-### 59.7 判据
+### 59.7 判据（⛔ 历史命令：pwsh 已废弃，仅供溯源）
 
 ```powershell
 python docs/agent/verify-split.py                                    # 四项 [OK]
@@ -4014,10 +3931,10 @@ python <zipfile 脚本>                                               # 库 jar 
 
 - **删除**：`tools/modrinth_upload.py`、`tools/modrinth.json`、`.gitignore` 的 Modrinth 凭据说明注释（3 行 → 1 行；**`.modrinth/` 忽略项保留**，本地 token 仍需忽略）；`tools/update_store_page.py` 整份重写为**只更新 CurseForge 计划**（`--modrinth-*` 参数与 PATCH 分支全删）。
 - **未动 CI**：`.github/workflows/build.yml` 本就没有商店上传步骤（只有 tag + 两个 GitHub Release 步骤），`modrinth` / `curseforge` 关键字命中各 0。
-- **保留（不是发布链路）**：`maven.modrinth:` **依赖源**（四线 `build.gradle` 共 43 处）、`scripts/test/mt_env.ps1` 的测试模组下载、`tools/check_mod_sources.ps1` 与 `scripts/verify/verify_probe_class_refs.ps1` 的 Maven 源校验、`ref/**` 参考源。
+- **保留（不是发布链路）**：`maven.modrinth:` **依赖源**（四线 `build.gradle` 共 43 处）、`scripts/test/mt_env.ps1` 的测试模组下载、`tools/check_mod_sources.py` 与 `scripts/verify/verify_probe_class_refs.py` 的 Maven 源校验、`ref/**` 参考源。
 - **历史 id 只作考古**：主项目 `5xDtrJ8X`、库项目 `2dIXA5wO`；配套「版本标题统一 = `<namePrefix> <基础版本>`」等口径随之作废。
 - **文档改口径**：`AGENTS.md` 索引 L2198 行主题、`AGENTS-full.md` 的〈Modrinth 上传〉节改写为「永久移除 + 只留历史」、`scripts/test/TESTING-SPEC.md` 附录 A 续 40 加 ⛔ 横幅、`README.md` / `README_ZH.md` 的 Download 段把 Modrinth 条目换成 CurseForge（含 `astral-dice` 1662159 / `starengine` 1755415 两个 project id）、`docs/store/starengine-page-en.md:42` 改「CurseForge carries the platform jars」。
-- `docs/AGENT-HANDOFF.md` 是 multi-main @9825cf1e 的**历史快照**，按规则不改（其中的 Modrinth 叙述只作背景）。
+- `docs/AGENT-HANDOFF.md（已删除 2026-11-05）` 是 multi-main @9825cf1e 的**历史快照**，按规则不改（其中的 Modrinth 叙述只作背景）。
 
 ### 60.3 StarEngine 四产物上传 CurseForge（项目 1755415）
 
@@ -4040,7 +3957,7 @@ python <zipfile 脚本>                                               # 库 jar 
 - ⚠️ **metadata 必须走文件**：`-F "metadata=<file"`；内联 `-F "metadata={json}"` 会被服务端判 400 `errorCode 1002 / Invalid JSON`。
 - 判据（本轮实测）：`python -c "import sys;sys.path.insert(0,'tools');import curseforge_upload as m;m.api_get(m.make_opener(None),'/game/version-types','<token>')"` ⇒ 打印两行 `[curl] …` 后返回 **31 个类型 / 7623 个版本**；`_curl_multipart` 对不存在的 project id 返回 `status=400 body={"errorCode":1003,…"Missing field `file`."}`（证明 curl 写通道真的执行、非挑战页响应原样回传）。
 
-### 60.5 判据命令
+### 60.5 判据命令（⛔ 历史命令：pwsh 已废弃，仅供溯源）
 
 ```powershell
 git -C F:\MCProject\astral_dice_multiloader status --short -uall   # 只应有素材目录未跟踪项
@@ -4193,7 +4110,7 @@ python tools/verify_sign_display_names.py      # 期望 GATE: PASS
 #### 62.1 提交与推送（已 push，未推 0）
 
 - 四线 `mod_version` → **`1.5.0-rc.5+<后缀>`**（`50e5e406`，4 文件 +4/−4：`neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1`）；`starengine_version` 仍 `1.1.0`（本轮未动库）。
-- `1368b837`（2 文件 +15/−4）：`scripts/verify/verify_chip_acquisition.ps1`（+11/−4，见 62.5）+ `.github/workflows/build.yml`（+8，见 62.5）。
+- `1368b837`（2 文件 +15/−4）：`scripts/verify/verify_chip_acquisition.py`（+11/−4，见 62.5）+ `.github/workflows/build.yml`（+8，见 62.5）。
 - `79e3b183`（5 文件 +1077/−6）：`release/1.5.0-rc.5/PLAYER_CHANGELOG_ZH.md` 375 行 / `release/1.5.0-rc.5/PLAYER_CHANGELOG.md` 382 行 / `release/1.5.0-rc.5/PLAYER_CHANGELOG_MCMOD.html` 314 行 + `CHANGELOG.md` / `CHANGELOG_ZH.md` 各 6 行。
 - **HEAD = `79e3b183`**；push 原文 `cce71efb..79e3b183  multi-main -> multi-main`（远端操作经 `-c http.proxy=http://127.0.0.1:7897`），推送后 `git rev-list --count origin/multi-main..HEAD` = **0**。
 - tag 实读（`git ls-remote --tags --refs origin`）：`1.5.0-rc.1` / `1.5.0-rc.2` / `1.5.0-rc.3` / `1.5.0-rc.4` / **`1.5.0-rc.5`** 共 5 个，**无正式 `1.5.0`**；`refs/tags/1.5.0-rc.5` 为注解 tag（对象 `db3b1796…`）→ `79e3b183` ⇒ CI 已按 push 打成 tag。**GitHub Release 与附件已确认**（`releases/expanded_assets/1.5.0-rc.5` 200：neo 2,598,301 B / `c97ea383…`、forge 2,647,158 B / `d4e48687…`，见 62.8）。
@@ -4225,9 +4142,9 @@ python tools/verify_sign_display_names.py      # 期望 GATE: PASS
 
 #### 62.5 守门致命化 + CI + 变异自证
 
-- `scripts/verify/verify_chip_acquisition.ps1`：`stale_page` / `no_note` 由 `isFatal=$false` 升为 **`$true`**（输出标签随之改 ❌），`no_page` 保持告警；逐线「无致命问题」条件同步补两项；头部退出码契约改写。
+- `scripts/verify/verify_chip_acquisition.py`：`stale_page` / `no_note` 由 `isFatal=$false` 升为 **`$true`**（输出标签随之改 ❌），`no_page` 保持告警；逐线「无致命问题」条件同步补两项；头部退出码契约改写。
 - 变异自证：`…/chips_starlight/star_coin_hammer_chip.json` 的 `text` 改成 `astral_dice.guide.chip_source.note_BROKEN` ⇒ `❌ 手册未说明筹码获取途径 1: ['star_coin_hammer_chip']` / `RESULT: FAIL` / `exit 1`；还原后 `PASS`（文件与 HEAD 逐字节一致）。
-- CI：`.github/workflows/build.yml` 在 parity 之后、Gradle 构建之前新增 `Check chip acquisition gate (P0)`（`run: pwsh -NoProfile -File scripts/verify/verify_chip_acquisition.ps1`）⇒ 筹码获取途径守门成为 push / PR 的硬拦。
+- CI：`.github/workflows/build.yml` 在 parity 之后、Gradle 构建之前新增 `Check chip acquisition gate (P0)`（`run: python scripts/verify/verify_chip_acquisition.py`）⇒ 筹码获取途径守门成为 push / PR 的硬拦。
 
 #### 62.6 CurseForge 发布（2 文件 HTTP 200 + 回读校验）
 
@@ -4253,3 +4170,4 @@ python tools/verify_sign_display_names.py      # 期望 GATE: PASS
 - **GitHub Release 已确认（14:0x 闭环）**：Release `1.5.0-rc.5` 存在，附件 neo 2,598,301 B / `c97ea383…` + forge 2,647,158 B / `d4e48687…`（下载件与页面 sha256 一致）；与本地构建条目集相同，差异仅 JSON 的 CRLF/LF 与 forge 5 个类常量池序（`javap` 逐字相同）⇒ 功能等价。
 - **1.20.1 未实机**：本批只跑 1.21.1，forge 线仅构建 + 投放 + 哈希。
 - **P1 两线**（`neoforge-26.1.2` / `fabric-1.20.1`）按「只发 P0」红线仍未验证 / 未移植。
+

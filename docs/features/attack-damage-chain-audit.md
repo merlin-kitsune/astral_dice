@@ -313,7 +313,7 @@ combat/DiceCombatEvents.java:305-317 赐福/降神倒计时启动、秘密侦探
 | **N14** | **技能命中算「攻击行为」**（近战 / 远程 / 法伤一律算） | AOE 早退不得再挡住赐福·降神倒计时启动与秘密侦探隐匿解除；改动时须核「一次 AOE 命中多个目标」的计数语义 |
 | **N25** | **不处理**：`neoforge-26.1.2` / `fabric-1.20.1` 持续搁置，直到 1.5.0 正式版再执行完整内容移植 | 仅在交接与审计里保留欠账登记，不做局部镜像 |
 
-> 验证产出（只读）：`docs/features/spell-single-hit-option-a.md`（方案一 + 折叠路径）与 `docs/features/spell-single-hit-option-b.md`（方案二 + mixin 冲突面）。
+> 验证产出（只读）：`docs/features/spell-single-hit-option-a.md`（方案一 + 折叠路径）与 `docs/features/spell-single-hit-option-b.md（已删除 2026-11-05）`（方案二 + mixin 冲突面）。
 
 | 编号 | 说明 | 需要裁决什么 |
 |---|---|---|
@@ -677,7 +677,7 @@ sources jar 清单（逐行实读，文件名省略版本内哈希）：`neoforg
 
 **与 2026-09-26 裁决① 的关系 —— 为什么不违反**：
 
-裁决① 的落地口径 = 「**移除** `getNewDamage()` 加项、改用 pre-mitigation 值 + 把保护/抗性改成乘算因子」，见 `docs/combat-vanilla-modifier-integration-plan.md:31`（§0.1 表首行「`getNewDamage()` 去留 → 采纳方案 A（移除）」）与 `:328`（§3.5 方案 A 行，结论「唯一数学正确的方案」）；代码里的引用点：1.21.1 `combat/DiceCombatEvents.java:805` / `:1087` / `:1127` / `:1142`，及另三线的同构注释（forge `:1112` / `:1399` / `:1458`、26.1.2 `:765` / `:1030` / `:1087`、fabric `:722` / `:983` / `:1056`）。
+裁决① 的落地口径 = 「**移除** `getNewDamage()` 加项、改用 pre-mitigation 值 + 把保护/抗性改成乘算因子」，见 `docs/combat-vanilla-modifier-integration-plan.md（已删除 2026-11-05）:31`（§0.1 表首行「`getNewDamage()` 去留 → 采纳方案 A（移除）」）与 `:328`（§3.5 方案 A 行，结论「唯一数学正确的方案」）；代码里的引用点：1.21.1 `combat/DiceCombatEvents.java:805` / `:1087` / `:1127` / `:1142`，及另三线的同构注释（forge `:1112` / `:1399` / `:1458`、26.1.2 `:765` / `:1030` / `:1087`、fabric `:722` / `:983` / `:1056`）。
 
 本批**不违反**，因为每条线的代理值与它自己的派发点严格配对，抗性 / 保护在每条线上都恰好生效**一次**：
 

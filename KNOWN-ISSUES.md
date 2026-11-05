@@ -45,6 +45,7 @@
   KI-G4 / KI-G5 / KI-G6**（命中音叠加 / 砖头创建失败静默作废 / 伤害 ±1 偏差）⇒ 未修/未决 **25 → 28**（G 组 1 → 4）。
 - ⚠️ **2026-10-08（KI-G6 修复批次）**：**KI-G6 已闭环**（根因 = `astral_dice:card_spell` 漏登记 `bypasses_cooldown` ⇒ 被原版受击无敌帧按 `damage - lastHurt` 差额结算；四线同批追加登记 + javadoc / 注释 / `AGENTS.md` 同步）⇒ 按 §0 第 4 条已移入 **§1.1** 索引；未修/未决 **28 → 27**（G 组 4 → 3）。
   ⚠️ 同批复核发现：**`KI-G4` / `KI-G5` 的标题已标「已修（2026-10-07）」但正文未清理、计数未扣减**（按 §0 第 4 条本应移入 §1.1）⇒ 本行计数沿用「正文仍在 = 仍计入」的口径，两者的清理待用户确认后另批处理。
+- ⚠️ **2026-11-05（NeoForge 升版裁决批次）**：新增 **§11 N 组 / KI-N1**（NeoForge 21.1.x 已到末版 + 7 处平台绕行点；用户裁决「不更新 NeoForge API 版本，只记录」）⇒ 正文条目 **27 → 28**（N 组 0 → 1）。计数口径按实测：A 7 + B 1 + C 3 + M 3 + D 1 + E 2 + F 7 + G 3 = 27（其中 KI-G4 / KI-G5 标题已标「已修」、正文未清理，仍计入）。
 ## 1.1 已处理索引（2026-10-01 首次清理）
 
 > **已修好的条目不再留在本清单的正文里**（清理规则见 §0 第 4 条）。本表只留「id + 一句话结论 + 证据落点」；
@@ -86,7 +87,7 @@
 
 ## 2. A 组 — 数值与伤害修饰器（来源 `docs/scan2/P2-numeric-modifiers.md`）
 
-> 该文档 2026-09-15 15:45 快照的 §0.3 汇总表把下列条目标为「**未列**」（**未**并入主差异表 `docs/scan2/D-discrepancy-table.md`）且「**未修**」；
+> 该文档 2026-09-15 15:45 快照的 §0.3 汇总表把下列条目标为「**未列**」（**未**并入主差异表 `docs/scan2/D-discrepancy-table.md（已删除 2026-11-05）`）且「**未修**」；
 > 同日 21:58 的主差异表与两个 `CHANGELOG` 中 **grep 命中 0** ⇒ 这些条目**从未进入裁定流程**。
 
 ### KI-1 ＝ P2-C2「骰战覆盖同时丢弃抗性提升 / 保护附魔」
@@ -160,20 +161,20 @@
 
 ### KI-8 ＝ P1 U5「立牌主动冷却的 tooltip 显示在 ≤ 1 秒时不出现」
 
-- 来源：`docs/scan2/P1-cooldowns-timers.md`（标「**未核验**」）
+- 来源：`docs/scan2/P1-cooldowns-timers.md（已删除 2026-11-05）`（标「**未核验**」）
 - 现象（文档原文摘要）：`ModTooltipHandler.addSignCooldownRemaining` 用 `remainingTicks / 20`（**向下取整**）且仅当 `remainingTicks > 0` 才显示 ⇒ 冷却不足 1 秒（或整秒取整为 0）时该行**不显示**。
 - 待复核点：是否属**预期行为**（不足 1 秒不显示）还是显示缺陷；两版本是否一致。
 
 ---
 
-## 4. C 组 — 更早扫描的未决项（来源 `docs/project-scan-report.md` §八）
+## 4. C 组 — 更早扫描的未决项（来源 `docs/project-scan-report.md（已删除 2026-11-05）` §八）
 
 > 该节共 5 项，其中 **#2 CI 分支过滤器**（`build.yml` 已写 `multi-1.20.1-1.21.1`）与 **#4 `AGENTS.md` 入库**（已纳入版本库）已于 2026-09-15 确认闭环，**不再登记**。
 
 ### KI-9 ＝ R1/R2「两处 1.20.1 功能缺失」
 
 - 文档选项：**立即补齐（双版本对等）** ／ **记录为已知差异**
-- 待办：先在当前 HEAD 上复核这「两处」具体是什么、是否仍缺失（原文未在本文件展开，复核时以 `docs/project-scan-report.md` 为准，或按 R 编号重新取证）。
+- 待办：先在当前 HEAD 上复核这「两处」具体是什么、是否仍缺失（原文未在本文件展开，复核时以 `docs/project-scan-report.md（已删除 2026-11-05）` 为准，或按 R 编号重新取证）。
 
 ### KI-10 ＝ R4「五个筹码的获取途径」
 
@@ -733,7 +734,94 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
 - **已落地的修法（四线同批）**：`advanceBrick` 在 `p.display == null || p.display.isRemoved()` 时**不再静默 return** —— 打一条 `LOGGER.warn("[Astral Dice] 板砖显示实体不可用，改为瞬时结算本次命中")` 并按「砸在头顶」位置 `resolveBrickHit(...)` 瞬时结算（26.1.2 现 `:427-434`），保证伤害与时点成立且留下日志。
 - **判据**：人为构造一次创建失败（例如同坐标已有实体 / 被 `/kill`），断言仍能结算伤害或至少留下日志。
 
-## 11. 变更记录
+## 11. N 组 — NeoForge 上游缺陷与版本封顶（2026-11-05 起）
+
+> 本组登记「根因在 NeoForge 上游」的未修项。与 A–G 组的区别：这些条目**在本版本内修不掉**，本仓只能选择「守补丁」或「换线」，因此登记的是**裁决 + 绕行点 + 复审条件**，不是待办。
+
+### KI-N1 ＝ NeoForge 21.1.x 已到末版：本模组**不更新** NeoForge API 版本，7 处平台绕行点按「守补丁」处置（**2026-11-05 用户裁决，只记录不实施**）
+
+- **裁决（2026-11-05，用户原话）**：「裁决不更新本Mod的NeoForge API版本并纪录已知问题」。
+- **裁决对象**：`neoforge-1.21.1` 线的 NeoForge 版本（当前工作树 `gradle.properties:22` = `21.1.265`）。
+- **结论**：21.1.x 已定格在 **21.1.265**，**没有可升的更高版本**；继续「升 NeoForge」既无空间也无收益。真正能消掉上游补丁的是**整线迁到 26.x**（本仓已有 `neoforge-26.1.2` 线），那是移植，不是升版。
+- ⚠️ **HEAD 与工作树不一致**：工作树 `21.1.265`，HEAD 仍 `21.1.235`（2026-11-03 测试台的 bump **尚未提交**）。本条裁决针对 **265**，不针对 HEAD。
+
+#### 11.1 为什么升不动（三源互证，2026-11-05 实读）
+
+| 证据 | 读数 |
+|---|---|
+| maven 元数据 / 版本 API | `21.1.*` 共 260 个版本，最高 `21.1.265`（`21.1.260` / `261` 跳号） |
+| 产物 HEAD 探测 | `21.1.265-universal.jar` = 200（`Last-Modified: 2026-10-25T06:01:18Z`）；`21.1.266` / `267` / `300` = 404 / 404 / 404 |
+| 上游分支 | `1.21.1` 分支最后提交 `624c929`（2026-10-25T05:56:23Z），其后无提交 |
+| 线级发布 | 只有线级 tag `21.1-stable`（2024-08-08），**无逐版 GitHub Release**（`/releases/tag/21.1.265` 404） |
+
+两条外部硬约束：
+
+1. **引脚是被 JEI 顶上去的，不是我们主动追新**：`neoforge-1.21.1/gradle.properties:20-21` 注释原文「2026-11-03 JEI 19.70.0.469 硬要求 neoforge [21.1.238,) ⇒ 随测试台升级一起抬到 21.1.265」。
+2. **上界被自己锁死**：`neoforge-1.21.1/src/main/templates/META-INF/neoforge.mods.toml:84` = `versionRange="[21.1,21.2)" #mandatory` ⇒ 再往上是**换线**，不是升版。另：`21.2.x` 只有 2 个 beta（`21.2.0` / `21.2.1-beta`，对应 MC 1.21.2 且已被上游放弃），不可作为目标。
+
+#### 11.2 保留的上游补丁：`LivingEntity#hurt` 的 `damageContainers` 泄漏
+
+- **上游缺陷**：`hurt` 开头把新建的 `DamageContainer` 压栈后调 `CommonHooks.onEntityIncomingDamage(...)`；事件被取消时**直接 `return false`、没有 `pop()`** ⇒ 每取消一次伤害就永久残留一个容器，栈只增不减，后续 `peek()` 取到旧容器 ⇒ 伤害数值 / 栈深静默错算（不崩、难查）。
+- **21.1.265 仍在泄漏**（本地源码 jar 实读）：`build/moddev/artifacts/neoforge-21.1.265-sources.jar!/net/minecraft/world/entity/LivingEntity.java:1152-1153` = 压栈后紧接 `if (CommonHooks.onEntityIncomingDamage(...)) return false;`；全方法唯一 `damageContainers.pop()` 在 `:1293`（正常返回路径），无 try/finally。
+- **26.1.2 已修**：`minecraft-patched-26.1.2.126-sources.jar!/.../LivingEntity.java:1204-1208`（方法改名 `hurtServer`，取消分支补 `this.damageContainers.pop();`）。上游对应 **PR #3101「Various fixes to damage pipeline events」（Shadows-of-Fire）**，**未 backport 到 21.1.x**。
+- **本仓补丁（保留，不删）**：`fixes/DamageStackSanitizer.java` + `fixes/NeoForgeFixesLog.java` + `mixin/fixes/LivingEntityDamageContainerMixin.java`（`astral_dice.neoforge_fixes.mixins.json` 为 `required:false` / `defaultRequire:0`）。设计是「进 hurt 记栈深、RETURN 截断回该深度」，**不是**「在钩子里 pop」⇒ 上游一旦 backport，本补丁**自动退化为 no-op**，不会双重弹栈。
+- **触发面（三处取消点）**：枪匠破绽闪避 / 肾上腺素-高效闪避 / 魔女漂浮（统一入口 `DiceCombatEvents.applyDodgeCancel`）+ 骇客「网络防火墙」末影珍珠免疫。
+- **删除风险：高** —— 删了不报错，只在多次取消之后开始算错伤害。
+
+#### 11.3 其余 6 处平台绕行点（同一批取证）
+
+| # | 位置 | 上游行为 / 限制 | 删除风险 | 升版能解决吗 |
+|---|---|---|---|---|
+| 2 | `item/sign/AmeSignItem.java:278-281` | `MobEffectEvent.Expired` 在 `activeEffects` 移除**之前**派发 ⇒ 事件内 `getEffect` 恒非 null（265 实证 `LivingEntity.java:808-810`） | 中：改回「判空」会让结算整段跳过 | 否（需上游改派发顺序） |
+| 3 | `item/sign/MosesSignItem.java:41-44` / `MegasSignItem.java:49-50` / `RenSignItem.java:44-45` | 空订阅者类（无 `@SubscribeEvent` 方法）标 `@EventBusSubscriber` ⇒ `IllegalArgumentException(class ... has no @SubscribeEvent methods, but register was called anyway)` ⇒ 模组构造失败 | **高**：判错即启动崩（2026-09-17 与枪匠两次真实崩线） | 只有上游放宽才行 |
+| 4 | `event/LinglingSignEvents.java:31-35` / `event/TemporaryCardEvents.java:61-64` / `item/sign/LinglingSignManager.java:172-174` | 拾取事件内禁 `ItemEntity#setItem`（未定义行为） | 低 | 否 |
+| 5 | `item/card/TemporaryCardUtil.java:271-282`（+ `:299` `purgeOutOfPlace`） | `ItemStackHandler#insertItem` 不查 `canFitInsideContainerItems`（只有 `ComponentItemHandler` 查）⇒ AE2 存储总线 / Create 物品舱口绕过槽位校验 ⇒ 设计为「拦不住就自毁」 | 中：临时牌可长期留存于第三方容器 | 否（265 未补） |
+| 6 | `AstralDiceMod.java:124-133`（`rewriteConfigVersion`） | `ModConfigSpec.correct` 只补缺失 / 校验失败的键 ⇒ 合法旧值不回写（265 实证 `ModConfigSpec.java:214` 与 `:246-254`） | 中：回归「版本号不更新 + 每次启动多一份同内容 .bak」 | 否 |
+| 7 | `combat/DiceCombatEvents.java:1373-1375` | 骰战不派发 `CriticalHitEvent`（已在 `LivingDamageEvent.Pre` 内，再派发会形成两条暴击判定链） | 低：设计取舍 | 不适用 |
+
+> 另有 10 项曾被怀疑是「NeoForge 绕行」但**已排除**（`entity/BarricadeEntity` 全覆写 hurt、`NancyLuSignItem` 改 0 不够、`ChargeEffect` `visible=false`、`ModEffects#getEntries` 活视图、`SignTimerSourceAdapter` 浅拷贝、`FirstLootChestHandler` 不复制 NeoForgeData、`ModCompatibilityCheck` 走 Java 检查（真正卡点是 Forge 1.20.1 不支持 `type="incompatible"`）、Jade / ModernUI / Iceberg 第三方缺陷、`mixin/container/*` 与 `mixin/client/*` 原版行为缺陷、`enumextensions.json` 与零 AT）——它们不是上游缺陷，不列入本组。
+
+#### 11.4 235 → 265 到底改了什么（证明「升了也没用」）
+
+- 源码 jar 逐文件哈希比对：6316 → 6320 文件，**新增 4 类 / 删除 0 / 改动 37**（neoforged 23 + minecraft-patched 14）。
+- 与本模组相关的 6 处：`AttachmentSync`（改按 `syncHandler.sendToPlayer()` 筛选）、`IAttributeExtension`（属性数值改走 `toValueComponent(null, value, flag)`）、`CommonHooks`（唯一 hunk：`getMainHandItem()` → `getWeaponItem()`）、`ScreenEvent#setNewScreen(@Nullable)`、`Mob#processEquipmentDropChance`、`TooltipFlag extends TooltipFlagExtension`。
+- **结论：37 个改动对上表 7 条一条都没解决。**
+- 已核对降级项：`AttachmentSync` 对应上游 backport `e0e7ab5`「Check AttachmentSyncHandler#syncToPlayer() for initial sync (#3670)」，而本仓 `grep -rn syncToPlayer neoforge-1.21.1/src/main/java` = **0 命中** ⇒ 对我等同 no-op，无需回归。
+
+#### 11.5 判据与复跑（可验证，不靠「看起来对」）
+
+```bash
+# 1) 换版本后第一件事：泄漏是否还在
+PYTHONIOENCODING=utf-8 python - <<'PY'
+import zipfile
+p = 'neoforge-1.21.1/build/moddev/artifacts/neoforge-21.1.265-sources.jar'
+s = zipfile.ZipFile(p).read('net/minecraft/world/entity/LivingEntity.java').decode('utf-8')
+i = s.index('damageContainers.push')
+print(s[i - 200:i + 400])
+PY
+# 期望：push 之后紧跟 onEntityIncomingDamage(...) 的 return false 分支「没有」pop
+
+# 2) 补丁自身逻辑（10 条单元用例）
+PYTHONIOENCODING=utf-8 python tools/run_mixin_stack_sanitizer_test.py
+# 期望：SUMMARY passed=10 failed=0 / MSS_RESULT: PASS (10/10)
+
+# 3) 实机存活：跑一次「取消类伤害」（破绽闪避）后查日志
+grep neoforge_fixes run/1.21.1/logs/latest.log
+# 期望：DamageContainer leak patch active (first hurt: entryDepth=.., beforeRestore=.., popped=1)
+```
+
+- 第 1、2 条已实跑通过（`MSS_RESULT: PASS (10/10)`）。
+- ⚠️ 第 3 条**至今无实机证据**：2026-11-03 那轮四线实机未触发取消 hurt，`run/1.21.1/logs/*.log` 里 `neoforge_fixes` 存活日志 **0 命中** ⇒ 「补丁在生效」目前只到「单元用例 + mixin 已应用」这一层，升级 / 改触发面后必须补跑。
+
+#### 11.6 复审条件（何时回来重看这条）
+
+1. 上游把 PR #3101 backport 到 21.1.x ⇒ 删 `fixes/` 三件套与该 mixin，跑 11.5 第 2 条确认 no-op 后再清理；
+2. 我们整线迁到 26.x ⇒ 该项自然消失，但需重验 §11.2 的三处触发面；
+3. JEI 或其它硬前置把 neoforge 下界抬到 21.2+ ⇒ 必须先改 `neoforge.mods.toml:84` 的区间，属**发布级变更**，须用户裁决。
+
+- ⚠️ **证据边界**：§11.3 第 3 条（空订阅者抛 `IllegalArgumentException`）**无法源码二次核验** —— `build/moddev/artifacts/` 的 merged sources jar 不含 FML 类，只能以仓内 2026-09-17 与枪匠两次真实崩线的现场记载为依据。其余 6 条均有源码级证据。
+
+## 12. 变更记录
 
 | 日期 | 变更 |
 |---|---|
@@ -789,3 +877,4 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
 | 2026-10-07 | **KI-D1 复验：崩溃开关 = dev-only `GlRenderPass.VALIDATION`，与 Sodium 版本无关** —— 环境升到最新（Sodium `mc26.1.2-0.9.2-neoforge`）；默认 dev 配置（`-Dneoforge.disableGlValidation=true`）+ 光影开：存活 ≥6 分钟不崩（16:24 轮约 9 分钟、16:38 电池轮 ≥7.5 分钟）、`crash-reports` 为空（该轮；现存 1 份来自 16:47 人为校验恢复实验）、`TEX/DIAG/ECON/DAMAGE-NUMBER/WALLET-GUI-26.1.2` 与 `TARGETSEL-OVERLAY-26.1.2` 全 PASS（同期 `MODERNUI-26.1.2` 因未装 Modern UI 前置模组 FAIL，属环境依赖）、棱柱 ≈18.5k px 与 HUD 文字 720 px 正常 ⇒ 无图形缺失。临时恢复校验后 **0.9.2 与 0.9.1 同样立刻崩**（`crash-2026-10-07_16.33.43`（已被后续 launch 清理删除） / `crash-2026-10-07_16.47.06`，栈逐帧相同、帧上 mixin 全归 Iris、路径内无本模组帧）⇒「0.9.2 元凶 / 0.9.1 修复」口径**作废**，钉版保持 0.9.2。同轮只读审计（`gfx-audit-2612`）确认全部渲染点均走现代 Blaze3D、直接 GL 依赖为 0 ⇒ **无需 Blaze3D 重写**。 |
 | 2026-10-07 | **四张伤害效果牌「实机 + 视觉验证」+ 代码复核 + fabric 重复注册修复**：① 四张牌（对怪激光 / 对怪板砖 / 轨道炮 / 定向爆破）在 26.1.2 dev run 全部跑通机读链（服务端 `[TargetSelection] start/confirm ... -> SUCCESS` + 客户端 `AP_DNUM` 伤害数字 + 连拍帧像素证据），实测伤害 4 / 3（激光两轮）、5（板砖）、8（轨道炮）、5（爆破），数字创建时刻恒为 confirm 后 10 tick；② 独立子代理代码复核（`temp/fx-card-audit/REPORT.md`）判四张牌功能正确，并发现 fabric 线 `AstralDiceMod.java:125/:126` 重复注册 `DamageCardFxScheduler`（`LoaderBus.add` 无去重 + `FabricBridges` 每 tick 单次 post ⇒ `process()` 每 tick 跑两遍）⇒ **已删重复行**（另三条线为注解式注册、无同类问题）；③ 复核另发现两处未修缺陷与一处未定位偏差 ⇒ 新增 **KI-G4**（`DamageEffectCardHandler.java:95-101` 通用命中音叠加 ⇒ 每次命中两声）、**KI-G5**（`DamageCardFxScheduler.java:211-213` 不检查 `spawnBrick` 返回 null + `:403-405` 静默 return ⇒ 牌消耗但无砖无伤害无日志）、**KI-G6**（实测伤害 ±1 偏差未定位）；④ 登记四张牌无行为用例的套件缺口与实机工具链教训（PauseScreen 污染尾部帧、卡 id 必须传裸 id）⇒ §1 计数 25 → 28（G 组 1 → 4）。版本 `.35 → .36`。 |
 | 2026-10-08 | **KI-G6 根因定位并闭环（四线同批）**：±1 偏差**不是** `effectCardDamageBonus` / 骰子态，而是 `astral_dice:card_spell` **漏登记** `data/minecraft/tags/damage_type/bypasses_cooldown.json`（六种自定义类型里唯一一个）⇒ 目标处于受击无敌帧窗口内、且刚被**更小**的伤害（实测环境 = 正午日光燃烧每秒 1 点）打过时，原版 `LivingEntity#hurtServer`（26.1.2 反编译源 `:1239-1253`）走「差额结算」只扣 `damage - lastHurt` ⇒ 板砖 6 → 5、激光 4 → 3，与 6 轮实测中 3 轮异常相符。修法 = 四线该标签 `values` 追加 `astral_dice:card_spell`（5 → 6 项，与同族 5 个类型对齐）+ 四线 `ModDamageTypes` 的 CARD_SPELL javadoc / `DiceCombatEvents` 扩散去重注释 / `AGENTS.md` 活体书页段口径同步 + 三份 `astral_bugfix_probe.js` 里「true_damage 未登记 bypasses_cooldown」的陈旧注释更正。**安全性**：同一次用量内「手套 3 格扩散 ∩ 爆破 6 格 AOE」的重复结算早已由 `runAsCardSplashResolution` + `markCardSplashHit` 显式登记去重（此前只是恰好靠标签差异兜底）⇒ 不引入双打。⇒ 按 §0 第 4 条 KI-G6 整块移出正文、入 §1.1；§1 计数 28 → **27**（G 组 4 → 3）。版本 `.48 → .49`。 |
+| 2026-11-05 | **新增 §11 N 组 与 KI-N1（用户裁决「不更新本 Mod 的 NeoForge API 版本」，只记录不实施）**：21.1.x 定格 `21.1.265`（maven 元数据 260 个 21.1 版本 / 产物 HEAD `265` = 200 而 `266`+ 全 404 / `1.21.1` 分支最后提交 `624c929`）；引脚是被 JEI `[21.1.238,)` 反向顶上去的，且 `neoforge.mods.toml:84` 的 `[21.1,21.2)` 自锁上界 ⇒ 再往上是**换线**而不是升版；235→265 的 37 处改动对 7 处平台绕行点**零命中**；`damageContainers` 泄漏（`LivingEntity.java:1152-1153`）在 265 仍在、26.1.2 已修（`hurtServer` `:1204-1208`，上游 PR #3101 未 backport）⇒ **保留** `fixes/` 三件套 + `mixin/fixes/`；登记 7 处绕行点（含空订阅者三处约束、`TemporaryCardUtil` 容器契约缺口、`AmeSignItem` 到期时序、`rewriteConfigVersion`、不派发 `CriticalHitEvent`）+ 3 条判据命令 + 3 条复审条件，并补上「该补丁从未进 KNOWN-ISSUES」的历史缺口。**只登记、未改任何代码。**

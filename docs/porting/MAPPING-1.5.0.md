@@ -177,7 +177,7 @@
 | R-08 | forge 与 fabric 缺 Jade `ShopCooldownServerDataProvider` | 商店冷却的**服务端数据源**缺失 ⇒ 客户端显示可能退化为无冷却/静态值 | **是**（行为面，需实测确认退化程度） | n121 与 n26 各 4 个 `compat/jade/*`；forge 与 fabric 各 3 个（无该 provider） |
 | R-09 | fabric 把 `LivingHurtEvent` 语义交由自写 mixin 承担（`LivingEntity#hurt`） | 注入点漂移（MC 更新/其它 mixin 冲突）会让**所有伤害相关逻辑**静默失效，而非报错 | **是**（每次升 MC 版本必验） | `platform/PuzzlesBridges.java:37-42`、`:61-66`；`mixin/bridge/LivingHurtBridgeMixin.java` |
 | R-10 | fabric 事件派发是**反射**（`LoaderBus` 扫描 `getDeclaredMethods` + `m.invoke`），且不递归内部类 | 反射失败/注解拼错时**静默不派发**（无编译错误）；内部类订阅者不会被注册 | **是**（新增订阅者时） | `platform/event/LoaderBus.java:112`、`:124`、`:138`、`:156`；`platform/event/SubscriptionAudit.java`（自检护栏） |
-| R-11 | fabric `@Inject` 必须只写方法名（带描述符会不重映射），且依赖 loom 自动生成 refmap | 生产环境崩（dev 不崩） | **是**（新增 mixin 时） | `fabric-1.20.1/src/main/resources/astral_dice.mixins.json:4`（`refmap`）；`porting/fabric-1.20.1/API_CHEATSHEET.md` §7 口径 |
+| R-11 | fabric `@Inject` 必须只写方法名（带描述符会不重映射），且依赖 loom 自动生成 refmap | 生产环境崩（dev 不崩） | **是**（新增 mixin 时） | `fabric-1.20.1/src/main/resources/astral_dice.mixins.json:4`（`refmap`）；`porting/fabric-1.20.1/API_CHEATSHEET.md（已删除 2026-11-05）` §7 口径 |
 | R-12 | forge 的 `@SubscribeEvent` 成员不得 `private`；`@Mod.EventBusSubscriber` 只扫顶层类 | 静默不注册 | **是**（新增订阅者时） | `porting/CROSS-VERSION-DIFFS.md` F4（旧报告口径，工作树逐条未复核） |
 | R-13 | fabric 存档布局与 forge **不兼容**（FAPI 附件段 vs `ForgeData → astral_data`） | 跨线换包会丢玩家附件数据 | 无需改代码，需在迁移/升级说明中声明 | `fabric-1.20.1/.../component/AttachedDataKey.java:47-49` |
 | R-14 | fabric 饰品后端三选一（Trinkets / Accessories），`TrinketBridge` 在 Trinkets 缺席时**直接返回** | Accessories 后端下部分 Curios 语义可能不生效（静默） | **是**（需实机验证两个后端各一遍） | `compat/curios/TrinketBridge.java:51`、`:65`；`compat/curios/CuriosApi.java:267` |

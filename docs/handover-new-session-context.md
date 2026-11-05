@@ -1,7 +1,7 @@
 # 新会话上下文（原生 Linux 真机期）
 
 
-> **口径提示**：本文件描述**主线**（`multi-main` / 1.5.0-rc.7）。若你工作在 `multi-dev-next` 工作树（`/mnt/f/MCProject/astral_dice_multiloader-next`，2.0 线 / `26.4-SNAPSHOT.5`），版本号与库引脚以 `docs/handover-2026-10-31-dev-next-linux-sync.md` 为准。
+> **口径提示**：本文件描述**主线**（`multi-main` / 1.5.0-rc.7）。若你工作在 `multi-dev-next` 工作树（`/mnt/f/MCProject/astral_dice_multiloader-next`，2.0 线 / `26.4-SNAPSHOT.5`），版本号与库引脚以 `docs/handover-2026-10-31-dev-next-linux-sync.md（已删除 2026-11-05）` 为准。
 
 > **重写于 2026-10-31（宿主从 VMware 虚拟机迁到真机之后）**：替换旧的「当前是虚拟机 + hgfs + `~/Project` 四副本」口径。
 > **路径纪律**：仓库内文件一律写**相对仓库根的路径**（如 `docs/agent/AGENTS-dsh-linux.md`、`run/start-1.21.1.sh`）；宿主绝对路径只在迁移/附录章节登记。

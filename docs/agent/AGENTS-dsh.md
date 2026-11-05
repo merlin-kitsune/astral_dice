@@ -16,12 +16,12 @@
 2. **测试台唯一口径 = bash + python**：Windows 宿主上的 bash 由 **MSYS2 / git bash** 提供（不要求 WSL），Linux 宿主用原生 bash；测试入口一律 `bash scripts/test/win/mt.sh --version <线> --phase <env|build|launch|cases|report|stop>`（Linux：`bash scripts/test/linux/{env,launch,stop}.sh`），静态守门一律 `python scripts/verify/*.py` / `python tools/*.py`。**不再新增 `.ps1` / `.psm1`**：既有 pwsh 测试资产一律作废，退役登记 `docs/features/devnext-pwsh-retirement-register.md`，文档与脚本里的 `.ps1` 引用只作溯源、不作执行口径。
 3. **编译**：在**当前工作树根**执行 `./gradlew :<线>:classes|jar`（本分支工作树 = `F:\MCProject\astral_dice_multiloader-next`；主线工作树 = `F:\MCProject\astral_dice_multiloader`，两者不要混用）。
 4. **实机**：`bash scripts/test/win/mt.sh --version <线> --phase <env|launch|stop>`（在工作树根执行；Windows 宿主经 MSYS2 / git bash，Linux 宿主见 `docs/agent/AGENTS-dsh-linux.md`〈测试台现状（Linux）〉）。
-5. **产物投放**：以工作树 `build\libs` 为唯一来源，按线复制到 `run\<1.21.1|1.20.1|26.1.2|fabric-1.20.1>\mods`，或**成对**投放两个 P0 整合包（`astral_dice-*.jar` + `starengine-*-<库版本>.jar`）；投完必须核 `Get-FileHash`，别把同名当新构建。
+5. **产物投放**：以工作树 `build/libs` 为唯一来源，按线复制到 `run/<1.21.1|1.20.1|26.1.2|fabric-1.20.1>/mods`，或**成对**投放两个 P0 整合包（`astral_dice-*.jar` + `starengine-*-<库版本>.jar`）；投完必须核 `sha256sum`（bash），别把同名当新构建。
 6. **git**：一律用 git bash 的 `git`，命令写全 `git -C F:\MCProject\<工作树> <子命令>`，或先 `cd` 进工作树。
 7. **JDK**：`JAVA_HOME=C:\Program Files\Zulu\zulu-21`（21.0.12）；`forge-1.20.1` 的 toolchain 17 由 Gradle 从 `%USERPROFILE%\.gradle\jdks` 取（已缓存 Adoptium 17.0.20），不要手改。
-8. **测试收尾必须自动关闭游戏进程（2026-10-18 用户裁决）**：任何测试轮次（单条 / 全量 / 中断 / 失败）结束后，必须执行 `bash scripts/test/win/mt.sh --version <线> --phase stop --force`，并在交付报告里贴出 `WIN_STOP: OK` 原文 + 「无本流程 java 客户端残留」的核对结果（`ps -W | grep -ci java` 计数；pwsh 台旧行为 `MT_STOP: OK`，仅作溯源）。**禁止**让 Minecraft 客户端无人观察地驻留 —— 它持续占用 CPU/GPU 并污染下一轮冷启动的前置状态。唯一例外：用例 `on_fail=keep_game_running` 落了 `.mt_keep_alive-<版本>` 的取证现场，此时在报告里说明保留原因与路径，取证完成后立即 `--phase stop --force`。
+8. **测试收尾必须自动关闭游戏进程（2026-10-18 用户裁决）**：任何测试轮次（单条 / 全量 / 中断 / 失败）结束后，必须执行 `bash scripts/test/win/mt.sh --version <线> --phase stop --force`，并在交付报告里贴出 `WIN_STOP: OK` 原文 + 「无本流程 java 客户端残留」的核对结果（`ps -W | grep -ci java` 计数；旧口径的 `MT_STOP: OK` 仅作溯源）。**禁止**让 Minecraft 客户端无人观察地驻留 —— 它持续占用 CPU/GPU 并污染下一轮冷启动的前置状态。唯一例外：用例 `on_fail=keep_game_running` 落了 `.mt_keep_alive-<版本>` 的取证现场，此时在报告里说明保留原因与路径，取证完成后立即 `--phase stop --force`。
 
-> 红线区〈命令执行规范（Shell）〉是拆分时逐字留存的**历史原文**（PowerShell 7 执行器约束，正本在 `docs/agent/AGENTS-full.md`，本节不动它）：DSH 现行执行口径以本节〈⚙️ 环境与工具链口径〉为准 —— **bash 由 MSYS2 / git bash 提供，禁止用 `cmd.exe` 批处理替代**（`.bat` 只保留 `gradlew.bat` / `run/Start-<线>.bat` 这类既有启动件），也不再新增 `.ps1` / `.psm1`。红线区内其余 PowerShell / `.ps1` 示例（`check_lang_sync.ps1`、`ft_env.ps1`、`mt.ps1` 收尾命令等）同属历史原文，**一律按本节执行**。
+> 红线区〈命令执行规范（Shell）〉已于 **2026-11-04 用户裁决**整体改写为现行口径（与本节〈⚙️ 环境与工具链口径〉一致）：**本项目只允许通过 `ops_bash` 调用工具**，bash 由 MSYS2 / git bash 提供、禁止用 `cmd.exe` 批处理替代（`.bat` 只保留 `gradlew.bat` / `run/Start-<线>.bat` 这类既有双击启动件）。原「一律 PowerShell 7 / `pwsh`」条款**已整节删除**，不要再引用；`docs/agent/AGENTS-full.md` 同处已同步改写，两项仍受 `docs/agent/verify-split.py` 项 1b 的逐字比对约束。
 
 
 ## 下沉到 StarEngine 的判定规则 —— 必须遵守（2026-10-19 用户裁决）
@@ -115,7 +115,7 @@
 | `docs/handover-new-session-context.md` | 可整份贴给新会话的**寒暄提示词**（环境 / 先读哪几份 / 基本盘 / 立即待办） | 是，同步刷新 |
 | `docs/agent/AGENTS-full.md` 末尾「待办交接各批」 | **逐批历史条目**（第 N 条 = 一批的完整事实 + 判据 + 坑） | 是，只追加不改旧条 |
 | `docs/handover-<版本>-<主题>.md` | 单批详案（如 .97 筹码批） | 是，属该批详证 |
-| ⛔ `docs/AGENT-HANDOFF.md` | multi-main @9825cf1e 的**历史快照**（工程拓扑/CI/发布链） | **不是**，只作背景，禁止据此下现状结论 |
+| ⛔ `docs/AGENT-HANDOFF.md（已删除 2026-11-05）` | multi-main @9825cf1e 的**历史快照**（工程拓扑/CI/发布链） | **不是**，只作背景，禁止据此下现状结论 |
 
 **接手（新会话）顺序 —— 一律实读，不信文档里的数字**：
 1. `git -C <工作树绝对路径> status --short -uall` + `git log -1 --oneline`（分支 / HEAD / 未提交改动）；
@@ -152,10 +152,9 @@
 5. **门禁**：`python tools/verify_sign_display_names.py` ⇒ 必须 `GATE: PASS`（P0 两线 31 个 `item.astral_dice.<id>_sign` 与权威表逐字一致 + 无 `<旧职称> Sign` 残留 + JA 无 `超天酱/地雷女/怪力乱神`）。
 6. **新增立牌时**：按 id 找 wiki 页 → 写进权威表 → 改两线 `en_us.json` / `ja_jp.json` → 跑门禁 → 再提交。
 
-> ⚠️ **执行口径提示**：下方红线区整块是拆分时的逐字历史原文（正本 `docs/agent/AGENTS-full.md` L2–L129；其中 `pwsh` 命令、`.ps1` 台账、`check_lang_sync.ps1`、`ft_env.ps1`、`mt.ps1` 等均为历史示例，受 `docs/agent/verify-split.py` 项 1b 的**逐字比对**约束、不随执行口径更新）。DSH 现行执行口径见本文件前部〈⚙️ 环境与工具链口径〉第 2 / 4 条 = **bash（Windows 经 MSYS2 / git bash）+ python**，红线区内与之冲突的表述**一律以该节为准**。
+> ✅ **执行口径**：下方红线区整块来自 `docs/agent/AGENTS-full.md` L2–L129（受 `docs/agent/verify-split.py` 项 1b 的**逐字比对**约束）。其中〈命令执行规范（Shell）〉已于 **2026-11-04 用户裁决**随本文件一起改写为『**只允许 `ops_bash` + bash（MSYS2 / git bash）+ python**』口径，PowerShell / `pwsh` / `.ps1` 条款**已全部删除**；若与本节〈⚙️ 环境与工具链口径〉仍有出入，以本节为准并即时订正（两边应逐字一致）。
 
 ## 📍 生效红线区 —— 原文逐字（`docs/agent/AGENTS-full.md` L2–L129；原文 H1 由本文件 H1 取代）
-
 
 > **子项目优先级与默认规则(必须遵守,2026-10-04 用户裁决重新划级)**:⛔ **本条原「三条生产线同批实施（含 26.1.2）」的口径已作废** —— 现行**两级优先模型**见下方「## 版本优先级与跨线移植纪律」:**P0 最高 = `neoforge-1.21.1` + `forge-1.20.1`**（功能一致、同批、优先）;**P1 次要 = `neoforge-26.1.2` + `fabric-1.20.1`**（待 P0 完成后移植）。以下为旧文存档 —— 所有功能/修复默认**同步修改三个版本**(`neoforge-1.21.1` + `forge-1.20.1` + `neoforge-26.1.2` —— 这三条是**生产线**),三线保持功能对等(无法对等的项必须按平台差异逐条登记,见 `docs/compat-26.1.2-neoforge.md`;**不再存在"只同步两个版本"的口径**);⚠️ **第四条线 `fabric-1.20.1`(Fabric 移植线)不在本「同批实施」约束内** —— 它由用户按批次单独下达移植任务,规则边界见下方「第四条线(`fabric-1.20.1`)的规则边界」;每次改动完成后由代理**自动本地提交**并**自动部署到整合包**(随 `gradlew build` 触发,**四条线各自推往自己的整合包**:`狐の航空学 Voxy Edition` / `1.20.1-Forge 模组测试` / `26.1.2-NeoForge 模组测试` / `1.20.1-Fabric 模组测试`),但**默认不执行 `git push`**。⛔ **发布投放红线（必须遵守,2026-10-25 用户裁决,优先级高于本条其余表述）**：**除非用户在当次任务里明确点名要求，否则默认只上传/发布 P0 两线（`neoforge-1.21.1` + `forge-1.20.1`）的产物** —— 涵盖 CurseForge / Modrinth / GitHub Release 与 tag / 任何对外分发渠道；**P1 两线（`neoforge-26.1.2` + `fabric-1.20.1`）从未获授权移植，其编译产物一律视为不可用** ⇒ 禁止上传、禁止建 Release/tag、禁止作为 P0 Release 的附件、禁止对外交付；需要 P1 发布时必须由用户逐次点名下达。 **2026-11-02 用户裁决（取代本条后半）**：四线 jar 允许放入同一个 GitHub Release（按版本号打 tag、全部正式版）；CF 侧 `fabric` / `neoforge-26.1.2` 仍受 `--allow-p1` 显式放行闸门约束（保留为防误传互锁），上传时必须显式加该参数。**② tag 与 Release 命名红线（同批裁决,强制）**：GitHub Release 的 tag **只按 mod 版本**创建（例 `1.5.0`、`1.5.0-rc.1`、`1.5.0-pre.6`）—— **禁止**按游戏平台建 tag（`fabric-1.5.0-rc.1`、`neoforge-…` 一律禁止）、禁止 `v` 前缀、禁止 `+加载器` 后缀；**同一版本的多平台 jar 必须放进同一个 Release**（现为 P0 两线 `neoforge-1.21.1` + `forge-1.20.1`，各自 jar 作同一 Release 的附件）；带 `-rc` / `-pre` / `-alpha` / `-beta` 的版本一律标 prerelease、不占 latest。**③ 发布时序红线（2026-11-02 用户裁决，强制）**：**未经详细测试（含实机冒烟）的版本一律不得作为发布版本**；**生产版本的发布动作必须是整条流程的最后一步** —— 固定顺序为「构建 → 本地详细测试 / 实机冒烟取证 → 审核项全过 → 才允许 push / tag / Release / CurseForge 上传」。在测试结论齐全之前执行的任何对外发布动作都算违规，发现即回滚或下架并记录。
 
@@ -172,7 +171,7 @@
 - 主线子项目 `neoforge-1.21.1`:MC 1.21.1 / NeoForge 21.1.235 / Java 21 / ModDevGradle(`net.neoforged.moddev` 2.0.141)
 - 移植子项目 `forge-1.20.1`:MC 1.20.1 / Forge 1.20.1-47.4.10 / Java 17 / ModDevGradle LegacyForge(`net.neoforged.moddev.legacyforge` 2.0.144)
 - 第三条线 `neoforge-26.1.2`:MC 26.1.2 / NeoForge 26.1.2.109 / Java 25 / ModDevGradle 2.0.147;由 1.21.1 源码整体迁移,差异见 `docs/compat-26.1.2-neoforge.md`。**2026-09-17 起已并入主线目录**(原独立 worktree `F:\MCProject\astral_dice_multiloader-26.1.2` / 分支 `multi-26.1.2-neoforge` 已合并进 `multi-1.20.1-1.21.1`,现行工作目录即主线根目录,四子项目同树)。
-- 第四条线 `fabric-1.20.1`:MC 1.20.1 / Fabric Loader 0.19.5 + Fabric API 0.92.12 / Java 17 / Fabric Loom(`fabric-loom`);由 `forge-1.20.1` 的 1.3.2-hotfix 源码整体移植(**加载器层整体替换**:Curios→Trinkets(+Accessories 软依赖) · Capability→Fabric API 附件 · Forge EventBus→自建 `LoaderBus`+Puzzles Lib/FAPI 回调/mixin · GLM→`LootTableEvents.MODIFY`),裁剪项与平台差异见 `porting/fabric-1.20.1/VERSION_PINS.md`、`KNOWN-ISSUES.md` §9。**2026-10-01 已并入主线目录**(原独立 worktree `F:\MCProject\astral_dice_multiloader_fabric` / 分支 `1.20.1-fabric` 已合并进 `multi-main` 并**已删除本地 worktree 与分支**（⚠️ **远端分支 `origin/1.20.1-fabric` 的删除需 push，尚未执行**，待用户放行；删除本地分支前已取证其 tip `a89487ac` 是 `multi-main` 的祖先、独有提交 0 个），四条线同一工作树)。⚠️ **本线 dev 环境有一个必须先做的前置**：Loom 重映射第三方 mod 时会剥离产物的 `fabric.mod.json` 的 `jars` 声明 ⇒ 自带内嵌库的 mod（Puzzles Lib / Accessories / Patchouli / Cloth Config / KubeJS）在 dev 里**全部起不来**（`HARD_DEP_NO_CANDIDATE` / `NoClassDefFoundError`）。跑任何 fabric dev 运行前先执行 `pwsh -NoProfile -File scripts/test/fabric/ft_env.ps1 --side both --install-embedded`（= `python tools/loom_embedded_jars.py --apply`，把内嵌库按 id 去重投放到 `run/<side>/mods/`，靠 Loom 的 `fabric.remapClasspathFile` 运行时重映射生效）；**换 `-PtestTrinkets` / `-PtestAccessories` 后必须重跑**。详见 `KNOWN-ISSUES.md` §9 **KI-F23**。
+- 第四条线 `fabric-1.20.1`:MC 1.20.1 / Fabric Loader 0.19.5 + Fabric API 0.92.12 / Java 17 / Fabric Loom(`fabric-loom`);由 `forge-1.20.1` 的 1.3.2-hotfix 源码整体移植(**加载器层整体替换**:Curios→Trinkets(+Accessories 软依赖) · Capability→Fabric API 附件 · Forge EventBus→自建 `LoaderBus`+Puzzles Lib/FAPI 回调/mixin · GLM→`LootTableEvents.MODIFY`),裁剪项与平台差异见 `porting/fabric-1.20.1/VERSION_PINS.md`、`KNOWN-ISSUES.md` §9。**2026-10-01 已并入主线目录**(原独立 worktree `F:\MCProject\astral_dice_multiloader_fabric` / 分支 `1.20.1-fabric` 已合并进 `multi-main` 并**已删除本地 worktree 与分支**（⚠️ **远端分支 `origin/1.20.1-fabric` 的删除需 push，尚未执行**，待用户放行；删除本地分支前已取证其 tip `a89487ac` 是 `multi-main` 的祖先、独有提交 0 个），四条线同一工作树)。⚠️ **本线 dev 环境有一个必须先做的前置**：Loom 重映射第三方 mod 时会剥离产物的 `fabric.mod.json` 的 `jars` 声明 ⇒ 自带内嵌库的 mod（Puzzles Lib / Accessories / Patchouli / Cloth Config / KubeJS）在 dev 里**全部起不来**（`HARD_DEP_NO_CANDIDATE` / `NoClassDefFoundError`）。跑任何 fabric dev 运行前先执行 `python tools/loom_embedded_jars.py --apply`（把内嵌库按 id 去重投放到 `run/<side>/mods/`，靠 Loom 的 `fabric.remapClasspathFile` 运行时重映射生效）；**换 `-PtestTrinkets` / `-PtestAccessories` 后必须重跑**。详见 `KNOWN-ISSUES.md` §9 **KI-F23**。
 - Base package/group: com.merlinkitsune.astral_dice;各子项目产物名均为 `astral_dice-<版本>.jar`,版本号自带加载器后缀(1.21.1 带 `+neoforge_1.21.1`,1.20.1 带 `+forge_1.20.1`,26.1.2 带 `+neoforge_26.1.2`,fabric 1.20.1 带 `+fabric_1.20.1`,下划线分隔)。
 
 When extending this workspace:
@@ -231,7 +230,7 @@ When extending this workspace:
 
 ### 与既有守门的关系（两层都要，不得互相替代）
 
-- **第一层 = 机器判据**：`scripts/verify/**`、`tools/audit_*.py`、`tools/check_lang_sync.ps1` 等守门脚本，可重复、可回归。
+- **第一层 = 机器判据**：`scripts/verify/**`、`tools/audit_*.py`、`tools/check_lang_sync.py` 等守门脚本，可重复、可回归。
 - **第二层 = 二次验证**：专治第一层覆盖不到的遗漏 —— **判据本身有漏**（实例：手册悬空键
   `guide.entry.special_effects.6` / `guide.entry.teru_sign.3` 长期**无任何门禁**，直到 2026-10-01 才补上
   `tools/audit_patchouli_keys.py`）、**守门跑错范围 / 跑错工作树**、**报告与实物不符**、**声称已改而实际未落盘**。
@@ -244,33 +243,33 @@ When extending this workspace:
 2. **测试与演示一律使用非亡灵生物**：游戏内实机测试、连拍演示、探针靶子**不得**用僵尸等亡灵生物（undead），
    一律改用**非亡灵**生物（如 minecraft:pillager、minecraft:cow）。原因：亡灵受治疗 / 伤害反转等特殊规则影响，
    会污染 FX / 伤害 / 音效类判据；历史脚本中以 zombie 为靶的写法一律视为待替换。
-3. **测试流程结束后必须关闭测试用游戏实例**：收尾时执行 pwsh -File scripts/test/mt.ps1 --version 线 --phase stop，
-   确认 MT_STOP: OK 且无本流程 java 客户端残留（gradle 守护进程保留属正常）；禁止让客户端无人观察地驻留 ——
+3. **测试流程结束后必须关闭测试用游戏实例**：收尾时执行 bash scripts/test/win/mt.sh --version 线 --phase stop，
+   确认 WIN_STOP: OK 且无本流程 java 客户端残留（gradle 守护进程保留属正常；旧口径标记 `MT_STOP` 仅作溯源）；禁止让客户端无人观察地驻留 ——
    它会持续占用 CPU / GPU、污染下一次冷启动前置状态，并让 enableShaders 之类的运行期状态被意外持久化。
-   **收尾一律带 `--purge-saves`**（2026-10-08 用户裁决：每轮实机验证后清理旧存档）：标准收尾命令 = `pwsh -File scripts/test/mt.ps1 --version <线> --phase stop --purge-saves`，成功判据 = `MT_CLEANUP_SAVES: PURGED <n>` + `MT_CLEANUP_RESULT: OK`；`.mt_keep_alive` 存在时只提示、保留取证现场。收尾同时**删除本轮注入的临时探针**（`run/<线>/kubejs/**` 的一次性测试脚本，以及源码侧 `scripts/test/resources/kubejs/**` 的临时探针），并在交付报告里贴 `git status --short -uall` 原文（2026-10-11 用户交接裁决）。
+   **收尾一律带 `--purge-saves`**（2026-10-08 用户裁决：每轮实机验证后清理旧存档）：标准收尾命令 = `bash scripts/test/win/mt.sh --version <线> --phase stop --purge-saves`，成功判据 = `MT_CLEANUP_SAVES: PURGED <n>` + `MT_CLEANUP_RESULT: OK`；`.mt_keep_alive` 存在时只提示、保留取证现场。收尾同时**删除本轮注入的临时探针**（`run/<线>/kubejs/**` 的一次性测试脚本，以及源码侧 `scripts/test/resources/kubejs/**` 的临时探针），并在交付报告里贴 `git status --short -uall` 原文（2026-10-11 用户交接裁决）。
 
 4. **二次验证（复核）一律改用 DSH 原生代码审查（插件 `@michengai/dsh-code-review`，工具 `dsh_code_review`），不再派 subagent / teammate**：每次复核 = **一次性独立会话、不复用**；
    调用 `dsh_code_review({ input })` 把「复核对象（提交或文件范围，用自然语言写清）+ 背景 + 逐项判据（R1..Rn）+ 输出要求（判定 SUPPORTED / REFUTED / 部分成立 + 逐字证据 文件:行号 + 未验证项 + 最小修法）」**一次性写全**进 `input`（会话干净，不给它沿用上下文的机会；该工具不解析 CLI 选项）。代码修改仍按第 1 条（每任务一个新 subagent、单任务、用完即弃）；复核不再由 subagent 承担。 ⚠️ **区分两件事**：本条约束的是**复核（二次验证，执行方 = `dsh_code_review`）**；**功能审查 / 功能验证**（静态取证、`:<线>:classes` 编译、`scripts/verify/**` 守门脚本、与需求逐字对账）自 2026-10-12 起按第 7 条**由一次性独立子代理**执行 —— 两者不得互相替代（**复核不派 subagent，功能审查必须派 subagent**）。
 
 5. **实机验证必须由用户在提示词中明确下达**（2026-10-08 用户裁决）：默认情况下 agent 只做**代码功能验证** —— 静态取证与逐字对账、`:<线>:classes` 编译、`dsh_code_review`、`scripts/verify/**` 守门脚本、用例 JSON 与文档的一致性/行尾核对；**不得**自行启动 dev 客户端跑实机、连拍、探针或用例。用户明确要求实机时才执行，且收尾按第 3 条带 `--purge-saves`；未实机的欠账如实登记在交付报告里，等用户点名下指令再补。
 
-6. **改动后旧实机证据一律作废，先停旧实例再测新构建（2026-10-11 用户交接裁决）**：任何代码 / 资源改动落地后，此前一切实机读数与截图立即失效，不得作为新构建的验收依据；测新构建前必须先 `mt.ps1 --phase stop` 停掉旧实例（禁止在旧实例上叠加新构建 —— `run/<线>/mods` 的 jar 会被旧进程持有且内容是旧代码）。
+6. **改动后旧实机证据一律作废，先停旧实例再测新构建（2026-10-11 用户交接裁决）**：任何代码 / 资源改动落地后，此前一切实机读数与截图立即失效，不得作为新构建的验收依据；测新构建前必须先 `bash scripts/test/win/mt.sh --version <线> --phase stop` 停掉旧实例（禁止在旧实例上叠加新构建 —— `run/<线>/mods` 的 jar 会被旧进程持有且内容是旧代码）。
 7. **开发操作流程（2026-10-12 用户裁决，取代 2026-10-11 版本；同日二次裁决修订②③⑤⑥⑧：所有代码编写一律通过向 Subagent 下达写代码命令完成，主 Agent 只负责规划 / 派活 / 验收 / 提交，不亲自编写任何代码）**：① 新功能先写**开发需求 / 设计计划**；② **P0 基准线 `neoforge-1.21.1` 的实现派子代理编写**（一次性、单任务、brief 自包含；主 Agent 不亲自写主线实现）；③ 子代理交付后由主 Agent 验收并按需自测（`:<线>:classes` 编译 / `scripts/verify/**` 守门脚本）；④ 完成后用 `dsh_code_review` 复核；⑤ 复核问题派新子代理修完后，**派子代理做独立功能审查**（静态取证、编译、守门脚本、与需求逐字对账）；⑥ 主 Agent 逐条回应审查结论、缺陷**派新子代理修复**，**全部确认无误后**才派子代理做 `forge-1.20.1` 移植（按 `docs/compat-1.20.1-forge.md` 差异映射）；⑦ 移植线再走一次 `dsh_code_review` 复核 + **另派一个独立子代理**做功能审查；⑧ 子代理模型**固定且只能用** `deepseek-official/deepseek-flash`（= DeepSeek-V4.1-Flash；2026-10-22 用户裁决：不得改派更强 / 其它 provider 的 model），仍受第 1 条「一个子代理一个任务、用完即弃」约束；复核 / 审查发现的问题交**新**子代理改进，**连续 3 次仍改不到位 ⇒ 报用户拍板**。⑨ **复核分级（2026-10-13 用户裁决）**：a) **非代码改动**（文档 / 规则 / 版本号 / CHANGELOG / 配置注释等）只做 `dsh_code_review`，免子代理功能复验；b) **小规模代码修正**（口径 / 字符串 / 数值 / 显示内容等简单修改）只做 `dsh_code_review`，除非用户另行下达指令，不执行子代理功能复验；c) **新功能请求**：`dsh_code_review` 后由主 Agent 按改动规模自判功能复验范围（全量 / 部分 / 不做），判断依据如实写进交付报告；d) **大型功能变更或新增**执行**全量**功能复核；e) **实机测试仍须用户明确许可**——无法仅靠功能复核确认的结果，必须向用户说明情况并请求其下达实机测试。**代码与二进制都无法确认是否符合需求时，必须询问用户是否实机测试**（用户明确下达才做，流程见第 5 条，收尾按第 3 条）；必须用户决策的问题或难以实现的功能**交用户拍板**，不得擅自取舍。
 8. **派子代理一律屏蔽人格注入（2026-10-22 用户裁决）**：所有 `subagent` / `subagent_fork` / `spawn_teammate` 的 brief 里，除职业声明外**必须原文加一句**「**不要使用任何人设 / 角色扮演 / 语气修饰 / 昵称自称，按你的职业身份以中性技术口吻输出**」；**审查 / 取证类任务必须用全新上下文的 `subagent`**（`subagent_fork` 会连同带人设的对话一起继承；**复核不在此列** —— 复核一律走 `dsh_code_review`，见第 4 条）。子代理回报里出现人格化表达（自称、卖萌、情绪表演）即视为**交付不合规**，主 Agent 应要求重发中性版结论；理由：人设会稀释证据密度，与「只给证据、不给情绪结论」的复核口径直接冲突。本条第 ① 句同样适用于 `spawn_teammate` 的初始 prompt 与后续 `send_message` 改需求。
 
-## 命令执行规范（Shell）— 必须遵守（2026-09-19 用户裁决）
+## 命令执行规范（Shell）— 必须遵守（2026-09-19 裁决；2026-11-04 用户裁决整体改写）
 
-**一律使用 PowerShell 7（`pwsh`）；禁止使用 Windows PowerShell 5.1。**
+**本项目只允许通过 `ops_bash` 调用工具：一切命令在 `run_code` 里用 `tools.ops_bash(...)` 执行。PowerShell 7（`pwsh`）与 `.ps1` / `.psm1` 口径已整体作废（原文已删除，勿再引用、勿新增）。**
 
-- **背景（实测）**：本代理工具的默认 shell 是 **Windows PowerShell 5.1**（`$PSVersionTable.PSVersion` = 5.1.x），而本仓全部工具链脚本与 AGENTS 示例均按 **pwsh 7**（当前 7.6.6）编写。5.1 下的差异会**静默改变行为或直接报错**：① `if` / `switch` **不能作表达式**（`(if ($x) { … } else { … })` 报「术语 'if' 不会被识别为 cmdlet…」，实测踩中）；② 不支持三元 `? :`、`??`、`?.`；③ `ConvertFrom-Json -AsHashtable`、`-Depth`、`Test-Json` 等参数缺失或语义不同；④ 默认编码、`$PSNativeCommandUseErrorActionPreference`、`&&`/`||` 等行为不同。
+- **背景（实测）**：本代理的命令通道是 `run_code` → `tools.ops_bash(...)`；Windows 宿主的 bash 由 **MSYS2 / git bash** 提供，原生 Linux 宿主用系统 bash。旧口径「一律 PowerShell 7 + `pwsh -NoProfile -File`」是 2026-09-19 的临时裁决，现已废止。
 - **规则**：
-  1. 多行或含 `if` 表达式 / 三元 / PS7 专用参数的命令，**一律落盘为 `.ps1` 再用 pwsh 跑**：`pwsh -NoProfile -File <绝对路径>`（脚本放 `temp/tNN/`，绝对路径，见「工作树与路径纪律」）。
-  2. 单行命令用 `pwsh -NoProfile -Command '…'`。
-  3. **禁止**直接用工具默认 shell 跑 PowerShell 代码（尤其上述语法）。
-  4. 调用本仓脚本（`scripts/test/*.ps1`、`tools/*.ps1`、`scripts/devtools/*.ps1`、`scripts/maintenance/*.ps1`）**必须**显式写 `pwsh -NoProfile -File …`；文档与交付说明里的示例同样写 `pwsh`。
-   5. **批处理（.bat）空参必须守卫（2026-10-11 用户交接裁决）**：`for %%A in (%*) do (` 在无参时会展开成 `for %%A in () do (` ⇒ 语法错误、窗口闪退；解析参数前一律先 `if not "%~1"==""` 守卫。
-   6. **手动启动脚本只做启动，禁止前置判断（2026-10-11 用户交接裁决）**：`run/Start-<线>.bat`（用户双击自测）= `chcp 65001` → `cd` → `gradlew :<线>:runClient` → `pause` 六行；**禁止**加版本号比对等任何前置判断（曾比对 `gradle.properties` 引脚与 `mods` 内 jar 名 ⇒ 每次升版都 FAIL，用户裁决只保留启动）。
-- **自查**：报错里出现「术语 'if' 不会被识别为 cmdlet / 函数 / 脚本文件」＝ 用了 5.1，按本条改用 pwsh 重跑；发现任何 AGENTS/文档示例写裸 `powershell` 或省略 `pwsh` 前缀的，一并改正。
+  1. 命令一律写成 **bash 形态**：`./gradlew :<线>:<task>`、`bash scripts/test/win/mt.sh …`、`python tools/xxx.py`、`git -C <工作树> …`；路径用 POSIX 形态（`/f/MCProject/...`），不要写 `F:` 反斜杠路径。
+  2. 多行 / 含引号 / 含 `$` 的命令**先落盘成脚本再跑**：`bash temp/xxx.sh`、`python temp/xxx.py`（脚本放 `temp/`，见「工作树与路径纪律」）；`ops_bash` 会拒掉不可解析的内联串（`analysis.strict-unparseable`）。
+  3. 本仓既有 `.ps1` / `.psm1` **一律作废**：不执行、不新增、不据此改写文档；退役登记见 `docs/features/devnext-pwsh-retirement-register.md`，文档里残留的 `.ps1` 引用只作历史溯源。
+  4. 测试台唯一入口 = `bash scripts/test/win/mt.sh --version <线> --phase <env|build|launch|cases|report|stop>`（Linux：`bash scripts/test/linux/{env,launch,stop}.sh`）；守门脚本 = `python tools/*.py` / `bash scripts/verify/*.sh`。
+  5. **双击启动件只作启动**：`gradlew.bat` / `run/Start-<线>.bat` 是用户手工双击的既有文件，不纳入命令执行口径；命令行启动一律 `./gradlew :<线>:runClient`（`.bat` 的空参守卫规则仍只针对这两个文件）。
+  6. 命令失败先看**第一条因果错误**（`BUILD FAILED` 之前的 `Caused by:` / `error:` 行），不要拿最后一次运行的尾部输出当结论。
+- **自查**：命令里出现 `pwsh` / `powershell` / `-File xxx.ps1` ⇒ 立即改成 bash / python 等价物；`ops_bash` 返回 `exit 2` 多为测试台门禁拦下（缺 `--version` / 缺 `--phase` / `cases` 缺 `--case`），按脚本 usage 补参数重跑。
 
 ## Git 代理规范（Git Proxy）— 必须遵守
 
@@ -284,10 +283,11 @@ When extending this workspace:
   ```
 - 若远程操作因代理失败，先检查代理进程（如 Clash/`127.0.0.1:7897` 端口）是否在运行，再排查网络；不要绕过代理直连 GitHub。
 - **默认不执行 `git push`**(见「编译产物上传规则」第 6 条);每次更新由代理自动完成本地提交,推送仅在用户明确要求时执行,且须经上述代理。
-
 <!-- END 生效红线区（原文逐字，AGENTS-full.md L2–L129） -->
 
 ## 📇 规则索引 —— 其余原文的位置（`docs/agent/AGENTS-full.md`）
+
+> ⚠️ 下列 `AGENTS-full.md` 分区是**历史原文存档**：其中出现的 `pwsh` / `.ps1` / `mt.ps1` 命令、以及「全流程为纯 PowerShell 7」一类表述**一律已作废**，只作溯源、不得照抄。执行口径只有一个：本文件前部〈⚙️ 环境与工具链口径〉+ 红线区〈命令执行规范（Shell）〉= **只允许 `ops_bash` + bash（MSYS2 / git bash）+ python**。
 
 | 行号区间 | 主题（原文标题摘引） | 何时必读（触发条件） |
 |---|---|---|

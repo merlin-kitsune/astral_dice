@@ -102,12 +102,12 @@ python3 -B docs/agent/verify-split.py                   # 规则守门
 - 前置：`starengine:1.1.0` 必须已发布到本机 mavenLocal（在兄弟仓 `starengine` 跑四线 `:publishToMavenLocal`，daemon 21）。
 - Linux 侧**不调用** `scripts/**/*.ps1`（52 个，Windows 测试台/守门脚本）；`scripts/test/mt.ps1`（19,384 行）整台不可移植，替代 = `scripts/test/linux/*.sh` + AutoJS `eval_js` + computer-use MCP。
 - 桌面/游戏注入通道：KDE Wayland 下 DSH MCP `computer-use-linux`（bin `~/.local/bin/computer-use-linux-mcp`，AT-SPI + KWin + Portal RemoteDesktop）截图/点击/键盘，`screen-ocr` 做屏幕 OCR；游戏内用 AutoJS HTTP 端点（`http://127.0.0.1:25585/mcp`，本会话未注册 MCP client，直接 curl 或临时注册）。
-- 迁移与现状：`docs/handover-2026-10-31-native-linux-migration.md`（原生 Linux 实测与路径重映射）；规则正本 `docs/agent/AGENTS-dsh-linux.md`；新会话入口 `docs/handover-new-session-context.md`。VM 时代文档（`docs/handover-2026-10-31-linux-vm-adoption.md`、`docs/handover-2026-10-31-local-disk-workspace.md`）只作历史。
+- 迁移与现状：`docs/handover-2026-10-31-native-linux-migration.md`（原生 Linux 实测与路径重映射）；规则正本 `docs/agent/AGENTS-dsh-linux.md`；新会话入口 `docs/handover-new-session-context.md`。VM 时代文档（`docs/handover-2026-10-31-linux-vm-adoption.md（已删除 2026-11-05）`、`docs/handover-2026-10-31-local-disk-workspace.md`）只作历史。
 - 上面 §4/§6 的 `D:\...`、`pwsh`、`gradlew.bat` 命令属 **Windows 历史口径**，Linux 宿主不执行。
 
 ## 7. 交接文件
 
-- DSH 滚动正本：`docs/handover-1.5.0-main.md`（pre.5 及更早：`docs/handover-1.5.0-pre.5-main.md`）。
+- DSH 滚动正本：`docs/handover-1.5.0-main.md`（pre.5 及更早：`docs/handover-1.5.0-pre.5-main.md（已删除 2026-11-05）`）。
 - 新会话寒暄提示词：`docs/handover-new-session-context.md`。
 - Kimi 接手：`docs/handover-<日期>-kimi-<主题>.md`（每批新建）。
 - 逐批历史：`docs/agent/AGENTS-full.md` 末尾「待办交接各批」（只追加不改旧条）。

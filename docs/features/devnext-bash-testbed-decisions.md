@@ -1,6 +1,6 @@
 # dev-next 测试台 bash 化：裁决记录与移植契约
 
-> 状态：**执行中**（2026-11-02，DSH）。本文件是 `docs/features/devnext-bash-testbed-gap.md`（缺口盘点）的续篇，只记「已定的事 / 契约数字 / 谁在做什么」，不重复盘点。
+> 状态：**执行中**（2026-11-02，DSH）。本文件是 `docs/features/devnext-bash-testbed-gap.md（已删除 2026-11-05）`（缺口盘点）的续篇，只记「已定的事 / 契约数字 / 谁在做什么」，不重复盘点。
 > 事实源：`scripts/test/**` 与 `scripts/test/win/lib/phases.sh` 实读；行号会漂，引用时以实读为准。
 
 ## 1 已定的口径
@@ -266,4 +266,98 @@ Indium（用户点名要求的 Sodium ↔ Fabric Rendering API 兼容层）**本
   只传用例名会被当文件名 ⇒ `No such file or directory`）。
 - 收停：`WIN_STOP: OK — 四线范围内无本 repo 的 Minecraft 客户端`。
 
+## 12 四线 AutoJS / KubeJS / 测试台 mod 全量追新（2026-11-03 夜，全部实机验证）
+
+用户裁决（原话）：「先更新所有测试台AutoJS、KubeJS版本」；「测试台其他mod，除26.1.2的sodium保持0.9.2版本外，其他所有mod（包括sodium）都更新到最新公开版本」。
+
+### 12.1 引脚改动表
+
+| 线 | 改动 |
+|---|---|
+| neoforge-1.21.1 | `neo_version` 21.1.235 → **21.1.265**（JEI 19.70 要求 `neoforge [21.1.238,)`）；`kubejs_version` build.372 → **build.381**；JEI 从 Curse 8512040 → `maven.modrinth:jei:1vC6z8wV`（19.70.0.469）；新增 `maven.modrinth:mezzconfig:sL7Ghaz1` |
+| forge-1.20.1 | JEI Curse 8778011 → `maven.modrinth:jei:6E4ps2ER`（15.74.0.234）；新增 `mezzconfig:toOvLp8Y`；collective → `w5c5YvXl`（8.75）；superflat → `I6QPoepF`（3.7）；modernfix `OvpPdk44` → `OM5gX4LT`（5.27.91） |
+| neoforge-26.1.2 | `neo_version` 26.1.2.109 → **26.1.2.126**（KubeJS 8.0.8 要求 `neoforge 26.1.2.110+`）；`kubejs_version` 8.0.6 → **8.0.8**；JEI → `maven.modrinth:jei:60HrmNPh`（29.53.0.115）；新增 `mezzconfig:5mEMrzgT`；jade `5jKeKXwB` → `Pr1h4azo`（26.1.12） |
+| fabric-1.20.1 | JEI `pQiaGCAN` → `bTwbXhIB`（15.74.0.234，`fabric.mod.json` 的 jei 区间同步 `>=15.74.0`）；collective → `w5c5YvXl`；yacl `CgwTUAR2` → `dvS5DjUA`（3.6.6）；accessories `A7wwzJ0e` → `mee7rWXz`（beta.49，**解除原「1.20.1 已停更」钉死**）；puzzles-lib `N8gFdljq` → `QSW0oJPl`（8.1.36） |
+
+**JEI 的新硬前置 mezz_config**：19.70 / 15.74 / 29.53 三个变体的 `mods.toml` / `neoforge.mods.toml` 都写了
+`mezz_config [0.6.10,1.0.0) required`，缺失即 Loader 硬拒 ⇒ 三条线各补一个 `mezzconfig` 引脚
+（1.20.1-fabric 原本就有 `mezzconfig:0.6.10`，未动）。
+**26.1.2 的 sodium 保持 0.9.2**（用户点名），其余 sodium（1.21.1 = 0.8.13、fabric = 0.5.13）本身已是最新。
+
+### 12.2 AutoJS：从新上游重编 + 保持 groupId
+
+- 上游 `F:/MCProject/AutoJS`（分支 `fabric-1.21.1` @ `67b585e`）已把包根 `cc.sighs.autojs` → `com.sighs.autojs`；
+  本仓沿用既定口径「**Maven groupId 仍写 `cc.sighs.autojs`**，只重编内容」，artifact version 仍 `1.0.0`。
+- target 引脚：neoforge-1.21.1 kubejs 379→**381**、rhino `2101.2.7-build.81` → **`2101.2.8-build.91`**；
+  neoforge-26.1 kubejs 8.0.6→**8.0.8**；forge/fabric-1.20.1 rhino `2001.2.2-build.17` → **`2001.2.3-build.10`**。
+- 构建（targets **不是** Gradle 子项目，必须 `-p`）：
+  `cd /f/MCProject/AutoJS && sh ./gradlew -p targets/<t> build -x test -Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=7897`
+  ⇒ 四个 target 全 BUILD SUCCESSFUL。
+- 发布：`PYTHONIOENCODING=utf-8 python scripts/test/tools/publish_autojs_maven.py --force`
+  ⇒ `MT_AUTOJS_MAVEN_RESULT: OK published=2 skipped=1 failed=0`；
+  产物 `AutoJS-neoforge-1.21.1-1.0.0.jar`（163,776 B）、`AutoJS-neoforge-26.1-1.0.0.jar`（164,801 B）复制进对应 `run/<ver>/mods`，
+  forge/fabric 走 mavenLocal + `-PautojsTestMod=1`。
+- 同坐标同版本覆盖 ⇒ 消费方若已有缓存需 `--refresh-dependencies`；本次 `~/.gradle/caches/.../cc.sighs.autojs` 本就不存在，
+  首次实机启动即取到新件（实测 forge dev jar 内含 `com/sighs` 86 个 class、`cc/sighs` 0 个）。
+
+### 12.3 fabric 专属坑：yacl 3.6.6 的 quilt-parsers 内嵌库
+
+- 现象：`Could not execute entrypoint stage 'client' … yet_another_config_lib_v3` /
+  `NoClassDefFoundError: org/quiltmc/parsers/json/gson/GsonWriter`。
+- 根因同 §10.3 那类：Loom 重映射第三方 mod 时会删掉 `fabric.mod.json` 的 `jars` 声明但保留 `META-INF/jars/*.jar`
+  ⇒ dev 运行期拿不到 `org_quiltmc_parsers_gson/json`。3.1.0 时代这两件不在依赖链上，故旧版无此问题。
+- 修法：`python tools/loom_embedded_jars.py --apply --clean --side client`（--clean 先按清单撤掉旧投放，避免重复 id）；
+  本次 `need=20 skip_dup=70 written=20`。
+- **重复 id 陷阱**：`--clean` 只撤 `astral_embedded-*.jar`，早期手工投放的 `endec-0.1.8.jar / fiber / gson / netty /
+  puzzlesaccessapi-fabric` 会与新的 `astral_embedded-<id>.jar` **撞 id**（Fabric Loader 直接拒绝启动）
+  ⇒ 这 5 个旧件已挪到 `temp/quarantine-embedded/`。投放后务必按 `fabric.mod.json` id 聚合自查一次。
+- 顺带确认：Debugify 2.0 在 yacl **3.6.6** 下正常加载（原注释担心的跨 minor API 漂移未发生）。
+
+### 12.4 四个实测坑（都踩到了）
+
+1. **补丁脚本「报 OK 但没落盘」**：`temp/_patch_modpins2.py` 对 `neoforge-26.1.2/gradle.properties` 与
+   `fabric-1.20.1/gradle.properties` 静默未写入（`git diff --stat` 里根本没有这两个文件）。
+   ⇒ 改完**必须用 `grep -nE '^key='` 逐项回读**，不得相信脚本自己的 "anchor hits 1"。
+   被漏掉的 4 组（neo_version / kubejs_version / accessories×3 / puzzleslib×3 / jei_version）本轮已用 `edit` 补上。
+2. **Configuration cache 让旧 loader 继续生效**：改 `neo_version` 后 `compileJava` 只用 14s（`1 up-to-date`），
+   `runClient` 仍去扫 `build/moddev/artifacts/minecraft-patched-26.1.2.109.jar` ⇒ 启动报
+   `Mod kubejs requires neoforge 26.1.2.110 or above`。修法：`./gradlew :neoforge-26.1.2:compileJava
+   --refresh-dependencies --no-configuration-cache`（3m45s，之后 `artifacts/` 里出现 `…-26.1.2.126*.jar`）。
+3. **AutoJS API 形态**：`AutoJS.level` 是方法（`AutoJS.level()`）、`AutoJS.players()` 返回数组、
+   `AutoJS.findEntities(...)` 返回的是**字符串**（不是实体对象）；取实体用 `AutoJS.level().getEntity(id)`。
+   服务端/客户端读控制器走 `e.getAnimatableInstanceCache().getManagerForId(id).getAnimationControllers()`（v4 API）。
+4. **`Java.loadClass('int')` 不合法**（Class could not be found）——反射取原语参数时别这么写。
+
+### 12.5 验收读数（2026-11-03 20:37–20:55，四线各一次实机）
+
+| 线 | 读数（`ModList` / `FabricLoader` 实读） |
+|---|---|
+| 1.21.1 | neoforge **21.1.265**、kubejs **2101.7.2-build.381**、rhino 2101.2.8-build.91、jei **19.70.0.469**、mezz_config 0.6.10、collective 8.75、superflat 3.7、immediatelyfast 1.6.15 |
+| 26.1.2 | neoforge **26.1.2.126**、kubejs **26.1.2-8.0.8**、jei **29.53.0.115**、mezz_config 0.6.10、jade 26.1.12、collective 8.75、superflat 3.7、modernfix 5.27.25、BAT build.11、sodium **0.9.2（保持）** |
+| 1.20.1 forge | forge 47.4.10、jei **15.74.0.234**、mezz_config 0.6.10、collective 8.75、superflat 3.7、modernfix **5.27.91**、kubejs build.26、rhino 2001.2.3-build.10 |
+| fabric-1.20.1 | jei **15.74.0.234**、collective 8.75、yacl **3.6.6**、accessories **beta.49**、puzzleslib **8.1.36**、indium 1.0.36、sodium 0.5.13、iris 1.7.6、debugify 2.0、modmenu 7.2.2 |
+
+功能面同样复验（GeckoLib vendor 未回退）：
+- 26.1.2：summon `astral_dice:sykestentacle` + 攻击 ⇒ 截图 `run/26.1.2/screenshots/2026-11-03_20.48.47.png`（近处攻击姿态、远处 idle）。
+- 1.20.1 forge：client `action = TRANSITIONING | trig=true`；截图 `run/1.20.1/screenshots/2026-11-03_20.50.51.png`。
+- fabric-1.20.1：client `idle RUNNING animation.tentacleidle` / `action RUNNING animation.tentacleattack trig=true`；
+  截图 `fabric-1.20.1/run/client/screenshots/2026-11-03_20.54.27.png`。
+- 四线 `python scripts/test/mt_preflight.py --version <线>` ⇒ `MT_PREFLIGHT: OK — 9 项全部满足`。
+
+### 12.6 未做 / 待裁决
+
+- `starengine` 四平台仍是 `26.4-SNAPSHOT.1`（本轮未动库）。
+- 本轮所有改动（四线 pin、AutoJS 工具与 vendor jar、`tools/loom_embedded_jars.py` 投放物）**未 commit / 未 push**。
+- fabric-1.21.1 线按用户指示继续搁置。
+
+## 13 options.txt 的两个致命缺省（2026-11-05，fabric-1.21.1 首启踩出，五线通用）
+
+测试台会给 `run/<线>/options.txt` 做三件事：强制窗口、禁失焦暂停、把潜行/冲刺绑定改回期望值。三个写入函数都在「文件不存在或只有几行」时会**新建一个空壳文件**（`_read_lines(path) or []` 之后追加），于是踩出两个坑：
+
+| 坑 | 现象 | 机制 | 落盘修法 |
+|---|---|---|---|
+| **缺 `onboardAccessibility:false`** | 客户端卡在「辅助功能引导」页（`AccessibilityOnboardingScreen`），`--quickPlaySingleplayer` **静默不执行**；`LAUNCH: WORLD_READY` 照样打绿（marker `Sound engine started` 是启动期日志），AutoJS 读 `player=false / dim=none` | 1.20.2+ 首次启动引导页由 `onboardAccessibility` 控制，缺省即「未完成引导」 | `scripts/test/mt_env.py` 的 `set_fullscreen_disabled()` 现在会一并补写 `onboardAccessibility:false` |
+| **NeoForge 修饰键绑定格式** | `Failed to load options` / `NumberFormatException: For input string: "o:CONTROL"`（栈 `Options.processOptions → InputConstants.getKey`），整份 options 被放弃加载（窗口/暂停/绑定三项设置同时失效） | neo 线把带修饰键的绑定写成 `key_key.jei.toggleOverlay:key.keyboard.o:CONTROL`；原版/fabric 解析第二个冒号后段时做 `Integer.parseInt` | `set_fullscreen_disabled()` 现在会丢弃「`key_` 开头且含 ≥2 个冒号」的行（游戏内以默认绑定重建）；跨线复制 options.txt 时必须先过滤 |
+
+> 判据（写用例/人工核查都用这一条）：**进世界的证据只能来自 AutoJS 读 `Minecraft.getInstance().player != null && level != null`**，不能只看 `LAUNCH: WORLD_READY`。相关验收读数见 `docs/features/fabric-1211-live-test-plan.md` §10。
 

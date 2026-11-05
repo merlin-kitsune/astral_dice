@@ -2,7 +2,7 @@
 
 > **版本口径（2026-10-28 用户裁决）**：本线一律称 **1.5.0**，不再带 `rc` 后缀；本文件已由 `docs/handover-1.5.0-rc.1-main.md` 改名为 **`docs/handover-1.5.0-main.md`**。**历史记录一律不改写真名** —— 正文里出现的 `1.5.0-rc.1`…`1.5.0-rc.4`、产物文件名、tag / CurseForge / GitHub Release 编号都是当时实况；代码侧四线 `gradle.properties` 现为 **`1.5.0-rc.5+<后缀>`**（2026-10-28 提交 `50e5e406` bump，见 §4.1aq-1），正式版发布那一轮才落成 `1.5.0+<后缀>`。
 >
-> **本文件自 `1.5.0-rc.1`（2026-10-25）起继续为滚动交接正本**（原 `docs/handover-1.5.0-pre.6-main.md` 于同批 `git mv` 改名；pre.6 的批次、实机读数、遗留与坑**原样保留在本文档内**，不另建文件）。pre.5 及更早的批次一律回 `docs/handover-1.5.0-pre.5-main.md`（§0 速览 / §3 批次表 / §4 实机读数 / §5 遗留 / §6 坑 / §7 路径）。
+> **本文件自 `1.5.0-rc.1`（2026-10-25）起继续为滚动交接正本**（原 `docs/handover-1.5.0-pre.6-main.md` 于同批 `git mv` 改名；pre.6 的批次、实机读数、遗留与坑**原样保留在本文档内**，不另建文件）。pre.5 及更早的批次一律回 `docs/handover-1.5.0-pre.5-main.md（已删除 2026-11-05）`（§0 速览 / §3 批次表 / §4 实机读数 / §5 遗留 / §6 坑 / §7 路径）。
 > 数字均为 2026-10-24 快照；**开工先实读** `git log -1 --oneline` + `git status --short -uall` + 四线 `gradle.properties`。
 
 ## 0 速览（一屏）
@@ -54,7 +54,7 @@
 
 29. **攻击 / 受击链路排查 + 三批修复（2026-10-27 18:28–19:2x，§4.1ae）**：只读排查 N1–N14 后派四路子代理 —— A 修 1.20.1 骰战吸收/护盾口径（新增 `settleDiceDamage` 唯一出口）、B 把事件牌惩罚伤害从 `setHealth`/无来源伤害改走正常管线（`unreducible_damage` + 触发者归因）、C 给 `dice_damage` 补 `bypasses_cooldown` 并统一 Papara 回血基数、D 只读复核两端法伤链。**Lead 否掉 D 的一条建议**（「forge 双扣吸收须补偿」经查 `setAbsorptionAmount` 已把负值钳 0，补偿反而白送吸收）。双线 `:classes` EXIT 0；**未实机**；待裁决 10 项见审计正本 §7.4。
 
-30. **法伤加成折叠为单次结算（方案 A）+ neo→forge 移植 mapping（2026-10-27 19:3x–20:2x，§4.1af）**：折叠点最终落在**护甲之前**（neo `LivingIncomingDamageEvent` @HIGHEST / forge `LivingHurtEvent` @HIGHEST），加成与本体同管道且只结算一次；乘性因子**仅对本体源自身不吃护甲的情形**（P0 全部 `astral_dice:card_spell` 法伤）与旧实现一致（裸 ×1.0 / 保护IV+抗性II ×0.216 / 保护IV+抗性IV ×0.072），本体源不在 `bypasses_armor` 内时（近战 / 箭矢 / 部分第三方法术类型）加成改为吃护甲 ⇒ 相对旧实现下降（护甲20/韧性8 约 ×0.30），属预期语义变更，第一轮「折在 `LivingDamageEvent`」会让加成放大 4.63×–13.9× 已订正。同批删除 `isApplyingTrueBonus()` 三处闸门（+5 旧口径订正：从未 +10），并产出 `docs/features/neo-to-forge-porting-mapping.md`（后续双线先做 neo、再按 mapping 落 forge）。双线 `:classes` 通过 + javap 类面核对；**未实机、未重出 jar**。
+30. **法伤加成折叠为单次结算（方案 A）+ neo→forge 移植 mapping（2026-10-27 19:3x–20:2x，§4.1af）**：折叠点最终落在**护甲之前**（neo `LivingIncomingDamageEvent` @HIGHEST / forge `LivingHurtEvent` @HIGHEST），加成与本体同管道且只结算一次；乘性因子**仅对本体源自身不吃护甲的情形**（P0 全部 `astral_dice:card_spell` 法伤）与旧实现一致（裸 ×1.0 / 保护IV+抗性II ×0.216 / 保护IV+抗性IV ×0.072），本体源不在 `bypasses_armor` 内时（近战 / 箭矢 / 部分第三方法术类型）加成改为吃护甲 ⇒ 相对旧实现下降（护甲20/韧性8 约 ×0.30），属预期语义变更，第一轮「折在 `LivingDamageEvent`」会让加成放大 4.63×–13.9× 已订正。同批删除 `isApplyingTrueBonus()` 三处闸门（+5 旧口径订正：从未 +10），并产出 `docs/features/neo-to-forge-porting-mapping.md（已删除 2026-11-05）`（后续双线先做 neo、再按 mapping 落 forge）。双线 `:classes` 通过 + javap 类面核对；**未实机、未重出 jar**。
 31. **折叠批三条裁决落地（2026-10-27 20:5x，§4.1ag）**：N14 AOE 命中也算攻击行为（两线副作用块提到 AOE 闸门之前，反击链仍早退）；法伤加成**必须绕过护甲** ⇒ 两线折叠处改调 `foldBonusBypassingArmor(...)`（护甲前二分预补偿，源带 `bypasses_armor` 或护甲 0 时直接相加）⇒ 数值回到与旧 `true_damage` 段一致；连击保留 cooldown。双线 `:classes` EXIT 0，**未实机、未重出 jar**。
 32. **近战链路专项审计（2026-10-27，§4.1ah）**：三路只读子代理交叉取证（F/A/MELEE 三套编号）+ Lead 逐字复核；落地 F1（forge 玩家黄心被写高，根因 `Player#actuallyHurt` 覆写没有 `:1684`）、F2（无骰赐福目标弱印记 ×1.21）、F3（七咒在生物近战丢失）、A3（额外加伤导致受击被动二次）、A4（立牌 +5 与 LOWEST 先后）、A5（幻影残留 tick 末对账）、A6（生物路径漏 +1）、F7（修女被动读护甲前值）、D3（`BaseSignItem#onHurt` amount 口径）。双线 `:classes` EXIT 0，**未实机**。
 
@@ -655,7 +655,7 @@ forge dev named 102,013 B / `e280aeab6c4b37c43468f7cce32a8bf64c70b6bdbcd2203f6c5
 9. **提交**：`59d69ce4`（22 文件 +?）；未 push、无 tag。
 ### 4.2 历史读数
 
-pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（含 4.8 pre.4 全量双线 10 跑 10 PASS、4.11–4.17 pre.5 各批、4.19 Jade 图标留白版）。
+pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md（已删除 2026-11-05）` §4（含 4.8 pre.4 全量双线 10 跑 10 PASS、4.11–4.17 pre.5 各批、4.19 Jade 图标留白版）。
 
 ### 4.1ae 攻击 / 受击链路全面排查 + 三批修复（2026-10-27 18:28–19:2x）—— 双线 `:classes` 通过，**未实机**
 
@@ -674,7 +674,7 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 3. **最终落点（两线）**：neo `neoforge-1.21.1/src/main/java/com/merlinkitsune/astral_dice/event/DamageEffectCardHandler.java:73-74` `@SubscribeEvent(priority = EventPriority.HIGHEST) onLivingIncomingDamagePre(LivingIncomingDamageEvent)`，唯一写值 `:134 event.setAmount(event.getAmount() + (float) bonus)`；forge 同文件 `:66-67 onLivingHurtPre(LivingHurtEvent)` 与 `:122-128` 同一句。音效拆成独立 `onLivingDamageSound`（neo `LivingDamageEvent.Pre` `:157-158` / forge `LivingDamageEvent` `:152-153`），读数**不再** `+ bonus`。`combat/SpellDamageContext` 的事件字段类型随之改（neo `LivingIncomingDamageEvent` / forge `LivingHurtEvent`）。
 4. **连带删除闸门**：`APPLYING_TRUE_BONUS` + `isApplyingTrueBonus()` 与三处消费者（两线 `LinglingSignEvents` 的 +5、`DiceCombatEvents` 的 N7 狂暴反噬）—— 同一击不再有第二次 hurt，闸门失去判据。⚠️ **旧行为订正**：+5 从未变成 +10（那道闸门本就排除嵌套段，折叠前后都是 +5 一次）。
 5. **口径与风险**：乘性因子**仅对本体源自身不吃护甲的情形**（`astral_dice:card_spell`）与旧实现一致（×1.0 / ×0.216 / ×0.072）；本体源不在 `bypasses_armor` 内时加成改为吃护甲，属预期语义变更（详见 §5 第 19 条），真正修掉的是「吸收钳制、固定点数减伤、按次触发的受击被动、跳字与音效、第三方多次判定」各算两次。骰战覆盖不可达：法伤 `getDirectEntity() == null` 在 `forge-1.20.1/src/main/java/com/merlinkitsune/astral_dice/combat/DiceCombatEvents.java:552` 早退，另有 `:576` 近战闸门。
-6. **mapping 文档**：`docs/features/neo-to-forge-porting-mapping.md`（602 行 / 62,765 B；14 节 + 附录 A/B，36 张表、每节末「对齐检查清单」，陷阱 T-01…T-18、未验证 U-01…U-10）。三条头号差异：forge 改伤害金额只能在 `settleDiceDamage` 出口（`LivingHurtEvent` 段的钳制会被随后 `setAmount(终值)` 整段丢掉）；neo `MobEffectEvent.Expired` 可取消而 forge 不可；`ItemStack#consume` / `isSameItemSameComponents` / `DeferredHolder` 在 forge 都不存在。
+6. **mapping 文档**：`docs/features/neo-to-forge-porting-mapping.md（已删除 2026-11-05）`（602 行 / 62,765 B；14 节 + 附录 A/B，36 张表、每节末「对齐检查清单」，陷阱 T-01…T-18、未验证 U-01…U-10）。三条头号差异：forge 改伤害金额只能在 `settleDiceDamage` 出口（`LivingHurtEvent` 段的钳制会被随后 `setAmount(终值)` 整段丢掉）；neo `MobEffectEvent.Expired` 可取消而 forge 不可；`ItemStack#consume` / `isSameItemSameComponents` / `DeferredHolder` 在 forge 都不存在。
 7. **判据**：双线 `:classes` `BUILD SUCCESSFUL`（8 tasks up-to-date）；javap 实测两线 `DamageEffectCardHandler` 类面只剩 `LIVING_PAGE_BIG_HIT_THRESHOLD` + `onLivingIncomingDamagePre`(neo)/`onLivingHurtPre`(forge) + `onLivingDamageSound`，`setAmount` 各 1 处 / `hurt` 0 处 / `trueDamage` 0 处；`isApplyingTrueBonus` 在 P0 两线只剩注释（P1 两线仍是活代码）；两线 16 个改动文件均 CRLF。**未实机、未重出 jar、四目标未投放**。
 
 ### 4.1ag 折叠批三条裁决落地：AOE 计攻击行为 + 加成绕过护甲 + 连击保留 cooldown（2026-10-27 20:5x）—— 双线 `:classes` 通过，**未实机**
@@ -700,7 +700,7 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
    - **F7** 两线骰战落地量 > 10 且 `getAlanaPassiveBonus > 0` ⇒ `AlanaSignItem.clearBonus`（`event/NewSignEvents` 的原判据保留给非骰战）。
    - **D3** 两线 `item/sign/BaseSignItem.java` 的 `onHurt` javadoc 增「amount 口径」段：两线数值口径不同（forge 护甲/药水/吸收后、neo 护甲前），只用于开关判定，**禁止**数值计算。
 3. **其它小修**：forge `item/sign/PaparaSignItem.java` 的受击回血从 `LivingDamageEvent` 处理器改为 `settleBiteHeal(LivingDamageEvent)`，由 `event/ChipDamageHandler.java` 的 finally（`compensateAbsorption` 之后）显式调用 ⇒ 顺序确定；forge `combat/PlayerHostilityTrackerEvents` 删掉重复的 `if (event.isCanceled()) return;`。
-4. **端口化文档**：`docs/features/neo-to-forge-porting-mapping.md` 订正 5 处过期口径 —— §1.1 法伤行（两次 hurt → 折叠成单次、折叠点行号）、§1.2 「forge 吸收被扣两次」（标 REFUTED，改为幻影 H 复盘）、§1.3（标为历史）、§12 T-04、§13 U-09。
+4. **端口化文档**：`docs/features/neo-to-forge-porting-mapping.md（已删除 2026-11-05）` 订正 5 处过期口径 —— §1.1 法伤行（两次 hurt → 折叠成单次、折叠点行号）、§1.2 「forge 吸收被扣两次」（标 REFUTED，改为幻影 H 复盘）、§1.3（标为历史）、§12 T-04、§13 U-09。
 5. **登记不改**：Papara 主动汲取回血仍用 `finalDmg`（lang 规格是「骰神赐福最终伤害的一半」）；F8（mob→player 不判敌对）、MELEE-06（+5 不限近战）、MELEE-07（熊猫人反击无 per-swing 去重）、F5 显示侧（`DamageNumberAggregator` 读中间值）均登记。 ⛔ 2026-10-27 21:5x 用户裁决已推翻其中 F8 / MELEE-06 / MELEE-07 三项，见 §4.1ai。
 6. **判据**：`gradlew.bat :neoforge-1.21.1:classes :forge-1.20.1:classes` ⇒ EXIT 0（nex 4 / forge 89 条既有 deprecation 警告）；**未实机、未重出 jar**。建议实机验证：F1 读黄心终态、F2 无骰×1.21、A4 气囊归零后是否仍 +5。
 
@@ -1094,7 +1094,7 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 | 项 | 路径 | 状态 |
 |---|---|---|
 | Linux 规则正本 | `docs/agent/AGENTS-dsh-linux.md` | 373 行，LF；根 `AGENTS.md` 分派表已补 Linux 行 |
-| 交接与迁移清单 | `docs/handover-2026-10-31-linux-vm-adoption.md` | 本批专文：hgfs 实测代价、交付物、缺口、**迁移 8 步 checklist**、VM 绝对路径快照 |
+| 交接与迁移清单 | `docs/handover-2026-10-31-linux-vm-adoption.md（已删除 2026-11-05）` | 本批专文：hgfs 实测代价、交付物、缺口、**迁移 8 步 checklist**、VM 绝对路径快照 |
 | 新会话入口 | `docs/handover-new-session-context.md` | 重写为 Linux/VM 口径（原文件是 Windows 口径） |
 | bash 启动脚本 | `run/start-{1.21.1,1.20.1,26.1.2}.sh` | 191/191/210 行、777；`gitignored`；`/proc` 精确匹配回收，无裸 `pkill` |
 | Linux 测试台 | `scripts/test/linux/{env,launch,stop}.sh` + `README.md` | bash、零 pwsh；`launch.sh` 以 AutoJS health+status 为就绪判据 |
@@ -1111,13 +1111,13 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 7. Windows 测试台结论：`scripts/test/mt.ps1`（19,384 行）在 Linux 只能跑「参数/闸门/退出码/纯文件检查/AutoJS HTTP 客户端」子集，`user32.dll` P/Invoke、`taskkill`、`Get-CimInstance`、`cmd.exe /c gradlew.bat`、GBK 控制台、`D:` 盘路径全部不可移植 ⇒ Linux 侧改用 `scripts/test/linux/*.sh`，不调用任何 `.ps1`。
 8. 本机出网：Maven Central 对本出口 IP 返回 403 ⇒ `~/.gradle/init.d/00-aliyun-central-mirror.gradle` 在仓库创建瞬间把 Central URL 改写为 aliyun（不改仓库文件）；neoforged 仓库曾 TLS 被切断，曾用 `~/.mc-mirror` + `10-neoforged-offline-mirror.gradle` 绕过，后已恢复直连并停用该 init（改名 `.disabled` 保留）。
 
-**仓库外产物**（迁移需重建，详见 `docs/handover-2026-10-31-linux-vm-adoption.md` §3/§6）：Gradle init 脚本、`~/.mc-mirror`、mavenLocal 四件 starengine 制品、DSH `~/.dsh/profiles/web/cordis.patch.yml` 的 `mcp-computer-use`/`mcp-autojs` 两条目、`~/.dsh/skills/autojs/SKILL.md`、可选 pwsh。
+**仓库外产物**（迁移需重建，详见 `docs/handover-2026-10-31-linux-vm-adoption.md（已删除 2026-11-05）` §3/§6）：Gradle init 脚本、`~/.mc-mirror`、mavenLocal 四件 starengine 制品、DSH `~/.dsh/profiles/web/cordis.patch.yml` 的 `mcp-computer-use`/`mcp-autojs` 两条目、`~/.dsh/skills/autojs/SKILL.md`、可选 pwsh。
 
-**工作树（未提交）**：` M AGENTS.md`、3 个 ` M forge-1.20.1/.../lang/*.json`、`?? docs/agent/AGENTS-dsh-linux.md`、`?? docs/handover-2026-10-31-linux-vm-adoption.md`、`?? scripts/test/linux/*`；用户既有 4 个未跟踪文件未改动。`run/` 整体在 `.gitignore:61`，启动脚本不入库。
+**工作树（未提交）**：` M AGENTS.md`、3 个 ` M forge-1.20.1/.../lang/*.json`、`?? docs/agent/AGENTS-dsh-linux.md`、`?? docs/handover-2026-10-31-linux-vm-adoption.md（已删除 2026-11-05）`、`?? scripts/test/linux/*`；用户既有 4 个未跟踪文件未改动。`run/` 整体在 `.gitignore:61`，启动脚本不入库。
 
 **遗留（§5 同步登记）**：fabric dev 启动（Sodium/LWJGL）、26.1.2 KubeJS 类加载、本机 Maven Central 403、`scripts/test/mt.conf` 仍含 Windows 历史路径、VM→真实 Linux 迁移未执行、本批未提交。
 
-**事实源**：hgfs 实测数据（`dd` 932 MB/s vs 2.7 GB/s、500 小文件 0.39s vs <0.01s、`ln -s` `Operation not supported`、硬链接 `EPERM ... link`）、三线启动截图与 `latest.log`、`python3 -B docs/agent/verify-split.py` 全 [OK] 等细节都在 `docs/handover-2026-10-31-linux-vm-adoption.md`，本条目只记结论与指针。
+**事实源**：hgfs 实测数据（`dd` 932 MB/s vs 2.7 GB/s、500 小文件 0.39s vs <0.01s、`ln -s` `Operation not supported`、硬链接 `EPERM ... link`）、三线启动截图与 `latest.log`、`python3 -B docs/agent/verify-split.py` 全 [OK] 等细节都在 `docs/handover-2026-10-31-linux-vm-adoption.md（已删除 2026-11-05）`，本条目只记结论与指针。
 
 ### 4.1ax 本机盘工作副本与 rsync 通道（2026-10-31 13:2x）
 
@@ -1175,7 +1175,7 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 | 11 | `docs/handover-1.5.0-main.md` | 文档 | §4.1aw / §4.1ax / §4.1ay + §5-Major 23~28（本轮再补 §0 快照与本节） |
 | 12 | `docs/handover-new-session-context.md` | 文档 | 整份重写为 Linux 期口径（196 行；§5 已含当次工作树全清单） |
 | 13 | `docs/agent/AGENTS-dsh-linux.md`（新） | 文档 | Linux 规则正本 376 行 / 56,608 B，LF |
-| 14 | `docs/handover-2026-10-31-linux-vm-adoption.md`（新） | 文档 | 205 行 / 16,320 B：hgfs 实测代价 + 8 步迁移 checklist |
+| 14 | `docs/handover-2026-10-31-linux-vm-adoption.md（已删除 2026-11-05）`（新） | 文档 | 205 行 / 16,320 B：hgfs 实测代价 + 8 步迁移 checklist |
 | 15 | `docs/handover-2026-10-31-local-disk-workspace.md`（新） | 文档 | 153 行 / 13,919 B：4 副本布局 + worktree 指针修复 + rsync 纪律 |
 | 16 | `scripts/dev/rsync-original.sh`（新） | 脚本 | 81 行：`pull` / `push` / `diff`，默认 dry-run |
 | 17–19 | `scripts/test/linux/{env,launch,stop}.sh`（新） | 脚本 | 345 / 459 / 222 行，bash 测试台三件套 |
@@ -1286,8 +1286,8 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 22. **第 4 批（绿宝石骰子 1:1）双线实机 PASS + 1.20.1 旧三批补验 PASS（2026-10-29 17:2x–17:4x，§4.1as）**：~~工作树 40 M + 8 ??~~ → **已提交 `463552b7`（43 files / +974 / −194，含 5 个新 java）+ `37f97dcf`（四线 bump `1.5.0-rc.6`），**已随 rc.6 push（`3e9f1f9f`，CI #128 SUCCESS，§4.1at）**；工作树只剩 3 ??（用户素材 / 探针 / `zz_screen_probe.py`）。**仍欠**：① 卡牌硬下限未做（原版声望 / 英雄之息折扣可把实付压到 5 以下）；② P1 两线（26.1.2 / fabric）仍保留 0.8 折扣与旧 lang，解冻后需同步；③ 探针 `star` 通道两处缺陷未修（本轮星币 / 1:1 判据走 AutoJS eval）；④ ~~两份 `CHANGELOG` 与 `release/1.5.0-rc.6/` 玩家说明尚未写~~ → **已完成（`3e9f1f9f`，§4.1at）**。
 
 23. **Linux（VM）适配批遗留（2026-10-31，§4.1aw）**：①`fabric-1.20.1` dev 启动失败 —— Sodium `EarlyDriverScanner` 要 LWJGL 3.3.1，Loom dev runtime 给 3.3.2-snapshot（与 Linux 无关，P1）；②`neoforge-26.1.2` 能到标题屏但停在 `KubeJSErrorScreen`，`astral_wallet_vision.js#38` 报 `Failed to load Java class 'com.merlinkitsune.starenginelib.economy.StarCoinWalletState'`，而 starengine jar 内确有该类 ⇒ KubeJS Rhino 看不到 jarJar/嵌套 jar（P1）；③本机 Maven Central 对本出口 IP 403，靠 `~/.gradle/init.d/00-aliyun-central-mirror.gradle` 在仓库创建瞬间改写 URL 绕过，换机需重测；④`scripts/test/mt.conf` 仍含 Windows 历史路径（Linux 脚本只读取少量键，`env.sh` 报 WARN 不阻断）。
-24. **VM → 真实 Linux 迁移未执行（2026-10-31 用户 m00876 明确方向）**：当前仓库在 VMware hgfs 上，实测写 64 MiB 932 MB/s（本机盘 2.7 GB/s）、建 500 小文件 0.39 s（<0.01 s）、`ln -s` 报 `Operation not supported`、硬链接 `EPERM`；迁移目的即消除这些限制。8 步迁移清单（拷贝含被忽略的 `run/`、工具链、starengine 发布、三线构建、测试台自检、DSH MCP 重建、8 条复验、迁移后清理）见 `docs/handover-2026-10-31-linux-vm-adoption.md` §6。
-25. **Linux 适配批改动全部未提交（2026-10-31，用户未放行 commit）**：` M AGENTS.md`、3 个 ` M forge-1.20.1/.../lang/*.json`、`?? docs/agent/AGENTS-dsh-linux.md`、`?? docs/handover-2026-10-31-linux-vm-adoption.md`、`?? scripts/test/linux/*`（详见 §4.1aw 工作树清单与 `docs/handover-new-session-context.md` §5）。用户既有 4 个未跟踪文件未改动。
+24. **VM → 真实 Linux 迁移未执行（2026-10-31 用户 m00876 明确方向）**：当前仓库在 VMware hgfs 上，实测写 64 MiB 932 MB/s（本机盘 2.7 GB/s）、建 500 小文件 0.39 s（<0.01 s）、`ln -s` 报 `Operation not supported`、硬链接 `EPERM`；迁移目的即消除这些限制。8 步迁移清单（拷贝含被忽略的 `run/`、工具链、starengine 发布、三线构建、测试台自检、DSH MCP 重建、8 条复验、迁移后清理）见 `docs/handover-2026-10-31-linux-vm-adoption.md（已删除 2026-11-05）` §6。
+25. **Linux 适配批改动全部未提交（2026-10-31，用户未放行 commit）**：` M AGENTS.md`、3 个 ` M forge-1.20.1/.../lang/*.json`、`?? docs/agent/AGENTS-dsh-linux.md`、`?? docs/handover-2026-10-31-linux-vm-adoption.md（已删除 2026-11-05）`、`?? scripts/test/linux/*`（详见 §4.1aw 工作树清单与 `docs/handover-new-session-context.md` §5）。用户既有 4 个未跟踪文件未改动。
 26. **Windows 测试台在 Linux 的处置口径（2026-10-31，§4.1aw-7）**：`scripts/test/mt.ps1`（851 行）+ 19 个模块共 19,384 行 PowerShell **全部保留但不调用**（`user32.dll` P/Invoke、`taskkill`、`Get-CimInstance`、`cmd.exe /c gradlew.bat`、GBK 控制台、`D:` 盘路径不可移植）；Linux 侧以 `scripts/test/linux/{env,launch,stop}.sh` 为准。未复刻：进程防撞锁、测试前世界清场、OP/禁 AI 闸门、`mt_inject`（PostMessage 键鼠）、`mt_ime`、`mt_capture`；替代通道 = AutoJS `eval_js`（游戏内）+ computer-use MCP（GUI 级）。
 
 27. **本机盘工作副本仍待提交（2026-10-31 13:2x，§4.1ax）**：4 个副本已复制到 `~/Project/`（ext4）并修好 worktree 指针与 autocrlf；相关文档/脚本**未 commit**。与 hgfs 原始镜像的 `rsync push` **已执行**（9 项，sha256 抽查 MATCH；复跑 dry-run 幂等）。再次整体复制到其它机器时，§4.1ax 的 4 个 worktree 指针文件需重做修复。
@@ -1300,7 +1300,7 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 
 ### Minor
 
-1. `docs/handover-2026-10-24-member-detective.md` 等 Kimi 批次文档已入库，措辞按 2026-10-24 事实；后续改动若改变其中数字需回填。
+1. `docs/handover-2026-10-24-member-detective.md（已删除 2026-11-05）` 等 Kimi 批次文档已入库，措辞按 2026-10-24 事实；后续改动若改变其中数字需回填。
 2. 仓库根 `undefined/temp/`（2026-10-23 历史临时脚本残留，被 `temp/` 规则忽略）未清理。
 3. `misaki_sign.json` 是手改的（与 datagen 是否逐字节一致未验）；下次 `runData` 后须 diff。
 4. **子代理模型口径已收紧为「唯一」**（2026-10-22 用户裁决）：一律 `provider: "deepseek-official"` + `model: "deepseek-flash"`（DeepSeek-V4.1-Flash），不得换更强 / 其它 provider 的 model；原「确需深推理才换更强 model」「其它模型仅作备用」两种口径**作废**；`list_subagent_models` 只核注册表、不换模型；该路由失效 ⇒ 停下报用户。同步文件 4 个：`docs/agent/AGENTS-dsh.md`（§A 第 6 条 / §B ③ / 红线区第 7 条⑧）、`docs/agent/AGENTS-full.md`（红线区第 7 条⑧同文 + 子项目修改默认规则实施分工 + 第 3 节纪律第 6 条）、`docs/agent/delegation-runbook.md`（§2 派活）、`docs/agent/AGENTS-kimi.md`（§0 第 2 条，使用 Kimi 路由 `DeepSeek/deepseek-flash`）。
@@ -1322,7 +1322,7 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 
 14. **`1.5.0-rc.2` 版本已落盘（2026-10-25，§4.1o）**：四线 `mod_version = 1.5.0-rc.2+<后缀>`、`release/1.5.0-rc.2/` 三份玩家更新日志（版本串已换，内容 = rc.1 + 调酒师治疗按张数 + 【交际花】）、`README*.md` 版本列同步；P0 两线已重建并投放四目标（§2 产物现状）。**已 push（`13a45619`）**，CI 自动建 tag `1.5.0-rc.2` 并从 `release/1.5.0-rc.2/` 取正文发布 prerelease（实测页面 200，两个 P0 jar 均在附件里）。**实机未覆盖项见 §4.1o 末行**（真实按键施放 / 死亡重登 / 窗口内反复进出）。
 
-15. **`tools/curseforge-description.md` 已删除（2026-10-25，用户裁决）**：CF 项目说明已由用户**手动粘贴**到作者后台（`https://authors.curseforge.com/#/projects/1662159/description`），仓库内草稿（含本轮中英两版全文 + 一句话 Summary）随之删除，避免与线上正文双份漂移。**CF 的 Description 字段至今无法经 API 修改**（`.curseforge/token` 只是 legacy upload token，Core API 也没有该端点，见 `AGENTS-full.md:2294`），今后要改说明一律在 CF 作者后台直接改，仓库不再留副本。历史文档里对 `tools/curseforge-description.md` 的引用（`docs/AGENT-HANDOFF.md:106` / `:593` / `:617`、`docs/agent/AGENTS-full.md:4034`、`docs/prerelease-check-1.3.7-hotfix.md:48` / `:84`、`docs/handover-1.5.0-pre.5-main.md:654`）一律读作**历史记录**，文件本身已不存在。
+15. **`tools/curseforge-description.md` 已删除（2026-10-25，用户裁决）**：CF 项目说明已由用户**手动粘贴**到作者后台（`https://authors.curseforge.com/#/projects/1662159/description`），仓库内草稿（含本轮中英两版全文 + 一句话 Summary）随之删除，避免与线上正文双份漂移。**CF 的 Description 字段至今无法经 API 修改**（`.curseforge/token` 只是 legacy upload token，Core API 也没有该端点，见 `AGENTS-full.md:2294`），今后要改说明一律在 CF 作者后台直接改，仓库不再留副本。历史文档里对 `tools/curseforge-description.md` 的引用（`docs/AGENT-HANDOFF.md（已删除 2026-11-05）:106` / `:593` / `:617`、`docs/agent/AGENTS-full.md:4034`、`docs/prerelease-check-1.3.7-hotfix.md（已删除 2026-11-05）:48` / `:84`、`docs/handover-1.5.0-pre.5-main.md（已删除 2026-11-05）:654`）一律读作**历史记录**，文件本身已不存在。
 
 17. **攻击 / 受击链路排查与三批修复已落盘（2026-10-27，§4.1ae）**：审计正本 `docs/features/attack-damage-chain-audit.md`（N1–N26）+ 法伤链独立复核 `docs/features/spell-damage-chain-verification.md`；批次 A/B/C 已改两线源码并双线编译通过，批次 E（惩罚伤害不得触发受击被动）在跑。**仍欠**：① 全部改动**未实机**（D 的 C1–C8 判据依赖尚未实现的探针）；② 待裁决 N11 / N14 / N15 / N16 / N18 / N19 / N20 / N22 / N23 / N24；③ N25 = P1 两线 `bypasses_cooldown.json` 仍缺 `dice_damage`（四线一致性欠账，P1 不碰）；④ 批次 A 的已知限制：`settleDiceDamage` 之后再被 LOWEST（气囊归零 / 磨刀石 −N）改金额时，平台 `:1684` 的扣减量会与写入值不等（方向是「少消耗吸收」，绝不双扣，1.20.1 无 `LivingDamageEvent.Post` 无法补偿）。
 
@@ -1361,7 +1361,7 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md` §4（�
 16. **1.20.1 的 AutoJS 是 `run\1.20.1\mods\AutoJS-forge-1.20.1-1.0.0-dev.jar`（named）**：`MT_ENV_AUTOJS: 跳过 — 1.20.1 线未接入` 只表示**不再自动投放**，运行时照样有端点；判据看启动日志 `MT_LAUNCH: OK — AutoJS 端点已就绪`。
 17. **`run/<线>/mods` 里的 astral_dice jar 会遮蔽 dev classes ⇒ datagen 静默不产出**（2026-10-25 实测）：`runData` 日志里 `Item Models: astral_dice finished` 与 `HashCache new count ... written: 0/1` 都正常，但新 `basicItem(...)` 对应的 `src/generated/.../models/item/xxx.json` **不存在**。根因：`run/1.21.1/mods/astral_dice-1.5.0-pre.6+neoforge_1.21.1.jar` 与 `neoforge-1.21.1/build/classes/java/main` 都声明 modid `astral_dice`，`UniqueModListBuilder` 选的是 **jar**（日志 `Selected file astral_dice-...jar for modid astral_dice`）⇒ 跑的是旧 jar 里的旧 `ModItemModelProvider`。修法：先把 `run/<线>/mods/astral_dice-*.jar` 移出（本轮移到 `temp/mods-bak-datagen/`），跑 `--rerun-tasks :<线>:runData`，再把 jar 拷回。
 18. **`run_code` 自带 120s 程序级 deadline，`tools.pwsh` 的 `timeoutMs` 覆盖不到它** ⇒ 长任务（两线 `runData`、双线 `build`）必须同时给 `run_code` 的 `timeoutMs`，否则进程在中途被杀、日志看似「跑完了」。另：**bundled python 在本会话无法写文件**（PIL `im.save()` 对 `temp/` 与 `src/main/resources/` 均 `PermissionError: [Errno 13]`）⇒ 生成 png/二进制一律用 node（`fs` + `zlib` 手写 PNG 编码器），不要走 python 写盘。
-13. pre.5 及更早的 32 条坑见 `docs/handover-1.5.0-pre.5-main.md` §6。
+13. pre.5 及更早的 32 条坑见 `docs/handover-1.5.0-pre.5-main.md（已删除 2026-11-05）` §6。
 
 19. **`mt_env` 的 modernfix 钉子会因整合包升版而 BLOCKED（2026-10-25 实测）**：`scripts/test/mt_env.ps1:48` 的 `$script:NeoForgeMods` 写死 `*modernfix-neoforge*5.27.26*.jar`（Target `modernfix-neoforge-5.27.26+mc1.21.1.jar`），而整合包已升到 **5.27.27** ⇒ `--phase env` 直接 `MT_MODS: BLOCKED — 整合包缺少 *modernfix-neoforge*5.27.26*.jar`（EXIT **11**），整条 env 中断（Sodium/Iris/KubeJS 都还没走到）。本轮绕过：跳过 env 直接 `--phase launch`（`run/1.21.1/mods` 已有完整 14 jar 且库为 1.1.0）。**修法待裁决**：把钉子与 Target 同步到 5.27.27，或改成不带补丁号的宽匹配（`*modernfix-neoforge*5.27.*.jar`）。
 
@@ -1495,4 +1495,4 @@ bash scripts/dev/rsync-original.sh push --apply      # 先 git commit
 ## 8 迁移到此为止的边界
 
 - 本批只做「在 Linux（VM）上把开发/构建/测试链路跑通并交接」；**没有**做真实机迁移、没有改源码逻辑（除 1.20.1 三条 lang 补键）、没有 commit。
-- 下一步按用户 m00876：迁移到真实 Linux，步骤见 `docs/handover-2026-10-31-linux-vm-adoption.md` §6；迁移完成后再按 §4.1aw 遗留清单收欠账。
+- 下一步按用户 m00876：迁移到真实 Linux，步骤见 `docs/handover-2026-10-31-linux-vm-adoption.md（已删除 2026-11-05）` §6；迁移完成后再按 §4.1aw 遗留清单收欠账。
