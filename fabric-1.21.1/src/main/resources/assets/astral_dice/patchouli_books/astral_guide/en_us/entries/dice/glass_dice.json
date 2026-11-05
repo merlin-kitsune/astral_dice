@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.glass_dice",
+  "category": "astral_dice:dice",
+  "icon": "astral_dice:glass_dice",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:glass_dice",
+      "text": "astral_dice.guide.entry.glass_dice.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:glass_dice"
+    }
+  ],
+  "sortnum": 2
+}

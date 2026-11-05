@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.blank_chip",
+  "category": "astral_dice:materials",
+  "icon": "astral_dice:blank_chip",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:blank_chip",
+      "text": "astral_dice.guide.entry.blank_chip.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:blank_chip_duplicate"
+    }
+  ],
+  "sortnum": 5
+}

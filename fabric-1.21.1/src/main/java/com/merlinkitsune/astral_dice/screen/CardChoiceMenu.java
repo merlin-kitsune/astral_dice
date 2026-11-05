@@ -1,0 +1,300 @@
+package com.merlinkitsune.astral_dice.screen;
+
+import com.merlinkitsune.astral_dice.choice.CardChoiceManager;
+import com.merlinkitsune.astral_dice.choice.CardChoiceType;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.SimpleContainer;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.ItemStack;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * 「选卡界面」菜单（用户裁决 2026-10-17；蓝本 = {@code shop/CardShopMenu} 的 ShelfSlot 形态）。
+ *
+ * <p><b>布局</b>（屏幕层自持 176x200，菜单层只给槽位坐标）：
+ * <ul>
+ *   <li>N 个虚拟卡槽（N = 1 或 3）：{@link #HIDDEN_X}/{@link #HIDDEN_Y} 后备容器，屏幕层自绘卡框，
+ *       每格至多 1 张；{@code mayPlace} 按 {@link CardChoiceType} 过滤；</li>
+ *   <li>玩家物品栏 36 格 9x4：坐标与商店同源（{@code shop_item_inventory.png} 的内格，图内偏移 +3,+3），
+ *       由原版渲染物品。</li>
+ * </ul>
+ *
+ * <p><b>移动规则</b>：{@link #quickMoveStack} 双向（物品栏卡牌 → 第一个可放置的空卡槽；
+ * 卡槽 → 物品栏）。屏幕层把「双击」翻译成原版 {@code ClickType.QUICK_MOVE}，
+ * 因此本方法同时承担双击与 Shift+点击两条入口。
+ * <p><b>数量口径</b>（spec §9-1「双击一次 → 卡槽出现 1 张」）：物品栏 → 卡槽方向**一次只搬 1 张**；
+ * 卡槽每格上限 1 张，重复双击/Shift+点击才会继续填下一格。
+ *
+ * <p><b>权威性</b>：卡牌由 {@code quickMoveStack}/原版点击**真实移入**本菜单的后备容器（服务端持有），
+ * 确认时只对容器内的栈逐张消耗 1 张，余量随 {@link #removed} 退回物品栏 ⇒ 客户端无法凭空造牌。
+ */
+public class CardChoiceMenu extends AbstractContainerMenu {
+
+    /** 隐藏坐标（屏幕层自绘；与商店 ShelfSlot 同口径）。 */
+    public static final int HIDDEN_X = -10000;
+    public static final int HIDDEN_Y = -10000;
+
+    /** 物品栏第一格（主物品栏第 1 行第 1 列）= shop_item_inventory.png 内格起点（图 @ (5,116) + (3,3)）。 */
+    public static final int INVENTORY_X = 8;
+    public static final int INVENTORY_Y = 119;
+    /** 快捷栏 y（图内 +61：三行主物品栏与快捷栏之间留 6px）。 */
+    public static final int INVENTORY_HOTBAR_Y = 177;
+
+    private final Inventory playerInventory;
+    private final SimpleContainer cardContainer;
+    private final int token;
+    private final int slotCount;
+    private final CardChoiceType type;
+    /** 已确认：removed 时只退余量、不触发会话作废。 */
+    private boolean confirmed;
+    private boolean closed;
+
+    /** 服务端构造（{@code ServerPlayer#openMenu} 的工厂）。 */
+    public CardChoiceMenu(int containerId, Inventory playerInventory, int token, int slotCount, CardChoiceType type) {
+        super(ModMenuTypes.CARD_CHOICE.get(), containerId);
+        this.playerInventory = playerInventory;
+        this.token = token;
+        this.slotCount = Math.max(CardChoiceManager.MIN_SLOTS, Math.min(CardChoiceManager.MAX_SLOTS, slotCount));
+        this.type = type == null ? CardChoiceType.ANY : type;
+        this.cardContainer = new SimpleContainer(this.slotCount);
+        initSlots();
+    }
+
+    /** 客户端构造（1.21.1：开屏数据经 {@link OpenData} 的 StreamCodec 传输，替代 1.20.1 手写 varint 读法）。 */
+    public CardChoiceMenu(int containerId, Inventory playerInventory, OpenData data) {
+        this(containerId, playerInventory, data.token(), data.slotCount(), data.type());
+    }
+
+    /**
+     * 开屏数据（1.21.1 口径）。
+     *
+     * <p>1.20.1 线靠 {@code ExtendedScreenHandlerFactory#writeScreenOpeningData(ServerPlayer, FriendlyByteBuf)}
+     * 手写三个 varint；1.21.1 的 fabric-screen-handler-api 改成了「开屏数据对象 + 注册在菜单类型上的
+     * {@code StreamCodec}」：服务端 {@code getScreenOpeningData(ServerPlayer)} 产出本记录，由 fabric 按
+     * 菜单类型 id 反查 codec 编码进 {@code fabric-screen-handler-api-v1:open_screen} 包，客户端解码后交给
+     * {@code CardChoiceMenu(int, Inventory, OpenData)}。
+     *
+     * <p>字段与 1.20.1 的线序一致（token → slotCount → type.ordinal()）；{@code type} 线上按
+     * {@code CardChoiceType} 的枚举序号传输（与服务端构造同源枚举，不存在越界值；槽数与会话<br>
+     * 校验仍在服务端做）。
+     */
+    public record OpenData(int token, int slotCount, CardChoiceType type) {
+        /**
+         * 线序 token → slotCount → type.ordinal()（与 1.20.1 手写 varint 的写出顺序一致）。
+         *
+         * <p>⚠️ 三段必须走 <b>显式类型参数</b> {@code <RegistryFriendlyByteBuf, OpenData, Integer, Integer, Integer>}：
+         * 第三个函数 {@code data -> data.type().ordinal()} 返回 {@code int}，若让编译器从
+         * {@code OpenData::new} 反推 T3，会把 T3 推成 {@code CardChoiceType}（record 第三字段的类型），
+         * 于是报「Integer 无法转换为 CardChoiceType」。线序是 int ⇒ T3 必须钉成 Integer，
+         * 再由码内 {@link CardChoiceType#byId(int)}（越界回落 ANY）还原枚举。
+         */
+        public static final StreamCodec<RegistryFriendlyByteBuf, OpenData> STREAM_CODEC =
+                StreamCodec.<RegistryFriendlyByteBuf, OpenData, Integer, Integer, Integer>composite(
+                        ByteBufCodecs.VAR_INT, OpenData::token,
+                        ByteBufCodecs.VAR_INT, OpenData::slotCount,
+                        ByteBufCodecs.VAR_INT, data -> data.type().ordinal(),
+                        (token, slotCount, typeOrdinal) ->
+                                new OpenData(token, slotCount, CardChoiceType.byId(typeOrdinal)));
+    }
+
+    private void initSlots() {
+        for (int i = 0; i < slotCount; i++) {
+            addSlot(new ChoiceCardSlot(cardContainer, i, this.type, HIDDEN_X, HIDDEN_Y));
+        }
+        for (int row = 0; row < 4; row++) {
+            for (int col = 0; col < 9; col++) {
+                int x = INVENTORY_X + col * 18;
+                int y = row == 3 ? INVENTORY_HOTBAR_Y : INVENTORY_Y + row * 18;
+                int index = row == 3 ? col : 9 + row * 9 + col;
+                addSlot(new Slot(playerInventory, index, x, y));
+            }
+        }
+    }
+
+    public int token() {
+        return token;
+    }
+
+    public int slotCount() {
+        return slotCount;
+    }
+
+    public CardChoiceType type() {
+        return type;
+    }
+
+    /** 已放满（确认按钮的唯一显示/响应判据）。 */
+    public boolean isComplete() {
+        return filledSlots() == slotCount;
+    }
+
+    public int filledSlots() {
+        int filled = 0;
+        for (int i = 0; i < slotCount; i++) {
+            ItemStack stack = cardContainer.getItem(i);
+            if (!stack.isEmpty() && type.matches(stack)) {
+                filled++;
+            }
+        }
+        return filled;
+    }
+
+    /**
+     * 服务端确认：校验后逐张消耗 1 张（1.20.1 = 带创造守卫的 {@code ItemStack#shrink(1)}；1.21.1 用 {@code consume(1, player)}）。
+     * 两线口径一致：创造模式（instabuild）不扣卡，生存模式仍扣。
+     */
+    public List<ItemStack> consumeSelection(Player player) {
+        // 先整体校验，再动任何一张（避免「消耗到一半发现不合法」）
+        for (int i = 0; i < slotCount; i++) {
+            ItemStack stack = cardContainer.getItem(i);
+            if (stack.isEmpty() || !type.matches(stack)) {
+                return List.of();
+            }
+        }
+        List<ItemStack> picked = new ArrayList<>(slotCount);
+        for (int i = 0; i < slotCount; i++) {
+            ItemStack stack = cardContainer.getItem(i);
+            ItemStack one = stack.copyWithCount(1);
+            // 创造模式不扣卡（对齐 1.21.1 的 consume(1, player)）
+            if (!player.isCreative()) stack.shrink(1);
+            cardContainer.setItem(i, stack.isEmpty() ? ItemStack.EMPTY : stack);
+            picked.add(one);
+        }
+        this.confirmed = true;
+        return picked;
+    }
+
+    @Override
+    public ItemStack quickMoveStack(Player player, int index) {
+        if (index < 0 || index >= slots.size()) {
+            return ItemStack.EMPTY;
+        }
+        Slot slot = slots.get(index);
+        if (slot == null || !slot.hasItem()) {
+            return ItemStack.EMPTY;
+        }
+        ItemStack stack = slot.getItem();
+        int playerStart = slotCount;
+        int playerEnd = slotCount + 36;
+        if (index >= slotCount) {
+            // 物品栏 → 卡槽（类型不符由 ChoiceCardSlot#mayPlace 拒绝）
+            if (!type.matches(stack)) {
+                return ItemStack.EMPTY;
+            }
+            // spec §9-1「双击一次 → 卡槽出现 1 张」：卡槽每格上限 1 张，若直接把**整栈**交给
+            // {@code moveItemStackTo}，它会按槽位顺序一次填满所有空卡槽（forge 线实测 put_filled=3）⇒
+            // 这里只搬 1 张到第一个可放置的空卡槽，余量留在原槽；重复双击/Shift+点击才会继续填下一格。
+            ItemStack one = stack.copyWithCount(1);
+            if (!moveItemStackTo(one, 0, slotCount, false)) {
+                return ItemStack.EMPTY;
+            }
+            stack.shrink(1);
+            if (stack.isEmpty()) {
+                slot.setByPlayer(ItemStack.EMPTY);
+            } else {
+                slot.setChanged();
+            }
+            // ⚠️ 必须返回 EMPTY，不能返回余量的副本：原版 {@code AbstractContainerMenu#doClick} 的
+            // QUICK_MOVE 分支是「while (返回值非空 && 与原槽物品同类) 再调一次 quickMoveStack」——
+            // 返回 copy 会把余量继续搬进后面的空卡槽，等于回到「一次双击填满」的旧行为。
+            return ItemStack.EMPTY;
+        }
+        // 卡槽 → 物品栏
+        ItemStack copy = stack.copy();
+        if (!moveItemStackTo(stack, playerStart, playerEnd, true)) {
+            return ItemStack.EMPTY;
+        }
+        if (stack.isEmpty()) {
+            slot.setByPlayer(ItemStack.EMPTY);
+        } else {
+            slot.setChanged();
+        }
+        return copy;
+    }
+
+    /** 恒 true：无方块锚点（与卡牌商店同口径），合法性由 token + 菜单实例 + 类型三重校验保证。 */
+    @Override
+    public boolean stillValid(Player player) {
+        return true;
+    }
+
+    @Override
+    public void removed(Player player) {
+        if (!player.level().isClientSide() && !closed) {
+            closed = true;
+            // 死亡 / 已断线一律**直接掉落**（避免写进不会再保存的背包）。
+            // 判据口径（1.21.1 / 1.20.1 一致）：{@code LivingEntity#isAlive()} 覆写为
+            //   {@code !isRemoved() && getHealth() > 0} ⇒ 死亡瞬间（生命已被置 0、实体尚未被 respawn 替换）
+            //   它**就是 false**，所以只看 isAlive() 就够；{@code isDeadOrDying()} 只等价于
+            //   {@code getHealth() <= 0}，被 {@code !isAlive()} 完全覆盖，属于冗余判据，已去掉。
+            boolean dying = !player.isAlive()
+                    || (player instanceof ServerPlayer serverPlayer && serverPlayer.hasDisconnected());
+            // 余量（含「已确认但原栈还有多张」与「未确认的全部选择」）一律退回物品栏
+            for (int i = 0; i < slotCount; i++) {
+                ItemStack stack = cardContainer.getItem(i);
+                if (!stack.isEmpty()) {
+                    // 与 AbstractContainerMenu#removed 同口径：死亡 / 已断线时掉落，避免写进不会再保存的背包
+                    if (dying) {
+                        player.drop(stack, false);
+                    } else {
+                        player.getInventory().placeItemBackInInventory(stack);
+                    }
+                    cardContainer.setItem(i, ItemStack.EMPTY);
+                }
+            }
+            // 光标携带物与卡槽余量同口径：父类 {@code AbstractContainerMenu#removed} 在
+            // {@code player.isAlive() && !hasDisconnected()} 时塞回背包、否则掉落；这里提前按**同一判据**
+            // 处理并清空光标，使两者走完全相同的分支。
+            if (dying) {
+                ItemStack carried = getCarried();
+                if (!carried.isEmpty()) {
+                    player.drop(carried, false);
+                    setCarried(ItemStack.EMPTY);
+                }
+            }
+            if (!confirmed && player instanceof ServerPlayer serverPlayer) {
+                CardChoiceManager.abandon(serverPlayer, token);
+            }
+        }
+        cardContainer.clearContent();
+        super.removed(player);
+    }
+
+    /** 虚拟卡槽：隐藏坐标、单格 1 张、按类型过滤。 */
+    private static final class ChoiceCardSlot extends Slot {
+        private final CardChoiceType type;
+
+        ChoiceCardSlot(SimpleContainer container, int index, CardChoiceType type, int x, int y) {
+            super(container, index, x, y);
+            this.type = type;
+        }
+
+        @Override
+        public boolean mayPlace(ItemStack stack) {
+            return type.matches(stack);
+        }
+
+        /**
+         * ⚠️ 必须为 true：原版在 {@code ClickType.QUICK_MOVE}（双击/Shift+点击）之前会检查
+         * {@code slot.mayPickup(player)}，恒 false 会让「双击取回」静默失效。
+         * 本槽不涉及商店那种「白拿货」风险（槽里就是玩家自己的卡），允许光标直接取回同样合理。
+         */
+        @Override
+        public boolean mayPickup(Player player) {
+            return true;
+        }
+
+        @Override
+        public int getMaxStackSize() {
+            return 1;
+        }
+    }
+}

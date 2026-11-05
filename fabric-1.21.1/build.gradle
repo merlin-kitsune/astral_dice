@@ -1,0 +1,257 @@
+// Astral Dice / Fabric 1.21.1 子项目(第五条线,2026-11-04 起)
+// Java 21 · Mojang 官方映射(officialMojangMappings)· Fabric Loom 1.17.21
+//
+// 蓝本 = neoforge-1.21.1 的 419 个业务文件(原版 API 天然是 1.21.1);
+// 平台层 = 新写 shim,镜像 NeoForge 21.1 的 API 形状,实现参照 fabric-1.20.1。
+// 计划 / 判据 / 冲突处置:docs/features/fabric-1211-port-feasibility-plan.md
+//
+// P1 脚手架阶段:只保证「Jar 能构建 + 依赖能解析」;入口类、mixin 配置、
+// accessWidener、平台层与业务代码按 P2-P4 分批补齐。
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+    id 'fabric-loom' version '1.17.21'
+    id 'idea'
+}
+
+version = mod_version
+group = mod_group_id
+
+base {
+    archivesName = 'astral_dice'
+}
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+sourceSets.main.resources {
+    // 数据生成产物必须进产物 jar(否则物品模型/配方全丢,编译与启动俱无感)
+    srcDir('src/generated/resources')
+    exclude("**/*.bbmodel")
+    exclude("**/.cache")
+    exclude("INSTRUCTIONS.md")
+    exclude("mc-src/**")
+}
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+    maven { url 'https://api.modrinth.com/maven' }
+    maven { url 'https://maven.blamejared.com' }
+    maven { url 'https://maven.ladysnake.org/releases' }
+    exclusiveContent {
+        forRepository { maven { url 'https://api.modrinth.com/maven' } }
+        filter { includeGroup 'maven.modrinth' }
+    }
+}
+
+def libVersion = project.starengine_version
+def libGroup = project.starengine_group
+// 前置库第 5 平台(fabric-1.21.1)尚未发布 => 缺失时只告警,不打断 P1/P2 构建。
+def libJar = new File(System.getProperty('user.home'),
+        ".m2/repository/${libGroup.replace('.', '/')}/starengine-fabric-1.21.1/${libVersion}/starengine-fabric-1.21.1-${libVersion}.jar")
+def libAvailable = libJar.isFile()
+
+dependencies {
+    minecraft "com.mojang:minecraft:${minecraft_version}"
+    mappings loom.officialMojangMappings()
+
+    modImplementation "net.fabricmc:fabric-loader:${loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${fabric_version}"
+
+    // 事件桥硬前置:Fabric 1.21.1 没有可改伤害值的 FAPI 事件,Puzzles Lib 提供 Mutable* 回调。
+    // 它自带 puzzlesaccessapi(内嵌),不含 Forge Config API Port => dev 运行期需一并投放。
+    modImplementation "maven.modrinth:puzzles-lib:${puzzleslib_mr_version}"
+    if (providers.gradleProperty('testPuzzles').getOrElse('true') != 'false') {
+        modRuntimeOnly "maven.modrinth:forge-config-api-port:${forgeconfigapiport_mr_version}"
+    }
+
+    if (libAvailable) {
+        modImplementation "${libGroup}:starengine-fabric-1.21.1:${libVersion}"
+    } else {
+        logger.lifecycle("[fabric-1.21.1] starengine-fabric-1.21.1:${libVersion} 不在 mavenLocal — 已跳过依赖(P8 之前业务代码无法编译,属预期)")
+    }
+
+    // 饰品后端:2026-11-05 用户裁决 —— 只做 Trinkets;Accessories / ACL 不进依赖。
+    // 运行时若装了 Accessories(或 ACL 连带 owo),ModCompatibilityCheck 会 fail-closed 拒绝启动。
+    modCompileOnly "maven.modrinth:trinkets:${trinkets_mr_version}"
+    if (providers.gradleProperty('testTrinkets').getOrElse('true') != 'false') {
+        modRuntimeOnly "maven.modrinth:trinkets:${trinkets_mr_version}"
+    }
+
+    // 玩家/实体持久数据
+    // CCA 的 Modrinth 单件是 bundle(内嵌 base/entity 等嵌套 jar)。Loom dev 解析 bundle 时
+    // 拿不到嵌套件 => Trinkets 3.10 的 HARD_DEP cardinal-components-base/entity 判定缺失
+    // (与 yacl 3.6.6 的 quilt-parsers 同一失效机理)。故 bundle 只留编译期,运行期显式补两件子模块。
+    modCompileOnly "maven.modrinth:cardinal-components-api:${cca_mr_version}"
+    modRuntimeOnly "dev.onyxstudios.cardinal-components-api:cardinal-components-base:${cca_version}"
+    modRuntimeOnly "dev.onyxstudios.cardinal-components-api:cardinal-components-entity:${cca_version}"
+
+    // owo-lib 只被 Accessories 需要;Trinkets-only 后不再进运行期依赖(2026-11-05)。
+
+    // 内容联动
+    modImplementation "maven.modrinth:patchouli:${patchouli_mr_version}"
+    modImplementation "maven.modrinth:jade:${jade_mr_version}"
+    // JEI 版本受 Loom 1.17.21 封顶(2026-11-05 实测):JEI 19.57.0.444 起的 fabric 件由
+    // Loom 1.18.2 构建,本线重映射时抛 "Mod was built with a newer version of Loom (1.18.2)",
+    // 而 Loom 1.18.x 需要 Gradle plugin-api 9.7.0 + 构建 JVM 25 => 全仓 wrapper 与 JVM 都要抬,
+    // 不该为一条测试台动全仓。故编译期与运行期统一钉 19.56.0.441(最后一个 Loom 1.13.6 构建件)。
+    // 编译期走 BlameJared 的 Mojmap API jar(纯 Java,manifest 无 Fabric-Loom-Version),不参与重映射。
+    compileOnly "mezz.jei:jei-1.21.1-common-api:${jei_version}"
+
+    // 测试台注入通道(AutoJS 自带 Rhino 内核;1.21.1 fabric 产物已入库)
+    // AutoJS 1.0.0 在 fabric.mod.json 里写死 depends rhino [2101,)，缺它 Loader 直接
+    // 报 HARD_DEP_NO_CANDIDATE 拒绝启动(2026-11-05 实测)；rhino 只随 AutoJS 一起进运行期。
+    if (providers.gradleProperty('autojsTestMod').orNull == '1') {
+        modRuntimeOnly 'cc.sighs.autojs:AutoJS-fabric-1.21.1:1.0.0'
+        modRuntimeOnly "maven.modrinth:rhino:${rhino_mr_version}"
+    }
+
+    // ── 测试台运行期 mod(2026-11-05 用户裁决的 12 项) ──────────────────────
+    // jade / puzzles-lib / forge-config-api-port 已在上方按运行期钉版接入;
+    // 这里补齐渲染栈、性能与 JEI(含它的 required 依赖 mezz-config)。
+    // 1.21.1 不再需要 indium;carpet / debugify / yacl / modmenu 不在裁决表内。
+    if (providers.gradleProperty('testMods').orNull != 'false') {
+        modRuntimeOnly "maven.modrinth:sodium:${sodium_mr_version}"
+        modRuntimeOnly "maven.modrinth:iris:${iris_mr_version}"
+        modRuntimeOnly "maven.modrinth:immediatelyfast:${immediatelyfast_mr_version}"
+        modRuntimeOnly "maven.modrinth:lithium:${lithium_mr_version}"
+        modRuntimeOnly "maven.modrinth:ferrite-core:${ferritecore_mr_version}"
+        modRuntimeOnly "maven.modrinth:collective:${collective_mr_version}"
+        modRuntimeOnly "maven.modrinth:superflat-world-no-slimes:${superflat_mr_version}"
+        modRuntimeOnly "maven.modrinth:modernfix:${modernfix_mr_version}"
+        modRuntimeOnly "maven.modrinth:jei:${jei_mr_version}"
+        modRuntimeOnly "maven.modrinth:mezzconfig:${mezzconfig_mr_version}"
+    }
+}
+
+loom {
+    // P4 已接入（2026-11-04）：自建 RenderType 与钱包按钮定位需要放宽可见性，
+    // 条目逐条按 MC 1.21.1 重核（见该文件内注释：CompositeState / TransparencyStateShard 在 1.21.1 已 public）。
+    accessWidenerPath = file('src/main/resources/astral_dice.accesswidener')
+    runs {
+        client {
+            client()
+            ideConfigGenerated = true
+            runDir 'run/client'
+            if (project.hasProperty('quickplayMultiplayer')) {
+                programArg '--quickPlayMultiplayer'
+                programArg project.findProperty('quickplayMultiplayer')
+            } else if (project.hasProperty('quickplay')) {
+                programArg '--quickPlaySingleplayer'
+                programArg project.findProperty('quickplay')
+            }
+            programArg '--width'
+            programArg '1920'
+            programArg '--height'
+            programArg '1080'
+            if (project.hasProperty('devUsername')) {
+                programArg '--username'
+                programArg project.findProperty('devUsername')
+            }
+        }
+        server {
+            server()
+            ideConfigGenerated = true
+            runDir 'run/server'
+        }
+        // 数据生成（P4/P5 接线，2026-11-04 补）。
+        // 与 forge 线的 `data { data() }` 不同源：Fabric 没有 gradle 侧 datagen 插件，
+        // 由 FAPI 的 `fabric-data-generation-api-v1` 读下面这几个系统属性驱动，
+        // 入口 = fabric.mod.json 的 `fabric-datagen` entrypoint（datagen.AstralDataGenerator）。
+        // 跑法：`./gradlew :fabric-1.21.1:runDatagen`
+        // 产物：`src/generated/resources`（已被上方 sourceSets.main.resources.srcDir 纳入资源集 → 进产物 jar）。
+        // 本线 java.toolchain.languageVersion = 21（:24）对全部 run* 生效，故 1.20.1 那种
+        // tasks.configureEach { javaLauncher = 21 } 兜底块在这里不需要。
+        datagen {
+            server()
+            name = "Data Generation"
+            // 这三个 -D 是 FAPI datagen 的约定开关，缺一不可：
+            vmArg "-Dfabric-api.datagen"
+            vmArg "-Dfabric-api.datagen.output-dir=${file('src/generated/resources').absolutePath}"
+            vmArg "-Dfabric-api.datagen.modid=${mod_id}"
+            // 只对声明的模组做严格校验：引用了不存在的纹理/模型时在生成期就报错。
+            vmArg "-Dfabric-api.datagen.strict-validation"
+            runDir 'run/datagen'
+        }
+    }
+}
+
+def templateProps = [
+        version                  : project.version.toString(),
+        loader_version           : project.loader_version.toString(),
+        minecraft_version_range  : project.minecraft_version_range.toString(),
+        trinkets_version         : project.trinkets_version.toString(),
+        puzzleslib_version_range : project.puzzleslib_version_range.toString(),
+        lib_version_range        : project.starengine_version_range.toString(),
+]
+
+processResources {
+    inputs.properties(templateProps)
+    filesMatching('fabric.mod.json') { expand(templateProps) }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.compilerArgs += ['-Xmaxerrs', '4000']
+}
+
+// 配置缓存兼容:所有对 tasks.named(...) 的访问都必须在配置期完成,
+// 执行期只允许用已捕获的 Provider / File(否则 Gradle 9 报
+// "Invocation of 'tasks' references a Gradle script object from a Groovy closure at execution time")。
+def remapJarTask = tasks.named('remapJar')
+def remapJarFile = remapJarTask.flatMap { it.archiveFile }
+
+tasks.register('pushToDevRun') {
+    group = 'build'
+    description = 'Copy the built mod jar to run/fabric-1.21.1/mods and drop stale fabric-1.21.1 jars.'
+    dependsOn remapJarTask
+    def jarProvider = remapJarFile
+    def modsDir = rootProject.file('run/fabric-1.21.1/mods')
+    doLast {
+        def jarFile = jarProvider.get().asFile
+        if (!jarFile.exists()) {
+            logger.warn("pushToDevRun: built jar not found, skipped: ${jarFile}")
+            return
+        }
+        modsDir.mkdirs()
+        modsDir.listFiles().findAll { File f ->
+            f.isFile() && (f.name ==~ /astral_dice-.+\+fabric_1\.21\.1\.jar/)
+        }.each { it.delete() }
+        new File(modsDir, jarFile.name).withOutputStream { out ->
+            jarFile.withInputStream { inp -> inp.transferTo(out) }
+        }
+        logger.lifecycle("pushToDevRun: pushed ${jarFile.name} -> ${modsDir}")
+    }
+}
+
+tasks.register('pushToRootBuild') {
+    group = 'build'
+    description = 'Copy the built production jar to the repository root build/libs (shared by all lines).'
+    dependsOn remapJarTask
+    def jarProvider = remapJarFile
+    def libsDir = rootProject.file('build/libs')
+    doLast {
+        def jarFile = jarProvider.get().asFile
+        if (!jarFile.exists()) {
+            logger.warn("pushToRootBuild: built jar not found, skipped: ${jarFile}")
+            return
+        }
+        libsDir.mkdirs()
+        new File(libsDir, jarFile.name).withOutputStream { out ->
+            jarFile.withInputStream { inp -> inp.transferTo(out) }
+        }
+        logger.lifecycle("pushToRootBuild: pushed ${jarFile.name} -> ${libsDir}")
+    }
+}
+
+tasks.named('build') {
+    finalizedBy tasks.named('pushToDevRun')
+    finalizedBy tasks.named('pushToRootBuild')
+}
+
+idea {
+    module {
+        downloadSources = true
+        downloadJavadoc = true
+    }
+}

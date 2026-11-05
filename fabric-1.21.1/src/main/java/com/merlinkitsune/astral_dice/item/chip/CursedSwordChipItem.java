@@ -1,0 +1,134 @@
+package com.merlinkitsune.astral_dice.item.chip;
+import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
+import com.merlinkitsune.starengine.combat.HostileTargets;
+
+import com.merlinkitsune.starengine.component.GameplayConstants;
+import com.merlinkitsune.astral_dice.component.ModAttachments;
+import com.merlinkitsune.astral_dice.effect.ModEffects;
+import com.merlinkitsune.starengine.event.ModEffectRemoval;
+import net.minecraft.core.Holder;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.enchantment.Enchantment;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
+import com.merlinkitsune.astral_dice.compat.curios.SlotContext;
+import com.merlinkitsune.astral_dice.item.ModItems;
+import com.merlinkitsune.astral_dice.platform.event.entity.living.LivingDeathEvent;
+import com.merlinkitsune.astral_dice.AstralDiceMod;
+import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
+import net.minecraft.world.entity.LivingEntity;
+import com.merlinkitsune.astral_dice.combat.PartyRelations;
+import com.merlinkitsune.astral_dice.platform.util.Effects;
+
+/**
+ * 诅咒之剑筹码:装备时始终受到"青之诅咒"影响。
+ * 骰神赐福期间,每击杀 1 个不少于 20 血的敌对目标,攻击力 +1;
+ * 每个骰神赐福效果期间最多触发一次,上限由**前置库常量**
+ * {@link GameplayConstants#CURSED_SWORD_BONUS_MAX} 决定(2026-10-02 由 16 上调为 32;该字段不读配置文件)。
+ * 移除筹码时清除全部攻击力加成与青之诅咒效果。
+ */
+public class CursedSwordChipItem extends BaseChipItem {
+
+    public CursedSwordChipItem(Properties properties) {
+        super(properties);
+    }
+
+    // 玩家是否佩戴诅咒之剑筹码
+    public static boolean isEquipped(Player player) {
+        // 总闸门(骰子装备和卸除调整):未佩戴骰子 ⇒ 本件功能一律不生效(数值保留)
+        if (!CurioSlotUtil.hasDiceEquipped(player)) return false;
+        if (player == null) return false;
+        var curios = CuriosApi.getCuriosInventory(player);
+        return curios.isPresent() && curios.get().findFirstCurio(s -> s.is(ModItems.CURSED_SWORD.get())).isPresent();
+    }
+
+    @Override
+    public void onEquip(SlotContext slotContext, ItemStack prevStack, ItemStack stack) {
+        if (!(slotContext.entity() instanceof Player player)) return;
+        if (player.level().isClientSide()) return;
+        // ⚠️ 第 2 参 prevStack 是槽位原内容(**往空槽装备时即 EMPTY**),第 3 参 stack 才是刚装上的那件。
+        // 旧代码把「青之诅咒」写到了第 2 参上 —— 空槽装备时那正是 `ItemStack.EMPTY` 这个全局单例,
+        // 于是装备时从未刻印成功(全靠 curioTick 每 tick 兜底才看似正常;EMPTY 单例被写组件本身也是隐患)。
+        applyBlueCurse(player);
+        ensureCurseMarker(player, stack);
+    }
+
+    @Override
+    public void curioTick(SlotContext slotContext, ItemStack stack) {
+        if (!(slotContext.entity() instanceof Player player)) return;
+        if (player.level().isClientSide()) return;
+        // 总闸门:未佩戴骰子 ⇒ 本筹码的持续效果不生效(数值保留)
+        if (slotContext.entity() instanceof net.minecraft.world.entity.player.Player gatePlayer
+                && !CurioSlotUtil.hasDiceEquipped(gatePlayer)) {
+            return;
+        }
+        // 持续保持青之诅咒,防止效果因任何原因消失
+        applyBlueCurse(player);
+        // 确保装备中的诅咒之剑带有青之诅咒,使千咒卷轴将其计入诅咒数量
+        ensureCurseMarker(player, stack);
+    }
+
+    @Override
+    protected void onChipUnequip(Player player, ItemStack stack) {
+        // 清除所有加成与青之诅咒效果
+        ModAttachments.setCursedSwordBonus(player, 0);
+        ModAttachments.setCursedSwordBlessingTriggered(player, false);
+        removeBlueCurse(player);
+    }
+
+    // 主动移除青之诅咒(经 ModEffectRemoval 内部通道放行移除拦截)
+    public static void removeBlueCurse(Player player) {
+        ModEffectRemoval.remove(player, Effects.holder(ModEffects.BLUE_CURSE.get()));
+    }
+
+    // 骰神赐福期间击杀敌对目标(不少于 20 血)时增加 1 点攻击力;每个赐福周期最多触发一次
+    public static void onKill(Player player) {
+        if (player == null || player.level().isClientSide()) return;
+        if (!isEquipped(player)) return;
+        // 仅在骰神赐福期间生效
+        if (!player.hasEffect(Effects.holder(ModEffects.DICE_BLESSING.get()))) return;
+        // 每个骰神赐福效果期间只能触发一次
+        if (ModAttachments.getCursedSwordBlessingTriggered(player)) return;
+        ModAttachments.setCursedSwordBlessingTriggered(player, true);
+        int current = ModAttachments.getCursedSwordBonus(player);
+        int max = GameplayConstants.CURSED_SWORD_BONUS_MAX;
+        if (current < max) {
+            ModAttachments.setCursedSwordBonus(player, current + 1);
+        }
+    }
+
+    // 为诅咒之剑附加"青之诅咒"诅咒附魔(仅用于被千咒卷轴识别为 1 点诅咒,无其他效果)
+    private static void ensureCurseMarker(Player player, ItemStack stack) {
+        if (stack == null || stack.isEmpty()) return;
+        // 1.21.1 附魔是数据驱动注册表:只能按 ResourceKey 从注册表查 Holder,没有代码注册的对象可取
+        // (原 1.20.1 的 ModEnchantments.CURSE_MARKER.get() 已不存在;查不到时按「没有标记」处理)。
+        Holder<Enchantment> marker = com.merlinkitsune.astral_dice.effect.ModEnchantments.curseMarker(player);
+        if (marker == null) return;
+        if (net.minecraft.world.item.enchantment.EnchantmentHelper.getItemEnchantmentLevel(marker, stack) <= 0) {
+            stack.enchant(marker, 1);
+        }
+    }
+
+    private static void applyBlueCurse(Player player) {
+        if (!player.hasEffect(Effects.holder(ModEffects.BLUE_CURSE.get()))) {
+            player.addEffect(new MobEffectInstance(Effects.holder(ModEffects.BLUE_CURSE.get()) , MobEffectInstance.INFINITE_DURATION, 0, false, true, true));
+        }
+    }
+
+    // 诅咒之剑:每击杀 1 个不少于 20 血敌对目标,攻击力 +1(上限由配置决定)
+    @SubscribeEvent
+    public static void onCursedSwordKill(LivingDeathEvent event) {
+        LivingEntity target = event.getEntity();
+        if (target.level().isClientSide()) return;
+        // 先取击杀者再判定敌对:视者 = 击杀者(全局敌对玩家规则)
+        if (!(event.getSource().getEntity() instanceof Player killer)) return;
+        if (!PartyRelations.isHostileTo(killer, target) || target.getMaxHealth() < 20) return;
+        CursedSwordChipItem.onKill(killer);
+    }
+
+}

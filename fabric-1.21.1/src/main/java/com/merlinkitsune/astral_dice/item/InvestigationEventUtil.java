@@ -1,0 +1,123 @@
+package com.merlinkitsune.astral_dice.item;
+
+
+import com.merlinkitsune.starengine.component.GameplayConstants;
+import com.merlinkitsune.astral_dice.component.ModAttachments;
+import com.merlinkitsune.astral_dice.effect.ConcealmentEffect;
+import com.merlinkitsune.astral_dice.effect.ModEffects;
+import com.merlinkitsune.astral_dice.event.AstralEventSystem;
+import com.merlinkitsune.starengine.event.EventTargetCollector;
+import com.merlinkitsune.astral_dice.network.ModNetwork.ActionBarMessage;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
+import com.merlinkitsune.astral_dice.network.ModNetwork;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
+import com.merlinkitsune.astral_dice.platform.event.entity.living.LivingDeathEvent;
+import com.merlinkitsune.astral_dice.platform.event.entity.living.MobEffectEvent;
+import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
+import com.merlinkitsune.astral_dice.combat.PartyRelations;
+import com.merlinkitsune.astral_dice.platform.util.Effects;
+/**
+ * "调查阶段"事件核心逻辑。
+ * 阶段:调查阶段 I / II / III / 真相揭露。仅由击杀"隐匿调查"目标触发(大侦探立牌的 11 项随机事件不包含该事件)。
+ * 调查阶段属于事件,触发时同样触发调查员立牌被动等事件附加效果。
+ */
+public final class InvestigationEventUtil {
+    private InvestigationEventUtil() {
+    }
+
+    // 秘密侦探立牌被动:击杀"隐匿调查"目标后触发调查阶段事件(推进施加者进度)
+    public static void triggerByKill(Player killer, Player applier, int markLevel) {
+        if (killer.level().isClientSide()) return;
+        if (applier == null) return;
+        int stage = ModAttachments.getInvestigationStage(applier);
+        if (killer == applier) {
+            // 释放者自己击杀隐匿调查目标:不存在其他攻击者,仅触发一次事件且仅自己获得效果
+            applyStageEffects(killer, null, stage, markLevel);
+            ModAttachments.setInvestigationStage(applier, Math.min(stage + 1, 4));
+            AstralEventSystem.triggerInvestigationEvent(killer);
+            sendInvestigationActionBar(killer);
+            return;
+        }
+        applyStageEffects(killer, applier, stage, markLevel);
+        // 推进进度(达到真相揭露阶段后永久保持,仅卸下立牌时清除)
+        ModAttachments.setInvestigationStage(applier, Math.min(stage + 1, 4));
+        AstralEventSystem.triggerInvestigationEvent(killer);
+            sendInvestigationActionBar(killer);
+    }
+
+    /** 隐匿时长(调查阶段四阶段统一 1:00;2026-09-28 用户裁决) */
+    public static final int CONCEALMENT_TICKS = 1200;
+
+    /** 阶段效果的作用半径(格)。2026-10-03 用户裁决:取代旧口径的「仅真相揭露 + 需 boss 附近时 32 格」。 */
+    public static final double EVENT_TARGET_RADIUS = 64.0D;
+
+    // 应用对应阶段的效果:隐匿(2026-09-28 用户裁决:取代原版「隐身」);
+    // 阶段 II 及以上同时施加调查增益(攻击加成在攻击事件中按阶段/目标标记层数结算)。
+    // ⚠️ 四阶段时长**统一为 1:00**:原来 I/II/III 分别是 0:15 / 0:20 / 0:30。
+    private static void applyStageEffects(Player self, Player applier, int stage, int markLevel) {
+        int duration = CONCEALMENT_TICKS;  // 全线 1:00(2026-09-28 用户裁决)
+        List<Player> recipients = new ArrayList<>();
+        recipients.add(self);
+        if (applier != null && applier != self) {
+            recipients.add(applier);
+        }
+        // 2026-10-03 用户裁决:阶段效果按「队伍 + 64 格」广播(口径见 PartyRelations#collectEventTargets)——
+        //   触发者有队伍 = 全队 ∪ 64 格内非队友(同队不重复判定);无队伍 = 全部无队伍玩家 ∪ 64 格内所有玩家。
+        //   取代旧口径:仅 stage>=4 才广播、且必须先满足「64 格内存在 boss」才取 32 格内玩家。
+        for (Player p : PartyRelations.collectEventTargets(self, EVENT_TARGET_RADIUS)) {
+            if (!recipients.contains(p)) {
+                recipients.add(p);
+            }
+        }
+        for (Player p : recipients) {
+            ConcealmentEffect.apply(p, duration);
+            // 调查阶段效果:所有受影响的玩家均显示(amplifier = 阶段序号 1=I,2=II,3=III,4=真相揭露)
+            p.addEffect(new MobEffectInstance(Effects.holder(ModEffects.INVESTIGATION_BONUS.get()) , duration, stage, false, false, true));
+        }
+    }
+
+    private static void sendInvestigationActionBar(Player player) {
+        if (player instanceof ServerPlayer sp) {
+            ModNetwork.sendToPlayer(sp,
+                    new ModNetwork.ActionBarMessage(Component.translatable("msg.astral_dice.investigation_event_triggered")
+                            .withStyle(ChatFormatting.YELLOW), GameplayConstants.ACTIONBAR_DURATION_TICKS));
+        }
+    }
+
+    // 击杀"隐匿调查"目标 → 触发调查阶段事件(全局处理,不要求击杀者佩戴秘密侦探立牌)
+    @SubscribeEvent
+    public static void onUndercoverInvestigationKill(LivingDeathEvent event) {
+        LivingEntity target = event.getEntity();
+        if (target.level().isClientSide()) return;
+        if (!target.hasEffect(Effects.holder(ModEffects.UNDERCOVER_INVESTIGATION.get()))) return;
+        if (!(event.getSource().getEntity() instanceof Player killer)) return;
+        Optional<java.util.UUID> source = ModAttachments.getUndercoverSource(target);
+        if (source.isEmpty()) return;
+        Player applier = target.level().getPlayerByUUID(source.get());
+        if (applier == null) return;
+        int markLevel = MarkManager.getLevel(target);
+        InvestigationEventUtil.triggerByKill(killer, applier, markLevel);
+    }
+
+    // "隐匿调查"被移除(自然到期/死亡/清除)时清空来源,避免残留 UUID 后续误触发
+    @SubscribeEvent
+    public static void onUndercoverRemoved(MobEffectEvent.Remove event) {
+        if (event.isCanceled()) return;
+        MobEffectInstance effect = event.getEffectInstance();
+        if (effect == null || effect.getEffect() == null
+                || effect.getEffect().value() != ModEffects.UNDERCOVER_INVESTIGATION.get()) return;
+        LivingEntity entity = event.getEntity();
+        if (entity.level().isClientSide()) return;
+        ModAttachments.setUndercoverSource(entity, Optional.empty());
+    }
+
+}

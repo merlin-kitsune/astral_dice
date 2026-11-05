@@ -1,0 +1,43 @@
+{
+  "fabric:load_conditions": [
+    {
+      "condition": "astral_dice:chip_recipes_enabled"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "astral_dice:blank_chip"
+    },
+    "P": {
+      "item": "astral_dice:star_plate"
+    },
+    "R": {
+      "item": "astral_dice:regeneration_reagent"
+    },
+    "X": {
+      "item": "minecraft:enchanted_golden_apple"
+    },
+    "Z": {
+      "fabric:type": "fabric:components",
+      "base": {
+        "item": "minecraft:potion"
+      },
+      "components": {
+        "minecraft:potion_contents": {
+          "potion": "minecraft:healing"
+        }
+      }
+    }
+  },
+  "pattern": [
+    "ZXZ",
+    "RBR",
+    "PPP"
+  ],
+  "result": {
+    "count": 1,
+    "id": "astral_dice:friendship_badge_chip"
+  }
+}

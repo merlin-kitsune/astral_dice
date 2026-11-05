@@ -1,0 +1,71 @@
+{
+  "boost_effect_card_use": {
+    "sounds": ["astral_dice:boost_effect_card_use"]
+  },
+  "coin_bag_withdraw": {
+    "sounds": ["astral_dice:coin_bag_withdraw"]
+  },
+  "coin_withdraw": {
+    "sounds": ["astral_dice:coin_withdraw"]
+  },
+  "damage_effect_card_bighit": {
+    "sounds": ["astral_dice:damage_effect_card_bighit"]
+  },
+  "damage_effect_card_cast": {
+    "sounds": ["astral_dice:damage_effect_card_cast"]
+  },
+  "damage_effect_card_hit": {
+    "sounds": ["astral_dice:damage_effect_card_hit"]
+  },
+  "directional_blast_hit": {
+    "sounds": ["astral_dice:directional_blast_hit"]
+  },
+  "effect_card_use": {
+    "sounds": ["astral_dice:effect_card_use"]
+  },
+  "event_bonus": {
+    "sounds": ["astral_dice:event_bonus"]
+  },
+  "event_damage": {
+    "sounds": ["astral_dice:event_damage"]
+  },
+  "event_fade_in": {
+    "sounds": ["astral_dice:event_fade_in"]
+  },
+  "event_fade_out": {
+    "sounds": ["astral_dice:event_fade_out"]
+  },
+  "event_heal": {
+    "sounds": ["astral_dice:event_heal"]
+  },
+  "event_poisoning": {
+    "sounds": ["astral_dice:event_poisoning"]
+  },
+  "event_tick": {
+    "sounds": ["astral_dice:event_tick"]
+  },
+  "event_transport": {
+    "sounds": ["astral_dice:event_transport"]
+  },
+  "glass_dice_broken": {
+    "sounds": ["astral_dice:glass_dice_broken"]
+  },
+  "megas_blast": {
+    "sounds": ["astral_dice:megas_blast"]
+  },
+  "monster_brick_hit": {
+    "sounds": ["astral_dice:monster_brick_hit"]
+  },
+  "monster_laser_hit": {
+    "sounds": ["astral_dice:monster_laser_hit"]
+  },
+  "orbital_strike_hit": {
+    "sounds": ["astral_dice:orbital_strike_hit"]
+  },
+  "skill_use": {
+    "sounds": ["astral_dice:skill_use"]
+  },
+  "wallet_deposit": {
+    "sounds": ["astral_dice:wallet_deposit"]
+  }
+}

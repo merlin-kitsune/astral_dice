@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.attack_card_dragon_roar",
+  "category": "astral_dice:cards_attack",
+  "icon": "astral_dice:attack_card_dragon_roar",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:attack_card_dragon_roar",
+      "text": "astral_dice.guide.entry.attack_card_dragon_roar.1"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.attack_card_dragon_roar.2"
+    }
+  ],
+  "sortnum": 8
+}

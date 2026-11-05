@@ -1,0 +1,134 @@
+package com.merlinkitsune.astral_dice.audio;
+
+import com.merlinkitsune.astral_dice.AstralDiceMod;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.sounds.SoundEvent;
+import com.merlinkitsune.astral_dice.platform.registry.DeferredRegister;
+import com.merlinkitsune.astral_dice.platform.registry.RegistryObject;
+
+/**
+ * 本模组自定义音效的**注册表**（23 条）。
+ *
+ * <p>每条音效由两部分组成，缺一不可：
+ * <ol>
+ *   <li><b>资源</b>：{@code assets/astral_dice/sounds/<id>.ogg}（单声道 Ogg Vorbis）＋
+ *       {@code assets/astral_dice/sounds.json} 里同名的声明条目；</li>
+ *   <li><b>注册</b>：本类里的 {@link SoundEvent}（id 与上面完全一致）。</li>
+ * </ol>
+ * 资源声明缺失时 {@code SoundEvent} 仍能注册成功，但播放时静默无声，
+ * 故新增音效必须**三处同时**落地（ogg / sounds.json / 本类）。
+ *
+ * <p><b>音量</b>调在 {@code sounds.json} 的条目里 —— {@code {"name": "...", "volume": 0.6}}（缺省 1.0，必须 &gt; 0）：
+ * 原版 {@code AbstractSoundInstance#getVolume()} = 实例音量 × JSON 音量，而 {@code SoundEngine#play} 读的正是它
+ * ⇒ JSON 音量**直接乘在播放增益上**（星币袋的取钱音效即 0.6 = 音量降低 40%，2026-09-25 用户裁决）。
+ * 音量属于**音效自身**，一律写进 JSON；{@code SoundPlayback} 里的 1.0F 是「实例音量」，不要为单条音效去改它。
+ *
+ * <p>播放一律走 {@link SoundPlayback}（区分「只发给本人」与「世界中广播」两种语义），
+ * 不要在调用点直接写 {@code level.playSound}。
+ *
+ * <p><b>源素材对照</b>（仓库根 {@code sound/} 目录，wav 转 ogg 的脚本见 {@code temp/t124/}）：
+ * <pre>
+ *   wallet.wav                    -> wallet_deposit
+ *   coin.wav                      -> coin_withdraw
+ *   coin1.wav                     -> coin_bag_withdraw
+ *   boost_effect_card_use.wav     -> boost_effect_card_use
+ *   effect_card_use.wav           -> effect_card_use
+ *   damage_effect_card_hit.wav    -> damage_effect_card_hit
+ *   damage_effect_card_bighit.wav  -> damage_effect_card_bighit
+ *   skill_use.wav                 -> skill_use
+ *   glass_dice_broken.wav         -> glass_dice_broken
+ *   megas_blast.wav               -> megas_blast
+ * effect_card_use1.wav          -> damage_effect_card_cast
+ * laser.wav                     -> monster_laser_hit
+ * brick_hit.wav                 -> monster_brick_hit
+ * laser_big.wav                 -> orbital_strike_hit
+ * blast.wav                     -> directional_blast_hit
+ * </pre>
+ */
+public final class ModSounds {
+
+    public static final DeferredRegister<SoundEvent> SOUNDS =
+            DeferredRegister.create(Registries.SOUND_EVENT, AstralDiceMod.MODID);
+
+    /** 存钱：星币钱包按钮（存入成功时）。源素材 {@code wallet.wav}。 */
+    public static final RegistryObject<SoundEvent> WALLET_DEPOSIT = register("wallet_deposit");
+
+    /** 取钱：取出**星币**（单枚或全部）。源素材 {@code coin.wav}。 */
+    public static final RegistryObject<SoundEvent> COIN_WITHDRAW = register("coin_withdraw");
+
+    /** 取钱：取出**星币袋**（单个或全部）。源素材 {@code coin1.wav}。 */
+    public static final RegistryObject<SoundEvent> COIN_BAG_WITHDRAW = register("coin_bag_withdraw");
+
+    /** 活体书页命中目标，本次伤害 **&lt; 8**（符卡-祸命中亦用本音）。源素材 {@code damage_effect_card_hit.wav}（2026-10-04 重写）。 */
+    public static final RegistryObject<SoundEvent> DAMAGE_EFFECT_CARD_HIT = register("damage_effect_card_hit");
+
+    /** 活体书页命中目标，本次伤害 **&gt;= 8**。源素材 {@code damage_effect_card_bighit.wav}。 */
+    public static final RegistryObject<SoundEvent> DAMAGE_EFFECT_CARD_BIGHIT = register("damage_effect_card_bighit");
+
+    /** 使用了狂暴 / 王之力 / 岿然不动。源素材 {@code boost_effect_card_use.wav}。 */
+    public static final RegistryObject<SoundEvent> BOOST_EFFECT_CARD_USE = register("boost_effect_card_use");
+
+    /** 使用效果牌（狂暴 / 王之力 / 岿然不动 除外）。源素材 {@code effect_card_use.wav}。 */
+    public static final RegistryObject<SoundEvent> EFFECT_CARD_USE = register("effect_card_use");
+
+    /** 主动技能**生效**时（含进入目标选择器）。源素材 {@code skill_use.wav}。 */
+    public static final RegistryObject<SoundEvent> SKILL_USE = register("skill_use");
+
+    /** 佩戴玻璃骰子的玩家死亡。源素材 {@code glass_dice_broken.wav}。 */
+    public static final RegistryObject<SoundEvent> GLASS_DICE_BROKEN = register("glass_dice_broken");
+
+    /** 「轨道轰炸」命中目标（在命中位置播放）。源素材 {@code megas_blast.wav}。 */
+    public static final RegistryObject<SoundEvent> MEGAS_BLAST = register("megas_blast");
+
+    /** 伤害效果牌**释放**时（对怪激光 / 对怪板砖 / 轨道炮 / 定向爆破 共用）。源素材 {@code effect_card_use1.wav}。 */
+    public static final RegistryObject<SoundEvent> DAMAGE_EFFECT_CARD_CAST = register("damage_effect_card_cast");
+
+    /** 对怪激光**命中**目标（在命中位置播放）。源素材 {@code laser.wav}。 */
+    public static final RegistryObject<SoundEvent> MONSTER_LASER_HIT = register("monster_laser_hit");
+
+    /** 对怪板砖**命中**目标（在命中位置播放）。源素材 {@code brick_hit.wav}。 */
+    public static final RegistryObject<SoundEvent> MONSTER_BRICK_HIT = register("monster_brick_hit");
+
+    /** 轨道炮**命中**目标（在命中位置播放）。源素材 {@code laser_big.wav}。 */
+    public static final RegistryObject<SoundEvent> ORBITAL_STRIKE_HIT = register("orbital_strike_hit");
+
+    /** 定向爆破**命中**（在爆炸位置播放）。源素材 {@code blast.wav}。 */
+    public static final RegistryObject<SoundEvent> DIRECTIONAL_BLAST_HIT = register("directional_blast_hit");
+
+    // ── 事件音效（事件效果卡；与 forge-1.20.1 同名同 id，资源 = assets/astral_dice/sounds/<id>.ogg） ──
+
+    /** 事件卡「天降之物」：受影响玩家**获得奖励**时（只发给本人）。 */
+    public static final RegistryObject<SoundEvent> EVENT_BONUS = register("event_bonus");
+
+    /** 事件卡「天崩地裂」（全体受伤）／「取长补短」（受伤方）判定后。 */
+    public static final RegistryObject<SoundEvent> EVENT_DAMAGE = register("event_damage");
+
+    /** 事件卡**发放**：受影响玩家收到弹卡包时（淡入）。 */
+    public static final RegistryObject<SoundEvent> EVENT_FADE_IN = register("event_fade_in");
+
+    /** 事件卡**结算收尾**（淡出）。与 forge 同 id 登记；当前两侧均无调用点，属预留。 */
+    public static final RegistryObject<SoundEvent> EVENT_FADE_OUT = register("event_fade_out");
+
+    /** 事件卡「天使降临」／「取长补短」（治疗方）判定后。 */
+    public static final RegistryObject<SoundEvent> EVENT_HEAL = register("event_heal");
+
+    /** 事件卡「问题外卖」：中毒效果生效时。 */
+    public static final RegistryObject<SoundEvent> EVENT_POISONING = register("event_poisoning");
+
+    /** 事件卡**持续计时**（逐 tick 提示）。与 forge 同 id 登记；当前两侧均无调用点，属预留。 */
+    public static final RegistryObject<SoundEvent> EVENT_TICK = register("event_tick");
+
+    /** 事件卡「拥挤通道」：传送完成时。 */
+    public static final RegistryObject<SoundEvent> EVENT_TRANSPORT = register("event_transport");
+
+
+    private ModSounds() {
+    }
+
+    /** 统一用可变范围（{@code createVariableRangeEvent}）：音量决定可听半径，与其它模组音效口径一致。 */
+    private static RegistryObject<SoundEvent> register(String id) {
+        return SOUNDS.register(id, () -> SoundEvent.createVariableRangeEvent(
+                ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, id)));
+    }
+}

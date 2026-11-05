@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.candy_chip",
+  "category": "astral_dice:chips_healing",
+  "icon": "astral_dice:candy_chip",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:candy_chip",
+      "text": "astral_dice.guide.entry.candy_chip.1"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.chip_source.note"
+    }
+  ],
+  "sortnum": 6
+}

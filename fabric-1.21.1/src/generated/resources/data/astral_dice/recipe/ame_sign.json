@@ -1,0 +1,33 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": {
+      "item": "minecraft:ink_sac"
+    },
+    "D": {
+      "item": "astral_dice:amethyst_dice"
+    },
+    "E": {
+      "item": "astral_dice:blank_sign"
+    },
+    "G": {
+      "item": "astral_dice:golden_star_plate"
+    },
+    "K": {
+      "item": "minecraft:black_wool"
+    },
+    "W": {
+      "item": "minecraft:cobweb"
+    }
+  },
+  "pattern": [
+    "GKG",
+    "WEW",
+    "CDC"
+  ],
+  "result": {
+    "count": 1,
+    "id": "astral_dice:ame_sign"
+  }
+}

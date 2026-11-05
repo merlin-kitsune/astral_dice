@@ -1,0 +1,20 @@
+{
+  "name": "astral_dice.guide.entry.spell_damage.name",
+  "category": "astral_dice:getting_started",
+  "icon": "astral_dice:effect_card_monster_laser",
+  "pages": [
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.spell_damage.1"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.spell_damage.2"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.spell_damage.3"
+    }
+  ],
+  "sortnum": 1
+}

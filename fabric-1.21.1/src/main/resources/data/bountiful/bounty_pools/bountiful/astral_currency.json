@@ -1,0 +1,41 @@
+{
+	"currency": true,
+	"content": {
+		"star_coin": {
+			"type": "item",
+			"content": "astral_dice:star_coin",
+			"amount": {
+				"min": 1,
+				"max": 64
+			},
+			"unitWorth": 250
+		},
+		"star_coin_bag": {
+			"type": "item",
+			"content": "astral_dice:star_coin_bag",
+			"amount": {
+				"min": 1,
+				"max": 9
+			},
+			"unitWorth": 2250
+		},
+		"star_plate": {
+			"type": "item",
+			"content": "astral_dice:star_plate",
+			"amount": {
+				"min": 1,
+				"max": 4
+			},
+			"unitWorth": 4000
+		},
+		"golden_star_plate": {
+			"type": "item",
+			"content": "astral_dice:golden_star_plate",
+			"amount": {
+				"min": 1,
+				"max": 2
+			},
+			"unitWorth": 16000
+		}
+	}
+}

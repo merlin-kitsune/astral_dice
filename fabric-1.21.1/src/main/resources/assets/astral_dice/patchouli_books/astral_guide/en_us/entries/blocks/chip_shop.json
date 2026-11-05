@@ -1,0 +1,17 @@
+{
+  "name": "block.astral_dice.chip_shop",
+  "category": "astral_dice:blocks",
+  "icon": "astral_dice:chip_shop",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:chip_shop",
+      "text": "astral_dice.guide.entry.chip_shop.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:chip_shop"
+    }
+  ],
+  "sortnum": 1
+}

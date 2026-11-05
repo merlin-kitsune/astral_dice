@@ -1,0 +1,58 @@
+package com.merlinkitsune.astral_dice.item.card;
+
+import com.merlinkitsune.starengine.component.GameplayConstants;
+import com.merlinkitsune.starengine.target.TargetType;
+import com.merlinkitsune.astral_dice.effect.ModEffects;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import com.merlinkitsune.astral_dice.platform.util.Effects;
+
+/**
+ * 狂暴(功能效果牌):获得"狂暴"效果(攻击力 +3/层,受到任意伤害 +1/层,可叠 3 层,持续 3:00)。
+ * **目标选择器类(手持即选择)** —— 主手手持本牌即自动进入目标选择模式(移出手持立即退出),
+ * 瞄准**非敌对生物**后左键确认,或按下鼠标右键对自身使用;**此类会话没有倒计时**,取消/移出手持不消耗卡牌。⚠️ 2026-10-03 用户裁决:目标类型由「仅玩家」扩为 {@code TargetType.NON_HOSTILE} —— **非敌对生物可选中、敌对生物不可选**(口径见前置库 {@code SelectorTargets}#matches 对 {@code NON_HOSTILE} 的路由),并保留对自身使用。
+ */
+public class BerserkCardItem extends BaseEffectCardItem {
+    /** 目标选择器动作 id(skill 名与动作注册键共用) */
+    public static final String ACTION_ID = "berserk";
+
+    /**
+     * 锁定范围（格）：「狂暴」的初始射程（2026-10-08 用户裁决）。
+     *
+     * <p>该值同时决定客户端准星的射线长度、半径高亮圆与服务端确认允许的最大距离（距离一律
+     * 按三维计算，含垂直高度差）。声明值上限 32 格；玩家侧加成（探天卫星筹码 / 书页射程）经
+     * {@code target/SelectorRangeModifiers} 统一生效。半径契约见 AGENTS.md 第 15 条。
+     */
+    public static final double LOCK_RANGE = 16.0D;
+
+    static {
+        // 目标 = 非敌对生物(敌对生物不可选) ∪ 自身;允许对自身使用(旧方案的「右键-自身使用」)
+        registerSelectorAction(ACTION_ID, TargetType.NON_HOSTILE, true, LOCK_RANGE);
+    }
+
+    public BerserkCardItem(Properties properties) {
+        super(properties);
+    }
+
+    @Override
+    protected String cardTypeId() {
+        return "berserk";
+    }
+
+    @Override
+    public String selectorActionId() {
+        return ACTION_ID;
+    }
+
+    @Override
+    protected void applyEffect(Level level, Player user, LivingEntity applyTo, ItemStack stack) {
+        var existing = applyTo.getEffect(Effects.holder(ModEffects.BERSERK.get()));
+        int newAmp = existing != null
+                ? Math.min(existing.getAmplifier() + 1, GameplayConstants.MAX_EFFECT_STACKS - 1) : 0;
+        int newDuration = existing != null ? Math.max(existing.getDuration(), 3600) : 3600;
+        applyTo.addEffect(new MobEffectInstance(Effects.holder(ModEffects.BERSERK.get()) , newDuration, newAmp, false, false, true));
+    }
+}

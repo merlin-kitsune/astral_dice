@@ -1,0 +1,32 @@
+{
+  "fabric:load_conditions": [
+    {
+      "condition": "astral_dice:chip_recipes_enabled"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "G": {
+      "item": "minecraft:gold_ingot"
+    },
+    "L": {
+      "item": "minecraft:lapis_lazuli"
+    },
+    "P": {
+      "item": "astral_dice:star_plate"
+    },
+    "T": {
+      "item": "astral_dice:bank_card_low_chip"
+    }
+  },
+  "pattern": [
+    "LGL",
+    "GTG",
+    "PPP"
+  ],
+  "result": {
+    "count": 1,
+    "id": "astral_dice:bank_card_high_chip"
+  }
+}

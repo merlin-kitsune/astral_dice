@@ -1,0 +1,43 @@
+{
+  "fabric:load_conditions": [
+    {
+      "condition": "astral_dice:chip_recipes_enabled"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": {
+      "item": "astral_dice:blank_chip"
+    },
+    "D": {
+      "item": "minecraft:soul_sand"
+    },
+    "P": {
+      "item": "astral_dice:star_plate"
+    },
+    "X": {
+      "item": "minecraft:ender_pearl"
+    },
+    "Z": {
+      "fabric:type": "fabric:components",
+      "base": {
+        "item": "minecraft:potion"
+      },
+      "components": {
+        "minecraft:potion_contents": {
+          "potion": "minecraft:regeneration"
+        }
+      }
+    }
+  },
+  "pattern": [
+    "ZXZ",
+    "DCD",
+    "PPP"
+  ],
+  "result": {
+    "count": 1,
+    "id": "astral_dice:adrenaline_low_chip"
+  }
+}

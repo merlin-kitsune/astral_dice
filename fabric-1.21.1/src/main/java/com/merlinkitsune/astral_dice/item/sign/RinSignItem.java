@@ -1,0 +1,72 @@
+package com.merlinkitsune.astral_dice.item.sign;
+
+import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
+import com.merlinkitsune.starengine.component.GameplayConstants;
+import com.merlinkitsune.astral_dice.component.ModAttachments;
+import com.merlinkitsune.astral_dice.component.ModDataComponents;
+import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import com.merlinkitsune.astral_dice.compat.curios.SlotContext;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
+import com.merlinkitsune.astral_dice.item.ModItems;
+import com.merlinkitsune.astral_dice.item.card.LivingPageItem;
+import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
+import net.minecraft.world.effect.MobEffectInstance;
+import com.merlinkitsune.astral_dice.effect.ModEffects;
+import com.merlinkitsune.astral_dice.effect.RinPageRangeEffect;
+import com.merlinkitsune.astral_dice.platform.util.Effects;
+
+public class RinSignItem extends BaseSignItem {
+
+    public RinSignItem(Properties properties) {
+        super(properties);
+    }
+
+    @Override
+    protected void clearSignData(Player player, ItemStack stack) {
+        super.clearSignData(player, stack);
+        // 移除立牌时重置调查员(rin)已使用的活体书页数量
+        ModAttachments.setRinPages(player, 0);
+    }
+
+    /**
+     * 是否佩戴本立牌(饰品槽)。死亡保留的累计值只在佩戴时作为加成生效(2026-09-15 裁决)——
+     * 判定入口统一在 {@code SpellDamageRegistry},禁止在别处直接读原附件值做加成或显示加成。
+     */
+    public static boolean isEquipped(Player player) {
+        // 总闸门(骰子装备和卸除调整):未佩戴骰子 ⇒ 本件功能一律不生效(数值保留)
+        if (!CurioSlotUtil.hasDiceEquipped(player)) return false;
+        var curios = CuriosApi.getCuriosInventory(player);
+        return curios.isPresent() && curios.get().findFirstCurio(s -> s.is(ModItems.RIN_SIGN.get())).isPresent();
+    }
+
+    @Override
+    protected InteractionResultHolder<ItemStack> handleUse(Level level, Player player, ItemStack stack) {
+        if (level.isClientSide) {
+            return InteractionResultHolder.success(stack);
+        }
+        // 主动:获得一张"活体书页"(专属牌,绑定获得者);若使用前物品栏中无活体书页则共获得两张
+        int giveCount = countLivingPages(player) == 0 ? 2 : 1;
+        for (int i = 0; i < giveCount; i++) {
+            // 唯一入口:新建 + 绑定获得者(见 LivingPageItem#createFor 的 javadoc)
+            VitaminPillChipItem.giveCard(player, LivingPageItem.createFor(player));
+        }
+        // 追加(2026-10-03 用户裁决):主动追加「书页射程」—— 活体书页使用射程 +50%,持续 2:00
+        player.addEffect(new MobEffectInstance(Effects.holder(ModEffects.RIN_PAGE_RANGE.get()) ,
+                RinPageRangeEffect.DURATION_TICKS, 0, false, false, true));
+        return InteractionResultHolder.success(stack);
+    }
+
+    // 统计物品栏中的活体书页数量
+    private static int countLivingPages(Player player) {
+        int count = 0;
+        for (ItemStack s : player.getInventory().items) {
+            if (!s.isEmpty() && s.is(ModItems.LIVING_PAGE.get())) {
+                count += s.getCount();
+            }
+        }
+        return count;
+    }
+}

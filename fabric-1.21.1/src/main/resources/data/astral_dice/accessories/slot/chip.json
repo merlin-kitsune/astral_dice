@@ -1,0 +1,10 @@
+{
+  "replace": false,
+  "amount": 0,
+  "operation": "set",
+  "order": 120,
+  "icon": "astral_dice:gui/slot/empty_chip_slot",
+  "validators": [
+    "astral_dice:curio_slot"
+  ]
+}

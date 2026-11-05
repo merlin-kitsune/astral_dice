@@ -1,0 +1,6 @@
+{
+  "name": "astral_dice.guide.category.getting_started",
+  "description": "astral_dice.guide.category.getting_started.desc",
+  "icon": "astral_dice:textures/gui/head_player_sign.png",
+  "sortnum": 0
+}
