@@ -27,8 +27,8 @@ import net.minecraft.world.item.ItemStack;
  * 目标 JEI 为 15.56.0.205（1.21.1 侧为 19.39.0.372）。本插件用到的 JEI API
  * 在两版签名逐条一致；与 MC 版本相关的差异只有一处写法：这里用
  * {@code new ResourceLocation(ns, path)}，与仓库既有写法保持一致
- * （Forge 1.20.1 同样提供回移的 {@code ResourceLocation.fromNamespaceAndPath(ns, path)}，
- * 两者行为完全等价、可互换）。
+ * （自 2026-11-05 本线降到 Forge 47.1.47 起只能用二参构造：{@code fromNamespaceAndPath} 是
+ * 1.21 的方法、Forge 47.4.0 才回填，47.1 线的编译期类路径里根本没有它）。
  *
  * <p>注册三件事：
  * <ol>

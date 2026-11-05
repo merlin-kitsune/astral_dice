@@ -21,21 +21,22 @@ import com.merlinkitsune.starengine.geckolib.model.GeoModel;
  * 上面的 json，不经过原版 {@code EntityRenderersEvent.RegisterLayerDefinitions}；把它加进
  * {@code registerLayerDefinitions} 会是无效注册。
  *
- * <p><b>1.20.1 平台差异</b>：{@code ResourceLocation.fromNamespaceAndPath} 在本线**可用** ——
- * Forge 47.4.x 已把它回填进 {@code ResourceLocation}（同仓 {@code client/EventCardOverlay}、
- * {@code world/ModPoiTypes} 等均为真实调用），故三个路径常量与蓝本逐字一致。
- * ⚠️ 不要退回二参构造 {@code new ResourceLocation(ns, path)}：本线该构造被注为
- * {@code @deprecated Forge: Consider using fromNamespaceAndPath(...)}，是既有 89 条编译警告的来源。
+ * <p><b>1.20.1 平台差异</b>：本线**只用二参构造** {@code new ResourceLocation(ns, path)}。
+ * ⚠️ {@code ResourceLocation.fromNamespaceAndPath(...)} 是 1.21 的方法，Forge 直到 **47.4.0**
+ * 才把它回填进 {@code ResourceLocation}；本线自 2026-11-05 Forge 降级到 **47.1.47**
+ * （整合包最常见的 47.1 线末版）起，该静态方法在编译期就不可见 —— 若在 47.4.x 上构建，
+ * 二参构造会被标 ⓘ {@code @deprecated Forge: Consider using fromNamespaceAndPath(...)}
+ * 而产生编译警告（性质是样式提示，不是缺陷）。
  */
 public class SykeTentacleModel extends GeoModel<SykeTentacleEntity> {
 
-    private static final ResourceLocation MODEL_LOCATION = ResourceLocation.fromNamespaceAndPath(
+    private static final ResourceLocation MODEL_LOCATION = new ResourceLocation(
             AstralDiceMod.MODID, "geo/sykestentacle.geo.json");
 
-    private static final ResourceLocation TEXTURE_LOCATION = ResourceLocation.fromNamespaceAndPath(
+    private static final ResourceLocation TEXTURE_LOCATION = new ResourceLocation(
             AstralDiceMod.MODID, "textures/entity/sykestentacle.png");
 
-    private static final ResourceLocation ANIMATION_LOCATION = ResourceLocation.fromNamespaceAndPath(
+    private static final ResourceLocation ANIMATION_LOCATION = new ResourceLocation(
             AstralDiceMod.MODID, "animations/sykestentacle.animation.json");
 
     @Override

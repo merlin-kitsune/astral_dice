@@ -33,6 +33,6 @@ public final class ModTags {
          * {@link com.merlinkitsune.astral_dice.shop.CardTradeFilter#isSellable(net.minecraft.world.item.ItemStack)}。
          */
         public static final TagKey<Item> IS_EXCLUSIVE =
-                ItemTags.create(ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, "is_exclusive"));
+                ItemTags.create(new ResourceLocation(AstralDiceMod.MODID, "is_exclusive"));
     }
 }

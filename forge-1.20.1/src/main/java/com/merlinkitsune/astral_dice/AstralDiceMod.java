@@ -90,9 +90,14 @@ public class AstralDiceMod {
         // 版本互通门槛(见 AGENTS.md):多人生服列表的「兼容」标记按 mod_version 的 major.minor 判定,
         // 与 SimpleChannel 的握手门槛同一判据。Forge 默认的 MATCH_VERSION 要求完整版本号完全相同,
         // 会把 1.2.0 ↔ 1.2.1 这类同二号位组合误标为不兼容,故显式注册本判据。
-        net.minecraftforge.fml.ModLoadingContext.get().registerDisplayTest(
-                VersionGate::interopVersion,
-                (remoteVersion, isFromServer) -> VersionGate.accepts(remoteVersion));
+        // ⚠️ 47.1.x 没有 registerDisplayTest(...) 便捷方法(它是 47.3.x 才加的),
+        //    必须走 IExtensionPoint.DisplayTest 扩展点原语:
+        //    形参 = 本地声明的版本号 Supplier<String> + (远端版本号, 是否来自服务端) 谓词。
+        net.minecraftforge.fml.ModLoadingContext.get().registerExtensionPoint(
+                net.minecraftforge.fml.IExtensionPoint.DisplayTest.class,
+                () -> new net.minecraftforge.fml.IExtensionPoint.DisplayTest(
+                        VersionGate::interopVersion,
+                        (remoteVersion, isFromServer) -> VersionGate.accepts(remoteVersion)));
         // Iron 的法术与魔法书联动:仅在模组加载时注册其事件处理器(类引用只在加载条件下触发)
         if (net.minecraftforge.fml.ModList.get().isLoaded("irons_spellbooks")) {
             MinecraftForge.EVENT_BUS.register(com.merlinkitsune.astral_dice.event.IronSpellbooksCompat.class);

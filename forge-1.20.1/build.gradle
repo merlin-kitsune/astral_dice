@@ -152,14 +152,14 @@ legacyForge {
     }
 }
 
-// Forge 自身版本门槛(**单一来源 = gradle.properties 的 forge_version**,形如 1.20.1-47.4.10):
+// Forge 自身版本门槛(**单一来源 = gradle.properties 的 forge_version**,形如 1.20.1-47.1.47):
 //   依赖区间(写入 modId="forge" 强制依赖):下限 = 本工程编译所依赖的 Forge 版本,上限 = 其次版本(47 → 48)。
 //   语言区间(写入 loaderVersion):**只能卡到主版本系列**(47)—— javafml 语言提供者的版本号就是 Forge
 //   主系列号,与完整版本号并不同构。2026-09-14 实机验证:`loaderVersion="[47.4.10,48)"` 会被 FML 判为
 //   `Missing language javafml version [47.4.10,48) wanted by astral_dice-…, found 47` 而**直接拒绝加载本模组**
 //   (Forge 自身的 mods.toml 也只写 loaderVersion="[24,]")。故:
 //     loaderVersion = [<major>,<major+1>)(当前 [47,48)),精确下限只放在 forge 依赖上;
-//   低于 47.4.10 的环境仍在 FML 依赖排序阶段被拒("Missing or unsupported mandatory dependencies"),
+//   低于 47.1.47 的环境仍在 FML 依赖排序阶段被拒("Missing or unsupported mandatory dependencies"),
 //   即在 mods.toml 解析/依赖排序阶段就拒绝,而不是照常加载后才抛 mixin 错误。
 def forgeSemver = project.forge_version.toString().split('-').last()
 def forgeMajor = (forgeSemver.split('\\.')[0] as int)
@@ -410,7 +410,8 @@ dependencies {
 // AutoForge: end mod addon dependencies
 
 // === Mixin 配置发现(Forge 1.20.1 关键;缺失会导致全部 Mixin 静默失效)===
-// 已核实:Forge 1.20.1 的 FML 47.4.10 对 Mixin 零集成(fmlloader/fmlcore 源码全文无 mixin 处理),
+// 已核实:Forge 1.20.1 的 FML(47.4.10 与 47.1.47 两版都验过)对 Mixin 零集成(fmlloader/fmlcore 的
+// 202 个 class 里 "mixin" 字节级命中 0 处),
 // 因此 mods.toml 里的 `[[mixins]] config=` 在 1.20.1 被完全忽略(该写法只在 NeoForge 生效)。
 // Mixin(fabric-mixin.jar / Sponge Mixin 0.8.5)实际只认两条通道:
 //   ① 生产 jar  → META-INF/MANIFEST.MF 的 `MixinConfigs` 属性(MixinPlatformAgentDefault#prepare 读取);

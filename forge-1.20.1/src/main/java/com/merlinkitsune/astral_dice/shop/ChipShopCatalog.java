@@ -40,9 +40,9 @@ import java.util.Optional;
  * {@code assets/astral_dice/textures/gui/chip_shop/chips/<chip_id>.png}，故本类里**没有任何中文字面量**。
  * <p><b>平台差异（forge-1.20.1）</b>：贴图/物品 id 定位用 {@code new ResourceLocation(MODID, path)} —— 与 1.21.1
  * 蓝本的 {@code ResourceLocation.fromNamespaceAndPath(MODID, path)} 语义等价，取的是**本线既有
- * {@code block/CardShopBlock} 一族的写法**。⚠️ 不得写成「1.20.1 没有 fromNamespaceAndPath」：本线有 11 处真实调用
- * 且全量编译通过，Forge 47.4.10 的 {@code net/minecraft/resources/ResourceLocation.java:316} 就有该方法，
- * 而 {@code :48} 反倒把二参构造注为 {@code @deprecated Forge: Consider using fromNamespaceAndPath(...)}。
+ * {@code block/CardShopBlock} 一族的写法**。⚠️ 不得写成「1.20.1 没有 fromNamespaceAndPath」——这句话只在 47.4.x 上
+ * 成立；自 2026-11-05 用户裁决把本线降到 **Forge 47.1.47**（47.1 线末版）后，该方法在编译期就不可见
+ * （它在 47.4.0 才被回填），全仓已统一退回二参构造，47.1 线也**不得**再写二参构造的 @deprecated 注解说明。
  * 其余常量与池表逐字同源（守门按字面校验，见 {@code scripts/verify/verify_chip_shop_ui.ps1} G9/G10/G11/G17/G18）。
  */
 public final class ChipShopCatalog {

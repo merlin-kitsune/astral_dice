@@ -53,7 +53,7 @@ import net.minecraft.world.item.ItemStack;
  * 在两版签名逐条一致；与 MC 版本相关的差异只有一处写法：本类的两处 id 拼装
  * （类别 id 由 RecipeType.create 自建、书签 id 在本类 getRegistryName 内）
  * 都用 {@code new ResourceLocation(ns, path)}，与仓库既有写法保持一致
- * （Forge 1.20.1 同样提供回移的 {@code ResourceLocation.fromNamespaceAndPath}，两者等价可互换）。
+ * （自 2026-11-05 本线降到 Forge 47.1.47 起只能用二参构造：{@code fromNamespaceAndPath} 是 1.21 的方法、Forge 47.4.0 才回填，47.1 线编译期不可见）。
  */
 public class ChipShopCategory implements IRecipeCategory<ChipShopRecipe> {
 

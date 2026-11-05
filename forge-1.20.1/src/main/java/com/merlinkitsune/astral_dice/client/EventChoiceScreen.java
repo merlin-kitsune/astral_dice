@@ -117,7 +117,7 @@ public class EventChoiceScreen extends Screen {
     }
 
     private static ResourceLocation tex(String name) {
-        return ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, "textures/gui/shop/" + name);
+        return new ResourceLocation(AstralDiceMod.MODID, "textures/gui/shop/" + name);
     }
 
     private int originX() {

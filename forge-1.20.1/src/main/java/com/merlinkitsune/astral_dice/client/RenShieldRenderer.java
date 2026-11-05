@@ -70,7 +70,7 @@ import java.util.List;
 public final class RenShieldRenderer {
     /** 球面图案贴图(六边能量单元;生成器见 tools/gen_ren_shield_texture.py) */
     private static final ResourceLocation SHIELD_TEXTURE =
-            ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, "textures/special/ren_shield.png");
+            new ResourceLocation(AstralDiceMod.MODID, "textures/special/ren_shield.png");
 
     /**
      * 球体本体通道:半透明实体着色器 + 半透明混合 + LEQUAL 深度测试 + **只写颜色**。
