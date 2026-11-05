@@ -1,0 +1,105 @@
+{
+  "case_id": "ENDERPEARL-IMMUNITY-fabric-1.21.1",
+  "title": "骇客防火墙（南希露立牌）末影珍珠免疫：戴骰子 + nancy_lu_sign 的玩家投出末影珍珠后，ProjectileImpactEvent 钩子把免疫截止时刻写成 gameTime+20（20 tick 常量）；窗口内 fall 伤害被 LivingAttackEvent 取消（hurt=false、血量零变动，珍珠自带的落地伤害被吃掉），窗口清零后同一发 fall 伤害正常生效（3 点）。证据：fabric-1.21.1/src/main/java/com/merlinkitsune/astral_dice/item/sign/NancyLuSignItem.java:60（ENDER_PEARL_IMMUNE_TICKS=20）、:288-296（onNancyLuEnderPearlImpact 写窗口）、:308-317（onNancyLuEnderPearlDamage 取消 DamageTypes.FALL）、:183-189（isEquipped）；fabric-1.21.1/src/main/java/com/merlinkitsune/astral_dice/component/ModAttachments.java:770、:933-939（NANCY_LU_ENDER_PEARL_IMMUNE_UNTIL 键与读写）；fabric-1.21.1/src/main/java/com/merlinkitsune/astral_dice/mixin/bridge/EnderPearlTeleportBridgeMixin.java:33-61（珍珠命中的桥接）。",
+  "version": "fabric-1.21.1",
+  "channel": "autojs",
+  "on_fail": "continue",
+  "steps": [
+    {
+      "op": "note",
+      "text": "两段式验证，避免 20 tick 窗口的时序竞态：(A) 触发段——先归零窗口再投珍珠，await_state 轮询窗口 != 0 即证明 ProjectileImpactEvent 钩子真的跑到了（fabric-1.21.1/src/main/java/com/merlinkitsune/astral_dice/item/sign/NancyLuSignItem.java:288-296）；(B) 语义段——把窗口显式设到很远的将来再打一发 fall，断言被取消，然后清零窗口再打一发，断言真的掉血（同一对调用只差窗口，构成对照）。原版侧伤害来源可查：MC 1.21.1 ThrownEnderpearl#onHit 用 entity.hurt(this.damageSources().fall(), event.getAttackDamage())（反编译源 net/minecraft/world/entity/projectile/ThrownEnderpearl.java:92，取自 neoforge-1.21.1/build/moddev/artifacts/neoforge-21.1.265-sources.jar），所以 NancyLuSignItem.java:313 的 DamageTypes.FALL 判据与珍珠落地伤害是同一个伤害类型。必须 survival（isImmuneToDamage 对创造玩家恒真）。自恢复：窗口归零、血满、清槽、回到进入用例前坐标与 gamemode。"
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "mode": "json",
+      "code": "(function(){\n  var P = AutoJS.players()[0];\n  var L = AutoJS.level();\n  var CSU = Java.loadClass('com.merlinkitsune.astral_dice.item.CurioSlotUtil');\n  var MA = Java.loadClass('com.merlinkitsune.astral_dice.component.ModAttachments');\n  var NLI = Java.loadClass('com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem');\n  var gmm = new RegExp('\"gameMode\":\"([a-z_]+)\"').exec(String(AutoJS.state()));\n  var gmName = gmm === null ? 'creative' : gmm[1];\n  AutoJS.write('astral_test_state.txt', gmName + '|' + P.getX() + '|' + P.getY() + '|' + P.getZ());\n  AutoJS.command('kill @e[type=!player,distance=..48]');\n  AutoJS.command('clear @a');\n  AutoJS.command('effect clear @a');\n  AutoJS.command('gamemode survival @a');\n  var out = {};\n  out.diceEquipped = CSU.tryAutoEquip(P, AutoJS.stack('astral_dice:diamond_dice', 1), 'dice').getResult().consumesAction();\n  out.signEquipped = CSU.tryAutoEquip(P, AutoJS.stack('astral_dice:nancy_lu_sign', 1), 'stand').getResult().consumesAction();\n  out.nancyEquipped = NLI.isEquipped(P);\n  out.immuneTicksConst = NLI.ENDER_PEARL_IMMUNE_TICKS;\n  MA.setNancyLuEnderPearlImmuneUntil(P, 0);\n  out.windowBefore = MA.getNancyLuEnderPearlImmuneUntil(P);\n  P.setHealth(12.0);\n  out.healthBefore = P.getHealth();\n  P.getInventory().selected = 0;\n  P.getInventory().setItem(0, AutoJS.stack('minecraft:ender_pearl', 1));\n  var held = AutoJS.held(P);\n  out.heldId = held.isEmpty() ? 'empty' : String(AutoJS.id(held));\n  out.gameTimeBefore = L.getGameTime();\n  return out;\n})()",
+      "save_as": "setup",
+      "timeout_ms": 60000
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "mode": "json",
+      "code": "(function(){\n  var P = AutoJS.players()[0];\n  var used = AutoJS.use();\n  var held = AutoJS.held(P);\n  return { threwPearl: used, heldAfterThrow: held.isEmpty() ? 'empty' : String(AutoJS.id(held)) };\n})()",
+      "save_as": "thrown",
+      "timeout_ms": 60000
+    },
+    {
+      "op": "await_state",
+      "side": "server",
+      "code": "(function(){\n  var P = AutoJS.players()[0];\n  var MA = Java.loadClass('com.merlinkitsune.astral_dice.component.ModAttachments');\n  return MA.getNancyLuEnderPearlImmuneUntil(P) > 0;\n})()",
+      "timeout_ms": 20000,
+      "interval_ms": 100
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "mode": "json",
+      "code": "(function(){\n  var P = AutoJS.players()[0];\n  var L = AutoJS.level();\n  var MA = Java.loadClass('com.merlinkitsune.astral_dice.component.ModAttachments');\n  var out = {};\n  out.windowObserved = MA.getNancyLuEnderPearlImmuneUntil(P);\n  out.windowWasSet = out.windowObserved > 0;\n  out.healthAfterPearl = P.getHealth();\n  out.pearlFallDamageCanceled = Math.abs(P.getHealth() - 12.0) < 0.001;\n  P.setHealth(12.0);\n  MA.setNancyLuEnderPearlImmuneUntil(P, L.getGameTime() + 400);\n  var hpImmune = P.getHealth();\n  out.hurtWhileImmune = P.hurt(L.damageSources().fall(), 3.0);\n  out.deltaWhileImmune = hpImmune - P.getHealth();\n  MA.setNancyLuEnderPearlImmuneUntil(P, 0);\n  var hpOpen = P.getHealth();\n  out.hurtAfterWindow = P.hurt(L.damageSources().fall(), 3.0);\n  out.deltaAfterWindow = hpOpen - P.getHealth();\n  out.windowFinal = MA.getNancyLuEnderPearlImmuneUntil(P);\n  return out;\n})()",
+      "save_as": "immunity",
+      "timeout_ms": 60000
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "mode": "json",
+      "code": "(function(){\n  var P = AutoJS.players()[0];\n  var Cur = Java.loadClass('com.merlinkitsune.astral_dice.compat.curios.CuriosApi');\n  var DCI = Java.loadClass('com.merlinkitsune.astral_dice.item.dice.DiceCurioItem');\n  var MA = Java.loadClass('com.merlinkitsune.astral_dice.component.ModAttachments');\n  var ItemStack = Java.loadClass('net.minecraft.world.item.ItemStack');\n  var stp = String(AutoJS.read('astral_test_state.txt')).split('|');\n  var gm = stp[0], x = Number(stp[1]), y = Number(stp[2]), z = Number(stp[3]);\n  MA.setNancyLuEnderPearlImmuneUntil(P, 0);\n  AutoJS.command('kill @e[type=!player,distance=..48]');\n  AutoJS.command('effect clear @a');\n  AutoJS.command('clear @a');\n  var inv = Cur.getCuriosInventory(P).get();\n  inv.getStacksHandler('stand').get().getStacks().setStackInSlot(0, ItemStack.EMPTY);\n  inv.getStacksHandler('dice').get().getStacks().setStackInSlot(0, ItemStack.EMPTY);\n  DCI.refreshChipSlotCount(P);\n  P.moveTo(x, y, z);\n  P.setDeltaMovement(0.0, 0.0, 0.0);\n  P.resetFallDistance();\n  P.setHealth(P.getMaxHealth());\n  AutoJS.command('gamemode ' + gm + ' @a');\n  var out = {};\n  out.windowFinal = MA.getNancyLuEnderPearlImmuneUntil(P);\n  out.diceSlotEmptyAfter = inv.getStacksHandler('dice').get().getStacks().getStackInSlot(0).isEmpty();\n  out.standSlotEmptyAfter = inv.getStacksHandler('stand').get().getStacks().getStackInSlot(0).isEmpty();\n  out.chipSlotsFinal = inv.getStacksHandler('chip').get().getSlots();\n  out.gameModeRestored = String(AutoJS.state()).indexOf('\"gameMode\":\"' + gm + '\"') >= 0;\n  out.healthRestored = (P.getHealth() >= P.getMaxHealth() - 0.001);\n  return out;\n})()",
+      "save_as": "restored",
+      "timeout_ms": 60000
+    }
+  ],
+  "asserts": [
+    {
+      "type": "state",
+      "from": "setup",
+      "expect": {
+        "diceEquipped": true,
+        "signEquipped": true,
+        "nancyEquipped": true,
+        "immuneTicksConst": 20,
+        "windowBefore": 0,
+        "healthBefore": 12,
+        "heldId": "minecraft:ender_pearl"
+      }
+    },
+    {
+      "type": "state",
+      "from": "thrown",
+      "expect": {
+        "threwPearl": true
+      }
+    },
+    {
+      "type": "state",
+      "from": "immunity",
+      "expect": {
+        "windowWasSet": true,
+        "pearlFallDamageCanceled": true,
+        "hurtWhileImmune": false,
+        "deltaWhileImmune": {
+          "min": -0.001,
+          "max": 0.001
+        },
+        "hurtAfterWindow": true,
+        "deltaAfterWindow": {
+          "min": 2.999,
+          "max": 3.001
+        },
+        "windowFinal": 0
+      }
+    },
+    {
+      "type": "state",
+      "from": "restored",
+      "expect": {
+        "windowFinal": 0,
+        "diceSlotEmptyAfter": true,
+        "standSlotEmptyAfter": true,
+        "chipSlotsFinal": 0,
+        "gameModeRestored": true,
+        "healthRestored": true
+      }
+    }
+  ]
+}

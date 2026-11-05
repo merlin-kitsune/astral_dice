@@ -1,0 +1,76 @@
+{
+  "case_id": "RENDER-HUD-ASTRAL-fabric-1.21.1",
+  "title": "战斗 HUD：CombatPowerHud 两个 IGuiOverlay 公开静态常量非空、贴图 id 指向 astral_dice 命名空间、overlay 注册面可枚举（client）；断言按公开 API + jar 条目取证，不做反射",
+  "version": "fabric-1.21.1",
+  "channel": "autojs",
+  "side": "client",
+  "on_fail": "stop_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "fabric 线 Rhino 不支持反射（getDeclaredFields/getDeclaredMethods 全不可用）⇒ 本用例只用公开静态字段与注册面枚举取证；私有字段 defense/attack 的数值比对不在本用例范围内。"
+    },
+    {
+      "op": "mcp_status",
+      "save_as": "mcp"
+    },
+    {
+      "op": "eval_js",
+      "save_as": "hud",
+      "code": "(function(){\n  var mc = Java.loadClass('net.minecraft.client.Minecraft').getInstance();\n  if (mc.player === null) { throw new Error('端点: client 侧无 player（客户端未进入世界）'); }\n  var HUD = Java.loadClass('com.merlinkitsune.astral_dice.client.CombatPowerHud');\n  var out = {\n    hudLoaded: true,\n    playerPresent: mc.player !== null,\n    defenseOverlayPresent: HUD.DEFENSE_OVERLAY !== null,\n    attackOverlayPresent: HUD.ATTACK_OVERLAY !== null,\n    defenseFullTex: String(HUD.DEFENSE_FULL),\n    defenseEmptyTex: String(HUD.DEFENSE_EMPTY)\n  };\n  out.overlayIds = [];\n  out.overlayProbeErr = '';\n  try {\n    var Ev = Java.loadClass('com.merlinkitsune.astral_dice.platform.client.event.RegisterGuiOverlaysEvent');\n    var Bus = Java.loadClass('com.merlinkitsune.astral_dice.platform.event.LoaderBus');\n    var ev = new Ev();\n    Bus.INSTANCE.postEvent(ev);\n    var entries = ev.getEntries();\n    for (var i = 0; i < entries.size(); i++) { out.overlayIds.push(String(entries.get(i).id())); }\n  } catch (e) { out.overlayProbeErr = String(e); }\n  out.hasDefenseId = out.overlayIds.indexOf('astral_dice:defense_bar') >= 0;\n  out.hasAttackId = out.overlayIds.indexOf('astral_dice:attack_bar') >= 0;\n  return out;\n})()"
+    },
+    {
+      "op": "note",
+      "text": "贴图与类必须进产物 jar：bytecode 断言覆盖 CombatPowerHud.class 与 defense_full.png。"
+    }
+  ],
+  "asserts": [
+    {
+      "type": "state",
+      "name": "mcp_ok",
+      "from": "mcp",
+      "expect": {
+        "Ok": true
+      }
+    },
+    {
+      "type": "state",
+      "name": "hud_overlays_public",
+      "from": "hud",
+      "expect": {
+        "hudLoaded": true,
+        "playerPresent": true,
+        "defenseOverlayPresent": true,
+        "attackOverlayPresent": true
+      }
+    },
+    {
+      "type": "state",
+      "name": "hud_textures_astral_ns",
+      "from": "hud",
+      "expect": {
+        "defenseFullTex": {
+          "regex": "^astral_dice:textures/gui/defense_full"
+        },
+        "defenseEmptyTex": {
+          "regex": "^astral_dice:textures/gui/defense_empty"
+        }
+      }
+    },
+    {
+      "type": "bytecode",
+      "name": "hud_class_in_jar",
+      "pattern": "^com/merlinkitsune/astral_dice/client/CombatPowerHud\\.class$"
+    },
+    {
+      "type": "bytecode",
+      "name": "hud_textures_in_jar",
+      "pattern": "^assets/astral_dice/textures/gui/defense_(full|half|empty)\\.png$"
+    },
+    {
+      "type": "mixin",
+      "name": "no_mixin_apply_failure",
+      "scope": "whole"
+    }
+  ]
+}

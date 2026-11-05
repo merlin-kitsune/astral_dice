@@ -33,7 +33,7 @@
       "ms": 400
     }
   ],
-  "assert": [
+  "asserts": [
     {
       "type": "log",
       "pattern": "APDUMP\\|EFFECTS\\|effect=astral_dice:lingling_surge\\|amplifier=0\\|duration=\\d+"

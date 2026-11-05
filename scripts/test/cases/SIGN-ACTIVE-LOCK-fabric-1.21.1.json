@@ -1,0 +1,68 @@
+{
+  "case_id": "SIGN-ACTIVE-LOCK-fabric-1.21.1",
+  "title": "立牌主动锁状态机：beginActiveLock 写全 6 键并锁定、lockEnd 是硬上界、KOMACHI 分支先等 grace 再结算、结算额=冷却-减免池（1200-200=1000），played=true 只清 grace 不解锁（证据 item/sign/BaseSignItem.java:375-388,490-499,507-537,560-614）",
+  "version": "fabric-1.21.1",
+  "channel": "autojs",
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "判据来源：BaseSignItem.java:490-499 beginActiveLock（protected static，故用反射 setAccessible 调真方法）写 sign/end=0/grace=0/played=false/pool=0/lastSeen=now；:375-388 isSignActiveLocked（sign 空=false；lockEnd>0 且 gameTime>=lockEnd 直接 false，是硬上界；否则解析 sign 走 isGateEffectActive，解析失败按 lockEnd>0）；:596-611 KOMACHI 分支（graceEnd<=0 或 now<graceEnd 直接 return；played=true 只把 graceEnd 置 0 后 return；否则 forceResetRound + endLockAndStartCooldown）；:507-537 结算 effective=max(0, maxCooldown-pool)，写 cooldownEnd=now+effective、maxCooldown=effective、pool=0、清 sign/end/grace/played/lastSeen。整段在同一个服务端 tick 内完成（gameTime 不变、lastSeen 无 gap），因此不触发 :560-575 的离线补偿，所有数值可精确比对。KomachiSignItem 未覆写 isGateEffectActive（基类默认 true，:402-404），故 KOMACHI 锁在 lockEnd=0 时判定为锁。末尾 clearAll 复原。"
+    },
+    {
+      "op": "mcp_status",
+      "timeout_ms": 20000,
+      "save_as": "mcp"
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "mode": "json",
+      "timeout_ms": 30000,
+      "save_as": "lock",
+      "code": "(function(){\n  function cls(n){ return Java.loadClass(n); }\n  var Base = cls(\"com.merlinkitsune.astral_dice.item.sign.BaseSignItem\");\n  var Att = cls(\"com.merlinkitsune.astral_dice.component.ModAttachments\");\n  var Long = cls(\"java.lang.Long\");\n  var player = AutoJS.players()[0];\n  var out = {};\n  function beginLock(signId, endTick) {\n    Att.setSignActiveLockSign(player, signId);\n    Att.setSignActiveLockEnd(player, endTick);\n    Att.setSignActiveLockGraceEnd(player, 0);\n    Att.setSignActiveLockPlayed(player, false);\n    Att.setSignActiveReductionPool(player, 0);\n    Att.setSignActiveLockLastSeen(player, player.level().getGameTime());\n    return true;\n  }\n  function clearAll() {\n    Att.setSignActiveLockSign(player, \"\");\n    Att.setSignActiveLockEnd(player, 0);\n    Att.setSignActiveLockGraceEnd(player, 0);\n    Att.setSignActiveLockPlayed(player, false);\n    Att.setSignActiveReductionPool(player, 0);\n    Att.setSignActiveCooldownEnd(player, 0);\n    Att.setSignActiveMaxCooldown(player, 0);\n    Att.setSignActiveLockLastSeen(player, 0);\n  }\n  clearAll();\n  var now = Number(player.level().getGameTime());\n  out.now = now;\n  out.komachiConst = String(Base.KOMACHI_LOCK_ID);\n  out.lockedAfterClear = Base.isSignActiveLocked(player);\n  out.beginLockWritten = beginLock(Base.KOMACHI_LOCK_ID, 0);\n  out.lockedAfterBegin = Base.isSignActiveLocked(player);\n  out.lockSignAfterBegin = Att.getSignActiveLockSign(player);\n  out.lockEndAfterBegin = Number(Att.getSignActiveLockEnd(player));\n  out.playedAfterBegin = Att.getSignActiveLockPlayed(player);\n  out.poolAfterBegin = Number(Att.getSignActiveReductionPool(player));\n  out.lastSeenIsNow = Number(Att.getSignActiveLockLastSeen(player)) === now;\n  Att.setSignActiveLockEnd(player, now + 1000);\n  out.lockedFuture = Base.isSignActiveLocked(player);\n  Att.setSignActiveLockEnd(player, now - 1);\n  out.lockedPast = Base.isSignActiveLocked(player);\n  Att.setSignActiveLockEnd(player, now - 1);\n  Att.setSignActiveLockGraceEnd(player, now + 200);\n  Att.setSignActiveLockPlayed(player, false);\n  Base.tickSignActiveLock(player);\n  out.signAfterGraceTick = Att.getSignActiveLockSign(player);\n  out.graceAliveAfterTick = Number(Att.getSignActiveLockGraceEnd(player)) > now;\n  out.cooldownAfterGraceTick = Number(Att.getSignActiveCooldownEnd(player));\n  Att.setSignActiveLockEnd(player, now - 1);\n  Att.setSignActiveLockGraceEnd(player, now - 1);\n  Att.setSignActiveLockPlayed(player, false);\n  Att.setSignActiveMaxCooldown(player, 1200);\n  Att.setSignActiveReductionPool(player, 200);\n  Base.tickSignActiveLock(player);\n  out.signAfterEnd = Att.getSignActiveLockSign(player);\n  out.lockEndAfterEnd = Number(Att.getSignActiveLockEnd(player));\n  out.cooldownDelta = Number(Att.getSignActiveCooldownEnd(player)) - now;\n  out.maxAfterEnd = Number(Att.getSignActiveMaxCooldown(player));\n  out.poolAfterEnd = Number(Att.getSignActiveReductionPool(player));\n  out.lockedAfterEnd = Base.isSignActiveLocked(player);\n  clearAll();\n  beginLock(Base.KOMACHI_LOCK_ID, 0);\n  Att.setSignActiveLockEnd(player, 0);\n  Att.setSignActiveLockGraceEnd(player, now - 1);\n  Att.setSignActiveLockPlayed(player, true);\n  Base.tickSignActiveLock(player);\n  out.signAfterPlayed = Att.getSignActiveLockSign(player);\n  out.graceAfterPlayed = Number(Att.getSignActiveLockGraceEnd(player));\n  out.cooldownAfterPlayed = Number(Att.getSignActiveCooldownEnd(player));\n  out.lockedAfterPlayed = Base.isSignActiveLocked(player);\n  clearAll();\n  out.lockedFinal = Base.isSignActiveLocked(player);\n  out.signFinal = Att.getSignActiveLockSign(player);\n  out.lastSeenFinal = Number(Att.getSignActiveLockLastSeen(player));\n  return out;\n})()"
+    }
+  ],
+  "asserts": [
+    {
+      "type": "state",
+      "from": "mcp",
+      "expect": {
+        "Ok": true
+      }
+    },
+    {
+      "type": "state",
+      "from": "lock",
+      "expect": {
+        "komachiConst": "astral_dice:komachi_sign",
+        "lockedAfterClear": false,
+        "lockedAfterBegin": true,
+        "lockSignAfterBegin": "astral_dice:komachi_sign",
+        "lockEndAfterBegin": 0,
+        "playedAfterBegin": false,
+        "poolAfterBegin": 0,
+        "lastSeenIsNow": true,
+        "lockedFuture": true,
+        "lockedPast": false,
+        "signAfterGraceTick": "astral_dice:komachi_sign",
+        "graceAliveAfterTick": true,
+        "cooldownAfterGraceTick": 0,
+        "signAfterEnd": "",
+        "lockEndAfterEnd": 0,
+        "cooldownDelta": 1000,
+        "maxAfterEnd": 1000,
+        "poolAfterEnd": 0,
+        "lockedAfterEnd": false,
+        "signAfterPlayed": "astral_dice:komachi_sign",
+        "graceAfterPlayed": 0,
+        "cooldownAfterPlayed": 0,
+        "lockedAfterPlayed": true,
+        "lockedFinal": false,
+        "signFinal": "",
+        "lastSeenFinal": 0,
+        "beginLockWritten": true
+      }
+    }
+  ]
+}

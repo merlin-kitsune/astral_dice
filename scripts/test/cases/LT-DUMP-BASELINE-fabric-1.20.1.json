@@ -17,7 +17,7 @@
       "ms": 500
     }
   ],
-  "assert": [
+  "asserts": [
     {
       "type": "log",
       "pattern": "APDUMP\\|HEAD\\|"

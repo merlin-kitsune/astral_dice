@@ -1,0 +1,82 @@
+{
+  "case_id": "RENDER-SHADER-ACTIVE-fabric-1.21.1",
+  "title": "L5 光影：Iris 已随运行期加载、API 可调用、且已挂载并启用 shaderpack。主断言 = IrisApi.isShaderPackInUse()==true + Iris.getIrisConfig().getShaderPackName() 命中 ComplementaryReimagined + minorApiRevision>=1。证据：fabric-1.21.1/gradle.properties:90-91（iris_version=1.8.8+1.21.1 / iris_mr_version=zsoi0dso）、fabric-1.21.1/build.gradle:122-124（默认 modRuntimeOnly iris）、运行目录 fabric-1.21.1/run/client/config/iris.properties（shaderPack=ComplementaryReimagined_r5.9.3.zip / enableShaders=true）、fabric-1.21.1/run/client/shaderpacks/ComplementaryReimagined_r5.9.3.zip。API 签名已 javap 实核（net.irisshaders.iris.api.v0.IrisApi#isShaderPackInUse/getMinorApiRevision/getConfig；net.irisshaders.iris.Iris#getIrisConfig/isPackInUseQuick/getCurrentPack/getShaderpacksDirectory；net.irisshaders.iris.config.IrisConfig#getShaderPackName/areShadersEnabled）。",
+  "version": "fabric-1.21.1",
+  "side": "client",
+  "channel": "autojs",
+  "on_fail": "keep_game_running",
+  "target": {
+    "type": "feature",
+    "ref": "l5-render-shader"
+  },
+  "steps": [
+    {
+      "op": "note",
+      "text": "为什么用 client 侧 eval 而不是截图：runner 的 screenshot 原语恒 BLOCKED（scripts/test/lib/mt_case.py:430-433），vision 断言不可用，所以光影判据只能读 client 侧真实 API 返回值（截图留人工）。\n\n为什么断言 packName 而不是只断言 boolean：isShaderPackInUse() 只说明「有包在跑」，packName 才能钉住跑的是不是 shaderpacks 目录里那一个；两者任一为假都该红。\n\n为什么 Iris 缺席走 BLOCKED：本线 dev 默认装 iris（build.gradle:122-124），但开关 -PtestIris=false 是合法运行形态（scripts/test/win/launch.sh:283-293），此时没有光影可取证，属于环境缺失而不是产品坏。runner 只有「错误串含 端点」才记 BLOCKED（mt_case.py:477-483），所以这里按该契约抛。"
+    },
+    {
+      "op": "mcp_status",
+      "save_as": "mcp",
+      "timeout_ms": 15000
+    },
+    {
+      "op": "eval_js",
+      "side": "client",
+      "save_as": "iris",
+      "timeout_ms": 20000,
+      "mode": "json",
+      "code": "(function(){\nfunction C(n){\n  try { return Java.loadClass(n); } catch (e1) {}\n  return Packages.java.lang.Class.forName(n);\n}\nfunction mOf(cls, name){\n  var ms = cls.getDeclaredMethods();\n  for (var i = 0; i < ms.length; i++) { if (String(ms[i].getName()) === name) { return ms[i]; } }\n  return null;\n}\nfunction fOf(cls, name){\n  var fs = cls.getDeclaredFields();\n  for (var i = 0; i < fs.length; i++) { if (String(fs[i].getName()) === name) { return fs[i]; } }\n  return null;\n}\nfunction invoke(m, tgt, vals){\n  var Arr = C('java.lang.reflect.Array');\n  var Obj = C('java.lang.Object');\n  var a = Arr.newInstance(Obj, vals.length);\n  for (var i = 0; i < vals.length; i++) { a[i] = vals[i]; }\n  m.setAccessible(true);\n  return m.invoke(tgt, a);\n}\nfunction stat(cls, name){\n  var f = fOf(cls, name);\n  f.setAccessible(true);\n  return f.get(null);\n}\nfunction countMixin(cls, prefix){\n  var ms = cls.getDeclaredMethods(), n = 0;\n  for (var i = 0; i < ms.length; i++) { if (String(ms[i].getName()).indexOf(prefix) === 0) { n++; } }\n  return n;\n}\nvar mc = C('net.minecraft.client.Minecraft').getInstance();\nvar out = { irisLoaded: false, modVersion: '', apiOk: false, revision: -1, shadersEnabled: false,\n            packInUse: false, currentPackPresent: false, packName: '', packInUseQuick: false,\n            shaderpacksDir: '', err: '' };\ntry {\n  var FL = C('net.fabricmc.loader.api.FabricLoader').getInstance();\n  var oc = FL.getModContainer('iris');\n  out.irisLoaded = oc.isPresent();\n  if (out.irisLoaded) { out.modVersion = String(oc.get().getMetadata().getVersion().getFriendlyString()); }\n} catch (e) { out.err += 'loader:' + e + ';'; }\ntry {\n  var IrisApi = C('net.irisshaders.iris.api.v0.IrisApi');\n  var api = IrisApi.getInstance();\n  out.apiOk = api !== null;\n  out.revision = Number(api.getMinorApiRevision());\n  out.packInUse = Boolean(api.isShaderPackInUse());\n  out.shadersEnabled = Boolean(api.getConfig().areShadersEnabled());\n} catch (e) { out.err += 'api:' + e + ';'; }\ntry {\n  var Iris = C('net.irisshaders.iris.Iris');\n  var pn = Iris.getIrisConfig().getShaderPackName();\n  out.packName = pn.isPresent() ? String(pn.get()) : '';\n  out.currentPackPresent = Boolean(Iris.getCurrentPack().isPresent());\n  out.packInUseQuick = Boolean(Iris.isPackInUseQuick());\n  out.shaderpacksDir = String(Iris.getShaderpacksDirectory());\n} catch (e) { out.err += 'iris:' + e + ';'; }\nif (!out.irisLoaded) { throw new Error('端点: iris 未随运行期加载（本线 dev 默认装，见 fabric-1.21.1/build.gradle:122-124；若以 -PtestIris=false 启动则本用例 BLOCKED 而非 FAIL）'); }\nreturn out;\n})()"
+    },
+    {
+      "op": "note",
+      "text": "判据三件套：① irisLoaded（FabricLoader 有 iris 模组）② apiOk + revision>=1（API 类真的在、且版本号可读）③ packInUse==true 且 packName 命中 ComplementaryReimagined（iris.properties 里配的那个包真的加载了）。modVersion 用正则 ^1\\.8\\. 钉住钉版（gradle.properties:90）。"
+    }
+  ],
+  "asserts": [
+    {
+      "type": "state",
+      "name": "mcp_ok",
+      "from": "mcp",
+      "expect": {
+        "Ok": true
+      }
+    },
+    {
+      "type": "state",
+      "name": "iris_present",
+      "from": "iris",
+      "expect": {
+        "irisLoaded": true,
+        "apiOk": true,
+        "revision": {
+          "gte": 1
+        },
+        "modVersion": {
+          "regex": "^1\\.8\\."
+        }
+      }
+    },
+    {
+      "type": "state",
+      "name": "shaderpack_active",
+      "from": "iris",
+      "expect": {
+        "shadersEnabled": true,
+        "packInUse": true,
+        "packName": {
+          "regex": "ComplementaryReimagined"
+        },
+        "currentPackPresent": true
+      }
+    },
+    {
+      "type": "mixin",
+      "name": "no_mixin_apply_failure",
+      "scope": "whole"
+    },
+    {
+      "type": "crash",
+      "name": "no_new_crash_report"
+    }
+  ]
+}

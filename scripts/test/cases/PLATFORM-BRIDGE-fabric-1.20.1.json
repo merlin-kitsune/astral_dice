@@ -13,7 +13,7 @@
       "save_as": "jar"
     }
   ],
-  "assert": [
+  "asserts": [
     {
       "type": "bytecode",
       "pattern": "platform/event/entity/living/[A-Za-z]+\\.class$"

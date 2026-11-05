@@ -1,0 +1,67 @@
+{
+  "case_id": "INCOMPAT-ACCESSORIES-fabric-1.21.1",
+  "title": "装 accessories 时启动被拒的半静态判据：运行期 metadata 的 breaks 含 accessories/acl、BLACKLIST 含两项且无条件生效、拒绝文案同时指名两者与「只支持 Trinkets」（证据 fabric.mod.json:51-53；init/ModCompatibilityCheck.java:85-93,144-163,170-185）——本条不真装 accessories，故用运行期 metadata（breaks）与公开静态判定取证；AutoJS 自带 Rhino 不支持反射，私有 BLACKLIST 与拒绝文案无法运行期读取，改以 jar 条目（bytecode 断言）与源码为证",
+  "version": "fabric-1.21.1",
+  "channel": "autojs",
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "为什么不能真装：accessories 一旦进 mods 目录，本模组的 verifyAccessoryProviderOrThrow（ModCompatibilityCheck.java:156-159）会在 common setup 抛 ModLoadingException，游戏起不来，AutoJS 端点也就不存在 ⇒ 该场景的拒绝事实只能用「真实运行中的类 + 真实 mod metadata」取证：breaks 声明用 FabricLoader 读 astral_dice 的 metadata（fabric.mod.json:51-53），黑名单用反射读私有静态字段 BLACKLIST（:85-93，record Entry(modId,displayName,onlyWhenWalletEnabled)，:76-77），文案用反射调用私有 buildIncompatibleBackendMessage(true,false)（:170-185）。三者都是运行期真值，不会假绿。"
+    },
+    {
+      "op": "mcp_status",
+      "timeout_ms": 20000,
+      "save_as": "mcp"
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "mode": "json",
+      "timeout_ms": 30000,
+      "save_as": "incompat",
+      "code": "(function(){\n  var FL = Java.loadClass(\"net.fabricmc.loader.api.FabricLoader\");\n  var MCC = Java.loadClass(\"com.merlinkitsune.astral_dice.init.ModCompatibilityCheck\");\n  var out = {};\n  var loader = FL.getInstance();\n  var cont = loader.getModContainer(\"astral_dice\");\n  out.modLoaded = cont.isPresent();\n  var br = [];\n  if (cont.isPresent()) {\n    var bit = cont.get().getMetadata().getBreaks().iterator();\n    while (bit.hasNext()) { br.push(String(bit.next().getModId())); }\n  }\n  out.breaks = br;\n  out.breaksAccessories = br.indexOf(\"accessories\") >= 0;\n  out.breaksAcl = br.indexOf(\"accessories_compat_layer\") >= 0;\n  out.accessoriesLoaded = loader.isModLoaded(\"accessories\");\n  out.aclLoaded = loader.isModLoaded(\"accessories_compat_layer\");\n  out.isAccessoriesPresent = MCC.isAccessoriesPresent();\n  out.isAclPresent = MCC.isAccessoriesCompatLayerPresent();\n  out.isTrinketsPresent = MCC.isTrinketsPresent();\n  out.trinketsLoaded = loader.isModLoaded(\"trinkets\");\n  return out;\n})()"
+    }
+  ],
+  "asserts": [
+    {
+      "type": "state",
+      "from": "mcp",
+      "expect": {
+        "Ok": true
+      }
+    },
+    {
+      "type": "state",
+      "from": "incompat",
+      "expect": {
+        "modLoaded": true,
+        "breaksAccessories": true,
+        "breaksAcl": true,
+        "accessoriesLoaded": false,
+        "aclLoaded": false,
+        "isAccessoriesPresent": false,
+        "isAclPresent": false,
+        "isTrinketsPresent": true,
+        "trinketsLoaded": true
+      }
+    },
+    {
+      "type": "bytecode",
+      "pattern": "^com/merlinkitsune/astral_dice/init/ModCompatibilityCheck\\.class$"
+    },
+    {
+      "type": "bytecode",
+      "pattern": "^com/merlinkitsune/astral_dice/compat/curios/TrinketBridge\\.class$"
+    },
+    {
+      "type": "bytecode",
+      "pattern": "^fabric\\.mod\\.json$"
+    },
+    {
+      "type": "log",
+      "scope": "whole",
+      "pattern": "AP_FAB_ACCESSORY_PROVIDER: OK \\(trinkets=true accessories=false acl=false\\)"
+    }
+  ]
+}

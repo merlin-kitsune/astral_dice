@@ -1,0 +1,108 @@
+{
+  "case_id": "AUTOJS-CHANNEL-fabric-1.21.1",
+  "title": "通道自检：MCP 端点可达 + server 侧 AutoJS 全局可用（side/server/level/players/modid 均可读且至少 1 名玩家在 worlds）+ client 侧 AutoJS 全局可用且在 worlds + console 命令源可写（/time set 往返并原样恢复）。任一环不通必须 BLOCKED（端点级）而不是 FAIL。证据：AutoJS 语义（AutoJS.command 走 console 命令源⇒选择器只能用 @a；AutoJS.level() 为方法；AutoJS.players() 返回 Player[]）、scripts/test/lib/mt_case.py:459-469（mcp_status Ok=false ⇒ Blocked）与 :477-483（错误串含 端点/transport/HTTP 0 ⇒ Blocked）、platform/event/LoaderBus.java:197。",
+  "version": "fabric-1.21.1",
+  "side": "server",
+  "channel": "autojs",
+  "on_fail": "keep_game_running",
+  "target": {
+    "type": "feature",
+    "ref": "autojs-harness"
+  },
+  "steps": [
+    {
+      "op": "note",
+      "text": "本用例是 L5 七条的前置：它证明「通道本身」通，而不是证明某个渲染行为。\n\nBLOKED 语义的三处落地：① mcp_status 不 Ok 时 runner 自己 raise Blocked（scripts/test/lib/mt_case.py:459-469）；② server/client 侧 eval 若连上了但 AutoJS 全局不存在，代码里显式 throw 'Error(端点: ...)' ⇒ runner 的错误串匹配「端点」⇒ Blocked（:477-483），不会污染成 FAIL；③ 端点整体不通时 eval 的 transport 错误同样落 Blocked。\n\n为什么还要专门测一次 console 命令源：AutoJS.command 走 console 命令源（选择器必须 @a，@s 会解析成 console），这是本线所有 setup/清场的基础设施；如果它悄悄失效，其他用例的「清场」会变成空操作（假绿）。这里用 /time set 往返取证：先读原白天时间 t0，写 6000，读 t1，再写回 t0，读 t2；断言 t1 落在 6000..6300（跨 tick 余量）且 |t2-t0|<=2 ⇒ 命令真的生效且用例把世界时间原样还了回去（自恢复）。\n\n注意：本用例在 server 侧主判（side=server），client 侧只作可达性附加判据；若整条 fabric-1.21.1 客户端没起，server 侧仍应 PASS，但 RENDER-* 五条会因 client 侧不可用而 BLOCKED —— 这是有意的分级。"
+    },
+    {
+      "op": "mcp_status",
+      "save_as": "mcp",
+      "timeout_ms": 15000
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "save_as": "srv",
+      "timeout_ms": 20000,
+      "mode": "json",
+      "code": "(function(){\nfunction C(n){\n  try { return Java.loadClass(n); } catch (e1) {}\n  return Packages.java.lang.Class.forName(n);\n}\nfunction B(v){ return String(v) === 'true'; }\nfunction mOf(cls, name){\n  var ms = cls.getDeclaredMethods();\n  for (var i = 0; i < ms.length; i++) { if (String(ms[i].getName()) === name) { return ms[i]; } }\n  return null;\n}\nfunction fOf(cls, name){\n  var fs = cls.getDeclaredFields();\n  for (var i = 0; i < fs.length; i++) { if (String(fs[i].getName()) === name) { return fs[i]; } }\n  return null;\n}\nfunction invoke(m, tgt, vals){\n  var Arr = C('java.lang.reflect.Array');\n  var Obj = C('java.lang.Object');\n  var a = Arr.newInstance(Obj, vals.length);\n  for (var i = 0; i < vals.length; i++) { a[i] = vals[i]; }\n  m.setAccessible(true);\n  return m.invoke(tgt, a);\n}\nfunction stat(cls, name){\n  var f = fOf(cls, name);\n  f.setAccessible(true);\n  return f.get(null);\n}\nfunction countMixin(cls, prefix){\n  var ms = cls.getDeclaredMethods(), n = 0;\n  for (var i = 0; i < ms.length; i++) { if (String(ms[i].getName()).indexOf(prefix) === 0) { n++; } }\n  return n;\n}\nif (typeof AutoJS === 'undefined') { throw new Error('端点: server 侧 AutoJS 全局缺失（通道未注入，本用例记 BLOCKED 而非 FAIL）'); }\nvar out = { hasAutoJS: true, side: '', serverOk: false, levelOk: false, players: 0, modid: '', err: '' };\ntry { out.side = String(AutoJS.side()); } catch (e) { out.err += 'side:' + e + ';'; }\ntry { out.serverOk = (AutoJS.server() !== null); } catch (e) { out.err += 'server:' + e + ';'; }\ntry { out.levelOk = (AutoJS.level() !== null); } catch (e) { out.err += 'level:' + e + ';'; }\ntry { var ps = AutoJS.players(); out.players = (ps === null) ? 0 : ps.length; } catch (e) { out.err += 'players:' + e + ';'; }\ntry {\n  var oc = C('net.fabricmc.loader.api.FabricLoader').getInstance().getModContainer('astral_dice');\n  out.modid = oc.isPresent() ? String(oc.get().getMetadata().getId()) : '';\n} catch (e) { out.err += 'loader:' + e + ';'; }\nreturn out;\n})()"
+    },
+    {
+      "op": "eval_js",
+      "side": "client",
+      "save_as": "cli",
+      "timeout_ms": 20000,
+      "mode": "json",
+      "code": "(function(){\nfunction C(n){\n  try { return Java.loadClass(n); } catch (e1) {}\n  return Packages.java.lang.Class.forName(n);\n}\nfunction B(v){ return String(v) === 'true'; }\nfunction mOf(cls, name){\n  var ms = cls.getDeclaredMethods();\n  for (var i = 0; i < ms.length; i++) { if (String(ms[i].getName()) === name) { return ms[i]; } }\n  return null;\n}\nfunction fOf(cls, name){\n  var fs = cls.getDeclaredFields();\n  for (var i = 0; i < fs.length; i++) { if (String(fs[i].getName()) === name) { return fs[i]; } }\n  return null;\n}\nfunction invoke(m, tgt, vals){\n  var Arr = C('java.lang.reflect.Array');\n  var Obj = C('java.lang.Object');\n  var a = Arr.newInstance(Obj, vals.length);\n  for (var i = 0; i < vals.length; i++) { a[i] = vals[i]; }\n  m.setAccessible(true);\n  return m.invoke(tgt, a);\n}\nfunction stat(cls, name){\n  var f = fOf(cls, name);\n  f.setAccessible(true);\n  return f.get(null);\n}\nfunction countMixin(cls, prefix){\n  var ms = cls.getDeclaredMethods(), n = 0;\n  for (var i = 0; i < ms.length; i++) { if (String(ms[i].getName()).indexOf(prefix) === 0) { n++; } }\n  return n;\n}\nif (typeof AutoJS === 'undefined') { throw new Error('端点: client 侧 AutoJS 全局缺失（通道未注入，本用例记 BLOCKED 而非 FAIL）'); }\nvar mc = C('net.minecraft.client.Minecraft').getInstance();\nreturn { hasAutoJS: true, inWorld: mc.level !== null, hasPlayer: mc.player !== null, fps: Number(mc.getFps()), err: '' };\n})()"
+    },
+    {
+      "op": "await_state",
+      "side": "server",
+      "timeout_ms": 60000,
+      "interval_ms": 500,
+      "code": "(function(){ if (typeof AutoJS === 'undefined') { return false; } var ps = AutoJS.players(); return ps !== null && ps.length > 0; })()"
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "save_as": "cmd",
+      "timeout_ms": 20000,
+      "mode": "json",
+      "code": "(function(){\nfunction C(n){\n  try { return Java.loadClass(n); } catch (e1) {}\n  return Packages.java.lang.Class.forName(n);\n}\nfunction B(v){ return String(v) === 'true'; }\nfunction mOf(cls, name){\n  var ms = cls.getDeclaredMethods();\n  for (var i = 0; i < ms.length; i++) { if (String(ms[i].getName()) === name) { return ms[i]; } }\n  return null;\n}\nfunction fOf(cls, name){\n  var fs = cls.getDeclaredFields();\n  for (var i = 0; i < fs.length; i++) { if (String(fs[i].getName()) === name) { return fs[i]; } }\n  return null;\n}\nfunction invoke(m, tgt, vals){\n  var Arr = C('java.lang.reflect.Array');\n  var Obj = C('java.lang.Object');\n  var a = Arr.newInstance(Obj, vals.length);\n  for (var i = 0; i < vals.length; i++) { a[i] = vals[i]; }\n  m.setAccessible(true);\n  return m.invoke(tgt, a);\n}\nfunction stat(cls, name){\n  var f = fOf(cls, name);\n  f.setAccessible(true);\n  return f.get(null);\n}\nfunction countMixin(cls, prefix){\n  var ms = cls.getDeclaredMethods(), n = 0;\n  for (var i = 0; i < ms.length; i++) { if (String(ms[i].getName()).indexOf(prefix) === 0) { n++; } }\n  return n;\n}\nif (typeof AutoJS === 'undefined') { throw new Error('端点: server 侧 AutoJS 全局缺失（通道未注入）'); }\nvar t0 = Number(AutoJS.level().getDayTime()) % 24000;\nAutoJS.command('/time set 6000');\nvar t1 = Number(AutoJS.level().getDayTime()) % 24000;\nAutoJS.command('/time set ' + t0);\nvar t2 = Number(AutoJS.level().getDayTime()) % 24000;\nvar d = t2 - t0; if (d < 0) { d = -d; }\nreturn { cmdSent: true, orig: t0, after: t1, restored: t2, restoreDelta: d, restoreOk: d <= 2 };\n})()"
+    },
+    {
+      "op": "note",
+      "text": "断言映射：srv.hasAutoJS/serverOk/levelOk ⇐ AutoJS 全局与 server()/level() 实存；srv.modid==='astral_dice' ⇐ fabric-1.21.1/src/main/resources/fabric.mod.json 的 id；srv.players>=1 ⇐ await_state 已等到玩家进 world（AutoJS.players() 返回 Player[]）；cli.inWorld ⇐ Minecraft.getInstance().level 非空；cmd.after 落在 6000..6300 ⇐ /time set 6000 真正落了世界时间（console 源可写），cmd.restoreOk ⇐ 结尾把时间写回原值（自恢复）。"
+    }
+  ],
+  "asserts": [
+    {
+      "type": "state",
+      "name": "mcp_endpoint_ok",
+      "from": "mcp",
+      "expect": {
+        "Ok": true
+      }
+    },
+    {
+      "type": "state",
+      "name": "server_channel_ok",
+      "from": "srv",
+      "expect": {
+        "hasAutoJS": true,
+        "serverOk": true,
+        "levelOk": true,
+        "players": {
+          "gte": 1
+        },
+        "modid": "astral_dice"
+      }
+    },
+    {
+      "type": "state",
+      "name": "client_channel_ok",
+      "from": "cli",
+      "expect": {
+        "hasAutoJS": true,
+        "inWorld": true,
+        "hasPlayer": true,
+        "fps": {
+          "gte": 1
+        }
+      }
+    },
+    {
+      "type": "state",
+      "name": "console_command_source_ok",
+      "from": "cmd",
+      "expect": {
+        "cmdSent": true,
+        "after": {
+          "gte": 6000,
+          "lte": 6300
+        },
+        "restoreOk": true
+      }
+    }
+  ]
+}

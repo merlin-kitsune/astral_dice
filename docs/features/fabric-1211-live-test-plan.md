@@ -339,3 +339,65 @@ bash scripts/test/win/mt.sh --version fabric-1.21.1 --phase stop --force
 3. **E8 RCON 仍未验证**（`env.sh` 的 RCON 段只探第一条 fabric 线）。
 4. `JAR-ASSETS` 里 `bountiful=4` 是自 1.20.1 带过来的死数据（本线不装 Bountiful），未清、也不设判据。
 
+
+## 14. fabric-1.21.1 用例全量落地与回归（2026-11-05 夜）
+
+本节收口 §13.5 遗留第 1、2 条：存量单数 `assert` 已清、L1–L5 + 专属 26 条已写并跑绿，**29 条用例全 PASS**。
+
+### 14.1 用例清单（`scripts/test/cases/*-fabric-1.21.1.json`，29 个文件）
+
+| 批次 | 用例 | 取证要点 |
+|---|---|---|
+| L0 | BOOT-READY / JAR-ASSETS / MODLIST | 启动行 + 产物条目/配方/饰品数 + 已装模组集合（§13） |
+| L1 | DICE-ROLL / CARD-USE / SIGN-EQUIP / WALLET-STARCOIN / CRAFT-CHIP | 骰子契约与自动装槽、卡的最大堆叠/耐久条、立牌是 stand 槽饰品（不是方块）、星币面额与账本、chip_shop 真合成 |
+| L2 | EFFECT-APPLY / DAMAGE-CHAIN / DODGE-BREAK / ENDERPEARL-IMMUNITY / EFFECT-STACK | 效果施加、易伤 ×1.10、moses 闪避反制、珍珠 20 tick fall 免疫、charge 上限 20 |
+| L3 | TRINKET-BACKEND / TRINKET-SLOTS / INCOMPAT-ACCESSORIES | Trinkets-only 后端、槽位上限、`breaks` 声明与不兼容拒绝 |
+| L4 | CARD-CHOICE-UI / CHIP-SHOP-UI / CHIP-SHOP-BUY / SIGN-ACTIVE-LOCK / ATTACHMENT-PERSIST / MENU-SYNC | 选卡界面、筹码商店 UI/购买、立牌主动锁定状态机、附件持久化、菜单同步 |
+| L5 | RENDER-SHADER-ACTIVE / RENDER-SIGN-TRANSLUCENT / RENDER-HUD-ASTRAL / RENDER-PARTICLE / RENDER-TOOLTIP-FRAME | 光影生效、立牌半透明、战斗 HUD、自定义粒子、tooltip 取色 |
+| 专属 | AUTOJS-CHANNEL / SYKESTENTACLE-ANIM | AutoJS 端点原语、GeckoLib 触手实体召唤/动画/掉血 |
+
+### 14.2 Rhino / AutoJS 互操作硬事实（写用例必读，本轮实测）
+
+1. **反射一律不可用**：`getDeclaredMethods` / `getDeclaredFields` / `setAccessible` / `invoke` 全报 `Java class ... has no public instance field or method named getDeclaredFields`；`Packages.java.lang.Class.forName` 兜底同样不可用。
+2. **`obj.getClass()` 不可用**（`TypeError: Cannot find function getClass`）⇒ 类名判定一律 `String(obj)`（得 `类名@hash`）。
+3. **包名前缀全局不解析**（`net.minecraft.client.Minecraft.getInstance()` 直接抛错）⇒ 所有类都走 `Java.loadClass(...)`。
+4. **`eval_js` mode=json 包成 `JSON.stringify((<code>))`** ⇒ 代码必须是**单个表达式**（多语句包 IIFE），且**裸字符串返回值恒为 null**，只能返回对象/数组。
+5. `mt_autojs.AutoJs.eval_js(self, code, side="auto", mode="raw", timeout_ms=None)` —— 第一个位置参数是 **code**。
+6. `InteractionResultHolder` 上不能直接调 `consumesAction()` ⇒ 写 `xxx.getResult().consumesAction()`。
+7. JS 里写 `10.0F` / `3.0F` 这类 Java float 字面量会报 `EvaluatorException: missing ) after argument list` ⇒ 去掉 `F` 后缀。
+8. **跨 eval 传状态用 `AutoJS.write(path, text)` / `AutoJS.read(path)`**（实测可用）；1.21.1 已无 `getPersistentData`。
+9. **`bytecode` / `bytecode_absent` 断言匹配的是产物 jar 条目名**（正则，`mt_case.py:748-762`），不是字节码内容。
+10. **mixin 类不能 `Java.loadClass`**：直接加载 `SignTranslucencyMixin` 会抛 `RuntimeException: Mixin transformation of ... failed` ⇒ mixin 只能做静态取证（jar 条目 + 配置 + `type: mixin` 全窗口无失败）。
+11. `screenshot` 原语当前恒 `raise Blocked`（`mt_case.py:430-433`）⇒ 视觉断言一律改静态/公开 API 路线。
+
+### 14.3 三处判据改写（不是因为产品有问题，而是通道限制）
+
+| 用例 | 原设想 | 实际取证方式 |
+|---|---|---|
+| RENDER-SIGN-TRANSLUCENT | 运行期直调 `AlphaContext.push/current` | 包私有 + mixin 不可加载 ⇒ jar 条目 + `astral_dice.mixins.json` 在产物内 + mixin 无失败 + `LivingEntityRenderer` 可加载 |
+| RENDER-HUD-ASTRAL | 反射读私有 defense/attack 数值 | 公开静态 `DEFENSE_OVERLAY` / `ATTACK_OVERLAY` / `DEFENSE_FULL` + jar 条目 |
+| RENDER-PARTICLE | 反射读 `ParticleEngine` 的 provider/spriteSet | 注册表命中 + `ResourceManager.getResource('astral_dice:particles/*.json')` 存在 + jar 条目 |
+
+### 14.4 全量回归读数（2026-11-05 夜，`temp/run_final_1211.log`）
+
+- 运行方式：逐条 `python scripts/test/lib/mt_case.py run --case scripts/test/cases/<X>-fabric-1.21.1.json --version fabric-1.21.1 --run-dir fabric-1.21.1/run/client --case-timeout 150`；活客户端 = `bash scripts/test/win/launch.sh --version fabric-1.21.1 --side client --enable-autojs --wait-world 600 --timeout 900`。
+- 结果：**TOTAL pass=29 fail=0 other=0**。
+- 首跑对比：26 条里 PASS 13 / FAIL 13；修复轮次共改 13 条（12 条重写/机械修 + RENDER-SIGN-TRANSLUCENT 改静态路线）。
+- 用例合法性：`python scripts/test/lib/mt_case.py validate --cases-dir scripts/test/cases --version fabric-1.21.1` ⇒ `MT_CASE_VALIDATE: files=29 errors=0`。
+
+### 14.5 本轮暴露的产品级问题（**未改代码，待裁决**）
+
+1. **玩家侧骰子闪避整体关闭**：`fabric-1.21.1/src/main/java/com/merlinkitsune/astral_dice/combat/DiceCombatEvents.java:261` `PLAYER_DODGE_ENABLED = false`（注释 :256-260 说明已移除），闪避只剩 moses / ren_shield / pandaman 三条立牌反制。
+2. **无 firewall/骇客防火墙类**：珍珠 20 tick fall 免疫的真实实现是 `item/sign/NancyLuSignItem.java`（`ENDER_PEARL_IMMUNE_TICKS = 20`，:60、:288-296、:308-317）。
+3. **`item/card/CardItem.java` 无 `use()`**：战斗卡只能在骰子卡槽里被战斗结算消耗（`DiceCombatEvents.java:1095 consumeAttackCardDurabilityOnce`），"右键用卡"不成立。
+4. **星币拾取桥是通知式、不可取消**（`platform/PuzzlesBridges.java:210-215`）⇒ 拾取入包与入账可能同时发生 = 潜在刷钱；WALLET-STARCOIN 走 `/give + depositAll` 绕开了拾取路径，未覆盖。
+5. **`item/ChargeManager.java:82-90` `addStacks` 返回叠加后总值而非增量**，与 `ChargeEffect.addStacks` 同名不同义。
+6. **`compat/curios/TrinketBridge.java:79-113`** 把 `onEquip` 的 prevStack / `onUnequip` 的 newStack 硬传 `ItemStack.EMPTY`，与 neo/forge 线语义不一致。
+7. 注释漂移两处已就地订正：`fabric-1.21.1/build.gradle:113`（sodium/iris 版本描述）与 `mixin/client/SignTranslucencyMixin.java:20`（写成 Fabric 1.20.1）。
+
+### 14.6 遗留
+
+1. `fabric-1.20.1` 的 `LT-ENTITY-SWEEP` 需活客户端，本轮未复跑（离线判 BLOCKED 属预期）。
+2. **E8 RCON 仍未验证**（`env.sh` 的 RCON 段只探第一条 fabric 线）。
+3. 视觉取证通道仍缺：`screenshot` 原语恒 BLOCKED，像素级断言（半透明、HUD 数值、粒子外观）待通道恢复后补。
+4. 上述 14.5 的 1–6 条未改代码，需用户裁决后另开批次。

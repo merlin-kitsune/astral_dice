@@ -1,0 +1,78 @@
+{
+  "case_id": "TRINKET-BACKEND-fabric-1.21.1",
+  "title": "饰品后端运行期判定：Trinkets 在位且 accessories/acl 不在位，astral_dice 命名空间下每个 ICurioItem 都拿到 TrinketBridge 适配器（证据 init/ModCompatibilityCheck.java:103-124,144-163；compat/curios/TrinketBridge.java:49-72,79-113）",
+  "version": "fabric-1.21.1",
+  "channel": "autojs",
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "判据来源：ModCompatibilityCheck.java:109-124 isTrinketsPresent/isAccessoriesPresent/isAccessoriesCompatLayerPresent 走 FabricLoader.isModLoaded；TrinketBridge.java:61-71 只给 namespace=astral_dice 且 instanceof ICurioItem 的物品注册 Trinket，适配器是私有 record TrinketBridge$Adapter（:79-113），故可用 getTrinket(item) 的运行时类名判定是否注册；本步只读，无副作用。"
+    },
+    {
+      "op": "mcp_status",
+      "timeout_ms": 20000,
+      "save_as": "mcp"
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "mode": "json",
+      "timeout_ms": 30000,
+      "save_as": "be",
+      "code": "(function(){\n  var BR = Java.loadClass(\"net.minecraft.core.registries.BuiltInRegistries\");\n  var RL = Java.loadClass(\"net.minecraft.resources.ResourceLocation\");\n  var TA = Java.loadClass(\"dev.emi.trinkets.api.TrinketsApi\");\n  var MCC = Java.loadClass(\"com.merlinkitsune.astral_dice.init.ModCompatibilityCheck\");\n  var FL = Java.loadClass(\"net.fabricmc.loader.api.FabricLoader\");\n  var out = {};\n  var loader = FL.getInstance();\n  out.trinketsLoaded = loader.isModLoaded(\"trinkets\");\n  out.accessoriesLoaded = loader.isModLoaded(\"accessories\");\n  out.aclLoaded = loader.isModLoaded(\"accessories_compat_layer\");\n  var tc = loader.getModContainer(\"trinkets\");\n  out.trinketsVersion = tc.isPresent() ? String(tc.get().getMetadata().getVersion().getFriendlyString()) : \"\";\n  out.isTrinketsPresent = MCC.isTrinketsPresent();\n  out.isAccessoriesPresent = MCC.isAccessoriesPresent();\n  out.isAclPresent = MCC.isAccessoriesCompatLayerPresent();\n  out.playerPresent = AutoJS.players()[0] != null;\n  var it = BR.ITEM.iterator(), ast = 0, adapted = 0, diceTotal = 0, diceMiss = 0, miss = [];\n  while (it.hasNext()) {\n    var item = it.next();\n    var rl = BR.ITEM.getKey(item);\n    if (String(rl.getNamespace()) !== \"astral_dice\") { continue; }\n    ast++;\n    var s = String(TA.getTrinket(item));\n    var hit = s.indexOf(\"Adapter[delegate=astral_dice:\") >= 0;\n    if (hit) { adapted++; }\n    if (String(rl.getPath()).indexOf(\"_dice\") >= 0) {\n      diceTotal++;\n      if (!hit) { diceMiss++; if (miss.length < 6) { miss.push(String(rl.getPath())); } }\n    }\n  }\n  out.astralItems = ast;\n  out.adapterCount = adapted;\n  out.diceTotal = diceTotal;\n  out.diceMissing = diceMiss;\n  out.diceMissingIds = miss;\n  out.diamondTrinket = String(TA.getTrinket(BR.ITEM.get(RL.parse(\"minecraft:diamond\"))));\n  out.diamondHasAdapter = out.diamondTrinket.indexOf(\"Adapter[delegate=astral_dice:\") >= 0;\n  return out;\n})()"
+    }
+  ],
+  "asserts": [
+    {
+      "type": "state",
+      "from": "mcp",
+      "expect": {
+        "Ok": true
+      }
+    },
+    {
+      "type": "state",
+      "from": "be",
+      "expect": {
+        "trinketsLoaded": true,
+        "accessoriesLoaded": false,
+        "aclLoaded": false,
+        "trinketsVersion": {
+          "regex": "^3\\.10"
+        },
+        "isTrinketsPresent": true,
+        "isAccessoriesPresent": false,
+        "isAclPresent": false,
+        "playerPresent": true,
+        "astralItems": {
+          "min": 140
+        },
+        "adapterCount": {
+          "min": 90
+        },
+        "diceTotal": {
+          "min": 10
+        },
+        "diceMissing": 0,
+        "diceMissingIds": {
+          "len": 0
+        },
+        "diamondHasAdapter": false,
+        "diamondTrinket": {
+          "regex": "TrinketsApi"
+        }
+      }
+    },
+    {
+      "type": "log",
+      "scope": "whole",
+      "pattern": "已为 \\d+ 件饰品物品注册 Trinkets 适配器"
+    },
+    {
+      "type": "absent",
+      "scope": "whole",
+      "pattern": "Trinkets 不在场"
+    }
+  ]
+}

@@ -25,7 +25,7 @@
       "ms": 500
     }
   ],
-  "assert": [
+  "asserts": [
     {
       "type": "log",
       "pattern": "APDUMP\\|LOCKRAW\\|effect_card_play_count=0"

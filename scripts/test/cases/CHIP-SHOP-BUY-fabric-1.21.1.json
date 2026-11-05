@@ -1,0 +1,72 @@
+{
+  "case_id": "CHIP-SHOP-BUY-fabric-1.21.1",
+  "title": "一次购买服务端权威扣款+发放：余额 0 时 handleBuy 走 DENY_NO_COIN 拒绝且不扣不发（服务端 denyReason() 恒为 DENY_NONE=-1，拒绝证据取「状态零变化 + 无 BUY 日志」），余额 100 时扣掉单价 10、purchasedCount+1、背包多 1 张筹码并写 5 分钟冷却（证据 shop/ChipShopMenu.java:359-431,103-115,118；network/ChipShopBuyPayload.java:43-52）",
+  "version": "fabric-1.21.1",
+  "channel": "autojs",
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "判据来源：ChipShopMenu.java:359-431 handleBuy 只在服务端且 buyer==menu.owner 生效；:371-379 price=state.price()，StarEngineEconomy.isAvailable/hasBalance/withdraw 任一失败即 deny(DENY_NO_COIN=0)（:103-115）；:389-392 创造直接进包、:393-408 生存满包则 drop；:413-416 withPurchased+withOffers(roll)+withCooldown(gameTime+6000)；:430 收尾 closeContainer。价格 10 来自 ChipShopCatalog.java:305-307。网络入口 network/ChipShopBuyPayload.java:43-52 只做 instanceof 判定后转调，故直接调 handleBuy 等价于一次真实购买。收尾在同一 IIFE 内完成（store EMPTY 清冷却、余额回原值、/clear @a 清发放物），不依赖后续用例。补充（实读 shop/ChipShopMenu.java:371-408）：扣款发生在创造模式判定之前（:376 withdraw 先于 :389 instabuild 分支），所以创造模式**同样扣款**，本用例的 spent=10/余额 90 在创造模式下也成立；但创造模式满包时 :391 add 会按原版语义把整栈吞掉（不掉落、无提示），故本用例隐含「物品栏至少有一个空位」这一前提。"
+    },
+    {
+      "op": "mcp_status",
+      "timeout_ms": 20000,
+      "save_as": "mcp"
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "mode": "json",
+      "timeout_ms": 40000,
+      "save_as": "buy",
+      "code": "(function(){\n  function cls(n){ return Java.loadClass(n); }\n  var BR = cls(\"net.minecraft.core.registries.BuiltInRegistries\");\n  var State = cls(\"com.merlinkitsune.astral_dice.shop.ChipShopState\");\n  var Opener = cls(\"com.merlinkitsune.astral_dice.shop.ChipShopOpener\");\n  var Econ = cls(\"com.merlinkitsune.starengine.economy.StarEngineEconomy\");\n  var player = AutoJS.players()[0];\n  var out = {};\n  function chipCount() {\n    var n = 0, inv = player.getInventory();\n    for (var i = 0; i < Number(inv.getContainerSize()); i++) {\n      var st = inv.getItem(i);\n      if (st != null && !st.isEmpty()) {\n        var p = String(BR.ITEM.getKey(st.getItem()).getPath());\n        if (p.indexOf(\"chip\") >= 0) { n += st.getCount(); }\n      }\n    }\n    return n;\n  }\n  out.econAvailable = Econ.isAvailable();\n  var bal0 = Number(Econ.getBalance(player));\n  out.bal0 = bal0;\n  player.closeContainer();\n  State.store(player, State.EMPTY);\n  Opener.open(player);\n  var m = player.containerMenu;\n  out.menuIsShop = String(m).indexOf(\"ChipShopMenu\") >= 0;\n  if (!out.menuIsShop) { out.abort = true; Econ.setBalance(player, bal0); return out; }\n  out.abort = false;\n  out.priceBefore = Number(m.price());\n  var chipsBefore = chipCount();\n  Econ.setBalance(player, 0);\n  m.handleBuy(player, 0);\n  out.denyVisibleServer = Number(m.denyReason());\n  out.purchasedAfterDeny = Number(State.get(player).purchasedCount());\n  out.balanceAfterDeny = Number(Econ.getBalance(player));\n  out.cooldownAfterDeny = Number(State.get(player).cooldownUntil());\n  out.chipsAfterDeny = chipCount() - chipsBefore;\n  out.menuStillShopAfterDeny = String(player.containerMenu).indexOf(\"ChipShopMenu\") >= 0;\n  Econ.setBalance(player, 100);\n  if (!out.menuStillShopAfterDeny) { Opener.open(player); m = player.containerMenu; }\n  out.priceAtBuy = Number(m.price());\n  m.handleBuy(player, 0);\n  var st = State.get(player);\n  out.purchasedAfterBuy = Number(st.purchasedCount());\n  out.balanceAfterBuy = Number(Econ.getBalance(player));\n  out.spent = 100 - out.balanceAfterBuy;\n  out.chipsGained = chipCount() - chipsBefore;\n  out.cooldownUntil = Number(st.cooldownUntil());\n  out.cooldownSet = Number(st.cooldownUntil()) > 0;\n  out.menuClosedAfterBuy = String(player.containerMenu).indexOf(\"ChipShopMenu\") < 0;\n  State.store(player, State.EMPTY);\n  Econ.setBalance(player, bal0);\n  AutoJS.command(\"/clear @a\");\n  out.balanceRestored = Number(Econ.getBalance(player)) === bal0;\n  out.chipsAfterClean = chipCount();\n  return out;\n})()"
+    }
+  ],
+  "asserts": [
+    {
+      "type": "state",
+      "from": "mcp",
+      "expect": {
+        "Ok": true
+      }
+    },
+    {
+      "type": "state",
+      "from": "buy",
+      "expect": {
+        "econAvailable": true,
+        "menuIsShop": true,
+        "abort": false,
+        "priceBefore": 10,
+        "purchasedAfterDeny": 0,
+        "balanceAfterDeny": 0,
+        "chipsAfterDeny": 0,
+        "menuStillShopAfterDeny": true,
+        "priceAtBuy": 10,
+        "purchasedAfterBuy": 1,
+        "spent": 10,
+        "balanceAfterBuy": 90,
+        "chipsGained": {
+          "min": 1
+        },
+        "cooldownSet": true,
+        "menuClosedAfterBuy": true,
+        "balanceRestored": true,
+        "chipsAfterClean": 0,
+        "denyVisibleServer": -1,
+        "cooldownAfterDeny": 0
+      }
+    },
+    {
+      "type": "log",
+      "scope": "case",
+      "pattern": "CHIP_SHOP_BUY .*price=10"
+    },
+    {
+      "type": "absent",
+      "scope": "case",
+      "pattern": "CHIP_SHOP_OPEN_DENIED"
+    }
+  ]
+}

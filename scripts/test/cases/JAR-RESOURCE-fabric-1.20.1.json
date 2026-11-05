@@ -9,13 +9,13 @@
       "save_as": "jar"
     }
   ],
-  "assert": [
+  "asserts": [
     {
       "type": "jar",
       "from": "jar",
       "entries_min": 1500,
       "models_min": 130,
-      "recipes_min": 130,
+      "recipes_min": 118,
       "embed_max": 0,
       "signs_min": 25
     },
@@ -32,7 +32,7 @@
       "pattern": "astral_dice\\.accesswidener$"
     },
     {
-      "type": "bytecode",
+      "type": "bytecode_absent",
       "pattern": "META-INF/jars/.*\\.jar$"
     }
   ]

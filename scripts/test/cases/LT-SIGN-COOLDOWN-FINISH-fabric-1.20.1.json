@@ -25,7 +25,7 @@
       "ms": 500
     }
   ],
-  "assert": [
+  "asserts": [
     {
       "type": "log",
       "pattern": "APDUMP\\|SIGN\\|sign_active_cooldown_end=\\d+"

@@ -41,7 +41,7 @@
       "ms": 400
     }
   ],
-  "assert": [
+  "asserts": [
     {
       "type": "bytecode",
       "pattern": "entity/(Barricade|Repulsion)Entity\\.class$"

@@ -1,0 +1,61 @@
+{
+  "case_id": "EFFECT-STACK-fabric-1.21.1",
+  "title": "效果叠层上限与换算：充能 astral_dice:charge 一次加 99 层被封到 20 层（amplifier=19、duration=INFINITE=-1），到上限后再加仍是 20（不溢出），consumeOne 掉 1 层、consume(3) 返回 3，removeAll 后层数与效果实例都归零；另一条并行的层数体系 astral_dice:weakness_reveal 一次加 99 层被封到 4 层（amplifier=3、duration=1200）。证据：fabric-1.21.1/src/main/java/com/merlinkitsune/astral_dice/effect/ChargeEffect.java:30-44（Math.min(CHARGE_MAX_STACKS, getStacks+stacks)、amplifier=total-1、DURATION_TICKS=INFINITE）、:47-51（层数=amplifier+1）；F:/MCProject/starengine_next/common/src/main/java/com/merlinkitsune/starengine/component/GameplayConstants.java:35（CHARGE_MAX_STACKS=20）；fabric-1.21.1/src/main/java/com/merlinkitsune/astral_dice/item/ChargeManager.java:82-90（返回加后总层数）、:103-109（consume 返回实际消耗）；fabric-1.21.1/src/main/java/com/merlinkitsune/astral_dice/effect/WeaknessRevealEffect.java:16（MAX_STACKS=4）、:22（DURATION_TICKS=1200）、:29-35（addStacks）。",
+  "version": "fabric-1.21.1",
+  "channel": "autojs",
+  "on_fail": "continue",
+  "steps": [
+    {
+      "op": "note",
+      "text": "charge 的层数模型：效果 amplifier = 层数-1，时长取 MobEffectInstance.INFINITE_DURATION（fabric-1.21.1/src/main/java/com/merlinkitsune/astral_dice/effect/ChargeEffect.java:23、:40-41），所以层数上限可从两个独立角度看——自己的 getStacks(P) 与原生 MobEffectInstance.getAmplifier()，本用例两个都断言。注意 ChargeManager.addStacks 的返回值是加后总层数而不是本次增量（fabric-1.21.1/src/main/java/com/merlinkitsune/astral_dice/item/ChargeManager.java:82-90 的 return total），不要按增量去断言。weakness_reveal 是另一个独立叠层效果（fabric-1.21.1/src/main/java/com/merlinkitsune/astral_dice/effect/WeaknessRevealEffect.java:16 MAX_STACKS=4），用来证明上限是各自效果类里的常量、不是全局规则。自恢复：removeAll + effect clear @a + clear @a。"
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "mode": "json",
+      "code": "(function(){\n  var P = AutoJS.players()[0];\n  var CM = Java.loadClass('com.merlinkitsune.astral_dice.item.ChargeManager');\n  var CE = Java.loadClass('com.merlinkitsune.astral_dice.effect.ChargeEffect');\n  var WRE = Java.loadClass('com.merlinkitsune.astral_dice.effect.WeaknessRevealEffect');\n  var ME = Java.loadClass('com.merlinkitsune.astral_dice.effect.ModEffects');\n  var Eff = Java.loadClass('com.merlinkitsune.astral_dice.platform.util.Effects');\n  AutoJS.command('kill @e[type=!player,distance=..48]');\n  AutoJS.command('effect clear @a');\n  AutoJS.command('clear @a');\n  CM.removeAll(P);\n  WRE.removeAll(P);\n  var out = {};\n  out.chargeStacksStart = CE.getStacks(P);\n  out.chargeTotalAfterAdd99 = CM.addStacks(P, 99);\n  out.chargeStacksCapped = CE.getStacks(P);\n  var ci = P.getEffect(Eff.holder(ME.CHARGE.get()));\n  out.chargeAmplifier = (ci === null) ? -99 : ci.getAmplifier();\n  out.chargeDuration = (ci === null) ? -99 : ci.getDuration();\n  out.chargeTotalAtCap = CM.addStacks(P, 5);\n  out.chargeStacksAtCap = CE.getStacks(P);\n  CM.consumeOne(P);\n  out.chargeAfterConsumeOne = CE.getStacks(P);\n  out.chargeConsumedReturn = CM.consume(P, 3);\n  out.chargeAfterConsume3 = CE.getStacks(P);\n  CM.removeAll(P);\n  out.chargeAfterRemoveAll = CE.getStacks(P);\n  out.chargeInstanceGone = (P.getEffect(Eff.holder(ME.CHARGE.get())) === null);\n  WRE.addStacks(P, 99);\n  out.weaknessStacksCapped = WRE.getStacks(P);\n  var wi = P.getEffect(Eff.holder(ME.WEAKNESS_REVEAL.get()));\n  out.weaknessAmplifier = (wi === null) ? -99 : wi.getAmplifier();\n  out.weaknessDuration = (wi === null) ? -99 : wi.getDuration();\n  return out;\n})()",
+      "save_as": "stack",
+      "timeout_ms": 60000
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "mode": "json",
+      "code": "(function(){\n  var P = AutoJS.players()[0];\n  var CM = Java.loadClass('com.merlinkitsune.astral_dice.item.ChargeManager');\n  var CE = Java.loadClass('com.merlinkitsune.astral_dice.effect.ChargeEffect');\n  var WRE = Java.loadClass('com.merlinkitsune.astral_dice.effect.WeaknessRevealEffect');\n  CM.removeAll(P);\n  WRE.removeAll(P);\n  AutoJS.command('effect clear @a');\n  AutoJS.command('clear @a');\n  return { chargeFinal: CE.getStacks(P), weaknessFinal: WRE.getStacks(P), effectsFinal: P.getActiveEffects().size() };\n})()",
+      "save_as": "restored",
+      "timeout_ms": 60000
+    }
+  ],
+  "asserts": [
+    {
+      "type": "state",
+      "from": "stack",
+      "expect": {
+        "chargeStacksStart": 0,
+        "chargeTotalAfterAdd99": 20,
+        "chargeStacksCapped": 20,
+        "chargeAmplifier": 19,
+        "chargeDuration": -1,
+        "chargeTotalAtCap": 20,
+        "chargeStacksAtCap": 20,
+        "chargeAfterConsumeOne": 19,
+        "chargeConsumedReturn": 3,
+        "chargeAfterConsume3": 16,
+        "chargeAfterRemoveAll": 0,
+        "chargeInstanceGone": true,
+        "weaknessStacksCapped": 4,
+        "weaknessAmplifier": 3,
+        "weaknessDuration": 1200
+      }
+    },
+    {
+      "type": "state",
+      "from": "restored",
+      "expect": {
+        "chargeFinal": 0,
+        "weaknessFinal": 0,
+        "effectsFinal": 0
+      }
+    }
+  ]
+}

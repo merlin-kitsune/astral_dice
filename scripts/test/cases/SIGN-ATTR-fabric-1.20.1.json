@@ -9,7 +9,7 @@
       "save_as": "jar"
     }
   ],
-  "assert": [
+  "asserts": [
     {
       "type": "bytecode",
       "pattern": "item/sign/[A-Za-z]+SignItem\\.class$"

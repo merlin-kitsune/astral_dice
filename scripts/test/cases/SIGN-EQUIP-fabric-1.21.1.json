@@ -1,0 +1,59 @@
+{
+  "case_id": "SIGN-EQUIP-fabric-1.21.1",
+  "title": "立牌不能「放置」——它是 stand 饰品槽的物品：canEquip 只认 stand 槽、且未戴骰子时 tryAutoEquip 被拒（立牌功能的总闸门）；戴上骰子后立牌可入槽且 NancyLuSignItem.isEquipped 由 false 变 true，摩西立牌不受影响；末影珍珠免疫窗口常量 = 20 tick。证据：fabric-1.21.1/src/main/java/com/merlinkitsune/astral_dice/item/sign/BaseSignItem.java:25（extends Item implements ICurioItem）、:31-43（canEquip 只认 stand + 重复装备拒绝）、:45-55（curioTick 总闸门 hasDiceEquipped）、:57-58（onCurioTick 空实现）；fabric-1.21.1/src/main/java/com/merlinkitsune/astral_dice/item/CurioSlotUtil.java:95-130（未戴骰子 => fail + 下发 msg.astral_dice.need_dice）、:194-198（hasDiceEquipped）；fabric-1.21.1/src/main/java/com/merlinkitsune/astral_dice/item/sign/NancyLuSignItem.java:60（ENDER_PEARL_IMMUNE_TICKS=20）、:183-189（isEquipped = hasDiceEquipped + 槽内匹配）；fabric-1.21.1/src/main/java/com/merlinkitsune/astral_dice/item/ModItems.java:968、:974（nancy_lu_sign / moses_sign 注册）。",
+  "version": "fabric-1.21.1",
+  "channel": "autojs",
+  "side": "server",
+  "on_fail": "continue",
+  "steps": [
+    {
+      "op": "note",
+      "text": "与任务书「放立牌方块」的偏差（源码事实）：fabric-1.21.1 的 block/ 目录只有 BarricadeBlock / CardShopBlock / ChipShopBlock / EventDrawBlock / ModBlocks，没有任何立牌方块；立牌全部是 item/sign/*SignItem 的**饰品物品**，进 stand 槽（fabric-1.21.1/src/main/java/com/merlinkitsune/astral_dice/item/sign/BaseSignItem.java:25、:33-34）。所以本用例改验「立牌入槽 + 被动总闸门」这条真实可复现的路径：未戴骰子时 CurioSlotUtil.tryAutoEquip 直接 fail（fabric-1.21.1/src/main/java/com/merlinkitsune/astral_dice/item/CurioSlotUtil.java:99-107），BaseSignItem.curioTick 也在 hasDiceEquipped 为假时提前 return（fabric-1.21.1/src/main/java/com/merlinkitsune/astral_dice/item/sign/BaseSignItem.java:45-55）——即「立牌对半径内玩家不产生被动」的确定前因。自恢复：清 dice/stand 槽 + refreshChipSlotCount + clear @a + effect clear @a。"
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "mode": "json",
+      "code": "(function(){\n  var P = AutoJS.players()[0];\n  var Cur = Java.loadClass('com.merlinkitsune.astral_dice.compat.curios.CuriosApi');\n  var CSU = Java.loadClass('com.merlinkitsune.astral_dice.item.CurioSlotUtil');\n  var SC = Java.loadClass('com.merlinkitsune.astral_dice.compat.curios.SlotContext');\n  var NLI = Java.loadClass('com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem');\n  var MSI = Java.loadClass('com.merlinkitsune.astral_dice.item.sign.MosesSignItem');\n  var ItemStack = Java.loadClass('net.minecraft.world.item.ItemStack');\n  AutoJS.command('kill @e[type=!player,distance=..48]');\n  AutoJS.command('clear @a');\n  AutoJS.command('effect clear @a');\n  var inv = Cur.getCuriosInventory(P).get();\n  var diceH = inv.getStacksHandler('dice').get();\n  var standH = inv.getStacksHandler('stand').get();\n  diceH.getStacks().setStackInSlot(0, ItemStack.EMPTY);\n  standH.getStacks().setStackInSlot(0, ItemStack.EMPTY);\n  var sign = AutoJS.stack('astral_dice:nancy_lu_sign', 1);\n  var signItem = sign.getItem();\n  var out = {};\n  out.canEquipStand = signItem.canEquip(new SC(P, 'stand', 0), sign);\n  out.canEquipDice = signItem.canEquip(new SC(P, 'dice', 0), sign);\n  out.hasDiceBefore = CSU.hasDiceEquipped(P);\n  out.signEquippedBefore = NLI.isEquipped(P);\n  var res1 = CSU.tryAutoEquip(P, AutoJS.stack('astral_dice:nancy_lu_sign', 1), 'stand');\n  out.equipWithoutDiceOk = res1.getResult().consumesAction();\n  out.standSlotAfterAttempt = standH.getStacks().getStackInSlot(0).isEmpty() ? 'empty' : String(AutoJS.id(standH.getStacks().getStackInSlot(0)));\n  CSU.tryAutoEquip(P, AutoJS.stack('astral_dice:diamond_dice', 1), 'dice');\n  out.hasDiceAfter = CSU.hasDiceEquipped(P);\n  var res2 = CSU.tryAutoEquip(P, AutoJS.stack('astral_dice:nancy_lu_sign', 1), 'stand');\n  out.equipWithDiceOk = res2.getResult().consumesAction();\n  out.signEquippedAfter = NLI.isEquipped(P);\n  out.mosesEquippedAfter = MSI.isEquipped(P);\n  out.standSlotId = standH.getStacks().getStackInSlot(0).isEmpty() ? 'empty' : String(AutoJS.id(standH.getStacks().getStackInSlot(0)));\n  out.enderPearlImmuneTicks = NLI.ENDER_PEARL_IMMUNE_TICKS;\n  return out;\n})()",
+      "save_as": "sign",
+      "timeout_ms": 60000
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "mode": "json",
+      "code": "(function(){\n  var P = AutoJS.players()[0];\n  var Cur = Java.loadClass('com.merlinkitsune.astral_dice.compat.curios.CuriosApi');\n  var DCI = Java.loadClass('com.merlinkitsune.astral_dice.item.dice.DiceCurioItem');\n  var ItemStack = Java.loadClass('net.minecraft.world.item.ItemStack');\n  var inv = Cur.getCuriosInventory(P).get();\n  inv.getStacksHandler('dice').get().getStacks().setStackInSlot(0, ItemStack.EMPTY);\n  inv.getStacksHandler('stand').get().getStacks().setStackInSlot(0, ItemStack.EMPTY);\n  DCI.refreshChipSlotCount(P);\n  AutoJS.command('clear @a');\n  AutoJS.command('effect clear @a');\n  return {\n    diceSlotEmptyAfter: inv.getStacksHandler('dice').get().getStacks().getStackInSlot(0).isEmpty(),\n    standSlotEmptyAfter: inv.getStacksHandler('stand').get().getStacks().getStackInSlot(0).isEmpty(),\n    chipSlotsFinal: inv.getStacksHandler('chip').get().getSlots()\n  };\n})()",
+      "save_as": "restored",
+      "timeout_ms": 60000
+    }
+  ],
+  "asserts": [
+    {
+      "type": "state",
+      "from": "sign",
+      "expect": {
+        "canEquipStand": true,
+        "canEquipDice": false,
+        "hasDiceBefore": false,
+        "signEquippedBefore": false,
+        "equipWithoutDiceOk": false,
+        "standSlotAfterAttempt": "empty",
+        "hasDiceAfter": true,
+        "equipWithDiceOk": true,
+        "signEquippedAfter": true,
+        "mosesEquippedAfter": false,
+        "standSlotId": "astral_dice:nancy_lu_sign",
+        "enderPearlImmuneTicks": 20
+      }
+    },
+    {
+      "type": "state",
+      "from": "restored",
+      "expect": {
+        "diceSlotEmptyAfter": true,
+        "standSlotEmptyAfter": true,
+        "chipSlotsFinal": 0
+      }
+    }
+  ]
+}

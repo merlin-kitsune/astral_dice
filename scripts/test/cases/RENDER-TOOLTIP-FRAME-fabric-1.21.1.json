@@ -1,0 +1,61 @@
+{
+  "case_id": "RENDER-TOOLTIP-FRAME-fabric-1.21.1",
+  "title": "tooltip 边框取色：TooltipFrameColors 公开 API（setColors/background/borderStart/borderEnd/clear/stack）按写入值回读、clear 后回落 fallback；mixin/bridge/TooltipRenderUtilColorMixin 在产物 jar（client）",
+  "version": "fabric-1.21.1",
+  "channel": "autojs",
+  "side": "client",
+  "on_fail": "stop_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "Rhino 无反射 ⇒ 不读 TooltipRenderUtil 私有颜色常量，改验本模组的公开取色 API 与 mixin 条目。"
+    },
+    {
+      "op": "mcp_status",
+      "save_as": "mcp"
+    },
+    {
+      "op": "eval_js",
+      "save_as": "tooltip",
+      "code": "(function(){\n  var TFC = Java.loadClass('com.merlinkitsune.astral_dice.platform.client.TooltipFrameColors');\n  var out = {};\n  out.fallbackBefore = TFC.background(-7);\n  TFC.setColors(0x111111, 0x222222, 0x333333);\n  out.background = TFC.background(-7);\n  out.borderStart = TFC.borderStart(-7);\n  out.borderEnd = TFC.borderEnd(-7);\n  TFC.clear();\n  out.afterClear = TFC.background(-7);\n  out.stackAfterClearNull = (TFC.stack() === null);\n  return out;\n})()"
+    }
+  ],
+  "asserts": [
+    {
+      "type": "state",
+      "name": "mcp_ok",
+      "from": "mcp",
+      "expect": {
+        "Ok": true
+      }
+    },
+    {
+      "type": "state",
+      "name": "tooltip_frame_colors_api",
+      "from": "tooltip",
+      "expect": {
+        "fallbackBefore": -7,
+        "background": 1118481,
+        "borderStart": 2236962,
+        "borderEnd": 3355443,
+        "afterClear": -7,
+        "stackAfterClearNull": true
+      }
+    },
+    {
+      "type": "bytecode",
+      "name": "tooltip_mixin_in_jar",
+      "pattern": "^com/merlinkitsune/astral_dice/mixin/bridge/TooltipRenderUtilColorMixin\\.class$"
+    },
+    {
+      "type": "bytecode",
+      "name": "tooltip_colors_class",
+      "pattern": "^com/merlinkitsune/astral_dice/platform/client/TooltipFrameColors\\.class$"
+    },
+    {
+      "type": "mixin",
+      "name": "no_mixin_apply_failure",
+      "scope": "whole"
+    }
+  ]
+}

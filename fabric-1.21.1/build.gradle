@@ -110,7 +110,7 @@ dependencies {
     // jade / puzzles-lib / forge-config-api-port 已在上方按运行期钉版接入;
     // 这里补齐渲染栈、性能与 JEI(含它的 required 依赖 mezz-config)。
     // 2026-11-05 补充:modmenu(测试环境查看已装模组)+ 它的 required 依赖 cloth-config;
-    //   sodium / iris 按用户要求回到 1.21.1 最新公开版(sodium 0.8.13 / iris 1.8.14-beta.1)。
+    //   sodium / iris 曾按要求取 1.21.1 最新公开版(0.8.13 / 1.8.14-beta.1),因 iris 在 dev 必崩回退成实测配对(见下)。
     if (providers.gradleProperty('testMods').orNull != 'false') {
         modRuntimeOnly "maven.modrinth:sodium:${sodium_mr_version}"
         // iris 单独一档开关:1.8.14-beta.1 的 MixinLevelRenderer 用**无描述符**的中间名引用

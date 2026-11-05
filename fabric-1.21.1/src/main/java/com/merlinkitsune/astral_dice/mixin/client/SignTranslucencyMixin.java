@@ -17,7 +17,7 @@ import com.merlinkitsune.astral_dice.platform.util.Effects;
  * 立牌半透明渲染：带「铁处女」或「摸鱼」的玩家强制走 {@code entityTranslucent} 渲染类型，
  * 并在渲染期间打开 {@link AlphaContext} 的 50% 透明度标记。
  *
- * <p><b>平台差异(Fabric 1.20.1)</b>:与 forge-1.20.1 侧逐字相同 —— 注入目标
+ * <p><b>平台差异(Fabric 1.21.1)</b>:与 1.20.1 两条 fabric/forge 侧同构 —— 注入目标
  * {@code LivingEntityRenderer#getRenderType / #render} 在两线同为原版成员,无平台包;
  * 取贴图走同包 {@link EntityRendererInvoker}(本批次一并移植)。另:forge / neo 侧注释里提到的
  * {@code ModelPartAlphaMixin} **在四条线均不存在**(实测),{@link AlphaContext} 目前只作
