@@ -324,9 +324,16 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
             }
             int iconX = stripX(QUALITY_X[chip] + CHIP_ICON_OFF);
             int iconY = stripY(QUALITY_Y + CHIP_ICON_OFF);
+            // ⚠️ 必须用 12 参重载。
+            //    10 参版本 blit(pipeline, tex, x, y, u, v, w, h, texW, texH) 内部把 srcWidth/srcHeight
+            //    直接取成 w/h（GuiGraphicsExtractor.java:315-319 委派到 12 参重载时传
+            //    width,height,width,height）⇒ 32x32 素材只被采样左上 24x24 一块再拉满 24x24，
+            //    图标被裁掉右边与下边各 1/4 并放大。2026-11-06 实机取证：
+            //    与「左上 24x24 裁剪」假设 MSE 418，与「整图缩到 24x24」假设 MSE 4269。
+            //    这里显式给 srcWidth/srcHeight = 32，才等价于 1.20.1 / 1.21.1 那条 11 参重载的语义。
             guiGraphics.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, entry.iconLocation(),
                     iconX, iconY, 0.0F, 0.0F, CHIP_ICON_SIZE, CHIP_ICON_SIZE,
-                    CHIP_ICON_SRC_SIZE, CHIP_ICON_SRC_SIZE);
+                    CHIP_ICON_SRC_SIZE, CHIP_ICON_SRC_SIZE, CHIP_ICON_SRC_SIZE, CHIP_ICON_SRC_SIZE);
         }
     }
 
