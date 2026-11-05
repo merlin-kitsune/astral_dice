@@ -480,7 +480,7 @@ mt_fab_cases_run() {
     "$py" - "$MT_REPO_ROOT" "$v" "$case_sel" "$side" "$(mt_fab_autojs_mode "$side")" \
         "$(mt_fab_rcon_port)" "$(mt_fab_rcon_password)" "$(mt_fab_report_file "$v")" \
         "$(mt_fab_jar_dir)" <<'PY'
-import glob, json, os, re, socket, struct, sys, time, zipfile
+import glob, json, os, re, socket, struct, subprocess, sys, time, zipfile
 
 repo, version, case_sel, side, autojs, rport, rpw, result_file, jar_dir = sys.argv[1:10]
 rport = int(rport)
@@ -564,7 +564,9 @@ def jar_stats():
         'jar': os.path.basename(p),
         'entries': len(names),
         'models': count('assets/astral_dice/models/item/', '.json'),
-        'recipes': count('data/astral_dice/recipes/', '.json'),
+        # 1.20.1 用 recipes/，1.21+ 用 recipe/ —— 两个都数（与 mt_paths.RECIPES_PREFIXES 同口径；
+        # 只数 recipes/ 会让 fabric-1.21.1 的 JAR-ASSETS 断言 recipes=0 恒 FAIL，2026-11-05 实测）
+        'recipes': count('data/astral_dice/recipes/', '.json') + count('data/astral_dice/recipe/', '.json'),
         'trinkets': count('data/trinkets/', '.json'),
         'bountiful': count('data/bountiful/', '.json'),
         'embed': count('META-INF/jars/', '.jar'),
@@ -718,6 +720,41 @@ for path in cases:
         fail_n += 1
         err('MT_CASE: %s = FAIL — version=%s 与本轮 %s 不符' % (cid, case.get('version'), version))
         records.append({'case_id': cid, 'verdict': 'FAIL', 'why': 'version'})
+        continue
+
+    if str(case.get('channel') or '') == 'autojs':
+        # channel=autojs 的条目（客户端 eval_js / mcp_status / await_state）转主运行器 mt_case.py：
+        # 本内嵌运行器只有 RCON + 日志 + 开包三种能力，没有 AutoJS 客户端通道（2026-11-05 实测：
+        # 直接走本运行器会把 MODLIST 这类条目判成 BLOCKED）。mt_case.py 已支持 fabric 的 run 目录与 jar 统计。
+        runner = os.path.join(repo, 'scripts', 'test', 'lib', 'mt_case.py')
+        case_run_dir = os.path.join(repo, version, 'run', side)
+        try:
+            proc = subprocess.run([sys.executable, runner, 'run', '--case', path,
+                                   '--version', version, '--run-dir', case_run_dir,
+                                   '--case-timeout', '240'],
+                                  stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                  universal_newlines=True, encoding='utf-8', errors='replace')
+        except OSError as exc:
+            blocked_n += 1
+            err('MT_CASE: %s = BLOCKED — 调用 mt_case.py 失败：%s' % (cid, exc))
+            records.append({'case_id': cid, 'verdict': 'BLOCKED', 'why': 'autojs-delegate:%s' % exc})
+            continue
+        text = proc.stdout or ''
+        for ln in text.splitlines():
+            if ln.startswith(('MT_CASE_RESULT', 'MT_CASE_DETAIL', 'MT_CASE_SUMMARY')):
+                out(ln)
+        if proc.returncode == 0:
+            ok_n += 1
+            out('MT_CASE: %s = OK（channel=autojs，mt_case.py 运行器）' % cid)
+            records.append({'case_id': cid, 'verdict': 'OK', 'why': 'autojs(mt_case.py)'})
+        elif proc.returncode == 11:
+            blocked_n += 1
+            err('MT_CASE: %s = BLOCKED — AutoJS 通道不可用（mt_case.py exit 11）' % cid)
+            records.append({'case_id': cid, 'verdict': 'BLOCKED', 'why': 'autojs-delegate:exit11'})
+        else:
+            fail_n += 1
+            err('MT_CASE: %s = FAIL — mt_case.py exit %d' % (cid, proc.returncode))
+            records.append({'case_id': cid, 'verdict': 'FAIL', 'why': 'autojs-delegate:exit%d' % proc.returncode})
         continue
 
     steps = case.get('steps') or []

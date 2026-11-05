@@ -8,11 +8,11 @@
 | 项 | 现状（实读） | 本版裁决后的处置 |
 |---|---|---|
 | 产物 | `fabric-1.21.1/build/libs/astral_dice-26.4-SNAPSHOT.6+fabric_1.21.1.jar` = 2,994,223 B / 2331 条目 / 809 class | 不动 |
-| 客户端 | **从未跑过**：`fabric-1.21.1/run/` 只有 `datagen`，`run/fabric-1.21.1/mods/` 只有产物 jar、无 logs | 阶段 A 结束后才允许首启（属实机，需放行） |
+| 客户端 | **已跑通**（2026-11-05 12:59 首启、13:48 回退版复验、18:36 本轮 L0 取证）：超平坦世界、85 mods、iris 1.8.8 光影生效、截图三张（§10.2 / §12.3） | 阶段 B 只差用例化（L0 已补，见 §13） |
 | 测试台 | **不具备跑第五线的能力**（版本表四线、fabric 车道常量写死 1.20.1、`mt_env.py` 无 fabric 分支） | **阶段 A：本阶段唯一目标 = 让它可用** |
 | 饰品后端 | 代码里同时有 Trinkets / Accessories 双后端（11 文件 / 122 处引用） | **只保 Trinkets**；Accessories + ACL 进黑名单（§2） |
-| 用例 | 24 条 fabric 基线 + 3 条专属（含双后端四态） | 收敛为 **24 + 3**（§5） |
-| 实机 | 未执行 | 阶段 B/C，仍等放行 |
+| 用例 | **L0 三条已落盘并实跑 PASS**（2026-11-05，§13）；其余 26 条为 0 | **3 / 29**；L1–L5 + 专属按手写 autojs 重写（§5） |
+| 实机 | 阶段 B 的启动与 L0 已执行（用户已放行首启与用例跑动） | 阶段 C 的 L1–L5 仍等放行 |
 
 **阶段顺序（裁决 3 + 4 的落点）**：A 测试台可用（改脚本 + 门禁 + env 接线，不启动游戏）→ B 首启与 L0 冒烟（实机）→ C 用例扩面与回归（实机）。
 
@@ -69,7 +69,7 @@
 | B8 | `scripts/test/win/launch.sh` | `:210-227` AutoJS artifact 名写死 + 重复即 BLOCKED | 按版本拼 artifact 名；判据保留 |
 | B9 | `scripts/test/win/env.sh` | `:163-300` fabric 双 run 目录 + RCON | 前缀判定；RCON 段只对真有 RCON 的线生效 |
 | B10 | `scripts/test/mt_env.py` | `:696-760` `cmd_mods` 无 fabric 分支；`:848` world fabric 判定等值 | 加 fabric 分支；world 判定改前缀 |
-| B11 | `scripts/test/mt_capture.py` | `:91` 版本；`:249-251` 窗口标题回落 | 增线；`fabric-1.21.1` 回落成 `1.21.1` |
+| B11 | `scripts/test/mt_capture.py` | `:91` 用法串只列四线（功能侧早已按 `mt_paths.VERSIONS` 工作）；`:249-251` 窗口标题回落 | 增线；`fabric-1.21.1` 回落成 `1.21.1`；**用法串已于 2026-11-05 补齐第五线**（提示文字，非功能） |
 | B12 | `tools/check_lang_sync.py` | `:26` 只认四线 | 增第五线 |
 | B13 | `tools/fetch_shaderpacks.py` | `:40-45` `RUN_DIRS` | 增 `fabric-1.21.1/run/client` |
 | B14 | `tools/verify_fabric_assets.py` | `:140-147` 写死读 1.20.1；`:179-187` 版本不符**静默降级扫源码** | 按 `--subproject` 参数化；版本不符必须 **FAIL** |
@@ -88,11 +88,11 @@
 
 | # | mod | Modrinth version id | 版本号 | 备注 |
 |---|---|---|---|---|
-| 1 | sodium | `SMxNOGZ6` | 0.8.13+mc1.21.1 | iris 硬依赖 |
-| 2 | iris | `bAo1Qhte` | 1.8.14-beta.1+1.21.1 | 依赖 sodium |
+| 1 | sodium | `u1OEbNKx` | mc1.21.1-0.6.13-fabric | iris 1.8.8 硬要求 0.6.x；0.8.13 见 §11/§12 |
+| 2 | iris | `zsoi0dso` | 1.8.8+1.21.1 | 1.8.14-beta.1 在 dev 必崩（§11.4），已回退（§12） |
 | 3 | immediatelyfast | `aLnBqxFW` | 1.6.15+1.21.1 | |
 | 4 | lithium | `N08Z8wog` | mc1.21.1-0.15.4 | |
-| 5 | jei | `WkRLMWAY` | 19.70.0.469 | **硬依赖 mezzconfig** |
+| 5 | jei | `r1Jkfnic` | 19.56.0.441 | **硬依赖 mezzconfig**；19.57+ 的 jar 声明 Loom 1.18.2 ⇒ 需 Gradle ≥9.7 + JVM 25，本线封顶 19.56 |
 | 6 | jade | `adpNvTZS` | 15.10.6+fabric | 本线 `modImplementation`（mixin 需编译期引用） |
 | 7 | ferrite-core | `sOzRw3CG` | 7.0.3-fabric | 本轮新钉（原无 1.21.1 钉版） |
 | 8 | collective | `qSQaLB3S` | 1.21.1-8.77 | superflat 硬依赖 |
@@ -102,7 +102,8 @@
 | 12 | modernfix | `NnNX8LBn` | 5.25.1+mc1.21.1 | |
 
 **不在 12 项里但缺了跑不起来的必需依赖**：`fabric-api 0.116.17+1.21.1 / Mys3P7lK`（基础）、`trinkets 3.10.0 / JagCscwi`（饰品后端唯一实现）、`mezzconfig 0.6.10 / VudGGZKL`（JEI 19.70 的 required 依赖，1.21.1 fabric 产物实测存在）。
-**删除项**：`indium`（sodium 0.8 不再需要）、`debugify`、`modmenu`、`carpet`（裁决 2 未列入）。
+**删除项**：`indium`（sodium 0.8 不再需要）、`debugify`、`carpet`（裁决 2 未列入）。
+**表外例外（2026-11-05 追加裁决）**：`modmenu 11.0.5 / 6lgOkclV` + 硬依赖 `cloth-config 15.0.140+fabric / HpMb5wGb` 已装 —— 用户要求用 modmenu 验证「测试环境下 mod 安装情况」，属测试台工具而非玩法依赖（§11.7 有截图取证）。故本线实际加载 **85** mods。
 
 ### E2–E10（其余环境项，仍成立）
 - E2 世界：超平坦、`allowCommands=1`、`keepInventory=true`、`mobGriefing=false`；fabric 分侧目录 ⇒ 世界写 `run/client/saves` 或 `run/server`，搬档前删 `session.lock`。
@@ -119,7 +120,7 @@
 
 | 批次 | 内容 | 条数 |
 |---|---|---|
-| L0 | 启动/就绪/注册面（BOOT-READY、JAR-ASSETS、MODLIST） | 3 |
+| L0 | 启动/就绪/注册面（BOOT-READY、JAR-ASSETS、MODLIST）—— **2026-11-05 已落盘并实跑 PASS，见 §13** | 3 |
 | L1 | 核心玩法冒烟（骰子/卡牌/立牌） | 6 |
 | L2 | 事件与战斗（伤害链、破绽闪避、免疫） | 4 |
 | L3 | **饰品后端（Trinkets only）**：`TRINKET-BACKEND`、`TRINKET-SLOTS`（骰子/立牌/筹码可装入且槽位数正确）、`INCOMPAT-ACCESSORIES`（装 accessories ⇒ 启动被拒且文案指名） | 3 |
@@ -183,7 +184,7 @@ v1 的 `ACCESSORIES-ONLY` / `DUAL-BACKEND` 两条**删除**（后端只剩一个
 
 ### 10.3 仍未收口的点
 1. **`--mode window` 对 GL 窗口只能抓到白屏**（`PrintWindow` 拿不到 OpenGL 后缓冲）⇒ fabric 线视觉取证一律用 `--mode f2`（游戏内 F2 落盘 + `.mt_shots.json` 世代映射）。
-2. **用例文件仍为 0**：`scripts/test/cases/*-fabric-1.21.1.json` 尚未编写，阶段 C 的 29 条待写。
+2. **用例文件仍为 0**：`scripts/test/cases/*-fabric-1.21.1.json` 尚未编写，阶段 C 的 29 条待写。**（已被 §13 取代：L0 三条已落盘，剩 26 条。）**
 3. `MT_CAPTURE` 打出的 run_id 沿用旧世代（`20260921-191522`），不影响 F2 实际落盘路径，但阶段 C 前应核一次 `.mt_active_run` 的生成逻辑。
 
 
@@ -281,4 +282,60 @@ v1 的 `ACCESSORIES-ONLY` / `DUAL-BACKEND` 两条**删除**（后端只剩一个
 ### 12.5 遗留
 
 1. 升级到 iris 0.8.x/sodium 最新只在**生产形态**可行；若哪天要在 dev 里验 iris 新版，必须先解决其注解缺描述符问题（只能等上游，或自己重打 jar 补描述符）。
-2. `fabric-1.21.1` 用例仍为 0 条（`scripts/test/cases/*-fabric-1.21.1.json`），光影/modmenu 目前都是人工读数 + 截图取证。
+2. `fabric-1.21.1` 用例仍为 0 条（`scripts/test/cases/*-fabric-1.21.1.json`），光影/modmenu 目前都是人工读数 + 截图取证。**（已被 §13 取代：L0 三条已落盘；光影仍是人工 + 截图。）**
+## §13 L0 三条用例落盘与实跑（2026-11-05 18:3x，m09832 指令 ①）
+
+### 13.1 三条用例（`scripts/test/cases/`，均 CRLF、裸 LF 0）
+
+| case_id | channel | side | 判据 |
+|---|---|---|---|
+| `BOOT-READY-fabric-1.21.1` | 日志判据（默认） | client | 4 条 log + crash + mixin：`Astral Dice mod loaded\.` / `May the god of the dice be with you!` / `Sound engine (started\|finished)` / `AP_FAB_ACCESSORY_PROVIDER: OK \(trinkets=true accessories=false acl=false\)`；log 断言 **scope=whole** |
+| `JAR-ASSETS-fabric-1.21.1` | 离线（不启动游戏） | server | `op=jar_stats` + `type=jar`：models≥158 / recipes≥125 / trinkets≥8 / entries≥2315 / embed≤0 |
+| `MODLIST-fabric-1.21.1` | **autojs** | client | `mcp_status` + `eval_js` 读 `FabricLoader.getInstance().getAllMods()` ⇒ `{count, missing, forbidden, astral}`，4 条 `state` 断言：count≥80 / missing 长度 0（17 项必需 id）/ forbidden 长度 0（`accessories`、`accessories_compat_layer`）/ astral=true |
+
+相对 `BOOT-READY-fabric-1.20.1` 的两处**有意差异**：① 本线不装 KubeJS ⇒ 去掉 `kubejs` 断言（该断言在本线读不到日志会恒真，属假绿）；② 追加饰品后端判据行（对应 §2 的 Trinkets-only 裁决）。
+
+门禁读数：`python scripts/test/lib/mt_case.py validate --cases-dir scripts/test/cases --version fabric-1.21.1` ⇒ `MT_JUDGMENT: with_judgment=2 without=1` / `MT_CASE_VALIDATE: files=3 errors=0`。
+
+### 13.2 两个运行器缺陷（本轮实测踩出，已修）
+
+1. **顶层 `assert`（单数）被静默忽略**：python 运行器只执行 `doc["asserts"]`（复数，`scripts/test/lib/mt_case.py:592 _asserts()`），写成 `assert` 的用例**断言一条都不跑**，而 `validate_case_strict`（`:302` 只看 `asserts`）也不报错 ⇒ 静默 PASS。存量 **17** 个用例中招（全在 fabric-1.20.1 线：`BOOT-READY-fabric-1.20.1`、`CARD-CHIP-UI-fabric-1.20.1`、`CURIOS-SLOT-SIZING-fabric-1.20.1`、`JAR-RESOURCE-fabric-1.20.1`、`LT-*-fabric-1.20.1` 等）。fabric 内嵌运行器两种键都收（`scripts/test/win/lib/fabric.sh` 内 `:263` 有注释），所以那条线侥幸没红。
+2. **fabric 内嵌 cases 运行器两处能力缺口**（`scripts/test/win/lib/fabric.sh` 的 heredoc python，不是 `mt_case.py`）：
+   - `jar_stats()` 只数 `data/astral_dice/recipes/`，1.21+ 的 `recipe/` 不数 ⇒ `JAR-ASSETS` 的 recipes 断言恒 0、恒 FAIL。
+   - 没有 AutoJS 客户端通道 ⇒ 遇 `eval_js / mcp_status / await_state` 一律判 BLOCKED ⇒ `MODLIST` 走编排入口必 BLOCKED。
+   修法（已落盘）：recipes 双前缀计数（与 `mt_paths.RECIPES_PREFIXES` 同口径）；`channel=autojs` 的条目转交 `mt_case.py run --case … --run-dir <sub>/run/<side>`，并按退出码映射（0→OK / 11→BLOCKED / 其它→FAIL）。修前实测：`JAR-ASSETS` FAIL、`MODLIST` BLOCKED；修后三条全 OK。
+
+### 13.3 正确命令行（本轮实跑过）
+
+```bash
+# 1) 起客户端（注意 --wait-world 会吞下一个参数；--side client 必须显式给）
+bash scripts/test/win/launch.sh --version fabric-1.21.1 --side client --enable-autojs --wait-world 600 --timeout 900
+
+# 2) 单条跑（编排入口；缺 --side client 时 fabric 默认 side=server，客户端条目会 BLOCKED）
+bash scripts/test/win/mt.sh --version fabric-1.21.1 --phase cases --side client --case scripts/test/cases/MODLIST-fabric-1.21.1.json
+
+# 3) 收停
+bash scripts/test/win/mt.sh --version fabric-1.21.1 --phase stop --force
+```
+
+**整批不放行**：`--phase cases` 不带 `--case` 会被 `MT_AUTO_DISABLED` 拦下（纯手动下达命令规则），需要时显式 `--allow-auto`。
+
+### 13.4 本轮实跑读数（日志 `scripts/test/win/logs/fabric-1.21.1-20261105-183615.log`）
+
+| 判据 | 读数 |
+|---|---|
+| 启动 | `LAUNCH: READY` + `LAUNCH: WORLD_READY`，`game_pid=156920`，AutoJS client `available=true` |
+| BOOT-READY | 6 条断言 PASS（4 log hit=True + crash PASS + mixin PASS） |
+| JAR-ASSETS | `jar=astral_dice-26.4-SNAPSHOT.6+fabric_1.21.1.jar models=158>=158 recipes=125>=125 trinkets=8>=8 entries=2315>=2315 embed=0<=0` PASS |
+| MODLIST | `count=85 / missing=[] / forbidden=[] / astral=true`，4 条 state 全 PASS |
+| 编排入口复跑 | 三条各 `MT_CASES: OK (1–2s)` |
+| 老线回归 | `fabric-1.20.1` 的 `JAR-ASSETS` 仍 `OK`（recipes 双前缀计数没打坏 1.20.1） |
+| 收停 | `WIN_STOP: OK` / `MT_STOP: OK` |
+
+### 13.5 遗留
+
+1. 存量 **16** 个单数 `assert` 用例未改（机械改键名即可，但属另一批 fabric-1.20.1 用例，本轮未动）。
+2. L1–L5 + 专属共 **26** 条未写（估 6–9h，需按 autojs 重写，kubejs 用例不可复用）。
+3. **E8 RCON 仍未验证**（`env.sh` 的 RCON 段只探第一条 fabric 线）。
+4. `JAR-ASSETS` 里 `bountiful=4` 是自 1.20.1 带过来的死数据（本线不装 Bountiful），未清、也不设判据。
+

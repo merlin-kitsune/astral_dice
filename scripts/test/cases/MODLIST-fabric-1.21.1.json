@@ -1,0 +1,71 @@
+{
+  "case_id": "MODLIST-fabric-1.21.1",
+  "title": "运行期模组清单（channel=autojs，客户端）：从运行中的 JVM 读 FabricLoader 的已加载模组集合，判据=必需项全在、禁用项全无、模组总数达下限。对应 2026-11-05 裁决：饰品后端只做 Trinkets（Accessories 与 Accessories Compatibility Layer 进不兼容列表，本线不得出现）；测试台 mod 表含 sodium/iris/jei/jade/modmenu/cloth-config 等 12 项 + modmenu。 代码必须写成单个 IIFE 表达式：运行器 mode=json 会把整段包成 JSON.stringify((<code>))，多语句最后跟对象字面量会变成 syntax error（2026-11-05 实测 EvaluatorException）。",
+  "version": "fabric-1.21.1",
+  "side": "client",
+  "channel": "autojs",
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "为什么必须从 JVM 读而不是读日志：日志里 Loading N mods 行只列部分条目，且无法区分别名的 mod id；本判据用 FabricLoader.getInstance().getAllMods() 取权威集合（含 fabric-api 子模块，故 count 会高于日志的 85）。\n\n为什么断言 forbidden 为空而不只是断言 accessories 不在：Accessories 兼容层 accessories_compat_layer 是独立 mod id，只查一个会漏。"
+    },
+    {
+      "op": "mcp_status",
+      "save_as": "mcp",
+      "timeout_ms": 15000
+    },
+    {
+      "op": "eval_js",
+      "side": "client",
+      "mode": "json",
+      "timeout_ms": 20000,
+      "code": "(function () {\n  var fl = Java.loadClass('net.fabricmc.loader.api.FabricLoader');\n  var all = fl.getInstance().getAllMods();\n  var ids = [];\n  var it = all.iterator();\n  while (it.hasNext()) { ids.push(String(it.next().getMetadata().getId())); }\n  var need = ['astral_dice','autojs','sodium','iris','jei','jade','modmenu','cloth-config','lithium','immediatelyfast','ferritecore','collective','superflatworldnoslimes','forgeconfigapiport','puzzleslib','modernfix','trinkets'];\n  var missing = [];\n  for (var i = 0; i < need.length; i++) { if (ids.indexOf(need[i]) < 0) { missing.push(need[i]); } }\n  var forbidden = [];\n  for (var j = 0; j < ids.length; j++) { if (ids[j] === 'accessories' || ids[j] === 'accessories_compat_layer') { forbidden.push(ids[j]); } }\n  return { count: ids.length, missing: missing, forbidden: forbidden, astral: ids.indexOf('astral_dice') >= 0 };\n})()",
+      "save_as": "modlist"
+    },
+    {
+      "op": "note",
+      "text": "判据：count≥80（实测 85 个 mod 条目量级，含子模块）、missing 必须为空（17 项必需 id）、forbidden 必须为空（两条不兼容 id）。"
+    }
+  ],
+  "asserts": [
+    {
+      "type": "state",
+      "name": "mod_count",
+      "from": "modlist",
+      "expect": {
+        "count": {
+          "min": 80
+        }
+      }
+    },
+    {
+      "type": "state",
+      "name": "required_mods",
+      "from": "modlist",
+      "expect": {
+        "missing": {
+          "len": 0
+        }
+      }
+    },
+    {
+      "type": "state",
+      "name": "incompat_mods",
+      "from": "modlist",
+      "expect": {
+        "forbidden": {
+          "len": 0
+        }
+      }
+    },
+    {
+      "type": "state",
+      "name": "astral_loaded",
+      "from": "modlist",
+      "expect": {
+        "astral": true
+      }
+    }
+  ]
+}
