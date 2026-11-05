@@ -86,9 +86,9 @@ python scripts/test/lib/mt_case.py audit --cases-dir scripts/test/cases [--versi
 | `await_state` | `side` `code` `script` `args` `timeout_ms` `interval_ms` | 可用 | 轮询到条件成立或超时 |
 | `assert` | `type` `pattern` `source` `image` `question` `from` `code` `side` `expect` | 可用 | 见 §5 |
 | `inject_command` | `command` `no_esc` `via` `side` | 可用 | 原版命令注入；**默认**走 AutoJS 客户端 `sendCommand`（玩家身份，`@s` 有效、不占键鼠）；`via: "native"` 才落键鼠注入器。详见 §4.1 |
-| `inject_key` | `key` `hold_ms` `no_esc` | 可用 | 键位须与产品绑定一致（绑定漂移会让用例假失败） |
-| `inject_mouse` | `button` `shift` `hold_ms` `no_esc` | 可用 | |
-| `screenshot` | `tag` `mode` `crop` | 表内但**恒 BLOCKED** | python 侧无截图通道（`mt_case.py:430-433` `raise Blocked`）；视觉取证改用客户端探针自截图 + debug 通道 |
+| `inject_key` | `key` `hold_ms` `no_esc` `via` `side` | 可用 | 键位须与产品绑定一致（绑定漂移会让用例假失败）；**默认**走 AutoJS 客户端动作，`via: "native"` 才落键鼠注入器。详见 §4.2 |
+| `inject_mouse` | `button` `shift` `hold_ms` `no_esc` `via` `side` | 可用 | 有界面 ⇒ 投给 `Screen#mouseClicked`（窗口中心 GUI 坐标）；无界面 ⇒ 左键 = 攻击、右键 = 世界右键。详见 §4.2 |
+| `screenshot` | `tag` `via` `timeout_ms` | 可用 | AutoJS 客户端 `Screenshot.grab`（异步落盘，轮询出图后按 `<tag>_<run_id>.png` 登记，进 `.mt_shots.json`）。**`vision` 断言仍恒 BLOCKED**，缺的是语义判定通道，不是截图本身 |
 | `jar_stats` | `save_as` | 可用 | 产物 jar 统计；jar 缺失记 BLOCKED |
 | `wait` | `ms` | 退役（仍可跑） | 固定睡眠；`audit` 计入 `fixed_wait_steps`，新用例改用 `await_state` |
 | `kubejs_reload` | — | 废除 | `channel=autojs` 下出现即 `validate` 报错 |
@@ -104,6 +104,28 @@ mt_channel.plan(): [ send_command(client) ] + [ autojs_command(server console), 
 - **`via` 字段**（步级）：`autojs`（默认，等同不写）| `native`（落 `scripts/test/mt_inject.py` 键鼠注入）。`MT_INJECT_MODE=native` 是整轮环境级同义开关（优先级：`via` > `MT_INJECT_MODE` > `autojs`）。
 - **native 回退面**：AutoJS 通道 `DELEGATED`（缺 jar / 三级全败）时自动回退键鼠注入并记 `MT_CASE_WARN`；`endpoint=unavailable` 判 BLOCKED（不是 FAIL）。native 侧会自动补前导 `/`（`mt_case.py:_native_command`）：**少了 `/` 会被当成聊天内容发送，而 `mt_inject.py` 仍打 `MT_INJECT_CMD` 并返回 0**（2026-11-05 实测的静默假绿）。
 - 通道回归用例：`STEP1-SMOKE-1.20.1.json`（客户端优先 + `@s` 判据）、`STEP1-VIA-NATIVE-1.20.1.json`（`via=native` 回退面）。
+
+### 4.2 输入与截图（2026-11-05 Step 2：AutoJS 客户端动作，不占键鼠）
+
+`inject_key` / `inject_mouse` / `screenshot` 三者与用例 `channel` 无关，统一按
+`via` 字段 > `MT_INJECT_MODE` > `autojs` 的优先级选通道。
+
+**键位翻译表**（`mt_case.py` 的 `AUTOJS_KEY_JS`，未列出的键一律回退 native 并留 `MT_CASE_WARN`）：
+
+| key | 实现 | 语义 |
+|---|---|---|
+| `e` | `KeyMapping.click(options.keyInventory)`（先关掉残留界面） | 开背包 / 创造栏 |
+| `escape` | 有界面 ⇒ `keyPressed(256,…)` → `onClose()` → `setScreen(null)` 逐级回落；无界面 ⇒ `pauseGame(true)` | 关屏 / 暂停并存档（26.x 无 `keyPressed(int,int,int)`，必须靠回落链） |
+| `f1` | `options.hideGui = !options.hideGui` | 切 HUD（该键没有 KeyMapping） |
+| `1`..`9` | `KeyMapping.click(options.keyHotbarSlots[i])` | 切快捷栏 |
+| `rclick` | 服务端 `p.pick(4.5,0,false)`：命中方块 ⇒ `AutoJS.place(...)`；否则 `AutoJS.use()` | 真实右键（开箱 / 使用机器 / 吃射翻书） |
+| `cancel` | 服务端发 `ClientboundContainerClosePacket` + `doCloseContainer()` | 关容器（等价 ESC 关容器） |
+
+- **`cancel` 不能用 `closeContainer()`**：Rhino 的 Java 包装器解析不到它——反射 `getClass().getMethods()` 能列出 `closeContainer`，但调用必抛 `TypeError: Cannot find function closeContainer`（1.20.1 的 `ServerPlayer` 与 `LocalPlayer` 都如此，2026-11-05 实测）。故按 `ServerPlayer#closeContainer` 的两步原样复刻；本来没开容器时返回 `no-container`，按幂等空操作判 PASS 并留痕。
+- **`e` 会先关掉残留界面**（`clicked-reset`）：上一条用例失败时留下的 Screen 否则会让下一条的首个 `e` 读到 `screen-open` 假失败。用例另外可从 `run()` 起点的 `_prepare_ui()` 拿到同一次复位（`keep_initial_screen: true` 可关）。
+- **空手对空气右键不是失败**：原版 `useItem` 返回 `FAIL`（`consumesAction=false`），但 `RightClickItem` 已派发。此时返回 `use-noeffect` 记 PASS + `MT_CASE_WARN`；`place-miss` / `use-miss` / `no-player` / `no-screen` / `screen-open` 仍一律判 ERROR（堵假绿）。
+- **必须保留真输入的用例**（AutoJS 无等价动作或判据依赖真实按键路径）：`WALLET-VISION-26.1.2` 的 `k`（iris 光影开关，自动回退 native）、`CC-ESC-1.21.1` 的 ESC（显式 `via: native`）、`TARGETSEL-PROMPT-1.21.1` 的右键（显式 `via: native`，需右键+潜行真实路径）。
+- **截图**：`Screenshot.grab` 是异步落盘（`RenderSystem.recordRenderCall`），python 侧轮询 `<shot_dir>` 新 png ≤3s 后重命名为 `<tag>_<run_id>.png` 并写 `.mt_shots.json`（后续断言/报告按 tag 取图）。抓不到即 BLOCKED，不冒充 PASS。
 
 ## 5. 断言（`ASSERT_TYPES`，共 11 种）
 

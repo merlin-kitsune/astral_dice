@@ -54,7 +54,8 @@
     },
     {
       "op": "inject_key",
-      "key": "escape"
+      "key": "escape",
+      "via": "native"
     },
     {
       "op": "wait",

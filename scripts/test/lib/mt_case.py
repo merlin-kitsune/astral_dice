@@ -28,9 +28,12 @@
     客户端 sendCommand 优先 = 玩家身份、@s 有效、不占键鼠也不要求窗口前台），与用例 channel 无关；
     该通道不可用（缺 AutoJS jar / 三级全败）才回退 scripts/test/mt_inject.py 的键鼠注入，并留 MT_CASE_WARN。
     显式回到键鼠注入：环境变量 MT_INJECT_MODE=native，或步内 "via": "native"。
-  · inject_key / inject_mouse ⇒ 恒委托 scripts/test/mt_inject.py（ctypes 直调 user32.SendInput）；
-    只有**真正验证输入路径**（键位绑定、ESC 关屏之类）的用例才该用它们。
-  · screenshot 两通道都 ⇒ BLOCKED：截图通道（mt_capture.ps1）随 pwsh 删除，python 侧无等价物
+  · inject_key / inject_mouse ⇒ 2026-11-05 Step 2 起**默认走 AutoJS**：已知键位翻译成客户端脚本动作
+    （e=开背包、escape=关屏/暂停、f1=切 HUD、1..9=切快捷栏、rclick=世界右键、cancel=关容器），
+    鼠标在有界面时投给 Screen#mouseClicked(窗口中心)、无界面时右键=世界右键/左键=攻击。
+    翻译不了的键（k 之类第三方键位）与要**真验输入路径**的步骤显式 via=native 走 mt_inject.py。
+  · screenshot ⇒ AutoJS 客户端 Screenshot.grab（异步落盘，python 侧轮询新文件后按 <tag>_<run_id>.png 登记）；
+    vision 断言仍 BLOCKED —— 缺的是**语义判定**通道，不是截图本身。
   · 产物 jar 缺失 ⇒ op=jar_stats 记 BLOCKED（工具链事实）；bytecode 断言按 pwsh 口径记 FAIL
 
 用法：
@@ -66,9 +69,9 @@ PRIMITIVES = {
     "wait": {"active": True, "fields": {"ms"}, "deprecated": "固定睡眠已退役，仅作迁移期兼容"},
     # ↓ 已迁移：AutoJS 通道下可用（pwsh 同口径；仅 kubejs_reload 退役）
     "inject_command": {"active": True, "fields": {"command", "no_esc", "via", "side"}},
-    "inject_key": {"active": True, "fields": {"key", "hold_ms", "no_esc"}},
-    "inject_mouse": {"active": True, "fields": {"button", "shift", "hold_ms", "no_esc"}},
-    "screenshot": {"active": True, "fields": {"tag", "mode", "crop"}},
+    "inject_key": {"active": True, "fields": {"key", "hold_ms", "no_esc", "via", "side"}},
+    "inject_mouse": {"active": True, "fields": {"button", "shift", "hold_ms", "no_esc", "via", "side"}},
+    "screenshot": {"active": True, "fields": {"tag", "mode", "crop", "via", "timeout_ms"}},
     "jar_stats": {"active": True, "fields": {"save_as"}},
     # ↓ 废除面：channel=autojs 下出现即报错（需求书 §5：改用 eval_js / await_state）
     "kubejs_reload": {"active": False, "fields": set()},
@@ -86,6 +89,83 @@ JAR_MIN_MAP = {"models_min": "models", "recipes_min": "recipes", "trinkets_min":
                "entries_min": "entries", "signs_min": "signs"}
 JAR_MAX_MAP = {"bountiful_max": "bountiful", "embed_max": "embed"}
 JAR_CRITERIA = set(JAR_MIN_MAP) | set(JAR_MAX_MAP) | {"embed_lib"}
+
+# ── AutoJS 输入通道（Step 2）：键/鼠标 → 客户端脚本动作 ─────────────────────────
+# 口径：能翻译成「等价脚本动作」的键位一律走 AutoJS（不占键鼠、不要求窗口前台）；
+# 翻译不了的（第三方键位 / 需要验证真实输入路径的用例）显式 via=native 走 mt_inject.py。
+_MC = "var mc = Java.loadClass('net.minecraft.client.Minecraft').getInstance();"
+
+AUTOJS_KEY_JS = {
+    # 打开背包：走原版键位 → 创造模式自动开创造栏（不硬编码界面类，跨版本稳定）
+    "e": ("(function(){" + _MC +
+          " var reset = 0;"
+          " if (mc.screen != null) { reset = 1; mc.setScreen(null); }"
+          " var km = Java.loadClass('net.minecraft.client.KeyMapping');"
+          " km.click(mc.options.keyInventory.getKey());"
+          " return reset ? 'clicked-reset' : 'clicked';})()"),
+    # ESC：有界面 ⇒ 交给界面关闭，无界面 ⇒ pauseGame(true)（单机在此存档）
+    # 26.x 的 Screen 已没有 keyPressed(int,int,int)（改成 KeyEvent），这里按版本能力依次回落：
+    #   keyPressed(256,0,0) → onClose() → setScreen(null)
+    "escape": ("(function(){" + _MC +
+               " if (mc.screen != null) { var s = mc.screen;"
+               "   try { s.keyPressed(256, 0, 0); } catch (e0) { }"
+               "   if (mc.screen === s) { try { s.onClose(); } catch (e1) { } }"
+               "   if (mc.screen === s) { mc.setScreen(null); }"
+               "   return 'screen-esc'; }"
+               " mc.pauseGame(true); return 'paused';})()"),
+    # F1：隐藏 HUD 是 KeyboardHandler 直接改的字段，没有键位可点
+    "f1": ("(function(){" + _MC +
+           " mc.options.hideGui = !mc.options.hideGui;"
+           " return mc.options.hideGui ? 'hidden' : 'shown';})()"),
+}
+
+# 鼠标在有界面时的投递位置：与 native 注入器一致 —— 窗口中心（GUI 缩放坐标）
+AUTOJS_SCREEN_CLICK_JS = (
+    "(function(){" + _MC +
+    " var s = mc.screen; if (s == null) { return 'no-screen'; }"
+    " var gw = 640, gh = 360;"
+    " try { var w = mc.getWindow(); gw = w.getGuiScaledWidth(); gh = w.getGuiScaledHeight(); } catch (e0) { }"
+    " var x = Math.floor(gw / 2), y = Math.floor(gh / 2), b = __BTN__;"
+    " var r1 = s.mouseClicked(x, y, b);"
+    " var r2 = s.mouseReleased(x, y, b);"
+    " return 'click:' + r1 + '/' + r2;})()")
+
+# 世界右键：服务端 look 4.5 格 → 命中方块就 place（开箱/使用机器），否则 use（吃/射/翻书）
+AUTOJS_WORLD_CLICK_JS = (
+    "(function(){ var ps = AutoJS.players();"
+    " if (ps == null || ps.length < 1) { return 'no-player'; }"
+    " var p = ps[0]; var hit = p.pick(4.5, 0.0, false); var isBlock = false;"
+    " try { isBlock = (String(hit.getType()) === 'BLOCK'); } catch (e0) { isBlock = false; }"
+    " if (isBlock) { var pos = hit.getBlockPos(); var d = hit.getDirection(); var face = 'up';"
+    " try { face = String(d.getName()); } catch (e1) { face = String(d).toLowerCase(); }"
+    " return AutoJS.place(pos.getX(), pos.getY(), pos.getZ(), face) ? 'place' : 'place-miss'; }"
+    " return AutoJS.use() ? 'use' : 'use-noeffect';})()")
+
+# 关容器：等价玩家按 ESC 关掉当前容器（服务端权威）
+# 不用 ps[0].closeContainer()：Rhino 的 Java 包装器解析不到它（反射能列出、调用必抛
+# "Cannot find function closeContainer"，1.20.1 ServerPlayer / LocalPlayer 均如此）。
+# 改按 ServerPlayer#closeContainer 的两步原样复刻：
+#   send(ClientboundContainerClosePacket(containerMenu.containerId)) + doCloseContainer()
+# 前者让客户端真正关屏，后者在服务端重置菜单并派发 PlayerContainerEvent.Close。
+AUTOJS_CLOSE_CONTAINER_JS = (
+    "(function(){ var ps = AutoJS.players();"
+    " if (ps == null || ps.length < 1) { return 'no-player'; }"
+    " var p = ps[0];"
+    " if (!p.hasContainerOpen()) { return 'no-container'; }"
+    " var PK = Java.loadClass('net.minecraft.network.protocol.game.ClientboundContainerClosePacket');"
+    " p.connection.send(new PK(p.containerMenu.containerId));"
+    " p.doCloseContainer(); return 'closed';})()")
+
+# 截图：Screenshot.grab 是异步落盘（RenderSystem.recordRenderCall），python 侧轮询新文件
+AUTOJS_SCREENSHOT_JS = (
+    "(function(){" + _MC +
+    " var Consumer = Java.loadClass('java.util.function.Consumer');"
+    " var cb = new JavaAdapter(Consumer, { accept: function (c) { } });"
+    " var Sc = Java.loadClass('net.minecraft.client.Screenshot');"
+    " var dir = mc.gameDirectory; var buf = null;"
+    " try { buf = mc.getMainRenderTarget(); } catch (e0) { buf = null; }"
+    " try { Sc.grab(dir, null, buf, cb); return 'grab:4'; } catch (e1) { }"
+    " try { Sc.grab(dir, buf, cb); return 'grab:3'; } catch (e2) { return 'ERR:' + e2; }})()")
 
 
 class Blocked(Exception):
@@ -381,9 +461,32 @@ class Runner:
         return self.deadline - time.monotonic()
 
     # ── steps ──
+    def _prepare_ui(self):
+        """用例开跑前把客户端界面复位（AutoJS 通道）。
+
+        上一条用例失败/中断时可能把某个 Screen 留在打开状态，下一条用例的第一个
+        inject_key e 就会读到 screen-open（假 FAIL）。这里只在 AutoJS 可用时做一次
+        幂等复位：有屏就关掉并留 MT_CASE_WARN，无屏零动作。
+        用例显式写 keep_initial_screen=true 时跳过（需要在既有界面里继续的场景）。
+        """
+        if self.doc.get("keep_initial_screen"):
+            return
+        js = ("(function(){" + _MC +
+              " if (mc.screen == null) { return 'null'; }"
+              " var n = String(mc.screen.getClass().getSimpleName());"
+              " mc.setScreen(null); return n;})()")
+        try:
+            ok, val, err = self._autojs(js, "client", "preflight screen", timeout_ms=8000)
+        except Blocked:
+            return
+        if ok and val and str(val) != "null":
+            self.warnings.append("起始界面 " + str(val) + " 已复位（上一用例残留）")
+            self.say("      · 起始界面 " + str(val) + " 已复位")
+
     def run(self) -> tuple[str, int]:
         self.say(f"MT_CASE_BEGIN: {self.doc['case_id']} (channel={self.doc.get('channel','kubejs')})")
         try:
+            self._prepare_ui()
             for i, step in enumerate(self.doc.get("steps", [])):
                 if self._time_left() <= 0:
                     return self._finish("TIMEOUT", 12, f"steps 超时（>{self.case_timeout}s）")
@@ -431,23 +534,11 @@ class Runner:
         elif op == "inject_command":
             self._do_inject_command(step)
         elif op == "screenshot":
-            raise Blocked(
-                "screenshot 通道未移植：AutoJS Screenshot.grab（Mt.Channel）与 native mt_capture.ps1 均随 pwsh "
-                "删除，python 侧没有截图通道；vision 断言因此恒为 BLOCKED，需由截图/启动块补齐后再启用")
+            self._do_screenshot(step)
         elif op == "inject_key":
-            argv = ["--key", str(step.get("key", ""))]
-            if step.get("hold_ms"):
-                argv += ["--hold-ms", str(int(step["hold_ms"]))]
-            if step.get("no_esc"):
-                argv.append("--no-esc")
-            self._native_inject("key", argv, "inject_key")
+            self._do_inject_key(step)
         elif op == "inject_mouse":
-            argv = ["--button", str(step.get("button", "left"))]
-            if step.get("shift"):
-                argv.append("--shift")
-            if step.get("hold_ms"):
-                argv += ["--hold-ms", str(int(step["hold_ms"]))]
-            self._native_inject("mouse", argv, "inject_mouse")
+            self._do_inject_mouse(step)
         else:  # validate 已挡，防御性
             raise Blocked(f"未实现原语 {op}")
 
@@ -539,6 +630,162 @@ class Runner:
         self.records.append({"op": "jar_stats", "outcome": "NOTE", "detail": detail})
         self.say("      jar_stats: " + detail)
 
+    # ── AutoJS 输入通道（Step 2）───────────────────────────────────────────
+    def _autojs(self, code: str, side: str, label: str, timeout_ms: int = 15000):
+        """在指定侧跑一段脚本动作；返回 (ok, value, err)。端点不可用 ⇒ Blocked。"""
+        res = self.client.eval_js(code, side=side, mode="raw", timeout_ms=timeout_ms)
+        if not res.get("ok"):
+            err = str(res.get("error", ""))
+            if "端点" in err or "transport" in err or "HTTP 0" in err:
+                raise Blocked(label + " 端点不可用：" + err[:200])
+            return False, None, err
+        return True, res.get("value"), None
+
+    def _do_inject_key(self, step: dict):
+        key = str(step.get("key", "")).strip()
+        mode = self._inject_mode(step)
+        if mode == "autojs":
+            js = AUTOJS_KEY_JS.get(key)
+            if js is None and key.isdigit() and 1 <= int(key) <= 9:
+                js = ("(function(){" + _MC +
+                      " if (mc.screen != null) { return 'screen-open'; }"
+                      " var km = Java.loadClass('net.minecraft.client.KeyMapping');"
+                      " km.click(mc.options.keyHotbarSlots[%d].getKey()); return 'clicked';})()"
+                      % (int(key) - 1))
+            if js is None and key in ("rclick", "right_click"):
+                ok, val, err = self._autojs(AUTOJS_WORLD_CLICK_JS, "server", "inject_key rclick")
+                self._finish_input("inject_key", key, ok, val, err)
+                return
+            if js is None and key in ("cancel", "close"):
+                ok, val, err = self._autojs(AUTOJS_CLOSE_CONTAINER_JS, "server", "inject_key cancel")
+                if ok and str(val) == "no-container":
+                    # 本来就没开容器：关容器是幂等动作，不算失败，但要留痕
+                    self.warnings.append("inject_key cancel：此前无打开的容器（幂等空操作）")
+                    val = "closed(idle)"
+                self._finish_input("inject_key", key, ok, val, err)
+                return
+            if js is not None:
+                ok, val, err = self._autojs(js, step.get("side") or "client", "inject_key " + key)
+                self._finish_input("inject_key", key, ok, val, err)
+                return
+            # 翻译不了（第三方键位 k 之类）⇒ 显式回退 native，留痕不静默
+            self.warnings.append("inject_key " + key + "：AutoJS 无等价动作，回退 native 键鼠注入")
+            self.say("      inject_key: →NATIVE（AutoJS 无等价动作）" + key)
+        argv = ["--key", key]
+        if step.get("hold_ms"):
+            argv += ["--hold-ms", str(int(step["hold_ms"]))]
+        if step.get("no_esc"):
+            argv.append("--no-esc")
+        self._native_inject("key", argv, "inject_key")
+
+    def _do_inject_mouse(self, step: dict):
+        button = str(step.get("button", "left")).strip().lower()
+        mode = self._inject_mode(step)
+        if mode == "autojs":
+            btn = 1 if button.startswith("r") else 0
+            js = AUTOJS_SCREEN_CLICK_JS.replace("__BTN__", str(btn))
+            ok, val, err = self._autojs(js, step.get("side") or "client", "inject_mouse")
+            if ok and str(val) not in ("no-screen", ""):
+                self._finish_input("inject_mouse", button, ok, val, err)
+                return
+            # 没有界面 ⇒ 世界里的点击：右键=look 命中方块 place / 否则 use
+            if button.startswith("r"):
+                ok2, val2, err2 = self._autojs(AUTOJS_WORLD_CLICK_JS, "server", "inject_mouse right")
+                self._finish_input("inject_mouse", button, ok2,
+                                   val2 if ok2 else val, err2 or err)
+                return
+            ok2, val2, err2 = self._autojs(
+                "(function(){ var ps = AutoJS.players();"
+                " if (ps == null || ps.length < 1) { return 'no-player'; }"
+                " return ps[0].swing(Java.loadClass('net.minecraft.world.InteractionHand').MAIN_HAND, true) == null"
+                " ? 'swing' : 'swing';})()", "server", "inject_mouse left")
+            self._finish_input("inject_mouse", button, ok2, val2, err2)
+            return
+        argv = ["--button", button]
+        if step.get("shift"):
+            argv.append("--shift")
+        if step.get("hold_ms"):
+            argv += ["--hold-ms", str(int(step["hold_ms"]))]
+        self._native_inject("mouse", argv, "inject_mouse")
+
+    def _finish_input(self, op: str, what: str, ok: bool, val, err):
+        detail = str(val if ok else err or val)[:200]
+        if not ok:
+            self.records.append({"op": op, "outcome": "ERROR", "detail": detail})
+            self.errors.append(op + " " + what + " 失败：" + detail)
+            self.say("      " + op + ": FAIL " + detail)
+            return
+        if str(val) == "use-noeffect":
+            # 空手对空气右键：原版本来就 return FAIL（consumesAction=false），
+            # 但服务端 useItem 已走完（RightClickItem 照常派发）⇒ 记为 PASS 并留痕
+            self.warnings.append(op + " " + what + "：空手对空气右键无副作用（原版语义）")
+            self.records.append({"op": op, "outcome": "PASS", "detail": "use-noeffect"})
+            self.say("      " + op + ": PASS " + what + " → use-noeffect")
+            return
+        if str(val) in ("no-player", "no-screen", "screen-open", "place-miss", "use-miss",
+                        "no-container"):
+            # 动作没生效 = 假绿来源，按错误处理（不是 PASS）
+            self.records.append({"op": op, "outcome": "ERROR", "detail": detail})
+            self.errors.append(op + " " + what + " 未生效：" + detail)
+            self.say("      " + op + ": FAIL " + detail)
+            return
+        self.records.append({"op": op, "outcome": "PASS", "detail": detail})
+        self.say("      " + op + ": PASS " + what + " → " + detail)
+
+    # ── 截图原语：AutoJS 客户端 Screenshot.grab（异步落盘 + 轮询新文件）──────────
+    def _do_screenshot(self, step: dict):
+        import mt_compat as mc
+        # mt_capture 住在 scripts/test/（不在 lib/），单独补一条搜索路径
+        _test_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        if _test_dir not in sys.path:
+            sys.path.append(_test_dir)
+        import mt_capture as cap
+        tag = str(step.get("tag") or "shot")
+        try:
+            paths = mc.get_paths(self.version)
+        except Exception as exc:  # noqa: BLE001
+            raise Blocked("screenshot 无法解析运行目录：" + str(exc)[:160])
+        os.makedirs(paths.shot_dir, exist_ok=True)
+        before = set(os.listdir(paths.shot_dir))
+        started = time.time()
+        ok, val, err = self._autojs(AUTOJS_SCREENSHOT_JS, "client", "screenshot",
+                                    timeout_ms=int(step.get("timeout_ms") or 20000))
+        if not ok or str(val).startswith("ERR:"):
+            self.records.append({"op": "screenshot", "outcome": "ERROR",
+                                 "detail": str(err or val)[:200]})
+            raise Blocked("screenshot 抓图失败：" + str(err or val)[:200])
+        shot = None
+        end = time.time() + max(3.0, float(step.get("timeout_ms") or 20000) / 1000.0)
+        while time.time() < end:
+            for name in sorted(os.listdir(paths.shot_dir)):
+                if name in before or not name.lower().endswith(".png"):
+                    continue
+                full = os.path.join(paths.shot_dir, name)
+                try:
+                    if os.path.getsize(full) > 0 and os.path.getmtime(full) >= started - 2:
+                        shot = full
+                        break
+                except OSError:
+                    continue
+            if shot:
+                break
+            time.sleep(0.25)
+        if not shot:
+            self.records.append({"op": "screenshot", "outcome": "ERROR", "detail": "未落盘"})
+            raise Blocked("screenshot 已触发但 3s 内未见新 png："
+                          + str(paths.shot_dir))
+        run_id = mc.active_run_id()
+        name = tag + "_" + (run_id or "run") + ".png"
+        dst = os.path.join(paths.shot_dir, name)
+        try:
+            os.replace(shot, dst)
+        except OSError:
+            dst = shot
+        cap.record_shot(paths, os.path.basename(dst), tag, run_id)
+        self.records.append({"op": "screenshot", "outcome": "PASS",
+                             "detail": os.path.relpath(dst, self.repo_root)})
+        self.say("      screenshot: PASS " + os.path.relpath(dst, self.repo_root))
+
     # ── native 注入通道（ctypes SendInput，实现在 scripts/test/mt_inject.py）──────
     def _native_inject(self, sub: str, argv: list, label: str):
         script = os.path.join(self.repo_root, "scripts", "test", "mt_inject.py")
@@ -576,7 +823,7 @@ class Runner:
             return "autojs"
         if raw in ("native", "keyboard", "inject"):
             return "native"
-        raise Blocked("inject_command：未知 via=" + repr(raw) + "（只接受 autojs / native）")
+        raise Blocked("未知 via=" + repr(raw) + "（只接受 autojs / native）")
 
     def _native_command(self, step: dict):
         # sendinput 传输是「原样打字」，不带前导 / 会被当成聊天内容发送，

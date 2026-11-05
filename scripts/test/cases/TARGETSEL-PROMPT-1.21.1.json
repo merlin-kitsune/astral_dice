@@ -61,7 +61,8 @@
       "op": "inject_mouse",
       "button": "right",
       "shift": true,
-      "no_esc": true
+      "no_esc": true,
+      "via": "native"
     },
     {
       "op": "wait",
