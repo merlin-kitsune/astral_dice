@@ -165,6 +165,12 @@ public class CardChoiceScreen extends AbstractContainerScreen<CardChoiceMenu> {
 
     @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+        // 背景暗化（2026-11-05/06 用户裁决：只暗化、不模糊，各线统一）。
+        //   1.20.1 的 Screen#render 只遍历控件、AbstractContainerScreen#render 只调 renderBg，
+        //   两处都不调 renderBackground ⇒ 容器屏默认对世界零处理（实测选卡界面背后世界与游戏内同亮度）。
+        //   原版容器屏看着暗，是因为它们的 renderBg 自己调了 renderBackground；本类不调 ⇒ 在这里补一次：
+        //   有世界 = 两层暗化渐变（+ 世界背景事件），无世界 = 泥土背景。
+        this.renderBackground(guiGraphics);
         super.render(guiGraphics, mouseX, mouseY, partialTick);
         // 卡槽是隐藏坐标 ⇒ 原版不会给它出 tooltip，这里补一份（放满/未放满都可查看卡牌信息）
         int hovered = choiceSlotAt(mouseX, mouseY);

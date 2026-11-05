@@ -2,6 +2,7 @@
 
 > **一句话**：dev 线（`26.4-SNAPSHOT.5`）的基线停在主线 **1.5.0-rc.7 时期**（合并点 `06fef75a`）；主线已于 2026-11-02 发布 **1.5.0 正式版**（tag `1.5.0` = `6fe38138`）。本文件给出「哪 36 个提交待吸收、吸收时要守住什么、吸收后怎么验」。
 > **位置**：`F:/MCProject/astral_dice_multiloader-next` = 主仓的 **git worktree**（分支 `multi-dev-next`），不是独立 clone；`.git` 用**相对路径** gitdir（Windows / Linux 双端可解析），细节见 `docs/handover-2026-10-31-dev-next-linux-sync.md（已删除 2026-11-05）` §2。
+> **2026-11-06 勘误（本条晚于全文快照）**：YSM（是，史蒂夫模型 2.6.5 及 `ysm-enhancements`）已按用户裁决从**所有测试环境**的整合包 mods 目录移出（归档在 `D:/.minecraft/_ysm_parked_20261106/`）⇒ 下文「26.1.2 只能 production 形态启动 / dev 形态必触发 YSM err54」两条**作废**：26.1.2 现可直接用 `bash scripts/test/win/launch.sh --version 26.1.2` 以 dev 形态启动（2026-11-06 00:03 实测 `LAUNCH: WORLD_READY`，game_pid 117164）。
 > **与主线文档的关系**：`docs/handover-1.5.0-main.md`、`docs/handover-new-session-context.md` 描述的是**主线**（`multi-main` / 1.5.0）；其中版本号、库引脚、发布节奏三块**对本线不成立**，一律以本文件与 dev 线自己的 changelog 为准。
 
 ## 0 接手第一步

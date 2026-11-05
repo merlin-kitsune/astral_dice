@@ -136,6 +136,10 @@ public class CardChoiceScreen extends AbstractContainerScreen<CardChoiceMenu> {
 
     @Override
     public void extractBackground(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
+        // 背景暗化（2026-11-05/06 用户裁决：只暗化、不模糊，各线统一）。
+        //   26.1.2 里容器屏的背景由本方法整体接管（没有调 super）⇒ 原版那条「游戏内 UI 只压透明暗化渐变」不会发生，
+        //   这里显式补一次原版透明背景渐变；模糊按裁决不做。
+        this.extractTransparentBackground(guiGraphics);
         // 卡面/卡名先画（在槽位物品与光标携带物之下），避免拖拽幽灵被卡面盖住
         for (int i = 0; i < this.menu.slotCount(); i++) {
             int x = cardX(i);
