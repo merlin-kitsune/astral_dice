@@ -6,7 +6,7 @@
 在新结构下必然 IndexError / 恒 FAIL ⇒ 换成与结构无关的四项：
   1. 全文快照：AGENTS-full.md 保序包含拆分前备份（不丢行、不乱序）；
      + 红线区的**新落点**（docs/agent/AGENTS-dsh.md 标记块）与快照 L2–L129 仍逐字一致；
-  2. 结构完整：宿主分派表 4 个宿主 / 共同安全红线 1–8 条 / 按需文档索引节；
+  2. 结构完整：宿主分派表 4 个宿主 / 共同安全红线 1–9 条 / 按需文档索引节；
   3. 引用有效：AGENTS.md 里引用的 docs/**.md 必须真实存在（默认只 WARN，--strict 才 FAIL）；
   4. 体量 + 驻留规则：AGENTS.md < 32K 字符；AGENTS-dsh.md 仍含用户裁决的 using-superpowers 段。
 
@@ -149,10 +149,11 @@ check('宿主分派表含 4 个宿主（' + ' / '.join(want_hosts) + '）',
 bolds = re.findall(r'^(\d+)\.\s+\*\*(.+?)\*\*', ag, re.M)
 nums = [int(n) for n, _ in bolds]
 want_red = ['默认不启动实机', '默认不部署', '默认不 commit', '保护素材与他人改动', '互斥锁', '不代改他人职责',
-            '没有详细测试就没有发布版本', '早提交、勤提交']
+            '没有详细测试就没有发布版本', '早提交、勤提交',
+            '单写者 + 实机互斥']
 hit = [w for w in want_red if any(w in t for _, t in bolds)]
 miss_red = [w for w in want_red if w not in hit]
-check('共同安全红线 1–8 条齐全且编号连续', nums == [1, 2, 3, 4, 5, 6, 7, 8] and not miss_red,
+check('共同安全红线 1–9 条齐全且编号连续', nums == [1, 2, 3, 4, 5, 6, 7, 8, 9] and not miss_red,
       f'编号={nums} / 命中 {len(hit)}/{len(want_red)} 条关键词' + (f' / 缺={miss_red}' if miss_red else ''))
 
 HEAD_IDX = '## 三、按需文档索引'

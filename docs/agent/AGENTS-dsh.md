@@ -4,7 +4,6 @@
 
 - DSH 宿主必须在**回复任何内容、调用任何其他工具之前**，先调用 `skill` 工具加载 `using-superpowers`（提供方 `superpowers-dsh`，正文 = 插件包 `skills/using-superpowers/SKILL.md`），再按它工作。
 - 它要求的是：**任何**任务（含反问、翻文件、看 `git status` 这类小动作）动手前先查技能目录；只要 1% 可能适用就必须加载，不得以「这个简单 / 用不着 / 我记得」跳过；流程类技能（`brainstorming` / `systematic-debugging`）先定打法，再由领域技能接力；进计划模式前先 `brainstorming`；只按技能目录里的**确切名字**调 `skill`，不凭记忆套用。
-- 派发子代理时，brief 里必须带一句「动手前先加载 `using-superpowers`」——子代理看不到本文件，不写就等于没这条规则。
 - 用户显式打 `/using-superpowers` 同样有效；本条只保证「不靠用户提醒也会加载」。
 - `skill` 工具不可见 / 加载报错时，在回复里明确写「本次会话未能加载 superpowers」，再照常干活，**不得**默认自己已经遵守。
 
@@ -20,6 +19,7 @@
 6. **git**：一律用 git bash 的 `git`，命令写全 `git -C F:\MCProject\<工作树> <子命令>`，或先 `cd` 进工作树。
 7. **JDK**：`JAVA_HOME=C:\Program Files\Zulu\zulu-21`（21.0.12）；`forge-1.20.1` 的 toolchain 17 由 Gradle 从 `%USERPROFILE%\.gradle\jdks` 取（已缓存 Adoptium 17.0.20），不要手改。
 8. **测试收尾必须自动关闭游戏进程（2026-10-18 用户裁决）**：任何测试轮次（单条 / 全量 / 中断 / 失败）结束后，必须执行 `bash scripts/test/win/mt.sh --version <线> --phase stop --force`，并在交付报告里贴出 `WIN_STOP: OK` 原文 + 「无本流程 java 客户端残留」的核对结果（`ps -W | grep -ci java` 计数；旧口径的 `MT_STOP: OK` 仅作溯源）。**禁止**让 Minecraft 客户端无人观察地驻留 —— 它持续占用 CPU/GPU 并污染下一轮冷启动的前置状态。唯一例外：用例 `on_fail=keep_game_running` 落了 `.mt_keep_alive-<版本>` 的取证现场，此时在报告里说明保留原因与路径，取证完成后立即 `--phase stop --force`。
+9. **命令通道 = `ops_bash` + 裸解释器名（2026-11-07 用户裁决）**：一切命令在 `run_code` 里用 `tools.ops_bash(...)` 执行，命令体里的 `bash` / `python` 一律写**裸名**，由 `ops_bash` 自行解析（Windows = PATH 上的 MSYS2 / git-bash；python = PATH 上的 **3.12.16**；Linux = 系统 bash / python3）。⛔ **禁止**写解释器绝对路径（`C:/msys64/usr/bin/bash`、`~/.dsh/dsh-runtimes/**/python.exe` 等）—— `ops_bash` 无法指定解释器，绝对路径只会让命令落到别的运行时。python 脚本**只依赖标准库**，缺库改实现，不得改指别的解释器。
 
 > 红线区〈命令执行规范（Shell）〉已于 **2026-11-04 用户裁决**整体改写为现行口径（与本节〈⚙️ 环境与工具链口径〉一致）：**本项目只允许通过 `ops_bash` 调用工具**，bash 由 MSYS2 / git bash 提供、禁止用 `cmd.exe` 批处理替代（`.bat` 只保留 `gradlew.bat` / `run/Start-<线>.bat` 这类既有双击启动件）。原「一律 PowerShell 7 / `pwsh`」条款**已整节删除**，不要再引用；`docs/agent/AGENTS-full.md` 同处已同步改写，两项仍受 `docs/agent/verify-split.py` 项 1b 的逐字比对约束。
 
@@ -139,7 +139,7 @@
 > - **定位命令**：`grep -n '^#' docs/agent/AGENTS-full.md`；标题 + 行号总表见 `docs/agent/AGENTS-TOC.md`。
 > - **派活必须带规则**：子代理看不到本文件 ⇒ brief 里要写清区间（`docs/agent/AGENTS-full.md` L<a>–L<b>，行号查 `AGENTS-TOC.md`）。
 > - **交叉引用口径**：其它文件（脚本 / README / TESTING-SPEC 等）里写的「见 AGENTS.md〈X〉」，一律改到 `docs/agent/AGENTS-full.md` 里**按标题名检索**；标题文字未做任何改动。
-> - **自检**：`python -B docs/agent/verify-split.py`（只读；四项 —— ① 快照保序包含 + **本文件红线区块与快照 L2–L120 逐字一致**；② 根 `AGENTS.md` 结构完整（宿主分派 / 共同红线 1–6 / 按需索引）；③ `AGENTS.md` 引用的 docs 路径都存在（默认 WARN，`--strict` 才 FAIL）；④ 体量 < 32K 且本文件的 `using-superpowers` 段没被删）。
+> - **自检**：`python -B docs/agent/verify-split.py`（只读；四项 —— ① 快照保序包含 + **本文件红线区块与快照 L2–L129 逐字一致**；② 根 `AGENTS.md` 结构完整（宿主分派 / 共同红线 1–9 / 按需索引）；③ `AGENTS.md` 引用的 docs 路径都存在（默认 WARN，`--strict` 才 FAIL）；④ 体量 < 32K 且本文件的 `using-superpowers` 段没被删）。
 
 ## 🎌 立牌 / 物品英日命名规则（2026-10-26 用户裁决；全文见 `docs/agent/AGENTS-full.md` L4116–L4186）
 
@@ -155,7 +155,6 @@
 > ✅ **执行口径**：下方红线区整块来自 `docs/agent/AGENTS-full.md` L2–L129（受 `docs/agent/verify-split.py` 项 1b 的**逐字比对**约束）。其中〈命令执行规范（Shell）〉已于 **2026-11-04 用户裁决**随本文件一起改写为『**只允许 `ops_bash` + bash（MSYS2 / git bash）+ python**』口径，PowerShell / `pwsh` / `.ps1` 条款**已全部删除**；若与本节〈⚙️ 环境与工具链口径〉仍有出入，以本节为准并即时订正（两边应逐字一致）。
 
 ## 📍 生效红线区 —— 原文逐字（`docs/agent/AGENTS-full.md` L2–L129；原文 H1 由本文件 H1 取代）
-
 > **子项目优先级与默认规则(必须遵守,2026-11-05 用户裁决重新划级)**:⛔ **原「三条生产线同批实施（含 26.1.2）」「四线同号」等旧口径已全部作废** —— 现行**两级优先模型**见下方「## 版本优先级与跨线移植纪律」:**P0 最高 = `forge-1.20.1` + `neoforge-1.21.1`**（新功能、修复、平衡、文案一律**先落这两条线**,两线保持功能对等,无法对等的项按平台差异逐条登记,见 `docs/compat-1.20.1-forge.md`）;**P1 = `fabric-1.20.1` + `fabric-1.21.1` + `neoforge-26.1.2`**（⛔ **只有 P0 新功能落盘无误且经过详尽测试后,由用户裁决才可向 P1 落盘,代理不得擅自决定**;各线规则边界见下方各自小节）;每次改动完成后由代理**自动本地提交**并**自动部署到整合包**(随 `gradlew build` 触发,**各线各自推往自己的测试实例**:`狐の航空学 Voxy Edition` / `1.20.1-Forge 模组测试` / `26.1.2-NeoForge 模组测试` / `1.20.1-Fabric 模组测试`),但**默认不执行 `git push`**。⛔ **发布投放红线（必须遵守,2026-10-25 用户裁决,优先级高于本条其余表述）**：**除非用户在当次任务里明确点名要求，否则默认只上传/发布 P0 两线（`neoforge-1.21.1` + `forge-1.20.1`）的产物** —— 涵盖 CurseForge / Modrinth / GitHub Release 与 tag / 任何对外分发渠道；**P1 三线（`fabric-1.20.1` + `fabric-1.21.1` + `neoforge-26.1.2`）的编译产物一律视为不可用** ⇒ 禁止上传、禁止建 Release/tag、禁止作为 P0 Release 的附件、禁止对外交付；需要 P1 发布时必须由用户逐次点名下达。 **2026-11-02 用户裁决（取代本条后半）**：各线 jar 允许放入同一个 GitHub Release（按版本号打 tag、全部正式版）；CF 侧 `fabric` / `neoforge-26.1.2` 仍受 `--allow-p1` 显式放行闸门约束（保留为防误传互锁），上传时必须显式加该参数。**② tag 与 Release 命名红线（同批裁决,强制）**：GitHub Release 的 tag **只按 mod 版本**创建（例 `1.5.0`、`1.5.0-rc.1`、`1.5.0-pre.6`）—— **禁止**按游戏平台建 tag（`fabric-1.5.0-rc.1`、`neoforge-…` 一律禁止）、禁止 `v` 前缀、禁止 `+加载器` 后缀；**同一版本的多平台 jar 必须放进同一个 Release**（现为 P0 两线 `neoforge-1.21.1` + `forge-1.20.1`，各自 jar 作同一 Release 的附件）；带 `-rc` / `-pre` / `-alpha` / `-beta` 的版本一律标 prerelease、不占 latest。**③ 发布时序红线（2026-11-02 用户裁决，强制）**：**未经详细测试（含实机冒烟）的版本一律不得作为发布版本**；**生产版本的发布动作必须是整条流程的最后一步** —— 固定顺序为「构建 → 本地详细测试 / 实机冒烟取证 → 审核项全过 → 才允许 push / tag / Release / CurseForge 上传」。在测试结论齐全之前执行的任何对外发布动作都算违规，发现即回滚或下架并记录。
 
 ## 发布流程硬规则（2026-11-02 用户裁决，强制）
@@ -256,6 +255,7 @@ When extending this workspace:
 6. **改动后旧实机证据一律作废，先停旧实例再测新构建（2026-10-11 用户交接裁决）**：任何代码 / 资源改动落地后，此前一切实机读数与截图立即失效，不得作为新构建的验收依据；测新构建前必须先 `bash scripts/test/win/mt.sh --version <线> --phase stop` 停掉旧实例（禁止在旧实例上叠加新构建 —— `run/<线>/mods` 的 jar 会被旧进程持有且内容是旧代码）。
 7. **开发操作流程（2026-10-12 用户裁决，取代 2026-10-11 版本；同日二次裁决修订②③⑤⑥⑧：所有代码编写一律通过向 Subagent 下达写代码命令完成，主 Agent 只负责规划 / 派活 / 验收 / 提交，不亲自编写任何代码；2026-11-07 修订④⑦⑨：复核执行方改为一次性独立 subagent + `review-agent` 技能，`dsh_code_review` 弃用）**：① 新功能先写**开发需求 / 设计计划**；② **P0 基准线 `neoforge-1.21.1` 的实现派子代理编写**（一次性、单任务、brief 自包含；主 Agent 不亲自写主线实现）；③ 子代理交付后由主 Agent 验收并按需自测（`:<线>:classes` 编译 / `scripts/verify/**` 守门脚本）；④ 完成后**派一次性独立 subagent 载 `review-agent` 技能复核**（brief 写全范围 + 判据，禁喂主会话结论）；⑤ 复核问题派新子代理修完后，**另派子代理做独立功能审查**（静态取证、编译、守门脚本、与需求逐字对账）；⑥ 主 Agent 逐条回应审查结论、缺陷**派新子代理修复**，**全部确认无误后**才派子代理做 `forge-1.20.1` 移植（按 `docs/compat-1.20.1-forge.md` 差异映射）；⑦ 移植线再走一次 `review-agent` 子代理复核 + **另派一个独立子代理**做功能审查；⑧ 子代理模型**固定且只能用** `deepseek-official/deepseek-flash`（= DeepSeek-V4.1-Flash；2026-10-22 用户裁决：不得改派更强 / 其它 provider 的 model），仍受第 1 条「一个子代理一个任务、用完即弃」约束；复核 / 审查发现的问题交**新**子代理改进，**连续 3 次仍改不到位 ⇒ 报用户拍板**。⑨ **复核分级（2026-10-13 用户裁决，2026-11-07 换执行方）**：a) **非代码改动**（文档 / 规则 / 版本号 / CHANGELOG / 配置注释等）只做 `review-agent` 子代理复核，免子代理功能复验；b) **小规模代码修正**（口径 / 字符串 / 数值 / 显示内容等简单修改）只做 `review-agent` 子代理复核，除非用户另行下达指令，不执行子代理功能复验；c) **新功能请求**：`review-agent` 复核后由主 Agent 按改动规模自判功能复验范围（全量 / 部分 / 不做），判断依据如实写进交付报告；d) **大型功能变更或新增**执行**全量**功能复核；e) **实机测试仍须用户明确许可**——无法仅靠功能复核确认的结果，必须向用户说明情况并请求其下达实机测试。**代码与二进制都无法确认是否符合需求时，必须询问用户是否实机测试**（用户明确下达才做，流程见第 5 条，收尾按第 3 条）；必须用户决策的问题或难以实现的功能**交用户拍板**，不得擅自取舍。
 8. **派子代理一律屏蔽人格注入（2026-10-22 用户裁决）**：所有 `subagent` / `subagent_fork` / `spawn_teammate` 的 brief 里，除职业声明外**必须原文加一句**「**不要使用任何人设 / 角色扮演 / 语气修饰 / 昵称自称，按你的职业身份以中性技术口吻输出**」；**审查 / 取证 / 复核类任务必须用全新上下文的 `subagent`**（`subagent_fork` 会连同带人设的对话一起继承；复核按第 4 条用 `review-agent` 子代理，同样不得 `subagent_fork`）。子代理回报里出现人格化表达（自称、卖萌、情绪表演）即视为**交付不合规**，主 Agent 应要求重发中性版结论；理由：人设会稀释证据密度，与「只给证据、不给情绪结论」的复核口径直接冲突。本条第 ① 句同样适用于 `spawn_teammate` 的初始 prompt 与后续 `send_message` 改需求。
+9. **单文件单写者 + 实机测试互斥（2026-11-07 用户裁决，强制）**：① **一个文件同一时刻只能有一个写者** —— 主 Agent、`subagent`、`spawn_teammate` 成员**不得并发修改同一文件**；并行时按**互斥写作用域**切分（teammate 的 `write_scopes` 必须互不重叠并在共享任务板登记），一旦发现作用域重叠 ⇒ **立即停手**，由 Lead 重新切分后再继续，禁止「谁先写完谁算」的覆盖式并发。② **实机测试同一时刻只允许一条线** —— 测试台端口 `25585`（AutoJS）/ `25565`（游戏）/ `25575`（fabric RCON）与 `run/<线>` 进程互斥；若发现**已有其他实机测试在进行**（他人的游戏实例、正在跑的 launch / cases 阶段、端口被占、`run/<线>` 有活跃进程），**必须搁置**本轮实机测试并**立即告知用户**（写清占用方与判据），**不得**等待、不得排期、不得轮询重试、不得杀别人的实例抢端口。
 
 ## 命令执行规范（Shell）— 必须遵守（2026-09-19 裁决；2026-11-04 用户裁决整体改写）
 
@@ -269,6 +269,8 @@ When extending this workspace:
   4. 测试台唯一入口 = `bash scripts/test/win/mt.sh --version <线> --phase <env|build|launch|cases|report|stop>`（Linux：`bash scripts/test/linux/{env,launch,stop}.sh`）；守门脚本 = `python tools/*.py` / `bash scripts/verify/*.sh`。
   5. **双击启动件只作启动**：`gradlew.bat` / `run/Start-<线>.bat` 是用户手工双击的既有文件，不纳入命令执行口径；命令行启动一律 `./gradlew :<线>:runClient`（`.bat` 的空参守卫规则仍只针对这两个文件）。
   6. 命令失败先看**第一条因果错误**（`BUILD FAILED` 之前的 `Caused by:` / `error:` 行），不要拿最后一次运行的尾部输出当结论。
+  7. **解释器只走 PATH，不写绝对路径**：命令里的 `bash` / `python` 一律写**裸名**，交给 `ops_bash` 自行解析 —— Windows 宿主解析到 PATH 上的 MSYS2 / git-bash，python 解析到 PATH 上的 **3.12.16**；原生 Linux 宿主解析到系统 bash / python3。⛔ **禁止**写 `C:/msys64/usr/bin/bash`、`C:/Python3xx/python.exe`、`~/.dsh/dsh-runtimes/**/python.exe` 这类绝对解释器路径：`ops_bash` 无法指定解释器，写成绝对路径只会让同一条命令在不同会话 / 不同机器上落到不同运行时（2026-11-07 用户裁决）。
+  8. **python 只依赖标准库**：解释器固定为 PATH 上的 3.12.16 ⇒ 脚本**不得依赖只有别处解释器才装的第三方库**（例：`PIL` 不在系统 python 里）。需要能力时优先标准库实现；确需第三方库先 `python -c "import X"` 实探，缺失即改实现，**不得**为此改指别的解释器。
 - **自查**：命令里出现 `pwsh` / `powershell` / `-File xxx.ps1` ⇒ 立即改成 bash / python 等价物；`ops_bash` 返回 `exit 2` 多为测试台门禁拦下（缺 `--version` / 缺 `--phase` / `cases` 缺 `--case`），按脚本 usage 补参数重跑。
 
 ## Git 代理规范（Git Proxy）— 必须遵守
@@ -280,9 +282,6 @@ When extending this workspace:
   ```bash
   git config http.proxy http://127.0.0.1:7897
   git config https.proxy http://127.0.0.1:7897
-  ```
-- 若远程操作因代理失败，先检查代理进程（如 Clash/`127.0.0.1:7897` 端口）是否在运行，再排查网络；不要绕过代理直连 GitHub。
-- **默认不执行 `git push`**(见「编译产物上传规则」第 6 条);每次更新由代理自动完成本地提交,推送仅在用户明确要求时执行,且须经上述代理。
 <!-- END 生效红线区（原文逐字，AGENTS-full.md L2–L129） -->
 ## ✅ 提交纪律（2026-11-07 用户裁决，必须遵守）
 

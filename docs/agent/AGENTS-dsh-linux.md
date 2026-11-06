@@ -2,7 +2,7 @@
 
 > **定位**：本文件是 **DSH 宿主在 Linux 原生环境**下的主规则。DSH 在 Linux 上先读本文件，再按根 `AGENTS.md` 的共同红线与按需索引执行；**Windows 规则**见 `docs/agent/AGENTS-dsh.md`（历史正本，仅对 Windows 宿主有效）。
 > **冲突裁决**：同一宿主上两份文件冲突 ⇒ **Linux 宿主以本文件为准**，Windows 宿主以 `docs/agent/AGENTS-dsh.md` 为准；共同红线以根 `AGENTS.md` 为准。
-> **红线原文不复制**：红线区逐字原文的唯一副本在 `docs/agent/AGENTS-dsh.md`〈📍 生效红线区〉（`docs/agent/verify-split.py` 项 1b 拿它和 `docs/agent/AGENTS-full.md` L2–L120 逐字比对）。本文件只给 **Linux 下的替换/补充口径**，复制第二份会让红线两处漂移。
+> **红线原文不复制**：红线区逐字原文的唯一副本在 `docs/agent/AGENTS-dsh.md`〈📍 生效红线区〉（`docs/agent/verify-split.py` 项 1b 拿它和 `docs/agent/AGENTS-full.md` L2–L129 逐字比对）。本文件只给 **Linux 下的替换/补充口径**，复制第二份会让红线两处漂移。
 > **事实源原则**：本文数字均为 **2026-10-31 实读快照**；宿主版本、路径、构建命令、日志路径一律以**实读命令**为准，文档只是当次快照。`[[PENDING:…]]` = 尚无实测依据，**不得**当已验证结论引用，也不得据此施工。
 > **🚚 2026-10-31 迁移批（本文件本轮改写的原因）**：宿主已从 **VMware 虚拟机 + hgfs 共享盘** 迁到 **原生 Linux 真机（双系统，与 Windows 共用同一块 NTFS 盘）**。旧的 `/mnt/hgfs/*`、`~/Project` 四副本、`rsync-original.sh` 通道、`computer-use`(mirsella)/`autojs` MCP 口径**全部作废**，一律以本文件为准；VM 时代文档只作历史（`docs/handover-2026-10-31-linux-vm-adoption.md（已删除 2026-11-05）`、`docs/handover-2026-10-31-local-disk-workspace.md`）。迁移实测见 `docs/handover-2026-10-31-native-linux-migration.md`。
 
@@ -11,7 +11,6 @@
 - 回复任何内容、调用任何工具**之前**，先调用 `skill` 工具、`name="using-superpowers"`。
 - 该技能规定「先查技能目录，1% 可能适用就须加载」，并负责其它流程类技能（brainstorming / writing-plans / systematic-debugging / verification-before-completion 等）的按任务加载。
 - `skill` 工具不可用（未注册 / 加载失败）时，**必须**在回复里明写「本次会话未能加载 superpowers」，不得假装已加载。
-- 派发子代理的 brief **必须**带一句「动手前先加载 using-superpowers（团队硬规则，任何动作之前）」。
 
 ## ⚙️ 环境与工具链口径（Linux 原生）
 
@@ -184,12 +183,12 @@
 - 本文件 = **DSH on Linux 的规则正本**；`docs/agent/AGENTS-dsh.md` = **Windows 原生**历史正本（不删、不改红线区，`verify-split.py` 项 1b 依赖它）。
 - 规则全文按需查：`docs/agent/AGENTS-full.md`（实读 4,244 行）+ 标题行号总表 `docs/agent/AGENTS-TOC.md`（198 行）。定位：`grep -n '^#' docs/agent/AGENTS-full.md`，按总表查区间后 `sed -n '<a>,<b>p'`。
 - 派活 brief 里写区间 `L<a>–L<b>`（查 `AGENTS-TOC.md`），读规则由**子代理**执行，不要把大段原文贴进主会话。
-- 自检：`python3 -B docs/agent/verify-split.py`（四项：快照保序包含 + `AGENTS-dsh.md` 红线区与快照 L2–L120 逐字一致 / 根 `AGENTS.md` 结构完整 / docs 引用存在 / 体量 < 32K 且 using-superpowers 段未删）。`--strict` 只把「docs 引用」提为致命。
+- 自检：`python3 -B docs/agent/verify-split.py`（四项：快照保序包含 + `AGENTS-dsh.md` 红线区与快照 L2–L129 逐字一致 / 根 `AGENTS.md` 结构完整 / docs 引用存在 / 体量 < 32K 且 using-superpowers 段未删）。`--strict` 只把「docs 引用」提为致命。
 - 改动本文件后同样跑一遍。`[[PENDING:…]]` 应清零；若某项事实源长期不可得（如某线尚未实跑），**保留标记并列为已知缺口**，不得删标记假装已验证。
 
 ## 📍 红线区 —— Linux 替换口径（原文见 `docs/agent/AGENTS-dsh.md`〈📍 生效红线区〉）
 
-> 本节为 **Linux 替换口径**，**不参与** `verify-split.py` 的逐字校验；红线文字正本仍是 `AGENTS-full.md` L2–L120，Linux 只替换其中的路径 / 工具通道。
+> 本节为 **Linux 替换口径**，**不参与** `verify-split.py` 的逐字校验；红线文字正本仍是 `AGENTS-full.md` L2–L129，Linux 只替换其中的路径 / 工具通道。
 
 红线**文字**不重写，只替换其中的 Windows 口径；下列条目按原文顺序对应：
 
@@ -214,7 +213,7 @@
 - 报告验收 5 条：① 结论有产物/行号级证据；② 每条判据可复现（给命令）；③ 区分 FAIL / ERROR / TIMEOUT / BLOCKED；④ 未做项与风险如实列出；⑤ 不给「大概/应该」。
 - 两层守门不得互替：`verify-split.py` 管规则文件结构，`code_review_*` 管代码/文档实质；一层通过不能替代另一层。
 
-## 子代理与测试环境硬规则（2026-10-08 裁决，8 条 Linux 化）
+## 子代理与测试环境硬规则（2026-10-08 裁决，9 条 Linux 化）
 
 1. **一 subagent 一任务，用完即弃**；不串任务、不复用上下文。
 2. **测试/演示一律用非亡灵生物**（`minecraft:pillager` / `minecraft:cow`），不要用亡灵类。
