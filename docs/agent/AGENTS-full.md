@@ -1688,6 +1688,7 @@ When extending this workspace:
 - 修改后必须运行同步检查:`python tools/check_lang_sync.py -LangDir <子项目>/src/main/resources/assets/astral_dice/lang`(对被修改的子项目执行;key 不一致退出码非 0);CI(build.yml)在构建前也会自动对**三个子项目**(`neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2`,各线各一步)执行该检查,key 不一致会导致 CI 失败。
 - 🚨 **删除 lang 键之前，必须先查「谁在引用它」——尤其帕秋莉手册**（2026-10-01 实测缺陷）：本仓已有**两处**「删了 lang 键、手册页没跟着删」的事故 —— `guide.entry.special_effects.6`（随「效果待定」机制取消而删）与 `guide.entry.teru_sign.3`（随「手册无效注释全面清理」而删），两处都使**游戏内手册页直接显示原始键名**（`astral_dice.guide.entry.*`）。⚠️ **`tools/check_lang_sync.py` 查不出这类问题**（它只比三语之间的键集，不负责「手册引用 ⊆ lang」）。⇒ 删键前先 `grep -rn "<键名>" */src/main/resources/assets/astral_dice/patchouli_books/`，删完后跑 **`python tools/audit_patchouli_keys.py`**（各线手册引用 ⊆ 同线三语 lang；0 = 通过）。
 - **默认自动本地提交、不推送 GitHub**:每次改动完成后由代理自动执行本地提交(见「子项目修改默认规则」),但**不执行 `git push`**。
+- **早提交、勤提交(2026-11-07 用户裁决,强制)**:每完成一个可独立验证的改动单元(功能 / 修复 / 文档 / 规则 / 版本号)**立即本地提交**,不得把多轮改动堆在工作树里等批量提交;一个提交只做一个可描述、可回滚的变更,提交信息如实写明改动面与验证读数;完成后工作树应回到「只剩已知未跟踪残留」状态。仍然**不执行 `git push`**。
 
 ### 日语（ja_jp）本地化 — 2026-09-22 起各线各一份
 
