@@ -1,9 +1,11 @@
-# Tooltip 染色规则（v2，1.2.0 起生效）
+# Tooltip 染色与文本书写规则（v3，2026-11-07 起生效）
 
 > 权威副本：`*/src/main/java/com/merlinkitsune/astral_dice/event/ModTooltipHandler.java` 类头 javadoc。
 > 本文档为可读版说明；两者必须同步修改。
 > 适用对象：**物品 tooltip**（`ItemTooltipEvent`，唯一监听点 `ModTooltipHandler.onItemTooltip`）。
 > 不适用：帕秋莉手册正文（`astral_dice.guide.entry.*`）、HUD/聊天/动作栏消息。
+
+> **v3 变更（2026-11-07 用户裁决）**：新增「规则 5：标点与留空」（专有名一律「」、时长后缀半角括号 + 前置空格、自然语言夹注仍用本语言全角括号、罗马数字等级与中日文之间留空格），自检命令改为 bash + python 形态；规则 0-4 内容不变。
 
 > **v2 变更（1.2.0 hotfix）**：新增「规则 0：回落码 = 本行底色码」（`§r` / `§7` 都不是「恢复本行底色」）
 > 与「规则 4：含 `%%` 的文案必须走 `tt(...)`」；v1 的「`§r` 保持原样」例外**作废**。
@@ -17,7 +19,7 @@
 | 正文（普通文本） | `§7` 灰 | 最常见的行底色；**不是**通用「回落码」——回落码必须等于本行底色（见 §1） |
 | 数值 | `§e` 黄 | 非时间类的所有数字 |
 | 时间 | `§9` 蓝 | 时长 / 冷却 / 间隔 |
-| 负面 / 状态警示 | `§c` 红 | 保留既有语义（见 §6 例外） |
+| 负面 / 状态警示 | `§c` 红 | 保留既有语义（见 §7 例外） |
 | 标题 | 行级 `withStyle(GOLD)` | 立牌「主动技能（X）」等标题行 |
 | 备注 | `§d` 粉紫 | `addSignNoteLines` 统一替换 `§7` → `§d` |
 | 按键提示 | `§f` 白 | `sign.key_hint`，其行级基础色即 WHITE |
@@ -149,7 +151,36 @@ Speed II (1:00) → §9Speed II (1:00)§7
 
 ---
 
-## 6. 例外（优先级：例外 > 规则 3 > 规则 2 > 规则 1）
+## 6. 规则 5：标点与留空（2026-11-07 用户裁决）
+
+**5.1 专有名一律直角引号「」，禁用方头括号【】**：角色、物品、机制、状态效果、区域等专有名，在 tooltip 与手册正文中都写成
+`「魔渊触须」`、`「魔渊区域」`、`「渊蚀印记」`；`【…】` 不再使用（存量已于 2026-11-07 全量改净）。
+状态效果名同样用「」（例 `「渊蚀印记」`），不再出现 `【交际花】` / `【充能】` 这类写法。
+
+**5.2 时长后缀一律半角括号，且括号前留一个空格**：
+
+```
+攻击力 §e+2§7 (§92:00§7)        ← 正确
+缓慢 II (0:30)                  ← 正确（名称 + 时间整段蓝，见规则 3）
+攻击力 §e+2§7（§92:00§7）       ← 禁止：全角括号
+攻击力 §e+2§7(§92:00§7)         ← 禁止：括号前无空格
+```
+
+**5.3 自然语言夹注仍用本语言全角括号**（中文 / 日文 `（）`），不要改成半角：
+
+```
+自身获得 §e1§7 点攻击力（每人一次，自身可叠加；计时结束后清除）   ← 正确
+```
+
+**5.4 罗马数字等级与中日文名之间留一个空格**：`缓慢 II`、`移動速度上昇 II`、`Speed II`；禁止 `移動速度上昇II`、`缓慢II` 这类紧贴写法。
+
+**5.5 续行符号由渲染器负责**：`addSignLines` 会把「行首两空格」的续行渲染成 `§7- 文本`，所以 lang 值里不要再自带 `-`、`•`，也不要靠行首两空格做缩进。
+
+**自检**：`python tools/verify_tooltip_format.py`（规则 5 的机器判据，覆盖五线 × zh_cn / en_us / ja_jp）。
+
+---
+
+## 7. 例外（优先级：例外 > 规则 3 > 规则 2 > 规则 1）
 
 1. **负面红保留**：条目已用 `§c` 的，`§c` 优先，规则 1/2/3 不再改写它。
    - 负面效果条目：`§c中毒 (0:15)§7`、`§c虚弱 (0:15)§7`、`§c饥饿 (0:30)§7` 等保持红色
@@ -165,18 +196,21 @@ Speed II (1:00) → §9Speed II (1:00)§7
 
 ---
 
-## 7. 自检
+## 8. 自检
 
 改动后跑（全部退出码 0 才算通过）：
 
 ```bash
-# 语言/手册一致性（两子项目各一次）
-pwsh -NoProfile -File tools/check_lang_sync.ps1 -LangDir neoforge-1.21.1/src/main/resources/assets/astral_dice/lang
-pwsh -NoProfile -File tools/check_lang_sync.ps1 -LangDir forge-1.20.1/src/main/resources/assets/astral_dice/lang
+# 语言 / 手册一致性（五线）
+python tools/check_lang_sync.py
 
-# tooltip 染色审计（R1/R1b/R2/R3 + R0 回落码、R4 tt() 路径）
-pwsh -NoProfile -File scripts/audit/tooltip_color_audit.ps1 --root .
+# 规则 5：标点与留空（五线 × 三语）
+python tools/verify_tooltip_format.py
+
+# 规则 0–4：染色（位置感知，能识别 §e1§7 秒 这类跨码形态）
+python -B scripts/audit/tooltip_color_audit.py --root .
 ```
+
 
 审计脚本 `scripts/audit/tooltip_color_audit.ps1`（位置感知，能识别 `§e1§7 秒` 这类跨码形态）
 同时从 `ModTooltipHandler.java` 解析「lang key → 行底色」映射，用于校验规则 0。

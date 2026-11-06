@@ -183,6 +183,7 @@ mt_channel.plan(): [ send_command(client) ] + [ autojs_command(server console), 
 | `python tools/check_changelog_parity.py` | `CHANGELOG_PARITY: OK` |
 | `python tools/verify_sign_display_names.py` | 立牌英日命名与权威表一致 |
 | `python tools/verify_effect_icons.py` | 效果图标各线齐备 |
+| `python tools/verify_tooltip_format.py` | tooltip 标点与留空：专有名「」、时长后缀半角括号 + 前置空格、罗马数字空格（`TOOLTIP_FORMAT: OK`） |
 | `python tools/check_mod_sources.py` | 模组源码结构一致 |
 | `python docs/agent/verify-split.py` | `AGENTS-dsh.md` 红线区与 `AGENTS-full.md` 逐字一致 |
 | `python tools/gen_agents_toc.py --check` | `TOC: OK` |

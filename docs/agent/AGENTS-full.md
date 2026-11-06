@@ -40,9 +40,9 @@ When extending this workspace:
 
 ## 二次验证规范（Independent Second-Pass Verification）— 必须遵守（2026-10-01 用户裁决）
 
-> ⚠️ **2026-10-08 用户裁决：复核执行方已改为 DSH 原生代码审查（2026-10-22 起执行工具 = `dsh_code_review`，插件 `@michengai/dsh-code-review`）** —— 本节的验收要求（独立证据、逐条对账、先取证后结论）仍然有效，但**不再派 subagent 做复核**；规则正本见〈子代理与测试环境硬规则〉第 4 条。
+> ⚠️ **2026-11-07 用户裁决（现行）：复核执行方 = 一次性独立 `subagent` + `review-agent` 技能（只读、缺陷优先、逐条附原始证据）；原 `dsh_code_review` 工具与 `@michengai/dsh-code-review` 插件**弃用**，不得再调用（2026-10-08～2026-11-06 的旧口径作废）** —— 本节的验收要求（独立证据、逐条对账、先取证后结论）继续有效；规则正本见〈子代理与测试环境硬规则〉第 4 条。
 
-**任何非平凡改动，收尾前必须做一遍独立二次验证（2026-10-08 起复核执行方 = DSH 原生代码审查 `dsh_code_review` 一次性独立会话，正本见〈子代理与测试环境硬规则〉第 4 条）。** 目的**不是**「再读一遍」，
+**任何非平凡改动，收尾前必须做一遍独立二次验证（2026-11-07 起复核执行方 = 一次性独立 `subagent` 携带 `review-agent` 技能，正本见〈子代理与测试环境硬规则〉第 4 条）。** 目的**不是**「再读一遍」，
 而是用**独立证据**去证伪主会话的结论：主会话的自述（「我已核对」「守门全绿」「已落盘」「已全线对等」）
 **不能作为验收依据** —— 它可能就是幻觉或遗漏，且**自证天然有偏**（复用自己的假设去检查自己的结论）。
 
@@ -56,7 +56,7 @@ When extending this workspace:
 
 ### 怎么派（brief 必须自包含 —— 子代理看不到本会话）
 
-> ⚠️ 2026-10-08 起：复核统一改用 DSH 原生代码审查（一次性独立会话、brief 一次性写全）；本节「brief 自包含 / 禁喂主会话结论 / 要原文证据」的要求同样适用于喂给审查工具的输入。**2026-10-22 工具口径**：执行工具 = `dsh_code_review({ input })`（插件 `@michengai/dsh-code-review`）；`input` 非空 ⇒ 整段**原样**作为自定义审查要求（不解析 CLI 选项，`--base main` / `.` / `status` 都当普通文字），`input` 为空 ⇒ 打开原生范围选择（对比基准分支 / 未提交更改 / 某次提交 / 自定义要求）。⚠️ 故**范围必须写成自然语言**（例「审查工作树未提交改动，含未跟踪文件」「审查最近 1 个提交 `7e7cf978`」）；子 Agent 自行取 git 状态与差异，报告以 GFM 回到本会话，进度看 `/review-status`、取消用 `/review-cancel`。
+> ⚠️ 2026-11-07 起：复核统一改用**一次性独立 `subagent` + `review-agent` 技能**（只读、缺陷优先）；brief 仍须一次性写全，本节的「brief 自包含 / 禁喂主会话结论 / 要原文证据」全部适用。**执行口径**：先 `skill({ name: "review-agent" })` 载入技能，再按该技能的分派格式写 brief（复核对象范围 + 背景 + 逐项判据 R1..Rn + 输出要求：判定 SUPPORTED / REFUTED / 部分成立 + 逐字证据 `文件:行号` + 未验证项 + 最小修法）；子代理自行取 git 状态与差异，报告直接回到本会话。⛔ `dsh_code_review` 与 `/review-status`、`/review-cancel` 一律停用（2026-11-07 弃用）。
 
 - 🚫 **禁**把主会话的结论、改动清单、「我已经改好了」当**事实**喂给它 —— 那是诱导它附和，等于白做。
 - ✅ **只给**：目标 / 涉及路径 / **期望的不变量** / **可独立执行的判据命令**（守门脚本、`grep -rn`、开包核验…）。
@@ -92,14 +92,14 @@ When extending this workspace:
    它会持续占用 CPU / GPU、污染下一次冷启动前置状态，并让 enableShaders 之类的运行期状态被意外持久化。
    **收尾一律带 `--purge-saves`**（2026-10-08 用户裁决：每轮实机验证后清理旧存档）：标准收尾命令 = `bash scripts/test/win/mt.sh --version <线> --phase stop --purge-saves`，成功判据 = `MT_CLEANUP_SAVES: PURGED <n>` + `MT_CLEANUP_RESULT: OK`；`.mt_keep_alive` 存在时只提示、保留取证现场。收尾同时**删除本轮注入的临时探针**（`run/<线>/kubejs/**` 的一次性测试脚本，以及源码侧 `scripts/test/resources/kubejs/**` 的临时探针），并在交付报告里贴 `git status --short -uall` 原文（2026-10-11 用户交接裁决）。
 
-4. **二次验证（复核）一律改用 DSH 原生代码审查（插件 `@michengai/dsh-code-review`，工具 `dsh_code_review`），不再派 subagent / teammate**：每次复核 = **一次性独立会话、不复用**；
-   调用 `dsh_code_review({ input })` 把「复核对象（提交或文件范围，用自然语言写清）+ 背景 + 逐项判据（R1..Rn）+ 输出要求（判定 SUPPORTED / REFUTED / 部分成立 + 逐字证据 文件:行号 + 未验证项 + 最小修法）」**一次性写全**进 `input`（会话干净，不给它沿用上下文的机会；该工具不解析 CLI 选项）。代码修改仍按第 1 条（每任务一个新 subagent、单任务、用完即弃）；复核不再由 subagent 承担。 ⚠️ **区分两件事**：本条约束的是**复核（二次验证，执行方 = `dsh_code_review`）**；**功能审查 / 功能验证**（静态取证、`:<线>:classes` 编译、`scripts/verify/**` 守门脚本、与需求逐字对账）自 2026-10-12 起按第 7 条**由一次性独立子代理**执行 —— 两者不得互相替代（**复核不派 subagent，功能审查必须派 subagent**）。
+4. **二次验证（复核）一律用一次性独立 `subagent` + `review-agent` 技能（2026-11-07 用户裁决；`dsh_code_review` 弃用，不得再调用），不复用同一子代理**：每次复核 = **新 subagent、单任务、用完即弃**；
+   派单前先 `skill({ name: "review-agent" })` 载入技能，再按其格式把「复核对象（提交或文件范围，写清绝对路径 / 提交号）+ 背景 + 逐项判据（R1..Rn）+ 输出要求（判定 SUPPORTED / REFUTED / 部分成立 + 逐字证据 文件:行号 + 未验证项 + 最小修法）」**一次性写全**进 brief（子代理看不到本会话，不得喂主会话结论）。⚠️ **区分两件事**：本条约束的是**复核（二次验证，执行方 = `review-agent` 子代理）**；**功能审查 / 功能验证**（静态取证、`:<线>:classes` 编译、`scripts/verify/**` 守门脚本、与需求逐字对账）按第 7 条**另派一个独立子代理**执行 —— 两者不得互相替代，同一个子代理不得既写码又复核。⛔ `dsh_code_review` / `@michengai/dsh-code-review` 已弃用。
 
-5. **实机验证必须由用户在提示词中明确下达**（2026-10-08 用户裁决）：默认情况下 agent 只做**代码功能验证** —— 静态取证与逐字对账、`:<线>:classes` 编译、`dsh_code_review`、`scripts/verify/**` 守门脚本、用例 JSON 与文档的一致性/行尾核对；**不得**自行启动 dev 客户端跑实机、连拍、探针或用例。用户明确要求实机时才执行，且收尾按第 3 条带 `--purge-saves`；未实机的欠账如实登记在交付报告里，等用户点名下指令再补。
+5. **实机验证必须由用户在提示词中明确下达**（2026-10-08 用户裁决）：默认情况下 agent 只做**代码功能验证** —— 静态取证与逐字对账、`:<线>:classes` 编译、`review-agent` 子代理复核、`scripts/verify/**` 守门脚本、用例 JSON 与文档的一致性/行尾核对；**不得**自行启动 dev 客户端跑实机、连拍、探针或用例。用户明确要求实机时才执行，且收尾按第 3 条带 `--purge-saves`；未实机的欠账如实登记在交付报告里，等用户点名下指令再补。
 
 6. **改动后旧实机证据一律作废，先停旧实例再测新构建（2026-10-11 用户交接裁决）**：任何代码 / 资源改动落地后，此前一切实机读数与截图立即失效，不得作为新构建的验收依据；测新构建前必须先 `bash scripts/test/win/mt.sh --version <线> --phase stop` 停掉旧实例（禁止在旧实例上叠加新构建 —— `run/<线>/mods` 的 jar 会被旧进程持有且内容是旧代码）。
-7. **开发操作流程（2026-10-12 用户裁决，取代 2026-10-11 版本；同日二次裁决修订②③⑤⑥⑧：所有代码编写一律通过向 Subagent 下达写代码命令完成，主 Agent 只负责规划 / 派活 / 验收 / 提交，不亲自编写任何代码）**：① 新功能先写**开发需求 / 设计计划**；② **P0 基准线 `neoforge-1.21.1` 的实现派子代理编写**（一次性、单任务、brief 自包含；主 Agent 不亲自写主线实现）；③ 子代理交付后由主 Agent 验收并按需自测（`:<线>:classes` 编译 / `scripts/verify/**` 守门脚本）；④ 完成后用 `dsh_code_review` 复核；⑤ 复核问题派新子代理修完后，**派子代理做独立功能审查**（静态取证、编译、守门脚本、与需求逐字对账）；⑥ 主 Agent 逐条回应审查结论、缺陷**派新子代理修复**，**全部确认无误后**才派子代理做 `forge-1.20.1` 移植（按 `docs/compat-1.20.1-forge.md` 差异映射）；⑦ 移植线再走一次 `dsh_code_review` 复核 + **另派一个独立子代理**做功能审查；⑧ 子代理模型**固定且只能用** `deepseek-official/deepseek-flash`（= DeepSeek-V4.1-Flash；2026-10-22 用户裁决：不得改派更强 / 其它 provider 的 model），仍受第 1 条「一个子代理一个任务、用完即弃」约束；复核 / 审查发现的问题交**新**子代理改进，**连续 3 次仍改不到位 ⇒ 报用户拍板**。⑨ **复核分级（2026-10-13 用户裁决）**：a) **非代码改动**（文档 / 规则 / 版本号 / CHANGELOG / 配置注释等）只做 `dsh_code_review`，免子代理功能复验；b) **小规模代码修正**（口径 / 字符串 / 数值 / 显示内容等简单修改）只做 `dsh_code_review`，除非用户另行下达指令，不执行子代理功能复验；c) **新功能请求**：`dsh_code_review` 后由主 Agent 按改动规模自判功能复验范围（全量 / 部分 / 不做），判断依据如实写进交付报告；d) **大型功能变更或新增**执行**全量**功能复核；e) **实机测试仍须用户明确许可**——无法仅靠功能复核确认的结果，必须向用户说明情况并请求其下达实机测试。**代码与二进制都无法确认是否符合需求时，必须询问用户是否实机测试**（用户明确下达才做，流程见第 5 条，收尾按第 3 条）；必须用户决策的问题或难以实现的功能**交用户拍板**，不得擅自取舍。
-8. **派子代理一律屏蔽人格注入（2026-10-22 用户裁决）**：所有 `subagent` / `subagent_fork` / `spawn_teammate` 的 brief 里，除职业声明外**必须原文加一句**「**不要使用任何人设 / 角色扮演 / 语气修饰 / 昵称自称，按你的职业身份以中性技术口吻输出**」；**审查 / 取证类任务必须用全新上下文的 `subagent`**（`subagent_fork` 会连同带人设的对话一起继承；**复核不在此列** —— 复核一律走 `dsh_code_review`，见第 4 条）。子代理回报里出现人格化表达（自称、卖萌、情绪表演）即视为**交付不合规**，主 Agent 应要求重发中性版结论；理由：人设会稀释证据密度，与「只给证据、不给情绪结论」的复核口径直接冲突。本条第 ① 句同样适用于 `spawn_teammate` 的初始 prompt 与后续 `send_message` 改需求。
+7. **开发操作流程（2026-10-12 用户裁决，取代 2026-10-11 版本；同日二次裁决修订②③⑤⑥⑧：所有代码编写一律通过向 Subagent 下达写代码命令完成，主 Agent 只负责规划 / 派活 / 验收 / 提交，不亲自编写任何代码；2026-11-07 修订④⑦⑨：复核执行方改为一次性独立 subagent + `review-agent` 技能，`dsh_code_review` 弃用）**：① 新功能先写**开发需求 / 设计计划**；② **P0 基准线 `neoforge-1.21.1` 的实现派子代理编写**（一次性、单任务、brief 自包含；主 Agent 不亲自写主线实现）；③ 子代理交付后由主 Agent 验收并按需自测（`:<线>:classes` 编译 / `scripts/verify/**` 守门脚本）；④ 完成后**派一次性独立 subagent 载 `review-agent` 技能复核**（brief 写全范围 + 判据，禁喂主会话结论）；⑤ 复核问题派新子代理修完后，**另派子代理做独立功能审查**（静态取证、编译、守门脚本、与需求逐字对账）；⑥ 主 Agent 逐条回应审查结论、缺陷**派新子代理修复**，**全部确认无误后**才派子代理做 `forge-1.20.1` 移植（按 `docs/compat-1.20.1-forge.md` 差异映射）；⑦ 移植线再走一次 `review-agent` 子代理复核 + **另派一个独立子代理**做功能审查；⑧ 子代理模型**固定且只能用** `deepseek-official/deepseek-flash`（= DeepSeek-V4.1-Flash；2026-10-22 用户裁决：不得改派更强 / 其它 provider 的 model），仍受第 1 条「一个子代理一个任务、用完即弃」约束；复核 / 审查发现的问题交**新**子代理改进，**连续 3 次仍改不到位 ⇒ 报用户拍板**。⑨ **复核分级（2026-10-13 用户裁决，2026-11-07 换执行方）**：a) **非代码改动**（文档 / 规则 / 版本号 / CHANGELOG / 配置注释等）只做 `review-agent` 子代理复核，免子代理功能复验；b) **小规模代码修正**（口径 / 字符串 / 数值 / 显示内容等简单修改）只做 `review-agent` 子代理复核，除非用户另行下达指令，不执行子代理功能复验；c) **新功能请求**：`review-agent` 复核后由主 Agent 按改动规模自判功能复验范围（全量 / 部分 / 不做），判断依据如实写进交付报告；d) **大型功能变更或新增**执行**全量**功能复核；e) **实机测试仍须用户明确许可**——无法仅靠功能复核确认的结果，必须向用户说明情况并请求其下达实机测试。**代码与二进制都无法确认是否符合需求时，必须询问用户是否实机测试**（用户明确下达才做，流程见第 5 条，收尾按第 3 条）；必须用户决策的问题或难以实现的功能**交用户拍板**，不得擅自取舍。
+8. **派子代理一律屏蔽人格注入（2026-10-22 用户裁决）**：所有 `subagent` / `subagent_fork` / `spawn_teammate` 的 brief 里，除职业声明外**必须原文加一句**「**不要使用任何人设 / 角色扮演 / 语气修饰 / 昵称自称，按你的职业身份以中性技术口吻输出**」；**审查 / 取证 / 复核类任务必须用全新上下文的 `subagent`**（`subagent_fork` 会连同带人设的对话一起继承；复核按第 4 条用 `review-agent` 子代理，同样不得 `subagent_fork`）。子代理回报里出现人格化表达（自称、卖萌、情绪表演）即视为**交付不合规**，主 Agent 应要求重发中性版结论；理由：人设会稀释证据密度，与「只给证据、不给情绪结论」的复核口径直接冲突。本条第 ① 句同样适用于 `spawn_teammate` 的初始 prompt 与后续 `send_message` 改需求。
 
 ## 命令执行规范（Shell）— 必须遵守（2026-09-19 裁决；2026-11-04 用户裁决整体改写）
 
@@ -554,7 +554,7 @@ When extending this workspace:
 - **基准线 = `neoforge-1.21.1`**：一切功能面的差异判定以它为基准。`forge-1.20.1` 是 P0 同侪（功能面与基准线一致，MC 版本差异另计）。
 - **移植方向**：`neoforge-26.1.2` = **向上**（1.21.1 → 26.1.2）；`fabric-1.20.1` = **向下**（MC 1.20.1）；`fabric-1.21.1` = 同版本跨加载器（MC 1.21.1）。
 - **fabric 的代码蓝本**：`fabric-1.20.1` 优先取 `forge-1.20.1`（同为 MC 1.20.1），凡 forge 已实现的功能照搬 forge 对应文件 + 固定平台替换；`fabric-1.21.1` 取 `neoforge-1.21.1`（同为 MC 1.21.1）。⚠️ **但「整文件照搬」只适用于平台中性文件** —— 平台敏感类（含已裁决差异或本线独有内容）**必须逐段局部改**。
-- **P0 内部的落地时序（2026-10-12 用户裁决，同日二次裁决修订为派子代理实现）**：`neoforge-1.21.1`（基准线）的实现**派子代理编写**（主 Agent 不亲自写代码），先经 `dsh_code_review` 复核、再由**独立子代理做功能审查**，**确认无误后**才派子代理做 `forge-1.20.1` 移植，移植线再走 `dsh_code_review` + 独立子代理功能审查；两线最终仍同处一个提交批次（功能对等），但**实施有先后顺序**，不允许「两线并行各写一遍」。
+- **P0 内部的落地时序（2026-10-12 用户裁决，同日二次裁决修订为派子代理实现）**：`neoforge-1.21.1`（基准线）的实现**派子代理编写**（主 Agent 不亲自写代码），先经 `review-agent` 子代理复核、再由**另一个独立子代理做功能审查**，**确认无误后**才派子代理做 `forge-1.20.1` 移植，移植线再走 `review-agent` 子代理复核 + 另一个独立子代理功能审查；两线最终仍同处一个提交批次（功能对等），但**实施有先后顺序**，不允许「两线并行各写一遍」。
 
 ### 二、P0 内部允许的三类差异（其余一律要求对等）
 
@@ -737,7 +737,7 @@ When extending this workspace:
 
 ### 子项目修改默认规则 — 必须遵守
 - **功能/修复默认同步修改 P0 两线（2026-10-04 用户裁决；原「各线同批」口径作废）**:所有功能、修复、平衡性调整一律**同批落 `neoforge-1.21.1`(基准线)+ `forge-1.20.1`**,两线保持功能对等;**P1 两线(`neoforge-26.1.2` / `fabric-1.20.1`)待 P0 完成后按「## 版本优先级与跨线移植纪律」分别移植**。**实施方式**:以 `neoforge-1.21.1` 的实现为**语义基准**,按 `docs/compat-1.20.1-forge.md` / `docs/compat-26.1.2-neoforge.md` / `porting/fabric-1.20.1/FABRIC-DIFFS.md` 的差异映射在各线落地;平台差异逐条登记(不写「看起来一致」的实现)。
-- **实施分工（2026-10-12 用户裁决，取代 2026-09-19「每次代码修改必须创建 subagent、各线并行实施」的口径；同日二次裁决修订①③：写代码一律派 Subagent，主 Agent 不亲自编写任何代码）**：① **基准线 `neoforge-1.21.1` 的实现派子代理编写**（单任务、用完即弃；主 Agent 只负责规划、派活、验收与提交）；② 主线完成后 `dsh_code_review` 复核 → 由**一次性独立子代理**做功能审查（静态取证 / `:<线>:classes` 编译 / `scripts/verify/**` 守门 / 与需求逐字对账）；③ 主 Agent 逐条回应并派新子代理修完、**确认无误后**才派子代理做 `forge-1.20.1` 移植；④ 移植线再走 `dsh_code_review` + **另派一个独立子代理**做功能审查。子代理一律**单任务、用完即弃**（硬规则第 1 条），模型固定且只能用 `deepseek-official/deepseek-flash`（= DeepSeek-V4.1-Flash），不得换用其它 model / provider，路由失效即停下报用户；同一文件同一时间只能归**一个** subagent 所有（共享文件由主 agent 预先指派 owner，跨文件接口由主 agent 先固定）；P1 两线并行移植时同受此约束。流程正本见「## 子代理与测试环境硬规则」第 7 条。
+- **实施分工（2026-10-12 用户裁决，取代 2026-09-19「每次代码修改必须创建 subagent、各线并行实施」的口径；同日二次裁决修订①③：写代码一律派 Subagent，主 Agent 不亲自编写任何代码）**：① **基准线 `neoforge-1.21.1` 的实现派子代理编写**（单任务、用完即弃；主 Agent 只负责规划、派活、验收与提交）；② 主线完成后**派一次性独立子代理载 `review-agent` 技能复核** → 再由**另一个一次性独立子代理**做功能审查（静态取证 / `:<线>:classes` 编译 / `scripts/verify/**` 守门 / 与需求逐字对账）；③ 主 Agent 逐条回应并派新子代理修完、**确认无误后**才派子代理做 `forge-1.20.1` 移植；④ 移植线再走一次 `review-agent` 子代理复核 + **另派一个独立子代理**做功能审查。子代理一律**单任务、用完即弃**（硬规则第 1 条），模型固定且只能用 `deepseek-official/deepseek-flash`（= DeepSeek-V4.1-Flash），不得换用其它 model / provider，路由失效即停下报用户；同一文件同一时间只能归**一个** subagent 所有（共享文件由主 agent 预先指派 owner，跨文件接口由主 agent 先固定）；P1 两线并行移植时同受此约束。流程正本见「## 子代理与测试环境硬规则」第 7 条。
 - **每次改动完成后自动执行下述收尾(无需用户逐项指示)**:① 同步两个 CHANGELOG 文件 → ② 构建**本批涉及的全部线** → ③ **自动部署到整合包**(随 `gradlew build` 触发的 `pushToGame`;**各线的推送白名单都是 `['multi-main']`——本开发工作树 `multi-dev-next` 与 `wt/*` 一律跳过,需强推时加 `-PdeployToPack`;各线各推往自己的整合包 `狐の航空学 Voxy Edition` / `1.20.1-Forge 模组测试` / `26.1.2-NeoForge 模组测试` / `1.20.1-Fabric 模组测试` —— ⚠️ **目录名一律以本机 `ls D:/.minecraft/versions/` 实测为准,禁止按命名规则推测**(本类「目录已改名而配置未跟」的缺口已复发多次)**)→ ④ **自动本地提交**。全程**不执行 `git push`**。
 - **单侧改动仅限用户明确要求**:只有当用户明确说“只改 1.21.1 / 先不移植”时,才允许只改一个版本;禁止擅自只改单侧或长期让 **P0 两线**功能不对等（P1 待移植期的阶段性不对等属设计内，按差异清单登记）。
 - 平台差异按各子项目规范实现(1.21.1 / 26.1.2 用数据组件/附件,1.20.1 用 `component/*DataKey` 与 Capability;事件、Curios 注册、Mixin、数据包目录均不同),**不得为了“看起来一致”而破坏目标平台的正确写法**。
@@ -796,7 +796,7 @@ When extending this workspace:
 29. **筹码商人 = 工作方块 + 村民职业 `astral_dice:chip_trader`（2026-10-13；P0 两线同批，镜像第 28 条卡牌交易员）**：① 工作方块 = `world/ModPoiTypes.CHIP_SHOP`（PoiType "chip_shop" = 筹码商店全部 BlockState，maxTickets=1 / validRange=1），并并入 `data/minecraft/tags/point_of_interest_type/acquirable_job_site.json`。② 职业 = `ModVillagerProfessions.CHIP_TRADER`，显示名键 `entity.minecraft.villager.astral_dice.chip_trader`，职业覆盖贴图 `textures/entity/villager/profession/chip_trader.png`（由 `models/chipshop_villager.bbmodel` 提取，两线同 md5 `802e4fd0`）。③ 交易表 = `trade/ChipTraderTrades`（镜像 CardTraderTrades）：池 = `ChipShopCatalog.entries()` 66 枚、权重 6/3/2（`weightOf`）、抽卡 `pickWeighted`；档位绑定 L1 稀有 / L2 稀有+史诗 / L3 史诗 / L4 史诗+传奇 / L5 传奇；**定价 = `minPrice + (tier-1)`**（筹码无卡面点数，与卡牌的 `CardRegistry.maxRoll` 口径差异）；「1 绿宝石 → 1 星币」L3 解锁、priceMultiplier 0.0F，佩戴绿宝石骰子由既有 `EmeraldDiceTrade` 通用 mixin 剔除（判据 baseCostA=EMERALD ∧ result=STAR_COIN，与职业无关，无需另写）。④ 1.20.1 平台差异：FORGE 总线 `@Mod.EventBusSubscriber(bus=Bus.FORGE)`、栈式 `MerchantOffer(ItemStack...)`（无 ItemCost）、`RegistryObject`+`ForgeRegistries`。
 
 29. **卡牌商店运行规则（2026-10-10 用户裁决，P0 两线；改商店前必读）**：① **换牌唯一时机 = 沙漏归 0 那一刻**（`CardShopCycleTicker.refreshIfDue`）；重新开店/关闭再开/玩家进出**都不重抽**（货架持久化在**玩家附件** `shop_shelf`，每人一份、彼此独立）。② 沙漏 = **4 档**（60s 切 4 份，`ceil(剩余/15)` 封顶 4，0 = 就绪并保持）且**不显示任何数字**；一轮内**转账 1 次、星光兑换 1 次**，买牌不限次数。③ **装备经商立牌 / 触发大酬宾只补差额牌**（`CardShopShelf.topUp`：先促销 2 格、后团队 1 格，**只增不减、幂等、保留 `enterRewardPaid`**），原牌/售价/已售/**计时器一律不动**；取下立牌或窗口过期**不缩架**，改动留到下次归零重排；补差只有一种判定（开店 / 大酬宾 / 界面开着时 ticker 每 10t 复检）。④ **反刷钱**：**方块交互**进店返现绑定货架批次（`enterRewardPaid`，只有 `roll()` 换批才归 false）⇒ 同一批只发 1 枚；⚠️ **主动技能进店路径当前实现为「必发 1 枚」**（由技能自身 120 秒冷却兜底），**是否也应受「每批一次」约束尚未裁决**（2026-10-10 已向用户提出，未获答复）—— 改这条之前必须先向用户确认。⑤ **界面禁令（用户多次强调）**：按钮上**不得绘制任何文字**，按钮 tooltip **只留按钮名**（「转账」「星光兑换」），**禁止新增任何解释性文本/HUD**；转账页**完全独立**（不渲染商店页），**不得**在面板上加深色遮罩；素材加大后**只重排位置**，文本/头像/控件尺寸与相对布局**不变**。⑥ **黑箱原则**：tooltip 与手册**不得暴露内部机制**（攻击力括号说明等一律删）。⑦ 配方 = `TTT/BBB/MMM`（T=`minecraft:smooth_stone_slab`、B=`astral_dice:star_coin`、M=`#minecraft:logs`），**两线必须逐字一致**（1.20.1 用 `result.item`、1.21.1 用 `result.id` 属平台差异）；手册「方块」类别含 `patchouli:crafting` 配方页。⑧ 收尾判据：`SHOP-V`/`SHOP-L` 等用例**必须冷启动**；实机截图 + 机器行缺一不可。
-30. **协作规则（2026-10-10 用户裁决；⛔ 2026-10-11 已作废 —— 现行 = 「## 子代理与测试环境硬规则」第 7 条「开发操作流程」（**2026-10-12 二次修订版**）：P0 基准线 `neoforge-1.21.1` 派子代理编写 → `code_review` 复核 → 子代理功能审查 → 确认无误后才移植 `forge-1.20.1`）**：~~编码一律由主 Agent 亲自完成，不并行下发给子代理~~（原文保留仅作追溯）；**只有「代码功能验证」与「测试」两类任务交给子代理**；**子代理校验主 Agent 成果是必须的**（每次非平凡改动后至少一轮独立校验），且**若子代理回报的一致性结论有偏差，主 Agent 必须先自行复查**（复算其证据）再决定修改，不得直接采信、也不得忽略。
+30. **协作规则（2026-10-10 用户裁决；⛔ 2026-10-11 已作废 —— 现行 = 「## 子代理与测试环境硬规则」第 7 条「开发操作流程」（**2026-10-12 二次修订版**）：P0 基准线 `neoforge-1.21.1` 派子代理编写 → 一次性独立 `subagent` 载 `review-agent` 技能复核 → 另一个独立子代理功能审查 → 确认无误后才移植 `forge-1.20.1`）**：~~编码一律由主 Agent 亲自完成，不并行下发给子代理~~（原文保留仅作追溯）；**只有「代码功能验证」与「测试」两类任务交给子代理**；**子代理校验主 Agent 成果是必须的**（每次非平凡改动后至少一轮独立校验），且**若子代理回报的一致性结论有偏差，主 Agent 必须先自行复查**（复算其证据）再决定修改，不得直接采信、也不得忽略。
 1. **实施方式：代码修改一律走 subagent，三个版本并行（⛔ **2026-10-10 起已作废，现行 = 「## 子代理与测试环境硬规则」第 1/7 条**）（用户 2026-09-19 裁决，必须遵守）**：① 每次代码修改**必须创建 subagent**；② **三个版本各一个 subagent**（`v121` / `v120` / `v2612`）**并行实施**同一语义改动；③ 批次较大时再在**每条线内**按子系统拆更多 subagent；④ **同一文件同一时间只能有一个 owner**：共享文件（`lang/*.json`、`ModTooltipHandler`、注册表类、探针脚本等）由主 agent 预先指派唯一 owner，其余 subagent 只**报告**自己需要的改动，不得同时写同一文件；⑤ 跨文件接口（新方法签名、新 lang 键、新探针读数格式）由主 agent 在派活前**先固定并写进各 subagent 的任务描述**。
 2. **主 agent（队长）的职责（必须遵守）**：① 侦察/定范围、固定接口与文件 ownership、派活；② **构建与冒烟测试一律由主 agent 亲自执行**（`scripts/test` 阶段 P/B/E/L/C/R、`mt_build`、`gradlew build`、`--phase launch`、`--phase cases`、`mt.ps1` 全流程）——**禁止**把这些放进 subagent，以保证改动与测试过程**对用户可见**；③ 汇总报告、解决冲突、跑静态闸门、同步 CHANGELOG、本地提交。构建/冒烟失败时**优先**把错误回报给该文件所属 subagent 修；其已结束或连续两次未修好时主 agent 可接手并在交付说明里记明。
    ⚠️ **2026-09-27 起叠加用户新规**：本条约束的是「谁来跑」，**不改变**「能跑什么」——`mt.ps1` 全流程与阶段 C 的整目录批量此时**已被闸门禁用**（见下方第 5 条与 `TESTING-RULES-OVERVIEW.md` §3.1）。主 agent 亲自执行时同样受闸门约束，须改用「单条用例 + 手动逐条注入」范式；要恢复批量执行需用户显式裁决或临时加 `--allow-auto`。
@@ -1608,6 +1608,20 @@ When extending this workspace:
 
 ⚠️ **手册条目不重复配方清单（2026-10-26 用户裁决，补充本表第 8 行）**：Patchouli 条目已有独立的 `recipe` 页展示配方 ⇒ `astral_dice.guide.entry.*` 正文**不再复述**「配方：<材料清单>（<档位>）」整句，档位由物品稀有度与配方页承载。首个清理对象 = `astral_dice.guide.entry.lingling_sign.3`（三语 × P0 两线一并删除该句，其余技能描述一字未动）。
 
+#### tooltip 文本书写规范（标点与留空）— 必须遵守（2026-11-07 用户裁决）
+
+> 起因：2026-11-07 用户两次指出 sykes 立牌 tooltip 的括号写错（用了 `【】` 与全角时长括号、且 `缓慢 II(0:30)` 缺空格）。为使后续所有 content 的写法不再各写一套，本节把**标点与留空**固化为规则，机器判据见 `tools/verify_tooltip_format.py`，可读版见 `docs/tooltip-color-rules.md` §6。
+
+| # | 规则 | 判据 / 正反例 |
+|---|---|---|
+| 1 | **专有名一律直角引号 `「」`**，禁止方头括号 `【】` | 角色 / 物品 / 机制 / 状态效果 / 区域等：`「魔渊触须」`、`「魔渊区域」`、`「渊蚀印记」`。存量已于 2026-11-07 五线 × 三语全量改净（15 个 lang 文件、133 个值） |
+| 2 | **时长后缀一律半角括号，且括号前留一个空格** | `攻击力 §e+2§7 (§92:00§7)` ✅ / `攻击力 §e+2§7（§92:00§7）` ❌ 全角 / `攻击力 §e+2§7(§92:00§7)` ❌ 无空格 |
+| 3 | **自然语言夹注仍用本语言全角括号** | 中文 / 日文 `（每人一次，自身可叠加）`；不要把夹注也改成半角 |
+| 4 | **罗马数字等级与中日文名之间留一个空格** | `缓慢 II`、`移動速度上昇 II`、`Speed II`；禁止 `移動速度上昇II` / `缓慢II` |
+| 5 | **续行符号由渲染器负责，lang 值不得自带** | `addSignLines` 会把「行首两空格」的续行渲染成 `§7- 文本` ⇒ lang 里不要写 `-`、`•`，也不要用行首两空格做缩进 |
+
+**守门**：`python tools/verify_tooltip_format.py`（扫描五线 × `zh_cn` / `en_us` / `ja_jp` 的 `tooltip.*` / `effect.*` / `astral_dice.guide.entry.*` 值，四条规则逐条判定；通过时打印 `TOOLTIP_FORMAT: OK checked=N files=15 …`，失败打印 `TOOLTIP_FORMAT_VIOLATION:` 明细并 exit 1）。改动 lang 文案后必须与 `python tools/check_lang_sync.py` 一起跑。
+
 #### tooltip 精简原则（保留黑箱）— 必须遵守（2026-10-26 用户裁决）
 
 > **起因**：2026-10-26 用户实读界面后指出，tooltip 此前为「把玩法解释清楚」塞进大量机制注释（结算口径、算术合计、内部计时器/图标有无、联动叠层方式），**破坏了可读性，也违背「保留黑箱」的设计取向**。用户亲自把 `tooltip.astral_dice.sign.jill_active` 的效果牌行改成极简式；本小节以该改写为**正样本**固化口径。
@@ -1623,7 +1637,7 @@ When extending this workspace:
 6. **三语 + P0 两线同批**：zh 改完必须同批改 `en_us` / `ja_jp`（键集一致、行结构与染色位置一致）；P0 = `neoforge-1.21.1` + `forge-1.20.1` 同批；P1 两线（26.1.2 / fabric）待用户下达。
 7. **手册分档（Patchouli）**：`astral_dice.guide.entry.*` 是查阅面，允许比 tooltip 详细（可以写「怎么算」），但同样禁止把内部实现细节写成玩家文案。⚠️ 2026-10-26 **只**精简了 tooltip，手册条目是否同口径**待用户裁决**（欠账见交接正本 §5）。
 8. **自检三问**：① 这句删掉，玩家会玩不出来吗？（不会 ⇒ 删）② 这句在解释内部实现吗？（是 ⇒ 删）③ 超了行数预算吗？（超 ⇒ 先删解释）。
-9. **守门**：`python -B tools/verify_sign_balance_changes.py` 对 4 个受裁决角色（dorothy / jill / deepseek / nancy）的 **tooltip 键**按精简口径检查（关键事实必须出现 + 黑名单措辞不得复活）；**手册键仍按详细口径**检查。染色另跑 `scripts/audit/tooltip_color_audit.py`。
+9. **守门**：`python -B tools/verify_sign_balance_changes.py` 对 4 个受裁决角色（dorothy / jill / deepseek / nancy）的 **tooltip 键**按精简口径检查（关键事实必须出现 + 黑名单措辞不得复活）；**手册键仍按详细口径**检查。染色另跑 `scripts/audit/tooltip_color_audit.py`；标点与留空跑 `python tools/verify_tooltip_format.py`（见〈tooltip 文本书写规范〉）。
 落地流程、实现细节词表与校验见技能 `astral-dice-tooltip-optimizer`；染色另见 `tooltip-color-rules`。
 
 ## 动作栏（ActionBar）口径 — 必须遵守（2026-09-29 成文）
@@ -3204,7 +3218,7 @@ python scripts/test/mt_gen_case.py --version 1.21.1 --spec "<自然语言描述>
 - **断言侧**：读数必须按实际字段顺序写正则；`zhaocard` 类成对读数用 `before>after`。
 - **测试工具侧**：全目录 `--phase cases` 会给另一版本条目写 `SKIP` 记账，`report.md` 自动判定把非 `PASS` 全判 ❌；且其预算是固定 `90+90×用例数`，`MT_CASES_TIMEOUT_SEC` 管不到 ⇒ 一律逐条 `--case` 单跑，必要时用 `mt_report.py collect --version <V> --verdict PASS` 重算并留痕（详见 zhao 测试流程段）。
 - **数据生成**：改资源前必须按「Gradle 构建守护规则」第 7 条移开 `run/<V>/mods` 里的旧产物 jar，否则 `runData` 静默用旧代码；两发布线 `exclude("**/.cache")` 口径不得回退。
-- **26.1.2 后续落地（P1）**：该线纳入主线，但⛔ **2026-10-12 起「与本批同批落地」的口径已作废** —— 现行 **P1 次要优先级**（见「## 版本优先级与跨线移植纪律」）：P0 两线（`neoforge-1.21.1` + `forge-1.20.1`）同批，26.1.2 待 P0 完成后移植（实施方式见〈子代理与测试环境硬规则〉第 7 条：P0 基准线派子代理编写、再经 `dsh_code_review` 与子代理功能审查后移植）。确有不落该线的例外时，必须在本清单追加迁移项。
+- **26.1.2 后续落地（P1）**：该线纳入主线，但⛔ **2026-10-12 起「与本批同批落地」的口径已作废** —— 现行 **P1 次要优先级**（见「## 版本优先级与跨线移植纪律」）：P0 两线（`neoforge-1.21.1` + `forge-1.20.1`）同批，26.1.2 待 P0 完成后移植（实施方式见〈子代理与测试环境硬规则〉第 7 条：P0 基准线派子代理编写、再经 `review-agent` 子代理复核与另一个子代理的功能审查后移植）。确有不落该线的例外时，必须在本清单追加迁移项。
 
 ---
 
@@ -3466,7 +3480,7 @@ python scripts/test/mt_gen_case.py --version 1.21.1 --spec "<自然语言描述>
 ⑤ **补充（2026-10-18 复核补跑 + 第三次崩溃，只追加、不改上文）**：(a) **`code_review` 补跑闭环** —— 首跑 job `b766f2a0-2273-4fbd-9bc4-e58e6deacb8e`：两线 `client/RepulsionModel.java` `completed` / 0 findings、`scripts/test/cases/LINGLING-1.21.1.json` `failed` `MODEL_INVALID_JSON`、两张 `textures/entity/repulsion.png` `blocked`（`The encoded data was not valid for encoding utf-8`）；重试 job `24e1c33b-4441-43e7-89b7-a0c4b3198e15`：**同一份 JSON `completed` / 0 findings**（其余 4 个文件走缓存复用 = `excluded`）⇒ **3 个文本件全部完成复核、共 0 findings**，唯一缺口 = 二进制贴图（已用双线同 sha256 `B59C576B…2088EBE` + `rot90(newNorth,3)==south` 逐像素断言 + 实机 `FRONT vs BACK` IoU `1.000` 三重核对替代）。(b) **第三次 DSH 崩溃**（2026-10-18 18:0x）：PTC 报 `warning[PTC-R002] Restored the durable head and skipped 48 unreconstructable historical cell(s)` 并回滚到 `bcae58f9`；当轮工作已先本地提交 ⇒ **零数据丢失**，仅会话历史 cell 受影响 ⇒ 教训 = 阶段成果及时本地提交，崩后先 `git log -1` + `git status` 核对落盘范围（崩溃 cell 内的 `tools.edit` 可能根本没执行）。(c) **并发写事故**：`docs-harness` 与 `autojs-eval-fix` 曾同时改 `docs/handover-2.0.0-dev-next.md` 与 `docs/handover-new-session-context.md` ⇒ 「已完成」行与第 39 条条目出现重复段，已合并去重；预防 = 派活时在共享任务 `write_scopes` 声明写域、写前先看 `git diff`。
 ## 待办交接：欠账角色立牌登记（2026-10-19，只登记、未实现）
 
-40. **欠账角色立牌（2026-10-19 登记；各线均无实现）**：以下 5 个 Astral Party 角色在本仓各线均**无立牌**——判据：`item/sign/` 无对应 `*SignItem.java`、`ModItems.java` 无对应注册、无贴图（各线 `src` 内 grep `Z3000|Luka|A\.L\.|InkShadow|Sykes|ink_shadow|z3000|a_l` 仅命中 `sea_lantern`/`VANILLA` 等无关字面）。建议 id 与 Wiki 顺序位置：**垃圾桶/Z3000 → `z3000`（编号 109）· 摩托车手/Luka → `luka`（编号 119；wiki 称号=午夜闪光）· 少主/A.L. → `a_l`（编号 118；wiki 称号=暗区少主）· 小猎手/InkShadow → `ink_shadow`（编号 111；wiki 名=墨影）· 魔渊幼体/Sykes → `sykes`（编号 129；wiki 名=赛克斯）**。下批做立牌时接续顺序按 Wiki 角色编号升序：**Z3000(109) → InkShadow(111) → A.L.(118) → Luka(119) → Sykes(129)**；开工前须先按〈立牌命名规范〉复核 id 契约，并核对 Luka「摩托车手」与 wiki 称号「午夜闪光」的口径。常态交接见 `docs/handover-2.0.0-dev-next.md` §5.x。
+40. **欠账角色立牌（2026-10-19 登记；余 4 个各线仍未实现）**：以下 4 个 Astral Party 角色在本仓各线均**无立牌**（Sykes 已于 2026-11-06 在 P0 两线落地，立牌 id `sykes`；P1 三线待裁决）——判据：`item/sign/` 无对应 `*SignItem.java`、`ModItems.java` 无对应注册、无贴图（各线 `src` 内 grep `Z3000|Luka|A\.L\.|InkShadow|ink_shadow|z3000|a_l` 仅命中 `sea_lantern`/`VANILLA` 等无关字面）。建议 id 与 Wiki 顺序位置：**垃圾桶/Z3000 → `z3000`（编号 109）· 摩托车手/Luka → `luka`（编号 119；wiki 称号=午夜闪光）· 少主/A.L. → `a_l`（编号 118；wiki 称号=暗区少主）· 小猎手/InkShadow → `ink_shadow`（编号 111；wiki 名=墨影）**。下批做立牌时接续顺序按 Wiki 角色编号升序：**Z3000(109) → InkShadow(111) → A.L.(118) → Luka(119)**；开工前须先按〈立牌命名规范〉复核 id 契约，并核对 Luka「摩托车手」与 wiki 称号「午夜闪光」的口径。常态交接见 `docs/handover-2.0.0-dev-next.md` §5.x。
 
 ## ⛔ WSL 口径失效对照（2026-10-22 用户裁决，仅存历史）
 
@@ -3488,25 +3502,22 @@ python scripts/test/mt_gen_case.py --version 1.21.1 --spec "<自然语言描述>
 ## 待办交接：DSH 原生批次（2026-10-22）
 
 41. **DSH 接手批（Windows 原生）—— 规则口径改写 + 守门假红修复 + 立牌冷却补齐（2026-10-22）**：交接基线：分支 `multi-main`，交接点 `7df4dab2`（其后一条 `docs(handover)` 提交 = `5b134a38`），版本 `1.5.0-pre.3`，各线 `mod_version = 1.5.0-pre.3+<后缀>`、`starengine_version = 1.1.0-pre.2`。① **WSL→Windows 口径改写（提交链 `cf872bfb` → `76b2c4d2` → `3e90be38`）**：`AGENTS.md` 开头「## ⛔ 回滚裁决」原 1–5 条整体改写为 1–6 条 Windows 口径（测试台唯一 pwsh 7 / 编译与实机都 Windows 原生 / 产物以 `build\libs` 为唯一来源并核 sha256 / git 一律 git bash 的 `git -C` 不需 `--git-dir=` 与 `cmd.exe` / `~/work/adm-*` 与 `/mnt/**` 副本作废 / 注入脚本与 `/opt/zulu`+`use-jdk` 作废），原「测试收尾关游戏」顺延第 7 条；`docs/agent/AGENTS-full.md` 就地标注 L2861（WSL 等价命令）与第 37 条 ⑥（WSL 环境新知）失效，并新增本文件末尾〈WSL 口径失效对照〉5 行表；`docs/handover-1.5.0-pre.3-main.md` §1/§7 改 Windows 口径。判据 `python docs/agent/verify-split.py` 四项 `[OK]`。⚠️ **坑**：`AGENTS.md` 正文不得出现「生效红线区」两个分隔标记的完整字面量（脚本按它切分，实测报「红线区 19,092 字符 vs 原文 11,520 字符 [FAIL]」）；`tools.edit` 插多行会把整文件转成 LF，需全量 `\r\n` 归一化。② **`verify_probe_class_refs` 六处红点全部定性为「守门自身缺陷 / 产物陈旧」，无一是源码缺口**：JEI 走 **Curse Maven**（`neoforge-1.21.1/build.gradle:187` `curse.maven:jei-238222:8512040`、`forge-1.20.1/build.gradle:272` `curse.maven:jei-238222:8778011`）而脚本原只解析 `maven.modrinth`；`org.lwjgl.glfw.GLFW` 由加载器运行期提供（gradle 缓存 `lwjgl-glfw-3.3.x.jar`）；`net.minecraftforge.registries.ForgeRegistries` 只出现在 `kubejs/1.21.1/server_scripts/astral_bugfix_probe.js:16817`/`:16833` 的 JSDoc 反例里；`client.DamageNumberStore` 红因 `neoforge-26.1.2/build/libs` 最新仍为 `astral_dice-1.3.7-beta.2+neoforge_26.1.2.jar`（2026-10-05），该 jar 内该类条目 0（源码侧 2026-09-26 由 `46986687` 加入）⇒ 产物与源码不同源。脚本修正 = 新增 `$script:CurseRe` + `curse.maven` 缓存解析循环、白名单加 `org.lwjgl.`、新增 `Remove-JsComments`（先删 `/*…*/` 再删 `(?<!:)//…`，不吃 URL 的 `://`）。修正后：1.21.1 = 150 处 / 1.20.1 = 142 处 / 均 **0 处不可解析**，26.1.2 = 108 处 / 剩 1 处（陈旧产物）⇒ 末行 `RESULT: FAIL（1 处）`；该脚本判 FAIL 时 **`exit 1`**（2026-10-22 实测），判据只看末行。「处数比修前多 2/1/1」的根因 = 旧剥注释实现会误删真代码，被删掉的 `Java.loadClass` 不进判据；现实现为单趟字符串感知扫描，并对 `build.gradle` 同样先剥注释（顺带消掉 `maven.modrinth:immediatelyfast` 误报）。③ **立牌冷却口径补齐（9 个而非 11 个）**：`item/sign/` 下 `BonnieSignItem` / `DorothySignItem` / `HaiqingSignItem` / `JillSignItem` / `MegasSignItem` / `MosesSignItem` / `RenSignItem` / `TeruSignItem` / `ZhaoSignItem` 各 +2 行（注释 + `ModAttachments.setSignActiveMaxCooldown(<receiver>, (long) (<与 setSignActiveCooldownEnd 同一表达式>))`），P0 两线同改（整份 diff = 23 文件：18 java + 4 文档 + 1 脚本；两线 9 个立牌的匿名 action 内部类字节码内含该调用，外层类不含）；`JasmineSignItem:121` 与 `KomachiSignItem:150` **故意不改** —— 它们只缩短已有冷却（Jasmine 读 `maxCooldown` 后 `cdEnd - maxCooldown/2`、Komachi 把剩余 ×0.7），是 max 的**消费者**，写 max 会改错基准。判据：`gradlew.bat :neoforge-1.21.1:classes :forge-1.20.1:classes` BUILD SUCCESSFUL。④ **`run/<线>/mods` 已重投**：两份 pre.3 产物 sha256 与 `build\libs` 逐一相符（neo `09980b2e…`、forge `70b347ba…`），两个 P0 整合包本即同一对 jar（各自成对带 `starengine-*-1.1.0-pre.2.jar`）。⑤ **复核工具坑**：`code_review_execute` 内联跑会撞 cell 600s 墙钟且超时后拿不到结果（`code_review_status` 缺 `jobId` 报 `Invalid review job id`），预览还会过期（`Preview missing, expired or owner/model/directory changed`）⇒ 正解 `code_review_preview({})`（传绝对路径会报 `Unsafe repository path`）→ `code_review_start({phase:'execute',previewId,confirmed:true})` → `code_review_wait`。⑥ **未做（如实登记）**：1.20.1 创造模式扣卡**实机复验仍未做**（静态判据成立：`forge-1.20.1/.../item/card/BaseEffectCardItem.java:337`/`:423` 与 `.../screen/CardChoiceMenu.java:134` 均 `if (!player.isCreative())`；neo 侧用 `consume(1, player)` 内建 instabuild 判定），须用户明确下达实机；P1 两线（26.1.2 / fabric）一律未动；未 push、无 tag。
-## 🧰 代码审查工具链更新（2026-10-22 用户裁决：改用 @michengai/dsh-code-review）
+## 🧰 代码审查 / 复核通道（2026-11-07 用户裁决：改用一次性 subagent + `review-agent` 技能，`dsh_code_review` 弃用）
 
-**背景**：旧的 DSH 原生 `code_review_*` 六件套（`code_review_preview` / `code_review_execute` / `code_review_start` / `code_review_wait` / `code_review_status` / `code_review_cancel`）**已不在工具面上**，由插件 `@michengai/dsh-code-review`（v1.0.1，装在 desktop/web profile）取代 —— 旧口径的 600s 墙钟、preview 过期、`protocol-correction` 卡死等问题随之作废（`docs/handover-1.5.0-pre.3-main.md` §6 坑 9 已改写）。
+> ⛔ **2026-11-07 用户裁决（现行正本，取代 2026-10-22 的 `@michengai/dsh-code-review` 口径）**：代码复核 = **一次性独立 `subagent` + `review-agent` 技能**（只读、缺陷优先）。
+> **`dsh_code_review` 工具与插件 `@michengai/dsh-code-review`（含 `/review`、`/review-status`、`/review-cancel`）一律弃用，不得再调用**。本节以下即现行口径；旧接口表已删除，历史批次条目按下一段「历史条目读法」理解。
 
 **现行唯一口径**（AGENTS.md 红线区〈二次验证规范〉与〈子代理与测试环境硬规则〉第 4 条已同步为同一口径）：
 
 | 项 | 值 |
 |---|---|
-| 插件 | `@michengai/dsh-code-review` v1.0.1；命令入口 `/review`（范围选择）、`/review-status`（进度与最近报告）、`/review-cancel`（取消） |
-| 工具 | `dsh_code_review({ input })` —— **唯一参数** `input: string`（必填，`additionalProperties: false`） |
-| `input` 非空 | 整段**原样**作为自定义审查要求交给子 Agent（**不解析 CLI 选项**：`--base main`、`.`、`status` 都按普通文字传递） |
-| `input` 为空 | 打开原生范围选择：对比基准分支 / 未提交更改（暂存 + 未暂存 + 未跟踪）/ 某次提交（最近 100 条或自由输入引用）/ 自定义要求。⚠️ 该路径走宿主交互式问答器（`lib/selection.js` 的 `userQuestions`）⇒ 非交互环境（脚本 / 无人值守会话）必须给非空 `input`，否则走不通 |
-| 执行方式 | 宿主原生 `spawn` 一个**独立**子 Agent，保留宿主系统提示与其余工具，**只禁用递归审查与专家召唤**；子 Agent 自行取 git 状态、diff 与相关代码 |
-| 返回值 | 本会话收到一份 GFM 报告（状态标题 + 发现 + 带行号片段的本地文件链接）；同一份报告原子保存到 `reportDirectory`（默认 `$DSH_HOME/code-review`，即 `C:\Users\xmace\.dsh\code-review`，文件名为 `sha256(会话).json`，`/review-status` 由它重渲染 GFM；`lib/journal.js` 实测为临时文件 + rename 原子写） |
-| 权限 | 插件不改写审批策略；受权限限制的操作由宿主拒绝，审查 Agent 说明证据与测试缺口后返回（「完成」= Agent 已返回，不代表 diff 取全或测试通过） |
+| 执行方 | 一次性独立 `subagent`（全新 context、单任务、用完即弃）；派单前先 `skill({ name: "review-agent" })` 载入技能 |
+| 范围 | brief 里写清绝对路径 / 提交号 / 提交区间（例「审查工作树未提交改动，含未跟踪文件」「审查提交 `7e7cf978`」）；子代理自行取 git status、git diff 与相关代码 |
+| 判据 | R1..Rn 一次性写全（复核对象 + 背景 + 逐项判据 + 输出要求）；禁止喂主会话结论（会诱导附和） |
+| 输出 | 判定 SUPPORTED / REFUTED / 部分成立 + 逐字证据 `文件:行号` + 未验证项 + 最小修法 |
+| 与功能审查的关系 | 同一个子代理不得既写码又复核；复核走 review-agent，功能审查（静态取证 / `:<线>:classes` 编译 / `scripts/verify/**` 守门 / 与需求逐字对账）由另一个一次性独立子代理执行 |
 
-**因此写 brief 的两条硬要求**：① **范围用自然语言写清**（例「审查工作树未提交改动（含未跟踪文件）」「审查最近 1 个提交 `7e7cf978`」「审查提交区间 `<a>..<b>`」）—— 写 `--base main` 等于让子 Agent 自己猜；② R1..Rn 判据与输出格式要求仍**一次性写全**进 `input`，红线区〈二次验证规范〉的三条验收标准不变（逐条挂原始证据 / 覆盖声称改过的每一处 / 明确列出不一致与无法判定项）。
-
-**历史条目读法**：本文档「待办交接各批」第 25 / 27 / 30 / 33 / 38 / 39 / 41 条与 `scripts/test/TESTING-SPEC.md` 附录 A 中出现的 `code_review` 及其 run id / jobId 均为**当时的旧接口**记录，2026-10-22 起一律读作 `dsh_code_review`（旧 id 无法在新工具里查询）。
+**历史条目读法**：本文档「待办交接各批」里的 `dsh_code_review` / `code_review` 及其 run id / jobId 均为历史记录（2026-10-22～2026-11-06 的执行方），2026-11-07 起不再可执行；要复核就按上表派 review-agent 子代理。
 
 ## 🧭 派活口径：只用 DSH 自己的子智能体（2026-10-22 用户裁决）
 
@@ -3523,7 +3534,7 @@ python scripts/test/mt_gen_case.py --version 1.21.1 --spec "<自然语言描述>
 | 一次性、可独立验收的活（写码 / 取证 / 移植 / 功能审查） | `subagent` | **全新 context，看不到本会话** ⇒ brief 必须完全自包含（目标 + 路径 + 判据命令 + 交付格式）；派发即返回 `subagentId`，结果由子代理 `send_message` 回报，运行时另有完成通知 |
 | 接续本会话上下文（续写、二次核查；**复核不算**，见下一行） | `subagent_fork` | 继承本会话**已完成回合**（不含当前进行中的这一轮）⇒ 不必重复背景，但新事实仍要写清 |
 | 需要多人并行 / 长期角色（跨文件、跨模块） | `spawn_teammate`（Team Lead 专属）+ 共享任务板 `team_task_create` / `team_task_update` / `team_task_list` | 每个 teammate 的 `write_scopes` 必须**互不重叠**；`send_message` 中途改需求；`wait_agent` 长超时一次到位；`interrupt_agent` 止血 |
-| 复核（二次验证） | `dsh_code_review({ input })` | **不是 subagent 派活**（见〈二次验证规范〉）；**不要**为复核另派 subagent |
+| 复核（二次验证） | `subagent` + `review-agent` 技能 | **一次性独立子代理**（2026-11-07 起）；`dsh_code_review` 已弃用；见〈二次验证规范〉与〈代码审查 / 复核通道〉 |
 
 ### 3. 纪律（与契约 §A「A 方案」并用）
 
