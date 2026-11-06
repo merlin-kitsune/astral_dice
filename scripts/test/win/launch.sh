@@ -70,8 +70,8 @@ usage() {
   --kill-on-timeout 超时后自动调 stop.sh 收停（默认只提示）
   --log-dir <dir>   日志目录，默认 scripts/test/win/logs
   --launch-mode bg|start
-                    bg（默认）= git bash 后台 + cmd //c gradlew.bat，可拿 PID；
-                    start      = cmd //c start "" /B cmd /c "…"（真正脱离控制台，
+                    bg（默认）= git bash 后台 + mt_cmdwin gradlew.bat，可拿 PID；
+                    start      = mt_cmdwin start "" /B cmd /c "…"（真正脱离控制台，
                                  但拿不到 PID，且本机沙箱下实测 start/b 会阻塞）
   --dry-run         只打印将执行的命令与判定依据，不启动任何进程
 
@@ -303,7 +303,7 @@ if [ "$DRY" = 1 ]; then
     mt_detail "toolchain    = $TOOLCHAIN_VER（Gradle 自动发现；本机需在位）"
     mt_detail "run_dir      = $RUN_DIR"
     mt_detail "launch_mode  = $LAUNCH_MODE"
-    mt_detail "cmd          = cmd //c \"$CMD_DESC\"（cwd=$MT_REPO_ROOT，JAVA_HOME=$(mt_to_win "${DAEMON_JDK:-<none>}")）"
+    mt_detail "cmd          = mt_cmdwin \"$CMD_DESC\"（cwd=$MT_REPO_ROOT，JAVA_HOME=$(mt_to_win "${DAEMON_JDK:-<none>}")）"
     mt_detail "log          = $LOG"
     mt_detail "pid_file     = $PIDFILE"
     mt_detail "timeout      = ${TIMEOUT}s（等 AutoJS 客户端侧 READY）"
@@ -328,7 +328,7 @@ if [ -z "$DAEMON_JDK" ]; then
     exit 11
 fi
 if [ ! -d "$RUN_DIR" ]; then
-    mt_launch_err "BLOCKED — $( [ -n "$FAB_SIDE" ] && printf '%s' "$RUN_DIR" || printf 'run/%s' "$VERSION" ) 不存在（先让 Gradle 解析一次项目：cmd //c gradlew.bat :$PROJECT:build 或直接跑一次 $Gradle_TASK）"
+    mt_launch_err "BLOCKED — $( [ -n "$FAB_SIDE" ] && printf '%s' "$RUN_DIR" || printf 'run/%s' "$VERSION" ) 不存在（先让 Gradle 解析一次项目：mt_cmdwin gradlew.bat :$PROJECT:build 或直接跑一次 $Gradle_TASK）"
     exit 11
 fi
 if [ ! -f "$MT_REPO_ROOT/gradlew.bat" ]; then
@@ -375,7 +375,7 @@ fi
 
 mt_launch "starting $VERSION (:$PROJECT) …"
 mt_detail "launch_mode  = $LAUNCH_MODE"
-mt_detail "cmd          = cmd //c \"$CMD_DESC\""
+mt_detail "cmd          = mt_cmdwin \"$CMD_DESC\""
 mt_detail "log          = $LOG"
 mt_detail "daemon_jvm   = $DAEMON_JDK（≥21；toolchain $TOOLCHAIN_VER 由 Gradle 自动发现）"
 
@@ -390,11 +390,11 @@ export MT_WIN_LAUNCH=1
 BG_PID=""
 if [ "$LAUNCH_MODE" = "start" ]; then
     # 真正脱离控制台（拿不到 PID：pidfile 里只能写"未知"，由 CIM 判线兜底）
-    cmd //c "start \"\" /B cmd /c \"$CMD_DESC > \"$LOG\" 2>&1\"" >/dev/null 2>&1 </dev/null &
+    mt_cmdwin "start \"\" /B cmd /c \"$CMD_DESC > \"$LOG\" 2>&1\"" >/dev/null 2>&1 </dev/null &
     BG_PID=""
     : > "$PIDFILE" 2>/dev/null || true
 else
-    cmd //c "$CMD_DESC" >"$LOG" 2>&1 </dev/null &
+    mt_cmdwin "$CMD_DESC" >"$LOG" 2>&1 </dev/null &
     BG_PID=$!
     winpid="$(cat "/proc/$BG_PID/winpid" 2>/dev/null | tr -d '\r\n')"
     printf '%s\n' "${winpid:-$BG_PID}" > "$PIDFILE" 2>/dev/null || true

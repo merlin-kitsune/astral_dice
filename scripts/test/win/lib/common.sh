@@ -152,6 +152,12 @@ mt_conf_get() {
 mt_ok()   { MT_OKS=$(( ${MT_OKS:-0} + 1 ));         printf 'CHECK: %s=OK — %s\n' "$1" "$2"; }
 mt_warn() { MT_WARNS=$(( ${MT_WARNS:-0} + 1 ));     printf 'CHECK: %s=WARN — %s\n' "$1" "$2"; }
 mt_fail() { MT_FAILS=$(( ${MT_FAILS:-0} + 1 ));     printf 'CHECK: %s=FAIL — %s\n' "$1" "$2" >&2; }
+# cmd.exe launcher: MSYS arg conversion may rewrite /c to a path, or else leave //c unrecognized.
+# Excluding only the /c prefix makes the literal /c reach cmd.exe in both forms (verified 2026-11-06).
+mt_cmdwin() {
+    MSYS2_ARG_CONV_EXCL='/c' cmd /c "$@"
+}
+
 mt_info() { [ "${MT_QUIET:-0}" = 1 ] || printf 'INFO: %s — %s\n' "$1" "$2"; }
 
 mt_launch()  { printf 'LAUNCH: %s\n' "$*"; }
@@ -191,7 +197,7 @@ mt_win_temp() {
     local t=""
     if [ -n "${MT_WIN_TEMP:-}" ]; then printf '%s' "$MT_WIN_TEMP"; return 0; fi
     if mt_have cmd; then
-        t="$(cmd //c 'echo %TEMP%' 2>/dev/null | tr -d '\r\n')"
+        t="$(mt_cmdwin 'echo %TEMP%' 2>/dev/null | tr -d '\r\n')"
     fi
     case "$t" in
         [A-Za-z]:*) t="$(mt_to_msys "$t")" ;;
@@ -328,7 +334,7 @@ mt_taskkill_tree() {
     if mt_have taskkill; then
         taskkill //PID "$pid" //T //F >/dev/null 2>&1 || true
     else
-        cmd //c "taskkill /PID $pid /T /F" >/dev/null 2>&1 || true
+        mt_cmdwin "taskkill /PID $pid /T /F" >/dev/null 2>&1 || true
     fi
     return 0
 }

@@ -107,7 +107,7 @@ esac
 
 # ── 3. Gradle Wrapper ────────────────────────────────────────────────────
 if [ -f "$MT_REPO_ROOT/gradlew.bat" ]; then
-    mt_ok gradlew "gradlew.bat 在位（Windows 侧入口；git bash 下调用 cmd //c gradlew.bat）"
+    mt_ok gradlew "gradlew.bat 在位（Windows 侧入口；git bash 下调用 mt_cmdwin gradlew.bat）"
     dist_url="$(grep -E '^distributionUrl=' "$MT_REPO_ROOT/gradle/wrapper/gradle-wrapper.properties" 2>/dev/null | cut -d= -f2- | tr -d '\r')"
     mt_info gradle_wrapper "distributionUrl=$dist_url"
 else
@@ -143,7 +143,7 @@ if [ -n "${JAVA_HOME:-}" ]; then
 else
     mt_warn java_home "JAVA_HOME 未设置（launch.sh 会自行发现 daemon JVM ≥21）"
 fi
-where_java="$(cmd //c 'where java' 2>/dev/null | tr -d '\r' | tr '\n' ';' | sed 's/;$//')"
+where_java="$(mt_cmdwin 'where java' 2>/dev/null | tr -d '\r' | tr '\n' ';' | sed 's/;$//')"
 mt_info java_where "where java → ${where_java:-<未找到>}"
 java_major="$(mt_java_major "$(command -v java 2>/dev/null || echo '')" 2>/dev/null || true)"
 if [ -n "$java_major" ]; then
@@ -225,7 +225,7 @@ for v in $VERSIONS; do
     elif mt_is_fabric "$v"; then
         mt_info "start_bat_$v" "fabric 线没有 run/start-$v.bat（统一走 win/launch.sh --side）"
     else
-        mt_info "start_bat_$v" "run/start-$v.bat 不存在（launch.sh 直接走 cmd //c gradlew.bat）"
+        mt_info "start_bat_$v" "run/start-$v.bat 不存在（launch.sh 直接走 mt_cmdwin gradlew.bat）"
     fi
 done
 

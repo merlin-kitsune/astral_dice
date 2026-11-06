@@ -374,7 +374,7 @@ fi
 # ── --stop-daemon ────────────────────────────────────────────────────
 if [ "$STOP_DAEMON" = 1 ]; then
     if [ "$DRY" = 1 ]; then
-        mt_winstop "would-run — cmd //c \"gradlew.bat --stop\"（cwd=$MT_REPO_ROOT）"
+        mt_winstop "would-run — mt_cmdwin \"gradlew.bat --stop\"（cwd=$MT_REPO_ROOT）"
     else
         jdk="$(mt_find_daemon_jdk 2>/dev/null || true)"
         if [ -n "$jdk" ]; then
@@ -383,7 +383,7 @@ if [ "$STOP_DAEMON" = 1 ]; then
         fi
         (
             cd "$MT_REPO_ROOT" || exit 1
-            cmd //c "gradlew.bat --stop" 2>&1 | tail -n 5
+            mt_cmdwin "gradlew.bat --stop" 2>&1 | tail -n 5
         ) || true
         daemons="$(mt_gradle_daemon_rows 2>/dev/null | grep -c . || true)"
         mt_winstop "DAEMON-STOP — gradlew.bat --stop 已调用；当前 GradleDaemon 进程数=$daemons"

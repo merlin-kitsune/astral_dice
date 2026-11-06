@@ -240,13 +240,13 @@ mt_phase_build() {
     }
     if [ "${MT_DRY_RUN:-0}" = 1 ]; then
         mt_phase_assert_mapping || true
-        mt_phase_dry "cd ${MT_REPO_ROOT} && cmd //c \"gradlew.bat :${sp}:classes\"" \
+        mt_phase_dry "cd ${MT_REPO_ROOT} && mt_cmdwin \"gradlew.bat :${sp}:classes\"" \
             "版本 ${v} → 子项目 :${sp}（toolchain $(mt_toolchain "$v")）" \
             "判据：gradlew 退出 0 → MT_BUILD: OK；非 0 → MT_BUILD: FAIL；缺 gradlew.bat → ERROR(2)" \
             "预算：$(mt_phase_budget build)s（对齐 mt.ps1 PhaseBudgets.build，bash P1 不强制掐表）"
         return 0
     fi
-    ( cd "$MT_REPO_ROOT" && cmd //c "gradlew.bat :${sp}:classes" )
+    ( cd "$MT_REPO_ROOT" && mt_cmdwin "gradlew.bat :${sp}:classes" )
     rc=$?
     mt_phase_verdict BUILD "$rc"
     return "$rc"
