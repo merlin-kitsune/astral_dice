@@ -405,5 +405,9 @@ public class ModEffects {
      * 不存在「忘记往清单里补一个」的漂移风险;同时**不改变任何既有注册语义**
      * (不新增、不重排、不延迟任何注册调用)。
      */
+    /** 渊蚀印记：负面、最多 20 层，每层使我方魔渊系伤害 +1（见 item/AbyssMarkManager）。 */
+    public static final RegistryObject<MobEffect> ABYSS_MARK =
+            EFFECTS.register("abyss_mark", AbyssMarkEffect::new);
+
     public static final Collection<RegistryObject<MobEffect>> ALL = EFFECTS.getEntries();
 }

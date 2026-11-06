@@ -1144,6 +1144,11 @@ public class ModItems {
             () -> new com.merlinkitsune.astral_dice.item.sign.DeepseekSignItem(new Item.Properties()
                     .stacksTo(1).rarity(com.merlinkitsune.starengine.item.AstralRarities.bizarre())));
 
+    // 魔渊幼体立牌（本模组原创，传奇）：主动「魔域转化」放置魔渊触须，被动「触须深渊」叠渊蚀印记。
+    public static final RegistryObject<Item> SYKES_SIGN = registerItem("sykes_sign",
+            () -> new com.merlinkitsune.astral_dice.item.sign.SykesSignItem(new Item.Properties()
+                    .stacksTo(1).rarity(com.merlinkitsune.starengine.item.AstralRarities.legendary())));
+
     // 机械师立牌(命名:megas,传奇):被动「物资补充」(手牌<6 张时每 1:00 自动获得 1 张随机卡牌)
     // + 主动「轨道轰炸」(指定 1 个敌对目标,消耗物品栏全部手牌,对目标及其周围 12 格范围轰炸;
     // 每 2 张卡 +1 次轰炸(上限 10 次),单次命中随机 1 怪 +2 点基础伤害 + 每张战斗牌费用×2;

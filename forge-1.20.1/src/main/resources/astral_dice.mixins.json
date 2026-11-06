@@ -20,7 +20,9 @@
     "trade.MerchantResultSlotMixin",
     "trade.ServerPlayerMixin",
     "HealOrHarmMobEffectMixin",
-    "RegenerationMobEffectMixin"
+    "RegenerationMobEffectMixin",
+    "sculk.SculkSensorVibrationUserMixin",
+    "sculk.SculkShriekerVibrationUserMixin"
   ],
   "client": [
     "client.AstralUseItemGuardMixin",

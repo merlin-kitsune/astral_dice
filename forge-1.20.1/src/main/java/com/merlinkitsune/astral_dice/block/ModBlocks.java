@@ -61,4 +61,16 @@ public class ModBlocks {
                     .isRedstoneConductor((state, level, pos) -> false)
                     .isSuffocating((state, level, pos) -> false)
                     .isViewBlocking((state, level, pos) -> false)));
+
+    /** 魔渊触须的占格碰撞方块（隐形、不可破坏；实体死亡/消失时由实体自行移除）。 */
+    public static final RegistryObject<Block> ABYSS_TENTACLE_COLLISION = BLOCKS.register("abyss_tentacle_collision",
+            () -> new AbyssTentacleBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.COLOR_PURPLE)
+                    .strength(-1.0F, 3600000.0F)
+                    .sound(SoundType.SCULK)
+                    .noOcclusion()
+                    .noLootTable()
+                    .isRedstoneConductor((state, level, pos) -> false)
+                    .isSuffocating((state, level, pos) -> false)
+                    .isViewBlocking((state, level, pos) -> false)));
 }

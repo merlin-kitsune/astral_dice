@@ -2495,6 +2495,18 @@
 					}
 				}
 			}
+		},
+		"animation.tentaclehide": {
+			"loop": false,
+			"animation_length": 1.2,
+			"bones": {
+				"root": {
+					"position": {
+						"0.0": [0, 0, 0],
+						"0.9": [0, -46, 0]
+					}
+				}
+			}
 		}
 	}
 }

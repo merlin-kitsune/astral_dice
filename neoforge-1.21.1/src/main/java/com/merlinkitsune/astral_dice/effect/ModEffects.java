@@ -402,5 +402,11 @@ public class ModEffects {
     public static final DeferredHolder<MobEffect, MobEffect> LINGLING_SURGE =
             EFFECTS.register("lingling_surge", LinglingSurgeEffect::new);
 
+
+    // ── 魔渊幼体立牌（2026-11-06）──
+    /** 渊蚀印记：负面、最多 20 层、每层使目标受到魔渊幼体 / 魔渊触须的伤害 +1。 */
+    public static final DeferredHolder<MobEffect, MobEffect> ABYSS_MARK =
+            EFFECTS.register("abyss_mark", com.merlinkitsune.astral_dice.effect.AbyssMarkEffect::new);
+
     public static final Collection<DeferredHolder<MobEffect, ? extends MobEffect>> ALL = EFFECTS.getEntries();
 }

@@ -1165,6 +1165,12 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(AstralRarities.bizarre())));
 
+    // 魔渊幼体立牌(sykes,传奇):主动「魔域转化」放魔渊触须占格 / 被动「触须深渊」渊蚀印记
+    public static final DeferredItem<Item> SYKES_SIGN = registerItem("sykes_sign",
+            () -> new com.merlinkitsune.astral_dice.item.sign.SykesSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.legendary())));
+
     // 符卡-福(专属功能效果牌,风水师立牌专属):出牌数 +1;对玩家(不限队伍)或自身使用 ⇒ 恢复 2 点生命值。
     // 专属绑定:获得即绑定获得者(ModDataComponents.OWNER_UUID),他人无法使用。
     // 品质:**稀有**(ASTRAL_DICE_RARE;用户 2026-09-21 裁决,原为传奇 UNCOMMON)。

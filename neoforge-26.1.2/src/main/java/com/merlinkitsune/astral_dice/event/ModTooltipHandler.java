@@ -136,7 +136,13 @@ import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
  * 再整体放进 {@code Component.literal}，颜色才不会丢。故凡 lang 值内含 {@code %%} 的行必须用
  * {@code tt(...)}，不得直接用 {@code Component.translatable(...)}。
  *
- * <p><b>例外（优先级：例外 &gt; 规则 3 &gt; 规则 2 &gt; 规则 1）</b>：
+ * <p><b>规则 5（标点与留空：专有名「」、时长后缀半角括号 + 前置空格）</b>：角色 / 物品 / 机制 / 状态效果 / 区域
+ * 等专有名一律写直角引号 {@code 「…」}，禁止用方头括号 {@code 【…】}；时长后缀一律半角括号且括号前留一个空格
+ * （{@code 攻击力 §e+2§7 (§92:00§7)}、{@code 缓慢 II (0:30)}），禁止 {@code （§92:00§7）} 与
+ * {@code (§92:00§7)}；自然语言夹注仍用本语言全角括号（{@code （每人一次）}）；罗马数字等级与中日文名之间留
+ * 空格（{@code 缓慢 II} / {@code 移動速度上昇 II}）；续行符号 {@code §7- } 由 {@link #addSignLines} 渲染，
+ * lang 值里不得自带 {@code -} 或 {@code •}，也不要用行首两空格做缩进。
+ * * <p><b>例外（优先级：例外 &gt; 规则 3 &gt; 规则 2 &gt; 规则 1）</b>：
  * <ol>
  *   <li>条目已用 {@code §c} 的保持红色（负面效果条目、负面数值、状态警示行、名称类红色），规则 1/2/3 不再改写；</li>
  *   <li>行级 {@code withStyle(...)} 语义色不作为改写对象，行内数值/时间照常着色；</li>
@@ -147,7 +153,9 @@ import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
  *   <li>连接词性质的 {@code +}（如 {@code §e+3§7 + §9黑暗 (0:03)§7} 中间那个）保持灰色。</li>
  * </ol>
  *
- * <p>审计：{@code pwsh -NoProfile -File scripts/audit/tooltip_color_audit.ps1}（退出码 0 = 无违规）。
+ * <p>自检（全部退出码 0 才算通过）：{@code python tools/check_lang_sync.py}（语言 / 手册一致性）、
+ * {@code python tools/verify_tooltip_format.py}（规则 5 标点与留空）、
+ * {@code python -B scripts/audit/tooltip_color_audit.py --root .}（规则 0–4 染色）。
  */
 @EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class ModTooltipHandler {

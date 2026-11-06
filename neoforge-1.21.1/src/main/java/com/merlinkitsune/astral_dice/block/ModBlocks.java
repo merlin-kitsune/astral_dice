@@ -45,6 +45,22 @@ public class ModBlocks {
                     .isRedstoneConductor((state, level, pos) -> false)
                     .isSuffocating((state, level, pos) -> false)
                     .isViewBlocking((state, level, pos) -> false)));
+    /**
+     * 魔渊触须的隐形占格方块(2026-11-06「魔渊幼体」立牌):没有 BlockItem,只能由
+     * entity/SykeTentacleEntity 放置/删除。满格碰撞、不渲染、不可破坏、可寻路通过
+     * —— 目的只是让该格不能被放置方块、实体也不能穿过,详见 {@link AbyssTentacleBlock}。
+     */
+    public static final DeferredBlock<Block> ABYSS_TENTACLE_COLLISION = BLOCKS.register("abyss_tentacle_collision",
+            () -> new AbyssTentacleBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.COLOR_PURPLE)
+                    .strength(-1.0F, 3600000.0F)
+                    .sound(SoundType.SCULK)
+                    .noOcclusion()
+                    .noLootTable()
+                    .isRedstoneConductor((state, level, pos) -> false)
+                    .isSuffocating((state, level, pos) -> false)
+                    .isViewBlocking((state, level, pos) -> false)));
+
 
     /** 抽奖盒(2026-10-10 事件体系重写):右键从公共事件池抽一条事件(独立注册,触发器 BLOCK_USE)。 */
     public static final DeferredBlock<Block> EVENT_DRAWER = BLOCKS.register("event_drawer",

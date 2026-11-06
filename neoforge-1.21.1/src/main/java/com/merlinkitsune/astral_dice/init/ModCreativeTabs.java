@@ -131,6 +131,8 @@ public class ModCreativeTabs {
                 output.accept(ModItems.SHERRY_SIGN.get());
                 // deepseek 未在 Wiki「Characters」页面出现(本模组原创),排在末尾
                 output.accept(ModItems.DEEPSEEK_SIGN.get());
+                // 魔渊幼体（本模组原创，与触手关联）
+                output.accept(ModItems.SYKES_SIGN.get());
                 // 筹码
                 // 2026-10-25 用户裁决：先保持既有流派分组顺序（星光 → 治愈 → 标记 → 充能 → 无流派），
                 //   组内再按稀有度升序排列（稀有 → 史诗 → 传奇，同档沿用原有相对顺序）；五档里本类只用到前 3 档。
