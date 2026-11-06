@@ -125,6 +125,7 @@ public class ModItemModelProvider extends FabricModelProvider {
         generators.generateFlatItem(ModItems.DOROTHY_SIGN.get(), ModelTemplates.FLAT_ITEM);
         generators.generateFlatItem(ModItems.ALANA_SIGN.get(), ModelTemplates.FLAT_ITEM);
         generators.generateFlatItem(ModItems.DEEPSEEK_SIGN.get(), ModelTemplates.FLAT_ITEM);
+        generators.generateFlatItem(ModItems.SYKES_SIGN.get(), ModelTemplates.FLAT_ITEM);
         generators.generateFlatItem(ModItems.FU_CARD.get(), ModelTemplates.FLAT_ITEM);
         generators.generateFlatItem(ModItems.HUO_CARD.get(), ModelTemplates.FLAT_ITEM);
         generators.generateFlatItem(ModItems.CHOCOLATE_CAKE.get(), ModelTemplates.FLAT_ITEM);

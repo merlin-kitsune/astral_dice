@@ -79,6 +79,22 @@ public final class ModBlocks {
                     .isSuffocating((state, level, pos) -> false)
                     .isViewBlocking((state, level, pos) -> false)));
 
+    /**
+     * 魔渊触须的隐形占格方块:不可破坏(伤害走实体那条路)、不掉落、不挡光照/窒息/红石,
+     * 但**保留碰撞**,让触须所在的格子成为实心地面。
+     * **没有 BlockItem**(玩家拿不到,也不进创造栏)。
+     */
+    public static final RegistryObject<Block> ABYSS_TENTACLE_COLLISION = BLOCKS.register("abyss_tentacle_collision",
+            () -> new AbyssTentacleBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.COLOR_PURPLE)
+                    .strength(-1.0F, 3600000.0F)
+                    .sound(SoundType.SCULK)
+                    .noOcclusion()
+                    .noLootTable()
+                    .isRedstoneConductor((state, level, pos) -> false)
+                    .isSuffocating((state, level, pos) -> false)
+                    .isViewBlocking((state, level, pos) -> false)));
+
     private ModBlocks() {
     }
 

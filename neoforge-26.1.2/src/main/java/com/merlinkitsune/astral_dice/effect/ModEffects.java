@@ -409,5 +409,8 @@ public class ModEffects {
      * 不存在「忘记往清单里补一个」的漂移风险;同时**不改变任何既有注册语义**
      * (不新增、不重排、不延迟任何注册调用)。
      */
+    /** 「渊蚀印记」(sykes 立牌被动)：负面效果，最多 20 层，每层使目标受到魔渊幼体 / 魔渊触须的伤害 +1。 */
+    public static final DeferredHolder<MobEffect, MobEffect> ABYSS_MARK = EFFECTS.register("abyss_mark", AbyssMarkEffect::new);
+
     public static final Collection<DeferredHolder<MobEffect, ? extends MobEffect>> ALL = EFFECTS.getEntries();
 }

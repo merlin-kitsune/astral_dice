@@ -1622,6 +1622,19 @@ public class ModTooltipHandler {
             addSignLines(tooltip, "tooltip.astral_dice.sign.deepseek_passive");
             addSignCooldownRemaining(tooltip, event.getEntity());
         }
+        // 魔渊幼体(sykes):与 P0(neoforge-1.21.1 event/ModTooltipHandler.java:1719)逐行同构,
+        // 多一行被动后的「附加说明」(sykes_note)与 1.20.1 风格的冷却行参数。
+        if (stack.is(ModItems.SYKES_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "tooltip.astral_dice.sign.sykes.active");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.sykes_active");
+            addSignPassiveTitle(tooltip, "tooltip.astral_dice.sign.sykes.passive");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.sykes_passive");
+            tooltip.add(Component.empty());
+            addSignNoteLines(tooltip, "tooltip.astral_dice.sign.sykes_note");
+            addSignCooldownRemaining(tooltip, event.getEntity());
+        }
         // 蛟龙立牌(mamushi)专属战斗牌:撕咬(费用 2 / 耐久 1 / 定值 +3)与
         // 龙之咆哮(费用 3 / 耐久 5 / 定值 +3;命中施加 缓慢 III 1:00 + 破防 1:00)。
         // 费用行 = 既有战斗牌的既有写法;描述行走规格 §4 冻结键 tooltip.astral_dice.card.bite / .dragon_roar

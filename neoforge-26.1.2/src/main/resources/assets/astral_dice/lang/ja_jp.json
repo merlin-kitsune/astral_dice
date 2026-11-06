@@ -253,7 +253,7 @@
   "effect.astral_dice.unwavering.description": "防御力 §e+4§7、最大 §e3§7 スタック；さらに 耐性上昇 II を獲得、持続 §93:00§r",
   "effect.astral_dice.weak_mark": "虚弱の刻印",
   "enchantment.astral_dice.curse_marker": "青の呪い",
-  "entity.astral_dice.sykestentacle": "触手",
+  "entity.astral_dice.sykestentacle": "魔淵の触手",
   "gui.astral_dice.attack_cost": "攻撃 Cost: %s / %s",
   "gui.astral_dice.card_inventory": "カード欄",
   "gui.astral_dice.card_inventory.locked": "ダイス神の加護中はカードを調整できません",
@@ -1165,5 +1165,18 @@
   "entity.astral_dice.villager.chip_trader": "チップ商人",
   "item.astral_dice.card_shop": "カードショップ",
   "item.astral_dice.chip_shop": "チップショップ",
-  "item.astral_dice.event_drawer": "イベントドロワー"
+  "item.astral_dice.event_drawer": "イベントドロワー",
+  "item.astral_dice.sykes_sign": "サイクスのスタンド",
+  "effect.astral_dice.abyss_mark": "淵蝕の刻印",
+  "effect.astral_dice.abyss_mark.description": "1スタックごとにサイクスと魔淵の触手から受けるダメージ §e+1§7、最大 §e20§7 スタック；持続 §92:00§7、期限切れごとに §e1§7 スタック減少",
+  "msg.astral_dice.abyss_no_ground": "ここには魔淵の触手を設置できません（接地面が必要です）",
+  "msg.astral_dice.abyss_summoned": "魔域転化：魔淵の触手を設置しました",
+  "tooltip.astral_dice.sign.sykes.active": "魔域転化",
+  "tooltip.astral_dice.sign.sykes.passive": "触手の深淵",
+  "tooltip.astral_dice.sign.sykes_active": "照準の位置に魔淵の触手を1本設置し、それを中心に周囲 §e5×5§7 ブロックの地表を魔淵領域に変える\n魔淵領域に入った敵対モブは触手に攻撃される",
+  "tooltip.astral_dice.sign.sykes_passive": "敵対目標を攻撃すると淵蝕の刻印を §e1§7 スタック付与する（§910§7 秒に1回まで）\n淵蝕の刻印1スタックごとにサイクスと魔淵の触手から受けるダメージ §e+1§7、最大 §e20§7 スタック\n装着中はスカルクセンサーとスカルクシュリーカーを作動させず、暗闇も付与されない\nウォーデンから受けるダメージ §e-50%%§7",
+  "tooltip.astral_dice.sign.sykes_note": "魔淵の触手は §96§7 秒ごとに魔淵領域内の全敵対目標を攻撃し、§e4§7 のスキルダメージと§9移動速度低下 II (0:30)§dを与える\n命中時はプレイヤーの近接ノックバックを伴う。魔淵の触手はそのブロックを占有して破壊不能で、移動・テレポートされず、ダメージ・回復・ステータス効果も受けない\n各触手は §e4§7 ブロック以内の敵対モブの敵意を引き、敵対目標が触手を攻撃すると §e1§7 のスキルダメージを受ける\n各触手は §910§7 分間存在し、消滅時は地面に沈み込む",
+  "astral_dice.guide.entry.sykes_sign.1": "サイクスのスタンド。アクティブ「魔域転化」：照準の位置に魔淵の触手を設置し、それを中心に周囲5×5ブロックの地表を魔淵領域に変える。領域内の敵対モブは触手に攻撃される。パッシブ「触手の深淵」：敵対目標を攻撃すると淵蝕の刻印を1スタック付与（10秒に1回まで）。1スタックごとにサイクスと魔淵の触手から受けるダメージが1増加、最大20スタック。",
+  "astral_dice.guide.entry.sykes_sign.2": "魔淵の触手は6秒ごとに領域内の全敵対目標を攻撃し、4のスキルダメージと移動速度低下 II (0:30)を与える。命中時はプレイヤーの近接ノックバックを伴う。触手はそのブロックを占有して破壊不能：他のブロックやエンティティを置けず、移動・テレポートもされず、いかなるダメージ・回復・ステータス効果も受けない。4ブロック以内の敵対モブの敵意を引き、敵対目標が触手を攻撃すると1のスキルダメージを受ける。各触手は10分間存在し、消滅時は地面に沈み込む。",
+  "astral_dice.guide.entry.sykes_sign.3": "淵蝕の刻印は2:00持続し、期限切れごとに1スタック減少する。サイクスのスタンドを装着中はスカルクセンサーとスカルクシュリーカーを作動させず、暗闇も付与されず、ウォーデンから受けるダメージが半減する。"
 }

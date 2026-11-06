@@ -493,6 +493,21 @@ public class ModAttachments {
         SIGN_ACTIVE_MAX_COOLDOWN.set(player, value);
     }
 
+    // 魔渊幼体立牌「被动施印」的 10 秒冷却起点(佩戴者级 gameTime;0 表示从未施印)。
+    // 仅服务端读写(判定只在 item/sign/SykesSignItem 的被动加伤路径与 item/AbyssMarkManager),
+    // 故不 .sync()、不入 SYNCED_KEYS。
+    // 之所以放附件而不是 NBT 字符串键:原版 1.20.1 的 Entity 没有 Forge 的 getPersistentData()。
+    public static final AttachedDataKey<Long> ABYSS_MARK_LAST_APPLY =
+            register(AttachedDataKey.builder("abyss_mark_last_apply", Codec.LONG, () -> 0L).build());
+
+    public static long getAbyssMarkLastApply(net.minecraft.world.entity.player.Player player) {
+        return ABYSS_MARK_LAST_APPLY.get(player);
+    }
+
+    public static void setAbyssMarkLastApply(net.minecraft.world.entity.player.Player player, long value) {
+        ABYSS_MARK_LAST_APPLY.set(player, value);
+    }
+
     // ===== 立牌主动技能"三态化"(可用 / 锁定-生效中 / 冷却)的玩家级状态 =====
     // 2026-09-25 用户裁决(第二批):主动技能施加的"带时长效果/自身计时器"跑完之前处于**锁定(生效中)**态,
     // 期间按键无效;锁定结束**必起冷却**(无空档)。全部键仅服务端使用(判定只在服务端 performSkill /

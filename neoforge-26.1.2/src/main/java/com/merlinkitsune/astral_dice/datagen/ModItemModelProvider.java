@@ -38,6 +38,7 @@ public class ModItemModelProvider extends ModelProvider {
 
         itemModels.generateFlatItem(ModItems.DICE.get(), ModelTemplates.FLAT_ITEM);
         itemModels.generateFlatItem(ModItems.GOLDEN_DICE.get(), ModelTemplates.FLAT_ITEM);
+        itemModels.generateFlatItem(ModItems.SYKES_SIGN.get(), ModelTemplates.FLAT_ITEM);
         itemModels.generateFlatItem(ModItems.GLASS_DICE.get(), ModelTemplates.FLAT_ITEM);
         itemModels.generateFlatItem(ModItems.NETHERRACK_DICE.get(), ModelTemplates.FLAT_ITEM);
         itemModels.generateFlatItem(ModItems.DIAMOND_DICE.get(), ModelTemplates.FLAT_ITEM);

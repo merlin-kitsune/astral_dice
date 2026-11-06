@@ -401,6 +401,16 @@ public class ModEffects {
             EFFECTS.register("lingling_surge", com.merlinkitsune.astral_dice.effect.LinglingSurgeEffect::new);
 
     /**
+     * 「渊蚀印记」(魔渊幼体立牌 sykes 被动):最多叠到 20 层,每层让下一次命中多受 1 点伤害;
+     * 2:00 到期只掉 1 层(施加侧共用一个 10 秒冷却)。
+     * 图标 = {@code textures/mob_effect/abyss_mark.png}(自 1.21.1 侧逐字节复制)。
+     *
+     * <p>⚠️ 1.20.1 是 {@code RegistryObject} ⇒ 全部引用处必须 {@code .get()}(P0 线是 Holder)。
+     */
+    public static final RegistryObject<MobEffect> ABYSS_MARK =
+            EFFECTS.register("abyss_mark", com.merlinkitsune.astral_dice.effect.AbyssMarkEffect::new);
+
+    /**
      * 本模组已注册的全部效果的**只读**视图(调试命令 {@code /astralparty cleareffect} 用)。
      *
      * <p>直接派生自 {@link #EFFECTS} 的注册条目视图——Forge 的 {@code getEntries()} 返回

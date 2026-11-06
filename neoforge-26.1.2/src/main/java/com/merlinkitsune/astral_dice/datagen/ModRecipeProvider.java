@@ -1421,6 +1421,19 @@ public class ModRecipeProvider extends RecipeProvider {
                 .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output);
 
+        // 魔渊幼体立牌(sykes,传奇):末影之眼 x4 / 幽匿催发体 x4 / 空白立牌 / 钻石骰子 / 黄金星盘
+        ShapedRecipeBuilder.shaped(items, RecipeCategory.MISC, ModItems.SYKES_SIGN.get())
+                .pattern("MYM")
+                .pattern("YCY")
+                .pattern("GDG")
+                .define('M', Items.ENDER_EYE)
+                .define('Y', Items.SCULK_CATALYST)
+                .define('C', ModItems.BLANK_SIGN.get())
+                .define('G', ModItems.GOLDEN_STAR_PLATE.get())
+                .define('D', ModItems.DIAMOND_DICE.get())
+                .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
+                .save(output);
+
         // 地雷女立牌(ame,奇特):GKG/WEW/CDC
         // (G=黄金星盘×2、K=黑色羊毛、W=蜘蛛网×2、C=墨囊×2、E=空白立牌、D=紫晶骰子;
         //  空白立牌置中、骰子固定中下)

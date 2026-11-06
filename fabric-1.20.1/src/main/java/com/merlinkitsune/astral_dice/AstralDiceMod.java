@@ -188,6 +188,7 @@ public class AstralDiceMod implements ModInitializer {
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.event.RepulsionCreeperGuard.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.event.RepulsionTeleportGuard.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.event.TemporaryCardEvents.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.AbyssMarkManager.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.InvestigationEventUtil.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.MarkManager.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.RenShieldManager.class);
@@ -227,6 +228,7 @@ public class AstralDiceMod implements ModInitializer {
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.PandamanSignItem.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.PaparaSignItem.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.SherrySignItem.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.SykesSignItem.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.TeruSignItem.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.ZhaoSignItem.class);
         // 卡牌商店货架周期(B1-CARDSHOP):forge 靠 @Mod.EventBusSubscriber 自动订阅,Fabric 必须显式登记;

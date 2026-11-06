@@ -253,7 +253,7 @@
   "effect.astral_dice.unwavering.description": "Defense §e+4§7, up to §e3§7 stacks; grants Resistance II, lasts §93:00§r",
   "effect.astral_dice.weak_mark": "Weak Mark",
   "enchantment.astral_dice.curse_marker": "Blue Curse",
-  "entity.astral_dice.sykestentacle": "Tentacle",
+  "entity.astral_dice.sykestentacle": "Abyss Tentacle",
   "gui.astral_dice.attack_cost": "Attack Cost: %s / %s",
   "gui.astral_dice.card_inventory": "Card Inventory",
   "gui.astral_dice.card_inventory.locked": "Cannot change cards during Dice Blessing",
@@ -1165,5 +1165,18 @@
   "entity.astral_dice.villager.chip_trader": "Chip Trader",
   "item.astral_dice.card_shop": "Card Shop",
   "item.astral_dice.chip_shop": "Chip Shop",
-  "item.astral_dice.event_drawer": "Event Drawer"
+  "item.astral_dice.event_drawer": "Event Drawer",
+  "item.astral_dice.sykes_sign": "Sykes Sign",
+  "effect.astral_dice.abyss_mark": "Abyss Mark",
+  "effect.astral_dice.abyss_mark.description": "Each stack increases damage taken from Sykes and the Abyss Tentacle by §e1§7, up to §e20§7 stacks; lasts §92:00§7 and loses §e1§7 stack on each expiry",
+  "msg.astral_dice.abyss_no_ground": "An Abyss Tentacle cannot be placed here (a solid surface is required)",
+  "msg.astral_dice.abyss_summoned": "Abyssal Conversion: Abyss Tentacle placed",
+  "tooltip.astral_dice.sign.sykes.active": "Abyssal Conversion",
+  "tooltip.astral_dice.sign.sykes.passive": "Tentacle Abyss",
+  "tooltip.astral_dice.sign.sykes_active": "Places an Abyss Tentacle where you are aiming and turns the §e5×5§7 ground area centred on it into an Abyss Zone\nHostile mobs entering the Abyss Zone are attacked by the tentacle",
+  "tooltip.astral_dice.sign.sykes_passive": "Attacking a hostile target grants §e1§7 Abyss Mark stack, at most once every §910§7 seconds\nEach Abyss Mark stack increases damage taken from Sykes and the Abyss Tentacle by §e1§7, up to §e20§7 stacks\nWhile worn you cannot trigger sculk sensors or shriekers, and shriekers cannot inflict Darkness on you\nDamage taken from Wardens is reduced by §e50%%§7",
+  "tooltip.astral_dice.sign.sykes_note": "The Abyss Tentacle strikes every hostile target inside the Abyss Zone every §96§7 seconds for §e4§7 skill damage and Slow II (§90:30§7)\nHits carry the player melee knockback; the Abyss Tentacle occupies its block and is indestructible, cannot be moved or teleported, and takes no damage, healing or status effects\nEach Abyss Tentacle draws hostile mobs within §e4§7 blocks, and a hostile mob that attacks it takes §e1§7 skill damage\nEach Abyss Tentacle lasts §910§7 minutes and then sinks into the ground",
+  "astral_dice.guide.entry.sykes_sign.1": "The Sykes Sign. Active \"Abyssal Conversion\": place an Abyss Tentacle where you are aiming, turning the 5×5 ground area centred on it into an Abyss Zone; hostile mobs entering the zone are attacked by the tentacle. Passive \"Tentacle Abyss\": attacking a hostile target grants 1 Abyss Mark stack (at most once every 10 seconds); each stack increases damage taken from Sykes and the Abyss Tentacle by 1, up to 20 stacks.",
+  "astral_dice.guide.entry.sykes_sign.2": "The Abyss Tentacle strikes every hostile target inside its zone once every 6 seconds for 4 skill damage and Slow II (0:30); hits carry the player melee knockback. The tentacle occupies its block and is indestructible: no other block or entity can be placed there, it cannot be moved or teleported, and it takes no damage, healing or status effects. It draws the aggression of hostile mobs within 4 blocks, and a hostile mob that attacks it takes 1 skill damage. Each tentacle lasts 10 minutes and then sinks into the ground.",
+  "astral_dice.guide.entry.sykes_sign.3": "Abyss Mark lasts 2:00 and loses 1 stack on each expiry. While wearing the Sykes Sign you cannot trigger sculk sensors or shriekers, shriekers cannot inflict Darkness on you, and damage taken from Wardens is halved."
 }

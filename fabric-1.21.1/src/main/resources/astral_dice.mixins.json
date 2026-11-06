@@ -24,6 +24,9 @@
     "bridge.LivingHealBridgeMixin",
     "bridge.LivingUseItemFinishBridgeMixin",
     "bridge.ItemTossBridgeMixin",
+    "bridge.LivingEntityAbyssDarknessGateMixin",
+    "sculk.SculkSensorVibrationUserMixin",
+    "sculk.SculkShriekerVibrationUserMixin",
     "container.ContainerMoveGuardMixin",
     "container.ShulkerBoxBlockEntityGuardMixin",
     "container.ShulkerBoxSlotGuardMixin",
@@ -52,6 +55,7 @@
     "bridge.ClientHandBridgeMixin",
     "bridge.ClientEntityRenderBridgeMixin",
     "bridge.ClientTooltipBridgeMixin",
+    "bridge.ContainerTooltipBridgeMixin",
     "bridge.TooltipRenderUtilColorMixin"
   ],
   "injectors": {

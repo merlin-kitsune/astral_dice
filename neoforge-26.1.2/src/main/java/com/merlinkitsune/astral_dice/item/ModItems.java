@@ -1189,6 +1189,12 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(AstralRarities.bizarre())));
 
+    // 魔渊幼体立牌(sykes,传奇):主动「魔域转化」放魔渊触须 / 被动「触须深渊」渊蚀印记
+    public static final DeferredItem<Item> SYKES_SIGN = registerItem("sykes_sign",
+            props -> new com.merlinkitsune.astral_dice.item.sign.SykesSignItem(props
+                    .stacksTo(1)
+                    .rarity(AstralRarities.legendary())));
+
     public static <T extends Item> DeferredItem<T> registerItem(String name,
             java.util.function.Function<Item.Properties, ? extends T> factory) {
         return ITEMS.registerItem(name, factory);

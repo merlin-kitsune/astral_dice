@@ -1854,6 +1854,21 @@ public class ModAttachments {
     public static final AttachedDataKey<CardShopShelf> SHOP_SHELF =
             register(AttachedDataKey.builder("shop_shelf", CardShopShelf.CODEC, () -> CardShopShelf.EMPTY).build());
 
+    // 魔渊幼体立牌(sykes)被动:上次给目标施「渊蚀印记」的游戏时刻(10 秒冷却 = 200 tick)。
+    // P0(neoforge-1.21.1)写的是 Entity#getPersistentData()(Forge/NeoForge 补丁,fabric 没有该 API)
+    // ⇒ 本线改用持久附件承载同一语义:服务端权威、跨死亡/重登保留、默认 0 = 从未施印。
+    // 只有服务端读写(客户端不需要它画任何东西)⇒ 不 .sync()、不进 SYNCED_KEYS。
+    public static final AttachedDataKey<Long> ABYSS_MARK_LAST_APPLY =
+            register(AttachedDataKey.builder("abyss_mark_last_apply", Codec.LONG, () -> 0L).build());
+
+    public static long getAbyssMarkLastApplyTick(Player player) {
+        return ABYSS_MARK_LAST_APPLY.get(player);
+    }
+
+    public static void setAbyssMarkLastApplyTick(Player player, long value) {
+        ABYSS_MARK_LAST_APPLY.set(player, value);
+    }
+
     private ModAttachments() {
     }
 }

@@ -181,6 +181,10 @@ public class AstralDiceMod implements ModInitializer {
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.event.RepulsionTeleportGuard.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.event.TemporaryCardEvents.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.InvestigationEventUtil.class);
+        // 魔渊幼体立牌(sykes)的被动与「渊蚀印记」降层:AbyssMarkManager 带 @SubscribeEvent
+        // (onMarkExpired / onServerTick)、SykesSignItem 带 @SubscribeEvent(onAttackHostile / onWardenDamage)
+        // ⇒ 两者都必须显式登记;漏登记 = 印记不降层、被动加伤/施印与监守者减伤全部静默失效。
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.AbyssMarkManager.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.MarkManager.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.RenShieldManager.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.card.FateGuidanceCardItem.class);
@@ -219,6 +223,9 @@ public class AstralDiceMod implements ModInitializer {
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.PandamanSignItem.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.PaparaSignItem.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.SherrySignItem.class);
+        // 魔渊幼体(sykes):主动走 handleUse(无需登记),但被动 onAttackHostile(LivingDamageEvent) 与
+        // onWardenDamage(LivingHurtEvent) 是 @SubscribeEvent ⇒ 必须在此登记。
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.SykesSignItem.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.TeruSignItem.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.ZhaoSignItem.class);
         // 卡牌商店货架周期(B1-CARDSHOP):forge 靠 @Mod.EventBusSubscriber 自动订阅,Fabric 必须显式登记;

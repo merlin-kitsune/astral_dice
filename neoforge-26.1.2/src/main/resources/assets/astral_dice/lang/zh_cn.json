@@ -253,7 +253,7 @@
   "effect.astral_dice.unwavering.description": "防御力 §e+4§7，最多叠 §e3§7 层；并获得 抗性提升 II，持续 §93:00§r",
   "effect.astral_dice.weak_mark": "虚弱印记",
   "enchantment.astral_dice.curse_marker": "青之诅咒",
-  "entity.astral_dice.sykestentacle": "触手",
+  "entity.astral_dice.sykestentacle": "魔渊触须",
   "gui.astral_dice.attack_cost": "攻击 Cost: %s / %s",
   "gui.astral_dice.card_inventory": "卡牌栏",
   "gui.astral_dice.card_inventory.locked": "骰神赐福期间无法调整卡牌",
@@ -1165,5 +1165,18 @@
   "entity.astral_dice.villager.chip_trader": "筹码商人",
   "item.astral_dice.card_shop": "卡牌商店",
   "item.astral_dice.chip_shop": "筹码商店",
-  "item.astral_dice.event_drawer": "抽奖盒"
+  "item.astral_dice.event_drawer": "抽奖盒",
+  "item.astral_dice.sykes_sign": "魔渊幼体立牌",
+  "effect.astral_dice.abyss_mark": "渊蚀印记",
+  "effect.astral_dice.abyss_mark.description": "每层使目标受到来自「魔渊幼体」与「魔渊触须」的伤害 §e+1§7，最多 §e20§7 层；持续 §92:00§7，每次到期减少 §e1§7 层",
+  "msg.astral_dice.abyss_no_ground": "这里放不下魔渊触须（需要可依附的实心面）",
+  "msg.astral_dice.abyss_summoned": "魔域转化：已放置魔渊触须",
+  "tooltip.astral_dice.sign.sykes.active": "魔域转化",
+  "tooltip.astral_dice.sign.sykes.passive": "触须深渊",
+  "tooltip.astral_dice.sign.sykes_active": "在准星指向的位置放置一根「魔渊触须」，以其为中心将周围 §e5×5§7 格的地表化为「魔渊区域」\n进入「魔渊区域」的敌对目标会被「魔渊触须」主动攻击",
+  "tooltip.astral_dice.sign.sykes_passive": "攻击敌方目标时使其获得 §e1§7 层「渊蚀印记」，每 §910§7 秒最多触发一次\n每层「渊蚀印记」使目标受到来自「魔渊幼体」与「魔渊触须」的伤害 §e+1§7，最多 §e20§7 层\n佩戴时无法触发幽匿感测体与尖啸体，也不会被尖啸体施加黑暗\n受到来自监守者的伤害 §e-50%%§7",
+  "tooltip.astral_dice.sign.sykes_note": "「魔渊触须」每 §96§7 秒攻击一次「魔渊区域」内的全部敌对目标，造成 §e4§7 点技能伤害并施加 §9缓慢 II (0:30)§d\n命中时附带玩家近战击退；「魔渊触须」占据一格且不可破坏，无法被移动或传送，也不受伤害、治疗与状态效果\n每根「魔渊触须」吸引 §e4§7 格内的敌对生物，敌对目标每次攻击它后受到 §e1§7 点技能伤害\n每根「魔渊触须」存活 §910§7 分钟，到期缩入地下消失",
+  "astral_dice.guide.entry.sykes_sign.1": "魔渊幼体立牌。主动「魔域转化」：在准星指向的位置放置一根魔渊触须，以其为中心将周围 5×5 格的地表化为魔渊区域，进入区域的敌对目标会被触须主动攻击。被动「触须深渊」：攻击敌方目标时使其获得 1 层渊蚀印记（每 10 秒最多一次），每层使目标受到魔渊幼体与魔渊触须的伤害 +1，最多 20 层。",
+  "astral_dice.guide.entry.sykes_sign.2": "魔渊触须每 6 秒攻击一次区域内的全部敌对目标，造成 4 点技能伤害并施加缓慢 II (0:30)；攻击命中时附带玩家近战击退。触须占格且不可破坏：不能在该格放置其它方块与实体，也不会被移动或传送，不受任何伤害、治疗与状态效果。它会吸引 4 格内的敌对生物，敌对目标每次攻击触须后受到 1 点技能伤害。每根触须存活 10 分钟，到期缩入地下消失。",
+  "astral_dice.guide.entry.sykes_sign.3": "渊蚀印记持续 2:00，每次到期减少 1 层。佩戴魔渊幼体立牌时无法触发幽匿感测体与尖啸体，也不会被尖啸体施加黑暗；受到来自监守者的伤害减半。"
 }

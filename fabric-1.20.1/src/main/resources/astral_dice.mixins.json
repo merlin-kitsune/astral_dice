@@ -36,6 +36,8 @@
     "trade.MerchantResultSlotMixin",
     "trade.ServerPlayerMixin",
     "HealOrHarmMobEffectMixin",
+    "sculk.SculkSensorVibrationUserMixin",
+    "sculk.SculkShriekerVibrationUserMixin",
     "RegenerationMobEffectMixin"
   ],
   "client": [
@@ -52,6 +54,7 @@
     "bridge.ClientHandBridgeMixin",
     "bridge.ClientEntityRenderBridgeMixin",
     "bridge.ClientTooltipBridgeMixin",
+    "bridge.ContainerTooltipBridgeMixin",
     "bridge.TooltipRenderUtilColorMixin"
   ],
   "injectors": {

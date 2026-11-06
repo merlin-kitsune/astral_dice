@@ -1168,6 +1168,13 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(AstralRarities.bizarre())));
 
+
+    // 魔渊幼体立牌(命名:sykes,传说):主动「深渊召唤」在地面招出魔渊触须(5x5 区域内每 6 秒抽打一次);
+    // 被动「渊蚀印记」命中叠层加伤,佩戴者不被幽匿感测/尖啸察觉、受监守者伤害减半。
+    public static final RegistryObject<Item> SYKES_SIGN = registerItem("sykes_sign",
+            () -> new com.merlinkitsune.astral_dice.item.sign.SykesSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.legendary())));
     public static <T extends Item> RegistryObject<T> registerItem(String name, Supplier<T> itemSupplier) {
         return ITEMS.register(name, itemSupplier);
     }

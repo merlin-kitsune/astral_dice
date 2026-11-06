@@ -1766,6 +1766,19 @@ public class ModTooltipHandler {
             addSignLines(tooltip, "tooltip.astral_dice.sign.deepseek_passive");
             addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player jp ? jp : null);
         }
+        // 魔渊幼体立牌(sykes,传奇):主动「魔域转化」放魔渊触须 / 被动「触须深渊」渊蚀印记
+        if (stack.is(ModItems.SYKES_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "tooltip.astral_dice.sign.sykes.active");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.sykes_active");
+            addSignPassiveTitle(tooltip, "tooltip.astral_dice.sign.sykes.passive");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.sykes_passive");
+            // 备注区：魔渊触须效果说明（紫色、无列表符号，由 addSignNoteLines 渲染）
+            tooltip.add(Component.empty());
+            addSignNoteLines(tooltip, "tooltip.astral_dice.sign.sykes_note");
+            addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player jp ? jp : null);
+        }
         // 符卡-福 / 符卡-祸(风水师立牌专属效果牌);键名 = 规格 §2.6 冻结值
         // (tooltip.astral_dice.fu_card / tooltip.astral_dice.huo_card)
         if (stack.is(ModItems.FU_CARD.get())) {

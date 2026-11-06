@@ -79,6 +79,27 @@ public final class ModBlocks {
                     .isSuffocating((state, level, pos) -> false)
                     .isViewBlocking((state, level, pos) -> false)));
 
+    /**
+     * 「魔渊区域」的隐形占格方块（魔渊触须站立的那一格；**没有 BlockItem**，不进创造栏）。
+     *
+     * <p>生命周期完全由 {@code entity/SykeTentacleEntity} 管理（召唤时放置、消失 / 移除时清掉），
+     * 属性照 {@link #BARRICADE_COLLISION} 的既有范式：不可破坏、不掉落、不参与光照/窒息/红石。
+     *
+     * <p>平台差异：fabric 的 {@code Block} 没有 Forge/NeoForge 的
+     * {@code getBlockPathType(BlockState, BlockGetter, BlockPos, Mob)} 重载 ⇒ 本线只在
+     * {@link AbyssTentacleBlock#isPathfindable} 表达「可走」，寻路语义不变。
+     */
+    public static final RegistryObject<Block> ABYSS_TENTACLE_COLLISION = BLOCKS.register("abyss_tentacle_collision",
+            () -> new AbyssTentacleBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.COLOR_PURPLE)
+                    .strength(-1.0F, 3600000.0F)
+                    .sound(SoundType.SCULK)
+                    .noOcclusion()
+                    .noLootTable()
+                    .isRedstoneConductor((state, level, pos) -> false)
+                    .isSuffocating((state, level, pos) -> false)
+                    .isViewBlocking((state, level, pos) -> false)));
+
     private ModBlocks() {
     }
 

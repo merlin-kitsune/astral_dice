@@ -49,6 +49,24 @@ public class ModBlocks {
                     .isSuffocating((state, level, pos) -> false)
                     .isViewBlocking((state, level, pos) -> false));
 
+    /**
+     * 魔渊触须占格方块（隐形、不可破坏）。
+     *
+     * <p>和路障同一套范式：魔渊触须实体存活期间占住自己那一格
+     * （不能再放其它方块 / 实体），实体消失时对应移除。
+     */
+    public static final DeferredBlock<Block> ABYSS_TENTACLE_COLLISION = BLOCKS.<Block>registerBlock("abyss_tentacle_collision",
+            AbyssTentacleBlock::new,
+            props -> props
+                    .mapColor(MapColor.COLOR_PURPLE)
+                    .strength(-1.0F, 3600000.0F)   // 不可破坏：只能由魔渊触须自己收回
+                    .sound(SoundType.SCULK)
+                    .noOcclusion()
+                    .noLootTable()
+                    .isRedstoneConductor((state, level, pos) -> false)
+                    .isSuffocating((state, level, pos) -> false)
+                    .isViewBlocking((state, level, pos) -> false));
+
     /** 抽奖盒(2026-10-10 事件体系重写):右键从公共事件池抽一条事件(独立注册,触发器 BLOCK_USE)。 */
     public static final DeferredBlock<Block> EVENT_DRAWER = BLOCKS.<Block>registerBlock("event_drawer",
             EventDrawBlock::new,
