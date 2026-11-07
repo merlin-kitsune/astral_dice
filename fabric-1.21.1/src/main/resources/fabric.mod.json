@@ -47,7 +47,7 @@
   "recommends": {
     "trinkets": ">=${trinkets_version}",
     "patchouli": "*",
-    "jei": ">=19.70.0"
+    "jei": ">=19.56.0"
   },
   "breaks": {
     "accessories": "*",
