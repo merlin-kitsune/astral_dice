@@ -487,6 +487,14 @@ public class DiceCombatEvents {
                         player, target, event.getAmount())
                 : null;
 
+        // 法伤链不参与骰战结算(与 neo 365-371 对等;2026-11-07 复核补口):
+        // 法伤加成已折叠进**本次**伤害事件(DamageEffectCardHandler),而骰战 settle 是覆盖式写值
+        // (自算终值 setAmount、不读事件现值)⇒ 法伤一旦走进 settle,折叠加成会被整段覆盖。
+        // 本仓自产法伤源 getDirectEntity() 恒 null(必然在上面早退),但**第三方法术源**的直接实体可能就是
+        // 玩家本人;此处按伤害类型白名单显式排除,不再依赖"direct==null"这一巧合。
+        // 只拦骰战结算:此前的赐福倒计时启动 / 隐匿解除 / 手电筒爆闪 / 电磁炮保持原有触发面(技能命中算攻击)。
+        if (SpellDamageRegistry.isSpellDamage(source, directEntity)) return;
+
         // 骰神赐福仅能由近战武器攻击触发与生效:直接伤害来源必须为玩家(已排除弓/弩/三叉戟投掷等远程),
         // 主手必须持有近战武器(排除空手/盾牌/非近战类武器)
         if (!isMeleeWeaponAttack(player)) return;
@@ -1752,17 +1760,18 @@ public class DiceCombatEvents {
      *
      * <h2>本线差异（与 forge-1.20.1 不同，理由=同源而非照抄）</h2>
      * <ul>
-     *   <li><b>法伤子句缺失</b>：forge 还有一条 {@code SpellDamageRegistry.isSpellDamage(source, direct)}
-     *       排除，因为 forge 的入口先有一道法伤闸门把法术挡在骰战之外。本线入口<b>没有</b>那道闸门
-     *       ⇒ 只要主手持近战武器，法术伤害也会走骰战结算、并在终值里乘过虚弱印记 ⇒ 此处必须跳过；
-     *       照抄 forge 那条会造成**双重应用**。</li>
+     *   <li><b>法伤子句已恢复（2026-11-07）</b>：forge 有一条「{@code SpellDamageRegistry} 判法伤」的
+     *       排除子句，前提是其入口先有一道法伤闸门把法术挡在骰战之外。本线入口原先<b>没有</b>那道闸门，
+     *       故此处曾刻意缺少该子句；2026-11-07 已在 {@link #onLivingDamagePre} 补齐对等的法伤闸门
+     *       （法伤在 settle 之前直接 return，不会折叠进终值）⇒ 本方法恢复 forge 同形的法伤排除：
+     *       法术伤害在此返回 false，由本事件照常提供虚弱印记倍率，不存在双重应用。</li>
      *   <li><b>生物→玩家近战返回 false</b>（forge 返回 {@code direct instanceof Mob && target instanceof Player}）：
      *       forge 的生物近战路径已把虚弱印记并入终值（{@code resolveMobMeleeAttack} 内），本线的
      *       {@code resolveMobMeleeAttack} **没有**这一步 ⇒ 生物打玩家的 +10% 仍由本事件提供；
      *       此处若返回 {@code true}，会让「带虚弱印记的玩家挨生物近战」整段丢掉 +10%（回归）。</li>
      * </ul>
-     * <p>⚠️ 这两条都是「本线终值折叠点比 forge 少」的症状登记：等本线补齐「入口法伤闸门」与
-     * 「生物近战路径的虚弱印记折叠」之后，本方法应改回与 forge 逐条同形。
+     * <p>⚠️ 剩下的这一条是「本线终值折叠点比 forge 少」的症状登记：等本线补齐「生物近战路径的
+     * 虚弱印记折叠」之后，本方法应改回与 forge 逐条同形。
      */
     private static boolean isDiceBattleSettledDamage(DamageSource source, LivingEntity target) {
         if (source == null || target == null) return false;
@@ -1770,6 +1779,8 @@ public class DiceCombatEvents {
         // 本模组内部 AOE(顺劈/溅射/法伤波及)与反击链:入口在分流前直接 return,不进骰战 ⇒ 未折叠
         if (isInternalAoe() || isInCounterChain()) return false;
         Entity direct = source.getDirectEntity();
+        // 法伤不进骰战入口(见 onLivingDamagePre 的法伤闸门)⇒ settle 未折叠法伤,本事件必须照常提供倍率
+        if (SpellDamageRegistry.isSpellDamage(source, direct)) return false;
         if (direct instanceof Player attacker) {
             if (!isMeleeWeaponAttack(attacker)) return false;
             if (attacker == target) return false;
