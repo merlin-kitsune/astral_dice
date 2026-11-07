@@ -2,6 +2,7 @@ package com.merlinkitsune.astral_dice.entity;
 
 import com.merlinkitsune.astral_dice.item.ChargeManager;
 import com.merlinkitsune.astral_dice.item.RepulsionItem;
+import com.merlinkitsune.astral_dice.item.sign.LinglingSignManager;
 import org.jetbrains.annotations.Nullable;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -1146,10 +1147,10 @@ public class RepulsionEntity extends LivingEntity {
         return false;
     }
 
-    // ── 待接线垫片（TODO-B0-SIGN；TODO-B0-ITEMS 已于 B3-EFFECTCARDS 接线）─────────
+    // ── 跨线符号收敛出口（TODO-B0-SIGN / TODO-B0-ITEMS 均已完成接线）─────────
     // forge 线的本类直接调用 item/RepulsionItem 与 item/sign/LinglingSignManager 的静态 API。
-    // fabric 线的 item 批与立牌（Lingling）批尚未落线，因此把每个外部符号收敛成下面的单一出口；
-    // 落线后只改这些方法体（改为直接转发），调用点逐字不动。逐条对应关系：
+    // fabric 线的 item 批与立牌（Lingling）批均已落线，因此把每个外部符号收敛成下面的单一出口，
+    // 现已**全部直接转发**；调用点逐字不动。逐条对应关系：
     //   RepulsionItem.MAX_DURABILITY                            → REPULSION_MAX_DURABILITY
     //   RepulsionItem.getDurability(ItemStack)                  → itemDurability(ItemStack)
     //   RepulsionItem.createRecovered(float,long,int,UUID,String) → createRecoveredStack(同签名)
@@ -1169,14 +1170,13 @@ public class RepulsionEntity extends LivingEntity {
     private static final String MSG_RECOVERED = "msg.astral_dice.repulsion_recovered";
 
     /**
-     * 立牌依附安全网：forge 线调用 {@code LinglingSignManager.hasSign(owner)}（放置者卸下「怪力乱神」
-     * 立牌 ⇒ 已放置的力场立即销毁）。fabric 线没有 Lingling 立牌系统，该安全网在 fabric 上
-     * **恒不触发**，等价于返回 {@code true}（判定为「立牌仍在」）⇒ 力场不会被立牌状态销毁。
-     *
-     * <p>TODO-B0-SIGN：立牌系统落线后改为 {@code return LinglingSignManager.hasSign(player);}
+     * 立牌依附安全网：与 neo 线同语义 —— 直接转发 {@code LinglingSignManager.hasSign(owner)}
+     * （放置者卸下「怪力乱神」立牌 ⇒ 已放置的力场立即销毁）。fabric 线已有 Lingling 立牌系统，
+     * {@code LinglingSignManager.hasSign(Player)} 为 {@code public static boolean}，只看 Curios
+     * {@code stand} 槽、不含骰子闸门（判据入口 {@code SignEquipCheck.hasSign(Player, Item)}）。
      */
     private static boolean hasOwnerSign(Player player) {
-        return true;
+        return LinglingSignManager.hasSign(player);
     }
 
     /**
