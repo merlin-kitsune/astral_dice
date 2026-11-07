@@ -27,7 +27,7 @@ import java.util.concurrent.ThreadLocalRandom;
  * <h2>它替代了什么(Forge 侧的两条通道)</h2>
  * <ol>
  *   <li><b>Global Loot Modifier</b>({@code astral_dice:add_table} 序列化器 +
- *       {@code data/astral_dice/loot_modifiers/*.json} 13 份 +
+ *       {@code data/astral_dice/loot_modifiers/*.json} 14 份(13 份星盘 + {@code golden_star_plate_ominous_vault}) +
  *       {@code data/forge/loot_modifiers/global_loot_modifiers.json}) —— Fabric 的 FML 没有
  *       GLM 概念,那套注册表({@code forge:global_loot_modifier_serializers})根本不存在。</li>
  *   <li><b>{@code LootTableLoadEvent}</b>({@code event/LootInjectionHandler} 的箱表四个池)
@@ -53,9 +53,20 @@ public final class FabricLootInjector {
 
     private static final ResourceLocation CHEST_STAR_PLATE = tableId("chests/star_plate");
     /**
+     * 黄金星盘子表的 id(试炼厅不祥宝库专用)。
+     *
+     * <p>它和 {@link #CHEST_STAR_PLATE} 一样**自带概率与数量**:子表
+     * {@code data/astral_dice/loot_table/chests/golden_star_plate.json} 只有一个池
+     * ({@code rolls: 1}),条目是「1 个黄金星盘 weight 1 / empty weight 19」⇒ 5%。
+     * 所以 Java 侧只做「挂整张子表」这一件事,**不在这里重复施加随机概率**。
+     */
+    private static final ResourceLocation CHEST_GOLDEN_STAR_PLATE = tableId("chests/golden_star_plate");
+    /**
      * 原版箱表里「挂 {@code astral_dice:chests/star_plate} 子表(5% 星盘)」的那批表。
-     * 逐字取自 Forge 侧 GLM {@code star_plate_all_chests.json} 的 43 条
-     * {@code forge:loot_table_id} 条件 —— **不做前缀近似**,以保证与 Forge 线的概率口径逐表一致。
+     * 逐字取自 NeoForge 1.21.1 侧 GLM {@code star_plate_all_chests.json} 的 56 条
+     * {@code neoforge:loot_table_id} 条件(1.20.1 线只有 43 条;1.21.1 起补入
+     * {@code chests/trial_chambers/*} 13 张试炼厅箱表)—— **不做前缀近似**,
+     * 以保证与 NeoForge 线的概率口径逐表一致。
      */
     private static final Set<String> STAR_PLATE_CHEST_TABLES = Set.of(
             "chests/abandoned_mineshaft",
@@ -82,6 +93,19 @@ public final class FabricLootInjector {
             "chests/stronghold_corridor",
             "chests/stronghold_crossing",
             "chests/stronghold_library",
+            "chests/trial_chambers/corridor",
+            "chests/trial_chambers/entrance",
+            "chests/trial_chambers/intersection",
+            "chests/trial_chambers/intersection_barrel",
+            "chests/trial_chambers/reward",
+            "chests/trial_chambers/reward_common",
+            "chests/trial_chambers/reward_ominous",
+            "chests/trial_chambers/reward_ominous_common",
+            "chests/trial_chambers/reward_ominous_rare",
+            "chests/trial_chambers/reward_ominous_unique",
+            "chests/trial_chambers/reward_rare",
+            "chests/trial_chambers/reward_unique",
+            "chests/trial_chambers/supply",
             "chests/underwater_ruin_big",
             "chests/underwater_ruin_small",
             "chests/village/village_armorer",
@@ -102,6 +126,13 @@ public final class FabricLootInjector {
             "chests/village/village_weaponsmith",
             "chests/woodland_mansion"
     );
+
+    /**
+     * 唯一一张挂「黄金星盘子表」的原版表:试炼厅不祥宝库。
+     * 逐字取自 NeoForge 侧 GLM {@code golden_star_plate_ominous_vault.json}
+     * ({@code minecraft:chests/trial_chambers/reward_ominous} ⇒ {@code astral_dice:chests/golden_star_plate})。
+     */
+    private static final String TRIAL_CHAMBERS_OMINOUS_VAULT = "chests/trial_chambers/reward_ominous";
 
     /**
      * 原版实体表 ⇒ 挂哪张星盘子表(键 = {@code minecraft:entities/<name>} 的 name)。
@@ -206,6 +237,15 @@ public final class FabricLootInjector {
                     .setRolls(ConstantValue.exactly(1))
                     .when(LootItemRandomChanceCondition.randomChance(isEndCity ? 0.05F : 0.02F))
                     .add(LootItem.lootTableItem(ModItems.GLASS_DICE.get())));
+
+            // ── ④ GLM golden_star_plate_ominous_vault 的等价物:不祥宝库挂黄金星盘子表 ──
+            //    子表自带 5%(1:19 权重),这里**不加 randomChance**,只挂整张表,避免二次抽样;
+            //    ③ 的四个池里没有 golden_star_plate,本块是全类唯一挂它的地方。
+            if (path.equals(TRIAL_CHAMBERS_OMINOUS_VAULT)) {
+                tableBuilder.withPool(LootPool.lootPool()
+                        .setRolls(ConstantValue.exactly(1))
+                        .add(NestedLootTable.lootTableReference(tableKey(CHEST_GOLDEN_STAR_PLATE))));
+            }
         });
     }
 
@@ -214,7 +254,7 @@ public final class FabricLootInjector {
         return STAR_PLATE_ENTITY_TABLES.size();
     }
 
-    /** 供跨线对照用:挂 5% 星盘子表的箱表条目数(测试台可断言 = 43)。 */
+    /** 供跨线对照用:挂 5% 星盘子表的箱表条目数(测试台可断言 = 56)。 */
     public static int chestTableCount() {
         return STAR_PLATE_CHEST_TABLES.size();
     }
