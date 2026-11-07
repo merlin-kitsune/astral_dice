@@ -1,6 +1,8 @@
 package com.merlinkitsune.astral_dice.client;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
+import com.merlinkitsune.astral_dice.effect.ModEffects;
+import com.merlinkitsune.astral_dice.platform.util.Effects;
 import com.merlinkitsune.astral_dice.network.ModNetwork;
 import com.merlinkitsune.starengine.target.SelectorTargets;
 import com.merlinkitsune.starengine.client.ActionBarManager;
@@ -31,7 +33,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
-import com.merlinkitsune.astral_dice.combat.PartyRelations;
+import com.merlinkitsune.starengine.combat.PartyRelations;
 
 /**
  * 目标选择器客户端状态机（第一人称 UX，**Create 强力胶式按键语义**）。
@@ -190,6 +192,10 @@ public final class TargetSelectionClient {
     public static String targetTagKey(LivingEntity entity) {
         Minecraft mc = Minecraft.getInstance();
         Player selector = mc.player;
+        // 用户裁决(2026-10-10 Q5):已带「隐匿调查」标记的目标在选择器里给出专属提示(不加 ActionBar)
+        if (entity.hasEffect(Effects.holder(ModEffects.UNDERCOVER_INVESTIGATION.get()))) {
+            return "undercover";
+        }
         if (entity instanceof Player) {
             return selector != null && isFriendly(selector, entity) ? "teammate" : "player";
         }
