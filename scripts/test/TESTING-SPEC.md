@@ -198,6 +198,7 @@ mt_channel.plan(): [ send_command(client) ] + [ autojs_command(server console), 
 - **AutoJS 端点独占**：`25585` 同一时刻只允许一条线占用；端口被占时**不得 launch**，否则注入打进别人那台游戏。
 - **命令选择器**：`AutoJS.command()` 走 `createCommandSourceStack()`，`@s` 解析成 console；一律用 `@a`。
 - **fabric 通道**：走 RCON，缺省 `127.0.0.1:25575` / `astralft`（`scripts/test/win/lib/fabric.sh:34-35`），但优先读 `server.properties` 的 `rcon.port` / `rcon.password`。
+- **MSYS2 参数转换**：`taskkill //PID` 里的 `//PID` 会被 MSYS2 当成 UNC 前缀改写 ⇒ `ERROR: Invalid argument/option - '//PID'`、收停静默失败。`stop.sh` / `lib/common.sh` 已统一改用 `MSYS2_ARG_CONV_EXCL='*' taskkill /PID <pid> /T /F`；同类 `//X` 写法一律不要再用。
 - **收停只有一条路**：`bash scripts/test/win/mt.sh --version <线> --phase stop`。`stop.sh --force` 在 bash 侧是 no-op；`trap` 只退编排层，不动游戏进程。
 
 ## 11. 覆盖缺口（如实标注，别当已支持）

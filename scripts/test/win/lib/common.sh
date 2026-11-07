@@ -326,13 +326,14 @@ mt_pid_alive() {
     done | grep -q alive
 }
 
-# 强杀进程树。git bash 会把 /PID 当路径，故用 //PID（MSYS 还原成 /PID）。
+# 强杀进程树。git bash 会把 /PID 当路径去转换（本机实测 //PID 会被改写成 UNC，
+# taskkill 直接报 Invalid argument/option）⇒ 用 MSYS2_ARG_CONV_EXCL='*' 关掉转换。
 # rc 不可靠（无此进程时 taskkill 仍可能 rc=0），调用方必须用 CIM 复核。
 mt_taskkill_tree() {
     local pid="${1:-}"
     case "$pid" in ''|*[!0-9]*) return 2 ;; esac
     if mt_have taskkill; then
-        taskkill //PID "$pid" //T //F >/dev/null 2>&1 || true
+        MSYS2_ARG_CONV_EXCL='*' taskkill /PID "$pid" /T /F >/dev/null 2>&1 || true
     else
         mt_cmdwin "taskkill /PID $pid /T /F" >/dev/null 2>&1 || true
     fi

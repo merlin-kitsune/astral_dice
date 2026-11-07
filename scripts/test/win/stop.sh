@@ -6,8 +6,9 @@
 #   * 判线：pwsh -NoProfile + Get-CimInstance Win32_Process 取 java.exe 的
 #     ProcessId/CommandLine，按 Mt.Paths.psm1:141-156 的同款标记串匹配
 #     （":<子项目>:"、"run\<version>"、"run/<version>"，不用裸子项目名）。
-#   * 收停：taskkill //PID <pid> //T //F（替代 kill -- -pgid；Windows 无进程组，
-#     /T 才是整棵树的等价物）。
+#   * 收停：MSYS2_ARG_CONV_EXCL='*' taskkill /PID <pid> /T /F（替代 kill -- -pgid；
+#     Windows 无进程组，/T 才是整棵树的等价物。裸 //PID 会被 MSYS2 改写成 UNC，
+#     本机实测 taskkill 报 Invalid argument/option）。
 #   * 清存档：--purge-saves，白名单对齐 mt_cleanup.ps1:228-265
 #     （client_world=run/<v>/saves/testworld、server_world=run/<v>/testworld、
 #      以及 run/<v>/saves/ 下各世界目录），绝不碰 mods/config/logs。
@@ -122,7 +123,7 @@ if [ -z "$ROWS" ]; then
     mt_info "cim" "无 java.exe 进程（CIM 判线结果为空）"
 fi
 
-# ── 收停：逐线收集 → taskkill //T //F ──────────────────────────────────
+# ── 收停：逐线收集 → taskkill /T /F（关闭 MSYS2 参数转换）──────────────
 killed_any=0
 pids_killed=""
 
@@ -131,11 +132,11 @@ kill_pid() {
     if [ "$DRY" = 1 ]; then
         mt_winstop "would-kill — PID $pid（$ver）"
         mt_detail "cmd          = $(printf '%s' "$cmd" | cut -c1-200)"
-        mt_detail "would-call   = taskkill //PID $pid //T //F"
+        mt_detail "would-call   = taskkill /PID $pid /T /F（MSYS2_ARG_CONV_EXCL=*）"
         return 0
     fi
     local tk_out
-    if tk_out="$(taskkill //PID "$pid" //T //F 2>&1)"; then
+    if tk_out="$(MSYS2_ARG_CONV_EXCL='*' taskkill /PID "$pid" /T /F 2>&1)"; then
         mt_winstop "killed — PID $pid（$ver）"
     else
         # taskkill 的退出码在本机不可靠（找不到进程也常返回 0，输出为 GBK），
