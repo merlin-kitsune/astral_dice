@@ -47,6 +47,17 @@ import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
  * <p>⚠️ 本类只在客户端加载（{@code value = Dist.CLIENT}）且位于 {@code client/} 包内；双端加载类不得引用它。
  */
 public final class RarityTooltipFrame {
+
+    /**
+     * 彩虹档预烘焙相位数量（2026-11-07 由 10 提到 30）。
+     *
+     * <p>10 相位 = 每 300ms 跳一档，肉眼能看出「一档一档跳」；30 相位 = 100ms 一档，
+     * 60fps 下相邻帧只差 1~2 档，观感接近连续。贴图 {@code rainbow00..rainbow29}，
+     * 由 {@code temp/gen_tooltip_sprites.py} 按库公式 {@code hsv(h,0.85,1.0)} 生成
+     * （顶色 = {@code rainbowBorderStart}、底色 = {@code rainbowBorderEnd}）。
+     */
+    private static final int RAINBOW_PHASES = 30;
+
     private RarityTooltipFrame() {
     }
 
@@ -69,5 +80,32 @@ public final class RarityTooltipFrame {
             event.setBorderStart(color);
             event.setBorderEnd(color);
         }
+    }
+
+    /** 本档位的贴图样式基名（{@code astral_dice:tooltip/<基名>_frame|_background}）；{@code null} = 交给原版绘制。
+     *
+     * <p>与 {@link #onTooltipColor} 同源取档：{@code null}（原版 / 其它模组物品）与稀有档返回 {@code null}，
+     * 其余档返回 {@code epic} / {@code legendary} / {@code pinnacle} / {@code rainbow00..09}。
+     * 奇特档按 {@link Rarity#RAINBOW_CYCLE_MILLIS} 切成 10 个相位（每相位一张贴图，逐帧换图 ⇒ 流动渐变），
+     * 与 26.1.2 线的 {@code RarityTooltipFrame#styleOf} 取同一算法，保证跨线观感一致。
+     */
+    public static String styleOf(ItemStack stack, long millis) {
+        if (stack == null || stack.isEmpty()) {
+            return null;
+        }
+        Rarity tier = AstralRarities.tierOf(stack.getRarity());
+        if (tier == null || tier == Rarity.RARE) {
+            return null;
+        }
+        if (tier.isRainbow()) {
+            long phase = Math.floorMod(millis, Rarity.RAINBOW_CYCLE_MILLIS) * RAINBOW_PHASES / Rarity.RAINBOW_CYCLE_MILLIS;
+            return String.format("rainbow%02d", Math.min(phase, RAINBOW_PHASES - 1L));
+        }
+        return switch (tier) {
+            case EPIC -> "epic";
+            case LEGENDARY -> "legendary";
+            case PINNACLE -> "pinnacle";
+            default -> null;
+        };
     }
 }

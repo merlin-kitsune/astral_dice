@@ -29,7 +29,7 @@ import net.neoforged.neoforge.client.event.RenderTooltipEvent;
  * 所以本模组自带同形状的贴图即可,**圆角、九宫格拉伸、边距全部沿用原版**,不自己画填充矩形
  * (2026-11-07 之前的自绘方案画出来是与 sprite 圆角不吻合的直角方框,已废弃)。
  * <p>贴图位置: {@code assets/astral_dice/textures/gui/sprites/tooltip/} 下的
- * {@code epic|legendary|pinnacle|rainbow00..09}_frame.png} 与同名 {@code _background.png}。
+ * {@code epic|legendary|pinnacle|rainbow00..29}_frame.png} 与同名 {@code _background.png}。
  * 生成口径:读原版 {@code frame.png},**只把非透明像素的 RGB 换成档位色、alpha 提到 255**
  * (对齐 1.20.1 / 1.21.1 的不透明框观感),形状与圆角 1:1 保留;背景直接复制原版
  * {@code background.png}。GUI sprite 图集({@code atlases/gui.json} 的 directory 源)按命名空间扫目录,
@@ -49,11 +49,14 @@ import net.neoforged.neoforge.client.event.RenderTooltipEvent;
 @EventBusSubscriber(modid = AstralDiceMod.MODID, value = Dist.CLIENT)
 public final class RarityTooltipFrame {
 
-    /** 彩虹档的预烘焙相位贴图(每张相隔 1/10 个 {@link Rarity#RAINBOW_CYCLE_MILLIS} 周期)。 */
-    private static final String[] RAINBOW_STYLES = {
-            "rainbow00", "rainbow01", "rainbow02", "rainbow03", "rainbow04",
-            "rainbow05", "rainbow06", "rainbow07", "rainbow08", "rainbow09"
-    };
+    /**
+     * 彩虹档的预烘焙相位数量(2026-11-07 由 10 提到 30)。
+     *
+     * <p>10 相位 = 每个相位 300ms,肉眼能看出「一档一档跳」;30 相位 = 100ms 一档,
+     * 在 60fps 下已接近连续(每帧只差 1~2 个相位)。贴图命名 {@code rainbow00..rainbow29},
+     * 由 {@code temp/gen_tooltip_sprites.py} 按库公式 {@code hsv(h,0.85,1.0)} 生成。
+     */
+    private static final int RAINBOW_PHASES = 30;
 
     private RarityTooltipFrame() {
     }
@@ -96,8 +99,8 @@ public final class RarityTooltipFrame {
         }
         if (tier.isRainbow()) {
             long frameMillis = Math.floorMod(millis, Rarity.RAINBOW_CYCLE_MILLIS);
-            long phase = frameMillis * RAINBOW_STYLES.length / Rarity.RAINBOW_CYCLE_MILLIS;
-            return RAINBOW_STYLES[(int) Math.min(phase, RAINBOW_STYLES.length - 1L)];
+            long phase = frameMillis * RAINBOW_PHASES / Rarity.RAINBOW_CYCLE_MILLIS;
+            return String.format("rainbow%02d", Math.min(phase, RAINBOW_PHASES - 1L));
         }
         return null;
     }

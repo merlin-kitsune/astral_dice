@@ -56,7 +56,8 @@
     "bridge.ClientEntityRenderBridgeMixin",
     "bridge.ClientTooltipBridgeMixin",
     "bridge.ContainerTooltipBridgeMixin",
-    "bridge.TooltipRenderUtilColorMixin"
+    "bridge.TooltipRenderUtilColorMixin",
+    "bridge.TooltipBackgroundSpriteMixin"
   ],
   "injectors": {
     "defaultRequire": 1
