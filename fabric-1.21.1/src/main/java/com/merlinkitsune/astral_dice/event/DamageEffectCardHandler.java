@@ -63,12 +63,29 @@ public class DamageEffectCardHandler {
      * 收敛到 float 精度。
      */
     private static float foldBonusBypassingArmor(LivingEntity target, DamageSource source, float base, double bonus) {
-        if (bonus <= 0.0) return base;
-        if (source.is(DamageTypeTags.BYPASSES_ARMOR)) return (float) (base + bonus);
+        return foldBonusBypassingArmor(target, source, base, bonus, 1.0);
+    }
+
+    /**
+     * 折叠加成,并把结果再乘一次受击侧倍率(2026-11-07 二次复核 M1 订正)。
+     *
+     * <p>目标值 = {@code (armor(base) + bonus) × multiplier}:加成等效绕过护甲,随后与本体一起
+     * 吃同一份倍率 —— 这正是 neo 的顺序({@code LivingDamageEvent.Pre} 在护甲/魔抗之后、吸收之前,
+     * 倍率乘的是折叠后的整份金额)。本线倍率在护甲之前生效,无法把乘法的「位置」搬过去,只能把
+     * **同样的数值结果**解出来:求 y 使 {@code armor(y) = 目标值},平台随后对 y 做护甲即成。
+     *
+     * <p>源自带 {@code bypasses_armor} 或目标无护甲时护甲是恒等映射,直接 {@code (base+bonus)×倍率}。
+     */
+    private static float foldBonusBypassingArmor(LivingEntity target, DamageSource source, float base,
+            double bonus, double multiplier) {
+        if (bonus <= 0.0) return (float) (base * multiplier);
+        if (source.is(DamageTypeTags.BYPASSES_ARMOR)) return (float) ((base + bonus) * multiplier);
         float armor = (float) target.getArmorValue();
-        if (armor <= 0.0F) return (float) (base + bonus);
+        if (armor <= 0.0F) return (float) ((base + bonus) * multiplier);
         float toughness = (float) target.getAttributeValue(Attributes.ARMOR_TOUGHNESS);
-        float want = CombatRules.getDamageAfterAbsorb(target, base, source, armor, toughness) + (float) bonus;
+        float want = (float) ((CombatRules.getDamageAfterAbsorb(target, base, source, armor, toughness)
+                + (float) bonus) * multiplier);
+        if (want <= 0.0F) return 0.0F;
         float lo = 0.0F;
         float hi = want * 8.0F;
         for (int i = 0; i < 40; i++) {
@@ -172,10 +189,12 @@ public class DamageEffectCardHandler {
      * 本体取的是已乘倍率的值、加成却漏乘 ⇒ 加成永远不吃受击侧倍率(雨中/水下 +40%、赐福减伤等),
      * 与 neo 不等价。
      *
-     * <p>对齐做法 = 退回倍率之前的空间再折叠:当前值 ÷ 本实例已登记的倍率 = 倍率前本金,
-     * 在倍率前空间里求 x 使 {@code armor(x) = armor(本金) + bonus}(加成等效绕过护甲),
-     * 再把 x × 同一倍率交给平台。平台随后在 {@code actuallyHurt} 内对 x×f 做护甲/魔抗/吸收,
-     * 与 neo「折叠(x) → 倍率(x×f) → 护甲」逐段同序。
+     * <p>⚠️ neo 的真实顺序不是「折叠 → 倍率 → 护甲」:它的折叠挂在
+     * {@code LivingIncomingDamageEvent}(护甲前),但倍率挂在 {@code LivingDamageEvent.Pre}
+     * (护甲、魔抗之后,吸收之前)⇒ 实际是「折叠 → 护甲 → 魔抗 → ×倍率」。本线倍率固定在护甲前,
+     * 位置搬不过去,只能把**数值结果**对齐:先退回倍率前本金(当前值 ÷ 倍率),按
+     * {@code want = (armor(本金) + bonus) × 倍率} 求目标,再反解 x 使 {@code armor(x) = want}。
+     * 平台对 x 做护甲/魔抗/吸收后的落地值与 neo 一致(魔抗对本体与加成各线性一次、可交换;吸收两线都在最后)。
      *
      * <p>倍率取自 {@link com.merlinkitsune.astral_dice.combat.DiceCombatModifiers#instanceVictimFactor}
      * ——只搬运本实例已登记的倍数,不重新求值(重算即双算,见该方法的 A3 口径);未登记时返回 1.0,
@@ -183,7 +202,7 @@ public class DamageEffectCardHandler {
      */
     private static float foldBonusPreFactor(LivingEntity target, DamageSource source,
             float postFactorAmount, double bonus) {
-        double factor = com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.instanceVictimFactor(target);
+        double factor = com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.instanceVictimFactor(target, source);
         if (!Double.isFinite(factor) || factor == 1.0) {
             return foldBonusBypassingArmor(target, source, postFactorAmount, bonus);
         }
@@ -192,7 +211,7 @@ public class DamageEffectCardHandler {
             return 0.0F;
         }
         float preFactor = (float) (postFactorAmount / factor);
-        return (float) (foldBonusBypassingArmor(target, source, preFactor, bonus) * factor);
+        return foldBonusBypassingArmor(target, source, preFactor, bonus, factor);
     }
 
     // ⚠️ 本类原有的 sendBonusDamageNumber 私有帮助方法已于 2026-09-26 移除:跳数字的唯一出口是

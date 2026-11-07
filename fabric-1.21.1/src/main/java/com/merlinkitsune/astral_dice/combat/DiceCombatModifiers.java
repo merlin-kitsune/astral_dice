@@ -148,6 +148,16 @@ public final class DiceCombatModifiers {
     private static LivingEntity instanceVictim;
     private static double instanceFactor = 1.0;
 
+    // 嵌套 hurt 的旁路快照(2026-11-07 二次复核):同一击内若有嵌套 hurt(骰战反击注入),单槽会被
+    // 改写成内层受害者 ⇒ 折叠点随后读回 1.0、加成漏乘倍率。这里按 (受害者身份, 伤害源身份) 存 4 条
+    // 弱引用快照;伤害源对象每次命中新建,故不会误配到旧实例,也无需显式清理。
+    // 只搬运已算好的倍率,不重新求值(A3「恰好一次」)。
+    private static final java.lang.ref.WeakReference<LivingEntity>[] RECENT_VICTIMS =
+            new java.lang.ref.WeakReference[4];
+    private static final DamageSource[] RECENT_SOURCES = new DamageSource[4];
+    private static final double[] RECENT_FACTORS = new double[4];
+    private static int recentCursor;
+
     /** 注册受击侧伤害修饰器(按注册顺序连乘) */
     public static void registerVictimDamageModifier(VictimDamageModifier modifier) {
         VICTIM_DAMAGE_MODIFIERS.add(modifier);
@@ -180,6 +190,11 @@ public final class DiceCombatModifiers {
         double factor = victimDamageFactor(victim, source);
         instanceVictim = victim;
         instanceFactor = factor;
+        int slot = recentCursor;
+        RECENT_VICTIMS[slot] = new java.lang.ref.WeakReference<>(victim);
+        RECENT_SOURCES[slot] = source;
+        RECENT_FACTORS[slot] = factor;
+        recentCursor = (slot + 1) & 3;
         return damage > 0 ? damage * factor : damage;
     }
 
@@ -191,6 +206,23 @@ public final class DiceCombatModifiers {
      */
     public static double instanceVictimFactor(LivingEntity victim) {
         return victim != null && victim == instanceVictim ? instanceFactor : 1.0;
+    }
+
+    /**
+     * 取本次伤害实例已登记的倍率,允许嵌套 hurt 改写单槽的情况:先认单槽,再按
+     * (受害者身份, 伤害源身份) 回落查 4 条弱引用快照。伤害源每次命中新建 ⇒ 旧实例不会被误配。
+     * 仍只搬运、不重新求值。
+     */
+    public static double instanceVictimFactor(LivingEntity victim, DamageSource source) {
+        if (victim == null) return 1.0;
+        if (victim == instanceVictim) return instanceFactor;
+        for (int i = 0; i < 4; i++) {
+            java.lang.ref.WeakReference<LivingEntity> ref = RECENT_VICTIMS[i];
+            if (ref != null && ref.get() == victim && RECENT_SOURCES[i] == source) {
+                return RECENT_FACTORS[i];
+            }
+        }
+        return 1.0;
     }
 
     /** 1 点防御力折算到玩家 ARMOR 属性的护甲值(= 1 ÷ 玩家护甲系数;2026-10-25 口径修正)。 */
