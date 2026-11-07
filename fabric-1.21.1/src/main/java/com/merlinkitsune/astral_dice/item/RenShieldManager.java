@@ -430,7 +430,10 @@ public final class RenShieldManager {
      *   <li>{@code event/DamageEffectCardHandler#onLivingDamagePre} 的法伤折叠段（折叠抬高后的重钳）。</li>
      * </ul>
      * 不得删掉任一处：删掉就会出现「剩余黄心 3 点、而本击 20 点」的漏红心。
-     * 优先级 {@link EventPriority#LOWEST}：本线同事件上只有 {@code EnderDiceHandler}（HIGH）。
+     * 优先级 {@link EventPriority#LOWEST}：本事件的消费者不止一个 —— {@code EnderDiceHandler}（HIGH，受击侧倍率）、
+     * {@code DiceCombatEvents#onLivingHurtRecordAbsorption}（HIGHEST，记录吸收前值）、
+     * {@code NewSignEvents} / {@code AirbagChipItem} / {@code SykesSignItem#onWardenDamage} / {@code ObsidianDiceHandler}（NORMAL，
+     * 监守者与爆炸减伤等）；选 LOWEST 是为了在金额基本定稿后钳制，避免被后续消费者抬高。
      */
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void onRenShieldAbsorb(LivingHurtEvent event) {

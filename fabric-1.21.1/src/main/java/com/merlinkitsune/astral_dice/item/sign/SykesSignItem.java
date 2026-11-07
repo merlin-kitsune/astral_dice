@@ -50,9 +50,11 @@ import net.minecraft.world.phys.BlockHitResult;
  *       Trinkets（{@code compat/curios/TrinketBridge} 适配成 Curios 形态），统一走本线既有门面
  *       {@link SignEquipCheck#hasSign(Player, net.minecraft.world.item.Item)}（纯 stand 槽判定，
  *       不带骰子总闸门，与 P0 的纯槽位语义一致）。</li>
- *   <li><b>加伤事件</b>：P0 的 {@code LivingDamageEvent.Pre}（护甲之后、吸收之前）在本线对应
- *       {@link LivingDamageEvent}（由 Puzzles 的 {@code LivingHurtCallback} 在 {@code actuallyHurt}
- *       HEAD 桥接，同一结算位置）；取 {@code getEntity() / getSource() / getAmount() / setAmount()}。</li>
+ *   <li><b>加伤事件</b>：P0 的 {@code LivingDamageEvent.Pre}（护甲、魔抗之后，吸收之前）在本线对应
+ *       {@link LivingDamageEvent}，但它由 Puzzles 的 {@code LivingHurtCallback} 在 {@code actuallyHurt}
+ *       <b>HEAD（偏移 0）</b>桥接，而护甲（偏移 12）/ 魔抗（19）/ 吸收（25-45）都在其之后 ⇒
+ *       <b>本线载荷是护甲之前</b>，与 P0 不是同一结算位置（B27 已登记残余）；取
+ *       {@code getEntity() / getSource() / getAmount() / setAmount()}。</li>
  *   <li><b>监守者减伤</b>：P0 的 {@code LivingIncomingDamageEvent}（{@code hurt} 内、{@code actuallyHurt}
  *       之前）在本线对应 {@link LivingHurtEvent}（由 {@code mixin/bridge/LivingHurtBridgeMixin} 用
  *       MixinExtras {@code @WrapOperation} 包裹 {@code actuallyHurt} 调用派发，同一位置）。</li>
