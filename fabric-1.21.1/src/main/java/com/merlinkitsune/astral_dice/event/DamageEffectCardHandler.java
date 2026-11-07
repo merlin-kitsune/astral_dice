@@ -35,9 +35,11 @@ import com.merlinkitsune.astral_dice.combat.DamageNumberAggregator;
  *
  * <p>与 neo 的时机差异仍是 B27 已登记残余:本线的折叠发生在 {@code hurt()} 的无敌帧差额
  * 分摊**之后**,也晚于盾牌格挡 / 冰冻 / 破甲头盔,故被无敌帧吞掉的那一击不产生加成数值。
- * 2026-11-07 二次复核又补了两处与时序相关的对齐:受击侧倍率已在更早的 {@code LivingHurtEvent@HIGH}
- * 乘进实参 ⇒ 折叠改为「倍率前空间求解、再乘回同一倍率」({@link #foldBonusPreFactor});鼠鼠护盾的钳制
- * 在更早的 {@code LivingHurtEvent@LOWEST} ⇒ 折叠后按剩余黄心重钳一次,不再漏红心。
+ * 2026-11-07 二次复核又补了两处与时序相关的对齐(其中第一处在复核后按 P0 真实次序再订正一次):
+ * 受击侧倍率在本线挂在更早的 {@code LivingHurtEvent@HIGH},而 P0 挂在 {@code LivingDamageEvent.Pre}
+ * (护甲/魔抗之后、吸收之前)⇒ 折叠目标值按「(护甲后本金 + 加成) × 倍率」求解再反解护甲前输入
+ * ({@link #foldBonusPreFactor}),而不是简单地把倍率乘在折叠结果上;鼠鼠护盾的钳制在更早的
+ * {@code LivingHurtEvent@LOWEST} ⇒ 折叠后按剩余黄心重钳一次,不再漏红心。
  */
 public class DamageEffectCardHandler {
 
