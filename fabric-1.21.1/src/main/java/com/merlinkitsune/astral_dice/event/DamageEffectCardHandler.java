@@ -6,9 +6,12 @@ import com.merlinkitsune.astral_dice.audio.SoundPlayback;
 import com.merlinkitsune.astral_dice.combat.SpellDamageContext;
 import com.merlinkitsune.astral_dice.combat.SpellDamageModifier;
 import com.merlinkitsune.astral_dice.combat.SpellDamageRegistry;
+import net.minecraft.tags.DamageTypeTags;
+import net.minecraft.world.damagesource.CombatRules;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
 import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
 import com.merlinkitsune.astral_dice.platform.event.EventPriority;
@@ -19,15 +22,62 @@ import com.merlinkitsune.astral_dice.combat.DamageNumberAggregator;
  * 法伤(远程/魔法伤害)结算主链路:判定作用域后,由注册表修饰器聚合加成并应用。
  * 作用域白名单与加成修饰器见 {@link SpellDamageRegistry};
  * 新增卡牌/筹码/立牌对法伤的作用只需注册修饰器,无需修改本类。
+ *
+ * <p>2026-11-07 与 neoforge-1.21.1 对齐(用户裁决「方案A 折叠」):法伤加成**并进同一次伤害
+ * 事件**({@code event.setAmount(...)}),不再发嵌套真伤 hurt。折叠点 = 本线
+ * {@link com.merlinkitsune.astral_dice.platform.event.entity.living.LivingDamageEvent},
+ * 由 Puzzles Lib 8.1.33 的 {@code LivingEntityFabricMixin#actuallyHurt}
+ * ({@code method_6074}) HEAD 注入 + {@code @ModifyVariable} 写回
+ * (桥接见 platform/PuzzlesBridges.java:99-110);{@code actuallyHurt} 方法体首行才是
+ * {@code getDamageAfterArmorAbsorb} / 魔抗 / 吸收 ⇒ **载荷口径 = 护甲之前**,与 neo 的
+ * {@code LivingIncomingDamageEvent} 同口径,故折叠函数可逐行等价移植。
+ *
+ * <p>与 neo 的时机差异仍是 B27 已登记残余:本线的折叠发生在 {@code hurt()} 的无敌帧差额
+ * 分摊**之后**,也晚于盾牌格挡 / 冰冻 / 破甲头盔,故被无敌帧吞掉的那一击不产生加成数值;
+ * 本次只做「由二次 hurt 改为一次结算」这一处语义,不搬动挂点。
  */
 public class DamageEffectCardHandler {
 
-    /** 真伤加成结算的**重入闸门**:真伤伤害源会再次进入本处理器(伤害事件对每一次 hurt 都会触发),
-     *  若将来某个作用域 matcher 把它判为法伤就会无限递归;闸门只覆盖"本处理器自己发起的那一次真伤结算"。 */
-    private static final ThreadLocal<Boolean> APPLYING_TRUE_BONUS = ThreadLocal.withInitial(() -> Boolean.FALSE);
-
     /** 活体书页命中的「重击」音效门槛:本次**完整伤害**(与 HUD 跳字同值) >= 该值即播 bighit。 */
     private static final int LIVING_PAGE_BIG_HIT_THRESHOLD = 8;
+
+    /**
+     * 折叠时为「加成绕过护甲」做预补偿(neo 2026-10-27 用户裁决;2026-11-07 逐行等价移植)。
+     *
+     * <p>折叠把加成并进本体,而护甲对整条伤害实例统一结算;若本体源要吃护甲,加成也会被削。
+     * 这里在护甲**之前**求解 x,使平台的护甲公式在 x 上得到「本体护甲后值 + bonus」 ⇒ 护甲后的
+     * 总量 = 本体护甲后值 + bonus,加成等效绕过护甲;抗性/保护/吸收/受击倍率仍对整段作用**一次**。
+     *
+     * <p>⚠️ 本线载荷口径:事件由 {@code LivingEntityFabricMixin#actuallyHurt} HEAD 派发
+     * (platform/PuzzlesBridges.java:99-110),入参与写回都是 {@code actuallyHurt} 的**护甲前**
+     * 参数(该方法体首行才调 {@code getDamageAfterArmorAbsorb}) ⇒ 与 neo 的
+     * {@code LivingIncomingDamageEvent} 同口径,故本函数「base = 护甲前值」的假设成立。
+     *
+     * <p>源自身带 {@code bypasses_armor}(本仓全部 {@code astral_dice:card_spell} 法伤都在内)或
+     * 目标没有护甲时直接相加、不做补偿。求解用二分:护甲公式对伤害单调不减(f(x) >= 0.2x,
+     * 平台实测 {@code CombatRules#getDamageAfterAbsorb} = damage * (1 - clamp(armor - damage/f,
+     * 0.2*armor, 20) / 25),f = 2 + toughness/4),故以 [0, 8*want] 为区间迭代 40 次足够
+     * 收敛到 float 精度。
+     */
+    private static float foldBonusBypassingArmor(LivingEntity target, DamageSource source, float base, double bonus) {
+        if (bonus <= 0.0) return base;
+        if (source.is(DamageTypeTags.BYPASSES_ARMOR)) return (float) (base + bonus);
+        float armor = (float) target.getArmorValue();
+        if (armor <= 0.0F) return (float) (base + bonus);
+        float toughness = (float) target.getAttributeValue(Attributes.ARMOR_TOUGHNESS);
+        float want = CombatRules.getDamageAfterAbsorb(target, base, source, armor, toughness) + (float) bonus;
+        float lo = 0.0F;
+        float hi = want * 8.0F;
+        for (int i = 0; i < 40; i++) {
+            float mid = (lo + hi) * 0.5F;
+            if (CombatRules.getDamageAfterAbsorb(target, mid, source, armor, toughness) < want) {
+                lo = mid;
+            } else {
+                hi = mid;
+            }
+        }
+        return hi;
+    }
 
     // ⚠️ 事件时机(B27 订正本线事实;2026-09-15 用户裁决修补 KI-5「电击手套 AOE 基准跨版本」):
     // 本处挂在 LivingDamageEvent,与 1.21.1 的 LivingDamageEvent.Pre 同名对应。但本次改挂
@@ -64,39 +114,30 @@ public class DamageEffectCardHandler {
         }
 
         // 应用加成并跳数字。
-        // **法伤加成按「真伤」独立结算**(2026-09-14 用户裁决):不再并进本次伤害事件——
-        // 并进去的话这份加成会连同武器伤害一起吃护甲值/盔甲韧性/保护附魔的减免,与
-        // 「伤害效果牌伤害纳入真伤机制」的口径不符;改走 ModDamageTypes.trueDamage(...)
-        // 独立结算:直接伤害实体为空 + 击杀归属施法者(与旧 explosion(null, player) 同形状,
-        // 不会被本模组或其它模组当成"玩家的直接攻击"重走骰战)。
-        // 2026-09-26:本处原有的「HUD 数显 = getAmount() + bonus」直发已移除 —— 显示值**同源**,
-        // 但改由 combat/DamageNumberAggregator 取(本线 = LivingDamageEvent#getAmount();该值在
-        // 护甲/吸收**之前**,不是「吸收之后的最终值」,见上方挂点说明)并与基础伤害累加。
-        if (bonus > 0 && !APPLYING_TRUE_BONUS.get()) {
-            // ① 本次命中的**基础伤害**也归入法伤组。必须显式登记:这条命中绝大多数是**原版**伤害源
-            //    (箭矢 arrow / 投掷物 / 其它模组法术),聚合器的类型回落认不出来。
+        // **2026-11-07 对齐 neo(方案A 折叠)**:法伤加成**并进同一次伤害事件**,不再发嵌套
+        // 真伤 hurt(旧实现 target.hurt(bonusSource, bonus) 让每条命中产生两条伤害实例 ⇒
+        // 两次死亡/击杀派发、两套音效分档,且抗性/保护/受击侧倍率/筹码固定点减伤对加成各算一次)。
+        // 本线载荷口径 = 护甲**之前**(见类头与上方挂点说明),与 neo 的 LivingIncomingDamageEvent
+        // 同口径 ⇒ 加成仍按「绕过护甲」结算:先做护甲预补偿再让平台的护甲公式统一削一次
+        // (见 foldBonusBypassingArmor);抗性/保护/吸收/受击倍率对合并值**只作用一次**。
+        // 重入闸门 APPLYING_TRUE_BONUS 随嵌套 hurt 一并移除(全仓无其它消费者,已 grep 核实)。
+        if (bonus > 0) {
+            // 本次命中的**基础伤害**也归入法伤组。必须显式登记:这条命中绝大多数是**原版**伤害源
+            // (箭矢 arrow / 投掷物 / 其它模组法术),聚合器的类型回落认不出来。
+            // 折叠后本体与加成是同一个 DamageSource / 同一个事件 ⇒ 只此一处登记,单 SPELL 槽。
             DamageNumberAggregator.tag(target, source, DamageNumberAggregator.Group.SPELL);
-            APPLYING_TRUE_BONUS.set(true);
-            try {
-                var bonusSource = com.merlinkitsune.astral_dice.damage.ModDamageTypes
-                        .trueDamage(target.level(), player);
-                // ② 法伤加成段(独立真伤)。组别同样必须显式登记:astral_dice:true_damage 被多路复用
-                //    (大当家溅射=攻击力类红 / 这里与效果牌范围波及=法伤类绿),只看类型区分不出来。
-                DamageNumberAggregator.tag(target, bonusSource, DamageNumberAggregator.Group.SPELL);
-                target.hurt(bonusSource, (float) bonus);
-            } finally {
-                APPLYING_TRUE_BONUS.set(false);
-            }
+            event.setAmount(foldBonusBypassingArmor(target, source, event.getAmount(), bonus));
         }
 
-        // 活体书页命中音效:**按本次命中的完整伤害分档**，取值与上面的 HUD 跳字完全同源
-        // （原始基础伤害 + 法伤加成，取整）⇒ 玩家听到的强弱与看到的数字一致。
+        // 活体书页命中音效:**按本次命中的完整伤害分档**,取值与上面的 HUD 跳字完全同源。
+        // ⚠️ 折叠后 event.getAmount() **已含**法伤加成,不得再 + bonus(再加就是双算)。
+        // 本线读数仍是护甲**之前**的合并值(B27 已登记残余),与 neo 的护甲后终值口径不同。
         // 判据 = 伤害类型是 astral_dice:card_spell，**且**不是四张伤害效果牌自己的 FX 伤害
         // （2026-10-07 修复 KI-G4：card_spell 不再只有活体书页一条产出路径 —— 四张牌重做后它们也走
         //   ModDamageTypes.cardSpell，且各自已播命中音，见 combat/DamageCardFxScheduler）。
         if (source.is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.CARD_SPELL)
                 && !com.merlinkitsune.astral_dice.combat.DamageCardFxScheduler.isApplyingCardFxDamage()) {
-            int dealt = (int) Math.round(event.getAmount() + bonus);
+            int dealt = (int) Math.round(event.getAmount());
             SoundPlayback.playAt(target.level(), target.getX(), target.getY(), target.getZ(),
                     dealt >= LIVING_PAGE_BIG_HIT_THRESHOLD
                             ? ModSounds.DAMAGE_EFFECT_CARD_BIGHIT.get()
