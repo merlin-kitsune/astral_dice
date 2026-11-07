@@ -286,18 +286,9 @@ public class ModAttachments {
         DICE_CURSE_RATIO.set(player, value);
     }
 
-    // 七咒倍率捕获辅助(1.20.1):LivingAttackEvent(HIGHEST)记录的原始伤害,供
-    // LivingHurtEvent(LOWEST)计算实际倍率;仅内存态,每次受击覆盖。
-    public static final AttachedDataKey<Float> CURSE_ORIGINAL_AMOUNT =
-            register(AttachedDataKey.builder("curse_original_amount", Codec.FLOAT, () -> 0.0f).inMemory().build());
-
-    public static float getCurseOriginalAmount(net.minecraft.world.entity.player.Player player) {
-        return CURSE_ORIGINAL_AMOUNT.get(player);
-    }
-
-    public static void setCurseOriginalAmount(net.minecraft.world.entity.player.Player player, float value) {
-        CURSE_ORIGINAL_AMOUNT.set(player, value);
-    }
+    // 七咒原始伤害捕获(仅 1.20.1 线的旧链路)在 fabric 线**不存在**:
+    // 本线没有神秘遗物+(该模组无 fabric 构建),原来的 `curse_original_amount` 附件写入后
+    // 全仓无人读取 ⇒ 2026-11-08 连同写入点一起删除,不再保留死键。
 
     // 调查员立牌(rin):已使用的活体书页数量(活体书页伤害永久+1 的来源,移除立牌后重置;死亡重生保留)
     // 「死亡重生保留」由 AstralData.onPlayerClone 的死亡分支复制本键实现(对应 1.21.1 的 .copyOnDeath())

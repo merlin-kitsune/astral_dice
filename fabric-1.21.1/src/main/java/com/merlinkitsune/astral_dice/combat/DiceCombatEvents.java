@@ -1718,6 +1718,9 @@ public class DiceCombatEvents {
         EXTERNAL_DAMAGE_FACTORS.add(factor);
     }
 
+    // ⚠️ fabric 线没有捕获点:本线不装神秘遗物+(该模组无 fabric 构建),`dice_curse_ratio`
+    //    全仓没有任何写入 ⇒ `getDiceCurseRatio` 恒为 1.0,下面的分支在此线**恒不触发**。
+    //    保留它只为与 P0 结构对齐(用户 2026-11-08 裁决:不做该模组的兼容移植)。
     // 内置因子:目标佩戴七咒之戒时,应用神秘遗物+ 已计算的第一诅咒【实际倍率】
     // (由 onCurseMitigation 在 LivingIncomingDamageEvent 捕获,动态适配模组配置/修正物品/救赎转换);
     // "命运的指引"激活时第一诅咒影响 -50%(加幅减半)。使用后清零捕获,避免残留。

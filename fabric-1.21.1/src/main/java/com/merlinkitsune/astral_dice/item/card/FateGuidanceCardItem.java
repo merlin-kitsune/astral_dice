@@ -22,7 +22,8 @@ import com.merlinkitsune.astral_dice.platform.util.Effects;
  * 2. 主动技能冷却时间减半(实时功能:立刻将当前最大冷却倒计时减少一半的时间)
  * 3. 对拥有"虚弱印记"的目标额外 +20% 伤害
  * 4. 所有食物提供的饱和度翻倍
- * 5. 神秘遗物+联动:装备七咒之戒时,第一诅咒(受到任何来源伤害加倍)影响 -50%
+ * 5. 神秘遗物+联动:fabric 线**不移植**(该模组没有 fabric 构建;P0 线才有)。
+ *    本条在此线恒不生效,相关捕获/换算代码已清理,不再保留半截链路。
  * 6. Iron 的法术与魔法书联动:魔力消耗减半
  * 功能全部由 attachment(FATE_ACTIVE_UNTIL)驱动;FATE_GUIDANCE 效果仅作状态显示(5:00 倒计时图标)。
  * 专属牌:仅允许获得者使用;赠与他人的专属牌接收者无法使用。
@@ -97,21 +98,6 @@ public class FateGuidanceCardItem extends BaseEffectCardItem {
         return until > 0 && player.level().getGameTime() < until;
     }
 
-
-    // 七咒第一诅咒处理:神秘遗物+ 模组(默认 NORMAL 优先级)先应用其配置/修正物品后的伤害倍率,
-    // 本处理器在 LOWEST 捕获该【实际倍率】(amount/original,动态适配 painMultiplier 配置、大地誓约、
-    // 救赎之戒转换等模组内修正),而非固化倍率。
-    // 1.20.1 Forge 无 LivingIncomingDamageEvent:改用 LivingAttackEvent(HIGHEST 记录原始伤害,
-    // 存瞬态附件)+ LivingHurtEvent(LOWEST 读当前伤害)组合还原 1.21 的 original/current 语义。
-    // - 骰战攻击(攻击者赐福激活+骰子+近战):不修改模组倍率,仅捕获存至目标侧,由骰战最终伤害使用;
-    // - 非骰战攻击:命运的指引激活时按加幅减半(第一诅咒影响 -50%),未激活则保持模组倍率。
-    @SubscribeEvent(priority = com.merlinkitsune.astral_dice.platform.event.EventPriority.HIGHEST)
-    public static void onCurseOriginalCapture(
-            com.merlinkitsune.astral_dice.platform.event.entity.living.LivingAttackEvent event) {
-        if (event.getEntity() instanceof Player player && !player.level().isClientSide()) {
-            com.merlinkitsune.astral_dice.component.ModAttachments.setCurseOriginalAmount(player, event.getAmount());
-        }
-    }
 
     // 命运的指引·福运:激活期间所有食物提供的饱和度翻倍。
     // Finish 事件在原版 eat(更新食物数据)之前触发,此处预先补一份饱和度增量。
