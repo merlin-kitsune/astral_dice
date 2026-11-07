@@ -184,8 +184,12 @@ public class DamageEffectCardHandler {
     private static float foldBonusPreFactor(LivingEntity target, DamageSource source,
             float postFactorAmount, double bonus) {
         double factor = com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.instanceVictimFactor(target);
-        if (factor <= 0.0 || factor == 1.0) {
+        if (!Double.isFinite(factor) || factor == 1.0) {
             return foldBonusBypassingArmor(target, source, postFactorAmount, bonus);
+        }
+        if (factor <= 0.0) {
+            // 受击倍率为 0:本次伤害已被完全归零,加成同样归零;且不能做除法(0 会得到 NaN/Inf)。
+            return 0.0F;
         }
         float preFactor = (float) (postFactorAmount / factor);
         return (float) (foldBonusBypassingArmor(target, source, preFactor, bonus) * factor);
