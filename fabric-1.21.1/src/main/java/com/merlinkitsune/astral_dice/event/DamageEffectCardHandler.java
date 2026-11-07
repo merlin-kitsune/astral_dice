@@ -4,6 +4,7 @@ import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.audio.ModSounds;
 import com.merlinkitsune.astral_dice.audio.SoundPlayback;
 import com.merlinkitsune.astral_dice.combat.SpellDamageContext;
+import com.merlinkitsune.astral_dice.item.RenShieldManager;
 import com.merlinkitsune.astral_dice.combat.SpellDamageModifier;
 import com.merlinkitsune.astral_dice.combat.SpellDamageRegistry;
 import net.minecraft.tags.DamageTypeTags;
@@ -33,8 +34,10 @@ import com.merlinkitsune.astral_dice.combat.DamageNumberAggregator;
  * {@code LivingIncomingDamageEvent} 同口径,故折叠函数可逐行等价移植。
  *
  * <p>与 neo 的时机差异仍是 B27 已登记残余:本线的折叠发生在 {@code hurt()} 的无敌帧差额
- * 分摊**之后**,也晚于盾牌格挡 / 冰冻 / 破甲头盔,故被无敌帧吞掉的那一击不产生加成数值;
- * 本次只做「由二次 hurt 改为一次结算」这一处语义,不搬动挂点。
+ * 分摊**之后**,也晚于盾牌格挡 / 冰冻 / 破甲头盔,故被无敌帧吞掉的那一击不产生加成数值。
+ * 2026-11-07 二次复核又补了两处与时序相关的对齐:受击侧倍率已在更早的 {@code LivingHurtEvent@HIGH}
+ * 乘进实参 ⇒ 折叠改为「倍率前空间求解、再乘回同一倍率」({@link #foldBonusPreFactor});鼠鼠护盾的钳制
+ * 在更早的 {@code LivingHurtEvent@LOWEST} ⇒ 折叠后按剩余黄心重钳一次,不再漏红心。
  */
 public class DamageEffectCardHandler {
 
@@ -119,14 +122,24 @@ public class DamageEffectCardHandler {
         // 两次死亡/击杀派发、两套音效分档,且抗性/保护/受击侧倍率/筹码固定点减伤对加成各算一次)。
         // 本线载荷口径 = 护甲**之前**(见类头与上方挂点说明),与 neo 的 LivingIncomingDamageEvent
         // 同口径 ⇒ 加成仍按「绕过护甲」结算:先做护甲预补偿再让平台的护甲公式统一削一次
-        // (见 foldBonusBypassingArmor);抗性/保护/吸收/受击倍率对合并值**只作用一次**。
+        // (见 foldBonusBypassingArmor)。
+        // ⚠️ 受击侧倍率**不**在本折叠点之后:event/EnderDiceHandler 已在更早的
+        // LivingHurtEvent@HIGH 乘进了本次实参 ⇒ 必须在倍率前空间里折叠、再乘回同一倍率
+        // (见 foldBonusPreFactor),否则加成永远不吃倍率。抗性/保护/吸收则对合并值**只作用一次**。
         // 重入闸门 APPLYING_TRUE_BONUS 随嵌套 hurt 一并移除(全仓无其它消费者,已 grep 核实)。
         if (bonus > 0) {
             // 本次命中的**基础伤害**也归入法伤组。必须显式登记:这条命中绝大多数是**原版**伤害源
             // (箭矢 arrow / 投掷物 / 其它模组法术),聚合器的类型回落认不出来。
             // 折叠后本体与加成是同一个 DamageSource / 同一个事件 ⇒ 只此一处登记,单 SPELL 槽。
             DamageNumberAggregator.tag(target, source, DamageNumberAggregator.Group.SPELL);
-            event.setAmount(foldBonusBypassingArmor(target, source, event.getAmount(), bonus));
+            float folded = foldBonusPreFactor(target, source, event.getAmount(), bonus);
+            // 鼠鼠护盾的金额钳制挂在更早的 LivingHurtEvent@LOWEST(折叠之前),折叠抬高金额后必须
+            // 重新钳一次,否则「剩余黄心 3 点、折叠后 20 点」会直接漏红心(neo 的钳制在折叠之后,无此缺口)。
+            if (target instanceof Player shielded) {
+                float remaining = RenShieldManager.remainingShieldAbsorption(shielded);
+                if (remaining > 0.0F && folded > remaining) folded = remaining;
+            }
+            event.setAmount(folded);
         }
 
         // 活体书页命中音效:**按本次命中的完整伤害分档**,取值与上面的 HUD 跳字完全同源。
@@ -148,6 +161,34 @@ public class DamageEffectCardHandler {
         for (SpellDamageModifier modifier : active) {
             modifier.onHit(ctx, bonus);
         }
+    }
+
+    /**
+     * 折叠 + 受击侧倍率对齐(2026-11-07 二次复核 M1)。
+     *
+     * <p>本线载荷口径是「护甲前、**受击侧倍率之后**」:受击侧倍率由 {@code event/EnderDiceHandler}
+     * 在 {@code LivingHurtEvent@HIGH} 乘进实参(早于本折叠点);neo 的折叠挂在
+     * {@code LivingIncomingDamageEvent}(倍率之前)。若直接按当前 {@code event.getAmount()} 折叠,
+     * 本体取的是已乘倍率的值、加成却漏乘 ⇒ 加成永远不吃受击侧倍率(雨中/水下 +40%、赐福减伤等),
+     * 与 neo 不等价。
+     *
+     * <p>对齐做法 = 退回倍率之前的空间再折叠:当前值 ÷ 本实例已登记的倍率 = 倍率前本金,
+     * 在倍率前空间里求 x 使 {@code armor(x) = armor(本金) + bonus}(加成等效绕过护甲),
+     * 再把 x × 同一倍率交给平台。平台随后在 {@code actuallyHurt} 内对 x×f 做护甲/魔抗/吸收,
+     * 与 neo「折叠(x) → 倍率(x×f) → 护甲」逐段同序。
+     *
+     * <p>倍率取自 {@link com.merlinkitsune.astral_dice.combat.DiceCombatModifiers#instanceVictimFactor}
+     * ——只搬运本实例已登记的倍数,不重新求值(重算即双算,见该方法的 A3 口径);未登记时返回 1.0,
+     * 走与折叠前完全相同的路径。
+     */
+    private static float foldBonusPreFactor(LivingEntity target, DamageSource source,
+            float postFactorAmount, double bonus) {
+        double factor = com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.instanceVictimFactor(target);
+        if (factor <= 0.0 || factor == 1.0) {
+            return foldBonusBypassingArmor(target, source, postFactorAmount, bonus);
+        }
+        float preFactor = (float) (postFactorAmount / factor);
+        return (float) (foldBonusBypassingArmor(target, source, preFactor, bonus) * factor);
     }
 
     // ⚠️ 本类原有的 sendBonusDamageNumber 私有帮助方法已于 2026-09-26 移除:跳数字的唯一出口是

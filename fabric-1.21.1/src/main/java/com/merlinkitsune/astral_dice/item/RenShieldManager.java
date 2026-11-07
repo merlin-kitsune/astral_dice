@@ -422,9 +422,14 @@ public final class RenShieldManager {
      * {@code getDamageAfterMagicAbsorb}；吸收 = 偏移 25-45 与 133-140。
      * Puzzles 的 {@code LivingHurtCallback} 注入点 = {@code @At} 的 HEAD（偏移 0 之前）。
      *
-     * <p>代价 = 钳制值还会被护甲再减一次 ⇒ **护盾这一击消耗得比 1.21.1 略少**（严格更保守，绝不漏血）。
-     * 另：骰战会在更晚的 {@code LivingDamageEvent} 上 {@code setAmount} 覆盖本钳制 ⇒ 已由
-     * {@code combat/DiceCombatEvents#settleDiceDamage} 的 N1 段重新钳一次（见该方法的注释）。
+     * <p>代价 = 钳制值还会被护甲再减一次 ⇒ **护盾这一击消耗得比 1.21.1 略少**（严格更保守）。
+     * ⚠️ 但这只在「折叠之前」成立：本钳制之后还有两个会抬高 / 覆盖金额的
+     * {@code LivingDamageEvent} 消费者，两处都已各自按剩余黄心**重钳一次**：
+     * <ul>
+     *   <li>{@code combat/DiceCombatEvents#settleDiceDamage} 的 N1 段（骰战覆盖式写终值）；</li>
+     *   <li>{@code event/DamageEffectCardHandler#onLivingDamagePre} 的法伤折叠段（折叠抬高后的重钳）。</li>
+     * </ul>
+     * 不得删掉任一处：删掉就会出现「剩余黄心 3 点、而本击 20 点」的漏红心。
      * 优先级 {@link EventPriority#LOWEST}：本线同事件上只有 {@code EnderDiceHandler}（HIGH）。
      */
     @SubscribeEvent(priority = EventPriority.LOWEST)
