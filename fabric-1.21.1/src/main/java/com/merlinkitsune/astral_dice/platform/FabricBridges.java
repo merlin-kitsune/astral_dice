@@ -53,7 +53,7 @@ import net.minecraft.world.InteractionResultHolder;
  *   <tr><td>{@code RegisterCommandsEvent} / {@code OnDatapackSyncEvent}</td><td>本类 installCommands</td></tr>
  *   <tr><td>{@code PlayerInteractEvent.RightClickBlock / EntityInteract / RightClickItem}</td><td>本类 installInteractions(FAPI Use*Callback)</td></tr>
  *   <tr><td>{@code LivingDamageEvent / LivingDeathEvent / LivingDropsEvent / LivingChangeTargetEvent}</td><td>PuzzlesBridges</td></tr>
- *   <tr><td>{@code MobEffectEvent.Added / Remove / Expired}</td><td>PuzzlesBridges</td></tr>
+ *   <tr><td>{@code MobEffectEvent.Added / Applicable / Remove / Expired}</td><td>PuzzlesBridges</td></tr>
  *   <tr><td>{@code BlockEvent.BreakEvent / AnvilUpdateEvent / EntityItemPickupEvent}</td><td>PuzzlesBridges</td></tr>
  *   <tr><td>{@code PlayerEvent.Clone}</td><td>PuzzlesBridges</td></tr>
  *   <tr><td>{@code LivingHurtEvent}</td><td>mixin bridge/LivingHurtBridgeMixin</td></tr>

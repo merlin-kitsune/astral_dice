@@ -37,13 +37,16 @@ import com.merlinkitsune.astral_dice.platform.util.Effects;
  *       {@code isCanceled()}、{@code getNewTarget()}、{@code getEffectInstance()}）；</li>
  *   <li>③ {@code PlayerEffectProtection} 本线不存在 ⇒ 本类只发原版 {@code player.addEffect}（温暖/赐福
  *       均为本模组自有效果，计时由 {@code EffectTimerGuard} 的 Added 记录链覆盖）；</li>
- *   <li>④ <b>{@code MobEffectEvent.Applicable} 在本线不派发</b>（{@code platform/PuzzlesBridges} 只桥接
- *       Apply / Remove / Expire，全仓 0 派发点）⇒ forge 的「免疫 HARMFUL 效果」子句在本线**无法实现**：
- *       若照样订阅，编译通过但运行时永不触发（静默 no-op）。故此处**不**订阅该事件，改为在
- *       {@code B4-SIGNS-REPORT} 的「需裁决」中列出，修法 = 在 {@code platform/PuzzlesBridges} 补一行
- *       {@code MobEffectEvents.CAN_BE_AFFECTED → MobEffectEvent.Applicable}（该文件不在本批写权范围）。
- *       伤害免疫 / 不被索敌两条与平台无关，照常生效；</li>
- *   <li>⑤ {@code event.setResult(Result.DENY)} 在本线 shim 中不存在 ⇒ 一律 {@code setCanceled(true)}。</li>
+ *   <li>④ {@code MobEffectEvent.Applicable} <b>已接线</b>（2026-11-07）：{@code platform/PuzzlesBridges} 的
+ *       {@code installEffects} 把 Puzzles 的 {@code MobEffectEvents.AFFECTS} 桥接成本事件；
+ *       该回调的注入点是 {@code LivingEntity#canBeAffected}（{@code method_6049}）的 HEAD，
+ *       正是 forge {@code MobEffectEvent.Applicable} 的同一条原版判定路径。
+ *       {@link com.merlinkitsune.astral_dice.platform.event.Event.Result} 的 {@code DENY} 经
+ *       {@code EventResult.DENY}（interrupt + false）让 {@code canBeAffected} 返回 false ⇒
+ *       该效果不施加，与 forge 的 {@code DO_NOT_APPLY} 逐值对等；</li>
+ *   <li>⑤ 结果型事件（如 {@code Applicable}）用 shim 自带的
+ *       {@link com.merlinkitsune.astral_dice.platform.event.Event.Result}
+ *       （{@code DENY / DEFAULT / ALLOW}）；可取消事件仍用 {@code setCanceled(true)}。</li>
  * </ul>
  */
 public final class NewSignEvents {
@@ -68,6 +71,38 @@ public final class NewSignEvents {
         if (event.getAmount() > 10.0F && com.merlinkitsune.astral_dice.component.SignAttachments
                 .getAlanaPassiveBonus(player) > 0) {
             AlanaSignItem.clearBonus(player);
+        }
+    }
+
+    /**
+     * 免疫 HARMFUL 效果的施加（forge {@code MobEffectEvent.Applicable} 的对等实现）。
+     *
+     * <p>派发点：{@code platform/PuzzlesBridges#installEffects} 注册的
+     * {@code MobEffectEvents.AFFECTS}，注入点是 {@code LivingEntity#canBeAffected}
+     * （{@code method_6049}）的 HEAD —— 与 forge / neo 的 {@code Applicable} 同一路径
+     * （{@code addEffect} 内先判，不通过直接返回 false，效果不入体）。
+     *
+     * <p>逐条对照 neo {@code NewSignEvents#onEffectApplicable}：路障 / 强化拒止 ⇒ 任何药水都不施加；
+     * 玩家携带铁处女 / 摸鱼 ⇒ 拦下所有 HARMFUL，但放行青之诅咒（它是玩家自己装备的筹码施加的）。
+     */
+    @SubscribeEvent
+    public static void onEffectApplicable(MobEffectEvent.Applicable event) {
+        // 2026-10-21 用户裁决：路障 / 强化拒止不吃任何药水
+        if (event.getEntity() instanceof com.merlinkitsune.astral_dice.entity.BarricadeEntity
+                || event.getEntity() instanceof com.merlinkitsune.astral_dice.entity.RepulsionEntity) {
+            event.setResult(com.merlinkitsune.astral_dice.platform.event.Event.Result.DENY);
+            return;
+        }
+        if (!(event.getEntity() instanceof Player player)) return;
+        if (player.level().isClientSide()) return;
+        if (!immune(player)) return;
+        var holder = event.getEffectInstance().getEffect();
+        // 2026-10-21: 青之诅咒由玩家**自己装备**的筹码施加，不属于「外来负面效果」
+        // ⇒ 铁处女 / 摸鱼的 HARMFUL 免疫不得拦它（否则 addEffect 返回 false、效果直接消失）。
+        // 本线 ModEffects.* 是 RegistryObject<MobEffect> ⇒ 用 .get()（neo 是 Holder ⇒ .value()）。
+        if (holder.value() == ModEffects.BLUE_CURSE.get()) return;
+        if (holder.value().getCategory() == net.minecraft.world.effect.MobEffectCategory.HARMFUL) {
+            event.setResult(com.merlinkitsune.astral_dice.platform.event.Event.Result.DENY);
         }
     }
 

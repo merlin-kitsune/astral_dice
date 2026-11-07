@@ -53,6 +53,15 @@ import com.merlinkitsune.astral_dice.platform.util.Effects;
  *   <tr><td>{@code MobEffectEvents.Apply / Remove / Expire}</td>
  *       <td>{@code addEffect} STORE / {@code removeEffect} HEAD / {@code tickEffects} 的 Iterator.remove</td>
  *       <td>{@link MobEffectEvent}.{@code Added} / {@code Remove} / {@code Expired}</td></tr>
+ *   <tr><td>{@code MobEffectEvents.AFFECTS}</td>
+ *       <td><b>{@code LivingEntity#canBeAffected} 的 HEAD（可中断）</b></td>
+ *       <td><b>{@link MobEffectEvent}.{@code Applicable}</b> —— Forge / Neo 的
+ *           {@code MobEffectEvent.Applicable} 正是插在这个位置（{@code addEffect} 内先判，
+ *           不通过直接返回 false）。puzzles-lib 21.1.66 实测：
+ *           {@code LivingEntityFabricMixin#canBeAffected} 上是
+ *           {@code @Inject(method="method_6049", at=@At("HEAD"), cancellable=true)}，
+ *           回调返回 {@code EventResult}，{@code isInterrupt()} 为真时直接
+ *           {@code cir.setReturnValue(result.getAsBoolean())}</td></tr>
  *   <tr><td>{@code LivingChangeTargetCallback}</td><td>{@code Mob#setTarget}</td>
  *       <td>{@link LivingChangeTargetEvent}（targetType = {@code MOB_TARGET}）</td></tr>
  *   <tr><td>{@code AnvilEvents.Use}</td><td>{@code AnvilMenu#onTake}（Container#setItem 之前）</td>
@@ -72,6 +81,11 @@ import com.merlinkitsune.astral_dice.platform.util.Effects;
  *       返回 0 ⇒ 不掉血 ⇒ 这里返回 {@link EventResult#INTERRUPT}（Puzzles 会 cancel 整个 actuallyHurt）。</li>
  *   <li>Forge {@code LivingDeathEvent} 取消 ⇒ 不死亡 ⇒ {@code INTERRUPT}。</li>
  *   <li>Forge {@code MobEffectEvent.Remove} 取消 ⇒ 不移除 ⇒ {@code INTERRUPT}。</li>
+ *   <li>Forge / Neo {@code MobEffectEvent.Applicable} 判为「不施加」（{@code DENY} /
+ *       {@code DO_NOT_APPLY}）⇒ 该效果压根不会被施加 ⇒ {@link EventResult#DENY}
+ *       （interrupt + false：Puzzles 让 {@code canBeAffected} 直接返回 false，
+ *       {@code addEffect} 随即返回 false）；判为 {@code ALLOW} ⇒ {@link EventResult#ALLOW}；
+ *       {@code DEFAULT} ⇒ {@link EventResult#PASS}（交回原版 {@code canBeAffected}）。</li>
  *   <li>Forge {@code LivingDropsEvent} 取消 ⇒ 无掉落 ⇒ {@code INTERRUPT}。</li>
  *   <li>Forge {@code BlockEvent.BreakEvent} 取消 ⇒ 不破坏 ⇒ {@code INTERRUPT}。</li>
  *   <li>其余：只有真的改过值/取消过才回 {@code INTERRUPT}，否则一律 {@link EventResult#PASS}
@@ -89,7 +103,7 @@ public final class PuzzlesBridges {
         // 取证:桥装没装必须能从日志看出来 —— 「代码在但没接上」是本项目踩过的最大一类坑
         //(见 AstralDiceMod 里 install() 从未被调用那一处)。
         com.merlinkitsune.astral_dice.AstralDiceMod.LOGGER.info(
-                "[Astral Dice] Puzzles 事件桥已安装:伤害/死亡/掉落/目标/效果×3/方块/克隆/拾取/铁砧×2");
+                "[Astral Dice] Puzzles 事件桥已安装:伤害/死亡/掉落/目标/效果×4/方块/克隆/拾取/铁砧×2");
     }
 
     // ------------------------------------------------------------------
@@ -184,6 +198,25 @@ public final class PuzzlesBridges {
         // ── MobEffectEvent.Expired ← MobEffectEvents.Expire(tickEffects 的 Iterator.remove) ──
         MobEffectEvents.EXPIRE.register((entity, effectInstance) ->
                 LoaderBus.INSTANCE.post(new MobEffectEvent.Expired(entity, effectInstance)));
+
+        // ── MobEffectEvent.Applicable ← MobEffectEvents.AFFECTS(canBeAffected HEAD，可中断) ──
+        // 取证(puzzles-lib 21.1.66，javap -p -c 于 fuzs.puzzleslib.fabric.mixin.LivingEntityFabricMixin):
+        //   @Inject(method = "method_6049", at = @At("HEAD"), cancellable = true)
+        //   void canBeAffected(MobEffectInstance, CallbackInfoReturnable<Boolean>)
+        //   body: Affects.onMobEffectAffects(...) → if (result.isInterrupt()) cir.setReturnValue(...)
+        // 映射：ALLOW = interrupt+true（强制施加）/ DENY = interrupt+false（不施加）/
+        //       PASS = 不干预（走原版）。因此无需自写 mixin，也不需要 EventResult.INTERRUPT
+        //       （后者 value 恒为 FALSE，语义上等于 DENY）。
+        MobEffectEvents.AFFECTS.register((entity, effectInstance) -> {
+            MobEffectEvent.Applicable event = new MobEffectEvent.Applicable(entity, effectInstance);
+            LoaderBus.INSTANCE.post(event);
+            // 枚举 switch 不限定常量名 ⇒ 无需 import 本线的 Event.Result
+            return switch (event.getResult()) {
+                case ALLOW -> EventResult.ALLOW;
+                case DENY -> EventResult.DENY;
+                case DEFAULT -> EventResult.PASS;
+            };
+        });
     }
 
     // ------------------------------------------------------------------
