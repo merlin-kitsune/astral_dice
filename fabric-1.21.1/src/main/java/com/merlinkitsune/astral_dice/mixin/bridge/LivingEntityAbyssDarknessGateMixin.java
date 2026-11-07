@@ -12,11 +12,15 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 /**
  * 「佩戴魔渊幼体立牌 ⇒ 不吃尖啸体的黑暗」的效果下发闸门（fabric-1.21.1 线）。
  *
- * <h3>为什么必须是 mixin，而不是事件</h3>
- * <p>P0（neoforge-1.21.1）用 {@code MobEffectEvent.Applicable} 一句 {@code DO_NOT_APPLY} 就够；本线
- * <b>不派发 Applicable</b>（{@code platform/PuzzlesBridges} 只桥 Apply / Remove / Expire，见
- * {@code event/NewSignEvents.java} 的同一结论），而 {@code LivingEntity#addEffect(MobEffectInstance)}
- * 在 1.21.1 是 <b>final</b>（javap 实测），也无法用子类覆写 ⇒ 只能在字节码层拦。
+ * <h3>为什么是 mixin（2026-11-07 订正）</h3>
+ * <p>P0（neoforge-1.21.1）用 {@code MobEffectEvent.Applicable} 一句 {@code DO_NOT_APPLY} 就够。
+ * 本线**原先**不派发 Applicable（{@code platform/PuzzlesBridges} 只桥 Apply / Remove / Expire），
+ * 已于 2026-11-07 接线：{@code MobEffectEvents.AFFECTS} → {@code MobEffectEvent.Applicable}
+ * （注入点 = {@code LivingEntity#canBeAffected} 的 HEAD）。{@link SykesSignItem#blocksDarkness}
+ * 只判「黑暗 + 佩戴者」⇒ 该规则**已可由事件表达**（{@code Result.DENY} 等价）。
+ * <p>本批仍<b>保留</b>该 mixin：移除属于行为面变更（需重新验证黑暗免疫与触须路径），
+ * 不在「接线」这批的范围。两处当前互不冲突 —— 本 mixin 在 {@code addEffect} 的 HEAD 直接
+ * {@code setReturnValue(false)}，{@code canBeAffected} 因此不会被调用，事件也就不会为该实例派发。
  *
  * <h3>注入点</h3>
  * <ul>
