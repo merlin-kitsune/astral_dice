@@ -14,7 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * 《星之骰戏》Fabric 1.20.1 入口。
+ * 《星之骰戏》Fabric 1.21.1 入口。
  *
  * <h2>与 Forge 侧的结构对应</h2>
  * <table border="1">

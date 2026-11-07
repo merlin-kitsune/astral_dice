@@ -378,7 +378,7 @@ When extending this workspace:
 >    ⇒ 规则三条：
 >    （a）**核验基准用发布 jar，不用记忆也不用注释** —— 下载真实产物 + `javap -p` 逐条比；
 >    上游源码也要核（并可回溯最早版本，确认契约在**整个版本区间**是否成立）；
->    （b）**每条后端都要有起步诊断机器行**（fabric 线是 `AP_FAB_PARTY:`，其余非 fabric 线是 **`AP_PARTY:`**
+>    （b）**每条后端都要有起步诊断机器行**（**fabric-1.20.1 仍是本地实现 ⇒ `AP_FAB_PARTY:`**；**fabric-1.21.1 自 2026-11-08 起改用 starengine 库版 ⇒ `AP_PARTY:`**，与 neo/forge 三线一致
 >    —— 字段同为 `sw_* back_ftb/back_opac why_ftb/why_opac`，由 `PartyRelations#reportBackends()` 在 common setup 打印）
 >    ⇒「装了却没生效」一眼可见，
 >    `why_*` 直接写明是哪个类/方法没找到；

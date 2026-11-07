@@ -20,7 +20,7 @@ import net.minecraft.world.entity.npc.VillagerProfession;
  *
  * <p>交易表由 {@code trade/CardTraderTrades#register()} 与 {@code trade/ChipTraderTrades#register()} 填充。
  *
- * <h2>Fabric 1.20.1 平台面</h2>
+ * <h2>Fabric 1.21.1 平台面</h2>
  *
  * <p>职业的构造是**纯原版 API**：{@code VillagerProfession(String, Predicate<Holder<PoiType>>,
  * Predicate<Holder<PoiType>>, ImmutableSet<Item>, ImmutableSet<Block>, SoundEvent)}（javap 确认 6 参 record

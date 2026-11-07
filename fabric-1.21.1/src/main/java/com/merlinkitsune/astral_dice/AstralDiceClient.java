@@ -5,7 +5,7 @@ import com.merlinkitsune.astral_dice.platform.event.LoaderBus;
 import net.fabricmc.api.ClientModInitializer;
 
 /**
- * 《星之骰戏》Fabric 1.20.1 客户端入口。
+ * 《星之骰戏》Fabric 1.21.1 客户端入口。
  *
  * <h2>为什么客户端监听登记搬到这里(2026-09-29)</h2>
  * <p>客户端订阅类(按键 / 粒子 / HUD overlay / tooltip 边框 / 目标高亮 …)只在客户端存在,
