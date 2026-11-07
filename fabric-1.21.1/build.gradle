@@ -144,6 +144,9 @@ loom {
             client()
             ideConfigGenerated = true
             runDir 'run/client'
+            if (providers.gradleProperty('mixinDebug').orNull == '1') {
+                vmArg '-Dmixin.debug.verbose=true'
+            }
             if (project.hasProperty('quickplayMultiplayer')) {
                 programArg '--quickPlayMultiplayer'
                 programArg project.findProperty('quickplayMultiplayer')

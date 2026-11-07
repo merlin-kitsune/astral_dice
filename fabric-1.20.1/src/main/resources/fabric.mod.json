@@ -33,6 +33,7 @@
   "mixins": [
     "astral_dice.mixins.json",
     "astral_dice.jade.mixins.json",
+    "astral_dice.jei.mixins.json",
     "astral_dice.trinkets.mixins.json"
   ],
   "depends": {
