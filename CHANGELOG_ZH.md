@@ -21,6 +21,7 @@
 - 合并过程守住版本纪律：逐线都不接受主线的 `1.5.0` / `1.5.0-hotfix` 号；StarEngine 仍钉 `26.4-SNAPSHOT.1`，声明区间 `[26.4-SNAPSHOT.1,27.0.0)`（Fabric：`>=26.4-SNAPSHOT.1 <27.0.0`）。
 - StarEngine 在各线均为**外部前置**：四个 `build.gradle` 内已无 `jarJar(...)` 与内嵌指令，产物 jar 内也不含 `starengine` 条目与 `META-INF/jarjar` 目录。
 - 合并后守门：`tools/check_lang_sync.py` 各线 `[OK]`，`tools/check_changelog_parity.py` 报 `CHANGELOG_PARITY: OK`，各线均 `BUILD SUCCESSFUL`，产物为 `astral_dice-26.4-SNAPSHOT.6+<line>.jar`。
+- **Fabric 1.21.1 补齐 P0 对等（7 处）**：对 `neoforge-1.21.1` 的审计在 P1 Fabric 线查出 7 处真实缺口，本批全部修复。① 星盘箱表覆盖只有 43 张、P0 是 56 张，差的 13 张全是 `chests/trial_chambers/*`；黄金星盘也失去了不祥宝库掉落 —— 现按 P0 口径注入，把 `astral_dice:chests/golden_star_plate` 子表挂进 `chests/trial_chambers/reward_ominous`（子表自带 1:19 权重，Java 侧不再二次抽样）。② 法伤加成原先以**第二次嵌套真伤**结算，一次命中产生两条伤害实例、两次死亡派发与两套音效分档；现改为与 P0 相同的「并进同一事件 + 护甲预补偿」。③ 邦妮立牌可刷星币：缺「已带隐匿调查」闸门、按施加前层数返币、绕过钱包漏斗，且缺立牌冷却记录与击杀去重。④ 本线从不派发 `MobEffectEvent.Applicable`，HARMFUL 免疫与路障／拒止投药拦截一直静默失效；现从 Puzzles `MobEffectEvents.AFFECTS`（`canBeAffected` HEAD）接线，不新增 mixin。⑤ 露露立牌受击冷却为 20 tick，应为 300。⑥ 魔法箭袋记录的是「本周期的第一张」，应记「本次实际使用的那张」。⑦ 拒止力场的注释自称「本线无立牌系统」，从不随卸牌销毁。守门：`:fabric-1.21.1:compileJava --rerun-tasks` 报 `BUILD SUCCESSFUL`；实机冒烟仍待跑（红线：默认不启动实机）。
 
 ## 26.4-SNAPSHOT.4
 
