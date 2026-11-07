@@ -25,6 +25,8 @@
 - 额外电池（`astral_dice:extra_battery_chip`）在两条 Fabric 线上没有 tooltip 描述行：`ExtraBatteryChipItem` 与 `BaseChipItem` 都不覆写 `appendHoverText`，描述行只由 `event/ModTooltipHandler` 注入，而该分支只在 neo/forge 三线存在（lang 键 `tooltip.astral_dice.chip.extra_battery` 一直都在）。本批按 P0 同构把 `fabric-1.21.1` 与 `fabric-1.20.1` 两条线一起补齐，实机各自取到「装备时，主动技能冷却时间 §e-50%§r」一行。
 - 鼠鼠护盾在 `fabric-1.21.1` 上整条失效：1.21.1 的 `setAbsorptionAmount` 被 `generic.max_absorption`（基础值 0）钳制，而本线 `RenShieldEffect` 照抄了 1.20.1 的实现、没有带 `+10.0` 的 `MAX_ABSORPTION` 修饰器（P0 侧有），护盾吸收值恒被钳成 0、施加后下一 tick 即因「吸收 ≤ 基线」被清理。现按 P0 同形补上修饰器（原版 1.21.1 签名 `(Holder<Attribute>, ResourceLocation, double, Operation)`），实机读数：施加后 `max_absorption=10`、吸收 10；带标记的法伤 `5+3` 扣 6.4（8×抗性 0.8），`18+3` 则被重钳在剩余护盾 10 上（折后 8.0，红心零损失）。
 
+- **Fabric 1.21.1 遗留对等项**：对 P1 Fabric 线的复核又收掉 6 处残留漂移。① 目标选择器缺 P0 那条 `undercover` 标签（对已带 `UNDERCOVER_INVESTIGATION` 的目标），现按 P0 同构补上（命中即早退，不发 ActionBar）；② `fabric.mod.json` 建议 `jei >=19.70.0`，而本线实际按 `19.56.0.441` 编译与测试，声明已降到 `>=19.56.0`（与 1.20.1 线同形）；③ 三处入口 javadoc 仍写「Fabric 1.20.1」（与鼠鼠护盾那个缺陷同源的照抄），已逐一订正；④ 三语各自的 3 个 `curios.modifiers.*` 在本线是死键（本线走 Trinkets，前置库 jar 也不读），已删除，三语键集仍一致；⑤ 队伍判定此前分裂成两套——本地 `astral_dice.combat.PartyRelations`（30 处调用，572 行）与前置库同名类（4 处），而 neo/forge 各线全用库版；现全部统一到库版并删除本地副本，起步诊断行随之变为与 P0 相同的 `AP_PARTY:`；⑥ 清理神秘遗物+ 的半截死链路：捕获处理器写入的 `curse_original_amount` 没有任何读取方，而消费者读的 `dice_curse_ratio` 在整条线没有写入点；死附件与处理器已删除，卡片 javadoc 也不再宣称本线不移植的功能（该模组没有 Fabric 构建）。守门：`:fabric-1.21.1:compileJava --rerun-tasks` 报 `BUILD SUCCESSFUL`，`tools/check_lang_sync.py --line fabric-1.21.1` 报 `[OK]`（三语各 1156 键）。
+
 ## 26.4-SNAPSHOT.4
 
 > dev 线新增 GeckoLib 硬前置与动画实体 `astral_dice:sykestentacle`，并按 bbmodel 重导几何资源；版本号按「每提交 +1」递增。P1 两线本批**搁置**（见下）。
