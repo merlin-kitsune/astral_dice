@@ -56,8 +56,12 @@ import net.minecraft.world.phys.BlockHitResult;
  *   <li><b>监守者减伤</b>：P0 的 {@code LivingIncomingDamageEvent}（{@code hurt} 内、{@code actuallyHurt}
  *       之前）在本线对应 {@link LivingHurtEvent}（由 {@code mixin/bridge/LivingHurtBridgeMixin} 用
  *       MixinExtras {@code @WrapOperation} 包裹 {@code actuallyHurt} 调用派发，同一位置）。</li>
- *   <li><b>黑暗免疫</b>：本线不派发 {@code MobEffectEvent.Applicable} ⇒ 改由 mixin 拦
- *       {@code LivingEntity#addEffect}，判定函数收敛到 {@link #blocksDarkness}。</li>
+ *   <li><b>黑暗免疫</b>：本线已接线 {@code MobEffectEvent.Applicable}（2026-11-07，
+ *       {@code platform/PuzzlesBridges} 桥 {@code MobEffectEvents.AFFECTS}，派发点 =
+ *       {@code LivingEntity#canBeAffected} HEAD）；但魔渊黑暗的门<b>仍保留</b> mixin 拦
+ *       {@code LivingEntity#addEffect}，判定函数同为 {@link #blocksDarkness}。两者不冲突：
+ *       mixin 在 {@code addEffect} HEAD 直接返回 false 时 {@code canBeAffected} 不跑，事件不会为该实例派发；
+ *       移除该 mixin 属行为面变更（需重验黑暗免疫与触须路径），未做。</li>
  *   <li><b>主动分发</b>：本线 {@link BaseSignItem#use} 接管右键（潜行 = 自动装备），主动技能经
  *       {@code BaseSignItem} 的 selector 分发到 {@link #handleUse} —— 与 P0 相同，无差异。</li>
  * </ol>

@@ -61,11 +61,11 @@ import java.util.UUID;
  *   <li><b>效果实例 Holder 化</b>：1.21.1 的 {@code MobEffectInstance} 收 {@code Holder<MobEffect>}
  *       ⇒ 缓慢效果统一经 {@link Effects#holder} 构造（P0 该线是直接传裸 {@code MobEffects.X}）。</li>
  *   <li><b>状态效果免疫</b>：P0 用 {@code MobEffectEvent.Applicable} 一句 {@code DO_NOT_APPLY} 挡住
- *       「触须吃任何状态效果」；本线<b>不派发 Applicable</b>（{@code platform/PuzzlesBridges} 只桥
- *       Apply / Remove / Expire），而 {@code LivingEntity#addEffect(MobEffectInstance)} 在 1.21.1 是
- *       <b>final</b>（javap 实测）⇒ 改为「每 tick {@link #removeAllEffects()} 兜底清空」：
- *       触须的 tick 跑在服务端主线程、效果无法在两次 tick 之间产生任何可观测行为（触须也不被治疗、
- *       不移动），语义等价。</li>
+ *       「触须吃任何状态效果」；本线于 2026-11-07 已接线同一事件
+ *       （{@code event/NewSignEvents#onEffectApplicable} 对触须全拒，{@code platform/PuzzlesBridges} 桥
+ *       {@code MobEffectEvents.AFFECTS} 到 {@code LivingEntity#canBeAffected} HEAD）。
+ *       原「每 tick {@link #removeAllEffects()} 兜底」<b>保留</b>（判定路径不变：直接
+ *       {@code addEffect} / 已有效果的路径不走 {@code canBeAffected}）。</li>
  *   <li><b>技能伤害源</b>：与 P0 同一个本线实现 {@link ModDamageTypes#skillDamage(Level, Entity)}
  *       （{@code astral_dice:skill_damage}），不使用 {@code hurt(source, 2.0F)} 之类直伤。</li>
  *   <li><b>几何/常量</b>：{@code ZONE_HALF=2.5 / ATTACK_INTERVAL_TICKS=120 /
