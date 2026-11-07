@@ -82,11 +82,19 @@ public final class NewSignEvents {
      * （{@code method_6049}）的 HEAD —— 与 forge / neo 的 {@code Applicable} 同一路径
      * （{@code addEffect} 内先判，不通过直接返回 false，效果不入体）。
      *
-     * <p>逐条对照 neo {@code NewSignEvents#onEffectApplicable}：路障 / 强化拒止 ⇒ 任何药水都不施加；
+     * <p>逐条对照 neo {@code NewSignEvents#onEffectApplicable}：魔渊触须 ⇒ 任何效果都不施加；
+     * 路障 / 强化拒止 ⇒ 任何药水都不施加；
      * 玩家携带铁处女 / 摸鱼 ⇒ 拦下所有 HARMFUL，但放行青之诅咒（它是玩家自己装备的筹码施加的）。
      */
     @SubscribeEvent
     public static void onEffectApplicable(MobEffectEvent.Applicable event) {
+        // 2026-11-07 二次复核：魔渊触须不吃任何状态效果（对齐 neo SykesSignItem#onEffectApplicable 的
+        // SykeTentacleEntity 分支）。此前只在 SykeTentacleEntity 每 tick removeAllEffects 兜底，
+        // 瞬时效果会完整结算一次。
+        if (event.getEntity() instanceof com.merlinkitsune.astral_dice.entity.SykeTentacleEntity) {
+            event.setResult(com.merlinkitsune.astral_dice.platform.event.Event.Result.DENY);
+            return;
+        }
         // 2026-10-21 用户裁决：路障 / 强化拒止不吃任何药水
         if (event.getEntity() instanceof com.merlinkitsune.astral_dice.entity.BarricadeEntity
                 || event.getEntity() instanceof com.merlinkitsune.astral_dice.entity.RepulsionEntity) {
