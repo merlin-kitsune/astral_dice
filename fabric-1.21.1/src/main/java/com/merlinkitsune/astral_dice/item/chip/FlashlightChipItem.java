@@ -9,7 +9,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import com.merlinkitsune.astral_dice.platform.event.entity.living.LivingDeathEvent;
 import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
-import com.merlinkitsune.astral_dice.combat.PartyRelations;
+import com.merlinkitsune.starengine.combat.PartyRelations;
 
 /**
  * 手电筒-强光筹码。

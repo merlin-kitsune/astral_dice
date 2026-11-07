@@ -1,4 +1,5 @@
 package com.merlinkitsune.astral_dice.combat;
+import com.merlinkitsune.starengine.combat.PartyRelations;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
