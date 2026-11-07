@@ -61,9 +61,9 @@ dependencies {
     // 事件桥硬前置:Fabric 1.21.1 没有可改伤害值的 FAPI 事件,Puzzles Lib 提供 Mutable* 回调。
     // 它自带 puzzlesaccessapi(内嵌),不含 Forge Config API Port => dev 运行期需一并投放。
     modImplementation "maven.modrinth:puzzles-lib:${puzzleslib_mr_version}"
-    if (providers.gradleProperty('testPuzzles').getOrElse('true') != 'false') {
-        modRuntimeOnly "maven.modrinth:forge-config-api-port:${forgeconfigapiport_mr_version}"
-    }
+    // 无条件投放:forgeconfigapiport 是 puzzleslib 自己的硬前置(depends 里写 "*"),
+    // 关掉只会得到「puzzleslib 在、FCAP 不在」这种必被 Loader 以 HARD_DEP 拒绝的组合。
+    modRuntimeOnly "maven.modrinth:forge-config-api-port:${forgeconfigapiport_mr_version}"
 
     if (libAvailable) {
         modImplementation "${libGroup}:starengine-fabric-1.21.1:${libVersion}"
