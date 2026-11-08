@@ -1679,6 +1679,19 @@ public class ModTooltipHandler {
             addSignLines(tooltip, "tooltip.astral_dice.sign.jill_passive");
             addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player jp ? jp : null);
         }
+        // 少主立牌(al,史诗):主动「强者怜悯」(选一名类玩家目标 + 选 1~3 张卡牌送给他,自己扣除,
+        // 每张换 2 星币) + 被动「双赢」分两个触发面:①给牌(任何走发牌漏斗的给牌)双方各 +1 星光;
+        // ②对目标使用主动技能后双方筹码 -5(下限 5)+ 各一次刷新;另:每 4 层星光 +1 攻/+1 防。
+        // 本立牌无玩家级动态计数器 ⇒ 四段(按键提示 + 主动名/描述 + 被动名/描述) + 冷却行。
+        if (stack.is(ModItems.AL_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "tooltip.astral_dice.sign.al.active");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.al_active");
+            addSignPassiveTitle(tooltip, "tooltip.astral_dice.sign.al.passive");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.al_passive");
+            addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player jp ? jp : null);
+        }
         // 多萝西立牌(dorothy):主动「真正的我」(传送到目标身边安全落点;1:00 内经过友方玩家使双方
         // +1 攻击力,每 10 秒一次、每人一次;【温暖】满 5 层时消耗全部层数换取「当前防御力」点攻击力
         // 1:00) + 被动「交际花」(每次有效治疗获得【温暖】:默认 +1 层,瞬间治疗 / 生命恢复按效果等级;

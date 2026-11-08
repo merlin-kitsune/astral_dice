@@ -98,7 +98,12 @@ public final class PlayerLikeTargets {
         }
         for (Handler handler : HANDLERS.values()) {
             if (!handler.matches(receiver)) continue;
-            return handler.giveCard(giver, receiver, card);
+            boolean ok = handler.giveCard(giver, receiver, card);
+            if (ok) {
+                // 与玩家路径同口径:附属生物收牌同样触发「给牌」类被动（少主立牌 A 面）
+                com.merlinkitsune.astral_dice.item.sign.AlSignItem.onCardGivenToOther(giver, receiver);
+            }
+            return ok;
         }
         return false;
     }

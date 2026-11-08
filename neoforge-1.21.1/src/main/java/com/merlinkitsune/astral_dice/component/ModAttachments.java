@@ -2284,6 +2284,19 @@ public class ModAttachments {
             ATTACHMENTS.register("jill_pending_target", () -> AttachmentType.builder(() -> "")
                     .serialize(Codec.STRING).build());
 
+    /** 少主：目标选择确认后暂存的目标 UUID（空串 = 无）。选卡取消即清空。 */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<String>> AL_PENDING_TARGET =
+            ATTACHMENTS.register("al_pending_target", () -> AttachmentType.builder(() -> "")
+                    .serialize(Codec.STRING).build());
+
+    public static String getAlPendingTarget(net.minecraft.world.entity.player.Player player) {
+        return player.getData(AL_PENDING_TARGET.get());
+    }
+
+    public static void setAlPendingTarget(net.minecraft.world.entity.player.Player player, String value) {
+        player.setData(AL_PENDING_TARGET.get(), value == null ? "" : value);
+    }
+
     /** 调酒师：主动 buff 受惠目标 UUID（空串 = 无；到期/卸下清除）。 */
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<String>> JILL_BUFF_TARGET =
             ATTACHMENTS.register("jill_buff_target", () -> AttachmentType.builder(() -> "")

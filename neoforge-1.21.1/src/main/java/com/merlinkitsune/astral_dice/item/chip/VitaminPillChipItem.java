@@ -63,6 +63,11 @@ public class VitaminPillChipItem extends BaseChipItem {
             // 蛟龙立牌被动「湖沼之王」:佩戴者使其他角色获得卡牌时累计觉醒层数(自己给自己不计)。
             if (giver != null) {
                 com.merlinkitsune.astral_dice.item.sign.MamushiSignItem.onCardGivenToOther(giver, player);
+                // 少主立牌被动「双赢」A 面:佩戴者使**其他**角色获得卡牌 ⇒ 双方各 +1 星光
+                // (2026-11-08 用户裁决:主动发卡 /「你有我有」/ 一切走本漏斗的发牌都算)
+                if (giver instanceof net.minecraft.server.level.ServerPlayer serverGiver) {
+                    com.merlinkitsune.astral_dice.item.sign.AlSignItem.onCardGivenToOther(serverGiver, player);
+                }
             }
         }
     }
