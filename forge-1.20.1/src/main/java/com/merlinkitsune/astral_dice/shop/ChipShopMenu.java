@@ -201,7 +201,8 @@ public class ChipShopMenu extends AbstractContainerMenu {
         addDataSlot(new DataSlot() {
             @Override
             public int get() {
-                return player.level().isClientSide() ? clientPrice : ChipShopState.get(player).price();
+                return player.level().isClientSide() ? clientPrice
+                        : ChipShopDiscounts.effectivePrice(player, ChipShopState.get(player).price());
             }
 
             @Override
@@ -283,7 +284,8 @@ public class ChipShopMenu extends AbstractContainerMenu {
 
     /** 单价（三格同价） */
     public int price() {
-        return player.level().isClientSide() ? clientPrice : ChipShopState.get(player).price();
+        return player.level().isClientSide() ? clientPrice
+                : ChipShopDiscounts.effectivePrice(player, ChipShopState.get(player).price());
     }
 
     /** 剩余刷新次数 */
@@ -358,7 +360,7 @@ public class ChipShopMenu extends AbstractContainerMenu {
         if (chip.isEmpty() || offerIndex >= state.offers().size()) {
             return; // 该格无候选（越界包 / 重复包 / 已重抽）⇒ 静默拒绝
         }
-        int price = state.price();
+        int price = ChipShopDiscounts.effectivePrice(buyer, state.price());
         if (!StarEngineEconomy.isAvailable() || !StarEngineEconomy.hasBalance(buyer, price)) {
             deny(buyer, DENY_NO_COIN, "msg.astral_dice.chip_shop_no_coin", price);
             return;

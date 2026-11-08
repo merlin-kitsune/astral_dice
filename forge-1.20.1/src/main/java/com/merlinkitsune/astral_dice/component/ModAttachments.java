@@ -420,12 +420,12 @@ public class ModAttachments {
         INVESTIGATION_STAGE.set(player, Math.max(1, value));
     }
 
-    public static int getStarlight(net.minecraft.world.entity.player.Player player) {
-        return PLAYER_STARLIGHT.get(player);
+    public static int getStarlight(net.minecraft.world.entity.LivingEntity holder) {
+        return PLAYER_STARLIGHT.get(holder);
     }
 
-    public static void setStarlight(net.minecraft.world.entity.player.Player player, int value) {
-        PLAYER_STARLIGHT.set(player, value);
+    public static void setStarlight(net.minecraft.world.entity.LivingEntity holder, int value) {
+        PLAYER_STARLIGHT.set(holder, value);
     }
 
     public static int getEightSidedAccum(net.minecraft.world.entity.player.Player player) {
@@ -590,6 +590,32 @@ public class ModAttachments {
     public static final AttachedDataKey<ChipShopState> CHIP_SHOP_STATE =
             register(AttachedDataKey.builder("chip_shop_state", ChipShopState.CODEC, () -> ChipShopState.EMPTY)
                     .sync().build());
+
+    // 筹码商店限时折扣（2026-11-08 少主立牌「双赢」，1.20.1 移植）：对目标使用主动技能后，
+    // 双方各得「单价 -5（下限 5）+ 一次刷新」。刻意不并进 CHIP_SHOP_STATE：
+    // 那是商店运行态（候选/次数/冷却），折扣是短时段 buff，且要能挂在注册生物身上；
+    // 非玩家实体由 AttachedDataKey 的 ForgeData 分支持久化（不 .sync()：客户端只通过菜单 DataSlot 读价格）。
+    public static final AttachedDataKey<Integer> CHIP_DISCOUNT_AMOUNT =
+            register(AttachedDataKey.builder("chip_discount_amount", Codec.INT, () -> 0).build());
+
+    public static final AttachedDataKey<Long> CHIP_DISCOUNT_UNTIL =
+            register(AttachedDataKey.builder("chip_discount_until", Codec.LONG, () -> 0L).build());
+
+    public static int getChipDiscountAmount(net.minecraft.world.entity.LivingEntity holder) {
+        return CHIP_DISCOUNT_AMOUNT.get(holder);
+    }
+
+    public static void setChipDiscountAmount(net.minecraft.world.entity.LivingEntity holder, int value) {
+        CHIP_DISCOUNT_AMOUNT.set(holder, value);
+    }
+
+    public static long getChipDiscountUntil(net.minecraft.world.entity.LivingEntity holder) {
+        return CHIP_DISCOUNT_UNTIL.get(holder);
+    }
+
+    public static void setChipDiscountUntil(net.minecraft.world.entity.LivingEntity holder, long value) {
+        CHIP_DISCOUNT_UNTIL.set(holder, value);
+    }
 
     // 立牌主动技能"本次冷却实际使用的最大冷却 tick"(路线 A:所有减免方一律读它作基准,不再各自重算;
     // 0 表示缺失/无冷却,减免方回退旧行为;仅服务端使用,故不 .sync()、不加入 SYNCED_KEYS)。

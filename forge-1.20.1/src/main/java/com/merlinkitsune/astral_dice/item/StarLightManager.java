@@ -24,7 +24,7 @@ public final class StarLightManager {
     }
 
     /** 当前星光点数 */
-    public static int get(Player player) {
+    public static int get(net.minecraft.world.entity.LivingEntity player) {
         return ModAttachments.getStarlight(player);
     }
 
@@ -114,13 +114,13 @@ public final class StarLightManager {
         ModAttachments.setStarlight(player, Math.max(0, get(player) - granted));
     }
 
-    public static void set(Player player, int value) {
+    public static void set(net.minecraft.world.entity.LivingEntity player, int value) {
         // 星光只受 0..上限 约束
         ModAttachments.setStarlight(player, Math.max(0, Math.min(value, getCap())));
     }
 
     // 增加星光(自动限制在上限内),返回增加后的值
-    public static int add(Player player, int amount) {
+    public static int add(net.minecraft.world.entity.LivingEntity player, int amount) {
         int next = Math.min(get(player) + amount, getCap());
         set(player, next);
         return next;
