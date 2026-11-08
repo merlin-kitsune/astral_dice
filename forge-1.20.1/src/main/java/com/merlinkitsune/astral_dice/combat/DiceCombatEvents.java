@@ -1307,7 +1307,7 @@ public class DiceCombatEvents {
 
     // 攻击牌耐久消耗(仅在触发骰神赐福的那次攻击执行一次;防御牌/蓄力不消耗)。
     // 普通近战触发与反击伤害注入共用(反击未赐福时作为触发攻击消耗一次耐久)。
-    private static void consumeAttackCardDurabilityOnce(Player player, ItemStack diceStack, WeaponEnhancement enhancement) {
+    private static void consumeAttackCardDurabilityOnce(LivingEntity player, ItemStack diceStack, WeaponEnhancement enhancement) {
         if (diceStack == null || diceStack.isEmpty() || enhancement == null
                 || enhancement.appliedStones().isEmpty()) return;
         List<AppliedStone> newStones = new ArrayList<>();
@@ -1354,8 +1354,12 @@ public class DiceCombatEvents {
     // ⚠️ 触发口径 = **每一次**受骰战攻击(不按赐福周期计数) —— 本方法取代原先
     //    「按装备顺序只扣第一张」的实现,以及更早的「每赐福周期一次、所有牌各扣 1」实现。
     private static void consumeAllDefenseCardDurability(LivingEntity defenderEntity) {
-        // 非玩家防御方没有「已装战斗牌」概念(战斗牌挂骰子强化,非玩家侧不生效) ⇒ 空转
-        if (!(defenderEntity instanceof Player defender)) return;
+        // G6(2026-11-08):经 DiceCombatParticipants 注册的「类玩家」生物可以装骰子与战斗牌,
+        // 与玩家同口径扣防御牌耐久并返还费用;未注册的生物仍然空转(回归红线)。
+        boolean participantDefender = !(defenderEntity instanceof Player)
+                && DiceCombatParticipants.isParticipant(defenderEntity);
+        if (!(defenderEntity instanceof Player) && !participantDefender) return;
+        LivingEntity defender = defenderEntity;
         if (defender.level().isClientSide()) return;
         var curios = CuriosCompat.getCuriosInventory(defender);
         if (curios.isEmpty()) return;
@@ -1456,6 +1460,14 @@ public class DiceCombatEvents {
                     }
                 }
             }
+        } else if (opposed && DiceCombatParticipants.isParticipant(target)) {
+            // G6(2026-11-08)：注册生物作防御方时同样掷防御牌（骰子与其战斗牌挂在同一个骰子栈上）
+            WeaponEnhancement defenderEnh = defenderDie.isEmpty()
+                    ? null
+                    : ModDataComponents.WEAPON_ENHANCEMENT.getOrDefault(defenderDie, null);
+            if (defenderEnh != null) {
+                defenseCardSum = sumEquippedDefenseCardPoints(target, defenderDie, defenderEnh);
+            }
         }
 
         // 生物武器附魔:按原版 Mob#doHurtTarget —— f += getDamageBonus(getMainHandItem(), 目标 MobType)
@@ -1478,6 +1490,25 @@ public class DiceCombatEvents {
                         + mobAttackAttr.getValue()
                         + enchantDamageBonus(mob, target);
         double mobAttack = attackPoints + mobRoll;
+        // === G6(2026-11-08)：注册的骰战参与者按玩家口径吃「骰战攻击修饰器 + 攻击牌」 ===
+        // 只在 DiceCombatParticipants 命中时执行；未注册生物整段跳过 ⇒ 既有行为逐值不变。
+        WeaponEnhancement attackerEnh = attackerDie.isEmpty()
+                ? null
+                : ModDataComponents.WEAPON_ENHANCEMENT.getOrDefault(attackerDie, null);
+        if (DiceCombatParticipants.isParticipant(mob)) {
+            WeaponEnhancement enhForCtx = attackerEnh != null ? attackerEnh : WeaponEnhancement.EMPTY;
+            DiceCombatContext participantCtx = new DiceCombatContext(
+                    mob, target, null, mobRoll, attackerDie, enhForCtx, false, false,
+                    enhForCtx.starLevel(), 0);
+            double modified = mobAttack;
+            for (var modifier : DiceCombatModifiers.attackModifiers()) {
+                modified = modifier.apply(participantCtx, modified);
+            }
+            mobAttack = modified + participantCtx.attackCardSum;
+            if (attackerEnh != null) {
+                consumeAttackCardDurabilityOnce(mob, attackerDie, attackerEnh);
+            }
+        }
         double playerDefense;
         if (target instanceof Player playerDefender) {
             playerDefense = com.merlinkitsune.starengine.combat.CombatFormula.playerDefense(
@@ -1684,7 +1715,7 @@ public class DiceCombatEvents {
      * 遍历全部已装卡逐张走 {@link CardRegistry#roll};玻璃骰子取最大值)。
      * 供生物攻击玩家时计算玩家侧战斗牌防御点数使用。
      */
-    private static int sumEquippedDefenseCardPoints(Player defender, ItemStack dice, WeaponEnhancement enh) {
+    private static int sumEquippedDefenseCardPoints(LivingEntity defender, ItemStack dice, WeaponEnhancement enh) {
         DiceCombatContext ctx = new DiceCombatContext(
                 defender, defender, null, 0, dice, enh, false, false, 0, 0);
         ctx.targetEnhancement = enh;
