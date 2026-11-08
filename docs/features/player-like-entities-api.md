@@ -186,7 +186,7 @@ PlayerLikeWallets.register(MAID_LIKE, e -> e instanceof EntityMaid, new PlayerLi
 
 | 线 | 状态 | 说明 |
 |---|---|---|
-| `neoforge-1.21.1`（P0） | 主体已落地 | `090a8c5f` / `a8a2fcf6` / `34d2d3a3` / `831ec4d8` / `03ab1b86` / `842b17a8` / `83ac4ced` 全在；G6（骰战参与者分支）仍欠 |
+| `neoforge-1.21.1`（P0） | 主体已落地 | `090a8c5f` / `a8a2fcf6` / `34d2d3a3` / `831ec4d8` / `03ab1b86` / `842b17a8` / `83ac4ced` 全在；G6 于 2026-11-08 落地（`e9a8856d` + `99fc9db1`） |
 | `forge-1.20.1` | 已落地（本批） | `051fc865` 类玩家面 + 目标选择放行、`f6499965` 商店折扣/服务、`0c9d86de` 立牌钩子实体级化、`55bdf174` 女仆槽位数据、`2f926f4c` 选卡器 1~3 张、`7f14ed50` 少主立牌 al（含资源/三语/手册） |
 | `neoforge-26.1.2` / `fabric-1.20.1` / `fabric-1.21.1` | 待 P1 重构后同步 | 仍按 §6.2 / §6.3 执行 |
 
@@ -204,7 +204,10 @@ PlayerLikeWallets.register(MAID_LIKE, e -> e instanceof EntityMaid, new PlayerLi
 
 `forge-1.20.1` 仍欠（同步 P0 时一并补）：
 
-- G6 骰战参与者的能力位分支（`DiceCombatEvents` 的 `instanceof Player` 逐条放宽）。
+- G6 已落地（P0 `e9a8856d` + `99fc9db1`；forge `930b6ce9` + `c53798e2`）：`DiceCombatContext.attacker`
+  与筹码/费用入口放宽到 `LivingEntity`，注册参与者吃攻击修饰器与战斗牌、按同口径扣耐久；
+  玩家专属加成由 `playerOrNull` 守卫跳过。
+- 仍欠（P1 线）：四线同步 G6；fabric 两线尚未做类玩家能力面。
 
 `forge-1.20.1` AL 落地的三处平台差异（与 P0 不同、已验证可编译）：
 
