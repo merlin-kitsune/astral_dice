@@ -1245,6 +1245,7 @@ public class DiceCombatEvents {
                 }
             }
         } else if (opposed && DiceCombatParticipants.isParticipant(target)) {
+            DiceCurioItem.refreshChipSlotCountForEntity(target);
             // G6(2026-11-08)：注册生物作防御方时同样掷防御牌（骰子与其战斗牌挂在同一个骰子栈上）
             WeaponEnhancement defenderEnh = defenderDie.isEmpty()
                     ? null
@@ -1289,6 +1290,7 @@ public class DiceCombatEvents {
                 : ModDataComponents.WEAPON_ENHANCEMENT.getOrDefault(attackerDie, null);
         DiceCombatContext g6Ctx = null;
         if (DiceCombatParticipants.isParticipant(mob)) {
+            DiceCurioItem.refreshChipSlotCountForEntity(mob);
             WeaponEnhancement enhForCtx = attackerEnh != null ? attackerEnh : WeaponEnhancement.EMPTY;
             DiceCombatContext participantCtx = new DiceCombatContext(
                     mob, target, null, mobRoll, attackerDie, enhForCtx, false, false,

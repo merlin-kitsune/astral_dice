@@ -1119,6 +1119,7 @@ public class DiceCombatEvents {
         DiceCombatContext g6Ctx = null;
         WeaponEnhancement attackerEnh = attackerDie.isEmpty() ? null : enhOfDefenderDie(attackerDie);
         if (DiceCombatParticipants.isParticipant(mob)) {
+            DiceCurioItem.refreshChipSlotCountForEntity(mob);
             WeaponEnhancement enhForCtx = attackerEnh != null ? attackerEnh : WeaponEnhancement.EMPTY;
             DiceCombatContext participantCtx = new DiceCombatContext(
                     mob, target, null, mobRoll, attackerDie, enhForCtx, false, false,
@@ -1143,6 +1144,7 @@ public class DiceCombatEvents {
         }
         // G6:参与者作防御方时先掷出她的防御牌(G6 之前只对玩家掷)
         if (!(target instanceof Player) && DiceCombatParticipants.isParticipant(target)) {
+            DiceCurioItem.refreshChipSlotCountForEntity(target);
             ItemStack g6DefenderDie = CurioSlotUtil.findFirstCurioMatching(target, DiceCurioItem::isDiceItem);
             WeaponEnhancement g6DefenderEnh = enhOfDefenderDie(g6DefenderDie);
             if (g6DefenderEnh != null) {
