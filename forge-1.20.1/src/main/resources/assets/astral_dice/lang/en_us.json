@@ -1157,5 +1157,15 @@
   "tooltip.astral_dice.sign.sykes_passive": "Attacking a hostile target grants §e1§7 Abyss Mark stack, at most once every §910§7 seconds\nEach Abyss Mark stack increases damage taken from Sykes and the Abyss Tentacle by §e1§7, up to §e20§7 stacks\nWhile worn you cannot trigger sculk sensors or shriekers, and shriekers cannot inflict Darkness on you\nDamage taken from Wardens is reduced by §e50%%§7",
   "tooltip.astral_dice.sign.sykes_note": "The Abyss Tentacle strikes every hostile target inside the Abyss Zone every §96§7 seconds for §e4§7 skill damage and Slow II (§90:30§7)\nHits carry the player melee knockback; the Abyss Tentacle occupies its block and is indestructible, cannot be moved or teleported, and takes no damage, healing or status effects\nEach Abyss Tentacle draws hostile mobs within §e4§7 blocks, and a hostile mob that attacks it takes §e1§7 skill damage\nEach Abyss Tentacle lasts §910§7 minutes and then sinks into the ground",
   "item.astral_dice.sykes_sign": "Sykes Sign",
-  "effect.astral_dice.abyss_mark.description": "Each stack increases damage taken from Sykes and the Abyss Tentacle by §e1§7, up to §e20§7 stacks; lasts §92:00§7 and loses §e1§7 stack on each expiry"
+  "effect.astral_dice.abyss_mark.description": "Each stack increases damage taken from Sykes and the Abyss Tentacle by §e1§7, up to §e20§7 stacks; lasts §92:00§7 and loses §e1§7 stack on each expiry",
+  "item.astral_dice.al_sign": "A.L. Sign",
+  "tooltip.astral_dice.sign.al.active": "Mercy of the Strong",
+  "tooltip.astral_dice.sign.al.passive": "Win-Win",
+  "tooltip.astral_dice.sign.al_active": "Pick a player, then choose §e1§7-§e3§7 cards to give them (the cards are taken from you)\n  For every card given: gain §e2§7 Star Coins",
+  "tooltip.astral_dice.sign.al_passive": "When you cause another character to gain cards (including You Have, I Have): both of you gain §e1§7 Starlight\n  After using the active skill on a target: both of you pay §e5§7 fewer Star Coins for chips (minimum §e5§7) and each gain §e1§7 refresh\n  Every §e4§7 Starlight: ATK §e+1§7, DEF §e+1§7",
+  "msg.astral_dice.al_ready": "Choose a player to give cards to",
+  "msg.astral_dice.al_done": "Gave %s cards and gained %s Star Coins",
+  "msg.astral_dice.al_no_cards": "You have no cards to give",
+  "astral_dice.guide.entry.al_sign.1": "A.L. Sign: the active Mercy of the Strong picks a player (characters registered by add-on mods count as players), then opens the card picker; §e1§7 card is enough to confirm, up to §e3§7. Given cards go straight into the receiver inventory and are removed from yours; anything that does not fit drops on the ground. Every card given grants §e2§7 Star Coins.",
+  "astral_dice.guide.entry.al_sign.2": "The passive Win-Win has two triggers: (1) any path that makes another character gain cards (including the You Have, I Have effect card) grants both sides §e1§7 Starlight; (2) using the active skill on a target makes chips cost §e5§7 fewer Star Coins for both sides (minimum §e5§7) and grants each §e1§7 refresh. Every §e4§7 Starlight grants ATK §e+1§7 and DEF §e+1§7."
 }
