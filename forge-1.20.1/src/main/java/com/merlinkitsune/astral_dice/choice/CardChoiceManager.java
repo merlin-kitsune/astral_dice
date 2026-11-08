@@ -61,14 +61,17 @@ public final class CardChoiceManager {
     private static final class Session {
         final int token;
         final int slotCount;
+        /** 最少实放张数（1~slotCount；= slotCount 即「必须放满」的旧行为）。 */
+        final int minSlots;
         final CardChoiceType type;
         Consumer<List<ItemStack>> handler;
         /** 已确认/已作废：此后不再接受确认与重复回调。 */
         boolean resolved;
 
-        Session(int token, int slotCount, CardChoiceType type, Consumer<List<ItemStack>> handler) {
+        Session(int token, int slotCount, int minSlots, CardChoiceType type, Consumer<List<ItemStack>> handler) {
             this.token = token;
             this.slotCount = slotCount;
+            this.minSlots = minSlots;
             this.type = type;
             this.handler = handler;
         }
@@ -88,30 +91,49 @@ public final class CardChoiceManager {
     /** 打开选卡界面（调用者自带 token）；true = 已建会话并下发界面。 */
     public static boolean start(ServerPlayer player, int slotCount, CardChoiceType type, int token,
                                 Consumer<List<ItemStack>> handler) {
+        return start(player, slotCount, slotCount, type, token, handler);
+    }
+
+    /**
+     * 打开选卡界面（可变下限；2026-11-08 少主立牌「强者怜悯」需要「1~3 张任选」）。
+     *
+     * @param minSlots 最少实放张数，夹取到 {@code [MIN_SLOTS, slotCount]}。
+     */
+    public static int start(ServerPlayer player, int slotCount, int minSlots, CardChoiceType type,
+                            Consumer<List<ItemStack>> handler) {
+        int token = ThreadLocalRandom.current().nextInt(1, Integer.MAX_VALUE);
+        return start(player, slotCount, minSlots, type, token, handler) ? token : -1;
+    }
+
+    public static boolean start(ServerPlayer player, int slotCount, int minSlots, CardChoiceType type, int token,
+                                Consumer<List<ItemStack>> handler) {
         if (player == null || type == null || handler == null || token <= 0) {
             return false;
         }
-        if (slotCount != SLOTS_SINGLE && slotCount != SLOTS_TRIPLE) {
+        if (slotCount < MIN_SLOTS || slotCount > MAX_SLOTS) {
             LOGGER.warn("AP_CARD_CHOICE: reject:reason=bad_slot_count:player={}:slots={}",
                     player.getGameProfile().getName(), slotCount);
             return false;
         }
+        int effectiveMinSlots = Math.max(MIN_SLOTS, Math.min(slotCount, minSlots));
         Session existing = SESSIONS.get(player.getUUID());
         if (existing != null && !existing.resolved) {
             LOGGER.warn("AP_CARD_CHOICE: reject:reason=already_open:player={}:token={}",
                     player.getGameProfile().getName(), existing.token);
             return false;
         }
-        Session session = new Session(token, slotCount, type, handler);
+        Session session = new Session(token, slotCount, effectiveMinSlots, type, handler);
         SESSIONS.put(player.getUUID(), session);
 
         try {
             NetworkHooks.openScreen(player, new SimpleMenuProvider(
-                            (containerId, inventory, p) -> new CardChoiceMenu(containerId, inventory, token, slotCount, type),
-                            Component.translatable(type.titleKey(slotCount))),
+                            (containerId, inventory, p) -> new CardChoiceMenu(containerId, inventory, token, slotCount,
+                                    effectiveMinSlots, type),
+                            Component.translatable(type.titleKey(slotCount, effectiveMinSlots))),
                     buf -> {
                         buf.writeVarInt(token);
                         buf.writeVarInt(slotCount);
+                        buf.writeVarInt(effectiveMinSlots);
                         buf.writeVarInt(type.ordinal());
                     });
         } catch (RuntimeException exception) {
@@ -138,8 +160,8 @@ public final class CardChoiceManager {
                     player.containerMenu == null ? "null" : player.containerMenu.getClass().getSimpleName());
             return false;
         }
-        LOGGER.info("AP_CARD_CHOICE: open:{}:player={}:slots={}:type={}",
-                token, player.getGameProfile().getName(), slotCount, type);
+        LOGGER.info("AP_CARD_CHOICE: open:{}:player={}:slots={}:minSlots={}:type={}",
+                token, player.getGameProfile().getName(), slotCount, effectiveMinSlots, type);
         return true;
     }
 

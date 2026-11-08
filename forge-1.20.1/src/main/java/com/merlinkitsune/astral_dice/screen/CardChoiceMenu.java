@@ -50,6 +50,8 @@ public class CardChoiceMenu extends AbstractContainerMenu {
     private final SimpleContainer cardContainer;
     private final int token;
     private final int slotCount;
+    /** 最少实放张数（1~slotCount）。 */
+    private final int minSlots;
     private final CardChoiceType type;
     /** 已确认：removed 时只退余量、不触发会话作废。 */
     private boolean confirmed;
@@ -57,10 +59,17 @@ public class CardChoiceMenu extends AbstractContainerMenu {
 
     /** 服务端构造（{@code ServerPlayer#openMenu} 的工厂）。 */
     public CardChoiceMenu(int containerId, Inventory playerInventory, int token, int slotCount, CardChoiceType type) {
+        this(containerId, playerInventory, token, slotCount, slotCount, type);
+    }
+
+    /** 可变下限版本（2026-11-08）：{@code minSlots} 夹取到 {@code [MIN_SLOTS, slotCount]}。 */
+    public CardChoiceMenu(int containerId, Inventory playerInventory, int token, int slotCount, int minSlots,
+                          CardChoiceType type) {
         super(ModMenuTypes.CARD_CHOICE.get(), containerId);
         this.playerInventory = playerInventory;
         this.token = token;
         this.slotCount = Math.max(CardChoiceManager.MIN_SLOTS, Math.min(CardChoiceManager.MAX_SLOTS, slotCount));
+        this.minSlots = Math.max(CardChoiceManager.MIN_SLOTS, Math.min(this.slotCount, minSlots));
         this.type = type == null ? CardChoiceType.ANY : type;
         this.cardContainer = new SimpleContainer(this.slotCount);
         initSlots();
@@ -68,7 +77,7 @@ public class CardChoiceMenu extends AbstractContainerMenu {
 
     /** 客户端构造（extra data：token + slotCount + type.ordinal()）。 */
     public CardChoiceMenu(int containerId, Inventory playerInventory, FriendlyByteBuf buf) {
-        this(containerId, playerInventory, buf.readVarInt(), buf.readVarInt(),
+        this(containerId, playerInventory, buf.readVarInt(), buf.readVarInt(), buf.readVarInt(),
                 CardChoiceType.byId(buf.readVarInt()));
     }
 
@@ -100,7 +109,12 @@ public class CardChoiceMenu extends AbstractContainerMenu {
 
     /** 已放满（确认按钮的唯一显示/响应判据）。 */
     public boolean isComplete() {
-        return filledSlots() == slotCount;
+        return filledSlots() >= minSlots;
+    }
+
+    /** 最少实放张数（1~slotCount）。 */
+    public int minSlots() {
+        return minSlots;
     }
 
     public int filledSlots() {
@@ -119,16 +133,16 @@ public class CardChoiceMenu extends AbstractContainerMenu {
      * 两线口径一致：创造模式（instabuild）不扣卡，生存模式仍扣。
      */
     public List<ItemStack> consumeSelection(Player player) {
-        // 先整体校验，再动任何一张（避免「消耗到一半发现不合法」）
-        for (int i = 0; i < slotCount; i++) {
-            ItemStack stack = cardContainer.getItem(i);
-            if (stack.isEmpty() || !type.matches(stack)) {
-                return List.of();
-            }
+        // 先整体校验，再动任何一张（避免「消耗到一半发现不合法」）：
+        // 2026-11-08 起允许多于 minSlots 的实放量，因此只统计合法张数、不再要求每槽非空。
+        int legal = filledSlots();
+        if (legal < minSlots) {
+            return List.of();
         }
-        List<ItemStack> picked = new ArrayList<>(slotCount);
+        List<ItemStack> picked = new ArrayList<>(legal);
         for (int i = 0; i < slotCount; i++) {
             ItemStack stack = cardContainer.getItem(i);
+            if (stack.isEmpty() || !type.matches(stack)) continue;
             ItemStack one = stack.copyWithCount(1);
             // 创造模式不扣卡（对齐 1.21.1 的 consume(1, player)）
             if (!player.isCreative()) stack.shrink(1);
