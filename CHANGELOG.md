@@ -11,6 +11,8 @@
 - Fix: the Meito card cost calculation passed a null player when the Misaki sign was not equipped, which crashed with a null pointer inside the curios inventory lookup; the charge-refund path now also uses `effectiveCost`, so an equipped sign settles at 3 points.
 - Add: the forge 1.20.1 line gains the A.L. sign (`al_sign`, epic) — active Mercy of the Strong gives 1-3 cards to a chosen player for 2 Star Coins per card; passive Win-Win grants both sides 1 Starlight whenever cards are handed over, and after using the active skill both sides pay 5 fewer Star Coins for chips (floor 5) plus one refresh; every 4 Starlight grants +1 ATK and +1 DEF. The card picker now accepts 1-3 cards on this line too.
 
+- **Fabric prerequisite consolidation**: both `fabric-1.21.1` and `fabric-1.20.1` dropped the Puzzles Lib and Forge Config API Port dependencies. The 13 (1.21.1) / 12 (1.20.1) event bridges are now provided by StarEngine's `api/event` callbacks and registered only by `StarengineBridges`; library pins are `26.4-SNAPSHOT.8` (1.21.1) and `26.4-SNAPSHOT.10` (1.20.1). All 13/12 chains were verified in-game (1.21.1 13/13; 1.20.1 12/12; the inherited `removeAllEffects` behaviour was kept as-is by decision). `MODLIST` no longer requires the removed mods.
+
 ## 26.4-SNAPSHOT.6
 
 > The dev line absorbs mainline `1.5.0` + `1.5.0-hotfix` (40 commits) and bumps its own version so the merged build is distinguishable. The dev pin set is unchanged: all four lines stay on `26.4-SNAPSHOT.6+<line>`, StarEngine stays pinned to `26.4-SNAPSHOT.1`.
