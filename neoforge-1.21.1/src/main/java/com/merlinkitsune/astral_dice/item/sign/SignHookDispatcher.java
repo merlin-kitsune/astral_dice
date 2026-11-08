@@ -47,7 +47,7 @@ public final class SignHookDispatcher {
     }
 
     /** 遍历玩家当前装备的全部立牌（客户端 / null 早退，与既有 invoke*Hooks 同口径）。 */
-    private static void forEachSign(Player player, Consumer<BaseSignItem> action) {
+    private static void forEachSign(LivingEntity player, Consumer<BaseSignItem> action) {
         if (player == null || player.level().isClientSide()) return;
         CuriosApi.getCuriosInventory(player).ifPresent(handler -> {
             var results = handler.findCurios(s -> s.getItem() instanceof BaseSignItem);
@@ -67,7 +67,12 @@ public final class SignHookDispatcher {
 
     /** 玩家造成击杀时,调用其全部已装备立牌的 {@code onKill} 钩子(实现自 {@code BaseSignItem#invokeKillHooks})。 */
     public static void fireKillHooks(Player killer, LivingEntity killed) {
-        forEachSign(killer, sign -> sign.onKill(killer, killed));
+        fireKillHooks((LivingEntity) killer, killed);
+    }
+
+    /** 实体级分发：玩家与注册生物同一入口（子类覆写 {@code onKillEntity} 才生效）。 */
+    public static void fireKillHooks(LivingEntity killer, LivingEntity killed) {
+        forEachSign(killer, sign -> sign.onKillEntity(killer, killed));
     }
 
     /**
@@ -78,6 +83,15 @@ public final class SignHookDispatcher {
      * 于是摔落 / 仙人掌 / 着火等环境伤害、以及本模组「符卡-祸」的无来源真伤都会算数。
      * 闸门保持在**分发处**(先于遍历),与原直调口径一致。
      */
+    public static void fireHurtHooks(LivingEntity entity, DamageSource source, float amount) {
+        if (entity == null || entity.level().isClientSide()) return;
+        boolean hostile = entity instanceof Player player
+                ? com.merlinkitsune.astral_dice.combat.DiceCombatEvents.isHostileAttack(player, source)
+                : source.getEntity() instanceof LivingEntity attacker && attacker != entity && attacker.isAlive();
+        if (!hostile) return;
+        forEachSign(entity, sign -> sign.onHurtEntity(entity, source, amount));
+    }
+
     public static void fireHurtHooks(Player player, DamageSource source, float amount) {
         if (player == null || player.level().isClientSide()) return;
         if (!com.merlinkitsune.astral_dice.combat.DiceCombatEvents.isHostileAttack(player, source)) return;
