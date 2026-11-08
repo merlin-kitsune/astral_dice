@@ -1155,6 +1155,9 @@
   "gui.astral_dice.card_choice.title_triple_combat": "选择三张战斗牌",
   "gui.astral_dice.card_choice.title_triple_effect": "选择三张效果牌",
   "gui.astral_dice.card_choice.title_triple_any": "选择三张卡牌",
+  "gui.astral_dice.card_choice.title_variable_combat": "选择 1~3 张战斗牌",
+  "gui.astral_dice.card_choice.title_variable_effect": "选择 1~3 张效果牌",
+  "gui.astral_dice.card_choice.title_variable_any": "选择 1~3 张卡牌",
   "msg.astral_dice.event_animating": "事件动画播放中，请稍后再试"
 }
 
