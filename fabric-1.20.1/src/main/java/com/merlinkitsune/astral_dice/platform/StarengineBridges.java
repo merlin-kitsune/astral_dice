@@ -30,11 +30,11 @@ import net.minecraft.world.item.ItemStack;
  *
  * <h2>为什么可以用「前置库的 mixin」</h2>
  * 本模组 109 个处理器全部注册在 {@link LoaderBus} 上（保留 Forge 的 {@code EventPriority}
- * 排序语义）。本类只负责把 Puzzles Lib 的回调转成对应事件再派发 —— 排序仍然由我们自己的总线做，
+ * 排序语义）。本类只负责把 Starengine 的回调转成对应事件再派发 —— 排序仍然由我们自己的总线做，
  * 所以「气囊保命优先、磨刀石次之、LOWEST = 最终伤害阶段」这套承重顺序**不受影响**。
  *
  * <h2>⚠️ 映射必须按**注入点**核对，不能按名字</h2>
- * 实测 Puzzles 8.1.33 的 {@code LivingEntityFabricMixin} 字节码后确认：
+ * 实测原 Puzzles 实现（1.20.1 为 8.1.36）的 {@code LivingEntityFabricMixin} 字节码后确认：
  * <table border="1">
  *   <caption>关键映射（已逐条核对注入位置）</caption>
  *   <tr><th>Puzzles 回调</th><th>注入点</th><th>对应 Forge 事件</th></tr>
@@ -88,7 +88,7 @@ public final class StarengineBridges {
         // 取证:桥装没装必须能从日志看出来 —— 「代码在但没接上」是本项目踩过的最大一类坑
         //(见 AstralDiceMod 里 install() 从未被调用那一处)。
         com.merlinkitsune.astral_dice.AstralDiceMod.LOGGER.info(
-                "[Astral Dice] Puzzles 事件桥已安装:伤害/死亡/掉落/目标/效果×3/方块/克隆/拾取/铁砧×2");
+                "[Astral Dice] Starengine 事件桥已安装:伤害/死亡/掉落/目标/效果×3/方块/克隆/拾取/铁砧×2");
     }
 
     // ------------------------------------------------------------------

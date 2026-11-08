@@ -558,7 +558,7 @@ tasks.register('pushToGame') {
 // JDK21 isReadOnly=false，同一 fabric-loader jar、同一路径）⇒ 运行期重映射必然抛
 // `java.io.IOException: the jar file ... can't be written`。
 // 触发面仅限「需要运行期重映射的 mod」= run/{server,client}/mods 里的 astral_embedded-*.jar
-// （tools/loom_embedded_jars.py 投放的内嵌库），删掉它们会缺 puzzlesaccessapi 启动失败。
+// （tools/loom_embedded_jars.py 投放的内嵌库）;puzzlesaccessapi 已随 Puzzles 移除而停用，不再是启动前置。
 // 产物 compileJava 仍按 toolchain 17 出 Java 17 字节码，仅 runClient/runServer/runDatagen 换 JVM。
 tasks.configureEach { t ->
     if (t.name == 'runClient' || t.name == 'runServer' || t.name == 'runDatagen') {

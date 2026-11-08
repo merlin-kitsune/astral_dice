@@ -35,7 +35,7 @@ import com.merlinkitsune.astral_dice.platform.util.Effects;
  * 所以「气囊保命优先、磨刀石次之、LOWEST = 最终伤害阶段」这套承重顺序**不受影响**。
  *
  * <h2>⚠️ 映射必须按**注入点**核对，不能按名字</h2>
- * 实测 Puzzles 8.1.33 的 {@code LivingEntityFabricMixin} 字节码后确认：
+ * 实测原 Puzzles 实现（1.21.1 为 21.1.66）的 {@code LivingEntityFabricMixin} 字节码后确认：
  * <table border="1">
  *   <caption>关键映射（已逐条核对注入位置）</caption>
  *   <tr><th>Puzzles 回调</th><th>注入点</th><th>对应 Forge 事件</th></tr>
@@ -103,7 +103,7 @@ public final class StarengineBridges {
         // 取证:桥装没装必须能从日志看出来 —— 「代码在但没接上」是本项目踩过的最大一类坑
         //(见 AstralDiceMod 里 install() 从未被调用那一处)。
         com.merlinkitsune.astral_dice.AstralDiceMod.LOGGER.info(
-                "[Astral Dice] Puzzles 事件桥已安装:伤害/死亡/掉落/目标/效果×4/方块/克隆/拾取/铁砧×2");
+                "[Astral Dice] Starengine 事件桥已安装:伤害/死亡/掉落/目标/效果×4/方块/克隆/拾取/铁砧×2");
     }
 
     // ------------------------------------------------------------------
@@ -134,9 +134,9 @@ public final class StarengineBridges {
         // ── LivingDropsEvent ← LivingDropsCallback(dropAllDeathLoot TAIL) ──
         LivingDropsCallback.EVENT.register((entity, source, drops, recentlyHit) -> {
             // 1.21.1 的 LivingDropsCallback 只有 4 参:(entity, source, drops, recentlyHit),lootingLevel 形参已删。
-            // 第 4 参的实际来源是「lootingLevel > 0」——puzzles-lib 21.1.66 的
+            // 第 4 参的实际来源是「lastHurtByPlayerTime > 0」——原 puzzles-lib 21.1.66 的
             // FabricEventImplHelper#tryOnLivingDrops 字节码:iload_2 / ifle / iconst_1,
-            // 即把 int 型 lootingLevel 压成 boolean 再传。故这里按「有没有抢夺等级」还原成 1/0;
+            // 即把 int 型 lastHurtByPlayerTime 压成 boolean 再传。故这里按「最近是否被玩家伤害」还原成 1/0;
             // 本线没有任何消费方读 getLootingLevel()/isRecentlyHit()(已 grep 核实),还原只用于事件构造。
             LivingDropsEvent event = new LivingDropsEvent(entity, source, drops, recentlyHit ? 1 : 0, recentlyHit);
             LoaderBus.INSTANCE.post(event);
