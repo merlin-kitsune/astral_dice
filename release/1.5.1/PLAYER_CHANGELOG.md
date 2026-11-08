@@ -19,7 +19,7 @@ Released: **1.5.1 (stable)** — a maintenance update that repairs one crash, lo
 
 ## Installation and requirements (read first)
 
-- **`StarEngine` is still a separate install** (same on all four lines, version **1.1.0**): the shipped jar does not bundle the library, so put the matching `starengine-<loader>-1.1.0.jar` into `mods`.
+- **`StarEngine` is still a separate install** (same on all four lines, version **1.1.1**): the shipped jar does not bundle the library, so put the matching `starengine-<loader>-1.1.1.jar` into `mods`.
 - Mixin runtime for 1.20.1: **Mixin Booster ≥0.1.3** or **Sinytra Connector** — either one, not both.
 - **No config edits and no world migration**: this version only changes one value lookup in cost settlement; config keys and the save format are untouched, so existing worlds load as they are.
 

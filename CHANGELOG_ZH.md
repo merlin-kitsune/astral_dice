@@ -12,6 +12,10 @@
 - **Forge 1.20.1 兼容下限下探到 47.1.47**：把 Forge API 面压回到 47.1.x，重写了两处只在更高版本才有的用法 —— `ResourceLocation.fromNamespaceAndPath(...)` 回退为 `new ResourceLocation(namespace, path)`（11 处），`ModLoadingContext.registerDisplayTest(...)` 改为原生扩展点注册（语义等价）。`mods.toml` 的 Forge 依赖区间随之变为 `[47.1.47,48)`，停在 47.1.x 的整合包无需升级 Forge 即可加载。
 - **卡牌选择器补上背景暗化**：1.20.1 的容器屏不会自动调用 `renderBackground`（`Screen#render` 只遍历控件、`AbstractContainerScreen#render` 只调 `renderBg`），选卡界面背后世界的亮度与游戏内一致、缺少视觉层次。现于 `CardChoiceScreen#render` 补一次背景渲染：有世界时两层暗化渐变，无世界时泥土背景（1.21.1 与 26.1.2 的原版 `Screen#render` / `extractBackground` 已自动处理，无需改动）。
 
+### 依赖更新
+
+- **前置库 StarEngine 升到 1.1.1**：本次只有 Forge 1.20.1 侧有源码变更（库自身依赖下限 47.4.10 → 47.1.47，`LoaderTags` 的 `ResourceLocation.fromNamespaceAndPath` 换回 `new ResourceLocation`），其余平台与 1.1.0 无差异。本模组四线 `starengine_version` 与 CI 检出提交同步到 `1.1.1`，四线声明的库依赖下界也一并收紧为 `1.1.1`（`mods.toml` `[1.1.1,2.0.0)` / `fabric.mod.json` `>=1.1.1 <2.0.0`）。挂在 Forge 47.1.x 上的整合包必须换成 1.1.1 —— 1.1.0 的库自己声明 `[47.4.10,48)`，会被 FML 在依赖排序阶段拒载。
+
 ## 1.5.0-hotfix (2026-11-02)
 
 ### 已修复BUG

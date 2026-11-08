@@ -12,6 +12,10 @@
 - **Forge 1.20.1 compatibility floor lowered to 47.1.47**: the Forge API surface is pulled back to 47.1.x by rewriting the two usages that only exist in newer builds — `ResourceLocation.fromNamespaceAndPath(...)` reverted to `new ResourceLocation(namespace, path)` (11 call sites), and `ModLoadingContext.registerDisplayTest(...)` replaced with native extension-point registration (semantically equivalent). The Forge dependency range in `mods.toml` is now `[47.1.47,48)`, so modpacks still on 47.1.x load without a Forge upgrade.
 - **Background dimming added to the card-choice screen**: on 1.20.1 container screens never call `renderBackground` automatically (`Screen#render` only iterates renderables while `AbstractContainerScreen#render` only calls `renderBg`), so the world behind the card-choice screen was as bright as in-game and the UI lacked visual separation. `CardChoiceScreen#render` now draws the background once: two-layer dimming gradient when a world is present, dirt background when there is none (1.21.1 and 26.1.2 already handle this through vanilla `Screen#render` / `extractBackground`, so they need no change).
 
+### Dependency updates
+
+- **StarEngine bumped to 1.1.1**: only the Forge 1.20.1 slice changes source-wise (the library's own dependency floor moves from 47.4.10 to 47.1.47, and its `LoaderTags` swaps `ResourceLocation.fromNamespaceAndPath` back to `new ResourceLocation`); the other platforms are identical to 1.1.0. All four `starengine_version` pins and the CI checkout commit are updated to `1.1.1`, and the declared library dependency floor is raised to `1.1.1` on every line (`mods.toml` `[1.1.1,2.0.0)` / `fabric.mod.json` `>=1.1.1 <2.0.0`). Modpacks on Forge 47.1.x must install 1.1.1 — 1.1.0 declares `[47.4.10,48)` itself and FML rejects it during dependency sorting.
+
 ## 1.5.0-hotfix (2026-11-02)
 
 ### Bug Fixes
