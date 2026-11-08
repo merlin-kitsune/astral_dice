@@ -110,7 +110,35 @@ public class DiceCurioItem extends Item implements ICurioItem {
         if (slotContext.entity().tickCount % 20 != 0) return;
         if (slotContext.entity() instanceof Player player) {
             refreshChipSlotCount(player, null, false, true);
+        } else if (com.merlinkitsune.astral_dice.target.PlayerLikeTargets
+                .isPlayerLike(slotContext.entity())
+                || com.merlinkitsune.astral_dice.combat.DiceCombatParticipants
+                .isParticipant(slotContext.entity())) {
+            // G6(2026-11-08):注册的类玩家生物与玩家同口径 —— 佩戴骰子即获得筹码栏。
+            // 玩家侧的「装备即生效」走 onEquip/登录/同步包三条路径;生物的 Curios 装备不触发那些钩子,
+            // 故统一由这条 20 tick 对账兜底(尺寸按骰子档位,不叠加 Mimi 立牌的 +1 —— 那是玩家装备检查)。
+            refreshChipSlotCountForEntity(slotContext.entity());
         }
+    }
+
+    /** 类玩家生物(经 {@code PlayerLikeTargets} 注册)的筹码栏对账;未注册生物整段跳过。 */
+    public static void refreshChipSlotCountForEntity(net.minecraft.world.entity.LivingEntity holder) {
+        if (holder == null || holder.level().isClientSide()) return;
+        if (holder instanceof Player player) {
+            refreshChipSlotCount(player);
+            return;
+        }
+        // 两条注册面都认：类玩家能力面(PlayerLikeTargets) 与 骰战参与者(DiceCombatParticipants)。
+        // TLMDice 目前只注册后者，若只认前者则真实女仆永远拿不到筹码栏。
+        if (!com.merlinkitsune.astral_dice.target.PlayerLikeTargets.isPlayerLike(holder)
+                && !com.merlinkitsune.astral_dice.combat.DiceCombatParticipants.isParticipant(holder)) return;
+        CuriosApi.getCuriosInventory(holder).ifPresent(inventory -> {
+            ItemStack dice = inventory.getStacksHandler("dice")
+                    .map(handler -> handler.getStacks().getStackInSlot(0))
+                    .orElse(ItemStack.EMPTY);
+            inventory.getStacksHandler("chip").ifPresent(chip ->
+                    setSlotCount(holder, chip, targetChipSlots(dice), false));
+        });
     }
 
     // === 筹码栏位 ===
@@ -208,7 +236,7 @@ public class DiceCurioItem extends Item implements ICurioItem {
     // forceRemove=false(装备/卸下/登录/数据包同步/每 tick 对账):**不缩掉仍在使用的槽位** ——
     //   目标值在「骰子槽瞬时为空」的读数下会算成 0(登录、数据包同步当拍都会发生),照收会把还在使用的
     //   槽位连同筹码一起交给背包;故把目标抬到「最靠后的非空槽位 + 1」,只允许增长或保持。
-    private static void setSlotCount(Player player, ICurioStacksHandler handler, int target, boolean forceRemove) {
+    private static void setSlotCount(net.minecraft.world.entity.LivingEntity player, ICurioStacksHandler handler, int target, boolean forceRemove) {
         int current = handler.getSlots();
         if (current > target) {
             if (!forceRemove) {
@@ -231,8 +259,10 @@ public class DiceCurioItem extends Item implements ICurioItem {
                         ItemStack s = handler.getStacks().getStackInSlot(i);
                         if (!s.isEmpty()) {
                             handler.getStacks().setStackInSlot(i, ItemStack.EMPTY);
-                            if (!player.getInventory().add(s)) {
-                                player.drop(s, false);
+                            if (player instanceof Player owner && owner.getInventory().add(s)) {
+                                // 玩家:归还物品栏
+                            } else {
+                                player.spawnAtLocation(s);
                             }
                             LOGGER.warn("[Astral Dice][setSlotCount] forceRemove: 槽位物品被移出并归还背包: {} (slot index {}), current={} target={}", s, i, current, target);
                         }
