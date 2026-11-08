@@ -187,14 +187,14 @@ PlayerLikeWallets.register(MAID_LIKE, e -> e instanceof EntityMaid, new PlayerLi
 | 线 | 状态 | 说明 |
 |---|---|---|
 | `neoforge-1.21.1`（P0） | 主体已落地 | `090a8c5f` / `a8a2fcf6` / `34d2d3a3` / `831ec4d8` / `03ab1b86` / `842b17a8` / `83ac4ced` 全在；G6（骰战参与者分支）仍欠 |
-| `forge-1.20.1` | 已落地（本批） | `051fc865` 类玩家面 + 目标选择放行、`f6499965` 商店折扣/服务、`0c9d86de` 立牌钩子实体级化、`55bdf174` 女仆槽位数据 |
+| `forge-1.20.1` | 已落地（本批） | `051fc865` 类玩家面 + 目标选择放行、`f6499965` 商店折扣/服务、`0c9d86de` 立牌钩子实体级化、`55bdf174` 女仆槽位数据、`2f926f4c` 选卡器 1~3 张、`7f14ed50` 少主立牌 al（含资源/三语/手册） |
 | `neoforge-26.1.2` / `fabric-1.20.1` / `fabric-1.21.1` | 待 P1 重构后同步 | 仍按 §6.2 / §6.3 执行 |
 
 `forge-1.20.1` 与 P0 的**有意差异**（不是遗漏，改写时保持）：
 
-1. **给牌钩子中立化**：1.20.1 尚无 `AlSignItem`（少主立牌整体未移植），因此 `target/PlayerLikeTargets#giveCard`
-   与 `VitaminPillChipItem#giveCard` 只触发 `item/sign/CardGivenHooks`，不硬引用具体立牌；
-   将来移植 AL 时由 `AlSignItem` 实现 `CardGivenHooks.Listener` 即可，无需再动调用点。
+1. **给牌钩子中立化**：`target/PlayerLikeTargets#giveCard` 与 `VitaminPillChipItem#giveCard` 只触发
+   `item/sign/CardGivenHooks`，不硬引用具体立牌；`AlSignItem` 通过 `CardGivenHooks.subscribe(...)`
+   订阅（1.21.1 是漏斗内直调）。新增立牌只需订阅同一钩子，不必再动调用点。
 2. **商店服务不重抽候选**：`shop/ChipShopService#purchase` 只扣款 + 入包 + `withPurchased`（无界面场景无货架可重抽）；
    `ChipShopMenu#handleBuy` 保持原有的「购买后重抽 + 冷却」行为，两者价格口径同源（`ChipShopDiscounts`）。
 3. **`forge` 的非玩家持久化走 ForgeData**：`AttachedDataKey#store` 对 Player 用 `AstralData` capability、
@@ -204,6 +204,10 @@ PlayerLikeWallets.register(MAID_LIKE, e -> e instanceof EntityMaid, new PlayerLi
 
 `forge-1.20.1` 仍欠（同步 P0 时一并补）：
 
-- `a8a2fcf6` 选卡器 1~3 张变长下限（AL 前置，`CardChoiceManager:94` 仍只收 1/3）；
-- AL 立牌本体（`item/sign/AlSignItem`、`ModItems.AL_SIGN`、tooltip 块、配方/模型/贴图/三语/手册）；
 - G6 骰战参与者的能力位分支（`DiceCombatEvents` 的 `instanceof Player` 逐条放宽）。
+
+`forge-1.20.1` AL 落地的三处平台差异（与 P0 不同、已验证可编译）：
+
+- 属性修饰符枚举是 `AttributeModifier.Operation.ADDITION`（1.21.1 是 `ADD_VALUE`）；
+- `StarEngineEconomy.deposit` 无 `level() instanceof ServerLevel` 守卫（1.20.1 直接调用）；
+- 「赠刷新」放宽到任意 `LivingEntity`（本线商店状态非玩家走 ForgeData），P0 仍只对玩家。
