@@ -760,33 +760,6 @@ public final class DiceCombatModifiers {
         });
 
 
-        // === 内置:风水师立牌(zhao)主动「白泽赐福」—— 溢出治疗等量转化的攻击力(2026-09-26) ===
-        // 加成本身是玩家附件(整数化 + 取整余数留在另一个浮点累加器;唯一写入方 =
-        // ZhaoSignItem#onLivingHeal,唯一回收动作 = clearZhaoOverflowBonus,在"赐福结束/被移除/
-        // 死亡/重登"四条路径上幂等调用),故赐福不存在时该加算项必为 0(回收彻底、与其它来源互不影响)。
-        registerAttackModifier((ctx, ap) -> {
-            Player __g6p = playerOrNull(ctx);
-            if (ctx.attacker.level().isClientSide()) return ap;
-            if (__g6p != null) ap += ModAttachments.getZhaoOverflowBonus(__g6p);
-            return ap;
-        });
-
-        // === 内置:绿洲女王立牌(nardis)被动「威压」—— 每装备一张**攻击牌**攻击力 +2 ===
-        // 计数直接取**攻击方骰子的 enhancement**(ctx.enhancement)⇒ 与实战同源;
-        // tooltip/GUI 走 getDisplayAttackRange 时传的是按卡牌栏实时构建的 enhancement,口径一致
-        // (所以不需要第二条链路)。临时牌**同样计入**它只是一张普通战斗牌,只是被打了标记;
-        // 被动防御力(+2/防御牌)走真实护甲折算,见 NardisSignItem#onCurioTick。
-        registerAttackModifier((ctx, ap) -> {
-            Player __g6p = playerOrNull(ctx);
-            if (__g6p == null) return ap;
-            if (__g6p.level().isClientSide()) return ap;
-            if (!NardisSignItem.isEquipped(__g6p)) return ap;
-            WeaponEnhancement enh = ctx.enhancement != null
-                    ? ctx.enhancement
-                    : NardisSignItem.equippedEnhancement(__g6p);
-            return ap + NardisSignItem.BONUS_PER_CARD * NardisSignItem.countStones(enh, false);
-        });
-
         // === 内置:教主立牌(teru)主动「降神」—— 施法者获得目标 50% 攻击力(镜像缓存) ===
         // 攻击加成真值在**目标**身上(施法瞬间快照),施法者侧只读每 tick 派生出来的镜像缓存
         // (见 item/sign/TeruSignItem#tickCasterSide):目标效果结束/死亡/登出 ⇒ 同 tick 归 0,不留残留。
