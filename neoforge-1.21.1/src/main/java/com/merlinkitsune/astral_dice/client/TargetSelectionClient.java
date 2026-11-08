@@ -638,7 +638,9 @@ public final class TargetSelectionClient {
         for (Entity entity : player.level().getEntities(player, search)) {
             if (!(entity instanceof LivingEntity living) || living == player) continue;
             if (!living.isAlive() || living.isSpectator()) continue;
-            if (!SelectorTargets.matches(targetType, player, living)) continue;
+            // 2026-11-08：与瞄准判定同源，放行「类玩家生物」（附属注册面，见 PlayerLikeTargets）
+            if (!SelectorTargets.matches(targetType, player, living)
+                    && !PlayerLikeTargets.matchesSelection(targetType, player, living)) continue;
             if (player.distanceToSqr(living) > radius * radius) continue;
             found.add(living);
         }
