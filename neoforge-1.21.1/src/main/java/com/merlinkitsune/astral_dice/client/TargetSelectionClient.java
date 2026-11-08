@@ -3,6 +3,7 @@ package com.merlinkitsune.astral_dice.client;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.network.TargetSelectCancelPayload;
 import com.merlinkitsune.astral_dice.network.TargetSelectConfirmPayload;
+import com.merlinkitsune.astral_dice.target.PlayerLikeTargets;
 import com.merlinkitsune.starengine.target.SelectorTargets;
 import com.merlinkitsune.starengine.client.ActionBarManager;
 import com.merlinkitsune.starengine.target.TargetType;
@@ -551,7 +552,9 @@ public final class TargetSelectionClient {
         LivingEntity newTarget = null;
         LivingEntity newRejected = null;
         if (aimed != null && aimed != player && aimed.isAlive()) {
-            if (SelectorTargets.matches(targetType, player, aimed) && player.distanceToSqr(aimed) <= radius * radius) {
+            if ((SelectorTargets.matches(targetType, player, aimed)
+                    || PlayerLikeTargets.matchesSelection(targetType, player, aimed))
+                    && player.distanceToSqr(aimed) <= radius * radius) {
                 newTarget = aimed;
             } else {
                 // 命中但不可选（会话目标类型不符 / 超出半径）：走 1/24 细边；

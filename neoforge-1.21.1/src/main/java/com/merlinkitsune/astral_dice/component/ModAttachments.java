@@ -487,12 +487,18 @@ public class ModAttachments {
         player.setData(INVESTIGATION_STAGE.get(), Math.max(1, value));
     }
 
-    public static int getStarlight(net.minecraft.world.entity.player.Player player) {
-        return player.getData(PLAYER_STARLIGHT.get());
+    /**
+     * 星光读数（2026-11-08 用户裁决：「由附属注册的生物，与玩家一样拥有全部功能（包括可持有星光）」）。
+     *
+     * <p>宿主由 {@code Player} 放宽到 {@link net.minecraft.world.entity.LivingEntity}：
+     * {@code PLAYER_STARLIGHT} 注册时没有宿主谓词，attachment 本身可以挂在任意活体上。
+     */
+    public static int getStarlight(net.minecraft.world.entity.LivingEntity living) {
+        return living.getData(PLAYER_STARLIGHT.get());
     }
 
-    public static void setStarlight(net.minecraft.world.entity.player.Player player, int value) {
-        player.setData(PLAYER_STARLIGHT.get(), value);
+    public static void setStarlight(net.minecraft.world.entity.LivingEntity living, int value) {
+        living.setData(PLAYER_STARLIGHT.get(), value);
     }
 
     public static int getEightSidedAccum(net.minecraft.world.entity.player.Player player) {
