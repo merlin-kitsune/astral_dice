@@ -11,6 +11,7 @@
 - Fix: the Meito card cost calculation passed a null player when the Misaki sign was not equipped, which crashed with a null pointer inside the curios inventory lookup; the charge-refund path now also uses `effectiveCost`, so an equipped sign settles at 3 points.
 - Add: the forge 1.20.1 line gains the A.L. sign (`al_sign`, epic) — active Mercy of the Strong gives 1-3 cards to a chosen player for 2 Star Coins per card; passive Win-Win grants both sides 1 Starlight whenever cards are handed over, and after using the active skill both sides pay 5 fewer Star Coins for chips (floor 5) plus one refresh; every 4 Starlight grants +1 ATK and +1 DEF. The card picker now accepts 1-3 cards on this line too.
 - Add: dice-battle participants (mobs registered through `DiceCombatParticipants`, e.g. Touhou Little Maid) now receive chip and combat-card bonuses on the same footing as players — the attacker side runs the dice-battle attack modifiers plus attack-card points and spends attack-card durability once per hit, while the defender side rolls defense cards. Player-only account/inventory bonuses (star-coin hammer, seven curses, Teru snapshot, healing points) are skipped for registered mobs, and the unregistered path is unchanged value for value. Both neoforge 1.21.1 and forge 1.20.1 land together.
+- Add: the dice-battle participant pipeline (G6) now also covers the three P1 lines — `neoforge-26.1.2`, `fabric-1.20.1` and `fabric-1.21.1`. Registered participants use the same attack-modifier and combat-card path on the attacker side and roll defense cards on the defender side; player-only bonuses are skipped and the unregistered path is unchanged value for value.
 
 - **Fabric prerequisite consolidation**: both `fabric-1.21.1` and `fabric-1.20.1` dropped the Puzzles Lib and Forge Config API Port dependencies. The 13 (1.21.1) / 12 (1.20.1) event bridges are now provided by StarEngine's `api/event` callbacks and registered only by `StarengineBridges`; library pins are `26.4-SNAPSHOT.8` (1.21.1) and `26.4-SNAPSHOT.10` (1.20.1). All 13/12 chains were verified in-game (1.21.1 13/13; 1.20.1 12/12; the inherited `removeAllEffects` behaviour was kept as-is by decision). `MODLIST` no longer requires the removed mods.
 
@@ -364,11 +365,6 @@
 - **The “Reinforced Repulsion” item is no longer listed in the creative tab or in JEI** (2026-10-25): the item itself stays registered and unchanged (its placer still recovers a placed field as this item, and a broken field still drops it); it is only **removed from the creative-tab item list**. JEI builds its item list straight from the creative tabs (`CreativeModeTabs.allTabs()` → `CreativeModeTab.getDisplayItems()`), so that single removal hides it in JEI too — **no JEI-side code was added**. It only reappears in JEI if a player explicitly turns on JEI's debug option “show hidden ingredients”. The effect card “Reinforced Repulsion” is unaffected and stays in the creative tab. (P0 lines: neoforge-1.21.1 + forge-1.20.1)
 
 - **Chips inside the creative tab / JEI are now sorted by rarity** (2026-10-25): the five existing groups and their order are unchanged (**Starlight → Healing → Mark → Charge → No school**); only the order **inside each group** changed — now **ascending rarity (Rare → Epic → Legendary)**, and chips of the same rarity keep their previous relative order. Chip pools themselves are untouched (still 67 chips; nothing added, removed or re-tiered). (P0 lines: neoforge-1.21.1 + forge-1.20.1)
-
-
-
-
-
 
 
 
@@ -886,7 +882,6 @@
   (red = attack power and extra damage, green = spell and skill damage). All three languages.
 - **Sign English / Japanese names now use the official wiki character names instead of machine-translated Chinese titles** (2026-10-26, both P0 lines): sign ids were always Astral Party character names, but the English names were machine-translated job titles (Secret Detective Sign / Cult Leader Sign / Bartender Sign / Sister Sign) and the Japanese names mixed in Chinese titles (超天酱 / 地雷女 / 怪力乱神 / シスター / バーテンダー) ⇒ they now use the official names (`Bonnie Sign` / `Jill Sign` / … and `ボニーのスタンド` / `ジルのスタンド` / …; 58 English and 23 Japanese occurrences per line, including prose references in tooltips, the guide and chat messages). The Chinese side (job-title style such as 秘密侦探立牌) is unchanged. Authoritative table `tools/sign_display_names.json`, puller `tools/sign_names_from_wiki.py`, gate `tools/verify_sign_display_names.py` (rule: `docs/agent/AGENTS-full.md`〈立牌 / 物品英日命名规则〉).
 - **Sign handbook entries no longer repeat the recipe list** (2026-10-26, both P0 lines x three languages): the guide text of seven signs (lingling / nardis / kangel / ame / sherry / hanna / megas) duplicated a "Recipe: ... (tier)" line even though every entry already has its own crafting page, so all of them were removed (zero recipe mentions remain in `guide.entry.*` across the P0 languages). Three entries (nardis / sherry / hanna) contained *only* that recipe sentence, so their whole text page was dropped (one page fewer per entry, and the matching lang key removed, 1,062 -> 1,059 keys per P0 line); the other four keep their skill and effect descriptions with only the recipe sentence excised.
-
 
 
 
@@ -2466,7 +2461,6 @@
 - **Fixed the 1.21.1 build crashing while loading the mod (never reaching the game)** (diagnosed in-game on 2026-09-17): after the "pre-gate" rework of the Gunsmith sign's target selection, `MosesSignItem` no longer registers any event-subscriber method, yet the class still carried the loader's automatic-subscriber annotation — on 1.21.1 NeoForge a class annotated as a subscriber with **no** subscriber method throws during **mod construction** (`class … has no @SubscribeEvent methods, but register was called anyway`), which escalates to `Failed to register automatic subscribers` → `Failed to wait for future Mod Construction` and makes the whole mod refuse to load (the symptom is a startup that stops at a failed `Mod Construction`, unrelated to gameplay). The stale annotation is removed, with a comment recording that this class **must not** carry a subscriber annotation again (regression guard); the equivalent dead annotation on the 1.20.1 side was cleaned up as well (Forge does not throw in this case, so it never surfaced there, but it was just as dead). Verified after the fix: a cold 1.21.1 launch enters the world normally.
 
 ## 1.2.1-hotfix
-
 
 
 ## 1.2.1

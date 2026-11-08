@@ -207,7 +207,7 @@ PlayerLikeWallets.register(MAID_LIKE, e -> e instanceof EntityMaid, new PlayerLi
 - G6 已落地（P0 `e9a8856d` + `99fc9db1`；forge `930b6ce9` + `c53798e2`）：`DiceCombatContext.attacker`
   与筹码/费用入口放宽到 `LivingEntity`，注册参与者吃攻击修饰器与战斗牌、按同口径扣耐久；
   玩家专属加成由 `playerOrNull` 守卫跳过。
-- 仍欠（P1 线）：四线同步 G6；fabric 两线尚未做类玩家能力面。
+- P1 线 G6 已同步（2026-11-08）：`neoforge-26.1.2` `26a41640`、`fabric-1.21.1` `b0459993`、`fabric-1.20.1` `9e9dbdf9`，口径与 P0/forge 一致（`DiceCombatContext.attacker` → `LivingEntity`、筹码/费用入口放宽、注册参与者吃攻击修饰器与战斗牌、防御侧掷防御牌；玩家专属加成由 `playerOrNull` 守卫跳过）。fabric 两线仍**未做**类玩家能力面（`PlayerLikeTargets` 等只存在于 P0/forge）。
 
 `forge-1.20.1` AL 落地的三处平台差异（与 P0 不同、已验证可编译）：
 
