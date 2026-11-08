@@ -27,7 +27,7 @@ public class CutterChipItem extends BaseChipItem {
     }
 
     /** 美工刀两条加成链共同的门槛:生命值 ≥ {@link #ACTIVE_HEALTH_RATIO},或处于「汲取」(papara_bite)状态。 */
-    public static boolean isActive(Player player) {
+    public static boolean isActive(net.minecraft.world.entity.LivingEntity player) {
         return player.getHealth() >= player.getMaxHealth() * ACTIVE_HEALTH_RATIO
                 || player.hasEffect(ModEffects.PAPARA_BITE);
     }
