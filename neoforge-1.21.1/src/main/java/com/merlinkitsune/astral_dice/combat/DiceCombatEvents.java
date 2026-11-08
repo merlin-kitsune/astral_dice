@@ -1173,6 +1173,7 @@ public class DiceCombatEvents {
         WeaponEnhancement attackerEnh = attackerDie.isEmpty()
                 ? null
                 : attackerDie.getOrDefault(ModDataComponents.WEAPON_ENHANCEMENT.get(), null);
+        DiceCombatContext g6Ctx = null;
         if (DiceCombatParticipants.isParticipant(mob)) {
             WeaponEnhancement enhForCtx = attackerEnh != null ? attackerEnh : WeaponEnhancement.EMPTY;
             DiceCombatContext participantCtx = new DiceCombatContext(
@@ -1183,6 +1184,7 @@ public class DiceCombatEvents {
                 modified = modifier.apply(participantCtx, modified);
             }
             mobAttack = modified + participantCtx.attackCardSum;
+            g6Ctx = participantCtx;
             // 战斗牌耐久：参与者每次骰战攻击消耗一次（玩家侧按赐福周期，参与者无赐福概念 ⇒ 每击一次）
             if (attackerEnh != null) {
                 consumeAttackCardDurabilityOnce(mob, attackerDie, attackerEnh);
@@ -1241,6 +1243,24 @@ public class DiceCombatEvents {
             ModAttachments.setDiceCurseRatio(playerTarget, 1.0f);
         }
         event.setNewDamage(finalDmg);
+        // === G6(2026-11-08):参与者的「额外加伤」通道(星光/星币/治愈点三项) ===
+        // 玩家路径在 onLivingDamagePre 里按 ctx 结算 astral_dice:extra_damage;参与者原先只吃攻击力修饰器,
+        // 连带「手电筒-爆闪」这类走本通道的筹码对女仆整段失效(2026-11-08 实机发现)。此处按同一口径补结算。
+        if (g6Ctx != null && !target.level().isClientSide()) {
+            int g6ExtraDamage = com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.extraDamageOf(g6Ctx);
+            if (g6ExtraDamage > 0) {
+                int savedInvulnerable = target.invulnerableTime;
+                beginAoe();
+                try {
+                    target.invulnerableTime = 0;
+                    target.hurt(com.merlinkitsune.astral_dice.damage.ModDamageTypes.extraDamage(
+                            target.level(), mob), g6ExtraDamage);
+                } finally {
+                    target.invulnerableTime = savedInvulnerable;
+                    endAoe();
+                }
+            }
+        }
         // F7(2026-10-27 近战审计):生物近战同样是骰战 ⇒ 修女被动也按落地量判定(与玩家路径同口径);
         //   原先只在玩家路径判,导致「怪一击 22 点打到玩家」时加成不被清(2026-10-27 实机见证)。
         applyAlanaBigHit(target, finalDmg - Math.min(finalDmg, target.getAbsorptionAmount()));
