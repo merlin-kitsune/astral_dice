@@ -501,6 +501,24 @@ public class ModAttachments {
         living.setData(PLAYER_STARLIGHT.get(), value);
     }
 
+    /** 筹码折扣面额（星币；0 = 无折扣）。 */
+    public static int getChipDiscountAmount(net.minecraft.world.entity.LivingEntity living) {
+        return living.getData(CHIP_DISCOUNT_AMOUNT.get());
+    }
+
+    public static void setChipDiscountAmount(net.minecraft.world.entity.LivingEntity living, int value) {
+        living.setData(CHIP_DISCOUNT_AMOUNT.get(), Math.max(0, value));
+    }
+
+    /** 筹码折扣截止时刻（世界 gameTime；0 = 无折扣）。 */
+    public static long getChipDiscountUntil(net.minecraft.world.entity.LivingEntity living) {
+        return living.getData(CHIP_DISCOUNT_UNTIL.get());
+    }
+
+    public static void setChipDiscountUntil(net.minecraft.world.entity.LivingEntity living, long value) {
+        living.setData(CHIP_DISCOUNT_UNTIL.get(), value);
+    }
+
     public static int getEightSidedAccum(net.minecraft.world.entity.player.Player player) {
         return player.getData(EIGHT_SIDED_ROLL_ACCUM.get());
     }
@@ -652,6 +670,22 @@ public class ModAttachments {
                     .copyOnDeath()
                     .build());
 
+
+    // 筹码商店折扣（2026-11-08 少主立牌「双赢」）：对目标使用主动技能后，双方各得一次
+    // 「筹码单价 -N 星币（下限 5）+ 一次刷新」。
+    // 刻意**不进 ChipShopState**：那是玩家存档里的商店运行态（候选/次数/冷却），折扣是短时段 buff，
+    // 且要能挂在附属注册的类玩家生物身上；LIMIT 语义见 shop/ChipShopDiscounts。
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> CHIP_DISCOUNT_AMOUNT =
+            ATTACHMENTS.register("chip_discount_amount", () -> AttachmentType.builder(() -> 0)
+                    .serialize(Codec.INT)
+                    .sync(ByteBufCodecs.VAR_INT)
+                    .build());
+
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> CHIP_DISCOUNT_UNTIL =
+            ATTACHMENTS.register("chip_discount_until", () -> AttachmentType.builder(() -> 0L)
+                    .serialize(Codec.LONG)
+                    .sync(ByteBufCodecs.VAR_LONG)
+                    .build());
 
     // 立牌主动技能"本次冷却实际使用的最大冷却 tick"(路线 A:所有减免方一律读它作基准,不再各自重算;
     // 0 表示缺失/无冷却,减免方回退旧行为;仅服务端使用,无需同步客户端)。

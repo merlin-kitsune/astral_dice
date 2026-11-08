@@ -168,7 +168,8 @@ public record ChipShopState(List<String> offers, Optional<String> lastPickCatego
      * 其余 record 字段原样保留 —— **不是**重置、也不回填 {@code REFRESH_INITIAL}，
      * 因此已有存档次数（含旧版本攒下的 >初值 次数）不会被清掉。
      *
-     * <p>唯一调用点 = {@code event/AnvilUpgradeHandler#onAnvilRepair}（取走分支）；
+     * <p>调用点 = {@code event/AnvilUpgradeHandler#onAnvilRepair}（取走分支）与
+     * {@code item/sign/AlSignItem}（少主立牌「双赢」：对目标使用主动技能后双方各 +1，2026-11-08）；
      * 预览（{@code AnvilUpdateEvent}）/ 装备查询 / 抽取器一律不得调用。
      */
     public ChipShopState withRefreshGranted() {
