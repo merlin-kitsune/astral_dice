@@ -59,7 +59,7 @@ import net.minecraft.world.phys.BlockHitResult;
  *       之前）在本线对应 {@link LivingHurtEvent}（由 {@code mixin/bridge/LivingHurtBridgeMixin} 用
  *       MixinExtras {@code @WrapOperation} 包裹 {@code actuallyHurt} 调用派发，同一位置）。</li>
  *   <li><b>黑暗免疫</b>：本线已接线 {@code MobEffectEvent.Applicable}（2026-11-07，
- *       {@code platform/PuzzlesBridges} 桥 {@code MobEffectEvents.AFFECTS}，派发点 =
+ *       {@code platform/StarengineBridges} 桥 {@code MobEffectEvents.AFFECTS}，派发点 =
  *       {@code LivingEntity#canBeAffected} HEAD）；但魔渊黑暗的门<b>仍保留</b> mixin 拦
  *       {@code LivingEntity#addEffect}，判定函数同为 {@link #blocksDarkness}。两者不冲突：
  *       mixin 在 {@code addEffect} HEAD 直接返回 false 时 {@code canBeAffected} 不跑，事件不会为该实例派发；

@@ -14,7 +14,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  *
  * <h3>为什么是 mixin（2026-11-07 订正）</h3>
  * <p>P0（neoforge-1.21.1）用 {@code MobEffectEvent.Applicable} 一句 {@code DO_NOT_APPLY} 就够。
- * 本线**原先**不派发 Applicable（{@code platform/PuzzlesBridges} 只桥 Apply / Remove / Expire），
+ * 本线**原先**不派发 Applicable（{@code platform/StarengineBridges} 只桥 Apply / Remove / Expire），
  * 已于 2026-11-07 接线：{@code MobEffectEvents.AFFECTS} → {@code MobEffectEvent.Applicable}
  * （注入点 = {@code LivingEntity#canBeAffected} 的 HEAD）。{@link SykesSignItem#blocksDarkness}
  * 只判「黑暗 + 佩戴者」⇒ 该规则**已可由事件表达**（{@code Result.DENY} 等价）。

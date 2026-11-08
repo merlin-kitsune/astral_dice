@@ -37,7 +37,7 @@ import com.merlinkitsune.astral_dice.platform.util.Effects;
  *       {@code isCanceled()}、{@code getNewTarget()}、{@code getEffectInstance()}）；</li>
  *   <li>③ {@code PlayerEffectProtection} 本线不存在 ⇒ 本类只发原版 {@code player.addEffect}（温暖/赐福
  *       均为本模组自有效果，计时由 {@code EffectTimerGuard} 的 Added 记录链覆盖）；</li>
- *   <li>④ {@code MobEffectEvent.Applicable} <b>已接线</b>（2026-11-07）：{@code platform/PuzzlesBridges} 的
+ *   <li>④ {@code MobEffectEvent.Applicable} <b>已接线</b>（2026-11-07）：{@code platform/StarengineBridges} 的
  *       {@code installEffects} 把 Puzzles 的 {@code MobEffectEvents.AFFECTS} 桥接成本事件；
  *       该回调的注入点是 {@code LivingEntity#canBeAffected}（{@code method_6049}）的 HEAD，
  *       正是 forge {@code MobEffectEvent.Applicable} 的同一条原版判定路径。
@@ -77,7 +77,7 @@ public final class NewSignEvents {
     /**
      * 免疫 HARMFUL 效果的施加（forge {@code MobEffectEvent.Applicable} 的对等实现）。
      *
-     * <p>派发点：{@code platform/PuzzlesBridges#installEffects} 注册的
+     * <p>派发点：{@code platform/StarengineBridges#installEffects} 注册的
      * {@code MobEffectEvents.AFFECTS}，注入点是 {@code LivingEntity#canBeAffected}
      * （{@code method_6049}）的 HEAD —— 与 forge / neo 的 {@code Applicable} 同一路径
      * （{@code addEffect} 内先判，不通过直接返回 false，效果不入体）。

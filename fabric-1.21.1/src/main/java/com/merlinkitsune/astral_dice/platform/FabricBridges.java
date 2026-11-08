@@ -52,10 +52,10 @@ import net.minecraft.world.InteractionResultHolder;
  *   <tr><td>{@code LivingAttackEvent}</td><td>本类 installDamage(FAPI ALLOW_DAMAGE)</td></tr>
  *   <tr><td>{@code RegisterCommandsEvent} / {@code OnDatapackSyncEvent}</td><td>本类 installCommands</td></tr>
  *   <tr><td>{@code PlayerInteractEvent.RightClickBlock / EntityInteract / RightClickItem}</td><td>本类 installInteractions(FAPI Use*Callback)</td></tr>
- *   <tr><td>{@code LivingDamageEvent / LivingDeathEvent / LivingDropsEvent / LivingChangeTargetEvent}</td><td>PuzzlesBridges</td></tr>
- *   <tr><td>{@code MobEffectEvent.Added / Applicable / Remove / Expired}</td><td>PuzzlesBridges</td></tr>
- *   <tr><td>{@code BlockEvent.BreakEvent / AnvilUpdateEvent / EntityItemPickupEvent}</td><td>PuzzlesBridges</td></tr>
- *   <tr><td>{@code PlayerEvent.Clone}</td><td>PuzzlesBridges</td></tr>
+ *   <tr><td>{@code LivingDamageEvent / LivingDeathEvent / LivingDropsEvent / LivingChangeTargetEvent}</td><td>StarengineBridges</td></tr>
+ *   <tr><td>{@code MobEffectEvent.Added / Applicable / Remove / Expired}</td><td>StarengineBridges</td></tr>
+ *   <tr><td>{@code BlockEvent.BreakEvent / AnvilUpdateEvent / EntityItemPickupEvent}</td><td>StarengineBridges</td></tr>
+ *   <tr><td>{@code PlayerEvent.Clone}</td><td>StarengineBridges</td></tr>
  *   <tr><td>{@code LivingHurtEvent}</td><td>mixin bridge/LivingHurtBridgeMixin</td></tr>
  *   <tr><td>{@code LivingUseTotemEvent}</td><td>mixin bridge/LivingUseTotemBridgeMixin</td></tr>
  *   <tr><td>{@code PlayerEvent.ItemCraftedEvent}</td><td>mixin bridge/ItemCraftedBridgeMixin</td></tr>
@@ -122,10 +122,10 @@ public final class FabricBridges {
         installDamage();
         installCommands();
         installInteractions();
-        // Puzzles Lib 回调 → 自建事件(伤害/死亡/掉落/目标/效果/铁砧/方块/克隆/拾取)。
-        // ⚠️ Puzzles 是**硬依赖**(fabric.mod.json depends)⇒ 无需守卫,也绝不能被守卫掉:
+        // Starengine 回调 → 自建事件(伤害/死亡/掉落/目标/效果/铁砧/方块/克隆/拾取)。
+        // ⚠️ Starengine 是**硬依赖**(fabric.mod.json depends)⇒ 无需守卫,也绝不能被守卫掉:
         //    否则这些事件会静默永不触发(项目最忌的假绿)。
-        PuzzlesBridges.install();
+        StarengineBridges.install();
     }
 
     private static void installTicks() {

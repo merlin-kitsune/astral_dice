@@ -94,7 +94,7 @@ public final class AbyssMarkManager {
     /**
      * 印记自然到期：层数 > 1 时登记「下一 tick 降一层」。
      *
-     * <p>（{@code MobEffectEvent.Expired} 在本线由 {@code platform/PuzzlesBridges} 从
+     * <p>（{@code MobEffectEvent.Expired} 在本线由 {@code platform/StarengineBridges} 从
      * Puzzles 的 {@code MobEffectExpiredCallback} 派发，服务端才触发。）
      */
     @SubscribeEvent

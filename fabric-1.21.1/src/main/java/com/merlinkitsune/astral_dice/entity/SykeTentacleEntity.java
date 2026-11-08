@@ -62,7 +62,7 @@ import java.util.UUID;
  *       ⇒ 缓慢效果统一经 {@link Effects#holder} 构造（P0 该线是直接传裸 {@code MobEffects.X}）。</li>
  *   <li><b>状态效果免疫</b>：P0 用 {@code MobEffectEvent.Applicable} 一句 {@code DO_NOT_APPLY} 挡住
  *       「触须吃任何状态效果」；本线于 2026-11-07 已接线同一事件
- *       （{@code event/NewSignEvents#onEffectApplicable} 对触须全拒，{@code platform/PuzzlesBridges} 桥
+ *       （{@code event/NewSignEvents#onEffectApplicable} 对触须全拒，{@code platform/StarengineBridges} 桥
  *       {@code MobEffectEvents.AFFECTS} 到 {@code LivingEntity#canBeAffected} HEAD）。
  *       原「每 tick {@link #removeAllEffects()} 兜底」<b>保留</b>（判定路径不变：直接
  *       {@code addEffect} / 已有效果的路径不走 {@code canBeAffected}）。</li>

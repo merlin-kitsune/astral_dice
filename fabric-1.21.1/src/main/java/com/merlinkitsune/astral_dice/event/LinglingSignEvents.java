@@ -21,7 +21,7 @@ import net.minecraft.world.item.ItemStack;
  *   <li><b>事件基类</b>:{@code net.minecraftforge.event.entity.item.ItemTossEvent} /
  *       {@code ...player.EntityItemPickupEvent} / {@code eventbus.api.SubscribeEvent}
  *       ⇒ 换成本线 {@code platform.event.*} 既有 shim(语义同 forge,经
- *       {@code mixin/bridge/ItemTossBridgeMixin} 与 {@code PuzzlesBridges} 派发);</li>
+ *       {@code mixin/bridge/ItemTossBridgeMixin} 与 {@code StarengineBridges} 派发);</li>
  *   <li><b>§4.2 拾取</b>:本线同样**没有** 1.21.1 的 {@code ItemEntityPickupEvent.Post},
  *       沿用 forge 的 {@code EntityItemPickupEvent}(拾取**之前**派发)。<b>只把掉落物本身换成
  *       强化拒止,不取消、不丢弃、不碰玩家背包</b> ⇒ 随后原版拾取照常把那 1 张强化拒止放进背包,

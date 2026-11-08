@@ -41,7 +41,6 @@
     "minecraft": "${minecraft_version_range}",
     "fabric-api": "*",
     "fabric-data-attachment-api-v1": "*",
-    "puzzleslib": "${puzzleslib_version_range}",
     "starengine": "${lib_version_range}"
   },
   "recommends": {

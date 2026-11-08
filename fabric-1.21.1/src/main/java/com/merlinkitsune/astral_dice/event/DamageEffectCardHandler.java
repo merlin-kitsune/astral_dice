@@ -29,7 +29,7 @@ import com.merlinkitsune.astral_dice.combat.DamageNumberAggregator;
  * {@link com.merlinkitsune.astral_dice.platform.event.entity.living.LivingDamageEvent},
  * 由 Puzzles Lib 8.1.33 的 {@code LivingEntityFabricMixin#actuallyHurt}
  * ({@code method_6074}) HEAD 注入 + {@code @ModifyVariable} 写回
- * (桥接见 platform/PuzzlesBridges.java:99-110);{@code actuallyHurt} 方法体首行才是
+ * (桥接见 platform/StarengineBridges.java:99-110);{@code actuallyHurt} 方法体首行才是
  * {@code getDamageAfterArmorAbsorb} / 魔抗 / 吸收 ⇒ **载荷口径 = 护甲之前**,与 neo 的
  * {@code LivingIncomingDamageEvent} 同口径,故折叠函数可逐行等价移植。
  *
@@ -54,7 +54,7 @@ public class DamageEffectCardHandler {
      * 总量 = 本体护甲后值 + bonus,加成等效绕过护甲;抗性/保护/吸收/受击倍率仍对整段作用**一次**。
      *
      * <p>⚠️ 本线载荷口径:事件由 {@code LivingEntityFabricMixin#actuallyHurt} HEAD 派发
-     * (platform/PuzzlesBridges.java:99-110),入参与写回都是 {@code actuallyHurt} 的**护甲前**
+     * (platform/StarengineBridges.java:99-110),入参与写回都是 {@code actuallyHurt} 的**护甲前**
      * 参数(该方法体首行才调 {@code getDamageAfterArmorAbsorb}) ⇒ 与 neo 的
      * {@code LivingIncomingDamageEvent} 同口径,故本函数「base = 护甲前值」的假设成立。
      *
@@ -107,7 +107,7 @@ public class DamageEffectCardHandler {
     // fuzs.puzzleslib.mixin.LivingEntityFabricMixin#actuallyHurt(@Inject(at=@At("HEAD"))) 在
     // actuallyHurt 偏移 0 派发,而护甲(偏移 12 getDamageAfterArmorAbsorb)、魔抗(19
     // getDamageAfterMagicAbsorb)、吸收(25-45)全在方法体内、注入点之后 ⇒ 载荷仍是护甲与吸收
-    // **之前**的原始入参。桥接处见 platform/PuzzlesBridges.java:99-110。
+    // **之前**的原始入参。桥接处见 platform/StarengineBridges.java:99-110。
     // 残余(平台固有,已登记 B27 报告):本线基准比 1.21.1 Pre 还早一层(护甲前),
     // 带甲或带吸收(黄心)的目标都会有差;本处只改挂点,不引入换算。
     @SubscribeEvent(priority = EventPriority.NORMAL)

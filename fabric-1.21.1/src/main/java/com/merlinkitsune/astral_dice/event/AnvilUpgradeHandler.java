@@ -60,7 +60,7 @@ public class AnvilUpgradeHandler {
      * {@value ChipShopCatalog#REFRESH_MAX}，不重置、不清零（已有存档次数照旧保留）。
      *
      * <p><b>平台说明(fabric)</b>：事件来自 `platform.event.entity.player.AnvilRepairEvent`，
-     * 由 Puzzles `AnvilRepairCallback` 经 `platform.PuzzlesBridges#installPlayers` 转接；
+     * 由 Puzzles `AnvilRepairCallback` 经 `platform.StarengineBridges#installPlayers` 转接；
      * 挂在本类的 {@code AnvilRepairEvent} 上而非 {@code AnvilUpdateEvent} 上，与 forge 线一致。
      */
     @SubscribeEvent

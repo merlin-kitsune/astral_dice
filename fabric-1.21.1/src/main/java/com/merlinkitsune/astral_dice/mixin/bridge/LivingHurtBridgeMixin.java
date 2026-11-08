@@ -19,7 +19,7 @@ import org.spongepowered.asm.mixin.injection.At;
  * <b>调用之前</b>（{@code ForgeHooks.onLivingHurt} 的返回值随后作为实参传给 {@code actuallyHurt}）——
  * 两者相隔一次调用，且 Forge 在 {@code onLivingHurt} 之后还有一次 {@code if (f1 <= 0) return false;}
  * 的早退。所以 {@code LivingHurtCallback} 只能桥 {@code LivingDamageEvent}（见
- * {@code platform/PuzzlesBridges}），{@code LivingHurtEvent} 必须自己注入。
+ * {@code platform/StarengineBridges}），{@code LivingHurtEvent} 必须自己注入。
  *
  * <h2>注入方式:包裹 {@code actuallyHurt} 调用</h2>
  * <p>用 MixinExtras 的 {@link WrapOperation} 而不是 {@code @ModifyArg}：
