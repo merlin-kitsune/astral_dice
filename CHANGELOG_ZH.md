@@ -27,6 +27,8 @@
 
 - **Fabric 1.21.1 遗留对等项**：对 P1 Fabric 线的复核又收掉 6 处残留漂移。① 目标选择器缺 P0 那条 `undercover` 标签（对已带 `UNDERCOVER_INVESTIGATION` 的目标），现按 P0 同构补上（命中即早退，不发 ActionBar）；② `fabric.mod.json` 建议 `jei >=19.70.0`，而本线实际按 `19.56.0.441` 编译与测试，声明已降到 `>=19.56.0`（与 1.20.1 线同形）；③ 三处入口 javadoc 仍写「Fabric 1.20.1」（与鼠鼠护盾那个缺陷同源的照抄），已逐一订正；④ 三语各自的 3 个 `curios.modifiers.*` 在本线是死键（本线走 Trinkets，前置库 jar 也不读），已删除，三语键集仍一致；⑤ 队伍判定此前分裂成两套——本地 `astral_dice.combat.PartyRelations`（30 处调用，572 行）与前置库同名类（4 处），而 neo/forge 各线全用库版；现全部统一到库版并删除本地副本，起步诊断行随之变为与 P0 相同的 `AP_PARTY:`；⑥ 清理神秘遗物+ 的半截死链路：捕获处理器写入的 `curse_original_amount` 没有任何读取方，而消费者读的 `dice_curse_ratio` 在整条线没有写入点；死附件与处理器已删除，卡片 javadoc 也不再宣称本线不移植的功能（该模组没有 Fabric 构建）。守门：`:fabric-1.21.1:compileJava --rerun-tasks` 报 `BUILD SUCCESSFUL`，`tools/check_lang_sync.py --line fabric-1.21.1` 报 `[OK]`（三语各 1156 键）。
 
+- **新增史诗立牌 `al`（少主立牌）**：主动「强者怜悯」选一名类玩家目标后打开卡牌选择器，可放 **1–3 张**（选择器改造为可变下限，放 1 张即可发送），卡牌直接进入目标物品栏、从佩戴者扣除，放不下的按失败掉在目标处，每送出 1 张得 2 星币；被动「双赢」刻意分成两个触发面：(A) **给牌**——一切走唯一发牌漏斗（`VitaminPillChipItem#giveCard`）的给牌（主动发卡、「你有我有」、附属注册生物收牌都算）双方各 +1 星光，同 tick 同受益人 20 tick 内去重；(B) **对目标使用主动技能**——双方筹码 -5 星币（下限 5，6000 tick）并各得一次商店刷新。每 4 层星光另加 +1 攻击 / +1 防御。附属模组可通过 `target/PlayerLikeTargets` 把生物注册成类玩家目标（原版玩家恒真，未注册生物仍被选择器拒绝）；星光、折扣与待定目标都挂在 `LivingEntity` 上，星币仍只走玩家账户。接线齐全：`ModItems.AL_SIGN`、datagen 配方 `B/X/B`、`K/C/K`、`X/D/X` 与模型/进度、贴图由 `images/少主立牌.png` 逐字节复制、`signs` 与 curios `stand` 标签、三语文案、帕秋莉手册条目，命名表新增 `lines` 字段让门禁只校验实装该立牌的线。守门：`:neoforge-1.21.1:compileJava` 与 `:neoforge-1.21.1:runData` 均 `BUILD SUCCESSFUL`，`check_lang_sync.py --line neoforge-1.21.1` 报 `[OK]`（三语各 1169 键），`verify_sign_display_names.py` 报 `GATE: PASS`（34 条）。
+
 ## 26.4-SNAPSHOT.4
 
 > dev 线新增 GeckoLib 硬前置与动画实体 `astral_dice:sykestentacle`，并按 bbmodel 重导几何资源；版本号按「每提交 +1」递增。P1 两线本批**搁置**（见下）。
