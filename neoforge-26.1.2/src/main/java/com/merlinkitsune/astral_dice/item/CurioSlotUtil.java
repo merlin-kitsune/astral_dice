@@ -207,7 +207,7 @@ public final class CurioSlotUtil {
      * 「已佩戴骰子」为前提；未佩戴时**功能一律不生效**，但已经累计的**数值保留**（不清零），
      * 直到重生 / 重新进入仍未佩戴时由 {@code DiceCurioItem#enforceNoDiceState} 强制复位。
      */
-    public static boolean hasDiceEquipped(Player player) {
+    public static boolean hasDiceEquipped(net.minecraft.world.entity.LivingEntity player) {
         if (player == null) return false;
         var curios = CuriosApi.getCuriosInventory(player);
         return curios.isPresent() && curios.get().findFirstCurio(DiceCurioItem::isDiceItem).isPresent();
