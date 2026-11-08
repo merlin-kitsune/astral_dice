@@ -2,8 +2,9 @@ modLoader="javafml" #mandatory
 
 # 加载器(javafml 语言提供者)版本门槛:只能卡到 **Forge 主版本系列**(由 build.gradle 从 forge_version
 # 派生,当前 = [47,48))—— javafml 语言提供者的版本号就是主系列号(47),与完整版本号不同构;
-# 实测 loaderVersion="[47.4.10,48)" 会被 FML 判为 fml.language.missingversion 而拒绝加载本模组。
-# 精确下限([47.4.10,48))放在下方 modId="forge" 依赖上,由 FML 依赖排序阶段拒绝。
+# 2026-09-14 实机：把完整版本区间写进 loaderVersion（当时为 [47.4.10,48)）会被 FML 判为
+# fml.language.missingversion 而拒绝加载本模组（现在只写主系列区间，见下行 loaderVersion）。
+# 精确下限([47.1.47,48))放在下方 modId="forge" 依赖上,由 FML 依赖排序阶段拒绝。
 loaderVersion="${forge_language_version_range}" #mandatory
 
 license="${mod_license}"

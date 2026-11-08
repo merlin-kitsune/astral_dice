@@ -14,8 +14,8 @@
 
     **判据（S1..S6）**
       S1 区间来源链：`forge-1.20.1/gradle.properties` 的 `forge_version`
-          （当前 `1.20.1-47.4.10`）→ 派生 `loaderVersion=[<major>,<major+1)>`（`[47,48)`）与
-          `modId="forge"` 依赖区间 `[<semver>,<major+1)>`（`[47.4.10,48)`）；三段来源
+          （当前 `1.20.1-47.1.47`）→ 派生 `loaderVersion=[<major>,<major+1)>`（`[47,48)`）与
+          `modId="forge"` 依赖区间 `[<semver>,<major+1)>`（`[47.1.47,48)`）；三段来源
           （模板 / 生成资源 / 构建产物 jar 内 `META-INF/mods.toml`）取回并要求与派生值一致。
           ⚠️ 模板经 Groovy `SimpleTemplateEngine` 展开，其中是 `${...}` 占位 ⇒ **模板段的
           区间取不到字面值属于正常**（只报 `placeholder`，不判失败），与旧执行体同一容忍口径。
@@ -31,14 +31,25 @@
           的类含 `ModSorter` 与 `VersionSupportMatrix`。
       S4/S5 离线判定器：用**同一个** `maven-artifact` jar（classpath 加 `commons-lang3`）编译并运行
           `LoaderGateProbe`，逐字复刻 `ModSorter#modVersionNotContained` +
-          `VersionSupportMatrix#testVersionSupportMatrix`（含 `mod.forge → 47.1.79` 别名覆盖项）：
+          `VersionSupportMatrix#testVersionSupportMatrix`：
             · 旧区间 `[47,)` 接纳 `47.0.0`/`47.4.9` ⇒ `bug_repro=1`（修复前 BUG 的**反证**，必须保留）；
-            · 新区间拒绝 `47.0.0`/`47.4.9`、接纳 `47.4.10`/`47.4.11`/`47.5.0`、拒绝 `48.0.0`；
+            · 新区间按 2026-11-08 的兼容下限 `47.1.47` 重算边界：拒绝 `47.0.0`/`47.1.46`、接纳
+              `47.1.47`/`47.1.48`/`47.2.0`/`47.4.9`/`47.4.10`/`47.5.0`、拒绝 `48.0.0`；
+              ⚠️ 旧口径（下限 `47.4.10`）里「拒绝 47.4.9」只是**当时的**边界：新下限下
+              47.4.9 ≥ 47.1.47 ⇒ **必须 accept**，矩阵与 `gate_ok` 都随语义重写，不是只换字符串；
+            · `mod.forge → 47.1.79` 是 **VersionSupportMatrix 的版本相关覆盖项**：Forge 47.3.x 起才为
+              MC 1.20.1 注册（47.1.47 / 47.2.8 的 fmlloader 只注册 1.19.2 三条：languageloader.javafml
+              →42、mod.minecraft→1.19.1、mod.forge→42.0.9）。故别名**由脚本从实际 fmlloader jar 的
+              VersionSupportMatrix.class 字节码读出**再作为入参传给判定器；别名落在区间内时 FML 谓词
+              被短路（不再看实际安装版本），此时打印 `AP_LG_ALIAS:...:fml_short_circuit=1` 与
+              `LG_NOTE`（**不判失败**，属 FML 既有语义）；
             · loaderVersion 接纳 javafml `47`、拒绝 `48`（别名键 `languageloader.javafml` **不在**
               overrideVersions，走纯 `containsVersion`）；
             · Mixin Booster 区间 `[0.1.3,)` 对前置 jar 内**真实版本** accept，`0.1.3`/`0.1.4`/`0.2.0`
               accept，`0.1.2`/`0.1.0`/`0.0.9` reject（它**不在** overrideVersions，禁止套 forge 别名回退）。
-          ⚠️ 判定器的三条区间入参由本脚本从上述**派生/声明值**传入（不写死在 Java 里），
+          ⚠️ 判定器的区间入参由本脚本从上述**派生/声明值**传入（不写死在 Java 里）；第 6 位
+          `mod.forge` 覆盖项版本由 S3 从实际 fmlloader 的 `VersionSupportMatrix.class` 字节码读出
+          （`AP_LG_VSM` 上报；`47.1.47`/`47.2.x` 为 `none`），供 `AP_LG_ALIAS` 判短路可见性。
           `forge_version` 变更时先卡 S1、再让判定器直接判**实际声明值**。
       S6 聚合：任一判据不成立 ⇒ 非零退出；各失败项以 `LG_FAIL:<key>` 逐条打印。
 
@@ -61,7 +72,7 @@
     **区间子判据字段的覆盖范围（T19-01；字段名不得改）**
       `AP_LG_VERDICT` 的 `bug_repro` / `gate_ok` / `loader_ok` / `mb_ok` **只代表离线判定器**
       （`LoaderGateProbe`：逐字复刻 `ModSorter#modVersionNotContained` + `VersionSupportMatrix`）
-      **对「版本区间」这一维**的结论：`[47,)` 是否复现修复前 BUG、`[47.4.10,48)` 的拒绝/接纳边界、
+      **对「版本区间」这一维**的结论：`[47,)` 是否复现修复前 BUG、`[47.1.47,48)` 的拒绝/接纳边界、
       `loaderVersion=[47,48)` 对 javafml 47/48 的判定、`[0.1.3,)` 对前置**真实版本**的判定。
       它们**不覆盖**：MB 依赖段的 `mandatory` / `ordering` / `side` / `versionRange` 声明是否正确、
       `build.gradle` 是否仍装配 `maven.modrinth:mixinbooster`、模板是否存在、三段是否一致 ——
@@ -89,8 +100,9 @@
       · `lgfixture` —— 正对照，`-SkipArtifacts` ⇒ exit 0（`overall=1`、`artifacts=skipped`）；
       · `lgfixture-nomb` —— 整段删除 MB 依赖段 ⇒ exit 1（`LG_FAIL:mb_absent_in_template`）；
       · `lgfixture-mb` —— MB `versionRange` 改成 `"*"` ⇒ exit 1（`LG_FAIL:mb_range_template=*`）；
-      · `lgfixture-loader-exact` —— 模板 `loaderVersion` 写成精确区间 `[47.4.10,48)`（2026-09-14
-        实机踩过的 `fml.language.missingversion` 写法）⇒ exit 1（`LG_FAIL:tmpl_loader=…`）；
+      · `lgfixture-loader-exact` —— 模板 `loaderVersion` 写成精确区间（夹具里是当时的 `[47.4.10,48)`；
+        2026-09-14 实机踩过的 `fml.language.missingversion` 写法，换任何精确版本区间都同样触发）
+        ⇒ exit 1（`LG_FAIL:tmpl_loader=…`）；
       · `lgfixture-mbfalse` —— MB 段 `mandatory` 改成 `false`（区间不动）⇒ exit 1
         （`LG_FAIL:mb_mandatory_template=false`，且 `mb_ok=1` —— 见上「区间子判据字段」一节的示例）；
       · `lgfixture-vdrift` —— `forge_version` 漂移到 `1.20.1-47.5.0`（真实偏差）+ 不构建（缺产物）
@@ -128,9 +140,10 @@ $EXIT_UNDECIDABLE = 2
 # 门槛断言的期望值 —— 即 AGENTS.md「加载器版本门槛 / Mixin Booster 硬前置」记录的实装口径。
 # 刻意写成常量：`forge_version` 一旦变更，S1 立即以 derived_*/toml_* /forge_version_changed 报偏差，
 # 迫使维护者同步这里与判定器的版本候选清单，而不是静默跟随。
-$EXPECT_FORGE_VERSION = '1.20.1-47.4.10'
+# 2026-11-08：兼容下限由 47.4.10 下调到 47.1.47（压低 API 面，兼容仍停在 47.1.x 的整合包）。
+$EXPECT_FORGE_VERSION = '1.20.1-47.1.47'
 $EXPECT_OLD_RANGE = '[47,)'
-$EXPECT_NEW_RANGE = '[47.4.10,48)'
+$EXPECT_NEW_RANGE = '[47.1.47,48)'
 $EXPECT_LOADER_RANGE = '[47,48)'
 $EXPECT_MB_RANGE = '[0.1.3,)'
 # 2026-09-29（BMC4 玩家实测定位）：mixinbooster 由 **mandatory** 改为 **optional**。
@@ -579,6 +592,7 @@ $mavenVer = ''
 $lang3Jar = ''
 $lang3Ver = ''
 $refClasses = @()
+$vsmText = ''
 $fmlVer = $forgeVersion
 $fmlJar = Find-FirstFile -Pattern (Join-Path $CacheRoot "net.minecraftforge\fmlloader\$fmlVer\*\fmlloader-$fmlVer.jar")
 if ($null -ne $fmlJar) {
@@ -622,6 +636,9 @@ if ($null -ne $fmlJar) {
             $s.CopyTo($ms); $s.Close()
             $txt = [System.Text.Encoding]::GetEncoding(28591).GetString($ms.ToArray())
             if ($txt.Contains($needle)) { $refClasses += ($e.FullName -replace '^.*/', '' -replace '\.class$', '') }
+            # VersionSupportMatrix 的常量池里若有 "47.1.79"，说明该 FML 版本为 1.20.1 注册了
+            # mod.forge 覆盖项（47.3.x 起才有）；47.1.47 / 47.2.8 只注册 1.19.2 的 42.x 条目。
+            if ($e.FullName -eq 'net/minecraftforge/fml/loading/VersionSupportMatrix.class') { $vsmText = $txt }
             $ms.Dispose()
         }
     } finally { $zip.Dispose() }
@@ -629,6 +646,12 @@ if ($null -ne $fmlJar) {
     Add-Undecidable 'fmlloader_jar_absent' "Gradle 缓存里找不到 fmlloader-$fmlVer.jar（$CacheRoot）" `
         'gradlew :forge-1.20.1:dependencies（首次解析依赖会把 fmlloader 拉进缓存）'
 }
+# mod.forge 覆盖项（决定 FML 的 forge 依赖行是否被短路）
+$forgeAlias = ''
+if ($vsmText.Contains('47.1.79')) { $forgeAlias = '47.1.79' }
+$vsmState = if (-not $fmlJar) { 'unknown' } elseif ($vsmText) { 'present' } else { 'absent' }
+$aliasState = if ($forgeAlias) { $forgeAlias } elseif ($fmlJar) { 'none' } else { 'unknown' }
+Add-Reading ("AP_LG_VSM:state={0}:mod_forge_alias={1}" -f $vsmState, $aliasState)
 if ($mavenVer -and -not $mavenJar) {
     Add-Undecidable 'maven_artifact_jar_absent' "缓存里找不到 maven-artifact-$mavenVer.jar" `
         'gradlew :forge-1.20.1:dependencies --refresh-dependencies'
@@ -676,83 +699,119 @@ import org.apache.maven.artifact.versioning.VersionRange;
  *
  * VersionSupportMatrix.testVersionSupportMatrix(range, key, value, test):
  *     if (test.test(key, range)) return true;
- *     var versions = overrideVersions.get(value + "." + key);   // 常量池 recipe = \u0001.\u0001
+ *     var versions = overrideVersions.get(value + "." + key);
  *     return versions != null && versions.stream().anyMatch(range::containsVersion);
- *   static { if (MC == 1.20.1) add("mod.forge", "47.1.79"); }   // key=value+"."+key="mod.forge"
+ *
+ * ⚠️ overrideVersions 里的 "mod.forge" 覆盖项**随 Forge 版本变化**（本机字节码实测）：
+ *    · Forge 47.3.x 起才为 MC 1.20.1 注册 add("mod.forge", "47.1.79")；
+ *    · 47.1.47 / 47.2.8 的 fmlloader 只在 MC 1.19.2 分支注册
+ *      languageloader.javafml→42 / mod.minecraft→1.19.1 / mod.forge→42.0.9，
+ *      1.20.1 下 overrideVersions 为空 ⇒ 判定退化为纯 containsVersion。
+ *    ⇒ 本判定器不写死别名，由调用方从**实际 fmlloader jar 的 VersionSupportMatrix.class**
+ *      常量池读出后作为 args[5] 传入（"-" = 该 FML 版本没有该覆盖项）。
  *
  * 入参（由 verify_forge_loader_gate.ps1 从 gradle.properties 派生 + mods.toml 实际声明值传入，
- * 不写死）：args[0]=旧区间 args[1]=新区间 args[2]=loaderVersion 区间 args[3]=MB 区间 args[4]=MB 实装版本。
+ * 不写死；"-" 表示该位不可用）：args[0]=旧区间 args[1]=新区间 args[2]=loaderVersion 区间
+ * args[3]=MB 区间 args[4]=MB 实装版本 args[5]=mod.forge 覆盖版本。
  */
 public class LoaderGateProbe {
 
-    private static final String FORGE_ALIAS = "47.1.79";
+    private static String arg(String[] args, int i, String dflt) {
+        String v = (args.length > i) ? args[i] : null;
+        if (v == null || v.isEmpty() || v.equals("-")) { return dflt; }
+        return v;
+    }
 
     private static boolean contains(VersionRange r, String v) {
         return r.containsVersion(new DefaultArtifactVersion(v));
     }
 
-    /** 拥有该 modId 的已安装版本时，FML 是否判定「版本区间满足」 */
-    private static boolean fmlAcceptsForge(VersionRange range, String installed) {
-        // ① 主体判定（ModSorter 的 predicate 分支）
-        boolean direct = contains(range, installed);
-        if (direct) return true;
-        // ② VersionSupportMatrix 的别名覆盖项（mod.forge → 47.1.79）
-        return contains(range, FORGE_ALIAS);
+    /**
+     * FML 对某个 modId 行的最终判定（ModSorter predicate + VersionSupportMatrix 覆盖项）。
+     * 覆盖项的值只与**区间**比较，与实际安装版本无关 ⇒ 别名落在区间内时整行恒真（短路）。
+     */
+    private static boolean fmlAcceptsForge(VersionRange range, String installed, String alias) {
+        if (contains(range, installed)) { return true; }
+        return !alias.isEmpty() && contains(range, alias);
     }
 
+    /** 纯 Maven 区间语义 —— 边界矩阵用这个口径。 */
     private static String v(VersionRange r, String ver) {
-        return fmlAcceptsForge(r, ver) ? "accept" : "reject";
+        return contains(r, ver) ? "accept" : "reject";
+    }
+
+    /** FML 最终谓词（含覆盖项短路）—— 只用于可见性上报，不参与 gate_ok。 */
+    private static String vf(VersionRange r, String ver, String alias) {
+        return fmlAcceptsForge(r, ver, alias) ? "accept" : "reject";
     }
 
     /**
      * Mixin Booster 专用：它**不在** VersionSupportMatrix 的 overrideVersions 里
      * （那里只有 "mod.forge"），故判定退化为纯 range.containsVersion —— 不能用
-     * fmlAcceptsForge（那个别名回退会让 [0.1.3,) 误判 "47.1.79" 为满足）。
+     * fmlAcceptsForge（那个覆盖项会让 [0.1.3,) 误判 "47.1.79" 为满足）。
      */
     private static String vb(VersionRange r, String ver) {
         return contains(r, ver) ? "accept" : "reject";
     }
 
     public static void main(String[] args) throws Exception {
-        String oldSpec = args.length > 0 ? args[0] : "[47,)";
-        String newSpec = args.length > 1 ? args[1] : "[47.4.10,48)";
-        String loaderSpec = args.length > 2 ? args[2] : "[47,48)";
+        String oldSpec = arg(args, 0, "[47,)");
+        String newSpec = arg(args, 1, "[47.1.47,48)");
+        String loaderSpec = arg(args, 2, "[47,48)");
+        String mbSpec = arg(args, 3, "");
+        String mbActual = arg(args, 4, "");
+        String forgeAlias = arg(args, 5, "");
         VersionRange oldRange = VersionRange.createFromVersionSpec(oldSpec);
         VersionRange newRange = VersionRange.createFromVersionSpec(newSpec);
         VersionRange loaderRange = VersionRange.createFromVersionSpec(loaderSpec);
 
-        // 旧区间（修复前）——低版本被接纳 = BUG 复现
-        boolean bug = fmlAcceptsForge(oldRange, "47.0.0") && fmlAcceptsForge(oldRange, "47.4.9");
+        // 旧区间（修复前）——低版本被接纳 = BUG 复现。用纯区间语义表达：`[47,)` 本身不设下限，
+        // 这是修复前 BUG 的反证判据（不依赖覆盖项，也不能因为下游判定变严而被删）。
+        boolean bug = contains(oldRange, "47.0.0") && contains(oldRange, "47.4.9");
         System.out.println("AP_LG_OLD:range=" + oldSpec + ":v47.0.0=" + v(oldRange, "47.0.0")
                 + ":v47.4.9=" + v(oldRange, "47.4.9")
                 + ":v47.4.10=" + v(oldRange, "47.4.10")
                 + ":bug_repro=" + (bug ? 1 : 0));
 
-        // 新区间（修复后）——拒绝 47.0.0 / 47.4.9，接纳 47.4.10+
-        boolean fixed = !fmlAcceptsForge(newRange, "47.0.0")
-                && !fmlAcceptsForge(newRange, "47.4.9")
-                && fmlAcceptsForge(newRange, "47.4.10")
-                && fmlAcceptsForge(newRange, "47.4.11")
-                && fmlAcceptsForge(newRange, "47.5.0")
-                && !fmlAcceptsForge(newRange, "48.0.0");
+        // 新区间（2026-11-08 起下限 47.1.47）：按纯 Maven 区间语义重算边界。
+        // ⚠️ 旧口径（下限 47.4.10）里 47.4.9 是 reject；新下限下 47.4.9 >= 47.1.47 ⇒ accept。
+        boolean fixed = !contains(newRange, "47.0.0")
+                && !contains(newRange, "47.1.46")
+                && contains(newRange, "47.1.47")
+                && contains(newRange, "47.1.48")
+                && contains(newRange, "47.2.0")
+                && contains(newRange, "47.4.9")
+                && contains(newRange, "47.4.10")
+                && contains(newRange, "47.5.0")
+                && !contains(newRange, "48.0.0");
         System.out.println("AP_LG_NEW:range=" + newSpec + ":v47.0.0=" + v(newRange, "47.0.0")
+                + ":v47.1.46=" + v(newRange, "47.1.46")
+                + ":v47.1.47=" + v(newRange, "47.1.47")
+                + ":v47.1.48=" + v(newRange, "47.1.48")
+                + ":v47.2.0=" + v(newRange, "47.2.0")
                 + ":v47.4.9=" + v(newRange, "47.4.9")
                 + ":v47.4.10=" + v(newRange, "47.4.10")
-                + ":v47.4.11=" + v(newRange, "47.4.11")
                 + ":v47.5.0=" + v(newRange, "47.5.0")
                 + ":v48.0.0=" + v(newRange, "48.0.0")
                 + ":gate_ok=" + (fixed ? 1 : 0));
 
-        // 别名覆盖项本身的自证：它不会把 47.4.9 抬进新区间
-        System.out.println("AP_LG_ALIAS:alias=mod.forge@" + FORGE_ALIAS
-                + ":new_range_contains_alias=" + (contains(newRange, FORGE_ALIAS) ? 1 : 0)
-                + ":old_range_contains_alias=" + (contains(oldRange, FORGE_ALIAS) ? 1 : 0));
+        // 覆盖项可见性：别名由 PS 从实际 fmlloader 字节码读出，不写死。
+        // 别名落在新区间内 ⇒ FML 对 forge 行恒真（短路）；这是 FML 既有语义，
+        // 只上报，不参与 gate_ok（gate_ok 判的是区间边界本身是否写对）。
+        boolean aliasInNew = !forgeAlias.isEmpty() && contains(newRange, forgeAlias);
+        boolean aliasInOld = !forgeAlias.isEmpty() && contains(oldRange, forgeAlias);
+        System.out.println("AP_LG_ALIAS:alias=" + (forgeAlias.isEmpty() ? "none" : "mod.forge@" + forgeAlias)
+                + ":new_range_contains_alias=" + (aliasInNew ? 1 : 0)
+                + ":old_range_contains_alias=" + (aliasInOld ? 1 : 0)
+                + ":fml_short_circuit=" + (aliasInNew ? 1 : 0)
+                + ":fml_v47.1.46=" + vf(newRange, "47.1.46", forgeAlias)
+                + ":fml_v48.0.0=" + vf(newRange, "48.0.0", forgeAlias));
 
         // loaderVersion 是 javafml **语言提供者**的版本区间。LanguageLoadingProvider#findLanguage
-        // 同样经 VersionSupportMatrix，但它的别名键是 value + "." + key = "languageloader.javafml"
-        // —— 不在 overrideVersions（只有 "mod.forge"）里，故判定退化为纯 containsVersion。
-        // 提供者版本 = Forge 主系列号 47（依据：2026-09-14 实机读数
-        // `Missing language javafml version [47.4.10,48) … found 47`）。
+        // 同样经 VersionSupportMatrix，但它的覆盖键是 value + "." + key = "languageloader.javafml"
+        // —— 1.20.1 下 overrideVersions 为空，判定退化为纯 containsVersion。
+        // 提供者版本 = Forge 主系列号 47（历史取证 2026-09-14：当时把完整版本区间 `[47.4.10,48)`
+        // 写进 loaderVersion，实机报 `Missing language javafml version [47.4.10,48) ... found 47`）。
         boolean loaderOk = contains(loaderRange, "47") && !contains(loaderRange, "48");
         System.out.println("AP_LG_LOADER:range=" + loaderSpec + ":javafml47=" + (contains(loaderRange, "47") ? "accept" : "reject")
                 + ":javafml48=" + (contains(loaderRange, "48") ? "accept" : "reject")
@@ -762,22 +821,20 @@ public class LoaderGateProbe {
         // Mixin Booster 强依赖区间（Forge 1.20.1 的 FML 无 Mixin 集成，Sponge Mixin 由该前置 jar
         // 内嵌的 fabric-mixin 以 ModLauncher 服务提供；缺它/旧它都会让本模组的全部 mixin
         // **静默失效**——不报任何错，所以必须在依赖排序阶段硬拒）。
-        if (args.length >= 5) {
-            String spec = args[3];
-            String actual = args[4];
-            VersionRange mb = VersionRange.createFromVersionSpec(spec);
-            boolean mbOk = contains(mb, actual)   // 实装前置版本必须落在区间内
-                    && contains(mb, "0.1.3")      // 下限闭合：[0.1.3,) 含 0.1.3
+        if (!mbSpec.isEmpty()) {
+            VersionRange mb = VersionRange.createFromVersionSpec(mbSpec);
+            boolean mbOk = contains(mb, mbActual)   // 实装前置版本必须落在区间内
+                    && contains(mb, "0.1.3")        // 下限闭合：[0.1.3,) 含 0.1.3
                     && contains(mb, "0.1.4")
                     && contains(mb, "0.2.0")
-                    && !contains(mb, "0.1.2")     // 旧前置必须被拒（不是"装了就算过"）
+                    && !contains(mb, "0.1.2")       // 旧前置必须被拒（不是"装了就算过"）
                     && !contains(mb, "0.1.0")
                     && !contains(mb, "0.0.9");
-            System.out.println("AP_LG_MB_RANGE:range=" + spec + ":artifact=" + actual
+            System.out.println("AP_LG_MB_RANGE:range=" + mbSpec + ":artifact=" + mbActual
                     + ":v0.1.0=" + vb(mb, "0.1.0")
                     + ":v0.1.2=" + vb(mb, "0.1.2")
                     + ":v0.1.3=" + vb(mb, "0.1.3")
-                    + ":v" + actual + "=" + vb(mb, actual)
+                    + ":v" + mbActual + "=" + vb(mb, mbActual)
                     + ":v0.1.4=" + vb(mb, "0.1.4")
                     + ":v0.2.0=" + vb(mb, "0.2.0")
                     + ":gate_ok=" + (mbOk ? 1 : 0));
@@ -799,12 +856,19 @@ public class LoaderGateProbe {
     } else {
         Write-Out 'LG_STEP:5/6 运行判定器(旧区间 BUG 复现 / 新区间门槛 / loaderVersion / Mixin Booster 区间)'
         $cp = "$mavenJar;$lang3Jar;$WorkDir"
-        if ($mbSeen.range -and $mbArtifactVersion) {
-            $out = & $java -cp $cp LoaderGateProbe $derivedOld $declaredForge $declaredLoader $mbSeen.range $mbArtifactVersion 2>&1
-            $probeRc = $LASTEXITCODE
-        } else {
-            $out = & $java -cp $cp LoaderGateProbe $derivedOld $declaredForge $declaredLoader 2>&1
-            $probeRc = $LASTEXITCODE
+        $mbRunnable = [bool]($mbSeen.range -and $mbArtifactVersion)
+        # '-' = 该位不可用（PowerShell 向原生命令传空串在某些宿主上会被吞，改用哨兵避免位次错乱）。
+        $probeArgs = @(
+            [string]$derivedOld,
+            [string]$declaredForge,
+            [string]$declaredLoader,
+            $(if ($mbRunnable) { [string]$mbSeen.range } else { '-' }),
+            $(if ($mbRunnable) { [string]$mbArtifactVersion } else { '-' }),
+            $(if ($forgeAlias) { [string]$forgeAlias } else { '-' })
+        )
+        $out = & $java -cp $cp LoaderGateProbe @probeArgs 2>&1
+        $probeRc = $LASTEXITCODE
+        if (-not $mbRunnable) {
             Add-Reading ("AP_LG_MB_RANGE:skipped=1:range={0}:artifact={1}:gate_ok=0" -f ([string]$mbSeen.range), $mbArtifactVersion)
         }
         foreach ($ln in @($out)) {
@@ -812,6 +876,11 @@ public class LoaderGateProbe {
             if ($s) { Add-Reading $s }
         }
         if ($probeRc -ne 0) { Add-Fail "probe_rc=$probeRc" }
+        if (@($script:Readings | Where-Object { $_ -like 'AP_LG_ALIAS:*fml_short_circuit=1*' }).Count -gt 0) {
+            Write-Out ('LG_NOTE:当前 fmlloader 的 mod.forge 覆盖项落在新的依赖区间内 ⇒ FML 依赖排序对 forge 行' +
+                '恒真（短路），该行不再拦低版本；这是 FML 既有语义，本脚本不判失败，' +
+                '门槛实际由运行期 API 决定。')
+        }
     }
 }
 

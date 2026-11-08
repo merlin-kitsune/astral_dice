@@ -74,7 +74,7 @@ The Abyss Reagent chip is named consistently now: display name, tooltip and ever
 | Support | Subproject | Minecraft | Loader | Java | Version | Patchouli |
 |---|---|---|---|---|---|---|
 | ✅ | `neoforge-1.21.1` | 1.21.1 | NeoForge 21.1.235 | 21 | 1.5.1 | ✅ |
-| ✅ | `forge-1.20.1` | 1.20.1 | Forge 47.4.10 | 17 | 1.5.1 | ✅ |
+| ✅ | `forge-1.20.1` | 1.20.1 | Forge 47.1.47+ | 17 | 1.5.1 | ✅ |
 | ✅ | `neoforge-26.1.2` | 26.1.2 | NeoForge 26.1.2.109 | 25 | 1.5.1 | ✅ |
 | ✅ | `fabric-1.20.1` | 1.20.1 | Fabric Loader 0.19.5 | 17 | 1.5.1 | ✅ |
 

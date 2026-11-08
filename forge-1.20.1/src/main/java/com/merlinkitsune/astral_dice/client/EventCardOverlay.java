@@ -21,7 +21,7 @@ import java.util.List;
  *  事件图 38×38 贴 (3,3) + MC 字体两行居中文字 ⇒ 框/图/文字随整卡同步缩放。 */
 public final class EventCardOverlay {
     public static final ResourceLocation LAYER_ID =
-            ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, "event_card");
+            new ResourceLocation(AstralDiceMod.MODID, "event_card");
 
     /** 事件卡框宽（公开：事件选择界面按同口径命中判定/排布）。 */
     public static final int FRAME_W = 44;
@@ -56,7 +56,7 @@ public final class EventCardOverlay {
     /** 收起阶段的**终点缩放**：用户裁决「淡出 = 缩小淡出」（原实现写成放大淡出，方向错了）。 */
     private static final float OUT_END_SCALE = 0.8F;
     private static final ResourceLocation FRAME_TEX =
-            ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, "textures/gui/event/card_frame.png");
+            new ResourceLocation(AstralDiceMod.MODID, "textures/gui/event/card_frame.png");
 
     private static final List<Card> CARDS = new ArrayList<>();
 
@@ -112,7 +112,7 @@ public final class EventCardOverlay {
 
     private static void drawCard(GuiGraphics g, Minecraft mc, Card card, int centerX, int centerY,
                                  float scale, float alpha) {
-        ResourceLocation icon = ResourceLocation.fromNamespaceAndPath(card.eventId().getNamespace(),
+        ResourceLocation icon = new ResourceLocation(card.eventId().getNamespace(),
                 "textures/gui/event/" + iconPath(card) + ".png");
         g.pose().pushPose();
         // 垂直对齐：FRAME_H 为奇数时 quad 中心天然低 0.5 GUI px（=2 物理 px @guiScale4）⇒ 上移半像素
@@ -165,7 +165,7 @@ public final class EventCardOverlay {
     public static void drawCardAt(GuiGraphics g, Minecraft mc, ResourceLocation frameTex,
                                   ResourceLocation eventId, int durationTicks, int tier,
                                   int frameX, int frameY) {
-        ResourceLocation icon = ResourceLocation.fromNamespaceAndPath(eventId.getNamespace(),
+        ResourceLocation icon = new ResourceLocation(eventId.getNamespace(),
                 "textures/gui/event/" + iconPath(eventId, tier) + ".png");
         int a = 255;
         com.mojang.blaze3d.systems.RenderSystem.enableBlend();

@@ -50,7 +50,7 @@ public final class ModPoiTypes {
     /** 工作站点 id（职业的 heldJobSite 谓词按它判定）—— 必须与标签文件里的 id 一致。 */
     public static final ResourceKey<PoiType> CARD_SHOP_KEY =
             ResourceKey.create(Registries.POINT_OF_INTEREST_TYPE,
-                    ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, "card_shop"));
+                    new ResourceLocation(AstralDiceMod.MODID, "card_shop"));
 
     /** 卡牌商店工作站点（1 张票券 / 1 格搜索半径，与原版工作站点同一取值）。 */
     public static final RegistryObject<PoiType> CARD_SHOP = POI_TYPES.register("card_shop",
@@ -60,7 +60,7 @@ public final class ModPoiTypes {
     /** 工作站点 id（职业的 heldJobSite 谓词按它判定）—— 必须与标签文件里的 id 一致。 */
     public static final ResourceKey<PoiType> CHIP_SHOP_KEY =
             ResourceKey.create(Registries.POINT_OF_INTEREST_TYPE,
-                    ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, "chip_shop"));
+                    new ResourceLocation(AstralDiceMod.MODID, "chip_shop"));
 
     /** 筹码商店工作站点（1 张票券 / 1 格搜索半径，与卡牌商店同一取值）。 */
     public static final RegistryObject<PoiType> CHIP_SHOP = POI_TYPES.register("chip_shop",
@@ -87,12 +87,12 @@ public final class ModPoiTypes {
      */
     public static final TagKey<PoiType> CARD_TRADER_JOB_SITES =
             TagKey.create(Registries.POINT_OF_INTEREST_TYPE,
-                    ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, "card_trader_job_site"));
+                    new ResourceLocation(AstralDiceMod.MODID, "card_trader_job_site"));
 
     /** 「筹码商人」的专用可认领工作站点标签（{@code #astral_dice:chip_trader_job_site}，内容 = {@code astral_dice:chip_shop}）；与 {@link #CARD_TRADER_JOB_SITES} 同一口径。 */
     public static final TagKey<PoiType> CHIP_TRADER_JOB_SITES =
             TagKey.create(Registries.POINT_OF_INTEREST_TYPE,
-                    ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, "chip_trader_job_site"));
+                    new ResourceLocation(AstralDiceMod.MODID, "chip_trader_job_site"));
 
     private ModPoiTypes() {
     }

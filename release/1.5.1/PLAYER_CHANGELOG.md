@@ -1,9 +1,10 @@
 # Astral Dice 1.5.1 — Player Changelog
 
-Released: **1.5.1 (stable)** — a **fix-only** update that repairs exactly one crash: gameplay, content and numbers are unchanged, and saves and multiplayer keep working.
+Released: **1.5.1 (stable)** — a maintenance update that repairs one crash, lowers the Forge compatibility floor and adds background dimming to the card-choice screen: gameplay, content and numbers are unchanged, and saves and multiplayer keep working.
 
 - **Server crash fixed**: when a meito card ran out of durability and its cost was settled, a player who was **not wearing the "Misaki" guardian sign** made the server crash, because the cost calculation had no player context; the save died at `Ticking player`, and one more trigger after a restart killed it again. It no longer crashes, and the cost is settled as usual.
 - **Compatibility**: works with 1.5.0 saves — no migration needed. The interop version is still **1.5**, so 1.5.1 and 1.5.0 players can play together.
+- **Forge compatibility floor lowered**: the 1.20.1 / Forge line now supports **Forge 47.1.47 and newer** (it previously required 47.4.10+), so modpacks still on 47.1.x no longer need a Forge upgrade.
 
 > **This release ships four builds**: `astral_dice-1.5.1+neoforge_1.21.1.jar` (Minecraft 1.21.1 / NeoForge), `astral_dice-1.5.1+forge_1.20.1.jar` (Minecraft 1.20.1 / Forge),
 > `astral_dice-1.5.1+neoforge_26.1.2.jar` (Minecraft 26.1.2 / NeoForge) and `astral_dice-1.5.1+fabric_1.20.1.jar` (Minecraft 1.20.1 / Fabric). All four belong to one Release, tagged `1.5.1`.
@@ -12,6 +13,8 @@ Released: **1.5.1 (stable)** — a **fix-only** update that repairs exactly one 
 
 - **Crash when a meito card ran out of durability (`Ticking player`)**: a meito card losing its last durability point triggers one cost settlement. If the player was **not wearing the "Misaki" guardian sign**, the old code computed the cost without passing the player into the curios lookup, so the server threw and the save died at `Ticking player`; one more trigger after a restart brought it back.
   This version threads the real player through cost settlement and the curios lookup, and guards the lookup with "do not query when there is no player". The 4 → 3 discount while wearing "Misaki" and the charge refund both use the same cost path and produce the same results as before.
+- **Background dimming on the card-choice screen (both 1.20.1 lines)**: container screens on 1.20.1 do not draw a background overlay by default, so the world behind the card-choice screen was as bright as in-game and the UI lacked depth. The background is now dimmed — a two-layer gradient when a world is present, dirt background when there is none. The 1.21.1 and 26.1.2 screens already do this in vanilla, so their look is unchanged.
+- **Forge 1.20.1 compatibility floor lowered to 47.1.47**: to support modpacks still on Forge 47.1.x, the Forge dependency now starts at 47.1.47. Two calls that only exist in newer builds had to be rewritten (invisible to players), and the Forge range in `mods.toml` is now `[47.1.47,48)`.
 - **Nothing else changes**: card costs, durability, discount conditions and charge refunds are numerically untouched.
 
 ## Installation and requirements (read first)

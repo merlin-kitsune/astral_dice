@@ -9,6 +9,8 @@
 ### Bug Fixes
 
 - **Null-pointer crash in meito card cost calculation**: when a meito card's durability hit zero and its cost was settled, a player who was not wearing the "Misaki" guardian sign made the cost calculation query the curios inventory with a `null` player, throwing `NullPointerException` and crashing the save at `Ticking player`. The player context is now threaded through the whole path (the player-less cost overload is removed), a null-player guard was added at the curios lookup, and the charge refund now uses the same unified cost path.
+- **Forge 1.20.1 compatibility floor lowered to 47.1.47**: the Forge API surface is pulled back to 47.1.x by rewriting the two usages that only exist in newer builds — `ResourceLocation.fromNamespaceAndPath(...)` reverted to `new ResourceLocation(namespace, path)` (11 call sites), and `ModLoadingContext.registerDisplayTest(...)` replaced with native extension-point registration (semantically equivalent). The Forge dependency range in `mods.toml` is now `[47.1.47,48)`, so modpacks still on 47.1.x load without a Forge upgrade.
+- **Background dimming added to the card-choice screen**: on 1.20.1 container screens never call `renderBackground` automatically (`Screen#render` only iterates renderables while `AbstractContainerScreen#render` only calls `renderBg`), so the world behind the card-choice screen was as bright as in-game and the UI lacked visual separation. `CardChoiceScreen#render` now draws the background once: two-layer dimming gradient when a world is present, dirt background when there is none (1.21.1 and 26.1.2 already handle this through vanilla `Screen#render` / `extractBackground`, so they need no change).
 
 ## 1.5.0-hotfix (2026-11-02)
 
