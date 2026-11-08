@@ -88,7 +88,7 @@ public class FlashlightBurstChipItem extends BaseChipItem {
     }
 
     /** 额外加伤点数:每 {@value #STARLIGHT_PER_DAMAGE} 层星光 +1(结算见 {@code DiceCombatModifiers} 额外加伤修饰器)。 */
-    public static int extraDamage(Player player) {
+    public static int extraDamage(net.minecraft.world.entity.LivingEntity player) {
         if (!isEquipped(player)) return 0;
         return StarLightManager.get(player) / STARLIGHT_PER_DAMAGE;
     }

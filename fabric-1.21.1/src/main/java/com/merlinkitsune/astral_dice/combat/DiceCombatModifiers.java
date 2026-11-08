@@ -524,9 +524,7 @@ public final class DiceCombatModifiers {
         // === 额外加伤:手电筒-强光(每 4 层星光 +1 点) ===
         registerExtraDamageModifier(ctx -> {
             if (!hasCurio(ctx.attacker, ModItems.FLASHLIGHT_CHIP.get())) return 0;
-            Player __pl0 = playerOrNull(ctx);
-            if (__pl0 == null) return 0;   // 星光为玩家账户级资源 ⇒ 注册生物不适用
-            return StarLightManager.get(__pl0) / 4;
+            return StarLightManager.get(ctx.attacker) / 4;
         });
 
         // === 额外加伤:手电筒-爆闪(每 2 层星光 +1 点) ===
@@ -536,9 +534,7 @@ public final class DiceCombatModifiers {
         // 装备判定走 FlashlightBurstChipItem#isEquipped(含 hasDiceEquipped 总闸门,与上方强光同款)。
         registerExtraDamageModifier(ctx -> {
             if (ctx.attacker.level().isClientSide()) return 0;
-            Player __pl1 = playerOrNull(ctx);
-            if (__pl1 == null) return 0;   // 星光层数是玩家账户资源 ⇒ 注册生物不适用
-            return com.merlinkitsune.astral_dice.item.chip.FlashlightBurstChipItem.extraDamage(__pl1);
+            return com.merlinkitsune.astral_dice.item.chip.FlashlightBurstChipItem.extraDamage(ctx.attacker);
         });
 
         // === 内置:电流剑(每 4 点充能 +1 攻击力) ===

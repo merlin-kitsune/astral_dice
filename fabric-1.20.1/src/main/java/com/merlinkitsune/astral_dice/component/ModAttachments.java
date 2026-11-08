@@ -441,12 +441,12 @@ public class ModAttachments {
         INVESTIGATION_STAGE.set(player, Math.max(1, value));
     }
 
-    public static int getStarlight(net.minecraft.world.entity.player.Player player) {
-        return PLAYER_STARLIGHT.get(player);
+    public static int getStarlight(net.minecraft.world.entity.LivingEntity living) {
+        return PLAYER_STARLIGHT.get(living);
     }
 
-    public static void setStarlight(net.minecraft.world.entity.player.Player player, int value) {
-        PLAYER_STARLIGHT.set(player, value);
+    public static void setStarlight(net.minecraft.world.entity.LivingEntity living, int value) {
+        PLAYER_STARLIGHT.set(living, value);
     }
 
     public static int getEightSidedAccum(net.minecraft.world.entity.player.Player player) {
