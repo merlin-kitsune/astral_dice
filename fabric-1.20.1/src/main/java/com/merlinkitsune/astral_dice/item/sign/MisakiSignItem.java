@@ -66,6 +66,11 @@ public class MisakiSignItem extends BaseSignItem {
     }
 
     // 名刀费用考虑护法立牌后的实际费用
+    /** G6(2026-11-08)：非玩家宿主按基础费用结算（护法立牌折扣只对玩家生效）。 */
+    public static int effectiveCost(net.minecraft.world.entity.LivingEntity holder, String type) {
+        return effectiveCost(holder instanceof Player p ? p : null, type);
+    }
+
     public static int effectiveCost(Player player, String type) {
         if ("meito".equals(type)) {
             return getMeitoCost(player);

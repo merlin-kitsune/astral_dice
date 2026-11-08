@@ -59,7 +59,7 @@ public class FortuneStickChipItem extends BaseChipItem {
     }
 
     /** 玩家是否佩戴本筹码(总闸门:未佩戴骰子 ⇒ 本件功能一律不生效)。 */
-    public static boolean isEquipped(Player player) {
+    public static boolean isEquipped(net.minecraft.world.entity.LivingEntity player) {
         if (player == null) return false;
         if (!CurioSlotUtil.hasDiceEquipped(player)) return false;
         var curios = CuriosApi.getCuriosInventory(player);
