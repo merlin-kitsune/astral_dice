@@ -163,3 +163,21 @@ PlayerLikeWallets.register(MAID_LIKE, e -> e instanceof EntityMaid, new PlayerLi
 | C | 卡牌 | `BaseEffectCardItem` 家族 | 把 `applyEffect(Player)` 拆成 `applyEffect(LivingEntity)`，玩家入口委派 |
 | D | 筹码 | 33 个 `isEquipped(Player)` 家族 | 改调 `ChipEquip.isEquipped(LivingEntity, …)`；逐个核对加成是否依赖玩家属性面 |
 | E | 骰战 | `DiceCombatEvents` 内 20+ 处 `instanceof Player` | 按 §5.1 已知限制逐条放宽（卡牌成本、成对结算、筹码加成） |
+
+## 7. P1 同步清单（用户裁决 2026-11-08：P1 更新完成后，本批全部落点必须同步进 P1）
+
+> 口径：P0（`neoforge-1.21.1`）是唯一先行线；**P1 侧正在进行的重构完成后**，下列提交必须逐条落到
+> `forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1` / `fabric-1.21.1`，不得只在 P0 存在。
+
+| 提交 | 主题 | P1 落地要点 |
+|---|---|---|
+| `090a8c5f` | 客户端相邻目标细边放行类玩家生物 | 客户端 `TargetSelectionClient` 两处过滤（准星 + 细边）都要同源改，漏一处会出现「能瞄准、选不中」 |
+| `a8a2fcf6` | 选卡器 1~3 张变长下限 | `CardChoiceManager` / `CardChoiceMenu` / `CardChoiceType` 三处 + 三语键同步 |
+| `34d2d3a3` | 类玩家能力层（wallet / abilities / ChipEquip / CardUseService） | 纯平台无关类，整目录复制；`PlayerLikeWallets` 的玩家默认钱包在各线同走 `StarEngineEconomy` |
+| `831ec4d8` | 立牌钩子放宽 `LivingEntity` | Curios→Trinkets（fabric 两线）装备遍历入口需换成 Trinkets 桥；forge 线包名 `top.theillusivec4.curios` 一致可直接复制 |
+| `03ab1b86` | 商店服务 + 状态宿主放宽 | forge 线 `ChipShopState.get/store` 走 `AstralData` 的 kept 白名单；fabric 两线走 `ItemDataKey` shim |
+| `842b17a8` | 女仆槽位数据 | fabric 线改写为 `data/trinkets/entities/*.json`；其余线直接复制 `curios/entities/player_like_maid.json` |
+| `83ac4ced` | 本文档 | 随代码一起进各线文档目录 |
+
+**同步完成判据**：四线各跑 `compileJava`；`grep -rn "class PlayerLikeWallet\|class ChipShopService"` 每线各 1 处；
+`docs/features/player-like-entities-api.md` 在四线都存在且 §7 改为「已同步」。
