@@ -13,9 +13,13 @@ D2 两线 resources 里的 attack_card_meito_discount.png 与源素材**逐字�
 D3 两线 CardShopScreen 定义 cardFaceTexture(ItemStack) 且 drawCardFace 通过它取贴图（不再就地拼路径）。
 D4 cardFaceTexture 内四道要素齐全：只对 ATTACK_CARD_MEITO 生效、读 MisakiSignItem#hasMisakiEquipped、
    指向 _discount.png、素材缺失时回退 base（faceExists 三元）。
-D5 服务端减费口径仍在（MisakiSignItem 里 hasMisakiEquipped(player) ? 3 : AppliedStone.cost("meito")），
+D5 服务端减费口径仍在（MisakiSignItem 里
+   hasMisakiEquipped(player) ? 3 : AppliedStone.cost(player, "meito")），
    保证「换图」与「实际费用」同源；该口径只允许 1 处。
 D6 减费贴图名只被 CardShopScreen 引用（单一事实源），其它 java 文件不得硬编码。
+D7 「无玩家费用入口」彻底消失（2026-11-08 名刀 NPE 崩溃修复）：`AppliedStone.cost("...")`
+   与 `CardRegistry.cost(..., null)` 形态一律不允许再出现——它们会把 null 玩家一路传到
+   Curios 查询里。P0 两线命中即失败；P1 三线尚未修（重做中）只计入告警，作为欠账登记。
 
 用法：python -B tools/verify_meito_discount_face.py [--quiet]
 退出码：0 = 全通过；1 = 有失败项。
@@ -27,6 +31,9 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LINES = ["neoforge-1.21.1", "forge-1.20.1"]
+# P1 三线（重做中）：D7 只告警不判失败，等 fabric/26.1.2 重做后并入 LINES
+P1_LINES = ["neoforge-26.1.2", "fabric-1.20.1", "fabric-1.21.1"]
+ALL_LINES = LINES + P1_LINES
 
 SRC = os.path.join("images", "shop", "card+event", "嘎呜切减费.png")
 TEX = os.path.join("src", "main", "resources", "assets", "astral_dice", "textures", "gui", "shop", "card",
@@ -114,7 +121,7 @@ for line in LINES:
         failures.append("D5 %s: MisakiSignItem 缺失" % line)
         continue
     src = read(p)
-    pat = 'hasMisakiEquipped(player) ? 3 : AppliedStone.cost("meito")'
+    pat = 'hasMisakiEquipped(player) ? 3 : AppliedStone.cost(player, "meito")'
     if src.count(pat) != 1:
         failures.append("D5 %s: 减费口径命中 %d 处（应为 1）" % (line, src.count(pat)))
     else:
@@ -142,6 +149,71 @@ if len(hits) < 2 or stray:
 else:
     notes.append("D6 减费贴图名只在两线 CardShopScreen 出现（%d 处）" % len(hits))
 
+
+# ---- D7 无玩家费用入口（null 玩家 NPE 根因）----
+NO_PLAYER_PATTERNS = [
+    re.compile(r'AppliedStone\s*\.\s*cost\s*\(\s*"'),
+    re.compile(r'CardRegistry\s*\.\s*cost\s*\([^;]*?,\s*(?:\(\s*(?:net\.minecraft\.world\.entity\.player\.)?Player\s*\)\s*)?null\s*\)', re.S),
+]
+
+# 变异自检：这些必须被抓到（防门禁假绿）
+D7_SELFTEST_BAD = [
+    'AppliedStone.cost("meito")',
+    'AppliedStone . cost("meito")',
+    'AppliedStone.cost(' + chr(10) + '    "meito")',
+    'CardRegistry.cost(type, (Player) null)',
+    'CardRegistry.cost(type, null)',
+    'CardRegistry.cost(' + chr(10) + '    type,' + chr(10) + '    null)',
+]
+# 这些是正确写法，不许误伤
+D7_SELFTEST_GOOD = [
+    'AppliedStone.cost(player, "meito")',
+    'AppliedStone.cost(player, type)',
+    'CardRegistry.cost(type, player)',
+    'if (player == null) return false;',
+]
+
+
+def d7_hits(text):
+    return [pat.search(text) for pat in NO_PLAYER_PATTERNS if pat.search(text)]
+
+
+for bad in D7_SELFTEST_BAD:
+    if not d7_hits(bad):
+        failures.append("D7 自检漏网: %r" % bad)
+for good in D7_SELFTEST_GOOD:
+    if d7_hits(good):
+        failures.append("D7 自检误伤: %r" % good)
+
+d7_files = 0
+d7_debt = []
+for line in ALL_LINES:
+    base = os.path.join(ROOT, line, "src", "main", "java")
+    for dirpath, dirnames, filenames in os.walk(base):
+        dirnames[:] = [d for d in dirnames if d not in ("build", "run")]
+        for fn in filenames:
+            if not fn.endswith(".java"):
+                continue
+            fp = os.path.join(dirpath, fn)
+            try:
+                text = read(fp)
+            except UnicodeDecodeError:
+                continue
+            d7_files += 1
+            for m in [pat.search(text) for pat in NO_PLAYER_PATTERNS]:
+                if not m:
+                    continue
+                line_no = text[:m.start()].count("\n") + 1
+                where = "%s/%s:%d" % (line, os.path.relpath(fp, os.path.join(ROOT, line)).replace("\\", "/"), line_no)
+                if line in LINES:
+                    failures.append("D7 无玩家费用调用残留: " + where)
+                else:
+                    d7_debt.append(where)
+if not failures:
+    notes.append("D7 %d 个 java 文件无「无玩家费用调用」形态（P0 两线）" % d7_files)
+if d7_debt:
+    notes.append("D7 欠账（P1 三线，重做中，暂不判失败）: " + ", ".join(d7_debt))
+
 quiet = "--quiet" in sys.argv
 if not quiet:
     for n in notes:
@@ -151,4 +223,4 @@ if failures:
     for f in failures:
         print("  - " + f)
     sys.exit(1)
-print("GATE: PASS (D1-D6 全部满足，两线)")
+print("GATE: PASS (D1-D6 两线全部满足；D7 五线扫描，P0 无残留、P1 仅登记欠账)")
