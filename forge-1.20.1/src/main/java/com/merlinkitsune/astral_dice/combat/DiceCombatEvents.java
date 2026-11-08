@@ -1508,7 +1508,14 @@ public class DiceCombatEvents {
             mobAttack = modified + participantCtx.attackCardSum;
             g6Ctx = participantCtx;
             if (attackerEnh != null) {
-                consumeAttackCardDurabilityOnce(mob, attackerDie, attackerEnh);
+                // ⚠️ attackerDie 来自 CurioSlotUtil.findFirstCurioMatching（返回 .copy()）
+                //     ⇒ 在副本上扣耐久会随副本丢弃；必须对**真实栈**就地写回（2026-11-09 实机取证）。
+                CurioSlotUtil.mutateFirstCurioMatching(mob, DiceCurioItem::isDiceItem, live -> {
+                    WeaponEnhancement liveEnh = ModDataComponents.WEAPON_ENHANCEMENT.getOrDefault(live, null);
+                    if (liveEnh != null) {
+                        consumeAttackCardDurabilityOnce(mob, live, liveEnh);
+                    }
+                });
             }
         }
         double playerDefense;

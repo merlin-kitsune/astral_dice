@@ -107,6 +107,31 @@ public final class CurioSlotUtil {
     }
 
     /**
+     * 遍历并**就地**修改首个匹配的饰品栈（G6，2026-11-08）。
+     *
+     * <p>{@link #findFirstCurioMatching} 故意返回 {@code .copy()}（只读调用方改副本不会回写）；
+     * 但「扣战斗牌耐久」这类写操作必须落在**真实栈**上，否则改动会随副本被丢弃。
+     */
+    public static boolean mutateFirstCurioMatching(LivingEntity entity,
+                                                   java.util.function.Predicate<ItemStack> predicate,
+                                                   java.util.function.Consumer<ItemStack> mutator) {
+        var curios = CuriosApi.getCuriosInventory(entity);
+        if (curios.isEmpty()) return false;
+        var curiosMap = curios.get().getCurios();
+        for (var key : curiosMap.keySet()) {
+            var stacks = curiosMap.get(key).getStacks();
+            for (int i = 0; i < stacks.getSlots(); i++) {
+                ItemStack s = stacks.getStackInSlot(i);
+                if (!s.isEmpty() && predicate.test(s)) {
+                    mutator.accept(s);
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
      * 遍历**指定饰品栏**（仅该 {@code slotId}）的非空槽位并执行动作。
      *
      * <p>2026-10-12 新增：筹码商店的「已拥有筹码」与「已装备流派计数」都要读 chip 栏，

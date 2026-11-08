@@ -1187,7 +1187,14 @@ public class DiceCombatEvents {
             g6Ctx = participantCtx;
             // 战斗牌耐久：参与者每次骰战攻击消耗一次（玩家侧按赐福周期，参与者无赐福概念 ⇒ 每击一次）
             if (attackerEnh != null) {
-                consumeAttackCardDurabilityOnce(mob, attackerDie, attackerEnh);
+                // ⚠️ attackerDie 来自 CurioSlotUtil.findFirstCurioMatching（返回 .copy()）
+                //     ⇒ 在副本上扣耐久会随副本丢弃；必须对**真实栈**就地写回（2026-11-09 实机取证）。
+                CurioSlotUtil.mutateFirstCurioMatching(mob, DiceCurioItem::isDiceItem, live -> {
+                    WeaponEnhancement liveEnh = live.getOrDefault(ModDataComponents.WEAPON_ENHANCEMENT.get(), null);
+                    if (liveEnh != null) {
+                        consumeAttackCardDurabilityOnce(mob, live, liveEnh);
+                    }
+                });
             }
         }
         double playerDefense;
