@@ -1,0 +1,30 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "minecraft:black_dye"
+    },
+    "X": {
+      "item": "astral_dice:star_coin_dust"
+    },
+    "K": {
+      "item": "minecraft:gold_block"
+    },
+    "C": {
+      "item": "astral_dice:blank_chip"
+    },
+    "D": {
+      "item": "astral_dice:diamond_dice"
+    }
+  },
+  "pattern": [
+    "BXB",
+    "KCK",
+    "XDX"
+  ],
+  "result": {
+    "item": "astral_dice:al_sign"
+  },
+  "show_notification": true
+}
