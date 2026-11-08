@@ -401,7 +401,7 @@ public final class RenShieldManager {
      *       用 MixinExtras {@code @WrapOperation} 包裹 {@code LivingEntity#hurt} 里对
      *       {@code actuallyHurt(DamageSource,float)} 的那一次调用，在**调用之前**派发；
      *       载荷 = 即将传给 {@code actuallyHurt} 的实参。</li>
-     *   <li>{@code LivingDamageEvent} —— 由 {@code platform/PuzzlesBridges} 从 Puzzles Lib 的
+     *   <li>{@code LivingDamageEvent} —— 由 {@code platform/StarengineBridges} 从 Puzzles Lib 的
      *       {@code LivingHurtCallback} 桥出，而该回调注入在 {@code LivingEntity#actuallyHurt} 的
      *       <b>HEAD</b>（{@code isInvulnerableTo} 之后、方法体其余部分之前）。</li>
      * </ul>

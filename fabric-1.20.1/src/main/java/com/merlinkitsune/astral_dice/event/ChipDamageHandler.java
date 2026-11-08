@@ -92,7 +92,7 @@ public final class ChipDamageHandler {
         // getDamageAfterArmorAbsorb)、魔抗(19 getDamageAfterMagicAbsorb)、吸收(25-45)全在其后
         // ⇒ 此处与生命值比较的是护甲/吸收**之前**的原始值,本线不做换算。
         // ⚠️ 本线平台注(批次 D-10 取证):本线该事件由 Puzzles 的 LIVING_HURT
-        //    回调桥接(platform/PuzzlesBridges.java:100-112),注入点在 actuallyHurt 的**方法入口**,
+        //    回调桥接(platform/StarengineBridges.java:100-112),注入点在 actuallyHurt 的**方法入口**,
         //    载荷是护甲 / 抗性 / 吸收**之前**的原始入参(字节码:fuzs.puzzleslib.mixin.LivingEntityFabricMixin
         //    的 actuallyHurt 处理器先判 isInvulnerableTo 再派发,偏移 0-54)⇒「致命判定天然按吸收之后」
         //    在本线**并不成立**;此处沿用本线既有口径(与骰战两条写终值路径同一口径),

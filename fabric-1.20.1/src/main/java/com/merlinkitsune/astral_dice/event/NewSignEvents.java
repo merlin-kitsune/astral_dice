@@ -36,10 +36,10 @@ import net.minecraft.world.entity.player.Player;
  *       {@code isCanceled()}、{@code getNewTarget()}、{@code getEffectInstance()}）；</li>
  *   <li>③ {@code PlayerEffectProtection} 本线不存在 ⇒ 本类只发原版 {@code player.addEffect}（温暖/赐福
  *       均为本模组自有效果，计时由 {@code EffectTimerGuard} 的 Added 记录链覆盖）；</li>
- *   <li>④ <b>{@code MobEffectEvent.Applicable} 在本线不派发</b>（{@code platform/PuzzlesBridges} 只桥接
+ *   <li>④ <b>{@code MobEffectEvent.Applicable} 在本线不派发</b>（{@code platform/StarengineBridges} 只桥接
  *       Apply / Remove / Expire，全仓 0 派发点）⇒ forge 的「免疫 HARMFUL 效果」子句在本线**无法实现**：
  *       若照样订阅，编译通过但运行时永不触发（静默 no-op）。故此处**不**订阅该事件，改为在
- *       {@code B4-SIGNS-REPORT} 的「需裁决」中列出，修法 = 在 {@code platform/PuzzlesBridges} 补一行
+ *       {@code B4-SIGNS-REPORT} 的「需裁决」中列出，修法 = 在 {@code platform/StarengineBridges} 补一行
  *       {@code MobEffectEvents.CAN_BE_AFFECTED → MobEffectEvent.Applicable}（该文件不在本批写权范围）。
  *       伤害免疫 / 不被索敌两条与平台无关，照常生效；</li>
  *   <li>⑤ {@code event.setResult(Result.DENY)} 在本线 shim 中不存在 ⇒ 一律 {@code setCanceled(true)}。</li>

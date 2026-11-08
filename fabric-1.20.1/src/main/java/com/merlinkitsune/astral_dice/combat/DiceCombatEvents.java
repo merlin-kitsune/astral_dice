@@ -84,7 +84,7 @@ public class DiceCombatEvents {
     //   settleDiceDamage 回写吸收余额 + registerPhantom 登记幻影 + withPhantomPeeled 在嵌套 hurt 前剥掉
     //   + onServerTickReconcilePhantoms 每 tick 校正。
     //   本线的 LivingDamageEvent 由 Puzzles Lib 的 LIVING_HURT 回调桥接,注入点在 actuallyHurt 的**方法入口**
-    //   (护甲 / 抗性 / 吸收之前,字节码取证见 platform/PuzzlesBridges.java 与本批 B20B 报告),平台只会在事件
+    //   (护甲 / 抗性 / 吸收之前,字节码取证见 platform/StarengineBridges.java 与本批 B20B 报告),平台只会在事件
     //   **之后**扣一次吸收 ⇒ 吸收本来就不会被双扣,幻影机制在本线没有病根;硬搬只会人为虚高 / 二次扣减
     //   (即引入新 bug)⇒ registerPhantom / phantomOf / withPhantomPeeled **不移植**,裁决登记见 B20B 报告。
     //   本线真正缺的两件事由本段补齐:

@@ -53,7 +53,7 @@ import net.minecraft.world.phys.BlockHitResult;
  *   <li>④ 监守者减伤：P0 用 {@code LivingIncomingDamageEvent}（本线无此事件）⇒ 改 {@code LivingHurtEvent}
  *       （{@code LivingEntity#hurt} 内对 {@code actuallyHurt} 的调用点，同样在护甲之前）；</li>
  *   <li>⑤ 效果闸门：P0 用 {@code MobEffectEvent.Applicable}；本线**不派发** Applicable
- *       （见 {@code event/NewSignEvents} 的注释与 {@code platform/PuzzlesBridges#installEffects}）⇒
+ *       （见 {@code event/NewSignEvents} 的注释与 {@code platform/StarengineBridges#installEffects}）⇒
  *       拆成两条：触须免疫在 {@code SykeTentacleEntity#canBeAffected}（1.20.1 该方法非 final 可覆写，
  *       1.21.1 起是 final 才逼出 P0 的事件写法）+ 每 tick {@code removeAllEffects()}；
  *       黑暗则订阅 {@code MobEffectEvent.Added} 后同 tick 移除（最多差 1 tick 的可视残留，见报告 E 段）；</li>

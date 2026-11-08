@@ -19,7 +19,7 @@ import net.minecraft.world.item.ItemStack;
  * <br>
  * <p><b>平台说明(fabric)</b>:这是 Forge 1.20.1 的原生事件;fabric 线由 Puzzles Lib 的
  * {@code AnvilRepairCallback} 转成同一事件后再经 {@link com.merlinkitsune.astral_dice.platform.event.LoaderBus}
- * 派发(注册点:{@code platform.PuzzlesBridges#installPlayers})。注入点是
+ * 派发(注册点:{@code platform.StarengineBridges#installPlayers})。注入点是
  * Puzzles 的 {@code AnvilMenuFabricMixin#onTake$0}(原版 {@code AnvilMenu#onTake} 里
  * {@code Container#setItem} 之前)—— 与 Forge 用 {@code ForgeHooks.onAnvilRepair} 插在
  * 「扣材料 + 清空输入槽」之前的位置语义一致:此时左右输入槽与产物都还在。

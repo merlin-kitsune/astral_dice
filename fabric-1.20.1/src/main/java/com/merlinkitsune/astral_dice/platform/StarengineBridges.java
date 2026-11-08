@@ -12,23 +12,23 @@ import com.merlinkitsune.astral_dice.platform.event.entity.player.EntityItemPick
 import com.merlinkitsune.astral_dice.platform.event.entity.player.PlayerEvent;
 import com.merlinkitsune.astral_dice.platform.event.level.BlockEvent;
 
-import fuzs.puzzleslib.api.event.v1.core.EventResult;
-import fuzs.puzzleslib.api.event.v1.entity.living.LivingChangeTargetCallback;
-import fuzs.puzzleslib.api.event.v1.entity.living.LivingDeathCallback;
-import fuzs.puzzleslib.api.event.v1.entity.living.LivingDropsCallback;
-import fuzs.puzzleslib.api.event.v1.entity.living.LivingHurtCallback;
-import fuzs.puzzleslib.api.event.v1.entity.living.MobEffectEvents;
-import fuzs.puzzleslib.api.event.v1.entity.player.AnvilRepairCallback;
-import fuzs.puzzleslib.api.event.v1.entity.player.AnvilUpdateCallback;
-import fuzs.puzzleslib.api.event.v1.entity.player.PlayerEvents;
-import fuzs.puzzleslib.api.event.v1.level.BlockEvents;
+import com.merlinkitsune.starengine.api.event.core.EventResult;
+import com.merlinkitsune.starengine.api.event.v1.entity.living.LivingChangeTargetCallback;
+import com.merlinkitsune.starengine.api.event.v1.entity.living.LivingDeathCallback;
+import com.merlinkitsune.starengine.api.event.v1.entity.living.LivingDropsCallback;
+import com.merlinkitsune.starengine.api.event.v1.entity.living.LivingHurtCallback;
+import com.merlinkitsune.starengine.api.event.v1.entity.living.MobEffectEvents;
+import com.merlinkitsune.starengine.api.event.v1.entity.player.AnvilRepairCallback;
+import com.merlinkitsune.starengine.api.event.v1.entity.player.AnvilUpdateCallback;
+import com.merlinkitsune.starengine.api.event.v1.entity.player.PlayerEvents;
+import com.merlinkitsune.starengine.api.event.v1.level.BlockEvents;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 
 /**
- * <b>Puzzles Lib 回调 → 自建 Forge 事件</b>的服务端桥。
+ * <b>Starengine 回调 → 自建 Forge 事件</b>的服务端桥。
  *
- * <h2>为什么可以用「别人的 mixin」</h2>
+ * <h2>为什么可以用「前置库的 mixin」</h2>
  * 本模组 109 个处理器全部注册在 {@link LoaderBus} 上（保留 Forge 的 {@code EventPriority}
  * 排序语义）。本类只负责把 Puzzles Lib 的回调转成对应事件再派发 —— 排序仍然由我们自己的总线做，
  * 所以「气囊保命优先、磨刀石次之、LOWEST = 最终伤害阶段」这套承重顺序**不受影响**。
@@ -77,7 +77,7 @@ import net.minecraft.world.item.ItemStack;
  *       （{@code PASS} = 不干预，让其它监听者与原版继续）。</li>
  * </ul>
  */
-public final class PuzzlesBridges {
+public final class StarengineBridges {
 
     /** 安装全部服务端桥（幂等由 {@link FabricBridges#install()} 的安装标志保证）。 */
     public static void install() {
@@ -248,6 +248,6 @@ public final class PuzzlesBridges {
         });
     }
 
-    private PuzzlesBridges() {
+    private StarengineBridges() {
     }
 }
