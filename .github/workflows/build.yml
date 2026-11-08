@@ -386,11 +386,15 @@ jobs:
           TAG="${{ steps.version.outputs.base }}"
           if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
             echo "Tag $TAG already exists"
+            echo "created=0" >> "$GITHUB_OUTPUT"
           else
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git tag -a "$TAG" -m "Release $TAG"
             git push origin "$TAG"
+            # created=1 ⇒ 本次推送**新开**一个版本号；下游的 CurseForge 上传用它做幂等判据
+            # （CF 的 legacy upload API 没有「按版本号查重」的接口，重复推送同一版本会叠出重复文件）。
+            echo "created=1" >> "$GITHUB_OUTPUT"
           fi
           # 交给下一步发布 Release(同 job:tag 已保证存在)
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
@@ -689,3 +693,67 @@ jobs:
       #    ⚠️ 2026-11-02 该理由已被取代：四线一并正式发布，26.1.2 / fabric 的 jar 现在由上面的
       #    Create/Update Release 步骤放进**同一个 tag / Release**（不再单独建 fabric pre-release）。
       #    ⇒ 「删除独立 pre-release 步骤」这一动作仍然成立；「P1 产物不可用、需逐次点名」的说法已作废。
+
+      - name: Publish to CurseForge (upload API, runs in CI only)
+        # 2026-11-08 用户裁决：**CurseForge 上传改由 CI 执行，本地不再手动上传**。
+        #   · 凭据：GitHub secret `CURSEFORGE_TOKEN`（账号级 legacy 上传 token，绝不入库）。
+        #   · 缺 secret ⇒ **硬失败**：历史上 Modrinth 那步「缺 token 只告警」曾让连续三批发版静默漏发，
+        #     故这里宁可红。要临时跳过就把本 step 的 if 关掉，而不是让它静默 success。
+        #   · 幂等：CF 的 legacy upload API 没有「按版本号查重」的接口 ⇒ 用 tag step 的 `created` 判据
+        #     —— 只有**本次推送新开版本号**（或混版提交）才上传；重推同一提交不会叠出重复文件。
+        #   · 产物范围：默认只发 P0 两线（neoforge-1.21.1 / forge-1.20.1），与
+        #     `tools/curseforge_upload.py` 的 P0 闸门口径一致；要连 P1 两线（neoforge-26.1.2 /
+        #     fabric-1.20.1）一起发，用 workflow_dispatch 的 `cf_p1=true` 或提交信息写 `[cf-p1]`。
+        #   · 传输：脚本自带 curl 回退（python urllib 打 CF 会被 Cloudflare 按指纹拦成 403）。
+        if: |
+          (github.event_name == 'push' && github.ref == 'refs/heads/multi-main' && (steps.version.outputs.unified != '1' || steps.tag.outputs.created == '1'))
+          || startsWith(github.ref, 'refs/tags/')
+        env:
+          CURSEFORGE_TOKEN: ${{ secrets.CURSEFORGE_TOKEN }}
+          CF_P1_INPUT: ${{ github.event.inputs.cf_p1 }}
+          HEAD_COMMIT_MSG: ${{ github.event.head_commit.message }}
+        run: |
+          set -euo pipefail
+          BASE="${{ steps.version.outputs.base }}"
+          echo "CF_PUBLISH: base=$BASE unified=${{ steps.version.outputs.unified }} tag_created=${{ steps.tag.outputs.created }}"
+
+          if [ -z "${CURSEFORGE_TOKEN:-}" ]; then
+            echo "::error::CURSEFORGE_TOKEN secret 未配置 —— CurseForge 上传被跳过。这是**刻意**的硬失败："
+            echo "::error::静默跳过会让一个已经在 GitHub 发布、却在商店缺件的版本流出去。请先配置该 secret。"
+            exit 1
+          fi
+
+          ALLOW_P1=0
+          case "${CF_P1_INPUT:-}" in true|True|TRUE|1) ALLOW_P1=1 ;; esac
+          case "${HEAD_COMMIT_MSG:-}" in *"[cf-p1]"*) ALLOW_P1=1 ;; esac
+
+          P0_JARS=( "neoforge-1.21.1/build/libs/astral_dice-${BASE}+neoforge_1.21.1.jar"
+                    "forge-1.20.1/build/libs/astral_dice-${BASE}+forge_1.20.1.jar" )
+          P1_JARS=( "neoforge-26.1.2/build/libs/astral_dice-${BASE}+neoforge_26.1.2.jar"
+                    "fabric-1.20.1/build/libs/astral_dice-${BASE}+fabric_1.20.1.jar" )
+
+          upload() {
+            local allow="$1"; shift
+            local args=()
+            for j in "$@"; do
+              if [ ! -f "$j" ]; then
+                echo "::error::CurseForge 上传缺少产物：$j（版本号与 jar 名不一致，或该线构建失败）"
+                exit 1
+              fi
+              args+=( --jar "$j" )
+            done
+            if [ "$allow" = "1" ]; then args+=( --allow-p1 ); fi
+            python3 tools/curseforge_upload.py "${args[@]}" --apply
+          }
+
+          echo "::group::CurseForge P0 (neoforge-1.21.1 / forge-1.20.1)"
+          upload 0 "${P0_JARS[@]}"
+          echo "::endgroup::"
+
+          if [ "$ALLOW_P1" = "1" ]; then
+            echo "::group::CurseForge P1 (neoforge-26.1.2 / fabric-1.20.1) — 本次显式放行"
+            upload 1 "${P1_JARS[@]}"
+            echo "::endgroup::"
+          else
+            echo "CF_P1: skipped（默认只发 P0 两线；要放行请用 workflow_dispatch 的 cf_p1=true 或提交信息带 [cf-p1]）"
+          fi

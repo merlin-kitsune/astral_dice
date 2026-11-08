@@ -2319,7 +2319,11 @@ When extending this workspace:
 - ⚠️ 站点域**必须**是 `minecraft.curseforge.com`（换 `www.` 会拿到**另一个游戏**的版本表）；**直连必被 Cloudflare 403**（加浏览器 UA 也无效）⇒ 本机一律加 `--proxy http://127.0.0.1:7897`。
 - 版本 id **动态解析**（`/api/game/version-types` + `/api/game/versions`，缓存 7 天），提交的 `gameVersions` = `Client` + `Server` + MC 版本 + 加载器。
 - 项目 `projectId = 1662159`（slug `astral-dice`）；完整实测口径与踩坑见 `scripts/test/TESTING-SPEC.md` **附录 A 续 33**。
-- ⚠️ **自动推送规则（触发时机 / 是否并入 CI）待用户设定** —— 在此之前**不要**把 CurseForge 上传接进 `build` 或 CI 流程。
+- ✅ **2026-11-08 用户裁决：CurseForge 上传改由 CI 执行，本地不再手动上传**。CI 实现 = `.github/workflows/build.yml` 末步 `Publish to CurseForge (upload API, runs in CI only)`：
+  - 凭据 = GitHub secret `CURSEFORGE_TOKEN`（**已配置**，账号级 legacy 上传 token；本机来源 `.curseforge/token` 仍 gitignore）。缺 secret 时该步**硬失败**（历史上 Modrinth 那步「缺 token 只告警」导致连续三批静默漏发，故此处宁可红）。
+  - 幂等 = tag 步骤新增的 `created` 输出：CF 的 legacy upload API **没有**「按版本号查重」的接口，故只在「本次推送新开版本号（`created=1`）」或「混版提交（`unified != 1`）」时上传；重推同一提交不会叠出重复文件。
+  - 产物范围 = 默认 **P0 两线**（`neoforge-1.21.1` / `forge-1.20.1`），与脚本 P0 闸门一致；要连 **P1 两线**（`neoforge-26.1.2` / `fabric-1.20.1`）一起发，用 `workflow_dispatch` 的 `cf_p1=true` 或提交信息写 `[cf-p1]`。
+  - 本地命令**只允许 dry-run**（`python tools/curseforge_upload.py --jar … `，不带 `--apply`）用于查看计划；真上传一律走 CI。
 - ⚠️ **项目说明（Description）无法经 API 修改（2026-10-02 实测，别再试）**：`.curseforge/token` 是**legacy 上传 token** —— `https://api.curseforge.com/v1/mods/{id}/description` 对它返回 **403**（0 字节，非 Cloudflare 页），Core API 的 `PUT /v1/mods/{id}` 同理不可用；legacy 上传 API 本身**没有**改描述的接口；项目页 `/minecraft/mc-mods/astral-dice` 与站点 JSON `/api/v1/mods/{id}` 均被 **Cloudflare 403**（即使挂了 `--proxy` 也一样，拿不到现有正文）。⇒ **说明全文维护在 `tools/curseforge-description.md`**（中英各一份，含 Fabric 前置），改版时由人工在项目页 Description 编辑器整段替换；产物上传仍走上面的脚本（`--jar` / `--update-file`）。
 
 > ⛔ **2026-10-23 用户裁决（m07502）**：Modrinth 发布链路**永久移除**（上游始终不给过审）。下面这一段是实现原文，**仅作历史**，不要照着做。
@@ -2351,7 +2355,7 @@ When extending this workspace:
 - **CI 现状（已实测）**：`.github/workflows/build.yml` 里 `modrinth` / `curseforge` 关键字命中各 **0** —— 只有 tag + 两个 GitHub Release 步骤；上方原文里「末步 `Publish to Modrinth`」在本仓**当前工作树中不存在**（历史描述）。
 - **保留（不是发布链路，禁止误删）**：`maven.modrinth:` **依赖源**（四线 `build.gradle` 共 43 处）、`scripts/test/mt_env.ps1` 的测试模组下载、`tools/check_mod_sources.ps1` 与 `scripts/verify/verify_probe_class_refs.ps1` 的 Maven 源校验、`ref/**` 参考源。
 - **历史 id（只作考古，禁止再用）**：主项目 `5xDtrJ8X`、库项目 `2dIXA5wO`；「版本标题统一 = `<namePrefix> <基础版本>`」「`version_type` 由版本后缀派生」等 Modrinth 侧口径随链路一并作废。
-- **现行唯一商店发布通道 = CurseForge**：`tools/curseforge_upload.py`（子命令 `push` / `update-info`，默认 dry-run，`--apply` 才写）。⚠️ 2026-10-23 实测：python urllib 打 `minecraft.curseforge.com/api/**` 会被 Cloudflare 按 **TLS/HTTP 指纹**拦成恒 403「Just a moment...」，而 `curl.exe` 直连 200 ⇒ 该脚本已内置 curl 回退（`--noproxy *` 直连优先、代理兜底；多部分表单必须 `-F "metadata=<tmpfile"`，内联 JSON 会被判 400）。
+- **现行唯一商店发布通道 = CurseForge（上传由 CI 执行，2026-11-08 起）**：`tools/curseforge_upload.py`（子命令 `push` / `update-info`，默认 dry-run，`--apply` 才写；CI step 见上方 + 文件末尾）；本地只用 dry-run 看计划。⚠️ 2026-10-23 实测：python urllib 打 `minecraft.curseforge.com/api/**` 会被 Cloudflare 按 **TLS/HTTP 指纹**拦成恒 403「Just a moment...」，而 `curl.exe` 直连 200 ⇒ 该脚本已内置 curl 回退（`--noproxy *` 直连优先、代理兜底；多部分表单必须 `-F "metadata=<tmpfile"`，内联 JSON 会被判 400）。
 - **发布后核对**：`api.cfwidget.com/minecraft/mc-mods/<slug>` 有缓存延迟（实测新上传件立刻查仍只显示旧件），判据以 Upload API 返回的 `fileId` + 稍后复查为准。
 
 ## 自动化测试流程（Automated Testing）— 必须遵守（子配置）
