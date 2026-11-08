@@ -1514,7 +1514,7 @@ public class DiceCombatEvents {
         for (AppliedStone stone : enh.appliedStones()) {
             if ("charge".equals(stone.type())) {
                 foundCharge = true;
-                costFreed += AppliedStone.cost(stone.type());
+                costFreed += MisakiSignItem.effectiveCost(player, stone.type());
             } else {
                 newStones.add(stone);
             }

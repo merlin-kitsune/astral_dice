@@ -4,6 +4,12 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 1.5.1 (2026-11-08)
+
+### Bug Fixes
+
+- **Null-pointer crash in meito card cost calculation**: when a meito card's durability hit zero and its cost was settled, a player who was not wearing the "Misaki" guardian sign made the cost calculation query the curios inventory with a `null` player, throwing `NullPointerException` and crashing the save at `Ticking player`. The player context is now threaded through the whole path (the player-less cost overload is removed), a null-player guard was added at the curios lookup, and the charge refund now uses the same unified cost path.
+
 ## 1.5.0-hotfix (2026-11-02)
 
 ### Bug Fixes

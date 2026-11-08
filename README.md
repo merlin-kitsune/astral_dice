@@ -28,9 +28,11 @@ Astral Dice is a survival expansion built around dice. Equip a dice and every me
 - Bountiful bounty board integration.
 - Jade shows defense instead of armor on all four lines.
 
-## What's new in 1.5.0
+## What's new in 1.5.1
 
-This section covers everything in the 1.5.0 stable release, including what the earlier 1.5.0 pre-release and release-candidate builds shipped. Entry-by-entry detail lives in [CHANGELOG.md](CHANGELOG.md).
+This section covers everything in the 1.5.1 and 1.5.0 stable releases, including what the earlier 1.5.0 pre-release and release-candidate builds shipped. Entry-by-entry detail lives in [CHANGELOG.md](CHANGELOG.md).
+
+- **1.5.1 fix**: when a meito card's durability ran out and the player was not wearing the "Misaki" guardian sign, cost settlement crashed because it lacked the player context (the save died at `Ticking player`). This is fixed; 1.5.0 saves and multiplayer remain compatible (interop version is still 1.5).
 
 **New content**
 
@@ -71,12 +73,12 @@ The Abyss Reagent chip is named consistently now: display name, tooltip and ever
 
 | Support | Subproject | Minecraft | Loader | Java | Version | Patchouli |
 |---|---|---|---|---|---|---|
-| ✅ | `neoforge-1.21.1` | 1.21.1 | NeoForge 21.1.235 | 21 | 1.5.0 | ✅ |
-| ✅ | `forge-1.20.1` | 1.20.1 | Forge 47.4.10 | 17 | 1.5.0 | ✅ |
-| ✅ | `neoforge-26.1.2` | 26.1.2 | NeoForge 26.1.2.109 | 25 | 1.5.0 | ✅ |
-| ✅ | `fabric-1.20.1` | 1.20.1 | Fabric Loader 0.19.5 | 17 | 1.5.0 | ✅ |
+| ✅ | `neoforge-1.21.1` | 1.21.1 | NeoForge 21.1.235 | 21 | 1.5.1 | ✅ |
+| ✅ | `forge-1.20.1` | 1.20.1 | Forge 47.4.10 | 17 | 1.5.1 | ✅ |
+| ✅ | `neoforge-26.1.2` | 26.1.2 | NeoForge 26.1.2.109 | 25 | 1.5.1 | ✅ |
+| ✅ | `fabric-1.20.1` | 1.20.1 | Fabric Loader 0.19.5 | 17 | 1.5.1 | ✅ |
 
-- **All four lines are release lines.** `neoforge-1.21.1`, `forge-1.20.1`, `neoforge-26.1.2` and `fabric-1.20.1` stay at feature parity; every GitHub Release carries all four jars, tagged with the bare base version (this release: `1.5.0`) and published as a stable release. CI builds every line in one run (`.github/workflows/build.yml`).
+- **All four lines are release lines.** `neoforge-1.21.1`, `forge-1.20.1`, `neoforge-26.1.2` and `fabric-1.20.1` stay at feature parity; every GitHub Release carries all four jars, tagged with the bare base version (this release: `1.5.1`) and published as a stable release. CI builds every line in one run (`.github/workflows/build.yml`).
 - `neoforge-26.1.2` is the 26.1.x migration line. It ships in the same batch as the other three, as an attachment on the same Release, and never gets its own tag. There is no Iron's Spells 'n Spellbooks integration here, since upstream ships no 26.1.x build.
 - `fabric-1.20.1` is the Fabric port line (added 2026-09-29, merged into `multi-main` on 2026-10-01) and has been a stable release line since 1.5.0: same Release and same tag as the other three. It has its own prerequisite set (see [Fabric prerequisites](#fabric-1201-prerequisites)), no Curios, Bountiful or Iron's Spells integration, and the four recipe-mechanism differences listed under "Platform & Compatibility" in [CHANGELOG.md](CHANGELOG.md).
 
@@ -113,9 +115,9 @@ The Abyss Reagent chip is named consistently now: display name, tooltip and ever
 ## Download
 
 - **GitHub Releases**: [merlin-kitsune/astral_dice/releases](https://github.com/merlin-kitsune/astral_dice/releases). Every Release carries all four jars: one each for `neoforge_1.21.1`, `forge_1.20.1`, `neoforge_26.1.2` and `fabric_1.20.1`.
-- **Tag rule**: the tag is always the bare base version (this release: `1.5.0`) - no `v` prefix, no platform prefix, no loader suffix. All four jars belong to that one Release, published as a stable release (not a pre-release). The Fabric line no longer publishes a separate pre-release and no longer takes its own tag.
-- **CurseForge**: the builds go to the main project (`astral-dice`, project id `1662159`). StarEngine has its own project (`starengine`, id `1755415`); **none of the four lines bundles it any more**, so players must install that separate jar themselves: `starengine-neoforge-1.21.1-1.1.0.jar` / `starengine-forge-1.20.1-1.1.0.jar` / `starengine-neoforge-26.1.2-1.1.0.jar` / `starengine-fabric-1.20.1-1.1.0.jar`. Version numbers keep the `+<loader>_<MC>` suffix (for example `1.5.0+neoforge_1.21.1`), and the release channel follows the version suffix. Modrinth publishing was permanently dropped on 2026-10-23; CurseForge is the only store channel.
-- **Build artefacts**: `astral_dice-1.5.0+neoforge_1.21.1.jar`, `astral_dice-1.5.0+forge_1.20.1.jar`, `astral_dice-1.5.0+neoforge_26.1.2.jar` and `astral_dice-1.5.0+fabric_1.20.1.jar`, each under its subproject's `build/libs/`; the version inside each jar matches the file name (1.5.0).
+- **Tag rule**: the tag is always the bare base version (this release: `1.5.1`) - no `v` prefix, no platform prefix, no loader suffix. All four jars belong to that one Release, published as a stable release (not a pre-release). The Fabric line no longer publishes a separate pre-release and no longer takes its own tag.
+- **CurseForge**: the builds go to the main project (`astral-dice`, project id `1662159`). StarEngine has its own project (`starengine`, id `1755415`); **none of the four lines bundles it any more**, so players must install that separate jar themselves: `starengine-neoforge-1.21.1-1.1.0.jar` / `starengine-forge-1.20.1-1.1.0.jar` / `starengine-neoforge-26.1.2-1.1.0.jar` / `starengine-fabric-1.20.1-1.1.0.jar`. Version numbers keep the `+<loader>_<MC>` suffix (for example `1.5.1+neoforge_1.21.1`), and the release channel follows the version suffix. Modrinth publishing was permanently dropped on 2026-10-23; CurseForge is the only store channel.
+- **Build artefacts**: `astral_dice-1.5.1+neoforge_1.21.1.jar`, `astral_dice-1.5.1+forge_1.20.1.jar`, `astral_dice-1.5.1+neoforge_26.1.2.jar` and `astral_dice-1.5.1+fabric_1.20.1.jar`, each under its subproject's `build/libs/`; the version inside each jar matches the file name (1.5.1).
 
 ## Build
 

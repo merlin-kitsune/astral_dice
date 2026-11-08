@@ -63,7 +63,7 @@ public class MisakiSignItem extends BaseSignItem {
 
     // 装备护法立牌时,"名刀嘎呜切"费用降低为 3 点
     public static int getMeitoCost(Player player) {
-        return hasMisakiEquipped(player) ? 3 : AppliedStone.cost("meito");
+        return hasMisakiEquipped(player) ? 3 : AppliedStone.cost(player, "meito");
     }
 
     // 名刀费用考虑护法立牌后的实际费用
@@ -71,10 +71,11 @@ public class MisakiSignItem extends BaseSignItem {
         if ("meito".equals(type)) {
             return getMeitoCost(player);
         }
-        return AppliedStone.cost(type);
+        return AppliedStone.cost(player, type);
     }
 
     public static boolean hasMisakiEquipped(Player player) {
+        if (player == null) return false;   // 无玩家上下文 ⇒ 不享受立牌折扣(1.5.1:防 Curios 侧 NPE)
         var curios = CuriosApi.getCuriosInventory(player);
         return curios.isPresent() && curios.get().findFirstCurio(s -> s.is(ModItems.MISAKI_SIGN.get())).isPresent();
     }
