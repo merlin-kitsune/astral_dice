@@ -2060,6 +2060,10 @@ public class ModAttachments {
     public static final AttachedDataKey<String> JILL_PENDING_TARGET =
             register(AttachedDataKey.builder("jill_pending_target", Codec.STRING, () -> "").build());
 
+    /** 少主：主动「强者怜悯」已选定、等待选卡确认的目标 UUID（空串 = 无；确认/取消/失败即清）。 */
+    public static final AttachedDataKey<String> AL_PENDING_TARGET =
+            register(AttachedDataKey.builder("al_pending_target", Codec.STRING, () -> "").build());
+
     /** 调酒师：主动 buff 受惠目标 UUID（空串 = 无；到期/卸下清除）。 */
     public static final AttachedDataKey<String> JILL_BUFF_TARGET =
             register(AttachedDataKey.builder("jill_buff_target", Codec.STRING, () -> "").build());
@@ -2113,8 +2117,16 @@ public class ModAttachments {
         return JILL_PENDING_TARGET.get(player);
     }
 
+    public static String getAlPendingTarget(net.minecraft.world.entity.player.Player player) {
+        return AL_PENDING_TARGET.get(player);
+    }
+
     public static void setJillPendingTarget(net.minecraft.world.entity.player.Player player, String value) {
         JILL_PENDING_TARGET.set(player, value == null ? "" : value);
+    }
+
+    public static void setAlPendingTarget(net.minecraft.world.entity.player.Player player, String value) {
+        AL_PENDING_TARGET.set(player, value == null ? "" : value);
     }
 
     public static String getJillBuffTarget(net.minecraft.world.entity.player.Player player) {

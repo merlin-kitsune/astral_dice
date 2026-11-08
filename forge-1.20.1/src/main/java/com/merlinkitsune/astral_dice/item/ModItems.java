@@ -1131,6 +1131,10 @@ public class ModItems {
                     .rarity(AstralRarities.epic())));
 
     // ── 2026-10-19 新批 4 个立牌 ──
+    // ── 2026-11-08 少主立牌（al，史诗）：主动选玩家→选 1~3 张卡转交 + 星币；被动给牌星光 / 主动后双方筹码折扣+刷新 ──
+    public static final RegistryObject<Item> AL_SIGN = registerItem("al_sign",
+            () -> new com.merlinkitsune.astral_dice.item.sign.AlSignItem(new Item.Properties()
+                    .stacksTo(1).rarity(com.merlinkitsune.starengine.item.AstralRarities.epic())));
     public static final RegistryObject<Item> JILL_SIGN = registerItem("jill_sign",
             () -> new com.merlinkitsune.astral_dice.item.sign.JillSignItem(new Item.Properties()
                     .stacksTo(1).rarity(com.merlinkitsune.starengine.item.AstralRarities.bizarre())));
