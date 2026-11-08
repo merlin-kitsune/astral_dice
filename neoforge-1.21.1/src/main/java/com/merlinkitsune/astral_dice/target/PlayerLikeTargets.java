@@ -48,6 +48,37 @@ public final class PlayerLikeTargets {
          * @return 是否成功接收（{@code false} 记为主手满/无法接收，调用方据此决定是否掉地）
          */
         boolean giveCard(ServerPlayer giver, LivingEntity receiver, ItemStack card);
+
+        /**
+         * 把一件非卡牌物品（筹码 / 奖励）交给该实体。
+         *
+         * @return 是否已成功交付；{@code false} 时调用方负责掉地
+         */
+        default boolean giveItem(LivingEntity receiver, ItemStack stack) {
+            return false;
+        }
+
+        /** 是否允许装备本模组立牌（需要 curios 的 {@code stand} 槽，见 G1 数据文件）。 */
+        default boolean supportsSigns() {
+            return false;
+        }
+
+        /** 是否允许装备本模组筹码（需要 curios 的 {@code chip} 槽）。 */
+        default boolean supportsChips() {
+            return false;
+        }
+
+        /** 是否允许使用本模组筹码商店（需要钱包与商店状态）。 */
+        default boolean supportsShop() {
+            return false;
+        }
+    }
+
+    /** 能力位（{@link #supports} 的入参）。 */
+    public enum Capability {
+        SIGNS,
+        CHIPS,
+        SHOP
     }
 
     /** 注册表：id → handler（保持注册顺序，先注册先匹配）。 */
@@ -106,5 +137,35 @@ public final class PlayerLikeTargets {
             return ok;
         }
         return false;
+    }
+
+    /** 找出匹配该实体的 handler（玩家返回 {@code null}：玩家能力恒真，不走注册表）。 */
+    public static Handler find(LivingEntity entity) {
+        if (entity == null || entity instanceof Player) return null;
+        for (Handler handler : HANDLERS.values()) {
+            if (handler.matches(entity)) return handler;
+        }
+        return null;
+    }
+
+    /** 能力查询：玩家恒真；注册生物看 handler 的能力位；未注册实体恒假。 */
+    public static boolean supports(LivingEntity entity, Capability capability) {
+        if (entity == null) return false;
+        if (entity instanceof Player) return true;
+        Handler handler = find(entity);
+        if (handler == null) return false;
+        return switch (capability) {
+            case SIGNS -> handler.supportsSigns();
+            case CHIPS -> handler.supportsChips();
+            case SHOP -> handler.supportsShop();
+        };
+    }
+
+    /** 交付一件物品给类玩家目标（玩家始终 {@code false}：由调用方走玩家物品栏逻辑）。 */
+    public static boolean giveItem(LivingEntity receiver, ItemStack stack) {
+        if (receiver == null || stack == null || stack.isEmpty()) return false;
+        if (receiver instanceof Player) return false;
+        Handler handler = find(receiver);
+        return handler != null && handler.giveItem(receiver, stack);
     }
 }
