@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "updated": "2026-11-06",
+  "updated": "2026-11-08",
   "rule": "EN = \"<wiki 英文页名> Sign\"；JA = \"<wiki nameJapanese>のスタンド\"；wiki 无条目则用 id 人名，禁止机翻职称。zh 侧保持游戏内职称式命名。",
   "sources": {
     "en_and_ja": "https://astralparty.miraheze.org/w/api.php?action=parse&page=<Title>&prop=wikitext&format=json&formatversion=2 （title = EN 名；CharPlayable.nameJapanese = JA 名）",
@@ -271,6 +271,15 @@
       "ja": "サイクスのスタンド",
       "wiki_page": "Sykes",
       "note": "2026-11-06 新增（wiki 编号 129，wiki 名=赛克斯；立牌 id 由用户裁决改为 sykes）"
+    },
+    {
+      "id": "al",
+      "zh": "少主立牌",
+      "en": "A.L. Sign",
+      "ja": "アルのスタンド",
+      "wiki_page": "A.L.",
+      "lines": ["neoforge-1.21.1"],
+      "note": "2026-11-08 新增：wiki 页 A.L.（Syndicate Prince），nameJapanese=アル；目前仅 neoforge-1.21.1 实装，lines 字段限定"
     }
   ]
 }

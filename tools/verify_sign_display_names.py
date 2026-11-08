@@ -17,6 +17,18 @@ W = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TABLE = os.path.join(W, 'tools', 'sign_display_names.json')
 LINES = ['neoforge-1.21.1', 'forge-1.20.1', 'fabric-1.20.1', 'fabric-1.21.1']
 
+ALL_LINES = list(LINES)
+
+
+def lines_of(sign):
+    """条目可带 lines 字段限定「已实装该立牌」的线；缺省 = 四线全有。
+
+    用途：某一批立牌只在部分线实装时（例：2026-11-08 少主立牌首发 neoforge-1.21.1），
+    其余线的 lang 不必补占位键，门禁也不会把它们判成「表与 lang 不一致」。
+    """
+    ls = sign.get('lines')
+    return set(ls) if ls else set(ALL_LINES)
+
 # 旧职称（英文）—— 只禁止它们紧接 "sign" 的形态，避免误伤 Boss 敌人 / Ninja Star / Healing Slime / Legendary Merchant 等既有专名
 EN_LEGACY = ['Secret Detective', 'Great Detective', 'Boss', 'Astrologer', 'Sweeper', 'Ninja', 'Slime',
              'Kanban Musume', 'Guardian', 'Gunsmith', 'Vampire', 'Business', 'Merchant', 'Investigator',
@@ -56,8 +68,9 @@ def main():
         print('-- ' + line + ' -- zh %d keys / en %d keys / ja %d keys'
               % (len(langs['zh']), len(langs['en']), len(langs['ja'])))
 
-        # 1) 立牌显示名必须与权威表逐字一致
-        for s in signs:
+        line_signs = [s for s in signs if line in lines_of(s)]
+        # 1) 立牌显示名必须与权威表逐字一致（只校验本线已实装的条目）
+        for s in line_signs:
             key = 'item.astral_dice.%s_sign' % s['id']
             for lang in ('en', 'ja'):
                 checks += 1
@@ -101,8 +114,9 @@ def main():
         keys = {k[len('item.astral_dice.'):-len('_sign')] for k in load(p)
                 if k.startswith('item.astral_dice.') and k.endswith('_sign')}
         checks += 1
-        missing = sorted(set(ids) - keys)
-        extra = sorted(keys - set(ids))
+        expected = {s['id'] for s in signs if line in lines_of(s)}
+        missing = sorted(expected - keys)
+        extra = sorted(keys - expected)
         if missing or extra:
             fail('[%s] 表与 lang 立牌集合不一致：表缺 %s / lang 多 %s' % (line, missing, extra))
 
