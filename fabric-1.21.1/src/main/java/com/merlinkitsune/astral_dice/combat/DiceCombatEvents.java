@@ -1101,7 +1101,7 @@ public class DiceCombatEvents {
 
     // 攻击牌耐久消耗(仅在触发骰神赐福的那次攻击执行一次;防御牌/蓄力不消耗)。
     // 普通近战触发与反击伤害注入共用(反击未赐福时作为触发攻击消耗一次耐久)。
-    private static void consumeAttackCardDurabilityOnce(Player player, ItemStack diceStack, WeaponEnhancement enhancement) {
+    private static void consumeAttackCardDurabilityOnce(LivingEntity player, ItemStack diceStack, WeaponEnhancement enhancement) {
         if (diceStack == null || diceStack.isEmpty() || enhancement == null
                 || enhancement.appliedStones().isEmpty()) return;
         List<AppliedStone> newStones = new ArrayList<>();
@@ -1148,8 +1148,12 @@ public class DiceCombatEvents {
     // ⚠️ 触发口径 = **每一次**受骰战攻击(不按赐福周期计数) —— 本方法取代原先
     //    「按装备顺序只扣第一张」的实现,以及更早的「每赐福周期一次、所有牌各扣 1」实现。
     private static void consumeAllDefenseCardDurability(LivingEntity defenderEntity) {
-        // 非玩家防御方没有「已装战斗牌」概念(战斗牌挂骰子强化,非玩家侧不生效) ⇒ 空转
-        if (!(defenderEntity instanceof Player defender)) return;
+        // G6(2026-11-08):经 DiceCombatParticipants 注册的「类玩家」生物可以装骰子与战斗牌,
+        // 与玩家同口径扣防御牌耐久并返还费用;未注册生物仍然空转(回归红线)。
+        boolean participantDefender = !(defenderEntity instanceof Player)
+                && DiceCombatParticipants.isParticipant(defenderEntity);
+        if (!(defenderEntity instanceof Player) && !participantDefender) return;
+        LivingEntity defender = defenderEntity;
         if (defender.level().isClientSide()) return;
         var curios = CuriosApi.getCuriosInventory(defender);
         if (curios.isEmpty()) return;
@@ -1191,7 +1195,8 @@ public class DiceCombatEvents {
 
     // === 生物近战攻击:独立骰战结算(2026-09-26 新增;2026-10-28 起含「骰战参与者」) ===
     // 与玩家攻击路径的差异:
-    //   · 攻击方是生物 ⇒ 无玩家上下文(DiceCombatContext 要求 Player 攻击者),故不走攻击修饰器链;
+    //   · 攻击方是生物且**未**注册为骰战参与者 ⇒ 不走攻击修饰器链;
+    //     G6(2026-11-08):经 DiceCombatParticipants 注册的参与者改走玩家口径的攻击修饰器 + 攻击牌;
     //   · 赐福:普通生物不触发;**骰战参与者**(经 DiceCombatParticipants 注册)在满足
     //     「攻击方带骰 && 未持有赐福 && isBlessingTarget」时给**自己**上赐福(见方法末尾,2026-10-28 用户裁决);
     //   · 对骰成立条件:目标带骰(照旧) ∪ 参与者攻击方带骰;参与者掷自己的骰(非玩家恒 1d6),
@@ -1256,6 +1261,12 @@ public class DiceCombatEvents {
                     }
                 }
             }
+        } else if (opposed && DiceCombatParticipants.isParticipant(target)) {
+            // G6(2026-11-08)：注册生物作防御方时同样掷防御牌（骰子与其战斗牌挂在同一个骰子栈上）
+            WeaponEnhancement enhOfDefender = enhOfDefenderDie(defenderDie);
+            if (enhOfDefender != null) {
+                defenseCardSum = sumEquippedDefenseCardPoints(target, defenderDie, enhOfDefender);
+            }
         }
 
         // 生物武器附魔:按原版 Mob#doHurtTarget —— f = modifyDamage(level, getWeaponItem(), target, source, f)
@@ -1286,6 +1297,26 @@ public class DiceCombatEvents {
                     + enchantDamageBonus(mob, target, source, mobAttackAttr.getValue());
         }
         double mobAttack = attackPoints + mobRoll;
+        // === G6(2026-11-08)：注册的骰战参与者按玩家口径吃「骰战攻击修饰器 + 攻击牌」 ===
+        // 只在 DiceCombatParticipants 命中时执行；未注册生物整段跳过 ⇒ 既有行为逐值不变。
+        WeaponEnhancement attackerEnh = attackerDie.isEmpty()
+                ? null
+                : ModDataComponents.WEAPON_ENHANCEMENT.getOrDefault(attackerDie, null);
+        if (DiceCombatParticipants.isParticipant(mob)) {
+            WeaponEnhancement enhForCtx = attackerEnh != null ? attackerEnh : WeaponEnhancement.EMPTY;
+            DiceCombatContext participantCtx = new DiceCombatContext(
+                    mob, target, null, mobRoll, attackerDie, enhForCtx, false, false,
+                    enhForCtx.starLevel(), 0);
+            double modified = mobAttack;
+            for (var modifier : DiceCombatModifiers.attackModifiers()) {
+                modified = modifier.apply(participantCtx, modified);
+            }
+            mobAttack = modified + participantCtx.attackCardSum;
+            // 战斗牌耐久：参与者每次骰战攻击消耗一次（玩家侧按赐福周期，参与者无赐福概念 ⇒ 每击一次）
+            if (attackerEnh != null) {
+                consumeAttackCardDurabilityOnce(mob, attackerDie, attackerEnh);
+            }
+        }
         double playerDefense;
         if (target instanceof Player playerDefender) {
             playerDefense = com.merlinkitsune.starengine.combat.CombatFormula.playerDefense(
@@ -1294,8 +1325,10 @@ public class DiceCombatEvents {
         } else {
             // 非玩家防守方:库 baseDefense 已按阵营给出基础防御(四阵营常量全 0、不含护甲/韧性),
             //   这里**不得**再叠加护甲值,否则护甲被计入两次。
+            // G6(2026-11-08)：注册参与者作防御方时，除基础防御与防守骰外还要计入她掷出的防御牌点数
+            //   （未注册生物 defenseCardSum 恒 0 ⇒ 该路径逐值不变）。
             playerDefense = com.merlinkitsune.starengine.combat.TargetBattleStats.baseDefense(target)
-                    + playerRoll;
+                    + playerRoll + defenseCardSum;
         }
 
         float finalDmg = com.merlinkitsune.starengine.combat.DiceBattleResolver
@@ -1469,12 +1502,18 @@ public class DiceCombatEvents {
     }
 
 
+    /** G6(2026-11-08)：取骰子栈上的战斗牌强化；无骰子/无强化返回 null。 */
+    private static WeaponEnhancement enhOfDefenderDie(ItemStack die) {
+        if (die == null || die.isEmpty()) return null;
+        return ModDataComponents.WEAPON_ENHANCEMENT.getOrDefault(die, null);
+    }
+
     /**
      * 已装备骰子的战斗牌点数合计(与 {@code DiceCombatModifiers} 的防御卡修饰器同源口径:
      * 遍历全部已装卡逐张走 {@link CardRegistry#roll};玻璃骰子取最大值)。
-     * 供生物攻击玩家时计算玩家侧战斗牌防御点数使用。
+     * 供生物攻击玩家/注册参与者作防御方时计算防御方战斗牌点数使用。
      */
-    private static int sumEquippedDefenseCardPoints(Player defender, ItemStack dice, WeaponEnhancement enh) {
+    private static int sumEquippedDefenseCardPoints(LivingEntity defender, ItemStack dice, WeaponEnhancement enh) {
         DiceCombatContext ctx = new DiceCombatContext(
                 defender, defender, null, 0, dice, enh, false, false, 0, 0);
         ctx.targetEnhancement = enh;

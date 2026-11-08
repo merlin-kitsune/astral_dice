@@ -15,8 +15,8 @@ import com.merlinkitsune.astral_dice.platform.event.entity.living.LivingDamageEv
  */
 public class DiceCombatContext {
 
-    /** 攻击者(玩家) */
-    public final Player attacker;
+    /** 攻击者：玩家，或经 {@code PlayerLikeTargets} 注册的「类玩家」生物（G6，2026-11-08） */
+    public final LivingEntity attacker;
     /** 本次攻击的目标(受击实体) */
     public final LivingEntity target;
     /** 触发本次计算的伤害事件 */
@@ -60,7 +60,7 @@ public class DiceCombatContext {
      */
     public int eagleScopeMarkLevel;
 
-    public DiceCombatContext(Player attacker, LivingEntity target, LivingDamageEvent event,
+    public DiceCombatContext(LivingEntity attacker, LivingEntity target, LivingDamageEvent event,
                              int baseDice, ItemStack diceStack, WeaponEnhancement enhancement,
                              boolean triggeredBlessing, boolean misakiBurst,
                              int misakiStar, int misakiStacks) {

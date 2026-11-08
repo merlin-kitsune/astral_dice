@@ -74,7 +74,7 @@ public class PerpetualMotionChipItem extends BaseChipItem {
         return map;
     }
 
-    public static boolean isEquipped(Player player) {
+    public static boolean isEquipped(net.minecraft.world.entity.LivingEntity player) {
         // 总闸门(骰子装备和卸除调整):未佩戴骰子 ⇒ 本件功能一律不生效(数值保留)
         if (!CurioSlotUtil.hasDiceEquipped(player)) return false;
         if (player == null) return false;
