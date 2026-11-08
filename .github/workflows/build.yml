@@ -23,6 +23,11 @@ on:
       - '[0-9]*'
   pull_request:
   workflow_dispatch:
+    inputs:
+      cf_only:
+        description: '定向补传：只上传这些线的 CF 产物（逗号分隔，如 neoforge-26.1.2,fabric-1.20.1）；留空 = 四线全部'
+        required: false
+        default: ''
 
 jobs:
   build:
@@ -695,27 +700,28 @@ jobs:
       #    ⇒ 「删除独立 pre-release 步骤」这一动作仍然成立；「P1 产物不可用、需逐次点名」的说法已作废。
 
       - name: Publish to CurseForge (upload API, runs in CI only)
-        # 2026-11-08 用户裁决：**CurseForge 上传改由 CI 执行，本地不再手动上传**。
+        # 2026-11-08 用户裁决（两次）：
+        #   ① CurseForge 上传**只从 CI 走**，本地不再手动上传（本地只允许 --dry-run 复核计划）。
+        #   ② **四线全部都必须发布到 CF**：早先「默认只发 P0 两线、P1 需逐次放行」的口径已作废 ——
+        #      各线都是正式发布线，商店侧不允许缺件。`tools/curseforge_upload.py` 的 P0 闸门已同步删除。
         #   · 凭据：GitHub secret `CURSEFORGE_TOKEN`（账号级 legacy 上传 token，绝不入库）。
-        #   · 缺 secret ⇒ **硬失败**：历史上 Modrinth 那步「缺 token 只告警」曾让连续三批发版静默漏发，
-        #     故这里宁可红。要临时跳过就把本 step 的 if 关掉，而不是让它静默 success。
-        #   · 幂等：CF 的 legacy upload API 没有「按版本号查重」的接口 ⇒ 用 tag step 的 `created` 判据
-        #     —— 只有**本次推送新开版本号**（或混版提交）才上传；重推同一提交不会叠出重复文件。
-        #   · 产物范围：默认只发 P0 两线（neoforge-1.21.1 / forge-1.20.1），与
-        #     `tools/curseforge_upload.py` 的 P0 闸门口径一致；要连 P1 两线（neoforge-26.1.2 /
-        #     fabric-1.20.1）一起发，用 workflow_dispatch 的 `cf_p1=true` 或提交信息写 `[cf-p1]`。
-        #   · 传输：脚本自带 curl 回退（python urllib 打 CF 会被 Cloudflare 按指纹拦成 403）。
+        #   · 缺 secret ⇒ **硬失败**：历史上 Modrinth 那步「缺 token 只告警」曾让连续三批发版静默漏发。
+        #   · 幂等：CF legacy upload API 没有「按版本号查重」的接口 ⇒ 用 tag step 的 `created` 判据，
+        #     只有**本次推送新开版本号**才整批上传；重推同一提交不会叠出重复文件。
+        #     ⇒ 「某次漏传/补传」必须走 workflow_dispatch 的 `cf_only` 定向补传（只传点名的那几条线），
+        #       这样绝不会重传已经在线上的 jar（重传会在商店里叠出同名重复文件）。
         if: |
           (github.event_name == 'push' && github.ref == 'refs/heads/multi-main' && (steps.version.outputs.unified != '1' || steps.tag.outputs.created == '1'))
           || startsWith(github.ref, 'refs/tags/')
+          || github.event_name == 'workflow_dispatch'
         env:
           CURSEFORGE_TOKEN: ${{ secrets.CURSEFORGE_TOKEN }}
-          CF_P1_INPUT: ${{ github.event.inputs.cf_p1 }}
+          CF_ONLY_INPUT: ${{ github.event.inputs.cf_only }}
           HEAD_COMMIT_MSG: ${{ github.event.head_commit.message }}
         run: |
           set -euo pipefail
           BASE="${{ steps.version.outputs.base }}"
-          echo "CF_PUBLISH: base=$BASE unified=${{ steps.version.outputs.unified }} tag_created=${{ steps.tag.outputs.created }}"
+          echo "CF_PUBLISH: base=$BASE unified=${{ steps.version.outputs.unified }} tag_created=${{ steps.tag.outputs.created }} cf_only='${CF_ONLY_INPUT:-}'"
 
           if [ -z "${CURSEFORGE_TOKEN:-}" ]; then
             echo "::error::CURSEFORGE_TOKEN secret 未配置 —— CurseForge 上传被跳过。这是**刻意**的硬失败："
@@ -723,37 +729,36 @@ jobs:
             exit 1
           fi
 
-          ALLOW_P1=0
-          case "${CF_P1_INPUT:-}" in true|True|TRUE|1) ALLOW_P1=1 ;; esac
-          case "${HEAD_COMMIT_MSG:-}" in *"[cf-p1]"*) ALLOW_P1=1 ;; esac
+          # 四线产物表：line|jar 路径。CF_ONLY 非空时只传点名的那几条线（定向补传）。
+          ALL_LINES=( "neoforge-1.21.1|neoforge-1.21.1/build/libs/astral_dice-${BASE}+neoforge_1.21.1.jar"
+                      "forge-1.20.1|forge-1.20.1/build/libs/astral_dice-${BASE}+forge_1.20.1.jar"
+                      "neoforge-26.1.2|neoforge-26.1.2/build/libs/astral_dice-${BASE}+neoforge_26.1.2.jar"
+                      "fabric-1.20.1|fabric-1.20.1/build/libs/astral_dice-${BASE}+fabric_1.20.1.jar" )
 
-          P0_JARS=( "neoforge-1.21.1/build/libs/astral_dice-${BASE}+neoforge_1.21.1.jar"
-                    "forge-1.20.1/build/libs/astral_dice-${BASE}+forge_1.20.1.jar" )
-          P1_JARS=( "neoforge-26.1.2/build/libs/astral_dice-${BASE}+neoforge_26.1.2.jar"
-                    "fabric-1.20.1/build/libs/astral_dice-${BASE}+fabric_1.20.1.jar" )
+          ONLY="$(echo "${CF_ONLY_INPUT:-}" | tr -d '[:space:]')"
+          JARS=()
+          for entry in "${ALL_LINES[@]}"; do
+            line="${entry%%|*}"; jar="${entry#*|}"
+            if [ -n "$ONLY" ]; then
+              case ",$ONLY," in
+                *",$line,"*) ;;
+                *) echo "  skip $line（不在 cf_only 名单内）"; continue ;;
+              esac
+            fi
+            if [ ! -f "$jar" ]; then
+              echo "::error::CurseForge 上传缺少产物：$jar（版本号与 jar 名不一致，或该线构建失败）"
+              exit 1
+            fi
+            JARS+=( --jar "$jar" )
+          done
 
-          upload() {
-            local allow="$1"; shift
-            local args=()
-            for j in "$@"; do
-              if [ ! -f "$j" ]; then
-                echo "::error::CurseForge 上传缺少产物：$j（版本号与 jar 名不一致，或该线构建失败）"
-                exit 1
-              fi
-              args+=( --jar "$j" )
-            done
-            if [ "$allow" = "1" ]; then args+=( --allow-p1 ); fi
-            python3 tools/curseforge_upload.py "${args[@]}" --apply
-          }
-
-          echo "::group::CurseForge P0 (neoforge-1.21.1 / forge-1.20.1)"
-          upload 0 "${P0_JARS[@]}"
-          echo "::endgroup::"
-
-          if [ "$ALLOW_P1" = "1" ]; then
-            echo "::group::CurseForge P1 (neoforge-26.1.2 / fabric-1.20.1) — 本次显式放行"
-            upload 1 "${P1_JARS[@]}"
-            echo "::endgroup::"
-          else
-            echo "CF_P1: skipped（默认只发 P0 两线；要放行请用 workflow_dispatch 的 cf_p1=true 或提交信息带 [cf-p1]）"
+          if [ "${#JARS[@]}" -eq 0 ]; then
+            echo "::error::cf_only='${ONLY}' 未匹配到任何线 —— 合法值：neoforge-1.21.1 / forge-1.20.1 / neoforge-26.1.2 / fabric-1.20.1"
+            exit 1
           fi
+
+          echo "::group::CurseForge 上传（四线口径；cf_only='${ONLY}' 为空 = 全部）"
+          JAR_N="$((${#JARS[@]} / 2))"
+          echo "本次 jar 数 = $JAR_N"
+          python3 tools/curseforge_upload.py "${JARS[@]}" --apply
+          echo "::endgroup::"
