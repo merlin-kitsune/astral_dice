@@ -4,6 +4,12 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 26.4-SNAPSHOT.7
+
+### This line
+
+- Fix: the Meito card cost calculation passed a null player when the Misaki sign was not equipped, which crashed with a null pointer inside the curios inventory lookup; the charge-refund path now also uses `effectiveCost`, so an equipped sign settles at 3 points.
+
 ## 26.4-SNAPSHOT.6
 
 > The dev line absorbs mainline `1.5.0` + `1.5.0-hotfix` (40 commits) and bumps its own version so the merged build is distinguishable. The dev pin set is unchanged: all four lines stay on `26.4-SNAPSHOT.6+<line>`, StarEngine stays pinned to `26.4-SNAPSHOT.1`.
