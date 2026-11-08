@@ -1167,13 +1167,13 @@ public class RepulsionEntity extends LivingEntity {
 
     /**
      * 立牌依附安全网：forge 线调用 {@code LinglingSignManager.hasSign(owner)}（放置者卸下「怪力乱神」
-     * 立牌 ⇒ 已放置的力场立即销毁）。fabric 线没有 Lingling 立牌系统，该安全网在 fabric 上
-     * **恒不触发**，等价于返回 {@code true}（判定为「立牌仍在」）⇒ 力场不会被立牌状态销毁。
+     * 立牌 ⇒ 已放置的力场立即销毁）。
      *
-     * <p>TODO-B0-SIGN：立牌系统落线后改为 {@code return LinglingSignManager.hasSign(player);}
+     * <p>2026-11-09：本线立牌批已落线（{@code item/sign/LinglingSignManager} 在位），原垫片
+     * 「恒 true」属过期假设 —— 恢复与 P0 同口径的判定，否则卸下/失去立牌后力场不会销毁。
      */
     private static boolean hasOwnerSign(Player player) {
-        return true;
+        return com.merlinkitsune.astral_dice.item.sign.LinglingSignManager.hasSign(player);
     }
 
     /**
