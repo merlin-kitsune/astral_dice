@@ -9,6 +9,7 @@
 ### This line
 
 - Fix: the Meito card cost calculation passed a null player when the Misaki sign was not equipped, which crashed with a null pointer inside the curios inventory lookup; the charge-refund path now also uses `effectiveCost`, so an equipped sign settles at 3 points.
+- Add: the forge 1.20.1 line gains the A.L. sign (`al_sign`, epic) — active Mercy of the Strong gives 1-3 cards to a chosen player for 2 Star Coins per card; passive Win-Win grants both sides 1 Starlight whenever cards are handed over, and after using the active skill both sides pay 5 fewer Star Coins for chips (floor 5) plus one refresh; every 4 Starlight grants +1 ATK and +1 DEF. The card picker now accepts 1-3 cards on this line too.
 
 ## 26.4-SNAPSHOT.6
 
