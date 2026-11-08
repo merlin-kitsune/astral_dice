@@ -58,6 +58,11 @@ public class VitaminPillChipItem extends BaseChipItem {
             // 蛟龙立牌(mamushi)被动:仅"使其他角色获得卡牌"才计层(giver == receiver 时由立牌侧自行判空)
             if (giver != null) {
                 com.merlinkitsune.astral_dice.item.sign.MamushiSignItem.onCardGivenToOther(giver, receiver);
+                // 「给牌」中立钩子(2026-11-08 类玩家能力面):主动发卡与「你有我有」都走本漏斗,
+                // 订阅者(例:少主立牌「双赢」)因此只需实现一份。掉落分支刻意不计。
+                if (giver instanceof net.minecraft.server.level.ServerPlayer serverGiver) {
+                    com.merlinkitsune.astral_dice.item.sign.CardGivenHooks.fire(serverGiver, receiver);
+                }
             }
         }
     }
