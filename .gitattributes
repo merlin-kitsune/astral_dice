@@ -10,3 +10,9 @@ gradlew text eol=lf
 *.py   text eol=lf
 *.conf text eol=lf
 README*.md text eol=lf
+# 文档口径（2026-11-09 用户裁决）：docs/**/*.md 一律 LF，避免每次 checkout 被 autocrlf 转 CRLF 后整篇显示改动；
+# 发布说明与 CHANGELOG 维持 CRLF（项目既有口径，写手按 CRLF 落盘）。
+docs/**/*.md text eol=lf
+CHANGELOG.md text eol=crlf
+CHANGELOG_ZH.md text eol=crlf
+release/**/*.md text eol=crlf

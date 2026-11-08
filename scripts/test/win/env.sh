@@ -203,6 +203,15 @@ for v in $VERSIONS; do
             rh="$(printf '%s' "$stats" | awk '{print $3}')"
             names="$(printf '%s' "$stats" | cut -d' ' -f4-)"
             mt_info "mods_$v" "${rd#$MT_REPO_ROOT/}/mods 共 ${total:-0} 个条目；autojs=${aj:-0}；rhino=${rh:-0}${names:+；aj_jar:${names}}"
+            # 2026-11-09 实机教训：run/<版本>/mods 里的 astral_dice*.jar 会**遮蔽** dev classes
+            # （同 modId 双源），表现为 datagen 不生成新配方、改动"不生效"。这里只告警不阻塞，
+            # 但把话说到位，避免再次整轮排查。
+            shadow="$(find "$rd/mods" -maxdepth 1 -type f -name 'astral_dice*.jar' -printf '%f ' 2>/dev/null)"
+            if [ -n "$shadow" ]; then
+                mt_warn "mod_shadow_$v" "${rd#$MT_REPO_ROOT/}/mods 内有 ${shadow}——与本线 dev classes 同 modId 双源，运行期可能加载旧 jar（datagen/启动静默用旧类）。请先 mv 到 temp/quarantine-run-mods/"
+            else
+                mt_ok "mod_shadow_$v" "mods 内无 astral_dice*.jar（不与 dev classes 争用 modId）"
+            fi
             # 2026-11-01 用户裁决：AutoJS 就绪判据放宽至所有版本 —— 不再按版本白名单，
             # 只看本线 run/<版本>/mods 里 AutoJS jar 是否在位（四线实测都在位）。
             # fabric 例外：它是**条件依赖**（-PautojsTestMod=1 才装），没有 jar 属正常，
