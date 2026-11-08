@@ -105,7 +105,29 @@ public class DiceCurioItem extends Item implements ICurioItem {
         if (slotContext.entity().tickCount % 20 != 0) return;
         if (slotContext.entity() instanceof Player player) {
             refreshChipSlotCount(player, null, false, true);
+        } else if (com.merlinkitsune.astral_dice.combat.DiceCombatParticipants.isParticipant(slotContext.entity())) {
+            // G6(2026-11-08):注册的类玩家生物/骰战参与者与玩家同口径 —— 佩戴骰子即获得筹码栏。
+            // 生物的 Curios 装备不会走玩家的 onEquip/登录/同步包路径,故由这条 20 tick 对账兜底。
+            refreshChipSlotCountForEntity(slotContext.entity());
         }
+    }
+
+    /** 类玩家生物(经 PlayerLikeTargets / DiceCombatParticipants 注册)的筹码栏对账;未注册生物整段跳过。 */
+    public static void refreshChipSlotCountForEntity(net.minecraft.world.entity.LivingEntity holder) {
+        if (holder == null || holder.level().isClientSide()) return;
+        if (holder instanceof Player player) {
+            refreshChipSlotCount(player);
+            return;
+        }
+        // P1 三线暂无 PlayerLikeTargets 能力面(仅 P0 两线有),这里只认骰战参与者注册面。
+        if (!com.merlinkitsune.astral_dice.combat.DiceCombatParticipants.isParticipant(holder)) return;
+        CuriosApi.getCuriosInventory(holder).ifPresent(inventory -> {
+            ItemStack dice = inventory.getStacksHandler("dice")
+                    .map(handler -> handler.getStacks().getStackInSlot(0))
+                    .orElse(ItemStack.EMPTY);
+            inventory.getStacksHandler("chip").ifPresent(chip ->
+                    setSlotCount(holder, chip, targetChipSlots(dice), false));
+        });
     }
 
     // === 筹码栏位 ===
@@ -203,7 +225,7 @@ public class DiceCurioItem extends Item implements ICurioItem {
     // forceRemove=false(每 tick 维持 / 登录迁移后恢复):**不缩掉仍在使用的槽位**——
     //   目标值可能来自「骰子槽内容瞬时为空」的读数(迁移当拍就会发生),若照收会把还在使用的
     //   槽位连同物品一起交给背包;故把目标值抬到「最靠后的非空槽位 + 1」,只允许增长或保持。
-    private static void setSlotCount(Player player, ICurioStacksHandler handler, int target, boolean forceRemove) {
+    private static void setSlotCount(net.minecraft.world.entity.LivingEntity player, ICurioStacksHandler handler, int target, boolean forceRemove) {
         int current = handler.getSlots();
         if (current > target) {
             if (!forceRemove) {
@@ -226,8 +248,11 @@ public class DiceCurioItem extends Item implements ICurioItem {
                         ItemStack s = handler.getStacks().getStackInSlot(i);
                         if (!s.isEmpty()) {
                             handler.getStacks().setStackInSlot(i, ItemStack.EMPTY);
-                            if (!player.getInventory().add(s)) {
-                                player.drop(s, false);
+                            if (player instanceof Player owner && owner.getInventory().add(s)) {
+                                // 玩家:归还物品栏
+                            } else if (!(player instanceof Player)) {
+                                // 生物没有物品栏:该分支只在 forceRemove 时可达,直接清出槽位(生物侧没有玩家背包可归还)
+                                LOGGER.warn("[Astral Dice][setSlotCount] forceRemove(non-player): 槽位物品被清出: {} (slot index {})", s, i);
                             }
                             LOGGER.warn("[Astral Dice][setSlotCount] forceRemove: 槽位物品被移出并归还背包: {} (slot index {}), current={} target={}", s, i, current, target);
                         }
