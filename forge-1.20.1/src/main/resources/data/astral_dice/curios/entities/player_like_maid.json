@@ -1,0 +1,10 @@
+{
+  "entities": [
+    "touhou_little_maid:maid"
+  ],
+  "slots": [
+    "dice",
+    "stand",
+    "chip"
+  ]
+}
