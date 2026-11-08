@@ -1518,8 +1518,9 @@ public class DiceCombatEvents {
         } else {
             // 非玩家防守方:库 baseDefense 已按阵营给出基础防御(四阵营常量全 0、不含护甲/韧性),
             //   这里**不得**再叠加 effectiveArmorPoints,否则护甲被计入两次。
+            // G6(2026-11-08)：注册参与者作防御方时，除基础防御与防守骰外还要计入她掷出的防御牌点数。
             playerDefense = com.merlinkitsune.starengine.combat.TargetBattleStats.baseDefense(target)
-                    + playerRoll;
+                    + playerRoll + defenseCardSum;
         }
 
         float finalDmg = com.merlinkitsune.starengine.combat.DiceBattleResolver
