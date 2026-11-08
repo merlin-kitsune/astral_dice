@@ -936,7 +936,7 @@ public class DiceCombatEvents {
 
     // 攻击牌耐久消耗(仅在触发骰神赐福的那次攻击执行一次;防御牌/蓄力不消耗)。
     // 普通近战触发与反击伤害注入共用(反击未赐福时作为触发攻击消耗一次耐久)。
-    private static void consumeAttackCardDurabilityOnce(Player player, ItemStack diceStack, WeaponEnhancement enhancement) {
+    private static void consumeAttackCardDurabilityOnce(net.minecraft.world.entity.LivingEntity player, ItemStack diceStack, WeaponEnhancement enhancement) {
         if (diceStack == null || diceStack.isEmpty() || enhancement == null
                 || enhancement.appliedStones().isEmpty()) return;
         List<AppliedStone> newStones = new ArrayList<>();
@@ -983,7 +983,8 @@ public class DiceCombatEvents {
     //    「按装备顺序只扣第一张」的实现,以及更早的「每赐福周期一次、所有牌各扣 1」实现。
     private static void consumeAllDefenseCardDurability(LivingEntity defenderEntity) {
         // 非玩家防御方没有「已装战斗牌」概念(战斗牌挂骰子强化,非玩家侧不生效) ⇒ 空转
-        if (!(defenderEntity instanceof Player defender)) return;
+        if (!(defenderEntity instanceof Player) && !DiceCombatParticipants.isParticipant(defenderEntity)) return;
+        net.minecraft.world.entity.LivingEntity defender = defenderEntity;
         if (defender.level().isClientSide()) return;
         var curios = CuriosApi.getCuriosInventory(defender);
         if (curios.isEmpty()) return;
@@ -1025,6 +1026,12 @@ public class DiceCombatEvents {
     }
 
 
+
+    /** 取防守方骰子上的卡牌强化(无骰/无强化返回 null);G6 起参与者与玩家同口径。 */
+    private static WeaponEnhancement enhOfDefenderDie(ItemStack dice) {
+        if (dice == null || dice.isEmpty()) return null;
+        return dice.getOrDefault(ModDataComponents.WEAPON_ENHANCEMENT.get(), null);
+    }
 
     // === 生物近战攻击:独立骰战结算(2026-09-26 新增;2026-10-28 起含「骰战参与者」) ===
     // 与玩家攻击路径的差异:
@@ -1107,6 +1114,34 @@ public class DiceCombatEvents {
                 : (double) com.merlinkitsune.starengine.combat.TargetBattleStats.baseAttack(mob)
                         + enchantedMobAttack(mob, target, source);
         double mobAttack = attackPoints + mobRoll;
+        // === G6(2026-11-08)：注册的骰战参与者按玩家口径吃「骰战攻击修饰器 + 攻击牌」 ===
+        // 只在 DiceCombatParticipants 命中时执行;未注册生物整段跳过 ⇒ 既有行为逐值不变。
+        DiceCombatContext g6Ctx = null;
+        WeaponEnhancement attackerEnh = attackerDie.isEmpty() ? null : enhOfDefenderDie(attackerDie);
+        if (DiceCombatParticipants.isParticipant(mob)) {
+            WeaponEnhancement enhForCtx = attackerEnh != null ? attackerEnh : WeaponEnhancement.EMPTY;
+            DiceCombatContext participantCtx = new DiceCombatContext(
+                    mob, target, null, mobRoll, attackerDie, enhForCtx, false, false,
+                    enhForCtx.starLevel(), 0);
+            double modified = mobAttack;
+            for (var modifier : com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.attackModifiers()) {
+                modified = modifier.apply(participantCtx, modified);
+            }
+            mobAttack = modified + participantCtx.attackCardSum;
+            g6Ctx = participantCtx;
+            // 战斗牌耐久：参与者每次骰战攻击消耗一次(玩家侧按赐福周期)
+            if (attackerEnh != null) {
+                consumeAttackCardDurabilityOnce(mob, attackerDie, attackerEnh);
+            }
+        }
+        // G6:参与者作防御方时先掷出她的防御牌(G6 之前只对玩家掷)
+        if (!(target instanceof Player) && DiceCombatParticipants.isParticipant(target)) {
+            ItemStack g6DefenderDie = CurioSlotUtil.findFirstCurioMatching(target, DiceCurioItem::isDiceItem);
+            WeaponEnhancement g6DefenderEnh = enhOfDefenderDie(g6DefenderDie);
+            if (g6DefenderEnh != null) {
+                defenseCardSum = sumEquippedDefenseCardPoints(target, g6DefenderDie, g6DefenderEnh);
+            }
+        }
         double playerDefense;
         if (target instanceof Player playerDefender) {
             playerDefense = com.merlinkitsune.starengine.combat.CombatFormula.playerDefense(
@@ -1116,7 +1151,7 @@ public class DiceCombatEvents {
             // 非玩家防守方:库 baseDefense 已按阵营给出基础防御(四阵营常量全 0、不含护甲/韧性),
             //   这里**不得**再叠加 getArmorValue,否则护甲被计入两次。
             playerDefense = com.merlinkitsune.starengine.combat.TargetBattleStats.baseDefense(target)
-                    + playerRoll;
+                    + playerRoll + defenseCardSum;
         }
 
         float finalDmg = com.merlinkitsune.starengine.combat.DiceBattleResolver
@@ -1131,6 +1166,22 @@ public class DiceCombatEvents {
                 resistanceAmplifierOf(target), protectionPointsOf(target, source));
         finalDmg *= (float) victimFactor;
         event.setNewDamage(finalDmg);
+        // === G6(2026-11-08):参与者的「额外加伤」通道(星光/星币/治愈点三项) ===
+        if (g6Ctx != null && !target.level().isClientSide()) {
+            int g6ExtraDamage = com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.extraDamageOf(g6Ctx);
+            if (g6ExtraDamage > 0) {
+                int savedInvulnerable = target.invulnerableTime;
+                beginAoe();
+                try {
+                    target.invulnerableTime = 0;
+                    target.hurt(com.merlinkitsune.astral_dice.damage.ModDamageTypes.extraDamage(
+                            target.level(), mob), g6ExtraDamage);
+                } finally {
+                    target.invulnerableTime = savedInvulnerable;
+                    endAoe();
+                }
+            }
+        }
         // 跳数字:与玩家攻击同一出口(登记组别,由 DamageNumberAggregator 在管线终值上取值)
         DamageNumberAggregator.tag(target, source, DamageNumberAggregator.Group.ATTACK);
         // 防御牌耐久:每次受到骰战攻击,防御方装备的所有防御牌各扣 1 点(仅在对骰成立时)
@@ -1241,7 +1292,7 @@ public class DiceCombatEvents {
      * 遍历全部已装卡逐张走 {@link CardRegistry#roll};玻璃骰子取最大值)。
      * 供生物攻击玩家时计算玩家侧战斗牌防御点数使用。
      */
-    private static int sumEquippedDefenseCardPoints(Player defender, ItemStack dice, WeaponEnhancement enh) {
+    private static int sumEquippedDefenseCardPoints(net.minecraft.world.entity.LivingEntity defender, ItemStack dice, WeaponEnhancement enh) {
         DiceCombatContext ctx = new DiceCombatContext(
                 defender, defender, null, 0, dice, enh, false, false, 0, 0);
         ctx.targetEnhancement = enh;

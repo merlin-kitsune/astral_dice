@@ -1287,6 +1287,7 @@ public class DiceCombatEvents {
         WeaponEnhancement attackerEnh = attackerDie.isEmpty()
                 ? null
                 : ModDataComponents.WEAPON_ENHANCEMENT.getOrDefault(attackerDie, null);
+        DiceCombatContext g6Ctx = null;
         if (DiceCombatParticipants.isParticipant(mob)) {
             WeaponEnhancement enhForCtx = attackerEnh != null ? attackerEnh : WeaponEnhancement.EMPTY;
             DiceCombatContext participantCtx = new DiceCombatContext(
@@ -1297,6 +1298,7 @@ public class DiceCombatEvents {
                 modified = modifier.apply(participantCtx, modified);
             }
             mobAttack = modified + participantCtx.attackCardSum;
+            g6Ctx = participantCtx;
             // 战斗牌耐久：参与者每次骰战攻击消耗一次（玩家侧按赐福周期，参与者无赐福概念 ⇒ 每击一次）
             if (attackerEnh != null) {
                 consumeAttackCardDurabilityOnce(mob, attackerDie, attackerEnh);
@@ -1326,6 +1328,24 @@ public class DiceCombatEvents {
         finalDmg *= (float) victimFactor;
         // N1 + N2:与玩家攻击路径同一出口(见 settleDiceDamage)
         settleDiceDamage(target, event, finalDmg);
+        // === G6(2026-11-08):参与者的「额外加伤」通道(星光/星币/治愈点三项) ===
+        // 玩家路径在 onLivingDamagePre 里按 ctx 结算 astral_dice:extra_damage;参与者原先只吃攻击力修饰器,
+        // 连带「手电筒-爆闪」这类走本通道的筹码对注册生物整段失效(2026-11-08 实机发现)。此处按同一口径补结算。
+        if (g6Ctx != null && !target.level().isClientSide()) {
+            int g6ExtraDamage = com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.extraDamageOf(g6Ctx);
+            if (g6ExtraDamage > 0) {
+                int savedInvulnerable = target.invulnerableTime;
+                beginAoe();
+                try {
+                    target.invulnerableTime = 0;
+                    target.hurt(com.merlinkitsune.astral_dice.damage.ModDamageTypes.extraDamage(
+                            target.level(), mob), g6ExtraDamage);
+                } finally {
+                    target.invulnerableTime = savedInvulnerable;
+                    endAoe();
+                }
+            }
+        }
         // 跳数字:与玩家攻击同一出口(登记组别,由 DamageNumberAggregator 在管线终值上取值)
         DamageNumberAggregator.tag(target, source, DamageNumberAggregator.Group.ATTACK);
         // 防御牌耐久:每次受到骰战攻击,防御方装备的所有防御牌各扣 1 点(仅在对骰成立时)
