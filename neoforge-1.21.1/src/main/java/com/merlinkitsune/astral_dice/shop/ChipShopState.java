@@ -68,12 +68,12 @@ public record ChipShopState(List<String> offers, Optional<String> lastPickCatego
     ).apply(instance, ChipShopState::new));
 
     /** 玩家存档读取（客户端读到的是一份「服务端同步值」——本模组不使用附件 sync，客户端不读它） */
-    public static ChipShopState get(Player player) {
-        return player.getData(ModAttachments.CHIP_SHOP_STATE.get());
+    public static ChipShopState get(net.minecraft.world.entity.LivingEntity holder) {
+        return holder.getData(ModAttachments.CHIP_SHOP_STATE.get());
     }
 
-    public static void store(Player player, ChipShopState state) {
-        player.setData(ModAttachments.CHIP_SHOP_STATE.get(), state);
+    public static void store(net.minecraft.world.entity.LivingEntity holder, ChipShopState state) {
+        holder.setData(ModAttachments.CHIP_SHOP_STATE.get(), state);
     }
 
     /** 候选（解析成池内条目；未知 id 会被跳过 —— 对应「换过版本 / 条目被移除」的旧存档） */
