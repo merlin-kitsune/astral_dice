@@ -1,18 +1,18 @@
 # fabric-1.20.1 测试台的运行时状态与产物（不入库）
 
-# 断言窗口快照（ft_assert.ps1 snapshot / ft_case.ps1 自动写入）
+# 断言窗口快照（现役断言/用例工具（scripts/test/lib/mt_assert.py、mt_case.py）自动写入）
 .ft_offsets.json
 
-# 启动状态（ft_launch.ps1 写，ft_stop.ps1 读后删除）
+# 启动状态（启动阶段写入，收停阶段确认后删除）
 .ft_launch_state.json
 
 # 保留现场标记（本台 v1 未实现 on_fail，先占位）
 .ft_keep_alive
 
-# 报告目录（ft.ps1 --phase report，默认被闸门拦下）
+# 报告目录（bash scripts/test/win/mt.sh --phase report，默认被闸门拦下）
 reports/
 
-# KubeJS 注入队列（ft_inject.ps1 --channel kubejs 写的是 run 目录下的同名文件，见 ft_cmd_watcher.js）
+# KubeJS 注入队列（旧通道 写的是 run 目录下的同名文件，见 ft_cmd_watcher.js）
 .ft_cmd_queue.txt
 
 # 语法自检结果（本地证据，可按需入库；默认忽略）

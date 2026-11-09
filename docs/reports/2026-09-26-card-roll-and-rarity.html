@@ -164,8 +164,8 @@
   <h3 style="font-size:15px;margin:18px 0 8px">④ 静态守门</h3>
   <div class="panel">
     <div class="kv">
-      <div>赏金池</div><div><code>verify_bountiful_pools.ps1</code> → <strong>ALL OK</strong>（objs 16 / rews 120；三线 md5 一致 <code>a7cab83a…</code>；价值平衡式 PASS）</div>
-      <div>语言键集</div><div><code>check_lang_sync.ps1</code> → <strong>EXIT=0</strong>，三线 × 三语各 <strong>812 keys</strong> 完全一致</div>
+      <div>赏金池</div><div><code>tools/verify_bountiful_pools.py</code> → <strong>ALL OK</strong>（objs 16 / rews 120；三线 md5 一致 <code>a7cab83a…</code>；价值平衡式 PASS）</div>
+      <div>语言键集</div><div><code>tools/check_lang_sync.py</code> → <strong>EXIT=0</strong>，三线 × 三语各 <strong>812 keys</strong> 完全一致</div>
       <div>旧文案残留</div><div>「取 2 次最大值」在 zh_cn 中 <strong>0 处</strong>；tooltip 7 处 + 手册 7 处均已改写为「单次掷取…」</div>
       <div>构建</div><div><code>gradlew build</code> <strong>BUILD SUCCESSFUL</strong>；三线 jar 已推 <code>run/&lt;ver&gt;/mods</code> 与根 <code>build/libs</code></div>
       <div>行为中性判定</div><div>全量核查 <code>scripts/test/**</code> 与探针 ⇒ <strong>无任何断言依赖随机牌点数</strong>（只依赖物品存在 / 移动 / 光泽 / 容器拦截）</div>
