@@ -1,10 +1,11 @@
 # B7 — 断言窗口改为「自本用例起」+ NANCY-LU-PEARL-IMMUNE 的 P2 `tel` 判据修复
+<!-- 历史记录：文中旧 shell 命令已于 2026-11-09 全部废弃，现用 bash 测试台（scripts/test/win/mt.sh）与 windows MCP，仅作溯源。 -->
 
 - 执行者：测试资产实施者（**只动 `scripts/test/**`**）
 - 仓库：`F:\MCProject\astral_dice_multiloader`，分支 `multi-1.20.1-1.21.1`，起始 HEAD `0f70c40`（工作树干净）
 - 上游依据：`docs/batch3/B6-test-perf.md（已删除 2026-11-05）`（工具链改造与三条超时）、`TESTING-SPEC.md`
-- 卡死护栏：任一步 / 任一用例 **> 6 分钟无新输出** ⇒ `mt.ps1 --phase stop --force`，记录进度并停下报告；
-  实际使用 `mt_watchdog.ps1`（cases 相位用 `-Action stop`，build/env/launch 用 `-Action report` + 人工收停，
+- 卡死护栏：任一步 / 任一用例 **> 6 分钟无新输出** ⇒ `scripts/test/win/mt.sh --phase stop --force`，记录进度并停下报告；
+  实际使用 `scripts/test/win/mt.sh --phase stop --verify`（cases 相位用 `-Action stop`，build/env/launch 用 `-Action report` + 人工收停，
   理由见 §5）与 `MT_CASE_TIMEOUT_SEC`
 - 本文件为**增量落盘**：每完成一项立即写
 
@@ -14,7 +15,7 @@
 
 ### 1.1 缺陷（B6 §4.3 已列为工具链缺陷候选，本批实施）
 
-`mt_assert.ps1:280-285`（旧）取的是**固定 launch 偏移**：`.mt_snapshot.json` 只在 launch 收尾写一次，
+`scripts/test/mt_assert.py:280-285`（旧）取的是**固定 launch 偏移**：`.mt_snapshot.json` 只在 launch 收尾写一次，
 于是**全部** `log` / `absent` 断言的窗口是「自 launch 起」而不是「自本用例起」⇒
 **任何不带 tag 唯一标识的标记都能被前序用例满足**。B6 实测：`APDUMP|LOCKRAW|` 的命中数随用例递增
 `14 → 28 → 42 → … → 126`，而相关断言照样 PASS —— 这在事实上把断言弱化成「本轮任意时刻出现过即通过」。
@@ -33,7 +34,7 @@
 1. `.mt_snapshot.json` 是本仓既有的**跨脚本契约**（`mt_assert` / `mt_case` / `mt_report` 三方共读），
    沿用它不必再引入第二套偏移来源；
 2. **B2 记录的「单阶段 launch 不写快照 ⇒ 陈旧 offset 出假 FAIL」在这里被结构性消除**：
-   偏移不再依赖「调用方记得补快照」，而是由**用例执行器每条自己写**（`mt_case.ps1`），
+   偏移不再依赖「调用方记得补快照」，而是由**用例执行器每条自己写**（`scripts/test/win/mt.sh --phase cases`），
    全流程与 `--phase cases` 单步路线都必然经过同一处；
 3. 刷新失败 ⇒ 该条用例记 `ERROR`（`MT_CASE_WINDOW: ERROR`），**绝不静默沿用陈旧偏移**
    （静默沿用正是「窗口跨用例」这一缺陷本身）。
@@ -52,7 +53,7 @@
 用例 JSON 侧对应 `assert.scope`：缺省 `case`、`scope=whole`（启动期事实，如 `Mixing client.GuiMixin …`）、`scope=launch`（两者之间的显式 opt-in）。
 ⚠️ **审计发现的漏标（见 §5）**：`LOOT-MODIFIER-1.20.1` 的反向断言里**混装了启动/数据包解码期文本** `Could not decode GlobalLootModifier`，
 B7 初版未给它标 `scope` ⇒ 收窄后该启动期覆盖被**静默丢掉**；已补 `"scope": "whole"`。
-非法 `scope` 在 `mt_case.ps1 validate` 阶段即被拦下（不在执行期静默落回默认窗口）。
+非法 `scope` 在 `scripts/test/win/mt.sh --phase cases validate` 阶段即被拦下（不在执行期静默落回默认窗口）。
 
 **证据可读性**：每条断言的结论行都带窗口标签，例如
 `MT_ASSERT_LOG: PASS — /…/ 命中 1 次（latest:latest.log@123456B(win=case)）`；
@@ -63,18 +64,18 @@ B7 初版未给它标 `scope` ⇒ 收窄后该启动期覆盖被**静默丢掉**
 | 既有用法 | 是否继续可用 | 依据 |
 |---|---|---|
 | `scope=whole`（`--no-snapshot`） | ✅ | 现映射为 `--window whole`，`--no-snapshot` 仍被接受 |
-| `--phase launch` 单步（快照由 `mt_launch.ps1:423` 写） | ✅ | 该调用已改为显式 `--window launch`，`launch_offsets` 由此冻结 |
+| `--phase launch` 单步（快照由 `scripts/test/win/mt.sh --phase launch:423` 写） | ✅ | 该调用已改为显式 `--window launch`，`launch_offsets` 由此冻结 |
 | `--phase cases` 单步（无 launch） | ✅ | 每条用例自写 `case` 窗口；若快照里没有 `launch_offsets` 则 `mixin` **退化并告警**（绝不静默改成 case 窗口） |
 | `mt_report collect` 的整轮增量摘要 | ✅ | 改为优先读 `launch_offsets`（否则报告只剩最后一条用例） |
 | LOADER-GATE-FORGE-1.20.1（纯离线、`loadergate.log`、全部 `scope=whole`） | ✅ | 该日志本就不在快照偏移表内（偏移恒 0 = 整文件），且用例显式 `scope=whole` |
-| B6 的 OP/dump 前置闸门读数 | ✅ | 闸门在 `mt_launch.ps1` 内、用例之前执行，不经任何用例断言读取 |
+| B6 的 OP/dump 前置闸门读数 | ✅ | 闸门在 `scripts/test/win/mt.sh --phase launch` 内、用例之前执行，不经任何用例断言读取 |
 
 ### 1.5 改动文件（任务 1）
 
-- `scripts/test/mt_assert.ps1`：`snapshot --window launch|case`、`Get-MtWindowOffset`、`log/absent/mixin` 窗口参数、`--window` 白名单校验
-- `scripts/test/mt_case.ps1`：`Invoke-MtCaseRun` 开头写 `--window case` 快照（失败⇒ERROR）；`scope` → `--window` 映射；`validate` 增加 `scope` 白名单
-- `scripts/test/mt_report.ps1`：整轮摘要优先 `launch_offsets`
-- `scripts/test/mt_launch.ps1` / `mt.ps1`：launch 快照显式写 `--window launch`
+- scripts/test/mt_assert.py：`snapshot --window launch|case`、`Get-MtWindowOffset`、`log/absent/mixin` 窗口参数、`--window` 白名单校验
+- scripts/test/win/mt.sh --phase cases：`Invoke-MtCaseRun` 开头写 `--window case` 快照（失败⇒ERROR）；`scope` → `--window` 映射；`validate` 增加 `scope` 白名单
+- scripts/test/win/mt.sh --phase report：整轮摘要优先 `launch_offsets`
+- scripts/test/win/mt.sh --phase launch / `scripts/test/win/mt.sh`：launch 快照显式写 `--window launch`
 
 ---
 
@@ -211,8 +212,8 @@ AP_P2_GEO:base=0,-60,-3:pre_ents=n=4[minecraft:pig@3.223,-60,0.098;minecraft:pig
 | 1 | **`assert.scope` 是否写入 schema 权威文档** | ❌→✅ `TESTING-SPEC.md` 原只写「`absent`（整文件不得出现）」与 `scope: whole`，**未记录新的缺省=case 与 `scope=launch`**，且「absent = 整文件」在 B7 后已不成立 ⇒ 已补「断言窗口（B7 起，`scope` 字段）」整段（含对反向断言的告警） |
 | 2 | **反向断言(`absent`)的窗口收窄是否丢覆盖** | ❌→✅ 全用例扫描发现 **1 条真缺陷**：`LOOT-MODIFIER-1.20.1` 的 `AP_GLM_ERR\|AP_GLM_EX:\|Could not decode GlobalLootModifier` 混装了**启动/数据包解码期**文本却按缺省 case 窗口求值 ⇒ 启动期解码失败不再可见。已补 `"scope": "whole"`。**决策依据**:`absent` 的缺省**保持 case 窗口**——本仓存在非 tag 唯一的反向模式（如 `AP_TICK_EX`），整文件语义会让某一用例的异常把**所有**声明它的用例判 FAIL，归因反而变差；故只对「文本非本用例产生」的断言显式标窗口 |
 | 3 | **正向断言是否还有被前序用例喂饱的** | ✅ 无。逐条扫描「非 `AP_` 标记且未设 scope」的断言共 45 条：`APDUMP\|…\|`（本用例自己的 dump）、`的属性护甲值的基值已设置为20.0`（本用例自己的 `/attribute`）、`狼/北极熊拥有以下实体数据：…`（B6 已折叠进探针 `runCmd` 并按 tag 门控）——全部由**本用例**产生，收窄后**更强**；两版本全量 587 断言 0 FAIL 亦与之一致 |
-| 4 | **`scope` 白名单是否真的在校验期拦下** | ✅ `mt_case.ps1:411-415` 在 `validate` 阶段报「未知 scope '{x}'（只接受 case / launch / whole）」；执行期 `:531` 再兜一层返回 `ERROR`（不静默落回默认） |
-| 5 | **旧参数兼容** | ✅ `mt_assert.ps1` 保留 `--no-snapshot`（= `--window whole`）与 `--since-snapshot`；`--window launch` 在缺少 `launch_offsets` 时**退化并告警**（绝不静默改成 case 窗口） |
+| 4 | **`scope` 白名单是否真的在校验期拦下** | ✅ `scripts/test/win/mt.sh --phase cases:411-415` 在 `validate` 阶段报「未知 scope '{x}'（只接受 case / launch / whole）」；执行期 `:531` 再兜一层返回 `ERROR`（不静默落回默认） |
+| 5 | **旧参数兼容** | ✅ `scripts/test/mt_assert.py` 保留 `--no-snapshot`（= `--window whole`）与 `--since-snapshot`；`--window launch` 在缺少 `launch_offsets` 时**退化并告警**（绝不静默改成 case 窗口） |
 | 6 | **`loadergate.log` 等表外日志源** | ✅ 无回退。快照 `offsets` 只含 `latest.log`/`debug.log`/`server.log`/`astral_probe.log`，表外源偏移恒 0 = 整文件 ⇒ `LOADER-GATE-FORGE-1.20.1` 的 9 条断言不受窗口影响（其中 1 条未写 `scope` 只是风格不一致，非缺陷） |
 | 7 | **两版本探针对等性** | ✅ B7 新增能力两版逐项一致（`nancyPearlArena`/`r3`/`blkAt`/`nearbyEntsText` 各 1 处、`TEL_MIN_DZ` 各 3 处引用、`_GEO` 发射各 1 处） |
 | 8 | **文档悬空引用** | ❌→✅ 本文件头部原写「理由见 §5」而无 §5 ⇒ 本节即为 §5 |

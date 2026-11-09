@@ -5,7 +5,7 @@
 
 ## 0. 用户三项明确纪律（2026-10-24，优先于本文其余条款）
 
-1. **工具选择：Git Bash 优先**。默认用 Git Bash 跑 shell 语义命令；**只有**仓库既有 `.ps1` 脚本、或确需 PowerShell 7 语义时才用 `pwsh -NoProfile -File <绝对路径>`。
+1. **工具选择：Git Bash 优先**。默认用 Git Bash 跑 shell 语义命令；**只有**确需 bash 语义时才用 `bash <绝对路径>`（仓库既有的旧脚本已于 2026-11-09 全部删除）。
 2. **K3.1 长上下文任务一律交给 Kimi 原生子代理**（`Agent` / `AgentSwarm`）；**所有子代理只能显式使用 `model="DeepSeek/deepseek-flash"`**，禁止 `primary`、主代理同模型或 resume 其他模型的代理；主会话只收结论与证据，不自己吞大文件、长日志、整份源码。
 3. **版本迭代必须新建交接文档**：每个版本 / 每批交接都新开 `docs/handover-<版本或日期>-<主题>.md`；**禁止**把旧交接文档改名、覆盖或原地重写。
 
@@ -26,18 +26,18 @@
 - 收尾对**另一棵树**跑一次 `git status --short`，确认没有落错文件。
 - 主线里的 `scripts/test/**` 属封包内容，只在用户于主线内明确裁决时才动。
 
-## 3. 工具选择：Git Bash → pwsh 7 → Python
+## 3. 工具选择：Git Bash → Python
 
 | 需求 | 用什么 | 例子 |
 |---|---|---|
 | 文件 / 目录 / 文本 / git 语义 | **Git Bash** | `ls`、`cp`、`grep -rn`、`git -C ... status`、`sha256sum` |
-| 仓库既有 `.ps1`，或 PS7 专属语义 | `pwsh -NoProfile -File <绝对路径>` | `pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --phase stop --force` |
-| 单行 PS 表达式 | `pwsh -NoProfile -Command '…'` | `pwsh -NoProfile -Command 'Test-Path F:\MCProject\.agent-locks\kimi.lock'` |
+| 多行命令或需 bash 语义 | `bash <绝对路径>` | `bash scripts/test/win/mt.sh --version 1.21.1 --phase stop` |
+| 单行路径判断 | `test` / `ls` | `test -f F:/MCProject/.agent-locks/kimi.lock` |
 | JSON / 哈希 / 字符数 / 文本一致性校验 | `python`（仅标准库） | `python -c "import json;json.load(open('x.json',encoding='utf-8'))"` |
 
-- **禁止** Windows PowerShell 5.1；报错出现「术语 'if' 不会被识别为 cmdlet」即用错 shell。
-- 属 PS7 语义的写法（`if` 作表达式、三元 `? :`、`??` / `?.`、`ConvertFrom-Json -AsHashtable`、`$PSNativeCommandUseErrorActionPreference`）⇒ 落盘 `.ps1` 再用 `pwsh -NoProfile -File` 跑，不要塞进 bash。
-- 反之，bash 能完成的事不绕道 PowerShell（启动开销大、引号转义易错）。
+- **禁止**使用 Windows 旧原生 shell 5.1（该口径已作废）；shell 语义一律走 Git Bash。
+- 旧 shell 专属写法（`if` 作表达式、三元 `? :`、`??` / `?.`、`ConvertFrom-Json -AsHashtable`、`$PSNativeCommandUseErrorActionPreference`）已随旧脚本退役；等价逻辑用 bash 条件语句或 python 实现。
+- bash 能完成的事不要绕道其他解释器（启动开销大、引号转义易错）。
 - Python 只用标准库，不新增依赖，不改 `requirements*`。
 
 ## 4. 长上下文任务一律委派（K3.1）
@@ -77,7 +77,7 @@
 - 非平凡改动（代码 / 资源 / 批量替换 / 跨线 / 结论型交付）宣布完成前，必须用**独立证据**复核：新开一个不继承本会话结论与假设的 Kimi `Agent`，或按用户指定方式复核。
 - 只喂：目标、路径、**期望的不变量**、可独立执行的判据命令；**不得**把自己的结论、「我已经改好了」当事实喂进去。
 - 复核结论必须挂原始证据（命令 + 输出片段），并显式列出「不一致 / 无法判定 / 未覆盖」三类项；主会话逐条回应，认同即改，不认同给反证，不得静默忽略。
-- 两层都要：机器判据（`scripts/verify/**`、`tools/audit_*.py`、`tools/check_lang_sync.ps1`）与独立复核**互不替代**；守门全绿 ≠ 已验收。
+- 两层都要：机器判据（`scripts/verify/**`、`tools/audit_*.py`、`tools/check_lang_sync.py`）与独立复核**互不替代**；守门全绿 ≠ 已验收。
 
 ## 6. 构建与部署副作用
 
@@ -91,7 +91,7 @@
 
 - **实机必须由用户明确下达**（启动 dev 客户端、连拍、探针、用例都算）。默认只做静态取证、编译、守门脚本；未实机的欠账如实登记。
 - 获得授权后：先停旧实例再测新构建（旧实例持有旧 jar，叠加会污染结果）。
-- 收尾**必做**：`pwsh -NoProfile -File scripts\test\mt.ps1 --version <线> --phase stop --force`，报告里贴 `MT_STOP: OK` 原文 + `Get-Process java` 计数；本流程客户端有残留即不合格。
+- 收尾**必做**：`bash scripts/test/win/mt.sh --version <线> --phase stop --force`，报告里贴 `MT_STOP: OK` 原文 + `Get-Process java` 计数；本流程客户端有残留即不合格。
 - 清存档按旧规则：标准收尾带 `--purge-saves`，成功判据 `MT_CLEANUP_SAVES: PURGED <n>` + `MT_CLEANUP_RESULT: OK`；存在 `.mt_keep_alive-<版本>` 取证现场时只提示，说明保留原因与路径，取证完立即 `--phase stop --force`。
 - 收尾同时删除本轮注入的临时探针（`run/<线>/kubejs/**`、`scripts/test/resources/kubejs/**`），并贴 `git status --short -uall` 原文。
 - 测试靶子用**非亡灵**生物（`minecraft:pillager` / `minecraft:cow` 等），不用僵尸。

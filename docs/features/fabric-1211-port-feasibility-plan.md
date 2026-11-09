@@ -13,7 +13,7 @@
 | **AutoJS 产物** | 仓内 vendor 只有 forge-1.20.1 / fabric-1.20.1 / neoforge-1.21.1 / neoforge-26.1 | 已有 `scripts/test/resources/mods/autojs/AutoJS-fabric-1.21.1-1.0.0.jar`（sha256 `f498cf4a9d8df3a26554d09b09ce615eb2badba08120964460703677c4822fa3`），PROVENANCE 有登记 |
 | **上游 target** | 「需要新克隆 + 新 target，约 1 个工作包」 | 上游 `F:/MCProject/AutoJS/targets/fabric-1.21.1` **已存在并构建成功**，其钉版可作本仓的对照证据（§6.2） |
 | **版本线** | 假设 `26.4-SNAPSHOT.5` | 各线现行 **`26.4-SNAPSHOT.6+<line>`**（n21 `gradle.properties:38`、fabric `gradle.properties:29`，v2 实读） |
-| **测试台** | 按 pwsh 口径列改造点 | pwsh **已废弃**，口径 = `scripts/test/win/*.sh` + `scripts/test/mt_*.py`（§9 按此重列） |
+| **测试台** | 按 旧 shell 口径列改造点 | 旧 shell **已废弃**，口径 = `scripts/test/win/*.sh` + `scripts/test/mt_*.py`（§9 按此重列） |
 | **依赖钉版** | 2026-11-03 Modrinth 实查 | **2026-11-04 19:2x 代理恢复后已逐项复验**（25 个 slug 全通过，见 §6.4）：除 **Collective 8.75 → 8.77**（`JsrQpNp7` → `qSQaLB3S`）外，其余与 11-03 快照完全一致 |
 | **Loom 版本** | 「必须抬到 1.19.3」 | **改为**「先沿用仓内 1.17.21（`fabric-1.20.1/build.gradle:14`），失败再抬」——AutoJS 的 1.21.1 target 用 **Loom 1.10.5 + Gradle 8.14.4** 也构建成功（`targets/fabric-1.21.1/build.gradle:8`、wrapper 实读），说明 1.21.1 对 Loom 版本不挑 |
 
@@ -258,7 +258,7 @@ PY
 
 **红线**：探针改写**只换宿主通道，不换机器行契约**（`scripts/test/mt_assert.py` 与用例里的 `expect` 都按机器行匹配）。
 
-## 9 测试台各线改造（bash + python 口径，pwsh 已废弃）
+## 9 测试台各线改造（bash + python 口径，旧 shell 已废弃）
 
 | 位置 | 现状 | 改法 |
 |---|---|---|

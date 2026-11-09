@@ -2,7 +2,7 @@
 
 > 生成 2026-10-11（Asia/Hong_Kong）｜工作树 F:\MCProject\astral_dice_multiloader-next（分支 multi-dev-next）
 > 范围：**P0 两线**（neoforge-1.21.1 + forge-1.20.1 同批）｜状态：**界面骨架 + 素材接线**；购买/刷新的业务逻辑待用户后续下达
-> 守门：scripts/verify/verify_chip_shop_ui.ps1（本规范的机器判据；先失败后实现）
+> 守门：scripts/verify/verify_chip_shop_ui.py（本规范的机器判据；先失败后实现）
 
 ## 1. 范围（本批做什么 / 不做什么）
 
@@ -80,7 +80,7 @@ client/ChipShopClientState.java：
 - buyRequestCount() / refreshRequestCount()：界面生命周期内发出的购买/刷新请求计数（拖拽或双击若不产生请求，实机断言即可区分）。
 - confirmPressTicks()：确认按钮按下态的剩余 tick（0 = 常态）。
 
-## 8. 验收（scripts/verify/verify_chip_shop_ui.ps1 的 G1..G6；G7/G8 另行执行）
+## 8. 验收（scripts/verify/verify_chip_shop_ui.py 的 G1..G6；G7/G8 另行执行）
 
 - G1 素材：两线 assets/astral_dice/textures/gui/shop/ 各含 13 张 chipshop_*.png 且与 images/shop 源逐字节相同；**不得**出现 chip_shop_GUI.png。
 - G2 常量：ChipShopScreen.java 含 §3 全部常量的字面量（GUI_WIDTH=284 / GUI_HEIGHT=183 / STRIP_X=34 / STRIP_Y=6 / STRIP_W=216 / STRIP_H=78 / CELL_X={3,45,88,131,174} / BUTTON_SIZE=24 / CONFIRM_X=11 / CONFIRM_Y=36 / REFRESH_X=181 / REFRESH_Y=36 / QUALITY_SIZE=28 / QUALITY_X={51,94,137} / QUALITY_Y=31 / CHIP_ICON_SIZE=24 / CHIP_ICON_OFF=(QUALITY_SIZE−CHIP_ICON_SIZE)/2 / LABEL_W=42 / LABEL_H=15 / LABEL_Y=61 / LABEL_X={1,44,87,130,172} / PANEL_X=56 / PANEL_Y=89 / PANEL_W=172 / PANEL_H=86 / SLOT_X0=61 / SLOT_Y0=94 / SLOT_PITCH=18 / SLOT_COLS=9 / SLOT_ROWS=3 / HOTBAR_Y=152）。
@@ -88,8 +88,8 @@ client/ChipShopClientState.java：
 - G4 交互：类内不出现 mouseDragged / DOUBLE_CLICK_MS / DRAG_THRESHOLD / dragIndex；`onConfirmPressed()` 恰出现 2 次（声明 + 调用），且**调用点必须落在 mouseClicked 的确认按钮分支内**（位置在 `CONFIRM_X` 命中之后、`chipIndexAt(` 之前）；buyRequestCount 初值 0。
 - G5 文案：三语 lang 各含 gui.astral_dice.chip_shop / .cost / .refresh_counter / .empty。
 - G6 接线：ModMenuTypes 注册 "chip_shop"；ChipShopMenu 玩家槽恰 36 个（9x3 + 9x1）；客户端绑定要求**同一行**同时出现 `CHIP_SHOP` 与 `ChipShopScreen::new`（剔除 `//` 注释后再判）。
-- G7 编译：pwsh -NoProfile -File scripts/test/mt_build.ps1 --version 1.21.1（及 1.20.1）--timeout 300 ⇒ MT_BUILD: OK。
-- G8 既有资源守门：pwsh -NoProfile -File scripts/verify/verify_resource_integrity.ps1 两线 PASS。
+- G7 编译：bash scripts/test/win/mt.sh --phase build --version 1.21.1（及 1.20.1）--timeout 300 ⇒ MT_BUILD: OK。
+- G8 既有资源守门：bash scripts/verify/verify_resource_integrity.py 两线 PASS。
 
 ### 守门脚本自身的反证（变异测试，2026-10-11）
 

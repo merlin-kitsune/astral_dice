@@ -274,18 +274,18 @@ src/generated/clientResources/   ← runClientData（assets/…：items 123 + mo
 
 | 位置 | 内容 |
 |---|---|
-| `lib/Mt.Paths.psm1` | `$VERSIONS` 增加 `'26.1.2'`；LOADER/SUBPROJECT 映射；`DEFAULT_PACK_MODS['26.1.2'] = D:\.minecraft\versions\26.1.2-NeoForge_26.1.2.109\mods`；配置键 `MT_PACK_MODS_NEOFORGE_26_1_2` |
-| `mt_preflight.ps1` | 分支白名单 `@('multi-1.20.1-1.21.1','multi-26.1.2-neoforge')` |
+| `scripts/test/lib/mt_paths.py` | `$VERSIONS` 增加 `'26.1.2'`；LOADER/SUBPROJECT 映射；`DEFAULT_PACK_MODS['26.1.2'] = D:\.minecraft\versions\26.1.2-NeoForge_26.1.2.109\mods`；配置键 `MT_PACK_MODS_NEOFORGE_26_1_2` |
+| `scripts/test/mt_preflight.py` | 分支白名单 `@('multi-1.20.1-1.21.1','multi-26.1.2-neoforge')` |
 | `mt.conf(.example)` | 新增 `MT_PACK_MODS_NEOFORGE_26_1_2` |
-| `lib/Mt.Proc.psm1` | 客户端入口识别新增 **`net.neoforged.fml.startup.Client`**（26.1.2 的客户端主类；用全限定名，`…startup.DataClient` 不会误命中） |
-| `mt_launch.ps1` | ①「全机已存在客户端」防撞预检同步新增该入口（漏检会导致跨版本撞车、读到他人 `latest.log`）；② **就绪判据按版本分支**——26.1.2 已无 `Total time to load game and open world was`，改用 `logged in with entity id` **且** `Loaded <N> advancements`（都取英文原版行，避免本地化文案）；③ 兼容性信号在 26.1.2 改报 `KUBEJS_LOADED` / `RHINO_LOADED`（本版本 dev run 不装渲染模组） |
-| `mt_env.ps1` | 新增 **26.1.2 探针运行时装装**（`Install-MtProbeRuntime`）：从 KubeJS 官方 maven 拉 `kubejs-neoforge-<gradle.properties:kubejs_version>` + `rhino` + `better-advanced-tooltips` 到 `run/26.1.2/mods`，缓存在 `temp/probe_mods/26.1.2/`；dev run **不**装渲染模组 |
-| `mt_case.ps1` | 条目 `version` 白名单改为取 `Get-MtVersions`（原先硬编码 `@('1.21.1','1.20.1')`，26.1.2 条目会被判「version 非法」） |
-| `mt_inject.ps1` | 未找到窗口时的报错文案同步两种入口 |
+| 旧件的进程/终止模块（现由 `jps -lvm` + windows MCP 的 `Process(mode:"kill")` 承担） | 客户端入口识别新增 **`net.neoforged.fml.startup.Client`**（26.1.2 的客户端主类；用全限定名，`…startup.DataClient` 不会误命中） |
+| `scripts/test/win/mt.sh --phase launch` | ①「全机已存在客户端」防撞预检同步新增该入口（漏检会导致跨版本撞车、读到他人 `latest.log`）；② **就绪判据按版本分支**——26.1.2 已无 `Total time to load game and open world was`，改用 `logged in with entity id` **且** `Loaded <N> advancements`（都取英文原版行，避免本地化文案）；③ 兼容性信号在 26.1.2 改报 `KUBEJS_LOADED` / `RHINO_LOADED`（本版本 dev run 不装渲染模组） |
+| `scripts/test/win/mt.sh --phase env` | 新增 **26.1.2 探针运行时装装**（`Install-MtProbeRuntime`）：从 KubeJS 官方 maven 拉 `kubejs-neoforge-<gradle.properties:kubejs_version>` + `rhino` + `better-advanced-tooltips` 到 `run/26.1.2/mods`，缓存在 `temp/probe_mods/26.1.2/`；dev run **不**装渲染模组 |
+| `scripts/test/win/mt.sh --phase cases` | 条目 `version` 白名单改为取 `Get-MtVersions`（原先硬编码 `@('1.21.1','1.20.1')`，26.1.2 条目会被判「version 非法」） |
+| `windows MCP 的 Click/Move/Type 输入` | 未找到窗口时的报错文案同步两种入口 |
 | `resources/kubejs/26.1.2/server_scripts/astral_probe.js` | **26.1.2 探针**（迁移期最小集）：`diag` / `itemcount` / `opprobe` / `dumpstate` / `give` / `equipslot` / `readstate` |
 | `cases/MIGRATION-SMOKE-26.1.2.json` | 迁移冒烟条目（24 条断言，见 §9.1） |
 | `.github/workflows/build.yml` | 分支触发 `multi-26.1.2-neoforge`、JDK 25、第三条 lang 校验、第三个 jar 上传；tag/Release 仍只走发布分支 |
-| `deploy.ps1`（本机、gitignore） | `'26.1.2' = 'neoforge-26.1.2'` |
+| `本机部署脚本（已删除，部署改按 git/bash 手写命令执行）`（本机、gitignore） | `'26.1.2' = 'neoforge-26.1.2'` |
 
 ### 7.1 KubeJS 运行时（26.1.2）——两个实测坑
 
@@ -340,7 +340,7 @@ src/generated/clientResources/   ← runClientData（assets/…：items 123 + mo
 1. **26.1.2 回归探针现状（2026-10-07 更正：文件名与规模均已变，勿再引用旧口径）**：本线的完整回归探针是
    `resources/kubejs/26.1.2/server_scripts/astral_bugfix_probe.js`（992,013 B / 16,608 行，提供 `/astralprobe` 子命令；同目录另有 6 个专项探针，
    `client_scripts` 另有 `astral_dnum_diag.js` / `astral_wallet_vision.js`）。早期登记的 `resources/kubejs/26.1.2/server_scripts/astral_probe.js`
-   **在本仓任何 `resources/kubejs/<版本>/` 下都不存在**（`mt_assert.ps1:128` / `:525`、`mt_env.ps1:1030`、`Mt.Paths.psm1:128` 里的 astral_probe 指的是
+   **在本仓任何 `resources/kubejs/<版本>/` 下都不存在**（`scripts/test/mt_assert.py:128` / `:525`、`scripts/test/win/mt.sh --phase env:1030`、`scripts/test/lib/mt_paths.py:128` 里的 astral_probe 指的是
    已移除的 `run/<版本>/astral_probe.log` 通道，与该脚本无关）。非 fabric 线探针规模现为 1.21.1 = 968,242 B / 16,278 行、1.20.1 = 962,454 B / 16,212 行、
    26.1.2 = 992,013 B / 16,608 行 ⇒ **规模已对齐**。
    忍者/骇客/电磁炮/法伤口径/牌桌锁 等**条目级**覆盖差异仍需逐条核对（规模对齐不等于逐条对等）。

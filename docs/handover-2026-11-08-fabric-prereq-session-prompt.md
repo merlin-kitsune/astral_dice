@@ -1,4 +1,5 @@
 # P1 fabric 线 · 前置收敛（Puzzles 去依赖）专用会话 prompt
+<!-- 历史记录：文中旧 shell 命令已于 2026-11-09 全部废弃，现用 bash 测试台（scripts/test/win/mt.sh）与 windows MCP，仅作溯源。 -->
 
 > 用法：新会话第一段消息整段粘贴本文件「=== 以下为 prompt ===」之后的内容。
 > 生成时间：2026-11-08；生成方：multi-dev-next 主会话（HEAD `cb57df4b`）。
@@ -77,7 +78,7 @@
 - 默认不起实机、不部署、不 commit/push（本地提交照「早提交勤提交」，push 需授权）。
 - 写文件或跑 Gradle 前查 `F:/MCProject/.agent-locks/`；DSH 用 `dsh.lock`，一次一个文件写者。
 - 发现别的实机占着 `25585`/`25565` 或在跑本仓 java ⇒ **搁置并报告**，不要 launch。
-- 解释器写裸名（`bash` / `python`），pwsh 已废弃。行尾：`docs/*.md`、`*.sh`、`*.py`、`README*.md` 用 LF；Java/json/gradle 用 CRLF（**注意**：`fabric-1.21.1/build.gradle` 工作树当前是 LF，动手前先实测再定，改完用 python 数字复核 bareLF/bareCR）。
+- 解释器写裸名（`bash` / `python`），旧 shell 已废弃。行尾：`docs/*.md`、`*.sh`、`*.py`、`README*.md` 用 LF；Java/json/gradle 用 CRLF（**注意**：`fabric-1.21.1/build.gradle` 工作树当前是 LF，动手前先实测再定，改完用 python 数字复核 bareLF/bareCR）。
 - 不代改他人职责；`models/ images/ sound/` 属素材目录，出现不属于自己的改动立即停手上报。
 - 只碰 fabric 线；neo 1.21.1 / forge 1.20.1 / neo 26.1.2 三线不动。
 
@@ -89,7 +90,7 @@
 - **实机/测试台**：`bash scripts/test/win/mt.sh --version fabric-1.21.1 --side client --enable-autojs --phase launch`，收停必须 `--phase stop --force`。
 - **AutoJS**：must `side:"server"`；Rhino 里没有 `Java.type`（用 `Java.loadClass`）、不认 `0.0f` 字面量、`getClass()` 不可用（用 `String(obj)`）。
 - **Carpet 假人**：`AutoJS.command('player BT spawn')` → 实体名小写 `bt`，默认 CREATIVE ⇒ 先 `setGameMode(SURVIVAL)`，否则 `hurt()` 恒 false。jar 已在 `fabric-1.21.1/run/client/mods/fabric-carpet-1.21-1.4.147+v240613.jar`（保留）。
-- **测试台收停缺陷已修**（`1110a2df`）：`taskkill //PID` 的 MSYS2 转换问题已改成 `MSYS2_ARG_CONV_EXCL='*' taskkill /PID ...`。
+- **测试台收停缺陷已修**（`1110a2df`）：windows MCP 的 `Process(mode:"kill", pid=…)` //PID` 的 MSYS2 转换问题已改成 `参数转译开关='*' windows MCP 的 `Process(mode:"kill", pid=…)` /PID ...`。
 
 ## 6. 起步命令
 

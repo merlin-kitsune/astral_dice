@@ -38,7 +38,7 @@ P T P
 - R = `minecraft:redstone_block`（红石块） · T = `astral_dice:diamond_dice`（钻石骰子）
 - 模板：`datagen/ModRecipeProvider.java` 中 Kangel/Ame 立牌段落（旧会话取证件 :1286-1297）。
 - **例外登记**：与 AGENTS-full.md:1088「BLANK_SIGN 固定 3×3 正中心 / 立牌骰子固定中下且仅 1 个」冲突 —— 用户显式给出 pattern，按「用户指令优先于工作区规则」处理，本例外**只对 lingling_sign 生效**；需在交付报告中登记，并把例外写进本 spec（已写）。
-- runData 后必须跑 `scripts/verify/verify_crafting_recipe_uniqueness.ps1`。
+- runData 后必须跑 `scripts/verify/verify_crafting_recipe_uniqueness.py`。
 
 ## 4. 被动「拦截者」（佩戴立牌时生效）
 
@@ -107,8 +107,8 @@ P T P
 2. `init/ModCreativeTabs` dice 页。
 3. `datagen/ModItemModelProvider` `basicItem`。
 4. 贴图 `assets/astral_dice/textures/item/lingling_sign.png`（从 `images/怪力乱神立牌.png` 复制）+ 生成的 model json。
-5. lang 三语（`zh_cn` / `en_us` / `ja_jp`？按 `tools/check_lang_sync.ps1` 现有的语言集合为准）：`item.astral_dice.lingling_sign`、`tooltip.astral_dice.sign.lingling_active`、`_passive`、`_note`、`astral_dice.guide.entry.lingling.N`、效果名/描述 `effect.astral_dice.lingling_surge` + `effect.astral_dice.lingling_surge.description`；字面 `%` 写 `%%`。
-6. tooltip：`event/ModTooltipHandler` 新增 lingling 段（`addSignActiveTitle`（GOLD）/ `addSignPassiveTitle` / `addSignNoteLines`）；染色按 `scripts/audit/tooltip_color_audit.ps1` 规则（时间值蓝 §9、其他数值黄 §e）。
+5. lang 三语（`zh_cn` / `en_us` / `ja_jp`？按 `tools/check_lang_sync.py` 现有的语言集合为准）：`item.astral_dice.lingling_sign`、`tooltip.astral_dice.sign.lingling_active`、`_passive`、`_note`、`astral_dice.guide.entry.lingling.N`、效果名/描述 `effect.astral_dice.lingling_surge` + `effect.astral_dice.lingling_surge.description`；字面 `%` 写 `%%`。
+6. tooltip：`event/ModTooltipHandler` 新增 lingling 段（`addSignActiveTitle`（GOLD）/ `addSignPassiveTitle` / `addSignNoteLines`）；染色按 `scripts/audit/tooltip_color_audit.py` 规则（时间值蓝 §9、其他数值黄 §e）。
 7. 标签：`data/curios/tags/item/stand.json`、`data/astral_dice/tags/item/signs.json`。
 8. 赏金池：`data/bountiful/bounty_pools/astral_rews.json`（参照 `diamond_dice` :33-42，unitWorth 7500）。
 9. 帕秋莉手册：`astral_dice.guide.entry.lingling.N` 页（键必须被 `tools/audit_patchouli_keys.py` 认可）。
@@ -123,18 +123,18 @@ P T P
 ## 8. 守门（实现后必须全绿）
 
 ```
-pwsh -NoProfile -File scripts/verify/verify_resource_integrity.ps1
-pwsh -NoProfile -File tools/check_lang_sync.ps1
-pwsh -NoProfile -File tools/audit_patchouli_keys.py
-pwsh -NoProfile -File tools/verify_rarity_consistency.py
-pwsh -NoProfile -File scripts/verify/verify_bountiful_pools.ps1
-pwsh -NoProfile -File scripts/audit/tooltip_color_audit.ps1
-pwsh -NoProfile -File scripts/verify/verify_crafting_recipe_uniqueness.ps1
-pwsh -NoProfile -File scripts/verify/verify_event_registry.ps1
+bash scripts/verify/verify_resource_integrity.py
+bash tools/check_lang_sync.py
+bash tools/audit_patchouli_keys.py
+bash tools/verify_rarity_consistency.py
+bash scripts/verify/verify_bountiful_pools.py
+bash scripts/audit/tooltip_color_audit.py
+bash scripts/verify/verify_crafting_recipe_uniqueness.py
+bash scripts/verify/verify_event_registry.py
 ```
 外加 `./gradlew :neoforge-1.21.1:classes`（及 forge 线）编译通过；`verify_effect_icons.py` 各线通过。
 
-> 状态（2026-10-18）：`forge-1.20.1` 移植完成 —— `lingling_surge` 已落地（效果数 1.20.1 = 61，两 P0 线 id 集合一致）。守门实测（本机）：`verify_resource_integrity.ps1` PASS、`check_lang_sync.ps1` OK、`verify_effect_icons.py` PASS（forge 61/61）、`verify_rarity_consistency.py` PASS、`audit_patchouli_keys.py` 悬空 0、`verify_crafting_recipe_uniqueness.ps1` collisions=0、`verify_event_registry.ps1` OK。两项**既有**偏差与本立牌无关、不在本批范围（均已实测对照 HEAD 基线）：① `verify_bountiful_pools.ps1` 6 项致命偏差（HEAD 基线 7 项，本批消灭了 2 条 lingling 相关项）—— 余项全部来自 1.20.1 独有的 `card_shop`/`chip_shop`/`event_drawer` 与 P1 线 26.1.2 尚未移植的 10 个条目（含 `ame_sign`/`kangel_sign`）；P0 两线的 `astral_rews.json` 已逐字节一致（md5 `c86d449c…`）。② `audit/tooltip_color_audit.ps1` 64 处违规（HEAD 基线同为 64，且无一条命中 lingling 键）。**本规格无「forge 待移植」遗留待办**。
+> 状态（2026-10-18）：`forge-1.20.1` 移植完成 —— `lingling_surge` 已落地（效果数 1.20.1 = 61，两 P0 线 id 集合一致）。守门实测（本机）：`verify_resource_integrity.py` PASS、`check_lang_sync.py` OK、`verify_effect_icons.py` PASS（forge 61/61）、`verify_rarity_consistency.py` PASS、`audit_patchouli_keys.py` 悬空 0、`verify_crafting_recipe_uniqueness.py` collisions=0、`verify_event_registry.py` OK。两项**既有**偏差与本立牌无关、不在本批范围（均已实测对照 HEAD 基线）：① `verify_bountiful_pools.py` 6 项致命偏差（HEAD 基线 7 项，本批消灭了 2 条 lingling 相关项）—— 余项全部来自 1.20.1 独有的 `card_shop`/`chip_shop`/`event_drawer` 与 P1 线 26.1.2 尚未移植的 10 个条目（含 `ame_sign`/`kangel_sign`）；P0 两线的 `astral_rews.json` 已逐字节一致（md5 `c86d449c…`）。② `audit/tooltip_color_audit.py` 64 处违规（HEAD 基线同为 64，且无一条命中 lingling 键）。**本规格无「forge 待移植」遗留待办**。
 
 ## 9. 不做 / 待用户
 
@@ -143,4 +143,4 @@ pwsh -NoProfile -File scripts/verify/verify_event_registry.ps1
 
 ## 10. 变更记录
 
-- **2026-10-18 晚（tooltip 文案）**：用户原话「将怪力乱神立牌和强化拒止tooltip中分号改为换行；怪力乱神tooltip注释部分移除充能上限描述（这是充能体系的全局规则，没必要重复描述）」+「路障和强化拒止耐久度描述向下移（放在描述最后，在出牌数上面）」。落地（三语 × P0 两线共 6 个 lang 文件、键集不变 1001 键）：`tooltip.astral_dice.sign.lingling_active` 拆 2 行、`_passive` 拆 3 行、`_note` 拆 2 行且删除「充能上限为 §e20§7 层；」（合计上限 20 是本立牌**独立加成层**的规则，记在本文件 §4.6 与 `GameplayConstants.CHARGE_MAX_STACKS`，tooltip 不再重复）。判据：`tools/check_lang_sync.ps1` OK、`scripts/audit/tooltip_color_audit.ps1` 64 处（与基线同数、无一条命中 lingling 键）。
+- **2026-10-18 晚（tooltip 文案）**：用户原话「将怪力乱神立牌和强化拒止tooltip中分号改为换行；怪力乱神tooltip注释部分移除充能上限描述（这是充能体系的全局规则，没必要重复描述）」+「路障和强化拒止耐久度描述向下移（放在描述最后，在出牌数上面）」。落地（三语 × P0 两线共 6 个 lang 文件、键集不变 1001 键）：`tooltip.astral_dice.sign.lingling_active` 拆 2 行、`_passive` 拆 3 行、`_note` 拆 2 行且删除「充能上限为 §e20§7 层；」（合计上限 20 是本立牌**独立加成层**的规则，记在本文件 §4.6 与 `GameplayConstants.CHARGE_MAX_STACKS`，tooltip 不再重复）。判据：`tools/check_lang_sync.py` OK、`scripts/audit/tooltip_color_audit.py` 64 处（与基线同数、无一条命中 lingling 键）。

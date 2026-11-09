@@ -1,4 +1,5 @@
 # 新会话上下文（原生 Linux 真机期）
+<!-- 历史记录：文中旧 shell 命令已于 2026-11-09 全部废弃，现用 bash 测试台（scripts/test/win/mt.sh）与 windows MCP，仅作溯源。 -->
 
 
 > **口径提示**：本文件描述**主线**（`multi-main` / 1.5.0-rc.7）。若你工作在 `multi-dev-next` 工作树（`/mnt/f/MCProject/astral_dice_multiloader-next`，2.0 线 / `26.4-SNAPSHOT.5`），版本号与库引脚以 `docs/handover-2026-10-31-dev-next-linux-sync.md（已删除 2026-11-05）` 为准。
@@ -8,7 +9,7 @@
 
 ## 0 接手第一步（顺序固定）
 
-1. 读根 `AGENTS.md` 认领宿主规则：本机是**原生 Linux 真机** ⇒ 规则正本 `docs/agent/AGENTS-dsh-linux.md`（361 行）；`docs/agent/AGENTS-dsh.md` 是 **Windows 历史正本**，只作对照，不照抄其 pwsh / `gradlew.bat` / `mt.ps1` 口径。
+1. 读根 `AGENTS.md` 认领宿主规则：本机是**原生 Linux 真机** ⇒ 规则正本 `docs/agent/AGENTS-dsh-linux.md`（361 行）；`docs/agent/AGENTS-dsh.md` 是 **Windows 历史正本**，只作对照，不照抄其 旧 shell / `gradlew.bat` / `scripts/test/win/mt.sh` 口径。
 2. 加载技能 `using-superpowers`（规则正本第 8 行起是硬要求）。
 3. 读 `docs/agent/AGENTS-dsh-linux.md` 全文。
 4. 读**最新交接三件**：`docs/handover-2026-10-31-native-linux-migration.md`（本批：真机迁移实测 + 路径重映射 + 权限坑）、`docs/handover-1.5.0-main.md` 的最后两条 `### 4.1az` / `### 4.1ba` 与 `## 5 遗留与欠账`。
@@ -50,7 +51,7 @@
 - 构建依赖 `starengine:1.1.0` 走 `mavenLocal()`；各线制品在 `~/.m2/repository/com/merlinkitsune/starengine/*/1.1.0/`。
 - 投放目标：`狐の航空学 Voxy Edition`(1.21.1) / `1.20.1-Forge 模组测试` / `26.1.2-NeoForge 模组测试` / `1.20.1-Fabric 模组测试`，均在 `/mnt/d/.minecraft/versions/<实例>/mods`。
 
-## 4 Linux 测试台（取代 Windows 的 `scripts/test/mt.ps1`）
+## 4 Linux 测试台（取代 Windows 的 scripts/test/win/mt.sh）
 
 ```bash
 bash scripts/test/linux/env.sh                      # 只读检查；机器行 CHECK: key=..., ENV_RESULT: OK|WARN|FAIL
@@ -63,7 +64,7 @@ bash scripts/test/linux/stop.sh  --all
 
 - 当前读数：`ENV_RESULT: WARN — 0 项阻塞，1 项提示`（唯一提示 = AutoJS 未运行，游戏没起时属正常）。
 - 键名变更：`hgfs_writable` → `repo_writable`；新增 `locks_stale`；`conf_windows` 降为 INFO。
-- Windows 的 `mt.ps1`（约 19.4k 行）在 Linux **整台不可移植且不调用**；未复刻：进程防撞锁、世界清场、OP/禁 AI 闸门、`mt_inject`/`mt_ime`/`mt_capture`。替代：游戏内 **AutoJS `eval_js`**，GUI 级 **`computer-use-linux`**。
+- Windows 的 `scripts/test/win/mt.sh`（约 19.4k 行）在 Linux **整台不可移植且不调用**；未复刻：进程防撞锁、世界清场、OP/禁 AI 闸门、`mt_inject`/`mt_ime`/`mt_capture`。替代：游戏内 **AutoJS `eval_js`**，GUI 级 **`computer-use-linux`**。
 
 ## 5 本批改动清单（2026-10-31 18:1x 落地，19:5x 已提交）
 
@@ -129,7 +130,7 @@ bash scripts/test/linux/env.sh                             # 环境体检
 - `legacyforge` dev 运行加载 `run/1.20.1/mods/*.jar` ⇒ 改 java/资源后必须 `:forge-1.20.1:pushToDevRun`。
 - 26.1.2 构建必须 `--no-configuration-cache`；各线 gradle daemon 必须 ≥JDK 21。
 - **同一时间只允许一个 gradle**（全队一个并发位）；动工作树或起 gradle 前查 `.agent-locks/`。
-- **不破坏 Windows 侧**：`*.ps1` / `*.bat` / `gradlew.bat` / `mt.conf` / `.vscode` / `run/*.bat` 一律保留原样；不删、不改、不「顺手清理」。
+- **不破坏 Windows 侧**：旧脚本（已删除） / `*.bat` / `gradlew.bat` / `mt.conf` / `.vscode` / `run/*.bat` 一律保留原样；不删、不改、不「顺手清理」。
 - 权限坑：`docs/agent/` 与 `starengine/*/build/` 是 1001 属主目录，**不停留去找 chown**，用文档里的绕法。
 - AutoJS eval：KubeJS 下用 `Java.loadClass('net.minecraft.client.Minecraft')`，**没有裸 `Minecraft` 全局**；`side` 必须明确（server/client）。
 - 默认不 commit / push / tag；默认不部署；保护 `models/` `images/` `sound/`；互斥锁三行 `PID=/TIME=/TASK=`；发现非自己改动立即停手报告。

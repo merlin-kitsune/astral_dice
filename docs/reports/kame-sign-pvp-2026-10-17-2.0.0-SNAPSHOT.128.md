@@ -1,9 +1,10 @@
 # 实机验证报告：kangel 拆双 id（`5695832e`）+ 1.20.1 一心同体复核
+<!-- 历史记录：文中旧 shell 命令已于 2026-11-09 全部废弃，现用 bash 测试台（scripts/test/win/mt.sh）与 windows MCP，仅作溯源。 -->
 
 - 被测版本：`2.0.0-SNAPSHOT.128`；HEAD `5695832e281a9eb270ed4f4badcc4764bdc5a1c0`（2026-10-17 13:24:28 +0800）
 - 工作树：`/mnt/f/mcproject/astral_dice_multiloader-next`（分支 `multi-dev-next`）
 - 两线 jar 重建：`run/1.21.1/mods/astral_dice-2.0.0-SNAPSHOT.128+neoforge_1.21.1.jar` mtime **13:26:58**、`run/1.20.1/mods/astral_dice-2.0.0-SNAPSHOT.128+forge_1.20.1.jar` mtime **13:27:02**（均晚于提交时间 13:24:28）
-- 测试台：`scripts/test/mt.ps1`（pwsh 7，经 `cmd.exe /c` 互操作）；世界 `testworld`；靶子非亡灵（`minecraft:pillager`）；假人 = Carpet 真 `ServerPlayer`，**非 bot 前缀**（`Fake1`/`Fake2`/`Fake3`/`Fake4`）
+- 测试台：`scripts/test/win/mt.sh`（当时的 Windows 测试台，经 `cmd.exe /c` 互操作）；世界 `testworld`；靶子非亡灵（`minecraft:pillager`）；假人 = Carpet 真 `ServerPlayer`，**非 bot 前缀**（`Fake1`/`Fake2`/`Fake3`/`Fake4`）
 - 证据留档：`temp/kame-20261017/{1.21.1,1.20.1}/`（`latest.log`、`kubejs_server.log`、`client.log`、`sha256.txt`）
 
 ---
@@ -93,5 +94,5 @@
 - 新增正式探针：`scripts/test/resources/kubejs/{1.21.1,1.20.1}/server_scripts/astral_kame_pvp_probe.js`（`/astralpvp pvp|seq|pair|mark|mit|clearfx|jointeam|leaveteam`；本轮临时名 `*_tmp.js` 与 `run/**` 运行副本已删除）
 - 收尾（两线）：`MT_STOP: OK` + `MT_CLEANUP_SAVES: PURGED 1` + `MT_CLEANUP_RESULT: OK`；**无测试客户端残留**（仅 Gradle 守护进程 PID 31428 / 20560，非客户端）
 - 本地提交（未 push）：`test(kame): 实机回归 kangel 拆双 id + 1.20.1 一心同体（非 bot 假人，.128）`；`git status --short -uall` 仅余既有 6 行（4 个 `%SystemDrive%` 缓存 + 2 个 `models/*.bbmodel`）
-- 备注：提交后 `.git/hooks/post-commit` 在 WSL 下报 `pwsh: not found`（hook 未执行；提交本身成功，属环境提示）
+- 备注：提交后 `.git/hooks/post-commit` 在 WSL 下报 `旧 shell: not found`（hook 未执行；提交本身成功，属环境提示）
 - 证据留档（先于 stop 复制）：`temp/kame-20261017/1.21.1/{latest.log,kubejs_client.log,kubejs_server.log,sha256.txt}`、`temp/kame-20261017/1.20.1/{latest.log,kubejs_server.log,sha256.txt}`

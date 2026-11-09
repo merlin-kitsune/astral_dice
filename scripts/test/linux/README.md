@@ -1,17 +1,17 @@
 # scripts/test/linux — Linux 侧最小测试路径（task-4 报告）
 
 > 状态：2026-10-31。作者：DSH teammate `test-harness`（task-4）。
-> 本目录只做「能在 Linux 上跑起来的最小路径」；Windows 完整测试台仍在 `scripts/test/*.ps1`，语义以它为准。
-> 三个脚本均为 bash，**零 pwsh 依赖**，不写 `run/` 下既有日志。
+> 本目录只做「能在 Linux 上跑起来的最小路径」；Windows 完整测试台见 `scripts/test/win/`（`mt.sh` + `win/lib/*.sh`），语义以它为准。
+> 三个脚本均为 bash，**零额外解释器依赖**，不写 `run/` 下既有日志。
 
 ## 0. 结论（先看这里）
 
-1. **Windows 测试台不能在 Linux 直接运行**：19,384 行 pwsh 代码在 pwsh 7.6.9 下**语法可解析**、参数解析与「禁用自动测试」闸门**可跑通**，但任何触达 Win32 API / Windows 进程模型的路径都失败（证据见 §4）。核心阻塞点是 `lib/Mt.Win32.psm1`（user32 P/Invoke）与 `mt_inject.ps1`（键盘/鼠标注入），其次 `taskkill` / `cmd.exe` / `Get-CimInstance`。
+1. **Windows 测试台不能在 Linux 直接运行**：旧测试台的 Windows 专属路径（19,384 行旧编排件）在 Linux 上无法沿用 —— 任何触达 Win32 API / Windows 进程模型的环节都失败（证据见 §4）。核心阻塞点是窗口与键鼠注入（user32 P/Invoke + 键盘/鼠标直投），其次进程枚举与强杀、`cmd.exe` 调 Gradle。现役 Windows 侧已改为 bash 编排 + `jps -lvm` 判线 + windows MCP 执行终止。
 2. **Linux 侧已落地三件套**：
    - `env.sh`：只读环境体检（各线 toolchain JDK + daemon JVM、run 目录/模组、AutoJS 三态探活、客户端残留、Gradle 进程、锁、git autocrlf）。**实测通过**（`ENV_RESULT: WARN`, exit 0）。
    - `launch.sh`：启动 `runClient` 并轮询就绪标志（优先 `run/start-<ver>.sh`，否则 `bash ./gradlew :<line>:runClient --console=plain`）。**只做过 `--dry-run`**，真实启动由 Lead 在 task-1 完成后统一验证（避免与 gradle-launcher 抢全队唯一的 Gradle 并发位）。
    - `stop.sh`：按 `run/<ver>/linux-run.pid` 进程组 + `/proc` 扫描收停，`LINUX_STOP: OK|RESIDUAL`。**两条 kill 路径均以假仓库实测通过**（§9.3）。
-3. **不可移植的测试能力**：`mt_case.ps1`（用例编排）/`mt_assert.ps1`（断言）/`mt_report.ps1`/`mt_watchdog.ps1` 都建立在「Windows 进程 + 键盘注入 + 窗口」之上，Linux 侧不复刻；替代路径是 **AutoJS HTTP 通道**（`docs/features/autojs-testing-flow.md（已删除 2026-11-05）` 六步流程），它不需要键鼠注入。详见 §6、§7。
+3. **不可移植的测试能力**：`scripts/test/win/mt.sh --phase cases`（用例编排）/`scripts/test/mt_assert.py`（断言）/`scripts/test/win/mt.sh --phase report`/`scripts/test/win/mt.sh --phase stop --verify` 都建立在「Windows 进程 + 键盘注入 + 窗口」之上，Linux 侧不复刻；替代路径是 **AutoJS HTTP 通道**（`docs/features/autojs-testing-flow.md（已删除 2026-11-05）` 六步流程），它不需要键鼠注入。详见 §6、§7。
 
 ## 1. 文件
 
@@ -57,7 +57,7 @@ scripts/test/linux/stop.sh --version 1.21.1 --purge-saves   # 删测试世界（
 - launch.sh：`LAUNCH: starting|READY|WORLD_READY|OK|FAIL|TIMEOUT|BLOCKED|ERROR|DRY-RUN`（READY=AutoJS 客户端侧就绪；WORLD_READY=日志 marker 附加信息）
 - stop.sh：`LINUX_STOP: pid=<pid> …`、`LINUX_STOP: pidfile-removed …`、`PURGE: removed …`、末尾 `LINUX_STOP: OK|RESIDUAL`
 
-退出码（对齐 `lib/Mt.Phase.psm1` 语义）：
+退出码（对齐 `scripts/test/win/lib/phases.sh` 语义）：
 
 | 码 | 含义 |
 |---|---|
@@ -69,45 +69,45 @@ scripts/test/linux/stop.sh --version 1.21.1 --purge-saves   # 删测试世界（
 | 12 | TIMEOUT（AutoJS 客户端侧在 `--timeout` 内未就绪） |
 | 130 | 用户 Ctrl-C 中断（游戏为独立进程组，不受影响） |
 
-## 4. 移植判定与证据（pwsh 7.6.9 只读探针）
+## 4. 移植判定与证据（当时的只读探针）
 
-pwsh 安装：`/home/kitsune/.local/powershell/pwsh`（7.6.9，linux-x64 tar.gz，sha256 `1da6d6d6…a884b`，`ldd` 无缺失）。
+当时用于探针的是旧 shell 7.6.9（linux-x64 tar.gz，sha256 `1da6d6d6…a884b`，`ldd` 无缺失）；该解释器现已不安装、不调用。
 
 | 探针 | 结果 | 原文/关键输出 |
 |---|---|---|
-| `mt.ps1` AST 解析 | ✅ 0 错误 | `PARSE_ERRORS=0`（851 行全部可解析） |
-| `mt.ps1 --help` | ✅ exit 0 | 参数表正常输出 |
+| 旧编排件 AST 解析 | ✅ 0 错误 | `PARSE_ERRORS=0`（851 行全部可解析） |
+| `--help` | ✅ exit 0 | 参数表正常输出 |
 | 自动测试闸门 | ✅ 生效 | 三例均 exit 2，stderr 首行 `MT_AUTO_DISABLED: …` |
-| `Mt.Win32.psm1` 导入 | ⚠️ 可导入 | `Import-Module` OK、导出函数齐全，但调用即失败 |
-| `Get-MtScreenSize` | ❌ | `MethodInvocationException: Exception calling "GetPrimaryScreenSize" … "Value cannot be null. (Parameter 'path1')"` |
-| `NativeLibrary.Load("user32.dll")` | ❌ | `Unable to load shared library 'user32.dll' or one of its dependencies. … cannot open shared object file: No such file or directory`（对照 libc 可加载：`LIBC_OK`，故非通用加载器问题） |
-| `taskkill` / `cmd.exe` | ❌ 不存在 | 命令查找失败 |
-| `Get-CimInstance` | ❌ | `CommandNotFoundException`（`Win32_Process` 查询不可用） |
-| `mt_ime.ps1 status` | ❌ exit 1 | 同 `Get-MtTopLevelWindows` 一族的 Win32 失败 |
-| `mt_inject.ps1`（无参） | ⚠️ 参数层 OK | `MT_ERROR: 缺少子命令（可选：key cmd mouse）`，exit 2（真正注入路径需 user32，必失败） |
-| `Mt.AutoJs.psm1` | ✅ 可导入 | 导出 9 函数，endpoint=`http://127.0.0.1:25585/mcp`（纯 HTTP，Linux 可复用） |
+| 窗口/键鼠模块导入 | ⚠️ 可导入 | 模块导出函数齐全，但调用即失败 |
+| 屏幕尺寸查询 | ❌ | `Exception calling "GetPrimaryScreenSize" … "Value cannot be null. (Parameter 'path1')"` |
+| `NativeLibrary.Load("user32.dll")` | ❌ | `Unable to load shared library 'user32.dll' … cannot open shared object file: No such file or directory`（对照 libc 可加载：`LIBC_OK`，故非通用加载器问题） |
+| 进程管理（按名枚举 / 强杀） | ❌ 不存在 | 命令查找失败 |
+| `jps -lvm` | ❌ | `CommandNotFoundException`（该 JDK 未带 jps） |
+| 输入法切换模块 | ❌ exit 1 | 同窗口枚举一族的 Win32 失败 |
+| 键鼠注入模块（无参） | ⚠️ 参数层 OK | `MT_ERROR: 缺少子命令（可选：key cmd mouse）`，exit 2（真正注入路径需 user32，必失败） |
+| `scripts/test/lib/mt_autojs.py` | ✅ 可导入 | 导出 9 函数，endpoint=`http://127.0.0.1:25585/mcp`（纯 HTTP，Linux 可复用） |
 
-结论：**pwsh 侧代码本身跨平台质量不错**（大量逻辑与 Win32 解耦），阻塞集中在少数 native/进程/IME 模块（§5）。
+结论：**旧测试台代码本身跨平台质量不错**（大量逻辑与 Win32 解耦），阻塞集中在少数 native / 进程 / IME 模块（§5）。
 
 ## 5. Windows-only 依赖清单（移植时要替换的全部点）
 
 | 类别 | 位置 | 用途 | Linux 替代 |
 |---|---|---|---|
-| Win32 P/Invoke | `lib/Mt.Win32.psm1` L349/L945（内联 C# user32/keyboard/窗口）、导出 20+ 函数 | 窗口查找、DPI、键鼠、窗口置顶 | Wayland computer-use MCP（task-2 已集成）/ xdotool |
-| 键鼠注入 | `mt_inject.ps1`（950 行，L349 内联 C#） | `WM_KEYDOWN`/`WM_CHAR`/`WM_*BUTTON` 按美式扫描码直投，绕过焦点/IME | computer-use MCP `act`（keyboard/pointer）；或用 AutoJS `eval_js` 驱动游戏状态（优先） |
-| 输入法切换 | `mt_ime.ps1`（427 行，`GetKeyboardLayout`/`ActivateKeyboardLayout`，KLID `00000409`） | 保证注入文本不被中文 IME 截获 | Linux 无对应需求（先确定输入法/布局再用 `fcitx5-remote` 等；当前不做） |
-| 进程管理 | `lib/Mt.Proc.psm1` L157/L1052 `taskkill /T /F`、L299 `Get-CimInstance Win32_Process Name='java.exe'`；`mt_case.ps1` L2184、`mt_watchdog.ps1` L128 同类查询 | 进程树强杀 / 按名发现 | `/proc` 扫描（已实现于 stop.sh / env.sh） |
-| `cmd.exe` 调 Gradle | `mt_build.ps1` L144、`mt_launch.ps1` L461 `cmd.exe /c gradlew.bat`、`mt_env.ps1` L2396、`mt_cleanup.ps1` L343 | 构建/启动/停守护 | `bash ./gradlew …`（本目录已用） |
-| 绝对 Windows 路径 | `lib/Mt.Paths.psm1` L50-52 `D:\.minecraft`、`mt_loadergate.ps1` L159-160（Zulu/Adoptium）、`ref-repro.ps1`（Git/F:）、`fabric/ft_prod.ps1` | 机器本地路径 | env.sh 已检测 `mt.conf` 里 `D:/`、`C:/` 值并 WARN |
-| 截图 | `mt_capture.ps1` L70 `Add-Type System.Drawing` + `CopyFromScreen` | 整屏截图（f2 走游戏内 F2） | `grim`（Wayland）/ `gnome-screenshot` / `scrot`；AutoJS 可 `screenshot` 原语（需游戏侧） |
-| 压缩库 | `mt_env.ps1` L1372、`mt_loadergate.ps1` L85/L346 `System.IO.Compression` | 解压世界种子/模组 | unzip/7z 或 pwsh 仍可（该模块本身跨平台） |
+| Win32 P/Invoke | 窗口模块（内联 C# user32/keyboard/窗口），导出 20+ 函数 | 窗口查找、DPI、键鼠、窗口置顶 | Wayland computer-use MCP（task-2 已集成）/ xdotool |
+| 键鼠注入 | 注入模块（950 行，内联 C#） | `WM_KEYDOWN`/`WM_CHAR`/`WM_*BUTTON` 按美式扫描码直投，绕过焦点/IME | computer-use MCP `act`（keyboard/pointer）；或用 AutoJS `eval_js` 驱动游戏状态（优先） |
+| 输入法切换 | IME 模块（427 行，`GetKeyboardLayout`/`ActivateKeyboardLayout`，KLID `00000409`） | 保证注入文本不被中文 IME 截获 | Linux 无对应需求（先确定输入法/布局再用 `fcitx5-remote` 等；当前不做） |
+| 进程管理 | 进程模块（Windows 侧进程树强杀 / 按名发现） | 进程树强杀 / 按名发现 | `jps -lvm` 枚举 + `/proc` 扫描（已实现于 stop.sh / env.sh）；终止进程由 Agent 用 windows MCP 执行 |
+| `cmd.exe` 调 Gradle | 构建 / 启动 / 停守护各阶段 | 构建/启动/停守护 | `bash ./gradlew …`（本目录已用） |
+| 绝对 Windows 路径 | 路径模块 L50-52 `D:\.minecraft`、加载器门控、复现脚本（Git/F:） | 机器本地路径 | env.sh 已检测 `mt.conf` 里 `D:/`、`C:/` 值并 WARN |
+| 截图 | 截图模块 L70 `System.Drawing` + `CopyFromScreen` | 整屏截图（f2 走游戏内 F2） | `grim`（Wayland）/ `gnome-screenshot` / `scrot`；AutoJS 可 `screenshot` 原语（需游戏侧） |
+| 压缩库 | `System.IO.Compression`（env / 加载器门控阶段） | 解压世界种子/模组 | unzip / 7z，或 python `zipfile` |
 | MCP 外部二进制 | `mt.conf` `MT_MCP_BIN=C:/Users/xmace/.local/bin/computer-control-mcp.exe` | Windows 会话层 MCP | 已由 task-2 的 Wayland computer-use MCP 取代 |
 
 ## 6. 与 Windows 测试台的差异（Linux 最小路径**不做**什么）
 
-- ❌ 用例编排 `mt_case.ps1`（2780 行，封闭原语表 inj/client/assert）：Linux 无键鼠注入与窗口，不复刻。
-- ❌ 断言引擎 `mt_assert.ps1`（1372 行，log/absent/crash/kubejs/mixin/vision/eval）与报告 `mt_report.ps1`：Linux 侧不用日志游标断言，改由 AutoJS 直接取状态断言。
-- ❌ 世界清场/OP-禁AI/史莱姆压制等 launch 闸门、`Enter-MtLaunchLock` 全机锁：Linux 侧未实现（stop.sh 有并发提示，env.sh 报告锁与 Gradle 进程）。
+- ❌ 用例编排 `scripts/test/win/mt.sh --phase cases`（2780 行，封闭原语表 inj/client/assert）：Linux 无键鼠注入与窗口，不复刻。
+- ❌ 断言引擎 `scripts/test/mt_assert.py`（1372 行，log/absent/crash/kubejs/mixin/vision/eval）与报告 `scripts/test/win/mt.sh --phase report`：Linux 侧不用日志游标断言，改由 AutoJS 直接取状态断言。
+- ❌ 世界清场/OP-禁AI/史莱姆压制等 launch 闸门、启动锁（全机锁）：Linux 侧未实现（stop.sh 有并发提示，env.sh 报告锁与 Gradle 进程）。
 - ❌ `--phase` 批量编排与「禁用自动测试」闸门：由 Lead/团队命令纪律保证，不写进 bash（避免绕过 Windows 侧用户裁决）。
 - ❌ Windows 的「世界已加载」日志判据不能直接挪用：Linux dev 客户端默认停在标题画面、不开世界（详见 §8.5）。
 - ✅ 保留：阶段语义（env/launch/stop）、退出码、机器行、日志落点、PID 协议、AutoJS 端点探活。
@@ -116,9 +116,9 @@ pwsh 安装：`/home/kitsune/.local/powershell/pwsh`（7.6.9，linux-x64 tar.gz�
 
 1. **P0 已解决**：Linux 上「起客户端 / 探活 / 收停」闭环 → 本目录三件套。
 2. **P1 建议**：把 AutoJS 通道作为 Linux 侧唯一「用例执行臂」——`docs/features/autojs-testing-flow.md（已删除 2026-11-05）` 六步流程 + 本仓 `autojs` skill；不需要键鼠，`stop.sh` 负责收尾。各线的 `run/<ver>/mods` **均已就位 AutoJS jar**（env.sh 各线报 OK，见 §9.1）；换线/重装后仍建议先跑 env.sh 复核。
-3. **P2 建议**：若必须保留「键鼠注入级」用例（GUI 拖拽/按键序列），改走 task-2 的 Wayland computer-use MCP（`act` 的 keyboard/pointer）；不要复活 `mt_inject` 的 user32 代码。
-4. **P3 建议**：`mt_ime`/`mt_capture`/`Mt.Win32` 保持 Windows-only，不强行移植；Linux 截图用 `grim` 即可。
-5. **不建议**：把 19k 行 pwsh 整体「去 Win32 化」——收益低（真正难替换的只有注入/窗口/IME 三块），且会把 Windows 侧稳定流程置于风险中。
+3. **P2 建议**：若必须保留「键鼠注入级」用例（GUI 拖拽/按键序列），改走 task-2 的 Wayland computer-use MCP（`act` 的 keyboard/pointer）；不要复活旧注入模块的 user32 代码。
+4. **P3 建议**：IME / 截图 / Win32 窗口模块保持 Windows-only，不强行移植；Linux 截图用 `grim` 即可。
+5. **不建议**：把 19k 行旧测试台整体「去 Win32 化」——收益低（真正难替换的只有注入/窗口/IME 三块），且会把 Windows 侧稳定流程置于风险中。
 
 ## 8. 已知限制与坑
 
@@ -131,7 +131,7 @@ pwsh 安装：`/home/kitsune/.local/powershell/pwsh`（7.6.9，linux-x64 tar.gz�
 
 ## 8.5 Linux 就绪判据与 Windows 的差异（2026-10-31 1.21.1 实机裁决）
 
-- **Windows 测试台**：`mt_launch.ps1` 轮询 `Total time to load game and open world was`（26.1.2 另认 `logged in with entity id` + `Loaded <N> advancements`）。其前提是测试台总用 quickplay 直接进单机世界，日志一定会出现世界加载完成行。
+- **Windows 测试台**：`scripts/test/win/mt.sh --phase launch` 轮询 `Total time to load game and open world was`（26.1.2 另认 `logged in with entity id` + `Loaded <N> advancements`）。其前提是测试台总用 quickplay 直接进单机世界，日志一定会出现世界加载完成行。
 - **Linux 实测（gradle-launcher 起的 `run/start-1.21.1.sh`，Lead 复核）**：dev 客户端默认停在**标题画面**、不会自动开世界，所以上面两行日志**根本不会出现**；而 AutoJS 在 ~97s 后就绪：
   - `GET http://127.0.0.1:25585/health` = `ok`（HTTP 200）
   - `status` 报 client `registered=true available=true state="client running, no world loaded"`

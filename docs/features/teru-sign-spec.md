@@ -195,7 +195,7 @@
 | 2 | 攻击修饰器 + `attackPowerOf/defensePowerOf` | 该线 `DiceCombatModifiers` 同构，但需按该线 `CurioApi`/组件 API 复核 |
 | 3 | 门控钩子 `canBeginSelectorSession` | 该线 `BaseSignItem` 门控分支需同步（该线立牌类数量与 1.21.1 不同） |
 | 4 | 两段式数据生成（**必经**） | `:neoforge-26.1.2:runClientData` + `:runServerData`，双输出根 `src/generated/{resources,clientResources}`；`assets/<ns>/items/<id>.json` 硬需求 |
-| 5 | 语言键 15 个 | 该线 lang 另有一套；迁移后各线各自 zh↔en 一致（`tools/check_lang_sync.ps1`） |
+| 5 | 语言键 15 个 | 该线 lang 另有一套；迁移后各线各自 zh↔en 一致（`tools/check_lang_sync.py`） |
 | 6 | 手册条目 + 标签 | 注意该线**缺 zhao 批次**（`entries/signs` 17 vs 18）⇒ 迁移顺序必须「先补 zhao、再补 teru」 |
 | 7 | 不得回移项 | 该线专有差异（如 `ItemTags.SPEARS` 近战判定）不得反向回移 |
 
@@ -205,10 +205,10 @@
 
 | 验收条 | 证据/判据 |
 |---|---|
-| 双线构建 | `scripts/test/mt_build.ps1 --version 1.21.1` / `--version 1.20.1` ⇒ `MT_BUILD: OK` |
+| 双线构建 | scripts/test/win/mt.sh --phase build --version 1.21.1` / `--version 1.20.1` ⇒ `MT_BUILD: OK` |
 | 资源落盘 | `src/generated/resources/.../teru_sign.json`（模型 + 配方 + 配方解锁 advancement）存在且时间戳更新 |
 | 产物内容 | `jar tf` 含 `TeruSignItem` / `TeruDescentEffect` / `HuguangEffect` / 三张贴图 / 手册条目 / 模型 / 配方 |
-| 语言同步 | `tools/check_lang_sync.ps1` 退出 0（各线各自「key 完全一致」，含新增 15 键） |
+| 语言同步 | `tools/check_lang_sync.py` 退出 0（各线各自「key 完全一致」，含新增 15 键） |
 | **防刷守卫 ①** | `TeruSignItem` 源码内**不出现**任何拾取事件订阅（grep 命中数 = 0） |
 | **防刷守卫 ②** | `saveToDice` 的水位写入只在 `delta > 0` 时发生；`teru_equip_watermark` 为 copyOnDeath（1.21.1 `.copyOnDeath()` 计数 = 5）/ 已在 `AstralData#onPlayerClone` 白名单（1.20.1 = 5 项） |
 | 生产物洁净 | 两线 `build/libs/*.jar` 内 `.cache` 条目 = 0（本批顺带修复了 `-next` 两线的 `exclude` 写法） |
@@ -221,8 +221,8 @@
 ### 9.1 用例与命令
 
 ```
-pwsh -File scripts/test/mt.ps1 --version 1.21.1 --phase build          # 或 env / launch
-pwsh -File scripts/test/mt.ps1 --version 1.21.1 --phase cases --case cases/TERU-SIGN-1.21.1.json
+bash scripts/test/win/mt.sh --version 1.21.1 --phase build          # 或 env / launch
+bash scripts/test/win/mt.sh --version 1.21.1 --phase cases --case cases/TERU-SIGN-1.21.1.json
 # 另三条：TERU-EXTRA-ATTACK-1.21.1 / TERU-HUGUANG-ANTIFARM-1.21.1 / LULU-SIGN-1.21.1（1.20.1 同名换版本号）
 ```
 

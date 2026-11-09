@@ -1,4 +1,5 @@
 # multi-dev-next 线交接：主线 1.5.0 正式版之后（2026-11-02）
+<!-- 历史记录：文中旧 shell 命令已于 2026-11-09 全部废弃，现用 bash 测试台（scripts/test/win/mt.sh）与 windows MCP，仅作溯源。 -->
 
 > **一句话**：dev 线（`26.4-SNAPSHOT.5`）的基线停在主线 **1.5.0-rc.7 时期**（合并点 `06fef75a`）；主线已于 2026-11-02 发布 **1.5.0 正式版**（tag `1.5.0` = `6fe38138`）。本文件给出「哪 36 个提交待吸收、吸收时要守住什么、吸收后怎么验」。
 > **位置**：`F:/MCProject/astral_dice_multiloader-next` = 主仓的 **git worktree**（分支 `multi-dev-next`），不是独立 clone；`.git` 用**相对路径** gitdir（Windows / Linux 双端可解析），细节见 `docs/handover-2026-10-31-dev-next-linux-sync.md（已删除 2026-11-05）` §2。
@@ -123,7 +124,7 @@ done
 | 6 | 各线构建 | 各线 `build` 各自 BUILD SUCCESSFUL，jar 落在 `<line>/build/libs/` 且在仓根 `build/libs/` |
 | 7 | fabric 客户端 | 直接 `gradlew :fabric-1.20.1:runClient --console=plain -PautojsTestMod=1 -PtestSodium=false -Pquickplay=testworld`（`launch.sh` **不透传** `-PtestSodium=false`，而 Sodium 版本不匹配会崩） |
 | 8 | 26.1.2 启动 | 只能走 production 形态 `python run/26.1.2/.tmp/prodlaunch.py --quickplay testworld --log <log>`（dev/userdev 形态必触发 YSM err54）。**该路径只在主线树存在**，dev-next 需先合并或自行补引导器 |
-| 9 | 用例合法性 | `pwsh -File scripts/test/mt_case.ps1 validate --case <json>` ⇒ `MT_VALIDATE: OK` |
+| 9 | 用例合法性 | `bash scripts/test/win/mt.sh --phase cases validate --case <json>` ⇒ `MT_VALIDATE: OK` |
 
 ## 7 已知坑（本次实战踩出来的，直接抄）
 
@@ -145,11 +146,11 @@ done
 - 上传 P1 两线（26.1.2 / fabric）必须 `--allow-p1`，否则脚本判 BLOCKED；库 jar 会自动改道到库项目 `1755415` 并自动 `--no-relations`。
 
 **实机 / 测试台**
-- AutoJS 端点 `25585` 在脚本里**各线硬编码**（`mt_launch.ps1:1094`(主线) / `:999`(dev)；`mt_assert.ps1:140`(两树同)；`mt_case.ps1:269`(主线) / `:149`(dev)）⇒ **同一时刻只能一条线占着**；`25585` / `25565` 被占时**绝不能 launch**，否则注入打进别人那台游戏，产生跨线污染的假绿。
+- AutoJS 端点 `25585` 在脚本里**各线硬编码**（`scripts/test/win/mt.sh --phase launch:1094`(主线) / `:999`(dev)；`scripts/test/mt_assert.py:140`(两树同)；`scripts/test/win/mt.sh --phase cases:269`(主线) / `:149`(dev)）⇒ **同一时刻只能一条线占着**；`25585` / `25565` 被占时**绝不能 launch**，否则注入打进别人那台游戏，产生跨线污染的假绿。
 - AutoJS 的 `command()` 走 `MinecraftServer.createCommandSourceStack()` ⇒ `@s` 解析成 console、没有玩家，**选择器一律 `@a`**。
-- `--phase preflight` 不是合法单阶段（`mt.ps1:552`(主线) / `:499`(dev) 不认），正确入口是 `scripts/test/mt_preflight.ps1 --version <线>`；`-?` 是陷阱，要 `--help`。
-- `mt_env.ps1 world` 默认 180s（`Invoke-MtEnvWorld [int]$Timeout = 180`），大世界易 BLOCKED；`mt.ps1:478`(主线) / `:429`(dev) 调它时**不转发 `--timeout`**，需要时直接跑 `mt_env.ps1 world --version <线> --timeout 900`。
-- 每轮结束必须 `mt.ps1 --version <线> --phase stop --force --purge-saves` 放端口。
+- `--phase preflight` 不是合法单阶段（`scripts/test/win/mt.sh:552`(主线) / `:499`(dev) 不认），正确入口是 scripts/test/mt_preflight.py --version <线>`；`-?` 是陷阱，要 `--help`。
+- `scripts/test/win/mt.sh --phase env world` 默认 180s（`Invoke-MtEnvWorld [int]$Timeout = 180`），大世界易 BLOCKED；`scripts/test/win/mt.sh:478`(主线) / `:429`(dev) 调它时**不转发 `--timeout`**，需要时直接跑 `scripts/test/win/mt.sh --phase env world --version <线> --timeout 900`。
+- 每轮结束必须 `scripts/test/win/mt.sh --version <线> --phase stop --force --purge-saves` 放端口。
 - 截图 `Screenshot.grab(...)` 是**异步落盘**的，grab 之后要等 ~2s 再复制，否则拿到 0 字节；F2 截图的 tag→文件名映射只在 `run/<ver>/screenshots/.mt_shots.json`，断言必须经 `Get-MtCurrentShots(run_id)`，不许 glob。
 - 鼠标 hover 取证：屏幕坐标 = 窗口 origin + gui 坐标 × guiScale（本次实例 origin `(320,180)`、guiScale `4`），`AbstractContainerScreen` 的 `leftPos/topPos/hoveredSlot` 可反射读。
 
@@ -163,7 +164,7 @@ done
 - **版本方案**：`<year>.<quarter>-SNAPSHOT.<n>`（当前 `26.4-SNAPSHOT.5`），按提交递增，不跟 1.5.0 那套发版节奏。
 - **StarEngine**：走 `starengine_next` worktree 的 `26.4-SNAPSHOT.1`，与主线 `1.1.0` 是**两套东西**，引脚与区间都要按本线改。
 - **独有功能**：GeckoLib 硬前置（要写 Modrinth **version id**，写纯版本号会解析错平台变体）、动画实体 `astral_dice:sykestentacle`、mob 侧骰战参与者与特殊骰能力注册接口。
-- **规则正本**：`docs/agent/AGENTS-dsh-linux.md`（原生 Linux）。主线文档里的 Windows 口径（pwsh 绝对路径、`F:\` 盘符等）在本线只作对照。
+- **规则正本**：`docs/agent/AGENTS-dsh-linux.md`（原生 Linux）。主线文档里的 Windows 口径（旧 shell 绝对路径、`F:\` 盘符等）在本线只作对照。
 
 ## 9 未完成 / 待裁决（从主线侧承接过来）
 

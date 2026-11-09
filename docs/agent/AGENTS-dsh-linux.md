@@ -125,7 +125,7 @@
 - **出网 = clash-verge-rev TUN 全局接管，直连**（2026-10-31 用户裁决 + 实读 `/configs`：`tun.enable=true`、`device=Meta`、`auto-route=true`、`inet4-address=198.18.0.1/30`，内核 mihomo `v1.19.32`）⇒ 远程 git **直接执行，不加 `-c http.proxy=…`**，也不要 `export *_proxy`（环境里本来就没有）。
   - **仓库 `.git/config` 仍有 `http.proxy`/`https.proxy` = `http://127.0.0.1:7897`**（Windows 期遗留、与 Windows 共用，**不要改**）。7897 仍在听，走它也能通；要单条命令**严格直连**就 `git -c http.proxy= -c https.proxy= <子命令>` 覆盖，**不要** `git config --unset`。
   - 查代理状态用 clash-verge-rev 外部控制：`curl -s -H 'Authorization: Bearer <secret>' http://127.0.0.1:9097/configs`（`/version` 看内核）；`secret` 取 `~/.local/share/io.github.clash-verge-rev.clash-verge-rev/config.yaml` 的 `secret:` 字段 —— **不要把明文 secret 写进仓库或日志**。`401 Unauthorized` 是 secret 不对，不代表断网。
-- **git hooks 在 Linux 上空转**：四个 hook 是三段 pwsh 探测版，本机 PATH 无 pwsh（`/mnt/c` 里是 Windows PE，不可执行）⇒ 静默 `exit 0`，松散引用自愈不执行；遇 `HEAD -> unknown revision` 先查 `git reflog`。提交前**手动**跑 `python3 -B docs/agent/verify-split.py`（四项 `[OK]`）与 `python3 tools/verify_sign_display_names.py`（`GATE: PASS`）。
+- **git hooks 在 Linux 上空转**：四个 hook 是三段 旧 shell 探测版，本机 PATH 无 旧 shell（`/mnt/c` 里是 Windows PE，不可执行）⇒ 静默 `exit 0`，松散引用自愈不执行；遇 `HEAD -> unknown revision` 先查 `git reflog`。提交前**手动**跑 `python3 -B docs/agent/verify-split.py`（四项 `[OK]`）与 `python3 tools/verify_sign_display_names.py`（`GATE: PASS`）。
 
 ### 8. 测试收尾必须关闭游戏进程（2026-10-18 裁决的 Linux 版）
 
@@ -202,7 +202,7 @@
 | 出网 / git 代理 | **2026-10-31 用户裁决改写**：clash-verge-rev **TUN 模式**全局接管（`tun.enable=true` / `198.18.0.1/30`）⇒ **直连，不再带 `-c http.proxy=`**；仓库 `.git/config` 的 `http(s).proxy=127.0.0.1:7897` 与 Windows 共用、**不改**，严格直连用命令级 `-c http.proxy= -c https.proxy=`；状态查 `127.0.0.1:9097`（Bearer secret） |
 | 默认不 commit / push / 打 tag | **不变**（最严格红线） |
 | `models/` `images/` `sound/` 与 `run/` 内他人产物 | **不变**：出现不属于自己的改动 ⇒ 停手报告，不 add/commit/stash/checkout/删除 |
-| 「Windows 开发配置不可动」 | **新增（2026-10-31 用户硬约束）**：本机与 Windows 共用同一块盘；只改 Linux 侧需要的文件，不删 / 不改 Windows 专属配置（`mt.conf` 的 Windows 路径、`*.ps1`、`gradlew.bat`、`run/start-*.bat`、`.vscode` 的 `F:\` 配置一律保留原样） |
+| 「Windows 开发配置不可动」 | **新增（2026-10-31 用户硬约束）**：本机与 Windows 共用同一块盘；只改 Linux 侧需要的文件，不删 / 不改 Windows 专属配置（`mt.conf` 的 Windows 路径、旧脚本（已删除）、`gradlew.bat`、`run/start-*.bat`、`.vscode` 的 `F:\` 配置一律保留原样） |
 
 - 优先级与基线（P0 = `neoforge-1.21.1` + `forge-1.20.1`；P1 = `neoforge-26.1.2` + `fabric-1.20.1`，`1.5.0` 正式版前不验证、不移植）、包根 `com.merlinkitsune.astral_dice`、fabric 内嵌库前置 `python3 tools/loom_embedded_jars.py --apply`（KI-F23）—— 全部**与宿主无关，原文有效**。
 
@@ -226,7 +226,7 @@
 
 ## 命令执行规范（bash；Windows 宿主同一套 bash 口径，见 `docs/agent/AGENTS-dsh.md`〈⚙️ 环境与工具链口径〉）
 
-1. **一律 bash**（`SHELL=/bin/bash`，实读）；脚本首行 `#!/usr/bin/env bash` + `set -euo pipefail`。**禁止**再写 PowerShell / `.ps1` 结论性命令（系统 PATH 无 pwsh；`*.ps1` 是 Windows 历史工具，Linux 侧不调用）。**不再新增** `.ps1` / `.psm1`（pwsh 测试资产已按 `docs/features/devnext-pwsh-retirement-register.md` 退役；Windows 侧同一口径，入口 `bash scripts/test/win/mt.sh`）。
+1. **一律 bash**（`SHELL=/bin/bash`，实读）；脚本首行 `#!/usr/bin/env bash` + `set -euo pipefail`。**禁止**再写 Windows 旧 shell 结论性命令（系统 PATH 无该解释器；旧件是 Windows 历史工具，Linux 侧不调用）。**不再新增**旧脚本 / 旧脚本模块（旧测试资产已按 `docs/features/` 下的测试资产退役登记文档退役；Windows 侧同一口径，入口 `bash scripts/test/win/mt.sh`）。
 2. **禁止 `bash -c` 塞多行/嵌套引号**：多行逻辑落 `temp/tNN/<name>.sh`，显式 `bash /绝对路径/...sh` 执行，`tNN` = 本轮批次号（不入库）。
 3. **长命令给超时**：`timeout --signal=TERM 300s <cmd>`；超时是独立结论（TIMEOUT ≠ FAIL ≠ ERROR）。长流程另落日志。
 4. **后台任务**：`setsid bash /绝对路径/x.sh > temp/tNN/x.log 2>&1 &`，PID 记 `temp/tNN/x.pid`；禁止无日志裸跑；收尾按进程组杀 `kill -TERM -- -<PGID>`。
@@ -252,7 +252,7 @@
 - 工具面：`get_app_state` / `screenshot` / `list_windows` / `focused_window` / `activate_window` / `click` / `scroll` / `drag` / `type_text` / `press_key` / `set_value` / `perform_action` / `move_window` / `resize_window`；配 `mcp__screen-ocr__ocr_screen|ocr_find|ocr_image` 做屏幕文字定位（比纯坐标稳）。
 - **本机缺的输入工具**（实读，不要假设存在）：`xdotool`、`wtype`、`wmctrl`、`grim`、`kdotool` **未安装**；`ydotool` 已装但**没有 socket**（`/run/user/1000/.ydotool_socket` 不存在），不要用它。`spectacle` 已装（`/usr/bin/spectacle`），可做 KDE 原生截图兜底：`spectacle -b -n -a -o /tmp/mc-world.png`。
 - **GUI 级驱动只在需要时用**：文字/坐标注入优先 `computer-use-linux` 的语义选择器（role/name），退而用坐标；坐标以**返回截图的 `coordinate_width/height`** 为准（可能被降采样），不要拿物理分辨率换算。
-- **驱动优先级（2026-10-31 沿用）**：游戏内输入/状态读写**首选 AutoJS `eval_js`**（脚本上下文直接操作，绕过窗口焦点问题）；GUI 级（建世界、开关菜单）用 `computer-use-linux` / `spectacle` + OCR；Windows 侧的 `scripts/test/mt_inject.py`（ctypes user32 注入；原 `mt_inject.ps1` 的替代物，旧件仅作溯源）是 **Windows-only**，Linux 无等价实现。
+- **驱动优先级（2026-10-31 沿用）**：游戏内输入/状态读写**首选 AutoJS `eval_js`**（脚本上下文直接操作，绕过窗口焦点问题）；GUI 级（建世界、开关菜单）用 `computer-use-linux` / `spectacle` + OCR；Windows 侧的 `scripts/test/mt_inject.py`（ctypes user32 注入；原 `windows MCP 的 Click/Move/Type 输入` 的替代物，旧件仅作溯源）是 **Windows-only**，Linux 无等价实现。
 - 游戏窗口是 **X11（XWayland）窗口**，`xwininfo -root -tree | grep -i minecraft` 可核对标题/几何；**GLFW 不暴露 AT-SPI**，`list_windows` 里可能看不到 MC —— 看不到就走整屏截图 + 坐标，不要卡在这里。
 - 截图证据一律落 `temp/tNN/`（不入库）；不得用固定外部目录。
 
@@ -278,8 +278,8 @@
 
 ## 🧪 测试台现状（Linux）
 
-- Windows 测试台（**迁移前实读快照 = 历史记录；现行执行口径见上**）：原 `scripts/test/mt.ps1` 851 行，入口 `mt.ps1 --phase <preflight|build|env|launch|cases|report|stop>`；全部 PowerShell 合计约 19,384 行。**整台不可移植**，且按红线**不改它**（该 pwsh 台已按 `docs/features/devnext-pwsh-retirement-register.md` 退役，仅作溯源）。Windows 侧现行入口 = `bash scripts/test/win/mt.sh --phase <preflight|env|build|launch|cases|report|stop>`（bash 由 MSYS2 / git bash 提供）；Linux 侧只用 bash 台。
-- **Linux 测试入口 = `scripts/test/linux/{env,launch,stop}.sh`**（bash，零 pwsh 依赖；`scripts/test/linux/README.md` 为完整操作说明）：
+- Windows 测试台（**迁移前实读快照 = 历史记录；现行执行口径见上**）：原 scripts/test/win/mt.sh 851 行，入口 `scripts/test/win/mt.sh --phase <preflight|build|env|launch|cases|report|stop>`；全部 旧 shell 合计约 19,384 行。**整台不可移植**，且按红线**不改它**（该 旧 shell 台已按 `docs/features/devnext-test-asset-retirement-register.md` 退役，仅作溯源）。Windows 侧现行入口 = `bash scripts/test/win/mt.sh --phase <preflight|env|build|launch|cases|report|stop>`（bash 由 MSYS2 / git bash 提供）；Linux 侧只用 bash 台。
+- **Linux 测试入口 = `scripts/test/linux/{env,launch,stop}.sh`**（bash，零 旧 shell 依赖；`scripts/test/linux/README.md` 为完整操作说明）：
   - `env.sh [--version <线>] [--quiet]`：**只读**环境检查（仓库/挂载、各线 JDK 与 `run/`、`mods/` 与 autojs·rhino jar、AutoJS `/health`、客户端残留、锁、Gradle 守护）；机器行 `CHECK: <key>=OK|WARN|FAIL` + 收尾 `ENV_RESULT: OK|WARN|FAIL`；退出码 `0` 无 FAIL / `1` 有 FAIL / `2` 用法错误。
     - 2026-10-31 真机首跑（本批改路径前）：`ENV_RESULT: WARN — 0 项阻塞，3 项提示`；改后重跑见 `docs/handover-2026-10-31-native-linux-migration.md`。
     - 键名变化：`hgfs_writable` → **`repo_writable`**（`ntfs3/ext4` 走 OK 分支并注明链接实测可用）；新增 `locks_stale`（陈旧锁检测，只报不删）；`mt.conf` 的 Windows 路径提示从 WARN 降为 INFO（Windows 台配置，Linux 不动）。
@@ -301,7 +301,7 @@
   - 1.20.1 首启曾因 Jade 11.13.3 的 dev-only `Missing config translation` 断言崩在标题屏（已在三语 lang 补 `config.jade.plugin_astral_dice.{shop_cooldown,event_drawer_cost}` 修复）；1.21.1 是 Jade 15.10.6 无该断言。
   - `run/26.1.2/mods/` 残留旧 `astral_dice-1.3.7-beta.2+neoforge_26.1.2.jar`，建议清理（未做）。
 - 规则层继续有效（与实现无关）：禁批量编排、单条手动、`FAIL` / `ERROR` / `TIMEOUT` / `BLOCKED` 语义不混同、测试顺序 1.21.1 先行、1.20.1 门控（未过记 `GATED`）、断言以服务端权威日志 `AP_<tag>_<KEY>` 为准、报告不得放宽口径。
-- 静态守门：纯 python 守门**可跑**——`python3 -B docs/agent/verify-split.py`（2026-10-31 实跑：全部通过）、`python3 tools/verify_sign_display_names.py`（`GATE: PASS`）、`python3 tools/audit_patchouli_keys.py`、`python3 -B tools/loom_embedded_jars.py`、`python3 scripts/test/lib/mt_case.py validate`。`scripts/` 与 `tools/` 下的 `.ps1` 是 **Windows 历史工具**，Linux 侧**不调用**；其余门禁在 Linux 下**手段缺失**，不得假装通过，也不得把「没跑」写成「已通过」。
+- 静态守门：纯 python 守门**可跑**——`python3 -B docs/agent/verify-split.py`（2026-10-31 实跑：全部通过）、`python3 tools/verify_sign_display_names.py`（`GATE: PASS`）、`python3 tools/audit_patchouli_keys.py`、`python3 -B tools/loom_embedded_jars.py`、`python3 scripts/test/lib/mt_case.py validate`。`scripts/` 与 `tools/` 下已无旧件（Windows 历史工具已删除），Linux 侧**不调用**；其余门禁在 Linux 下**手段缺失**，不得假装通过，也不得把「没跑」写成「已通过」。
 - 实机一律等用户明确下达；未授权时只做编译 + 静态守门。
 
 ## 互斥锁与并发

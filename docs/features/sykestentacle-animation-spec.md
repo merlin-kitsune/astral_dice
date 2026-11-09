@@ -88,7 +88,7 @@
 
 ## 5. 取证方式（可复现）
 
-- 启动：`Start-Process 'C:/Users/xmace/AppData/Local/Programs/Blockbench/Blockbench.exe'`，端口 `3000`（端点 `/bb-mcp`）约 2 s 就绪。
+- 启动：运行 `C:/Users/xmace/AppData/Local/Programs/Blockbench/Blockbench.exe`（Agent 侧由 windows MCP 启动），端口 `3000`（端点 `/bb-mcp`）约 2 s 就绪。
 - 载入：`risky_eval` 里 `Codecs.project.load(JSON.parse(文件内容), { path: <绝对路径>, no_file: true })`。
 - 注意：同一 MCP 会话里工具面会变化（本次曾先见 17 个工具、重开会话后 77 个），且 `tools/call` 必须带请求头 `MCP-Protocol-Version: 2025-06-18`，否则服务端回 `Parse error: Invalid JSON-RPC message`。
 

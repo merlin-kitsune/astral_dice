@@ -1,4 +1,5 @@
 # 选卡界面 + Jade 商店冷却倒计时 · 实机验证报告（forge-1.20.1）
+<!-- 历史记录：文中旧 shell 命令已于 2026-11-09 全部废弃，现用 bash 测试台（scripts/test/win/mt.sh）与 windows MCP，仅作溯源。 -->
 
 - **线 / 加载器 / MC**：`forge-1.20.1` / Forge 47.4.10 / Minecraft 1.20.1（Java 17）
 - **日期**：2026-10-17（实机时段 18:35–18:50）
@@ -59,7 +60,7 @@ pushToDevRun: pushed astral_dice-2.0.0-SNAPSHOT.128+forge_1.20.1.jar -> ...\run\
 
 ### 1.3 并发约束（如实登记）
 
-`mt_launch.ps1` 的防撞预检是**全机**判定（不分版本）：只要存在任一 MC 客户端就 `BLOCKED`。因此本线与 1.21.1 线**无法真正并行**；本轮先后经历 3 次等待/重试（17:20–18:35）才取得独占窗口。
+`scripts/test/win/mt.sh --phase launch` 的防撞预检是**全机**判定（不分版本）：只要存在任一 MC 客户端就 `BLOCKED`。因此本线与 1.21.1 线**无法真正并行**；本轮先后经历 3 次等待/重试（17:20–18:35）才取得独占窗口。
 
 ## 2. 方法与探针（已全部删除）
 
@@ -284,7 +285,7 @@ MT_CLEANUP: 已收停 0 个本流程进程（范围：1.20.1）
 MT_CLEANUP_RESULT: OK
 ```
 
-（`PURGED 0` 是因为前一条 `mt.ps1 --phase stop --purge-saves` 已先完成清档；`run/1.20.1/saves` 现已不存在。
+（`PURGED 0` 是因为前一条 `scripts/test/win/mt.sh --phase stop --purge-saves` 已先完成清档；`run/1.20.1/saves` 现已不存在。
  本流程 java 客户端残留数 = 0；Gradle 守护按规则保留。）
 
 - 未执行 `git commit` / `git push`。
@@ -424,7 +425,7 @@ gradlew.bat :forge-1.20.1:runClient -PtestJade=false -Pquickplay=testworld --con
 | `mt_launch_20261017-202622.log` | `PREFLIGHT_OP: OK` | **1** |
 
 - **本线 11 次冷启动：10 次进入 preflight-op，其中 9 次首次注入即成功**（无需手工重注）；未再出现 D4-1 描述的「T 键被吞 / 文本合并成 `t/astralprobe opprobe/astralprobe opprobe`」形态。余 1 次在 preflight 之前即被 GLFW 崩溃打断（见 R5）。
-- 唯一 1 次 ERROR 的真实形态是**子进程未执行**：`$LASTEXITCODE` 为空（`注入返回码 /`），游戏侧没有对应聊天行；重试 3 次同样为空 ⇒ 属**测试工具链**（嵌套 `& pwsh -File ...`）问题，不是探针/产品缺陷，也不是 D4-1 的原症状。
+- 唯一 1 次 ERROR 的真实形态是**子进程未执行**：`$LASTEXITCODE` 为空（`注入返回码 /`），游戏侧没有对应聊天行；重试 3 次同样为空 ⇒ 属**测试工具链**（嵌套 `& bash ...`）问题，不是探针/产品缺陷，也不是 D4-1 的原症状。
 
 ### R5 · 阻塞项与工具链取证（只登记，未改动产品代码）
 
@@ -434,7 +435,7 @@ gradlew.bat :forge-1.20.1:runClient -PtestJade=false -Pquickplay=testworld --con
    Java frames: ... com.mojang.blaze3d.platform.Window.updateDisplay()V → RenderSystem.flipFrame
    ```
    触发时机与**另一条线（1.21.1）客户端冷启动**高度重合（例：本线 20:21:07 崩溃，1.21.1 的 `Total time to load game` = 20:21:24；20:06:34 两线客户端同秒消失）。`-P` 无关、关光影（`mt_env shaders --state off`）也不消除 ⇒ 判定为**本机双 GL 客户端并存的驱动级问题**，不是本模组缺陷。可用窗口 = 对方客户端不在启动/关闭的时段（本轮 20:23–20:27 的读数即在该窗口取得）。
-2. **`doImmediateRespawn` 硬闸门假 ERROR**：`mt_launch.ps1` 的闸门在两次注入后仅 `600ms` 就读日志；实测原版回显在第 2 条注入后 **~2.4s** 才落盘（20:15:31 注入 → 20:15:34 `[CHAT] 已将游戏规则doImmediateRespawn设为true`）⇒ 20:14:51 那次虽然规则**已生效**，闸门仍判 `MT_LAUNCH: ERROR`（`注入返回码 /`）。同批 `$LASTEXITCODE` 为空也是同一嵌套进程问题的表象。
+2. **`doImmediateRespawn` 硬闸门假 ERROR**：`scripts/test/win/mt.sh --phase launch` 的闸门在两次注入后仅 `600ms` 就读日志；实测原版回显在第 2 条注入后 **~2.4s** 才落盘（20:15:31 注入 → 20:15:34 `[CHAT] 已将游戏规则doImmediateRespawn设为true`）⇒ 20:14:51 那次虽然规则**已生效**，闸门仍判 `MT_LAUNCH: ERROR`（`注入返回码 /`）。同批 `$LASTEXITCODE` 为空也是同一嵌套进程问题的表象。
 3. **影响**：`--phase launch` 因此多数轮次返回 `rc=2`，但客户端实际已进入世界；本轮改为「launch 后手工确认 gamerule + prep/open」继续执行，所有读数均建立在真实世界里（`Total time to load game` 已出现、`AP_NOAI` 心跳正常、服务端/客户端快照一致）。
 
 ### R6 · 交付物与收尾
@@ -444,7 +445,7 @@ gradlew.bat :forge-1.20.1:runClient -PtestJade=false -Pquickplay=testworld --con
   - `scripts/test/cases/CC-DBLCLICK-1.20.1.json`（双击恰好 1 张）
   - `scripts/test/cases/CC-RIGHTCLICK-1.20.1.json`（右键口径专项：吞空光标 / 放行携带物 / 非卡物品）
   - `scripts/test/cases/JADE-NOJADE-1.20.1.json`（`-PtestJade=false` 启动）
-- **临时探针已删除（两侧）**：`scripts/test/resources/kubejs/1.20.1/{server_scripts/astral_cc2_probe.js,client_scripts/astral_cc2_client.js}`、`run/1.20.1/kubejs/{server_scripts,client_scripts}/astral_cc2_*.js`、`temp/cc2_*.ps1`。
+- **临时探针已删除（两侧）**：`scripts/test/resources/kubejs/1.20.1/{server_scripts/astral_cc2_probe.js,client_scripts/astral_cc2_client.js}`、`run/1.20.1/kubejs/{server_scripts,client_scripts}/astral_cc2_*.js`、`temp/cc2_旧脚本（已删除）。
 - **收停 + 清档**：
   ```
   MT_CLEANUP: 指定了 --version，保留 Gradle 守护进程
@@ -452,5 +453,5 @@ gradlew.bat :forge-1.20.1:runClient -PtestJade=false -Pquickplay=testworld --con
   MT_CLEANUP: 已收停 0 个本流程进程（范围：1.20.1）
   MT_CLEANUP_RESULT: OK
   ```
-  （前一条 `mt.ps1 --version 1.20.1 --phase stop --purge-saves` 已完成清档；`run/1.20.1/saves` 现为空，本线 java 客户端残留 = 0。）
+  （前一条 `scripts/test/win/mt.sh --version 1.20.1 --phase stop --purge-saves` 已完成清档；`run/1.20.1/saves` 现为空，本线 java 客户端残留 = 0。）
 - 未执行 `git commit` / `git push`。

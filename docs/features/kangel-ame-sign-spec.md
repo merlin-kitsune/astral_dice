@@ -130,15 +130,15 @@
 - tooltip：`tooltip.astral_dice.sign.kangel_active` / `kangel_passive` / `kangel_note` / `kangel_fans`；`tooltip.astral_dice.sign.ame_active` / `ame_passive` / `ame_note` / `ame_love_layers`
 - actionbar：`msg.astral_dice.kangel_*`（主动结果：获得星币数/回满/友方发放）、`msg.astral_dice.ame_*`（主动结果、到期结算）
 - guide：§5 六键
-- 守门：`tools/check_lang_sync.ps1` 两线 exit=0；`scripts/audit/tooltip_color_audit.ps1` PASS。
+- 守门：`tools/check_lang_sync.py` 两线 exit=0；`scripts/audit/tooltip_color_audit.py` PASS。
 
 ## 7. 验收守门（两线全绿为准）
 
-- `scripts/test/mt_build.ps1`（Windows 侧 pwsh 互操作）两线 OK；
+- scripts/test/win/mt.sh --phase build（Windows 侧 旧 shell 互操作）两线 OK；
 - 两线 `runData`：模型 + 配方 + 进度各 2 组生成物落盘并提交；
-- `scripts/verify/verify_crafting_recipe_uniqueness.ps1`：两条新配方 0 碰撞；
+- `scripts/verify/verify_crafting_recipe_uniqueness.py`：两条新配方 0 碰撞；
 - `tools/verify_effect_icons.py`：3 新效果图标覆盖；
-- `tools/audit_patchouli_keys.py`、`tools/check_lang_sync.ps1`、`scripts/audit/tooltip_color_audit.ps1`、`verify_bountiful_pools.ps1`（回归）、`scripts/verify/verify_resource_integrity.ps1`。
+- `tools/audit_patchouli_keys.py`、`tools/check_lang_sync.py`、`scripts/audit/tooltip_color_audit.py`、`verify_bountiful_pools.py`（回归）、`scripts/verify/verify_resource_integrity.py`。
 - 版本号各线同步 bump（.127 → .128，含未改动的 P1 两线）；两份 CHANGELOG 各 +1 条；AGENTS.md 立牌/效果/lang 计数**实测后订正**。
 
 ## 8. 假定（用户未指定，按既有口径锁定）

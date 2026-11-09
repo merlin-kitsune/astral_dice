@@ -1,4 +1,5 @@
 # 实机验证报告：选卡界面（§9 八条）+ Jade 三店倒计时（§5 五条）（2.0.0-SNAPSHOT.128，2026-10-17）
+<!-- 历史记录：文中旧 shell 命令已于 2026-11-09 全部废弃，现用 bash 测试台（scripts/test/win/mt.sh）与 windows MCP，仅作溯源。 -->
 
 - 被测线：`neoforge-1.21.1`（MC 1.21.1 / NeoForge 21.1.235 / Java 21）
 - 工作树：`/mnt/f/MCProject/astral_dice_multiloader-next`（分支 `multi-dev-next`，HEAD = `f7ee13e0`）
@@ -45,7 +46,7 @@
 ## 1. 构建与产物核对
 
 ```
-$ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --phase build
+$ bash scripts/test/win/mt.sh --version 1.21.1 --phase build
 MT_INFO: [尝试 1/3] gradlew :neoforge-1.21.1:build (超时 60s)
 MT_BUILD: OK (2s) — 产物已更新：astral_dice-2.0.0-SNAPSHOT.128+neoforge_1.21.1.jar
 
@@ -78,7 +79,7 @@ bed6443296ccceb02f0e1a70bb08de71ec78478e55f4e094a221aa8b61181141  .../run/1.21.1
    - Rhino 实测坑：`ServerLevel.getGameTime()` **不可见**（`Cannot find function getGameTime`）；
      可用的是 `p.level.dayTime()`（同一世界时间轴，本轮实测 `dayTime == server.tickCount == 240`，且全程未 `/time set`）。
 2. **客户端探针**（`client_scripts/astral_cc_client.js`）
-   - `mt_inject.ps1` 的真鼠标**没有坐标参数**（只能打窗口中心），且**界面开着时 T 键被 GUI 吞掉**（命令注入失效）；
+   - `windows MCP 的 Click/Move/Type 输入` 的真鼠标**没有坐标参数**（只能打窗口中心），且**界面开着时 T 键被 GUI 吞掉**（命令注入失效）；
    - 因此由客户端脚本调用屏幕自己的**公开事件入口** `mouseClicked / mouseDragged / mouseReleased / onClose`，
      传**绝对 GUI 坐标**（`getGuiLeft()/getGuiTop() + 相对值`）——卡牌移动仍由原版点击包走
      「客户端 → 服务端菜单」，与真人操作同一条产品路径；
@@ -153,7 +154,7 @@ AP_CARD_CHOICE: abandon:346xxx:player=Dev:consumed=0
 AP_CCC:SCREEN:closed:...:inv={0:astral_dice:attack_card_mediumx1,1:astral_dice:attack_card_largex1}
 AP_CCC:AFTER_CLOSE:inv={0:...mediumx1,1:...largex1}
 ```
-（Esc 由 `mt_inject.ps1 key --key escape` 注入**真实按键**；断言另含 `absent AP_CC:HANDLER:`。）
+（Esc 由 `windows MCP 的 Click/Move/Type 输入 key --key escape` 注入**真实按键**；断言另含 `absent AP_CC:HANDLER:`。）
 
 ### 3.7 拖到已占用格（CC-OCCUPIED）
 ```
@@ -277,16 +278,16 @@ AP_CC:CDSET:kind=clear:secs=0:...
 ## 6. 收尾与工作区状态
 
 ```
-$ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --phase stop --purge-saves
+$ bash scripts/test/win/mt.sh --version 1.21.1 --phase stop --purge-saves
 ===== MT_PHASE: stop =====
 MT_WARN: STOP: 收停后仍有残留（= 保留的 Gradle 守护进程，见下）
 
-$ pwsh -NoProfile -File scripts/test/mt_cleanup.ps1 status
+$ bash scripts/test/win/mt.sh --phase stop status
 本流程进程 0 个：
 Gradle 守护进程 1 个：  PID=31428 (Zulu 21, Gradle daemon)
 MT_CLEANUP_STATUS: RESIDUAL — 仍有残留
 
-$ pwsh -NoProfile -File scripts/test/mt_cleanup.ps1 run --version 1.21.1 --purge-saves
+$ bash scripts/test/win/mt.sh --phase stop run --version 1.21.1 --purge-saves
 MT_CLEANUP: 指定了 --version，保留 Gradle 守护进程
 MT_CLEANUP_SAVES: PURGED 0
 MT_CLEANUP: 已收停 0 个本流程进程（范围：1.21.1）
@@ -339,7 +340,7 @@ MT_CLEANUP_RESULT: OK
 | `temp/ccjade-20261017/logs/kubejs_{server,client}.log` | KubeJS 两侧日志（server 0 errors） |
 | `temp/ccjade-20261017/shots/jade-*.png` | Jade 悬浮框截图（F2，已登记世代） |
 | `temp/ccjade-20261017/shots/cc-*.png` | 选卡界面自截图（1/3 无按钮、3/3 有按钮、类型过滤、已占用格、死亡前） |
-| `temp/ccjade-20261017/probe-backup/` | 两支临时探针的原始副本（复跑时放回 `scripts/test/resources/kubejs/1.21.1/` + `mt_env.ps1 kubejs` + 冷启动即可） |
+| `temp/ccjade-20261017/probe-backup/` | 两支临时探针的原始副本（复跑时放回 `scripts/test/resources/kubejs/1.21.1/` + `scripts/test/win/mt.sh --phase env kubejs` + 冷启动即可） |
 | `temp/ccjade-20261017/{build,env,world*,launch*,final-stop}.log` | 构建/环境/启动/收尾日志 |
 
 ---
@@ -353,16 +354,16 @@ cp temp/ccjade-20261017/probe-backup/scripts__test__resources__kubejs__1.21.1__s
 cp temp/ccjade-20261017/probe-backup/scripts__test__resources__kubejs__1.21.1__client_scripts__astral_cc_client.js \
    scripts/test/resources/kubejs/1.21.1/client_scripts/astral_cc_client.js
 
-pwsh -NoProfile -File scripts/test/mt_env.ps1 kubejs --version 1.21.1
-pwsh -NoProfile -File scripts/test/mt_env.ps1 world --version 1.21.1
-pwsh -NoProfile -File scripts/test/mt.ps1  --version 1.21.1 --phase launch
+bash scripts/test/win/mt.sh --phase env kubejs --version 1.21.1
+bash scripts/test/win/mt.sh --phase env world --version 1.21.1
+bash scripts/test/win/mt.sh  --version 1.21.1 --phase launch
 # 2) 逐条（每条用例单独一次执行；Jade 三条无状态耦合）
 for c in CC-DBLCLICK CC-DRAG CC-FILTER CC-INCOMPLETE CC-CONFIRM CC-ESC CC-OCCUPIED CC-DEATH \
          JADE-CARD JADE-CHIP JADE-DRAWER; do
-  pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --phase cases --case "scripts/test/cases/$c-1.21.1.json"
+  bash scripts/test/win/mt.sh --version 1.21.1 --phase cases --case "scripts/test/cases/$c-1.21.1.json"
 done
 # 3) 收尾
-pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --phase stop --purge-saves
+bash scripts/test/win/mt.sh --version 1.21.1 --phase stop --purge-saves
 ```
 
 ---
@@ -390,7 +391,7 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --phase stop --purge-
 ### 9.1 构建与部署
 
 ```
-$ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --phase build
+$ bash scripts/test/win/mt.sh --version 1.21.1 --phase build
 MT_INFO: [尝试 1/3] gradlew :neoforge-1.21.1:build (超时 60s)
 MT_BUILD: OK (2s) — 产物已更新：astral_dice-2.0.0-SNAPSHOT.128+neoforge_1.21.1.jar
 
@@ -554,7 +555,7 @@ logged in with entity id：1 次
   `MT_INJECT: ERROR — 未能唯一确定本版本 Minecraft 窗口（存在多个候选客户端）`（`case-CC-FILTER-a.log`）。
 - 根因：本线 dev 客户端的 java 命令行是 DevLaunch 短形式（实测 `net.caffeinemc.sodium / net.minecraft.client.main.Main /`，不含子项目名/run 目录），
   只能走「标题含版本号的唯一候选」回退；旧代码额外要求**全局候选数 == 1** ⇒ 双线必然返回 0。
-- 修法（`scripts/test/lib/Mt.Win32.psm1`，仅测试工具链）：回退判据改为**按标题里的版本号**做唯一性判定（`$titleHit.Count -eq 1` 即接受；同版本出现 2 个窗口仍返回 0，不猜）。
+- 修法（`scripts/test/lib/windows MCP（`Click`/`Move`/`Type`/`Screenshot`）`，仅测试工具链）：回退判据改为**按标题里的版本号**做唯一性判定（`$titleHit.Count -eq 1` 即接受；同版本出现 2 个窗口仍返回 0，不猜）。
 - 验证：`Find-MtMinecraftWindow -Version 1.21.1` → `1245682`（修前 `0`）；窗口枚举原样两份：`Minecraft NeoForge* 1.21.1` / `Minecraft* Forge 1.20.1`。
   **该改动未提交，需评审。**
 
@@ -568,10 +569,10 @@ logged in with entity id：1 次
   最终在**双方都不在启动**的窗口内一次性跑完 4 条用例。
 - 结论：并行测试的物理约束比 AGENTS 现行「短时启动锁」更强，建议后续把「启动锁」升级为**会话级互斥**或分机执行（待裁决，本轮未改）。
 
-#### D4-5（未修，工具链）：从 WSL 起 `pwsh.exe` 时，`& <exe>` 子进程的 stdout / 退出码丢失
+#### D4-5（未修，工具链）：从 WSL 起旧解释器可执行文件时，用调用运算符起的子进程 stdout / 退出码丢失
 
-- 现象：`mt_launch` 里 `& $psExe ...` 的 `$LASTEXITCODE` 为 `$null`（日志显示 `注入返回码 /`），
-  且从 WSL 直接 `& pwsh -File …` 完全拿不到子进程输出（最小复现：`temp/ccregress-20261017/probe_lastrc.ps1` → `lastrc=[] type=null`，连 `cmd.exe /c exit 9` 也读不到）。
+- 现象：启动阶段里用调用运算符起该解释器时，`$LASTEXITCODE` 为 `$null`（日志显示 `注入返回码 /`），
+  且从 WSL 直接起 bash 子进程也完全拿不到输出（最小复现：`temp/ccregress-20261017/当时的临时探针脚本（已删除）` → `lastrc=[] type=null`，连 `cmd.exe /c exit 9` 也读不到）。
   经 `cmd.exe`/`.bat` + **文件重定向**启动时恢复正常（`launch_nogamerule.bat`）。
 - 影响：WSL 环境下 `--phase launch` 的 PRECLEAN / `doImmediateRespawn` 闸门会误报失败（命令实际可能已送达）；
   preflight-op 闸门因改为「回读日志」不受影响（本轮 0 次重试）。
@@ -580,7 +581,7 @@ logged in with entity id：1 次
 ### 9.9 收尾
 
 ```
-$ pwsh -NoProfile -File scripts/test/mt_cleanup.ps1 run --version 1.21.1 --purge-saves
+$ bash scripts/test/win/mt.sh --phase stop run --version 1.21.1 --purge-saves
 MT_CLEANUP: 指定了 --version，保留 Gradle 守护进程
 MT_CLEANUP_SAVES: PURGED 0
 MT_CLEANUP: 已收停 0 个本流程进程（范围：1.21.1）
@@ -588,7 +589,7 @@ MT_CLEANUP_RESULT: OK
 ```
 
 - `run/1.21.1/saves/` 实测为空（`ls | wc -l` = 0；`PURGED 0` 是因为前一条 `--phase stop --purge-saves` 已清过）。
-- **无 1.21.1 客户端残留**（`Get-CimInstance ... | match 'net.minecraft.client.main.Main|devlaunch'` 为空）；Gradle 守护进程按规则保留。
+- **无 1.21.1 客户端残留**（`jps -lvm` 过滤 `net.minecraft.client.main.Main|devlaunch` 为空）；Gradle 守护进程按规则保留。
 - 临时探针已从两侧删除：`scripts/test/resources/kubejs/1.21.1/{server_scripts,client_scripts}/astral_ccr_*.js`、`astral_jade_probe.js`
   与 `run/1.21.1/kubejs/**` 同名副本，备份见 `temp/ccregress-20261017/probe-backup/`。
 - 日志快照：`temp/ccregress-20261017/latest-before-nojade.log` = CC-RIGHTCLICK / CC-DBLCLICK 那一代（49 行 `AP_CCR:*`，
@@ -609,4 +610,4 @@ MT_CLEANUP_RESULT: OK
 | `temp/ccregress-20261017/deps-{nojade,jade}.txt` | `runtimeClasspath` 依赖对照（0 处 vs `maven.modrinth:jade:eYz2YBGT`） |
 | `temp/ccregress-20261017/launch_nogamerule.bat` / `launch3.log` | 带 `MT_ALLOW_NO_IMMEDIATE_RESPAWN=1` 的启动封装与输出 |
 | `temp/ccregress-20261017/build.log` / `env2.log` / `final-stop.log` | 构建 / 环境 / 收尾 |
-| `temp/ccregress-20261017/probe-backup/` | 三支临时探针原始副本（复跑时放回 + `mt_env.ps1 kubejs` + 冷启动） |
+| `temp/ccregress-20261017/probe-backup/` | 三支临时探针原始副本（复跑时放回 + `scripts/test/win/mt.sh --phase env kubejs` + 冷启动） |

@@ -486,7 +486,7 @@ combat/DiceCombatEvents.java:305-317 赐福/降神倒计时启动、秘密侦探
 **判据（实跑）**
 
 - 两线 `gradlew.bat :neoforge-1.21.1:classes :forge-1.20.1:classes` ⇒ **EXIT 0 / BUILD SUCCESSFUL**（`temp/compile_melee70.log`；forge 89 条 / neo 4 条既有 deprecation 警告）。
-- `pwsh -NoProfile -File tools/check_lang_sync.ps1` ⇒ exit 0，两线 `OK: zh_cn(1065) = en_us(1065) = ja_jp(1065)`（WARN 仅既有的 `dorothy_passive` / `jill_active` 颜色码差异）。
+- `bash tools/check_lang_sync.py` ⇒ exit 0，两线 `OK: zh_cn(1065) = en_us(1065) = ja_jp(1065)`（WARN 仅既有的 `dorothy_passive` / `jill_active` 颜色码差异）。
 - 行为面：骰战路径 +5 不变（仍在 `isEquipped && isTrackedByAny` 时并入终值）；非骰战（法伤 / 技能 / 远程 / 环境）从「+5」变为「不加」—— 这是本次唯一的数值变更，且与三语文案同批落地。
 - **仍未实机、未重出 jar**（实机判据：法伤击杀被吸附目标应无 +5；近战骰战击杀应仍 +5；嘲讽单位同挥击多段只反击一次）。
 - P1 两线（`neoforge-26.1.2` / `fabric-1.20.1`）未镜像（既定范围外）。
@@ -560,7 +560,7 @@ MELEE-06 把 +5 限定骰战后，两条既有实机用例的测量段失效（�
 3. **F3**（七咒 `DiceCurseRatio` 生物近战生效）：`FateGuidanceCardItem` 在 `!hasEnigmaticCurse(player)` 时先把 ratio 清 1.0，而 dev `run\1.20.1\mods` 未装神秘遗物+ ⇒ 只能代码级（`forge-1.20.1/.../DiceCombatEvents.java:1443-1447`）。
 4. **N14「AOE 命中按目标逐个计攻击行为」**：语义已由 §7.8 落地，但未写专项判据。
 
-收尾：`mt.ps1 --version 1.21.1 --phase stop --force --purge-saves` ⇒ `MT_CLEANUP_SAVES: PURGED 1` / `MT_CLEANUP_RESULT: OK` / `MT_STOP: OK (1s)`；`Get-CimInstance Win32_Process java.exe` 无输出（无客户端 / daemon 残留）。
+收尾：`scripts/test/win/mt.sh --version 1.21.1 --phase stop --force --purge-saves` ⇒ `MT_CLEANUP_SAVES: PURGED 1` / `MT_CLEANUP_RESULT: OK` / `MT_STOP: OK (1s)`；`jps -lvm` 无 `java.exe` 输出（无客户端 / daemon 残留）。
 
 ### 7.12 attrless 生物近战崩溃修复（N27，C1 + C2，2026-10-29，四线：P0 双线 + P1 两线）
 
@@ -611,7 +611,7 @@ java.lang.IllegalArgumentException: Can't find attribute minecraft:generic.attac
 3. `forge-1.20.1`：`ForgeHooks#onLivingDamage` 在 `actuallyHurt` 的 `:1680` 派发，位置在护甲 `:1667` → 抗性 + 保护 `:1668` → 吸收扣减 `:1669-1670` **之后**；且 mob→player 实际走 `Player#actuallyHurt` 覆盖实现（`Player.java:940`；`ForgeHooks.onLivingHurt` `:942`、护甲/魔法 `:944-945`、扣吸收 `:946-947`、`onLivingDamage` `:948`，该实现**不再**第二次扣吸收）。⇒ `getAmount()` = **三步都已过**的终值。
 4. `fabric-1.20.1`：钩子载荷来自本仓自写兼容事件 `platform/event/entity/living/LivingDamageEvent.java:33`，由 `platform/PuzzlesBridges.java:96` 从 Puzzles Lib `LivingHurtCallback` 桥出；该回调的注入点是 `LivingEntity#actuallyHurt` 的 **HEAD**（同文件 `:40` 的 javadoc 表格行、`mixin/bridge/LivingHurtBridgeMixin.java:17-18` 的实测注释、`:44` 的注入目标）⇒ 载荷是**减免前**的形参（`PuzzlesBridges.java:57-58` 明写「拿到的 `MutableFloat` 是 `actuallyHurt` 的入参」）。但同一载荷在此之前已被 `event/EnderDiceHandler.java:147`（`@SubscribeEvent(priority = EventPriority.HIGH)`）在 `:152-153` 乘过 `applyVictimDamageModifiers(...)`；`platform/event/EventPriority.java:12-16` 的枚举序 `HIGHEST, HIGH, NORMAL, LOW, LOWEST` 配 `platform/event/LoaderBus.java:236` 的 `out.sort(...)` ⇒ **HIGH 先于 NORMAL**，而骰战派发点 `combat/DiceCombatEvents.java:221` 是 NORMAL（`:228-231` 把该倍率固化为 `victimFactor`、`:280` 传入 `resolveMobMeleeAttack`）⇒ 读到的是**已乘过倍率**的值，故代理要除回去（`:1041-1042`），随后 `:1062` 再乘一次 `victimFactor`、`:1063` `event.setAmount(finalDmg)` 写回。
 
-**实机验证（2026-10-30，`neoforge-1.21.1` 单线，测试台 `scripts/test/mt.ps1`）**：本批把 C1 + C2 搬到真机跑通，范围内**只有** `neoforge-1.21.1`（其余各线见「未做」）。跑法为阶段化测试台的 `--phase build / env / launch / cases / report / stop`（含 `--purge-saves`）。用例是临时件 `scripts/test/cases/TMP-ATTRLESS-HYDRA-1.21.1.json`，**未入库**（`git status` 为 `??`；它依赖暮色森林第三方 jar，不进仓库）。
+**实机验证（2026-10-30，`neoforge-1.21.1` 单线，测试台 scripts/test/win/mt.sh）**：本批把 C1 + C2 搬到真机跑通，范围内**只有** `neoforge-1.21.1`（其余各线见「未做」）。跑法为阶段化测试台的 `--phase build / env / launch / cases / report / stop`（含 `--purge-saves`）。用例是临时件 `scripts/test/cases/TMP-ATTRLESS-HYDRA-1.21.1.json`，**未入库**（`git status` 为 `??`；它依赖暮色森林第三方 jar，不进仓库）。
 
 **踩点手法（不需要装备骰子）**：不靠生物 AI 真打，用原版命令直接造「生物近战命中玩家」：
 
@@ -638,7 +638,7 @@ java.lang.IllegalArgumentException: Can't find attribute minecraft:generic.attac
 - `MT_ASSERT_STATE: PASS` ×13
 - `MT_STOP: OK (1s) — 收停完成，无本流程残留进程`；`MT_CLEANUP_SAVES: PURGED 1`
 
-用例 JSON 的 `asserts` 共 16 项（13 state + 1 crash + 2 absent，全 PASS；`mt_assert.ps1:1197` 的 `$tag = 'MT_ASSERT_' + $Kind.ToUpperInvariant()` 决定了标记按断言类型分通道，故 state 行是 13 条而不是 16 条）。
+用例 JSON 的 `asserts` 共 16 项（13 state + 1 crash + 2 absent，全 PASS；`scripts/test/mt_assert.py:1197` 的 `$tag = 'MT_ASSERT_' + $Kind.ToUpperInvariant()` 决定了标记按断言类型分通道，故 state 行是 13 条而不是 16 条）。
 
 **难度变量（代理值天然含难度倍率 —— 必须固定难度做断言）**：`net/minecraft/world/entity/player/Player.java` 的 `hurt(DamageSource, float)`（声明 `:922`）在 `:936` 就执行
 
@@ -665,7 +665,7 @@ EASY 逐点吻合 `amount/2+1 − playerDefense`（48 进事件时已是 25，25
 1. **`MT_REPORT: OK` 只代表 report 阶段命令成功**，不代表本轮通过：报告文件里的**汇总结论是 FAIL**（`1.21.1: ❌ FAIL（未通过）`），因为它按本轮世代（`20261020-130057`）聚合了 71 条历史批次条目，其中 `CC-*`（9 条）、`LINGLING-1.21.1`、`DEBT-*`（6 条）等旧条目仍带 FAIL / ERROR（23 FAIL + 1 ERROR）。本条用例在报告条目表里的结果是 **`PASS`**（`scripts/test/reports/20260926-230116/1.21.1/report.md`，测试台产物、gitignored）。
 2. **`MT_NOAI_AUDIT: PASS(无正面对照)` 是弱证据**：`heartbeats=17`、`mismatch=0` 看起来全绿，但本轮心跳里 `mobs` 全为 0（报告原文「`mobs>0` 有 0 行」）⇒ 它只证明收场后现场干净，**没有**对「带 AI 实体在场时的失配」构成正面对照。
 
-**测试台环境备注**：本地 `scripts/test/mt.conf`（gitignored，`.gitignore:55`）补了 AutoJS 端点三键；`mt.ps1` **没有** `--phase preflight`（该阶段只在全流程内由独立脚本 `scripts/test/mt_preflight.ps1` 执行，`Invoke-MtRunPhase` 对未知阶段直接 `MT_EXIT_ERROR`）；`--phase report` 与纯 `--case` 形式都需要 `--allow-auto` 才能过批量编排闸门。
+**测试台环境备注**：本地 `scripts/test/mt.conf`（gitignored，`.gitignore:55`）补了 AutoJS 端点三键；`scripts/test/win/mt.sh` **没有** `--phase preflight`（该阶段只在全流程内由独立脚本 scripts/test/mt_preflight.py 执行，`Invoke-MtRunPhase` 对未知阶段直接 `MT_EXIT_ERROR`）；`--phase report` 与纯 `--case` 形式都需要 `--allow-auto` 才能过批量编排闸门。
 
 **判据出处（javadoc 原文，非记忆）**：
 

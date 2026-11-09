@@ -241,17 +241,17 @@ R1 明确指出：原用例全程只用 `attack_card_medium` ⇒ **R1（效果�
 **2026-09-27 二次需求（用户当日追加，均已裁决并落地，见 §1 表 #6–#10 与 §7.0/§7.3）**
 - 给牌构成改为 **2 战斗 + 1 效果**；新增**冻结（使用中）**；解冻先到者（牌用光 ⇒ 立刻解冻**且移除效果** / 3:00 到期 ⇒ 清剩余牌）；冷却**自释放并行计时、解冻不追加**；新增**安全门**（空槽 < 3 ⇒ 拒绝且**零消耗** + 提示）。
 - 实现落点（两线）：`TemporaryCardUtil`（`GRANT_BATTLE_COUNT/GRANT_EFFECT_COUNT/grantNardisPrivilege/grantRandom(Player,Category,int)` + `tick` 尾段解冻(a)三重防抖）、`NardisSignItem`（安全门 + `startActiveLockOnUse`/`isGateEffectActive`/`cooldownRunsDuringLock`）、`BaseSignItem`（**唯一结构性改动**：新增 `cooldownRunsDuringLock` 钩子，默认 `false`；`endLockAndStartCooldown` 拆 2 参私有重载）、lang 4 文件（新 msg 键 + 4 个旧文案改写，键数 736 → **737**）。
-- **主代理独立核实**：`mt_build` 两线 `OK`；`javap` 在 `run/<V>/mods/` 的 jar 里看到全部新方法两线齐备；**解包 jar 的 lang 确认新文案在位、旧文案（`§e3§7 张随机临时牌` / `效果生效中再次释放` / `从全部战斗牌与效果牌中随机`）已消失**；`tools/check_lang_sync.ps1` exit 0（两线 737/737、26.1.2 683 未动）；`tooltip_color_audit` **12 处 = 既有基线**（teru `50%`），本批**新增 0**；CHANGELOG 两文件 **367:367 条 / 578:578 行**、各子节逐节相等。
+- **主代理独立核实**：`mt_build` 两线 `OK`；`javap` 在 `run/<V>/mods/` 的 jar 里看到全部新方法两线齐备；**解包 jar 的 lang 确认新文案在位、旧文案（`§e3§7 张随机临时牌` / `效果生效中再次释放` / `从全部战斗牌与效果牌中随机`）已消失**；`tools/check_lang_sync.py` exit 0（两线 737/737、26.1.2 683 未动）；`tooltip_color_audit` **12 处 = 既有基线**（teru `50%`），本批**新增 0**；CHANGELOG 两文件 **367:367 条 / 578:578 行**、各子节逐节相等。
 - 文档：`AGENTS.md` 立牌技能表改新语义 + 迁移清单**第 14 条**（ESC 输入放行，26.1.2 同构代码仍在）/ **第 15 条**（nardis 新语义 + 落点 + 三条已登记推论 + 文案同步口径）；CHANGELOG 按「合并进原条目」改写 nardis 条目 + 新增 ESC 修复条目。
 - **已登记不修（实现方主动纠正/推导，主代理采信）**：① 卡牌物品 `stacksTo(64)` 可堆叠 ⇒ 「空槽 < 3 即拒绝」最坏保守 ≈1/9（保留确定性口径，**是否放宽待用户**）；② 解锁时冷却已过完 ⇒ 冻结期减免池作废；③ `cooldown_end` 为绝对 gameTime 而效果时长离线冻结 ⇒ 长离线重登可能「冷却已过、冻结尚存」。
 - **未验证**：新语义的两线游戏内行为（B1）——断言契约见 §7.3（N1–N7，含「牌用光后 `n_fx` 多拍稳定为 0、不得抖动」这条防环主判据）。**产品改动与测试资产尚未提交。**
 
 **已完成并验证（首轮）**
 - 两条发布线产品代码 + 资产全部落地：1.21.1（Java 逻辑/mixin/组件/资产）+ 1.20.1 完整镜像（含 3 个 1.20.1 专有容器 mixin：`ShulkerBoxSlot#mayPlace`、`ShulkerBoxBlockEntity#canPlaceItemThroughFace`、`BundleItem#add`）。
-- **两线构建均由主代理亲自跑通**：`mt_build.ps1 --version 1.21.1` 与 `--version 1.20.1` 均 `MT_BUILD: OK`。
+- **两线构建均由主代理亲自跑通**：`scripts/test/win/mt.sh --phase build --version 1.21.1` 与 `--version 1.20.1` 均 `MT_BUILD: OK`。
 - **已提交 `8e59e923`**（72 文件：两条线实现 + 新增资产 + AGENTS.md 五处表格 + 两份 CHANGELOG 玩家侧条目），**未 push**。
 - AGENTS.md 已更新：立牌品质表（`黄金骰子(无星盘)` 行加 nardis）、立牌技能表（新增 nardis 行）、效果清单、数据组件清单（10→11，含 `temporary_card`）、26.1.2 迁移清单**第 13 条**（8 子项）。
-- **效果计数勘误（2026-09-27，R1 发现 + 主代理实测复核）**：AGENTS.md 原写「34→35」「实测各 35 个」「两线现各 34 个」**全部过时**。实测（`Select-String 'register\(\s*"'` 计数）：**1.21.1 = 37、1.20.1 = 37、26.1.2 = 32**（迁移前基线：发布线 `HEAD~1` = 36 ⇒ nardis 使其 **36→37**）。26.1.2 的 id 集合是两个发布线的**真子集**，差额恰为**尚未迁移**的 5 个：`zhao_blessing`/`misfortune`（风水师）、`teru_descent`/`teru_huguang`（照）、`nardis_privilege`（女王特权）⇒ AGENTS.md 里「26.1.2 收口后 id 集合与两个发布线逐项一致」这句已加时效注记；`PlayerTickEvents` 里「调 `temporaryCardTick`」更正为**真实名 `TemporaryCardUtil.tick`**。
+- **效果计数勘误（2026-09-27，R1 发现 + 主代理实测复核）**：AGENTS.md 原写「34→35」「实测各 35 个」「两线现各 34 个」**全部过时**。实测（`grep -cE 'register\(\s*"'` 计数）：**1.21.1 = 37、1.20.1 = 37、26.1.2 = 32**（迁移前基线：发布线 `HEAD~1` = 36 ⇒ nardis 使其 **36→37**）。26.1.2 的 id 集合是两个发布线的**真子集**，差额恰为**尚未迁移**的 5 个：`zhao_blessing`/`misfortune`（风水师）、`teru_descent`/`teru_huguang`（照）、`nardis_privilege`（女王特权）⇒ AGENTS.md 里「26.1.2 收口后 id 集合与两个发布线逐项一致」这句已加时效注记；`PlayerTickEvents` 里「调 `temporaryCardTick`」更正为**真实名 `TemporaryCardUtil.tick`**。
 - 静态守门基线（R1 比对用）：语言 736/736 键一致（26.1.2 = 683）✅；`tooltip_color_audit` **既有 12 处违规**（全是 teru 的 `50%`，4 文件各 3 处）——本批**新增 0 处**；`check_mod_sources` ✅。
 - 26.1.2 线**零改动**（`git status` 为空）。
 

@@ -1,4 +1,5 @@
 # 实机复测报告：地雷女 ame_overdose 自然到期结算幂等修复（2.0.0-SNAPSHOT.128，2026-10-17）
+<!-- 历史记录：文中旧 shell 命令已于 2026-11-09 全部废弃，现用 bash 测试台（scripts/test/win/mt.sh）与 windows MCP，仅作溯源。 -->
 
 - 被测提交：`6e06cf4c`（`fix(sign): 地雷女立牌 ame_overdose 自然到期只结算一次（.128，P0 两线）`，2026-10-17 12:40:19 +0800）
 - 工作树：`/mnt/f/mcproject/astral_dice_multiloader-next`（分支 `multi-dev-next`，HEAD = `6e06cf4c`）
@@ -33,7 +34,7 @@ $ ls -la --time-style=full-iso run/1.21.1/mods/astral_dice-*.jar run/1.20.1/mods
 ```
 
 - 两线 jar mtime（12:42:32 / 12:42:37）均**晚于**提交时间 12:40:19。
-- 构建入口与结果（Watchdog 口径 `mt_build.ps1`，60s 窗口）：
+- 构建入口与结果（Watchdog 口径 `scripts/test/win/mt.sh --phase build`，60s 窗口）：
   - `temp/kame128/build-1.21.1.log`：`MT_BUILD: OK (2s) — 产物已更新：astral_dice-2.0.0-SNAPSHOT.128+neoforge_1.21.1.jar`
   - `temp/kame128/build-1.20.1.log`：`MT_BUILD: OK (3s) — 产物已更新：astral_dice-2.0.0-SNAPSHOT.128+forge_1.20.1.jar`
 - 开包核对 `AmeSignItem.class` 常量池含修复标记：
@@ -163,7 +164,7 @@ $ ls -la --time-style=full-iso run/1.21.1/mods/astral_dice-*.jar run/1.20.1/mods
 
 ## 6. 收尾（收停 / 清存档 / 无残留）
 
-1）两线标准收尾（`--phase stop --purge-saves`，经 cmd 包装以规避 WSL 互操作下嵌套 `& pwsh` 的环境缺陷，见备注）：
+1）两线标准收尾（`--phase stop --purge-saves`，经 cmd 包装以规避 WSL 互操作下嵌套 `& 旧 shell` 的环境缺陷，见备注）：
 ```
 ===== MT_PHASE: stop =====
 MT_CLEANUP: 指定了 --version，保留 Gradle 守护进程
@@ -179,13 +180,13 @@ MT_CLEANUP: 已收停 0 个本流程进程（范围：1.21.1）
 MT_CLEANUP_RESULT: OK
 MT_STOP: OK (1s) — 收停完成，无本流程残留进程
 ```
-`PURGED 0` 的原因：本轮先用 `mt.ps1 --phase stop --purge-saves` 收停并已清空世界，随后再次收尾时无存档可清；实测两线存档目录此时为空：
+`PURGED 0` 的原因：本轮先用 `scripts/test/win/mt.sh --phase stop --purge-saves` 收停并已清空世界，随后再次收尾时无存档可清；实测两线存档目录此时为空：
 ```
 run/1.20.1/saves: total 0
 run/1.21.1/saves: total 0
 ```
 2）无测试客户端残留：`tasklist` 仅剩 2 个 java（Gradle 守护 / Gradle worker），命令行分别为 `Zulu\zulu-21 ... --add-opens` 与 `eclipse_adoptium-17 ... gradle-worker`，**无 runClient**。
-3）备注（环境缺陷，非产品问题）：在 WSL 互操作 + 管道 stdio 下，`pwsh` 内用调用运算符 `& pwsh ...` 启子进程会**静默不执行**（`CHILDHI; exit 7` 无输出且 `$LASTEXITCODE` 为空），导致 `mt_stop.ps1` 直跑时误报 `MT_WARN: STOP: 收停后仍有残留`；改用 `cmd.exe /c` 启动外层 pwsh 后同一脚本输出 `MT_STOP: OK`。同一环境用 `Start-Process -Wait -PassThru` 可正常拿到 `ExitCode=7`，故确认是调用方式问题而非清理逻辑问题。
+3）备注（环境缺陷，非产品问题）：在 WSL 互操作 + 管道 stdio 下，旧解释器里用调用运算符启子进程会**静默不执行**（`CHILDHI; exit 7` 无输出且退出码为空），导致 `scripts/test/win/mt.sh --phase stop` 直跑时误报 `MT_WARN: STOP: 收停后仍有残留`；改用 `cmd.exe /c` 启动外层 shell 后同一脚本输出 `MT_STOP: OK`。同一环境用可直接取退出码的启动方式可正常拿到 `ExitCode=7`，故确认是调用方式问题而非清理逻辑问题。
 
 ---
 
@@ -202,16 +203,16 @@ run/1.21.1/saves: total 0
 
 ## 8. 复跑命令（单线）
 
-```powershell
-pwsh -NoProfile -File scripts/test/mt_build.ps1 --version 1.21.1 --timeout 60 --retries 2
-pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --phase env
-pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --phase launch
-pwsh -NoProfile -File scripts/test/mt_inject.ps1 cmd --version 1.21.1 --command "/astralkame equip stand \"astral_dice:ame_sign\" Dev"
-pwsh -NoProfile -File scripts/test/mt_inject.ps1 cmd --version 1.21.1 --command "/astralkame set cap 20 Dev"
-pwsh -NoProfile -File scripts/test/mt_inject.ps1 cmd --version 1.21.1 --command "/astralkame set love 8 Dev"
-pwsh -NoProfile -File scripts/test/mt_inject.ps1 cmd --version 1.21.1 --command "/astralkame poll on"
-pwsh -NoProfile -File scripts/test/mt_inject.ps1 cmd --version 1.21.1 --command "/astralkame ovd Dev 100 0 N1"
+```bash
+bash scripts/test/win/mt.sh --phase build --version 1.21.1 --timeout 60 --retries 2
+bash scripts/test/win/mt.sh --version 1.21.1 --phase env
+bash scripts/test/win/mt.sh --version 1.21.1 --phase launch
+bash windows MCP 的 Click/Move/Type 输入 cmd --version 1.21.1 --command "/astralkame equip stand \"astral_dice:ame_sign\" Dev"
+bash windows MCP 的 Click/Move/Type 输入 cmd --version 1.21.1 --command "/astralkame set cap 20 Dev"
+bash windows MCP 的 Click/Move/Type 输入 cmd --version 1.21.1 --command "/astralkame set love 8 Dev"
+bash windows MCP 的 Click/Move/Type 输入 cmd --version 1.21.1 --command "/astralkame poll on"
+bash windows MCP 的 Click/Move/Type 输入 cmd --version 1.21.1 --command "/astralkame ovd Dev 100 0 N1"
 # 等 7s 后读 state / poll 行，期望恰好一次 love 8→4、cap 20→21
-pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --phase stop --purge-saves
+bash scripts/test/win/mt.sh --version 1.21.1 --phase stop --purge-saves
 ```
 

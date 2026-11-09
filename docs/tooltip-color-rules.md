@@ -212,7 +212,7 @@ python -B scripts/audit/tooltip_color_audit.py --root .
 ```
 
 
-审计脚本 `scripts/audit/tooltip_color_audit.ps1`（位置感知，能识别 `§e1§7 秒` 这类跨码形态）
+审计脚本 `scripts/audit/tooltip_color_audit.py`（位置感知，能识别 `§e1§7 秒` 这类跨码形态）
 同时从 `ModTooltipHandler.java` 解析「lang key → 行底色」映射，用于校验规则 0。
 
 **覆盖矩阵（2026-10-06 校准，与门内注释同源）**：本门实际审计 **4 线 × {`zh_cn.json`, `en_us.json`, `ja_jp.json`}**（12 个 lang 文件）；

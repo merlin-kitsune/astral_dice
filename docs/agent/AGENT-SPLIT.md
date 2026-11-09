@@ -11,11 +11,11 @@
 | 写源码 | **禁止** | **唯一允许** |
 | 编译 | 仅在私有副本（`~/work/...`） | 直接在工作树 `gradlew.bat` |
 | git commit / push | **禁止** | 唯一允许（push 仍需用户放行） |
-| 实机 / `mt.ps1` | **禁止** | **唯一允许** |
+| 实机 / `scripts/test/win/mt.sh` | **禁止** | **唯一允许** |
 | 投放整合包 | 禁止 | 允许 |
 | 文档 | 可以（`docs/**`） | 可以 |
 
-判定口径：凡会改变工作树内容或占用本机进程/GPU 的动作（写文件、`gradlew`、`mt.ps1`、`git commit`、
+判定口径：凡会改变工作树内容或占用本机进程/GPU 的动作（写文件、`gradlew`、`scripts/test/win/mt.sh`、`git commit`、
 复制 jar 到整合包）一律归 DSH；Codex 只做读取、`grep`、`dsh_code_review`、`docs/**` 写作。
 Codex 私有副本的编译结果**不作为验收证据**（副本与工作树可能不同步），只用于它自己判断可行性。
 
@@ -26,13 +26,13 @@ Codex 私有副本的编译结果**不作为验收证据**（副本与工作树�
    本轮结束（成功 / 失败 / 中断）**必须删除**。
 3. Codex 只读，**不加锁**，也不得创建或删除 `dsh.lock`。
 4. 同一工作树同时只允许一个 agent 跑 gradle。启动构建前先查两件事：
-   - `dsh.lock` 是否存在、PID 是否存活（`Get-Process -Id <PID>` 报「找不到进程」⇒ 陈旧锁，可删并记录时间）；
+   - `dsh.lock` 是否存在、PID 是否存活（`jps -lvm` / `ps -p <PID>` 查不到该进程 ⇒ 陈旧锁，可删并记录时间）；
    - `build\` 与各子项目 `build\` 的最新修改时间是否在近 30 分钟内（有写入却无锁 ⇒ 他人正在编译，等或问）。
 5. 抢锁/查锁命令（只读，任意一侧可跑）：
 
-```powershell
-pwsh -NoProfile -Command 'Get-Content F:\MCProject\.agent-locks\dsh.lock -ErrorAction SilentlyContinue'
-pwsh -NoProfile -Command 'Get-ChildItem F:\MCProject\astral_dice_multiloader -Recurse -Filter build -Directory -Depth 2 | ForEach-Object { $_.LastWriteTime.ToString("s") + "  " + $_.FullName }'
+```bash
+cat F:/MCProject/.agent-locks/dsh.lock 2>/dev/null
+find F:/MCProject/astral_dice_multiloader -maxdepth 3 -type d -name build -printf '%TY-%Tm-%TdT%TH:%TM:%TS  %p\n'
 ```
 
 ## 三、交接
@@ -53,9 +53,9 @@ pwsh -NoProfile -Command 'Get-ChildItem F:\MCProject\astral_dice_multiloader -Re
 
 ## 五、核查（收尾自查，任一方向适用）
 
-```powershell
+```bash
 git -C F:\MCProject\astral_dice_multiloader status --short -uall      # 只应有自己改的文件
-pwsh -NoProfile -Command 'Test-Path F:\MCProject\.agent-locks\dsh.lock'  # DSH 收尾后应为 False
+test -f F:/MCProject/.agent-locks/dsh.lock || echo 'no dsh.lock（收尾后应为不存在）'
 python docs/agent/verify-split.py                                      # 动过规则文件后四项全 [OK]
 ```
 
@@ -71,6 +71,6 @@ python docs/agent/verify-split.py                                      # 动过�
    （每批新建，不覆盖旧交接文件）。
 5. 追加到第五节的自查口径（只读，双方可跑）：
 
-```powershell
-pwsh -NoProfile -Command 'Test-Path F:\MCProject\.agent-locks\kimi.lock'   # Kimi 收尾后应为 False
+```bash
+test -f F:/MCProject/.agent-locks/kimi.lock || echo 'no kimi.lock（收尾后应为不存在）'
 ```

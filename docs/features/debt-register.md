@@ -15,7 +15,7 @@
 | D5 | `neoforge-26.1.2` 缺 `data/astral_dice/curios/entities/player_like_maid.json`（P0/forge 有）⇒ 同版本对注册生物饰品槽不一致 | 补齐 `entities: ["touhou_little_maid:maid"]`、`slots: ["stand","chip"]` | 数据件，JSON 解析通过；该线无 TLM，运行期不可达（见 D6） |
 
 > 2026-11-09 口径变更：进程 / 窗口 / 桌面操作改由 `dsh-windows-mcp`（`mcp__windows__*`）承担，
-> 本表提到的 `work/audit/stop_tlmdice.sh`、`taskkill`、`ps -W` 一类做法一律**降级为历史取证记录**，
+> 本表提到的 `work/audit/stop_tlmdice.sh`、windows MCP 的 `Process(mode:"kill", pid=…)`、`ps -W` 一类做法一律**降级为历史取证记录**，
 > 不再作为执行口径（规则正本见 `docs/agent/AGENTS-dsh.md`〈⚙️ 环境与工具链口径〉第 10 条）。
 
 ## 二、已登记、未修（含原因与下一步）

@@ -128,7 +128,7 @@ if (hooks != null) {
 4. `EventTimerStore.start` 头部回放块存在且不在 `onExpire != null` 内。
 5. `python scripts/verify/verify_event_timer_stack.py` 四条断言全 PASS —— 其中断言 04 补掉假绿空间：派发器里无回调的 `EventTimerStore.start(...)` 行号必须**小于** `effect().apply(` 行号（回放不会撤掉新写入的状态，全靠这个先后顺序）。
 
-实机（须用户点名下达，收尾 `mt.ps1 --phase stop --purge-saves` + `MT_STOP: OK`）：
+实机（须用户点名下达，收尾 `scripts/test/win/mt.sh --phase stop --purge-saves` + `MT_STOP: OK`）：
 
 1. 开界面 → 按一次 ESC：界面仍在 + actionbar 出现；日志无 `forceFirst`。
 2. 再按 ESC：界面关闭 + `AP_EVENT_FIRE: id=<session.firstEvent>` 出现且带 `src=ACTIVE_SKILL`（若首选项此刻已不可派发，实际派发的是 fallback 后的事件：以 `AP_EVENT_CHOICE: force:*:event=` 记下的 `forced` 为准）。

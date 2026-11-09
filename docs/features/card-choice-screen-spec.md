@@ -184,7 +184,7 @@ CardChoiceManager.registerHandler(player, myToken, picked -> { ... });
    服务端日志应出现 `AP_CARD_CHOICE: death_cleanup:<token>` 与 `abandon:...:consumed=0`。
    重生后立刻再次 `CardChoiceManager.start(...)` **必须成功**（不出现 `reject:reason=already_open`）。
 
-> 收尾按 AGENTS：`pwsh -File scripts/test/mt.ps1 --version <线> --phase stop --purge-saves`。
+> 收尾按 AGENTS：`bash scripts/test/win/mt.sh --version <线> --phase stop --purge-saves`。
 
 ## 10. 审查修复登记（2026-10-17，提交 `c4ed57cc` 之后）
 

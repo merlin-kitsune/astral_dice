@@ -1,4 +1,5 @@
 # multi-dev-next 交接（2026-11-07 18:1x）
+<!-- 历史记录：文中旧 shell 命令已于 2026-11-09 全部废弃，现用 bash 测试台（scripts/test/win/mt.sh）与 windows MCP，仅作溯源。 -->
 
 > **一句话**：`multi-dev-next` 分支上，**fabric 两条线的 tooltip 边框第三方兼容已收口并实机验收**
 > （背包 + JEI 面板都跟随稀有度档位色、换物品不串色），本地有一串未 push 的提交，工作树只剩两个未跟踪文件。
@@ -33,7 +34,7 @@ git -C F:/MCProject/astral_dice_multiloader-next status --short -uall
   `docs/agent/AGENTS-full.md` 的红线区被 `docs/agent/verify-split.py` 逐字镜像校验；TOC 由 `tools/gen_agents_toc.py` 生成。
 - **本周期新增/裁决的三条规则**（`2c2c9bcd`）：
   1. 派子代理**不再要求**它加载 `using-superpowers`（去角色扮演化）；
-  2. 解释器一律写裸名（`bash` / `python`），**pwsh 全废弃**；禁绝对路径写解释器；
+  2. 解释器一律写裸名（`bash` / `python`），**旧 shell 全废弃**；禁绝对路径写解释器；
   3. **一个文件同一时刻只一个写者**；发现别的实机（别的会话/别的线）在跑，**必须搁置并告知用户**。
 - **提交纪律**（`838bcf69` 用户裁决）：完成一个可独立验证的单元就**立即本地提交**；
   **默认不 push**（要用户明确放行，远程走代理 `http://127.0.0.1:7897`）。
@@ -45,7 +46,7 @@ git -C F:/MCProject/astral_dice_multiloader-next status --short -uall
 
 **工程结构**
 - 反同步主线 36 提交落地（版本线与 `starengine` 引脚按本线保持，未被主线覆盖）。
-- 测试台 **pwsh → bash + python** 全量切换：入口 `bash scripts/test/win/mt.sh --version <线> --phase <env|build|launch|cases|report|stop>`，
+- 测试台 **旧 shell → bash + python** 全量切换：入口 `bash scripts/test/win/mt.sh --version <线> --phase <env|build|launch|cases|report|stop>`，
   能力层 `scripts/test/win/*.sh` + `scripts/test/mt_*.py` + `scripts/test/lib/mt_*.py`；
   `AGENTS-full.md` 的「自动化测试流程」整章重写（604 行 → 523 行），`verify-split.py` 加「章节排除」。
 - 清理 83 份废弃 md（判据：被规则索引或源码引用者保留），悬空引用机械打墓碑「（已删除 2026-11-05）」。
@@ -135,7 +136,7 @@ bash scripts/test/win/launch.sh --version fabric-1.20.1 --side client --enable-a
 
 # 收停（stop.sh 对 //PID 的转义在本机常失败，残留时补刀）
 bash scripts/test/win/stop.sh --version fabric-1.20.1
-MSYS2_ARG_CONV_EXCL='*' cmd /c 'taskkill /PID <pid> /T /F'
+参数转译开关='*' cmd /c 'windows MCP 的 `Process(mode:"kill", pid=…)` /PID <pid> /T /F'
 
 # AutoJS 探针（无参构造；eval_js 会把代码包成 JSON.stringify(...)，多语句写成 (function(){...})()）
 python - <<'PY'
@@ -147,7 +148,7 @@ PY
 
 ## 9. 本周期踩过的坑（工具/环境向）
 
-- **`cmd //c` 被 MSYS2 路径转换破坏** ⇒ 统一走 `mt_cmdwin`；补刀杀进程要 `MSYS2_ARG_CONV_EXCL='*'`。
+- **`cmd //c` 被 MSYS2 路径转换破坏** ⇒ 统一走 `mt_cmdwin`；补刀杀进程要 `参数转译开关='*'`。
 - **AutoJS 的 `Java.loadClass("...").class` 取不到 `.class`**（Rhino 报 has no public instance field）
   ⇒ 要反射类，用 `Java.loadClass("java.lang.Class").forName("...")`。
 - **`VerifyError` 是类加载期错误，而 dev run 的类加载是懒的** ⇒ 「客户端起来了」不能当作 mixin 生效的判据，
@@ -163,7 +164,7 @@ PY
 |---|---|
 | 本周期 tooltip 三方兼容的完整证据链 | `docs/features/tooltip-frame-third-party-compat.md` |
 | 主线 1.5.0 反同步那轮的交接 | `docs/handover-2026-11-02-dev-next-mainline-150.md` |
-| 测试台（bash 口径）决策与 pwsh 退役登记 | `docs/features/devnext-bash-testbed-decisions.md`、`docs/features/devnext-pwsh-retirement-register.md` |
+| 测试台（bash 口径）决策与 旧 shell 退役登记 | `docs/features/devnext-bash-testbed-decisions.md`、`docs/features/devnext-test-asset-retirement-register.md` |
 | 用例 schema 权威 | `scripts/test/TESTING-SPEC.md` |
 | 立牌英日命名规则 | `docs/agent/AGENTS-full.md`〈立牌 / 物品英日命名规则〉+ `tools/sign_display_names.json` |
 

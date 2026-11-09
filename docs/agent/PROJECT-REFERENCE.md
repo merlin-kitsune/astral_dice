@@ -30,7 +30,7 @@
 | `<子项目>/src/main/java` | 产品源码（`item/` 物品与立牌/筹码 · `combat/` 骰战结算 · `event/` 事件订阅 · `effect/` 状态效果 · `shop/` 卡牌与筹码商店 · `target/` 目标选择 · `resource/` 星光/治愈/充能 · `entity/` 自定义实体） |
 | `<子项目>/src/main/resources/assets/astral_dice/lang/` | 三语 `zh_cn.json` / `en_us.json` / `ja_jp.json`（P0 各 1,046 键；UTF-8 无 BOM、CRLF、一行一键、2 空格缩进） |
 | `<子项目>/src/generated/resources` | datagen 产物（`recipe*` / `recipes` 注意 neo 用 `recipe/`、forge 用 `recipes/`） |
-| `scripts/test/` | 测试台（`mt.ps1` 唯一入口 + `cases/*.json` + `resources/kubejs/` 探针 + `TESTING-SPEC.md`） |
+| `scripts/test/` | 测试台（`scripts/test/win/mt.sh` 唯一入口 + `cases/*.json` + `resources/kubejs/` 探针 + `TESTING-SPEC.md`） |
 | `scripts/verify/` · `tools/` | 守门脚本（见 §5） |
 | `docs/` | 交接正本 `handover-*.md`、规则库 `docs/agent/`、批次记录 `docs/features/`、兼容映射 `docs/compat-*.md` |
 | `run/<线>/` | dev 运行目录（`mods/` 由构建任务投放；`--purge-saves` 会删 testworld） |
@@ -39,7 +39,7 @@
 
 ## 4. 常用命令（Windows 原生）
 
-```powershell
+```bash
 # 状态（收尾应只剩用户素材）
 git -C F:\MCProject\astral_dice_multiloader status --short -uall
 git -C F:\MCProject\astral_dice_multiloader log --oneline -5
@@ -51,25 +51,25 @@ $env:JAVA_HOME='C:\Program Files\Zulu\zulu-21'
 .\gradlew.bat :neoforge-1.21.1:runData          # datagen（改配方/物品后必须）
 
 # 测试台（唯一入口，禁 bash/.sh/PS 5.1）
-pwsh -NoProfile -File F:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1 --version 1.21.1 --phase env
-pwsh -NoProfile -File F:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1 --version 1.20.1 --phase run --case <用例名>
-pwsh -NoProfile -File F:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1 --version 1.20.1 --phase stop --force --purge-saves
+bash F:\MCProject\astral_dice_multiloader\scripts/test/win/mt.sh --version 1.21.1 --phase env
+bash F:\MCProject\astral_dice_multiloader\scripts/test/win/mt.sh --version 1.20.1 --phase run --case <用例名>
+bash F:\MCProject\astral_dice_multiloader\scripts/test/win/mt.sh --version 1.20.1 --phase stop --force --purge-saves
 ```
 
 - forge dev 必须用 `build/devlibs` 的 **named** jar（`AutoJS-forge-1.20.1-1.0.0-dev.jar` 同理），与整合包用的 reobf jar **不可同目录**。
 - `--purge-saves` 会删 `testworld`：下轮实机前先 `--phase env`。
-- 禁用 Windows PowerShell 5.1（不支持三元 / `??` / `-AsHashtable`）。
+- 禁用 Windows 旧的原生 shell 5.1（不支持三元 / `??` / `-AsHashtable`）。
 
 ## 5. 守门脚本（P0 两线必跑）
 
 | 脚本 | 判据 |
 |---|---|
-| `tools/check_lang_sync.ps1` | 各线 key 集一致 + 颜色码/占位符结构一致（WARN 级） |
+| `tools/check_lang_sync.py` | 各线 key 集一致 + 颜色码/占位符结构一致（WARN 级） |
 | `tools/audit_patchouli_keys.py` | 手册引用 1,694 处，悬空必须 0 |
 | `docs/agent/verify-split.py` | 规则文件四项自检（快照保序包含 / AGENTS.md 结构 / docs 引用 / 体量） |
-| `scripts/audit/tooltip_color_audit.ps1` | tooltip 染色规则（R0 回落码 = 行底色 · R1 数值 §e · R2 时间 §9 · R3 效果名+时间整段蓝） |
-| `scripts/verify/verify_chip_shop_ui.ps1` | 筹码商店帧/逻辑（G1..G18h） |
-| `scripts/verify/verify_probe_class_refs.ps1` | 探针 javaclass 引用可解析（既有 1 红点 = 26.1.2 产物陈旧） |
+| `scripts/audit/tooltip_color_audit.py` | tooltip 染色规则（R0 回落码 = 行底色 · R1 数值 §e · R2 时间 §9 · R3 效果名+时间整段蓝） |
+| `scripts/verify/verify_chip_shop_ui.py` | 筹码商店帧/逻辑（G1..G18h） |
+| `scripts/verify/verify_probe_class_refs.py` | 探针 javaclass 引用可解析（既有 1 红点 = 26.1.2 产物陈旧） |
 | `tools/verify_misaki_balance.py` · `verify_bonnie_active_order.py` · `verify_member_recommendation_hand_gate.py` | 2026-10-24 批次的三道专项判据 |
 
 ## 6. 投放目标（成对：mod jar + `starengine-*-1.1.0.jar`）
@@ -100,10 +100,10 @@ python3 -B docs/agent/verify-split.py                   # 规则守门
 ```
 
 - 前置：`starengine:1.1.0` 必须已发布到本机 mavenLocal（在兄弟仓 `starengine` 跑各线 `:publishToMavenLocal`，daemon 21）。
-- Linux 侧**不调用** `scripts/**/*.ps1`（52 个，Windows 测试台/守门脚本）；`scripts/test/mt.ps1`（19,384 行）整台不可移植，替代 = `scripts/test/linux/*.sh` + AutoJS `eval_js` + computer-use MCP。
+- Linux 侧**不调用** `scripts/**` 下的 52 个旧件（Windows 历史工具，已删除）；旧编排件（19,384 行）整台不可移植，替代 = `scripts/test/linux/*.sh` + AutoJS `eval_js` + computer-use MCP。
 - 桌面/游戏注入通道：KDE Wayland 下 DSH MCP `computer-use-linux`（bin `~/.local/bin/computer-use-linux-mcp`，AT-SPI + KWin + Portal RemoteDesktop）截图/点击/键盘，`screen-ocr` 做屏幕 OCR；游戏内用 AutoJS HTTP 端点（`http://127.0.0.1:25585/mcp`，本会话未注册 MCP client，直接 curl 或临时注册）。
 - 迁移与现状：`docs/handover-2026-10-31-native-linux-migration.md`（原生 Linux 实测与路径重映射）；规则正本 `docs/agent/AGENTS-dsh-linux.md`；新会话入口 `docs/handover-new-session-context.md`。VM 时代文档（`docs/handover-2026-10-31-linux-vm-adoption.md（已删除 2026-11-05）`、`docs/handover-2026-10-31-local-disk-workspace.md`）只作历史。
-- 上面 §4/§6 的 `D:\...`、`pwsh`、`gradlew.bat` 命令属 **Windows 历史口径**，Linux 宿主不执行。
+- 上面 §4/§6 的 `D:\...`、`旧 shell`、`gradlew.bat` 命令属 **Windows 历史口径**，Linux 宿主不执行。
 
 ## 7. 交接文件
 

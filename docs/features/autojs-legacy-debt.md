@@ -4,7 +4,7 @@
 > `scripts/test/convert_cases_autojs.py` 机械化迁移，`channel=autojs` 覆盖率 **231/231**，
 > legacy 驱动原语（`inject_command/inject_key/inject_mouse/screenshot/kubejs_reload`）残留 **0**
 > （`python3 scripts/test/lib/mt_case.py validate` ⇒ `files=231 errors=0`）。
-> 通道口径与实机证据见 `docs/wsl-autojs-toolchain.md`；工具链已改为 WSL + bash/python（旧 pwsh 游戏流程脚本已删除）—— ⛔ **2026-10-22 起本句失效**：WSL 测试台与注入脚本全部作废，工具链已回 **Windows 原生 pwsh 7**（见 `AGENTS.md`〈回滚裁决〉与 `docs/agent/AGENTS-full.md` 末尾〈WSL 口径失效对照〉）。
+> 通道口径与实机证据见 `docs/wsl-autojs-toolchain.md`；工具链已改为 WSL + bash/python（当时的游戏流程脚本已删除）—— ⛔ **2026-10-22 起本句失效**：WSL 测试台与注入脚本全部作废，工具链已回 **Windows 原生**（当时的 Windows 测试台）（见 `AGENTS.md`〈回滚裁决〉与 `docs/agent/AGENTS-full.md` 末尾〈WSL 口径失效对照〉）。
 > **仍未完成**：GUI 状态机类用例（`CC-*` / `BOT-2P` 等）的语义级改写、`vision` 断言（9 条，WSL 下 BLOCKED）、
 > 1.20.1/26.1.2/fabric 各线的 AutoJS 端到端验证。
 
@@ -83,13 +83,13 @@
 | `{"type":"log","pattern":"<配方条数>"}` | 遍历 `server.getRecipeManager().getRecipes()` 数 `id.getPath()` 后缀 → `expect:{chips:{gte:0}}` | 计数类判据改用 `min/max/gte/lte`，不再是「出现了数字」 |
 | `{"type":"log","pattern":"<集合内容>"}` | 返回数组 → `expect:{list:{set:[…]}}`（顺序无关） | 集合判定 |
 | `{"type":"absent","pattern":"…"}` | 保留（负向断言），必要时补一条 `eval` 计数器 `== 0` | 双保险 |
-| `{"op":"kubejs_reload"}` | **删除**：`channel=autojs` 下该原语已退役（`mt_case.ps1` 的 `Test-MtCaseValid` 退役原语分支；行号会漂，按函数名检索） | 改用 `eval_js` / `await_state` |
+| `{"op":"kubejs_reload"}` | **删除**：`channel=autojs` 下该原语已退役（`scripts/test/win/mt.sh --phase cases` 的 `Test-MtCaseValid` 退役原语分支；行号会漂，按函数名检索） | 改用 `eval_js` / `await_state` |
 
 写完后必须做的三件事：
 
 1. 顶层显式加 `"channel": "autojs"`（缺省是 `kubejs`，不写等于没迁）。
 2. `eval` 断言必须给 `from` 或内联 `code`，且 `expect` 不能省（`eval` 缺 `expect` ⇒ ERROR 2；只有 `state` 允许「无判据」只打印证据）。
-3. 跑 `pwsh -NoProfile -File scripts/test/mt_case.ps1 validate --case <用例绝对路径>`（**位置参数 `validate`**，没有 `--validate`；封闭原语表会立刻拦住非法字段）。
+3. 跑 `bash scripts/test/win/mt.sh --phase cases validate --case <用例绝对路径>`（**位置参数 `validate`**，没有 `--validate`；封闭原语表会立刻拦住非法字段）。
 
 ## 6. 单条用例迁移 checklist
 
@@ -97,7 +97,7 @@
 2. 写 `eval_js` 求值片段：`side` 按「改状态/权威数据 = server、界面/输入/FPS = client」定；用 `save_as` 命名存档。
 3. 用 `state` 断言 `from` 引用存档，写明确的 `expect`（标量 / 区间 / 集合 / 嵌套）。
 4. 删掉只为打印而存在的探针步骤与 `kubejs_reload`；保留 `crash/mixin/kubejs` 断言。
-5. `mt_case.ps1 validate` 过结构校验。
+5. `scripts/test/win/mt.sh --phase cases validate` 过结构校验。
 6. 实机跑：端点没起 ⇒ BLOCKED（**不要**当功能缺陷去改代码）；判据不符 ⇒ FAIL（这才是要看的东西）。
 7. 在本文 §1 表格里更新数字（本文是完成度的唯一事实源）。
 
@@ -107,21 +107,17 @@
 
 ## 8. 复算命令（只读，可重跑）
 
-~~~powershell
-$d = "F:\MCProject\astral_dice_multiloader-next\scripts\test\cases"
-# 按线统计顶层用例数
-Get-ChildItem $d -File -Filter *.json | Where-Object { $_.Name -notlike ".mt_*" } |
-  Group-Object { switch -Wildcard ($_.Name) {
-    "*-1.21.1.json" { "1.21.1" }; "*-1.20.1.json" { "1.20.1" }; "*-26.1.2.json" { "26.1.2" }; default { "other" } } } |
-  Select-Object Name, Count
+~~~bash
+d='F:/MCProject/astral_dice_multiloader-next/scripts/test/cases'
+# 按线统计顶层用例数（排除运行时产物 .mt_*）
+ls "$d"/*.json | grep -v '/\.mt_' | sed -E 's#.*-(1\.21\.1|1\.20\.1|26\.1\.2)\.json#\1#; t; s#.*#other#' | sort | uniq -c
 # blocked 子目录
-(Get-ChildItem "$d\blocked-26.1.2" -File -Filter *.json).Count
-# 已迁到 eval 通道的用例数
-(Select-String -Path "$d\*.json","$d\blocked-26.1.2\*.json" -Pattern '"channel"\s*:\s*"autojs"' -List |
-  Where-Object { $_.Filename -notlike '.mt_*' }).Count   # 必须排除运行时产物 .mt_autojs.json / .mt_snapshot.json
+ls "$d/blocked-26.1.2"/*.json | wc -l
+# 已迁到 eval 通道的用例数（必须排除运行时产物 .mt_autojs.json / .mt_snapshot.json）
+grep -lE '"channel"[[:space:]]*:[[:space:]]*"autojs"' "$d"/*.json "$d"/blocked-26.1.2/*.json | grep -v '/\.mt_' | wc -l
 ~~~
 
-~~~powershell
+~~~bash
 # 断言面（按类型，解析 asserts 数组）
 python -c "import glob,json,os,collections;c=collections.Counter();[c.update(a['type'] for a in json.load(open(f,encoding='utf-8'))['asserts']) for f in glob.glob('scripts/test/cases/*.json')+glob.glob('scripts/test/cases/blocked-26.1.2/*.json') if not os.path.basename(f).startswith('.mt_')];print(c.most_common())"   # 必须 encoding='utf-8'（本机默认 GBK 会崩）
 ~~~

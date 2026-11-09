@@ -1,4 +1,5 @@
 # 第二批改动:立牌主动技能「三态化」侦察与方案设计
+<!-- 历史记录：文中旧 shell 命令已于 2026-11-09 全部废弃，现用 bash 测试台（scripts/test/win/mt.sh）与 windows MCP，仅作溯源。 -->
 
 - 仓库:`F:\MCProject\astral_dice_multiloader`,分支 `multi-1.20.1-1.21.1`,基线 `HEAD=6daebf9`(工作区干净)
 - 子项目:`neoforge-1.21.1`(MC 1.21.1 / NeoForge / Java 21)与 `forge-1.20.1`(MC 1.20.1 / Forge / Java 17),包 `com.merlinkitsune.astral_dice`

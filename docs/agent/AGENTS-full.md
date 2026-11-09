@@ -2380,7 +2380,7 @@ When extending this workspace:
 
 ## 自动化测试流程（Automated Testing）— 必须遵守（子配置）
 
-> **2026-11-05 重写**：本章已按现行 **bash + python** 测试台整体重写（Windows 侧跑在 MSYS2 / Git Bash，Linux 侧原生 bash）。旧 原生 shell 资产（`scripts/test/mt（旧脚本名）`、`scripts/test/lib/Mt.*（旧模块名）`、`scripts/verify|devtools|tools` 下的 `（旧脚本名）`/`（旧模块名）`）已于 2026-11-04 **全部退役并删除**，退役登记见 `docs/features/devnext-旧 shell-retirement-register.md`。本章不再包含任何可执行的 旧 shell 命令；凡见到 `mt（旧脚本名）` / `-File` / `-Version` 一类写法，一律当作**历史溯源**，不是现行入口。
+> **2026-11-05 重写**：本章已按现行 **bash + python** 测试台整体重写（Windows 侧跑在 MSYS2 / Git Bash，Linux 侧原生 bash）。旧 原生 shell 资产（`scripts/test/mt（旧脚本名）`、`scripts/test/lib/Mt.*（旧模块名）`、`scripts/verify|devtools|tools` 下的 `（旧脚本名）`/`（旧模块名）`）已于 2026-11-04 **全部退役并删除**，退役登记见 `docs/features/devnext-test-asset-retirement-register.md`。本章不再包含任何可执行的 旧 shell 命令；凡见到 `mt（旧脚本名）` / `-File` / `-Version` 一类写法，一律当作**历史溯源**，不是现行入口。
 >
 > **调用约束**：本项目只允许通过 `ops_bash` 调用工具（见〈命令执行规范（Shell）〉）。禁止用 原生 shell 7 执行任何测试命令。
 
@@ -2896,7 +2896,7 @@ python scripts/test/mt_gen_case.py --version 1.21.1 --spec "<自然语言描述>
 3. **游戏内瞄准**：把生物传送到固定朝向（+Z）的准星正前方，桌面鼠标**不用于**镜头。
 4. **必须串行**：runClient 独占（见 6.5 的端口互斥）。
 5. **产物与忽略项**：`scripts/test/mt.conf`、`reports/*`、`cases/.mt_*` 是本地忽略产物；`AGENTS.md` 自 2026-09-15 起入库。
-6. **旧 旧 shell 资产**：归档包 `docs/archive/legacy_scripts_20260912.zip`；仓内 `（旧脚本名）` / `（旧模块名）` 现计 **0 / 0**（2026-11-04 全部删除，退役登记见 `docs/features/devnext-旧 shell-retirement-register.md`）。
+6. **旧 旧 shell 资产**：归档包 `docs/archive/legacy_scripts_20260912.zip`；仓内 `（旧脚本名）` / `（旧模块名）` 现计 **0 / 0**（2026-11-04 全部删除，退役登记见 `docs/features/devnext-test-asset-retirement-register.md`）。
 7. **文档欠账（已知，待补）**：`scripts/test/TESTING-SPEC.md` 与 `scripts/test/TESTING-RULES-OVERVIEW.md（已删除 2026-11-05）` 仍是 旧 shell 口径（watchdog / `mt_scope` / `mt_loadergate` / 顺序 gate），与现行实现对不上；以本章与源码为准。
 
 ## NeoForge 上游 BUG 补丁（neoforge_fixes）— 必须遵守

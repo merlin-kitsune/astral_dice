@@ -254,7 +254,7 @@ fabric-1.21.1/
 - 配方 result 对照：neo `recipe/amethyst_dice.json` = `{"count":1,"id":"astral_dice:amethyst_dice"}`；fabric `recipes/amethyst_dice.json` = `{"item":"astral_dice:amethyst_dice"}`；**两者的 ingredient 段都还是 `{"item":…}`**（id 化是 1.21.2+）。
 
 ### 12.4 探针通道被 KubeJS 绑死的实证
-- `scripts/test/fabric/cases/FAB-Q2Q3-INVARIANTS.json` 的 steps 写明「装探针：`ft_env.ps1 --side server --install-probe astral_catchup_probe.js`」，读数载体是 Fabric API 的 FakePlayer。
+- `scripts/test/fabric/cases/FAB-Q2Q3-INVARIANTS.json` 的 steps 写明「装探针：`bash scripts/test/win/mt.sh --version fabric-1.20.1 --phase env --side server --install-probe astral_catchup_probe.js`」，读数载体是 Fabric API 的 FakePlayer。
 - `scripts/test/fabric/astral_catchup_probe.js:10` 记载「KubeJS 各 server_scripts 共享全局作用域」⇒ 探针是 KubeJS 脚本。
 - 结论：KubeJS 缺席 ⇒ `scripts/test/fabric/` 那 8 个 FAB-* 用例 + 4 个探针在新线**整条不可用**，不是「改个配置」能绕的。
 

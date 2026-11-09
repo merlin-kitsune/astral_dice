@@ -1,4 +1,5 @@
 # 交接：从 VMware 虚拟机迁到原生 Linux 真机（2026-10-31，DSH 宿主）
+<!-- 历史记录：文中旧 shell 命令已于 2026-11-09 全部废弃，现用 bash 测试台（scripts/test/win/mt.sh）与 windows MCP，仅作溯源。 -->
 
 > **状态**：环境已就绪，可正常构建与测试；**Windows 侧配置与资产未改动**（同一块 NTFS 盘，Windows 侧看到的仍是原样）。
 > **本批性质**：宿主迁移 + 规则文件 Linux 化 + 测试台路径接管。**不含**任何游戏内容/功能改动，未改版本号。
@@ -52,7 +53,7 @@
 11. **`docs/handover-new-session-context.md`**：整篇按原生 Linux 重写（原为「当前是虚拟机！」+ 四副本 rsync 口径）。
 12. **新增本文** + `docs/handover-1.5.0-main.md` §4.1ba 批次条目（只追加）。
 
-**明确没动（Windows 侧资产）**：`scripts/test/mt.ps1` 及 `scripts/**/*.ps1`（52 个）、`scripts/test/mt.conf`（仍含 `D:/`、`C:/`）、`*.bat`、`gradlew.bat`、`.vscode/launch.json`（仍是 `F:\...` 绝对路径）、`run/start-*.bat`、`models/` `images/` `sound/` 素材、以及用户 4 个未跟踪文件（`models/astral_anvil.bbmodel`、`scripts/test/cases/TMP-ATTRLESS-HYDRA-1.21.1.json`、`scripts/test/resources/kubejs/1.21.1/server_scripts/astral_batch3_probe.js`、`zz_screen_probe.py`）。
+**明确没动（Windows 侧资产）**：scripts/test/win/mt.sh 及 `scripts/**` 下 52 个旧脚本（已删除）、`scripts/test/mt.conf`（仍含 `D:/`、`C:/`）、`*.bat`、`gradlew.bat`、`.vscode/launch.json`（仍是 `F:\...` 绝对路径）、`run/start-*.bat`、`models/` `images/` `sound/` 素材、以及用户 4 个未跟踪文件（`models/astral_anvil.bbmodel`、`scripts/test/cases/TMP-ATTRLESS-HYDRA-1.21.1.json`、`scripts/test/resources/kubejs/1.21.1/server_scripts/astral_batch3_probe.js`、`zz_screen_probe.py`）。
 
 ## 4 NTFS 语义与权限坑（本批实测）
 
@@ -145,7 +146,7 @@ ENV_RESULT: WARN — 0 项阻塞，1 项提示（仅 autojs_health：游戏未�
 
 ## 10 与 Windows 的互操作纪律（本批新增红线）
 
-- 同一块 NTFS 盘：**不要**为了 Linux 方便去删 Windows 专属文件（`*.ps1`、`*.bat`、`mt.conf`、`.vscode`、`gradlew.bat`），也不要改 `run/` 下的 Windows 产物。
+- 同一块 NTFS 盘：**不要**为了 Linux 方便去删 Windows 专属文件（旧脚本（已删除）、`*.bat`、`mt.conf`、`.vscode`、`gradlew.bat`），也不要改 `run/` 下的 Windows 产物。
 - Windows 侧已发布的 mavenLocal 与 Linux 侧独立；Windows 侧能构建不代表 Linux 侧能，反之亦然。
 - 只改大小写的文件名在 Windows 上等价、在 Linux 上不等价 ⇒ 涉及重命名时两边都要 `git status` 复核。
 - 双系统交替启动：Windows 快速启动/休眠占用该盘时不要写盘。

@@ -11,7 +11,7 @@
 | 术语表（机器可读） | `docs/i18n/ja-terms.json` | 23 角色（zh/en/ja）+ 9 世界术语 + 100 物品 |
 | 术语表（人读） | `docs/i18n/ja-glossary.md`、`docs/i18n/ja-items.md` | 角色与世界术语 / 物品（带 `status`） |
 | 生成脚本 | `temp/ja/gen_ja_lang.py` + `temp/ja/t_*.py` | 逐行定点写；自带键集/结构守恒校验；`--check` 干跑、`--write` 落盘 |
-| 守门扩展 | `tools/check_lang_sync.ps1` | 已扩为「zh 基线 + en_us + 可选 ja_jp」 |
+| 守门扩展 | `tools/check_lang_sync.py` | 已扩为「zh 基线 + en_us + 可选 ja_jp」 |
 | 实机取证 | `scripts/test/cases/JA-VISUAL-1.21.1.json` | 命令反馈 + 帕秋莉手册 |
 
 ## 二、口径（关键决定）
@@ -47,7 +47,7 @@
 ## 四、校验结果（2026-09-22）
 
 - `gen_ja_lang.py --check`：各线各 **805/805 键覆盖**；换行/`§`/`%` 不一致 **0 条**。
-- `tools/check_lang_sync.ps1`：各线 `OK`、**0 WARN**、退出码 0（即 zh/en/ja 三方 key 一致 + 无裸 `%`）。
+- `tools/check_lang_sync.py`：各线 `OK`、**0 WARN**、退出码 0（即 zh/en/ja 三方 key 一致 + 无裸 `%`）。
 - **反例验证**：临时植入裸 `%` ⇒ `[FAIL] …(ja): 含未转义字面百分号` + rc=1；删一个键 ⇒ `[FAIL] … 缺失于 ja_jp.json` + rc=1。
 - **构建**：各线 `MT_BUILD: OK`；开 jar 核对 —— 各 jar 内 `ja_jp.json` **805 键**、抽查文案正确。
 - **实机取证**（1.21.1 切 `lang:ja_jp`）：

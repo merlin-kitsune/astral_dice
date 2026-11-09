@@ -6,7 +6,7 @@
 > 冻结时点 HEAD = `1970de2c`）。共享前置库 = `F:\MCProject\starengine_lib`（分支 `main`，**本批不改库**）。
 > ⚠️ **行号基准 = `git show 1970de2c:<path>`（HEAD），不是并行实现中的工作区**：`v121`/`v120` 正在改动同一批文件，
 > 工作区行号已在漂移（实测：`neoforge-1.21.1/.../item/sign/FenSignItem.java` 的 `MAX_RECHARGE` 在 HEAD 为 `:37`，
-> 工作区已移到 `:39`）。复核任一引用请用 `git show 1970de2c:<path> | Select-String '<符号>'`。
+> 工作区已移到 `:39`）。复核任一引用请用 `git show 1970de2c:<path> | grep -n '<符号>'`。
 > 原版证据取自 ModDevGradle 反编译源 jar：
 > - `neoforge-1.21.1/build/moddev/artifacts/neoforge-21.1.235-sources.jar`
 > - `forge-1.20.1/build/moddev/artifacts/forge-1.20.1-47.4.10-sources.jar`
@@ -138,7 +138,7 @@
 | `images/游戏大师立牌.png`（sha256 `502197D3…`） | `textures/item/ren_sign.png`、`textures/mob_effect/ren_shield.png`、`textures/gui/head_player_sign.png` | 一图多落点 |
 | `images/标记喷罐.png` | `textures/item/marker_sprayer_chip.png`；`images/标记.png` → `textures/mob_effect/marked.png` | 物品图/效果图分落点 |
 
-**本批图标逐一核对（`Test-Path` + SHA-256）**：
+**本批图标逐一核对（存在性 + SHA-256）**：
 
 | 需求图标 | `images/` 存在性 | 目标落点 | 处置（冻结） |
 |---|---|---|---|
@@ -188,7 +188,7 @@
 | 选择器通用提示 | `:424-437`（`msg.astral_dice.target_select.*`、`hud.astral_dice.target_select.tag.*` `:266-271`） | 无需新增（复用） |
 | 手册文本 | `:102-103`（`astral_dice.guide.entry.fen_sign.1/2`） | `astral_dice.guide.entry.zhao_sign.{1..n}`、`astral_dice.guide.entry.fu_card.1`/`huo_card.1` |
 
-**同步纪律（有工具证据，不靠猜）**：`tools/check_lang_sync.ps1` 的比对单位是**每个子项目自己的 zh ↔ en 键集**
+**同步纪律（有工具证据，不靠猜）**：`tools/check_lang_sync.py` 的比对单位是**每个子项目自己的 zh ↔ en 键集**
 （`:418-430` 计算 `missingInEn` / `extraInEn`；`:499` 依次扫描各线的 lang 目录）
 ⇒ **新增中英键即可，不需要也不允许为对齐 key 集去改被冻结的 26.1.2**。
 另外 `lang/*.json` 属 `TESTING-SPEC.md:27` 的「非核心」范围（仅需构建 + `check_lang_sync`）。
@@ -237,7 +237,7 @@
 > ✅ **本批冻结时点的实现对齐抽样（只读，仅作早期信号，不作为验收依据）**：两线的
 > `data/curios/tags/*/stand.json`、`data/astral_dice/tags/*/signs.json`、`…/effect_cards.json`
 > 均已含 `zhao_sign` / `fu_card` / `huo_card` 对应项，`lang/zh_cn.json` 含 `zhao_sign`，
-> `init/ModCreativeTabs.java` 含 `ZHAO_SIGN`（`Select-String` 抽样，非逐条评审）。
+> `init/ModCreativeTabs.java` 含 `ZHAO_SIGN`（`grep` 抽样，非逐条评审）。
 
 ### 2.10 手册（Patchouli）
 
@@ -661,7 +661,7 @@ for (Player ally : EventTargetCollector.collectTeamPlayers(triggerer)) {
 ### 10.4 `captain` 独占
 
 根 `build.gradle` / `settings.gradle` / 三子项目 `gradle.properties` 与 `build.gradle`、`gradle/**`、`gradlew*`、
-`tools/**`、`scripts/devtools/**`、`scripts/test/mt_*.ps1`、根级 `images/**`（**注意**：图标源在仓库根 `images/`，本批**只读复制**到各子项目，
+`tools/**`、`scripts/devtools/**`、`scripts/test/**` 下的旧件、根级 `images/**`（**注意**：图标源在仓库根 `images/`，本批**只读复制**到各子项目，
 **不需要新增源图**，见 §2.3）；以及全部构建、datagen、冒烟、提交动作。
 
 ### 10.5 冲突风险点（单 owner 校验）
@@ -686,7 +686,7 @@ for (Player ally : EventTargetCollector.collectTeamPlayers(triggerer)) {
 | 2 | 效果注册（**id 集有差**） | `neoforge-26.1.2/.../effect/ModEffects.java` 的 `EFFECTS.register(` 命中 **32** 处，而 1.21.1 同文件 **34** 处 ⇒ 迁移时必须先按 `AGENTS.md` 的「效果注册条目」口径核对 id 集 |
 | 3 | 附件（平台形态不同） | 26.1.2 走 NeoForge `AttachmentType`（与 1.21.1 同类）；1.20.1 才是 `AttachedDataKey` |
 | 4 | **两段式数据生成（必经）** | `neoforge-26.1.2/.../datagen/{ClientDataGenerators,ServerDataGenerators,ModItemModelProvider,ModRecipeProvider}.java` + 双输出根 `src/generated/{resources,clientResources}`（见 `AGENTS.md` 26.1.2 速记第 2 条）；物品模型另有 1.21.4+ 的 `assets/<ns>/items/<id>.json` 硬需求（`src/generated/clientResources/assets/astral_dice/items/*.json` 现存） |
-| 5 | 语言键 | 26.1.2 `lang/zh_cn.json` 现 685 行 = 1.21.1 685 行；新增键需各线各自 zh↔en 一致（`tools/check_lang_sync.ps1:499`） |
+| 5 | 语言键 | 26.1.2 `lang/zh_cn.json` 现 685 行 = 1.21.1 685 行；新增键需各线各自 zh↔en 一致（`tools/check_lang_sync.py:499`） |
 | 6 | 长矛近战判定 | `ItemTags.SPEARS` **只在 26.1.2 线存在**（`AGENTS.md` 26.1.2 速记第 10 条）⇒ 若本批触碰 `isMeleeWeaponAttack`（`combat/DiceCombatEvents.java:973-981`），迁移时**不得**把 26.1.2 版本回移 |
 | 7 | 立牌主动门控（`BaseSignItem` 第 2.5 步） | 26.1.2 现有 18 个立牌类，需确认门控分支与新选择器 API 一致 |
 
@@ -746,7 +746,7 @@ for (Player ally : EventTargetCollector.collectTeamPlayers(triggerer)) {
   (d) **存档/读档结构**：5 个新附件键（`.serialize`）参与玩家 NBT 读写（`component/ModAttachments.java:23-27` 形态），且涉及死亡/重登策略（§9.3）。
 - 同一批（同一 commit）以最高级别为准（`:34`）、拿不准一律按更高一级（`:35`）⇒ 结论不变；
 - 「第 7 条不影响举证」已在本节 12.1 给出双侧枚举；但按 `:40`（第 9 条），触及共享前置库或跨模块公共路径时**直接按完整冒烟处理**——故 12.1 的枚举仅用于**说明影响面**，**不得**用于缩小冒烟范围；
-- 若 `mt_scope.ps1` 得到「核心（定向最小冒烟）」的建议级别，**以本节结论为准**（`TESTING-SPEC.md:42` 的冲突口径：以 `AGENTS.md` 为准，而 `AGENTS.md` 的完整冒烟情形含「全局伤害结算出入口」）。
+- 若 `作用域校验（现由 python 守门脚本承担）` 得到「核心（定向最小冒烟）」的建议级别，**以本节结论为准**（`TESTING-SPEC.md:42` 的冲突口径：以 `AGENTS.md` 为准，而 `AGENTS.md` 的完整冒烟情形含「全局伤害结算出入口」）。
 
 ---
 
@@ -845,7 +845,7 @@ for (Player ally : EventTargetCollector.collectTeamPlayers(triggerer)) {
   `neoforge-1.21.1`：`ZHAO-SIGN-1.21.1` / `HUO-CURSE-1.21.1` / `ZHAO-BLESSING-1.21.1`；
   `forge-1.20.1`：`ZHAO-SIGN-1.20.1`（该线把这批断言并入单一用例）。
   `neoforge-26.1.2` 因用户冻结**不跑**（只登记待迁移项，见 §11）。
-- **唯一入口**：`temp/t76/run-change-scoped.ps1`（`stop → build → env → launch → 逐条用例 → stop --purge-saves`，探针改动由冷启动生效）；
+- **唯一入口**：`temp/t76/当时的临时批处理脚本（已删除）`（`stop → build → env → launch → 逐条用例 → stop --purge-saves`，探针改动由冷启动生效）；
   **不提供全量模式**。启动期硬闸门（noai / 史莱姆压制 / preflight）与 §9 静态闸门照旧必过。
 - **我原先的误判（如实记录，含推翻过程）**：我把「本批新增全局治疗钩子 `LivingHealEvent` + 改 `DiceCombatEvents`（全局伤害结算）+
   新增注册表/存档键」当作 `TESTING-SPEC §1.1` 例外②「跨模块公共路径」，并据此要求**两线各跑阶段 L + 阶段 C 全清单**。
@@ -913,7 +913,7 @@ for (Player ally : EventTargetCollector.collectTeamPlayers(triggerer)) {
 
 ### 14.7 `t8` 裁决（`v120` 回报的三点；captain 取证后的终裁）
 
-> 取证来源：`scripts/verify/verify_bountiful_pools.ps1`（**用正确 root** 跑，见下方陷阱）+ `AGENTS.md:764-785` + 库 `EventTargetCollector.java:30-62`。
+> 取证来源：`scripts/verify/verify_bountiful_pools.py`（**用正确 root** 跑，见下方陷阱）+ `AGENTS.md:764-785` + 库 `EventTargetCollector.java:30-62`。
 
 | # | 事项 | 终裁 | 证据 |
 |---|---|---|---|
@@ -922,7 +922,7 @@ for (Player ally : EventTargetCollector.collectTeamPlayers(triggerer)) {
 | **③** | `v120` 报「`FU_CARD_CYCLE_BONUS` 键名/同步性待与 `v121` 对齐」 | **无需改动，两侧已对等**：键名同为 `fu_card_cycle_bonus`；1.21.1 用内联 `.sync(ByteBufCodecs.VAR_INT)`（`ModAttachments:85-89`），1.20.1 用 `.sync()` + `SYNCED_KEYS`（`:955`/`:1093-1094`） | 与两个同级计数器 `EFFECT_CARD_BONUS_PLAYS`（`:45-49`）/`LIVING_PAGE_CYCLE_BONUS`（`:62-66`）同址同步，依据 = 客户端 `isBlockedOnClient → isBurstFull → getMaxAllowed` 需看到同一份额外出牌数 |
 | **④** | 闸门自身缺陷（`t8` 新发现，非 `v120` 提出） | **就地修正**：卡牌判据由「id 前缀」改为「id 前缀 **∪ 卡牌标签**」 | 原判据只认 `attack_card_`/`defense_card_`/`effect_card_` 前缀 ⇒ `fu_card`/`huo_card` 被归入 materials ⇒ **闸门对这两张卡是否入池完全失明**（实测：加入池前后分类都是 `cards 25 / materials 8`，条数不变，**1 多余 + 2 缺失恰好互相抵消**）；修正后读 `data/astral_dice/tags/{item|items}/{combat_cards,effect_cards}.json`（与 `ModItems.isCardItem` 同一判据），分类变为 `cards 27 / materials 6`；主工作树（发布线）回归复跑仍 ALL OK ⇒ 无假失败。**随后按 §14.8 的用户裁决把期望集合再改为「卡牌 − 专属效果牌」**（读 `is_exclusive.json`，并对**所有**类别剔除），新增输出行 `专属效果牌(禁止进入任何赏金池): N 项` ⇒ 池内残留**任一**专属 id 都会被 `extra` 差集报成**致命偏差**（强制力不再依赖「分类是否看得见它」） |
 
-> ⚠️ **闸门运行陷阱（`t8` 亲历的假绿，必须遵守）**：`verify_bountiful_pools.ps1` 的 `-Root` 默认 **`'.'`**，
+> ⚠️ **闸门运行陷阱（`t8` 亲历的假绿，必须遵守）**：`verify_bountiful_pools.py` 的 `-Root` 默认 **`'.'`**，
 > 在**非目标工作树**的 cwd 下运行会去校验**另一棵树**并给出 `结果: ALL OK` 的**假绿**（实测：在会话根
 > `F:\MCProject\astral_dice_multiloader` 下运行，校验的是不含本批改动的发布线树 ⇒ 全绿，而 dev 树实为 4 项致命偏差）。
 > ⇒ 任何赏金池判定**必须**显式 `-Root F:\MCProject\astral_dice_multiloader-next`（或在 dev 树根下运行）。
@@ -964,7 +964,7 @@ for (Player ally : EventTargetCollector.collectTeamPlayers(triggerer)) {
 
 ### 14.9 `t11` 镜像裁决（`v121` 交付 t2 后暴露的两线偏离；captain 用**机械集合差**取证）
 
-- **取证工具（只读）**：`temp/t75/parity-zhao.ps1` —— 抽两线 `src/main/java` 的「附件 id 字面量 / Java 常量名 / 访问器方法名」三类集合做**对称差**，
+- **取证工具（只读）**：`temp/t75/当时的临时对拍脚本（已删除）` —— 抽两线 `src/main/java` 的「附件 id 字面量 / Java 常量名 / 访问器方法名」三类集合做**对称差**，
   并断言下降沿基准键存在。当前基线 `PARITY_FAIL=7`：
 ```
 [附件 id] 1.21.1=11 / 1.20.1=7
@@ -986,7 +986,7 @@ for (Player ally : EventTargetCollector.collectTeamPlayers(triggerer)) {
 - **更正一处误读（如实记录）**：`v121` 报告称闸门「`$LEGACY_POOL_EXCEPTIONS` 已声明但 `Get-Expected` 尚未消费，故显示 FAIL 而非具名 WARN」——
   **不成立**。那是 captain 按用户「**一并清出**」裁决**刻意清空**白名单后的**正确行为**（两张既有专属牌此刻仍是违规 ⇒ 必须报致命偏差），
   并非漏消费；`t9` 落地后该项自然消失。
-- **`t11` 验证结果（captain 独立复跑，2026-09-26）**：`temp/t75/parity-zhao.ps1` → **`PARITY_FAIL=0`**（附件 id 11:11、Java 常量 9:9、访问器方法名 12:12 **三类全等**；两线 `zhao_prev_blessing` 均在 ⇒ 下降沿机制双侧生效；`MobEffectEvent.Expired` 各 **9 处未被误删** ⇒ 骰神赐福既有逻辑完好）；赏金池闸门 → `exit 0 / ALL OK`（两线 91 条、md5 `ea5f23a2a1a3b3864860c94068ab9ea4`、零 WARN）。
+- **`t11` 验证结果（captain 独立复跑，2026-09-26）**：`temp/t75/当时的临时对拍脚本（已删除）` → **`PARITY_FAIL=0`**（附件 id 11:11、Java 常量 9:9、访问器方法名 12:12 **三类全等**；两线 `zhao_prev_blessing` 均在 ⇒ 下降沿机制双侧生效；`MobEffectEvent.Expired` 各 **9 处未被误删** ⇒ 骰神赐福既有逻辑完好）；赏金池闸门 → `exit 0 / ALL OK`（两线 91 条、md5 `ea5f23a2a1a3b3864860c94068ab9ea4`、零 WARN）。
 - **裁决 C（`v120` 报「Expired vs tick 下降沿与 captain 旧话冲突」）**：**按 §4.4 实现，不回退**。取证：§4.4（`:318` 唯一判定点 = 玩家级 tick 的下降沿检测；`:336-339` **冻结决定**：`Expired` 在效果被外力移除时**不触发**，且**双挂会重复消费 skip ⇒ 禁止**）。
   ⚠️ **captain 在 `t3` 期对 `v120` 说的「`Expired` 正是规格指定的既有挂点」是错的** —— 依据的是 §12.1 那一行（`:657`），它与 §4.4 **自相矛盾**、属陈旧行；已就地更正为「本批**不新增调用**，`Expired` 订阅仅服务**骰神赐福自身**」。`v120` 对「§4.1 的 Expired 钩子属骰神赐福自身、二者不冲突」的判断**正确**。
 - **`t11` 附带关闭的真缺陷（`v120` 发现，特此记账）**：forge 侧原缺 `tryClaimDiceJudgment` 守卫 ⇒ **一次挥击命中 N 个目标会发 N 张符卡**（1.21.1 有守卫、forge 无 ⇒ 两线行为不等）。已按 1.21.1 同形补齐（该方法 + 调用点守卫）。
@@ -1084,11 +1084,11 @@ for (Player ally : EventTargetCollector.collectTeamPlayers(triggerer)) {
 | 效果注册 id 集 | `effect/ModEffects.java` 的 `EFFECTS.register(` 命中 **34** 处 | 与 1.21.1 逐条镜像 | **32** 处 ⇒ 迁移前必须先核对 id 集（§11 第 2 项） |
 | 数据生成 | 单段 `runData`；物品模型由 `basicItem(...)` 生成到 `src/generated/resources/assets/.../models/item/` | 同 1.21.1（`forge-1.20.1/.../datagen/`），另有 reobf / `pushToDevRun` 产物差异（见 `AGENTS.md`） | **两段式** `runClientData` + `runServerData` + 双输出根（§11 第 4 项） |
 | 目标选择器基础设施 | `target/` 包（5 类）+ 库 `starenginelib/target/`，**两发布线一致** | 同左（`forge-1.20.1/.../target/` 5 类） | 需核对立牌门控分支与选择器 API（§11 第 7 项） |
-| 语言键同步单位 | 每子项目**自身** zh↔en 键集相等（`tools/check_lang_sync.ps1:418-430`，各线依次扫描 `:499`）⇒ **新增中英两键即可，不得为对齐去改被冻结的 26.1.2** | 同左 | 同左（解冻后随迁移一起补） |
+| 语言键同步单位 | 每子项目**自身** zh↔en 键集相等（`tools/check_lang_sync.py:418-430`，各线依次扫描 `:499`）⇒ **新增中英两键即可，不得为对齐去改被冻结的 26.1.2** | 同左 | 同左（解冻后随迁移一起补） |
 
 ### 15.2 行号基准（**读本文件任何 `文件:行号` 之前必读**）
 
-- 全部行号基准 = **HEAD `1970de2c`**，复核方式 `git show 1970de2c:<path> | Select-String '<符号>'`；
+- 全部行号基准 = **HEAD `1970de2c`**，复核方式 `git show 1970de2c:<path> | grep -n '<符号>'`；
   **不要**直接读工作区行号 —— `v121`/`v120` 正在并行修改同一批文件，工作区行号已漂移
   （实测：`neoforge-1.21.1/.../item/sign/FenSignItem.java` 的 `MAX_RECHARGE` 在 HEAD 为 `:37`、工作区为 `:39`）。
 - 库文件（`F:\MCProject\starengine_lib`，分支 `main`）本批**零改动** ⇒ 其行号即当前 `main` 工作区行号。
@@ -1098,18 +1098,18 @@ for (Player ally : EventTargetCollector.collectTeamPlayers(triggerer)) {
 
 ### 附：本文件生成时的只读证据命令（可复现）
 
-```powershell
+```bash
 # 图标映射（逐字节比对）
-$img='F:\MCProject\astral_dice_multiloader-next\images'
-Get-FileHash "$img\反击.png","$img\风水师立牌.png","$img\符卡-福.png","$img\符卡-祸.png","$img\厄运.png" -Algorithm SHA256
-# 缺失图标（应报“路径不存在”）
-Test-Path "$img\白泽赐福.png"; Test-Path "$img\养精蓄锐.png"
+img='F:/MCProject/astral_dice_multiloader-next/images'
+sha256sum "$img/反击.png" "$img/风水师立牌.png" "$img/符卡-福.png" "$img/符卡-祸.png" "$img/厄运.png"
+# 缺失图标（应报 No such file）
+test -f "$img/白泽赐福.png"; test -f "$img/养精蓄锐.png"
 # 治疗/掷骰消费点双侧枚举
 #   （grep 工具：'\.heal\(' / 'setHealth\(' / 'rollCombatDie|rollDice' / 'attackModifiers\(\)'）
 # 冒烟级别
-pwsh -NoProfile -File scripts/test/mt_scope.ps1
+python docs/agent/verify-split.py       # 作用域校验
 # t6 回填后的自检（规格文件完整性 + 两树同哈希）
-cd F:\MCProject\astral_dice_multiloader-next
-pwsh -NoProfile -Command "Select-String -LiteralPath docs/features/fengshui-sign-spec.md -Pattern 'onDroppedByPlayer|grantBonusPlay|完整冒烟|tags/items' | Measure-Object | Select-Object -ExpandProperty Count"
-pwsh -NoProfile -Command "(Get-FileHash docs/features/fengshui-sign-spec.md).Hash -eq (Get-FileHash 'F:\MCProject\astral_dice_multiloader\docs\features\fengshui-sign-spec.md').Hash"
+cd /f/MCProject/astral_dice_multiloader-next
+grep -cE 'onDroppedByPlayer|grantBonusPlay|完整冒烟|tags/items' docs/features/fengshui-sign-spec.md
+sha256sum docs/features/fengshui-sign-spec.md /f/MCProject/astral_dice_multiloader/docs/features/fengshui-sign-spec.md
 ```
