@@ -1171,10 +1171,10 @@
   "msg.astral_dice.event_animating": "事件动画播放中，请稍后再试",
   "item.astral_dice.souri_sign": "金鲤立牌",
   "tooltip.astral_dice.sign.souri.active": "把酒言欢",
-  "tooltip.astral_dice.sign.souri_active": "在指定地块放置「葫芦饮」；已获得「金鲤化龙」时改为放置「仙酿」\n被动结算后，自身获得 §e1§7 层「觉醒」与 §e1§7 层「反击」",
+  "tooltip.astral_dice.sign.souri_active": "在指定地块放置「葫芦饮」；已获得「金鲤化龙」时改为放置「仙酿」\n随后获得 §e1§7 层「金鳞」，并使自身获得 §e1§7 层「反击」",
   "tooltip.astral_dice.sign.souri.passive": "不醉不归",
   "tooltip.astral_dice.sign.souri_passive": "反击时获得 §e1§7 层「金鳞」\n任意角色拾取「葫芦饮」或「仙酿」后，自身获得 §e1§7 层「反击」",
-  "tooltip.astral_dice.sign.souri_dragon_form": "「金鲤化龙」：每层「金鳞」攻击力 §e+1§7",
+  "tooltip.astral_dice.sign.souri_dragon_form": "金鲤化龙",
   "effect.astral_dice.gourd_drink": "葫芦饮",
   "effect.astral_dice.gourd_drink.description": "攻击力 §e+3§7 (§91:00§7)；一次只能持有一个",
   "effect.astral_dice.immortal_brew": "仙酿",
@@ -1190,10 +1190,10 @@
   "msg.astral_dice.souri_dragon_gained": "「金鳞」已满，获得「金鲤化龙」！",
   "msg.astral_dice.souri_gourd_converted": "场上 §e%s§7 个「葫芦饮」化为「仙酿」",
   "msg.astral_dice.souri_no_ground": "需要指向可放置的地块",
-  "astral_dice.guide.entry.souri_sign.1": "主动「把酒言欢」：在指定地块放置「葫芦饮」；已获得「金鲤化龙」时改为放置「仙酿」。随后自身获得 §e1§7 层「觉醒」与 §e1§7 层「反击」。",
+  "astral_dice.guide.entry.souri_sign.1": "主动「把酒言欢」：在指定地块放置「葫芦饮」；已获得「金鲤化龙」时改为放置「仙酿」。随后获得 §e1§7 层「金鳞」，并使自身获得 §e1§7 层「反击」。",
   "astral_dice.guide.entry.souri_sign.2": "被动「不醉不归」：反击时获得 §e1§7 层「金鳞」；任意角色拾取「葫芦饮」或「仙酿」后，自身获得 §e1§7 层「反击」。",
-  "astral_dice.guide.entry.souri_sign.3": "「金鳞」每层防御力 §e+1§7，最多 §e4§7 层；达到 §e4§7 层获得「金鲤化龙」，并将场上未拾取的「葫芦饮」转为「仙酿」。\\n「金鲤化龙」每层「金鳞」攻击力 §e+1§7。\\n「葫芦饮」攻击力 §e+3§7 (§91:00§7)。「仙酿」攻击力 §e+4§7、迅捷 (§92:00§7)，拾取时立即回复 §e6§7 点生命；两者一次只能拾取一个。\\n联动「留给你的」：佩戴蛟龙立牌者拾取「葫芦饮」获得 §e1§7 层觉醒，拾取「仙酿」获得 §e2§7 层。",
-  "tooltip.astral_dice.sign.souri_awakening": "觉醒：§e%s§7 / §e%s§r",
+  "astral_dice.guide.entry.souri_sign.3": "「金鳞」：每层获得防御力 §e+1§7，最多 §e4§7 层。达到 §e4§7 层后获得「金鲤化龙」，并使场上未拾取的「葫芦饮」转换为「仙酿」。\n「金鲤化龙」：获得后，每层「金鳞」获得攻击力 §e+1§7。\n「葫芦饮」：攻击力 §e+3§7，持续 (§91:00§7)（一次只能拾取一个）。\n「仙酿」：攻击力 §e+4§7，并获得迅捷，持续 (§92:00§7)；拾取「仙酿」后立即回复 §e6§7 点生命值（一次只能拾取一个）。\n联动「留给你的」：持有蛟龙立牌的玩家拾取「葫芦饮」后，获得 §e1§7 层「觉醒」；拾取「仙酿」后，获得 §e2§7 层「觉醒」。",
   "tooltip.astral_dice.sign.souri_gold_scale": "金鳞：§e%s§7 / §e%s§r",
-  "tooltip.astral_dice.sign.souri_counter": "反击：§e%s§7 / §e%s§r"
+  "tooltip.astral_dice.sign.souri_note": "「金鳞」：每层获得防御力 §e+1§7，最多 §e4§7 层。达到 §e4§7 层后获得「金鲤化龙」，并使场上未拾取的「葫芦饮」转换为「仙酿」\n「金鲤化龙」：获得后，每层「金鳞」获得攻击力 §e+1§7\n「葫芦饮」：攻击力 §e+3§7，持续 (§91:00§7)（一次只能拾取一个）\n「仙酿」：攻击力 §e+4§7，并获得迅捷，持续 (§92:00§7)；拾取「仙酿」后立即回复 §e6§7 点生命值（一次只能拾取一个）",
+  "tooltip.astral_dice.sign.souri_link": "联动「留给你的」：持有蛟龙立牌的玩家拾取「葫芦饮」后，获得 §e1§7 层「觉醒」；拾取「仙酿」后，获得 §e2§7 层「觉醒」"
 }

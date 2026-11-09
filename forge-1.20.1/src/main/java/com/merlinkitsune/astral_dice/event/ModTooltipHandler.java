@@ -11,6 +11,7 @@ import com.merlinkitsune.astral_dice.item.HealingManager;
 import com.merlinkitsune.astral_dice.item.StarLightManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.RepulsionItem;
+import com.merlinkitsune.astral_dice.item.sign.SouriSignManager;
 import com.merlinkitsune.astral_dice.item.sign.JasmineSignItem;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -1605,10 +1606,7 @@ public class ModTooltipHandler {
             }
             addSignCooldownRemaining(tooltip, event.getEntity());
         }
-        // 金鲤立牌(souri,2026-11-09):主动「把酒言欢」(在准星地块上方放置葫芦饮;已获「金鲤化龙」则放仙酿;
-        // 同时 +1 觉醒 / +1 反击) + 被动「不醉不归」(反击出口 +1 金鳞;任意角色拾饮给佩戴者 +1 反击;
-        // 4 层金鳞触发「金鲤化龙」,场上本人未拾取的葫芦饮就地转仙酿) + 备注「留给你的」(拾饮者佩戴蛟龙立牌
-        // ⇒ +1/+2 蛟龙觉醒)。三条计数器行:觉醒 / 金鳞读立牌自有同步键,反击层数复用通用反击计数。
+        // 金鲤立牌(souri):主动「把酒言欢」放置葫芦饮/仙酿 + 自身金鳞/反击;被动「不醉不归」。
         if (stack.is(ModItems.SOURI_SIGN.get())) {
             tooltip.add(Component.empty());
             addSignKeyHint(tooltip);
@@ -1616,22 +1614,26 @@ public class ModTooltipHandler {
             addSignLines(tooltip, "tooltip.astral_dice.sign.souri_active");
             addSignPassiveTitle(tooltip, "tooltip.astral_dice.sign.souri.passive");
             addSignLines(tooltip, "tooltip.astral_dice.sign.souri_passive");
-            if (event.getEntity() != null) {
-                addSignCounter(tooltip, "tooltip.astral_dice.sign.souri_awakening",
-                        com.merlinkitsune.astral_dice.item.sign.SouriSignManager.getAwakening(player),
-                        com.merlinkitsune.astral_dice.item.sign.SouriSignManager.AWAKENING_MAX);
-                addSignCounter(tooltip, "tooltip.astral_dice.sign.souri_gold_scale",
-                        com.merlinkitsune.astral_dice.item.sign.SouriSignManager.getGoldScales(player),
-                        com.merlinkitsune.astral_dice.item.sign.SouriSignManager.GOLD_SCALE_MAX);
-                if (com.merlinkitsune.astral_dice.item.sign.SouriSignItem.hasDragon(player)) {
-                    tooltip.add(Component.translatable("tooltip.astral_dice.sign.souri_dragon_form")
+            // 状态行只留一条：化龙前显示「金鳞」层数，化龙后只显示「金鲤化龙」
+            // （用户 2026-11-10 裁决：觉醒/反击都不显示；觉醒本就属于蛟龙立牌）
+            Player souriViewer = event.getEntity();
+            if (souriViewer != null) {
+                if (SouriSignManager.hasDragon(souriViewer)) {
+                    tooltip.add(Component.empty());
+                    tooltip.add(tt("tooltip.astral_dice.sign.souri_dragon_form")
                             .withStyle(ChatFormatting.GOLD));
+                } else {
+                    addSignCounter(tooltip, "tooltip.astral_dice.sign.souri_gold_scale",
+                            SouriSignManager.getGoldScales(souriViewer),
+                            SouriSignManager.GOLD_SCALE_MAX);
                 }
-                addSignCounter(tooltip, "tooltip.astral_dice.sign.souri_counter",
-                        com.merlinkitsune.astral_dice.component.ModAttachments.getRenCounterCharges(player),
-                        com.merlinkitsune.astral_dice.item.sign.SouriSignManager.COUNTER_MAX);
             }
-            addSignCooldownRemaining(tooltip, event.getEntity());
+            // 备注区（浅紫、无标题）：金鳞 / 金鲤化龙 / 葫芦饮 / 仙酿 的数值口径
+            tooltip.add(Component.empty());
+            addSignNoteLines(tooltip, "tooltip.astral_dice.sign.souri_note");
+            // 联动「留给你的」：加的是**蛟龙立牌持有者**的觉醒
+            addSignNoteLines(tooltip, "tooltip.astral_dice.sign.souri_link");
+            addSignCooldownRemaining(tooltip, souriViewer);
         }
         // 机械师立牌(megas):主动「轨道轰炸」(选择器类——指定 1 个敌对目标 => 立即消耗物品栏全部手牌⇒
         // 以目标为中心 12 格范围轰炸；次数 = min(消耗卡牌数 / 2, 10)、单次基础 2 伤 + 所消耗战斗牌费用总和 ×2)

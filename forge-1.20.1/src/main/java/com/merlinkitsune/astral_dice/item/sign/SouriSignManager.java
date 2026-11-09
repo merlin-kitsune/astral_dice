@@ -27,11 +27,11 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * 金鲤立牌（souri，传奇）的服务端权威管理器：觉醒 / 金鳞 / 金鲤化龙 / 反击层数 / 饮品拾取。
+ * 金鲤立牌（souri，传奇）的服务端权威管理器：金鳞 / 金鲤化龙 / 反击层数 / 饮品拾取。
  *
  * <h2>状态真值</h2>
  * <ul>
- *   <li>觉醒 = 玩家附件 {@code SOURI_AWAKENING}（独立计数器，用户 2026-11-09 裁决：不复用蛟龙觉醒）；</li>
+ *   <li>觉醒 **不属于** 金鲤：本立牌不产出、也不显示「觉醒」；联动「留给你的」加的是</li>
  *   <li>金鳞 = 玩家附件 {@code SOURI_GOLD_SCALES}（0..{@link #GOLD_SCALE_MAX}），HUD 由
  *       {@code souri_gold_scale} 效果镜像；</li>
  *   <li>金鲤化龙 = 锁存态效果 {@code souri_dragon}（金鳞首次达到 4 层时授予，卸下立牌时清除）；</li>
@@ -58,9 +58,6 @@ public final class SouriSignManager {
     /** 立牌物品注册 id（调试读数用） */
     public static final String SIGN_ID = "astral_dice:souri_sign";
 
-    /** 觉醒计数器上限（与蛟龙同名上限对齐；觉醒本身不触发形态，仅作资源读数） */
-    public static final int AWAKENING_MAX = 8;
-
     /** 金鳞层数上限（用户需求冻结值） */
     public static final int GOLD_SCALE_MAX = SouriGoldScaleEffect.MAX_STACKS;
 
@@ -79,20 +76,6 @@ public final class SouriSignManager {
     private SouriSignManager() {
     }
 
-    // ══════════════════════════════════════════════════════════════════════════
-    //  觉醒（独立计数器）
-    // ══════════════════════════════════════════════════════════════════════════
-
-    public static int getAwakening(Player player) {
-        if (player == null) return 0;
-        return ModAttachments.getSouriAwakening(player);
-    }
-
-    public static void addAwakening(Player player, int delta) {
-        if (player == null || player.level().isClientSide() || delta <= 0) return;
-        ModAttachments.setSouriAwakening(player,
-                Math.min(AWAKENING_MAX, ModAttachments.getSouriAwakening(player) + delta));
-    }
 
     // ══════════════════════════════════════════════════════════════════════════
     //  反击（复用 Ren 层数附件，佩戴金鲤时上限放宽到 4）
