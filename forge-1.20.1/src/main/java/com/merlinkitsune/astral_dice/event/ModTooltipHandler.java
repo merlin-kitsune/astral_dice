@@ -1614,9 +1614,15 @@ public class ModTooltipHandler {
             addSignLines(tooltip, "tooltip.astral_dice.sign.souri_active");
             addSignPassiveTitle(tooltip, "tooltip.astral_dice.sign.souri.passive");
             addSignLines(tooltip, "tooltip.astral_dice.sign.souri_passive");
-            // 状态行只留一条：化龙前显示「金鳞」层数，化龙后只显示「金鲤化龙」
-            // （用户 2026-11-10 裁决：觉醒/反击都不显示；觉醒本就属于蛟龙立牌）
             Player souriViewer = event.getEntity();
+            // 备注区（浅紫、无标题）：金鳞 / 金鲤化龙 / 葫芦饮 / 仙酿 的数值口径
+            tooltip.add(Component.empty());
+            addSignNoteLines(tooltip, "tooltip.astral_dice.sign.souri_note");
+            // 联动「留给你的」：与备注之间留空行（用户 2026-11-10 裁决）
+            tooltip.add(Component.empty());
+            addSignNoteLines(tooltip, "tooltip.astral_dice.sign.souri_link");
+            // 状态行置于最底部、上方留空行：化龙前显示「金鳞」层数，化龙后只显示「金鲤化龙」
+            // （用户 2026-11-10 裁决：觉醒/反击都不显示；觉醒本就属于蛟龙立牌）
             if (souriViewer != null) {
                 if (SouriSignManager.hasDragon(souriViewer)) {
                     tooltip.add(Component.empty());
@@ -1628,11 +1634,6 @@ public class ModTooltipHandler {
                             SouriSignManager.GOLD_SCALE_MAX);
                 }
             }
-            // 备注区（浅紫、无标题）：金鳞 / 金鲤化龙 / 葫芦饮 / 仙酿 的数值口径
-            tooltip.add(Component.empty());
-            addSignNoteLines(tooltip, "tooltip.astral_dice.sign.souri_note");
-            // 联动「留给你的」：加的是**蛟龙立牌持有者**的觉醒
-            addSignNoteLines(tooltip, "tooltip.astral_dice.sign.souri_link");
             addSignCooldownRemaining(tooltip, souriViewer);
         }
         // 机械师立牌(megas):主动「轨道轰炸」(选择器类——指定 1 个敌对目标 => 立即消耗物品栏全部手牌⇒
