@@ -119,19 +119,24 @@ The Abyss Reagent chip is named consistently now: display name, tooltip and ever
 - **CurseForge**: the builds go to the main project (`astral-dice`, project id `1662159`). StarEngine has its own project (`starengine`, id `1755415`); **none of the four lines bundles it any more**, so players must install that separate jar themselves: `starengine-neoforge-1.21.1-26.4-SNAPSHOT.1.jar` / `starengine-forge-1.20.1-26.4-SNAPSHOT.1.jar` / `starengine-neoforge-26.1.2-26.4-SNAPSHOT.1.jar` / `starengine-fabric-1.20.1-26.4-SNAPSHOT.1.jar`. Version numbers keep the `+<loader>_<MC>` suffix (for example `1.5.0+neoforge_1.21.1`), and the release channel follows the version suffix. Modrinth publishing was permanently dropped on 2026-10-23; CurseForge is the only store channel.
 - **Build artefacts**: `astral_dice-1.5.0+neoforge_1.21.1.jar`, `astral_dice-1.5.0+forge_1.20.1.jar`, `astral_dice-1.5.0+neoforge_26.1.2.jar` and `astral_dice-1.5.0+fabric_1.20.1.jar`, each under its subproject's `build/libs/`; the version inside each jar matches the file name (1.5.0).
 
-## Build provenance (26.4-SNAPSHOT.9)
+## Build provenance (26.4-SNAPSHOT.10)
 
 Each jar carries `META-INF/astral_dice/build-info.json` with `{version, commit, builtAt, classCount}` and ships a
-sibling `<jar>.sha256`. `build-info.commit` names the **code commit** the jar was built from; the README update that
-records the hash does not change the artifact.
+sibling `<jar>.sha256` (neoforge-1.21.1 and forge-1.20.1 only; the other lines carry no build-info). `build-info.commit`
+names the **code commit** the jar was built from; the README update that records the hash does not change the artifact.
 
 | Line | Version | Built from | Built at | Size (B) | SHA-256 |
 |---|---|---|---|---|---|
-| neoforge-1.21.1 | 26.4-SNAPSHOT.9+neoforge_1.21.1 | `72170753`（永久不兼容 + .9） | 2026-11-09T21:38:42+08:00 | 2,732,029 | `81d3f9f76b138bad1fbfc133f1884465756b87bf338fd7d2f915b1552fa60f61` |
-| forge-1.20.1 | 26.4-SNAPSHOT.9+forge_1.20.1 | `50ad3bbd`（永久不兼容 + .9） | 2026-11-09T21:39:39+08:00 | 2,781,885 | `d1ec96b2f88a1124dfd5a1928d6a8d014a88622a9f2d097ef83961c0d1bf7320` |
-| neoforge-26.1.2 | 26.4-SNAPSHOT.9+neoforge_26.1.2 | 同上（本线无 build-info） | 2026-11-09T21:38:00+08:00 | 2,912,981 | `1fe5e78196210608a55044d13e33b81f48e114ad596578b3f1bd6bee52518269` |
-| fabric-1.20.1 | 26.4-SNAPSHOT.9+fabric_1.20.1 | 同上（本线无 build-info） | 2026-11-09T21:38:03+08:00 | 3,023,619 | `577adb256d22a8964c17d4a850c5333210fda21600835cee68137865d4becb36` |
-| fabric-1.21.1 | 26.4-SNAPSHOT.9+fabric_1.21.1 | 同上（本线无 build-info） | 2026-11-09T21:38:03+08:00 | 3,049,923 | `592c92a06a4f61789890ec23708f5218d1ccd57226cfff8724a7620244745d32` |
+| neoforge-1.21.1 | 26.4-SNAPSHOT.10+neoforge_1.21.1 | `77a0d1b2`（库引脚 .2 + .10） | 2026-11-09T22:24:47+08:00 | 2,732,032 | `50732740bc3cc86a276f9f512c598cd4a83b0b07c700311c79cf6e4d5e67057a` |
+| forge-1.20.1 | 26.4-SNAPSHOT.10+forge_1.20.1 | `77a0d1b2`（库引脚 .2 + .10） | 2026-11-09T22:24:47+08:00 | 2,781,886 | `a82a34dea51d873b1b088d104341e52b8c419d3b14972f66a10e2875c88283b1` |
+| neoforge-26.1.2 | 26.4-SNAPSHOT.10+neoforge_26.1.2 | 同上（本线无 build-info） | 2026-11-09T22:16:16+08:00 | 2,912,982 | `48a455cfeed1c832a7838d99cbd962cde983f96b621d5c5b83d9e045f2410d5b` |
+| fabric-1.20.1 | 26.4-SNAPSHOT.10+fabric_1.20.1 | 待重建（Loom 缓存重建被当前网络阻塞） | — | — | — |
+| fabric-1.21.1 | 26.4-SNAPSHOT.10+fabric_1.21.1 | 待重建（同上） | — | — | — |
+
+The two fabric lines could not be rebuilt in this cycle: after an interrupted build Loom marked its cache lock as
+`ACQUIRED_PREVIOUS_OWNER_DISOWNED` and rebuilds it from scratch, and that rebuild stalls while downloading Minecraft
+metadata in this environment. Rebuild them (`./gradlew --configure-on-demand :fabric-1.20.1:build :fabric-1.21.1:build`)
+once the Loom cache can be repopulated, then fill the two rows above and commit.
 
 `build/libs` keeps only the current version; older `26.4-SNAPSHOT.{6,7}` and `2.0.0-SNAPSHOT.*` jars were moved to
 `temp/quarantine-build-libs/`. Purge stale local m2 coordinates that were overwritten in place before this release:

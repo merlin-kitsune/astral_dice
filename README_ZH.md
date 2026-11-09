@@ -119,18 +119,23 @@ Astral Dice 是一个以骰子为核心的生存扩展。戴上骰子后，每�
 - **CurseForge**：构建发布到主项目（`astral-dice`，project id `1662159`）。StarEngine 有独立项目（`starengine`，id `1755415`）；**各线全部不再内置**该库，玩家需自行安装对应平台的那份独立 jar：`starengine-neoforge-1.21.1-26.4-SNAPSHOT.1.jar` / `starengine-forge-1.20.1-26.4-SNAPSHOT.1.jar` / `starengine-neoforge-26.1.2-26.4-SNAPSHOT.1.jar` / `starengine-fabric-1.20.1-26.4-SNAPSHOT.1.jar`。版本号保留 `+<加载器>_<MC版本>` 后缀（例如 `1.5.0+neoforge_1.21.1`），发布渠道由版本后缀决定。Modrinth 发布链路已于 2026-10-23 永久移除，唯一商店通道是 CurseForge。
 - **构建产物**：`astral_dice-1.5.0+neoforge_1.21.1.jar`、`astral_dice-1.5.0+forge_1.20.1.jar`、`astral_dice-1.5.0+neoforge_26.1.2.jar`、`astral_dice-1.5.0+fabric_1.20.1.jar`，各自位于对应子项目的 `build/libs/` 下；jar 内元数据版本与文件名同号（1.5.0）。
 
-## 构建溯源（26.4-SNAPSHOT.9）
+## 构建溯源（26.4-SNAPSHOT.10）
 
-每个 jar 内嵌 `META-INF/astral_dice/build-info.json`（`{version, commit, builtAt, classCount}`），并附同名 `<jar>.sha256`。
-`build-info.commit` 指向**代码提交**；登记哈希的那次 README 提交不改变产物。
+每个 jar 内含 `META-INF/astral_dice/build-info.json`（`{version, commit, builtAt, classCount}`），并在同目录附 `<jar>.sha256`
+（仅 neoforge-1.21.1 与 forge-1.20.1 带 build-info，其余平台不含）。`build-info.commit` 表示该 jar 由哪个**代码提交**构建；
+记录哈希的 README 更新本身不改动产物。
 
-| 线 | 版本 | 构建自 | 构建时间 | 大小（字节） | SHA-256 |
+| 线 | 版本 | 构建自 | 构建时间 | 大小 (B) | SHA-256 |
 |---|---|---|---|---|---|
-| neoforge-1.21.1 | 26.4-SNAPSHOT.9+neoforge_1.21.1 | `72170753`（永久不兼容 + .9） | 2026-11-09T21:38:42+08:00 | 2,732,029 | `81d3f9f76b138bad1fbfc133f1884465756b87bf338fd7d2f915b1552fa60f61` |
-| forge-1.20.1 | 26.4-SNAPSHOT.9+forge_1.20.1 | `50ad3bbd`（永久不兼容 + .9） | 2026-11-09T21:39:39+08:00 | 2,781,885 | `d1ec96b2f88a1124dfd5a1928d6a8d014a88622a9f2d097ef83961c0d1bf7320` |
-| neoforge-26.1.2 | 26.4-SNAPSHOT.9+neoforge_26.1.2 | 同上（本线无 build-info） | 2026-11-09T21:38:00+08:00 | 2,912,981 | `1fe5e78196210608a55044d13e33b81f48e114ad596578b3f1bd6bee52518269` |
-| fabric-1.20.1 | 26.4-SNAPSHOT.9+fabric_1.20.1 | 同上（本线无 build-info） | 2026-11-09T21:38:03+08:00 | 3,023,619 | `577adb256d22a8964c17d4a850c5333210fda21600835cee68137865d4becb36` |
-| fabric-1.21.1 | 26.4-SNAPSHOT.9+fabric_1.21.1 | 同上（本线无 build-info） | 2026-11-09T21:38:03+08:00 | 3,049,923 | `592c92a06a4f61789890ec23708f5218d1ccd57226cfff8724a7620244745d32` |
+| neoforge-1.21.1 | 26.4-SNAPSHOT.10+neoforge_1.21.1 | `77a0d1b2`（库引脚 .2 + .10） | 2026-11-09T22:24:47+08:00 | 2,732,032 | `50732740bc3cc86a276f9f512c598cd4a83b0b07c700311c79cf6e4d5e67057a` |
+| forge-1.20.1 | 26.4-SNAPSHOT.10+forge_1.20.1 | `77a0d1b2`（库引脚 .2 + .10） | 2026-11-09T22:24:47+08:00 | 2,781,886 | `a82a34dea51d873b1b088d104341e52b8c419d3b14972f66a10e2875c88283b1` |
+| neoforge-26.1.2 | 26.4-SNAPSHOT.10+neoforge_26.1.2 | 同上（本线无 build-info） | 2026-11-09T22:16:16+08:00 | 2,912,982 | `48a455cfeed1c832a7838d99cbd962cde983f96b621d5c5b83d9e045f2410d5b` |
+| fabric-1.20.1 | 26.4-SNAPSHOT.10+fabric_1.20.1 | 待重建（Loom 缓存重建被当前网络阻塞） | — | — | — |
+| fabric-1.21.1 | 26.4-SNAPSHOT.10+fabric_1.21.1 | 待重建（同上） | — | — | — |
+
+本轮两条 fabric 线未能重建：一次被中断的构建后，Loom 把缓存锁标记为 `ACQUIRED_PREVIOUS_OWNER_DISOWNED` 并从头重建缓存，
+而该重建在本环境下卡在 Minecraft 元数据下载。待 Loom 缓存能重新填充后执行
+`./gradlew --configure-on-demand :fabric-1.20.1:build :fabric-1.21.1:build`，再补齐上表两行并提交。
 
 `build/libs` 只保留当前版本；旧的 `26.4-SNAPSHOT.{6,7}` 与 `2.0.0-SNAPSHOT.*` 已移到 `temp/quarantine-build-libs/`。
 先清掉本次之前被同名覆盖的本地 m2 坐标，再从整合包/分发目录重装：
