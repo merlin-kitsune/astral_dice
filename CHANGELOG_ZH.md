@@ -13,6 +13,7 @@
 - 新增：骰战参与者（经 `DiceCombatParticipants` 注册的生物，如车万女仆）在骰战内按玩家口径吃筹码与战斗牌 —— 攻击侧跑骰战攻击修饰器并计入攻击牌点数、每击消耗一次攻击牌耐久，防御侧掷防御牌；玩家专属的账户/背包类加成（星币锤、七咒、狐光快照、治愈点等）对注册生物按不适用跳过，未注册生物路径逐值不变。neoforge 1.21.1 与 forge 1.20.1 两线同批。
 - 新增：骰战参与者管线（G6）同步到 P1 三线 —— `neoforge-26.1.2`、`fabric-1.20.1`、`fabric-1.21.1`。注册生物在攻击侧沿用同一套骰战攻击修饰器与攻击牌点数、防御侧掷防御牌；玩家专属加成按不适用跳过，未注册路径逐值不变。
 - 修复：注册参与者（女仆等）在 Curios 5.x 下拿不到筹码槽 —— 改为参战首击就地补齐筹码槽，使筹码通道在真实玩法可达；未注册生物路径不变。
+- 修复：类玩家生物（经 `PlayerLikeTargets` 注册）在商店与立牌主动上的三处上游缺口 —— ① 商店候选从不播种，导致任何注册生物恒 `NO_OFFER`（新增 `ChipShopOpener#openFor` 与 `ChipShopService#prepareOffers`，候选掷取宿主放宽到 `LivingEntity`）；② 立牌主动对非玩家恒失败（`AlanaSignItem` 现实现 `activateForEntity`，只施「铁处女」免疫，其余立牌仍只对玩家）；③ 卸骰不缩回筹码栏、购买交付失败仍扣款并推进购买计数（现按剩余槽位防御式收缩；失败退款走 `PlayerLikeWallet#deposit` 且不推进购买）。neoforge 1.21.1 与 forge 1.20.1 两线同批。
 
 - **Fabric 前置收敛**：`fabric-1.21.1` 与 `fabric-1.20.1` 均移除 Puzzles Lib 与 Forge Config API Port 依赖；13（1.21.1）/12（1.20.1）条事件桥改由 StarEngine 的 `api/event` 回调提供，只由 `StarengineBridges` 注册；库引脚分别为 `26.4-SNAPSHOT.8` / `26.4-SNAPSHOT.10`。13/12 条链均已在实机验证（1.21.1 全 13、1.20.1 全 12；继承的 `removeAllEffects` 行为按裁决保持原样）。`MODLIST` 不再要求已移除的两个模组。
 

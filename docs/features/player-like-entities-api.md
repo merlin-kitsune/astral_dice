@@ -56,6 +56,7 @@ public interface PlayerLikeWallet {
     boolean isAvailable();
     long balance(LivingEntity holder);
     boolean withdraw(LivingEntity holder, int amount);
+    default boolean deposit(LivingEntity holder, int amount) { return false; }  // 退款；默认不支持
 }
 public static void register(ResourceLocation id, Predicate<LivingEntity> matches, PlayerLikeWallet wallet);
 public static PlayerLikeWallet resolve(LivingEntity holder);   // 玩家恒走 StarEngineEconomy
@@ -68,8 +69,12 @@ public enum Result { OK, INVALID, NO_OFFER, NO_WALLET, NO_COINS, DELIVERY_FAILED
 public record Quote(int basePrice, int discount, int price, long balance, boolean affordable) {}
 public static Quote quote(LivingEntity holder);
 public static Result purchase(LivingEntity holder, int offerIndex);
+public static boolean prepareOffers(LivingEntity holder);   // 只为类玩家播种候选（幂等）
 public static boolean grantRefresh(LivingEntity holder);
 public static void grantDiscount(LivingEntity holder, int amount, long durationTicks);
+
+// shop/ChipShopOpener
+public static boolean openFor(LivingEntity holder);   // 非界面宿主：三项前置 + 补抽 + 机器行
 
 // shop/ChipShopState（宿主放宽）
 public static ChipShopState get(LivingEntity holder);
@@ -90,6 +95,7 @@ protected void onKillEntity(LivingEntity killer, LivingEntity killed);   // 默�
 protected void onHurtEntity(LivingEntity entity, DamageSource source, float amount);
 public boolean activateFor(LivingEntity owner);
 protected boolean activateForEntity(LivingEntity owner);                 // 默认 WARN false
+// 目前唯一覆写者：AlanaSignItem（铁处女免疫；被动加成仍只对玩家）
 
 // item/sign/SignHookDispatcher
 public static void fireKillHooks(LivingEntity killer, LivingEntity killed);
@@ -131,6 +137,8 @@ PlayerLikeWallets.register(MAID_LIKE, e -> e instanceof EntityMaid, new PlayerLi
 3. **目标选择器的「敌对女仆」**：`SelectorTargets` 的敌对判定走关系表，B-10（带 viewer 的可叠加探针）未做。
 4. **购买后重抽**：`ChipShopService` 只推进购买次数，换一批候选需要调用方按 UI 生命周期处理（`ChipShopState#withOffers`）。
 5. **掉落语义**：非玩家交付失败时 `spawnAtLocation` 兜底；若附属希望进背包/容器，必须实现 `Handler.giveItem`。
+6. **商店候选与退款（2026-11-09 补）**：类玩家没有界面，调用方必须先 `ChipShopService.prepareOffers(holder)`（或 `ChipShopOpener.openFor`）再购买，否则 `NO_OFFER`；购买交付失败时按 `PlayerLikeWallet.deposit` 退款、且**不**推进购买计数；钱包未实现 `deposit` 时退款为 `false`（日志 `refunded=false`，钱已扣掉，附属必须自行实现）。
+7. **立牌主动（2026-11-09 补）**：仅 `AlanaSignItem` 实现了 `activateForEntity`；其余立牌的主动仍只对玩家可用（选择器型主动需要「无 ServerPlayer owner」的会话形态，未设计）。
 
 ## 6. 其余四线的迁移映射与步骤
 
@@ -214,3 +222,13 @@ PlayerLikeWallets.register(MAID_LIKE, e -> e instanceof EntityMaid, new PlayerLi
 - 属性修饰符枚举是 `AttributeModifier.Operation.ADDITION`（1.21.1 是 `ADD_VALUE`）；
 - `StarEngineEconomy.deposit` 无 `level() instanceof ServerLevel` 守卫（1.20.1 直接调用）；
 - 「赠刷新」放宽到任意 `LivingEntity`（本线商店状态非玩家走 ForgeData），P0 仍只对玩家。
+
+## 8. 2026-11-09 三条上游反馈的处置（TLMDice）
+
+| # | 反馈 | 处置 | 落在 |
+|---|---|---|---|
+| ① | `ChipShopOpener.ensureOffers` 只收 `Player`，类玩家恒 `NO_OFFER` | `ensureOffers(LivingEntity)` + `ChipShopOpener.openFor(LivingEntity)` + `ChipShopService.prepareOffers(LivingEntity)`；候选播种与玩家同源（`ChipShopRoller` 全部宿主放宽） | `neoforge-1.21.1` / `forge-1.20.1` |
+| ② | `BaseSignItem#activateForEntity` 默认 WARN+false，没有立牌实现 ⇒ 主动对类玩家恒失败 | `AlanaSignItem` 覆写：只施「铁处女」免疫（`AP_SIGN_ACTIVE_ENTITY`）；被动加成仍只对玩家，文档已写明「唯一支持者」 | `neoforge-1.21.1` / `forge-1.20.1` |
+| ③ | 卸骰不缩回（`tryRemoveChipBonus` 只认 Player）；购买交付失败仍扣款并推进计数 | 卸骰：非玩家走 `chip` 槽 + `setSlotCount(..., CHIP_NO_DICE_SLOTS, false)`（防御式收缩，不丢物品）；购买：失败先 `wallet.deposit` 退款、**不** `withPurchased`，日志 `delivery_failed … refunded=` | `neoforge-1.21.1` / `forge-1.20.1` |
+
+> P1 三线（`neoforge-26.1.2` / `fabric-1.20.1` / `fabric-1.21.1`）**本批不适用**：它们尚无类玩家能力层（`PlayerLikeWallet` / `ChipShopService` 不存在），反馈对象也只有 P0 两线的 TLMDice。
