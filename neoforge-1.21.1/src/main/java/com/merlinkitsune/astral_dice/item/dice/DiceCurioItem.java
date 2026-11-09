@@ -118,6 +118,13 @@ public class DiceCurioItem extends Item implements ICurioItem {
             // 玩家侧的「装备即生效」走 onEquip/登录/同步包三条路径;生物的 Curios 装备不触发那些钩子,
             // 故统一由这条 20 tick 对账兜底(尺寸按骰子档位,不叠加 Mimi 立牌的 +1 —— 那是玩家装备检查)。
             refreshChipSlotCountForEntity(slotContext.entity());
+            // 2026-11-09（D）：类玩家首次拿到商店状态时幂等播种一次候选，下游不必自己 prepareOffers。
+            if (com.merlinkitsune.astral_dice.shop.ChipShopState.get(slotContext.entity()).offers().isEmpty()) {
+                com.merlinkitsune.astral_dice.shop.ChipShopService.prepareOffers(slotContext.entity());
+                LOGGER.info("AP_CHIP_SHOP_AUTOSEED: holder={}:offers={}",
+                        slotContext.entity().getName().getString(),
+                        com.merlinkitsune.astral_dice.shop.ChipShopState.get(slotContext.entity()).offers().size());
+            }
         }
     }
 

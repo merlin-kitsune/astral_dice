@@ -115,6 +115,13 @@ public class DiceCurioItem extends Item implements ICurioItem {
             // G6(2026-11-08):注册的类玩家生物/骰战参与者与玩家同口径 —— 佩戴骰子即获得筹码栏。
             // 生物的 Curios 装备不会走玩家的 onEquip/登录/同步包路径,故由这条 20 tick 对账兜底。
             refreshChipSlotCountForEntity(slotContext.entity());
+            // 2026-11-09（D）：类玩家首次拿到商店状态时幂等播种一次候选，下游不必自己 prepareOffers。
+            if (com.merlinkitsune.astral_dice.shop.ChipShopState.get(slotContext.entity()).offers().isEmpty()) {
+                com.merlinkitsune.astral_dice.shop.ChipShopService.prepareOffers(slotContext.entity());
+                LOGGER.info("AP_CHIP_SHOP_AUTOSEED: holder={}:offers={}",
+                        slotContext.entity().getName().getString(),
+                        com.merlinkitsune.astral_dice.shop.ChipShopState.get(slotContext.entity()).offers().size());
+            }
         }
     }
 
