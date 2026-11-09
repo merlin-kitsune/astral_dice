@@ -7,6 +7,7 @@
 - **没有详细测试就没有发布版本**：构建成功不等于可发布。任何版本在对外分发前必须完成本地详细测试与**实机冒烟**取证（进世界、mod 清单与版本号、版本门行、关键功能日志/截图），证据缺失即视为未测试。
 - **发布动作必须是最后一步**：固定顺序 = 构建 → 本地详细测试 → 实机冒烟取证 → 审核项全过 → 才允许 push / tag / GitHub Release / CurseForge 上传。禁止「先上传再补测」「边测边发」。
 - **覆盖全部渠道**：GitHub Release、CurseForge、任何对外分发点一视同仁；构建产物本地生成不算发布。
+- **前置库随版本一起发（2026-11-10 用户裁决）**：本次版本若升级了 StarEngine，**库的对应版本必须先于（或随同）模组上线 CurseForge 项目 `1755415`，四平台 jar 齐全**；缺前置的模组版本视为未完成发布（事故见〈CurseForge 上传〉节）。
 - **违规处置**：若发现已在测试结论齐全之前发布 ⇒ 立即下架/归档该件并登记在案，不得用「后续补测通过」掩盖已发生的越序发布。
 - **发布前须取得用户许可（2026-11-02 补充）**：测试与实机取证完成后，先向用户汇报证据，**由用户明确点头后**才执行 push / tag / Release / CurseForge；用户未许可前不得对外发布，用户已撤回的发布件不得自行重新上传。
 - **CF 站点显示名与 changelog 口径（2026-11-02）**：上传件的显示名一律 `Astral Dice <版本> (<加载器> <MC>)`（加载器写 `NeoForge`/`Forge`/`Fabric`）；小版本更新（补丁 / hotfix / 预发布）不在 CF 写 changelog，只有主线版本 `X.Y.0` 才附带。
@@ -2324,6 +2325,10 @@ When extending this workspace:
   - 幂等 = tag 步骤新增的 `created` 输出：CF 的 legacy upload API **没有**「按版本号查重」的接口，故只在「本次推送新开版本号（`created=1`）」或「混版提交（`unified != 1`）」时上传；重推同一提交不会叠出重复文件。
   - 产物范围 = **四线全部**（`neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1`）—— 2026-11-08 用户裁决：**所有版本都必须发布到 CF**，早先的 P0-only / `--allow-p1` 口径与 `cf_p1` 输入已删除；补传/漏传用 `workflow_dispatch` 的 `cf_only`（逗号分隔线名，如 `neoforge-26.1.2,fabric-1.20.1`）定向补，留空 = 四线全发。
   - 本地命令**只允许 dry-run**（`python tools/curseforge_upload.py --jar … `，不带 `--apply`）用于查看计划；真上传一律走 CI。
+- ⛔ **库升级必须连带发库（2026-11-10 用户裁决，强制）**：发布本模组新版本前，若该版 `starengine_version`（或依赖区间下界）对应的库版本**尚未在 CurseForge 库项目 `1755415` 上线**，必须**先发库、确认四平台 jar 齐全，再发模组** —— 否则玩家装了模组也缺前置、直接进不去。
+  - 事故复盘：`astral_dice 1.5.1` 发布时 `starengine 1.1.1` 从未上传过（库仓当时只有 build / tag / GitHub Release，CI 没有 CF 步）⇒ 玩家缺前置；2026-11-10 已补传 1.1.1 四件（forge `9528728` / fabric `9528730` / neo1.21.1 `9528733` / neo26.1.2 `9528736`）。
+  - 库仓自 2026-11-10 起自带 CF 发布 CI：`starengine/.github/workflows/build.yml` 末步 `Publish to CurseForge` + `starengine/tools/curseforge.json`（项目 `1755415`，四平台全发）⇒ 正常发版会自动带上；仅当「库已定型但 CI 缺失 / 漏跑」时用 `workflow_dispatch` + `cf_apply=true` 补传（默认 false = 只 dry-run 验接线，避免叠重复文件）。
+  - **发布检查清单固定为**：① 库版本已在 CF 上且四平台齐全 → ② 模组构建 → ③ 本地测试 / 实机冒烟 → ④ 用户点头 → ⑤ push / tag / Release / CF 上传。
 - ⚠️ **项目说明（Description）无法经 API 修改（2026-10-02 实测，别再试）**：`.curseforge/token` 是**legacy 上传 token** —— `https://api.curseforge.com/v1/mods/{id}/description` 对它返回 **403**（0 字节，非 Cloudflare 页），Core API 的 `PUT /v1/mods/{id}` 同理不可用；legacy 上传 API 本身**没有**改描述的接口；项目页 `/minecraft/mc-mods/astral-dice` 与站点 JSON `/api/v1/mods/{id}` 均被 **Cloudflare 403**（即使挂了 `--proxy` 也一样，拿不到现有正文）。⇒ **说明全文维护在 `tools/curseforge-description.md`**（中英各一份，含 Fabric 前置），改版时由人工在项目页 Description 编辑器整段替换；产物上传仍走上面的脚本（`--jar` / `--update-file`）。
 
 > ⛔ **2026-10-23 用户裁决（m07502）**：Modrinth 发布链路**永久移除**（上游始终不给过审）。下面这一段是实现原文，**仅作历史**，不要照着做。
