@@ -148,6 +148,14 @@ public final class SouriSignManager {
     /** 把附件层数镜像到 HUD 效果（amplifier = 层数 - 1；层数 0 时摘除图标）。 */
     public static void refreshGoldScaleHud(Player player) {
         if (player == null || player.level().isClientSide()) return;
+        // 金鲤化龙后隐藏「金鳞」图标：层数真值仍在附件里，防御/攻击收益照旧生效。
+        if (hasDragon(player)) {
+            if (player.hasEffect(ModEffects.SOURI_GOLD_SCALE)) {
+                com.merlinkitsune.starengine.event.ModEffectRemoval.remove(
+                        player, ModEffects.SOURI_GOLD_SCALE);
+            }
+            return;
+        }
         int scales = getGoldScales(player);
         if (scales <= 0) {
             if (player.hasEffect(ModEffects.SOURI_GOLD_SCALE)) {
@@ -172,6 +180,7 @@ public final class SouriSignManager {
             PlayerEffectProtection.apply(player, new MobEffectInstance(
                     ModEffects.SOURI_DRAGON, -1, 0, false, false, true));
         }
+        refreshGoldScaleHud(player);
         int converted = convertFieldGourds(player);
         if (player instanceof ServerPlayer sp) {
             sendActionBar(sp, "msg.astral_dice.souri_dragon_gained");
@@ -204,6 +213,8 @@ public final class SouriSignManager {
     /** 卸下立牌 / 立牌离身：清空本立牌的全部状态与属性修饰符（幂等）。 */
     public static void clearAll(Player player) {
         if (player == null || player.level().isClientSide()) return;
+        // 死亡掉落不算「主动卸下」：金鳞层数与化龙状态保持不丢失（用户 2026-11-10 裁决）。
+        if (player.isDeadOrDying()) return;
         ModAttachments.setSouriAwakening(player, 0);
         ModAttachments.setSouriGoldScales(player, 0);
         ModAttachments.setRenCounterCharges(player, 0);
@@ -220,12 +231,12 @@ public final class SouriSignManager {
     /** 每 20t 的自愈：死亡/重登/外部清除后按附件真值把防御与 HUD 重新挂上。 */
     public static void resync(Player player) {
         if (player == null || player.level().isClientSide()) return;
-        refreshDefense(player);
-        refreshGoldScaleHud(player);
         if (getGoldScales(player) >= GOLD_SCALE_MAX && !hasDragon(player)) {
             PlayerEffectProtection.apply(player, new MobEffectInstance(
                     ModEffects.SOURI_DRAGON, -1, 0, false, false, true));
         }
+        refreshDefense(player);
+        refreshGoldScaleHud(player);
     }
 
     // ══════════════════════════════════════════════════════════════════════════
