@@ -5,7 +5,7 @@
 //  【为什么必须是客户端脚本】
 //    · 服务端探针 /astralshop 靠聊天注入驱动，而**界面开着时 T 键被 GUI 吞掉**
 //      ⇒ 开店之后的任何命令都到不了服务端（SHOP-GUI 首跑实测教训）。
-//    · mt_inject.ps1 的真鼠标注入只能打**窗口中心**（无坐标参数）⇒ 打不到卡框/转账按钮。
+//    · scripts/test/mt_inject.py 的真鼠标注入只能打**窗口中心**（无坐标参数）⇒ 打不到卡框/转账按钮。
 //    · 于是：先在服务端用 /astralshop openkeep 把界面**留在屏幕上**，再由本脚本
 //      调 CardShopScreen#mouseClicked/mouseReleased 传**绝对 GUI 坐标**（leftPos+相对值）
 //      来驱动真代码路径（起拖→落点→买；进转账面板→选行→选金额→确认）。

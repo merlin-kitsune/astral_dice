@@ -1854,7 +1854,7 @@ function doKomachiCooldown(ctx, tag) {
  *
  * 两件事**都要**,不是二选一(勿简化):
  *  ① 保留下面 tag 唯一的 `READ` / `CLEARED` —— 断言窗口是「自 launch 快照起的 latest.log
- *     增量」、**跨用例共享**(见 mt_assert.ps1 的 `Get-MtSnapFor`),不带 tag 的 APDUMP 行
+ *     增量」、**跨用例共享**(见 scripts/test/lib/mt_assert.py 的 `Get-MtSnapFor`),不带 tag 的 APDUMP 行
  *     无法归属到某一条用例 ⇒ 拿通用 APDUMP 行顶替 tag 唯一的既有断言等于**弱化断言**
  *     (前序 AIRBAG 的 dump 就能把 `effect_card_play_count=0` 之类的行先喂饱)。
  *  ② **追加** `dumpState`:由 dump 的 `LOCKRAW` 组把 `effect_card_bonus_plays` /
@@ -6748,7 +6748,7 @@ function doTeruClear(ctx, tag) {
 //     /astralprobe zhaolink <tag> <read|call>           心意相连:只读候选集 / 调 onAllyActiveSkill
 //     /astralprobe zhaonuclear <tag>                    收尾:清卡/效果/状态/计时器 + 卸立牌 + 清主手
 //
-//   ⚠️ 改探针后必须**冷启动**(mt.ps1 --phase stop → --phase launch):
+//   ⚠️ 改探针后必须**冷启动**(scripts/test/win/mt.sh --phase stop → --phase launch):
 //      /kubejs reload server-scripts 不会重绑已注册的 Brigadier 命令。
 //   ⚠️ 两线(1.21.1 / 1.20.1)本段逐字一致:只允许用两线同名 API(已核对访问器 14:14、常量 6:6、
 //      类路径 11:11 全等;1.20.1 的 FenSignItem#addRecharge 形参名不同但签名相同)。
@@ -10691,7 +10691,7 @@ function doSignExpireGrace(ctx, tag) {
     return 1;
 }
 
-// NARDIS-IMPL-END(插入器用:重跑 build_nardi_block.ps1 时靠这一行定位旧块并整段替换)
+// NARDIS-IMPL-END(插入器用:重跑 插入器脚本（已删除） 时靠这一行定位旧块并整段替换)
 // ════════════════════════════════════════════════════════════════════════════
 //  蛟龙立牌(mamushi)游戏内取证段(2026-09-27;双人/多人用 Carpet `/player` bot)
 //    语义基准 = docs/features/mamushi-sign-spec.md(§1 冻结常量 / §2 技能语义 /
@@ -11220,7 +11220,7 @@ function mamuKill(p) {
  * <p>⚠️ **别指望它自动关掉死亡界面**(2026-09-28 实测推翻旧注释):`ClientPacketListener#handleRespawn`
  * 只在「当前界面已是 `DeathScreen`」时才 `setScreen(null)`(`:1230-1232`),而死亡包更晚到时会**新建**
  * 界面 ⇒ 界面永久驻留、聊天注入全被吞(详见 {@link doMamuDie} 头注的取证与正确口径:
- * 由 `mt_launch.ps1` 的 `gamerule doImmediateRespawn true` 环境不变量保证从不创建该界面)。
+ * 由 `scripts/test/win/mt.sh --phase launch` 的 `gamerule doImmediateRespawn true` 环境不变量保证从不创建该界面)。
  *
  * <p>⚠️⚠️ **签名两线不同**(2026-09-27 反编译源码核对,必须双形态):
  * <ul>
@@ -12948,7 +12948,7 @@ function doMamuGuard(ctx, tag, modeText) {
  * 客户端 `handleRespawn` **只在「当前界面已是 DeathScreen」时**才 `setScreen(null)`
  * (`ClientPacketListener.java:1230-1232`),此刻界面还没创建 ⇒ 不关;随后迟到的死亡包**新建**
  * 死亡界面(`:1715-1716`),而玩家已被重生为满血 ⇒ 界面永久驻留。
- * ⇒ **正确口径由环境不变量提供**:测试启动期 `mt_launch.ps1` 注入 `gamerule doImmediateRespawn true`
+ * ⇒ **正确口径由环境不变量提供**:测试启动期 `scripts/test/win/mt.sh --phase launch` 注入 `gamerule doImmediateRespawn true`
  * (硬闸门 + 游戏内回显自证),客户端因此 `showDeathScreen=false`
  * (`ClientPacketListener:1491`),死亡包改走 `player.respawn()` 分支(`:1717`)⇒
  * **从不创建死亡界面**;客户端自发 `PERFORM_RESPAWN` 被 `ServerGamePacketListenerImpl:1672` 的
@@ -13118,7 +13118,7 @@ function doMamuDie(ctx, tag, keepText) {
     // 全量快照(字段顺序与 ZERO_* 逐字一致;第 5 参 = 直发新玩家)
     return mamuRead(ctx, tag, (np != null) ? np : p, "DIE", np);
 }
-// MAMUSHI-IMPL-END(插入器用:重跑 build_mamushi_block.ps1 时靠这一行定位旧块并整段替换)
+// MAMUSHI-IMPL-END(插入器用:重跑 插入器脚本（已删除） 时靠这一行定位旧块并整段替换)
 
 //  ⚠️ 1.20.1 平台差异(与 1.21.1 段逐条对等):
 //    · ModEffects 常量是 RegistryObject ⇒ hasEffect 传 .get()

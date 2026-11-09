@@ -5,7 +5,7 @@
 //  【为什么必须是客户端脚本】
 //    · 服务端探针 /astralshop 靠聊天注入驱动，而**界面开着时 T 键被 GUI 吞掉**
 //      ⇒ 开店之后的任何命令都到不了服务端（SHOP-GUI 首跑实测教训）。
-//    · mt_inject.ps1 的真鼠标注入只能打**窗口中心**（无坐标参数）⇒ 打不到卡框/转账按钮。
+//    · scripts/test/mt_inject.py 的真鼠标注入只能打**窗口中心**（无坐标参数）⇒ 打不到卡框/转账按钮。
 //    · 于是：先在服务端用 /astralshop openkeep 把界面**留在屏幕上**，再由本脚本
 //      调 CardShopScreen#mouseClicked/mouseReleased 传**绝对 GUI 坐标**（leftPos+相对值）
 //      来驱动真代码路径（起拖→落点→买；进转账面板→选行→选金额→确认）。
@@ -1535,7 +1535,7 @@ function csRunN(mc, step) {
 //   ⑦ 拖拽三连（单击选中 / 原版 16x16 小图标跟随 / 落包后 soldout + 物品栏出现该卡）+ 反例（落点不在格内 ⇒ 不发包、无扣款）
 //  ⑧⑨ 由 csTail（商店屏之外）接管：创造栏排序 + JEI 配方查看器 TTT/BBB/MMM
 //  ⚠️ ④⑥ 需要**真实 OS 光标**停在控件上（探针的 lastHover* 来自 render 传入的真实光标坐标），
-//     由外部脚本 temp/t91/real_cursor.ps1 并发驱动：探针落 evt=n2_need_<label> ⇒ 外部把真光标移过去 ⇒
+//     由外部脚本 temp/t91/windows MCP 的 Move/Click 并发驱动：探针落 evt=n2_need_<label> ⇒ 外部把真光标移过去 ⇒
 //     探针轮询 scr.hoverState() 确认命中后继续；每阶段都有超时兜底（绝不卡死，超时记 n2_to_*）。
 var csN2P = 0;         // 阶段机
 var csN2T = 0;         // 本阶段已过 tick

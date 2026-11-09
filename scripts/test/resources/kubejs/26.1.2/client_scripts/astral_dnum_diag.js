@@ -1,6 +1,6 @@
 // ════════════════════════════════════════════════════════════════════════════
 //  astral_dnum_diag.js —— 伤害跳字（DamageNumberStore）客户端侧读数探针
-//                      （2026-09-26 新增；本文件是**模板**，由 mt_env.ps1 的
+//                      （2026-09-26 新增；本文件是**模板**，由 `scripts/test/win/mt.sh --phase env` 的
 //                       Sync-MtEnvKubejs 同步到 run/26.1.2/kubejs/client_scripts/）
 //
 //  【为什么必须走客户端通道】

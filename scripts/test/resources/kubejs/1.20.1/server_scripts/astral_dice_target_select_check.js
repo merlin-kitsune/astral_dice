@@ -19,7 +19,7 @@
 // 4. sendSuccess(Supplier) 不可靠,统一 sendFailure(Component);
 // 5. 修改后执行 /kubejs reload server-scripts + /reload 快速重载(无需重启游戏),
 //    并检查 run/1.20.1/logs/kubejs/server.log 为 0 errors(进入世界后第一步)。
-// 6. 脚本文件必须 UTF-8 无 BOM;勿用 PowerShell Set-Content 重写(默认 ANSI 会损坏中文注释)。
+// 6. 脚本文件必须 UTF-8 无 BOM;勿用 外部 shell Set-Content 重写(默认 ANSI 会损坏中文注释)。
 
 var ComponentClass = Java.loadClass("net.minecraft.network.chat.Component");
 var AABBClass = Java.loadClass("net.minecraft.world.phys.AABB");
