@@ -4,6 +4,12 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 26.4-SNAPSHOT.9
+
+### This line
+
+- Change: Magic Coins and SG-Economy are now **permanently incompatible** on all five lines (`neoforge-1.21.1`, `forge-1.20.1`, `neoforge-26.1.2`, `fabric-1.20.1`, `fabric-1.21.1`). The blacklist no longer carries a "only while the star-coin wallet is enabled" flag: turning `enable_star_coin_wallet` off no longer restores compatibility. The startup notice drops the "disable the wallet to coexist" way out and keeps a single remedy — remove the listed mods.
+
 ## 26.4-SNAPSHOT.8
 
 ### This line
