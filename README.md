@@ -127,8 +127,8 @@ names the **code commit** the jar was built from; the README update that records
 
 | Line | Version | Built from | Built at | Size (B) | SHA-256 |
 |---|---|---|---|---|---|
-| neoforge-1.21.1 | 26.4-SNAPSHOT.10+neoforge_1.21.1 | `4cbcd95a`（库引脚 .2 + .10） | 2026-11-09T23:12:32+08:00 | 2,780,084 | `8c66ff945aea0138d3c562938439e8adc69da6c4cad2e17ca993f1bc68fd7555` |
-| forge-1.20.1 | 26.4-SNAPSHOT.10+forge_1.20.1 | `4cbcd95a`（库引脚 .2 + .10） | 2026-11-09T23:12:32+08:00 | 2,830,163 | `7cfa3c04aea3d4a5ef9eb1b8fa4690b8417d08f6f808b4b677f16c361af751bc` |
+| neoforge-1.21.1 | 26.4-SNAPSHOT.10+neoforge_1.21.1 | `1ff15962`（库引脚 .2 + .10） | 2026-11-09T23:15:13+08:00 | 2,780,067 | `47a9aab9159bdc5b3712ac7672a0f0ff98260ec691a32c971904bbb546a85344` |
+| forge-1.20.1 | 26.4-SNAPSHOT.10+forge_1.20.1 | `1ff15962`（库引脚 .2 + .10） | 2026-11-09T23:15:13+08:00 | 2,830,146 | `a2ca3da088cbb9029c21561542451f1aed9d3b0cd072cdbe12d10308783b91f8` |
 | neoforge-26.1.2 | 26.4-SNAPSHOT.10+neoforge_26.1.2 | 同上（本线无 build-info） | 2026-11-09T22:16:16+08:00 | 2,912,982 | `48a455cfeed1c832a7838d99cbd962cde983f96b621d5c5b83d9e045f2410d5b` |
 | fabric-1.20.1 | 26.4-SNAPSHOT.10+fabric_1.20.1 | `58992f0c`（库引脚 .11 + .10） | 2026-11-09T22:32:17+08:00 | 3,023,620 | `b1ed477eafea1ea45a532e50d3b15915ddea4c16b1949661fcec5bd3da0fff2e` |
 | fabric-1.21.1 | 26.4-SNAPSHOT.10+fabric_1.21.1 | `58992f0c`（库引脚 .9 + .10） | 2026-11-09T22:32:52+08:00 | 3,049,924 | `7a6f8169afb89767c39f13321062abcf6fc60aa8bde8c01a330c96c465dc8b53` |
