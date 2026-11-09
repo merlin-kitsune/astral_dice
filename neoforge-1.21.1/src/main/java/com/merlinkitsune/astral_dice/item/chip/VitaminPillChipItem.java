@@ -65,9 +65,8 @@ public class VitaminPillChipItem extends BaseChipItem {
                 com.merlinkitsune.astral_dice.item.sign.MamushiSignItem.onCardGivenToOther(giver, player);
                 // 少主立牌被动「双赢」A 面:佩戴者使**其他**角色获得卡牌 ⇒ 双方各 +1 星光
                 // (2026-11-08 用户裁决:主动发卡 /「你有我有」/ 一切走本漏斗的发牌都算)
-                if (giver instanceof net.minecraft.server.level.ServerPlayer serverGiver) {
-                    com.merlinkitsune.astral_dice.item.sign.AlSignItem.onCardGivenToOther(serverGiver, player);
-                }
+                // 2026-11-09（C）：改走中立钩子（非玩家发牌方也会进钩子并留 AP_CARD_GIVEN 锚点）
+                com.merlinkitsune.astral_dice.item.sign.CardGivenHooks.fire(giver, player);
             }
         }
     }
