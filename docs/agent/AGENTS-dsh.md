@@ -12,7 +12,7 @@
 ## ⚙️ 环境与工具链口径（Windows 原生，优先级高于本文件其余测试 / 环境条款）
 
 1. **一台机器、一种工作流**：DSH 直接在本机 Windows 工作树上动手 —— 没有第二个运行环境，也没有路径转译层。
-2. **测试台唯一口径 = bash + python**：Windows 宿主上的 bash 由 **MSYS2 / git bash** 提供（不要求 WSL），Linux 宿主用原生 bash；测试入口一律 `bash scripts/test/win/mt.sh --version <线> --phase <env|build|launch|cases|report|stop>`（Linux：`bash scripts/test/linux/{env,launch,stop}.sh`），静态守门一律 `python scripts/verify/*.py` / `python tools/*.py`。**不再新增 `.ps1` / `.psm1`**：既有 pwsh 测试资产一律作废，退役登记 `docs/features/devnext-pwsh-retirement-register.md`，文档与脚本里的 `.ps1` 引用只作溯源、不作执行口径。
+2. **测试台唯一口径 = bash + python**：Windows 宿主上的 bash 由 **MSYS2 / git bash** 提供（不要求 WSL），Linux 宿主用原生 bash；测试入口一律 `bash scripts/test/win/mt.sh --version <线> --phase <env|build|launch|cases|report|stop>`（Linux：`bash scripts/test/linux/{env,launch,stop}.sh`），静态守门一律 `python scripts/verify/*.py` / `python tools/*.py`。**不再新增任何独立的原生 shell 脚本资产**：旧的原生脚本测试台已于 2026-11-04 起作废（退役登记见 `docs/features/` 下的历史登记文件），文档与脚本里的旧脚本引用只作溯源、不作执行口径。
 3. **编译**：在**当前工作树根**执行 `./gradlew :<线>:classes|jar`（本分支工作树 = `F:\MCProject\astral_dice_multiloader-next`；主线工作树 = `F:\MCProject\astral_dice_multiloader`，两者不要混用）。
 4. **实机**：`bash scripts/test/win/mt.sh --version <线> --phase <env|launch|stop>`（在工作树根执行；Windows 宿主经 MSYS2 / git bash，Linux 宿主见 `docs/agent/AGENTS-dsh-linux.md`〈测试台现状（Linux）〉）。
 5. **产物投放**：以工作树 `build/libs` 为唯一来源，按线复制到 `run/<1.21.1|1.20.1|26.1.2|fabric-1.20.1>/mods`，或**成对**投放两个 P0 整合包（`astral_dice-*.jar` + `starengine-*-<库版本>.jar`）；投完必须核 `sha256sum`（bash），别把同名当新构建。
@@ -23,12 +23,12 @@
 
 10. **实机的「进程 / 窗口 / 桌面」操作一律走 `dsh-windows-mcp`（2026-11-09 用户裁决，取代一切旧窗口脚本口径）**：MCP server 名 `windows`，工具面 = `Process`（`mode:"list"` / `mode:"kill"`，按 PID 或进程名）、`Snapshot` / `Screenshot`（截屏与 UI 元素树）、`Click` / `Move` / `Type` / `Shortcut` / `Scroll` / `Clipboard`（键鼠与剪贴板）、`Wait` / `WaitFor`（等窗口 / 文本 / 元素）、`Process` 之外的 `DisplayInventory` / `Registry` / `Notification` 等。
     - **适用范围**：启动后对游戏进程与窗口的一切操作 —— 列进程、判断「本仓 java 客户端是否残留」、强杀卡死 / 加载失败的实例、把窗口拉前台、点击 / 输入 / 快捷键、截图取证、读剪贴板。
-    - ⛔ **旧版命令一律废弃**：`taskkill //PID … /T /F`（含 `MSYS2_ARG_CONV_EXCL` 绕法）、按 `ps -W` / CIM `Win32_Process` 猜 PID 的判线、`work/audit/stop_tlmdice.sh` 这类「按端口反查 PID 再杀」的临时脚本、PowerShell 的窗口 / 键鼠脚本、手工截图脚本 —— **不执行、不新增、不据此改写文档**，只在历史记录里作溯源。
+    - ⛔ **旧版进程与窗口脚本一律废弃**：一切「先猜 PID 再强杀」的临时脚本、按平台专有进程表查询判线的写法、平台专有窗口 / 键鼠自动化与手工截图脚本 —— **不执行、不新增、不据此改写文档**，只在历史记录里作溯源。脚本侧只负责**报告 PID**（`MT_STOP: PENDING pid=…`），终止动作由 Agent 执行。
     - ✅ **保留** AutoJS 流程：`autojs` MCP（`eval_js` / 探针 / 用例 / 断言）仍然是**游戏内状态**的唯一通道；它只管游戏内（实体、方块、背包、UI 逻辑），**不管进程与窗口**。两者边界：进程 / 窗口 / 桌面 → `mcp__windows__*`；游戏内读写 → `autojs`。
-    - 桌面被你占用时该 MCP 会返回 `USER_CONTROL`（带等待秒数）—— 这不是失败：`Wait` 后再试或先问你是否可接管，**不得**因此退回 `taskkill` / CIM 旧路径。
+    - 桌面被你占用时该 MCP 会返回 `USER_CONTROL`（带等待秒数）—— 这不是失败：`Wait` 后再试或先问你是否可接管，**不得**因此退回旧的原生进程强杀路径。
     - 测试台的 `--phase launch|stop` 仍负责 Gradle 生命周期（起停 dev 进程、写 pidfile、喷机器行）；**当脚本收停失败或进程卡死时，处置动作改由 `Process(mode:"kill")` 完成**，不再手写 kill 命令。
 
-> 红线区〈命令执行规范（Shell）〉已于 **2026-11-04 用户裁决**整体改写为现行口径（与本节〈⚙️ 环境与工具链口径〉一致）：**本项目只允许通过 `ops_bash` 调用工具**，bash 由 MSYS2 / git bash 提供、禁止用 `cmd.exe` 批处理替代（`.bat` 只保留 `gradlew.bat` / `run/Start-<线>.bat` 这类既有双击启动件）。原「一律 PowerShell 7 / `pwsh`」条款**已整节删除**，不要再引用；`docs/agent/AGENTS-full.md` 同处已同步改写，两项仍受 `docs/agent/verify-split.py` 项 1b 的逐字比对约束。
+> 红线区〈命令执行规范（Shell）〉已于 **2026-11-04 用户裁决**整体改写为现行口径（与本节〈⚙️ 环境与工具链口径〉一致）：**本项目只允许通过 `ops_bash` 调用工具**，bash 由 MSYS2 / git bash 提供、禁止用 `cmd.exe` 批处理替代（`.bat` 只保留 `gradlew.bat` / `run/Start-<线>.bat` 这类既有双击启动件）。原「一律使用平台原生 shell」条款**已整节删除**，不要再引用；`docs/agent/AGENTS-full.md` 同处已同步改写，两项仍受 `docs/agent/verify-split.py` 项 1b 的逐字比对约束。
 
 
 ## 下沉到 StarEngine 的判定规则 —— 必须遵守（2026-10-19 用户裁决）
@@ -159,7 +159,7 @@
 5. **门禁**：`python tools/verify_sign_display_names.py` ⇒ 必须 `GATE: PASS`（P0 两线 31 个 `item.astral_dice.<id>_sign` 与权威表逐字一致 + 无 `<旧职称> Sign` 残留 + JA 无 `超天酱/地雷女/怪力乱神`）。
 6. **新增立牌时**：按 id 找 wiki 页 → 写进权威表 → 改两线 `en_us.json` / `ja_jp.json` → 跑门禁 → 再提交。
 
-> ✅ **执行口径**：下方红线区整块来自 `docs/agent/AGENTS-full.md` L2–L129（受 `docs/agent/verify-split.py` 项 1b 的**逐字比对**约束）。其中〈命令执行规范（Shell）〉已于 **2026-11-04 用户裁决**随本文件一起改写为『**只允许 `ops_bash` + bash（MSYS2 / git bash）+ python**』口径，PowerShell / `pwsh` / `.ps1` 条款**已全部删除**；若与本节〈⚙️ 环境与工具链口径〉仍有出入，以本节为准并即时订正（两边应逐字一致）。
+> ✅ **执行口径**：下方红线区整块来自 `docs/agent/AGENTS-full.md` L2–L129（受 `docs/agent/verify-split.py` 项 1b 的**逐字比对**约束）。其中〈命令执行规范（Shell）〉已于 **2026-11-04 用户裁决**随本文件一起改写为『**只允许 `ops_bash` + bash（MSYS2 / git bash）+ python**』口径，旧的原生 shell 条款**已全部删除**；若与本节〈⚙️ 环境与工具链口径〉仍有出入，以本节为准并即时订正（两边应逐字一致）。
 
 ## 📍 生效红线区 —— 原文逐字（`docs/agent/AGENTS-full.md` L2–L130；原文 H1 由本文件 H1 取代）
 > **子项目优先级与默认规则(必须遵守,2026-11-05 用户裁决重新划级)**:⛔ **原「三条生产线同批实施（含 26.1.2）」「四线同号」等旧口径已全部作废** —— 现行**两级优先模型**见下方「## 版本优先级与跨线移植纪律」:**P0 最高 = `forge-1.20.1` + `neoforge-1.21.1`**（新功能、修复、平衡、文案一律**先落这两条线**,两线保持功能对等,无法对等的项按平台差异逐条登记,见 `docs/compat-1.20.1-forge.md`）;**P1 = `fabric-1.20.1` + `fabric-1.21.1` + `neoforge-26.1.2`**（⛔ **只有 P0 新功能落盘无误且经过详尽测试后,由用户裁决才可向 P1 落盘,代理不得擅自决定**;各线规则边界见下方各自小节）;每次改动完成后由代理**自动本地提交**并**自动部署到整合包**(随 `gradlew build` 触发,**各线各自推往自己的测试实例**:`狐の航空学 Voxy Edition` / `1.20.1-Forge 模组测试` / `26.1.2-NeoForge 模组测试` / `1.20.1-Fabric 模组测试`),但**默认不执行 `git push`**。⛔ **发布投放红线（必须遵守,2026-10-25 用户裁决,优先级高于本条其余表述）**：**除非用户在当次任务里明确点名要求，否则默认只上传/发布 P0 两线（`neoforge-1.21.1` + `forge-1.20.1`）的产物** —— 涵盖 CurseForge / Modrinth / GitHub Release 与 tag / 任何对外分发渠道；**P1 三线（`fabric-1.20.1` + `fabric-1.21.1` + `neoforge-26.1.2`）的编译产物一律视为不可用** ⇒ 禁止上传、禁止建 Release/tag、禁止作为 P0 Release 的附件、禁止对外交付；需要 P1 发布时必须由用户逐次点名下达。 **2026-11-02 用户裁决（取代本条后半）**：各线 jar 允许放入同一个 GitHub Release（按版本号打 tag、全部正式版）；CF 侧 `fabric` / `neoforge-26.1.2` 仍受 `--allow-p1` 显式放行闸门约束（保留为防误传互锁），上传时必须显式加该参数。**② tag 与 Release 命名红线（同批裁决,强制）**：GitHub Release 的 tag **只按 mod 版本**创建（例 `1.5.0`、`1.5.0-rc.1`、`1.5.0-pre.6`）—— **禁止**按游戏平台建 tag（`fabric-1.5.0-rc.1`、`neoforge-…` 一律禁止）、禁止 `v` 前缀、禁止 `+加载器` 后缀；**同一版本的多平台 jar 必须放进同一个 Release**（现为 P0 两线 `neoforge-1.21.1` + `forge-1.20.1`，各自 jar 作同一 Release 的附件）；带 `-rc` / `-pre` / `-alpha` / `-beta` 的版本一律标 prerelease、不占 latest。**③ 发布时序红线（2026-11-02 用户裁决，强制）**：**未经详细测试（含实机冒烟）的版本一律不得作为发布版本**；**生产版本的发布动作必须是整条流程的最后一步** —— 固定顺序为「构建 → 本地详细测试 / 实机冒烟取证 → 审核项全过 → 才允许 push / tag / Release / CurseForge 上传」。在测试结论齐全之前执行的任何对外发布动作都算违规，发现即回滚或下架并记录。
@@ -266,20 +266,20 @@ When extending this workspace:
 
 ## 命令执行规范（Shell）— 必须遵守（2026-09-19 裁决；2026-11-04 用户裁决整体改写）
 
-**本项目只允许通过 `ops_bash` 调用工具：一切命令在 `run_code` 里用 `tools.ops_bash(...)` 执行。PowerShell 7（`pwsh`）与 `.ps1` / `.psm1` 口径已整体作废（原文已删除，勿再引用、勿新增）。**
+**本项目只允许通过 `ops_bash` 调用工具：一切命令在 `run_code` 里用 `tools.ops_bash(...)` 执行。旧的原生 shell 脚本口径已整体作废（原文已删除，勿再引用、勿新增）。**
 
-- **背景（实测）**：本代理的命令通道是 `run_code` → `tools.ops_bash(...)`；Windows 宿主的 bash 由 **MSYS2 / git bash** 提供，原生 Linux 宿主用系统 bash。旧口径「一律 PowerShell 7 + `pwsh -NoProfile -File`」是 2026-09-19 的临时裁决，现已废止。
+- **背景（实测）**：本代理的命令通道是 `run_code` → `tools.ops_bash(...)`；Windows 宿主的 bash 由 **MSYS2 / git bash** 提供，原生 Linux 宿主用系统 bash。旧口径「一律使用平台原生 shell 执行脚本」是 2026-09-19 的临时裁决，现已废止。
 - **规则**：
   1. 命令一律写成 **bash 形态**：`./gradlew :<线>:<task>`、`bash scripts/test/win/mt.sh …`、`python tools/xxx.py`、`git -C <工作树> …`；路径用 POSIX 形态（`/f/MCProject/...`），不要写 `F:` 反斜杠路径。
   2. 多行 / 含引号 / 含 `$` 的命令**先落盘成脚本再跑**：`bash temp/xxx.sh`、`python temp/xxx.py`（脚本放 `temp/`，见「工作树与路径纪律」）；`ops_bash` 会拒掉不可解析的内联串（`analysis.strict-unparseable`）。
-  3. 本仓既有 `.ps1` / `.psm1` **一律作废**：不执行、不新增、不据此改写文档；退役登记见 `docs/features/devnext-pwsh-retirement-register.md`，文档里残留的 `.ps1` 引用只作历史溯源。
+  3. 本仓既有独立原生 shell 脚本 **一律作废**：不执行、不新增、不据此改写文档；退役登记见 `docs/features/` 下的历史登记文件，文档里残留的旧脚本引用只作历史溯源。
   4. 测试台唯一入口 = `bash scripts/test/win/mt.sh --version <线> --phase <env|build|launch|cases|report|stop>`（Linux：`bash scripts/test/linux/{env,launch,stop}.sh`）；守门脚本 = `python tools/*.py` / `bash scripts/verify/*.sh`。
   5. **双击启动件只作启动**：`gradlew.bat` / `run/Start-<线>.bat` 是用户手工双击的既有文件，不纳入命令执行口径；命令行启动一律 `./gradlew :<线>:runClient`（`.bat` 的空参守卫规则仍只针对这两个文件）。
   6. 命令失败先看**第一条因果错误**（`BUILD FAILED` 之前的 `Caused by:` / `error:` 行），不要拿最后一次运行的尾部输出当结论。
   7. **解释器只走 PATH，不写绝对路径**：命令里的 `bash` / `python` 一律写**裸名**，交给 `ops_bash` 自行解析 —— Windows 宿主解析到 PATH 上的 MSYS2 / git-bash，python 解析到 PATH 上的 **3.12.16**；原生 Linux 宿主解析到系统 bash / python3。⛔ **禁止**写 `C:/msys64/usr/bin/bash`、`C:/Python3xx/python.exe`、`~/.dsh/dsh-runtimes/**/python.exe` 这类绝对解释器路径：`ops_bash` 无法指定解释器，写成绝对路径只会让同一条命令在不同会话 / 不同机器上落到不同运行时（2026-11-07 用户裁决）。
   8. **python 只依赖标准库**：解释器固定为 PATH 上的 3.12.16 ⇒ 脚本**不得依赖只有别处解释器才装的第三方库**（例：`PIL` 不在系统 python 里）。需要能力时优先标准库实现；确需第三方库先 `python -c "import X"` 实探，缺失即改实现，**不得**为此改指别的解释器。
   9. **进程 / 窗口 / 桌面不是 bash 的活**：这类动作一律 `mcp__windows__*`（`Process` / `Snapshot` / `Click` / `Type` / `Shortcut` / `Wait` …），bash 只负责构建、测试台脚本、守门脚本与 git；游戏内读写走 `autojs` MCP。三者边界见〈⚙️ 环境与工具链口径〉第 10 条。
-- **自查**：命令里出现 `pwsh` / `powershell` / `-File xxx.ps1` ⇒ 立即改成 bash / python 等价物；命令里出现 `taskkill` / `ps -W` / `Win32_Process` 去处理游戏进程 ⇒ 改用 `mcp__windows__Process`；游戏内读写仍走 `autojs` MCP（`eval_js`）；`ops_bash` 返回 `exit 2` 多为测试台门禁拦下（缺 `--version` / 缺 `--phase` / `cases` 缺 `--case`），按脚本 usage 补参数重跑。
+- **自查**：命令里出现旧的原生 shell 调用或旧脚本名 ⇒ 立即改成 bash / python 等价物；命令里出现强杀 / 猜测 PID 去处理游戏进程 ⇒ 改用 `mcp__windows__Process`（Agent 执行终止，脚本只交棒 PID）；游戏内读写仍走 `autojs` MCP（`eval_js`）；`ops_bash` 返回 `exit 2` 多为测试台门禁拦下（缺 `--version` / 缺 `--phase` / `cases` 缺 `--case`），按脚本 usage 补参数重跑。
 
 ## Git 代理规范（Git Proxy）— 必须遵守
 
@@ -301,7 +301,7 @@ When extending this workspace:
 
 ## 📇 规则索引 —— 其余原文的位置（`docs/agent/AGENTS-full.md`）
 
-> ⚠️ 下列 `AGENTS-full.md` 分区是**历史原文存档**：其中出现的 `pwsh` / `.ps1` / `mt.ps1` 命令、以及「全流程为纯 PowerShell 7」一类表述**一律已作废**，只作溯源、不得照抄。执行口径只有一个：本文件前部〈⚙️ 环境与工具链口径〉+ 红线区〈命令执行规范（Shell）〉= **只允许 `ops_bash` + bash（MSYS2 / git bash）+ python**。
+> ⚠️ 下列 `AGENTS-full.md` 分区是**历史原文存档**：其中出现的旧原生 shell 命令与「全流程为纯原生 shell」一类表述**一律已作废**，只作溯源、不得照抄。执行口径只有一个：本文件前部〈⚙️ 环境与工具链口径〉+ 红线区〈命令执行规范（Shell）〉= **只允许 `ops_bash` + bash（MSYS2 / git bash）+ python**。
 
 | 行号区间 | 主题（原文标题摘引） | 何时必读（触发条件） |
 |---|---|---|
