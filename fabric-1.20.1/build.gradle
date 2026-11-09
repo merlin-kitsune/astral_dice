@@ -243,7 +243,7 @@ dependencies {
     modRuntimeOnly "maven.modrinth:yacl:dvS5DjUA"   // 3.6.6+1.20.1 (2026-11-03 从 3.1.0 升级)
 
     // AutoJS 实机测试库（仅 dev 运行期；CI/普通构建不解析）
-    // 由 scripts/test/tools/publish_autojs_maven.ps1 发布到 mavenLocal（见本文件 :47 的 mavenLocal()）。
+    // 由 scripts/test/tools/publish_autojs_maven.py 发布到 mavenLocal（见本文件 :47 的 mavenLocal()）。
     // 条件守卫：默认关闭 => 没有本地产物时普通构建 / CI 不解析该坐标。
     // Loom 的 mod* 配置对带 fabric.mod.json 的依赖做 intermediary->named；AutoJS 产物
     //    manifest `Fabric-Loom-Version=1.10.5`，低于本仓 1.19.3，不触发 built-with-newer-Loom 门禁。

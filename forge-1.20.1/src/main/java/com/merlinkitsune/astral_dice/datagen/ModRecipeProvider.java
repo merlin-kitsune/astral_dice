@@ -313,7 +313,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
 
         // 金色飞星(传奇/星光流派):**进阶筹码** —— 走紫->金「通用升级」模板 RDR/DTD/GGG
         // (红石粉 / 钻石 / 上一等级 = 紫色飞星 / 黄金星盘),不再复用紫色飞星的基础图案。
-        // ⚠️ 本筹码的进阶关系同时登记在 scripts/verify/ChipCommon.psm1 的 $UPGRADE 表中。
+        // ⚠️ 本筹码的进阶关系同时登记在 scripts/verify/chip_common.py 的 $UPGRADE 表中。
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.GOLDEN_SHOOTING_STAR_CHIP.get())
                 .pattern("RDR")
                 .pattern("DTD")
@@ -1363,7 +1363,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
         // 2026-09-25 用户裁决:骰子由钻石骰子改为紫晶骰子(本仓首条以紫晶骰子为材料的配方,
         // 故不再有同档伙伴)。
         // 本配方六个填料的格位与全部其它立牌均不复用,网格全局唯一
-        // (守门:scripts/verify/verify_crafting_recipe_uniqueness.ps1)。
+        // (守门:scripts/verify/verify_crafting_recipe_uniqueness.py)。
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.JILL_SIGN.get())
                 .pattern("PVP").pattern("GEG").pattern("WDW")
                 .define('P', ModItems.GOLDEN_STAR_PLATE.get())
@@ -1408,7 +1408,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
         // (G=黄金星盘×2、Q=白色羊毛、L=皮革、E=空白立牌、T=木棍、D=紫晶骰子;空白立牌置中、骰子固定中下)
         // 2026-09-25 用户裁决:两个线位换黄金星盘、骰子换紫晶骰子(原「黄金骰子(无星盘)」档作废)。
         // 本配方六个填料的格位与全部其它立牌均不复用,材料多重集亦不同 ⇒ 网格全局唯一
-        // (守门:scripts/verify/verify_crafting_recipe_uniqueness.ps1)。
+        // (守门:scripts/verify/verify_crafting_recipe_uniqueness.py)。
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.HANNA_SIGN.get())
                 .pattern("GQG")
                 .pattern("LEL")
@@ -1425,7 +1425,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
         // 机械师立牌(megas,传奇):紫晶骰子 + 黄金星盘档。RPR/MEM/DID
         // (R=红石块、P=黄金星盘、M=铁块、E=空白立牌、D=紫晶骰子、I=发射器;空白立牌置中、骰子固定中下)
         // 工业/机械主题(轨道轰炸 = 从天而降的火力支援)。本配方六个填料的格位与全部其它立牌均不复用,
-        // 材料多重集亦不同 ⇒ 网格全局唯一(守门:scripts/verify/verify_crafting_recipe_uniqueness.ps1)。
+        // 材料多重集亦不同 ⇒ 网格全局唯一(守门:scripts/verify/verify_crafting_recipe_uniqueness.py)。
         // 机械师立牌 megas(2026-09-27 用户指定配方)：
         //   S F S      S = 金锭    F = 发射器
         //   X L X      X = 下界合金块  L = 空白立牌
@@ -1447,7 +1447,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
         // 2026-10-16 冻结规格(用户指定):「GNG/WEW/ADA」—— G=黄金星盘×2、N=音符盒、
         // W=白色羊毛×2、A=红石灯×2、E=空白立牌、D=紫晶骰子。
         // 与 sherry(PBP/AEA/IDI)、hanna(GQG/LEL/TDT)同档(黄金星盘 + 紫晶骰子),填充材料互不相同 ⇒
-        // 网格与材料多重集全局唯一(守门:scripts/verify/verify_crafting_recipe_uniqueness.ps1)。
+        // 网格与材料多重集全局唯一(守门:scripts/verify/verify_crafting_recipe_uniqueness.py)。
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.KANGEL_SIGN.get())
                 .pattern("GNG")
                 .pattern("WEW")
@@ -1483,7 +1483,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
         // 2026-10-18 冻结规格(spec §3,与 1.21.1 侧 data/astral_dice/recipe/lingling_sign.json 逐字对齐):
         // 「PDP/DRD/PTP」。注意这是**刻意例外**于 AGENTS-full.md:1088「立牌配方统一 空白立牌 + 紫晶骰子」
         // 的条目(规格 §3 已声明);材料多重集与其它立牌互不相同 ⇒ 守门
-        // scripts/verify/verify_crafting_recipe_uniqueness.ps1 通过。
+        // scripts/verify/verify_crafting_recipe_uniqueness.py 通过。
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.LINGLING_SIGN.get())
                 .pattern("PDP")
                 .pattern("DRD")

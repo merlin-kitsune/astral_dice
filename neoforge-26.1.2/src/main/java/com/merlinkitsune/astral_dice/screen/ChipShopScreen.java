@@ -17,7 +17,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
 
 /**
  * 筹码商店界面（**界面骨架批 + 逻辑批已合流**：图标 blit / 品质外框 / 确认与刷新发包 / 拒绝红闪；判据正本
- * {@code docs/chip-shop-ui-spec.md}，机器判据 {@code scripts/verify/verify_chip_shop_ui.ps1}）。
+ * {@code docs/chip-shop-ui-spec.md}，机器判据 {@code scripts/verify/verify_chip_shop_ui.py}）。
  *
  * <p><b>整屏 284x183</b>，全部坐标为 GUI 内绝对像素；条带内的素材坐标另用「条带内相对坐标」
  * （{@link #stripX}/{@link #stripY} 换算），常量一律照规范 §3 的实测值逐字定义。

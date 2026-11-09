@@ -43,7 +43,7 @@ repositories {
     // 见 AGENTS.md「模组依赖添加规则(统一口径)」:第三方**模组**(含其附属/前置模组)工件只允许来自
     // Curse Maven 与 Modrinth Maven。`exclusiveContent` 同时声明仓库并把这两个 group 从其它所有仓库
     // 排除 ⇒ 任何 `curse.maven:` / `maven.modrinth:` 坐标都不可能从别处解析(与阶段 P 的
-    // `tools/check_mod_sources.ps1` 静态守门互补)。
+    // `tools/check_mod_sources.py` 静态守门互补)。
     exclusiveContent {
         forRepository { maven { url 'https://www.cursemaven.com' } }
         filter { includeGroup 'curse.maven' }

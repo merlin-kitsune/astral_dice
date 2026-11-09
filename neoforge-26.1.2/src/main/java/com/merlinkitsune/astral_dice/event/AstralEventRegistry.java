@@ -27,7 +27,7 @@ import java.util.Set;
  * <p><b>启动自检</b>({@link #ensureInit()}):① id 唯一(注册时即校验);② 每条必须有非空 nameKey 与 icon;
  * ③ 图标材质文件存在 —— 默认只 <b>warn</b>(机器行),加 {@code -Dastral_dice.strictEventRegistry=true} 升级为致命错误;
  * ④ 打印机器行 {@code AP_EVENT_REG: count=…:pool=…} 供测试断言。三语 lang 键的齐全性由静态守门
- * {@code scripts/verify/verify_event_registry.ps1} 负责。
+ * {@code scripts/verify/verify_event_registry.py} 负责。
  */
 public final class AstralEventRegistry {
     private static final Logger LOGGER = LoggerFactory.getLogger(AstralEventRegistry.class);

@@ -155,7 +155,7 @@ public class ModItems {
     //   全力攻击(巅峰 pinnacle)**保持原档**;撕咬 / 龙之咆哮 = 奇特(bizarre,沿用「专属牌 = 奇特」惯例,
     //   同日经用户确认保留 —— 不得随手改成稀有)。
     //   ⚠️ 改这些牌(或任何入池物品)的 rarity,**必须**同步三线赏金池 `astral_rews.json` 的 `"rarity"` 字段
-    //      (守门 `scripts/verify/verify_bountiful_pools.ps1` 按「物品档位 ↔ 数据层 rarity」映射比对,漏改即红)。
+    //      (守门 `scripts/verify/verify_bountiful_pools.py` 按「物品档位 ↔ 数据层 rarity」映射比对,漏改即红)。
     // 新增物品时按此标准选择 rarity,并保持与图标边框颜色一致;若参与赏金,同步维护 astral_objs/astral_rews。
     // ═══════════════════════════════════════════════════════════════════════════
 

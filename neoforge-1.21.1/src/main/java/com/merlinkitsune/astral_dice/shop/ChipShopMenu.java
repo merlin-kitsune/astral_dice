@@ -35,7 +35,7 @@ import java.util.List;
  * 「槽内物品图标内缩 1 px」⇒ 本类的槽位坐标 = 格网起点 **+1 px**。原版 {@code Slot} 的 x/y 同时是
  * **物品绘制点**与**命中判定点**，故内缩位移放在槽位坐标里一次做对，屏幕层不再逐格修正。
  *
- * <p><b>为什么 36 条玩家槽构造是逐条字面量</b>：守门脚本 {@code scripts/verify/verify_chip_shop_ui.ps1}
+ * <p><b>为什么 36 条玩家槽构造是逐条字面量</b>：守门脚本 {@code scripts/verify/verify_chip_shop_ui.py}
  * （G6）按字面统计槽位数（应恰为 36），循环写法会让这条判据失去意义 —— 保持逐条可核对。
  *
  * <p><b>反刷取</b>（计划表 §5）：候选槽 {@link OfferSlot#mayPickup} 恒 false ⇒ 候选**永不**进入原版

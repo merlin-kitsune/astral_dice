@@ -193,16 +193,16 @@ public class ModTooltipHandler {
     // UnknownFormatConversionException,而 tooltip 事件链上无人接这个异常 ⇒ **客户端直接崩溃**
     // (2026-09-21 教主立牌 `tooltip.astral_dice.sign.teru_active` 实例,见 crash-2026-09-21_15.12.05)。
     // 这里先把所有不构成合法转换的 % 转义成 %%,任何文案笔误或第三方资源包改坏 lang 都只会显示成
-    // 字面 %(与 check_lang_sync.ps1 的“应写 %%”口径一致),不再崩游戏。
+    // 字面 %(与 tools/check_lang_sync.py 的“应写 %%”口径一致),不再崩游戏。
     private static String translationString(String key, Object... args) {
         String raw = net.minecraft.locale.Language.getInstance().getOrDefault(key, key);
         return String.format(escapeStrayPercents(raw), args);
     }
 
-    // 合法转换 = %[sdbfxoeg] 或 %<数字>$[sdbfxoeg](与 tools/check_lang_sync.ps1 的白名单**逐字一致**)。
+    // 合法转换 = %[sdbfxoeg] 或 %<数字>$[sdbfxoeg](与 tools/check_lang_sync.py 的白名单**逐字一致**)。
     // ⚠️ 这是**刻意收窄**的集合:本仓语料只用 %s(少数 %d),故不支持 Java Formatter 的完整语法 ——
     //    `%-5s` / `%02d` / `%.2f` / `%S` / `%n` / `%tY` 等合法写法会被当成字面 % 转义(渲染成原文而非格式化)。
-    //    要引入这类写法,必须**同时**扩这里的 VALID_PERCENT 与 check_lang_sync.ps1 的扫描口径,
+    //    要引入这类写法,必须**同时**扩这里的 VALID_PERCENT 与 tools/check_lang_sync.py 的扫描口径,
     //    否则闸门会把它判为「未转义字面百分号」。
     private static final java.util.regex.Pattern VALID_PERCENT =
             java.util.regex.Pattern.compile("%(?:%|\\d+\\$[sdbfxoeg]|[sdbfxoeg])");

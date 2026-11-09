@@ -156,7 +156,7 @@ public final class AstralPartyCommand {
     private static final String KILL_LOG_PREFIX = "AFTERM";
 
     // === dump(只读转储)的机器格式约定 =====================================================
-    // 机器格式的核心价值是「稳定」:固定前缀 + 固定分隔符 + 固定键序,供 PowerShell 侧对
+    // 机器格式的核心价值是「稳定」:固定前缀 + 固定分隔符 + 固定键序,供日志/机器行侧对
     // run/<版本>/logs/latest.log 做正则断言。任何形状改动都等于破坏既有断言,不要随手改。
     /** 每行固定前缀;分隔符为 {@code |} */
     private static final String DUMP_PREFIX = "APDUMP";
@@ -447,7 +447,7 @@ public final class AstralPartyCommand {
      * {@code dump}:**只读**转储本模组自身的状态,输出 {@code APDUMP|<组>|<键>=<值>} 行。
      *
      * <p>设计取向(决定了实现取舍,勿随手改):测试流程的断言 100% 是对
-     * {@code run/<版本>/logs/latest.log} 的正则匹配,PowerShell 侧没有读游戏内状态的能力,
+     * {@code run/<版本>/logs/latest.log} 的正则匹配,日志/机器行侧没有读游戏内状态的能力,
      * 因此本子命令的**核心价值是输出格式的稳定性**,不是"好看的输出"。所以:
      * <ul>
      *   <li>原始值优先于派生值 —— 断言锚定 {@code LOCKRAW}/{@code SIGN}/{@code EFFECTS}/{@code PENDING},

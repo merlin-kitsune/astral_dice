@@ -43,7 +43,7 @@ import java.util.Optional;
  * {@code block/CardShopBlock} 一族的写法**。⚠️ 不得写成「1.20.1 没有 fromNamespaceAndPath」——这句话只在 47.4.x 上
  * 成立；自 2026-11-05 用户裁决把本线降到 **Forge 47.1.47**（47.1 线末版）后，该方法在编译期就不可见
  * （它在 47.4.0 才被回填），全仓已统一退回二参构造，47.1 线也**不得**再写二参构造的 @deprecated 注解说明。
- * 其余常量与池表逐字同源（守门按字面校验，见 {@code scripts/verify/verify_chip_shop_ui.ps1} G9/G10/G11/G17/G18）。
+ * 其余常量与池表逐字同源（守门按字面校验，见 {@code scripts/verify/verify_chip_shop_ui.py} G9/G10/G11/G17/G18）。
  */
 public final class ChipShopCatalog {
 
