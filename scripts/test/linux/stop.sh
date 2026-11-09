@@ -2,7 +2,7 @@
 # ============================================================================
 # scripts/test/linux/stop.sh — Astral Dice 测试台 · Linux 侧收停
 #
-# 对标 Windows 侧 mt_stop.ps1 → mt_cleanup.ps1 的语义（唯一收停实现）：
+# 对标 Windows 侧 `scripts/test/win/stop.sh` → `scripts/test/mt_cleanup.py` 的语义（唯一收停实现）：
 #   1) 先按 <run-dir>/linux-run.pid 收停整个进程组（TERM → 等待 → KILL）
 #   2) 再用 /proc/<pid>/cwd + /proc/<pid>/cmdline 扫本 repo 的 Minecraft 客户端
 #      （java 进程；cwd 在 run/<ver>，或 cmdline 含 -Dfml / net.minecraft / runClient）
@@ -14,9 +14,9 @@
 #   scripts/test/linux/stop.sh --all            # 收停所有线的客户端
 #
 #   --version <ver>  1.21.1 | 1.20.1 | 26.1.2 | fabric-1.20.1
-#   --all            所有线（与 --version 二选一，必填其一，对标 mt_stop.ps1）
+#   --all            所有线（与 --version 二选一，必填其一，对标 `scripts/test/win/stop.sh`）
 #   --force          宽限期 15s → 3s
-#   --purge-saves    收停后删测试世界（对标 mt_cleanup.ps1 --purge-saves）
+#   --purge-saves    收停后删测试世界（对标 `scripts/test/mt_cleanup.py` --purge-saves）
 #   --stop-daemon    额外 `bash ./gradlew --stop`（会停全机 Gradle 守护！默认不做）
 #   --dry-run        只打印将做什么
 #

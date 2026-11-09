@@ -2,7 +2,7 @@
 # ============================================================================
 # scripts/test/linux/env.sh — Astral Dice 测试台 · Linux 侧最小环境检查
 #
-# 背景：scripts/test/ 的完整测试台是 PowerShell 7 + Windows-only（user32/taskkill/
+# 背景：scripts/test/ 的完整测试台是 Windows-only 原生 shell 台（user32/强制结束进程/
 #       cmd.exe/IME），Linux 下不可用（结论与证据见 scripts/test/linux/README.md）。
 #       本目录是 Linux 宿主的最小可用测试路径：env.sh / launch.sh / stop.sh。
 #

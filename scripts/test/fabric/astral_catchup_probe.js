@@ -24,7 +24,7 @@
 //   （实测存在于 `.gradle/loom-cache` 的 Fabric API 模块 jar）⇒ 探针**无需任何前置**即可
 //   在纯 dev 服务端里拿到一个 `ServerPlayer` 做读数。传了玩家名则用真玩家，否则用 FakePlayer。
 //
-//  ── 命令一览（驱动方 = ft_inject.ps1 --channel rcon）────────────────────────
+//  ── 命令一览（驱动方 = `scripts/test/mt_inject.py` --channel rcon）────────────────────────
 //    /astralcatchup env                         只读：注册面 / 类 / 常量 / 方法可用性
 //    /astralcatchup melee  [player]              近战判定：空手/剪刀/钓竿/打火石/刷子/铁剑 六态
 //    /astralcatchup range  [player]              射程两段夹取：无加成 / 书页射程 / 上限夹取

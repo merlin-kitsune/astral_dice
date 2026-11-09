@@ -2,7 +2,7 @@
 # ============================================================================
 # scripts/test/linux/launch.sh — Astral Dice 测试台 · Linux 侧最小启动路径
 #
-# 语义 = mt_launch.ps1 的最小集：启动 runClient → 轮询就绪 → 可选 AutoJS 探活。
+# 语义 = `scripts/test/win/mt.sh --phase launch` 的最小集：启动 runClient → 轮询就绪 → 可选 AutoJS 探活。
 # 不复刻 Windows 侧的进程防撞锁/世界清场/OP-禁AI 闸门（见 README「与 Windows 台差异」）。
 #
 # 用法：

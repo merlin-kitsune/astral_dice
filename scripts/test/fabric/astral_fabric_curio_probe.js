@@ -16,7 +16,7 @@
 //      名字由 Carpet 的 `/player <name> spawn` 造出来的假玩家提供（实体类型 = minecraft:player，
 //      槽位数据按实体类型绑定，故与真人同路）。
 //
-//  ── 命令一览（驱动方 = ft_inject.ps1 --channel rcon）───────────────────────
+//  ── 命令一览（驱动方 = `scripts/test/mt_inject.py` --channel rcon）───────────────────────
 //    /astralfab env                                只读：两条通道是否在场
 //    /astralfab groups   <player>                 只读：全部槽位组及槽数
 //    /astralfab state    <player> <tag>           只读：骰子/筹码栏/闸门/背包 全量快照
