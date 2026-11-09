@@ -2480,6 +2480,42 @@ public class ModAttachments {
         player.setData(DEEPSEEK_LAST_TICK.get(), value);
     }
 
+    // ══════════════════════════════════════════════════════════════════════════
+    //  金鲤立牌 souri（2026-11-09）：独立计数器（用户裁决：不复用蛟龙觉醒）
+    // ══════════════════════════════════════════════════════════════════════════
+
+    /** 金鲤觉醒层数（独立计数器；0 起，无形态转换，仅作立牌自身资源） */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> SOURI_AWAKENING =
+            ATTACHMENTS.register("souri_awakening", () -> AttachmentType.builder(() -> 0)
+                    .serialize(Codec.INT)
+                    .sync(ByteBufCodecs.INT)
+                    .copyOnDeath()
+                    .build());
+
+    /** 金鳞层数（0..4；达 4 触发金鲤化龙，并把场上未拾取的葫芦饮转为仙酿） */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> SOURI_GOLD_SCALES =
+            ATTACHMENTS.register("souri_gold_scales", () -> AttachmentType.builder(() -> 0)
+                    .serialize(Codec.INT)
+                    .sync(ByteBufCodecs.INT)
+                    .copyOnDeath()
+                    .build());
+
+    public static int getSouriAwakening(net.minecraft.world.entity.player.Player player) {
+        return player.getData(SOURI_AWAKENING.get());
+    }
+
+    public static void setSouriAwakening(net.minecraft.world.entity.player.Player player, int value) {
+        player.setData(SOURI_AWAKENING.get(), Math.max(0, value));
+    }
+
+    public static int getSouriGoldScales(net.minecraft.world.entity.player.Player player) {
+        return player.getData(SOURI_GOLD_SCALES.get());
+    }
+
+    public static void setSouriGoldScales(net.minecraft.world.entity.player.Player player, int value) {
+        player.setData(SOURI_GOLD_SCALES.get(), Math.max(0, value));
+    }
+
     public static long getDeepseekIdleSince(net.minecraft.world.entity.player.Player player) {
         return player.getData(DEEPSEEK_IDLE_SINCE.get());
     }

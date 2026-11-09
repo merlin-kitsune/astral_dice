@@ -114,6 +114,25 @@ public final class DiceCombatModifiers {
     }
 
     /** 注册额外加伤修饰器(按注册顺序累加) */
+    // ── 金鲤立牌(souri,2026-11-09):葫芦饮/仙酿定值攻击 + 金鲤化龙按金鳞层数加攻击 ──
+    static {
+        registerAttackModifier((ctx, ap) -> {
+            if (skipOnClient(ctx)) return ap;
+            if (!(ctx.attacker instanceof Player __sp)) return ap;
+            if (__sp.hasEffect(ModEffects.GOURD_DRINK)) {
+                ap += com.merlinkitsune.astral_dice.effect.GourdDrinkEffect.ATTACK_BONUS;
+            }
+            if (__sp.hasEffect(ModEffects.IMMORTAL_BREW)) {
+                ap += com.merlinkitsune.astral_dice.effect.ImmortalBrewEffect.ATTACK_BONUS;
+            }
+            if (__sp.hasEffect(ModEffects.SOURI_DRAGON)) {
+                ap += com.merlinkitsune.astral_dice.item.sign.SouriSignManager.getGoldScales(__sp)
+                        * com.merlinkitsune.astral_dice.item.sign.SouriSignManager.ATTACK_PER_SCALE;
+            }
+            return ap;
+        });
+    }
+
     public static void registerExtraDamageModifier(ExtraDamageModifier modifier) {
         EXTRA_DAMAGE_MODIFIERS.add(modifier);
     }

@@ -235,7 +235,7 @@ PlayerLikeWallets.register(MAID_LIKE, e -> e instanceof EntityMaid, new PlayerLi
 
 ## 立牌 × 类玩家支持矩阵（2026-11-09 A）
 
-`BaseSignItem#activateForEntity(LivingEntity)` 已由 **全部 34 个立牌类**覆写（javap 计数即可核对）。
+`BaseSignItem#activateForEntity(LivingEntity)` 已由 **全部 35 个立牌类**覆写（javap 计数即可核对）。
 能完整复刻玩家语义的立牌给出真实实现；其余按依赖的玩家通道显式拒绝，并打
 `AP_SIGN_ACTIVE_ENTITY_DENIED: sign=<id>:reason=<reason>:owner=<name>`。
 
@@ -244,6 +244,7 @@ PlayerLikeWallets.register(MAID_LIKE, e -> e instanceof EntityMaid, new PlayerLi
 | alana | ✅ | —（铁处女免疫，300t 冷却同玩家，全场唯一原来就支持的） |
 | jasmine | ✅ | —（横扫 + 随机抗性/力量，时长 2400t 同玩家） |
 | misaki | ✅ | —（气爆 2400t；层数 ≥3 时扣层并经 `PlayerLikeTargets.giveItem` 补一张卡） |
+| souri | ⚠️ | 放置饮品为真实现（在朝向 1.5 格处生成【葫芦饮】/【仙酿】）；但「觉醒 / 反击层数」只挂在玩家附件与 `ServerPlayer` 上，非玩家仅取得饮品 |
 | al, bonnie, dorothy, haiqing, jill, lulu, megas, moses, ren, teru, zhao | ❌ | needs_player_session（依赖 `TargetSelectionRegistry` 的 ServerPlayer 会话） |
 | deepseek | ❌ | needs_player_wallet（星币账户） |
 | fen, hanna, komachi, lingling, mamushi, nancylu, nardis, pandaman | ❌ | needs_player_card_channel（发卡/卡牌栏） |

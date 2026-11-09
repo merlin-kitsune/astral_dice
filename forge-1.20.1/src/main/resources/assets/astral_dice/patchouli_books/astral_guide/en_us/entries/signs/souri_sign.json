@@ -1,0 +1,21 @@
+{
+  "name": "item.astral_dice.souri_sign",
+  "category": "astral_dice:signs",
+  "icon": "astral_dice:souri_sign",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:souri_sign",
+      "text": "astral_dice.guide.entry.souri_sign.1"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.souri_sign.2"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.souri_sign.3"
+    }
+  ],
+  "sortnum": 27
+}

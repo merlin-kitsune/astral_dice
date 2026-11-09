@@ -409,5 +409,21 @@ public class ModEffects {
     public static final RegistryObject<MobEffect> ABYSS_MARK =
             EFFECTS.register("abyss_mark", AbyssMarkEffect::new);
 
+    /** 葫芦饮（金鲤立牌）：攻击力 +3，1:00。 */
+    public static final RegistryObject<MobEffect> GOURD_DRINK =
+            EFFECTS.register("gourd_drink", GourdDrinkEffect::new);
+
+    /** 仙酿（金鲤立牌）：攻击力 +4、移速 II、拾取回血 6，2:00。 */
+    public static final RegistryObject<MobEffect> IMMORTAL_BREW =
+            EFFECTS.register("immortal_brew", ImmortalBrewEffect::new);
+
+    /** 金鳞（金鲤立牌）：0–3 层，每层 +1 防御；【金鲤化龙】后每层再 +1 攻击。 */
+    public static final RegistryObject<MobEffect> SOURI_GOLD_SCALE =
+            EFFECTS.register("souri_gold_scale", SouriGoldScaleEffect::new);
+
+    /** 金鲤化龙（金鲤立牌）：金鳞满 4 层后的变身态，场上未拾取的葫芦饮就地转仙酿。 */
+    public static final RegistryObject<MobEffect> SOURI_DRAGON =
+            EFFECTS.register("souri_dragon", SouriDragonEffect::new);
+
     public static final Collection<RegistryObject<MobEffect>> ALL = EFFECTS.getEntries();
 }

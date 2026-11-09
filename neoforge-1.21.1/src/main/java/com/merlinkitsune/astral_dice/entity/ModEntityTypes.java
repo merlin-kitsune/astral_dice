@@ -67,6 +67,17 @@ public final class ModEntityTypes {
                     .clientTrackingRange(10)
                     .build("sykestentacle"));
 
+    /**
+     * 金鲤漂浮饮品（2026-11-09）：无碰撞、无重力、不可推动的纯展示实体；
+     * 尺寸按 bbmodel 实测（约 0.9 格高、0.6 格宽），拾取扫描在实体自己的 tick 内完成。
+     */
+    public static final DeferredHolder<EntityType<?>, EntityType<SouriDrinkEntity>> SOURI_DRINK =
+            ENTITY_TYPES.register("souri_drink", () -> EntityType.Builder
+                    .<SouriDrinkEntity>of(SouriDrinkEntity::new, MobCategory.MISC)
+                    .sized(0.35F, 0.45F)
+                    .clientTrackingRange(10)
+                    .build("souri_drink"));
+
     private ModEntityTypes() {
     }
 }

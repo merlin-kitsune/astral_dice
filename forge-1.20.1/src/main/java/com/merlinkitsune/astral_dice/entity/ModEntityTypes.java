@@ -82,6 +82,27 @@ public final class ModEntityTypes {
                     .clientTrackingRange(10)
                     .build("sykestentacle"));
 
+    /**
+     * 金鲤立牌的漂浮饮品（【葫芦饮】/【仙酿】，2026-11-09；由 neoforge-1.21.1 蓝本移植）。
+     *
+     * <p>尺寸 {@code sized(0.35F, 0.45F)}：瓶子模型约 0.3 格宽、0.43 格高，碰撞箱贴身即可
+     * （该实体本就不参与碰撞，{@code isPickable/canBeCollidedWith} 均为 false，尺寸只用于
+     * 拾取扫描的 {@code inflate} 起点与渲染包围盒）；{@code clientTrackingRange(10)} 保证
+     * 10 格内的客户端能收到该实体（放置后需要立刻可见）。
+     *
+     * <p><b>1.20.1 平台差异</b>：注册器类型是 {@code RegistryObject<EntityType<SouriDrinkEntity>>}
+     * （1.21.1 蓝本是 {@code DeferredHolder<EntityType<?>, EntityType<SouriDrinkEntity>>}）；
+     * 构建链两线同形。
+     */
+    public static final RegistryObject<EntityType<SouriDrinkEntity>> SOURI_DRINK =
+            ENTITY_TYPES.register("souri_drink", () -> EntityType.Builder
+                    // 显式类型实参:该实体有 (EntityType,Level) 与 (Level,UUID,Variant) 两个构造器,
+                    // `::new` 在多构造器下的目标类型推断会失败(单构造器的 Barricade/Syke 不需要)。
+                    .<SouriDrinkEntity>of(SouriDrinkEntity::new, MobCategory.MISC)
+                    .sized(0.35F, 0.45F)
+                    .clientTrackingRange(10)
+                    .build("souri_drink"));
+
     private ModEntityTypes() {
     }
 }

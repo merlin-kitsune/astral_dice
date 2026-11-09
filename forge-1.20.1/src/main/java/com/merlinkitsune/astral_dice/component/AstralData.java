@@ -120,7 +120,12 @@ public class AstralData implements INBTSerializable<CompoundTag> {
                         ModAttachments.LINGLING_GRANTED.name(),
                         // 2026-10-24 筹码商店:刷新次数已无时间自动恢复(原 ticker 删除)⇒ 若死亡不复制
                         // 这条存档,重生后次数会回默认初值 = 变相「自动补满」。1.21.1 侧同键 .copyOnDeath()。
-                        ModAttachments.CHIP_SHOP_STATE.name()
+                        ModAttachments.CHIP_SHOP_STATE.name(),
+                        // 金鲤立牌(souri,2026-11-09):觉醒/金鳞两层计数跨死亡保留
+                        // (1.21.1 侧是同名键的 .copyOnDeath())。与 MAMUSHI_AWAKENING 同构:死亡时立牌
+                        // 会因饰品槽清空而先走 clearSignData,故必须在这份白名单里补回来。
+                        ModAttachments.SOURI_AWAKENING.name(),
+                        ModAttachments.SOURI_GOLD_SCALES.name()
                 };
                 event.getEntity().getCapability(ModCapabilities.ASTRAL_DATA).ifPresent(newData -> {
                     CompoundTag src = oldData.persistentStore();

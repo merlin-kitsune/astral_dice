@@ -13,6 +13,7 @@ import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.RepulsionItem;
 import com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil;
 import com.merlinkitsune.astral_dice.item.sign.JasmineSignItem;
+import com.merlinkitsune.astral_dice.item.sign.SouriSignManager;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
@@ -1624,6 +1625,28 @@ public class ModTooltipHandler {
                             mamushiAwaken,
                             com.merlinkitsune.astral_dice.item.sign.MamushiSignItem.AWAKEN_MAX);
                 }
+            }
+            addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player p ? p : null);
+        }
+        // 金鲤立牌(souri):主动「把酒言欢」放置葫芦饮/仙酿 + 自身觉醒/反击;被动「不醉不归」。
+        if (stack.is(ModItems.SOURI_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "tooltip.astral_dice.sign.souri.active");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.souri_active");
+            addSignPassiveTitle(tooltip, "tooltip.astral_dice.sign.souri.passive");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.souri_passive");
+            if (event.getEntity() instanceof Player p) {
+                addSignCounter(tooltip, "tooltip.astral_dice.sign.souri_awakening",
+                        SouriSignManager.getAwakening(p), SouriSignManager.AWAKENING_MAX);
+                addSignCounter(tooltip, "tooltip.astral_dice.sign.souri_gold_scale",
+                        SouriSignManager.getGoldScales(p), SouriSignManager.GOLD_SCALE_MAX);
+                if (SouriSignManager.hasDragon(p)) {
+                    tooltip.add(tt("tooltip.astral_dice.sign.souri_dragon_form")
+                            .withStyle(ChatFormatting.GOLD));
+                }
+                addSignCounter(tooltip, "tooltip.astral_dice.sign.souri_counter",
+                        ModAttachments.getRenCounterCharges(p), SouriSignManager.COUNTER_MAX);
             }
             addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player p ? p : null);
         }

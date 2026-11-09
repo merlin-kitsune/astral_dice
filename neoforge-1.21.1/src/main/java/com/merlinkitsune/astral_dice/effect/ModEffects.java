@@ -408,5 +408,22 @@ public class ModEffects {
     public static final DeferredHolder<MobEffect, MobEffect> ABYSS_MARK =
             EFFECTS.register("abyss_mark", com.merlinkitsune.astral_dice.effect.AbyssMarkEffect::new);
 
+    // ── 金鲤立牌（souri，2026-11-09）──
+    /** 金鳞：层数镜像效果（真值在附件 SOURI_GOLD_SCALES；最多 4 层）。 */
+    public static final DeferredHolder<MobEffect, MobEffect> SOURI_GOLD_SCALE =
+            EFFECTS.register("souri_gold_scale", com.merlinkitsune.astral_dice.effect.SouriGoldScaleEffect::new);
+
+    /** 金鲤化龙：金鳞满 4 层后的锁存态标记（攻击加成由实时谓词按层数求和）。 */
+    public static final DeferredHolder<MobEffect, MobEffect> SOURI_DRAGON =
+            EFFECTS.register("souri_dragon", com.merlinkitsune.astral_dice.effect.SouriDragonEffect::new);
+
+    /** 葫芦饮：攻击力 +3、1:00（一次只能持有一个）。 */
+    public static final DeferredHolder<MobEffect, MobEffect> GOURD_DRINK =
+            EFFECTS.register("gourd_drink", com.merlinkitsune.astral_dice.effect.GourdDrinkEffect::new);
+
+    /** 仙酿：攻击力 +4、2:00，拾取当刻迅捷 II 2:00 + 回复 6 点生命值（一次只能持有一个）。 */
+    public static final DeferredHolder<MobEffect, MobEffect> IMMORTAL_BREW =
+            EFFECTS.register("immortal_brew", com.merlinkitsune.astral_dice.effect.ImmortalBrewEffect::new);
+
     public static final Collection<DeferredHolder<MobEffect, ? extends MobEffect>> ALL = EFFECTS.getEntries();
 }

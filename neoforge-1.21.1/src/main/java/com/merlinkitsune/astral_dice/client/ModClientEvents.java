@@ -56,6 +56,7 @@ public class ModClientEvents {
         event.registerEntityRenderer(ModEntityTypes.REPULSION.get(), RepulsionRenderer::new);
         // Syke 触手(2026-10-29):GeckoLib 渲染器,**不**走 registerLayerDefinitions ——
         // 几何来自 assets/astral_dice/geo/sykestentacle.geo.json,没有原版 LayerDefinition 可注册。
+        event.registerEntityRenderer(ModEntityTypes.SOURI_DRINK.get(), SouriDrinkRenderer::new);
         event.registerEntityRenderer(ModEntityTypes.SYKE_TENTACLE.get(), SykeTentacleRenderer::new);
     }
 

@@ -847,6 +847,27 @@ public final class DiceCombatModifiers {
             return ap + (ctx.attacker instanceof Player __pn ? com.merlinkitsune.astral_dice.item.sign.AmeSignItem.getLove(__pn) : 0);
         });
 
+        // === 内置:金鲤立牌(souri)「酒意」—— 葫芦饮 +3 / 仙酿 +4 / 化龙后每层金鳞 +1(2026-11-09) ===
+        // 三条都与 neoforge-1.21.1 蓝本同一口径,且全部以**实时谓词**读取:
+        // 饮品效果本身就是"一次只能拾取一个"的独占态(见 GourdDrinkEffect javadoc) ⇒ 两条 if 互斥;
+        // 金鳞层数在化龙后仍然保留(层数不变),故攻加成为 dragon 态下 getGoldScales × ATTACK_PER_SCALE。
+        // ⚠️ 金鳞的**防御力**(每层 +1)不在这里,走 setDefenseArmorBonus 的既有规范(见 SouriSignManager#refreshDefense)。
+        registerAttackModifier((ctx, ap) -> {
+            if (skipOnClient(ctx)) return ap;
+            if (!(ctx.attacker instanceof Player __sp)) return ap;
+            if (__sp.hasEffect(com.merlinkitsune.astral_dice.effect.ModEffects.GOURD_DRINK.get())) {
+                ap += com.merlinkitsune.astral_dice.effect.GourdDrinkEffect.ATTACK_BONUS;
+            }
+            if (__sp.hasEffect(com.merlinkitsune.astral_dice.effect.ModEffects.IMMORTAL_BREW.get())) {
+                ap += com.merlinkitsune.astral_dice.effect.ImmortalBrewEffect.ATTACK_BONUS;
+            }
+            if (__sp.hasEffect(com.merlinkitsune.astral_dice.effect.ModEffects.SOURI_DRAGON.get())) {
+                ap += com.merlinkitsune.astral_dice.item.sign.SouriSignManager.getGoldScales(__sp)
+                        * com.merlinkitsune.astral_dice.item.sign.SouriSignManager.ATTACK_PER_SCALE;
+            }
+            return ap;
+        });
+
         // === 内置:防御卡掷骰(收集结果写入上下文;目标无骰子时 targetEnhancement 为 null,结果 0)。
         // 防御力规范:骰战防御修饰器仅保留战斗防御牌(区间变动);效果牌/立牌/筹码的防御力
         // 统一折算为真实护甲(1 防御力 = 1÷护甲系数 护甲值),由各自 tick 经 setDefenseArmorBonus 挂到 ARMOR 属性,

@@ -1148,6 +1148,12 @@ public class ModItems {
             () -> new com.merlinkitsune.astral_dice.item.sign.DeepseekSignItem(new Item.Properties()
                     .stacksTo(1).rarity(com.merlinkitsune.starengine.item.AstralRarities.bizarre())));
 
+    // 金鲤立牌(souri,传奇,2026-11-09):主动「把酒言欢」放置葫芦饮(化龙后为仙酿),被动「不醉不归」
+    // (反击时叠金鳞、他人拾饮叠反击),4 层金鳞触发「金鲤化龙」。
+    public static final RegistryObject<Item> SOURI_SIGN = registerItem("souri_sign",
+            () -> new com.merlinkitsune.astral_dice.item.sign.SouriSignItem(new Item.Properties()
+                    .stacksTo(1).rarity(com.merlinkitsune.starengine.item.AstralRarities.legendary())));
+
     // 魔渊幼体立牌（本模组原创，传奇）：主动「魔域转化」放置魔渊触须，被动「触须深渊」叠渊蚀印记。
     public static final RegistryObject<Item> SYKES_SIGN = registerItem("sykes_sign",
             () -> new com.merlinkitsune.astral_dice.item.sign.SykesSignItem(new Item.Properties()

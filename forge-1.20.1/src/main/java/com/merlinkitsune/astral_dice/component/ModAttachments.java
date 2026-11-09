@@ -1350,6 +1350,43 @@ public class ModAttachments {
         MAMUSHI_AWAKENING.set(player, Math.max(0, value));
     }
 
+    /**
+     * 金鲤立牌(souri)「觉醒」层数(0..{@code SouriSignManager.AWAKENING_MAX})。
+     *
+     * <p>**同步**:立牌 tooltip 的计数行({@code tooltip.astral_dice.sign.souri_awakening})要读它
+     * ⇒ 与 {@code mamushi_awakening} 同一口径,必须进 {@code SYNCED_KEYS}。
+     * **跨死亡保留** ⇒ 同时进 {@link AstralData#onPlayerClone} 白名单与
+     * {@link DeathPreservedBonuses} 第 9 槽位(两层缺一不可,理由同 {@code rin_pages})。
+     */
+    public static final AttachedDataKey<Integer> SOURI_AWAKENING =
+            register(AttachedDataKey.builder("souri_awakening", Codec.INT, () -> 0).sync().build());
+
+    /**
+     * 金鲤立牌(souri)「金鳞」层数(0..{@code SouriGoldScaleEffect.MAX_STACKS})。
+     *
+     * <p>**同步**:tooltip 计数行({@code tooltip.astral_dice.sign.souri_gold_scale})与
+     * 客户端 HUD 镜像都要读它 ⇒ 必须进 {@code SYNCED_KEYS}。
+     * **跨死亡保留** ⇒ 同 {@code rin_pages},白名单 + 第 10 槽位两层都要。
+     */
+    public static final AttachedDataKey<Integer> SOURI_GOLD_SCALES =
+            register(AttachedDataKey.builder("souri_gold_scales", Codec.INT, () -> 0).sync().build());
+
+    public static int getSouriAwakening(net.minecraft.world.entity.player.Player player) {
+        return SOURI_AWAKENING.get(player);
+    }
+
+    public static void setSouriAwakening(net.minecraft.world.entity.player.Player player, int value) {
+        SOURI_AWAKENING.set(player, Math.max(0, value));
+    }
+
+    public static int getSouriGoldScales(net.minecraft.world.entity.player.Player player) {
+        return SOURI_GOLD_SCALES.get(player);
+    }
+
+    public static void setSouriGoldScales(net.minecraft.world.entity.player.Player player, int value) {
+        SOURI_GOLD_SCALES.set(player, Math.max(0, value));
+    }
+
     public static boolean getMamushiBiteBonusActive(net.minecraft.world.entity.player.Player player) {
         return MAMUSHI_BITE_BONUS_ACTIVE.get(player);
     }
@@ -1550,6 +1587,9 @@ public class ModAttachments {
             SYNCED_KEYS.add(SHOP_TRANSFER_COOLDOWN_END);
             SYNCED_KEYS.add(CHIP_SHOP_STATE);
             SYNCED_KEYS.add(EVENT_DRAWER_COOLDOWN_UNTIL);
+            // 金鲤立牌(souri,2026-11-09):两个计数器行的真值都要客户端可见(tooltip + HUD 镜像)
+            SYNCED_KEYS.add(SOURI_AWAKENING);
+            SYNCED_KEYS.add(SOURI_GOLD_SCALES);
         }
         return SYNCED_KEYS;
     }

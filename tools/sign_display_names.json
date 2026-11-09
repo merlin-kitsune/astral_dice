@@ -283,6 +283,18 @@
         "forge-1.20.1"
       ],
       "note": "2026-11-08 已核对 wiki 页 A.L.（Syndicate Prince），nameJapanese=アル；目前 neoforge-1.21.1 与 forge-1.20.1 实装，lines 字段限定校验线"
+    },
+    {
+      "id": "souri",
+      "zh": "金鲤立牌",
+      "en": "Amakawa Souri Sign",
+      "ja": "天川双里のスタンド",
+      "wiki_page": "Amakawa Souri",
+      "lines": [
+        "neoforge-1.21.1",
+        "forge-1.20.1"
+      ],
+      "note": "2026-11-09 新增（用户 m08862）；wiki 的可玩角色页 Souri 重定向到怪物页 Amakawa Souri，无 CharPlayable/nameJapanese ⇒ ja 暂按「天川双里」推定，待日服名称核实"
     }
   ]
 }

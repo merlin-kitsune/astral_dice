@@ -2490,7 +2490,10 @@ public class DiceCombatEvents {
         if (isInCounterChain()) return;
         if (!(victim instanceof Player player)) return;
         if (!player.isAlive()) return;
-        if (!player.hasEffect(ModEffects.REN_SHIELD.get())) return;
+        // 2026-11-09 金鲤立牌(souri):佩戴该立牌时**无需**「人盾」效果也能反击 ——
+        // 反击层数是立牌自己的资源(addCounter 叠、clearAll 清),与「人盾」共用同一个计数键与图标刷新入口。
+        boolean souri = com.merlinkitsune.astral_dice.item.sign.SouriSignItem.isEquipped(player);
+        if (!player.hasEffect(ModEffects.REN_SHIELD.get()) && !souri) return;
         if (ModAttachments.getRenCounterCharges(player) <= 0) return;
         if (!(event.getSource().getEntity() instanceof LivingEntity attacker)) return;
         if (attacker == player) return;
@@ -2498,10 +2501,20 @@ public class DiceCombatEvents {
         // 才消耗反击层数。视者 = 带盾玩家(player);于是队友 / 已驯服宠物 / 未激怒中立生物的
         // 攻击不再误消耗层数、也不再把反击打在友军身上(自伤已由上一行排除)。
         if (!PartyRelations.isHostileTo(player, attacker)) return;
-        // 一次性充能:先消耗层数(并同步摘掉「反击」图标),再注入伤害
-        ModAttachments.setRenCounterCharges(player, 0);
+        // 一次性充能:先消耗层数(并同步摘掉「反击」图标),再注入伤害。
+        // 2026-11-09 金鲤立牌(souri):该立牌的被动是「逐层消耗」⇒ 佩戴时改为**减 1 层**并 +1 金鳞;
+        // 未佩戴(纯「人盾」路径)仍是「一次打空」。
+        if (souri) {
+            ModAttachments.setRenCounterCharges(player,
+                    Math.max(0, ModAttachments.getRenCounterCharges(player) - 1));
+        } else {
+            ModAttachments.setRenCounterCharges(player, 0);
+        }
         RenShieldManager.refreshCounterEffect(player);
         injectCounterDamage(player, attacker);
+        if (souri) {
+            com.merlinkitsune.astral_dice.item.sign.SouriSignManager.addGoldScale(player);
+        }
         if (player instanceof ServerPlayer sp) {
             ModNetwork.sendToPlayer(sp, new ModNetwork.ActionBarMessage(
                     Component.translatable("msg.astral_dice.ren_counter_fired")

@@ -1149,6 +1149,11 @@ public class ModItems {
 
     // 少主立牌(al,史诗):被动「双赢」(给牌双方 +1 星光 / 主动后双方筹码 -5 + 刷新 / 每 4 层星光 +1 攻防)
     //   主动「强者怜悯」:选一名类玩家目标 → 选 1~3 张牌送给对方 → 获得张数 ×2 星币
+    public static final DeferredItem<Item> SOURI_SIGN = registerItem("souri_sign",
+            () -> new com.merlinkitsune.astral_dice.item.sign.SouriSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(com.merlinkitsune.starengine.item.AstralRarities.legendary())));
+
     public static final DeferredItem<Item> AL_SIGN = registerItem("al_sign",
             () -> new com.merlinkitsune.astral_dice.item.sign.AlSignItem(new Item.Properties()
                     .stacksTo(1)

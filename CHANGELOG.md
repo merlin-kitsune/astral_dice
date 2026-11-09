@@ -9,6 +9,7 @@
 ### This line
 
 - Change: the pinned StarEngine moves to `26.4-SNAPSHOT.2` (Forge / NeoForge 1.21.1 / 26.1.2), `26.4-SNAPSHOT.9` (fabric-1.21.1) and `26.4-SNAPSHOT.11` (fabric-1.20.1); the fabric range lower bounds follow. That library release drops the legacy `starengine_lib` modId wallet compatibility, so the wallet is read only from the `starengine` key.
+- Add: the **Golden Koi Sign** (`souri`, legendary; recipe TBD) lands on `neoforge-1.21.1` and `forge-1.20.1`. Active "Raise a Toast" places a Gourd Drink (an Immortal Brew once Golden Koi Ascension is active) and grants 1 Awakening plus 1 Counter. Passive "Never Sober" grants 1 Golden Scale on every counter, and 1 Counter whenever any character picks up a Gourd Drink or Immortal Brew. Golden Scale (+1 defense each, max 4) upgrades into Golden Koi Ascension at 4 stacks — turning every unclaimed Gourd Drink on the field into an Immortal Brew — and grants +1 attack per Golden Scale. Gourd Drink: +3 attack (1:00); Immortal Brew: +4 attack, Speed (2:00) and +6 health on pickup; only one can be held at a time. Mamushi Sign wearers gain 1/2 Awakening from a Gourd Drink / Immortal Brew. Drinks are floating, non-colliding GeckoLib entities built from the new `winegourd` / `winegourdbetter` models, fully self-lit, spinning and bobbing like dropped items, with white pickup particles. (Golden Scale still borrows the sign icon until its own art arrives.)
 
 ## 26.4-SNAPSHOT.9
 
