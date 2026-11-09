@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """Tooltip 染色规则审计（规则见 docs/tooltip-color-rules.md）。
 
-python 等价移植 scripts/audit/tooltip_color_audit.ps1（原 .py 在 92fbeaf 删除，取回的是**旧版**
+python 等价移植 旧版 tooltip_color_audit 实现（原 .py 在 92fbeaf 删除，取回的是**旧版**
 ——那版只有 2 线 2 语、无 R0/R4；本文件按**现行 ps1** 移植，ps1 才是权威口径）。
 
 只读审计，不修改任何文件。检查项：
@@ -294,7 +294,7 @@ def invoke_audit_lang(path: str, codes_by_key: Dict[str, Optional[str]],
 
 
 def _normalize_dashes(argv: Sequence[str]) -> List[str]:
-    """兼容 pwsh 风格单破折号（-Root → --root）；其它未知参数原样交给 argparse（rc=2）。"""
+    """兼容 旧 shell 风格单破折号（-Root → --root）；其它未知参数原样交给 argparse（rc=2）。"""
     out: List[str] = []
     for tok in argv:
         if tok in ("-Root", "-root"):
@@ -309,7 +309,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     raw = list(sys.argv[1:] if argv is None else argv)
     ap = argparse.ArgumentParser(
         prog="tooltip_color_audit.py",
-        description="只读审计 tooltip 染色规则（R0/R1/R1b/R2/R3/R4），等价 tooltip_color_audit.ps1。",
+        description="只读审计 tooltip 染色规则（R0/R1/R1b/R2/R3/R4），等价 旧版 tooltip_color_audit 实现。",
         epilog="退出码：0 无违规 / 1 有违规 / 2 无法判定（lang 文件缺失或未审到任何文件）",
     )
     ap.add_argument("root_pos", nargs="?", default=None, metavar="Root",

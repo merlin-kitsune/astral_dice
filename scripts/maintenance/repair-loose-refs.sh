@@ -18,7 +18,7 @@
 #
 # 退出码恒为 0（拿不到 gitdir 就静默退出）：这是自动维护动作，不应因为当前目录不是 git 仓库就报错。
 #
-# 与 repair-loose-refs.ps1（139 行）的差异：ps1 用 [System.IO.File]::WriteAllText + UTF8(no BOM)
+# 与旧版 139 行实现的差异：旧版用 [System.IO.File]::WriteAllText + UTF8(no BOM)
 # 写 ref，本脚本用 printf（ref 文件是纯 ASCII 十六进制 + 换行，编码无歧义）；其余判定逐一对应。
 
 set -u
