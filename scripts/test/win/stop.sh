@@ -2,22 +2,24 @@
 # ============================================================================
 # scripts/test/win/stop.sh — Astral Dice 测试台 · Windows(git bash) 收停路径
 #
-# 语义 = Linux 蓝本 stop.sh 的 Windows 对应物：
-#   * 判线：pwsh -NoProfile + Get-CimInstance Win32_Process 取 java.exe 的
-#     ProcessId/CommandLine，按 Mt.Paths.psm1:141-156 的同款标记串匹配
-#     （":<子项目>:"、"run\<version>"、"run/<version>"，不用裸子项目名）。
-#   * 收停：MSYS2_ARG_CONV_EXCL='*' taskkill /PID <pid> /T /F（替代 kill -- -pgid；
-#     Windows 无进程组，/T 才是整棵树的等价物。裸 //PID 会被 MSYS2 改写成 UNC，
-#     本机实测 taskkill 报 Invalid argument/option）。
-#   * 清存档：--purge-saves，白名单对齐 mt_cleanup.ps1:228-265
+# 语义 = Linux 蓝本 stop.sh 的 Windows 对应物，但**本脚本不终止任何进程**：
+#   * 判线：jps -lvm（JDK 自带）的 java 行 + run/<ver>/win-run.pid（fabric 为
+#     run/<side>/win-run.pid）+ netstat -ano 里 25585/25565/25575 的 LISTENING PID。
+#     标记串沿用 ":<子项目>:"、"run\<version>"、"run/<version>"（不用裸子项目名）。
+#   * 收停：只解析并打印应终止的 PID（MT_STOP: PENDING pid=…），
+#     实际终止由 Agent 调用 windows MCP 的 Process(mode:"kill") 执行。
+#   * --verify：只读核对——三个测试台端口无 LISTENING 且无匹配 jps 行 ⇒ MT_STOP: OK；
+#     否则 MT_STOP: FAIL（exit 1）。
+#   * 清存档：--purge-saves，白名单对齐旧编排器
 #     （client_world=run/<v>/saves/testworld、server_world=run/<v>/testworld、
 #      以及 run/<v>/saves/ 下各世界目录），绝不碰 mods/config/logs。
 #
 # 用法：
-#   bash scripts/test/win/stop.sh [--version <ver>|--all] [--purge-saves]
-#                                 [--stop-daemon] [--grace <秒>] [--dry-run]
+#   bash scripts/test/win/stop.sh [--version <ver>|--all] [--verify] [--purge-saves]
+#                                 [--stop-daemon] [--grace <秒>] [--dry-run] [--force]
 #
-# 退出码：0=无残留（含"本来就没有"、dry-run）；1=仍有残留；2=用法错误
+# 退出码：0=已打印 PENDING/OK（含本来就无残留、dry-run）；1=--verify 仍有残留；
+#         2=用法错误
 # ============================================================================
 set -uo pipefail
 
@@ -32,33 +34,37 @@ if [ -z "$MT_REPO_ROOT" ]; then
 fi
 export MT_REPO_ROOT
 
+# 收停机器行前缀（与 winux 侧 MT_* 家族一致）：MT_STOP: PENDING|OK|FAIL …
+mt_stop()     { printf 'MT_STOP: %s\n' "$*"; }
+mt_stop_err() { printf 'MT_STOP: %s\n' "$*" >&2; }
+
 VERSION=""
 ALL=0
 PURGE=0
 FORCE=0
 DRY=0
+VERIFY=0
 STOP_DAEMON=0
 GRACE=10
 
 usage() {
     cat <<'USAGE'
 用法：
-  bash scripts/test/win/stop.sh [--version <ver>|--all] [--purge-saves]
-                                [--stop-daemon] [--grace <秒>] [--dry-run]
+  bash scripts/test/win/stop.sh [--version <ver>|--all] [--verify] [--purge-saves]
+                                [--stop-daemon] [--grace <秒>] [--dry-run] [--force]
 
-  --version <ver>   1.21.1 | 1.20.1 | 26.1.2 | fabric-1.20.1（只收这一条线）
-  --all             四条线全收（1.21.1 1.20.1 26.1.2 fabric-1.20.1）
-                    缺省不给两者时 = --all（收停是幂等安全检查）
-  --purge-saves     同时清测试世界存档（白名单：run/<v>/saves/*、run/<v>/testworld、
-                    run/<v>/client_world/testworld、run/<v>/server_world/testworld、
-                    fabric 双侧 fabric-1.20.1/run/<client|server>；不碰 mods / config / logs）
-  --force           对齐 mt.ps1 的命令行契约；bash 侧恒 taskkill //T //F，本开关无副作用
-  --stop-daemon     收停后顺带 `gradlew.bat --stop`（Gradle daemon）
-  --grace <秒>      判残留的复核等待上限，默认 10
-  --dry-run         只打印 would-kill / would-remove，不杀进程、不删文件
+  --version <ver>   1.21.1 | 1.20.1 | 26.1.2 | fabric-1.20.1 | fabric-1.21.1（只收这一条线）
+  --all             五条线全收（缺省 = --all；收停是幂等安全检查）
+  --verify          只读核对：三个测试台端口无 LISTENING 且无匹配 jps 行 ⇒ MT_STOP: OK
+  --purge-saves     同时清测试世界存档（白名单：run/<v>/saves/*、run/<v>/testworld；
+                    不碰 mods / config / logs）
+  --force           兼容旧契约；已降级为 no-op（脚本不终止进程）
+  --stop-daemon     收停后顺带 `gradlew.bat --stop`（Gradle daemon；不是进程强杀）
+  --grace <秒>      兼容旧契约；脚本不再等待进程退出，此值仅被接受
+  --dry-run         只打印待终止 PID 与 would-remove，不删文件
 
-判线标记串（与 scripts/test/lib/Mt.Paths.psm1:141-156 一致）：
-  ":<子项目>:"、"run\<version>"、"run/<version>" —— 刻意不用裸子项目名，避免误杀 IDE。
+判线三源（缺一不可）：jps -lvm 行、run/<ver>/win-run.pid、25585/25565/25575 的 LISTENING。
+终止动作由 Agent 通过 windows MCP 的 Process(mode:"kill") 执行；脚本本身不做任何 kill。
 USAGE
 }
 
@@ -67,9 +73,9 @@ while [ $# -gt 0 ]; do
         --version)      VERSION="${2:-}"; shift 2 ;;
         --version=*)    VERSION="${1#*=}"; shift ;;
         --all)          ALL=1; shift ;;
+        --verify)       VERIFY=1; shift ;;
         --purge-saves)  PURGE=1; shift ;;
-        # --force 对齐 mt.ps1:783-790 的命令行契约：bash 侧恒用 taskkill //T //F，
-        # 没有优雅信号档 ⇒ 只「接受但无副作用」，绝不因它报未知参数。
+        # 兼容旧命令行契约；真正终止已移交 Agent，故该开关无副作用。
         --force)        FORCE=1; shift ;;
         --stop-daemon)  STOP_DAEMON=1; shift ;;
         --grace)        GRACE="${2:-}"; shift 2 ;;
@@ -84,9 +90,8 @@ if [ "$ALL" = 1 ] && [ -n "$VERSION" ]; then
     echo "用法错误：--version 与 --all 互斥，二选一" >&2
     exit 2
 fi
-# 缺省（--version 与 --all 都不给）= 四线全收。
-# 与 Linux 蓝本"必须给其一"不同：契约把两者都标为可选，且收停是幂等安全检查，
-# 默认扫全仓比报错更适合"先确保没有残留再干活"的用法。
+# 缺省（--version 与 --all 都不给）= 全收。
+# 收停是幂等安全检查，默认扫全仓比报错更适合"先确保没有残留再干活"的用法。
 if [ "$ALL" = 0 ] && [ -z "$VERSION" ]; then
     ALL=1
 fi
@@ -102,50 +107,64 @@ else
     TARGETS="$VERSION"
 fi
 
-# ── CIM 判线（一次查询，多条线复用）────────────────────────────────────
+if [ "$FORCE" = 1 ]; then
+    mt_winstop_err "提示 — --force 已降级为 no-op：脚本不终止进程，终止由 Agent 用 windows MCP 的 Process(kill) 执行"
+fi
+
+# ── jps 进程表（一次查询，多条线复用）────────────────────────────────────
 ROWS=""
-cim_ok=1
-if rows="$(mt_cim_java_rows 2>/dev/null)"; then
-    ROWS="$rows"
-else
-    cim_ok=0
+PROCS_OK=1
+if ! ROWS="$(mt_jps_java_rows 2>/dev/null)"; then
+    PROCS_OK=0
+    ROWS=""
 fi
-if [ "$cim_ok" = 0 ]; then
-    if [ "$DRY" = 1 ]; then
-        mt_winstop "DRY-RUN — CIM 查询失败（pwsh -NoProfile Get-CimInstance 不可用）；真实运行会 exit 2"
-        exit 2
-    fi
-    mt_winstop_err "ERROR — CIM 查询失败（pwsh -NoProfile Get-CimInstance 不可用），无法判线"
-    exit 2
+if [ "$PROCS_OK" = 0 ]; then
+    mt_winstop_err "WARN — jps -lvm 不可用（未找到 \$JAVA_HOME/bin/jps 或 PATH 的 jps）；本轮只能靠 pidfile + 端口判线"
 fi
 
-if [ -z "$ROWS" ]; then
-    mt_info "cim" "无 java.exe 进程（CIM 判线结果为空）"
+# ── --verify：只读残留核对（无监听 + 无匹配 jps 行）───────────────────────
+if [ "$VERIFY" = 1 ]; then
+    bad=""
+    for port in $MT_GAME_PORTS; do
+        for p in $(mt_port_pids "$port" 2>/dev/null); do
+            bad="$bad port:$port(pid=$p)"
+        done
+    done
+    if [ "$PROCS_OK" = 1 ] && [ -n "$ROWS" ]; then
+        while IFS=$'\t' read -r pid cmd; do
+            [ -n "$pid" ] || continue
+            for v in $TARGETS; do
+                if mt_cmdline_matches_version "$v" "$cmd"; then
+                    bad="$bad jps:$v(pid=$pid)"
+                    break
+                fi
+            done
+        done <<< "$ROWS"
+    elif [ "$PROCS_OK" = 0 ]; then
+        bad="$bad jps-unavailable"
+    fi
+    if [ -z "$bad" ]; then
+        mt_stop "OK — 25585/25565/25575 无 LISTENING，且无匹配 jps 行（$TARGETS）"
+        exit 0
+    fi
+    mt_stop "FAIL — 仍有残留：$bad"
+    exit 1
 fi
 
-# ── 收停：逐线收集 → taskkill /T /F（关闭 MSYS2 参数转换）──────────────
-killed_any=0
-pids_killed=""
+# ── 收集待终止 PID（jps 行 + pidfile + 端口）──────────────────────────────
+declare -a PENDING_PIDS=()
+declare -a PENDING_SRC=()
+declare -a STALE_PIDFILES=()
+declare -a KEEP_PIDFILES=()
 
-kill_pid() {
-    local pid="$1" ver="$2" cmd="$3"
-    if [ "$DRY" = 1 ]; then
-        mt_winstop "would-kill — PID $pid（$ver）"
-        mt_detail "cmd          = $(printf '%s' "$cmd" | cut -c1-200)"
-        mt_detail "would-call   = taskkill /PID $pid /T /F（MSYS2_ARG_CONV_EXCL=*）"
-        return 0
-    fi
-    local tk_out
-    if tk_out="$(MSYS2_ARG_CONV_EXCL='*' taskkill /PID "$pid" /T /F 2>&1)"; then
-        mt_winstop "killed — PID $pid（$ver）"
-    else
-        # taskkill 的退出码在本机不可靠（找不到进程也常返回 0，输出为 GBK），
-        # 一律以随后的 CIM 复核为准，这里只把原始输出附在字段行。
-        mt_winstop "kill-call — PID $pid（$ver）返回非零，按 CIM 复核结果判定"
-        mt_detail "taskkill_out = $(printf '%s' "$tk_out" | tr -d '\r' | head -n 2 | tr '\n' ' ')"
-    fi
-    pids_killed="$pids_killed $pid"
-    return 0
+add_pid() {
+    local pid="$1" src="$2" x
+    case "$pid" in ''|*[!0-9]*) return 0 ;; esac
+    for x in "${PENDING_PIDS[@]}"; do
+        [ "$x" = "$pid" ] && return 0
+    done
+    PENDING_PIDS+=("$pid")
+    PENDING_SRC+=("$src")
 }
 
 for v in $TARGETS; do
@@ -154,8 +173,6 @@ for v in $TARGETS; do
     # 否则 pidfile / AutoJS 状态文件会落到另一条 fabric 线的目录里(2026-11-05 实测遗漏)。
     mt_fab_set_version "$v" || true
     run_dir="$MT_REPO_ROOT/run/$v"
-    # fabric-1.20.1 是双 run 目录（<子项目>/run/<client|server>）：pidfile 每侧各一个，
-    # 另外旧 pwsh 测试台在 scripts/test/fabric/.ft_launch_state.json 里也记了 PID。
     pid_dirs="$run_dir"
     if mt_is_fabric "$v"; then
         pid_dirs="$(mt_fab_side_dir client) $(mt_fab_side_dir server)"
@@ -163,62 +180,53 @@ for v in $TARGETS; do
         mt_detail "run_layout   = $(mt_fab_run_label "$v" client) | $(mt_fab_run_label "$v" server)"
     fi
 
-    # 1) 先按 CIM 判线（命令行是权威，pidfile 可能是上一轮遗留）
-    hit=0
-    while IFS=$'\t' read -r pid cmd; do
-        [ -n "$pid" ] || continue
-        if mt_cmdline_matches_version "$v" "$cmd"; then
-            kill_pid "$pid" "$v" "$cmd"
-            hit=1
-        fi
-    done <<< "$ROWS"
+    before="${#PENDING_PIDS[@]}"
 
-    # 2) pidfile（win-run.pid）—— 记的是 Windows PID
+    # jps 行（命令行是权威；pidfile 可能是上一轮遗留）
+    hit=0
+    if [ "$PROCS_OK" = 1 ] && [ -n "$ROWS" ]; then
+        while IFS=$'\t' read -r pid cmd; do
+            [ -n "$pid" ] || continue
+            if mt_cmdline_matches_version "$v" "$cmd"; then
+                add_pid "$pid" "jps:$v"
+                mt_detail "cmd          = PID $pid $(printf '%s' "$cmd" | cut -c1-160)"
+                hit=1
+            fi
+        done <<< "$ROWS"
+    fi
+
+    # pidfile（win-run.pid，记的是 Windows PID）；活着才进 PENDING，否则记为陈旧
     for pd in $pid_dirs; do
-    pidfile="$pd/win-run.pid"
-    if [ -f "$pidfile" ]; then
+        pidfile="$pd/win-run.pid"
+        [ -f "$pidfile" ] || continue
         p="$(tr -d '\r\n' < "$pidfile" 2>/dev/null || true)"
         case "$p" in
-            ''|*[!0-9]*) p="" ;;
+            ''|*[!0-9]*)
+                STALE_PIDFILES+=("$pidfile|")
+                continue
+                ;;
         esac
-        if [ -n "$p" ]; then
-            if mt_pid_alive "$p"; then
-                kill_pid "$p" "$v" "pidfile=$pidfile"
-                hit=1
-            elif [ "$DRY" = 1 ]; then
-                mt_winstop "would-remove-pidfile — $pidfile（PID $p 已不是 java 进程）"
-            fi
-        fi
-        if [ "$DRY" = 1 ]; then
-            mt_winstop "would-remove-pidfile — $pidfile"
+        if mt_pid_alive "$p"; then
+            add_pid "$p" "pidfile:${pidfile#"$MT_REPO_ROOT"/}"
+            KEEP_PIDFILES+=("$pidfile|$p")
+            hit=1
         else
-            rm -f "$pidfile" 2>/dev/null && mt_info "pidfile" "已删除 $pidfile" \
-                || mt_info "pidfile" "删除失败（沙箱或占用）：$pidfile"
+            STALE_PIDFILES+=("$pidfile|$p")
         fi
-    fi
     done
 
-    # 2b) fabric 旧 pwsh 测试台的启动状态文件（scripts/test/fabric/.ft_launch_state.json）
-    if mt_is_fabric "$v"; then
-        sp="$(mt_fab_state_pid 2>/dev/null || true)"
-        case "$sp" in
-            ''|*[!0-9]*) sp="" ;;
-        esac
-        if [ -n "$sp" ]; then
-            sside="$(mt_fab_state_get side 2>/dev/null || echo '?')"
-            if mt_pid_alive "$sp"; then
-                kill_pid "$sp" "$v" "ft_launch_state(side=$sside)"
-                hit=1
-            else
-                mt_info "fabric_state" ".ft_launch_state.json 记的 PID $sp（side=$sside）已不在运行（陈旧状态，不删他人文件）"
-            fi
-        fi
-    fi
+    # 测试台端口：25585 AutoJS / 25565 游戏 / 25575 fabric RCON
+    for port in $MT_GAME_PORTS; do
+        for p in $(mt_port_pids "$port" 2>/dev/null); do
+            add_pid "$p" "port:$port"
+            hit=1
+        done
+    done
 
-    # 2c) fabric：AutoJS 注入状态文件（run/<side>/.mt_autojs_injected）—— launch.sh 写、本脚本删。
-    #     「mods 里有没有 AutoJS jar」在 fabric 线恒为假，PowerShell 侧通道判定改读这个文件，
-    #     所以它必须与进程同生命周期：收停即删，避免下次手工启动时被读成「已注入」。
-    if mt_is_fabric "$v"; then
+    # fabric：AutoJS 注入状态文件（run/<side>/.mt_autojs_injected）—— launch.sh 写、本脚本删。
+    # 「mods 里有没有 AutoJS jar」在 fabric 线恒为假，通道判定改读这个文件，
+    # 所以它必须与进程同生命周期；仅在该版本已无待终止 PID 时才删。
+    if mt_is_fabric "$v" && [ "${#PENDING_PIDS[@]}" = "$before" ]; then
         for sd in client server; do
             sf="$(mt_fab_autojs_state_path "$sd" 2>/dev/null || true)"
             [ -n "$sf" ] || continue
@@ -232,76 +240,49 @@ for v in $TARGETS; do
         done
     fi
 
-    if [ "$hit" = 0 ] && [ "$DRY" = 0 ]; then
-        mt_info "noop" "$v 线未发现本 repo 的 java 进程（CIM 判线为空）"
+    if [ "$hit" = 0 ]; then
+        mt_info "noop" "$v 线未发现本 repo 的测试台进程（jps/pidfile/端口均为空）"
     fi
     if [ -f "$run_dir/linux-run.pid" ]; then
         mt_info "linux-pidfile" "存在 run/$v/linux-run.pid（Linux 台遗留；本脚本不删他人状态文件）"
     fi
 done
 
-# ── 复核残留（taskkill 是同步的，但 /T 收树需要一点时间）───────────────
-wait_residual() {
-    local secs="$1"
-    [ "$DRY" = 1 ] && return 0
-    local i=0
-    while [ "$i" -lt "$secs" ]; do
-        local rows2 left=0
-        if rows2="$(mt_cim_java_rows 2>/dev/null)"; then
-            while IFS=$'\t' read -r pid cmd; do
-                [ -n "$pid" ] || continue
-                for v in $TARGETS; do
-                    if mt_cmdline_matches_version "$v" "$cmd"; then left=1; break; fi
-                done
-                [ "$left" = 1 ] && break
-            done <<< "$rows2"
-            [ "$left" = 0 ] && return 0
+# ── 陈旧 pidfile：进程确实不在才清理（活进程的 pidfile 一律保留）──────────
+if [ "${#STALE_PIDFILES[@]}" -gt 0 ]; then
+    for rec in "${STALE_PIDFILES[@]}"; do
+        f="${rec%%|*}"
+        p="${rec#*|}"
+        if [ -n "$p" ]; then
+            mt_detail "stale        = $f（PID $p 不在 jps/端口表里）"
+        else
+            mt_detail "stale        = $f（内容无有效 PID）"
         fi
-        sleep 1
-        i=$((i + 1))
+        if [ "$DRY" = 1 ]; then
+            mt_winstop "would-remove-pidfile — $f"
+        else
+            rm -f "$f" 2>/dev/null && mt_info "pidfile" "已删除陈旧 pidfile $f" \
+                || mt_info "pidfile" "删除失败（沙箱或占用）：$f"
+        fi
     done
-    return 1
-}
+fi
+for rec in "${KEEP_PIDFILES[@]}"; do
+    mt_detail "pidfile      = 保留 $rec（进程仍在）"
+done
 
-residual_pids() {
-    local rows2
-    rows2="$(mt_cim_java_rows 2>/dev/null)" || return 2
-    local out="" left=0
-    while IFS=$'\t' read -r pid cmd; do
-        [ -n "$pid" ] || continue
-        for v in $TARGETS; do
-            if mt_cmdline_matches_version "$v" "$cmd"; then
-                out="$out PID $pid($v)"
-                left=1
-                break
-            fi
-        done
-    done <<< "$rows2"
-    printf '%s' "$out"
-    [ "$left" = 1 ] && return 0 || return 1
-}
-
-if [ "$DRY" = 1 ]; then
-    mt_winstop "DRY-RUN — 未杀进程、未删文件"
-    if [ "$PURGE" = 1 ]; then
-        mt_detail "purge        = 已请求（真实运行会逐条打 PURGE: removed/would-remove）"
-    else
-        mt_detail "purge        = 未请求（加 --purge-saves 才清存档）"
-    fi
-    mt_detail "stop_daemon  = $([ "$STOP_DAEMON" = 1 ] && echo 会执行 || echo 不执行)"
+# ── 收尾机器行：PENDING / OK（不杀进程）──────────────────────────────────
+if [ "${#PENDING_PIDS[@]}" -eq 0 ]; then
+    mt_stop "OK — 未发现本 repo 的 Minecraft 客户端（无需收停）"
 else
-    wait_residual "$GRACE" || true
-    left="$(residual_pids)"; rc=$?
-    if [ "$rc" = 2 ]; then
-        mt_winstop_err "ERROR — 复核阶段 CIM 查询失败，无法判定残留"
-        exit 2
-    elif [ "$rc" = 0 ]; then
-        mt_winstop "RESIDUAL — 仍在本 repo 运行：$left"
-        mt_detail "提示         = 残留可能是「不是 java.exe 名字的派生进程」，或权限不足；可先核对 CIM 输出"
-        exit 1
-    else
-        mt_winstop "OK — 四线范围内无本 repo 的 Minecraft 客户端"
-    fi
+    joined=""
+    i=0
+    for pid in "${PENDING_PIDS[@]}"; do
+        if [ "$i" -eq 0 ]; then joined="$pid"; else joined="$joined,$pid"; fi
+        i=$((i + 1))
+        mt_detail "pending      = PID $pid（${PENDING_SRC[$((i - 1))]}）"
+    done
+    mt_stop "PENDING pid=$joined"
+    mt_stop "由 Agent 用 mcp__windows__Process(mode:\"kill\") 终止上述 PID；脚本不做任何 kill"
 fi
 
 # ── --purge-saves：白名单清测试世界 ───────────────────────────────────
@@ -333,9 +314,9 @@ if [ "$PURGE" = 1 ]; then
             purge_dirs="$(mt_fab_side_dir client) $(mt_fab_side_dir server)"
         fi
         for run_dir in $purge_dirs; do
-        [ -d "$run_dir" ] || { mt_info "purge-skip" "${run_dir#$MT_REPO_ROOT/} 不存在"; continue; }
+        [ -d "$run_dir" ] || { mt_info "purge-skip" "${run_dir#"$MT_REPO_ROOT"/} 不存在"; continue; }
 
-        # (a) 命名世界（对齐 mt_cleanup.ps1:228-265 的 client_world / server_world）
+        # (a) 命名世界（对齐旧编排器的 client_world / server_world）
         for named in "$run_dir/saves/testworld" "$run_dir/testworld" \
                      "$run_dir/client_world/testworld" "$run_dir/server_world/testworld"; do
             purge_dir "$named" "$v"
@@ -366,13 +347,13 @@ if [ "$PURGE" = 1 ]; then
             purge_dir "$d" "$v"
         done
         done
-        done
+    done
     if [ "$DRY" = 1 ]; then
         mt_purge "DRY-RUN — 未删除任何文件"
     fi
 fi
 
-# ── --stop-daemon ────────────────────────────────────────────────────
+# ── --stop-daemon（唯一允许的"停止"动作：Gradle 自带命令，不是进程强杀）──
 if [ "$STOP_DAEMON" = 1 ]; then
     if [ "$DRY" = 1 ]; then
         mt_winstop "would-run — mt_cmdwin \"gradlew.bat --stop\"（cwd=$MT_REPO_ROOT）"
@@ -392,11 +373,6 @@ if [ "$STOP_DAEMON" = 1 ]; then
 fi
 
 if [ "$DRY" = 1 ]; then
-    exit 0
-fi
-
-# ── 收尾机器行 ───────────────────────────────────────────────────────
-if [ "$killed_any" = 0 ] && [ -z "$pids_killed" ]; then
-    mt_winstop "OK — 未发现本 repo 的 Minecraft 客户端（无需收停）"
+    mt_winstop "DRY-RUN — 未杀进程、未删文件（只读预览）"
 fi
 exit 0

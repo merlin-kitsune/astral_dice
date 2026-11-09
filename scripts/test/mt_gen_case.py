@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""mt_gen_case —— 用例 JSON / MD 脚手架生成器（python 复原版，等价 scripts/test/mt_gen_case.ps1）。
+"""mt_gen_case —— 用例 JSON / MD 脚手架生成器（python 复原版）。
 
 只生成文件，不执行、不起游戏、不改环境脚本。三种互斥模式：
   --new <注册id>   按新内容生成（spec-driven：类别规则 + 骨架步骤 + vision 断言）
@@ -10,11 +10,11 @@
 参数错误：MT_ERROR: … 退出 2；生成的条目过不了 lib/mt_case.py 校验：MT_GEN: ERROR — … 退出 2。
 
 与 ps1 的差异（有意，仅两处，均为「资产已 bash 化」的必然结果）：
-  * MT_GEN_NEXT 里的复跑命令由 pwsh -File scripts/test/mt.ps1 … 改为 bash scripts/test/mt.sh …
-    （.ps1 已退役；机器行前缀与语义不变，只是宿主换成本仓现役的 bash 测试台）。
+  * MT_GEN_NEXT 里的复跑命令由旧编排器命令改为 bash scripts/test/mt.sh …
+    （旧入口已退役；机器行前缀与语义不变，只是宿主换成本仓现役的 bash 测试台）。
   * 增加 -h/--help（ps1 没有该开关；本仓约定每个 python 入口 --help 退出 0）。
 
-本文件不调用任何 .ps1 / .psm1，也不 Import-Module。
+本文件不调用任何外部脚本资产，也不做模块导入。
 """
 
 import hashlib
@@ -72,7 +72,7 @@ def usage():
     return chr(10).join([
         "用法: python scripts/test/mt_gen_case.py --version <版本> (--new <注册id> | --feature <功能名> | --spec <描述>) [--dry-run]",
         "",
-        "用例脚手架生成器（等价 scripts/test/mt_gen_case.ps1）：只写 cases/<case_id>.json 与 .md，",
+        "用例脚手架生成器：只写 cases/<case_id>.json 与 .md，",
         "不执行用例、不启动游戏、不改环境脚本。",
         "",
         "选项:",

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """mt_channel.py — AutoJS 命令通道（bash/python 侧）。
 
-把 pwsh 版 scripts/test/lib/Mt.Channel.psm1 的 **命令注入通道**语义等价搬到 python：
+把旧编排器的 **命令注入通道**语义等价搬到 python：
 
   命令通道 = 三级探测链，逐级尝试、首级成功即记住（2026-11-05 Step 1 起**客户端优先**）：
     1) send_command      side=client  (function(){ Client.getConnection().sendCommand(L); return "send_command"; })()
@@ -15,7 +15,7 @@
   链序可用环境变量 MT_CHANNEL_ORDER=client-first|server-first 覆盖，默认 client-first：
   用例里 @s 共 667 处 / 225 个用例，server-first 会让它们静默失效（console 没有 @s）。
 
-判据（与 pwsh 逐条对齐）：
+判据（与旧编排器逐条对齐）：
   · 空命令（Trim 后）⇒ status=ERROR / command_empty
   · run/<...>/mods 里没有 AutoJS-*.jar 且 fabric 未注入 ⇒ status=DELEGATED（通道不可用，不是失败）
   · 成功 = ok 为真 **且** diagnostics 无错误证据（ok:true 不代表没出错）

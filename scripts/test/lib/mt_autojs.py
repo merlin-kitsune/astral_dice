@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """mt_autojs.py — AutoJS 脚本上下文 MCP 客户端（WSL/bash 工具链）。
 
-与 scripts/test/lib/Mt.AutoJs.psm1 **语义等价**的 python3 标准库实现（无第三方依赖）：
+与旧编排器的 AutoJS 脚本执行资产 **语义等价**的 python3 标准库实现（无第三方依赖）：
   · 传输：HTTP POST <endpoint>，JSON-RPC 2.0；Accept 同时接受 application/json 与 text/event-stream
   · 握手：initialize → notifications/initialized → tools/call；会话 id 由响应头 Mcp-Session-Id 回带
   · 工具面：status / eval_js / kubejs_log / reload_scripts（side ∈ auto|server|client）

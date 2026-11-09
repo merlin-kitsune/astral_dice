@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """mt_report —— 证据收集与报告生成（阶段 R）。
 
-scripts/test/mt_report.ps1 的 python 原生等价实现（不启动 pwsh / powershell）。
+旧编排器报告器的 python 原生等价实现（不启动任何 shell 解释器）。
 
 子命令与 CLI 形态（与 ps1 逐字一致）:
     mt_report.py mark    --version <v> [--phase <name>] [--case <name>] --result <R>
@@ -12,7 +12,7 @@ scripts/test/mt_report.ps1 的 python 原生等价实现（不启动 pwsh / powe
     reports/<run_id>/<version>/report.md   单版本报告（含明确的通过/失败结论）
     reports/<run_id>/SUMMARY.md            总览（版本结论 + 综合结论）
 
-退出码（Mt.Phase.psm1）: PASS=0 FAIL=1 ERROR=2 PREFLIGHT=10 BLOCKED=11 TIMEOUT=12
+退出码（阶段契约）: PASS=0 FAIL=1 ERROR=2 PREFLIGHT=10 BLOCKED=11 TIMEOUT=12
     mark    -> 0
     collect -> 0 / 2（无效运行 = 规则 14；生物 AI 审计不达标）
     summary -> 0 / 1（未全部通过）/ 2（无效运行）
@@ -491,7 +491,7 @@ def invoke_collect(version, verdict_arg=""):
             "> 依据（规则 14 收严版）：「被用户主动终止的游戏进程一律视为作废。此次测试产生的任何结果都必须视为无效。需要重新执行测试进行验证。」",
             "> 触发条目：`"
             + ut_case_names
-            + "`（结论 `USER_TERMINATED` —— 疑似用户手动终止，判定见 `mt_case.ps1` 的 `MT_USER_TERMINATED`）。",
+            + "`（结论 `USER_TERMINATED` —— 疑似用户手动终止，判定见 `mt_case` 的 `MT_USER_TERMINATED`）。",
             "> 处置：**不计入通过率**、**不作为缺陷依据**，也不与产品 `❌ FAIL` 混淆；下方条目表逐条如实保留全部结果串（含其它失败串）供审计。",
             "> 退出码：沿用既有非 0 中断码 `MT_EXIT_ERROR(2)`（与用例级 `USER_TERMINATED` 同一数值，未新造）。",
             "",
@@ -766,7 +766,7 @@ def invoke_summary():
         "- **生成时间**: " + now_stamp(),
         "",
         "> 测试顺序：先 1.21.1，通过后才执行 1.20.1。两个版本都给出独立结论。",
-        "> `mt.ps1 --version <V>` 指定单版本时只跑该版本、不做跨版本门控，总览也只列实际执行过的版本。",
+        "> `bash scripts/test/win/mt.sh --version <V>` 指定单版本时只跑该版本、不做跨版本门控，总览也只列实际执行过的版本。",
         "> 条目判定口径（规则 14 收严版）：`PASS`/`SKIP` 之外（FAIL/TIMEOUT/BLOCKED/ERROR/GATED）一律计入 ❌ 并让退出码非 0；",
         "> 但 `USER_TERMINATED` 是**第三类 —— 无效运行**：该次运行的全部结果无效（不计入通过率、不作为缺陷依据），不与 ❌ FAIL 混淆，退出码沿用既有中断码 MT_EXIT_ERROR(2)。",
         "",

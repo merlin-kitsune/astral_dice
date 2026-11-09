@@ -6,12 +6,12 @@
 # 蓝本：scripts/test/linux/{env,launch,stop}.sh（只读复用其契约，不修改它们）。
 #
 # 本机约束（2026-11-01 实测，MSYS2 UCRT64 / bash 5.3.15）：
-#   * 可用：pwsh 7.6.9、curl 8.22、python3、taskkill、netstat、cmd.exe
-#   * 不可用：jq / wget / setsid / findmnt / pgrep / wmic；`ps -o` 不支持
+#   * 可用：jps（JDK 自带）、curl 8.22、python3、netstat、cmd.exe
+#   * 不可用：jq / wget / setsid / findmnt / pgrep；`ps -o` / `ps -W` 不支持
 #   * /tmp 写入被沙箱拒绝 → 临时文件只走 Windows 真 TEMP 或仓库内（绝不落 /tmp）
 #   * curl 一律 --noproxy '*'（本机 127.0.0.1 经代理会 000）
-#   * pwsh 一律 -NoProfile -NonInteractive
-#   * 进程识别一律 CIM（Get-CimInstance Win32_Process），不按进程名批量杀 java
+#   * 进程表一律 jps -lvm（JDK 自带；不引入任何外部进程查询工具）
+#   * 脚本不终止任何进程：收停只打印 PID，终止由 Agent 通过 windows MCP 的 Process(kill) 执行
 #
 # 机器行契约（docs/features/windows-channel-decoupling-spec.md §3）：
 #   CHECK: <key>=OK|WARN|FAIL — <detail>
@@ -22,7 +22,7 @@
 
 MT_COMMON_VERSION="1.0.0-win"
 
-# ── 版本表（五线齐全；注意 Mt.Paths.psm1 的 $VERSIONS 至今只有三条线）───────
+# ── 版本表（五线齐全；注意旧编排器的 $VERSIONS 至今只有三条线）──────────────
 MT_ALL_VERSIONS="1.21.1 1.20.1 26.1.2 fabric-1.20.1 fabric-1.21.1"
 MT_WORLD_NAME="testworld"
 
@@ -167,27 +167,44 @@ mt_winstop_err() { printf 'WIN_STOP: %s\n' "$*" >&2; }
 mt_purge()   { printf 'PURGE: %s\n' "$*"; }
 mt_detail()  { printf '  %s\n' "$*"; }
 
-# ── PowerShell 内核 / 外部工具 ────────────────────────────────────────────
-# 用途仅限「宿主能力」：CIM(Win32_Process) 取进程命令行做按线判线（bash 无等价物）。
-# ⚠️ 这不是测试资产——scripts/ 下 .ps1 已全部废弃，这里调的是 PowerShell **解释器**：
-#   ① pwsh 7（若装了） ② 系统自带 Windows PowerShell 5.1（Win10/11 恒有）。
-# MT_PWSH_EXE 可直接钉死解释器（反向判据「没有解释器必须 ERROR」用它自证）。
-mt_pwsh_exe() {
-    local exe="${MT_PWSH_EXE:-}"
+# ── jps：java 进程表（JDK 自带，替代一切外部进程查询）──────────────────
+# 输出每行 "<pid>\t<主类与参数>"；jps 不可用 / 执行失败时 stderr 打 JPS_ERROR … 且返回非 0。
+# 查找顺序：MT_JPS_EXE 钉值 → $JAVA_HOME/bin/jps → PATH 的 jps。
+mt_jps_exe() {
+    local exe="${MT_JPS_EXE:-}" jh
     if [ -n "$exe" ]; then printf '%s' "$exe"; return 0; fi
-    if command -v pwsh >/dev/null 2>&1; then exe="$(command -v pwsh)"
-    elif [ -x "/c/Program Files/PowerShell/7/pwsh.exe" ]; then exe="/c/Program Files/PowerShell/7/pwsh.exe"
-    elif [ -x "/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe" ]; then exe="/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe"
-    else return 127
+    if [ -n "${JAVA_HOME:-}" ]; then
+        jh="$(mt_to_msys "$JAVA_HOME" 2>/dev/null)"
+        jh="${jh%/}"
+        if [ -n "$jh" ] && [ -x "$jh/bin/jps.exe" ]; then exe="$jh/bin/jps.exe"
+        elif [ -n "$jh" ] && [ -x "$jh/bin/jps" ]; then exe="$jh/bin/jps"
+        fi
     fi
-    MT_PWSH_EXE="$exe"
+    if [ -z "$exe" ] && command -v jps >/dev/null 2>&1; then
+        exe="$(command -v jps)"
+    fi
+    [ -n "$exe" ] || return 127
+    MT_JPS_EXE="$exe"
     printf '%s' "$exe"
 }
 
-mt_pwsh() {
-    local exe
-    exe="$(mt_pwsh_exe 2>/dev/null)" || return 127
-    "$exe" -NoProfile -NonInteractive -Command "$1"
+mt_jps_java_rows() {
+    local exe raw
+    exe="$(mt_jps_exe 2>/dev/null)" || {
+        printf 'JPS_ERROR jps 不可用（未找到 $JAVA_HOME/bin/jps 或 PATH 的 jps）\n' >&2
+        return 127
+    }
+    if ! raw="$("$exe" -lvm 2>/dev/null)"; then
+        printf 'JPS_ERROR jps -lvm 执行失败：%s\n' "$exe" >&2
+        return 1
+    fi
+    printf '%s\n' "$raw" | tr -d '\r' | awk '
+        NF >= 2 && $1 ~ /^[0-9]+$/ {
+            rest = $2
+            for (i = 3; i <= NF; i++) rest = rest " " $i
+            if (rest ~ /sun\.tools\.jps\.Jps/) next
+            print $1 "\t" rest
+        }'
 }
 
 mt_have() { command -v "${1:-}" >/dev/null 2>&1; }
@@ -244,25 +261,31 @@ mt_dir_writable() {
     return 1
 }
 
-# ── CIM：java 进程 (pid, CommandLine) ─────────────────────────────────────
-# 输出每行 "<pid>\t<CommandLine>"；CIM 失败时 stderr 打 CIM_ERROR … 且返回非 0。
-mt_cim_java_rows() {
-    local ps
-    ps="$(cat <<'PS'
-$ErrorActionPreference = 'Stop'
-try {
-    $p = @(Get-CimInstance Win32_Process -Filter "Name='java.exe'" -ErrorAction Stop)
-} catch {
-    [Console]::Error.WriteLine('CIM_ERROR ' + $_.Exception.Message)
-    exit 3
-}
-foreach ($x in $p) { "{0}`t{1}" -f [int]$x.ProcessId, ([string]$x.CommandLine) }
-PS
-)"
-    mt_pwsh "$ps"
+# ── 测试台端口（判线与残留核对共用）──────────────────────────────────────
+# 25585 AutoJS / 25565 游戏 / 25575 fabric RCON；同一时刻只允许一条线占用。
+MT_GAME_PORTS="25585 25565 25575"
+
+# netstat -ano 的 LISTENING 行取 PID（$1 = 端口）；输出每个 pid 一行（已去重）。
+mt_port_pids() {
+    local port="${1:-}" re
+    case "$port" in ''|*[!0-9]*) return 2 ;; esac
+    mt_have netstat || return 1
+    re=":${port}$"
+    netstat -ano 2>/dev/null | tr -d '\r' | awk -v re="$re" '
+        NF >= 5 && $(NF-1) == "LISTENING" && $2 ~ re { print $NF }' | sort -u
 }
 
-# 命令行是否属于某线（与 Mt.Paths.psm1:141-156 Get-MtProcessMarkers 同款标记串）：
+# 三个测试台端口上所有 LISTENING 的 PID（输出 "pid<TAB>port"）。
+mt_all_port_rows() {
+    local port p
+    for port in $MT_GAME_PORTS; do
+        for p in $(mt_port_pids "$port" 2>/dev/null); do
+            printf '%s\t%s\n' "$p" "$port"
+        done
+    done
+}
+
+# 命令行是否属于某线（与旧编排器 Get-MtProcessMarkers 同款标记串）：
 #   ":<子项目>:"（gradle 任务选择器）、"run\<ver>"、"run/<ver>"
 # 刻意不用裸子项目名：那同时是仓库目录名，会误命中 IDE / 索引进程。
 mt_cmdline_matches_version() {
@@ -275,7 +298,7 @@ mt_cmdline_matches_version() {
     case "$lc" in *"run\\$v"*) return 0 ;; esac
     # fabric 线是双 run 目录 <fabric-子项目>/run/<client|server>，路径里没有独立版本号，
     # 所以上面的 run/<版本> needle 命中不了；改为「子项目名 + run + client|server」兜底匹配，
-    # 避免在双引号内写反斜杠字面量（\ 在 double-quote 里是转义，曾把行尾引号吃掉导致解析错）。
+    # 避免在双引号内写反斜杠字面量（\\ 在 double-quote 里是转义，曾把行尾引号吃掉导致解析错）。
     # 只在 fabric 线走这段兜底，且用本版本自己的子项目名（避免 fabric-1.21.1 借到 fabric-1.20.1 的路径）。
     if mt_is_fabric "$v"; then
         case "$lc" in *"$sub"*run*client*) return 0 ;; esac
@@ -292,7 +315,7 @@ mt_cmdline_matches_version() {
 
 mt_rows_for_version() {
     local v="${1:-}" rows pid cmd
-    rows="$(mt_cim_java_rows 2>/dev/null)" || return 1
+    rows="$(mt_jps_java_rows 2>/dev/null)" || return 1
     [ -n "$rows" ] || return 0
     while IFS=$'\t' read -r pid cmd; do
         [ -n "$pid" ] || continue
@@ -305,7 +328,7 @@ mt_rows_for_version() {
 # 所有线的残留（--all 用）；输出 "<pid>\t<ver>\t<cmdline>"。
 mt_rows_for_any_version() {
     local rows pid cmd v hit
-    rows="$(mt_cim_java_rows 2>/dev/null)" || return 1
+    rows="$(mt_jps_java_rows 2>/dev/null)" || return 1
     [ -n "$rows" ] || return 0
     while IFS=$'\t' read -r pid cmd; do
         [ -n "$pid" ] || continue
@@ -317,32 +340,25 @@ mt_rows_for_any_version() {
     done <<< "$rows"
 }
 
+# pid 是否仍在（口径 = jps 行 ∪ 三个测试台端口的 LISTENING PID；本机没有可用的 ps）。
 mt_pid_alive() {
-    local pid="${1:-}" rows
+    local pid="${1:-}" rows port p
     case "$pid" in ''|*[!0-9]*) return 1 ;; esac
-    rows="$(mt_cim_java_rows 2>/dev/null)" || return 1
-    printf '%s\n' "$rows" | while IFS=$'\t' read -r p _c; do
-        [ "$p" = "$pid" ] && { echo alive; break; }
-    done | grep -q alive
-}
-
-# 强杀进程树。git bash 会把 /PID 当路径去转换（本机实测 //PID 会被改写成 UNC，
-# taskkill 直接报 Invalid argument/option）⇒ 用 MSYS2_ARG_CONV_EXCL='*' 关掉转换。
-# rc 不可靠（无此进程时 taskkill 仍可能 rc=0），调用方必须用 CIM 复核。
-mt_taskkill_tree() {
-    local pid="${1:-}"
-    case "$pid" in ''|*[!0-9]*) return 2 ;; esac
-    if mt_have taskkill; then
-        MSYS2_ARG_CONV_EXCL='*' taskkill /PID "$pid" /T /F >/dev/null 2>&1 || true
-    else
-        mt_cmdwin "taskkill /PID $pid /T /F" >/dev/null 2>&1 || true
+    rows="$(mt_jps_java_rows 2>/dev/null)" || rows=""
+    if printf '%s\n' "$rows" | awk -v p="$pid" '$1 == p { f = 1 } END { exit !f }'; then
+        return 0
     fi
-    return 0
+    for port in $MT_GAME_PORTS; do
+        for p in $(mt_port_pids "$port" 2>/dev/null); do
+            [ "$p" = "$pid" ] && return 0
+        done
+    done
+    return 1
 }
 
 mt_gradle_daemon_rows() {
     local rows pid cmd
-    rows="$(mt_cim_java_rows 2>/dev/null)" || return 1
+    rows="$(mt_jps_java_rows 2>/dev/null)" || return 1
     [ -n "$rows" ] || return 0
     while IFS=$'\t' read -r pid cmd; do
         [ -n "$pid" ] || continue

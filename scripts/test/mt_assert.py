@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """一条一条读「自快照点起的增量日志」，把判据变成 PASS / FAIL / INCONCLUSIVE。
 
-本文件是 scripts/test/mt_assert.ps1（1537 行）的 python 等价物，子命令、参数名、机器行、
+本文件是旧编排器断言器（1537 行）的 python 等价物，子命令、参数名、机器行、
 退出码逐字对齐；ps1 侧即将物理删除，手动「读一条增量日志 / 判一条断言」的能力必须由它承接。
 
 子命令：snapshot / log / absent / crash / kubejs / mixin / eval / state

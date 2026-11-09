@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""mt_env —— 测试环境准备（python 复原版，CLI 对齐 scripts/test/mt_env.ps1）。
+"""mt_env —— 测试环境准备（python 复原版）。
 
 子命令面（与 ps1 的闭集一致）：mods | world | kill | kubejs | shaders | debug
 选项：--version <v>（必填） --seed --state <on|off|status> --pause-lock <on|off|status>
@@ -29,7 +29,7 @@
   * 未复原 = 能力缺失时一律 BLOCKED/ERROR，不返回 0。
   * 增加 -h/--help。
 
-本文件不调用任何 .ps1 / .psm1：起服务端走 cmd.exe /c gradlew.bat（Windows）或 sh gradlew。
+本文件不调用任何外部脚本资产：起服务端走 cmd.exe /c gradlew.bat（Windows）或 sh gradlew。
 """
 
 import hashlib
@@ -1138,7 +1138,7 @@ def usage():
     return chr(10).join([
         "用法: python scripts/test/mt_env.py (mods|world|kill|kubejs|shaders|debug) --version <v> [选项]",
         "",
-        "测试环境准备（CLI 对齐 scripts/test/mt_env.ps1）。",
+        "测试环境准备。",
         "",
         "子命令:",
         "  mods     kubejs 模板同步 + 渲染模组同步 + options.txt 三项守门（1.21.1 / fabric / 1.20.1 / 26.1.2）",

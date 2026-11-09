@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""mt_case.py — 用例执行 + 断言引擎（bash/python 原生，不依赖 pwsh）。
+"""mt_case.py — 用例执行 + 断言引擎（bash/python 原生，不依赖外部解释器）。
 
-职责（判定语义与 scripts/test/mt_case.ps1 对齐；pwsh 资产删除后由其接替）：
+职责（判定语义与旧编排器的用例执行器对齐；旧资产删除后由其接替）：
   · validate：封闭原语表 + 断言类型 + 迁移纯度（channel=autojs 不得含废除原语）
   · run：执行 steps（note / mcp_status / eval_js / await_state / inject_command / jar_stats /
          screenshot / inject_key / inject_mouse / wait / assert），再跑 asserts
@@ -19,7 +19,7 @@
   · crash / mixin / kubejs —— 只能读文件层事实（端点随进程一起死），保留为日志通道；
     crash-reports 目录不存在 ⇒ INCONCLUSIVE（无证据，不冒充 PASS）
   · jar —— 读 op=jar_stats 落下的离线包统计（models/recipes/trinkets/entries/signs 下限、
-    bountiful/embed 上限、embed_lib 布尔），口径与 pwsh Get-MtCaseJarStats 逐字段一致
+    bountiful/embed 上限、embed_lib 布尔），口径与旧编排器的 jar 统计逐字段一致
   · bytecode / bytecode_absent —— 在产物 jar 条目名上跑正则（数量下限/零命中）
   · vision —— 截图 + 语义判定，python 侧无等价物 ⇒ 记 BLOCKED(11)（不是 PASS，也不是 FAIL）
 
@@ -34,7 +34,7 @@
     翻译不了的键（k 之类第三方键位）与要**真验输入路径**的步骤显式 via=native 走 mt_inject.py。
   · screenshot ⇒ AutoJS 客户端 Screenshot.grab（异步落盘，python 侧轮询新文件后按 <tag>_<run_id>.png 登记）；
     vision 断言仍 BLOCKED —— 缺的是**语义判定**通道，不是截图本身。
-  · 产物 jar 缺失 ⇒ op=jar_stats 记 BLOCKED（工具链事实）；bytecode 断言按 pwsh 口径记 FAIL
+  · 产物 jar 缺失 ⇒ op=jar_stats 记 BLOCKED（工具链事实）；bytecode 断言按旧口径记 FAIL
 
 用法：
   python3 scripts/test/lib/mt_case.py validate --cases-dir scripts/test/cases
@@ -59,7 +59,7 @@ import mt_channel  # noqa: E402
 import mt_paths  # noqa: E402
 from mt_autojs import AutoJs  # noqa: E402
 
-# ── 封闭原语表（与 pwsh 版同键集；active = AutoJS 通道允许的原语）────────────
+# ── 封闭原语表（与旧版同键集；active = AutoJS 通道允许的原语）────────────
 PRIMITIVES = {
     "note": {"active": True, "fields": {"text"}},
     "mcp_status": {"active": True, "fields": {"timeout_ms", "save_as"}},
@@ -67,7 +67,7 @@ PRIMITIVES = {
     "await_state": {"active": True, "fields": {"side", "code", "script", "args", "timeout_ms", "interval_ms"}},
     "assert": {"active": True, "fields": {"type", "pattern", "source", "image", "question", "from", "code", "side", "expect"}},
     "wait": {"active": True, "fields": {"ms"}, "deprecated": "固定睡眠已退役，仅作迁移期兼容"},
-    # ↓ 已迁移：AutoJS 通道下可用（pwsh 同口径；仅 kubejs_reload 退役）
+    # ↓ 已迁移：AutoJS 通道下可用（旧版同口径；仅 kubejs_reload 退役）
     "inject_command": {"active": True, "fields": {"command", "no_esc", "via", "side"}},
     "inject_key": {"active": True, "fields": {"key", "hold_ms", "no_esc", "via", "side"}},
     "inject_mouse": {"active": True, "fields": {"button", "shift", "hold_ms", "no_esc", "via", "side"}},
@@ -84,7 +84,7 @@ SIDES = ("auto", "server", "client")
 JUDGMENT_OPS = ("eval_js", "await_state")
 JUDGMENT_ASSERT_TYPES = ("eval", "state", "log", "absent", "crash", "kubejs", "mixin")
 
-# jar 断言字段口径（pwsh Invoke-MtCaseAssert 的 min/max 两张表，逐字段同名）
+# jar 断言字段口径（旧断言器的 min/max 两张表，逐字段同名）
 JAR_MIN_MAP = {"models_min": "models", "recipes_min": "recipes", "trinkets_min": "trinkets",
                "entries_min": "entries", "signs_min": "signs"}
 JAR_MAX_MAP = {"bountiful_max": "bountiful", "embed_max": "embed"}
@@ -287,11 +287,11 @@ def latest_crash_stamp(run_dir: str):
 
 
 def has_crash_dir(run_dir: str) -> bool:
-    """crash-reports 目录是否存在。不存在 ⇒ crash 断言无证据（pwsh 记 INCONCLUSIVE，不冒充 PASS）。"""
+    """crash-reports 目录是否存在。不存在 ⇒ crash 断言无证据（旧口径记 INCONCLUSIVE，不冒充 PASS）。"""
     return os.path.isdir(os.path.join(run_dir, "crash-reports"))
 
 
-# ── 断言窗口（pwsh B7 的 case / launch / whole 三档）───────────────────────
+# ── 断言窗口（旧版 B7 的 case / launch / whole 三档）───────────────────────
 # case   = 自本用例开始（Runner 起跑时的文件长度；默认，挡住前序用例/上一轮的污染）
 # launch = 自 launch 阶段起（基线由 launch 阶段在 cases/.mt_snapshot.json 冻结；缺失则退化并告警，
 #          绝不静默把 launch 断言降级成 case 断言 —— 那会凭空制造假 FAIL）
@@ -495,7 +495,7 @@ class Runner:
             self._asserts()
         except Blocked as exc:
             self.records.append({"op": "blocked", "outcome": "BLOCKED", "detail": str(exc)})
-            # pwsh 的升级序：ERROR > TIMEOUT > FAIL > BLOCKED（BLOCKED 不覆盖已判定的 FAIL）
+            # 旧版的升级序：ERROR > TIMEOUT > FAIL > BLOCKED（BLOCKED 不覆盖已判定的 FAIL）
             if self.errors:
                 self.blocked.append(str(exc))
                 return self._finish("ERROR", 2, "; ".join(self.errors[:3]))
@@ -612,7 +612,7 @@ class Runner:
         self.records.append({"op": "await_state", "side": side, "tries": tries, "outcome": "FAIL"})
         self.failures.append(f"await_state 超时 {timeout_ms}ms：{last}")
 
-    # ── 离线 jar 统计（不启动游戏；与 pwsh op=jar_stats / bash fabric.sh 同一契约）──
+    # ── 离线 jar 统计（不启动游戏；与旧口径 op=jar_stats / bash fabric.sh 同一契约）──
     def _do_jar_stats(self, step: dict):
         save_as = step.get("save_as") or "jar"
         try:
@@ -877,7 +877,7 @@ class Runner:
         t = a.get("type")
         label = (a.get("name") or a.get("pattern") or a.get("from") or t)
         if t in ("state", "eval"):
-            # pwsh Invoke-MtCaseAssert：这两类断言只对 channel=autojs 有语义（值来自 AutoJS 求值）
+            # 旧断言器：这两类断言只对 channel=autojs 有语义（值来自 AutoJS 求值）
             channel = self.doc.get("channel", "kubejs")
             if channel != "autojs":
                 self.errors.append(f"{t} 断言要求用例 channel=autojs（当前 {channel}）")
@@ -930,7 +930,7 @@ class Runner:
                 self.warnings.append(f"断言 {label}：{degraded}")
             if unclear and (ok if t == "log" else True):
                 # 窗口不可判：log 的「未命中」不是产品失败；absent 的「未出现」只是弱结论
-                # （pwsh mt_assert.ps1：MT_ASSERT_LOG / MT_ASSERT_ABSENT 的 INCONCLUSIVE 通道）
+                # （旧断言器：MT_ASSERT_LOG / MT_ASSERT_ABSENT 的 INCONCLUSIVE 通道）
                 tag = "INCONCLUSIVE" if t == "log" else "INCONCLUSIVE(弱通过)"
                 self.inconclusive.append(f"{t} {label}：{unclear}")
                 self.warnings.append(f"MT_ASSERT_INCONCLUSIVE: WARN — 窗口不可判（{unclear}）⇒ 本条不计 {'FAIL' if t == 'log' else 'PASS'}")
@@ -942,7 +942,7 @@ class Runner:
                 self.failures.append(f"断言 {label}：{detail}")
         elif t == "crash":
             if not has_crash_dir(self.run_dir):
-                # 无 crash-reports 目录 ⇒ 没有可比对的证据：pwsh（D4）记 INCONCLUSIVE，绝不冒充 PASS
+                # 无 crash-reports 目录 ⇒ 没有可比对的证据：旧断言器（D4）记 INCONCLUSIVE，绝不冒充 PASS
                 crash_dir = os.path.join(self.run_dir, "crash-reports")
                 self.inconclusive.append(f"crash（{crash_dir} 目录不存在）")
                 self.say(f"MT_ASSERT_CRASH: INCONCLUSIVE — crash-reports 目录不存在（{crash_dir}）")
@@ -961,7 +961,7 @@ class Runner:
             if not ok:
                 self.failures.append("断言 kubejs：KubeJS 日志出现 error/exception/failed")
         elif t == "mixin":
-            # pwsh：mixin 子命令的默认窗口是 launch（Mixin 应用在启动期；跟随 case 窗口会退化恒真）
+            # 旧断言器：mixin 子命令的默认窗口是 launch（Mixin 应用在启动期；跟随 case 窗口会退化恒真）
             scope = self._assert_scope(a, "launch")
             if scope is None:
                 return
@@ -974,7 +974,7 @@ class Runner:
             if degraded:
                 self.warnings.append(f"断言 {label}：{degraded}")
             if ok and unclear:
-                # 窗口缺内容 ⇒「无 Mixin 失败」只是弱结论（pwsh：MT_ASSERT_MIXIN: INCONCLUSIVE(弱通过)）
+                # 窗口缺内容 ⇒「无 Mixin 失败」只是弱结论（旧断言器：INCONCLUSIVE（弱通过））
                 self.inconclusive.append(f"mixin {label}：{unclear}")
                 self.say(f"MT_ASSERT_MIXIN: INCONCLUSIVE(弱通过) — 窗口不可判（{unclear}）"
                          f"⇒ 无 Mixin 失败为弱结论")
@@ -1048,9 +1048,9 @@ class Runner:
     def _window_offset(self, source: str, scope: str) -> tuple[int, str, str]:
         """返回 (起始字节偏移, 退化告警, 不可判原因)。
 
-        不可判(w) 对应 pwsh Get-MtWindowFidelity 的可证缺口：
+        不可判(w) 对应旧窗口保真度的可证缺口：
           · 请求起点 > 当前文件长度 ⇒ 起点被 clamp 到 0，起点之前的内容确定丢失（anchor-overrun）。
-        不可判 ≠ FAIL 也 ≠ PASS：由调用方记 INCONCLUSIVE（见 mt_assert.ps1 的 INCONCLUSIVE 通道）。
+        不可判 ≠ FAIL 也 ≠ PASS：由调用方记 INCONCLUSIVE（见旧断言器的 INCONCLUSIVE 通道）。
         """
         path = log_path(self.run_dir, source)
         if scope == "whole":
@@ -1076,7 +1076,7 @@ class Runner:
         return base, degraded, ""
 
     def _assert_scope(self, a: dict, default: str) -> str | None:
-        """校验 scope；非法值 ⇒ 记 ERROR（pwsh：未知 scope 返回 ERROR），返回 None 表示已登记。"""
+        """校验 scope；非法值 ⇒ 记 ERROR（旧断言器：未知 scope 返回 ERROR），返回 None 表示已登记。"""
         scope = (a.get("scope") or default)
         scope = str(scope).strip() or default
         if scope not in WINDOW_CHOICES:
@@ -1088,7 +1088,7 @@ class Runner:
 
     def _finish(self, verdict: str, code: int, detail: str) -> tuple[str, int]:
         cid = self.doc["case_id"]
-        # 机器行逐字对齐 pwsh（scripts/test/mt_case.ps1:3095 `"MT_CASE_RESULT: {0} = {1}"`）：
+        # 机器行逐字对齐旧版本（scripts/test/mt_case.py 的 "MT_CASE_RESULT: {0} = {1}"）：
         # 取值域只有 PASS|FAIL|ERROR|BLOCKED|TIMEOUT，详情另起一行业，绝不混进取值域。
         self.say(f"MT_CASE_RESULT: {cid} = {verdict}")
         if detail:

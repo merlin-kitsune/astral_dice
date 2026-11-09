@@ -3,21 +3,21 @@
 # scripts/test/win/lib/phases.sh — 阶段实现层（P1：能 bash 化的走 bash；cases/report/preflight 已改接 python）
 #
 # 被 scripts/test/win/mt.sh source。本文件只负责「一个阶段怎么执行」，
-# 参数解析、批量闸门、版本顺序与门控留在 mt.sh（对应 mt.ps1 的 Invoke-MtRunPhase）。
+# 参数解析、批量闸门、版本顺序与门控留在 mt.sh（对应迁移前编排器的 Invoke-MtRunPhase）。
 #
 # P1 分工（与 docs/features/bash-first-test-flow-plan.md 的批次表对齐）：
 #   env       → bash scripts/test/win/env.sh            （bash 原生；只读体检）
 #   build     → cmd //c "gradlew.bat :<子项目>:classes"  （bash 原生；四线映射见本文件）
 #   launch    → bash scripts/test/win/launch.sh          （autojs 通道）
-#               --channel native → **已失效**：窗口/输入注入随 pwsh 资产删除，阶段记 BLOCKED(11)
+#               --channel native → **已失效**：窗口/输入注入随旧资产删除，阶段记 BLOCKED(11)
 #   stop      → bash scripts/test/win/stop.sh            （bash 原生）
 #   cases     → python scripts/test/lib/mt_case.py       （bash 原生接管；退出码原样透传）
 #   report    → python scripts/test/mt_report.py         （bash 原生接管；退出码原样透传）
 #   preflight → python scripts/test/mt_preflight.py      （bash 原生接管；退出码原样透传）
 #
-# 退出码（与 scripts/test/lib/Mt.Phase.psm1:29-36 逐值一致）：
+# 退出码（与迁移前阶段库逐值一致）：
 #   0=PASS 1=FAIL 2=ERROR 10=PREFLIGHT 11=BLOCKED 12=TIMEOUT（130=中断，由 mt.sh 的 trap 出）
-# 机器行（与 mt.ps1 同一族，不新造前缀）：MT_ERROR: / MT_INFO: / MT_WARN: / MT_PHASE: /
+# 机器行（与迁移前编排器同一族，不新造前缀）：MT_ERROR: / MT_INFO: / MT_WARN: / MT_PHASE: /
 #   MT_<NAME>: OK|FAIL|BLOCKED|TIMEOUT|ERROR / LAUNCH_BUDGET: / CASES_BUDGET:
 #
 # 本文件不写 run/ 与 scripts/test/**，不启游戏、不跑 gradlew（只有 build 阶段真跑时才跑，
@@ -45,7 +45,7 @@ fi
 : "${MT_EXIT_BLOCKED:=11}"
 : "${MT_EXIT_TIMEOUT:=12}"
 
-# 阶段集合：任务要求的六个 + preflight（preflight 已改接 python，不再依赖 pwsh）。
+# 阶段集合：任务要求的六个 + preflight（preflight 已改接 python，不依赖任何外部脚本）。
 MT_PHASES="env build launch cases report stop preflight"
 
 # ── 小工具 ───────────────────────────────────────────────────────────────
@@ -58,7 +58,7 @@ mt_phase_begin() {
     printf '\n===== MT_PHASE: %s =====\n' "${1:-}"
 }
 
-# 已耗时文案，与 Mt.Phase.psm1:108-111 的 Get-MtPhaseElapsed 同格式（秒 / m05s）
+# 已耗时文案，与迁移前阶段库的 Get-MtPhaseElapsed 同格式（秒 / m05s）
 mt_phase_elapsed() {
     local now secs
     now="$(date +%s)"
@@ -70,7 +70,7 @@ mt_phase_elapsed() {
     fi
 }
 
-# 退出码 → 报告结果字（mt.ps1:878 的 PASS/BLOCKED/TIMEOUT/FAIL 四档）
+# 退出码 → 报告结果字（迁移前编排器的 PASS/BLOCKED/TIMEOUT/FAIL 四档）
 mt_phase_result_of() {
     case "${1:-}" in
         0)  printf '%s' PASS ;;
@@ -81,8 +81,8 @@ mt_phase_result_of() {
 }
 
 # 运行 id：.mt_active_run 是粘性写盘的 runId 文件（gitignored），bash 只读不写。
-# 纯 bash 实现（原先借 pwsh Import-Module Mt.Paths.psm1 取，pwsh 资产删除后不再依赖任何外部脚本）：
-#   ① 文件存在且形如 YYYYMMDD-HHMMSS ⇒ 直接用（与 pwsh 的 Get-MtActiveRunId 同语义）
+# 纯 bash 实现（原先借外部模块取，旧资产删除后不再依赖任何外部脚本）：
+#   ① 文件存在且形如 YYYYMMDD-HHMMSS ⇒ 直接用（与迁移前的 Get-MtActiveRunId 同语义）
 #   ② 否则退回本地时间戳并显式告警（绝不静默换成另一个 id 而不说）。
 mt_phase_run_id() {
     local f rid=""
@@ -106,7 +106,7 @@ mt_phase_is_phase() {
     return 1
 }
 
-# 阶段预算（秒），对齐 mt.ps1:149-161 的 PhaseBudgets；bash P1 不强制超时，只用于打印判据。
+# 阶段预算（秒），对齐迁移前编排器的 PhaseBudgets；bash P1 不强制超时，只用于打印判据。
 mt_phase_budget() {
     case "${1:-}" in
         preflight) printf '%s' 120 ;;
@@ -130,7 +130,7 @@ mt_phase_require_repo() {
     return 0
 }
 
-# 版本合法性：文案与 scripts/test/lib/Mt.Paths.psm1:78 同款，版本列表用 bash 侧的四线。
+# 版本合法性：文案与迁移前路径库同款，版本列表用 bash 侧的四线。
 mt_phase_require_version() {
     local v="${1:-}"
     if mt_is_version "$v"; then return 0; fi
@@ -138,7 +138,7 @@ mt_phase_require_version() {
     return "$MT_EXIT_ERROR"
 }
 
-# ── 五线项目名映射（mt.ps1 的 build 阶段等价物）───────────────────────────
+# ── 五线项目名映射（迁移前编排器的 build 阶段等价物）─────────────────────────
 # 与 lib/common.sh 的 mt_subproject 必须一致；mt_phase_assert_mapping 负责自证。
 mt_phase_subproject() {
     case "${1:-}" in
@@ -190,7 +190,7 @@ mt_phase_py_file() {
     return "$rc"
 }
 
-# 阶段退出码 → 机器行（格式对齐 Mt.Phase.psm1:113-171：
+# 阶段退出码 → 机器行（格式对齐迁移前阶段库：
 #   MT_<NAME>: OK (<elapsed>) / MT_<NAME>: FAIL (<elapsed>) — <原因> / BLOCKED / ERROR）
 mt_phase_verdict() {
     local name="${1:-PHASE}" rc="${2:-0}" el
@@ -243,7 +243,7 @@ mt_phase_build() {
         mt_phase_dry "cd ${MT_REPO_ROOT} && mt_cmdwin \"gradlew.bat :${sp}:classes\"" \
             "版本 ${v} → 子项目 :${sp}（toolchain $(mt_toolchain "$v")）" \
             "判据：gradlew 退出 0 → MT_BUILD: OK；非 0 → MT_BUILD: FAIL；缺 gradlew.bat → ERROR(2)" \
-            "预算：$(mt_phase_budget build)s（对齐 mt.ps1 PhaseBudgets.build，bash P1 不强制掐表）"
+            "预算：$(mt_phase_budget build)s（对齐迁移前 PhaseBudgets.build，bash P1 不强制掐表）"
         return 0
     fi
     ( cd "$MT_REPO_ROOT" && mt_cmdwin "gradlew.bat :${sp}:classes" )
@@ -252,21 +252,21 @@ mt_phase_build() {
     return "$rc"
 }
 
-# ══ 阶段：launch（bash 原生 launch.sh；native 通道过渡期委托 pwsh）════════════
+# ══ 阶段：launch（bash 原生 launch.sh；native 通道过渡期已失效）════════════
 mt_phase_launch() {
     local v="${1:-}" rc
     mt_phase_require_version "$v" || return $?
     mt_phase_require_repo || return $?
-    # fabric 线（fabric-*）：走 fabric.sh 的 bash 实现（双 run 目录 + 按侧就绪 marker），不委托 pwsh
+    # fabric 线（fabric-*）：走 fabric.sh 的 bash 实现（双 run 目录 + 按侧就绪 marker），不委托外部脚本
     if mt_is_fabric "$v"; then
         mt_fab_phase_launch "$v"
         return $?
     fi
-    # native 通道 = 窗口定位 + user32 合成输入（原 mt_launch.ps1 / Mt.Win32.psm1），随 pwsh 资产删除而**失效**。
+    # native 通道 = 窗口定位 + user32 合成输入（原启动器 / Win32 模块），随旧资产删除而**失效**。
     # 按纪律：能力缺失一律 BLOCKED(11) 且写明原因，绝不静默回落到 autojs（那会把「没注入」判成 PASS）。
     local channel="${MT_CHANNEL:-autojs}"
     if [ "$channel" = "native" ]; then
-        mt_phase_err 'launch --channel native 已不可用：窗口定位 / user32 合成输入随 pwsh 资产（mt_launch.ps1 + Mt.Win32.psm1）删除而移除'
+        mt_phase_err 'launch --channel native 已不可用：窗口定位 / user32 合成输入随旧资产（启动器 + Win32 模块）删除而移除'
         mt_phase_err '改用 --channel autojs（launch.sh + AutoJS 端点注入），或在 native 通道的 python 等价物落地后再跑 native'
         mt_phase_verdict LAUNCH "$MT_EXIT_BLOCKED"
         return "$MT_EXIT_BLOCKED"
@@ -275,7 +275,7 @@ mt_phase_launch() {
         mt_phase_dry "cd ${MT_REPO_ROOT} && bash scripts/test/win/launch.sh --version ${v}" \
             '判据：LAUNCH: READY → PASS(0)；BLOCKED(11) / TIMEOUT(12) / ERROR(2) 原样透传' \
             '通道：autojs —— launch.sh 只有 AutoJS 就绪判定（不接受 --channel 参数，故不转发）' \
-            "预算：MT_LAUNCH_TIMEOUT_SEC 优先，否则 launch.sh 默认（mt.ps1 基线 $(mt_phase_budget launch)s）"
+            "预算：MT_LAUNCH_TIMEOUT_SEC 优先，否则 launch.sh 默认（迁移前基线 $(mt_phase_budget launch)s）"
         return 0
     fi
     ( cd "$MT_REPO_ROOT" && bash "$MT_PHASES_DIR/../launch.sh" --version "$v" )
@@ -285,7 +285,7 @@ mt_phase_launch() {
 }
 
 # ══ 阶段：stop（bash 原生，委托 win/stop.sh）═══════════════════════════════
-# 参数语义对齐 mt.ps1:783-790：--version | --all + --force / --keep-daemon / --purge-saves。
+# 参数语义对齐迁移前编排器：--version | --all + --force / --keep-daemon / --purge-saves。
 mt_phase_stop() {
     local v="${1:-}" rc
     local -a args=()
@@ -296,14 +296,14 @@ mt_phase_stop() {
     if [ "${MT_DRY_RUN:-0}" = 1 ]; then
         mt_phase_dry "cd ${MT_REPO_ROOT} && bash scripts/test/win/stop.sh ${args[*]}" \
             '判据：WIN_STOP: OK → PASS(0)；WIN_STOP: RESIDUAL → FAIL(1)；rc=2 → 用法错误/CIM 不可用' \
-            'PURGE: removed|failed — 清存档白名单与 mt_cleanup.ps1:228-265 对齐'
+            'PURGE: removed|failed — 清存档白名单与迁移前的清理脚本对齐'
         if [ "${MT_STOP_KEEP_DAEMON:-0}" = 1 ]; then
             mt_phase_dry '--keep-daemon：不传 stop.sh --stop-daemon（Gradle 守护不归阶段管）'
         fi
         return 0
     fi
     if [ "${MT_STOP_FORCE:-0}" = 1 ]; then
-        mt_phase_info 'STOP: --force 在 bash 侧是 no-op（stop.sh 恒用 taskkill //T //F，无优雅信号档）'
+        mt_phase_info 'STOP: --force 在 bash 侧是 no-op（stop.sh 只打印 PID，不杀进程，没有优雅信号档）'
     fi
     if [ "${MT_STOP_KEEP_DAEMON:-0}" = 1 ]; then
         mt_phase_info 'STOP: --keep-daemon 生效（不传 --stop-daemon，守护保留）'
@@ -393,7 +393,7 @@ mt_phase_report_mark() {
 }
 
 mt_phase_report_summary() {
-    # fabric 线（fabric-*）：bash 原生 SUMMARY.md（旧 pwsh 报告脚本没有 fabric 分支）
+    # fabric 线（fabric-*）：bash 原生 SUMMARY.md（旧报告脚本没有 fabric 分支）
     if mt_is_fabric "${1:-}"; then mt_fab_report_summary "${1:-}"; return $?; fi
     [ "${MT_DRY_RUN:-0}" = 1 ] && { mt_phase_dry 'python -u scripts/test/mt_report.py summary'; return 0; }
     mt_phase_py_file 'mt_report.py' summary
@@ -418,7 +418,7 @@ mt_phase_preflight() {
     return "$rc"
 }
 
-# ══ 分发：run_phase <版本> <阶段> [用例路径]（对应 mt.ps1 的 Invoke-MtRunPhase）══
+# ══ 分发：run_phase <版本> <阶段> [用例路径]（对应迁移前编排器的 Invoke-MtRunPhase）══
 mt_run_phase() {
     local v="${1:-}" phase="${2:-}" casepath="${3:-}"
     mt_phase_is_phase "$phase" || {

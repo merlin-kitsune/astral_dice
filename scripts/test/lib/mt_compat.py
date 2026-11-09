@@ -1,20 +1,21 @@
 #!/usr/bin/env python3
-"""mt_compat —— pwsh 测试台资产的 python 等价层。
+"""mt_compat —— 测试台的 python 等价层（报告 / 前置检查共用）。
 
-只承载 mt_report.py / mt_preflight.py 需要的部分，函数名与 Mt.*.psm1 一一对应：
+只承载 mt_report.py / mt_preflight.py 需要的部分，按职责分组：
 
-  Mt.Paths.psm1   -> VERSIONS / LOADER / SUBPROJECT / get_paths / run_label / active_run_id /
-                     run_start_ts / current_shots / assert_version
-  Mt.Conf.psm1    -> load_conf / CONF
-  Mt.Phase.psm1   -> init_console / write_mt_line / write_mt_err_line / write_mt_warn /
-                     write_mt_error_line / json_dump / MT_EXIT_*
-  Mt.Proc.psm1    -> read_log_window / log_anchor / list_java_processes /
-                     test_client_process / test_pipeline_process / stop_version_processes
-  Mt.Channel.psm1 -> channel_mode
+  路径与版本  -> VERSIONS / LOADER / SUBPROJECT / get_paths / run_label / active_run_id /
+                 run_start_ts / current_shots / assert_version
+  配置        -> load_conf / CONF
+  控制台原语  -> init_console / write_mt_line / write_mt_err_line / write_mt_warn /
+                 write_mt_error_line / json_dump / MT_EXIT_*
+  进程与日志  -> read_log_window / log_anchor / list_java_processes /
+                 test_client_process / test_pipeline_process / stop_version_processes
+  通道        -> channel_mode
 
 约束：
-  · 纯标准库；不启动 pwsh / powershell 子进程，不依赖 psutil / wmic。
-  · 一律 LF 与 UTF-8 无 BOM 输出（与 Initialize-MtConsole 同义）。
+  · 纯标准库；不启动任何外部解释器，不依赖 psutil。
+  · 进程表一律走 JDK jps（经 mt_ps），本文件不终止任何进程。
+  · 一律 LF 与 UTF-8 无 BOM 输出。
   · 源码里不出现反斜杠字面量：路径分隔与换行由 BSL / NL 常量给出，
     以免经 shell 或编辑器二次转义。
 """
@@ -25,7 +26,6 @@ import hashlib
 import json
 import os
 import re
-import subprocess
 import sys
 import time
 from datetime import datetime
@@ -98,7 +98,7 @@ ANCHOR_CTIME_TOLERANCE_MS = 2000
 ANCHOR_MTIME_TOLERANCE_MS = 2000
 
 
-# ── 控制台与输出原语（Mt.Phase.psm1） ──────────────────────────────────────
+# ── 控制台与输出原语 ──────────────────────────────────────────────────────
 def init_console():
     """UTF-8 无 BOM、不做换行翻译（显式 LF）。"""
     for stream in (sys.stdout, sys.stderr):
@@ -134,11 +134,11 @@ def json_dump(obj):
 
 
 def split_crlf(text):
-    """PowerShell 的 -split 换行口径（CRLF / 单独 CR / LF）。"""
+    """换行切分口径（CRLF / 单独 CR / LF）。"""
     return (text or "").replace(CR + NL, NL).replace(CR, NL).split(NL)
 
 
-# ── 配置（Mt.Conf.psm1） ───────────────────────────────────────────────────
+# ── 配置 ───────────────────────────────────────────────────────────────────
 def load_conf(path=None):
     if path is None:
         path = CONF_FILE
@@ -169,7 +169,7 @@ def load_conf(path=None):
 CONF = load_conf()
 
 
-# ── 版本与路径（Mt.Paths.psm1） ────────────────────────────────────────────
+# ── 版本与路径 ─────────────────────────────────────────────────────────────
 def get_versions():
     return list(VERSIONS)
 
@@ -385,7 +385,7 @@ def current_shots(paths, run_id_value, since_unix=0.0):
     return [full for (_m, full) in fresh]
 
 
-# ── 日志窗口（Mt.Proc.psm1） ───────────────────────────────────────────────
+# ── 日志窗口 ───────────────────────────────────────────────────────────────
 def _read_bytes_shared(path):
     try:
         with open(path, "rb") as fh:
@@ -567,9 +567,9 @@ def read_text_shared(path):
     return data.decode("utf-8", "replace")
 
 
-# ── 进程枚举与分类（Mt.Proc.psm1） ─────────────────────────────────────────
+# ── 进程枚举与分类（jps） ──────────────────────────────────────────────────
 class ProcessEnumerationUnavailable(RuntimeError):
-    """进程表读不到（CIM 不可用、Toolhelp/查询失败）。调用方必须显式降级并点名。"""
+    """进程表读不到（jps 不可用、Toolhelp/查询失败）。调用方必须显式降级并点名。"""
 
 
 _TITLE_CACHE = None
@@ -667,36 +667,22 @@ def _command_line_win32(pid):
         kernel32.CloseHandle(ctypes.c_void_p(handle))
 
 
-def _java_rows_via_mt_ps():
-    """降级来源：mt_ps.java_rows()（wmic CSV → PowerShell CIM 取命令行）。
+def list_java_processes():
+    """java 进程的 [{pid, command_line}]。
 
-    Toolhelp 快照本身拿不到命令行；本机实测 _command_line_win32 对**所有** java 进程
-    都返回 ""（空），于是 test_pipeline_process 的证据判定恒 False ⇒
-    stop_version_processes 静默变成 no-op（世界生成后服务端残留、端口被占、
-    下一条线的 launch 被 BLOCKED）。所以命令行全空时必须改走这里。
+    优先 jps（经 mt_ps，能给出主类与参数）；jps 不可用时退回 Toolhelp 快照
+    （快照本身拿不到命令行，_command_line_win32 兜底）。两者都读不到，或非 Windows
+    宿主，抛 ProcessEnumerationUnavailable（调用方必须显式 SKIP/BLOCKED 并点名，
+    不得回落到「空表 = 无遗留进程」）。
     """
     try:
         from . import mt_ps  # 延迟导入，避免与 mt_compat 初始化顺序耦合
         rows = mt_ps.java_rows()
+        return [{"pid": int(row["pid"]), "command_line": row.get("cmdline") or ""} for row in rows]
     except Exception:
-        return []
-    out = []
-    for row in rows:
-        try:
-            out.append({"pid": int(row["pid"]), "command_line": row.get("cmdline") or ""})
-        except (KeyError, TypeError, ValueError):
-            continue
-    return out
-
-
-def list_java_processes():
-    """Get-JavaProcesses：java.exe 的 [{pid, command_line}]。
-
-    读不到进程表时抛 ProcessEnumerationUnavailable（调用方必须显式 SKIP/BLOCKED 并点名，
-    不得回落到「空表 = 无遗留进程」）。
-    """
+        pass
     if not IS_WINDOWS:
-        raise ProcessEnumerationUnavailable("非 Windows 宿主：没有 CIM/Toolhelp 进程表等价物")
+        raise ProcessEnumerationUnavailable("非 Windows 宿主：没有 jps / Toolhelp 进程表等价物")
     try:
         kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
         kernel32.CreateToolhelp32Snapshot.restype = ctypes.c_void_p
@@ -736,10 +722,6 @@ def list_java_processes():
                         }
                     )
                 ok = kernel32.Process32NextW(ctypes.c_void_p(snapshot), ctypes.byref(entry))
-            if not any(str(row.get("command_line") or "") for row in found):
-                alt = _java_rows_via_mt_ps()
-                if any(str(row.get("command_line") or "") for row in alt):
-                    return alt
             return found
         finally:
             kernel32.CloseHandle(ctypes.c_void_p(snapshot))
@@ -801,26 +783,19 @@ def test_pipeline_process(paths, pid, command_line):
 
 
 def stop_version_processes(paths, quiet=True):
-    """Stop-MtVersionProcesses 的最小等价：taskkill /PID <pid> /T /F（不打印，preflight 用 Quiet）。"""
-    killed = 0
+    """本流程应收停的 PID 列表（**只返回，不终止**）。
+
+    preflight / cleanup 用返回值计数并打印；终止由 Agent 通过 windows MCP 的
+    Process(mode:"kill") 执行。
+    """
+    pids = []
     for proc in list_java_processes():
-        if not test_pipeline_process(paths, proc["pid"], proc["command_line"]):
-            continue
-        try:
-            subprocess.run(
-                ["taskkill", "/PID", str(proc["pid"]), "/T", "/F"],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                timeout=30,
-                check=False,
-            )
-        except (OSError, subprocess.SubprocessError):
-            continue
-        killed += 1
-    return killed
+        if test_pipeline_process(paths, proc["pid"], proc["command_line"]):
+            pids.append(int(proc["pid"]))
+    return pids
 
 
-# ── 通道模式（Mt.Channel.psm1） ────────────────────────────────────────────
+# ── 通道模式 ───────────────────────────────────────────────────────────────
 _CHANNEL_STATE = {"mode": "", "emitted": False, "value": ""}
 
 

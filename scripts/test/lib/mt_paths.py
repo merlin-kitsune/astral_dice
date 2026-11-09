@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """mt_paths.py — 单仓路径事实源（bash/python 侧）。
 
-与 scripts/test/lib/Mt.Paths.psm1、scripts/test/win/lib/common.sh 的版本表 / 子项目映射**同口径**，
+与 scripts/test/win/lib/common.sh 的版本表 / 子项目映射**同口径**，
 供 mt_case.py 在**不启动游戏**的前提下定位产物 jar（op=jar_stats 与 jar/bytecode 断言的数据源）。
 
 映射（三处必须一致，改一处就要改三处）：
@@ -11,7 +11,7 @@
   fabric-1.20.1 -> fabric-1.20.1     (fabric)
   fabric-1.21.1 -> fabric-1.21.1     (fabric；2026-11-05 并入，第五条线)
 
-产物定位口径（与 pwsh Get-MtCaseJarEntries 逐条对齐）：
+产物定位口径（与旧编排器的打包条目枚举逐条对齐）：
   · 只在 <repo>/<subproject>/build/libs 下找，不做版本目录拼接
   · 候选 = astral_dice-*.jar，排除 -(sources|dev|slim).jar$
   · 取 mtime 最新的一只；找不到 / 打不开 ⇒ 抛 JarMissing（调用方决定 BLOCKED/FAIL），
@@ -45,7 +45,7 @@ def is_fabric(version: str) -> bool:
 JAR_GLOB = "astral_dice-*.jar"
 JAR_EXCLUDE = re.compile(r"-(sources|dev|slim)\.jar$")
 
-# jar_stats 口径（pwsh Get-MtCaseJarStats + bash fabric.sh mt_fab_cases_run 的 recipes 修正）
+# jar_stats 口径（旧编排器统计 + bash fabric.sh mt_fab_cases_run 的 recipes 修正）
 MODELS_PREFIX = "assets/astral_dice/models/item/"
 RECIPES_PREFIXES = ("data/astral_dice/recipes/", "data/astral_dice/recipe/")
 TRINKETS_PREFIX = "data/trinkets/"
@@ -105,7 +105,7 @@ def _count(names: list[str], prefixes, suffix: str) -> int:
 
 
 def jar_stats(version: str, root: str | None = None) -> dict:
-    """离线开包统计。字段与 pwsh / bash 两侧名字完全相同（下游断言按名取）。"""
+    """离线开包统计。字段与 python / bash 两侧名字完全相同（下游断言按名取）。"""
     path, names = jar_entries(version, root)
     if path is None:
         raise JarMissing(f"找不到产物 jar（先跑 --phase build）：{libs_dir(version, root)}")

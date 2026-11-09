@@ -2,12 +2,12 @@
 # -*- coding: utf-8 -*-
 r"""Start-SelfTest —— dev 工作树（multi-dev-next）自测启用脚本的 Python 移植。
 
-等价 scripts/devtools/Start-SelfTest.ps1（pwsh 版本）。一条命令完成「用户自行测试」所需的三件事：
+等价旧编排器的自测工具。一条命令完成「用户自行测试」所需的三件事：
   1) 构建所选平台（缺省 1.21.1）；
   2) 部署到目标 mods 目录（先删后拷；部署契约按「该线产物是否仍 JarJar 内嵌库」区分）；
   3) 可选启动 dev 客户端（--launch，缺省关闭；人工测试路径）。
 
-参数面（同时接受 argparse 长选项与 pwsh 单破折号写法）：
+参数面（同时接受 argparse 长选项与单破折号写法）：
   -Version / --version          1.21.1（缺省） | 1.20.1 | 26.1.2
   -TargetDir / --target-dir     目标 mods 目录（缺省 <repo>\run\<Version>\mods）
   -TargetKind / --target-kind   auto（缺省） | dev | prod
@@ -22,7 +22,7 @@ r"""Start-SelfTest —— dev 工作树（multi-dev-next）自测启用脚本的
                                 库仓库磁盘路径（缺省 = <repo 父目录>\starengine_next）
 
 退出码：0 成功（含 --dry-run）；1 任一 Fail 断言失败（构建失败 / 产物缺失或形态不对 /
-部署后计数不对）。未知参数或参数取值非法 ⇒ 2（argparse 行为，与 pwsh 参数绑定失败同义）。
+部署后计数不对）。未知参数或参数取值非法 ⇒ 2（argparse 行为，与旧工具参数绑定失败同义）。
 
 与 ps1 的差异（逐条）：
   · 不打印终端颜色（Write-Host -ForegroundColor 的颜色码不是可解析语义；CI 重定向时 ps1 侧也会被
@@ -399,7 +399,7 @@ def _write_csv(path: str, header: list, rows: list) -> None:
 
 
 # ---------------------------------------------------------------------------
-# 参数解析（兼容 pwsh 单破折号与 -Name:value 写法）
+# 参数解析（兼容单破折号与 -Name:value 写法）
 # ---------------------------------------------------------------------------
 def _split_colon_forms(argv: list) -> list:
     known = {
@@ -421,8 +421,8 @@ def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="start_self_test.py",
         add_help=True,
-        description="dev 工作树自测启用：构建 -> 部署（先删后拷）-> 可选启动 dev 客户端。等价 Start-SelfTest.ps1。",
-        epilog="参数可写成 --version 1.21.1 或 pwsh 风格 -Version 1.21.1；开关项同样接受 -DryRun 等写法。",
+        description="dev 工作树自测启用：构建 -> 部署（先删后拷）-> 可选启动 dev 客户端。",
+        epilog="参数可写成 --version 1.21.1 或单破折号 -Version 1.21.1；开关项同样接受 -DryRun 等写法。",
     )
     p.add_argument("--version", "-Version", dest="version", default="1.21.1",
                    choices=list(VERSIONS), help="平台（缺省 1.21.1）")
@@ -626,7 +626,7 @@ def _run(args, repo_root, line, sub, props_path, version, lib_repo_path,
         started_at = datetime.now()
         creationflags = 0
         if os.name == "nt":
-            creationflags = 0x08000000  # CREATE_NO_WINDOW（Start-Process -WindowStyle Hidden）
+            creationflags = 0x08000000  # CREATE_NO_WINDOW（隐藏子进程窗口）
         with open(build_log, "wb") as out_fh, open(build_log + ".err", "wb") as err_fh:
             proc = subprocess.Popen(
                 [gradlew, "%s:build" % line["GradlePath"], "--console=plain"],
@@ -639,13 +639,10 @@ def _run(args, repo_root, line, sub, props_path, version, lib_repo_path,
             except subprocess.TimeoutExpired:
                 exited = False
         if not exited:
-            write_warn("超过 %ds 未退出（仓库已知的 Gradle 守护进程不退出问题）⇒ 强制结束进程树，随后按规则做日志+产物双验证"
-                       % build_timeout_sec)
-            try:
-                subprocess.run(["taskkill", "/PID", str(proc.pid), "/T", "/F"],
-                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            except OSError:
-                pass
+            write_warn("超过 %ds 未退出（仓库已知的 Gradle 守护进程不退出问题）⇒ 本脚本不终止进程；"
+                       "构建 PID=%d 由 Agent 用 windows MCP 的 Process(mode:\"kill\") 终止，"
+                       "Gradle 守护进程用 gradlew --stop；随后按规则做日志+产物双验证"
+                       % (build_timeout_sec, proc.pid))
         try:
             with open(build_log, "r", encoding="utf-8", errors="replace", newline="") as fh:
                 log_text = fh.read()
@@ -703,7 +700,7 @@ def _run(args, repo_root, line, sub, props_path, version, lib_repo_path,
             "forge 线正确来源：%s\\%s\\build\\devlibs\\%s（先跑 %s\\gradlew.bat %s:build）"
             % (repo_root, sub, mod_jar_name, repo_root, line["GradlePath"]),
             # ps1 第 537 行是 "'…正确来源：' + (Join-Path …)"，写在 @( ) 的逗号元素里时
-            # PowerShell 会把 expr + (cmd) 拆成两个数组元素（实测 @("a","b","c"+(...)) 的 Count=4），
+            # 旧编排器会把 expr + (cmd) 拆成两个数组元素（实测拼接结果 Count=4），
             # 所以 ps1 实际打出两条 hint（标题一条、路径一条）；此处按同一行为拆开，保证逐字节一致。
             "NeoForge 线（无 reobf 环节）正确来源：",
             os.path.join(repo_root, sub, "build", "libs", mod_jar_name),
@@ -814,7 +811,7 @@ def _run(args, repo_root, line, sub, props_path, version, lib_repo_path,
             )
         write_ok("已后台启动 dev 客户端：PID = %d" % proc.pid)
         write_info("日志：%s" % client_log)
-        write_info("停止：taskkill /PID %d /T /F   或   工具链 mt.ps1 --phase stop --force" % proc.pid)
+        write_info("停止：由 Agent 用 windows MCP 的 Process(mode:\"kill\") 终止 PID %d；或 bash scripts/test/win/stop.sh --version <v> 只打印待收停 PID" % proc.pid)
     else:
         write_info("未启动客户端（缺省）。需要人工测试时由用户显式加 -Launch。")
 

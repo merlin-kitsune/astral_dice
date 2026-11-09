@@ -2,9 +2,9 @@
 # ============================================================================
 # scripts/test/win/launch.sh — Astral Dice 测试台 · Windows(git bash) 启动路径
 #
-# 语义 = Linux 蓝本 launch.sh 的 Windows 对应物 + mt.ps1 的最小集：
+# 语义 = Linux 蓝本 launch.sh 的 Windows 对应物 + 旧编排器最小集：
 #   拉起 gradlew.bat :<子项目>:runClient（带 -Pquickplay）→ 轮询就绪 → 打印机器行。
-#   不复刻 mt_launch.ps1 的窗口注入/截图/世界清场/OP 闸门（见 README「分工边界」）。
+#   不复刻旧编排器的窗口注入/截图/世界清场/OP 闸门（见 README「分工边界」）。
 #
 # 用法：
 #   bash scripts/test/win/launch.sh --version <ver> [--timeout 600] [--wait-world 0]
@@ -238,18 +238,48 @@ fi
 marker_fallback=1
 
 residue_note=""
-cim_ok=1
-if rows="$(mt_cim_java_rows 2>/dev/null)"; then
+procs_ok=1
+rows=""
+if ! rows="$(mt_jps_java_rows 2>/dev/null)"; then
+    procs_ok=0
+    rows=""
+fi
+if [ "$procs_ok" = 1 ]; then
+    pid=""
     while IFS=$'\t' read -r pid cmd; do
         [ -n "$pid" ] || continue
         if launch_cmdline_matches "$cmd"; then
             BLOCKERS="$BLOCKERS same_line_running"
-            residue_note="$residue_note PID $pid；"
+            residue_note="$residue_note PID $pid(jps)；"
             break
         fi
     done <<< "$rows"
-else
-    cim_ok=0
+    # pidfile：进程仍活着也算同线残留（jps 只列 JVM，wrapper/端口兜住边界）
+    if [ -f "$PIDFILE" ]; then
+        pf_pid="$(tr -d '\r\n' < "$PIDFILE" 2>/dev/null)"
+        case "$pf_pid" in
+            ''|*[!0-9]*) : ;;
+            *)
+                if mt_pid_alive "$pf_pid"; then
+                    case "$residue_note" in
+                        *"PID $pf_pid"*) : ;;
+                        *) BLOCKERS="$BLOCKERS same_line_running"
+                           residue_note="$residue_note PID $pf_pid(pidfile)；" ;;
+                    esac
+                fi
+                ;;
+        esac
+    fi
+    # 三个测试台端口任一 LISTENING ⇒ 已有实机在跑（同一时刻只允许一条线）
+    for port in $MT_GAME_PORTS; do
+        for p in $(mt_port_pids "$port" 2>/dev/null); do
+            case "$residue_note" in
+                *"PID $p"*) : ;;
+                *) BLOCKERS="$BLOCKERS same_line_running"
+                   residue_note="$residue_note PID $p(port $port)；" ;;
+            esac
+        done
+    done
 fi
 
 # 额外 Gradle 前置参数（MT_GRADLE_PRE_ARGS，形如 -Dorg.gradle.java.installations.paths=...）：
@@ -313,7 +343,7 @@ if [ "$DRY" = 1 ]; then
     mt_detail "autojs_line  = autojs_deployed=$autojs_deployed / probe_enabled=$probe_enabled / marker_fallback=$marker_fallback / fabric_injected=$fab_aj_injected（MT_ALLOW_NO_AUTOJS=$allow_no_autojs；判据：$MODS_LABEL 里 AutoJS jar 是否在位$( [ "$fab_aj_injected" = 1 ] && printf '，或 fabric 已由 -PautojsTestMod=1 注入' )）"
     mt_detail "ready_by     = $ready_by"
     mt_detail "world_marker = $(launch_marker_name)"
-    mt_detail "cim_scan     = $( [ "$cim_ok" = 1 ] && printf 'CIM 可用，同线残留=%s' "${residue_note:-无}" || printf 'CIM 查询失败（无法判残留）' )"
+    mt_detail "procs_scan   = $( [ "$procs_ok" = 1 ] && printf 'jps 可用，同线残留=%s' "${residue_note:-无}" || printf 'jps 查询失败（无法判残留）' )"
     if [ -n "$BLOCKERS" ]; then
         mt_detail "blockers     =$BLOCKERS（真启动会 exit 11 BLOCKED）"
     else
@@ -335,13 +365,13 @@ if [ ! -f "$MT_REPO_ROOT/gradlew.bat" ]; then
     mt_launch_err "BLOCKED — 缺 gradlew.bat（$MT_REPO_ROOT/gradlew.bat）"
     exit 11
 fi
-if [ "$cim_ok" = 0 ]; then
-    mt_launch_err "BLOCKED — CIM 查询失败（pwsh -NoProfile Get-CimInstance 不可用），无法判断同线是否已在运行"
+if [ "$procs_ok" = 0 ]; then
+    mt_launch_err "BLOCKED — jps -lvm 不可用（未找到 \$JAVA_HOME/bin/jps 或 PATH 的 jps），无法判断同线是否已在运行"
     exit 11
 fi
 if [ -n "$residue_note" ]; then
-    mt_launch_err "BLOCKED — 同一线客户端已在运行：$residue_note"
-    mt_launch_err "  先收停：bash scripts/test/win/stop.sh --version $VERSION"
+    mt_launch_err "BLOCKED — 同一线客户端已在运行（jps/pidfile/端口）：$residue_note"
+    mt_launch_err "  先收停：bash scripts/test/win/stop.sh --version $VERSION（只打印 PID；由 Agent 用 windows MCP 终止）"
     exit 11
 fi
 # 其它线在跑只提示（全队只有一个 Gradle 并发位）
@@ -363,13 +393,13 @@ mkdir -p "$LOG_DIR" 2>/dev/null || {
 }
 
 # fabric：把「本次启动是否真的注入了 AutoJS」落到 run/<side>/.mt_autojs_injected。
-# PowerShell 侧通道就绪判定（Mt.Channel.psm1 Test-MtChannelAutoJsDeployed）读它 ——
-# 因为 mods/ 里永远不会有 AutoJS jar。stop.sh 收停时删除，保证与进程同生命周期。
+# 通道就绪判定读它 —— 因为 mods/ 里永远不会有 AutoJS jar。
+# stop.sh 收停时删除，保证与进程同生命周期。
 if mt_is_fabric "$VERSION"; then
     if mt_fab_autojs_state_write "${FAB_SIDE:-client}" >/dev/null 2>&1; then
         mt_detail "autojs_state = $(mt_fab_autojs_state_path "${FAB_SIDE:-client}")"
     else
-        mt_detail "autojs_state = 写入失败（PowerShell 侧判定将退回 marker 兜底）"
+        mt_detail "autojs_state = 写入失败（通道判定将退回 marker 兜底）"
     fi
 fi
 
@@ -389,7 +419,7 @@ export MT_WIN_LAUNCH=1
 
 BG_PID=""
 if [ "$LAUNCH_MODE" = "start" ]; then
-    # 真正脱离控制台（拿不到 PID：pidfile 里只能写"未知"，由 CIM 判线兜底）
+    # 真正脱离控制台（拿不到 PID：pidfile 里只能写"未知"，由 jps/端口判线兜底）
     mt_cmdwin "start \"\" /B cmd /c \"$CMD_DESC > \"$LOG\" 2>&1\"" >/dev/null 2>&1 </dev/null &
     BG_PID=""
     : > "$PIDFILE" 2>/dev/null || true
@@ -404,7 +434,7 @@ cd "$OLD_PWD" 2>/dev/null || cd "$MT_REPO_ROOT"
 if [ -n "$BG_PID" ]; then
     mt_detail "wrapper_pid  = ${winpid:-$BG_PID}（Windows PID；pidfile $PIDFILE）"
 else
-    mt_detail "wrapper_pid  = 未知（launch_mode=start 不返回 PID；stop.sh 靠 CIM 判线）"
+    mt_detail "wrapper_pid  = 未知（launch_mode=start 不返回 PID；stop.sh 靠 jps/端口判线）"
 fi
 
 # ── 轮询 ─────────────────────────────────────────────────────────────────
@@ -509,13 +539,16 @@ else
 fi
 
 game_pid=""
-if [ -d "$RUN_DIR" ] && rows2="$(mt_cim_java_rows 2>/dev/null)"; then
+if [ -d "$RUN_DIR" ] && rows2="$(mt_jps_java_rows 2>/dev/null)"; then
     while IFS=$'\t' read -r p c; do
         [ -n "$p" ] || continue
         if launch_cmdline_matches "$c"; then game_pid="$p"; break; fi
     done <<< "$rows2"
 fi
-mt_detail "game_pid    = ${game_pid:-未找到（可能仍在启动早期；用 CIM 判线）}"
+if [ -z "$game_pid" ]; then
+    for p in $(mt_port_pids 25565 2>/dev/null); do game_pid="$p"; break; done
+fi
+mt_detail "game_pid    = ${game_pid:-未找到（可能仍在启动早期；用 jps/端口判线）}"
 mt_detail "log         = $LOG"
 mt_detail "pid_file    = $PIDFILE"
 mt_detail "收停        = bash scripts/test/win/stop.sh --version $VERSION"

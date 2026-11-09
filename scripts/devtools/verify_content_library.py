@@ -3,19 +3,19 @@
 """verify_content_library —— 内容库一致性校验（薄包装）。
 
 本文件**不重新实现**任何校验逻辑，只是 scripts/verify/verify_content_library.py 的兼容入口：
-原样透传 stdout 与退出码，让老调用点（scripts/devtools/verify_content_library.ps1 -Root <dir>）
+原样透传 stdout 与退出码，让老调用点（旧脚本 -Root <dir>）
 的迁移成本为零。
 
 为什么是薄包装（判重结论，可复验）：
-  1. 任务书里提到的 scripts/verify/verify_content_library.ps1 **在 git 和工作树里都不存在**
-     （git ls-files 只列到 scripts/devtools/verify_content_library.ps1）；
+  1. 任务书里提到的 scripts/verify/verify_content_library 旧入口 **在 git 和工作树里都不存在**
+     （git ls-files 只列到 scripts/devtools/ 下的旧入口）；
   2. scripts/verify/verify_content_library.py 是同一套逻辑的 python 版：docstring 自述
-     「等价 scripts/devtools/verify_content_library.ps1」，常量与 ps1 逐个相同
+     「等价 scripts/devtools/verify_content_library 旧脚本」，常量逐个相同
      （START_COMMIT=68dbd59 / VERS 双版本 / BASE_TAG_COUNTS / BASE_SLOT_COUNTS / BLANK_ITEMS /
      NEW_EFFECTS 6 个），输出行 [OK] / WARN / FAIL / ALL OK / !! 缺少 … 与 ps1 同形；
-  3. 反过来看 devtools 的 ps1：它自己的头注写的是「PowerShell 移植版 1:1 对应
+  3. 反过来看 devtools 的旧脚本：它自己的头注写的是「移植版 1:1 对应
      scripts/audit 之外的 verify_content_library.py（原 .py 92fbeaf 删除）」——即两者本就是
-     同一实现的两份壳子（历史里 .py → .ps1，本分支又把 .ps1 退役回 .py）。
+     同一实现的两份壳子（历史里 python 与脚本双份，本分支收敛回 python）。
   ⇒ 再抄一份 456 行的实现只会产生「两份会各自漂移的真相」，故只做包装。
 
 用法：
@@ -61,7 +61,7 @@ def _enable_utf8_stdout() -> None:
 
 
 def translate(argv: Sequence[str]) -> List[str]:
-    """把 pwsh 风格 -Root 折成 --root；--help 由本包装自己处理，不再下传。"""
+    """把旧式 -Root 折成 --root；--help 由本包装自己处理，不再下传。"""
     out: List[str] = []
     i = 0
     n = len(argv)

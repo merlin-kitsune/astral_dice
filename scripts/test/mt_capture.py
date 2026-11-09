@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""mt_capture —— 截图取证（python 复原版，等价 scripts/test/mt_capture.ps1）。
+"""mt_capture —— 截图取证（python 复原版）。
 
 两种模式：
   f2      向本版本游戏窗口投递 F2（user32 PostMessageW，VK 0x71 / 扫描码 0x3C），
@@ -34,7 +34,7 @@
   * 增加 -h/--help（ps1 没有；本仓约定每个 python 入口 --help 退出 0）。
   * --keep 与 ps1 一样**只解析不使用**（python 原件的已知缺陷，ps1 特意保留同一行为）。
 
-本文件不调用任何 .ps1 / .psm1（F2 注入用 ctypes 内联实现，不依赖 mt_inject）。
+本文件不调用任何外部脚本资产（F2 注入用 ctypes 内联实现，不依赖 mt_inject）。
 """
 
 import ctypes
@@ -80,7 +80,7 @@ def usage():
     return chr(10).join([
         "用法: python scripts/test/mt_capture.py (capture|list|prune) [选项]",
         "",
-        "截图取证（等价 scripts/test/mt_capture.ps1）。",
+        "截图取证。",
         "",
         "子命令:",
         "  capture  拍一张（--mode f2 游戏内 F2；--mode window 窗口抓取）",
@@ -307,7 +307,7 @@ def ensure_foreground(hwnd, attempts=3):
 
 
 def post_f2(hwnd):
-    """F2 按下 + 抬起。lParam 编码与 mt_inject.ps1 逐位一致。"""
+    """F2 按下 + 抬起。lParam 编码与 mt_inject 逐位一致。"""
     u = user32()
     down = 1 | (SCAN_F2 << 16)
     up = (1 << 30) | (1 << 14) | (SCAN_F2 << 16)

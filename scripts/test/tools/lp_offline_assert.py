@@ -4,13 +4,13 @@
 
 用途：在不重启游戏的前提下反复校准断言正则。
 
-本脚本是 scripts/test/tools/lp_offline_assert.ps1（41 行，随 pwsh 资产退役删除）的等价实现。
+本脚本是旧编排器离线断言器（41 行，随迁移删除）的等价实现。
 判据差异：ps1 用 .NET [regex]，本脚本用 python re —— 两者都是「Search（任意位置匹配）」语义；
 极端正则（lookbehind 变长、.NET 专属语法）可能表现不同，本脚本不做语法转译，报错即 FAIL 并原样打印。
 
 用法:
     python scripts/test/tools/lp_offline_assert.py --case <用例名或路径> --version <线>
-    python scripts/test/tools/lp_offline_assert.py -Case <用例> -Version <线>      # pwsh 风格
+    python scripts/test/tools/lp_offline_assert.py -Case <用例> -Version <线>      # 单破折号旧式写法
 
 输出:
     MT_OFFLINE_ASSERT_INPUT: case=<名> asserts=<n> latest=<字节>B debug=<字节>B

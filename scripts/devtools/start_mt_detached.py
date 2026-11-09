@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""start_mt_detached —— 脱离式执行器（python 等价移植 scripts/devtools/Start-MtDetached.ps1）。
+"""start_mt_detached —— 脱离式执行器（python 等价移植旧编排器的同名工具）。
 
 把任意阶段/命令放到**独立进程**里跑，输出落日志文件，调用方立即返回 pid。
 
@@ -9,7 +9,7 @@ mt_build / mt_launch / mt_env(world) 会**故意留下长命子进程** —— G
 客户端必须活过本脚本（launch → cases 是分步执行的），这是工具链的正确设计。问题出在
 **非交互式调用方**（代理/CI/管道捕获）：它按**整棵进程树**等待，只要还有后代活着调用就不返回，
 表现为「脚本卡滞」，直到超时被强杀，而强杀会连带杀掉整棵树（客户端、守护一起死）。
-实测对照：mt --phase build（需新起守护）4s 构建成功但调用 600s 超时；cmd /c "pwsh ... > file 2>&1"
+实测对照：mt --phase build（需新起守护）4s 构建成功但调用 600s 超时；旧写法 `cmd /c "… > file 2>&1"`
 无效（不是 stdout 管道问题，是等整树）；Start-Process -WindowStyle Hidden 立即返回且后代存活。
 
 因此：凡会**新起长命后代**的阶段，一律用本脚本脱离执行，再按日志里的终态标记轮询。
@@ -22,7 +22,7 @@ mt_build / mt_launch / mt_env(world) 会**故意留下长命子进程** —— G
     python scripts/devtools/start_mt_detached.py \
         --script scripts/test/mt.py --arg --phase launch --version 1.21.1 \
         --out temp/detached_launch_1211.log
-    # 也接受 pwsh 风格：-Script / -Out / -WorkDir / -Merge / -ScriptArgs
+    # 也接受单破折号风格：-Script / -Out / -WorkDir / -Merge / -ScriptArgs
 
 参数面（与 ps1 的手写 argv 循环逐条对齐，**包括「未知 token 透传」这一条**）：
     -Script <path>      要脱离执行的脚本（必填）
@@ -35,16 +35,16 @@ mt_build / mt_launch / mt_env(world) 会**故意留下长命子进程** —— G
 退出码（与 ps1 一致）：0 = 已起进程；2 = 缺参数 / 目标脚本不存在 / 无法确定解释器。
 
 与 ps1 的差异（移植纪律要求逐条说明）：
-  1. ps1 用 Start-Process 起「当前 pwsh + -NoProfile -File <script>」；本移植**不调用 pwsh**
-     （.ps1 正在退役，新工具链不依赖它）。改为按目标脚本类型选解释器：
-     .py → 当前 python、.sh → bash；其它扩展名（含 .ps1/.psm1）→ exit 2 并提示用 --interpreter
+  1. 旧工具用 Start-Process 起「当前解释器 + 目标脚本」；本移植**不调用外部解释器**
+     （旧脚本资产正在退役，新工具链不依赖它）。改为按目标脚本类型选解释器：
+     .py → 当前 python、.sh → bash；其它扩展名 → exit 2 并提示用 --interpreter
      显式指定解释器（唯一无法 1:1 保留的能力，理由见交付说明）。
   2. ps1 解析了 -Merge 却**从未使用**（$Merge 赋值后没有读者，属 ps1 的死开关）；这里按 ps1 头部
      文档声明的语义真正实现（stderr 并入 -Out，不再单独生成 <Out>.err）。
   3. --help/-h 是新增的（ps1 没有），用于自证参数面；ps1 会把 help 当透传 token。
 
 与 ps1 一致、务必别「顺手修掉」的地方：
-  · 未识别的 token **不报错**，而是进透传列表（这是 ps1 的既有契约，mt.ps1 依赖它透传 --phase 等）；
+  · 未识别的 token **不报错**，而是进透传列表（这是旧工具的既有契约，mt 依赖它透传 --phase 等）；
     这与「未知参数一律 rc=2」的通例相反，但等价性优先。
   · 本脚本只负责「起」，不负责「等」：等待交给调用方按日志标记轮询。
 """
@@ -185,7 +185,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     cmd = pick_interpreter(script, opts["interpreter"])
     if cmd is None:
         _error("无法确定解释器：目标脚本不是 .py/.sh（" + script + "）。"
-               "本脚本不再调用 pwsh；请用 --interpreter 显式指定，或改用 .py 目标。")
+               "本脚本不调用外部解释器；请用 --interpreter 显式指定，或改用 .py 目标。")
         return 2
     cmd = list(cmd) + [script] + list(opts["script_args"])
 

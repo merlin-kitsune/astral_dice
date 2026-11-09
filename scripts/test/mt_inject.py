@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """mt_inject — 游戏内输入注入（阶段 C 的执行臂，python 版）。
 
-与 scripts/test/mt_inject.ps1（950 行，随迁移删除）**契约等价**：子命令 key / cmd / mouse、
+与旧编排器的输入注入子命令（约 950 行，随迁移删除）**契约等价**：子命令 key / cmd / mouse、
 参数名、机器行、退出码（PASS 0 / FAIL 1 / ERROR 2）逐条对齐。
 
 唯一刻意差异：本文件支持 --help / -h（ps1 没有帮助入口，会按「未知参数」退 2）——
@@ -355,7 +355,7 @@ def window_pid(hwnd):
     return int(pid.value)
 
 
-# ── java 进程表（宿主能力：mt_ps 走 wmic/PowerShell 解释器）────────────────
+# ── java 进程表（宿主能力：mt_ps 走 JDK jps）──────────────────────────────
 def _java_rows():
     try:
         return mt_ps.java_rows()
@@ -380,11 +380,9 @@ def _pid_is_java(pid):
     for row in rows:
         if row["pid"] == int(pid):
             return True
-    rc, out = mt_ps.run_ps("(Get-Process -Id %d -ErrorAction SilentlyContinue).ProcessName" % int(pid))
-    text = (out or "").strip()
-    if not text:
-        return True
-    return "java" in text.lower()
+    # 枚举成功但表里没有该 pid ⇒ 不是本用户可见的 JVM（jps 只列同用户进程）；
+    # 枚举失败时沿用容错语义（上面 return True），不因探测能力缺口阻断注入。
+    return False
 
 
 def find_window(version):

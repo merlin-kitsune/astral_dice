@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
-"""mt_cleanup —— 遗留进程 / 存档清理（python 复原版，等价 scripts/test/mt_cleanup.ps1）。
+"""mt_cleanup —— 遗留进程 / 存档清理（python 复原版）。
 
-它是整条测试链**唯一**的进程收停实现（mt 的退出钩子、--phase stop、mt_stop 都走这里）：
-只收停本流程的 dev 客户端 / Gradle 任务进程（判据 = lib/mt_compat 的 test_pipeline_process）
-以及 Gradle 守护进程（走 gradlew --stop），绝不 taskkill /IM gradle.exe。
+职责边界（2026-11 起）：
+  * 只**发现并打印**本流程的 dev 客户端 / Gradle 任务进程 PID（判据 = lib/mt_compat 的
+    test_pipeline_process），以及 Gradle 守护进程（走 gradlew --stop）；
+  * 本脚本**不终止任何进程**：终止由 Agent 通过 windows MCP 的 Process(mode:"kill") 执行；
+  * 绝不按镜像名批量终止 gradle。
 
 失败取证标记（cases/.mt_keep_alive-<版本>，以及历史遗留的 cases/.mt_keep_alive）存在时：
-    run 不杀任何进程，只打印提示；--force 会清掉**所有**匹配的标记再收停。
+    run 不打印待收停 PID，只给提示；--force 会清掉**所有**匹配的标记再继续。
 
-机器行（与 ps1 逐字同形）：
-    MT_CLEANUP: 已收停 <n> 个本流程进程<范围><守护>
+机器行：
+    MT_CLEANUP: PENDING pid=<...>（本脚本不终止进程；由 Agent 用 windows MCP 终止）
+    MT_CLEANUP: 待收停 <n> 个本流程进程<范围><守护>
     MT_CLEANUP: 指定了 --version，保留 Gradle 守护进程
     MT_CLEANUP: 按 --keep-daemon 保留 <n> 个守护进程
     MT_CLEANUP: 警告 — 仍有 <n> 个本流程进程未退出：[…]
@@ -22,14 +25,15 @@
 退出码：0 = 无残留 / SKIP；1 = 仍有残留；11 = 进程枚举不可用（BLOCKED，绝不当作「干净」）；
         2 = 参数错误（MT_ERROR: …）。
 
-与 ps1 的两处**有意差异**：
-  * 进程枚举走 lib/mt_compat.list_java_processes()（ctypes：Toolhelp32 + NtQueryInformationProcess）。
-    枚举 API 本身不可用（非 Windows / API 失败）时记 BLOCKED(11)，绝不静默当作 0 个进程。
+两处**有意差异**：
+  * 进程枚举优先 lib/mt_compat.list_java_processes()（JDK jps；不可用时退回 ctypes
+    Toolhelp32 + NtQueryInformationProcess）。枚举 API 本身不可用（非 Windows / API 失败）
+    时记 BLOCKED(11)，绝不静默当作 0 个进程。
   * 删存档树先 rename 再删：Windows 的批量删除保护可能在删到一半时把进程杀掉（本仓实测过），
     rename 是原子且快的，rename 之后的 rmtree 失败只会留下 <路径>.purge-<时间戳>，并打 MT_WARN。
-  * 增加 -h/--help（ps1 没有；本仓约定每个 python 入口 --help 退出 0）。
+  * 增加 -h/--help（本仓约定每个 python 入口 --help 退出 0）。
 
-本文件不调用任何 .ps1 / .psm1，也不 Import-Module：gradlew --stop 走 cmd.exe/gradlew.bat 或 gradlew。
+本文件不调用任何外部脚本资产：gradlew --stop 走 cmd.exe/gradlew.bat 或 gradlew。
 """
 
 import os
@@ -59,7 +63,7 @@ def usage():
     return chr(10).join([
         "用法: python scripts/test/mt_cleanup.py (status|run) [选项]",
         "",
-        "遗留进程 / 存档清理（等价 scripts/test/mt_cleanup.ps1）。",
+        "遗留进程 / 存档清理。",
         "只收停本流程的 dev 客户端 / Gradle 任务进程，另用 gradlew --stop 收 Gradle 守护。",
         "",
         "子命令:",
@@ -275,13 +279,15 @@ def cmd_run(versions, force, keep_daemon, purge, daemon_timeout, quiet):
         mc.write_mt_line("MT_CLEANUP_RESULT: SKIP")
         return EXIT_PASS
 
-    killed = 0
+    pending = []
     for version in versions:
         try:
             paths = mc.get_paths(version)
         except ValueError:
             continue
-        killed += mc.stop_version_processes(paths, quiet=True)
+        for pid in mc.stop_version_processes(paths, quiet=True):
+            if pid not in pending:
+                pending.append(pid)
 
     daemon_stopped = False
     if not keep_daemon:
@@ -312,7 +318,7 @@ def cmd_run(versions, force, keep_daemon, purge, daemon_timeout, quiet):
     elif not quiet:
         mc.write_mt_line("MT_CLEANUP_SAVES: KEPT（未指定 --purge-saves）")
 
-    if killed > 0:
+    if pending:
         settle(versions)
 
     procs, error = enumerate_processes()
@@ -328,7 +334,10 @@ def cmd_run(versions, force, keep_daemon, purge, daemon_timeout, quiet):
         if versions != list(mc.VERSIONS):
             scope = "（范围：" + ", ".join(versions) + "）"
         daemon_txt = "，Gradle 守护已停止" if daemon_stopped else ""
-        mc.write_mt_line("MT_CLEANUP: 已收停 " + str(killed) + " 个本流程进程" + scope + daemon_txt)
+        if pending:
+            mc.write_mt_line("MT_CLEANUP: PENDING pid=" + ",".join(str(pid) for pid in pending)
+                             + "（本脚本不终止进程；由 Agent 用 mcp__windows__Process(mode:\"kill\") 终止）")
+        mc.write_mt_line("MT_CLEANUP: 待收停 " + str(len(pending)) + " 个本流程进程" + scope + daemon_txt)
         if keep_daemon:
             mc.write_mt_line("MT_CLEANUP: 按 --keep-daemon 保留 " + str(len(ldaemon)) + " 个守护进程")
         if left:

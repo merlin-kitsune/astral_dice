@@ -2,11 +2,11 @@
 # ============================================================================
 # scripts/test/win/mt.sh — Astral Dice 测试台 · bash 编排层（P1 契约层）
 #
-# 全 bash/python 实现，**不依赖任何 .ps1 资产**（旧 pwsh 测试台已整体废弃删除）。
+# 全 bash/python 实现，**不依赖任何外部脚本资产**（旧测试台已整体退役删除）。
 #   env/build/launch/stop        → bash（scripts/test/win/*.sh + lib/*.sh）
 #   cases/report/preflight       → python（scripts/test/lib/mt_case.py / mt_report.py / mt_preflight.py）
-# 机器行、退出码、开关面与旧 pwsh 版逐字对齐；差异只有「能力缺口记 BLOCKED(11)」这一条：
-#   native 注入通道（窗口定位 / user32 合成输入）随 pwsh 资产删除而失效，见 phases.sh 的 launch 阶段。
+# 机器行、退出码、开关面与旧编排器逐字对齐；差异只有「能力缺口记 BLOCKED(11)」这一条：
+#   native 注入通道（窗口定位 / user32 合成输入）随旧资产删除而失效，见 phases.sh 的 launch 阶段。
 #
 # 阶段：env | build | launch | cases | report | stop（另接受 preflight，P2 迁移）
 #
@@ -49,7 +49,7 @@ export MT_REPO_ROOT
 
 usage() { sed -n '2,32p' "$0"; }
 
-# ── 选项默认值（对齐 mt.ps1:558-582 的 $script:Opt 表）─────────────────────
+# ── 选项默认值（对齐迁移前编排器的 $script:Opt 表）─────────────────────
 OPT_VERSION=""
 OPT_PHASE=""
 OPT_CASE=""
@@ -63,7 +63,7 @@ OPT_PURGE_MODE=""        # "" = 未指定；1 = 清存档；0 = 保留存档
 OPT_DRY_RUN=0
 CHANNEL=""               # 解析后归一（显式 > MT_CHANNEL > autojs）
 
-# 取值类参数：缺值文案与 mt.ps1:599-613 逐字一致
+# 取值类参数：缺值文案与迁移前编排器逐字一致
 need_value() {  # need_value <开关名> <剩余参数个数>
     if [ "${2:-0}" -lt 1 ]; then
         printf 'MT_ERROR: 缺少 --%s 的值\n' "$1" >&2
@@ -114,7 +114,7 @@ fi
 MT_CHANNEL="$CHANNEL"
 export MT_CHANNEL
 
-# 放行开关：--allow-auto 或 MT_ALLOW_AUTO=1（正则 ^(1|true|yes|on)$，pwsh -match 大小写不敏感）
+# 放行开关：--allow-auto 或 MT_ALLOW_AUTO=1（正则 ^(1|true|yes|on)$，大小写不敏感）
 ALLOW_AUTO=0
 [ "$OPT_ALLOW_AUTO" = 1 ] && ALLOW_AUTO=1
 case "$(printf '%s' "${MT_ALLOW_AUTO:-}" | tr 'A-Z' 'a-z')" in
@@ -123,7 +123,7 @@ esac
 MT_ALLOW_AUTO_ACTIVE=$ALLOW_AUTO
 export MT_ALLOW_AUTO_ACTIVE
 
-# 阶段 / 版本合法性（文案与 mt.ps1 的 未知阶段 / Assert-MtVersion 同款）
+# 阶段 / 版本合法性（文案与迁移前编排器的 未知阶段 / 版本校验 同款）
 if [ -n "$OPT_PHASE" ]; then
     if ! mt_phase_is_phase "$OPT_PHASE"; then
         printf 'MT_ERROR: 未知阶段 %s（可选：%s）\n' "$OPT_PHASE" "$MT_PHASES" >&2
@@ -163,7 +163,7 @@ if [ -n "$OPT_FAB_AUTOJS" ]; then
 fi
 export MT_SIDE MT_FAB_AUTOJS
 
-# stop 阶段的开关透传（mt.ps1:783-790）
+# stop 阶段的开关透传（对齐迁移前编排器）
 MT_STOP_FORCE=$OPT_FORCE
 MT_STOP_KEEP_DAEMON=$OPT_KEEP_DAEMON
 MT_STOP_PURGE_SAVES=0
@@ -175,7 +175,7 @@ export MT_DRY_RUN=$OPT_DRY_RUN
 on_interrupt() { printf 'MT_WARN: 收到中断信号，编排层退出（130）；游戏进程不动，收停用 --phase stop\n' >&2; exit 130; }
 trap on_interrupt INT TERM
 
-# ══ 🚫 批量编排闸门（对齐 mt.ps1:738-777，必须放在 stop / 单阶段分支之前）════
+# ══ 🚫 批量编排闸门（对齐迁移前编排器，必须放在 stop / 单阶段分支之前）════
 # 为什么前移：单阶段分支以 exit 收尾，闸门写在后面会被 --phase report 直接绕过（实测踩过）。
 if [ "$ALLOW_AUTO" != 1 ]; then
     auto_blocked=0

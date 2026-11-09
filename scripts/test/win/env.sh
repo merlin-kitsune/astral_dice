@@ -344,11 +344,11 @@ case " $VERSIONS " in
         fi
         ;;
 esac
-# ── 8. java 进程残留（CIM 判线，绝不按进程名批量处理）────────────────────
-if ! rows="$(mt_cim_java_rows 2>/dev/null)"; then
-    mt_fail residue "CIM 查询 Win32_Process 失败（pwsh -NoProfile Get-CimInstance 不可用）"
+# ── 8. java 进程残留（jps 判线，绝不按进程名批量处理）────────────────────
+if ! rows="$(mt_jps_java_rows 2>/dev/null)"; then
+    mt_fail residue "jps -lvm 不可用（未找到 \$JAVA_HOME/bin/jps 或 PATH 的 jps）—— 无法做进程判线"
 elif [ -z "$rows" ]; then
-    mt_ok residue "无 java 进程残留（CIM Win32_Process 查询为空）"
+    mt_ok residue "无 java 进程残留（jps -lvm 查询为空）"
 else
     found=0
     while IFS=$'\t' read -r pid cmd; do
@@ -359,7 +359,7 @@ else
         done
         if [ -n "$hit" ]; then
             found=1
-            mt_warn residue "PID $pid 属 $hit 线的客户端/构建进程仍在运行 → 先跑 bash scripts/test/win/stop.sh --version $hit"
+            mt_warn residue "PID $pid 属 $hit 线的客户端/构建进程仍在运行 → 先跑 bash scripts/test/win/stop.sh --version $hit 拿 PID，再由 Agent 用 windows MCP 终止"
         fi
     done <<< "$rows"
     if [ "$found" = 0 ]; then
@@ -433,11 +433,11 @@ else
     mt_info locks "锁目录 $lock_dir 不存在（无跨宿主互斥时属正常）"
 fi
 
-# ── 12. Gradle 守护进程数（CIM 命令行含 GradleDaemon）────────────────────
+# ── 12. Gradle 守护进程数（jps 命令行含 GradleDaemon）─────────────────────
 if drows="$(mt_gradle_daemon_rows 2>/dev/null)"; then
     dn=$(printf '%s\n' "$drows" | grep -c . || true)
     wn=$(printf '%s\n' "${rows:-}" | grep -ci 'gradle-wrapper\|gradlew' || true)
-    mt_info gradle "CIM：GradleDaemon=${dn:-0} gradlew-wrapper=${wn:-0}（全队只有一个 Gradle 并发位，启动前确认无别的 agent 在构建）"
+    mt_info gradle "jps：GradleDaemon=${dn:-0} gradlew-wrapper=${wn:-0}（全队只有一个 Gradle 并发位，启动前确认无别的 agent 在构建）"
     if [ "${dn:-0}" -gt 0 ]; then
         while IFS=$'\t' read -r dpid dcmd; do
             [ -n "$dpid" ] || continue
@@ -446,10 +446,10 @@ if drows="$(mt_gradle_daemon_rows 2>/dev/null)"; then
         done <<< "$drows"
     fi
 else
-    mt_warn gradle "CIM 查询 Gradle daemon 失败"
+    mt_warn gradle "jps 查询 Gradle daemon 失败"
 fi
 
-# ── 13. 临时目录口径（/tmp 不可写）与 pwsh ───────────────────────────────
+# ── 13. 临时目录口径（/tmp 不可写）与 jps ─────────────────────────────────
 # 事实：git bash 的 $TEMP 就是 /tmp，而 /tmp 是 C:\Users\<user>\AppData\Local\Temp 的
 # MSYS 挂载点（mount 可见 usertemp 标记）——所以"不用 /tmp"等于"不用 Windows 默认 TEMP"。
 # 本会话 ACL/沙箱拒写该目录；AutoJS 探测已改为纯管道（curl -D -），不再依赖临时文件。
@@ -460,15 +460,15 @@ else
     mt_warn tmp "\$TEMP(=${TEMP:-<空>}，AppData\\Local\\Temp 的挂载点) 与 run/.mt-tmp 均不可写；AutoJS 探测不受影响（纯管道解析），仅影响将来需要落盘临时文件的扩展"
 fi
 
-# PowerShell **解释器**（不是测试资产）：pwsh 7 或系统自带 5.1，只用于 CIM 进程命令行判线。
-if pwsh_ver="$(mt_pwsh '$PSVersionTable.PSVersion.ToString()' 2>/dev/null | tr -d '\r' | head -n 1)" && [ -n "$pwsh_ver" ]; then
-    mt_ok pwsh "PowerShell 内核 $pwsh_ver（$(mt_pwsh_exe)）；CIM 判线依赖它（非测试资产，.ps1 已全部废弃）"
+# jps（JDK 自带进程表）：判线与收停的唯一进程来源，不依赖任何外部进程查询工具。
+if jps_exe="$(mt_jps_exe 2>/dev/null)" && [ -n "$jps_exe" ] && "$jps_exe" -lvm >/dev/null 2>&1; then
+    mt_ok jps "jps -lvm 可用（$jps_exe）；进程判线与收停 PID 发现依赖它"
 else
-    mt_fail pwsh "找不到 PowerShell 解释器（pwsh 与 %SystemRoot%/System32/WindowsPowerShell/v1.0/powershell.exe 都不可用）—— 无法做 CIM 进程判线；设 MT_PWSH_EXE 指定解释器"
+    mt_fail jps "jps -lvm 不可用（未找到 \$JAVA_HOME/bin/jps 或 PATH 的 jps）—— 无法做进程判线；装 JDK 或设 MT_JPS_EXE 指定 jps"
 fi
 
 tool_list=""
-for t in curl taskkill netstat cmd git python3; do
+for t in curl netstat cmd git python3; do
     if mt_have "$t"; then tool_list="$tool_list $t"; else tool_list="$tool_list ${t}(缺)"; fi
 done
 mt_info tools "外部工具：$tool_list"

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """mt_preflight —— 阶段 P 前置检查（bash + python 原生实现）。
 
-等价 `scripts/test/mt_preflight.ps1` 的 `--version <v>` / `--all` / `--channel <x>` 三种形态
+等价旧编排器的 `--version <v>` / `--all` / `--channel <x>` 三种形态
 与退出码（0 / 10 / 11 / 2），供 `scripts/test/win/lib/phases.sh` 的 `--phase preflight` 调用。
 
 设计口径（与 ps1 逐字对齐的部分见各函数注释）：
@@ -12,15 +12,15 @@
       - 模组来源：闸门本身是静态守门（阶段 P 与 TESTING-SPEC 第 9 节共用同一套规则），
         现由 tools/check_mod_sources.py 承担（ps1 已废弃）。本脚本按同源方式调用它
         （python <gate> -Root <root>）并解析其 MOD_SOURCE_GATE: 行，**不复制判定逻辑**；
-        .py 不存在时回退 .ps1（需 pwsh，缺则 BLOCKED(11)），两者皆缺记 FAIL(10) —— 绝不放行。
+        .py 不存在时直接 BLOCKED(11)，绝不放行。
       - 输入法（仅 native 通道）：走 lib/mt_ime.py（ps1 的 Mt.Win32 即由它移植而来，
         describe / KLID_EN_US 逐字一致）。
-  * 进程枚举走 ctypes（Toolhelp32 + NtQueryInformationProcess + EnumWindows），不依赖 psutil / WMIC；
+  * 进程枚举走 ctypes（Toolhelp32 + NtQueryInformationProcess + EnumWindows），不依赖 psutil 或任何外部进程工具；
     枚举 API 本身不可用（非 Windows）时记 BLOCKED(11) —— ps1 的非 win32 pgrep 分支随「测试链仅
     Windows」一并删除，python 侧没有等价实现，因此既不能判 OK 也不能静默跳过。
   * `MT_PREFLIGHT_TEST_PROCS` 钩子与 ps1 同义（JSON 数组替换真实进程表，非法 JSON 告警后回退）。
 
-除「模组来源」闸门（现由 tools/check_mod_sources.py 承担；仅在 .py 缺失时才回退 pwsh 版）外不启动 pwsh；其余只用标准库。
+除「模组来源」闸门（由 tools/check_mod_sources.py 承担）外不启动外部脚本；其余只用标准库。
 """
 
 import fnmatch
@@ -28,7 +28,6 @@ import hashlib
 import json
 import os
 import re
-import shutil
 import subprocess
 import sys
 import urllib.parse
@@ -59,7 +58,7 @@ def usage():
     return chr(10).join([
         "用法: python scripts/test/mt_preflight.py [--version <版本>] [--all] [--channel <x>] [--json]",
         "",
-        "阶段 P 前置检查（等价 scripts/test/mt_preflight.ps1）。",
+        "阶段 P 前置检查。",
         "",
         "选项:",
         "  --version <v>  只检查指定版本：" + " ".join(mc.VERSIONS),
@@ -232,22 +231,17 @@ def leftover_check(version):
                     + version + " --phase stop --force")
         stale = list(ours)
         mc.write_mt_line("  [ .. ] 遗留进程(" + version + "): 检出 " + str(len(stale))
-                         + " 个本线遗留进程（PID=" + _pids_text(stale) + "），自动收停中…")
+                         + " 个本线遗留进程（PID=" + _pids_text(stale) + "）")
         try:
-            mc.stop_version_processes(paths, quiet=True)
+            pids = mc.stop_version_processes(paths, quiet=True)
         except mc.ProcessEnumerationUnavailable as exc:
-            return ("BLOCKED", "自动收停时无法枚举进程（" + str(exc) + "）—— 本项无法判定（不放行）")
-        try:
-            rescanned = process_table()
-        except mc.ProcessEnumerationUnavailable as exc:
-            return ("BLOCKED", "自动收停后无法重扫进程（" + str(exc) + "）—— 本项无法判定（不放行）")
-        ours, others = leftover_scan(paths, rescanned)
-        if ours:
-            return (False, "自动收停后仍有本线遗留 PID=" + _pids_text(ours)
-                    + "，请手工执行 bash scripts/test/win/mt.sh --version " + version
-                    + " --phase stop 并检查权限")
-        return (True, "已自动收停 " + str(len(stale)) + " 个本线遗留进程（PID=" + _pids_text(stale)
-                + "）——退出钩子失效时的兜底，不影响本次结论")
+            return ("BLOCKED", "清理遗留进程前无法枚举进程（" + str(exc) + "）—— 本项无法判定（不放行）")
+        pending = ",".join(str(pid) for pid in pids) if pids else _pids_text(stale)
+        mc.write_mt_line("  [ .. ] MT_PREFLIGHT: PENDING pid=" + pending
+                         + "（脚本不终止进程；由 Agent 用 mcp__windows__Process(mode:\"kill\") 终止）")
+        return ("BLOCKED", "本线遗留 PID=" + _pids_text(stale)
+                + "；先由 Agent 用 windows MCP 终止（或 bash scripts/test/win/stop.sh --version "
+                + version + " 拿 PID），再重跑前置检查")
 
     if others:
         return (True, "无本线（" + version + "）遗留；另有 " + str(len(others))
@@ -435,19 +429,10 @@ def lib_pairing_check(version):
 def mod_sources_check(root):
     tools_dir = os.path.join(root, "tools")
     gate_py = os.path.join(tools_dir, "check_mod_sources.py")
-    gate_ps1 = os.path.join(tools_dir, "check_mod_sources.ps1")
-    if os.path.isfile(gate_py):
-        argv = [sys.executable, gate_py, "-Root", root]
-        label = gate_py
-    elif os.path.isfile(gate_ps1):
-        pwsh = shutil.which("pwsh")
-        if not pwsh:
-            return ("BLOCKED", "找不到 pwsh，且 " + gate_py + " 不存在，无法执行模组来源闸门"
-                    + "（python 等价物缺失）—— 能力缺失，不放行")
-        argv = [pwsh, "-NoProfile", "-File", gate_ps1, "-Root", root]
-        label = gate_ps1
-    else:
-        return ("FAIL", "缺少 " + gate_py + "（也没有 " + gate_ps1 + "）")
+    if not os.path.isfile(gate_py):
+        return ("BLOCKED", "找不到 " + gate_py + "（模组来源闸门 .py 缺失）—— 能力缺失，不放行")
+    argv = [sys.executable, gate_py, "-Root", root]
+    label = gate_py
     try:
         proc = subprocess.run(argv, capture_output=True, timeout=120)
     except (OSError, subprocess.SubprocessError) as exc:

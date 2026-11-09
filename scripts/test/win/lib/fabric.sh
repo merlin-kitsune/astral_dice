@@ -13,8 +13,8 @@
 #     2) AutoJS 是**条件依赖**：各 fabric 线的 build.gradle（autojsTestMod 开关）只有在
 #        -PautojsTestMod=1 时才 modRuntimeOnly 引入 AutoJS，运行目录默认没有它
 #        ⇒ 没有 MCP，注入只能走 RCON（127.0.0.1:25575 / 口令 astralft，
-#        见 scripts/test/fabric/ft_env.ps1:143-150）；
-#     3) 旧 fabric 测试台（scripts/test/fabric/ft_*.ps1）的机器行前缀是
+#        见旧 fabric 测试台的环境段）；
+#     3) 旧 fabric 测试台（已退役）的机器行前缀是
 #        MT_FAB_*，本文件把这类输出归一成主测试台的 MT_*（只读兼容，不改旧脚本）。
 #
 # 依赖约定：本文件**不 source common.sh**（避免循环包含）。它只调用 common.sh
@@ -34,7 +34,7 @@ MT_FAB_SIDES="client server"
 MT_FAB_DEFAULT_SIDE="client"
 MT_FAB_RCON_PORT="${MT_FAB_RCON_PORT:-25575}"
 MT_FAB_RCON_PASSWORD="${MT_FAB_RCON_PASSWORD:-astralft}"
-# 就绪判据与旧测试台 ft_launch.ps1:131 的 ready pattern 同源
+# 就绪判据与旧 fabric 测试台的 ready pattern 同源
 MT_FAB_READY_SERVER='Done \([0-9.]\+s\)! For help'
 MT_FAB_READY_CLIENT='Sound engine finished|Sound engine started'
 
@@ -179,10 +179,10 @@ mt_fab_autojs_note() {
         "$MT_FABRIC_VERSION" "$(mt_fab_autojs_mode "${1:-}")" "$MT_FAB_RCON_PORT"
 }
 
-# ── AutoJS 注入状态文件（launch.sh 写 / stop.sh 删 / PowerShell 通道判定读）────
+# ── AutoJS 注入状态文件（launch.sh 写 / stop.sh 删 / 通道判定读）────
 # 存在理由：fabric 的 AutoJS 是**条件依赖**，由 -PautojsTestMod=1 以 modRuntimeOnly 注入运行期
 # classpath，**永远不进 run/<side>/mods**；而「mods 里有没有 AutoJS-*.jar」是既有就绪判据
-# （scripts/test/win/launch.sh:191-210、scripts/test/lib/Mt.Channel.psm1:225-242）。制品是
+# （scripts/test/win/launch.sh:191-210、scripts/test/lib/mt_channel.py:225-242）。制品是
 # intermediary 命名空间，手放进 mods 会 NoSuchMethodError（TESTING-RULES-OVERVIEW.md:191 规则 6），
 # 所以判据只能改成「本次启动是否真的注入了」——落这个文件。
 mt_fab_autojs_state_path() {
@@ -372,7 +372,7 @@ sys.exit(0)
 PY
 }
 
-# ── 旧机器行归一：MT_FAB_* → MT_*（只用于读旧 pwsh 测试台输出）──────────────
+# ── 旧机器行归一：MT_FAB_* → MT_*（只用于读迁移前测试台输出）──────────────
 mt_fab_normalize_stream() {
     sed -u -e 's/^MT_FAB_INFO:[[:space:]]*/MT_INFO: /' \
            -e 's/^MT_FAB_WARN:[[:space:]]*/MT_WARN: /' \
@@ -409,7 +409,7 @@ mt_fab_marker_hit() {
     grep -qE "$pat" "$log" 2>/dev/null
 }
 
-# ── launch：委托 win/launch.sh（bash 原生，不碰 pwsh）───────────────────────
+# ── launch：委托 win/launch.sh（bash 原生，不碰外部脚本）───────────────────
 mt_fab_phase_launch() {
     local v side rc tsk ajarg other
     v="${1:-$MT_FABRIC_VERSION}"
@@ -800,7 +800,7 @@ for path in cases:
             verdict, why = 'BLOCKED', '%s 需要 AutoJS（当前 AutoJS=%s；fabric 的 AutoJS 是 -PautojsTestMod=1 条件依赖）' % (op, autojs)
             break
         if op in ('screenshot', 'kubejs_reload'):
-            verdict, why = 'BLOCKED', '%s 在 bash/python 侧未实现（旧 pwsh 通道 ft_inject.ps1 已废弃删除；能力缺口登记见 docs/features/devnext-bash-testbed-decisions.md）' % op
+            verdict, why = 'BLOCKED', '%s 在 bash/python 侧未实现（旧 fabric 注入通道已退役删除；能力缺口登记见 docs/features/devnext-bash-testbed-decisions.md）' % op
             break
         if op == 'assert':
             res, detail = eval_assert(step, state)
@@ -896,7 +896,7 @@ mt_fab_phase_report() {
     return "$rc"
 }
 
-## mt_fab_report_mark <version> <phase> <result>：与 pwsh 的 report mark 同语义
+## mt_fab_report_mark <version> <phase> <result>：与迁移前的 report mark 同语义
 ##   机器行按主测试台口径单写 MT_INFO:（mt_info 打的是 "INFO: key — detail"，此处不用它）
 mt_fab_report_mark() {
     local v phase result dir
@@ -958,7 +958,7 @@ PY
     return "$rc"
 }
 
-# ── preflight：fabric 前置检查（bash 原生，不委托 pwsh）──────────────────────
+# ── preflight：fabric 前置检查（bash 原生，不委托外部脚本）──────────────────
 mt_fab_phase_preflight() {
     local v problems side s
     v="${1:-$MT_FABRIC_VERSION}"

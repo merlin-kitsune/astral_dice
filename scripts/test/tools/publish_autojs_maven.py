@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 """把 AutoJS 实机测试库两个产物按 Maven 布局发布到 mavenLocal（jar + 手写最小 pom.xml）。
 
-本脚本是 scripts/test/tools/publish_autojs_maven.ps1 的等价 Python 实现
-（该 pwsh 资产已随本分支的 bash/python 收敛而废弃删除）。
+本脚本是旧编排器发布脚本的等价 Python 实现
+（该资产已随本分支的 bash/python 收敛而废弃删除）。
 
 用法:
     python scripts/test/tools/publish_autojs_maven.py [--force] [--m2-repo <dir>] [--root <dir>]
@@ -187,7 +187,7 @@ def main():
     ap.add_argument("-M2Repo", "--m2-repo", dest="m2_repo",
                     default=os.path.join(os.path.expanduser("~"), ".m2", "repository"))
     ap.add_argument("-Root", "--root", dest="root", default=None)
-    # pwsh 风格单破折号长选项也接受（-Root / -M2Repo 已覆盖）
+    # 兼容单破折号长选项（-Root / -M2Repo 已覆盖）
     a = ap.parse_args()
 
     root = a.root or os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", ".."))
