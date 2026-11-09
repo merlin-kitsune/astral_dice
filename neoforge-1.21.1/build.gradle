@@ -505,6 +505,8 @@ def buildInfoVersion = project.version.toString()
 def buildInfoGitRoot = rootProject.projectDir
 tasks.register("generateBuildInfo") {
     outputs.dir(buildInfoOutDir)
+    outputs.upToDateWhen { false }
+    inputs.property("version", project.version.toString())
     doLast {
         def dir = buildInfoOutDir.get().asFile
         def out = new File(dir, "META-INF/astral_dice/build-info.json")
