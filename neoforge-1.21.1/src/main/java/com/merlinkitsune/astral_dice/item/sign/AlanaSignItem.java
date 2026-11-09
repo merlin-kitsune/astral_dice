@@ -7,6 +7,7 @@ import com.merlinkitsune.astral_dice.item.ModItems;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
@@ -78,6 +79,24 @@ public class AlanaSignItem extends BaseSignItem implements SignHooks.BlessingTri
             sendSignActionBar(player, "msg.astral_dice.alana_done");
         }
         return net.minecraft.world.InteractionResultHolder.sidedSuccess(stack, level.isClientSide);
+    }
+
+    /**
+     * 非玩家 owner 的主动（2026-11-09，TLMDice 汇报的「activeForEntity 恒 false」）：
+     * 只实现「铁处女 30s 免疫」这一段 —— 玩家侧还有 PassiveBonus 恢复与 PlayerEffectProtection，
+     * 两者都建立在玩家附件 / 玩家保护层上，生物侧不适用（被动加成由玩家侧 blessing 钩子维护）。
+     */
+    @Override
+    protected boolean activateForEntity(LivingEntity owner) {
+        if (owner == null || owner.level().isClientSide()) {
+            return false;
+        }
+        owner.addEffect(new MobEffectInstance(ModEffects.ALANA_IRON_MAIDEN, IRON_MAIDEN_TICKS, 0,
+                false, true, true));
+        org.slf4j.LoggerFactory.getLogger(AlanaSignItem.class).info(
+                "AP_SIGN_ACTIVE_ENTITY: sign=alana:owner={}:duration={}",
+                owner.getName().getString(), IRON_MAIDEN_TICKS);
+        return true;
     }
 
     @Override
