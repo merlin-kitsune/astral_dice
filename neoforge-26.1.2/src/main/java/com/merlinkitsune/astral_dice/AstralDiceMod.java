@@ -48,10 +48,10 @@ public class AstralDiceMod {
                     + "（下载指引占位：<待填写 —— 发布页 / 整合包说明>）");
             throw new IllegalStateException("Missing required dependency: StarEngine (starengine)");
         }
-        // ⚠️ 不兼容模组黑名单(Magic Coins / SG-Economy)的检查**不能放在这里**:它是否拒绝取决于
-        //    「星币钱包」开关(config/ModCommonConfig 的 enable_star_coin_wallet),而配置要到**本阶段之后**
-        //    才加载(装载顺序:构造 -> 注册表初始化 -> Config loading),此处读配置会抛「配置尚未加载」。
-        //    ⇒ 检查已移到 onCommonSetup 的 ModCompatibilityCheck.verifyOrThrow()(详见该类类头)。
+        // ⚠️ 不兼容模组黑名单(Magic Coins / SG-Economy)的检查放在 common setup:
+        //    那里走平台统一的 ModLoadingException 链路,能把本类文案原样显示在加载错误界面。
+        //    2026-11-09 起该黑名单为**永久不兼容**,不再依赖「星币钱包」开关,也不需要读配置。
+        //    ⇒ 调用点见 onCommonSetup 的 ModCompatibilityCheck.verifyOrThrow()(详见该类类头)。
         ModItems.ITEMS.register(modEventBus);
         ModDataComponents.DATA_COMPONENTS.register(modEventBus);
         ModEffects.EFFECTS.register(modEventBus);
@@ -155,8 +155,8 @@ public class AstralDiceMod {
 
     @SubscribeEvent
     private void onCommonSetup(FMLCommonSetupEvent event) {
-        // 不兼容模组黑名单(Magic Coins / SG-Economy):**只有在「星币钱包」启用时才拒绝启动**
-        // (2026-09-22 用户裁决),因此必须等到配置加载完成才能判定 —— 本事件就在 Config loading 之后。
+        // 不兼容模组黑名单(Magic Coins / SG-Economy):**永久不兼容,与「星币钱包」开关无关**
+        // (2026-11-09 用户裁决):命中即拒绝启动,不因关闭钱包而放行。
         // 命中即抛 ModLoadingException ⇒ 游戏停在加载错误界面并显示提示原文(链路见 ModCompatibilityCheck 类头)。
         // 放在 enqueueWork **之前**:同步执行,不与其它 mod 的延迟任务交错,失败得越干净越好。
         com.merlinkitsune.astral_dice.init.ModCompatibilityCheck.verifyOrThrow();
