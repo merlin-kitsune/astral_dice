@@ -84,4 +84,24 @@ public class MisakiSignItem extends BaseSignItem {
         var curios = CuriosCompat.getCuriosInventory(player);
         return curios.isPresent() && curios.get().findFirstCurio(s -> s.is(ModItems.MISAKI_SIGN.get())).isPresent();
     }
+    // 2026-11-09（A）：类玩家宿主的主动 —— 爆发 2400t；层数 ≥3 时扣层并补一张「名刀嘎呜切」。
+    @Override
+    protected boolean activateForEntity(net.minecraft.world.entity.LivingEntity owner) {
+        if (owner.level().isClientSide()) {
+            return com.merlinkitsune.astral_dice.item.sign.SignEntitySkills.deny("misaki", owner, "client_side");
+        }
+        owner.addEffect(new net.minecraft.world.effect.MobEffectInstance(
+                com.merlinkitsune.astral_dice.effect.ModEffects.MISAKI_BURST.get(), 2400, 0, false, true, true));
+        com.merlinkitsune.astral_dice.item.CurioSlotUtil.mutateFirstCurioMatching(owner,
+                s -> s.is(com.merlinkitsune.astral_dice.item.ModItems.MISAKI_SIGN.get()), live -> {
+                    int stacks = com.merlinkitsune.astral_dice.component.ModDataComponents.MISAKI_SIGN_STACKS.getOrDefault(live, 0);
+                    if (stacks >= 3) {
+                        com.merlinkitsune.astral_dice.component.ModDataComponents.MISAKI_SIGN_STACKS.set(live, stacks - 2);
+                        com.merlinkitsune.astral_dice.target.PlayerLikeTargets.giveItem(owner,
+                                new net.minecraft.world.item.ItemStack(
+                                        com.merlinkitsune.astral_dice.item.ModItems.ATTACK_CARD_MEITO.get()));
+                    }
+                });
+        return com.merlinkitsune.astral_dice.item.sign.SignEntitySkills.ok("misaki", owner, 2400);
+    }
 }

@@ -167,5 +167,11 @@ public class SykesSignItem extends BaseSignItem {
     public void onUnequip(SlotContext slotContext, ItemStack newStack, ItemStack stack) {
         // 立牌本身不持有状态：印记挂在目标身上、施印冷却挂在佩戴者持久数据上，跨卸下保留
         super.onUnequip(slotContext, newStack, stack);
+    
+}
+    // 2026-11-09（A）：类玩家宿主的主动入口 —— 当前语义依赖玩家侧通道，显式拒绝并留锚点。
+    @Override
+    protected boolean activateForEntity(net.minecraft.world.entity.LivingEntity owner) {
+        return com.merlinkitsune.astral_dice.item.sign.SignEntitySkills.deny("sykes", owner, "needs_player_aim");
     }
 }

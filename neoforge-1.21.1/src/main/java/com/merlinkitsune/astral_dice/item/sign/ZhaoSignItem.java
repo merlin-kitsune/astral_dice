@@ -497,5 +497,11 @@ public class ZhaoSignItem extends BaseSignItem implements SignHooks.DiceJudgment
     /** 只读读数辅助(探针/调试用):当前是否满足"组队"这一前置(未组队 ⇒ 心意相连整体不生效) */
     public static boolean teamGateOpen(Player player) {
         return player != null && PartyRelations.hasTeam(player);
+    
+}
+    // 2026-11-09（A）：类玩家宿主的主动入口 —— 当前语义依赖玩家侧通道，显式拒绝并留锚点。
+    @Override
+    protected boolean activateForEntity(net.minecraft.world.entity.LivingEntity owner) {
+        return com.merlinkitsune.astral_dice.item.sign.SignEntitySkills.deny("zhao", owner, "needs_player_session");
     }
 }

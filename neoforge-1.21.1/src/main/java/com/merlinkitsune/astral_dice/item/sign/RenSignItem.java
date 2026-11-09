@@ -137,5 +137,11 @@ public class RenSignItem extends BaseSignItem {
     /** 玩家是否佩戴游戏大师立牌(被动「鼠鼠救我」的佩戴判定) */
     public static boolean isEquipped(Player player) {
         return SignEquipCheck.isEquipped(player, ModItems.REN_SIGN.get());
+    
+}
+    // 2026-11-09（A）：类玩家宿主的主动入口 —— 当前语义依赖玩家侧通道，显式拒绝并留锚点。
+    @Override
+    protected boolean activateForEntity(net.minecraft.world.entity.LivingEntity owner) {
+        return com.merlinkitsune.astral_dice.item.sign.SignEntitySkills.deny("ren", owner, "needs_player_session");
     }
 }

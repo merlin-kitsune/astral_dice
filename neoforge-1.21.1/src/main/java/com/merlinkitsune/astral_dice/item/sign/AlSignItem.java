@@ -78,6 +78,7 @@ public class AlSignItem extends BaseSignItem {
 
     static {
         TargetSelectionRegistry.register(new GiftAction());
+        CardGivenHooks.subscribe(AlSignItem::onCardGivenToOther);
     }
 
     @Override
@@ -235,8 +236,16 @@ public class AlSignItem extends BaseSignItem {
      * <p>由发牌唯一漏斗 {@link VitaminPillChipItem#giveCard} 的成功分支与
      * {@link PlayerLikeTargets#giveCard}（附属注册生物）调用；同 tick 同受益人只结算一次。
      */
-    public static void onCardGivenToOther(ServerPlayer giver, LivingEntity receiver) {
-        if (giver == null || receiver == null) return;
+    public static void onCardGivenToOther(LivingEntity rawGiver, LivingEntity receiver) {
+        // 2026-11-09（C）：中立发牌方；未知发牌方无法校验佩戴者的「双赢」被动，显式跳过并留锚点。
+        ServerPlayer giver = rawGiver instanceof ServerPlayer sp ? sp : null;
+        if (giver == null) {
+            if (receiver != null) {
+                LOGGER.info("AP_AL_GIFT_STARLIGHT: skipped=unknown_giver:receiver={}", receiver.getName().getString());
+            }
+            return;
+        }
+        if (receiver == null) return;
         if (giver.level().isClientSide() || receiver.level().isClientSide()) return;
         if (giver == receiver) return; // 自己给自己不算「对方」
         if (!isEquipped(giver)) return;
@@ -290,5 +299,11 @@ public class AlSignItem extends BaseSignItem {
             clearStarlightAttributes(player);
         }
         super.onUnequip(slotContext, newStack, stack);
+    
+}
+    // 2026-11-09（A）：类玩家宿主的主动入口 —— 当前语义依赖玩家侧通道，显式拒绝并留锚点。
+    @Override
+    protected boolean activateForEntity(net.minecraft.world.entity.LivingEntity owner) {
+        return com.merlinkitsune.astral_dice.item.sign.SignEntitySkills.deny("al", owner, "needs_player_session");
     }
 }

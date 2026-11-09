@@ -401,5 +401,11 @@ public class HannaSignItem extends BaseSignItem implements SignHooks.DiceRollRes
         if (!event.getItemStack().is(Items.ENDER_PEARL)) return;
         event.setCanceled(true);
         sendSignActionBarColored(player, net.minecraft.ChatFormatting.RED, "msg.astral_dice.hanna_no_pearl");
+    
+}
+    // 2026-11-09（A）：类玩家宿主的主动入口 —— 当前语义依赖玩家侧通道，显式拒绝并留锚点。
+    @Override
+    protected boolean activateForEntity(net.minecraft.world.entity.LivingEntity owner) {
+        return com.merlinkitsune.astral_dice.item.sign.SignEntitySkills.deny("hanna", owner, "needs_player_card_channel");
     }
 }
