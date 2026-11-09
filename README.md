@@ -119,6 +119,27 @@ The Abyss Reagent chip is named consistently now: display name, tooltip and ever
 - **CurseForge**: the builds go to the main project (`astral-dice`, project id `1662159`). StarEngine has its own project (`starengine`, id `1755415`); **none of the four lines bundles it any more**, so players must install that separate jar themselves: `starengine-neoforge-1.21.1-26.4-SNAPSHOT.1.jar` / `starengine-forge-1.20.1-26.4-SNAPSHOT.1.jar` / `starengine-neoforge-26.1.2-26.4-SNAPSHOT.1.jar` / `starengine-fabric-1.20.1-26.4-SNAPSHOT.1.jar`. Version numbers keep the `+<loader>_<MC>` suffix (for example `1.5.0+neoforge_1.21.1`), and the release channel follows the version suffix. Modrinth publishing was permanently dropped on 2026-10-23; CurseForge is the only store channel.
 - **Build artefacts**: `astral_dice-1.5.0+neoforge_1.21.1.jar`, `astral_dice-1.5.0+forge_1.20.1.jar`, `astral_dice-1.5.0+neoforge_26.1.2.jar` and `astral_dice-1.5.0+fabric_1.20.1.jar`, each under its subproject's `build/libs/`; the version inside each jar matches the file name (1.5.0).
 
+## Build provenance (26.4-SNAPSHOT.8)
+
+Each jar carries `META-INF/astral_dice/build-info.json` with `{version, commit, builtAt, classCount}` and ships a
+sibling `<jar>.sha256`. `build-info.commit` names the **code commit** the jar was built from; the README update that
+records the hash does not change the artifact.
+
+| Line | Version | Built from | Built at | Size (B) | SHA-256 |
+|---|---|---|---|---|---|
+| neoforge-1.21.1 | 26.4-SNAPSHOT.8+neoforge_1.21.1 | `624258e8`（A–E 全部代码 + 版本号） | 2026-11-09T21:08:01+08:00 | 2,732,436 | `897940101d0e1ec1b2d61ff3d6da52c706cfd9bb2a3e2c5fb376949f5648bc86` |
+| forge-1.20.1 | 26.4-SNAPSHOT.8+forge_1.20.1 | `624258e8`（A–E 全部代码 + 版本号） | 2026-11-09T21:08:01+08:00 | 2,782,292 | `059362740f855ba785c6aad025c0dce45f0de5045ca33798d035fe6ba9baf7a2` |
+
+`build/libs` keeps only the current version; older `26.4-SNAPSHOT.{6,7}` and `2.0.0-SNAPSHOT.*` jars were moved to
+`temp/quarantine-build-libs/`. Purge stale local m2 coordinates that were overwritten in place before this release:
+
+```bash
+rm -rf ~/.m2/repository/com/merlinkitsune/astral_dice/neoforge-1.21.1/26.4-SNAPSHOT.7+neoforge_1.21.1
+rm -rf ~/.m2/repository/com/merlinkitsune/astral_dice/astral_dice-forge-1.20.1/26.4-SNAPSHOT.7
+```
+
+Then reinstall from the packaged jars (`bash tools/install-astra-maven-local.sh --from <dist dir>` in the consumer repo).
+
 ## Build
 
 ```bash
