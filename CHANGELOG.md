@@ -4,6 +4,16 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 26.4-SNAPSHOT.8
+
+### This line
+
+- Add: every sign (34 classes on both `neoforge-1.21.1` and `forge-1.20.1`) now overrides `activateForEntity(LivingEntity)`. Jasmine's sweep and Misaki's burst are real non-player implementations (same effect, duration and card refund as the player path); the rest refuse explicitly with a machine-readable reason (`AP_SIGN_ACTIVE_ENTITY_DENIED: sign=…:reason=…`). The full support matrix lives in `docs/features/player-like-entities-api.md`.
+- Add: wallet/shop failure semantics are now distinguishable — `PlayerLikeWallet#isAvailable(LivingEntity)` plus a new `WALLET_UNAVAILABLE` result separate "owner offline / wallet frozen" from "no wallet" (`NO_WALLET`) and "not enough coins"; `PlayerLikeAbilities#deliverLikePlayer` is the single delivery entry (inventory → ground fallback).
+- Fix: the card-given hook accepts a neutral giver — `CardGivenHooks#fire(LivingEntity, LivingEntity)` (null giver allowed, `AP_CARD_GIVEN` anchor) so non-player card handouts reach the passive chain; the legacy `ServerPlayer` overload remains. The neoforge line gains the same hook class the forge line already had.
+- Add: player-like entities now seed their chip-shop offers automatically on the first `curioTick` when their state has no offers (`AP_CHIP_SHOP_AUTOSEED`), so downstream integrations no longer have to call `prepareOffers` themselves. Seeding happens once; paid-out / cooling-down / fully-owned states are not re-rolled.
+- Build: version `26.4-SNAPSHOT.8`; each jar embeds `META-INF/astral_dice/build-info.json` (version / commit / builtAt / classCount) and ships a sibling `.sha256`; the README build-provenance table records commit, build time and jar hash, and lists the commands to purge stale `26.4-SNAPSHOT.7` m2 coordinates.
+
 ## 26.4-SNAPSHOT.7
 
 ### This line

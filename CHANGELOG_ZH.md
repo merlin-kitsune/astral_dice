@@ -4,6 +4,16 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
+## 26.4-SNAPSHOT.8
+
+### 本线
+
+- 新增：两线（`neoforge-1.21.1` / `forge-1.20.1`）**全部 34 个立牌类**都覆写了 `activateForEntity(LivingEntity)`。茉莉的横扫与美咲的气爆给出真实现（效果、时长、扣层补卡与玩家路径一致）；其余立牌显式拒绝并给出机器可读原因（`AP_SIGN_ACTIVE_ENTITY_DENIED: sign=…:reason=…`）。完整支持矩阵见 `docs/features/player-like-entities-api.md`。
+- 新增：钱包/商店的失败语义可区分 —— `PlayerLikeWallet#isAvailable(LivingEntity)` 与新的 `WALLET_UNAVAILABLE` 结果把「主人离线/账户冻结」同「无钱包」（`NO_WALLET`）、「余额不足」区分开；`PlayerLikeAbilities#deliverLikePlayer` 成为统一交付入口（背包 → 掉地兜底）。
+- 修复：给牌钩子接受中立发牌方 —— `CardGivenHooks#fire(LivingEntity, LivingEntity)`（允许 null 发牌方，打 `AP_CARD_GIVEN` 锚点），非玩家发牌也能进被动链；旧 `ServerPlayer` 重载保留。neoforge 线补齐了 forge 线已有的该钩子类。
+- 新增：类玩家实体在首次 `curioTick` 且商店状态无候选时自动播种一次（`AP_CHIP_SHOP_AUTOSEED`），下游不必再自己调 `prepareOffers`。播种只发生一次；已购完/冷却中/已拥有全部不重掷。
+- 构建：版本号 `26.4-SNAPSHOT.8`；每个 jar 内嵌 `META-INF/astral_dice/build-info.json`（version / commit / builtAt / classCount）并附 `.sha256`；README 增加「版本 → 提交 → 构建时间 → jar 哈希」表，并给出清理陈旧 `26.4-SNAPSHOT.7` m2 坐标的命令。
+
 ## 26.4-SNAPSHOT.7
 
 ### 本线

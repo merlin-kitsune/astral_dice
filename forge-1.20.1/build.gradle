@@ -642,3 +642,72 @@ tasks.named('build') {
     finalizedBy tasks.named('pushToRootBuild')
 }
 
+// ── 构建元数据（2026-11-09 E2）：jar 内 META-INF/astral_dice/build-info.json
+// 只记录 version / commit / builtAt / classCount；**不**放自指 sha256（sha256 写在 jar 旁的 .sha256 文件里）。
+def buildInfoOutDir = layout.buildDirectory.dir("generated/buildinfo")
+def buildInfoClassesDir = layout.buildDirectory.dir("classes/java/main")
+def buildInfoVersion = project.version.toString()
+def buildInfoGitRoot = rootProject.projectDir
+tasks.register("generateBuildInfo") {
+    outputs.dir(buildInfoOutDir)
+    doLast {
+        def dir = buildInfoOutDir.get().asFile
+        def out = new File(dir, "META-INF/astral_dice/build-info.json")
+        out.parentFile.mkdirs()
+        int count = 0
+        def classesRoot = buildInfoClassesDir.get().asFile
+        if (classesRoot.exists()) {
+            classesRoot.eachFileRecurse { f ->
+                if (f.isFile() && f.name.endsWith(".class")) count++
+            }
+        }
+        // HEAD 直接读 .git（兼容普通仓库、worktree 与 commondir），避免依赖外部命令
+        def head = "unknown"
+        try {
+            def dotGit = new File(buildInfoGitRoot, ".git")
+            File gitDir = null
+            if (dotGit.isDirectory()) {
+                gitDir = dotGit
+            } else if (dotGit.isFile()) {
+                def txt = dotGit.text.trim()
+                if (txt.startsWith("gitdir:")) gitDir = new File(buildInfoGitRoot, txt.substring(7).trim())
+            }
+            if (gitDir != null) {
+                File commonDir = gitDir
+                def commonFile = new File(gitDir, "commondir")
+                if (commonFile.exists()) commonDir = new File(gitDir, commonFile.text.trim())
+                def headFile = new File(gitDir, "HEAD")
+                if (headFile.exists()) {
+                    def hp = headFile.text.trim()
+                    if (hp.startsWith("ref: ")) {
+                        def refName = hp.substring(5).trim()
+                        def refFile = new File(commonDir, refName)
+                        def packed = new File(commonDir, "packed-refs")
+                        if (refFile.exists()) {
+                            head = refFile.text.trim()
+                        } else if (packed.exists()) {
+                            packed.eachLine { line ->
+                                if (!line.startsWith("#") && line.contains(" " + refName)) {
+                                    head = line.split(" ")[0].trim()
+                                }
+                            }
+                        }
+                    } else {
+                        head = hp
+                    }
+                }
+            }
+        } catch (Exception ignored) {
+            head = "unknown"
+        }
+        out.text = groovy.json.JsonOutput.toJson([
+                version   : buildInfoVersion,
+                commit    : head,
+                builtAt   : new Date().format("yyyy-MM-dd'T'HH:mm:ssXXX"),
+                classCount: count,
+        ])
+    }
+}
+sourceSets.main.resources.srcDir(buildInfoOutDir)
+tasks.named("processResources") { dependsOn tasks.named("generateBuildInfo") }
+tasks.named("jar") { dependsOn tasks.named("generateBuildInfo") }

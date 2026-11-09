@@ -232,3 +232,51 @@ PlayerLikeWallets.register(MAID_LIKE, e -> e instanceof EntityMaid, new PlayerLi
 | ③ | 卸骰不缩回（`tryRemoveChipBonus` 只认 Player）；购买交付失败仍扣款并推进计数 | 卸骰：非玩家走 `chip` 槽 + `setSlotCount(..., CHIP_NO_DICE_SLOTS, false)`（防御式收缩，不丢物品）；购买：失败先 `wallet.deposit` 退款、**不** `withPurchased`，日志 `delivery_failed … refunded=` | `neoforge-1.21.1` / `forge-1.20.1` |
 
 > P1 三线（`neoforge-26.1.2` / `fabric-1.20.1` / `fabric-1.21.1`）**本批不适用**：它们尚无类玩家能力层（`PlayerLikeWallet` / `ChipShopService` 不存在），反馈对象也只有 P0 两线的 TLMDice。
+
+## 立牌 × 类玩家支持矩阵（2026-11-09 A）
+
+`BaseSignItem#activateForEntity(LivingEntity)` 已由 **全部 34 个立牌类**覆写（javap 计数即可核对）。
+能完整复刻玩家语义的立牌给出真实实现；其余按依赖的玩家通道显式拒绝，并打
+`AP_SIGN_ACTIVE_ENTITY_DENIED: sign=<id>:reason=<reason>:owner=<name>`。
+
+| 立牌 id | 支持 | 不支持原因（reason） |
+|---|---|---|
+| alana | ✅ | —（铁处女免疫，300t 冷却同玩家，全场唯一原来就支持的） |
+| jasmine | ✅ | —（横扫 + 随机抗性/力量，时长 2400t 同玩家） |
+| misaki | ✅ | —（气爆 2400t；层数 ≥3 时扣层并经 `PlayerLikeTargets.giveItem` 补一张卡） |
+| al, bonnie, dorothy, haiqing, jill, lulu, megas, moses, ren, teru, zhao | ❌ | needs_player_session（依赖 `TargetSelectionRegistry` 的 ServerPlayer 会话） |
+| deepseek | ❌ | needs_player_wallet（星币账户） |
+| fen, hanna, komachi, lingling, mamushi, nancylu, nardis, pandaman | ❌ | needs_player_card_channel（发卡/卡牌栏） |
+| mimi, rin, papara | ❌ | needs_player_inventory（玩家背包） |
+| padman, sherry, fanny, ame | ❌ | needs_player_target（玩家目标选择） |
+| sykes | ❌ | needs_player_aim（玩家瞄准） |
+| parunan | ❌ | needs_player_shop_ui（玩家商店界面） |
+| kangel | ❌ | needs_player_team（队伍/合体判定） |
+| blank | ➖ | 材料物品，无主动 |
+
+> 结论：类玩家的立牌主动面**不是全量对齐**，而是「纯自身效果可用 + 其余显式拒绝并留锚点」。
+> 下游不必再猜「为什么没反应」：看 `AP_SIGN_ACTIVE_ENTITY_DENIED` 的 reason 即可。
+
+## 钱包 / 商店新增语义（2026-11-09 B）
+
+- `PlayerLikeWallet#isAvailable(LivingEntity)`：默认转发无参版本；附属用它区分「主人离线」与「没有账户」。
+  `ChipShopService` 现在返回三种不同结果：
+  - `NO_WALLET` —— 没有绑定钱包；
+  - `WALLET_UNAVAILABLE` —— 有绑定但当前不可用（主人离线 / 账户冻结）；
+  - `NO_COINS` —— 余额不足。
+- `PlayerLikeAbilities#deliverLikePlayer(LivingEntity, ItemStack)`：统一交付入口（`giveItem` → 失败兜底掉地）。
+  `PlayerLikeTargets#giveItem` 对玩家恒 `false` 是设计如此，**玩家请用各自背包 API**。
+
+## 给牌钩子的中立化（2026-11-09 C）
+
+`CardGivenHooks` 两线统一：`Listener#onCardGiven(LivingEntity giver, LivingEntity receiver)`，
+`fire(LivingEntity, LivingEntity)` 允许 `giver == null`（未知发牌方），并在服务端打
+`AP_CARD_GIVEN: giver=<name|none>:receiver=<name>`；旧的 `fire(ServerPlayer, ...)` 保留为兼容重载。
+产品结论：**未知发牌方不触发「双赢」等需要校验佩戴者的被动**，但会显式留
+`AP_AL_GIFT_STARLIGHT: skipped=unknown_giver` 锚点（不再静默 return）。
+
+## 类玩家商店自动播种（2026-11-09 D）
+
+`DiceCurioItem#curioTick` 对类玩家/参与者在补齐筹码槽后，若其商店状态**没有候选**则幂等补抽一次
+（`ChipShopService#prepareOffers`），并打 `AP_CHIP_SHOP_AUTOSEED: holder=<name>:offers=<n>`。
+自动播种只发生一次；「已购完 / 冷却中 / 已拥有全部」不会重掷，玩家路径不变。
