@@ -18,7 +18,7 @@
 5. **产物投放**：以工作树 `build/libs` 为唯一来源，按线复制到 `run/<1.21.1|1.20.1|26.1.2|fabric-1.20.1>/mods`，或**成对**投放两个 P0 整合包（`astral_dice-*.jar` + `starengine-*-<库版本>.jar`）；投完必须核 `sha256sum`（bash），别把同名当新构建。
 6. **git**：一律用 git bash 的 `git`，命令写全 `git -C F:\MCProject\<工作树> <子命令>`，或先 `cd` 进工作树。
 7. **JDK**：`JAVA_HOME=C:\Program Files\Zulu\zulu-21`（21.0.12）；`forge-1.20.1` 的 toolchain 17 由 Gradle 从 `%USERPROFILE%\.gradle\jdks` 取（已缓存 Adoptium 17.0.20），不要手改。
-8. **测试收尾必须自动关闭游戏进程（2026-10-18 用户裁决）**：任何测试轮次（单条 / 全量 / 中断 / 失败）结束后，必须执行 `bash scripts/test/win/mt.sh --version <线> --phase stop --force`，并在交付报告里贴出 `WIN_STOP: OK` 原文 + 「无本流程 java 客户端残留」的核对结果（用 `mcp__windows__Process(mode="list")` 读进程表并核对 `java` 数量；旧口径的 `ps -W | grep -ci java` 与 `MT_STOP: OK` 仅作溯源）。**禁止**让 Minecraft 客户端无人观察地驻留 —— 它持续占用 CPU/GPU 并污染下一轮冷启动的前置状态。唯一例外：用例 `on_fail=keep_game_running` 落了 `.mt_keep_alive-<版本>` 的取证现场，此时在报告里说明保留原因与路径，取证完成后立即 `--phase stop --force`。
+8. **测试收尾必须关闭游戏进程（2026-10-18 用户裁决；2026-11-09 起终止动作由 Agent 执行）**：任何测试轮次（单条 / 全量 / 中断 / 失败）结束后，收尾分两步 —— ① `bash scripts/test/win/mt.sh --version <线> --phase stop` 只**发现并打印** `MT_STOP: PENDING pid=…`（脚本不终止任何进程）；② Agent 用 `mcp__windows__Process(mode="kill", pid=…)` 终止这些 PID，随后 `--phase stop --verify` 必须输出 `MT_STOP: OK`（25585/25565/25575 无 LISTENING 且无匹配 `jps -lvm` 行）。交付报告贴 `MT_STOP: OK` 原文 + `Process(mode="list")` 的 `java` 数量核对（旧的原生进程表查询与强制结束命令仅作溯源）。**禁止**让 Minecraft 客户端无人观察地驻留 —— 它持续占用 CPU/GPU 并污染下一轮冷启动的前置状态。唯一例外：用例 `on_fail=keep_game_running` 落了 `.mt_keep_alive-<版本>` 的取证现场，此时在报告里说明保留原因与路径，取证完成后立即按上述两步收停。
 9. **命令通道 = `ops_bash` + 裸解释器名（2026-11-07 用户裁决）**：一切命令在 `run_code` 里用 `tools.ops_bash(...)` 执行，命令体里的 `bash` / `python` 一律写**裸名**，由 `ops_bash` 自行解析（Windows = PATH 上的 MSYS2 / git-bash；python = PATH 上的 **3.12.16**；Linux = 系统 bash / python3）。⛔ **禁止**写解释器绝对路径（`C:/msys64/usr/bin/bash`、`~/.dsh/dsh-runtimes/**/python.exe` 等）—— `ops_bash` 无法指定解释器，绝对路径只会让命令落到别的运行时。python 脚本**只依赖标准库**，缺库改实现，不得改指别的解释器。
 
 10. **实机的「进程 / 窗口 / 桌面」操作一律走 `dsh-windows-mcp`（2026-11-09 用户裁决，取代一切旧窗口脚本口径）**：MCP server 名 `windows`，工具面 = `Process`（`mode:"list"` / `mode:"kill"`，按 PID 或进程名）、`Snapshot` / `Screenshot`（截屏与 UI 元素树）、`Click` / `Move` / `Type` / `Shortcut` / `Scroll` / `Clipboard`（键鼠与剪贴板）、`Wait` / `WaitFor`（等窗口 / 文本 / 元素）、`Process` 之外的 `DisplayInventory` / `Registry` / `Notification` 等。
@@ -249,8 +249,8 @@ When extending this workspace:
 2. **测试与演示一律使用非亡灵生物**：游戏内实机测试、连拍演示、探针靶子**不得**用僵尸等亡灵生物（undead），
    一律改用**非亡灵**生物（如 minecraft:pillager、minecraft:cow）。原因：亡灵受治疗 / 伤害反转等特殊规则影响，
    会污染 FX / 伤害 / 音效类判据；历史脚本中以 zombie 为靶的写法一律视为待替换。
-3. **测试流程结束后必须关闭测试用游戏实例**：收尾时执行 bash scripts/test/win/mt.sh --version 线 --phase stop，
-   确认 WIN_STOP: OK 且无本流程 java 客户端残留（用 `mcp__windows__Process` 列进程核对 `java`；gradle 守护进程保留属正常；旧口径标记 `MT_STOP` 仅作溯源）；禁止让客户端无人观察地驻留 ——
+3. **测试流程结束后必须关闭测试用游戏实例**：收尾分两步 —— ① 执行 `bash scripts/test/win/mt.sh --version <线> --phase stop`（只打印 `MT_STOP: PENDING pid=…`，脚本不终止进程）；
+   ② Agent 用 `mcp__windows__Process(mode="kill", pid=…)` 终止这些 PID，再 `--phase stop --verify` 必须输出 `MT_STOP: OK`（三端口无 LISTENING 且无匹配 `jps -lvm` 行）；报告贴该行原文 + `Process(mode="list")` 的 `java` 数量（gradle 守护进程保留属正常）；禁止让客户端无人观察地驻留 ——
    它会持续占用 CPU / GPU、污染下一次冷启动前置状态，并让 enableShaders 之类的运行期状态被意外持久化。
    **收尾一律带 `--purge-saves`**（2026-10-08 用户裁决：每轮实机验证后清理旧存档）：标准收尾命令 = `bash scripts/test/win/mt.sh --version <线> --phase stop --purge-saves`，成功判据 = `MT_CLEANUP_SAVES: PURGED <n>` + `MT_CLEANUP_RESULT: OK`；`.mt_keep_alive` 存在时只提示、保留取证现场。收尾同时**删除本轮注入的临时探针**（`run/<线>/kubejs/**` 的一次性测试脚本，以及源码侧 `scripts/test/resources/kubejs/**` 的临时探针），并在交付报告里贴 `git status --short -uall` 原文（2026-10-11 用户交接裁决）。
 

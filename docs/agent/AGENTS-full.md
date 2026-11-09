@@ -87,8 +87,8 @@ When extending this workspace:
 2. **测试与演示一律使用非亡灵生物**：游戏内实机测试、连拍演示、探针靶子**不得**用僵尸等亡灵生物（undead），
    一律改用**非亡灵**生物（如 minecraft:pillager、minecraft:cow）。原因：亡灵受治疗 / 伤害反转等特殊规则影响，
    会污染 FX / 伤害 / 音效类判据；历史脚本中以 zombie 为靶的写法一律视为待替换。
-3. **测试流程结束后必须关闭测试用游戏实例**：收尾时执行 bash scripts/test/win/mt.sh --version 线 --phase stop，
-   确认 WIN_STOP: OK 且无本流程 java 客户端残留（用 `mcp__windows__Process` 列进程核对 `java`；gradle 守护进程保留属正常；旧口径标记 `MT_STOP` 仅作溯源）；禁止让客户端无人观察地驻留 ——
+3. **测试流程结束后必须关闭测试用游戏实例**：收尾分两步 —— ① 执行 `bash scripts/test/win/mt.sh --version <线> --phase stop`（只打印 `MT_STOP: PENDING pid=…`，脚本不终止进程）；
+   ② Agent 用 `mcp__windows__Process(mode="kill", pid=…)` 终止这些 PID，再 `--phase stop --verify` 必须输出 `MT_STOP: OK`（三端口无 LISTENING 且无匹配 `jps -lvm` 行）；报告贴该行原文 + `Process(mode="list")` 的 `java` 数量（gradle 守护进程保留属正常）；禁止让客户端无人观察地驻留 ——
    它会持续占用 CPU / GPU、污染下一次冷启动前置状态，并让 enableShaders 之类的运行期状态被意外持久化。
    **收尾一律带 `--purge-saves`**（2026-10-08 用户裁决：每轮实机验证后清理旧存档）：标准收尾命令 = `bash scripts/test/win/mt.sh --version <线> --phase stop --purge-saves`，成功判据 = `MT_CLEANUP_SAVES: PURGED <n>` + `MT_CLEANUP_RESULT: OK`；`.mt_keep_alive` 存在时只提示、保留取证现场。收尾同时**删除本轮注入的临时探针**（`run/<线>/kubejs/**` 的一次性测试脚本，以及源码侧 `scripts/test/resources/kubejs/**` 的临时探针），并在交付报告里贴 `git status --short -uall` 原文（2026-10-11 用户交接裁决）。
 
@@ -2395,7 +2395,7 @@ bash scripts/test/win/mt.sh --version 1.21.1 --phase build      # 阶段 B：gra
 bash scripts/test/win/mt.sh --version 1.21.1 --phase launch     # 阶段 L：起客户端 + 等就绪 + 进世界
 bash scripts/test/win/mt.sh --version 1.21.1 --phase cases --case scripts/test/cases/X-1.21.1.json
 bash scripts/test/win/mt.sh --version 1.21.1 --phase report     # 阶段 R：收集证据 + 出结论
-bash scripts/test/win/mt.sh --version 1.21.1 --phase stop --force --purge-saves   # 收停 + 清存档
+bash scripts/test/win/mt.sh --version 1.21.1 --phase stop --purge-saves          # 收停：只打印 PENDING PID（终止由 Agent 经 windows MCP 执行）+ 清存档
 
 # 全流程（各线顺序 + 门控；--allow-auto 过批量闸门）
 bash scripts/test/win/mt.sh --allow-auto
@@ -2422,7 +2422,7 @@ bash scripts/test/win/mt.sh --version 1.21.1 --phase build --dry-run
 | `12` | TIMEOUT（到预算上限） |
 | `130` | 中断（Ctrl-C） |
 
-**机器行族（供报告与断言消费，勿改格式串）**：`MT_ERROR:` / `MT_INFO:` / `MT_WARN:` / `MT_PHASE:` / `MT_RUN:` / `MT_VERSION_VERDICT:` / `MT_AUTO_DISABLED:` / `MT_DEPRECATED:`（旧 shell 委托标记，P2–P4 后已无产出）/ `MT_<阶段>: OK|FAIL|BLOCKED|TIMEOUT|ERROR`。收停另有 `WIN_STOP: OK`（`scripts/test/win/lib/common.sh:156` 的 `mt_winstop()`），**不是**旧口径的 `MT_STOP: OK`。
+**机器行族（供报告与断言消费，勿改格式串）**：`MT_ERROR:` / `MT_INFO:` / `MT_WARN:` / `MT_PHASE:` / `MT_RUN:` / `MT_VERSION_VERDICT:` / `MT_AUTO_DISABLED:` / `MT_DEPRECATED:`（旧 shell 委托标记，P2–P4 后已无产出）/ `MT_<阶段>: OK|FAIL|BLOCKED|TIMEOUT|ERROR`。收停另有 `MT_STOP: PENDING pid=…`（发现阶段，脚本不终止进程）与 `MT_STOP: OK|FAIL`（`--verify` 复核三端口 LISTENING 与 `jps -lvm` 行）；终止动作由 Agent 经 `mcp__windows__Process(mode="kill")` 执行。
 
 **四个批量闸门（2026-09-27 规则，逐字保留）**：① 无 `--phase` 的全流程；② `--phase cases` 未带 `--case`；③ `--phase report`；④ 无 `--version` 的单阶段 —— 一律拦下并 `exit 2`，除非显式 `--allow-auto`。这不是防呆，是防「无意识跑满各线把机器占住」。
 
@@ -2435,7 +2435,7 @@ bash scripts/test/win/mt.sh --version 1.21.1 --phase build --dry-run
 - 现行用例清单以 `scripts/test/cases/*.json` 实测为准；规范正本 `scripts/test/TESTING-SPEC.md`；规则总览 `scripts/test/TESTING-RULES-OVERVIEW.md（已删除 2026-11-05）`。
 
 - ⚠️ **测试环境必须窗口模式**（2026-09-21 实测 + 用户裁决）：`run/<版本>/options.txt` 的 `fullscreen` 必须为 `false`。全屏会让键鼠注入**完全送不到**（全屏切换换窗口句柄 / 焦点），launch 阶段硬闸门因此稳定 FAIL —— 症状极具迷惑性：脚本自发的 tick 心跳照常出现在 `latest.log`，唯独「注入命令」没有任何回应，极易误诊为「探针未加载」。env 阶段在**冷启动之前**幂等强制（`scripts/test/win/lib/common.sh` 的窗口化强制逻辑）。
-- ⚠️ **冒烟测试结束后直接杀死游戏进程**（2026-09-21 用户裁决）：不得让 runClient 驻留。用例**不得**设 `on_fail=keep_game_running` —— 现行 bash 收停链路（`win/stop.sh`）**并不读取** `cases/.mt_keep_alive-<版本>` 标记，设了它只会让现场悄悄留成常驻进程（标记只有 `mt_preflight.py` 的前置检查会看见并报 FAIL）；标准收尾仍是 `mt.sh --version <V> --phase stop --purge-saves`。
+- ⚠️ **冒烟测试结束后必须关闭游戏进程**（2026-09-21 用户裁决；2026-11-09 起终止由 Agent 执行）：不得让 runClient 驻留。用例**不得**设 `on_fail=keep_game_running` —— 现行 bash 收停链路（`win/stop.sh`）**并不读取** `cases/.mt_keep_alive-<版本>` 标记，设了它只会让现场悄悄留成常驻进程（标记只有 `mt_preflight.py` 的前置检查会看见并报 FAIL）；标准收尾 = `mt.sh --version <V> --phase stop --purge-saves` 取 PID → Agent 经 windows MCP 终止 → `--phase stop --verify` 复核 `MT_STOP: OK`。
 - **测试分支（任意分支均可，2026-09-17 用户裁决）**：分支**不再是前置门槛** —— 阶段 P 的分支检查只作**信息性回显 + WARN**，一律放行、不拦停。报告「分支」一栏取运行时实际分支名（读失败回落 `unknown`）。其余前置断言（输入法 / 遗留进程 / 模组来源闸门 / Gradle 包装器 / 兼容栈 / run 可写）**逐条保留、一项未减**。
 - **「长按」类回归必须真的按住，且必须有对照步（2026-09-14 实测教训）**：旧注入器曾**静默忽略** hold 时长（始终 down→100ms→up），于是「长按右键」类用例走不到原版自动重复分支，用单击也能「通过」——判据形同虚设。现行 `scripts/test/mt_inject.py` 用 `--hold-ms` 表达按住（`--hold-ms 0` = 保留单击行为，输出行回显按住时长）。凡结论依赖「重复触发」的用例，必须附一条**对照步**证明重复真的发生（如生存模式投 16 枚鸡蛋、长按 3 秒后必须只剩 1 枚；创造模式下物品不消耗，**不能**用作对照）。
 
@@ -2517,9 +2517,9 @@ bash scripts/test/win/stop.sh --all --purge-saves           # 各线全收（--v
 - **清理范围**（只动 `run/<版本>/` 内的世界目录，绝不碰 run 之外，也绝不碰种子包 `scripts/test/resources/testworld-seed-<版本>.zip`）：① `run/<版本>/saves/<世界名>`（客户端读取位置）；② `run/<版本>/<世界名>`（服务端生成世界的中间位置）；③ `run/<版本>/saves/` 下其它含 `level.dat` 的历史遗留世界（逐个回显后删除）。fabric 线另有 `fabric-1.20.1/run/<client|server>` 双侧目录。删除结果回显 `PURGE: removed <N>` / `PURGE: would-remove`（`--dry-run`）；python 手工链路（`mt_cleanup.py --purge-saves`）另打 `MT_CLEANUP_SAVES: PURGED <N>` / `KEPT`。
 - **为什么删得起**：与阶段 E「每次开新的自动化测试都必须重建世界」同源 —— 旧存档本来就必须重建，留着只会掩盖「忘了跑 env 世界重建」，还白占磁盘。
 - ⚠️ **两阶段/重登类用例（`CHIP-RELOG-*`）中途的 stop 禁止加 `--purge-saves`**：那类流程是 `saveall` → `stop`（**保留存档**）→ `launch` 读回，删了就没得读。故 `--phase stop` **默认不清理**，只有显式 `--purge-saves` 才清。
-- **失败取证标记（契约缺口，已知）**：`.mt_keep_alive` 的「只提示不执行」语义**目前只在 `mt_preflight.py` 与 `mt_cleanup.py` 里成立** —— 前置检查看见标记会判 FAIL 并给出原因，python 收停会 SKIP；但**显式 `--phase stop` 走的是 `win/stop.sh`，它不读标记、`--force` 也只是空赋值**（`stop.sh:37`、`:72`，`phases.sh:304-306` 还会打 `MT_INFO: STOP: --force 在 bash 侧是 no-op`）。⇒ 需要保留现场时**不要**跑 `--phase stop`，改用 `python scripts/test/mt_cleanup.py run --version <V>`；取证完 `--purge-saves --force` 释放。该缺口已登记，后续按需求补齐为 bash 侧读标记。
+- **失败取证标记（契约缺口，已知）**：`.mt_keep_alive` 的「只提示不执行」语义**目前只在 `mt_preflight.py` 与 `mt_cleanup.py` 里成立** —— 前置检查看见标记会判 FAIL 并给出原因，python 收停会 SKIP；但**显式 `--phase stop` 走的是 `win/stop.sh`，它不读标记、也不终止进程**（只打印 `MT_STOP: PENDING pid=…`；`--force` 接受但 no-op）。⇒ 需要保留现场时**不要**跑 `--phase stop`，改用 `python scripts/test/mt_cleanup.py run --version <V>`；取证完再按 stop → Agent 终止 → `--verify` 释放。
 - **不要在测试任务之间留着客户端**：进入世界后若长时间不再读数，进程会一直驻留（占内存/显卡，且下一次 launch 的前置检查可能因此中止）。这与「前置检查自动收停遗留进程」是两道互补保险，不能互相替代。
-- **收停是异步的**：`TerminateProcess` 返回 ≠ 进程已从进程表消失。`win/stop.sh` 用 `--grace`（默认 10 秒）在判残留前复核；慢退出的客户端否则会被误报 `WIN_STOP: RESIDUAL` / 退出码 1。python 手工链路 `mt_cleanup.py` 固定 `SETTLE_SECONDS = 20.0`（步长 0.5）。
+- **收停是「交棒 + 复核」而非同步杀**：`win/stop.sh` 只打印 `MT_STOP: PENDING pid=…`；Agent 用 windows MCP 终止后，`--phase stop --verify` 复核三端口无 LISTENING 且无匹配 `jps -lvm` 行；`mt_cleanup.py` 仍以 `SETTLE_SECONDS = 20.0`（步长 0.5）观测进程表。
 - **收停范围覆盖「专用服务端 / 数据生成 / run 任务包装器」**：判据有**两套实现**（不共用一个单点）—— bash 侧 `scripts/test/win/lib/common.sh:259-279` 的 `mt_cmdline_matches_version`（命令行含 `:<子项目>:` 或 `run/<v>` / `run\<v>`，fabric 另加 `run*client|server` 兜底）；python 侧 `scripts/test/lib/mt_compat.py:742-790` 的 `test_client_process` / `test_pipeline_process`（窗口标题含版本号，或 fabric `devlaunchinjector` / `KnotClient`，加 `gradle-wrapper.jar` + 运行入口）。⚠️ **只认 `run` 家族选择器** —— `:neoforge-1.21.1:build` 之类的构建任务不属于测试流程，**绝不能杀**（构建中途被收停会毁产物）。
 
 ### 6. 工具链（`scripts/test/`；脚本入库，仅 `mt.conf`、`reports/*`、`cases/.mt_*` 为本地忽略的运行时产物）
@@ -2593,7 +2593,7 @@ mt.sh
 
 | 路径 | 入口 | 何时用 | 行为 |
 |---|---|---|---|
-| **编排链路（唯一自动路径）** | `scripts/test/win/stop.sh`（`--phase stop` 与全流程收尾都走它，`mt.sh:208` / `:308`） | 每轮结束、全流程收尾 | 按进程判据收停本流程进程 → `--grace`（默认 10s）复核残留 → `--purge-saves` 清存档 → `--stop-daemon` 停守护；打 `WIN_STOP: …` / `PURGE: …` |
+| **编排链路（唯一自动路径）** | `scripts/test/win/stop.sh`（`--phase stop` 与全流程收尾都走它，`mt.sh:208` / `:308`） | 每轮结束、全流程收尾 | 用 `jps -lvm` + pidfile + 三端口发现本流程进程 → 打印 `MT_STOP: PENDING pid=…`（不终止） → 由 Agent 经 `mcp__windows__Process(mode="kill")` 终止 → `--verify` 复核 `MT_STOP: OK` → `--purge-saves` 清存档 → `--stop-daemon` 停守护；打 `MT_STOP: …` / `PURGE: …` |
 | **手工链路** | `python scripts/test/mt_cleanup.py status\|run` | 需要「尊重失败取证标记」或只想看残留时 | 读 `cases/.mt_keep_alive-<版本>`（存在即 SKIP 并保留现场）、`--force` 才清标记、固定 `SETTLE_SECONDS = 20.0` 复核；打 `MT_CLEANUP*` |
 
 ⚠️ **没有全局退出钩子**：`mt.sh:228` 明确写着「P1 简化点：不做全局 `--run-timeout` 预算、不做退出清理」，`trap` 只退编排层、**不动游戏进程**。⇒ 分步执行（`--phase launch` / `--phase cases`）时**最后一次读数之后必须自己跑收停命令**，这是硬纪律。
