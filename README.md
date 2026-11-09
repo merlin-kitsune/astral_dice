@@ -119,7 +119,7 @@ The Abyss Reagent chip is named consistently now: display name, tooltip and ever
 - **CurseForge**: the builds go to the main project (`astral-dice`, project id `1662159`). StarEngine has its own project (`starengine`, id `1755415`); **none of the four lines bundles it any more**, so players must install that separate jar themselves: `starengine-neoforge-1.21.1-26.4-SNAPSHOT.1.jar` / `starengine-forge-1.20.1-26.4-SNAPSHOT.1.jar` / `starengine-neoforge-26.1.2-26.4-SNAPSHOT.1.jar` / `starengine-fabric-1.20.1-26.4-SNAPSHOT.1.jar`. Version numbers keep the `+<loader>_<MC>` suffix (for example `1.5.0+neoforge_1.21.1`), and the release channel follows the version suffix. Modrinth publishing was permanently dropped on 2026-10-23; CurseForge is the only store channel.
 - **Build artefacts**: `astral_dice-1.5.0+neoforge_1.21.1.jar`, `astral_dice-1.5.0+forge_1.20.1.jar`, `astral_dice-1.5.0+neoforge_26.1.2.jar` and `astral_dice-1.5.0+fabric_1.20.1.jar`, each under its subproject's `build/libs/`; the version inside each jar matches the file name (1.5.0).
 
-## Build provenance (26.4-SNAPSHOT.8)
+## Build provenance (26.4-SNAPSHOT.9)
 
 Each jar carries `META-INF/astral_dice/build-info.json` with `{version, commit, builtAt, classCount}` and ships a
 sibling `<jar>.sha256`. `build-info.commit` names the **code commit** the jar was built from; the README update that
@@ -127,8 +127,11 @@ records the hash does not change the artifact.
 
 | Line | Version | Built from | Built at | Size (B) | SHA-256 |
 |---|---|---|---|---|---|
-| neoforge-1.21.1 | 26.4-SNAPSHOT.8+neoforge_1.21.1 | `624258e8`（A–E 全部代码 + 版本号） | 2026-11-09T21:08:01+08:00 | 2,732,436 | `897940101d0e1ec1b2d61ff3d6da52c706cfd9bb2a3e2c5fb376949f5648bc86` |
-| forge-1.20.1 | 26.4-SNAPSHOT.8+forge_1.20.1 | `624258e8`（A–E 全部代码 + 版本号） | 2026-11-09T21:08:01+08:00 | 2,782,292 | `059362740f855ba785c6aad025c0dce45f0de5045ca33798d035fe6ba9baf7a2` |
+| neoforge-1.21.1 | 26.4-SNAPSHOT.9+neoforge_1.21.1 | `72170753`（永久不兼容 + .9） | 2026-11-09T21:38:42+08:00 | 2,732,029 | `81d3f9f76b138bad1fbfc133f1884465756b87bf338fd7d2f915b1552fa60f61` |
+| forge-1.20.1 | 26.4-SNAPSHOT.9+forge_1.20.1 | `72170753`（永久不兼容 + .9） | 2026-11-09T21:38:44+08:00 | 2,781,884 | `fc6901cae3864b656ed32c81e17d84960e553f68e9a529fa2e5dcbcff4c69d2b` |
+| neoforge-26.1.2 | 26.4-SNAPSHOT.9+neoforge_26.1.2 | 同上（本线无 build-info） | 2026-11-09T21:38:00+08:00 | 2,912,981 | `1fe5e78196210608a55044d13e33b81f48e114ad596578b3f1bd6bee52518269` |
+| fabric-1.20.1 | 26.4-SNAPSHOT.9+fabric_1.20.1 | 同上（本线无 build-info） | 2026-11-09T21:38:03+08:00 | 3,023,619 | `577adb256d22a8964c17d4a850c5333210fda21600835cee68137865d4becb36` |
+| fabric-1.21.1 | 26.4-SNAPSHOT.9+fabric_1.21.1 | 同上（本线无 build-info） | 2026-11-09T21:38:03+08:00 | 3,049,923 | `592c92a06a4f61789890ec23708f5218d1ccd57226cfff8724a7620244745d32` |
 
 `build/libs` keeps only the current version; older `26.4-SNAPSHOT.{6,7}` and `2.0.0-SNAPSHOT.*` jars were moved to
 `temp/quarantine-build-libs/`. Purge stale local m2 coordinates that were overwritten in place before this release:

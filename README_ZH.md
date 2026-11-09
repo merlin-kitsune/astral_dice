@@ -119,15 +119,18 @@ Astral Dice 是一个以骰子为核心的生存扩展。戴上骰子后，每�
 - **CurseForge**：构建发布到主项目（`astral-dice`，project id `1662159`）。StarEngine 有独立项目（`starengine`，id `1755415`）；**各线全部不再内置**该库，玩家需自行安装对应平台的那份独立 jar：`starengine-neoforge-1.21.1-26.4-SNAPSHOT.1.jar` / `starengine-forge-1.20.1-26.4-SNAPSHOT.1.jar` / `starengine-neoforge-26.1.2-26.4-SNAPSHOT.1.jar` / `starengine-fabric-1.20.1-26.4-SNAPSHOT.1.jar`。版本号保留 `+<加载器>_<MC版本>` 后缀（例如 `1.5.0+neoforge_1.21.1`），发布渠道由版本后缀决定。Modrinth 发布链路已于 2026-10-23 永久移除，唯一商店通道是 CurseForge。
 - **构建产物**：`astral_dice-1.5.0+neoforge_1.21.1.jar`、`astral_dice-1.5.0+forge_1.20.1.jar`、`astral_dice-1.5.0+neoforge_26.1.2.jar`、`astral_dice-1.5.0+fabric_1.20.1.jar`，各自位于对应子项目的 `build/libs/` 下；jar 内元数据版本与文件名同号（1.5.0）。
 
-## 构建溯源（26.4-SNAPSHOT.8）
+## 构建溯源（26.4-SNAPSHOT.9）
 
 每个 jar 内嵌 `META-INF/astral_dice/build-info.json`（`{version, commit, builtAt, classCount}`），并附同名 `<jar>.sha256`。
 `build-info.commit` 指向**代码提交**；登记哈希的那次 README 提交不改变产物。
 
 | 线 | 版本 | 构建自 | 构建时间 | 大小（字节） | SHA-256 |
 |---|---|---|---|---|---|
-| neoforge-1.21.1 | 26.4-SNAPSHOT.8+neoforge_1.21.1 | `624258e8`（A–E 全部代码 + 版本号） | 2026-11-09T21:08:01+08:00 | 2,732,436 | `897940101d0e1ec1b2d61ff3d6da52c706cfd9bb2a3e2c5fb376949f5648bc86` |
-| forge-1.20.1 | 26.4-SNAPSHOT.8+forge_1.20.1 | `624258e8`（A–E 全部代码 + 版本号） | 2026-11-09T21:08:01+08:00 | 2,782,292 | `059362740f855ba785c6aad025c0dce45f0de5045ca33798d035fe6ba9baf7a2` |
+| neoforge-1.21.1 | 26.4-SNAPSHOT.9+neoforge_1.21.1 | `72170753`（永久不兼容 + .9） | 2026-11-09T21:38:42+08:00 | 2,732,029 | `81d3f9f76b138bad1fbfc133f1884465756b87bf338fd7d2f915b1552fa60f61` |
+| forge-1.20.1 | 26.4-SNAPSHOT.9+forge_1.20.1 | `72170753`（永久不兼容 + .9） | 2026-11-09T21:38:44+08:00 | 2,781,884 | `fc6901cae3864b656ed32c81e17d84960e553f68e9a529fa2e5dcbcff4c69d2b` |
+| neoforge-26.1.2 | 26.4-SNAPSHOT.9+neoforge_26.1.2 | 同上（本线无 build-info） | 2026-11-09T21:38:00+08:00 | 2,912,981 | `1fe5e78196210608a55044d13e33b81f48e114ad596578b3f1bd6bee52518269` |
+| fabric-1.20.1 | 26.4-SNAPSHOT.9+fabric_1.20.1 | 同上（本线无 build-info） | 2026-11-09T21:38:03+08:00 | 3,023,619 | `577adb256d22a8964c17d4a850c5333210fda21600835cee68137865d4becb36` |
+| fabric-1.21.1 | 26.4-SNAPSHOT.9+fabric_1.21.1 | 同上（本线无 build-info） | 2026-11-09T21:38:03+08:00 | 3,049,923 | `592c92a06a4f61789890ec23708f5218d1ccd57226cfff8724a7620244745d32` |
 
 `build/libs` 只保留当前版本；旧的 `26.4-SNAPSHOT.{6,7}` 与 `2.0.0-SNAPSHOT.*` 已移到 `temp/quarantine-build-libs/`。
 先清掉本次之前被同名覆盖的本地 m2 坐标，再从整合包/分发目录重装：
