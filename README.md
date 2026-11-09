@@ -130,13 +130,14 @@ names the **code commit** the jar was built from; the README update that records
 | neoforge-1.21.1 | 26.4-SNAPSHOT.10+neoforge_1.21.1 | `77a0d1b2`（库引脚 .2 + .10） | 2026-11-09T22:24:47+08:00 | 2,732,032 | `50732740bc3cc86a276f9f512c598cd4a83b0b07c700311c79cf6e4d5e67057a` |
 | forge-1.20.1 | 26.4-SNAPSHOT.10+forge_1.20.1 | `77a0d1b2`（库引脚 .2 + .10） | 2026-11-09T22:24:47+08:00 | 2,781,886 | `a82a34dea51d873b1b088d104341e52b8c419d3b14972f66a10e2875c88283b1` |
 | neoforge-26.1.2 | 26.4-SNAPSHOT.10+neoforge_26.1.2 | 同上（本线无 build-info） | 2026-11-09T22:16:16+08:00 | 2,912,982 | `48a455cfeed1c832a7838d99cbd962cde983f96b621d5c5b83d9e045f2410d5b` |
-| fabric-1.20.1 | 26.4-SNAPSHOT.10+fabric_1.20.1 | 待重建（Loom 缓存重建被当前网络阻塞） | — | — | — |
-| fabric-1.21.1 | 26.4-SNAPSHOT.10+fabric_1.21.1 | 待重建（同上） | — | — | — |
+| fabric-1.20.1 | 26.4-SNAPSHOT.10+fabric_1.20.1 | `58992f0c`（库引脚 .11 + .10） | 2026-11-09T22:32:17+08:00 | 3,023,620 | `b1ed477eafea1ea45a532e50d3b15915ddea4c16b1949661fcec5bd3da0fff2e` |
+| fabric-1.21.1 | 26.4-SNAPSHOT.10+fabric_1.21.1 | `58992f0c`（库引脚 .9 + .10） | 2026-11-09T22:32:52+08:00 | 3,049,924 | `7a6f8169afb89767c39f13321062abcf6fc60aa8bde8c01a330c96c465dc8b53` |
 
-The two fabric lines could not be rebuilt in this cycle: after an interrupted build Loom marked its cache lock as
-`ACQUIRED_PREVIOUS_OWNER_DISOWNED` and rebuilds it from scratch, and that rebuild stalls while downloading Minecraft
-metadata in this environment. Rebuild them (`./gradlew --configure-on-demand :fabric-1.20.1:build :fabric-1.21.1:build`)
-once the Loom cache can be repopulated, then fill the two rows above and commit.
+Both fabric lines were rebuilt afterwards. The stall was a throughput problem, not a dead end: after an interrupted
+build Loom marked its cache lock `ACQUIRED_PREVIOUS_OWNER_DISOWNED` and re-downloaded `minecraft-server.jar` (47.8 MB)
+through the local HTTPS proxy at ~73 KB/s, so the console looked frozen. Route Mojang CDNs direct
+(`systemProp.http.nonProxyHosts` gain `piston-data.mojang.com`, `piston-meta.mojang.com`, `libraries.minecraft.net`,
+`resources.download.minecraft.net`; keep `maven.fabricmc.net` proxied) and judge a stall by watching `*.part` grow.
 
 `build/libs` keeps only the current version; older `26.4-SNAPSHOT.{6,7}` and `2.0.0-SNAPSHOT.*` jars were moved to
 `temp/quarantine-build-libs/`. Purge stale local m2 coordinates that were overwritten in place before this release:
