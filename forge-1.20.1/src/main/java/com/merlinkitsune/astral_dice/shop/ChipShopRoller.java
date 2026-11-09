@@ -3,6 +3,7 @@ package com.merlinkitsune.astral_dice.shop;
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -48,12 +49,12 @@ public final class ChipShopRoller {
      * @param player    服务端玩家（提供星阶、已拥有集合、已装备流派与随机源）
      * @param lastPick  上次购买筹码的类别；{@code null} ⇒ 无类别偏置（R10）
      */
-    public static List<ChipShopCatalog.Entry> roll(Player player, @Nullable ChipShopCatalog.Category lastPick) {
+    public static List<ChipShopCatalog.Entry> roll(LivingEntity player, @Nullable ChipShopCatalog.Category lastPick) {
         return roll(player, player.getRandom(), lastPick);
     }
 
     /** 可注入随机源的版本（测试 / 复算用；生产走 {@link #roll(Player, ChipShopCatalog.Category)}） */
-    public static List<ChipShopCatalog.Entry> roll(Player player, RandomSource random,
+    public static List<ChipShopCatalog.Entry> roll(LivingEntity player, RandomSource random,
                                                    @Nullable ChipShopCatalog.Category lastPick) {
         List<ChipShopCatalog.Entry> pool = availablePool(player);
         Map<ChipShopCatalog.School, Integer> equippedSchools = equippedSchoolCounts(player);
@@ -80,7 +81,7 @@ public final class ChipShopRoller {
     }
 
     /** 可用池 = 全池 − 已拥有（顺序保持 {@link ChipShopCatalog#POOL} 的注册顺序，便于复算） */
-    public static List<ChipShopCatalog.Entry> availablePool(Player player) {
+    public static List<ChipShopCatalog.Entry> availablePool(LivingEntity player) {
         Set<Item> owned = ownedChipItems(player);
         List<ChipShopCatalog.Entry> pool = new ArrayList<>(ChipShopCatalog.POOL.size());
         for (ChipShopCatalog.Entry entry : ChipShopCatalog.POOL) {
@@ -92,7 +93,7 @@ public final class ChipShopRoller {
     }
 
     /** 玩家是否已拥有全部筹码（R6：全拥有 ⇒ 不开店 + actionbar 红字） */
-    public static boolean ownsEverything(Player player) {
+    public static boolean ownsEverything(LivingEntity player) {
         return availablePool(player).isEmpty();
     }
 
@@ -103,7 +104,7 @@ public final class ChipShopRoller {
      * 2026-10-24 用户裁决：换骰子 / 换装备**不再触发免费重抽**（原「换骰或升星都必须重抽」的口径已作废）；
      * 真实铁砧升星改为在**取走成品**时授予 1 次刷新。未装备骰子时返回 {@code "none"}。
      */
-    public static String diceKey(Player player) {
+    public static String diceKey(LivingEntity player) {
         if (player == null) return "none";
         var curios = com.merlinkitsune.starengine.item.CuriosCompat.getCuriosInventory(player);
         if (curios.isEmpty()) return "none";
@@ -116,7 +117,7 @@ public final class ChipShopRoller {
     }
 
     /** 骰子星阶（复用卡牌商店口径：下界之星骰恒 3，否则 clamp 0..3） */
-    public static int starLevel(Player player) {
+    public static int starLevel(LivingEntity player) {
         return Math.max(0, Math.min(3, CardShopShelf.currentStarLevel(player)));
     }
 
@@ -205,28 +206,37 @@ public final class ChipShopRoller {
     }
 
     /** 该筹码是否已被玩家拥有（R5/Q11 口径：chip 饰品槽 ∪ 物品栏 36 格，不含副手） */
-    public static boolean isOwned(Player player, ChipShopCatalog.Entry entry) {
+    public static boolean isOwned(LivingEntity player, ChipShopCatalog.Entry entry) {
         return ownedChipItems(player).contains(entry.item());
     }
 
     /** 「已拥有」物品集合 = chip 饰品槽 ∪ 物品栏 36 格（不含副手） */
-    public static Set<Item> ownedChipItems(Player player) {
+    public static Set<Item> ownedChipItems(LivingEntity player) {
         Set<Item> owned = new HashSet<>();
-        CurioSlotUtil.forEachCurioStack(player, CHIP_SLOT_ID, stack -> owned.add(stack.getItem()));
-        Inventory inventory = player.getInventory();
-        for (int i = 0; i < INVENTORY_SLOTS; i++) {
-            ItemStack stack = inventory.getItem(i);
-            if (!stack.isEmpty()) {
-                owned.add(stack.getItem());
+        if (player instanceof Player owner) {
+            CurioSlotUtil.forEachCurioStack(owner, CHIP_SLOT_ID, stack -> owned.add(stack.getItem()));
+            Inventory inventory = owner.getInventory();
+            for (int i = 0; i < INVENTORY_SLOTS; i++) {
+                ItemStack stack = inventory.getItem(i);
+                if (!stack.isEmpty()) {
+                    owned.add(stack.getItem());
+                }
+            }
+        } else {
+            for (ItemStack stack : com.merlinkitsune.astral_dice.item.chip.ChipEquip.equippedChips(player)) {
+                if (!stack.isEmpty()) {
+                    owned.add(stack.getItem());
+                }
             }
         }
         return owned;
     }
 
     /** 已装备筹码的**流派计数**（只算 chip 饰品槽；用于同流派权重） */
-    private static Map<ChipShopCatalog.School, Integer> equippedSchoolCounts(Player player) {
+    private static Map<ChipShopCatalog.School, Integer> equippedSchoolCounts(LivingEntity player) {
         Map<ChipShopCatalog.School, Integer> counts = new EnumMap<>(ChipShopCatalog.School.class);
-        CurioSlotUtil.forEachCurioStack(player, CHIP_SLOT_ID, stack ->
+        if (!(player instanceof Player owner)) return counts;
+        CurioSlotUtil.forEachCurioStack(owner, CHIP_SLOT_ID, stack ->
                 ChipShopCatalog.schoolOf(stack).ifPresent(school -> counts.merge(school, 1, Integer::sum)));
         return counts;
     }

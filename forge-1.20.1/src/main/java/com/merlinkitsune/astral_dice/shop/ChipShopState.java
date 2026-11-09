@@ -128,7 +128,7 @@ public record ChipShopState(List<String> offers, Optional<String> lastPickCatego
      * <p>⚠️ 2026-10-24 用户裁决：**已删除「骰子签名变化即重抽」的比对** —— 换装备 / 换骰子 / 升星
      * 都不得再免费刷新（旧比对让换一次骰子就等于白送一批候选）。{@code rolledDiceKey} 仅作诊断留痕。
      */
-    public boolean needsReroll(Player player) {
+    public boolean needsReroll(net.minecraft.world.entity.LivingEntity player) {
         List<ChipShopCatalog.Entry> list = entries();
         if (list.isEmpty()) {
             return true;

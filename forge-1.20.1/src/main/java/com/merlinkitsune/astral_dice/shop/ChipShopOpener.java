@@ -68,15 +68,40 @@ public final class ChipShopOpener {
      *
      * <p>包级可见：{@link ChipShopMenu} 不调用它（菜单构造只读），仅供本类与测试 / 探针使用。
      */
-    static void ensureOffers(Player player) {
-        ChipShopState state = ChipShopState.get(player);
-        if (!state.needsReroll(player)) {
+    static void ensureOffers(net.minecraft.world.entity.LivingEntity holder) {
+        ChipShopState state = ChipShopState.get(holder);
+        if (!state.needsReroll(holder)) {
             return;
         }
-        ChipShopState next = state.withOffers(ChipShopRoller.roll(player, state.lastCategory().orElse(null)), ChipShopRoller.diceKey(player));
-        ChipShopState.store(player, next);
-        LOGGER.info("[astral_dice] CHIP_SHOP_REROLL_ON_ENTER player={} offers={} purchased={}",
-                player.getName().getString(), next.offersKey(), next.purchasedCount());
+        ChipShopState next = state.withOffers(ChipShopRoller.roll(holder, state.lastCategory().orElse(null)), ChipShopRoller.diceKey(holder));
+        ChipShopState.store(holder, next);
+        LOGGER.info("[astral_dice] CHIP_SHOP_REROLL_ON_ENTER holder={} offers={} purchased={}",
+                holder.getName().getString(), next.offersKey(), next.purchasedCount());
+    }
+
+    /**
+     * 非界面宿主（注册生物）的「进店」等价入口：三项前置 → 补抽 → 机器行。
+     *
+     * <p>玩家仍走 {@link #open(Player)}（要开菜单）；本方法对玩家返回 {@code false}，避免误用。
+     */
+    public static boolean openFor(net.minecraft.world.entity.LivingEntity holder) {
+        if (holder == null || holder.level().isClientSide()) return false;
+        if (holder instanceof Player) return false;
+        if (ChipShopRoller.ownsEverything(holder)) {
+            LOGGER.info("[astral_dice] CHIP_SHOP_OPEN_DENIED holder={} reason=owned_all",
+                    holder.getName().getString());
+            return false;
+        }
+        if (ChipShopState.get(holder).inCooldown(holder.level().getGameTime())) {
+            LOGGER.info("[astral_dice] CHIP_SHOP_OPEN_DENIED holder={} reason=cooldown",
+                    holder.getName().getString());
+            return false;
+        }
+        ensureOffers(holder);
+        ChipShopState state = ChipShopState.get(holder);
+        LOGGER.info("[astral_dice] CHIP_SHOP_READY holder={} offers={} purchased={} refreshes={}",
+                holder.getName().getString(), state.offersKey(), state.purchasedCount(), state.refreshesLeft());
+        return true;
     }
 
     /** 物品栏 36 格是否已满 —— 开店前预检。筹码一律 {@code stacksTo(1)} ⇒ 落点等价于「第一个空格」；

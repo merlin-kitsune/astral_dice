@@ -69,5 +69,11 @@ public final class PlayerLikeWallets {
             return holder instanceof Player player && isAvailable() && StarEngineEconomy.hasBalance(player, amount)
                     && StarEngineEconomy.withdraw(player, amount);
         }
+
+        @Override
+        public boolean deposit(LivingEntity holder, int amount) {
+            if (amount <= 0) return true;
+            return holder instanceof Player player && isAvailable() && StarEngineEconomy.deposit(player, amount);
+        }
     }
 }

@@ -219,10 +219,20 @@ public class DiceCurioItem extends Item implements ICurioItem {
     }
 
     private void tryRemoveChipBonus(SlotContext slotContext, ItemStack stack) {
-        if (!(slotContext.entity() instanceof Player player)) return;
+        net.minecraft.world.entity.LivingEntity holder = slotContext.entity();
         // 骰子已卸下(或即将离开槽位):目标 0。仍走防御式收缩 —— 栏内还有筹码时保持占用它的那些槽位,
         // 不会像强制收缩那样把合法筹码交给背包。
-        clearChipSlotCount(player, false);
+        if (holder instanceof Player player) {
+            clearChipSlotCount(player, false);
+            return;
+        }
+        // 类玩家生物（G6）：卸骰当拍参与者谓词可能已是 false，因此不依赖注册谓词；
+        // 防御式收缩只抬目标、不丢物品，故对任意宿主安全。
+        var curios = com.merlinkitsune.starengine.item.CuriosCompat.getCuriosInventory(holder);
+        if (curios.isEmpty()) return;
+        ICurioStacksHandler chip = curios.get().getStacksHandler("chip").orElse(null);
+        if (chip == null) return;
+        setSlotCount(holder, chip, CHIP_NO_DICE_SLOTS, false);
     }
 
     // 通用槽位调整:

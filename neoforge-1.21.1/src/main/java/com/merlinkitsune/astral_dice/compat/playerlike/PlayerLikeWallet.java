@@ -22,4 +22,14 @@ public interface PlayerLikeWallet {
 
     /** 扣款；余额不足时返回 {@code false} 且不得有任何副作用。 */
     boolean withdraw(LivingEntity holder, int amount);
+
+    /**
+     * 退款（可选）：交易「已扣款但交付失败」时必须能回滚。
+     *
+     * <p>默认不支持（返回 {@code false}）。实现了本方法的钱包可让
+     * {@code ChipShopService#purchase} 保证「交付失败 ⇒ 不扣钱」。
+     */
+    default boolean deposit(LivingEntity holder, int amount) {
+        return false;
+    }
 }

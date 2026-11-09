@@ -225,10 +225,20 @@ public class DiceCurioItem extends Item implements ICurioItem {
     }
 
     private void tryRemoveChipBonus(SlotContext slotContext, ItemStack stack) {
-        if (!(slotContext.entity() instanceof Player player)) return;
-        // 骰子已卸下(或即将离开槽位):目标 0。仍走防御式收缩 —— 栏内还有筹码时保持占用它的那些槽位,
-        // 不会像强制收缩那样把合法筹码交给背包。
-        clearChipSlotCount(player, false);
+        net.minecraft.world.entity.LivingEntity holder = slotContext.entity();
+        if (holder instanceof Player player) {
+            // 骰子已卸下(或即将离开槽位):目标 0。仍走防御式收缩 —— 栏内还有筹码时保持占用它的那些槽位,
+            // 不会像强制收缩那样把合法筹码交给背包。
+            clearChipSlotCount(player, false);
+            return;
+        }
+        // G6 后续(2026-11-09, TLMDice 汇报):类玩家生物卸骰也要缩回筹码栏。
+        // 判定不能依赖「类玩家 / 参与者」注册谓词 —— 卸骰当拍骰子已离位，参与者谓词可能已为 false。
+        // 本模组只会给自己曾经发放过修饰符的宿主调用到这里；forceRemove=false 的防御式收缩
+        // 在栏内仍有筹码时会把目标抬到最高占用位，因此不会误丢物品。
+        CuriosApi.getCuriosInventory(holder)
+                .flatMap(inventory -> inventory.getStacksHandler("chip"))
+                .ifPresent(chip -> setSlotCount(holder, chip, CHIP_NO_DICE_SLOTS, false));
     }
 
     // 通用槽位调整:

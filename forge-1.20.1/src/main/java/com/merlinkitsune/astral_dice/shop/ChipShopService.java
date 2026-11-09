@@ -51,10 +51,16 @@ public final class ChipShopService {
         if (!wallet.withdraw(holder, price)) return Result.NO_COINS;
         ItemStack bought = entry.stack().copy();
         boolean delivered = deliver(holder, bought);
+        if (!delivered) {
+            boolean refunded = wallet.deposit(holder, price);
+            LOGGER.info("AP_CHIP_SHOP_SERVICE: delivery_failed holder={}:index={}:price={}:refunded={}",
+                    holder.getName().getString(), offerIndex, price, refunded);
+            return Result.DELIVERY_FAILED;
+        }
         ChipShopState.store(holder, state.withPurchased(entry.category()));
         LOGGER.info("AP_CHIP_SHOP_SERVICE: holder={}:index={}:price={}:delivered={}",
-                holder.getName().getString(), offerIndex, price, delivered);
-        return delivered ? Result.OK : Result.DELIVERY_FAILED;
+                holder.getName().getString(), offerIndex, price, true);
+        return Result.OK;
     }
 
     public static boolean grantRefresh(LivingEntity holder) {
@@ -64,6 +70,17 @@ public final class ChipShopService {
         if (next == state) return false;
         ChipShopState.store(holder, next);
         return true;
+    }
+
+    /**
+     * 只为「候选播种」的服务面入口：注册生物没有界面，但也需要一批候选才能买。
+     *
+     * <p>等价于玩家进店时的免费补抽（{@code ChipShopOpener#ensureOffers}），幂等。
+     */
+    public static boolean prepareOffers(LivingEntity holder) {
+        if (holder == null || holder.level().isClientSide()) return false;
+        ChipShopOpener.ensureOffers(holder);
+        return !ChipShopState.get(holder).entries().isEmpty();
     }
 
     public static void grantDiscount(LivingEntity holder, int amount, long durationTicks) {

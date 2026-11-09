@@ -72,10 +72,24 @@ public final class ChipShopService {
         if (!wallet.withdraw(holder, price)) return Result.NO_COINS;
         ItemStack bought = entry.stack().copy();
         boolean delivered = deliver(holder, bought);
+        if (!delivered) {
+            // 2026-11-09（TLMDice 汇报）：扣款与交付必须同生共死 —— 交付失败一律退款、且**不**推进购买次数。
+            boolean refunded = wallet.deposit(holder, price);
+            LOGGER.warn("AP_CHIP_SHOP_SERVICE: delivery_failed holder={}:index={}:price={}:refunded={}",
+                    holder.getName().getString(), offerIndex, price, refunded);
+            return Result.DELIVERY_FAILED;
+        }
         ChipShopState.store(holder, state.withPurchased(entry.category()));
-        LOGGER.info("AP_CHIP_SHOP_SERVICE: holder={}:index={}:price={}:delivered={}",
-                holder.getName().getString(), offerIndex, price, delivered);
-        return delivered ? Result.OK : Result.DELIVERY_FAILED;
+        LOGGER.info("AP_CHIP_SHOP_SERVICE: holder={}:index={}:price={}:delivered=true",
+                holder.getName().getString(), offerIndex, price);
+        return Result.OK;
+    }
+
+    /** 无界面「进店」：三项前置校验 + 进店补抽（不开菜单）。返回 {@code false} 表示被拒。 */
+    public static boolean prepareOffers(LivingEntity holder) {
+        if (holder == null || holder.level().isClientSide()) return false;
+        ChipShopOpener.ensureOffers(holder);
+        return true;
     }
 
     /** 直接授予一次刷新（受 {@code REFRESH_MAX} 封顶，与 UI 同一 store）。 */

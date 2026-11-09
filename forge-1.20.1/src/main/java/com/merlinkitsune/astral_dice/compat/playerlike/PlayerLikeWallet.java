@@ -22,4 +22,13 @@ public interface PlayerLikeWallet {
 
     /** 扣款；余额不足时返回 {@code false} 且不得有任何副作用。 */
     boolean withdraw(LivingEntity holder, int amount);
+
+    /**
+     * 退款（交付失败时回滚已扣的星币）。
+     *
+     * <p>默认 {@code false}：调用方必须把「扣了钱但退不回来」写进失败语义，不得静默吞掉。
+     */
+    default boolean deposit(LivingEntity holder, int amount) {
+        return false;
+    }
 }
