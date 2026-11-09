@@ -172,8 +172,8 @@ public class AstralDiceMod {
 
     @SubscribeEvent
     public void onCommonSetup(FMLCommonSetupEvent event) {
-        // 不兼容模组黑名单(Magic Coins / SG-Economy):**只有在「星币钱包」启用时才拒绝启动**
-        // (2026-09-22 用户裁决),因此必须等到配置加载完成才能判定 —— 本事件就在 CONFIG_LOAD 之后。
+        // 不兼容模组黑名单(Magic Coins / SG-Economy):**永久不兼容,与「星币钱包」开关无关**
+        // (2026-11-09 用户裁决):命中即拒绝启动,不因关闭钱包而放行。
         // 命中即抛 ModLoadingException ⇒ 游戏停在加载错误界面并显示提示原文(链路见 ModCompatibilityCheck 类头)。
         // 放在 enqueueWork **之前**:同步执行,不与其它 mod 的延迟任务交错,失败得越干净越好。
         ModCompatibilityCheck.verifyOrThrow();
