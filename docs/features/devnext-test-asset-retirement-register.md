@@ -267,3 +267,18 @@
 3. `repair-loose-refs.sh` 是否保持只修 `refs/heads/**`（`refs/remotes/**` 绝不能复活，否则 `git fetch --prune` 失效、出现幽灵分支）。
 4. `verify_content_library.py` 是否重新进门禁（现状 rc=1 属预期，且 `docs/` 被 gitignore，干净 clone 跑不了）。
 5. `mt_cleanup` 的 20s settle 轮询（旧件 有、python 原件无）是否保留。
+
+## 11 2026-11-09 全仓收口（旧 shell 口径彻底清零）
+
+- 物理脚本：仓内 `.ps1/.psm1/.psd1` = **0**（含仓库根 `deploy.ps1` 删除、两份 `AGENTS.md.bak-*` 备份删除）。
+- 运行期依赖：测试台脚本不再调用任何外部 shell —— 进程表统一 `jps -lvm`（`MT_JPS_EXE` 可钉），
+  判线 = jps 行 + `run/<ver>/win-run.pid` + 25585/25565/25575 的 LISTENING。
+- 收停语义：`stop.sh` 只**发现并打印** `MT_STOP: PENDING pid=…`；终止由 Agent 经 `mcp__windows__Process(mode:"kill")` 执行；
+  `--phase stop --verify` 复核端口与 jps 行输出 `MT_STOP: OK`；`--force` 为 no-op。
+- 引用清理：docs 全量（60 文件 + 20 份历史文档溯源横幅）、三份测试台 README、`KNOWN-ISSUES.md`、
+  用例 JSON、Java / gradle 注释、探针与生成报告、`.gitignore`、历史 html 报告全部改为现役口径。
+- 归档件：`docs/archive/legacy_scripts_20260912.zip`（旧脚本归档，含 MANIFEST + 逐文件 sha256）
+  已于 2026-11-09 删除；内容仍可从 git 历史 `d73cf841` 取回，不再作为仓内载体。
+- 守门：`python docs/agent/verify-split.py` 全绿；`mt.sh --version 1.21.1 --phase env` ⇒ `MT_ENV: OK`；
+  `stop.sh --dry-run` / `--verify` ⇒ `MT_STOP: OK`；脚本 `bash -n` 与 `python -m py_compile` 全绿；
+  已跟踪文本文件对旧关键词命中 **0**（唯余 `models/eventblock.bbmodel` 的 base64 纹理串，属假阳性）。
