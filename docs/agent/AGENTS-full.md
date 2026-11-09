@@ -354,7 +354,7 @@ When extending this workspace:
 >    （`assets/minecraft/atlases/blocks.json` 声明 `{type:directory, source:gui/slot, prefix:gui/slot/}`）
 >    ⇒ 图标**必须**放在 `assets/<ns>/textures/gui/slot/*.png`，且 `icon` 要写**图集 sprite 名** `astral_dice:gui/slot/…`
 >    （同一个字符串对两条通道同时成立）。放错目录 = **文件明明存在却显示紫黑格**，且**不报错、日志无痕迹**。
->    ⇒ 收尾两道门：`scripts/verify/verify_fabric_assets.py` 第 8 项 + 客户端 `AccessoriesClientIconCheck`
+>    ⇒ 收尾两道门：`tools/verify_fabric_assets.py` 第 8 项 + 客户端 `AccessoriesClientIconCheck`
 >    —— ⚠️ **必须同时查「文件是否存在」与「是否被图集收录」**，只查前者查不出本缺陷（它正是「文件在、位置错」）。
 > ⑫ **同步 dev/main 线的既有修复：按文件移植，不要整分支 merge**（2026-09-30 用户裁决「直接同步 `multi-dev-next` 的改动，避免重复造轮」）：
 >    本线的目录**不在** dev 线的改动范围内（dev-next 的提交改的是各线 `neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2`），
