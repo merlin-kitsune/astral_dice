@@ -18,8 +18,15 @@
 5. **产物投放**：以工作树 `build/libs` 为唯一来源，按线复制到 `run/<1.21.1|1.20.1|26.1.2|fabric-1.20.1>/mods`，或**成对**投放两个 P0 整合包（`astral_dice-*.jar` + `starengine-*-<库版本>.jar`）；投完必须核 `sha256sum`（bash），别把同名当新构建。
 6. **git**：一律用 git bash 的 `git`，命令写全 `git -C F:\MCProject\<工作树> <子命令>`，或先 `cd` 进工作树。
 7. **JDK**：`JAVA_HOME=C:\Program Files\Zulu\zulu-21`（21.0.12）；`forge-1.20.1` 的 toolchain 17 由 Gradle 从 `%USERPROFILE%\.gradle\jdks` 取（已缓存 Adoptium 17.0.20），不要手改。
-8. **测试收尾必须自动关闭游戏进程（2026-10-18 用户裁决）**：任何测试轮次（单条 / 全量 / 中断 / 失败）结束后，必须执行 `bash scripts/test/win/mt.sh --version <线> --phase stop --force`，并在交付报告里贴出 `WIN_STOP: OK` 原文 + 「无本流程 java 客户端残留」的核对结果（`ps -W | grep -ci java` 计数；旧口径的 `MT_STOP: OK` 仅作溯源）。**禁止**让 Minecraft 客户端无人观察地驻留 —— 它持续占用 CPU/GPU 并污染下一轮冷启动的前置状态。唯一例外：用例 `on_fail=keep_game_running` 落了 `.mt_keep_alive-<版本>` 的取证现场，此时在报告里说明保留原因与路径，取证完成后立即 `--phase stop --force`。
+8. **测试收尾必须自动关闭游戏进程（2026-10-18 用户裁决）**：任何测试轮次（单条 / 全量 / 中断 / 失败）结束后，必须执行 `bash scripts/test/win/mt.sh --version <线> --phase stop --force`，并在交付报告里贴出 `WIN_STOP: OK` 原文 + 「无本流程 java 客户端残留」的核对结果（用 `mcp__windows__Process(mode="list")` 读进程表并核对 `java` 数量；旧口径的 `ps -W | grep -ci java` 与 `MT_STOP: OK` 仅作溯源）。**禁止**让 Minecraft 客户端无人观察地驻留 —— 它持续占用 CPU/GPU 并污染下一轮冷启动的前置状态。唯一例外：用例 `on_fail=keep_game_running` 落了 `.mt_keep_alive-<版本>` 的取证现场，此时在报告里说明保留原因与路径，取证完成后立即 `--phase stop --force`。
 9. **命令通道 = `ops_bash` + 裸解释器名（2026-11-07 用户裁决）**：一切命令在 `run_code` 里用 `tools.ops_bash(...)` 执行，命令体里的 `bash` / `python` 一律写**裸名**，由 `ops_bash` 自行解析（Windows = PATH 上的 MSYS2 / git-bash；python = PATH 上的 **3.12.16**；Linux = 系统 bash / python3）。⛔ **禁止**写解释器绝对路径（`C:/msys64/usr/bin/bash`、`~/.dsh/dsh-runtimes/**/python.exe` 等）—— `ops_bash` 无法指定解释器，绝对路径只会让命令落到别的运行时。python 脚本**只依赖标准库**，缺库改实现，不得改指别的解释器。
+
+10. **实机的「进程 / 窗口 / 桌面」操作一律走 `dsh-windows-mcp`（2026-11-09 用户裁决，取代一切旧窗口脚本口径）**：MCP server 名 `windows`，工具面 = `Process`（`mode:"list"` / `mode:"kill"`，按 PID 或进程名）、`Snapshot` / `Screenshot`（截屏与 UI 元素树）、`Click` / `Move` / `Type` / `Shortcut` / `Scroll` / `Clipboard`（键鼠与剪贴板）、`Wait` / `WaitFor`（等窗口 / 文本 / 元素）、`Process` 之外的 `DisplayInventory` / `Registry` / `Notification` 等。
+    - **适用范围**：启动后对游戏进程与窗口的一切操作 —— 列进程、判断「本仓 java 客户端是否残留」、强杀卡死 / 加载失败的实例、把窗口拉前台、点击 / 输入 / 快捷键、截图取证、读剪贴板。
+    - ⛔ **旧版命令一律废弃**：`taskkill //PID … /T /F`（含 `MSYS2_ARG_CONV_EXCL` 绕法）、按 `ps -W` / CIM `Win32_Process` 猜 PID 的判线、`work/audit/stop_tlmdice.sh` 这类「按端口反查 PID 再杀」的临时脚本、PowerShell 的窗口 / 键鼠脚本、手工截图脚本 —— **不执行、不新增、不据此改写文档**，只在历史记录里作溯源。
+    - ✅ **保留** AutoJS 流程：`autojs` MCP（`eval_js` / 探针 / 用例 / 断言）仍然是**游戏内状态**的唯一通道；它只管游戏内（实体、方块、背包、UI 逻辑），**不管进程与窗口**。两者边界：进程 / 窗口 / 桌面 → `mcp__windows__*`；游戏内读写 → `autojs`。
+    - 桌面被你占用时该 MCP 会返回 `USER_CONTROL`（带等待秒数）—— 这不是失败：`Wait` 后再试或先问你是否可接管，**不得**因此退回 `taskkill` / CIM 旧路径。
+    - 测试台的 `--phase launch|stop` 仍负责 Gradle 生命周期（起停 dev 进程、写 pidfile、喷机器行）；**当脚本收停失败或进程卡死时，处置动作改由 `Process(mode:"kill")` 完成**，不再手写 kill 命令。
 
 > 红线区〈命令执行规范（Shell）〉已于 **2026-11-04 用户裁决**整体改写为现行口径（与本节〈⚙️ 环境与工具链口径〉一致）：**本项目只允许通过 `ops_bash` 调用工具**，bash 由 MSYS2 / git bash 提供、禁止用 `cmd.exe` 批处理替代（`.bat` 只保留 `gradlew.bat` / `run/Start-<线>.bat` 这类既有双击启动件）。原「一律 PowerShell 7 / `pwsh`」条款**已整节删除**，不要再引用；`docs/agent/AGENTS-full.md` 同处已同步改写，两项仍受 `docs/agent/verify-split.py` 项 1b 的逐字比对约束。
 
@@ -154,7 +161,7 @@
 
 > ✅ **执行口径**：下方红线区整块来自 `docs/agent/AGENTS-full.md` L2–L129（受 `docs/agent/verify-split.py` 项 1b 的**逐字比对**约束）。其中〈命令执行规范（Shell）〉已于 **2026-11-04 用户裁决**随本文件一起改写为『**只允许 `ops_bash` + bash（MSYS2 / git bash）+ python**』口径，PowerShell / `pwsh` / `.ps1` 条款**已全部删除**；若与本节〈⚙️ 环境与工具链口径〉仍有出入，以本节为准并即时订正（两边应逐字一致）。
 
-## 📍 生效红线区 —— 原文逐字（`docs/agent/AGENTS-full.md` L2–L129；原文 H1 由本文件 H1 取代）
+## 📍 生效红线区 —— 原文逐字（`docs/agent/AGENTS-full.md` L2–L130；原文 H1 由本文件 H1 取代）
 > **子项目优先级与默认规则(必须遵守,2026-11-05 用户裁决重新划级)**:⛔ **原「三条生产线同批实施（含 26.1.2）」「四线同号」等旧口径已全部作废** —— 现行**两级优先模型**见下方「## 版本优先级与跨线移植纪律」:**P0 最高 = `forge-1.20.1` + `neoforge-1.21.1`**（新功能、修复、平衡、文案一律**先落这两条线**,两线保持功能对等,无法对等的项按平台差异逐条登记,见 `docs/compat-1.20.1-forge.md`）;**P1 = `fabric-1.20.1` + `fabric-1.21.1` + `neoforge-26.1.2`**（⛔ **只有 P0 新功能落盘无误且经过详尽测试后,由用户裁决才可向 P1 落盘,代理不得擅自决定**;各线规则边界见下方各自小节）;每次改动完成后由代理**自动本地提交**并**自动部署到整合包**(随 `gradlew build` 触发,**各线各自推往自己的测试实例**:`狐の航空学 Voxy Edition` / `1.20.1-Forge 模组测试` / `26.1.2-NeoForge 模组测试` / `1.20.1-Fabric 模组测试`),但**默认不执行 `git push`**。⛔ **发布投放红线（必须遵守,2026-10-25 用户裁决,优先级高于本条其余表述）**：**除非用户在当次任务里明确点名要求，否则默认只上传/发布 P0 两线（`neoforge-1.21.1` + `forge-1.20.1`）的产物** —— 涵盖 CurseForge / Modrinth / GitHub Release 与 tag / 任何对外分发渠道；**P1 三线（`fabric-1.20.1` + `fabric-1.21.1` + `neoforge-26.1.2`）的编译产物一律视为不可用** ⇒ 禁止上传、禁止建 Release/tag、禁止作为 P0 Release 的附件、禁止对外交付；需要 P1 发布时必须由用户逐次点名下达。 **2026-11-02 用户裁决（取代本条后半）**：各线 jar 允许放入同一个 GitHub Release（按版本号打 tag、全部正式版）；CF 侧 `fabric` / `neoforge-26.1.2` 仍受 `--allow-p1` 显式放行闸门约束（保留为防误传互锁），上传时必须显式加该参数。**② tag 与 Release 命名红线（同批裁决,强制）**：GitHub Release 的 tag **只按 mod 版本**创建（例 `1.5.0`、`1.5.0-rc.1`、`1.5.0-pre.6`）—— **禁止**按游戏平台建 tag（`fabric-1.5.0-rc.1`、`neoforge-…` 一律禁止）、禁止 `v` 前缀、禁止 `+加载器` 后缀；**同一版本的多平台 jar 必须放进同一个 Release**（现为 P0 两线 `neoforge-1.21.1` + `forge-1.20.1`，各自 jar 作同一 Release 的附件）；带 `-rc` / `-pre` / `-alpha` / `-beta` 的版本一律标 prerelease、不占 latest。**③ 发布时序红线（2026-11-02 用户裁决，强制）**：**未经详细测试（含实机冒烟）的版本一律不得作为发布版本**；**生产版本的发布动作必须是整条流程的最后一步** —— 固定顺序为「构建 → 本地详细测试 / 实机冒烟取证 → 审核项全过 → 才允许 push / tag / Release / CurseForge 上传」。在测试结论齐全之前执行的任何对外发布动作都算违规，发现即回滚或下架并记录。
 
 ## 发布流程硬规则（2026-11-02 用户裁决，强制）
@@ -243,7 +250,7 @@ When extending this workspace:
    一律改用**非亡灵**生物（如 minecraft:pillager、minecraft:cow）。原因：亡灵受治疗 / 伤害反转等特殊规则影响，
    会污染 FX / 伤害 / 音效类判据；历史脚本中以 zombie 为靶的写法一律视为待替换。
 3. **测试流程结束后必须关闭测试用游戏实例**：收尾时执行 bash scripts/test/win/mt.sh --version 线 --phase stop，
-   确认 WIN_STOP: OK 且无本流程 java 客户端残留（gradle 守护进程保留属正常；旧口径标记 `MT_STOP` 仅作溯源）；禁止让客户端无人观察地驻留 ——
+   确认 WIN_STOP: OK 且无本流程 java 客户端残留（用 `mcp__windows__Process` 列进程核对 `java`；gradle 守护进程保留属正常；旧口径标记 `MT_STOP` 仅作溯源）；禁止让客户端无人观察地驻留 ——
    它会持续占用 CPU / GPU、污染下一次冷启动前置状态，并让 enableShaders 之类的运行期状态被意外持久化。
    **收尾一律带 `--purge-saves`**（2026-10-08 用户裁决：每轮实机验证后清理旧存档）：标准收尾命令 = `bash scripts/test/win/mt.sh --version <线> --phase stop --purge-saves`，成功判据 = `MT_CLEANUP_SAVES: PURGED <n>` + `MT_CLEANUP_RESULT: OK`；`.mt_keep_alive` 存在时只提示、保留取证现场。收尾同时**删除本轮注入的临时探针**（`run/<线>/kubejs/**` 的一次性测试脚本，以及源码侧 `scripts/test/resources/kubejs/**` 的临时探针），并在交付报告里贴 `git status --short -uall` 原文（2026-10-11 用户交接裁决）。
 
@@ -271,7 +278,8 @@ When extending this workspace:
   6. 命令失败先看**第一条因果错误**（`BUILD FAILED` 之前的 `Caused by:` / `error:` 行），不要拿最后一次运行的尾部输出当结论。
   7. **解释器只走 PATH，不写绝对路径**：命令里的 `bash` / `python` 一律写**裸名**，交给 `ops_bash` 自行解析 —— Windows 宿主解析到 PATH 上的 MSYS2 / git-bash，python 解析到 PATH 上的 **3.12.16**；原生 Linux 宿主解析到系统 bash / python3。⛔ **禁止**写 `C:/msys64/usr/bin/bash`、`C:/Python3xx/python.exe`、`~/.dsh/dsh-runtimes/**/python.exe` 这类绝对解释器路径：`ops_bash` 无法指定解释器，写成绝对路径只会让同一条命令在不同会话 / 不同机器上落到不同运行时（2026-11-07 用户裁决）。
   8. **python 只依赖标准库**：解释器固定为 PATH 上的 3.12.16 ⇒ 脚本**不得依赖只有别处解释器才装的第三方库**（例：`PIL` 不在系统 python 里）。需要能力时优先标准库实现；确需第三方库先 `python -c "import X"` 实探，缺失即改实现，**不得**为此改指别的解释器。
-- **自查**：命令里出现 `pwsh` / `powershell` / `-File xxx.ps1` ⇒ 立即改成 bash / python 等价物；`ops_bash` 返回 `exit 2` 多为测试台门禁拦下（缺 `--version` / 缺 `--phase` / `cases` 缺 `--case`），按脚本 usage 补参数重跑。
+  9. **进程 / 窗口 / 桌面不是 bash 的活**：这类动作一律 `mcp__windows__*`（`Process` / `Snapshot` / `Click` / `Type` / `Shortcut` / `Wait` …），bash 只负责构建、测试台脚本、守门脚本与 git；游戏内读写走 `autojs` MCP。三者边界见〈⚙️ 环境与工具链口径〉第 10 条。
+- **自查**：命令里出现 `pwsh` / `powershell` / `-File xxx.ps1` ⇒ 立即改成 bash / python 等价物；命令里出现 `taskkill` / `ps -W` / `Win32_Process` 去处理游戏进程 ⇒ 改用 `mcp__windows__Process`；游戏内读写仍走 `autojs` MCP（`eval_js`）；`ops_bash` 返回 `exit 2` 多为测试台门禁拦下（缺 `--version` / 缺 `--phase` / `cases` 缺 `--case`），按脚本 usage 补参数重跑。
 
 ## Git 代理规范（Git Proxy）— 必须遵守
 
@@ -282,7 +290,7 @@ When extending this workspace:
   ```bash
   git config http.proxy http://127.0.0.1:7897
   git config https.proxy http://127.0.0.1:7897
-<!-- END 生效红线区（原文逐字，AGENTS-full.md L2–L129） -->
+<!-- END 生效红线区（原文逐字，AGENTS-full.md L2–L130） -->
 ## ✅ 提交纪律（2026-11-07 用户裁决，必须遵守）
 
 - **早提交、勤提交**：每完成一个可独立验证的改动单元（功能 / 修复 / 文档 / 规则 / 版本号），**立即本地提交**，不得把多轮改动堆在工作树里等批量提交。

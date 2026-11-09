@@ -129,13 +129,15 @@ check('快照行数 ≥ 3480', norm(FULL).count('\n') >= 3480, f'lines={norm(FUL
 # 老脚本第 2 项守的「红线区 == 快照 L2–L120 逐字」不能丢，这里按新落点原样续守。
 # 2026-11-02：dsh 侧红线区内新增整节「## 发布流程硬规则（2026-11-02 用户裁决，强制）」（+9 行）并同步进
 # AGENTS-full.md，故比较区间的下界随之后移 L2–L120 → L2–L129（判据仍是逐字节相等，未放宽）。
+# 2026-11-09：红线区〈命令执行规范〉新增第 9 条（进程/窗口/桌面归 dsh-windows-mcp，+1 行）并同步进
+# AGENTS-full.md ⇒ 下界再后移 L2–L129 → L2–L130（判据不变）。
 _dsh = norm(DSH)
 _dl = _dsh.split('\n')
-_exp = '\n'.join(norm(FULL).split('\n')[1:129]).strip('\n')
+_exp = '\n'.join(norm(FULL).split('\n')[1:130]).strip('\n')
 _s = next((i + 1 for i, l in enumerate(_dl) if l.startswith('## 📍 生效红线区')), None)
 _e = next((i for i, l in enumerate(_dl) if l.startswith('<!-- END 生效红线区')), None)
 _act = '\n'.join(_dl[_s:_e]).strip('\n') if (_s is not None and _e is not None and _e > _s) else None
-check('AGENTS-dsh.md 生效红线区块与 AGENTS-full.md L2–L129 逐字一致', _act == _exp,
+check('AGENTS-dsh.md 生效红线区块与 AGENTS-full.md L2–L130 逐字一致', _act == _exp,
       f'红线区 {len(_act):,} 字符' if _act is not None else '红线区标记缺失（## 📍 生效红线区 / <!-- END 生效红线区）')
 
 print('== 2. AGENTS.md 结构完整（宿主分派 / 共同红线 / 按需索引）==')

@@ -88,7 +88,7 @@ When extending this workspace:
    一律改用**非亡灵**生物（如 minecraft:pillager、minecraft:cow）。原因：亡灵受治疗 / 伤害反转等特殊规则影响，
    会污染 FX / 伤害 / 音效类判据；历史脚本中以 zombie 为靶的写法一律视为待替换。
 3. **测试流程结束后必须关闭测试用游戏实例**：收尾时执行 bash scripts/test/win/mt.sh --version 线 --phase stop，
-   确认 WIN_STOP: OK 且无本流程 java 客户端残留（gradle 守护进程保留属正常；旧口径标记 `MT_STOP` 仅作溯源）；禁止让客户端无人观察地驻留 ——
+   确认 WIN_STOP: OK 且无本流程 java 客户端残留（用 `mcp__windows__Process` 列进程核对 `java`；gradle 守护进程保留属正常；旧口径标记 `MT_STOP` 仅作溯源）；禁止让客户端无人观察地驻留 ——
    它会持续占用 CPU / GPU、污染下一次冷启动前置状态，并让 enableShaders 之类的运行期状态被意外持久化。
    **收尾一律带 `--purge-saves`**（2026-10-08 用户裁决：每轮实机验证后清理旧存档）：标准收尾命令 = `bash scripts/test/win/mt.sh --version <线> --phase stop --purge-saves`，成功判据 = `MT_CLEANUP_SAVES: PURGED <n>` + `MT_CLEANUP_RESULT: OK`；`.mt_keep_alive` 存在时只提示、保留取证现场。收尾同时**删除本轮注入的临时探针**（`run/<线>/kubejs/**` 的一次性测试脚本，以及源码侧 `scripts/test/resources/kubejs/**` 的临时探针），并在交付报告里贴 `git status --short -uall` 原文（2026-10-11 用户交接裁决）。
 
@@ -116,7 +116,8 @@ When extending this workspace:
   6. 命令失败先看**第一条因果错误**（`BUILD FAILED` 之前的 `Caused by:` / `error:` 行），不要拿最后一次运行的尾部输出当结论。
   7. **解释器只走 PATH，不写绝对路径**：命令里的 `bash` / `python` 一律写**裸名**，交给 `ops_bash` 自行解析 —— Windows 宿主解析到 PATH 上的 MSYS2 / git-bash，python 解析到 PATH 上的 **3.12.16**；原生 Linux 宿主解析到系统 bash / python3。⛔ **禁止**写 `C:/msys64/usr/bin/bash`、`C:/Python3xx/python.exe`、`~/.dsh/dsh-runtimes/**/python.exe` 这类绝对解释器路径：`ops_bash` 无法指定解释器，写成绝对路径只会让同一条命令在不同会话 / 不同机器上落到不同运行时（2026-11-07 用户裁决）。
   8. **python 只依赖标准库**：解释器固定为 PATH 上的 3.12.16 ⇒ 脚本**不得依赖只有别处解释器才装的第三方库**（例：`PIL` 不在系统 python 里）。需要能力时优先标准库实现；确需第三方库先 `python -c "import X"` 实探，缺失即改实现，**不得**为此改指别的解释器。
-- **自查**：命令里出现 `pwsh` / `powershell` / `-File xxx.ps1` ⇒ 立即改成 bash / python 等价物；`ops_bash` 返回 `exit 2` 多为测试台门禁拦下（缺 `--version` / 缺 `--phase` / `cases` 缺 `--case`），按脚本 usage 补参数重跑。
+  9. **进程 / 窗口 / 桌面不是 bash 的活**：这类动作一律 `mcp__windows__*`（`Process` / `Snapshot` / `Click` / `Type` / `Shortcut` / `Wait` …），bash 只负责构建、测试台脚本、守门脚本与 git；游戏内读写走 `autojs` MCP。三者边界见〈⚙️ 环境与工具链口径〉第 10 条。
+- **自查**：命令里出现 `pwsh` / `powershell` / `-File xxx.ps1` ⇒ 立即改成 bash / python 等价物；命令里出现 `taskkill` / `ps -W` / `Win32_Process` 去处理游戏进程 ⇒ 改用 `mcp__windows__Process`；游戏内读写仍走 `autojs` MCP（`eval_js`）；`ops_bash` 返回 `exit 2` 多为测试台门禁拦下（缺 `--version` / 缺 `--phase` / `cases` 缺 `--case`），按脚本 usage 补参数重跑。
 
 ## Git 代理规范（Git Proxy）— 必须遵守
 
