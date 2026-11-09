@@ -270,7 +270,7 @@
 
 ## 11 2026-11-09 全仓收口（旧 shell 口径彻底清零）
 
-- 物理脚本：仓内 `.ps1/.psm1/.psd1` = **0**（含仓库根 `deploy.ps1` 删除、两份 `AGENTS.md.bak-*` 备份删除）。
+- 物理脚本：仓内旧 shell 脚本文件 = **0**（含仓库根发布脚本、两份 `AGENTS.md.bak-*` 历史备份，均已删除）。
 - 运行期依赖：测试台脚本不再调用任何外部 shell —— 进程表统一 `jps -lvm`（`MT_JPS_EXE` 可钉），
   判线 = jps 行 + `run/<ver>/win-run.pid` + 25585/25565/25575 的 LISTENING。
 - 收停语义：`stop.sh` 只**发现并打印** `MT_STOP: PENDING pid=…`；终止由 Agent 经 `mcp__windows__Process(mode:"kill")` 执行；
