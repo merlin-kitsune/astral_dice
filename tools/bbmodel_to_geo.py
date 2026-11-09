@@ -16,6 +16,10 @@ Conversion rules (mirrors the shape of the in-repo sample
 
 * element ``from`` / ``to``      -> cube ``origin`` / ``size`` (``to - from``)
 * element ``origin`` + rotation  -> cube ``pivot`` (only when rotation is set)
+* **X 轴预补偿**：GeckoLib loader（``BakedModelFactory#constructCube`` /
+  ``#updatePivot``）会再做一次 ``origin.x = -(origin.x + size.x)``、
+  ``pivot.x *= -1``、``rotation = (-rx, -ry, rz)``；因此这里先做同样的镜像，
+  否则实机上 187 个带旋转的 cube 会全部扭向（2026-11-10 金鲤葫芦事故）。
 * per-face 4-number UV rects     -> ``{"uv": [u, v], "uv_size": [du, dv]}``;
   when either delta is negative the anchor moves to the second corner and both
   deltas flip sign, which is what Blockbench itself exports
@@ -132,6 +136,12 @@ def convert_cube(element):
         raise ValueError("element %r has neither from/to nor origin/size"
                          % (element.get("name"),))
 
+    # Bedrock/Blockbench 的 X 轴与 GeckoLib loader 的约定相反：loader 在
+    # BakedModelFactory#constructCube 里会做 origin.x = -(origin.x + size.x)、
+    # pivot.x *= -1、rotation = (-rx, -ry, rz)。这里预补偿一次，产出的 geo
+    # 才能被 loader 还原成 Blockbench 里的形状（本仓既有 geo 同此约定）。
+    origin = [-(origin[0] + size[0]), origin[1], origin[2]]
+
     cube = {"origin": origin, "size": size}
 
     if "inflate" in element:
@@ -144,8 +154,9 @@ def convert_cube(element):
         if pivot is None:
             raise ValueError("rotated element %r has no pivot"
                              % (element.get("name"),))
-        cube["pivot"] = vec(pivot)
-        cube["rotation"] = vec(element["rotation"])
+        rot = vec(element["rotation"])
+        cube["pivot"] = vec([-float(pivot[0]), float(pivot[1]), float(pivot[2])])
+        cube["rotation"] = vec([-rot[0], -rot[1], rot[2]])
 
     faces = element.get("faces") or {}
     uv = {}
@@ -183,9 +194,13 @@ def collect_bones(nodes, by_uuid, bones, parent=None, counter=None):
         bone = {"name": name}
         if parent is not None:
             bone["parent"] = parent
-        bone["pivot"] = vec(node.get("origin") or [0, 0, 0])
+        # 与 cube 一致：预补偿 loader 的 X 镜像（pivot.x 取负、rotation 的 rx/ry 取负）
+        bone_pivot = vec(node.get("origin") or [0, 0, 0])
+        bone["pivot"] = vec([-float(bone_pivot[0]), float(bone_pivot[1]),
+                             float(bone_pivot[2])])
         if has_rotation(node.get("rotation")):
-            bone["rotation"] = vec(node["rotation"])
+            rot = vec(node["rotation"])
+            bone["rotation"] = vec([-rot[0], -rot[1], rot[2]])
         if "inflate" in node:
             bone["inflate"] = num(node["inflate"])
 
@@ -274,7 +289,7 @@ def build_geometry(doc, png_dims):
                     "visible_bounds_width": round(size_px[0] / PIXELS_PER_BLOCK, 4),
                     "visible_bounds_height": round(size_px[1] / PIXELS_PER_BLOCK, 4),
                     "visible_bounds_offset": [
-                        round(center_px[0] / PIXELS_PER_BLOCK, 4),
+                        round(-center_px[0] / PIXELS_PER_BLOCK, 4),
                         round(center_px[1] / PIXELS_PER_BLOCK, 4),
                         round(center_px[2] / PIXELS_PER_BLOCK, 4),
                     ],
@@ -395,7 +410,7 @@ def convert(model):
     png = decode_texture(doc)
     dims = png_size(png)
     geometry, stats = build_geometry(doc, dims)
-    text = dumps(geometry) + "\n"
+    text = dumps(geometry).replace("\n", "\r\n") + "\r\n"
     json.loads(text)  # self-check: our writer must emit valid JSON
     return text.encode("utf-8"), png, dims, stats
 
@@ -470,8 +485,8 @@ def verify():
                 problems.append("%s: png size %r != %r"
                                 % (png_path.relative_to(ROOT),
                                    png_size(png_bytes), dims))
-            if b"\r" in geo_bytes:
-                problems.append("%s: contains CR (must be LF)"
+            if b"\n" in geo_bytes.replace(b"\r\n", b""):
+                problems.append("%s: contains bare LF (repo json uses CRLF)"
                                 % geo_path.relative_to(ROOT))
             seen[line] = {"geo": sha256(geo_bytes), "png": sha256(png_bytes)}
         if len(seen) > 1:

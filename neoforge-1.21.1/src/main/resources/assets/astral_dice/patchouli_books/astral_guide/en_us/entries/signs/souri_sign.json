@@ -15,6 +15,10 @@
     {
       "type": "patchouli:text",
       "text": "astral_dice.guide.entry.souri_sign.3"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:souri_sign"
     }
   ],
   "sortnum": 27

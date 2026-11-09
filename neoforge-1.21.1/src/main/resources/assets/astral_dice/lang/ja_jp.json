@@ -1168,7 +1168,7 @@
   "gui.astral_dice.card_choice.title_variable_effect": "効果カードを1～3枚選択",
   "gui.astral_dice.card_choice.title_variable_any": "カードを1～3枚選択",
   "msg.astral_dice.event_animating": "イベント演出中です。少し待ってからお試しください。",
-  "item.astral_dice.souri_sign": "天川双里のスタンド",
+  "item.astral_dice.souri_sign": "天川蒼鯉のスタンド",
   "tooltip.astral_dice.sign.souri.active": "酒を酌み交わす",
   "tooltip.astral_dice.sign.souri_active": "指定したブロックに「ひょうたん酒」を置く。「金鯉化龍」を獲得済みなら「仙醸」を置く\nその後、自身は「覚醒」を §e1§7 層と「反撃」を §e1§7 層獲得する",
   "tooltip.astral_dice.sign.souri.passive": "酔い潰れるまで",

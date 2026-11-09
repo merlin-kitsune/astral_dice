@@ -1330,6 +1330,19 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('D', ModItems.DIAMOND_DICE.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
                 .save(output);
+        // 金鲤立牌(souri,传奇):B/Y/B + Z/C/Z + P/D/P（B=星币尘、Y=热带鱼、Z=钟、C=空白筹码、P=黄金星盘、D=钻石骰子）
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.SOURI_SIGN.get())
+                .pattern("BYB")
+                .pattern("ZCZ")
+                .pattern("PDP")
+                .define('B', ModItems.STAR_COIN_DUST.get())
+                .define('Y', net.minecraft.world.item.Items.TROPICAL_FISH)
+                .define('Z', net.minecraft.world.item.Items.CLOCK)
+                .define('C', ModItems.BLANK_CHIP.get())
+                .define('P', ModItems.GOLDEN_STAR_PLATE.get())
+                .define('D', ModItems.DIAMOND_DICE.get())
+                .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
+                .save(output);
         // 多萝西立牌(dorothy,奇特):紫晶骰子 + 黄金星盘×2（PHP/LEL/TDT）
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.DOROTHY_SIGN.get())
                 .pattern("PHP")
