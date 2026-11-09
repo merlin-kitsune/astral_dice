@@ -17,6 +17,14 @@ public interface PlayerLikeWallet {
     /** 该钱包当前是否可用（余额系统在线、账户存在）。 */
     boolean isAvailable();
 
+    /**
+     * 带宿主的可用性（2026-11-09 B）：默认转发无参版本。
+     * 附属可用它区分「主人离线」与「没有账户」，商店据此返回 WALLET_UNAVAILABLE 而不是 NO_COINS。
+     */
+    default boolean isAvailable(LivingEntity holder) {
+        return isAvailable();
+    }
+
     /** 当前可用星币（不足或缺账户返回 0）。 */
     long balance(LivingEntity holder);
 

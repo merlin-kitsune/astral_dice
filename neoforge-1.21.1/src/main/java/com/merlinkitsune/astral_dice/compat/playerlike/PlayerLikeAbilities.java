@@ -51,5 +51,18 @@ public final class PlayerLikeAbilities {
     /** 把一件物品交给该实体（筹码/奖励）；返回是否已交付，{@code false} 时调用方负责掉地。 */
     public static boolean giveItem(LivingEntity receiver, ItemStack stack) {
         return receiver != null && PlayerLikeTargets.giveItem(receiver, stack);
+    
+}
+    /**
+     * 统一交付入口（2026-11-09 B4）：注册生物走 {@link PlayerLikeTargets#giveItem}，
+     * 失败再兜底掉地；玩家请用各自的背包 API。返回 {@code true} 表示物品已离开我们手上。
+     */
+    public static boolean deliverLikePlayer(net.minecraft.world.entity.LivingEntity receiver,
+                                            net.minecraft.world.item.ItemStack stack) {
+        if (receiver == null || stack == null || stack.isEmpty()) return false;
+        if (giveItem(receiver, stack)) return true;
+        if (receiver.level() == null || receiver.level().isClientSide()) return false;
+        receiver.spawnAtLocation(stack);
+        return true;
     }
 }

@@ -36,6 +36,8 @@ public final class ChipShopService {
         NO_OFFER,
         /** 没有可用钱包。 */
         NO_WALLET,
+        /** 有绑定但当前不可用（例：主人离线 / 账户被冻结）。2026-11-09 B 新增。 */
+        WALLET_UNAVAILABLE,
         /** 星币不足。 */
         NO_COINS,
         /** 扣款成功但物品既进不了容器也掉不出来（几乎不发生）。 */
@@ -56,7 +58,7 @@ public final class ChipShopService {
         int price = ChipShopDiscounts.effectivePrice(holder, base);
         PlayerLikeWallet wallet = PlayerLikeWallets.resolve(holder);
         long balance = wallet == null ? 0L : wallet.balance(holder);
-        return new Quote(base, ChipShopDiscounts.remaining(holder), price, balance, wallet != null && wallet.isAvailable() && balance >= price);
+        return new Quote(base, ChipShopDiscounts.remaining(holder), price, balance, wallet != null && wallet.isAvailable(holder) && balance >= price);
     }
 
     /** 购买第 {@code offerIndex} 格候选。 */
@@ -67,7 +69,8 @@ public final class ChipShopService {
         if (offerIndex < 0 || offerIndex >= entries.size()) return Result.NO_OFFER;
         ChipShopCatalog.Entry entry = entries.get(offerIndex);
         PlayerLikeWallet wallet = PlayerLikeWallets.resolve(holder);
-        if (wallet == null || !wallet.isAvailable()) return Result.NO_WALLET;
+        if (wallet == null) return Result.NO_WALLET;
+        if (!wallet.isAvailable(holder)) return Result.WALLET_UNAVAILABLE;
         int price = ChipShopDiscounts.effectivePrice(holder, state.price());
         if (!wallet.withdraw(holder, price)) return Result.NO_COINS;
         ItemStack bought = entry.stack().copy();
