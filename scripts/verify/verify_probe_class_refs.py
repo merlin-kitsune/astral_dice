@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""探针类引用守门（由 verify_probe_class_refs.ps1 等价迁移）
+"""探针类引用守门（由 旧版 verify_probe_class_refs 实现 等价迁移）
 
 核对 KubeJS 探针里 Java.loadClass(...) 的目标是否真在运行时 classpath：
   1. build/libs/astral_dice-*.jar（取最新一份，排除 sources/javadoc）
@@ -13,16 +13,16 @@
 
 豁免：JDK 自带前缀 + com.mojang.* 运行期提供者 + org.lwjgl.（见 JDK_PREFIXES / WHITELIST）。
 
-退出码（与 ps1 一致）：0 = 全部可解析；1 = 有不可解析的类引用；2 = 无法判定 / 用法错误。
+退出码（与 旧实现 一致）：0 = 全部可解析；1 = 有不可解析的类引用；2 = 无法判定 / 用法错误。
 
-与 ps1 的差异（逐条，均已在交付报告列明）：
-  1) 默认 Root：ps1 为 '.'（依赖 cwd ⇒ 在错误目录跑会假绿）；本脚本改为脚本位置上溯两级。
-     显式 -Root 仍按传入值使用（与 ps1 相同）。
+与 旧实现 的差异（逐条，均已在交付报告列明）：
+  1) 默认 Root：旧实现 为 '.'（依赖 cwd ⇒ 在错误目录跑会假绿）；本脚本改为脚本位置上溯两级。
+     显式 -Root 仍按传入值使用（与 旧实现 相同）。
   2) 反假绿新增：全部版本合计 "参与判据的 loadClass = 0 处" ⇒ 打印
-     "RESULT: ERROR（无法判定）…" 并 exit 2（ps1 该情形会落到 PASS）。文案沿用本脚本已有的
+     "RESULT: ERROR（无法判定）…" 并 exit 2（旧实现 该情形会落到 PASS）。文案沿用本脚本已有的
      [FATAL]/RESULT: ERROR 词汇。
-  3) 输出换行/编码跟随平台（ps1 用 Write-Output，同样是平台换行）；本脚本不做 JSON 类输出。
-  4) gradle 缓存根：ps1 用 $env:USERPROFILE（Linux 上为空会报错）；本脚本回落到 home 目录。
+  3) 输出换行/编码跟随平台（旧实现 用 Write-Output，同样是平台换行）；本脚本不做 JSON 类输出。
+  4) gradle 缓存根：旧实现 用 $env:USERPROFILE（Linux 上为空会报错）；本脚本回落到 home 目录。
 
 用法：
   python scripts/verify/verify_probe_class_refs.py [-Version 1.21.1|1.20.1|26.1.2|all] [-Root <仓库根>]
@@ -84,8 +84,8 @@ CHECKED_TOTAL = 0
 
 
 def norm_seps(p: str) -> str:
-    """复刻 PowerShell Join-Path 在 Windows 上的分隔符归一（'/' -> '\\'）：
-    ps1 用 Join-Path 拼所有派生路径，Windows 上会把整条路径统一成反斜杠；
+    """复刻 旧 shell Join-Path 在 Windows 上的分隔符归一（'/' -> '\\'）：
+    旧实现 用 Join-Path 拼所有派生路径，Windows 上会把整条路径统一成反斜杠；
     posix 上 Join-Path 不做转换，故此处只在 os.sep 为 '\\' 时转换（Linux CI 无操作）。"""
     if os.sep == "\\":
         return p.replace("/", "\\")
@@ -122,7 +122,7 @@ def newest_file(pattern: str):
 
 
 def glob_paths(pattern: str):
-    """非递归 glob（PowerShell Get-ChildItem -Path <pattern> -File 的等价）。"""
+    """非递归 glob（旧 shell Get-ChildItem -Path <pattern> -File 的等价）。"""
     import glob
 
     return sorted(glob.glob(pattern), key=lambda p: p)
@@ -199,7 +199,7 @@ def add_zip_entries(path: str) -> bool:
                 except Exception:  # noqa: BLE001
                     continue
         return True
-    except Exception:  # noqa: BLE001 - 读不了返回 False（与 ps1 的 catch 对齐）
+    except Exception:  # noqa: BLE001 - 读不了返回 False（与 旧实现 的 catch 对齐）
         return False
 
 
@@ -481,12 +481,12 @@ def probe_line(ver: str, root: str) -> None:
 
 
 def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(description="探针类引用守门（ps1 等价迁移版）")
+    ap = argparse.ArgumentParser(description="探针类引用守门（旧实现 等价迁移版）")
     ap.add_argument("-Version", "--version", dest="version", default="all",
                     choices=("1.21.1", "1.20.1", "26.1.2", "all"), help="要检查的版本线（默认 all）")
     ap.add_argument("root_pos", nargs="?", default=None, help="仓库根（位置参数，可选）")
     ap.add_argument("-Root", "--root", dest="root", default=None,
-                    help="仓库根（默认脚本位置上溯两级；ps1 原默认是 '.'）")
+                    help="仓库根（默认脚本位置上溯两级；旧实现 原默认是 '.'）")
     args = ap.parse_args(argv)
 
     root = norm_seps(args.root if args.root is not None else (args.root_pos or default_root()))

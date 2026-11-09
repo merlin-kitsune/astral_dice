@@ -85,7 +85,7 @@
 | N2 | `Item.Properties#itemIdOrThrow` ⇒ **物品注册必须** `registerItem(name, props -> new XxxItem(props…))`（旧写法注册期 NPE「Item id not set」） | ① | 已落地 | `ModItems` |
 | N3 | **datagen 两段式**：无 `data` 运行类型，只有 `runClientData` + `runServerData`；**双输出根**（`src/generated/resources` + `src/generated/clientResources`）；`HashCache` 会互删；`GatherDataEvent` 是**抽象类**（须注册 `.Client`/`.Server`）；`@EventBusSubscriber` 只剩 `value()`/`modid()`；`ExistingFileHelper` / NeoForge `client.model.generators.ItemModelProvider` **不存在** | ① | 已落地 | `datagen/*` / `build.gradle` |
 | N4 | 配方 ingredient **必须字符串**（`{"item":"X"}` 会整份丢弃、只留一行日志）；`global_loot_modifiers.json` **索引已废除**；`crafting_special_suspiciousstew` 序列化器**不存在** | ① | 已落地 | `data/**` |
-| N5 | gamerule：**键名 snake_case**（`naturalRegeneration`→`natural_health_regeneration`；`doFireTick` **已删** ⇒ 用 `fire_spread_radius_around_player 0`）；存 `saves/<world>/data/minecraft/game_rules.dat`（**不再在 `level.dat`**） | ① | 已落地 | `scripts/test/mt_env.ps1` |
+| N5 | gamerule：**键名 snake_case**（`naturalRegeneration`→`natural_health_regeneration`；`doFireTick` **已删** ⇒ 用 `fire_spread_radius_around_player 0`）；存 `saves/<world>/data/minecraft/game_rules.dat`（**不再在 `level.dat`**） | ① | 已落地 | `scripts/test/mt_env（旧脚本名） |
 | N6 | 客户端「提取-渲染状态」架构（`GuiGraphicsExtractor` / `GuiLayer`）；`blit` / `text` 语义陷阱；禁止跨版本抄投影公式 | ① | 已落地 | `client/*` |
 | N7 | Curios 15：饰品栏尺寸**只能**经「槽位修饰符 → `update()`」改写（禁直接 `grow/shrink`，否则崩服） | ① | 已落地 | `DiceCurioItem` |
 | N8 | Mixin 目标漂移：`PiglinAi#isWearingSafeArmor`、`Gui#renderEffects→extractEffects`、`EffectRenderingInventoryScreen→EffectsInInventory` | ① | 已落地 | `mixin/*` |
@@ -109,14 +109,14 @@
 |---|---|---|---|
 | B1 | 加载器层**整体替换**：Curios → Trinkets(+Accessories 软依赖)；Capability → Fabric API **附件**；Forge EventBus → 自建 `LoaderBus` + Puzzles Lib / FAPI 回调 / mixin；GLM → `LootTableEvents.MODIFY` | ② | 已落地 |
 | B2 | **禁 `@Mod.EventBusSubscriber`** ⇒ `LoaderBus.INSTANCE.register(X.class)`；`LoaderBus.scan` **不递归内部类**；`SubscriptionAudit` 护栏 | ② | 已落地 |
-| B3 | **dev / prod 两套映射**（intermediary）：**禁按字符串名反射原版成员**；`ft_prod.ps1` 生产冒烟 + `-PreloadClasses` | ② | 已落地 |
+| B3 | **dev / prod 两套映射**（intermediary）：**禁按字符串名反射原版成员**；`旧生产启动脚本（已删除）` 生产冒烟 + `-PreloadClasses` | ② | 已落地 |
 | B4 | **禁 `@ModifyConstant`** ⇒ MixinExtras `@WrapOperation`（与其它模组同点注入**可共存**） | ② | 已落地 |
 | B5 | 附件键注册**必须早于玩家数据反序列化**（`ModAttachments#ensureRegistered()`，空实现只触发 `<clinit>`） | ② | 已落地 |
 | B6 | Accessories 槽位图标**必须**落原版 `minecraft:blocks` 图集目录 `textures/gui/slot/` | ② | 已落地 |
 | B7 | `depends` 是 **AND 语义** ⇒ 饰品「二选一」走 `recommends` + 运行时守卫 `verifyAccessoryProviderOrThrow()` | ② | 已落地 |
 | B8 | 通用标签**自建 `c:`**（对齐 NeoForge 定义） | ② | 已落地 |
 | B9 | 配方「指定药水」走自建 `astral_dice:nbt_shaped` 序列化器 | ② | 已落地 |
-| B10 | Loom 重映射剥掉 `fabric.mod.json` 的 `jars` ⇒ `tools/loom_embedded_jars.py` + `ft_env.ps1 --install-embedded` | ② | 已落地 |
+| B10 | Loom 重映射剥掉 `fabric.mod.json` 的 `jars` ⇒ `tools/loom_embedded_jars.py` + `旧环境脚本（已删除） --install-embedded` | ② | 已落地 |
 | B11 | 保留的 **1.20.1 差异**：星币锤配方 / 复仇之戟行为 / `potionTag` 与 `NbtShapedRecipe`（**不得**按 1.21.1 覆盖） | ① | 已落地（用户裁决） |
 | B12 | 联动裁剪：`irons_spellbooks` ❌ / `enigmaticlegacy` ❌ / `bountiful` ❌ 无 data ⇒ 全部移除；`patchouli` / `waystones` / `trinkets` / `accessories` / Modern UI ✅ 保留 | ③ | **已全部落地**（Modern UI 兼容于 2026-10-04 适配，见 `FABRIC-DIFFS.md` §3/§4 P1-B-1） |
 | B13 | 常驻时长归一 / 射程系统 / 隐匿效果 / 效果牌目标口径 / 立牌受击族 / 输入收口 / 动作栏收口 | —（跨线同源） | **已落地**（追平批 1~8） |
@@ -170,9 +170,9 @@
 
 ## 5. 移植作业的固定收尾动作（各线通用）
 
-1. **构建**：目标线 `build` SUCCESSFUL（⚠️ 构建日志须用 **Python `subprocess` 直捕 stderr 再 `decode`**，别走管道；本机 PowerShell 工具回显失效 ⇒ 输出 `*> 文件` 落盘再读）。
+1. **构建**：目标线 `build` SUCCESSFUL（⚠️ 构建日志须用 **Python `subprocess` 直捕 stderr 再 `decode`**，别走管道；本机 原生 shell 工具回显失效 ⇒ 输出 `*> 文件` 落盘再读）。
 2. **产物三件套**：jar 时间戳 + **开包 `javap` 核符号** + 资源条目核对（fabric 尤须）。
-3. **守门**：`scripts/verify/verify_*.ps1` + `scripts/audit/tooltip_color_audit.ps1` + `tools/{check_lang_sync,check_mod_sources,audit_actionbar,verify_party_api,verify_firearm_detection,audit_mixin_injection,audit_patchouli_keys,verify_fabric_assets,verify_effect_icons}` —— ⚠️ **守门 0 ≠ 全绿**（散三处）。⚠️ `audit_mixin_injection` / `check_lang_sync` / `audit_actionbar` **自 2026-10-04 起已含 `fabric-1.20.1`**（此前不含，见 P1-B-4 ⇒ 已闭环）。
+3. **守门**：`scripts/verify/verify_*.旧实现` + `scripts/audit/tooltip_color_audit.py` + `tools/{check_lang_sync,check_mod_sources,audit_actionbar,verify_party_api,verify_firearm_detection,audit_mixin_injection,audit_patchouli_keys,verify_fabric_assets,verify_effect_icons}` —— ⚠️ **守门 0 ≠ 全绿**（散三处）。⚠️ `audit_mixin_injection` / `check_lang_sync` / `audit_actionbar` **自 2026-10-04 起已含 `fabric-1.20.1`**（此前不含，见 P1-B-4 ⇒ 已闭环）。
 4. **一致性检查**：抹平平台样板后逐行对比本线 ↔ `neoforge-1.21.1` 的**同一段实现**。
 5. **二次验证**：非平凡改动 / 发布动作 / 批量或跨线改动 ⇒ **必派独立子代理对账**（`AGENTS.md`「二次验证规范」）。
 6. **文档**：`CHANGELOG{,_ZH}.md`（1.21.1 与 20.1 同批；26.1.2/fabric 按其节奏）+ 本表「待解决问题」状态更新 + `KNOWN-ISSUES.md`（未修项禁删、已修项移 §1.1 索引）。

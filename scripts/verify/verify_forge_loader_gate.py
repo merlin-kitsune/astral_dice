@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 r"""verify_forge_loader_gate —— 1.20.1「加载器版本门槛 + Mixin Booster 硬前置」独立静态守门
-（由 verify_forge_loader_gate.ps1 等价迁移；判据本体与旧执行体逐条等价，读数前缀沿用 AP_LG_*）
+（由 旧版 verify_forge_loader_gate 实现 等价迁移；判据本体与旧执行体逐条等价，读数前缀沿用 AP_LG_*）
 
 零 mt 依赖：① 不 Import-Module scripts/test/lib/*；② 不读写 run/**；③ 不读 cases/*.json；
 ④ 不用 mt 退出码常量（退出码 = 本脚本自定）。
@@ -27,7 +27,7 @@ r"""verify_forge_loader_gate —— 1.20.1「加载器版本门槛 + Mixin Boost
      接纳 javafml 47、拒绝 48；Mixin Booster 区间 [0.1.3,) 对真实版本 accept。
   S6 聚合：任一判据不成立 ⇒ 非零退出；各失败项以 LG_FAIL:<key> 逐条打印。
 
-退出码契约与优先级（与 ps1 逐字一致）
+退出码契约与优先级（与 旧实现 逐字一致）
   0 = 门槛成立（AP_LG_VERDICT:...:range_only=1:overall=1）；
   1 = 存在明确偏差（LG_FAIL 非空即判 1，verdict overall=0）；
   2 = 无法判定（仅当 LG_FAIL 为空且存在 LG_UNDECIDABLE），每条带 LG_REMEDY:<key>:<命令>；
@@ -38,11 +38,11 @@ r"""verify_forge_loader_gate —— 1.20.1「加载器版本门槛 + Mixin Boost
 只读：除在工作目录落盘判定器源码/字节码（<脚本所在仓库>/temp/t78/loadergate/，与 -Root 指向的树
 无关）外不写任何文件；产品侧（两条发布线 + 26.1.2）一律只读。
 
-与 ps1 的差异（逐条，均已列入交付报告）
-  1) JDK 探测：ps1 硬编码 bin\javac.exe；本脚本按平台取 bin/javac(|.exe)，Linux CI 可用。
-  2) gradle 缓存根 / ~/.gradle/jdks：ps1 用 $env:USERPROFILE（Linux 上为空会报错）；本脚本回落 home。
-  3) classpath 分隔符：ps1 写死 ';'；本脚本用 os.pathsep（Windows 上仍是 ';'）。
-  4) 判定器源码落盘行尾跟随 os.linesep（ps1 跟随其自身文件行尾）——仅影响 temp/ 下文件字节，
+与 旧实现 的差异（逐条，均已列入交付报告）
+  1) JDK 探测：旧实现 硬编码 bin\javac.exe；本脚本按平台取 bin/javac(|.exe)，Linux CI 可用。
+  2) gradle 缓存根 / ~/.gradle/jdks：旧实现 用 $env:USERPROFILE（Linux 上为空会报错）；本脚本回落 home。
+  3) classpath 分隔符：旧实现 写死 ';'；本脚本用 os.pathsep（Windows 上仍是 ';'）。
+  4) 判定器源码落盘行尾跟随 os.linesep（旧实现 跟随其自身文件行尾）——仅影响 temp/ 下文件字节，
      不影响任何输出行。
   5) 无新增判据、无新增状态词、无删除检查项。
 
@@ -141,7 +141,7 @@ def read_text(path):
 
 
 def iter_files_recursive(root):
-    """PowerShell Get-ChildItem -Recurse -File 的等价：本级文件优先，再 DFS 子目录。"""
+    """旧 shell Get-ChildItem -Recurse -File 的等价：本级文件优先，再 DFS 子目录。"""
     try:
         entries = list(os.scandir(root))
     except OSError:
@@ -247,7 +247,7 @@ import org.apache.maven.artifact.versioning.VersionRange;
  *     return versions != null && versions.stream().anyMatch(range::containsVersion);
  *   static { if (MC == 1.20.1) add("mod.forge", "47.1.79"); }   // key=value+"."+key="mod.forge"
  *
- * 入参（由 verify_forge_loader_gate.ps1 从 gradle.properties 派生 + mods.toml 实际声明值传入，
+ * 入参（由 旧版 verify_forge_loader_gate 实现 从 gradle.properties 派生 + mods.toml 实际声明值传入，
  * 不写死）：args[0]=旧区间 args[1]=新区间 args[2]=loaderVersion 区间 args[3]=MB 区间 args[4]=MB 实装版本。
  */
 public class LoaderGateProbe {
@@ -367,7 +367,7 @@ def run(root_arg, skip_artifacts):
         write_out("AP_LG_VERDICT:overall=2:undecidable=root_unresolved")
         return EXIT_UNDECIDABLE
     # GetFullPath 两个分支都做归一：ntpath.abspath 内含 normpath（'/' → '\'、折叠 . 与 ..），
-    # 在 Linux 上对正斜杠路径是无操作 ⇒ 与 ps1 逐字一致且不引入平台写死。
+    # 在 Linux 上对正斜杠路径是无操作 ⇒ 与 旧实现 逐字一致且不引入平台写死。
     root = os.path.abspath(root)
     root = root.rstrip("\\/")
     sub = os.path.join(root, "forge-1.20.1")
@@ -381,7 +381,7 @@ def run(root_arg, skip_artifacts):
     else:
         home = os.environ.get("USERPROFILE") or os.path.expanduser("~")
         cache_root = os.path.join(home, ".gradle", "caches", "modules-2", "files-2.1")
-    # Join-Path 在本机渲染成反斜杠：normpath 让 py 与 ps1 在 Windows 上逐字一致；
+    # Join-Path 在本机渲染成反斜杠：normpath 让 py 与 旧实现 在 Windows 上逐字一致；
     # 在 Linux（CI）上 normpath 对正斜杠路径是无操作。
     cache_root = os.path.normpath(cache_root)
 
@@ -829,8 +829,8 @@ def run(root_arg, skip_artifacts):
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(description="1.20.1 加载器版本门槛 + Mixin Booster 硬前置静态守门（ps1 等价迁移）")
-    ap.add_argument("root_pos", nargs="?", default=None, help="仓库根（位置参数，与 ps1 的 -Root 位置参数等价）")
+    ap = argparse.ArgumentParser(description="1.20.1 加载器版本门槛 + Mixin Booster 硬前置静态守门（旧实现 等价迁移）")
+    ap.add_argument("root_pos", nargs="?", default=None, help="仓库根（位置参数，与 旧实现 的 -Root 位置参数等价）")
     ap.add_argument("-Root", "--root", dest="root", default=None,
                     help="仓库根（缺省由脚本位置上溯两级派生）")
     ap.add_argument("-SkipArtifacts", "--skip-artifacts", dest="skip_artifacts", action="store_true",

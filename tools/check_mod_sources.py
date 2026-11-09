@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """模组依赖来源检查（统一口径）—— AGENTS.md「模组依赖添加规则（统一口径，1.20.1 + 1.21.1）」的执行体。
 
-本文件是 tools/check_mod_sources.ps1 的**等价迁移**（pwsh 测试资产退役后的承接实现）：
+本文件是 tools/check_mod_sources.py 的**等价迁移**（旧 shell 测试资产退役后的承接实现）：
 判定规则、每一行输出格式、状态词、退出码与 ps1 逐字一致；唯一差异是人类可读文案里出现的
 **脚本自身文件名**（ps1 -> 本文件实际名），使被指向的文件在 ps1 退役后依然真实存在。
 
@@ -110,7 +110,7 @@ VIOLATIONS: list[str] = []
 EXCEPTIONS: list[str] = []
 INFOS: list[str] = []
 
-# 人类可读文案里出现的脚本自身标识（ps1 原文是 tools/check_mod_sources.ps1）
+# 人类可读文案里出现的脚本自身标识（ps1 原文是 tools/check_mod_sources.py）
 SCRIPT_REF = "tools/" + Path(__file__).name
 
 
@@ -140,7 +140,7 @@ class _Console:
 
 # ── 解析 ──────────────────────────────────────────────────────────────────
 def read_lines(path: str) -> list[str]:
-    """等价于 PowerShell 的 Get-Content：按 CRLF/LF/CR 切行，去掉行尾，丢弃末尾空元素。"""
+    """等价于 原生 shell 的 Get-Content：按 CRLF/LF/CR 切行，去掉行尾，丢弃末尾空元素。"""
     try:
         with open(path, "rb") as fh:
             raw = fh.read()
@@ -358,7 +358,7 @@ def test_mod_source_file(project: str, path: str, enforce: bool) -> None:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog=Path(__file__).name,
-        description="模组依赖来源检查（统一口径）——tools/check_mod_sources.ps1 的等价 Python 实现。",
+        description="模组依赖来源检查（统一口径）——tools/check_mod_sources.py 的等价 Python 实现。",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "规则:\n"
@@ -386,7 +386,7 @@ def build_parser() -> argparse.ArgumentParser:
         nargs="?",
         default=None,
         metavar="ROOT",
-        help="同 --root（兼容 pwsh 的位置参数调用习惯）",
+        help="同 --root（兼容 旧 shell 的位置参数调用习惯）",
     )
     return parser
 

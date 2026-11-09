@@ -10,7 +10,7 @@
   "steps": [
     {
       "op": "note",
-      "text": "哨兵 788 场景：① 转账面板 2× 回滚全貌（geom 与 calc 双侧 scale=1:panel=81,26）② 面板实际绘制的翻译键白名单（只允许确认键自身文字，禁 cooldown/cooldown_hint）⑤ 星光兑换冷却（cd=0 就绪 → 真实点击兑换 → cd>0 灰态 → 再点 client-side 早退：rej 递增 / 余额与星光不变 / applied=0）⑥ 沙漏 4→1→0 就绪并保持。⑤ 的灰态与按下态由外部 temp/t92/real_cursor_o.ps1 送真实 OS 光标（探针落 evt=o_need_hover_ex 信标后轮询 hoverState 命中 ex=1 再点）。"
+      "text": "哨兵 788 场景：① 转账面板 2× 回滚全貌（geom 与 calc 双侧 scale=1:panel=81,26）② 面板实际绘制的翻译键白名单（只允许确认键自身文字，禁 cooldown/cooldown_hint）⑤ 星光兑换冷却（cd=0 就绪 → 真实点击兑换 → cd>0 灰态 → 再点 client-side 早退：rej 递增 / 余额与星光不变 / applied=0）⑥ 沙漏 4→1→0 就绪并保持。⑤ 的灰态与按下态由外部 temp/t92/windows MCP 的真实光标与左键（Move/Click） 送真实 OS 光标（探针落 evt=o_need_hover_ex 信标后轮询 hoverState 命中 ex=1 再点）。"
     },
     {
       "op": "note",

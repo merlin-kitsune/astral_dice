@@ -237,7 +237,7 @@ def parse_file(path):
     src = io.open(path, encoding="utf-8", newline="").read()
     out = {}
     # ⚠️ save() 的接收者各不相同(neo: output / output.withConditions;forge: chipOutput),
-    #   故此处只要求是「点号路径」,不写死 output —— 与 ChipCommon.psm1 的 '[\w.]+' 等价。
+    #   故此处只要求是「点号路径」,不写死 output —— 与 旧版 ChipCommon 模块 的 '[\w.]+' 等价。
     for m in re.finditer(r'ShapedRecipeBuilder\.shaped\(RecipeCategory\.MISC,\s*ModItems\.(\w+)\.get\(\)(?:,\s*\d+)?\)(.*?)\.save\([\w.]+[^;]*\);', src, re.S):
         const, body = m.group(1), m.group(2)
         if const not in chips:

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""筹码商店守门（verify_chip_shop_ui.ps1 的 Python 等价迁移）。
+"""筹码商店守门（旧版 verify_chip_shop_ui 实现 的 Python 等价迁移）。
 
 静态判据 G1..G6 界面骨架 + G9..G27 业务逻辑（编译 G7 与资源守门 G8 另行执行）。
 判据正本：docs/chip-shop-ui-spec.md §8 / docs/chip-shop-logic-plan.md §9。
@@ -11,7 +11,7 @@
     python scripts/verify/verify_chip_shop_ui.py forge      # 只查 forge-1.20.1
 退出码 0 = 全绿；1 = 有缺失/不一致；2 = 无法判定（一条线都没扫到 —— 反假绿守卫）。
 
-输出契约与 ps1 完全一致（前缀 / 状态词 / 行文本逐字对齐）：
+输出契约与 旧实现 完全一致（前缀 / 状态词 / 行文本逐字对齐）：
     'CHIPUI: …' / 'CHIPUI_ROOT: …' / '--- <line> ---' / 'CHIPUI_FAIL: …' /
     'CHIPUI_ASSETS|LAYOUT|FRAME|INTERACT|LANG|LANGKEYS|MENUTYPE|SLOTS|BIND|G9|G10|G17|G18|
      LOGIC|G21|G21b|G22|G23..G27|NEXT|TOTAL_FAIL|RESULT: …'
@@ -19,7 +19,7 @@
 反假绿守卫（2026-11-02 批次 B，本仓踩过「错误目录跑出 vacuous PASS」的坑）：
   · 仓库根一律从 __file__ 上溯两级求（不读 cwd）；
   · 一条线都没进（两个子项目目录都不存在）时追加一条 CHIPUI_FAIL 并 **exit 2**（无法判定），
-    绝不以 'CHIPUI_RESULT: OK' 收场。正常仓库根下该分支永不触发，故不影响与 ps1 的逐字输出。
+    绝不以 'CHIPUI_RESULT: OK' 收场。正常仓库根下该分支永不触发，故不影响与 旧实现 的逐字输出。
 """
 
 import fnmatch

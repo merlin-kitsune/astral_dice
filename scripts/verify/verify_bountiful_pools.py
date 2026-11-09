@@ -18,7 +18,7 @@
 用法:
   python scripts/verify/verify_bountiful_pools.py [--root <repo-root>]
 
-—— Python 版:1:1 对应 scripts/verify/verify_bountiful_pools.ps1。
+—— Python 版:1:1 对应 scripts/verify/旧版 verify_bountiful_pools 实现。
    ⚠️ 与 92fbeaf 之前的旧 .py 的差异（旧版已过时，不得回退）：
       三线（含 neoforge-26.1.2）/ AstralRarities 稀有度口径 / 传奇进池 / 卡牌标签判据 /
       专属牌剔除 / astral_currency.json 跨线一致 / 无 cwd 依赖（默认根 = 脚本上溯 3 层）。

@@ -1,7 +1,7 @@
 # 26.1.2 —— 需第二玩家的用例（当前无法执行）
 
 这 12 条用例**与 1.21.1 / 1.20.1 两线成对存在、断言逐字相同**，但在 26.1.2 线上
-**当前无法执行**，因此**不放在 `cases/` 下**（`mt_case.ps1` 的目录枚举是非递归的
+**当前无法执行**，因此**不放在 `cases/` 下**（`scripts/test/lib/mt_case.py` 的目录枚举是非递归的
 `Get-ChildItem -LiteralPath <dir> -Filter *.json`，子目录不会被扫到）。
 
 > 结论摘要：**26.1.2 这条 MC×加载器组合上，目前拿不到「第二玩家」能力。**
@@ -28,7 +28,7 @@ MAMUSHI-GUARD / MAMUSHI-PASSIVE / MAMUSHI-REG / TERU-EXTRA-ATTACK / TERU-SIGN / 
 ## 路径 B：Sinytra Connector + Fabric 版 Carpet —— **实测致命失败**
 
 Carpet 官方只有 **Fabric** 构建（Modrinth `loaders: ['fabric']`），故尝试经 Connector 转发。
-四件套均已实现进工具链（`mt_env.ps1` 的 `$script:ConnectorStack2612`），**但默认关闭**，
+四件套均已实现进工具链（`scripts/test/win/mt.sh --phase env` 的 `$script:ConnectorStack2612`），**但默认关闭**，
 需显式 `MT_CARPET_VIA_CONNECTOR=1` 才装。
 
 | 组件 | 版本 | 来源 |
@@ -75,7 +75,7 @@ NeoForge 的 `net.neoforged.neoforge.common.util.FakePlayer`，而它**不进 `P
 ## 解除条件（任一条成立即可全部启用）
 
 1. NeoForge 原生移植 `Carpet: NeoForged` 发布 26.1.x 构建 ⇒ 把 `$script:CarpetByVersion['26.1.2']`
-   改成 `neoforge-carpet` 规格、并把 `mt_launch.ps1` 的 `$carpetGateOn` 恢复为无条件 true；
+   改成 `neoforge-carpet` 规格、并把 `scripts/test/win/mt.sh --phase launch` 的 `$carpetGateOn` 恢复为无条件 true；
 2. Connector 修好「无 refmap 的 Fabric 模组」的 mixin 重映射，或 Carpet 改为携带 refmap 发布
    ⇒ 直接 `MT_CARPET_VIA_CONNECTOR=1` 复跑 `mt_env world`，能过再启用用例；
 3. 在探针里自建 bot 通道（`FakePlayerFactory` 造 `ServerPlayer` **并注册进 `PlayerList`**）

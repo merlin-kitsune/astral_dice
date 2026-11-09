@@ -11,7 +11,7 @@
   迭代 = 配方（任一）的全部本模组材料均已可达 → 该物品可达
   标签材料（如 #astral_dice:dice_t3）展开为其成员
 
-八项检查（与 verify_chip_acquisition.ps1 逐项对齐）：
+八项检查（与 旧版 verify_chip_acquisition 实现 逐项对齐）：
   ❌ 缺配方 no_rec / ❌ 传递不可达 unreach / ❌ 配方引用未注册物品 dangling /
   ❌ curios:chip 槽缺项 no_slot / ❌ 未进创造栏 no_tab / ⚠️ 手册未展示 crafting 页 no_page(告警) /
   ❌ 手册仍展示 crafting 页（配方默认关闭）stale_page / ❌ 手册未说明筹码获取途径 no_note
@@ -28,7 +28,7 @@
 import json, os, re, sys, glob
 from collections import defaultdict
 
-try:  # 与 ps1 逐字节对比时避免 CRLF 翻译
+try:  # 与 旧实现 逐字节对比时避免 CRLF 翻译
     sys.stdout.reconfigure(encoding="utf-8", newline="\n")
     sys.stderr.reconfigure(encoding="utf-8", newline="\n")
 except Exception:
@@ -269,7 +269,7 @@ def main():
     print("筹码「配方 / 获取途径」守门校验")
     print("=" * 78)
 
-    # ---- 守卫 1：子项目数为 0 ⇒ 无法判定，绝不 vacuous PASS（对齐 ps1 的 throw + exit 2）----
+    # ---- 守卫 1：子项目数为 0 ⇒ 无法判定，绝不 vacuous PASS（对齐 旧实现 的 throw + exit 2）----
     sub_list = subs()
     if not sub_list:
         print(f"\n❌ FAIL: 未发现任何目标子项目（ROOT={ROOT} 错或目录结构变化）⇒ 无法判定；不得判 PASS")

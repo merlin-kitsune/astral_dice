@@ -11,7 +11,7 @@ import com.merlinkitsune.astral_dice.fixes.DamageStackSanitizer;
  *
  * <p>独立可复现的运行命令（在仓库根 F:\MCProject\astral_dice_multiloader 执行）：
  * <pre>
- * pwsh -NoProfile -File tools\run_mixin_stack_sanitizer_test.ps1
+ * 旧调用：tools\run_mixin_stack_sanitizer_test.py
  * </pre>
  * 等价手工命令（javac/java 取 JAVA_HOME 下的 21；本机亦可用
  * {@code C:\Program Files\Zulu\zulu-21\bin}）：

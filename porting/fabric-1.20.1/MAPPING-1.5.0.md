@@ -597,7 +597,7 @@ sounds/               event_bonus.ogg event_damage.ogg event_fade_in.ogg event_f
 | `gui.astral_dice.*` | 25 | 商店/事件 GUI 文案 |
 | `effect.astral_dice.*` | 24 | 15 个新效果 + 9 个既有效果补充（name/description） |
 | `item.astral_dice.*` | 17 | 17 个未注册物品 |
-| `event.astral_dice.*` | 13 | 13 条事件定义（`verify_event_registry.ps1` 强校验） |
+| `event.astral_dice.*` | 13 | 13 条事件定义（scripts/verify/verify_event_registry.py 强校验） |
 | `jei.astral_dice.*` | 8 | JEI 类别名 |
 | `block.astral_dice.*` | 4 | 3 个方块 + 1 个方块变体 |
 | `curios.modifiers.*` | 3 | 饰品槽位修饰（fabric 侧走 `trinkets.slot.*` / `accessories.slot.*`，**属合法平台差异，不改**） |
@@ -655,7 +655,7 @@ fabric 独有的 26 键（**不是缺口**，不得删）：`trinkets.slot.astra
 
 - **[F] 文件存在性**：`test -f`（路径相对仓库根）
 - **[G] grep 计数/模式**：`grep -c` / `grep -q`（模式逐字给出）
-- **[S] 守门脚本**：`python` / `pwsh` 命令 + 退出码
+- **[S] 守门脚本**：`python` / 旧 shell 命令 + 退出码
 - **[L] 游戏内机器行**：`run/logs/latest.log` 里必须出现的字面量（或其正则）
 
 统一前置（对所有小节成立）：
@@ -685,8 +685,8 @@ for f in platform/event/LoaderBus platform/network/SimpleChannel \
 | 商店目录/概率类可执行 | G | `grep -c "public static" .../shop/{CardShopCatalog,ChipShopCatalog,ChipShopRoller}.java` | 与 neo 版方法数一致（§1.1 已列） |
 | 商店菜单已注册 | G | `grep -n "CARD_SHOP_MENU\|CHIP_SHOP_MENU" .../screen/ModMenuTypes.java` | 2 条 register |
 | 商店物品提示 | G | `grep -c "CardShop\|ChipShop" .../event/ModTooltipHandler.java` | ≥ 4 |
-| 资源闭合（注册↔模型↔贴图） | S | `pwsh -NoProfile -File scripts/verify/verify_resource_integrity.ps1` | 退出码 0 |
-| 商店 UI 结构 | S | `pwsh -NoProfile -File scripts/verify/verify_chip_shop_ui.ps1 fabric`（**需先给脚本加 `fabric` 分支**，现仅 `neo`/`forge`） | 退出码 0（G1..G27） |
+| 资源闭合（注册↔模型↔贴图） | S | `旧调用：scripts/verify/verify_resource_integrity.py` | 退出码 0 |
+| 商店 UI 结构 | S | `旧调用：scripts/verify/verify_chip_shop_ui.py fabric`（**需先给脚本加 `fabric` 分支**，现仅 `neo`/`forge`） | 退出码 0（G1..G27） |
 | 客户端资源 | S | `python tools/verify_fabric_assets.py --jar <fabric 构建产物>` | 退出码 0（无「注册了但资源没跟上」） |
 | 游戏内 | L | `grep -c "Astral Dice mod loaded." run/logs/latest.log` | ≥ 1，且无 `MISSING TEXTURE`/`Unable to load model` 行 |
 
@@ -696,7 +696,7 @@ for f in platform/event/LoaderBus platform/network/SimpleChannel \
 |---|---|---|---|
 | 13 条事件定义存在 | F | `ls fabric-1.20.1/src/main/java/com/merlinkitsune/astral_dice/event/api/` | 5 个文件（AstralEvent/AstralEventEffect/AstralEventPolarity/AstralEventTier/AstralEventTrigger） |
 | 事件 id 常量 | G | `grep -c "public static final" .../event/AstralEventIds.java` | = 13 |
-| 事件注册守门 | S | `pwsh -NoProfile -File scripts/verify/verify_event_registry.ps1 -Line fabric-1.20.1` | 退出码 0（判据：id 有常量、路径唯一、三语 `event.astral_dice.<path>.name`、图标 `textures/gui/event/<path>.png`、`investigation_stage` 4 张阶级图） |
+| 事件注册守门 | S | `旧调用：scripts/verify/verify_event_registry.py -Line fabric-1.20.1` | 退出码 0（判据：id 有常量、路径唯一、三语 `event.astral_dice.<path>.name`、图标 `textures/gui/event/<path>.png`、`investigation_stage` 4 张阶级图） |
 | 事件图标 | F | `ls fabric-1.20.1/src/main/resources/assets/astral_dice/textures/gui/event/` | 13 + 4 阶 |
 | 事件三语 lang | G | `grep -c "event\.astral_dice\." fabric-1.20.1/src/main/resources/assets/astral_dice/lang/en_us.json` | = 13（三语同） |
 | 事件处理器全部注册到总线 | G | `grep -c "LoaderBus.INSTANCE.register" .../AstralDiceMod.java` | ≥ 现有 9 + 本轮新增（EventChoiceManager/EventCardService/GlobalEventGate/InvestigationArbitration/BarricadeAggroHandler/CurioDeathKeepHandler/NewSignEvents/RepulsionCreeperGuard/RepulsionTeleportGuard/ModEntityEvents 等，逐类 1 条） |
@@ -740,7 +740,7 @@ for f in platform/event/LoaderBus platform/network/SimpleChannel \
 | 判据 | 类型 | 命令 / 模式 | 通过标准 |
 |---|---|---|---|
 | 效果常量齐全 | G | `grep -c "DeferredHolder\|RegistryObject<MobEffect>\|register(" .../effect/ModEffects.java` | 与 neo 效果常量数一致（fabric 现缺 15） |
-| 效果图标逐个存在 | S | `python tools/verify_effect_icons.py` | 退出码 0（脚本 `:52` `LINES` 已含 `fabric-1.20.1`；判据=每个 MOB_EFFECT id 必须有 `textures/mob_effect/<id>.png`） |
+| 效果图标逐个存在 | S | `python scripts/verify/verify_effect_icons.py` | 退出码 0（脚本 `:52` `LINES` 已含 `fabric-1.20.1`；判据=每个 MOB_EFFECT id 必须有 `textures/mob_effect/<id>.png`） |
 | 图标数对账 | G | `ls fabric-1.20.1/src/main/resources/assets/astral_dice/textures/mob_effect/*.png \| wc -l` | = 53 + 15 = 68（与 neo 一致） |
 | 效果三语文案 | G | `grep -c "effect\.astral_dice\..*\.name" .../lang/en_us.json` | 与常量数一致（三语同） |
 | 两处 mixin 已注册 | G | `grep -c "HealOrHarmMobEffectMixin\|RegenerationMobEffectMixin" fabric-1.20.1/src/main/resources/astral_dice.mixins.json` | = 2（当前 0） |
@@ -786,11 +786,11 @@ for f in platform/event/LoaderBus platform/network/SimpleChannel \
 ### 5.9 全局回归（每次提交必跑）
 
 ```bash
-python tools/verify_effect_icons.py                  # 退出码 0
+python scripts/verify/verify_effect_icons.py                  # 退出码 0
 python tools/audit_patchouli_keys.py -v              # 退出码 0
 python3 tools/check_lang_sync.py --line fabric-1.20.1 # 退出码 0
 python tools/audit_mixin_injection.py --hint-sources  # 退出码 0
-pwsh -NoProfile -File scripts/verify/verify_resource_integrity.ps1   # 退出码 0
+旧调用：scripts/verify/verify_resource_integrity.py   # 退出码 0
 grep -rn "net\.minecraftforge\|net\.neoforged\|top\.theillusivec4" fabric-1.20.1/src/main/java | wc -l  # 0
 ```
 
@@ -924,7 +924,7 @@ grep -rn "net\.minecraftforge\|net\.neoforged" neoforge-1.21.1/src/main/java | w
 | B-8 | 事件触发/效果施加是否有可断言的机器行 | 本轮只确认了启动/饰品/版本门的机器行（§5 引用），事件与效果的施加点日志未逐条核 | `grep -rn "LOGGER.info"` 于 `event/`、`effect/` 后确认 |
 | B-9 | `BarricadeEntity`(447 行)/`RepulsionEntity`(1115 行) 在 1.20.1 的逐方法签名 | 未逐方法对照 1.20.1 `LivingEntity` 的 `tick/aiStep/defineSynchedData/addAdditionalSaveData` 签名；这类重写必须逐签名核 | 与 1.20.1 反编译源逐方法对读 |
 | B-10 | `ExplosionEvent` / `VillagerTradesEvent` 新事件的注入点 | fabric `platform/event/` 无这两个事件，需新写事件类 + bridge mixin；**具体注入哪个原版方法（`Explosion.finalizeExplosion` / `Villager.getOffers`）需要按 1.20.1 字节码取证** | `javap` 1.20.1 目标类 + `audit_mixin_injection.py` |
-| B-11 | `verify_chip_shop_ui.ps1` 的 fabric 判据是否成立 | 脚本内 `$lines` 只映射 `neo`/`forge`（`verify_chip_shop_ui.ps1:45`），无 fabric 分支；G1..G27 的具体断言在 fabric 上是否全部适用未验证 | 先补 `fabric` → `fabric-1.20.1` 映射再跑 |
+| B-11 | scripts/verify/verify_chip_shop_ui.py 的 fabric 判据是否成立 | 脚本内 `$lines` 只映射 `neo`/`forge`（scripts/verify/verify_chip_shop_ui.py:45`），无 fabric 分支；G1..G27 的具体断言在 fabric 上是否全部适用未验证 | 先补 `fabric` → `fabric-1.20.1` 映射再跑 |
 | B-12 | JEI 在 fabric 的可行性 | `build.gradle:172-176` 明确 JEI 15.62 由 Loom 1.17.20 构建、被 1.14.10 拒绝，因此「不参与编译」；是否能用「手工 compileOnly jar」绕过未做实验（且本任务禁止跑 gradle） | 需允许构建的环境 |
 | B-13 | 游戏内行为层（打开商店、抽事件、路障碰撞、放拒止） | 本任务**禁止启动游戏**，§5 全部判据均为静态可执行判据 + 已存在的机器行；行为验证需另跑实机 | 实机测试台 |
 

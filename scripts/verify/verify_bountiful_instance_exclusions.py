@@ -50,7 +50,7 @@ import re
 import sys
 import zipfile
 
-try:  # 与 ps1 逐字节对比时避免 CRLF 翻译
+try:  # 与 旧实现 逐字节对比时避免 CRLF 翻译
     sys.stdout.reconfigure(encoding="utf-8", newline="\n")
     sys.stderr.reconfigure(encoding="utf-8", newline="\n")
 except Exception:

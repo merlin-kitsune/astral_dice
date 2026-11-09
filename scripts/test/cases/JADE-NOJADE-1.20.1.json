@@ -9,7 +9,7 @@
   "steps": [
     {
       "op": "note",
-      "text": "本用例的「不装 Jade」在**启动参数**层：pwsh -File scripts/test/mt_launch.ps1 --version 1.20.1 的 gradle 侧改由 cmd/gradlew.bat 直起 :forge-1.20.1:runClient -PtestJade=false；mt_launch 不支持透传 -P，故该轮用 gradlew 直起（记录见报告 §回归验证 J5）。进入世界后再跑本用例的断言。"
+      "text": "本用例的「不装 Jade」在**启动参数**层：bash scripts/test/win/mt.sh --phase launch --version 1.20.1 的 gradle 侧改由 cmd/gradlew.bat 直起 :forge-1.20.1:runClient -PtestJade=false；mt_launch 不支持透传 -P，故该轮用 gradlew 直起（记录见报告 §回归验证 J5）。进入世界后再跑本用例的断言。"
     },
     {
       "op": "inject_command",

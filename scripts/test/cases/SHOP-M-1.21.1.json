@@ -118,7 +118,7 @@
     },
     {
       "op": "note",
-      "text": "③-§1.4 几何窗口（哨兵 785）：屏保持开着，用例到此结束，随后由 temp/t88/real_human_drag.ps1 用 OS 级真实鼠标（SetCursorPos + SendInput）拖拽卡框 → 物品栏，再按真实 ESC 关屏"
+      "text": "③-§1.4 几何窗口（哨兵 785）：屏保持开着，用例到此结束，随后由 temp/t88/windows MCP 的真实光标拖拽（Move/Click） 用 OS 级真实鼠标（SetCursorPos + SendInput）拖拽卡框 → 物品栏，再按真实 ESC 关屏"
     },
     {
       "op": "inject_command",

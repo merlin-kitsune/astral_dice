@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """run_mixin_stack_sanitizer_test —— DamageStackSanitizer 纯 Java 语义测试运行器。
 
-python 等价移植 scripts/../tools/run_mixin_stack_sanitizer_test.ps1（原 ps1 随 .ps1 退役删除）。
+python 等价移植 scripts/../tools/run_mixin_stack_sanitizer_test.py（旧脚本已随退役删除）。
 
 做什么（与 ps1 完全一致）：
   1. 只编译**真实源文件** neoforge-1.21.1/src/main/java/com/merlinkitsune/astral_dice/fixes/
@@ -30,9 +30,9 @@ python 等价移植 scripts/../tools/run_mixin_stack_sanitizer_test.ps1（原 ps
 java 自身非 0 时**原样**透传它的退出码（ps1 的 exit $rc）。
 
 与 ps1 的差异（移植纪律要求逐条说明）：
-  · ps1 用 PowerShell 的 Get-Command / Get-ChildItem 找 JDK；这里用 JAVA_HOME → PATH（shutil.which）
+  · ps1 用 原生 shell 的 Get-Command / Get-ChildItem 找 JDK；这里用 JAVA_HOME → PATH（shutil.which）
     → 两个固定猜测目录（Zulu 21、Eclipse Adoptium jdk-21*），顺序与 ps1 相同。
-  · ps1 的 Write-Error 会带 PowerShell 自己的错误装饰并写到 stderr；这里只写纯文本消息（同上 stderr）。
+  · ps1 的 Write-Error 会带 原生 shell 自己的错误装饰并写到 stderr；这里只写纯文本消息（同上 stderr）。
     「缺源文件 / 找不到工具」仍然 exit 2，未降级为 0。
 """
 
@@ -66,7 +66,7 @@ def _error(msg: str) -> None:
 
 
 def _normalize_dashes(argv: List[str], spec: dict) -> List[str]:
-    """把 pwsh 风格单破折号参数（-OutDir）折成 argparse 长选项（--outdir）。
+    """把 旧 shell 风格单破折号参数（-OutDir）折成 argparse 长选项（--outdir）。
 
     spec 形如 {"outdir": "outdir"}（小写名 -> 规范长选项名），大小写不敏感。
     不在 spec 里的 token 原样透传，交给 argparse 判 rc=2。
@@ -111,7 +111,7 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     ap = argparse.ArgumentParser(
         prog="run_mixin_stack_sanitizer_test.py",
-        description="编译并运行 DamageStackSanitizer 的纯 Java 语义测试（等价 run_mixin_stack_sanitizer_test.ps1）。",
+        description="编译并运行 DamageStackSanitizer 的纯 Java 语义测试（等价 run_mixin_stack_sanitizer_test.py）。",
         epilog="退出码：0 通过 / 1 javac 失败 / 2 缺源文件或找不到 JDK / 其它 = java 自身退出码",
     )
     ap.add_argument("--outdir", "-OutDir", default=None,

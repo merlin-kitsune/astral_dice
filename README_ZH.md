@@ -129,7 +129,7 @@ Astral Dice 是一个以骰子为核心的生存扩展。戴上骰子后，每�
 ./gradlew :fabric-1.20.1:build       # 1.20.1 Fabric
 ```
 
-- 第三方模组（含前端模组）只从 **Curse Maven**（`curse.maven:`）或 **Modrinth Maven**（`maven.modrinth:`）获取。`build.gradle` 的 `exclusiveContent` 在依赖解析时强制这一点，`tools/check_mod_sources.ps1` 负责静态检查，细则见 `AGENTS.md`。模组 jar 不入库。
+- 第三方模组（含前端模组）只从 **Curse Maven**（`curse.maven:`）或 **Modrinth Maven**（`maven.modrinth:`）获取。`build.gradle` 的 `exclusiveContent` 在依赖解析时强制这一点，`tools/check_mod_sources.py` 负责静态检查，细则见 `AGENTS.md`。模组 jar 不入库。
 - 库从 mavenLocal 解析。做新版本时先发布：在 StarEngine 仓库里执行 `./gradlew :<platform>:publishToMavenLocal`。
 
 ## 许可

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""立牌注册 / 标签一致性守门（verify_sign_registration.ps1 的 Python 等价迁移，2026-10-21 起）。
+"""立牌注册 / 标签一致性守门（旧版 verify_sign_registration 实现 的 Python 等价迁移，2026-10-21 起）。
 
 1.21.1 起立牌要能装备，必须同时出现在三处：
   - item/ModItems.java 的 registerItem("..._sign")
@@ -9,18 +9,18 @@
 
 检查四条线：neoforge-1.21.1(item) / forge-1.20.1(items) / neoforge-26.1.2(item) / fabric-1.20.1(items)。
 
-输出与退出码完全对齐 ps1：
+输出与退出码完全对齐 旧实现：
   'SIGN_REG: OK|FAIL [proj] registered=N signs=M stand=K'
   '   缺 signs.json : a, b'  /  '   缺 stand.json : …'  /  '   标签内未注册: …'
   'SIGN_REG: UNDECIDABLE [proj] 缺少 <path>'  /  'SIGN_REG: UNDECIDABLE（检查面缺失）'
   'SIGN_REG: FAIL（N 条线不一致）'  /  'SIGN_REG: ALL OK'
   退出码：0 = 一致；1 = 有缺失/多余；2 = 无法判定（检查面缺失）。
 
-与 ps1 的两点差别（都是反假绿要求，2026-11-02 批次 B）：
-  1. 仓库根仍按「脚本位置上溯两级」求（ps1 同口径），但 ps1 找不到 settings.gradle 时回落到
-     **当前目录**；本实现显式提供 --root 覆盖，且回落分支保留 ps1 语义仅作为最后手段。
+与 旧实现 的两点差别（都是反假绿要求，2026-11-02 批次 B）：
+  1. 仓库根仍按「脚本位置上溯两级」求（旧实现 同口径），但 旧实现 找不到 settings.gradle 时回落到
+     **当前目录**；本实现显式提供 --root 覆盖，且回落分支保留 旧实现 语义仅作为最后手段。
   2. 追加守卫：四条线累计 **registered 数为 0** 时判『无法判定』(退出码 2)，
-     复用 ps1 已有的 'SIGN_REG: UNDECIDABLE（检查面缺失）' 机器行 —— 不新增任何状态词/机器行，
+     复用 旧实现 已有的 'SIGN_REG: UNDECIDABLE（检查面缺失）' 机器行 —— 不新增任何状态词/机器行，
      只堵住「注册正则一条都没扫到却报 ALL OK」的 vacuous PASS。
 
 用法：
@@ -94,9 +94,9 @@ def repo_root_from_script():
 
 def main(argv):
     parser = argparse.ArgumentParser(
-        description="立牌注册 / 标签一致性守门（verify_sign_registration.ps1 的 Python 等价实现）")
+        description="立牌注册 / 标签一致性守门（旧版 verify_sign_registration 实现 的 Python 等价实现）")
     parser.add_argument("--root", "-r", default=None,
-                        help="仓库根（缺省 = 脚本位置上溯两级；ps1 在缺 settings.gradle 时回落当前目录）")
+                        help="仓库根（缺省 = 脚本位置上溯两级；旧实现 在缺 settings.gradle 时回落当前目录）")
     args = parser.parse_args(argv)
 
     if args.root:

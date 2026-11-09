@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""资源完整性守门（verify_resource_integrity.ps1 的 Python 等价迁移）。
+"""资源完整性守门（旧版 verify_resource_integrity 实现 的 Python 等价迁移）。
 
 核对「物品注册表 → 模型 → 物品模型定义」三步链是否逐条闭合，逐线（版本线）独立检查：
   1. ModItems.java 里 registerItem("id", …) / registerSimpleBlockItem("id", …) / register("id", …) 的全部 id；
@@ -12,16 +12,16 @@
 
 只读，不修改任何工程文件。
 
-输出与退出码完全对齐 ps1：
+输出与退出码完全对齐 旧实现：
   - 机器行前缀：'='*92 分隔、'资源完整性 [ver]  <dir>'、'  jar   = …'、'  注册物品 id = N'、
     '  [OK]/[MISS]/[WARN] <label> …'、'RESULT: PASS / FAIL / ERROR（无法判定）'；
   - 退出码：0 = 全部通过；1 = 存在致命偏差（模型/物品模型定义缺失）；2 = 无法判定
     （未核到任何一条线，例如没有 jar 或路径约定变了 —— 反假绿守卫，绝不允许 vacuous PASS）。
 
-与 ps1 的唯一差别（反假绿要求，2026-11-02 批次 B）：
+与 旧实现 的唯一差别（反假绿要求，2026-11-02 批次 B）：
   - `--root` 缺省值 '.' 的含义改为「脚本所在仓库根」而不是「当前目录」，因此**在错误目录里跑
-    也会扫到真仓库**（ps1 的 Root='.' 依赖 cwd）；显式传 --root 时按传入值走。
-    打印的路径前缀仍与 ps1 相同（缺省时就是 '.'）。
+    也会扫到真仓库**（旧实现 的 Root='.' 依赖 cwd）；显式传 --root 时按传入值走。
+    打印的路径前缀仍与 旧实现 相同（缺省时就是 '.'）。
 
 用法：
     python scripts/verify/verify_resource_integrity.py                 # 三线全跑
@@ -192,7 +192,7 @@ def repo_root_from_script():
 
 def main(argv):
     parser = argparse.ArgumentParser(
-        description="资源完整性守门（verify_resource_integrity.ps1 的 Python 等价实现）")
+        description="资源完整性守门（旧版 verify_resource_integrity 实现 的 Python 等价实现）")
     parser.add_argument("--version", "-v", default="all",
                         choices=["1.21.1", "1.20.1", "26.1.2", "all"],
                         help="要检查的版本线（默认 all）")

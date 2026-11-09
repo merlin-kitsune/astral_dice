@@ -41,7 +41,7 @@
 | 联动 | 实测 | 处理 |
 |---|---|---|
 | **Iron's Spells 'n Spellbooks** | Modrinth 反查**无 fabric/1.20.1 版** | fabric 线裁剪（事件接线 `IronSpellbooksCompat` 删除） |
-| **Bountiful（赏金板）** | 无 Fabric 版（Forge/NeoForge only） | fabric 线裁剪（`data/bountiful/**` 与守门 `verify_bountiful_pools.ps1` 不进 fabric 线） |
+| **Bountiful（赏金板）** | 无 Fabric 版（Forge/NeoForge only） | fabric 线裁剪（`data/bountiful/**` 与守门 `scripts/verify/verify_bountiful_pools.py` 不进 fabric 线） |
 | **Mixin Booster / MixinRuntimeGate** | Fabric Loader 自带 Mixin | **整条删除**（mods.toml 的 mixinbooster 依赖、`init/MixinRuntimeGate.java`） |
 | Embeddium / Oculus | Forge-only | 用 Sodium/Iris 替（仅运行环境） |
 | neoforge-carpet | NeoForge-only | 用 fabric-carpet 替 |
@@ -58,7 +58,7 @@
 | `ref/yarn` | `1.20.1`（9672e1f） | Yarn 映射（备选对照；**不采用**，仅留作字段名对照参考） |
 | `ref/patchouli` | `1.20.x`（f561109，多平台 Fabric/NeoForge/Xplat 结构） | Patchouli Fabric 版结构 |
 
-> ⚠️ 上表坐标列为「建议坐标」，**逐一以 `tools/check_mod_sources.ps1`（R1/R1b/R2/R3 守门）反查的最终坐标为准**；Modrinth/CF 的 fileId 精确值在执行移植时用 Modrinth API `v2/project/<slug>/version?loaders=["fabric"]&game_versions=["1.20.1"]` 重新反查一次（本表版本号已为当时实测值）。
+> ⚠️ 上表坐标列为「建议坐标」，**逐一以 `tools/check_mod_sources.py`（R1/R1b/R2/R3 守门）反查的最终坐标为准**；Modrinth/CF 的 fileId 精确值在执行移植时用 Modrinth API `v2/project/<slug>/version?loaders=["fabric"]&game_versions=["1.20.1"]` 重新反查一次（本表版本号已为当时实测值）。
 
 
 ---

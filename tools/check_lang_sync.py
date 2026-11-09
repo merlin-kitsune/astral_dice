@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""lang 同步检查（Linux 无 pwsh，tools/check_lang_sync.ps1 在本机不可用）。
+"""lang 同步检查（Linux 无 旧 shell，tools/check_lang_sync.py 在本机不可用）。
 
-与 tools/check_lang_sync.ps1 **同判定能力、同退出码**，逐条对齐 ps1 语义：
+与 tools/check_lang_sync.py **同判定能力、同退出码**，逐条对齐 ps1 语义：
 
 1. **键集**：en_us.json 与 zh_cn.json 双向一致；ja_jp.json（存在即校验）
    以 **zh_cn 为基线**一致（ps1 :456-470）。

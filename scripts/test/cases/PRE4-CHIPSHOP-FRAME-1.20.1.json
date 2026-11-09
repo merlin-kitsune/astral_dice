@@ -11,7 +11,7 @@
   "steps": [
     {
       "op": "note",
-      "text": "背景：`screen/ChipShopScreen.java` 的品质外框 blit 曾被 `fe4aa05f`（2026-10-21 无边框图标批）删掉，2026-10-22 恢复（`qualityCode(DataSlot)` 优先、`qualityFrameIndexOf` 兜底、`QUALITY_FRAME_NONE` 跳过）。本轮实机只做**观感取证**（外框是客户端绘制，服务端日志无判据），静态判据由 `scripts/verify/verify_chip_shop_ui.ps1`（G2b 正向断言）承担。"
+      "text": "背景：`screen/ChipShopScreen.java` 的品质外框 blit 曾被 `fe4aa05f`（2026-10-21 无边框图标批）删掉，2026-10-22 恢复（`qualityCode(DataSlot)` 优先、`qualityFrameIndexOf` 兜底、`QUALITY_FRAME_NONE` 跳过）。本轮实机只做**观感取证**（外框是客户端绘制，服务端日志无判据），静态判据由 `scripts/verify/verify_chip_shop_ui.py`（G2b 正向断言）承担。"
     },
     {
       "op": "inject_command",
@@ -56,7 +56,7 @@
     },
     {
       "op": "note",
-      "text": "注意：下一条 vision 断言在测试台里是 DELEGATED（不判红绿），仅作截图取证；外框的机器判据是 verify_chip_shop_ui.ps1 的 G2b 静态正向断言。"
+      "text": "注意：下一条 vision 断言在测试台里是 DELEGATED（不判红绿），仅作截图取证；外框的机器判据是 scripts/verify/verify_chip_shop_ui.py 的 G2b 静态正向断言。"
     },
     {
       "op": "assert",
@@ -87,7 +87,7 @@
   ],
   "evidence": {
     "0": "pre4-chipshop-frame",
-    "machine_judge_none": "本用例唯一的外框判据是 steps 里的 `assert/vision`，而 scripts/test/mt_case.ps1 对 vision 一律返回 DELEGATED（:1623，:2439 映射成 →VIS），既不判红也不判绿 ⇒ 该用例 PASS 只代表 crash / kubejs / mixin 三条健康断言通过，**不代表外框被画出来**。外框的机器判据是静态守门 `scripts/verify/verify_chip_shop_ui.ps1` 的 G2b 正向断言（绘制入口 + qualityTex 三档映射 + 几何），截图供人工目视。",
+    "machine_judge_none": "本用例唯一的外框判据是 steps 里的 `assert/vision`，而 scripts/test/lib/mt_case.py 对 vision 一律返回 DELEGATED（:1623，:2439 映射成 →VIS），既不判红也不判绿 ⇒ 该用例 PASS 只代表 crash / kubejs / mixin 三条健康断言通过，**不代表外框被画出来**。外框的机器判据是静态守门 `scripts/verify/verify_chip_shop_ui.py` 的 G2b 正向断言（绘制入口 + qualityTex 三档映射 + 几何），截图供人工目视。",
     "screenshot_tag": "pre4-chipshop-frame"
   }
 }

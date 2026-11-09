@@ -1,29 +1,29 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""合成配方「网格唯一性」静态守门（由 verify_crafting_recipe_uniqueness.ps1 等价迁移）
+"""合成配方「网格唯一性」静态守门（由 旧版 verify_crafting_recipe_uniqueness 实现 等价迁移）
 
 用途：防止两条配方对同一个 3×3 摆放同时成立（原版 RecipeManager#getRecipeFor 取
 byType(CRAFTING) 里第一条 matches() 命中的配方，后者永远产不出来）。
 
-判据（与 ps1 逐条对齐，按原版 matches() 语义推导）：
+判据（与 旧实现 逐条对齐，按原版 matches() 语义推导）：
   * shaped ↕ shaped：pattern 展开成 3×3 单元矩阵，裁掉**四周全空**的行/列，
     内部空格仍参与（该格必须为空）⇒ 裁剪后逐格相同即重合。
   * 任意两条配方：非空材料**多重集**相同即重合（shaped 与 shapeless 跨类型也查）。
   * 材料等价只按字面 id：{"item":X}→item:X / {"tag":T}→tag:T / 数组→oneof:[...] /
     其它→json:<紧凑序列化>。
 
-输出约定（对齐 ps1）：
-  - ps1 显式把 [Console]::OutputEncoding 设为 UTF8(no BOM)，并用 [Console]::Out.Write(文本 + LF)
+输出约定（对齐 旧实现）：
+  - 旧实现 显式把 [Console]::OutputEncoding 设为 UTF8(no BOM)，并用 [Console]::Out.Write(文本 + LF)
     ⇒ stdout/stderr 一律 UTF-8 + LF（跨平台恒定）。本脚本 reconfigure newline='' 复刻。
   - 退出码：0 = 全绿；1 = 存在重合 / root 不存在 / 无子项目；
             2 = 无法判定（**迁移新增反假绿分支**：扫到 0 个配方文件时拒绝 vacuous PASS）。
 
-与 ps1 的已知差异（逐条）：
+与 旧实现 的已知差异（逐条）：
   1) 反假绿新增：配方文件数为 0 ⇒ stderr "RECIPE_UNIQ: ERROR 未扫到任何配方文件…" + exit 2
-     （ps1 在该情形下会打印 shaped=0|shapeless=0 然后 "RECIPE_UNIQ: OK" 退出 0，属假绿）。
+     （旧实现 在该情形下会打印 shaped=0|shapeless=0 然后 "RECIPE_UNIQ: OK" 退出 0，属假绿）。
   2) JSON 解析失败的报错文案沿用 python 的 json 异常文本，与 .NET ConvertFrom-Json 不同
      （仅出现在畸形 JSON 的情形，行前缀与判据一致）。
-  3) 排序：ps1 用 Sort-Object（.NET 文化敏感比较），本脚本用 python 字典序；真实数据与
+  3) 排序：旧实现 用 Sort-Object（.NET 文化敏感比较），本脚本用 python 字典序；真实数据与
      迁移夹具上两者结果一致（见交付报告），仅在材料 id 含 '_' 等标点与字母交错且相对
      顺序本就不确定时才可能不同。
 
@@ -66,7 +66,7 @@ def write_err(text: str = "") -> None:
 # 其它形态(药水等) -> json:<紧凑序列化>
 # ---------------------------------------------------------------------------
 def _ci_get(obj: dict, name: str):
-    """PowerShell 的 PSObject 属性访问/对 -contains 均忽略大小写。"""
+    """旧 shell 的 PSObject 属性访问/对 -contains 均忽略大小写。"""
     if name in obj:
         return obj[name]
     low = name.lower()
@@ -107,7 +107,7 @@ def ingredient_key(value) -> str:
 
 
 def _ps_str(v) -> str:
-    """[string]$v 的近似：PowerShell 把 $null 变 ''、true/false 小写。"""
+    """[string]$v 的近似：旧 shell 把 $null 变 ''、true/false 小写。"""
     if isinstance(v, bool):
         return "true" if v else "false"
     if isinstance(v, (int, float, str)):
@@ -207,7 +207,7 @@ def read_recipes(project_dir: str):
             try:
                 with open(e.path, "r", encoding="utf-8-sig") as fh:
                     js = json.load(fh)
-            except Exception as exc:  # noqa: BLE001 - 与 ps1 的 catch 对齐
+            except Exception as exc:  # noqa: BLE001 - 与 旧实现 的 catch 对齐
                 warn.append("JSON parse failed: %s/%s — %s" % (rel, e.name, exc))
                 continue
             if not isinstance(js, dict):
@@ -225,7 +225,7 @@ def read_recipes(project_dir: str):
 
 
 def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(description="合成配方网格唯一性守门（ps1 等价迁移版）")
+    ap = argparse.ArgumentParser(description="合成配方网格唯一性守门（旧实现 等价迁移版）")
     ap.add_argument("root_pos", nargs="?", default=None, help="仓库根（位置参数，可选）")
     ap.add_argument("-Root", "--root", dest="root", default="", help="仓库根（默认脚本位置上溯两级）")
     ap.add_argument("-LogDir", "--log-dir", dest="log_dir", default="", help="额外落盘目录（相对仓库根）")

@@ -36,8 +36,8 @@
 | A8 | **指定药水配方** | 1.21.1/26.1.2 `DataComponentIngredient.of(true,…)`；forge `PartialNBTIngredient` | **自建 `astral_dice:nbt_shaped`**（`NbtShapedRecipe` + `StackConstraint`） | 语义基准 = `DataComponentIngredient.of(true,…)`（strict 精确匹配）；⚠️ **只改 fabric 端**，forge 的 `PartialNBTIngredient` / `potionTag(...)` **保持原样**（有意差异，勿统一） |
 | A9 | **通用标签** | NeoForge 自带 `c:`；Forge `forge:` | **自建 `c:`**（对齐 NeoForge 定义） | `c:bricks` = **砖物品**（`minecraft:brick` / `minecraft:nether_brick`），**不是**砖块方块；1.20.1 标签目录 = `data/<ns>/tags/items/`（**复数**） |
 | A10 | **datagen** | NeoForge/Forge `GatherDataEvent` | Fabric `FabricDataGenerator` | ⚠️ 重写构建脚本易**漏搬** `sourceSets.main.resources.srcDir('src/generated/resources')` ⇒ 生成资源**不进产物**（编译 + 启动期均无感，只见「物品紫黑、配方不存在」）⇒ 改构建脚本后**必须开包核对资源条目数**（KI-F4） |
-| A11 | **内嵌库（JiJ）** | 产物内 `META-INF/jarjar/` | 同（但 Loom 会剥离 `fabric.mod.json` 的 `jars`） | ⚠️ **Loom 重映射第三方 mod 时剥掉 `jars` 声明** ⇒ dev 里 Puzzles Lib / Accessories / Patchouli / Cloth Config / KubeJS 全部起不来 ⇒ 跑 dev 前先 `ft_env.ps1 --side both --install-embedded`（= `tools/loom_embedded_jars.py --apply`）；换 `-PtestTrinkets`/`-PtestAccessories` 后**必须重跑**（KI-F23） |
-| A12 | **生产映射** | 单套映射 | **dev(named) 与 prod(intermediary) 两套** | 🚨 **禁按字符串名反射原版成员**（`getDeclaredField("color")` 在 dev 命中、prod 是 `field_8908` ⇒ 启动 100% 崩，且 dev 全绿测不出）（KI-F13）⇒ **按类型/修饰符查找**；凡改**库/源码/依赖/构建配置**，除 dev 冒烟外**必须**跑 `ft_prod.ps1`（`Sound engine started` = PASS）；改过 mixin 还须加 **`-PreloadClasses`**（intermediary 名）（KI-F14） |
+| A11 | **内嵌库（JiJ）** | 产物内 `META-INF/jarjar/` | 同（但 Loom 会剥离 `fabric.mod.json` 的 `jars`） | ⚠️ **Loom 重映射第三方 mod 时剥掉 `jars` 声明** ⇒ dev 里 Puzzles Lib / Accessories / Patchouli / Cloth Config / KubeJS 全部起不来 ⇒ 跑 dev 前先 `旧环境脚本（已删除） --side both --install-embedded`（= `tools/loom_embedded_jars.py --apply`）；换 `-PtestTrinkets`/`-PtestAccessories` 后**必须重跑**（KI-F23） |
+| A12 | **生产映射** | 单套映射 | **dev(named) 与 prod(intermediary) 两套** | 🚨 **禁按字符串名反射原版成员**（`getDeclaredField("color")` 在 dev 命中、prod 是 `field_8908` ⇒ 启动 100% 崩，且 dev 全绿测不出）（KI-F13）⇒ **按类型/修饰符查找**；凡改**库/源码/依赖/构建配置**，除 dev 冒烟外**必须**跑 `旧生产启动脚本（已删除）`（`Sound engine started` = PASS）；改过 mixin 还须加 **`-PreloadClasses`**（intermediary 名）（KI-F14） |
 | A13 | **Mixin 注入** | `@ModifyConstant` 可用 | 🚨 **禁 `@ModifyConstant`** | 它与其它模组的同点注入**互斥** ⇒ 会让对方 `InjectionError` 崩游戏（KI-F14）⇒ 一律用 MixinExtras **`@WrapOperation`** 包裹**调用指令**（不同字节码位置 ⇒ 可共存） |
 | A14 | **槽位图标（Accessories）** | Curios 用 `icon` 路径 | **必须落原版 `minecraft:blocks` 图集** | 图标放 `assets/<ns>/textures/gui/slot/*.png`，`icon` 写**图集 sprite 名** `astral_dice:gui/slot/…`（Trinkets 路径直连 + Accessories 图集，同一字符串对两通道同时成立）；放错 = **文件在、位置错** ⇒ 紫黑格且无日志（KI-F18）⇒ 两道门：`verify_fabric_assets.py` 第 8 项 + `AccessoriesClientIconCheck`（**须同时查「文件存在」与「图集收录」**） |
 | A15 | **玩家名** | 固定 | Loom 默认**随机**用户名 | ⇒ 离线 UUID 每次变 ⇒ **跨会话缺陷在 dev 根本不可能复现** ⇒ 用 `-PdevUsername=<name>` 固定（KI-F17 的定位关键手段） |
@@ -101,14 +101,14 @@
 | **Q2** | **KI-G2 医疗箱筹码「重登 / 切维度」可反复白刷回血**：`PlayerLoggedInEvent` / `PlayerChangedDimensionEvent` 均 `refreshMedkitEquipSession + triggerMedkitOnEquip`，而 `equipTrigger` 的 `triggerHealing` **无条件** ⇒ 每次重登 / 每次过门再完整触发一次（层数满 32 时直接按 32×2 回血） | 只登记未改 —— 属用户 2026-10-01 裁决「这两个时点各触发一次」的**数学必然推论**（⚠️ **2026-10-04 已闭环**：按可选方案 ③ 撤掉重登 / 切维度两个触发点，各线同批；实机 `FAB-Q2Q3-INVARIANTS` 6/6） | ①**接受为设计**（0 改动，文档如实披露）；②**节流**（同玩家 N 秒内最多一次，或仅当「闸门上次因**死亡**释放」时才触发）；③**撤掉这两个时点**（只留「装备时」+「重生后」；= 删两处调用 + 手册文案回退） | **②**（保留裁决意图、堵住无限刷）；⚠️ 三条均不得改「装备时 / 重生后必触发」与三档概率 / `HEALING_TIMER_SECONDS=60` / `HEALING_POINT_CAP=32` |
 | **Q3** | **KI-F25② 裸 `removeEffect` 在效果不存在时抛 `CancellationException`**（`astral_dice:` 效果的外部移除被**设计性**拦截 ⇒ 拦截器取消了一个未被声明为可取消的回调） | 已登记，**未做决定性复现**（⚠️ 本节是**裁决前快照**；处置与更正见 §4.2 与 §4.3） | ①跑一次决定性复现（三条路径：裸 `removeEffect`(效果不存在) / `/effect clear` / 喝牛奶），确认后修（拦截器加 `cancellable()` 判定或前置存在性检查）；②维持现状（原版与本模组自身都先判存在性，影响面小） | **①**（探针可做的无人值守项，一次即定性） |
 | **Q4** | **KI-F25④ `FakePlayer` 不进世界 tick 循环** ⇒ 依赖「玩家级每 N tick」的行为（如 `normalizeLegacyInfiniteDurations`）**无法**在本线端到端断言 | 已如实登记（测试能力边界，非产品缺陷） | ①带**真人玩家 / 客户端进世界**验证（需用户在场）；②维持（该特性已有静态判据 + 其余非 fabric 线实机读数） | **②**（不影响产品正确性） |
-| **Q5** | **KI-F21-① 进世界验证未跑**：`ft_prod.ps1` 的 quickplay 通道曾**误删存档** ⇒ 世界内行为（附件注册 / ∞ 显示 / 效果面板悬停注释 / 配方实际可合成）未在 fabric 实机确认 | 刻意未跑（该参数已加护栏，需显式 `-AcknowledgeQuickPlayDestructive`） | ①授权该参数 + **先备份存档**后跑一次；②由**用户手动**进世界目视；③维持不做 | **①或②**（用户在场时一次性做完，覆盖面最大） |
+| **Q5** | **KI-F21-① 进世界验证未跑**：`旧生产启动脚本（已删除）` 的 quickplay 通道曾**误删存档** ⇒ 世界内行为（附件注册 / ∞ 显示 / 效果面板悬停注释 / 配方实际可合成）未在 fabric 实机确认 | 刻意未跑（该参数已加护栏，需显式 `-AcknowledgeQuickPlayDestructive`） | ①授权该参数 + **先备份存档**后跑一次；②由**用户手动**进世界目视；③维持不做 | **①或②**（用户在场时一次性做完，覆盖面最大） |
 | **Q6** | **KI-F21-② 上游缺陷（主仓）**：`multi-main` 删了 lang 键 `astral_dice.guide.entry.special_effects.6`，但 `forge-1.20.1` 手册 `getting_started/special_effects.json` 仍引用它 ⇒ 手册该行显示**原始键名**（fabric 线已用「保留键」规避） | 主仓未裁决 | ①改手册（删 / 改该 page）；②恢复该 lang 键；③维持（fabric 已规避） | **①**（与手册条目结构一致；P0 两线同批） |
 | **Q7** | **库侧 2 处同类反射缺陷**（KI-F22 附带，**影响各线**）：`EventTargetCollector` 在 `TeamManager` 上反射 `getTeamForPlayer(Player)/(UUID)`（**均不存在**）；OPAC 类名 `dev.darkhax.opac.*` **不存在** | 已登记，交库侧下次发版 | ①库侧修（下次 bump 一并，`tools/verify_party_api.py` 已能自动比对契约）；②维持（该后端本就不生效，仅影响第三方联动） | **①**（修复成本低、已有自动守门） |
 | **Q8** | **纪律项（非缺陷）**：P1-B-8 = 改构建脚本后**必须开包核对**资源条目数（否则生成资源静默不进产物）；P1-B-9 = 跨加载器存档不互通（附件 vs Capability；Trinkets/Accessories vs Curios）**平台差异、不修补**；P1-B-10 = `verify_fabric_assets.py` 白名单为空，新增项须写「为何不能修 + 需谁裁决」 | 已固化 | ①维持现有纪律（人工执行）；②把 P1-B-8 的「开包核对」**自动化**为守门脚本（构建后自动比对产物资源条目数）；P1-B-9 维持（无解，仅文档披露） | **②**（一次性投入，之后自动守门） |
 
 > ⚠️ 上表**所有方案均待用户裁决**；未获裁决前不实施任何一条。
 > 复算/取证入口：`tools/verify_fabric_assets.py`、`tools/verify_party_api.py`、
-> `scripts/test/fabric/{ft.ps1,ft_prod.ps1}`、`scripts/test/fabric/cases/FAB-CATCHUP-PARITY.json`。
+> `scripts/test/fabric` 旧测试台入口（已删除）、`scripts/test/fabric/cases/FAB-CATCHUP-PARITY.json`。
 
 ### 4.2 处置结果（2026-10-04 用户裁决；Q1~Q8 **已全部落地**）
 
@@ -118,7 +118,7 @@
 | **Q2** | 彻底封堵漏洞 + 写入 AGENTS 红线 | **各线** | 删除「登录 / 切换维度 = 新装备会话」的 `refreshMedkitEquipSession + triggerMedkitOnEquip`（各线各 2 处）⇒ 装备触发点收敛为**两个**：①真的装上筹码 ②死亡重生后；`AGENTS.md` 新增「平衡性红线」节（FATAL 定性 / 不得绕过 / 四件套连带义务） | 反复重登 / 反复过门**不再**产生治愈点或回血；死亡重生仍触发一次 |
 | **Q3** | 直接修复，不做额外讨论或绕过 | **fabric** | `event/ModEffectEvents#onModEffectRemovalPrevented` 增「目标已无该效果 ⇒ 放行」；`platform/PuzzlesBridges` 的 REMOVE 桥接同判据（不派发事件、不返回 `EventResult.INTERRUPT`）⇒ **正面语义修复**（不存在的效果无需拦截，也就不会走到不可取消的路径） | 裸 `removeEffect`（效果不存在）/ `/effect clear` / 牛奶 三条路径均不再抛 `CancellationException`；**存在时仍照旧拦截**（实测：**部分通过**，见 §4.3 —— 「效果不存在」这条路径已证安全；另有 **1 次来源未定位**的偶发异常，本改动按**第二道防线**保留） |
 | **Q4** | 按主线处理方式解决 | **fabric 测试资产** | 采用主线口径 = **真人玩家 / 客户端进世界**取证（不用 `FakePlayer` 的 tick 采样捷径） | 玩家级每-N-tick 类行为（如 `normalizeLegacyInfiniteDurations`）取得端到端读数 |
-| **Q5** | 授权自动化测试、测试环境无需保留存档 | **测试环境** | 允许销毁存档的通道（`ft_prod.ps1 -AcknowledgeQuickPlayDestructive` 等）；测试世界可重建 | 用例可无人值守跑完并出 PASS/FAIL 结论 |
+| **Q5** | 授权自动化测试、测试环境无需保留存档 | **测试环境** | 允许销毁存档的通道（`旧生产启动脚本（已删除） -AcknowledgeQuickPlayDestructive` 等）；测试世界可重建 | 用例可无人值守跑完并出 PASS/FAIL 结论 |
 | **Q6** | 同步修改对应手册内容 | **fabric**（对齐主流非 fabric 线） | 删除 fabric 多出的 `special_effects` **第 6 页** + 三语 `guide.entry.special_effects.6` 键 ⇒ 与其余非 fabric 线一致（5 页 / 无该键） | 各线 `special_effects.json` 均 5 页；各线三语均无 `.6` 键（守门 C3 覆盖） |
 | **Q7** | 在库侧进行修补 | **库 `starengine_lib`** | **核实结论：已修且已发布**（提交 `006e824`，随 `1.0.11`）：`EventTargetCollector$Ftb` 用 `getTeamForPlayerID(UUID)` / `getKnownPlayer(UUID)`，`$Opac` 用 `xearo.pac…OpenPACServerAPI`；错误目标 `getTeamForPlayer(Player)` 与 `dev.darkhax.opac.*` **已消失**（jar 字节码核对）。本批无需再改库 | 守门 C2 对**消费方当前 pin 版本**的库 jar 核对通过 |
 | **Q8** | 加入自动化核对机制 | **新增守门** | 新增 `tools/verify_rarity_consistency.py`：**C1** 手册档位词 ↔ 代码稀有度（各线）、**C2** 库侧反射契约（pin 版本库 jar）、**C3** 手册引用 ↔ lang 键 双向。已做**反证测试**（注入反例 → 精确 FAIL，还原 → PASS） | 各线全跑 `exit=0`；反例能被报出（非死门禁） |
@@ -199,8 +199,8 @@ Q4 / Q5 的状态见 fabric README §7.4 与 `KNOWN-ISSUES` KI-F25④ / KI-F21-�
 - **滞后测绘**：`porting/fabric-1.20.1/gap-report/semantic_gap.py`（语义差）、`forge_only_lines.py`（forge 独有实质语句行）。
 - **资源闭环**：`python tools/verify_fabric_assets.py`（8 项；0=PASS / 1=缺陷 / 2=缺产物 jar）。
 - **队友判定契约**：`python tools/verify_party_api.py`（各线分线校验）。
-- **生产映射冒烟**：`pwsh -NoProfile -File scripts/test/fabric/ft_prod.ps1 -Instance <整合包目录> -McRoot <D:\.minecraft> -Java <java.exe> [-PreloadClasses 'net.minecraft.class_XXXX']`。
-- **dev 冒烟**：`scripts/test/fabric/ft.ps1` / `ft_env.ps1`（**不得**复用 `mt.ps1` 生产线口径）。
+- **生产映射冒烟**：`旧调用：scripts/test/fabric/旧生产启动脚本（已删除） -Instance <整合包目录> -McRoot <D:\.minecraft> -Java <java.exe> [-PreloadClasses 'net.minecraft.class_XXXX']`。
+- **dev 冒烟**：`scripts/test/fabric` 旧测试台入口（已删除） / `旧环境脚本（已删除）`（**不得**复用 `scripts/test/win/mt.sh` 生产线口径）。
 
 ---
 

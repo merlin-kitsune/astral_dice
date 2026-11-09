@@ -88,7 +88,7 @@ description: 《星之骰戏》(astral_dice) forge-1.20.1 → fabric-1.20.1 移�
 - 事件按 `API_CHEATSHEET.md §3` + `PORT_ANALYSIS.md §4.2` 逐事件改写；无 FAPI 对应者（10~15 种）自写 mixin（注入点列在 §5.1）或自定义回调。
 - 自定义事件 `SignActiveTriggeredEvent` 派发改消费方直调订阅点。
 - `network/` 改 `ServerPlayNetworking`/`ClientPlayNetworking`（1.20.1 channel-handler + PacketByteBufs，**无 PayloadTypeRegistry**）；12 消息逐一映射；VersionGate 重写为握手包内嵌协议版本常量比对。
-- 判据：测试台冒烟用例过（**此时接入** Mt.Paths.psm1 的 fabric 分派）。
+- 判据：测试台冒烟用例过（**此时接入** 旧测试台路径模块（已删除） 的 fabric 分派）。
 
 ### 1.6 P5 战利品 + 配置 + GUI
 
@@ -106,7 +106,7 @@ description: 《星之骰戏》(astral_dice) forge-1.20.1 → fabric-1.20.1 移�
 
 ### 1.8 P7 测试台 + CI + 收口
 
-- `Mt.Paths.psm1` 加 fabric 分派（版本键 `1.20.1-fabric`）；`mt.conf.example`；新建 `scripts/verify/verify_fabric_loader_gate.ps1`（对标 forge 版）。
+- `旧测试台路径模块（已删除）` 加 fabric 分派（版本键 `1.20.1-fabric`）；`mt.conf.example`；新建 `tools/verify_fabric_loader_gate.py`（对标 forge 版）。
 - CI build.yml：branches + JDK17 + lang 第四步 + artifact/Release JARS 加 fabric jar；库 checkout ref 钉库 fabric 版 SHA。
 - `AGENTS.md`/`README(_ZH)`/双 `CHANGELOG` 更新。
 - 判据：全套件绿 + CI 绿。

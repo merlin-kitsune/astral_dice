@@ -129,7 +129,7 @@ The Abyss Reagent chip is named consistently now: display name, tooltip and ever
 ./gradlew :fabric-1.20.1:build       # 1.20.1 Fabric
 ```
 
-- Third-party mods (front-ends included) come only from **Curse Maven** (`curse.maven:`) or **Modrinth Maven** (`maven.modrinth:`). `exclusiveContent` in `build.gradle` enforces this during resolution, and `tools/check_mod_sources.ps1` checks it statically. Details in `AGENTS.md`. Mod jars are never committed.
+- Third-party mods (front-ends included) come only from **Curse Maven** (`curse.maven:`) or **Modrinth Maven** (`maven.modrinth:`). `exclusiveContent` in `build.gradle` enforces this during resolution, and `tools/check_mod_sources.py` checks it statically. Details in `AGENTS.md`. Mod jars are never committed.
 - The library resolves from mavenLocal. Publish it first when working on a new version: `./gradlew :<platform>:publishToMavenLocal` inside the StarEngine repository.
 
 ## License

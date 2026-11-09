@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""事件注册表静态守门（由 verify_event_registry.ps1 等价迁移而来）
+"""事件注册表静态守门（由 旧版 verify_event_registry 实现 等价迁移而来）
 
-判据（与 ps1 完全一致）：
+判据（与 旧实现 完全一致）：
   ① 注册的 id 都在 AstralEventIds 里有常量；
   ② id 路径唯一；
   ③ 三语 lang 均有 event.astral_dice.<path>.name；
@@ -10,17 +10,17 @@
      （investigation_stage 另查 4 张阶级图）；
   ⑤ 事件键字面量不得散落在注册表之外（WARN，不影响退出码）。
 
-输出约定（对齐 ps1）：
-  - 全部人类可读行写 stdout，平台换行（Windows CRLF / Linux LF）——ps1 用 Write-Host，
+输出约定（对齐 旧实现）：
+  - 全部人类可读行写 stdout，平台换行（Windows CRLF / Linux LF）——旧实现 用 Write-Host，
     同样是平台换行；UTF-8。
   - 退出码：0 = 全绿；1 = 有 FAIL（含"注册表中未找到任何 AstralEventIds 引用"
     "缺少源文件"两种提前退出分支）。
 
 反假绿：
   - 默认仓库根 = 脚本位置上溯两级（不依赖 cwd），可显式覆盖；
-  - 扫到 0 条注册引用时 ps1 本身就 FAIL 且退出 1（不是假绿），此处保持同一判据与文案。
+  - 扫到 0 条注册引用时 旧实现 本身就 FAIL 且退出 1（不是假绿），此处保持同一判据与文案。
 
-与 ps1 的唯一已知差异：ps1 末尾"常量已定义但未注册"的 WARN 走 $constMap.Keys
+与 旧实现 的唯一已知差异：旧实现 末尾"常量已定义但未注册"的 WARN 走 $constMap.Keys
 （.NET Hashtable，字符串哈希随机化，跨进程顺序不稳定），本脚本按 ids 文件出现顺序输出；
 真实仓库当前该分支为 0 行，故 stdout 逐字节一致。
 
@@ -50,8 +50,8 @@ REGISTRY_EXCLUDE = re.compile(r"AstralEventRegistry\.java$", re.IGNORECASE)
 
 
 def norm_seps(p: str) -> str:
-    """复刻 PowerShell Join-Path 在 Windows 上的分隔符归一（'/' -> '\\'）：
-    ps1 用 Join-Path 拼所有派生路径，Windows 上会把整条路径统一成反斜杠；
+    """复刻 旧 shell Join-Path 在 Windows 上的分隔符归一（'/' -> '\\'）：
+    旧实现 用 Join-Path 拼所有派生路径，Windows 上会把整条路径统一成反斜杠；
     posix 上 Join-Path 不做转换，故此处只在 os.sep 为 '\\' 时转换（Linux CI 无操作）。"""
     if os.sep == "\\":
         return p.replace("/", "\\")
@@ -67,7 +67,7 @@ def default_root() -> str:
 def iter_java_files(root: str):
     """复刻 Get-ChildItem -Recurse -Filter *.java 的枚举顺序：
     先输出本目录下的 *.java（文件系统枚举顺序），再按枚举顺序递归子目录
-    （已用 /tmp 夹具实测 PowerShell 7.6.9 为「本级文件全部优先，然后 DFS 子目录」）。"""
+    （已用 /tmp 夹具实测 旧 shell 7.6.9 为「本级文件全部优先，然后 DFS 子目录」）。"""
     try:
         entries = list(os.scandir(root))
     except OSError:
@@ -95,7 +95,7 @@ def read_text(path: str) -> str:
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(
-        description="事件注册表静态守门（ps1 等价迁移版）",
+        description="事件注册表静态守门（旧实现 等价迁移版）",
         add_help=True,
     )
     ap.add_argument("root_pos", nargs="?", default=None, help="仓库根（位置参数，可选）")
@@ -116,7 +116,7 @@ def main(argv=None) -> int:
         print("EVENT_REG: FAIL 缺少源文件（%s / %s）" % (ids_file, reg_file))
         return 1
 
-    # 常量表：PowerShell @{} 是忽略大小写的 Hashtable
+    # 常量表：旧 shell @{} 是忽略大小写的 Hashtable
     const_map = {}       # lower(name) -> path
     const_order = []     # 按 ids 文件出现顺序保留原始名
     for m in CONST_PATTERN.finditer(read_text(ids_file)):
@@ -193,7 +193,7 @@ def main(argv=None) -> int:
 
 def select_string_quiet(path: str, pattern: re.Pattern) -> bool:
     """复刻 Select-String -Quiet：逐行（忽略大小写）正则命中即 True。
-    文件不存在时 ps1 在 $ErrorActionPreference=Stop 下会终止；此处按"缺键"处理（仍 FAIL）。"""
+    文件不存在时 旧实现 在 $ErrorActionPreference=Stop 下会终止；此处按"缺键"处理（仍 FAIL）。"""
     try:
         text = read_text(path)
     except OSError:

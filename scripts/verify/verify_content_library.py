@@ -1,22 +1,22 @@
 #!/usr/bin/env python3
-"""verify_content_library —— 内容库一致性校验（python 复原版，等价 scripts/devtools/verify_content_library.ps1）。
+"""verify_content_library —— 内容库一致性校验（python 复原版，等价 scripts/devtools/旧版 verify_content_library 实现）。
 
 对照物：docs/1.2.0-content.json（1.2.0 冻结快照）↔ 工程实际文件。
 
-判定与退出码与 ps1 逐条对齐：
+判定与退出码与 旧实现 逐条对齐：
   1) 新增物品闭集：HEAD 的 registerItem id 集合 − 68dbd59^ 的集合，必须与快照 items 的键集相等；
   2) 逐物品（双版本）：ModItems 注册 / 汇总标签 / curios 槽位 / 配方产物 / 手册条目；
   3) 计数基线：BASE_TAG_COUNTS 与 BASE_SLOT_COUNTS；
   4) 装备槽守门：汇总标签去掉空白基底（BLANK_ITEMS）后必须全部进对应 curios 槽标签；
   5) 新增效果：ModEffects 注册 + 双版本 × 中英 lang 键；
   6) 双版本对等：汇总标签 / curios 槽 / 手册条目。
-输出行（[OK] / WARN / FAIL / ALL OK / !! 缺少 …）与 ps1 同形；有偏差退出 1，全部通过退出 0。
+输出行（[OK] / WARN / FAIL / ALL OK / !! 缺少 …）与 旧实现 同形；有偏差退出 1，全部通过退出 0。
 
-与 ps1 的两处**有意差异**（其余逐字对齐）：
-  * 增加了 -h/--help（ps1 只有位置参数 Root）：本仓约定每个 python 入口都必须有 --help 且退出 0。
-  * --root <v> 与位置参数 Root 等价（历史 python 原件的参数是 --root；ps1 是位置参数，两者都接）。
+与 旧实现 的两处**有意差异**（其余逐字对齐）：
+  * 增加了 -h/--help（旧实现 只有位置参数 Root）：本仓约定每个 python 入口都必须有 --help 且退出 0。
+  * --root <v> 与位置参数 Root 等价（历史 python 原件的参数是 --root；旧实现 是位置参数，两者都接）。
 
-本脚本只读工程文件，不写任何文件；不调用任何 .ps1 / .psm1。
+本脚本只读工程文件，不写任何文件；不调用任何 .旧实现 /  旧模块。
 """
 
 import json
@@ -118,7 +118,7 @@ def git(root, args):
     return proc.stdout.decode("utf-8", "replace").replace(chr(13) + chr(10), chr(10))
 
 
-# ── 取值（逐个对齐 ps1 的同名函数）───────────────────────────────────────
+# ── 取值（逐个对齐 旧实现 的同名函数）───────────────────────────────────────
 def new_ids_from_git(root):
     rel = "neoforge-1.21.1/src/main/java/com/merlinkitsune/astral_dice/item/ModItems.java"
     old = git(root, ["show", START_COMMIT + "^:" + rel])
@@ -226,7 +226,7 @@ def usage():
         "用法: python scripts/verify/verify_content_library.py [--root <目录>]",
         "",
         "内容库一致性校验：docs/1.2.0-content.json（1.2.0 冻结快照）↔ 工程实际文件。",
-        "等价 scripts/devtools/verify_content_library.ps1（位置参数 Root）。",
+        "等价 scripts/devtools/旧版 verify_content_library 实现（位置参数 Root）。",
         "",
         "选项:",
         "  --root <目录>  工程根目录（默认 '.'）；也可用位置参数直接给",

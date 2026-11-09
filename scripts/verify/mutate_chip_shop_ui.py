@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """筹码商店守门「变异测试」（judge-mutation）—— 证明 verify_chip_shop_ui 的 G9..G27 判据不是假绿。
 
-本文件是 scripts/verify/mutate_chip_shop_ui.ps1 的**等价迁移**（2026-11-02 批次 B）：
+本文件是 scripts/verify/旧版 mutate_chip_shop_ui 实现 的**等价迁移**（2026-11-02 批次 B）：
 对源码/资源逐条注入一处语义变异（去重 / 概率表 / 已拥有过滤 / 双击 / 第二购买入口 / 隐藏槽 mayPickup /
 价格步长 / 价格上限 / 刷新周期 / 刷新上限钳制 / 物品栏已满判定取反 / 筹码格命中条件 / 确认守卫被削 /
 语言键集不对称 / 悬空语言键 / 两枚图标互换字节 / 品质外框被删掉或被改档），共 39 条 =
@@ -14,14 +14,14 @@
     python scripts/verify/mutate_chip_shop_ui.py --root F:/MCProject/astral_dice_multiloader-next
     python scripts/verify/mutate_chip_shop_ui.py --gate scripts/verify/verify_chip_shop_ui.py
 
-退出码（与 ps1 一致）：0 = 全部变异都被抓到（守门有效）；1 = 有变异漏判（守门有洞）；
+退出码（与 旧实现 一致）：0 = 全部变异都被抓到（守门有效）；1 = 有变异漏判（守门有洞）；
 2 = harness 自身失败（锚点没命中 / 目标文件缺失 / 还原后字节不一致）—— 该条判据根本没被注入，
     与「漏判」分开计数、分开报告，禁止混进判红桶里。
 
-与 ps1 的差别（仅两处，都不改输出契约）：
-  1. 被调用的守门脚本由「同目录同名 .py」决定（ps1 调 verify_chip_shop_ui.ps1），
-     默认即本文件的兄弟脚本，可用 --gate 覆盖 —— 这样 ps1 资产删除后本 harness 仍可用；
-  2. 写日志前显式创建 temp/t87/ 目录（ps1 依赖该目录已存在）。
+与 旧实现 的差别（仅两处，都不改输出契约）：
+  1. 被调用的守门脚本由「同目录同名 .py」决定（旧实现 调 旧版 verify_chip_shop_ui 实现），
+     默认即本文件的兄弟脚本，可用 --gate 覆盖 —— 这样 旧实现 资产删除后本 harness 仍可用；
+  2. 写日志前显式创建 temp/t87/ 目录（旧实现 依赖该目录已存在）。
 
 多行锚点：脚本内 NL 恒为 LF，而 forge 线源码/资源多为 CRLF ⇒ 锚点与替换串在比对前按
 **目标文件自己的行尾**归一化（convert_to_file_eol）；不归一化时多行锚点会静默匹配不到（实测踩中过）。
@@ -311,7 +311,7 @@ def build_swaps(root):
 
 
 def run_gate(gate, tgt, log):
-    """等价于 ps1 侧的「& 解释器(NoProfile, File, <gate>, <tgt>) 并 *> <log>」：
+    """等价于 旧实现 侧的「& 解释器(NoProfile, File, <gate>, <tgt>) 并 *> <log>」：
     子进程 stdout+stderr 一律重定向进日志文件，只把退出码带回来（日志随后原文读回做关键字判定）。"""
     d = os.path.dirname(log)
     if d and not os.path.isdir(d):
@@ -330,7 +330,7 @@ def read_log(log):
 
 
 def judge(name, expect, code, out, caught, escaped):
-    """ps1: if (code -ne 0 -and hit) { 判红 } else { 漏判！ }"""
+    """旧实现: if (code -ne 0 -and hit) { 判红 } else { 漏判！ }"""
     hit = expect in out
     if code != 0 and hit:
         caught[0] += 1
