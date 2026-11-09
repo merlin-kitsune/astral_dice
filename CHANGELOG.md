@@ -4,6 +4,12 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 26.4-SNAPSHOT.10
+
+### This line
+
+- Change: the pinned StarEngine moves to `26.4-SNAPSHOT.2` (Forge / NeoForge 1.21.1 / 26.1.2), `26.4-SNAPSHOT.9` (fabric-1.21.1) and `26.4-SNAPSHOT.11` (fabric-1.20.1); the fabric range lower bounds follow. That library release drops the legacy `starengine_lib` modId wallet compatibility, so the wallet is read only from the `starengine` key.
+
 ## 26.4-SNAPSHOT.9
 
 ### This line
