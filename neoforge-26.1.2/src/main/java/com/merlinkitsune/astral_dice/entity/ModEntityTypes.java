@@ -96,6 +96,21 @@ public final class ModEntityTypes {
                     .clientTrackingRange(10)
                     .build(ResourceKey.create(Registries.ENTITY_TYPE, id)));
 
+    /**
+     * 暗影之门（{@code astral_dice:inkshadow_portal}，2026-11-10）：无碰撞、无重力、不可攻击的传送门实体；
+     * 模型约 1.19×0.37×0.94 格（渲染 ×1.6），碰撞箱取 1.2×1.2 与渲染后的可见宽度同量级，
+     * {@code clientTrackingRange(10)} 覆盖 8 格放置距离。
+     *
+     * <p>26.1.2 只有 {@code build(ResourceKey)} 重载 ⇒ 走 {@code register(String, Function<Identifier, T>)}，
+     * 注册 id 由加载器直接注入（与 {@link #SOURI_DRINK} 同法）。
+     */
+    public static final DeferredHolder<EntityType<?>, EntityType<InkShadowPortalEntity>> INKSHADOW_PORTAL =
+            ENTITY_TYPES.register("inkshadow_portal", id -> EntityType.Builder
+                    .<InkShadowPortalEntity>of(InkShadowPortalEntity::new, MobCategory.MISC)
+                    .sized(1.2F, 1.2F)
+                    .clientTrackingRange(10)
+                    .build(ResourceKey.create(Registries.ENTITY_TYPE, id)));
+
     private ModEntityTypes() {
     }
 }

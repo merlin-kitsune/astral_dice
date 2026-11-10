@@ -1034,6 +1034,17 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(AstralRarities.legendary())));
 
+    // 小猎手立牌(命名:inkshadow,稀有;2026-11-10):主动「暗影之门」(准星 8 格内放起始门;30 秒内再按
+    //   技能键放终点门(可跨维度),两门成对 ⇒ 3:00 内踩上即两端传送、门前 2.5 格敌对生物受 2 点法伤;
+    //   窗口内封锁攻击/右键/交互并锁定 hotbar 槽位),被动「双生之影」(每成功传送一次 +1 层攻击 +2、
+    //   3:00 过期;层数与剩余时间走 HUD 图标)。
+    // 稀有品质 = ASTRAL_DICE_RARE(2026-11-10 用户裁决:史诗 -> 稀有);
+    // 配方 = 末影珍珠×2 + 星币×2 + 黄色染料×2 + 空白筹码 + 骰子(2026-11-11 墨囊->末影珍珠、金块->黄色染料)。
+    public static final DeferredItem<Item> INKSHADOW_SIGN = registerItem("inkshadow_sign",
+            props -> new com.merlinkitsune.astral_dice.item.sign.InkShadowSignItem(props
+                    .stacksTo(1)
+                    .rarity(AstralRarities.rare())));
+
     // 少主立牌(命名:al,传奇;2026-11-08):主动「强者怜悯」(目标选择器选一名类玩家目标 ⇒ 选 1~3 张卡牌
     //   赠予对方,每张换 2 星币,1 张即可确认、背包无牌直接取消不进冷却),被动「双赢」(A 面:佩戴者使他人
     //   获得卡牌 ⇒ 双方各 +1 星光;B 面:对目标使用主动技能后双方筹码 -5(下限 5)+ 各一次刷新),

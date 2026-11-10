@@ -1318,6 +1318,20 @@ public class ModRecipeProvider extends RecipeProvider {
                 .define('D', ModItems.DIAMOND_DICE.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
                 .save(output);
+        // 小猎手立牌(inkshadow,稀有):B/X/B + K/C/K + X/D/X（B=末影珍珠、X=星币、K=黄色染料、
+        // C=空白筹码、D=骰子）—— 与 1.21.1 参考实现同网格同材料
+        // （2026-11-10 用户裁决品质史诗->稀有、配方简化；2026-11-11 墨囊->末影珍珠、金块->黄色染料）。
+        ShapedRecipeBuilder.shaped(items, RecipeCategory.MISC, ModItems.INKSHADOW_SIGN.get())
+                .pattern("BXB")
+                .pattern("KCK")
+                .pattern("XDX")
+                .define('B', Items.ENDER_PEARL)
+                .define('X', ModItems.STAR_COIN.get())
+                .define('K', Items.YELLOW_DYE)
+                .define('C', ModItems.BLANK_CHIP.get())
+                .define('D', ModItems.DICE.get())
+                .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
+                .save(output);
         // 少主立牌(al,史诗):B/X/B + K/C/K + X/D/X（B=黑色染料、X=星币尘、K=金块、C=空白筹码、
         // D=钻石骰子）—— 与 1.21.1 参考实现同网格同材料。
         ShapedRecipeBuilder.shaped(items, RecipeCategory.MISC, ModItems.AL_SIGN.get())

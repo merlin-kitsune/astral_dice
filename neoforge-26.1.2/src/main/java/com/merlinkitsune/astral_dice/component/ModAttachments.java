@@ -1999,6 +1999,112 @@ public class ModAttachments {
         player.setData(SOURI_GOLD_SCALES.get(), Math.max(0, value));
     }
 
+    // ══════════════════════════════════════════════════════════════════════════
+    //  小猎手立牌 inkshadow（2026-11-10）：放置窗口 / 槽位锁 / 被动层数 / 门对寿命
+    //
+    //  全部只有 .serialize 无 .sync：这些状态只在服务端判定（客户端不读），不需要每 tick
+    //  走附件同步通道；需要的视觉表达由 mob_effect（inkshadow_stack HUD）与实体本身承担。
+    //  序列化形状按 26.1.2 线口径写成 .serialize(Codec.X.fieldOf("value"))（1.21.1 是裸 Codec）。
+    // ══════════════════════════════════════════════════════════════════════════
+
+    /** 放置窗口内「起始门」实体 UUID 的字符串形式（空串 = 无窗口） */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<String>> INKSHADOW_PENDING_UUID =
+            ATTACHMENTS.register("inkshadow_pending_uuid", () -> AttachmentType.builder(() -> "")
+                    .serialize(Codec.STRING.fieldOf("value"))
+                    .build());
+
+    /** 放置窗口内起始门所在维度（{@code dimension().location().toString()}，空串 = 无窗口） */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<String>> INKSHADOW_PENDING_DIM =
+            ATTACHMENTS.register("inkshadow_pending_dim", () -> AttachmentType.builder(() -> "")
+                    .serialize(Codec.STRING.fieldOf("value"))
+                    .build());
+
+    /** 放置窗口截止 tick（0 = 无窗口） */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> INKSHADOW_PENDING_DEADLINE =
+            ATTACHMENTS.register("inkshadow_pending_deadline", () -> AttachmentType.builder(() -> 0L)
+                    .serialize(Codec.LONG.fieldOf("value"))
+                    .build());
+
+    /** 放置窗口内被锁定的 hotbar 槽位（-1 = 无锁；窗口结束/作废时解除） */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> INKSHADOW_LOCKED_SLOT =
+            ATTACHMENTS.register("inkshadow_locked_slot", () -> AttachmentType.builder(() -> -1)
+                    .serialize(Codec.INT.fieldOf("value"))
+                    .build());
+
+    /** 被动「双生之影」层数（0..无上限；攻击加成由 inkShadowSignManager 直接挂修饰符） */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> INKSHADOW_STACKS =
+            ATTACHMENTS.register("inkshadow_stacks", () -> AttachmentType.builder(() -> 0)
+                    .serialize(Codec.INT.fieldOf("value"))
+                    .build());
+
+    /** 被动层数过期 tick（0 = 无层数） */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> INKSHADOW_STACKS_EXPIRE =
+            ATTACHMENTS.register("inkshadow_stacks_expire", () -> AttachmentType.builder(() -> 0L)
+                    .serialize(Codec.LONG.fieldOf("value"))
+                    .build());
+
+    /** 活跃门对过期 tick 列表（逗号分隔；门对建立时追加、刷新时剪掉过期项） */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<String>> INKSHADOW_PAIR_EXPIRIES =
+            ATTACHMENTS.register("inkshadow_pair_expiries", () -> AttachmentType.builder(() -> "")
+                    .serialize(Codec.STRING.fieldOf("value"))
+                    .build());
+
+    public static String getInkShadowPendingUuid(net.minecraft.world.entity.player.Player player) {
+        return player.getData(INKSHADOW_PENDING_UUID.get());
+    }
+
+    public static void setInkShadowPendingUuid(net.minecraft.world.entity.player.Player player, String value) {
+        player.setData(INKSHADOW_PENDING_UUID.get(), value == null ? "" : value);
+    }
+
+    public static String getInkShadowPendingDim(net.minecraft.world.entity.player.Player player) {
+        return player.getData(INKSHADOW_PENDING_DIM.get());
+    }
+
+    public static void setInkShadowPendingDim(net.minecraft.world.entity.player.Player player, String value) {
+        player.setData(INKSHADOW_PENDING_DIM.get(), value == null ? "" : value);
+    }
+
+    public static long getInkShadowPendingDeadline(net.minecraft.world.entity.player.Player player) {
+        return player.getData(INKSHADOW_PENDING_DEADLINE.get());
+    }
+
+    public static void setInkShadowPendingDeadline(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(INKSHADOW_PENDING_DEADLINE.get(), Math.max(0L, value));
+    }
+
+    public static int getInkShadowLockedSlot(net.minecraft.world.entity.player.Player player) {
+        return player.getData(INKSHADOW_LOCKED_SLOT.get());
+    }
+
+    public static void setInkShadowLockedSlot(net.minecraft.world.entity.player.Player player, int value) {
+        player.setData(INKSHADOW_LOCKED_SLOT.get(), value < 0 ? -1 : value);
+    }
+
+    public static int getInkShadowStacks(net.minecraft.world.entity.player.Player player) {
+        return player.getData(INKSHADOW_STACKS.get());
+    }
+
+    public static void setInkShadowStacks(net.minecraft.world.entity.player.Player player, int value) {
+        player.setData(INKSHADOW_STACKS.get(), Math.max(0, value));
+    }
+
+    public static long getInkShadowStacksExpire(net.minecraft.world.entity.player.Player player) {
+        return player.getData(INKSHADOW_STACKS_EXPIRE.get());
+    }
+
+    public static void setInkShadowStacksExpire(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(INKSHADOW_STACKS_EXPIRE.get(), Math.max(0L, value));
+    }
+
+    public static String getInkShadowPairExpiries(net.minecraft.world.entity.player.Player player) {
+        return player.getData(INKSHADOW_PAIR_EXPIRIES.get());
+    }
+
+    public static void setInkShadowPairExpiries(net.minecraft.world.entity.player.Player player, String value) {
+        player.setData(INKSHADOW_PAIR_EXPIRIES.get(), value == null ? "" : value);
+    }
+
     /**
      * 怪力侦探立牌(sherry)「推理时间」**层数真值**(0..5)。
      *

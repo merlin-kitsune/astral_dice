@@ -432,5 +432,17 @@ public class ModEffects {
     public static final DeferredHolder<MobEffect, MobEffect> SOURI_DRAGON =
             EFFECTS.register("souri_dragon", SouriDragonEffect::new);
 
+    // ── 小猎手立牌 inkshadow（2026-11-10）────────────────────────────────────────
+
+    /**
+     * 「双生之影」：被动层数**镜像**效果（真值在附件 INKSHADOW_STACKS）。
+     *
+     * <p>不加属性修饰符：攻击加成由 {@code InkShadowSignManager#refreshStacks} 直接挂
+     * ATTACK_DAMAGE 修饰符（与金鳞的防御同口径：附件真值 + 修饰符，效果只做 HUD 图标）。
+     * 时长 = 层数剩余时间，amplifier = 层数 - 1。
+     */
+    public static final DeferredHolder<MobEffect, MobEffect> INKSHADOW_STACK =
+            EFFECTS.register("inkshadow_stack", InkShadowStackEffect::new);
+
     public static final Collection<DeferredHolder<MobEffect, ? extends MobEffect>> ALL = EFFECTS.getEntries();
 }

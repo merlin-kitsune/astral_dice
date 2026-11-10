@@ -33,7 +33,8 @@
     "astral_dice:deepseek_sign",
     "astral_dice:sykes_sign",
     "astral_dice:souri_sign",
-    "astral_dice:al_sign"
+    "astral_dice:al_sign",
+    "astral_dice:inkshadow_sign"
   ],
   "replace": false
 }

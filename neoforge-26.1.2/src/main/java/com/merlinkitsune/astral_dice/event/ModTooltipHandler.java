@@ -1708,6 +1708,17 @@ public class ModTooltipHandler {
             }
             addSignCooldownRemaining(tooltip, souriViewer);
         }
+        // 小猎手立牌(inkshadow,稀有):主动「暗影之门」放两端传送门 + 被动「双生之影」攻击叠加。
+        // 无玩家级动态计数器 ⇒ 四段(按键提示 + 主动名/描述 + 被动名/描述) + 冷却行。
+        if (stack.is(ModItems.INKSHADOW_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "tooltip.astral_dice.sign.inkshadow.active");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.inkshadow_active");
+            addSignPassiveTitle(tooltip, "tooltip.astral_dice.sign.inkshadow.passive");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.inkshadow_passive");
+            addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player jp ? jp : null);
+        }
         // 少主立牌(al,史诗):主动「强者怜悯」(选一名类玩家目标 + 选 1~3 张卡牌送给他,自己扣除,
         // 每张换 2 星币) + 被动「双赢」分两个触发面:①给牌(任何走发牌漏斗的给牌)双方各 +1 星光;
         // ②对目标使用主动技能后双方筹码 -5(下限 5)+ 各一次刷新;另:每 4 层星光 +1 攻/+1 防。
