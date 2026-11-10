@@ -163,6 +163,7 @@ public class ModItemModelProvider implements DataProvider {
         items.add(ModItems.TERU_SIGN.get());
         items.add(ModItems.NARDIS_SIGN.get());
         items.add(ModItems.MAMUSHI_SIGN.get());
+        items.add(ModItems.SYKES_SIGN.get());
         items.add(ModItems.SHERRY_SIGN.get());
         items.add(ModItems.HANNA_SIGN.get());
         items.add(ModItems.KANGEL_SIGN.get());

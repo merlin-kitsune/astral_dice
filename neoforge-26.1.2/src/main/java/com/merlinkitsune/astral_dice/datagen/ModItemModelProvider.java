@@ -201,7 +201,7 @@ public class ModItemModelProvider extends ModelProvider {
 
     /**
      * 方块状态：26.1.2 的 ModelProvider 会对注册表里每个方块做「是否生成了 blockstate」校验，
-     * 缺一个就抛 Missing blockstate definitions。这里把 4 个方块指向仓库中手写的自定义模型，
+     * 缺一个就抛 Missing blockstate definitions。这里把 5 个方块指向仓库中手写的自定义模型，
      * 不生成新模型（这些模型是 Blockbench 产出的，不是 trivial cube）。
      */
     private void registerBlockStates(BlockModelGenerators blockModels) {
@@ -215,6 +215,8 @@ public class ModItemModelProvider extends ModelProvider {
                 BlockModelGenerators.createSimpleBlock(ModBlocks.EVENT_DRAWER.get(), BlockModelGenerators.plainVariant(id("block/event_drawer"))));
         blockModels.blockStateOutput.accept(
                 BlockModelGenerators.createSimpleBlock(ModBlocks.BARRICADE_COLLISION.get(), BlockModelGenerators.plainVariant(id("block/barricade_collision"))));
+        blockModels.blockStateOutput.accept(
+                BlockModelGenerators.createSimpleBlock(ModBlocks.ABYSS_TENTACLE_COLLISION.get(), BlockModelGenerators.plainVariant(id("block/abyss_tentacle_collision"))));
     }
 
     /** 方块物品的 item 模型：父模型直接指向方块模型（与手写 models/item/*.json 一致）。 */

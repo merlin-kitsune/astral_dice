@@ -1402,6 +1402,19 @@ public class ModRecipeProvider extends FabricRecipeProvider {
         // 修法:按 forge-1.20.1 侧既有实现逐条搬回本方提供器,让 datagen 同时产出配方与进度;
         //       生成结果与既有 recipe JSON 逐字节一致(仅补出 6 个 advancement)。
 
+        // 立牌 sykes:MYM/YCY/GDG(M=末影之眼、Y=幽匿催化体、C=空白立牌、G=黄金星盘、D=钻石骰子)
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.SYKES_SIGN.get())
+                .pattern("MYM")
+                .pattern("YCY")
+                .pattern("GDG")
+                .define('M', Items.ENDER_EYE)
+                .define('Y', Items.SCULK_CATALYST)
+                .define('C', ModItems.BLANK_SIGN.get())
+                .define('G', ModItems.GOLDEN_STAR_PLATE.get())
+                .define('D', ModItems.DIAMOND_DICE.get())
+                .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
+                .save(output);
+
         // 立牌 alana:SBS/CEC/IDI(S=石砖、B=书、C=下界石英、E=空白立牌、I=铁锭、D=黄金骰子)
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.ALANA_SIGN.get())
                 .pattern("SBS")
