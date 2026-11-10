@@ -192,7 +192,7 @@
 - ⛔ `docs/AGENT-HANDOFF.md（已删除 2026-11-05）` **不是现状**，只作历史参考。
 - **接手顺序**：`git status --short -uall` + `git log --oneline -1` → 各线 `gradle.properties` 的 `mod_version` → handover §0/§5 → 按 §7 取路径。
 - **交班 6 义务**（其中一项必做）：`python3 -B docs/agent/verify-split.py` 四项全 `[OK]`。
-- 事实源快照会落后：2026-11-10 实读**五线** `mod_version` 均 `26.4-SNAPSHOT.10+<后缀>`（`neoforge_1.21.1` / `forge_1.20.1` / `neoforge_26.1.2` / `fabric_1.20.1` / `fabric_1.21.1`），与之配套的 starengine 引脚 `.2/.2/.2/.11/.9` —— 这类数字**一律实读覆盖**，不要引用本文。
+- 事实源快照会落后：2026-11-10 实读**五线** `mod_version` 均 `26.4-SNAPSHOT.10+<后缀>`（`neoforge_1.21.1` / `forge_1.20.1` / `neoforge_26.1.2` / `fabric_1.20.1` / `fabric_1.21.1`），与之配套的 starengine 引脚 `.2/.2/.2/.11/.9`；同日随后升版为 `26.4-SNAPSHOT.11`（引脚不变，产物仍是 `.10`）—— 这类数字**一律实读覆盖**，不要引用本文。
 
 ## 📌 本文件的定位与自检
 

@@ -4,6 +4,15 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 26.4-SNAPSHOT.11
+
+### This line
+
+- Change: the mod version moves to `26.4-SNAPSHOT.11` on all five lines (`neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1` / `fabric-1.21.1`). The StarEngine pins and all behaviour are unchanged (`26.4-SNAPSHOT.2` / `.2` / `.2` / `.11` / `.9`); this entry records the version advance only and carries no gameplay change.
+- Docs: new `docs/features/souri-sign-spec.md` — the **Golden Koi Sign** implementation record (15 frozen constants with file:line, six semantics sections covering active / passive / Golden Scale & Ascension / drinks / Mamushi link / unequip & death, per-line coverage, the 2026-11-10 P0 live readings and a re-run checklist). The sign previously had no landing page under `docs/` at all; commit titles were the only source.
+- Docs: the README dependency table now lists the real dev-tree pins per line (NeoForge 1.21.1 / Forge 1.20.1 / NeoForge 26.1.2 = `26.4-SNAPSHOT.2`, fabric-1.20.1 = `.11`, fabric-1.21.1 = `.9`), and the range note now says the range is template-expanded from that single pin. The Fabric (1.20.1) prerequisites row follows `.11`. The published `1.5.0` artefacts still pin `26.4-SNAPSHOT.1`.
+- Note: `build/libs` and the game `mods` folders still hold `26.4-SNAPSHOT.10` artefacts (the ones recorded in the README build provenance table); rebuild at `.11` and refresh that table before the next packaging run.
+
 ## 26.4-SNAPSHOT.10
 
 ### This line
