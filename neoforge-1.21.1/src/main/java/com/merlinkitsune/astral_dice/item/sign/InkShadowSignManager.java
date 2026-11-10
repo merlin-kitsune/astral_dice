@@ -1,7 +1,10 @@
 package com.merlinkitsune.astral_dice.item.sign;
 
 import com.merlinkitsune.astral_dice.component.ModAttachments;
+import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.entity.InkShadowPortalEntity;
+import com.merlinkitsune.starengine.event.ModEffectRemoval;
+import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
@@ -12,6 +15,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
@@ -90,7 +94,8 @@ public final class InkShadowSignManager {
     private static boolean placeStartPortal(ServerLevel level, ServerPlayer player, BlockPos pos, long now) {
         InkShadowPortalEntity portal = new InkShadowPortalEntity(level, player.getUUID());
         portal.setPending(now + InkShadowSignItem.WINDOW_TICKS);
-        portal.setPos(pos.getX() + 0.5D, pos.getY() + 0.25D, pos.getZ() + 0.5D);
+        // 实体锚在地块底面（pos.getY()），模型由渲染器的 GROUND_LIFT 抬到正好贴地
+        portal.setPos(pos.getX() + 0.5D, pos.getY(), pos.getZ() + 0.5D);
         portal.setYRot(player.getYRot());
         level.addFreshEntity(portal);
 
@@ -113,7 +118,7 @@ public final class InkShadowSignManager {
             return false;
         }
         InkShadowPortalEntity end = new InkShadowPortalEntity(level, player.getUUID());
-        end.setPos(pos.getX() + 0.5D, pos.getY() + 0.25D, pos.getZ() + 0.5D);
+        end.setPos(pos.getX() + 0.5D, pos.getY(), pos.getZ() + 0.5D);
         end.setYRot(player.getYRot());
         level.addFreshEntity(end);
 
@@ -221,7 +226,7 @@ public final class InkShadowSignManager {
         refreshStacks(owner);
     }
 
-    /** 按附件真值重算攻击加成（幂等；层数到期 / 立牌离身 ⇒ 移除修饰符）。 */
+    /** 按附件真值重算攻击加成与 HUD 指示器（幂等；层数到期 / 立牌离身 ⇒ 移除修饰符与图标）。 */
     public static void refreshStacks(Player player) {
         if (player == null || player.level().isClientSide()) return;
         long now = player.level().getGameTime();
@@ -231,15 +236,40 @@ public final class InkShadowSignManager {
             ModAttachments.setInkShadowStacks(player, 0);
             ModAttachments.setInkShadowStacksExpire(player, 0L);
             SignAttributeUtil.remove(player, Attributes.ATTACK_DAMAGE, InkShadowSignItem.ATTACK_MODIFIER_KEY);
+            refreshStackHud(player, 0, 0L, now);
             return;
         }
         if (!InkShadowSignItem.isEquipped(player)) {
             // 离身只是暂不生效；层数本身按 2:00 自然过期（重新装备回来仍可继续享用剩余时间）
             SignAttributeUtil.remove(player, Attributes.ATTACK_DAMAGE, InkShadowSignItem.ATTACK_MODIFIER_KEY);
+            refreshStackHud(player, 0, 0L, now);
             return;
         }
         SignAttributeUtil.apply(player, Attributes.ATTACK_DAMAGE, InkShadowSignItem.ATTACK_MODIFIER_KEY,
                 InkShadowSignItem.STACK_ATTACK_BONUS * stacks, AttributeModifier.Operation.ADD_VALUE);
+        refreshStackHud(player, stacks, expire, now);
+    }
+
+    /**
+     * 被动层数的 HUD 指示器：图标 = 小猎手立牌贴图（{@code textures/mob_effect/inkshadow_stack.png}），
+     * amplifier = 层数 - 1，持续时间 = 层数剩余时间；层数 0 / 过期 / 离身 ⇒ 摘掉图标。
+     */
+    private static void refreshStackHud(Player player, int stacks, long expire, long now) {
+        boolean present = player.hasEffect(ModEffects.INKSHADOW_STACK);
+        int duration = stacks <= 0 || expire <= now ? 0 : (int) Math.max(1L, expire - now);
+        if (duration <= 0) {
+            if (present) ModEffectRemoval.remove(player, ModEffects.INKSHADOW_STACK);
+            return;
+        }
+        MobEffectInstance current = player.getEffect(ModEffects.INKSHADOW_STACK);
+        int amplifier = stacks - 1;
+        // 层数不变时只让原效果自然倒计时；差 1 秒以上才重挂，避免每 tick 刷包
+        if (current != null && current.getAmplifier() == amplifier && current.getDuration() >= duration - 20) {
+            return;
+        }
+        if (current != null) ModEffectRemoval.remove(player, ModEffects.INKSHADOW_STACK);
+        PlayerEffectProtection.apply(player, new MobEffectInstance(
+                ModEffects.INKSHADOW_STACK, duration, amplifier, false, false, true));
     }
 
     /** 卸下立牌：放置窗口作废 + 被动层数清零（与 forge-1.20.1 的 {@code onSignUnequipped} 同口径）。 */
@@ -251,6 +281,7 @@ public final class InkShadowSignManager {
             ModAttachments.setInkShadowStacksExpire(player, 0L);
         }
         SignAttributeUtil.remove(player, Attributes.ATTACK_DAMAGE, InkShadowSignItem.ATTACK_MODIFIER_KEY);
+        refreshStackHud(player, 0, 0L, player.level().getGameTime());
     }
 
     // ══════════════════════════════════════════════════════════════════════════

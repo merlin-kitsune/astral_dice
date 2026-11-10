@@ -40,8 +40,8 @@ public class InkShadowSignItem extends BaseSignItem {
     /** 起始门 → 终点门的放置窗口 30s */
     public static final int WINDOW_TICKS = 600;
 
-    /** 一对门的存活时长 5:00 */
-    public static final int PAIR_LIFETIME_TICKS = 6000;
+    /** 一对门的存活时长 3:00（用户 2026-11-10 二次更正） */
+    public static final int PAIR_LIFETIME_TICKS = 3600;
 
     /** 放置射程（格），与其它立牌同档 */
     public static final double PLACE_RANGE = 8.0D;
@@ -61,8 +61,14 @@ public class InkShadowSignItem extends BaseSignItem {
     /** 门前危险区每 20t 的法术伤害 */
     public static final float PORTAL_HAZARD_DAMAGE = 2.0F;
 
-    /** 同一玩家再次触发同一扇门的冷却（防止两门间来回弹跳） */
-    public static final int RETRIGGER_TICKS = 60;
+    /** 同一玩家在同一扇门上的传送冷却 5s（不给任何提示，静默等待） */
+    public static final int TELEPORT_COOLDOWN_TICKS = 100;
+
+    /** 玩家站进门里多久才真正传送 1.5s（30t） */
+    public static final int STAND_TICKS = 30;
+
+    /** 门主人放置完一对门后，必须先离开这个半径（格）才会被自己的门传送 */
+    public static final double OWNER_ARM_RADIUS = 4.0D;
 
     /** 移速修饰符的固定 key（重复 apply 只改数值，不叠出多个修饰符） */
     public static final String SPEED_MODIFIER_KEY = "inkshadow_place_speed";

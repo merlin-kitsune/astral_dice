@@ -425,5 +425,10 @@ public class ModEffects {
     public static final DeferredHolder<MobEffect, MobEffect> IMMORTAL_BREW =
             EFFECTS.register("immortal_brew", com.merlinkitsune.astral_dice.effect.ImmortalBrewEffect::new);
 
+    // ── 小猎手立牌（inkshadow，2026-11-10 验收改版）──
+    /** 双生之影：被动层数的 HUD 指示器（层数真值在附件，图标 = 立牌贴图）。 */
+    public static final DeferredHolder<MobEffect, MobEffect> INKSHADOW_STACK =
+            EFFECTS.register("inkshadow_stack", com.merlinkitsune.astral_dice.effect.InkShadowStackEffect::new);
+
     public static final Collection<DeferredHolder<MobEffect, ? extends MobEffect>> ALL = EFFECTS.getEntries();
 }
