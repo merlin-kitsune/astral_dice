@@ -12,11 +12,11 @@
 |---|---|---|
 | 中文名 | 小猎手立牌 | `lang/zh_cn.json` `item.astral_dice.inkshadow_sign` |
 | 英文名 | InkShadow Sign | `lang/en_us.json` |
-| 日文名 | インクシャドウのスタンド | `lang/ja_jp.json` |
-| wiki 页（暂定） | InkShadow | `tools/sign_display_names.json` |
+| 日文名 | スミカゲのスタンド | `lang/ja_jp.json` |
+| 英文页名 / 日文角色名 | `InkShadow` / `スミカゲ` | `tools/sign_display_names.json`（用户 m04852 给定） |
 | 门禁 `lines` | `neoforge-1.21.1` / `forge-1.20.1` | 同上（P1 三线未实装 ⇒ 不入门禁） |
 
-**命名风险（待用户确认）**：wiki（astralparty.miraheze.org）本轮 API 被反爬拦截（HTTP 403），无法核实英文页名与 `nameJapanese` ⇒ 暂按 id 直译「InkShadow Sign」+ 片假名转写「インクシャドウのスタンド」，`note` 已标注待日服核实。用户确认后改 `tools/sign_display_names.json` 与本表，再跑门禁。
+**命名已核实（2026-11-11，用户 m04852）**：官方英文名 `InkShadow`（紧凑写法，无空格）、日文角色名 `スミカゲ`。⇒ 立牌名 `InkShadow Sign` / `スミカゲのスタンド`；传送门实体名 `InkShadow Portal` / `スミカゲポータル`（原 `Ink Shadow Portal` / `インクシャドウポータル` 已改）。此前「wiki API 403 反爬、en/ja 暂推定」的说明作废。门禁 `tools/sign_display_names.json` 的 `en`/`ja` 与本表已同步。
 
 ## §1 标识与常量（2026-11-10 第二轮验收改版后的值，全部可在代码内一处调整）
 
@@ -112,7 +112,7 @@
 
 ## §4 文本键（zh_cn / en_us / ja_jp 三份）
 
-`item.astral_dice.inkshadow_sign`、`tooltip.astral_dice.sign.inkshadow.active`、`tooltip.astral_dice.sign.inkshadow_active`（**单键多行**：值内用 `\n` 分隔，子项以两个空格开头，由 `addSignLines` 拆行；第 5 段为本轮新增：站定 1.5 s、每门 5 s 静默、放置者需先离开 4 格）、`tooltip.astral_dice.sign.inkshadow.passive`、`tooltip.astral_dice.sign.inkshadow_passive`；手册 `astral_dice.guide.entry.inkshadow_sign.{1,2}`；实体名 `entity.astral_dice.inkshadow_portal`（zh「末影传送门」/ en「Ink Shadow Portal」/ ja「インクシャドウポータル」）；被动效果 `effect.astral_dice.inkshadow_stack` + `.description`。
+`item.astral_dice.inkshadow_sign`、`tooltip.astral_dice.sign.inkshadow.active`、`tooltip.astral_dice.sign.inkshadow_active`（**单键多行**：值内用 `\n` 分隔，子项以两个空格开头，由 `addSignLines` 拆行；第 5 段为本轮新增：站定 1.5 s、每门 5 s 静默、放置者需先离开 4 格）、`tooltip.astral_dice.sign.inkshadow.passive`、`tooltip.astral_dice.sign.inkshadow_passive`；手册 `astral_dice.guide.entry.inkshadow_sign.{1,2}`；实体名 `entity.astral_dice.inkshadow_portal`（zh「末影传送门」/ en「InkShadow Portal」/ ja「スミカゲポータル」，2026-11-11 按官方名订正）；被动效果 `effect.astral_dice.inkshadow_stack` + `.description`。
 
 tooltip 挂点：`event/ModTooltipHandler` 的 `ModItems.INKSHADOW_SIGN` 块（照 `AL_SIGN` 块：`addSignKeyHint` → 主动标题/正文 → 被动标题/正文 → `addSignCooldownRemaining`）。
 

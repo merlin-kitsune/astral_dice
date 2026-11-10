@@ -1203,7 +1203,7 @@
   "msg.astral_dice.inkshadow_no_start": "Shadowgate: the start gate has expired — place it again",
   "msg.astral_dice.inkshadow_no_ground": "Shadowgate: a gate cannot be placed here",
   "tooltip.astral_dice.sign.inkshadow_active": "Press the skill key to place the start gate where you stand, then place the end gate elsewhere within §930 seconds§7\nDuring placement: movement speed §e+10%%§7\n  Cannot attack, cannot switch weapons, cannot interact with block entities\nOnce both gates exist the pair lasts §93:00§7; entering one lets you exit from the other, across dimensions",
-  "entity.astral_dice.inkshadow_portal": "Ink Shadow Portal",
+  "entity.astral_dice.inkshadow_portal": "InkShadow Portal",
   "effect.astral_dice.inkshadow_stack": "Twin Shadows",
   "effect.astral_dice.inkshadow_stack.description": "Active while your own gate pair exists: §e+2§7 ATK per stack, stackable",
   "tooltip.astral_dice.sign.inkshadow_passive": "While a gate pair you placed still exists, every player who crosses your gates grants you §e+2§7 ATK (once per player, including yourself), stackable\nHostile mobs near a gate take §e2§7 magic damage",

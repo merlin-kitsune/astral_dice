@@ -304,13 +304,13 @@
       "id": "inkshadow",
       "zh": "小猎手立牌",
       "en": "InkShadow Sign",
-      "ja": "インクシャドウのスタンド",
+      "ja": "スミカゲのスタンド",
       "wiki_page": "InkShadow",
       "lines": [
         "neoforge-1.21.1",
         "forge-1.20.1"
       ],
-      "note": "2026-11-10 新增（用户 m02258）；wiki API 本轮被反爬拦截（HTTP 403），en/ja 暂按「InkShadow」与片假名转写推定，待日服名称核实；当前仅 P0 两线实装，P1 三线待用户裁决后补 lines"
+      "note": "2026-11-10 新增（用户 m02258）；2026-11-11 用户 m04852 给定官方名 en=InkShadow / ja=スミカゲ ⇒ 立牌名 Inkshadow Sign / スミカゲのスタンド，实体名 InkShadow Portal / スミカゲポータル（先前「403 反爬暂推定」作废）；当前仅 P0 两线实装，P1 三线待用户裁决后补 lines"
     }
   ]
 }
