@@ -226,6 +226,9 @@ public class AstralDiceMod implements ModInitializer {
         // 魔渊幼体(sykes):主动走 handleUse(无需登记),但被动 onAttackHostile(LivingDamageEvent) 与
         // onWardenDamage(LivingHurtEvent) 是 @SubscribeEvent ⇒ 必须在此登记。
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.SykesSignItem.class);
+        // 小猎手立牌(inkshadow):主动走 handleUse(无需登记),但窗口 tick / 行为封锁 / 死亡登出
+        // 都是 @SubscribeEvent ⇒ 必须在此登记(事件类在 event/InkShadowSignEvents)。
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.event.InkShadowSignEvents.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.TeruSignItem.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.ZhaoSignItem.class);
         // 卡牌商店货架周期(B1-CARDSHOP):forge 靠 @Mod.EventBusSubscriber 自动订阅,Fabric 必须显式登记;

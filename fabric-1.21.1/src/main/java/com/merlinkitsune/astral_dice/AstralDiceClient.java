@@ -68,6 +68,11 @@ public class AstralDiceClient implements ClientModInitializer {
                 com.merlinkitsune.astral_dice.entity.ModEntityTypes.SOURI_DRINK.get(),
                 com.merlinkitsune.astral_dice.client.SouriDrinkRenderer::new);
 
+        // 实体渲染器:小猎手立牌的「暗影之门」传送门(GeckoLib 模型 + 成对激活时的地面发光门面)。
+        net.fabricmc.fabric.api.client.rendering.v1.EntityRendererRegistry.register(
+                com.merlinkitsune.astral_dice.entity.ModEntityTypes.INKSHADOW_PORTAL.get(),
+                com.merlinkitsune.astral_dice.client.InkShadowPortalRenderer::new);
+
         // 客户端事件桥:把 FAPI 的客户端回调接到自建事件上。
         // ⚠️ 与服务端的 FabricBridges.install() 同理 —— 不装则 client/* 的处理器
         //    全部「注册了但从不派发」。必须放在监听器注册之后。

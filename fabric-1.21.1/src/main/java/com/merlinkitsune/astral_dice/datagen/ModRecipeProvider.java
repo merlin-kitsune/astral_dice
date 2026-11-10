@@ -1526,6 +1526,21 @@ public class ModRecipeProvider extends FabricRecipeProvider {
                 .define('D', ModItems.DIAMOND_DICE.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
                 .save(output);
+        // 小猎手立牌(inkshadow,稀有):B/X/B + K/C/K + X/D/X
+        // (B=末影珍珠、X=星币、K=黄色染料、C=空白筹码、D=骰子/普通骰子)
+        // 2026-11-10 用户裁决:品质史诗→稀有,配方简化(星币尘→星币、钻石骰子→骰子)
+        // 2026-11-11 用户裁决:墨囊→末影珍珠、金块→金色染料(原版无金色染料,取黄色染料)
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.INKSHADOW_SIGN.get())
+                .pattern("BXB")
+                .pattern("KCK")
+                .pattern("XDX")
+                .define('B', Items.ENDER_PEARL)
+                .define('X', ModItems.STAR_COIN.get())
+                .define('K', Items.YELLOW_DYE)
+                .define('C', ModItems.BLANK_CHIP.get())
+                .define('D', ModItems.DICE.get())
+                .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
+                .save(output);
         // 符卡-福 / 符卡-祸:**无配方**(专属牌,仅由风水师立牌的被动「福祸相倚」与主动「白泽赐福」
         // 及「心意相连」发放,与活体书页/命运的指引等专属牌同一口径:不进随机池、不进合成表)。
     }

@@ -176,6 +176,7 @@ public class ModItemModelProvider implements DataProvider {
         items.add(ModItems.DEEPSEEK_SIGN.get());
         items.add(ModItems.SOURI_SIGN.get());
         items.add(ModItems.AL_SIGN.get());
+        items.add(ModItems.INKSHADOW_SIGN.get());
         items.add(ModItems.FU_CARD.get());
         items.add(ModItems.HUO_CARD.get());
         items.add(ModItems.CHOCOLATE_CAKE.get());

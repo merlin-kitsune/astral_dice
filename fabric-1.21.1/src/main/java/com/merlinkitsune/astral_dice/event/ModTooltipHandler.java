@@ -1681,6 +1681,19 @@ public class ModTooltipHandler {
             addSignLines(tooltip, "tooltip.astral_dice.sign.al_passive");
             addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player jp ? jp : null);
         }
+        // 小猎手立牌(inkshadow,稀有):主动「暗影之门」放起始门/终点门，被动「双生之影」
+        // (门主人被穿过 +2 攻击 / 门前 2.5 格敌对生物每 20t 受 2 点法术伤害)。
+        // 与 P0(neoforge-1.21.1 event/ModTooltipHandler.java:1776-1784)逐行同构；
+        // 本立牌没有玩家级动态计数器(层数 HUD 走 inkshadow_stack 效果,不进 tooltip) ⇒ 四段 + 冷却行。
+        if (stack.is(ModItems.INKSHADOW_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "tooltip.astral_dice.sign.inkshadow.active");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.inkshadow_active");
+            addSignPassiveTitle(tooltip, "tooltip.astral_dice.sign.inkshadow.passive");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.inkshadow_passive");
+            addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player jp ? jp : null);
+        }
         // 蛟龙立牌(mamushi)专属战斗牌:撕咬(费用 2 / 耐久 1 / 定值 +3)与
         // 龙之咆哮(费用 3 / 耐久 5 / 定值 +3;命中施加 缓慢 III 1:00 + 破防 1:00)。
         // 费用行 = 既有战斗牌的既有写法;描述行走规格 §4 冻结键 tooltip.astral_dice.card.bite / .dragon_roar

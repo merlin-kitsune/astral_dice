@@ -446,6 +446,18 @@ public class ModEffects {
             EFFECTS.register("immortal_brew", com.merlinkitsune.astral_dice.effect.ImmortalBrewEffect::new);
 
     /**
+     * 「暗影层数」（小猎手立牌 inkshadow 的被动「双生之影」）：**纯 HUD 指示器**，无任何数值功能。
+     *
+     * <p>{@code amplifier = 层数 - 1}，持续时间 = 名下最晚存活门对的剩余刻数；层数真值在
+     * {@code ModAttachments#INKSHADOW_STACKS}，由 {@code item.sign.InkShadowSignManager} 维护。
+     * 颜色 {@code 0x5A2E8A}。
+     *
+     * <p>图标 {@code textures/mob_effect/inkshadow_stack.png}（与 1.21.1 侧逐字节复制）。
+     */
+    public static final RegistryObject<MobEffect> INKSHADOW_STACK =
+            EFFECTS.register("inkshadow_stack", com.merlinkitsune.astral_dice.effect.InkShadowStackEffect::new);
+
+    /**
      * 本模组已注册的全部效果的**只读**视图(调试命令 {@code /astralparty cleareffect} 用)。
      *
      * <p>直接派生自 {@link #EFFECTS} 的注册条目视图——Forge 的 {@code getEntries()} 返回

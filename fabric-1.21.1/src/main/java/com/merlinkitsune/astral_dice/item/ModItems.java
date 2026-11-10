@@ -1190,6 +1190,17 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(AstralRarities.epic())));
 
+    /**
+     * 小猎手立牌(inkshadow,稀有)。主动「暗影之门」放起始门/终点门(跨维度成对、5:00 存活),
+     * 被动「双生之影」门主人每被穿过一次 +2 攻击,门前 2.5 格敌对生物每 20t 受 2 点法术伤害。
+     *
+     * <p>品质按 2026-11-10 用户裁决:史诗 → **稀有**。
+     */
+    public static final RegistryObject<Item> INKSHADOW_SIGN = registerItem("inkshadow_sign",
+            () -> new com.merlinkitsune.astral_dice.item.sign.InkShadowSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.rare())));
+
     public static <T extends Item> RegistryObject<T> registerItem(String name, Supplier<T> itemSupplier) {
         return ITEMS.register(name, itemSupplier);
     }

@@ -328,6 +328,12 @@ public final class ModNetwork {
             ctx.get().enqueueWork(() -> {
                 var player = ctx.get().getSender();
                 if (player != null) {
+                    // 小猎手立牌(inkshadow)「暗影之门」前置钩子:放置窗口内(起始门已放、未成对)时,
+                    // 立牌处于"锁定/生效中"态,isSignActiveLocked 会把按键拦在 performSkill 之外 ⇒
+                    // 这里先尝试直接放终点门(返回 true 表示本按键已被本立牌消费,不重复结算主动)。
+                    if (com.merlinkitsune.astral_dice.item.sign.InkShadowSignManager.tryPlaceEndFromKey(player)) {
+                        return;
+                    }
                     com.merlinkitsune.astral_dice.item.sign.BaseSignItem.performSkillForCurio(player);
                 }
             });

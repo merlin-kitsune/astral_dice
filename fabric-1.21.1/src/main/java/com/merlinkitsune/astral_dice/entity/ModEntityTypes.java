@@ -79,6 +79,20 @@ public final class ModEntityTypes {
                     .build("sykestentacle"));
 
     /**
+     * {@code astral_dice:inkshadow_portal} —— 小猎手立牌「暗影之门」的传送门实体
+     * （起始门 PENDING / 成对 ACTIVE 两态，纯展示 + 服务端站定判定）。
+     *
+     * <p>尺寸 {@code sized(1.2F, 1.2F)}（P0 neoforge-1.21.1 同值）；{@code clientTrackingRange(10)}
+     * 覆盖渲染与跨维度可视范围。注意实体锚点在地块底面，模型高度由渲染器的 {@code GROUND_LIFT} 抬升。
+     */
+    public static final RegistryObject<EntityType<InkShadowPortalEntity>> INKSHADOW_PORTAL =
+            ENTITY_TYPES.register("inkshadow_portal", () -> EntityType.Builder
+                    .<InkShadowPortalEntity>of(InkShadowPortalEntity::new, MobCategory.MISC)
+                    .sized(1.2F, 1.2F)
+                    .clientTrackingRange(10)
+                    .build("inkshadow_portal"));
+
+    /**
      * {@code astral_dice:souri_drink} —— 金鲤立牌的漂浮饮品（葫芦饮 / 仙酿，纯展示体 + 服务端拾取扫描）。
      *
      * <p>尺寸 {@code sized(0.35F, 0.45F)}、{@code clientTrackingRange(10)} 与 1.21.1 蓝本一致。

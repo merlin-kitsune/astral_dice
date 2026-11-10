@@ -1236,6 +1236,48 @@ public class ModAttachments {
     public static final AttachedDataKey<String> AL_PENDING_TARGET =
             register(AttachedDataKey.builder("al_pending_target", Codec.STRING, () -> "").build());
 
+    // ══════════════════════════════════════════════════════════════════════════
+    //  小猎手立牌「暗影之门」放置窗口 + 被动「双生之影」
+    //  与 P0(neoforge-1.21.1 component/ModAttachments.java:856-951)同口径:
+    //  **全部不 .sync()、不进 SYNCED_KEYS** —— P0 只 serialize(纯服务端状态),
+    //  tooltip 与 HUD 都不读这些附件(层数走 inkshadow_stack 效果的 amplifier)。
+    // ══════════════════════════════════════════════════════════════════════════
+
+    /** 起始门实体 UUID 字符串(空串 = 没有进行中的放置窗口)。 */
+    public static final AttachedDataKey<String> INKSHADOW_PENDING_UUID =
+            register(AttachedDataKey.builder("inkshadow_pending_uuid", Codec.STRING, () -> "").build());
+
+    /** 起始门所在维度 id 字符串(如 {@code minecraft:overworld})。 */
+    public static final AttachedDataKey<String> INKSHADOW_PENDING_DIM =
+            register(AttachedDataKey.builder("inkshadow_pending_dim", Codec.STRING, () -> "").build());
+
+    /** 放置窗口截止刻(绝对 gameTime,long;0 = 无窗口)。 */
+    public static final AttachedDataKey<Long> INKSHADOW_PENDING_DEADLINE =
+            register(AttachedDataKey.builder("inkshadow_pending_deadline", Codec.LONG, () -> 0L).build());
+
+    /** 窗口内被强制锁定的快捷栏槽位(-1 = 未锁)。 */
+    public static final AttachedDataKey<Integer> INKSHADOW_LOCKED_SLOT =
+            register(AttachedDataKey.builder("inkshadow_locked_slot", Codec.INT, () -> -1).build());
+
+    /** 被动「双生之影」层数(真值;HUD 镜像在 {@code inkshadow_stack} 效果的 amplifier)。 */
+    public static final AttachedDataKey<Integer> INKSHADOW_STACKS =
+            register(AttachedDataKey.builder("inkshadow_stacks", Codec.INT, () -> 0).build());
+
+    /**
+     * 层数到期刻 —— **已停用**：层数改为「只要名下还有存活门对就持续生效」，
+     * 本键仅为旧存档兼容保留声明（与 P0 同处置），新代码禁止读写。
+     */
+    public static final AttachedDataKey<Long> INKSHADOW_STACKS_EXPIRE =
+            register(AttachedDataKey.builder("inkshadow_stacks_expire", Codec.LONG, () -> 0L).build());
+
+    /**
+     * 属于佩戴者的存活门对到期刻列表(逗号分隔 tick,由 {@code InkShadowSignManager} 维护)。
+     *
+     * <p>门对建立时追加一条、每次刷新被动时剪掉已过期项；列表清空 ⇒ 被动失效并清零层数。
+     */
+    public static final AttachedDataKey<String> INKSHADOW_PAIR_EXPIRIES =
+            register(AttachedDataKey.builder("inkshadow_pair_expiries", Codec.STRING, () -> "").build());
+
     public static int getMamushiAwakening(net.minecraft.world.entity.player.Player player) {
         return MAMUSHI_AWAKENING.get(player);
     }
@@ -1290,6 +1332,66 @@ public class ModAttachments {
 
     public static void setAlPendingTarget(net.minecraft.world.entity.player.Player player, String value) {
         AL_PENDING_TARGET.set(player, value == null ? "" : value);
+    }
+
+    public static String getInkShadowPendingUuid(net.minecraft.world.entity.player.Player player) {
+        return INKSHADOW_PENDING_UUID.get(player);
+    }
+
+    public static void setInkShadowPendingUuid(net.minecraft.world.entity.player.Player player, String value) {
+        INKSHADOW_PENDING_UUID.set(player, value == null ? "" : value);
+    }
+
+    public static String getInkShadowPendingDim(net.minecraft.world.entity.player.Player player) {
+        return INKSHADOW_PENDING_DIM.get(player);
+    }
+
+    public static void setInkShadowPendingDim(net.minecraft.world.entity.player.Player player, String value) {
+        INKSHADOW_PENDING_DIM.set(player, value == null ? "" : value);
+    }
+
+    public static long getInkShadowPendingDeadline(net.minecraft.world.entity.player.Player player) {
+        return INKSHADOW_PENDING_DEADLINE.get(player);
+    }
+
+    public static void setInkShadowPendingDeadline(net.minecraft.world.entity.player.Player player, long value) {
+        INKSHADOW_PENDING_DEADLINE.set(player, value);
+    }
+
+    public static int getInkShadowLockedSlot(net.minecraft.world.entity.player.Player player) {
+        return INKSHADOW_LOCKED_SLOT.get(player);
+    }
+
+    public static void setInkShadowLockedSlot(net.minecraft.world.entity.player.Player player, int value) {
+        INKSHADOW_LOCKED_SLOT.set(player, value);
+    }
+
+    public static int getInkShadowStacks(net.minecraft.world.entity.player.Player player) {
+        return INKSHADOW_STACKS.get(player);
+    }
+
+    public static void setInkShadowStacks(net.minecraft.world.entity.player.Player player, int value) {
+        INKSHADOW_STACKS.set(player, Math.max(0, value));
+    }
+
+    /** @deprecated 层数到期机制已停用（门对寿命即层数寿命），仅为旧存档兼容保留。 */
+    @Deprecated
+    public static long getInkShadowStacksExpire(net.minecraft.world.entity.player.Player player) {
+        return INKSHADOW_STACKS_EXPIRE.get(player);
+    }
+
+    /** @deprecated 同 {@link #getInkShadowStacksExpire}。 */
+    @Deprecated
+    public static void setInkShadowStacksExpire(net.minecraft.world.entity.player.Player player, long value) {
+        INKSHADOW_STACKS_EXPIRE.set(player, value);
+    }
+
+    public static String getInkShadowPairExpiries(net.minecraft.world.entity.player.Player player) {
+        return INKSHADOW_PAIR_EXPIRIES.get(player);
+    }
+
+    public static void setInkShadowPairExpiries(net.minecraft.world.entity.player.Player player, String value) {
+        INKSHADOW_PAIR_EXPIRIES.set(player, value == null ? "" : value);
     }
 
     public static long getMamushiForcedCooldownUntil(net.minecraft.world.entity.player.Player player) {
