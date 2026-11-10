@@ -90,7 +90,8 @@
 
 - 铁律：**所有 `./gradlew …` 之前 `export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64`**；编译目标由 `java.toolchain` 决定，与 daemon JVM 无关。
 - 根 `gradle.properties` 实读：`org.gradle.jvmargs=-Xmx3G`、`daemon=true`、`parallel=true`、`caching=true`、`configuration-cache=true`。
-- **代理只覆盖 Gradle 进程，不覆盖游戏 JVM**（2026-11-10 实机取证）：`~/.gradle/gradle.properties` 的 `systemProp.*.proxy*` 只对 Gradle 生效；实机客户端 JVM 仍是直连，于是 Forge 自带 `[Forge Version Check/WARN] net.minecraftforge.fml.VersionChecker` 拉 `https://files.minecraftforge.net/net/minecraftforge/forge/promotions_slim.json` 会抛 `java.net.http.HttpConnectTimeoutException: HTTP connect timed out`（1.20.1 那轮共 6 行 ERROR 级噪声）。**这是网络口径差异，不是回归、不阻断加载**。要验证真伪看有没有新 crash-report 与 `AP_*` 标记，而不是数 ERROR 行数。
+- **网络口径：Linux 原生宿主只有 TUN 直连，没有 Gradle 代理**（2026-11-10 用户裁决）——clash-verge-rev 以 **TUN 全局接管**路由，Gradle 与游戏 JVM **都走直连**；Windows 那套「设 `systemProp.*.proxy*` 指向 `http://127.0.0.1:7897`」在本机**不适用**，`~/.gradle/gradle.properties` 的代理块已按此删除（见〈依赖镜像〉后的出网条目）。
+  - 由此，实机客户端里 Forge 自带 `[Forge Version Check/WARN] net.minecraftforge.fml.VersionChecker` 拉 `https://files.minecraftforge.net/...promotions_slim.json` 抛 `java.net.http.HttpConnectTimeoutException: HTTP connect timed out`（1.20.1 那轮 6 行 ERROR 级噪声）**只是该域名在 TUN 下不可达，不是代理缺失、不是回归、不阻断加载**。判断真伪看有没有新 crash-report 与 `AP_*` 标记，而不是数 ERROR 行数。
 - **单 gradle 并发位**：同一工作树同一时间只允许一个 gradle；启动前查锁（〈互斥锁与并发〉）与 `pgrep -af gradle`。
 - **依赖镜像：真机已不需要 aliyun init.d**（本批最重要的出网变化）：
   - 2026-10-31 真机实测：Central / aliyun / neoforged / github **全部 200**（`annotations-26.0.2.pom` 实拉）。**VM 期的 Central 403 封禁不存在了。**
@@ -101,10 +102,12 @@
 - 换线构建耗时与失败模式以**构建台账**为准（每次记录线 / 命令 / 耗时 / 结果），单次耗时不当 SLA。
 
 - **fabric-loom 1.17.21 要求 Gradle ≥ 9.5**（2026-11-10 两向实测）：本树 wrapper = 9.5.1 ⇒ 正确；改用 9.2.1 立刻报 `No matching variant of net.fabricmc:fabric-loom:1.17.21 ... attribute 'org.gradle.plugin.api-version' with value '9.2.1'`。⇒ **不要为了「稳」把 wrapper 降到 9.2.1**（starengine_next 用 9.2.1 能过，是因为它引的 loom 版本更旧）。
-- **出网修正（2026-11-10，本批最重要的构建变化）**：TUN **并不**通 maven.neoforged.net（直连 30s 超时 `code=000`，走 `-x http://127.0.0.1:7897` 则 1.06s / 200），maven.fabricmc.net 直连被限速到 ~27 KB/s。⇒ 已建 **`~/.gradle/gradle.properties`**（原先不存在），内容只有：`systemProp.http.proxyHost=127.0.0.1` / `systemProp.http.proxyPort=7897` / 同款 `https.` 两项 / `systemProp.http.nonProxyHosts=localhost|127.0.0.1`，带注明「[dsh 2026-11-10] … 走 clash HTTP 终点」。**这是本机构建能通的前提之一，别当垃圾删**；**2026-11-10 用户裁决：此代理配置长期保留**（不随会话清理）。git 侧口径不变（仍直连，见〈7. git〉）。
-  - **误报陷阱**：代理没配好/缓存残缺时，loom 解析会以**伪装成依赖冲突**的样子失败 —— `Could not resolve net.fabricmc:tiny-remapper:0.14.0 ... Cannot choose between the available variants ... The only attribute distinguishing these variants is 'org.gradle.dependency.bundling'`（`external` / `shadowed`）。看到这条**先查网络与 Gradle 缓存**（`curl -x http://127.0.0.1:7897 -o /dev/null -w '%{http_code}' <artifact-url>`），**不要**改 fabric 依赖、也不要排除其它线。
-  - 订正：本文件上一版把这条报错判成「Gradle 9.5.1 变体歧义 / 版本缺陷」并写了临时排除 `settings.gradle` 的绕行，**结论错误，已作废**（9.5.1 在代理修好 + 缓存补齐后完全正常）。
-  - **2026-11-10 复核实据**：代理与缓存补齐后 `JAVA_HOME=…21 ./gradlew :fabric-1.20.1:tasks --console=plain -q` ⇒ **EXIT=0**（fabric 线路由/插件解析正常）。⇒ 当时临时注释 `settings.gradle` 里 fabric 两行属**多余动作**，已原样恢复（`git checkout -- settings.gradle`，sha256 `f0e8c268…dccb`）；不要再照抄那个绕行。
+- **出网口径（2026-11-10 用户裁决，本批订正）**：Linux 原生宿主用 **clash-verge-rev TUN 模式**访问外网（TUN 全局接管，**不走代理服务器**）⇒ **Gradle / git / 游戏 JVM 一律直连**，`http://127.0.0.1:7897` 这套 Windows 代理口径**在本机不适用**。
+  - 动作：已删除 **`~/.gradle/gradle.properties`** 里的 `systemProp.*.proxy*` 五行（旧版曾按「代理长期保留」写成必须项，**该结论已作废**）；现在该文件即使存在也只允许放与网络无关的 JVM 参数。
+  - **clash 内核没起来时**（TUN 不在位，例如本机 2026-11-10 傍晚 ~7897 无监听、mihomo 未运行）：一切需要联网的 Gradle 任务都要加 **`--offline`**（依赖已在缓存时可直接过）；不加会在 configuration 阶段对远程 HEAD（如 `forge-1.20.1-47.1.47-userdev.jar`）连接被拒而失败。判据：`ss -ltnp | grep 7897` 与 `curl -s -o /dev/null -w '%{http_code}' https://maven.neoforged.net/releases/` 直连是否 200。
+  - **误报陷阱**：网络不可达 / 缓存残缺时，loom 解析会以**伪装成依赖冲突**的样子失败 —— `Could not resolve net.fabricmc:tiny-remapper:0.14.0 ... Cannot choose between the available variants ... The only attribute distinguishing these variants is 'org.gradle.dependency.bundling'`（`external` / `shadowed`）。看到这条**先查 TUN 是否在位、Gradle 缓存是否齐全**（直连 `curl -o /dev/null -w '%{http_code}' <artifact-url>`），**不要**改 fabric 依赖、不要排除其它线、更不要套 Windows 的代理参数。
+  - 订正：本文件上一版把这条报错判成「Gradle 9.5.1 变体歧义 / 版本缺陷」并写了临时排除 `settings.gradle` 的绕行，**结论错误，已作废**（9.5.1 在 TUN 恢复 + 缓存补齐后完全正常）。
+  - **2026-11-10 复核实据**：网络与缓存补齐后 `JAVA_HOME=…21 ./gradlew :fabric-1.20.1:tasks --console=plain -q` ⇒ **EXIT=0**（fabric 线路由/插件解析正常）。⇒ 当时临时注释 `settings.gradle` 里 fabric 两行属**多余动作**，已原样恢复（`git checkout -- settings.gradle`，sha256 `f0e8c268…dccb`）；不要再照抄那个绕行。
 - 2026-11-10 收尾实测（活动树，`settings.gradle` 已还原为 5 行 include）：`./gradlew help` = BUILD SUCCESSFUL 1m26s；`./gradlew :neoforge-1.21.1:classes` = **1.4s**（4 executed / 1 from cache）；收尾零残留 java（daemon 已 `--stop`）。⇒ 网络 + mavenLocal 两处修好后，**P0 线可直接构建，不需要改任何仓库文件**。
 
 ### 5.1 datagen（各线入口不同，2026-11-10 全部实跑通）
@@ -123,6 +126,8 @@
 - **谁在跑 datagen 之前必须先补 starengine**（见〈6. 前置库 starengine〉），否则配置期就挂。
 - **仓里 generated JSON 由 Gson 写出、无尾换行**；手抄 JSON 带尾换行 ⇒ 重跑 datagen 会以「去尾换行 / 键顺序」形式产生大量纯格式 diff。**以 datagen 输出为真值**，不要手工把手抄格式改回去。语义漂移（判据键 `has_star_coin_dust`→`has_blank_chip` 等）也要跟着接受。
 - **provider 缺失会让 datagen「静默删文件」**：2026-11-10 fabric-1.21.1 重跑时删掉了 `sykes_sign` 的 recipe/model（该线 provider 没登记）。⇒ 看到 generated 里 `D` 了既有产物，先查对应线 `datagen/Mod{Recipe,ItemModel}Provider.java` 是否漏登记，而不是把删除当正常产出。
+- **P0 的 `runData` 跑前必须 park 本线 jar**（2026-11-10 实证）：`run/1.21.1/mods` 与 `run/1.20.1/mods` 里的 `astral_dice-*.jar` 会进 datagen 的 launch classpath（日志 `Found valid mod file astral_dice-…`），与 `-Dfml.modFolders=…build/classes/java/main` 的同名 mod 冲突 ⇒ datagen 实际跑**旧 jar 里的代码**，新加的 provider 一条都不生效（连跑两遍都「BUILD SUCCESSFUL 但产物没变」）。处置：跑前 `mv run/<线>/mods/astral_dice-*.jar temp/datagen/parked/`，跑完放回。
+- **`runData` 收尾不退出**（forge 1.20.1 实证）：provider 跑完 + `HashCache: Caching: total files: … written: N` 行出现 = 产物已落盘；之后 JVM 卡在 Collective 更新检查线程，`BUILD SUCCESSFUL` 可能永远不到（前台 `gradlew` 会一直挂到超时）。判据改用 `HashCache` 行 + `git status <线>/src/generated`，然后 `pkill -f dataRunProgramArgs`。**`pkill -f` 的 pattern 不能出现在同一条 `bash -c` 命令行里**，否则会把自己的 shell 一起打死（本轮连踩两次，表现为工具调用零输出）。
 - **fabric-1.20.1 的 datagen 长期跑不通**（本批已修）：该线 `ModItemModelProvider extends FabricModelProvider`，原版 `net.minecraft.data.models.ModelProvider` 会用 `BuiltInRegistries.BLOCK` 与本次生成的 blockstate 求差集，而本模组方块是手写 blockstate/model ⇒ 必报 `Missing blockstate definitions for: [card_shop, chip_shop, event_drawer, barricade_collision, abyss_tentacle_collision]`。修法：该文件改 `implements DataProvider`（照 fabric-1.21.1 同文件），用 `DataProvider.saveStable` 手写 item model，不再继承 FabricModelProvider。
 - **NTFS 上的假 M**：datagen 重写文件后 `git status` 会冒出几百条 M，但 `git diff` 为空、`git hash-object` 与索引一致、`git update-index --really-refresh` 仍报 needs update。处置：对目标路径 `git add` 一次即恢复干净；**判真正改动只看 `git diff --numstat`**。
 - 跨线债务：`abyss_tentacle_collision` 的 blockstate/model 目前**只有 26.1.2** 有（P0 两线与 fabric 两线都缺）⇒ 该占位方块在缺的线上渲染为缺失模型；补与不补待裁决。
@@ -158,7 +163,7 @@
 - `git status --short -uall` 实读（2026-11-10，`-next` 树）= **715 条，全部 `??`、0 条已跟踪改动**：709 条在 `work/`（audit 日志与脚本）、`models/{inkshadoweffect,littleslime,vacuumhead,winegourd,winegourdbetter}.bbmodel` 五个、根 `立牌计划表.txt`。**全部属用户素材/待裁决，不得 add/commit/stash/删除**（旧清单里的 `TMP-ATTRLESS-HYDRA-1.21.1.json` 与 `zz_screen_probe.py` 已不存在）。
   - 主树同期另有 **427 条 `??` + 2 条 `M`**（`docs/agent/AGENTS-dsh-linux.md`、`docs/archive/card-recipes-2026-10-09/README.md`）——那是**另一棵树的他人未提交改动**，本会话只读不碰，遇到就报用户。
 - **出网 = clash-verge-rev TUN 全局接管，直连**（2026-10-31 用户裁决 + 实读 `/configs`：`tun.enable=true`、`device=Meta`、`auto-route=true`、`inet4-address=198.18.0.1/30`，内核 mihomo `v1.19.32`）⇒ 远程 git **直接执行，不加 `-c http.proxy=…`**，也不要 `export *_proxy`（环境里本来就没有）。
-  - **仓库 `.git/config` 仍有 `http.proxy`/`https.proxy` = `http://127.0.0.1:7897`**（Windows 期遗留、与 Windows 共用，**不要改**）。7897 仍在听，走它也能通；要单条命令**严格直连**就 `git -c http.proxy= -c https.proxy= <子命令>` 覆盖，**不要** `git config --unset`。
+  - **仓库 `.git/config` 仍有 `http.proxy`/`https.proxy` = `http://127.0.0.1:7897`**（Windows 期遗留、与 Windows 共用，**不要改**）。按 2026-11-10「Linux 只有 TUN 直连、不用代理」裁决：**Linux 上执行远程 git 时用 `git -c http.proxy= -c https.proxy= <子命令>` 覆盖成严格直连**（这也是本机默认推荐口径）；**不要** `git config --unset`（会改到 Windows 共用配置）。
   - 查代理状态用 clash-verge-rev 外部控制：`curl -s -H 'Authorization: Bearer <secret>' http://127.0.0.1:9097/configs`（`/version` 看内核）；`secret` 取 `~/.local/share/io.github.clash-verge-rev.clash-verge-rev/config.yaml` 的 `secret:` 字段 —— **不要把明文 secret 写进仓库或日志**。`401 Unauthorized` 是 secret 不对，不代表断网。
 - **git hooks 在 Linux 上空转**：四个 hook 是三段 旧 shell 探测版，本机 PATH 无 旧 shell（`/mnt/c` 里是 Windows PE，不可执行）⇒ 静默 `exit 0`，松散引用自愈不执行；遇 `HEAD -> unknown revision` 先查 `git reflog`。提交前**手动**跑 `python3 -B docs/agent/verify-split.py`（四项 `[OK]`）与 `python3 tools/verify_sign_display_names.py`（`GATE: PASS`）。
 
@@ -234,7 +239,7 @@
 | 「相对路径陷阱」 | **不变且更严**：双系统同盘 + 多工作树共存，任何跨仓命令都必须绝对路径 |
 | 「分支归属纪律（禁止镜像/回填）」 | **不变**（宿主无关）；`~/Project` 副本层已不存在，不要按旧文档重建 |
 | 发布投放（整合包 `versions/<实例>/mods`） | Linux 宿主**可**投放：根 = `/mnt/d/.minecraft`（`MC_HOME` 可覆盖，根 `build.gradle` 的 `mcHomePath` 统一解析：`MC_HOME` > `/mnt/d/.minecraft` > `D:/.minecraft`）；Windows 宿主同一批文件在 `D:\.minecraft`。**「默认不部署」红线不变**（仅用户明确下达时跑 `pushToGame`/`build`） |
-| 出网 / git 代理 | **2026-10-31 用户裁决改写**：clash-verge-rev **TUN 模式**全局接管（`tun.enable=true` / `198.18.0.1/30`）⇒ **直连，不再带 `-c http.proxy=`**；仓库 `.git/config` 的 `http(s).proxy=127.0.0.1:7897` 与 Windows 共用、**不改**，严格直连用命令级 `-c http.proxy= -c https.proxy=`；状态查 `127.0.0.1:9097`（Bearer secret） |
+| 出网 / git 代理 | **2026-11-10 用户裁决**：Linux 原生宿主用 clash-verge-rev **TUN 模式**全局接管（`tun.enable=true` / `198.18.0.1/30`）⇒ **Gradle / git / 游戏 JVM 全部直连，Windows 的 `127.0.0.1:7897` 代理口径在本机不适用**（`~/.gradle/gradle.properties` 代理块已删）；仓库 `.git/config` 的 `http(s).proxy=127.0.0.1:7897` 是 Windows 共用遗留、**不改**，Linux 上用命令级 `-c http.proxy= -c https.proxy=` 走直连；clash 未运行 ⇒ gradle 加 `--offline`；状态查 `127.0.0.1:9097`（Bearer secret） |
 | 默认不 commit / push / 打 tag | **不变**（最严格红线） |
 | `models/` `images/` `sound/` 与 `run/` 内他人产物 | **不变**：出现不属于自己的改动 ⇒ 停手报告，不 add/commit/stash/checkout/删除 |
 | 「Windows 开发配置不可动」 | **新增（2026-10-31 用户硬约束）**：本机与 Windows 共用同一块盘；只改 Linux 侧需要的文件，不删 / 不改 Windows 专属配置（`mt.conf` 的 Windows 路径、旧脚本（已删除）、`gradlew.bat`、`run/start-*.bat`、`.vscode` 的 `F:\` 配置一律保留原样） |
@@ -274,7 +279,7 @@
 ## Git 代理与操作规范
 
 - **出网走 TUN 直连（2026-10-31 用户裁决）**：clash-verge-rev 以 TUN 接管全部路由（实读 `/configs`：`tun.enable=true`、`device=Meta`、`auto-route=true`、`198.18.0.1/30`，内核 mihomo `v1.19.32`）⇒ **远程 git 直接跑，不加 `-c http.proxy=…`**，也不要 export `*_proxy`。
-  - 仓库 `.git/config` 仍有 `http.proxy`/`https.proxy` = `http://127.0.0.1:7897`（**Windows 共用配置，保留不动**）；`7897` 在听 ⇒ 走它也能通，严格直连用 `git -c http.proxy= -c https.proxy= <子命令>` 覆盖。
+  - 仓库 `.git/config` 仍有 `http.proxy`/`https.proxy` = `http://127.0.0.1:7897`（**Windows 共用配置，保留不动**）。**Linux 口径：远程 git 一律用 `git -c http.proxy= -c https.proxy= <子命令>` 走 TUN 直连**（2026-11-10 用户裁决：Linux 用 TUN，不套 Windows 代理）。
   - 排障：`curl -s -H 'Authorization: Bearer <secret>' http://127.0.0.1:9097/configs` 确认 `tun.enable=true`（secret 见 `~/.local/share/io.github.clash-verge-rev.clash-verge-rev/config.yaml`）；`/version` 看内核；`401` 是 secret 问题不是断网。Maven 侧 Central / aliyun / neoforged 直连 200，不需要镜像也不需要代理。
 - 一律 `git -C /mnt/f/MCProject/astral_dice_multiloader <子命令>`；**默认不 commit / push / tag**，远程操作须用户明确要求。
 - 提交前 `git status --short -uall` 必须只剩用户未跟踪素材（4 个文件，见〈git〉）；有他人改动 ⇒ 停手报告。
