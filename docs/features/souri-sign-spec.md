@@ -3,7 +3,7 @@
 > 本文是**实现记录 + 语义冻结**，不是前置设计稿：先有 2026-11-09 的代码与用户裁决，2026-11-10 补本文。
 > **代码为真源**：本文任何数字若与代码不符，以代码为准，并回改本文。
 > 基准：`multi-dev-next` @ `3a6df49c`；实机取证 2026-11-10（neoforge-1.21.1 + forge-1.20.1）。
-> 落地线：**neoforge-1.21.1 / forge-1.20.1（P0，逐文件同构）**；P1 三线未移植（见 §6）。
+> 落地线：**五线已全部移植**（P0 `neoforge-1.21.1` / `forge-1.20.1` 逐文件同构且实机通过；P1 `fabric-1.20.1` / `fabric-1.21.1` / `neoforge-26.1.2` 于 2026-11-10 移植并通过编译，未实机——见 §6）。
 
 ## §0 定名与命名门禁
 
@@ -116,21 +116,27 @@ tooltip 结构（自上而下）：名称／栏位／按键提示／主动段／
 
 ## §6 跨线现状与欠账
 
-| 线 | Souri\*.java | lang 键 | 状态 |
-|---|---|---|---|
-| neoforge-1.21.1 | 7 | 23 | ✅ 实机通过 |
-| forge-1.20.1 | 7 | 23 | ✅ 实机通过 |
-| neoforge-26.1.2 | 0 | 0 | ❌ 未移植（缺 5 类基础设施 + 本体） |
-| fabric-1.20.1 | 0 | 0 | ❌ 未移植 |
-| fabric-1.21.1 | 0 | 0 | ❌ 未移植 |
+| 线 | Souri\*.java | 新增主资源 | lang 键（souri） | 编译 | 状态 |
+|---|---|---|---|---|---|
+| neoforge-1.21.1 | 7 | 10 | 23 | ✅ | ✅ 实机通过（§7） |
+| forge-1.20.1 | 7 | 11 | 23 | ✅ | ✅ 实机通过（§7）；2026-11-10 补上缺失的 `animations/souridrink.animation.json` |
+| fabric-1.20.1 | 9 | 11 | 23 | ✅ `:fabric-1.20.1:compileJava` BUILD SUCCESSFUL | ⏳ 未实机（该线无启动脚本） |
+| fabric-1.21.1 | 9 | 11 | 23 | ✅ `:fabric-1.21.1:compileJava` BUILD SUCCESSFUL | ⏳ 未实机 |
+| neoforge-26.1.2 | 9 | 15（含 GeckoLib 5 新资源根 `geckolib/models|animations`） | 23 | ✅ `:neoforge-26.1.2:compileJava` BUILD SUCCESSFUL | ⏳ 未实机，且 datagen 未实跑 |
 
-P1 移植前需先补齐的共享基建（两条 fabric 线各缺 9 项）：`SignHooks`、`SignHookDispatcher`、`SignActiveLockMachine`、`SignEntitySkills`、`CardGivenHooks`、`MosesEnigmaticLink`、`AlSignItem`、`SouriSignItem`、`SouriSignManager`。
+**P1 三线的语义差异（2026-11-10 移植，逐条经源码实读）**：
+
+1. `activateForEntity(LivingEntity)` 未移植 —— 两条 fabric 线的 `BaseSignItem` 无该钩子，26.1.2 线无 `SignEntitySkills` 分发；缺口仅限「非玩家持牌生物主动施放」，玩家路径完全等价。
+2. fabric-1.20.1 不移植 forge 残留键 `souri_awakening`：死亡保留 9 槽、金鳞在 index 8（forge 线为 index 8/9 两套并存）。
+3. fabric-1.21.1：钩子改 `onCurioTick`/`clearSignData`，动作栏走 `ModNetwork.ActionBarMessage`，效果走 `Effects.holder` 桥接，反击按层扣减且穿金鲤时 `RenShieldManager` 保留层数 + `refreshCounterEffect`；新增 `MamushiSignItem.addAwakening`。
+4. neoforge-26.1.2：`MamushiSignItem.addAwakening` 由 `private` 放宽为 `public static`；GeckoLib 5 的 `GeoEntityRenderer<T,R>` 与 `RenderPassInfo<R extends GeoRenderState>` 边界不一致，渲染器签名用原始类型绕过（1 条 unchecked）；实体存档改 `ValueInput/ValueOutput`、`hurt` 已 final ⇒ 覆写 `hurtServer` 恒 false。
+5. 三线均未重跑 datagen（fabric 两线直接取 forge/neo21 同版本产物；26.1.2 四个 generated 产物为手工补写，provider 代码已同步）。
 
 已知代码欠账（**不要当成本文写错**）：
 
 1. `SouriSignItem.java:21`（forge `:20`）Javadoc 仍写「随后自身 +1 层【觉醒】、+1 层【反击】」——实际是 `addGoldScale`（金鳞）；同段「配方待定」也已过期（配方已生成）。
 2. `SouriSignManager.java:201` 残留 `setSouriAwakening(player, 0)`（见 §2.6）。
-3. 金鲤缺 P1 移植排期，属未排期欠账，不属本规格范围。
+3. P1 三线已移植并编译通过，但**未实机**、**未重跑 datagen**（见 §6）」；命名门禁 `tools/verify_sign_display_names.py` 的 `LINES` 仍只覆盖四线，26.1.2 尚未纳入。
 
 ## §7 实机取证（2026-11-10，P0 双线）
 

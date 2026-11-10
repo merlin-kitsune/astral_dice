@@ -11,6 +11,9 @@
 - 变更：版本号升至 `26.4-SNAPSHOT.11`（五线 `neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1` / `fabric-1.21.1`）。前置库引脚与行为均不变（仍为 `26.4-SNAPSHOT.2` / `.2` / `.2` / `.11` / `.9`），本条只记录版本号推进，不含玩法改动。
 - 文档：新增 `docs/features/souri-sign-spec.md`（**金鲤立牌**规格与实现记录：15 项冻结常量含 file:line、主动/被动/金鳞与化龙/饮品/蛟龙联动/卸下与死亡六组语义、跨线覆盖、P0 双线实机取证读数与复跑清单）。金鲤此前在 `docs/` 无任何落点，唯一真源是提交标题。
 - 文档：README 依赖表改为 dev 树实际引脚并按线列出（NeoForge 1.21.1 / Forge 1.20.1 / NeoForge 26.1.2 = `26.4-SNAPSHOT.2`，fabric-1.20.1 = `.11`，fabric-1.21.1 = `.9`），版本区间说明改为「模板展开自同一引脚」；Fabric (1.20.1) 前置表第 6 行同步 `.11`。已发布的 `1.5.0` 产物仍 pin `26.4-SNAPSHOT.1`。
+- 新增：**金鲤立牌**（`souri`）移植到 P1 三线 —— `fabric-1.20.1` / `fabric-1.21.1` / `neoforge-26.1.2`，至此**五线齐**。每线 9 个 Java（立牌物品 / 管理器 / 饮品实体 / 3 个效果 / 模型 + 渲染器）+ 主资源与生成产物（model / recipe / advancement），三语各 23 个 souri 键、27 个功能键与 P0 逐字一致。三线 `:compileJava` 均 BUILD SUCCESSFUL；**未实机、未重跑 datagen**。语义差异：两条 fabric 线与 26.1.2 无 `activateForEntity`（仅「非玩家持牌生物主动施放」缺失，玩家路径等价）；26.1.2 的 `MamushiSignItem.addAwakening` 由 `private` 放宽为 `public static`，渲染器因 GeckoLib 5 泛型边界改用原始类型（1 条 unchecked）。
+- 修复：`forge-1.20.1` 缺 `assets/astral_dice/animations/souridrink.animation.json` —— 该线 `SouriDrinkModel` 引用它但文件从未入库，饮品动画在 P0 线会静默缺失；已从 `neoforge-1.21.1` 补入同 md5 文件。
+- 文档：新增 `docs/features/sign-roadmap.md`（立牌计划表六项状态 + 三项未实现规格 + 开工必做）；`docs/features/souri-sign-spec.md` 覆盖表改为五线；`tools/sign_display_names.json` 金鲤 `lines` 补两条 fabric 线（命名门禁 110,059 项 PASS）。
 - 注意：`build/libs` 与游戏 `mods` 目录里现存的仍是 `26.4-SNAPSHOT.10` 产物（README〈Build provenance〉记的就是它们）；下一次出包前必须按 `.11` 重建并对齐溯源表。
 
 ## 26.4-SNAPSHOT.10

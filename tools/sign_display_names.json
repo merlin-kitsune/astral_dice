@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "updated": "2026-11-08",
+  "updated": "2026-11-10",
   "rule": "EN = \"<wiki 英文页名> Sign\"；JA = \"<wiki nameJapanese>のスタンド\"；wiki 无条目则用 id 人名，禁止机翻职称。zh 侧保持游戏内职称式命名。",
   "sources": {
     "en_and_ja": "https://astralparty.miraheze.org/w/api.php?action=parse&page=<Title>&prop=wikitext&format=json&formatversion=2 （title = EN 名；CharPlayable.nameJapanese = JA 名）",
@@ -292,9 +292,11 @@
       "wiki_page": "Amakawa Souri",
       "lines": [
         "neoforge-1.21.1",
-        "forge-1.20.1"
+        "forge-1.20.1",
+        "fabric-1.20.1",
+        "fabric-1.21.1"
       ],
-      "note": "2026-11-09 新增（用户 m08862）；wiki 的可玩角色页 Souri 重定向到怪物页 Amakawa Souri，无 CharPlayable/nameJapanese ⇒ ja 暂按「天川双里」推定，待日服名称核实"
+      "note": "2026-11-09 新增（用户 m08862）；wiki 的可玩角色页 Souri 重定向到怪物页 Amakawa Souri，无 CharPlayable/nameJapanese ⇒ ja 暂按「天川双里」推定，待日服名称核实；2026-11-10 补 P1 两线 fabric-1.20.1 / fabric-1.21.1（neoforge-26.1.2 已实装但门禁 LINES 尚未覆盖该线）"
     }
   ]
 }
