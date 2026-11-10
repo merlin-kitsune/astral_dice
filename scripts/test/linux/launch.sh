@@ -58,7 +58,7 @@ usage() {
                               [--quickplay <世界名>] [--kill-on-timeout]
                               [--log-dir DIR] [--dry-run]
 
-  --version <ver>   1.21.1 | 1.20.1 | 26.1.2 | fabric-1.20.1（必填）
+  --version <ver>   1.21.1 | 1.20.1 | 26.1.2 | fabric-1.20.1 | fabric-1.21.1（必填）
   --timeout <sec>   等待标题画面 READY（AutoJS 客户端侧就绪）上限，默认 600
   --wait-world <秒> READY 后再等世界就绪 marker 的秒数，默认 0=不等待（仅打印已命中的 marker）
   --quickplay <名>  透传 -Pquickplay=<名>（经 run/start-*.sh 或 gradlew；build.gradle 四线已配置，
@@ -92,7 +92,7 @@ while [ $# -gt 0 ]; do
 done
 
 if [ -z "$VERSION" ]; then
-    echo "用法错误：必须给 --version（1.21.1 | 1.20.1 | 26.1.2 | fabric-1.20.1）；-h 看用法" >&2
+    echo "用法错误：必须给 --version（1.21.1 | 1.20.1 | 26.1.2 | fabric-1.20.1 | fabric-1.21.1）；-h 看用法" >&2
     exit 2
 fi
 case "$VERSION" in
@@ -100,6 +100,7 @@ case "$VERSION" in
     1.20.1)        PROJECT="forge-1.20.1";    TOOLCHAIN_VER=17 ;;
     26.1.2)        PROJECT="neoforge-26.1.2"; TOOLCHAIN_VER=25 ;;
     fabric-1.20.1) PROJECT="fabric-1.20.1";   TOOLCHAIN_VER=17 ;;
+    fabric-1.21.1) PROJECT="fabric-1.21.1";   TOOLCHAIN_VER=21 ;;
     *) echo "用法错误：未知 --version $VERSION" >&2; exit 2 ;;
 esac
 case "$TIMEOUT" in
@@ -109,7 +110,17 @@ case "$WAIT_WORLD" in
     ''|*[!0-9]*) echo "用法错误：--wait-world 必须是整数秒（0=不等待）" >&2; exit 2 ;;
 esac
 
-RUN_DIR="$REPO_ROOT/run/$VERSION"
+# Loom 的子项目 runDir 是相对项目目录的 run/client（不是仓库根 run/<ver>）：
+#   fabric-1.20.1 → fabric-1.20.1/run/client；fabric-1.21.1 → fabric-1.21.1/run/client。
+# 日志/健康检查/pid 文件/残留扫描都按这个目录走，否则 fabric 线会看错地方（run/<ver> 不存在 → BLOCKED）。
+AUTOJS_INJECT=0
+case "$VERSION" in
+    fabric-1.20.1|fabric-1.21.1)
+        RUN_DIR="$REPO_ROOT/$PROJECT/run/client"
+        AUTOJS_INJECT=1 ;;
+    *)
+        RUN_DIR="$REPO_ROOT/run/$VERSION" ;;
+esac
 
 conf_get() {
     local key="$1" def="${2:-}" v=""
@@ -128,7 +139,7 @@ scan_clients() {
         [ "$(cat "$p/comm" 2>/dev/null || true)" = "java" ] || continue
         cwd="$(readlink "$p/cwd" 2>/dev/null || true)"
         case "$cwd" in
-            "$REPO_ROOT"/run/*) printf '%s|%s\n' "$pid" "$cwd" ;;
+            "$REPO_ROOT"/run/*|"$REPO_ROOT"/fabric-*/run/*) printf '%s|%s\n' "$pid" "$cwd" ;;
         esac
     done
 }
@@ -264,6 +275,12 @@ for jar in "$RUN_DIR/mods"/*.jar; do
         *[Aa][Uu][Tt][Oo][Jj][Ss]*.jar) aj_n=$((aj_n + 1)); aj_names="$aj_names $b" ;;
     esac
 done
+# fabric-* 线：AutoJS 由 build.gradle 的 -PautojsTestMod=1 注入 dev classpath（run 目录里没有 jar）。
+# 仍按 aj_n=1 走 AutoJS 主判据，否则会退化成 marker 兜底，P2（通道 registered/available）就没人验。
+if [ "$AUTOJS_INJECT" = 1 ]; then
+    aj_n=1
+    aj_names=" (injected via -PautojsTestMod=1 on dev classpath)"
+fi
 endpoint="$(conf_get MT_AUTOJS_ENDPOINT "${MT_AUTOJS_ENDPOINT:-http://127.0.0.1:25585/mcp}")"
 base_url="${endpoint%/mcp}"
 allow_no_autojs="${MT_ALLOW_NO_AUTOJS:-0}"
@@ -296,6 +313,11 @@ else
     fi
     CMD=(bash ./gradlew ":$PROJECT:runClient" --console=plain)
     START_SRC="bash ./gradlew :$PROJECT:runClient --console=plain"
+fi
+# fabric-* 线必须注入 AutoJS（build.gradle: if gradleProperty('autojsTestMod')==1 → modRuntimeOnly AutoJS，
+# fabric-1.21.1 还带 rhino 以满足其 HARD_DEP）；不传就完全没有 AutoJS，健康检查必失败。
+if [ "$AUTOJS_INJECT" = 1 ]; then
+    CMD+=("-PautojsTestMod=1")
 fi
 if [ -n "$QUICKPLAY" ]; then
     # build.gradle 四线都实现 -Pquickplay：1.21.1/1.20.1/fabric → --quickPlaySingleplayer <名>；

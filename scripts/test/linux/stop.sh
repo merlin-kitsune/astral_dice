@@ -13,7 +13,7 @@
 #   scripts/test/linux/stop.sh --version 1.21.1 [--force] [--dry-run] [--purge-saves]
 #   scripts/test/linux/stop.sh --all            # 收停所有线的客户端
 #
-#   --version <ver>  1.21.1 | 1.20.1 | 26.1.2 | fabric-1.20.1
+#   --version <ver>  1.21.1 | 1.20.1 | 26.1.2 | fabric-1.20.1 | fabric-1.21.1
 #   --all            所有线（与 --version 二选一，必填其一，对标 `scripts/test/win/stop.sh`）
 #   --force          宽限期 15s → 3s
 #   --purge-saves    收停后删测试世界（对标 `scripts/test/mt_cleanup.py` --purge-saves）
@@ -27,7 +27,7 @@ set -uo pipefail
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="${MT_STOP_REPO_ROOT:-$(cd "$DIR/../../.." && pwd)}"   # MT_STOP_REPO_ROOT 仅供脚本自测注入假仓库根
-ALL_VERSIONS="1.21.1 1.20.1 26.1.2 fabric-1.20.1"
+ALL_VERSIONS="1.21.1 1.20.1 26.1.2 fabric-1.20.1 fabric-1.21.1"
 
 VERSION=""
 ALL=0
@@ -88,10 +88,10 @@ scan_pids() {
         cmd="$(tr '\0' ' ' < "$p/cmdline" 2>/dev/null || true)"
         matched=0
         if [ "$ALL" = 1 ]; then
-            case "$cwd" in "$REPO_ROOT"/run/*) matched=1 ;; esac
+            case "$cwd" in "$REPO_ROOT"/run/*|"$REPO_ROOT"/fabric-*/run/*) matched=1 ;; esac
         else
-            case "$cwd" in "$REPO_ROOT/run/$VERSION"|"$REPO_ROOT/run/$VERSION"/*) matched=1 ;; esac
-            case "$cmd" in *"$REPO_ROOT/run/$VERSION"*) matched=1 ;; esac
+            case "$cwd" in "$RUN_DIR"|"$RUN_DIR"/*) matched=1 ;; esac
+            case "$cmd" in *"$RUN_DIR"*) matched=1 ;; esac
         fi
         if [ "$matched" = 0 ]; then
             case "$cmd" in
@@ -106,7 +106,11 @@ saw_pid=0
 residual=0
 
 for v in $VERSIONS; do
-    RUN_DIR="$REPO_ROOT/run/$v"
+    # fabric 线的 Loom runDir 是 <proj>/run/client（与 launch.sh 的 RUN_DIR 口径一致）
+    case "$v" in
+        fabric-1.20.1|fabric-1.21.1) RUN_DIR="$REPO_ROOT/$v/run/client" ;;
+        *) RUN_DIR="$REPO_ROOT/run/$v" ;;
+    esac
     PIDFILE="$RUN_DIR/linux-run.pid"
 
     # 1) PID 文件 → 进程组
