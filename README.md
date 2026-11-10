@@ -151,6 +151,13 @@ On `forge-1.20.1` the same commit registers the item (1593 items; `astral_dice:s
 no 25565 / 25575 / 25585 listener. The only log errors are Forge's own version-check timeouts (the game JVM has
 no proxy), which do not affect loading.
 
+Same day, second batch: the 少主 (`al`) sign was ported to the three P1 lines and each was smoke-tested serially —
+world-ready in 16.220 s (`fabric-1.20.1`), 18.137 s (`fabric-1.21.1`) and 12.184 s (`neoforge-26.1.2`), each
+stopped cleanly with no 25565 / 25575 / 25585 listener left behind and no new crash report. `astral_dice:al_sign`
+registers as epic, stacks to 1, and its tooltip renders every section on 1.21.1 and 26.1.2; the 1.20.1 line's
+KubeJS Rhino cannot reach `TooltipFlag$Default`, so that line was verified from the lang keys and
+`ModTooltipHandler` instead. Readings: [docs/features/al-sign-spec.md](docs/features/al-sign-spec.md) §7.
+
 Both fabric lines were rebuilt afterwards. The stall was a throughput problem, not a dead end: after an interrupted
 build Loom marked its cache lock `ACQUIRED_PREVIOUS_OWNER_DISOWNED` and re-downloaded `minecraft-server.jar` (47.8 MB)
 through the local HTTPS proxy at ~73 KB/s, so the console looked frozen. Route Mojang CDNs direct

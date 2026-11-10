@@ -280,9 +280,11 @@
       "wiki_page": "A.L.",
       "lines": [
         "neoforge-1.21.1",
-        "forge-1.20.1"
+        "forge-1.20.1",
+        "fabric-1.20.1",
+        "fabric-1.21.1"
       ],
-      "note": "2026-11-08 已核对 wiki 页 A.L.（Syndicate Prince），nameJapanese=アル；目前 neoforge-1.21.1 与 forge-1.20.1 实装，lines 字段限定校验线"
+      "note": "2026-11-08 已核对 wiki 页 A.L.（Syndicate Prince），nameJapanese=アル；2026-11-10 补 P1 两线 fabric-1.20.1 / fabric-1.21.1（neoforge-26.1.2 已实装但门禁 LINES 尚未覆盖该线），lines 字段限定校验线"
     },
     {
       "id": "souri",
