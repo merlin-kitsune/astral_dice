@@ -41,6 +41,17 @@ public enum CardChoiceType {
                 + name().toLowerCase(Locale.ROOT);
     }
 
+    /**
+     * 标题 lang 键（**变长下限**）：{@code minSlots < slotCount} 时用
+     * {@code ..._variable_<type>}（「选择 1~3 张」），否则回落 {@link #titleKey(int)}。
+     */
+    public String titleKey(int slotCount, int minSlots) {
+        if (minSlots < slotCount) {
+            return "gui.astral_dice.card_choice.title_variable_" + name().toLowerCase(Locale.ROOT);
+        }
+        return titleKey(slotCount);
+    }
+
     /** 网络解码；越界一律回落 {@link #ANY}（服务端仍会做槽数/会话校验）。 */
     public static CardChoiceType byId(int id) {
         CardChoiceType[] values = values();

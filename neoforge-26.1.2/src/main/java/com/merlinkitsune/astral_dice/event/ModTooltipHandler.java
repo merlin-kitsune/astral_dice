@@ -1708,6 +1708,19 @@ public class ModTooltipHandler {
             }
             addSignCooldownRemaining(tooltip, souriViewer);
         }
+        // 少主立牌(al,史诗):主动「强者怜悯」(选一名类玩家目标 + 选 1~3 张卡牌送给他,自己扣除,
+        // 每张换 2 星币) + 被动「双赢」分两个触发面:①给牌(任何走发牌漏斗的给牌)双方各 +1 星光;
+        // ②对目标使用主动技能后双方筹码 -5(下限 5)+ 各一次刷新;另:每 4 层星光 +1 攻/+1 防。
+        // 本立牌无玩家级动态计数器 ⇒ 四段(按键提示 + 主动名/描述 + 被动名/描述) + 冷却行。
+        if (stack.is(ModItems.AL_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "tooltip.astral_dice.sign.al.active");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.al_active");
+            addSignPassiveTitle(tooltip, "tooltip.astral_dice.sign.al.passive");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.al_passive");
+            addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player alViewer ? alViewer : null);
+        }
         // 机械师立牌(megas):主动「轨道轰炸」(选择器类——指定 1 个敌对目标 => 立即消耗物品栏全部手牌⇒
         // 以目标为中心 12 格范围轰炸；次数 = min(消耗卡牌数 / 2, 10)、单次基础 2 伤 + 所消耗战斗牌费用总和 ×2)
         // + 被动「物资补充」(手牌 < 6 张时每 1:00 自动获得 1 张随机卡牌)。

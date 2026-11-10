@@ -1034,6 +1034,16 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(AstralRarities.legendary())));
 
+    // 少主立牌(命名:al,传奇;2026-11-08):主动「强者怜悯」(目标选择器选一名类玩家目标 ⇒ 选 1~3 张卡牌
+    //   赠予对方,每张换 2 星币,1 张即可确认、背包无牌直接取消不进冷却),被动「双赢」(A 面:佩戴者使他人
+    //   获得卡牌 ⇒ 双方各 +1 星光;B 面:对目标使用主动技能后双方筹码 -5(下限 5)+ 各一次刷新),
+    //   被动「星光」(每 4 层星光 +1 攻/+1 防,每 tick 重算、卸下移除)。
+    // 史诗品质 = ASTRAL_DICE_EPIC(2026-11-08 用户裁决);配方 = 黑染料 + 金块×2 + 星币尘×2 + 空白筹码 + 钻石骰子。
+    public static final DeferredItem<Item> AL_SIGN = registerItem("al_sign",
+            props -> new com.merlinkitsune.astral_dice.item.sign.AlSignItem(props
+                    .stacksTo(1)
+                    .rarity(AstralRarities.epic())));
+
     // 怪力侦探立牌(命名:sherry,奇特):主动「怪力投掷」把 12 格内全部敌对目标按抛物线扔到玩家面前 2 格,
     // **落地之后**造成 2 点伤害并施加 1 层「标记」(推理时间满 5 层 ⇒ 额外 5 点);被动「侦探出击」按
     // 「攻击 ≥20 血敌对目标」累积「推理时间」(上限 5,**死亡不清**,骰神赐福结束后 −1 层),

@@ -50,25 +50,34 @@ public class CardChoiceMenu extends AbstractContainerMenu {
     private final SimpleContainer cardContainer;
     private final int token;
     private final int slotCount;
+    /** 确认时至少要放满几张（1..slotCount）；等于 slotCount 即「必须放满」的旧口径。 */
+    private final int minSlots;
     private final CardChoiceType type;
     /** 已确认：removed 时只退余量、不触发会话作废。 */
     private boolean confirmed;
     private boolean closed;
 
-    /** 服务端构造（{@code ServerPlayer#openMenu} 的工厂）。 */
+    /** 服务端构造（旧口径：槽位数 = 必须放满数）。 */
     public CardChoiceMenu(int containerId, Inventory playerInventory, int token, int slotCount, CardChoiceType type) {
+        this(containerId, playerInventory, token, slotCount, slotCount, type);
+    }
+
+    /** 服务端构造（{@code ServerPlayer#openMenu} 的工厂；支持「槽位数 &gt; 必须放满数」）。 */
+    public CardChoiceMenu(int containerId, Inventory playerInventory, int token, int slotCount, int minSlots,
+                          CardChoiceType type) {
         super(ModMenuTypes.CARD_CHOICE.get(), containerId);
         this.playerInventory = playerInventory;
         this.token = token;
         this.slotCount = Math.max(CardChoiceManager.MIN_SLOTS, Math.min(CardChoiceManager.MAX_SLOTS, slotCount));
+        this.minSlots = Math.max(CardChoiceManager.MIN_SLOTS, Math.min(minSlots, this.slotCount));
         this.type = type == null ? CardChoiceType.ANY : type;
         this.cardContainer = new SimpleContainer(this.slotCount);
         initSlots();
     }
 
-    /** 客户端构造（extra data：token + slotCount + type.ordinal()）。 */
+    /** 客户端构造（extra data：token + slotCount + minSlots + type.ordinal()）。 */
     public CardChoiceMenu(int containerId, Inventory playerInventory, FriendlyByteBuf buf) {
-        this(containerId, playerInventory, buf.readVarInt(), buf.readVarInt(),
+        this(containerId, playerInventory, buf.readVarInt(), buf.readVarInt(), buf.readVarInt(),
                 CardChoiceType.byId(buf.readVarInt()));
     }
 
@@ -94,13 +103,18 @@ public class CardChoiceMenu extends AbstractContainerMenu {
         return slotCount;
     }
 
+    /** 确认时至少要放满几张（{@code filledSlots() >= minSlots} 才允许确认）。 */
+    public int minSlots() {
+        return minSlots;
+    }
+
     public CardChoiceType type() {
         return type;
     }
 
-    /** 已放满（确认按钮的唯一显示/响应判据）。 */
+    /** 已达下限（确认按钮的唯一显示/响应判据）；空槽不参与结算。 */
     public boolean isComplete() {
-        return filledSlots() == slotCount;
+        return filledSlots() >= minSlots;
     }
 
     public int filledSlots() {
@@ -114,18 +128,30 @@ public class CardChoiceMenu extends AbstractContainerMenu {
         return filled;
     }
 
-    /** 服务端确认：校验后逐张消耗 1 张（1.21.1 = {@code ItemStack#consume(1, player)}）。 */
+    /**
+     * 服务端确认：校验后逐张消耗 1 张（1.21.1 = {@code ItemStack#consume(1, player)}）。
+     *
+     * <p>支持空槽：空槽（或类型不符的槽）**跳过不消耗**，只要求实放张数
+     * {@code >= minSlots}；返回值即本次真正交出的卡牌，数量可能小于 {@link #slotCount()}。
+     */
     public List<ItemStack> consumeSelection(Player player) {
-        // 先整体校验，再动任何一张（避免「消耗到一半发现不合法」）
+        // 先整体校验（有多少合法槽），再动任何一张（避免「消耗到一半发现不合法」）
+        int filled = 0;
+        for (int i = 0; i < slotCount; i++) {
+            ItemStack stack = cardContainer.getItem(i);
+            if (!stack.isEmpty() && type.matches(stack)) {
+                filled++;
+            }
+        }
+        if (filled < minSlots) {
+            return List.of();
+        }
+        List<ItemStack> picked = new ArrayList<>(filled);
         for (int i = 0; i < slotCount; i++) {
             ItemStack stack = cardContainer.getItem(i);
             if (stack.isEmpty() || !type.matches(stack)) {
-                return List.of();
+                continue;
             }
-        }
-        List<ItemStack> picked = new ArrayList<>(slotCount);
-        for (int i = 0; i < slotCount; i++) {
-            ItemStack stack = cardContainer.getItem(i);
             ItemStack one = stack.copyWithCount(1);
             stack.consume(1, player);
             cardContainer.setItem(i, stack.isEmpty() ? ItemStack.EMPTY : stack);

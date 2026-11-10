@@ -605,7 +605,10 @@ public final class TargetSelectionClient {
         LivingEntity newTarget = null;
         LivingEntity newRejected = null;
         if (aimed != null && aimed != player && aimed.isAlive()) {
-            if (SelectorTargets.matches(targetType, player, aimed) && player.distanceToSqr(aimed) <= radius * radius) {
+            if ((SelectorTargets.matches(targetType, player, aimed)
+                    || com.merlinkitsune.astral_dice.target.PlayerLikeTargets.matchesSelection(
+                            targetType, player, aimed))
+                    && player.distanceToSqr(aimed) <= radius * radius) {
                 newTarget = aimed;
             } else {
                 // 命中但不可选（会话目标类型不符 / 超出半径）：走 1/24 细边；
@@ -689,7 +692,10 @@ public final class TargetSelectionClient {
         for (Entity entity : player.level().getEntities(player, search)) {
             if (!(entity instanceof LivingEntity living) || living == player) continue;
             if (!living.isAlive() || living.isSpectator()) continue;
-            if (!SelectorTargets.matches(targetType, player, living)) continue;
+            // 与瞄准判定同源，放行「类玩家生物」（附属注册面，见 PlayerLikeTargets）
+            if (!SelectorTargets.matches(targetType, player, living)
+                    && !com.merlinkitsune.astral_dice.target.PlayerLikeTargets.matchesSelection(
+                            targetType, player, living)) continue;
             if (player.distanceToSqr(living) > radius * radius) continue;
             found.add(living);
         }

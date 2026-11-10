@@ -1318,6 +1318,19 @@ public class ModRecipeProvider extends RecipeProvider {
                 .define('D', ModItems.DIAMOND_DICE.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
                 .save(output);
+        // 少主立牌(al,史诗):B/X/B + K/C/K + X/D/X（B=黑色染料、X=星币尘、K=金块、C=空白筹码、
+        // D=钻石骰子）—— 与 1.21.1 参考实现同网格同材料。
+        ShapedRecipeBuilder.shaped(items, RecipeCategory.MISC, ModItems.AL_SIGN.get())
+                .pattern("BXB")
+                .pattern("KCK")
+                .pattern("XDX")
+                .define('B', Items.BLACK_DYE)
+                .define('X', ModItems.STAR_COIN_DUST.get())
+                .define('K', Items.GOLD_BLOCK)
+                .define('C', ModItems.BLANK_CHIP.get())
+                .define('D', ModItems.DIAMOND_DICE.get())
+                .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
+                .save(output);
 
         // 怪力侦探立牌(sherry):紫晶骰子 + 黄金星盘档。PBP/AEA/IDI
         // (P=黄金星盘×2、B=书、E=空白立牌、A=铁砧、I=铁块、D=紫晶骰子;空白立牌置中、骰子固定中下)

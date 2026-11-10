@@ -121,6 +121,7 @@ public class ModItemModelProvider extends ModelProvider {
         itemModels.generateFlatItem(ModItems.NARDIS_SIGN.get(), ModelTemplates.FLAT_ITEM);
         itemModels.generateFlatItem(ModItems.MAMUSHI_SIGN.get(), ModelTemplates.FLAT_ITEM);
         itemModels.generateFlatItem(ModItems.SOURI_SIGN.get(), ModelTemplates.FLAT_ITEM);
+        itemModels.generateFlatItem(ModItems.AL_SIGN.get(), ModelTemplates.FLAT_ITEM);
         itemModels.generateFlatItem(ModItems.SHERRY_SIGN.get(), ModelTemplates.FLAT_ITEM);
         itemModels.generateFlatItem(ModItems.HANNA_SIGN.get(), ModelTemplates.FLAT_ITEM);
         itemModels.generateFlatItem(ModItems.KANGEL_SIGN.get(), ModelTemplates.FLAT_ITEM);

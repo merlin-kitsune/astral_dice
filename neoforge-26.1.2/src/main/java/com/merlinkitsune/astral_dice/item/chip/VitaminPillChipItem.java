@@ -64,6 +64,9 @@ public class VitaminPillChipItem extends BaseChipItem {
             if (giver != null) {
                 com.merlinkitsune.astral_dice.item.sign.MamushiSignItem.onCardGivenToOther(giver, player);
             }
+            // 「给牌」中立钩子:少主立牌「双赢」A 面(佩戴者使他人获得卡牌 ⇒ 双方各 +1 星光)。
+            // 放在成功入包分支内(与 mamushi 同口径):掉落不计。
+            com.merlinkitsune.astral_dice.item.sign.CardGivenHooks.fire(giver, player);
         }
     }
 

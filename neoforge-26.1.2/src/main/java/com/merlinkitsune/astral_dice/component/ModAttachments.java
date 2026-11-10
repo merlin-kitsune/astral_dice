@@ -2303,6 +2303,51 @@ public class ModAttachments {
             ATTACHMENTS.register("jill_buff_end", () -> AttachmentType.builder(() -> 0L)
                     .serialize(Codec.LONG.fieldOf("value")).build());
 
+    // ── 少主立牌「双赢」：筹码商店限时折扣（双方各一次；不叠加、只刷新）──
+    // 刻意**不进 ChipShopState**：那是玩家存档里的商店运行态（候选/次数/冷却），折扣是短时段 buff，
+    // 且要能挂在附属注册的类玩家生物身上；口径见 shop/ChipShopDiscounts。
+
+    /** 筹码折扣面额（星币；0 = 无折扣）。 */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> CHIP_DISCOUNT_AMOUNT =
+            ATTACHMENTS.register("chip_discount_amount", () -> AttachmentType.builder(() -> 0)
+                    .serialize(Codec.INT.fieldOf("value")).sync(ByteBufCodecs.VAR_INT).build());
+
+    /** 筹码折扣截止时刻（世界 gameTime；0 = 无折扣）。 */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> CHIP_DISCOUNT_UNTIL =
+            ATTACHMENTS.register("chip_discount_until", () -> AttachmentType.builder(() -> 0L)
+                    .serialize(Codec.LONG.fieldOf("value")).sync(ByteBufCodecs.VAR_LONG).build());
+
+    /** 筹码折扣面额（星币；0 = 无折扣）。 */
+    public static int getChipDiscountAmount(net.minecraft.world.entity.LivingEntity living) {
+        return living.getData(CHIP_DISCOUNT_AMOUNT.get());
+    }
+
+    public static void setChipDiscountAmount(net.minecraft.world.entity.LivingEntity living, int value) {
+        living.setData(CHIP_DISCOUNT_AMOUNT.get(), Math.max(0, value));
+    }
+
+    /** 筹码折扣截止时刻（世界 gameTime；0 = 无折扣）。 */
+    public static long getChipDiscountUntil(net.minecraft.world.entity.LivingEntity living) {
+        return living.getData(CHIP_DISCOUNT_UNTIL.get());
+    }
+
+    public static void setChipDiscountUntil(net.minecraft.world.entity.LivingEntity living, long value) {
+        living.setData(CHIP_DISCOUNT_UNTIL.get(), value);
+    }
+
+    /** 少主：目标选择确认后暂存的目标 UUID（空串 = 无）。选卡取消即清空。 */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<String>> AL_PENDING_TARGET =
+            ATTACHMENTS.register("al_pending_target", () -> AttachmentType.builder(() -> "")
+                    .serialize(Codec.STRING.fieldOf("value")).build());
+
+    public static String getAlPendingTarget(net.minecraft.world.entity.player.Player player) {
+        return player.getData(AL_PENDING_TARGET.get());
+    }
+
+    public static void setAlPendingTarget(net.minecraft.world.entity.player.Player player, String value) {
+        player.setData(AL_PENDING_TARGET.get(), value == null ? "" : value);
+    }
+
     /** 多萝西：主动窗口结束刻（0 = 无窗口）。 */
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> DOROTHY_WINDOW_END =
             ATTACHMENTS.register("dorothy_window_end", () -> AttachmentType.builder(() -> 0L)
