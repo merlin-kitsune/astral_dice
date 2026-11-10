@@ -16,7 +16,7 @@
 - 新增：**少主立牌**（`al`）移植到 P1 三线 —— `fabric-1.20.1` / `fabric-1.21.1` / `neoforge-26.1.2`，至此**五线齐**。每线 4 个新 Java（立牌物品 / 给牌钩子 / 筹码折扣 / 类玩家目标）+ 贴图、手册条目、三语各 13 键、生成产物（model / recipe / advancement）；并**补齐 P1 三线原本缺失的选卡基建**：`CardChoiceManager` 的 `minSlots` 变长下限重载、`CardChoiceType.titleKey(slotCount, minSlots)` 变长标题键、`CardChoiceMenu` 按 `minSlots` 判定可确认（旧 4 参调用点行为逐字不变）。三线 datagen 跑通（只新增 10 个 al 产物、无删除无漂移），三线串行实机 **PASS**（世界就绪 16.220 / 18.137 / 12.184 s，`LINUX_STOP: OK`，无新增 crash）。语义差异：三线均不覆写 `activateForEntity`（P1 无 `SignEntitySkills`，P0 本身恒 deny）；刷新只发 `ServerPlayer`；fabric-1.20.1 的 `CardChoiceType` 补两参 `titleKey`。
 - 文档：新增 `docs/features/al-sign-spec.md`（**少主立牌**规格与实现记录：12 项冻结常量含 file:line、主动「强者怜悯」/ 被动「双赢」A 面给牌 / 星光属性 / 限时折扣四组语义、P1 选卡基建、13 键文本、五线覆盖与 5 条语义差异、§7 实机取证读数、复跑清单）；`docs/features/sign-roadmap.md` 的 al 行改为「五线已落地」；`tools/sign_display_names.json` 少主 `lines` 补两条 fabric 线（命名门禁 **110,663** 项 PASS）。
 - 文档：新增 `docs/features/sign-roadmap.md`（立牌计划表六项状态 + 三项未实现规格 + 开工必做）；`docs/features/souri-sign-spec.md` 覆盖表改为五线；`tools/sign_display_names.json` 金鲤 `lines` 补两条 fabric 线（命名门禁现 **110,663** 项 PASS）。
-- 注意：`build/libs` 与游戏 `mods` 目录里现存的仍是 `26.4-SNAPSHOT.10` 产物（README〈Build provenance〉记的就是它们）；下一次出包前必须按 `.11` 重建并对齐溯源表。
+- 重建：五线已按 `26.4-SNAPSHOT.11` 重建（2026-11-10 15:21，源提交 `011a6891`，一条命令跑五个 `:build`，28 executed / 16 up-to-date），README〈Build provenance〉表已换成 `.11` 真值（P0 两行含 `build-info.json` 的 commit/builtAt/classCount，另三线无描述符只有尺寸+哈希）；两枚 P0 jar 的 `<jar>.sha256` 旁证按最终字节重生成（`<line>/build/libs/` 与根 `build/libs/` 各一份）。`run/*/mods` 由各线 `pushToDevRun` 同步为 `.11`；`pushToGame` 因 `multi-dev-next` 不在整合包白名单而跳过。
 
 ## 26.4-SNAPSHOT.10
 

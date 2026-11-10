@@ -120,9 +120,9 @@ The Abyss Reagent chip is named consistently now: display name, tooltip and ever
 - **CurseForge**: the builds go to the main project (`astral-dice`, project id `1662159`). StarEngine has its own project (`starengine`, id `1755415`); **none of the four lines bundles it any more**, so players must install that separate jar themselves: `starengine-neoforge-1.21.1-26.4-SNAPSHOT.1.jar` / `starengine-forge-1.20.1-26.4-SNAPSHOT.1.jar` / `starengine-neoforge-26.1.2-26.4-SNAPSHOT.1.jar` / `starengine-fabric-1.20.1-26.4-SNAPSHOT.1.jar`. Version numbers keep the `+<loader>_<MC>` suffix (for example `1.5.0+neoforge_1.21.1`), and the release channel follows the version suffix. Modrinth publishing was permanently dropped on 2026-10-23; CurseForge is the only store channel.
 - **Build artefacts**: `astral_dice-1.5.0+neoforge_1.21.1.jar`, `astral_dice-1.5.0+forge_1.20.1.jar`, `astral_dice-1.5.0+neoforge_26.1.2.jar` and `astral_dice-1.5.0+fabric_1.20.1.jar`, each under its subproject's `build/libs/`; the version inside each jar matches the file name (1.5.0).
 
-## Build provenance (26.4-SNAPSHOT.10)
+## Build provenance (26.4-SNAPSHOT.11)
 
-> The source version is now `26.4-SNAPSHOT.11`; the table below records the last `.10` builds that exist on disk and stays as history until the next rebuild.
+> All five lines were rebuilt from `011a6891` on 2026-11-10T15:21 (+08:00). The table records exactly those artefacts.
 
 Each jar carries `META-INF/astral_dice/build-info.json` with `{version, commit, builtAt, classCount}` and ships a
 sibling `<jar>.sha256` (neoforge-1.21.1 and forge-1.20.1 only; the other lines carry no build-info). `build-info.commit`
@@ -130,19 +130,22 @@ names the **code commit** the jar was built from; the README update that records
 
 | Line | Version | Built from | Built at | Size (B) | SHA-256 |
 |---|---|---|---|---|---|
-| neoforge-1.21.1 | 26.4-SNAPSHOT.10+neoforge_1.21.1 | `3a6df49c`（库引脚 .2 + .10） | 2026-11-10T01:53:14+08:00 | 2,780,786 | `a340082fb2f14f1b8b504075eb95890e4690f56a1544660164e031aa97e05ba0` |
-| forge-1.20.1 | 26.4-SNAPSHOT.10+forge_1.20.1 | `3a6df49c`（库引脚 .2 + .10） | 2026-11-10T01:53:14+08:00 | 2,830,919 | `9d567924dbd26d5b24387bb919ed729ec98325434798cd8a5549d980f1d9ac85` |
-| neoforge-26.1.2 | 26.4-SNAPSHOT.10+neoforge_26.1.2 | 无 build-info，commit 不可回指（早于 `3a6df49c`） | 2026-11-09T22:16:16+08:00 | 2,912,982 | `48a455cfeed1c832a7838d99cbd962cde983f96b621d5c5b83d9e045f2410d5b` |
-| fabric-1.20.1 | 26.4-SNAPSHOT.10+fabric_1.20.1 | `58992f0c`（库引脚 .11 + .10） | 2026-11-09T22:32:17+08:00 | 3,023,620 | `b1ed477eafea1ea45a532e50d3b15915ddea4c16b1949661fcec5bd3da0fff2e` |
-| fabric-1.21.1 | 26.4-SNAPSHOT.10+fabric_1.21.1 | `58992f0c`（库引脚 .9 + .10） | 2026-11-09T22:32:52+08:00 | 3,049,924 | `7a6f8169afb89767c39f13321062abcf6fc60aa8bde8c01a330c96c465dc8b53` |
+| neoforge-1.21.1 | 26.4-SNAPSHOT.11+neoforge_1.21.1 | `011a6891`（库引脚 .2 + .11） | 2026-11-10T15:21:27+08:00 | 2,781,337 | `6eef0a89380ffb78865638601260d1c4baa56008008b8ccb32370d996fa05de6` |
+| forge-1.20.1 | 26.4-SNAPSHOT.11+forge_1.20.1 | `011a6891`（库引脚 .2 + .11） | 2026-11-10T15:21:28+08:00 | 2,831,252 | `0fa60d4641bd9aa5621645e9336f8464e953ff8af7176a06b276b6c1c17aa2b8` |
+| neoforge-26.1.2 | 26.4-SNAPSHOT.11+neoforge_26.1.2 | 无 build-info，commit 不可回指（与 P0 同批构建） | 2026-11-10T15:21:27+08:00 | 2,982,819 | `eb1a739acefe3a4d0b035f1e136134c32c17ae43c1b1863773ac589081bc70de` |
+| fabric-1.20.1 | 26.4-SNAPSHOT.11+fabric_1.20.1 | 无 build-info，commit 不可回指（与 P0 同批构建） | 2026-11-10T15:21:30+08:00 | 3,094,347 | `04f9bf65ab57e67a178d4e3024ca4a706d656c8fcd192a7621137a38df64d2a1` |
+| fabric-1.21.1 | 26.4-SNAPSHOT.11+fabric_1.21.1 | 无 build-info，commit 不可回指（与 P0 同批构建） | 2026-11-10T15:21:30+08:00 | 3,120,561 | `31183feafeba11781db31ec31692aa0a91733fca4f00e8eed35fd07b733dc98a` |
 
-The two `fabric-*` rows and the `neoforge-26.1.2` row predate the 2026-11-10T01:53 rebuild and are unchanged by it;
-only the two P0 lines were rebuilt, at commit `3a6df49c`. Both P0 jars had their `<jar>.sha256` sidecars regenerated from the
-final bytes after that rebuild. `fabric-1.21.1` is tracked here because it is built from this worktree, but it is **not** a
-release line yet: it is the P1 scaffolding line, has no row in the support matrix above, and gets no Release attachment
+All five rows come from one build run (`gradlew --no-daemon --no-configuration-cache` over the five `:build` tasks,
+`BUILD SUCCESSFUL in 6s`, 28 executed / 16 up-to-date). Both P0 jars had their `<jar>.sha256` sidecars regenerated from the
+final bytes, next to the jars in `<line>/build/libs/` and in the root `build/libs/` mirror. Only the two P0 jars embed
+`build-info.json`; the other three lines have no such descriptor, so their rows are identified by size + hash only.
+`fabric-1.21.1` is tracked here because it is built from this worktree, but it is **not** a release line yet: it is the P1
+scaffolding line, has no row in the support matrix above, and gets no Release attachment
 (see `docs/features/fabric-1211-port-feasibility-plan.md`).
 
-Live smoke for this batch (Linux host, 2026-11-10): both P0 jars were launched from `build/libs` into `testworld`.
+Live smoke on 2026-11-10 used the `.10` P0 jars built from `3a6df49c` (the ones in the table above before this
+rebuild) — they were launched from `build/libs` into `testworld`.
 On `neoforge-1.21.1` the 金鲤 (`astral_dice:souri_sign`) tooltip renders every line, including the 「金鳞：2 / 4」
 status line, which is read from the **viewer's** attachment (`ModTooltipHandler.java:1646-1656`), not from the stack.
 On `forge-1.20.1` the same commit registers the item (1593 items; `astral_dice:souri_sign` is the only `souri` id),
@@ -150,6 +153,10 @@ On `forge-1.20.1` the same commit registers the item (1593 items; `astral_dice:s
 `souri_dragon` effects plus the `souri_drink` entity are registered. Both sessions stopped cleanly and left
 no 25565 / 25575 / 25585 listener. The only log errors are Forge's own version-check timeouts (the game JVM has
 no proxy), which do not affect loading.
+
+The `.11` jars themselves were not smoke-tested from `build/libs`: the `al` work described next was verified on the dev
+`runClient` classpath of the three P1 lines, and the two P0 jars in this table are a rebuild of `011a6891` that has no
+separately launched session of its own yet.
 
 Same day, second batch: the 少主 (`al`) sign was ported to the three P1 lines and each was smoke-tested serially —
 world-ready in 16.220 s (`fabric-1.20.1`), 18.137 s (`fabric-1.21.1`) and 12.184 s (`neoforge-26.1.2`), each
