@@ -15,7 +15,7 @@
 | **Codex** | `docs/agent/AGENT-SPLIT.md` | 维持原**只读验证**分工：可读、可 `grep`、可写 `docs/**`；不写源码、不跑构建、不跑实机 |
 | **其他宿主** | 先向用户确认 | **不得**把 `AGENTS-kimi.md` 或 `AGENTS-dsh.md` 当成自己的规则 |
 
-- `docs/agent/AGENTS-dsh.md` = **DSH 的规则正本**（2026-10-24 起从旧根规则文件迁入；同日按用户裁决清掉非 DSH 内容 —— WSL 口径、路径转译、跨宿主的派活工具说明一律删除，只留实际工作流裁决）。目录内另有历史留存：原根规则文件备份 `AGENTS.md.bak-a-plan-183829` 经 `docs/agent/AGENTS-full.md` 逐字留存。当前 `AGENTS-dsh.md` SHA-256 `6dec2278f25a2e39b67ce8b8858a9f6bb6a7ede7f82331afb0d3b198343befcf`（纯 LF，324 行 / 56,114 B；2026-11-07 复核）。
+- `docs/agent/AGENTS-dsh.md` = **DSH 的规则正本**（2026-10-24 起从旧根规则文件迁入；同日按用户裁决清掉非 DSH 内容 —— WSL 口径、路径转译、跨宿主的派活工具说明一律删除，只留实际工作流裁决）。目录内另有历史留存：原根规则文件备份 `AGENTS.md.bak-a-plan-183829` 经 `docs/agent/AGENTS-full.md` 逐字留存。当前 `AGENTS-dsh.md` SHA-256 `24cec6a2f89301efa4965598745f06dfa5bebd131b65d84ed90fd186970c033a`（纯 LF，332 行 / 59,147 B；2026-11-10 复核）。
 - `docs/agent/AGENTS-dsh-linux.md` = **DSH 在 Linux 原生宿主的规则正本**（2026-10-31 起；逐条 Linux 化，Windows 口径保留在 `AGENTS-dsh.md` 作历史正本）。Linux 与 Windows 冲突时各读自己的正本；共同红线与索引仍以本文件为准。
 - Kimi 当前接手文档：`docs/handover-2026-10-24-kimi-takeover.md`；Kimi 当前工程参考：`docs/agent/PROJECT-REFERENCE.md`。
 
