@@ -25,7 +25,7 @@
 | 成对存活 | `PAIR_LIFETIME_TICKS = 6000`（5:00） | 到期两扇门一起消失，无动画 |
 | 放置距离 | `PLACE_RANGE = 8.0D` | 准星射线取落点 |
 | 放置期移速 | `MOVEMENT_SPEED` +10%，`ADD_MULTIPLIED_TOTAL` | 放置期专属，终点门放下即移除 |
-| 主动冷却 | `ACTIVE_COOLDOWN_TICKS = 2400`（2:00） | **待用户验收调整**；锁定结束由 `SignActiveLockMachine` 起冷却 |
+| 主动冷却 | **全局立牌规则**：`GameplayConstants.SIGN_ACTIVE_COOLDOWN_SECONDS`（默认 180 s = 3600 tick） | 2026-11-10 用户裁决「遵守全局规则，默认 180 秒」⇒ 不覆写 `activeCooldownBaseTicks` / `activeCooldownBaseTicksNoBattery`，直接继承 `BaseSignItem` 默认链（`WeirdDiceHandler.signCooldownTicks`，含充能封顶 180→160 s 与「额外电池筹码 ×0.5」减免）；锁定结束由 `SignActiveLockMachine` 起冷却 |
 | 被动叠层 | 每层攻击力 `+2`，时长 `STACK_DURATION_TICKS = 2400`（2:00） | 每次穿越刷新时长，层数不设上限 |
 | 敌对伤害 | `PORTAL_HAZARD_RADIUS = 2.5` 格内每 20 tick 受 `2.0` 点 `SKILL_DAMAGE` | 用户口径「魔法伤害」= 本仓 `SKILL_DAMAGE`（与魔渊触须同款） |
 | 防弹跳 | `RETRIGGER_TICKS = 60` | 同玩家对同一扇门 3 s 内不重复触发 |
@@ -40,7 +40,7 @@
 
 1. 佩戴者按 J（`BaseSignItem.performSkillForCurio` 链路）→ `InkShadowSignItem.handleUse`。
 2. **无 pending**：准星 8 格内取落点，生成**起始门**（state=PENDING，半透明、不可穿越），写 pending（实体 UUID + 维度 + 截止刻 = now + 600），进入**锁定态**（`beginActiveLock`），并施加 +10% 移速。
-3. **有 pending 且在窗口内**：第二次按键**不经过 `performSkillForCurio`** —— 由网络入口 `SignActivatePayload.handle`（neo21）/ `ModNetwork.SignActivateMessage` 前置钩子（forge）先问 `InkShadowSignManager.tryPlaceEndFromKey(player)`，命中即 `return`。钩子内落地**终点门**，两扇门同时转 ACTIVE（双向可穿越），`expireTick = now + 6000`，清 pending、移除移速、锁定随 `isGateEffectActive` 变 false 而结束并起 `ACTIVE_COOLDOWN_TICKS` 冷却。
+3. **有 pending 且在窗口内**：第二次按键**不经过 `performSkillForCurio`** —— 由网络入口 `SignActivatePayload.handle`（neo21）/ `ModNetwork.SignActivateMessage` 前置钩子（forge）先问 `InkShadowSignManager.tryPlaceEndFromKey(player)`，命中即 `return`。钩子内落地**终点门**，两扇门同时转 ACTIVE（双向可穿越），`expireTick = now + 6000`，清 pending、移除移速、锁定随 `isGateEffectActive` 变 false 而结束并按全局立牌规则起冷却（默认 180 s）。
    - 这样设计的理由：一次主动技能只结算一次。若第二次按键仍走 `performSkill`，会二次触发风扇筹码发牌 / 电流核心 / 技能音效 / `SignActiveTriggeredEvent`。
    - 终点门落点非法（准星没指到可放置方块面）⇒ 红字 `msg.astral_dice.inkshadow_no_ground`，**保留窗口可重试**，不消耗冷却。
 4. 放置期限制（服务端强制）：无法攻击（`AttackEntityEvent` 取消）、不能切换武器（每 tick 复位锁定槽位）、不能与方块实体交互（`PlayerInteractEvent` 五个子事件取消）；ESC 与立牌技能键不受影响。
@@ -59,6 +59,7 @@
 
 - `extends Entity implements GeoEntity`；`noPhysics`、无重力、不可拾取、不可被攻击（`isInvulnerableTo` 恒 true、`hurt` 恒 false）、无碰撞箱 ⇒ 不能破坏、不能被攻击、不挡路。
 - 穿越：ACTIVE 门每 5 tick 扫 `inflate(0.6)` 内玩家；命中 ⇒ 传送到配对门（**跨维度**用 `teleportTo(ServerLevel, x, y, z, yaw, pitch)`），标记该门 `visitedUuids`、写 `RETRIGGER_TICKS` 防弹跳、结算被动、调跃迁引擎钩子。
+- 穿越视听（2026-11-10 用户裁决「传送可使用末影珍珠传送音效」）：出发前在起点、传送后在落点各播一次 `SoundEvents.ENDERMAN_TELEPORT`（`SoundSource.PLAYERS`，1.0/1.0）+ 40 粒 `ParticleTypes.PORTAL`，与 `event/EnderDiceHandler#playTeleportEffects` 同源同参数（掷末影珍珠的传送音效）。落点特效在 `teleportTo` 之后播，跨维度时包才送得到。
 - 到期：`expireTick` 到 ⇒ 两扇门一起 discard。
 
 ### §2.4 渲染（首版占位，用户验收后定）
@@ -92,12 +93,13 @@ tooltip 挂点：`event/ModTooltipHandler` 的 `ModItems.INKSHADOW_SIGN` 块（�
 ## §5 边界与已知取舍
 
 - **显示效果是占位**（模型缩放、漩涡尺寸/转速/透明度、起始门半透明程度）：全部集中常量，用户验收后单独一轮调整。
-- **冷却 2:00 是占位值**：用户未给数值，按「同类主动技能常规量级」取 2400 tick。冷却从锁定结束时由 `SignActiveLockMachine` 起算；**放置窗口超时、放置期死亡/退出、以及放置中卸下立牌都算已消耗，照付全额 2400**（首版口径，用户可改）。
+- **冷却走全局口径**（2026-11-10 用户裁决）：不再写死 2400，继承 `BaseSignItem` 的全局链 = `SIGN_ACTIVE_COOLDOWN_SECONDS`（默认 180 s）→ 充能封顶 180→160 s → 额外电池 ×0.5。冷却从锁定结束时由 `SignActiveLockMachine` 起算；**放置窗口超时、放置期死亡/退出、以及放置中卸下立牌都算已消耗，照付全额**。
 - **卸下即作废**：`onUnequip` 清 pending + 起始门 discard + 移速移除 + 层数清零 + 撤攻击修饰符。
 - **配方占位**：`BXB/KCK/XDX`（墨囊 / 星尘 / 金块 / 空白筹码 / 钻石骰）——与少主配方同形，仅换关键材料；待用户定。
 - **跃迁核心映射**：仓内无该物品，接到 `WarpEngineChipItem.onPortalOrWaystoneTeleport`；若用户指的是新物品需另立规格。
 - 门不可破坏/不可攻击由「非 `LivingEntity` + 不可拾取 + `isInvulnerableTo` 恒真 + `hurt` 恒 false」实现，不走方块（因此不受领地/破坏事件影响）。
-- 未做：P1 三线、门与门的视觉配对提示（颜色/编号）、音效、穿越粒子、多人并发门数量上限（首版不限制）。
+- 未做：P1 三线、门与门的视觉配对提示（颜色/编号）、放置音效、多人并发门数量上限（首版不限制）。
+- **forge-1.20.1 仍是旧值**：本批（冷却全局化 + 末影传送音效）按要求**只改 1.21.1**，forge 线保留 `ACTIVE_COOLDOWN_TICKS = 2400` 与无音效版本，待验收通过后同步。
 
 ## §6 跨线覆盖
 

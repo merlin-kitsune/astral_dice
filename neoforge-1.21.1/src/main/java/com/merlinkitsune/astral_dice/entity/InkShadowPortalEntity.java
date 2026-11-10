@@ -10,6 +10,7 @@ import com.merlinkitsune.starengine.geckolib.animation.AnimatableManager;
 import com.merlinkitsune.starengine.geckolib.animation.AnimationController;
 import com.merlinkitsune.starengine.geckolib.animation.RawAnimation;
 import com.merlinkitsune.starengine.geckolib.util.GeckoLibUtil;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -23,6 +24,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
@@ -193,7 +196,7 @@ public class InkShadowPortalEntity extends Entity implements GeoEntity {
             if (serverPlayer.getPortalCooldown() > 0) continue;
             Long retriggerAt = this.retrigger.get(id);
             if (retriggerAt != null && now < retriggerAt) continue;
-            if (!teleportToPair(serverPlayer)) continue;
+            if (!teleportToPair(serverLevel, serverPlayer)) continue;
             this.visitedUuids.add(id);
             this.retrigger.put(id, now + InkShadowSignItem.RETRIGGER_TICKS);
             serverPlayer.setPortalCooldown(InkShadowSignItem.RETRIGGER_TICKS);
@@ -204,15 +207,31 @@ public class InkShadowPortalEntity extends Entity implements GeoEntity {
     }
 
     /** 传送到配对门坐标；对方维度解析失败 ⇒ false（不记“已穿越”）。 */
-    private boolean teleportToPair(ServerPlayer player) {
+    private boolean teleportToPair(ServerLevel fromLevel, ServerPlayer player) {
         if (this.pairUuid == null || this.pairDim.isEmpty()) return false;
         MinecraftServer server = player.getServer();
         if (server == null) return false;
         ServerLevel target = dimensionLevel(server, this.pairDim);
         if (target == null) return false;
+        Vec3 from = player.position();
+        Vec3 to = new Vec3(this.pairX, this.pairY + 0.1D, this.pairZ);
+        playTeleportEffects(fromLevel, from);
         player.teleportTo(target, this.pairX, this.pairY + 0.1D, this.pairZ,
                 player.getYRot(), player.getXRot());
+        // 落点特效在传送之后播（跨维度时玩家此时才在目标维度里，包才送得到）
+        playTeleportEffects(target, to);
         return true;
+    }
+
+    /**
+     * 末影传送视觉/听觉：`PORTAL` 粒子 + `SoundEvents.ENDERMAN_TELEPORT`
+     * （与 {@code event/EnderDiceHandler#playTeleportEffects} 同源同参数：掷末影珍珠的传送音效）。
+     */
+    private static void playTeleportEffects(ServerLevel level, Vec3 pos) {
+        level.sendParticles(ParticleTypes.PORTAL,
+                pos.x, pos.y + 1.0D, pos.z, 40, 0.5D, 0.5D, 0.5D, 0.05D);
+        level.playSound(null, pos.x, pos.y, pos.z,
+                SoundEvents.ENDERMAN_TELEPORT, SoundSource.PLAYERS, 1.0F, 1.0F);
     }
 
     /**

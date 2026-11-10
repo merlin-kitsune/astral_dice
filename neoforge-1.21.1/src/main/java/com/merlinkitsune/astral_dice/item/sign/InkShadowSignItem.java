@@ -29,7 +29,8 @@ import net.minecraft.world.phys.HitResult;
  * {@code SignActiveLockMachine.isSignActiveLocked} 拦在 {@code performSkill} 之外。
  * 因此<b>第二次按键不经过 {@code performSkill}</b>：{@code network/SignActivatePayload} 先用
  * {@link InkShadowSignManager#tryPlaceEndFromKey} 这个前置钩子直接放终点门（与 forge-1.20.1 同构）；
- * pending 一清空，锁定机下一拍自然结束锁定并起 2:00 冷却。
+ * pending 一清空，锁定机下一拍自然结束锁定，冷却走<b>全局立牌规则</b>
+ * （{@code GameplayConstants.SIGN_ACTIVE_COOLDOWN_SECONDS}，默认 180 s，含充能封顶与电池减免）。
  */
 public class InkShadowSignItem extends BaseSignItem {
 
@@ -47,9 +48,6 @@ public class InkShadowSignItem extends BaseSignItem {
 
     /** 放置窗口内的移速加成：MOVEMENT_SPEED / ADD_MULTIPLIED_TOTAL +10%（待用户验收调整） */
     public static final double SPEED_AMPLIFIER = 0.10D;
-
-    /** 主动冷却 2:00（待用户验收调整） */
-    public static final int ACTIVE_COOLDOWN_TICKS = 2400;
 
     /** 被动每层攻击 +2（待用户验收调整） */
     public static final double STACK_ATTACK_BONUS = 2.0D;
@@ -79,18 +77,6 @@ public class InkShadowSignItem extends BaseSignItem {
     /** 玩家是否佩戴小猎手立牌（Curios stand 槽 + 骰子前置） */
     public static boolean isEquipped(Player player) {
         return SignEquipCheck.isEquipped(player, ModItems.INKSHADOW_SIGN.get());
-    }
-
-    /** 主动冷却基准 2:00（锁定/生效期结束后由锁定机结算）。 */
-    @Override
-    protected int activeCooldownBaseTicks(Player player) {
-        return ACTIVE_COOLDOWN_TICKS;
-    }
-
-    /** 电池/充能芯片读同一个基准值：两处必须逐行同义（玩家可见冷却不能因芯片而异）。 */
-    @Override
-    protected int activeCooldownBaseTicksNoBattery(Player player) {
-        return ACTIVE_COOLDOWN_TICKS;
     }
 
     /** 放置窗口 = 主动「生效中」：锁定机据此在窗口结束/终点门落地后自动转入冷却。 */
