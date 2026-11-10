@@ -52,9 +52,6 @@ public class InkShadowSignItem extends BaseSignItem {
     /** 被动每层攻击 +2（待用户验收调整） */
     public static final double STACK_ATTACK_BONUS = 2.0D;
 
-    /** 被动层数持续 2:00（每次新增层刷新而非叠加计时） */
-    public static final int STACK_DURATION_TICKS = 2400;
-
     /** 门前危险区半径（格） */
     public static final double PORTAL_HAZARD_RADIUS = 2.5D;
 

@@ -876,7 +876,7 @@ public class ModAttachments {
                     .serialize(Codec.INT)
                     .build());
 
-    // 被动「双生之影」层数 / 层数到期时刻(每次新增层刷新而不是累加计时)
+    // 被动「双生之影」层数。层数到期附件（INKSHADOW_STACKS_EXPIRE）已停用，仅为旧存档兼容保留声明。
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> INKSHADOW_STACKS =
             ATTACHMENTS.register("inkshadow_stacks", () -> AttachmentType.builder(() -> 0)
                     .serialize(Codec.INT)
@@ -933,6 +933,21 @@ public class ModAttachments {
 
     public static void setInkShadowStacksExpire(net.minecraft.world.entity.player.Player player, long value) {
         player.setData(INKSHADOW_STACKS_EXPIRE.get(), value);
+    }
+
+    // 被动「双生之影」：属于佩戴者的存活门对到期刻列表(逗号分隔 tick，由 InkShadowSignManager 维护)。
+    //   门对建立时追加一条、每次刷新被动时剪掉已过期项；列表为空 ⇒ 被动失效并清零层数。
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<String>> INKSHADOW_PAIR_EXPIRIES =
+            ATTACHMENTS.register("inkshadow_pair_expiries", () -> AttachmentType.builder(() -> "")
+                    .serialize(Codec.STRING)
+                    .build());
+
+    public static String getInkShadowPairExpiries(net.minecraft.world.entity.player.Player player) {
+        return player.getData(INKSHADOW_PAIR_EXPIRIES.get());
+    }
+
+    public static void setInkShadowPairExpiries(net.minecraft.world.entity.player.Player player, String value) {
+        player.setData(INKSHADOW_PAIR_EXPIRIES.get(), value);
     }
 
     // @Deprecated 已废弃:立牌主动技能"等待目标释放"机制已被目标选择器(TargetSelectionManager 会话)替代,

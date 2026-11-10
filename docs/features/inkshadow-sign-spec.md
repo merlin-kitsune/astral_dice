@@ -1,6 +1,7 @@
 # 小猎手立牌（inkshadow）规格与实现记录
 
 > 本文是**语义冻结 + 实现记录**：P0 两线（`neoforge-1.21.1` / `forge-1.20.1`）2026-11-10 首版落地（用户 m02258 下达，明确「先做第一版供验收，显示效果由我自己定」）。
+> **2026-11-10 第三轮（被动改按存活门对生效，用户 m04094）同样只落在 `neoforge-1.21.1`**；中文 tooltip 由用户亲手改写并按用户版本落盘。
 > **2026-11-10 第二轮验收改版（用户 m02953 / m03003）目前只落在 `neoforge-1.21.1`**：门贴地、门面改末地传送门样式平铺地面且只在成对时渲染、站定 1.5 s 传送、每门 5 s 静默冷却、主人先离开 4 格、成对存活 3:00、被动状态指示器用立牌图标。forge-1.20.1 仍是首版语义（见 §5 末行）。
 > **代码为真源**：本文任何数字若与代码不符，以代码为准并回改本文。§7 实机取证在验收轮次回填。
 > 需求正本：仓库根 `立牌计划表.txt`（小猎手段）+ 用户 m02258 的补充说明；`docs/features/sign-roadmap.md` §2.1 记录排期。
@@ -31,12 +32,12 @@
 | 站定半径 | `STAND_RADIUS = 0.55D` | 2026-11-10 用户裁决「判定范围太大，改为踩在门正上方」：按与门盘中心的**水平距离**判定（旧实现用实体包围箱 `inflate(0.6)`，等效半径约 1.2 格，贴边走过也会传）；另要求脚底与门同层（`dy ∈ [-0.5, 1.0]`） |
 | 站定判定 | `STAND_TICKS = 30`（1.5 s） | 玩家踩进门盘正上方需连续站定 1.5 s 才实际传送（每 2 tick 累计一次，离开即清零）；**踩上去就每 2 tick 播一次门面粒子**（不等站定完成，冷却中/保险未解除也播） |
 | 主人保险 | `OWNER_ARM_RADIUS = 4.0D` | 刚放好的一对门不会立刻传送放置者本人：本人需先离开门 4 格外，该门对主人才解除保险（用户 m02953 第 7 条） |
-| 被动叠层 | 每层攻击力 `+2`，时长 `STACK_DURATION_TICKS = 2400`（2:00） | 每次穿越刷新时长，层数不设上限 |
+| 被动叠层 | 每层攻击力 `+2`；**生效条件 = 主人名下存在存活门对**（`INKSHADOW_PAIR_EXPIRIES` 里还有未到期的到期刻），**不再有 2:00 计时** | 2026-11-10 用户裁决「由持续 2:00 改成有属于自己的传送门存在时，效果就能生效」；层数不设上限，门对全部到期即清零并撤攻击修饰符 |
 | 敌对伤害 | `PORTAL_HAZARD_RADIUS = 2.5` 格内每 20 tick 受 `2.0` 点 `SKILL_DAMAGE` | 用户口径「魔法伤害」= 本仓 `SKILL_DAMAGE`（与魔渊触须同款） |
 | 一次性计数 | `visitedUuids`（NBT `Visited`） | 每扇门 × 每人只结算一次被动叠层；【传送本身】可重复，不受此限制 |
 | 显示常量 | `MODEL_SCALE = 1.6` / `GROUND_LIFT = 0.12` / `SURFACE_Y = 0.03` / `SURFACE_RADIUS = 0.62` / `SURFACE_SPIN_TICKS = 200` / `PENDING_RENDER_SCALE = 0.95` | 集中声明在 `client/InkShadowPortalRenderer`，注释「待用户验收调整」 |
 
-状态载体（均为玩家级附件，primitive、仅服务端）：`INKSHADOW_PENDING_UUID`、`INKSHADOW_PENDING_DIM`、`INKSHADOW_PENDING_DEADLINE`、`INKSHADOW_LOCKED_SLOT`、`INKSHADOW_STACKS`、`INKSHADOW_STACKS_EXPIRE`。
+状态载体（均为玩家级附件、仅服务端）：`INKSHADOW_PENDING_UUID`、`INKSHADOW_PENDING_DIM`、`INKSHADOW_PENDING_DEADLINE`、`INKSHADOW_LOCKED_SLOT`、`INKSHADOW_STACKS`、`INKSHADOW_PAIR_EXPIRIES`（String，逗号分隔的存活门对到期刻；门对建立时追加一条、每次刷新被动时剪掉已过期项）、`INKSHADOW_STACKS_EXPIRE`（**已停用**，仅为旧存档兼容保留声明）。
 冷却复用立牌统一口径（`SIGN_ACTIVE_COOLDOWN_END` / `SIGN_ACTIVE_MAX_COOLDOWN`），不新建。
 
 ## §2 语义
@@ -56,7 +57,9 @@
 ### §2.2 被动「双生之影」
 
 - **穿越计数按「每扇门 × 每人」**：每扇门各自维护 `visitedUuids`；同一玩家穿过起始门与终点门各计一次（用户备注明确）。
-- 触发：门主人（`ownerUuid`）获得 +1 层，攻击力修饰符 = `2.0 × 层数`（固定 UUID、`ADD_VALUE`），时长刷新到 now + 2400；层过期清零并移除修饰符。
+- 触发：门主人（`ownerUuid`）获得 +1 层，攻击力修饰符 = `2.0 × 层数`（固定 UUID、`ADD_VALUE`）。
+- **生效条件（2026-11-10 用户裁决，第三轮）**：层数不再按时间过期 —— 只要主人名下还有存活门对（`livePairDeadline(player) > 0`）就一直有效；门对全部到期后下一拍 `refreshStacks` 把层数清零并移除修饰符。注册表是玩家附件 `INKSHADOW_PAIR_EXPIRIES`：`placeEndPortal` 成功时 `registerLivePair` 追加 `now + 3600`，`livePairDeadline` 每次读取顺手剪掉已过期项，因此不依赖门实体回写、登出/重启/跨维度都自洽。
+- HUD 指示器：`inkshadow_stack` 效果的持续时间挂成**最晚存活门对的剩余时间**，门对到期效果自然消失。
 - 门主人离线、未佩戴本牌、或已不满足 `isEquipped` ⇒ 仍计穿越但不加层（不报错）。
 - **【跃迁核心】联动**：每次成功穿越额外调用本仓最接近的实存物 `WarpEngineChipItem.onPortalOrWaystoneTeleport(player)`（其自身 3600 tick 冷却与充能奖励原样保留）。仓内**没有**名为「跃迁核心」的物品（只有 `warp_engine_chip` 跃迁引擎 / 电流核心 / 原初核心）⇒ 该映射待用户确认。
 - 敌对伤害：ACTIVE 门每 20 tick 对 `PORTAL_HAZARD_RADIUS` 内的敌对生物造 2 点 `SKILL_DAMAGE`。
@@ -100,7 +103,7 @@
 | 数据（**datagen 产出**，落各线 `src/generated/resources/`） | `assets/astral_dice/models/item/inkshadow_sign.json`、`data/astral_dice/recipe(s)/inkshadow_sign.json`（**占位配方**）、`data/astral_dice/advancement(s)/recipes/misc/inkshadow_sign.json` |
 | 数据（手写，落各线 `src/main/resources/`） | `data/astral_dice/tags/item(s)/signs.json`、`data/curios/tags/item(s)/stand.json`、Patchouli `entries/signs/inkshadow_sign.json` |
 | datagen 登记 | `datagen/ModItemModelProvider`（`basicItem(ModItems.INKSHADOW_SIGN.get())`）+ `datagen/ModRecipeProvider`（`BXB/KCK/XDX` 占位配方，`unlockedBy has_blank_chip`） |
-| 文本 | `lang/{zh_cn,en_us,ja_jp}.json` 各 11 + 本轮新增键（见 §4）；另有 `entity.astral_dice.inkshadow_portal`（末影传送门）、`effect.astral_dice.inkshadow_stack` + `.description` |
+| 文本 | `lang/{zh_cn,en_us,ja_jp}.json` 各 11 + 本轮新增键（见 §4）；另有 `entity.astral_dice.inkshadow_portal`（末影传送门）、`effect.astral_dice.inkshadow_stack` + `.description`。**2026-11-10 中文 `_active` / `_passive` / `.description` 由用户亲自改写，以用户版本为准**，英日按同义重译（被动表述同步为「存在自身放置的传送门期间」） |
 | 环境脚本 | `run/start-{1.21.1,1.20.1,26.1.2}.sh` 增补 `DISPLAY` / `XAUTHORITY` 兜底（后台 job 里两者常为空，见 §8） |
 
 ## §4 文本键（zh_cn / en_us / ja_jp 三份）
@@ -120,7 +123,7 @@ tooltip 挂点：`event/ModTooltipHandler` 的 `ModItems.INKSHADOW_SIGN` 块（�
 - **跃迁核心映射**：仓内无该物品，接到 `WarpEngineChipItem.onPortalOrWaystoneTeleport`；若用户指的是新物品需另立规格。
 - 门不可破坏/不可攻击由「非 `LivingEntity` + 不可拾取 + `isInvulnerableTo` 恒真 + `hurt` 恒 false」实现，不走方块（因此不受领地/破坏事件影响）。
 - **传送语义（第二轮）**：门可反复使用，没有一次性限制；同一扇门对同一玩家 5 s 冷却、站定 1.5 s 才传，全程无 actionbar 提示；被动叠层仍是每扇门 × 每人一次性（`visitedUuids`）。门是**双向**的：两扇门都能把人送到对面（Apex 恶灵大招的折跃门机制）。
-- **被动状态指示器**：叠层期间给玩家挂 `inkshadow_stack` 增益效果（amplifier = 层数 − 1，图标即立牌图标），用于 HUD 显示层数与剩余时间；效果与攻击修饰符同生命周期（`refreshStackHud` 在层数/过期/卸下三处同步）。
+- **被动状态指示器**：叠层期间给玩家挂 `inkshadow_stack` 增益效果（amplifier = 层数 − 1，图标即立牌图标），HUD 的剩余时间即**最晚存活门对的剩余时间**；效果与攻击修饰符同生命周期（`refreshStackHud` 在层数/门对失效/卸下三处同步）。
 - 未做：P1 三线、门与门的视觉配对提示（颜色/编号）、放置音效、多人并发门数量上限（首版不限制）。
 - **forge-1.20.1 仍是旧值**：本批（冷却全局化 + 末影传送音效）按要求**只改 1.21.1**，forge 线保留 `ACTIVE_COOLDOWN_TICKS = 2400` 与无音效版本，待验收通过后同步。
 
@@ -128,8 +131,8 @@ tooltip 挂点：`event/ModTooltipHandler` 的 `ModItems.INKSHADOW_SIGN` 块（�
 
 | 线 | 状态 |
 |---|---|
-| `neoforge-1.21.1` | 首版已落地（2026-11-10）+ **第二轮验收改版已实机验证**（本节 §7） |
-| `forge-1.20.1` | 首版已落地（2026-11-10）；**第二轮改动尚未同步**（冷却仍写死 2400、无末影音效、门仍 +0.25、旧的一次性穿越逻辑），待 1.21.1 验收通过后同步 |
+| `neoforge-1.21.1` | 首版已落地（2026-11-10）+ 第二轮验收改版已实机验证 + **第三轮（被动改按存活门对生效）已实机验证**（本节 §7） |
+| `forge-1.20.1` | 首版已落地（2026-11-10）；**第二、三轮改动均尚未同步**（冷却仍写死 2400、无末影音效、门仍 +0.25、旧的一次性穿越逻辑、被动仍是 2:00 计时），待 1.21.1 验收通过后同步 |
 | `fabric-1.20.1` / `fabric-1.21.1` / `neoforge-26.1.2` | **未做**（红线：P1 不自动跟进，等用户裁决） |
 
 ## §7 实机取证
@@ -189,6 +192,18 @@ Astral Dice
 ```
 
 语言热更判据：客户端 `Java.loadClass('net.minecraft.client.Minecraft').getInstance().reloadResourcePacks()` 后，`net.minecraft.locale.Language.getInstance().getOrDefault('tooltip.astral_dice.sign.inkshadow_active')` 返回合并正文、`…_active.1` 返回键名本身（旧键已删）。
+
+### §7.1d 被动改按存活门对生效 + 用户文本落盘（2026-11-10 22:39–22:45，AutoJS 服务端/客户端探针）
+
+| 检查 | 读数 |
+|---|---|
+| 建立一对门 | `M.placePortal` 两次 ⇒ `ok1=true ok2=true`；`INKSHADOW_PAIR_EXPIRIES=264442`，`livePairDeadline=264442` |
+| 叠层与加成 | `addStack` ×2 ⇒ `stacks=2`、`ATTACK_DAMAGE=5`（base 1 + 2×2.0）、HUD `INKSHADOW_STACK amp=1 dur=3600`（= 门对剩余时间） |
+| 越过旧 2:00 计时（放置后 153 s） | `stacks=2`、`atk=5`、`deadline` 不变、HUD `dur=540` ⇒ **层数没有按 2:00 消失** |
+| 门对到期后（放置后 226 s） | `stacks=0`、`atk=1`、`expiries=`（空）、`deadline=0`、HUD `none` ⇒ 无存活门对即失效并清零 |
+| 文本热更 | `Minecraft.getInstance().reloadResourcePacks()` 后客户端 `Language.getOrDefault` 读到用户手改的中文；`getTooltipLines` 输出 14 行，主动 3 段 + 被动 2 段，无编号键残留、无「2:00」字样 |
+
+> 复跑提示：改 lang 后既要 `cp` 到 `neoforge-1.21.1/build/resources/main/assets/astral_dice/lang/`，也要客户端侧 `reloadResourcePacks()`；服务端 `Language` 是启动时加载的，读 tooltip 请走**客户端**探针（`Item$TooltipContext.of(mc.level)` + `TooltipFlag.NORMAL`）。
 
 ### §7.2 首版（2026-11-10 白天，历史）
 

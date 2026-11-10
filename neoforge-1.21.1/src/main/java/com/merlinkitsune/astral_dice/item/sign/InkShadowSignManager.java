@@ -22,6 +22,9 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.StringJoiner;
 import java.util.UUID;
 
 /**
@@ -130,6 +133,7 @@ public final class InkShadowSignManager {
         Vec3 endPos = new Vec3(end.getX(), end.getY(), end.getZ());
         start.activate(expireTick, end.getUUID(), endDim, endPos);
         end.activate(expireTick, start.getUUID(), startDim, startPos);
+        registerLivePair(player, expireTick);
 
         clearPending(player);
         sendActionBar(player, "msg.astral_dice.inkshadow_place_end");
@@ -217,43 +221,90 @@ public final class InkShadowSignManager {
     //  被动「双生之影」
     // ══════════════════════════════════════════════════════════════════════════
 
-    /** 门主人 +1 层：刷新 2:00 计时（不叠加时长），按当前层数重算攻击修饰符。 */
+    /** 门主人 +1 层：层数不再按时间过期，只要主人名下还有存活门对就持续生效（用户 2026-11-10 口径）。 */
     public static void addStack(Player owner) {
         if (owner == null || owner.level().isClientSide()) return;
         if (!InkShadowSignItem.isEquipped(owner)) return;
         int stacks = ModAttachments.getInkShadowStacks(owner) + 1;
         ModAttachments.setInkShadowStacks(owner, stacks);
-        ModAttachments.setInkShadowStacksExpire(owner, owner.level().getGameTime() + InkShadowSignItem.STACK_DURATION_TICKS);
         refreshStacks(owner);
     }
 
-    /** 按附件真值重算攻击加成与 HUD 指示器（幂等；层数到期 / 立牌离身 ⇒ 移除修饰符与图标）。 */
+    /** 按附件真值重算攻击加成与 HUD 指示器（幂等；没有存活门对 / 立牌离身 ⇒ 移除修饰符与图标）。 */
     public static void refreshStacks(Player player) {
         if (player == null || player.level().isClientSide()) return;
         long now = player.level().getGameTime();
         int stacks = ModAttachments.getInkShadowStacks(player);
-        long expire = ModAttachments.getInkShadowStacksExpire(player);
-        if (stacks <= 0 || now > expire) {
+        long deadline = livePairDeadline(player);
+        if (stacks <= 0 || deadline <= 0L) {
+            // 门对全部到期 ⇒ 层数清零：被动只在「有属于自己的传送门存在」时生效
             ModAttachments.setInkShadowStacks(player, 0);
-            ModAttachments.setInkShadowStacksExpire(player, 0L);
             SignAttributeUtil.remove(player, Attributes.ATTACK_DAMAGE, InkShadowSignItem.ATTACK_MODIFIER_KEY);
             refreshStackHud(player, 0, 0L, now);
             return;
         }
         if (!InkShadowSignItem.isEquipped(player)) {
-            // 离身只是暂不生效；层数本身按 2:00 自然过期（重新装备回来仍可继续享用剩余时间）
+            // 离身只是暂不生效；门对还在，重新装回即恢复当前层数
             SignAttributeUtil.remove(player, Attributes.ATTACK_DAMAGE, InkShadowSignItem.ATTACK_MODIFIER_KEY);
             refreshStackHud(player, 0, 0L, now);
             return;
         }
         SignAttributeUtil.apply(player, Attributes.ATTACK_DAMAGE, InkShadowSignItem.ATTACK_MODIFIER_KEY,
                 InkShadowSignItem.STACK_ATTACK_BONUS * stacks, AttributeModifier.Operation.ADD_VALUE);
-        refreshStackHud(player, stacks, expire, now);
+        refreshStackHud(player, stacks, deadline, now);
+    }
+
+    /** 门对建立：登记到期刻（同一主人可同时存在多对，逐条记录，过期逐条剪掉）。 */
+    private static void registerLivePair(Player owner, long expireTick) {
+        List<Long> expiries = parseExpiries(ModAttachments.getInkShadowPairExpiries(owner));
+        expiries.add(expireTick);
+        writeExpiries(owner, expiries);
+    }
+
+    /**
+     * 属于该玩家的存活门对的最晚到期刻（0 = 一对都没有）。
+     * 顺手把已过期的记录剪掉，因此不依赖门实体反过来通知：登出、重启、跨维度都自洽。
+     */
+    public static long livePairDeadline(Player player) {
+        if (player == null || player.level().isClientSide()) return 0L;
+        long now = player.level().getGameTime();
+        List<Long> all = parseExpiries(ModAttachments.getInkShadowPairExpiries(player));
+        List<Long> alive = new ArrayList<>();
+        long deadline = 0L;
+        for (long expiry : all) {
+            if (expiry > now) {
+                alive.add(expiry);
+                if (expiry > deadline) deadline = expiry;
+            }
+        }
+        if (alive.size() != all.size()) writeExpiries(player, alive);
+        return deadline;
+    }
+
+    private static List<Long> parseExpiries(String raw) {
+        List<Long> expiries = new ArrayList<>();
+        if (raw == null || raw.isEmpty()) return expiries;
+        for (String part : raw.split(",")) {
+            if (part.isEmpty()) continue;
+            try {
+                long expiry = Long.parseLong(part.trim());
+                if (expiry > 0L) expiries.add(expiry);
+            } catch (NumberFormatException ignored) {
+                // 脏数据直接丢弃
+            }
+        }
+        return expiries;
+    }
+
+    private static void writeExpiries(Player player, List<Long> expiries) {
+        StringJoiner joiner = new StringJoiner(",");
+        for (long expiry : expiries) joiner.add(Long.toString(expiry));
+        ModAttachments.setInkShadowPairExpiries(player, joiner.toString());
     }
 
     /**
      * 被动层数的 HUD 指示器：图标 = 小猎手立牌贴图（{@code textures/mob_effect/inkshadow_stack.png}），
-     * amplifier = 层数 - 1，持续时间 = 层数剩余时间；层数 0 / 过期 / 离身 ⇒ 摘掉图标。
+     * amplifier = 层数 - 1，持续时间 = 最晚存活门对的剩余时间；无门对 / 离身 ⇒ 摘掉图标。
      */
     private static void refreshStackHud(Player player, int stacks, long expire, long now) {
         boolean present = player.hasEffect(ModEffects.INKSHADOW_STACK);
@@ -279,7 +330,6 @@ public final class InkShadowSignManager {
         if (hasPending(player)) clearPending(player);
         if (ModAttachments.getInkShadowStacks(player) > 0) {
             ModAttachments.setInkShadowStacks(player, 0);
-            ModAttachments.setInkShadowStacksExpire(player, 0L);
         }
         SignAttributeUtil.remove(player, Attributes.ATTACK_DAMAGE, InkShadowSignItem.ATTACK_MODIFIER_KEY);
         refreshStackHud(player, 0, 0L, player.level().getGameTime());
