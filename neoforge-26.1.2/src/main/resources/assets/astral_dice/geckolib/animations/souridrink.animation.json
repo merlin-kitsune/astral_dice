@@ -1,4 +1,17 @@
 {
   "format_version": "1.8.0",
-  "animations": {}
+  "animations": {
+    "animation.souridrink.idle": {
+      "loop": true,
+      "animation_length": 1.0,
+      "bones": {
+        "RotationFix": {
+          "rotation": {
+            "0.0": [0, 0, 0],
+            "1.0": [0, 0, 0]
+          }
+        }
+      }
+    }
+  }
 }
