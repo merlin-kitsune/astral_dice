@@ -131,6 +131,7 @@ public class ModCreativeTabs {
                 output.accept(ModItems.SHERRY_SIGN.get());
                 // deepseek 未在 Wiki「Characters」页面出现(本模组原创),排在末尾
                 output.accept(ModItems.DEEPSEEK_SIGN.get());
+                output.accept(ModItems.AL_SIGN.get());
             output.accept(ModItems.SOURI_SIGN.get());
                 output.accept(ModItems.SYKES_SIGN.get());
                 output.accept(ModItems.INKSHADOW_SIGN.get());
