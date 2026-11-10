@@ -97,6 +97,9 @@ public class InkShadowPortalEntity extends Entity implements GeoEntity {
     /** 玩家级传送冷却截止刻（静默、无提示） */
     private final Map<UUID, Long> teleportCooldown = new HashMap<>();
     /** 玩家在本扇门内的累计站定 tick（离开即清零） */
+    /** 门本身的环境音间隔（tick）；约 4.5 s 一次。 */
+    private static final int AMBIENT_INTERVAL_TICKS = 90;
+
     private final Map<UUID, Integer> standingTicks = new HashMap<>();
     /** 门主人是否已离开过保险半径（false = 主人还站在门口，暂不传送他） */
     private boolean ownerArmed;
@@ -186,6 +189,11 @@ public class InkShadowPortalEntity extends Entity implements GeoEntity {
         }
         // 2) 门主人保险：走出半径后解除（放置完不会立刻把自己传走）
         armOwnerOnLeaving(serverLevel);
+        // 2.5) 门本身的循环音效（下界传送门环境音，每 4.5 s 一次；起始门也算「门」）
+        if (this.tickCount % AMBIENT_INTERVAL_TICKS == 0 && this.tickCount > 0) {
+            serverLevel.playSound(null, this.getX(), this.getY() + 0.4D, this.getZ(),
+                    SoundEvents.PORTAL_AMBIENT, SoundSource.BLOCKS, 0.5F, 1.0F);
+        }
         if (!isActive()) return;
         // 3) 每 2t 扫玩家：站定 1.5s ⇒ 传送 + 门主人首次 +1 层 + 跃迁核心过门奖励
         if (this.tickCount % 2 == 0) {
@@ -245,6 +253,11 @@ public class InkShadowPortalEntity extends Entity implements GeoEntity {
             Long cdUntil = this.teleportCooldown.get(id);
             if (cdUntil != null && now < cdUntil) continue;
             if (this.ownerUuid != null && this.ownerUuid.equals(id) && !this.ownerArmed) continue;
+            // 进入时（本次站定的第一拍）播下界传送门「进入」音效 block.portal.trigger
+            if (!this.standingTicks.containsKey(id)) {
+                serverLevel.playSound(null, this.getX(), this.getY() + 0.1D, this.getZ(),
+                        SoundEvents.PORTAL_TRIGGER, SoundSource.BLOCKS, 0.6F, 1.0F);
+            }
             int stand = this.standingTicks.getOrDefault(id, 0) + 2;
             if (stand < InkShadowSignItem.STAND_TICKS) {
                 this.standingTicks.put(id, stand);
@@ -275,23 +288,29 @@ public class InkShadowPortalEntity extends Entity implements GeoEntity {
         if (target == null) return false;
         Vec3 from = player.position();
         Vec3 to = new Vec3(this.pairX, this.pairY + 0.05D, this.pairZ);
-        playTeleportEffects(fromLevel, from);
+        boolean crossDimension = target != fromLevel;
+        // 起点侧：跨维度时补一次「出下界传送门」音效（目标维度的声音传不过来）
+        playTeleportParticles(fromLevel, from);
+        if (crossDimension) {
+            playPortalSound(fromLevel, from, SoundEvents.PORTAL_TRAVEL, 0.8F);
+        }
         player.teleportTo(target, this.pairX, this.pairY + 0.05D, this.pairZ,
                 player.getYRot(), player.getXRot());
         // 落点特效在传送之后播（跨维度时玩家此时才在目标维度里，包才送得到）
-        playTeleportEffects(target, to);
+        playTeleportParticles(target, to);
+        playPortalSound(target, to, SoundEvents.PORTAL_TRAVEL, 0.8F);
         return true;
     }
 
-    /**
-     * 末影传送视觉/听觉：`PORTAL` 粒子 + `SoundEvents.ENDERMAN_TELEPORT`
-     * （与 {@code event/EnderDiceHandler#playTeleportEffects} 同源同参数：掷末影珍珠的传送音效）。
-     */
-    private static void playTeleportEffects(ServerLevel level, Vec3 pos) {
+    /** 传送粒子：起落点各 40 粒 `PORTAL`。 */
+    private static void playTeleportParticles(ServerLevel level, Vec3 pos) {
         level.sendParticles(ParticleTypes.PORTAL,
                 pos.x, pos.y + 1.0D, pos.z, 40, 0.5D, 0.5D, 0.5D, 0.05D);
-        level.playSound(null, pos.x, pos.y, pos.z,
-                SoundEvents.ENDERMAN_TELEPORT, SoundSource.PLAYERS, 1.0F, 1.0F);
+    }
+
+    /** 下界传送门音效（`block.portal.*`）：门本身环境音 / 进入 trigger / 传送 travel。 */
+    private static void playPortalSound(ServerLevel level, Vec3 pos, net.minecraft.sounds.SoundEvent sound, float volume) {
+        level.playSound(null, pos.x, pos.y, pos.z, sound, SoundSource.BLOCKS, volume, 1.0F);
     }
 
     /** 到达对面门时给对面门也写一次本玩家的冷却，防止刚落脚就被弹回。 */

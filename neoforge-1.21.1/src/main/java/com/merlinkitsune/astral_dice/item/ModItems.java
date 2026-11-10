@@ -1159,11 +1159,12 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(AstralRarities.epic())));
 
-    // 小猎手立牌(inkshadow,史诗):主动「暗影之门」两端传送门 / 被动「双生之影」攻击叠加 + 门前法伤
+    // 小猎手立牌(inkshadow,稀有):主动「暗影之门」两端传送门 / 被动「双生之影」攻击叠加 + 门前法伤
+    // 2026-11-10 用户裁决:品质由史诗降为稀有(ASTRAL_DICE_RARE),配方随之简化
     public static final DeferredItem<Item> INKSHADOW_SIGN = registerItem("inkshadow_sign",
             () -> new com.merlinkitsune.astral_dice.item.sign.InkShadowSignItem(new Item.Properties()
                     .stacksTo(1)
-                    .rarity(AstralRarities.epic())));
+                    .rarity(AstralRarities.rare())));
 
     // 多萝西立牌(dorothy,奇特):被动「交际花」(温暖层数)/ 主动「真正的我」(传送 + 友方光环)
     public static final DeferredItem<Item> DOROTHY_SIGN = registerItem("dorothy_sign",

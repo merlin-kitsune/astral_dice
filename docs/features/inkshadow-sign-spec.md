@@ -22,7 +22,7 @@
 
 | 项 | 值 | 说明 |
 |---|---|---|
-| 注册 id | `astral_dice:inkshadow_sign` | `ModItems` 注册，`stacksTo(1)`，稀有度 `ASTRAL_DICE_EPIC`（紫色/史诗） |
+| 注册 id | `astral_dice:inkshadow_sign` | `ModItems` 注册，`stacksTo(1)`，稀有度 `ASTRAL_DICE_RARE`（水蓝/稀有；2026-11-10 用户裁决由史诗降为稀有） |
 | 放置窗口 | `WINDOW_TICKS = 600`（30 s） | 起始门放下后必须在窗口内放下终点门 |
 | 成对存活 | `PAIR_LIFETIME_TICKS = 3600`（3:00） | 用户 m03003 更正「一组传送门存活期为3:00」；到期两扇门一起消失，无动画 |
 | 放置距离 | `PLACE_RANGE = 8.0D` | 准星射线取落点 |
@@ -70,7 +70,11 @@
 - 穿越（2026-11-10 改版）：ACTIVE 门每 2 tick 在 `inflate(1.0)` 内向候选玩家筛「踩在门正上方」（`isStandingOn`：水平距离 ≤ `STAND_RADIUS = 0.55` 且 `dy ∈ [-0.5, 1.0]`），每名玩家累计 `standingTicks`；有人踩着就每 2 tick `sendParticles(ParticleTypes.PORTAL, 6, 0.32, 0.05, 0.32, 0.02)`（踩上去即有反馈）；累计 ≥ `STAND_TICKS`（1.5 s）且该玩家未在 `teleportCooldown` 内 ⇒ 传送到配对门（**跨维度**用 `teleportTo(ServerLevel, x, y, z, yaw, pitch)`，落点 y = 对面门 y + 0.05），随后：写本门 5 s 冷却、给对面门写 5 s 冷却并清其站定计数、`visitedUuids` 首次为真时结算被动叠层、调跃迁引擎钩子。
 - **主人保险**：每 tick 检查门主人与门的距离，超过 `OWNER_ARM_RADIUS` 才把 `ownerArmed` 置 true；未解除保险时主人本人踩门不传送（NBT `OwnerArmed` 持久化）。
 - 离开门范围即 `standingTicks` 清零；不再使用原版 `setPortalCooldown`（会连带影响原版传送门，且 5 s 静默要求由本实体自己的表实现）。
-- 穿越视听（2026-11-10 用户裁决「传送可使用末影珍珠传送音效」）：出发前在起点、传送后在落点各播一次 `SoundEvents.ENDERMAN_TELEPORT`（`SoundSource.PLAYERS`，1.0/1.0）+ 40 粒 `ParticleTypes.PORTAL`，与 `event/EnderDiceHandler#playTeleportEffects` 同源同参数（掷末影珍珠的传送音效）。落点特效在 `teleportTo` 之后播，跨维度时包才送得到。
+- 穿越视听（2026-11-10 第三轮：下界传送门音效三件套，替换早先的末影珍珠音）：
+  - **门本身**：每 `AMBIENT_INTERVAL_TICKS = 90`（4.5 s）在门位播 `SoundEvents.PORTAL_AMBIENT`（`SoundSource.BLOCKS`，0.5/1.0）——起始门与成对门都响，作为「门开着」的环境音。
+  - **进入时**：玩家本次站定的第一拍（`standingTicks` 尚未记录该玩家）播 `SoundEvents.PORTAL_TRIGGER`（`BLOCKS`，0.6/1.0），即原版「走进下界传送门」的那一声。
+  - **传送后**：落点播 `SoundEvents.PORTAL_TRAVEL`（`BLOCKS`，0.8/1.0）；**跨维度**时起点额外再播一次同一音效（目标维度的声音传不回来）。落点粒子/音效都在 `teleportTo` 之后播，跨维度时包才送得到。
+  - 粒子保持：起落点各 40 粒 `ParticleTypes.PORTAL`；踩门期间每 2 tick 6 粒。
 - 到期：`expireTick` 到 ⇒ 两扇门一起 discard。
 
 ### §2.4 渲染（首版占位，用户验收后定）
@@ -100,9 +104,9 @@
 | 效果（状态指示器） | `java/.../effect/InkShadowStackEffect.java` + `effect/ModEffects.java` 注册 `inkshadow_stack`（图标 = `textures/mob_effect/inkshadow_stack.png`，即立牌图标） |
 | 注册 | `ModItems`、`ModCreativeTabs`、`ModEntityTypes`、客户端渲染注册（`ModClientEvents` / forge 对应入口）、`component/ModAttachments` |
 | 资产 | `assets/astral_dice/geo/inkshadoweffect.geo.json`、`animations/inkshadoweffect.animation.json`、`textures/entity/inkshadoweffect.png`（64×64）+ `inkshadoweffect.png.mcmeta`、`textures/entity/inkshadow_portal_surface.png`（地面门面）、`textures/mob_effect/inkshadow_stack.png`、`textures/item/inkshadow_sign.png`（物品图标取自用户素材 `images/小猎手立牌.png`；模型顶点源自 `models/inkshadoweffect.bbmodel`，经 `tools/bbmodel_to_geo.py` 转换） |
-| 数据（**datagen 产出**，落各线 `src/generated/resources/`） | `assets/astral_dice/models/item/inkshadow_sign.json`、`data/astral_dice/recipe(s)/inkshadow_sign.json`（**占位配方**）、`data/astral_dice/advancement(s)/recipes/misc/inkshadow_sign.json` |
+| 数据（**datagen 产出**，落各线 `src/generated/resources/`） | `assets/astral_dice/models/item/inkshadow_sign.json`、`data/astral_dice/recipe(s)/inkshadow_sign.json`（**稀有档简化配方**）、`data/astral_dice/advancement(s)/recipes/misc/inkshadow_sign.json` |
 | 数据（手写，落各线 `src/main/resources/`） | `data/astral_dice/tags/item(s)/signs.json`、`data/curios/tags/item(s)/stand.json`、Patchouli `entries/signs/inkshadow_sign.json` |
-| datagen 登记 | `datagen/ModItemModelProvider`（`basicItem(ModItems.INKSHADOW_SIGN.get())`）+ `datagen/ModRecipeProvider`（`BXB/KCK/XDX` 占位配方，`unlockedBy has_blank_chip`） |
+| datagen 登记 | `datagen/ModItemModelProvider`（`basicItem(ModItems.INKSHADOW_SIGN.get())`）+ `datagen/ModRecipeProvider`（`BXB/KCK/XDX` 稀有档配方：墨囊 / **星币** / 金块 / 空白筹码 / **骰子**，`unlockedBy has_blank_chip`） |
 | 文本 | `lang/{zh_cn,en_us,ja_jp}.json` 各 11 + 本轮新增键（见 §4）；另有 `entity.astral_dice.inkshadow_portal`（末影传送门）、`effect.astral_dice.inkshadow_stack` + `.description`。**2026-11-10 中文 `_active` / `_passive` / `.description` 由用户亲自改写，以用户版本为准**，英日按同义重译（被动表述同步为「存在自身放置的传送门期间」） |
 | 环境脚本 | `run/start-{1.21.1,1.20.1,26.1.2}.sh` 增补 `DISPLAY` / `XAUTHORITY` 兜底（后台 job 里两者常为空，见 §8） |
 
@@ -119,20 +123,20 @@ tooltip 挂点：`event/ModTooltipHandler` 的 `ModItems.INKSHADOW_SIGN` 块（�
 - **显示效果仍待用户逐项验收**（模型缩放 1.6、地面门面半径 0.62 / 转速 200 tick / 自发光、未配对门 0.95 缩放）：全部集中常量，验收后单独一轮调整。当前门面是**贴地的末地传送门样式星盘**（黑底 + 紫星 + 自转），旧版竖立 billboard 漩涡已删除。
 - **冷却走全局口径**（2026-11-10 用户裁决）：不再写死 2400，继承 `BaseSignItem` 的全局链 = `SIGN_ACTIVE_COOLDOWN_SECONDS`（默认 180 s）→ 充能封顶 180→160 s → 额外电池 ×0.5。冷却从锁定结束时由 `SignActiveLockMachine` 起算；**放置窗口超时、放置期死亡/退出、以及放置中卸下立牌都算已消耗，照付全额**。
 - **卸下即作废**：`onUnequip` 清 pending + 起始门 discard + 移速移除 + 层数清零 + 撤攻击修饰符。
-- **配方占位**：`BXB/KCK/XDX`（墨囊 / 星尘 / 金块 / 空白筹码 / 钻石骰）——与少主配方同形，仅换关键材料；待用户定。
+- **配方（2026-11-10 用户裁决简化）**：`BXB/KCK/XDX`（墨囊 / **星币** / 金块 / 空白筹码 / **骰子**）——用户原话「星盘降低为星币，骰子换成普通骰子」；本配方原先用的是星币尘 + 钻石骰（占位档），按「简化」口径落到最基础的星币与普通骰子。中心仍是空白筹码（与其它立牌用空白立牌不同，属首版占位遗留，未在本次指令范围内改）。
 - **跃迁核心映射**：仓内无该物品，接到 `WarpEngineChipItem.onPortalOrWaystoneTeleport`；若用户指的是新物品需另立规格。
 - 门不可破坏/不可攻击由「非 `LivingEntity` + 不可拾取 + `isInvulnerableTo` 恒真 + `hurt` 恒 false」实现，不走方块（因此不受领地/破坏事件影响）。
 - **传送语义（第二轮）**：门可反复使用，没有一次性限制；同一扇门对同一玩家 5 s 冷却、站定 1.5 s 才传，全程无 actionbar 提示；被动叠层仍是每扇门 × 每人一次性（`visitedUuids`）。门是**双向**的：两扇门都能把人送到对面（Apex 恶灵大招的折跃门机制）。
 - **被动状态指示器**：叠层期间给玩家挂 `inkshadow_stack` 增益效果（amplifier = 层数 − 1，图标即立牌图标），HUD 的剩余时间即**最晚存活门对的剩余时间**；效果与攻击修饰符同生命周期（`refreshStackHud` 在层数/门对失效/卸下三处同步）。
-- 未做：P1 三线、门与门的视觉配对提示（颜色/编号）、放置音效、多人并发门数量上限（首版不限制）。
-- **forge-1.20.1 仍是旧值**：本批（冷却全局化 + 末影传送音效）按要求**只改 1.21.1**，forge 线保留 `ACTIVE_COOLDOWN_TICKS = 2400` 与无音效版本，待验收通过后同步。
+- 未做：P1 三线、门与门的视觉配对提示（颜色/编号）、多人并发门数量上限（首版不限制）。音效已按第三轮要求补全（环境音 / 进入 / 传送 / 跨维度）。
+- **forge-1.20.1 仍是旧值**：本批（冷却全局化 + 下界传送门音效 + 稀有度/配方）按要求**只改 1.21.1**，forge 线仍保留 `ACTIVE_COOLDOWN_TICKS = 2400`、末影珍珠音效、史诗品质与旧配方（星币尘 + 钻石骰），待验收通过后同步。
 
 ## §6 跨线覆盖
 
 | 线 | 状态 |
 |---|---|
-| `neoforge-1.21.1` | 首版已落地（2026-11-10）+ 第二轮验收改版已实机验证 + **第三轮（被动改按存活门对生效）已实机验证**（本节 §7） |
-| `forge-1.20.1` | 首版已落地（2026-11-10）；**第二、三轮改动均尚未同步**（冷却仍写死 2400、无末影音效、门仍 +0.25、旧的一次性穿越逻辑、被动仍是 2:00 计时），待 1.21.1 验收通过后同步 |
+| `neoforge-1.21.1` | 首版已落地（2026-11-10）+ 第二轮验收改版已实机验证 + 第三轮（被动改按存活门对生效）已实机验证 + **第四轮（下界传送门音效 / 稀有品质 / 简化配方）已编译 + 实机复核**（§7.1e） |
+| `forge-1.20.1` | 首版已落地（2026-11-10）；**第二至四轮改动均尚未同步**（冷却仍写死 2400、末影珍珠音效、史诗品质 + 星币尘/钻石骰配方、门仍 +0.25、旧的一次性穿越逻辑、被动仍是 2:00 计时），待 1.21.1 验收通过后同步 |
 | `fabric-1.20.1` / `fabric-1.21.1` / `neoforge-26.1.2` | **未做**（红线：P1 不自动跟进，等用户裁决） |
 
 ## §7 实机取证
@@ -205,6 +209,18 @@ Astral Dice
 
 > 复跑提示：改 lang 后既要 `cp` 到 `neoforge-1.21.1/build/resources/main/assets/astral_dice/lang/`，也要客户端侧 `reloadResourcePacks()`；服务端 `Language` 是启动时加载的，读 tooltip 请走**客户端**探针（`Item$TooltipContext.of(mc.level)` + `TooltipFlag.NORMAL`）。
 
+### §7.1e 下界传送门音效 / 稀有品质 / 简化配方（2026-11-10 23:10–23:14，AutoJS 服务端探针）
+
+| 检查 | 读数 |
+|---|---|
+| 物品 | `st.getHoverName()` = 「小猎手立牌」，`st.getRarity()` = **`ASTRAL_DICE_RARE`**（改前 `ASTRAL_DICE_EPIC`），`maxStackSize=1` |
+| 配方（运行期） | `server.getRecipeManager().byKey(astral_dice:inkshadow_sign).isPresent()` = **true**；`src/generated/resources/data/astral_dice/recipe/inkshadow_sign.json` 为 `BXB/KCK/XDX`，B=`minecraft:ink_sac`、**X=`astral_dice:star_coin`**、K=`minecraft:gold_block`、C=`astral_dice:blank_chip`、**D=`astral_dice:dice`** |
+| datagen | `:neoforge-1.21.1:runData` 前 park 掉 `run/1.21.1/mods/astral_dice-*.jar`，`HashCache … written` 出现后 `pkill -f dataRunProgramArgs`；本批仅 `inkshadow_sign.json` 一份 recipe 变化，其余无漂移 |
+| 音效通道 | 代码三条：`tickCount % 90 == 0` ⇒ `PORTAL_AMBIENT`（BLOCKS 0.5）、站定第一拍 ⇒ `PORTAL_TRIGGER`（BLOCKS 0.6）、落点 ⇒ `PORTAL_TRAVEL`（BLOCKS 0.8）且跨维度时起点再补一次同一个 `PORTAL_TRAVEL`；旧 `ENDERMAN_TELEPORT` 已移除，粒子保留 |
+| 实机运行 | 直接 `InkShadowSignManager.placePortal` 两次在 `(315,-60,300)` / `(323,-60,306)` 造出一对 ACTIVE 门；玩家 `(315.5,-60,300.5)` 站定 1.5 s 后传到 `(323.5,-60,306.5)`；日志无 `Unable to play unknown soundEvent`、无新增异常 |
+| 编译 | `JAVA_HOME=… ./gradlew --no-daemon --offline :neoforge-1.21.1:compileJava` ⇒ BUILD SUCCESSFUL in 5s |
+
+> 听感（音量/音高/环境音间隔 4.5 s 是否合适）需用户实机试听；本机只能确认音效事件已解析、播放路径无异常。改完 Java 需重启客户端（本轮 log `scripts/test/linux/logs/1.21.1-20261110-231034.log`，game_pid 217094）。
 ### §7.2 首版（2026-11-10 白天，历史）
 
 P0 双线：物品注册 / 起始门 `+0.25` 悬浮版 / 一次性 `visitedUuids` 穿越 / 2400 冷却（forge 仍是此版）/ 1.21.1 tooltip 全行（含「金鳞」式状态行由 viewer 决定的那类历史结论不适用于本牌）。

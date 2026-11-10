@@ -1330,17 +1330,18 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('D', ModItems.DIAMOND_DICE.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
                 .save(output);
-        // 小猎手立牌(inkshadow,史诗,占位配方**待用户定**):B/X/B + K/C/K + X/D/X
-        // (B=墨囊、X=星币尘、K=金块、C=空白筹码、D=钻石骰子)
+        // 小猎手立牌(inkshadow,稀有):B/X/B + K/C/K + X/D/X
+        // (B=墨囊、X=星币、K=金块、C=空白筹码、D=骰子/普通骰子)
+        // 2026-11-10 用户裁决:品质史诗→稀有,配方简化(星币尘→星币、钻石骰子→骰子)
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.INKSHADOW_SIGN.get())
                 .pattern("BXB")
                 .pattern("KCK")
                 .pattern("XDX")
                 .define('B', net.minecraft.world.item.Items.INK_SAC)
-                .define('X', ModItems.STAR_COIN_DUST.get())
+                .define('X', ModItems.STAR_COIN.get())
                 .define('K', net.minecraft.world.item.Items.GOLD_BLOCK)
                 .define('C', ModItems.BLANK_CHIP.get())
-                .define('D', ModItems.DIAMOND_DICE.get())
+                .define('D', ModItems.DICE.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
                 .save(output);
         // 魔渊幼体立牌(sykes,史诗):MYM/YCY/GDG（M=末影之眼、Y=幽匿催发体、C=空白立牌、G=黄金星盘、D=钻石骰子）

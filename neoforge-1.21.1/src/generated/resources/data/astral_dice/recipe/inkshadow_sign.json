@@ -9,13 +9,13 @@
       "item": "astral_dice:blank_chip"
     },
     "D": {
-      "item": "astral_dice:diamond_dice"
+      "item": "astral_dice:dice"
     },
     "K": {
       "item": "minecraft:gold_block"
     },
     "X": {
-      "item": "astral_dice:star_coin_dust"
+      "item": "astral_dice:star_coin"
     }
   },
   "pattern": [
