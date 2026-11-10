@@ -3,7 +3,7 @@
 > 本文是**实现记录 + 语义冻结**，不是前置设计稿：先有 2026-11-09 的代码与用户裁决，2026-11-10 补本文。
 > **代码为真源**：本文任何数字若与代码不符，以代码为准，并回改本文。
 > 基准：`multi-dev-next` @ `3a6df49c`；实机取证 2026-11-10（neoforge-1.21.1 + forge-1.20.1）。
-> 落地线：**五线已全部移植**（P0 `neoforge-1.21.1` / `forge-1.20.1` 逐文件同构且实机通过；P1 `fabric-1.20.1` / `fabric-1.21.1` / `neoforge-26.1.2` 于 2026-11-10 移植并通过编译，未实机——见 §6）。
+> 落地线：**五线已全部移植且实机通过**（P0 `neoforge-1.21.1` / `forge-1.20.1` 逐文件同构；P1 `fabric-1.20.1` / `fabric-1.21.1` / `neoforge-26.1.2` 于 2026-11-10 移植、编译、datagen 跑通，并当日实机冒烟通过——见 §6 / §6.1 / §7）。
 
 ## §0 定名与命名门禁
 
@@ -120,9 +120,9 @@ tooltip 结构（自上而下）：名称／栏位／按键提示／主动段／
 |---|---|---|---|---|---|
 | neoforge-1.21.1 | 7 | 10 | 23 | ✅ | ✅ 实机通过（§7） |
 | forge-1.20.1 | 7 | 11 | 23 | ✅ | ✅ 实机通过（§7）；2026-11-10 补上缺失的 `animations/souridrink.animation.json` |
-| fabric-1.20.1 | 9 | 11 | 23 | ✅ `:fabric-1.20.1:compileJava` BUILD SUCCESSFUL | ⏳ 未实机（该线无启动脚本） |
-| fabric-1.21.1 | 9 | 11 | 23 | ✅ `:fabric-1.21.1:compileJava` BUILD SUCCESSFUL | ⏳ 未实机 |
-| neoforge-26.1.2 | 9 | 15（含 GeckoLib 5 新资源根 `geckolib/models|animations`） | 23 | ✅ `:neoforge-26.1.2:compileJava` BUILD SUCCESSFUL | ⏳ 未实机，且 datagen 未实跑 |
+| fabric-1.20.1 | 9 | 11 | 23 | ✅ | ✅ 实机通过（§7，16.8s 开世界） |
+| fabric-1.21.1 | 9 | 11 | 23 | ✅ | ✅ 实机通过（§7，21.4s；测试台支持本批新加） |
+| neoforge-26.1.2 | 9 | 15（含 GeckoLib 5 新资源根 `geckolib/models|animations`） | 23 | ✅ | ✅ 实机通过（§7，14.1s）；datagen 跑通（§6.1） |
 
 **P1 三线的语义差异（2026-11-10 移植，逐条经源码实读）**：
 
@@ -130,15 +130,38 @@ tooltip 结构（自上而下）：名称／栏位／按键提示／主动段／
 2. fabric-1.20.1 不移植 forge 残留键 `souri_awakening`：死亡保留 9 槽、金鳞在 index 8（forge 线为 index 8/9 两套并存）。
 3. fabric-1.21.1：钩子改 `onCurioTick`/`clearSignData`，动作栏走 `ModNetwork.ActionBarMessage`，效果走 `Effects.holder` 桥接，反击按层扣减且穿金鲤时 `RenShieldManager` 保留层数 + `refreshCounterEffect`；新增 `MamushiSignItem.addAwakening`。
 4. neoforge-26.1.2：`MamushiSignItem.addAwakening` 由 `private` 放宽为 `public static`；GeckoLib 5 的 `GeoEntityRenderer<T,R>` 与 `RenderPassInfo<R extends GeoRenderState>` 边界不一致，渲染器签名用原始类型绕过（1 条 unchecked）；实体存档改 `ValueInput/ValueOutput`、`hurt` 已 final ⇒ 覆写 `hurtServer` 恒 false。
-5. 三线均未重跑 datagen（fabric 两线直接取 forge/neo21 同版本产物；26.1.2 四个 generated 产物为手工补写，provider 代码已同步）。
+5. 三线 datagen 已于 2026-11-10 全部跑通并验证幂等；此前手抄 JSON 的语义漂移已按 datagen 输出为真值接受（见 §6.1）。
 
 已知代码欠账（**不要当成本文写错**）：
 
 1. `SouriSignItem.java:21`（forge `:20`）Javadoc 仍写「随后自身 +1 层【觉醒】、+1 层【反击】」——实际是 `addGoldScale`（金鳞）；同段「配方待定」也已过期（配方已生成）。
 2. `SouriSignManager.java:201` 残留 `setSouriAwakening(player, 0)`（见 §2.6）。
-3. P1 三线已移植并编译通过，但**未实机**、**未重跑 datagen**（见 §6）」；命名门禁 `tools/verify_sign_display_names.py` 的 `LINES` 仍只覆盖四线，26.1.2 尚未纳入。
+3. P1 三线已移植、编译通过、datagen 跑通并幂等、实机通过（见 §6.1 / §7）；命名门禁 `tools/verify_sign_display_names.py` 的 `LINES` 仍只覆盖四线，26.1.2 尚未纳入。
 
-## §7 实机取证（2026-11-10，P0 双线）
+## §6.1 datagen 实跑与修复（2026-11-10）
+
+跑法（四条任务一次跑完，日志 `temp/datagen/run5-idempotent.log`）：
+
+```bash
+export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
+./gradlew --no-daemon :fabric-1.20.1:runDatagen :fabric-1.21.1:runDatagen \
+  :neoforge-26.1.2:runServerData :neoforge-26.1.2:runClientData --console=plain
+```
+
+结果：`BUILD SUCCESSFUL`；连跑两遍后暂存区文件摘要不变（md5 `7dfbf0e31550fc41f5034b9fa585df91`）⇒ 幂等。
+
+跑通之前有四处阻塞，均已修在源码里：
+
+1. **fabric-1.20.1**：`runDatagen` 报 `IllegalStateException: Missing blockstate definitions for: [card_shop, chip_shop, event_drawer, barricade_collision, abyss_tentacle_collision]`（`net.minecraft.data.models.ModelProvider.run`）。根因是该线 `ModItemModelProvider extends FabricModelProvider`，原版 ModelProvider 用 `BuiltInRegistries.BLOCK` 与本次生成的 blockstate 求差集，而本模组方块全部手写 blockstate/model ⇒ 该校验必炸，**该线 datagen 此前从未跑通**。修复：`datagen/ModItemModelProvider.java` 改写为 `implements DataProvider`（照 fabric-1.21.1 同文件手法），156 条 `generateFlatItem` 转成 `items.add(ModItems.X.get())` + `DataProvider.saveStable`，产出与既有 generated 逐字节一致。
+2. **neoforge-26.1.2**：`runClientData` 首跑 SIGBUS（exit 134）——Sodium 探到 RTX 5090 后打 `[NVIDIA_THREADED_OPTIMIZATIONS_BROKEN, NO_ERROR_CONTEXT_UNSUPPORTED]`，崩在 `ld-linux-x86-64.so.2`。绕法：datagen 期间把 `run/26.1.2/mods` 的 sodium + iris 临时移出（只移 sodium 会因 iris 硬依赖失败），跑完必须放回。
+3. **neoforge-26.1.2 真实缺陷**：移走 sodium 后暴露 `Missing blockstate definitions for: [astral_dice:abyss_tentacle_collision]`（`ModelProvider.BlockStateGeneratorCollector.validate`）。根因：`datagen/ModItemModelProvider.java` 的 `registerBlockStates` 只登记 4 个方块，漏了 `ModBlocks.ABYSS_TENTACLE_COLLISION`。修复：新增手写模型 `assets/astral_dice/models/block/abyss_tentacle_collision.json`（`{"textures":{"particle":"minecraft:block/sculk"},"elements":[]}`）+ 在 provider 里补 `createSimpleBlock` 登记。
+4. **fabric-1.21.1 provider 缺 sykes 立牌**：重跑 datagen 会删掉 `sykes_sign` 的 recipe/model（其余四线都有）。修复：`ModItemModelProvider` 补 `items.add(ModItems.SYKES_SIGN.get())`，`ModRecipeProvider` 补 sykes 配方块（MYM/YCY/GDG），重跑后产物齐全。
+
+**手抄 JSON 的真实漂移（以 datagen 为真值）**：souri 的 recipe/model 只差 key 顺序与结尾换行；advancement 判据键由手抄的 `has_star_coin_dust` 变为 provider 产出的 `has_blank_chip`（`astral_dice:blank_chip`），1.20.1 格式另有 `sends_telemetry_event: false` 与 `items` 数组化；26.1.2 另补出原本缺失的 `advancement/recipes/misc/sykes_sign.json`。**generated JSON 由 Gson 写出、无尾换行**，手抄文件带尾换行 ⇒ 一律以 datagen 输出为准。
+
+⚠️ 跨线债务：`abyss_tentacle_collision` 的 blockstate/model 目前仍**只有 26.1.2** 有（P0 两线 + fabric 两线都没有）⇒ 魔渊触须占位方块在这些线渲染为缺失模型。是否五线统一补，待裁决。
+
+## §7 实机取证（2026-11-10）
 
 **neoforge-1.21.1**（`launch.sh --version 1.21.1 --quickplay testworld`，log `scripts/test/linux/logs/1.21.1-20261110-111530.log`）：
 
@@ -152,6 +175,20 @@ tooltip 结构（自上而下）：名称／栏位／按键提示／主动段／
 - `LAUNCH: READY` + `WORLD_READY`；`BR.ITEM` 1,593 项，souri 相关 id 同样只有 `astral_dice:souri_sign`；`getGoldScales=2`、`isEquipped=true`。
 - tooltip 文本在该线**未**取证：1.20.1 的 Rhino 够不到枚举静态量（`TooltipFlag$Default.NORMAL` 报 `InternalError`，且无 `Java.type`）。判定改为「读 lang 键 + 1.21.1 tooltip 全行」两条合并取证。
 
+**P1 三线（2026-11-10 晚，串行跑，端口不重叠；报告 `temp/live-p1/report.md`）**：
+
+| 线 | 开世界 | AutoJS 两侧 | 注册表 | 玩家读数 | 新 crash | 截图 |
+|---|---|---|---|---|---|---|
+| fabric-1.20.1 | 16.794s | registered/available=true | souri 物品 1 + `souri_drink` + 双效果 | goldScales=0 / hasDragon=false（该线无 `isEquipped` API，非缺陷） | 无 | `temp/live-p1/fabric-1.20.1.png` |
+| fabric-1.21.1 | 21.449s | true（自有 Rhino 内核，无 KubeJS/`BR`） | 同上 | goldScales=0 / hasDragon=false / isEquipped=false / GOLD_SCALE_MAX=4 | 无 | `temp/live-p1/fabric-1.21.1.png` |
+| neoforge-26.1.2 | 14.125s | true | 同上 | 同上 | 无 | `temp/live-p1/26.1.2.png` |
+
+- 三线均以 `launch.sh --quickplay testworld` 起、`stop.sh` 收（`LINUX_STOP: OK`），收尾三端口全空、无 java 残留、crash-report 计数等于基线。
+- **26.1.2 在 Sodium+Iris 在位时普通 `runClient` 不崩** ⇒ 之前记录的 SIGBUS 是 **datagen（`runClientData`）路径专属**（JRE 25 + NVIDIA workaround），普通客户端不受影响。
+- 26.1.2 的 GeckoLib 5（StarEngine 包装）会 **eager bake** 动画文件：`geckolib/animations/souridrink.animation.json` 原是空 `{"animations":{}}`，报 `No animation definitions found in animation file!`（非致命，仅资源加载错误）。已补最小 idle 动画（`animation.souridrink.idle`，`RotationFix` 恒等旋转，1s 循环）并复跑确认该 ERROR 消失（log `scripts/test/linux/logs/26.1.2-20261110-132723.log`）。1.21.x 线同为空文件但不 eager bake，故不报错，未改动。
+- fabric 两条线的 AutoJS 由 `-PautojsTestMod=1` 注入 dev classpath（run 目录里没有 jar）；此外 `~/.m2` 需有 `cc.sighs.autojs:AutoJS-fabric-<线>:1.0.0`，否则配置期就解析失败（本次用 `publish_autojs_maven.py --root temp/live-p1/m2root` 装入，仓库零改动）。
+- 26.1.2 探针 API 变化（后续写脚本/探针要看）：`ResourceLocation` → `Identifier.parse`；`BuiltInRegistries.ITEM.get()` 返回 `Optional<Holder<Item>>`；`Inventory.selected` → `setSelectedSlot/getSelectedSlot`；服务端取实例用 `ServerLifecycleHooks.getCurrentServer()`。
+
 ## §8 复跑清单
 
 ```bash
@@ -160,7 +197,14 @@ export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
 bash scripts/test/linux/env.sh --quiet            # 期望 ENV_RESULT: WARN，0 blocking
 bash scripts/test/linux/launch.sh --version 1.21.1 --quickplay testworld --timeout 900 --wait-world 300
 # 期望 LAUNCH: READY + LAUNCH: WORLD_READY，autojs health=ok 200
+
+# P1 三线（fabric 自动注入 -PautojsTestMod=1；fabric 的 RUN_DIR = fabric-<ver>/run/client）
+bash scripts/test/linux/launch.sh --version fabric-1.20.1 --quickplay testworld --timeout 900 --wait-world 300
+bash scripts/test/linux/launch.sh --version fabric-1.21.1 --quickplay testworld --timeout 900 --wait-world 300
+bash scripts/test/linux/launch.sh --version 26.1.2        --quickplay testworld --timeout 900 --wait-world 300
 ```
+
+前置：`~/.m2` 需有 `cc.sighs.autojs:AutoJS-fabric-<线>:1.0.0`（否则 fabric 线配置期就解析失败）；starengine 需已 `publishToMavenLocal` 到五平台引脚（见 `docs/agent/AGENTS-dsh-linux.md`）。
 
 AutoJS 验收（`~/.dsh` 之外的 MCP 端点 `http://127.0.0.1:25585/mcp`，`tools` = `status` / `eval_js`，参数 `{side:"server", code}`）：
 

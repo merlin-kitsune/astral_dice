@@ -107,20 +107,39 @@
   - **2026-11-10 复核实据**：代理与缓存补齐后 `JAVA_HOME=…21 ./gradlew :fabric-1.20.1:tasks --console=plain -q` ⇒ **EXIT=0**（fabric 线路由/插件解析正常）。⇒ 当时临时注释 `settings.gradle` 里 fabric 两行属**多余动作**，已原样恢复（`git checkout -- settings.gradle`，sha256 `f0e8c268…dccb`）；不要再照抄那个绕行。
 - 2026-11-10 收尾实测（活动树，`settings.gradle` 已还原为 5 行 include）：`./gradlew help` = BUILD SUCCESSFUL 1m26s；`./gradlew :neoforge-1.21.1:classes` = **1.4s**（4 executed / 1 from cache）；收尾零残留 java（daemon 已 `--stop`）。⇒ 网络 + mavenLocal 两处修好后，**P0 线可直接构建，不需要改任何仓库文件**。
 
+### 5.1 datagen（各线入口不同，2026-11-10 全部实跑通）
+
+- **入口按加载器分**：fabric 两线 = `runDatagen`（Loom 数据生成，工作目录 `fabric-<线>/run/datagen`，产物落 `fabric-<线>/src/generated/...`）；neo26 = **`runServerData` + `runClientData` 两个任务**（服务端产物 `neoforge-26.1.2/src/generated/resources`，客户端产物 `neoforge-26.1.2/src/generated/clientResources`）。四条任务可一条命令跑完：
+
+  ```bash
+  cd /mnt/f/MCProject/astral_dice_multiloader-next
+  export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
+  ./gradlew --no-daemon :fabric-1.20.1:runDatagen :fabric-1.21.1:runDatagen \
+    :neoforge-26.1.2:runServerData :neoforge-26.1.2:runClientData --console=plain
+  ```
+
+  2026-11-10 实测：`BUILD SUCCESSFUL in 13s`（热缓存），日志 `temp/datagen/run5-idempotent.log`。**幂等验证法**：连跑两遍 → `git add -A` → `git diff --cached --stat | md5sum` 两次一致（本批 `7dfbf0e31550fc41f5034b9fa585df91`）。
+- **26.1.2 的 `runClientData` 在 Sodium 下必崩**（2026-11-10 实测，exit 134 / SIGBUS）：Sodium 探到 `LinuxPciAdapterInfo[vendor=NVIDIA, name=GB202 [GeForce RTX 5090]]` 后打 `[NVIDIA_THREADED_OPTIMIZATIONS_BROKEN, NO_ERROR_CONTEXT_UNSUPPORTED]`、"Modifying process environment"，随后 JVM 崩在 `ld-linux-x86-64.so.2`（JRE 25.0.5）。绕法：跑前把 `run/26.1.2/mods/sodium-neoforge-*.jar` **与** `iris-neoforge-*.jar` 一起临时移出（只移 sodium 会因 iris 硬依赖报 `Mod iris requires sodium 0.6 or above`），跑完必须放回。
+- **谁在跑 datagen 之前必须先补 starengine**（见〈6. 前置库 starengine〉），否则配置期就挂。
+- **仓里 generated JSON 由 Gson 写出、无尾换行**；手抄 JSON 带尾换行 ⇒ 重跑 datagen 会以「去尾换行 / 键顺序」形式产生大量纯格式 diff。**以 datagen 输出为真值**，不要手工把手抄格式改回去。语义漂移（判据键 `has_star_coin_dust`→`has_blank_chip` 等）也要跟着接受。
+- **provider 缺失会让 datagen「静默删文件」**：2026-11-10 fabric-1.21.1 重跑时删掉了 `sykes_sign` 的 recipe/model（该线 provider 没登记）。⇒ 看到 generated 里 `D` 了既有产物，先查对应线 `datagen/Mod{Recipe,ItemModel}Provider.java` 是否漏登记，而不是把删除当正常产出。
+- **fabric-1.20.1 的 datagen 长期跑不通**（本批已修）：该线 `ModItemModelProvider extends FabricModelProvider`，原版 `net.minecraft.data.models.ModelProvider` 会用 `BuiltInRegistries.BLOCK` 与本次生成的 blockstate 求差集，而本模组方块是手写 blockstate/model ⇒ 必报 `Missing blockstate definitions for: [card_shop, chip_shop, event_drawer, barricade_collision, abyss_tentacle_collision]`。修法：该文件改 `implements DataProvider`（照 fabric-1.21.1 同文件），用 `DataProvider.saveStable` 手写 item model，不再继承 FabricModelProvider。
+- **NTFS 上的假 M**：datagen 重写文件后 `git status` 会冒出几百条 M，但 `git diff` 为空、`git hash-object` 与索引一致、`git update-index --really-refresh` 仍报 needs update。处置：对目标路径 `git add` 一次即恢复干净；**判真正改动只看 `git diff --numstat`**。
+- 跨线债务：`abyss_tentacle_collision` 的 blockstate/model 目前**只有 26.1.2** 有（P0 两线与 fabric 两线都缺）⇒ 该占位方块在缺的线上渲染为缺失模型；补与不补待裁决。
+
 ### 6. 前置库 starengine（`26.4-SNAPSHOT.{2,9,11}`，必须先进 mavenLocal）
 
 - 各线 `gradle.properties` 实读（2026-11-10）：`starengine_group=com.merlinkitsune.starengine`；引脚 **`neoforge-1.21.1` = `26.4-SNAPSHOT.2`**、**`forge-1.20.1` = `26.4-SNAPSHOT.2`**、**`neoforge-26.1.2` = `26.4-SNAPSHOT.2`**、**`fabric-1.20.1` = `26.4-SNAPSHOT.11`**（`starengine_version_range=>=26.4-SNAPSHOT.11 <27.0.0`）、**`fabric-1.21.1` = `26.4-SNAPSHOT.9`**（range `>=26.4-SNAPSHOT.9 <27.0.0`）。旧文档的 `1.1.0` 已过期。各线 `build.gradle` 均含 `mavenLocal()`（neo `:30` / forge `:29` / neo26 `:39` / fabric `:47`）。
 - 正确顺序：先在**库仓**发布到本机 mavenLocal，再构建本仓。缺哪条线的制品，哪条线就解析失败（`Could not resolve com.merlinkitsune.starengine:...`）。
 - **库仓要选对（2026-11-10 实读）**：本开发树对应的库仓是 **`/mnt/f/MCProject/starengine_next`**（settings.gradle 有 5 个 include，含 `fabric-1.21.1`）；旧的 `/mnt/f/MCProject/starengine` 只有 4 个 include（**无 fabric-1.21.1**）。两条都自带 gradlew（wrapper 均为 9.2.1）。
 - **R1 阻塞已销账（2026-11-10 本会话实做）**：在 `starengine_next` 依次发布五平台，`:neoforge-1.21.1` 1m10s、其余四平台合计 1m36s，均 BUILD SUCCESSFUL；`~/.m2/repository/com/merlinkitsune/starengine/` 现为 **`neoforge-1.21.1` .2 / `forge-1.20.1` .2 / `neoforge-26.1.2` .2 / `fabric-1.20.1` .11 / `fabric-1.21.1` .9**（各三件齐，与五线引脚逐字符相等）。⇒ 换机/清 `~/.m2` 后重做这一批即可，**不必**再猜版本。
-- **本机 mavenLocal 与引脚不匹配（2026-11-10 实读，最高优先级构建阻塞）**：`~/.m2/repository/com/merlinkitsune/starengine/` 下只有 **4 个**平台目录（`starengine-neoforge-1.21.1` / `starengine-forge-1.20.1` / `starengine-neoforge-26.1.2` / `starengine-fabric-1.20.1`），各只含 `1.1.0` 与 `26.4-SNAPSHOT.1` 两版；**新版 `.2` / `.9` / `.11` 全缺，`starengine-fabric-1.21.1` 目录整件缺失**。⇒ 动任何一线之前**先** `publishToMavenLocal`，否则配置期直接 `Could not resolve`（记 **BLOCKED**，不是产品缺陷）。starengine 实件在兄弟仓 `/mnt/f/MCProject/starengine_next/build/libs/`。
+- **mavenLocal 缺件史（2026-11-10 上午实读，现已销账）**：当时 `~/.m2/repository/com/merlinkitsune/starengine/` 下只有 4 个平台目录、各只含 `1.1.0` 与 `26.4-SNAPSHOT.1`，新版 `.2`/`.9`/`.11` 全缺、`starengine-fabric-1.21.1` 整件缺失 ⇒ 配成 `Could not resolve`。**当日下午已按上一条完成五平台发布，此阻塞不再存在**；换机 / 清 `~/.m2` 后会复现，届时照上面顺序重发。starengine 实件在兄弟仓 `/mnt/f/MCProject/starengine_next/build/libs/`。
 - 发布命令（daemon JVM 必须 21）：
   ```bash
-  cd /mnt/f/MCProject/starengine
+  cd /mnt/f/MCProject/starengine_next   # 注意是本开发树对应的库仓，不是旧的 starengine
   export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
   ./gradlew :neoforge-1.21.1:publishToMavenLocal --console=plain
   ./gradlew :forge-1.20.1:publishToMavenLocal    --console=plain
-  ./gradlew :fabric-1.20.1:publishToMavenLocal   --console=plain
   ./gradlew :neoforge-26.1.2:publishToMavenLocal --console=plain
   ./gradlew :fabric-1.20.1:publishToMavenLocal   --console=plain
   ./gradlew :fabric-1.21.1:publishToMavenLocal   --console=plain
@@ -307,7 +326,10 @@
   - `env.sh [--version <线>] [--quiet]`：**只读**环境检查（仓库/挂载、各线 JDK 与 `run/`、`mods/` 与 autojs·rhino jar、AutoJS `/health`、客户端残留、锁、Gradle 守护）；机器行 `CHECK: <key>=OK|WARN|FAIL` + 收尾 `ENV_RESULT: OK|WARN|FAIL`；退出码 `0` 无 FAIL / `1` 有 FAIL / `2` 用法错误。
     - 2026-11-10 复跑：`ENV_RESULT: WARN — 0 项阻塞，2 项提示`（`autojs_health=WARN`（`/health`=000）+ `locks_stale=WARN`（锁 PID 已退出）），24 条 `CHECK`，退出码 `0`。2026-10-31 首跑为「WARN — 0 项阻塞，3 项提示」。
     - 键名变化：`hgfs_writable` → **`repo_writable`**（`ntfs3/ext4` 走 OK 分支并注明链接实测可用）；新增 `locks_stale`（陈旧锁检测，只报不删）；`mt.conf` 的 Windows 路径提示从 WARN 降为 INFO（Windows 台配置，Linux 不动）。
-  - `launch.sh --version <线> [--timeout 600] [--quickplay <世界名>] [--kill-on-timeout] [--log-dir <dir>] [--dry-run]`：**优先复用 `run/start-<线>.sh`**（存在且可执行），否则回退 `bash ./gradlew :<线>:runClient --console=plain`；`setsid` 独立进程组启动，日志落 `scripts/test/linux/logs/<线>-<ts>.log`，PID 落 `run/<线>/linux-run.pid`。 `--wait-world <秒>` 是本日实跑必加项（等世界真正加载完再返回，本会话用 240）。
+  - `launch.sh --version <线> [--timeout 600] [--quickplay <世界名>] [--kill-on-timeout] [--log-dir <dir>] [--dry-run]`：**优先复用 `run/start-<线>.sh`**（存在且可执行），否则回退 `bash ./gradlew :<线>:runClient --console=plain`；`setsid` 独立进程组启动，日志落 `scripts/test/linux/logs/<线>-<ts>.log`，PID 落 `<RUN_DIR>/linux-run.pid`。 `--wait-world <秒>` 是本日实跑必加项（等世界真正加载完再返回，本会话用 240）。
+  - **五线全支持（2026-11-10 补）**：`env.sh` / `launch.sh` / `stop.sh` 的版本表都已是 `1.21.1 1.20.1 26.1.2 fabric-1.20.1 fabric-1.21.1`（`fabric-1.21.1` 的 toolchain = 21）。**fabric 线的 `RUN_DIR` 不是 `run/<ver>`**，而是 Loom 的 `fabric-<ver>/run/client`（日志/pid/健康检查/残留扫描都按这个口径；之前按 `run/<ver>` 会直接判 BLOCKED）。
+  - **fabric 线的 AutoJS 必须显式注入**：`launch.sh` 对 `fabric-*` 自动追加 `-PautojsTestMod=1`（`build.gradle` 里该 property 才加 `modRuntimeOnly AutoJS`；`fabric-1.21.1` 另带 rhino 满足其 HARD_DEP），并把 AutoJS 计数置 1 以保持「AutoJS 就绪」为主判据（fabric 的 run 目录里本来没有 jar）。
+  - **另一个前置**：`~/.m2` 里必须有 `cc.sighs.autojs:AutoJS-fabric-<线>:1.0.0`，否则 fabric 线在建配置阶段就 `Could not resolve`。2026-11-10 用仓内 `scripts/test/**/publish_autojs_maven.py --root <临时 m2 根>` 装入（仓库零改动）后才跑通；换机/清 `~/.m2` 后要重做。
   - **2026-11-10 实跑基线（1.21.1，本会话）**：`bash scripts/test/linux/launch.sh --version 1.21.1 --quickplay testworld --timeout 600 --wait-world 240` ⇒ 约 90s 输出 `LAUNCH: READY` + `WORLD_READY`，日志 `scripts/test/linux/logs/1.21.1-20261110-111530.log`，`wrapper_pid=65471` / `game_pid=66504`；收停 `stop.sh --version 1.21.1` ⇒ `LINUX_STOP: OK`（3 行 + `pidfile-removed`），随后 25585/25565/25575 全无监听、零残留 java。该轮 `logs/latest.log` 只有 **3 条 ERROR**，全是 Curios 槽位噪声（`scroll/feet/spellbook is not a registered slot type!`），无新 crash-report。
   - **2026-11-10 实跑基线（1.20.1，本会话）**：`launch.sh --version 1.20.1 --quickplay testworld --timeout 900 --wait-world 300` ⇒ `LAUNCH: READY` + `WORLD_READY`，日志 `scripts/test/linux/logs/1.20.1-20261110-112805.log`（3,756 行），`wrapper_pid=83909` / `game_pid=85638`；`stop.sh --version 1.20.1` ⇒ `LINUX_STOP: OK`，三端口全空、无残留 java。服务端读数：`BR.ITEM` 共 **1593** 项，`souri` 相关 id 只有 `astral_dice:souri_sign`；`SouriSignManager.getGoldScales(p)=2`、`SouriSignItem.isEquipped(p)=true`、`hasDragon(p)=false`、`GOLD_SCALE_MAX=4`；`BR.MOB_EFFECT` 有 `souri_gold_scale` / `souri_dragon`，`BR.ENTITY_TYPE` 有 `souri_drink`（物品只能走 `BR.ITEM.get(new RL("astral_dice:souri_sign")).getDefaultInstance()` 取，`Item.of("id")` 会静默返回 air）。
   - **1.20.1 的 Rhino 够不到枚举静态量**：`TooltipFlag$Default.NORMAL` 与 `valueOf(...)` 都报 `InternalError: Java class "net.minecraft.world.item.TooltipFlag$Default" has no public instance field or method named "NORMAL"`，且 1.20.1 KubeJS **没有** `Java.type`（`TypeError: Cannot find function type in object dev.latvian.mods.kubejs.bindings.JavaWrapper`）。⇒ tooltip 全文只在 **1.21.1** 侧取证（`stack.getTooltipLines(Java.loadClass("net.minecraft.world.item.Item$TooltipContext").of(p.serverLevel()), p, TooltipFlag.NORMAL)`，注意 `p.level()` 是属性不是方法）；1.20.1 侧改用 lang key 实读 + 注册表/状态读数，不要在 1.20.1 上死磕 tooltip。
@@ -315,6 +337,9 @@
   - launch.sh 退出码：`0` 就绪 / `1` 启动失败或进程提前退出 / `2` AutoJS 端点未就绪（ERROR，逃生阀 `MT_ALLOW_NO_AUTOJS=1`）/ `11` BLOCKED / `12` TIMEOUT / `130` 用户中断。
   - `stop.sh --version <线> | --all [--force] [--purge-saves] [--stop-daemon] [--dry-run]`：标准收停。先按 `linux-run.pid` 收进程组（`TERM` → 15s → `KILL`），再 `/proc` 扫描补漏，复核无残留才输出 `LINUX_STOP: OK`；有残留输出 `LINUX_STOP: RESIDUAL` 并 `exit 1`。
   - **未复刻的 Windows 能力**：进程防撞锁、测试前世界清场、OP / 禁 AI 闸门。这些前置在 Linux 侧仍需人工确认，不得当作「已验证」。
+  - **2026-11-10 实跑基线（P1 三线，串行，报告 `temp/live-p1/report.md`）**：fabric-1.20.1 开世界 **16.794s**、fabric-1.21.1 **21.449s**、neoforge-26.1.2 **14.125s**，三线 `LAUNCH: READY` + `WORLD_READY`，AutoJS 两侧 `registered/available=true`，`stop.sh` 全 `LINUX_STOP: OK`，收尾三端口全空、无 java 残留、crash-report 计数等于基线。souri 注册读数：物品恰 1 个 `astral_dice:souri_sign` + `souri_drink` 实体 + `souri_gold_scale`/`souri_dragon` 双效果；三条新线 `goldScales=0`、`hasDragon=false`（fabric-1.20.1 无 `isEquipped` API，属移植差异不是缺陷）。
+  - **26.1.2 的 Rhino 口径与 1.20.1/1.21.1 不同**（2026-11-10 实测）：`ResourceLocation` → `Identifier.parse`；`BuiltInRegistries.ITEM.get()` 返回 `Optional<Holder<Item>>`；`Inventory.selected` → `setSelectedSlot/getSelectedSlot`；服务端实例只能 `Java.loadClass("net.neoforged.neoforge.server.ServerLifecycleHooks").getCurrentServer()`（`Utils.getServer()` 在服务端为 null）。**fabric-1.21.1 的 AutoJS 是另一套 Rhino 内核**（无 KubeJS/`BR`/`Utils`）：`eval_js side=server` 里用 `Java.loadClass("net.minecraft.client.Minecraft").getInstance().getSingleplayerServer()` 取服务端。
+  - **26.1.2 的 GeckoLib 5（StarEngine 包装）会 eager bake 动画文件**：空 `{"animations":{}}` 会报 `No animation definitions found in animation file!`（`StarEngine-GeckoLib … GeckoLibGsonLoader`，非致命，仅资源加载 ERROR）。⇒ 新增动画文件时不要留空壳；本批已给 `geckolib/animations/souridrink.animation.json` 补最小 idle 动画，复跑确认该 ERROR 消失。1.21.x 线同为空文件但不 eager bake，故不报错。
 - 启动脚本 `run/start-{1.20.1,1.21.1,26.1.2}.sh`（2026-11-10 实读 8,658 / 8,673 / 9,644 B，均 `rwx`；**两条 fabric 线都没有 start 脚本**，只能走 `launch.sh` 的 `./gradlew :<线>:runClient` 回退）：
   - 用法 `./run/start-1.21.1.sh [<额外 gradlew 参数…>]`；脚本自行 `cd` 到仓库根，`set -euo pipefail`；前台 `bash run/start-1.21.1.sh`，后台 `setsid nohup bash run/start-1.21.1.sh > /tmp/launch-1211.out 2>&1 &`。Wayland 会话下环境须就位：`DISPLAY=:0 WAYLAND_DISPLAY=wayland-0 XDG_RUNTIME_DIR=/run/user/1000`。
   - **`run/` 整体在 `.gitignore:61` 里** ⇒ `run/start-*.sh` 是**未跟踪/被忽略**文件；确实要入库才 `git add -f`，默认**不 add**。
@@ -323,8 +348,8 @@
   - 收尾只收本实例（按 `/proc/<pid>/cwd` 与 `--gameDir` 精确匹配），先 `SIGTERM` → 20s → `SIGKILL`；**绝不**全机 `pkill -f java`。
   - 1.20.1（legacyforge dev run）加载的是 `run/1.20.1/mods/astral_dice-<ver>+forge_1.20.1.jar`，不是 `build/resources/main`：改了 `src/main/resources` 后**必须** `JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 ./gradlew :forge-1.20.1:pushToDevRun`（约 60s）再启动。1.21.1（MDG NeoForge）无此问题。
 - **已知遗留（迁移前既有，不随换机消失）**：
-  - `fabric-1.20.1` 实机未通过：Loom dev runtime 给 LWJGL `3.3.2-snapshot`，Sodium 0.5.x 只接受 `3.3.1`（`Sodium-EarlyDriverScanner … Installed version: 3.3.2-snapshot / Required version: 3.3.1`）⇒ 构建侧 pin 或换 Sodium，P1。
-  - 26.1.2 客户端停在 `KubeJSErrorScreen`：`EvaluatorException: Failed to load Java class 'com.merlinkitsune.starenginelib.economy.StarCoinWalletState': Class could not be found!`（jar 内确有该类；Rhino 类加载器看不到 jarJar 嵌套类），P1。
+  - ~~`fabric-1.20.1` 实机未通过~~ **已不成立（2026-11-10 实机通过，16.8s 开世界）**：旧失败是 Loom dev runtime 给 LWJGL `3.3.2-snapshot`、Sodium 0.5.x 只接受 `3.3.1`（`Sodium-EarlyDriverScanner … Installed version: 3.3.2-snapshot / Required version: 3.3.1`）。当前 `fabric-1.20.1/run/client/mods` 没有 Sodium；若日后显式加 Sodium，仍需在构建侧 pin LWJGL 或换 Sodium 版本。
+  - 26.1.2 的 `KubeJSErrorScreen` 已**降级为非阻断**（2026-11-10 实机）：KubeJS 客户端脚本 `astral_wallet_vision.js#38` 仍报 `EvaluatorException: Failed to load Java class 'com.merlinkitsune.starenginelib.economy.StarCoinWalletState': Class could not be found!`（jar 内确有该类；Rhino 类加载器看不到 jarJar 嵌套类），但世界正常加载、游戏可玩，归为既有噪声；修不修属 P1 欠账。
   - 1.20.1 首启曾因 Jade 11.13.3 的 dev-only `Missing config translation` 断言崩在标题屏（已在三语 lang 补 `config.jade.plugin_astral_dice.{shop_cooldown,event_drawer_cost}` 修复）；1.21.1 是 Jade 15.10.6 无该断言。
   - `run/26.1.2/mods/` 残留旧 `astral_dice-1.3.7-beta.2+neoforge_26.1.2.jar`，建议清理（未做）。
 - 规则层继续有效（与实现无关）：禁批量编排、单条手动、`FAIL` / `ERROR` / `TIMEOUT` / `BLOCKED` 语义不混同、测试顺序 1.21.1 先行、1.20.1 门控（未过记 `GATED`）、断言以服务端权威日志 `AP_<tag>_<KEY>` 为准、报告不得放宽口径。
