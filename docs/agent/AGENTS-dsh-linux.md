@@ -317,6 +317,8 @@
   - `obj.getClass()` 对 Rhino 包装的 Java 对象不可用（报 `Cannot find function getClass`），要看类型用 `String(obj)` 或 `Java.type` 反射。
   - curl 兜底调用格式（实测可用）：`POST http://127.0.0.1:25585/mcp`，头 `Content-Type: application/json` + `Accept: application/json, text/event-stream`，体 `{"jsonrpc":"2.0","id":N,"method":"tools/call","params":{"name":"eval_js","arguments":{"side":"server","code":"…"}}}`，结果在 `result.content[0].text`（JSON 字符串，含 `diagnostics`）。
 - 真机 server 侧 Rhino 实测坑（2026-10-31，26.1.2 专用服）：没有全局 `server`，须 `Java.loadClass("net.neoforged.neoforge.server.ServerLifecycleHooks").getCurrentServer()`；**没有 `Java.from`**；`registry.keySet()` 元素**直接是 `Identifier`**（不是 `ResourceKey`），用 `String(x)` 取值；`MappedRegistry#get/containsKey` 因 `Identifier` 与 `ResourceKey` 重载在 Rhino 里报 ambiguous ⇒ 改用 `keySet().toArray()` 遍历；`performPrefixedCommand(cmd)` 有副作用但返回值读不到，命令回显去 `logs/latest.log` 里 grep。
+- **判「方块模型是否解析」的实机方法（2026-11-10 在 1.21.1 与 1.20.1 两线实测）**：先在 server 侧 `level.setBlockAndUpdate(pos, block.defaultBlockState())` 把方块放下，再在 client 侧
+  `mc.getBlockRenderer().getBlockModel(state).getQuads(state, d, level.random).size()` 对 `d = null, DOWN, UP, NORTH, SOUTH, WEST, EAST` 七个桶求和：**合计 0 = 不可见模型（`elements: []`）**、`>0` 且出现紫黑棋盘 = missing model（资产缺失）。资产是否进包用 `mc.getResourceManager().getResource(RL.parse("astral_dice:blockstates/<id>.json")).isPresent()` 复查。1.20.1 的 `ResourceLocation` 也要走 `Java.loadClass`，但 `parse` 静态方法可直接调。
 - 安全边界：`unrestricted=true` 时**只绑 loopback**，禁 `0.0.0.0`。
 
 ## 🧪 测试台现状（Linux）
