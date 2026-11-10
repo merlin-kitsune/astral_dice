@@ -106,7 +106,7 @@
 | 资产 | `assets/astral_dice/geo/inkshadoweffect.geo.json`、`animations/inkshadoweffect.animation.json`、`textures/entity/inkshadoweffect.png`（64×64）+ `inkshadoweffect.png.mcmeta`、`textures/entity/inkshadow_portal_surface.png`（地面门面）、`textures/mob_effect/inkshadow_stack.png`、`textures/item/inkshadow_sign.png`（物品图标取自用户素材 `images/小猎手立牌.png`；模型顶点源自 `models/inkshadoweffect.bbmodel`，经 `tools/bbmodel_to_geo.py` 转换） |
 | 数据（**datagen 产出**，落各线 `src/generated/resources/`） | `assets/astral_dice/models/item/inkshadow_sign.json`、`data/astral_dice/recipe(s)/inkshadow_sign.json`（**稀有档简化配方**）、`data/astral_dice/advancement(s)/recipes/misc/inkshadow_sign.json` |
 | 数据（手写，落各线 `src/main/resources/`） | `data/astral_dice/tags/item(s)/signs.json`、`data/curios/tags/item(s)/stand.json`、Patchouli `entries/signs/inkshadow_sign.json` |
-| datagen 登记 | `datagen/ModItemModelProvider`（`basicItem(ModItems.INKSHADOW_SIGN.get())`）+ `datagen/ModRecipeProvider`（`BXB/KCK/XDX` 稀有档配方：墨囊 / **星币** / 金块 / 空白筹码 / **骰子**，`unlockedBy has_blank_chip`） |
+| datagen 登记 | `datagen/ModItemModelProvider`（`basicItem(ModItems.INKSHADOW_SIGN.get())`）+ `datagen/ModRecipeProvider`（`BXB/KCK/XDX` 稀有档配方：末影珍珠 / **星币** / 黄色染料 / 空白筹码 / **骰子**，`unlockedBy has_blank_chip`） |
 | 文本 | `lang/{zh_cn,en_us,ja_jp}.json` 各 11 + 本轮新增键（见 §4）；另有 `entity.astral_dice.inkshadow_portal`（末影传送门）、`effect.astral_dice.inkshadow_stack` + `.description`。**2026-11-10 中文 `_active` / `_passive` / `.description` 由用户亲自改写，以用户版本为准**，英日按同义重译（被动表述同步为「存在自身放置的传送门期间」） |
 | 环境脚本 | `run/start-{1.21.1,1.20.1,26.1.2}.sh` 增补 `DISPLAY` / `XAUTHORITY` 兜底（后台 job 里两者常为空，见 §8） |
 
@@ -123,7 +123,7 @@ tooltip 挂点：`event/ModTooltipHandler` 的 `ModItems.INKSHADOW_SIGN` 块（�
 - **显示效果仍待用户逐项验收**（模型缩放 1.6、地面门面半径 0.62 / 转速 200 tick / 自发光、未配对门 0.95 缩放）：全部集中常量，验收后单独一轮调整。当前门面是**贴地的末地传送门样式星盘**（黑底 + 紫星 + 自转），旧版竖立 billboard 漩涡已删除。
 - **冷却走全局口径**（2026-11-10 用户裁决）：不再写死 2400，继承 `BaseSignItem` 的全局链 = `SIGN_ACTIVE_COOLDOWN_SECONDS`（默认 180 s）→ 充能封顶 180→160 s → 额外电池 ×0.5。冷却从锁定结束时由 `SignActiveLockMachine` 起算；**放置窗口超时、放置期死亡/退出、以及放置中卸下立牌都算已消耗，照付全额**。
 - **卸下即作废**：`onUnequip` 清 pending + 起始门 discard + 移速移除 + 层数清零 + 撤攻击修饰符。
-- **配方（2026-11-10 用户裁决简化）**：`BXB/KCK/XDX`（墨囊 / **星币** / 金块 / 空白筹码 / **骰子**）——用户原话「星盘降低为星币，骰子换成普通骰子」；本配方原先用的是星币尘 + 钻石骰（占位档），按「简化」口径落到最基础的星币与普通骰子。中心仍是空白筹码（与其它立牌用空白立牌不同，属首版占位遗留，未在本次指令范围内改）。
+- **配方（2026-11-10 用户裁决简化，2026-11-11 换料）**：`BXB/KCK/XDX`（**末影珍珠** / **星币** / **黄色染料** / 空白筹码 / **骰子**）——简化口径来自「星盘降低为星币，骰子换成普通骰子」；2026-11-11 用户再裁决「金块换成金色染料，墨囊换成末影珍珠」⇒ B 墨囊→末影珍珠、K 金块→金色染料。**原版没有「金色染料」这一物品**，取色相最接近的 `minecraft:yellow_dye`（黄色染料，图标是金黄色）；若用户实际想要别的物品（如金粒/金锭/某模组染色物），只需改 `ModRecipeProvider` 两行的 `.define('K', …)`。中心仍是空白筹码（与其它立牌用空白立牌不同，属首版占位遗留，未在指令范围内改）。
 - **跃迁核心映射**：仓内无该物品，接到 `WarpEngineChipItem.onPortalOrWaystoneTeleport`；若用户指的是新物品需另立规格。
 - 门不可破坏/不可攻击由「非 `LivingEntity` + 不可拾取 + `isInvulnerableTo` 恒真 + `hurt` 恒 false」实现，不走方块（因此不受领地/破坏事件影响）。
 - **传送语义（第二轮）**：门可反复使用，没有一次性限制；同一扇门对同一玩家 5 s 冷却、站定 1.5 s 才传，全程无 actionbar 提示；被动叠层仍是每扇门 × 每人一次性（`visitedUuids`）。门是**双向**的：两扇门都能把人送到对面（Apex 恶灵大招的折跃门机制）。
