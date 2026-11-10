@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "astral_dice:block/abyss_tentacle_collision"
+    }
+  }
+}
