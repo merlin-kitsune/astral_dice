@@ -1892,6 +1892,42 @@ public class ModAttachments {
         SOURI_GOLD_SCALES.set(player, Math.max(0, value));
     }
 
+    // 少主立牌(al)「双赢」被动 B 面:筹码商店限时折扣(只刷新不叠加、到期按世界时间判定)。
+    // 仅服务端读写,不同步客户端 ⇒ 不 .sync()、不加入 SYNCED_KEYS。
+    public static final AttachedDataKey<Integer> CHIP_DISCOUNT_AMOUNT =
+            register(AttachedDataKey.builder("chip_discount_amount", Codec.INT, () -> 0).build());
+
+    public static final AttachedDataKey<Long> CHIP_DISCOUNT_UNTIL =
+            register(AttachedDataKey.builder("chip_discount_until", Codec.LONG, () -> 0L).build());
+
+    /** 少主立牌(al)主动:「强者怜悯」选卡界面打开期间待交付的目标 UUID 字符串(空 = 无)。 */
+    public static final AttachedDataKey<String> AL_PENDING_TARGET =
+            register(AttachedDataKey.builder("al_pending_target", Codec.STRING, () -> "").build());
+
+    public static int getChipDiscountAmount(LivingEntity holder) {
+        return CHIP_DISCOUNT_AMOUNT.get(holder);
+    }
+
+    public static void setChipDiscountAmount(LivingEntity holder, int value) {
+        CHIP_DISCOUNT_AMOUNT.set(holder, Math.max(0, value));
+    }
+
+    public static long getChipDiscountUntil(LivingEntity holder) {
+        return CHIP_DISCOUNT_UNTIL.get(holder);
+    }
+
+    public static void setChipDiscountUntil(LivingEntity holder, long value) {
+        CHIP_DISCOUNT_UNTIL.set(holder, value);
+    }
+
+    public static String getAlPendingTarget(Player player) {
+        return AL_PENDING_TARGET.get(player);
+    }
+
+    public static void setAlPendingTarget(Player player, String value) {
+        AL_PENDING_TARGET.set(player, value == null ? "" : value);
+    }
+
     private ModAttachments() {
     }
 }

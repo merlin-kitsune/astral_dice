@@ -72,6 +72,7 @@ import com.merlinkitsune.astral_dice.item.sign.TeruSignItem;
 import com.merlinkitsune.astral_dice.item.sign.NardisSignItem;
 import com.merlinkitsune.astral_dice.item.sign.MamushiSignItem;
 import com.merlinkitsune.astral_dice.item.sign.SouriSignItem;
+import com.merlinkitsune.astral_dice.item.sign.AlSignItem;
 import com.merlinkitsune.astral_dice.item.chip.MotoHelmetChipItem;
 import com.merlinkitsune.astral_dice.item.chip.BoxingGlovesChipItem;
 import com.merlinkitsune.astral_dice.item.sign.BonnieSignItem;
@@ -1034,6 +1035,16 @@ public class ModItems {
             () -> new SouriSignItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(AstralRarities.legendary())));
+
+    // 少主立牌(命名:al,史诗):主动「强者怜悯」(目标选择器选一名类玩家目标 → 选卡界面选 1~3 张,
+    //   放 1 张即可确认;逐张交给对方,物品栏满则掉在对方脚下;自身获得「送出张数 × 2」星币)
+    // + 被动「双赢」(佩戴者使其他角色获得卡牌时双方各 +1 层星光;对目标使用主动技能后双方各获
+    //   「筹码单价 -5、下限 5」与一次商店刷新;每 4 层星光 ⇒ 攻击力 +1、防御力 +1)。
+    // 史诗品质 = ASTRAL_DICE_EPIC;配方 = 星币尘 + 金块 + 钻石骰子档(BXB/KCK/XDX)。
+    public static final RegistryObject<Item> AL_SIGN = registerItem("al_sign",
+            () -> new AlSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.epic())));
 
     // 怪力侦探立牌(命名:sherry,奇特):主动「怪力投掷」把 12 格内全部敌对目标按抛物线扔到玩家面前 2 格,
     // **落地之后**造成 2 点伤害并施加 1 层「标记」(推理时间满 5 层 ⇒ 额外 5 点);被动「侦探出击」按

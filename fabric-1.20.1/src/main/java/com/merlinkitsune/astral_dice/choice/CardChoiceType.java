@@ -56,6 +56,17 @@ public enum CardChoiceType {
      * 覆盖 1×{combat,effect,any} + 3×{combat,effect,any} 共 6 键（三语各一份）。
      */
     public String titleKey(int slotCount) {
+        return titleKey(slotCount, slotCount);
+    }
+
+    /**
+     * 可变下限版本：{@code minSlots < slotCount} 时用「1~N 张任选」的专用标题键
+     * （{@code title_variable_<type>}），否则回落旧键（与 forge 线同源）。
+     */
+    public String titleKey(int slotCount, int minSlots) {
+        if (minSlots < slotCount) {
+            return "gui.astral_dice.card_choice.title_variable_" + name().toLowerCase(Locale.ROOT);
+        }
         return "gui.astral_dice.card_choice.title_" + (slotCount == 1 ? "single_" : "triple_")
                 + name().toLowerCase(Locale.ROOT);
     }

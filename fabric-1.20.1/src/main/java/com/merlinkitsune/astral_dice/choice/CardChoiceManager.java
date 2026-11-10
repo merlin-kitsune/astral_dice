@@ -42,9 +42,9 @@ import java.util.function.Consumer;
  *   <li><b>打开菜单</b>：forge 用 {@code NetworkHooks#openScreen(player, provider, buf -> ...)} 附带 extra data；
  *       本线用 {@code player.openMenu(factory)} + {@link ExtendedScreenHandlerFactory}
  *       （Fabric Screen Handler API v1，随 fabric-api 0.92.12 提供）：
- *       {@code writeScreenOpeningData} 写入的三个 VarInt 与 forge 的 extra data <b>同序同义</b>
- *       （token / slotCount / type.ordinal()），客户端 {@code CardChoiceMenu(int, Inventory, FriendlyByteBuf)}
- *       构造器因此可以与 forge 逐字一致 ⇒ <b>两张界面文件字节级相同、零改动</b>。</li>
+ *       {@code writeScreenOpeningData} 写入的四个 VarInt 与 forge 的 extra data <b>同序同义</b>
+ *       （token / slotCount / minSlots / type.ordinal()），客户端
+ *       {@code CardChoiceMenu(int, Inventory, FriendlyByteBuf)} 构造器按同序读取。</li>
  *   <li><b>关包</b>：同一份 {@link ModNetwork#sendToPlayer}（本线内部走 SimpleChannel）。</li>
  *   <li><b>事件订阅</b>：forge 的 {@code @Mod.EventBusSubscriber} 自动注册在本线不存在 ⇒ 必须在
  *       {@code AstralDiceMod#registerListeners()} 里 <b>显式</b>
@@ -72,14 +72,16 @@ public final class CardChoiceManager {
     private static final class Session {
         final int token;
         final int slotCount;
+        final int minSlots;
         final CardChoiceType type;
         Consumer<List<ItemStack>> handler;
         /** 已确认/已作废：此后不再接受确认与重复回调。 */
         boolean resolved;
 
-        Session(int token, int slotCount, CardChoiceType type, Consumer<List<ItemStack>> handler) {
+        Session(int token, int slotCount, int minSlots, CardChoiceType type, Consumer<List<ItemStack>> handler) {
             this.token = token;
             this.slotCount = slotCount;
+            this.minSlots = minSlots;
             this.type = type;
             this.handler = handler;
         }
@@ -88,17 +90,19 @@ public final class CardChoiceManager {
     /**
      * 本线的「带 extra data 的打开菜单」载体：替换 forge 的 {@code NetworkHooks#openScreen(player, provider, writer)}。
      *
-     * <p>三个 VarInt 的顺序/语义必须与 {@code CardChoiceMenu(int, Inventory, FriendlyByteBuf)} 的读取顺序严格一致
-     * （token → slotCount → type.ordinal()），否则客户端会错位解码。
+     * <p>四个 VarInt 的顺序/语义必须与 {@code CardChoiceMenu(int, Inventory, FriendlyByteBuf)} 的读取顺序严格一致
+     * （token → slotCount → minSlots → type.ordinal()），否则客户端会错位解码。
      */
     private static final class ChoiceMenuFactory implements ExtendedScreenHandlerFactory {
         private final int token;
         private final int slotCount;
+        private final int minSlots;
         private final CardChoiceType type;
 
-        ChoiceMenuFactory(int token, int slotCount, CardChoiceType type) {
+        ChoiceMenuFactory(int token, int slotCount, int minSlots, CardChoiceType type) {
             this.token = token;
             this.slotCount = slotCount;
+            this.minSlots = minSlots;
             this.type = type;
         }
 
@@ -106,17 +110,18 @@ public final class CardChoiceManager {
         public void writeScreenOpeningData(ServerPlayer player, FriendlyByteBuf buf) {
             buf.writeVarInt(token);
             buf.writeVarInt(slotCount);
+            buf.writeVarInt(minSlots);
             buf.writeVarInt(type.ordinal());
         }
 
         @Override
         public Component getDisplayName() {
-            return Component.translatable(type.titleKey(slotCount));
+            return Component.translatable(type.titleKey(slotCount, minSlots));
         }
 
         @Override
         public CardChoiceMenu createMenu(int containerId, Inventory inventory, Player player) {
-            return new CardChoiceMenu(containerId, inventory, token, slotCount, type);
+            return new CardChoiceMenu(containerId, inventory, token, slotCount, minSlots, type);
         }
     }
 
@@ -127,34 +132,53 @@ public final class CardChoiceManager {
      */
     public static int start(ServerPlayer player, int slotCount, CardChoiceType type,
                             Consumer<List<ItemStack>> handler) {
-        int token = ThreadLocalRandom.current().nextInt(1, Integer.MAX_VALUE);
-        return start(player, slotCount, type, token, handler) ? token : -1;
+        // 老调用点：minSlots 缺省 = slotCount（放满才可确认，行为不变）
+        return start(player, slotCount, slotCount, type, handler);
     }
 
-    /** 打开选卡界面（调用者自带 token）；true = 已建会话并下发界面。 */
+    /**
+     * 打开选卡界面（自动分配 token，可指定最少张数）。
+     *
+     * @param minSlots 至少放入几张才允许确认（会被夹到 [{@link #MIN_SLOTS}, slotCount]）
+     * @return 会话 token；&lt;0 = 被拒（已有未结算会话 / 参数非法）
+     */
+    public static int start(ServerPlayer player, int slotCount, int minSlots, CardChoiceType type,
+                            Consumer<List<ItemStack>> handler) {
+        int token = ThreadLocalRandom.current().nextInt(1, Integer.MAX_VALUE);
+        return start(player, slotCount, minSlots, type, token, handler) ? token : -1;
+    }
+
+    /** 打开选卡界面（调用者自带 token，放满才可确认，等价 minSlots = slotCount）。 */
     public static boolean start(ServerPlayer player, int slotCount, CardChoiceType type, int token,
+                                Consumer<List<ItemStack>> handler) {
+        return start(player, slotCount, slotCount, type, token, handler);
+    }
+
+    /** 打开选卡界面（调用者自带 token + 最少张数）；true = 已建会话并下发界面。 */
+    public static boolean start(ServerPlayer player, int slotCount, int minSlots, CardChoiceType type, int token,
                                 Consumer<List<ItemStack>> handler) {
         if (player == null || type == null || handler == null || token <= 0) {
             return false;
         }
-        if (slotCount != SLOTS_SINGLE && slotCount != SLOTS_TRIPLE) {
+        if (slotCount < MIN_SLOTS || slotCount > MAX_SLOTS) {
             LOGGER.warn("AP_CARD_CHOICE: reject:reason=bad_slot_count:player={}:slots={}",
                     player.getGameProfile().getName(), slotCount);
             return false;
         }
+        int effectiveMinSlots = Math.max(MIN_SLOTS, Math.min(slotCount, minSlots));
         Session existing = SESSIONS.get(player.getUUID());
         if (existing != null && !existing.resolved) {
             LOGGER.warn("AP_CARD_CHOICE: reject:reason=already_open:player={}:token={}",
                     player.getGameProfile().getName(), existing.token);
             return false;
         }
-        Session session = new Session(token, slotCount, type, handler);
+        Session session = new Session(token, slotCount, effectiveMinSlots, type, handler);
         SESSIONS.put(player.getUUID(), session);
 
         try {
             // forge 这里是 NetworkHooks.openScreen(player, new SimpleMenuProvider(...), buf -> {...})；
-            // 本线把「provider + extra data」合并成 ChoiceMenuFactory（同序写入三个 VarInt）。
-            player.openMenu(new ChoiceMenuFactory(token, slotCount, type));
+            // 本线把「provider + extra data」合并成 ChoiceMenuFactory（同序写入四个 VarInt）。
+            player.openMenu(new ChoiceMenuFactory(token, slotCount, effectiveMinSlots, type));
         } catch (RuntimeException exception) {
             // 打开途中抛异常（createMenu 构造失败 / extra data 编码失败等）：会话已入 map，
             // 不清理就会让该玩家此后**恒**被判 already_open ⇒ 必须回滚会话并返回失败。
@@ -179,8 +203,8 @@ public final class CardChoiceManager {
                     player.containerMenu == null ? "null" : player.containerMenu.getClass().getSimpleName());
             return false;
         }
-        LOGGER.info("AP_CARD_CHOICE: open:{}:player={}:slots={}:type={}",
-                token, player.getGameProfile().getName(), slotCount, type);
+        LOGGER.info("AP_CARD_CHOICE: open:{}:player={}:slots={}:minSlots={}:type={}",
+                token, player.getGameProfile().getName(), slotCount, effectiveMinSlots, type);
         return true;
     }
 
