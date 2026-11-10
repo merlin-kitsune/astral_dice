@@ -133,8 +133,8 @@ names the **code commit** the jar was built from; the README update that records
 
 | Line | Version | Built from | Built at | Size (B) | SHA-256 |
 |---|---|---|---|---|---|
-| neoforge-1.21.1 | 26.4-SNAPSHOT.11+neoforge_1.21.1 | `60deccc7`（库引脚 .2 + .11），classCount 588 | 2026-11-11T00:21:35+08:00 | 2,827,020 | `3d4d5534c0458f74b8292b615b378ef816880e3b8e4d989f138b99eb626742e8` |
-| forge-1.20.1 | 26.4-SNAPSHOT.11+forge_1.20.1 | `60deccc7`（库引脚 .2 + .11），classCount 613 | 2026-11-11T00:21:35+08:00 | 2,876,962 | `6dd1d0437e27a951669f5b5b03051c98d75bee54d335274fc1e0da58dedc2f36` |
+| neoforge-1.21.1 | 26.4-SNAPSHOT.11+neoforge_1.21.1 | `273dc47a`（库引脚 .2 + .11），classCount 588 | 2026-11-11T00:35:28+08:00 | 2,827,030 | `ed22288b7ed87a8664fb4b1ca756989dbbfa865951305031fc37412d07eb380e` |
+| forge-1.20.1 | 26.4-SNAPSHOT.11+forge_1.20.1 | `273dc47a`（库引脚 .2 + .11），classCount 613 | 2026-11-11T00:35:28+08:00 | 2,876,972 | `8629e2965d9dbac8f5a162072e5bdfb14af50bc64b94601733f6df30cd0aaecd` |
 | neoforge-26.1.2 | 26.4-SNAPSHOT.11+neoforge_26.1.2 | 无 build-info，commit 不可回指（与 P0 同批构建） | 2026-11-10T15:21:27+08:00 | 2,982,819 | `eb1a739acefe3a4d0b035f1e136134c32c17ae43c1b1863773ac589081bc70de` |
 | fabric-1.20.1 | 26.4-SNAPSHOT.11+fabric_1.20.1 | 无 build-info，commit 不可回指（与 P0 同批构建） | 2026-11-10T15:21:30+08:00 | 3,094,347 | `04f9bf65ab57e67a178d4e3024ca4a706d656c8fcd192a7621137a38df64d2a1` |
 | fabric-1.21.1 | 26.4-SNAPSHOT.11+fabric_1.21.1 | 无 build-info，commit 不可回指（与 P0 同批构建） | 2026-11-10T15:21:30+08:00 | 3,120,561 | `31183feafeba11781db31ec31692aa0a91733fca4f00e8eed35fd07b733dc98a` |
@@ -143,13 +143,15 @@ The three P1 rows come from one build run (`gradlew --no-daemon --no-configurati
 `BUILD SUCCESSFUL in 6s`, 28 executed / 16 up-to-date); the two P0 rows were rebuilt afterwards on their own (history below).
 Only the two P0 jars embed
 `build-info.json`; the other three lines have no such descriptor, so their rows are identified by size + hash only.
-Rebuild history for the two P0 rows: `011a6891` at 15:21 (both), `51ff5691` at 23:17 (`neoforge-1.21.1` only), then both
-at 2026-11-11T00:21 from `60deccc7` — the commit that carries the `al_sign` creative-tab fix (`f19bf1a4`) and the forge
-Huntsman-Sign sync (`75b335d6`). The current `neoforge-1.21.1` jar is 2,827,020 B / `sha256 3d4d553…42e8` / `classCount 588`;
-the current `forge-1.20.1` jar is 2,876,962 B / `sha256 6dd1d04…2f36` / `classCount 613`. Both `.sha256` sidecars were
+Rebuild history for the two P0 rows: `011a6891` at 15:21 (both), `51ff5691` at 23:17 (`neoforge-1.21.1` only), both
+at 2026-11-11T00:21 from `60deccc7` (the `al_sign` creative-tab fix `f19bf1a4` plus the forge Huntsman-Sign sync
+`75b335d6`), then both again at **00:35 from `273dc47a`** after the Huntsman-Sign recipe ingredients changed
+(ink sac → ender pearl, gold block → yellow dye). The current `neoforge-1.21.1` jar is 2,827,030 B /
+`sha256 ed22288…380e` / `classCount 588`; the current `forge-1.20.1` jar is 2,876,972 B / `sha256 8629e29…aecd` /
+`classCount 613`. Both `.sha256` sidecars were
 regenerated from the final bytes next to the jars in `<line>/build/libs/` and in the root `build/libs/` mirror.
 `neoforge-1.21.1` is byte-identical in all three places (build dir, root mirror, `run/1.21.1/mods/`). `forge-1.20.1` is not:
-`pushToDevRun` puts a re-packed jar in `run/1.20.1/mods/` (2,846,569 B / `sha256 db656ab…3bd0`, same `build-info.json`), so
+`pushToDevRun` puts a re-packed jar in `run/1.20.1/mods/` (2,846,578 B / `sha256 1a9bd4e…2752`, same `build-info.json`), so
 the `build/libs` bytes above are the release artefacts and the `run/` copy is only the dev-runtime one. The three P1 rows are
 still the 15:21 artefacts (no code change since).
 
