@@ -413,6 +413,39 @@ public class ModEffects {
             EFFECTS.register("abyss_mark", com.merlinkitsune.astral_dice.effect.AbyssMarkEffect::new);
 
     /**
+     * 「金鳞」（金鲤立牌 souri）：层数镜像效果，{@code amplifier = 层数 - 1}，层数真值在
+     * {@code ModAttachments#SOURI_GOLD_SCALES}（0..4）。颜色 {@code 0xF2C14E}、{@code MAX_STACKS = 4}。
+     *
+     * <p>图标 {@code textures/mob_effect/souri_gold_scale.png}（与 1.21.1 侧逐字节复制）。
+     */
+    public static final RegistryObject<MobEffect> SOURI_GOLD_SCALE =
+            EFFECTS.register("souri_gold_scale", com.merlinkitsune.astral_dice.effect.SouriGoldScaleEffect::new);
+
+    /**
+     * 「金鲤化龙」（金鲤立牌 souri）：金鳞首次达到 4 层时授予的锁存态效果（无限时长、无图标装饰）。
+     *
+     * <p>图标 {@code textures/mob_effect/souri_dragon.png}。
+     */
+    public static final RegistryObject<MobEffect> SOURI_DRAGON =
+            EFFECTS.register("souri_dragon", com.merlinkitsune.astral_dice.effect.SouriDragonEffect::new);
+
+    /**
+     * 「葫芦饮」（金鲤立牌 souri）：拾取葫芦饮后 1:00 的标记效果（无原版修饰符，攻击 +3 走实时谓词）。
+     *
+     * <p>图标 {@code textures/mob_effect/gourd_drink.png}。
+     */
+    public static final RegistryObject<MobEffect> GOURD_DRINK =
+            EFFECTS.register("gourd_drink", com.merlinkitsune.astral_dice.effect.GourdDrinkEffect::new);
+
+    /**
+     * 「仙酿」（金鲤立牌 souri）：拾取仙酿后 2:00 的标记效果（无原版修饰符，攻击 +4 走实时谓词）。
+     *
+     * <p>图标 {@code textures/mob_effect/immortal_brew.png}。
+     */
+    public static final RegistryObject<MobEffect> IMMORTAL_BREW =
+            EFFECTS.register("immortal_brew", com.merlinkitsune.astral_dice.effect.ImmortalBrewEffect::new);
+
+    /**
      * 本模组已注册的全部效果的**只读**视图(调试命令 {@code /astralparty cleareffect} 用)。
      *
      * <p>直接派生自 {@link #EFFECTS} 的注册条目视图——Forge 的 {@code getEntries()} 返回

@@ -63,6 +63,11 @@ public class AstralDiceClient implements ClientModInitializer {
                 com.merlinkitsune.astral_dice.entity.ModEntityTypes.SYKE_TENTACLE.get(),
                 com.merlinkitsune.astral_dice.client.SykeTentacleRenderer::new);
 
+        // 实体渲染器:金鲤立牌的漂浮饮品(葫芦饮/仙酿),GeckoLib 渲染 + 渲染器内旋转/浮动。
+        net.fabricmc.fabric.api.client.rendering.v1.EntityRendererRegistry.register(
+                com.merlinkitsune.astral_dice.entity.ModEntityTypes.SOURI_DRINK.get(),
+                com.merlinkitsune.astral_dice.client.SouriDrinkRenderer::new);
+
         // 客户端事件桥:把 FAPI 的客户端回调接到自建事件上。
         // ⚠️ 与服务端的 FabricBridges.install() 同理 —— 不装则 client/* 的处理器
         //    全部「注册了但从不派发」。必须放在监听器注册之后。

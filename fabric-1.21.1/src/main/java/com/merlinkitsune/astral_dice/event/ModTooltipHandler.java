@@ -1639,6 +1639,35 @@ public class ModTooltipHandler {
             addSignNoteLines(tooltip, "tooltip.astral_dice.sign.sykes_note");
             addSignCooldownRemaining(tooltip, event.getEntity());
         }
+        // 金鲤立牌(souri):主动「把酒言欢」放置葫芦饮/仙酿 + 自身金鳞/反击;被动「不醉不归」。
+        if (stack.is(ModItems.SOURI_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "tooltip.astral_dice.sign.souri.active");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.souri_active");
+            addSignPassiveTitle(tooltip, "tooltip.astral_dice.sign.souri.passive");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.souri_passive");
+            Player souriViewer = player;
+            // 备注区（浅紫、无标题）：金鳞 / 金鲤化龙 / 葫芦饮 / 仙酿 的数值口径
+            tooltip.add(Component.empty());
+            addSignNoteLines(tooltip, "tooltip.astral_dice.sign.souri_note");
+            // 联动「留给你的」：与备注之间留空行
+            tooltip.add(Component.empty());
+            addSignNoteLines(tooltip, "tooltip.astral_dice.sign.souri_link");
+            // 状态行置于最底部、上方留空行：化龙前显示「金鳞」层数，化龙后只显示「金鲤化龙」
+            if (souriViewer != null) {
+                if (com.merlinkitsune.astral_dice.item.sign.SouriSignManager.hasDragon(souriViewer)) {
+                    tooltip.add(Component.empty());
+                    tooltip.add(tt("tooltip.astral_dice.sign.souri_dragon_form")
+                            .withStyle(ChatFormatting.GOLD));
+                } else {
+                    addSignCounter(tooltip, "tooltip.astral_dice.sign.souri_gold_scale",
+                            com.merlinkitsune.astral_dice.item.sign.SouriSignManager.getGoldScales(souriViewer),
+                            com.merlinkitsune.astral_dice.item.sign.SouriSignManager.GOLD_SCALE_MAX);
+                }
+            }
+            addSignCooldownRemaining(tooltip, souriViewer);
+        }
         // 蛟龙立牌(mamushi)专属战斗牌:撕咬(费用 2 / 耐久 1 / 定值 +3)与
         // 龙之咆哮(费用 3 / 耐久 5 / 定值 +3;命中施加 缓慢 III 1:00 + 破防 1:00)。
         // 费用行 = 既有战斗牌的既有写法;描述行走规格 §4 冻结键 tooltip.astral_dice.card.bite / .dragon_roar

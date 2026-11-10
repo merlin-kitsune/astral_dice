@@ -78,6 +78,18 @@ public final class ModEntityTypes {
                     .clientTrackingRange(10)
                     .build("sykestentacle"));
 
+    /**
+     * {@code astral_dice:souri_drink} —— 金鲤立牌的漂浮饮品（葫芦饮 / 仙酿，纯展示体 + 服务端拾取扫描）。
+     *
+     * <p>尺寸 {@code sized(0.35F, 0.45F)}、{@code clientTrackingRange(10)} 与 1.21.1 蓝本一致。
+     */
+    public static final RegistryObject<EntityType<SouriDrinkEntity>> SOURI_DRINK =
+            ENTITY_TYPES.register("souri_drink", () -> EntityType.Builder
+                    .<SouriDrinkEntity>of((type, level) -> new SouriDrinkEntity(type, level), MobCategory.MISC)
+                    .sized(0.35F, 0.45F)
+                    .clientTrackingRange(10)
+                    .build("souri_drink"));
+
     private ModEntityTypes() {
     }
 }

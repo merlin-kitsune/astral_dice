@@ -1176,6 +1176,13 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(AstralRarities.legendary())));
 
+    // 金鲤立牌(命名:souri,传奇):主动「把酒言欢」在准星地块上方放置葫芦饮(化龙后改放仙酿),
+    // 自身 +1 金鳞 / +1 反击;被动「不醉不归」反击出口 +1 金鳞、他人拾取饮品 +1 反击。
+    public static final RegistryObject<Item> SOURI_SIGN = registerItem("souri_sign",
+            () -> new com.merlinkitsune.astral_dice.item.sign.SouriSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.legendary())));
+
     public static <T extends Item> RegistryObject<T> registerItem(String name, Supplier<T> itemSupplier) {
         return ITEMS.register(name, itemSupplier);
     }

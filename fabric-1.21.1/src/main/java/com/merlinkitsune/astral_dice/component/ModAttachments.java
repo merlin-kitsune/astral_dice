@@ -1194,6 +1194,23 @@ public class ModAttachments {
     public static final AttachedDataKey<Long> MAMUSHI_FORCED_COOLDOWN_UNTIL =
             register(AttachedDataKey.builder("mamushi_forced_cooldown_until", Codec.LONG, () -> 0L).build());
 
+    /**
+     * 金鲤立牌(souri)「觉醒」层数(服务端权威;本立牌不产出觉醒,仅卸下时归零)。
+     *
+     * <p>**同步** + **跨死亡保留**:与 {@link #MAMUSHI_AWAKENING} 同口径。
+     */
+    public static final AttachedDataKey<Integer> SOURI_AWAKENING =
+            register(AttachedDataKey.builder("souri_awakening", Codec.INT, () -> 0).sync().copyOnDeath().build());
+
+    /**
+     * 金鲤立牌(souri)「金鳞」层数(0..{@code SouriSignManager.GOLD_SCALE_MAX} = 4),状态真值。
+     *
+     * <p>HUD 只读镜像在 {@code souri_gold_scale} 效果上(amplifier = 层数 - 1);
+     * tooltip 计数行直接读本附件 ⇒ 必须同步;跨死亡保留(死亡掉落不算主动卸下)。
+     */
+    public static final AttachedDataKey<Integer> SOURI_GOLD_SCALES =
+            register(AttachedDataKey.builder("souri_gold_scales", Codec.INT, () -> 0).sync().copyOnDeath().build());
+
     public static int getMamushiAwakening(net.minecraft.world.entity.player.Player player) {
         return MAMUSHI_AWAKENING.get(player);
     }
@@ -1208,6 +1225,22 @@ public class ModAttachments {
 
     public static void setMamushiBiteBonusActive(net.minecraft.world.entity.player.Player player, boolean value) {
         MAMUSHI_BITE_BONUS_ACTIVE.set(player, value);
+    }
+
+    public static int getSouriAwakening(net.minecraft.world.entity.player.Player player) {
+        return SOURI_AWAKENING.get(player);
+    }
+
+    public static void setSouriAwakening(net.minecraft.world.entity.player.Player player, int value) {
+        SOURI_AWAKENING.set(player, Math.max(0, value));
+    }
+
+    public static int getSouriGoldScales(net.minecraft.world.entity.player.Player player) {
+        return SOURI_GOLD_SCALES.get(player);
+    }
+
+    public static void setSouriGoldScales(net.minecraft.world.entity.player.Player player, int value) {
+        SOURI_GOLD_SCALES.set(player, Math.max(0, value));
     }
 
     public static long getMamushiForcedCooldownUntil(net.minecraft.world.entity.player.Player player) {
@@ -1402,6 +1435,9 @@ public class ModAttachments {
             SYNCED_KEYS.add(SHOP_TRANSFER_COOLDOWN_END);
             // 抽奖盒:购买后冷却(客户端 Jade 悬浮框读可进入倒计时,必须同步)
             SYNCED_KEYS.add(EVENT_DRAWER_COOLDOWN_UNTIL);
+            // 金鲤立牌(souri):金鳞层数需客户端可见(tooltip 计数行);觉醒仅服务端口径,一并同步
+            SYNCED_KEYS.add(SOURI_GOLD_SCALES);
+            SYNCED_KEYS.add(SOURI_AWAKENING);
         }
         return SYNCED_KEYS;
     }

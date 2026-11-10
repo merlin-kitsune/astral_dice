@@ -172,7 +172,10 @@ public final class RenShieldManager {
             ModEffectRemoval.remove(player, Effects.holder(ModEffects.REN_SHIELD.get()));
         }
         removeOwnResistance(player);
-        ModAttachments.setRenCounterCharges(player, 0);
+        // 金鲤立牌(souri):反击层数可脱离鼠鼠护盾独立存在,护盾清空时保留
+        if (!com.merlinkitsune.astral_dice.item.sign.SouriSignItem.isEquipped(player)) {
+            ModAttachments.setRenCounterCharges(player, 0);
+        }
         removeCounterEffect(player);
         ModAttachments.setRenShieldBaselineAbsorption(player, 0.0F);
         // 护盾清空 ⇒ 广播可见性(重复广播同一状态幂等)
@@ -186,14 +189,16 @@ public final class RenShieldManager {
      * 但**要回收我们那份黄心** —— 否则 1.20.1 侧(无吸收上限钳制)会永久留下最多
      * {@link #SHIELD_ABSORPTION} 点「无来源的隐形黄心」;回收量以基线为下界,外部来源不动。
      */
-    private static void cleanupStale(Player player) {
+    private static void cleanupStale(Player player, boolean keepCounter) {
         removeOwnResistance(player);
         float baseline = Math.max(0.0F, ModAttachments.getRenShieldBaselineAbsorption(player));
         float current = player.getAbsorptionAmount();
         if (current > baseline) {
             player.setAbsorptionAmount(Math.max(baseline, current - SHIELD_ABSORPTION));
         }
-        ModAttachments.setRenCounterCharges(player, 0);
+        if (!keepCounter) {
+            ModAttachments.setRenCounterCharges(player, 0);
+        }
         ModAttachments.setRenShieldBaselineAbsorption(player, 0.0F);
         // 效果被外部路径移除(/effect clear、牛奶、死亡等)时**不会**经过 voidShield
         // ⇒ 客户端镜像会残留「他有护盾」,故这里必须补一次广播。
@@ -275,15 +280,15 @@ public final class RenShieldManager {
         }
 
         // 无护盾:清理残留簿记(效果被移除/离线期间异常等)+ 回收我们那份黄心
+        // 金鲤立牌(souri):反击层数不依附鼠鼠护盾 —— 佩戴金鲤时保留层数,只回收护盾簿记
+        boolean keepCounter = com.merlinkitsune.astral_dice.item.sign.SouriSignItem.isEquipped(player);
         if (ModAttachments.isRenShieldOwnResistance(player)
                 || ModAttachments.getRenCounterCharges(player) != 0
                 || ModAttachments.getRenShieldBaselineAbsorption(player) != 0.0F) {
-            cleanupStale(player);
+            cleanupStale(player, keepCounter);
         }
-        // 「反击」图标只跟随护盾:护盾不在就不该显示
-        if (player.hasEffect(Effects.holder(ModEffects.REN_COUNTER.get()))) {
-            removeCounterEffect(player);
-        }
+        // 「反击」图标跟随层数:金鲤层数 > 0 时保留,层数为 0 时摘除
+        refreshCounterEffect(player);
 
         if (player.tickCount % SLOW_INTERVAL_TICKS != 0) return;
         // ③ 被动「鼠鼠救我」:仅佩戴者本人;首次观察记为起点(装备后 5 分钟首次补盾)

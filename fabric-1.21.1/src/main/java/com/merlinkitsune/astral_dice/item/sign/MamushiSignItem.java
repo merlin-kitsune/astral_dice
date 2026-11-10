@@ -323,6 +323,21 @@ public class MamushiSignItem extends BaseSignItem {
         ModAttachments.setMamushiAwakening(player, Math.max(0, value));
     }
 
+    /**
+     * 加层并处理「首次进入真龙形态」的转换与提示(通用的加层出口,供金鲤立牌联动调用)。
+     *
+     * <p>层数封顶 {@link #AWAKEN_MAX};真龙形态是锁存态 ⇒ 形态成立后不再累计(入口早退)。
+     * 与 1.21.1 侧 {@code addAwakening} 同语义:加层后首次达到阈值即发
+     * {@code msg.astral_dice.mamushi_dragon_form} 并执行幂等转换 {@link #transformToDragon(Player)}。
+     */
+    public static void addAwakening(Player player, int delta) {
+        if (player == null || delta <= 0) return;
+        if (isDragonForm(player)) return;
+        setAwakening(player, Math.min(getAwakening(player) + delta, AWAKEN_MAX));
+        // 走到这里此前必不在形态(上方已早退)⇒ 加层后达阈值即为「首次进入」
+        triggerDragonFormIfNeeded(player, false);
+    }
+
     /** 撕咬加成锁存是否置位(置位 + 仍有骰神赐福 ⇒ 加成 = min(觉醒, 4)) */
     public static boolean getBiteBonusActive(Player player) {
         return player != null && ModAttachments.getMamushiBiteBonusActive(player);

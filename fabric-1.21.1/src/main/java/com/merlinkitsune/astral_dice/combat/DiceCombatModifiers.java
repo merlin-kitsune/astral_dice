@@ -874,6 +874,25 @@ public final class DiceCombatModifiers {
             if (!player.isInWaterRainOrBubble()) return 1.0;
             return com.merlinkitsune.astral_dice.event.EnderDiceHandler.RAIN_WATER_DAMAGE_MULTIPLIER;
         });
+
+        // === 内置:金鲤立牌(souri)「葫芦饮 / 仙酿 / 金鲤化龙」加攻 ===
+        // 葫芦饮 +3、仙酿 +4(定值,效果壳不带原版修饰符);金鲤化龙后每层金鳞 +1。
+        // 全部按**效果/附件实时取值** ⇒ 效果到期或卸下立牌后立即失效,不落地任何修饰符。
+        registerAttackModifier((ctx, ap) -> {
+            if (ctx.attacker.level().isClientSide()) return ap;
+            if (!(ctx.attacker instanceof Player __souri)) return ap;
+            if (__souri.hasEffect(Effects.holder(ModEffects.GOURD_DRINK.get()))) {
+                ap += com.merlinkitsune.astral_dice.effect.GourdDrinkEffect.ATTACK_BONUS;
+            }
+            if (__souri.hasEffect(Effects.holder(ModEffects.IMMORTAL_BREW.get()))) {
+                ap += com.merlinkitsune.astral_dice.effect.ImmortalBrewEffect.ATTACK_BONUS;
+            }
+            if (__souri.hasEffect(Effects.holder(ModEffects.SOURI_DRAGON.get()))) {
+                ap += com.merlinkitsune.astral_dice.item.sign.SouriSignManager.getGoldScales(__souri)
+                        * com.merlinkitsune.astral_dice.item.sign.SouriSignManager.ATTACK_PER_SCALE;
+            }
+            return ap;
+        });
     }
 
     public record PowerRange(int min, int max) {
