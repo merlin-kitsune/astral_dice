@@ -79,6 +79,7 @@ The Abyss Reagent chip is named consistently now: display name, tooltip and ever
 - **All four lines are release lines.** `neoforge-1.21.1`, `forge-1.20.1`, `neoforge-26.1.2` and `fabric-1.20.1` stay at feature parity; every GitHub Release carries all four jars, tagged with the bare base version (this release: `1.5.0`) and published as a stable release. CI builds every line in one run (`.github/workflows/build.yml`).
 - `neoforge-26.1.2` is the 26.1.x migration line. It ships in the same batch as the other three, as an attachment on the same Release, and never gets its own tag. There is no Iron's Spells 'n Spellbooks integration here, since upstream ships no 26.1.x build.
 - `fabric-1.20.1` is the Fabric port line (added 2026-09-29, merged into `multi-main` on 2026-10-01) and has been a stable release line since 1.5.0: same Release and same tag as the other three. It has its own prerequisite set (see [Fabric prerequisites](#fabric-1201-prerequisites)), no Curios, Bountiful or Iron's Spells integration, and the four recipe-mechanism differences listed under "Platform & Compatibility" in [CHANGELOG.md](CHANGELOG.md).
+- `fabric-1.21.1` is a fifth subproject that builds from this worktree but is **not released**. It is the P1 scaffolding line (see [the port feasibility plan](docs/features/fabric-1211-port-feasibility-plan.md)): it stays out of this support matrix, out of every GitHub Release and off CurseForge until its acceptance gates are met. Its jar appears in the provenance table below only so the build output stays traceable.
 
 ## Dependencies
 
@@ -127,11 +128,26 @@ names the **code commit** the jar was built from; the README update that records
 
 | Line | Version | Built from | Built at | Size (B) | SHA-256 |
 |---|---|---|---|---|---|
-| neoforge-1.21.1 | 26.4-SNAPSHOT.10+neoforge_1.21.1 | `ffa127a2`（库引脚 .2 + .10） | 2026-11-10T00:07:30+08:00 | 2,780,133 | `692f2c053a4fca98f744f5e84f0ebfaf1a8c62b9f502421d11ecfcc18643c7a2` |
-| forge-1.20.1 | 26.4-SNAPSHOT.10+forge_1.20.1 | `ffa127a2`（库引脚 .2 + .10） | 2026-11-10T00:07:30+08:00 | 2,830,219 | `9a243efcc4f30ae338429f8559ae570b0f25e71fd8ddba93f31f7b33116c84a7` |
-| neoforge-26.1.2 | 26.4-SNAPSHOT.10+neoforge_26.1.2 | 同上（本线无 build-info） | 2026-11-09T22:16:16+08:00 | 2,912,982 | `48a455cfeed1c832a7838d99cbd962cde983f96b621d5c5b83d9e045f2410d5b` |
+| neoforge-1.21.1 | 26.4-SNAPSHOT.10+neoforge_1.21.1 | `3a6df49c`（库引脚 .2 + .10） | 2026-11-10T01:53:14+08:00 | 2,780,786 | `a340082fb2f14f1b8b504075eb95890e4690f56a1544660164e031aa97e05ba0` |
+| forge-1.20.1 | 26.4-SNAPSHOT.10+forge_1.20.1 | `3a6df49c`（库引脚 .2 + .10） | 2026-11-10T01:53:14+08:00 | 2,830,919 | `9d567924dbd26d5b24387bb919ed729ec98325434798cd8a5549d980f1d9ac85` |
+| neoforge-26.1.2 | 26.4-SNAPSHOT.10+neoforge_26.1.2 | 无 build-info，commit 不可回指（早于 `3a6df49c`） | 2026-11-09T22:16:16+08:00 | 2,912,982 | `48a455cfeed1c832a7838d99cbd962cde983f96b621d5c5b83d9e045f2410d5b` |
 | fabric-1.20.1 | 26.4-SNAPSHOT.10+fabric_1.20.1 | `58992f0c`（库引脚 .11 + .10） | 2026-11-09T22:32:17+08:00 | 3,023,620 | `b1ed477eafea1ea45a532e50d3b15915ddea4c16b1949661fcec5bd3da0fff2e` |
 | fabric-1.21.1 | 26.4-SNAPSHOT.10+fabric_1.21.1 | `58992f0c`（库引脚 .9 + .10） | 2026-11-09T22:32:52+08:00 | 3,049,924 | `7a6f8169afb89767c39f13321062abcf6fc60aa8bde8c01a330c96c465dc8b53` |
+
+The two `fabric-*` rows and the `neoforge-26.1.2` row predate the 2026-11-10T01:53 rebuild and are unchanged by it;
+only the two P0 lines were rebuilt, at commit `3a6df49c`. Both P0 jars had their `<jar>.sha256` sidecars regenerated from the
+final bytes after that rebuild. `fabric-1.21.1` is tracked here because it is built from this worktree, but it is **not** a
+release line yet: it is the P1 scaffolding line, has no row in the support matrix above, and gets no Release attachment
+(see `docs/features/fabric-1211-port-feasibility-plan.md`).
+
+Live smoke for this batch (Linux host, 2026-11-10): both P0 jars were launched from `build/libs` into `testworld`.
+On `neoforge-1.21.1` the 金鲤 (`astral_dice:souri_sign`) tooltip renders every line, including the 「金鳞：2 / 4」
+status line, which is read from the **viewer's** attachment (`ModTooltipHandler.java:1646-1656`), not from the stack.
+On `forge-1.20.1` the same commit registers the item (1593 items; `astral_dice:souri_sign` is the only `souri` id),
+`SouriSignManager.getGoldScales` reads 2, `SouriSignItem.isEquipped` is true, and the `souri_gold_scale` /
+`souri_dragon` effects plus the `souri_drink` entity are registered. Both sessions stopped cleanly and left
+no 25565 / 25575 / 25585 listener. The only log errors are Forge's own version-check timeouts (the game JVM has
+no proxy), which do not affect loading.
 
 Both fabric lines were rebuilt afterwards. The stall was a throughput problem, not a dead end: after an interrupted
 build Loom marked its cache lock `ACQUIRED_PREVIOUS_OWNER_DISOWNED` and re-downloaded `minecraft-server.jar` (47.8 MB)
