@@ -122,7 +122,8 @@ The Abyss Reagent chip is named consistently now: display name, tooltip and ever
 
 ## Build provenance (26.4-SNAPSHOT.11)
 
-> All five lines were rebuilt from `011a6891` on 2026-11-10T15:21 (+08:00). The table records exactly those artefacts.
+> All five lines were rebuilt from `011a6891` on 2026-11-10T15:21 (+08:00). The table records exactly those artefacts, except that
+> `neoforge-1.21.1` was rebuilt alone at 23:17 from `51ff5691` after the Huntsman-Sign acceptance edits (see the note after the table).
 
 Each jar carries `META-INF/astral_dice/build-info.json` with `{version, commit, builtAt, classCount}` and ships a
 sibling `<jar>.sha256` (neoforge-1.21.1 and forge-1.20.1 only; the other lines carry no build-info). `build-info.commit`
@@ -130,7 +131,7 @@ names the **code commit** the jar was built from; the README update that records
 
 | Line | Version | Built from | Built at | Size (B) | SHA-256 |
 |---|---|---|---|---|---|
-| neoforge-1.21.1 | 26.4-SNAPSHOT.11+neoforge_1.21.1 | `011a6891`（库引脚 .2 + .11） | 2026-11-10T15:21:27+08:00 | 2,781,337 | `6eef0a89380ffb78865638601260d1c4baa56008008b8ccb32370d996fa05de6` |
+| neoforge-1.21.1 | 26.4-SNAPSHOT.11+neoforge_1.21.1 | `51ff5691`（库引脚 .2 + .11） | 2026-11-10T23:17:51+08:00 | 2,827,006 | `ba9233142422055acb96a78a9c9e57c122208701568f2851130bd3f72a2413d5` |
 | forge-1.20.1 | 26.4-SNAPSHOT.11+forge_1.20.1 | `011a6891`（库引脚 .2 + .11） | 2026-11-10T15:21:28+08:00 | 2,831,252 | `0fa60d4641bd9aa5621645e9336f8464e953ff8af7176a06b276b6c1c17aa2b8` |
 | neoforge-26.1.2 | 26.4-SNAPSHOT.11+neoforge_26.1.2 | 无 build-info，commit 不可回指（与 P0 同批构建） | 2026-11-10T15:21:27+08:00 | 2,982,819 | `eb1a739acefe3a4d0b035f1e136134c32c17ae43c1b1863773ac589081bc70de` |
 | fabric-1.20.1 | 26.4-SNAPSHOT.11+fabric_1.20.1 | 无 build-info，commit 不可回指（与 P0 同批构建） | 2026-11-10T15:21:30+08:00 | 3,094,347 | `04f9bf65ab57e67a178d4e3024ca4a706d656c8fcd192a7621137a38df64d2a1` |
@@ -140,6 +141,11 @@ All five rows come from one build run (`gradlew --no-daemon --no-configuration-c
 `BUILD SUCCESSFUL in 6s`, 28 executed / 16 up-to-date). Both P0 jars had their `<jar>.sha256` sidecars regenerated from the
 final bytes, next to the jars in `<line>/build/libs/` and in the root `build/libs/` mirror. Only the two P0 jars embed
 `build-info.json`; the other three lines have no such descriptor, so their rows are identified by size + hash only.
+`neoforge-1.21.1` was rebuilt a second time on 2026-11-10T23:17 (+08:00) from `51ff5691` (Huntsman Sign sound / rarity /
+recipe acceptance edits). That jar is 2,827,006 B, `sha256 ba92331…13d5`, `classCount 588`, and the same bytes sit in
+`neoforge-1.21.1/build/libs/`, the root `build/libs/` mirror and `run/1.21.1/mods/`, with its `.sha256` sidecar regenerated
+from the final bytes. The other four rows are still the 15:21 artefacts; `forge-1.20.1` does not have the acceptance edits yet.
+
 `fabric-1.21.1` is tracked here because it is built from this worktree, but it is **not** a release line yet: it is the P1
 scaffolding line, has no row in the support matrix above, and gets no Release attachment
 (see `docs/features/fabric-1211-port-feasibility-plan.md`).
