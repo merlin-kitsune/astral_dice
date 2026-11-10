@@ -28,12 +28,13 @@
 | 放置期移速 | `MOVEMENT_SPEED` +10%，`ADD_MULTIPLIED_TOTAL` | 放置期专属，终点门放下即移除 |
 | 主动冷却 | **全局立牌规则**：`GameplayConstants.SIGN_ACTIVE_COOLDOWN_SECONDS`（默认 180 s = 3600 tick） | 2026-11-10 用户裁决「遵守全局规则，默认 180 秒」⇒ 不覆写 `activeCooldownBaseTicks` / `activeCooldownBaseTicksNoBattery`，直接继承 `BaseSignItem` 默认链（`WeirdDiceHandler.signCooldownTicks`，含充能封顶 180→160 s 与「额外电池筹码 ×0.5」减免）；锁定结束由 `SignActiveLockMachine` 起冷却 |
 | 传送冷却 | `TELEPORT_COOLDOWN_TICKS = 100`（5 s，静默） | 同一玩家对同一扇门每 5 s 只能传一次；**无 actionbar 提示**（用户 m02953 第 6 条） |
-| 站定判定 | `STAND_TICKS = 30`（1.5 s） | 玩家踩进门内需连续站定 1.5 s 才实际传送（每 2 tick 累计一次，离开即清零） |
+| 站定半径 | `STAND_RADIUS = 0.55D` | 2026-11-10 用户裁决「判定范围太大，改为踩在门正上方」：按与门盘中心的**水平距离**判定（旧实现用实体包围箱 `inflate(0.6)`，等效半径约 1.2 格，贴边走过也会传）；另要求脚底与门同层（`dy ∈ [-0.5, 1.0]`） |
+| 站定判定 | `STAND_TICKS = 30`（1.5 s） | 玩家踩进门盘正上方需连续站定 1.5 s 才实际传送（每 2 tick 累计一次，离开即清零）；**踩上去就每 2 tick 播一次门面粒子**（不等站定完成，冷却中/保险未解除也播） |
 | 主人保险 | `OWNER_ARM_RADIUS = 4.0D` | 刚放好的一对门不会立刻传送放置者本人：本人需先离开门 4 格外，该门对主人才解除保险（用户 m02953 第 7 条） |
 | 被动叠层 | 每层攻击力 `+2`，时长 `STACK_DURATION_TICKS = 2400`（2:00） | 每次穿越刷新时长，层数不设上限 |
 | 敌对伤害 | `PORTAL_HAZARD_RADIUS = 2.5` 格内每 20 tick 受 `2.0` 点 `SKILL_DAMAGE` | 用户口径「魔法伤害」= 本仓 `SKILL_DAMAGE`（与魔渊触须同款） |
 | 一次性计数 | `visitedUuids`（NBT `Visited`） | 每扇门 × 每人只结算一次被动叠层；【传送本身】可重复，不受此限制 |
-| 显示常量 | `MODEL_SCALE = 1.6` / `GROUND_LIFT = 0.10` / `SURFACE_Y = 0.02` / `SURFACE_RADIUS = 0.62` / `SURFACE_SPIN_TICKS = 200` / `PENDING_RENDER_SCALE = 0.95` | 集中声明在 `client/InkShadowPortalRenderer`，注释「待用户验收调整」 |
+| 显示常量 | `MODEL_SCALE = 1.6` / `GROUND_LIFT = 0.12` / `SURFACE_Y = 0.03` / `SURFACE_RADIUS = 0.62` / `SURFACE_SPIN_TICKS = 200` / `PENDING_RENDER_SCALE = 0.95` | 集中声明在 `client/InkShadowPortalRenderer`，注释「待用户验收调整」 |
 
 状态载体（均为玩家级附件，primitive、仅服务端）：`INKSHADOW_PENDING_UUID`、`INKSHADOW_PENDING_DIM`、`INKSHADOW_PENDING_DEADLINE`、`INKSHADOW_LOCKED_SLOT`、`INKSHADOW_STACKS`、`INKSHADOW_STACKS_EXPIRE`。
 冷却复用立牌统一口径（`SIGN_ACTIVE_COOLDOWN_END` / `SIGN_ACTIVE_MAX_COOLDOWN`），不新建。
@@ -47,6 +48,7 @@
 3. **有 pending 且在窗口内**：第二次按键**不经过 `performSkillForCurio`** —— 由网络入口 `SignActivatePayload.handle`（neo21）/ `ModNetwork.SignActivateMessage` 前置钩子（forge）先问 `InkShadowSignManager.tryPlaceEndFromKey(player)`，命中即 `return`。钩子内落地**终点门**，两扇门同时转 ACTIVE（双向可穿越），`expireTick = now + 3600`，清 pending、移除移速、锁定随 `isGateEffectActive` 变 false 而结束并按全局立牌规则起冷却（默认 180 s）。
    - 这样设计的理由：一次主动技能只结算一次。若第二次按键仍走 `performSkill`，会二次触发风扇筹码发牌 / 电流核心 / 技能音效 / `SignActiveTriggeredEvent`。
    - 终点门落点非法（准星没指到可放置方块面）⇒ 红字 `msg.astral_dice.inkshadow_no_ground`，**保留窗口可重试**，不消耗冷却。
+   - **提示口径（2026-11-10 用户裁决「只用单个 actionbar，优先公用通道，有覆写用覆写」）**：起始门落地的那一条 actionbar 由公用事件 `SignActiveTriggeredEvent` 承载 —— `InkShadowSignEvents.onSignActiveTriggered` 先 `setHandled()` 压掉基类的通用文案 `<立牌>主动技能已启动!`，再代发 `msg.astral_dice.inkshadow_place_start`；`placeStartPortal` 自身**不再**发提示（早期两条叠在一起）。终点门走前置钩子、不经该事件，仍由 `placeEndPortal` 单选 `msg.astral_dice.inkshadow_place_end`。实机两条各只出现一条。
 4. 放置期限制（服务端强制）：无法攻击（`AttackEntityEvent` 取消）、不能切换武器（每 tick 复位锁定槽位）、不能与方块实体交互（`PlayerInteractEvent` 五个子事件取消）；ESC 与立牌技能键不受影响。
 5. **作废路径**：窗口超时、死亡（`LivingDeathEvent`）、退出（`PlayerLoggedOutEvent`）⇒ 起始门 discard、pending 清空、移速移除、槽位解锁；终点门不存在 ⇒ 无残留。
 6. 起始门在终点门放下前**无效**：PENDING 态不参与穿越扫描，也不触发被动。
@@ -62,7 +64,7 @@
 ### §2.3 门实体（`InkShadowPortalEntity`）
 
 - `extends Entity implements GeoEntity`；`noPhysics`、无重力、不可拾取、不可被攻击（`isInvulnerableTo` 恒 true、`hurt` 恒 false）、无碰撞箱 ⇒ 不能破坏、不能被攻击、不挡路。
-- 穿越（2026-11-10 改版）：ACTIVE 门每 2 tick 扫 `inflate(0.6)` 内玩家，每名玩家累计 `standingTicks`；累计 ≥ `STAND_TICKS`（1.5 s）且该玩家未在 `teleportCooldown` 内 ⇒ 传送到配对门（**跨维度**用 `teleportTo(ServerLevel, x, y, z, yaw, pitch)`，落点 y = 对面门 y + 0.05），随后：写本门 5 s 冷却、给对面门写 5 s 冷却并清其站定计数、`visitedUuids` 首次为真时结算被动叠层、调跃迁引擎钩子。
+- 穿越（2026-11-10 改版）：ACTIVE 门每 2 tick 在 `inflate(1.0)` 内向候选玩家筛「踩在门正上方」（`isStandingOn`：水平距离 ≤ `STAND_RADIUS = 0.55` 且 `dy ∈ [-0.5, 1.0]`），每名玩家累计 `standingTicks`；有人踩着就每 2 tick `sendParticles(ParticleTypes.PORTAL, 6, 0.32, 0.05, 0.32, 0.02)`（踩上去即有反馈）；累计 ≥ `STAND_TICKS`（1.5 s）且该玩家未在 `teleportCooldown` 内 ⇒ 传送到配对门（**跨维度**用 `teleportTo(ServerLevel, x, y, z, yaw, pitch)`，落点 y = 对面门 y + 0.05），随后：写本门 5 s 冷却、给对面门写 5 s 冷却并清其站定计数、`visitedUuids` 首次为真时结算被动叠层、调跃迁引擎钩子。
 - **主人保险**：每 tick 检查门主人与门的距离，超过 `OWNER_ARM_RADIUS` 才把 `ownerArmed` 置 true；未解除保险时主人本人踩门不传送（NBT `OwnerArmed` 持久化）。
 - 离开门范围即 `standingTicks` 清零；不再使用原版 `setPortalCooldown`（会连带影响原版传送门，且 5 s 静默要求由本实体自己的表实现）。
 - 穿越视听（2026-11-10 用户裁决「传送可使用末影珍珠传送音效」）：出发前在起点、传送后在落点各播一次 `SoundEvents.ENDERMAN_TELEPORT`（`SoundSource.PLAYERS`，1.0/1.0）+ 40 粒 `ParticleTypes.PORTAL`，与 `event/EnderDiceHandler#playTeleportEffects` 同源同参数（掷末影珍珠的传送音效）。落点特效在 `teleportTo` 之后播，跨维度时包才送得到。
@@ -70,7 +72,7 @@
 
 ### §2.4 渲染（首版占位，用户验收后定）
 
-- 门体：`inkshadoweffect.geo.json` + `textures/entity/inkshadoweffect.png`（**64×64，与 bbmodel 内嵌贴图逐字节一致**，geo 的 `texture_width/height` 同步为 64、全部 354 个面的 uv/uv_size ×2），GeckoLib idle 动画 `animation.inkshadoweffect.idle`（2.0 s 循环，四骨 Y 轴自转，数值与 bbmodel 的 `Idle` 关键帧一致）。
+- 门体：`inkshadoweffect.geo.json` + `textures/entity/inkshadoweffect.png`（**64×64，与 bbmodel 内嵌贴图逐字节一致**，geo 的 `texture_width/height` 同步为 64、全部 354 个面的 uv/uv_size ×2），GeckoLib idle 动画 `animation.inkshadoweffect.idle`（**4.0 s 循环**，四骨 Y 轴自转时长按 2.0 s 的 `Idle` 关键帧整体×2 —— 2026-11-10 用户裁决「动画太快，速度减半」；运行时 `getAnimation(...).length()` = 80 tick）。
   - 2026-11-10 修（闪修第二轮）：首版曾把 64×64 贴图缩到 32×32 去迁就 geo 的 `texture_width: 32`，等于<b>降分辨率</b>；后来闪烁在关光影时同样出现，用户点名「检查是不是又是降分辨率导致的」⇒ 改为保留原始 64×64 并把 geo 的 uv 空间整体 ×2，同时补 `inkshadoweffect.png.mcmeta`：
     ```json
     { "texture": { "blur": false, "clamp": true } }
@@ -151,6 +153,17 @@ tooltip 挂点：`event/ModTooltipHandler` 的 `ModItems.INKSHADOW_SIGN` 块（�
 | 视听 | 穿越播 `ENDERMAN_TELEPORT` + 40 粒 `PARTICLE_PORTAL`（起点与落点各一次） |
 | 编译 | `./gradlew --no-daemon --offline :neoforge-1.21.1:compileJava` ⇒ BUILD SUCCESSFUL |
 | 截图 | 双门低角度 / 俯视 / overlay 版 / 未配对单门（sha256 见交付报告；`temp/` 下未入库） |
+
+### §7.1c 提示口径 / 动画时长 / 站定范围（2026-11-10 22:1x–22:2x，AutoJS 服务端探针 + 窗口截图）
+
+| 项 | 读数 |
+|---|---|
+| 起始门提示 | 触发后 actionbar **只有一条**「暗影之门：起始之门已放置，30 秒内选择终点之门的位置」，基类通用文案「小猎手立牌:主动技能已启动!」已被 `setHandled()` 压掉；`pending=true`（截图 `temp/shots/actionbar/start-single.png`） |
+| 终点门提示 | `tryPlaceEndFromKey` ⇒ `true`、`pending=false`，actionbar 只有一条「暗影之门：终点之门已放置，配对存在 3:00」（截图 `temp/shots/actionbar/end-single.png`） |
+| 动画时长 | `GeckoLibCache.getBakedAnimations()` 的 key 是资源路径（`astral_dice:animations/inkshadoweffect.animation.json`）；`getAnimation('animation.inkshadoweffect.idle').length()` = **80 tick**（4.0 s，改前半速 40） |
+| 站定范围 | 门对 `(316.5,-60,300.5)` / `(352.5,-60,300.5)`：站到距中心 **1.3 格**（旧判定会命中的位置）保持 3 s ⇒ 原地不动（读回 `x=317.80`）；站到中心 ⇒ 传送生效（随后读到配对门位置 `x=352.50`） |
+| 踩门粒子 | 站在门盘中心约 0.35 s 后截图可见门面上一片 `PORTAL` 粒子（`sendParticles(ParticleTypes.PORTAL, 6, 0.32, 0.05, 0.32, 0.02)` 每 2 tick） |
+| 编译 | `:neoforge-1.21.1:compileJava` ⇒ BUILD SUCCESSFUL；Java 改动必须 `stop.sh` + `launch.sh` 重启才生效 |
 
 **未验证 / 留给用户**：门面尺寸与转速是否合眼、模型缩放 1.6 是否合适、3:00 到期的实际消失时刻（本轮只核了 `Expire` 同值）、死亡/退出作废在第二轮代码下未重跑（首版曾验）、forge 线未同步。
 

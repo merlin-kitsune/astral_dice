@@ -1,7 +1,10 @@
 package com.merlinkitsune.astral_dice.event;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
+import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.sign.InkShadowSignManager;
+import com.merlinkitsune.astral_dice.item.sign.SignActionBar;
+import com.merlinkitsune.starengine.event.SignActiveTriggeredEvent;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -22,6 +25,24 @@ import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 public final class InkShadowSignEvents {
 
     private InkShadowSignEvents() {
+    }
+
+    /**
+     * 主动技能反馈：**只发一条**（2026-11-10 用户裁决 m03850）。
+     *
+     * <p>此前「起始之门已放置」由 {@link InkShadowSignManager#placePortal} 在 {@code handleUse} 里直接发，
+     * 而 {@code BaseSignItem.performSkill} 第 5 步随后又发默认的「主动技能已启动」——客户端 actionbar 是
+     * 单槽位，两条同 tick 竞争、看着像重叠。改为走**公用通道** {@link SignActiveTriggeredEvent}：
+     * 本处理器认领该立牌（{@code setHandled()} 抑制默认提示），并在这里发唯一一条。
+     * 终点门那一次按键走网络包前置钩子、不经本事件，仍由 {@code placeEndPortal} 自己发。
+     */
+    @SubscribeEvent
+    public static void onSignActiveTriggered(SignActiveTriggeredEvent event) {
+        if (!event.getSignStack().is(ModItems.INKSHADOW_SIGN.get())) return;
+        event.setHandled();
+        if (event.getPlayer() instanceof ServerPlayer player && InkShadowSignManager.hasPending(player)) {
+            SignActionBar.sendSignActionBar(player, "msg.astral_dice.inkshadow_place_start");
+        }
     }
 
     @SubscribeEvent

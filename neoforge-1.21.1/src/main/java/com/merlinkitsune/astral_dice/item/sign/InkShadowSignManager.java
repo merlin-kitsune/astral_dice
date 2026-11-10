@@ -106,7 +106,8 @@ public final class InkShadowSignManager {
         ModAttachments.setInkShadowLockedSlot(player, player.getInventory().selected);
         SignAttributeUtil.apply(player, Attributes.MOVEMENT_SPEED, InkShadowSignItem.SPEED_MODIFIER_KEY,
                 InkShadowSignItem.SPEED_AMPLIFIER, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
-        sendActionBar(player, "msg.astral_dice.inkshadow_place_start");
+        // 本 tick 的唯一 actionbar 由 event/InkShadowSignEvents#onSignActiveTriggered 走公用
+        // SignActiveTriggeredEvent 通道发送（此处再发会与默认「主动技能已启动」争同一槽位）
         return true;
     }
 

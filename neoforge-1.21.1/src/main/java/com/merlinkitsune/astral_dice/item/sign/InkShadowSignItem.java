@@ -70,6 +70,14 @@ public class InkShadowSignItem extends BaseSignItem {
     /** 门主人放置完一对门后，必须先离开这个半径（格）才会被自己的门传送 */
     public static final double OWNER_ARM_RADIUS = 4.0D;
 
+    /**
+     * 判定「踩在门正上方」的水平半径（格）。
+     *
+     * <p>2026-11-10 用户裁决：原实现用实体包围箱外扩 0.6 格判定，范围过大（贴着门边走过也会被传）。
+     * 现在必须落在门盘中心 {@code STAND_RADIUS} 之内才算站上，配合 {@code STAND_TICKS} 站定后才传送。
+     */
+    public static final double STAND_RADIUS = 0.55D;
+
     /** 移速修饰符的固定 key（重复 apply 只改数值，不叠出多个修饰符） */
     public static final String SPEED_MODIFIER_KEY = "inkshadow_place_speed";
 

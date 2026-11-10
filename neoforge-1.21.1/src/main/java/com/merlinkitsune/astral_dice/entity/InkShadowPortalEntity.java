@@ -197,6 +197,26 @@ public class InkShadowPortalEntity extends Entity implements GeoEntity {
         }
     }
 
+    /**
+     * 玩家是否「踩在门正上方」：与门盘中心的水平距离 ≤ {@link InkShadowSignItem#STAND_RADIUS}，
+     * 且脚底与门所在层相差不超过 ±0.75 格（避免隔着一格地面也被判定）。
+     */
+    private boolean isStandingOn(Player player) {
+        double dx = player.getX() - this.getX();
+        double dz = player.getZ() - this.getZ();
+        double r = InkShadowSignItem.STAND_RADIUS;
+        if (dx * dx + dz * dz > r * r) return false;
+        double dy = player.getY() - this.getY();
+        return dy >= -0.5D && dy <= 1.0D;
+    }
+
+    /** 有人踩在门上时每 2t 播一次门面粒子（踩上去就有反馈，不等 1.5s 站定完成）。 */
+    private void spawnStandParticles(ServerLevel serverLevel) {
+        serverLevel.sendParticles(ParticleTypes.PORTAL,
+                this.getX(), this.getY() + 0.15D, this.getZ(),
+                6, 0.32D, 0.05D, 0.32D, 0.02D);
+    }
+
     /** 门主人离开保险半径后置 true；主人不在线则保持未解除。 */
     private void armOwnerOnLeaving(ServerLevel serverLevel) {
         if (this.ownerArmed || this.ownerUuid == null) return;
@@ -213,11 +233,15 @@ public class InkShadowPortalEntity extends Entity implements GeoEntity {
     private void scanPlayers(ServerLevel serverLevel, long now) {
         Set<UUID> inside = new HashSet<>();
         for (Player player : serverLevel.getEntitiesOfClass(Player.class,
-                this.getBoundingBox().inflate(0.6D))) {
+                this.getBoundingBox().inflate(1.0D))) {
             if (!(player instanceof ServerPlayer serverPlayer)) continue;
             if (!serverPlayer.isAlive() || serverPlayer.isSpectator()) continue;
+            // 2026-11-10 用户裁决:必须踩在门正上方(水平半径内),贴着门边走过不算
+            if (!isStandingOn(serverPlayer)) continue;
             UUID id = serverPlayer.getUUID();
             inside.add(id);
+            // 踩上去就播粒子(与是否在 5s 冷却、门主人保险是否解除无关),给「正在生效」的即时反馈
+            spawnStandParticles(serverLevel);
             Long cdUntil = this.teleportCooldown.get(id);
             if (cdUntil != null && now < cdUntil) continue;
             if (this.ownerUuid != null && this.ownerUuid.equals(id) && !this.ownerArmed) continue;
