@@ -22,9 +22,9 @@ import net.minecraft.resources.ResourceLocation;
 public class InkShadowPortalModel extends GeoModel<InkShadowPortalEntity> {
 
     private static final ResourceLocation GEO =
-            new ResourceLocation(AstralDiceMod.MODID, "geo/inkshadoweffect.geo.json");
+            new ResourceLocation(AstralDiceMod.MODID, "geo/inkshadoweffect_ink128.geo.json");
     private static final ResourceLocation TEXTURE =
-            new ResourceLocation(AstralDiceMod.MODID, "textures/entity/inkshadoweffect.png");
+            new ResourceLocation(AstralDiceMod.MODID, "textures/entity/inkshadoweffect_ink128.png");
     private static final ResourceLocation ANIM =
             new ResourceLocation(AstralDiceMod.MODID, "animations/inkshadoweffect.animation.json");
 

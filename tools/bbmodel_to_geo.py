@@ -56,6 +56,7 @@ MODELS = (
     {"name": "winegourd", "bbmodel": "models/winegourd.bbmodel"},
     {"name": "winegourdbetter", "bbmodel": "models/winegourdbetter.bbmodel"},
     {"name": "inkshadoweffect", "bbmodel": "models/inkshadoweffect.bbmodel"},
+    {"name": "inkshadoweffect_ink128", "bbmodel": "models/ink128.bbmodel"},
 )
 
 FACE_ORDER = ("north", "east", "south", "west", "up", "down")

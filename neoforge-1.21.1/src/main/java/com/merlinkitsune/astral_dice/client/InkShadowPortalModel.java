@@ -10,12 +10,12 @@ public class InkShadowPortalModel extends GeoModel<InkShadowPortalEntity> {
 
     @Override
     public ResourceLocation getModelResource(InkShadowPortalEntity animatable) {
-        return ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, "geo/inkshadoweffect.geo.json");
+        return ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, "geo/inkshadoweffect_ink128.geo.json");
     }
 
     @Override
     public ResourceLocation getTextureResource(InkShadowPortalEntity animatable) {
-        return ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, "textures/entity/inkshadoweffect.png");
+        return ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, "textures/entity/inkshadoweffect_ink128.png");
     }
 
     @Override
