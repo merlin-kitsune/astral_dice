@@ -1,8 +1,7 @@
 # 小猎手立牌（inkshadow）规格与实现记录
 
 > 本文是**语义冻结 + 实现记录**：P0 两线（`neoforge-1.21.1` / `forge-1.20.1`）2026-11-10 首版落地（用户 m02258 下达，明确「先做第一版供验收，显示效果由我自己定」）。
-> **2026-11-10 第三轮（被动改按存活门对生效，用户 m04094）同样只落在 `neoforge-1.21.1`**；中文 tooltip 由用户亲手改写并按用户版本落盘。
-> **2026-11-10 第二轮验收改版（用户 m02953 / m03003）目前只落在 `neoforge-1.21.1`**：门贴地、门面改末地传送门样式平铺地面且只在成对时渲染、站定 1.5 s 传送、每门 5 s 静默冷却、主人先离开 4 格、成对存活 3:00、被动状态指示器用立牌图标。forge-1.20.1 仍是首版语义（见 §5 末行）。
+> **五线已落地（2026-11-11）**：第二轮验收改版（门贴地、门面改末地传送门样式平铺地面且只在成对时渲染、站定 1.5 s 传送、每门 5 s 静默冷却、主人先离开 4 格、成对存活 3:00、被动状态指示器用立牌图标）先落 `neoforge-1.21.1`，同日同步 `forge-1.20.1`；P1 三线（`fabric-1.20.1` / `fabric-1.21.1` / `neoforge-26.1.2`）按同一语义移植并逐线实机（§6 / §7.1g）。中文 tooltip 由用户亲手改写并按用户版本落盘。
 > **代码为真源**：本文任何数字若与代码不符，以代码为准并回改本文。§7 实机取证在验收轮次回填。
 > 需求正本：仓库根 `立牌计划表.txt`（小猎手段）+ 用户 m02258 的补充说明；`docs/features/sign-roadmap.md` §2.1 记录排期。
 
@@ -128,8 +127,9 @@ tooltip 挂点：`event/ModTooltipHandler` 的 `ModItems.INKSHADOW_SIGN` 块（�
 - 门不可破坏/不可攻击由「非 `LivingEntity` + 不可拾取 + `isInvulnerableTo` 恒真 + `hurt` 恒 false」实现，不走方块（因此不受领地/破坏事件影响）。
 - **传送语义（第二轮）**：门可反复使用，没有一次性限制；同一扇门对同一玩家 5 s 冷却、站定 1.5 s 才传，全程无 actionbar 提示；被动叠层仍是每扇门 × 每人一次性（`visitedUuids`）。门是**双向**的：两扇门都能把人送到对面（Apex 恶灵大招的折跃门机制）。
 - **被动状态指示器**：叠层期间给玩家挂 `inkshadow_stack` 增益效果（amplifier = 层数 − 1，图标即立牌图标），HUD 的剩余时间即**最晚存活门对的剩余时间**；效果与攻击修饰符同生命周期（`refreshStackHud` 在层数/门对失效/卸下三处同步）。
-- 未做：P1 三线、门与门的视觉配对提示（颜色/编号）、多人并发门数量上限（首版不限制）。音效已按第三轮要求补全（环境音 / 进入 / 传送 / 跨维度）。
-- **forge-1.20.1 仍是旧值**：本批（冷却全局化 + 下界传送门音效 + 稀有度/配方）按要求**只改 1.21.1**，forge 线仍保留 `ACTIVE_COOLDOWN_TICKS = 2400`、末影珍珠音效、史诗品质与旧配方（星币尘 + 钻石骰），待验收通过后同步。
+- **跨维度放置的已知缺陷（2026-11-11 fabric-1.20.1 实机发现，待修）**：起点门放在 A 维度、玩家带窗口跑到 B 维度放终点门时，`resolvePendingPortal` 用 **pending 维度**的 level 去 `getEntity(uuid)`，若起点门所在区块已卸载就取不到实体 ⇒ 回红字「起始之门已消失」并保留窗口（`fabric-1.20.1/.../InkShadowSignManager.java:175-183`）。实体级 `activate(expireTick, pairUuid, pairDim, pairPos)` 本身支持跨维度（§7.1 / §7.1f 的跨维度读数都是直接 activate 建的），所以缺的是「跨维度放置」这条路径。候选修法：起点门区块 ticket（`ServerChunkCache.addRegionTicket`）／把起点门坐标存进附件后强制 `getChunk`／延长窗口。改一条线即需同步五线，等用户裁决。
+- 未做：门与门的视觉配对提示（颜色/编号）、多人并发门数量上限（首版不限制）。音效已按第三轮要求补全（环境音 / 进入 / 传送 / 跨维度）。
+- **forge-1.20.1 已同步**（2026-11-11 00:0x，提交 `75b335d6`）：冷却走全局、下界传送门三件套音效、稀有品质、简化配方（star_coin / dice）与 1.21.1 逐项一致；差异只在平台 API（`GeoModel#getRenderType`、`TickEvent.PlayerTickEvent` END、`SignActionBar`），见 §7.1f。
 
 ## §6 跨线覆盖
 
@@ -137,7 +137,9 @@ tooltip 挂点：`event/ModTooltipHandler` 的 `ModItems.INKSHADOW_SIGN` 块（�
 |---|---|
 | `neoforge-1.21.1` | 首版已落地（2026-11-10）+ 第二轮验收改版已实机验证 + 第三轮（被动改按存活门对生效）已实机验证 + **第四轮（下界传送门音效 / 稀有品质 / 简化配方）已编译 + 实机复核**（§7.1e） |
 | `forge-1.20.1` | **已同步到 1.21.1 终态**（2026-11-11 00:0x，提交随本批）：稀有品质、简化配方（star_coin / dice）、门 3:00、站定 1.5 s、双门 5 s 冷却、跨维度双向、下界传送门三件套音效、被动按存活门对叠层 + `inkshadow_stack` HUD、贴地无悬浮、门面平铺且未配对不画；实机读数见 §7.1f |
-| `fabric-1.20.1` / `fabric-1.21.1` / `neoforge-26.1.2` | **未做**（红线：P1 不自动跟进，等用户裁决） |
+| `fabric-1.20.1` | **已移植并实机**（2026-11-11，提交 `5777004a`；§7.1g）：物品/创造栏/门对/站定 1.5 s/5 s 冷却双向均通；`platform.event` 垫片只处理 `TickEvent.Phase.END`；`curioTick`→`onCurioTick`、`onUnequip`→`clearSignData` |
+| `fabric-1.21.1` | **已移植并实机**（2026-11-11，提交 `4caa00ff`；§7.1g）：Trinkets 饰品槽 + 客户端 6 项资源命中 + 双向/5 s 冷却成立 |
+| `neoforge-26.1.2` | **已移植并实机**（2026-11-11，提交 `18d5d89c`；§7.1g）：Identifier/Optional<Holder>/ValueInput·ValueOutput/GeckoLib5 全按 26.1.2 改写 |
 
 ## §7 实机取证
 
@@ -243,6 +245,16 @@ Astral Dice
 
 P0 双线首版：物品注册 / 起始门 `+0.25` 悬浮版 / 一次性 `visitedUuids` 穿越 / 2400 冷却 / 1.21.1 tooltip 全行（含「金鳞」式状态行由 viewer 决定的那类历史结论不适用于本牌）。**已被 §7.1 / §7.1e / §7.1f 取代**，保留作对照。
 
+### §7.1g P1 三线移植实机（2026-11-11 01:4x–02:0x，AutoJS 服务端探针；三线串行、每轮 stop 后端口清零）
+
+| 线 | 启动 | 读数 |
+|---|---|---|
+| `fabric-1.20.1` | log `scripts/test/linux/logs/fabric-1.20.1-20261111-014318.log`，wrapper 294642 / game 294782；**本轮首启失败**（`GLFW error 65548` + `xprop: unable to open display ':0'`）⇒ 需显式 `XAUTHORITY`（见 §8 第 4 条） | 玩家 `Player348`；`item.astral_dice.inkshadow_sign` / `maxStackSize=1` / `ASTRAL_DICE_RARE` / `dice_tab` 命中；门对 (9.5,-61,16.5)+(14.5,-61,21.5) 均 ACTIVE；站定 3.5 s ⇒ 传送成功；站 2.6 s 不动、7.1 s 反向传回；客户端 6 项资源（geo/png/动画/门面/物品/状态图标）全 true；**跨维度放置失败**（§5 缺陷条） |
+| `fabric-1.21.1` | log `scripts/test/linux/logs/fabric-1.21.1-20261111-015857.log`，wrapper 304117 / game 304207；AutoJS 是自有 Rhino 内核（无 KubeJS/BR/Utils） | 玩家 `Player995`；同上前三项一致，`dice_tab` 161 项命中；`p.serverLevel()` 取等级（`p.level` 在本线是方法、返回 Function）；门对 (14.5,-61,36.5)+(20.5,-61,42.5) 均 ACTIVE；站定 3.6 s ⇒ 传到对面；2.6 s 仍在原地、7.6 s 反向传回；未佩立牌时 `tickPlayer` 会作废窗口（设计如此，跨维度放置因此未能脚本化验证） |
+| `neoforge-26.1.2` | log `scripts/test/linux/logs/26.1.2-20261111-020546.log`，wrapper 310608 / game 310752；WORLD_READY marker 是 `logged in with entity id` + `Loaded <N> advancements` | 玩家 `Dev`；同上前三项一致；门对 (106.5,-61,103.5)+(112.5,-61,109.5) 均 ACTIVE；站定 3.6 s ⇒ 传到对面；2.2 s 原地、7.4 s 反向传回；`p.level` 在本线是**属性** |
+
+三线共同：`stop.sh` 均 `LINUX_STOP: OK`、25585/25565/25575 端口清零；截图本轮全部纯黑（显示器休眠，见 §8 第 4 条），视觉未取证。
+
 ## §8 复跑清单
 
 1. 编译：`JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 ./gradlew --no-daemon :neoforge-1.21.1:compileJava :forge-1.20.1:compileJava --console=plain`
@@ -255,3 +267,7 @@ P0 双线首版：物品注册 / 起始门 `+0.25` 悬浮版 / 一次性 `visite
    - **跑前必须 park `run/<线>/mods/astral_dice-*.jar`**（`mkdir -p temp/live-parked && mv run/1.21.1/mods/astral_dice-*.jar temp/live-parked/`）：runClient 会把 mods 里的同名 jar 与 `-Dfml.modFolders` 的 `build/classes` 一起当 mod 载入，**实机跑的是 jar 里的旧代码**（log 里 `Considering mod file candidate … Found valid mod file astral_dice-…jar`）。跑完 `mv` 回。2026-11-10 实证：不 park 时源码已改 `setPos(pos.getY())`，实机门仍在 -59.75。
    - 从后台 job 启动时 `DISPLAY` / `XAUTHORITY` 常为空 ⇒ 客户端会带着 `Authorization required, but no authorization protocol specified` 卡 6 分钟后失败；`run/start-*.sh` 已加两段兜底（X11 socket 存在则 `DISPLAY=:0`，`/run/user/$(id -u)/xauth_*` 取第一个）。
    - clash 内核未起时（`ss -ltnp | grep 7897` 为空）全链路加 `--offline`。
+   - **`XAUTHORITY` 必须显式给**：KDE 会话重启后 Xwayland 的 `-auth` 文件会换名（本轮 `/run/user/1000/xauth_reiZZS`，mtime 00:59），只给 `DISPLAY=:0` 的轮次会在启动时报 `GLFW error 65548: Wayland: The platform does not support setting the input focus` + `Authorization required, but no authorization protocol specified`。取法：`export XAUTHORITY=$(pgrep -a Xwayland | grep -o '/run/user/[0-9]*/xauth_[A-Za-z0-9]*' | head -1)`。
+   - **显示器休眠时截图全黑**：`mcp__computer-use-linux__screenshot`（窗口与整屏）返回的 `original_bytes` 恒定、画面纯黑（Xwayland 无 DPMS 扩展，`xset dpms force on` 报 `server does not have extension for dpms option`），视觉取证要等人醒着/屏幕点亮。
+   - **NeoForge 1.21.1 的 early display 在会话锁屏时无法交接窗口**：`EARLYDISPLAY: Failed to initialize the mod loading system and display` + `We seem to be having trouble handing off the window, tried for 1 second`，客户端会卡在模态框等用户点击 ⇒ P0 的 1.21.1 实机在该状态下跑不起来（fabric 线不受影响，26.1.2 也不走 early display）。
+   - P1 三线实机命令同上，把 `--version` 换成 `fabric-1.20.1` / `fabric-1.21.1` / `26.1.2`；datagen 三线任务为 `:fabric-1.20.1:runDatagen :fabric-1.21.1:runDatagen :neoforge-26.1.2:runServerData :neoforge-26.1.2:runClientData`（同样先 park 五枚 `run/*/mods/astral_dice-*.jar`）。
