@@ -2201,7 +2201,10 @@ public class DiceCombatEvents {
         if (isInCounterChain()) return;
         if (!(victim instanceof Player player)) return;
         if (!player.isAlive()) return;
-        if (!player.hasEffect(ModEffects.REN_SHIELD.get())) return;
+        // 金鲤立牌(souri):反击层数可脱离鼠鼠护盾独立存在(佩戴金鲤时上限放宽到 4,
+        // 护盾不在也能触发) ⇒ 闸门改为「有盾 或 佩戴金鲤」
+        boolean souriCounter = com.merlinkitsune.astral_dice.item.sign.SouriSignItem.isEquipped(player);
+        if (!player.hasEffect(ModEffects.REN_SHIELD.get()) && !souriCounter) return;
         if (ModAttachments.getRenCounterCharges(player) <= 0) return;
         if (!(event.getSource().getEntity() instanceof LivingEntity attacker)) return;
         if (attacker == player) return;
@@ -2209,10 +2212,19 @@ public class DiceCombatEvents {
         // 才消耗反击层数。视者 = 带盾玩家(player);于是队友 / 已驯服宠物 / 未激怒中立生物的
         // 攻击不再误消耗层数、也不再把反击打在友军身上(自伤已由上一行排除)。
         if (!PartyRelations.isHostileTo(player, attacker)) return;
-        // 一次性充能:先消耗层数(并同步摘掉「反击」图标),再注入伤害
-        ModAttachments.setRenCounterCharges(player, 0);
+        // 一次性充能:有盾时一次性耗尽;佩戴金鲤(counter 上限 4)时改为消耗 1 层。
+        // 先消耗层数(并同步刷新/摘掉「反击」图标),再注入伤害。
+        if (souriCounter) {
+            ModAttachments.setRenCounterCharges(player, Math.max(0, ModAttachments.getRenCounterCharges(player) - 1));
+        } else {
+            ModAttachments.setRenCounterCharges(player, 0);
+        }
         RenShieldManager.refreshCounterEffect(player);
         injectCounterDamage(player, attacker);
+        // 被动「不醉不归」:佩戴金鲤时每次反击 +1 层「金鳞」
+        if (souriCounter) {
+            com.merlinkitsune.astral_dice.item.sign.SouriSignManager.addGoldScale(player);
+        }
         if (player instanceof ServerPlayer sp) {
             ModNetwork.sendToPlayer(sp, new ModNetwork.ActionBarMessage(
                     Component.translatable("msg.astral_dice.ren_counter_fired")

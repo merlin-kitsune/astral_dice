@@ -43,5 +43,8 @@ public final class EntityRenderers {
         EntityModelLayerRegistry.registerModelLayer(RepulsionModel.LAYER_LOCATION,
                 RepulsionModel::createBodyLayer);
         EntityRendererRegistry.register(ModEntityTypes.REPULSION.get(), RepulsionRenderer::new);
+
+        // 金鲤立牌(souri)放置的饮品实体:GeckoLib 渲染器自行按 variant 选模型/贴图,无需模型层登记。
+        EntityRendererRegistry.register(ModEntityTypes.SOURI_DRINK.get(), SouriDrinkRenderer::new);
     }
 }

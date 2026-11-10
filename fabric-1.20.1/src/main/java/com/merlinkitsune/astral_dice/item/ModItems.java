@@ -71,6 +71,7 @@ import com.merlinkitsune.astral_dice.item.sign.ZhaoSignItem;
 import com.merlinkitsune.astral_dice.item.sign.TeruSignItem;
 import com.merlinkitsune.astral_dice.item.sign.NardisSignItem;
 import com.merlinkitsune.astral_dice.item.sign.MamushiSignItem;
+import com.merlinkitsune.astral_dice.item.sign.SouriSignItem;
 import com.merlinkitsune.astral_dice.item.chip.MotoHelmetChipItem;
 import com.merlinkitsune.astral_dice.item.chip.BoxingGlovesChipItem;
 import com.merlinkitsune.astral_dice.item.sign.BonnieSignItem;
@@ -1022,6 +1023,15 @@ public class ModItems {
     // 传奇品质 = ASTRAL_DICE_LEGENDARY(本模组「金=传奇」映射);配方 = 钻石骰子 + 黄金星盘档(照大当家立牌 fen)。
     public static final RegistryObject<Item> MAMUSHI_SIGN = registerItem("mamushi_sign",
             () -> new MamushiSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.legendary())));
+
+    // 金鲤立牌(souri,传奇):主动「把酒言欢」(在准星指定地块放置「葫芦饮」;已获「金鲤化龙」时改放
+    //   「仙酿」,随后自身 +1 层「金鳞」与 +1 层「反击」;冷却 SouriSignItem.ACTIVE_COOLDOWN_TICKS=1:00)
+    // + 被动「不醉不归」(反击时 +1 层「金鳞」;任意角色拾取葫芦饮/仙酿后佩戴者 +1 层「反击」)。
+    // 传奇品质 = ASTRAL_DICE_LEGENDARY;配方 = 黄金星盘 + 钻石骰子档(BYB/ZCZ/PDP)。
+    public static final RegistryObject<Item> SOURI_SIGN = registerItem("souri_sign",
+            () -> new SouriSignItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(AstralRarities.legendary())));
 

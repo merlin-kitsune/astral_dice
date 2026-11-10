@@ -115,6 +115,7 @@ public class ModItemModelProvider extends FabricModelProvider {
         generators.generateFlatItem(ModItems.TERU_SIGN.get(), ModelTemplates.FLAT_ITEM);
         generators.generateFlatItem(ModItems.NARDIS_SIGN.get(), ModelTemplates.FLAT_ITEM);
         generators.generateFlatItem(ModItems.MAMUSHI_SIGN.get(), ModelTemplates.FLAT_ITEM);
+        generators.generateFlatItem(ModItems.SOURI_SIGN.get(), ModelTemplates.FLAT_ITEM);
         generators.generateFlatItem(ModItems.SHERRY_SIGN.get(), ModelTemplates.FLAT_ITEM);
         generators.generateFlatItem(ModItems.HANNA_SIGN.get(), ModelTemplates.FLAT_ITEM);
         generators.generateFlatItem(ModItems.KANGEL_SIGN.get(), ModelTemplates.FLAT_ITEM);

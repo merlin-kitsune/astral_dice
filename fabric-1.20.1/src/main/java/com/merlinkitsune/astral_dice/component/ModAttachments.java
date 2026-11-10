@@ -1869,6 +1869,29 @@ public class ModAttachments {
     public static final AttachedDataKey<CardShopShelf> SHOP_SHELF =
             register(AttachedDataKey.builder("shop_shelf", CardShopShelf.CODEC, () -> CardShopShelf.EMPTY).build());
 
+    /**
+     * 金鲤立牌(souri)「金鳞」层数(0..{@code SouriGoldScaleEffect.MAX_STACKS} = 4)。
+     *
+     * <p>**同步**:tooltip 计数行({@code tooltip.astral_dice.sign.souri_gold_scale})与客户端 HUD
+     * 镜像({@code sourigoldscale} 效果实例由服务端维护,客户端只读效果)都要读它
+     * ⇒ 与 {@code mamushi_awakening} 同口径进 {@code SYNCED_KEYS}。
+     * **跨死亡保留** ⇒ 同时进 {@link DeathPreservedBonuses} 第 9 槽位(立牌死亡掉落会先触发
+     * {@code onUnequip → clearSignData} 清零,单靠附件层不够)。
+     *
+     * <p>forge-1.20.1 蓝本另有一个 {@code souri_awakening} 附件(残留自早期设计,**无任何读写点**)——
+     * 本线不移植,见移植报告「语义差异」。
+     */
+    public static final AttachedDataKey<Integer> SOURI_GOLD_SCALES =
+            register(AttachedDataKey.builder("souri_gold_scales", Codec.INT, () -> 0).sync().build());
+
+    public static int getSouriGoldScales(Player player) {
+        return SOURI_GOLD_SCALES.get(player);
+    }
+
+    public static void setSouriGoldScales(Player player, int value) {
+        SOURI_GOLD_SCALES.set(player, Math.max(0, value));
+    }
+
     private ModAttachments() {
     }
 }

@@ -78,6 +78,22 @@ public final class ModEntityTypes {
                     .clientTrackingRange(10)
                     .build("sykestentacle"));
 
+    /**
+     * {@code astral_dice:souri_drink} —— 金鲤立牌(souri)主动放置的饮品实体(GOURD 葫芦饮 / BREW 仙酿;
+     * 纯展示体,无 AI、无重力、无碰撞,GeckoLib 动画)。
+     *
+     * <p>尺寸 {@code sized(0.35F, 0.45F)} 依据模型实测(酒葫芦约 0.3 格宽、0.42 格高);
+     * {@code clientTrackingRange(10)} 与蓝本一致。{@code EntityType.Builder.of} 需显式类型实参
+     * {@code <SouriDrinkEntity>}:该实体有 (EntityType, Level) 与 (Level, UUID, Variant) 两个构造器,
+     * 无实参时 javac 无法推断 {@code EntityFactory} 的目标类型。
+     */
+    public static final RegistryObject<EntityType<SouriDrinkEntity>> SOURI_DRINK =
+            ENTITY_TYPES.register("souri_drink", () -> EntityType.Builder
+                    .<SouriDrinkEntity>of(SouriDrinkEntity::new, MobCategory.MISC)
+                    .sized(0.35F, 0.45F)
+                    .clientTrackingRange(10)
+                    .build("souri_drink"));
+
     private ModEntityTypes() {
     }
 }

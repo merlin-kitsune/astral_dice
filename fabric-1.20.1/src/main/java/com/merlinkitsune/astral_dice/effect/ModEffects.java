@@ -411,6 +411,47 @@ public class ModEffects {
             EFFECTS.register("abyss_mark", com.merlinkitsune.astral_dice.effect.AbyssMarkEffect::new);
 
     /**
+     * 「葫芦饮」(金鲤立牌 souri 主动放置的饮品):有限时长 1:00({@code GourdDrinkEffect.DURATION_TICKS}),
+     * 攻击力 +3({@code GourdDrinkEffect.ATTACK_BONUS});一次只能持有一个饮品(拾取判定见
+     * {@code SouriSignManager#isDrinkBlocked})。
+     * 图标 = {@code textures/mob_effect/gourd_drink.png}(自 forge-1.20.1 逐字节复制)。
+     *
+     * <p>⚠️ 1.20.1 是 {@code RegistryObject} ⇒ 全部引用处必须 {@code .get()}。
+     */
+    public static final RegistryObject<MobEffect> GOURD_DRINK =
+            EFFECTS.register("gourd_drink", com.merlinkitsune.astral_dice.effect.GourdDrinkEffect::new);
+
+    /**
+     * 「仙酿」(金鲤立牌 souri 化龙后放置的饮品):有限时长 2:00({@code ImmortalBrewEffect.DURATION_TICKS}),
+     * 攻击力 +4、拾取时立即回复 6 点生命并施加迅捷 I;一次只能持有一个饮品。
+     * 图标 = {@code textures/mob_effect/immortal_brew.png}(自 forge-1.20.1 逐字节复制)。
+     *
+     * <p>⚠️ 1.20.1 是 {@code RegistryObject} ⇒ 全部引用处必须 {@code .get()}。
+     */
+    public static final RegistryObject<MobEffect> IMMORTAL_BREW =
+            EFFECTS.register("immortal_brew", com.merlinkitsune.astral_dice.effect.ImmortalBrewEffect::new);
+
+    /**
+     * 「金鳞」(金鲤立牌 souri 被动):层数真值在附件 {@code ModAttachments#SOURI_GOLD_SCALES}(0..4),
+     * 本效果只是 HUD 可见载体({@code amplifier = 层数 - 1},无限时长);每层防御力 +1,
+     * 满 4 层授予「金鲤化龙」。化龙后本图标被摘掉(层数仍在,仍按层加攻)。
+     * 图标 = {@code textures/mob_effect/souri_gold_scale.png}。
+     *
+     * <p>⚠️ 1.20.1 是 {@code RegistryObject} ⇒ 全部引用处必须 {@code .get()}。
+     */
+    public static final RegistryObject<MobEffect> SOURI_GOLD_SCALE =
+            EFFECTS.register("souri_gold_scale", com.merlinkitsune.astral_dice.effect.SouriGoldScaleEffect::new);
+
+    /**
+     * 「金鲤化龙」(金鲤立牌 souri):锁存态,无限时长({@code -1});获得后每层「金鳞」额外攻击力 +1。
+     * 图标 = {@code textures/mob_effect/souri_dragon.png}。
+     *
+     * <p>⚠️ 1.20.1 是 {@code RegistryObject} ⇒ 全部引用处必须 {@code .get()}。
+     */
+    public static final RegistryObject<MobEffect> SOURI_DRAGON =
+            EFFECTS.register("souri_dragon", com.merlinkitsune.astral_dice.effect.SouriDragonEffect::new);
+
+    /**
      * 本模组已注册的全部效果的**只读**视图(调试命令 {@code /astralparty cleareffect} 用)。
      *
      * <p>直接派生自 {@link #EFFECTS} 的注册条目视图——Forge 的 {@code getEntries()} 返回
