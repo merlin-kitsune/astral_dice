@@ -58,6 +58,8 @@ public class ModClientEvents {
         // 几何来自 assets/astral_dice/geo/sykestentacle.geo.json,没有原版 LayerDefinition 可注册。
         event.registerEntityRenderer(ModEntityTypes.SOURI_DRINK.get(), SouriDrinkRenderer::new);
         event.registerEntityRenderer(ModEntityTypes.SYKE_TENTACLE.get(), SykeTentacleRenderer::new);
+        // 小猎手立牌「暗影之门」(2026-11-10):GeckoLib 渲染器 + 激活态漩涡公告板
+        event.registerEntityRenderer(ModEntityTypes.INKSHADOW_PORTAL.get(), InkShadowPortalRenderer::new);
     }
 
     /** 模型层定义：`astral_dice:barricade#main` ⇒ {@link BarricadeModel#createBodyLayer()}。 */

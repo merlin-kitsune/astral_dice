@@ -299,6 +299,18 @@
         "fabric-1.21.1"
       ],
       "note": "2026-11-09 新增（用户 m08862）；wiki 的可玩角色页 Souri 重定向到怪物页 Amakawa Souri，无 CharPlayable/nameJapanese ⇒ ja 暂按「天川双里」推定，待日服名称核实；2026-11-10 补 P1 两线 fabric-1.20.1 / fabric-1.21.1（neoforge-26.1.2 已实装但门禁 LINES 尚未覆盖该线）"
+    },
+    {
+      "id": "inkshadow",
+      "zh": "小猎手立牌",
+      "en": "InkShadow Sign",
+      "ja": "インクシャドウのスタンド",
+      "wiki_page": "InkShadow",
+      "lines": [
+        "neoforge-1.21.1",
+        "forge-1.20.1"
+      ],
+      "note": "2026-11-10 新增（用户 m02258）；wiki API 本轮被反爬拦截（HTTP 403），en/ja 暂按「InkShadow」与片假名转写推定，待日服名称核实；当前仅 P0 两线实装，P1 三线待用户裁决后补 lines"
     }
   ]
 }

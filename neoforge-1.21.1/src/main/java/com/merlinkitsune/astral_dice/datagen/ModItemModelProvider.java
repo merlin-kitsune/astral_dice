@@ -106,6 +106,7 @@ public class ModItemModelProvider extends ItemModelProvider {
         basicItem(ModItems.LINGLING_SIGN.get());
         basicItem(ModItems.JILL_SIGN.get());
         basicItem(ModItems.AL_SIGN.get());
+        basicItem(ModItems.INKSHADOW_SIGN.get());
         basicItem(ModItems.DOROTHY_SIGN.get());
         basicItem(ModItems.ALANA_SIGN.get());
         basicItem(ModItems.DEEPSEEK_SIGN.get());

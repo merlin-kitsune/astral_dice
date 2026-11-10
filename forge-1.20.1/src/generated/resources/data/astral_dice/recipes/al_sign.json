@@ -5,17 +5,17 @@
     "B": {
       "item": "minecraft:black_dye"
     },
-    "X": {
-      "item": "astral_dice:star_coin_dust"
-    },
-    "K": {
-      "item": "minecraft:gold_block"
-    },
     "C": {
       "item": "astral_dice:blank_chip"
     },
     "D": {
       "item": "astral_dice:diamond_dice"
+    },
+    "K": {
+      "item": "minecraft:gold_block"
+    },
+    "X": {
+      "item": "astral_dice:star_coin_dust"
     }
   },
   "pattern": [

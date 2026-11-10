@@ -764,6 +764,75 @@ public class ModAttachments {
         WARP_ENGINE_PORTAL_COOLDOWN_END.set(player, value);
     }
 
+    // ==== 小猎手立牌(inkshadow,2026-11-10) ====
+    // 放置窗口状态:全部为原始类型、不 sync、仅服务端读写(客户端渲染只看实体的 state 同步字段)。
+    // 起始门 UUID(空串 = 无待配对起始门)。
+    public static final AttachedDataKey<String> INKSHADOW_PENDING_UUID =
+            register(AttachedDataKey.builder("inkshadow_pending_uuid", Codec.STRING, () -> "").build());
+    // 起始门所在维度 id(如 minecraft:overworld);终点门允许跨维度,仅作记录/诊断。
+    public static final AttachedDataKey<String> INKSHADOW_PENDING_DIM =
+            register(AttachedDataKey.builder("inkshadow_pending_dim", Codec.STRING, () -> "").build());
+    // 放置窗口截止 gameTime(0 = 无窗口)。
+    public static final AttachedDataKey<Long> INKSHADOW_PENDING_DEADLINE =
+            register(AttachedDataKey.builder("inkshadow_pending_deadline", Codec.LONG, () -> 0L).build());
+    // 放置期间被锁定的快捷栏槽位(-1 = 未锁定)。
+    public static final AttachedDataKey<Integer> INKSHADOW_LOCKED_SLOT =
+            register(AttachedDataKey.builder("inkshadow_locked_slot", Codec.INT, () -> -1).build());
+    // 被动「双生之影」当前层数。
+    public static final AttachedDataKey<Integer> INKSHADOW_STACKS =
+            register(AttachedDataKey.builder("inkshadow_stacks", Codec.INT, () -> 0).build());
+    // 被动层数到期时刻(0 = 无到期;刷新不累加,只后移)。
+    public static final AttachedDataKey<Long> INKSHADOW_STACKS_EXPIRE =
+            register(AttachedDataKey.builder("inkshadow_stacks_expire", Codec.LONG, () -> 0L).build());
+
+    public static String getInkShadowPendingUuid(net.minecraft.world.entity.player.Player player) {
+        return INKSHADOW_PENDING_UUID.get(player);
+    }
+
+    public static void setInkShadowPendingUuid(net.minecraft.world.entity.player.Player player, String value) {
+        INKSHADOW_PENDING_UUID.set(player, value == null ? "" : value);
+    }
+
+    public static String getInkShadowPendingDim(net.minecraft.world.entity.player.Player player) {
+        return INKSHADOW_PENDING_DIM.get(player);
+    }
+
+    public static void setInkShadowPendingDim(net.minecraft.world.entity.player.Player player, String value) {
+        INKSHADOW_PENDING_DIM.set(player, value == null ? "" : value);
+    }
+
+    public static long getInkShadowPendingDeadline(net.minecraft.world.entity.player.Player player) {
+        return INKSHADOW_PENDING_DEADLINE.get(player);
+    }
+
+    public static void setInkShadowPendingDeadline(net.minecraft.world.entity.player.Player player, long value) {
+        INKSHADOW_PENDING_DEADLINE.set(player, value);
+    }
+
+    public static int getInkShadowLockedSlot(net.minecraft.world.entity.player.Player player) {
+        return INKSHADOW_LOCKED_SLOT.get(player);
+    }
+
+    public static void setInkShadowLockedSlot(net.minecraft.world.entity.player.Player player, int value) {
+        INKSHADOW_LOCKED_SLOT.set(player, value);
+    }
+
+    public static int getInkShadowStacks(net.minecraft.world.entity.player.Player player) {
+        return INKSHADOW_STACKS.get(player);
+    }
+
+    public static void setInkShadowStacks(net.minecraft.world.entity.player.Player player, int value) {
+        INKSHADOW_STACKS.set(player, value);
+    }
+
+    public static long getInkShadowStacksExpire(net.minecraft.world.entity.player.Player player) {
+        return INKSHADOW_STACKS_EXPIRE.get(player);
+    }
+
+    public static void setInkShadowStacksExpire(net.minecraft.world.entity.player.Player player, long value) {
+        INKSHADOW_STACKS_EXPIRE.set(player, value);
+    }
+
     // @Deprecated 已废弃:立牌主动技能"等待目标释放"机制已被目标选择器(TargetSelectionManager 会话)替代,
     // 占星师/秘密侦探不再读写本附件。定义保留(已持久化)以避免旧存档附件数据异常,禁止新代码使用。
     // 立牌主动技能"等待目标释放"状态类型:1=占星师(虚弱印记) 2=秘密侦探(隐匿调查);0=无等待

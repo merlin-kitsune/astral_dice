@@ -103,6 +103,15 @@ public final class ModEntityTypes {
                     .clientTrackingRange(10)
                     .build("souri_drink"));
 
+    // 小猎手立牌(inkshadow):【传送门】。同样多构造器,必须显式类型实参;
+    // 尺寸 1.2×1.2 覆盖模型可见范围,clientTrackingRange(10) 保证放置后立刻可见。
+    public static final RegistryObject<EntityType<InkShadowPortalEntity>> INKSHADOW_PORTAL =
+            ENTITY_TYPES.register("inkshadow_portal", () -> EntityType.Builder
+                    .<InkShadowPortalEntity>of(InkShadowPortalEntity::new, MobCategory.MISC)
+                    .sized(1.2F, 1.2F)
+                    .clientTrackingRange(10)
+                    .build("inkshadow_portal"));
+
     private ModEntityTypes() {
     }
 }

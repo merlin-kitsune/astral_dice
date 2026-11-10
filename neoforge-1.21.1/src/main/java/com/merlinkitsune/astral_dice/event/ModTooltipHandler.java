@@ -1772,6 +1772,16 @@ public class ModTooltipHandler {
             addSignNoteLines(tooltip, "tooltip.astral_dice.sign.sykes_note");
             addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player jp ? jp : null);
         }
+        // 小猎手立牌(inkshadow,史诗):主动「暗影之门」两端传送门 / 被动「双生之影」攻击叠加
+        if (stack.is(ModItems.INKSHADOW_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "tooltip.astral_dice.sign.inkshadow.active");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.inkshadow_active");
+            addSignPassiveTitle(tooltip, "tooltip.astral_dice.sign.inkshadow.passive");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.inkshadow_passive");
+            addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player jp ? jp : null);
+        }
         // 符卡-福 / 符卡-祸(风水师立牌专属效果牌);键名 = 规格 §2.6 冻结值
         // (tooltip.astral_dice.fu_card / tooltip.astral_dice.huo_card)
         if (stack.is(ModItems.FU_CARD.get())) {

@@ -1159,6 +1159,13 @@ public class ModItems {
             () -> new com.merlinkitsune.astral_dice.item.sign.SykesSignItem(new Item.Properties()
                     .stacksTo(1).rarity(com.merlinkitsune.starengine.item.AstralRarities.legendary())));
 
+    // 小猎手立牌(inkshadow,史诗,2026-11-10):主动「暗影之门」30 秒内两处各放一扇【传送门】成对(可跨维度,
+    // 成对后存活 5:00,放置期 +10% 移速且禁攻击/切武器/交互);被动「双生之影」每名玩家首次穿越一扇门
+    // ⇒ 门主人 +2 攻击(2:00,可叠加),敌对目标靠近门受 2 点魔法伤害。
+    public static final RegistryObject<Item> INKSHADOW_SIGN = registerItem("inkshadow_sign",
+            () -> new com.merlinkitsune.astral_dice.item.sign.InkShadowSignItem(new Item.Properties()
+                    .stacksTo(1).rarity(com.merlinkitsune.starengine.item.AstralRarities.epic())));
+
     // 机械师立牌(命名:megas,传奇):被动「物资补充」(手牌<6 张时每 1:00 自动获得 1 张随机卡牌)
     // + 主动「轨道轰炸」(指定 1 个敌对目标,消耗物品栏全部手牌,对目标及其周围 12 格范围轰炸;
     // 每 2 张卡 +1 次轰炸(上限 10 次),单次命中随机 1 怪 +2 点基础伤害 + 每张战斗牌费用×2;

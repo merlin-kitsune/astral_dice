@@ -853,6 +853,88 @@ public class ModAttachments {
         player.setData(WARP_ENGINE_PORTAL_COOLDOWN_END.get(), value);
     }
 
+    // 小猎手立牌「暗影之门」:起始门放置窗口状态(玩家级,仅服务端,不参与同步)。
+    //   uuid 为空 / deadline 已过 ⇒ 没有进行中的放置窗口。6 个键各自独立持久化,登出重登后仍能还原窗口。
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<String>> INKSHADOW_PENDING_UUID =
+            ATTACHMENTS.register("inkshadow_pending_uuid", () -> AttachmentType.builder(() -> "")
+                    .serialize(Codec.STRING)
+                    .build());
+
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<String>> INKSHADOW_PENDING_DIM =
+            ATTACHMENTS.register("inkshadow_pending_dim", () -> AttachmentType.builder(() -> "")
+                    .serialize(Codec.STRING)
+                    .build());
+
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> INKSHADOW_PENDING_DEADLINE =
+            ATTACHMENTS.register("inkshadow_pending_deadline", () -> AttachmentType.builder(() -> 0L)
+                    .serialize(Codec.LONG)
+                    .build());
+
+    // 窗口内被强制的快捷栏槽位(-1 = 未锁)
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> INKSHADOW_LOCKED_SLOT =
+            ATTACHMENTS.register("inkshadow_locked_slot", () -> AttachmentType.builder(() -> -1)
+                    .serialize(Codec.INT)
+                    .build());
+
+    // 被动「双生之影」层数 / 层数到期时刻(每次新增层刷新而不是累加计时)
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> INKSHADOW_STACKS =
+            ATTACHMENTS.register("inkshadow_stacks", () -> AttachmentType.builder(() -> 0)
+                    .serialize(Codec.INT)
+                    .build());
+
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> INKSHADOW_STACKS_EXPIRE =
+            ATTACHMENTS.register("inkshadow_stacks_expire", () -> AttachmentType.builder(() -> 0L)
+                    .serialize(Codec.LONG)
+                    .build());
+
+    public static String getInkShadowPendingUuid(net.minecraft.world.entity.player.Player player) {
+        return player.getData(INKSHADOW_PENDING_UUID.get());
+    }
+
+    public static void setInkShadowPendingUuid(net.minecraft.world.entity.player.Player player, String value) {
+        player.setData(INKSHADOW_PENDING_UUID.get(), value);
+    }
+
+    public static String getInkShadowPendingDim(net.minecraft.world.entity.player.Player player) {
+        return player.getData(INKSHADOW_PENDING_DIM.get());
+    }
+
+    public static void setInkShadowPendingDim(net.minecraft.world.entity.player.Player player, String value) {
+        player.setData(INKSHADOW_PENDING_DIM.get(), value);
+    }
+
+    public static long getInkShadowPendingDeadline(net.minecraft.world.entity.player.Player player) {
+        return player.getData(INKSHADOW_PENDING_DEADLINE.get());
+    }
+
+    public static void setInkShadowPendingDeadline(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(INKSHADOW_PENDING_DEADLINE.get(), value);
+    }
+
+    public static int getInkShadowLockedSlot(net.minecraft.world.entity.player.Player player) {
+        return player.getData(INKSHADOW_LOCKED_SLOT.get());
+    }
+
+    public static void setInkShadowLockedSlot(net.minecraft.world.entity.player.Player player, int value) {
+        player.setData(INKSHADOW_LOCKED_SLOT.get(), value);
+    }
+
+    public static int getInkShadowStacks(net.minecraft.world.entity.player.Player player) {
+        return player.getData(INKSHADOW_STACKS.get());
+    }
+
+    public static void setInkShadowStacks(net.minecraft.world.entity.player.Player player, int value) {
+        player.setData(INKSHADOW_STACKS.get(), value);
+    }
+
+    public static long getInkShadowStacksExpire(net.minecraft.world.entity.player.Player player) {
+        return player.getData(INKSHADOW_STACKS_EXPIRE.get());
+    }
+
+    public static void setInkShadowStacksExpire(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(INKSHADOW_STACKS_EXPIRE.get(), value);
+    }
+
     // @Deprecated 已废弃:立牌主动技能"等待目标释放"机制已被目标选择器(TargetSelectionManager 会话)替代,
     // 占星师/秘密侦探不再读写本附件。定义保留(已 serialize 持久化)以避免旧存档附件数据异常,禁止新代码使用。
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> SIGN_READY_TYPE =

@@ -55,6 +55,7 @@ LINES = ("neoforge-1.21.1", "forge-1.20.1")
 MODELS = (
     {"name": "winegourd", "bbmodel": "models/winegourd.bbmodel"},
     {"name": "winegourdbetter", "bbmodel": "models/winegourdbetter.bbmodel"},
+    {"name": "inkshadoweffect", "bbmodel": "models/inkshadoweffect.bbmodel"},
 )
 
 FACE_ORDER = ("north", "east", "south", "west", "up", "down")

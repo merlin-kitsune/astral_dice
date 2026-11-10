@@ -1196,5 +1196,17 @@
   "astral_dice.guide.entry.souri_sign.3": "「金鳞」：每层获得防御力 §e+1§7，最多 §e4§7 层。达到 §e4§7 层后获得「金鲤化龙」，并使场上未拾取的「葫芦饮」转换为「仙酿」。\n「金鲤化龙」：获得后，每层「金鳞」获得攻击力 §e+1§7。\n「葫芦饮」：攻击力 §e+3§7，持续 §91:00§7（一次只能拾取一个）。\n「仙酿」：攻击力 §e+4§7，并获得迅捷 (§92:00§7)；拾取「仙酿」后立即回复 §e6§7 点生命值（一次只能拾取一个）。\n联动「留给你的」：持有蛟龙立牌的玩家拾取「葫芦饮」后，获得 §e1§7 层「觉醒」；拾取「仙酿」后，获得 §e2§7 层「觉醒」。",
   "tooltip.astral_dice.sign.souri_gold_scale": "金鳞：§e%s§7 / §e%s§r",
   "tooltip.astral_dice.sign.souri_note": "「金鳞」：每层获得防御力 §e+1§7，最多 §e4§7 层。达到 §e4§7 层后获得「金鲤化龙」，并使场上未拾取的「葫芦饮」转换为「仙酿」\n「金鲤化龙」：获得后，每层「金鳞」获得攻击力 §e+1§7\n「葫芦饮」：攻击力 §e+3§7，持续 §91:00§7\n「仙酿」：攻击力 §e+4§7，并获得迅捷，持续 §92:00§7；拾取「仙酿」后立即回复 §e6§7 点生命值\n（一次只能拾取一个饮品）",
-  "tooltip.astral_dice.sign.souri_link": "留给你的：持有蛟龙立牌的玩家拾取「葫芦饮」后，获得 §e1§7 层「觉醒」；拾取「仙酿」后，获得 §e2§7 层「觉醒」"
+  "tooltip.astral_dice.sign.souri_link": "留给你的：持有蛟龙立牌的玩家拾取「葫芦饮」后，获得 §e1§7 层「觉醒」；拾取「仙酿」后，获得 §e2§7 层「觉醒」",
+  "item.astral_dice.inkshadow_sign": "小猎手立牌",
+  "tooltip.astral_dice.sign.inkshadow.active": "暗影之门",
+  "tooltip.astral_dice.sign.inkshadow_active": "放置起始【传送门】；§e30 秒§7内在另一处放置终点【传送门】即配对成功\n放置期间移动速度 §e+10%§7，但无法攻击、无法切换武器、无法与方块实体交互",
+  "tooltip.astral_dice.sign.inkshadow.passive": "双生之影",
+  "tooltip.astral_dice.sign.inkshadow_passive": "每有一名玩家首次穿越一扇【传送门】，自身攻击力 §e+2§7（§92:00§7，可叠加）\n敌对目标靠近【传送门】时受到 §e2§7 点魔法伤害",
+  "tooltip.astral_dice.sign.inkshadow_note": "每对【传送门】存活 §95:00§7，可跨维度；到期直接消失，且不可破坏、不可攻击\n同一名玩家对一对门的两扇各计一次；起始门在终点门放下前无效（半透明、不可穿越）\n放置期间死亡、退出或被击杀 ⇒ 本次作废，起始门消失",
+  "astral_dice.guide.entry.inkshadow_sign.1": "主动「暗影之门」：在当前位置放置起始【传送门】，随后须在 §e30 秒§7内在另一处放置终点【传送门】。放置期间移动速度 §e+10%§7，但无法攻击、无法切换武器、无法与方块实体交互；放置终点后恢复。",
+  "astral_dice.guide.entry.inkshadow_sign.2": "被动「双生之影」：每有一名新玩家穿越一扇【传送门】，自身攻击力 §e+2§7，持续 §92:00§7，可叠加；每名玩家对每扇门仅触发一次（含自身）。敌对目标靠近【传送门】时受到 §e2§7 点魔法伤害。每对门存活 §95:00§7，可跨维度；起始门在终点门放下前无效。放置期间死亡、退出或被击杀 ⇒ 本次作废，起始门消失。",
+  "msg.astral_dice.inkshadow_no_ground": "需要指向可放置的方块面",
+  "msg.astral_dice.inkshadow_placed_start": "已放置起始【传送门】，§e30 秒§7内在另一处放置终点",
+  "msg.astral_dice.inkshadow_placed_end": "终点【传送门】已放置，配对成功",
+  "msg.astral_dice.inkshadow_void": "放置窗口结束，起始【传送门】消失"
 }

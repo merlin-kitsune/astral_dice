@@ -79,6 +79,8 @@ public class ModClientEvents {
         event.registerEntityRenderer(ModEntityTypes.SYKE_TENTACLE.get(), SykeTentacleRenderer::new);
         // 金鲤立牌的漂浮饮品(2026-11-09):GeoEntityRenderer，无需注册 LayerDefinition
         event.registerEntityRenderer(ModEntityTypes.SOURI_DRINK.get(), SouriDrinkRenderer::new);
+        // 小猎手立牌的【传送门】(2026-11-10):GeoEntityRenderer，无需注册 LayerDefinition
+        event.registerEntityRenderer(ModEntityTypes.INKSHADOW_PORTAL.get(), InkShadowPortalRenderer::new);
     }
 
     /** 模型层定义：`astral_dice:barricade#main` ⇒ {@link BarricadeModel#createBodyLayer()}。 */

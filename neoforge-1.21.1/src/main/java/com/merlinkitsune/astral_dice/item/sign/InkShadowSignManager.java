@@ -1,0 +1,267 @@
+package com.merlinkitsune.astral_dice.item.sign;
+
+import com.merlinkitsune.astral_dice.component.ModAttachments;
+import com.merlinkitsune.astral_dice.entity.InkShadowPortalEntity;
+import net.minecraft.ChatFormatting;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.game.ClientboundSetCarriedItemPacket;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.Vec3;
+
+import java.util.UUID;
+
+/**
+ * 小猎手立牌「暗影之门 / 双生之影」的服务端状态机。
+ *
+ * <p>所有状态存放在玩家附件（仅服务端、不参与同步）：pending 起始门 uuid / 维度 / 窗口截止刻、
+ * 放置窗口内被强制锁定的快捷栏槽位、被动层数与层数到期刻。
+ *
+ * <p>生命周期：
+ * <ol>
+ *   <li>首门：生成 PENDING 传送门实体 + 写 pending + 加移速 + 锁快捷栏；</li>
+ *   <li>终点门：取起始门实体 → 双向 {@code activate} 配对（含跨维度坐标）→ 清 pending / 移速 / 槽位锁；</li>
+ *   <li>窗口超时 / 死亡 / 登出：销毁起始门并清空全部临时状态（{@link #voidPortal}）。</li>
+ * </ol>
+ */
+public final class InkShadowSignManager {
+
+    /** 立牌物品注册 id */
+    public static final String SIGN_ID = InkShadowSignItem.SIGN_ID;
+
+    private InkShadowSignManager() {
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  放置
+    // ══════════════════════════════════════════════════════════════════════════
+
+    /** 放置窗口的截止刻（未进入窗口时为 0）。 */
+    public static long pendingDeadline(Player player) {
+        return player == null ? 0L : ModAttachments.getInkShadowPendingDeadline(player);
+    }
+
+    /**
+     * 主动技能键的**前置钩子**（由 {@code network/SignActivatePayload#handle} 在
+     * {@code BaseSignItem.performSkillForCurio} 之前调用，与 forge-1.20.1 同构）。
+     *
+     * <p>窗口内按第二下时 {@code isSignActiveLocked} 会因锁定态把按键拦死，故这里绕过整条
+     * {@code performSkill} 直接放终点门：一次主动只结算一次（不重复触发风扇筹码 / 电流核心 /
+     * {@code SignActiveTriggeredEvent}）。返回 true 表示本按键已被本立牌消费。
+     */
+    public static boolean tryPlaceEndFromKey(ServerPlayer player) {
+        if (player == null || !hasPending(player)) return false;
+        if (!InkShadowSignItem.isEquipped(player)) {
+            voidPortal(player);
+            return true;
+        }
+        BlockPos pos = InkShadowSignItem.resolvePlacePos(player);
+        if (pos == null) {
+            sendActionBarColored(player, ChatFormatting.RED, "msg.astral_dice.inkshadow_no_ground");
+            return true;
+        }
+        placeEndPortal((ServerLevel) player.level(), player, pos, player.level().getGameTime());
+        return true;
+    }
+
+    /** 一次按键：窗口内 ⇒ 放终点门；否则 ⇒ 放起始门。返回 false 时本次主动不结算（不进冷却）。 */
+    public static boolean placePortal(ServerLevel level, ServerPlayer player, BlockPos pos) {
+        if (player == null || level == null || pos == null) return false;
+        long now = level.getGameTime();
+        if (hasPending(player)) {
+            return placeEndPortal(level, player, pos, now);
+        }
+        // 窗口已过期但 tick 还没清掉残留 pending：先销毁旧起始门，本次按新的起始门处理
+        if (!ModAttachments.getInkShadowPendingUuid(player).isEmpty()) {
+            voidPortal(player);
+        }
+        return placeStartPortal(level, player, pos, now);
+    }
+
+    private static boolean placeStartPortal(ServerLevel level, ServerPlayer player, BlockPos pos, long now) {
+        InkShadowPortalEntity portal = new InkShadowPortalEntity(level, player.getUUID());
+        portal.setPending(now + InkShadowSignItem.WINDOW_TICKS);
+        portal.setPos(pos.getX() + 0.5D, pos.getY() + 0.25D, pos.getZ() + 0.5D);
+        portal.setYRot(player.getYRot());
+        level.addFreshEntity(portal);
+
+        ModAttachments.setInkShadowPendingUuid(player, portal.getUUID().toString());
+        ModAttachments.setInkShadowPendingDim(player, level.dimension().location().toString());
+        ModAttachments.setInkShadowPendingDeadline(player, now + InkShadowSignItem.WINDOW_TICKS);
+        // 放置窗口内锁死快捷栏：切武器走的是 selected 槽位，强行回写即可（背包重排后下一 tick 继续回写）
+        ModAttachments.setInkShadowLockedSlot(player, player.getInventory().selected);
+        SignAttributeUtil.apply(player, Attributes.MOVEMENT_SPEED, InkShadowSignItem.SPEED_MODIFIER_KEY,
+                InkShadowSignItem.SPEED_AMPLIFIER, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
+        sendActionBar(player, "msg.astral_dice.inkshadow_place_start");
+        return true;
+    }
+
+    private static boolean placeEndPortal(ServerLevel level, ServerPlayer player, BlockPos pos, long now) {
+        InkShadowPortalEntity start = resolvePendingPortal(player);
+        if (start == null) {
+            // 起始门所在区块未加载 ⇒ 无法建立双向引用；保留窗口让玩家回到起始门附近重试
+            sendActionBarColored(player, ChatFormatting.RED, "msg.astral_dice.inkshadow_no_start");
+            return false;
+        }
+        InkShadowPortalEntity end = new InkShadowPortalEntity(level, player.getUUID());
+        end.setPos(pos.getX() + 0.5D, pos.getY() + 0.25D, pos.getZ() + 0.5D);
+        end.setYRot(player.getYRot());
+        level.addFreshEntity(end);
+
+        long expireTick = now + InkShadowSignItem.PAIR_LIFETIME_TICKS;
+        String startDim = start.level().dimension().location().toString();
+        String endDim = level.dimension().location().toString();
+        Vec3 startPos = new Vec3(start.getX(), start.getY(), start.getZ());
+        Vec3 endPos = new Vec3(end.getX(), end.getY(), end.getZ());
+        start.activate(expireTick, end.getUUID(), endDim, endPos);
+        end.activate(expireTick, start.getUUID(), startDim, startPos);
+
+        clearPending(player);
+        sendActionBar(player, "msg.astral_dice.inkshadow_place_end");
+        return true;
+    }
+
+    /** 窗口/死亡/登出：销毁起始门并清空一切临时状态（幂等）。 */
+    public static void voidPortal(Player player) {
+        if (player == null) return;
+        InkShadowPortalEntity start = resolvePendingPortal(player);
+        if (start != null && !start.isRemoved()) start.discard();
+        clearPending(player);
+    }
+
+    private static void clearPending(Player player) {
+        ModAttachments.setInkShadowPendingUuid(player, "");
+        ModAttachments.setInkShadowPendingDim(player, "");
+        ModAttachments.setInkShadowPendingDeadline(player, 0L);
+        ModAttachments.setInkShadowLockedSlot(player, -1);
+        SignAttributeUtil.remove(player, Attributes.MOVEMENT_SPEED, InkShadowSignItem.SPEED_MODIFIER_KEY);
+    }
+
+    /** pending 是否仍在 30s 窗口内（判定含截止刻，服务端/客户端同值）。 */
+    public static boolean hasPending(Player player) {
+        if (player == null) return false;
+        if (ModAttachments.getInkShadowPendingUuid(player).isEmpty()) return false;
+        long deadline = ModAttachments.getInkShadowPendingDeadline(player);
+        return deadline > 0L && player.level().getGameTime() < deadline;
+    }
+
+    private static InkShadowPortalEntity resolvePendingPortal(Player player) {
+        if (player == null) return null;
+        String uuid = ModAttachments.getInkShadowPendingUuid(player);
+        if (uuid.isEmpty()) return null;
+        MinecraftServer server = player.getServer();
+        if (server == null) return null;
+        ServerLevel level = dimensionLevel(server, ModAttachments.getInkShadowPendingDim(player));
+        if (level == null) return null;
+        UUID id;
+        try {
+            id = UUID.fromString(uuid);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+        return level.getEntity(id) instanceof InkShadowPortalEntity portal ? portal : null;
+    }
+
+    private static ServerLevel dimensionLevel(MinecraftServer server, String dimension) {
+        if (server == null || dimension == null || dimension.isEmpty()) return null;
+        ResourceLocation id = ResourceLocation.tryParse(dimension);
+        if (id == null) return null;
+        return server.getLevel(ResourceKey.create(Registries.DIMENSION, id));
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  每 tick（服务端）
+    // ══════════════════════════════════════════════════════════════════════════
+
+    public static void tickPlayer(ServerPlayer player) {
+        if (player == null || player.level().isClientSide()) return;
+        // 1) 窗口超时：销毁起始门、解除移速与槽位锁
+        if (!ModAttachments.getInkShadowPendingUuid(player).isEmpty() && !hasPending(player)) {
+            voidPortal(player);
+            return;
+        }
+        // 2) 窗口内强锁快捷栏（玩家可改 selected，但每 tick 回写）；未佩戴 ⇒ 窗口作废
+        if (hasPending(player)) {
+            if (!InkShadowSignItem.isEquipped(player)) {
+                voidPortal(player);
+                return;
+            }
+            int locked = ModAttachments.getInkShadowLockedSlot(player);
+            int size = player.getInventory().items.size();
+            if (locked >= 0 && locked < size && locked != player.getInventory().selected) {
+                player.getInventory().selected = locked;
+                // 与 forge-1.20.1 同口径：必须通知客户端，否则 HUD 槽位与真实手持不一致
+                player.connection.send(new ClientboundSetCarriedItemPacket(locked));
+            }
+        }
+        // 3) 被动层数到期/离身时撤掉攻击修饰符（幂等）
+        refreshStacks(player);
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  被动「双生之影」
+    // ══════════════════════════════════════════════════════════════════════════
+
+    /** 门主人 +1 层：刷新 2:00 计时（不叠加时长），按当前层数重算攻击修饰符。 */
+    public static void addStack(Player owner) {
+        if (owner == null || owner.level().isClientSide()) return;
+        if (!InkShadowSignItem.isEquipped(owner)) return;
+        int stacks = ModAttachments.getInkShadowStacks(owner) + 1;
+        ModAttachments.setInkShadowStacks(owner, stacks);
+        ModAttachments.setInkShadowStacksExpire(owner, owner.level().getGameTime() + InkShadowSignItem.STACK_DURATION_TICKS);
+        refreshStacks(owner);
+    }
+
+    /** 按附件真值重算攻击加成（幂等；层数到期 / 立牌离身 ⇒ 移除修饰符）。 */
+    public static void refreshStacks(Player player) {
+        if (player == null || player.level().isClientSide()) return;
+        long now = player.level().getGameTime();
+        int stacks = ModAttachments.getInkShadowStacks(player);
+        long expire = ModAttachments.getInkShadowStacksExpire(player);
+        if (stacks <= 0 || now > expire) {
+            ModAttachments.setInkShadowStacks(player, 0);
+            ModAttachments.setInkShadowStacksExpire(player, 0L);
+            SignAttributeUtil.remove(player, Attributes.ATTACK_DAMAGE, InkShadowSignItem.ATTACK_MODIFIER_KEY);
+            return;
+        }
+        if (!InkShadowSignItem.isEquipped(player)) {
+            // 离身只是暂不生效；层数本身按 2:00 自然过期（重新装备回来仍可继续享用剩余时间）
+            SignAttributeUtil.remove(player, Attributes.ATTACK_DAMAGE, InkShadowSignItem.ATTACK_MODIFIER_KEY);
+            return;
+        }
+        SignAttributeUtil.apply(player, Attributes.ATTACK_DAMAGE, InkShadowSignItem.ATTACK_MODIFIER_KEY,
+                InkShadowSignItem.STACK_ATTACK_BONUS * stacks, AttributeModifier.Operation.ADD_VALUE);
+    }
+
+    /** 卸下立牌：放置窗口作废 + 被动层数清零（与 forge-1.20.1 的 {@code onSignUnequipped} 同口径）。 */
+    public static void onUnequip(Player player) {
+        if (player == null || player.level().isClientSide()) return;
+        if (hasPending(player)) clearPending(player);
+        if (ModAttachments.getInkShadowStacks(player) > 0) {
+            ModAttachments.setInkShadowStacks(player, 0);
+            ModAttachments.setInkShadowStacksExpire(player, 0L);
+        }
+        SignAttributeUtil.remove(player, Attributes.ATTACK_DAMAGE, InkShadowSignItem.ATTACK_MODIFIER_KEY);
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  提示
+    // ══════════════════════════════════════════════════════════════════════════
+
+    private static void sendActionBar(Player player, String key) {
+        player.displayClientMessage(Component.translatable(key), true);
+    }
+
+    private static void sendActionBarColored(Player player, ChatFormatting color, String key) {
+        player.displayClientMessage(Component.translatable(key).withStyle(color), true);
+    }
+}

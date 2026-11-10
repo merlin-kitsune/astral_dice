@@ -78,6 +78,18 @@ public final class ModEntityTypes {
                     .clientTrackingRange(10)
                     .build("souri_drink"));
 
+    /**
+     * 小猎手立牌「暗影之门」（2026-11-10）：无碰撞、无重力、不可攻击的传送门实体；
+     * 模型实测约 1.19 × 0.37 × 0.94 格（渲染时整体 ×1.6），碰撞箱取 1.2×1.2 覆盖门面。
+     * 穿门判定在实体自己的 tick 内扫描，故 clientTrackingRange 放到 10 保证隔壁玩家也能看到门。
+     */
+    public static final DeferredHolder<EntityType<?>, EntityType<InkShadowPortalEntity>> INKSHADOW_PORTAL =
+            ENTITY_TYPES.register("inkshadow_portal", () -> EntityType.Builder
+                    .<InkShadowPortalEntity>of(InkShadowPortalEntity::new, MobCategory.MISC)
+                    .sized(1.2F, 1.2F)
+                    .clientTrackingRange(10)
+                    .build("inkshadow_portal"));
+
     private ModEntityTypes() {
     }
 }

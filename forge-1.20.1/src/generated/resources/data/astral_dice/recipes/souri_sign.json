@@ -5,6 +5,9 @@
     "B": {
       "item": "astral_dice:star_coin_dust"
     },
+    "C": {
+      "item": "astral_dice:blank_chip"
+    },
     "D": {
       "item": "astral_dice:diamond_dice"
     },
@@ -16,9 +19,6 @@
     },
     "Z": {
       "item": "minecraft:clock"
-    },
-    "C": {
-      "item": "astral_dice:blank_chip"
     }
   },
   "pattern": [

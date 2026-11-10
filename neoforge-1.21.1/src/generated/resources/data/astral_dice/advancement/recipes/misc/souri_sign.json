@@ -1,11 +1,11 @@
 {
   "parent": "minecraft:recipes/root",
   "criteria": {
-    "has_star_coin_dust": {
+    "has_blank_chip": {
       "conditions": {
         "items": [
           {
-            "items": "astral_dice:star_coin_dust"
+            "items": "astral_dice:blank_chip"
           }
         ]
       },
@@ -21,7 +21,7 @@
   "requirements": [
     [
       "has_the_recipe",
-      "has_star_coin_dust"
+      "has_blank_chip"
     ]
   ],
   "rewards": {

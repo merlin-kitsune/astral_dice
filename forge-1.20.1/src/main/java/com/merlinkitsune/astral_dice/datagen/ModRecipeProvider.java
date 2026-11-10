@@ -1494,7 +1494,34 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('T', ModItems.DIAMOND_DICE.get())
                 .unlockedBy("has_conductive_wire", has(ModItems.CONDUCTIVE_WIRE.get()))
                 .save(output::accept);
-        // 金鲤立牌(souri,传奇):B/Y/B + Z/C/Z + P/D/P（B=星币尘、Y=热带鱼、Z=钟、C=空白筹码、P=黄金星盘、D=钻石骰子）
+        // 少主立牌(al,史诗):黑色染料 + 金块×2 + 星币尘×2 + 空白筹码 + 钻石骰子 → BXB/KCK/XDX
+        // (B=黑色染料、X=星币尘、K=金块、C=空白筹码、D=钻石骰子;2026-11-08 用户给定行序)
+        // 2026-11-10 补:1.20.1 线此前只有手写的 generated json、provider 里没有这条,datagen 会把它当 stale 删掉。
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.AL_SIGN.get())
+                .pattern("BXB")
+                .pattern("KCK")
+                .pattern("XDX")
+                .define('B', Items.BLACK_DYE)
+                .define('X', ModItems.STAR_COIN_DUST.get())
+                .define('K', Items.GOLD_BLOCK)
+                .define('C', ModItems.BLANK_CHIP.get())
+                .define('D', ModItems.DIAMOND_DICE.get())
+                .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
+                .save(output::accept);
+        // 魔渊幼体立牌(sykes,史诗):MYM/YCY/GDG（M=末影之眼、Y=幽匿催发体、C=空白立牌、G=黄金星盘、D=钻石骰子）
+        // 2026-11-10 补:P0 两线此前都没有这条配方（1.20.1 线连 generated 里都没有），与 fabric 两线 + 1.21.1 不对齐。
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.SYKES_SIGN.get())
+                .pattern("MYM")
+                .pattern("YCY")
+                .pattern("GDG")
+                .define('M', Items.ENDER_EYE)
+                .define('Y', Items.SCULK_CATALYST)
+                .define('C', ModItems.BLANK_SIGN.get())
+                .define('G', ModItems.GOLDEN_STAR_PLATE.get())
+                .define('D', ModItems.DIAMOND_DICE.get())
+                .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
+                .save(output::accept);
+        // 金鲤立牌(souri,传奇)
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.SOURI_SIGN.get())
                 .pattern("BYB")
                 .pattern("ZCZ")
@@ -1504,6 +1531,19 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('Z', Items.CLOCK)
                 .define('C', ModItems.BLANK_CHIP.get())
                 .define('P', ModItems.GOLDEN_STAR_PLATE.get())
+                .define('D', ModItems.DIAMOND_DICE.get())
+                .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
+                .save(output::accept);
+        // 小猎手立牌(inkshadow,史诗,占位配方**待用户定**):B/X/B + K/C/K + X/D/X
+        // （B=墨囊、X=星币尘、K=金块、C=空白筹码、D=钻石骰子）
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.INKSHADOW_SIGN.get())
+                .pattern("BXB")
+                .pattern("KCK")
+                .pattern("XDX")
+                .define('B', Items.INK_SAC)
+                .define('X', ModItems.STAR_COIN_DUST.get())
+                .define('K', Items.GOLD_BLOCK)
+                .define('C', ModItems.BLANK_CHIP.get())
                 .define('D', ModItems.DIAMOND_DICE.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
                 .save(output::accept);

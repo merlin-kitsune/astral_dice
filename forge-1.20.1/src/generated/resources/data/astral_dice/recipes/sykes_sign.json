@@ -24,7 +24,7 @@
     "GDG"
   ],
   "result": {
-    "count": 1,
-    "id": "astral_dice:sykes_sign"
-  }
+    "item": "astral_dice:sykes_sign"
+  },
+  "show_notification": true
 }

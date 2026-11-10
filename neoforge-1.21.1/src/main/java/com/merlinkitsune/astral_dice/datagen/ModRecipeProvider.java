@@ -1330,7 +1330,34 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('D', ModItems.DIAMOND_DICE.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
                 .save(output);
-        // 金鲤立牌(souri,传奇):B/Y/B + Z/C/Z + P/D/P（B=星币尘、Y=热带鱼、Z=钟、C=空白筹码、P=黄金星盘、D=钻石骰子）
+        // 小猎手立牌(inkshadow,史诗,占位配方**待用户定**):B/X/B + K/C/K + X/D/X
+        // (B=墨囊、X=星币尘、K=金块、C=空白筹码、D=钻石骰子)
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.INKSHADOW_SIGN.get())
+                .pattern("BXB")
+                .pattern("KCK")
+                .pattern("XDX")
+                .define('B', net.minecraft.world.item.Items.INK_SAC)
+                .define('X', ModItems.STAR_COIN_DUST.get())
+                .define('K', net.minecraft.world.item.Items.GOLD_BLOCK)
+                .define('C', ModItems.BLANK_CHIP.get())
+                .define('D', ModItems.DIAMOND_DICE.get())
+                .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
+                .save(output);
+        // 魔渊幼体立牌(sykes,史诗):MYM/YCY/GDG（M=末影之眼、Y=幽匿催发体、C=空白立牌、G=黄金星盘、D=钻石骰子）
+        // 2026-11-10 补:此前该配方以手写文件形式只存在于 src/generated/resources（datagen 不产出 ⇒
+        // 一跑 runData 就被当脏产物删掉），此处改为正式生成，与 fabric 两线同源。
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.SYKES_SIGN.get())
+                .pattern("MYM")
+                .pattern("YCY")
+                .pattern("GDG")
+                .define('M', net.minecraft.world.item.Items.ENDER_EYE)
+                .define('Y', net.minecraft.world.item.Items.SCULK_CATALYST)
+                .define('C', ModItems.BLANK_SIGN.get())
+                .define('G', ModItems.GOLDEN_STAR_PLATE.get())
+                .define('D', ModItems.DIAMOND_DICE.get())
+                .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
+                .save(output);
+        // 金鲤立牌(souri,传奇)
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.SOURI_SIGN.get())
                 .pattern("BYB")
                 .pattern("ZCZ")

@@ -1,0 +1,155 @@
+package com.merlinkitsune.astral_dice.item.sign;
+
+import com.merlinkitsune.astral_dice.item.ModItems;
+import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
+
+/**
+ * 小猎手立牌（inkshadow，史诗）。
+ *
+ * <h2>主动「暗影之门」</h2>
+ * 第一次按键在准星所指地块放置<b>起始门</b>（未激活、不可穿越），{@link #WINDOW_TICKS}（30s）内
+ * 第二次按键放置<b>终点门</b>；两门成对激活、跨维度互通，存活 {@link #PAIR_LIFETIME_TICKS}（5:00）。
+ * 放置窗口内移速 +10%，且不能攻击 / 换武器 / 与方块实体交互（见 {@code InkShadowSignEvents}）。
+ *
+ * <h2>被动「双生之影」</h2>
+ * 每名玩家首次穿过一扇门 ⇒ 门主人攻击 +{@link #STACK_ATTACK_BONUS}（2:00，可叠加，逐门逐人各计一次）；
+ * 门周围 {@link #PORTAL_HAZARD_RADIUS} 格内的敌对生物每 20t 受 {@link #PORTAL_HAZARD_DAMAGE} 点法术伤害。
+ *
+ * <h2>与基类「三态化」的衔接</h2>
+ * 起始门放下后由 {@link #startActiveLockOnUse} 以 {@code lockEnd = 放置截止刻} 进入锁定态
+ * （{@code isGateEffectActive = hasPending}），故窗口期按 J 会被
+ * {@code SignActiveLockMachine.isSignActiveLocked} 拦在 {@code performSkill} 之外。
+ * 因此<b>第二次按键不经过 {@code performSkill}</b>：{@code network/SignActivatePayload} 先用
+ * {@link InkShadowSignManager#tryPlaceEndFromKey} 这个前置钩子直接放终点门（与 forge-1.20.1 同构）；
+ * pending 一清空，锁定机下一拍自然结束锁定并起 2:00 冷却。
+ */
+public class InkShadowSignItem extends BaseSignItem {
+
+    /** 立牌物品注册 id（与 {@link InkShadowSignManager#SIGN_ID} 同一字符串） */
+    public static final String SIGN_ID = "astral_dice:inkshadow_sign";
+
+    /** 起始门 → 终点门的放置窗口 30s */
+    public static final int WINDOW_TICKS = 600;
+
+    /** 一对门的存活时长 5:00 */
+    public static final int PAIR_LIFETIME_TICKS = 6000;
+
+    /** 放置射程（格），与其它立牌同档 */
+    public static final double PLACE_RANGE = 8.0D;
+
+    /** 放置窗口内的移速加成：MOVEMENT_SPEED / ADD_MULTIPLIED_TOTAL +10%（待用户验收调整） */
+    public static final double SPEED_AMPLIFIER = 0.10D;
+
+    /** 主动冷却 2:00（待用户验收调整） */
+    public static final int ACTIVE_COOLDOWN_TICKS = 2400;
+
+    /** 被动每层攻击 +2（待用户验收调整） */
+    public static final double STACK_ATTACK_BONUS = 2.0D;
+
+    /** 被动层数持续 2:00（每次新增层刷新而非叠加计时） */
+    public static final int STACK_DURATION_TICKS = 2400;
+
+    /** 门前危险区半径（格） */
+    public static final double PORTAL_HAZARD_RADIUS = 2.5D;
+
+    /** 门前危险区每 20t 的法术伤害 */
+    public static final float PORTAL_HAZARD_DAMAGE = 2.0F;
+
+    /** 同一玩家再次触发同一扇门的冷却（防止两门间来回弹跳） */
+    public static final int RETRIGGER_TICKS = 60;
+
+    /** 移速修饰符的固定 key（重复 apply 只改数值，不叠出多个修饰符） */
+    public static final String SPEED_MODIFIER_KEY = "inkshadow_place_speed";
+
+    /** 攻击修饰符的固定 key */
+    public static final String ATTACK_MODIFIER_KEY = "inkshadow_stack_attack";
+
+    public InkShadowSignItem(Properties properties) {
+        super(properties);
+    }
+
+    /** 玩家是否佩戴小猎手立牌（Curios stand 槽 + 骰子前置） */
+    public static boolean isEquipped(Player player) {
+        return SignEquipCheck.isEquipped(player, ModItems.INKSHADOW_SIGN.get());
+    }
+
+    /** 主动冷却基准 2:00（锁定/生效期结束后由锁定机结算）。 */
+    @Override
+    protected int activeCooldownBaseTicks(Player player) {
+        return ACTIVE_COOLDOWN_TICKS;
+    }
+
+    /** 电池/充能芯片读同一个基准值：两处必须逐行同义（玩家可见冷却不能因芯片而异）。 */
+    @Override
+    protected int activeCooldownBaseTicksNoBattery(Player player) {
+        return ACTIVE_COOLDOWN_TICKS;
+    }
+
+    /** 放置窗口 = 主动「生效中」：锁定机据此在窗口结束/终点门落地后自动转入冷却。 */
+    @Override
+    protected boolean isGateEffectActive(Player player) {
+        return InkShadowSignManager.hasPending(player);
+    }
+
+    /**
+     * 起始门放下 ⇒ 以「放置截止刻」为锁上界进入锁定态；{@code performSkill} 的冷却分支在
+     * {@link #handleUse} 之后执行，此刻 pending 已写入，故恒返回 true（不写 cooldown_end）。
+     */
+    @Override
+    protected boolean startActiveLockOnUse(Player player, long now) {
+        if (!InkShadowSignManager.hasPending(player)) return false;
+        beginActiveLock(player, SIGN_ID, InkShadowSignManager.pendingDeadline(player));
+        return true;
+    }
+
+    @Override
+    protected InteractionResultHolder<ItemStack> handleUse(Level level, Player player, ItemStack stack) {
+        if (level.isClientSide) return InteractionResultHolder.success(stack);
+        if (!(player instanceof ServerPlayer serverPlayer) || !(level instanceof ServerLevel serverLevel)) {
+            return InteractionResultHolder.fail(stack);
+        }
+        BlockPos target = resolvePlacePos(player);
+        if (target == null) {
+            sendSignActionBar(player, "msg.astral_dice.inkshadow_no_ground");
+            return InteractionResultHolder.fail(stack);
+        }
+        return InkShadowSignManager.placePortal(serverLevel, serverPlayer, target)
+                ? InteractionResultHolder.success(stack)
+                : InteractionResultHolder.fail(stack);
+    }
+
+    /** 准星命中方块的可替换邻格；命中液体/空气或超出射程 ⇒ null。 */
+    public static BlockPos resolvePlacePos(Player player) {
+        HitResult hit = player.pick(PLACE_RANGE, 0.0F, false);
+        if (!(hit instanceof BlockHitResult blockHit) || hit.getType() != HitResult.Type.BLOCK) return null;
+        BlockPos pos = blockHit.getBlockPos().relative(blockHit.getDirection());
+        if (!player.level().getBlockState(pos).canBeReplaced()) return null;
+        return pos;
+    }
+
+    @Override
+    public void curioTick(top.theillusivec4.curios.api.SlotContext slotContext, ItemStack stack) {
+        super.curioTick(slotContext, stack);
+        if (slotContext.entity() instanceof Player player && !player.level().isClientSide()
+                && player.tickCount % 20 == 0) {
+            InkShadowSignManager.refreshStacks(player);
+        }
+    }
+
+    @Override
+    public void onUnequip(top.theillusivec4.curios.api.SlotContext slotContext,
+                          ItemStack newStack, ItemStack stack) {
+        super.onUnequip(slotContext, newStack, stack);
+        if (slotContext.entity() instanceof Player player && !player.level().isClientSide()) {
+            InkShadowSignManager.onUnequip(player);
+        }
+    }
+}
