@@ -23,6 +23,7 @@ import com.merlinkitsune.astral_dice.item.InvestigationEventUtil;
 import com.merlinkitsune.astral_dice.item.MarkManager;
 import com.merlinkitsune.astral_dice.item.StarLightManager;
 import com.merlinkitsune.astral_dice.item.sign.MisakiSignItem;
+import com.merlinkitsune.astral_dice.item.sign.SouriSignManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.RepulsionItem;
 import com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil;
@@ -1677,6 +1678,35 @@ public class ModTooltipHandler {
                 }
             }
             addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player p ? p : null);
+        }
+        // 金鲤立牌(souri):主动「把酒言欢」放置葫芦饮/仙酿 + 自身金鳞/反击;被动「不醉不归」。
+        if (stack.is(ModItems.SOURI_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "tooltip.astral_dice.sign.souri.active");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.souri_active");
+            addSignPassiveTitle(tooltip, "tooltip.astral_dice.sign.souri.passive");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.souri_passive");
+            Player souriViewer = event.getEntity() instanceof Player sv ? sv : null;
+            // 备注区(浅紫、无标题):金鳞 / 金鲤化龙 / 葫芦饮 / 仙酿 的数值口径
+            tooltip.add(Component.empty());
+            addSignNoteLines(tooltip, "tooltip.astral_dice.sign.souri_note");
+            // 联动「留给你的」:与备注之间留空行
+            tooltip.add(Component.empty());
+            addSignNoteLines(tooltip, "tooltip.astral_dice.sign.souri_link");
+            // 状态行置于最底部、上方留空行:化龙前显示「金鳞」层数,化龙后只显示「金鲤化龙」
+            if (souriViewer != null) {
+                if (SouriSignManager.hasDragon(souriViewer)) {
+                    tooltip.add(Component.empty());
+                    tooltip.add(tt("tooltip.astral_dice.sign.souri_dragon_form")
+                            .withStyle(ChatFormatting.GOLD));
+                } else {
+                    addSignCounter(tooltip, "tooltip.astral_dice.sign.souri_gold_scale",
+                            SouriSignManager.getGoldScales(souriViewer),
+                            SouriSignManager.GOLD_SCALE_MAX);
+                }
+            }
+            addSignCooldownRemaining(tooltip, souriViewer);
         }
         // 机械师立牌(megas):主动「轨道轰炸」(选择器类——指定 1 个敌对目标 => 立即消耗物品栏全部手牌⇒
         // 以目标为中心 12 格范围轰炸；次数 = min(消耗卡牌数 / 2, 10)、单次基础 2 伤 + 所消耗战斗牌费用总和 ×2)

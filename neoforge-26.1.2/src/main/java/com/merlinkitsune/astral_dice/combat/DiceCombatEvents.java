@@ -1982,7 +1982,10 @@ public static boolean attackerHasDiceCurio(Player player) {
         if (isInCounterChain()) return;
         if (!(victim instanceof Player player)) return;
         if (!player.isAlive()) return;
-        if (!player.hasEffect(ModEffects.REN_SHIELD)) return;
+        // 金鲤立牌(souri,2026-11-09):反击层数不再只依附鼠鼠护盾 —— 佩戴金鲤时同一出口
+        // 也消耗 1 层并把「反击」计成金鳞;上限由 SouriSignManager 放宽到 4(用户裁决)。
+        boolean souri = com.merlinkitsune.astral_dice.item.sign.SouriSignItem.isEquipped(player);
+        if (!player.hasEffect(ModEffects.REN_SHIELD) && !souri) return;
         if (ModAttachments.getRenCounterCharges(player) <= 0) return;
         if (!(event.getSource().getEntity() instanceof LivingEntity attacker)) return;
         if (attacker == player) return;
@@ -1990,10 +1993,15 @@ public static boolean attackerHasDiceCurio(Player player) {
         // 才消耗反击层数。视者 = 带盾玩家(player);于是队友 / 已驯服宠物 / 未激怒中立生物的
         // 攻击不再误消耗层数、也不再把反击打在友军身上(自伤已由上一行排除)。
         if (!PartyRelations.isHostileTo(player, attacker)) return;
-        // 一次性充能:先消耗层数(并同步摘掉「反击」图标),再注入伤害
-        ModAttachments.setRenCounterCharges(player, 0);
+        // 逐层消耗(2026-11-09 金鲤):鼠鼠护盾仍是 1 层一次性;金鲤允许叠到 4 层。
+        ModAttachments.setRenCounterCharges(player,
+                Math.max(0, ModAttachments.getRenCounterCharges(player) - 1));
         RenShieldManager.refreshCounterEffect(player);
         injectCounterDamage(player, attacker);
+        // 被动「不醉不归」:反击时 +1 层金鳞(仅佩戴金鲤者)
+        if (souri) {
+            com.merlinkitsune.astral_dice.item.sign.SouriSignManager.addGoldScale(player);
+        }
         if (player instanceof net.minecraft.server.level.ServerPlayer sp) {
             PacketDistributor.sendToPlayer(sp, new ActionBarPayload(
                     Component.translatable("msg.astral_dice.ren_counter_fired")

@@ -31,7 +31,8 @@
     "astral_dice:dorothy_sign",
     "astral_dice:alana_sign",
     "astral_dice:deepseek_sign",
-    "astral_dice:sykes_sign"
+    "astral_dice:sykes_sign",
+    "astral_dice:souri_sign"
   ],
   "replace": false
 }

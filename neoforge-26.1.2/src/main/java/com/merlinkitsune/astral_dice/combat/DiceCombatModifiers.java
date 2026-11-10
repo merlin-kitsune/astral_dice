@@ -828,6 +828,26 @@ public final class DiceCombatModifiers {
             return __g6p == null ? ap : ap + com.merlinkitsune.astral_dice.item.sign.AmeSignItem.getLove(__g6p);
         });
 
+        // === 内置:金鲤立牌(souri,2026-11-09)攻击力加成 ===
+        // ① 葫芦饮(+3)/仙酿(+4)是**定值**攻击加成,由效果存在与否实时判定;
+        // ② 金鲤化龙后按金鳞层数加攻击(层数真值在附件 SOURI_GOLD_SCALES,实时读取)——
+        //    与 1.21.1 参考实现逐字同口径,不落地任何新状态。
+        registerAttackModifier((ctx, ap) -> {
+            if (skipOnClient(ctx)) return ap;
+            if (!(ctx.attacker instanceof Player __sp)) return ap;
+            if (__sp.hasEffect(ModEffects.GOURD_DRINK)) {
+                ap += com.merlinkitsune.astral_dice.effect.GourdDrinkEffect.ATTACK_BONUS;
+            }
+            if (__sp.hasEffect(ModEffects.IMMORTAL_BREW)) {
+                ap += com.merlinkitsune.astral_dice.effect.ImmortalBrewEffect.ATTACK_BONUS;
+            }
+            if (__sp.hasEffect(ModEffects.SOURI_DRAGON)) {
+                ap += com.merlinkitsune.astral_dice.item.sign.SouriSignManager.getGoldScales(__sp)
+                        * com.merlinkitsune.astral_dice.item.sign.SouriSignManager.ATTACK_PER_SCALE;
+            }
+            return ap;
+        });
+
         // === 内置:防御卡掷骰(收集结果写入上下文;目标无骰子时 targetEnhancement 为 null,结果 0)。
         // 防御力规范:骰战防御修饰器仅保留战斗防御牌(区间变动);效果牌/立牌/筹码的防御力
         // 统一折算为真实护甲(1 防御力 = 1÷护甲系数 护甲值),由各自 tick 经 setDefenseArmorBonus 挂到 ARMOR 属性,

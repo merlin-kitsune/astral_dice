@@ -208,7 +208,7 @@ public class MamushiSignItem extends BaseSignItem
      * 直接早退,值恒为 {@link #AWAKEN_MAX};形态本身是锁存态(判据 {@code >= }{@link #AWAKEN_MAX}),
      * 故计数器失效不影响形态判定。
      */
-    private static void addAwakening(Player player, int delta) {
+    public static void addAwakening(Player player, int delta) {
         if (player == null || delta <= 0) return;
         // 真龙形态是锁存态:形态成立即表示「觉醒」计数器**已失效** ⇒ 不再累计(值恒为 AWAKEN_MAX)。
         if (isDragonForm(player)) return;

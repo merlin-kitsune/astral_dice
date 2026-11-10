@@ -1024,6 +1024,16 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(AstralRarities.legendary())));
 
+    // 金鲤立牌(命名:souri,传奇;2026-11-09):主动「把酒言欢」(准星 8 格内放 1 个【葫芦饮】;已获【金鲤化龙】
+    //   则改放【仙酿】,随后自身 +1 金鳞 / +1 反击,冷却 1:00),被动「不醉不归」(反击出口 +1 金鳞;
+    //   任意角色拾取饮品 ⇒ 放置者 +1 反击),金鳞满 4 ⇒ 【金鲤化龙】(锁存态:每层金鳞攻击 +1、防御 +1,
+    //   场上未拾取的葫芦饮全部转仙酿);联动「留给你的」(拾取者佩戴蛟龙立牌 ⇒ 蛟龙觉醒 +1 葫芦饮 / +2 仙酿)。
+    // 传奇品质 = ASTRAL_DICE_LEGENDARY(本模组「金=传奇」映射);配方 = 钻石骰子 + 黄金星盘档。
+    public static final DeferredItem<Item> SOURI_SIGN = registerItem("souri_sign",
+            props -> new com.merlinkitsune.astral_dice.item.sign.SouriSignItem(props
+                    .stacksTo(1)
+                    .rarity(AstralRarities.legendary())));
+
     // 怪力侦探立牌(命名:sherry,奇特):主动「怪力投掷」把 12 格内全部敌对目标按抛物线扔到玩家面前 2 格,
     // **落地之后**造成 2 点伤害并施加 1 层「标记」(推理时间满 5 层 ⇒ 额外 5 点);被动「侦探出击」按
     // 「攻击 ≥20 血敌对目标」累积「推理时间」(上限 5,**死亡不清**,骰神赐福结束后 −1 层),

@@ -1,0 +1,20 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": "astral_dice:star_coin_dust",
+    "C": "astral_dice:blank_chip",
+    "D": "astral_dice:diamond_dice",
+    "P": "astral_dice:golden_star_plate",
+    "Y": "minecraft:tropical_fish",
+    "Z": "minecraft:clock"
+  },
+  "pattern": [
+    "BYB",
+    "ZCZ",
+    "PDP"
+  ],
+  "result": {
+    "id": "astral_dice:souri_sign"
+  }
+}

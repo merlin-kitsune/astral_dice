@@ -1957,6 +1957,48 @@ public class ModAttachments {
         player.setData(MAMUSHI_BITE_BONUS_ACTIVE.get(), value);
     }
 
+    // ══════════════════════════════════════════════════════════════════════════
+    //  金鲤立牌 souri（2026-11-09）：独立计数器（用户裁决：不复用蛟龙觉醒）
+    //
+    //  键名 / 类型 / 同步 / 死亡策略 = docs/features/souri-sign-spec.md §1：
+    //  - souri_awakening:int,.sync()+.copyOnDeath()（遗留独立计数器；26.1.2 线里金鲤不再
+    //    有「觉醒→形态」转换，只在 clearAll 归零，保留附件以与 1.21.1 存档口径一致）；
+    //  - souri_gold_scales:int,.sync()（客户端 tooltip 要读层数）+ .copyOnDeath()
+    //    （死亡掉落立牌不算主动卸下 ⇒ 层数不丢，见 SouriSignManager#clearAll）。
+    // ══════════════════════════════════════════════════════════════════════════
+
+    /** 金鲤觉醒层数（独立计数器；0 起，无形态转换，仅作立牌自身资源） */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> SOURI_AWAKENING =
+            ATTACHMENTS.register("souri_awakening", () -> AttachmentType.builder(() -> 0)
+                    .serialize(Codec.INT.fieldOf("value"))
+                    .sync(ByteBufCodecs.INT)
+                    .copyOnDeath()
+                    .build());
+
+    /** 金鳞层数（0..4；达 4 触发金鲤化龙，并把场上未拾取的葫芦饮转为仙酿） */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> SOURI_GOLD_SCALES =
+            ATTACHMENTS.register("souri_gold_scales", () -> AttachmentType.builder(() -> 0)
+                    .serialize(Codec.INT.fieldOf("value"))
+                    .sync(ByteBufCodecs.INT)
+                    .copyOnDeath()
+                    .build());
+
+    public static int getSouriAwakening(net.minecraft.world.entity.player.Player player) {
+        return player.getData(SOURI_AWAKENING.get());
+    }
+
+    public static void setSouriAwakening(net.minecraft.world.entity.player.Player player, int value) {
+        player.setData(SOURI_AWAKENING.get(), Math.max(0, value));
+    }
+
+    public static int getSouriGoldScales(net.minecraft.world.entity.player.Player player) {
+        return player.getData(SOURI_GOLD_SCALES.get());
+    }
+
+    public static void setSouriGoldScales(net.minecraft.world.entity.player.Player player, int value) {
+        player.setData(SOURI_GOLD_SCALES.get(), Math.max(0, value));
+    }
+
     /**
      * 怪力侦探立牌(sherry)「推理时间」**层数真值**(0..5)。
      *

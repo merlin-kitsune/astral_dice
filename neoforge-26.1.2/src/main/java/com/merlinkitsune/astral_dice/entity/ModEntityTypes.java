@@ -82,6 +82,20 @@ public final class ModEntityTypes {
                     .clientTrackingRange(10)
                     .build(ResourceKey.create(Registries.ENTITY_TYPE, id)));
 
+    /**
+     * 金鲤漂浮饮品（{@code astral_dice:souri_drink}，2026-11-09）：无碰撞、无重力、不可推动的纯展示实体；
+     * 尺寸按 bbmodel 实测（约 0.9 格高、0.6 格宽），拾取扫描在实体自己的 tick 内完成。
+     *
+     * <p>26.1.2 只有 {@code build(ResourceKey)} 重载 ⇒ 走 {@code register(String, Function<Identifier, T>)}，
+     * 注册 id 由加载器直接注入（与 {@link #SYKE_TENTACLE} 同法）。
+     */
+    public static final DeferredHolder<EntityType<?>, EntityType<SouriDrinkEntity>> SOURI_DRINK =
+            ENTITY_TYPES.register("souri_drink", id -> EntityType.Builder
+                    .<SouriDrinkEntity>of(SouriDrinkEntity::new, MobCategory.MISC)
+                    .sized(0.35F, 0.45F)
+                    .clientTrackingRange(10)
+                    .build(ResourceKey.create(Registries.ENTITY_TYPE, id)));
+
     private ModEntityTypes() {
     }
 }

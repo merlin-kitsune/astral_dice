@@ -121,6 +121,7 @@ public class ModCreativeTabs {
                 output.accept(ModItems.TERU_SIGN.get());
                 output.accept(ModItems.MOSES_SIGN.get());
                 output.accept(ModItems.MAMUSHI_SIGN.get());
+                output.accept(ModItems.SOURI_SIGN.get());
                 output.accept(ModItems.BONNIE_SIGN.get());
                 output.accept(ModItems.LINGLING_SIGN.get());
                 output.accept(ModItems.KANGEL_SIGN.get());

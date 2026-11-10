@@ -412,5 +412,25 @@ public class ModEffects {
     /** 「渊蚀印记」(sykes 立牌被动)：负面效果，最多 20 层，每层使目标受到魔渊幼体 / 魔渊触须的伤害 +1。 */
     public static final DeferredHolder<MobEffect, MobEffect> ABYSS_MARK = EFFECTS.register("abyss_mark", AbyssMarkEffect::new);
 
+    // ── 金鲤立牌 souri（2026-11-09）──────────────────────────────────────────────
+    // 四个效果都**不带**属性修饰符：攻击/防御收益由 combat/DiceCombatModifiers 的实时谓词与
+    // SouriSignManager#refreshDefense 提供（效果只做状态标记与 HUD 可见性）。
+
+    /** 「葫芦饮」：金鲤主动放置的两种饮品之一，拾取后 1:00，骰战攻击 +3（谓词实时求和）。 */
+    public static final DeferredHolder<MobEffect, MobEffect> GOURD_DRINK =
+            EFFECTS.register("gourd_drink", GourdDrinkEffect::new);
+
+    /** 「仙酿」：金鲤化龙后放置的饮品，拾取后 2:00，骰战攻击 +4（迅捷 II 与回血在拾取当刻一次性结算）。 */
+    public static final DeferredHolder<MobEffect, MobEffect> IMMORTAL_BREW =
+            EFFECTS.register("immortal_brew", ImmortalBrewEffect::new);
+
+    /** 「金鳞」：层数镜像效果（真值在附件 SOURI_GOLD_SCALES；最多 4 层；化龙后隐藏）。 */
+    public static final DeferredHolder<MobEffect, MobEffect> SOURI_GOLD_SCALE =
+            EFFECTS.register("souri_gold_scale", SouriGoldScaleEffect::new);
+
+    /** 「金鲤化龙」：金鳞满 4 层后的**锁存态**（无限时长，由 SouriSignManager 的 tick 判定驱动）。 */
+    public static final DeferredHolder<MobEffect, MobEffect> SOURI_DRAGON =
+            EFFECTS.register("souri_dragon", SouriDragonEffect::new);
+
     public static final Collection<DeferredHolder<MobEffect, ? extends MobEffect>> ALL = EFFECTS.getEntries();
 }

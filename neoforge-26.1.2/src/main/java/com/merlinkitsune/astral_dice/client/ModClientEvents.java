@@ -67,6 +67,8 @@ public class ModClientEvents {
         // GeckoLib 的几何/贴图/动画来自 assets/astral_dice/{geo,textures/entity,animations}/，渲染器只需把模型实例交给 GeoEntityRenderer；
         // **不** 走 EntityRenderersEvent.RegisterLayerDefinitions（那是原版模型层的注册口，对本实体无效）。
         event.registerEntityRenderer(ModEntityTypes.SYKE_TENTACLE.get(), SykeTentacleRenderer::new);
+        // 金鲤漂浮饮品（2026-11-09）：GeckoLib 5 渲染器，变体（葫芦饮/仙酿）由渲染态数据票切换几何与贴图。
+        event.registerEntityRenderer(ModEntityTypes.SOURI_DRINK.get(), SouriDrinkRenderer::new);
     }
 
     /** 模型层定义：`astral_dice:barricade#main` / `astral_dice:repulsion#main`。 */
