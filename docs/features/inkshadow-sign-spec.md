@@ -70,12 +70,18 @@
 
 ### §2.4 渲染（首版占位，用户验收后定）
 
-- 门体：`inkshadoweffect.geo.json` + `textures/entity/inkshadoweffect.png`（**32×32**，与 geo 的 `texture_width/height` 一致），GeckoLib idle 动画 `animation.inkshadoweffect.idle`（2.0 s 循环，四骨 Y 轴自转）。
-  - 2026-11-10 修：bbmodel 内嵌贴图是 64×64 而 geo 声明 32×32，GeckoLib 只采样左上 1/4 ⇒ 把 png 用 LANCZOS 缩到 32×32（两线同 hash）后模型内圈恢复正常颜色。
-- 整体抬升 `GROUND_LIFT = 0.10`：geo 最低点 -0.9945 单位 × 1.6 / 16 ≈ -0.0995 格，抬升后底边正好落在方块顶面。
+- 门体：`inkshadoweffect.geo.json` + `textures/entity/inkshadoweffect.png`（**64×64，与 bbmodel 内嵌贴图逐字节一致**，geo 的 `texture_width/height` 同步为 64、全部 354 个面的 uv/uv_size ×2），GeckoLib idle 动画 `animation.inkshadoweffect.idle`（2.0 s 循环，四骨 Y 轴自转，数值与 bbmodel 的 `Idle` 关键帧一致）。
+  - 2026-11-10 修（闪修第二轮）：首版曾把 64×64 贴图缩到 32×32 去迁就 geo 的 `texture_width: 32`，等于<b>降分辨率</b>；后来闪烁在关光影时同样出现，用户点名「检查是不是又是降分辨率导致的」⇒ 改为保留原始 64×64 并把 geo 的 uv 空间整体 ×2，同时补 `inkshadoweffect.png.mcmeta`：
+    ```json
+    { "texture": { "blur": false, "clamp": true } }
+    ```
+    `blur:false` 关掉 mipmap，避免 cutout 的 alpha 阈值在缩小采样时逐帧把像素裁进裁出（那种「边缘溶解」在远处看起来就是闪烁）。
+- 整体抬升 `GROUND_LIFT = 0.12`：geo 最低点 -0.9945 单位 × 1.6 / 16 ≈ -0.0995 格，抬升后底边落在方块顶面；多出的 2 cm 是给模型里那两层**零厚度地面贴片**（LiedInner 约 6 mm、LiedOuter 约 2 mm）留深度余量——它们若与草地共面，远处会 z-fighting 出闪斑。
 - **地面门面（末地传送门样式）**：`textures/entity/inkshadow_portal_surface.png`（64×64，纯黑底 + 紫色星盘 + 圆形 alpha 边缘）贴在模型内框上方 `SURFACE_Y = 0.02` 的水平四边形，半径 `SURFACE_RADIUS = 0.62`（不超出门框），绕 Y 轴 `SURFACE_SPIN_TICKS = 200` 慢转；用 `entityTranslucentEmissive` + `LightTexture.FULL_BRIGHT` 自发光。
 - **只在成对激活时渲染门面**：未配对的起始门只显示模型本体（`PENDING_RENDER_SCALE = 0.95` 略缩），符合用户 m02953 第 5 条。
-- 渲染顺序：旧版门面被模型零厚度底板整片遮挡 ⇒ 先 `MultiBufferSource.BufferSource.endBatch()` 刷出模型顶点，再 `disableDepthTest + depthMask(false)` 画门面，画完立即恢复，不影响其它实体。删除了旧版的竖立 billboard 漩涡（`VORTEX_*` 常量与 `inkshadow_vortex.png` 引用一并移除；文件保留未删）。
+- 渲染层：模型走 `RenderType.entityCutoutNoCull`（**不透明 + 写深度、不剔除背面**）。首版用 `entityTranslucent`，门环是一堆零厚度薄片，半透明不写深度只能靠排序，看起来像「鬼影」而且随视角逐帧变；改成 cutout 后进不透明通道，观感立刻变实心。
+- 渲染顺序：模型已写深度，门面（`SURFACE_Y = 0.03`，高于模型所有薄片）走正常深度测试即可；**已删除**旧版 `endBatch() + disableDepthTest + depthMask(false)` 的状态 hack（在 Iris 延迟管线里会打乱通道顺序）。
+- **眼睛闪烁的根因与修法（第三轮）**：黄色眼睛只出现在 `InkShadow` 骨上；该骨的三块薄片里，中间大平板在 z=-6.6，两片侧翼在 z=-6.6153，只差 0.015 单位（1.6 缩放下约 0.15 mm）⇒ 与中间平板几乎共面，深度值逐帧翻转，眼睛就在「亮/灭」之间跳。修法：把两片侧翼后移到 z=-6.75（约 1.5 cm），眼睛所在的中间平板永远在前，闪烁消失。**注意**：曾试过给整个模型开背面剔除（`entityCutout`）——眼睛会直接消失（单侧 UV 被剔），该方向不可取。
 
 ## §3 落点清单（P0 两线同构）
 
@@ -88,7 +94,7 @@
 | 事件 | `java/.../event/InkShadowSignEvents.java` |
 | 效果（状态指示器） | `java/.../effect/InkShadowStackEffect.java` + `effect/ModEffects.java` 注册 `inkshadow_stack`（图标 = `textures/mob_effect/inkshadow_stack.png`，即立牌图标） |
 | 注册 | `ModItems`、`ModCreativeTabs`、`ModEntityTypes`、客户端渲染注册（`ModClientEvents` / forge 对应入口）、`component/ModAttachments` |
-| 资产 | `assets/astral_dice/geo/inkshadoweffect.geo.json`、`animations/inkshadoweffect.animation.json`、`textures/entity/inkshadoweffect.png`（32×32）、`textures/entity/inkshadow_portal_surface.png`（地面门面）、`textures/mob_effect/inkshadow_stack.png`、`textures/item/inkshadow_sign.png`（物品图标取自用户素材 `images/小猎手立牌.png`；模型顶点源自 `models/inkshadoweffect.bbmodel`，经 `tools/bbmodel_to_geo.py` 转换） |
+| 资产 | `assets/astral_dice/geo/inkshadoweffect.geo.json`、`animations/inkshadoweffect.animation.json`、`textures/entity/inkshadoweffect.png`（64×64）+ `inkshadoweffect.png.mcmeta`、`textures/entity/inkshadow_portal_surface.png`（地面门面）、`textures/mob_effect/inkshadow_stack.png`、`textures/item/inkshadow_sign.png`（物品图标取自用户素材 `images/小猎手立牌.png`；模型顶点源自 `models/inkshadoweffect.bbmodel`，经 `tools/bbmodel_to_geo.py` 转换） |
 | 数据（**datagen 产出**，落各线 `src/generated/resources/`） | `assets/astral_dice/models/item/inkshadow_sign.json`、`data/astral_dice/recipe(s)/inkshadow_sign.json`（**占位配方**）、`data/astral_dice/advancement(s)/recipes/misc/inkshadow_sign.json` |
 | 数据（手写，落各线 `src/main/resources/`） | `data/astral_dice/tags/item(s)/signs.json`、`data/curios/tags/item(s)/stand.json`、Patchouli `entries/signs/inkshadow_sign.json` |
 | datagen 登记 | `datagen/ModItemModelProvider`（`basicItem(ModItems.INKSHADOW_SIGN.get())`）+ `datagen/ModRecipeProvider`（`BXB/KCK/XDX` 占位配方，`unlockedBy has_blank_chip`） |
