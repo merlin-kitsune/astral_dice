@@ -833,6 +833,19 @@ public class ModAttachments {
         INKSHADOW_STACKS_EXPIRE.set(player, value);
     }
 
+    // 被动「双生之影」当前仍存活的门对到期刻列表(逗号分隔的 gameTime;无固定总时限,每对门各自 3600t)。
+    // 由 InkShadowSignManager.registerLivePair 追加、livePairDeadline 剪掉过期项;空串 = 无存活门对。
+    public static final AttachedDataKey<String> INKSHADOW_PAIR_EXPIRIES =
+            register(AttachedDataKey.builder("inkshadow_pair_expiries", Codec.STRING, () -> "").build());
+
+    public static String getInkShadowPairExpiries(net.minecraft.world.entity.player.Player player) {
+        return INKSHADOW_PAIR_EXPIRIES.get(player);
+    }
+
+    public static void setInkShadowPairExpiries(net.minecraft.world.entity.player.Player player, String value) {
+        INKSHADOW_PAIR_EXPIRIES.set(player, value == null ? "" : value);
+    }
+
     // @Deprecated 已废弃:立牌主动技能"等待目标释放"机制已被目标选择器(TargetSelectionManager 会话)替代,
     // 占星师/秘密侦探不再读写本附件。定义保留(已持久化)以避免旧存档附件数据异常,禁止新代码使用。
     // 立牌主动技能"等待目标释放"状态类型:1=占星师(虚弱印记) 2=秘密侦探(隐匿调查);0=无等待

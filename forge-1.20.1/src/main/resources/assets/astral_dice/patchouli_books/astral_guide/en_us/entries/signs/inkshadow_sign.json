@@ -11,6 +11,10 @@
     {
       "type": "patchouli:text",
       "text": "astral_dice.guide.entry.inkshadow_sign.2"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:inkshadow_sign"
     }
   ],
   "sortnum": 47

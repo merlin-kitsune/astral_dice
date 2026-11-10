@@ -425,5 +425,12 @@ public class ModEffects {
     public static final RegistryObject<MobEffect> SOURI_DRAGON =
             EFFECTS.register("souri_dragon", SouriDragonEffect::new);
 
+    /**
+     * 双生之影（小猎手立牌 passive）：HUD 显示载体，amplifier = 层数 - 1，duration = 最晚到期门对的剩余刻。
+     * 真实层数在附件 INKSHADOW_STACKS（见 component/ModAttachments），本效果不参与伤害计算。
+     */
+    public static final RegistryObject<MobEffect> INKSHADOW_STACK =
+            EFFECTS.register("inkshadow_stack", InkShadowStackEffect::new);
+
     public static final Collection<RegistryObject<MobEffect>> ALL = EFFECTS.getEntries();
 }

@@ -1737,10 +1737,8 @@ public class ModTooltipHandler {
             addSignNoteLines(tooltip, "tooltip.astral_dice.sign.sykes_note");
             addSignCooldownRemaining(tooltip, event.getEntity());
         }
-        // 小猎手立牌(inkshadow,史诗):主动「暗影之门」(当前位置放起始【传送门】,30 秒内在另一处放
-        // 终点【传送门】成一對;放置期 +10% 移速、禁攻击/切武器/交互;成对后存活 5:00、可跨维度)
-        // + 被动「双生之影」(每名玩家首次穿越一扇门 ⇒ 门主人 +2 攻击,2:00,可叠加;敌对目标靠近
-        // 【传送门】受 2 点魔法伤害)。
+        // 小猎手立牌(inkshadow,稀有):主动「暗影之门」两端传送门 / 被动「双生之影」攻击叠加
+        // (与 1.21.1 线同形:说明全部收进 _active/_passive 两个单键多行键,不再有 _note 备注段)
         if (stack.is(ModItems.INKSHADOW_SIGN.get())) {
             tooltip.add(Component.empty());
             addSignKeyHint(tooltip);
@@ -1748,9 +1746,6 @@ public class ModTooltipHandler {
             addSignLines(tooltip, "tooltip.astral_dice.sign.inkshadow_active");
             addSignPassiveTitle(tooltip, "tooltip.astral_dice.sign.inkshadow.passive");
             addSignLines(tooltip, "tooltip.astral_dice.sign.inkshadow_passive");
-            // 备注区：双生之影的计数口径 / 门不可破坏 / 到期消失（紫色、无列表符号）
-            tooltip.add(Component.empty());
-            addSignNoteLines(tooltip, "tooltip.astral_dice.sign.inkshadow_note");
             addSignCooldownRemaining(tooltip, event.getEntity());
         }
         if (stack.is(ModItems.DEEPSEEK_SIGN.get())) {

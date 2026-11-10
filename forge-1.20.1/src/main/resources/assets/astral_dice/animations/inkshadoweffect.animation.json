@@ -3,36 +3,36 @@
 	"animations": {
 		"animation.inkshadoweffect.idle": {
 			"loop": true,
-			"animation_length": 2.0,
+			"animation_length": 4.0,
 			"bones": {
 				"StandLower": {
 					"rotation": {
 						"0.0": [0, 0, 0],
-						"2.0": [0, 720, 0]
+						"4.0": [0, 720, 0]
 					}
 				},
 				"LiedInner": {
 					"rotation": {
 						"0.0": [0, 0, 0],
-						"2.0": [0, 720, 0]
+						"4.0": [0, 720, 0]
 					}
 				},
 				"StandTaller": {
 					"rotation": {
 						"0.0": [0, 0, 0],
-						"2.0": [0, -360, 0]
+						"4.0": [0, -360, 0]
 					}
 				},
 				"LiedOuter": {
 					"rotation": {
 						"0.0": [0, 0, 0],
-						"2.0": [0, 360, 0]
+						"4.0": [0, 360, 0]
 					}
 				},
 				"EffectCircle": {
 					"rotation": {
 						"0.0": [0, 0, 0],
-						"2.0": [0, -180, 0]
+						"4.0": [0, -180, 0]
 					}
 				}
 			}
