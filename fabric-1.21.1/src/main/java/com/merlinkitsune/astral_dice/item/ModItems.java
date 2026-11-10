@@ -1183,6 +1183,13 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(AstralRarities.legendary())));
 
+    // 少主立牌(命名:al,史诗):主动「强者怜悯」选一名类玩家目标 + 选 1~3 张卡牌送给他(自己扣除),
+    // 每张换 2 星币,双方各得一次筹码折扣与刷新;被动「双赢」A 面给牌双方各 +1 星光、每 4 层 +1 攻/+1 防。
+    public static final RegistryObject<Item> AL_SIGN = registerItem("al_sign",
+            () -> new com.merlinkitsune.astral_dice.item.sign.AlSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.epic())));
+
     public static <T extends Item> RegistryObject<T> registerItem(String name, Supplier<T> itemSupplier) {
         return ITEMS.register(name, itemSupplier);
     }

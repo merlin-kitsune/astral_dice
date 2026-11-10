@@ -184,7 +184,6 @@
   "astral_dice.guide.entry.playstyles.5": "Charge: a player-level stack resource (max 20), built up by moving, teleporting, killing and triggering the Dice Blessing (Energy Recycler, Warp Engine, Electric Sword, Perpetual Motion). While you have any Charge, sign active cooldowns are capped at 160 seconds and effect-card cooldowns at 30 seconds (the base value is capped, and other reductions such as the Weird Dice still apply); stacks also convert into attack and movement speed, or the Current Core can spend them to instantly finish a sign's active cooldown.",
   "astral_dice.guide.entry.playstyles.6": "Beyond the four playstyles, general chips such as Boxing Gloves, Speed Skates and Sandwiches belong to none of them and directly buff your stats.",
   "astral_dice.guide.entry.playstyles.7": "Coordinate with teammates to pull off combos.",
-
   "astral_dice.guide.entry.playstyles.name": "Playstyles",
   "astral_dice.guide.entry.revenge_halberd_chip.1": "While under any of these effects, attack +6: Weakness, Slowness, Mining Fatigue, Blindness, Darkness, Wind Charged, Weaving, Oozing, Infested, Blue Curse.",
   "astral_dice.guide.entry.revenge_halberd_chip.2": "While under any of these effects, defense +6: Hunger, Nausea, Poison, Wither, Raid Omen, Trial Omen, Marked.",
@@ -1182,5 +1181,18 @@
   "astral_dice.guide.entry.souri_sign.3": "Golden Scale: §e+1§7 defense per stack, up to §e4§7 stacks. At §e4§7 stacks grants Golden Koi Ascension and turns unclaimed Gourd Drinks on the field into Immortal Brews.\nGolden Koi Ascension: each Golden Scale grants §e+1§7 attack damage.\nGourd Drink: §e+3§7 attack damage, lasting §91:00§7 (only one can be held).\nImmortal Brew: §e+4§7 attack damage and Speed (§92:00§7); restores §e6§7 health on pickup (only one can be held).\nSynergy \\\"Left to You\\\": a player wearing the Mamushi Sign gains §e1§7 Awakening from a Gourd Drink and §e2§7 from an Immortal Brew.",
   "tooltip.astral_dice.sign.souri_gold_scale": "Golden Scale: §e%s§7 / §e%s§r",
   "tooltip.astral_dice.sign.souri_note": "Golden Scale: §e+1§7 defense per stack, up to §e4§7 stacks. At §e4§7 stacks grants Golden Koi Ascension and turns unclaimed Gourd Drinks on the field into Immortal Brews\nGolden Koi Ascension: each Golden Scale grants §e+1§7 attack damage\nGourd Drink: §e+3§7 attack damage, lasting §91:00§7\nImmortal Brew: §e+4§7 attack damage and Speed, lasting §92:00§7; restores §e6§7 health immediately on pickup\n(only one drink can be held)",
-  "tooltip.astral_dice.sign.souri_link": "Left to You: a player wearing the Mamushi Sign gains §e1§7 Awakening from a Gourd Drink and §e2§7 from an Immortal Brew"
+  "tooltip.astral_dice.sign.souri_link": "Left to You: a player wearing the Mamushi Sign gains §e1§7 Awakening from a Gourd Drink and §e2§7 from an Immortal Brew",
+  "tooltip.astral_dice.sign.al.active": "Mercy of the Strong",
+  "tooltip.astral_dice.sign.al.passive": "Win-Win",
+  "astral_dice.guide.entry.al_sign.1": "A.L. Sign: the active Mercy of the Strong picks a player (characters registered by add-on mods count as players), then opens the card picker; §e1§7 card is enough to confirm, up to §e3§7. Given cards go straight into the receiver inventory and are removed from yours; anything that does not fit drops on the ground. Every card given grants §e2§7 Star Coins.",
+  "astral_dice.guide.entry.al_sign.2": "The passive Win-Win has two triggers: (1) any path that makes another character gain cards (including the You Have, I Have effect card) grants both sides §e1§7 Starlight; (2) using the active skill on a target makes chips cost §e5§7 fewer Star Coins for both sides (minimum §e5§7) and grants each §e1§7 refresh. Every §e4§7 Starlight grants ATK §e+1§7 and DEF §e+1§7.",
+  "msg.astral_dice.al_ready": "Choose a player to give cards to",
+  "msg.astral_dice.al_done": "Gave %s cards and gained %s Star Coins",
+  "msg.astral_dice.al_no_cards": "You have no cards to give",
+  "tooltip.astral_dice.sign.al_active": "Pick a player, then choose §e1§7-§e3§7 cards to give them (the cards are taken from you)\n  For every card given: gain §e2§7 Star Coins",
+  "tooltip.astral_dice.sign.al_passive": "When you cause another character to gain cards (including You Have, I Have): both of you gain §e1§7 Starlight\n  After using the active skill on a target: both of you pay §e5§7 fewer Star Coins for chips (minimum §e5§7) and each gain §e1§7 refresh\n  Every §e4§7 Starlight: ATK §e+1§7, DEF §e+1§7",
+  "item.astral_dice.al_sign": "A.L. Sign",
+  "gui.astral_dice.card_choice.title_variable_combat": "Choose 1-3 Combat Cards",
+  "gui.astral_dice.card_choice.title_variable_effect": "Choose 1-3 Effect Cards",
+  "gui.astral_dice.card_choice.title_variable_any": "Choose 1-3 Cards"
 }

@@ -184,7 +184,6 @@
   "astral_dice.guide.entry.playstyles.5": "充能：玩家级层数资源（上限 20），由移动、传送、击杀与触发骰神赐福积累（能量回收器、跃迁引擎、电流剑、永动机）；只要拥有充能，立牌主动冷却至多 160 秒、效果牌冷却至多 30 秒（把基础值封顶，诡异骰子等其它减免照常生效），层数还能换算为攻击力与移动速度，或由电流核心消耗以立即结束立牌主动冷却。",
   "astral_dice.guide.entry.playstyles.6": "此外还有拳击手套、速度轮滑、夹心饼干等不属任何流派的泛用筹码，直接强化属性。",
   "astral_dice.guide.entry.playstyles.7": "与队友配合可打出组合技。",
-
   "astral_dice.guide.entry.playstyles.name": "流派",
   "astral_dice.guide.entry.revenge_halberd_chip.1": "获得以下任一效果时，攻击力 +6：虚弱、缓慢、挖掘疲劳、失明、黑暗、蓄风、盘丝、渗浆、寄生、青之诅咒。",
   "astral_dice.guide.entry.revenge_halberd_chip.2": "获得以下任一效果时，防御力 +6：饥饿、反胃、中毒、凋零、袭击之兆、试炼之兆、标记。",
@@ -1182,5 +1181,18 @@
   "astral_dice.guide.entry.souri_sign.3": "「金鳞」：每层获得防御力 §e+1§7，最多 §e4§7 层。达到 §e4§7 层后获得「金鲤化龙」，并使场上未拾取的「葫芦饮」转换为「仙酿」。\n「金鲤化龙」：获得后，每层「金鳞」获得攻击力 §e+1§7。\n「葫芦饮」：攻击力 §e+3§7，持续 §91:00§7（一次只能拾取一个饮品）。\n「仙酿」：攻击力 §e+4§7，并获得迅捷 (§92:00§7)；拾取「仙酿」后立即回复 §e6§7 点生命值（一次只能拾取一个饮品）。\n「留给你的」：持有蛟龙立牌的玩家拾取「葫芦饮」后，获得 §e1§7 层「觉醒」；拾取「仙酿」后，获得 §e2§7 层「觉醒」。",
   "tooltip.astral_dice.sign.souri_gold_scale": "金鳞：§e%s§7 / §e%s§r",
   "tooltip.astral_dice.sign.souri_note": "「金鳞」：每层获得防御力 §e+1§7，最多 §e4§7 层。达到 §e4§7 层后获得「金鲤化龙」，并使场上未拾取的「葫芦饮」转换为「仙酿」\n「金鲤化龙」：获得后，每层「金鳞」获得攻击力 §e+1§7\n「葫芦饮」：攻击力 §e+3§7，持续 §91:00§7\n「仙酿」：攻击力 §e+4§7，并获得迅捷，持续 §92:00§7；拾取「仙酿」后立即回复 §e6§7 点生命值\n（一次只能拾取一个饮品）",
-  "tooltip.astral_dice.sign.souri_link": "留给你的：持有蛟龙立牌的玩家拾取「葫芦饮」后，获得 §e1§7 层「觉醒」；拾取「仙酿」后，获得 §e2§7 层「觉醒」"
+  "tooltip.astral_dice.sign.souri_link": "留给你的：持有蛟龙立牌的玩家拾取「葫芦饮」后，获得 §e1§7 层「觉醒」；拾取「仙酿」后，获得 §e2§7 层「觉醒」",
+  "tooltip.astral_dice.sign.al.active": "强者怜悯",
+  "tooltip.astral_dice.sign.al.passive": "双赢",
+  "astral_dice.guide.entry.al_sign.1": "少主立牌：主动「强者怜悯」先选一名玩家（附属模组注册的角色同样算玩家），再打开卡牌选择器；放 §e1§7 张即可确认，上限 §e3§7 张。卡牌直接进入对方物品栏并从自己身上扣除，塞不进则原地掉落；每赠出 §e1§7 张获得 §e2§7 星币。",
+  "astral_dice.guide.entry.al_sign.2": "被动「双赢」分两个触发面：①任何使其他角色获得卡牌的途径（含「你有我有」效果牌）都会让双方各 +§e1§7 层星光；②对目标使用主动技能后，双方购买筹码的价格 -§e5§7 星币（最低 §e5§7）并各获得 §e1§7 次刷新。自身每 §e4§7 层星光提供攻击力 §e+1§7、防御力 §e+1§7。",
+  "msg.astral_dice.al_ready": "请选择要赠予卡牌的玩家",
+  "msg.astral_dice.al_done": "已赠出 %s 张卡牌，获得 %s 星币",
+  "msg.astral_dice.al_no_cards": "身上没有可赠予的卡牌",
+  "tooltip.astral_dice.sign.al_active": "选择一名玩家，随后选择 §e1§7～§e3§7 张卡牌赠予他（卡牌从自己身上扣除）\n  每赠出 §e1§7 张：获得 §e2§7 星币",
+  "tooltip.astral_dice.sign.al_passive": "使其他角色获得卡牌时（含「你有我有」）：双方各获得 §e1§7 层星光\n  对目标使用主动技能后：双方购买筹码的价格 §e-5§7 星币（最低 §e5§7），并各获得 §e1§7 次刷新\n  每拥有 §e4§7 层星光：攻击力 §e+1§7、防御力 §e+1§7",
+  "item.astral_dice.al_sign": "少主立牌",
+  "gui.astral_dice.card_choice.title_variable_combat": "选择 1~3 张战斗牌",
+  "gui.astral_dice.card_choice.title_variable_effect": "选择 1~3 张效果牌",
+  "gui.astral_dice.card_choice.title_variable_any": "选择 1~3 张卡牌"
 }

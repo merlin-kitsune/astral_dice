@@ -71,14 +71,17 @@ public final class CardChoiceManager {
     private static final class Session {
         final int token;
         final int slotCount;
+        /** 确认时至少要放满几张（1..slotCount）；{@code slotCount} 即「必须放满」的旧口径。 */
+        final int minSlots;
         final CardChoiceType type;
         Consumer<List<ItemStack>> handler;
         /** 已确认/已作废：此后不再接受确认与重复回调。 */
         boolean resolved;
 
-        Session(int token, int slotCount, CardChoiceType type, Consumer<List<ItemStack>> handler) {
+        Session(int token, int slotCount, int minSlots, CardChoiceType type, Consumer<List<ItemStack>> handler) {
             this.token = token;
             this.slotCount = slotCount;
+            this.minSlots = minSlots;
             this.type = type;
             this.handler = handler;
         }
@@ -93,27 +96,29 @@ public final class CardChoiceManager {
     private static final class ChoiceMenuFactory implements ExtendedScreenHandlerFactory<CardChoiceMenu.OpenData> {
         private final int token;
         private final int slotCount;
+        private final int minSlots;
         private final CardChoiceType type;
 
-        ChoiceMenuFactory(int token, int slotCount, CardChoiceType type) {
+        ChoiceMenuFactory(int token, int slotCount, int minSlots, CardChoiceType type) {
             this.token = token;
             this.slotCount = slotCount;
+            this.minSlots = minSlots;
             this.type = type;
         }
 
         @Override
         public CardChoiceMenu.OpenData getScreenOpeningData(ServerPlayer player) {
-            return new CardChoiceMenu.OpenData(token, slotCount, type);
+            return new CardChoiceMenu.OpenData(token, slotCount, minSlots, type);
         }
 
         @Override
         public Component getDisplayName() {
-            return Component.translatable(type.titleKey(slotCount));
+            return Component.translatable(type.titleKey(slotCount, minSlots));
         }
 
         @Override
         public CardChoiceMenu createMenu(int containerId, Inventory inventory, Player player) {
-            return new CardChoiceMenu(containerId, inventory, token, slotCount, type);
+            return new CardChoiceMenu(containerId, inventory, token, slotCount, minSlots, type);
         }
     }
 
@@ -124,12 +129,37 @@ public final class CardChoiceManager {
      */
     public static int start(ServerPlayer player, int slotCount, CardChoiceType type,
                             Consumer<List<ItemStack>> handler) {
-        int token = ThreadLocalRandom.current().nextInt(1, Integer.MAX_VALUE);
-        return start(player, slotCount, type, token, handler) ? token : -1;
+        return start(player, slotCount, slotCount, type, handler);
     }
 
-    /** 打开选卡界面（调用者自带 token）；true = 已建会话并下发界面。 */
+    /**
+     * 打开选卡界面（**变长下限**）：{@code slotCount} 个卡槽、确认时至少要放满 {@code minSlots} 张。
+     *
+     * <p>2026-11-08 新增（少主立牌「强者怜悯」：可给 1~3 张，1 张即可发送）：
+     * 旧口径「槽位数 = 必须放满数」由此拆成两个参数；{@code minSlots} 会被夹到
+     * {@code [MIN_SLOTS, slotCount]}，空槽在确认时**不计入、不消耗**。
+     *
+     * @return 会话 token；&lt;0 = 被拒（已有未结算会话 / 参数非法 / 打开失败）
+     */
+    public static int start(ServerPlayer player, int slotCount, int minSlots, CardChoiceType type,
+                            Consumer<List<ItemStack>> handler) {
+        int token = ThreadLocalRandom.current().nextInt(1, Integer.MAX_VALUE);
+        return start(player, slotCount, minSlots, type, token, handler) ? token : -1;
+    }
+
+    /** 打开选卡界面（调用者自带 token，旧口径：必须放满）；true = 已建会话并下发界面。 */
     public static boolean start(ServerPlayer player, int slotCount, CardChoiceType type, int token,
+                                Consumer<List<ItemStack>> handler) {
+        return start(player, slotCount, slotCount, type, token, handler);
+    }
+
+    /**
+     * 打开选卡界面（自带 token + 变长下限，见
+     * {@link #start(ServerPlayer, int, int, CardChoiceType, Consumer)}）。
+     *
+     * @return true = 已建会话并下发界面
+     */
+    public static boolean start(ServerPlayer player, int slotCount, int minSlots, CardChoiceType type, int token,
                                 Consumer<List<ItemStack>> handler) {
         if (player == null || type == null || handler == null || token <= 0) {
             return false;
@@ -145,13 +175,15 @@ public final class CardChoiceManager {
                     player.getGameProfile().getName(), existing.token);
             return false;
         }
-        Session session = new Session(token, slotCount, type, handler);
+        int effectiveMinSlots = Math.max(MIN_SLOTS, Math.min(minSlots, slotCount));
+        Session session = new Session(token, slotCount, effectiveMinSlots, type, handler);
         SESSIONS.put(player.getUUID(), session);
 
         try {
             // forge 这里是 NetworkHooks.openScreen(player, new SimpleMenuProvider(...), buf -> {...})；
-            // 本线把「provider + extra data」合并成 ChoiceMenuFactory（同序写入三个 VarInt）。
-            player.openMenu(new ChoiceMenuFactory(token, slotCount, type));
+            // 本线把「provider + extra data」合并成 ChoiceMenuFactory（同序写入四个 VarInt：
+            // token → slotCount → minSlots → type.ordinal()）。
+            player.openMenu(new ChoiceMenuFactory(token, slotCount, effectiveMinSlots, type));
         } catch (RuntimeException exception) {
             // 打开途中抛异常（createMenu 构造失败 / extra data 编码失败等）：会话已入 map，
             // 不清理就会让该玩家此后**恒**被判 already_open ⇒ 必须回滚会话并返回失败。
@@ -176,8 +208,8 @@ public final class CardChoiceManager {
                     player.containerMenu == null ? "null" : player.containerMenu.getClass().getSimpleName());
             return false;
         }
-        LOGGER.info("AP_CARD_CHOICE: open:{}:player={}:slots={}:type={}",
-                token, player.getGameProfile().getName(), slotCount, type);
+        LOGGER.info("AP_CARD_CHOICE: open:{}:player={}:slots={}:minSlots={}:type={}",
+                token, player.getGameProfile().getName(), slotCount, effectiveMinSlots, type);
         return true;
     }
 
@@ -218,8 +250,9 @@ public final class CardChoiceManager {
         }
         session.resolved = true;
         SESSIONS.remove(player.getUUID(), session);
-        LOGGER.info("AP_CARD_CHOICE: confirm:{}:player={}:slots={}:type={}:picked={}",
-                token, player.getGameProfile().getName(), session.slotCount, session.type, picked.size());
+        LOGGER.info("AP_CARD_CHOICE: confirm:{}:player={}:slots={}:minSlots={}:type={}:picked={}",
+                token, player.getGameProfile().getName(), session.slotCount, session.minSlots, session.type,
+                picked.size());
         ModNetwork.sendToPlayer(player, new CardChoiceCloseMessage(token));
         player.closeContainer();
         try {

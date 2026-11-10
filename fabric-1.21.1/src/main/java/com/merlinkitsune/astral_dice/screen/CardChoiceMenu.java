@@ -52,17 +52,31 @@ public class CardChoiceMenu extends AbstractContainerMenu {
     private final SimpleContainer cardContainer;
     private final int token;
     private final int slotCount;
+    /** 确认时至少要放满几张（1..slotCount；旧口径 = slotCount）。 */
+    private final int minSlots;
     private final CardChoiceType type;
     /** 已确认：removed 时只退余量、不触发会话作废。 */
     private boolean confirmed;
     private boolean closed;
 
-    /** 服务端构造（{@code ServerPlayer#openMenu} 的工厂）。 */
+    /** 服务端构造（旧口径：槽位数 = 必须放满数）。 */
     public CardChoiceMenu(int containerId, Inventory playerInventory, int token, int slotCount, CardChoiceType type) {
+        this(containerId, playerInventory, token, slotCount, slotCount, type);
+    }
+
+    /**
+     * 服务端构造（{@code ServerPlayer#openMenu} 的工厂；2026-11-08 起支持「槽位数 &gt; 必须放满数」）。
+     *
+     * <p>{@code minSlots} 会被夹到 {@code [MIN_SLOTS, slotCount]}：少主立牌「强者怜悯」允许放 1~3 张，
+     * 放 1 张即可确认，空槽在确认时不计入、不消耗。
+     */
+    public CardChoiceMenu(int containerId, Inventory playerInventory, int token, int slotCount, int minSlots,
+                          CardChoiceType type) {
         super(ModMenuTypes.CARD_CHOICE.get(), containerId);
         this.playerInventory = playerInventory;
         this.token = token;
         this.slotCount = Math.max(CardChoiceManager.MIN_SLOTS, Math.min(CardChoiceManager.MAX_SLOTS, slotCount));
+        this.minSlots = Math.max(CardChoiceManager.MIN_SLOTS, Math.min(minSlots, this.slotCount));
         this.type = type == null ? CardChoiceType.ANY : type;
         this.cardContainer = new SimpleContainer(this.slotCount);
         initSlots();
@@ -70,7 +84,7 @@ public class CardChoiceMenu extends AbstractContainerMenu {
 
     /** 客户端构造（1.21.1：开屏数据经 {@link OpenData} 的 StreamCodec 传输，替代 1.20.1 手写 varint 读法）。 */
     public CardChoiceMenu(int containerId, Inventory playerInventory, OpenData data) {
-        this(containerId, playerInventory, data.token(), data.slotCount(), data.type());
+        this(containerId, playerInventory, data.token(), data.slotCount(), data.minSlots(), data.type());
     }
 
     /**
@@ -86,7 +100,7 @@ public class CardChoiceMenu extends AbstractContainerMenu {
      * {@code CardChoiceType} 的枚举序号传输（与服务端构造同源枚举，不存在越界值；槽数与会话<br>
      * 校验仍在服务端做）。
      */
-    public record OpenData(int token, int slotCount, CardChoiceType type) {
+    public record OpenData(int token, int slotCount, int minSlots, CardChoiceType type) {
         /**
          * 线序 token → slotCount → type.ordinal()（与 1.20.1 手写 varint 的写出顺序一致）。
          *
@@ -97,12 +111,13 @@ public class CardChoiceMenu extends AbstractContainerMenu {
          * 再由码内 {@link CardChoiceType#byId(int)}（越界回落 ANY）还原枚举。
          */
         public static final StreamCodec<RegistryFriendlyByteBuf, OpenData> STREAM_CODEC =
-                StreamCodec.<RegistryFriendlyByteBuf, OpenData, Integer, Integer, Integer>composite(
+                StreamCodec.<RegistryFriendlyByteBuf, OpenData, Integer, Integer, Integer, Integer>composite(
                         ByteBufCodecs.VAR_INT, OpenData::token,
                         ByteBufCodecs.VAR_INT, OpenData::slotCount,
+                        ByteBufCodecs.VAR_INT, OpenData::minSlots,
                         ByteBufCodecs.VAR_INT, data -> data.type().ordinal(),
-                        (token, slotCount, typeOrdinal) ->
-                                new OpenData(token, slotCount, CardChoiceType.byId(typeOrdinal)));
+                        (token, slotCount, minSlots, typeOrdinal) ->
+                                new OpenData(token, slotCount, minSlots, CardChoiceType.byId(typeOrdinal)));
     }
 
     private void initSlots() {
@@ -127,13 +142,23 @@ public class CardChoiceMenu extends AbstractContainerMenu {
         return slotCount;
     }
 
+    /** 确认时至少要放满几张（{@code filledSlots() >= minSlots} 才允许确认）。 */
+    public int minSlots() {
+        return minSlots;
+    }
+
     public CardChoiceType type() {
         return type;
     }
 
-    /** 已放满（确认按钮的唯一显示/响应判据）。 */
+    /**
+     * 已达下限（确认按钮的唯一显示/响应判据）。
+     *
+     * <p>2026-11-08：旧口径 {@code filledSlots() == slotCount}（必须放满）改为 {@code >= minSlots}
+     * —— 少主立牌「强者怜悯」允许 1~3 张任选，空槽不参与结算。
+     */
     public boolean isComplete() {
-        return filledSlots() == slotCount;
+        return filledSlots() >= minSlots;
     }
 
     public int filledSlots() {
@@ -152,16 +177,24 @@ public class CardChoiceMenu extends AbstractContainerMenu {
      * 两线口径一致：创造模式（instabuild）不扣卡，生存模式仍扣。
      */
     public List<ItemStack> consumeSelection(Player player) {
-        // 先整体校验，再动任何一张（避免「消耗到一半发现不合法」）
+        // 先整体校验（有多少合法槽），再动任何一张（避免「消耗到一半发现不合法」）；
+        // 2026-11-08：支持空槽 —— 空槽（或类型不符的槽）**跳过不消耗**，只要求实放张数 >= minSlots。
+        int filled = 0;
+        for (int i = 0; i < slotCount; i++) {
+            ItemStack stack = cardContainer.getItem(i);
+            if (!stack.isEmpty() && type.matches(stack)) {
+                filled++;
+            }
+        }
+        if (filled < minSlots) {
+            return List.of();
+        }
+        List<ItemStack> picked = new ArrayList<>(filled);
         for (int i = 0; i < slotCount; i++) {
             ItemStack stack = cardContainer.getItem(i);
             if (stack.isEmpty() || !type.matches(stack)) {
-                return List.of();
+                continue;
             }
-        }
-        List<ItemStack> picked = new ArrayList<>(slotCount);
-        for (int i = 0; i < slotCount; i++) {
-            ItemStack stack = cardContainer.getItem(i);
             ItemStack one = stack.copyWithCount(1);
             // 创造模式不扣卡（对齐 1.21.1 的 consume(1, player)）
             if (!player.isCreative()) stack.shrink(1);

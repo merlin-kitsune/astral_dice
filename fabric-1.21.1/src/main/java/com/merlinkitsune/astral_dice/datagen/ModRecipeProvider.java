@@ -1500,6 +1500,20 @@ public class ModRecipeProvider extends FabricRecipeProvider {
                 .unlockedBy("has_conductive_wire", has(ModItems.CONDUCTIVE_WIRE.get()))
                 .save(output);
         // 金鲤立牌(souri,传奇):B/Y/B + Z/C/Z + P/D/P（B=星币尘、Y=热带鱼、Z=钟、C=空白筹码、P=黄金星盘、D=钻石骰子）
+        // 少主立牌(al,史诗):黑色染料 + 金块×2 + 星币尘×2 + 空白筹码 + 钻石骰子 → BXB/KCK/XDX
+        // (B=黑色染料、X=星币尘、K=金块、C=空白筹码、D=钻石骰子;2026-11-08 用户给定行序)
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.AL_SIGN.get())
+                .pattern("BXB")
+                .pattern("KCK")
+                .pattern("XDX")
+                .define('B', net.minecraft.world.item.Items.BLACK_DYE)
+                .define('X', ModItems.STAR_COIN_DUST.get())
+                .define('K', net.minecraft.world.item.Items.GOLD_BLOCK)
+                .define('C', ModItems.BLANK_CHIP.get())
+                .define('D', ModItems.DIAMOND_DICE.get())
+                .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
+                .save(output);
+        // 金鲤立牌(souri,传奇):B/Y/B + Z/C/Z + P/D/P（B=星币尘、Y=热带鱼、Z=钟、C=空白筹码、P=黄金星盘、D=钻石骰子）
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.SOURI_SIGN.get())
                 .pattern("BYB")
                 .pattern("ZCZ")

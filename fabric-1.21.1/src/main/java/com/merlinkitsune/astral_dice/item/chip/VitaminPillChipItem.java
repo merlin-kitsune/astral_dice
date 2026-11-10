@@ -61,6 +61,8 @@ public class VitaminPillChipItem extends BaseChipItem {
             // 蛟龙立牌(mamushi)被动:仅"使其他角色获得卡牌"才计层(giver == receiver 时由立牌侧自行判空)
             if (giver != null) {
                 com.merlinkitsune.astral_dice.item.sign.MamushiSignItem.onCardGivenToOther(giver, receiver);
+                // 2026-11-09 C:中立「给牌」钩子(少主立牌 al 被动 A 面;非玩家发牌方也进钩子并留 AP_CARD_GIVEN 锚点)
+                com.merlinkitsune.astral_dice.item.sign.CardGivenHooks.fire(giver, receiver);
             }
         }
     }

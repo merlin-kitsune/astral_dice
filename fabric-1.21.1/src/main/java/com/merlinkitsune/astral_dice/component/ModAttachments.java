@@ -1211,6 +1211,31 @@ public class ModAttachments {
     public static final AttachedDataKey<Integer> SOURI_GOLD_SCALES =
             register(AttachedDataKey.builder("souri_gold_scales", Codec.INT, () -> 0).sync().copyOnDeath().build());
 
+    /**
+     * 筹码商店「限时折扣」额度（筹码）——少主立牌(al)主动「强者怜悯」B 面授予。
+     *
+     * <p>宿主是**任意** {@link net.minecraft.world.entity.LivingEntity}（类玩家生物同样持有折扣，
+     * 见 {@code target/PlayerLikeTargets}）；成交价在 {@code ChipShopMenu} 的 DataSlot / price() /
+     * handleBuy 三处同源现算，故必须 {@code .sync()}（客户端要显示折后价）。
+     * 折扣**刻意不进** {@code ChipShopState}（后者是玩家存档运行态）。
+     */
+    public static final AttachedDataKey<Integer> CHIP_DISCOUNT_AMOUNT =
+            register(AttachedDataKey.builder("chip_discount_amount", Codec.INT, () -> 0).sync().build());
+
+    /** 筹码商店折扣到期刻（绝对 gameTime，long）；≤0 或已过期 ⇒ 无折扣。 */
+    public static final AttachedDataKey<Long> CHIP_DISCOUNT_UNTIL =
+            register(AttachedDataKey.builder("chip_discount_until", Codec.LONG, () -> 0L).sync().build());
+
+    /**
+     * 少主立牌(al)主动「强者怜悯」**待结算目标**（玩家 UUID 字符串；空串 = 无）。
+     *
+     * <p>会话态：选卡界面打开前写入、{@code resolve} 里读取并清空（取消路径也清空）。
+     * 纯服务端（选卡结算在服务端完成，客户端不读），故 **不** {@code .sync()}、
+     * 不加入 {@code SYNCED_KEYS}。
+     */
+    public static final AttachedDataKey<String> AL_PENDING_TARGET =
+            register(AttachedDataKey.builder("al_pending_target", Codec.STRING, () -> "").build());
+
     public static int getMamushiAwakening(net.minecraft.world.entity.player.Player player) {
         return MAMUSHI_AWAKENING.get(player);
     }
@@ -1241,6 +1266,30 @@ public class ModAttachments {
 
     public static void setSouriGoldScales(net.minecraft.world.entity.player.Player player, int value) {
         SOURI_GOLD_SCALES.set(player, Math.max(0, value));
+    }
+
+    public static int getChipDiscountAmount(net.minecraft.world.entity.LivingEntity living) {
+        return CHIP_DISCOUNT_AMOUNT.get(living);
+    }
+
+    public static void setChipDiscountAmount(net.minecraft.world.entity.LivingEntity living, int value) {
+        CHIP_DISCOUNT_AMOUNT.set(living, Math.max(0, value));
+    }
+
+    public static long getChipDiscountUntil(net.minecraft.world.entity.LivingEntity living) {
+        return CHIP_DISCOUNT_UNTIL.get(living);
+    }
+
+    public static void setChipDiscountUntil(net.minecraft.world.entity.LivingEntity living, long value) {
+        CHIP_DISCOUNT_UNTIL.set(living, value);
+    }
+
+    public static String getAlPendingTarget(net.minecraft.world.entity.player.Player player) {
+        return AL_PENDING_TARGET.get(player);
+    }
+
+    public static void setAlPendingTarget(net.minecraft.world.entity.player.Player player, String value) {
+        AL_PENDING_TARGET.set(player, value == null ? "" : value);
     }
 
     public static long getMamushiForcedCooldownUntil(net.minecraft.world.entity.player.Player player) {
@@ -1438,6 +1487,8 @@ public class ModAttachments {
             // 金鲤立牌(souri):金鳞层数需客户端可见(tooltip 计数行);觉醒仅服务端口径,一并同步
             SYNCED_KEYS.add(SOURI_GOLD_SCALES);
             SYNCED_KEYS.add(SOURI_AWAKENING);
+            SYNCED_KEYS.add(CHIP_DISCOUNT_AMOUNT);
+            SYNCED_KEYS.add(CHIP_DISCOUNT_UNTIL);
         }
         return SYNCED_KEYS;
     }

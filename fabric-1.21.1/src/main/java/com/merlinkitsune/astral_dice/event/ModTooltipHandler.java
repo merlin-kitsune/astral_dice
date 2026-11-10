@@ -1668,6 +1668,19 @@ public class ModTooltipHandler {
             }
             addSignCooldownRemaining(tooltip, souriViewer);
         }
+        // 少主立牌(al,史诗):主动「强者怜悯」(选一名类玩家目标 + 选 1~3 张卡牌送给他,自己扣除,
+        // 每张换 2 星币) + 被动「双赢」分两个触发面:①给牌(任何走发牌漏斗的给牌)双方各 +1 星光;
+        // ②对目标使用主动技能后双方筹码 -5(下限 5)+ 各一次刷新;另:每 4 层星光 +1 攻/+1 防。
+        // 本立牌无玩家级动态计数器 ⇒ 四段(按键提示 + 主动名/描述 + 被动名/描述) + 冷却行。
+        if (stack.is(ModItems.AL_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "tooltip.astral_dice.sign.al.active");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.al_active");
+            addSignPassiveTitle(tooltip, "tooltip.astral_dice.sign.al.passive");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.al_passive");
+            addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player jp ? jp : null);
+        }
         // 蛟龙立牌(mamushi)专属战斗牌:撕咬(费用 2 / 耐久 1 / 定值 +3)与
         // 龙之咆哮(费用 3 / 耐久 5 / 定值 +3;命中施加 缓慢 III 1:00 + 破防 1:00)。
         // 费用行 = 既有战斗牌的既有写法;描述行走规格 §4 冻结键 tooltip.astral_dice.card.bite / .dragon_roar
