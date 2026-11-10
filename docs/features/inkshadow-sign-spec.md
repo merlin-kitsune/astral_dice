@@ -103,9 +103,11 @@
 
 ## §4 文本键（zh_cn / en_us / ja_jp 三份）
 
-`item.astral_dice.inkshadow_sign`、`tooltip.astral_dice.sign.inkshadow.active`、`tooltip.astral_dice.sign.inkshadow_active.{1..5}`（第 5 条为本轮新增：站定 1.5 s、每门 5 s 静默、放置者需先离开 4 格）、`tooltip.astral_dice.sign.inkshadow.passive`、`tooltip.astral_dice.sign.inkshadow_passive.{1,2}`；手册 `astral_dice.guide.entry.inkshadow_sign.{1,2}`；实体名 `entity.astral_dice.inkshadow_portal`（zh「末影传送门」/ en「Ink Shadow Portal」/ ja「インクシャドウポータル」）；被动效果 `effect.astral_dice.inkshadow_stack` + `.description`。
+`item.astral_dice.inkshadow_sign`、`tooltip.astral_dice.sign.inkshadow.active`、`tooltip.astral_dice.sign.inkshadow_active`（**单键多行**：值内用 `\n` 分隔，子项以两个空格开头，由 `addSignLines` 拆行；第 5 段为本轮新增：站定 1.5 s、每门 5 s 静默、放置者需先离开 4 格）、`tooltip.astral_dice.sign.inkshadow.passive`、`tooltip.astral_dice.sign.inkshadow_passive`；手册 `astral_dice.guide.entry.inkshadow_sign.{1,2}`；实体名 `entity.astral_dice.inkshadow_portal`（zh「末影传送门」/ en「Ink Shadow Portal」/ ja「インクシャドウポータル」）；被动效果 `effect.astral_dice.inkshadow_stack` + `.description`。
 
 tooltip 挂点：`event/ModTooltipHandler` 的 `ModItems.INKSHADOW_SIGN` 块（照 `AL_SIGN` 块：`addSignKeyHint` → 主动标题/正文 → 被动标题/正文 → `addSignCooldownRemaining`）。
+
+⚠️ **文本键必须是单键多行，不能写成 `.1`/`.2` 编号键**（2026-11-10 实机发现的缺陷）：`addSignLines(tooltip, key)` 只读 `translationString(key)` 后按 `\n` 拆行，**不会**遍历 `key.1`、`key.2`；写成编号键时 lang 里的文本完全不会被读到，tooltip 会原样渲染 `§7tooltip.astral_dice.sign.inkshadow_active` 这样的键名。本批已把 1.21.1 的 `_active.1..5` / `_passive.1..2` 合并回单键（三语同改）。同理由 `addSignNoteLines` / `addCardLines` 处理的键也一样。
 
 ## §5 边界与已知取舍
 
@@ -151,6 +153,29 @@ tooltip 挂点：`event/ModTooltipHandler` 的 `ModItems.INKSHADOW_SIGN` 块（�
 | 截图 | 双门低角度 / 俯视 / overlay 版 / 未配对单门（sha256 见交付报告；`temp/` 下未入库） |
 
 **未验证 / 留给用户**：门面尺寸与转速是否合眼、模型缩放 1.6 是否合适、3:00 到期的实际消失时刻（本轮只核了 `Expire` 同值）、死亡/退出作废在第二轮代码下未重跑（首版曾验）、forge 线未同步。
+
+### §7.1b tooltip 文本修复复核（2026-11-10 21:56，AutoJS 服务端探针）
+
+编号键 → 单键多行合并后，用 `stack.getTooltipLines(TC.of(p.serverLevel()), p, TooltipFlag.NORMAL)` 读到的完整行序：
+
+```
+小猎手立牌 / 栏位: 立牌 / (空) / 按下 J 触发 / (空)
+主动技能（暗影之门）：
+  按技能键在脚下放置起始之门，需在 30 秒内在其他位置放置终点之门
+  放置期间：移动速度 +10%
+  - 无法攻击、无法切换武器、无法与方块实体交互
+  两门成型后成对存在 3:00，任意玩家进入一端后从另一端离开，可跨维度
+  终点未放置时起始之门无效（半透明且不可穿越）
+  - 放置窗口内死亡、登出或被击杀：起始之门消失且本次主动失效
+  站入门内 1.5 秒后传送；同一扇门对同一玩家每 5 秒最多一次（无提示）
+  - 放置者需先离开门 4 格，之后才会被自己的门传送
+被动技能（双生之影）：
+  每有一名新玩家穿过任意一端：自身攻击力 +2，持续 2:00，可叠加（每名玩家仅计一次，含自身）
+  每扇门对每名玩家只计一次；敌对目标靠近传送门时受到 2 点魔法伤害
+Astral Dice
+```
+
+语言热更判据：客户端 `Java.loadClass('net.minecraft.client.Minecraft').getInstance().reloadResourcePacks()` 后，`net.minecraft.locale.Language.getInstance().getOrDefault('tooltip.astral_dice.sign.inkshadow_active')` 返回合并正文、`…_active.1` 返回键名本身（旧键已删）。
 
 ### §7.2 首版（2026-11-10 白天，历史）
 
