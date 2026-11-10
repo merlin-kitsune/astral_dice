@@ -136,7 +136,7 @@ tooltip 挂点：`event/ModTooltipHandler` 的 `ModItems.INKSHADOW_SIGN` 块（�
 | 线 | 状态 |
 |---|---|
 | `neoforge-1.21.1` | 首版已落地（2026-11-10）+ 第二轮验收改版已实机验证 + 第三轮（被动改按存活门对生效）已实机验证 + **第四轮（下界传送门音效 / 稀有品质 / 简化配方）已编译 + 实机复核**（§7.1e） |
-| `forge-1.20.1` | 首版已落地（2026-11-10）；**第二至四轮改动均尚未同步**（冷却仍写死 2400、末影珍珠音效、史诗品质 + 星币尘/钻石骰配方、门仍 +0.25、旧的一次性穿越逻辑、被动仍是 2:00 计时），待 1.21.1 验收通过后同步 |
+| `forge-1.20.1` | **已同步到 1.21.1 终态**（2026-11-11 00:0x，提交随本批）：稀有品质、简化配方（star_coin / dice）、门 3:00、站定 1.5 s、双门 5 s 冷却、跨维度双向、下界传送门三件套音效、被动按存活门对叠层 + `inkshadow_stack` HUD、贴地无悬浮、门面平铺且未配对不画；实机读数见 §7.1f |
 | `fabric-1.20.1` / `fabric-1.21.1` / `neoforge-26.1.2` | **未做**（红线：P1 不自动跟进，等用户裁决） |
 
 ## §7 实机取证
@@ -221,9 +221,27 @@ Astral Dice
 | 编译 | `JAVA_HOME=… ./gradlew --no-daemon --offline :neoforge-1.21.1:compileJava` ⇒ BUILD SUCCESSFUL in 5s |
 
 > 听感（音量/音高/环境音间隔 4.5 s 是否合适）需用户实机试听；本机只能确认音效事件已解析、播放路径无异常。改完 Java 需重启客户端（本轮 log `scripts/test/linux/logs/1.21.1-20261110-231034.log`，game_pid 217094）。
+### §7.1f forge-1.20.1 终态实机（2026-11-10 23:54–2026-11-11 00:1x，AutoJS `eval_js` 服务端探针 + 窗口截图）
+
+| 检查 | 读数 |
+|---|---|
+| 启动 | `launch.sh --version 1.20.1 --quickplay testworld` ⇒ `LAUNCH: READY` + `WORLD_READY`（log `scripts/test/linux/logs/1.20.1-20261110-235422.log`，11,972 行，game_pid 239325 / wrapper 239106） |
+| 物品 | `st.getRarity()` = **`ASTRAL_DICE_RARE`**、`getHoverName()` = 「小猎手立牌」、`maxStackSize=1` |
+| 配方 | `server.getRecipeManager().byKey(astral_dice:inkshadow_sign).isPresent()` = true；datagen 出 `recipes/inkshadow_sign.json`（1.20.1 复数路径），X=`astral_dice:star_coin`、D=`astral_dice:dice` |
+| 门实体 | `placePortal` 两次 ⇒ 两门 `isActive()=true`、y=-60 严格贴地、`getDisplayName()`=「末影传送门」 |
+| 站定传送 | 离开到 (310.5,-60,300.5) 再站上 (315.5,-60,302.5) 3.5 s ⇒ 读回 (321.5,-60,306.5) |
+| 5 s 冷却 / 双向 | 到达端再站 1.5 s（冷却内）不动；冷却后反向同样成立 |
+| 跨维度 | 主世界 (340.5,-60,320.5) 站定 ⇒ 下界 (0.5,128,3.5)，门对两端分别位于 `minecraft:overworld` / `minecraft:the_nether`，`isActive()` 均为 true |
+| 被动叠层 | 装备立牌（`CuriosApi.getCuriosInventory(p).resolve().get().setEquippedCurio('stand',0,st)`，回读 `item.astral_dice.inkshadow_sign`、slots=1）后穿**新门对**：`INKSHADOW_STACK amp=0 dur=3474`、`ATTACK_DAMAGE=3.0`（base 1 + 2.0）；同一对门再穿一次不再加层（`visitedUuids` 每玩家每对一次） |
+| 视听 | 门环/黄眼/平铺门面渲染正常（与 1.21.1 同一套 geo/animation/贴图，md5 全同）；门面仅在成对 ACTIVE 时绘制；无 `Unable to play unknown soundEvent` |
+| 日志 | 无新增 crash；ERROR 只有既有 Embeddium taint + mixin 装加载 WARN + `MixinRuntimeGate` 自检 NPE WARN（既有，注明不影响加载） |
+| 编译 | `JAVA_HOME=… ./gradlew --no-daemon --offline :forge-1.20.1:compileJava` ⇒ BUILD SUCCESSFUL in 6s |
+
+> 1.20.1 的 Rhino 取不到 `TooltipFlag$Default`，tooltip **运行时文本未取证**（1.20.1 的 KubeJS 也没有 `Java.type`）⇒ 只做静态核对：`ModTooltipHandler` 的 inkshadow 块与三语键在位、键名与 1.21.1 同源。1.20.1 侧渲染走 `GeoModel#getRenderType`（1.20.1 GeckoLib 无 `GeoEntityRenderer` 钩子）。
+
 ### §7.2 首版（2026-11-10 白天，历史）
 
-P0 双线：物品注册 / 起始门 `+0.25` 悬浮版 / 一次性 `visitedUuids` 穿越 / 2400 冷却（forge 仍是此版）/ 1.21.1 tooltip 全行（含「金鳞」式状态行由 viewer 决定的那类历史结论不适用于本牌）。
+P0 双线首版：物品注册 / 起始门 `+0.25` 悬浮版 / 一次性 `visitedUuids` 穿越 / 2400 冷却 / 1.21.1 tooltip 全行（含「金鳞」式状态行由 viewer 决定的那类历史结论不适用于本牌）。**已被 §7.1 / §7.1e / §7.1f 取代**，保留作对照。
 
 ## §8 复跑清单
 
