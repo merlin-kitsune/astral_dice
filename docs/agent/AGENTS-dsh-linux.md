@@ -20,7 +20,7 @@
 - **物理机**：`systemd-detect-virt` = `none`，DMI `MS-7E59` / `Micro-Star International Co., Ltd.`；**不是 VMware / WSL / 容器**。
 - 发行版 `Ubuntu 26.04.1 LTS`（`VERSION_CODENAME=resolute`），内核 `7.0.0-43-generic`；用户 `kitsune`，登录 shell `/bin/bash`。
 - 桌面 = **KDE Plasma**，会话类型 **Wayland**：`XDG_SESSION_TYPE=wayland`、`WAYLAND_DISPLAY=wayland-0`、`DISPLAY=:0`、`XDG_RUNTIME_DIR=/run/user/1000`。
-- **XWayland 是 MC 的硬前提**：MC 1.20.1 / 1.21.1 / 26.1.2 的 GLFW 只有 X11 后端，Wayland 会话下 `DISPLAY=:0` 必须存在（`run/start-*.sh` 在其为空时直接 `exit 1`；各线窗口在 VM 期实测都是 X11 窗口，真机沿用同一结论）。
+- **XWayland 是 MC 的硬前提**：MC 1.20.1 / 1.21.1 / 26.1.2 的 GLFW 只有 X11 后端，Wayland 会话下 `DISPLAY=:0` 必须存在（`run/start-*.sh` 在 `DISPLAY` 为空时会先尝试兜底：`/tmp/.X11-unix/X0` 存在即 `export DISPLAY=:0`，再从 `/run/user/$(id -u)/xauth_*` 取 `XAUTHORITY`；两段都不成立才 `exit 1`。各线窗口在 VM 期实测都是 X11 窗口，真机沿用同一结论）。
 - **双系统互操作是本机的新前提**：本机 Linux 与 Windows 交替启动，共用同一块 NTFS 盘（Windows `F:` = `/mnt/f`，`D:` = `/mnt/d`）。用户硬约束（2026-10-31）：**Windows 下的开发配置与资产不可改**——本文件所有动作只动 Linux 侧、只动仓库内该动的文件。
 - **AppArmor 已启用**（`/sys/module/apparmor/parameters/enabled=Y`，2026-11-10 实读）；无 SELinux；**没有** hgfs、9p、WSL、`~/Project`。
 
@@ -126,6 +126,7 @@
 - **谁在跑 datagen 之前必须先补 starengine**（见〈6. 前置库 starengine〉），否则配置期就挂。
 - **仓里 generated JSON 由 Gson 写出、无尾换行**；手抄 JSON 带尾换行 ⇒ 重跑 datagen 会以「去尾换行 / 键顺序」形式产生大量纯格式 diff。**以 datagen 输出为真值**，不要手工把手抄格式改回去。语义漂移（判据键 `has_star_coin_dust`→`has_blank_chip` 等）也要跟着接受。
 - **provider 缺失会让 datagen「静默删文件」**：2026-11-10 fabric-1.21.1 重跑时删掉了 `sykes_sign` 的 recipe/model（该线 provider 没登记）。⇒ 看到 generated 里 `D` 了既有产物，先查对应线 `datagen/Mod{Recipe,ItemModel}Provider.java` 是否漏登记，而不是把删除当正常产出。
+- **`runClient` 跑前也必须 park 本线 jar（2026-11-10 实证，比 datagen 更隐蔽）**：`run/1.21.1/mods/astral_dice-*.jar` 会被 runClient 当额外 mod 载入（log `Considering mod file candidate … Found valid mod file astral_dice-…jar`），与 `-Dfml.modFolders=…build/classes/java/main` 的同名 mod 并存 ⇒ **实机实际跑的是 jar 里的旧代码**，改源码+`compileJava` 完全不生效（本轮证据：源码 `setPos(pos.getY())` 已改，实机新生门 y 仍 `-59.75`）。处置：`mkdir -p temp/live-parked && mv run/<线>/mods/astral_dice-*.jar temp/live-parked/`，跑完 `mv` 回。**任何「源码改了但实机没变」先查这条。**
 - **P0 的 `runData` 跑前必须 park 本线 jar**（2026-11-10 实证）：`run/1.21.1/mods` 与 `run/1.20.1/mods` 里的 `astral_dice-*.jar` 会进 datagen 的 launch classpath（日志 `Found valid mod file astral_dice-…`），与 `-Dfml.modFolders=…build/classes/java/main` 的同名 mod 冲突 ⇒ datagen 实际跑**旧 jar 里的代码**，新加的 provider 一条都不生效（连跑两遍都「BUILD SUCCESSFUL 但产物没变」）。处置：跑前 `mv run/<线>/mods/astral_dice-*.jar temp/datagen/parked/`，跑完放回。
 - **`runData` 收尾不退出**（forge 1.20.1 实证）：provider 跑完 + `HashCache: Caching: total files: … written: N` 行出现 = 产物已落盘；之后 JVM 卡在 Collective 更新检查线程，`BUILD SUCCESSFUL` 可能永远不到（前台 `gradlew` 会一直挂到超时）。判据改用 `HashCache` 行 + `git status <线>/src/generated`，然后 `pkill -f dataRunProgramArgs`。**`pkill -f` 的 pattern 不能出现在同一条 `bash -c` 命令行里**，否则会把自己的 shell 一起打死（本轮连踩两次，表现为工具调用零输出）。
 - **fabric-1.20.1 的 datagen 长期跑不通**（本批已修）：该线 `ModItemModelProvider extends FabricModelProvider`，原版 `net.minecraft.data.models.ModelProvider` 会用 `BuiltInRegistries.BLOCK` 与本次生成的 blockstate 求差集，而本模组方块是手写 blockstate/model ⇒ 必报 `Missing blockstate definitions for: [card_shop, chip_shop, event_drawer, barricade_collision, abyss_tentacle_collision]`。修法：该文件改 `implements DataProvider`（照 fabric-1.21.1 同文件），用 `DataProvider.saveStable` 手写 item model，不再继承 FabricModelProvider。
@@ -351,16 +352,16 @@
   - 用法 `./run/start-1.21.1.sh [<额外 gradlew 参数…>]`；脚本自行 `cd` 到仓库根，`set -euo pipefail`；前台 `bash run/start-1.21.1.sh`，后台 `setsid nohup bash run/start-1.21.1.sh > /tmp/launch-1211.out 2>&1 &`。Wayland 会话下环境须就位：`DISPLAY=:0 WAYLAND_DISPLAY=wayland-0 XDG_RUNTIME_DIR=/run/user/1000`。
   - **`run/` 整体在 `.gitignore:61` 里** ⇒ `run/start-*.sh` 是**未跟踪/被忽略**文件；确实要入库才 `git add -f`，默认**不 add**。
   - **JDK：`DEFAULT_JDK` 三脚本统一 `/usr/lib/jvm/java-21-openjdk-amd64`**；`ASTRA_JAVA_HOME` **只覆盖 daemon JVM**，不改变 toolchain。
-  - **`DISPLAY` 为空直接 `exit 1`**：Wayland 会话必须靠 XWayland（本机 `DISPLAY=:0`）。
+  - **`DISPLAY` / `XAUTHORITY` 兜底（2026-11-10 补）**：Wayland 会话必须靠 XWayland（本机 `DISPLAY=:0`）。从 DSH 后台 job 起进程时两者常为空，症状是客户端卡 6 分钟后 `Failed to initialize the mod loading system and display` + `Authorization required, but no authorization protocol specified` + `xprop: unable to open display ':0'`；真值在 KDE 会话里：`DISPLAY=:0`、`XAUTHORITY=/run/user/1000/xauth_reiZZS`。三份 start 脚本现均在检查前兜底（X11 socket 存在 ⇒ `DISPLAY=:0`；`/run/user/$(id -u)/xauth_*` 取第一个 ⇒ `XAUTHORITY`），兜底后不带任何环境变量直接 `launch.sh` 也能就绪。
   - 收尾只收本实例（按 `/proc/<pid>/cwd` 与 `--gameDir` 精确匹配），先 `SIGTERM` → 20s → `SIGKILL`；**绝不**全机 `pkill -f java`。
-  - 1.20.1（legacyforge dev run）加载的是 `run/1.20.1/mods/astral_dice-<ver>+forge_1.20.1.jar`，不是 `build/resources/main`：改了 `src/main/resources` 后**必须** `JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 ./gradlew :forge-1.20.1:pushToDevRun`（约 60s）再启动。1.21.1（MDG NeoForge）无此问题。
+  - 1.20.1（legacyforge dev run）加载的是 `run/1.20.1/mods/astral_dice-<ver>+forge_1.20.1.jar`，不是 `build/resources/main`：改了 `src/main/resources` 后**必须** `JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 ./gradlew :forge-1.20.1:pushToDevRun`（约 60s）再启动。1.21.1（MDG NeoForge）的 dev classpath 是 `build/classes` + `build/resources`，但 **mods 里的同名 jar 仍会被一起加载并可能压过 dev classes**（见上面 runClient park 条）⇒ 改完源码实机前先 park jar；jar 只是为了对齐 mods 目录与交付物。
 - **已知遗留（迁移前既有，不随换机消失）**：
   - ~~`fabric-1.20.1` 实机未通过~~ **已不成立（2026-11-10 实机通过，16.8s 开世界）**：旧失败是 Loom dev runtime 给 LWJGL `3.3.2-snapshot`、Sodium 0.5.x 只接受 `3.3.1`（`Sodium-EarlyDriverScanner … Installed version: 3.3.2-snapshot / Required version: 3.3.1`）。当前 `fabric-1.20.1/run/client/mods` 没有 Sodium；若日后显式加 Sodium，仍需在构建侧 pin LWJGL 或换 Sodium 版本。
   - 26.1.2 的 `KubeJSErrorScreen` 已**降级为非阻断**（2026-11-10 实机）：KubeJS 客户端脚本 `astral_wallet_vision.js#38` 仍报 `EvaluatorException: Failed to load Java class 'com.merlinkitsune.starenginelib.economy.StarCoinWalletState': Class could not be found!`（jar 内确有该类；Rhino 类加载器看不到 jarJar 嵌套类），但世界正常加载、游戏可玩，归为既有噪声；修不修属 P1 欠账。
   - 1.20.1 首启曾因 Jade 11.13.3 的 dev-only `Missing config translation` 断言崩在标题屏（已在三语 lang 补 `config.jade.plugin_astral_dice.{shop_cooldown,event_drawer_cost}` 修复）；1.21.1 是 Jade 15.10.6 无该断言。
   - `run/26.1.2/mods/` 残留旧 `astral_dice-1.3.7-beta.2+neoforge_26.1.2.jar`，建议清理（未做）。
 - 规则层继续有效（与实现无关）：禁批量编排、单条手动、`FAIL` / `ERROR` / `TIMEOUT` / `BLOCKED` 语义不混同、测试顺序 1.21.1 先行、1.20.1 门控（未过记 `GATED`）、断言以服务端权威日志 `AP_<tag>_<KEY>` 为准、报告不得放宽口径。
-- 静态守门：纯 python 守门**可跑**——`python3 -B docs/agent/verify-split.py`（2026-11-10 实跑：全部通过、`exit=0`，1 个警告「未找到 `AGENTS.md.bak-a-plan-*` 备份，跳过快照比对」——**该项实际被跳过**）、`python3 tools/verify_sign_display_names.py`（`GATE: PASS`，检查项 108,811，5 线含 `fabric-1.21.1`）、`python3 tools/audit_patchouli_keys.py`、`python3 -B tools/loom_embedded_jars.py`、`python3 scripts/test/lib/mt_case.py validate`。`scripts/` 与 `tools/` 下已无旧件（Windows 历史工具已删除），Linux 侧**不调用**；其余门禁在 Linux 下**手段缺失**，不得假装通过，也不得把「没跑」写成「已通过」。
+- 静态守门：纯 python 守门**可跑**——`python3 -B docs/agent/verify-split.py`（2026-11-10 实跑：全部通过、`exit=0`，1 个警告「未找到 `AGENTS.md.bak-a-plan-*` 备份，跳过快照比对」——**该项实际被跳过**）、`python3 tools/verify_sign_display_names.py`（`GATE: PASS`，2026-11-10 小猎手入表后检查项 111,290，门禁 `LINES` 仍只覆盖四线，`neoforge-26.1.2` 未纳入）、`python3 tools/audit_patchouli_keys.py`、`python3 -B tools/loom_embedded_jars.py`、`python3 scripts/test/lib/mt_case.py validate`。`scripts/` 与 `tools/` 下已无旧件（Windows 历史工具已删除），Linux 侧**不调用**；其余门禁在 Linux 下**手段缺失**，不得假装通过，也不得把「没跑」写成「已通过」。
 - 实机一律等用户明确下达；未授权时只做编译 + 静态守门。
 
 ## 互斥锁与并发

@@ -1,6 +1,7 @@
 # 小猎手立牌（inkshadow）规格与实现记录
 
 > 本文是**语义冻结 + 实现记录**：P0 两线（`neoforge-1.21.1` / `forge-1.20.1`）2026-11-10 首版落地（用户 m02258 下达，明确「先做第一版供验收，显示效果由我自己定」）。
+> **2026-11-10 第二轮验收改版（用户 m02953 / m03003）目前只落在 `neoforge-1.21.1`**：门贴地、门面改末地传送门样式平铺地面且只在成对时渲染、站定 1.5 s 传送、每门 5 s 静默冷却、主人先离开 4 格、成对存活 3:00、被动状态指示器用立牌图标。forge-1.20.1 仍是首版语义（见 §5 末行）。
 > **代码为真源**：本文任何数字若与代码不符，以代码为准并回改本文。§7 实机取证在验收轮次回填。
 > 需求正本：仓库根 `立牌计划表.txt`（小猎手段）+ 用户 m02258 的补充说明；`docs/features/sign-roadmap.md` §2.1 记录排期。
 
@@ -16,20 +17,23 @@
 
 **命名风险（待用户确认）**：wiki（astralparty.miraheze.org）本轮 API 被反爬拦截（HTTP 403），无法核实英文页名与 `nameJapanese` ⇒ 暂按 id 直译「InkShadow Sign」+ 片假名转写「インクシャドウのスタンド」，`note` 已标注待日服核实。用户确认后改 `tools/sign_display_names.json` 与本表，再跑门禁。
 
-## §1 标识与常量（首版冻结值，全部可在代码内一处调整）
+## §1 标识与常量（2026-11-10 第二轮验收改版后的值，全部可在代码内一处调整）
 
 | 项 | 值 | 说明 |
 |---|---|---|
 | 注册 id | `astral_dice:inkshadow_sign` | `ModItems` 注册，`stacksTo(1)`，稀有度 `ASTRAL_DICE_EPIC`（紫色/史诗） |
 | 放置窗口 | `WINDOW_TICKS = 600`（30 s） | 起始门放下后必须在窗口内放下终点门 |
-| 成对存活 | `PAIR_LIFETIME_TICKS = 6000`（5:00） | 到期两扇门一起消失，无动画 |
+| 成对存活 | `PAIR_LIFETIME_TICKS = 3600`（3:00） | 用户 m03003 更正「一组传送门存活期为3:00」；到期两扇门一起消失，无动画 |
 | 放置距离 | `PLACE_RANGE = 8.0D` | 准星射线取落点 |
 | 放置期移速 | `MOVEMENT_SPEED` +10%，`ADD_MULTIPLIED_TOTAL` | 放置期专属，终点门放下即移除 |
 | 主动冷却 | **全局立牌规则**：`GameplayConstants.SIGN_ACTIVE_COOLDOWN_SECONDS`（默认 180 s = 3600 tick） | 2026-11-10 用户裁决「遵守全局规则，默认 180 秒」⇒ 不覆写 `activeCooldownBaseTicks` / `activeCooldownBaseTicksNoBattery`，直接继承 `BaseSignItem` 默认链（`WeirdDiceHandler.signCooldownTicks`，含充能封顶 180→160 s 与「额外电池筹码 ×0.5」减免）；锁定结束由 `SignActiveLockMachine` 起冷却 |
+| 传送冷却 | `TELEPORT_COOLDOWN_TICKS = 100`（5 s，静默） | 同一玩家对同一扇门每 5 s 只能传一次；**无 actionbar 提示**（用户 m02953 第 6 条） |
+| 站定判定 | `STAND_TICKS = 30`（1.5 s） | 玩家踩进门内需连续站定 1.5 s 才实际传送（每 2 tick 累计一次，离开即清零） |
+| 主人保险 | `OWNER_ARM_RADIUS = 4.0D` | 刚放好的一对门不会立刻传送放置者本人：本人需先离开门 4 格外，该门对主人才解除保险（用户 m02953 第 7 条） |
 | 被动叠层 | 每层攻击力 `+2`，时长 `STACK_DURATION_TICKS = 2400`（2:00） | 每次穿越刷新时长，层数不设上限 |
 | 敌对伤害 | `PORTAL_HAZARD_RADIUS = 2.5` 格内每 20 tick 受 `2.0` 点 `SKILL_DAMAGE` | 用户口径「魔法伤害」= 本仓 `SKILL_DAMAGE`（与魔渊触须同款） |
-| 防弹跳 | `RETRIGGER_TICKS = 60` | 同玩家对同一扇门 3 s 内不重复触发 |
-| 显示常量 | `MODEL_SCALE` / `MODEL_Y_OFFSET` / `PENDING_ALPHA` / `VORTEX_RADIUS` / `VORTEX_PERIOD_TICKS` / `VORTEX_ALPHA` | 集中声明并注释「待用户验收调整」 |
+| 一次性计数 | `visitedUuids`（NBT `Visited`） | 每扇门 × 每人只结算一次被动叠层；【传送本身】可重复，不受此限制 |
+| 显示常量 | `MODEL_SCALE = 1.6` / `GROUND_LIFT = 0.10` / `SURFACE_Y = 0.02` / `SURFACE_RADIUS = 0.62` / `SURFACE_SPIN_TICKS = 200` / `PENDING_RENDER_SCALE = 0.95` | 集中声明在 `client/InkShadowPortalRenderer`，注释「待用户验收调整」 |
 
 状态载体（均为玩家级附件，primitive、仅服务端）：`INKSHADOW_PENDING_UUID`、`INKSHADOW_PENDING_DIM`、`INKSHADOW_PENDING_DEADLINE`、`INKSHADOW_LOCKED_SLOT`、`INKSHADOW_STACKS`、`INKSHADOW_STACKS_EXPIRE`。
 冷却复用立牌统一口径（`SIGN_ACTIVE_COOLDOWN_END` / `SIGN_ACTIVE_MAX_COOLDOWN`），不新建。
@@ -39,8 +43,8 @@
 ### §2.1 主动「暗影之门」
 
 1. 佩戴者按 J（`BaseSignItem.performSkillForCurio` 链路）→ `InkShadowSignItem.handleUse`。
-2. **无 pending**：准星 8 格内取落点，生成**起始门**（state=PENDING，半透明、不可穿越），写 pending（实体 UUID + 维度 + 截止刻 = now + 600），进入**锁定态**（`beginActiveLock`），并施加 +10% 移速。
-3. **有 pending 且在窗口内**：第二次按键**不经过 `performSkillForCurio`** —— 由网络入口 `SignActivatePayload.handle`（neo21）/ `ModNetwork.SignActivateMessage` 前置钩子（forge）先问 `InkShadowSignManager.tryPlaceEndFromKey(player)`，命中即 `return`。钩子内落地**终点门**，两扇门同时转 ACTIVE（双向可穿越），`expireTick = now + 6000`，清 pending、移除移速、锁定随 `isGateEffectActive` 变 false 而结束并按全局立牌规则起冷却（默认 180 s）。
+2. **无 pending**：准星 8 格内取落点，生成**起始门**（state=PENDING，不画门面、不可穿越），写 pending（实体 UUID + 维度 + 截止刻 = now + 600），进入**锁定态**（`beginActiveLock`），并施加 +10% 移速。起始门与终点门都由 `InkShadowSignManager` 用 `setPos(x+0.5, y, z+0.5)` 落在方块地面（2026-11-10 改版去掉了早期 +0.25 的悬浮偏移）。
+3. **有 pending 且在窗口内**：第二次按键**不经过 `performSkillForCurio`** —— 由网络入口 `SignActivatePayload.handle`（neo21）/ `ModNetwork.SignActivateMessage` 前置钩子（forge）先问 `InkShadowSignManager.tryPlaceEndFromKey(player)`，命中即 `return`。钩子内落地**终点门**，两扇门同时转 ACTIVE（双向可穿越），`expireTick = now + 3600`，清 pending、移除移速、锁定随 `isGateEffectActive` 变 false 而结束并按全局立牌规则起冷却（默认 180 s）。
    - 这样设计的理由：一次主动技能只结算一次。若第二次按键仍走 `performSkill`，会二次触发风扇筹码发牌 / 电流核心 / 技能音效 / `SignActiveTriggeredEvent`。
    - 终点门落点非法（准星没指到可放置方块面）⇒ 红字 `msg.astral_dice.inkshadow_no_ground`，**保留窗口可重试**，不消耗冷却。
 4. 放置期限制（服务端强制）：无法攻击（`AttackEntityEvent` 取消）、不能切换武器（每 tick 复位锁定槽位）、不能与方块实体交互（`PlayerInteractEvent` 五个子事件取消）；ESC 与立牌技能键不受影响。
@@ -58,15 +62,20 @@
 ### §2.3 门实体（`InkShadowPortalEntity`）
 
 - `extends Entity implements GeoEntity`；`noPhysics`、无重力、不可拾取、不可被攻击（`isInvulnerableTo` 恒 true、`hurt` 恒 false）、无碰撞箱 ⇒ 不能破坏、不能被攻击、不挡路。
-- 穿越：ACTIVE 门每 5 tick 扫 `inflate(0.6)` 内玩家；命中 ⇒ 传送到配对门（**跨维度**用 `teleportTo(ServerLevel, x, y, z, yaw, pitch)`），标记该门 `visitedUuids`、写 `RETRIGGER_TICKS` 防弹跳、结算被动、调跃迁引擎钩子。
+- 穿越（2026-11-10 改版）：ACTIVE 门每 2 tick 扫 `inflate(0.6)` 内玩家，每名玩家累计 `standingTicks`；累计 ≥ `STAND_TICKS`（1.5 s）且该玩家未在 `teleportCooldown` 内 ⇒ 传送到配对门（**跨维度**用 `teleportTo(ServerLevel, x, y, z, yaw, pitch)`，落点 y = 对面门 y + 0.05），随后：写本门 5 s 冷却、给对面门写 5 s 冷却并清其站定计数、`visitedUuids` 首次为真时结算被动叠层、调跃迁引擎钩子。
+- **主人保险**：每 tick 检查门主人与门的距离，超过 `OWNER_ARM_RADIUS` 才把 `ownerArmed` 置 true；未解除保险时主人本人踩门不传送（NBT `OwnerArmed` 持久化）。
+- 离开门范围即 `standingTicks` 清零；不再使用原版 `setPortalCooldown`（会连带影响原版传送门，且 5 s 静默要求由本实体自己的表实现）。
 - 穿越视听（2026-11-10 用户裁决「传送可使用末影珍珠传送音效」）：出发前在起点、传送后在落点各播一次 `SoundEvents.ENDERMAN_TELEPORT`（`SoundSource.PLAYERS`，1.0/1.0）+ 40 粒 `ParticleTypes.PORTAL`，与 `event/EnderDiceHandler#playTeleportEffects` 同源同参数（掷末影珍珠的传送音效）。落点特效在 `teleportTo` 之后播，跨维度时包才送得到。
 - 到期：`expireTick` 到 ⇒ 两扇门一起 discard。
 
 ### §2.4 渲染（首版占位，用户验收后定）
 
-- 门体：`inkshadoweffect.geo.json` + `textures/entity/inkshadoweffect.png`，GeckoLib idle 动画 `animation.inkshadoweffect.idle`（2.0 s 循环，四骨 Y 轴自转，来自 bbmodel 的 48 帧 Idle）。
-- **激活门中间单独一层黑色漩涡**：`textures/entity/inkshadow_vortex.png`（64×64 黑色螺旋 alpha），独立旋转 quad，`VORTEX_PERIOD_TICKS` 转一圈；门模型本身不含漩涡（用户备注）。
-- PENDING 态：不画漩涡 + 整体半透明（`PENDING_ALPHA`）。
+- 门体：`inkshadoweffect.geo.json` + `textures/entity/inkshadoweffect.png`（**32×32**，与 geo 的 `texture_width/height` 一致），GeckoLib idle 动画 `animation.inkshadoweffect.idle`（2.0 s 循环，四骨 Y 轴自转）。
+  - 2026-11-10 修：bbmodel 内嵌贴图是 64×64 而 geo 声明 32×32，GeckoLib 只采样左上 1/4 ⇒ 把 png 用 LANCZOS 缩到 32×32（两线同 hash）后模型内圈恢复正常颜色。
+- 整体抬升 `GROUND_LIFT = 0.10`：geo 最低点 -0.9945 单位 × 1.6 / 16 ≈ -0.0995 格，抬升后底边正好落在方块顶面。
+- **地面门面（末地传送门样式）**：`textures/entity/inkshadow_portal_surface.png`（64×64，纯黑底 + 紫色星盘 + 圆形 alpha 边缘）贴在模型内框上方 `SURFACE_Y = 0.02` 的水平四边形，半径 `SURFACE_RADIUS = 0.62`（不超出门框），绕 Y 轴 `SURFACE_SPIN_TICKS = 200` 慢转；用 `entityTranslucentEmissive` + `LightTexture.FULL_BRIGHT` 自发光。
+- **只在成对激活时渲染门面**：未配对的起始门只显示模型本体（`PENDING_RENDER_SCALE = 0.95` 略缩），符合用户 m02953 第 5 条。
+- 渲染顺序：旧版门面被模型零厚度底板整片遮挡 ⇒ 先 `MultiBufferSource.BufferSource.endBatch()` 刷出模型顶点，再 `disableDepthTest + depthMask(false)` 画门面，画完立即恢复，不影响其它实体。删除了旧版的竖立 billboard 漩涡（`VORTEX_*` 常量与 `inkshadow_vortex.png` 引用一并移除；文件保留未删）。
 
 ## §3 落点清单（P0 两线同构）
 
@@ -77,27 +86,31 @@
 | 实体 | `java/.../entity/InkShadowPortalEntity.java` |
 | 渲染 | `java/.../client/InkShadowPortalModel.java`、`client/InkShadowPortalRenderer.java` |
 | 事件 | `java/.../event/InkShadowSignEvents.java` |
+| 效果（状态指示器） | `java/.../effect/InkShadowStackEffect.java` + `effect/ModEffects.java` 注册 `inkshadow_stack`（图标 = `textures/mob_effect/inkshadow_stack.png`，即立牌图标） |
 | 注册 | `ModItems`、`ModCreativeTabs`、`ModEntityTypes`、客户端渲染注册（`ModClientEvents` / forge 对应入口）、`component/ModAttachments` |
-| 资产 | `assets/astral_dice/geo/inkshadoweffect.geo.json`、`animations/inkshadoweffect.animation.json`、`textures/entity/inkshadoweffect.png`、`textures/entity/inkshadow_vortex.png`、`textures/item/inkshadow_sign.png`（顶点源自 `models/inkshadoweffect.bbmodel`，经 `tools/bbmodel_to_geo.py` 转换） |
+| 资产 | `assets/astral_dice/geo/inkshadoweffect.geo.json`、`animations/inkshadoweffect.animation.json`、`textures/entity/inkshadoweffect.png`（32×32）、`textures/entity/inkshadow_portal_surface.png`（地面门面）、`textures/mob_effect/inkshadow_stack.png`、`textures/item/inkshadow_sign.png`（物品图标取自用户素材 `images/小猎手立牌.png`；模型顶点源自 `models/inkshadoweffect.bbmodel`，经 `tools/bbmodel_to_geo.py` 转换） |
 | 数据（**datagen 产出**，落各线 `src/generated/resources/`） | `assets/astral_dice/models/item/inkshadow_sign.json`、`data/astral_dice/recipe(s)/inkshadow_sign.json`（**占位配方**）、`data/astral_dice/advancement(s)/recipes/misc/inkshadow_sign.json` |
 | 数据（手写，落各线 `src/main/resources/`） | `data/astral_dice/tags/item(s)/signs.json`、`data/curios/tags/item(s)/stand.json`、Patchouli `entries/signs/inkshadow_sign.json` |
 | datagen 登记 | `datagen/ModItemModelProvider`（`basicItem(ModItems.INKSHADOW_SIGN.get())`）+ `datagen/ModRecipeProvider`（`BXB/KCK/XDX` 占位配方，`unlockedBy has_blank_chip`） |
-| 文本 | `lang/{zh_cn,en_us,ja_jp}.json` 各 11 键（见 §4） |
+| 文本 | `lang/{zh_cn,en_us,ja_jp}.json` 各 11 + 本轮新增键（见 §4）；另有 `entity.astral_dice.inkshadow_portal`（末影传送门）、`effect.astral_dice.inkshadow_stack` + `.description` |
+| 环境脚本 | `run/start-{1.21.1,1.20.1,26.1.2}.sh` 增补 `DISPLAY` / `XAUTHORITY` 兜底（后台 job 里两者常为空，见 §8） |
 
 ## §4 文本键（zh_cn / en_us / ja_jp 三份）
 
-`item.astral_dice.inkshadow_sign`、`tooltip.astral_dice.sign.inkshadow.active`、`tooltip.astral_dice.sign.inkshadow_active.{1..4}`、`tooltip.astral_dice.sign.inkshadow.passive`、`tooltip.astral_dice.sign.inkshadow_passive.{1,2}`；手册 `astral_dice.guide.entry.inkshadow_sign.{1,2}`。
+`item.astral_dice.inkshadow_sign`、`tooltip.astral_dice.sign.inkshadow.active`、`tooltip.astral_dice.sign.inkshadow_active.{1..5}`（第 5 条为本轮新增：站定 1.5 s、每门 5 s 静默、放置者需先离开 4 格）、`tooltip.astral_dice.sign.inkshadow.passive`、`tooltip.astral_dice.sign.inkshadow_passive.{1,2}`；手册 `astral_dice.guide.entry.inkshadow_sign.{1,2}`；实体名 `entity.astral_dice.inkshadow_portal`（zh「末影传送门」/ en「Ink Shadow Portal」/ ja「インクシャドウポータル」）；被动效果 `effect.astral_dice.inkshadow_stack` + `.description`。
 
 tooltip 挂点：`event/ModTooltipHandler` 的 `ModItems.INKSHADOW_SIGN` 块（照 `AL_SIGN` 块：`addSignKeyHint` → 主动标题/正文 → 被动标题/正文 → `addSignCooldownRemaining`）。
 
 ## §5 边界与已知取舍
 
-- **显示效果是占位**（模型缩放、漩涡尺寸/转速/透明度、起始门半透明程度）：全部集中常量，用户验收后单独一轮调整。
+- **显示效果仍待用户逐项验收**（模型缩放 1.6、地面门面半径 0.62 / 转速 200 tick / 自发光、未配对门 0.95 缩放）：全部集中常量，验收后单独一轮调整。当前门面是**贴地的末地传送门样式星盘**（黑底 + 紫星 + 自转），旧版竖立 billboard 漩涡已删除。
 - **冷却走全局口径**（2026-11-10 用户裁决）：不再写死 2400，继承 `BaseSignItem` 的全局链 = `SIGN_ACTIVE_COOLDOWN_SECONDS`（默认 180 s）→ 充能封顶 180→160 s → 额外电池 ×0.5。冷却从锁定结束时由 `SignActiveLockMachine` 起算；**放置窗口超时、放置期死亡/退出、以及放置中卸下立牌都算已消耗，照付全额**。
 - **卸下即作废**：`onUnequip` 清 pending + 起始门 discard + 移速移除 + 层数清零 + 撤攻击修饰符。
 - **配方占位**：`BXB/KCK/XDX`（墨囊 / 星尘 / 金块 / 空白筹码 / 钻石骰）——与少主配方同形，仅换关键材料；待用户定。
 - **跃迁核心映射**：仓内无该物品，接到 `WarpEngineChipItem.onPortalOrWaystoneTeleport`；若用户指的是新物品需另立规格。
 - 门不可破坏/不可攻击由「非 `LivingEntity` + 不可拾取 + `isInvulnerableTo` 恒真 + `hurt` 恒 false」实现，不走方块（因此不受领地/破坏事件影响）。
+- **传送语义（第二轮）**：门可反复使用，没有一次性限制；同一扇门对同一玩家 5 s 冷却、站定 1.5 s 才传，全程无 actionbar 提示；被动叠层仍是每扇门 × 每人一次性（`visitedUuids`）。门是**双向**的：两扇门都能把人送到对面（Apex 恶灵大招的折跃门机制）。
+- **被动状态指示器**：叠层期间给玩家挂 `inkshadow_stack` 增益效果（amplifier = 层数 − 1，图标即立牌图标），用于 HUD 显示层数与剩余时间；效果与攻击修饰符同生命周期（`refreshStackHud` 在层数/过期/卸下三处同步）。
 - 未做：P1 三线、门与门的视觉配对提示（颜色/编号）、放置音效、多人并发门数量上限（首版不限制）。
 - **forge-1.20.1 仍是旧值**：本批（冷却全局化 + 末影传送音效）按要求**只改 1.21.1**，forge 线保留 `ACTIVE_COOLDOWN_TICKS = 2400` 与无音效版本，待验收通过后同步。
 
@@ -105,13 +118,37 @@ tooltip 挂点：`event/ModTooltipHandler` 的 `ModItems.INKSHADOW_SIGN` 块（�
 
 | 线 | 状态 |
 |---|---|
-| `neoforge-1.21.1` | 首版已落地（2026-11-10） |
-| `forge-1.20.1` | 首版已落地（2026-11-10） |
+| `neoforge-1.21.1` | 首版已落地（2026-11-10）+ **第二轮验收改版已实机验证**（本节 §7） |
+| `forge-1.20.1` | 首版已落地（2026-11-10）；**第二轮改动尚未同步**（冷却仍写死 2400、无末影音效、门仍 +0.25、旧的一次性穿越逻辑），待 1.21.1 验收通过后同步 |
 | `fabric-1.20.1` / `fabric-1.21.1` / `neoforge-26.1.2` | **未做**（红线：P1 不自动跟进，等用户裁决） |
 
 ## §7 实机取证
 
-（待回填：P0 双线 启动就绪 / 物品注册 / tooltip 全行 / 放置起始门 / 终点门 / 穿越 + 叠层 / 5 分钟到期 / 死亡作废 / 敌对伤害 / 截图）
+### §7.1 1.21.1 第二轮（2026-11-10 20:31–20:57，AutoJS `eval_js` 服务端探针 + 窗口截图）
+
+| 项 | 读数 |
+|---|---|
+| 启动 | `launch.sh --version 1.21.1 --quickplay testworld` 不带任何环境变量 ⇒ `LAUNCH: READY` + `WORLD_READY`（log `scripts/test/linux/logs/1.21.1-20261110-205203.log`，game_pid 117991 / wrapper 117816） |
+| 物品 | `astral_dice:inkshadow_sign` 注册、`item.astral_dice.inkshadow_sign`、显示名「小猎手立牌」、`maxStackSize=1` |
+| 实体名 | `getDisplayName()` = 「末影传送门」（`entity.astral_dice.inkshadow_portal`） |
+| 起始门 | `setPos(y=pos.getY())` 后 y=-60（贴地，严格等于方块顶面）；`isActive()=false`；未配对时**不画门面** |
+| 终点门 | `tryPlaceEndFromKey(p)` ⇒ `true`，两门 `isActive()=true`、`State=1`、`Expire` 相同 |
+| 成对存活 | 两门 `Expire` 一致（同一 `now + 3600`）；20:56:35 建的门在 20:59:50 复查已 `count=0`（≈3 分钟整消失） |
+| 主人保险 | 放置者站自己门里 26 s 不传送 |
+| 站定传送 | 离开 5 格再回门内站 1.5 s ⇒ (46.5,-60,48.5) → (40.5,-60,42.5) |
+| 5 s 冷却 | 到达后站 2.5 s 仍在原地（冷却中）；5 s 后再站 1.5 s ⇒ 反向传回 (46.5,-60,48.5)（双向成立） |
+| 跨维度 | 下界 (0.5,129,0.5) 站定 → 主世界 (60.5,-60,62.5) |
+| 被动叠层 | `INKSHADOW_STACK` amplifier=1、duration=2236；`ATTACK_DAMAGE` base 1 → value 5（2 层 × 2.0 `ADD_VALUE`） |
+| 敌对伤害 | husk（20 hp，NoAI）在门旁 2.5 格内：hp 18 → 16 → 14（t=4138 / 4165 / 4193），约 2 点 / 1.3 s |
+| 视听 | 穿越播 `ENDERMAN_TELEPORT` + 40 粒 `PARTICLE_PORTAL`（起点与落点各一次） |
+| 编译 | `./gradlew --no-daemon --offline :neoforge-1.21.1:compileJava` ⇒ BUILD SUCCESSFUL |
+| 截图 | 双门低角度 / 俯视 / overlay 版 / 未配对单门（sha256 见交付报告；`temp/` 下未入库） |
+
+**未验证 / 留给用户**：门面尺寸与转速是否合眼、模型缩放 1.6 是否合适、3:00 到期的实际消失时刻（本轮只核了 `Expire` 同值）、死亡/退出作废在第二轮代码下未重跑（首版曾验）、forge 线未同步。
+
+### §7.2 首版（2026-11-10 白天，历史）
+
+P0 双线：物品注册 / 起始门 `+0.25` 悬浮版 / 一次性 `visitedUuids` 穿越 / 2400 冷却（forge 仍是此版）/ 1.21.1 tooltip 全行（含「金鳞」式状态行由 viewer 决定的那类历史结论不适用于本牌）。
 
 ## §8 复跑清单
 
@@ -122,3 +159,6 @@ tooltip 挂点：`event/ModTooltipHandler` 的 `ModItems.INKSHADOW_SIGN` 块（�
    - 本批实测漂移面：P0 两线 25 个既有 JSON 纯格式漂移（键序 / 去尾换行）= datagen 真值，接受；`sykes_sign` 的 advancement 在 P0 两线首次生成（此前手写缺）。
 3. 门禁：`python3 tools/verify_sign_display_names.py`（`GATE: PASS`）、`python3 -B docs/agent/verify-split.py`、`python3 tools/gen_agents_toc.py --check`。
 4. 实机：`bash scripts/test/linux/launch.sh --version 1.21.1 --quickplay testworld --timeout 900 --wait-world 300`，AutoJS `eval_js` 取证后 `stop.sh`，再换 `1.20.1`。
+   - **跑前必须 park `run/<线>/mods/astral_dice-*.jar`**（`mkdir -p temp/live-parked && mv run/1.21.1/mods/astral_dice-*.jar temp/live-parked/`）：runClient 会把 mods 里的同名 jar 与 `-Dfml.modFolders` 的 `build/classes` 一起当 mod 载入，**实机跑的是 jar 里的旧代码**（log 里 `Considering mod file candidate … Found valid mod file astral_dice-…jar`）。跑完 `mv` 回。2026-11-10 实证：不 park 时源码已改 `setPos(pos.getY())`，实机门仍在 -59.75。
+   - 从后台 job 启动时 `DISPLAY` / `XAUTHORITY` 常为空 ⇒ 客户端会带着 `Authorization required, but no authorization protocol specified` 卡 6 分钟后失败；`run/start-*.sh` 已加两段兜底（X11 socket 存在则 `DISPLAY=:0`，`/run/user/$(id -u)/xauth_*` 取第一个）。
+   - clash 内核未起时（`ss -ltnp | grep 7897` 为空）全链路加 `--offline`。
