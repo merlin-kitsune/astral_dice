@@ -452,6 +452,15 @@ public class ModEffects {
             EFFECTS.register("souri_dragon", com.merlinkitsune.astral_dice.effect.SouriDragonEffect::new);
 
     /**
+     * 「双生之影」(小猎手立牌 inkshadow):被动层数的 HUD 可见载体(时限 = 存活门对的到期刻;
+     * 层数只加攻击,图标随层数刷新)。图标 = {@code textures/mob_effect/inkshadow_stack.png}。
+     *
+     * <p>⚠️ 1.20.1 是 {@code RegistryObject} ⇒ 全部引用处必须 {@code .get()}。
+     */
+    public static final RegistryObject<MobEffect> INKSHADOW_STACK =
+            EFFECTS.register("inkshadow_stack", com.merlinkitsune.astral_dice.effect.InkShadowStackEffect::new);
+
+    /**
      * 本模组已注册的全部效果的**只读**视图(调试命令 {@code /astralparty cleareffect} 用)。
      *
      * <p>直接派生自 {@link #EFFECTS} 的注册条目视图——Forge 的 {@code getEntries()} 返回

@@ -1562,6 +1562,17 @@ public class ModTooltipHandler {
             addSignLines(tooltip, "tooltip.astral_dice.sign.al_passive");
             addSignCooldownRemaining(tooltip, event.getEntity());
         }
+        // 小猎手立牌(inkshadow,稀有):主动「暗影之门」两端传送门 / 被动「双生之影」攻击叠加
+        // (与 1.21.1 线同形:说明全部收进 _active/_passive 两个单键多行键,不再有 _note 备注段)
+        if (stack.is(ModItems.INKSHADOW_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "tooltip.astral_dice.sign.inkshadow.active");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.inkshadow_active");
+            addSignPassiveTitle(tooltip, "tooltip.astral_dice.sign.inkshadow.passive");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.inkshadow_passive");
+            addSignCooldownRemaining(tooltip, event.getEntity());
+        }
         // 机械师立牌(megas):主动「轨道轰炸」(选择器类——指定 1 个敌对目标 => 立即消耗物品栏全部手牌⇒
         // 以目标为中心 12 格范围轰炸；次数 = min(消耗卡牌数 / 2, 10)、单次基础 2 伤 + 所消耗战斗牌费用总和 ×2)
         // + 被动「物资补充」(手牌 < 6 张时每 1:00 自动获得 1 张随机卡牌)。

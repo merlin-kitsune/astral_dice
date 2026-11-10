@@ -1203,5 +1203,19 @@
   "astral_dice.guide.entry.al_sign.2": "パッシブ「ウィンウィン」は2つの発動面を持つ：①他のキャラクターにカードを渡すあらゆる経路（相手にもカードを渡す効果カードを含む）で双方が §e1§7 スターライトを獲得；②対象にアクティブスキルを使用した後、双方のチップ購入価格が §e5§7 スターコイン安くなり（最低 §e5§7）、双方が §e1§7 回更新を獲得。自身のスターライト §e4§7 ごとに攻撃力 §e+1§7、防御力 §e+1§7。",
   "gui.astral_dice.card_choice.title_variable_combat": "戦闘カードを1～3枚選択",
   "gui.astral_dice.card_choice.title_variable_effect": "効果カードを1～3枚選択",
-  "gui.astral_dice.card_choice.title_variable_any": "カードを1～3枚選択"
+  "gui.astral_dice.card_choice.title_variable_any": "カードを1～3枚選択",
+  "item.astral_dice.inkshadow_sign": "スミカゲのスタンド",
+  "tooltip.astral_dice.sign.inkshadow.active": "影の門",
+  "tooltip.astral_dice.sign.inkshadow.passive": "双生の影",
+  "msg.astral_dice.inkshadow_place_start": "影の門：始点の門を設置しました。§930秒§7以内に終点の門を設置してください",
+  "msg.astral_dice.inkshadow_place_end": "影の門：終点の門を設置しました。ペアは §93:00§7 持続します",
+  "msg.astral_dice.inkshadow_no_start": "影の門：始点の門が失効しました。設置し直してください",
+  "msg.astral_dice.inkshadow_no_ground": "影の門：ここには設置できません",
+  "tooltip.astral_dice.sign.inkshadow_active": "スキルキーで自身の位置に始点の門を設置し、その後 §930秒§7 以内に別の場所へ終点の門を設置する\n設置中：移動速度 §e+10%%§7\n  攻撃・武器の切り替え・ブロックエンティティとの相互作用は不可\n両方の門が揃うとそのペアは §93:00§7 存在し、片方に入るともう片方から出られる（次元を跨げる）",
+  "entity.astral_dice.inkshadow_portal": "スミカゲポータル",
+  "effect.astral_dice.inkshadow_stack": "双生の影",
+  "effect.astral_dice.inkshadow_stack.description": "自身が設置した門が存在する間、1スタックにつき攻撃力 §e+2§7（累積可）",
+  "tooltip.astral_dice.sign.inkshadow_passive": "自身が設置した門が場に存在する間、プレイヤーが自身の門を通過するたびに攻撃力 §e+2§7（1人1回・自身も含む、累積可）\n敵対モブは門の近くで §e2§7 の魔法ダメージを受ける",
+  "astral_dice.guide.entry.inkshadow_sign.1": "スミカゲのスタンドは「影の門」で対になる裂け目を開き、「双生の影」で渡った者ごとに攻撃力を重ねます。",
+  "astral_dice.guide.entry.inkshadow_sign.2": "装備してスキルキーを押すと始点、続いて30秒以内に終点の門を設置できます。ペアは3:00持続し、次元を跨いでも機能します。"
 }

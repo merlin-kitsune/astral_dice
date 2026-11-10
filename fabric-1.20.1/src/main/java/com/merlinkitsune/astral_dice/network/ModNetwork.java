@@ -324,6 +324,11 @@ public final class ModNetwork {
             ctx.get().enqueueWork(() -> {
                 var player = ctx.get().getSender();
                 if (player != null) {
+                    // 小猎手立牌(inkshadow):第二次按键 = 放终点门 —— 必须在通用「按技能键」流程之前消费,
+                    // 否则会走进 performSkillForCurio 重新开始一段放置窗口(forge 同款前置钩子)。
+                    if (com.merlinkitsune.astral_dice.item.sign.InkShadowSignManager.tryPlaceEndFromKey(player)) {
+                        return;
+                    }
                     com.merlinkitsune.astral_dice.item.sign.BaseSignItem.performSkillForCurio(player);
                 }
             });

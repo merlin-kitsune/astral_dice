@@ -231,6 +231,8 @@ public class AstralDiceMod implements ModInitializer {
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.SykesSignItem.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.TeruSignItem.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.ZhaoSignItem.class);
+        // inkshadow 立牌：放置窗口 tick / 交互拦截 / 死亡与掉线清理；LoaderBus 不递归内部类，必须显式登记。
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.event.InkShadowSignEvents.class);
         // 卡牌商店货架周期(B1-CARDSHOP):forge 靠 @Mod.EventBusSubscriber 自动订阅,Fabric 必须显式登记;
         // 漏登记 = 换牌/补差全部静默停摆(不报错,只是货架永不刷新)。
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.shop.CardShopCycleTicker.class);

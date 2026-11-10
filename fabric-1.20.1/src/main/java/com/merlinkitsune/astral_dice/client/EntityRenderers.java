@@ -46,5 +46,9 @@ public final class EntityRenderers {
 
         // 金鲤立牌(souri)放置的饮品实体:GeckoLib 渲染器自行按 variant 选模型/贴图,无需模型层登记。
         EntityRendererRegistry.register(ModEntityTypes.SOURI_DRINK.get(), SouriDrinkRenderer::new);
+
+        // 小猎手立牌(inkshadow)的两端传送门:同样是 GeckoLib 实体(模型/贴图/动画由模型类自选),
+        // 只是额外在 ACTIVE 态画一圈地面发光面(见 InkShadowPortalRenderer)。
+        EntityRendererRegistry.register(ModEntityTypes.INKSHADOW_PORTAL.get(), InkShadowPortalRenderer::new);
     }
 }

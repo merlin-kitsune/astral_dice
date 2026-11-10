@@ -76,6 +76,7 @@ import com.merlinkitsune.astral_dice.item.sign.AlSignItem;
 import com.merlinkitsune.astral_dice.item.chip.MotoHelmetChipItem;
 import com.merlinkitsune.astral_dice.item.chip.BoxingGlovesChipItem;
 import com.merlinkitsune.astral_dice.item.sign.BonnieSignItem;
+import com.merlinkitsune.astral_dice.item.sign.InkShadowSignItem;
 import com.merlinkitsune.astral_dice.item.sign.ParunanSignItem;
 import com.merlinkitsune.astral_dice.item.sign.MisakiSignItem;
 import com.merlinkitsune.astral_dice.item.card.MonsterLaserCardItem;
@@ -1045,6 +1046,15 @@ public class ModItems {
             () -> new AlSignItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(AstralRarities.epic())));
+
+    // 小猎手立牌(命名:inkshadow,稀有):主动「暗影之门」(首次按键在准星地块放下起始门、30 s 内
+    //   再按一次放终点门;两端各自 5 s 传送冷却、站定 1.5 s 传送,跨维度双向;窗口内锁定快捷栏并禁交互)
+    // + 被动「双生之影」(存活门对每对 +1 层,每层攻击力 +2;打怪时门还会对 2.5 格内敌对生物造成
+    //   2.0 技能伤害)。稀有品质 = ASTRAL_DICE_RARE;配方 = 末影珍珠 + 星币档(BXB/KCK/XDX)。
+    public static final RegistryObject<Item> INKSHADOW_SIGN = registerItem("inkshadow_sign",
+            () -> new InkShadowSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.rare())));
 
     // 怪力侦探立牌(命名:sherry,奇特):主动「怪力投掷」把 12 格内全部敌对目标按抛物线扔到玩家面前 2 格,
     // **落地之后**造成 2 点伤害并施加 1 层「标记」(推理时间满 5 层 ⇒ 额外 5 点);被动「侦探出击」按

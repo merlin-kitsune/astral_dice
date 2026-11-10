@@ -1203,5 +1203,19 @@
   "astral_dice.guide.entry.al_sign.2": "被动「双赢」分两个触发面：①任何使其他角色获得卡牌的途径（含「你有我有」效果牌）都会让双方各 +§e1§7 层星光；②对目标使用主动技能后，双方购买筹码的价格 -§e5§7 星币（最低 §e5§7）并各获得 §e1§7 次刷新。自身每 §e4§7 层星光提供攻击力 §e+1§7、防御力 §e+1§7。",
   "gui.astral_dice.card_choice.title_variable_combat": "选择 1~3 张战斗牌",
   "gui.astral_dice.card_choice.title_variable_effect": "选择 1~3 张效果牌",
-  "gui.astral_dice.card_choice.title_variable_any": "选择 1~3 张卡牌"
+  "gui.astral_dice.card_choice.title_variable_any": "选择 1~3 张卡牌",
+  "item.astral_dice.inkshadow_sign": "小猎手立牌",
+  "tooltip.astral_dice.sign.inkshadow.active": "暗影之门",
+  "tooltip.astral_dice.sign.inkshadow.passive": "双生之影",
+  "msg.astral_dice.inkshadow_place_start": "暗影之门：起始之门已放置，§930 秒§7 内选择终点之门的位置",
+  "msg.astral_dice.inkshadow_place_end": "暗影之门：终点之门已放置，成对存在 §93:00§7",
+  "msg.astral_dice.inkshadow_no_start": "暗影之门：起始之门已失效，请重新放置",
+  "msg.astral_dice.inkshadow_no_ground": "暗影之门：此处无法放置传送门",
+  "tooltip.astral_dice.sign.inkshadow_active": "按技能键在自身位置放置起始之门，随后需在 §930 秒§7 内在另一位置放置终点之门\n放置期间：移动速度 §e+10%%§7\n  无法攻击、无法切换武器、无法与方块实体交互\n两门成型后，该传送门组存在 §93:00§7，玩家进入后可从另一端出来，可跨维度传送",
+  "entity.astral_dice.inkshadow_portal": "末影传送门",
+  "effect.astral_dice.inkshadow_stack": "双生之影",
+  "effect.astral_dice.inkshadow_stack.description": "存在自身放置的传送门期间生效：每层攻击力 §e+2§7，可叠加",
+  "tooltip.astral_dice.sign.inkshadow_passive": "场上存在自身放置的传送门时，每有一名玩家穿越自身放置的传送门后，使自身攻击力 §e+2§7，每名玩家仅能触发一次加成（包括自身），可叠加\n敌对目标靠近传送门时受到 §e2§7 点魔法伤害",
+  "astral_dice.guide.entry.inkshadow_sign.1": "小猎手立牌：以「暗影之门」在两点之间撕开成对裂隙，并用「双生之影」让每名穿越者为你叠加攻势。",
+  "astral_dice.guide.entry.inkshadow_sign.2": "装备后按技能键：先放起始之门，再在 §930 秒§7 内放终点之门；两门持续 §93:00§7 且可跨维度。"
 }

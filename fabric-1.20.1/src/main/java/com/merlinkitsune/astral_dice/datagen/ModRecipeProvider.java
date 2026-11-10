@@ -1344,6 +1344,22 @@ public class ModRecipeProvider extends FabricRecipeProvider {
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
                 .save(output::accept);
 
+        // 小猎手立牌(inkshadow,稀有):B/X/B + K/C/K + X/D/X
+        // (B=末影珍珠、X=星币、K=黄色染料、C=空白筹码、D=骰子/普通骰子)
+        // 2026-11-10 用户裁决:品质史诗→稀有,配方简化(星币尘→星币、钻石骰子→骰子)
+        // 2026-11-11 用户裁决:墨囊→末影珍珠、金块→金色染料(原版无金色染料,取黄色染料)
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.INKSHADOW_SIGN.get())
+                .pattern("BXB")
+                .pattern("KCK")
+                .pattern("XDX")
+                .define('B', Items.ENDER_PEARL)
+                .define('X', ModItems.STAR_COIN.get())
+                .define('K', Items.YELLOW_DYE)
+                .define('C', ModItems.BLANK_CHIP.get())
+                .define('D', ModItems.DICE.get())
+                .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
+                .save(output::accept);
+
         // 怪力侦探立牌(sherry):紫晶骰子 + 黄金星盘档。PBP/AEA/IDI
         // (P=黄金星盘×2、B=书、E=空白立牌、A=铁砧、I=铁块、D=紫晶骰子;空白立牌置中、骰子固定中下)
         // 2026-09-25 用户裁决:骰子由钻石骰子改为紫晶骰子(本仓首条以紫晶骰子为材料的配方,

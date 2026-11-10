@@ -1203,5 +1203,19 @@
   "astral_dice.guide.entry.al_sign.2": "The passive Win-Win has two triggers: (1) any path that makes another character gain cards (including the You Have, I Have effect card) grants both sides §e1§7 Starlight; (2) using the active skill on a target makes chips cost §e5§7 fewer Star Coins for both sides (minimum §e5§7) and grants each §e1§7 refresh. Every §e4§7 Starlight grants ATK §e+1§7 and DEF §e+1§7.",
   "gui.astral_dice.card_choice.title_variable_combat": "Choose 1-3 Combat Cards",
   "gui.astral_dice.card_choice.title_variable_effect": "Choose 1-3 Effect Cards",
-  "gui.astral_dice.card_choice.title_variable_any": "Choose 1-3 Cards"
+  "gui.astral_dice.card_choice.title_variable_any": "Choose 1-3 Cards",
+  "item.astral_dice.inkshadow_sign": "InkShadow Sign",
+  "tooltip.astral_dice.sign.inkshadow.active": "Shadowgate",
+  "tooltip.astral_dice.sign.inkshadow.passive": "Twin Shadows",
+  "msg.astral_dice.inkshadow_place_start": "Shadowgate: start gate placed — choose the end gate within §930 seconds§7",
+  "msg.astral_dice.inkshadow_place_end": "Shadowgate: end gate placed — the pair lasts §93:00§7",
+  "msg.astral_dice.inkshadow_no_start": "Shadowgate: the start gate has expired — place it again",
+  "msg.astral_dice.inkshadow_no_ground": "Shadowgate: a gate cannot be placed here",
+  "tooltip.astral_dice.sign.inkshadow_active": "Press the skill key to place the start gate where you stand, then place the end gate elsewhere within §930 seconds§7\nDuring placement: movement speed §e+10%%§7\n  Cannot attack, cannot switch weapons, cannot interact with block entities\nOnce both gates exist the pair lasts §93:00§7; entering one lets you exit from the other, across dimensions",
+  "entity.astral_dice.inkshadow_portal": "InkShadow Portal",
+  "effect.astral_dice.inkshadow_stack": "Twin Shadows",
+  "effect.astral_dice.inkshadow_stack.description": "Active while your own gate pair exists: §e+2§7 ATK per stack, stackable",
+  "tooltip.astral_dice.sign.inkshadow_passive": "While a gate pair you placed still exists, every player who crosses your gates grants you §e+2§7 ATK (once per player, including yourself), stackable\nHostile mobs near a gate take §e2§7 magic damage",
+  "astral_dice.guide.entry.inkshadow_sign.1": "The InkShadow Sign opens paired rifts with Shadowgate and turns every traveller into a stack of Twin Shadows.",
+  "astral_dice.guide.entry.inkshadow_sign.2": "Equip it and press the skill key: place the start gate, then the end gate within 30 seconds. The pair lasts 3:00 and works across dimensions."
 }

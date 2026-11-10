@@ -1928,6 +1928,86 @@ public class ModAttachments {
         AL_PENDING_TARGET.set(player, value == null ? "" : value);
     }
 
+    // ==== 小猎手立牌(inkshadow,2026-11-10) ====
+    // 放置窗口状态:全部为原始类型、不 sync、仅服务端读写(客户端渲染只看实体的 state 同步字段)。
+    /** 起始门 UUID(空串 = 无待配对起始门)。 */
+    public static final AttachedDataKey<String> INKSHADOW_PENDING_UUID =
+            register(AttachedDataKey.builder("inkshadow_pending_uuid", Codec.STRING, () -> "").build());
+    /** 起始门所在维度 id(如 minecraft:overworld);终点门允许跨维度,仅作记录/诊断。 */
+    public static final AttachedDataKey<String> INKSHADOW_PENDING_DIM =
+            register(AttachedDataKey.builder("inkshadow_pending_dim", Codec.STRING, () -> "").build());
+    /** 放置窗口截止 gameTime(0 = 无窗口)。 */
+    public static final AttachedDataKey<Long> INKSHADOW_PENDING_DEADLINE =
+            register(AttachedDataKey.builder("inkshadow_pending_deadline", Codec.LONG, () -> 0L).build());
+    /** 放置期间被锁定的快捷栏槽位(-1 = 未锁定)。 */
+    public static final AttachedDataKey<Integer> INKSHADOW_LOCKED_SLOT =
+            register(AttachedDataKey.builder("inkshadow_locked_slot", Codec.INT, () -> -1).build());
+    /** 被动「双生之影」当前层数。 */
+    public static final AttachedDataKey<Integer> INKSHADOW_STACKS =
+            register(AttachedDataKey.builder("inkshadow_stacks", Codec.INT, () -> 0).build());
+    /** 被动层数到期时刻(0 = 无到期;刷新不累加,只后移)。 */
+    public static final AttachedDataKey<Long> INKSHADOW_STACKS_EXPIRE =
+            register(AttachedDataKey.builder("inkshadow_stacks_expire", Codec.LONG, () -> 0L).build());
+    /** 被动「双生之影」当前仍存活的门对到期刻列表(逗号分隔的 gameTime;无固定总时限,每对门各自 3600t)。 */
+    public static final AttachedDataKey<String> INKSHADOW_PAIR_EXPIRIES =
+            register(AttachedDataKey.builder("inkshadow_pair_expiries", Codec.STRING, () -> "").build());
+
+    public static String getInkShadowPendingUuid(Player player) {
+        return INKSHADOW_PENDING_UUID.get(player);
+    }
+
+    public static void setInkShadowPendingUuid(Player player, String value) {
+        INKSHADOW_PENDING_UUID.set(player, value == null ? "" : value);
+    }
+
+    public static String getInkShadowPendingDim(Player player) {
+        return INKSHADOW_PENDING_DIM.get(player);
+    }
+
+    public static void setInkShadowPendingDim(Player player, String value) {
+        INKSHADOW_PENDING_DIM.set(player, value == null ? "" : value);
+    }
+
+    public static long getInkShadowPendingDeadline(Player player) {
+        return INKSHADOW_PENDING_DEADLINE.get(player);
+    }
+
+    public static void setInkShadowPendingDeadline(Player player, long value) {
+        INKSHADOW_PENDING_DEADLINE.set(player, value);
+    }
+
+    public static int getInkShadowLockedSlot(Player player) {
+        return INKSHADOW_LOCKED_SLOT.get(player);
+    }
+
+    public static void setInkShadowLockedSlot(Player player, int value) {
+        INKSHADOW_LOCKED_SLOT.set(player, value);
+    }
+
+    public static int getInkShadowStacks(Player player) {
+        return INKSHADOW_STACKS.get(player);
+    }
+
+    public static void setInkShadowStacks(Player player, int value) {
+        INKSHADOW_STACKS.set(player, Math.max(0, value));
+    }
+
+    public static long getInkShadowStacksExpire(Player player) {
+        return INKSHADOW_STACKS_EXPIRE.get(player);
+    }
+
+    public static void setInkShadowStacksExpire(Player player, long value) {
+        INKSHADOW_STACKS_EXPIRE.set(player, value);
+    }
+
+    public static String getInkShadowPairExpiries(Player player) {
+        return INKSHADOW_PAIR_EXPIRIES.get(player);
+    }
+
+    public static void setInkShadowPairExpiries(Player player, String value) {
+        INKSHADOW_PAIR_EXPIRIES.set(player, value == null ? "" : value);
+    }
+
     private ModAttachments() {
     }
 }
