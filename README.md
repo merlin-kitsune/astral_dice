@@ -120,27 +120,28 @@ The Abyss Reagent chip is named consistently now: display name, tooltip and ever
 - **CurseForge**: the builds go to the main project (`astral-dice`, project id `1662159`). StarEngine has its own project (`starengine`, id `1755415`); **none of the four lines bundles it any more**, so players must install that separate jar themselves: `starengine-neoforge-1.21.1-26.4-SNAPSHOT.1.jar` / `starengine-forge-1.20.1-26.4-SNAPSHOT.1.jar` / `starengine-neoforge-26.1.2-26.4-SNAPSHOT.1.jar` / `starengine-fabric-1.20.1-26.4-SNAPSHOT.1.jar`. Version numbers keep the `+<loader>_<MC>` suffix (for example `1.5.0+neoforge_1.21.1`), and the release channel follows the version suffix. Modrinth publishing was permanently dropped on 2026-10-23; CurseForge is the only store channel.
 - **Build artefacts**: `astral_dice-1.5.0+neoforge_1.21.1.jar`, `astral_dice-1.5.0+forge_1.20.1.jar`, `astral_dice-1.5.0+neoforge_26.1.2.jar` and `astral_dice-1.5.0+fabric_1.20.1.jar`, each under its subproject's `build/libs/`; the version inside each jar matches the file name (1.5.0).
 
-## Build provenance (26.4-SNAPSHOT.11)
+## Build provenance (26.4-SNAPSHOT.13)
 
-> All five lines were rebuilt together at **2026-11-11T14:15 from `e1d1e922`** (the session head after the Huntsman-Sign
-> cross-chunk/cross-dimension fix and the P1 visual-proof docs). Earlier artifact generations are summarised under the table.
+> All five lines were rebuilt together at **2026-11-12T01:10 from `a248f13e`** (the audit commit that closes the
+> P0/P1 reclassification, the 26.1.2 player-like shop port and the two 26.1.2 parity fixes). Earlier artifact
+> generations are summarised under the table.
 
-Each jar carries `META-INF/astral_dice/build-info.json` with `{version, commit, builtAt, classCount}` and ships a
-sibling `<jar>.sha256` (neoforge-1.21.1 and forge-1.20.1 only; the other lines carry no build-info). `build-info.commit`
-names the **code commit** the jar was built from; the README update that records the hash does not change the artifact.
+The two NeoForge/Forge release jars carry `META-INF/astral_dice/build-info.json` with `{version, commit, builtAt,
+classCount}`; all five `.13` jars ship a sibling `<jar>.sha256`. `build-info.commit` names the **code commit** the
+jar was built from; the README update that records the hash does not change the artifact.
 
 | Line | Version | Built from | Built at | Size (B) | SHA-256 |
 |---|---|---|---|---|---|
-| neoforge-1.21.1 | 26.4-SNAPSHOT.11+neoforge_1.21.1 | `e1d1e922`，classCount 588 | 2026-11-11T14:15:34+08:00 | 2,843,160 | `fbb1f58ea2f1cb4f350b2b8a5dfe218bc373f5d8da6afb6cb36b30d543fb0654` |
-| forge-1.20.1 | 26.4-SNAPSHOT.11+forge_1.20.1 | `e1d1e922`，classCount 613 | 2026-11-11T14:15:35+08:00 | 2,893,115 | `8cb619d48acdc4df8ac590b751ca68cbb46bfea24f5cf7beec867c1ede87c71e` |
-| neoforge-26.1.2 | 26.4-SNAPSHOT.11+neoforge_26.1.2 | 无 build-info，commit 不可回指（与 P0 同一批 14:15 构建） | 2026-11-11T14:15 | 3,045,772 | `c2ebd506abd9a0ce113ffde7cbbe7df52d864fb0b3073b476c6e8745d12ba5a9` |
-| fabric-1.20.1 | 26.4-SNAPSHOT.11+fabric_1.20.1 | 无 build-info，commit 不可回指（与 P0 同一批 14:15 构建） | 2026-11-11T14:15 | 3,144,866 | `a1a479396cffdceefb8ac18a2e8d93a98452afeef13c1c1722472bd02fbf16ab` |
-| fabric-1.21.1 | 26.4-SNAPSHOT.11+fabric_1.21.1 | 无 build-info，commit 不可回指（与 P0 同一批 14:15 构建） | 2026-11-11T14:15 | 3,171,262 | `ac9e2f13eb39618689e955ad332394bd829a9534a36f5c817dd18169b3fbdb11` |
+| neoforge-1.21.1 | 26.4-SNAPSHOT.13+neoforge_1.21.1 | `a248f13e`，classCount 588 | 2026-11-12T01:10:45+08:00 | 2,844,066 | `6c109cff4467d4bef6d6793424045c22f33fc14fec6868eba5221eaa7c281c61` |
+| forge-1.20.1 | 26.4-SNAPSHOT.13+forge_1.20.1 | `a248f13e`，classCount 613 | 2026-11-12T01:10:45+08:00 | 2,893,989 | `0e69643106b2ce362e805bacde48eacbda8edbe8b3198ba125648cc55cd1f2aa` |
+| neoforge-26.1.2 | 26.4-SNAPSHOT.13+neoforge_26.1.2 | 无 build-info，按同一批 `a248f13e` 构建 | 2026-11-12T01:10 | 3,064,168 | `6d0204ce0363eca2f2c645c5ec4afdeeb93d7cf173482afb4b2a99a6b314a39d` |
+| fabric-1.20.1 | 26.4-SNAPSHOT.13+fabric_1.20.1 | 无 build-info，按同一批 `a248f13e` 构建 | 2026-11-12T01:10 | 3,152,903 | `7da6d30fad8193fc0df0591d569df86ce00fb089f58d5fd035ea608bd86a3634` |
+| fabric-1.21.1 | 26.4-SNAPSHOT.13+fabric_1.21.1 | 无 build-info，按同一批 `a248f13e` 构建 | 2026-11-12T01:10 | 3,179,282 | `c9fdbfaeaeae865bd1d4273ffbe9474b3ae59c5adaf846802d81ad214759ea52` |
 
-The five rows come from one build run (`gradlew --no-daemon --offline --no-configuration-cache` over the five `:build`
-tasks, `BUILD SUCCESSFUL in 6s`, 26 executed / 18 up-to-date), which also pumped every `pushToDevRun` copy into
-`run/*/mods/`. Only the two P0 jars embed `build-info.json`; the other three lines have no such descriptor, so their rows
-are identified by size + hash only.
+The five rows come from one build run (`gradlew --no-daemon --offline` over the five `:build` tasks,
+`BUILD SUCCESSFUL in 11s`, 21 executed / 23 up-to-date), which also pumped every `pushToDevRun` copy into
+`run/*/mods/`. Only `neoforge-1.21.1` and `forge-1.20.1` embed `build-info.json`; the other three lines are
+identified by size + hash only.
 
 Rebuild history for the two P0 rows: `011a6891` at 2026-11-10T15:21 (all five), `51ff5691` at 23:17 (`neoforge-1.21.1`
 only), `60deccc7` at 2026-11-11T00:21, `273dc47a` at 00:35 (recipe ingredients: ink sac → ender pearl, gold block →

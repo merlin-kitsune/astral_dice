@@ -12,7 +12,7 @@
 - Fix (26.1.2 Secret Detective Sign): the active `apply` path now restores the server-side early return "target already has `UNDERCOVER_INVESTIGATION` => log `AP_UNDERCOVER_REJECT` and return", matching 1.21.1 / 1.20.1 and preventing a second application and a second coin payout.
 - Fix (26.1.2 Member Recommendation Letter): `countHandCards` used to walk `getNonEquipmentItems()` twice (double-counting the main inventory and never counting the offhand); it now counts the main inventory once plus `Inventory.SLOT_OFFHAND` once, restoring the correct "fewer than 5 cards" gate.
 - Gates (P0 three lines): `verify_misaki_balance.py` / `verify_bonnie_active_order.py` / `verify_member_recommendation_hand_gate.py` now include `neoforge-26.1.2` in `LINES`; misaki accepts the 26.1.2 generated-recipe string `key` form and the datagen `items` first argument; member accepts `getNonEquipmentItems()` / `SLOT_OFFHAND`. 26.1.2 has no Bountiful, so misaki's B1 bounty-pool check is skipped. All three gates exit 0 (35 / 18 / 21 checks).
-- Build: one `:build` invocation over all five `.13` lines passed (2026-11-12 01:04, 32 executed / 12 up-to-date); the five root `build/libs` artefacts were refreshed. Compile/static-gate verification only, no live run in this round.
+- Build: one `:build` invocation over all five `.13` lines passed (2026-11-12 01:10, 21 executed / 23 up-to-date, source `a248f13e`); the five root `build/libs` artefacts and their `.sha256` sidecars were refreshed. Compile/static-gate verification only, no live run in this round.
 
 ## 26.4-SNAPSHOT.12
 

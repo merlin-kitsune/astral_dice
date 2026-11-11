@@ -12,7 +12,7 @@
 - 修复（26.1.2 秘密侦探立牌）：主动 `apply` 补回「目标已带 `UNDERCOVER_INVESTIGATION` ⇒ 记录 `AP_UNDERCOVER_REJECT` 并 return」的服务端早退闸门，与 1.21.1 / 1.20.1 对齐，避免重复施加与二次返币。
 - 修复（26.1.2 会员推荐信）：`countHandCards` 原本把 `getNonEquipmentItems()` 统计两遍（主背包重复计数、副手从未计入），现改为主背包一次 + `Inventory.SLOT_OFFHAND` 副手一次；手牌 <5 的发牌门恢复正确口径。
 - 门禁（P0 三线）：`verify_misaki_balance.py` / `verify_bonnie_active_order.py` / `verify_member_recommendation_hand_gate.py` 的 `LINES` 加入 `neoforge-26.1.2`；misaki 兼容 26.1.2 生成配方的字符串 `key` 与 datagen 的 `items` 首参；member 兼容 `getNonEquipmentItems()` / `SLOT_OFFHAND`。26.1.2 无 Bountiful，misaki 的 B1 赏金池检查跳过。三只门禁 exit 0（35 / 18 / 21 项）。
-- 构建：五线 `.13` 一条命令 `:build` PASS（2026-11-12 01:04，32 executed / 12 up-to-date）；根 `build/libs` 五枚产物已更新。本轮只做编译 / 静态门禁验证，未实机。
+- 构建：五线 `.13` 一条命令 `:build` PASS（2026-11-12 01:10，21 executed / 23 up-to-date，构建源 `a248f13e`）；根 `build/libs` 五枚产物与 `.sha256` 已更新。本轮只做编译 / 静态门禁验证，未实机。
 
 ## 26.4-SNAPSHOT.12
 
