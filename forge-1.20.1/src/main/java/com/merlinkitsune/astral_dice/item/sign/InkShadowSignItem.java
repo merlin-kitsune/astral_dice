@@ -153,4 +153,10 @@ public class InkShadowSignItem extends BaseSignItem {
             InkShadowSignManager.onUnequip(player);
         }
     }
+
+    // 2026-11-11 补齐：暗影之门依赖 ServerPlayer 会话（准星射线 + 门对记录），类玩家宿主不可复刻。
+    @Override
+    protected boolean activateForEntity(net.minecraft.world.entity.LivingEntity owner) {
+        return SignEntitySkills.deny("inkshadow", owner, "needs_player_session");
+    }
 }
