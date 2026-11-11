@@ -255,8 +255,29 @@ log `scripts/test/linux/logs/1.20.1-20261111-130421.log`（wrapper 402705 / game
 | 调试期假象（已排除） | 早前「门只活 30 s 就消失」= `WINDOW_TICKS=600` 窗口到期自毁（`remove reason=DISCARDED tick=600`），属设计行为；探针应把放终点门压在同一 cell 内完成，或在探针里 `setInkShadowPendingDeadline(p, 大数)` 续命（不改代码） |
 | 未取证 | 跨维度落点被原版安全定位压到 y=128（`dy=-1` 超出站定判定 `[-0.5,1.0]`）时反向需跳到 y=129 才传 ⇒ 属测试点悬空，非代码缺陷；这一条只在本轮探针里遇到 |
 
-> 本批只实机验了 `forge-1.20.1`（1.21.1 那一轮因 NeoForge early display 无法交接窗口而起不来，见 §8 第 4 条）；另外四线的同一补丁只做到**编译通过**，视觉/放置行为待后续轮次补证。
+> 本批只实机验了 `forge-1.20.1`（1.21.1 那一轮因 NeoForge early display 无法交接窗口而起不来，见 §8 第 4 条）；另外四线当轮只做到**编译通过**。后续补证见 §7.1i。
 
+### §7.1i 1.21.1 跨维度复核 + P1 三线视觉与 26.1.2 跨维度放置（2026-11-11 13:29–13:56，AutoJS `eval_js` 服务端探针 + 窗口截图）
+
+统一环境：`export DISPLAY=:0; export XAUTHORITY=/run/user/1000/xauth_reiZZS`；实机期间 `systemd-inhibit`（PID 416388）+ `org.freedesktop.ScreenSaver.Inhibit`（cookie 11024）阻止 KDE 锁屏/睡眠，收尾已 kill + UnInhibit；四轮串行、每轮 `stop.sh` 后端口 25585/25565/25575 清零；跑前按 §8 第 4 条 park 本线 `astral_dice-*.jar`，收尾已全部归位（`run/1.21.1/mods`、`run/1.20.1/mods`、`run/26.1.2/mods`、`run/fabric-1.20.1/mods`、`run/fabric-1.21.1/mods` 五枚齐）。
+
+| 线 | 启动读数 | 视觉 | 跨维度 |
+|---|---|---|---|
+| `neoforge-1.21.1` | log `scripts/test/linux/logs/1.21.1-20261111-132958.log`，wrapper 417537 / game 417718；early display 本轮正常（屏幕点亮后即可交接窗口） | window 3562307776352023：ink128 门环 + 黄色眼睛 + 平铺紫色星盘门面三件齐全、贴地；actionbar「暗影之门：终点之门已放置，成对存在 3:00」 | 主世界 (5002,-60,5002) 放起始门 → `execute in minecraft:the_nether run tp Dev 300 128 300` → 下界 (302,128,302) 放终点门 ⇒ `end=true pending=false`、两门 ACTIVE；玩家先 tp 到 (300.5,128,312.5) 解主人保险，再站 (302.5,128,302.5) 4 s ⇒ 落到主世界 (5002.5,-60.0,5002.5) ✓ |
+| `fabric-1.20.1` | log `scripts/test/linux/logs/fabric-1.20.1-20261111-134215.log`，wrapper 426321 / game 426599 | window 8156118636023553：门环 + 紫色星盘近景正常（傍晚光照下门环偏暗，非缺陷） | 未做（本轮只补视觉） |
+| `fabric-1.21.1` | log `scripts/test/linux/logs/fabric-1.21.1-20261111-134657.log`，wrapper 431642 / game 431924 | window 1415715373759046：门环 + 紫色星盘近景正常 | 未做（本轮只补视觉） |
+| `neoforge-26.1.2` | log `scripts/test/linux/logs/26.1.2-20261111-135118.log`，wrapper 436872 / game 437097 | window 6287081372416062：门环 + 紫色星盘 + 黄眼近景正常 | 主世界 (200,-60,200) 放起始门 → 下界 (102,0,102) 放终点门 ⇒ `start=true end=true`；逐维实体扫描 overworld `portals=3 active=3` / the_nether `portals=1 active=1` ✓ |
+
+| 线 | 放置探针片段 | 备注 |
+|---|---|---|
+| `neoforge-1.21.1` | `Java.loadClass('net.neoforged.neoforge.server.ServerLifecycleHooks').getCurrentServer()` + `p.serverLevel()` | 服务端探针取等级用 `serverLevel()` |
+| `fabric-1.20.1` | `Utils.getServer()` + `p.serverLevel()` | KubeJS 侧 `Utils` 可用 |
+| `fabric-1.21.1` | `Java.loadClass('net.minecraft.client.Minecraft').getInstance().getSingleplayerServer()` | 自有 Rhino，无 KubeJS/`Utils` |
+| `neoforge-26.1.2` | `ServerLifecycleHooks.getCurrentServer()` + **`p.level`（属性）** | `p.serverLevel()` 在本线报 `Cannot find function serverLevel`；`ServerLevel.getForcedChunks()` 在本线已改名（报 `Cannot find function getForcedChunks`），改逐维扫实体；`ServerLevel.getEntities()` 直接返回可迭代对象（无 `getAll()`） |
+
+统一探针要点（11-11 复核）：门 y **必须**取 `sl.getHeight(Heightmap$Types.MOTION_BLOCKING, x, z)` 的返回值（该值即空气层），用 `y-1` 会把门埋进地面看不见；`InkShadowSignManager.placePortal(sl, p, new BlockPos(x, y, z))` 连调两次即成对（`start=true` / `end=true`），不需要装备立牌；`p.connection.teleport(x,y,z,yaw,pitch)` 是唯一稳定的位置/视角探针（`p.teleportTo(level,...)` 在 Rhino 下二义）。
+
+> 剩余未实机项：fabric 两线的跨维度放置行为（视觉已取证，逻辑与其余三线同源、同一补丁）。
 ### §7.2 首版（2026-11-10 白天，历史）
 
 P0 双线首版：物品注册 / 起始门 `+0.25` 悬浮版 / 一次性 `visitedUuids` 穿越 / 2400 冷却 / 1.21.1 tooltip 全行（含「金鳞」式状态行由 viewer 决定的那类历史结论不适用于本牌）。**已被 §7.1 / §7.1e / §7.1f 取代**，保留作对照。
