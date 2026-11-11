@@ -74,6 +74,7 @@
   - **进入时**：玩家本次站定的第一拍（`standingTicks` 尚未记录该玩家）播 `SoundEvents.PORTAL_TRIGGER`（`BLOCKS`，0.6/1.0），即原版「走进下界传送门」的那一声。
   - **传送后**：落点播 `SoundEvents.PORTAL_TRAVEL`（`BLOCKS`，0.8/1.0）；**跨维度**时起点额外再播一次同一音效（目标维度的声音传不回来）。落点粒子/音效都在 `teleportTo` 之后播，跨维度时包才送得到。
   - 粒子保持：起落点各 40 粒 `ParticleTypes.PORTAL`；踩门期间每 2 tick 6 粒。
+- **区块常载（2026-11-11 修复，跨区块/跨维度放置的前置）**：门被放到远处或别的维度时没有玩家 ticket，连第一次 tick 都跑不到；区块一卸载，门实体不会写进区块存档，回来即永久消失（实机证据：`/summon astral_dice:inkshadow_portal` 生成的门在 `run/<线>/saves/<world>/entities/*.mca` 里能查到，`placePortal` 放的门从不出现在实体档里）。现在 `InkShadowSignManager` 放置后立刻 `level.setChunkForced(pos.getX() >> 4, pos.getZ() >> 4, true)`，门实体每 tick 再 `forceOwnChunk()` 兜底（服务端崩溃重开后重新钉住），并在 `remove(RemovalReason)` 里 `releaseOwnChunk()`。代价是一对门存活期内两块区块常载（最长 3:00，到期/作废即释放）。
 - 到期：`expireTick` 到 ⇒ 两扇门一起 discard。
 
 ### §2.4 渲染（首版占位，用户验收后定）
@@ -127,7 +128,7 @@ tooltip 挂点：`event/ModTooltipHandler` 的 `ModItems.INKSHADOW_SIGN` 块（�
 - 门不可破坏/不可攻击由「非 `LivingEntity` + 不可拾取 + `isInvulnerableTo` 恒真 + `hurt` 恒 false」实现，不走方块（因此不受领地/破坏事件影响）。
 - **传送语义（第二轮）**：门可反复使用，没有一次性限制；同一扇门对同一玩家 5 s 冷却、站定 1.5 s 才传，全程无 actionbar 提示；被动叠层仍是每扇门 × 每人一次性（`visitedUuids`）。门是**双向**的：两扇门都能把人送到对面（Apex 恶灵大招的折跃门机制）。
 - **被动状态指示器**：叠层期间给玩家挂 `inkshadow_stack` 增益效果（amplifier = 层数 − 1，图标即立牌图标），HUD 的剩余时间即**最晚存活门对的剩余时间**；效果与攻击修饰符同生命周期（`refreshStackHud` 在层数/门对失效/卸下三处同步）。
-- **跨维度放置的已知缺陷（2026-11-11 fabric-1.20.1 实机发现，待修）**：起点门放在 A 维度、玩家带窗口跑到 B 维度放终点门时，`resolvePendingPortal` 用 **pending 维度**的 level 去 `getEntity(uuid)`，若起点门所在区块已卸载就取不到实体 ⇒ 回红字「起始之门已消失」并保留窗口（`fabric-1.20.1/.../InkShadowSignManager.java:175-183`）。实体级 `activate(expireTick, pairUuid, pairDim, pairPos)` 本身支持跨维度（§7.1 / §7.1f 的跨维度读数都是直接 activate 建的），所以缺的是「跨维度放置」这条路径。候选修法：起点门区块 ticket（`ServerChunkCache.addRegionTicket`）／把起点门坐标存进附件后强制 `getChunk`／延长窗口。改一条线即需同步五线，等用户裁决。
+- **跨维度 / 跨区块放置（2026-11-11 已修复并实机验证，五线同构）**：原症状是「起点门在 A 维度、玩家带窗口跑到 B 维度放终点门 ⇒ 红字『起始之门已消失』」。根因有两层：①`resolvePendingPortal` 用 pending 维度的 level 直接 `getEntity(uuid)`，区块卸载就取不到；②更要紧的是**门实体本身在无 ticket 的区块里根本没被 tick 过，也就没写进区块存档**，区块拉回来也找不回实体（实测：拉回后 `hasChunk=true` 而 `getEntity=null`）。修法 = 方案1（附件 `INKSHADOW_PENDING_POS` 记坐标 + 解析时 `level.getChunk(...)` 重试一次）**加**门实体自钉区块（放置即 `setChunkForced`，实体每 tick 兜底，`remove` 释放）。只做方案1 不够——这是本轮最重要的教训。forge-1.20.1 跨区块与跨维度放置/双向穿越实测见 §7.1h。
 - 未做：门与门的视觉配对提示（颜色/编号）、多人并发门数量上限（首版不限制）。音效已按第三轮要求补全（环境音 / 进入 / 传送 / 跨维度）。
 - **forge-1.20.1 已同步**（2026-11-11 00:0x，提交 `75b335d6`）：冷却走全局、下界传送门三件套音效、稀有品质、简化配方（star_coin / dice）与 1.21.1 逐项一致；差异只在平台 API（`GeoModel#getRenderType`、`TickEvent.PlayerTickEvent` END、`SignActionBar`），见 §7.1f。
 
@@ -241,6 +242,21 @@ Astral Dice
 
 > 1.20.1 的 Rhino 取不到 `TooltipFlag$Default`，tooltip **运行时文本未取证**（1.20.1 的 KubeJS 也没有 `Java.type`）⇒ 只做静态核对：`ModTooltipHandler` 的 inkshadow 块与三语键在位、键名与 1.21.1 同源。1.20.1 侧渲染走 `GeoModel#getRenderType`（1.20.1 GeckoLib 无 `GeoEntityRenderer` 钩子）。
 
+### §7.1h 跨区块 / 跨维度放置修复实机（2026-11-11 13:04–13:14，forge-1.20.1，AutoJS `eval_js` 服务端探针）
+
+log `scripts/test/linux/logs/1.20.1-20261111-130421.log`（wrapper 402705 / game 402886）；`stop.sh` ⇒ `LINUX_STOP: OK`。跑前按 §8 第 4 条 park 了 `run/1.20.1/mods/astral_dice-*.jar`（否则跑的是旧 jar 代码，见 §8 第 4 条）。
+
+| 场景 | 读数 |
+|---|---|
+| 跨区块放置 | 起始门放 (150002,-60,150002) 后把玩家 tp 到 5000 格外再放终点门 ⇒ `start=true end=true pendingAfter=""`，两门 `isActive()=true`；玩家站终点门 4 s 后落到 (171002.5,-60,171002.5)（站定 1.5 s 生效） |
+| 跨维度放置 | 主世界 (200000.5,-60,200000.5) 放起始门 (200002,-60,200002)，`execute in minecraft:the_nether run tp` 到 B 维度放终点门 (300,128,300) ⇒ `start=true end=true`；玩家不在 B 维度时该门实体仍在（`NE 300.5,300.5 a=true`）且 `forcedChunks=1` |
+| 跨维度双向 | 主世界站定 ⇒ 下界 (300.5,128,300.5) ✓；下界再站 4 s 不动（落点冷却 `TELEPORT_COOLDOWN_TICKS=100` = 5 s），再等 4 s ⇒ 回主世界 (210002.5,-59.95,210002.5) ✓ |
+| 主人保险 | 放置者站在门前 2 格内不传送，须先离开 `OWNER_ARM_RADIUS=4.0` 再回来才生效（设计行为，§2.3） |
+| 调试期假象（已排除） | 早前「门只活 30 s 就消失」= `WINDOW_TICKS=600` 窗口到期自毁（`remove reason=DISCARDED tick=600`），属设计行为；探针应把放终点门压在同一 cell 内完成，或在探针里 `setInkShadowPendingDeadline(p, 大数)` 续命（不改代码） |
+| 未取证 | 跨维度落点被原版安全定位压到 y=128（`dy=-1` 超出站定判定 `[-0.5,1.0]`）时反向需跳到 y=129 才传 ⇒ 属测试点悬空，非代码缺陷；这一条只在本轮探针里遇到 |
+
+> 本批只实机验了 `forge-1.20.1`（1.21.1 那一轮因 NeoForge early display 无法交接窗口而起不来，见 §8 第 4 条）；另外四线的同一补丁只做到**编译通过**，视觉/放置行为待后续轮次补证。
+
 ### §7.2 首版（2026-11-10 白天，历史）
 
 P0 双线首版：物品注册 / 起始门 `+0.25` 悬浮版 / 一次性 `visitedUuids` 穿越 / 2400 冷却 / 1.21.1 tooltip 全行（含「金鳞」式状态行由 viewer 决定的那类历史结论不适用于本牌）。**已被 §7.1 / §7.1e / §7.1f 取代**，保留作对照。
@@ -270,4 +286,5 @@ P0 双线首版：物品注册 / 起始门 `+0.25` 悬浮版 / 一次性 `visite
    - **`XAUTHORITY` 必须显式给**：KDE 会话重启后 Xwayland 的 `-auth` 文件会换名（本轮 `/run/user/1000/xauth_reiZZS`，mtime 00:59），只给 `DISPLAY=:0` 的轮次会在启动时报 `GLFW error 65548: Wayland: The platform does not support setting the input focus` + `Authorization required, but no authorization protocol specified`。取法：`export XAUTHORITY=$(pgrep -a Xwayland | grep -o '/run/user/[0-9]*/xauth_[A-Za-z0-9]*' | head -1)`。
    - **显示器休眠时截图全黑**：`mcp__computer-use-linux__screenshot`（窗口与整屏）返回的 `original_bytes` 恒定、画面纯黑（Xwayland 无 DPMS 扩展，`xset dpms force on` 报 `server does not have extension for dpms option`），视觉取证要等人醒着/屏幕点亮。
    - **NeoForge 1.21.1 的 early display 在会话锁屏时无法交接窗口**：`EARLYDISPLAY: Failed to initialize the mod loading system and display` + `We seem to be having trouble handing off the window, tried for 1 second`，客户端会卡在模态框等用户点击 ⇒ P0 的 1.21.1 实机在该状态下跑不起来（fabric 线不受影响，26.1.2 也不走 early display）。
+   - **门「消失」的两个常见原因**（2026-11-11 实测）：①`WINDOW_TICKS = 600` 放置窗口到期 ⇒ 起始门 `remove reason=DISCARDED tick=600`，属设计行为（探针跨 30 s 才放终点门必然踩到）；②门所在区块卸载后实体从未 tick 过、不会写进区块存档 ⇒ 回来永久消失（已由「放置即 `setChunkForced` + 实体每 tick `forceOwnChunk()`」修复）。排查三连：`p.getForcedChunks().contains(ChunkPos.asLong(cx,cz))` 看常载、`level.hasChunk(cx,cz)` 看区块、扫 `saves/<world>/entities/*.mca` 看实体是否落档（zlib 块里搜 `inkshadow_portal`）。
    - P1 三线实机命令同上，把 `--version` 换成 `fabric-1.20.1` / `fabric-1.21.1` / `26.1.2`；datagen 三线任务为 `:fabric-1.20.1:runDatagen :fabric-1.21.1:runDatagen :neoforge-26.1.2:runServerData :neoforge-26.1.2:runClientData`（同样先 park 五枚 `run/*/mods/astral_dice-*.jar`）。

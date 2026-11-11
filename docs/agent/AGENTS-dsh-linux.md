@@ -369,6 +369,7 @@
   - `run/26.1.2/mods/` 残留旧 `astral_dice-1.3.7-beta.2+neoforge_26.1.2.jar`，建议清理（未做）。
 - 规则层继续有效（与实现无关）：禁批量编排、单条手动、`FAIL` / `ERROR` / `TIMEOUT` / `BLOCKED` 语义不混同、测试顺序 1.21.1 先行、1.20.1 门控（未过记 `GATED`）、断言以服务端权威日志 `AP_<tag>_<KEY>` 为准、报告不得放宽口径。
 - 静态守门：纯 python 守门**可跑**——`python3 -B docs/agent/verify-split.py`（2026-11-10 实跑：全部通过、`exit=0`，1 个警告「未找到 `AGENTS.md.bak-a-plan-*` 备份，跳过快照比对」——**该项实际被跳过**）、`python3 tools/verify_sign_display_names.py`（`GATE: PASS`，2026-11-10 小猎手入表后检查项 111,290，门禁 `LINES` 仍只覆盖四线，`neoforge-26.1.2` 未纳入）、`python3 tools/audit_patchouli_keys.py`、`python3 -B tools/loom_embedded_jars.py`、`python3 scripts/test/lib/mt_case.py validate`。`scripts/` 与 `tools/` 下已无旧件（Windows 历史工具已删除），Linux 侧**不调用**；其余门禁在 Linux 下**手段缺失**，不得假装通过，也不得把「没跑」写成「已通过」。
+- **实机期间必须阻止 KDE 锁屏与睡眠（2026-11-11 用户裁决 m05435：有实机任务时开启，任务结束关闭）**：锁屏会让 NeoForge 1.21.1 的 early display 交接窗口失败、AutoJS 不注册；显示器休眠会让截图返回纯黑 —— 两者都会把正常轮次误判成失败。开（两条都要）：`systemd-inhibit --what=idle:sleep:handle-lid-switch --who=dsh --why='astral_dice live test <日期>' --mode=block sleep 7200 &`（记 PID）＋ `dbus-send --session --print-reply --dest=org.freedesktop.ScreenSaver /ScreenSaver org.freedesktop.ScreenSaver.Inhibit string:'dsh live test' string:'<原因>'`（返回 `uint32 <cookie>`）。关：`kill <inhibitor-pid>` ＋ `dbus-send --session --dest=org.freedesktop.ScreenSaver /ScreenSaver org.freedesktop.ScreenSaver.UnInhibit uint32:<cookie>`。漏关 = 会话结束后机器长期不锁屏，属环境残留，必须与「锁文件 / gradle daemon / 端口」一起清。
 - 实机一律等用户明确下达；未授权时只做编译 + 静态守门。
 
 ## 互斥锁与并发
