@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-'''立牌英日命名门禁（三线：neoforge-1.21.1 / forge-1.20.1 / fabric-1.20.1）。
+'''立牌英日命名门禁（五线：neoforge-1.21.1 / forge-1.20.1 / neoforge-26.1.2 / fabric-1.20.1 / fabric-1.21.1）。
 
 规则（2026-10-26 用户裁决，见 docs/agent/AGENTS-full.md〈立牌 / 物品英日命名规则〉）：
   - EN 立牌名 = "<wiki 英文页名> Sign"，JA = "<wiki nameJapanese>のスタンド"；
@@ -15,13 +15,13 @@ import json, os, re, sys
 
 W = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TABLE = os.path.join(W, 'tools', 'sign_display_names.json')
-LINES = ['neoforge-1.21.1', 'forge-1.20.1', 'fabric-1.20.1', 'fabric-1.21.1']
+LINES = ['neoforge-1.21.1', 'forge-1.20.1', 'neoforge-26.1.2', 'fabric-1.20.1', 'fabric-1.21.1']
 
 ALL_LINES = list(LINES)
 
 
 def lines_of(sign):
-    """条目可带 lines 字段限定「已实装该立牌」的线；缺省 = 四线全有。
+    """条目可带 lines 字段限定「已实装该立牌」的线；缺省 = 五线全有。
 
     用途：某一批立牌只在部分线实装时（例：2026-11-08 少主立牌首发 neoforge-1.21.1），
     其余线的 lang 不必补占位键，门禁也不会把它们判成「表与 lang 不一致」。

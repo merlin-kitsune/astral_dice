@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "updated": "2026-11-10",
+  "updated": "2026-11-11",
   "rule": "EN = \"<wiki 英文页名> Sign\"；JA = \"<wiki nameJapanese>のスタンド\"；wiki 无条目则用 id 人名，禁止机翻职称。zh 侧保持游戏内职称式命名。",
   "sources": {
     "en_and_ja": "https://astralparty.miraheze.org/w/api.php?action=parse&page=<Title>&prop=wikitext&format=json&formatversion=2 （title = EN 名；CharPlayable.nameJapanese = JA 名）",
@@ -278,13 +278,7 @@
       "en": "A.L. Sign",
       "ja": "アルのスタンド",
       "wiki_page": "A.L.",
-      "lines": [
-        "neoforge-1.21.1",
-        "forge-1.20.1",
-        "fabric-1.20.1",
-        "fabric-1.21.1"
-      ],
-      "note": "2026-11-08 已核对 wiki 页 A.L.（Syndicate Prince），nameJapanese=アル；2026-11-10 补 P1 两线 fabric-1.20.1 / fabric-1.21.1（neoforge-26.1.2 已实装但门禁 LINES 尚未覆盖该线），lines 字段限定校验线"
+      "note": "2026-11-08 已核对 wiki 页 A.L.（Syndicate Prince），nameJapanese=アル；2026-11-10 补 P1 两线 fabric-1.20.1 / fabric-1.21.1（neoforge-26.1.2 已实装），lines 字段限定校验线（2026-11-11 门禁纳入 neoforge-26.1.2 后移除）"
     },
     {
       "id": "souri",
@@ -292,13 +286,7 @@
       "en": "Amakawa Souri Sign",
       "ja": "天川蒼鯉のスタンド",
       "wiki_page": "Amakawa Souri",
-      "lines": [
-        "neoforge-1.21.1",
-        "forge-1.20.1",
-        "fabric-1.20.1",
-        "fabric-1.21.1"
-      ],
-      "note": "2026-11-09 新增（用户 m08862）；wiki 的可玩角色页 Souri 重定向到怪物页 Amakawa Souri，无 CharPlayable/nameJapanese ⇒ ja 暂按「天川双里」推定，待日服名称核实；2026-11-10 补 P1 两线 fabric-1.20.1 / fabric-1.21.1（neoforge-26.1.2 已实装但门禁 LINES 尚未覆盖该线）"
+      "note": "2026-11-09 新增（用户 m08862）；wiki 的可玩角色页 Souri 重定向到怪物页 Amakawa Souri，无 CharPlayable/nameJapanese ⇒ ja 暂按「天川双里」推定，待日服名称核实；2026-11-10 补 P1 两线 fabric-1.20.1 / fabric-1.21.1（neoforge-26.1.2 已实装）"
     },
     {
       "id": "inkshadow",
@@ -306,13 +294,7 @@
       "en": "InkShadow Sign",
       "ja": "スミカゲのスタンド",
       "wiki_page": "InkShadow",
-      "lines": [
-        "neoforge-1.21.1",
-        "forge-1.20.1",
-        "fabric-1.20.1",
-        "fabric-1.21.1"
-      ],
-      "note": "2026-11-10 新增（用户 m02258）；2026-11-11 用户 m04852 给定官方名 en=InkShadow / ja=スミカゲ ⇒ 立牌名 InkShadow Sign / スミカゲのスタンド，实体名 InkShadow Portal / スミカゲポータル（「403 反爬暂推定」作废）；2026-11-11 墨影移植 P1 三线，门禁覆盖补 fabric-1.20.1 / fabric-1.21.1（neoforge-26.1.2 不在门禁 LINES，随线检查）"
+      "note": "2026-11-10 新增（用户 m02258）；2026-11-11 用户 m04852 给定官方名 en=InkShadow / ja=スミカゲ ⇒ 立牌名 InkShadow Sign / スミカゲのスタンド，实体名 InkShadow Portal / スミカゲポータル（「403 反爬暂推定」作废）；2026-11-11 墨影移植 P1 三线，门禁覆盖补 fabric-1.20.1 / fabric-1.21.1（neoforge-26.1.2 自 2026-11-11 起纳入门禁 LINES）"
     }
   ]
 }
