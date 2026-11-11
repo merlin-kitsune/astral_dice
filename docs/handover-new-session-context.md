@@ -2,7 +2,8 @@
 <!-- 历史记录：文中旧 shell 命令已于 2026-11-09 全部废弃，现用 bash 测试台（scripts/test/win/mt.sh）与 windows MCP，仅作溯源。 -->
 
 
-> **口径提示**：本文件描述**主线**（`multi-main` / 1.5.0-rc.7）。若你工作在 `multi-dev-next` 工作树（`/mnt/f/MCProject/astral_dice_multiloader-next`，2.0 线 / `26.4-SNAPSHOT.5`），版本号与库引脚以 `docs/handover-2026-10-31-dev-next-linux-sync.md（已删除 2026-11-05）` 为准。
+> **口径提示（2026-11-11 更新）**：本文件描述**主线**（`multi-main` / 1.5.0-rc.7），数字是 2026-10-31 快照，**只作历史参考**。
+> **若你工作在 `multi-dev-next` 工作树**（`/mnt/f/MCProject/astral_dice_multiloader-next`，2.0 线 / `26.4-SNAPSHOT.11`）⇒ **当前交接正本是 `docs/handover-2026-11-11-devnext-session.md`**，版本号、库引脚（starengine .2/.2/.2/.11/.9）、产物溯源、欠账验证结果、下一步候选一律以它为准；本文件的 §1/§2 数字不要照抄到 dev 线。
 
 > **重写于 2026-10-31（宿主从 VMware 虚拟机迁到真机之后）**：替换旧的「当前是虚拟机 + hgfs + `~/Project` 四副本」口径。
 > **路径纪律**：仓库内文件一律写**相对仓库根的路径**（如 `docs/agent/AGENTS-dsh-linux.md`、`run/start-1.21.1.sh`）；宿主绝对路径只在迁移/附录章节登记。
@@ -12,10 +13,10 @@
 1. 读根 `AGENTS.md` 认领宿主规则：本机是**原生 Linux 真机** ⇒ 规则正本 `docs/agent/AGENTS-dsh-linux.md`（361 行）；`docs/agent/AGENTS-dsh.md` 是 **Windows 历史正本**，只作对照，不照抄其 旧 shell / `gradlew.bat` / `scripts/test/win/mt.sh` 口径。
 2. 加载技能 `using-superpowers`（规则正本第 8 行起是硬要求）。
 3. 读 `docs/agent/AGENTS-dsh-linux.md` 全文。
-4. 读**最新交接三件**：`docs/handover-2026-10-31-native-linux-migration.md`（本批：真机迁移实测 + 路径重映射 + 权限坑）、`docs/handover-1.5.0-main.md` 的最后两条 `### 4.1az` / `### 4.1ba` 与 `## 5 遗留与欠账`。
+4. 读**最新交接**：dev 线 ⇒ `docs/handover-2026-11-11-devnext-session.md`（本轮正本，含实读现状 + 欠账验证 + 下一步）；辅以 `docs/handover-1.5.0-main.md` 的 `## 5 遗留与欠账`，以及 `docs/handover-2026-10-31-native-linux-migration.md`（真机迁移实测 + 路径重映射 + 权限坑）。
 5. 动手前跑 `bash scripts/test/linux/env.sh` 与 `git status --short -uall` 核对现状。
 
-## 1 实读现状（2026-10-31 18:1x 快照，以命令为准）
+## 1 实读现状（2026-10-31 18:1x 快照 · **仅 multi-main**；dev 线见 `docs/handover-2026-11-11-devnext-session.md`）
 
 | 项 | 值 |
 |---|---|

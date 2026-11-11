@@ -122,10 +122,8 @@ The Abyss Reagent chip is named consistently now: display name, tooltip and ever
 
 ## Build provenance (26.4-SNAPSHOT.11)
 
-> All five lines were rebuilt from `011a6891` on 2026-11-10T15:21 (+08:00). Both P0 rows have since been rebuilt twice more:
-> `neoforge-1.21.1` alone at 23:17 from `51ff5691` (Huntsman-Sign sound / rarity / recipe), then **both P0 lines at
-> 2026-11-11T00:21 from `60deccc7`** after the `al_sign` creative-tab fix and the forge Huntsman-Sign sync. The table shows
-> the current bytes; the notes after it record which rows moved when.
+> All five lines were rebuilt together at **2026-11-11T14:15 from `e1d1e922`** (the session head after the Huntsman-Sign
+> cross-chunk/cross-dimension fix and the P1 visual-proof docs). Earlier artifact generations are summarised under the table.
 
 Each jar carries `META-INF/astral_dice/build-info.json` with `{version, commit, builtAt, classCount}` and ships a
 sibling `<jar>.sha256` (neoforge-1.21.1 and forge-1.20.1 only; the other lines carry no build-info). `build-info.commit`
@@ -133,27 +131,25 @@ names the **code commit** the jar was built from; the README update that records
 
 | Line | Version | Built from | Built at | Size (B) | SHA-256 |
 |---|---|---|---|---|---|
-| neoforge-1.21.1 | 26.4-SNAPSHOT.11+neoforge_1.21.1 | `273dc47a`（库引脚 .2 + .11），classCount 588 | 2026-11-11T00:35:28+08:00 | 2,827,030 | `ed22288b7ed87a8664fb4b1ca756989dbbfa865951305031fc37412d07eb380e` |
-| forge-1.20.1 | 26.4-SNAPSHOT.11+forge_1.20.1 | `273dc47a`（库引脚 .2 + .11），classCount 613 | 2026-11-11T00:35:28+08:00 | 2,876,972 | `8629e2965d9dbac8f5a162072e5bdfb14af50bc64b94601733f6df30cd0aaecd` |
-| neoforge-26.1.2 | 26.4-SNAPSHOT.11+neoforge_26.1.2 | 无 build-info，commit 不可回指（与 P0 同批构建） | 2026-11-10T15:21:27+08:00 | 2,982,819 | `eb1a739acefe3a4d0b035f1e136134c32c17ae43c1b1863773ac589081bc70de` |
-| fabric-1.20.1 | 26.4-SNAPSHOT.11+fabric_1.20.1 | 无 build-info，commit 不可回指（与 P0 同批构建） | 2026-11-10T15:21:30+08:00 | 3,094,347 | `04f9bf65ab57e67a178d4e3024ca4a706d656c8fcd192a7621137a38df64d2a1` |
-| fabric-1.21.1 | 26.4-SNAPSHOT.11+fabric_1.21.1 | 无 build-info，commit 不可回指（与 P0 同批构建） | 2026-11-10T15:21:30+08:00 | 3,120,561 | `31183feafeba11781db31ec31692aa0a91733fca4f00e8eed35fd07b733dc98a` |
+| neoforge-1.21.1 | 26.4-SNAPSHOT.11+neoforge_1.21.1 | `e1d1e922`，classCount 588 | 2026-11-11T14:15:34+08:00 | 2,843,160 | `fbb1f58ea2f1cb4f350b2b8a5dfe218bc373f5d8da6afb6cb36b30d543fb0654` |
+| forge-1.20.1 | 26.4-SNAPSHOT.11+forge_1.20.1 | `e1d1e922`，classCount 613 | 2026-11-11T14:15:35+08:00 | 2,893,115 | `8cb619d48acdc4df8ac590b751ca68cbb46bfea24f5cf7beec867c1ede87c71e` |
+| neoforge-26.1.2 | 26.4-SNAPSHOT.11+neoforge_26.1.2 | 无 build-info，commit 不可回指（与 P0 同一批 14:15 构建） | 2026-11-11T14:15 | 3,045,772 | `c2ebd506abd9a0ce113ffde7cbbe7df52d864fb0b3073b476c6e8745d12ba5a9` |
+| fabric-1.20.1 | 26.4-SNAPSHOT.11+fabric_1.20.1 | 无 build-info，commit 不可回指（与 P0 同一批 14:15 构建） | 2026-11-11T14:15 | 3,144,866 | `a1a479396cffdceefb8ac18a2e8d93a98452afeef13c1c1722472bd02fbf16ab` |
+| fabric-1.21.1 | 26.4-SNAPSHOT.11+fabric_1.21.1 | 无 build-info，commit 不可回指（与 P0 同一批 14:15 构建） | 2026-11-11T14:15 | 3,171,262 | `ac9e2f13eb39618689e955ad332394bd829a9534a36f5c817dd18169b3fbdb11` |
 
-The three P1 rows come from one build run (`gradlew --no-daemon --no-configuration-cache` over the five `:build` tasks,
-`BUILD SUCCESSFUL in 6s`, 28 executed / 16 up-to-date); the two P0 rows were rebuilt afterwards on their own (history below).
-Only the two P0 jars embed
-`build-info.json`; the other three lines have no such descriptor, so their rows are identified by size + hash only.
-Rebuild history for the two P0 rows: `011a6891` at 15:21 (both), `51ff5691` at 23:17 (`neoforge-1.21.1` only), both
-at 2026-11-11T00:21 from `60deccc7` (the `al_sign` creative-tab fix `f19bf1a4` plus the forge Huntsman-Sign sync
-`75b335d6`), then both again at **00:35 from `273dc47a`** after the Huntsman-Sign recipe ingredients changed
-(ink sac → ender pearl, gold block → yellow dye). The current `neoforge-1.21.1` jar is 2,827,030 B /
-`sha256 ed22288…380e` / `classCount 588`; the current `forge-1.20.1` jar is 2,876,972 B / `sha256 8629e29…aecd` /
-`classCount 613`. Both `.sha256` sidecars were
-regenerated from the final bytes next to the jars in `<line>/build/libs/` and in the root `build/libs/` mirror.
+The five rows come from one build run (`gradlew --no-daemon --offline --no-configuration-cache` over the five `:build`
+tasks, `BUILD SUCCESSFUL in 6s`, 26 executed / 18 up-to-date), which also pumped every `pushToDevRun` copy into
+`run/*/mods/`. Only the two P0 jars embed `build-info.json`; the other three lines have no such descriptor, so their rows
+are identified by size + hash only.
+
+Rebuild history for the two P0 rows: `011a6891` at 2026-11-10T15:21 (all five), `51ff5691` at 23:17 (`neoforge-1.21.1`
+only), `60deccc7` at 2026-11-11T00:21, `273dc47a` at 00:35 (recipe ingredients: ink sac → ender pearl, gold block →
+yellow dye), then **`e1d1e922` at 2026-11-11T14:15** (both P0 lines, after the Huntsman-Sign chunk-pin/cross-dimension fix
+`4ee66b81` and the global-cooldown + nether-portal-sound change `37f97669`). Both `.sha256` sidecars were regenerated from
+the final bytes next to the jars in `<line>/build/libs/` and in the root `build/libs/` mirror.
 `neoforge-1.21.1` is byte-identical in all three places (build dir, root mirror, `run/1.21.1/mods/`). `forge-1.20.1` is not:
-`pushToDevRun` puts a re-packed jar in `run/1.20.1/mods/` (2,846,578 B / `sha256 1a9bd4e…2752`, same `build-info.json`), so
-the `build/libs` bytes above are the release artefacts and the `run/` copy is only the dev-runtime one. The three P1 rows are
-still the 15:21 artefacts (no code change since).
+`pushToDevRun` puts a re-packed jar in `run/1.20.1/mods/` (2,862,670 B / `sha256 6a5fc2c4…0f8b1f`, same `build-info.json`),
+so the `build/libs` bytes above are the release artefacts and the `run/` copy is only the dev-runtime one.
 
 `fabric-1.21.1` is tracked here because it is built from this worktree, but it is **not** a release line yet: it is the P1
 scaffolding line, has no row in the support matrix above, and gets no Release attachment
