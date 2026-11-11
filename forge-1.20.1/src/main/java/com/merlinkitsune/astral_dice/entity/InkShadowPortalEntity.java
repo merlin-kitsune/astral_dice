@@ -192,9 +192,36 @@ public class InkShadowPortalEntity extends Entity implements GeoEntity {
         return false;
     }
 
+    /**
+     * 本门所在区块是否已被本实体申请为常载。
+     * <p>2026-11-11 实机定位：{@code addFreshEntity} 放下的门如果所在区块被卸载，门实体不会被写进区块存档，
+     * 回来时永远消失（召唤命令放的门则正常）。配对门必须在 3:00 内一直可用，所以本门自己把区块钉住，
+     * 到期/作废时在 {@link #remove(RemovalReason)} 里释放；即便服务端崩溃，重开后门实体加载、读到过期刻会自行解锁。
+     */
+    private boolean chunkForced;
+
+    private void forceOwnChunk() {
+        if (!(this.level() instanceof ServerLevel serverLevel) || this.chunkForced) return;
+        serverLevel.setChunkForced(((int) Math.floor(this.getX())) >> 4, ((int) Math.floor(this.getZ())) >> 4, true);
+        this.chunkForced = true;
+    }
+
+    private void releaseOwnChunk() {
+        if (!(this.level() instanceof ServerLevel serverLevel) || !this.chunkForced) return;
+        serverLevel.setChunkForced(((int) Math.floor(this.getX())) >> 4, ((int) Math.floor(this.getZ())) >> 4, false);
+        this.chunkForced = false;
+    }
+
+    @Override
+    public void remove(RemovalReason reason) {
+        releaseOwnChunk();
+        super.remove(reason);
+    }
+
     @Override
     public void tick() {
         super.tick();
+        forceOwnChunk();
         if (!(this.level() instanceof ServerLevel serverLevel)) return;
         long now = serverLevel.getGameTime();
         // 1) 到期：自己与配对门一起消失（对方区块未加载时由对方自己的 tick 到期）

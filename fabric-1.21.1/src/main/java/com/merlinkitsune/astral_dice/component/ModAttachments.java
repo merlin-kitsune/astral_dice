@@ -1254,6 +1254,9 @@ public class ModAttachments {
     /** 放置窗口截止刻(绝对 gameTime,long;0 = 无窗口)。 */
     public static final AttachedDataKey<Long> INKSHADOW_PENDING_DEADLINE =
             register(AttachedDataKey.builder("inkshadow_pending_deadline", Codec.LONG, () -> 0L).build());
+    // 起始门坐标(BlockPos.asLong;Long.MIN_VALUE = 无)。起点门区块卸载后按此坐标强制加载再解析实体。
+    public static final AttachedDataKey<Long> INKSHADOW_PENDING_POS =
+            register(AttachedDataKey.builder("inkshadow_pending_pos", Codec.LONG, () -> Long.MIN_VALUE).build());
 
     /** 窗口内被强制锁定的快捷栏槽位(-1 = 未锁)。 */
     public static final AttachedDataKey<Integer> INKSHADOW_LOCKED_SLOT =
@@ -1356,6 +1359,13 @@ public class ModAttachments {
 
     public static void setInkShadowPendingDeadline(net.minecraft.world.entity.player.Player player, long value) {
         INKSHADOW_PENDING_DEADLINE.set(player, value);
+    }
+    public static long getInkShadowPendingPos(net.minecraft.world.entity.player.Player player) {
+        return INKSHADOW_PENDING_POS.get(player);
+    }
+
+    public static void setInkShadowPendingPos(net.minecraft.world.entity.player.Player player, long value) {
+        INKSHADOW_PENDING_POS.set(player, value);
     }
 
     public static int getInkShadowLockedSlot(net.minecraft.world.entity.player.Player player) {

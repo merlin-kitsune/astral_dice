@@ -103,10 +103,14 @@ public final class InkShadowSignManager {
         portal.setPos(pos.getX() + 0.5D, pos.getY(), pos.getZ() + 0.5D);
         portal.setYRot(player.getYRot());
         level.addFreshEntity(portal);
+        // 放置即钉区块：门如果在别的维度/远处，没有玩家 ticket 它连第一次 tick 都跑不到，
+        // 区块一卸载门就丢（2026-11-11 跨维度实机）。实体自己每 tick 也会再钉一次，到期/作废时释放。
+        level.setChunkForced(pos.getX() >> 4, pos.getZ() >> 4, true);
 
         ModAttachments.setInkShadowPendingUuid(player, portal.getUUID().toString());
         ModAttachments.setInkShadowPendingDim(player, level.dimension().location().toString());
         ModAttachments.setInkShadowPendingDeadline(player, now + InkShadowSignItem.WINDOW_TICKS);
+        ModAttachments.setInkShadowPendingPos(player, pos.asLong());
         // 放置窗口内锁死快捷栏：切武器走的是 selected 槽位，强行回写即可（背包重排后下一 tick 继续回写）
         ModAttachments.setInkShadowLockedSlot(player, player.getInventory().selected);
         SignAttributeUtil.apply(player, Attributes.MOVEMENT_SPEED, InkShadowSignItem.SPEED_MODIFIER_KEY,
@@ -127,6 +131,7 @@ public final class InkShadowSignManager {
         end.setPos(pos.getX() + 0.5D, pos.getY(), pos.getZ() + 0.5D);
         end.setYRot(player.getYRot());
         level.addFreshEntity(end);
+        level.setChunkForced(pos.getX() >> 4, pos.getZ() >> 4, true);
 
         long expireTick = now + InkShadowSignItem.PAIR_LIFETIME_TICKS;
         String startDim = start.level().dimension().location().toString();
@@ -154,6 +159,7 @@ public final class InkShadowSignManager {
         ModAttachments.setInkShadowPendingUuid(player, "");
         ModAttachments.setInkShadowPendingDim(player, "");
         ModAttachments.setInkShadowPendingDeadline(player, 0L);
+        ModAttachments.setInkShadowPendingPos(player, Long.MIN_VALUE);
         ModAttachments.setInkShadowLockedSlot(player, -1);
         SignAttributeUtil.remove(player, Attributes.MOVEMENT_SPEED, InkShadowSignItem.SPEED_MODIFIER_KEY);
     }
@@ -180,7 +186,14 @@ public final class InkShadowSignManager {
         } catch (IllegalArgumentException e) {
             return null;
         }
-        return level.getEntity(id) instanceof InkShadowPortalEntity portal ? portal : null;
+        InkShadowPortalEntity portal = level.getEntity(id) instanceof InkShadowPortalEntity found ? found : null;
+        if (portal != null) return portal;
+        // 起点门所在区块可能已卸载(玩家跨维度 / 远走)：按记录的坐标强制加载区块后再解析一次
+        long packed = ModAttachments.getInkShadowPendingPos(player);
+        if (packed == Long.MIN_VALUE) return null;
+        BlockPos pendingPos = BlockPos.of(packed);
+        level.getChunk(pendingPos.getX() >> 4, pendingPos.getZ() >> 4);
+        return level.getEntity(id) instanceof InkShadowPortalEntity reloaded ? reloaded : null;
     }
 
     private static ServerLevel dimensionLevel(MinecraftServer server, String dimension) {
