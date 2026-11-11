@@ -4,7 +4,7 @@
 
 > **v1.2（2026-10-17，用户裁决批准）**：**图标归属对调** —— 金色描边版改归**目标标记** `kangel_fan.png`，**佩戴者指示器** `kangel_fan_indicator.png` 用回 `images/粉丝.png` **原版（逐字节复制）**。效果 id / 注册 / lang 键 / 行为全部不变，只改两张图标的视觉归属（见裁决 #8、§2、§3.7）。
 
-> 本文件是两张新立牌的**冻结规格**：行为以本文件为准。实施范围：**P0 两线**（`neoforge-1.21.1` 先落地 → 验收后 `forge-1.20.1` 按 `docs/compat-1.20.1-forge.md` 移植）；P1 两线（26.1.2 / fabric）本批不动，待移植批次。
+> 本文件是两张新立牌的**冻结规格**：行为以本文件为准。实施范围：**P0 三线**（`neoforge-1.21.1` 先落地 → 验收后 `forge-1.20.1` 按 `docs/compat-1.20.1-forge.md` 移植；`neoforge-26.1.2` 已有代码、2026-11-11 划级后归 P0，验收状态见 `sign-roadmap.md`）；P1 两线（`fabric-1.20.1` / `fabric-1.21.1`）本批不动，待移植批次。
 > 品质：**奇特**（`AstralRarities.bizarre()`），照 sherry/hanna 档。
 
 ## 0. 需求（用户原话，2026-10-16）
@@ -130,16 +130,16 @@
 - tooltip：`tooltip.astral_dice.sign.kangel_active` / `kangel_passive` / `kangel_note` / `kangel_fans`；`tooltip.astral_dice.sign.ame_active` / `ame_passive` / `ame_note` / `ame_love_layers`
 - actionbar：`msg.astral_dice.kangel_*`（主动结果：获得星币数/回满/友方发放）、`msg.astral_dice.ame_*`（主动结果、到期结算）
 - guide：§5 六键
-- 守门：`tools/check_lang_sync.py` 两线 exit=0；`scripts/audit/tooltip_color_audit.py` PASS。
+- 守门：`tools/check_lang_sync.py` 原两线 exit=0；`scripts/audit/tooltip_color_audit.py` PASS。
 
-## 7. 验收守门（两线全绿为准）
+## 7. 验收守门（2026-10-16 批次为 P0 两线；2026-11-11 划级后 26.1.2 归 P0，三线口径待补跑）
 
-- scripts/test/win/mt.sh --phase build（Windows 侧 旧 shell 互操作）两线 OK；
-- 两线 `runData`：模型 + 配方 + 进度各 2 组生成物落盘并提交；
+- scripts/test/win/mt.sh --phase build（Windows 侧 旧 shell 互操作）原两线 OK；
+- 原两线 `runData`：模型 + 配方 + 进度各 2 组生成物落盘并提交；
 - `scripts/verify/verify_crafting_recipe_uniqueness.py`：两条新配方 0 碰撞；
 - `tools/verify_effect_icons.py`：3 新效果图标覆盖；
 - `tools/audit_patchouli_keys.py`、`tools/check_lang_sync.py`、`scripts/audit/tooltip_color_audit.py`、`verify_bountiful_pools.py`（回归）、`scripts/verify/verify_resource_integrity.py`。
-- 版本号各线同步 bump（.127 → .128，含未改动的 P1 两线）；两份 CHANGELOG 各 +1 条；AGENTS.md 立牌/效果/lang 计数**实测后订正**。
+- 版本号各线同步 bump（.127 → .128，含未改动的 fabric 两线；26.1.2 现 P0 需纳入版本同步）；两份 CHANGELOG 各 +1 条；AGENTS.md 立牌/效果/lang 计数**实测后订正**。
 
 ## 8. 假定（用户未指定，按既有口径锁定）
 

@@ -49,9 +49,8 @@ public class MemberRecommendationChipItem extends BaseChipItem {
         for (ItemStack stack : player.getInventory().getNonEquipmentItems()) {
             if (ModItems.isCardItem(stack)) total += stack.getCount();
         }
-        for (ItemStack stack : player.getInventory().getNonEquipmentItems()) {
-            if (ModItems.isCardItem(stack)) total += stack.getCount();
-        }
+        ItemStack offhand = player.getInventory().getItem(net.minecraft.world.entity.player.Inventory.SLOT_OFFHAND);
+        if (!offhand.isEmpty() && ModItems.isCardItem(offhand)) total += offhand.getCount();
         return total;
     }
 

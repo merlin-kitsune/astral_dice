@@ -22,7 +22,7 @@ import org.slf4j.LoggerFactory;
  *
  * <h2>根因链（对实物 jar {@code ModernUI-Fabric-1.20.1-3.12.0.1-universal.jar}
  * （Modrinth {@code modern-ui}；sha1 {@code 90b40fcb82e885fcb8f73992dc51473682db29d8}）反汇编，逐条可复现）</h2>
- * <p>⚠️ <b>本线的机制与两条 P0 线不同</b> —— P0（NeoForge / Forge）上 Modern UI 走**平台事件**
+ * <p>⚠️ <b>本线的机制与 P0 基准两线（neo21 / forge）不同</b> —— 那两线上 Modern UI 走**平台事件**
  * （{@code UIManagerForge} 的 {@code @SubscribeEvent} HIGH/LOW 自绘 + 取消）；而 Fabric 无 Forge 事件总线，
  * 它改为**注入原版类**：
  * <ol>

@@ -5,9 +5,11 @@
 > - 功能（描述文本）：在玩家指定地面上放置一个强化拒止，强化拒止会自动吸附8格范围内的敌对目标，并对其持续施加缓慢和虚弱效果。强化拒止每10秒消耗吸附目标数量的耐久度（单次最大消耗5点）
 > - 功能补充：强化拒止是一个实体，没有碰撞箱。使用该效果牌时遵循原版放置方块规则将强化止实体放置在指定位置，强化拒止拥有100点耐久，会以1秒为频率将半径8格范围敌对目标向强化拒止的位置逐渐缓慢拉扯（但目标无法逃离强化拒止影响范围），强化拒止不会吸引仇恨，但会持续为怪物施加 缓慢 (0:10)和虚弱 (0:10)，强化拒止耐久耗尽会有碎裂粒子效果，主动攻击并不会对齐造成伤害。」
 >
-> 本批范围：**P0 两线 neoforge-1.21.1 + forge-1.20.1**（逐项对等；两线代码剥注释后 0 hunk，仅平台 API 差异）。neoforge-26.1.2 / fabric-1.20.1 属 P1，不在本批。
+> 本批范围：**P0 两线 neoforge-1.21.1 + forge-1.20.1**（逐项对等；两线代码剥注释后 0 hunk，仅平台 API 差异）。neoforge-26.1.2 自 2026-11-11 划级后归 P0，该线 `RepulsionCardItem` / `RepulsionEntity` 已落地（源码实读）；fabric-1.20.1 / fabric-1.21.1 属 P1，不在本批。
+>
+> **2026-11-11 划级变更**：26.1.2 由 P1 归 P0；本文原「26.1.2 / fabric 属 P1」作废（fabric 两线仍 P1）。
 
-> ⚠️ **2026-10-22 用户裁决：品质改为「奇特（bizarre）」** —— 本牌在 `data/astral_dice/tags/item/is_exclusive.json` 里，属专属牌；专属牌一律奇特档。实现 = P0 两线 `item/ModItems.java` 的 `EFFECT_CARD_REPULSION` 用 `.rarity(AstralRarities.bizarre())`（原 `.epic()`）。上面的用户原文按「逐字引用」保留不改。
+> ⚠️ **2026-10-22 用户裁决：品质改为「奇特（bizarre）」** —— 本牌在 `data/astral_dice/tags/item/is_exclusive.json` 里，属专属牌；专属牌一律奇特档。实现 = P0 基准两线（neo21/forge；26.1.2 同源）`item/ModItems.java` 的 `EFFECT_CARD_REPULSION` 用 `.rarity(AstralRarities.bizarre())`（原 `.epic()`）。上面的用户原文按「逐字引用」保留不改。
 
 ## 1. 冻结设计 → 落点（逐条对应）
 

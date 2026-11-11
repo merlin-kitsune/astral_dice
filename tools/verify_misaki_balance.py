@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""护法立牌（misaki_sign）品质/配方/死亡规则的静态守门（P0 两线）。
+"""护法立牌（misaki_sign）品质/配方/死亡规则的静态守门（P0 三线）。
 
 ## 要拦的回归
-用户 2026-10-24 裁决（P0 两线 neoforge-1.21.1 / forge-1.20.1）：
+用户 2026-11-11 裁决（P0 三线 neoforge-1.21.1 / forge-1.20.1 / neoforge-26.1.2）：
 1. 品质 legendary → epic；
 2. 合成配方 P 位 golden_star_plate → star_plate（datagen 与已入库生成 JSON 必须同步，
    只改一边 ⇒ 下次 runData 会回滚，属典型假绿）；
@@ -26,8 +26,8 @@
   文件仍为 UTF-8 / 纯 CRLF / Tab 缩进 / 末尾换行。
 
 ## 范围
-只查 P0 两线；P1（neoforge-26.1.2 / fabric-1.20.1）**不在本任务范围**，明确不检查
-（P0/P1 分歧由 scripts/verify/verify_bountiful_pools.py 报出，属已知既有红）。
+只查 P0 三线（neoforge-1.21.1 / forge-1.20.1 / neoforge-26.1.2）；P1（fabric-1.20.1 /
+fabric-1.21.1）**不在本任务范围**。26.1.2 没有 Bountiful 模组，B1 赏金池检查跳过。
 
 退出码：0 全部通过 / 1 存在违规 / 2 无法判定（文件或方法无法定位）。
 
@@ -64,8 +64,8 @@ _astral_heal_stdio()
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# P0 对等两线；P1 明确不在本任务范围。
-LINES = ("neoforge-1.21.1", "forge-1.20.1")
+# P0 对等三线；P1 明确不在本任务范围。
+LINES = ("neoforge-1.21.1", "forge-1.20.1", "neoforge-26.1.2")
 
 JAVA_REL = os.path.join(
     "src", "main", "java", "com", "merlinkitsune", "astral_dice")
@@ -85,6 +85,9 @@ RECIPE_REL = {
     "forge-1.20.1": os.path.join(
         "src", "generated", "resources", "data", "astral_dice",
         "recipes", "misaki_sign.json"),
+    "neoforge-26.1.2": os.path.join(
+        "src", "generated", "resources", "data", "astral_dice",
+        "recipe", "misaki_sign.json"),
 }
 
 MISAKI_REG_RX = re.compile(r'registerItem\s*\(\s*"misaki_sign"')
@@ -93,8 +96,8 @@ RARITY_EPIC_RX = re.compile(r'\.rarity\(\s*AstralRarities\.epic\(\)\s*\)')
 RARITY_LEGENDARY_RX = re.compile(r'\.rarity\(\s*AstralRarities\.legendary\(\)\s*\)')
 
 MISAKI_RECIPE_RX = re.compile(
-    r'ShapedRecipeBuilder\s*\.\s*shaped\(\s*RecipeCategory\s*\.\s*MISC\s*,\s*'
-    r'ModItems\s*\.\s*MISAKI_SIGN\s*\.\s*get\(\)\s*\)')
+    r'ShapedRecipeBuilder\s*\.\s*shaped\(\s*(?:[A-Za-z_$][\w$]*\s*,\s*)?'
+    r'RecipeCategory\s*\.\s*MISC\s*,\s*ModItems\s*\.\s*MISAKI_SIGN\s*\.\s*get\(\)\s*\)')
 NEXT_RECIPE_RX = re.compile(r'ShapedRecipeBuilder\s*\.\s*shaped\s*\(')
 DEFINE_P_STAR_RX = re.compile(
     r"\.define\(\s*'P'\s*,\s*ModItems\s*\.\s*STAR_PLATE\s*\.\s*get\(\)\s*\)")
@@ -275,7 +278,9 @@ def check_generated_recipe(line, run, verbose):
     except Exception as exc:  # noqa: BLE001 - 解析失败按无法判定处理
         run(None, "R2 %s: 生成配方 JSON 解析失败: %r" % (line, exc))
         return
-    item = (((data.get("key") or {}).get("P") or {}).get("item"))
+    key_p = (data.get("key") or {}).get("P")
+    # 1.20.1/1.21.1 为 {"item": "..."}；26.1.2 起 key 值可直接是物品 id 字符串
+    item = key_p.get("item") if isinstance(key_p, dict) else key_p
     if item == STAR_PLATE_ID:
         run(True, "")
         if verbose:
@@ -413,8 +418,8 @@ def main():
             fails.append(msg)
             print("  FAIL " + msg)
 
-    print("== 护法立牌品质/配方/死亡规则（P0 两线：neoforge-1.21.1 / forge-1.20.1；"
-          "P1 neoforge-26.1.2 / fabric-1.20.1 明确不在检查范围）==")
+    print("== 护法立牌品质/配方/死亡规则（P0 三线：neoforge-1.21.1 / forge-1.20.1 / "
+          "neoforge-26.1.2；P1 fabric 两线明确不在检查范围）==")
     for line in LINES:
         print("[%s]" % line)
         check_items_rarity(line, run, verbose)
@@ -422,7 +427,8 @@ def main():
         check_generated_recipe(line, run, verbose)
         check_death_cleanup(line, run, verbose)
         check_clear_sign_data(line, run, verbose)
-        check_bountiful_pool(line, run, verbose)
+        if line != "neoforge-26.1.2":  # 26.1.2 没有 Bountiful 模组，赏金池不在范围
+            check_bountiful_pool(line, run, verbose)
 
     print()
     if fails:

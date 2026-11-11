@@ -16,8 +16,9 @@
 |---|---|---|---|---|---|
 | `neoforge-1.21.1` | 1.21.1 | NeoForge 21.1.235 | 21 | ModDevGradle `net.neoforged.moddev` | **P0** |
 | `forge-1.20.1` | 1.20.1 | Forge 47.4.10 | 17 | `net.neoforged.moddev.legacyforge` | **P0** |
-| `neoforge-26.1.2` | 26.1.2 | NeoForge 26.1.2.109 | 25 | ModDevGradle | P1（`1.5.0` 正式版前不验证、不移植） |
-| `fabric-1.20.1` | 1.20.1 | Fabric Loader 0.19.5 + FAPI 0.92.12 | 17 | Fabric Loom | P1（同上） |
+| `neoforge-26.1.2` | 26.1.2 | NeoForge 26.1.2.109 | 25 | ModDevGradle | **P0** |
+| `fabric-1.20.1` | 1.20.1 | Fabric Loader 0.19.5 + FAPI 0.92.12 | 17 | Fabric Loom | **P1** |
+| `fabric-1.21.1` | 1.21.1 | Fabric Loader + FAPI（见子项目） | 21 | Fabric Loom | **P1**（scaffolding，未发布） |
 
 - 版本：各线 `mod_version = 1.5.0-pre.6+<加载器后缀>`（`neoforge_1.21.1` / `forge_1.20.1` / `neoforge_26.1.2` / `fabric_1.20.1`，下划线分隔）；各线 `starengine_version = 1.1.0-pre.2`（fabric 另有 `starengine_version_range`）。
 - jar 内硬前置区间 `[1.1.0-pre.2,2.0.0)`，`META-INF/jarjar/` 计数 0（库**不内嵌**，必须成对投放）。
@@ -60,7 +61,7 @@ bash F:\MCProject\astral_dice_multiloader\scripts/test/win/mt.sh --version 1.20.
 - `--purge-saves` 会删 `testworld`：下轮实机前先 `--phase env`。
 - 禁用 Windows 旧的原生 shell 5.1（不支持三元 / `??` / `-AsHashtable`）。
 
-## 5. 守门脚本（P0 两线必跑）
+## 5. 守门脚本（P0 三线必跑）
 
 | 脚本 | 判据 |
 |---|---|
@@ -91,7 +92,7 @@ bash F:\MCProject\astral_dice_multiloader\scripts/test/win/mt.sh --version 1.20.
 export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64     # 所有 gradlew 的 daemon JVM 必须 ≥21；子项目 toolchain 17/21/25 自动发现
 ./gradlew :neoforge-1.21.1:classes --console=plain      # P0
 ./gradlew :forge-1.20.1:classes   --console=plain       # P0
-./gradlew :neoforge-26.1.2:classes --console=plain --no-configuration-cache   # P1，该线必须关配置缓存
+./gradlew :neoforge-26.1.2:classes --console=plain --no-configuration-cache   # P0，该线必须关配置缓存
 ./gradlew :forge-1.20.1:pushToDevRun --console=plain    # legacyforge dev 运行加载 run/1.20.1/mods/*.jar，改代码后必须重建
 bash scripts/test/linux/env.sh                          # 只读环境检查（ENV_RESULT: OK|WARN|FAIL）
 bash scripts/test/linux/launch.sh --version 1.21.1      # 就绪 = AutoJS /health 200 + status client available → LAUNCH: READY

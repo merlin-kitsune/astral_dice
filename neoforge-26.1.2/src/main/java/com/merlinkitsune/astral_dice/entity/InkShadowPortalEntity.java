@@ -73,6 +73,7 @@ public class InkShadowPortalEntity extends Entity implements GeoEntity {
     private static final String TAG_PAIR_Z = "PairZ";
     private static final String TAG_EXPIRE = "Expire";
     private static final String TAG_VISITED = "Visited";
+    private static final String TAG_ARRIVAL_LOCKED = "ArrivalLocked";
 
     private static final String CONTROLLER_IDLE = "idle";
     private static final String ANIM_IDLE = "animation.inkshadoweffect.idle";
@@ -93,6 +94,8 @@ public class InkShadowPortalEntity extends Entity implements GeoEntity {
     private long expireTick;
     /** 本扇门已计过被动层数的玩家（逐门逐人各一次；不影响能否再传送） */
     private final Set<UUID> visitedUuids = new HashSet<>();
+    /** 落地后尚未离开门盘中心的玩家（必须走远才解除，防止原地被弹回） */
+    private final Set<UUID> arrivalLocked = new HashSet<>();
     /** 玩家级传送冷却截止刻（静默、无提示） */
     private final Map<UUID, Long> teleportCooldown = new HashMap<>();
     /** 玩家在本扇门内的累计站定 tick（离开即清零） */
@@ -262,6 +265,7 @@ public class InkShadowPortalEntity extends Entity implements GeoEntity {
     }
 
     private void scanPlayers(ServerLevel serverLevel, long now) {
+        pruneArrivalLocks(serverLevel);
         Set<UUID> inside = new HashSet<>();
         for (Player player : serverLevel.getEntitiesOfClass(Player.class,
                 this.getBoundingBox().inflate(1.0D))) {
@@ -273,6 +277,8 @@ public class InkShadowPortalEntity extends Entity implements GeoEntity {
             inside.add(id);
             // 踩上去就播粒子(与是否在 5s 冷却、门主人保险是否解除无关),给「正在生效」的即时反馈
             spawnStandParticles(serverLevel);
+            // 刚落地还没走远：不累计站定，也不允许再次传送
+            if (this.arrivalLocked.contains(id)) continue;
             Long cdUntil = this.teleportCooldown.get(id);
             if (cdUntil != null && now < cdUntil) continue;
             if (this.ownerUuid != null && this.ownerUuid.equals(id) && !this.ownerArmed) continue;
@@ -345,9 +351,32 @@ public class InkShadowPortalEntity extends Entity implements GeoEntity {
         ServerLevel target = dimensionLevel(server, this.pairDim);
         if (target == null) return;
         if (target.getEntity(this.pairUuid) instanceof InkShadowPortalEntity pair) {
+            pair.arrivalLocked.add(playerId);
             pair.teleportCooldown.put(playerId, now + InkShadowSignItem.TELEPORT_COOLDOWN_TICKS);
             pair.standingTicks.remove(playerId);
         }
+    }
+
+    /**
+     * 落地锁清理：玩家离开门盘中心 {@link InkShadowSignItem#PORTAL_EXIT_RADIUS} 后解除，
+     * 或离线/换维度时直接丢弃。锁在时 scanPlayers 不累计站定，避免到点原地被弹回。
+     */
+    private void pruneArrivalLocks(ServerLevel serverLevel) {
+        if (this.arrivalLocked.isEmpty()) return;
+        MinecraftServer server = serverLevel.getServer();
+        if (server == null) return;
+        double r = InkShadowSignItem.PORTAL_EXIT_RADIUS;
+        double r2 = r * r;
+        this.arrivalLocked.removeIf(id -> {
+            ServerPlayer player = server.getPlayerList().getPlayer(id);
+            // 离线/换维度时保留锁：跨维度传送的落点可能还没切到目标维度，
+            // 此时清锁会让落点门立刻重新可传送，正是「到点后被弹回」的来源。
+            if (player == null) return false;
+            if (player.level() != serverLevel) return false;
+            double dx = player.getX() - this.getX();
+            double dz = player.getZ() - this.getZ();
+            return dx * dx + dz * dz > r2;
+        });
     }
 
     private void grantOwnerStack(ServerLevel serverLevel) {
@@ -424,6 +453,11 @@ public class InkShadowPortalEntity extends Entity implements GeoEntity {
             // 旧存档脏数据：忽略这一条即可，不影响其它玩家计数
             if (id != null) this.visitedUuids.add(id);
         }
+        this.arrivalLocked.clear();
+        for (String raw : input.listOrEmpty(TAG_ARRIVAL_LOCKED, Codec.STRING)) {
+            UUID id = parseUuid(raw);
+            if (id != null) this.arrivalLocked.add(id);
+        }
     }
 
     @Override
@@ -440,6 +474,10 @@ public class InkShadowPortalEntity extends Entity implements GeoEntity {
         ValueOutput.TypedOutputList<String> visited = output.list(TAG_VISITED, Codec.STRING);
         for (UUID id : this.visitedUuids) {
             visited.add(id.toString());
+        }
+        ValueOutput.TypedOutputList<String> locked = output.list(TAG_ARRIVAL_LOCKED, Codec.STRING);
+        for (UUID id : this.arrivalLocked) {
+            locked.add(id.toString());
         }
     }
 

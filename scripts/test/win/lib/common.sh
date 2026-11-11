@@ -155,7 +155,7 @@ mt_fail() { MT_FAILS=$(( ${MT_FAILS:-0} + 1 ));     printf 'CHECK: %s=FAIL — %
 # cmd.exe launcher: MSYS arg conversion may rewrite /c to a path, or else leave //c unrecognized.
 # Excluding only the /c prefix makes the literal /c reach cmd.exe in both forms (verified 2026-11-06).
 mt_cmdwin() {
-    cmd //c "$@"
+    cmd.exe /c "$@"
 }
 
 mt_info() { [ "${MT_QUIET:-0}" = 1 ] || printf 'INFO: %s — %s\n' "$1" "$2"; }

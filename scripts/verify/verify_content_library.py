@@ -36,7 +36,9 @@ DICE_TIERS = ["dice_t0", "dice_t1", "dice_t2", "dice_t3", "dice_t4"]
 BASE_SLOT_COUNTS = {"chip": 59, "dice": 13, "stand": 16}
 BASE_TAG_COUNTS = {"chips": 60, "signs": 17, "dices": 13, "materials": 14}
 BLANK_ITEMS = ["blank_chip", "blank_sign"]
-NEW_EFFECTS = ["charge", "empower", "weakness_reveal", "moses_broken", "moses_ready", "pandaman_taunt"]
+# moses_ready 在 2026-09-19「立牌主动前置门控收口」中已随旧「待命等待器」一并删除；
+# 现存 `msg.astral_dice.moses_ready` 是 MosesSignItem 的 actionbar 文案键，不是 MobEffect。
+NEW_EFFECTS = ["charge", "empower", "weakness_reveal", "moses_broken", "pandaman_taunt"]
 
 errors = []
 warnings = []

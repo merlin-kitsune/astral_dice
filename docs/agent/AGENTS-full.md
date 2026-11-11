@@ -1,6 +1,6 @@
 # Agent Instructions
 
-> **子项目优先级与默认规则(必须遵守,2026-11-05 用户裁决重新划级)**:⛔ **原「三条生产线同批实施（含 26.1.2）」「四线同号」等旧口径已全部作废** —— 现行**两级优先模型**见下方「## 版本优先级与跨线移植纪律」:**P0 最高 = `forge-1.20.1` + `neoforge-1.21.1`**（新功能、修复、平衡、文案一律**先落这两条线**,两线保持功能对等,无法对等的项按平台差异逐条登记,见 `docs/compat-1.20.1-forge.md`）;**P1 = `fabric-1.20.1` + `fabric-1.21.1` + `neoforge-26.1.2`**（⛔ **只有 P0 新功能落盘无误且经过详尽测试后,由用户裁决才可向 P1 落盘,代理不得擅自决定**;各线规则边界见下方各自小节）;每次改动完成后由代理**自动本地提交**并**自动部署到整合包**(随 `gradlew build` 触发,**各线各自推往自己的测试实例**:`狐の航空学 Voxy Edition` / `1.20.1-Forge 模组测试` / `26.1.2-NeoForge 模组测试` / `1.20.1-Fabric 模组测试`),但**默认不执行 `git push`**。⛔ **发布投放红线（必须遵守,2026-10-25 用户裁决,优先级高于本条其余表述）**：**除非用户在当次任务里明确点名要求，否则默认只上传/发布 P0 两线（`neoforge-1.21.1` + `forge-1.20.1`）的产物** —— 涵盖 CurseForge / Modrinth / GitHub Release 与 tag / 任何对外分发渠道；**P1 三线（`fabric-1.20.1` + `fabric-1.21.1` + `neoforge-26.1.2`）的编译产物一律视为不可用** ⇒ 禁止上传、禁止建 Release/tag、禁止作为 P0 Release 的附件、禁止对外交付；需要 P1 发布时必须由用户逐次点名下达。 **2026-11-02 用户裁决（取代本条后半）**：各线 jar 允许放入同一个 GitHub Release（按版本号打 tag、全部正式版）；CF 侧 `fabric` / `neoforge-26.1.2` 仍受 `--allow-p1` 显式放行闸门约束（保留为防误传互锁），上传时必须显式加该参数。**② tag 与 Release 命名红线（同批裁决,强制）**：GitHub Release 的 tag **只按 mod 版本**创建（例 `1.5.0`、`1.5.0-rc.1`、`1.5.0-pre.6`）—— **禁止**按游戏平台建 tag（`fabric-1.5.0-rc.1`、`neoforge-…` 一律禁止）、禁止 `v` 前缀、禁止 `+加载器` 后缀；**同一版本的多平台 jar 必须放进同一个 Release**（现为 P0 两线 `neoforge-1.21.1` + `forge-1.20.1`，各自 jar 作同一 Release 的附件）；带 `-rc` / `-pre` / `-alpha` / `-beta` 的版本一律标 prerelease、不占 latest。**③ 发布时序红线（2026-11-02 用户裁决，强制）**：**未经详细测试（含实机冒烟）的版本一律不得作为发布版本**；**生产版本的发布动作必须是整条流程的最后一步** —— 固定顺序为「构建 → 本地详细测试 / 实机冒烟取证 → 审核项全过 → 才允许 push / tag / Release / CurseForge 上传」。在测试结论齐全之前执行的任何对外发布动作都算违规，发现即回滚或下架并记录。
+> **子项目优先级与默认规则(必须遵守,2026-11-11 用户裁决重新划级)**:⛔ **原「四线同号」「P0 两线 / P1 三线」等旧口径已全部作废** —— 现行**两级优先模型**见下方「## 版本优先级与跨线移植纪律」:**P0 最高 = `forge-1.20.1` + `neoforge-1.21.1` + `neoforge-26.1.2`**（新功能、修复、平衡、文案一律**先落这三条线**,三线保持功能对等,无法对等的项按平台差异逐条登记,见 `docs/compat-1.20.1-forge.md`）;**P1 = `fabric-1.20.1` + `fabric-1.21.1`**（⛔ **只有 P0 新功能落盘无误且经过详尽测试后,由用户裁决才可向 P1 落盘,代理不得擅自决定**;各线规则边界见下方各自小节）;每次改动完成后由代理**自动本地提交**并**自动部署到整合包**(随 `gradlew build` 触发,**各线各自推往自己的测试实例**:`狐の航空学 Voxy Edition` / `1.20.1-Forge 模组测试` / `26.1.2-NeoForge 模组测试` / `1.20.1-Fabric 模组测试`),但**默认不执行 `git push`**。⛔ **发布投放红线（必须遵守,2026-10-25 用户裁决,优先级高于本条其余表述）**：**除非用户在当次任务里明确点名要求，否则默认只上传/发布 P0 三线（`neoforge-1.21.1` + `forge-1.20.1` + `neoforge-26.1.2`）的产物** —— 涵盖 CurseForge / Modrinth / GitHub Release 与 tag / 任何对外分发渠道；**P1 两线（`fabric-1.20.1` + `fabric-1.21.1`）的编译产物一律视为不可用** ⇒ 禁止上传、禁止建 Release/tag、禁止作为 P0 Release 的附件、禁止对外交付；需要 P1 发布时必须由用户逐次点名下达。 **2026-11-02 用户裁决（取代本条后半）**：各线 jar 允许放入同一个 GitHub Release（按版本号打 tag、全部正式版）；CF 侧 `fabric` 两线仍受 `--allow-p1` 显式放行闸门约束（保留为防误传互锁），上传时必须显式加该参数。**② tag 与 Release 命名红线（同批裁决,强制）**：GitHub Release 的 tag **只按 mod 版本**创建（例 `1.5.0`、`1.5.0-rc.1`、`1.5.0-pre.6`）—— **禁止**按游戏平台建 tag（`fabric-1.5.0-rc.1`、`neoforge-…` 一律禁止）、禁止 `v` 前缀、禁止 `+加载器` 后缀；**同一版本的多平台 jar 必须放进同一个 Release**（现为 P0 三线 `neoforge-1.21.1` + `forge-1.20.1` + `neoforge-26.1.2`，各自 jar 作同一 Release 的附件）；带 `-rc` / `-pre` / `-alpha` / `-beta` 的版本一律标 prerelease、不占 latest。**③ 发布时序红线（2026-11-02 用户裁决，强制）**：**未经详细测试（含实机冒烟）的版本一律不得作为发布版本**；**生产版本的发布动作必须是整条流程的最后一步** —— 固定顺序为「构建 → 本地详细测试 / 实机冒烟取证 → 审核项全过 → 才允许 push / tag / Release / CurseForge 上传」。在测试结论齐全之前执行的任何对外发布动作都算违规，发现即回滚或下架并记录。
 
 ## 发布流程硬规则（2026-11-02 用户裁决，强制）
 
@@ -14,7 +14,7 @@
 项目基线:
 - 主线子项目 `neoforge-1.21.1`:MC 1.21.1 / NeoForge 21.1.235 / Java 21 / ModDevGradle(`net.neoforged.moddev` 2.0.141)
 - 移植子项目 `forge-1.20.1`:MC 1.20.1 / Forge 1.20.1-47.4.10 / Java 17 / ModDevGradle LegacyForge(`net.neoforged.moddev.legacyforge` 2.0.144)
-- P1 线 `neoforge-26.1.2`:MC 26.1.2 / NeoForge 26.1.2.109 / Java 25 / ModDevGradle 2.0.147;由 1.21.1 源码整体迁移,差异见 `docs/compat-26.1.2-neoforge.md`。**2026-09-17 起已并入主线目录**(原独立 worktree `F:\MCProject\astral_dice_multiloader-26.1.2` / 分支 `multi-26.1.2-neoforge` 已合并进 `multi-1.20.1-1.21.1`,现行工作目录即主线根目录,四子项目同树)。
+- P0 线 `neoforge-26.1.2`:MC 26.1.2 / NeoForge 26.1.2.109 / Java 25 / ModDevGradle 2.0.147;由 1.21.1 源码整体迁移,差异见 `docs/compat-26.1.2-neoforge.md`。**2026-09-17 起已并入主线目录**(原独立 worktree `F:\MCProject\astral_dice_multiloader-26.1.2` / 分支 `multi-26.1.2-neoforge` 已合并进 `multi-1.20.1-1.21.1`,现行工作目录即主线根目录,四子项目同树)。
 - P1 线 `fabric-1.20.1`:MC 1.20.1 / Fabric Loader 0.19.5 + Fabric API 0.92.12 / Java 17 / Fabric Loom(`fabric-loom`);由 `forge-1.20.1` 的 1.3.2-hotfix 源码整体移植(**加载器层整体替换**:Curios→Trinkets(+Accessories 软依赖) · Capability→Fabric API 附件 · Forge EventBus→自建 `LoaderBus`+Puzzles Lib/FAPI 回调/mixin · GLM→`LootTableEvents.MODIFY`),裁剪项与平台差异见 `porting/fabric-1.20.1/VERSION_PINS.md`、`KNOWN-ISSUES.md` §9。**2026-10-01 已并入主线目录**(原独立 worktree `F:\MCProject\astral_dice_multiloader_fabric` / 分支 `1.20.1-fabric` 已合并进 `multi-main` 并**已删除本地 worktree 与分支**（⚠️ **远端分支 `origin/1.20.1-fabric` 的删除需 push，尚未执行**，待用户放行；删除本地分支前已取证其 tip `a89487ac` 是 `multi-main` 的祖先、独有提交 0 个），各线同一工作树)。⚠️ **本线 dev 环境有一个必须先做的前置**：Loom 重映射第三方 mod 时会剥离产物的 `fabric.mod.json` 的 `jars` 声明 ⇒ 自带内嵌库的 mod（Puzzles Lib / Accessories / Patchouli / Cloth Config / KubeJS）在 dev 里**全部起不来**（`HARD_DEP_NO_CANDIDATE` / `NoClassDefFoundError`）。跑任何 fabric dev 运行前先执行 `python tools/loom_embedded_jars.py --apply`（把内嵌库按 id 去重投放到 `run/<side>/mods/`，靠 Loom 的 `fabric.remapClasspathFile` 运行时重映射生效）；**换 `-PtestTrinkets` / `-PtestAccessories` 后必须重跑**。详见 `KNOWN-ISSUES.md` §9 **KI-F23**。
 - Base package/group: com.merlinkitsune.astral_dice;各子项目产物名均为 `astral_dice-<版本>.jar`,版本号自带加载器后缀(1.21.1 带 `+neoforge_1.21.1`,1.20.1 带 `+forge_1.20.1`,26.1.2 带 `+neoforge_26.1.2`,fabric 1.20.1 带 `+fabric_1.20.1`,下划线分隔)。
 
@@ -31,7 +31,7 @@ When extending this workspace:
 本仓存在**同级的多个 git worktree**，它们的磁盘路径与「会话工作目录」经常不一致，踩过一次真实事故（改动被写到另一个工作树），故固化两条硬规则：
 
 1. **分支归属纪律（禁止镜像/回填）**：任务只属于哪个分支，就**只在那个工作树的磁盘路径**上处理，**禁止**把改动「镜像/回填/同步」到另一个工作树。
-   - 当前两个常驻工作树：**主线** `F:\MCProject\astral_dice_multiloader`（分支 `multi-main`，含**各线**（P0 两线 + P1 三线），属**封包**状态）与 **2.0.0 开发线** `F:\MCProject\astral_dice_multiloader-next`（分支 `multi-dev-next`）。**fabric 的原独立工作树 `F:\MCProject\astral_dice_multiloader_fabric` 已于 2026-10-01 移除**（分支并入 `multi-main`，故本仓现只余上述两棵常驻树）。
+   - 当前两个常驻工作树：**主线** `F:\MCProject\astral_dice_multiloader`（分支 `multi-main`，含**各线**（P0 三线 + P1 两线），属**封包**状态）与 **2.0.0 开发线** `F:\MCProject\astral_dice_multiloader-next`（分支 `multi-dev-next`）。**fabric 的原独立工作树 `F:\MCProject\astral_dice_multiloader_fabric` 已于 2026-10-01 移除**（分支并入 `multi-main`，故本仓现只余上述两棵常驻树）。
    - dev 分支的任务（如目标选择器改造与其工具链改动）**只能**在 `-next` 工作树落地；主线的 `scripts/test/**` 等文件**必须保持封包版本**（改动若必须进主线，须由用户在主线工作树内单独裁决，不由 dev 任务顺带推送）。
    - 核验方式（收尾必做）：`git -C F:\MCProject\astral_dice_multiloader status --short --untracked-files=all` 除 `?? .agent-teams/**` 与 `models/` / `images/` / `sound/` 三处素材目录下的未跟踪 / 改动文件（2026-10-22 用户裁决：随时更新，见 `AGENTS-full.md` 第 50 条）外**必须无输出**；`git -C F:\MCProject\astral_dice_multiloader rev-parse --short HEAD` 必须仍是收尾前的封包提交。**所有 git 命令一律带 `-C <工作树绝对路径>`**，不要依赖 cwd。
 2. **相对路径陷阱（必须用绝对路径）**：.NET / `System.IO` / 多数文件 API 的**相对路径按进程 cwd 解析**，而本会话的进程 cwd 往往是**主线工作树** —— 于是「写一个 `scripts/test/cases/xxx.json`」会静默落到**主线**（实测事故：一条 0 字节用例文件落在主线，事后删除复原）。
@@ -88,7 +88,7 @@ When extending this workspace:
    一律改用**非亡灵**生物（如 minecraft:pillager、minecraft:cow）。原因：亡灵受治疗 / 伤害反转等特殊规则影响，
    会污染 FX / 伤害 / 音效类判据；历史脚本中以 zombie 为靶的写法一律视为待替换。
 3. **测试流程结束后必须关闭测试用游戏实例**：收尾分两步 —— ① 执行 `bash scripts/test/win/mt.sh --version <线> --phase stop`（只打印 `MT_STOP: PENDING pid=…`，脚本不终止进程）；
-   ② Agent 用 `mcp__windows__Process(mode="kill", pid=…)` 终止这些 PID，再 `--phase stop --verify` 必须输出 `MT_STOP: OK`（三端口无 LISTENING 且无匹配 `jps -lvm` 行）；报告贴该行原文 + `Process(mode="list")` 的 `java` 数量（gradle 守护进程保留属正常）；禁止让客户端无人观察地驻留 ——
+   ② Agent 用 `ops_bash` 执行 `taskkill /F /PID <pid>` 终止这些 PID，再 `--phase stop --verify` 必须输出 `MT_STOP: OK`（三端口无 LISTENING 且无匹配 `jps -lvm` 行）；报告贴该行原文 + `tasklist` / `jps -lvm` 的 `java` 数量（gradle 守护进程保留属正常）；禁止让客户端无人观察地驻留 ——
    它会持续占用 CPU / GPU、污染下一次冷启动前置状态，并让 enableShaders 之类的运行期状态被意外持久化。
    **收尾一律带 `--purge-saves`**（2026-10-08 用户裁决：每轮实机验证后清理旧存档）：标准收尾命令 = `bash scripts/test/win/mt.sh --version <线> --phase stop --purge-saves`，成功判据 = `MT_CLEANUP_SAVES: PURGED <n>` + `MT_CLEANUP_RESULT: OK`；`.mt_keep_alive` 存在时只提示、保留取证现场。收尾同时**删除本轮注入的临时探针**（`run/<线>/kubejs/**` 的一次性测试脚本，以及源码侧 `scripts/test/resources/kubejs/**` 的临时探针），并在交付报告里贴 `git status --short -uall` 原文（2026-10-11 用户交接裁决）。
 
@@ -116,8 +116,8 @@ When extending this workspace:
   6. 命令失败先看**第一条因果错误**（`BUILD FAILED` 之前的 `Caused by:` / `error:` 行），不要拿最后一次运行的尾部输出当结论。
   7. **解释器只走 PATH，不写绝对路径**：命令里的 `bash` / `python` 一律写**裸名**，交给 `ops_bash` 自行解析 —— Windows 宿主解析到 PATH 上的 MSYS2 / git-bash，python 解析到 PATH 上的 **3.12.16**；原生 Linux 宿主解析到系统 bash / python3。⛔ **禁止**写 `C:/msys64/usr/bin/bash`、`C:/Python3xx/python.exe`、`~/.dsh/dsh-runtimes/**/python.exe` 这类绝对解释器路径：`ops_bash` 无法指定解释器，写成绝对路径只会让同一条命令在不同会话 / 不同机器上落到不同运行时（2026-11-07 用户裁决）。
   8. **python 只依赖标准库**：解释器固定为 PATH 上的 3.12.16 ⇒ 脚本**不得依赖只有别处解释器才装的第三方库**（例：`PIL` 不在系统 python 里）。需要能力时优先标准库实现；确需第三方库先 `python -c "import X"` 实探，缺失即改实现，**不得**为此改指别的解释器。
-  9. **进程 / 窗口 / 桌面不是 bash 的活**：这类动作一律 `mcp__windows__*`（`Process` / `Snapshot` / `Click` / `Type` / `Shortcut` / `Wait` …），bash 只负责构建、测试台脚本、守门脚本与 git；游戏内读写走 `autojs` MCP。三者边界见〈⚙️ 环境与工具链口径〉第 10 条。
-- **自查**：命令里出现旧的原生 shell 调用或旧脚本名 ⇒ 立即改成 bash / python 等价物；命令里出现强杀 / 猜测 PID 去处理游戏进程 ⇒ 改用 `mcp__windows__Process`（Agent 执行终止，脚本只交棒 PID）；游戏内读写仍走 `autojs` MCP（`eval_js`）；`ops_bash` 返回 `exit 2` 多为测试台门禁拦下（缺 `--version` / 缺 `--phase` / `cases` 缺 `--case`），按脚本 usage 补参数重跑。
+  9. **进程 / 窗口 / 桌面分流**：窗口 / 桌面用 `mcp__wincu__windows_computer_use_*`（`list_windows` / `snapshot` / `click` / `type_text` / `keypress` / `scroll` / `wait` …）；进程用 `ops_bash` 的 `tasklist` / `jps -lvm` / `taskkill`（当前没有进程 MCP）；游戏内读写走 AutoJS HTTP（`http://127.0.0.1:25585/mcp`），不是 `autojs` MCP。三者边界见〈⚙️ 环境与工具链口径〉第 10 条。
+- **自查**：命令里出现旧的原生 shell 调用或旧脚本名 ⇒ 立即改成 bash / python 等价物；命令里出现强杀 / 猜测 PID 去处理游戏进程 ⇒ 改用 `ops_bash` 的 `taskkill /F /PID`（Agent 执行终止，脚本只交棒 PID）；游戏内读写仍走 AutoJS HTTP（`eval_js`）；`ops_bash` 返回 `exit 2` 多为测试台门禁拦下（缺 `--version` / 缺 `--phase` / `cases` 缺 `--case`），按脚本 usage 补参数重跑。
 
 ## Git 代理规范（Git Proxy）— 必须遵守
 
@@ -302,7 +302,7 @@ When extending this workspace:
 > 版本号各 git 分支独立（AGENTS.md 自 2026-09-15 起**已纳入版本库**，各分支各自维护一份）：**发布线 `multi-main`**（2026-09-22 由 `multi-1.20.1-1.21.1` 改名；连带项已同批处理：各线 `build.gradle` 的 `packPushBranches → ['multi-main']`、`.github/workflows/build.yml` 的 5 处分支名与触发条件，以及 `.github/workflows/build.yml` 里 checkout 前置库的 `ref:` 钉值）**当前 = `1.3.7-hotfix`**（2026-10-01：承接 1.3.5 的补丁发布——FTB 队友判定后端修复；见下方「发布规范」对 `-hotfix` 打 tag 的说明）（2026-09-22 那次收编后统一升版为 `1.3.0` —— 1.21.1 / 1.20.1 = `1.3.0`，26.1.2 = `1.3.0-beta.1`，按发布规范 tag 解析为裸版本 `1.3.0`；此后逐版递增至 **1.3.5**；2026-10-01 起为 `1.3.5-hotfix`、2026-10-04 起为 **`1.3.7`**、2026-10-05 起为 **`1.3.7-hotfix`**，以矩阵表「当前版本」列与各线 `gradle.properties` 为准。⚠️ 本处曾长期停留在 `1.3.0`、与矩阵表自相矛盾，2026-10-01 二次验证时一并更正）；`multi-dev-next` 当前 = **`26.4-SNAPSHOT.4`**（2026-10-29 GeckoLib 硬前置 + 动画实体 `astral_dice:sykestentacle` 落地，P1 两线搁置；上一版 `26.4-SNAPSHOT.3` 为 2026-10-28 mob 侧骰战参与者与特殊骰能力注册接口落地；再上一版 `26.4-SNAPSHOT.2` 为同步发布线 `1.5.0-rc.5` 内容后递增；2026-10-26 起改用 `<年份>.<季度>-SNAPSHOT.<序号>` 新规则，取代 `2.0.0-SNAPSHOT.<N>`；工作树 `F:\MCProject\astral_dice_multiloader-next`。⚠️ **该线并未停止演进** —— 2026-09-22 曾整体并入发布线 `multi-main`（`7b726617`，收编 160 个提交），但此后 `multi-dev-next` **继续独立开发**（目标选择器改造、四张伤害效果牌重做、fabric 线并入等）；现行口径见下方「## 版本号递增约定（每提交一版）」与「## 版本优先级与跨线移植纪律」）；`neoforge-26.1.2` 子项目当前 = **`1.3.0-beta.1`**（2026-09-17 用户裁决 + **2026-09-19 修订：26.1.2 已纳入主线、各线同步（不再是低优先级线）**；**2026-09-22 用户裁决：各线同批升版，26.1.2 取 `1.3.0-beta.1`** —— 此前 `.13` 时代「与另两线版本号对齐、不再单独加 `-beta`」的口径随之作废；`multi-26.1.2-neoforge` 分支自此只作为合并前历史，不再单独开发）。上表「当前版本」以发布线工作分支 `multi-main` 为准。
 > ⚠️ 历史上另有一条 dev 分支 **`wt/2.0.0-vnext`**（连带独立 worktree `C:/Users/xmace/.dsh/worktrees/astral_dice_multiloader-a03b2df2/2.0.0-vnext`）——2026-09-17 用户裁决「移除 wt/2.0.0-vnext 分支，仅保留当前分支」后**已删除**：worktree 与分支一并移除，`git branch -d` 成功即证明其 tip **`d7e4ac8f4f1c31484bf4366caa4e144aec45979f`** 的全部提交都已被 `multi-dev-next` 包含（`multi-dev-next..wt/2.0.0-vnext` 为空）⇒ **未丢失任何提交**；该分支从未推到远端（`origin` 只有 `multi-1.20.1-1.21.1` 与 `multi-dev-next`），故无需远端清理。`multi-26.1.2-neoforge` 作为合并前历史分支**保留**（未在本次裁决范围内）。
 
-> **P1 线(26.1.2)的规则边界(2026-09-19 用户裁决修订 —— 26.1.2 已纳入主线,必须遵守)**:⛔ **2026-10-04 更新:本条「26.1.2 纳入各线同批实施」的口径已作废** —— 现行 **P1 次要优先级**（见下方「## 版本优先级与跨线移植纪律」）;本段其余平台差异说明仍有效。自本裁决起「同步修改」约束**三个版本**(`neoforge-1.21.1` + `forge-1.20.1` + `neoforge-26.1.2`):任何功能/修复/平衡/文案改动按现行 **P0/P1 两级模型**落地（P0 两线同批 + P1 待移植；⛔ 2026-10-12 起原「一律各线同批实施」口径与实施方式均已作废，实施方式以〈子代理与测试环境硬规则〉第 7 条为准）,26.1.2 **不再**是「发布线完成后再迁移」的低优先级移植线。各线各自按 `docs/compat-26.1.2-neoforge.md`(26.1.2 相对 1.21.1)、`docs/compat-1.20.1-forge.md`(1.20.1 相对 1.21.1)的差异映射实现,**平台差异必须逐条登记**;各线落地后按 `scripts/test/TESTING-SPEC.md` §13.2 做一致性测试。三子项目的 `mod_version`/`mods.toml` 门槛仍各自独立。⚠️ **P1 线 `fabric-1.20.1` 不参与本条的「各线同批实施」约束** —— 其边界见上一条 ①（由用户按批次单独下达移植任务）。
+> **P0 线(26.1.2)的规则边界(2026-09-19 用户裁决修订，2026-11-11 重新划级)**：26.1.2 自 2026-11-11 起由 P1 调回 **P0** —— 与 `neoforge-1.21.1` + `forge-1.20.1` 同属 P0 三线，功能/修复/平衡/文案先落三线，按〈子代理与测试环境硬规则〉第 7 条的实施方式落地。⛔ 2026-10-04 的「P1 次要优先级」与 2026-10-12 的「P0 两线」口径均已作废；本段其余平台差异说明仍有效。各线按 `docs/compat-26.1.2-neoforge.md` / `docs/compat-1.20.1-forge.md` 的差异映射实现，平台差异必须逐条登记；各线落地后按 `scripts/test/TESTING-SPEC.md` §13.2 做一致性测试。三子项目的 `mod_version` / `mods.toml` 门槛仍各自独立。⚠️ **P1 两线（fabric）不参与 P0 三线的同批约束** —— 其边界见上一条 ①（由用户按批次单独下达移植任务）。各线各自按 `docs/compat-26.1.2-neoforge.md`(26.1.2 相对 1.21.1)、`docs/compat-1.20.1-forge.md`(1.20.1 相对 1.21.1)的差异映射实现,**平台差异必须逐条登记**;各线落地后按 `scripts/test/TESTING-SPEC.md` §13.2 做一致性测试。三子项目的 `mod_version`/`mods.toml` 门槛仍各自独立。⚠️ **P1 线 `fabric-1.20.1` 不参与本条的「各线同批实施」约束** —— 其边界见上一条 ①（由用户按批次单独下达移植任务）。
 > ⑧ **本线自己的版本号一律带 `-alpha.x` 预发布后缀**（2026-09-29 用户裁决 —— 本线是**移植线**）：
 >    ⚠️ **与 26.1.2 线用 `-beta.x` 是同一套安排**（2026-10-01 并入 `multi-main` 后的口径）：
 >    两条线都是**独立的预发布号线** —— **永不占用发布线的裸版本号**、**不单独打裸版本 tag**；
@@ -502,7 +502,7 @@ When extending this workspace:
 3. **`GatherDataEvent` 在 26.1.2 是抽象类**:监听器必须注册在 `GatherDataEvent.Client` / `GatherDataEvent.Server` 上;注册到抽象父类会让模组构造期直接失败(`Cannot register listeners for abstract class …`)。客户端 provider(继承原版 `net.minecraft.client.data.models.ModelProvider`)与服务端 provider **必须分属两个类**,客户端那个还要加 `@EventBusSubscriber(value = Dist.CLIENT, …)`(服务端数据生成运行的 classpath 不含客户端类)。
 4. **`@EventBusSubscriber` 只剩 `value()`/`modid()`**(`bus = Bus.MOD` 已删除);`ExistingFileHelper`、NeoForge 的 `client.model.generators.ItemModelProvider`、Parchment 的 26.1.x 数据**均不存在**;原版 `ModelProvider` 对重复登记**抛异常**(1.21.1 侧 `ModItemModelProvider` 里 `STAR_COIN` 重复登记在旧 API 下被静默覆盖,26.1.2 已删重复行)。
 5. **Mixin 目标字符串不受编译器保护**:每次换 26.1.2.x 小版本都要按 `docs/compat-26.1.2-neoforge.md` §3 逐条对目标版本源码复核(已发现 `PiglinAi#isWearingGold→isWearingSafeArmor`、`Gui#renderEffects→extractEffects`、`EffectRenderingInventoryScreen→EffectsInInventory`;`MerchantOffer` 复制构造仍在,无需改)。该线**已删除** NeoForge 伤害容器泄漏修复 mixin(26.1.2 上游已修),该线**无 Iron's Spells 'n Spellbooks 联动**(上游无 26.1.x 构建)。
-6. **26.1.2 的游戏内验证必须走本仓库 `scripts/test` 工具链,且已按 26.1.2 适配(2026-09-17 实跑 PASS)**:桌面工具（原 `computer_control` MCP；2026-10-18 起改为 DSH `dsh-computer-use` 插件）的合成点击**进不去 GLFW 窗口**(实测主菜单点不动),键鼠注入只能用 `mt_inject`。五条已固化的事实:
+6. **26.1.2 的游戏内验证必须走本仓库 `scripts/test` 工具链,且已按 26.1.2 适配(2026-09-17 实跑 PASS)**:旧桌面工具（原 `computer_control` MCP / `dsh-computer-use` 插件；均已退役，当前用 `mcp__wincu__windows_computer_use_*`）的合成点击**进不去 GLFW 窗口**(实测主菜单点不动),键鼠注入只能用 `mt_inject`。五条已固化的事实:
    - **就绪判据**:26.1.2 **没有** `Total time to load game and open world was`;`mt_launch` 改用 `logged in with entity id` **且** `Loaded <N> advancements`(都取英文原版行,禁用本地化文案如「加入了游戏」)。
    - **探针运行时装装**:26.1.2 整合包**没有** KubeJS,由 `mt_env（已删除） mods --version 26.1.2` 从 KubeJS maven 拉 `kubejs-neoforge`(版本取 `gradle.properties:kubejs_version`,注意 maven 版本**不带** `+neoforge` 后缀)+ `rhino` + `better-advanced-tooltips`(后者是**硬前置**,即使只跑服务端;缺它 runServer 在 RegisterEvent 阶段 `NoClassDefFoundError`),缓存于 `temp/probe_mods/26.1.2/`;**`tiny-java-server` 是纯 Java 库,禁止放进 `run/mods`**(FML 会弹「不是有效的模组文件」并停在警告屏)。**不**把 KubeJS 写进 build.gradle 依赖(否则 datagen 也会装载它)。
    - **探针 API 形态**(详见 `compat-26.1.2-neoforge.md` §7.2):权限用 `permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)`;`Level#dimension` 在 Rhino 下是**属性**;**禁止**用 Curios `findFirstCurio(...)`(KubeJS 8 的 `ItemWrapper` 会按 `findFirstCurio(Item)` 重载解析并抛 `KubeRuntimeException`,**连 `guard` 都捕不到** ⇒ 读数全无)。
@@ -543,22 +543,22 @@ When extending this workspace:
 
 7. **原版类的包结构调整(2026-09-30 实测)**:26.1.2 把部分怪物类**拆进了子包** —— `Zombie` / `ZombifiedPiglin` / `Husk` / `Drowned` / `ZombieVillager` 位于 `net.minecraft.world.entity.monster.**zombie**`(1.21.1 是 `monster.Zombie`);`Piglin` / `PiglinBrute` / `AbstractPiglin` 仍在 `monster.piglin`,`EnderMan` 仍在 `monster`。⚠️ **另有 `WitherSkeleton` 位于 `monster.**skeleton**`**(1.21.1 / 1.20.1 均为 `monster.WitherSkeleton`)—— 与 zombie 拆包同类,2026-09-30 引入「凋灵骷髅 5% 掉星盘」档位时实测踩到;`Ghast` / `Guardian` / `ElderGuardian` 各线均仍在 `monster`。照抄 1.21.1 的 import 会以「找不到符号」编译失败(实测 `event/LootInjectionHandler` 引入僵尸猪灵/猪灵判定,以及其后引入凋灵骷髅判定时两度踩到)。
 
-## 版本优先级与跨线移植纪律（2026-11-05 用户裁决重新划级）— 必须遵守
+## 版本优先级与跨线移植纪律（2026-11-11 用户裁决重新划级）— 必须遵守
 
 > ⚠️ **本节是「哪条线先改、改完怎么传」的唯一权威口径**；与旧文冲突时以本节为准。
-> ⛔ 旧口径（「三条生产线同批实施（含 26.1.2）」「四线同号」「P1 = 26.1.2 + fabric-1.20.1 两条」）**全部作废**，沿革见第五节。
+> ⛔ 旧口径（「P0 两线 / P1 三线」「三条生产线同批实施（含 26.1.2）」「四线同号」）**全部作废**，沿革见第五节。
 
 ### 一、两级优先模型
 
 | 优先级 | 子项目 | 更新时序 | 一致性要求 |
 |---|---|---|---|
-| **P0 最高** | `forge-1.20.1` · `neoforge-1.21.1`（**基准线**） | 任何功能 / 修复 / 平衡 / 文案改动**先落这两条线**，并**优先于 P1 落地**；两线同处一个提交批次 | 两者必须**功能一致**（逐项对等）；差异只能来自第二节「三类合理差异」，且**必须逐条登记** |
-| **P1** | `fabric-1.20.1`（向下移植）· `fabric-1.21.1`（1.21.1 平台的 fabric 移植线）· `neoforge-26.1.2`（向上移植） | ⛔ **不得擅自向 P1 落盘**：只有 P0 新功能落盘无误、且经过**详尽测试**之后，**由用户裁决**才可向 P1 落盘；P1 的验收与对外发布同样须用户逐次点名 | 各自对照**基准线 `neoforge-1.21.1`** 逐项对等；平台 / 版本差异逐条登记；⚠️ 缺联动模组的线按第三节口径排除 |
+| **P0 最高** | `forge-1.20.1` · `neoforge-1.21.1`（**基准线**） · `neoforge-26.1.2` | 任何功能 / 修复 / 平衡 / 文案改动**先落这三条线**，并**优先于 P1 落地**；三线同处一个提交批次 | 三者必须**功能一致**（逐项对等）；差异只能来自第二节「三类合理差异」，且**必须逐条登记** |
+| **P1** | `fabric-1.20.1`（向下移植）· `fabric-1.21.1`（同版本跨加载器） | ⛔ **不得擅自向 P1 落盘**：只有 P0 三线落盘无误、且经过**详尽测试**之后，**由用户裁决**才可向 P1 落盘；P1 的验收与对外发布同样须用户逐次点名 | 各自对照**基准线 `neoforge-1.21.1`** 逐项对等；平台 / 版本差异逐条登记；⚠️ 缺联动模组的线按第三节口径排除 |
 
-- **基准线 = `neoforge-1.21.1`**：一切功能面的差异判定以它为基准。`forge-1.20.1` 是 P0 同侪（功能面与基准线一致，MC 版本差异另计）。
-- **移植方向**：`neoforge-26.1.2` = **向上**（1.21.1 → 26.1.2）；`fabric-1.20.1` = **向下**（MC 1.20.1）；`fabric-1.21.1` = 同版本跨加载器（MC 1.21.1）。
+- **基准线 = `neoforge-1.21.1`**：一切功能面的差异判定以它为基准。`forge-1.20.1` 与 `neoforge-26.1.2` 是 P0 同侪（功能面与基准线一致，MC 版本差异另计）。
+- **移植方向**：`neoforge-26.1.2` = **向上**（1.21.1 → 26.1.2，现为 P0）；`fabric-1.20.1` = **向下**（MC 1.20.1）；`fabric-1.21.1` = 同版本跨加载器（MC 1.21.1）。
 - **fabric 的代码蓝本**：`fabric-1.20.1` 优先取 `forge-1.20.1`（同为 MC 1.20.1），凡 forge 已实现的功能照搬 forge 对应文件 + 固定平台替换；`fabric-1.21.1` 取 `neoforge-1.21.1`（同为 MC 1.21.1）。⚠️ **但「整文件照搬」只适用于平台中性文件** —— 平台敏感类（含已裁决差异或本线独有内容）**必须逐段局部改**。
-- **P0 内部的落地时序（2026-10-12 用户裁决，同日二次裁决修订为派子代理实现）**：`neoforge-1.21.1`（基准线）的实现**派子代理编写**（主 Agent 不亲自写代码），先经 `review-agent` 子代理复核、再由**另一个独立子代理做功能审查**，**确认无误后**才派子代理做 `forge-1.20.1` 移植，移植线再走 `review-agent` 子代理复核 + 另一个独立子代理功能审查；两线最终仍同处一个提交批次（功能对等），但**实施有先后顺序**，不允许「两线并行各写一遍」。
+- **P0 内部的落地时序（2026-10-12 用户裁决，2026-11-11 划级后扩为三线）**：`neoforge-1.21.1`（基准线）的实现**派子代理编写**（主 Agent 不亲自写代码），先经 `review-agent` 子代理复核、再由**另一个独立子代理做功能审查**，**确认无误后**才派子代理分别做 `forge-1.20.1` 与 `neoforge-26.1.2` 的移植；每条移植线再走 `review-agent` 子代理复核 + 另一个独立子代理功能审查；三线最终仍同处一个提交批次（功能对等），但**实施有先后顺序**，不允许「三线并行各写一遍」。
 
 ### 二、P0 内部允许的三类差异（其余一律要求对等）
 
@@ -566,15 +566,15 @@ When extending this workspace:
 |---|---|---|---|
 | ① | **游戏版本差异** | MC 版本存废的原版 API / 物品 / 效果 | `MaceItem` / `Items.MACE`（1.21 新增）；`MobEffects.{WIND_CHARGED,WEAVING,OOZING,INFESTED,RAID_OMEN,TRIAL_OMEN}`（1.21 新增）；`ItemTags.SPEARS`（26.1.2 才有） |
 | ② | **平台差异** | 加载器（Forge ↔ NeoForge ↔ Fabric）机制 | 事件系统、注册 API、Capability ↔ 附件、datagen 事件、GUI 渲染入口、Curios ↔ Trinkets |
-| ③ | **联动模组本身差异** | 某线装 / 未装某模组，或其注册名不同 | 1.20.1 神秘遗物注册名 = `enigmaticlegacy:` 而非 `enigmaticlegacyplus:` |
+| ③ | **联动模组本身差异** | 某线装 / 未装某模组，或其注册名不同 | 1.20.1 神秘遗物注册名 = `enigmaticlegacy:` 而非 `enigmaticlegacyplus:`；26.1.2 无 Iron's Spells |
 
-### 三、联动口径（P1 各线）
+### 三、联动口径（P0 的 `neoforge-26.1.2` 与 P1 两线）
 
 - **平台不存在该模组 ⇒ 该线该联动整体移除**（数据包、lang 键、手册条目、伤害类型 key、tooltip 分支一并删除）：
   - `neoforge-26.1.2`：**Iron's Spells 'n Spellbooks 与神秘遗物+（`enigmaticlegacyplus`）均已移除**（2026-10-04 二次清理，口径无例外）；
   - `fabric-1.20.1`：**Iron's Spells 'n Spellbooks 与神秘遗物均已移除**；
   - `fabric-1.21.1`：**Iron's Spells 'n Spellbooks 与神秘遗物+ 均未移植**（2026-11-05 现状）；饰品后端**只做 Trinkets**，`Accessories` 与 `Accessories Compatibility Layer` 已写入 `fabric.mod.json` 的 `breaks` 段。
-- **平台存在的模组联动一律保留**：`patchouli` / `waystones` / `curios`（P0 + 26.1.2）/ `bountiful` / `trinkets`（fabric 两线）/ **Modern UI**（**各线均已适配**：P0 与 fabric 走 `RenderTooltipEvent.Color` 方案；26.1.2 平台只提供 `RenderTooltipEvent.Texture`、无颜色事件 ⇒ 改为对接 Modern UI 自身的 `TooltipRenderer#sStrokeColor`，见 `client/ModernUITooltipCompat`）。
+- **平台存在的模组联动一律保留**：`patchouli` / `waystones` / `curios`（P0 三线）/ `bountiful` / `trinkets`（fabric 两线）/ **Modern UI**（**各线均已适配**：P0 与 fabric 走 `RenderTooltipEvent.Color` 方案；26.1.2 平台只提供 `RenderTooltipEvent.Texture`、无颜色事件 ⇒ 改为对接 Modern UI 自身的 `TooltipRenderer#sStrokeColor`，见 `client/ModernUITooltipCompat`）。
 
 ### 四、逐项对照清单（移植作业索引）
 
@@ -582,8 +582,8 @@ When extending this workspace:
 |---|---|---|---|
 | `neoforge-1.21.1` | P0（**基准**） | —（差异以此为基准） | `KNOWN-ISSUES.md` §2~§8 |
 | `forge-1.20.1` | P0 | `docs/compat-1.20.1-forge.md` §1~§9 | 同文件 §9 + `KNOWN-ISSUES.md` `KI-9` |
+| `neoforge-26.1.2` | P0 | `docs/compat-26.1.2-neoforge.md` + 本文「neoforge-26.1.2 关键差异速记」 | 同文件 §8「尚未完成 / 已知缺口」 |
 | `fabric-1.21.1` | P1 | `docs/features/fabric-1211-live-test-plan.md`（移植与测试相位）+ `porting/fabric-1.20.1/FABRIC-DIFFS.md`（同族差异） | 同上文件的「未收口」小节 + `KNOWN-ISSUES.md` |
-| `neoforge-26.1.2` | P1 | `docs/compat-26.1.2-neoforge.md` + 本文「neoforge-26.1.2 关键差异速记」 | 同文件 §8「尚未完成 / 已知缺口」 |
 | `fabric-1.20.1` | P1 | **`porting/fabric-1.20.1/FABRIC-DIFFS.md`**（专项清单） | 同文件 §4 + `KNOWN-ISSUES.md` §9（KI-F*）+ §1.1（`KI-E3` 已于 2026-10-04 闭环） |
 
 > ⚠️ `docs/` **自 2026-10-01 起已纳入版本库**（`.gitignore` 的 `docs/` 排除条目已移除，提交 `d73cf841`） ⇒ 清单的可版本化载体**同时在 `porting/` 下**（下两行的 `porting/` 总分表为权威）：
@@ -596,7 +596,8 @@ When extending this workspace:
 - **2026-09-29 裁决**：fabric 为移植线，不在「同批实施」约束内（其九项边界见「多版本子项目矩阵」节）。**仍有效**（fabric 两线现为 P1）。
 - **2026-10-04 裁决（已被 2026-11-05 取代）**：划级为 **P0 = `neoforge-1.21.1` + `forge-1.20.1`**、**P1 = `neoforge-26.1.2` + `fabric-1.20.1`**（待 P0 完成后分别向上 / 向下移植）；P1 中缺联动模组的线按「平台存在性」排除不存在的联动，**无例外**。
 - **2026-10-29 裁决（P1 批次搁置）**：P1 两线**暂设为搁置线** —— 批次只完成 P0 两线（`neoforge-1.21.1` + `forge-1.20.1`，构建与守门照旧）；P1 的代码与资源可以随批落盘，但**不构建、不验证、不发布**。**⚠️ 本条关于「P1 可随批落盘」的部分由 2026-11-05 裁决收紧为「须用户裁决」。**
-- **2026-11-05 裁决（现行，取代 2026-10-04 的划级）**：**P0 = `forge-1.20.1` + `neoforge-1.21.1`**（更新优先级最高，新功能先落盘于此）；**P1 = `fabric-1.20.1` + `fabric-1.21.1` + `neoforge-26.1.2`** —— 只有 P0 新功能落盘无误且经过**详尽测试**后，**由用户裁决**才可向 P1 落盘，**不得擅自决定**。旧「三条生产线 / 四条线 / 三线同批 / 四线同号」描述一律废弃。
+- **2026-11-05 裁决（已被 2026-11-11 取代）**：**P0 = `forge-1.20.1` + `neoforge-1.21.1`**；**P1 = `fabric-1.20.1` + `fabric-1.21.1` + `neoforge-26.1.2`** —— 只有 P0 新功能落盘无误且经过**详尽测试**后，**由用户裁决**才可向 P1 落盘。
+- **2026-11-11 裁决（现行，取代 2026-11-05 的划级）**：**P0 = `forge-1.20.1` + `neoforge-1.21.1` + `neoforge-26.1.2`**；**P1 = `fabric-1.20.1` + `fabric-1.21.1`**。理由：forge / neoforge 的实现方式更接近，fabric 平台差异较大。26.1.2 从 P1 调回 P0；fabric 两线仍为 P1。旧「P0 两线 / P1 三线」口径全部作废。
 
 ## 平衡性红线（2026-10-04 用户裁决）— 必须遵守
 
@@ -740,16 +741,16 @@ When extending this workspace:
 - **同步自检**:改动后按版本号比对两文件的 `- ` 条目数,同版本条目数必须相等(不等即为漏改一侧)。
 
 ### 子项目修改默认规则 — 必须遵守
-- **功能/修复默认同步修改 P0 两线（2026-10-04 用户裁决；原「各线同批」口径作废）**:所有功能、修复、平衡性调整一律**同批落 `neoforge-1.21.1`(基准线)+ `forge-1.20.1`**,两线保持功能对等;**P1 两线(`neoforge-26.1.2` / `fabric-1.20.1`)待 P0 完成后按「## 版本优先级与跨线移植纪律」分别移植**。**实施方式**:以 `neoforge-1.21.1` 的实现为**语义基准**,按 `docs/compat-1.20.1-forge.md` / `docs/compat-26.1.2-neoforge.md` / `porting/fabric-1.20.1/FABRIC-DIFFS.md` 的差异映射在各线落地;平台差异逐条登记(不写「看起来一致」的实现)。
-- **实施分工（2026-10-12 用户裁决，取代 2026-09-19「每次代码修改必须创建 subagent、各线并行实施」的口径；同日二次裁决修订①③：写代码一律派 Subagent，主 Agent 不亲自编写任何代码）**：① **基准线 `neoforge-1.21.1` 的实现派子代理编写**（单任务、用完即弃；主 Agent 只负责规划、派活、验收与提交）；② 主线完成后**派一次性独立子代理载 `review-agent` 技能复核** → 再由**另一个一次性独立子代理**做功能审查（静态取证 / `:<线>:classes` 编译 / `scripts/verify/**` 守门 / 与需求逐字对账）；③ 主 Agent 逐条回应并派新子代理修完、**确认无误后**才派子代理做 `forge-1.20.1` 移植；④ 移植线再走一次 `review-agent` 子代理复核 + **另派一个独立子代理**做功能审查。子代理一律**单任务、用完即弃**（硬规则第 1 条），模型固定且只能用 `deepseek-official/deepseek-flash`（= DeepSeek-V4.1-Flash），不得换用其它 model / provider，路由失效即停下报用户；同一文件同一时间只能归**一个** subagent 所有（共享文件由主 agent 预先指派 owner，跨文件接口由主 agent 先固定）；P1 两线并行移植时同受此约束。流程正本见「## 子代理与测试环境硬规则」第 7 条。
+- **功能/修复默认同步修改 P0 三线（2026-11-11 用户裁决；原「各线同批」「P0 两线」口径作废）**:所有功能、修复、平衡性调整一律**同批落 `neoforge-1.21.1`(基准线)+ `forge-1.20.1` + `neoforge-26.1.2`**,三线保持功能对等;**P1 两线(`fabric-1.20.1` / `fabric-1.21.1`)待 P0 完成后按「## 版本优先级与跨线移植纪律」分别移植**。**实施方式**:以 `neoforge-1.21.1` 的实现为**语义基准**,按 `docs/compat-1.20.1-forge.md` / `docs/compat-26.1.2-neoforge.md` / `porting/fabric-1.20.1/FABRIC-DIFFS.md` 的差异映射在各线落地;平台差异逐条登记(不写「看起来一致」的实现)。
+- **实施分工（2026-10-12 用户裁决，取代 2026-09-19「每次代码修改必须创建 subagent、各线并行实施」的口径；同日二次裁决修订①③：写代码一律派 Subagent，主 Agent 不亲自编写任何代码）**：① **基准线 `neoforge-1.21.1` 的实现派子代理编写**（单任务、用完即弃；主 Agent 只负责规划、派活、验收与提交）；② 主线完成后**派一次性独立子代理载 `review-agent` 技能复核** → 再由**另一个一次性独立子代理**做功能审查（静态取证 / `:<线>:classes` 编译 / `scripts/verify/**` 守门 / 与需求逐字对账）；③ 主 Agent 逐条回应并派新子代理修完、**确认无误后**才派子代理做 `forge-1.20.1` 与 `neoforge-26.1.2` 移植；④ 每条移植线再走一次 `review-agent` 子代理复核 + **另派一个独立子代理**做功能审查。子代理一律**单任务、用完即弃**（硬规则第 1 条），模型固定且只能用 `deepseek-official/deepseek-flash`（= DeepSeek-V4.1-Flash），不得换用其它 model / provider，路由失效即停下报用户；同一文件同一时间只能归**一个** subagent 所有（共享文件由主 agent 预先指派 owner，跨文件接口由主 agent 先固定）；P1 两线并行移植时同受此约束。流程正本见「## 子代理与测试环境硬规则」第 7 条。
 - **每次改动完成后自动执行下述收尾(无需用户逐项指示)**:① 同步两个 CHANGELOG 文件 → ② 构建**本批涉及的全部线** → ③ **自动部署到整合包**(随 `gradlew build` 触发的 `pushToGame`;**各线的推送白名单都是 `['multi-main']`——本开发工作树 `multi-dev-next` 与 `wt/*` 一律跳过,需强推时加 `-PdeployToPack`;各线各推往自己的整合包 `狐の航空学 Voxy Edition` / `1.20.1-Forge 模组测试` / `26.1.2-NeoForge 模组测试` / `1.20.1-Fabric 模组测试` —— ⚠️ **目录名一律以本机 `ls D:/.minecraft/versions/` 实测为准,禁止按命名规则推测**(本类「目录已改名而配置未跟」的缺口已复发多次)**)→ ④ **自动本地提交**。全程**不执行 `git push`**。
-- **单侧改动仅限用户明确要求**:只有当用户明确说“只改 1.21.1 / 先不移植”时,才允许只改一个版本;禁止擅自只改单侧或长期让 **P0 两线**功能不对等（P1 待移植期的阶段性不对等属设计内，按差异清单登记）。
+- **单侧改动仅限用户明确要求**:只有当用户明确说“只改 1.21.1 / 先不移植”时,才允许只改一个版本;禁止擅自只改单侧或长期让 **P0 三线**功能不对等（P1 待移植期的阶段性不对等属设计内，按差异清单登记）。
 - 平台差异按各子项目规范实现(1.21.1 / 26.1.2 用数据组件/附件,1.20.1 用 `component/*DataKey` 与 Capability;事件、Curios 注册、Mixin、数据包目录均不同),**不得为了“看起来一致”而破坏目标平台的正确写法**。
-- 用户在任一线测试时报告的 BUG/需求,默认在 **P0 两线同批修复**(P1 两线随移植批次一并带上)。
+- 用户在任一线测试时报告的 BUG/需求,默认在 **P0 三线同批修复**(P1 两线随移植批次一并带上)。
 
 ### 模组内容更新规则 — 26.1.2 迁移清单与批次记录（1–22 条为历史存档）— ⛔ 「各线同批」口径已于 2026-10-04 作废,现行见「## 版本优先级与跨线移植纪律」
 
-> ⛔ **作废注记（2026-10-04 用户裁决）**：本节原标题的「各线同批同步实施」口径**已作废**，现行 = **P0（1.21.1 + 1.20.1）同批、P1（26.1.2 + fabric）待移植**，见「## 版本优先级与跨线移植纪律」。下方**第 1–22 条**为 2026-09 各线同批时代的迁移历史存档（第 22 条已闭环）；**第 23 条起为 P0/P1 时代的批次记录，其中 P1 待移植项与条目 29（卡牌商店运行规则）仍是现行依据**；条目 30 已于 2026-10-11 作废（见该条注记）。
+> ⛔ **作废注记（2026-10-04 用户裁决）**：本节原标题的「各线同批同步实施」口径**已作废**，现行 = **P0（1.21.1 + 1.20.1 + 26.1.2）同批、P1（fabric 两线）待移植**，见「## 版本优先级与跨线移植纪律」。下方**第 1–22 条**为 2026-09 各线同批时代的迁移历史存档（第 22 条已闭环）；**第 23 条起为 P0/P1 时代的批次记录，其中 P1 待移植项与条目 29（卡牌商店运行规则）仍是现行依据**；条目 30 已于 2026-10-11 作废（见该条注记）。
 
 自 2026-09-19 用户裁决起，`neoforge-26.1.2` **纳入主线**：各线（`neoforge-1.21.1` + `forge-1.20.1` + `neoforge-26.1.2`）**同批同步实施**，原「发布线先落地、26.1.2 之后再迁移」的优先顺序**作废**（`neoforge-26.1.2` 不再是低优先级线）。各线同处一个工作目录（26.1.2 已并入主线）。
 
@@ -1400,19 +1401,19 @@ When extending this workspace:
 星光点数由 `StarLightManager` 统一管理(玩家级共享资源,与具体饰品解耦)。
 
 - **星光为固定点数,不随时间衰减,无计数器,只有增加与减少**(存储于附件 `player_starlight`,上限为常量 `MAX_STARLIGHT` = 32)。
-- **可兑换池只有一个(2026-10-24 用户裁决;P0 两线 neoforge-1.21.1 + forge-1.20.1 已落地)**:P0 两线的星光**不再有「不可兑换的基础值(下限)」**—— 当前值**全部**可兑换;客户端 `CardShopScreen#canExchange` 与服务端 `ResourceConversion#starlightToStarCoins` 同源判定「当前值 ≥ `STARLIGHT_PER_COIN`(2)」。⚠️ **P1 两线(neoforge-26.1.2 / fabric-1.20.1)尚未移植**:仍保留 `getBasePoints` / `grantStarlightFloorOnEquip` 与「可兑换量 = 当前值 − 基础值」的旧下限语义,以下四条新口径**只对 P0 成立**。
-- **装备发放(普通发放;仅 P0 两线)**:P0 的银行卡-余额少 / 余额多 / 用不完与星币锤在**装备时**一次性发放 **4 / 7 / 3 / 5** 层(`BankCardChipItem.STARLIGHT_LOW/HIGH`、`BankCardUnlimitedChipItem.STARLIGHT_ON_EQUIP`、`StarCoinHammerChipItem.STARLIGHT_ON_EQUIP`),统一走 `#grantStarlightOnEquip`(申领装备会话闸门 + 按**实际**抬升量记账);P0 **不再有「下限型」发放入口**(`getBasePoints` / `grantStarlightFloorOnEquip` 已从 P0 删除,禁止在 P0 复活),而 **P1 两线的银行卡-余额少/多仍以 `#grantStarlightFloorOnEquip` 发放下限并保留 `getBasePoints`**(用不完 / 星币锤已是 `#grantStarlightOnEquip` 一次性发放),待移植。
+- **可兑换池只有一个（2026-10-24 用户裁决；2026-11-11 五线源码复核统一）**：五线星光**均无「不可兑换的基础值（下限）」**—— 当前值**全部**可兑换；客户端 `CardShopScreen#canExchange` 与服务端 `ResourceConversion#starlightToStarCoins` 同源判定「当前值 ≥ `STARLIGHT_PER_COIN`（2）」。五线源码已无 `getBasePoints` / `grantStarlightFloorOnEquip`（2026-11-11 全仓 Java 0 命中）；**禁止复活**旧下限语义。
+- **装备发放（普通发放；五线统一）**：银行卡-余额少 / 余额多 / 用不完与星币锤在**装备时**一次性发放 **4 / 7 / 3 / 5** 层（`BankCardChipItem.STARLIGHT_LOW/HIGH`、`BankCardUnlimitedChipItem.STARLIGHT_ON_EQUIP`、`StarCoinHammerChipItem.STARLIGHT_ON_EQUIP`），统一走 `#grantStarlightOnEquip`（申领装备会话闸门 + 按**实际**抬升量记账）；五线均**不再有「下限型」发放入口**，禁止重新引入 `getBasePoints` / `grantStarlightFloorOnEquip`。
 - **兑换后补充**:每次**兑换成功**(`ResourceConversion#starlightToStarCoins` 的 `gained > 0` 分支)按当前佩戴的上述四件物品数值之和调用 `StarLightManager#replenishOnExchange` 一次性补充(普通 `add`,封顶 `MAX_STARLIGHT` = 32);补充**不申领闸门、不写装备账本** ⇒ 卸下扣回的始终只是装备时那一笔,补充量不会被当成可扣回额度。
 - **兑换按偶数扣除**:每轮按 `coins = 可用星光 / STARLIGHT_PER_COIN`(2:1)算币,再扣 `coins × 2` ⇒ **奇数余数(1 点)保留**、不参与本次兑换;实际扣除量为 0 时不发币、也不补充。
 - **消耗后不自动补回**:`spend()` 只把当前值减去实扣量,`set()` 仅按 `0..MAX_STARLIGHT` 钳制(2026-10-24 起**没有**基础值回填);补充只发生在**兑换成功后**的 `#replenishOnExchange`。
-- **⚠️ 「卸除即扣除」全筹码底线(2026-09-25 用户裁决,必须遵守)**:**任何**「装备时获得星光」的筹码,其卸下清理**必须**调用 `StarLightManager#revokeStarlightOnUnequip(player, bit)` 把本次装备**实际**获得的星光扣回;发放侧**必须**走统一入口(一次性 +N → `#grantStarlightOnEquip`;银行卡-余额少/多在 P0 两线自 2026-10-24 起同此口径,P1 两线仍走 `#grantStarlightFloorOnEquip`),申领装备会话闸门并**按实际抬升量记账**。
+- **⚠️ 「卸除即扣除」全筹码底线（2026-09-25 用户裁决，必须遵守；2026-11-11 五线统一）**：**任何**「装备时获得星光」的筹码，其卸下清理**必须**调用 `StarLightManager#revokeStarlightOnUnequip(player, bit)` 把本次装备**实际**获得的星光扣回；发放侧**必须**走统一入口（一次性 +N → `#grantStarlightOnEquip`；银行卡-余额少/多同样如此），申领装备会话闸门并**按实际抬升量记账**。
   - **严禁**「装备加、卸除不加回」(2026-09-25 用户实报的「银行卡刷星光」即此根因:反复装卸可无限累积——旧下限口径下,银行卡卸下后下限消失、原本不可兑换的 4/7 点立刻变成可兑换 ⇒ 稳定的星币产线)。
   - **严禁**照名义值扣:星光已到上限(`MAX_STARLIGHT = 32`)时装备**一点没涨**,照名义值扣 = 白扣玩家自己攒的星光。
-  - **扣回不许走 `set()`**:扣回发生在 Curios 的卸下回调里,此刻**槽位状态未必已更新**。⚠️ **P1 两线(neoforge-26.1.2 / fabric-1.20.1)的真实理由**:该两线 `set()` 仍含「不低于 `getBasePoints()` 下限」的抬升,而银行卡可能**尚未**从槽位移除 ⇒ 下限会把刚扣下去的值重新抬回,扣回量被吞掉(扣不动)。**P0 两线**自 2026-10-24 起已无下限(`getBasePoints` 已删除),下限抬回这条理由不再成立,但**仍必须**直接写附件:① `set()` 末尾还会套一层 `getCap()` 截断,若存量曾越出上限(旧存档/他模组直写),按账本扣回会被这层截断多吞一截;直接写能严格只扣账本量。② 与 P1 保持同一条纪律,避免将来下限口径回流时被静默吞掉。两种情况下都必须**直接写** `ModAttachments#setStarlight`。⚠️ **该写入口不做任何范围钳制**(两线实现都是把入参原样写进附件)⇒ **调用方必须自己保证 `0..MAX_STARLIGHT`**(本仓写法 `Math.max(0, get(player) - granted)`)。
+- **扣回不许走 `set()`**：扣回发生在 Curios 的卸下回调里，此刻**槽位状态未必已更新**。⚠️ 五线自 2026-10-24 / 2026-11-11 起均无基础值下限，`set()` 的「下限抬回」理由已不成立；但**仍必须**直接写附件：① `set()` 末尾还会套一层 `getCap()` 截断，若存量曾越出上限（旧存档/他模组直写），按账本扣回会被这层截断多吞一截；直接写能严格只扣账本量。② 与全仓保持同一条纪律，避免将来下限口径回流时被静默吞掉。因此必须**直接写** `ModAttachments#setStarlight`。⚠️ **该写入口不做任何范围钳制**（各线实现都是把入参原样写进附件）⇒ **调用方必须自己保证 `0..MAX_STARLIGHT`**（本仓写法 `Math.max(0, get(player) - granted)`）。
   - 新增同类筹码**未接这条底线 = 违规**(发放与扣回必须**一一配对**,位号在 `StarLightManager.GRANT_BIT_*` 里登记);**兑换后的补充是普通 `add`,不申领发放位、不写账本**。
 - **显示**:所有影响星光(或与星光兑换直接相关)的立牌/筹码 tooltip 显示当前星光点数(手电筒/八面骰/银行卡/星币锤等筹码经 `tooltip.astral_dice.chip.starlight`;**经商立牌保留自己的计数器 `tooltip.astral_dice.sign.parunan_starlight`** —— 2026-10-08 起它不再产星光,但它是「星光兑换星币」的入口,计数器对玩家判断可兑换量仍有意义)。
 - 获取来源(2026-10-08 更新):手电筒、八面骰(骰点累计)、银行卡/银行卡-用不完、星币锤等装备型筹码、占星师(骰点 6 → 6 星币)等。⚠️ **经商立牌被动与 ATM 机筹码自本批起不再产出星光** —— 前者改为商店向被动(进店 +1 星币 / 兑换 +50%),后者改为「转账双方 +1 星光 +2 星币」的转账奖励。
-- **兑换/消耗入口(2026-10-08 起)**:星光 → 星币改由 **卡牌商店**(方块 `card_shop`)界面的「星光兑换」按钮承担(2:1,**无冷却**;P0 两线按偶数扣除、成功后按当前佩戴补充,P1 两线仍按「当前值 − 基础值」兑换且兑换后不补充;服务端 `ResourceConversion.starlightToStarCoins`);星币消耗 = 商店购买卡牌(基价 3,10% 概率降价为 1)与玩家间转账(5~20/次,60 秒冷却)。经商立牌主动不再套现,只负责开店。
+- **兑换/消耗入口（2026-10-08 起；2026-11-11 五线统一）**：星光 → 星币改由 **卡牌商店**（方块 `card_shop`）界面的「星光兑换」按钮承担（2:1，**无冷却**；五线均按偶数扣除、成功后按当前佩戴补充，源码复核：五线 `ResourceConversion#starlightToStarCoins` 均调用 `replenishOnExchange`；服务端 `ResourceConversion.starlightToStarCoins`）；星币消耗 = 商店购买卡牌（基价 3，10% 概率降价为 1）与玩家间转账（5~20/次，60 秒冷却）。经商立牌主动不再套现，只负责开店。
 - **看板娘立牌(mimi)被动与星光无关**:每获得/变换 1 张战斗牌获得 1 星币(获得:经 `RandomCardHandler.giveCardTo` 发放战斗牌;变换:看板主动变化已装备卡牌并插入 1 张,每张 1 星币)。
 
 ## 反击伤害注入规范（Counterattack Damage Injection）— 必须遵守
@@ -1638,7 +1639,7 @@ When extending this workspace:
    - 改前（臃肿，228 字符）：`效果牌：每张使目标立即恢复 §e2§7 点生命（按张数叠加，且每张各自结算为一次治疗 —— 三张 = 三次治疗、共 §e6§7 点；「温暖」按治疗次数叠层）；三张均为效果牌（全效果牌）时不给计时器与图标`
    - 改后（正样本，148 字符）：`效果牌：目标恢复 §e2§7 点生命`
    - 被删的只有**结算口径与内部状态**；「牌型 → 对象 → 数值」这条信息链一字不少。en / ja 对应行同批收敛为 `Effect card: target heals §e2§7 HP` / `効果カード：対象のHPを §e2§7 回復`。
-6. **三语 + P0 两线同批**：zh 改完必须同批改 `en_us` / `ja_jp`（键集一致、行结构与染色位置一致）；P0 = `neoforge-1.21.1` + `forge-1.20.1` 同批；P1 两线（26.1.2 / fabric）待用户下达。
+6. **三语 + P0 三线同批**：zh 改完必须同批改 `en_us` / `ja_jp`（键集一致、行结构与染色位置一致）；P0 = `neoforge-1.21.1` + `forge-1.20.1` + `neoforge-26.1.2` 同批；P1 两线（`fabric-1.20.1` / `fabric-1.21.1`）待用户下达。
 7. **手册分档（Patchouli）**：`astral_dice.guide.entry.*` 是查阅面，允许比 tooltip 详细（可以写「怎么算」），但同样禁止把内部实现细节写成玩家文案。⚠️ 2026-10-26 **只**精简了 tooltip，手册条目是否同口径**待用户裁决**（欠账见交接正本 §5）。
 8. **自检三问**：① 这句删掉，玩家会玩不出来吗？（不会 ⇒ 删）② 这句在解释内部实现吗？（是 ⇒ 删）③ 超了行数预算吗？（超 ⇒ 先删解释）。
 9. **守门**：`python -B tools/verify_sign_balance_changes.py` 对 4 个受裁决角色（dorothy / jill / deepseek / nancy）的 **tooltip 键**按精简口径检查（关键事实必须出现 + 黑名单措辞不得复活）；**手册键仍按详细口径**检查。染色另跑 `scripts/audit/tooltip_color_audit.py`；标点与留空跑 `python tools/verify_tooltip_format.py`（见〈tooltip 文本书写规范〉）。
@@ -1890,7 +1891,7 @@ When extending this workspace:
 
 - **立牌无独立升星**(骰子升星不受影响,仍走数据组件 `weapon_enhancement.starLevel`):立牌铁砧升星与 `SIGN_STAR_LEVEL` 数据组件已移除;护法立牌(misaki)爆发/名刀的星级加成一律取**玩家装备骰子的星级**(`WeaponEnhancement.starLevel`,经 `DiceCombatContext.misakiStar` 传递),未装备骰子或 0 星骰子则无星级加成。
 - 筹码栏必须佩戴骰子才有(`chip.json size=0`;1.20.1 侧 base=0 来自 IMC 注册,不是数据包 JSON),数量由 `DiceTier.chipBonus` 按星级计算(基础=星级;金=1+星级;钻石=2+星级;合金=3+星级,即 0★~3★ 分别为 0/1/2/3、1/2/3/4、2/3/4/5、3/4/5/6),由 `DiceCurioItem` 动态调整。
-  - **`onEquip(SlotContext, ItemStack prevStack, ItemStack stack)` 的第 2 参是 prevStack、第 3 参才是刚装上的骰子**(Curios 5.14.1 `ICurioItem.java:81-90` / 9.5.1 `:83-92` 的 javadoc,与 `ItemizedCurioCapability#onEquip` 的 `(slotContext, prevStack, this.getStack())` 转发同构)。**禁止**把第 2 参当「刚装备的那件」用:往空槽装备时它是 `ItemStack.EMPTY`,按它推导的逻辑会**静默变成空操作**(2026-09-18 筹码栏「偶发不增加」的根因即此 —— 目标恒 0,只能靠 `curioTick` 每 20 tick 兜底,表现为「装备后要等约 1 秒」)。要「当前佩戴的那件」就**回读栏位**(`getStacksHandler("dice").getStacks().getStackInSlot(0)`),不要信任事件入参。(`onUnequip` 相反:第 3 参才是被卸下的那件。)⚠️ **同款参数误用已于 2026-09-24 全仓清完(六处)**:`AtmChipItem` / `StarCoinHammerChipItem` / `BankCardChipItem` / `BankCardUnlimitedChipItem` 的 `if (!prevStack.isEmpty()) return;` 全部写在第 3 参上 ⇒ **恒 return、装备时星光从未发放**(用户实报「所有银行卡都无法提供星光点数」)；`CursedSwordChipItem` 把「千咒刻印」写到第 2 参 ⇒ 往空槽装备时写进了 `ItemStack.EMPTY` **全局单例**并立刻丢弃；`FenSignItem` 的「装备时重置计时起点」同样恒 no-op。🚨 **更隐蔽的一条:一次性发放不能用「空槽守卫」挡重放** —— Curios 只持久化 `stacks`、**不持久化 `previousStacks`**(`DynamicStackHandler.previousStacks` 是纯内存字段,`deserializeNBT` 不写它)⇒ **登录 / 重生 / 切维度**后首 tick 的 `prevStack` 恒为空栈而槽里有物品 ⇒ `!ItemStack.matches(stack, prevStack)` 成立 ⇒ Curios **重放 `onEquip`**;而重放时 `prevStack` 恰好就是空栈 ⇒ `prevStack.isEmpty()` 守卫**放行**。故「装备时一次性发放」必须走**玩家级持久化闸门**(`claimEquipGrant`,见附件 `starlight_equip_grant_flags`):装备时置位、卸下时释放 —— 装卸循环照旧每次装备发一次,但不吃登录重放。**P0 两线(neoforge-1.21.1 / forge-1.20.1)**:「装备时一次性发放」的筹码(含银行卡-余额少/多 = 4/7;2026-10-24 起该两线由下限型改为发放型)**全部**都**必须**走闸门 —— 只有**不改变星光总量**的纯读取/显示路径才不需要闸门。⚠️ **P1 两线(neoforge-26.1.2 / fabric-1.20.1)未移植**:该两线的银行卡-余额少/多仍是「下限型」发放(`StarLightManager#grantStarlightFloorOnEquip`,`BASE_LOW/HIGH`;可兑换量 = 当前值 − 基础值),**不适用**上面这条「含银行卡 4/7 必须走闸门」的表述;用不完 / 星币锤在该两线已是 `#grantStarlightOnEquip` 一次性发放。
+  - **`onEquip(SlotContext, ItemStack prevStack, ItemStack stack)` 的第 2 参是 prevStack、第 3 参才是刚装上的骰子**(Curios 5.14.1 `ICurioItem.java:81-90` / 9.5.1 `:83-92` 的 javadoc,与 `ItemizedCurioCapability#onEquip` 的 `(slotContext, prevStack, this.getStack())` 转发同构)。**禁止**把第 2 参当「刚装备的那件」用:往空槽装备时它是 `ItemStack.EMPTY`,按它推导的逻辑会**静默变成空操作**(2026-09-18 筹码栏「偶发不增加」的根因即此 —— 目标恒 0,只能靠 `curioTick` 每 20 tick 兜底,表现为「装备后要等约 1 秒」)。要「当前佩戴的那件」就**回读栏位**(`getStacksHandler("dice").getStacks().getStackInSlot(0)`),不要信任事件入参。(`onUnequip` 相反:第 3 参才是被卸下的那件。)⚠️ **同款参数误用已于 2026-09-24 全仓清完(六处)**:`AtmChipItem` / `StarCoinHammerChipItem` / `BankCardChipItem` / `BankCardUnlimitedChipItem` 的 `if (!prevStack.isEmpty()) return;` 全部写在第 3 参上 ⇒ **恒 return、装备时星光从未发放**(用户实报「所有银行卡都无法提供星光点数」)；`CursedSwordChipItem` 把「千咒刻印」写到第 2 参 ⇒ 往空槽装备时写进了 `ItemStack.EMPTY` **全局单例**并立刻丢弃；`FenSignItem` 的「装备时重置计时起点」同样恒 no-op。🚨 **更隐蔽的一条:一次性发放不能用「空槽守卫」挡重放** —— Curios 只持久化 `stacks`、**不持久化 `previousStacks`**(`DynamicStackHandler.previousStacks` 是纯内存字段,`deserializeNBT` 不写它)⇒ **登录 / 重生 / 切维度**后首 tick 的 `prevStack` 恒为空栈而槽里有物品 ⇒ `!ItemStack.matches(stack, prevStack)` 成立 ⇒ Curios **重放 `onEquip`**;而重放时 `prevStack` 恰好就是空栈 ⇒ `prevStack.isEmpty()` 守卫**放行**。故「装备时一次性发放」必须走**玩家级持久化闸门**(`claimEquipGrant`,见附件 `starlight_equip_grant_flags`):装备时置位、卸下时释放 —— 装卸循环照旧每次装备发一次,但不吃登录重放。**五线统一（2026-11-11 源码复核）**：「装备时一次性发放」的筹码（含银行卡-余额少/多 = 4/7）**全部**都必须走闸门；只有**不改变星光总量**的纯读取/显示路径才不需要闸门。旧下限型 `grantStarlightFloorOnEquip` / `getBasePoints` 已从五线源码删除，禁止复活。
   - **槽位尺寸只能用「自有 id 的绝对槽位修饰符」改写**:`removeModifier(id)` → `addPermanentModifier(new AttributeModifier(id, target, ADD_VALUE/ADDITION))` → `update()`(归零时**保留 0 值修饰符**;值未变时早退,否则每 tick 都会触发一次 `SPacketSyncModifiers`)。**禁止**用 Curios 的 `grow/shrink` 差值驱动 —— 它只在 `curios:legacy`(1.20.1 = 固定 UUID `0b0eabbd-4220-4e9f-bafb-34100da2bd7e`)这个**相对累加器**上加减,而尺寸是存档里的缓存值,读到一次偏差就永久漂移且不会自愈;1.2.x 旧实现留下的 legacy 修饰符必须在迁移时清除,否则与自有修饰符**叠加翻倍**(自有 id:1.21.1/26.1.2 用 `astral_dice:chip_slots`,1.20.1 用 UUID `a5d1c9e2-6f34-4b7a-8c21-0e5d9b3f7a64`)。
   - **尺寸是缓存值,必须有主动对账入口**:登录(`PlayerLoggedInEvent`)、数据包同步(`OnDatapackSyncEvent`,用 `LOWEST` 保证晚于 Curios 自己的处理器)、复活克隆(`PlayerEvent.Clone`)各按当前骰子重算一次 ⇒ `/curios reset`、同步丢包、旧存档残值都能自愈。`getStacksHandler(id)` 落空时**必须记 WARN**(禁止 `flatMap(...).ifPresent(...)` 这种静默 no-op:该支「Curios 时序/槽位表问题」与「有 handler 但尺寸没长」的修复方向完全不同)。
   - **收缩必须保护占用中的槽位**:先把目标抬到「最靠后的非空槽位 + 1」再改写,否则「骰子槽瞬时为空 ⇒ 目标读成 0」会把筹码连同槽位一起交给背包。看板娘立牌的 +1 只在**佩戴骰子时**生效(未佩戴骰子不给筹码栏)。
@@ -2119,7 +2120,7 @@ When extending this workspace:
     ⚠️ 凋灵（`WitherBoss`）与凋灵骷髅（`WitherSkeleton`）是两个互不相干的类。
     ⚠️ **26.1.2 包差异**：`WitherSkeleton` 在 `monster.**skeleton**`、`Zombie` 在 `monster.**zombie**`
     （1.21.1 / 1.20.1 均在 `monster`）。
-- ⚠️ **调整任何战利品概率一律改这里**，不要在数据包 GLM 里另开一套；按现行 **P0/P1 两级模型**落地（P0 两线同批 + P1 待移植；⛔ 2026-10-12 起原「各线同步」口径已作废，见「## 版本优先级与跨线移植纪律」）+ 重跑构建 + **开 jar 核符号与常量**。
+- ⚠️ **调整任何战利品概率一律改这里**，不要在数据包 GLM 里另开一套；按现行 **P0/P1 两级模型**落地（P0 三线同批 + P1 fabric 两线待移植；⛔ 2026-10-12 起原「各线同步」口径已作废，见「## 版本优先级与跨线移植纪律」）+ 重跑构建 + **开 jar 核符号与常量**。
 
 ### 取证红线
 
@@ -2422,7 +2423,7 @@ bash scripts/test/win/mt.sh --version 1.21.1 --phase build --dry-run
 | `12` | TIMEOUT（到预算上限） |
 | `130` | 中断（Ctrl-C） |
 
-**机器行族（供报告与断言消费，勿改格式串）**：`MT_ERROR:` / `MT_INFO:` / `MT_WARN:` / `MT_PHASE:` / `MT_RUN:` / `MT_VERSION_VERDICT:` / `MT_AUTO_DISABLED:` / `MT_DEPRECATED:`（旧 shell 委托标记，P2–P4 后已无产出）/ `MT_<阶段>: OK|FAIL|BLOCKED|TIMEOUT|ERROR`。收停另有 `MT_STOP: PENDING pid=…`（发现阶段，脚本不终止进程）与 `MT_STOP: OK|FAIL`（`--verify` 复核三端口 LISTENING 与 `jps -lvm` 行）；终止动作由 Agent 经 `mcp__windows__Process(mode="kill")` 执行。
+**机器行族（供报告与断言消费，勿改格式串）**：`MT_ERROR:` / `MT_INFO:` / `MT_WARN:` / `MT_PHASE:` / `MT_RUN:` / `MT_VERSION_VERDICT:` / `MT_AUTO_DISABLED:` / `MT_DEPRECATED:`（旧 shell 委托标记，P2–P4 后已无产出）/ `MT_<阶段>: OK|FAIL|BLOCKED|TIMEOUT|ERROR`。收停另有 `MT_STOP: PENDING pid=…`（发现阶段，脚本不终止进程）与 `MT_STOP: OK|FAIL`（`--verify` 复核三端口 LISTENING 与 `jps -lvm` 行）；终止动作由 Agent 用 `ops_bash` 的 `taskkill /F /PID <pid>` 执行。
 
 **四个批量闸门（2026-09-27 规则，逐字保留）**：① 无 `--phase` 的全流程；② `--phase cases` 未带 `--case`；③ `--phase report`；④ 无 `--version` 的单阶段 —— 一律拦下并 `exit 2`，除非显式 `--allow-auto`。这不是防呆，是防「无意识跑满各线把机器占住」。
 
@@ -2593,7 +2594,7 @@ mt.sh
 
 | 路径 | 入口 | 何时用 | 行为 |
 |---|---|---|---|
-| **编排链路（唯一自动路径）** | `scripts/test/win/stop.sh`（`--phase stop` 与全流程收尾都走它，`mt.sh:208` / `:308`） | 每轮结束、全流程收尾 | 用 `jps -lvm` + pidfile + 三端口发现本流程进程 → 打印 `MT_STOP: PENDING pid=…`（不终止） → 由 Agent 经 `mcp__windows__Process(mode="kill")` 终止 → `--verify` 复核 `MT_STOP: OK` → `--purge-saves` 清存档 → `--stop-daemon` 停守护；打 `MT_STOP: …` / `PURGE: …` |
+| **编排链路（唯一自动路径）** | `scripts/test/win/stop.sh`（`--phase stop` 与全流程收尾都走它，`mt.sh:208` / `:308`） | 每轮结束、全流程收尾 | 用 `jps -lvm` + pidfile + 三端口发现本流程进程 → 打印 `MT_STOP: PENDING pid=…`（不终止） → 由 Agent 用 `ops_bash` 的 `taskkill /F /PID <pid>` 终止 → `--verify` 复核 `MT_STOP: OK` → `--purge-saves` 清存档 → `--stop-daemon` 停守护；打 `MT_STOP: …` / `PURGE: …` |
 | **手工链路** | `python scripts/test/mt_cleanup.py status\|run` | 需要「尊重失败取证标记」或只想看残留时 | 读 `cases/.mt_keep_alive-<版本>`（存在即 SKIP 并保留现场）、`--force` 才清标记、固定 `SETTLE_SECONDS = 20.0` 复核；打 `MT_CLEANUP*` |
 
 ⚠️ **没有全局退出钩子**：`mt.sh:228` 明确写着「P1 简化点：不做全局 `--run-timeout` 预算、不做退出清理」，`trap` 只退编排层、**不动游戏进程**。⇒ 分步执行（`--phase launch` / `--phase cases`）时**最后一次读数之后必须自己跑收停命令**，这是硬纪律。
@@ -2826,7 +2827,7 @@ python scripts/test/mt_report.py summary
 | 游戏内按键语义 | `mt_inject.py` | SendInput 扫描码；文本用 `KEYEVENTF_UNICODE` 整串发送（不按 `/`）；注入前把目标窗口线程切 en-US |
 | fabric-1.20.1 注入 | **RCON**（默认）/ AutoJS（可选） | 缺省 RCON `127.0.0.1:25575`、口令 `astralft`（常量在 `fabric.sh:34-35`，且会**优先读 `server.properties` 的 `rcon.port` / `rcon.password`**，`fabric.sh:254-264`）；要 AutoJS 必须 `--enable-autojs` |
 | KubeJS | legacy 通道 | 只在 AutoJS 不覆盖的探针命令上使用；**不得**用它替代 mixin / crash / 审计判据 |
-| 窗口外 UI / 对照取证 | DSH `dsh-computer-use` 插件 | **不用于**游戏内镜头与攻击（GLFW 抓取光标下不可靠） |
+| 窗口外 UI / 对照取证 | `mcp__wincu__windows_computer_use_*` | **不用于**游戏内镜头与攻击（GLFW 抓取光标下不可靠） |
 | `--channel native` | **已失效** | 随 旧 shell 资产删除 ⇒ launch 记 `BLOCKED(11)` |
 | mineflayer bot | **已移除（2026-09-14）** | 原版协议进不了 Forge/NeoForge 服务器（NeoForge 配置期直接拒、Forge `Channels [astral_dice:main,patchouli:main,curios:main] rejected vanilla connections`）⇒ 只保留单客户端 + 注入 |
 
@@ -3223,7 +3224,7 @@ python scripts/test/mt_gen_case.py --version 1.21.1 --spec "<自然语言描述>
 - **断言侧**：读数必须按实际字段顺序写正则；`zhaocard` 类成对读数用 `before>after`。
 - **测试工具侧**：全目录 `--phase cases` 会给另一版本条目写 `SKIP` 记账，`report.md` 自动判定把非 `PASS` 全判 ❌；且其预算是固定 `90+90×用例数`，`MT_CASES_TIMEOUT_SEC` 管不到 ⇒ 一律逐条 `--case` 单跑，必要时用 `mt_report.py collect --version <V> --verdict PASS` 重算并留痕（详见 zhao 测试流程段）。
 - **数据生成**：改资源前必须按「Gradle 构建守护规则」第 7 条移开 `run/<V>/mods` 里的旧产物 jar，否则 `runData` 静默用旧代码；两发布线 `exclude("**/.cache")` 口径不得回退。
-- **26.1.2 后续落地（P1）**：该线纳入主线，但⛔ **2026-10-12 起「与本批同批落地」的口径已作废** —— 现行 **P1 次要优先级**（见「## 版本优先级与跨线移植纪律」）：P0 两线（`neoforge-1.21.1` + `forge-1.20.1`）同批，26.1.2 待 P0 完成后移植（实施方式见〈子代理与测试环境硬规则〉第 7 条：P0 基准线派子代理编写、再经 `review-agent` 子代理复核与另一个子代理的功能审查后移植）。确有不落该线的例外时，必须在本清单追加迁移项。
+- **26.1.2 的当前归属（P0，2026-11-11）**：26.1.2 与 `neoforge-1.21.1` + `forge-1.20.1` 同属 **P0 三线**（见「## 版本优先级与跨线移植纪律」）；功能/修复先落三线，实施方式见〈子代理与测试环境硬规则〉第 7 条（基准线派子代理编写、`review-agent` 复核与另一子代理功能审查后移植）。确有不落该线的例外时，必须在本清单追加迁移项。
 
 ---
 
@@ -3399,7 +3400,7 @@ python scripts/test/mt_gen_case.py --version 1.21.1 --spec "<自然语言描述>
 7. **`mamuconv <tag> dice <maxCost>` 的参数位曾把 `maxCost` 当成目标玩家名**（`who = arg` 后又喂给 `mamuResolve`）⇒ `no_player:9` 且 return ⇒ 骰子侧转换不可取证（已修）。
 8. **没有任何既有路径能把 `dragon_roar` 写进 `appliedStones`**（唯一写入口 `domBuildTempStone` 类型写死 nardis；`mamubite` 写死 bite；`cardprep` 只进主手）⇒ 端到端命中链依赖 `mamuconv dice` 修复；`doMamuJump` 自身也有时序陷阱（破防臂的 `arm1` 在攻击**前**读、第二击落在上一击的**无敌帧**内 ⇒ `meleeHit` 三连 API 全失败、`hit_break=-1`）。
 9. **`signprep` 的 `stand` 字段取的是纳德丽专属判定**（`NardisSignItem.isEquipped`）⇒ 对 parunan/jasmine/komachi 恒为 0，且紧接 `putInSlot` 之后同 tick 读回为空；不要把它当「任意立牌已装备」的通用门控（LOCK-OFFLINE 的断言已改为不依赖它，待探针改通用判定后可复原）。
-10. **「零读数」先怀疑死亡界面，再怀疑探针/产品**：`mamudie`（kill + 同 tick 服务端重生）在客户端**仍会留下死亡界面**（`ServerPlayer#die` 的死亡包带 `PacketSendListener`，写盘走事件循环 ⇒ 可能晚于 `PlayerList#respawn` 的重生包到达；客户端 `handleRespawn` 只在「界面**已是** DeathScreen」时才 `setScreen(null)`，此刻界面还没创建 ⇒ 迟到的死亡包随后新建界面）。实测：`mamudie` 之后 `latest.log` 直到本轮结束只剩 `AP_NOAI` 心跳、**0 条用例读数**，把紧随的 `LOCK-OFFLINE-1.21.1`（47 断言）与 `LOCK-OFFLINE-RELOG-A-1.21.1`（16 断言）整片染红；而**同一刻**服务端读数是 `respawn_ok=1:p_alive=1`、HUD 满血、截图确认界面停在「你死了！」⇒ **玩家其实活着，纯客户端界面卡死**。**修法/排查口径见 TESTING-SPEC §10-31**（启动期 `doImmediateRespawn=true` 硬闸门；`inject_mouse` 只能点窗口中心，重生按钮点不到 ⇒ 手工恢复用 DSH `dsh-computer-use` 插件的真实点击或 stop+launch）。
+10. **「零读数」先怀疑死亡界面，再怀疑探针/产品**：`mamudie`（kill + 同 tick 服务端重生）在客户端**仍会留下死亡界面**（`ServerPlayer#die` 的死亡包带 `PacketSendListener`，写盘走事件循环 ⇒ 可能晚于 `PlayerList#respawn` 的重生包到达；客户端 `handleRespawn` 只在「界面**已是** DeathScreen」时才 `setScreen(null)`，此刻界面还没创建 ⇒ 迟到的死亡包随后新建界面）。实测：`mamudie` 之后 `latest.log` 直到本轮结束只剩 `AP_NOAI` 心跳、**0 条用例读数**，把紧随的 `LOCK-OFFLINE-1.21.1`（47 断言）与 `LOCK-OFFLINE-RELOG-A-1.21.1`（16 断言）整片染红；而**同一刻**服务端读数是 `respawn_ok=1:p_alive=1`、HUD 满血、截图确认界面停在「你死了！」⇒ **玩家其实活着，纯客户端界面卡死**。**修法/排查口径见 TESTING-SPEC §10-31**（启动期 `doImmediateRespawn=true` 硬闸门；`inject_mouse` 只能点窗口中心，重生按钮点不到 ⇒ 手工恢复用 `mcp__wincu__windows_computer_use_*` 的真实点击或 stop+launch）。
 11. **`pos_restored` 曾恒为 0（坐标被朝向连坐）**：`getYRot()/getXRot()` 在本环境 Rhino **不可见**（全探针只出现在这一处、此前从未真正执行过）⇒ 与坐标挤在同一个 `try` 时把**坐标一起丢掉**（`pos_how=no_pos`）。后果是功能性的：重生会把玩家丢回**世界出生点**，用例尾部 `/kill @e[type=!player,distance=..64]` 清场静默打空、污染下一个用例。已拆两个 `try`，朝向退化 `getter → 裸字段 p.yRot/p.xRot → 0`（走字段回退时 `pos_how` 后缀 `_yawfield` 留痕）。
 12. **`mamudie <tag> 1` 会把玩家留在「0 血濒死」态**：`PlayerList#respawn(p, true, …)` 走 `keepEverything=true` ⇒ `ServerPlayer#restoreFrom` **连血量一起复制**（1.21.1 `:1443` 先满血、`:1446` 再 `setHealth(that.getHealth())` = 0；1.20.1 `:1157-1159` 直接复制）⇒ `LivingEntity#isAlive()` 读 0（实测 `hp=20>0:p_alive=0`），不放任会被 `tickDeath` 真移除。探针**已在读数前补满血**（仅读到 0 才动手）并记 `revive_hp=0>20`；这是**命令契约**（结束时玩家活着），不是产品语义，不影响 `awake_kept`/`copied_ok` 判据。
 13. **单条用例预算已由 180 s 放宽到 600 s**（2026-09-28）：用例规模从 ~20 步涨到 105~164 步，而**每一步**都要过注入器 ⇒ 实测稳定 ≈ **1.7 s/步**，105 步的 `MAMUSHI-GUARD` 刚好被 180 s 判 TIMEOUT（只剩最后 3 步）。**写用例不必再为预算压缩等待/合并步骤**；标定数据与覆写方式见 TESTING-SPEC §12。
@@ -3774,7 +3775,7 @@ python scripts/test/mt_gen_case.py --version 1.21.1 --spec "<自然语言描述>
 
 ### 55.6 判据命令（⛔ 历史命令：旧 shell 已废弃，仅供溯源）
 ```text
-（历史命令已删除；现役等价命令见 `scripts/test/win/mt.sh --phase …` 与 `mcp__windows__*` 口径）
+（历史命令已删除；现役等价命令见 `scripts/test/win/mt.sh --phase …` 与 `mcp__wincu__windows_computer_use_*`（窗口 / 桌面）+ `ops_bash`（进程）口径）
 ```
 
 ## 56. Java 源代码许可改为 GPL-3.0-only（2026-10-23 用户裁决）
@@ -3807,7 +3808,7 @@ python scripts/test/mt_gen_case.py --version 1.21.1 --spec "<自然语言描述>
 ### 56.6 判据命令（⛔ 历史命令：旧 shell 已废弃，仅供溯源）
 
 ```text
-（历史命令已删除；现役等价命令见 `scripts/test/win/mt.sh --phase …` 与 `mcp__windows__*` 口径）
+（历史命令已删除；现役等价命令见 `scripts/test/win/mt.sh --phase …` 与 `mcp__wincu__windows_computer_use_*`（窗口 / 桌面）+ `ops_bash`（进程）口径）
 ```
 
 ## 57. 许可二次裁决：删 `LICENSE-MIT` + 前置库 StarEngine 同步改 GPL-3.0-only（2026-10-23 用户裁决）
@@ -3835,7 +3836,7 @@ python scripts/test/mt_gen_case.py --version 1.21.1 --spec "<自然语言描述>
 ### 57.4 判据命令（⛔ 历史命令：旧 shell 已废弃，仅供溯源）
 
 ```text
-（历史命令已删除；现役等价命令见 `scripts/test/win/mt.sh --phase …` 与 `mcp__windows__*` 口径）
+（历史命令已删除；现役等价命令见 `scripts/test/win/mt.sh --phase …` 与 `mcp__wincu__windows_computer_use_*`（窗口 / 桌面）+ `ops_bash`（进程）口径）
 ```
 
 ### 57.5 未做与风险
@@ -3920,7 +3921,7 @@ python scripts/test/mt_gen_case.py --version 1.21.1 --spec "<自然语言描述>
 ### 59.7 判据（⛔ 历史命令：旧 shell 已废弃，仅供溯源）
 
 ```text
-（历史命令已删除；现役等价命令见 `scripts/test/win/mt.sh --phase …` 与 `mcp__windows__*` 口径）
+（历史命令已删除；现役等价命令见 `scripts/test/win/mt.sh --phase …` 与 `mcp__wincu__windows_computer_use_*`（窗口 / 桌面）+ `ops_bash`（进程）口径）
 ```
 
 ## 60. Modrinth 发布链路永久移除 + StarEngine 四产物上 CurseForge（2026-10-23 用户裁决）
@@ -3964,7 +3965,7 @@ python scripts/test/mt_gen_case.py --version 1.21.1 --spec "<自然语言描述>
 ### 60.5 判据命令（⛔ 历史命令：旧 shell 已废弃，仅供溯源）
 
 ```text
-（历史命令已删除；现役等价命令见 `scripts/test/win/mt.sh --phase …` 与 `mcp__windows__*` 口径）
+（历史命令已删除；现役等价命令见 `scripts/test/win/mt.sh --phase …` 与 `mcp__wincu__windows_computer_use_*`（窗口 / 桌面）+ `ops_bash`（进程）口径）
 ```
 
 ### 60.6 未做 / 风险

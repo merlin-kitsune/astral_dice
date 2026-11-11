@@ -1,6 +1,7 @@
 # 攻击 / 受击（伤害）链路审计与隐患登记
 
 > 审计日期：2026-10-27　范围：**P0 双线** `neoforge-1.21.1` + `forge-1.20.1`（P1 `neoforge-26.1.2` / `fabric-1.20.1` 只登记不验证）
+> **2026-11-11 重新划级**：P0 三线 = `neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2`；P1 两线 = `fabric-1.20.1` / `fabric-1.21.1`。本报告 2026-10-27 的范围与批次记录保持历史原样；文中「P1 两线」原指 26.1.2 + fabric-1.20.1，现 26.1.2 归 P0。
 > 方式：**只读静态取证**（两线 sources jar 逐行 + 全量 `@SubscribeEvent` 枚举）。未实机。
 > 起因：`m20350`「执行代码测攻击/受击链路全面排查，找出仍存在的问题和隐患」；`m20514`「记录所有问题，派子代理分批修正，务必使两线处理链路统一；再开一路验证两端法伤链」。
 
@@ -13,7 +14,7 @@
 | N3 | P1 | forge | 安全气囊致死判定偏高（黄心充足也白耗充能） | **已修**（N2 落地后语义自动正确，仅订正注释） | A |
 | N4 | P1 | 双线 | 事件牌「取长补短」-8 走 `setHealth` 旁路（可 0 血不死、绕过全部减伤与保命） | **已修** | B |
 | N5 | P2 | 双线 | 事件牌 4/2 点用 `damageSources().generic()`（无归属、被无敌帧吞、仍吃护甲） | **已修** | B |
-| N6 | P2 | 双线 | `dice_damage` 未登记 `bypasses_cooldown`（反击注入 / 绯红骰子自伤可被无敌帧吞） | **已修**（P1 两线 json 未同步 ⇒ N25） | C |
+| N6 | P2 | 双线 | `dice_damage` 未登记 `bypasses_cooldown`（反击注入 / 绯红骰子自伤可被无敌帧吞） | **已修**（26.1.2 现 P0、fabric 两线 json 未同步 ⇒ N25） | C |
 | N7 | P2 | 双线 | 狂暴反噬在嵌套伤害实例下多次触发 | **已修** | A |
 | N8 | P2 | 双线 | 弱标记 ×1.10 锚点两线不同（forge 吸收后 / neo 吸收前） | **已修**（骰战路径；法伤路径受平台钩子限制，见 N16） | A |
 | N9 | P2 | 双线 | Papara 汲取回血基数两线不同（forge 吸收后 / neo 吸收前） | **已修**（两线统一到「实际扣红心量」） | C |
@@ -28,13 +29,13 @@
 | N18 | P2 | 双线 | 贯穿之铳 bonus 无上限（随目标护甲线性增长，且乘命中次数） | **待裁决**（数值） | — |
 | N19 | P2 | 双线 | 紫晶骰子法伤 `rollD6(roller)` 忽略 `roller`（不吃诡异/绯红偏置，与骰战口径不同） | **待裁决**（设计意图确认） | — |
 | N20 | P2 | 双线 | 电击手套 AOE 每个目标各走一遍完整修饰器（标记 + 防御 + 各自 d6） | **待裁决**（合意则补注释） | — |
-| N21 | P2 | 双线 | B 批惩罚伤害带 causing ⇒ 触发受击被动（立牌钩子 / BufferShield / Papara / 赐福倒计时） | **已修**：`isHostileAttack` 排除 `UNREDUCIBLE_DAMAGE` / `CARD_COST`（neo `combat/DiceCombatEvents.java:1777-1786` / forge `:1907-1916`，文本 sha256 相同）；P1 两线未镜像（N25） | E |
+| N21 | P2 | 双线 | B 批惩罚伤害带 causing ⇒ 触发受击被动（立牌钩子 / BufferShield / Papara / 赐福倒计时） | **已修**：`isHostileAttack` 排除 `UNREDUCIBLE_DAMAGE` / `CARD_COST`（neo `combat/DiceCombatEvents.java:1777-1786` / forge `:1907-1916`，文本 sha256 相同）；26.1.2（现 P0）与 fabric 两线未镜像（N25） | E |
 | N22 | P3 | 双线 | 四张伤害效果牌 `isActive` 恒 false = 死代码；若将来恢复会双倍加成 | 登记（建议删或加断言锁死） | — |
 | N23 | P3 | 双线 | 盾不挡 `card_spell`/`true_damage` 靠 `direct=null` 而非标签 | 登记（建议在 `ModDamageTypes` javadoc 写死） | — |
 | N24 | P3 | 双线 | 惩罚伤害跳字组别 `SPELL`，语义上不是法术 | 登记（可选 `CARD_COST` 配色） | — |
-| N25 | P3 | P1 两线 | `neoforge-26.1.2` / `fabric-1.20.1` 的 `bypasses_cooldown.json` 未含 `dice_damage`（各线一致性欠账） | 登记（P1 不碰） | — |
+| N25 | P3→P0 | 26.1.2（现 P0）+ fabric 两线 | `neoforge-26.1.2` / `fabric-1.20.1` / `fabric-1.21.1` 的 `bypasses_cooldown.json` 未含 `dice_damage`（各线一致性欠账） | 26.1.2 按 P0 补；fabric 两线登记 | — |
 | N26 | P3 | 双线 | 仍无归因的伤害点：电磁炮雷击真伤、厄运 `true_damage`、大餐对亡灵 `magic()`、Sherry 兜底 `generic()` | 登记（部分已文档化） | — |
-| N27 | P1 | 四线（P0 双线 + P1 两线） | 无 `minecraft:generic.attack_damage` 属性的生物（如暮色九头蛇）近战命中玩家 ⇒ 旧代码无条件 `mob.getAttributeValue(...)` 抛 `IllegalArgumentException`，服务端 `Ticking entity` 整崩 | **已修**（C1 空值早退 + C2 本击原版伤害代理；各线代理口径按平台差异） | G |
+| N27 | P1 | 原四线（原 P0 双线 + 原 P1 两线；26.1.2 现 P0） | 无 `minecraft:generic.attack_damage` 属性的生物（如暮色九头蛇）近战命中玩家 ⇒ 旧代码无条件 `mob.getAttributeValue(...)` 抛 `IllegalArgumentException`，服务端 `Ticking entity` 整崩 | **已修**（C1 空值早退 + C2 本击原版伤害代理；各线代理口径按平台差异） | G |
 
 ## 1. 判据基石：两线伤害派发顺序不一样
 
@@ -238,7 +239,7 @@ combat/DiceCombatEvents.java:305-317 赐福/降神倒计时启动、秘密侦探
 ## 5. 未覆盖 / 约束
 
 - 全部结论为**静态取证**，未实机；N1/N2/N4 的实机判据见 §6。
-- **P1 两线未审计**（`neoforge-26.1.2` / `fabric-1.20.1`）：同名处理器仍未接 `DeathTriggerGuard`、未做本表任何修复，属既定范围外欠账。
+- **原 P1 两线未审计**（`neoforge-26.1.2` 现 P0 / `fabric-1.20.1` P1）：同名处理器仍未接 `DeathTriggerGuard`、未做本表任何修复；26.1.2 的该缺口现为 P0 发布欠账。
 - `Combat` 内 `PlayerHostilityTrackerEvents`（HIGH）与 `BarricadeBlock`（thrown 伤害源）未做进一步语义评估。
 - N11 / N14 需用户裁决，未改。
 
@@ -327,7 +328,7 @@ combat/DiceCombatEvents.java:305-317 赐福/降神倒计时启动、秘密侦探
 | N22 | 四张伤害效果牌 `isActive` 恒 false = 死代码 | 删除还是加断言锁死 |
 | N23 | 盾不挡 `card_spell`/`true_damage` 靠 `direct=null` 而非标签 | 是否在 `ModDamageTypes` javadoc 写死禁令 |
 | N24 | 惩罚伤害跳字组别 `SPELL` | 是否改用 `CARD_COST` 配色 |
-| N25 | P1 两线 `bypasses_cooldown.json` 缺 `dice_damage` | 何时补（P1 批次） |
+| N25 | 26.1.2（现 P0）与 fabric 两线 `bypasses_cooldown.json` 缺 `dice_damage` | 26.1.2 的缺口按 P0 补；fabric 按 P1 批次 |
 
 ### 7.5 批次 F：幻影吸收余额显式化（2026-10-27 19:0x–19:2x，forge 单线）
 
@@ -342,7 +343,7 @@ combat/DiceCombatEvents.java:305-317 赐福/降神倒计时启动、秘密侦探
 - `compensateAbsorption(LivingEntity, float finalAmount)`（`:482-489`）剥 H ⇒ 写 `真实余额 + finalAmount` ⇒ 平台扣 finalAmount 落回真实余额；**写完把登记刷新成 `finalAmount` 而非清除**（LOWEST 段可能多个处理器依次改金额，后者必须知道平台还会扣多少），`finalAmount <= 0` 才转清除。调用点：`event/ChipDamageHandler.java:61`（`finally` 覆盖气囊/磨刀石/侦探/超天酱四条分支与全部早退）、`event/LinglingSignEvents.java:121`（+5 之后）、`combat/DiceCombatEvents.java:1777`（弱印记乘算之后）。
 - 另在 `onLivingHurtRecordAbsorption`（`:335-347`）末尾 `PHANTOM_ABSORPTION.remove(target)`，保证每段新受击从干净状态开始。
 
-**判据**：双线 `:classes` EXIT 0；`setAbsorptionAmount(` 在 forge `DiceCombatEvents.java` 共 9 命中（4 注释 + 5 代码：`:395` 写回 / `:465` 剥 / `:469` 挂回 / `:487` 对齐）；neo 与 P1 两线零 diff。**未实机**。
+**判据**：双线 `:classes` EXIT 0；`setAbsorptionAmount(` 在 forge `DiceCombatEvents.java` 共 9 命中（4 注释 + 5 代码：`:395` 写回 / `:465` 剥 / `:469` 挂回 / `:487` 对齐）；neo 与 26.1.2（现 P0）及 fabric 两线零 diff。**未实机**。
 
 **残余边缘（登记不改）**：① 窗口内其它代码读余额仍看到虚高值（只活到同 tick `:1684`，对 HUD/跨线程不可见）；② `event/DamageEffectCardHandler.java:102` 的嵌套真伤与骰战近战互斥（不可达），若将来交叉再套 `withPhantomPeeled`（无登记时 no-op）；③ 第三方在 LOWEST 段之后再改金额且不调 `compensateAbsorption` 会回退偏移；④ 非玩家目标的登记无 compensate 出口，但同 tick `:1684` 照常扣，跨 tick 由 `gameTime` 过期与 `:346` 兜底。
 
@@ -366,7 +367,7 @@ combat/DiceCombatEvents.java:305-317 赐福/降神倒计时启动、秘密侦探
 
 **骰战覆盖风险（已核不可达）**：法伤源 `getDirectEntity() == null` 在 `forge-1.20.1/.../combat/DiceCombatEvents.java:552` 早退，另有 `:576` 近战闸门；若将来可达，settle 会**覆盖**折叠值（加成丢失）而不是再叠一次 —— 注释已写死该前提。
 
-**判据**：双线 `:classes` EXIT 0；javap 两线 `DamageEffectCardHandler` 类面只剩 `LIVING_PAGE_BIG_HIT_THRESHOLD` + `onLivingIncomingDamagePre`(neo)/`onLivingHurtPre`(forge) + `onLivingDamageSound`，`setAmount` 各 1 处、`hurt` 0 处、`trueDamage` 0 处；P0 两线 `.java` 的 `isApplyingTrueBonus` / `APPLYING_TRUE_BONUS` 只剩注释（P1 `fabric-1.20.1` / `neoforge-26.1.2` 仍是活代码 + 双段 hurt ⇒ 本批范围仅 P0 双线）。**未实机、未重出 jar**。
+**判据**：双线 `:classes` EXIT 0；javap 两线 `DamageEffectCardHandler` 类面只剩 `LIVING_PAGE_BIG_HIT_THRESHOLD` + `onLivingIncomingDamagePre`(neo)/`onLivingHurtPre`(forge) + `onLivingDamageSound`，`setAmount` 各 1 处、`hurt` 0 处、`trueDamage` 0 处；P0 两线 `.java` 的 `isApplyingTrueBonus` / `APPLYING_TRUE_BONUS` 只剩注释（原 P1 的 `fabric-1.20.1` 仍是活代码 + 双段 hurt；`neoforge-26.1.2` 现 P0 但也仍是活代码 + 双段 hurt ⇒ 本批范围仅原 P0 双线，26.1.2 的折叠列为 P0 欠账）。**未实机、未重出 jar**。
 
 ### 7.7 折叠批独立复核（2026-10-27，R1–R7）—— 两条必须处置项已落地
 
@@ -377,7 +378,7 @@ combat/DiceCombatEvents.java:305-317 赐福/降神倒计时启动、秘密侦探
 | R1 neo 折叠点 | SUPPORTED | `LivingEntity.java:1153` 唯一派发（`CommonHooks.java:296` 全 jar 仅 1 处 new），`:1159` 以 container 为唯一事实源，早于 `:1164` 盾牌 / `:1178` 冰冻 / `:1182` 头盔 / `:1190-1197` 无敌帧 / `:1787-1789` 护甲与魔法吸收 |
 | R2 forge 折叠点 | SUPPORTED（措辞订正） | `LivingEntity.java:1665` 早于 `:1667` 护甲 / `:1668` 魔法吸收；但全 jar 有**两个互斥**派发点（另一处 `player/Player.java:942` 覆写不调 super）⇒「全 jar 唯一」不成立，「LivingEntity 内唯一」成立 |
 | R3 `SpellDamageContext` | SUPPORTED | 两线字段类型与处理器入参一致；全仓无消费者读该字段（`DiceCombatModifiers` 读的是 `DiceCombatContext.event`） |
-| R4 折叠残留 | 部分成立 | P0 两线 `.java` 只剩注释、判据链完整；但 mapping 文档 `:56/:106/:472` 仍教旧闸门（**已订正**），且 P1 两线仍是活代码 |
+| R4 折叠残留 | 部分成立 | P0 两线 `.java` 只剩注释、判据链完整；但 mapping 文档 `:56/:106/:472` 仍教旧闸门（**已订正**），且 26.1.2（现 P0，折叠欠账）与 fabric 两线仍是活代码 |
 | R5 骰战覆盖 | SUPPORTED + 窄风险（**已加闸门**） | 本仓法伤源 `new DamageSource(holder, null, causing)` ⇒ `getDirectEntity()` 恒 null ⇒ 必早退；第三方法术源若 direct = 玩家本人且主手近战武器则可进 `settleDiceDamage` ⇒ 已在两线 `combat/DiceCombatEvents.java` 的近战闸门前加 `if (SpellDamageRegistry.isSpellDamage(source, directEntity)) return;` |
 | R6 数值不变 | **REFUTED（已订正口径）** | 旧加成走 `true_damage`（在 `bypasses_armor` 内）⇒ 不吃护甲；折叠后随本体源。见 §7.6 数值口径 (a)(b)(c) |
 | R7 音效 | SUPPORTED | 音效处理器与折叠处理器同集同序，读数已去 `+bonus`（neo `:176` / forge `:169`）；既存不对称：neo 读吸收前、forge 读吸收后 |
@@ -386,7 +387,7 @@ combat/DiceCombatEvents.java:305-317 赐福/降神倒计时启动、秘密侦探
 
 **既存不对称（非本批）**：forge `event/LinglingSignEvents.java:125` 有 `DiceCombatEvents.compensateAbsorption(target, event.getAmount())`，neo 无对应（因 neo 折叠点在其之前）。
 
-**范围**：本批只覆盖 P0 双线。P1 `fabric-1.20.1` / `neoforge-26.1.2` 仍是「双段 hurt + 活闸门」⇒ 「全仓单次结算」不成立。**未实机**。
+**范围**：本批只覆盖原 P0 双线。`fabric-1.20.1`（P1）与 `neoforge-26.1.2`（现 P0）仍是「双段 hurt + 活闸门」⇒ 「全仓单次结算」不成立；26.1.2 的该缺口升级为 P0。**未实机**。
 
 ### 7.8 三条裁决落地（2026-10-27 20:5x，用户裁决）
 
@@ -489,7 +490,7 @@ combat/DiceCombatEvents.java:305-317 赐福/降神倒计时启动、秘密侦探
 - `bash tools/check_lang_sync.py` ⇒ exit 0，两线 `OK: zh_cn(1065) = en_us(1065) = ja_jp(1065)`（WARN 仅既有的 `dorothy_passive` / `jill_active` 颜色码差异）。
 - 行为面：骰战路径 +5 不变（仍在 `isEquipped && isTrackedByAny` 时并入终值）；非骰战（法伤 / 技能 / 远程 / 环境）从「+5」变为「不加」—— 这是本次唯一的数值变更，且与三语文案同批落地。
 - **仍未实机、未重出 jar**（实机判据：法伤击杀被吸附目标应无 +5；近战骰战击杀应仍 +5；嘲讽单位同挥击多段只反击一次）。
-- P1 两线（`neoforge-26.1.2` / `fabric-1.20.1`）未镜像（既定范围外）。
+- 26.1.2（现 P0）与 `fabric-1.20.1`（P1）未镜像；26.1.2 的该缺口升级为 P0。
 
 ### 7.11 近战批实机验证 + F7 公共出口 / MELEE-04 回血基数修复（2026-10-27 22:1x–22:3x，P0 双线）
 

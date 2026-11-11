@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """秘密侦探立牌主动「隐匿调查 → +1 层标记 → 按施加后层数返币」的静态守门
-（P0 两线：neoforge-1.21.1 / forge-1.20.1）。
+（P0 三线：neoforge-1.21.1 / forge-1.20.1 / neoforge-26.1.2）。
 
 ## 要拦的回归
 用户裁决：主动技能对目标施加时，除「隐匿调查」外**还施加 1 层标记**；返还星币必须在
@@ -24,8 +24,8 @@
 - **B5** `apply` 内不得裸写 `ModEffects.MARKED`。
 
 ## 范围
-只查 P0 两线（`neoforge-1.21.1` / `forge-1.20.1`）；P1（`neoforge-26.1.2` / `fabric-1.20.1`）
-**不在本任务范围，明确不检查**。
+只查 P0 三线（`neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2`）；P1（`fabric-1.20.1` /
+`fabric-1.21.1`）**不在本任务范围，明确不检查**。
 
 退出码：0 全部通过 / 1 存在违规 / 2 无法判定（文件/apply 方法无法定位）。
 
@@ -65,8 +65,8 @@ _astral_heal_stdio()
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# P0 对等两线；P1 明确不在本任务范围。
-LINES = ("neoforge-1.21.1", "forge-1.20.1")
+# P0 对等三线；P1 明确不在本任务范围。
+LINES = ("neoforge-1.21.1", "forge-1.20.1", "neoforge-26.1.2")
 
 SIGN_REL = os.path.join(
     "src", "main", "java", "com", "merlinkitsune", "astral_dice",
@@ -304,8 +304,8 @@ def main():
             fails.append(msg)
             print("  FAIL " + msg)
 
-    print("== 秘密侦探立牌主动顺序（P0 两线：neoforge-1.21.1 / forge-1.20.1；"
-          "P1 neoforge-26.1.2 / fabric-1.20.1 明确不在检查范围）==")
+    print("== 秘密侦探立牌主动顺序（P0 三线：neoforge-1.21.1 / forge-1.20.1 / "
+          "neoforge-26.1.2；P1 fabric 两线明确不在检查范围）==")
     for line in LINES:
         print("[%s]" % line)
         check_line(line, verbose, run)

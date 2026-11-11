@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Bountiful 赏金联动一致性校验（只读守门）。
 
-独立重算「按规则应进入赏金池的物品集合」，与三线池文件逐项比对：
+独立重算「按规则应进入赏金池的物品集合」，与两条 Bountiful 线池文件逐项比对：
   1. 各线 ModItems 注册物品 id 与品质完全一致（以 neoforge-1.21.1 为基线逐条对构造比对）；
   2. astral_objs = 非「不进池档」骰子 + 货币(star_coin / star_coin_bag / star_plate / golden_star_plate)；
   3. astral_rews = astral_objs ∪ 卡牌(专属牌除外) ∪ 非「不进池档」筹码 ∪ 非「不进池档」立牌
@@ -20,7 +20,7 @@
 
 —— Python 版:1:1 对应 scripts/verify/旧版 verify_bountiful_pools 实现。
    ⚠️ 与 92fbeaf 之前的旧 .py 的差异（旧版已过时，不得回退）：
-      三线（含 neoforge-26.1.2）/ AstralRarities 稀有度口径 / 传奇进池 / 卡牌标签判据 /
+      两线（neoforge-1.21.1 / forge-1.20.1；26.1.2 无 Bountiful，不参与）/ AstralRarities 稀有度口径 / 传奇进池 / 卡牌标签判据 /
       专属牌剔除 / astral_currency.json 跨线一致 / 无 cwd 依赖（默认根 = 脚本上溯 3 层）。
 """
 import hashlib
@@ -31,7 +31,7 @@ import re
 import sys
 
 NS = 'astral_dice'
-VERSIONS = ['neoforge-1.21.1', 'forge-1.20.1', 'neoforge-26.1.2']
+VERSIONS = ['neoforge-1.21.1', 'forge-1.20.1']
 BASELINE = VERSIONS[0]
 MODITEMS_REL = 'src/main/java/com/merlinkitsune/astral_dice/item/ModItems.java'
 POOL_REL = 'src/main/resources/data/bountiful/bounty_pools/bountiful/'
@@ -47,7 +47,7 @@ MONEY = ['star_coin', 'star_coin_bag', 'star_plate', 'golden_star_plate']
 EXCLUDED_TIERS = ('PINNACLE', 'BIZARRE')
 RARITY_MAP = {'COMMON': 'COMMON', 'RARE': 'RARE', 'EPIC': 'EPIC', 'LEGENDARY': 'LEGENDARY'}
 
-TAG_DIR = {'neoforge-1.21.1': 'item', 'forge-1.20.1': 'items', 'neoforge-26.1.2': 'item'}
+TAG_DIR = {'neoforge-1.21.1': 'item', 'forge-1.20.1': 'items'}
 CARD_TAGS = ['combat_cards.json', 'effect_cards.json']
 EXCLUSIVE_TAG = 'is_exclusive.json'
 LEGACY_POOL_EXCEPTIONS = []

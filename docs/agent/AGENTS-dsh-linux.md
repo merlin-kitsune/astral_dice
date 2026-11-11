@@ -131,7 +131,7 @@
 - **`runData` 收尾不退出**（forge 1.20.1 实证）：provider 跑完 + `HashCache: Caching: total files: … written: N` 行出现 = 产物已落盘；之后 JVM 卡在 Collective 更新检查线程，`BUILD SUCCESSFUL` 可能永远不到（前台 `gradlew` 会一直挂到超时）。判据改用 `HashCache` 行 + `git status <线>/src/generated`，然后 `pkill -f dataRunProgramArgs`。**`pkill -f` 的 pattern 不能出现在同一条 `bash -c` 命令行里**，否则会把自己的 shell 一起打死（本轮连踩两次，表现为工具调用零输出）。
 - **fabric-1.20.1 的 datagen 长期跑不通**（本批已修）：该线 `ModItemModelProvider extends FabricModelProvider`，原版 `net.minecraft.data.models.ModelProvider` 会用 `BuiltInRegistries.BLOCK` 与本次生成的 blockstate 求差集，而本模组方块是手写 blockstate/model ⇒ 必报 `Missing blockstate definitions for: [card_shop, chip_shop, event_drawer, barricade_collision, abyss_tentacle_collision]`。修法：该文件改 `implements DataProvider`（照 fabric-1.21.1 同文件），用 `DataProvider.saveStable` 手写 item model，不再继承 FabricModelProvider。
 - **NTFS 上的假 M**：datagen 重写文件后 `git status` 会冒出几百条 M，但 `git diff` 为空、`git hash-object` 与索引一致、`git update-index --really-refresh` 仍报 needs update。处置：对目标路径 `git add` 一次即恢复干净；**判真正改动只看 `git diff --numstat`**。
-- 跨线债务：`abyss_tentacle_collision` 的 blockstate/model 目前**只有 26.1.2** 有（P0 两线与 fabric 两线都缺）⇒ 该占位方块在缺的线上渲染为缺失模型；补与不补待裁决。
+- 跨线债务：`abyss_tentacle_collision` 的 blockstate/model 目前**只有 26.1.2** 有（P0 三线中的 `forge-1.20.1` / `neoforge-1.21.1` 与 P1 的 `fabric-1.20.1` / `fabric-1.21.1` 都缺）⇒ 该占位方块在缺的线上渲染为缺失模型；补与不补待裁决。
 
 - **P1 三线 datagen 也要 park 五枚 jar**（2026-11-11 实证）：`run/1.21.1`、`run/1.20.1`、`run/26.1.2`、`run/fabric-1.20.1`、`run/fabric-1.21.1` 下的 `astral_dice-*.jar` 先全部 `mv` 到 `temp/datagen/parked-p1/`（脚本里逐条写死源/目标，别用通配 mv 混线），跑完再逐条 `mv` 回原线。四任务一次跑：`:fabric-1.20.1:runDatagen :fabric-1.21.1:runDatagen :neoforge-26.1.2:runServerData :neoforge-26.1.2:runClientData` ⇒ 2026-11-11 实测 `BUILD SUCCESSFUL in 13s`，`HashCache … written: 2/3/3`，generated 只新增 10 个 inkshadow 产物、无删除无漂移。
 - **P1 三线实机基线（2026-11-11 01:4x–02:0x，小猎手 inkshadow；读数见 `docs/features/inkshadow-sign-spec.md` §7.1g）**：fabric-1.20.1 log `scripts/test/linux/logs/fabric-1.20.1-20261111-014318.log`（wrapper 294642 / game 294782）、fabric-1.21.1 `…-015857.log`（304117 / 304207）、26.1.2 `26.1.2-20261111-020546.log`（310608 / 310752）；三线 `LAUNCH: READY` + `WORLD_READY`、门对双向 + 5 s 冷却成立、`stop.sh` 全 `LINUX_STOP: OK`、端口清零。
@@ -248,7 +248,7 @@
 | `models/` `images/` `sound/` 与 `run/` 内他人产物 | **不变**：出现不属于自己的改动 ⇒ 停手报告，不 add/commit/stash/checkout/删除 |
 | 「Windows 开发配置不可动」 | **新增（2026-10-31 用户硬约束）**：本机与 Windows 共用同一块盘；只改 Linux 侧需要的文件，不删 / 不改 Windows 专属配置（`mt.conf` 的 Windows 路径、旧脚本（已删除）、`gradlew.bat`、`run/start-*.bat`、`.vscode` 的 `F:\` 配置一律保留原样） |
 
-- 优先级与基线（P0 = `neoforge-1.21.1` + `forge-1.20.1`；P1 = `neoforge-26.1.2` + `fabric-1.20.1`，`1.5.0` 正式版前不验证、不移植）、包根 `com.merlinkitsune.astral_dice`、fabric 内嵌库前置 `python3 tools/loom_embedded_jars.py --apply`（KI-F23）—— 全部**与宿主无关，原文有效**。
+- 优先级与基线（P0 = `neoforge-1.21.1` + `forge-1.20.1` + `neoforge-26.1.2`；P1 = `fabric-1.20.1` + `fabric-1.21.1`，P1 按待移植/验收口径）、包根 `com.merlinkitsune.astral_dice`、fabric 内嵌库前置 `python3 tools/loom_embedded_jars.py --apply`（KI-F23）—— 全部**与宿主无关，原文有效**。
 
 ## 二次验证规范（与宿主无关，命令 Linux 化）
 
@@ -296,7 +296,7 @@
 - 工具面：`get_app_state` / `screenshot` / `list_windows` / `focused_window` / `activate_window` / `click` / `scroll` / `drag` / `type_text` / `press_key` / `set_value` / `perform_action` / `move_window` / `resize_window`；配 `mcp__screen-ocr__ocr_screen|ocr_find|ocr_image` 做屏幕文字定位（比纯坐标稳）。
 - **本机缺的输入工具**（实读，不要假设存在）：`xdotool`、`wtype`、`wmctrl`、`grim`、`kdotool` **未安装**；`ydotool` 已装且 **socket 现已存在**（`/run/user/1000/.ydotool_socket`，2026-11-10 实读）——但按键语义未实测（布局/修饰键映射未知），**仍不要**拿它当默认通道。`spectacle` 已装（`/usr/bin/spectacle`），可做 KDE 原生截图兜底：`spectacle -b -n -a -o /tmp/mc-world.png`。
 - **GUI 级驱动只在需要时用**：文字/坐标注入优先 `computer-use-linux` 的语义选择器（role/name），退而用坐标；坐标以**返回截图的 `coordinate_width/height`** 为准（可能被降采样），不要拿物理分辨率换算。
-- **驱动优先级（2026-10-31 沿用）**：游戏内输入/状态读写**首选 AutoJS `eval_js`**（脚本上下文直接操作，绕过窗口焦点问题）；GUI 级（建世界、开关菜单）用 `computer-use-linux` / `spectacle` + OCR；Windows 侧的 `scripts/test/mt_inject.py`（ctypes user32 注入；原 `windows MCP 的 Click/Move/Type 输入` 的替代物，旧件仅作溯源）是 **Windows-only**，Linux 无等价实现。
+- **驱动优先级（2026-10-31 沿用）**：游戏内输入/状态读写**首选 AutoJS `eval_js`**（脚本上下文直接操作，绕过窗口焦点问题）；GUI 级（建世界、开关菜单）用 `computer-use-linux` / `spectacle` + OCR；Windows 侧的 `scripts/test/mt_inject.py`（ctypes user32 注入；原 Windows 键鼠 MCP 的替代物；该 MCP 已不在当前 DSH 环境注册，旧件仅作溯源）是 **Windows-only**，Linux 无等价实现。
 - 游戏窗口是 **X11（XWayland）窗口**，`xwininfo -root -tree | grep -i minecraft` 可核对标题/几何；**GLFW 不暴露 AT-SPI**，`list_windows` 里可能看不到 MC —— 看不到就走整屏截图 + 坐标，不要卡在这里。
 - 截图证据一律落 `temp/tNN/`（不入库）；不得用固定外部目录。
 

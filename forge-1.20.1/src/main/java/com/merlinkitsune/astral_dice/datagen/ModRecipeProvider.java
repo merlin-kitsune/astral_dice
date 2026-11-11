@@ -1509,7 +1509,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
                 .save(output::accept);
         // 魔渊幼体立牌(sykes,史诗):MYM/YCY/GDG（M=末影之眼、Y=幽匿催发体、C=空白立牌、G=黄金星盘、D=钻石骰子）
-        // 2026-11-10 补:P0 两线此前都没有这条配方（1.20.1 线连 generated 里都没有），与 fabric 两线 + 1.21.1 不对齐。
+        // 2026-11-10 补:原 P0 两线（neo21/forge）此前都没有这条配方（1.20.1 线连 generated 里都没有），与 fabric 两线 + 1.21.1 不对齐。
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.SYKES_SIGN.get())
                 .pattern("MYM")
                 .pattern("YCY")

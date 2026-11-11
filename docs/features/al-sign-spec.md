@@ -1,9 +1,9 @@
 # 少主立牌（al）规格与实现记录
 
-> 本文是**实现记录 + 语义冻结**，不是前置设计稿：P0 代码 2026-11-08 落地（用户裁决），2026-11-10 完成 P1 三线移植后补本文。
+> 本文是**实现记录 + 语义冻结**，不是前置设计稿：P0 基准两线代码 2026-11-08 落地（用户裁决），2026-11-10 完成原 P1 三线（fabric 两线 + 26.1.2）移植后补本文；2026-11-11 用户划级后 26.1.2 归 P0。
 > **代码为真源**：本文任何数字若与代码不符，以代码为准，并回改本文。
 > 基准：`multi-dev-next` @ `5dbf39d4` 之后（P1 移植批）；P0 实机取证 2026-11-10 上午（neoforge-1.21.1 金鲤轮次顺带确认 al 注册）。
-> 落地线：**五线全部落地**（P0 `neoforge-1.21.1` / `forge-1.20.1`；P1 `fabric-1.20.1` / `fabric-1.21.1` / `neoforge-26.1.2` 于 2026-11-10 移植、编译、datagen 跑通；P1 实机取证见 §7）。
+> 落地线：**五线全部落地**（P0 `neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2`；P1 `fabric-1.20.1` / `fabric-1.21.1`。原 P1 三线于 2026-11-10 移植、编译、datagen 跑通；2026-11-11 起 26.1.2 归 P0；实机取证见 §7）。
 
 ## §0 定名与命名门禁
 
@@ -21,7 +21,7 @@
 
 | 项 | 值 | 出处（neoforge-1.21.1；forge 行号略异） |
 |---|---|---|
-| 注册 id | `astral_dice:al_sign` | `item/ModItems.java:1157`；P1：forge 1135 / fabric-1.20.1 1044 / fabric-1.21.1 1188 / neo26 1042 |
+| 注册 id | `astral_dice:al_sign` | `item/ModItems.java:1157`；其余线：forge 1135 / fabric-1.20.1 1044 / fabric-1.21.1 1188 / neo26 1042 |
 | 稀有度 | `epic`（史诗） | `item/ModItems.java` 注册行（neo26 曾误写 legendary，已按 P0 改正） |
 | 堆叠 | `stacksTo(1)` | 同上 |
 | Curios 栏位 | `stand`（立牌） | `data/curios/tags/item/stand.json`；另见 `data/astral_dice/tags/item/signs.json` |
@@ -37,7 +37,7 @@
 状态载体：
 
 - 待结算目标 = 附件 `AL_PENDING_TARGET`（UUID 字符串，结算后立即置空）。
-- 限时折扣 = 附件 `CHIP_DISCOUNT_AMOUNT` + `CHIP_DISCOUNT_UNTIL`（tick），三线 P1 本批新增，与 P0 同名同义。
+- 限时折扣 = 附件 `CHIP_DISCOUNT_AMOUNT` + `CHIP_DISCOUNT_UNTIL`（tick），原 P1 三线（fabric 两线 + 26.1.2）本批新增，与 P0 同名同义。
 - 冷却 = 玩家级附件 `SIGN_ACTIVE_COOLDOWN_END` / `SIGN_ACTIVE_MAX_COOLDOWN`（立牌统一口径，不新建）。
 
 ## §2 语义
@@ -67,13 +67,13 @@
 ### §2.4 限时折扣
 
 - `ChipShopDiscounts.effectivePrice(player, base) = max(MIN_PRICE=5, base - amount)`，`until <= now` 视为无折扣。
-- 筹码商店**三处必须同源**：`ChipShopMenu` 的 DataSlot、`price()`、`handleBuy` 扣款。P1 三线本批把 `int price = state.price()` 全部改为 `ChipShopDiscounts.effectivePrice(...)`。
+- 筹码商店**三处必须同源**：`ChipShopMenu` 的 DataSlot、`price()`、`handleBuy` 扣款。原 P1 三线本批把 `int price = state.price()` 全部改为 `ChipShopDiscounts.effectivePrice(...)`。
 
 ## §3 落点清单
 
 P0（各 4 个 Java 变体 + 集成点）：`item/sign/AlSignItem.java`、`item/sign/CardGivenHooks.java`、`shop/ChipShopDiscounts.java`、`target/PlayerLikeTargets.java`；集成 `item/ModItems.java`、`item/chip/VitaminPillChipItem.java`、`target/TargetSelectionManager.java`、`shop/ChipShopMenu.java`、`event/ModTooltipHandler.java`、`init/ModCreativeTabs.java`、`component/ModAttachments.java`、`datagen/ModItemModelProvider.java`、`datagen/ModRecipeProvider.java`。
 
-P1 三线额外改了选卡链路（**本批新增的结构性基建**）：`choice/CardChoiceManager.java`（`minSlots` 变长下限 + clamp）、`choice/CardChoiceType.java`（`titleKey(slotCount, minSlots)` → `title_variable_*`）、`screen/CardChoiceMenu.java`（菜单内按 minSlots 判定可确认）；fabric 两线与 neo26 另动了 `client/TargetSelectionClient.java`（客户端放行同源）。
+原 P1 三线额外改了选卡链路（**本批新增的结构性基建**）：`choice/CardChoiceManager.java`（`minSlots` 变长下限 + clamp）、`choice/CardChoiceType.java`（`titleKey(slotCount, minSlots)` → `title_variable_*`）、`screen/CardChoiceMenu.java`（菜单内按 minSlots 判定可确认）；fabric 两线与 neo26 另动了 `client/TargetSelectionClient.java`（客户端放行同源）。
 
 资源（各线）：
 - 贴图 `assets/astral_dice/textures/item/al_sign.png`（五线同 md5 `f073b69e1a64ae4856bdc386f2892738`）
@@ -84,7 +84,7 @@ P1 三线额外改了选卡链路（**本批新增的结构性基建**）：`cho
 
 ## §4 文本（13 键 × zh/en/ja 三语，五线齐）
 
-`item.astral_dice.al_sign`；`tooltip.astral_dice.sign.al.{active,passive}`；`tooltip.astral_dice.sign.al_{active,passive}`；`msg.astral_dice.{al_ready,al_done,al_no_cards}`；`astral_dice.guide.entry.al_sign.{1,2}`；`gui.astral_dice.card_choice.title_variable_{any,combat,effect}`（minSlots 变长标题，P0 已有，P1 本批补齐）。
+`item.astral_dice.al_sign`；`tooltip.astral_dice.sign.al.{active,passive}`；`tooltip.astral_dice.sign.al_{active,passive}`；`msg.astral_dice.{al_ready,al_done,al_no_cards}`；`astral_dice.guide.entry.al_sign.{1,2}`；`gui.astral_dice.card_choice.title_variable_{any,combat,effect}`（minSlots 变长标题，P0 已有，原 P1 三线本批补齐）。
 
 tooltip 结构（自上而下）：名称／栏位／按键提示／主动段「强者怜悯」／被动段「双赢」／状态行（冷却剩余）／模组名。实现位置 `event/ModTooltipHandler.java:1717`（P0 neo21）。
 
@@ -93,7 +93,7 @@ tooltip 结构（自上而下）：名称／栏位／按键提示／主动段「
 1. 主动**不可对自己**（`allowSelf()=false`），且目标必须过 `PlayerLikeTargets.isPlayerLike`。
 2. 「给牌」以**送出**为准，不看目标是否真的进背包（掉地也算）；`chosen` 为空不算技能使用（不进冷却）。
 3. 折扣**不叠加**（attachment 覆盖写），刷新每次最多 +1 次。
-4. P1 三线不覆写 `activateForEntity`（见 §6 差异），非玩家持牌生物的主动施放缺口已知。
+4. 原 P1 三线已落地 `activateForEntity`：`AlSignItem` 覆写后以 `needs_player_session` 拒绝非玩家（与 P0 同口径），缺口不在入口而在会话依赖。
 
 ## §6 跨线现状与语义差异
 
@@ -101,17 +101,17 @@ tooltip 结构（自上而下）：名称／栏位／按键提示／主动段「
 |---|---|---|---|---|---|---|
 | neoforge-1.21.1 | 4 | 既有 | 13 | ✅ | — | ✅ 实机（P0） |
 | forge-1.20.1 | 4 | 既有 | 13 | ✅ | — | ✅ 实机（P0） |
-| fabric-1.20.1 | 4 | 10 | 13 | ✅ | ✅ | ✅ 实机（§7） |
-| fabric-1.21.1 | 4 | 10 | 13 | ✅ | ✅ | ✅ 实机（§7） |
-| neoforge-26.1.2 | 4 | 11 | 13 | ✅ | ✅ | ✅ 实机（§7） |
+| fabric-1.20.1 | 4 | 10 | 13 | ✅ | ✅ | ✅ 实机（P1，§7） |
+| fabric-1.21.1 | 4 | 10 | 13 | ✅ | ✅ | ✅ 实机（P1，§7） |
+| neoforge-26.1.2 | 4 | 11 | 13 | ✅ | ✅ | ✅ 实机（P0，§7） |
 
-**P1 三线的语义差异（2026-11-10 移植，逐条经源码实读）**：
+**原 P1 三线的语义差异（2026-11-10 移植、2026-11-11 补实体级钩子；2026-11-11 划级后 26.1.2 归 P0、fabric 两线仍 P1，逐条经源码实读）**：
 
-1. `activateForEntity(LivingEntity)` 未移植 —— 两条 fabric 线的 `BaseSignItem` 无该钩子、26.1.2 线无 `SignEntitySkills`；缺口仅限「非玩家持牌生物主动施放」，玩家路径等价（P0 该方法本身就是恒 `deny("al", …, "needs_player_session")`）。
-2. 刷新只发给 `ServerPlayer` 目标：P1 的 `ChipShopState.get/store` 形参是 `Player`（P0 neo21 是 `LivingEntity`），非玩家类玩家生物拿不到刷新（折扣仍发）。
+1. `activateForEntity(LivingEntity)` 已移植 —— 原 P1 三线 `BaseSignItem` 均有该钩子、`SignEntitySkills` 已落地；`AlSignItem` 显式覆写并恒 `deny("al", …, "needs_player_session")`，玩家路径等价。
+2. 刷新只发给 `ServerPlayer` 目标：原 P1 的 `ChipShopState.get/store` 形参是 `Player`（P0 neo21 是 `LivingEntity`），非玩家类玩家生物拿不到刷新（折扣仍发）。
 3. fabric-1.20.1 的 `CardChoiceType` 原来只有单参 `titleKey`，本批补了两参版本以承载 `title_variable_*`。
 4. neo26 的动作 id 按 26.1.2 惯例写成 `al_gift`（与 P0 `astral_dice:al_gift` 同值）；`Inventory#items` 私有 ⇒ 用 `getNonEquipmentItems()` + 副手索引；`spawnAtLocation(ServerLevel, ItemStack)`；附件序列化补 `fieldOf("value")`。
-5. 三线 datagen 已于 2026-11-10 全部跑通，手写 generated 产物被 datagen 覆盖/确认为真值（无删除、无纯格式漂移）。
+5. 原 P1 三线 datagen 已于 2026-11-10 全部跑通，手写 generated 产物被 datagen 覆盖/确认为真值（无删除、无纯格式漂移）。
 
 ## §7 实机取证
 

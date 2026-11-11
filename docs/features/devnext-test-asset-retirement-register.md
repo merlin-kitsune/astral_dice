@@ -116,16 +116,17 @@
 ## 4 已知就地红（不是本轮迁移造成，需用户排优先级）
 
 `python scripts/verify/verify_bountiful_pools.py` 与 旧件 版**结论一致地红**（11 项致命），原因：
+> **2026-11-11 重新划级**：26.1.2 归 P0 ⇒ 下列 26.1.2 条目由「P1 滞后」升级为 P0 发布欠账；fabric 两线仍 P1。
 - 跨线 `ModItems` 不一致：`card_shop` / `chip_shop` / `event_drawer` 只在 forge-1.20.1 与 neoforge-26.1.2 有，**n21 没有**（属 P0 内部不一致，该修）
-- `astral_rews.json` 缺条目：n21/forge 各缺 `alana_sign`、`extra_battery_chip`；**26.1.2 缺 9 条**（属 P1 滞后，按口径只移植不擅动）
+- `astral_rews.json` 缺条目：n21/forge 各缺 `alana_sign`、`extra_battery_chip`；**26.1.2 缺 9 条**（2026-11-11 起归 P0，属 P0 发布欠账，不再是 P1 滞后）
 - rarity 映射错误：`fanny_sign` / `haiqing_sign` 判成 RARE（应 EPIC）；26.1.2 `misaki_sign` LEGENDARY→EPIC
 - 各线 `astral_rews.json` md5 不一致；卡牌标签仅 n21 有 `effect_card_barricade` / `effect_card_repulsion`
 
 `python scripts/verify/verify_sign_registration.py` 同样**结论一致地红**（py 与 旧件 归一化输出逐字节相同，rc 均 1）：
-- `FAIL [neoforge-26.1.2] registered=32 signs=25 stand=31` —— `data/astral_dice/tags/item/signs.json` 只有 25 项，缺 alana / ame / deepseek / dorothy / jill / kangel / lingling 七张立牌；
-- `FAIL [fabric-1.20.1] registered=32 signs=32 stand=24` —— `data/curios/tags/items/stand.json` 只有 24 项，同样缺这七张（`blank_sign` 按设计不入 stand 表）；
-- P0 两线（n21 / forge）均 `OK registered=32 signs=32 stand=31`；
-- 性质：`git show origin/multi-main:<同上路径>` 与 HEAD 的条目数**完全相同**（25 / 24 / 32）⇒ 主线本就是红的，不是本轮合并造成；两条都是 P1 线内容，按用户口径「只移植不擅动」登记。
+- `FAIL [neoforge-26.1.2] registered=32 signs=25 stand=31` —— `data/astral_dice/tags/item/signs.json` 只有 25 项，缺 alana / ame / deepseek / dorothy / jill / kangel / lingling 七张立牌；**26.1.2 现 P0 ⇒ P0 阻塞**；
+- `FAIL [fabric-1.20.1] registered=32 signs=32 stand=24` —— `data/curios/tags/items/stand.json` 只有 24 项，同样缺这七张（`blank_sign` 按设计不入 stand 表）；仍 P1；
+- P0 基准两线（n21 / forge）均 `OK registered=32 signs=32 stand=31`；
+- 性质：`git show origin/multi-main:<同上路径>` 与 HEAD 的条目数**完全相同**（25 / 24 / 32）⇒ 主线本就是红的，不是本轮合并造成；26.1.2 现 P0、fabric 仍 P1，26.1.2 的缺口按 P0 发布欠账登记。
 
 `python scripts/verify/verify_forge_loader_gate.py` rc=2（**无法判定**，非产品红）：`fmlloader` 的 POM 不在 Gradle 缓存目录里 ⇒ `maven-artifact` / `commons-lang3` 版本取不到 ⇒ 离线判定器 classpath 不完整。补救命令写在输出里：`gradlew :forge-1.20.1:dependencies --refresh-dependencies`。
 

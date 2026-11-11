@@ -236,7 +236,7 @@
 4. **`Apotheosis.MHFMixinLivingEntity`** 的具体注入目标（MHF = ？）未用 `javap -v` 逐条确认；只确认常量池含 `[LivingEntity, setHealth]`、不含 `hurt` / `actuallyHurt` / `getDamageAfter*`。
 5. **`apothic_attributes.AttributeEvents` 的暴击（`crit_chance/crit_damage`）注入时机**未逐行读：若它挂在 `LivingIncomingDamageEvent`（护甲前），则现状「加成段也可能吃暴击倍率」，折叠后只吃一次 ⇒ 数值结论会再变一档。
 6. **神秘遗物+ 43/47 个订阅类的具体逻辑**未逐个读（只做了类级常量扫描 + 事件类名统计），因此「哪些效果会双触发」只给量级不给清单。
-7. **`isApplyingTrueBonus()` 在 fabric-1.20.1 / neoforge-26.1.2 两条线是否被引用**未查（本任务范围只覆盖两条 P0 线）；折叠方案若走「保留方法体 return false」可规避该风险。
+7. **`isApplyingTrueBonus()` 在 fabric-1.20.1 / neoforge-26.1.2 两条线是否被引用**未查（本任务范围只覆盖原两条 P0 线 neo21/forge；26.1.2 现 P0 但本任务未查）；折叠方案若走「保留方法体 return false」可规避该风险。
 8. **第三方 `LivingEntityMixin（irons / goety / enigmaticlegacyplus）对 `hurt` 的注入内容是 @Inject 还是 @Redirect/计数**未反编译确认；只知道它们确实命中 `hurt` 的常量池。
 9. **折叠后 `victimFactor`（EnderDice HIGH）与弱印记（LOW）的先后**已按优先级推定（HIGH 先于 NORMAL 先于 LOW 先于 LOWEST），未在运行期打印验证。
 10. 咒法学 / 血魔法 **未安装**的判定依据是 508 个 jar 的 `[[mods]] modId` + 文件名 + lang 名反查；若存在以别的 id 实现的同类模组（例如 `occultism` 系），不在本报告映射内。

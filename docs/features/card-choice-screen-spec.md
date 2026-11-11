@@ -2,15 +2,17 @@
 
 > 2026-10-17 用户裁决。本批范围：**通用组件 + 接入接口**，不接任何具体技能；
 > 不移植 `neoforge-26.1.2` / `fabric-1.20.1`；不做超时强制选择；不新绘任何贴图。
+>
+> **2026-11-11 划级变更**：P0 = `neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2`；P1 = `fabric-1.20.1` / `fabric-1.21.1`。`CardChoiceType` / `CardChoiceManager` / `Menu` / `Screen` 后续已在 26.1.2 与 fabric 两线落地（源码实读）；文中「P0 两线」「两线」是 2026-10-17 批次口径，历史保留。
 
 ## 1. 类清单与职责
 
 | 类 | 线 | 职责 |
 |---|---|---|
-| `choice/CardChoiceType` | P0 两线 | 三态枚举 `COMBAT / EFFECT / ANY`；按标签判定 `ItemStack`；生成标题 lang 键 |
-| `choice/CardChoiceManager` | P0 两线 | 服务端会话（每玩家最多 1 个未结算会话）、打开菜单、确认消费、关闭作废、回调调用者、掉线清理 |
-| `screen/CardChoiceMenu` | P0 两线 | `AbstractContainerMenu`：N 个虚拟卡槽（隐藏坐标）+ 36 格玩家物品栏；`quickMoveStack` 双向搬牌；类型过滤；确认消费；关闭退牌 |
-| `screen/CardChoiceScreen` | P0 两线 | `AbstractContainerScreen`：无背景图/无标题带、白字标题、卡框 + 卡面 + 卡名 marquee、物品栏底图、放满才出现的确认按钮；单击/双击/拖拽手势 |
+| `choice/CardChoiceType` | P0 三线（26.1.2 已落地） | 三态枚举 `COMBAT / EFFECT / ANY`；按标签判定 `ItemStack`；生成标题 lang 键 |
+| `choice/CardChoiceManager` | P0 三线（26.1.2 已落地） | 服务端会话（每玩家最多 1 个未结算会话）、打开菜单、确认消费、关闭作废、回调调用者、掉线清理 |
+| `screen/CardChoiceMenu` | P0 三线（26.1.2 已落地） | `AbstractContainerMenu`：N 个虚拟卡槽（隐藏坐标）+ 36 格玩家物品栏；`quickMoveStack` 双向搬牌；类型过滤；确认消费；关闭退牌 |
+| `screen/CardChoiceScreen` | P0 三线（26.1.2 已落地） | `AbstractContainerScreen`：无背景图/无标题带、白字标题、卡框 + 卡面 + 卡名 marquee、物品栏底图、放满才出现的确认按钮；单击/双击/拖拽手势 |
 | `network/CardChoiceConfirmPayload`（1.21.1） / `network/CardChoiceConfirmMessage`（1.20.1） | 各线 | C2S：只带会话 token |
 | `network/CardChoiceClosePayload`（1.21.1） / `network/CardChoiceCloseMessage`（1.20.1） | 各线 | S2C：token 作用域关闭界面 |
 | `client/CardChoiceClientHandler` | 各线 | 客户端 dist 隔离入口（关闭逻辑），保证双端 payload 类不出现 `net.minecraft.client.*` direct reference |
@@ -33,7 +35,7 @@
 
 菜单/屏幕常量必须同源：`CardChoiceMenu.INVENTORY_X/Y/HOTBAR_Y` = 底图 (5,116) + 内格偏移 (3,3) / 快捷栏 +61。
 
-## 3. lang 键（三语 × 两线各 6 键）
+## 3. lang 键（三语 × 原两线各 6 键；26.1.2 后续已落地）
 
 `gui.astral_dice.card_choice.title_<single|triple>_<combat|effect|any>`：
 
@@ -134,7 +136,7 @@ CardChoiceManager.registerHandler(player, myToken, picked -> { ... });
 | `renderSlot` 覆写 | `protected`，可跳过隐藏槽 | **`private`**，不可覆写 ⇒ 隐藏槽物品由原版画在 -10000（与商店同口径，无副作用） |
 | `ResourceLocation` 构造 | `fromNamespaceAndPath` | `new ResourceLocation` |
 
-> **观众（spectator）打开——两线行为相同，不是端口差异**：provider（`SimpleMenuProvider` 的 lambda）
+> **观众（spectator）打开——原两线行为相同，不是端口差异**：provider（`SimpleMenuProvider` 的 lambda）
 > **恒非 null**，不存在「`createMenu` 返回 null ⇒ 打开失败」的分支 ⇒ 观众**能**打开界面；
 > 但其点击包被服务端丢弃（`ServerGamePacketListenerImpl#handleContainerClick`：`if (this.player.isSpectator())`
 > 只执行 `containerMenu.sendAllDataToRemote()`，1.21.1 为 L1705、1.20.1 为 L1594，不进入 `clicked`），

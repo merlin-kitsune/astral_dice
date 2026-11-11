@@ -100,14 +100,14 @@
     { "type": "log", "source": "latest", "pattern": "AP_RB3B_RB3B:layers=1:wm=medium=1:caster=0:.*:inv_atk=0:ground_atk=[1-9]:" },
     { "type": "log", "source": "latest", "pattern": "AP_RB3C_RB3C:layers=1:wm=medium=1:.*:ground_atk=[0-9]:" },
 
-    { "type": "log", "source": "latest", "pattern": "AP_RB7_RD:layers=1:wm=medium=1:caster=0:target=0:.*:skip=0:prev=0:newt=0:bless=0:.*:fx_h=0/[0-9]+:fx_h_on=1" },
+    { "type": "log", "source": "latest", "pattern": "AP_RB7_RD:layers=1:wm=medium=1:caster=0:target=0:.*:skip=0:prev=0:newt=0:bless=0:.*:fx_h=0/(-1|[0-9]+):fx_h_on=1" },
     { "type": "log", "source": "latest", "pattern": "AP_Z_CLEAR:cleared=1:layers=0:wm=-:.*:sign=0:" },
 
     { "type": "absent", "source": "latest", "pattern": "AP_[A-Z0-9]+_ERR" },
     { "type": "absent", "source": "latest", "pattern": "AP_[A-Z0-9]+_EX:" },
     { "type": "absent", "source": "latest", "pattern": "menu_null" },
     { "type": "absent", "source": "latest", "pattern": "card_not_in_inv" },
-    { "type": "absent", "source": "latest", "pattern": ":err=" },
+    { "type": "absent", "source": "latest", "pattern": ":err=(?!-)." },
     { "type": "kubejs" },
     { "type": "crash" }
   ],

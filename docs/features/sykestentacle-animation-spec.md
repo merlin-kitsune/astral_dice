@@ -93,7 +93,9 @@
 - 注意：同一 MCP 会话里工具面会变化（本次曾先见 17 个工具、重开会话后 77 个），且 `tools/call` 必须带请求头 `MCP-Protocol-Version: 2025-06-18`，否则服务端回 `Parse error: Invalid JSON-RPC message`。
 
 
-## 6. GeckoLib 接入（2026-10-29 落地；P0 两线已构建验收，P1 两线搁置）
+## 6. GeckoLib 接入（2026-10-29 落地；原 P0 两线已构建验收，原 P1 两线搁置）
+
+> 2026-11-11 划级复核：`neoforge-26.1.2` 已归 P0 且本线已有该实体；`fabric-1.20.1` / `fabric-1.21.1` 归 P1。原 2026-10-29 的构建验收只覆盖 neo21/forge，26.1.2 的构建验收需按 P0 补记。
 
 模型已接进模组，成为实体 `astral_dice:sykestentacle`。本节记录**代码侧的调用事实**，与 1–5 节的资产侧事实互补。
 

@@ -83,7 +83,7 @@ public class MisakiSignItem extends BaseSignItem {
         return curios.isPresent() && curios.get().findFirstCurio(s -> s.is(ModItems.MISAKI_SIGN.get())).isPresent();
     }
 
-    // 2026-11-11 P1 补齐：爆发 2400t；层数 ≥3 时扣 2 层并补一张名刀（P1 无 PlayerLikeTargets，非玩家掉落交付）。
+    // 2026-11-11 P1 补齐：爆发 2400t；层数 ≥3 时扣 2 层并补一张名刀（与 P0 同口径：非玩家走 PlayerLikeTargets.giveItem，玩家路径在 handleUse）。
     @Override
     protected boolean activateForEntity(net.minecraft.world.entity.LivingEntity owner) {
         if (owner.level().isClientSide()) {
@@ -98,13 +98,7 @@ public class MisakiSignItem extends BaseSignItem {
                         com.merlinkitsune.astral_dice.component.ModDataComponents.MISAKI_SIGN_STACKS.set(live, stacks - 2);
                         net.minecraft.world.item.ItemStack meito = new net.minecraft.world.item.ItemStack(
                                 com.merlinkitsune.astral_dice.item.ModItems.ATTACK_CARD_MEITO.get());
-                        if (owner instanceof net.minecraft.world.entity.player.Player player) {
-                            com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem.giveCard(player, meito);
-                        } else {
-                            net.minecraft.world.entity.item.ItemEntity drop = new net.minecraft.world.entity.item.ItemEntity(
-                                    owner.level(), owner.getX(), owner.getY() + 0.5D, owner.getZ(), meito);
-                            owner.level().addFreshEntity(drop);
-                        }
+                        com.merlinkitsune.astral_dice.target.PlayerLikeTargets.giveItem(owner, meito);
                     }
                 });
         return com.merlinkitsune.astral_dice.item.sign.SignEntitySkills.ok("misaki", owner, 2400);

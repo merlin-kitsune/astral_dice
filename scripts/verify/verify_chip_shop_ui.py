@@ -725,18 +725,20 @@ for key in targets:
     for t in ("availablePool(", "ownedChipItems("):
         if t not in roller_src:
             Fail(line + ": 抽取器缺已拥有过滤 " + t)
-    if "needsReroll(Player player)" not in state_src:
+    if not re.search(r"public boolean needsReroll\((?:net\.minecraft\.world\.entity\.)?(?:Player|LivingEntity) \w+\)", state_src):
         Fail(line + ": ChipShopState 缺 needsReroll")
     if "ChipShopRoller.isOwned(player, entry)" not in state_src:
         Fail(line + ": needsReroll 未按已拥有判定")
-    for t in ("ChipShopRoller.ownsEverything(player)", "msg.astral_dice.chip_shop_owned_all"):
+    modern_opener = "private static boolean prepare(" in opener_src
+    opener_var = "holder" if modern_opener and "ChipShopRoller.ownsEverything(holder)" in opener_src else "player"
+    for t in ("ChipShopRoller.ownsEverything(" + opener_var + ")", "msg.astral_dice.chip_shop_owned_all"):
         if t not in opener_src:
             Fail(line + ": 开店入口缺「已集齐」拒绝 " + t)
-    for t in ("hasNoRoom(player)", "msg.astral_dice.chip_shop_inventory_full"):
+    for t in ("hasNoRoom(" + opener_var + ")", "msg.astral_dice.chip_shop_inventory_full"):
         if t not in opener_src:
             Fail(line + ": 开店入口缺「物品栏已满」拒绝 " + t)
     # G13b 「物品栏已满」的语义
-    hnr = re.search(r"private static boolean hasNoRoom\(Player player\)\s*\{(?P<b>.*?)\n    \}", opener_src, re.S)
+    hnr = re.search(r"private static boolean hasNoRoom\((?:Player|LivingEntity) \w+\)\s*\{(?P<b>.*?)\n    \}", opener_src, re.S)
     if not hnr:
         Fail(line + ": 未找到 hasNoRoom 方法体")
     else:
@@ -747,13 +749,30 @@ for key in targets:
             Fail(line + ": hasNoRoom 的物品栏已满判定被改（须「遇空格即返 false」）")
         if not re.search(r"return true;", hb):
             Fail(line + ": hasNoRoom 全满时应返 true")
-    i_own = opener_src.find("ownsEverything(player)")
-    i_room = opener_src.find("hasNoRoom(player)")
-    i_ens = opener_src.find("ensureOffers(player)")
-    i_open = opener_src.find("openMenu(")
-    if not (i_own >= 0 and i_room > i_own and i_ens > i_room and i_open > i_ens):
-        Fail(line + ": 开店顺序应为「已集齐 → 物品栏满 → 补抽 → openMenu」（实测 own=" + str(i_own)
-             + " room=" + str(i_room) + " ens=" + str(i_ens) + " open=" + str(i_open) + "）")
+    if modern_opener:
+        prep_body = get_body(opener_src, "private static boolean prepare(")
+        if prep_body == "":
+            Fail(line + ": 未找到 prepare 方法体")
+        else:
+            assert_order(prep_body,
+                         ["ChipShopRoller.ownsEverything(" + opener_var + ")", "hasNoRoom(" + opener_var + ")",
+                          "ensureOffers(" + opener_var + ")"],
+                         "prepare 顺序（已集齐 → 物品栏满 → 补抽）", line)
+        open_body = get_body(opener_src, "public static boolean openFor(")
+        if open_body == "":
+            Fail(line + ": 未找到 openFor 方法体")
+        else:
+            assert_order(open_body, ["prepare(" + opener_var + ")", "openMenu("],
+                         "openFor 顺序（prepare → openMenu）", line)
+    else:
+        open_body = get_body(opener_src, "public static void open(")
+        if open_body == "":
+            Fail(line + ": 未找到 open 方法体")
+        else:
+            assert_order(open_body,
+                         ["ChipShopRoller.ownsEverything(" + opener_var + ")", "hasNoRoom(" + opener_var + ")",
+                          "ensureOffers(" + opener_var + ")", "openMenu("],
+                         "open 顺序（已集齐 → 物品栏满 → 补抽 → openMenu）", line)
 
     # ---- G14 无记录 / 异类别不得有偏置 ----
     for t in ("if (lastPick == null || candidate == null || candidate != lastPick) {", "return 1.0;"):
@@ -883,7 +902,7 @@ for key in targets:
         Fail(line + ": 仍有 ticker 引用 " + " | ".join(ticker_refs))
 
     # ---- G18d needsReroll 不得再按骰子签名判定 ----
-    nr = re.search(r"public boolean needsReroll\(Player player\)\s*\{(?P<b>.*?)\n    \}", state_src, re.S)
+    nr = re.search(r"public boolean needsReroll\((?:net\.minecraft\.world\.entity\.)?(?:Player|LivingEntity) \w+\)\s*\{(?P<b>.*?)\n    \}", state_src, re.S)
     if not nr:
         Fail(line + ": 未找到 needsReroll 方法体")
     else:
@@ -986,8 +1005,8 @@ for key in targets:
     if bi_sites != "ChipShopBlock.java×1|ChipShopState.java×1":
         Fail(line + ": withBlankInsert 调用点越界（空白投入只允许 ChipShopBlock 一次），实测 " + bi_sites)
     gr_sites = get_call_site_files("withRefreshGranted(")
-    if gr_sites != "AnvilUpgradeHandler.java×1|ChipShopState.java×1":
-        Fail(line + ": withRefreshGranted 调用点越界（升星授予只允许 AnvilUpgradeHandler 一次），实测 " + gr_sites)
+    if gr_sites != "AlSignItem.java×1|AnvilUpgradeHandler.java×1|ChipShopService.java×1|ChipShopState.java×1":
+        Fail(line + ": withRefreshGranted 调用点越界（升星授予只允许 AnvilUpgradeHandler + 少主立牌 / 服务面），实测 " + gr_sites)
     w("CHIPUI_G18: 刷新来源 = 铁砧升星取走 1 次（唯一授予点）+ 空白筹码；ticker 已删；"
       "扣次数仅 ChipShopMenu / 空白仅 ChipShopBlock")
 
@@ -1190,8 +1209,9 @@ for key in targets:
         Fail(line + ": 无法定位 DataSlot 区块")
     else:
         ds_region = ms[ds_start:ds_end]
+        price_token = "quotedPrice()" if "quotedPrice()" in ms else "ChipShopState.get(player).price()"
         assert_order(ds_region,
-                     ["clientPrice", "ChipShopState.get(player).price()", "clientRefreshesLeft",
+                     ["clientPrice", price_token, "clientRefreshesLeft",
                       "ChipShopState.get(player).refreshesLeft()", "ChipShopCatalog.REFRESH_MAX",
                       "clientDenyReason", "clientTiers[index]"],
                      "DataSlot 顺序（单价/剩余刷新/总刷新/拒绝原因/品质码）", line)
@@ -1220,8 +1240,10 @@ for key in targets:
         cs2 = code_src(cf)
         for ft in ("discount", "promotion", "MEMBER_RECOMMENDATION"):
             if ft in cs2:
+                if ft == "discount" and os.path.basename(cf) in ("ChipShopDiscounts.java", "ChipShopService.java"):
+                    continue
                 Fail(line + ": " + os.path.basename(cf) + " 出现折扣路径标识符 " + ft
-                     + "（筹码商店无任何折扣路径）")
+                     + "（折扣仅允许 ChipShopDiscounts / ChipShopService 的少主立牌路径）")
     if '"gui.astral_dice.chip_shop"' in src:
         Fail(line + ": 屏幕绘制了标题键 gui.astral_dice.chip_shop（键保留但不绘制）")
     for t in ("gui.astral_dice.chip_shop.cost", "gui.astral_dice.chip_shop.refresh_counter",
@@ -1239,7 +1261,11 @@ for key in targets:
                       "return 1.0;", "if (slot <= 0) {", "return CATEGORY_ALPHA;",
                       "return (CATEGORY_ALPHA - 1.0) * SLOT_DECAY + 1.0;"],
                      "categoryWeight 分支顺序", line)
-    roll_body = get_body(roller_src, "public static List<ChipShopCatalog.Entry> roll(Player player, RandomSource random,")
+    roll_body = get_body(roller_src, "public static List<ChipShopCatalog.Entry> roll(net.minecraft.world.entity.LivingEntity player, RandomSource random,")
+    if roll_body == "":
+        roll_body = get_body(roller_src, "public static List<ChipShopCatalog.Entry> roll(LivingEntity player, RandomSource random,")
+    if roll_body == "":
+        roll_body = get_body(roller_src, "public static List<ChipShopCatalog.Entry> roll(Player player, RandomSource random,")
     if roll_body == "":
         Fail(line + ": 无法定位抽取器 roll 方法体")
     else:

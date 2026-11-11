@@ -1,20 +1,20 @@
-# P1 两线本地 combat 副本的漂移风险（登记，不立刻收编）
+# 跨线本地 combat 副本的漂移风险（26.1.2 现 P0；登记，不立刻收编）
 
-> 裁决来源：用户 2026-11-02「先清理孤儿代码，P1记录漂移风险」。
-> 本文只登记事实、风险与检测方法；**不**把 P1 的本地副本收编到 starengine 库，也**不**改 P0。
+> 裁决来源：用户 2026-11-02「先清理孤儿代码，P1记录漂移风险」。2026-11-11 重新划级后，26.1.2 归 P0、fabric 两线归 P1；本文标题与历史段落中的「P1 两线」保留当时的 26.1.2 + fabric 口径。
+> 本文只登记事实、风险与检测方法；**不**把本地副本收编到 starengine 库，也**不**改 P0 基准两线（n21/forge）。26.1.2 的本地副本风险现按 P0 跟踪。
 > 事实取自 2026-11-02 实读（HEAD `6a1c8d4b` 之后的工作树）；任何数字若与现读不符，以命令输出为准。
 
-## 1. 事实：P1 两线各留一份 `combat/{PartyRelations,EliteTargets}`
+## 1. 事实：26.1.2（现 P0）与 fabric-1.20.1（P1）各留一份 `combat/{PartyRelations,EliteTargets}`
 
 | 线 | 本地文件（行） | 同包解析到本地副本的消费者 |
 |---|---|---|
 | `neoforge-26.1.2` | `combat/PartyRelations.java` 582、`combat/EliteTargets.java` 68 | `combat/DiceCombatEvents.java`、`combat/OrbitalBombardmentManager.java`、`combat/ShootingStarManager.java` |
 | `fabric-1.20.1` | `combat/PartyRelations.java` 572、`combat/EliteTargets.java` 70 | 同上三个 |
-| `neoforge-1.21.1` / `forge-1.20.1`（P0） | **无**本地副本 | —— 全部 `import com.merlinkitsune.starengine.combat.*` |
+| `neoforge-1.21.1` / `forge-1.20.1`（P0 基准） | **无**本地副本 | —— 全部 `import com.merlinkitsune.starengine.combat.*` |
 
 补充事实：
 
-- P1 不是「整线都不用库」：n26 有 42 个、fabric 有 44 个 java 文件触及这两个名字，其中绝大多数是 `import com.merlinkitsune.starengine.combat.*` 绑库版本（n26 132 处 / P0 172 处 `starengine.combat` import）。
+- 26.1.2 与 fabric 不是「整线都不用库」：n26 有 42 个、fabric 有 44 个 java 文件触及这两个名字，其中绝大多数是 `import com.merlinkitsune.starengine.combat.*` 绑库版本（n26 132 处 / P0 基准 172 处 `starengine.combat` import）。
 - **fabric 的 `AstralDiceMod.java:352` 显式写全限定名 `com.merlinkitsune.astral_dice.combat.PartyRelations.reportBackends()`（调本地副本）**；n21 与 n26 同一行调的是 `com.merlinkitsune.starengine.combat.PartyRelations.reportBackends()`（库版本）。⇒ fabric 不是「忘了改 import」，是刻意/遗留地指向本地副本。
 - 三个消费者（`DiceCombatEvents` / `OrbitalBombardmentManager` / `ShootingStarManager`）本身就在 `com.merlinkitsune.astral_dice.combat` 包里，**裸名字优先解析同包类**，所以即便它们 import 了 starengine 的别的类，只要没单独 import 这两个，绑定的仍是本地副本。
 
@@ -30,7 +30,7 @@
 ## 3. 为什么仍然是风险
 
 1. **同包解析优先于 import**：谁在 `astral_dice.combat` 包里新增代码并裸写 `PartyRelations.xxx()`，就静默绑到本地副本，编译期零提示。
-2. **库升级不传导**：`starengine 26.4-SNAPSHOT.1` 之后若修正 `isHostileTo` / `collectEventTargets` 的判定，P0 立即受益，P1 三个消费者仍跑旧实现 ⇒ 同一场战斗在 P0 与 P1 上判定可能不同，且只有跑到对应场景才暴露。
+2. **库升级不传导**：`starengine 26.4-SNAPSHOT.1` 之后若修正 `isHostileTo` / `collectEventTargets` 的判定，P0 基准两线立即受益，26.1.2 与 fabric 的三个消费者仍跑旧实现 ⇒ 同一场战斗在 P0 基准与 26.1.2/fabric 上判定可能不同，且只有跑到对应场景才暴露。
 3. **fabric 是显式 FQN 调本地**，即使把 import 清干净也不会自动切换。
 4. **本地副本还会漂向新平台 API**：26.1.2 的 `LivingEntity` 签名与 1.20.1 不同，本地副本一旦为目标平台改过一行，就再也无法与库逐字节对照。
 
@@ -45,7 +45,7 @@ python temp/p0/dupdrift.py
 # ② 本地副本 vs 库 jar 的 API 形状对比（javap）
 python temp/p0/javap_dupdrift.py
 
-# ③ 结构面：P0 与 P1 的 combat 包文件清单
+# ③ 结构面：P0 基准与 26.1.2/fabric 的 combat 包文件清单
 git ls-tree -r --name-only HEAD -- neoforge-1.21.1/src/main/java/com/merlinkitsune/astral_dice/combat \
   forge-1.20.1/src/main/java/com/merlinkitsune/astral_dice/combat \
   neoforge-26.1.2/src/main/java/com/merlinkitsune/astral_dice/combat \
@@ -56,11 +56,11 @@ git ls-tree -r --name-only HEAD -- neoforge-1.21.1/src/main/java/com/merlinkitsu
 
 ## 5. 收编触发条件（现在是「只记录」，满足任一条件再动手）
 
-- 库 `26.4-SNAPSHOT.*` 对 `PartyRelations` / `EliteTargets` 做了**行为性**修改（判定口径、目标集、友军识别），而 P1 未同步；
-- P1 需要向这两个类**新增**平台专用逻辑（那时应改为「库提供扩展点」而不是复制）；
-- 出现「同一战斗在 P0 与 P1 判定不一致」的现场证据。
+- 库 `26.4-SNAPSHOT.*` 对 `PartyRelations` / `EliteTargets` 做了**行为性**修改（判定口径、目标集、友军识别），而 26.1.2 / fabric 未同步；
+- 26.1.2 或 fabric 需要向这两个类**新增**平台专用逻辑（那时应改为「库提供扩展点」而不是复制）；
+- 出现「同一战斗在 P0 基准与 26.1.2/fabric 判定不一致」的现场证据。
 
-处置方向（届时）：把 P1 三个消费者改成 import 库版本 → 删本地两份 → 跑各线构建 + 相关用例；不要反过来把 P0 改成用本地副本。
+处置方向（届时）：把 26.1.2 与 fabric 的三个消费者改成 import 库版本 → 删本地两份 → 跑各线构建 + 相关用例；不要反过来把 P0 基准两线改成用本地副本。
 
 ## 6. 附：本轮孤儿代码清理（同批）
 

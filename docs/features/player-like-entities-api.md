@@ -1,7 +1,8 @@
 # 类玩家生物能力面（player-like entities API）
 
-> 状态：2026-11-08 落地第一版（P0 = `neoforge-1.21.1`；其余四线的迁移映射见 §6）。
+> 状态：2026-11-08 落地第一版（P0 基准线 = `neoforge-1.21.1`；跨线迁移映射见 §6）。
 > 目标读者：本仓维护者 + 需要接入的附属模组（首个接入方 = TLMDice / 车万女仆）。
+> **2026-11-11 划级变更**：P0 三线 = `neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2`；P1 两线 = `fabric-1.20.1` / `fabric-1.21.1`。26.1.2 原属 P1，现归 P0；其 `PlayerLikeTargets` / `PlayerLikeWallet` / `PlayerLikeWallets` / `ChipShopService` 已于 2026-11-11 补齐，`ChipShopState` / `ChipShopRoller` / `ChipShopOpener` 已泛化到 `LivingEntity`。fabric 两线仍为 P1，`PlayerLikeWallet` / `ChipShopService` 缺口按 P1 记录。
 
 ## 1. 三种实体
 
@@ -13,7 +14,7 @@
 
 注册面是**唯一入口**：附属自己不注册，本模组不会把任何生物当成玩家。
 
-## 2. 能力矩阵（P0 当前状态）
+## 2. 能力矩阵（P0 基准线 neoforge-1.21.1 当前状态）
 
 | 能力 | 玩家 | 注册生物 | 未注册 | 说明 |
 |---|---|---|---|---|
@@ -138,18 +139,18 @@ PlayerLikeWallets.register(MAID_LIKE, e -> e instanceof EntityMaid, new PlayerLi
 4. **购买后重抽**：`ChipShopService` 只推进购买次数，换一批候选需要调用方按 UI 生命周期处理（`ChipShopState#withOffers`）。
 5. **掉落语义**：非玩家交付失败时 `spawnAtLocation` 兜底；若附属希望进背包/容器，必须实现 `Handler.giveItem`。
 6. **商店候选与退款（2026-11-09 补）**：类玩家没有界面，调用方必须先 `ChipShopService.prepareOffers(holder)`（或 `ChipShopOpener.openFor`）再购买，否则 `NO_OFFER`；购买交付失败时按 `PlayerLikeWallet.deposit` 退款、且**不**推进购买计数；钱包未实现 `deposit` 时退款为 `false`（日志 `refunded=false`，钱已扣掉，附属必须自行实现）。
-7. **立牌主动（2026-11-09 补）**：仅 `AlanaSignItem` 实现了 `activateForEntity`；其余立牌的主动仍只对玩家可用（选择器型主动需要「无 ServerPlayer owner」的会话形态，未设计）。
+7. **立牌主动（2026-11-09 补，2026-11-11 更新）**：P0 基准线 `neoforge-1.21.1` 已由全部 35 个立牌类覆写 `activateForEntity`；原 P1 三线（26.1.2 现 P0、fabric 两线 P1）基类入口已落地（`AlSignItem` 等按依赖的玩家通道显式拒绝），覆盖与拒绝原因见下文矩阵。
 
-## 6. 其余四线的迁移映射与步骤
+## 6. 跨线迁移映射与步骤
 
 ### 6.1 逐线差异
 
 | 线 | 附件 | Curios | 事件面 | 备注 |
 |---|---|---|---|---|
-| neoforge-1.21.1（P0，已完成） | `AttachmentType` | `CuriosApi.getCuriosInventory(LivingEntity)`（Curios 9） | neoforge 事件 | 本文件即此线实测口径 |
-| forge-1.20.1 | `AstralData`（kept 白名单） | `top.theillusivec4.curios.api.CuriosApi`（Curios 5.x） | Forge 事件 | 无 `AttachmentType`；`ChipShopState` 存取改走 `AstralData` |
-| neoforge-26.1.2 | `AttachmentType` | Curios 15（`ICurioStacksHandler` 已移除 `grow/shrink`） | neoforge 事件 | `setData/getData` 之外无差异；优先复制 P0 |
-| fabric-1.20.1 / fabric-1.21.1 | 自建 `ItemDataKey` / `AttachmentSync` shim | **Trinkets**（槽位语义不同） | Fabric 事件 + `LoaderBus` | `CuriosApi` 调用点要换成 Trinkets 桥，槽位判定改 `TrinketsApi` |
+| neoforge-1.21.1（P0 基准，已完成） | `AttachmentType` | `CuriosApi.getCuriosInventory(LivingEntity)`（Curios 9） | neoforge 事件 | 本文件即此线实测口径 |
+| forge-1.20.1（P0，已完成） | `AstralData`（kept 白名单） | `top.theillusivec4.curios.api.CuriosApi`（Curios 5.x） | Forge 事件 | 无 `AttachmentType`；`ChipShopState` 存取改走 `AstralData` |
+| neoforge-26.1.2（P0，已完成；2026-11-11 起归 P0） | `AttachmentType` | Curios 15（`ICurioStacksHandler` 已移除 `grow/shrink`） | neoforge 事件 | `setData/getData` 之外无差异；优先复制 P0 |
+| fabric-1.20.1 / fabric-1.21.1（P1） | 自建 `ItemDataKey` / `AttachmentSync` shim | **Trinkets**（槽位语义不同） | Fabric 事件 + `LoaderBus` | `CuriosApi` 调用点要换成 Trinkets 桥，槽位判定改 `TrinketsApi` |
 
 ### 6.2 迁移步骤（每条线同一套）
 
@@ -162,7 +163,7 @@ PlayerLikeWallets.register(MAID_LIKE, e -> e instanceof EntityMaid, new PlayerLi
 7. **门禁**：`./gradlew :<line>:compileJava` + 行尾（CRLF/bareLF=0）+ `check_lang_sync`；新增类不含 lang 键，无需 `verify_sign_display_names`。
 8. **实机验收（需用户放行）**：注册/未注册对照、装备槽、收卡、星光、商店购买与刷新、立牌被动/主动、卡牌使用；断言全部锚机器行（`AP_PLAYER_LIKE*` / `AP_CHIP_SHOP_SERVICE`）。
 
-### 6.3 需要逐项改写的实现清单（P1 排序）
+### 6.3 需要逐项改写的实现清单（跨线排序；原 P1 批次）
 
 | 顺序 | 面 | 文件 | 改法 |
 |---|---|---|---|
@@ -172,10 +173,10 @@ PlayerLikeWallets.register(MAID_LIKE, e -> e instanceof EntityMaid, new PlayerLi
 | D | 筹码 | 33 个 `isEquipped(Player)` 家族 | 改调 `ChipEquip.isEquipped(LivingEntity, …)`；逐个核对加成是否依赖玩家属性面 |
 | E | 骰战 | `DiceCombatEvents` 内 20+ 处 `instanceof Player` | 按 §5.1 已知限制逐条放宽（卡牌成本、成对结算、筹码加成） |
 
-## 7. P1 同步清单（用户裁决 2026-11-08：P1 更新完成后，本批全部落点必须同步进 P1）
+## 7. 跨线同步清单（原 P1 批次；用户裁决 2026-11-08）
 
-> 口径：P0（`neoforge-1.21.1`）是唯一先行线；**P1 侧正在进行的重构完成后**，下列提交必须逐条落到
-> `forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1` / `fabric-1.21.1`，不得只在 P0 存在。
+> 历史口径（2026-11-08）：P0 基准 `neoforge-1.21.1` 是先行线；**原 P1 侧重构完成后**，下列提交必须逐条落到
+> `forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1` / `fabric-1.21.1`。2026-11-11 划级后 forge 与 26.1.2 属 P0，fabric 两线属 P1。
 
 | 提交 | 主题 | P1 落地要点 |
 |---|---|---|
@@ -187,8 +188,8 @@ PlayerLikeWallets.register(MAID_LIKE, e -> e instanceof EntityMaid, new PlayerLi
 | `842b17a8` | 女仆槽位数据 | fabric 线改写为 `data/trinkets/entities/*.json`；其余线直接复制 `curios/entities/player_like_maid.json` |
 | `83ac4ced` | 本文档 | 随代码一起进各线文档目录 |
 
-**同步完成判据**：四线各跑 `compileJava`；`grep -rn "class PlayerLikeWallet\|class ChipShopService"` 每线各 1 处；
-`docs/features/player-like-entities-api.md` 在四线都存在且 §7 改为「已同步」。
+**同步完成判据（历史）**：原四线各跑 `compileJava`；`grep -rn "class PlayerLikeWallet\|class ChipShopService"` 每线各 1 处；
+`docs/features/player-like-entities-api.md` 在原四线都存在且 §7 改为「已同步」。
 
 ### 7.1 落地进度（2026-11-08）
 
@@ -196,7 +197,8 @@ PlayerLikeWallets.register(MAID_LIKE, e -> e instanceof EntityMaid, new PlayerLi
 |---|---|---|
 | `neoforge-1.21.1`（P0） | 主体已落地 | `090a8c5f` / `a8a2fcf6` / `34d2d3a3` / `831ec4d8` / `03ab1b86` / `842b17a8` / `83ac4ced` 全在；G6 于 2026-11-08 落地（`e9a8856d` + `99fc9db1`） |
 | `forge-1.20.1` | 已落地（本批） | `051fc865` 类玩家面 + 目标选择放行、`f6499965` 商店折扣/服务、`0c9d86de` 立牌钩子实体级化、`55bdf174` 女仆槽位数据、`2f926f4c` 选卡器 1~3 张、`7f14ed50` 少主立牌 al（含资源/三语/手册） |
-| `neoforge-26.1.2` / `fabric-1.20.1` / `fabric-1.21.1` | 待 P1 重构后同步 | 仍按 §6.2 / §6.3 执行 |
+| `neoforge-26.1.2`（P0，2026-11-11 补齐） | 主体已落地 | `PlayerLikeTargets` / 立牌实体级钩子 / `PlayerLikeWallet` / `PlayerLikeWallets` / `ChipShopService` 均已落地；`ChipShopState` / `ChipShopRoller` / `ChipShopOpener` 已泛化到 `LivingEntity` |
+| `fabric-1.20.1` / `fabric-1.21.1`（P1） | 部分落地（2026-11-11） | `PlayerLikeTargets` / 立牌实体级钩子已同步；`PlayerLikeWallet` / `ChipShopService` 仍待同步 |
 
 `forge-1.20.1` 与 P0 的**有意差异**（不是遗漏，改写时保持）：
 
@@ -215,7 +217,7 @@ PlayerLikeWallets.register(MAID_LIKE, e -> e instanceof EntityMaid, new PlayerLi
 - G6 已落地（P0 `e9a8856d` + `99fc9db1`；forge `930b6ce9` + `c53798e2`）：`DiceCombatContext.attacker`
   与筹码/费用入口放宽到 `LivingEntity`，注册参与者吃攻击修饰器与战斗牌、按同口径扣耐久；
   玩家专属加成由 `playerOrNull` 守卫跳过。
-- P1 线 G6 已同步（2026-11-08）：`neoforge-26.1.2` `26a41640`、`fabric-1.21.1` `b0459993`、`fabric-1.20.1` `9e9dbdf9`，口径与 P0/forge 一致（`DiceCombatContext.attacker` → `LivingEntity`、筹码/费用入口放宽、注册参与者吃攻击修饰器与战斗牌、防御侧掷防御牌；玩家专属加成由 `playerOrNull` 守卫跳过）。fabric 两线仍**未做**类玩家能力面（`PlayerLikeTargets` 等只存在于 P0/forge）。
+- 原 P1 三线 G6 已同步（2026-11-08）：`neoforge-26.1.2` `26a41640`、`fabric-1.21.1` `b0459993`、`fabric-1.20.1` `9e9dbdf9`，口径与 P0/forge 一致（`DiceCombatContext.attacker` → `LivingEntity`、筹码/费用入口放宽、注册参与者吃攻击修饰器与战斗牌、防御侧掷防御牌；玩家专属加成由 `playerOrNull` 守卫跳过）。2026-11-11 起 26.1.2 归 P0；三线均已落地 `PlayerLikeTargets`（目标放行/发牌/立牌钩子）。26.1.2 的 `PlayerLikeWallet` / `ChipShopService` 已于 2026-11-11 补齐；fabric 两线仍缺，按 P1 记录。
 
 `forge-1.20.1` AL 落地的三处平台差异（与 P0 不同、已验证可编译）：
 
@@ -231,7 +233,7 @@ PlayerLikeWallets.register(MAID_LIKE, e -> e instanceof EntityMaid, new PlayerLi
 | ② | `BaseSignItem#activateForEntity` 默认 WARN+false，没有立牌实现 ⇒ 主动对类玩家恒失败 | `AlanaSignItem` 覆写：只施「铁处女」免疫（`AP_SIGN_ACTIVE_ENTITY`）；被动加成仍只对玩家，文档已写明「唯一支持者」 | `neoforge-1.21.1` / `forge-1.20.1` |
 | ③ | 卸骰不缩回（`tryRemoveChipBonus` 只认 Player）；购买交付失败仍扣款并推进计数 | 卸骰：非玩家走 `chip` 槽 + `setSlotCount(..., CHIP_NO_DICE_SLOTS, false)`（防御式收缩，不丢物品）；购买：失败先 `wallet.deposit` 退款、**不** `withPurchased`，日志 `delivery_failed … refunded=` | `neoforge-1.21.1` / `forge-1.20.1` |
 
-> P1 三线（`neoforge-26.1.2` / `fabric-1.20.1` / `fabric-1.21.1`）**本批不适用**：它们尚无类玩家能力层（`PlayerLikeWallet` / `ChipShopService` 不存在），反馈对象也只有 P0 两线的 TLMDice。
+> 原 P1 三线（`neoforge-26.1.2` / `fabric-1.20.1` / `fabric-1.21.1`）在本批不适用：它们尚无 `PlayerLikeWallet` / `ChipShopService`（`PlayerLikeTargets` 已有），反馈对象也只有 P0 基准两线的 TLMDice。**2026-11-11 划级后 26.1.2 归 P0 ⇒ 26.1.2 的 wallet/service 缺口升级为 P0 发布缺口；fabric 两线仍按 P1 记录。**
 
 ## 立牌 × 类玩家支持矩阵（2026-11-09 A）
 

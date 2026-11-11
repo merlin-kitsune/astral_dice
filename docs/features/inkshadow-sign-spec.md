@@ -1,7 +1,7 @@
 # 小猎手立牌（inkshadow）规格与实现记录
 
-> 本文是**语义冻结 + 实现记录**：P0 两线（`neoforge-1.21.1` / `forge-1.20.1`）2026-11-10 首版落地（用户 m02258 下达，明确「先做第一版供验收，显示效果由我自己定」）。
-> **五线已落地（2026-11-11）**：第二轮验收改版（门贴地、门面改末地传送门样式平铺地面且只在成对时渲染、站定 1.5 s 传送、每门 5 s 静默冷却、主人先离开 4 格、成对存活 3:00、被动状态指示器用立牌图标）先落 `neoforge-1.21.1`，同日同步 `forge-1.20.1`；P1 三线（`fabric-1.20.1` / `fabric-1.21.1` / `neoforge-26.1.2`）按同一语义移植并逐线实机（§6 / §7.1g）。中文 tooltip 由用户亲手改写并按用户版本落盘。
+> 本文是**语义冻结 + 实现记录**：P0 基准两线（`neoforge-1.21.1` / `forge-1.20.1`）2026-11-10 首版落地；26.1.2 自 2026-11-11 划级后归 P0（用户 m02258 下达，明确「先做第一版供验收，显示效果由我自己定」）。
+> **五线已落地（2026-11-11）**：第二轮验收改版（门贴地、门面改末地传送门样式平铺地面且只在成对时渲染、站定 1.5 s 传送、每门 5 s 静默冷却、主人先离开 4 格、成对存活 3:00、被动状态指示器用立牌图标）先落 `neoforge-1.21.1`，同日同步 `forge-1.20.1`；原 P1 三线（`fabric-1.20.1` / `fabric-1.21.1` / `neoforge-26.1.2`；26.1.2 现归 P0）按同一语义移植并逐线实机（§6 / §7.1g）。中文 tooltip 由用户亲手改写并按用户版本落盘。
 > **代码为真源**：本文任何数字若与代码不符，以代码为准并回改本文。§7 实机取证在验收轮次回填。
 > 需求正本：仓库根 `立牌计划表.txt`（小猎手段）+ 用户 m02258 的补充说明；`docs/features/sign-roadmap.md` §2.1 记录排期。
 
@@ -13,7 +13,7 @@
 | 英文名 | InkShadow Sign | `lang/en_us.json` |
 | 日文名 | スミカゲのスタンド | `lang/ja_jp.json` |
 | 英文页名 / 日文角色名 | `InkShadow` / `スミカゲ` | `tools/sign_display_names.json`（用户 m04852 给定） |
-| 门禁 `lines` | `neoforge-1.21.1` / `forge-1.20.1` | 同上（P1 三线未实装 ⇒ 不入门禁） |
+| 门禁 `lines` | `neoforge-1.21.1` / `forge-1.20.1` | 同上（26.1.2 自 2026-11-11 起归 P0，但门禁尚未纳入） |
 
 **命名已核实（2026-11-11，用户 m04852）**：官方英文名 `InkShadow`（紧凑写法，无空格）、日文角色名 `スミカゲ`。⇒ 立牌名 `InkShadow Sign` / `スミカゲのスタンド`；传送门实体名 `InkShadow Portal` / `スミカゲポータル`（原 `Ink Shadow Portal` / `インクシャドウポータル` 已改）。此前「wiki API 403 反爬、en/ja 暂推定」的说明作废。门禁 `tools/sign_display_names.json` 的 `en`/`ja` 与本表已同步。
 
@@ -92,7 +92,7 @@
 - 渲染顺序：模型已写深度，门面（`SURFACE_Y = 0.03`，高于模型所有薄片）走正常深度测试即可；**已删除**旧版 `endBatch() + disableDepthTest + depthMask(false)` 的状态 hack（在 Iris 延迟管线里会打乱通道顺序）。
 - **眼睛闪烁的根因与修法（第三轮）**：黄色眼睛只出现在 `InkShadow` 骨上；该骨的三块薄片里，中间大平板在 z=-6.6，两片侧翼在 z=-6.6153，只差 0.015 单位（1.6 缩放下约 0.15 mm）⇒ 与中间平板几乎共面，深度值逐帧翻转，眼睛就在「亮/灭」之间跳。修法：把两片侧翼后移到 z=-6.75（约 1.5 cm），眼睛所在的中间平板永远在前，闪烁消失。**注意**：曾试过给整个模型开背面剔除（`entityCutout`）——眼睛会直接消失（单侧 UV 被剔），该方向不可取。
 
-## §3 落点清单（P0 两线同构）
+## §3 落点清单（P0 基准两线同构；26.1.2 见跨线差异）
 
 | 类别 | 文件（相对各线 `src/main/`） |
 |---|---|
@@ -282,7 +282,7 @@ log `scripts/test/linux/logs/1.20.1-20261111-130421.log`（wrapper 402705 / game
 
 P0 双线首版：物品注册 / 起始门 `+0.25` 悬浮版 / 一次性 `visitedUuids` 穿越 / 2400 冷却 / 1.21.1 tooltip 全行（含「金鳞」式状态行由 viewer 决定的那类历史结论不适用于本牌）。**已被 §7.1 / §7.1e / §7.1f 取代**，保留作对照。
 
-### §7.1g P1 三线移植实机（2026-11-11 01:4x–02:0x，AutoJS 服务端探针；三线串行、每轮 stop 后端口清零）
+### §7.1g 原 P1 三线（现 26.1.2 归 P0）移植实机（2026-11-11 01:4x–02:0x，AutoJS 服务端探针；三线串行、每轮 stop 后端口清零）
 
 | 线 | 启动 | 读数 |
 |---|---|---|
@@ -308,4 +308,4 @@ P0 双线首版：物品注册 / 起始门 `+0.25` 悬浮版 / 一次性 `visite
    - **显示器休眠时截图全黑**：`mcp__computer-use-linux__screenshot`（窗口与整屏）返回的 `original_bytes` 恒定、画面纯黑（Xwayland 无 DPMS 扩展，`xset dpms force on` 报 `server does not have extension for dpms option`），视觉取证要等人醒着/屏幕点亮。
    - **NeoForge 1.21.1 的 early display 在会话锁屏时无法交接窗口**：`EARLYDISPLAY: Failed to initialize the mod loading system and display` + `We seem to be having trouble handing off the window, tried for 1 second`，客户端会卡在模态框等用户点击 ⇒ P0 的 1.21.1 实机在该状态下跑不起来（fabric 线不受影响，26.1.2 也不走 early display）。
    - **门「消失」的两个常见原因**（2026-11-11 实测）：①`WINDOW_TICKS = 600` 放置窗口到期 ⇒ 起始门 `remove reason=DISCARDED tick=600`，属设计行为（探针跨 30 s 才放终点门必然踩到）；②门所在区块卸载后实体从未 tick 过、不会写进区块存档 ⇒ 回来永久消失（已由「放置即 `setChunkForced` + 实体每 tick `forceOwnChunk()`」修复）。排查三连：`p.getForcedChunks().contains(ChunkPos.asLong(cx,cz))` 看常载、`level.hasChunk(cx,cz)` 看区块、扫 `saves/<world>/entities/*.mca` 看实体是否落档（zlib 块里搜 `inkshadow_portal`）。
-   - P1 三线实机命令同上，把 `--version` 换成 `fabric-1.20.1` / `fabric-1.21.1` / `26.1.2`；datagen 三线任务为 `:fabric-1.20.1:runDatagen :fabric-1.21.1:runDatagen :neoforge-26.1.2:runServerData :neoforge-26.1.2:runClientData`（同样先 park 五枚 `run/*/mods/astral_dice-*.jar`）。
+   - 原 P1 三线实机命令同上，把 `--version` 换成 `fabric-1.20.1` / `fabric-1.21.1` / `26.1.2`；datagen 三线任务为 `:fabric-1.20.1:runDatagen :fabric-1.21.1:runDatagen :neoforge-26.1.2:runServerData :neoforge-26.1.2:runClientData`（同样先 park 五枚 `run/*/mods/astral_dice-*.jar`）。

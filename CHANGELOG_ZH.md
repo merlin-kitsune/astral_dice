@@ -4,6 +4,31 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
+## 26.4-SNAPSHOT.13
+
+### 本线
+
+- 变更：版本号升至 `26.4-SNAPSHOT.13`（五线 `neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1` / `fabric-1.21.1`）；本轮为发布审计发现的两处 26.1.2 P0 行为缺口修复，以及三只特殊门禁扩到 P0 三线。
+- 修复（26.1.2 秘密侦探立牌）：主动 `apply` 补回「目标已带 `UNDERCOVER_INVESTIGATION` ⇒ 记录 `AP_UNDERCOVER_REJECT` 并 return」的服务端早退闸门，与 1.21.1 / 1.20.1 对齐，避免重复施加与二次返币。
+- 修复（26.1.2 会员推荐信）：`countHandCards` 原本把 `getNonEquipmentItems()` 统计两遍（主背包重复计数、副手从未计入），现改为主背包一次 + `Inventory.SLOT_OFFHAND` 副手一次；手牌 <5 的发牌门恢复正确口径。
+- 门禁（P0 三线）：`verify_misaki_balance.py` / `verify_bonnie_active_order.py` / `verify_member_recommendation_hand_gate.py` 的 `LINES` 加入 `neoforge-26.1.2`；misaki 兼容 26.1.2 生成配方的字符串 `key` 与 datagen 的 `items` 首参；member 兼容 `getNonEquipmentItems()` / `SLOT_OFFHAND`。26.1.2 无 Bountiful，misaki 的 B1 赏金池检查跳过。三只门禁 exit 0（35 / 18 / 21 项）。
+- 构建：五线 `.13` 一条命令 `:build` PASS（2026-11-12 01:04，32 executed / 12 up-to-date）；根 `build/libs` 五枚产物已更新。本轮只做编译 / 静态门禁验证，未实机。
+
+## 26.4-SNAPSHOT.12
+
+### 本线
+
+- 变更：版本号升至 `26.4-SNAPSHOT.12`（五线 `neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1` / `fabric-1.21.1`）；本轮为 P1 欠账实机收尾 + P0 发布审计补齐。
+- 修复（小猎手传送门回弹，工作树）：传送落地后新增 2.0 格「离开阈值」落地锁 —— 目标门在玩家真正走离门盘中心前不再累计站定，避免 5 秒冷却结束后原地被弹回；跨维度两门互指不再来回传送。五线同构；P0 1.21.1 实机验证同维度与跨维度均不弹回、走远后可再次使用。
+
+- 实机（P1 三线，2026-11-11）：`fabric-1.20.1`、`fabric-1.21.1`、`neoforge-26.1.2` 均完成小猎手传送门同维度传送、跨维度放置/穿越、落地锁（6.5s 不弹回）与走远 >2 格再回门解锁；三线均 PASS。
+
+- 文档 / 规则（2026-11-11 用户裁决重新划级）：P0 改为三线 `forge-1.20.1` / `neoforge-1.21.1` / `neoforge-26.1.2`，P1 改为两线 `fabric-1.20.1` / `fabric-1.21.1`；理由为 forge/neoforge 实现更接近、fabric 差异较大。同步更新 `docs/agent/AGENTS-full.md`、`AGENTS-dsh.md`、`AGENTS-dsh-linux.md`、`PROJECT-REFERENCE.md`、`tools/curseforge_upload.py` 的 P0 白名单，以及立牌 / 卡牌 / 伤害链 / 玩家类目标等当前规格与相关 Java 注释；历史批次记录保留原标签并加日期注记。本条只改文档 / 规则与注释，无产品代码改动，不额外 bump SNAPSHOT。
+
+- 补齐（26.1.2 类玩家商店，P0 发布审计）：新增 `compat/playerlike/PlayerLikeWallet.java`、`PlayerLikeWallets.java` 与 `shop/ChipShopService.java`；`ChipShopState` / `ChipShopRoller` / `ChipShopOpener` 的存取与候选/开门入口由 `Player` 泛化到 `LivingEntity`，非玩家走 `PlayerLikeTargets.giveItem` 交付、失败按钱包 `deposit` 退款。玩家菜单路径不变；`:neoforge-26.1.2:build` PASS（编译/构建验证，未实机）。
+- 补全（赏金池，neo21/forge）：`data/bountiful/bounty_pools/bountiful/astral_rews.json` 补 `al_sign`（EPIC）/ `inkshadow_sign`（RARE）/ `souri_sign`（LEGENDARY）/ `sykes_sign`（LEGENDARY），与 `ModItems` 的实际稀有度对齐；26.1.2 无 Bountiful，不参与。
+- 门禁（2026-11-11 发布审计）：`verify_chip_shop_ui.py` 支持 `Player`/`LivingEntity` 两种签名与 neo21 泛化开门形态；`verify_bountiful_pools.py` 将 26.1.2 移出 Bountiful 版本集；`verify_forge_loader_gate.py` 对齐已提交的 `forge_version=1.20.1-47.1.47` 与 `[47.1.47,48)`；`verify_content_library.py` 移除已删除的 `moses_ready` 效果假阳性。前三项 exit 0；content-library 仍有 9 条 1.2.0 冻结快照漂移，脚本自述为一次性验收项，未计入常规门禁。
+
 ## 26.4-SNAPSHOT.11
 
 ### 本线
@@ -39,6 +64,13 @@
 - 实机（`forge-1.20.1`，2026-11-11 13:0x，log `scripts/test/linux/logs/1.20.1-20261111-130421.log`）：跨区块放置（起始门在 (150002,-60,150002)、玩家 tp 到 5000 格外后再放终点门）⇒ `start=true end=true`、两门 `isActive()=true`，站定 4 s 由 (150002,-60,150002) 侧传到 (171002.5,-60,171002.5)；跨维度放置（主世界 ↔ 下界屋顶）⇒ `start=true end=true`，玩家不在下界时门实体仍在且 `forcedChunks=1`；双向穿越 主世界→下界 (300.5,128,300.5) → 落点 5 s 冷却后回主世界 (210002.5,-59.95,210002.5)。`neoforge-1.21.1` 那一轮因 NeoForge early display 无法交接窗口未能实机，其余四线只做到编译通过（后续补证见下条）。
 - 实机（补证，2026-11-11 13:29–13:56，四轮串行、每轮 `stop.sh` 后端口清零）：`neoforge-1.21.1`（log `scripts/test/linux/logs/1.21.1-20261111-132958.log`）跨维度放置与穿越双双成立 —— 主世界 (5002,-60,5002) 放起始门、下界 (302,128,302) 放终点门 ⇒ `end=true pending=false`、两门 ACTIVE，玩家站定 4 s 由下界落到主世界 (5002.5,-60.0,5002.5)；`neoforge-26.1.2`（log `scripts/test/linux/logs/26.1.2-20261111-135118.log`）主世界→下界放置 ⇒ `start=true end=true`，逐维实体扫描 overworld 3 门全 ACTIVE / the_nether 1 门 ACTIVE。**P1 三线视觉取证补齐**（此前因显示器休眠截图全黑）：fabric-1.20.1 / fabric-1.21.1 / 26.1.2 三条线的 ink128 门环 + 黄色眼睛 + 平铺紫色星盘门面均正常、严格贴地（window 8156118636023553 / 1415715373759046 / 6287081372416062）；探针口径差异记入 spec §7.1i（26.1.2 用 `p.level` 属性、`getForcedChunks()` 已改名、`getEntities()` 直接可迭代）。仍未实机：fabric 两线的跨维度放置行为（视觉已取证、逻辑同源）。
 - 文档 / 规则：`docs/features/inkshadow-sign-spec.md` 的 §2.3（区块常载）、§5（跨维度/跨区块放置已修复）、§7.1h（本轮实机读数）、§8（门「消失」的两个常见原因与排查三连）已回填；`docs/agent/AGENTS-dsh-linux.md` 新增「实机期间必须阻止 KDE 锁屏与睡眠」（用户 m05435 裁决：`systemd-inhibit` + `ScreenSaver.Inhibit` 开、`kill` + `UnInhibit` 关，漏关属环境残留）。
+- 修复（tooltip 染色审计，提交 2754d905）：仓库级 `scripts/audit/tooltip_color_audit.py` 原报 302 处违规，覆盖五线 × 三语（41 组 key、15 个 lang 文件；R3 120 / R1 106 / R2 72 / R1b 4）。全部按行级改写清零，保留各文件原有字节布局（不使用 `json.dump`），审计现已 PASS。
+- 修复（立牌命名门禁，提交 545978e6 + b0bc56ed）：五线现在全部跟随 `tools/sign_display_names.json` 的 wiki 角色名（36 条，2026-11-11 更新）。门禁已覆盖 `neoforge-26.1.2`，并新增对未知 `<name> Sign` / `<name>のスタンド` 形式的结构性检查，不再只依赖旧职称黑名单；26.1.2 的 46 处旧职称与五线其余散文指代已改写。`python tools/verify_sign_display_names.py` => GATE: PASS，164,786 项检查。本项取代上方 `souri` / `al` 移植条目里「P1 三线无 activateForEntity」的旧口径。
+- 新增（P1 立牌主动入口，提交 6498dfa6）：`fabric-1.20.1`、`fabric-1.21.1`、`neoforge-26.1.2` 补齐 `SignEntitySkills` / `BaseSignItem.activateForEntity(LivingEntity)` 基建与 35 个立牌覆写，与 P0 契约对齐。Jasmine 与 Misaki 为真实实体级实现；其余返回机器可读的 `AP_SIGN_ACTIVE_ENTITY_DENIED: sign=...:reason=...` 拒绝原因。
+- 修复（P0 InkShadow，提交 d8eb37d6）：P0 两线补齐 `inkshadow` 的 `activateForEntity` 覆写，以 `needs_player_session` 拒绝（暗影之门依赖 `ServerPlayer` 会话）；P0 覆写覆盖现为 36/36。
+- 修复（P1 实体级击杀/受击 + Misaki，工作树）：三条 P1 线的 `BaseSignItem` 新增 `onKillEntity` / `onHurtEntity` 与 `invokeKillHooks(LivingEntity, LivingEntity)` / `invokeHurtHooks(LivingEntity, DamageSource, float)`；受击路径沿用 P0 的敌对闸门（玩家走 `isHostileAttack`，非玩家要求攻击者是存活且非自身的 `LivingEntity`）。三条 P1 线的 `MisakiSignItem` 改为通过 `PlayerLikeTargets.giveItem(owner, ...)` 交付名刀卡，不再掉落实体物品，与 P0 同口径。五线 `:build` 通过。
+- 构建（2026-11-11）：五线 `.11` jar 已按当前树重建；`pushToRootBuild` 更新 `build/libs`，`pushToDevRun` 更新 `run/<line>/mods`。`pushToGame` 因 `multi-dev-next` 不在 `[multi-main]` 白名单继续 skipped；未写整合包。
+
 ## 26.4-SNAPSHOT.10
 
 ### 本线

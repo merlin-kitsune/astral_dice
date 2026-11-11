@@ -1,6 +1,6 @@
 # 怪力乱神立牌（Lingling Sign）实现规格
 
-> 状态：设计已裁决并已实现（2026-10-18）。P0 两线：`neoforge-1.21.1`（已交付）+ `forge-1.20.1`（已移植完成，无遗留待办）。
+> 状态：设计已裁决并已实现（2026-10-18）。P0 基准两线：`neoforge-1.21.1`（已交付）+ `forge-1.20.1`（已移植完成，无遗留待办）。2026-11-11 划级后 `neoforge-26.1.2` 归 P0；该线 `LinglingSignItem` / `LinglingSignManager` 已落地，但本文原始验收只覆盖原两线，26.1.2 的完整验收属 P0 待补。
 > 需求来源：用户 2026-10-18 11:13 指令（逐字见 §1）。取证依据：`temp/recon_report.txt`（旧会话只读取证报告）。
 
 ## 1. 用户需求（逐字）
@@ -134,7 +134,7 @@ bash scripts/verify/verify_event_registry.py
 ```
 外加 `./gradlew :neoforge-1.21.1:classes`（及 forge 线）编译通过；`verify_effect_icons.py` 各线通过。
 
-> 状态（2026-10-18）：`forge-1.20.1` 移植完成 —— `lingling_surge` 已落地（效果数 1.20.1 = 61，两 P0 线 id 集合一致）。守门实测（本机）：`verify_resource_integrity.py` PASS、`check_lang_sync.py` OK、`verify_effect_icons.py` PASS（forge 61/61）、`verify_rarity_consistency.py` PASS、`audit_patchouli_keys.py` 悬空 0、`verify_crafting_recipe_uniqueness.py` collisions=0、`verify_event_registry.py` OK。两项**既有**偏差与本立牌无关、不在本批范围（均已实测对照 HEAD 基线）：① `verify_bountiful_pools.py` 6 项致命偏差（HEAD 基线 7 项，本批消灭了 2 条 lingling 相关项）—— 余项全部来自 1.20.1 独有的 `card_shop`/`chip_shop`/`event_drawer` 与 P1 线 26.1.2 尚未移植的 10 个条目（含 `ame_sign`/`kangel_sign`）；P0 两线的 `astral_rews.json` 已逐字节一致（md5 `c86d449c…`）。② `audit/tooltip_color_audit.py` 64 处违规（HEAD 基线同为 64，且无一条命中 lingling 键）。**本规格无「forge 待移植」遗留待办**。
+> 状态（2026-10-18）：`forge-1.20.1` 移植完成 —— `lingling_surge` 已落地（效果数 1.20.1 = 61，两 P0 线 id 集合一致）。守门实测（本机）：`verify_resource_integrity.py` PASS、`check_lang_sync.py` OK、`verify_effect_icons.py` PASS（forge 61/61）、`verify_rarity_consistency.py` PASS、`audit_patchouli_keys.py` 悬空 0、`verify_crafting_recipe_uniqueness.py` collisions=0、`verify_event_registry.py` OK。两项**既有**偏差与本立牌无关、不在本批范围（均已实测对照 HEAD 基线）：① `verify_bountiful_pools.py` 6 项致命偏差（HEAD 基线 7 项，本批消灭了 2 条 lingling 相关项）—— 余项全部来自 1.20.1 独有的 `card_shop`/`chip_shop`/`event_drawer` 与 26.1.2（现 P0）尚未移植的 10 个条目（含 `ame_sign`/`kangel_sign`）；P0 基准两线（neo21/forge）的 `astral_rews.json` 已逐字节一致（md5 `c86d449c…`），26.1.2 的缺口按 P0 补。② `audit/tooltip_color_audit.py` 64 处违规（HEAD 基线同为 64，且无一条命中 lingling 键）。**本规格无「forge 待移植」遗留待办**。
 
 ## 9. 不做 / 待用户
 

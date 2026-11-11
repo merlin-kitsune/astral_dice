@@ -81,6 +81,14 @@ public class InkShadowSignItem extends BaseSignItem {
      */
     public static final double STAND_RADIUS = 0.55D;
 
+    /**
+     * 传送落地后必须离开门盘中心的水平距离（格）。
+     *
+     * <p>2026-11-11 用户反馈：到点后停在原地，5s 冷却一过就会被站定判定再次传回去；
+     * 跨维度时两扇门互指会来回弹。落地锁必须靠「真的走开」解除，不能只靠时间冷却。
+     */
+    public static final double PORTAL_EXIT_RADIUS = 2.0D;
+
     /** 移速修饰符的固定 key（重复 apply 只改数值，不叠出多个修饰符） */
     public static final String SPEED_MODIFIER_KEY = "inkshadow_place_speed";
 

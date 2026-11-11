@@ -40,7 +40,7 @@ import java.util.UUID;
  * 「魔渊触须」（{@code astral_dice:sykestentacle}）：魔渊幼体立牌（sykes）主动技能「魔域转化」放下的召唤物。
  *
  * <p><b>它是什么</b>：{@code extends LivingEntity} 但不带 Mob AI —— 位置、仇恨、攻击、寿命全部由本类自己驱动，
- * 行为规格（用户 2026-11-06 裁决，P0 两线已实机验证，本线逐条等价移植）：
+ * 行为规格（用户 2026-11-06 裁决，原 P0 两线已实机验证，本线逐条等价移植；2026-11-11 起本线归 P0）：
  * <ul>
  *   <li><b>魔渊区域</b> = 以触须所在格中心为原点、x/z 各 ±{@link #ZONE_HALF} 格的 <b>5×5 地表</b>（含四角）；</li>
  *   <li>每 {@link #ATTACK_INTERVAL_TICKS} tick 抽打一次区域内的<b>全部</b>敌对目标：

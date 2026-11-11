@@ -1038,10 +1038,10 @@ def report_abort(steps, slug, uploaded, info_attempted, old_info):
 
 # ---------------------------------------------------------------- 上传计划（push / 旧式共用）
 # ⛔ 2026-10-25 用户裁决（强制，优先级高于本文件其余说明）
-# 默认只上传 P0 两线 = `neoforge-1.21.1` + `forge-1.20.1` 的产物；P1 两线
-# （`neoforge-26.1.2` + `fabric-1.20.1`）从未获授权移植，其编译产物一律视为不可用。
+# 默认只上传 P0 三线 = `neoforge-1.21.1` + `forge-1.20.1` + `neoforge-26.1.2` 的产物；
+# P1 两线（`fabric-1.20.1` + `fabric-1.21.1`）按用户逐次裁决验收，其编译产物默认视为不可用。
 # 仅在用户当次点名要求发布 P1 时才允许 `--allow-p1` 放行（逐次都要显式给）。
-P0_UPLOAD_LINES = {("neoforge", "1.21.1"), ("forge", "1.20.1")}
+P0_UPLOAD_LINES = {("neoforge", "1.21.1"), ("forge", "1.20.1"), ("neoforge", "26.1.2")}
 
 
 def guard_p0_only(loader, mc, jar, allow_p1):
@@ -1054,8 +1054,8 @@ def guard_p0_only(loader, mc, jar, allow_p1):
         return
     raise SystemExit(
         f"[BLOCKED] {jar.name} 属于 P1 线（{loader} / MC {mc}），按 2026-10-25 用户裁决默认禁止上传：\n"
-        "          P1 两线（neoforge-26.1.2 / fabric-1.20.1）从未获授权移植，其编译产物一律视为不可用。\n"
-        "          允许上传的只有 P0 两线：neoforge-1.21.1 与 forge-1.20.1。\n"
+        "          P1 两线（fabric-1.20.1 / fabric-1.21.1）默认未经用户逐次验收，其编译产物视为不可用。\n"
+        "          允许上传的只有 P0 三线：neoforge-1.21.1、forge-1.20.1 与 neoforge-26.1.2。\n"
         "          若本次任务确由用户点名要求发布 P1，请显式加 --allow-p1。")
 
 def build_jobs(args, binding, cat, offline):

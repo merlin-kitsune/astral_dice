@@ -7,7 +7,7 @@ r"""verify_forge_loader_gate —— 1.20.1「加载器版本门槛 + Mixin Boost
 ④ 不用 mt 退出码常量（退出码 = 本脚本自定）。
 
 判据（S1..S6）
-  S1 区间来源链：forge-1.20.1/gradle.properties 的 forge_version（期望 1.20.1-47.4.10）
+  S1 区间来源链：forge-1.20.1/gradle.properties 的 forge_version（期望 1.20.1-47.1.47；2026-11-05 用户裁决降至 47.1 线末版）
      → 派生 loaderVersion=[<major>,<major+1)> 与 forge 依赖区间 [<semver>,<major+1)>；
      模板 / 生成资源 / 构建产物 jar 内 META-INF/mods.toml 三段取回并要求与派生值一致。
      模板经 Groovy SimpleTemplateEngine 展开，其中是美元花括号占位 ⇒ 模板段的区间取不到字面值
@@ -23,7 +23,8 @@ r"""verify_forge_loader_gate —— 1.20.1「加载器版本门槛 + Mixin Boost
   S4/S5 离线判定器：用同一个 maven-artifact jar（classpath 加 commons-lang3）编译并运行
      LoaderGateProbe，逐字复刻 ModSorter#modVersionNotContained + VersionSupportMatrix
      （含 mod.forge → 47.1.79 别名覆盖项）：旧区间 [47,) 接纳低版本 ⇒ bug_repro=1（修复前 BUG 反证）；
-     新区间拒绝 47.0.0/47.4.9、接纳 47.4.10/47.4.11/47.5.0、拒绝 48.0.0；loaderVersion=[47,48)
+     新区间用直接 contains 判定：拒绝 47.0.0/47.1.46、接纳 47.1.47/47.2.0/47.4.10/47.5.0、拒绝 48.0.0；
+     别名 47.1.79 落在新区间内（FML 别名回退会掩盖下限，单独记录，不参与 gate_ok）；loaderVersion=[47,48)
      接纳 javafml 47、拒绝 48；Mixin Booster 区间 [0.1.3,) 对真实版本 accept。
   S6 聚合：任一判据不成立 ⇒ 非零退出；各失败项以 LG_FAIL:<key> 逐条打印。
 
@@ -63,9 +64,9 @@ EXIT_OK = 0
 EXIT_DEVIATION = 1
 EXIT_UNDECIDABLE = 2
 
-EXPECT_FORGE_VERSION = "1.20.1-47.4.10"
+EXPECT_FORGE_VERSION = "1.20.1-47.1.47"
 EXPECT_OLD_RANGE = "[47,)"
-EXPECT_NEW_RANGE = "[47.4.10,48)"
+EXPECT_NEW_RANGE = "[47.1.47,48)"
 EXPECT_LOADER_RANGE = "[47,48)"
 EXPECT_MB_RANGE = "[0.1.3,)"
 # 2026-09-29（BMC4 玩家实测定位）：mixinbooster 由 mandatory 改为 optional。
@@ -268,7 +269,7 @@ public class LoaderGateProbe {
     }
 
     private static String v(VersionRange r, String ver) {
-        return fmlAcceptsForge(r, ver) ? "accept" : "reject";
+        return contains(r, ver) ? "accept" : "reject";
     }
 
     /**
@@ -282,7 +283,7 @@ public class LoaderGateProbe {
 
     public static void main(String[] args) throws Exception {
         String oldSpec = args.length > 0 ? args[0] : "[47,)";
-        String newSpec = args.length > 1 ? args[1] : "[47.4.10,48)";
+        String newSpec = args.length > 1 ? args[1] : "[47.1.47,48)";
         String loaderSpec = args.length > 2 ? args[2] : "[47,48)";
         VersionRange oldRange = VersionRange.createFromVersionSpec(oldSpec);
         VersionRange newRange = VersionRange.createFromVersionSpec(newSpec);
@@ -295,22 +296,24 @@ public class LoaderGateProbe {
                 + ":v47.4.10=" + v(oldRange, "47.4.10")
                 + ":bug_repro=" + (bug ? 1 : 0));
 
-        // 新区间（修复后）——拒绝 47.0.0 / 47.4.9，接纳 47.4.10+
-        boolean fixed = !fmlAcceptsForge(newRange, "47.0.0")
-                && !fmlAcceptsForge(newRange, "47.4.9")
-                && fmlAcceptsForge(newRange, "47.4.10")
-                && fmlAcceptsForge(newRange, "47.4.11")
-                && fmlAcceptsForge(newRange, "47.5.0")
-                && !fmlAcceptsForge(newRange, "48.0.0");
+        // 新区间（修复后）——用直接 contains 判定下限：拒绝 47.0.0 / 47.1.46，接纳 47.1.47+
+        boolean fixed = !contains(newRange, "47.0.0")
+                && !contains(newRange, "47.1.46")
+                && contains(newRange, "47.1.47")
+                && contains(newRange, "47.2.0")
+                && contains(newRange, "47.4.10")
+                && contains(newRange, "47.5.0")
+                && !contains(newRange, "48.0.0");
         System.out.println("AP_LG_NEW:range=" + newSpec + ":v47.0.0=" + v(newRange, "47.0.0")
-                + ":v47.4.9=" + v(newRange, "47.4.9")
+                + ":v47.1.46=" + v(newRange, "47.1.46")
+                + ":v47.1.47=" + v(newRange, "47.1.47")
+                + ":v47.2.0=" + v(newRange, "47.2.0")
                 + ":v47.4.10=" + v(newRange, "47.4.10")
-                + ":v47.4.11=" + v(newRange, "47.4.11")
                 + ":v47.5.0=" + v(newRange, "47.5.0")
                 + ":v48.0.0=" + v(newRange, "48.0.0")
                 + ":gate_ok=" + (fixed ? 1 : 0));
 
-        // 别名覆盖项本身的自证：它不会把 47.4.9 抬进新区间
+        // 别名覆盖项本身的自证：47.1.79 落在新区间内，FML 别名回退会掩盖下限（单独记录，不参与 gate_ok）
         System.out.println("AP_LG_ALIAS:alias=mod.forge@" + FORGE_ALIAS
                 + ":new_range_contains_alias=" + (contains(newRange, FORGE_ALIAS) ? 1 : 0)
                 + ":old_range_contains_alias=" + (contains(oldRange, FORGE_ALIAS) ? 1 : 0));

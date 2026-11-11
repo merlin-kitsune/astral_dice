@@ -3,7 +3,7 @@
 > 本文是**实现记录 + 语义冻结**，不是前置设计稿：先有 2026-11-09 的代码与用户裁决，2026-11-10 补本文。
 > **代码为真源**：本文任何数字若与代码不符，以代码为准，并回改本文。
 > 基准：`multi-dev-next` @ `3a6df49c`；实机取证 2026-11-10（neoforge-1.21.1 + forge-1.20.1）。
-> 落地线：**五线已全部移植且实机通过**（P0 `neoforge-1.21.1` / `forge-1.20.1` 逐文件同构；P1 `fabric-1.20.1` / `fabric-1.21.1` / `neoforge-26.1.2` 于 2026-11-10 移植、编译、datagen 跑通，并当日实机冒烟通过——见 §6 / §6.1 / §7）。
+> 落地线：**五线已全部移植且实机通过**（P0 `neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2`（26.1.2 自 2026-11-11 划级后归 P0）；P1 `fabric-1.20.1` / `fabric-1.21.1`。原 P1 三线于 2026-11-10 移植、编译、datagen 跑通，并当日实机冒烟通过——见 §6 / §6.1 / §7）。
 
 ## §0 定名与命名门禁
 
@@ -85,7 +85,7 @@
 
 ## §3 落点清单
 
-Java（P0 两线各 7 个，逐文件同构）：
+Java（P0 基准两线各 7 个，逐文件同构；26.1.2 同源）：
 
 - `item/ModItems.java`（注册）、`item/sign/SouriSignItem.java`、`item/sign/SouriSignManager.java`
 - `entity/SouriDrinkEntity.java` + 其客户端渲染/模型（`client/` 下 souri 相关 2 个文件）
@@ -124,9 +124,9 @@ tooltip 结构（自上而下）：名称／栏位／按键提示／主动段／
 | fabric-1.21.1 | 9 | 11 | 23 | ✅ | ✅ 实机通过（§7，21.4s；测试台支持本批新加） |
 | neoforge-26.1.2 | 9 | 15（含 GeckoLib 5 新资源根 `geckolib/models|animations`） | 23 | ✅ | ✅ 实机通过（§7，14.1s）；datagen 跑通（§6.1） |
 
-**P1 三线的语义差异（2026-11-10 移植，逐条经源码实读）**：
+**原 P1 三线的语义差异（2026-11-10 移植；2026-11-11 起 26.1.2 归 P0、fabric 两线仍 P1，逐条经源码实读）**：
 
-1. `activateForEntity(LivingEntity)` 未移植 —— 两条 fabric 线的 `BaseSignItem` 无该钩子，26.1.2 线无 `SignEntitySkills` 分发；缺口仅限「非玩家持牌生物主动施放」，玩家路径完全等价。
+1. `BaseSignItem#activateForEntity(LivingEntity)` 已在原 P1 三线落地（2026-11-11）；`SouriSignItem` 未覆写该入口 ⇒ 缺口仅限「非玩家持牌生物主动施放」，玩家路径完全等价。
 2. fabric-1.20.1 不移植 forge 残留键 `souri_awakening`：死亡保留 9 槽、金鳞在 index 8（forge 线为 index 8/9 两套并存）。
 3. fabric-1.21.1：钩子改 `onCurioTick`/`clearSignData`，动作栏走 `ModNetwork.ActionBarMessage`，效果走 `Effects.holder` 桥接，反击按层扣减且穿金鲤时 `RenShieldManager` 保留层数 + `refreshCounterEffect`；新增 `MamushiSignItem.addAwakening`。
 4. neoforge-26.1.2：`MamushiSignItem.addAwakening` 由 `private` 放宽为 `public static`；GeckoLib 5 的 `GeoEntityRenderer<T,R>` 与 `RenderPassInfo<R extends GeoRenderState>` 边界不一致，渲染器签名用原始类型绕过（1 条 unchecked）；实体存档改 `ValueInput/ValueOutput`、`hurt` 已 final ⇒ 覆写 `hurtServer` 恒 false。
@@ -136,7 +136,7 @@ tooltip 结构（自上而下）：名称／栏位／按键提示／主动段／
 
 1. `SouriSignItem.java:21`（forge `:20`）Javadoc 仍写「随后自身 +1 层【觉醒】、+1 层【反击】」——实际是 `addGoldScale`（金鳞）；同段「配方待定」也已过期（配方已生成）。
 2. `SouriSignManager.java:201` 残留 `setSouriAwakening(player, 0)`（见 §2.6）。
-3. P1 三线已移植、编译通过、datagen 跑通并幂等、实机通过（见 §6.1 / §7）；命名门禁 `tools/verify_sign_display_names.py` 的 `LINES` 仍只覆盖四线，26.1.2 尚未纳入。
+3. 原 P1 三线已移植、编译通过、datagen 跑通并幂等、实机通过（见 §6.1 / §7）；2026-11-11 起 26.1.2 归 P0。命名门禁 `tools/verify_sign_display_names.py` 的 `LINES` 已覆盖五线（`neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1` / `fabric-1.21.1`，2026-11-11 复核），P0 三线均在门禁内。
 
 ## §6.1 datagen 实跑与修复（2026-11-10）
 
@@ -159,7 +159,7 @@ export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
 
 **手抄 JSON 的真实漂移（以 datagen 为真值）**：souri 的 recipe/model 只差 key 顺序与结尾换行；advancement 判据键由手抄的 `has_star_coin_dust` 变为 provider 产出的 `has_blank_chip`（`astral_dice:blank_chip`），1.20.1 格式另有 `sends_telemetry_event: false` 与 `items` 数组化；26.1.2 另补出原本缺失的 `advancement/recipes/misc/sykes_sign.json`。**generated JSON 由 Gson 写出、无尾换行**，手抄文件带尾换行 ⇒ 一律以 datagen 输出为准。
 
-⚠️ 跨线债务：`abyss_tentacle_collision` 的 blockstate/model 目前仍**只有 26.1.2** 有（P0 两线 + fabric 两线都没有）⇒ 魔渊触须占位方块在这些线渲染为缺失模型。是否五线统一补，待裁决。
+⚠️ 跨线债务：`abyss_tentacle_collision` 的 blockstate/model 目前仍**只有 26.1.2（现 P0）** 有；P0 基准线 neo21/forge 与 P1 fabric 两线都没有 ⇒ 魔渊触须占位方块在这四线渲染为缺失模型。26.1.2 已满足；其余四线是否统一补，待裁决。
 
 ## §7 实机取证（2026-11-10）
 

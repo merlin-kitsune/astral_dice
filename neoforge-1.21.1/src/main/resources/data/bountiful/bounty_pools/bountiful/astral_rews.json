@@ -1250,6 +1250,46 @@
 			},
 			"unitWorth": 1600
 		},
+		"al_sign": {
+			"type": "item",
+			"rarity": "EPIC",
+			"content": "astral_dice:al_sign",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 7500
+		},
+		"inkshadow_sign": {
+			"type": "item",
+			"rarity": "RARE",
+			"content": "astral_dice:inkshadow_sign",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 1600
+		},
+		"souri_sign": {
+			"type": "item",
+			"rarity": "LEGENDARY",
+			"content": "astral_dice:souri_sign",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 10000
+		},
+		"sykes_sign": {
+			"type": "item",
+			"rarity": "LEGENDARY",
+			"content": "astral_dice:sykes_sign",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 10000
+		},
 		"flashlight_burst_chip": {
 			"type": "item",
 			"rarity": "LEGENDARY",

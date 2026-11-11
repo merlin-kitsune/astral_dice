@@ -119,7 +119,7 @@ public class DiceCurioItem extends Item implements ICurioItem {
             refreshChipSlotCount(player);
             return;
         }
-        // P1 三线暂无 PlayerLikeTargets 能力面(仅 P0 两线有),这里只认骰战参与者注册面。
+        // 本线已有 PlayerLikeTargets 能力面(2026-11-11 复核);这里仍只认骰战参与者注册面。
         if (!com.merlinkitsune.astral_dice.combat.DiceCombatParticipants.isParticipant(holder)) return;
         CuriosApi.getCuriosInventory(holder).ifPresent(inventory -> {
             ItemStack dice = inventory.getStacksHandler("dice")

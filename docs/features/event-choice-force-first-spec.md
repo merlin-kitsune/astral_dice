@@ -1,7 +1,7 @@
 # 事件二选一界面：退出即强制触发首个事件 + 事件叠加口径统一
 
 > 状态：设计已定稿、待开工（2026-10-29，用户 m00076 裁决「按 A 执行，B 登记为备选；A 若出现明显漏洞则改 B」）
-> 适用范围：P0 双线 `neoforge-1.21.1`（基准）/ `forge-1.20.1`（移植）。P1 两线（`neoforge-26.1.2` / `fabric-1.20.1`）冻结期间不动。
+> 适用范围：P0 三线 `neoforge-1.21.1`（基准）/ `forge-1.20.1`（移植）/ `neoforge-26.1.2`（2026-11-11 划级后归 P0）。P1 两线（`fabric-1.20.1` / `fabric-1.21.1`）冻结期间不动；本设计尚未开工，26.1.2 的落地状态待开工时核对。
 > 关联：`docs/specs/event-system-rewrite.md`（事件体系口径）、`docs/features/card-choice-screen-spec.md`（Menu 路线先例）
 
 ## 0 一句话
@@ -82,7 +82,7 @@
 
 ### 4.3 为什么复用 Cancel 包而不是新增包
 
-客户端到服务端只需要表达「没选就退出了」这一件事，现有 `EventChoiceCancelPayload` 的语义位正好空出来；复用可省掉两线的包注册与 5 个包的一致性回归。包类名保留（改名会扩大 diff），在其 Javadoc 注明新语义「退出即强制结算首个事件」。
+客户端到服务端只需要表达「没选就退出了」这一件事，现有 `EventChoiceCancelPayload` 的语义位正好空出来；复用可省掉原两线的包注册与 5 个包的一致性回归。包类名保留（改名会扩大 diff），在其 Javadoc 注明新语义「退出即强制结算首个事件」。
 
 ### 4.4 叠加：revert-at-start（等价于 ①②合流）
 
@@ -123,7 +123,7 @@ if (hooks != null) {
 静态：
 
 1. `.\gradlew.bat :neoforge-1.21.1:classes` 与 `:neoforge-1.21.1:jar` 通过（forge 线移植后同）。
-2. `grep -c "shouldCloseOnEsc" ` 在两线 `EventChoiceScreen` 均为 1 处且返回 false；`keyPressed` 覆写存在。
+2. `grep -c "shouldCloseOnEsc" ` 在原两线 `EventChoiceScreen` 均为 1 处且返回 false；`keyPressed` 覆写存在。
 3. 三语 lang 三键齐备、`git ls-files --eol` 无 CRLF 混入。
 4. `EventTimerStore.start` 头部回放块存在且不在 `onExpire != null` 内。
 5. `python scripts/verify/verify_event_timer_stack.py` 四条断言全 PASS —— 其中断言 04 补掉假绿空间：派发器里无回调的 `EventTimerStore.start(...)` 行号必须**小于** `effect().apply(` 行号（回放不会撤掉新写入的状态，全靠这个先后顺序）。
@@ -141,7 +141,7 @@ if (hooks != null) {
 
 - **不做** Menu/Container 化改造（方案 B）。B 的价值是服务端天然权威（客户端崩溃也能在容器移除时立即结算），代价是注册 `MenuType`、重写开屏与发卡链路、Screen 改由 menu 驱动；卡牌选卡线 `docs/features/card-choice-screen-spec.md:101-105` 已有可照抄的成熟实现，真需要时可照该先例做。**后续若 A 暴露明显漏洞（例如客户端被强制杀进程后首个事件不结算而玩家又能重开界面刷掉），直接改 B**，不在 A 上继续打补丁。
 - **不做**事件层数 / amplifier 累加（D4）。
-- **不做** P1 两线同步（冻结期，正式版后再议）。
+- **不做** P1 两线（fabric）同步（冻结期，正式版后再议）；26.1.2 自 2026-11-11 起归 P0，开工时纳入 P0 三线范围。
 - **不改** `GlobalEventGate` 的 ACTIVE_SKILL 豁免口径（2026-10-29 D1 裁决）。
 - **不修** `EventTimerStore.clear` 与 `ON_EXPIRE` 的语义不对称、登出清理缺失（无调用方，登记为已知边界）。
 

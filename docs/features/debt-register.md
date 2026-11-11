@@ -22,12 +22,13 @@
 
 | ID | 级别 | 欠账 | 现状 | 下一步 |
 |---|---|---|---|---|
-| D6 | P1 | P1 三线的 G6「注册参与者」端到端在本仓不可达：`run/mods` 里没有参与者提供方（TLMDice 只构建 forge-1.20.1 / neoforge-1.21.1） | 已做：静态同形 + 五线编译 + 玩家路径回归（fabric-1.21.1 三条用例 PASS、fabric-1.20.1 三条 OK、26.1.2 启动正常） | 等 TLMDice 出 P1 构建后补端到端；或在上游加一个不依赖第三方模组的测试参与者注册器（仅 dev） |
-| D7 | P1 | `neoforge-26.1.2` 战斗类用例资产未接线：`DEF-CARD` / `MAMUSHI-COMBAT` / `HOSTILE-TARGETS` 全 `hit=False`，日志无 `AP_D0_/AP_CB_/AP_H1_` 探针行 | 不是崩溃，是同名用例在这条线上缺探针脚本 | 按 `scripts/test/resources/kubejs/26.1.2/` 补三份探针或以「该线不做这三例」显式登记 |
-| D8 | P2 | P1 守卫颗粒度未逐行同形：`26.1.2` 13 处、`fabric-1.20.1` 10 处仍是「整段 lambda 提前返回」，P0 是逐调用点 | 数值口径与 P0 一致（都是玩家专属账户/背包 API 跳过），但结构不同 | 下一轮把这些块拆到语句级；改动需重跑五线编译与实机回归 |
+| D6 | P0 | `neoforge-26.1.2`（2026-11-11 起 P0）的 G6「注册参与者」端到端在本仓不可达：`run/mods` 里没有参与者提供方（TLMDice 只构建 forge-1.20.1 / neoforge-1.21.1）；fabric 两线的同类缺口仍按 P1 | 已做：静态同形 + 五线编译 + 玩家路径回归（fabric-1.21.1 三条用例 PASS、fabric-1.20.1 三条 OK、26.1.2 启动正常） | 等 TLMDice 出 26.1.2 构建后补端到端；或加 dev 测试参与者注册器 |
+| D7 | P0 | `neoforge-26.1.2` 战斗类用例资产未接线：`DEF-CARD` / `MAMUSHI-COMBAT` / `HOSTILE-TARGETS` 全 `hit=False`，日志无 `AP_D0_/AP_CB_/AP_H1_` 探针行 | 不是崩溃，是该线缺探针脚本；2026-11-11 起 26.1.2 归 P0 ⇒ 按 P0 发布阻塞处理 | 按 `scripts/test/resources/kubejs/26.1.2/` 补三份探针或以「该线不做这三例」显式登记 |
+| D8 | P2（26.1.2 现 P0 线） | 守卫颗粒度未逐行同形：`26.1.2` 13 处、`fabric-1.20.1` 10 处仍是「整段 lambda 提前返回」，P0 基准两线是逐调用点 | 数值口径与基准一致（都是玩家专属账户/背包 API 跳过），但结构不同；26.1.2 的该差异按 P0 线质量欠账跟踪 | 下一轮把这些块拆到语句级；改动需重跑五线编译与实机回归 |
 | D9 | P2 | `fabric-*` 的七咒（第一诅咒 -50%）整链未移植：`enigmaticlegacyplus` 无 fabric 构建 | 已按用户裁决「不移植」，并在卡片 javadoc 与 CHANGELOG 写明 | 保持不移植；若将来有 fabric 构建再评估 |
 | D10 | P2 | 生成物 `sykes_sign` 配方/模型：datagen 已不再产出，仓库里仍保留（靠 `git checkout` 维持） | 属既有欠账，非本周期引入 | 发布前定夺：删除并加迁移说明，或恢复生成源码 |
 | D11 | P2 | forge dev 环境必须用「重映射件」：rhino / collective / superflat 的生产件（SRG refmap）在 Mojmap dev 必崩 | 已在 `run/1.20.1/mods` 用 MDG/FG 转换缓存件跑通（`rhino-dev.jar`、`collective-dev.jar`、`superflat-dev.jar`） | 把这些件纳入测试台自举（存在性 + sha256 + 缺失时明确报错），见 TLMDice 侧 prompt |
+| D12 | P0 | `neoforge-26.1.2` 缺 `PlayerLikeWallet` / `ChipShopService`（`PlayerLikeTargets` 已有）；这两个类型只在 `neoforge-1.21.1` / `forge-1.20.1` | 源码实读：26.1.2 无 `PlayerLikeWallet.java` / `ChipShopService.java`；fabric 两线同样缺，仍 P1 | 26.1.2 现 P0，发布前必须补或显式裁决降级 |
 
 ## 三、跨仓（TLMDice）
 

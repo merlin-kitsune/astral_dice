@@ -28,7 +28,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * 与 1.21.1 {@code mappings.tiny} 中 {@code method_51435 = renderTooltipInternal} 一致)。
  * <b>物品栈在调用点就被丢掉了</b> —— fabric 原版没有 NeoForge 那种
  * 「{@code renderComponentTooltipFromElements(Font, List, int, int, ItemStack)}」带栈入口
- * (NeoForge 的 JEI 正是调那条,所以 P0 两线的 JEI 里染色天然生效)。
+ * (NeoForge 的 JEI 正是调那条,所以 P0 基准两线(neo21/forge)的 JEI 里染色天然生效)。
  *
  * <p>本桥因此在 JEI 的入口处自己压栈:HEAD 写 {@link TooltipFrameColors#pushStack(ItemStack)},
  * RETURN 清掉。这样下游无论走哪条绘制路径,都能读到「当前 tooltip 是哪个物品」。
@@ -43,7 +43,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * 故本桥在这里直接调 {@link ModernUITooltipCompat#beginRender(ItemStack)} /
  * {@link ModernUITooltipCompat#endRender()} —— 它写的是 Modern UI 自己的
  * {@code TooltipRenderer.sStrokeColor} 并临时关掉 {@code sAdaptiveColors},
- * 属于「在它的绘制之前改它的颜色来源」,与 P0 两线事件层的时序语义等价。
+ * 属于「在它的绘制之前改它的颜色来源」,与 P0 基准两线事件层的时序语义等价。
  *
  * <p>全部注入点都是 {@code require = 0}:JEI 缺席时本 mixin 根本不加载
  * ({@code astral_dice.jei.mixins.json} 是 {@code required: false}),
