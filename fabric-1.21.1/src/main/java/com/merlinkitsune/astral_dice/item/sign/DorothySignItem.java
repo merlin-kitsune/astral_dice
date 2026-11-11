@@ -284,4 +284,10 @@ public class DorothySignItem extends BaseSignItem {
         }
         return best;
     }
+
+    // 2026-11-11 P1 补齐：与 P0 同口径的机器可读拒绝。
+    @Override
+    protected boolean activateForEntity(net.minecraft.world.entity.LivingEntity owner) {
+        return com.merlinkitsune.astral_dice.item.sign.SignEntitySkills.deny("dorothy", owner, "needs_player_session");
+    }
 }

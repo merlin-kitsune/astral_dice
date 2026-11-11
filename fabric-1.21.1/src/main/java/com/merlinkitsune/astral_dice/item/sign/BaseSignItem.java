@@ -720,4 +720,23 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
                 + "(目标选择器类立牌走 performSkill 第 2.5 步门控,不会到达这里)", stack);
         return InteractionResultHolder.fail(stack);
     }
+
+    /**
+     * 供附属模组触发的主动技能入口（非玩家 owner）。
+     *
+     * <p>玩家请走既有的 {@code performSkillForCurio} 管線。非玩家默认下放到
+     * {@link #activateForEntity}，未覆写时只打 WARN 并返回 {@code false} ——
+     * 需要支持类玩家生物主动的立牌应覆写 {@code activateForEntity}。
+     */
+    public boolean activateFor(net.minecraft.world.entity.LivingEntity owner) {
+        if (owner == null) return false;
+        if (owner instanceof Player) return false;
+        return activateForEntity(owner);
+    }
+
+    /** 非玩家 owner 的主动实现（默认不支持）。 */
+    protected boolean activateForEntity(net.minecraft.world.entity.LivingEntity owner) {
+        LOGGER.warn("[Astral Dice][SignSkill] activateForEntity 未被覆写: owner={}", owner.getName().getString());
+        return false;
+    }
 }

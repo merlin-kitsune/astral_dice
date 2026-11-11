@@ -107,4 +107,24 @@ public class SouriSignItem extends BaseSignItem {
     protected void clearSignData(Player player, ItemStack stack) {
         SouriSignManager.clearAll(player);
     }
+
+    /** 2026-11-11 P1 补齐：在自身前方放置饮品并 +1 反击（玩家 owner 仍走玩家分支）。 */
+    @Override
+    protected boolean activateForEntity(net.minecraft.world.entity.LivingEntity owner) {
+        if (owner == null || owner.level().isClientSide()) return false;
+        boolean dragon = owner instanceof net.minecraft.world.entity.player.Player player0 && hasDragon(player0);
+        com.merlinkitsune.astral_dice.entity.SouriDrinkEntity drink =
+                new com.merlinkitsune.astral_dice.entity.SouriDrinkEntity(owner.level(), owner.getUUID(), dragon
+                        ? com.merlinkitsune.astral_dice.entity.SouriDrinkEntity.Variant.BREW
+                        : com.merlinkitsune.astral_dice.entity.SouriDrinkEntity.Variant.GOURD);
+        drink.setPos(owner.getX() + owner.getLookAngle().x * 1.5D,
+                owner.getY() + 0.25D,
+                owner.getZ() + owner.getLookAngle().z * 1.5D);
+        owner.level().addFreshEntity(drink);
+        if (owner instanceof net.minecraft.world.entity.player.Player player) {
+            SouriSignManager.addGoldScale(player);
+            SouriSignManager.addCounter(player, 1);
+        }
+        return true;
+    }
 }

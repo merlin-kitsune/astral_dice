@@ -388,4 +388,10 @@ public class KangelSignItem extends BaseSignItem {
         // 「一心同体」防御随佩戴结束一并撤销(key 归属本立牌;0 = 移除,幂等)
         DiceCombatModifiers.setDefenseArmorBonus(player, KANGEL_LINK_DEFENSE_KEY, 0);
     }
+
+    // 2026-11-11 P1 补齐：与 P0 同口径的机器可读拒绝。
+    @Override
+    protected boolean activateForEntity(net.minecraft.world.entity.LivingEntity owner) {
+        return com.merlinkitsune.astral_dice.item.sign.SignEntitySkills.deny("kangel", owner, "needs_player_team");
+    }
 }

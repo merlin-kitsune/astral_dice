@@ -298,6 +298,12 @@ public class AlSignItem extends BaseSignItem {
         clearStarlightAttributes(player);
     }
 
-    // 2026-11-09（A）/ P1 移植注：类玩家宿主的主动入口（1.21.1 侧 activateForEntity）依赖
-    // SignEntitySkills，本线无该前置 ⇒ 不覆写（玩家路径逐字等价），语义差异已登记在移植报告。
+    // 2026-11-11 P1 补齐：SignEntitySkills 与基类 activateForEntity 已在本线落地，
+    // 非玩家 owner 由基类入口转入本类覆写（deny needs_player_session）。
+
+    // 2026-11-11 P1 补齐：与 P0 同口径的机器可读拒绝。
+    @Override
+    protected boolean activateForEntity(net.minecraft.world.entity.LivingEntity owner) {
+        return com.merlinkitsune.astral_dice.item.sign.SignEntitySkills.deny("al", owner, "needs_player_session");
+    }
 }

@@ -143,4 +143,10 @@ public class RenSignItem extends BaseSignItem {
         return curios.isPresent()
                 && curios.get().findFirstCurio(s -> s.is(ModItems.REN_SIGN.get())).isPresent();
     }
+
+    // 2026-11-11 P1 补齐：与 P0 同口径的机器可读拒绝。
+    @Override
+    protected boolean activateForEntity(net.minecraft.world.entity.LivingEntity owner) {
+        return com.merlinkitsune.astral_dice.item.sign.SignEntitySkills.deny("ren", owner, "needs_player_session");
+    }
 }

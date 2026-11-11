@@ -63,8 +63,8 @@ import java.util.UUID;
  *       （键名 / codec / 默认值逐字一致）；</li>
  *   <li>③ 刷新：forge 的 {@code ChipShopState#get/store} 接受任意 {@code LivingEntity}，本线只接受
  *       {@link Player} ⇒ 只对 {@link ServerPlayer} 目标发刷新（非玩家目标无商店状态，见移植报告）；</li>
- *   <li>④ {@code activateForEntity}：forge 走 {@code SignEntitySkills.deny("al", owner, "needs_player_session")}，
- *       本线无 {@code SignEntitySkills} ⇒ 不覆写该方法（玩家路径等价，见移植报告「语义差异」）。</li>
+ *   <li>④ {@code activateForEntity}：本线已补齐 {@code SignEntitySkills} 与基类入口（2026-11-11），
+ *       非玩家 owner 走 {@code SignEntitySkills.deny("al", owner, "needs_player_session")}。</li>
  * </ul>
  */
 public class AlSignItem extends BaseSignItem {
@@ -308,5 +308,11 @@ public class AlSignItem extends BaseSignItem {
             clearStarlightAttributes(player);
         }
         super.onUnequip(slotContext, newStack, stack);
+    }
+
+    // 2026-11-11 P1 补齐：与 P0 同口径的机器可读拒绝。
+    @Override
+    protected boolean activateForEntity(net.minecraft.world.entity.LivingEntity owner) {
+        return com.merlinkitsune.astral_dice.item.sign.SignEntitySkills.deny("al", owner, "needs_player_session");
     }
 }

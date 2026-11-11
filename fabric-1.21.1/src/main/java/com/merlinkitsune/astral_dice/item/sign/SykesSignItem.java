@@ -180,4 +180,10 @@ public class SykesSignItem extends BaseSignItem {
         // 立牌本身不持有状态：印记挂在目标身上、施印冷却挂在佩戴者持久附件上，跨卸下保留
         super.onUnequip(slotContext, newStack, stack);
     }
+
+    // 2026-11-11 P1 补齐：与 P0 同口径的机器可读拒绝。
+    @Override
+    protected boolean activateForEntity(net.minecraft.world.entity.LivingEntity owner) {
+        return com.merlinkitsune.astral_dice.item.sign.SignEntitySkills.deny("sykes", owner, "needs_player_aim");
+    }
 }

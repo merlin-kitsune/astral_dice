@@ -274,4 +274,10 @@ public class JillSignItem extends BaseSignItem {
         }
         super.onUnequip(slotContext, newStack, stack);
     }
+
+    // 2026-11-11 P1 补齐：与 P0 同口径的机器可读拒绝。
+    @Override
+    protected boolean activateForEntity(net.minecraft.world.entity.LivingEntity owner) {
+        return com.merlinkitsune.astral_dice.item.sign.SignEntitySkills.deny("jill", owner, "needs_player_session");
+    }
 }

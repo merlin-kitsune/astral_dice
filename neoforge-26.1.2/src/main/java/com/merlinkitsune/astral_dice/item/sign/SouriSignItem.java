@@ -34,8 +34,8 @@ import top.theillusivec4.curios.api.SlotContext;
  * <ul>
  *   <li>{@code BaseSignItem#handleUse} 在本线返回 {@link InteractionResult}（1.21.1 为
  *       {@code InteractionResultHolder<ItemStack>}）；</li>
- *   <li>本线 {@code BaseSignItem} 没有 {@code activateForEntity}（无 {@code SignEntitySkills} 基建），
- *       参考实现里的「非玩家主动入口」整体删除；金鲤的主动只服务佩戴立牌的玩家。</li>
+ *   <li>2026-11-11 已补 {@code SignEntitySkills} 与基类 {@code activateForEntity}；
+ *       非玩家 owner 走本类覆写（前方放饮品；玩家分支额外记金鳞/反击）。</li>
  * </ul>
  */
 public class SouriSignItem extends BaseSignItem {
@@ -114,5 +114,25 @@ public class SouriSignItem extends BaseSignItem {
         if (slotContext.entity() instanceof Player player && !player.level().isClientSide()) {
             SouriSignManager.clearAll(player);
         }
+    }
+
+    /** 2026-11-11 P1 补齐：在自身前方放置饮品并 +1 反击（玩家 owner 仍走玩家分支）。 */
+    @Override
+    protected boolean activateForEntity(net.minecraft.world.entity.LivingEntity owner) {
+        if (owner == null || owner.level().isClientSide()) return false;
+        boolean dragon = owner instanceof net.minecraft.world.entity.player.Player player0 && hasDragon(player0);
+        com.merlinkitsune.astral_dice.entity.SouriDrinkEntity drink =
+                new com.merlinkitsune.astral_dice.entity.SouriDrinkEntity(owner.level(), owner.getUUID(), dragon
+                        ? com.merlinkitsune.astral_dice.entity.SouriDrinkEntity.Variant.BREW
+                        : com.merlinkitsune.astral_dice.entity.SouriDrinkEntity.Variant.GOURD);
+        drink.setPos(owner.getX() + owner.getLookAngle().x * 1.5D,
+                owner.getY() + 0.25D,
+                owner.getZ() + owner.getLookAngle().z * 1.5D);
+        owner.level().addFreshEntity(drink);
+        if (owner instanceof net.minecraft.world.entity.player.Player player) {
+            SouriSignManager.addGoldScale(player);
+            SouriSignManager.addCounter(player, 1);
+        }
+        return true;
     }
 }
