@@ -156,8 +156,8 @@
 2. **wiki 无条目 ⇒ 用 id 的人名，不机翻**；唯一例外：本模组自制形象 `deepseek` = `Big Fat Fish Sign` / `大食い魚のスタンド`。
 3. **先改权威表，再改 lang**：`tools/sign_display_names.json` 是立牌命名的唯一事实源（36 条，字段 `id` / `zh` / `en` / `ja` / `wiki_page` / `note`，可选 `lines` 限定已实装该立牌的分支）；同一角色名在 `item.*` / `tooltip.*` / `msg.*` / `astral_dice.guide.entry.*` 里都有复述，散文指代（`the Astrologer gains`、`怪力乱神が…`）也要换成人名。既有专名（`Ninja Star` / `Ninja Combo` / `Healing Slime` / `Legendary Merchant` / 泛指的 `Boss`）不动。
 4. **数据源与拉取**：`https://astralparty.miraheze.org/w/api.php?action=parse&page=<英文页名>&prop=wikitext&format=json&formatversion=2` ⇒ `parse.title` = EN 名、wikitext 里的 `nameJapanese` = JA 名；拉取/校验一律用 `python tools/sign_names_from_wiki.py`（`--write` 写回表，`--proxy http://127.0.0.1:7897` 走代理）。`wiki.biligame.com/starengine` 只作中文校核，非首页请求返回反爬 HTML，**不能**当数据源。
-5. **门禁**：`python tools/verify_sign_display_names.py` ⇒ 必须 `GATE: PASS`（五条加载器线各 36 个 `item.astral_dice.<id>_sign` 与权威表逐字一致 + 无 `<旧职称> Sign` 残留 + JA 无 `超天酱/地雷女/怪力乱神`）。
-6. **新增立牌时**：按 id 找 wiki 页 → 写进权威表 → 改 P0 两线 `en_us.json` / `ja_jp.json`（某线尚未实装时给表项加 `lines` 限定，避免门禁按「表缺键」判失败）→ 跑门禁 → 再提交。
+5. **门禁**：`python tools/verify_sign_display_names.py` ⇒ 必须 `GATE: PASS`（五条加载器线各 36 个 `item.astral_dice.<id>_sign` 与权威表逐字一致 + 无 `<旧职称> Sign` 残留 + JA 无 `超天酱/地雷女/怪力乱神/蛟龍` + 结构性检查：EN 任意 `<Name> Sign`、JA 任意 `<Name>のスタンド` 的名字必须是表内人名后缀，专抓黑名单外的新机翻名）。
+6. **新增立牌时**：按 id 找 wiki 页 → 写进权威表 → 改五条加载器线的 `en_us.json` / `ja_jp.json`（某线尚未实装时给表项加 `lines` 限定，避免门禁按「表缺键」判失败）→ 跑门禁 → 再提交。
 
 > ✅ **执行口径**：下方红线区整块来自 `docs/agent/AGENTS-full.md` L2–L129（受 `docs/agent/verify-split.py` 项 1b 的**逐字比对**约束）。其中〈命令执行规范（Shell）〉已于 **2026-11-04 用户裁决**随本文件一起改写为『**只允许 `ops_bash` + bash（MSYS2 / git bash）+ python**』口径，旧的原生 shell 条款**已全部删除**；若与本节〈⚙️ 环境与工具链口径〉仍有出入，以本节为准并即时订正（两边应逐字一致）。
 
