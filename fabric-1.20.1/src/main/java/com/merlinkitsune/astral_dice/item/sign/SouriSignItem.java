@@ -79,7 +79,6 @@ public class SouriSignItem extends BaseSignItem {
         drink.setPos(target.getX() + 0.5D, target.getY() + 0.25D, target.getZ() + 0.5D);
         level.addFreshEntity(drink);
 
-        SouriSignManager.addGoldScale(player);
         SouriSignManager.addCounter(player, 1);
         sendSignActionBar(player, dragon
                 ? "msg.astral_dice.souri_place_brew"
@@ -123,7 +122,6 @@ public class SouriSignItem extends BaseSignItem {
                 owner.getZ() + owner.getLookAngle().z * 1.5D);
         owner.level().addFreshEntity(drink);
         if (owner instanceof net.minecraft.world.entity.player.Player player) {
-            SouriSignManager.addGoldScale(player);
             SouriSignManager.addCounter(player, 1);
         }
         return true;

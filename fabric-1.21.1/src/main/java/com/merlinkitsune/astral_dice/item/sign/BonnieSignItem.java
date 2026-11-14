@@ -9,7 +9,7 @@ import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.starengine.event.ModEffectRemoval;
 import com.merlinkitsune.astral_dice.item.MarkManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
-import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
+import com.merlinkitsune.astral_dice.item.card.RandomCardHandler;
 import com.merlinkitsune.astral_dice.network.ModNetwork;
 import com.merlinkitsune.starengine.target.TargetSelectionAction;
 import com.merlinkitsune.astral_dice.target.TargetSelectionManager;
@@ -32,7 +32,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.ThreadLocalRandom;
 import com.merlinkitsune.starengine.combat.PartyRelations;
 import com.merlinkitsune.astral_dice.platform.util.Effects;
 
@@ -40,7 +39,7 @@ import com.merlinkitsune.astral_dice.platform.util.Effects;
  * 秘密侦探立牌(命名:bonnie)。
  * 被动:
  * 1. 攻击带有"标记"的目标时攻击力+3;
- * 2. 击杀带有"标记"的敌对目标后获得一张随机攻击牌;
+ * 2. 击杀带有"标记"的敌对目标后获得一张随机战斗牌;
  * (击杀"隐匿调查"目标触发调查阶段事件已由 InvestigationEventUtil 全局处理)
  * 主动:使用目标选择器选择目标并施加"隐匿调查"(永久,直到目标死亡/消失)与 1 层"标记";
  * 按施加后的标记层数获得 标记层数*2 星币(选择器目标规则:敌对生物或非队友玩家,
@@ -119,7 +118,7 @@ public class BonnieSignItem extends BaseSignItem {
     }
 
     // 被动 2(击杀钩子,由 BaseSignItem.invokeKillHooks 分发):
-    // - 击杀带"标记"的敌对目标 → 获得一张随机攻击牌;
+    // - 击杀带"标记"的敌对目标 → 获得一张随机战斗牌;
     // 被动 3 已移至 InvestigationEventUtil.onUndercoverInvestigationKill 统一处理,
     // 使任意玩家击杀"隐匿调查"目标都能触发调查阶段事件(不再要求击杀者佩戴秘密侦探立牌)。
     @Override
@@ -129,20 +128,10 @@ public class BonnieSignItem extends BaseSignItem {
                 && !(killed instanceof Player)
                 && PartyRelations.isHostileTo(killer, killed)
                 && killed.getMaxHealth() >= 20) {
-            giveRandomBattleCard(killer);
+            RandomCardHandler.giveCardTo(killer, RandomCardHandler.CardCategory.BATTLE);
         }
     }
 
-    // 给击杀者一张随机攻击牌(攻击-中/大/特大 之一)
-    private static void giveRandomBattleCard(Player player) {
-        net.minecraft.world.item.Item[] cards = {
-                ModItems.ATTACK_CARD_MEDIUM.get(),
-                ModItems.ATTACK_CARD_LARGE.get(),
-                ModItems.ATTACK_CARD_EPIC.get()
-        };
-        ItemStack stack = new ItemStack(cards[ThreadLocalRandom.current().nextInt(cards.length)]);
-        VitaminPillChipItem.giveCard(player, stack);
-    }
 
     // 秘密侦探立牌被动:击杀带"标记"目标获得随机战斗牌。
     // 通过立牌击杀钩子分发(见 BonnieSignItem.onKill);"隐匿调查"击杀事件由下方全局处理器统一触发。

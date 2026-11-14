@@ -1509,6 +1509,8 @@ public class ModTooltipHandler {
             addSignLines(tooltip, "tooltip.astral_dice.sign.mamushi_active");
             addSignPassiveTitle(tooltip, "tooltip.astral_dice.sign.mamushi.passive");
             addSignLines(tooltip, "tooltip.astral_dice.sign.mamushi_passive");
+            tooltip.add(Component.empty());
+            addSignNoteLines(tooltip, "tooltip.astral_dice.sign.mamushi_note");
             // 真龙形态标注行(仅锁存态成立时显示;金色,与「觉醒已达 8 层」的语义对应);
             // 「觉醒」计数器在进入真龙形态后**已失效** ⇒ 此时不再显示计数器行,只留该标注。
             if (com.merlinkitsune.astral_dice.item.sign.MamushiSignItem.isDragonForm(player)) {

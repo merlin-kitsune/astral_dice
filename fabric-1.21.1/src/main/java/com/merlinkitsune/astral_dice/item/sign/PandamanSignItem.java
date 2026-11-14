@@ -8,8 +8,8 @@ import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 import com.merlinkitsune.astral_dice.item.HealingManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
+import com.merlinkitsune.astral_dice.item.card.RandomCardHandler;
 import com.merlinkitsune.astral_dice.item.chip.FriendshipBadgeChipItem;
-import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.InteractionResultHolder;
@@ -30,7 +30,6 @@ import com.merlinkitsune.astral_dice.compat.curios.SlotContext;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.ThreadLocalRandom;
 import com.merlinkitsune.starengine.combat.PartyRelations;
 import com.merlinkitsune.astral_dice.platform.util.Effects;
 
@@ -92,13 +91,8 @@ public class PandamanSignItem extends BaseSignItem {
         if (level.isClientSide) {
             return InteractionResultHolder.success(stack);
         }
-        // 1. 获得随机治疗类效果牌
-        ItemStack randomHealingCard = switch (ThreadLocalRandom.current().nextInt(3)) {
-            case 0 -> new ItemStack(ModItems.HAMBURGER.get());
-            case 1 -> new ItemStack(ModItems.CHOCOLATE_CAKE.get());
-            default -> new ItemStack(ModItems.LUXURY_FEAST.get());
-        };
-        VitaminPillChipItem.giveCard(player, randomHealingCard);
+        // 1. 获得随机治疗类效果牌(公共发牌类 HEALING 池,不再私有随机)
+        RandomCardHandler.giveCardTo(player, RandomCardHandler.CardCategory.HEALING);
 
         // 2. 嘲讽 16 格内所有敌对目标(含 Boss)
         AABB aabb = player.getBoundingBox().inflate(TAUNT_RANGE);

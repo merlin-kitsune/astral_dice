@@ -8,7 +8,6 @@ import com.merlinkitsune.astral_dice.event.api.AstralEvent;
 import com.merlinkitsune.astral_dice.event.api.AstralEventTrigger;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.card.RandomCardHandler;
-import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
 import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
 import com.merlinkitsune.astral_dice.platform.event.TickEvent;
 import com.merlinkitsune.astral_dice.platform.event.entity.living.LivingHealEvent;
@@ -541,7 +540,7 @@ public final class EventEffects {
     public static void battleFrenzy(ServerLevel level, Player triggerer, Player target, AstralEvent event,
                                     AstralEventTrigger source, int tier) {
         for (int i = 0; i < 2; i++) {
-            VitaminPillChipItem.giveCard(target, new ItemStack(ModItems.ATTACK_CARD_EPIC.get()));
+            RandomCardHandler.giveFixedCardTo(target, ModItems.ATTACK_CARD_EPIC.get());
         }
     }
 

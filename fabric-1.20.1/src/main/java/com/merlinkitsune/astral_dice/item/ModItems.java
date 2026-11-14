@@ -671,14 +671,14 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(AstralRarities.legendary()), SandwichChipItem.HEALTH_HIGH));
 
-    // 肾上腺素-一般:生命值为 50% 或更低时,攻击力/防御力 +3(史诗)
+    // 肾上腺素-一般:生命值为 50% 或更低时,攻击力/防御力 +3;触发加成时被怪物近战攻击有 20% 闪避(史诗)
     public static final RegistryObject<Item> ADRENALINE_LOW = registerItem("adrenaline_low_chip",
             () -> new AdrenalineChipItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(AstralRarities.epic()), AdrenalineChipItem.BONUS_LOW));
 
-    // 肾上腺素-高效:生命值为 50% 或更低时,攻击力/防御力 +8;触发加成时被敌方攻击,
-    // 骰点 4-5 → 50% 闪避、6 → 100% 闪避本次伤害(传奇)
+    // 肾上腺素-高效:生命值为 50% 或更低时,攻击力/防御力 +8;触发加成时被怪物近战攻击有 20% 闪避;
+    // 与一般同时装备时叠加为 40%(传奇)
     public static final RegistryObject<Item> ADRENALINE_HIGH = registerItem("adrenaline_high_chip",
             () -> new AdrenalineChipItem(new Item.Properties()
                     .stacksTo(1)

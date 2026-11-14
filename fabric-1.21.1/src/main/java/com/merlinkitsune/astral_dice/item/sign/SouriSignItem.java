@@ -18,7 +18,7 @@ import net.minecraft.world.phys.HitResult;
  *
  * <h2>主动「把酒言欢」</h2>
  * 在准星指定的地块上方放置一个【葫芦饮】；若自身已获得【金鲤化龙】，改放【仙酿】。
- * 随后自身 +1 层【金鳞】、+1 层【反击】。主动为瞬时型，冷却 {@link #ACTIVE_COOLDOWN_TICKS}
+ * 并使自身 +1 层【反击】。主动为瞬时型，冷却 {@link #ACTIVE_COOLDOWN_TICKS}
  * （1:00，与其它立牌同档；无锁定态）。
  *
  * <h2>被动「不醉不归」</h2>
@@ -75,7 +75,6 @@ public class SouriSignItem extends BaseSignItem {
         drink.setPos(target.getX() + 0.5D, target.getY() + 0.25D, target.getZ() + 0.5D);
         level.addFreshEntity(drink);
 
-        SouriSignManager.addGoldScale(player);
         SouriSignManager.addCounter(player, 1);
         sendSignActionBar(player, dragon
                 ? "msg.astral_dice.souri_place_brew"
@@ -122,7 +121,6 @@ public class SouriSignItem extends BaseSignItem {
                 owner.getZ() + owner.getLookAngle().z * 1.5D);
         owner.level().addFreshEntity(drink);
         if (owner instanceof net.minecraft.world.entity.player.Player player) {
-            SouriSignManager.addGoldScale(player);
             SouriSignManager.addCounter(player, 1);
         }
         return true;
