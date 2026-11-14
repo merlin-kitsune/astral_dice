@@ -1070,6 +1070,7 @@
   "tooltip.astral_dice.sign.moses_enigmatic": "神秘遗物+联动：\n佩戴七咒之戒，并拥有「弱点识破」时：\n修正第三诅咒：移除护甲降低效果\n修正第六诅咒：死亡时不再掉落灵魂水晶（减少最大生命值）",
   "command.astral_dice.astralparty.killbarricade.success": "已清除 %s 个路障实体",
   "command.astral_dice.astralparty.killrepulsion.success": "已清除 %s 个强化拒止实体",
+  "command.astral_dice.astralparty.clearportals.success": "已清除服务器内 %s 扇暗影之门",
   "tooltip.astral_dice.sign.kangel_active": "立即获得（§e1§7+ 粉丝数）的星币，最多可获得§e10§7个。如果粉丝数不少于§e3§7个，还会使生命值立即恢复全满。如果玩家粉丝数不少于§e9§7个，还会额外使得友方玩家获得§e3§7星币",
   "tooltip.astral_dice.sign.kangel_passive": "玩家主动攻击或攻击玩家的目标会被施加「粉丝」状态，该目标攻击超天酱时，造成的伤害§e-1§7",
   "tooltip.astral_dice.sign.kangel_note": "一心同体：当玩家队伍中有地雷女时，使得该角色被动技能同样对其生效",

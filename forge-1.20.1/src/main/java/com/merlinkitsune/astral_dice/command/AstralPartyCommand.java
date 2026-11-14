@@ -4,10 +4,12 @@ import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.entity.BarricadeEntity;
+import com.merlinkitsune.astral_dice.entity.InkShadowPortalEntity;
 import com.merlinkitsune.astral_dice.entity.RepulsionEntity;
 import com.merlinkitsune.starengine.event.ModEffectRemoval;
 import com.merlinkitsune.astral_dice.item.card.EffectCardPeriod;
 import com.merlinkitsune.astral_dice.item.sign.BaseSignItem;
+import com.merlinkitsune.astral_dice.item.sign.InkShadowSignManager;
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
@@ -42,7 +44,7 @@ import java.util.Optional;
 /**
  * {@code /astralparty} 调试命令(仅 OP,权限级 2)。
  *
- * <p>七个子命令:五个写入类按「出牌锁的三条判据」分工——出牌锁判定见
+ * <p>八个:五个写入类按「出牌锁的三条判据」分工——出牌锁判定见
  * {@link EffectCardPeriod#isBlocked(net.minecraft.world.entity.player.Player)}:
  * <ol>
  *   <li>{@code isBurstFull} —— 出牌数达当轮上限;</li>
@@ -70,6 +72,8 @@ import java.util.Optional;
  *   <li>{@code /astralparty killrepulsion [radius|all]} —— 清掉**当前维度**里的
  *       {@link RepulsionEntity 强化拒止实体}(2026-10-22 新增);同一套参数口径。被它关掉重力的飞行目标
  *       会随之还原 ⇒ 不留"浮空怪"。这是「拿不到实体 id、{@code /kill} 也打不掉」时的兜底。</li>
+ *   <li>{@code /astralparty clearportals} —— 清掉**服务器全部维度**里的
+ *       {@link InkShadowPortalEntity 暗影之门}，并复位在线玩家的待放起始门状态；无参数。</li>
  * </ul>
  *
  * <p><b>dump 的输出约定(核心是「格式稳定」,不是给人看)</b>:① 每行固定前缀 {@code APDUMP|},
@@ -124,6 +128,7 @@ public final class AstralPartyCommand {
     private static final String KEY_FINISH_COOLDOWN_OTHER = "command.astral_dice.astralparty.finishsigncooldown.success.other";
     private static final String KEY_KILL_BARRICADE = "command.astral_dice.astralparty.killbarricade.success";
     private static final String KEY_KILL_REPULSION = "command.astral_dice.astralparty.killrepulsion.success";
+    private static final String KEY_CLEAR_PORTALS = "command.astral_dice.astralparty.clearportals.success";
     private static final String KEY_NO_PLAYER = "command.astral_dice.astralparty.error.no_player";
     /** dump 的**人类可读摘要**(唯一走 lang key 的 dump 反馈;APDUMP 机器行正文刻意不走 lang) */
     private static final String KEY_DUMP_SUMMARY = "command.astral_dice.astralparty.dump.summary";
@@ -140,6 +145,8 @@ public final class AstralPartyCommand {
     private static final String KILL_BARRICADE_LITERAL = "killbarricade";
     /** {@code killrepulsion} 的主字面量(清掉当前维度里的强化拒止实体) */
     private static final String KILL_REPULSION_LITERAL = "killrepulsion";
+    /** {@code clearportals} 的主字面量(清掉服务器全部维度里的暗影之门) */
+    private static final String CLEAR_PORTALS_LITERAL = "clearportals";
     /** 实体清理命令的可选参数:半径(格,立方体范围;1..{@link #MAX_KILL_RADIUS}) */
     private static final String ARG_RADIUS = "radius";
     /** 实体清理命令的可选子字面量:整个维度(不按半径筛) */
@@ -207,7 +214,8 @@ public final class AstralPartyCommand {
                 .then(killEntityNode(KILL_BARRICADE_LITERAL, BarricadeEntity.class,
                         "barricade", KEY_KILL_BARRICADE))
                 .then(killEntityNode(KILL_REPULSION_LITERAL, RepulsionEntity.class,
-                        "repulsion", KEY_KILL_REPULSION));
+                        "repulsion", KEY_KILL_REPULSION))
+                .then(clearPortalsNode());
         // 别名:同一构建器工厂 + 同一执行方法,命令只注册一次主名 + 别名
         for (String alias : RESET_LOCK_ALIASES) {
             root.then(resetCardLockNode(alias));
@@ -221,6 +229,46 @@ public final class AstralPartyCommand {
                 .executes(ctx -> onSelf(ctx, AstralPartyCommand::resetCardLock))
                 .then(Commands.argument(ARG_TARGETS, EntityArgument.players())
                         .executes(ctx -> onTargets(ctx, AstralPartyCommand::resetCardLock)));
+    }
+
+    /**
+     * {@code clearportals}:清掉**服务器全部维度**里的所有 {@link InkShadowPortalEntity 暗影之门}，
+     * 并复位在线玩家的待放起始门状态（uuid / 移速 / 快捷栏锁）。
+     *
+     * <p>与 {@code killbarricade}/{@code killrepulsion} 不同，本命令不受执行者当前维度限制；
+     * 传送门可能成对分布在不同的 {@code ServerLevel}。
+     */
+    private static int clearPortals(CommandContext<CommandSourceStack> ctx) {
+        CommandSourceStack source = ctx.getSource();
+        List<InkShadowPortalEntity> portals = new ArrayList<>();
+        for (ServerLevel level : source.getServer().getAllLevels()) {
+            for (Entity entity : level.getAllEntities()) {
+                if (entity instanceof InkShadowPortalEntity portal) {
+                    portals.add(portal);
+                }
+            }
+        }
+        int cleared = 0;
+        for (InkShadowPortalEntity portal : portals) {
+            if (portal.isRemoved()) continue;
+            portal.discard();
+            cleared++;
+        }
+        // 起始门被清掉后，附件里的 pending 状态必须一起复位，否则下一次主动技能会误判窗口。
+        for (ServerPlayer player : source.getServer().getPlayerList().getPlayers()) {
+            InkShadowSignManager.voidPortal(player);
+        }
+        LOGGER.info("{}|type=inkshadow_portal|killed={}|mode=all|radius=-1|dim=all",
+                KILL_LOG_PREFIX, cleared);
+        final int clearedCount = cleared;
+        source.sendSuccess(() -> Component.translatable(KEY_CLEAR_PORTALS, clearedCount), true);
+        return cleared;
+    }
+
+    private static LiteralArgumentBuilder<CommandSourceStack> clearPortalsNode() {
+        return Commands.literal(CLEAR_PORTALS_LITERAL)
+                .requires(AstralPartyCommand::hasPermission)
+                .executes(AstralPartyCommand::clearPortals);
     }
 
     /**

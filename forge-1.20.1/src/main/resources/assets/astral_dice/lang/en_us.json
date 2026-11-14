@@ -843,6 +843,7 @@
   "command.astral_dice.astralparty.dump.summary": "Dumped state for %s player(s); machine-readable lines are in latest.log",
   "command.astral_dice.astralparty.killbarricade.success": "Cleared %s barricade(s)",
   "command.astral_dice.astralparty.killrepulsion.success": "Cleared %s repulsion field(s)",
+  "command.astral_dice.astralparty.clearportals.success": "Cleared %s shadow portal(s) across the server",
   "item.astral_dice.zhao_sign": "Zhao Sign",
   "item.astral_dice.fu_card": "Blessing Talisman",
   "item.astral_dice.huo_card": "Misfortune Talisman",

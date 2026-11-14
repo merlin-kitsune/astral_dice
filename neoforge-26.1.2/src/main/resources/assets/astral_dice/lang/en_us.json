@@ -985,6 +985,7 @@
   "tooltip.astral_dice.sign.moses_enigmatic": "Enigmatic Legacy+ link:\nwhile wearing the Cursed Ring and having Weakness Insight:\ncorrects Curse 3: removes the armor reduction\ncorrects Curse 6: no longer drops Soul Crystals on death (reduced max health)",
   "command.astral_dice.astralparty.killbarricade.success": "Cleared %s barricade(s)",
   "command.astral_dice.astralparty.killrepulsion.success": "Cleared %s repulsion field(s)",
+  "command.astral_dice.astralparty.clearportals.success": "Cleared %s shadow portal(s) across the server",
   "item.astral_dice.kangel_sign": "KAngel Sign",
   "item.astral_dice.ame_sign": "Ame Sign",
   "effect.astral_dice.kangel_fan": "Fan",

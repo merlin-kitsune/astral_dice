@@ -985,6 +985,7 @@
   "tooltip.astral_dice.sign.moses_enigmatic": "神秘遗物+联动：\n佩戴七咒之戒，并拥有「弱点识破」时：\n修正第三诅咒：移除护甲降低效果\n修正第六诅咒：死亡时不再掉落灵魂水晶（减少最大生命值）",
   "command.astral_dice.astralparty.killbarricade.success": "已清除 %s 个路障实体",
   "command.astral_dice.astralparty.killrepulsion.success": "已清除 %s 个强化拒止实体",
+  "command.astral_dice.astralparty.clearportals.success": "已清除服务器内 %s 扇暗影之门",
   "item.astral_dice.kangel_sign": "超天酱立牌",
   "item.astral_dice.ame_sign": "地雷女立牌",
   "effect.astral_dice.kangel_fan": "粉丝",

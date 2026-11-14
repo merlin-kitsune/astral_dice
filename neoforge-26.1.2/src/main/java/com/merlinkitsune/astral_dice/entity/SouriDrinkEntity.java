@@ -33,7 +33,7 @@ import java.util.UUID;
  * {@link SouriSignManager#onDrinkPicked}（效果 + 立牌持有者反击层 + 蛟龙联动 + 白色粒子）。
  *
  * <h2>生命周期</h2>
- * 放置后 {@link #LIFETIME_TICKS}（5:00）自动消失；【金鲤化龙】会把本人名下未拾取的葫芦饮
+ * 放置后 {@link #LIFETIME_TICKS}（10:00，无人拾取时自动销毁）自动消失；【金鲤化龙】会把本人名下未拾取的葫芦饮
  * 就地转为仙酿（{@link #setVariant}）。
  *
  * <h2>26.1.2 平台适配（本线）</h2>
@@ -57,8 +57,8 @@ public class SouriDrinkEntity extends Entity implements GeoEntity {
         }
     }
 
-    /** 放置后存活时长 5:00 */
-    public static final int LIFETIME_TICKS = 6000;
+    /** 放置后存活时长 10:00（无人拾取时自动销毁） */
+    public static final int LIFETIME_TICKS = 12000;
 
     private static final EntityDataAccessor<Integer> DATA_VARIANT =
             SynchedEntityData.defineId(SouriDrinkEntity.class, EntityDataSerializers.INT);
@@ -141,11 +141,23 @@ public class SouriDrinkEntity extends Entity implements GeoEntity {
                 serverLevel.sendParticles(ParticleTypes.CLOUD,
                         this.getX(), this.getY() + 0.4D, this.getZ(),
                         12, 0.25D, 0.25D, 0.25D, 0.02D);
+                // 金色/白色上升光点：拾取瞬间在葫芦位置再补一层明显可见的反馈。
+                serverLevel.sendParticles(ParticleTypes.END_ROD,
+                        this.getX(), this.getY() + 0.4D, this.getZ(),
+                        16, 0.25D, 0.25D, 0.25D, 0.0D);
             }
             SouriSignManager.onDrinkPicked(player, this);
             discard();
             return;
         }
+    }
+
+    /**
+     * 纯展示实体没有生命值；显式覆写让 /kill 直接移除它，不经过 hurtServer 的伤害过滤。
+     */
+    @Override
+    public void kill(ServerLevel level) {
+        this.discard();
     }
 
     @Override

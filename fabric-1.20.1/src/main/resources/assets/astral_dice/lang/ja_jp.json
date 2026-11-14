@@ -1070,6 +1070,7 @@
   "tooltip.astral_dice.sign.moses_enigmatic": "神秘の遺物+連動：\n七呪の指輪を装着し「弱点看破」を持つ時：\n第三の呪いを修正：防具低下効果を除去\n第六の呪いを修正：死亡時にソウルクリスタルをドロップしなくなる（最大体力の減少）",
   "command.astral_dice.astralparty.killbarricade.success": "バリケードを %s 個除去しました",
   "command.astral_dice.astralparty.killrepulsion.success": "強化拒止フィールドを %s 個除去しました",
+  "command.astral_dice.astralparty.clearportals.success": "サーバー内のシャドウゲートを %s 基除去しました",
   "tooltip.astral_dice.sign.kangel_active": "即座に（§e1§7 + ファン数）のスターコインを獲得、最大 §e10§7 個。ファン数が §e3§7 以上なら体力が全回復する。ファン数が §e9§7 以上なら、味方プレイヤーは追加で §e3§7 スターコインを獲得する",
   "tooltip.astral_dice.sign.kangel_passive": "自身が攻撃した、または自身を攻撃したターゲットに「ファン」を付与。そのターゲットが超てんちゃんを攻撃する時、与えるダメージ §e-1§7",
   "tooltip.astral_dice.sign.kangel_note": "一心同体：チーム内にあめちゃんがいると、そのキャラクターのパッシブも同様に適用される",

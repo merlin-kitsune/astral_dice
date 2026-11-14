@@ -985,6 +985,7 @@
   "tooltip.astral_dice.sign.moses_enigmatic": "神秘の遺物+連動：\n七呪の指輪を装着し「弱点看破」を持つ時：\n第三の呪いを修正：防具低下効果を除去\n第六の呪いを修正：死亡時にソウルクリスタルをドロップしなくなる（最大体力の減少）",
   "command.astral_dice.astralparty.killbarricade.success": "バリケードを %s 個除去しました",
   "command.astral_dice.astralparty.killrepulsion.success": "強化拒止フィールドを %s 個除去しました",
+  "command.astral_dice.astralparty.clearportals.success": "サーバー内のシャドウゲートを %s 基除去しました",
   "item.astral_dice.kangel_sign": "超てんちゃんのスタンド",
   "item.astral_dice.ame_sign": "あめちゃんのスタンド",
   "effect.astral_dice.kangel_fan": "ファン",

@@ -1070,6 +1070,7 @@
   "tooltip.astral_dice.sign.moses_enigmatic": "Enigmatic Legacy+ link:\nwhile wearing the Cursed Ring and having Weakness Insight:\ncorrects Curse 3: removes the armor reduction\ncorrects Curse 6: no longer drops Soul Crystals on death (reduced max health)",
   "command.astral_dice.astralparty.killbarricade.success": "Cleared %s barricade(s)",
   "command.astral_dice.astralparty.killrepulsion.success": "Cleared %s repulsion field(s)",
+  "command.astral_dice.astralparty.clearportals.success": "Cleared %s shadow portal(s) across the server",
   "tooltip.astral_dice.sign.kangel_active": "Immediately gain (§e1§7 + fan count) star coins, up to §e10§7. If your fan count is at least §e3§7, your health is also fully restored. If your fan count is at least §e9§7, friendly players additionally gain §e3§7 star coins",
   "tooltip.astral_dice.sign.kangel_passive": "Targets you attack or that attack you are marked with the 「Fan」 status, and they deal §e-1§7 damage when attacking the KAngel",
   "tooltip.astral_dice.sign.kangel_note": "Two Hearts as One: while a member of your team wears the Ame Sign, this character's passive ability also applies to them",

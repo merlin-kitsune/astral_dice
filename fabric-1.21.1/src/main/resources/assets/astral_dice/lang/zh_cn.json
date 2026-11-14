@@ -843,6 +843,7 @@
   "command.astral_dice.astralparty.dump.summary": "已转储 %s 名玩家的状态，机器可解析行见日志(latest.log)",
   "command.astral_dice.astralparty.killbarricade.success": "已清除 %s 个路障实体",
   "command.astral_dice.astralparty.killrepulsion.success": "已清除 %s 个强化拒止实体",
+  "command.astral_dice.astralparty.clearportals.success": "已清除服务器内 %s 扇暗影之门",
   "item.astral_dice.zhao_sign": "风水师立牌",
   "item.astral_dice.fu_card": "符卡-福",
   "item.astral_dice.huo_card": "符卡-祸",
