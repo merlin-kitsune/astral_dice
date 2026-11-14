@@ -10,7 +10,7 @@
 
 - 葫芦饮：`astral_dice:souri_drink` 的两种变体（`GOURD` / `BREW`）在无人拾取时由 5:00 延长为 10:00（12,000 ticks）后自动销毁；成功拾取时在葫芦位置新增一层 `END_ROD` 光点，并保留原有的 cloud/END_ROD 反馈。实体显式覆写 `kill()` / `kill(ServerLevel)` 为 `discard()`，确保 `/kill` 始终能移除它（26.1.2 的普通伤害会被 `hurtServer` 过滤）。
 - 新增 `/astralparty clearportals`（OP 权限级 2）：清除服务器全部维度里的 `InkShadowPortalEntity`，并复位在线玩家的待放传送门状态；向 `latest.log` 落 `AFTERM|type=inkshadow_portal|killed=N|mode=all|radius=-1|dim=all` 机器行。五线均补 `command.astral_dice.astralparty.clearportals.success`（`zh_cn` / `en_us` / `ja_jp`）。
-- 验证：五线 `:build` → BUILD SUCCESSFUL in 6s（44 tasks）；`.45` 产物已推入各 `run/<line>/mods`。本轮未实机。
+- 验证：五线 `:build` → BUILD SUCCESSFUL in 6s（44 tasks）；`.45` 产物已推入各 `run/<line>/mods`。`1.21.1` 快速实机：`GOURD` / `BREW` 均以 `Life:20` 召唤并在等待后自动消失；默认召唤读到 `Life=12000`；`/kill` 移除了剩余实体。`clearportals` 未实机。
 
 ## 26.4-SNAPSHOT.44
 

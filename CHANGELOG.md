@@ -10,7 +10,7 @@
 
 - Gourd drinks: both `astral_dice:souri_drink` variants (`GOURD` / `BREW`) now last 10:00 (12,000 ticks) when left unpicked (was 5:00); successful pickup adds an `END_ROD` burst at the drink position on top of the existing cloud/END_ROD feedback. The entity explicitly overrides `kill()` / `kill(ServerLevel)` to `discard()`, so `/kill` always removes it (on 26.1.2 normal damage is filtered by `hurtServer`).
 - Added `/astralparty clearportals` (OP level 2): removes every `InkShadowPortalEntity` in all server dimensions and resets online players' pending gate state; emits `AFTERM|type=inkshadow_portal|killed=N|mode=all|radius=-1|dim=all` to `latest.log`. Added `command.astral_dice.astralparty.clearportals.success` in `zh_cn` / `en_us` / `ja_jp` on all five lines.
-- Validation: five-line `:build` -> BUILD SUCCESSFUL in 6s (44 tasks); `.45` jars pushed to every `run/<line>/mods`. No live run this round.
+- Validation: five-line `:build` -> BUILD SUCCESSFUL in 6s (44 tasks); `.45` jars pushed to every `run/<line>/mods`. Live `1.21.1` quick run: both `GOURD` and `BREW` summoned with `Life:20` auto-discarded after the wait; a default summon read `Life=12000`; `/kill` removed the remaining entity. The `clearportals` command was not live-tested.
 
 ## 26.4-SNAPSHOT.44
 
