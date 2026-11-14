@@ -335,7 +335,7 @@ def autojs_check(root):
         present = glob_ci(paths.mods_dir, "AutoJS-*.jar")
         if not present:
             warns.append(version + " 的 mods 里还没有 autojs jar（冷启动前执行 bash scripts/test/win/mt.sh --version "
-                         + version + " --phase env 装配 run/<版本>/mods）")
+                         + version + " --phase env 装配 run/<子项目名>/mods）")
         elif len(present) > 1:
             issues.append(version + " 的 mods 里有 " + str(len(present))
                           + " 个 autojs jar（同族多份 ⇒ FML Duplicate mods）：" + ", ".join(present))

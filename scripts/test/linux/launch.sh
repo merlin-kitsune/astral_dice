@@ -110,7 +110,7 @@ case "$WAIT_WORLD" in
     ''|*[!0-9]*) echo "用法错误：--wait-world 必须是整数秒（0=不等待）" >&2; exit 2 ;;
 esac
 
-# Loom 的子项目 runDir 是相对项目目录的 run/client（不是仓库根 run/<ver>）：
+# Loom 的子项目 runDir 是相对项目目录的 run/client（不是仓库根 run/<子项目名>）：
 #   fabric-1.20.1 → fabric-1.20.1/run/client；fabric-1.21.1 → fabric-1.21.1/run/client。
 # 日志/健康检查/pid 文件/残留扫描都按这个目录走，否则 fabric 线会看错地方（run/<ver> 不存在 → BLOCKED）。
 AUTOJS_INJECT=0
@@ -119,7 +119,7 @@ case "$VERSION" in
         RUN_DIR="$REPO_ROOT/$PROJECT/run/client"
         AUTOJS_INJECT=1 ;;
     *)
-        RUN_DIR="$REPO_ROOT/run/$VERSION" ;;
+        RUN_DIR="$REPO_ROOT/run/$PROJECT" ;;
 esac
 
 conf_get() {
@@ -261,7 +261,7 @@ if [ ! -x "$DAEMON_JDK/bin/java" ]; then
 fi
 JDK_HOME="$DAEMON_JDK"
 if [ ! -d "$RUN_DIR" ]; then
-    echo "LAUNCH: BLOCKED — run/$VERSION 不存在（先让 Gradle 解析一次项目）" >&2
+    echo "LAUNCH: BLOCKED — run/$PROJECT 不存在（先让 Gradle 解析一次项目）" >&2
     exit 11
 fi
 
@@ -429,7 +429,7 @@ if [ "$aj_ok" != 1 ]; then
         tail_log "$LOG"
         if [ "$aj_n" -gt 0 ] && [ "$health_seen" = 0 ]; then
             echo "LAUNCH: ERROR — ${TIMEOUT}s 内 AutoJS 端点从未响应 health（$endpoint），且无世界 marker" >&2
-            echo "  run/$VERSION/mods 有 AutoJS jar，但端点不可用；逃生阀：MT_ALLOW_NO_AUTOJS=1（需日志 marker 兜底）" >&2
+            echo "  run/$PROJECT/mods 有 AutoJS jar，但端点不可用；逃生阀：MT_ALLOW_NO_AUTOJS=1（需日志 marker 兜底）" >&2
             if [ "$KILL_ON_TIMEOUT" = 1 ]; then bash "$DIR/stop.sh" --version "$VERSION" >&2 || true; fi
             exit 2
         fi

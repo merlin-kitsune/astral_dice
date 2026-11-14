@@ -132,7 +132,7 @@ PROJECT="$(mt_subproject "$VERSION")"
 TOOLCHAIN_VER="$(mt_toolchain "$VERSION")"
 
 # ── fabric 线：双 run 目录 + 条件 AutoJS（其它三线走原来的单目录）──────────
-# 三线：仓库根/run/<版本>，客户端固定 :<子项目>:runClient。
+# 三线：仓库根/run/<子项目名>（run/neoforge-1.21.1 等），客户端固定 :<子项目>:runClient。
 # fabric：<子项目>/run/<client|server>，任务按侧选 runClient / runServer；
 #   -PautojsTestMod=1 只在显式 --enable-autojs（或 MT_FAB_AUTOJS=1）时才带。
 FAB_SIDE=""
@@ -147,15 +147,15 @@ if mt_is_fabric "$VERSION"; then
     AJ_ARG="$(mt_fab_gradle_autojs_arg "$FAB_SIDE")"
 else
     if [ -n "$SIDE" ]; then
-        echo "用法错误：--side 只对 fabric 线（fabric-<mcver>）有效（其它三线是单 run 目录 run/<版本>；收到 --version $VERSION）" >&2
+        echo "用法错误：--side 只对 fabric 线（fabric-<mcver>）有效（其它三线是单 run 目录 run/<子项目名>；收到 --version $VERSION）" >&2
         exit 2
     fi
-    RUN_DIR="$MT_REPO_ROOT/run/$VERSION"
+    RUN_DIR="$MT_REPO_ROOT/run/$PROJECT"
     Gradle_TASK="runClient"
     AJ_ARG=""
 fi
 # mods 目录的显示用标签（fabric 是双目录，不能拼成 run/<版本>/mods）
-if [ -n "$FAB_SIDE" ]; then MODS_LABEL="$MT_FAB_SUBPROJECT/run/$FAB_SIDE/mods"; else MODS_LABEL="run/$VERSION/mods"; fi
+if [ -n "$FAB_SIDE" ]; then MODS_LABEL="$MT_FAB_SUBPROJECT/run/$FAB_SIDE/mods"; else MODS_LABEL="run/$PROJECT/mods"; fi
 PIDFILE="$RUN_DIR/win-run.pid"
 ENDPOINT="$(mt_aj_endpoint)"
 BASE_URL="${ENDPOINT%/mcp}"

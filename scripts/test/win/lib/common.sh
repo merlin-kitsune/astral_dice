@@ -286,7 +286,9 @@ mt_all_port_rows() {
 }
 
 # 命令行是否属于某线（与旧编排器 Get-MtProcessMarkers 同款标记串）：
-#   ":<子项目>:"（gradle 任务选择器）、"run\<ver>"、"run/<ver>"
+#   ":<子项目>:"（gradle 任务选择器）、"run\<子项目名>"、"run/<子项目名>"
+# 2026-11-12：仓库根 run 目录改为带加载器的完整名（= 子项目名），故后两条 needle
+# 改用子项目名；裸版本号目录已不存在，继续拼 run/<ver> 会让判线指空。
 # 刻意不用裸子项目名：那同时是仓库目录名，会误命中 IDE / 索引进程。
 mt_cmdline_matches_version() {
     local v="${1:-}" cmd="${2:-}" sub lc needle
@@ -294,8 +296,8 @@ mt_cmdline_matches_version() {
     lc="$(printf '%s' "$cmd" | tr 'A-Z' 'a-z')"
     needle=":${sub}:"
     case "$lc" in *"$needle"*) return 0 ;; esac
-    case "$lc" in *"run/$v"*) return 0 ;; esac
-    case "$lc" in *"run\\$v"*) return 0 ;; esac
+    case "$lc" in *"run/$sub"*) return 0 ;; esac
+    case "$lc" in *"run\\$sub"*) return 0 ;; esac
     # fabric 线是双 run 目录 <fabric-子项目>/run/<client|server>，路径里没有独立版本号，
     # 所以上面的 run/<版本> needle 命中不了；改为「子项目名 + run + client|server」兜底匹配，
     # 避免在双引号内写反斜杠字面量（\\ 在 double-quote 里是转义，曾把行尾引号吃掉导致解析错）。

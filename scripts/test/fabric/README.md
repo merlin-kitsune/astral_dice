@@ -14,7 +14,7 @@
 >
 > 1. **fabric-1.20.1 已正式登记进 旧 shell 生产线**：`scripts/test/lib/mt_paths.py` 的
 >    `VERSIONS` / `LOADER` / `SUBPROJECT` 三表含 fabric，run 根按 side 解析成
->    `fabric-1.20.1/run/{client,server}`（其它各线仍是 `run/<版本>` 单目录）；`scripts/test/win/mt.sh` 新增
+>    `fabric-1.20.1/run/{client,server}`（其它各线仍是 `run/<子项目名>` 单目录）；`scripts/test/win/mt.sh` 新增
 >    `--side client|server`（只对 fabric 有效，经 `MT_SIDE` 传给全部子进程）。
 > 2. **用例已迁到正式目录**：规范位置 = `scripts/test/cases/<CASE>-fabric-1.20.1.json`（16 条）。
 >    本目录 `cases/FAB-*.json` **保留仅作历史**，不再被执行；逐条映射见 §11.1。
@@ -34,7 +34,7 @@
 | 事件注册   | `@Mod.EventBusSubscriber` 自动注册                                                  | **自建反射总线** `platform/event/LoaderBus`；须在 `AstralDiceMod.registerListeners()` 显式登记（`platform/event/LoaderBus.java:103-161`、`AstralDiceMod.java:51,91`）                                                                                       | 没有「注册失败」这种可 grep 的 Forge 报错形态；必须用 fabric 专属的派发计数报告         |
 | 事件派发   | Forge 原生 EventBus                                                               | **四路**：FAPI 回调（`platform/FabricBridges.java:107-121`）+ Puzzles Lib（`platform/PuzzlesBridges`）+ 你自写 mixin（`mixin/bridge/**`）+ 前置库事件                                                                                                          | 「桥装了但事件从不触发」是**静默**失效；生产线没有对应护栏                            |
 | 启动入口   | `@Mod` 构造器                                                                      | `fabric.mod.json` 的 `main` / `client` / `fabric-datagen` entrypoint（`src/main/resources/fabric.mod.json:14-24`）                                                                                                                             | 启动期事实的锚点不同                                                 |
-| 运行目录   | 仓库根 `run/<版本>`（gradle `gameDirectory = rootProject.file('run/1.21.1')`）         | **子项目内** `fabric-1.20.1/run/{client,server}`（Loom `runDir 'run/client'` 相对**子项目**解析，`build.gradle:172-182`）；datagen → `run/datagen`                                                                                                         | 所有路径推导都不一样                                                 |
+| 运行目录   | 仓库根 `run/<子项目名>`（gradle `gameDirectory = rootProject.file('run/neoforge-1.21.1')`）         | **子项目内** `fabric-1.20.1/run/{client,server}`（Loom `runDir 'run/client'` 相对**子项目**解析，`build.gradle:172-182`）；datagen → `run/datagen`                                                                                                         | 所有路径推导都不一样                                                 |
 | 构建     | `gradlew :forge-1.20.1:build`                                                   | `gradlew :fabric-1.20.1:build`                                                                                                                                                                                                              | 任务名不同                                                      |
 | 依赖     | Curios / Mixin Booster                                                          | Trinkets 3.7.2（+ Accessories 可选）+ Puzzles Lib 8.1.33 + Forge Config API Port + Fabric API + Cardinal Components（`build.gradle:65-158`、`gradle.properties`）                                                                                  | `scripts/test/win/mt.sh --phase env` 装的前置清单完全不适用                                   |
 | 探测手段   | KubeJS 探针 + `/astralparty` 管理员命令                                                | 同样 KubeJS（已在 `modRuntimeOnly`），**外加** fabric 专属 `LoaderBus#dispatchReport()`                                                                                                                                                                | 生产线没有 dispatchReport，抓不到「0 次派发」                            |
@@ -780,7 +780,7 @@ M2 钉住 fabric 的两条 `hasEffect` 早退判据。期望 `GATE: PASS (22 项
 1. 不要「前台跑 + 管道捕获」：启动阶段孵化出的游戏进程会继承控制台/管道 ⇒ 调用挂死。
 2. 正确姿势 = 分离式启动：`nohup bash scripts/test/win/mt.sh --version fabric-1.20.1 --side <client|server> --phase launch > <out> 2>&1 &`（不等整棵进程树），随后**另起一次工具调用**轮询就绪。
 3. 本会话的工具调用有 300s 上限、超时会**杀掉整棵进程树**（实测两次杀掉运行中的服务端、一次杀掉客户端）⇒ 单次调用总时长压到 250s 以内，长等待必须做成有界轮询（`timeout 250s …`）。
-4. 运行目录在 `fabric-1.20.1/run/{client,server}`（Loom `runDir` 相对子项目），**不是**仓库根 `run/<版本>`。
+4. 运行目录在 `fabric-1.20.1/run/{client,server}`（Loom `runDir` 相对子项目），**不是**仓库根 `run/<子项目名>`。
 
 ---
 ### 7.3 已修复的测试台缺陷（9 个；每个都附实测证据）

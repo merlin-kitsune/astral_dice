@@ -10,7 +10,7 @@
 2. **Linux 侧已落地三件套**：
    - `env.sh`：只读环境体检（各线 toolchain JDK + daemon JVM、run 目录/模组、AutoJS 三态探活、客户端残留、Gradle 进程、锁、git autocrlf）。**实测通过**（`ENV_RESULT: WARN`, exit 0）。
    - `launch.sh`：启动 `runClient` 并轮询就绪标志（优先 `run/start-<ver>.sh`，否则 `bash ./gradlew :<line>:runClient --console=plain`）。**只做过 `--dry-run`**，真实启动由 Lead 在 task-1 完成后统一验证（避免与 gradle-launcher 抢全队唯一的 Gradle 并发位）。
-   - `stop.sh`：按 `run/<ver>/linux-run.pid` 进程组 + `/proc` 扫描收停，`LINUX_STOP: OK|RESIDUAL`。**两条 kill 路径均以假仓库实测通过**（§9.3）。
+   - `stop.sh`：按 `run/<子项目名>/linux-run.pid` 进程组 + `/proc` 扫描收停，`LINUX_STOP: OK|RESIDUAL`。**两条 kill 路径均以假仓库实测通过**（§9.3）。
 3. **不可移植的测试能力**：`scripts/test/win/mt.sh --phase cases`（用例编排）/`scripts/test/mt_assert.py`（断言）/`scripts/test/win/mt.sh --phase report`/`scripts/test/win/mt.sh --phase stop --verify` 都建立在「Windows 进程 + 键盘注入 + 窗口」之上，Linux 侧不复刻；替代路径是 **AutoJS HTTP 通道**（`docs/features/autojs-testing-flow.md（已删除 2026-11-05）` 六步流程），它不需要键鼠注入。详见 §6、§7。
 
 ## 1. 文件
@@ -18,7 +18,7 @@
 | 文件 | 作用 | 实测状态 |
 |---|---|---|
 | `env.sh` | 只读环境体检，机器行 `CHECK: key=OK\|WARN\|FAIL — detail` + `ENV_RESULT: OK\|WARN\|FAIL` | ✅ 实测（exit 0 / WARN） |
-| `launch.sh` | 启动客户端 → 轮询就绪标志 → 可选 AutoJS 探活；日志 `scripts/test/linux/logs/<ver>-<ts>.log`，PID `run/<ver>/linux-run.pid` | ⏳ 仅 `--dry-run`（真实启动留给 Lead） |
+| `launch.sh` | 启动客户端 → 轮询就绪标志 → 可选 AutoJS 探活；日志 `scripts/test/linux/logs/<ver>-<ts>.log`，PID `run/<子项目名>/linux-run.pid` | ⏳ 仅 `--dry-run`（真实启动留给 Lead） |
 | `stop.sh` | 收停客户端（pid 文件进程组 → `/proc` 扫描 → 复核），可选 `--purge-saves` / `--stop-daemon` | ✅ 实测（含假仓库 kill 测试） |
 | `logs/` | launch.sh 默认日志目录（`logs/.gitignore` 已忽略内容，不会污染 `git status`） | — |
 
@@ -37,7 +37,7 @@ scripts/test/linux/launch.sh --version 26.1.2 --timeout 900 --kill-on-timeout
 # 3) 收停
 scripts/test/linux/stop.sh --version 1.21.1
 scripts/test/linux/stop.sh --all --force
-scripts/test/linux/stop.sh --version 1.21.1 --purge-saves   # 删测试世界（saves/* 与 run/<ver>/*/level.dat）
+scripts/test/linux/stop.sh --version 1.21.1 --purge-saves   # 删测试世界（saves/* 与 run/<子项目名>/*/level.dat）
 ```
 
 线路映射（Gradle daemon JVM 各线统一 **JDK 21**；子项目 toolchain 由 Gradle 自动发现）：
@@ -115,7 +115,7 @@ scripts/test/linux/stop.sh --version 1.21.1 --purge-saves   # 删测试世界（
 ## 7. 残余 Windows-only 能力与建议（按优先级）
 
 1. **P0 已解决**：Linux 上「起客户端 / 探活 / 收停」闭环 → 本目录三件套。
-2. **P1 建议**：把 AutoJS 通道作为 Linux 侧唯一「用例执行臂」——`docs/features/autojs-testing-flow.md（已删除 2026-11-05）` 六步流程 + 本仓 `autojs` skill；不需要键鼠，`stop.sh` 负责收尾。各线的 `run/<ver>/mods` **均已就位 AutoJS jar**（env.sh 各线报 OK，见 §9.1）；换线/重装后仍建议先跑 env.sh 复核。
+2. **P1 建议**：把 AutoJS 通道作为 Linux 侧唯一「用例执行臂」——`docs/features/autojs-testing-flow.md（已删除 2026-11-05）` 六步流程 + 本仓 `autojs` skill；不需要键鼠，`stop.sh` 负责收尾。各线的 `run/<子项目名>/mods` **均已就位 AutoJS jar**（env.sh 各线报 OK，见 §9.1）；换线/重装后仍建议先跑 env.sh 复核。
 3. **P2 建议**：若必须保留「键鼠注入级」用例（GUI 拖拽/按键序列），改走 task-2 的 Wayland computer-use MCP（`act` 的 keyboard/pointer）；不要复活旧注入模块的 user32 代码。
 4. **P3 建议**：IME / 截图 / Win32 窗口模块保持 Windows-only，不强行移植；Linux 截图用 `grim` 即可。
 5. **不建议**：把 19k 行旧测试台整体「去 Win32 化」——收益低（真正难替换的只有注入/窗口/IME 三块），且会把 Windows 侧稳定流程置于风险中。
@@ -124,7 +124,7 @@ scripts/test/linux/stop.sh --version 1.21.1 --purge-saves   # 删测试世界（
 
 - **仓库在 NTFS（ntfs3）上，不再有 hgfs**（2026-10-31 迁到原生 Linux 真机）：`findmnt -n -o FSTYPE,SOURCE -T <repo>` ⇒ `ntfs3 /dev/nvme2n1p1`；`ln -s` / 硬链接 / `chmod +x` 实测可用，`write`/`edit` 工具可直接落盘。NTFS 仍比 ext4 慢：Gradle 缓存（`~/.gradle`，ext4 家目录）与 `build/`（NTFS）分居两盘，大临时文件优先 `/tmp/`。
 - **Gradle 并发位只有 1 个**：本目录三件套**从不**自动跑 Gradle；launch.sh 真实启动前请确认没有别的 agent 在构建（env.sh 的 `INFO: gradle` 行给出 daemon/wrapper 计数）。
-- **PID 文件写在 `run/<ver>/linux-run.pid`**（Lead 裁决）：与 Windows 台 `run/` 产物并存；`run/` 已被 git 忽略，不会污染提交。
+- **PID 文件写在 `run/<子项目名>/linux-run.pid`**（Lead 裁决）：与 Windows 台 `run/` 产物并存；`run/` 已被 git 忽略，不会污染提交。
 - **AutoJS 探活**：`GET <endpoint>/health` 三态（200=ONLINE / 000=DOWN / 其它=HTTP_ERROR）；`GET /mcp` 返回 405 是正常（无服务端 SSE）。
 - **fabric-1.20.1 的就绪判据与其他线一致**：主判据是 AutoJS 客户端侧（§8.5），不再依赖「世界已加载」日志 marker。
 - **`mt.conf` 里的 `MT_PACK_MODS_*` / `MT_MCP_BIN` 是 Windows 机器历史值**：env.sh 检测到 `D:/`、`C:/` 会 WARN，不影响 Linux 运行。
@@ -138,7 +138,7 @@ scripts/test/linux/stop.sh --version 1.21.1 --purge-saves   # 删测试世界（
 - **因此 `launch.sh` 改以 AutoJS 为准**：
   - 主判据：`health`==200 **且** MCP `initialize` + `tools/call status` 报 `sides[]` 中 `side=="client"` 且 `available=true` → `LAUNCH: READY`，exit 0。
   - 日志 marker 只作附加信息：命中时额外打 `LAUNCH: WORLD_READY`，**不作为 READY 必要条件**；`--wait-world <秒>`（默认 0）可在 READY 后额外等它。
-  - `MT_ALLOW_NO_AUTOJS=1`：允许 AutoJS 未就绪时用日志 marker 兜底判 READY；`run/<ver>/mods` 无 AutoJS jar 的线也自动允许 marker 兜底。两套都没有 → AutoJS 通道从未响应 health 则 exit 2，否则 exit 12。
+  - `MT_ALLOW_NO_AUTOJS=1`：允许 AutoJS 未就绪时用日志 marker 兜底判 READY；`run/<子项目名>/mods` 无 AutoJS jar 的线也自动允许 marker 兜底。两套都没有 → AutoJS 通道从未响应 health 则 exit 2，否则 exit 12。
 - **需要世界的用例**：用 `--quickplay <世界名>`（build.gradle 各线已实现 `-Pquickplay`：1.21.1/1.20.1/fabric 映射 `--quickPlaySingleplayer <名>`，26.1.2 必须等号形式 `--quickPlaySingleplayer=<名>`；launch.sh 经 `run/start-*.sh` 的 `"$@"` 透传或直接附给 gradlew，**本脚本传参未实机验证**），或先在标题画面用 AutoJS `eval_js` 建/开世界（见 `docs/features/autojs-testing-flow.md（已删除 2026-11-05）`）。
 
 ## 9. 实测记录（2026-10-31）
@@ -148,7 +148,7 @@ scripts/test/linux/stop.sh --version 1.21.1 --purge-saves   # 删测试世界（
 ```
 CHECK: repo=OK / mount=INFO(ntfs3, source=/dev/nvme2n1p1) / gradlew=OK
 CHECK: jdk_1.21.1=OK (21.0.12.1) / jdk_1.20.1=OK (17.0.20.1) / jdk_26.1.2=OK (25.0.4.1) / jdk_fabric-1.20.1=OK (17.0.20.1)
-CHECK: run_dir_*=OK（run/1.21.1, run/1.20.1, run/26.1.2, run/fabric-1.20.1 均存在）
+CHECK: run_dir_*=OK（run/neoforge-1.21.1, run/forge-1.20.1, run/neoforge-26.1.2, run/fabric-1.20.1 均存在）
 CHECK: autojs_jar_1.21.1=OK（AutoJS-neoforge-1.21.1-1.0.0.jar）
 CHECK: autojs_jar_1.20.1=OK（AutoJS-forge-1.20.1-1.0.0-dev.jar）
 CHECK: autojs_jar_26.1.2=OK（AutoJS-neoforge-26.1-1.0.0.jar）
@@ -172,7 +172,7 @@ LAUNCH: DRY-RUN — 未启动任何进程
   toolchain    = 17（Gradle 自动发现，本机需在位）
   start_source = run/start-1.20.1.sh（可执行，直接调用）
   log          = scripts/test/linux/logs/1.20.1-<ts>.log
-  pid_file     = run/1.20.1/linux-run.pid
+  pid_file     = run/forge-1.20.1/linux-run.pid
   timeout      = 600s（等 AutoJS 客户端侧 READY；旧日志 marker 不作必要条件）
   wait_world   = 0s（READY 后额外等世界 marker，0=不等）
   autojs_jar   = 1 个  AutoJS-forge-1.20.1-1.0.0-dev.jar
@@ -198,14 +198,14 @@ LAUNCH: DRY-RUN — 未启动任何进程
 ### 9.3 stop.sh 假仓库 kill 测试（`MT_STOP_REPO_ROOT` 自测钩子）
 
 ```
-# (a) pid 文件路径：setsid sleep 300 → run/26.1.2/linux-run.pid
+# (a) pid 文件路径：setsid sleep 300 → run/neoforge-26.1.2/linux-run.pid
 LINUX_STOP: pid=45219 ver=26.1.2 — SIGTERM（进程组）
 LINUX_STOP: pid=45219 已退出
-LINUX_STOP: pidfile-removed /tmp/fake-repo/run/26.1.2/linux-run.pid
+LINUX_STOP: pidfile-removed /tmp/fake-repo/run/neoforge-26.1.2/linux-run.pid
 LINUX_STOP: OK                                   EXIT=0   # 进程已消失
 
-# (b) /proc 扫描路径：真 java（cwd=run/1.21.1，cmdline 含 -Dfml…），无 pid 文件
-LINUX_STOP: pid=48337 ver=1.21.1 — SIGTERM（/proc 扫描命中，cwd=/tmp/fake-repo/run/1.21.1）
+# (b) /proc 扫描路径：真 java（cwd=run/neoforge-1.21.1，cmdline 含 -Dfml…），无 pid 文件
+LINUX_STOP: pid=48337 ver=1.21.1 — SIGTERM（/proc 扫描命中，cwd=/tmp/fake-repo/run/neoforge-1.21.1）
 LINUX_STOP: pid=48337 已退出
 LINUX_STOP: OK                                   EXIT=0   # 进程已消失
 ```
@@ -256,5 +256,5 @@ Dependency requires at least JVM runtime version 21. This build uses a Java 17 J
 - **env.sh 键名变化**：`hgfs_writable` → **`repo_writable`**（`ntfs3/ext4/xfs/btrfs` 走 OK 并注明链接可用）；新增 **`locks_stale`**（按锁文件 `PID=` 做 `kill -0`，陈旧锁**只报不删**）；`mt.conf` 的 Windows 路径提示由 `WARN` 降为 `INFO`；`mount` 行新增 `ntfs3|ntfs` 分支。
 - **锁目录**：`/mnt/f/MCProject/.agent-locks`（与 Windows 同一目录）。
 - **实测（2026-10-31 17:5x，改后首跑）**：`ENV_RESULT: WARN — 0 项阻塞，1 项提示`；`pack_dirs=OK（整合包根=/mnt/d/.minecraft，各线目标 mods 目录齐全）`、`repo_writable=OK`、`locks_stale` 无陈旧锁、`gradle_daemon_jvm=OK`。
-- **未变**：daemon JVM 仍统一 21、toolchain 按线（17/21/25）、`stop.sh` 收停协议、`launch.sh` 以 AutoJS 判 READY、`run/<ver>/linux-run.pid` 协议。
+- **未变**：daemon JVM 仍统一 21、toolchain 按线（17/21/25）、`stop.sh` 收停协议、`launch.sh` 以 AutoJS 判 READY、`run/<子项目名>/linux-run.pid` 协议。
 - 详细迁移实测与剩余 checklist 见 `docs/handover-2026-10-31-native-linux-migration.md`。

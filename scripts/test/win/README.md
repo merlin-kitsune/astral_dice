@@ -21,7 +21,7 @@ scripts/test/win/
 └── README.md        # 本文件
 ```
 
-> 写域纪律：本目录**只读**复用 `scripts/test/mt.conf` 与 `run/<v>/**` 的现状，
+> 写域纪律：本目录**只读**复用 `scripts/test/mt.conf` 与 `run/<子项目名>/**` 的现状，
 > 不改 `scripts/test/linux/**`、不改 `mt.conf`、不新增任何外部脚本资产（旧资产已退役）。
 
 ---
@@ -34,7 +34,7 @@ scripts/test/win/
 | `cmd //c start "" /B cmd /c "…"` 在本机**阻塞**（6s 超时仍未返回） | `launch.sh` 默认 `--launch-mode bg`（bash 后台 + `cmd //c gradlew.bat`，可拿 PID）；`start` 只是保留的备选 |
 | 旧式进程终止的退出码不可靠（找不到进程也常返回 0，输出还是 GBK 乱码） | 脚本**不终止进程**：`stop.sh` 只打印待收停 PID，残留判定一律用 jps + 端口复核 |
 | 全仓只有一个 Gradle 并发位，daemon JVM **必须 ≥ 21** | `launch.sh` 找不到 ≥21 的 JDK 就 `LAUNCH: BLOCKED`(11)，绝不用 17 硬起 |
-| `run/1.20.1/mods`、`run/fabric-1.20.1/mods` 里实际躺着 `AutoJS-*.jar` | 2026-11-01 用户裁决：AutoJS 就绪判据**放宽至所有版本**，按「本线 `run/<版本>/mods` 里 `AutoJS-*.jar` 是否在位」判定（各线实测都在位 ⇒ 各线全部纳入 AutoJS 主判据；无 jar 的线自动退回日志 marker） |
+| `run/forge-1.20.1/mods`、`run/fabric-1.20.1/mods` 里实际躺着 `AutoJS-*.jar` | 2026-11-01 用户裁决：AutoJS 就绪判据**放宽至所有版本**，按「本线 `run/<子项目名>/mods` 里 `AutoJS-*.jar` 是否在位」判定（各线实测都在位 ⇒ 各线全部纳入 AutoJS 主判据；无 jar 的线自动退回日志 marker） |
 | bash 在本机会话里对 `scripts/test/**`、`run/**` 的写入可能被 ACL/沙箱拒 | `env.sh` 的 `write_targets` 会 WARN；`launch.sh` 建不了日志目录就直接 `ERROR`(2) 明说，不静默降级 |
 
 ---
@@ -43,7 +43,7 @@ scripts/test/win/
 
 | Linux 蓝本用的是 | Windows 侧对应物 | 说明 / 降级 |
 |---|---|---|
-| `/proc/<pid>/cmdline`、`/proc/<pid>/cwd` | `jps -lvm` 取「PID + 主类与参数」 | 没有 cwd 字段，判线只能靠命令行；标记串：`:<子项目>:`、`run\\<version>`、`run/<version>`（**不用**裸子项目名，那同时是仓库目录名，会误命中 IDE） |
+| `/proc/<pid>/cmdline`、`/proc/<pid>/cwd` | `jps -lvm` 取「PID + 主类与参数」 | 没有 cwd 字段，判线只能靠命令行；标记串：`:<子项目>:`、`run\\<version>`、`run/<子项目名>`（**不用**裸子项目名，那同时是仓库目录名，会误命中 IDE） |
 | `pgrep -f` / `ps` 过滤 | 同一份 jps 输出在 bash 里 `while IFS=$'\t' read -r pid cmd` 过滤 | jps 不可用（缺 JDK / 无权限）⇒ `env.sh` FAIL、`launch.sh`/`stop.sh` BLOCKED/ERROR(2)，绝不「当作没有进程」继续 |
 | `kill -SIG -- -<pgid>`（进程组） | 脚本**不做终止**，只输出 PID 列表 | 终止由 Agent 通过 windows MCP 的 `Process(kill)` 执行；没有「整棵进程树」的等价物 |
 | `setsid` + `nohup` | bash 后台 `>log 2>&1 </dev/null &` + `cmd //c`；`start "" /B` 作备选 | 本机 `start /B` 实测阻塞 ⇒ 默认走 bg；后台子进程必须重定向三路 FD，否则调用方挂起 |
@@ -59,7 +59,7 @@ scripts/test/win/
 
 1. **进程组语义**：`kill -- -pgid` 没有对应物，脚本也不再终止进程；若某个 java 已 detach 出 wrapper，
    只能靠 jps 判线逐条列出 PID，交给 Agent 终止。
-2. **cwd 判据**：Linux 用 `/proc/<pid>/cwd` 精确判「这个 java 是不是在 `run/<v>/` 下」；
+2. **cwd 判据**：Linux 用 `/proc/<pid>/cwd` 精确判「这个 java 是不是在 `run/<子项目名>/` 下」；
    Windows 拿不到别的进程 cwd ⇒ 只能靠命令行标记串，理论上比 cwd 弱。
 3. **信号语义**：`SIGTERM` 宽限期不存在，且脚本不发送任何信号；终止方式与时机由 Agent 决定
    （强杀写入中的存档有小概率留残档）。
@@ -87,7 +87,7 @@ PURGE: removed|failed|would-remove|DRY-RUN — <路径>（<版本> 世界存档�
 
 - `CHECK: x=FAIL` 只用于**真阻塞**（jps 不可用、仓库根错、mt.conf 缺键…）；「游戏没启动」这类
   预期状态一律 WARN，避免把正常状态刷成红。
-- `LAUNCH: BLOCKED` 的三种成因：daemon JVM 缺 / `run/<v>` 不存在 / **同一线已有客户端在跑**。
+- `LAUNCH: BLOCKED` 的三种成因：daemon JVM 缺 / `run/<子项目名>` 不存在 / **同一线已有客户端在跑**。
   第四种（jps 不可用、判不了线）也归 BLOCKED——不知道就别起。
 - `LAUNCH: READY`（AutoJS 在线）与 `LAUNCH: WORLD_READY`（世界 marker 命中）可以同时出现；
   只有 READY 时 exit 仍为 0（客户端可用但世界可能还没进）。
@@ -209,7 +209,7 @@ bash scripts/test/win/stop.sh --version 26.1.2 --stop-daemon
    任务管理器交叉确认。
 2. `LAUNCH: TIMEOUT` / `ERROR` 后默认**不收停**（与 Linux 蓝本一致），避免把「还在加载」误杀；
    需要收停时由 Agent 用 windows MCP 终止（脚本只打印 PID）。
-3. `--purge-saves` 只清白名单世界目录；`run/<v>/logs`、`hs_err_pid*.log`、`crash-reports` 一律不动
+3. `--purge-saves` 只清白名单世界目录；`run/<子项目名>/logs`、`hs_err_pid*.log`、`crash-reports` 一律不动
    （要清就手工，别让测试脚本替人删日志）。
 4. `--launch-mode start` 在本机不可用（阻塞）；保留该选项是为了其他机器/未来的 `start` 语义。
 5. 本目录脚本落地即 `755`；若从 git 检出后发现不可执行，`bash <脚本>` 方式调用即可，
@@ -219,7 +219,7 @@ bash scripts/test/win/stop.sh --version 26.1.2 --stop-daemon
 
 fabric 线与其余各线有**两处结构差异**，用法据此分叉：
 
-1. **run 目录是双份**：`fabric-1.20.1/run/client` 与 `fabric-1.20.1/run/server`（其余各线是单目录 `run/<版本>`）。
+1. **run 目录是双份**：`fabric-1.20.1/run/client` 与 `fabric-1.20.1/run/server`（其余各线是单目录 `run/<子项目名>`）。
    ⇒ 必须用 `--side client|server` 指定一侧；不带时默认 `client`。其它各线传 `--side` 会被明确拒绝（`exit 2`）。
 2. **AutoJS 是条件依赖**：`fabric-1.20.1/build.gradle:182-190` 只在 `-PautojsTestMod=1` 时挂 `modRuntimeOnly`。
    ⇒ launch **默认不带**该开关；显式加 `--enable-autojs`（或环境变量 `MT_FAB_AUTOJS=1`）才会追加 `-PautojsTestMod=1`。

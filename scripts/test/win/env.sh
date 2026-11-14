@@ -156,8 +156,8 @@ fi
 for v in $VERSIONS; do
     proj="$(mt_subproject "$v")" || { mt_fail "version_$v" "未知版本"; continue; }
     toolchain_ver="$(mt_toolchain "$v")"
-    run_dir="$MT_REPO_ROOT/run/$v"
-    # fabric 线是双 run 目录（<fabric-子项目>/run/<client|server>）；其它三线仍是单目录。
+    run_dir="$MT_REPO_ROOT/run/$proj"
+    # fabric 线是双 run 目录（<fabric-子项目>/run/<client|server>）；其它三线是单目录 run/<子项目名>。
     # check_dirs 是「本条线要检查的 run 目录」列表，下面所有检查都按它循环。
     check_dirs="$run_dir"
     if mt_is_fabric "$v"; then
@@ -238,7 +238,7 @@ for v in $VERSIONS; do
     fi
 done
 
-# ── 7. AutoJS 端点（是否纳入判据按 run/<版本>/mods 里 AutoJS jar 是否在位判定）
+# ── 7. AutoJS 端点（是否纳入判据按 run/<子项目名>/mods 里 AutoJS jar 是否在位判定）
 endpoint="$(mt_aj_endpoint)"
 base_url="${endpoint%/mcp}"
 port="${base_url##*:}"
@@ -247,7 +247,7 @@ mt_info autojs_endpoint "endpoint=$endpoint base=$base_url port=$port timeout_ms
 
 checked_autojs=0
 for v in $VERSIONS; do
-    aj_n_v="$(mt_autojs_jar_count "$MT_REPO_ROOT/run/$v" 2>/dev/null || true)"
+    aj_n_v="$(mt_autojs_jar_count "$MT_REPO_ROOT/run/$(mt_subproject "$v")" 2>/dev/null || true)"
     [ -n "$aj_n_v" ] || aj_n_v=0
     if [ "$aj_n_v" -gt 0 ]; then
         checked_autojs=1
@@ -276,13 +276,13 @@ if [ "$checked_autojs" = 1 ]; then
         mt_info autojs_port "netstat 不可用，跳过端口探测"
     fi
 else
-    mt_info autojs_health "本次检查的线（$VERSIONS）的 run/<版本>/mods 里都没有 AutoJS jar，跳过 /health"
+    mt_info autojs_health "本次检查的线（$VERSIONS）的 run/<子项目名>/mods 里都没有 AutoJS jar，跳过 /health"
 fi
 
 for v in $VERSIONS; do
     aj_exists=0
     aj_where=""
-    scan_dirs="$MT_REPO_ROOT/run/$v"
+    scan_dirs="$MT_REPO_ROOT/run/$(mt_subproject "$v")"
     if mt_is_fabric "$v"; then
         mt_fab_set_version "$v" || true
         scan_dirs="$MT_REPO_ROOT/$MT_FAB_SUBPROJECT/run/client $MT_REPO_ROOT/$MT_FAB_SUBPROJECT/run/server"
@@ -300,7 +300,7 @@ for v in $VERSIONS; do
     elif mt_is_fabric "$v"; then
         mt_info "autojs_line_$v" "fabric 双侧 mods 里都无 AutoJS jar（=0，-PautojsTestMod 未开启属正常），注入与断言改走 RCON 127.0.0.1:$(mt_fab_rcon_port)"
     else
-        mt_info "autojs_line_$v" "run/$v/mods 里无 AutoJS jar（=0），该线改走日志 marker 兜底"
+        mt_info "autojs_line_$v" "run/$(mt_subproject "$v")/mods 里无 AutoJS jar（=0），该线改走日志 marker 兜底"
     fi
 done
 
@@ -384,7 +384,10 @@ fi
 
 wt_bad=""
 wt_ok=""
-for d in "$LOG_DIR" "$MT_REPO_ROOT/run/1.21.1"; do
+for d in "$LOG_DIR" $(for v in $VERSIONS; do case "$v" in
+        fabric-*) printf '%s\n' "$MT_REPO_ROOT/$(mt_subproject "$v")" ;;
+        *)        printf '%s\n' "$MT_REPO_ROOT/run/$(mt_subproject "$v")" ;;
+    esac; done); do
     if mt_dir_writable "$d"; then
         wt_ok="$wt_ok $(printf '%s' "$d" | sed "s|$MT_REPO_ROOT/||")"
     else
@@ -392,7 +395,7 @@ for d in "$LOG_DIR" "$MT_REPO_ROOT/run/1.21.1"; do
     fi
 done
 if [ -z "$wt_bad" ]; then
-    mt_ok write_targets "launch 写目标可写：日志目录与 run/<ver>/（pidfile）；OK 项:$wt_ok"
+    mt_ok write_targets "launch 写目标可写：日志目录与 run/<子项目名>/（pidfile）；OK 项:$wt_ok"
 else
     mt_warn write_targets "launch 写目标不可写:$wt_bad（日志/pidfile 会失败；沙箱/ACL 拒绝时属环境问题，正常交互 shell 下应可写）"
 fi

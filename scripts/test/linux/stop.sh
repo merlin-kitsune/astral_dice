@@ -102,14 +102,25 @@ scan_pids() {
     done
 }
 
+line_project() {
+    case "$1" in
+        1.21.1)  printf %s neoforge-1.21.1 ;;
+        1.20.1)  printf %s forge-1.20.1 ;;
+        26.1.2)  printf %s neoforge-26.1.2 ;;
+        fabric-1.20.1|fabric-1.21.1) printf %s "$1" ;;
+        *) return 1 ;;
+    esac
+}
+
 saw_pid=0
 residual=0
 
 for v in $VERSIONS; do
     # fabric 线的 Loom runDir 是 <proj>/run/client（与 launch.sh 的 RUN_DIR 口径一致）
+    # 其它三线是仓库根 run/<子项目名>（2026-11-12 改名，不再拼裸版本号）
     case "$v" in
         fabric-1.20.1|fabric-1.21.1) RUN_DIR="$REPO_ROOT/$v/run/client" ;;
-        *) RUN_DIR="$REPO_ROOT/run/$v" ;;
+        *) RUN_DIR="$REPO_ROOT/run/$(line_project "$v")" ;;
     esac
     PIDFILE="$RUN_DIR/linux-run.pid"
 

@@ -69,6 +69,12 @@ SUBPROJECT = {
     "fabric-1.21.1": "fabric-1.21.1",
 }
 
+# 仓库根 run/ 下的目录名（2026-11-12 用户改名：run/1.21.1 -> run/neoforge-1.21.1、
+# run/1.20.1 -> run/forge-1.20.1、run/26.1.2 -> run/neoforge-26.1.2，与子项目名一致）。
+# fabric 两线不用这一层：它们跑在 <子项目>/run/{client,server}（Loom runDir）。
+# ⚠️ 不要再拼 "run/" + 裸版本号 —— 那些目录已不存在，拼出来会让判线/停进程/日志读取全部指空。
+RUN_DIR_NAME = dict(SUBPROJECT)
+
 DEFAULT_PACK_MODS = {
     "1.21.1": "D:" + BSL + ".minecraft" + BSL + "versions" + BSL + "狐の航空学 Voxy Edition" + BSL + "mods",
     "1.20.1": "D:" + BSL + ".minecraft" + BSL + "versions" + BSL + "1.20.1-Forge 模组测试" + BSL + "mods",
@@ -198,13 +204,13 @@ def run_root(version, side=""):
         raise ValueError("未知版本 " + str(version))
     if is_fabric(version):
         return os.path.join(os.path.join(ROOT, SUBPROJECT[version]), "run", resolve_side(version, side))
-    return os.path.join(os.path.join(ROOT, "run"), version)
+    return os.path.join(os.path.join(ROOT, "run"), RUN_DIR_NAME[version])
 
 
 def run_label(version, side=""):
     if is_fabric(version):
         return SUBPROJECT[version] + "/run/" + resolve_side(version, side)
-    return "run/" + version
+    return "run/" + RUN_DIR_NAME[version]
 
 
 def get_paths(version, side=""):
@@ -260,7 +266,7 @@ def process_markers(paths):
             paths.run_dir,
             "fabric.dli.env=" + paths.side,
         ]
-    return [":" + paths.subproject + ":", "run" + BSL + paths.version, paths.run_dir]
+    return [":" + paths.subproject + ":", "run" + BSL + RUN_DIR_NAME[paths.version], paths.run_dir]
 
 
 # ── 运行 id / 截图清单 ─────────────────────────────────────────────────────

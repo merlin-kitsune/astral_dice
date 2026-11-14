@@ -172,7 +172,7 @@ for v in $TARGETS; do
     # fabric 线的 run 目录由全局 MT_FAB_SUBPROJECT 决定，裸调本脚本时必须先按本次版本切过来，
     # 否则 pidfile / AutoJS 状态文件会落到另一条 fabric 线的目录里(2026-11-05 实测遗漏)。
     mt_fab_set_version "$v" || true
-    run_dir="$MT_REPO_ROOT/run/$v"
+    run_dir="$MT_REPO_ROOT/run/$project"
     pid_dirs="$run_dir"
     if mt_is_fabric "$v"; then
         pid_dirs="$(mt_fab_side_dir client) $(mt_fab_side_dir server)"
@@ -244,7 +244,7 @@ for v in $TARGETS; do
         mt_info "noop" "$v 线未发现本 repo 的测试台进程（jps/pidfile/端口均为空）"
     fi
     if [ -f "$run_dir/linux-run.pid" ]; then
-        mt_info "linux-pidfile" "存在 run/$v/linux-run.pid（Linux 台遗留；本脚本不删他人状态文件）"
+        mt_info "linux-pidfile" "存在 ${run_dir#"$MT_REPO_ROOT"/}/linux-run.pid（Linux 台遗留；本脚本不删他人状态文件）"
     fi
 done
 
@@ -309,7 +309,7 @@ purge_dir() {
 if [ "$PURGE" = 1 ]; then
     for v in $TARGETS; do
         # fabric 双侧各有一套世界存档（<子项目>/run/<client|server>）；其它线单目录。
-        purge_dirs="$MT_REPO_ROOT/run/$v"
+        purge_dirs="$MT_REPO_ROOT/run/$project"
         if mt_is_fabric "$v"; then
             purge_dirs="$(mt_fab_side_dir client) $(mt_fab_side_dir server)"
         fi

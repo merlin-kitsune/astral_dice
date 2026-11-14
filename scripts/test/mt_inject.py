@@ -416,8 +416,9 @@ def find_window(version):
             paths = None
         markers = []
         if paths is not None:
-            # 与 python 原 _find_window 同口径：裸子项目名 + run 目录 + run\<版本>
-            markers = [str(paths.subproject), str(paths.run_dir), "run" + BSL + str(version)]
+            # 与 python 原 _find_window 同口径：裸子项目名 + run 目录 + run\<子项目名>
+            # （2026-11-12 起 run 目录名 = 子项目名，不再拼裸版本号）
+            markers = [str(paths.subproject), str(paths.run_dir), "run" + BSL + str(paths.subproject)]
         rows = _java_rows() or []
         by_pid = {}
         for row in rows:

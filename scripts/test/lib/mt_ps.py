@@ -110,10 +110,12 @@ def markers_for(version, side=""):
         out.append(sub + "runclient")
         out.append(sub + "runserver")
         return [item.lower() for item in out]
+    # 2026-11-12: 仓库根 run 目录改用带加载器的完整名（run/neoforge-1.21.1 等），
+    # 与子项目名一致；裸版本号的 run/<version> 已不存在。
     return [
         ":" + sub + ":",
-        "run" + BSL + version,
-        "run/" + version,
+        "run" + BSL + sub,
+        "run/" + sub,
     ]
 
 

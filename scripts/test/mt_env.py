@@ -636,7 +636,7 @@ def sync_kubejs(version):
             mc.write_mt_warn("MT_WARN: 复制脚本失败 " + src + " — " + str(exc))
     if copied:
         mc.write_mt_line("MT_KUBEJS: OK — 已同步 " + str(copied) + "/" + str(total)
-                         + " 个脚本到 run/" + version
+                         + " 个脚本到 run/<子项目名>/kubejs"
                          + "/kubejs（模板有更新；探针命令的改动需**冷启动**才生效）")
     else:
         mc.write_mt_line("MT_KUBEJS: OK — " + str(total) + " 个脚本均与模板一致（无需同步）")

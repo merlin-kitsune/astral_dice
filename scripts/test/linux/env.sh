@@ -143,10 +143,11 @@ fi
 for v in $VERSIONS; do
     proj="$(line_project "$v")" || { log_fail "version_$v" "未知版本"; continue; }
     toolchain_ver="$(line_jdkver "$v")"
-    # fabric 线 Loom runDir 是 <proj>/run/client，不在仓库根 run/<ver>
+    # fabric 线 Loom runDir 是 <proj>/run/client；其它三线是仓库根 run/<子项目名>
+    # （2026-11-12 起 run 目录改名 run/neoforge-1.21.1 等，不再拼裸版本号）
     case "$v" in
         fabric-*) run_dir="$REPO_ROOT/$proj/run/client" ;;
-        *)        run_dir="$REPO_ROOT/run/$v" ;;
+        *)        run_dir="$REPO_ROOT/run/$proj" ;;
     esac
 
     jdk_home="$(jdk_home_for "$toolchain_ver" || true)"
@@ -158,7 +159,7 @@ for v in $VERSIONS; do
     fi
 
     if [ ! -d "$run_dir" ]; then
-        log_warn "run_dir_$v" "run/$v 不存在（首次 runClient 后由 Gradle 创建）"
+        log_warn "run_dir_$v" "run/$proj 不存在（首次 runClient 后由 Gradle 创建）"
     else
         log_ok "run_dir_$v" "$run_dir 存在"
         if [ -d "$run_dir/mods" ]; then
@@ -187,7 +188,7 @@ for v in $VERSIONS; do
         elif [ "${v#fabric-}" != "$v" ]; then
             log_info "mods_$v" "$run_dir/mods 不存在（fabric 线 mods 由 Loom dev classpath 装配；AutoJS 用 -PautojsTestMod=1 注入）"
         else
-            log_warn "mods_$v" "run/$v/mods 不存在（env 装配尚未执行；Linux 侧暂无自动装配）"
+            log_warn "mods_$v" "run/$proj/mods 不存在（env 装配尚未执行；Linux 侧暂无自动装配）"
         fi
     fi
 done

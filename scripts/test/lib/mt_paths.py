@@ -123,12 +123,16 @@ def jar_stats(version: str, root: str | None = None) -> dict:
 
 
 def run_dir(version: str, side: str | None = None, root: str | None = None) -> str:
-    """run 根：fabric 双 run 目录 <sub>/run/<side>；另三线 run/<版本>。"""
+    """run 根：fabric 双 run 目录 <sub>/run/<side>；另三线 run/<子项目名>。
+
+    2026-11-12 起仓库根 run 目录改用带加载器的完整名（run/neoforge-1.21.1、
+    run/forge-1.20.1、run/neoforge-26.1.2），不再拼裸版本号；目录名与子项目名一致。
+    """
     base = root or repo_root()
     sub = subproject(version)
     if is_fabric(version):
         return os.path.join(base, sub, "run", (side or "server").strip() or "server")
-    return os.path.join(base, "run", version)
+    return os.path.join(base, "run", sub)
 
 
 def mods_dir(version: str, side: str | None = None, root: str | None = None) -> str:

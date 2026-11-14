@@ -316,7 +316,7 @@ mt_phase_stop() {
 
 # ══ 阶段：cases（已改接 python lib/mt_case.py）════════════════════════════
 mt_phase_cases() {
-    local v="${1:-}" casepath="${2:-}" rc percase budget
+    local v="${1:-}" casepath="${2:-}" rc percase budget sub
     # fabric 线（fabric-*）：bash 原生解析 scripts/test/cases/*-<当前 fabric 版本>.json，不委托 mt_case.py
     if mt_is_fabric "$v"; then
         mt_fab_phase_cases "$v" "$casepath"
@@ -324,6 +324,7 @@ mt_phase_cases() {
     fi
     mt_phase_require_version "$v" || return $?
     mt_phase_require_repo || return $?
+    sub="$(mt_subproject "$v")" || return $?
     percase="${MT_CASE_TIMEOUT_SEC:-600}"
     case "$percase" in ''|*[!0-9]*) percase=600 ;; esac
 
@@ -334,10 +335,10 @@ mt_phase_cases() {
     #     --allow-auto 仅兼容接受、批量闸门仍在 mt.sh），故与 ps1 一样透传
     local -a args
     if [ -n "$casepath" ]; then
-        args=(run --case "$casepath" --version "$v" --case-timeout "$percase" --run-dir "run/$v")
+        args=(run --case "$casepath" --version "$v" --case-timeout "$percase" --run-dir "run/$sub")
         budget=$((percase + 90))
     else
-        args=(run --version "$v" --case-timeout "$percase" --run-dir "run/$v")
+        args=(run --version "$v" --case-timeout "$percase" --run-dir "run/$sub")
         budget=$((90 + percase))
     fi
     # --channel 只接受 python 侧的两个取值（kubejs / autojs）；native 无等价注入通道 ⇒ 显式降级告警，
