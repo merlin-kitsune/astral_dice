@@ -1,0 +1,15 @@
+{
+  "values": [
+    "astral_dice:atm_chip",
+    "astral_dice:bank_card_high_chip",
+    "astral_dice:bank_card_low_chip",
+    "astral_dice:bank_card_unlimited_chip",
+    "astral_dice:eight_sided_dice_chip",
+    "astral_dice:flashlight_burst_chip",
+    "astral_dice:flashlight_chip",
+    "astral_dice:fortune_stick_chip",
+    "astral_dice:golden_shooting_star_chip",
+    "astral_dice:purple_shooting_star_chip",
+    "astral_dice:star_coin_hammer_chip"
+  ]
+}

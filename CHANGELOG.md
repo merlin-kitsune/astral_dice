@@ -4,6 +4,15 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 26.4-SNAPSHOT.52
+
+### This line
+
+- Added four flat chip-school item tags on NeoForge 1.21.1, Forge 1.20.1, and NeoForge 26.1.2: `astral_dice:school_starlight` (11 chips), `astral_dice:school_healing` (10), `astral_dice:school_mark` (9), and `astral_dice:school_charge` (11), 41 chips in total. Values follow the `ChipShopCatalog.POOL` order; the 29 generic chips are not tagged, and `blank_chip` is excluded.
+- Exposed the tags as `SCHOOL_STARLIGHT` / `SCHOOL_HEALING` / `SCHOOL_MARK` / `SCHOOL_CHARGE` `TagKey<Item>` constants in each line's `ModTags.Items`. They are data-only for now: no consumer uses them yet, and they are reserved for the future research system.
+- Added `tools/verify_chip_school_tags.py` to parse each line's POOL and enforce exact tag values/order, three-line mapping identity, the 41/29 split, `chips.json` membership, the platform-specific `item`/`items` directory, no extra `school_generic`, and CRLF/BOM on the new tag files. The two Fabric lines have no school tags yet and are skipped until the files land.
+- Validation: the verifier exits 0 with `total=41 chips=71` on all three lines; the five-line `:build` completed with BUILD SUCCESSFUL in 6s (44 tasks; 32 executed, 12 up-to-date), and the three P0 `.52` jars contain the four tag JSONs while the two Fabric jars contain none. No live test in this batch: the tags are data-only and still have no in-game consumer.
+
 ## 26.4-SNAPSHOT.51
 
 ### This line
