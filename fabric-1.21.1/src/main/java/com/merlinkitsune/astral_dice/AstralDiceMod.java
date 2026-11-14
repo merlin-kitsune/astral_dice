@@ -144,6 +144,7 @@ public class AstralDiceMod implements ModInitializer {
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.combat.PlayerHostilityTrackerEvents.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.combat.SherryThrowManager.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.combat.ShootingStarManager.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.combat.SwordInStoneRainManager.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.command.AstralPartyCommand.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.economy.StarCoinPickupHandler.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.event.AnvilUpgradeHandler.class);

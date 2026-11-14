@@ -4,6 +4,15 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 26.4-SNAPSHOT.49
+
+### This line
+
+- `sword_in_stone_legendary_chip`: the blessing-end magic damage now arrives as a green + gold particle strike. Each hostile target within 24 blocks gets a particle cluster 8 blocks above its hitbox top; the cluster charges for 4 ticks, falls in 3 ticks (about 2.67 blocks/tick), and only then applies `astral_dice:card_spell` damage. Multi-target strikes are staggered by up to 10 ticks. The delayed hit stays inside the internal AOE window, and the particles reuse the bundled Iron Elden Ring particle library (`NATURE_SPARKLE` / `NATURE_GLOW` / `HOLY_STAR` / `HOLY_SPARK`) without new textures.
+- Fabric lines explicitly register `SwordInStoneRainManager` in `AstralDiceMod#registerListeners`; Forge / NeoForge use the event-bus annotation. Without that registration the Fabric tick handler would compile but never run.
+- Perfect Branch tooltip and handbook entry no longer repeat the per-item "clears all stacks when unequipped" note; clearing on unequip is a shared rule for all chips and signs.
+- Validation: five-line `:compileJava` → BUILD SUCCESSFUL in 2s after the final review fixes; an earlier five-line `:build` also passed in 3s. No live run this round, so the FX was not visually inspected.
+
 ## 26.4-SNAPSHOT.48
 
 ### This line

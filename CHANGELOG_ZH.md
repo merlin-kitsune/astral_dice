@@ -4,6 +4,15 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
+## 26.4-SNAPSHOT.49
+
+### 本线
+
+- 石中剑-传说：赐福结束的魔法伤害改为绿色+金色粒子落击。24 格内每个敌对目标头上 8 格生成粒子团，蓄势 4 tick 后用 3 tick 落下（约 2.67 格/tick），粒子抵达碰撞箱上沿时才结算 `astral_dice:card_spell` 伤害；多目标按最多 10 tick 错峰。延迟伤害包在内部波及窗口内，粒子复用仓库铁-艾尔登法环粒子库（`NATURE_SPARKLE` / `NATURE_GLOW` / `HOLY_STAR` / `HOLY_SPARK`），不新增贴图。
+- 两条 fabric 线在 `AstralDiceMod#registerListeners` 显式登记 `SwordInStoneRainManager`；Forge / NeoForge 由事件总线注解自动订阅。漏登记会编译通过但 tick 永不触发。
+- 完美树枝 tooltip 与手册条目不再重复「卸下筹码清空层数」这一句；卸下清空是所有筹码/立牌的公共约定。
+- 验证：最终复核修复后五线 `:compileJava` → BUILD SUCCESSFUL in 2s；此前五线 `:build` 也已通过（3s）。本轮未实机，未目视检查粒子观感。
+
 ## 26.4-SNAPSHOT.48
 
 ### 本线
