@@ -189,6 +189,16 @@ forge combat/DiceCombatEvents.java:303      if (isInternalAoe() || counterDepth 
 
 `true_damage` 在 `bypasses_armor` + `bypasses_cooldown`，但**不在** `bypasses_enchantments` / `bypasses_resistance` ⇒ 法伤加成段、飞星、大当家溅射、电磁炮雷击都会被「保护」附魔与抗性药水削减。与「真伤」命名不符，需用户裁决是否本意。
 
+### N11a · 已裁决 · skill_damage 改为等值伤害（2026-11-14）
+
+**问题**：`skill_damage` 原本只登记 `bypasses_armor` + `bypasses_cooldown`，**不在** `bypasses_enchantments` / `bypasses_resistance`，且 `ChipDamageHandler` 的不可削减闸门只认 `CARD_COST` / `UNREDUCIBLE_DAMAGE` ⇒ 保护附魔、抗性药水、磨刀石 -2、怪力侦探 -N、超天酱 -1 都会削减技能伤害。1.21.1 实机（`/damage astral_dice:skill_damage 5`）：裸僵尸 5.0、抗性 II 3.0、钻石胸甲保护 IV 4.2。
+
+**用户裁决**：「技能伤害必须为等值伤害」。
+
+**修法**：五线 `bypasses_enchantments` / `bypasses_resistance` 追加 `astral_dice:skill_damage`；五线 `ChipDamageHandler` 的 `unreducible` 追加 `SKILL_DAMAGE` ⇒ 护甲、盔甲韧性、保护附魔、抗性、固定点数减伤全部跳过。**保命**机制（安全气囊、不死图腾、末影骰子、磨刀石「不可被一次击倒」、鼠鼠护盾黄心吸收）保持不变；加伤类（虚弱印记 ×1.10、末影骰雨中/水下 +40%）不属于「防御值/减伤」，本次不动。
+
+**复验**：见 `docs/reports/2026-11-14-skill-damage-equal-40.md`。
+
 ### N12 · P3 · 双线 · 无击杀归因的伤害点
 
 ```

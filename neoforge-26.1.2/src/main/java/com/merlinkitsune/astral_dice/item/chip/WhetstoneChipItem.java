@@ -88,7 +88,7 @@ public class WhetstoneChipItem extends BaseChipItem {
 
     /**
      * @param flatReductionEnabled 是否启用「低血 -2」的**固定点数减伤**（2026-10-02 新增）。
-     *        「不可削减」伤害段（王之力代价 {@code card_cost}、狂暴反噬 {@code unreducible_damage}）传
+     *        「不可削减」伤害段（王之力代价 {@code card_cost}、狂暴反噬 {@code unreducible_damage}、技能伤害 {@code skill_damage}）传
      *        {@code false} —— 此时「-2」被跳过，但「不可被一次击倒」的**保命**部分**仍然生效**
      *        （用户裁决：「8 点必须真扣，仅保命生效」）。
      */

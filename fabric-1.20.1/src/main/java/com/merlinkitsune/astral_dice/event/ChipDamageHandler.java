@@ -103,11 +103,12 @@ public final class ChipDamageHandler {
         }
 
         // 磨刀石:低血量减伤 + 血量 > 1 时不可被一次伤害击倒
-        // 「不可削减」伤害段（王之力代价 card_cost / 狂暴反噬 unreducible_damage，2026-10-02 用户裁决）：
+        // 「不可削减」伤害段（王之力代价 card_cost / 狂暴反噬 unreducible_damage，2026-10-02 用户裁决；技能伤害 skill_damage，2026-11-14 用户裁决「等值伤害」）：
         // 跳过本模组的**固定点数减伤**（下面磨刀石 -2、怪力侦探立牌 -N）—— 但**保命**机制照常：
         // 安全气囊在上面已处理（致命即 return），磨刀石「不可被一次击倒」在下面仍然生效。
         boolean unreducible = event.getSource().is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.CARD_COST)
-                || event.getSource().is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.UNREDUCIBLE_DAMAGE);
+                || event.getSource().is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.UNREDUCIBLE_DAMAGE)
+                || event.getSource().is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.SKILL_DAMAGE);
 
         float modified = WhetstoneChipItem.modifyIncomingDamage(player, damage, !unreducible);
         if (modified != damage) {
@@ -135,7 +136,7 @@ public final class ChipDamageHandler {
         // 造成的伤害 -1。⚠️ 判据只认**目标标记** kangel_fan —— 佩戴者自己的计数指示器是另一个 id
         // (kangel_fan_indicator,2026-10-17 拆分),绝不参与本段,否则超天酱互殴会互相误判 -1。
         // 与上面 sherry 的段落**同一口径**:固定点数减法、与磨刀石同阶段(LOWEST = 最终伤害
-        // 阶段)、`Math.max(0, …)` **允许扣到 0**、**不可减免**伤害类型(CARD_COST / UNREDUCIBLE_DAMAGE)
+        // 阶段)、`Math.max(0, …)` **允许扣到 0**、**不可减免**伤害类型(CARD_COST / UNREDUCIBLE_DAMAGE / SKILL_DAMAGE)
         // 一律跳过(「不可削减」段已在上面算好 unreducible);刻意**不**附带"不可致死保护"。
         if (!unreducible && com.merlinkitsune.astral_dice.item.sign.KangelSignItem
                 .fanMitigationActive(player, event.getSource())) {

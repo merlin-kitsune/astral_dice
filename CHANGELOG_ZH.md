@@ -4,6 +4,15 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
+## 26.4-SNAPSHOT.40
+
+### 本线
+
+- 修复：`astral_dice:skill_damage` 对护甲值/韧性/保护附魔/抗性提升/固定点数减伤改为等值伤害。五线同时把它加入 `bypasses_enchantments` 与 `bypasses_resistance`（护甲/无敌帧原本已 bypass），并让 `ChipDamageHandler` 把 `SKILL_DAMAGE` 判为不可削减——磨刀石 -2、sherry 层数、kangel -1 不再生效。保命机制（安全气囊、磨刀石保留 1 血、RenShield 黄心吸收）不变；吸收黄心与摩西「破绽」闪避仍会先结算。
+- 文档：`ModDamageTypes` javadoc 与攻击/法术伤害链表格改为等值口径；N11a 记录裁决与修前/修后读数。
+- 验证：五线 `:build` → BUILD SUCCESSFUL in 15s。产物 sha256：1.21.1 `88a8767cefe935b79ca7c3ead039827110e387b7ee0ddaf4b37d32eb1f09224d`、1.20.1 `76bbd00e7f73c8cbf0486a20ff54e5614ac10a929e2b32e872aea5ee0b96e21c`、26.1.2 `483565d1dbe21772978184904e5871f9bc411995e3fba6e4c087fd36a2b7b252`、fabric-1.20.1 `8e5ba7055d000d0e8b256364b5860614f78944c99fa59359e87d3f5284b60bf5`、fabric-1.21.1 `1438531703e02c0f2f56e4bf26a7e2f6b4084d8ecb05c72d576c746dc60996e1`。
+- 实机验证（2026-11-14，neoforge-1.21.1 + forge-1.20.1，`26.4-SNAPSHOT.40`）：抗性提升 II + 保护 IV 下，普通 `mob_attack` 10 被削到 3.37 / 3.83，而 `skill_damage` 5 恰好造成 5.0（修前：单独抗性 II 把 5 削到 3.0，单独保护 IV 削到 4.2）；真实 Z3000 四格拖拽同样从带防御的僵尸身上扣掉正好 5.0。读数见 `docs/reports/2026-11-14-skill-damage-equal-40.md`。
+
 ## 26.4-SNAPSHOT.39
 
 ### 本线

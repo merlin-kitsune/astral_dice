@@ -4,6 +4,15 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 26.4-SNAPSHOT.40
+
+### This line
+
+- Fix: `astral_dice:skill_damage` now deals equal damage against armor, toughness, enchantment protection, resistance and flat reductions. All five lines add it to `bypasses_enchantments` and `bypasses_resistance` (armor/cooldown were already bypassed), and `ChipDamageHandler` treats `SKILL_DAMAGE` as unreducible, so the whetstone -2, sherry stacks and kangel -1 no longer cut it. Safety nets (airbag, whetstone one-shot protection, RenShield absorption) are unchanged; absorption (yellow hearts) and Moses dodge still settle first.
+- Docs: `ModDamageTypes` javadocs and the attack/spell damage chain tables now state the equal-damage contract; N11a records the ruling and the before/after readings.
+- Validation: five-line `:build` -> BUILD SUCCESSFUL in 15s. Jars: 1.21.1 sha256 `88a8767cefe935b79ca7c3ead039827110e387b7ee0ddaf4b37d32eb1f09224d`, 1.20.1 `76bbd00e7f73c8cbf0486a20ff54e5614ac10a929e2b32e872aea5ee0b96e21c`, 26.1.2 `483565d1dbe21772978184904e5871f9bc411995e3fba6e4c087fd36a2b7b252`, fabric-1.20.1 `8e5ba7055d000d0e8b256364b5860614f78944c99fa59359e87d3f5284b60bf5`, fabric-1.21.1 `1438531703e02c0f2f56e4bf26a7e2f6b4084d8ecb05c72d576c746dc60996e1`.
+- Live verification (2026-11-14, neoforge-1.21.1 + forge-1.20.1, `26.4-SNAPSHOT.40`): with Resistance II + Protection IV, regular `mob_attack` 10 is cut to 3.37 / 3.83, while `skill_damage` 5 deals exactly 5.0 (before the fix: Resistance II alone cut 5 to 3.0, Protection IV alone to 4.2); a real Z3000 4-block pull also removes exactly 5.0 from a buffed zombie. Readings: `docs/reports/2026-11-14-skill-damage-equal-40.md`.
+
 ## 26.4-SNAPSHOT.39
 
 ### This line
