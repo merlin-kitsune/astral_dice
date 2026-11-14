@@ -592,6 +592,10 @@ public class DiceCombatEvents {
             AdvancedPeripheralsChipItem.onBlessingStart(player);
             // 会员推荐信筹码:触发骰神赐福时,获得一张随机卡牌
             com.merlinkitsune.astral_dice.item.chip.MemberRecommendationChipItem.onBlessingStart(player);
+            // 石中剑-精良筹码:触发骰神赐福时,自身与队伍角色获得「圣剑守护」1:00
+            com.merlinkitsune.astral_dice.item.chip.HolySwordGuardChipItem.onBlessingStart(player);
+            // 完美树枝筹码:触发骰神赐福时,+1 层「超强精力」
+            com.merlinkitsune.astral_dice.item.chip.PerfectBranchChipItem.onBlessingStart(player);
             // 大当家立牌:触发骰神赐福 → 记录触发时刻;养精蓄锐满层则消耗 2 层并置位本次攻击的溅射
             fenSplashArmed = com.merlinkitsune.astral_dice.item.sign.FenSignItem.onBlessingTriggered(player);
             // 阿兰娜立牌:触发骰神赐福 → 被动攻击 +5(主线由立牌钩子分发层派发到 AlanaSignItem;
@@ -1578,6 +1582,8 @@ public class DiceCombatEvents {
         com.merlinkitsune.astral_dice.item.chip.BankCardUnlimitedChipItem.onBlessingEnd(player);
         // 大碗炖肉筹码:赐福结束后,16 格范围内所有友方目标 +1 治愈并恢复 2 点生命值
         com.merlinkitsune.astral_dice.item.chip.BigBowlStewChipItem.onBlessingEnd(player);
+        // 石中剑-传说筹码:赐福结束后,对 24 格内所有敌对目标造成「状态层数×2」魔法伤害(最低 4 点)
+        com.merlinkitsune.astral_dice.item.chip.SwordInStoneLegendaryChipItem.onBlessingEnd(player);
         // 骇客立牌:赐福结束刷新被动(攻击/防御,覆盖旧类型)
         NancyLuSignItem.onDiceBlessingEnded(player);
         // 蛟龙立牌(mamushi):赐福结束清除撕咬加成锁存(立牌 tick 另有"无赐福且锁存为真 ⇒ 清"的兜底)

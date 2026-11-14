@@ -60,6 +60,14 @@ public class ModEffects {
     public static final RegistryObject<MobEffect> DICE_BLESSING =
             EFFECTS.register("dice_blessing", DiceBlessingEffect::new);
 
+    // 圣剑守护(石中剑-精良):触发骰神赐福时给队伍 1:00 攻击 +2 / 受伤 -2
+    public static final RegistryObject<MobEffect> HOLY_SWORD_GUARD =
+            EFFECTS.register("holy_sword_guard", HolySwordGuardEffect::new);
+
+    // 超强精力(完美树枝):赐福 +1 层,每层攻击 +2 / 防御 +1,最多 10 层
+    public static final RegistryObject<MobEffect> SUPER_ENERGY =
+            EFFECTS.register("super_energy", SuperEnergyEffect::new);
+
     // 爆发(护法立牌 misaki 主动):持续 60 秒
     public static final RegistryObject<MobEffect> MISAKI_BURST =
             EFFECTS.register("misaki_burst", MisakiBurstEffect::new);

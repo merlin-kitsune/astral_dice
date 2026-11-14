@@ -133,6 +133,23 @@ public final class DiceCombatModifiers {
         });
     }
 
+    // ── 石中剑-精良 / 完美树枝(2026-11-14):圣剑守护攻击 +2;超强精力每层攻击 +2 ──
+    static {
+        registerAttackModifier((ctx, ap) -> {
+            if (skipOnClient(ctx)) return ap;
+            if (ctx.attacker.hasEffect(ModEffects.HOLY_SWORD_GUARD)) {
+                ap += 2;
+            }
+            if (ctx.attacker instanceof net.minecraft.world.entity.player.Player player) {
+                net.minecraft.world.effect.MobEffectInstance energy = player.getEffect(ModEffects.SUPER_ENERGY);
+                if (energy != null) {
+                    ap += 2 * Math.min(10, energy.getAmplifier() + 1);
+                }
+            }
+            return ap;
+        });
+    }
+
     public static void registerExtraDamageModifier(ExtraDamageModifier modifier) {
         EXTRA_DAMAGE_MODIFIERS.add(modifier);
     }

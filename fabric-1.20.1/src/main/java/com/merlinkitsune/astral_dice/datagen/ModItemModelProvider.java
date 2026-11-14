@@ -242,6 +242,9 @@ public class ModItemModelProvider implements DataProvider {
         items.add(ModItems.ABYSS_REAGENT_CHIP.get());
         items.add(ModItems.INFINITE_GRID_CHIP.get());
         items.add(ModItems.SENSOR_CHIP.get());
+        items.add(ModItems.SWORD_IN_STONE_EPIC_CHIP.get());
+        items.add(ModItems.SWORD_IN_STONE_LEGENDARY_CHIP.get());
+        items.add(ModItems.PERFECT_BRANCH_CHIP.get());
         items.add(ModItems.EVENT_TICKET.get());
         return items;
     }

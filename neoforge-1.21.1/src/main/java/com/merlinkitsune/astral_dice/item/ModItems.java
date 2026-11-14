@@ -21,6 +21,9 @@ import com.merlinkitsune.astral_dice.item.chip.FortuneStickChipItem;
 import com.merlinkitsune.astral_dice.item.chip.AbyssReagentChipItem;
 import com.merlinkitsune.astral_dice.item.chip.InfiniteGridChipItem;
 import com.merlinkitsune.astral_dice.item.chip.SensorChipItem;
+import com.merlinkitsune.astral_dice.item.chip.HolySwordGuardChipItem;
+import com.merlinkitsune.astral_dice.item.chip.SwordInStoneLegendaryChipItem;
+import com.merlinkitsune.astral_dice.item.chip.PerfectBranchChipItem;
 import com.merlinkitsune.astral_dice.item.chip.EagleScopeChipItem;
 import com.merlinkitsune.astral_dice.item.chip.MagicTomeChipItem;
 import com.merlinkitsune.astral_dice.item.chip.BufferShieldChipItem;
@@ -928,6 +931,24 @@ public class ModItems {
             () -> new SensorChipItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(AstralRarities.epic())));
+
+    // 石中剑-精良:触发骰神赐福时,自身与队伍角色获得「圣剑守护」1:00(攻击力 +2/受到伤害 -2)
+    public static final DeferredItem<Item> SWORD_IN_STONE_EPIC_CHIP = registerItem("sword_in_stone_epic_chip",
+            () -> new HolySwordGuardChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.epic())));
+
+    // 石中剑-传说:赐福结束后,对 24 格内敌对目标造成「自身全部状态层数 ×2」魔法伤害(最低 4)
+    public static final DeferredItem<Item> SWORD_IN_STONE_LEGENDARY_CHIP = registerItem("sword_in_stone_legendary_chip",
+            () -> new SwordInStoneLegendaryChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.legendary())));
+
+    // 完美树枝:赐福 +1 层超强精力,死亡 -1 层;每层攻击力 +2/防御力 +1,最多 10 层
+    public static final DeferredItem<Item> PERFECT_BRANCH_CHIP = registerItem("perfect_branch_chip",
+            () -> new PerfectBranchChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.legendary())));
 
     public static final DeferredItem<Item> PADMAN_SIGN = registerItem("padman_sign",
             () -> new PadmanSignItem(new Item.Properties()

@@ -1188,6 +1188,24 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(AstralRarities.epic())));
 
+    // 石中剑-精良(史诗/攻击):触发骰神赐福时,自身与队伍角色获得「圣剑守护」1:00(攻击力 +2、受到伤害 -2)。
+    public static final DeferredItem<Item> SWORD_IN_STONE_EPIC_CHIP = registerItem("sword_in_stone_epic_chip",
+            props -> new com.merlinkitsune.astral_dice.item.chip.HolySwordGuardChipItem(props
+                    .stacksTo(1)
+                    .rarity(AstralRarities.epic())));
+
+    // 石中剑-传说(传奇/攻击):自身骰神赐福结束后,对 24 格内敌对目标造成「状态层数×2」魔法伤害,最低 4 点。
+    public static final DeferredItem<Item> SWORD_IN_STONE_LEGENDARY_CHIP = registerItem("sword_in_stone_legendary_chip",
+            props -> new com.merlinkitsune.astral_dice.item.chip.SwordInStoneLegendaryChipItem(props
+                    .stacksTo(1)
+                    .rarity(AstralRarities.legendary())));
+
+    // 完美树枝(传奇/强化):触发骰神赐福 +1 层「超强精力」,死亡扣 1 层;每层攻击 +2、防御 +1,最多 10 层。
+    public static final DeferredItem<Item> PERFECT_BRANCH_CHIP = registerItem("perfect_branch_chip",
+            props -> new com.merlinkitsune.astral_dice.item.chip.PerfectBranchChipItem(props
+                    .stacksTo(1)
+                    .rarity(AstralRarities.legendary())));
+
     // 超天酱立牌(kangel,奇特):主动「网络天使」+ 被动「小天使请安」+ 备注「一心同体」
     public static final DeferredItem<Item> KANGEL_SIGN = registerItem("kangel_sign",
             props -> new com.merlinkitsune.astral_dice.item.sign.KangelSignItem(props

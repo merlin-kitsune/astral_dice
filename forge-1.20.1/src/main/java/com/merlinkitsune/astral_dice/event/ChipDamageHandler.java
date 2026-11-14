@@ -50,7 +50,19 @@ public final class ChipDamageHandler {
     public static void onLivingDamage(LivingDamageEvent event) {
         LivingEntity entity = event.getEntity();
         if (entity.level().isClientSide()) return;
-        if (!(entity instanceof Player player)) return;
+        if (!(entity instanceof Player player)) {
+            // 圣剑守护对经 DiceCombatParticipants 注册的非玩家生物同样生效(如骰战女仆)
+            if (com.merlinkitsune.astral_dice.combat.DiceCombatParticipants.isParticipant(entity)
+                    && entity.hasEffect(com.merlinkitsune.astral_dice.effect.ModEffects.HOLY_SWORD_GUARD.get())) {
+                boolean allyUnreducible = event.getSource().is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.CARD_COST)
+                        || event.getSource().is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.UNREDUCIBLE_DAMAGE)
+                        || event.getSource().is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.SKILL_DAMAGE);
+                if (!allyUnreducible) {
+                    event.setAmount(Math.max(0.0F, event.getAmount() - 2.0F));
+                }
+            }
+            return;
+        }
         // 2026-10-27 批次F(P2-B):本处理器是「settle 之后改金额」的最后一站 —— 气囊归零 / 磨刀石 /
         // 怪力侦探立牌 / 超天酱立牌四条分支都会改 event.getAmount()。骰战 settle 写回的吸收里含幻影 H,
         // 金额被改后平台 :1684 的扣减量就不再等于 H(气囊归零时 :1681 整段跳过 ⇒ 黄心白涨 H)⇒ 必须在
@@ -123,6 +135,15 @@ public final class ChipDamageHandler {
         if (!unreducible && totalCut > 0.0F) {
             float current = event.getAmount();
             float capped = Math.max(0.0F, current - totalCut);
+            if (capped != current) {
+                event.setAmount(capped);
+            }
+        }
+
+        // 圣剑守护(石中剑-精良):受到伤害 -2;不可削减伤害(CARD_COST / UNREDUCIBLE_DAMAGE / SKILL_DAMAGE)跳过
+        if (!unreducible && player.hasEffect(com.merlinkitsune.astral_dice.effect.ModEffects.HOLY_SWORD_GUARD.get())) {
+            float current = event.getAmount();
+            float capped = Math.max(0.0F, current - 2.0F);
             if (capped != current) {
                 event.setAmount(capped);
             }

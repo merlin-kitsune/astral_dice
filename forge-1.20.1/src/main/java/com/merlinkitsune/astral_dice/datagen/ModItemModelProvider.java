@@ -171,5 +171,8 @@ public class ModItemModelProvider extends ItemModelProvider {
         basicItem(ModItems.ABYSS_REAGENT_CHIP.get());
         basicItem(ModItems.INFINITE_GRID_CHIP.get());
         basicItem(ModItems.SENSOR_CHIP.get());
+        basicItem(ModItems.SWORD_IN_STONE_EPIC_CHIP.get());
+        basicItem(ModItems.SWORD_IN_STONE_LEGENDARY_CHIP.get());
+        basicItem(ModItems.PERFECT_BRANCH_CHIP.get());
     }
 }

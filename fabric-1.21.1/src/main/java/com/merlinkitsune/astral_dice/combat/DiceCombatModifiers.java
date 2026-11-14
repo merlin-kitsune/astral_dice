@@ -273,6 +273,24 @@ public final class DiceCombatModifiers {
      * {@code defensePoints} ⇒ 文案「防御力 +X」与实机读数不符(数值口径失真)。现按系数倒数换算:
      * 玩家 +X 防御力落 +X 防御力(≈3.33X 护甲),生物按 0.40 系数(2.5X 护甲)。
      */
+    static {
+        // 石中剑-精良「圣剑守护」: 攻击力 +2
+        // 完美树枝「超强精力」: 每层攻击力 +2(最多 10 层)
+        registerAttackModifier((ctx, ap) -> {
+            if (ctx.attacker.level().isClientSide()) return ap;
+            if (ctx.attacker.hasEffect(Effects.holder(ModEffects.HOLY_SWORD_GUARD.get()))) {
+                ap += 2;
+            }
+            if (ctx.attacker instanceof Player player) {
+                var energy = player.getEffect(Effects.holder(ModEffects.SUPER_ENERGY.get()));
+                if (energy != null) {
+                    ap += 2 * Math.min(10, energy.getAmplifier() + 1);
+                }
+            }
+            return ap;
+        });
+    }
+
     public static void setDefenseArmorBonus(Player player, String modifierKey, int defensePoints) {
         if (player == null || player.level().isClientSide()) return;
         AttributeInstance attr = player.getAttribute(Attributes.ARMOR);

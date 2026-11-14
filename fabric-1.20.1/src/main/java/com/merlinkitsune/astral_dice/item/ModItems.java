@@ -886,6 +886,24 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(AstralRarities.epic())));
 
+    // 石中剑-精良(史诗/攻击):触发骰神赐福时,自身与队伍角色获得「圣剑守护」1:00(攻击力 +2、受到伤害 -2)。
+    public static final RegistryObject<Item> SWORD_IN_STONE_EPIC_CHIP = registerItem("sword_in_stone_epic_chip",
+            () -> new com.merlinkitsune.astral_dice.item.chip.HolySwordGuardChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.epic())));
+
+    // 石中剑-传说(传奇/攻击):自身骰神赐福结束后,对 24 格内敌对目标造成「状态层数×2」魔法伤害,最低 4 点。
+    public static final RegistryObject<Item> SWORD_IN_STONE_LEGENDARY_CHIP = registerItem("sword_in_stone_legendary_chip",
+            () -> new com.merlinkitsune.astral_dice.item.chip.SwordInStoneLegendaryChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.legendary())));
+
+    // 完美树枝(传奇/强化):触发骰神赐福 +1 层「超强精力」,死亡扣 1 层;每层攻击 +2、防御 +1,最多 10 层。
+    public static final RegistryObject<Item> PERFECT_BRANCH_CHIP = registerItem("perfect_branch_chip",
+            () -> new com.merlinkitsune.astral_dice.item.chip.PerfectBranchChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.legendary())));
+
     public static final RegistryObject<Item> PADMAN_SIGN = registerItem("padman_sign",
             () -> new PadmanSignItem(new Item.Properties()
                     .stacksTo(1)

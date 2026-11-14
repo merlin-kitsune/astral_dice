@@ -63,6 +63,14 @@ public class ModEffects {
     public static final DeferredHolder<MobEffect, MobEffect> DICE_BLESSING =
             EFFECTS.register("dice_blessing", DiceBlessingEffect::new);
 
+    // 石中剑-精良：圣剑守护（攻击力 +2 / 受到伤害 -2）
+    public static final DeferredHolder<MobEffect, MobEffect> HOLY_SWORD_GUARD =
+            EFFECTS.register("holy_sword_guard", com.merlinkitsune.astral_dice.effect.HolySwordGuardEffect::new);
+
+    // 完美树枝：超强精力（amplifier + 1 = 层数，最多 10 层）
+    public static final DeferredHolder<MobEffect, MobEffect> SUPER_ENERGY =
+            EFFECTS.register("super_energy", com.merlinkitsune.astral_dice.effect.SuperEnergyEffect::new);
+
     // 爆发(护法立牌 misaki 主动):持续 60 秒
     public static final DeferredHolder<MobEffect, MobEffect> MISAKI_BURST =
             EFFECTS.register("misaki_burst", MisakiBurstEffect::new);

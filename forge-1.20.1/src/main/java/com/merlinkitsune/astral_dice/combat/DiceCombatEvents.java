@@ -789,6 +789,10 @@ public class DiceCombatEvents {
             AdvancedPeripheralsChipItem.onBlessingStart(player);
             // 会员推荐信筹码:触发骰神赐福时,获得一张随机卡牌
             com.merlinkitsune.astral_dice.item.chip.MemberRecommendationChipItem.onBlessingStart(player);
+            // 石中剑-精良:赐福触发 → 队伍圣剑守护 1:00
+            com.merlinkitsune.astral_dice.item.chip.HolySwordGuardChipItem.onBlessingStart(player);
+            // 完美树枝:赐福触发 → 超强精力 +1 层
+            com.merlinkitsune.astral_dice.item.chip.PerfectBranchChipItem.onBlessingStart(player);
             // 大当家立牌:触发骰神赐福 → 记录触发时刻;养精蓄锐满层则消耗 2 层并置位本次攻击的溅射
             fenSplashArmed = SignHookDispatcher.fireBlessingTriggered(player);
             // 蛟龙立牌(mamushi)专属战斗牌「撕咬」:触发骰神赐福时,每张**装备中**的撕咬 +1 层觉醒并锁存加成
@@ -1819,6 +1823,8 @@ public class DiceCombatEvents {
         com.merlinkitsune.astral_dice.item.chip.BankCardUnlimitedChipItem.onBlessingEnd(player);
         // 大碗炖肉筹码:赐福结束后,16 格范围内所有友方目标 +1 治愈并恢复 2 点生命值
         com.merlinkitsune.astral_dice.item.chip.BigBowlStewChipItem.onBlessingEnd(player);
+        // 石中剑-传说:赐福结束 → 自身状态层数 × 2 的魔法伤害(24 格内敌对目标,最低 4)
+        com.merlinkitsune.astral_dice.item.chip.SwordInStoneLegendaryChipItem.onBlessingEnd(player);
         // 骇客立牌:赐福结束刷新被动(攻击/防御,覆盖旧类型);
         // 蛟龙立牌(mamushi):赐福结束清除撕咬加成锁存(立牌 tick 另有"无赐福且锁存为真 ⇒ 清"的兜底)。
         // 两者统一走立牌钩子分发(按玩家当前装备的立牌 instanceof 派发,新增立牌无需改本文件)。

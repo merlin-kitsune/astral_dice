@@ -60,6 +60,14 @@ public class ModEffects {
     public static final RegistryObject<MobEffect> DICE_BLESSING =
             EFFECTS.register("dice_blessing", DiceBlessingEffect::new);
 
+    // 石中剑-精良: 圣剑守护(攻击力 +2 / 受到伤害 -2)
+    public static final RegistryObject<MobEffect> HOLY_SWORD_GUARD =
+            EFFECTS.register("holy_sword_guard", HolySwordGuardEffect::new);
+
+    // 完美树枝: 超强精力(层数指示器,amplifier + 1 = 层数)
+    public static final RegistryObject<MobEffect> SUPER_ENERGY =
+            EFFECTS.register("super_energy", SuperEnergyEffect::new);
+
     // 爆发(护法立牌 misaki 主动):持续 60 秒
     public static final RegistryObject<MobEffect> MISAKI_BURST =
             EFFECTS.register("misaki_burst", MisakiBurstEffect::new);

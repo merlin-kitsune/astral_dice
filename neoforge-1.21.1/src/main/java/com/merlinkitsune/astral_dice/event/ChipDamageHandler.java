@@ -49,7 +49,21 @@ public final class ChipDamageHandler {
     public static void onLivingDamagePre(LivingDamageEvent.Pre event) {
         LivingEntity entity = event.getEntity();
         if (entity.level().isClientSide()) return;
-        if (!(entity instanceof Player player)) return;
+        // 石中剑-精良:非玩家骰战参与者(如车万女仆)同样享受「圣剑守护」的固定 -2
+        if (!(entity instanceof Player)) {
+            if (com.merlinkitsune.astral_dice.combat.DiceCombatParticipants.isParticipant(entity)
+                    && entity.hasEffect(com.merlinkitsune.astral_dice.effect.ModEffects.HOLY_SWORD_GUARD)) {
+                boolean unreducible = event.getSource().is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.CARD_COST)
+                        || event.getSource().is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.UNREDUCIBLE_DAMAGE)
+                        || event.getSource().is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.SKILL_DAMAGE);
+                if (!unreducible) {
+                    float current = event.getNewDamage();
+                    event.setNewDamage(Math.max(0.0F, current - 2.0F));
+                }
+            }
+            return;
+        }
+        Player player = (Player) entity;
 
         float damage = event.getNewDamage();
         if (damage <= 0.0F) return;
@@ -113,6 +127,15 @@ public final class ChipDamageHandler {
         if (!unreducible && totalCut > 0.0F) {
             float current = event.getNewDamage();
             float capped = Math.max(0.0F, current - totalCut);
+            if (capped != current) {
+                event.setNewDamage(capped);
+            }
+        }
+
+        // 石中剑-精良「圣剑守护」:固定 -2,与磨刀石/立牌同阶段(LOWEST 最终伤害),不可削减伤害跳过。
+        if (!unreducible && player.hasEffect(com.merlinkitsune.astral_dice.effect.ModEffects.HOLY_SWORD_GUARD)) {
+            float current = event.getNewDamage();
+            float capped = Math.max(0.0F, current - 2.0F);
             if (capped != current) {
                 event.setNewDamage(capped);
             }

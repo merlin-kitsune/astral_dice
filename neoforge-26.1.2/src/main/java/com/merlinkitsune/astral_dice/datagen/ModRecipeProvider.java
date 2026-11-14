@@ -737,6 +737,43 @@ public class ModRecipeProvider extends RecipeProvider {
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
                 .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
 
+        // 石中剑-精良:绿宝石两侧 + 金剑中轴 + 再生试剂/空白筹码/再生试剂 + 星盘下排
+        ShapedRecipeBuilder.shaped(items, RecipeCategory.MISC, ModItems.SWORD_IN_STONE_EPIC_CHIP.get())
+                .pattern("EXE")
+                .pattern("RBR")
+                .pattern("PPP")
+                .define('E', Items.EMERALD)
+                .define('X', Items.GOLDEN_SWORD)
+                .define('R', ModItems.REGENERATION_REAGENT.get())
+                .define('B', ModItems.BLANK_CHIP.get())
+                .define('P', ModItems.STAR_PLATE.get())
+                .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
+
+        // 石中剑-传说:精良筹码升级(下界合金锭上下 + 黄金星盘左右 + 精良筹码居中)
+        ShapedRecipeBuilder.shaped(items, RecipeCategory.MISC, ModItems.SWORD_IN_STONE_LEGENDARY_CHIP.get())
+                .pattern(" N ")
+                .pattern("GBG")
+                .pattern(" N ")
+                .define('N', Items.NETHERITE_INGOT)
+                .define('G', ModItems.GOLDEN_STAR_PLATE.get())
+                .define('B', ModItems.SWORD_IN_STONE_EPIC_CHIP.get())
+                .unlockedBy("has_sword_in_stone_epic_chip", has(ModItems.SWORD_IN_STONE_EPIC_CHIP.get()))
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
+
+        // 完美树枝:蒲公英两侧 + 木棍中轴 + 附魔金苹果/空白筹码/附魔金苹果 + 黄金星盘下排
+        ShapedRecipeBuilder.shaped(items, RecipeCategory.MISC, ModItems.PERFECT_BRANCH_CHIP.get())
+                .pattern("DSD")
+                .pattern("ABA")
+                .pattern("GGG")
+                .define('D', Items.DANDELION)
+                .define('S', Items.STICK)
+                .define('A', Items.ENCHANTED_GOLDEN_APPLE)
+                .define('B', ModItems.BLANK_CHIP.get())
+                .define('G', ModItems.GOLDEN_STAR_PLATE.get())
+                .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
+                .save(output.withConditions(ChipRecipesEnabledCondition.INSTANCE));
+
         // 复仇之戟:凋灵骷髅头上排 + 钻石剑中轴 + 空白筹码居中 + 星盘下排
         ShapedRecipeBuilder.shaped(items, RecipeCategory.MISC, ModItems.REVENGE_HALBERD.get())
                 .pattern("DJD")

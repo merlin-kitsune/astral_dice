@@ -50,7 +50,22 @@ public final class ChipDamageHandler {
     public static void onLivingDamage(LivingDamageEvent event) {
         LivingEntity entity = event.getEntity();
         if (entity.level().isClientSide()) return;
-        if (!(entity instanceof Player player)) return;
+        if (!(entity instanceof Player player)) {
+            if (com.merlinkitsune.astral_dice.combat.DiceCombatParticipants.isParticipant(entity)
+                    && entity.hasEffect(com.merlinkitsune.astral_dice.effect.ModEffects.HOLY_SWORD_GUARD.get())) {
+                boolean unreducible = event.getSource().is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.CARD_COST)
+                        || event.getSource().is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.UNREDUCIBLE_DAMAGE)
+                        || event.getSource().is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.SKILL_DAMAGE);
+                if (!unreducible) {
+                    float current = event.getAmount();
+                    float capped = Math.max(0.0F, current - 2.0F);
+                    if (capped != current) {
+                        event.setAmount(capped);
+                    }
+                }
+            }
+            return;
+        }
 
         // N2 收口(批次 D-10):本处理器有 4 个早退点,若把「本击受击快照失效」写在各出口上,
         // 早晚漏一个 ⇒ 统一放进 finally,与 forge-1.20.1 同名文件(:49-67)同形。
@@ -127,6 +142,14 @@ public final class ChipDamageHandler {
         if (!unreducible && totalCut > 0.0F) {
             float current = event.getAmount();
             float capped = Math.max(0.0F, current - totalCut);
+            if (capped != current) {
+                event.setAmount(capped);
+            }
+        }
+        // 圣剑守护:石中剑-精良赐福期间,受到的伤害 -2(不可削减伤害类型跳过)
+        if (!unreducible && player.hasEffect(com.merlinkitsune.astral_dice.effect.ModEffects.HOLY_SWORD_GUARD.get())) {
+            float current = event.getAmount();
+            float capped = Math.max(0.0F, current - 2.0F);
             if (capped != current) {
                 event.setAmount(capped);
             }

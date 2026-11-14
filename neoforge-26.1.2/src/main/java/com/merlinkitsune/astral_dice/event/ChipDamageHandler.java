@@ -49,7 +49,22 @@ public final class ChipDamageHandler {
     public static void onLivingDamagePre(LivingDamageEvent.Pre event) {
         LivingEntity entity = event.getEntity();
         if (entity.level().isClientSide()) return;
-        if (!(entity instanceof Player player)) return;
+        if (!(entity instanceof Player player)) {
+            if (com.merlinkitsune.astral_dice.combat.DiceCombatParticipants.isParticipant(entity)
+                    && entity.hasEffect(com.merlinkitsune.astral_dice.effect.ModEffects.HOLY_SWORD_GUARD)) {
+                boolean unreducible = event.getSource().is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.CARD_COST)
+                        || event.getSource().is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.UNREDUCIBLE_DAMAGE)
+                        || event.getSource().is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.SKILL_DAMAGE);
+                if (!unreducible) {
+                    float current = event.getNewDamage();
+                    float capped = Math.max(0.0F, current - 2.0F);
+                    if (capped != current) {
+                        event.setNewDamage(capped);
+                    }
+                }
+            }
+            return;
+        }
 
         float damage = event.getNewDamage();
         if (damage <= 0.0F) return;
@@ -118,6 +133,14 @@ public final class ChipDamageHandler {
             }
         }
 
+        // 圣剑守护:石中剑-精良赐福期间,受到的伤害 -2(不可削减伤害类型跳过)
+        if (!unreducible && player.hasEffect(com.merlinkitsune.astral_dice.effect.ModEffects.HOLY_SWORD_GUARD)) {
+            float current = event.getNewDamage();
+            float capped = Math.max(0.0F, current - 2.0F);
+            if (capped != current) {
+                event.setNewDamage(capped);
+            }
+        }
         // 超天酱立牌(kangel)被动「小天使请安」+ 地雷女立牌(ame)备注「一心同体」(2026-10-16):
         // 带「粉丝」(kangel_fan)的目标攻击佩戴者(或与其一心同体的地雷女佩戴者（队内须有超天酱立牌佩戴者）)时,
         // 造成的伤害 -1。⚠️ 判据只认**目标标记** kangel_fan —— 佩戴者自己的计数指示器是另一个 id

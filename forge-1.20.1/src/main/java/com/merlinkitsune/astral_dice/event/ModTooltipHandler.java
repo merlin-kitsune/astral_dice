@@ -1188,6 +1188,18 @@ public class ModTooltipHandler {
             tooltip.add(Component.empty());
             addChipLines(tooltip, "tooltip.astral_dice.chip.extra_battery", ChatFormatting.GRAY);
         }
+        if (stack.is(ModItems.SWORD_IN_STONE_EPIC_CHIP.get())) {
+            tooltip.add(Component.empty());
+            addChipLines(tooltip, "tooltip.astral_dice.chip.sword_in_stone_epic_chip", ChatFormatting.GRAY);
+        }
+        if (stack.is(ModItems.SWORD_IN_STONE_LEGENDARY_CHIP.get())) {
+            tooltip.add(Component.empty());
+            addChipLines(tooltip, "tooltip.astral_dice.chip.sword_in_stone_legendary_chip", ChatFormatting.GRAY);
+        }
+        if (stack.is(ModItems.PERFECT_BRANCH_CHIP.get())) {
+            tooltip.add(Component.empty());
+            addChipLines(tooltip, "tooltip.astral_dice.chip.perfect_branch_chip", ChatFormatting.GRAY);
+        }
         if (stack.is(ModItems.PADMAN_SIGN.get())) {
             tooltip.add(Component.empty());
             addSignKeyHint(tooltip);

@@ -235,6 +235,9 @@ public class ModItemModelProvider implements DataProvider {
         items.add(ModItems.ABYSS_REAGENT_CHIP.get());
         items.add(ModItems.INFINITE_GRID_CHIP.get());
         items.add(ModItems.SENSOR_CHIP.get());
+        items.add(ModItems.SWORD_IN_STONE_EPIC_CHIP.get());
+        items.add(ModItems.SWORD_IN_STONE_LEGENDARY_CHIP.get());
+        items.add(ModItems.PERFECT_BRANCH_CHIP.get());
         // event_ticket 的模型是手写件（src/main/resources/assets/astral_dice/models/item/event_ticket.json，
         // 与 n21 生成的同名文件内容一致）⇒ 这里不再生成，避免同一路径出现两份资源；
         // 排除后本 provider 产出 153 个模型，与 n21 的 src/generated 逐项对齐。

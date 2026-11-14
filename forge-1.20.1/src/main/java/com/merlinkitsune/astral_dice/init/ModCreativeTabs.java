@@ -36,6 +36,7 @@ public class ModCreativeTabs {
                 output.accept(ModItems.GOLDEN_STAR_PLATE.get());
                 output.accept(ModItems.BLANK_SIGN.get());
                 output.accept(ModItems.BLANK_CHIP.get());
+        output.accept(ModItems.VACUUM_PIECE.get());
                 // 已解绑筹码配方总开关（2026-10-18，怪力乱神立牌 spec §7）：这 4 种材料不再受
                 // ENABLE_CHIP_RECIPES 影响，创造栏**始终显示** —— 立牌合成需要它们。开关只作用于
                 // 筹码合成配方的数据加载（ChipRecipesEnabledCondition），筹码本身同样始终显示。
@@ -208,7 +209,7 @@ public class ModCreativeTabs {
                 output.accept(ModItems.BOOKMARK_CHIP.get());
                 output.accept(ModItems.PIGGY_BANK_CHIP.get());
                 output.accept(ModItems.CURSED_SWORD.get());
-                // -- 史诗（EPIC） (11) --
+                // -- 史诗（EPIC） (12) --
                 output.accept(ModItems.MAGIC_TOME_CHIP.get());
                 output.accept(ModItems.BIG_BACKPACK_CHIP.get());
                 output.accept(ModItems.BOXING_GLOVES_MEDIUM.get());
@@ -220,7 +221,8 @@ public class ModCreativeTabs {
                 output.accept(ModItems.WHETSTONE_CHIP.get());
                 output.accept(ModItems.EXTRA_BATTERY_CHIP.get());
                 output.accept(ModItems.REVENGE_HALBERD.get());
-                // -- 传奇（LEGENDARY） (7) --
+                output.accept(ModItems.SWORD_IN_STONE_EPIC_CHIP.get());
+                // -- 传奇（LEGENDARY） (9) --
                 output.accept(ModItems.BOXING_GLOVES_HIGH.get());
                 output.accept(ModItems.SPEED_SKATES_HIGH.get());
                 output.accept(ModItems.MOTO_HELMET_HIGH.get());
@@ -228,6 +230,8 @@ public class ModCreativeTabs {
                 output.accept(ModItems.ADRENALINE_HIGH.get());
                 output.accept(ModItems.SATELLITE_CHIP.get());
                 output.accept(ModItems.PIERCING_GUN.get());
+                output.accept(ModItems.SWORD_IN_STONE_LEGENDARY_CHIP.get());
+                output.accept(ModItems.PERFECT_BRANCH_CHIP.get());
                 // 任务S §4（2026-10-10 用户裁决）：卡牌商店移到本栏**最后**（旧口径「提到最前」已被推翻）。
                 // JEI 物品列表顺序取自创造栏（IngredientSorterComparators.getCreativeMenuComparator），
                 // 因此这里一并决定了 JEI 里卡牌商店的位置。

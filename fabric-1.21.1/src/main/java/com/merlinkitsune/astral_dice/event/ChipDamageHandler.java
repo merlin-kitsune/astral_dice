@@ -50,7 +50,24 @@ public final class ChipDamageHandler {
     public static void onLivingDamage(LivingDamageEvent event) {
         LivingEntity entity = event.getEntity();
         if (entity.level().isClientSide()) return;
-        if (!(entity instanceof Player player)) return;
+        if (!(entity instanceof Player player)) {
+            // 非玩家骰战参与者(如车万女仆)同样吃「圣剑守护」的固定 -2
+            if (com.merlinkitsune.astral_dice.combat.DiceCombatParticipants.isParticipant(entity)
+                    && entity.hasEffect(com.merlinkitsune.astral_dice.platform.util.Effects.holder(
+                            com.merlinkitsune.astral_dice.effect.ModEffects.HOLY_SWORD_GUARD.get()))) {
+                boolean unreducible = event.getSource().is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.CARD_COST)
+                        || event.getSource().is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.UNREDUCIBLE_DAMAGE)
+                        || event.getSource().is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.SKILL_DAMAGE);
+                if (!unreducible) {
+                    float current = event.getAmount();
+                    float capped = Math.max(0.0F, current - 2.0F);
+                    if (capped != current) {
+                        event.setAmount(capped);
+                    }
+                }
+            }
+            return;
+        }
 
         // N2 收口(批次 D-10):本处理器有 4 个早退点,若把「本击受击快照失效」写在各出口上,
         // 早晚漏一个 ⇒ 统一放进 finally,与 forge-1.20.1 同名文件(:49-67)同形。
@@ -131,6 +148,16 @@ public final class ChipDamageHandler {
                 event.setAmount(capped);
             }
         }
+        // 石中剑-精良「圣剑守护」: 受到伤害 -2(固定点数,不可削减段跳过)
+        if (!unreducible && player.hasEffect(com.merlinkitsune.astral_dice.platform.util.Effects.holder(
+                com.merlinkitsune.astral_dice.effect.ModEffects.HOLY_SWORD_GUARD.get()))) {
+            float current = event.getAmount();
+            float capped = Math.max(0.0F, current - 2.0F);
+            if (capped != current) {
+                event.setAmount(capped);
+            }
+        }
+
         // 超天酱立牌(kangel)被动「小天使请安」+ 地雷女立牌(ame)备注「一心同体」(2026-10-16):
         // 带「粉丝」(kangel_fan)的目标攻击佩戴者(或与其一心同体的地雷女佩戴者（队内须有超天酱立牌佩戴者）)时,
         // 造成的伤害 -1。⚠️ 判据只认**目标标记** kangel_fan —— 佩戴者自己的计数指示器是另一个 id

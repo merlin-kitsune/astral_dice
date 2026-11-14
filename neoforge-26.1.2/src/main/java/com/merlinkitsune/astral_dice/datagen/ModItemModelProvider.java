@@ -196,6 +196,9 @@ public class ModItemModelProvider extends ModelProvider {
         itemModels.generateFlatItem(ModItems.ABYSS_REAGENT_CHIP.get(), ModelTemplates.FLAT_ITEM);
         itemModels.generateFlatItem(ModItems.INFINITE_GRID_CHIP.get(), ModelTemplates.FLAT_ITEM);
         itemModels.generateFlatItem(ModItems.SENSOR_CHIP.get(), ModelTemplates.FLAT_ITEM);
+        itemModels.generateFlatItem(ModItems.SWORD_IN_STONE_EPIC_CHIP.get(), ModelTemplates.FLAT_ITEM);
+        itemModels.generateFlatItem(ModItems.SWORD_IN_STONE_LEGENDARY_CHIP.get(), ModelTemplates.FLAT_ITEM);
+        itemModels.generateFlatItem(ModItems.PERFECT_BRANCH_CHIP.get(), ModelTemplates.FLAT_ITEM);
         itemModels.generateFlatItem(ModItems.EVENT_TICKET.get(), ModelTemplates.FLAT_ITEM);
     }
 

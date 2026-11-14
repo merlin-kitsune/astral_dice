@@ -60,6 +60,11 @@ public class ModEffects {
     public static final RegistryObject<MobEffect> DICE_BLESSING =
             EFFECTS.register("dice_blessing", DiceBlessingEffect::new);
 
+    public static final RegistryObject<MobEffect> HOLY_SWORD_GUARD =
+            EFFECTS.register("holy_sword_guard", HolySwordGuardEffect::new);
+    public static final RegistryObject<MobEffect> SUPER_ENERGY =
+            EFFECTS.register("super_energy", SuperEnergyEffect::new);
+
     // 爆发(护法立牌 misaki 主动):持续 60 秒
     public static final RegistryObject<MobEffect> MISAKI_BURST =
             EFFECTS.register("misaki_burst", MisakiBurstEffect::new);

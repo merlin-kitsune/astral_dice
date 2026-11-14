@@ -4,6 +4,29 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 26.4-SNAPSHOT.48
+
+### This line
+
+- Fixed the .47 datagen omission: regenerated the three chip item models, three recipes, and recipe advancements; 26.1.2 also gets its `items/` model definitions and villager-trade JSON. All five `src/generated` trees are now included in the build.
+- Added the three chip tooltip branches and `tooltip.astral_dice.chip.*` keys in all 15 lang files; the new keys follow the corner-bracket, half-width duration, and color rules with no new violations.
+- Fixed Perfect Branch death-restore ordering: the preserved layer is consumed only after a real restore; if Clone runs before Curios is available, the value is kept for the Respawn fallback; only equipped players with layers are preserved; null checks now precede equip checks in all three chips.
+- Asset gate: added the missing `vacuum_piece` to the creative tab on all five lines (the prior gap failed `verify_fabric_assets.py`).
+- Validation: five-line `:build` → BUILD SUCCESSFUL in 5s (44 tasks); jars contain the three models, textures, and recipes, and 26.1.2 includes the `items/` definitions and villager trades. No live run this round.
+
+## 26.4-SNAPSHOT.47
+
+### This line
+
+- New chips: `sword_in_stone_epic_chip` (EPIC), `sword_in_stone_legendary_chip` (LEGENDARY), and `perfect_branch_chip` (LEGENDARY), plus effects `holy_sword_guard` and `super_energy`.
+- `sword_in_stone_epic_chip`: on Dice Blessing, the holder and party players, plus API-registered dice participants owned by them within 64 blocks of any such player, gain Holy Sword Guard for 1:00 (Attack Power +2, damage taken -2). The -2 is a flat reduction in the chip damage handler and is skipped for `CARD_COST` / `UNREDUCIBLE_DAMAGE` / `SKILL_DAMAGE`; it also applies to non-player participants.
+- `sword_in_stone_legendary_chip`: when the holder's Dice Blessing ends, hostile targets within 24 blocks take magic damage equal to `max(4, total effect layers × 2)`. Layers count every active effect as `amplifier + 1` (modded, vanilla, hidden) and exclude the just-ended Dice Blessing.
+- `perfect_branch_chip`: on Dice Blessing, gain 1 Super Energy stack (max 10); death removes 1 stack; each stack gives Attack Power +2 and Defense +1. Defense is applied through a transient armor modifier refreshed every tick and cleared on unequip.
+- Recipes: epic = emerald / golden sword / emerald; regeneration reagent / blank chip / regeneration reagent; star plate ×3. Legendary = netherite ingot top and bottom, golden star plate left and right, epic chip center. Perfect Branch = dandelion / stick / dandelion; enchanted golden apple / blank chip / enchanted golden apple; golden star plate ×3. All three use the existing `ENABLE_CHIP_RECIPES` condition.
+- Wiring: all five lines. Shop pool 67 → 70 (rare 19 / epic 30 / legendary 21); creative-tab order follows the existing rarity groups and JEI follows the tab; item models; 3 Patchouli chip entries per line (English guide pages, with zh_cn / ja_jp guide text keys in the 15 lang files); 8 icons per line (item / shop / effect); 15 lang files (zh_cn / en_us / ja_jp).
+- Team targeting uses shared `PartyRelations` and `DiceCombatParticipants`, so API-registered creatures such as TLMDice maids owned by the player or a teammate count as friendly without a hard dependency on the maid mod.
+- Validation: five-line `:build` → BUILD SUCCESSFUL in 4s (44 tasks); `.47` jars pushed to every `run/<line>/mods` by `pushToDevRun`. No live run this round.
+
 ## 26.4-SNAPSHOT.46
 
 ### This line
