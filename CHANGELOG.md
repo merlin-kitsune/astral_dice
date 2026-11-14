@@ -4,6 +4,13 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 26.4-SNAPSHOT.44
+
+### This line
+
+- Restore: 【仙酿】(`astral_dice:souri_drink`, `Variant=1`) uses the 130-bone / 724-cube `winegourdbetter` model again. The Bedrock export's 180 negative-size cubes were normalized offline to positive AABBs; face keys were x-flipped and each face's UV/rotation was solved against GeckoLib 4.x `GeoQuad.build`, keeping UV space 128 and the original 256×256 texture. The normalized assets are byte-identical across all five lines: geo sha256 `8f2b7b3c15db9588cfafba0994294910c2537585cbb8b0cfa8938f015121d510` (1,639,334 B), texture sha256 `8227d5b2fecafd985500e5a5976ccb8014ff869cd735662aaefc1a5204d4e498` (9,965 B). `neoforge-26.1.2` keeps its `assets/astral_dice/geckolib/models/` path.
+- Validation: the built `.44` jar live-tested on `neoforge-1.21.1` with 130 bones / 724 cubes; four-angle close-ups render coherent (`run/neoforge-1.21.1/screenshots/2026-11-14_16.25.15.png` and `2026-11-14_16.25.23.png`..`26.png`). Five-line `:build` -> BUILD SUCCESSFUL in 3s (44 tasks), and the `.44` jars were pushed to every `run/<line>/mods` by `pushToDevRun`.
+
 ## 26.4-SNAPSHOT.43
 
 ### This line
