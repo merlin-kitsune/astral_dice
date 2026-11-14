@@ -4,6 +4,15 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 26.4-SNAPSHOT.53
+
+### This line
+
+- Extended the four flat chip-school tags to Fabric 1.20.1 and Fabric 1.21.1, so all five loader lines now ship `astral_dice:school_starlight` (11 chips), `school_healing` (10), `school_mark` (9), and `school_charge` (11), 41 chips total. The Fabric tag values match the P0 lines byte for byte, follow `ChipShopCatalog.POOL` order, and still exclude the 29 generic chips and `blank_chip`.
+- Added `SCHOOL_STARLIGHT` / `SCHOOL_HEALING` / `SCHOOL_MARK` / `SCHOOL_CHARGE` `TagKey<Item>` constants to both Fabric `ModTags.Items`, using each line's `TagKey.create(Registries.ITEM, ...)` factory. The tags remain data-only with no consumer; they are reserved for the future research system.
+- Updated `tools/verify_chip_school_tags.py` to require all five lines. Missing or partly missing files, a wrong `item`/`items` directory, extra school files or constants, out-of-order or duplicate values, generic/`blank_chip` leakage, and non-`chips.json` members now fail on every line; Fabric is no longer skipped.
+- Validation: the verifier exits 0 on all five lines with `total=41 chips=71`; the five-line `:build` completed with BUILD SUCCESSFUL in 9s (44 tasks; 32 executed, 12 up-to-date), and all five `.53` jars contain the four school JSONs, including both Fabric jars. The eight new Fabric JSONs are byte-identical to the NeoForge 1.21.1 copies, with CRLF, no BOM, and a trailing newline. No live test in this batch: the tags are data-only and still have no in-game consumer.
+
 ## 26.4-SNAPSHOT.52
 
 ### This line

@@ -47,5 +47,45 @@ public final class ModTags {
          */
         public static final TagKey<Item> EXCLUSIVE_CHIPS =
                 TagKey.create(Registries.ITEM, new ResourceLocation(AstralDiceMod.MODID, "exclusive_chips"));
+
+        /**
+         * 筹码流派标签：{@code School.STARLIGHT}（11 枚）。
+         *
+         * <p>收录 {@code ChipShopCatalog.POOL} 中该流派的全部筹码，顺序与 POOL 一致。
+         *
+         * <p>仅供未来研究系统使用，目前无消费方。
+         */
+        public static final TagKey<Item> SCHOOL_STARLIGHT =
+                TagKey.create(Registries.ITEM, new ResourceLocation(AstralDiceMod.MODID, "school_starlight"));
+
+        /**
+         * 筹码流派标签：{@code School.HEALING}（10 枚）。
+         *
+         * <p>收录 {@code ChipShopCatalog.POOL} 中该流派的全部筹码，顺序与 POOL 一致。
+         *
+         * <p>仅供未来研究系统使用，目前无消费方。
+         */
+        public static final TagKey<Item> SCHOOL_HEALING =
+                TagKey.create(Registries.ITEM, new ResourceLocation(AstralDiceMod.MODID, "school_healing"));
+
+        /**
+         * 筹码流派标签：{@code School.MARK}（9 枚）。
+         *
+         * <p>收录 {@code ChipShopCatalog.POOL} 中该流派的全部筹码，顺序与 POOL 一致。
+         *
+         * <p>仅供未来研究系统使用，目前无消费方。
+         */
+        public static final TagKey<Item> SCHOOL_MARK =
+                TagKey.create(Registries.ITEM, new ResourceLocation(AstralDiceMod.MODID, "school_mark"));
+
+        /**
+         * 筹码流派标签：{@code School.CHARGE}（11 枚）。
+         *
+         * <p>收录 {@code ChipShopCatalog.POOL} 中该流派的全部筹码，顺序与 POOL 一致。
+         *
+         * <p>仅供未来研究系统使用，目前无消费方。
+         */
+        public static final TagKey<Item> SCHOOL_CHARGE =
+                TagKey.create(Registries.ITEM, new ResourceLocation(AstralDiceMod.MODID, "school_charge"));
     }
 }

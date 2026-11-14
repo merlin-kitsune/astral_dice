@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
-"""Chip school item-tag guard (P0 three lines).
+"""Chip school item-tag guard (five required lines: neoforge-1.21.1, forge-1.20.1,
+neoforge-26.1.2, fabric-1.20.1, fabric-1.21.1).
 
 Authoritative mapping comes from each line's
 src/main/java/com/merlinkitsune/astral_dice/shop/ChipShopCatalog.java POOL:
 every row is e("id", TIER_..., School.X, Category.Y).
 
 Checks:
-1) parse the three POOLs into id -> School;
+1) parse each line's POOL into id -> School;
 2) for each line and each of the four school tags, compare the JSON values
    exactly against the POOL order (no duplicates, nothing missing, nothing extra);
-3) the three lines must share one mapping; the four schools total 41 chips with
-   counts 11/10/9/11; the 29 GENERIC chips must not appear in any school tag;
+3) all five lines must share one mapping and identical tag values; the four
+   schools total 41 chips with counts 11/10/9/11; the 29 GENERIC chips must not
+   appear in any school tag;
 4) all 41 chips must be present in the same line's chips.json values;
 5) each line's tag files must live in its own platform directory (item for the
    neoforge lines and fabric-1.21.1, items for the 1.20.1 lines), with no extra
@@ -20,8 +22,8 @@ Checks:
 7) every tag JSON is read as bytes and must be CRLF, BOM-free, without bare LF
    and with a trailing newline.
 
-The P0 three lines fail when files are missing. Other lines (a future P1) print
-SKIP while none of their school tag files exist.
+All five lines are required: missing, misplaced, partly missing or extra school
+tag files fail on every line.
 
 Usage: python tools/verify_chip_school_tags.py
 Standard library only.
@@ -34,7 +36,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 
-P0_LINES = ("neoforge-1.21.1", "forge-1.20.1", "neoforge-26.1.2")
+REQUIRED_LINES = ("neoforge-1.21.1", "forge-1.20.1", "neoforge-26.1.2",
+                   "fabric-1.20.1", "fabric-1.21.1")
 
 # (tag suffix, School constant in POOL, expected chip count)
 SCHOOLS = (
@@ -71,7 +74,9 @@ ROW_RE = re.compile(
 DECL_RE = re.compile(r'public static final TagKey<Item>\s+(SCHOOL_[A-Z]+)')
 
 CONST_RE = re.compile(
-    r'public static final TagKey<Item> (SCHOOL_[A-Z]+)\s*=\s*ItemTags\.create\([^;]*?"(school_[a-z]+)"\)',
+    r'public static final TagKey<Item> (SCHOOL_[A-Z]+)\s*=\s*'
+    r'(?:ItemTags\.create|TagKey\.create\(Registries\.ITEM,)'
+    r'[^;]*?"(school_[a-z]+)"\)',
     re.S,
 )
 
@@ -268,7 +273,8 @@ def check_line(line_dir):
     check_modtags(line_dir)
 
     return {"ids": ids, "mapping": mapping, "summary": summary,
-            "directory": directory, "chips": len(chips_values)}
+            "tag_values": tag_values, "directory": directory,
+            "chips": len(chips_values)}
 
 
 def report(line_dir, result):
@@ -282,10 +288,10 @@ def report(line_dir, result):
 
 
 def main():
-    print("CHIP_SCHOOL_TAGS: checking P0 lines %s" % ", ".join(P0_LINES))
+    print("CHIP_SCHOOL_TAGS: checking lines %s" % ", ".join(REQUIRED_LINES))
     reference = None
     reference_line = None
-    for line_dir in P0_LINES:
+    for line_dir in REQUIRED_LINES:
         directory = expected_tag_dir(line_dir)
         if directory is None:
             fail("%s: unknown expected tag directory (add the line to TAG_DIRS)" % line_dir)
@@ -293,7 +299,7 @@ def main():
         missing = [name for name in TAG_NAMES
                    if not (tag_root(line_dir, directory) / name).is_file()]
         if missing:
-            fail("%s: missing P0 tag files in data/astral_dice/tags/%s: %s"
+            fail("%s: missing tag files in data/astral_dice/tags/%s: %s"
                  % (line_dir, directory, ", ".join(missing)))
             misplaced = school_files(tag_root(line_dir, other_tag_dir(directory)))
             if misplaced:
@@ -314,6 +320,10 @@ def main():
                  % (line_dir, reference_line, diff))
         if result["ids"] != reference["ids"]:
             fail("%s: POOL order differs from %s" % (line_dir, reference_line))
+        for suffix, _school, _count in SCHOOLS:
+            if result["tag_values"].get(suffix) != reference["tag_values"].get(suffix):
+                fail("%s: school_%s values differ from %s"
+                     % (line_dir, suffix, reference_line))
         report(line_dir, result)
 
     if reference is not None:
@@ -324,26 +334,6 @@ def main():
                 fail("school_%s count %d, expected %d"
                      % (suffix, reference["summary"][suffix], expected_count))
 
-    # Future P1 lines: skip only while none of their school tag files exist.
-    for entry in sorted(ROOT.iterdir()):
-        if not entry.is_dir() or entry.name in P0_LINES:
-            continue
-        if not (entry / CATALOG_REL).is_file():
-            continue
-        present = (school_files(tag_root(entry.name, "item"))
-                   + school_files(tag_root(entry.name, "items")))
-        if not present:
-            messages.append("CHIP_SCHOOL_TAGS: SKIP %s (no school tag files yet)" % entry.name)
-            continue
-        directory = expected_tag_dir(entry.name)
-        if directory is None:
-            fail("%s: school tag files present but the line is not registered in TAG_DIRS: %s"
-                 % (entry.name, ", ".join(present)))
-            continue
-        result = check_line(entry.name)
-        if result is not None:
-            report(entry.name, result)
-
     if errors:
         for msg in errors:
             print("CHIP_SCHOOL_TAGS: FAIL " + msg, file=sys.stderr)
@@ -351,7 +341,7 @@ def main():
         return 1
 
     if reference is None:
-        print("CHIP_SCHOOL_TAGS: FAIL no P0 line could be checked", file=sys.stderr)
+        print("CHIP_SCHOOL_TAGS: FAIL no line could be checked", file=sys.stderr)
         return 1
 
     for msg in messages:

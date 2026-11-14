@@ -4,6 +4,15 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
+## 26.4-SNAPSHOT.53
+
+### 本线
+
+- 四个扁平筹码流派标签补齐 Fabric 1.20.1 / Fabric 1.21.1，五线现在全部带有 `astral_dice:school_starlight`（11 枚）、`school_healing`（10 枚）、`school_mark`（9 枚）、`school_charge`（11 枚），共 41 枚。Fabric 标签取值与 P0 三线逐字节一致，按 `ChipShopCatalog.POOL` 顺序，泛用 29 枚与 `blank_chip` 仍排除在外。
+- 两条 Fabric 的 `ModTags.Items` 新增 `SCHOOL_STARLIGHT` / `SCHOOL_HEALING` / `SCHOOL_MARK` / `SCHOOL_CHARGE` 四个 `TagKey<Item>` 常量，沿用各线 `TagKey.create(Registries.ITEM, ...)` 工厂。标签目前仍只作数据用途，没有消费方，留给未来的研究系统。
+- `tools/verify_chip_school_tags.py` 改为五线全部必需：缺文件、部分缺失、`item`/`items` 目录放错、多出 school 文件或常量、值顺序错或重复、GENERIC / `blank_chip` 泄漏、非 `chips.json` 成员，都会在对应线失败；Fabric 不再跳过。
+- 验证：门禁五线 exit 0，均 `total=41 chips=71`；五线 `:build` → BUILD SUCCESSFUL in 9s（44 tasks；32 executed，12 up-to-date），五枚 `.53` jar 均含四个流派标签 JSON，Fabric 两枚也已包含。8 个新 Fabric JSON 与 NeoForge 1.21.1 副本逐字节一致，CRLF、无 BOM、末尾换行。本轮未实机：标签目前仍无游戏内消费方。
+
 ## 26.4-SNAPSHOT.52
 
 ### 本线
