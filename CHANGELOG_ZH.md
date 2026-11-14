@@ -4,6 +4,15 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
+## 26.4-SNAPSHOT.42
+
+### 本线
+
+- 修复：`fabric-1.20.1` 与 `neoforge-26.1.2` 的状态栏防御行和 Jade 护甲行仍在画旧的 non-jade `defense_full/half/empty` 贴图。两线现改用 jade 素材（`images/Def_2_jade.png` -> full、`images/Def_1_jade.png` -> half、`images/Def_0_jade.png` -> empty）；其余三线原本就是同一份字节。现在五线 15 个文件逐字节一致：full `8c1f6cccabe0e1740ce091f3011b9b90c9ed419eb5fd3605c8a7ea762957434d`、half `a9bda341395e366bb4dfabd40eddc481c8a2fb3cccf6b3f85c559eed60f7f62f`、empty `64dab94879b17962d1da771d1a366a4a604d9df3a6265a96c48aec337ff5aa63`。
+- 文件：`fabric-1.20.1/src/main/resources/assets/astral_dice/textures/gui/defense_{full,half,empty}.png` 与 `neoforge-26.1.2/src/main/resources/assets/astral_dice/textures/gui/defense_{full,half,empty}.png`（替换 6 张）。不改 Java：`CombatPowerHud.DEFENSE_FULL/HALF` 驱动状态栏防御行，同一组常量加 `DEFENSE_EMPTY` 驱动 `ArmorElementIconMixin` / `DisplayHelperArmorIconMixin` 的 Jade 钩子（`DEFENSE_EMPTY` 仅 Jade 用，状态栏空态保持透明、不画空槽）。
+- 验证：五线 `:build` → BUILD SUCCESSFUL in 7s；`.42` 产物已由 `pushToDevRun` 推入各 `run/<line>/mods`。
+- 实机验证（2026-11-14，fabric-1.20.1 + neoforge-26.1.2，`26.4-SNAPSHOT.42`）：fabric 状态栏防御行 = 2 满 + 1 半（玩家护甲 10 → 防御 5），Jade 护甲行 = 2 满 + 1 半 + 7 空，全部 jade（`fabric-1.20.1/run/client/screenshots/2026-11-14_15.27.40.png`）。26.1.2 状态栏 = 2 满 + 1 半；其 Jade 护甲行由 `ArmorValueProviderMixin`（`CombatFormula.mobDefenseInt`）驱动，防御 2/4/8 的僵尸分别显示 1/2/4 个满 jade 图标，防御 5 的奇数例显示 2 满 + 1 半（`run/neoforge-26.1.2/screenshots/2026-11-14_15.35.31.png`）。状态栏与 Jade 中都不再残留 non-jade 防御图标。
+
 ## 26.4-SNAPSHOT.41
 
 ### 本线

@@ -4,6 +4,15 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 26.4-SNAPSHOT.42
+
+### This line
+
+- Fix: the HUD defense row and the Jade armor row on `fabric-1.20.1` and `neoforge-26.1.2` still drew the old non-jade `defense_full/half/empty` textures. Both lines now use the jade set (`images/Def_2_jade.png` -> full, `images/Def_1_jade.png` -> half, `images/Def_0_jade.png` -> empty); the other three lines already carried the same bytes. All 15 files are now byte-identical across the five lines: full `8c1f6cccabe0e1740ce091f3011b9b90c9ed419eb5fd3605c8a7ea762957434d`, half `a9bda341395e366bb4dfabd40eddc481c8a2fb3cccf6b3f85c559eed60f7f62f`, empty `64dab94879b17962d1da771d1a366a4a604d9df3a6265a96c48aec337ff5aa63`.
+- Files: `fabric-1.20.1/src/main/resources/assets/astral_dice/textures/gui/defense_{full,half,empty}.png` and `neoforge-26.1.2/src/main/resources/assets/astral_dice/textures/gui/defense_{full,half,empty}.png` (6 replaced). No Java change: `CombatPowerHud.DEFENSE_FULL/HALF` drive the HUD row, and the same constants plus `DEFENSE_EMPTY` drive the `ArmorElementIconMixin` / `DisplayHelperArmorIconMixin` Jade hook (`DEFENSE_EMPTY` is Jade-only; the HUD draws no empty slot).
+- Validation: five-line `:build` -> BUILD SUCCESSFUL in 7s; the `.42` jars were pushed to every `run/<line>/mods` by `pushToDevRun`.
+- Live verification (2026-11-14, fabric-1.20.1 + neoforge-26.1.2, `26.4-SNAPSHOT.42`): fabric HUD defense row = 2 full + 1 half (player armor 10 -> defense 5), Jade armor row = 2 full + 1 half + 7 empty, all jade (`fabric-1.20.1/run/client/screenshots/2026-11-14_15.27.40.png`). 26.1.2 HUD = 2 full + 1 half; its Jade armor row is driven by `ArmorValueProviderMixin` (`CombatFormula.mobDefenseInt`), so a zombie with defense 2/4/8 shows 1/2/4 full jade icons and one with odd defense 5 shows 2 full + 1 half (`run/neoforge-26.1.2/screenshots/2026-11-14_15.35.31.png`). No non-jade defense icon remains in either HUD or Jade.
+
 ## 26.4-SNAPSHOT.41
 
 ### This line

@@ -49,7 +49,7 @@
 
 ## 四、工具约定（图片 / 脚本）
 
-- 图片处理一律用 ImageMagick 7：`C:/Program Files/ImageMagick-7.1.2-Q16/magick.exe`（PATH 里有 `magick` 也可）；裁剪、拼图、缩放、格式转换都走它，不要改用 Python/PIL 或系统画图工具。
+- 图片处理一律用 ImageMagick 7：`C:/Program Files/ImageMagick-7.1.2-Q16-HDRI/magick.exe`（PATH 里有 `magick` 也可）；裁剪、拼图、缩放、格式转换都走它，不要改用 Python/PIL 或系统画图工具。
 - **严格禁用 Windows PowerShell**（含 `powershell.exe` / `pwsh` / `Start-Process` / `Get-Process` 等）；命令一律走 bash（MSYS）或 DSH 的专用工具。MSYS 下引用 Windows 路径用 `/f/...`；需要原样传 `/PID` 这类参数时加 `MSYS_NO_PATHCONV=1`。
 - 例：`magick in.png -crop 560x520+600+120 +repage out.png`；`magick montage a.png b.png -tile 2x2 -geometry +4+4 sheet.png`；`magick identify out.png`。
 
