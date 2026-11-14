@@ -10,6 +10,7 @@
 
 - 恢复：【仙酿】（`astral_dice:souri_drink` 且 `Variant=1`）重新使用 130 骨骼 / 724 方块的 `winegourdbetter` 模型。基岩导出的 180 个负尺寸方块已在离线预处理中归一化为正尺寸 AABB；面键按 x 轴翻转，逐面 UV/旋转按 GeckoLib 4.x `GeoQuad.build` 反解，UV 空间保持 128，贴图保留原始 256×256。归一化资产五线逐字节一致：geo sha256 `8f2b7b3c15db9588cfafba0994294910c2537585cbb8b0cfa8938f015121d510`（1,639,334 B），贴图 sha256 `8227d5b2fecafd985500e5a5976ccb8014ff869cd735662aaefc1a5204d4e498`（9,965 B）。`neoforge-26.1.2` 仍走 `assets/astral_dice/geckolib/models/` 路径。
 - 验证：`.44` 构建产物在 `neoforge-1.21.1` 实机加载 130 骨骼 / 724 方块，四角度近景渲染连贯（`run/neoforge-1.21.1/screenshots/2026-11-14_16.25.15.png` 与 `2026-11-14_16.25.23.png`..`26.png`）；五线 `:build` → BUILD SUCCESSFUL in 3s（44 tasks），`.44` 产物已由 `pushToDevRun` 推入各 `run/<line>/mods`。
+- 已知限制：本次只修复了几何显示；瓶身渐变与纹饰细节仍与 Blockbench 预览不一致，根因未解决。保留归一化资产，仅作为比原破碎导出更好的兜底。
 
 ## 26.4-SNAPSHOT.43
 
