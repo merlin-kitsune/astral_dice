@@ -15,10 +15,11 @@
 2. **测试台唯一口径 = bash + python**：Windows 宿主上的 bash 由 **MSYS2 / git bash** 提供（不要求 WSL），Linux 宿主用原生 bash；测试入口一律 `bash scripts/test/win/mt.sh --version <线> --phase <env|build|launch|cases|report|stop>`（Linux：`bash scripts/test/linux/{env,launch,stop}.sh`），静态守门一律 `python scripts/verify/*.py` / `python tools/*.py`。**不再新增任何独立的原生 shell 脚本资产**：旧的原生脚本测试台已于 2026-11-04 起作废（退役登记见 `docs/features/` 下的历史登记文件），文档与脚本里的旧脚本引用只作溯源、不作执行口径。
 3. **编译**：在**当前工作树根**执行 `./gradlew :<线>:classes|jar`（本分支工作树 = `F:\MCProject\astral_dice_multiloader-next`；主线工作树 = `F:\MCProject\astral_dice_multiloader`，两者不要混用）。
 4. **实机**：`bash scripts/test/win/mt.sh --version <线> --phase <env|launch|stop>`（在工作树根执行；Windows 宿主经 MSYS2 / git bash，Linux 宿主见 `docs/agent/AGENTS-dsh-linux.md`〈测试台现状（Linux）〉）。
-5. **产物投放**：以工作树 `build/libs` 为唯一来源，按线复制到 `run/<1.21.1|1.20.1|26.1.2|fabric-1.20.1>/mods`，或**成对**投放两个 P0 整合包（`astral_dice-*.jar` + `starengine-*-<库版本>.jar`）；投完必须核 `sha256sum`（bash），别把同名当新构建。
+5. **产物投放**：以工作树 `build/libs` 为唯一来源，按线复制到 `run/<子项目名>/mods`，或**成对**投放两个 P0 整合包（`astral_dice-*.jar` + `starengine-*-<库版本>.jar`）；投完必须核 `sha256sum`（bash），别把同名当新构建。
+   - **run 目录名 = 子项目名**（2026-11-12 用户改名）：`run/neoforge-1.21.1`、`run/forge-1.20.1`、`run/neoforge-26.1.2`、`run/fabric-1.20.1`、`run/fabric-1.21.1`；**不再有** `run/1.21.1` / `run/1.20.1` / `run/26.1.2` 这类裸版本号目录。fabric 两线实际运行目录仍是其子项目内的 `run/{client,server}`。产物投放、判线、停进程、日志读取一律按这个口径。
 6. **git**：一律用 git bash 的 `git`，命令写全 `git -C F:\MCProject\<工作树> <子命令>`，或先 `cd` 进工作树。
 7. **JDK**：`JAVA_HOME=C:\Program Files\Zulu\zulu-21`（21.0.12）；`forge-1.20.1` 的 toolchain 17 由 Gradle 从 `%USERPROFILE%\.gradle\jdks` 取（已缓存 Adoptium 17.0.20），不要手改。
-8. **测试收尾必须关闭游戏进程（2026-10-18 用户裁决；2026-11-09 起终止动作由 Agent 执行）**：任何测试轮次（单条 / 全量 / 中断 / 失败）结束后，收尾分两步 —— ① `bash scripts/test/win/mt.sh --version <线> --phase stop` 只**发现并打印** `MT_STOP: PENDING pid=…`（脚本不终止任何进程）；② Agent 用 `ops_bash` 执行 `taskkill /F /PID <pid>` 终止这些 PID（用 `tasklist` / `jps -lvm` 核对 java 数量），随后 `--phase stop --verify` 必须输出 `MT_STOP: OK`（25585/25565/25575 无 LISTENING 且无匹配 `jps -lvm` 行）。交付报告贴 `MT_STOP: OK` 原文 + `tasklist` / `jps -lvm` 的 `java` 数量核对。**禁止**让 Minecraft 客户端无人观察地驻留 —— 它持续占用 CPU/GPU 并污染下一轮冷启动的前置状态。唯一例外：用例 `on_fail=keep_game_running` 落了 `.mt_keep_alive-<版本>` 的取证现场，此时在报告里说明保留原因与路径，取证完成后立即按上述两步收停。
+8. **测试收尾必须关闭游戏进程（2026-10-18 用户裁决；2026-11-09 起终止动作由 Agent 执行）**：任何测试轮次（单条 / 全量 / 中断 / 失败）结束后，收尾分两步 —— ① `bash scripts/test/win/mt.sh --version <线> --phase stop` 只**发现并打印** `MT_STOP: PENDING pid=…`（脚本不终止任何进程）；② Agent 用 `ops_bash` 执行 `taskkill /F /PID <pid>` 终止这些 PID（用 `tasklist` / `jps -lvm` 核对 java 数量），随后**再跑一次** `bash scripts/test/win/mt.sh --version <线> --phase stop` 复核：必须输出 `MT_STOP: OK — 未发现本 repo 的 Minecraft 客户端`（25585/25565/25575 无 LISTENING 且无匹配 `jps -lvm` 行）。2026-11-12 实测 `mt.sh` **不接受** `--verify`（会 `MT_ERROR: 未知参数`），复核口径 = 再跑一次 stop。交付报告贴 `MT_STOP: OK` 原文 + `tasklist` / `jps -lvm` 的 `java` 数量核对。**禁止**让 Minecraft 客户端无人观察地驻留 —— 它持续占用 CPU/GPU 并污染下一轮冷启动的前置状态。唯一例外：用例 `on_fail=keep_game_running` 落了 `.mt_keep_alive-<版本>` 的取证现场，此时在报告里说明保留原因与路径，取证完成后立即按上述两步收停。
 9. **命令通道 = `ops_bash` + 裸解释器名（2026-11-07 用户裁决）**：一切命令在 `run_code` 里用 `tools.ops_bash(...)` 执行，命令体里的 `bash` / `python` 一律写**裸名**，由 `ops_bash` 自行解析（Windows = PATH 上的 MSYS2 / git-bash；python = PATH 上的 **3.12.16**；Linux = 系统 bash / python3）。⛔ **禁止**写解释器绝对路径（`C:/msys64/usr/bin/bash`、`~/.dsh/dsh-runtimes/**/python.exe` 等）—— `ops_bash` 无法指定解释器，绝对路径只会让命令落到别的运行时。python 脚本**只依赖标准库**，缺库改实现，不得改指别的解释器。
 
 10. **实机的「窗口 / 桌面」操作只走当前注册的 `wincu`（2026-11-11 用户裁决：`windows_mcp` / `dsh-windows-mcp` 已退役，当前环境不存在这些 server）**：当前 MCP server 名为 `wincu`，工具面 = `mcp__wincu__windows_computer_use_*`（`list_windows` / `snapshot` / `screenshot` / `click` / `move` / `type_text` / `keypress` / `scroll` / `wait` / `wait_for` / `find` / `invoke` / `set_value` / `activate_window` / `close_window`）。**没有 `windows` / `windows_mcp` / `Process` / `dsh-windows-mcp` 这些工具，不要再按这些名字调用。**
@@ -26,6 +27,7 @@
     - **窗口 / 桌面**：只用 `mcp__wincu__windows_computer_use_*`；先 `list_windows` 找目标，再 `snapshot` / `screenshot` 观察，动作后重新观察确认；`activate_window` 会抢焦点，非必要不调用。
     - ✅ **AutoJS**：游戏内状态仍走 AutoJS HTTP 端点 `http://127.0.0.1:25585/mcp`（`eval_js` / 探针 / 用例 / 断言），不是 `autojs` MCP 工具；它只管游戏内，不管进程与窗口。
     - 旧版进程 / 窗口脚本一律废弃；当前只允许 `ops_bash`（进程）、`mcp__wincu__windows_computer_use_*`（窗口 / 桌面）、AutoJS HTTP（游戏内）三条通道。
+    - ✅ **AutoJS 26.1.2 实测口径**（2026-11-12，取证模板见 `docs/reports/2026-11-12-26.1.2-acceptance.md`）：无 `server` / `ItemStack` 全局，类一律 `Java.loadClass("全限定名")`；实体无 `getClass()` / `getUUID()`（用 `getId()`）；`AutoJS.entitiesNear` 实测返回空（不可靠），查实体改用 `p.level.getEntitiesOfClass(Entity.class, p.getBoundingBox().inflate(r))`；`JavaAdapter` 只覆盖接口抽象方法，**default 方法覆盖无效**（`giveItem` / `supportsShop` 落回默认值）；方块右键 `AutoJS.use` 在本轮不派发，商店验证改走 `ChipShopOpener.open` 同入口。
 
 > 红线区〈命令执行规范（Shell）〉已于 **2026-11-04 用户裁决**整体改写为现行口径（与本节〈⚙️ 环境与工具链口径〉一致）：**本项目只允许通过 `ops_bash` 调用工具**，bash 由 MSYS2 / git bash 提供、禁止用 `cmd.exe` 批处理替代（`.bat` 只保留 `gradlew.bat` / `run/Start-<线>.bat` 这类既有双击启动件）。原「一律使用平台原生 shell」条款**已整节删除**，不要再引用；`docs/agent/AGENTS-full.md` 同处已同步改写，两项仍受 `docs/agent/verify-split.py` 项 1b 的逐字比对约束。
 
@@ -249,19 +251,19 @@ When extending this workspace:
    一律改用**非亡灵**生物（如 minecraft:pillager、minecraft:cow）。原因：亡灵受治疗 / 伤害反转等特殊规则影响，
    会污染 FX / 伤害 / 音效类判据；历史脚本中以 zombie 为靶的写法一律视为待替换。
 3. **测试流程结束后必须关闭测试用游戏实例**：收尾分两步 —— ① 执行 `bash scripts/test/win/mt.sh --version <线> --phase stop`（只打印 `MT_STOP: PENDING pid=…`，脚本不终止进程）；
-   ② Agent 用 `ops_bash` 执行 `taskkill /F /PID <pid>` 终止这些 PID，再 `--phase stop --verify` 必须输出 `MT_STOP: OK`（三端口无 LISTENING 且无匹配 `jps -lvm` 行）；报告贴该行原文 + `tasklist` / `jps -lvm` 的 `java` 数量（gradle 守护进程保留属正常）；禁止让客户端无人观察地驻留 ——
+   ② Agent 用 `ops_bash` 执行 `taskkill /F /PID <pid>` 终止这些 PID，再跑一次 `bash scripts/test/win/mt.sh --version <线> --phase stop` 复核：必须输出 `MT_STOP: OK — 未发现本 repo 的 Minecraft 客户端`（三端口无 LISTENING 且无匹配 `jps -lvm` 行）；2026-11-12 实测 `mt.sh` 不接受 `--verify`；报告贴该行原文 + `tasklist` / `jps -lvm` 的 `java` 数量（gradle 守护进程保留属正常）；禁止让客户端无人观察地驻留 ——
    它会持续占用 CPU / GPU、污染下一次冷启动前置状态，并让 enableShaders 之类的运行期状态被意外持久化。
-   **收尾一律带 `--purge-saves`**（2026-10-08 用户裁决：每轮实机验证后清理旧存档）：标准收尾命令 = `bash scripts/test/win/mt.sh --version <线> --phase stop --purge-saves`，成功判据 = `MT_CLEANUP_SAVES: PURGED <n>` + `MT_CLEANUP_RESULT: OK`；`.mt_keep_alive` 存在时只提示、保留取证现场。收尾同时**删除本轮注入的临时探针**（`run/<线>/kubejs/**` 的一次性测试脚本，以及源码侧 `scripts/test/resources/kubejs/**` 的临时探针），并在交付报告里贴 `git status --short -uall` 原文（2026-10-11 用户交接裁决）。
+   **收尾一律带 `--purge-saves`**（2026-10-08 用户裁决：每轮实机验证后清理旧存档）：标准收尾命令 = `bash scripts/test/win/mt.sh --version <线> --phase stop --purge-saves`，成功判据 = `MT_CLEANUP_SAVES: PURGED <n>` + `MT_CLEANUP_RESULT: OK`；`.mt_keep_alive` 存在时只提示、保留取证现场。收尾同时**删除本轮注入的临时探针**（`run/<子项目名>/kubejs/**` 的一次性测试脚本，以及源码侧 `scripts/test/resources/kubejs/**` 的临时探针），并在交付报告里贴 `git status --short -uall` 原文（2026-10-11 用户交接裁决）。
 
 4. **二次验证（复核）一律用一次性独立 `subagent` + `review-agent` 技能（2026-11-07 用户裁决；`dsh_code_review` 弃用，不得再调用），不复用同一子代理**：每次复核 = **新 subagent、单任务、用完即弃**；
    派单前先 `skill({ name: "review-agent" })` 载入技能，再按其格式把「复核对象（提交或文件范围，写清绝对路径 / 提交号）+ 背景 + 逐项判据（R1..Rn）+ 输出要求（判定 SUPPORTED / REFUTED / 部分成立 + 逐字证据 文件:行号 + 未验证项 + 最小修法）」**一次性写全**进 brief（子代理看不到本会话，不得喂主会话结论）。⚠️ **区分两件事**：本条约束的是**复核（二次验证，执行方 = `review-agent` 子代理）**；**功能审查 / 功能验证**（静态取证、`:<线>:classes` 编译、`scripts/verify/**` 守门脚本、与需求逐字对账）按第 7 条**另派一个独立子代理**执行 —— 两者不得互相替代，同一个子代理不得既写码又复核。⛔ `dsh_code_review` / `@michengai/dsh-code-review` 已弃用。
 
 5. **实机验证必须由用户在提示词中明确下达**（2026-10-08 用户裁决）：默认情况下 agent 只做**代码功能验证** —— 静态取证与逐字对账、`:<线>:classes` 编译、`review-agent` 子代理复核、`scripts/verify/**` 守门脚本、用例 JSON 与文档的一致性/行尾核对；**不得**自行启动 dev 客户端跑实机、连拍、探针或用例。用户明确要求实机时才执行，且收尾按第 3 条带 `--purge-saves`；未实机的欠账如实登记在交付报告里，等用户点名下指令再补。
 
-6. **改动后旧实机证据一律作废，先停旧实例再测新构建（2026-10-11 用户交接裁决）**：任何代码 / 资源改动落地后，此前一切实机读数与截图立即失效，不得作为新构建的验收依据；测新构建前必须先 `bash scripts/test/win/mt.sh --version <线> --phase stop` 停掉旧实例（禁止在旧实例上叠加新构建 —— `run/<线>/mods` 的 jar 会被旧进程持有且内容是旧代码）。
+6. **改动后旧实机证据一律作废，先停旧实例再测新构建（2026-10-11 用户交接裁决）**：任何代码 / 资源改动落地后，此前一切实机读数与截图立即失效，不得作为新构建的验收依据；测新构建前必须先 `bash scripts/test/win/mt.sh --version <线> --phase stop` 停掉旧实例（禁止在旧实例上叠加新构建 —— `run/<子项目名>/mods` 的 jar 会被旧进程持有且内容是旧代码）。
 7. **开发操作流程（2026-10-12 用户裁决，取代 2026-10-11 版本；同日二次裁决修订②③⑤⑥⑧：所有代码编写一律通过向 Subagent 下达写代码命令完成，主 Agent 只负责规划 / 派活 / 验收 / 提交，不亲自编写任何代码；2026-11-07 修订④⑦⑨：复核执行方改为一次性独立 subagent + `review-agent` 技能，`dsh_code_review` 弃用）**：① 新功能先写**开发需求 / 设计计划**；② **P0 基准线 `neoforge-1.21.1` 的实现派子代理编写**（一次性、单任务、brief 自包含；主 Agent 不亲自写主线实现）；③ 子代理交付后由主 Agent 验收并按需自测（`:<线>:classes` 编译 / `scripts/verify/**` 守门脚本）；④ 完成后**派一次性独立 subagent 载 `review-agent` 技能复核**（brief 写全范围 + 判据，禁喂主会话结论）；⑤ 复核问题派新子代理修完后，**另派子代理做独立功能审查**（静态取证、编译、守门脚本、与需求逐字对账）；⑥ 主 Agent 逐条回应审查结论、缺陷**派新子代理修复**，**全部确认无误后**才派子代理做 `forge-1.20.1` 移植（按 `docs/compat-1.20.1-forge.md` 差异映射）；⑦ 移植线再走一次 `review-agent` 子代理复核 + **另派一个独立子代理**做功能审查；⑧ 子代理模型**固定且只能用** `deepseek-official/deepseek-flash`（= DeepSeek-V4.1-Flash；2026-10-22 用户裁决：不得改派更强 / 其它 provider 的 model），仍受第 1 条「一个子代理一个任务、用完即弃」约束；复核 / 审查发现的问题交**新**子代理改进，**连续 3 次仍改不到位 ⇒ 报用户拍板**。⑨ **复核分级（2026-10-13 用户裁决，2026-11-07 换执行方）**：a) **非代码改动**（文档 / 规则 / 版本号 / CHANGELOG / 配置注释等）只做 `review-agent` 子代理复核，免子代理功能复验；b) **小规模代码修正**（口径 / 字符串 / 数值 / 显示内容等简单修改）只做 `review-agent` 子代理复核，除非用户另行下达指令，不执行子代理功能复验；c) **新功能请求**：`review-agent` 复核后由主 Agent 按改动规模自判功能复验范围（全量 / 部分 / 不做），判断依据如实写进交付报告；d) **大型功能变更或新增**执行**全量**功能复核；e) **实机测试仍须用户明确许可**——无法仅靠功能复核确认的结果，必须向用户说明情况并请求其下达实机测试。**代码与二进制都无法确认是否符合需求时，必须询问用户是否实机测试**（用户明确下达才做，流程见第 5 条，收尾按第 3 条）；必须用户决策的问题或难以实现的功能**交用户拍板**，不得擅自取舍。
 8. **派子代理一律屏蔽人格注入（2026-10-22 用户裁决）**：所有 `subagent` / `subagent_fork` / `spawn_teammate` 的 brief 里，除职业声明外**必须原文加一句**「**不要使用任何人设 / 角色扮演 / 语气修饰 / 昵称自称，按你的职业身份以中性技术口吻输出**」；**审查 / 取证 / 复核类任务必须用全新上下文的 `subagent`**（`subagent_fork` 会连同带人设的对话一起继承；复核按第 4 条用 `review-agent` 子代理，同样不得 `subagent_fork`）。子代理回报里出现人格化表达（自称、卖萌、情绪表演）即视为**交付不合规**，主 Agent 应要求重发中性版结论；理由：人设会稀释证据密度，与「只给证据、不给情绪结论」的复核口径直接冲突。本条第 ① 句同样适用于 `spawn_teammate` 的初始 prompt 与后续 `send_message` 改需求。
-9. **单文件单写者 + 实机测试互斥（2026-11-07 用户裁决，强制）**：① **一个文件同一时刻只能有一个写者** —— 主 Agent、`subagent`、`spawn_teammate` 成员**不得并发修改同一文件**；并行时按**互斥写作用域**切分（teammate 的 `write_scopes` 必须互不重叠并在共享任务板登记），一旦发现作用域重叠 ⇒ **立即停手**，由 Lead 重新切分后再继续，禁止「谁先写完谁算」的覆盖式并发。② **实机测试同一时刻只允许一条线** —— 测试台端口 `25585`（AutoJS）/ `25565`（游戏）/ `25575`（fabric RCON）与 `run/<线>` 进程互斥；若发现**已有其他实机测试在进行**（他人的游戏实例、正在跑的 launch / cases 阶段、端口被占、`run/<线>` 有活跃进程），**必须搁置**本轮实机测试并**立即告知用户**（写清占用方与判据），**不得**等待、不得排期、不得轮询重试、不得杀别人的实例抢端口。
+9. **单文件单写者 + 实机测试互斥（2026-11-07 用户裁决，强制）**：① **一个文件同一时刻只能有一个写者** —— 主 Agent、`subagent`、`spawn_teammate` 成员**不得并发修改同一文件**；并行时按**互斥写作用域**切分（teammate 的 `write_scopes` 必须互不重叠并在共享任务板登记），一旦发现作用域重叠 ⇒ **立即停手**，由 Lead 重新切分后再继续，禁止「谁先写完谁算」的覆盖式并发。② **实机测试同一时刻只允许一条线** —— 测试台端口 `25585`（AutoJS）/ `25565`（游戏）/ `25575`（fabric RCON）与 `run/<子项目名>` 进程互斥；若发现**已有其他实机测试在进行**（他人的游戏实例、正在跑的 launch / cases 阶段、端口被占、`run/<子项目名>` 有活跃进程），**必须搁置**本轮实机测试并**立即告知用户**（写清占用方与判据），**不得**等待、不得排期、不得轮询重试、不得杀别人的实例抢端口。
 
 ## 命令执行规范（Shell）— 必须遵守（2026-09-19 裁决；2026-11-04 用户裁决整体改写）
 
@@ -290,6 +292,17 @@ When extending this workspace:
   git config http.proxy http://127.0.0.1:7897
   git config https.proxy http://127.0.0.1:7897
 <!-- END 生效红线区（原文逐字，AGENTS-full.md L2–L130） -->
+
+## 上下文压缩（billion-context）— 必须遵守（2026-11-12 用户裁决）
+
+- **禁止调用 DSH 自带的压缩工具**：`tools.compress` / 原生 `compress` 一律不得使用。本会话反复出现的 `PTC-X001`（`Compression REFUSED: ... requireNudge / requireRecommendation`）就是走错通道的直接证据；不要为了消掉压缩提示而重试自带 `compress`。
+- 需要压缩时**只走 billion-context 代理**：
+  1. `GET http://127.0.0.1:18789/__bili/plugin/status?fallback=latest` 取当前 `conversationId` 与 `compressibleRanges`（端口以 `BILLION_CONTEXT_PROXY` 为准，默认 18789）；
+  2. `POST http://127.0.0.1:18789/__bili/plugin/tool`，body 为 `{ conversationId, tool: "compress", args: { content } }`；
+  3. `content` 每个块只用 status 返回的**当前** ref 作头，旧 ref / 历史 nudge ref 一律不用。
+- 成功判据：`outcome="applied"` 且 `blocksCreated >= 1`；失败先重读 status，不重试旧 ref，也不改走 DSH 自带 `compress`。
+- 压缩不是任务推进的前提：代理拒绝或端口不可用时，继续正常干活，不反复调用压缩工具。
+
 ## ✅ 提交纪律（2026-11-07 用户裁决，必须遵守）
 
 - **早提交、勤提交**：每完成一个可独立验证的改动单元（功能 / 修复 / 文档 / 规则 / 版本号），**立即本地提交**，不得把多轮改动堆在工作树里等批量提交。

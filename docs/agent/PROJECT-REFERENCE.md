@@ -34,7 +34,7 @@
 | `scripts/test/` | 测试台（`scripts/test/win/mt.sh` 唯一入口 + `cases/*.json` + `resources/kubejs/` 探针 + `TESTING-SPEC.md`） |
 | `scripts/verify/` · `tools/` | 守门脚本（见 §5） |
 | `docs/` | 交接正本 `handover-*.md`、规则库 `docs/agent/`、批次记录 `docs/features/`、兼容映射 `docs/compat-*.md` |
-| `run/<线>/` | dev 运行目录（`mods/` 由构建任务投放；`--purge-saves` 会删 testworld） |
+| `run/<子项目名>/` | dev 运行目录（`mods/` 由构建任务投放；`--purge-saves` 会删 testworld） |
 | `build/libs/` | 产物（唯一交付来源）；`build/devlibs/` forge 的 **named** jar 供 dev 用 |
 | `models/` `images/` `sound/` | 用户素材目录，**随时更新**，不得擅自 add/commit/改 |
 
@@ -80,7 +80,7 @@ bash F:\MCProject\astral_dice_multiloader\scripts/test/win/mt.sh --version 1.20.
 - forge → `/mnt/d/.minecraft/versions/1.20.1-Forge 模组测试/mods`
 - fabric → `/mnt/d/.minecraft/versions/1.20.1-Fabric 模组测试/mods`
 - 26.1.2 → `/mnt/d/.minecraft/versions/26.1.2-NeoForge 模组测试/mods`
-- dev → `run/1.21.1/mods` / `run/1.20.1/mods`（forge 用 named jar）
+- dev → `run/neoforge-1.21.1/mods` / `run/forge-1.20.1/mods`（forge 用 named jar）
 
 缺库即启动失败 `Missing or unsupported mandatory dependencies`。投放后必须逐份核 sha256。
 
@@ -93,7 +93,7 @@ export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64     # 所有 gradlew 的 dae
 ./gradlew :neoforge-1.21.1:classes --console=plain      # P0
 ./gradlew :forge-1.20.1:classes   --console=plain       # P0
 ./gradlew :neoforge-26.1.2:classes --console=plain --no-configuration-cache   # P0，该线必须关配置缓存
-./gradlew :forge-1.20.1:pushToDevRun --console=plain    # legacyforge dev 运行加载 run/1.20.1/mods/*.jar，改代码后必须重建
+./gradlew :forge-1.20.1:pushToDevRun --console=plain    # legacyforge dev 运行加载 run/forge-1.20.1/mods/*.jar，改代码后必须重建
 bash scripts/test/linux/env.sh                          # 只读环境检查（ENV_RESULT: OK|WARN|FAIL）
 bash scripts/test/linux/launch.sh --version 1.21.1      # 就绪 = AutoJS /health 200 + status client available → LAUNCH: READY
 bash scripts/test/linux/stop.sh  --version 1.21.1       # 期望 LINUX_STOP: OK（无 java / net.minecraft 残留）

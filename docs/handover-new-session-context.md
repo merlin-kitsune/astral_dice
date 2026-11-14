@@ -44,9 +44,9 @@
 
 | 线 | 加载器 / MC | Java | runClient 目录 | 状态（宿主迁移后） |
 |---|---|---|---|---|
-| `neoforge-1.21.1` (P0) | NeoForge 21.1.235 / 1.21.1 | 21 | `run/1.21.1` | `:classes` ✅（真机 32s）、实机证据为 VM 期，真机未复跑 |
-| `forge-1.20.1` (P0) | Forge 47.4.10 / 1.20.1 | 17 | `run/1.20.1` | `:classes` ✅（真机 30s）、实机证据为 VM 期 |
-| `neoforge-26.1.2` (P1) | NeoForge 26.1.2.109 / 26.1.2 | 25 | `run/26.1.2` | `:classes` ✅（需 `--no-configuration-cache`）、实机停在 KubeJS 报错屏 |
+| `neoforge-1.21.1` (P0) | NeoForge 21.1.235 / 1.21.1 | 21 | `run/neoforge-1.21.1` | `:classes` ✅（真机 32s）、实机证据为 VM 期，真机未复跑 |
+| `forge-1.20.1` (P0) | Forge 47.4.10 / 1.20.1 | 17 | `run/forge-1.20.1` | `:classes` ✅（真机 30s）、实机证据为 VM 期 |
+| `neoforge-26.1.2` (P1) | NeoForge 26.1.2.109 / 26.1.2 | 25 | `run/neoforge-26.1.2` | `:classes` ✅（需 `--no-configuration-cache`）、实机停在 KubeJS 报错屏 |
 | `fabric-1.20.1` (P1) | Fabric 0.19.5 + FAPI 0.92.12 | 17 | `run/fabric-1.20.1` | `:classes` ✅、**dev 启动失败**（Sodium/LWJGL） |
 
 - 构建依赖 `starengine:1.1.0` 走 `mavenLocal()`；各线制品在 `~/.m2/repository/com/merlinkitsune/starengine/*/1.1.0/`。
@@ -95,7 +95,7 @@ export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64        # 所有 gradlew 的 
 ./gradlew :neoforge-1.21.1:classes --console=plain
 ./gradlew :forge-1.20.1:classes    --console=plain
 ./gradlew :neoforge-26.1.2:classes --console=plain --no-configuration-cache
-./gradlew :forge-1.20.1:pushToDevRun --console=plain       # legacyforge dev 加载 run/1.20.1/mods/*.jar
+./gradlew :forge-1.20.1:pushToDevRun --console=plain       # legacyforge dev 加载 run/forge-1.20.1/mods/*.jar
 bash run/start-1.21.1.sh                                   # 直接起客户端（需 DISPLAY=:0）
 python3 -B docs/agent/verify-split.py                      # 规则库守门（期望全 [OK]）
 python3 tools/verify_sign_display_names.py                 # 立牌命名守门（GATE: PASS）
@@ -115,7 +115,7 @@ bash scripts/test/linux/env.sh                             # 环境体检
 2. **真机 AutoJS 未复测**（`[[PENDING:autojs-native]]`）：端点/类加载/端口占用；本机无 `autojs` MCP，只能 `curl` JSON-RPC。
 3. **桌面注入未验证**：`computer-use-linux` 的 screenshot 走 portal（首次可能弹授权）；缺 `xdotool`/`wtype`/`grim`。
 4. **fabric-1.20.1 dev 启动失败**：Sodium 要 LWJGL 3.3.1，Loom dev runtime 给 3.3.2-snapshot（与宿主无关，P1）。
-5. **26.1.2 KubeJS 类加载**：`astral_wallet_vision.js#38` 报 `StarCoinWalletState: Class could not be found`；`run/26.1.2/mods/` 还残留旧 `astral_dice-1.3.7-beta.2` jar（未清）。
+5. **26.1.2 KubeJS 类加载**：`astral_wallet_vision.js#38` 报 `StarCoinWalletState: Class could not be found`；`run/neoforge-26.1.2/mods/` 还残留旧 `astral_dice-1.3.7-beta.2` jar（未清）。
 6. **`starengine/*/build.vmresidue-20261031/`**（约 300 MB）是 Windows 属主残留，删除需 root。
 7. **`.vscode/launch.json` 仍是 `F:\...` 绝对路径**——Windows 侧配置，按红线保留；Linux 用 `run/start-*.sh`。
 8. `scripts/test/mt.conf` 仍是 Windows 历史路径（`env.sh` 只报 INFO，不阻断、不修改）。
@@ -128,7 +128,7 @@ bash scripts/test/linux/env.sh                             # 环境体检
 - **实机必须用户明确下达**；测试结束必须 `stop.sh` 收停，贴 `LINUX_STOP: OK` + 无 java/`net.minecraft` 残留。
 - 禁止裸 `pkill -f`（会杀别的 MC 实例）；脚本一律 `/proc/<pid>/cwd` + cmdline 精确匹配。
 - **脚本运行中不要编辑它**：bash 按字节流重解析，可能把启动脚本再跑一遍。
-- `legacyforge` dev 运行加载 `run/1.20.1/mods/*.jar` ⇒ 改 java/资源后必须 `:forge-1.20.1:pushToDevRun`。
+- `legacyforge` dev 运行加载 `run/forge-1.20.1/mods/*.jar` ⇒ 改 java/资源后必须 `:forge-1.20.1:pushToDevRun`。
 - 26.1.2 构建必须 `--no-configuration-cache`；各线 gradle daemon 必须 ≥JDK 21。
 - **同一时间只允许一个 gradle**（全队一个并发位）；动工作树或起 gradle 前查 `.agent-locks/`。
 - **不破坏 Windows 侧**：旧脚本（已删除） / `*.bat` / `gradlew.bat` / `mt.conf` / `.vscode` / `run/*.bat` 一律保留原样；不删、不改、不「顺手清理」。

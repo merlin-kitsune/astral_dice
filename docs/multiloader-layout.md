@@ -11,8 +11,8 @@ astral_dice_multiloader/
 ├── gradle/wrapper + gradlew(.bat)                        # Gradle 9.2.1(阿里云镜像)
 ├── tools/check_lang_sync.py                              # lang 同步检查(对任一子项目 lang 目录运行)
 ├── docs/ 本机部署脚本（已删除，部署改按 git/bash 手写命令执行） scripts/ temp/         # 从原仓库迁移的配套内容
-├── run/1.21.1/                                        # 1.21.1 开发测试环境(仓库根统一 run/,git 排除)
-├── run/1.20.1/                                        # 1.20.1 开发测试环境(仓库根统一 run/,git 排除)
+├── run/neoforge-1.21.1/                                        # 1.21.1 开发测试环境(仓库根统一 run/,git 排除)
+├── run/forge-1.20.1/                                        # 1.20.1 开发测试环境(仓库根统一 run/,git 排除)
 ├── neoforge-1.21.1/   # 1.21.1 NeoForge 子项目(主线)
 │   ├── build.gradle / gradle.properties                  # 沿用原 1.21.1-main 分支构建脚本(路径不变)
 │   ├── src/                                              # 原 1.21.1-main 分支 src 全量(main + generated)
@@ -53,10 +53,10 @@ astral_dice_multiloader/
 | `neoforge-1.21.1/src` | `1.21.1-main` 分支 `src/` |
 | `neoforge-1.21.1/build.gradle`、`gradle.properties` | `1.21.1-main` 分支同名文件(未改动) |
 | `neoforge-1.21.1/base-mod-compile-libs/`、`.oss-basemod-repo/` | 原仓库同名目录(1.21.1 构建依赖) |
-| `run/1.21.1/` | 原仓库 `run/1.21.1/`(git 排除内容;自 2026-09 起统一存放于仓库根 run/) |
+| `run/neoforge-1.21.1/` | 原仓库 `run/neoforge-1.21.1/`(git 排除内容;自 2026-09 起统一存放于仓库根 run/) |
 | `forge-1.20.1/src` | `1.20.1-forge` 分支 `src/` |
 | `forge-1.20.1/build.gradle`、`gradle.properties` | `1.20.1-forge` 分支同名文件(未改动) |
-| `run/1.20.1/` | 原仓库 `run/1.20.1/`(git 排除内容;自 2026-09 起统一存放于仓库根 run/) |
+| `run/forge-1.20.1/` | 原仓库 `run/forge-1.20.1/`(git 排除内容;自 2026-09 起统一存放于仓库根 run/) |
 | `tools/check_lang_sync.py` | `1.20.1-forge` 分支 `tools/check_lang_sync.py` |
 | `docs/`、`scripts/`、`temp/`、`.zcode/`、`AGENTS.md`、旧部署脚本（已删除，部署改按 git / bash 手写命令执行） | 原仓库同名内容(git 排除内容);`AGENTS.md`/旧部署脚本（已删除）/`docs/`/CI 已做 multiloader 适配 |
 | `CHANGELOG_ZH.md`(中文)、`CHANGELOG.md`(英文)、`README.md`、`LICENSE`、`.gitattributes` | `1.21.1-main` 分支(README/CHANGELOG 已做 multiloader 适配;CHANGELOG 已按语言拆分为两文件,条目一一对应) |
@@ -71,9 +71,9 @@ astral_dice_multiloader/
 
 ## 注意事项
 
-- 两个版本的 `run/` 目录统一存放在**仓库根 `run/`** 下(`run/1.21.1` 与 `run/1.20.1`),按版本隔离且互不污染
+- 两个版本的 `run/` 目录统一存放在**仓库根 `run/`** 下(`run/neoforge-1.21.1` 与 `run/forge-1.20.1`),按版本隔离且互不污染
   (mods/config/saves 独立);两子项目 build.gradle 的 `gameDirectory`/`pushToDevRun` 均指向
-  `rootProject.file('run/<版本>')`。
+  `rootProject.file('run/<子项目名>')`。
 - `gradle.properties` 的版本号**各子项目独立**;发布流程见 AGENTS.md「新版本发布流程」。
 - 功能/修复默认**同步修改两个版本**(`neoforge-1.21.1` + `forge-1.20.1`);每次改动完成后自动本地提交、并随 `gradlew build` 自动部署到整合包,但**不自动 `git push`**(见 AGENTS.md「子项目修改默认规则」)。
 - 两版本**均有帕秋莉手册**(1.20.1 已于 1.1.3 移植,含 Patchouli 1.20.1-85-forge 依赖),手册结构两版本一致。
