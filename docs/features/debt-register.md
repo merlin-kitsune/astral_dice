@@ -30,7 +30,7 @@
 | D11 | P2 | forge dev 环境必须用「重映射件」：rhino / collective / superflat 的生产件（SRG refmap）在 Mojmap dev 必崩 | 已在 `run/1.20.1/mods` 用 MDG/FG 转换缓存件跑通（`rhino-dev.jar`、`collective-dev.jar`、`superflat-dev.jar`） | 把这些件纳入测试台自举（存在性 + sha256 + 缺失时明确报错），见 TLMDice 侧 prompt |
 | D12 | P0 | `neoforge-26.1.2` 缺 `PlayerLikeWallet` / `ChipShopService`（`PlayerLikeTargets` 已有）；这两个类型只在 `neoforge-1.21.1` / `forge-1.20.1` | 源码实读：26.1.2 无 `PlayerLikeWallet.java` / `ChipShopService.java`；fabric 两线同样缺，仍 P1 | 26.1.2 现 P0，发布前必须补或显式裁决降级 |
 | D13 | P1 | 目标选择器「女仆」类别未接线：本仓已提供 `TargetPromptCategories.registerActionCategory(actionId, "maid")`，TLMDice 侧尚未注册任何动作 | P0 三线 .35 与 fabric 两线 .36 均已改完并实机（读数见 `docs/reports/2026-11-14-target-selector-actionbar-35.md` 与 `docs/reports/2026-11-14-target-selector-actionbar-36-fabric.md`）；女仆选择动作在 TLMDice 仓（`MaidActiveSkillIntent` 等） | TLMDice 客户端初始化时对其选择动作注册 `maid`，并补实机 |
-| D14 | P1 | 垃圾桶立牌 `z3000_sign` 只在 P0 三线落地（26.4-SNAPSHOT.32–.34 实机通过）；`fabric-1.20.1` / `fabric-1.21.1` 0 代码 / 0 lang / 0 配方 / 0 实机 | 2026-11-14 实读：两线无 `item/sign/Z3000SignItem.java`，`zh_cn.json` 无 `z3000` 键，`src/generated` 无 `z3000_sign` 配方与模型 | 移植代码 + 管道渲染 + lang + datagen + 配方；两线各补实机（拉取 / 拒绝 / 拖拽击杀计数 / 攻击叠层）；未落地前不得对外声称 Fabric 可用 |
+| D14 | 已解决（2026-11-14） | 垃圾桶立牌 `z3000_sign` 原先只在 P0 三线落地；现已在 `fabric-1.20.1` / `fabric-1.21.1` 落地（26.4-SNAPSHOT.37，提交 `a04ddd5d`） | 两线实机通过：4.5 格拉取 1000→995、17 格拒绝、冷却闸门、拖拽延迟击杀 +1 反击并 -33% 冷却、两个 20 血击杀把攻击叠层 0→1（`ATTACK_DAMAGE` 1.0→2.0）；读数见 `docs/reports/2026-11-14-z3000-fabric-37.md` | 未覆盖：反击层数消耗路径、视觉、1200 tick 节流在连续击杀下的表现（需要时补测） |
 
 ## 三、跨仓（TLMDice）
 
