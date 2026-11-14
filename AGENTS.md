@@ -47,4 +47,10 @@
 | Linux 测试台（bash） | `scripts/test/linux/README.md`（`env.sh` / `launch.sh` / `stop.sh`）；Linux 规则正本的〈测试台现状（Linux）〉一节 |
 | 桌面控制 / 游戏内注入通道 | Windows 当前 DSH：`mcp__wincu__windows_computer_use_*`（详见 `docs/agent/AGENTS-dsh.md` 第 10 条）；Linux 宿主见 `docs/agent/AGENTS-dsh-linux.md` 的〈桌面控制与实机通道（Wayland）〉与〈AutoJS 运行时通道〉（`computer-use-linux` / `screen-ocr` / `autojs` 仅 Linux 注册） |
 
-> 本文件只放「分派 + 共同红线 + 索引」。宿主专用的工作方式（额度口径、委派细节、角色设定）、逐批历史与完整领域规格**都不放在这里**，一律留在各自的规则文件里，按需读取。
+## 四、工具约定（图片 / 脚本）
+
+- 图片处理一律用 ImageMagick 7：`C:/Program Files/ImageMagick-7.1.2-Q16/magick.exe`（PATH 里有 `magick` 也可）；裁剪、拼图、缩放、格式转换都走它，不要改用 Python/PIL 或系统画图工具。
+- **严格禁用 Windows PowerShell**（含 `powershell.exe` / `pwsh` / `Start-Process` / `Get-Process` 等）；命令一律走 bash（MSYS）或 DSH 的专用工具。MSYS 下引用 Windows 路径用 `/f/...`；需要原样传 `/PID` 这类参数时加 `MSYS_NO_PATHCONV=1`。
+- 例：`magick in.png -crop 560x520+600+120 +repage out.png`；`magick montage a.png b.png -tile 2x2 -geometry +4+4 sheet.png`；`magick identify out.png`。
+
+> 本文件只放「分派 + 共同红线 + 索引 + 工具约定」。宿主专用的工作方式（额度口径、委派细节、角色设定）、逐批历史与完整领域规格**都不放在这里**，一律留在各自的规则文件里，按需读取。

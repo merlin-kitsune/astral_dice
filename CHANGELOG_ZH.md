@@ -4,6 +4,15 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
+## 26.4-SNAPSHOT.41
+
+### 本线
+
+- 修复：【仙酿】（`astral_dice:souri_drink` 且 `Variant=1`）恢复 bbmodel 的完整渲染。导出器此前把所有方块归一成正尺寸，并按 bbmodel 的 `resolution`=128 写 `texture_width/height`，而实际贴图是 256×256——180 个 outline 方块因此丢掉带符号的面朝向，128 的 UV 比例又采样到透明空洞。五线现改为 Blockbench 原生带符号方块语义（`origin[0]=-(from.x+size.x)`、带符号 `size`、up/down 面 UV 翻转）加 256×256 UV 元数据：130 骨骼 / 724 方块 / 4344 面 / 180 个负尺寸方块。
+- 文件：五份 `winegourdbetter.geo.json`（四线在 `assets/astral_dice/geo/`，26.1.2 在 `assets/astral_dice/geckolib/models/`），逐字节一致，sha256 `a426c6e20a9ec23df98fbcf47e4e07b64958a2d01cfe2e9ee9042427e3f8e465`（1,473,170 B）。
+- 验证：五线 `:build` → BUILD SUCCESSFUL in 15s。产物 sha256：1.21.1 `b0d25fdb7f8fca099285083e9fd977a78e837ff0e3a3ddf329ef6755b9b8ce43`、1.20.1 forge `a06fafbc410b7d4fa9e3db40411482c03a07d515de26665836d3e016d99d0e74`、26.1.2 `fb365552297baa12de9658d06cea61e99178093c2f13bc56405600130d99d9b6`、fabric-1.20.1 `37053486cfa9c4db2fd57635f49044ef9a6cd6af3b71936f0ea8ca2913949233`、fabric-1.21.1 `d21d0ef16969ed66b8c84c08da94d069e3e8a026a671e94ddd8489e6ecb9b1f2`。
+- 实机验证（2026-11-14，neoforge-26.1.2 + neoforge-1.21.1，`26.4-SNAPSHOT.41`）：两线均与 bbmodel 同形——蓝色瓶身、金色下半身、蓝色笼状条带/蝴蝶结、金色瓶盖，不再是此前的扁平蓝瓶或整体反色的金壳。截图：`run/neoforge-26.1.2/screenshots/2026-11-14_15.14.58.png`、`run/neoforge-1.21.1/screenshots/brew1211_sky3.png`；26.1.2 角度拼图 `build/tmp-dsh/signed2612_angles.png`。forge-1.20.1 与两条 fabric 线字节相同但本轮未实机。读数见 `docs/reports/2026-11-14-brew-uv-41.md`。
+
 ## 26.4-SNAPSHOT.40
 
 ### 本线

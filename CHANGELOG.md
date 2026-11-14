@@ -4,6 +4,15 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 26.4-SNAPSHOT.41
+
+### This line
+
+- Fix: 【仙酿】(`astral_dice:souri_drink` with `Variant=1`) renders the bbmodel again. The exporter had normalized every cube to a positive size and written `texture_width/height` from the bbmodel's 128 `resolution`, although the real PNG is 256×256; the 180 outline cubes lost their signed face direction and the 128 UV scale sampled transparent holes. All five lines now use Blockbench's native signed cube semantics (`origin[0]=-(from.x+size.x)`, signed `size`, up/down UV flip) and 256×256 UV metadata: 130 bones / 724 cubes / 4344 quads / 180 negative-size cubes.
+- Files: five `winegourdbetter.geo.json` (four under `assets/astral_dice/geo/`, 26.1.2 under `assets/astral_dice/geckolib/models/`), byte-identical, sha256 `a426c6e20a9ec23df98fbcf47e4e07b64958a2d01cfe2e9ee9042427e3f8e465` (1,473,170 B).
+- Validation: five-line `:build` -> BUILD SUCCESSFUL in 15s. Jars: 1.21.1 `b0d25fdb7f8fca099285083e9fd977a78e837ff0e3a3ddf329ef6755b9b8ce43`, 1.20.1 forge `a06fafbc410b7d4fa9e3db40411482c03a07d515de26665836d3e016d99d0e74`, 26.1.2 `fb365552297baa12de9658d06cea61e99178093c2f13bc56405600130d99d9b6`, fabric-1.20.1 `37053486cfa9c4db2fd57635f49044ef9a6cd6af3b71936f0ea8ca2913949233`, fabric-1.21.1 `d21d0ef16969ed66b8c84c08da94d069e3e8a026a671e94ddd8489e6ecb9b1f2`.
+- Live verification (2026-11-14, neoforge-26.1.2 + neoforge-1.21.1, `26.4-SNAPSHOT.41`): both lines now match the bbmodel — blue bottle body, gold lower body, blue cage/ribbon, gold cap — instead of the earlier flattened blue bottle / inverted gold shell. Screenshots: `run/neoforge-26.1.2/screenshots/2026-11-14_15.14.58.png`, `run/neoforge-1.21.1/screenshots/brew1211_sky3.png`; 26.1.2 angle sheet `build/tmp-dsh/signed2612_angles.png`. The forge-1.20.1 and two fabric lines carry the same geo bytes but were not live-run this round. Readings: `docs/reports/2026-11-14-brew-uv-41.md`.
+
 ## 26.4-SNAPSHOT.40
 
 ### This line
