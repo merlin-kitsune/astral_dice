@@ -68,4 +68,12 @@ public class ModBlocks {
                     .mapColor(MapColor.METAL)
                     .strength(2.5F)
                     .sound(SoundType.METAL)));
+
+    /** 星愿铁砧(2026-11-15):继承原版铁砧(重力/朝向/音效/砸伤),无耐久;右键打开三输入升星界面。 */
+    public static final DeferredBlock<Block> ASTRAL_ANVIL = BLOCKS.register("astral_anvil",
+            () -> new AstralAnvilBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.METAL)
+                    .requiresCorrectToolForDrops()
+                    .strength(5.0F, 1200.0F)
+                    .sound(SoundType.ANVIL)));
 }

@@ -3,6 +3,7 @@ package com.merlinkitsune.astral_dice.client;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.entity.ModEntityTypes;
 import com.merlinkitsune.astral_dice.init.ModParticles;
+import com.merlinkitsune.astral_dice.screen.AstralAnvilScreen;
 import com.merlinkitsune.astral_dice.screen.CardInventoryScreen;
 import com.merlinkitsune.astral_dice.screen.CardChoiceScreen;
 import com.merlinkitsune.astral_dice.screen.CardShopScreen;
@@ -42,6 +43,7 @@ public class ModClientEvents {
         event.register(ModMenuTypes.CARD_SHOP.get(), CardShopScreen::new);
         event.register(ModMenuTypes.CHIP_SHOP.get(), ChipShopScreen::new);
         event.register(ModMenuTypes.CARD_CHOICE.get(), CardChoiceScreen::new);
+        event.register(ModMenuTypes.ASTRAL_ANVIL.get(), AstralAnvilScreen::new);
     }
 
     /**

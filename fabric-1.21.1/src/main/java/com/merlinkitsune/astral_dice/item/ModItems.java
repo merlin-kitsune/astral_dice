@@ -1115,6 +1115,10 @@ public class ModItems {
     public static final RegistryObject<Item> EVENT_DRAWER = registerItem("event_drawer",
             () -> new BlockItem(ModBlocks.EVENT_DRAWER.get(), new Item.Properties().stacksTo(1)));
 
+    /** 星愿铁砧(方块物品形态):不可堆叠,放置后右键打开升星界面(fabric-1.21.1)。 */
+    public static final RegistryObject<Item> ASTRAL_ANVIL = registerItem("astral_anvil",
+            () -> new BlockItem(ModBlocks.ASTRAL_ANVIL.get(), new Item.Properties().stacksTo(1)));
+
     // 路障(效果牌,2026-10-17;2026-10-17 移植到本线):在视线命中的方块面上放一座路障
     // (30 点耐久 / 6 格拉仇恨 / 栅栏级挡路)。实现形态 = 可见实体(entity/BarricadeEntity)
     // + 隐形碰撞方块(block/BarricadeBlock)。品质:稀有

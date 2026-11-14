@@ -26,9 +26,10 @@ import net.minecraftforge.common.ForgeConfigSpec;
  * Modern UI 开启『现代提示框』时会自行绘制整个提示框并取消原版渲染(⇒ 本模组 `RenderTooltipEvent.Color` 永不派发),
  * 本模组按稀有度写入的边框色被整体丢弃,故新增本开关(**仅客户端渲染项,不影响服务端玩法**)。」。
  * v7 用于「新增 `enable_chip_recipes`(筹码合成配方总开关,默认 false —— 关闭时 61 枚筹码无法通过合成获得)」。
+ * v8 用于「新增 `experimental_star_upgrade`(实验性升星总开关,默认 false —— 一个开关同时控制:产出 0★、取走时归还已装配卡牌、按 dice_t0..dice_t4 分级取经验;关闭时行为与改动前完全一致)」。
  */
 public final class ModCommonConfig {
-    public static final int CONFIG_VERSION = 7;
+    public static final int CONFIG_VERSION = 8;
 
     public static final ForgeConfigSpec SPEC;
 
@@ -53,6 +54,23 @@ public final class ModCommonConfig {
      * <p>⚠️ 本项**不进** {@link #snapshot()}:库 {@code GameplayConfigValues} 无对应字段,不得改动库契约。
      */
     public static final ForgeConfigSpec.BooleanValue ENABLE_CHIP_RECIPES;
+    /** 实验性升星开关的**权威默认值**(与 {@link #EXPERIMENTAL_STAR_UPGRADE} 对应)。 */
+    public static final boolean EXPERIMENTAL_STAR_UPGRADE_DEFAULT = false;
+
+    /**
+     * 实验性升星开关(**服务端玩法项**,默认 false —— 权威默认值见 {@link #EXPERIMENTAL_STAR_UPGRADE_DEFAULT})。
+     *
+     * <p>一个开关同时控制三件事(2026-11-15 用户裁决):
+     * <ol>
+     *   <li>产出形态:开启后铁砧产出 **0★** 骰子(关闭时维持「星级 +1」);</li>
+     *   <li>卡牌归还:开启后取走 0★ 产物时把输入骰子已装配的卡牌全部归还玩家(关闭时卡牌随骰子保留);</li>
+     *   <li>分级经验:开启后按输入骰子的分级标签(dice_t0..dice_t4)取 5 / 10 / 15 / 20 / 30 级(关闭时固定 10 级)。</li>
+     * </ol>
+     * 判定与数值集中在 {@code item.DiceStarUpgrade}(唯一事实源,勿另复制一套)。
+     *
+     * <p>⚠️ 本项**不进** {@link #snapshot()}:库 {@code GameplayConfigValues} 无对应字段,不得改动库契约。
+     */
+    public static final ForgeConfigSpec.BooleanValue EXPERIMENTAL_STAR_UPGRADE;
     public static final ForgeConfigSpec.BooleanValue EVENT_APPLY_MC_TEAM;
     public static final ForgeConfigSpec.BooleanValue EVENT_APPLY_FTB_TEAM;
     public static final ForgeConfigSpec.BooleanValue EVENT_APPLY_OPAC;
@@ -109,6 +127,12 @@ public final class ModCommonConfig {
         // 筹码合成配方总开关(默认 false;关闭时 61 枚筹码无法通过合成获得 —— 权威默认值见 ChipShopCatalog#CHIP_RECIPES_DEFAULT)。
         ENABLE_CHIP_RECIPES = builder.comment("是否启用筹码合成配方(默认：false；关闭时 61 枚筹码无法通过合成获得)")
                 .define("enable_chip_recipes", false);
+
+        // 实验性升星开关(默认 false;关闭时行为与改动前完全一致:固定 10 级、星级 +1、卡牌保留 —— 权威默认值见 EXPERIMENTAL_STAR_UPGRADE_DEFAULT)。
+        EXPERIMENTAL_STAR_UPGRADE = builder.comment("实验性升星(默认：false)",
+                        "false = 铁砧升星维持既有行为:固定 10 级经验、星级 +1、卡牌随骰子保留;",
+                        "true = 同时启用三项实验行为:产出 0★ 并归还已装配的卡牌、经验按输入骰子的分级标签取 5 / 10 / 15 / 20 / 30 级")
+                .define("experimental_star_upgrade", false);
 
         builder.push("event_system").comment("=== 事件系统 ===");
         EVENT_APPLY_MC_TEAM = builder.comment("事件是否作用于 Minecraft 同队玩家")

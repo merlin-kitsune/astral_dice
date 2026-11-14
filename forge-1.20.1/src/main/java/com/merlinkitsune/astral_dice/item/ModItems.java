@@ -451,6 +451,10 @@ public class ModItems {
     public static final RegistryObject<Item> CHIP_SHOP = registerItem("chip_shop",
             () -> new BlockItem(ModBlocks.CHIP_SHOP.get(), new Item.Properties().stacksTo(1)));
 
+    // 星愿铁砧方块物品(右键方块打开三输入升星台;与商店方块同款不可堆叠)
+    public static final RegistryObject<Item> ASTRAL_ANVIL = registerItem("astral_anvil",
+            () -> new BlockItem(ModBlocks.ASTRAL_ANVIL.get(), new Item.Properties().stacksTo(1)));
+
     /** 奇怪的问号(2026-10-10 事件体系重写):使用后抽一条事件(ITEM_USE),生存消耗 1 张。 */
     public static final RegistryObject<Item> EVENT_TICKET = registerItem("event_ticket",
             () -> new EventDrawItem(new Item.Properties()

@@ -2,6 +2,7 @@ package com.merlinkitsune.astral_dice.client;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.init.ModParticles;
+import com.merlinkitsune.astral_dice.screen.AstralAnvilScreen;
 import com.merlinkitsune.astral_dice.screen.CardChoiceScreen;
 import com.merlinkitsune.astral_dice.screen.CardInventoryScreen;
 import com.merlinkitsune.astral_dice.screen.CardShopScreen;
@@ -69,6 +70,8 @@ public class ModClientEvents {
                     ModMenuTypes.CARD_SHOP.get(), CardShopScreen::new);
             net.minecraft.client.gui.screens.MenuScreens.register(
                     ModMenuTypes.CARD_CHOICE.get(), CardChoiceScreen::new);
+            net.minecraft.client.gui.screens.MenuScreens.register(
+                    ModMenuTypes.ASTRAL_ANVIL.get(), AstralAnvilScreen::new);
         });
     }
 

@@ -238,6 +238,7 @@ public class ModCreativeTabs {
                 //   → buildContents → getDisplayItems），⇒ 这一处同时决定创造页与 JEI 的排序，JEI 侧无需任何代码改动。
                 output.accept(ModItems.EVENT_TICKET.get());
 output.accept(ModItems.EVENT_DRAWER.get());
+                output.accept(ModItems.ASTRAL_ANVIL.get());
 output.accept(ModItems.CARD_SHOP.get());
 output.accept(ModItems.CHIP_SHOP.get());
             }).build());

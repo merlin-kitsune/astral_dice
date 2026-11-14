@@ -1056,6 +1056,8 @@
   "msg.astral_dice.event_drawer_blank_insert": "ブランクチップを投入しました - 抽選ボックスをリセットし、すぐ購入できます",
   "msg.astral_dice.event_global_cooldown": "前のイベントがまだ終了していません（あと §e%s§7 秒）",
   "block.astral_dice.barricade_collision": "バリケード（当たり判定）",
+  "block.astral_dice.astral_anvil": "星願の金床",
+  "container.astral_dice.astral_anvil": "星願の金床",
   "block.astral_dice.card_shop": "カードショップ",
   "msg.astral_dice.card_shop_no_coin": "スターコインが足りません（必要：%s）",
   "msg.astral_dice.card_shop_bought": "%s を購入しました（%s スターコイン）",

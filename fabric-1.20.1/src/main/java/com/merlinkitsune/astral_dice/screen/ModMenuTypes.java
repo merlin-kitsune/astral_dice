@@ -34,6 +34,10 @@ public class ModMenuTypes {
             () -> new net.fabricmc.fabric.api.screenhandler.v1.ExtendedScreenHandlerType<CardChoiceMenu>(
                     CardChoiceMenu::new));
 
+    /** 星愿铁砧菜单（骰子升星 / 实验性还原；见 screen/AstralAnvilMenu）。 */
+    public static final RegistryObject<MenuType<AstralAnvilMenu>> ASTRAL_ANVIL = MENU_TYPES.register("astral_anvil",
+            () -> new MenuType<>(AstralAnvilMenu::new, FeatureFlags.DEFAULT_FLAGS));
+
     /** 服务端打开卡牌栏(原 OpenCardInventoryPayload 的服务端逻辑;需佩戴骰子)。 */
     public static void openCardInventory(ServerPlayer serverPlayer) {
         var curios = CuriosApi.getCuriosInventory(serverPlayer);

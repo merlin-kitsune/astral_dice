@@ -73,4 +73,12 @@ public class ModBlocks {
                     .isRedstoneConductor((state, level, pos) -> false)
                     .isSuffocating((state, level, pos) -> false)
                     .isViewBlocking((state, level, pos) -> false)));
+
+    /** 星愿铁砧（2026-11-15）：三输入升星台；无耐久、不调 AnvilBlock#damage、不进 minecraft:anvil 标签。 */
+    public static final RegistryObject<Block> ASTRAL_ANVIL = BLOCKS.register("astral_anvil",
+            () -> new AstralAnvilBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.METAL)
+                    .requiresCorrectToolForDrops()
+                    .strength(5.0F, 1200.0F)
+                    .sound(SoundType.ANVIL)));
 }

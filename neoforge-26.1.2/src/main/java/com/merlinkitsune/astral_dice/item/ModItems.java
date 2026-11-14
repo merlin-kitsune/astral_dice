@@ -1152,6 +1152,10 @@ public class ModItems {
     public static final DeferredItem<BlockItem> EVENT_DRAWER = registerItem("event_drawer",
             props -> new BlockItem(ModBlocks.EVENT_DRAWER.get(), props.stacksTo(1)));
 
+    // 星愿铁砧方块(物品形态):放置后右键打开「星愿铁砧」界面（不可堆叠）
+    public static final DeferredItem<BlockItem> ASTRAL_ANVIL = registerItem("astral_anvil",
+            props -> new BlockItem(ModBlocks.ASTRAL_ANVIL.get(), props.stacksTo(1)));
+
     // 事件券:抽奖盒消耗品
     public static final DeferredItem<Item> EVENT_TICKET = registerItem("event_ticket",
             props -> new EventDrawItem(props

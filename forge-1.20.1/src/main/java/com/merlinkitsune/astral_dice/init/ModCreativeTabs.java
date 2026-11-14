@@ -238,6 +238,7 @@ public class ModCreativeTabs {
                 // 因此这里一并决定了 JEI 里卡牌商店的位置。
                 output.accept(ModItems.EVENT_TICKET.get());
 output.accept(ModItems.EVENT_DRAWER.get());
+                output.accept(ModItems.ASTRAL_ANVIL.get());
 output.accept(ModItems.CARD_SHOP.get());
                 output.accept(ModItems.CHIP_SHOP.get());
             }).build());

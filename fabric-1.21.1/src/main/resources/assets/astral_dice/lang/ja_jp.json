@@ -1042,6 +1042,8 @@
   "gui.astral_dice.chip_shop.empty": "なし",
   "gui.astral_dice.chip_shop.refresh_counter": "%s",
   "block.astral_dice.barricade_collision": "バリケード（当たり判定）",
+  "block.astral_dice.astral_anvil": "星願の金床",
+  "container.astral_dice.astral_anvil": "星願の金床",
   "block.astral_dice.card_shop": "カードショップ",
   "block.astral_dice.chip_shop": "チップショップ",
   "msg.astral_dice.card_shop_no_coin": "スターコインが足りません（必要：%s）",

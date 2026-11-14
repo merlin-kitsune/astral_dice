@@ -4,6 +4,8 @@ import com.merlinkitsune.astral_dice.component.AppliedStone;
 import com.merlinkitsune.starengine.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import com.merlinkitsune.astral_dice.component.WeaponEnhancement;
+import com.merlinkitsune.astral_dice.item.CardReturnHelper;
+import com.merlinkitsune.astral_dice.item.DiceStarUpgrade;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.shop.ChipShopCatalog;
 import com.merlinkitsune.astral_dice.shop.ChipShopState;
@@ -24,26 +26,20 @@ public class AnvilUpgradeHandler {
         ItemStack left = event.getLeft();
         ItemStack right = event.getRight();
 
-        if (!isDice(left)) return;
+        if (!DiceStarUpgrade.isDice(left)) return;
         if (!right.is(ModItems.STAR_COIN.get())) return;
         WeaponEnhancement enhancement = ModDataComponents.WEAPON_ENHANCEMENT.getOrDefault(left, WeaponEnhancement.EMPTY);
-        int req = starCoinCost(enhancement.starLevel());
+        int req = DiceStarUpgrade.starCoinCost(enhancement.starLevel());
         if (req < 0) return;
         if (right.getCount() < req) return;
-        ItemStack output = left.copy();
-        ModDataComponents.WEAPON_ENHANCEMENT.set(output, new WeaponEnhancement(
-                        enhancement.usedCost(),
-                        GameplayConstants.cardCostForStar(enhancement.starLevel() + 1),
-                        enhancement.usedDefenseCost(),
-                        GameplayConstants.cardCostForStar(enhancement.starLevel() + 1),
-                        enhancement.starLevel() + 1,
-                        // ⚠️ appliedStones 必须**原样透传**(不重建):临时牌(绿洲女王 nardis)的
-                        // temporary 分量存在 AppliedStone 里,重建/拷贝时丢标记 = 该牌到期清不掉。
-                        enhancement.appliedStones()
-                ));
+        // 产出形态 / 星币成本 / 经验等级全部集中在 item.DiceStarUpgrade(唯一事实源)。
+        // 实验开关关闭时与改动前完全一致:星级 +1、经验固定 10 级、卡牌随骰子保留;
+        // 开启时产出 0★ + 清空 appliedStones,经验按输入骰子的分级标签取。
+        ItemStack output = DiceStarUpgrade.resultFor(left);
+        if (output.isEmpty()) return;
         event.setOutput(output);
         event.setMaterialCost(req);
-        event.setCost(10);
+        event.setCost(DiceStarUpgrade.xpCostFor(left));
     }
 
     /**
@@ -59,6 +55,9 @@ public class AnvilUpgradeHandler {
      * <p><b>授予语义</b> = {@link ChipShopState#withRefreshGranted()}：在存档现有次数上 +1 并封顶
      * {@value ChipShopCatalog#REFRESH_MAX}，不重置、不清零（已有存档次数照旧保留）。
      *
+     * <p><b>实验性升星</b>（{@code experimental_star_upgrade} = true）：产物形态是「0★ + 空 appliedStones」，
+     * 此时**不要求**星阶 +1，而是归还输入骰子已装配的全部卡牌（{@link CardReturnHelper#returnCards}）并照旧授予刷新。
+     *
      * <p><b>平台说明(fabric)</b>：事件来自 `platform.event.entity.player.AnvilRepairEvent`，
      * 由 Puzzles `AnvilRepairCallback` 经 `platform.StarengineBridges#installPlayers` 转接；
      * 挂在本类的 {@code AnvilRepairEvent} 上而非 {@code AnvilUpdateEvent} 上，与 forge 线一致。
@@ -70,56 +69,50 @@ public class AnvilUpgradeHandler {
         }
         ItemStack left = event.getLeft();
         ItemStack right = event.getRight();
-        ItemStack output = event.getOutput();
-        if (!isDice(left) || !isDice(output) || !output.is(left.getItem())) {
+        if (!DiceStarUpgrade.isDice(left)) {
             return;
         }
         if (!right.is(ModItems.STAR_COIN.get())) {
             return;
         }
         WeaponEnhancement input = ModDataComponents.WEAPON_ENHANCEMENT.getOrDefault(left, WeaponEnhancement.EMPTY);
-        WeaponEnhancement upgraded = ModDataComponents.WEAPON_ENHANCEMENT.getOrDefault(output, WeaponEnhancement.EMPTY);
-        int required = starCoinCost(input.starLevel());
-        if (required < 0) {
+        // shift-click 时事件 output 可能已被搬空,必须以输入重算产物(与星愿铁砧共用 DiceStarUpgrade)
+        ItemStack expected = DiceStarUpgrade.resultFor(left);
+        if (expected.isEmpty()) {
             return;
         }
-        if (upgraded.starLevel() != input.starLevel() + 1) {
+        WeaponEnhancement upgraded = ModDataComponents.WEAPON_ENHANCEMENT.getOrDefault(expected, WeaponEnhancement.EMPTY);
+        int required = DiceStarUpgrade.starCoinCost(input.starLevel());
+        if (required < 0) {
             return;
         }
         if (right.getCount() < required) {
             return;
+        }
+        // 实验性升星:产物是「0★ + 空 appliedStones」⇒ 输入骰子已装配的卡牌在这里归还给玩家;
+        // 其余分支维持原校验(产物星阶恰好比输入 +1,卡牌随骰子保留)。
+        boolean reset = upgraded.starLevel() == 0 && upgraded.appliedStones().isEmpty();
+        if (!reset && upgraded.starLevel() != input.starLevel() + 1) {
+            return;
+        }
+        int returnedCards = 0;
+        if (reset) {
+            returnedCards = CardReturnHelper.returnCards(player, input.appliedStones());
         }
         ChipShopState next = ChipShopState.get(player).withRefreshGranted();
         ChipShopState.store(player, next);
         LOGGER.info("[astral_dice] CHIP_SHOP_REFRESH_GRANTED player={} star={}->{} coins={} refreshes={}/{}",
                 player.getGameProfile().getName(), input.starLevel(), upgraded.starLevel(), right.getCount(),
                 next.refreshesLeft(), ChipShopCatalog.REFRESH_MAX);
+        if (reset) {
+            LOGGER.info("[astral_dice] ANVIL_STAR_RESET_CARDS_RETURNED player={} star={}->0 cards={}",
+                    player.getGameProfile().getName(), input.starLevel(), returnedCards);
+        }
     }
 
-    /** 升星白名单：全部 13 种骰子（基础/黄金/玻璃/下界岩/钻石/绿宝石/黑曜石/诡异/紫晶/下界合金/绯红/末影/下界之星） */
-    private static boolean isDice(ItemStack stack) {
-        return stack.is(ModItems.DICE.get()) || stack.is(ModItems.GOLDEN_DICE.get()) || stack.is(ModItems.DIAMOND_DICE.get())
-                || stack.is(ModItems.NETHERITE_DICE.get()) || stack.is(ModItems.EMERALD_DICE.get())
-                || stack.is(ModItems.GLASS_DICE.get()) || stack.is(ModItems.NETHERRACK_DICE.get())
-                || stack.is(ModItems.OBSIDIAN_DICE.get()) || stack.is(ModItems.WEIRD_DICE.get())
-                || stack.is(ModItems.AMETHYST_DICE.get()) || stack.is(ModItems.CRIMSON_DICE.get())
-                || stack.is(ModItems.ENDER_DICE.get()) || stack.is(ModItems.NETHER_STAR_DICE.get());
-    }
-
-    /**
-     * 升星星币成本：0★→15 / 1★→20 / 2★→25；不可升（≥3★ 或非法星阶）⇒ -1。
-     *
-     * <p>**预览与授予共用这一份**（{@link #onAnvilUpdate} 与 {@link #onAnvilRepair} 都调它），
-     * 不得各写一套数值 —— 两套数值一旦漂移，铁砧预览价与实际授予条件就会不一致。
-     */
-    private static int starCoinCost(int starLevel) {
-        return switch (starLevel) {
-            case 0 -> 15;
-            case 1 -> 20;
-            case 2 -> 25;
-            default -> -1;
-        };
-    }
+    // isDice(13 种骰子白名单)与 starCoinCost(0★ 15 / 1★ 20 / 2★ 25,不可升 -1)已下沉到
+    // item.DiceStarUpgrade —— 预览(onAnvilUpdate)、授予(onAnvilRepair)与星愿铁砧菜单必须共用
+    // 同一份数值,不得在本类里再留第二套实现。
 
     // ============ 立牌 tooltip 统一格式辅助 ============
     // 格式模板:

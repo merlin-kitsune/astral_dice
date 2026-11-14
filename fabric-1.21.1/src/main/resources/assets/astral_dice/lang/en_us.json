@@ -1042,6 +1042,8 @@
   "gui.astral_dice.chip_shop.empty": "None",
   "gui.astral_dice.chip_shop.refresh_counter": "%s",
   "block.astral_dice.barricade_collision": "Barricade (Collision)",
+  "block.astral_dice.astral_anvil": "Astral Anvil",
+  "container.astral_dice.astral_anvil": "Astral Anvil",
   "block.astral_dice.card_shop": "Card Shop",
   "block.astral_dice.chip_shop": "Chip Shop",
   "msg.astral_dice.card_shop_no_coin": "Not enough Star Coins (need %s)",

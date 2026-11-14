@@ -1058,6 +1058,8 @@
   "msg.astral_dice.event_drawer_blank_insert": "已投入空白筹码，抽奖盒已重置并可立即再次购买",
   "msg.astral_dice.event_global_cooldown": "上一个事件尚未结束（还需 §e%s§7 秒）",
 "block.astral_dice.barricade_collision": "路障（隐形碰撞方块）",
+  "block.astral_dice.astral_anvil": "星愿铁砧",
+  "container.astral_dice.astral_anvil": "星愿铁砧",
   "block.astral_dice.card_shop": "卡牌商店",
   "msg.astral_dice.card_shop_no_coin": "星币不足（需要 %s）",
   "msg.astral_dice.card_shop_bought": "已购买 %s，花费 %s 星币",

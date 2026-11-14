@@ -95,6 +95,14 @@ public final class ModBlocks {
                     .isSuffocating((state, level, pos) -> false)
                     .isViewBlocking((state, level, pos) -> false)));
 
+    /** 星愿铁砧:原版铁砧属性(金属色 / 金属音 / 5,1200 / 需正确工具),**无耐久、永不破损**;不进 minecraft:anvil 标签。 */
+    public static final RegistryObject<Block> ASTRAL_ANVIL = BLOCKS.register("astral_anvil",
+            () -> new AstralAnvilBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.METAL)
+                    .requiresCorrectToolForDrops()
+                    .strength(5.0F, 1200.0F)
+                    .sound(SoundType.ANVIL)));
+
     private ModBlocks() {
     }
 

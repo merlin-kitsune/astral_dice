@@ -7,6 +7,7 @@ import com.merlinkitsune.astral_dice.screen.CardInventoryScreen;
 import com.merlinkitsune.astral_dice.screen.CardChoiceScreen;
 import com.merlinkitsune.astral_dice.screen.CardShopScreen;
 import com.merlinkitsune.astral_dice.screen.ChipShopScreen;
+import com.merlinkitsune.astral_dice.screen.AstralAnvilScreen;
 import com.merlinkitsune.astral_dice.screen.ModMenuTypes;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -102,6 +103,8 @@ public class ModClientEvents {
             // 的模型是 no-op）。若将来模型去掉 render_type，再考虑在此兜底。
             net.minecraft.client.gui.screens.MenuScreens.register(
                     ModMenuTypes.CARD_INVENTORY.get(), CardInventoryScreen::new);
+            net.minecraft.client.gui.screens.MenuScreens.register(
+                    ModMenuTypes.ASTRAL_ANVIL.get(), AstralAnvilScreen::new);
             net.minecraft.client.gui.screens.MenuScreens.register(
                     ModMenuTypes.CARD_SHOP.get(), CardShopScreen::new);
             net.minecraft.client.gui.screens.MenuScreens.register(

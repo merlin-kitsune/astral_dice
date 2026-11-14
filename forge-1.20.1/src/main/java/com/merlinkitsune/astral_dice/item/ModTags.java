@@ -82,5 +82,39 @@ public final class ModTags {
          */
         public static final TagKey<Item> SCHOOL_CHARGE =
                 ItemTags.create(new ResourceLocation(AstralDiceMod.MODID, "school_charge"));
+
+        /**
+         * 骰子分级标签（实验性升星开关「分级经验」的依据；开关关闭时无消费方）。
+         *
+         * <p>T0=基础骰；T1=黄金/玻璃/下界岩；T2=钻石/绿宝石/黑曜石/诡异/紫晶；
+         * T3=下界合金/绯红/末影；T4=下界之星 —— 13 枚骰子全部分级、无遗漏。
+         * 经验表见 {@link com.merlinkitsune.astral_dice.item.DiceStarUpgrade#xpCostFor(net.minecraft.world.item.ItemStack)}。
+         */
+        public static final TagKey<Item> DICE_T0 =
+                ItemTags.create(new ResourceLocation(AstralDiceMod.MODID, "dice_t0"));
+
+        /** 骰子分级标签 T1（黄金 / 玻璃 / 下界岩）。 */
+        public static final TagKey<Item> DICE_T1 =
+                ItemTags.create(new ResourceLocation(AstralDiceMod.MODID, "dice_t1"));
+
+        /** 骰子分级标签 T2（钻石 / 绿宝石 / 黑曜石 / 诡异 / 紫晶）。 */
+        public static final TagKey<Item> DICE_T2 =
+                ItemTags.create(new ResourceLocation(AstralDiceMod.MODID, "dice_t2"));
+
+        /** 骰子分级标签 T3（下界合金 / 绯红 / 末影）。 */
+        public static final TagKey<Item> DICE_T3 =
+                ItemTags.create(new ResourceLocation(AstralDiceMod.MODID, "dice_t3"));
+
+        /** 骰子分级标签 T4（下界之星）。 */
+        public static final TagKey<Item> DICE_T4 =
+                ItemTags.create(new ResourceLocation(AstralDiceMod.MODID, "dice_t4"));
+
+        /**
+         * 星愿铁砧材料槽可接受的物品（对应 data/astral_dice/tags/item/astral_anvil_materials.json）。
+         *
+         * <p>⚠️ 目前只作为数据标签常量存在：JSON 由资源批次落地，本批不新建 / 不改任何 tag JSON。
+         */
+        public static final TagKey<Item> ASTRAL_ANVIL_MATERIALS =
+                ItemTags.create(new ResourceLocation(AstralDiceMod.MODID, "astral_anvil_materials"));
     }
 }

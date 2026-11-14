@@ -967,6 +967,8 @@
   "tooltip.astral_dice.chip.shooting_star_cooldown": "クールダウン中：§c%s§c 秒",
   "astral_dice.guide.entry.purple_shooting_star_chip.1": "敵対ターゲットのそばを通過した時、そのターゲットに 1 のダメージを与え、自身は 1 スタックの「スターライト」を獲得。10 秒毎に 1 回発動；金色の流星とタイマーを共有。",
   "astral_dice.guide.entry.golden_shooting_star_chip.1": "敵対ターゲットのそばを通過した時、そのターゲットに 2 のダメージを与え、自身は 1 スタックの「スターライト」を獲得；ターゲットがエリートモブまたはボスの場合、追加でプレイヤーの現在の「スターライト」スタック数分のダメージを与える。10 秒毎に 1 回発動；紫の流星とタイマーを共有。",
+  "block.astral_dice.astral_anvil": "星願の金床",
+  "container.astral_dice.astral_anvil": "星願の金床",
   "block.astral_dice.card_shop": "カードショップ",
   "block.astral_dice.chip_shop": "チップショップ",
   "block.astral_dice.event_drawer": "抽選ボックス",

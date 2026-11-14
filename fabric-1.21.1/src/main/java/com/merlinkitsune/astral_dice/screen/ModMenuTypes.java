@@ -29,6 +29,11 @@ public class ModMenuTypes {
             MENU_TYPES.register("chip_shop",
                     () -> new MenuType<>(com.merlinkitsune.astral_dice.shop.ChipShopMenu::new, FeatureFlags.DEFAULT_FLAGS));
 
+    /** 星愿铁砧菜单(fabric-1.21.1):槽 0 = 骰子,槽 1/2 = 材料,槽 3 = 结果。 */
+    public static final RegistryObject<MenuType<AstralAnvilMenu>> ASTRAL_ANVIL =
+            MENU_TYPES.register("astral_anvil",
+                    () -> new MenuType<>(AstralAnvilMenu::new, FeatureFlags.DEFAULT_FLAGS));
+
     /**
      * 选卡界面（B1-SCREEN-CHOICE）：带 extra data（token/slotCount/type），必须用 Fabric 的 ExtendedScreenHandlerType。
      *

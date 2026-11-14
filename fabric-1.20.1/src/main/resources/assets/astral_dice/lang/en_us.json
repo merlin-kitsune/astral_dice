@@ -967,6 +967,8 @@
   "tooltip.astral_dice.chip.shooting_star_cooldown": "On cooldown: §c%s§c s",
   "astral_dice.guide.entry.purple_shooting_star_chip.1": "Passing by a hostile target deals 1 damage to it and grants you 1 Starlight. Triggers once every 10 seconds; shares its timer with the Golden Shooting Star.",
   "astral_dice.guide.entry.golden_shooting_star_chip.1": "Passing by a hostile target deals 2 damage to it and grants you 1 Starlight; if the target is an elite or a boss, it takes additional damage equal to your current Starlight. Triggers once every 10 seconds; shares its timer with the Purple Shooting Star.",
+  "block.astral_dice.astral_anvil": "Astral Anvil",
+  "container.astral_dice.astral_anvil": "Astral Anvil",
   "block.astral_dice.card_shop": "Card Shop",
   "block.astral_dice.chip_shop": "Chip Shop",
   "block.astral_dice.event_drawer": "Lottery Box",

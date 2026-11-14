@@ -74,4 +74,16 @@ public class ModBlocks {
                     .mapColor(MapColor.METAL)
                     .strength(2.5F)
                     .sound(SoundType.METAL));
+
+    /**
+     * 星愿铁砧：属性照原版铁砧（金属色 / 需正确工具 / 硬度 5 / 抗爆 1200 / 铁砧音效），但**无耐久**——
+     * 不参与原版 {@code AnvilBlock.damage} 的开裂链条，也不加入 {@code minecraft:anvil} 标签。
+     */
+    public static final DeferredBlock<Block> ASTRAL_ANVIL = BLOCKS.<Block>registerBlock("astral_anvil",
+            AstralAnvilBlock::new,
+            props -> props
+                    .mapColor(MapColor.METAL)
+                    .strength(5.0F, 1200.0F)
+                    .requiresCorrectToolForDrops()
+                    .sound(SoundType.ANVIL));
 }

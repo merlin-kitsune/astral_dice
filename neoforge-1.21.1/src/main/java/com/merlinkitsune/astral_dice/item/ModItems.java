@@ -472,6 +472,10 @@ public class ModItems {
     public static final DeferredItem<BlockItem> EVENT_DRAWER = ITEMS.register("event_drawer",
             () -> new BlockItem(ModBlocks.EVENT_DRAWER.get(), new Item.Properties().stacksTo(1)));
 
+    /** 星愿铁砧(物品形态):放置后右键打开「星愿铁砧」界面(三输入升星,无耐久)。 */
+    public static final DeferredItem<BlockItem> ASTRAL_ANVIL = ITEMS.register("astral_anvil",
+            () -> new BlockItem(ModBlocks.ASTRAL_ANVIL.get(), new Item.Properties().stacksTo(1)));
+
     public static final DeferredItem<Item> JASMINE_SIGN = registerItem("jasmine_sign",
             () -> new JasmineSignItem(new Item.Properties()
                     .stacksTo(1)

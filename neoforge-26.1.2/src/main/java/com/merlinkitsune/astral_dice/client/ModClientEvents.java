@@ -14,6 +14,7 @@ import com.merlinkitsune.astral_dice.screen.CardInventoryScreen;
 import com.merlinkitsune.astral_dice.screen.CardChoiceScreen;
 import com.merlinkitsune.astral_dice.screen.ChipShopScreen;
 import com.merlinkitsune.astral_dice.screen.CardShopScreen;
+import com.merlinkitsune.astral_dice.screen.AstralAnvilScreen;
 import com.merlinkitsune.astral_dice.screen.ModMenuTypes;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
@@ -86,6 +87,7 @@ public class ModClientEvents {
         event.register(ModMenuTypes.CARD_INVENTORY.get(), CardInventoryScreen::new);
         event.register(ModMenuTypes.CARD_SHOP.get(), CardShopScreen::new);
         event.register(ModMenuTypes.CHIP_SHOP.get(), ChipShopScreen::new);
+        event.register(ModMenuTypes.ASTRAL_ANVIL.get(), AstralAnvilScreen::new);
         event.register(ModMenuTypes.CARD_CHOICE.get(), CardChoiceScreen::new);
     }
 
