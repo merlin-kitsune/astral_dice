@@ -2245,9 +2245,9 @@ public class DiceCombatEvents {
         if (!player.isAlive()) return;
         // 金鲤立牌(souri):反击层数不再只依附鼠鼠护盾 —— 佩戴金鲤时同一出口
         // 也消耗 1 层并把「反击」计成金鳞;上限由 SouriSignManager 放宽到 4。
+        // 垃圾桶立牌(z3000):拖拽击杀同样发放「反击」层数 ⇒ 与金鲤同权;
+        // 两者合并成唯一闸门 counterCarrier,不能保留只认金鲤的旧闸门(否则 z3000-only 永不进入)。
         boolean souri = com.merlinkitsune.astral_dice.item.sign.SouriSignItem.isEquipped(player);
-        if (!player.hasEffect(Effects.holder(ModEffects.REN_SHIELD.get())) && !souri) return;
-        // 垃圾桶立牌(z3000):拖拽击杀同样发放「反击」层数 ⇒ 与金鲤同权。
         boolean counterCarrier = souri
                 || com.merlinkitsune.astral_dice.item.sign.Z3000SignItem.isEquipped(player);
         if (!player.hasEffect(Effects.holder(ModEffects.REN_SHIELD.get())) && !counterCarrier) return;

@@ -81,7 +81,7 @@ public final class SouriSignManager {
     //  反击（复用 Ren 层数附件，佩戴金鲤时上限放宽到 4）
     // ══════════════════════════════════════════════════════════════════════════
 
-    /** 增加反击层数（仅在佩戴金鲤时由本立牌调用；上限 {@link #COUNTER_MAX}）。 */
+    /** 增加反击层数（佩戴金鲤或垃圾桶立牌时分别由各自立牌调用；上限 {@link #COUNTER_MAX}）。 */
     public static void addCounter(Player player, int delta) {
         if (player == null || player.level().isClientSide() || delta <= 0) return;
         int total = Math.min(COUNTER_MAX, ModAttachments.getRenCounterCharges(player) + delta);

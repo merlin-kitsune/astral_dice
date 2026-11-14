@@ -4,6 +4,16 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 26.4-SNAPSHOT.38
+
+### This line
+
+- Fix: the Fabric counter gate kept the old "shield or Golden Koi" early return, so a player wearing only Z3000 (no shield) never consumed a Counter stack and never struck back. The gate is now the single `counterCarrier` check (shield OR Golden Koi OR Z3000); 1.20.1 still spends one stack per trigger.
+- Fix: fabric-1.20.1's `BonnieSignItem` kill dispatch now claims `DeathTriggerGuard` (`sign_kill`), matching 1.21.1 and the P0 lines, so a nested hurt cannot run `Z3000SignItem.onKill` twice for one death.
+- Docs: the Z3000 guide entry on both Fabric lines no longer claims a 10-second counter state (that state machine, `CounterStateManager`, exists only on the P0 lines). It now describes the one-shot counter and the 4-stack cap. Two language keys that a script had merged onto one physical line are split again.
+- Validation: `:fabric-1.20.1:build :fabric-1.21.1:build` -> BUILD SUCCESSFUL in 1s. Jars: `astral_dice-26.4-SNAPSHOT.38+fabric_1.20.1.jar` (sha256 `1d65817bbf67d827715e3ac7ca2a51412526955c309a7465292a6e5ae92806a7`) and `astral_dice-26.4-SNAPSHOT.38+fabric_1.21.1.jar` (sha256 `47bfc98f8b95fd9b06465c7e089e869c22d6d79b7ce15b45c20c34b5ab272061`).
+- Live verification (2026-11-14, both Fabric lines, `26.4-SNAPSHOT.38`): Z3000-only, no shield, one Counter stack, hit by a hostile zombie -> charges 1 -> 0 and the zombie takes counter damage (1.20.1 1000 -> 999.06, player 20 -> 18.33; 1.21.1 zombie 20 -> 19.06). A dragged target killed afterwards still logs exactly one `AP_Z3000_DRAG_KILL` and raises the counter 0 -> 1. Readings in `docs/reports/2026-11-14-z3000-fabric-37.md`.
+
 ## 26.4-SNAPSHOT.37
 
 ### This line

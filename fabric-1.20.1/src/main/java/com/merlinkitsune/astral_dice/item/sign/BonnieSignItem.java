@@ -134,6 +134,7 @@ public class BonnieSignItem extends BaseSignItem {
         LivingEntity target = event.getEntity();
         if (target.level().isClientSide()) return;
         if (!(event.getSource().getEntity() instanceof Player killer)) return;
+        if (!com.merlinkitsune.astral_dice.combat.DeathTriggerGuard.claim(event.getEntity(), "sign_kill")) return;
         BaseSignItem.invokeKillHooks(killer, target);
     }
 
