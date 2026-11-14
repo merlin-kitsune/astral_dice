@@ -4,6 +4,14 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
+## 26.4-SNAPSHOT.46
+
+### 本线
+
+- 立牌排序：创造栏与 JEI 现在按 Astral Party Wiki 主页当前的角色顺序（https://astralparty.miraheze.org/wiki/Main_Page）排列。36 个既有立牌已按该顺序重排；Wiki 上还有 Luka，但本模组尚未注册该立牌，因此跳过；本模组原创的 DeepSeek 保持在最后。
+- JEI 侧没有独立的物品排序代码：JEI 的物品列表直接取自创造栏（ItemStackListFactory -> buildContents -> getDisplayItems），所以只改五线 ModCreativeTabs.java 的 displayItems 即可同时控制创造栏与 JEI。BLANK_SIGN 仍留在材料区。
+- 验证：五线 :build -> BUILD SUCCESSFUL in 7s（44 tasks）；.46 产物已由 pushToDevRun 推入各 run/<line>/mods。本轮未实机。
+
 ## 26.4-SNAPSHOT.45
 
 ### 本线

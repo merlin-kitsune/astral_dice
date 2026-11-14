@@ -4,6 +4,14 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 26.4-SNAPSHOT.46
+
+### This line
+
+- Sign order: the creative tab and JEI now follow the current Astral Party Wiki main-page character order (https://astralparty.miraheze.org/wiki/Main_Page). The 36 existing signs were reordered to that sequence; Luka is listed on the wiki but has no sign item yet, so it is skipped, and the mod-original DeepSeek stays last.
+- JEI has no separate item-order code: its item list is built from the creative tabs (ItemStackListFactory -> buildContents -> getDisplayItems), so updating the five ModCreativeTabs.java displayItems blocks controls both the creative tab and JEI. BLANK_SIGN remains in the materials section.
+- Validation: five-line :build -> BUILD SUCCESSFUL in 7s (44 tasks); the .46 jars were pushed to every run/<line>/mods by pushToDevRun. No live run this round.
+
 ## 26.4-SNAPSHOT.45
 
 ### This line

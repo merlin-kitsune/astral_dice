@@ -97,7 +97,8 @@ public class ModCreativeTabs {
                 output.accept(ModItems.ORBITAL_STRIKE_CARD.get());
                 output.accept(ModItems.DIRECTIONAL_BLAST_CARD.get());
                 output.accept(ModItems.LIVING_PAGE.get());
-                // 立牌(按 Astral Party Wiki「Characters」页面角色顺序排列;deepseek 为本模组原创角色,排末尾)
+                // 立牌(按 Astral Party Wiki「Characters」页面角色顺序排列;DeepSeek 为本模组原创角色,排末尾)
+                // Wiki 当前顺序还包含 Luka，但本模组尚未实现该立牌，故跳过。
                 // card_shop 已按任务S §4 移到本栏**最后**（见 displayItems 末尾）——旧的任务N′ §3.1「提到最前」已被用户推翻，此处不再重复列出
                 output.accept(ModItems.MIMI_SIGN.get());
                 output.accept(ModItems.PARUNAN_SIGN.get());
@@ -107,6 +108,7 @@ public class ModCreativeTabs {
                 output.accept(ModItems.PADMAN_SIGN.get());
                 output.accept(ModItems.PAPARA_SIGN.get());
                 output.accept(ModItems.REN_SIGN.get());
+                output.accept(ModItems.Z3000_SIGN.get());
                 output.accept(ModItems.PANDAMAN_SIGN.get());
                 output.accept(ModItems.LULU_SIGN.get());
                 output.accept(ModItems.FEN_SIGN.get());
@@ -117,26 +119,25 @@ public class ModCreativeTabs {
                 output.accept(ModItems.NANCY_LU_SIGN.get());
                 output.accept(ModItems.MEGAS_SIGN.get());
                 output.accept(ModItems.ZHAO_SIGN.get());
+                output.accept(ModItems.AL_SIGN.get());
                 output.accept(ModItems.RIN_SIGN.get());
                 output.accept(ModItems.TERU_SIGN.get());
                 output.accept(ModItems.MOSES_SIGN.get());
                 output.accept(ModItems.MAMUSHI_SIGN.get());
+                output.accept(ModItems.INKSHADOW_SIGN.get());
                 output.accept(ModItems.BONNIE_SIGN.get());
                 output.accept(ModItems.LINGLING_SIGN.get());
+                output.accept(ModItems.SYKES_SIGN.get());
+                output.accept(ModItems.SOURI_SIGN.get());
                 output.accept(ModItems.KANGEL_SIGN.get());
                 output.accept(ModItems.AME_SIGN.get());
                 output.accept(ModItems.JILL_SIGN.get());
                 output.accept(ModItems.DOROTHY_SIGN.get());
                 output.accept(ModItems.HANNA_SIGN.get());
                 output.accept(ModItems.SHERRY_SIGN.get());
-                // deepseek 未在 Wiki「Characters」页面出现(本模组原创),排在末尾
+                // DeepSeek 未在 Wiki「Characters」页面出现(本模组原创),排在末尾
                 output.accept(ModItems.DEEPSEEK_SIGN.get());
-                // 魔渊幼体（本模组原创，与触手关联）
-                output.accept(ModItems.AL_SIGN.get());
-                output.accept(ModItems.SOURI_SIGN.get());
-                output.accept(ModItems.SYKES_SIGN.get());
-                output.accept(ModItems.INKSHADOW_SIGN.get());
-                output.accept(ModItems.Z3000_SIGN.get());
+
                 // 筹码
                 // 2026-10-25 用户裁决：先保持既有流派分组顺序（星光 → 治愈 → 标记 → 充能 → 无流派），
                 //   组内再按稀有度升序排列（稀有 → 史诗 → 传奇，同档沿用原有相对顺序）；五档里本类只用到前 3 档。
