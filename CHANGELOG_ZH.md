@@ -4,6 +4,14 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
+## 26.4-SNAPSHOT.36
+
+### 本线
+
+- 移植：目标选择器 ActionBar 的「选择一个{类别}目标」文案（六词闭集 敌对 / 友方 / 中立 / 任意 / 玩家 / 女仆，不再拼接技能或效果牌名）移植到 fabric-1.20.1 与 fabric-1.21.1。两线新增 target/TargetPromptCategories（同样的 TargetType 默认映射与附属覆写入口），并清掉同样的 28 个死语言键（每份语言文件的 msg.astral_dice.target_select* 键由 44 个减到 23 个）。
+- 验证：:fabric-1.20.1:compileJava :fabric-1.21.1:compileJava → BUILD SUCCESSFUL in 3s；:fabric-1.20.1:build :fabric-1.21.1:build → BUILD SUCCESSFUL in 6s。产物：astral_dice-26.4-SNAPSHOT.36+fabric_1.20.1.jar（sha256 c334b98b65a81951f8ef2630c1d1dd6b23a43f0e37c60fc43b85f1300b6b1b8b）与 astral_dice-26.4-SNAPSHOT.36+fabric_1.21.1.jar（sha256 9bf15aacf244b4690747c46c1416e6726dc81de98017235cc1ca07ad45885e88）。
+- 实机验证（2026-11-14，fabric-1.20.1 + fabric-1.21.1，`26.4-SNAPSHOT.36`）：按真实持卡右键路径（hotbar.0 + `gameMode.useItem`）分别读到 友方 / 中立 / 玩家 文案与「移出手持即退出选择」后缀；1.20.1 用 `TargetSelectionClient.steadyPrompt()` 反射判读，1.21.1 因 Java 21 限制反射被拒，改用 `fabric-1.21.1/run/client/screenshots/` 截图判读。读数与截图哈希见 `docs/reports/2026-11-14-target-selector-actionbar-36-fabric.md`。拒绝态与「任意」「女仆」词条在 Fabric 两线未覆盖。
+
 ## 26.4-SNAPSHOT.35
 
 ### 本线

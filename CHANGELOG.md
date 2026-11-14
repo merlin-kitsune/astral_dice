@@ -4,6 +4,14 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 26.4-SNAPSHOT.36
+
+### This line
+
+- Port: the target-selector ActionBar category prompt ("Select a <category> target", closed six-word vocabulary hostile / friendly / neutral / any / player / maid, no skill or effect card name) is ported to fabric-1.20.1 and fabric-1.21.1. Both Fabric lines gain target/TargetPromptCategories with the same TargetType defaults and addon override hook, and drop the same 28 dead language keys (44 -> 23 msg.astral_dice.target_select* keys per language file).
+- Validation: :fabric-1.20.1:compileJava :fabric-1.21.1:compileJava -> BUILD SUCCESSFUL in 3s; :fabric-1.20.1:build :fabric-1.21.1:build -> BUILD SUCCESSFUL in 6s. Jars: astral_dice-26.4-SNAPSHOT.36+fabric_1.20.1.jar (sha256 c334b98b65a81951f8ef2630c1d1dd6b23a43f0e37c60fc43b85f1300b6b1b8b) and astral_dice-26.4-SNAPSHOT.36+fabric_1.21.1.jar (sha256 9bf15aacf244b4690747c46c1416e6726dc81de98017235cc1ca07ad45885e88).
+- Live verification (2026-11-14, fabric-1.20.1 + fabric-1.21.1, `26.4-SNAPSHOT.36`): real card right-click (hotbar.0 + `gameMode.useItem`) showed friendly / neutral / player wording with the held-card suffix; 1.20.1 read through `TargetSelectionClient.steadyPrompt()`, 1.21.1 through screenshots in `fabric-1.21.1/run/client/screenshots/` (reflection blocked there by the Java 21 restricted lookup). Readings in `docs/reports/2026-11-14-target-selector-actionbar-36-fabric.md`. Reject state and the maid / any words are not covered on Fabric.
+
 ## 26.4-SNAPSHOT.35
 
 ### This line

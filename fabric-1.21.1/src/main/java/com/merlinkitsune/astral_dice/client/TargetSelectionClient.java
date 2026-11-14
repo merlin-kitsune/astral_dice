@@ -448,9 +448,9 @@ public final class TargetSelectionClient {
      * </ul>
      *
      * <p>四态优先级：① 有有效目标 → 绿 {@code .valid}；② 否则准星命中但不可选 →
-     * 红 {@code .rejected}（参数 = 本次会话 {@link TargetType} 对应的有效目标名）；
+     * 红 {@code .rejected}（参数 = 本次会话的目标类别（敌对 / 友方 / 中立 / 任意 / 玩家 / 女仆））；
      * ③ 否则 → 白 {@code .no_target_self}（{@link #allowSelf()} 为真）或
-     * {@code .no_target}（为假），参数 = 技能名。
+     * {@code .no_target}（为假），参数 = 本次会话的目标类别（敌对 / 友方 / 中立 / 任意 / 玩家 / 女仆）。
      */
     private static Component steadyPrompt() {
         String base = holdToSelect ? "msg.astral_dice.target_select.prompt.hold" : "msg.astral_dice.target_select.prompt";
@@ -459,13 +459,13 @@ public final class TargetSelectionClient {
             main = Component.translatable(base + ".valid")
                     .withStyle(ChatFormatting.GREEN);
         } else if (rejectedTarget != null) {
-            main = Component.translatable(base + ".rejected", validTargetName())
+            main = Component.translatable(base + ".rejected", categoryName())
                     .withStyle(ChatFormatting.RED);
         } else if (allowSelf()) {
-            main = Component.translatable(base + ".no_target_self", skillName())
+            main = Component.translatable(base + ".no_target_self", categoryName())
                     .withStyle(ChatFormatting.WHITE);
         } else {
-            main = Component.translatable(base + ".no_target", skillName())
+            main = Component.translatable(base + ".no_target", categoryName())
                     .withStyle(ChatFormatting.WHITE);
         }
         if (holdToSelect) {
@@ -478,24 +478,15 @@ public final class TargetSelectionClient {
     }
 
     /**
-     * 技能名（按会话 actionId 取 lang）。
+     * 本次会话的提示类别（2026-11-14 用户裁决：ActionBar 只显示「选择的目标准类」，
+     * 不再拼接技能 / 效果牌名字）。
      *
-     * <p>用 {@code translatableWithFallback}：未登记的 actionId 回退显示 actionId 本身，
-     * 而不是裸的 lang 键名。
+     * <p>类别来自 {@link com.merlinkitsune.astral_dice.target.TargetPromptCategories}：
+     * 附属模组可按 actionId 覆写（例：TLMDice 注册「女仆」），否则按会话 TargetType 推导。
      */
-    private static Component skillName() {
-        return Component.translatableWithFallback("msg.astral_dice.target_select.skill." + actionId, actionId);
-    }
-
-    /**
-     * 本次会话有效目标名（按 {@link TargetType} 枚举名取 lang）。
-     *
-     * <p>用 {@code translatableWithFallback}，fallback = 枚举名 ⇒ 将来新增 {@link TargetType}
-     * 而 lang 尚未补齐时只会显示枚举名，不会显示裸键。
-     */
-    private static Component validTargetName() {
-        String name = targetType.name();
-        return Component.translatableWithFallback("msg.astral_dice.target_select.valid_target." + name, name);
+    private static Component categoryName() {
+        return Component.translatable("msg.astral_dice.target_select.category."
+                + com.merlinkitsune.astral_dice.target.TargetPromptCategories.categoryFor(actionId, targetType));
     }
 
     /**
