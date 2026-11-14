@@ -26,7 +26,7 @@ import org.slf4j.LoggerFactory;
  * 垃圾桶立牌(z3000,稀有)。
  *
  * <p>主动「过来把你」:选择一个 16 格内的敌对目标,用抓钩把它拖到自身面前并造成 5 点技能伤害;
- * 若这次技能伤害直接击杀目标,获得 1 层「反击」。
+ * 被拖拽过的目标被击杀时(不限击杀时机),获得 1 层「反击」。
  *
  * <p>被动「回收利用」:
  * <ul>
@@ -44,6 +44,13 @@ public class Z3000SignItem extends BaseSignItem {
     public static final double HEALTHY_KILL_THRESHOLD = 20.0D;
     public static final long COOLDOWN_REDUCTION_INTERVAL_TICKS = 1200L;
     private static final String ATTACK_MODIFIER_KEY = "z3000_attack_bonus";
+    /** 被拖拽标记前缀；后缀是拖拽者 UUID，击杀时据此补发反击层。 */
+    private static final String DRAGGED_TAG_PREFIX = "astral_dice.z3000_dragged.";
+
+    /** 抓钩开始拖拽时打到目标身上的标记。 */
+    public static String draggedTag(Player dragger) {
+        return DRAGGED_TAG_PREFIX + dragger.getUUID();
+    }
 
     static {
         TargetSelectionRegistry.register(new TargetSelectionAction() {
@@ -69,7 +76,7 @@ public class Z3000SignItem extends BaseSignItem {
                     return;
                 }
                 GrapplingHookEntity hook = new GrapplingHookEntity(player.level(), player, target,
-                        ACTIVE_DAMAGE, true);
+                        ACTIVE_DAMAGE);
                 player.level().addFreshEntity(hook);
                 long cooldown = WeirdDiceHandler.signCooldownTicks(player);
                 ModAttachments.setSignActiveCooldownEnd(player, player.level().getGameTime() + cooldown);
@@ -112,6 +119,12 @@ public class Z3000SignItem extends BaseSignItem {
     @Override
     protected void onKill(Player killer, LivingEntity killed) {
         if (killed instanceof Player || !PartyRelations.isHostileTo(killer, killed)) return;
+        if (wasDraggedBy(killed, killer)) {
+            SouriSignManager.addCounter(killer, 1);
+            LOGGER.info("AP_Z3000_DRAG_KILL player={} target={} counter={}",
+                    killer.getName().getString(), killed.getName().getString(),
+                    ModAttachments.getRenCounterCharges(killer));
+        }
         if (killed.getMaxHealth() >= HEALTHY_KILL_THRESHOLD) {
             int progress = ModAttachments.getZ3000HealthyKills(killer) + 1;
             if (progress >= HEALTHY_KILLS_PER_STACK) {
@@ -136,12 +149,9 @@ public class Z3000SignItem extends BaseSignItem {
                 killer.getName().getString(), killed.getName().getString(), remaining, reduced);
     }
 
-    /** 抓钩命中并造成技能伤害后调用；只有本次伤害直接击杀才给反击层。 */
-    public static void grantDraggedKillCounter(ServerPlayer player) {
-        if (!isEquipped(player)) return;
-        SouriSignManager.addCounter(player, 1);
-        LOGGER.info("AP_Z3000_DRAG_KILL player={} counter={}",
-                player.getName().getString(), ModAttachments.getRenCounterCharges(player));
+    /** 目标是否被该玩家拖拽过；标记写在实体 tags 上，拖拽结束或超时都不会清除。 */
+    private static boolean wasDraggedBy(LivingEntity killed, Player killer) {
+        return killed.entityTags().contains(DRAGGED_TAG_PREFIX + killer.getUUID());
     }
 
     public static void refreshAttackBonus(Player player) {

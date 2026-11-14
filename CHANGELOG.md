@@ -4,6 +4,29 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 26.4-SNAPSHOT.34
+
+### This line
+
+- Change: version bumps to `26.4-SNAPSHOT.34` on all five lines; product code changes are one line each in the three renderers.
+- Fix: the 3 places `.33` missed - the 1.21.1/1.20.1 `render()` pipe start and the 26.1.2 `shouldRender()` culling AABB still used 0.65; all now use `START_HEIGHT_FACTOR` (0.45), so the pipe really leaves from the player's center. Bytecode check: `GrapplingHookRenderer.class` contains `0.45d` twice and `0.65d` zero times.
+- Build: `:neoforge-1.21.1:build :forge-1.20.1:build :neoforge-26.1.2:build` -> `BUILD SUCCESSFUL in 20s`, EXIT=0. SHA-256: 1.21.1 `9f70316fa0e0411d6d0440b7f9fe969064d48f55067b3dca1c8655f41d995244`; 1.20.1 `03fecaf1e6b7521e69cc3cb75b816d6cfa8f18ac184023445f7351d557fcd349`; 26.1.2 `4ca7e6aa6f6eddcf6d9d164f73a829a657cc31e5a6431af99779a02bcd45dc57`.
+- Live: .34 re-ran the Z3000 matrix on all P0 three lines (neoforge-1.21.1 / forge-1.20.1 / neoforge-26.1.2): 9-block pull 1000 -> 995 ending at 1.5 blocks, 17-block rejection (`target_too_far`, cooldown untouched) and 16.00-block acceptance, a dragged target killed 5-6 s later still granting +1 Counter with a -33% cooldown cut, Counter cap 4, at most one cooldown cut per 1200 ticks, attack stacks stopping at 12 (base 1 -> 13, base 100 -> 112), <20-health kills excluded, cooldown gating. Pipe-start/attachment visuals await user confirmation. Report: `docs/reports/2026-11-14-z3000-devnext-34-acceptance.md`. No push/tag/CF.
+
+## 26.4-SNAPSHOT.33
+
+
+### This line
+
+- Change: version bumps to `26.4-SNAPSHOT.33` on all five lines. Product-code/resource changes are on the P0 three lines (neoforge-1.21.1 / forge-1.20.1 / neoforge-26.1.2); the two Fabric lines only receive the version bump.
+- Fix (grappling-hook visuals): the `vacuum_piece` model's axis sits at model x=0 while `vacuum_head` is centered at (8,8,8). `ItemRenderer` translates the item pose by -0.5 on every axis, so the pipe ran about half a block off to one side of the head. The renderer now applies `PIPE_X_CENTER_FIX = 0.5` after `rotateToDirection`, so the pipe meets the head's center; the head model itself is unchanged. `START_HEIGHT_FACTOR = 0.45` was defined, but the 1.21.1/1.20.1 `render()` start and the 26.1.2 culling AABB still used 0.65 (the replacement hit the wrong occurrences), so .33 still ran the pipe out of the chest; corrected in .34.
+- Tuning: `GrapplingHookEntity.PULL_STEP` 0.175 -> 0.5 blocks per tick, so a dragged target arrives about three times faster (front offset 1.5 and stop distance 1.25 unchanged).
+- Fix (drag-kill counter semantics): the counter is no longer granted only when the pull's own 5 skill damage lands the kill. `attach()` now tags the target with `astral_dice.z3000_dragged.<owner uuid>`, and `Z3000SignItem.onKill` grants +1 counter whenever the killer kills a target carrying that killer's tag, no matter when the kill happens. The `grantCounterOnKill` flag, the five-argument constructor and the direct grant in `hitTarget()` are removed, so the kill hook is the single grant path; `DeathTriggerGuard` keeps one death from dispatching the hook twice.
+- Localization: zh/en/ja tooltip and guide text on the three lines now say that killing a target you have dragged grants 1 counter stack regardless of timing.
+- Compatibility: the 26.1.2 `Z3000SignItem` reads entity tags through `Entity#entityTags()`; 1.20.1 and 1.21.1 keep `getTags()`.
+- Validation: `:neoforge-1.21.1:build :forge-1.20.1:build :neoforge-26.1.2:build` -> `BUILD SUCCESSFUL in 3s`, exit 0. SHA-256: 1.21.1 c76e5b8fcb3fa11403f842add19e964a8a12bb5bb73598bcb099176bd688ffd3; 1.20.1 25954b9d92d9ec031f814112fb3e25a0a0fd21e89b8ac1f7295b8af2920f3866; 26.1.2 ea86f9827bbc126ac472caa01b7cd30688cc17067e9ec975573ab789af5585b6.
+- Live: .33 passed the Z3000 functional matrix on 1.21.1 (9-block pull 1000->995 ending at 1.5 blocks, 17-block rejection / 16.00-block acceptance, delayed kill +1 stack, counter cap 4, -33% cooldown once per minute, attack stacks stopping at 12, <20-health kills excluded, cooldown gating); 1.20.1/26.1.2 not run. Pipe-start defect tracked in .34. No commit/push/tag/CF.
+
 ## 26.4-SNAPSHOT.32
 
 ### This line

@@ -35,6 +35,13 @@ public class GrapplingHookRenderer extends EntityRenderer<GrapplingHookEntity, G
     private static final float HEAD_SCALE_XZ = 1.8F;
     private static final float HEAD_SCALE_Y = 2.6F;
     private static final double MIN_SEGMENT = 0.02D;
+    /** 管道起点在玩家碰撞箱高度上的比例；0.45 取正中心下方，避免从胸口射出。 */
+    private static final double START_HEIGHT_FACTOR = 0.45D;
+    /**
+     * vacuum_piece 的模型中轴在 x=0（普通物品模型在 x=8）；ItemRenderer 会统一
+     * translate(-0.5)，管道因此横偏半格。这里补回半格，让管道正对钩头中心。
+     */
+    private static final double PIPE_X_CENTER_FIX = 0.5D;
 
     private final ItemModelResolver itemModelResolver;
     private ItemStack pipeStack;
@@ -76,7 +83,7 @@ public class GrapplingHookRenderer extends EntityRenderer<GrapplingHookEntity, G
         }
 
         Vec3 origin = new Vec3(state.x, state.y, state.z);
-        Vec3 start = interpolated(owner, owner.getBbHeight() * 0.65D, partialTick).subtract(origin);
+        Vec3 start = interpolated(owner, owner.getBbHeight() * START_HEIGHT_FACTOR, partialTick).subtract(origin);
         Vec3 end = Vec3.ZERO;
         Vec3 direction = end.subtract(start);
         if (direction.lengthSqr() < 1.0E-6D) {
@@ -102,7 +109,7 @@ public class GrapplingHookRenderer extends EntityRenderer<GrapplingHookEntity, G
             return false;
         }
         Vec3 head = entity.position();
-        Vec3 chest = owner.position().add(0.0D, owner.getBbHeight() * 0.65D, 0.0D);
+        Vec3 chest = owner.position().add(0.0D, owner.getBbHeight() * START_HEIGHT_FACTOR, 0.0D);
         return frustum.isVisible(new AABB(head.x, head.y, head.z, chest.x, chest.y, chest.z));
     }
 
@@ -120,6 +127,7 @@ public class GrapplingHookRenderer extends EntityRenderer<GrapplingHookEntity, G
                 poseStack.pushPose();
                 poseStack.translate(center.x, center.y, center.z);
                 rotateToDirection(poseStack, state.direction);
+                poseStack.translate(PIPE_X_CENTER_FIX, 0.0D, 0.0D);
                 poseStack.scale(1.0F, 1.0F, (float) segmentLength);
                 state.pipe.submit(poseStack, collector, state.lightCoords, OverlayTexture.NO_OVERLAY, 0);
                 poseStack.popPose();

@@ -4,6 +4,29 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
+## 26.4-SNAPSHOT.34
+
+### 本线
+
+- 变更：版本号升至 `26.4-SNAPSHOT.34`（五线）；产品代码只有三线渲染器各 1 行。
+- 修复：`.33` 漏改的 3 处 0.65 —— 1.21.1 / 1.20.1 的 `render()` 管道起点、26.1.2 的 `shouldRender()` 剔除 AABB，全部改为 `START_HEIGHT_FACTOR`（0.45），管道现在真的从玩家中心下方伸出。字节码复核：`GrapplingHookRenderer.class` 中 `0.45d` 出现 2 次、`0.65d` 0 次。
+- 构建：`:neoforge-1.21.1:build :forge-1.20.1:build :neoforge-26.1.2:build` → `BUILD SUCCESSFUL in 20s`，EXIT=0。产物 SHA-256：1.21.1 `9f70316fa0e0411d6d0440b7f9fe969064d48f55067b3dca1c8655f41d995244`；1.20.1 `03fecaf1e6b7521e69cc3cb75b816d6cfa8f18ac184023445f7351d557fcd349`；26.1.2 `4ca7e6aa6f6eddcf6d9d164f73a829a657cc31e5a6431af99779a02bcd45dc57`。
+- 实机：.34 已在 P0 三线（neoforge-1.21.1 / forge-1.20.1 / neoforge-26.1.2）重跑 Z3000 全矩阵：9 格拖拽 1000 -> 995、终点 1.5 格；17 格拒绝（`target_too_far`，冷却未扣）与 16.00 格施放；拖完 5-6 秒后再击杀仍给 +1 反击并 -33% 冷却；反击封顶 4；每 1200 tick 最多减一次冷却；攻击叠层封顶 12（基础 1 -> 13、基础 100 -> 112）；最大生命 <20 的击杀不计层；冷却门控生效。管道起点/接头视觉仍待用户目视确认。报告：`docs/reports/2026-11-14-z3000-devnext-34-acceptance.md`。未 push/tag/CF。
+
+## 26.4-SNAPSHOT.33
+
+
+### 本线
+
+- 变更：版本号升至 `26.4-SNAPSHOT.33`（五线）；产品代码/资源改动在 P0 三线（neoforge-1.21.1 / forge-1.20.1 / neoforge-26.1.2），fabric 两线仅版本同步。
+- 修复（抓钩视觉）：`vacuum_piece` 模型中轴在模型 x=0，而 `vacuum_head` 中心在 (8,8,8)；`ItemRenderer` 会对物品 pose 统一平移 -0.5，导致管道相对头部横偏约半格。渲染器改为在 `rotateToDirection` 之后加 `PIPE_X_CENTER_FIX = 0.5` 平移，使管道接到头部正中心；头部模型本身不动。起点常量 `START_HEIGHT_FACTOR = 0.45` 已定义，但 1.21.1 / 1.20.1 的 `render()` 起点与 26.1.2 的剔除 AABB 仍残留 0.65（替换命中错行），.33 实机管道仍从胸口出线，由 .34 修正。
+- 调整：`GrapplingHookEntity.PULL_STEP` 0.175 → 0.5 格/tick，拖拽速度约提升到 3 倍（1.5 格面前距离与 1.25 格停止距离不变）。
+- 修复（拖拽击杀给反击的语义）：不再要求「本次拖拽的 5 点技能伤害直接击杀」才给层。`attach()` 给目标打上 `astral_dice.z3000_dragged.<owner uuid>` 标记，`Z3000SignItem.onKill` 在击杀者击杀带自己标记的目标时给 +1 层反击，不限击杀时机；删除 `grantCounterOnKill` 字段、五参构造与 `hitTarget()` 里的直接授予，击杀钩子成为唯一加层路径；`DeathTriggerGuard` 保证同一次死亡只分发一次，不会重复加层。
+- 本地化：三线中英日 tooltip 与手册文案改为「被拖拽过的目标被击杀时获得 1 层反击，不限击杀时机」。
+- 兼容：26.1.2 的 `Z3000SignItem` 用 `Entity#entityTags()` 读实体标签，1.20.1 / 1.21.1 仍用 `getTags()`。
+- 验证：`:neoforge-1.21.1:build :forge-1.20.1:build :neoforge-26.1.2:build` → `BUILD SUCCESSFUL in 3s`，exit 0。产物 SHA-256：1.21.1 c76e5b8fcb3fa11403f842add19e964a8a12bb5bb73598bcb099176bd688ffd3；1.20.1 25954b9d92d9ec031f814112fb3e25a0a0fd21e89b8ac1f7295b8af2920f3866；26.1.2 ea86f9827bbc126ac472caa01b7cd30688cc17067e9ec975573ab789af5585b6。
+- 实机：.33 在 1.21.1 跑通 Z3000 功能矩阵（9 格拖拽 1000→995 且停在 1.5 格、17 格拒绝 / 16.00 格可施放、延迟击杀 +1 层、反击封顶 4、-33% 冷却每分钟一次、攻击叠层到 12 后不再涨、<20 血不计、冷却门控）；1.20.1 / 26.1.2 未跑。管道起点问题见 .34。未 commit/push/tag/CF。
+
 ## 26.4-SNAPSHOT.32
 
 ### 本线

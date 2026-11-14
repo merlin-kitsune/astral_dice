@@ -32,6 +32,13 @@ public class GrapplingHookRenderer extends EntityRenderer<GrapplingHookEntity> {
     private static final float HEAD_SCALE_XZ = 1.8F;
     private static final float HEAD_SCALE_Y = 2.6F;
     private static final double MIN_SEGMENT = 0.02D;
+    /** 管道起点在玩家碰撞箱高度上的比例；0.45 取正中心下方，避免从胸口射出。 */
+    private static final double START_HEIGHT_FACTOR = 0.45D;
+    /**
+     * vacuum_piece 的模型中轴在 x=0（普通物品模型在 x=8）；ItemRenderer 会统一
+     * translate(-0.5)，管道因此横偏半格。这里补回半格，让管道正对钩头中心。
+     */
+    private static final double PIPE_X_CENTER_FIX = 0.5D;
     private static final ResourceLocation FALLBACK_TEXTURE =
             new ResourceLocation("textures/misc/white.png");
 
@@ -62,7 +69,7 @@ public class GrapplingHookRenderer extends EntityRenderer<GrapplingHookEntity> {
             return false;
         }
         Vec3 head = entity.position();
-        Vec3 chest = owner.position().add(0.0D, owner.getBbHeight() * 0.65D, 0.0D);
+        Vec3 chest = owner.position().add(0.0D, owner.getBbHeight() * START_HEIGHT_FACTOR, 0.0D);
         return frustum.isVisible(new AABB(head.x, head.y, head.z, chest.x, chest.y, chest.z));
     }
 
@@ -75,7 +82,7 @@ public class GrapplingHookRenderer extends EntityRenderer<GrapplingHookEntity> {
         }
 
         Vec3 origin = interpolated(entity, 0.0D, partialTick);
-        Vec3 start = interpolated(owner, owner.getBbHeight() * 0.65D, partialTick).subtract(origin);
+        Vec3 start = interpolated(owner, owner.getBbHeight() * START_HEIGHT_FACTOR, partialTick).subtract(origin);
         Vec3 end = interpolated(entity, 0.0D, partialTick).subtract(origin);
         Vec3 direction = end.subtract(start);
         if (direction.lengthSqr() < 1.0E-6D) {
@@ -102,6 +109,7 @@ public class GrapplingHookRenderer extends EntityRenderer<GrapplingHookEntity> {
             poseStack.pushPose();
             poseStack.translate(center.x, center.y, center.z);
             rotateToDirection(poseStack, direction);
+            poseStack.translate(PIPE_X_CENTER_FIX, 0.0D, 0.0D);
             poseStack.scale(1.0F, 1.0F, (float) segmentLength);
             this.itemRenderer.renderStatic(this.pipeStack, ItemDisplayContext.FIXED, light,
                     OverlayTexture.NO_OVERLAY, poseStack, bufferSource, entity.level(), 0);

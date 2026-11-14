@@ -5,7 +5,6 @@ import com.merlinkitsune.astral_dice.item.sign.Z3000SignItem;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
@@ -35,7 +34,7 @@ public class GrapplingHookEntity extends Projectile {
 
     public static final double RANGE = 16.0D;
     public static final double SHOOT_SPEED = 0.75D;
-    public static final double PULL_STEP = 0.175D;
+    public static final double PULL_STEP = 0.5D;
     public static final double FRONT_OFFSET = 1.5D;
     public static final double STOP_DISTANCE = 1.25D;
     public static final int MAX_LIFE_TICKS = 240;
@@ -50,7 +49,6 @@ public class GrapplingHookEntity extends Projectile {
     private int age;
     private boolean attached;
     private float impactDamage;
-    private boolean grantCounterOnKill;
 
     public GrapplingHookEntity(EntityType<? extends GrapplingHookEntity> type, Level level) {
         super(type, level);
@@ -59,13 +57,12 @@ public class GrapplingHookEntity extends Projectile {
     }
 
     public GrapplingHookEntity(Level level, Player owner, LivingEntity target) {
-        this(level, owner, target, 0.0F, false);
+        this(level, owner, target, 0.0F);
     }
 
-    public GrapplingHookEntity(Level level, Player owner, LivingEntity target, float impactDamage, boolean grantCounterOnKill) {
+    public GrapplingHookEntity(Level level, Player owner, LivingEntity target, float impactDamage) {
         this(ModEntityTypes.GRAPPLING_HOOK.get(), level);
         this.impactDamage = impactDamage;
-        this.grantCounterOnKill = grantCounterOnKill;
         this.setOwner(owner);
         this.entityData.set(DATA_OWNER_ID, owner.getId());
         this.entityData.set(DATA_TARGET_ID, target.getId());
@@ -146,6 +143,7 @@ public class GrapplingHookEntity extends Projectile {
         this.setDeltaMovement(Vec3.ZERO);
         this.hasImpulse = true;
         this.attached = true;
+        target.addTag(Z3000SignItem.draggedTag(owner));
         LOGGER.info("AP_GRAPPLE_ATTACH owner={} target={} dist={}",
                 owner.getName().getString(), target.getName().getString(), fmt(target.distanceTo(owner)));
     }
@@ -174,18 +172,13 @@ public class GrapplingHookEntity extends Projectile {
         }
     }
 
-    /** 到达后结算主动技能的撞击伤害；只有本次伤害直接击杀且由立牌发起时才加反击层。 */
+    /** 到达后结算主动技能的撞击伤害；反击层由被拖拽标记在击杀事件里补发。 */
     private void hitTarget(Player owner, LivingEntity target) {
         if (this.impactDamage <= 0.0F) return;
-        boolean deadBefore = target.isDeadOrDying();
         target.hurt(ModDamageTypes.skillDamage(this.level(), owner), this.impactDamage);
         LOGGER.info("AP_GRAPPLE_DAMAGE owner={} target={} damage={} dead={}",
                 owner.getName().getString(), target.getName().getString(), fmt(this.impactDamage),
                 target.isDeadOrDying());
-        if (this.grantCounterOnKill && !deadBefore && target.isDeadOrDying()
-                && owner instanceof ServerPlayer serverPlayer) {
-            Z3000SignItem.grantDraggedKillCounter(serverPlayer);
-        }
     }
 
     /** 把目标放到指定水平位置；目标在地面时按目标列抬高到地面，避免拖进方块。 */
