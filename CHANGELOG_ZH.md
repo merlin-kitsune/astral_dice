@@ -4,6 +4,15 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
+## 26.4-SNAPSHOT.39
+
+### 本线
+
+- 素材：【仙酿】（`astral_dice:souri_drink` 且 `Variant=1`）改用新的 `models/winegourdbetter.bbmodel`（130 骨骼 / 724 方块 / 128×128 UV），不再与【葫芦饮】共用同一份几何。
+- 生成脚本 `build/tmp-dsh/gen_winegdbetter.py`：Blockbench bedrock 方块 → GeckoLib `1.12.0` 几何（x 镜像、旋转符号 `(-x, -y, z)`、逐面 UV 规则、底面负高度翻转），并用「把 `winegourd.bbmodel` 重新生成后与仓库内 `winegourd.geo.json` 逐骨骼比对」做自检（完全一致）。
+- 五线同步更新 `geo/winegourdbetter.geo.json`（26.1.2 为 `geckolib/models/winegourdbetter.geo.json`）与 `textures/entity/winegourdbetter.png`（五线字节一致）。
+- 验证：五线 `:build` → BUILD SUCCESSFUL in 10s。实机（2026-11-14，neoforge-1.21.1，`26.4-SNAPSHOT.39`）：`/summon astral_dice:souri_drink` + `Variant=1` 后四个朝向截图判读，蓝色瓶身 / 金色束带与绳结 / 金色瓶盖与底缘与 bbmodel 预览同形，瓶身贴图与 UV 对应正确；日志无缺贴图/模型告警。其余四线为同一份字节（geo sha256 `1c760d12da6b2047`、tex `8227d5b2fecafd98`），仅核对了路径与文件存在，未实机。读数见 `docs/reports/2026-11-14-brew-model-39.md`。
+
 ## 26.4-SNAPSHOT.38
 
 ### 本线
