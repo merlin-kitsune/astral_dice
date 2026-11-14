@@ -200,7 +200,7 @@ public class ModCreativeTabs {
                 output.accept(ModItems.RAILGUN_CHIP.get());
                 output.accept(ModItems.PRIMORDIAL_CORE_CHIP.get());
                 // === 无流派 ===
-                // -- 稀有（RARE） (8) --
+                // -- 稀有（RARE） (7) --
                 output.accept(ModItems.BOXING_GLOVES_LOW.get());
                 output.accept(ModItems.SPEED_SKATES_LOW.get());
                 output.accept(ModItems.MOTO_HELMET_LOW.get());
@@ -208,8 +208,7 @@ public class ModCreativeTabs {
                 output.accept(ModItems.MEMBER_RECOMMENDATION_CHIP.get());
                 output.accept(ModItems.BOOKMARK_CHIP.get());
                 output.accept(ModItems.PIGGY_BANK_CHIP.get());
-                output.accept(ModItems.CURSED_SWORD.get());
-                // -- 史诗（EPIC） (12) --
+                // -- 史诗（EPIC） (10) --
                 output.accept(ModItems.MAGIC_TOME_CHIP.get());
                 output.accept(ModItems.BIG_BACKPACK_CHIP.get());
                 output.accept(ModItems.BOXING_GLOVES_MEDIUM.get());
@@ -220,16 +219,18 @@ public class ModCreativeTabs {
                 output.accept(ModItems.SMART_WATCH_CHIP.get());
                 output.accept(ModItems.WHETSTONE_CHIP.get());
                 output.accept(ModItems.EXTRA_BATTERY_CHIP.get());
-                output.accept(ModItems.REVENGE_HALBERD.get());
-                output.accept(ModItems.SWORD_IN_STONE_EPIC_CHIP.get());
-                // -- 传奇（LEGENDARY） (9) --
+                // -- 传奇（LEGENDARY） (6) --
                 output.accept(ModItems.BOXING_GLOVES_HIGH.get());
                 output.accept(ModItems.SPEED_SKATES_HIGH.get());
                 output.accept(ModItems.MOTO_HELMET_HIGH.get());
                 output.accept(ModItems.SANDWICH_HIGH.get());
                 output.accept(ModItems.ADRENALINE_HIGH.get());
                 output.accept(ModItems.SATELLITE_CHIP.get());
+                // -- 专属筹码（6） --
+                output.accept(ModItems.CURSED_SWORD.get());
+                output.accept(ModItems.REVENGE_HALBERD.get());
                 output.accept(ModItems.PIERCING_GUN.get());
+                output.accept(ModItems.SWORD_IN_STONE_EPIC_CHIP.get());
                 output.accept(ModItems.SWORD_IN_STONE_LEGENDARY_CHIP.get());
                 output.accept(ModItems.PERFECT_BRANCH_CHIP.get());
                 // 任务S §4（2026-10-10 用户裁决）：卡牌商店移到**最后**。

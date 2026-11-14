@@ -4,6 +4,14 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 26.4-SNAPSHOT.50
+
+### This line
+
+- Creative-tab / JEI chip order: Cursed Sword, Revenge Halberd, Piercing Gun, Sword in Stone (Epic), Sword in Stone (Legendary), and Perfect Branch now form a dedicated six-chip block at the end of the chip list, immediately before the card-shop entries. NeoForge 1.21.1 / Forge 1.20.1 / NeoForge 26.1.2 were reordered and their rarity section counts corrected from rare 8 → 7, epic 12 → 10, legendary 9 → 6. The two Fabric lines already had the six chips contiguous in the requested order, so only the section label was added. JEI follows the creative tab, so no JEI code changed.
+- Added the `astral_dice:exclusive_chips` item tag on all five lines, with `ModTags.Items.EXCLUSIVE_CHIPS`. The tag lists the same six chips in the same order. It currently has no consumer and does not change shop, villager-trade, bounty-pool, or gameplay behavior. It is deliberately separate from `is_exclusive`, which remains card-only.
+- Validation: five-line `:build` → BUILD SUCCESSFUL in 6s (44 tasks; 32 executed, 12 up-to-date); all five `.50` jars contain `exclusive_chips.json` (`tags/item/` on 1.21.1 / 26.1.2 / Fabric 1.21.1, `tags/items/` on both 1.20.1 lines). No live run this round.
+
 ## 26.4-SNAPSHOT.49
 
 ### This line

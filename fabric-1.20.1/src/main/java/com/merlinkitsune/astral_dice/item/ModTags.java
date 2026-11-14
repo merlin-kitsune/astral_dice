@@ -39,5 +39,13 @@ public final class ModTags {
          */
         public static final TagKey<Item> IS_EXCLUSIVE =
                 TagKey.create(Registries.ITEM, new ResourceLocation(AstralDiceMod.MODID, "is_exclusive"));
+
+        /**
+         * 专属筹码（6 枚：诅咒之剑 / 复仇之戟 / 贯穿之铳 / 石中剑-精良 / 石中剑-传说 / 完美树枝）。
+         *
+         * <p>目前只作为数据标签存在，尚无任何消费方；后续玩法设计再接入。
+         */
+        public static final TagKey<Item> EXCLUSIVE_CHIPS =
+                TagKey.create(Registries.ITEM, new ResourceLocation(AstralDiceMod.MODID, "exclusive_chips"));
     }
 }

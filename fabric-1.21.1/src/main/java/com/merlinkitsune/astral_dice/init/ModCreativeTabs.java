@@ -206,6 +206,7 @@ public class ModCreativeTabs {
                 output.accept(ModItems.WHETSTONE_CHIP.get());
                 output.accept(ModItems.EXTRA_BATTERY_CHIP.get());
                 output.accept(ModItems.SATELLITE_CHIP.get());
+                // -- 专属筹码（6） --
                 output.accept(ModItems.CURSED_SWORD.get());
                 output.accept(ModItems.REVENGE_HALBERD.get());
                 output.accept(ModItems.PIERCING_GUN.get());
