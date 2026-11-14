@@ -52,15 +52,15 @@
 - 1.21.1：序列升到 12 后继续杀 s15/s16 仍 12；基础 1 → 13。
 - `最大生命 <20` 不计层：三线击杀 10 血 husk 后 stacks 保持 12、healthy 计数 0。
 
-## 5. 视觉（**待用户目视裁决，本报告不判 PASS**）
+## 5. 视觉（**用户已于 2026-11-14 目视确认**）
 
 - 渲染常量（三线 jar 内 `javap` 取证）：`START_HEIGHT_FACTOR=0.45`、`PIPE_X_CENTER_FIX=0.5`、`HEAD_BACK=0.55`。
 - 1.21.1 第三人称截图（本轮已在会话内展示）：管道自玩家腰部下方伸出、连到吸尘器头。
-- 用户原始三点：① 接头居中；② 起点在玩家正中心下方；③ 拖拽提速（已由 §1 age 数据验证）。① ② 需用户看图确认。
+- 用户原始三点：① 接头居中；② 起点在玩家正中心下方；③ 拖拽提速（已由 §1 age 数据验证）。① ② 用户已于 2026-11-14 12:37 目视确认（1.21.1 第三人称截图）。
 
 ## 6. 未验证 / 未做
 
-- 视觉美观度（接头是否「正中心」）未由机器判定。
+- 视觉美观度（接头是否「正中心」）未由机器判定，结论仅来自用户目视（1.21.1；26.1.2 未取到有效帧）。
 - 26.1.2 的 `attribute` 命令在本版静默无效（`generic.max_health` 未命中），夹具改用 `Entity#getAttribute(...).setBaseValue`；`AutoJS.attack` 在 26.1.2 也不生效，击杀改用 `server.createCommandSourceStack().withSuppressedOutput()` + `damage ... minecraft:player_attack by Dev`。
 - 1.20.1 `sp.level.getEntity(id)` 返回 null，必须遍历 `getAllEntities()`。
 - 三线 .34 未构建产物校验之外的东西：没有重跑 datagen；没有 commit。
