@@ -4,6 +4,13 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
+## 26.4-SNAPSHOT.43
+
+### 本线
+
+- 回滚：【仙酿】（`astral_dice:souri_drink` 且 `Variant=1`）退回 `26.4-SNAPSHOT.39` 之前的 64×64 低模 `winegourdbetter` 几何与贴图。基岩风 130 骨骼 / 724 方块的导出在 Java 侧仍无法正确渲染，五线先恢复已知可用的低模资产，不再携带破碎的高模。五线逐字节一致：geo sha256 `0b7c63bead05ad803cc53d2959a3ec1e9292454c66645f2cb41bc52dea38b6f4`（98,906 B），贴图 sha256 `3f2d3b0d81fc9e6cbbacdf55225766a0f70988cbcc090a8854d8b1f1c1066966`（3,450 B）。
+- 验证：五线 `:build` → BUILD SUCCESSFUL in 6s；`.43` 产物已由 `pushToDevRun` 推入各 `run/<line>/mods`。本轮未实机。
+
 ## 26.4-SNAPSHOT.42
 
 ### 本线

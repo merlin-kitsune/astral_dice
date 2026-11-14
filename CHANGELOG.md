@@ -4,6 +4,13 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 26.4-SNAPSHOT.43
+
+### This line
+
+- Revert: 【仙酿】(`astral_dice:souri_drink` with `Variant=1`) is back on the 64×64 low-poly `winegourdbetter` geometry and texture that predate `26.4-SNAPSHOT.39`. The Bedrock-style 130-bone / 724-cube export still does not render correctly in Java, so all five lines restore the known-good low-poly pair instead of shipping a broken high-detail model. Byte-identical across the five lines: geo sha256 `0b7c63bead05ad803cc53d2959a3ec1e9292454c66645f2cb41bc52dea38b6f4` (98,906 B), texture sha256 `3f2d3b0d81fc9e6cbbacdf55225766a0f70988cbcc090a8854d8b1f1c1066966` (3,450 B).
+- Validation: five-line `:build` -> BUILD SUCCESSFUL in 6s; the `.43` jars were pushed to every `run/<line>/mods` by `pushToDevRun`. No live run this round.
+
 ## 26.4-SNAPSHOT.42
 
 ### This line
