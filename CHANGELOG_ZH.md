@@ -11,7 +11,8 @@
 - 变更：目标选择器的 ActionBar 不再拼接技能 / 效果牌名字，常驻提示改为「选择一个<类别>目标」，类别是闭集六选一：`hostile` / `friendly` / `neutral` / `any` / `player` / `maid`（中：敌对 / 友方 / 中立 / 任意 / 玩家 / 女仆）。
 - 接口：P0 三线新增 `target/TargetPromptCategories`。默认类别按会话 `TargetType` 推导（`ENEMY` / `ENEMY_OR_RIVAL` → 敌对；`CREATURE` / `CREATURE_OR_RIVAL` → 中立；`NON_HOSTILE` → 友方；`LIVING` → 任意；`PLAYER` → 玩家）；附属模组可按 actionId 覆写：`registerActionCategory(actionId, category)`。女仆一词留给 TLMDice 附属（注册已登记为 P1 欠账 D13）。
 - 清理（死条目）：九份语言文件删除 20 个 `msg.astral_dice.target_select.skill.`、5 个 `...valid_target.` 与零引用的 `active` / `rejected` / `self_unsupported`；客户端删除 `skillName()` / `validTargetName()`，三线 11 个物品类里的旧「技能名」注释一并清掉。
-- 验证：`:neoforge-1.21.1:compileJava :forge-1.20.1:compileJava :neoforge-26.1.2:compileJava` → `BUILD SUCCESSFUL in 8s`，exit 0。实机验证随后；fabric 两线本轮不改文案（P1）。
+- 验证：`:neoforge-1.21.1:compileJava :forge-1.20.1:compileJava :neoforge-26.1.2:compileJava` → `BUILD SUCCESSFUL in 8s`，exit 0。实机验证见下；fabric 两线本轮不改文案（P1）。
+- 实机验证（2026-11-14，P0 三线 `26.4-SNAPSHOT.35`）：1.21.1 覆盖敌对 / 友方 / 中立 / 玩家 / 拒绝态，1.20.1 覆盖敌对 + 友方，26.1.2 覆盖敌对 + 玩家，均为新文案且无技能名；截图与 sha256 前 16 位见 `docs/reports/2026-11-14-target-selector-actionbar-35.md`。「任意」「女仆」当前不可达（无 `TargetType.LIVING` 动作；女仆注册在 TLMDice，P1 欠账 D13）。
 
 ## 26.4-SNAPSHOT.34
 
