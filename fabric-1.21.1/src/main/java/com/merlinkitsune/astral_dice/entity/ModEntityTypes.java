@@ -104,6 +104,18 @@ public final class ModEntityTypes {
                     .clientTrackingRange(10)
                     .build("souri_drink"));
 
+
+    /**
+     * {@code astral_dice:grappling_hook} —— 垃圾桶立牌(z3000)主动「过来把你」的抓钩。
+     * 纯坐标载具(无 AI、无重力、无碰撞),由 {@code GrapplingHookEntity} 在服务端推进;
+     * 尺寸 0.5×0.5 只影响包围盒,视觉由客户端渲染器按物品模型绘制。
+     */
+    public static final RegistryObject<EntityType<GrapplingHookEntity>> GRAPPLING_HOOK =
+            ENTITY_TYPES.register("grappling_hook", () -> EntityType.Builder
+                    .<GrapplingHookEntity>of(GrapplingHookEntity::new, MobCategory.MISC)
+                    .sized(0.5F, 0.5F)
+                    .clientTrackingRange(10)
+                    .build("grappling_hook"));
     private ModEntityTypes() {
     }
 }

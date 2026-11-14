@@ -63,6 +63,11 @@ public class AstralDiceClient implements ClientModInitializer {
                 com.merlinkitsune.astral_dice.entity.ModEntityTypes.SYKE_TENTACLE.get(),
                 com.merlinkitsune.astral_dice.client.SykeTentacleRenderer::new);
 
+        // 抓钩(z3000):纯物品模型渲染,无自带贴图。
+        net.fabricmc.fabric.api.client.rendering.v1.EntityRendererRegistry.register(
+                com.merlinkitsune.astral_dice.entity.ModEntityTypes.GRAPPLING_HOOK.get(),
+                com.merlinkitsune.astral_dice.client.GrapplingHookRenderer::new);
+
         // 客户端事件桥:把 FAPI 的客户端回调接到自建事件上。
         // ⚠️ 与服务端的 FabricBridges.install() 同理 —— 不装则 client/* 的处理器
         //    全部「注册了但从不派发」。必须放在监听器注册之后。

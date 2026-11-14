@@ -1575,6 +1575,23 @@ public class ModTooltipHandler {
             addSignLines(tooltip, "tooltip.astral_dice.sign.inkshadow_passive");
             addSignCooldownRemaining(tooltip, event.getEntity());
         }
+        // 垃圾桶立牌(z3000,稀有):主动「过来把你」拖拽 / 被动「回收利用」冷却与攻击成长
+        if (stack.is(ModItems.Z3000_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "tooltip.astral_dice.sign.z3000.active");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.z3000_active");
+            addSignPassiveTitle(tooltip, "tooltip.astral_dice.sign.z3000.passive");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.z3000_passive");
+            Player z3000Viewer = event.getEntity();
+            if (z3000Viewer != null) {
+                addSignCounter(tooltip, "tooltip.astral_dice.sign.z3000_status",
+                        ModAttachments.getZ3000AttackStacks(z3000Viewer),
+                        com.merlinkitsune.astral_dice.item.sign.Z3000SignItem.ATTACK_CAP,
+                        ModAttachments.getZ3000HealthyKills(z3000Viewer) % 2);
+            }
+            addSignCooldownRemaining(tooltip, z3000Viewer);
+        }
         // 机械师立牌(megas):主动「轨道轰炸」(选择器类——指定 1 个敌对目标 => 立即消耗物品栏全部手牌⇒
         // 以目标为中心 12 格范围轰炸；次数 = min(消耗卡牌数 / 2, 10)、单次基础 2 伤 + 所消耗战斗牌费用总和 ×2)
         // + 被动「物资补充」(手牌 < 6 张时每 1:00 自动获得 1 张随机卡牌)。

@@ -171,7 +171,7 @@ public class ModItemModelProvider implements DataProvider {
         items.add(ModItems.NARDIS_SIGN.get());
         items.add(ModItems.MAMUSHI_SIGN.get());
         items.add(ModItems.SOURI_SIGN.get());
-        items.add(ModItems.AL_SIGN.get());
+        items.add(ModItems.Z3000_SIGN.get());        items.add(ModItems.AL_SIGN.get());
         items.add(ModItems.INKSHADOW_SIGN.get());
         items.add(ModItems.SHERRY_SIGN.get());
         items.add(ModItems.HANNA_SIGN.get());

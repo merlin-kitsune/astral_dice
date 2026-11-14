@@ -63,6 +63,11 @@ public class AstralDiceClient implements ClientModInitializer {
                 com.merlinkitsune.astral_dice.entity.ModEntityTypes.SYKE_TENTACLE.get(),
                 com.merlinkitsune.astral_dice.client.SykeTentacleRenderer::new);
 
+        // 抓钩(z3000):纯物品模型渲染,无自带贴图。
+        net.fabricmc.fabric.api.client.rendering.v1.EntityRendererRegistry.register(
+                com.merlinkitsune.astral_dice.entity.ModEntityTypes.GRAPPLING_HOOK.get(),
+                com.merlinkitsune.astral_dice.client.GrapplingHookRenderer::new);
+
         // 实体渲染器:金鲤立牌的漂浮饮品(葫芦饮/仙酿),GeckoLib 渲染 + 渲染器内旋转/浮动。
         net.fabricmc.fabric.api.client.rendering.v1.EntityRendererRegistry.register(
                 com.merlinkitsune.astral_dice.entity.ModEntityTypes.SOURI_DRINK.get(),

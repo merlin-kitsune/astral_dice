@@ -1182,6 +1182,18 @@ public class ModItems {
             () -> new com.merlinkitsune.astral_dice.item.sign.SouriSignItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(AstralRarities.legendary())));
+    // 垃圾桶立牌(z3000,稀有):主动「过来把你」16 格敌对大目标抓取(5 技能伤害,拖到面前);
+    // 被拖拽过的目标被击杀时(不限击杀时机)+1 层「反击」。
+    // + 被动「回收利用」(敌对击杀缩短主动剩余冷却 33%,每分钟一次;每 2 个最大生命≥20 的
+    //   敌对击杀攻击力 +1,上限 +12)。
+    public static final RegistryObject<Item> Z3000_SIGN = registerItem("z3000_sign",
+            () -> new com.merlinkitsune.astral_dice.item.sign.Z3000SignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.rare())));
+
+    // 抓钩渲染用隐藏原型载体(不进创造栏、无配方):仅 GrapplingHookRenderer 读取其模型。
+    public static final RegistryObject<Item> VACUUM_PIECE = registerItem("vacuum_piece",
+            () -> new Item(new Item.Properties()));
 
     // 少主立牌(命名:al,史诗):主动「强者怜悯」选一名类玩家目标 + 选 1~3 张卡牌送给他(自己扣除),
     // 每张换 2 星币,双方各得一次筹码折扣与刷新;被动「双赢」A 面给牌双方各 +1 星光、每 4 层 +1 攻/+1 防。

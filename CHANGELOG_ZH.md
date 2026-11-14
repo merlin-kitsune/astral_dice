@@ -4,6 +4,17 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
+## 26.4-SNAPSHOT.37
+
+### 本线
+
+- 移植：垃圾桶立牌（Z3000）落地 fabric-1.20.1 与 fabric-1.21.1，行为与 P0 三线一致。两线各新增 item/sign/Z3000SignItem、entity/GrapplingHookEntity、client/GrapplingHookRenderer，三个玩家附件 z3000_attack_stacks / z3000_healthy_kills / z3000_last_cooldown_reduction，物品与实体注册、创造栏条目，以及以 z3000_status / z3000_passive 为键的 tooltip 分支。
+- 战斗接线：DiceCombatEvents 的「反击」闸门把垃圾桶立牌与金鲤立牌同权（1.20.1 另把层数扣减一并走 counterCarrier 标志；金鳞奖励仍只认金鲤）。RenShieldManager 在 voidShield 与 cleanupStale 两处都保留计数器层数。
+- 数据对齐（五线）：astral_dice:z3000_sign 此前既不在 Curios stand 标签、也不在 astral_dice:signs 标签里，而其他立牌都在。现在每条线的两个标签都登记了它。（stand 槽位本身由代码注册：Forge 线 AstralDiceMod 的 SlotTypeMessage，Fabric 线走 Trinkets 槽类型；标签是成员元数据，不是装备闸门。）
+- 资源与数据：吸尘头/管线模型与贴图、垃圾桶立牌贴图复制到两条 fabric 线；datagen 生成配方（漏斗 / 红石 / 铁锭 / 空白立牌 / 铁粒 / 骰子）与物品模型；两线三语各补 11 个 z3000 语言键（zh_cn / en_us / ja_jp）。
+- 验证：:fabric-1.20.1:compileJava :fabric-1.21.1:compileJava → BUILD SUCCESSFUL in 3s；:fabric-1.20.1:runDatagen :fabric-1.21.1:runDatagen → BUILD SUCCESSFUL in 15s（385 个文件缓存，写入 5 个）；:fabric-1.20.1:build :fabric-1.21.1:build → BUILD SUCCESSFUL in 4s。Fabric 的 Curios shim 位于 com.merlinkitsune.astral_dice.compat.curios，不是 top.theillusivec4.curios.api，复制来的类已按此改导入。
+- 实机验证（2026-11-14，fabric-1.20.1 + fabric-1.21.1，`26.4-SNAPSHOT.37`）：两线均通过 Z3000 矩阵——4.5 格拉取 1000 -> 995、终点 1.5 格且带拖拽 tag；17 格拒绝（`AP_Z3000_REJECT reason=too_far`，冷却不变）；冷却闸门（cdEnd 不变、selecting=false）；拖拽后延迟击杀给 +1 反击并 -33% 冷却；两个 20 血击杀把攻击叠层 0 -> 1（`ATTACK_DAMAGE` 1.0 -> 2.0）。读数与实测坑见 `docs/reports/2026-11-14-z3000-fabric-37.md`。未覆盖：反击层数消耗路径、视觉、1200 tick 节流在连续击杀下的表现。
+
 ## 26.4-SNAPSHOT.36
 
 ### 本线

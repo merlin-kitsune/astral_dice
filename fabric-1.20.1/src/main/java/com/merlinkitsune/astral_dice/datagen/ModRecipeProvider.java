@@ -63,6 +63,20 @@ public class ModRecipeProvider extends FabricRecipeProvider {
                 .unlockedBy("has_star_coin", has(ModItems.STAR_COIN.get()))
                 .save(output::accept);
 
+        // 垃圾桶立牌(z3000,稀有):漏斗 + 红石 + 铁锭 + 空白立牌 + 铁粒 + 骰子
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.Z3000_SIGN.get())
+                .pattern("HRH")
+                .pattern("ISI")
+                .pattern("TDT")
+                .define('H', Items.HOPPER)
+                .define('R', Items.REDSTONE)
+                .define('I', Items.IRON_INGOT)
+                .define('S', ModItems.BLANK_SIGN.get())
+                .define('T', Items.IRON_NUGGET)
+                .define('D', ModItems.DICE.get())
+                .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
+                .save(output::accept);
+
         // === 立牌(均含空白立牌;配方难度按角色强度分级,强力立牌加入骰子/稀有材料) ===
         // T1 弱:史莱姆立牌(史莱姆球×4 + 星币×3 + 黄金骰子×1,有序,空白立牌置中,黄金骰子置中下)
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.LULU_SIGN.get())

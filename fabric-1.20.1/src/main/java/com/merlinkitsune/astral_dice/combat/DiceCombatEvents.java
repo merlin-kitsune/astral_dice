@@ -2205,6 +2205,10 @@ public class DiceCombatEvents {
         // 护盾不在也能触发) ⇒ 闸门改为「有盾 或 佩戴金鲤」
         boolean souriCounter = com.merlinkitsune.astral_dice.item.sign.SouriSignItem.isEquipped(player);
         if (!player.hasEffect(ModEffects.REN_SHIELD.get()) && !souriCounter) return;
+        // 垃圾桶立牌(z3000):拖拽击杀同样发放「反击」层数 ⇒ 与金鲤同权,可脱离护盾消耗。
+        boolean counterCarrier = souriCounter
+                || com.merlinkitsune.astral_dice.item.sign.Z3000SignItem.isEquipped(player);
+        if (!player.hasEffect(ModEffects.REN_SHIELD.get()) && !counterCarrier) return;
         if (ModAttachments.getRenCounterCharges(player) <= 0) return;
         if (!(event.getSource().getEntity() instanceof LivingEntity attacker)) return;
         if (attacker == player) return;
@@ -2214,7 +2218,7 @@ public class DiceCombatEvents {
         if (!PartyRelations.isHostileTo(player, attacker)) return;
         // 一次性充能:有盾时一次性耗尽;佩戴金鲤(counter 上限 4)时改为消耗 1 层。
         // 先消耗层数(并同步刷新/摘掉「反击」图标),再注入伤害。
-        if (souriCounter) {
+        if (counterCarrier) {
             ModAttachments.setRenCounterCharges(player, Math.max(0, ModAttachments.getRenCounterCharges(player) - 1));
         } else {
             ModAttachments.setRenCounterCharges(player, 0);

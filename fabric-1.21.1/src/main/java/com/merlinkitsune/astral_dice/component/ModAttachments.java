@@ -1596,6 +1596,9 @@ public class ModAttachments {
             SYNCED_KEYS.add(SHOP_TRANSFER_COOLDOWN_END);
             // 抽奖盒:购买后冷却(客户端 Jade 悬浮框读可进入倒计时,必须同步)
             SYNCED_KEYS.add(EVENT_DRAWER_COOLDOWN_UNTIL);
+            // 垃圾桶立牌(z3000):叠层与击杀进度在 tooltip 上显示,必须同步
+            SYNCED_KEYS.add(Z3000_ATTACK_STACKS);
+            SYNCED_KEYS.add(Z3000_HEALTHY_KILLS);
             // 金鲤立牌(souri):金鳞层数需客户端可见(tooltip 计数行);觉醒仅服务端口径,一并同步
             SYNCED_KEYS.add(SOURI_GOLD_SCALES);
             SYNCED_KEYS.add(SOURI_AWAKENING);
@@ -1637,6 +1640,42 @@ public class ModAttachments {
         REN_COUNTER_CHARGES.set(player, Math.max(0, value));
     }
 
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 垃圾桶立牌(z3000):攻击叠层 / 最大生命≥20 击杀进度 / 上次冷却缩短时刻
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    public static final AttachedDataKey<Integer> Z3000_ATTACK_STACKS =
+            register(AttachedDataKey.builder("z3000_attack_stacks", Codec.INT, () -> 0).sync().build());
+
+    public static int getZ3000AttackStacks(net.minecraft.world.entity.player.Player player) {
+        return Z3000_ATTACK_STACKS.get(player);
+    }
+
+    public static void setZ3000AttackStacks(net.minecraft.world.entity.player.Player player, int value) {
+        Z3000_ATTACK_STACKS.set(player, Math.max(0, value));
+    }
+
+    public static final AttachedDataKey<Integer> Z3000_HEALTHY_KILLS =
+            register(AttachedDataKey.builder("z3000_healthy_kills", Codec.INT, () -> 0).sync().build());
+
+    public static int getZ3000HealthyKills(net.minecraft.world.entity.player.Player player) {
+        return Z3000_HEALTHY_KILLS.get(player);
+    }
+
+    public static void setZ3000HealthyKills(net.minecraft.world.entity.player.Player player, int value) {
+        Z3000_HEALTHY_KILLS.set(player, Math.max(0, value));
+    }
+
+    public static final AttachedDataKey<Long> Z3000_LAST_COOLDOWN_REDUCTION =
+            register(AttachedDataKey.builder("z3000_last_cooldown_reduction", Codec.LONG, () -> 0L).build());
+
+    public static long getZ3000LastCooldownReduction(net.minecraft.world.entity.player.Player player) {
+        return Z3000_LAST_COOLDOWN_REDUCTION.get(player);
+    }
+
+    public static void setZ3000LastCooldownReduction(net.minecraft.world.entity.player.Player player, long value) {
+        Z3000_LAST_COOLDOWN_REDUCTION.set(player, Math.max(0L, value));
+    }
     // ═══════════════════════════════════════════════════════════════════════════
     // 风水师立牌(zhao)+ 两张符卡(fu_card / huo_card)
     // ═══════════════════════════════════════════════════════════════════════════

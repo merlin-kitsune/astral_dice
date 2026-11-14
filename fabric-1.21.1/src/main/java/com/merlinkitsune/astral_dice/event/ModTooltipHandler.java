@@ -1696,6 +1696,23 @@ public class ModTooltipHandler {
             addSignLines(tooltip, "tooltip.astral_dice.sign.inkshadow_passive");
             addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player jp ? jp : null);
         }
+        // 垃圾桶立牌(z3000,稀有):主动「过来把你」拖拽 / 被动「回收利用」冷却与攻击成长
+        if (stack.is(ModItems.Z3000_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "tooltip.astral_dice.sign.z3000.active");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.z3000_active");
+            addSignPassiveTitle(tooltip, "tooltip.astral_dice.sign.z3000.passive");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.z3000_passive");
+            Player z3000Viewer = event.getEntity();
+            if (z3000Viewer != null) {
+                addSignCounter(tooltip, "tooltip.astral_dice.sign.z3000_status",
+                        ModAttachments.getZ3000AttackStacks(z3000Viewer),
+                        com.merlinkitsune.astral_dice.item.sign.Z3000SignItem.ATTACK_CAP,
+                        ModAttachments.getZ3000HealthyKills(z3000Viewer) % 2);
+            }
+            addSignCooldownRemaining(tooltip, z3000Viewer);
+        }
         // 蛟龙立牌(mamushi)专属战斗牌:撕咬(费用 2 / 耐久 1 / 定值 +3)与
         // 龙之咆哮(费用 3 / 耐久 5 / 定值 +3;命中施加 缓慢 III 1:00 + 破防 1:00)。
         // 费用行 = 既有战斗牌的既有写法;描述行走规格 §4 冻结键 tooltip.astral_dice.card.bite / .dragon_roar

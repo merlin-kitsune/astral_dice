@@ -172,7 +172,8 @@ public final class RenShieldManager {
         }
         removeOwnResistance(player);
         // 金鲤立牌(souri):反击层数可脱离鼠鼠护盾独立存在,护盾清空时保留
-        if (!com.merlinkitsune.astral_dice.item.sign.SouriSignItem.isEquipped(player)) {
+        if (!com.merlinkitsune.astral_dice.item.sign.SouriSignItem.isEquipped(player)
+                && !com.merlinkitsune.astral_dice.item.sign.Z3000SignItem.isEquipped(player)) {
             ModAttachments.setRenCounterCharges(player, 0);
         }
         removeCounterEffect(player);
@@ -280,7 +281,8 @@ public final class RenShieldManager {
 
         // 无护盾:清理残留簿记(效果被移除/离线期间异常等)+ 回收我们那份黄心
         // 金鲤立牌(souri):反击层数不依附鼠鼠护盾 —— 佩戴金鲤时保留层数,只回收护盾簿记
-        boolean keepCounter = com.merlinkitsune.astral_dice.item.sign.SouriSignItem.isEquipped(player);
+        boolean keepCounter = com.merlinkitsune.astral_dice.item.sign.SouriSignItem.isEquipped(player)
+                || com.merlinkitsune.astral_dice.item.sign.Z3000SignItem.isEquipped(player);
         if (ModAttachments.isRenShieldOwnResistance(player)
                 || ModAttachments.getRenCounterCharges(player) != 0
                 || ModAttachments.getRenShieldBaselineAbsorption(player) != 0.0F) {

@@ -4,6 +4,17 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 26.4-SNAPSHOT.37
+
+### This line
+
+- Port: Z3000 (the trash-can sign) now exists on fabric-1.20.1 and fabric-1.21.1 with the same behaviour as the P0 lines. Each Fabric line gains item/sign/Z3000SignItem, entity/GrapplingHookEntity and client/GrapplingHookRenderer, the z3000_attack_stacks / z3000_healthy_kills / z3000_last_cooldown_reduction player attachments, the item and entity registrations, the creative-tab entry and the tooltip branch keyed on z3000_status / z3000_passive.
+- Combat wiring: the counter gate in DiceCombatEvents treats Z3000 as a counter carrier next to the Golden Koi sign (1.20.1 additionally routes the charge decrement through the same counterCarrier flag; the gold-scale reward still requires the Golden Koi). RenShieldManager keeps the counter stacks when either sign is equipped, both in voidShield and in cleanupStale.
+- Data consistency (all five lines): astral_dice:z3000_sign was missing from both the Curios stand tag and the astral_dice:signs tag while every other sign is listed there. Both tags now include it on every line. (The slot itself is registered by code in AstralDiceMod/SlotTypeMessage on Forge and by Trinkets slot types on Fabric; the tags are membership metadata, not the equip gate.)
+- Assets and data: vacuum-head/pipe models and textures plus the z3000 sign texture copied into both Fabric lines; datagen adds the recipe (hopper / redstone / iron ingot / blank sign / iron nugget / dice) and the item model; 11 z3000 language keys per language file (zh_cn / en_us / ja_jp) added to both lines.
+- Validation: :fabric-1.20.1:compileJava :fabric-1.21.1:compileJava -> BUILD SUCCESSFUL in 3s; :fabric-1.20.1:runDatagen :fabric-1.21.1:runDatagen -> BUILD SUCCESSFUL in 15s (385 files cached, 5 written); :fabric-1.20.1:build :fabric-1.21.1:build -> BUILD SUCCESSFUL in 4s. The Fabric Curios shim lives under com.merlinkitsune.astral_dice.compat.curios, not top.theillusivec4.curios.api - the copied class imports were adjusted accordingly.
+- Live verification (2026-11-14, fabric-1.20.1 + fabric-1.21.1, `26.4-SNAPSHOT.37`): both lines pass the Z3000 matrix - 4.5-block pull 1000 -> 995 ending at 1.5 blocks with the dragged tag, 17-block rejection (`AP_Z3000_REJECT reason=too_far`, cooldown untouched), cooldown gating (cdEnd unchanged, selecting false), a dragged target killed later granting +1 Counter with a -33% cooldown cut, and attack stacks 0 -> 1 (ATTACK_DAMAGE 1.0 -> 2.0) from two 20-health kills. Readings and pitfalls in `docs/reports/2026-11-14-z3000-fabric-37.md`. Not covered: counter consumption, visuals, the 1200-tick throttle under sustained kills.
+
 ## 26.4-SNAPSHOT.36
 
 ### This line

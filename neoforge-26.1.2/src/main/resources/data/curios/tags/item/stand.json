@@ -34,7 +34,8 @@
     "astral_dice:sykes_sign",
     "astral_dice:souri_sign",
     "astral_dice:al_sign",
-    "astral_dice:inkshadow_sign"
-  ],
+    "astral_dice:inkshadow_sign",
+    "astral_dice:z3000_sign"
+],
   "replace": false
 }
