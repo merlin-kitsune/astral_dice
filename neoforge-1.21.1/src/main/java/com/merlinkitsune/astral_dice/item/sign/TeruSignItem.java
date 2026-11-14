@@ -119,7 +119,7 @@ import java.util.UUID;
 public class TeruSignItem extends BaseSignItem {
     private static final Logger LOGGER = LoggerFactory.getLogger(TeruSignItem.class);
 
-    /** 主动技能的动作 id(注册表键;也是 actionbar 技能名 {@code msg.astral_dice.target_select.skill.<id>} 的来源) */
+    /** 主动技能的动作 id（注册表键） */
     public static final String ACTION_ID = "teru_descent";
 
     /** 立牌的物品注册 id(锁定态/调试读数用) */

@@ -47,7 +47,7 @@ import top.theillusivec4.curios.api.CuriosApi;
 public class RenSignItem extends BaseSignItem {
     private static final Logger LOGGER = LoggerFactory.getLogger(RenSignItem.class);
 
-    /** 主动技能的动作 id(注册表键;也是 actionbar 技能名 {@code msg.astral_dice.target_select.skill.<id>} 的来源) */
+    /** 主动技能的动作 id（注册表键） */
     public static final String ACTION_ID = "ren_privilege";
 
     /**

@@ -4,6 +4,15 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 26.4-SNAPSHOT.35
+
+### This line
+
+- Change: the target selector's ActionBar no longer names the skill or effect card. The steady prompt now starts with "Select a <category> target" over a closed six-word vocabulary: `hostile` / `friendly` / `neutral` / `any` / `player` / `maid` (zh: 敌对 / 友方 / 中立 / 任意 / 玩家 / 女仆).
+- API: new `target/TargetPromptCategories` on all three P0 lines. The default category derives from the session `TargetType` (`ENEMY` / `ENEMY_OR_RIVAL` -> hostile; `CREATURE` / `CREATURE_OR_RIVAL` -> neutral; `NON_HOSTILE` -> friendly; `LIVING` -> any; `PLAYER` -> player); an addon can override it per action id through `registerActionCategory(actionId, category)`. The maid word is reserved for the TLMDice addon (registration tracked as P1 debt D13).
+- Cleanup (dead entries): removed the 20 `msg.astral_dice.target_select.skill.` keys, the 5 `...valid_target.` keys and the unreferenced `active` / `rejected` / `self_unsupported` keys from all nine language files; removed `skillName()` / `validTargetName()` plus the stale "skill name" javadoc in 11 item classes per line.
+- Validation: `:neoforge-1.21.1:compileJava :forge-1.20.1:compileJava :neoforge-26.1.2:compileJava` -> `BUILD SUCCESSFUL in 8s`, exit 0. Live verification follows; the two Fabric lines intentionally keep the old text (P1).
+
 ## 26.4-SNAPSHOT.34
 
 ### This line

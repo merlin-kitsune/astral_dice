@@ -29,6 +29,7 @@
 | D10 | P2 | 生成物 `sykes_sign` 配方/模型：datagen 已不再产出，仓库里仍保留（靠 `git checkout` 维持） | 属既有欠账，非本周期引入 | 发布前定夺：删除并加迁移说明，或恢复生成源码 |
 | D11 | P2 | forge dev 环境必须用「重映射件」：rhino / collective / superflat 的生产件（SRG refmap）在 Mojmap dev 必崩 | 已在 `run/1.20.1/mods` 用 MDG/FG 转换缓存件跑通（`rhino-dev.jar`、`collective-dev.jar`、`superflat-dev.jar`） | 把这些件纳入测试台自举（存在性 + sha256 + 缺失时明确报错），见 TLMDice 侧 prompt |
 | D12 | P0 | `neoforge-26.1.2` 缺 `PlayerLikeWallet` / `ChipShopService`（`PlayerLikeTargets` 已有）；这两个类型只在 `neoforge-1.21.1` / `forge-1.20.1` | 源码实读：26.1.2 无 `PlayerLikeWallet.java` / `ChipShopService.java`；fabric 两线同样缺，仍 P1 | 26.1.2 现 P0，发布前必须补或显式裁决降级 |
+| D13 | P1 | 目标选择器「女仆」类别未接线：本仓已提供 `TargetPromptCategories.registerActionCategory(actionId, "maid")`，TLMDice 侧尚未注册任何动作；fabric 两线也仍是旧文案（技能名 + valid_target） | P0 三线已改完并通过编译；女仆选择动作在 TLMDice 仓（`MaidActiveSkillIntent` 等） | TLMDice 客户端初始化时对其选择动作注册 `maid`；fabric 两线同步 `TargetPromptCategories` + 文案；两处都补实机 |
 
 ## 三、跨仓（TLMDice）
 

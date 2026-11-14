@@ -29,7 +29,7 @@ import net.minecraft.world.level.Level;
  * <p>图标 = {@code images/符卡-福.png}(实装路径 {@code textures/item/fu_card.png})。
  */
 public class FuCardItem extends BaseEffectCardItem {
-    /** 目标选择器动作 id(注册表键;也是 actionbar 技能名 {@code msg.astral_dice.target_select.skill.<id>} 的来源) */
+    /** 目标选择器动作 id（注册表键） */
     public static final String ACTION_ID = "fu_card";
 
     /**
