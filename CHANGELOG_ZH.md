@@ -4,6 +4,15 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
+## 26.4-SNAPSHOT.51
+
+### 本线
+
+- 修复三枚新筹码在五线缺失成员标签的问题：`sword_in_stone_epic_chip`、`sword_in_stone_legendary_chip`、`perfect_branch_chip` 原先只在 `astral_dice:exclusive_chips` 中，缺少 `astral_dice:chips` 与 `curios:chip`；现两处均已补入，Curios 槽位校验与筹码逻辑可正常识别。
+- 1.21.1 实机：六枚专属筹码均返回 `astral_dice:chips`、`astral_dice:exclusive_chips`、`curios:chip`；对照 `atm_chip` 仍不在 `exclusive_chips`。
+- FX 实机：12 只高血量尸壳，石中剑-传说落下绿色+金色粒子；两轮各 4 点伤害均在粒子命中后结算（200 → 192）。截图用 4 TPS 慢放便于观察，实际仍为蓄势 4 tick / 下落 3 tick。
+- 验证：五线 `:build` → BUILD SUCCESSFUL in 7s（44 tasks；32 executed，12 up-to-date）；五枚 `.51` jar 均含修复后的 `chips.json` / `chip.json` 与六项 `exclusive_chips.json`。1.21.1 实机使用超平坦测试世界。未 push/tag。
+
 ## 26.4-SNAPSHOT.50
 
 ### 本线

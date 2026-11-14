@@ -4,6 +4,15 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 26.4-SNAPSHOT.51
+
+### This line
+
+- Fixed the missing member tags on the three new chips across all five lines: `sword_in_stone_epic_chip`, `sword_in_stone_legendary_chip`, and `perfect_branch_chip` were present in `astral_dice:exclusive_chips` but absent from `astral_dice:chips` and `curios:chip`. Each is now listed in both member tags, so Curios slot validation and chip logic recognize them.
+- Live check on NeoForge 1.21.1: all six exclusive chips report `astral_dice:chips`, `astral_dice:exclusive_chips`, and `curios:chip`; `atm_chip` remains outside `exclusive_chips`.
+- FX verification: twelve high-health husks; the legendary chip rained green + gold particles, and two waves dealt 4 damage each only after the particle impact (200 → 192 on every target). Screenshots were captured at 4 TPS slow motion for inspection; the shipped timing remains a 4-tick charge and 3-tick fall.
+- Validation: five-line `:build` → BUILD SUCCESSFUL in 7s (44 tasks; 32 executed, 12 up-to-date); all five `.51` jars contain the repaired `chips.json` / `chip.json` and the six-entry `exclusive_chips.json`. The NeoForge 1.21.1 live run used the flat test world. No push or tag.
+
 ## 26.4-SNAPSHOT.50
 
 ### This line
