@@ -1,6 +1,7 @@
 package com.merlinkitsune.astral_dice.item.chip;
 
 import com.merlinkitsune.astral_dice.combat.DiceCombatEvents;
+import com.merlinkitsune.astral_dice.item.CounterStateManager;
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.starengine.item.CuriosCompat;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
@@ -64,6 +65,8 @@ public class AirbagChipItem extends BaseChipItem {
      * 伤害口径与鼠鼠护盾 / 肉弹战车嘲讽 / 摩西破绽闪避的反击完全同源(见
      * {@link DiceCombatEvents#injectCounterDamage});施加者取伤害源的击杀归属实体,
      * 自伤(施加者即本人)与无归属来源(例如 {@code /kill} 的 generic_kill)一律不反击。
+     * <p>2026-11-12 裁决:只对**近战**且非友方(非玩家/非女仆)的攻击者激活 10 秒反击状态
+     * 并反击;远程/魔法/技能致命伤仍会被气囊无效化,但不进入反击状态、也不反击。
      */
     public static boolean tryNegateFatal(Player player, DamageSource source) {
         if (player == null || player.level().isClientSide()) return false;
@@ -96,6 +99,9 @@ public class AirbagChipItem extends BaseChipItem {
         if (source == null) return;
         if (!(source.getEntity() instanceof LivingEntity attacker)) return;
         if (attacker == player) return;
+        if (!CounterStateManager.isMeleeDamage(source)) return;
+        if (CounterStateManager.isFriendlyTarget(attacker)) return;
+        CounterStateManager.activateForced(player);
         DiceCombatEvents.injectCounterDamage(player, attacker);
     }
 

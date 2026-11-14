@@ -17,12 +17,12 @@ import top.theillusivec4.curios.api.SlotContext;
  *
  * <h2>主动「把酒言欢」</h2>
  * 在准星指定的地块上方放置一个【葫芦饮】；若自身已获得【金鲤化龙】，改放【仙酿】。
- * 随后自身 +1 层【金鳞】、+1 层【反击】。主动为瞬时型，冷却 {@link #ACTIVE_COOLDOWN_TICKS}
+ * 并使自身 +1 层【反击】。主动为瞬时型，冷却 {@link #ACTIVE_COOLDOWN_TICKS}
  * （1:00，与其它立牌同档；无锁定态）。
  *
  * <h2>被动「不醉不归」</h2>
  * <ul>
- *   <li>反击时（{@code combat/DiceCombatEvents} 消耗 1 层反击的出口）+1 层【金鳞】；</li>
+ *   <li>10 秒反击状态**成功激活**时 +1 层【金鳞】（反击命中本身不再增加）；</li>
  *   <li>任意角色拾取【葫芦饮】/【仙酿】后，佩戴者 +1 层【反击】。</li>
  * </ul>
  *
@@ -35,7 +35,7 @@ import top.theillusivec4.curios.api.SlotContext;
  *   <li>{@code BaseSignItem#handleUse} 在本线返回 {@link InteractionResult}（1.21.1 为
  *       {@code InteractionResultHolder<ItemStack>}）；</li>
  *   <li>2026-11-11 已补 {@code SignEntitySkills} 与基类 {@code activateForEntity}；
- *       非玩家 owner 走本类覆写（前方放饮品；玩家分支额外记金鳞/反击）。</li>
+ *       非玩家 owner 走本类覆写（前方放饮品；玩家分支额外记反击）。</li>
  * </ul>
  */
 public class SouriSignItem extends BaseSignItem {
@@ -82,7 +82,6 @@ public class SouriSignItem extends BaseSignItem {
         drink.setPos(target.getX() + 0.5D, target.getY() + 0.25D, target.getZ() + 0.5D);
         level.addFreshEntity(drink);
 
-        SouriSignManager.addGoldScale(player);
         SouriSignManager.addCounter(player, 1);
         sendSignActionBar(player, dragon
                 ? "msg.astral_dice.souri_place_brew"
@@ -116,7 +115,7 @@ public class SouriSignItem extends BaseSignItem {
         }
     }
 
-    /** 2026-11-11 P1 补齐：在自身前方放置饮品并 +1 反击（玩家 owner 仍走玩家分支）。 */
+    /** 2026-11-11 P1 补齐：在自身前方放置饮品并 +1 次反击可激活次数（玩家 owner 仍走玩家分支）。 */
     @Override
     protected boolean activateForEntity(net.minecraft.world.entity.LivingEntity owner) {
         if (owner == null || owner.level().isClientSide()) return false;
@@ -130,7 +129,6 @@ public class SouriSignItem extends BaseSignItem {
                 owner.getZ() + owner.getLookAngle().z * 1.5D);
         owner.level().addFreshEntity(drink);
         if (owner instanceof net.minecraft.world.entity.player.Player player) {
-            SouriSignManager.addGoldScale(player);
             SouriSignManager.addCounter(player, 1);
         }
         return true;

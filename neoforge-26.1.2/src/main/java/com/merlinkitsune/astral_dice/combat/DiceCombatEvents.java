@@ -108,7 +108,7 @@ import com.merlinkitsune.astral_dice.item.chip.FriendshipBadgeChipItem;
 import com.merlinkitsune.astral_dice.item.chip.RevengeHalberdChipItem;
 import com.merlinkitsune.astral_dice.item.chip.SatelliteChipItem;
 import com.merlinkitsune.astral_dice.item.chip.CurrentCoreChipItem;
-import com.merlinkitsune.astral_dice.item.RenShieldManager;
+import com.merlinkitsune.astral_dice.item.CounterStateManager;
 import com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem;
 import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
 import com.merlinkitsune.astral_dice.item.card.FateGuidanceCardItem;
@@ -118,6 +118,8 @@ import com.merlinkitsune.starengine.combat.HostileTargets;
 
 @EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class DiceCombatEvents {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(DiceCombatEvents.class);
 
     /**
      * 玩家侧闪避判定开关:当前 false(玩家侧闪避已移除,目标未佩戴骰子时直接进入常规防御结算)。
@@ -1970,10 +1972,9 @@ public static boolean attackerHasDiceCurio(Player player) {
         injectCounterDamage(player, attacker);
     }
 
-    // 游戏大师立牌(ren)「鼠鼠护盾」自带的一次性反击:带盾玩家被攻击时消耗 1 层,对攻击者注入一次
-    // 现有反击伤害(沿用同一公式)。事件与肉弹嘲讽同源(LivingDamageEvent.Pre,位于吸收结算之前),
-    // 该钩子只表示「伤害已确认」,与吸收数值无关 ⇒ **被黄心完全吃掉的一击同样触发**;
-    // 若这一击正好打空黄心,护盾的清空由 RenShieldManager 的每 tick 轮询在稍后完成(先反击、后破盾)。
+    // 游戏大师立牌(ren)「鼠鼠护盾」与金鲤立牌(souri)共用的 10 秒反击状态(2026-11-12 裁决):
+    // 只对**近战**且非友方(非玩家/非女仆)的攻击者生效;首次命中有可激活次数时进入 200t 状态,
+    // 状态期间每次近战命中都免费反击,不再扣层、不再刷新时长。金鳞只在状态成功激活时 +1。
     @SubscribeEvent(priority = EventPriority.NORMAL)
     public static void onRenShieldCounter(LivingDamageEvent.Pre event) {
         LivingEntity victim = event.getEntity();
@@ -1982,26 +1983,20 @@ public static boolean attackerHasDiceCurio(Player player) {
         if (isInCounterChain()) return;
         if (!(victim instanceof Player player)) return;
         if (!player.isAlive()) return;
-        // 金鲤立牌(souri,2026-11-09):反击层数不再只依附鼠鼠护盾 —— 佩戴金鲤时同一出口
-        // 也消耗 1 层并把「反击」计成金鳞;上限由 SouriSignManager 放宽到 4(用户裁决)。
-        boolean souri = com.merlinkitsune.astral_dice.item.sign.SouriSignItem.isEquipped(player);
-        if (!player.hasEffect(ModEffects.REN_SHIELD) && !souri) return;
-        if (ModAttachments.getRenCounterCharges(player) <= 0) return;
         if (!(event.getSource().getEntity() instanceof LivingEntity attacker)) return;
         if (attacker == player) return;
-        // 2026-09-29 收紧(与效果文案「佩戴者被攻击时消耗该层」对齐):只有**敌对目标**的攻击
-        // 才消耗反击层数。视者 = 带盾玩家(player);于是队友 / 已驯服宠物 / 未激怒中立生物的
-        // 攻击不再误消耗层数、也不再把反击打在友军身上(自伤已由上一行排除)。
-        if (!PartyRelations.isHostileTo(player, attacker)) return;
-        // 逐层消耗(2026-11-09 金鲤):鼠鼠护盾仍是 1 层一次性;金鲤允许叠到 4 层。
-        ModAttachments.setRenCounterCharges(player,
-                Math.max(0, ModAttachments.getRenCounterCharges(player) - 1));
-        RenShieldManager.refreshCounterEffect(player);
-        injectCounterDamage(player, attacker);
-        // 被动「不醉不归」:反击时 +1 层金鳞(仅佩戴金鲤者)
-        if (souri) {
-            com.merlinkitsune.astral_dice.item.sign.SouriSignManager.addGoldScale(player);
+        if (!CounterStateManager.isMeleeDamage(event.getSource())) return;
+        if (CounterStateManager.isFriendlyTarget(attacker)) return;
+        boolean wasActive = CounterStateManager.isActive(player);
+        if (!wasActive) {
+            boolean souri = com.merlinkitsune.astral_dice.item.sign.SouriSignItem.isEquipped(player);
+            boolean z3000 = com.merlinkitsune.astral_dice.item.sign.Z3000SignItem.isEquipped(player);
+            if (!player.hasEffect(ModEffects.REN_SHIELD) && !souri && !z3000) return;
+            if (!CounterStateManager.tryActivateWithCharge(player)) return;
         }
+        injectCounterDamage(player, attacker);
+        LOGGER.info("[Astral Dice][Counter] AP_COUNTER_FIRE player={} attacker={} free={}",
+                player.getName().getString(), attacker.getName().getString(), wasActive);
         if (player instanceof net.minecraft.server.level.ServerPlayer sp) {
             PacketDistributor.sendToPlayer(sp, new ActionBarPayload(
                     Component.translatable("msg.astral_dice.ren_counter_fired")
@@ -2021,6 +2016,8 @@ public static boolean attackerHasDiceCurio(Player player) {
     // 2026-10-08 起同时被安全气囊筹码复用(见 item/chip/AirbagChipItem#counterAttacker) ⇒ 提升为 public。
     public static void injectCounterDamage(Player player, LivingEntity attacker) {
         if (isInCounterChain()) return;
+        // MELEE-07(2026-10-27 用户裁决):一次挥击只结算一次反击(与 1.21.1/1.20.1 对齐)。
+        if (!DeathTriggerGuard.claimPair(attacker, player, "counter")) return;
         // 整个「反击伤害计算 + 注入」都必须落在反击链内:计算过程本身也会造成伤害——
         // computeCounterDamage → rollCombatDie → CrimsonDiceHandler.rollD6 掷出 1 时会对掷骰者
         // 本人施加 6 点 astral_dice:dice_damage(CrimsonDiceHandler.java:63-65)。若把计算留在

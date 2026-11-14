@@ -4,6 +4,7 @@ import com.merlinkitsune.starengine.item.CuriosCompat;
 
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.item.ModItems;
+import com.merlinkitsune.astral_dice.item.card.RandomCardHandler;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import top.theillusivec4.curios.api.CuriosApi;
@@ -61,9 +62,8 @@ public class SatelliteChipItem extends BaseChipItem {
         long cdEnd = ModAttachments.getSatelliteGiveCooldownEnd(player);
         if (now < cdEnd) return;
         if (countOrbitalStrike(player) < TARGET_ORBITAL_STRIKE_COUNT) {
-            ItemStack card = new ItemStack(ModItems.ORBITAL_STRIKE_CARD.get());
-            // 统一经维生素药丸发牌路径(合成/获得卡牌联动)
-            VitaminPillChipItem.giveCard(player, card);
+            // 固定公共牌统一经公共发牌类(不走私有发牌)
+            RandomCardHandler.giveFixedCardTo(player, ModItems.ORBITAL_STRIKE_CARD.get());
         }
         ModAttachments.setSatelliteGiveCooldownEnd(player, now + GIVE_INTERVAL_TICKS);
     }

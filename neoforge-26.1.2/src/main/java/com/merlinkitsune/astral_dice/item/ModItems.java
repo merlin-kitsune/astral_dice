@@ -695,14 +695,14 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(AstralRarities.legendary()), SandwichChipItem.HEALTH_HIGH));
 
-    // 肾上腺素-一般:生命值为 50% 或更低时,攻击力/防御力 +3(史诗)
+    // 肾上腺素-一般:生命值为 50% 或更低时,攻击力/防御力 +3;触发加成时被怪物近战攻击有 20% 闪避(史诗)
     public static final DeferredItem<Item> ADRENALINE_LOW = registerItem("adrenaline_low_chip",
             props -> new AdrenalineChipItem(props
                     .stacksTo(1)
                     .rarity(AstralRarities.epic()), AdrenalineChipItem.BONUS_LOW));
 
-    // 肾上腺素-高效:生命值为 50% 或更低时,攻击力/防御力 +8;触发加成时被敌方攻击,
-    // 骰点 4-5 → 50% 闪避、6 → 100% 闪避本次伤害(传奇)
+    // 肾上腺素-高效:生命值为 50% 或更低时,攻击力/防御力 +8;触发加成时被怪物近战攻击有 20% 闪避;
+    // 与一般同时装备时叠加为 40%(传奇)
     public static final DeferredItem<Item> ADRENALINE_HIGH = registerItem("adrenaline_high_chip",
             props -> new AdrenalineChipItem(props
                     .stacksTo(1)
@@ -1025,7 +1025,7 @@ public class ModItems {
                     .rarity(AstralRarities.legendary())));
 
     // 金鲤立牌(命名:souri,传奇;2026-11-09):主动「把酒言欢」(准星 8 格内放 1 个【葫芦饮】;已获【金鲤化龙】
-    //   则改放【仙酿】,随后自身 +1 金鳞 / +1 反击,冷却 1:00),被动「不醉不归」(反击出口 +1 金鳞;
+    //   则改放【仙酿】,随后自身 +1 可激活反击次数,冷却 1:00),被动「不醉不归」(成功进入反击状态时 +1 金鳞;
     //   任意角色拾取饮品 ⇒ 放置者 +1 反击),金鳞满 4 ⇒ 【金鲤化龙】(锁存态:每层金鳞攻击 +1、防御 +1,
     //   场上未拾取的葫芦饮全部转仙酿);联动「留给你的」(拾取者佩戴蛟龙立牌 ⇒ 蛟龙觉醒 +1 葫芦饮 / +2 仙酿)。
     // 传奇品质 = ASTRAL_DICE_LEGENDARY(本模组「金=传奇」映射);配方 = 钻石骰子 + 黄金星盘档。
@@ -1042,6 +1042,16 @@ public class ModItems {
     // 配方 = 末影珍珠×2 + 星币×2 + 黄色染料×2 + 空白筹码 + 骰子(2026-11-11 墨囊->末影珍珠、金块->黄色染料)。
     public static final DeferredItem<Item> INKSHADOW_SIGN = registerItem("inkshadow_sign",
             props -> new com.merlinkitsune.astral_dice.item.sign.InkShadowSignItem(props
+                    .stacksTo(1)
+                    .rarity(AstralRarities.rare())));
+
+    // 垃圾桶立牌(z3000,稀有):主动「过来把你」16 格拖拽 + 5 点技能伤害,被动「回收利用」。
+    // 原型：Z3000 抓钩的管道节 / 吸尘头模型载体；不进创造栏、无配方。
+    public static final DeferredItem<Item> VACUUM_PIECE = registerItem("vacuum_piece",
+            props -> new Item(props));
+
+    public static final DeferredItem<Item> Z3000_SIGN = registerItem("z3000_sign",
+            props -> new com.merlinkitsune.astral_dice.item.sign.Z3000SignItem(props
                     .stacksTo(1)
                     .rarity(AstralRarities.rare())));
 

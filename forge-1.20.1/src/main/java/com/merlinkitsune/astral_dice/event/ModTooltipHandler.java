@@ -12,6 +12,7 @@ import com.merlinkitsune.astral_dice.item.StarLightManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.RepulsionItem;
 import com.merlinkitsune.astral_dice.item.sign.SouriSignManager;
+import com.merlinkitsune.astral_dice.item.sign.Z3000SignItem;
 import com.merlinkitsune.astral_dice.item.sign.JasmineSignItem;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -1594,6 +1595,8 @@ public class ModTooltipHandler {
             addSignLines(tooltip, "tooltip.astral_dice.sign.mamushi_active");
             addSignPassiveTitle(tooltip, "tooltip.astral_dice.sign.mamushi.passive");
             addSignLines(tooltip, "tooltip.astral_dice.sign.mamushi_passive");
+            tooltip.add(Component.empty());
+            addSignNoteLines(tooltip, "tooltip.astral_dice.sign.mamushi_note");
             // 真龙形态标注行(仅锁存态成立时显示;金色,与「觉醒已达 8 层」的语义对应);
             // 「觉醒」计数器在进入真龙形态后**已失效** ⇒ 此时不再显示计数器行,只留该标注。
             if (com.merlinkitsune.astral_dice.item.sign.MamushiSignItem.isDragonForm(player)) {
@@ -1736,6 +1739,22 @@ public class ModTooltipHandler {
             tooltip.add(Component.empty());
             addSignNoteLines(tooltip, "tooltip.astral_dice.sign.sykes_note");
             addSignCooldownRemaining(tooltip, event.getEntity());
+        }
+        // 垃圾桶立牌(z3000,稀有):主动「过来把你」拖拽 / 被动「回收利用」冷却与攻击成长
+        if (stack.is(ModItems.Z3000_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "tooltip.astral_dice.sign.z3000.active");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.z3000_active");
+            addSignPassiveTitle(tooltip, "tooltip.astral_dice.sign.z3000.passive");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.z3000_passive");
+            Player z3000Viewer = event.getEntity();
+            if (z3000Viewer != null) {
+                addSignCounter(tooltip, "tooltip.astral_dice.sign.z3000_status",
+                        ModAttachments.getZ3000AttackStacks(z3000Viewer), Z3000SignItem.ATTACK_CAP,
+                        ModAttachments.getZ3000HealthyKills(z3000Viewer) % 2);
+            }
+            addSignCooldownRemaining(tooltip, z3000Viewer);
         }
         // 小猎手立牌(inkshadow,稀有):主动「暗影之门」两端传送门 / 被动「双生之影」攻击叠加
         // (与 1.21.1 线同形:说明全部收进 _active/_passive 两个单键多行键,不再有 _note 备注段)

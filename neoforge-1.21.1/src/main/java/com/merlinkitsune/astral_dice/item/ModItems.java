@@ -714,14 +714,14 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(AstralRarities.legendary()), SandwichChipItem.HEALTH_HIGH));
 
-    // 肾上腺素-一般:生命值为 50% 或更低时,攻击力/防御力 +3(史诗)
+    // 肾上腺素-一般:生命值为 50% 或更低时,攻击力/防御力 +3;触发加成时被怪物近战攻击有 20% 闪避(史诗)
     public static final DeferredItem<Item> ADRENALINE_LOW = registerItem("adrenaline_low_chip",
             () -> new AdrenalineChipItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(AstralRarities.epic()), AdrenalineChipItem.BONUS_LOW));
 
-    // 肾上腺素-高效:生命值为 50% 或更低时,攻击力/防御力 +8;触发加成时被敌方攻击,
-    // 骰点 4-5 → 50% 闪避、6 → 100% 闪避本次伤害(传奇)
+    // 肾上腺素-高效:生命值为 50% 或更低时,攻击力/防御力 +8;触发加成时被怪物近战攻击有 20% 闪避;
+    // 与一般同时装备时叠加为 40%(传奇)
     public static final DeferredItem<Item> ADRENALINE_HIGH = registerItem("adrenaline_high_chip",
             () -> new AdrenalineChipItem(new Item.Properties()
                     .stacksTo(1)
@@ -1189,6 +1189,18 @@ public class ModItems {
             () -> new com.merlinkitsune.astral_dice.item.sign.SykesSignItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(AstralRarities.legendary())));
+
+    // 垃圾桶立牌(z3000,稀有):主动「过来把你」16 格拖拽 + 5 点技能伤害,被动「回收利用」。
+    public static final DeferredItem<Item> Z3000_SIGN = registerItem("z3000_sign",
+            () -> new com.merlinkitsune.astral_dice.item.sign.Z3000SignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.rare())));
+
+    // 原型(2026-11-12):垃圾桶立牌「过来把你」动态管道试验用的隐藏物品。
+    // 只作为 Display.ItemDisplay 的模型载体(管道节 / 吸引头),不放进创造栏,
+    // 也不参与配方;正式立牌落地时再决定是否保留。
+    public static final DeferredItem<Item> VACUUM_PIECE = registerItem("vacuum_piece",
+            () -> new Item(new Item.Properties()));
 
     // 符卡-福(专属功能效果牌,风水师立牌专属):出牌数 +1;对玩家(不限队伍)或自身使用 ⇒ 恢复 2 点生命值。
     // 专属绑定:获得即绑定获得者(ModDataComponents.OWNER_UUID),他人无法使用。

@@ -102,7 +102,8 @@ public final class ChipShopService {
         if (holder == null || holder.level().isClientSide()) return false;
         ChipShopState state = ChipShopState.get(holder);
         ChipShopState next = state.withRefreshGranted();
-        if (next == state) return false;
+        // 封顶时 withRefreshGranted() 仍会 new 一个等值记录，引用比较不可用；按次数判断是否真的授予。
+        if (next.refreshesLeft() == state.refreshesLeft()) return false;
         ChipShopState.store(holder, next);
         return true;
     }

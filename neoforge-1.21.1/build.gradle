@@ -77,10 +77,11 @@ neoForge {
     // Default run configurations.
     // These can be tweaked, removed, or duplicated as needed.
     runs {
-        // 版本隔离:开发测试游戏目录统一放在仓库根 run/<版本>,
-        // 与 forge(run/1.20.1)互不污染 mods/config/saves
+        // 版本隔离:开发测试游戏目录统一放在仓库根 run/neoforge-1.21.1,
+        // 与 forge(run/forge-1.20.1)互不污染 mods/config/saves
+        // (2026-11-12 用户把三条 rename 成带加载器的完整名;目录名与子项目名一致,别再改回裸版本号)
         configureEach {
-            gameDirectory = rootProject.file('run/1.21.1')
+            gameDirectory = rootProject.file('run/neoforge-1.21.1')
         }
 
         client {
@@ -295,7 +296,7 @@ dependencies {
 // AutoForge: end mod addon dependencies
 
 // === 编译产物分发规则 ===
-// 默认行为:每次构建完成后自动推送到仓库根 run/1.21.1/mods(本机 runClient 调试)、
+// 默认行为:每次构建完成后自动推送到仓库根 run/neoforge-1.21.1/mods(本机 runClient 调试)、
 // 仓库根目录 build/libs,并推送到整合包 mods 目录(删除旧版后复制新版)。
 // 整合包位置: /mnt/d/.minecraft/versions/狐の航空学 Voxy Edition/mods（Windows 宿主同盘为 D:\.minecraft\…；MC_HOME 可覆盖）
 //
@@ -312,7 +313,7 @@ dependencies {
 //   需要推送时:把分支加进白名单;或单次用 -PdeployToPack 强制。
 //   ⚠️ 用 -PdeployToPack 强推本 mod 时,务必确认整合包内**已有**独立的 starengine-*.jar 且与之配对
 //      (库为独立前置、不再内置;下方会读 starengine_version 检查,缺库告警)。
-def devRunModsDir = rootProject.file('run/1.21.1/mods')
+def devRunModsDir = rootProject.file('run/neoforge-1.21.1/mods')
 // 整合包目录: 由根 build.gradle 的 mcHomePath 统一解析（MC_HOME > /mnt/d/.minecraft > D:/.minecraft）
 def packModsDir = new File(rootProject.ext.mcHomePath, 'versions/狐の航空学 Voxy Edition/mods')
 
@@ -329,12 +330,12 @@ def libVersionLocked = project.findProperty('starengine_version')?.toString()
 def dotGitEntry = rootProject.file('.git')
 
 
-// 默认:推送到仓库根 run/1.21.1/mods
+// 默认:推送到仓库根 run/neoforge-1.21.1/mods
 def jarArchiveProvider = tasks.named('jar').flatMap { it.archiveFile }
 
 tasks.register('pushToDevRun') {
     group = 'build'
-    description = 'Copy the built mod jar to the dev run mods folder (root run/1.21.1/mods) and remove old versions.'
+    description = 'Copy the built mod jar to the dev run mods folder (root run/neoforge-1.21.1/mods) and remove old versions.'
     dependsOn tasks.named('jar')
     doLast {
         def jarFile = jarArchiveProvider.get().asFile

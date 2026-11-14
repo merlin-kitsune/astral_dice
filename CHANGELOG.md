@@ -4,6 +4,192 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 26.4-SNAPSHOT.32
+
+### This line
+
+- Fixed: the 26.1.2 `GrapplingHookRenderer` created its `ItemStack` fields during entity-renderer construction, before item components were bound; resource reload threw `Components not bound yet` (`Failed to create model for astral_dice:grappling_hook`) and the client stayed on the title screen. The pipe/head stacks are now created lazily on the first `extractRenderState`.
+- Build: P0 three lines rebuilt successfully; SHA-256: 1.21.1 c4ff8df0e6348d039e86d83670f3548f59d6a18ea7c11b467fcb111d0c3130ca, 1.20.1 9aa7b89dc525ce2b33c58ce411344afcfec469ba04f3271b46ec669e34818cfc, 26.1.2 b1646981ca216380104ef0bbc048dcba8996708f3b3fbe49ecc1439380fee28a.
+- Live: after the fix 26.1.2 reached READY and the full Z3000 suite passed (9-block pull + 5 skill damage, 17-block rejection / 16.00-block acceptance, drag kill +1 counter with a 3550->2379 cooldown cut, no second cut in the same minute, attack cap at 12/13, low-health kill excluded, cooldown gating). Report: `docs/reports/2026-11-14-z3000-acceptance.md`.
+
+## 26.4-SNAPSHOT.31
+
+### This line
+
+- Added: the Z3000 trash-can sign z3000_sign (Rare) on the P0 three lines (neoforge-1.21.1 / forge-1.20.1 / neoforge-26.1.2); the two Fabric lines only receive the version bump.
+- Active Come Here: pick a hostile target within 16 blocks, spawn a grappling hook that pulls it to 1.5 blocks in front of the player and deals 5 skill damage; if that skill damage directly kills the target, gain 1 counter charge.
+- Passive Recycle: a hostile kill shortens the active cooldown by 33%, at most once per minute; every 2 kills of hostile targets with max health >=20 grant +1 attack, up to +12. The attack bonus is refreshed through a fixed-id attribute modifier.
+- Compatibility: Z3000 counter charges can trigger the 10-second counter state without the rat shield or Souri; shield cleanup and counter expiry do not clear Z3000 charges.
+- Recipe: HRH / ISI / TDT (H=hopper, R=redstone, I=iron ingot, S=blank sign, T=iron nugget, D=dice); recipe and advancement generated on all three lines, and verify_crafting_recipe_uniqueness.py reports collisions=0 on all three.
+- Resources and localization: item model, 32x32 texture, creative-tab entry and zh/en/ja tooltip plus guide text on three lines. 26.1.2 now declares a custom model for the hidden vacuum_piece item, fixing the runClientData Missing item model definitions failure.
+- Validation: :neoforge-1.21.1:build :forge-1.20.1:build :neoforge-26.1.2:build -> BUILD SUCCESSFUL in 13s, exit 0. SHA-256: 1.21.1 3f3e2781a316b1bcffbadd40f071f5a86683e7a14489a325e2dceff5f7de1ebe; 1.20.1 a9dd78593fc5a3cce88bcf6f29bb607d4806e2ab3eab4a6aa4b559d9e9d6dd09; 26.1.2 305c19dc45e5850cc5563147cca682575254e50cf14bf353800011180095cff6.
+- Live (on .31 artifacts): 1.21.1 and 1.20.1 passed (9-block pull + 5 skill damage, 17-block rejection / 16.00-block acceptance, drag kill +1 counter, once-per-minute -33% cooldown, no second reduction in the same minute, attack stacks and +12 cap, low-health kills excluded; 1.21.1 cap/low-health readings were not persisted). 26.1.2 crashed during startup at .31 with `Components not bound yet` and passed the full suite after the .32 fix. Report: `docs/reports/2026-11-14-z3000-acceptance.md`. No commit/push/tag/CF.
+
+## 26.4-SNAPSHOT.30
+
+### This line
+
+- Change: version bumps to `26.4-SNAPSHOT.30` on all five lines. Only `neoforge-1.21.1` has product-code/resource changes; the other four lines only receive the version bump.
+- Cleanup (neoforge-1.21.1 prototype only): removed every remaining third-party-derived piece of the grappling-hook prototype — the six `grappling_hook_{attach,shoot}_*.ogg` sounds, `textures/entity/hook/grappling_hook.png`, the sound registrations and subtitles, the third-party notices/license files, and the SPDX/license headers in `GrapplingHookEntity`/`GrapplingHookRenderer`.
+- Rewritten: `GrapplingHookEntity` and `GrapplingHookRenderer` are now project-owned implementations with the same drag behavior and the same `vacuum_piece` pipe / `vacuum_head` visuals. No item, no block hooking, no player pull, no damage; the OP-2 `/astralhook <target>` command remains the temporary entry point.
+- Validation: five-line `:build` passed (`BUILD SUCCESSFUL in 12s`, exit 0); `astral_dice-26.4-SNAPSHOT.30+neoforge_1.21.1.jar` SHA-256 `fdea2efe2e62c5588e1f443654d61ef00180ced33980fa19804ab9f63dee6dcf`. No live rerun in this entry. No commit/push/tag/CF.
+
+## 26.4-SNAPSHOT.29
+
+### This line
+
+- Change: version bumps to `26.4-SNAPSHOT.29` on all five lines. Only `neoforge-1.21.1` has product-code changes; the other four lines only receive the version bump.
+- Fix (neoforge-1.21.1 prototype only): `EntityRenderDispatcher` already translates the PoseStack to the entity position; the renderer added world coordinates on top, drawing the pipe/head at twice the offset and out of view. The from/to/head points now use coordinates relative to the entity origin.
+- Validation: `:neoforge-1.21.1:build` passed; 1.21.1 live rerun on the flat test world shows the white pipe from the player to the target, the target pulled to 1.5 blocks in front, and the pipe shortening with distance. Key frames: `vac29-700/1100/1500/3000.png`; log ends at `AP_GRAPPLE_END reason=arrived age=53`. The head is visible but still reads as a flat orange-red plate from the side because the source model is only 1.8 px tall; whether to thicken it is pending user visual review.
+
+## 26.4-SNAPSHOT.28
+
+### This line
+
+- Change: version bumps to `26.4-SNAPSHOT.28` on all five lines. Only `neoforge-1.21.1` has product-code changes; the other four lines only receive the version bump.
+- Fix (neoforge-1.21.1 prototype only): the hook entity now syncs its owner entity id. On the client, `Projectile#getOwner()` does not resolve `ownerUUID`, so the renderer had no player anchor and drew no pipe. The renderer now uses `getRenderOwner()`.
+- Validation: owner sync was confirmed by a client probe (`getRenderOwner()` returned `LocalPlayer Dev`); the live rerun still showed no pipe/head because of the renderer offset, fixed in `.29`.
+
+## 26.4-SNAPSHOT.27
+
+### This line
+
+- Change: version bumps to `26.4-SNAPSHOT.27` on all five lines. Only `neoforge-1.21.1` has product-code changes; the other four lines only receive the version bump.
+- Changed (neoforge-1.21.1 prototype only): the grappling hook keeps the `.26` fire/attach/pull animation and sounds, but the hook head now uses our `vacuum_head` model and the iron chain is replaced by white `vacuum_piece` pipe segments. The old `GrapplingHookModel` and chain block rendering are removed.
+- Validation: build passed; the 1.21.1 live rerun showed no pipe/head because the client owner was null and the renderer also double-applied the entity offset. Both causes were fixed in `.28`/`.29`.
+
+## 26.4-SNAPSHOT.26
+
+### This line
+
+- Change: version bumps to `26.4-SNAPSHOT.26` on all five lines. Only `neoforge-1.21.1` has product-code changes; the other four lines only receive the version bump.
+- Fix (neoforge-1.21.1 prototype only): when the pulled mob reaches the stop threshold, it is snapped to the exact front point 1.5 blocks ahead of the player instead of stopping 2–3 blocks away because of the 0.175-block pull step.
+- Validation: `:neoforge-1.21.1:build` passed; live test on 2026-11-13 at 19:06/19:08 pulled the mob from 9 blocks to exactly 1.5 blocks in front of the player (`z=-1.00`, log `AP_GRAPPLE_END age=49`); screenshots are listed in `docs/reports/2026-11-13-grappling-hook-live.md`; user visual confirmation pending.
+
+## 26.4-SNAPSHOT.25
+
+### This line
+
+- Change: version bumps to `26.4-SNAPSHOT.25` on all five lines. Only `neoforge-1.21.1` has product-code/resource changes; the other four lines only receive the version bump.
+- Changed (neoforge-1.21.1 prototype only): the grappling hook is no longer an item and no longer hooks blocks or pulls the player. It now flies to a living mob, attaches, and pulls that mob to a point 1.5 blocks in front of the player; the chain shortens as the mob approaches. Manual trigger is the temporary OP-2 command `/astralhook <target>`; the hook entity only accepts `Mob` targets and deals no damage.
+- Scope: still a 1.21.1-only visual/mechanic prototype. The hook model, chain renderer and sounds remain temporary validation assets.
+- Validation: `:neoforge-1.21.1:build` passed; live test on 2026-11-13 at 18:43 showed the chain extending from the player, the mob being dragged and the chain shortening; the mob stopped about 2.7 blocks away, which `.26` fixes by snapping to the front point.
+
+## 26.4-SNAPSHOT.24
+
+### This line
+
+- Change: version bumps to `26.4-SNAPSHOT.24` on all five lines. Only `neoforge-1.21.1` has product-code/resource changes; the other four lines only receive the version bump.
+- New prototype (neoforge-1.21.1 only): first grappling-hook prototype. It was item-based (right-click to fire/reel); later entries replaced the item with an OP-2 command and removed the item path.
+- Validation: `:neoforge-1.21.1:build` passed at `.24`; no live test yet.
+- Scope: a 1.21.1-only effect prototype, not the finished Trash Can sign, and not ported to the other four lines.
+
+## 26.4-SNAPSHOT.23
+
+### This line
+
+- Change: version bumps to `26.4-SNAPSHOT.23` on all five lines. Only `neoforge-1.21.1` has product-code/resource changes; the other four lines only receive the version bump.
+- Fix (neoforge-1.21.1 prototype only): the vacuum head model's UVs were still in the bbmodel's 64-unit space, while `FaceBakery` always divides UVs by 16; the head therefore sampled outside the sprite and appeared as a white slab. UVs are now converted to 16-unit space (`uv / 4`) when the model is generated.
+- Scope: still the Trash Can sign prototype (hidden `vacuum_piece` + OP-2 `/astralvacuum`), not the finished sign.
+- Validation: build and live visual check pending.
+
+## 26.4-SNAPSHOT.22
+
+### This line
+
+- Change: version bumps to `26.4-SNAPSHOT.22` on all five lines. Only `neoforge-1.21.1` has product-code changes; the other four lines only receive the version bump.
+- Fix (neoforge-1.21.1 prototype only): the vacuum pipe now really shortens while pulling. `DisplayRenderer` never reads `Entity.isInvisible()`, so the previous `setInvisible(true)` left every retired segment rendered as a static pipe. Hidden segments are now also moved to `level.getMinBuildHeight() - 8` through `hideSegment(...)`.
+- Fix (neoforge-1.21.1 prototype only): the vacuum head is explicitly made visible on every geometry update and is scaled non-uniformly to `HEAD_SCALE_XZ=3`, `HEAD_SCALE_Y=4` (the source model is only 1.8 pixels tall) with `HEAD_HOVER=0.02` to avoid z-fighting.
+- Fix (neoforge-1.21.1 prototype only): all vacuum displays are tagged `astral_vacuum`; `ServerStartedEvent` removes orphaned tagged displays left by an interrupted test, and `ServerStoppingEvent` cleans active pipes.
+- Diagnostics (neoforge-1.21.1 prototype only): every 5 ticks `AP_VACUUM_GEOM age=... len=... visible=... head=... target=...` reports the current pipe length and visible segment count.
+- Scope: still the Trash Can sign prototype (hidden `vacuum_piece` + OP-2 `/astralvacuum`), not the finished sign.
+- Validation: `./gradlew.bat :neoforge-1.21.1:build :forge-1.20.1:build :neoforge-26.1.2:build :fabric-1.20.1:build :fabric-1.21.1:build --console=plain` finished with `BUILD SUCCESSFUL in 10s` (exit 0); root `build/libs` has five `.22` jars and `run/neoforge-1.21.1/mods` has the `.22` neoforge jar. Live test (neoforge-1.21.1 only, flat world 新的世界): pipe shortening and straight-line pull confirmed (AP_VACUUM_GEOM len 7.18 -> 1.01, visible 10 -> 1); the head entity selected astral_dice:item/vacuum_head but still sampled outside the sprite and appeared as a white slab, so head visuals remained unfixed.
+
+## 26.4-SNAPSHOT.21
+
+### This line
+
+- Change: version bumps to `26.4-SNAPSHOT.21` on all five lines. Only `neoforge-1.21.1` has product-code changes; the other four lines only receive the version bump.
+- Fix (neoforge-1.21.1 prototype only): the vacuum head no longer floats or looks flattened. `ItemRenderer` applies its fixed `translate(-0.5)` after the display transformation, so a scale-2 model was offset +0.5 blocks on every axis; `baseDisplayTag()` now writes `translation = -0.5*(scale-1)` and the head's bottom sits on the ground.
+- Change (neoforge-1.21.1 prototype only): the pipe is now a straight, ground-hugging line from the start point to the head along a fixed `pullDir`; the quadratic Bezier lateral `bow` and the per-segment ground re-sampling curvature are gone. Segments are placed every 0.75 blocks and hidden until the pipe reaches them; the head starts at the caster instead of the target, and the target is pulled back along the same line.
+- Change (neoforge-1.21.1 prototype only): speed reduced by 50%: `EXTEND_TICKS` 8 -> 16, `PULL_STEP` 0.35 -> 0.175; `MAX_LIFE_TICKS` 80 -> 160 to leave room at half speed. `HEAD_FRONT` corrected from `4.072/16*2` to the actual model front `3.986/16*2`.
+- Scope: still the Trash Can sign prototype (hidden `vacuum_piece` + OP-2 `/astralvacuum`), not the finished sign.
+- Validation: `./gradlew.bat :neoforge-1.21.1:build :forge-1.20.1:build :neoforge-26.1.2:build :fabric-1.20.1:build :fabric-1.21.1:build --console=plain` finished with `BUILD SUCCESSFUL` (final rerun: 3s); the `.21` jar contains the updated `VacuumPipeManager$Pipe` (verified with `javap`: `pullDir` field and `pipeStart(ServerLevel, ServerPlayer, Vec3)`). No live run this round: head ground contact, straight-line pull and half speed remain visually unverified.
+
+## 26.4-SNAPSHOT.20
+
+### This line
+
+- Change: version bumps to `26.4-SNAPSHOT.20` on all five lines. Only `neoforge-1.21.1` has product-code changes; the other four lines only receive the version bump.
+- Fix (neoforge-1.21.1 prototype only): the vacuum pipe's arrival threshold `ARRIVE_DISTANCE` is raised from `1.35` to `1.60` blocks. The target is pulled to `FRONT_OFFSET=1.5` blocks in front of the caster, so the old `1.35` threshold could never be satisfied and `AP_VACUUM_DAMAGE` never fired; the target is now considered arrived at 1.5 blocks and takes 5 skill damage.
+- Scope: still the Trash Can sign prototype (hidden `vacuum_piece` item plus OP-2 `/astralvacuum`), not the finished sign.
+- Live test (neoforge-1.21.1 only): in the flat world `新的世界`, a 1000-HP zombie was pulled from 8 blocks in front of the player. 13 `Display.ItemDisplay` entities (12 segments + 1 head) were spawned; target distance went 8.00 → 7.65 → 4.15 → 1.50; the log shows `AP_VACUUM_DAMAGE ... damage=5.0` and `AP_VACUUM_END reason=arrived age=27`, and every display was removed. The logged base damage is 5.0; the zombie lost 28 HP (1000→972), likely because a damage-folding effect card added damage, but that contribution has not been isolated yet.
+
+## 26.4-SNAPSHOT.19
+
+### This line
+
+- Change: version bumps to `26.4-SNAPSHOT.19` on all five lines. This round adds a `neoforge-1.21.1`-only prototype for the Trash Can sign's dynamic vacuum pipe; it is not yet the finished sign.
+- Prototype (neoforge-1.21.1 only): a hidden `astral_dice:vacuum_piece` item and an OP-2 command `/astralvacuum <target>`. The pipe is a chain of `Display.ItemDisplay` entities: up to 24 straight segments (0.75 block each) plus one vacuum head. Segments follow a quadratic Bezier with a small lateral bow, are snapped to the local ground height, and are repositioned each tick without rewriting transformation NBT.
+- Prototype model: `vacuum_head.json` is converted from `models/vacuumhead.bbmodel` (18 elements, 128x128 texture decoded from its data URI). Blockbench rotations 16.38954 and -26.56505 degrees are not legal vanilla element rotations, so they are clamped to 22.5 / -22.5 degrees. The head model is translated so its +Z front is 0.509 blocks from the display center and its bottom rests on the ground. `vacuum_piece.json` is a 1-block gray-white tube along +Z, scaled to 0.75 per segment.
+- Prototype mechanism: target must be an `Enemy` within 16 blocks. The pipe extends for 8 ticks, then pulls the target 0.35 blocks per tick toward 1.5 blocks in front of the caster, and deals 5 skill damage when the target is within 1.35 blocks. Hard lifetime is 80 ticks. Log anchors: `AP_VACUUM_START`, `AP_VACUUM_PULL`, `AP_VACUUM_DAMAGE`, `AP_VACUUM_END`.
+- Validation: both generated item models parse through `BlockModel.fromStream` (1 and 18 elements); `./gradlew.bat :neoforge-1.21.1:build` passed; the hidden item is not added to the creative tab. No live run in this round: rendering, head orientation, ground contact and pulling remain unverified.
+- Not included: the actual Trash Can sign item, its active/passive behaviour, recipes, tooltips, guide entries, or ports to the other four lines.
+
+## 26.4-SNAPSHOT.18
+
+### This line
+
+- Change: version bumps to `26.4-SNAPSHOT.18` on all five lines; this round reworks counterattacks into a 10-second melee-only state (P0 three lines; the two Fabric lines keep the previous semantics until P1).
+- Counter state (26.1.2 / neo21 / forge): added `CounterStateManager`. A qualifying melee hit activates the `ren_counter` effect for exactly 200 ticks; while active, every qualifying melee hit counterattacks for free. Later hits do not refresh the duration, and the effect no longer mirrors charge counts.
+- Restriction: only melee hits activate or trigger the state. Projectiles, explosions, magic and skill/card damage are excluded; friendly targets (players and Touhou Little Maid entities) neither activate nor get counterattacked. Every other target, including neutral/passive mobs, is countered.
+- Consistency (26.1.2 / neo21 / forge): 26.1.2 now uses the same `DeathTriggerGuard.claimPair` guard as the other two lines, so one swing cannot counter twice. `CounterStateManager.isMeleeDamage` also rejects every Astral Dice custom damage type (skill, card spell, true, extra, card cost, unreducible and dice damage), so skill or card damage can never activate or retrigger the state.
+- Resource rules: one charge is consumed only on a successful activation, and Gold Scale is granted only on that activation. Game Master's shield now caps charges at 4 while the Souri Sign is equipped instead of crushing an existing 4 down to 1; losing the shield no longer removes an active 10-second state.
+- Airbag: a lethal melee hit still negates the damage and now also activates the 10-second state before countering the attacker; lethal ranged/magic damage is still negated but does not activate or counter.
+- Asset (all five lines): the `ren_counter` HUD icon was replaced with `images/反击.png` (392 B, SHA-256 `4e1131d856ab07ed3e68593d9fa11761b5eb505479e173d9a3368bde94fdfe3d`).
+- Build: five-line `:build` passed. Live acceptance (P0 three lines, superflat worlds): `neoforge-1.21.1` passed the full P0 counter suite including the Touhou Little Maid friendly path; `forge-1.20.1` and `neoforge-26.1.2` passed all core P0 cases, but their test environments do not have Touhou Little Maid, so the maid-friendly path remains unverified and is not claimed as passing. Details: `docs/reports/2026-11-12-counter-p0-acceptance.md`.
+
+## 26.4-SNAPSHOT.17
+
+### This line
+
+- Change: version bumps to `26.4-SNAPSHOT.17` on all five lines; this round extends the Adrenaline chips' dodge.
+- Adrenaline (all five lines): both the common and high-efficiency chips now grant a 20%% dodge chance while the low-health bonus is active. Equipping both stacks the chance to 40%%. Dodge is rolled once per incoming hit.
+- Restriction (all five lines): only melee attacks from hostile mobs can be dodged; player attacks, projectiles/ranged attacks and environmental damage are excluded.
+- Text (all five lines, zh / en / ja): both chip tooltips and the guide entries now state the 20%% dodge, the stacking rule and the monster-melee restriction.
+- Build: five-line `:build` (compile / build verification only; no live run in this round).
+
+## 26.4-SNAPSHOT.16
+
+### This line
+
+- Change: version bumps to `26.4-SNAPSHOT.16` on all five lines; this round adds the Mamushi-Souri link, reworks Souri's active skill, updates two detective recipes, fixes several sign tooltips and cleans up the guide text.
+- Asset (all five lines): the Immortal Brew (`仙酿`) effect icon was replaced with `images/仙酿.png`.
+- Souri (all five lines): the active skill now only places the drink and grants 1 stack of Counter; it no longer grants Golden Scale. Golden Scale now comes only from counterattacks or the Mamushi link. Tooltip and guide text were rewritten to match.
+- Mamushi (all five lines): when its active skill gives cards to a player wearing the Souri Sign, that player gains 1 stack of Golden Scale (once per target per active). A new note is shown in the tooltip note area.
+- Recipes (all five lines): Fanny Sign is now `RRR / GCG / BTB` (redstone / gold ingot / blank sign / star coin / golden dice); Bonnie Sign replaces its two spyglasses with Mark Paint.
+- Tooltips (all five lines): removed the two parentheticals from the Al Sign; Inkshadow's placement line now begins with "During placement: cannot attack"; Fen Sign's "true damage" is now "skill damage".
+- Guide (all five lines, zh / en / ja): all `§` colour codes removed; LF line breaks replaced with tabs; Teru Sign's active description shortened to avoid the font anomaly.
+- Build: five-line `:build` (compile / build verification only; no live run in this round).
+
+## 26.4-SNAPSHOT.15
+
+### This line
+
+- Change: version bumps to `26.4-SNAPSHOT.15` on all five lines; this round centralises random card dealing in `RandomCardHandler` and fixes Bonnie's passive pool.
+- Fix / feature (all five lines): `RandomCardHandler.CardCategory.BATTLE` is now exactly 8 public battle cards — attack-medium / large / epic, defense-medium / large / epic, Meito and Charge. `ALL` keeps the other public cards (including Shadow Strike), but every pool removes exclusive cards and `ATTACK_CARD_FULL_POWER`. Added `HEALING` (burger / chocolate cake / luxury feast) and `giveFixedCardTo` public entry points.
+- Fix (Bonnie, all five lines): the passive "kill a marked hostile" reward no longer uses the private 3-card attack pool; it calls `RandomCardHandler.giveCardTo(killer, BATTLE)`, so defence / Meito / Charge can now drop.
+- Refactor (all five lines): Pandaman's private 3-choice healing roll now uses `HEALING`; Satellite's fixed Orbital Strike and EventEffects' fixed attack-epic now use `giveFixedCardTo`. No private random card pool remains for public cards (exclusive-card grants excluded).
+- Build: five-line `:build` (compile / build verification only; no live run in this round).
+
+## 26.4-SNAPSHOT.14
+
+### This line
+
+- Change: version bumps to `26.4-SNAPSHOT.14` on all five lines; this round fixes the `ChipShopService.grantRefresh` ceiling check.
+- Fix (all three shop lines — 26.1.2 / neo21 / forge): `grantRefresh` compared pre/post records by reference (`next == state`), but `withRefreshGranted()` always allocates a new record even when `refreshesLeft` is clamped at `REFRESH_MAX`; the guard now compares the `refreshesLeft` values, so a capped grant returns `false` and does not rewrite the store. Affected: `neoforge-26.1.2/.../ChipShopService.java:105`, `neoforge-1.21.1/.../ChipShopService.java:103`, `forge-1.20.1/.../ChipShopService.java:71`.
+- Build: `:neoforge-26.1.2:build` / `:neoforge-1.21.1:build` / `:forge-1.20.1:build` (compile/build verification only; no live run in this round).
+
 ## 26.4-SNAPSHOT.13
 
 ### This line

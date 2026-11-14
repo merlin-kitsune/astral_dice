@@ -10,7 +10,6 @@ import com.merlinkitsune.astral_dice.effect.SouriGoldScaleEffect;
 import com.merlinkitsune.astral_dice.entity.SouriDrinkEntity;
 import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
 import com.merlinkitsune.astral_dice.item.ModItems;
-import com.merlinkitsune.astral_dice.item.RenShieldManager;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -25,7 +24,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * 金鲤立牌（souri，传奇）的服务端权威管理器：金鳞 / 金鲤化龙 / 反击层数 / 饮品拾取。
+ * 金鲤立牌（souri，传奇）的服务端权威管理器：金鳞 / 金鲤化龙 / 可激活反击次数 / 饮品拾取。
  *
  * <h2>状态真值</h2>
  * <ul>
@@ -33,9 +32,9 @@ import java.util.UUID;
  *   <li>金鳞 = 玩家附件 {@code SOURI_GOLD_SCALES}（0..{@link #GOLD_SCALE_MAX}），HUD 由
  *       {@code souri_gold_scale} 效果镜像；</li>
  *   <li>金鲤化龙 = 锁存态效果 {@code souri_dragon}（金鳞首次达到 4 层时授予，卸下立牌时清除）；</li>
- *   <li>反击 = 复用 {@code RenShieldManager} 的层数附件 {@code REN_COUNTER_CHARGES}，
- *       但金鲤在佩戴时把上限放宽到 {@link #COUNTER_MAX}（用户裁决：允许叠加，上限 4，
- *       每次反击消耗 1 层并 +1 金鳞）。</li>
+ *   <li>反击 = 可激活次数复用附件 {@code REN_COUNTER_CHARGES}（佩戴金鲤时上限 {@link #COUNTER_MAX}）；
+ *       激活与 10 秒状态由 {@code CounterStateManager} 统一管理：每次成功激活消耗 1 层，
+ *       状态期间免费反击，反击命中本身不再扣层。</li>
  * </ul>
  *
  * <h2>属性收益</h2>
@@ -57,7 +56,7 @@ public final class SouriSignManager {
     /** 金鲤化龙后，每层金鳞提供的攻击力 */
     public static final int ATTACK_PER_SCALE = 1;
 
-    /** 金鲤佩戴时的反击层数上限（用户裁决：与金鳞上限对齐） */
+    /** 金鲤佩戴时的可激活反击次数上限（用户裁决：与金鳞上限对齐） */
     public static final int COUNTER_MAX = 4;
 
     /** 防御力修饰器的固定 key（幂等覆盖） */
@@ -68,25 +67,14 @@ public final class SouriSignManager {
 
 
     // ══════════════════════════════════════════════════════════════════════════
-    //  反击（复用 Ren 层数附件，佩戴金鲤时上限放宽到 4）
+    //  反击可激活次数（佩戴金鲤时上限 4；状态本体由 CounterStateManager 管理）
     // ══════════════════════════════════════════════════════════════════════════
 
-    /** 增加反击层数（仅在佩戴金鲤时由本立牌调用；上限 {@link #COUNTER_MAX}）。 */
+    /** 增加可激活次数（仅在佩戴金鲤时由本立牌调用；上限 {@link #COUNTER_MAX}）。 */
     public static void addCounter(Player player, int delta) {
         if (player == null || player.level().isClientSide() || delta <= 0) return;
         int total = Math.min(COUNTER_MAX, ModAttachments.getRenCounterCharges(player) + delta);
         ModAttachments.setRenCounterCharges(player, total);
-        RenShieldManager.refreshCounterEffect(player);
-    }
-
-    /** 消耗 1 层反击（由 {@code combat/DiceCombatEvents} 的反击出口调用）；返回是否真的消耗。 */
-    public static boolean consumeCounter(Player player) {
-        if (player == null || player.level().isClientSide()) return false;
-        int charges = ModAttachments.getRenCounterCharges(player);
-        if (charges <= 0) return false;
-        ModAttachments.setRenCounterCharges(player, charges - 1);
-        RenShieldManager.refreshCounterEffect(player);
-        return true;
     }
 
     // ══════════════════════════════════════════════════════════════════════════
@@ -200,7 +188,6 @@ public final class SouriSignManager {
         ModAttachments.setSouriAwakening(player, 0);
         ModAttachments.setSouriGoldScales(player, 0);
         ModAttachments.setRenCounterCharges(player, 0);
-        RenShieldManager.refreshCounterEffect(player);
         DiceCombatModifiers.setDefenseArmorBonus(player, DEFENSE_KEY, 0);
         if (player.hasEffect(ModEffects.SOURI_GOLD_SCALE)) {
             com.merlinkitsune.starengine.event.ModEffectRemoval.remove(player, ModEffects.SOURI_GOLD_SCALE);
@@ -233,7 +220,7 @@ public final class SouriSignManager {
 
     /**
      * 拾取结算：给拾取方施加对应效果（仙酿额外迅捷 II 2:00 + 立即回复 6 点），
-     * 给**立牌持有者（放置者）** +1 层反击，并按联动给**持蛟龙立牌者**加蛟龙觉醒。
+     * 给**立牌持有者（放置者）** +1 层可激活次数，并按联动给**持蛟龙立牌者**加蛟龙觉醒。
      */
     public static void onDrinkPicked(Player picker, SouriDrinkEntity drink) {
         if (picker == null || drink == null || picker.level().isClientSide()) return;

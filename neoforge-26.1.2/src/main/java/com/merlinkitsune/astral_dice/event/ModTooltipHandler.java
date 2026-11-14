@@ -24,6 +24,7 @@ import com.merlinkitsune.astral_dice.item.MarkManager;
 import com.merlinkitsune.astral_dice.item.StarLightManager;
 import com.merlinkitsune.astral_dice.item.sign.MisakiSignItem;
 import com.merlinkitsune.astral_dice.item.sign.SouriSignManager;
+import com.merlinkitsune.astral_dice.item.sign.Z3000SignItem;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.RepulsionItem;
 import com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil;
@@ -1663,6 +1664,8 @@ public class ModTooltipHandler {
             addSignLines(tooltip, "tooltip.astral_dice.sign.mamushi_active");
             addSignPassiveTitle(tooltip, "tooltip.astral_dice.sign.mamushi.passive");
             addSignLines(tooltip, "tooltip.astral_dice.sign.mamushi_passive");
+            tooltip.add(Component.empty());
+            addSignNoteLines(tooltip, "tooltip.astral_dice.sign.mamushi_note");
             if (event.getEntity() instanceof Player p) {
                 // 「觉醒」计数器在进入真龙形态后**已失效** ⇒ 不再显示该行,只留「真龙形态」标注。
                 // 判据用**已同步**的觉醒层数(客户端 tooltip 不发起 Curios 调用)。
@@ -1832,6 +1835,22 @@ public class ModTooltipHandler {
             tooltip.add(Component.empty());
             addSignNoteLines(tooltip, "tooltip.astral_dice.sign.sykes_note");
             addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player jp ? jp : null);
+        }
+        // 垃圾桶立牌(z3000,稀有):主动「过来把你」拖拽 / 被动「回收利用」冷却与攻击成长
+        if (stack.is(ModItems.Z3000_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "tooltip.astral_dice.sign.z3000.active");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.z3000_active");
+            addSignPassiveTitle(tooltip, "tooltip.astral_dice.sign.z3000.passive");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.z3000_passive");
+            Player z3000Viewer = event.getEntity() instanceof Player zp ? zp : null;
+            if (z3000Viewer != null) {
+                addSignCounter(tooltip, "tooltip.astral_dice.sign.z3000_status",
+                        ModAttachments.getZ3000AttackStacks(z3000Viewer), Z3000SignItem.ATTACK_CAP,
+                        ModAttachments.getZ3000HealthyKills(z3000Viewer) % 2);
+            }
+            addSignCooldownRemaining(tooltip, z3000Viewer);
         }
         // 符卡-福 / 符卡-祸(风水师立牌专属效果牌);键名 = 规格 §2.6 冻结值
         // (tooltip.astral_dice.fu_card / tooltip.astral_dice.huo_card)

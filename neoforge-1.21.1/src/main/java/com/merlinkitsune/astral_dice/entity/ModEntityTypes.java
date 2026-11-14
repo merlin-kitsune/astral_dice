@@ -90,6 +90,18 @@ public final class ModEntityTypes {
                     .clientTrackingRange(10)
                     .build("inkshadow_portal"));
 
+    /**
+     * 抓钩（2026-11-13 原型）：只保留拖拽目标的钩头实体。
+     * 实体只做「飞行 / 钩住 / 收回」状态机，尺寸取 0.5×0.5（与原实现一致）；
+     * {@code clientTrackingRange(10)} 覆盖 12.5 格射程，保证链子与钩子在客户端可见。
+     */
+    public static final DeferredHolder<EntityType<?>, EntityType<GrapplingHookEntity>> GRAPPLING_HOOK =
+            ENTITY_TYPES.register("grappling_hook", () -> EntityType.Builder
+                    .<GrapplingHookEntity>of(GrapplingHookEntity::new, MobCategory.MISC)
+                    .sized(0.5F, 0.5F)
+                    .clientTrackingRange(10)
+                    .build("grappling_hook"));
+
     private ModEntityTypes() {
     }
 }

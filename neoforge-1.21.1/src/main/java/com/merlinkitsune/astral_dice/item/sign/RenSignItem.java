@@ -34,7 +34,7 @@ import top.theillusivec4.curios.api.CuriosApi;
  * 自身目标由 {@link SelfTargetable#allowSelf()} 打开(右键路径,消费方侧实现,不改共享库的
  * {@code TargetType#matches})。
  *
- * <p><b>鼠鼠护盾</b> = 5 黄心(10 点吸收)+ 抗性提升 + 1 层一次性反击;黄心被打空即立即清空
+ * <p><b>鼠鼠护盾</b> = 5 黄心(10 点吸收)+ 抗性提升 + 1 层可激活反击次数;黄心被打空即立即清空
  * (见 {@link RenShieldManager})。
  *
  * <p>主动为「目标选择器类」技能:按下主动键只开启选择会话(门控),确认目标后才施效并进入玩家级冷却

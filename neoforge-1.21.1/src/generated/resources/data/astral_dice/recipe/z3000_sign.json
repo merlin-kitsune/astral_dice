@@ -1,0 +1,33 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "D": {
+      "item": "astral_dice:dice"
+    },
+    "H": {
+      "item": "minecraft:hopper"
+    },
+    "I": {
+      "item": "minecraft:iron_ingot"
+    },
+    "R": {
+      "item": "minecraft:redstone"
+    },
+    "S": {
+      "item": "astral_dice:blank_sign"
+    },
+    "T": {
+      "item": "minecraft:iron_nugget"
+    }
+  },
+  "pattern": [
+    "HRH",
+    "ISI",
+    "TDT"
+  ],
+  "result": {
+    "count": 1,
+    "id": "astral_dice:z3000_sign"
+  }
+}

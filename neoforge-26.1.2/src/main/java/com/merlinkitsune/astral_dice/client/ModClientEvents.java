@@ -71,6 +71,7 @@ public class ModClientEvents {
         event.registerEntityRenderer(ModEntityTypes.SOURI_DRINK.get(), SouriDrinkRenderer::new);
         // 小猎手暗影之门（2026-11-10）：GeckoLib 5 渲染器 + 贴地门面（门面在 postRenderPass 里提交自定义几何）。
         event.registerEntityRenderer(ModEntityTypes.INKSHADOW_PORTAL.get(), InkShadowPortalRenderer::new);
+        event.registerEntityRenderer(ModEntityTypes.GRAPPLING_HOOK.get(), GrapplingHookRenderer::new);
     }
 
     /** 模型层定义：`astral_dice:barricade#main` / `astral_dice:repulsion#main`。 */

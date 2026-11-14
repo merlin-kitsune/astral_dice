@@ -1406,8 +1406,9 @@ public class ModAttachments {
                     .build());
 
     /**
-     * 游戏大师立牌(ren):一次性反击层数(0/1)。获得鼠鼠护盾时 +1,被攻击时消耗 1 层并对攻击者
-     * 注入一次现有反击伤害;护盾清空时归零。
+     * 游戏大师立牌(ren)/金鲤立牌(souri):可激活次数(游戏大师 1,佩戴金鲤时上限 4)。
+     * 获得护盾或放置饮品时 +1;首次近战命中消耗 1 次并进入 200 tick 反击状态,状态期间反击免费。
+     * 护盾清空时归零(佩戴金鲤时保留);反击状态本体见 {@code item/CounterStateManager}。
      */
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> REN_COUNTER_CHARGES =
             ATTACHMENTS.register("ren_counter_charges", () -> AttachmentType.builder(() -> 0)
@@ -2646,4 +2647,50 @@ public class ModAttachments {
     public static void setDeepseekIdleSince(net.minecraft.world.entity.player.Player player, long value) {
         player.setData(DEEPSEEK_IDLE_SINCE.get(), value);
     }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  垃圾桶立牌(z3000,2026-11-13)
+    //  仅服务端判定；攻击层数同步给客户端 tooltip。
+    // ══════════════════════════════════════════════════════════════════════════
+
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> Z3000_ATTACK_STACKS =
+            ATTACHMENTS.register("z3000_attack_stacks", () -> AttachmentType.builder(() -> 0)
+                    .serialize(Codec.INT.fieldOf("value"))
+                    .sync(ByteBufCodecs.INT)
+                    .build());
+
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> Z3000_HEALTHY_KILLS =
+            ATTACHMENTS.register("z3000_healthy_kills", () -> AttachmentType.builder(() -> 0)
+                    .serialize(Codec.INT.fieldOf("value"))
+                    .build());
+
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> Z3000_LAST_COOLDOWN_REDUCTION =
+            ATTACHMENTS.register("z3000_last_cooldown_reduction", () -> AttachmentType.builder(() -> 0L)
+                    .serialize(Codec.LONG.fieldOf("value"))
+                    .build());
+
+    public static int getZ3000AttackStacks(net.minecraft.world.entity.player.Player player) {
+        return player.getData(Z3000_ATTACK_STACKS.get());
+    }
+
+    public static void setZ3000AttackStacks(net.minecraft.world.entity.player.Player player, int value) {
+        player.setData(Z3000_ATTACK_STACKS.get(), Math.max(0, value));
+    }
+
+    public static int getZ3000HealthyKills(net.minecraft.world.entity.player.Player player) {
+        return player.getData(Z3000_HEALTHY_KILLS.get());
+    }
+
+    public static void setZ3000HealthyKills(net.minecraft.world.entity.player.Player player, int value) {
+        player.setData(Z3000_HEALTHY_KILLS.get(), Math.max(0, value));
+    }
+
+    public static long getZ3000LastCooldownReduction(net.minecraft.world.entity.player.Player player) {
+        return player.getData(Z3000_LAST_COOLDOWN_REDUCTION.get());
+    }
+
+    public static void setZ3000LastCooldownReduction(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(Z3000_LAST_COOLDOWN_REDUCTION.get(), value);
+    }
+
 }

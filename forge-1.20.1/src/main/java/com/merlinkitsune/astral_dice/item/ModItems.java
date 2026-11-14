@@ -715,14 +715,14 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(AstralRarities.legendary()), SandwichChipItem.HEALTH_HIGH));
 
-    // 肾上腺素-一般:生命值为 50% 或更低时,攻击力/防御力 +3(史诗)
+    // 肾上腺素-一般:生命值为 50% 或更低时,攻击力/防御力 +3;触发加成时被怪物近战攻击有 20% 闪避(史诗)
     public static final RegistryObject<Item> ADRENALINE_LOW = registerItem("adrenaline_low_chip",
             () -> new AdrenalineChipItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(AstralRarities.epic()), AdrenalineChipItem.BONUS_LOW));
 
-    // 肾上腺素-高效:生命值为 50% 或更低时,攻击力/防御力 +8;触发加成时被敌方攻击,
-    // 骰点 4-5 → 50% 闪避、6 → 100% 闪避本次伤害(传奇)
+    // 肾上腺素-高效:生命值为 50% 或更低时,攻击力/防御力 +8;触发加成时被怪物近战攻击有 20% 闪避;
+    // 与一般同时装备时叠加为 40%(传奇)
     public static final RegistryObject<Item> ADRENALINE_HIGH = registerItem("adrenaline_high_chip",
             () -> new AdrenalineChipItem(new Item.Properties()
                     .stacksTo(1)
@@ -1149,7 +1149,7 @@ public class ModItems {
                     .stacksTo(1).rarity(com.merlinkitsune.starengine.item.AstralRarities.bizarre())));
 
     // 金鲤立牌(souri,传奇,2026-11-09):主动「把酒言欢」放置葫芦饮(化龙后为仙酿),被动「不醉不归」
-    // (反击时叠金鳞、他人拾饮叠反击),4 层金鳞触发「金鲤化龙」。
+    // (成功进入反击状态时叠金鳞、他人拾饮叠可激活反击次数),4 层金鳞触发「金鲤化龙」。
     public static final RegistryObject<Item> SOURI_SIGN = registerItem("souri_sign",
             () -> new com.merlinkitsune.astral_dice.item.sign.SouriSignItem(new Item.Properties()
                     .stacksTo(1).rarity(com.merlinkitsune.starengine.item.AstralRarities.legendary())));
@@ -1164,6 +1164,15 @@ public class ModItems {
     // 每名玩家首次穿越一扇门 ⇒ 门主人 +2 攻击(随门对存活,可叠加),敌对目标靠近门受 2 点魔法伤害。
     public static final RegistryObject<Item> INKSHADOW_SIGN = registerItem("inkshadow_sign",
             () -> new com.merlinkitsune.astral_dice.item.sign.InkShadowSignItem(new Item.Properties()
+                    .stacksTo(1).rarity(com.merlinkitsune.starengine.item.AstralRarities.rare())));
+
+    // 垃圾桶立牌(z3000,稀有):主动「过来把你」16 格拖拽 + 5 点技能伤害,被动「回收利用」。
+    // 原型：Z3000 抓钩的管道节 / 吸尘头模型载体；不进创造栏、无配方。
+    public static final RegistryObject<Item> VACUUM_PIECE = registerItem("vacuum_piece",
+            () -> new Item(new Item.Properties()));
+
+    public static final RegistryObject<Item> Z3000_SIGN = registerItem("z3000_sign",
+            () -> new com.merlinkitsune.astral_dice.item.sign.Z3000SignItem(new Item.Properties()
                     .stacksTo(1).rarity(com.merlinkitsune.starengine.item.AstralRarities.rare())));
 
     // 机械师立牌(命名:megas,传奇):被动「物资补充」(手牌<6 张时每 1:00 自动获得 1 张随机卡牌)

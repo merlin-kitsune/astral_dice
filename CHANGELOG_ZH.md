@@ -4,6 +4,192 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
+## 26.4-SNAPSHOT.32
+
+### 本线
+
+- 修复：26.1.2 的 `GrapplingHookRenderer` 在实体渲染器构造阶段创建 `ItemStack`，此时物品组件尚未绑定，资源重载抛 `Components not bound yet`（`Failed to create model for astral_dice:grappling_hook`），客户端停在标题画面无法进入世界；改为首次 `extractRenderState` 时惰性创建管道/头部物品栈。
+- 构建：P0 三线重新构建并通过；1.21.1 / 1.20.1 / 26.1.2 产物 SHA-256 分别为 c4ff8df0e6348d039e86d83670f3548f59d6a18ea7c11b467fcb111d0c3130ca、9aa7b89dc525ce2b33c58ce411344afcfec469ba04f3271b46ec669e34818cfc、b1646981ca216380104ef0bbc048dcba8996708f3b3fbe49ecc1439380fee28a。
+- 实机：26.1.2 修复后 READY，Z3000 全套 PASS（9 格拖拽 + 5 点伤害、17 格拒绝 / 16.00 格可用、拖拽击杀 +1 反击与 3550→2379 冷却缩减、同分钟第二杀不重复、攻击 12/13 封顶、低血不计、冷却门控）；报告见 `docs/reports/2026-11-14-z3000-acceptance.md`。
+
+## 26.4-SNAPSHOT.31
+
+### 本线
+
+- 新增：垃圾桶立牌 z3000_sign（稀有）落地 P0 三线（neoforge-1.21.1 / forge-1.20.1 / neoforge-26.1.2）；fabric 两线仅版本同步。
+- 主动「过来把你」：16 格内选定敌对目标后生成抓钩，目标被拖到玩家面前 1.5 格并受到 5 点技能伤害；若这次技能伤害直接击杀目标，获得 1 层「反击」。
+- 被动「回收利用」：击杀敌对目标使主动剩余冷却缩短 33%，每分钟最多一次；每击杀 2 个最大生命 ≥20 的敌对目标攻击力 +1，最多 +12。攻击加成通过固定 id 的属性修饰符刷新。
+- 兼容：Z3000 的反击层可在没有鼠鼠护盾或金鲤时触发 10 秒反击状态；护盾清理与反击状态过期不会清掉 Z3000 的层数。
+- 配方：HRH / ISI / TDT（H=漏斗、R=红石、I=铁锭、S=空白立牌、T=铁粒、D=普通骰子），已生成三线 recipe/advancement；verify_crafting_recipe_uniqueness.py 三线 collisions=0。
+- 资源与本地化：三线新增 z3000_sign 物品模型、32×32 贴图、创造栏条目与中英日 tooltip/手册文本；26.1.2 为隐藏物品 vacuum_piece 声明自定义模型，修复 runClientData 的 Missing item model definitions。
+- 验证：:neoforge-1.21.1:build :forge-1.20.1:build :neoforge-26.1.2:build → BUILD SUCCESSFUL in 13s，exit 0。产物 SHA-256：1.21.1 3f3e2781a316b1bcffbadd40f071f5a86683e7a14489a325e2dceff5f7de1ebe；1.20.1 a9dd78593fc5a3cce88bcf6f29bb607d4806e2ab3eab4a6aa4b559d9e9d6dd09；26.1.2 305c19dc45e5850cc5563147cca682575254e50cf14bf353800011180095cff6。
+- 实机（.31 产物）：1.21.1 与 1.20.1 主链路 PASS（9 格拖拽 + 5 点伤害、17 格拒绝 / 16.00 格可用、拖拽击杀 +1 反击、每分钟一次 -33% 冷却、同分钟第二杀不重复缩减、攻击叠层与 +12 封顶、低血不计；1.21.1 的叠层封顶与低血排除仅有链路日志，数值读数未留档）。26.1.2 在 .31 启动时因渲染器构造期 `Components not bound yet` 崩溃，改由 .32 修复后全套 PASS。报告见 `docs/reports/2026-11-14-z3000-acceptance.md`。未 commit/push/tag/CF。
+
+## 26.4-SNAPSHOT.30
+
+### 本线
+
+- 变更：版本号升至 `26.4-SNAPSHOT.30`（五线）；仅 `neoforge-1.21.1` 有产品代码/资源改动，其余四线仅为版本同步。
+- 清理（仅 neoforge-1.21.1 原型）：删除抓钩原型剩余的全部第三方派生内容——6 个 `grappling_hook_{attach,shoot}_*.ogg` 音效、`textures/entity/hook/grappling_hook.png`、声音注册与字幕、第三方声明/许可文件，以及 `GrapplingHookEntity`/`GrapplingHookRenderer` 里的 SPDX/许可头。
+- 重写：`GrapplingHookEntity` 与 `GrapplingHookRenderer` 改为项目自有实现，保留同样的拖拽行为与 `vacuum_piece` 管道 / `vacuum_head` 头部视觉；无物品、无方块钩取、无玩家牵引、无伤害；临时入口仍是 OP 2 的 `/astralhook <target>`。
+- 验证：五线 `:build` PASS（`BUILD SUCCESSFUL in 12s`，exit 0）；`astral_dice-26.4-SNAPSHOT.30+neoforge_1.21.1.jar` SHA-256 `fdea2efe2e62c5588e1f443654d61ef00180ced33980fa19804ab9f63dee6dcf`；本条未实机。未 commit/push/tag/CF。
+
+## 26.4-SNAPSHOT.29
+
+### 本线
+
+- 变更：版本号升至 `26.4-SNAPSHOT.29`（五线）；仅 `neoforge-1.21.1` 有产品代码改动，其余四线仅为版本同步。
+- 修复（仅 neoforge-1.21.1 原型）：`EntityRenderDispatcher` 已把 PoseStack 平移到实体位置，渲染器又叠加了世界坐标，导致管道/头部被画到偏移两倍处而不可见。现将 from/to/head 全部改成相对实体原点坐标。
+- 验证：`:neoforge-1.21.1:build` 通过；1.21.1 在超平坦测试世界实机重跑，可见白色管道从玩家连到目标，目标被拖到正前方 1.5 格，管道随距离缩短；关键帧 `vac29-700/1100/1500/3000.png`，日志以 `AP_GRAPPLE_END reason=arrived age=53` 结束。头部可见，但源模型只有 1.8px 高，侧视仍像一块橙红扁板；是否加厚待用户目视裁决。
+
+## 26.4-SNAPSHOT.28
+
+### 本线
+
+- 变更：版本号升至 `26.4-SNAPSHOT.28`（五线）；仅 `neoforge-1.21.1` 有产品代码改动，其余四线仅为版本同步。
+- 修复（仅 neoforge-1.21.1 原型）：抓钩实体新增同步的 owner 实体 id；客户端 `Projectile#getOwner()` 不会解析 ownerUUID，导致渲染器拿不到玩家、整条管道不显示。渲染器改用 `getRenderOwner()`。
+- 验证：客户端探针确认 owner 同步成功（`getRenderOwner()` 返回 `LocalPlayer Dev`）；实机重跑仍看不到管道/头部，原因是渲染器偏移，已在 `.29` 修复。
+
+## 26.4-SNAPSHOT.27
+
+### 本线
+
+- 变更：版本号升至 `26.4-SNAPSHOT.27`（五线）；仅 `neoforge-1.21.1` 有产品代码改动，其余四线仅为版本同步。
+- 改动（仅 neoforge-1.21.1 原型）：抓钩保留 `.26` 的发射/命中/拖拽动画与音效，把钩头换成我们的 `vacuum_head` 模型、铁链换成白色 `vacuum_piece` 管道逐节渲染；移除原 `GrapplingHookModel` 与锁链方块绘制。
+- 验证：构建通过；1.21.1 实机重跑看不到管道/头部，原因是客户端 owner 为空且渲染器重复叠加实体偏移；两处已在 `.28`/`.29` 修复。
+
+## 26.4-SNAPSHOT.26
+
+### 本线
+
+- 变更：版本号升至 `26.4-SNAPSHOT.26`（五线）；仅 `neoforge-1.21.1` 有产品代码改动，其余四线仅为版本同步。
+- 修复（仅 neoforge-1.21.1 原型）：被拖拽目标进入停止阈值后，直接吸附到玩家正前方 1.5 格，避免 0.175 格步长把目标留在 2~3 格之外。
+- 验证：`:neoforge-1.21.1:build` PASS；2026-11-13 19:06/19:08 实机 1.21.1 确认目标从 9 格拉到玩家正前方 1.5 格（z=-1.00），日志 `AP_GRAPPLE_END age=49`；截图见 `docs/reports/2026-11-13-grappling-hook-live.md`，待用户目视确认。
+
+## 26.4-SNAPSHOT.25
+
+### 本线
+
+- 变更：版本号升至 `26.4-SNAPSHOT.25`（五线）；仅 `neoforge-1.21.1` 有产品代码/资源改动，其余四线仅为版本同步。
+- 改动（仅 neoforge-1.21.1 原型）：抓钩不再作为物品，也不再抓方块把玩家拉过去。现在钩子飞向活体怪物、命中后勾住，并把目标拖到玩家视线前方 1.5 格；目标靠近时锁链同步缩短。临时入口为 OP 2 的 `/astralhook <target>`，只接受 `Mob` 目标且不结算伤害。
+- 范围：仍是 1.21.1 单线视觉/机制原型；钩模型、锁链渲染与音效仍属临时验证素材。
+- 验证：`:neoforge-1.21.1:build` PASS；2026-11-13 18:43 实机 1.21.1 确认锁链从玩家伸向目标、目标被拖动、链长随距离缩短；但目标停在距玩家约 2.7 格处，已由 `.26` 吸附修正。
+
+## 26.4-SNAPSHOT.24
+
+### 本线
+
+- 变更：版本号升至 `26.4-SNAPSHOT.24`（五线）；仅 `neoforge-1.21.1` 有产品代码/资源改动，其余四线仅为版本同步。
+- 新原型（仅 neoforge-1.21.1）：抓钩初版原型，当时为物品形态（右键发射/收回）；后续条目已改为 OP 2 命令并移除物品路径。
+- 验证：`:neoforge-1.21.1:build` 在 `.24` PASS；未实机。
+- 范围：1.21.1 单线效果原型，不是完整垃圾桶立牌，也未向其他四线移植。
+
+## 26.4-SNAPSHOT.23
+
+### 本线
+
+- 变更：版本号升至 `26.4-SNAPSHOT.23`（五线）；仅 `neoforge-1.21.1` 有产品代码/资源改动，其余四线仅为版本同步。
+- 修复（仅 neoforge-1.21.1 原型）：吸尘头模型的 UV 仍是 bbmodel 的 64 单位空间，而 `FaceBakery` 始终按 16 单位换算，导致取样越界、头部显示为白色平板。生成模型时把 UV 统一除以 4 转到 16 单位空间。
+- 范围：仍是垃圾桶立牌原型（隐藏 `vacuum_piece` + OP 2 的 `/astralvacuum`），不是完整立牌。
+- 验证：待构建与实机目视。
+
+## 26.4-SNAPSHOT.22
+
+### 本线
+
+- 变更：版本号升至 `26.4-SNAPSHOT.22`（五线）；仅 `neoforge-1.21.1` 有产品代码改动，其余四线仅为版本同步。
+- 修复（仅 neoforge-1.21.1 原型）：吸尘管道在拖回时真正变短。`DisplayRenderer` 完全不读取 `Entity.isInvisible()`，此前 `setInvisible(true)` 隐藏的旧节仍会被渲染，看起来像一条不会缩短的静态管道。现在隐藏的节还会被 `hideSegment(...)` 挪到 `level.getMinBuildHeight() - 8`。
+- 修复（仅 neoforge-1.21.1 原型）：吸尘头在每次几何更新时显式恢复可见，并改为非等比缩放 `HEAD_SCALE_XZ=3`、`HEAD_SCALE_Y=4`（源模型只有 1.8 像素高），加 `HEAD_HOVER=0.02` 避免与地面 z-fighting。
+- 修复（仅 neoforge-1.21.1 原型）：所有吸尘显示实体带 `astral_vacuum` 标签；`ServerStartedEvent` 清理中断测试遗留的孤儿显示实体，`ServerStoppingEvent` 清理仍在活动的管道。
+- 诊断（仅 neoforge-1.21.1 原型）：每 5 tick 输出 `AP_VACUUM_GEOM age=... len=... visible=... head=... target=...`，报告当前管道长度与可见节数。
+- 范围：仍是垃圾桶立牌原型（隐藏 `vacuum_piece` + OP 2 的 `/astralvacuum`），不是完整立牌。
+- 验证：`./gradlew.bat :neoforge-1.21.1:build :forge-1.20.1:build :neoforge-26.1.2:build :fabric-1.20.1:build :fabric-1.21.1:build --console=plain` 结果为 `BUILD SUCCESSFUL in 10s`（exit 0）；根 `build/libs` 已有五枚 `.22` jar，`run/neoforge-1.21.1/mods` 已换成 `.22` neoforge jar。实机（仅 neoforge-1.21.1，超平坦世界 新的世界）：管道缩短与直线牵引已确认（AP_VACUUM_GEOM len 7.18 → 1.01、visible 10 → 1）；头部实体已选中 astral_dice:item/vacuum_head，但贴图取样仍越界、显示为白色平板，头部视觉未修好。
+
+## 26.4-SNAPSHOT.21
+
+### 本线
+
+- 变更：版本号升至 `26.4-SNAPSHOT.21`（五线）；仅 `neoforge-1.21.1` 有产品代码改动，其余四线仅为版本同步。
+- 修复（仅 neoforge-1.21.1 原型）：吸尘头不再悬空、不再看起来被压扁。`ItemRenderer` 在显示变换之后固定执行 `translate(-0.5)`，导致 scale=2 的模型三轴各偏移 +0.5 格；`baseDisplayTag()` 改为写 `translation = -0.5*(scale-1)`，头部底边落在地面。
+- 变更（仅 neoforge-1.21.1 原型）：管道改为沿固定 `pullDir` 的贴地直线，从起点直达吸尘头；去掉二次贝塞尔侧向 `bow` 与逐节重取地面造成的弯曲。每节按 0.75 格等距排布，未伸到的节先隐藏；吸尘头从施放者面前出发，目标沿同一直线被拖回。
+- 变更（仅 neoforge-1.21.1 原型）：速度降低 50%：`EXTEND_TICKS` 8 → 16、`PULL_STEP` 0.35 → 0.175；`MAX_LIFE_TICKS` 80 → 160，半速下留出余量。`HEAD_FRONT` 从 `4.072/16*2` 更正为实际模型前端 `3.986/16*2`。
+- 范围：仍是垃圾桶立牌原型（隐藏 `vacuum_piece` + OP 2 的 `/astralvacuum`），不是完整立牌。
+- 验证：`./gradlew.bat :neoforge-1.21.1:build :forge-1.20.1:build :neoforge-26.1.2:build :fabric-1.20.1:build :fabric-1.21.1:build --console=plain` 结果为 `BUILD SUCCESSFUL`（最终重跑 3s）；`.21` jar 内 `VacuumPipeManager$Pipe` 已含 `pullDir` 字段与 `pipeStart(ServerLevel, ServerPlayer, Vec3)`（`javap` 复核）。本轮未实机：头部贴地、直线牵引与半速均未目视验证。
+
+## 26.4-SNAPSHOT.20
+
+### 本线
+
+- 变更：版本号升至 `26.4-SNAPSHOT.20`（五线）；仅 `neoforge-1.21.1` 有产品代码改动，其余四线仅为版本同步。
+- 修复（仅 neoforge-1.21.1 原型）：动态吸尘管道的拉到位判定 `ARRIVE_DISTANCE` 从 `1.35` 改为 `1.60` 格。目标被 `FRONT_OFFSET=1.5` 拉到身前 1.5 格后，旧阈值 `1.35` 永远不满足，导致 `AP_VACUUM_DAMAGE` 不触发；现在到 1.5 格即判定到位并结算 5 点技能伤害。
+- 范围：仍是垃圾桶立牌的原型（隐藏 `vacuum_piece` 物品 + OP 2 的 `/astralvacuum`），不是完整立牌。
+- 实机（仅 neoforge-1.21.1）：超平坦世界 `新的世界`，目标为 1000 血的僵尸，玩家前方 8 格施放。生成 13 个 `Display.ItemDisplay`（12 节 + 1 头）；目标距离 8.00 → 7.65 → 4.15 → 1.50；日志出现 `AP_VACUUM_DAMAGE ... damage=5.0` 与 `AP_VACUUM_END reason=arrived age=27`，显示实体全部回收。基础伤害锚点为 5.0；目标实际掉血 28（1000→972），差值疑似来自伤害折叠效果牌加成，尚未隔离确认。
+
+## 26.4-SNAPSHOT.19
+
+### 本线
+
+- 变更：版本号升至 `26.4-SNAPSHOT.19`（五线）；本轮新增垃圾桶立牌「动态吸尘管道」的 `neoforge-1.21.1` 单线原型，尚不是完整立牌。
+- 原型（仅 neoforge-1.21.1）：隐藏物品 `astral_dice:vacuum_piece` 与 OP 2 命令 `/astralvacuum <target>`。管道由一串 `Display.ItemDisplay` 组成：最多 24 节直管（每节 0.75 格）加一个吸尘头。各节沿二次贝塞尔曲线排布并带轻微侧弯，按当地地面高度贴地；每 tick 只改实体位置与朝向，不重写 transformation NBT。
+- 原型模型：`vacuum_head.json` 由 `models/vacuumhead.bbmodel` 转换（18 个元素，128x128 贴图从 data URI 解出）。Blockbench 的 16.38954 与 -26.56505 度不是原版允许的元素旋转角，已夹到 22.5 / -22.5 度；头部整体平移，使 +Z 前端位于显示中心前 0.509 格、底部贴地。`vacuum_piece.json` 是沿 +Z 的 1 格长灰白细管，每节缩放到 0.75。
+- 原型机制：目标必须是 16 格内的 `Enemy`。前 8 tick 伸管，之后每 tick 把目标向施放者面前 1.5 格拉 0.35 格；目标进入 1.35 格时造成 5 点技能伤害；最长 80 tick。日志锚点：`AP_VACUUM_START`、`AP_VACUUM_PULL`、`AP_VACUUM_DAMAGE`、`AP_VACUUM_END`。
+- 验证：两个生成的物品模型均通过 `BlockModel.fromStream` 解析（1 / 18 个元素）；`./gradlew.bat :neoforge-1.21.1:build` 通过；隐藏物品未加入创造栏。本轮未实机：渲染、头部朝向、贴地与牵引均未验证。
+- 未包含：真正的垃圾桶立牌物品、主动/被动、配方、tooltip、手册条目，以及另外四线的移植。
+
+## 26.4-SNAPSHOT.18
+
+### 本线
+
+- 变更：版本号升至 `26.4-SNAPSHOT.18`（五线）；本轮把反击改为 10 秒近战状态（P0 三线；fabric 两线在 P1 前保持旧语义）。
+- 反击状态（26.1.2 / neo21 / forge）：新增 `CounterStateManager`。符合条件的近战命中激活 `ren_counter` 效果，固定 200 tick；状态期间每次符合条件的近战命中都免费反击。后续命中不刷新时长，效果也不再镜像可激活次数。
+- 限制：只有近战命中能激活或触发状态；弹射物、爆炸、魔法与技能 / 卡牌伤害均排除；友方角色（玩家、车万女仆）既不激活也不被反击；其余目标（含中立 / 被动生物）都会被反击。
+- 一致性（26.1.2 / neo21 / forge）：26.1.2 补上另外两线已有的 `DeathTriggerGuard.claimPair` 去重，一次挥击不会反击两次；`CounterStateManager.isMeleeDamage` 同时排除本模组全部自定义伤害（技能、卡牌法术、真实、额外、卡牌费用、不可减免、骰子伤害），技能或卡牌伤害不会激活或重复触发状态。
+- 资源规则：只有成功激活才消耗 1 次可激活次数；「金鳞」也只在成功激活时 +1。游戏大师护盾在佩戴金鲤时上限为 4，不再把已有的 4 层压回 1 层；护盾消失不再移除已经激活的 10 秒状态。
+- 安全气囊：近战致命伤仍会被无效化，并先激活 10 秒状态再反击攻击者；远程 / 魔法致命伤仍无效化，但不激活、不反击。
+- 素材（五线）：`ren_counter` HUD 图标替换为 `images/反击.png`（392 B，SHA-256 `4e1131d856ab07ed3e68593d9fa11761b5eb505479e173d9a3368bde94fdfe3d`）。
+- 构建：五线 `:build` 通过。实机验收（P0 三线，超平坦世界）：`neoforge-1.21.1` 全套 P0 反击用例通过，含车万女仆友方路径；`forge-1.20.1` 与 `neoforge-26.1.2` 核心 P0 用例通过，但两线测试环境未安装车万女仆，女仆友方路径未验证，不写 PASS。详情：`docs/reports/2026-11-12-counter-p0-acceptance.md`。
+
+## 26.4-SNAPSHOT.17
+
+### 本线
+
+- 变更：版本号升至 `26.4-SNAPSHOT.17`（五线）；本轮扩展肾上腺素筹码的闪避。
+- 肾上腺素（五线）：一般与高效在低血加成触发期间都获得 20%% 闪避；两枚同时装备时叠加为 40%%，每次受击只掷一次。
+- 限制（五线）：只有敌对怪物的近战攻击可被闪避；玩家攻击、弹射物/远程攻击与环境伤害均不参与。
+- 文案（五线，中 / 英 / 日）：两枚筹码 tooltip 与手册条目同步写明 20%% 闪避、叠加规则和仅怪物近战限制。
+- 构建：五线 `:build`（仅编译 / 构建验证，本轮未实机）。
+
+## 26.4-SNAPSHOT.16
+
+### 本线
+
+- 变更：版本号升至 `26.4-SNAPSHOT.16`（五线）；本轮新增蛟龙—金鲤联动、重写金鲤主动、更新两张侦探配方、修正若干立牌 tooltip，并清理手册文本。
+- 素材（五线）：仙酿（Immortal Brew）效果图标替换为 `images/仙酿.png`。
+- 金鲤（五线）：主动技能现在只放置饮品并使自身获得 1 层「反击」，不再获得「金鳞」；「金鳞」只能通过反击或蛟龙联动获得。tooltip 与手册文案同步重写。
+- 蛟龙（五线）：主动技能使装备金鲤立牌的玩家获得卡牌时，使对方增加 1 层「金鳞」（每个目标每次主动最多 1 层）；tooltip 备注区新增说明。
+- 配方（五线）：大侦探立牌改为 `RRR / GCG / BTB`（红石粉 / 金锭 / 空白立牌 / 星币 / 黄金骰子）；秘密侦探立牌的两枚望远镜改为标记涂料。
+- Tooltip（五线）：少主立牌移除两处括号；小猎手立牌的放置说明第三行改为「放置期间无法攻击」开头；大当家立牌的「真实伤害」改为「技能伤害」。
+- 手册（五线，中 / 英 / 日）：移除全部 `§` 染色；LF 换行改为制表符；缩短教主立牌主动描述，避免字体异常。
+- 构建：五线 `:build`（仅编译 / 构建验证，本轮未实机）。
+
+## 26.4-SNAPSHOT.15
+
+### 本线
+
+- 变更：版本号升至 `26.4-SNAPSHOT.15`（五线）；本轮把随机发牌收口到 `RandomCardHandler`，并修复 Bonnie 被动的随机池。
+- 修复 / 功能（五线）：`RandomCardHandler.CardCategory.BATTLE` 固定为 8 张公共战斗牌——攻击-中 / 大 / 特大、防御-中 / 大 / 特大、名刀、蓄力；`ALL` 保留其余公共牌（含暗袭），但所有池都会移除专属牌与 `ATTACK_CARD_FULL_POWER`；新增 `HEALING`（汉堡 / 巧克力蛋糕 / 豪华大餐）与 `giveFixedCardTo` 公共入口。
+- 修复（Bonnie，五线）：被动「击杀带标记的敌对目标」不再走私有 3 张攻击池，改为 `RandomCardHandler.giveCardTo(killer, BATTLE)`，防御 / 名刀 / 蓄力现在都能掉落。
+- 重构（五线）：Pandaman 的私有治疗三选一改用 `HEALING`；Satellite 固定轨道炮、EventEffects 固定攻击-特大改走 `giveFixedCardTo`。公共牌已无私有随机池（发专属牌的能力除外）。
+- 构建：五线 `:build`（仅编译 / 构建验证，本轮未实机）。
+
+## 26.4-SNAPSHOT.14
+
+### 本线
+
+- 变更：版本号升至 `26.4-SNAPSHOT.14`（五线）；本轮修复 `ChipShopService.grantRefresh` 的封顶判断。
+- 修复（商店三线 26.1.2 / neo21 / forge）：`grantRefresh` 原本用引用比较 `next == state`，而 `withRefreshGranted()` 即使 `refreshesLeft` 已被夹到 `REFRESH_MAX` 也总会新建记录；现改为比较 `refreshesLeft` 的值，封顶时返回 `false` 且不再写回 store。涉及 `neoforge-26.1.2/.../ChipShopService.java:105`、`neoforge-1.21.1/.../ChipShopService.java:103`、`forge-1.20.1/.../ChipShopService.java:71`。
+- 构建：`:neoforge-26.1.2:build` / `:neoforge-1.21.1:build` / `:forge-1.20.1:build`（仅编译 / 构建验证，本轮未实机）。
+
 ## 26.4-SNAPSHOT.13
 
 ### 本线

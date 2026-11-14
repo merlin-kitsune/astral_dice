@@ -406,6 +406,10 @@ public class MamushiSignItem extends BaseSignItem
             if (hadNoCards) {
                 RandomCardHandler.giveCardTo(player, target, RandomCardHandler.CardCategory.ALL);
             }
+            // 小心思：目标佩戴金鲤立牌时，本次主动发牌使其 +1 层金鳞
+            if (SouriSignItem.isEquipped(target)) {
+                SouriSignManager.addGoldScale(target);
+            }
         }
         return InteractionResult.SUCCESS;
     }

@@ -22,7 +22,7 @@ import net.minecraft.world.phys.HitResult;
  *
  * <h2>被动「不醉不归」</h2>
  * <ul>
- *   <li>反击时（{@code combat/DiceCombatEvents} 消耗 1 层反击的出口）+1 层【金鳞】；</li>
+ *   <li>10 秒反击状态**成功激活**时 +1 层【金鳞】（反击命中本身不再增加）；</li>
  *   <li>任意角色拾取【葫芦饮】/【仙酿】后，佩戴者 +1 层【反击】。</li>
  * </ul>
  *
@@ -80,7 +80,6 @@ public class SouriSignItem extends BaseSignItem {
         drink.setPos(target.getX() + 0.5D, target.getY() + 0.25D, target.getZ() + 0.5D);
         level.addFreshEntity(drink);
 
-        SouriSignManager.addGoldScale(player);
         SouriSignManager.addCounter(player, 1);
         sendSignActionBar(player, dragon
                 ? "msg.astral_dice.souri_place_brew"
@@ -97,7 +96,7 @@ public class SouriSignItem extends BaseSignItem {
         return pos;
     }
 
-    /** 非玩家（类玩家生物）的主动入口：在自身前方放置饮品并 +1 反击。 */
+    /** 非玩家（类玩家生物）的主动入口：在自身前方放置饮品并 +1 次反击可激活次数。 */
     @Override
     protected boolean activateForEntity(LivingEntity owner) {
         if (owner == null || owner.level().isClientSide()) return false;
@@ -109,7 +108,6 @@ public class SouriSignItem extends BaseSignItem {
                 owner.getZ() + owner.getLookAngle().z * 1.5D);
         owner.level().addFreshEntity(drink);
         if (owner instanceof Player p) {
-            SouriSignManager.addGoldScale(p);
             SouriSignManager.addCounter(p, 1);
         }
         return true;

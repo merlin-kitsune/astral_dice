@@ -60,6 +60,8 @@ public class ModClientEvents {
         event.registerEntityRenderer(ModEntityTypes.SYKE_TENTACLE.get(), SykeTentacleRenderer::new);
         // 小猎手立牌「暗影之门」(2026-11-10):GeckoLib 渲染器 + 激活态漩涡公告板
         event.registerEntityRenderer(ModEntityTypes.INKSHADOW_PORTAL.get(), InkShadowPortalRenderer::new);
+        // 抓钩（2026-11-13）：吸尘器头 ItemDisplay 模型 + 白色管道逐节渲染
+        event.registerEntityRenderer(ModEntityTypes.GRAPPLING_HOOK.get(), GrapplingHookRenderer::new);
     }
 
     /** 模型层定义：`astral_dice:barricade#main` ⇒ {@link BarricadeModel#createBodyLayer()}。 */

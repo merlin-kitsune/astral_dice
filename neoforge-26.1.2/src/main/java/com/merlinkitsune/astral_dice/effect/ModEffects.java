@@ -221,7 +221,7 @@ public class ModEffects {
     public static final DeferredHolder<MobEffect, MobEffect> REN_SHIELD =
             EFFECTS.register("ren_shield", RenShieldEffect::new);
 
-    /** 「反击」:鼠鼠护盾那 1 层一次性反击的可见载体(层数镜像到 HUD 图标;图标 = images/反击.png) */
+    /** 「反击」:持续 10 秒的反击状态(由 CounterStateManager 管理;图标 = images/反击.png) */
     public static final DeferredHolder<MobEffect, MobEffect> REN_COUNTER =
             EFFECTS.register("ren_counter", RenCounterEffect::new);
 

@@ -110,17 +110,16 @@ public class ModRecipeProvider extends RecipeProvider {
                 .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output);
 
-        // T2 中:大侦探立牌(黄金骰子 + 红石粉 + 金锭×2 + 星币×2 + 星盘×2,有序,空白立牌置中,骰子置中下,红石粉置中上)
+        // T2 中:大侦探立牌(黄金骰子 + 红石粉×3 + 金锭×2 + 星币×2,有序,空白立牌置中,骰子置中下)
         ShapedRecipeBuilder.shaped(items, RecipeCategory.MISC, ModItems.FANNY_SIGN.get())
-                .pattern("SRS")
+                .pattern("RRR")
                 .pattern("GEG")
-                .pattern("PDP")
+                .pattern("BTB")
                 .define('E', ModItems.BLANK_SIGN.get())
                 .define('R', Items.REDSTONE)
-                .define('S', ModItems.STAR_COIN.get())
+                .define('B', ModItems.STAR_COIN.get())
                 .define('G', Items.GOLD_INGOT)
-                .define('P', ModItems.STAR_PLATE.get())
-                .define('D', ModItems.GOLDEN_DICE.get())
+                .define('T', ModItems.GOLDEN_DICE.get())
                 .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output);
 
@@ -192,7 +191,7 @@ public class ModRecipeProvider extends RecipeProvider {
                 .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output);
 
-        // T4 极强:秘密侦探立牌(下界合金骰子 + 望远镜×2 + 末地水晶 + 黄金星盘×2 + 金苹果×2,有序,空白立牌置中,骰子置中下)
+        // T4 极强:秘密侦探立牌(下界合金骰子 + 标记涂料×2 + 末地水晶 + 黄金星盘×2 + 金苹果×2,有序,空白立牌置中,骰子置中下)
         ShapedRecipeBuilder.shaped(items, RecipeCategory.MISC, ModItems.BONNIE_SIGN.get())
                 .pattern("PCP")
                 .pattern("TET")
@@ -200,7 +199,7 @@ public class ModRecipeProvider extends RecipeProvider {
                 .define('E', ModItems.BLANK_SIGN.get())
                 .define('P', ModItems.GOLDEN_STAR_PLATE.get())
                 .define('C', Items.END_CRYSTAL)
-                .define('T', Items.SPYGLASS)
+                .define('T', ModItems.MARK_PAINT.get())
                 .define('A', Items.GOLDEN_APPLE)
                 .define('D', ModItems.NETHERITE_DICE.get())
                 .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
@@ -1317,6 +1316,19 @@ public class ModRecipeProvider extends RecipeProvider {
                 .define('P', ModItems.GOLDEN_STAR_PLATE.get())
                 .define('D', ModItems.DIAMOND_DICE.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
+                .save(output);
+        // 垃圾桶立牌(z3000,稀有):HRH/ISI/TDT（H=漏斗、R=红石、I=铁锭、S=空白立牌、T=铁粒、D=骰子）
+        ShapedRecipeBuilder.shaped(items, RecipeCategory.MISC, ModItems.Z3000_SIGN.get())
+                .pattern("HRH")
+                .pattern("ISI")
+                .pattern("TDT")
+                .define('H', Items.HOPPER)
+                .define('R', Items.REDSTONE)
+                .define('I', Items.IRON_INGOT)
+                .define('S', ModItems.BLANK_SIGN.get())
+                .define('T', Items.IRON_NUGGET)
+                .define('D', ModItems.DICE.get())
+                .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output);
         // 小猎手立牌(inkshadow,稀有):B/X/B + K/C/K + X/D/X（B=末影珍珠、X=星币、K=黄色染料、
         // C=空白筹码、D=骰子）—— 与 1.21.1 参考实现同网格同材料

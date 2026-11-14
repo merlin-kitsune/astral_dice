@@ -74,10 +74,11 @@ legacyForge {
     // Default run configurations.
     // These can be tweaked, removed, or duplicated as needed.
     runs {
-        // 版本隔离:开发测试游戏目录统一放在仓库根 run/<版本>,
-        // 与 neoforge(run/1.21.1)互不污染 mods/config/saves
+        // 版本隔离:开发测试游戏目录统一放在仓库根 run/forge-1.20.1,
+        // 与 neoforge(run/neoforge-1.21.1)互不污染 mods/config/saves
+        // (2026-11-12 用户把三条 rename 成带加载器的完整名;目录名与子项目名一致,别再改回裸版本号)
         configureEach {
-            gameDirectory = rootProject.file('run/1.20.1')
+            gameDirectory = rootProject.file('run/forge-1.20.1')
         }
 
         client {
@@ -266,7 +267,7 @@ dependencies {
     //    ⇒ 1.20.1 的测试世界**只能**走种子包恢复：`scripts/test/resources/testworld-seed-1.20.1.zip`
     //      （scripts/test/win/mt.sh 的 env 阶段检测到该 zip 会自动给 mt_env 加 `--seed`，跳过 runServer）。
     //      种子包生成办法：临时注释下面两行 → `bash scripts/test/win/mt.sh --phase env world --version 1.20.1`
-    //      → `Compress-Archive run/1.20.1/saves/testworld → scripts/test/resources/testworld-seed-1.20.1.zip`
+    //      → `Compress-Archive run/forge-1.20.1/saves/testworld → scripts/test/resources/testworld-seed-1.20.1.zip`
     //      → 恢复这两行。2026-09-27 首次执行，已产出 192758 字节的种子包。
     modImplementation "curse.maven:embeddium-908741:5681725"     // embeddium-0.3.31+mc1.20.1
     modImplementation "curse.maven:oculus-581495:6020952"        // oculus-mc1.20.1-1.8.0(curse 最新 1.20.1 版;本地 1.8.1 未上 curse)
@@ -401,7 +402,7 @@ dependencies {
     // 必须 modRuntimeOnly（不写成 modImplementation）：本模组代码不引用 AutoJS，
     //    只为实机 MCP 端点提供运行时模组；也不参与打包。
     // 1.20.1 生产 jar 是 SRG 字节码 => 必须走 mod* 配置交给 MDG 在解析期做 SRG->named；
-    //    直接投放到 run/1.20.1/mods 会 `NoSuchMethodError`（SRG 名如 m_137583_() 在 named 运行期不存在）。
+    //    直接投放到 run/forge-1.20.1/mods 会 `NoSuchMethodError`（SRG 名如 m_137583_() 在 named 运行期不存在）。
     if (providers.gradleProperty('autojsTestMod').orNull == '1') {
         modRuntimeOnly 'cc.sighs.autojs:AutoJS-forge-1.20.1:1.0.0'
     }
@@ -433,7 +434,7 @@ tasks.withType(org.gradle.api.tasks.bundling.Jar).configureEach {
 }
 
 // === 编译产物分发规则(与 1.21.1 分支保持同一任务面与同一推送标准;旧 jar 清理按版本后缀隔离)===
-// 默认行为:每次构建完成后自动推送到仓库根 run/1.20.1/mods(本机 runClient 调试)、
+// 默认行为:每次构建完成后自动推送到仓库根 run/forge-1.20.1/mods(本机 runClient 调试)、
 // 仓库根目录 build/libs,并推送到整合包 mods 目录(删除旧版后复制新版)。
 // 整合包位置: /mnt/d/.minecraft/versions/1.20.1-Forge 模组测试/mods（Windows 宿主同盘为 D:\.minecraft\…；MC_HOME 可覆盖）
 // (2026-09-29 修正:原指向 `1.20.1 模组测试`,该目录在本机**已不存在**(整合包目录被重命名为
@@ -454,7 +455,7 @@ tasks.withType(org.gradle.api.tasks.bundling.Jar).configureEach {
 //   需要推送时:把分支加进白名单;或单次用 -PdeployToPack 强制。
 //   ⚠️ 用 -PdeployToPack 强推本 mod 时,务必确认整合包内**已有**独立的 starengine-*.jar 且与之配对
 //      (库为独立前置、不再内置;下方会读 starengine_version 检查,缺库告警)。
-def devRunModsDir = rootProject.file('run/1.20.1/mods')
+def devRunModsDir = rootProject.file('run/forge-1.20.1/mods')
 // 整合包目录: 由根 build.gradle 的 mcHomePath 统一解析（MC_HOME > /mnt/d/.minecraft > D:/.minecraft）
 def packModsDir = new File(rootProject.ext.mcHomePath, 'versions/1.20.1-Forge 模组测试/mods')
 
@@ -476,7 +477,7 @@ def staleJarMatcher = { File f ->
 }
 
 // 产物来源按环境区分(MDG LegacyForge 双产物):
-//   - pushToDevRun(开发 runClient 环境 root run/1.20.1/mods):jar.archiveFile = build/devlibs
+//   - pushToDevRun(开发 runClient 环境 root run/forge-1.20.1/mods):jar.archiveFile = build/devlibs
 //     的未重混淆 jar(Mojmap 名)——forgeclientuserdev 运行时加载 Mojmap 原版类,
 //     推 SRG 版反而报 NoSuchFieldError(f_256929_)。
 //   - pushToGame(生产/整合包):reobfJar.archiveFile = build/libs 的 SRG 重混淆 jar——
@@ -486,7 +487,7 @@ def prodJarArchiveProvider = tasks.named('reobfJar').flatMap { it.archiveFile }
 
 tasks.register('pushToDevRun') {
     group = 'build'
-    description = 'Copy the built mod jar to the dev run mods folder (root run/1.20.1/mods) and remove old 1.20.1 versions.'
+    description = 'Copy the built mod jar to the dev run mods folder (root run/forge-1.20.1/mods) and remove old 1.20.1 versions.'
     dependsOn tasks.named('jar')
     doLast {
         def jarFile = devJarArchiveProvider.get().asFile

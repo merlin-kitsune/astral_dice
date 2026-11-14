@@ -7,7 +7,7 @@ import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import com.merlinkitsune.astral_dice.component.WeaponEnhancement;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
-import com.merlinkitsune.astral_dice.item.RenShieldManager;
+import com.merlinkitsune.astral_dice.item.CounterStateManager;
 import com.merlinkitsune.astral_dice.item.sign.BaseSignItem;
 import com.merlinkitsune.astral_dice.item.sign.MosesSignItem;
 import com.merlinkitsune.astral_dice.item.sign.PandamanSignItem;
@@ -2175,10 +2175,10 @@ public class DiceCombatEvents {
         injectCounterDamage(player, attacker);
     }
 
-    // 游戏大师立牌(ren)「鼠鼠护盾」自带的一次性反击:带盾玩家被攻击时消耗 1 层,对攻击者注入一次
-    // 现有反击伤害(沿用同一公式)。事件与肉弹嘲讽同源(1.21.1 = LivingDamageEvent.Pre,位于吸收结算之前),
-    // 该钩子只表示「伤害已确认」,与吸收数值无关 ⇒ **被黄心完全吃掉的一击同样触发**;
-    // 若这一击正好打空黄心,护盾的清空由 RenShieldManager 的每 tick 轮询在稍后完成(先反击、后破盾)。
+    // 游戏大师立牌(ren)「鼠鼠护盾」/ 金鲤立牌(souri)的 10 秒反击:
+    // 被**近战**命中时,若当前不在状态且有可激活次数,则消耗 1 层进入 200t 状态;
+    // 状态期间每次近战命中都对非友方目标免费反击一次(不再扣层)。
+    // 远程/弹射物/爆炸/魔法/技能不激活、不反击;玩家与车万女仆视作友方。
     @SubscribeEvent(priority = EventPriority.NORMAL)
     public static void onRenShieldCounter(LivingDamageEvent.Pre event) {
         LivingEntity victim = event.getEntity();
@@ -2187,26 +2187,21 @@ public class DiceCombatEvents {
         if (isInCounterChain()) return;
         if (!(victim instanceof Player player)) return;
         if (!player.isAlive()) return;
-        // 金鲤立牌(souri,2026-11-09):反击层数不再只依附鼠鼠护盾 —— 佩戴金鲤时同一出口
-        // 也消耗 1 层并把「反击」计成金鳞;上限由 SouriSignManager 放宽到 4(用户裁决)。
-        boolean souri = com.merlinkitsune.astral_dice.item.sign.SouriSignItem.isEquipped(player);
-        if (!player.hasEffect(ModEffects.REN_SHIELD) && !souri) return;
-        if (ModAttachments.getRenCounterCharges(player) <= 0) return;
         if (!(event.getSource().getEntity() instanceof LivingEntity attacker)) return;
         if (attacker == player) return;
-        // 2026-09-29 收紧(与效果文案「佩戴者被攻击时消耗该层」对齐):只有**敌对目标**的攻击
-        // 才消耗反击层数。视者 = 带盾玩家(player);于是队友 / 已驯服宠物 / 未激怒中立生物的
-        // 攻击不再误消耗层数、也不再把反击打在友军身上(自伤已由上一行排除)。
-        if (!PartyRelations.isHostileTo(player, attacker)) return;
-        // 逐层消耗(2026-11-09 金鲤):鼠鼠护盾仍是 1 层一次性;金鲤允许叠到 4 层。
-        ModAttachments.setRenCounterCharges(player,
-                Math.max(0, ModAttachments.getRenCounterCharges(player) - 1));
-        RenShieldManager.refreshCounterEffect(player);
-        injectCounterDamage(player, attacker);
-        // 被动「不醉不归」:反击时 +1 层金鳞(仅佩戴金鲤者)
-        if (souri) {
-            com.merlinkitsune.astral_dice.item.sign.SouriSignManager.addGoldScale(player);
+        if (!CounterStateManager.isMeleeDamage(event.getSource())) return;
+        if (CounterStateManager.isFriendlyTarget(attacker)) return;
+
+        boolean wasActive = CounterStateManager.isActive(player);
+        if (!wasActive) {
+            boolean souri = com.merlinkitsune.astral_dice.item.sign.SouriSignItem.isEquipped(player);
+            boolean z3000 = com.merlinkitsune.astral_dice.item.sign.Z3000SignItem.isEquipped(player);
+            if (!player.hasEffect(ModEffects.REN_SHIELD) && !souri && !z3000) return;
+            if (!CounterStateManager.tryActivateWithCharge(player)) return;
         }
+        injectCounterDamage(player, attacker);
+        LOGGER.info("[Astral Dice][Counter] AP_COUNTER_FIRE player={} attacker={} free={}",
+                player.getName().getString(), attacker.getName().getString(), wasActive);
         if (player instanceof net.minecraft.server.level.ServerPlayer sp) {
             PacketDistributor.sendToPlayer(sp, new ActionBarPayload(
                     Component.translatable("msg.astral_dice.ren_counter_fired")

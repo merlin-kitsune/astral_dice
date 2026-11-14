@@ -88,10 +88,11 @@ neoForge {
     // Default run configurations.
     // These can be tweaked, removed, or duplicated as needed.
     runs {
-        // 版本隔离:开发测试游戏目录统一放在仓库根 run/26.1.2,
-        // 与 1.21.1(run/1.21.1)、1.20.1(run/1.20.1)互不污染 mods/config/saves
+        // 版本隔离:开发测试游戏目录统一放在仓库根 run/neoforge-26.1.2,
+        // 与 neoforge-1.21.1(run/neoforge-1.21.1)、forge-1.20.1(run/forge-1.20.1)互不污染 mods/config/saves
+        // (2026-11-12 用户把三条 rename 成带加载器的完整名;目录名与子项目名一致,别再改回裸版本号)
         configureEach {
-            gameDirectory = rootProject.file('run/26.1.2')
+            gameDirectory = rootProject.file('run/neoforge-26.1.2')
         }
 
         client {
@@ -300,7 +301,7 @@ idea {
 }
 
 // === 编译产物分发规则 ===
-// 默认行为:每次构建完成后自动推送到仓库根 run/26.1.2/mods(本机 runClient 调试)、
+// 默认行为:每次构建完成后自动推送到仓库根 run/neoforge-26.1.2/mods(本机 runClient 调试)、
 // 仓库根目录 build/libs,并推送到整合包 mods 目录(删除旧版后复制新版)。
 // 整合包位置: /mnt/d/.minecraft/versions/26.1.2-NeoForge 模组测试/mods（Windows 宿主同盘为 D:\.minecraft\…；MC_HOME 可覆盖）
 // (2026-09-17 修正:原指向 `26.1.2-NeoForge_26.1.2.109`,该目录在本机**并不存在**,
@@ -312,7 +313,7 @@ idea {
 //  ⚠️ 教训(必守):`packModsDir` **禁止凭命名规则推测** —— 换机/整合包改名后必须
 //  `ls /mnt/d/.minecraft/versions/`（Windows 宿主为 `ls D:/.minecraft/versions/`）核对真实目录名,并在构建日志里确认出现
 //  `pushToGame: pushed … -> <目标>` 一行;只看 `BUILD SUCCESSFUL` 会漏掉静默跳过。
-def devRunModsDir = rootProject.file('run/26.1.2/mods')
+def devRunModsDir = rootProject.file('run/neoforge-26.1.2/mods')
 // 整合包目录: 由根 build.gradle 的 mcHomePath 统一解析（MC_HOME > /mnt/d/.minecraft > D:/.minecraft）
 def packModsDir = new File(rootProject.ext.mcHomePath, 'versions/26.1.2-NeoForge 模组测试/mods')
 
@@ -344,7 +345,7 @@ def jarArchiveProvider = tasks.named('jar').flatMap { it.archiveFile }
 
 tasks.register('pushToDevRun') {
     group = 'build'
-    description = 'Copy the built mod jar to the dev run mods folder (root run/26.1.2/mods) and remove old versions.'
+    description = 'Copy the built mod jar to the dev run mods folder (root run/neoforge-26.1.2/mods) and remove old versions.'
     dependsOn tasks.named('jar')
     doLast {
         def jarFile = jarArchiveProvider.get().asFile

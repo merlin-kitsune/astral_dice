@@ -112,6 +112,7 @@ public class ModItemModelProvider extends ItemModelProvider {
         basicItem(ModItems.SOURI_SIGN.get());
         basicItem(ModItems.SYKES_SIGN.get());
         basicItem(ModItems.INKSHADOW_SIGN.get());
+        basicItem(ModItems.Z3000_SIGN.get());
         basicItem(ModItems.FU_CARD.get());
         basicItem(ModItems.HUO_CARD.get());
         basicItem(ModItems.CHOCOLATE_CAKE.get());
