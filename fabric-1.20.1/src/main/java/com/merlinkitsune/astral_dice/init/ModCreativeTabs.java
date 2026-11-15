@@ -35,7 +35,6 @@ public class ModCreativeTabs {
                 output.accept(ModItems.GOLDEN_STAR_PLATE.get());
                 output.accept(ModItems.BLANK_SIGN.get());
                 output.accept(ModItems.BLANK_CHIP.get());
-        output.accept(ModItems.VACUUM_PIECE.get());
                 output.accept(ModItems.REGENERATION_REAGENT.get());
                 output.accept(ModItems.CONDUCTIVE_WIRE.get());
                 output.accept(ModItems.STAR_COIN_DUST.get());

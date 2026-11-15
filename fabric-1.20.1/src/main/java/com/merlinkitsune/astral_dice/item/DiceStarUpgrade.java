@@ -57,6 +57,12 @@ public final class DiceStarUpgrade {
                 || stack.is(ModItems.ENDER_DICE.get()) || stack.is(ModItems.NETHER_STAR_DICE.get());
     }
 
+    /** 骰子当前星阶；非骰子或读取失败返回 -1。 */
+    public static int starLevel(ItemStack stack) {
+        if (!isDice(stack)) return -1;
+        return enhancementOf(stack).starLevel();
+    }
+
     /** 升星星币成本：0★→15 / 1★→20 / 2★→25；不可升（≥3★ 或非法星阶）⇒ -1。 */
     public static int starCoinCost(int starLevel) {
         return switch (starLevel) {

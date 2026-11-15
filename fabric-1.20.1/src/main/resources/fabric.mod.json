@@ -26,7 +26,8 @@
     ],
     "jei_mod_plugin": [
       "com.merlinkitsune.astral_dice.compat.jei.CardShopJeiPlugin",
-      "com.merlinkitsune.astral_dice.compat.jei.ChipShopJeiPlugin"
+      "com.merlinkitsune.astral_dice.compat.jei.ChipShopJeiPlugin",
+      "com.merlinkitsune.astral_dice.compat.jei.AstralAnvilJeiPlugin"
     ]
   },
   "accessWidener": "astral_dice.accesswidener",

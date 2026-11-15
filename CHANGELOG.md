@@ -4,6 +4,24 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 26.4-SNAPSHOT.64
+
+### This line
+
+- Added a JEI recipe shortcut to the Astral Anvil screen on all five lines. Left-clicking the gold arrow now opens the dedicated `astral_dice:astral_anvil` JEI category, which lists the 13 dice × 0/1/2 stars (39 upgrade rules) with the astral anvil as catalyst, star coin cost, and XP cost. The exact page is chosen from the input dice's item and current star level, so it shows the anvil star-upgrade rule rather than the dice's crafting recipe. Hovering the arrow shows a 'Show Recipes' tooltip while JEI is available; the screen talks only to the JEI-free `AstralAnvilJeiBridge`, so the mod still loads without JEI. `AstralAnvilJeiPlugin` is discovered by `@JeiPlugin` on NeoForge/Forge and registered under `jei_mod_plugin` in both Fabric `fabric.mod.json` files; all 15 language files carry the new category and tooltip keys.
+- Added `DiceStarUpgrade.starLevel(ItemStack)` (non-dice → -1) so the JEI category and arrow match the exact upgrade page without duplicating component-reading logic.
+- Made that JEI page mode-aware. With `experimental_star_upgrade` on, every page now reads `Reset X★ → 0★` and keeps the same 15/20/25 star-coin and tiered XP costs as the in-game anvil; with the option off it still reads `Star X→Y · N Star Coins`. All 15 language files carry the new reset key.
+- Hid the leftover `astral_dice:vacuum_piece` 'Pipe Prototype' item from gameplay: removed it from all five creative tabs and removed its three NeoForge 1.21.1 language names. The item registration and item model stay because `GrapplingHookRenderer` uses `vacuum_piece` as the internal model carrier for the Z3000 grappling hook; deleting it would break that renderer.
+- Validation: five-line `.64` `:build` exit 0 (`BUILD SUCCESSFUL in 3s`, 44 tasks; 21 executed, 23 up-to-date; log `temp/build-64.log`). All five jars contain `AstralAnvilJeiCategory.class`, and every `zh_cn.json` carries `重置 %s★ → 0★`. NeoForge 1.21.1 live (`scripts/test/win/logs/1.21.1-20261115-114726.log`): opened the Astral Anvil GUI, put one `astral_dice:dice` and 64 `astral_dice:star_coin` into the input slots, then left-clicked the arrow. JEI opened `astral_dice:astral_anvil` with page `1/1`: anvil + dice + 15 Star Coins → dice, `重置 0★ → 0★`, `附魔花费: 5` (the test instance has `experimental_star_upgrade=true`; the recipe's own `coinCost` is 15 and `xpCost` is 5). JEI's runtime ingredient inventory returned 1928 item stacks with zero `vacuum_piece` hits, and the creative tab has no Pipe Prototype entry. The other four lines were built but not live-tested in this batch. Screenshot evidence: `temp/astral-anvil-evidence/neoforge-1.21.1/jei-astral-anvil.png` and `...-crop.png` (not committed).
+
+
+## 26.4-SNAPSHOT.59
+
+### This line
+
+- Fixed the Astral Anvil inventory icon on all five lines. The block model had no `minecraft:block/block` parent, so its item inherited no GUI display transform and rendered as a flat, oversized face instead of a normal block icon. It now inherits the vanilla block GUI transform (30°/225° rotation, 0.625 scale), matching the vanilla anvil item icon. The in-world model, UVs, textures, recipe, and item model are unchanged.
+- Validation: five-line `:build` exit 0 (BUILD SUCCESSFUL in 10s, 44 tasks; 32 executed, 12 up-to-date); all five `.59` jars carry the parented block model, and `check_changelog_parity.py` reports `CHANGELOG_PARITY: OK sections=81 entries=1080/1080`. No live run in this batch; this is the standard block GUI display transform, not new rendering code.
+
 ## 26.4-SNAPSHOT.58
 
 ### This line

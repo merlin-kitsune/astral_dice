@@ -1,11 +1,13 @@
 package com.merlinkitsune.astral_dice.screen;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
+import com.merlinkitsune.astral_dice.compat.jei.AstralAnvilJeiBridge;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.ItemStack;
 
 /**
  * 星愿铁砧界面（2026-11-15）：176×166，背景取自 textures/gui/shop/astral_anvil.png。
@@ -33,6 +35,14 @@ public class AstralAnvilScreen extends AbstractContainerScreen<AstralAnvilMenu> 
     private static final int ERROR_WIDTH = 28;
     private static final int ERROR_HEIGHT = 21;
 
+    /** 箭头可点击区（避开材料槽 2 的 89..107）。 */
+    private static final int RECIPE_X = 108;
+    private static final int RECIPE_Y = 36;
+    private static final int RECIPE_WIDTH = 23;
+    private static final int RECIPE_HEIGHT = 21;
+    private static final Component RECIPE_TOOLTIP =
+            Component.translatable("gui.astral_dice.astral_anvil.show_recipes");
+
     public AstralAnvilScreen(AstralAnvilMenu menu, Inventory playerInventory, Component title) {
         super(menu, playerInventory, title);
         this.imageWidth = 176;
@@ -43,12 +53,54 @@ public class AstralAnvilScreen extends AbstractContainerScreen<AstralAnvilMenu> 
     }
 
     @Override
+    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+        super.render(guiGraphics, mouseX, mouseY, partialTick);
+        this.renderRecipeTooltip(guiGraphics, mouseX, mouseY);
+    }
+
+    @Override
     protected void renderBg(GuiGraphics guiGraphics, float partialTick, int mouseX, int mouseY) {
         guiGraphics.blit(TEXTURE, this.leftPos, this.topPos, 0.0F, 0.0F, this.imageWidth, this.imageHeight,
                 this.imageWidth, this.imageHeight);
         if (hasInvalidInput()) {
             guiGraphics.blit(VANILLA_ANVIL_TEXTURE, this.leftPos + ERROR_X, this.topPos + ERROR_Y, 176, 0,
                     ERROR_WIDTH, ERROR_HEIGHT);
+        }
+    }
+
+    // ── JEI 配方箭头 ────────────────────────────────────────────────────────
+    private boolean isOverRecipeArrow(double mouseX, double mouseY) {
+        int localX = (int) mouseX - this.leftPos;
+        int localY = (int) mouseY - this.topPos;
+        return localX >= RECIPE_X && localX < RECIPE_X + RECIPE_WIDTH
+                && localY >= RECIPE_Y && localY < RECIPE_Y + RECIPE_HEIGHT;
+    }
+
+    private boolean hasRecipeTarget() {
+        return !this.menu.getSlot(AstralAnvilMenu.RESULT_SLOT).getItem().isEmpty()
+                || !this.menu.getSlot(AstralAnvilMenu.INPUT_SLOT).getItem().isEmpty();
+    }
+
+    private boolean showRecipe() {
+        ItemStack input = this.menu.getSlot(AstralAnvilMenu.INPUT_SLOT).getItem();
+        if (!input.isEmpty()) {
+            return AstralAnvilJeiBridge.showRecipes(input);
+        }
+        return AstralAnvilJeiBridge.showRecipes(this.menu.getSlot(AstralAnvilMenu.RESULT_SLOT).getItem());
+    }
+
+    @Override
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (button == 0 && this.isOverRecipeArrow(mouseX, mouseY) && this.showRecipe()) {
+            return true;
+        }
+        return super.mouseClicked(mouseX, mouseY, button);
+    }
+
+    private void renderRecipeTooltip(GuiGraphics guiGraphics, int mouseX, int mouseY) {
+        if (AstralAnvilJeiBridge.isAvailable() && this.hasRecipeTarget()
+                && this.isOverRecipeArrow(mouseX, mouseY)) {
+            guiGraphics.renderTooltip(this.font, RECIPE_TOOLTIP, mouseX, mouseY);
         }
     }
 

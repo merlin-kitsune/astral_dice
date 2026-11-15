@@ -4,6 +4,24 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
+## 26.4-SNAPSHOT.64
+
+### 本线
+
+- 五线星愿铁砧界面新增 JEI 配方入口：左键点击材料槽与结果槽之间的金色箭头，现在会打开专属的 `astral_dice:astral_anvil` JEI 类别，列出 13 种骰子 × 0/1/2 星共 39 条升星规则，并以星愿铁砧为催化剂显示星币成本与经验成本。具体页面按输入骰子的物品与当前星阶精确匹配，因此显示的是星愿铁砧升星规则，而不是骰子的工作台合成配方。JEI 可用时悬停箭头显示「查看配方」；界面只依赖不引用 JEI 类型的 `AstralAnvilJeiBridge`，未安装 JEI 时模组仍可正常加载。NeoForge/Forge 通过 `@JeiPlugin` 发现 `AstralAnvilJeiPlugin`，两条 Fabric 线在 `fabric.mod.json` 的 `jei_mod_plugin` 中注册；15 份语言文件均已加入新类别与提示键。
+- 新增 `DiceStarUpgrade.starLevel(ItemStack)`（非骰子返回 -1），让 JEI 类别与箭头在不重复组件读取逻辑的前提下匹配到精确的升星页。
+- 让该 JEI 页随模式切换：`experimental_star_upgrade` 开启时，每条规则显示「重置 X★ → 0★」，并保持与游戏内铁砧一致的 15/20/25 星币与分级经验成本；关闭时仍显示「星阶 X→Y · N 星币」。15 份语言文件均已加入新的重置键。
+- 从玩法中隐藏残留的 `astral_dice:vacuum_piece`「管道原型」：五线创造栏均已移除，NeoForge 1.21.1 的三份语言名称也已删除。物品注册与物品模型保留，因为 `GrapplingHookRenderer` 仍用 `vacuum_piece` 作为 Z3000 抓钩管道的内部模型载体；直接删除会破坏该渲染器。
+- 验证：五线 `.64` `:build` exit 0（`BUILD SUCCESSFUL in 3s`，44 tasks；21 executed，23 up-to-date；日志 `temp/build-64.log`）。五枚 jar 均含 `AstralAnvilJeiCategory.class`，五份 `zh_cn.json` 均含 `重置 %s★ → 0★`。NeoForge 1.21.1 实机（`scripts/test/win/logs/1.21.1-20261115-114726.log`）：打开星愿铁砧界面，把 1 枚 `astral_dice:dice` 与 64 枚 `astral_dice:star_coin` 放入输入槽，左键点击箭头；JEI 打开 `astral_dice:astral_anvil`，页码 `1/1`：铁砧 + 骰子 + 15 星币 → 骰子，显示「重置 0★ → 0★」「附魔花费: 5」（测试实例 `experimental_star_upgrade=true`；该配方自身 `coinCost=15`、`xpCost=5`）。JEI 运行时物品清单共 1928 个物品栈，`vacuum_piece` 命中 0；创造栏也无「管道原型」条目。其余四线本批已构建、未实机。截图证据：`temp/astral-anvil-evidence/neoforge-1.21.1/jei-astral-anvil.png` 与 `...-crop.png`（未提交）。
+
+
+## 26.4-SNAPSHOT.59
+
+### 本线
+
+- 修复五线星愿铁砧的物品栏图标。方块模型缺少 `minecraft:block/block` 父模型，物品状态没有继承标准 GUI 显示变换，图标会变成扁平、过大的一个面，而不是正常方块图标。现改为继承原版方块 GUI 变换（30°/225° 旋转、0.625 缩放），与铁砧物品图标一致；世界内模型、UV、贴图、配方与物品模型均未改动。
+- 验证：五线 `:build` exit 0（BUILD SUCCESSFUL in 10s，44 tasks；32 executed，12 up-to-date）；五枚 `.59` jar 均含带父模型的方块模型；`check_changelog_parity.py` 输出 `CHANGELOG_PARITY: OK sections=81 entries=1080/1080`。本轮未实机：改动只是原版方块 GUI 显示变换，不涉及新渲染代码。
+
 ## 26.4-SNAPSHOT.58
 
 ### 本线
