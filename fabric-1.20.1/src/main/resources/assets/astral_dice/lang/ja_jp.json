@@ -973,7 +973,6 @@
   "jei.astral_dice.astral_anvil": "星願鉄床",
   "jei.astral_dice.astral_anvil.star_cost": "星階 %s→%s · %s スターコイン",
   "jei.astral_dice.astral_anvil.xp_cost": "アップグレード費用：%s",
-  "jei.astral_dice.astral_anvil.star_reset": "リセット %s★ → 0★",
   "block.astral_dice.card_shop": "カードショップ",
   "block.astral_dice.chip_shop": "チップショップ",
   "block.astral_dice.event_drawer": "抽選ボックス",

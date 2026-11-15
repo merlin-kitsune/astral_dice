@@ -1,13 +1,9 @@
 package com.merlinkitsune.astral_dice.screen;
 
 import com.merlinkitsune.astral_dice.block.ModBlocks;
-import com.merlinkitsune.astral_dice.component.AppliedStone;
-import com.merlinkitsune.astral_dice.component.ModDataComponents;
-import com.merlinkitsune.astral_dice.component.WeaponEnhancement;
 import com.merlinkitsune.astral_dice.item.DiceStarUpgrade;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.ModTags;
-import com.merlinkitsune.astral_dice.item.CardReturnHelper;
 import com.merlinkitsune.astral_dice.shop.ChipShopState;
 import java.util.List;
 import net.minecraft.server.level.ServerPlayer;
@@ -130,17 +126,6 @@ public class AstralAnvilMenu extends ItemCombinerMenu {
             ChipShopState.store(serverPlayer, ChipShopState.get(serverPlayer).withRefreshGranted());
         }
 
-        // 快捷移动会先把结果槽搬空再回调 onTake，carried 可能是空栈；按输入栈重算产物形态。
-        ItemStack expectedOutput = DiceStarUpgrade.resultFor(dice);
-        WeaponEnhancement result = expectedOutput.getOrDefault(ModDataComponents.WEAPON_ENHANCEMENT.get(),
-                WeaponEnhancement.EMPTY);
-        if (!expectedOutput.isEmpty() && result.starLevel() == 0 && result.appliedStones().isEmpty()) {
-            List<AppliedStone> stones = dice.getOrDefault(ModDataComponents.WEAPON_ENHANCEMENT.get(),
-                    WeaponEnhancement.EMPTY).appliedStones();
-            if (!stones.isEmpty()) {
-                CardReturnHelper.returnCards(player, stones);
-            }
-        }
         if (!player.level().isClientSide()) {
             this.cost.set(0);
         }

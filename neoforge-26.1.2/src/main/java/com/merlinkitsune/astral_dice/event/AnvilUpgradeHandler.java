@@ -2,7 +2,6 @@ package com.merlinkitsune.astral_dice.event;
 
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
-import com.merlinkitsune.astral_dice.component.AppliedStone;
 import com.merlinkitsune.starengine.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
@@ -22,7 +21,6 @@ import com.merlinkitsune.astral_dice.item.InvestigationEventUtil;
 import com.merlinkitsune.astral_dice.item.MarkManager;
 import com.merlinkitsune.astral_dice.item.StarLightManager;
 import com.merlinkitsune.astral_dice.item.sign.MisakiSignItem;
-import com.merlinkitsune.astral_dice.item.CardReturnHelper;
 import com.merlinkitsune.astral_dice.item.DiceStarUpgrade;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.shop.ChipShopCatalog;
@@ -59,8 +57,7 @@ public class AnvilUpgradeHandler {
         if (req < 0) return;
         if (right.getCount() < req) return;
         // 产出形态 / 星币成本 / 经验等级全部集中在 item.DiceStarUpgrade(唯一事实源)。
-        // 实验开关关闭时与改动前完全一致:星级 +1、经验固定 10 级、卡牌随骰子保留;
-        // 开启时产出 0★ + 清空 appliedStones,经验按输入骰子的分级标签取。
+        // 铁砧任何模式都只星级 +1、卡牌随骰子保留;实验开关只把经验改为按输入骰子的分级标签取。
         ItemStack output = DiceStarUpgrade.resultFor(left);
         if (output.isEmpty()) return;
         event.setOutput(output);
@@ -81,8 +78,7 @@ public class AnvilUpgradeHandler {
      * <p><b>授予语义</b> = {@link ChipShopState#withRefreshGranted()}：在存档现有次数上 +1 并封顶
      * {@value ChipShopCatalog#REFRESH_MAX}，不重置、不清零（已有存档次数照旧保留）。
      *
-     * <p><b>实验性升星</b>（{@code experimental_star_upgrade} = true）：产物形态是「0★ + 空 appliedStones」，
-     * 此时**不要求**星阶 +1，而是归还输入骰子已装配的全部卡牌（{@link CardReturnHelper#returnCards}）并照旧授予刷新。
+     * <p>实验开关只影响经验等级；铁砧任何模式都要求产物星阶恰好比输入 +1，卡牌随骰子保留。
      */
     @SubscribeEvent
     public static void onAnvilRepair(AnvilCraftEvent.Post event) {
@@ -111,25 +107,15 @@ public class AnvilUpgradeHandler {
         if (right.getCount() < required) {
             return;
         }
-        // 实验性升星:产物是「0★ + 空 appliedStones」⇒ 输入骰子已装配的卡牌在这里归还给玩家;
-        // 其余分支维持原校验(产物星阶恰好比输入 +1,卡牌随骰子保留)。
-        boolean reset = upgraded.starLevel() == 0 && upgraded.appliedStones().isEmpty();
-        if (!reset && upgraded.starLevel() != input.starLevel() + 1) {
+        // 铁砧只做星级 +1；实验性重置已移到骰子升阶合成，不在铁砧发生。
+        if (upgraded.starLevel() != input.starLevel() + 1) {
             return;
-        }
-        int returnedCards = 0;
-        if (reset) {
-            returnedCards = CardReturnHelper.returnCards(player, input.appliedStones());
         }
         ChipShopState next = ChipShopState.get(player).withRefreshGranted();
         ChipShopState.store(player, next);
         LOGGER.info("[astral_dice] CHIP_SHOP_REFRESH_GRANTED player={} star={}->{} coins={} refreshes={}/{}",
                 player.getGameProfile().name(), input.starLevel(), upgraded.starLevel(), right.getCount(),
                 next.refreshesLeft(), ChipShopCatalog.REFRESH_MAX);
-        if (reset) {
-            LOGGER.info("[astral_dice] ANVIL_STAR_RESET_CARDS_RETURNED player={} star={}->0 cards={}",
-                    player.getGameProfile().name(), input.starLevel(), returnedCards);
-        }
     }
 
     // isDice(13 种骰子白名单)与 starCoinCost(0★ 15 / 1★ 20 / 2★ 25,不可升 -1)已下沉到

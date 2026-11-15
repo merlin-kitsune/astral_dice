@@ -2,6 +2,7 @@ package com.merlinkitsune.astral_dice.recipe;
 
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import com.merlinkitsune.astral_dice.component.WeaponEnhancement;
+import com.merlinkitsune.astral_dice.item.DiceStarUpgrade;
 import com.merlinkitsune.astral_dice.item.dice.DiceCurioItem;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
@@ -20,7 +21,8 @@ import net.minecraft.world.item.crafting.ShapedRecipePattern;
  * 骰子升级有序合成配方:基础骰子/黄金骰子/钻石骰子按各自配方
  * (见 data/astral_dice/recipe/{golden_dice,diamond_dice,netherite_dice}.json)
  * 由骰子 + 材料(星币/星盘/黄金星盘/原版金属)合成出更高阶骰子。
- * 合成产物会完整继承输入骰子的 WeaponEnhancement(星级 + 已装配攻防牌配置 + cost)。
+ * 普通模式合成产物完整继承输入骰子的 WeaponEnhancement(星级 + 已装配攻防牌配置 + cost)；
+ * 实验模式下产物重置为 0★ + 空卡槽（卡牌由取走时的合成事件归还，费用不退）。
  */
 public class DiceUpgradeShapedRecipe extends ShapedRecipe {
     private final ItemStack output;
@@ -49,6 +51,9 @@ public class DiceUpgradeShapedRecipe extends ShapedRecipe {
                 resultStack.set(ModDataComponents.WEAPON_ENHANCEMENT.get(), enh);
                 break;
             }
+        }
+        if (DiceStarUpgrade.experimentalEnabled()) {
+            resultStack = DiceStarUpgrade.resetCraftedResult(resultStack);
         }
         return resultStack;
     }

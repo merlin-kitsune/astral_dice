@@ -4,6 +4,16 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 26.4-SNAPSHOT.67
+
+### This line
+
+- The Astral Anvil no longer resets star level or returns cards under `experimental_star_upgrade`; both the Astral Anvil and the vanilla anvil now always add exactly one star and keep the input dice's applied cards.
+- Moved that reset to dice-tier crafting (plain → golden → diamond). With `experimental_star_upgrade` on, the crafted dice is reset to 0★ with no applied cards and zero used attack/defense cost; its card capacity is reset to the 0★ value. The parent dice's applied cards are returned to the player. Crafting inputs and card costs are not refunded (option B).
+- Added `DiceUpgradeCraftHandler` on all five lines (server-side, experimental only); both Fabric lines register it explicitly. Removed the anvil menu/handler reset branch and the `ANVIL_STAR_RESET_CARDS_RETURNED` log.
+- The JEI `astral_dice:astral_anvil` page no longer shows `Reset X★ → 0★`; the `star_reset` key was removed from all 15 language files, and the config comments now describe the crafting reset instead of an anvil reset.
+- Validation: five-line `compileJava` exit 0 (`BUILD SUCCESSFUL in 17s`, 8 tasks; log `temp/compile-b-all-2.log`). Five-line `.67` `:build` exit 0 (`BUILD SUCCESSFUL in 21s`, 44 tasks; 37 executed, 7 up-to-date; log `temp/build-67.log`); all five `.67` jars contain `DiceUpgradeCraftHandler` and were deployed to `run/<line>/mods`. NeoForge 1.21.1 live with `experimental_star_upgrade=true` (`scripts/test/win/logs/1.21.1-20261115-134430.log`): crafted a `golden_dice` in a crafting table from a carded 2★ `astral_dice:dice` (medium card) + 4 gold ingots + 4 star coins; the result was 0★ with empty `appliedStones`, used attack/defense cost 0/0 and capacity 3/3. Taking it returned one `astral_dice:attack_card_medium` (log `:9453`: `CRAFT_STAR_RESET_CARDS_RETURNED player=Dev source=astral_dice:dice star=2->0 cards=1`), and neither the gold ingots nor the star coins were refunded. A second carded 2★ dice in the Astral Anvil upgraded to 3★ with its medium card retained and 25 star coins consumed (64→39), confirming the anvil no longer resets. Clicking the anvil arrow opened the JEI `astral_dice:astral_anvil` page; it reads `星阶 0→1 · 15 星币 / 升级花费：5` with no `重置` text; screenshot `temp/astral-anvil-evidence/neoforge-1.21.1/jei-67-no-reset.png` (sha256 `1f58b4ca2bb801358fd1539dc6873b79661d2d89bdb23d2172d89a0d9c639a92`). The other four lines were built but not live-tested in this batch.
+
 ## 26.4-SNAPSHOT.66
 
 ### This line

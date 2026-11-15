@@ -4,6 +4,16 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
+## 26.4-SNAPSHOT.67
+
+### 本线
+
+- 星愿铁砧不再在 `experimental_star_upgrade` 开启时重置星级或归还卡牌；星愿铁砧与原版铁砧现在都固定只加 1 星，并保留输入骰子已装配的卡牌。
+- 把重置移到骰子升阶合成（普通→黄金→钻石）：开启实验开关后，合成出的新骰子重置为 0★、清空已装配卡牌、已用攻/防费用归零，卡牌上限回到 0★ 基础值；母体骰子已装配的卡牌退回玩家。合成投入与卡牌费用不退（B 方案）。
+- 五线新增 `DiceUpgradeCraftHandler`（仅服务端、仅实验开关开启时生效）；两条 Fabric 线在 `AstralDiceMod` 显式注册。删除铁砧菜单/事件处理器中的重置分支与 `ANVIL_STAR_RESET_CARDS_RETURNED` 日志。
+- JEI `astral_dice:astral_anvil` 页面不再显示「重置 X★ → 0★」；15 份语言文件已删除 `star_reset` 键，配置注释改为描述升阶合成重置，而不是铁砧重置。
+- 验证：五线 `compileJava` exit 0（`BUILD SUCCESSFUL in 17s`，8 tasks；日志 `temp/compile-b-all-2.log`）。五线 `.67` `:build` exit 0（`BUILD SUCCESSFUL in 21s`，44 tasks；37 executed，7 up-to-date；日志 `temp/build-67.log`）；五枚 `.67` jar 均含 `DiceUpgradeCraftHandler`，并已部署到 `run/<line>/mods`。NeoForge 1.21.1 实机（`experimental_star_upgrade=true`，`scripts/test/win/logs/1.21.1-20261115-134430.log`）：工作台用带 medium 卡的 2★ `astral_dice:dice` + 4 金锭 + 4 星币合成 `golden_dice`，产物为 0★、`appliedStones` 为空、已用攻/防费用 0/0、上限 3/3。取走后退回 1 张 `astral_dice:attack_card_medium`（日志 `:9453`：`CRAFT_STAR_RESET_CARDS_RETURNED player=Dev source=astral_dice:dice star=2->0 cards=1`），金锭与星币均未返还。另一枚带卡 2★ 骰子在星愿铁砧升到 3★、medium 卡保留，消耗 25 星币（64→39），确认铁砧不再重置。点击箭头打开 JEI `astral_dice:astral_anvil` 页面，显示「星阶 0→1 · 15 星币 / 升级花费：5」，没有「重置」文案；截图 `temp/astral-anvil-evidence/neoforge-1.21.1/jei-67-no-reset.png`（sha256 `1f58b4ca2bb801358fd1539dc6873b79661d2d89bdb23d2172d89a0d9c639a92`）。其余四线本批仅构建、未实机。
+
 ## 26.4-SNAPSHOT.66
 
 ### 本线

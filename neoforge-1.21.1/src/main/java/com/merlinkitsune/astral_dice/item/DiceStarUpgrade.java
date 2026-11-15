@@ -15,7 +15,7 @@ import java.util.List;
  * <ul>
  *   <li>{@link #isDice(ItemStack)}：13 种骰子白名单（升星输入判定）；</li>
  *   <li>{@link #starCoinCost(int)}：星币成本 0★→15 / 1★→20 / 2★→25，不可升（≥3★）⇒ -1；</li>
- *   <li>{@link #resultFor(ItemStack)}：按 {@link #experimentalEnabled()} 产出「星级 +1 且卡牌保留」或「0★ 且清空卡牌」；</li>
+ *   <li>{@link #resultFor(ItemStack)}：固定产出「星级 +1 且卡牌保留」（实验性重置只发生在骰子升阶合成）；</li>
  *   <li>{@link #xpCostFor(ItemStack)}：关闭时固定 10 级；开启时按输入骰子的 dice_t0..dice_t4 分级取 5 / 10 / 15 / 20 / 30，未命中 5。</li>
  * </ul>
  *
@@ -91,10 +91,10 @@ public final class DiceStarUpgrade {
     public static ItemStack resultFor(ItemStack input) {
         if (!isDice(input)) return ItemStack.EMPTY;
         if (starCoinCost(enhancementOf(input).starLevel()) < 0) return ItemStack.EMPTY;
-        return experimentalEnabled() ? experimentalReset(input) : normalUpgraded(input);
+        return normalUpgraded(input);
     }
 
-    /** 普通升星（实验开关关闭）：星级 +1，卡牌（appliedStones）**原样透传**，卡牌上限按新星阶重算。 */
+    /** 铁砧升星（任何模式）：星级 +1，卡牌（appliedStones）**原样透传**，卡牌上限按新星阶重算。 */
     public static ItemStack normalUpgraded(ItemStack input) {
         if (!isDice(input)) return ItemStack.EMPTY;
         WeaponEnhancement enhancement = enhancementOf(input);
@@ -113,11 +113,10 @@ public final class DiceStarUpgrade {
         return output;
     }
 
-    /** 实验性升星（实验开关开启）：产出 **0★ + 空 appliedStones**，卡牌由取走时的 {@code CardReturnHelper} 归还。 */
-    public static ItemStack experimentalReset(ItemStack input) {
-        if (!isDice(input)) return ItemStack.EMPTY;
-        if (starCoinCost(enhancementOf(input).starLevel()) < 0) return ItemStack.EMPTY;
-        ItemStack output = input.copy();
+    /** 升阶合成（实验开关开启）：把产物重置为 **0★ + 空 appliedStones**，母体卡牌由 {@code DiceUpgradeCraftHandler} 在合成事件中归还。 */
+    public static ItemStack resetCraftedResult(ItemStack result) {
+        if (!isDice(result)) return ItemStack.EMPTY;
+        ItemStack output = result.copy();
         setEnhancement(output, new WeaponEnhancement(
                 0,
                 GameplayConstants.cardCostForStar(0),

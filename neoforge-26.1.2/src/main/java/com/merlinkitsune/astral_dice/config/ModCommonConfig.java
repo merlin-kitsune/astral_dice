@@ -27,7 +27,7 @@ import net.neoforged.neoforge.common.ModConfigSpec;
  * ⚠️ 本线(26.1.2)平台只提供 `RenderTooltipEvent.Texture`(贴图 id)、**没有颜色事件** ⇒ 兼容层改为对接
  * Modern UI 自身的 `TooltipRenderer#sStrokeColor`(**仅客户端渲染项,不影响服务端玩法**)」。
  * v7 用于「新增 `enable_chip_recipes`(筹码合成配方总开关,默认 false)—— 26.1.2 合并时漏 bump,本次一并补记」。
- * v8 用于「新增 `experimental_star_upgrade`(实验性升星总开关,默认 false —— 一个开关同时控制:产出 0★、取走时归还已装配卡牌、按 dice_t0..dice_t4 分级取经验)」。
+ * v8 用于「新增 `experimental_star_upgrade`(实验性升星总开关,默认 false —— 开关影响骰子升阶合成的重置/退卡/费用与铁砧分级经验;铁砧升星始终只 +1,从不重置;关闭时行为与改动前完全一致)」。
  */
 public final class ModCommonConfig {
     public static final int CONFIG_VERSION = 8;
@@ -73,11 +73,10 @@ public final class ModCommonConfig {
     /**
      * 实验性升星开关(**服务端玩法项**,默认 false —— 权威默认值见 {@link #EXPERIMENTAL_STAR_UPGRADE_DEFAULT})。
      *
-     * <p>一个开关同时控制三件事(2026-11-15 用户裁决):
+     * <p>一个开关同时控制两件事(2026-11-15 用户裁决):
      * <ol>
-     *   <li>产出形态:开启后铁砧产出 **0★** 骰子(关闭时维持「星级 +1」);</li>
-     *   <li>卡牌归还:开启后取走 0★ 产物时把输入骰子已装配的卡牌全部归还玩家(关闭时卡牌随骰子保留);</li>
-     *   <li>分级经验:开启后按输入骰子的分级标签(dice_t0..dice_t4)取 5 / 10 / 15 / 20 / 30 级(关闭时固定 10 级)。</li>
+     *   <li>升阶合成重置:开启后骰子升阶合成(普通→黄金→钻石等)的新骰子重置为 **0★**、清空已装配卡牌与已用费用,并归还母体骰子的卡牌(费用不退);铁砧升星始终只 +1,从不重置。</li>
+     *   <li>分级经验:开启后铁砧升星按输入骰子的分级标签(dice_t0..dice_t4)取 5 / 10 / 15 / 20 / 30 级(关闭时固定 10 级)。</li>
      * </ol>
      * 判定与数值集中在 {@code item.DiceStarUpgrade}(唯一事实源,勿另复制一套)。
      *
@@ -134,10 +133,10 @@ public final class ModCommonConfig {
         ENABLE_CHIP_RECIPES = builder.comment("是否启用筹码合成配方(默认：false；关闭时 61 枚筹码无法通过合成获得)")
                 .define("enable_chip_recipes", false);
 
-        // 实验性升星开关(默认 false;关闭时行为与改动前完全一致:固定 10 级、星级 +1、卡牌保留 —— 权威默认值见 EXPERIMENTAL_STAR_UPGRADE_DEFAULT)。
+        // 实验性升星开关(默认 false;关闭时行为与改动前完全一致:升阶合成继承母体、铁砧固定 10 级、星级 +1 —— 权威默认值见 EXPERIMENTAL_STAR_UPGRADE_DEFAULT)。
         EXPERIMENTAL_STAR_UPGRADE = builder.comment("实验性升星(默认：false)",
-                        "false = 铁砧升星维持既有行为:固定 10 级经验、星级 +1、卡牌随骰子保留;",
-                        "true = 同时启用三项实验行为:产出 0★ 并归还已装配的卡牌、经验按输入骰子的分级标签取 5 / 10 / 15 / 20 / 30 级")
+                        "false = 升阶合成继承母体星阶/卡牌/费用,铁砧升星固定 10 级经验、星级 +1;",
+                        "true = 升阶合成产物重置为 0★、清空卡牌与费用并归还母体卡牌(费用不退),铁砧经验按输入骰子的分级标签取 5 / 10 / 15 / 20 / 30 级")
                 .define("experimental_star_upgrade", false);
 
         ENABLE_STAR_COIN_WALLET = builder.comment("是否启用星币钱包(默认：true)",

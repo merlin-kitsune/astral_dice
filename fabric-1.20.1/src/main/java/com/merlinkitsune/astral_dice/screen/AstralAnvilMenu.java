@@ -3,7 +3,6 @@ package com.merlinkitsune.astral_dice.screen;
 import com.merlinkitsune.astral_dice.block.ModBlocks;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import com.merlinkitsune.astral_dice.component.WeaponEnhancement;
-import com.merlinkitsune.astral_dice.item.CardReturnHelper;
 import com.merlinkitsune.astral_dice.item.DiceStarUpgrade;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.ModTags;
@@ -133,13 +132,6 @@ public class AstralAnvilMenu extends ItemCombinerMenu {
         this.inputSlots.setItem(INPUT_SLOT, ItemStack.EMPTY);
 
         if (player instanceof ServerPlayer serverPlayer && !input.isEmpty()) {
-            // 快捷移动会先把结果槽搬空再回调 onTake,所以 stack 可能是空栈;空时按输入重新算一次产出形态。
-            ItemStack takenResult = stack.isEmpty() ? DiceStarUpgrade.resultFor(input) : stack;
-            WeaponEnhancement outputEnhancement =
-                    ModDataComponents.WEAPON_ENHANCEMENT.getOrDefault(takenResult, WeaponEnhancement.EMPTY);
-            if (outputEnhancement.starLevel() == 0 && outputEnhancement.appliedStones().isEmpty()) {
-                CardReturnHelper.returnCards(serverPlayer, getEnhancement(input).appliedStones());
-            }
             ChipShopState.store(serverPlayer, ChipShopState.get(serverPlayer).withRefreshGranted());
         }
         if (!player.level().isClientSide()) {

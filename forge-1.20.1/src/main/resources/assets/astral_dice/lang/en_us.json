@@ -1063,7 +1063,6 @@
   "jei.astral_dice.astral_anvil.star_cost": "Star %s→%s · %s Star Coins",
   "jei.astral_dice.astral_anvil.xp_cost": "Upgrade Cost: %s",
   "block.astral_dice.card_shop": "Card Shop",
-  "jei.astral_dice.astral_anvil.star_reset": "Reset %s★ → 0★",
   "msg.astral_dice.card_shop_no_coin": "Not enough Star Coins (need %s)",
   "msg.astral_dice.card_shop_bought": "Purchased %s for %s Star Coins",
   "msg.astral_dice.card_shop_exchange_done": "Starlight exchange complete: gained %s Star Coins",

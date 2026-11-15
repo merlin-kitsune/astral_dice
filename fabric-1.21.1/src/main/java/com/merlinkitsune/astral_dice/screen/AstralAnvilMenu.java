@@ -1,12 +1,9 @@
 package com.merlinkitsune.astral_dice.screen;
 
 import com.merlinkitsune.astral_dice.block.ModBlocks;
-import com.merlinkitsune.astral_dice.component.ModDataComponents;
-import com.merlinkitsune.astral_dice.component.WeaponEnhancement;
 import com.merlinkitsune.astral_dice.item.DiceStarUpgrade;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.ModTags;
-import com.merlinkitsune.astral_dice.item.CardReturnHelper;
 import com.merlinkitsune.astral_dice.shop.ChipShopState;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Inventory;
@@ -132,14 +129,6 @@ public class AstralAnvilMenu extends ItemCombinerMenu {
             ChipShopState.store(serverPlayer, ChipShopState.get(serverPlayer).withRefreshGranted());
         }
 
-        // 4) 产物降回 0★ 且卡牌被清空：把输入骰子上原有的卡牌原样还给玩家
-        // 快捷移动会先把结果槽搬空再回调 onTake，stack 可能是空栈；按输入栈重算产物形态。
-        ItemStack expectedOutput = DiceStarUpgrade.resultFor(input);
-        WeaponEnhancement output = ModDataComponents.WEAPON_ENHANCEMENT.getOrDefault(expectedOutput, WeaponEnhancement.EMPTY);
-        WeaponEnhancement previous = ModDataComponents.WEAPON_ENHANCEMENT.getOrDefault(input, WeaponEnhancement.EMPTY);
-        if (!expectedOutput.isEmpty() && output.starLevel() == 0 && output.appliedStones().isEmpty() && !previous.appliedStones().isEmpty()) {
-            CardReturnHelper.returnCards(player, previous.appliedStones());
-        }
 
         // 5) 清空输入骰子并播放铁砧音效
         this.inputSlots.setItem(INPUT_SLOT, ItemStack.EMPTY);

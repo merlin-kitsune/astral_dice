@@ -1,9 +1,6 @@
 package com.merlinkitsune.astral_dice.screen;
 
 import com.merlinkitsune.astral_dice.block.ModBlocks;
-import com.merlinkitsune.astral_dice.item.CardReturnHelper;
-import com.merlinkitsune.astral_dice.component.ModDataComponents;
-import com.merlinkitsune.astral_dice.component.WeaponEnhancement;
 import com.merlinkitsune.astral_dice.item.DiceStarUpgrade;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.ModTags;
@@ -98,7 +95,7 @@ public class AstralAnvilMenu extends ItemCombinerMenu {
     }
 
     private static int starLevelOf(ItemStack stack) {
-        return stack.getOrDefault(ModDataComponents.WEAPON_ENHANCEMENT.get(), WeaponEnhancement.EMPTY).starLevel();
+        return DiceStarUpgrade.starLevel(stack);
     }
 
     /** 经验成本（原版铁砧同款语义：按等级扣，不是按点数）。 */
@@ -113,16 +110,12 @@ public class AstralAnvilMenu extends ItemCombinerMenu {
     }
 
     /**
-     * 取走结果：扣经验（创造免）、扣材料（先槽 1 后槽 2）、授予筹码商店刷新；
-     * 实验模式下产出形态为「0★ + 空卡槽」时，把**输入骰子**上挂过的卡牌归还。
+     * 取走结果：扣经验（创造免）、扣材料（先槽 1 后槽 2）、授予筹码商店刷新。
      */
     @Override
     protected void onTake(Player player, ItemStack stack) {
         int xpCost = this.cost.get();
         int consumed = this.materialCost;
-        ItemStack inputStack = this.inputSlots.getItem(INPUT_SLOT);
-        WeaponEnhancement inputEnhancement = inputStack
-                .getOrDefault(ModDataComponents.WEAPON_ENHANCEMENT.get(), WeaponEnhancement.EMPTY);
         if (!player.getAbilities().instabuild) {
             player.giveExperienceLevels(-xpCost);
         }
@@ -131,13 +124,6 @@ public class AstralAnvilMenu extends ItemCombinerMenu {
         consumeMaterials(consumed);
         if (player instanceof ServerPlayer serverPlayer) {
             ChipShopState.store(serverPlayer, ChipShopState.get(serverPlayer).withRefreshGranted());
-            // 快捷移动会先把结果槽搬空再回调 onTake，stack 可能是空栈；按输入栈重算产物形态。
-            ItemStack expectedOutput = DiceStarUpgrade.resultFor(inputStack);
-            WeaponEnhancement output = expectedOutput
-                    .getOrDefault(ModDataComponents.WEAPON_ENHANCEMENT.get(), WeaponEnhancement.EMPTY);
-            if (!expectedOutput.isEmpty() && output.starLevel() == 0 && output.appliedStones().isEmpty()) {
-                CardReturnHelper.returnCards(serverPlayer, inputEnhancement.appliedStones());
-            }
         }
         if (!player.level().isClientSide()) {
             this.cost.set(0);

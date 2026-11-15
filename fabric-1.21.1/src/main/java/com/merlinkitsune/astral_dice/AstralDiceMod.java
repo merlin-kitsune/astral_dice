@@ -148,6 +148,7 @@ public class AstralDiceMod implements ModInitializer {
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.command.AstralPartyCommand.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.economy.StarCoinPickupHandler.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.event.AnvilUpgradeHandler.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.event.DiceUpgradeCraftHandler.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.event.BarricadeAggroHandler.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.event.ChipDamageHandler.class);
         // B2-8 批次:死亡保底 —— onPlayerDrops(LivingDropsEvent, LOWEST) 决定「死亡不掉落饰品」、

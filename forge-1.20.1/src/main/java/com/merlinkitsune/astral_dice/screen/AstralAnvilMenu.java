@@ -6,7 +6,6 @@ import com.merlinkitsune.astral_dice.component.WeaponEnhancement;
 import com.merlinkitsune.astral_dice.item.DiceStarUpgrade;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.ModTags;
-import com.merlinkitsune.astral_dice.item.CardReturnHelper;
 import com.merlinkitsune.astral_dice.shop.ChipShopState;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Inventory;
@@ -133,16 +132,7 @@ public class AstralAnvilMenu extends ItemCombinerMenu {
             player.giveExperienceLevels(-xpCost);
         }
 
-        // 0 星形态（实验开关下的重置 / 已无卡形态）需要把输入骰子上佩戴的卡牌退回玩家。
-        // 快捷移动会先把结果槽搬空再回调 onTake，stack 可能是空栈；按输入栈重算产物形态。
-        ItemStack expectedOutput = DiceStarUpgrade.resultFor(input);
-        WeaponEnhancement output = ModDataComponents.WEAPON_ENHANCEMENT.getOrDefault(expectedOutput, WeaponEnhancement.EMPTY);
         if (player instanceof ServerPlayer serverPlayer) {
-            if (!expectedOutput.isEmpty() && output.starLevel() == 0 && output.appliedStones().isEmpty()) {
-                WeaponEnhancement inputEnhancement =
-                        ModDataComponents.WEAPON_ENHANCEMENT.getOrDefault(input, WeaponEnhancement.EMPTY);
-                CardReturnHelper.returnCards(serverPlayer, inputEnhancement.appliedStones());
-            }
             ChipShopState.store(serverPlayer, ChipShopState.get(serverPlayer).withRefreshGranted());
         }
 

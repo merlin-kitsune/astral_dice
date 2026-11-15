@@ -38,7 +38,6 @@ public final class AstralAnvilJeiCategory implements IRecipeCategory<AstralAnvil
     private static final String KEY_TITLE = "jei.astral_dice.astral_anvil";
     private static final String KEY_STAR_COST = "jei.astral_dice.astral_anvil.star_cost";
     private static final String KEY_XP_COST = "jei.astral_dice.astral_anvil.xp_cost";
-    private static final String KEY_STAR_RESET = "jei.astral_dice.astral_anvil.star_reset";
 
     private static final int WIDTH = 128;
     private static final int HEIGHT = 52;
@@ -128,13 +127,11 @@ public final class AstralAnvilJeiCategory implements IRecipeCategory<AstralAnvil
             double mouseX, double mouseY) {
         this.arrow.draw(guiGraphics, ARROW_X, ARROW_Y);
         Font font = Minecraft.getInstance().font;
-                    guiGraphics.drawString(font,
-                DiceStarUpgrade.experimentalEnabled()
-                        ? Component.translatable(KEY_STAR_RESET, recipe.starLevel())
-                        : Component.translatable(KEY_STAR_COST, recipe.starLevel(),
-                                recipe.starLevel() + 1, recipe.coinCost()),
+        guiGraphics.drawString(font,
+                Component.translatable(KEY_STAR_COST, recipe.starLevel(),
+                        recipe.starLevel() + 1, recipe.coinCost()),
                 TEXT_X, TEXT_Y, TEXT_COLOR, false);
-            guiGraphics.drawString(font, Component.translatable(KEY_XP_COST, recipe.xpCost()), TEXT_X, TEXT_Y + 12, TEXT_COLOR, false);
+        guiGraphics.drawString(font, Component.translatable(KEY_XP_COST, recipe.xpCost()), TEXT_X, TEXT_Y + 12, TEXT_COLOR, false);
     }
 
     /** 全部展示记录：13 种骰子 × 0/1/2 星。星币成本与经验成本都取自 {@link DiceStarUpgrade}。 */
