@@ -3,6 +3,8 @@ package com.merlinkitsune.astral_dice.item;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import com.merlinkitsune.astral_dice.component.WeaponEnhancement;
 import com.merlinkitsune.astral_dice.config.ModCommonConfig;
+import com.merlinkitsune.astral_dice.data.AstralDiceDataStore;
+import com.merlinkitsune.astral_dice.item.dice.DiceTierRegistry;
 import com.merlinkitsune.starengine.component.GameplayConstants;
 import net.minecraft.world.item.ItemStack;
 
@@ -49,6 +51,7 @@ public final class DiceStarUpgrade {
     /** 13 种骰子白名单（基础/黄金/玻璃/下界岩/钻石/绿宝石/黑曜石/诡异/紫晶/下界合金/绯红/末影/下界之星）。 */
     public static boolean isDice(ItemStack stack) {
         if (stack == null || stack.isEmpty()) return false;
+        if (DiceTierRegistry.isDice(stack)) return true;
         return stack.is(ModItems.DICE.get()) || stack.is(ModItems.GOLDEN_DICE.get()) || stack.is(ModItems.DIAMOND_DICE.get())
                 || stack.is(ModItems.NETHERITE_DICE.get()) || stack.is(ModItems.EMERALD_DICE.get())
                 || stack.is(ModItems.GLASS_DICE.get()) || stack.is(ModItems.NETHERRACK_DICE.get())
@@ -65,6 +68,11 @@ public final class DiceStarUpgrade {
 
     /** 升星星币成本：0★→15 / 1★→20 / 2★→25；不可升（≥3★ 或非法星阶）⇒ -1。 */
     public static int starCoinCost(int starLevel) {
+        int fromData = AstralDiceDataStore.anvil().starCoinCostFor(starLevel);
+        return fromData > 0 ? fromData : fallbackStarCoinCost(starLevel);
+    }
+
+    private static int fallbackStarCoinCost(int starLevel) {
         return switch (starLevel) {
             case 0 -> 15;
             case 1 -> 20;
@@ -131,14 +139,34 @@ public final class DiceStarUpgrade {
      * 升星消耗的经验等级：关闭实验开关 ⇒ 固定 10；开启 ⇒ 按**输入骰子**的标签分级（与星级无关）。
      */
     public static int xpCostFor(ItemStack input) {
-        if (!experimentalEnabled()) return XP_COST_NORMAL;
-        if (input == null || input.isEmpty()) return XP_COST_UNTIERED;
-        if (input.is(ModTags.Items.DICE_T0)) return XP_COST_T0;
-        if (input.is(ModTags.Items.DICE_T1)) return XP_COST_T1;
-        if (input.is(ModTags.Items.DICE_T2)) return XP_COST_T2;
-        if (input.is(ModTags.Items.DICE_T3)) return XP_COST_T3;
-        if (input.is(ModTags.Items.DICE_T4)) return XP_COST_T4;
-        return XP_COST_UNTIERED;
+        if (!experimentalEnabled()) {
+            int fromData = AstralDiceDataStore.anvil().xpCostNormal();
+            return fromData > 0 ? fromData : XP_COST_NORMAL;
+        }
+        int tier = diceTier(input);
+        int fromData = AstralDiceDataStore.anvil().xpCostForTier(tier);
+        return fromData > 0 ? fromData : fallbackXpCost(tier);
+    }
+
+    private static int diceTier(ItemStack input) {
+        if (input == null || input.isEmpty()) return -1;
+        if (input.is(ModTags.Items.DICE_T0)) return 0;
+        if (input.is(ModTags.Items.DICE_T1)) return 1;
+        if (input.is(ModTags.Items.DICE_T2)) return 2;
+        if (input.is(ModTags.Items.DICE_T3)) return 3;
+        if (input.is(ModTags.Items.DICE_T4)) return 4;
+        return -1;
+    }
+
+    private static int fallbackXpCost(int tier) {
+        return switch (tier) {
+            case 0 -> XP_COST_T0;
+            case 1 -> XP_COST_T1;
+            case 2 -> XP_COST_T2;
+            case 3 -> XP_COST_T3;
+            case 4 -> XP_COST_T4;
+            default -> XP_COST_UNTIERED;
+        };
     }
 
     private static WeaponEnhancement enhancementOf(ItemStack stack) {

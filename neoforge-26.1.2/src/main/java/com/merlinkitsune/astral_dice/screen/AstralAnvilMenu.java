@@ -1,12 +1,15 @@
 package com.merlinkitsune.astral_dice.screen;
 
 import com.merlinkitsune.astral_dice.block.ModBlocks;
+import com.merlinkitsune.astral_dice.data.AstralDiceDataStore;
 import com.merlinkitsune.astral_dice.item.DiceStarUpgrade;
-import com.merlinkitsune.astral_dice.item.ModItems;
-import com.merlinkitsune.astral_dice.item.ModTags;
 import com.merlinkitsune.astral_dice.shop.ChipShopState;
 import java.util.List;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.ContainerLevelAccess;
@@ -55,8 +58,8 @@ public class AstralAnvilMenu extends ItemCombinerMenu {
     private static ItemCombinerMenuSlotDefinition createSlotDefinition() {
         return ItemCombinerMenuSlotDefinition.create()
                 .withSlot(DICE_SLOT, 26, 38, DiceStarUpgrade::isDice)
-                .withSlot(MATERIAL_SLOT_1, 71, 38, stack -> stack.is(ModTags.Items.ASTRAL_ANVIL_MATERIALS))
-                .withSlot(MATERIAL_SLOT_2, 89, 38, stack -> stack.is(ModTags.Items.ASTRAL_ANVIL_MATERIALS))
+                .withSlot(MATERIAL_SLOT_1, 71, 38, AstralAnvilMenu::isMaterial)
+                .withSlot(MATERIAL_SLOT_2, 89, 38, AstralAnvilMenu::isMaterial)
                 .withResultSlot(RESULT_SLOT, 134, 38)
                 .build();
     }
@@ -84,9 +87,9 @@ public class AstralAnvilMenu extends ItemCombinerMenu {
 
         ItemStack output = ItemStack.EMPTY;
         int coins = 0;
-        if (DiceStarUpgrade.isDice(dice) && isStarCoinOrEmpty(material1) && isStarCoinOrEmpty(material2)) {
-            int required = DiceStarUpgrade.starCoinCost(dice);
-            if (required > 0 && material1.getCount() + material2.getCount() >= required) {
+        if (DiceStarUpgrade.isDice(dice) && areValidMaterials(material1, material2)) {
+            int required = DiceStarUpgrade.starCoinCost(DiceStarUpgrade.starLevel(dice));
+            if (required > 0 && totalDenomination(material1) + totalDenomination(material2) >= required) {
                 ItemStack upgraded = DiceStarUpgrade.resultFor(dice);
                 if (!upgraded.isEmpty()) {
                     output = upgraded;
@@ -101,8 +104,31 @@ public class AstralAnvilMenu extends ItemCombinerMenu {
         }
     }
 
-    private static boolean isStarCoinOrEmpty(ItemStack stack) {
-        return stack.isEmpty() || stack.is(ModItems.STAR_COIN.get());
+    private static boolean areValidMaterials(ItemStack material1, ItemStack material2) {
+        return (material1.isEmpty() || isMaterial(material1)) && (material2.isEmpty() || isMaterial(material2));
+    }
+
+    /** 材料槽可放：数据包面额 > 0，或命中 {@code material_tag}（按 1 计）。 */
+    private static boolean isMaterial(ItemStack stack) {
+        return !stack.isEmpty() && denominationOf(stack) > 0;
+    }
+
+    private static int denominationOf(ItemStack stack) {
+        String itemId = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
+        int configured = AstralDiceDataStore.anvil().denomination(itemId);
+        if (configured > 0) {
+            return configured;
+        }
+        Identifier tagId = Identifier.tryParse(AstralDiceDataStore.anvil().materialTag());
+        if (tagId == null) {
+            return 0;
+        }
+        TagKey<net.minecraft.world.item.Item> tag = TagKey.create(Registries.ITEM, tagId);
+        return stack.is(tag) ? 1 : 0;
+    }
+
+    private static int totalDenomination(ItemStack stack) {
+        return denominationOf(stack) * stack.getCount();
     }
 
     @Override
@@ -132,18 +158,19 @@ public class AstralAnvilMenu extends ItemCombinerMenu {
         this.broadcastChanges();
     }
 
-    private void consumeMaterials(int amount) {
-        int remaining = amount;
+    private void consumeMaterials(int totalValue) {
+        int remaining = totalValue;
         for (int index = MATERIAL_SLOT_1; index <= MATERIAL_SLOT_2 && remaining > 0; index++) {
             ItemStack stack = this.inputSlots.getItem(index);
-            if (stack.isEmpty()) {
-                continue;
-            }
-            int taken = Math.min(remaining, stack.getCount());
-            stack.shrink(taken);
-            remaining -= taken;
-            if (stack.isEmpty()) {
-                this.inputSlots.setItem(index, ItemStack.EMPTY);
+            while (remaining > 0 && !stack.isEmpty()) {
+                int value = Math.max(1, denominationOf(stack));
+                stack.shrink(1);
+                remaining -= value;
+                if (stack.isEmpty()) {
+                    this.inputSlots.setItem(index, ItemStack.EMPTY);
+                } else {
+                    this.inputSlots.setItem(index, stack);
+                }
             }
         }
     }
