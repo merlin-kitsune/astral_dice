@@ -12,5 +12,7 @@ public final class FabricDataReloadHandler {
     public static void register() {
         ResourceManagerHelper.get(PackType.SERVER_DATA)
                 .registerReloadListener(new FabricAnvilUpgradeReloadListener());
+        ResourceManagerHelper.get(PackType.SERVER_DATA)
+                .registerReloadListener(new FabricShopDataReloadListener());
     }
 }

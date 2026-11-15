@@ -4,6 +4,15 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 26.4-SNAPSHOT.70
+
+### This line
+
+- The card shop and chip shop pools are now data-pack driven on all five lines. `data/<namespace>/astral_dice/shop/*.json` declares the 23-card pool and the 70-chip pool (id, tier, school, category, weight, combat flag and star gate); the built-in pools remain the fallback when no valid file is present.
+- Added `ShopData` and a shop snapshot in `AstralDiceDataStore`. Each line registers a shop reload listener; `ChipShopCatalog` and `CardShopCatalog` swap their active pool/index after a reload without restarting the server.
+- Fabric 1.20.1/1.21.1 use the same default data; the barricade card continues to resolve through the Fabric `byItemId` helper, so the Fabric pool is semantically identical to the Neo/Forge pool.
+- Validation: five-line `build` exit 0 (`BUILD SUCCESSFUL in 15s`, 44 tasks: 32 executed / 12 up-to-date; `.70` jars in `build/libs`). No live-client testing in this batch.
+
 ## 26.4-SNAPSHOT.69
 
 ### This line

@@ -4,6 +4,15 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
+## 26.4-SNAPSHOT.70
+
+### 本线
+
+- 五线卡牌商店与筹码商店的池改为数据包驱动：`data/<namespace>/astral_dice/shop/*.json` 声明 23 张卡牌池与 70 枚筹码池（id、tier、school、category、weight、combat、星级门槛）；没有有效文件时继续使用内置池。
+- 新增 `ShopData` 与 `AstralDiceDataStore` 的商店快照；五线各注册一个商店 reload listener；重载后 `ChipShopCatalog` / `CardShopCatalog` 直接切换 active pool/index，无需重启服务器。
+- Fabric 1.20.1 / 1.21.1 使用同一份默认数据；路障卡仍通过 Fabric 的 `byItemId` 助手延迟解析，因此 Fabric 池与 Neo / Forge 语义一致。
+- 验证：五线 `build` exit 0（`BUILD SUCCESSFUL in 15s`，44 tasks：32 executed / 12 up-to-date；`.70` jar 在 `build/libs`）。本批未做实机客户端测试。
+
 ## 26.4-SNAPSHOT.69
 
 ### 本线

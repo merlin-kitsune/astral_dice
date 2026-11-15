@@ -80,11 +80,12 @@ public final class ChipShopRoller {
         return picked;
     }
 
-    /** 可用池 = 全池 − 已拥有（顺序保持 {@link ChipShopCatalog#POOL} 的注册顺序，便于复算） */
+    /** 可用池 = 全池 − 已拥有（顺序保持 {@link ChipShopCatalog#entries()} 的注册顺序，便于复算） */
     public static List<ChipShopCatalog.Entry> availablePool(LivingEntity holder) {
         Set<Item> owned = ownedChipItems(holder);
-        List<ChipShopCatalog.Entry> pool = new ArrayList<>(ChipShopCatalog.POOL.size());
-        for (ChipShopCatalog.Entry entry : ChipShopCatalog.POOL) {
+        List<ChipShopCatalog.Entry> all = ChipShopCatalog.entries();
+        List<ChipShopCatalog.Entry> pool = new ArrayList<>(all.size());
+        for (ChipShopCatalog.Entry entry : all) {
             if (!owned.contains(entry.item())) {
                 pool.add(entry);
             }

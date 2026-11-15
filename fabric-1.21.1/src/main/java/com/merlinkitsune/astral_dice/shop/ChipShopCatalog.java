@@ -1,6 +1,7 @@
 package com.merlinkitsune.astral_dice.shop;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
+import com.merlinkitsune.astral_dice.data.ShopData;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.RandomSource;
@@ -8,6 +9,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -185,7 +187,7 @@ public final class ChipShopCatalog {
     }
 
     /** 70 枚池（顺序 = 计划表 §1 的顺序；与 ModItems / 手册三方 70/70 吻合） */
-    public static final List<Entry> POOL = List.of(
+    private static final List<Entry> DEFAULT_POOL = List.of(
             e("atm_chip", TIER_RARE, School.STARLIGHT, Category.ECONOMY),
             e("bank_card_high_chip", TIER_EPIC, School.STARLIGHT, Category.ECONOMY),
             e("bank_card_low_chip", TIER_RARE, School.STARLIGHT, Category.ECONOMY),
@@ -258,7 +260,8 @@ public final class ChipShopCatalog {
             e("whetstone_chip", TIER_EPIC, School.GENERIC, Category.ATTACK)
     );
 
-    private static final Map<String, Entry> BY_ID = buildIndex();
+    private static volatile List<Entry> activePool = DEFAULT_POOL;
+    private static volatile Map<String, Entry> activeIndex = buildIndex(DEFAULT_POOL);
 
     private ChipShopCatalog() {
     }
@@ -267,17 +270,39 @@ public final class ChipShopCatalog {
         return new Entry(id, tier, school, category);
     }
 
-    private static Map<String, Entry> buildIndex() {
+    private static Map<String, Entry> buildIndex(List<Entry> pool) {
         Map<String, Entry> map = new LinkedHashMap<>();
-        for (Entry entry : POOL) {
+        for (Entry entry : pool) {
             map.put(entry.id(), entry);
         }
         return Map.copyOf(map);
     }
 
+    /** 应用数据包池；空列表或全部非法时恢复内置 70 枚池。 */
+    public static synchronized void applyData(ShopData data) {
+        List<Entry> next = new ArrayList<>();
+        if (data != null) {
+            for (ShopData.Chip chip : data.chips()) {
+                School school = School.byKey(chip.school()).orElse(null);
+                Category category = Category.byKey(chip.category()).orElse(null);
+                if (school != null && category != null) {
+                    next.add(new Entry(chip.id(), chip.tier(), school, category));
+                }
+            }
+        }
+        if (next.isEmpty()) {
+            activePool = DEFAULT_POOL;
+            activeIndex = buildIndex(DEFAULT_POOL);
+            return;
+        }
+        List<Entry> copy = List.copyOf(next);
+        activePool = copy;
+        activeIndex = buildIndex(copy);
+    }
+
     /** id → 池内条目（未知 id 返回空，不抛异常） */
     public static Optional<Entry> byId(String id) {
-        return id == null ? Optional.empty() : Optional.ofNullable(BY_ID.get(id));
+        return id == null ? Optional.empty() : Optional.ofNullable(activeIndex.get(id));
     }
 
     /** 物品 → 池内条目（非筹码 / air 返回空） */
@@ -331,7 +356,7 @@ public final class ChipShopCatalog {
 
     /** 池只读视图（村民交易表复用同一份池子）。 */
     public static List<Entry> entries() {
-        return POOL;
+        return activePool;
     }
 
     /** 按品质码反查档位（1/2/3；异常返回 -1）。 */

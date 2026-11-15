@@ -2,6 +2,7 @@ package com.merlinkitsune.astral_dice.event;
 
 import com.merlinkitsune.astral_dice.data.AnvilUpgradeReloadListener;
 import com.merlinkitsune.astral_dice.data.LootInjectionReloadListener;
+import com.merlinkitsune.astral_dice.data.ShopDataReloadListener;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.AddReloadListenerEvent;
@@ -27,5 +28,6 @@ public final class AstralDataReloadHandler {
         List<LootInjectionHandler.PendingTable> pending = LootInjectionHandler.drainPending();
         event.addListener(new AnvilUpgradeReloadListener());
         event.addListener(new LootInjectionReloadListener(pending));
+        event.addListener(new ShopDataReloadListener());
     }
 }

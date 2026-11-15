@@ -1,0 +1,565 @@
+{
+  "schema_version": 1,
+  "chips": [
+    {
+      "id": "atm_chip",
+      "tier": 1,
+      "school": "starlight",
+      "category": "economy"
+    },
+    {
+      "id": "bank_card_high_chip",
+      "tier": 2,
+      "school": "starlight",
+      "category": "economy"
+    },
+    {
+      "id": "bank_card_low_chip",
+      "tier": 1,
+      "school": "starlight",
+      "category": "economy"
+    },
+    {
+      "id": "bank_card_unlimited_chip",
+      "tier": 3,
+      "school": "starlight",
+      "category": "economy"
+    },
+    {
+      "id": "eight_sided_dice_chip",
+      "tier": 1,
+      "school": "starlight",
+      "category": "economy"
+    },
+    {
+      "id": "extra_battery_chip",
+      "tier": 2,
+      "school": "generic",
+      "category": "support"
+    },
+    {
+      "id": "flashlight_burst_chip",
+      "tier": 3,
+      "school": "starlight",
+      "category": "attack"
+    },
+    {
+      "id": "flashlight_chip",
+      "tier": 2,
+      "school": "starlight",
+      "category": "attack"
+    },
+    {
+      "id": "fortune_stick_chip",
+      "tier": 2,
+      "school": "starlight",
+      "category": "attack"
+    },
+    {
+      "id": "golden_shooting_star_chip",
+      "tier": 3,
+      "school": "starlight",
+      "category": "attack"
+    },
+    {
+      "id": "purple_shooting_star_chip",
+      "tier": 2,
+      "school": "starlight",
+      "category": "attack"
+    },
+    {
+      "id": "star_coin_hammer_chip",
+      "tier": 3,
+      "school": "starlight",
+      "category": "attack"
+    },
+    {
+      "id": "abyss_reagent_chip",
+      "tier": 2,
+      "school": "healing",
+      "category": "heal"
+    },
+    {
+      "id": "big_bowl_stew_chip",
+      "tier": 3,
+      "school": "healing",
+      "category": "heal"
+    },
+    {
+      "id": "buffer_shield_chip",
+      "tier": 1,
+      "school": "healing",
+      "category": "heal"
+    },
+    {
+      "id": "candy_chip",
+      "tier": 2,
+      "school": "healing",
+      "category": "heal"
+    },
+    {
+      "id": "cutter_blade_chip",
+      "tier": 3,
+      "school": "healing",
+      "category": "attack"
+    },
+    {
+      "id": "cutter_chip",
+      "tier": 2,
+      "school": "healing",
+      "category": "attack"
+    },
+    {
+      "id": "friendship_badge_chip",
+      "tier": 2,
+      "school": "healing",
+      "category": "heal"
+    },
+    {
+      "id": "medkit_complete_chip",
+      "tier": 3,
+      "school": "healing",
+      "category": "heal"
+    },
+    {
+      "id": "medkit_emergency_chip",
+      "tier": 1,
+      "school": "healing",
+      "category": "heal"
+    },
+    {
+      "id": "vitamin_pill_chip",
+      "tier": 2,
+      "school": "healing",
+      "category": "heal"
+    },
+    {
+      "id": "eagle_scope_chip",
+      "tier": 3,
+      "school": "mark",
+      "category": "attack"
+    },
+    {
+      "id": "hand_fan_big_chip",
+      "tier": 2,
+      "school": "mark",
+      "category": "support"
+    },
+    {
+      "id": "hand_fan_small_chip",
+      "tier": 1,
+      "school": "mark",
+      "category": "support"
+    },
+    {
+      "id": "magic_quiver_chip",
+      "tier": 2,
+      "school": "mark",
+      "category": "support"
+    },
+    {
+      "id": "marker_sprayer_chip",
+      "tier": 1,
+      "school": "mark",
+      "category": "support"
+    },
+    {
+      "id": "ninja_star_chip",
+      "tier": 3,
+      "school": "mark",
+      "category": "attack"
+    },
+    {
+      "id": "scope_chip",
+      "tier": 2,
+      "school": "mark",
+      "category": "attack"
+    },
+    {
+      "id": "sensor_chip",
+      "tier": 2,
+      "school": "mark",
+      "category": "support"
+    },
+    {
+      "id": "target_chip",
+      "tier": 1,
+      "school": "mark",
+      "category": "attack"
+    },
+    {
+      "id": "advanced_peripherals_chip",
+      "tier": 2,
+      "school": "charge",
+      "category": "attack"
+    },
+    {
+      "id": "airbag_chip",
+      "tier": 2,
+      "school": "charge",
+      "category": "support"
+    },
+    {
+      "id": "current_core_chip",
+      "tier": 2,
+      "school": "charge",
+      "category": "reinforce"
+    },
+    {
+      "id": "electric_glove_chip",
+      "tier": 2,
+      "school": "charge",
+      "category": "attack"
+    },
+    {
+      "id": "electric_sword_chip",
+      "tier": 1,
+      "school": "charge",
+      "category": "attack"
+    },
+    {
+      "id": "energy_recycler_chip",
+      "tier": 1,
+      "school": "charge",
+      "category": "reinforce"
+    },
+    {
+      "id": "infinite_grid_chip",
+      "tier": 2,
+      "school": "charge",
+      "category": "reinforce"
+    },
+    {
+      "id": "perpetual_motion_chip",
+      "tier": 3,
+      "school": "charge",
+      "category": "reinforce"
+    },
+    {
+      "id": "primordial_core_chip",
+      "tier": 3,
+      "school": "charge",
+      "category": "reinforce"
+    },
+    {
+      "id": "railgun_chip",
+      "tier": 3,
+      "school": "charge",
+      "category": "attack"
+    },
+    {
+      "id": "warp_engine_chip",
+      "tier": 1,
+      "school": "charge",
+      "category": "reinforce"
+    },
+    {
+      "id": "adrenaline_high_chip",
+      "tier": 3,
+      "school": "generic",
+      "category": "attack"
+    },
+    {
+      "id": "adrenaline_low_chip",
+      "tier": 2,
+      "school": "generic",
+      "category": "attack"
+    },
+    {
+      "id": "big_backpack_chip",
+      "tier": 2,
+      "school": "generic",
+      "category": "reinforce"
+    },
+    {
+      "id": "bookmark_chip",
+      "tier": 1,
+      "school": "generic",
+      "category": "attack"
+    },
+    {
+      "id": "boxing_gloves_high_chip",
+      "tier": 3,
+      "school": "generic",
+      "category": "attack"
+    },
+    {
+      "id": "boxing_gloves_low_chip",
+      "tier": 1,
+      "school": "generic",
+      "category": "attack"
+    },
+    {
+      "id": "boxing_gloves_medium_chip",
+      "tier": 2,
+      "school": "generic",
+      "category": "attack"
+    },
+    {
+      "id": "cursed_sword_chip",
+      "tier": 1,
+      "school": "generic",
+      "category": "attack"
+    },
+    {
+      "id": "magic_tome_chip",
+      "tier": 2,
+      "school": "generic",
+      "category": "support"
+    },
+    {
+      "id": "member_recommendation_chip",
+      "tier": 1,
+      "school": "generic",
+      "category": "economy"
+    },
+    {
+      "id": "moto_helmet_high_chip",
+      "tier": 3,
+      "school": "generic",
+      "category": "reinforce"
+    },
+    {
+      "id": "moto_helmet_low_chip",
+      "tier": 1,
+      "school": "generic",
+      "category": "reinforce"
+    },
+    {
+      "id": "moto_helmet_medium_chip",
+      "tier": 2,
+      "school": "generic",
+      "category": "reinforce"
+    },
+    {
+      "id": "perfect_branch_chip",
+      "tier": 3,
+      "school": "generic",
+      "category": "reinforce"
+    },
+    {
+      "id": "piercing_gun_chip",
+      "tier": 3,
+      "school": "generic",
+      "category": "attack"
+    },
+    {
+      "id": "piggy_bank_chip",
+      "tier": 1,
+      "school": "generic",
+      "category": "economy"
+    },
+    {
+      "id": "revenge_halberd_chip",
+      "tier": 2,
+      "school": "generic",
+      "category": "attack"
+    },
+    {
+      "id": "sandwich_high_chip",
+      "tier": 3,
+      "school": "generic",
+      "category": "reinforce"
+    },
+    {
+      "id": "sandwich_low_chip",
+      "tier": 1,
+      "school": "generic",
+      "category": "reinforce"
+    },
+    {
+      "id": "sandwich_medium_chip",
+      "tier": 2,
+      "school": "generic",
+      "category": "reinforce"
+    },
+    {
+      "id": "satellite_chip",
+      "tier": 3,
+      "school": "generic",
+      "category": "support"
+    },
+    {
+      "id": "smart_watch_chip",
+      "tier": 2,
+      "school": "generic",
+      "category": "support"
+    },
+    {
+      "id": "speed_skates_high_chip",
+      "tier": 3,
+      "school": "generic",
+      "category": "reinforce"
+    },
+    {
+      "id": "speed_skates_low_chip",
+      "tier": 1,
+      "school": "generic",
+      "category": "reinforce"
+    },
+    {
+      "id": "speed_skates_medium_chip",
+      "tier": 2,
+      "school": "generic",
+      "category": "reinforce"
+    },
+    {
+      "id": "sword_in_stone_epic_chip",
+      "tier": 2,
+      "school": "generic",
+      "category": "attack"
+    },
+    {
+      "id": "sword_in_stone_legendary_chip",
+      "tier": 3,
+      "school": "generic",
+      "category": "attack"
+    },
+    {
+      "id": "whetstone_chip",
+      "tier": 2,
+      "school": "generic",
+      "category": "attack"
+    }
+  ],
+  "cards": [
+    {
+      "item": "astral_dice:attack_card_medium",
+      "weight": 6,
+      "combat": true,
+      "min_star_level": 0
+    },
+    {
+      "item": "astral_dice:attack_card_large",
+      "weight": 6,
+      "combat": true,
+      "min_star_level": 0
+    },
+    {
+      "item": "astral_dice:attack_card_epic",
+      "weight": 6,
+      "combat": true,
+      "min_star_level": 0
+    },
+    {
+      "item": "astral_dice:attack_card_shadow_strike",
+      "weight": 6,
+      "combat": true,
+      "min_star_level": 0
+    },
+    {
+      "item": "astral_dice:defense_card_medium",
+      "weight": 6,
+      "combat": true,
+      "min_star_level": 0
+    },
+    {
+      "item": "astral_dice:defense_card_large",
+      "weight": 6,
+      "combat": true,
+      "min_star_level": 0
+    },
+    {
+      "item": "astral_dice:defense_card_epic",
+      "weight": 6,
+      "combat": true,
+      "min_star_level": 0
+    },
+    {
+      "item": "astral_dice:effect_card_berserk",
+      "weight": 6,
+      "combat": false,
+      "min_star_level": 0
+    },
+    {
+      "item": "astral_dice:effect_card_fight_poison_with_poison",
+      "weight": 6,
+      "combat": false,
+      "min_star_level": 0
+    },
+    {
+      "item": "astral_dice:monster_laser_card",
+      "weight": 6,
+      "combat": false,
+      "min_star_level": 0
+    },
+    {
+      "item": "astral_dice:chocolate_cake",
+      "weight": 6,
+      "combat": false,
+      "min_star_level": 0
+    },
+    {
+      "item": "astral_dice:you_have_i_have",
+      "weight": 6,
+      "combat": false,
+      "min_star_level": 0
+    },
+    {
+      "item": "astral_dice:effect_card_barricade",
+      "weight": 6,
+      "combat": false,
+      "min_star_level": 0
+    },
+    {
+      "item": "astral_dice:attack_card_meito",
+      "weight": 3,
+      "combat": true,
+      "min_star_level": 0
+    },
+    {
+      "item": "astral_dice:effect_card_king_power",
+      "weight": 3,
+      "combat": false,
+      "min_star_level": 0
+    },
+    {
+      "item": "astral_dice:effect_card_unwavering",
+      "weight": 3,
+      "combat": false,
+      "min_star_level": 0
+    },
+    {
+      "item": "astral_dice:monster_brick_card",
+      "weight": 3,
+      "combat": false,
+      "min_star_level": 0
+    },
+    {
+      "item": "astral_dice:hamburger",
+      "weight": 3,
+      "combat": false,
+      "min_star_level": 0
+    },
+    {
+      "item": "astral_dice:luxury_feast",
+      "weight": 3,
+      "combat": false,
+      "min_star_level": 0
+    },
+    {
+      "item": "astral_dice:express_delivery",
+      "weight": 3,
+      "combat": false,
+      "min_star_level": 0
+    },
+    {
+      "item": "astral_dice:attack_card_charge",
+      "weight": 2,
+      "combat": true,
+      "min_star_level": 2
+    },
+    {
+      "item": "astral_dice:orbital_strike_card",
+      "weight": 2,
+      "combat": false,
+      "min_star_level": 0
+    },
+    {
+      "item": "astral_dice:directional_blast_card",
+      "weight": 2,
+      "combat": false,
+      "min_star_level": 0
+    }
+  ]
+}

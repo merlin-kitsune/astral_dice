@@ -2,6 +2,7 @@ package com.merlinkitsune.astral_dice.event;
 
 import com.merlinkitsune.astral_dice.data.AnvilUpgradeReloadListener;
 import com.merlinkitsune.astral_dice.data.LootInjectionReloadListener;
+import com.merlinkitsune.astral_dice.data.ShopDataReloadListener;
 import net.minecraft.resources.Identifier;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -21,5 +22,6 @@ public final class AstralDataReloadHandler {
         List<LootInjectionHandler.PendingTable> pending = LootInjectionHandler.drainPending();
         event.addListener(Identifier.fromNamespaceAndPath("astral_dice", "anvil_upgrade"), new AnvilUpgradeReloadListener());
         event.addListener(Identifier.fromNamespaceAndPath("astral_dice", "loot_injection"), new LootInjectionReloadListener(pending));
+        event.addListener(Identifier.fromNamespaceAndPath("astral_dice", "shop_data"), new ShopDataReloadListener());
     }
 }
