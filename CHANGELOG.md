@@ -4,6 +4,13 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 26.4-SNAPSHOT.66
+
+### This line
+
+- Fixed the Astral Anvil JEI entry with empty slots: left-clicking the arrow with no items now opens the `astral_dice:astral_anvil` category and lists all 39 upgrade recipes (13 dice × 0/1/2 stars) instead of requiring the input or result slot to contain an item; the 'Show Recipes' tooltip also appears when the GUI is empty. `AstralAnvilJeiBridge` now accepts an empty stack, and the plugin passes the complete recipe list to `RecipesGui` for that case.
+- Validation: five-line `.66` `:build` exit 0 (`BUILD SUCCESSFUL in 15s`, 44 tasks; 32 executed, 12 up-to-date; log `temp/build-66.log`). NeoForge 1.21.1 live (`scripts/test/win/logs/1.21.1-20261115-132255.log`, loading `astral_dice-26.4-SNAPSHOT.66+neoforge_1.21.1.jar`, `experimental_star_upgrade=false`): cleared the inventory, placed an Astral Anvil at `(8,-60,5)`, opened the empty GUI, then left-clicked the arrow; `mc.screen` changed from `AstralAnvilScreen` to JEI `RecipesGui`, the category contained 39 recipes on page `1/14`, all upgrade entries (star 0→1 / 1→2 / 2→3, Upgrade Cost 10); screenshot `run/neoforge-1.21.1/screenshots/2026-11-15_13.23.52.png`. The other four lines were built but not live-tested in this batch.
+
 ## 26.4-SNAPSHOT.65
 
 ### This line

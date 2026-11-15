@@ -26,14 +26,14 @@ public final class AstralAnvilJeiBridge {
     }
 
     /**
-     * 让 JEI 打开指定物品的配方页；返回是否真的调用了 JEI。
+     * 让 JEI 打开指定物品的配方页；空栈表示列出全部配方。返回是否真的调用了 JEI。
      */
     public static boolean showRecipes(ItemStack stack) {
         Consumer<ItemStack> opener = recipeOpener;
-        if (opener == null || stack.isEmpty()) {
+        if (opener == null || stack == null) {
             return false;
         }
-        opener.accept(stack.copy());
+        opener.accept(stack.isEmpty() ? ItemStack.EMPTY : stack.copy());
         return true;
     }
 }

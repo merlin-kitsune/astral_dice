@@ -124,13 +124,13 @@ public class AstralAnvilScreen extends AbstractContainerScreen<AstralAnvilMenu> 
         if (!input.isEmpty()) {
             return AstralAnvilJeiBridge.showRecipes(input);
         }
-        return AstralAnvilJeiBridge.showRecipes(this.menu.getSlot(AstralAnvilMenu.RESULT_SLOT).getItem());
+        return this.menu.getSlot(AstralAnvilMenu.RESULT_SLOT).getItem().isEmpty() ? AstralAnvilJeiBridge.showRecipes(ItemStack.EMPTY) : AstralAnvilJeiBridge.showRecipes(this.menu.getSlot(AstralAnvilMenu.RESULT_SLOT).getItem());
     }
 
     @Override
     public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         super.extractRenderState(graphics, mouseX, mouseY, partialTick);
-        if (AstralAnvilJeiBridge.isAvailable() && this.hasRecipeTarget()
+        if (AstralAnvilJeiBridge.isAvailable()
                 && this.isOverRecipeArrow(mouseX, mouseY)) {
             graphics.setTooltipForNextFrame(this.font, RECIPE_TOOLTIP, mouseX, mouseY);
         }

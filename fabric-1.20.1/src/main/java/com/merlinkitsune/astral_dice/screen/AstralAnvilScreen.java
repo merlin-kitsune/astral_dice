@@ -134,7 +134,7 @@ public class AstralAnvilScreen extends AbstractContainerScreen<AstralAnvilMenu> 
         if (!input.isEmpty()) {
             return AstralAnvilJeiBridge.showRecipes(input);
         }
-        return AstralAnvilJeiBridge.showRecipes(this.menu.getSlot(AstralAnvilMenu.RESULT_SLOT).getItem());
+        return this.menu.getSlot(AstralAnvilMenu.RESULT_SLOT).getItem().isEmpty() ? AstralAnvilJeiBridge.showRecipes(ItemStack.EMPTY) : AstralAnvilJeiBridge.showRecipes(this.menu.getSlot(AstralAnvilMenu.RESULT_SLOT).getItem());
     }
 
     @Override
@@ -148,7 +148,7 @@ public class AstralAnvilScreen extends AbstractContainerScreen<AstralAnvilMenu> 
     @Override
     protected void renderTooltip(GuiGraphics guiGraphics, int mouseX, int mouseY) {
         super.renderTooltip(guiGraphics, mouseX, mouseY);
-        if (AstralAnvilJeiBridge.isAvailable() && this.hasRecipeTarget()
+        if (AstralAnvilJeiBridge.isAvailable()
                 && this.isOverRecipeArrow(mouseX, mouseY)) {
             guiGraphics.renderTooltip(this.font, RECIPE_TOOLTIP, mouseX, mouseY);
         }

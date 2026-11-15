@@ -51,7 +51,7 @@ public final class AstralAnvilJeiPlugin implements IModPlugin {
     public void onRuntimeAvailable(IJeiRuntime runtime) {
         AstralAnvilJeiBridge.setRecipeOpener(stack -> {
             AstralAnvilJeiCategory.Recipe recipe = AstralAnvilJeiCategory.find(stack);
-            if (recipe == null || this.category == null) {
+            if (this.category == null) {
                 return;
             }
             runtime.getRecipesGui().showRecipes(this.category, AstralAnvilJeiCategory.recipesStartingWith(recipe), List.of());

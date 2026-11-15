@@ -4,6 +4,13 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
+## 26.4-SNAPSHOT.66
+
+### 本线
+
+- 修复星愿铁砧的 JEI 空槽入口：不放入任何物品时，左键点击箭头也会打开 `astral_dice:astral_anvil` 类别并列出全部 39 条升星配方（13 种骰子 × 0/1/2 星），不再要求输入槽或结果槽有物品；「查看配方」tooltip 同样在空槽时显示。实现上 `AstralAnvilJeiBridge` 允许空栈，插件收到空栈时把完整配方列表交给 `RecipesGui`。
+- 验证：五线 `.66` `:build` exit 0（`BUILD SUCCESSFUL in 15s`，44 tasks；32 executed，12 up-to-date；日志 `temp/build-66.log`）。NeoForge 1.21.1 实机（`scripts/test/win/logs/1.21.1-20261115-132255.log`，加载 `astral_dice-26.4-SNAPSHOT.66+neoforge_1.21.1.jar`，`experimental_star_upgrade=false`）：清空背包、在 `(8,-60,5)` 放星愿铁砧、打开空界面后，左键点击箭头，`mc.screen` 从 `AstralAnvilScreen` 变为 JEI `RecipesGui`，类别内共 39 条配方，页码 `1/14`，全部为升星页（星阶 0→1 / 1→2 / 2→3，升级花费 10）；截图 `run/neoforge-1.21.1/screenshots/2026-11-15_13.23.52.png`。其余四线本批仅构建、未实机。
+
 ## 26.4-SNAPSHOT.65
 
 ### 本线
