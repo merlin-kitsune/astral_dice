@@ -225,7 +225,7 @@
 ## 📌 本文件的定位与自检
 
 - 本文件 = **DSH on Linux 的规则正本**；`docs/agent/AGENTS-dsh.md` = **Windows 原生**历史正本（不删、不改红线区，`verify-split.py` 项 1b 依赖它）。
-- 规则全文按需查：`docs/agent/AGENTS-full.md`（2026-11-10 实读 4,162 行）+ 标题行号总表 `docs/agent/AGENTS-TOC.md`（288 行）。**TOC 当前与正文漂移**：`python3 tools/gen_agents_toc.py --check` ⇒ `TOC: DRIFT`、`exit=1`（表内 L105 `@13169` vs 实际 `@13352`）⇒ 查区间前先用 `grep -n '^#' AGENTS-full.md` 校准，别盲信总表。定位：`grep -n '^#' docs/agent/AGENTS-full.md`，按总表查区间后 `sed -n '<a>,<b>p'`。
+- 规则全文按需查：`docs/agent/AGENTS-full.md`（2026-11-15 实读 4,276 行）+ 标题行号总表 `docs/agent/AGENTS-TOC.md`（312 行）。**TOC 已与正文同步**：`python3 tools/gen_agents_toc.py --check` ⇒ `TOC: OK`、`exit=0`，查区间可直接按总表。定位：`grep -n '^#' docs/agent/AGENTS-full.md`，按总表查区间后 `sed -n '<a>,<b>p'`。
 - 派活 brief 里写区间 `L<a>–L<b>`（查 `AGENTS-TOC.md`），读规则由**子代理**执行，不要把大段原文贴进主会话。
 - 自检：`python3 -B docs/agent/verify-split.py`（四项：快照保序包含 + `AGENTS-dsh.md` 红线区与快照 L2–L130 逐字一致 / 根 `AGENTS.md` 结构完整 / docs 引用存在 / 体量 < 32K 且 using-superpowers 段未删）。`--strict` 只把「docs 引用」提为致命。
 - 改动本文件后同样跑一遍。`[[PENDING:…]]` 应清零；若某项事实源长期不可得（如某线尚未实跑），**保留标记并列为已知缺口**，不得删标记假装已验证。
@@ -390,7 +390,7 @@
 
 ## 📇 规则索引
 
-- 区间表来自 `docs/agent/AGENTS-dsh.md`〈📇 规则索引〉（对应 `AGENTS-full.md` 2026-11-10 实读 4,162 行、`AGENTS-TOC.md` 288 行标题表；注意 `AGENTS-TOC.md` 自称 source 行数是**旧快照**，且当前 `--check` 报 `DRIFT`，行数以 `wc -l` 实读为准）；**Linux 宿主同样适用**，命中条目的 Windows 命令按〈Gradle〉/〈命令执行规范〉改写：
+- 区间表来自 `docs/agent/AGENTS-dsh.md`〈📇 规则索引〉（对应 `AGENTS-full.md` 2026-11-15 实读 4,276 行、`AGENTS-TOC.md` 312 行标题表；两者已由 `--write` 同步、`--check` 为 `TOC: OK`，行号可直接按表）；**Linux 宿主同样适用**，命中条目的 Windows 命令按〈Gradle〉/〈命令执行规范〉改写：
 
 | 主题 | `AGENTS-full.md` 区间 |
 |---|---|

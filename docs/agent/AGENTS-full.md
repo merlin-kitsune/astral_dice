@@ -132,6 +132,98 @@ When extending this workspace:
 - 若远程操作因代理失败，先检查代理进程（如 Clash/`127.0.0.1:7897` 端口）是否在运行，再排查网络；不要绕过代理直连 GitHub。
 - **默认不执行 `git push`**(见「编译产物上传规则」第 6 条);每次更新由代理自动完成本地提交,推送仅在用户明确要求时执行,且须经上述代理。
 
+## StarEngine / AstralDiceApi 强制 API 规范（2026-11-15 用户裁决）— 必须遵守
+
+本节统一「主模组 ↔ StarEngine ↔ 附属模组 / KubeJS」的内容注册与查询入口。**新代码、新附属、新脚本一律按本节；旧文档里的 `starengine_lib` 命名与直接写 StarEngine 注册表的写法视为历史，不得复制。**
+
+### 1. 唯一公开入口
+- 对外公开门面只有 `com.merlinkitsune.astral_dice.api.AstralDiceApi`（`common/src/main/java/com/merlinkitsune/astral_dice/api/AstralDiceApi.java`）。
+- 附属模组、KubeJS、数据包脚本、新功能代码**只能**调用 `AstralDiceApi` 的静态方法；**禁止**直接调用 StarEngine 的 `Signs` / `Chips` / `DiceTiers` / `WalletRegistry` / `DamageHooks` 注册方法，也**禁止**直接调用主模组 `CombatStatHooks` 的 `register` / `install` / `clear`，或自行 `new SignDescriptor(...)` / `new ChipDescriptor(...)` 后塞进注册表。
+- StarEngine 的 `SignDescriptor` / `ChipDescriptor` / `ChipSchool` / `ChipCategory` / `HookHandle` / `DamagePhase` / `EntityWallet` / `DamageHook`，以及主模组 `api.combat` 的 `DamageCategory` / `DamageCategoryResolver` / `CombatStat` / `CombatStatStage` / `CombatStatHook` / `CombatStatHandle` 等**类型**可以作为参数 / 返回类型使用；允许使用类型不等于允许绕过门面注册。
+- 主模组内部实现层（`DiceTierRegistry`、`DamageBridge`）继续直接对接 StarEngine 是允许的；它们是 `AstralDiceApi` 的实现细节，**不是第二个公开入口**，不得在附属 / KubeJS / 新功能里直接调用。
+
+### 2. 内容注册与查询矩阵
+
+查询入口读 **StarEngine 快照**，不是主模组 `DiceTierRegistry`；快照返回后不受后续注册影响。
+
+| 需求 | 方法 | 行为 / 约束 |
+|---|---|---|
+| 注册可玩骰子 | `registerDiceTier(String id, Supplier<Item> item, int cardSlots, IntUnaryOperator chipSlots)` | 同时写 `DiceTierRegistry` 与 StarEngine `DiceTiers`；返回 `DiceTier`；**只有这个重载**能让 `DiceCurioItem` 与星愿铁砧认得该骰子。 |
+| 只注册库侧骰子描述符 | `registerDiceTier(String id, int cardSlots, IntUnaryOperator chipSlots)` | 只写 `DiceTiers`；供纯 StarEngine 消费方使用，**不会**生成可玩骰子，主模组不做物品匹配。 |
+| 查询骰子 | `diceTier(String id)` / `diceTiers()` / `diceTierIds()` | 读 StarEngine `DiceTiers`；未注册返回 `null` / 空列表。只注册库侧描述符的 id 也会出现在这里，**不能**据此判断主模组有可玩物品。 |
+| 注册立牌 | `registerSign(String id, String school, int activeCooldownTicks)` | 写 StarEngine `Signs`，返回 `SignDescriptor`；`school` 目前用字符串键（内置统一 `generic`）。 |
+| 查询立牌 | `sign(String id)` / `signs()` / `signIds()` | 读 `Signs`；未注册返回 `null` / 空列表；`signs()` 与 `signIds()` 是快照。 |
+| 注册筹码 | `registerChip(String id, ChipSchool school, ChipCategory category, int price, int weight)` | 写 StarEngine `Chips`，返回 `ChipDescriptor`；`price` / `weight` 是描述符元数据，不替代商店动态定价。 |
+| 查询筹码 | `chip(String id)` / `chips()` / `chipIds()` | 读 `Chips`；未注册返回 `null` / 空列表；`chips()` 与 `chipIds()` 是快照。 |
+| 查询冻结状态 | `isContentFrozen()` | `DiceTierRegistry` / `DiceTiers` / `Signs` / `Chips` 四者全部冻结才返回 `true`。 |
+| 冻结内容 | `freezeContent()` | 冻结上述四个注册表；可重复调用；只由主模组在服务器启动后调用。 |
+| 平台 | `platform()` | 返回当前加载器平台实现；不要用它绕过内容门面。 |
+
+### 3. 钱包矩阵
+
+钱包是**服务端权威状态**：Java 侧由钱包实现决定；KubeJS 只在 server scripts 暴露这些入口。
+
+| 需求 | 方法 | 行为 / 约束 |
+|---|---|---|
+| 注册钱包 | `registerWallet(String id, Predicate<LivingEntity> matches, EntityWallet wallet)` | 写 StarEngine `WalletRegistry`；同 id 替换并保留原顺序；`matches` 判定实体是否使用该钱包。玩家始终解析到 `PlayerWallet`，无需注册。 |
+| 查询可用 | `walletAvailable(LivingEntity entity)` | 无钱包或实体为 `null` 返回 `false`。 |
+| 查询余额 | `walletBalance(LivingEntity entity)` / `walletHasBalance(LivingEntity entity, long amount)` | 无钱包时余额 `0`、可用性 `false`；`walletHasBalance` 在 `amount < 0` 时返回 `false`，`amount == 0` 合法。 |
+| 存入 / 取出 | `walletDeposit(LivingEntity entity, long amount)` / `walletWithdraw(LivingEntity entity, long amount)` | 金额必须为正；`amount <= 0`、无钱包或钱包拒绝均返回 `false`。 |
+| 转账 | `walletTransfer(LivingEntity from, LivingEntity to, long amount)` | `from == to`、金额非正、任一方无钱包返回 `false`；先取出再存入，存入失败时尽力退回；退回也失败只记录日志并返回 `false`（库侧没有原子转账原语）。 |
+
+### 4. 伤害链与战斗属性矩阵
+
+伤害链复用 StarEngine `DamageHooks`，属性链使用主模组 `CombatStatHooks`。分类器与属性支持**只在 NeoForge 1.21.1 + Forge 1.20.1 安装**；其余三线可以编译，但分类查询与两类钩子注册会抛 `IllegalStateException`，避免注册出永不触发的钩子。
+
+| 需求 | 方法 | 行为 / 约束 |
+|---|---|---|
+| 安装伤害分类器 | `installDamageCategoryResolver(DamageCategoryResolver resolver)` | 只由主模组在两线 `onCommonSetup` 调用；附属 / KubeJS 不得调用。 |
+| 查询分类支持 | `isDamageCategorySupported()` | 当前线是否已安装分类器。 |
+| 查询伤害大类 | `damageCategory(DamageSource source)` | 返回 `DICE_MELEE` / `RANGED` / `MAGIC` / `GUN` / `SKILL` / `OTHER`；`null` 返回 `OTHER`；未安装分类器抛 `IllegalStateException`。 |
+| 注册分类伤害钩子 | `registerDamageHook(DamageCategory category, DamagePhase phase, int priority, DamageHook hook)` | 包装 StarEngine `DamageHooks`；类别不匹配返回 `EventResult.PASS`，不打断同阶段其它钩子；未安装分类器时立即抛异常；返回 `HookHandle`。 |
+| 注册全量伤害钩子 | `registerDamageHook(DamagePhase phase, int priority, DamageHook hook)` | 旧入口，不分类，所有伤害都会命中；返回 `HookHandle`。需要类别隔离时用上面的重载。 |
+| 安装属性支持 | `installCombatStatSupport()` | 只由主模组在两线 `onCommonSetup` 调用；可重复调用。 |
+| 查询属性支持 | `isCombatStatSupported()` | 当前线是否已接线。 |
+| 注册属性钩子 | `registerCombatStatHook(CombatStat stat, CombatStatStage stage, int priority, CombatStatHook hook)` | 返回 `CombatStatHandle`；未接线抛 `IllegalStateException`；按属性 × 阶段分组，优先级从大到小链式执行。 |
+
+- **伤害阶段**：`INCOMING`（护甲前，可取消 / 改原始值）、`AFTER_ARMOR`（护甲后）、`POST`（通知；改 `amount` 不影响已落地伤害）、`DEATH`（可取消死亡）。同一阶段内优先级越大越先执行，同优先级按注册顺序；首个非 `PASS` 结果短路：`DENY` / `INTERRUPT` 取消本次伤害，`ALLOW` 显式放行并结束本阶段链。
+- **分类优先级**：`SKILL` -> `GUN` -> `MAGIC` -> `RANGED` -> `DICE_MELEE` -> `OTHER`。`GUN` 复用 `SpellDamageRegistry` 的枪械证据表，不受 `GameplayConstants.ALLOW_FIREARM_DAMAGE` 影响（该配置只影响法术白名单）；`RANGED` 只收 `AbstractArrow` / `ThrowableProjectile` 一类弹射物；`DICE_MELEE` 是直接实体近战的兜底。
+- **属性阶段**：`BASE` 替换初始值；`ADDITIVE` 写 `value + n`；`MULTIPLICATIVE` 写 `value * m`；`FINAL` 做最终修正。阶段本身只决定执行顺序，**不强制运算**——钩子必须自己返回新数值。攻击侧 `BASE` 在基础攻击力之后、内置 `AttackPowerModifier` 之前；`ADDITIVE` / `MULTIPLICATIVE` 在内置循环之后；`FINAL` 在 `DiceBattleResolver.resolve` 之前。防御侧 `BASE` 在 `CombatFormula` 之后、加 `defenseBaseDice + defenseCardSum` 之前；其余三阶段在 padman bypass 之后、`resolve` 之前。
+- **属性作用域**：ATTACK / DEFENSE 钩子只挂在**骰战（近战）**结算里。远程 / 魔法 / 枪弹 / 技能不经过 `DiceCombatEvents`，属性钩子不会影响它们；这些类型请用伤害链钩子（`INCOMING` / `AFTER_ARMOR`）。
+- **显示路径**：`CombatStatContext.display == true` 时属性钩子不执行；HUD / tooltip 的预览数值不包含脚本加成。异常会被隔离并记录，不中断本次结算。
+
+### 5. 生命周期与冻结
+- **注册窗口**：模组构造 / 共通初始化（`onCommonSetup` / `FMLCommonSetupEvent.enqueueWork`）到服务器启动完成前。主模组内置内容在五线 `onCommonSetup` 里调用 `BuiltinContent.register()`；KubeJS server scripts 在服务器启动前执行，仍可注册。
+- **冻结点**：NeoForge 1.21.1 在 `neoforge-1.21.1/src/main/java/com/merlinkitsune/astral_dice/AstralDiceMod.java:225`、Forge 1.20.1 在 `forge-1.20.1/src/main/java/com/merlinkitsune/astral_dice/AstralDiceMod.java:234` 的 `ServerStartedEvent` 回调里调用 `AstralDiceApi.freezeContent()`（Fabric 线为 `SERVER_STARTED`）。冻结后 `Signs` / `Chips` / `DiceTiers` / `DiceTierRegistry` 的写入抛 `IllegalStateException`（消息含 `is frozen`）。
+- **禁止提前冻结**：附属模组、KubeJS 脚本、数据包脚本不得调用 `freezeContent()`；提前冻结会让主模组和后续脚本的注册全部失败。KubeJS 附属 0.0.1 已移除脚本可见的 `freezeContent`，只保留 `isContentFrozen` 查询。
+- **`/reload` 不能新增内容**：内容注册表不是数据包重载目标；冻结后要新增内容只能改注册代码并重启服务器。查询不受冻结影响；伤害 / 属性钩子不是内容注册表，脚本重载时可以注销并重注册。
+
+### 6. 骰子的双写语义
+- 需要主模组真正认得的骰子，必须用带 `Supplier<Item>` 的 `registerDiceTier` 重载；不带 `Supplier` 的重载只给 StarEngine 消费者用，`DiceCurioItem`、筹码栏 / 卡牌栏、星愿铁砧升星都不认。
+- `DiceTierRegistry` 是主模组实现层，不是附属 API；附属 / KubeJS / 新功能不得直接调用 `DiceTierRegistry.register(...)` 或 `DiceTierRegistry.freeze()`。
+- **查询不等于可玩**：`diceTiers()` / `diceTierIds()` 读 StarEngine，会包含只注册库侧描述符的 id；判断主模组是否有可玩物品，要看 `DiceTierRegistry` 的物品匹配或各线 `ModItems`。
+
+### 7. 内置内容连接
+- 主模组内置 **36 个立牌、70 个筹码、13 个骰面阶级**。`BuiltinContent.register()` 在五线共通初始化里通过 `AstralDiceApi.registerSign` / `registerChip` 写入 StarEngine；`blank_sign` / `blank_chip` 是合成材料，不注册。
+- 代码事实源：立牌清单是 `common/src/main/java/com/merlinkitsune/astral_dice/content/BuiltinContent.java` 的 `SIGNS`（36）；筹码清单是同类 `CHIPS`（70）。数据事实源：筹码的 `school` / `category` / `tier` 在 `common/src/main/resources/data/astral_dice/astral_dice/shop/offers.json` 的 `chips`（70；`cards` 是 23 张卡牌，不是筹码）。
+- **描述符 ≠ 物品注册项**：StarEngine 描述符只提供内容元数据；物品仍在各线 `ModItems` 注册。新增 / 删除内置立牌或筹码时，必须同时同步 `ModItems`、`BuiltinContent`、`offers.json`（筹码）并跑五线构建。
+- `BuiltinContent` 是主模组内部实现，不是附属 API；附属模组不要 import 或调用它。
+
+### 8. 命名、依赖与 KubeJS 附属契约
+- 当前库名 **StarEngine**；`starengine_lib` / `starengine_lib_next` / `starengine_lib_fabric` / `starengine_lib_version` / `com.merlinkitsune.starengine_lib` 都是历史名。新代码、新文档、新依赖只写 `StarEngine` / `com.merlinkitsune.starengine`；依赖坐标与版本属性以各线 `gradle.properties` 实读为准。
+- 旧文档中的历史条目可以保留，但不得据此新建目录、包名、Gradle 属性或 import；发现新改动引入旧名即拒。
+- **KubeJS 附属**：独立仓 `F:\MCProject\astral_dice_kubejs`，发布版 **0.0.1，不带任何后缀**；只支持 NeoForge 1.21.1 + Forge 1.20.1，产物 `astral_dice_kubejs-0.0.1.jar`；元数据要求主模组 `[26.4-SNAPSHOT.76,)`。共享 binding 在附属仓 `common/src/main/java/com/merlinkitsune/astraldice/kubejs`，通过反射调用 `AstralDiceApi`，**不编译依赖**主模组或 StarEngine。
+- **KubeJS 脚本面**：只在 server scripts 暴露；注册入口有 `registerSign` / `registerChip` / `registerDiceTier` / `registerDamageHook(category, phase, [priority], fn)` / `registerCombatStatHook(stat, stage, [priority], fn)`；查询与钱包入口以附属仓 README 为准。物品 id 必须在注册表存在，未知 id 由脚本侧拒绝；枚举大小写不敏感。脚本重载时由 `beforeScriptsLoaded`（KubeJS 7）/ `onServerReload`（KubeJS 6）清空旧钩子，脚本重新注册。
+- **版本联动**：主模组新增 / 修改 `AstralDiceApi` 公开方法时，按仓库版本纪律 bump 主模组版本，并同步附属仓 metadata 的主模组下界与 README / CHANGELOG；不得只改主模组而让附属仓声明过宽的旧区间。
+
+### 9. 验证门
+- **代码审查**：在 `common/src/main/java` 与五线 `src/main/java` 检索 `Signs.register|Chips.register|DiceTiers.register|WalletRegistry.register|DamageHooks.register|CombatStatHooks.register|new SignDescriptor|new ChipDescriptor`；命中只允许在 `AstralDiceApi.java` / `DiceTierRegistry.java` / `CombatStatHooks.java` 等主模组实现层，附属 / KubeJS / 新功能命中即拒。
+- **附属审查**：KubeJS 共享 binding 不得新增对 `com.merlinkitsune.astral_dice` 或 `com.merlinkitsune.starengine` 的编译期 import；这些类名只能出现在反射字符串里。新增 JS API 时同步附属仓 README / CHANGELOG。
+- **命名审查**：代码 / Gradle / 新文档不得新增 `starengine_lib`；历史文档命中不删，但新改动不得复制。
+- **构建门**：主模组五线 build 通过；改 KubeJS 附属时另跑附属仓两线 build（NeoForge 1.21.1 + Forge 1.20.1），并确认两枚产物都含 `logo.png` 与共享 binding 类。
+- **实机门**：改主模组内容 / 伤害 / 属性 API 时，至少跑 NeoForge 1.21.1 探针，确认 `version=0.0.1;platform=kubejs;addonId=astral_dice_kubejs;available=true;signs=36;chips=70;diceTiers=13;frozen=true;categorySupported=true;statSupported=true`；改 KubeJS 附属或钩子脚本时，NeoForge 1.21.1 与 Forge 1.20.1 各跑一次，并检查钩子注册 / 注销、分类过滤、钱包读取。字段名是 `frozen`，不是 `frozenSign` / `frozenChip`。新增 / 删除内容时同步更新期望值并记录日志路径。
+- 如果只改文档 / 规则且未改产品代码，不触发版本 bump 与实机回归。
+
 ## 第三方联动取源与反射纪律（Third-Party Integration Sourcing）— 必须遵守（2026-10-01 用户裁决）
 
 **针对其它模组的联动 / 调用，禁止凭记忆猜 API。** 取源与实现一律以**实物**为准。用户裁决（2026-10-01）三条：
@@ -404,7 +496,9 @@ When extending this workspace:
 >    ✅ ⑨~⑬ 是 **fabric 平台通用纪律**（生产映射冒烟 / 附件注册时序 / Accessories 图标路径 /
 >    按文件移植 / 反射后端核验），**本分支同样适用**，不因版本号线不同而豁免。
 >
-### 前置库 starengine_lib 的版本与兼容性契约（全局，2026-09-22 用户裁决）
+### 前置库 StarEngine（旧文档名 starengine_lib）的版本与兼容性契约（全局，2026-09-22 用户裁决）
+
+> **现行命名（2026-11-15 起）**：本节历史正文里的 `starengine_lib` / `starengine_lib_next` / `starengine_lib_fabric` / `starengine_lib_version` 均为旧名。当前库仓路径为 `F:\MCProject\starengine`（发布线）/ `F:\MCProject\starengine_next`（开发线），包名为 `com.merlinkitsune.starengine`；依赖坐标与版本属性以各线 `gradle.properties` 实读为准。旧名只作历史溯源，新代码 / 新文档 / 新依赖不得再使用。
 
 > 本契约**跨两个仓库生效**（库仓开发线工作树 `F:\MCProject\starengine_lib_next`（分支 `next`）↔ 本仓各线），是库的**公开兼容性承诺**。
 > ⚠️ **库仓工作树布局（2026-10-02 用户裁决）**：`F:\MCProject\starengine_lib` 常驻 **`main`**（发布线）；
@@ -842,6 +936,8 @@ When extending this workspace:
 
 规则:新增骰子/卡牌/筹码/立牌类分别放入 `item.dice`/`item.card`/`item.chip`/`item.sign`;跨包引用需显式 import(禁止依赖同包隐式可见性)。
 
+**顶层 API / 内容包（2026-11-15 起）**：`api/` 只放对外门面（`AstralDiceApi`），`content/` 只放主模组内置内容注册（`BuiltinContent`）；附属模组不得把类塞进这两个包，也不得从这两个包之外再开第二个公开注册入口。`api` 是唯一公开门面，`content` 是主模组内部实现；完整规范见「StarEngine / AstralDiceApi 强制 API 规范」。
+
 **网络 payload / message 类不得直接引用 `net.minecraft.client.**`（2026-10-11 用户交接裁决）**：专用服务器按 dist 裁剪类（`RuntimeDistCleaner`），payload 一旦被专服加载并触达客户端类型即崩 ⇒ 客户端动作（弹卡 / GUI / 音效）一律下沉到 `client/` 包的 helper 类，payload 本体只在 `FMLEnvironment.dist == Dist.CLIENT`（或平台等价守卫）之内间接触达；判据 = 专服启动冒烟 `Done` 且 `RuntimeDistCleaner` 命中 0 + `javap` 反证 payload 类无客户端类型引用。
 
 ## 物品一览（Item Registry）— 新增/修改前必读
@@ -951,7 +1047,11 @@ When extending this workspace:
 
 ### 立牌（signs）— 命名规范见下节
 
+> **内置立牌连接（2026-11-15）**：36 个内置立牌由 `BuiltinContent.register()` 在五线 `onCommonSetup` 通过 `AstralDiceApi.registerSign` 写入 StarEngine；`blank_sign` 不注册。立牌物品注册与 StarEngine 描述符是两件事；新增 / 删除时同步 `ModItems` 与 `BuiltinContent`。
+
 ### 筹码（chips）— 一览见「筹码一览」节
+
+> **内置筹码连接（2026-11-15）**：70 个内置筹码（`offers.json` 全集，排除 `blank_chip`）由同一入口通过 `AstralDiceApi.registerChip` 注册；`school` / `category` / `tier` 以 `offers.json` 为准，`price=10`、`weight` 按 tier 6/3/2 由 `BuiltinContent` 映射。新增 / 删除时同步 `offers.json`、`ModItems`（若有物品）与 `BuiltinContent`。
 
 > **筹码状态图标口径（2026-10-01 用户裁决）— 必须遵守**：筹码的 HUD 状态图标就是一枚本模组的 `MobEffect`，
 > 显示条件由 `event/PlayerTickEvents#updateChipBonusIndicators`（或各筹码自己的 `updateXxxEffect`）**每 tick 维护**。

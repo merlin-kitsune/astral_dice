@@ -149,7 +149,7 @@
 > - **交叉引用口径**：其它文件（脚本 / README / TESTING-SPEC 等）里写的「见 AGENTS.md〈X〉」，一律改到 `docs/agent/AGENTS-full.md` 里**按标题名检索**；标题文字未做任何改动。
 > - **自检**：`python -B docs/agent/verify-split.py`（只读；四项 —— ① 快照保序包含 + **本文件红线区块与快照 L2–L129 逐字一致**；② 根 `AGENTS.md` 结构完整（宿主分派 / 共同红线 1–9 / 按需索引）；③ `AGENTS.md` 引用的 docs 路径都存在（默认 WARN，`--strict` 才 FAIL）；④ 体量 < 32K 且本文件的 `using-superpowers` 段没被删）。
 
-## 🎌 立牌 / 物品英日命名规则（2026-10-26 用户裁决；全文见 `docs/agent/AGENTS-full.md` L4116–L4186）
+## 🎌 立牌 / 物品英日命名规则（2026-10-26 用户裁决；全文见 `docs/agent/AGENTS-full.md` L4137–L4209）
 
 **一句话**：立牌 id 全是角色人名 ⇒ EN / JA 名字一律取官方 wiki 的角色名，**禁止机翻中文职称**；zh 侧保持游戏内职称式命名、不动。
 
