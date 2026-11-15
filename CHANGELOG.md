@@ -4,6 +4,15 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 26.4-SNAPSHOT.71
+
+### This line
+
+- Wired the StarEngine damage-hook chain into the main damage events. NeoForge 1.21.1 and 26.1.2 dispatch all four phases (INCOMING, AFTER_ARMOR, POST, DEATH); Forge 1.20.1 dispatches INCOMING, AFTER_ARMOR and DEATH (no native post event); Fabric 1.21.1 dispatches INCOMING, POST and DEATH; Fabric 1.20.1 dispatches INCOMING and DEATH.
+- Fabric's `ALLOW_DAMAGE` can cancel but cannot rewrite the incoming amount; its bridge treats amount changes as advisory. Forge lacks a native post-damage event, and Fabric 1.20.1 lacks a post/after-armor event; these gaps are documented in the bridge classes.
+- No hooks are registered by default, so the event wiring is behavior-neutral until a mod registers a hook.
+- Validation: five-line `build` exit 0 (`BUILD SUCCESSFUL in 15s`, 44 tasks: 32 executed / 12 up-to-date; `.71` jars in `build/libs`). No live-client testing in this batch.
+
 ## 26.4-SNAPSHOT.70
 
 ### This line

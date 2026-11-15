@@ -4,6 +4,15 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
+## 26.4-SNAPSHOT.71
+
+### 本线
+
+- 把 StarEngine 伤害钩子链接入主伤害事件。NeoForge 1.21.1 / 26.1.2 派发四阶段（INCOMING、AFTER_ARMOR、POST、DEATH）；Forge 1.20.1 派发 INCOMING、AFTER_ARMOR、DEATH（该线没有原生 Post 事件）；Fabric 1.21.1 派发 INCOMING、POST、DEATH；Fabric 1.20.1 派发 INCOMING、DEATH。
+- Fabric 的 `ALLOW_DAMAGE` 只能取消、不能改写进入伤害；桥接层把 amount 改写视为建议值。Forge 缺原生 Post，Fabric 1.20.1 缺 Post/AfterArmor；这些差异已在桥接类注释中写明。
+- 默认不注册任何钩子，因此未注册时事件接线不改变行为。
+- 验证：五线 `build` exit 0（`BUILD SUCCESSFUL in 15s`，44 tasks：32 executed / 12 up-to-date；`.71` jar 在 `build/libs`）。本批未做实机客户端测试。
+
 ## 26.4-SNAPSHOT.70
 
 ### 本线

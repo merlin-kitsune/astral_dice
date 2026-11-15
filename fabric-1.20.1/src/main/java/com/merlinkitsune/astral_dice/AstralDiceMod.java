@@ -68,6 +68,7 @@ public class AstralDiceMod implements ModInitializer {
         // 战利品注入(FAPI LootTableEvents.MODIFY):替代 Forge 侧的 GLM + LootTableLoadEvent 两条通道
         com.merlinkitsune.astral_dice.loot.FabricLootInjector.register();
         com.merlinkitsune.astral_dice.data.FabricDataReloadHandler.register();
+        com.merlinkitsune.astral_dice.combat.FabricDamageBridge.register();
         commitRegistrations();
         // B0 平台注册链(顺序敏感):POI 建 BlockState→PoiType 映射表依赖方块已注册;
         // 职业依赖 POI 的 ResourceKey 存在;交易表依赖职业已 commit(否则 RegistryObject.get() 抛异常)。
