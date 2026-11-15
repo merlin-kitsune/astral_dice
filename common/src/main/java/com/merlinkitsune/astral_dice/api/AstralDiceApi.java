@@ -1,5 +1,6 @@
 package com.merlinkitsune.astral_dice.api;
 
+import com.merlinkitsune.astral_dice.item.dice.DiceTierRegistry;
 import com.merlinkitsune.astral_dice.platform.AstralDicePlatform;
 import com.merlinkitsune.astral_dice.platform.AstralDicePlatforms;
 import com.merlinkitsune.starengine.api.combat.damage.DamageHook;
@@ -19,17 +20,20 @@ import com.merlinkitsune.starengine.api.economy.WalletRegistry;
 import java.util.List;
 import java.util.function.IntUnaryOperator;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.Item;
 
 /**
  * Astral Dice 对外的统一门面(主项目 {@code common} 源码根)。
  *
- * <p><b>纯委托,不复制注册表</b>:骰面阶级 / 立牌 / 筹码的注册表、经济钱包表、
- * 伤害钩子链全部由 StarEngine({@code com.merlinkitsune.starengine.api.*})持有,
- * 本类只把入口收敛到一处,让调用方不必直接依赖库的类名分布。
+ * <p><b>两级注册表</b>:立牌 / 筹码 / 经济钱包 / 伤害钩子链由 StarEngine
+ * ({@code com.merlinkitsune.starengine.api.*})持有;骰面阶级另有一份主项目注册表
+ * ({@link DiceTierRegistry}),因为筹码栏 / 卡牌栏 / 星愿铁砧在游戏主流程里要按物品栈解析。
+ * 带 {@link Supplier} 的 {@link #registerDiceTier} 会同时写两边,只写库侧的重载不会让骰子可玩。
  *
- * <p>生命周期约定:注册必须在内容冻结之前完成 —— 冻结后库侧注册表会拒绝写入。
- * 冻结由模组自己在内容注册完成后调用 {@link #freezeContent()}(当前骨架阶段尚未接线)。
+ * <p>生命周期约定:注册必须在内容冻结之前完成 —— 冻结后两级注册表都会拒绝写入。
+ * 模组在内容注册完成后调用 {@link #freezeContent()}。
  *
  * <p>本类的全部方法都是静态且无状态的,可在任意线程调用(并发语义继承库侧实现)。
  */
@@ -40,9 +44,28 @@ public final class AstralDiceApi {
 
     // ---------------------------------------------------------------- 骰面阶级
 
-    /** 注册一个骰面阶级。{@code chipBonus} 由库侧按 {@code 下标 -> 加成} 求值。 */
-    public static DiceTier registerDiceTier(String id, int cardSlots, IntUnaryOperator chipBonus) {
-        return DiceTiers.register(id, cardSlots, chipBonus);
+    /**
+     * 注册一个骰子阶层并绑定实际物品：这是附属新增可玩骰子的入口。
+     *
+     * <p>同时写入主模组 {@link DiceTierRegistry}（筹码栏 / 卡牌栏 / 星愿铁砧识别）
+     * 与 StarEngine 的全局描述符表。{@code chipSlots} 返回该星级下的**绝对筹码格数**。
+     */
+    public static com.merlinkitsune.astral_dice.item.dice.DiceTier registerDiceTier(
+            String id, Supplier<Item> item, int cardSlots, IntUnaryOperator chipSlots) {
+        com.merlinkitsune.astral_dice.item.dice.DiceTier tier =
+                new com.merlinkitsune.astral_dice.item.dice.DiceTier(id, item, chipSlots, cardSlots);
+        DiceTierRegistry.register(tier);
+        return tier;
+    }
+
+    /**
+     * 只注册骰子描述符（不绑定物品）。
+     *
+     * <p>它不会让主模组的 {@code DiceCurioItem} / 铁砧识别该骰子；需要可玩物品时请用
+     * {@link #registerDiceTier(String, Supplier, int, IntUnaryOperator)}。
+     */
+    public static DiceTier registerDiceTier(String id, int cardSlots, IntUnaryOperator chipSlots) {
+        return DiceTiers.register(id, cardSlots, chipSlots);
     }
 
     /** 按 id 取骰面阶级;不存在返回 {@code null}。 */
@@ -98,6 +121,7 @@ public final class AstralDiceApi {
 
     /** 冻结内容注册表(骰面阶级 / 立牌 / 筹码),冻结后再注册会被库侧拒绝。 */
     public static void freezeContent() {
+        DiceTierRegistry.freeze();
         DiceTiers.freeze();
         Signs.freeze();
         Chips.freeze();
