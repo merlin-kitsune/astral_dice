@@ -49,6 +49,10 @@ public class AstralDiceMod {
                     + "（下载指引占位：<待填写 —— 发布页 / 整合包说明>）");
             throw new IllegalStateException("Missing required dependency: StarEngine (starengine)");
         }
+        // 主项目 common 源码根:平台工厂先落位(StarEngine 缺失断言之后、任何内容注册之前),
+        // 之后 common 里的 AstralDiceApi 才能取到正确的平台 id。仅 set + install,零行为变化。
+        com.merlinkitsune.astral_dice.platform.AstralDicePlatforms.install(
+                new com.merlinkitsune.astral_dice.platform.ForgeAstralDicePlatform());
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
         // ⚠️ 不兼容模组黑名单(Magic Coins / SG-Economy)的检查**不能放在这里**:它是否拒绝取决于
         //    「星币钱包」开关(config/ModCommonConfig 的 enable_star_coin_wallet),而配置要到**本阶段之后**

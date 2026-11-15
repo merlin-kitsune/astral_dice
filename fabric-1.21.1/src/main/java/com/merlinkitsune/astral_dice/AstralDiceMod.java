@@ -50,6 +50,10 @@ public class AstralDiceMod implements ModInitializer {
         //    先做「Trinkets 或 Accessories 二选一」判定,玩家看到的就是完整的中文说明
         //    而不是一个 NoClassDefFoundError 堆栈(2026-09-29 用户裁决)。
         ModCompatibilityCheck.verifyAccessoryProviderOrThrow();
+        // 主项目 common 源码根:平台工厂在加载器兼容性判定之后、任何内容注册之前落位
+        // (仅 set + install,零行为变化),之后 AstralDiceApi 才能取到正确的平台 id。
+        com.merlinkitsune.astral_dice.platform.AstralDicePlatforms.install(
+                new com.merlinkitsune.astral_dice.platform.FabricAstralDicePlatform());
         // ⚠️ 必须在这里(**mod 初始化期**)强制附件键注册 —— 它的静态初始化是惰性的,
         //    若推迟到「第一次读写附件」(= 玩家登录处理器)才跑,则玩家 NBT 反序列化时
         //    注册表里还没有这些 id,Fabric 会逐条 "Unknown attachment type ... skipping"
