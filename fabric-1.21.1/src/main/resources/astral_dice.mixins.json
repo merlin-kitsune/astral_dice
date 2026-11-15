@@ -39,7 +39,8 @@
     "trade.MerchantResultSlotMixin",
     "trade.ServerPlayerMixin",
     "HealOrHarmMobEffectMixin",
-    "RegenerationMobEffectMixin"
+    "RegenerationMobEffectMixin",
+    "bridge.LivingDamageBridgeMixin"
   ],
   "client": [
     "client.AstralUseItemGuardMixin",

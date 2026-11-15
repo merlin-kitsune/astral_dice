@@ -4,6 +4,16 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
+## 26.4-SNAPSHOT.72
+
+### 本线
+
+- Forge 1.20.1 与两条 Fabric 线补齐 StarEngine 的四个伤害阶段。Forge 仍无原生「扣血之后」事件，POST 改由 `LivingEntity#actuallyHurt` 的生命值差补齐：HEAD 记录进入时生命值，RETURN 仅在生命值真的下降时派发。
+- Fabric 1.20.1 / 1.21.1 通过 `LivingDamageBridgeMixin` 增加 AFTER_ARMOR 与 POST：在 `LivingEntity#actuallyHurt` 内包裹 `setHealth` 调用，先按「护甲/吸收之后」的伤害派发 AFTER_ARMOR（可取消或改写），再按实际生命值损失派发 POST。该路径同时覆盖 Fabric 1.21.1 的 `AFTER_DAMAGE` 在致死伤害时不派发的缺口。
+- 移除 Fabric 1.21.1 的 `AFTER_DAMAGE` 注册，避免 POST 重复并消除致死伤害漏派发；`ALLOW_DAMAGE` 仍只映射 INCOMING 且只能取消。
+- Mixin 注册：Forge 为 `bridge.LivingDamagePostBridgeMixin`，两条 Fabric 线为 `bridge.LivingDamageBridgeMixin`。伤害来源用 ThreadLocal 栈保存，嵌套伤害仍能正确配对。
+- 验证：五线 `build` exit 0（`BUILD SUCCESSFUL in 15s`，44 tasks：27 executed / 17 up-to-date；`.72` jar 在 `build/libs`）。Forge refmap 已映射到 `m_6475_`；Fabric 最终 jar 内已重映射为 `method_6074` / `method_6033`。本批未做实机客户端测试。
+
 ## 26.4-SNAPSHOT.71
 
 ### 本线

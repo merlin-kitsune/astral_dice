@@ -4,6 +4,16 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 26.4-SNAPSHOT.72
+
+### This line
+
+- Forge 1.20.1 and both Fabric lines now expose all four StarEngine damage phases. Forge still has no native post-health event, so POST is derived from the health delta around `LivingEntity#actuallyHurt`: HEAD records the entry health, RETURN fires POST only when health actually dropped.
+- Fabric 1.20.1 / 1.21.1 add AFTER_ARMOR and POST through `LivingDamageBridgeMixin`: it wraps the `setHealth` call inside `LivingEntity#actuallyHurt`, dispatches AFTER_ARMOR with the post-armor/absorption loss (cancel or rewrite), then dispatches POST with the real health loss. This also covers lethal damage, which Fabric 1.21.1's `AFTER_DAMAGE` skips.
+- Removed the Fabric 1.21.1 `AFTER_DAMAGE` registration to avoid duplicate POST and the lethal-damage blind spot. `ALLOW_DAMAGE` remains cancel-only and is still mapped to INCOMING.
+- Mixin registration: `bridge.LivingDamagePostBridgeMixin` (Forge) and `bridge.LivingDamageBridgeMixin` (both Fabric lines). Damage sources are carried through ThreadLocal stacks so nested damage stays paired.
+- Validation: five-line `build` exit 0 (`BUILD SUCCESSFUL in 15s`, 44 tasks: 27 executed / 17 up-to-date; `.72` jars in `build/libs`). The Forge refmap maps the mixin to `m_6475_`; the Fabric final jars contain the remapped `method_6074` / `method_6033` targets. No live-client testing in this batch.
+
 ## 26.4-SNAPSHOT.71
 
 ### This line

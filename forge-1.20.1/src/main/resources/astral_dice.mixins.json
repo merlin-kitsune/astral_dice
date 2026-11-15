@@ -22,7 +22,8 @@
     "HealOrHarmMobEffectMixin",
     "RegenerationMobEffectMixin",
     "sculk.SculkSensorVibrationUserMixin",
-    "sculk.SculkShriekerVibrationUserMixin"
+    "sculk.SculkShriekerVibrationUserMixin",
+    "bridge.LivingDamagePostBridgeMixin"
   ],
   "client": [
     "client.AstralUseItemGuardMixin",
