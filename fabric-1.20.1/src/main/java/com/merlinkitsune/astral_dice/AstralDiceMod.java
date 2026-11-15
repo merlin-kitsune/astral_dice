@@ -92,6 +92,11 @@ public class AstralDiceMod implements ModInitializer {
         //    都处于「代码在、但没接上」的静默失效状态)。位置 = 监听器注册之后,
         //    这样桥第一次派发时订阅者一定已在总线上。
         FabricBridges.install();
+        // 内容注册表在服务器启动后冻结(KubeJS 服务器脚本此时已加载完成)。
+        net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STARTED.register(server -> {
+            com.merlinkitsune.astral_dice.api.AstralDiceApi.freezeContent();
+            LOGGER.info("[Astral Dice] 内容注册表已在服务器启动后冻结。");
+        });
         // Trinkets 通道(硬→软:2026-09-29 起 Trinkets 与 Accessories **二选一**即可)。
         // ⚠️ 守卫放在**调用点**而不是方法体内 —— TrinketBridge 直接引用
         //    dev.emi.trinkets.api.*(含内部 record Adapter implements Trinket),

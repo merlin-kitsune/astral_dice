@@ -87,6 +87,8 @@ public class AstralDiceMod {
         // 否则 data/astral_dice/loot_modifiers/*.json 全部解码失败(详见 loot/AstralLootModifiers)
         com.merlinkitsune.astral_dice.loot.AstralLootModifiers.SERIALIZERS.register(modEventBus);
         modEventBus.register(this);
+        // 内容注册表在服务器启动后冻结(KubeJS 服务器脚本此时已加载完成)
+        MinecraftForge.EVENT_BUS.addListener(AstralDiceMod::onServerStarted);
         // 配置:配置项定义、TOML 读写与配置 GUI 全部留在本模组(见 config/ModCommonConfig)。
         // 旧版本配置文件先备份,再由 Forge 继承旧值写入新配置(仅公共配置;client 配置已移除)。
         backupOldConfigIfNeeded("astral_dice-common.toml", ModCommonConfig.CONFIG_VERSION);
@@ -213,5 +215,17 @@ public class AstralDiceMod {
             LOGGER.info("Astral Dice mod loaded.");
             LOGGER.info("May the god of the dice be with you!");
         });
+    }
+
+    /**
+     * 服务器启动后冻结内容注册表。
+     *
+     * <p>⚠️ 不能放在 {@link #onCommonSetup}：KubeJS 服务器脚本在 common setup 之后才加载，
+     * 提前冻结会让脚本侧的 {@code AstralDice.registerSign/registerChip} 直接抛
+     * {@link IllegalStateException}。ServerStartedEvent 晚于脚本加载，届时注册已完成。
+     */
+    private static void onServerStarted(net.minecraftforge.event.server.ServerStartedEvent event) {
+        com.merlinkitsune.astral_dice.api.AstralDiceApi.freezeContent();
+        LOGGER.info("[Astral Dice] 内容注册表已在服务器启动后冻结。");
     }
 }

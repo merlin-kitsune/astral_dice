@@ -33,7 +33,9 @@ import net.minecraft.world.item.Item;
  * 带 {@link Supplier} 的 {@link #registerDiceTier} 会同时写两边,只写库侧的重载不会让骰子可玩。
  *
  * <p>生命周期约定:注册必须在内容冻结之前完成 —— 冻结后两级注册表都会拒绝写入。
- * 模组在内容注册完成后调用 {@link #freezeContent()}。
+ * 主模组在服务器启动后({@code ServerStartedEvent}; Fabric 为 {@code SERVER_STARTED})调用
+ * {@link #freezeContent()},该时机晚于 KubeJS 服务器脚本加载,脚本仍可在启动阶段注册内容。
+ * 附属模组不要自行提前冻结,否则后续脚本注册会被拒绝;{@code /reload} 也不能再新增内容。
  *
  * <p>本类的全部方法都是静态且无状态的,可在任意线程调用(并发语义继承库侧实现)。
  */
@@ -119,7 +121,12 @@ public final class AstralDiceApi {
 
     // ------------------------------------------------------------------ 收口
 
-    /** 冻结内容注册表(骰面阶级 / 立牌 / 筹码),冻结后再注册会被库侧拒绝。 */
+    /**
+     * 冻结内容注册表(骰面阶级 / 立牌 / 筹码),冻结后再注册会被库侧拒绝。
+     *
+     * <p>由主模组在服务器启动后调用;可重复调用。附属模组应在此之前完成注册,
+     * 不要自行提前冻结。
+     */
     public static void freezeContent() {
         DiceTierRegistry.freeze();
         DiceTiers.freeze();

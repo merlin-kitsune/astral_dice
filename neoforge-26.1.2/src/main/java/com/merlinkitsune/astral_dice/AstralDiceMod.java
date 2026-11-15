@@ -79,6 +79,8 @@ public class AstralDiceMod {
         backupOldConfigIfNeeded("astral_dice-common.toml", ModCommonConfig.CONFIG_VERSION);
         modContainer.registerConfig(ModConfig.Type.COMMON, ModCommonConfig.SPEC);
         modEventBus.register(this);
+        // 内容注册表在服务器启动后冻结(KubeJS 服务器脚本此时已加载完成)
+        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(AstralDiceMod::onServerStarted);
         // Waystones 传送联动:仅在模组加载时反射注册事件,未安装时静默跳过
         com.merlinkitsune.astral_dice.event.WaystoneWarpCompat.init();
         // ⚠️ 客户端菜单界面(ModMenuTypes.CARD_INVENTORY → CardInventoryScreen)的注册**不在这里**。
@@ -203,5 +205,17 @@ public class AstralDiceMod {
             CuriosApi.registerCurio(ModItems.FANNY_SIGN.get(), (ICurioItem) ModItems.FANNY_SIGN.get());
             CuriosApi.registerCurio(ModItems.RIN_SIGN.get(), (ICurioItem) ModItems.RIN_SIGN.get());
         });
+    }
+
+    /**
+     * 服务器启动后冻结内容注册表。
+     *
+     * <p>⚠️ 不能放在 {@link #onCommonSetup}：KubeJS 服务器脚本在 common setup 之后才加载，
+     * 提前冻结会让脚本侧的 {@code AstralDice.registerSign/registerChip} 直接抛
+     * {@link IllegalStateException}。ServerStartedEvent 晚于脚本加载，届时注册已完成。
+     */
+    private static void onServerStarted(net.neoforged.neoforge.event.server.ServerStartedEvent event) {
+        com.merlinkitsune.astral_dice.api.AstralDiceApi.freezeContent();
+        LOGGER.info("[Astral Dice] 内容注册表已在服务器启动后冻结。");
     }
 }

@@ -4,6 +4,14 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 26.4-SNAPSHOT.74
+
+### This line
+
+- Content registries (`DiceTierRegistry`, `DiceTiers`, `Signs`, `Chips`) now freeze after server start (`ServerStartedEvent` on NeoForge/Forge, `ServerLifecycleEvents.SERVER_STARTED` on Fabric) instead of during common setup. KubeJS server scripts load after common setup; freezing there would reject `AstralDice.registerSign/registerChip` from scripts. Late registration after freeze still throws `IllegalStateException`.
+- Documented DEATH-phase cancellation semantics in `DamageBridge`: cancelling only suppresses platform death processing (drops, death message); it does not restore health or keep the entity alive. Use POST to restore health or rewrite the damage in INCOMING/AFTER_ARMOR if survival is intended.
+- Validation: five-line `.74` build exit 0 (`BUILD SUCCESSFUL in 24s`, 44 tasks: 37 executed / 7 up-to-date; five `.74` jars in `build/libs`). NeoForge 1.21.1 live (`scripts/test/win/logs/1.21.1-20261115-185541.log`): the KubeJS pre-freeze script registered `kubejs_prefreeze_sign` at :5964, the freeze log appeared at :6422, and the probe returned `sign=true;signCount=1;frozenSign=true;frozenChip=true;frozenTiers=true;frozenRegistry=true;lateSign=...IllegalStateException: content registry sign is frozen`. No client visual check in this batch.
+
 ## 26.4-SNAPSHOT.73
 
 ### This line

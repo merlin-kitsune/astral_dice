@@ -4,6 +4,14 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
+## 26.4-SNAPSHOT.74
+
+### 本线
+
+- 内容注册表（`DiceTierRegistry`、`DiceTiers`、`Signs`、`Chips`）改为在服务器启动后冻结（NeoForge/Forge 为 `ServerStartedEvent`，Fabric 为 `ServerLifecycleEvents.SERVER_STARTED`），不再在 common setup 阶段冻结。KubeJS 服务器脚本在 common setup 之后才加载，若提前冻结会让脚本侧的 `AstralDice.registerSign/registerChip` 直接被拒；冻结后的迟到注册仍抛 `IllegalStateException`。
+- 在 `DamageBridge` 注释中写明 DEATH 阶段取消语义：取消只阻止平台继续处理死亡（掉落、死亡消息等），不会恢复已扣生命值，也不会让实体回到存活状态；需要目标存活时应在 POST 阶段补回生命值，或在 INCOMING/AFTER_ARMOR 阶段改写伤害使其不致死。
+- 验证：五线 `.74` `build` exit 0（`BUILD SUCCESSFUL in 24s`，44 tasks：37 executed / 7 up-to-date；五枚 `.74` jar 在 `build/libs`）。NeoForge 1.21.1 实机（`scripts/test/win/logs/1.21.1-20261115-185541.log`）：KubeJS 预冻结脚本在 :5964 注册 `kubejs_prefreeze_sign`，:6422 输出冻结日志；探针返回 `sign=true;signCount=1;frozenSign=true;frozenChip=true;frozenTiers=true;frozenRegistry=true;lateSign=...IllegalStateException: content registry sign is frozen`。本批未做客户端视觉检查。
+
 ## 26.4-SNAPSHOT.73
 
 ### 本线
