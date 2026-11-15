@@ -4,6 +4,14 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
+## 26.4-SNAPSHOT.73
+
+### 本线
+
+- 修复共享商店数据中 9 张卡牌的物品 ID 与注册名不一致（`monster_laser_card` → `effect_card_monster_laser`、`chocolate_cake` → `effect_card_chocolate_cake`、`you_have_i_have` → `effect_card_you_have_i_have`、`monster_brick_card` → `effect_card_monster_brick`、`hamburger` → `effect_card_hamburger`、`luxury_feast` → `effect_card_luxury_feast`、`express_delivery` → `effect_card_express_delivery`、`orbital_strike_card` → `effect_card_orbital_strike`、`directional_blast_card` → `effect_card_directional_blast`）。这 9 个 ID 都解析为 `minecraft:air`，导致卡牌交易校验器打印 9 条「命中被排除项：<空气>」，商店池里出现空条目。
+- `CardShopCatalog.applyData` 现在会跳过无法解析或未注册的卡牌物品 ID 并输出错误日志，不再把空气 `PoolEntry` 放进池子；错误的数据包不会再让空卡上架。
+- 验证：五线 `.73` `build` exit 0（`BUILD SUCCESSFUL in 14s`，44 tasks：32 executed / 12 up-to-date；五枚 `.73` jar 在 `build/libs`）。NeoForge 1.21.1 实机（`scripts/test/win/logs/1.21.1-20261115-184222.log`）：23 张商店卡牌全部解析到已注册物品，`CardShopCatalog.entries()` 为 23 条，`CardTradeFilter.validatePool` 异常 0；日志 `:6137`（商店池 23 张、异常 0）与 `:7731`（smoke_reload 23 张、异常 0）。三条 Curios `scroll/feet/spellbook is not a registered slot type!` 错误与本次改动无关。
+
 ## 26.4-SNAPSHOT.72
 
 ### 本线

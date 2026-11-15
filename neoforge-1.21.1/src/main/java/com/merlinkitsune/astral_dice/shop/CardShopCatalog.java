@@ -6,7 +6,8 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.Item;
-import net.minecraft.world.item.Items;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -33,6 +34,8 @@ import java.util.function.Supplier;
  * {@code 10%} 概率降为 {@value #DISCOUNT_PRICE} 星币（D2/用户追加口径）。
  */
 public final class CardShopCatalog {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger("astral_dice/shop");
 
     public static final int BASE_SLOTS = 3;
     public static final int PROMOTION_BONUS_SLOTS = 2;
@@ -181,10 +184,16 @@ public final class CardShopCatalog {
         if (data != null) {
             for (ShopData.Card card : data.cards()) {
                 ResourceLocation itemId = ResourceLocation.tryParse(card.item());
-                if (itemId != null) {
-                    next.add(new PoolEntry(() -> BuiltInRegistries.ITEM.getOptional(itemId).orElse(Items.AIR),
-                            card.weight(), card.combat(), card.minStarLevel()));
+                if (itemId == null) {
+                    LOGGER.error("[shop] 卡牌 id 非法，已跳过：{}", card.item());
+                    continue;
                 }
+                Item item = BuiltInRegistries.ITEM.getOptional(itemId).orElse(null);
+                if (item == null) {
+                    LOGGER.error("[shop] 卡牌物品未注册，已跳过：{}", card.item());
+                    continue;
+                }
+                next.add(new PoolEntry(() -> item, card.weight(), card.combat(), card.minStarLevel()));
             }
         }
         activePool = next.isEmpty() ? DEFAULT_POOL : List.copyOf(next);

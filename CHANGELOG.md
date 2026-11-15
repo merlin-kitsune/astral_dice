@@ -4,6 +4,14 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 26.4-SNAPSHOT.73
+
+### This line
+
+- Fixed nine shared shop card entries whose item IDs did not match the registered items (`monster_laser_card` → `effect_card_monster_laser`, `chocolate_cake` → `effect_card_chocolate_cake`, `you_have_i_have` → `effect_card_you_have_i_have`, `monster_brick_card` → `effect_card_monster_brick`, `hamburger` → `effect_card_hamburger`, `luxury_feast` → `effect_card_luxury_feast`, `express_delivery` → `effect_card_express_delivery`, `orbital_strike_card` → `effect_card_orbital_strike`, `directional_blast_card` → `effect_card_directional_blast`). All nine resolved to `minecraft:air`, so the card-trade validator logged nine “excluded item: <air>” errors and the shop pool contained empty entries.
+- `CardShopCatalog.applyData` now skips unparsable or unregistered card item IDs and logs an error instead of adding an air `PoolEntry`; a bad shop data pack can no longer put empty cards on a shelf.
+- Validation: five-line `.73` build exit 0 (`BUILD SUCCESSFUL in 14s`, 44 tasks: 32 executed / 12 up-to-date; five `.73` jars in `build/libs`). NeoForge 1.21.1 live (`scripts/test/win/logs/1.21.1-20261115-184222.log`): all 23 shop cards resolve to registered items, `CardShopCatalog.entries()` has 23 entries and `CardTradeFilter.validatePool` reports 0 bad; log lines `:6137` (shop pool 23, abnormal 0) and `:7731` (smoke_reload 23, abnormal 0). The three Curios `scroll/feet/spellbook is not a registered slot type!` errors are unrelated to this change.
+
 ## 26.4-SNAPSHOT.72
 
 ### This line

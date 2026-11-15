@@ -478,19 +478,19 @@
       "min_star_level": 0
     },
     {
-      "item": "astral_dice:monster_laser_card",
+      "item": "astral_dice:effect_card_monster_laser",
       "weight": 6,
       "combat": false,
       "min_star_level": 0
     },
     {
-      "item": "astral_dice:chocolate_cake",
+      "item": "astral_dice:effect_card_chocolate_cake",
       "weight": 6,
       "combat": false,
       "min_star_level": 0
     },
     {
-      "item": "astral_dice:you_have_i_have",
+      "item": "astral_dice:effect_card_you_have_i_have",
       "weight": 6,
       "combat": false,
       "min_star_level": 0
@@ -520,25 +520,25 @@
       "min_star_level": 0
     },
     {
-      "item": "astral_dice:monster_brick_card",
+      "item": "astral_dice:effect_card_monster_brick",
       "weight": 3,
       "combat": false,
       "min_star_level": 0
     },
     {
-      "item": "astral_dice:hamburger",
+      "item": "astral_dice:effect_card_hamburger",
       "weight": 3,
       "combat": false,
       "min_star_level": 0
     },
     {
-      "item": "astral_dice:luxury_feast",
+      "item": "astral_dice:effect_card_luxury_feast",
       "weight": 3,
       "combat": false,
       "min_star_level": 0
     },
     {
-      "item": "astral_dice:express_delivery",
+      "item": "astral_dice:effect_card_express_delivery",
       "weight": 3,
       "combat": false,
       "min_star_level": 0
@@ -550,13 +550,13 @@
       "min_star_level": 2
     },
     {
-      "item": "astral_dice:orbital_strike_card",
+      "item": "astral_dice:effect_card_orbital_strike",
       "weight": 2,
       "combat": false,
       "min_star_level": 0
     },
     {
-      "item": "astral_dice:directional_blast_card",
+      "item": "astral_dice:effect_card_directional_blast",
       "weight": 2,
       "combat": false,
       "min_star_level": 0
