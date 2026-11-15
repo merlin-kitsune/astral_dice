@@ -54,7 +54,7 @@ public final class AstralAnvilJeiPlugin implements IModPlugin {
             if (recipe == null || this.category == null) {
                 return;
             }
-            runtime.getRecipesGui().showRecipes(this.category, List.of(recipe), List.of());
+            runtime.getRecipesGui().showRecipes(this.category, AstralAnvilJeiCategory.recipesStartingWith(recipe), List.of());
         });
     }
 

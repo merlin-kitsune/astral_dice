@@ -972,7 +972,7 @@
   "gui.astral_dice.astral_anvil.show_recipes": "查看配方",
   "jei.astral_dice.astral_anvil": "星愿铁砧",
   "jei.astral_dice.astral_anvil.star_cost": "星阶 %s→%s · %s 星币",
-  "jei.astral_dice.astral_anvil.xp_cost": "附魔花费：%s",
+  "jei.astral_dice.astral_anvil.xp_cost": "升级花费：%s",
   "jei.astral_dice.astral_anvil.star_reset": "重置 %s★ → 0★",
   "block.astral_dice.card_shop": "卡牌商店",
   "block.astral_dice.chip_shop": "筹码商店",

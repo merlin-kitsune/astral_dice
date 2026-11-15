@@ -4,6 +4,16 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
+## 26.4-SNAPSHOT.65
+
+### 本线
+
+- 修复五线星愿铁砧 JEI 页面的整体布局：类别宽度由 180 px 改为 128 px，JEI 会把配方面板居中，不再在右侧留下大片空白。
+- 点击铁砧箭头时，现在会把全部 39 条升星页（13 种骰子 × 0/1/2 星）交给 JEI，并把与输入骰子、当前星阶匹配的那条排到最前。此前只传这一条，所以界面恒为 `1/1`，也只显示普通骰子的费用。
+- 每条页面现在读取自己的骰子与星阶：关闭 `experimental_star_upgrade` 时所有骰子都显示 10 级费用；开启时 `dice_t0`…`dice_t4` 分别显示 5/10/15/20/30，未分阶骰子显示 5；星币成本仍按星阶为 15/20/25。
+- 把 JEI 的费用文案从「附魔花费」改为「升级花费」（英文 `Upgrade Cost`，日文「アップグレード費用」），15 份语言文件均已更新。
+- 验证：五线 `.65` `:build` exit 0（`BUILD SUCCESSFUL in 15s`，44 tasks；32 executed，12 up-to-date；日志 `temp/build-65.log`）；五枚 `.65` jar 均含 `AstralAnvilJeiCategory.recipesStartingWith` 与改名后的 `Upgrade Cost` 文案。NeoForge 1.21.1 普通模式实机（`scripts/test/win/logs/1.21.1-20261115-123420.log`，`experimental_star_upgrade=false`）：`diamond_dice` + 64 星币时 `cost=10`；点击箭头打开 `astral_dice:astral_anvil`，面板居中、页码 `1/14`，39 条（13 种骰子 × 0/1/2 星）全部显示 `升级花费：10`；截图 `temp/astral-anvil-evidence/neoforge-1.21.1/jei-65-normal.png`。实验模式（`scripts/test/win/logs/1.21.1-20261115-123622.log`，开关开启）：`nether_star_dice`（t4）+ 64 星币时 `cost=30`；JEI 页首条为「重置 0★ → 0★」「升级花费：30」，39 条按经验 5/10/15/20/30 的分布为 3/9/15/9/3；截图 `.../jei-65-experimental.png`。其余四线本批已构建、未实机。
+
 ## 26.4-SNAPSHOT.64
 
 ### 本线

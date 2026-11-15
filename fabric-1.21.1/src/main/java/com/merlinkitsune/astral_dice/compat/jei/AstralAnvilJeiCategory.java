@@ -40,7 +40,7 @@ public final class AstralAnvilJeiCategory implements IRecipeCategory<AstralAnvil
     private static final String KEY_XP_COST = "jei.astral_dice.astral_anvil.xp_cost";
     private static final String KEY_STAR_RESET = "jei.astral_dice.astral_anvil.star_reset";
 
-    private static final int WIDTH = 180;
+    private static final int WIDTH = 128;
     private static final int HEIGHT = 52;
     private static final int ANVIL_X = 6;
     private static final int ANVIL_Y = 6;
@@ -144,6 +144,16 @@ public final class AstralAnvilJeiCategory implements IRecipeCategory<AstralAnvil
             for (int star = 0; star < 3; star++) {
                 list.add(new Recipe(dice, star));
             }
+        }
+        return List.copyOf(list);
+    }
+
+    /** 全部展示记录，但把命中的那条排到首位；找不到时按原顺序。 */
+    public static List<Recipe> recipesStartingWith(Recipe first) {
+        List<Recipe> list = new ArrayList<>(recipes());
+        if (first != null) {
+            list.remove(first);
+            list.add(0, first);
         }
         return List.copyOf(list);
     }

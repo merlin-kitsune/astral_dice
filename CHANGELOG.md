@@ -4,6 +4,16 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 26.4-SNAPSHOT.65
+
+### This line
+
+- Fixed the Astral Anvil JEI page layout on all five lines: the category is now 128 px wide instead of 180 px, so JEI centers the recipe panel instead of leaving a wide empty margin on the right.
+- Clicking the anvil arrow now sends all 39 upgrade pages (13 dice × 0/1/2 stars) to JEI, with the page matching the input dice and current star level moved to the front. Previously only that single recipe was sent, so the GUI always showed page `1/1` and only the plain dice cost.
+- Each page now reads its own dice and star level: with `experimental_star_upgrade` off every die shows the 10-level cost; with it on, dice in `dice_t0`…`dice_t4` show 5/10/15/20/30 and untiered dice show 5, while star-coin costs remain 15/20/25 by star level.
+- Renamed the JEI cost line from `Enchant Cost` to `Upgrade Cost` (zh: 升级花费, ja: アップグレード費用) in all 15 language files.
+- Validation: five-line `.65` `:build` exit 0 (`BUILD SUCCESSFUL in 15s`, 44 tasks; 32 executed, 12 up-to-date; log `temp/build-65.log`); all five `.65` jars contain `AstralAnvilJeiCategory.recipesStartingWith` and the renamed `Upgrade Cost` strings. NeoForge 1.21.1 live normal mode (`scripts/test/win/logs/1.21.1-20261115-123420.log`, `experimental_star_upgrade=false`): a `diamond_dice` + 64 star coins showed `cost=10`; clicking the arrow opened `astral_dice:astral_anvil` with the panel centered, page `1/14`, and all 39 entries (13 dice × 0/1/2 stars) read `Upgrade Cost: 10`; screenshot `temp/astral-anvil-evidence/neoforge-1.21.1/jei-65-normal.png`. Experimental mode (`scripts/test/win/logs/1.21.1-20261115-123622.log`, option on): a `nether_star_dice` (t4) + 64 star coins showed `cost=30`; the JEI page starts with `Reset 0★ → 0★` and `Upgrade Cost: 30`, and the 39-entry list splits 3/9/15/9/3 across XP 5/10/15/20/30; screenshot `.../jei-65-experimental.png`. The other four lines were built but not live-tested in this batch.
+
 ## 26.4-SNAPSHOT.64
 
 ### This line
