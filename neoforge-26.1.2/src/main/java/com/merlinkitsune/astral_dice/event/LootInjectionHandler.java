@@ -2,6 +2,8 @@ package com.merlinkitsune.astral_dice.event;
 
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
+import com.merlinkitsune.astral_dice.data.LootInjectionData;
+import com.merlinkitsune.astral_dice.data.LootRule;
 import com.merlinkitsune.astral_dice.component.AppliedStone;
 import com.merlinkitsune.starengine.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
@@ -28,14 +30,17 @@ import com.merlinkitsune.astral_dice.item.sign.JasmineSignItem;
 import com.merlinkitsune.astral_dice.item.sign.LuluSignItem;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.animal.Animal;
@@ -79,15 +84,20 @@ import top.theillusivec4.curios.api.CuriosApi;
 import top.theillusivec4.curios.api.type.inventory.ICurioStacksHandler;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 
 import net.minecraft.world.level.storage.loot.LootPool;
 import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.entries.LootItem;
+import net.minecraft.world.level.storage.loot.entries.NestedLootTable;
+import net.minecraft.world.level.storage.loot.predicates.LootItemKilledByPlayerCondition;
 import net.minecraft.world.level.storage.loot.functions.SetItemCountFunction;
 import net.minecraft.world.level.storage.loot.predicates.LootItemRandomChanceCondition;
 import net.minecraft.world.level.storage.loot.providers.number.ConstantValue;
@@ -114,87 +124,135 @@ import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
 
 @EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class LootInjectionHandler {
-    @SubscribeEvent
-    public static void onLivingDrops(LivingDropsEvent event) {
-        var entity = event.getEntity();
-        if (entity.level().isClientSide()) return;
 
-        // 星盘掉落(2026-09-30 用户指定:由「凋灵/监守者必掉 1 个 + 其余 Monster 0.3%」扩展为分档口径)
-        // —— 档位、数量与判定顺序见 starPlateDropCount。
-        int starPlates = starPlateDropCount(entity);
-        if (starPlates > 0) {
-            event.getDrops().add(new net.minecraft.world.entity.item.ItemEntity(
-                    entity.level(), entity.getX(), entity.getY(), entity.getZ(),
-                    new ItemStack(ModItems.STAR_PLATE.get(), starPlates)));
-        }
-
-        rollKillStarCoin(event);
-    }
-
-
+    private static final Logger LOGGER = LoggerFactory.getLogger(LootInjectionHandler.class);
+    private static final String VANILLA_NAMESPACE = "minecraft";
+    private static final List<String> CHEST_KINDS = List.of(LootRule.KIND_CHEST);
+    private static final List<String> ENTITY_KINDS = List.of(LootRule.KIND_ENTITY, LootRule.KIND_MONSTER);
+    private static final List<PendingTable> PENDING = Collections.synchronizedList(new ArrayList<>());
+    private static final Set<String> WARNED = ConcurrentHashMap.newKeySet();
     @SubscribeEvent
     public static void onLootTableLoad(LootTableLoadEvent event) {
-        var name = event.getName();
-        if (!name.getPath().startsWith("chests/")) return;
+        Identifier name = event.getName();
+        if (name == null || !VANILLA_NAMESPACE.equals(name.getNamespace())) {
+            return;
+        }
+        if (kindsFor(name).isEmpty()) {
+            return;
+        }
+        enqueue(name, event.getTable());
+    }
 
-        // ⚠️ 自有命名空间的表必须早退（2026-09-27 修复「双通道重复注入」）：
-        //    下方判据只按**路径前缀**匹配，而自有表 `astral_dice:chests/star_plate` 的 path 同样是 `chests/star_plate`
-        //    ⇒ 它会被一并注入下面这一整套 astral_dice:* 池。偏偏 GLM `star_plate_all_chests` 又是**无条件**（100%）
-        //    把该表挂到原版箱表上（`neoforge:add_table`），于是「开一个箱子 = 主表 + 附加表各滚一遍」——
-        //    四池被二次注入放大（两次独立判定 ⇒ 1−(1−p)²）：星币 5%→9.75%、空白筹码 3%→5.91%、玻璃骰子 2%→3.96%；星盘特例（本表另含 5% 星盘权重）⇒ 修复前 6.89%、修复后 5.95%。
-        //    自有表由 GLM 自行引用，**不得**再由本 handler 注入。
-        if (name.getNamespace().equals(com.merlinkitsune.astral_dice.AstralDiceMod.MODID)) return;
+    public static void enqueue(Identifier id, LootTable table) {
+        if (id != null && table != null) {
+            PENDING.add(new PendingTable(id, table));
+        }
+    }
 
-        LootTable table = event.getTable();
+    public static List<PendingTable> drainPending() {
+        synchronized (PENDING) {
+            if (PENDING.isEmpty()) {
+                return List.of();
+            }
+            List<PendingTable> drained = new ArrayList<>(PENDING);
+            PENDING.clear();
+            return drained;
+        }
+    }
 
-        // Prevent duplicate pool addition on reload
-        if (table.getPool("astral_dice:star_coin") != null) return;
+    public static void injectPending(List<PendingTable> pending, LootInjectionData data) {
+        if (pending == null || pending.isEmpty() || data == null || data.isEmpty()) {
+            return;
+        }
+        for (PendingTable entry : pending) {
+            try {
+                List<String> kinds = kindsFor(entry.id());
+                if (kinds.isEmpty()) {
+                    continue;
+                }
+                boolean monster = isMonsterTable(entry.id());
+                for (String kind : kinds) {
+                    LootRule rule = data.bestRule(kind, entry.id().toString(), monster);
+                    if (rule != null) {
+                        inject(entry.table(), rule);
+                    }
+                }
+            } catch (RuntimeException ex) {
+                LOGGER.warn("[astral_dice] 战利品注入失败 {}: {}", entry.id(), ex.getMessage());
+            }
+        }
+    }
 
-        boolean isBuriedTreasure = name.toString().equals("minecraft:chests/buried_treasure");
-        boolean isEndCity = name.toString().equals("minecraft:chests/end_city_treasure");
+    private static List<String> kindsFor(Identifier tableId) {
+        String path = tableId.getPath();
+        if (path.startsWith("chests/")) {
+            return CHEST_KINDS;
+        }
+        if (path.startsWith("entities/")) {
+            return ENTITY_KINDS;
+        }
+        return List.of();
+    }
 
-        // Star Coin: 5% all chests (1-2), 9% in end city
-        table.addPool(LootPool.lootPool()
+    private static boolean isMonsterTable(Identifier tableId) {
+        String path = tableId.getPath();
+        if (!path.startsWith("entities/")) {
+            return false;
+        }
+        Identifier entityId = Identifier.fromNamespaceAndPath(
+                tableId.getNamespace(), path.substring("entities/".length()));
+        return BuiltInRegistries.ENTITY_TYPE.get(entityId)
+                .map(ref -> ref.value().getCategory() == MobCategory.MONSTER)
+                .orElse(false);
+    }
+
+    private static void inject(LootTable table, LootRule rule) {
+        String poolName = AstralDiceMod.MODID + ":" + rule.id();
+        if (table.getPool(poolName) != null) {
+            return;
+        }
+        Identifier target = Identifier.tryParse(rule.table());
+        if (target == null) {
+            warnOnce(rule.id(), "战利品规则 {} 的目标表 id 非法: {}，已跳过", rule.id(), rule.table());
+            return;
+        }
+        String expectedPrefix = LootRule.KIND_CHEST.equals(rule.targetKind()) ? "chests/" : "entities/";
+        if (!target.getPath().startsWith(expectedPrefix)) {
+            warnOnce(rule.id(), "战利品规则 {} 的目标表 {} 与 target_kind={} 不匹配，已跳过", rule.id(), target, rule.targetKind());
+            return;
+        }
+        LootPool.Builder pool = LootPool.lootPool()
                 .setRolls(ConstantValue.exactly(1))
-                .when(LootItemRandomChanceCondition.randomChance(isEndCity ? 0.09f : 0.05f))
-                .add(LootItem.lootTableItem(ModItems.STAR_COIN.get())
-                        .apply(SetItemCountFunction.setCount(UniformGenerator.between(1, 2))))
-                .name("astral_dice:star_coin")
-                .build());
+                .add(NestedLootTable.lootTableReference(ResourceKey.create(Registries.LOOT_TABLE, target)))
+                .name(poolName);
+        if (rule.requirePlayerKill()) {
+            pool.when(LootItemKilledByPlayerCondition.killedByPlayer());
+        }
+        table.addPool(pool.build());
+    }
 
-        // Blank Chip: 埋藏的宝藏 100% 必出;其余战利品箱子 3%
-        // (2026-09-27 用户需求:略微提高空白筹码的战利品获取概率 —— 原先其它箱子 0%)
-        if (isBuriedTreasure) {
-            table.addPool(LootPool.lootPool()
-                    .setRolls(ConstantValue.exactly(1))
-                    .add(LootItem.lootTableItem(ModItems.BLANK_CHIP.get()))
-                    .name("astral_dice:blank_chip")
-                    .build());
-        } else {
-            table.addPool(LootPool.lootPool()
-                    .setRolls(ConstantValue.exactly(1))
-                    .when(LootItemRandomChanceCondition.randomChance(0.03f))
-                    .add(LootItem.lootTableItem(ModItems.BLANK_CHIP.get()))
-                    .name("astral_dice:blank_chip")
-                    .build());
+    private static void warnOnce(String key, String format, Object... args) {
+        if (WARNED.add(key)) {
+            LOGGER.warn("[astral_dice] " + format, args);
+        }
+    }
+
+    public static final class PendingTable {
+        private final Identifier id;
+        private final LootTable table;
+
+        private PendingTable(Identifier id, LootTable table) {
+            this.id = id;
+            this.table = table;
         }
 
-        // Star Plate: 1% all chests, 5% in end city
-        table.addPool(LootPool.lootPool()
-                .setRolls(ConstantValue.exactly(1))
-                .when(LootItemRandomChanceCondition.randomChance(isEndCity ? 0.05f : 0.01f))
-                .add(LootItem.lootTableItem(ModItems.STAR_PLATE.get()))
-                .name("astral_dice:star_plate")
-                .build());
+        public Identifier id() {
+            return this.id;
+        }
 
-        // Glass Dice: 末地城 5%;其余战利品箱子 2%(数量固定 1)
-        // (2026-09-27 用户需求:战利品箱中增加玻璃骰子,并略微提高其掉落率 —— 原先战利品箱 0%)
-        table.addPool(LootPool.lootPool()
-                .setRolls(ConstantValue.exactly(1))
-                .when(LootItemRandomChanceCondition.randomChance(isEndCity ? 0.05f : 0.02f))
-                .add(LootItem.lootTableItem(ModItems.GLASS_DICE.get()))
-                .name("astral_dice:glass_dice")
-                .build());
+        public LootTable table() {
+            return this.table;
+        }
     }
 
 

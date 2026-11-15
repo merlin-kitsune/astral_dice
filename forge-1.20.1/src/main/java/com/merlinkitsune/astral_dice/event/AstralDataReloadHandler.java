@@ -2,6 +2,7 @@ package com.merlinkitsune.astral_dice.event;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.data.AnvilUpgradeReloadListener;
+import com.merlinkitsune.astral_dice.data.LootInjectionReloadListener;
 import net.minecraftforge.event.AddReloadListenerEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -16,5 +17,6 @@ public final class AstralDataReloadHandler {
     @SubscribeEvent
     public static void onAddReloadListener(AddReloadListenerEvent event) {
         event.addListener(new AnvilUpgradeReloadListener());
+        event.addListener(new LootInjectionReloadListener());
     }
 }

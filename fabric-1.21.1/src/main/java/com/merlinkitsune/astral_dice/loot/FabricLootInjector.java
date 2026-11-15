@@ -1,264 +1,173 @@
 package com.merlinkitsune.astral_dice.loot;
 
-import java.util.Map;
-import java.util.Set;
-
-import com.merlinkitsune.astral_dice.AstralDiceMod;
-import com.merlinkitsune.astral_dice.item.ModItems;
-
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParser;
+import com.merlinkitsune.astral_dice.data.LootInjectionData;
+import com.merlinkitsune.astral_dice.data.LootRule;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.loot.v3.LootTableEvents;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.packs.resources.Resource;
+import net.minecraft.server.packs.resources.ResourceManager;
+import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.level.storage.loot.LootPool;
 import net.minecraft.world.level.storage.loot.LootTable;
-import net.minecraft.world.level.storage.loot.entries.LootItem;
 import net.minecraft.world.level.storage.loot.entries.NestedLootTable;
-import net.minecraft.world.level.storage.loot.functions.SetItemCountFunction;
-import net.minecraft.world.level.storage.loot.predicates.LootItemRandomChanceCondition;
+import net.minecraft.world.level.storage.loot.predicates.LootItemKilledByPlayerCondition;
 import net.minecraft.world.level.storage.loot.providers.number.ConstantValue;
-import net.minecraft.world.level.storage.loot.providers.number.UniformGenerator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.ThreadLocalRandom;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
-/**
- * 战利品注入的 **Fabric 1.21.1** 实现。
- *
- * <h2>它替代了什么(Forge 侧的两条通道)</h2>
- * <ol>
- *   <li><b>Global Loot Modifier</b>({@code astral_dice:add_table} 序列化器 +
- *       {@code data/astral_dice/loot_modifiers/*.json} 14 份(13 份星盘 + {@code golden_star_plate_ominous_vault}) +
- *       {@code data/forge/loot_modifiers/global_loot_modifiers.json}) —— Fabric 的 FML 没有
- *       GLM 概念,那套注册表({@code forge:global_loot_modifier_serializers})根本不存在。</li>
- *   <li><b>{@code LootTableLoadEvent}</b>({@code event/LootInjectionHandler} 的箱表四个池)
- *       —— Fabric 没有该事件。</li>
- * </ol>
- * 两者在 Fabric 侧统一由 {@code LootTableEvents.MODIFY} 承担。⚠️ 1.21.1 用的是 **Fabric Loot API v3**
- * ({@code net.fabricmc.fabric.api.loot.v3}),回调是 <b>4 个参数</b>
- * ({@code (ResourceKey<LootTable>, LootTable.Builder, LootTableSource, HolderLookup.Provider)});
- * 1.20.1 的 v2 才是 5 个参数且表 id 是 {@link ResourceLocation} —— 从旧线复制来的写法必须按这里改。
- *
- * <h2>为什么不需要「幂等去重」</h2>
- * Forge 侧改的是**已加载的 LootTable 实例**,重载会再改一次 ⇒ 必须靠
- * {@code table.getPool("astral_dice:xxx") != null} 早退。Fabric 的 MODIFY 每次重载都作用在
- * **新建的 {@code LootTable.Builder}** 上 ⇒ 天然幂等,不需要(也**没有**)这个查询能力。
- *
- * <h2>自有命名空间早退(项目红灯条款)</h2>
- * 自有表 {@code astral_dice:chests/star_plate} 的 path 同样是 {@code chests/star_plate},
- * 会被前缀判据命中。Forge 侧因此出现过「GLM 100% 挂表 + 本 handler 再注入」的双通道重复
- * (概率 1−(1−p)² 放大)。Fabric 侧虽然不再有 GLM,但**判据必须继续保留**:本类对
- * {@code astral_dice} 命名空间一律早退。
- */
+/** Fabric 1.21.1 战利品注入：数据包规则 + {@link LootTableEvents#MODIFY}。 */
 public final class FabricLootInjector {
 
-    private static final ResourceLocation CHEST_STAR_PLATE = tableId("chests/star_plate");
-    /**
-     * 黄金星盘子表的 id(试炼厅不祥宝库专用)。
-     *
-     * <p>它和 {@link #CHEST_STAR_PLATE} 一样**自带概率与数量**:子表
-     * {@code data/astral_dice/loot_table/chests/golden_star_plate.json} 只有一个池
-     * ({@code rolls: 1}),条目是「1 个黄金星盘 weight 1 / empty weight 19」⇒ 5%。
-     * 所以 Java 侧只做「挂整张子表」这一件事,**不在这里重复施加随机概率**。
-     */
-    private static final ResourceLocation CHEST_GOLDEN_STAR_PLATE = tableId("chests/golden_star_plate");
-    /**
-     * 原版箱表里「挂 {@code astral_dice:chests/star_plate} 子表(5% 星盘)」的那批表。
-     * 逐字取自 NeoForge 1.21.1 侧 GLM {@code star_plate_all_chests.json} 的 56 条
-     * {@code neoforge:loot_table_id} 条件(1.20.1 线只有 43 条;1.21.1 起补入
-     * {@code chests/trial_chambers/*} 13 张试炼厅箱表)—— **不做前缀近似**,
-     * 以保证与 NeoForge 线的概率口径逐表一致。
-     */
-    private static final Set<String> STAR_PLATE_CHEST_TABLES = Set.of(
-            "chests/abandoned_mineshaft",
-            "chests/ancient_city",
-            "chests/ancient_city_ice_box",
-            "chests/bastion_bridge",
-            "chests/bastion_hoglin_stable",
-            "chests/bastion_other",
-            "chests/bastion_treasure",
-            "chests/buried_treasure",
-            "chests/desert_pyramid",
-            "chests/end_city_treasure",
-            "chests/igloo_chest",
-            "chests/jungle_temple",
-            "chests/jungle_temple_dispenser",
-            "chests/nether_bridge",
-            "chests/pillager_outpost",
-            "chests/ruined_portal",
-            "chests/shipwreck_map",
-            "chests/shipwreck_supply",
-            "chests/shipwreck_treasure",
-            "chests/simple_dungeon",
-            "chests/spawn_bonus_chest",
-            "chests/stronghold_corridor",
-            "chests/stronghold_crossing",
-            "chests/stronghold_library",
-            "chests/trial_chambers/corridor",
-            "chests/trial_chambers/entrance",
-            "chests/trial_chambers/intersection",
-            "chests/trial_chambers/intersection_barrel",
-            "chests/trial_chambers/reward",
-            "chests/trial_chambers/reward_common",
-            "chests/trial_chambers/reward_ominous",
-            "chests/trial_chambers/reward_ominous_common",
-            "chests/trial_chambers/reward_ominous_rare",
-            "chests/trial_chambers/reward_ominous_unique",
-            "chests/trial_chambers/reward_rare",
-            "chests/trial_chambers/reward_unique",
-            "chests/trial_chambers/supply",
-            "chests/underwater_ruin_big",
-            "chests/underwater_ruin_small",
-            "chests/village/village_armorer",
-            "chests/village/village_butcher",
-            "chests/village/village_cartographer",
-            "chests/village/village_desert_house",
-            "chests/village/village_fisher",
-            "chests/village/village_fletcher",
-            "chests/village/village_mason",
-            "chests/village/village_plains_house",
-            "chests/village/village_savanna_house",
-            "chests/village/village_shepherd",
-            "chests/village/village_snowy_house",
-            "chests/village/village_taiga_house",
-            "chests/village/village_tannery",
-            "chests/village/village_temple",
-            "chests/village/village_toolsmith",
-            "chests/village/village_weaponsmith",
-            "chests/woodland_mansion"
-    );
+    private static final Logger LOGGER = LoggerFactory.getLogger(FabricLootInjector.class);
+    private static final String VANILLA_NAMESPACE = "minecraft";
+    private static final List<String> CHEST_KINDS = List.of(LootRule.KIND_CHEST);
+    private static final List<String> ENTITY_KINDS = List.of(LootRule.KIND_ENTITY, LootRule.KIND_MONSTER);
+    private static final String DEFAULT_RULES = "/data/astral_dice/astral_dice/loot/injection.json";
 
-    /**
-     * 唯一一张挂「黄金星盘子表」的原版表:试炼厅不祥宝库。
-     * 逐字取自 NeoForge 侧 GLM {@code golden_star_plate_ominous_vault.json}
-     * ({@code minecraft:chests/trial_chambers/reward_ominous} ⇒ {@code astral_dice:chests/golden_star_plate})。
-     */
-    private static final String TRIAL_CHAMBERS_OMINOUS_VAULT = "chests/trial_chambers/reward_ominous";
+    private static MinecraftServer server;
+    private static ResourceManager cachedManager;
+    private static LootInjectionData cachedRules = LootInjectionData.empty();
+    private static boolean classpathLoaded;
 
-    /**
-     * 原版实体表 ⇒ 挂哪张星盘子表(键 = {@code minecraft:entities/<name>} 的 name)。
-     * 逐字取自 Forge 侧 12 份实体 GLM JSON:10 个普通怪物 → {@code entities/star_plate}(1%),
-     * 末影龙/凋灵 → {@code entities/star_plate_boss}(100%)。
-     */
-    private static final Map<String, String> STAR_PLATE_ENTITY_TABLES = Map.ofEntries(
-            Map.entry("creeper", "entities/star_plate"),
-            Map.entry("drowned", "entities/star_plate"),
-            Map.entry("ender_dragon", "entities/star_plate_boss"),
-            Map.entry("enderman", "entities/star_plate"),
-            Map.entry("evoker", "entities/star_plate"),
-            Map.entry("ravager", "entities/star_plate"),
-            Map.entry("skeleton", "entities/star_plate"),
-            Map.entry("spider", "entities/star_plate"),
-            Map.entry("vindicator", "entities/star_plate"),
-            Map.entry("witch", "entities/star_plate"),
-            Map.entry("wither", "entities/star_plate_boss"),
-            Map.entry("zombie", "entities/star_plate")
-    );
-
-    /**
-     * 本模组自有战利品表的 id。
-     *
-     * <p>1.21.1 的战利品表是注册表条目,子表引用要 {@link ResourceKey}&lt;{@link LootTable}&gt;
-     * ({@code NestedLootTable.lootTableReference(ResourceKey)} 的形参就是 key),而不是裸
-     * {@link ResourceLocation} —— 所以这里统一保留 id 形式,再用 {@link #tableKey(ResourceLocation)}
-     * 在调用点包装(1.20.1 的 {@code NestedLootTable} 前身类 + {@code lootTableReference(ResourceLocation)} 写法已删)。
-     */
-    private static ResourceLocation tableId(String path) {
-        return ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, path);
+    private FabricLootInjector() {
     }
 
-    /** {@link ResourceLocation} → 战利品表注册表 key({@code Registries.LOOT_TABLE})。 */
-    private static ResourceKey<LootTable> tableKey(ResourceLocation id) {
-        return ResourceKey.create(Registries.LOOT_TABLE, id);
-    }
-
-    /** 在 mod 初始化阶段注册(幂等:MODIFY 只 register 一次)。 */
     public static void register() {
+        ServerLifecycleEvents.SERVER_STARTED.register(s -> server = s);
         LootTableEvents.MODIFY.register((key, tableBuilder, source, registries) -> {
-            // v3 回调给的是 ResourceKey<LootTable>(v2 给的是 ResourceLocation);下面的判据仍按 id 写。
             ResourceLocation id = key.location();
-            if (!"minecraft".equals(id.getNamespace())) {
-                // 自有命名空间(以及任何第三方)一律不注入 —— 见类注释的「自有命名空间早退」
+            if (!VANILLA_NAMESPACE.equals(id.getNamespace())) {
                 return;
             }
-            String path = id.getPath();
-
-            // ── ① GLM star_plate_all_chests 的等价物:把星盘子表挂到指定箱表 ──
-            if (STAR_PLATE_CHEST_TABLES.contains(path)) {
-                tableBuilder.withPool(LootPool.lootPool()
-                        .setRolls(ConstantValue.exactly(1))
-                        .add(NestedLootTable.lootTableReference(tableKey(CHEST_STAR_PLATE))));
+            List<String> kinds = kindsFor(id);
+            if (kinds.isEmpty()) {
+                return;
             }
-
-            // ── ② GLM star_plate_<mob> 的等价物:把星盘子表挂到指定实体表 ──
-            if (path.startsWith("entities/")) {
-                String entity = path.substring("entities/".length());
-                String sub = STAR_PLATE_ENTITY_TABLES.get(entity);
-                if (sub != null) {
-                    tableBuilder.withPool(LootPool.lootPool()
-                            .setRolls(ConstantValue.exactly(1))
-                            .add(NestedLootTable.lootTableReference(tableKey(tableId(sub)))));
+            LootInjectionData data = rules();
+            if (data.isEmpty()) {
+                return;
+            }
+            boolean monster = isMonsterTable(id);
+            for (String kind : kinds) {
+                LootRule rule = data.bestRule(kind, id.toString(), monster);
+                if (rule != null) {
+                    inject(tableBuilder, rule);
                 }
-            }
-
-            // ── ③ LootTableLoadEvent 的等价物:箱表四个池 ──
-            if (!path.startsWith("chests/")) {
-                return;
-            }
-            boolean isBuriedTreasure = path.equals("chests/buried_treasure");
-            boolean isEndCity = path.equals("chests/end_city_treasure");
-
-            // 星币:所有箱 5%(1-2 枚),末地城 9%
-            tableBuilder.withPool(LootPool.lootPool()
-                    .setRolls(ConstantValue.exactly(1))
-                    .when(LootItemRandomChanceCondition.randomChance(isEndCity ? 0.09F : 0.05F))
-                    .add(LootItem.lootTableItem(ModItems.STAR_COIN.get())
-                            .apply(SetItemCountFunction.setCount(UniformGenerator.between(1, 2)))));
-
-            // 空白筹码:埋藏的宝藏 100% 必出,其余箱 3%
-            if (isBuriedTreasure) {
-                tableBuilder.withPool(LootPool.lootPool()
-                        .setRolls(ConstantValue.exactly(1))
-                        .add(LootItem.lootTableItem(ModItems.BLANK_CHIP.get())));
-            } else {
-                tableBuilder.withPool(LootPool.lootPool()
-                        .setRolls(ConstantValue.exactly(1))
-                        .when(LootItemRandomChanceCondition.randomChance(0.03F))
-                        .add(LootItem.lootTableItem(ModItems.BLANK_CHIP.get())));
-            }
-
-            // 星盘:所有箱 1%,末地城 5%
-            tableBuilder.withPool(LootPool.lootPool()
-                    .setRolls(ConstantValue.exactly(1))
-                    .when(LootItemRandomChanceCondition.randomChance(isEndCity ? 0.05F : 0.01F))
-                    .add(LootItem.lootTableItem(ModItems.STAR_PLATE.get())));
-
-            // 玻璃骰子:末地城 5%,其余箱 2%
-            tableBuilder.withPool(LootPool.lootPool()
-                    .setRolls(ConstantValue.exactly(1))
-                    .when(LootItemRandomChanceCondition.randomChance(isEndCity ? 0.05F : 0.02F))
-                    .add(LootItem.lootTableItem(ModItems.GLASS_DICE.get())));
-
-            // ── ④ GLM golden_star_plate_ominous_vault 的等价物:不祥宝库挂黄金星盘子表 ──
-            //    子表自带 5%(1:19 权重),这里**不加 randomChance**,只挂整张表,避免二次抽样;
-            //    ③ 的四个池里没有 golden_star_plate,本块是全类唯一挂它的地方。
-            if (path.equals(TRIAL_CHAMBERS_OMINOUS_VAULT)) {
-                tableBuilder.withPool(LootPool.lootPool()
-                        .setRolls(ConstantValue.exactly(1))
-                        .add(NestedLootTable.lootTableReference(tableKey(CHEST_GOLDEN_STAR_PLATE))));
             }
         });
     }
 
-    /** 供跨线对照用:本模组声明的「必掉星盘」实体表条目数(测试台可断言)。 */
-    public static int entityTableCount() {
-        return STAR_PLATE_ENTITY_TABLES.size();
+    private static synchronized LootInjectionData rules() {
+        if (server != null) {
+            ResourceManager manager = server.getResourceManager();
+            if (manager == cachedManager) {
+                return cachedRules;
+            }
+            cachedManager = manager;
+            cachedRules = parseManager(manager);
+            return cachedRules;
+        }
+        if (!classpathLoaded) {
+            cachedRules = parseClasspath();
+            classpathLoaded = true;
+        }
+        return cachedRules;
     }
 
-    /** 供跨线对照用:挂 5% 星盘子表的箱表条目数(测试台可断言 = 56)。 */
-    public static int chestTableCount() {
-        return STAR_PLATE_CHEST_TABLES.size();
+    private static LootInjectionData parseManager(ResourceManager resourceManager) {
+        Map<String, LootRule> merged = new LinkedHashMap<>();
+        for (Map.Entry<ResourceLocation, Resource> entry : new TreeMap<>(resourceManager
+                .listResources("astral_dice/loot", path -> path.getPath().endsWith(".json"))).entrySet()) {
+            final ResourceLocation fileId = entry.getKey();
+            try (Reader reader = entry.getValue().openAsReader()) {
+                merge(merged, JsonParser.parseReader(reader), fileId.toString());
+            } catch (RuntimeException | java.io.IOException ex) {
+                LOGGER.warn("[astral_dice] 跳过非法战利品数据 {}: {}", fileId, ex.getMessage());
+            }
+        }
+        LOGGER.info("[astral_dice] 战利品注入规则已从数据包加载 {} 条", merged.size());
+        return LootInjectionData.of(new ArrayList<>(merged.values()));
     }
 
-    private FabricLootInjector() {
+    private static LootInjectionData parseClasspath() {
+        Map<String, LootRule> merged = new LinkedHashMap<>();
+        try (InputStream in = FabricLootInjector.class.getResourceAsStream(DEFAULT_RULES)) {
+            if (in != null) {
+                merge(merged, JsonParser.parseReader(new InputStreamReader(in, StandardCharsets.UTF_8)), "builtin");
+            }
+        } catch (RuntimeException | java.io.IOException ex) {
+            LOGGER.warn("[astral_dice] 读取内置战利品规则失败: {}", ex.getMessage());
+        }
+        LOGGER.info("[astral_dice] 战利品注入规则已从内置数据加载 {} 条", merged.size());
+        return LootInjectionData.of(new ArrayList<>(merged.values()));
+    }
+
+    private static void merge(Map<String, LootRule> merged, JsonElement element, String source) {
+        if (!element.isJsonObject()) {
+            throw new IllegalArgumentException(source + " 不是 JSON 对象");
+        }
+        LootInjectionData parsed = LootInjectionData.parse(element.getAsJsonObject(),
+                message -> LOGGER.warn("[astral_dice] 战利品数据 {} 的 {}", source, message));
+        for (LootRule rule : parsed.rules()) {
+            merged.putIfAbsent(rule.id(), rule);
+        }
+    }
+
+    private static List<String> kindsFor(ResourceLocation tableId) {
+        String path = tableId.getPath();
+        if (path.startsWith("chests/")) {
+            return CHEST_KINDS;
+        }
+        if (path.startsWith("entities/")) {
+            return ENTITY_KINDS;
+        }
+        return List.of();
+    }
+
+    private static boolean isMonsterTable(ResourceLocation tableId) {
+        String path = tableId.getPath();
+        if (!path.startsWith("entities/")) {
+            return false;
+        }
+        ResourceLocation entityId = ResourceLocation.fromNamespaceAndPath(
+                tableId.getNamespace(), path.substring("entities/".length()));
+        return BuiltInRegistries.ENTITY_TYPE.getOptional(entityId)
+                .map(type -> type.getCategory() == MobCategory.MONSTER)
+                .orElse(false);
+    }
+
+    private static void inject(LootTable.Builder tableBuilder, LootRule rule) {
+        ResourceLocation target = ResourceLocation.tryParse(rule.table());
+        if (target == null) {
+            return;
+        }
+        String expectedPrefix = LootRule.KIND_CHEST.equals(rule.targetKind()) ? "chests/" : "entities/";
+        if (!target.getPath().startsWith(expectedPrefix)) {
+            return;
+        }
+        LootPool.Builder pool = LootPool.lootPool()
+                .setRolls(ConstantValue.exactly(1))
+                .add(NestedLootTable.lootTableReference(ResourceKey.create(Registries.LOOT_TABLE, target)));
+        if (rule.requirePlayerKill()) {
+            pool.when(LootItemKilledByPlayerCondition.killedByPlayer());
+        }
+        tableBuilder.withPool(pool);
     }
 }
