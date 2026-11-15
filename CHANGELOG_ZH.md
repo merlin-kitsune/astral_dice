@@ -4,6 +4,17 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
+## 26.4-SNAPSHOT.76
+
+### 本线
+
+- 新增公共战斗 API 包 `com.merlinkitsune.astral_dice.api.combat`：`DamageCategory`（`DICE_MELEE`、`RANGED`、`MAGIC`、`GUN`、`SKILL`、`OTHER`）、`DamageCategoryResolver`、`CombatStat`（`ATTACK`、`DEFENSE`）、`CombatStatStage`（`BASE`、`ADDITIVE`、`MULTIPLICATIVE`、`FINAL`）、`CombatStatContext`、`CombatStatHook`、`CombatStatHandle` 与 `CombatStatHooks`。钩子按优先级降序执行，异常被隔离并记录日志；展示态上下文跳过钩子；未安装支持前注册会被拒绝。
+- `AstralDiceApi` 新增 `signs()`、`chips()`、`signIds()`、`chipIds()`、`diceTierIds()`、`isContentFrozen()`；钱包 `walletAvailable`/`walletBalance`/`walletHasBalance`/`walletDeposit`/`walletWithdraw`/`walletTransfer`（尽力转账，失败退款）；伤害分类 `installDamageCategoryResolver`/`damageCategory`/`isDamageCategorySupported`；按分类过滤的 `registerDamageHook`；以及 `installCombatStatSupport`/`isCombatStatSupported`/`registerCombatStatHook`。原有仅按阶段的 `registerDamageHook` 与 `freezeContent` 保留。
+- NeoForge 1.21.1 与 Forge 1.20.1 在 common setup 安装 `SpellDamageRegistry::damageCategory` 与属性钩子支持；其余三线只编译、不安装。已接线的两线按 `SKILL` → `GUN` → `MAGIC` → `RANGED` → `DICE_MELEE` → `OTHER` 分类，复用现有枪械 / 法术证据表。GUN 归类不受 `GameplayConstants.ALLOW_FIREARM_DAMAGE` 影响，该配置只影响法术白名单。
+- 两线 `DiceCombatEvents` 接入属性钩子：攻击 `BASE` 在基础攻击力之后、内置攻击修正之前；攻击 `ADDITIVE`/`MULTIPLICATIVE` 在内置循环之后；攻击 `FINAL` 在 `DiceBattleResolver.resolve` 之前；防御 `BASE` 在公式之后、累加 `defenseBaseDice`/`defenseCardSum` 之前；防御 `ADDITIVE`/`MULTIPLICATIVE`/`FINAL` 在 padman bypass 之后、结算之前。战斗上下文使用 `display=false`；HUD 与 tooltip 数值不包含脚本钩子。
+- 新增独立 KubeJS 附属 `0.0.1`（独立仓库），两线共享反射绑定：内容注册 / 查询、钱包读写、按分类的伤害钩子、攻击 / 防御钩子、仓库根 `logo.png` 图标，元数据要求 `[26.4-SNAPSHOT.76,)`。附属仅限服务器脚本；`/reload` 会清空钩子。
+- 验证：五线 `.76` `build` exit 0（`BUILD SUCCESSFUL in 8s`，44 tasks：32 executed / 12 up-to-date；五枚 `.76` jar），附属两线构建通过。NeoForge 1.21.1 实机（`scripts/test/win/logs/1.21.1-20261115-202859.log`）：`Astral Dice KubeJS 0.0.1 loaded (KubeJS 7, NeoForge 1.21.1)`；探针 `signs=36;chips=70;diceTiers=13;frozen=true;categorySupported=true;statSupported=true;magicCategory=magic;diceCategory=dice_melee;walletBalance=166`；行为探针 `cancelHealth=20->20`、`plainHealth=20->16`，攻击 `BASE` 钩子 `runs=1`，防御 `BASE` 钩子 `runs=1`。Forge 1.20.1 实机（`scripts/test/win/logs/1.20.1-20261115-203634.log`，测试期通过临时 Gradle init 脚本排除了无关的 Carpet 测试依赖）：`Astral Dice KubeJS 0.0.1 loaded (KubeJS 6, Forge 1.20.1)`；探针 `signs=36;chips=70;diceTiers=13;frozen=true;categorySupported=true;statSupported=true`；行为 `cancelSeen=magic/incoming/4/4;cancelHealth=20->20;plainHealth=20->16;statSeen=attack/base/0.20800000056624413;statTargetHealth=0;defenseSeen=defense/base/0;defenseTargetHealth=19`。
+
 ## 26.4-SNAPSHOT.75
 
 ### 本线

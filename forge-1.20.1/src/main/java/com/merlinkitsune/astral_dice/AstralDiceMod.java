@@ -214,6 +214,10 @@ public class AstralDiceMod {
             com.merlinkitsune.astral_dice.combat.CardRegistry.init();
             // 把内置立牌 / 筹码接进 StarEngine 内容注册表(冻结在服务器启动后)。
             com.merlinkitsune.astral_dice.content.BuiltinContent.register();
+            // 对外公开的伤害分类与骰战属性钩子:仅本线安装,其余加载器线编译通过但不接线。
+            com.merlinkitsune.astral_dice.api.AstralDiceApi.installDamageCategoryResolver(
+                    com.merlinkitsune.astral_dice.combat.SpellDamageRegistry::damageCategory);
+            com.merlinkitsune.astral_dice.api.AstralDiceApi.installCombatStatSupport();
             LOGGER.info("Astral Dice mod loaded.");
             LOGGER.info("May the god of the dice be with you!");
         });

@@ -1,10 +1,19 @@
 package com.merlinkitsune.astral_dice.api;
 
+import com.merlinkitsune.astral_dice.api.combat.CombatStat;
+import com.merlinkitsune.astral_dice.api.combat.CombatStatContext;
+import com.merlinkitsune.astral_dice.api.combat.CombatStatHandle;
+import com.merlinkitsune.astral_dice.api.combat.CombatStatHook;
+import com.merlinkitsune.astral_dice.api.combat.CombatStatHooks;
+import com.merlinkitsune.astral_dice.api.combat.CombatStatStage;
+import com.merlinkitsune.astral_dice.api.combat.DamageCategory;
+import com.merlinkitsune.astral_dice.api.combat.DamageCategoryResolver;
 import com.merlinkitsune.astral_dice.item.dice.DiceTierRegistry;
 import com.merlinkitsune.astral_dice.platform.AstralDicePlatform;
 import com.merlinkitsune.astral_dice.platform.AstralDicePlatforms;
 import com.merlinkitsune.starengine.api.combat.damage.DamageHook;
 import com.merlinkitsune.starengine.api.combat.damage.DamageHooks;
+import com.merlinkitsune.starengine.api.event.core.EventResult;
 import com.merlinkitsune.starengine.api.combat.damage.DamagePhase;
 import com.merlinkitsune.starengine.api.combat.damage.HookHandle;
 import com.merlinkitsune.starengine.api.content.chip.ChipCategory;
@@ -18,11 +27,15 @@ import com.merlinkitsune.starengine.api.content.sign.Signs;
 import com.merlinkitsune.starengine.api.economy.EntityWallet;
 import com.merlinkitsune.starengine.api.economy.WalletRegistry;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.IntUnaryOperator;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.Item;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Astral Dice 对外的统一门面(主项目 {@code common} 源码根)。
@@ -40,6 +53,9 @@ import net.minecraft.world.item.Item;
  * <p>本类的全部方法都是静态且无状态的,可在任意线程调用(并发语义继承库侧实现)。
  */
 public final class AstralDiceApi {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(AstralDiceApi.class);
+    private static volatile DamageCategoryResolver damageCategoryResolver;
 
     private AstralDiceApi() {
     }
@@ -117,6 +133,168 @@ public final class AstralDiceApi {
     /** 注册一个伤害钩子,返回的句柄可用于注销。 */
     public static HookHandle registerDamageHook(DamagePhase phase, int priority, DamageHook hook) {
         return DamageHooks.register(phase, priority, hook);
+    }
+
+    // ------------------------------------------------------------------ 查询
+
+    /** 全部已注册立牌（库侧快照）。 */
+    public static List<SignDescriptor> signs() {
+        return Signs.all();
+    }
+
+    /** 全部已注册筹码（库侧快照）。 */
+    public static List<ChipDescriptor> chips() {
+        return Chips.all();
+    }
+
+    /** 全部立牌 id。 */
+    public static List<String> signIds() {
+        return Signs.all().stream().map(SignDescriptor::id).toList();
+    }
+
+    /** 全部筹码 id。 */
+    public static List<String> chipIds() {
+        return Chips.all().stream().map(ChipDescriptor::id).toList();
+    }
+
+    /** 全部骰面阶级 id。 */
+    public static List<String> diceTierIds() {
+        return DiceTiers.all().stream().map(DiceTier::id).toList();
+    }
+
+    /** 内容注册表是否已冻结。 */
+    public static boolean isContentFrozen() {
+        return Signs.isFrozen() && Chips.isFrozen() && DiceTiers.isFrozen() && DiceTierRegistry.isFrozen();
+    }
+
+    // ------------------------------------------------------------------ 钱包读写的便捷入口
+
+    /** 该实体当前是否存在可用钱包。 */
+    public static boolean walletAvailable(LivingEntity entity) {
+        return resolveWallet(entity) != null;
+    }
+
+    /** 该实体钱包余额；没有钱包时返回 0。 */
+    public static long walletBalance(LivingEntity entity) {
+        EntityWallet wallet = resolveWallet(entity);
+        return wallet == null ? 0L : wallet.balance(entity);
+    }
+
+    /** 该实体钱包余额是否不少于 {@code amount}（{@code amount < 0} 返回 false）。 */
+    public static boolean walletHasBalance(LivingEntity entity, long amount) {
+        if (amount < 0) {
+            return false;
+        }
+        EntityWallet wallet = resolveWallet(entity);
+        return wallet != null && wallet.balance(entity) >= amount;
+    }
+
+    /** 向该实体钱包存入；金额必须为正，失败返回 false。 */
+    public static boolean walletDeposit(LivingEntity entity, long amount) {
+        if (amount <= 0) {
+            return false;
+        }
+        EntityWallet wallet = resolveWallet(entity);
+        return wallet != null && wallet.deposit(entity, amount);
+    }
+
+    /** 从该实体钱包取出；金额必须为正，失败返回 false。 */
+    public static boolean walletWithdraw(LivingEntity entity, long amount) {
+        if (amount <= 0) {
+            return false;
+        }
+        EntityWallet wallet = resolveWallet(entity);
+        return wallet != null && wallet.withdraw(entity, amount);
+    }
+
+    /**
+     * 钱包转账：先取出、再存入，存入失败时尽力退回。
+     *
+     * <p>库侧没有原子转账原语，因此这是**尽力而为**的两步操作；退回也失败时只记录日志并返回 false。
+     */
+    public static boolean walletTransfer(LivingEntity from, LivingEntity to, long amount) {
+        if (from == null || to == null || from == to || amount <= 0) {
+            return false;
+        }
+        EntityWallet fromWallet = resolveWallet(from);
+        EntityWallet toWallet = resolveWallet(to);
+        if (fromWallet == null || toWallet == null || !fromWallet.withdraw(from, amount)) {
+            return false;
+        }
+        if (toWallet.deposit(to, amount)) {
+            return true;
+        }
+        if (!fromWallet.deposit(from, amount)) {
+            LOGGER.error("Wallet transfer refund failed: amount={}, from={}, to={}", amount, from, to);
+        }
+        return false;
+    }
+
+    private static EntityWallet resolveWallet(LivingEntity entity) {
+        return entity == null ? null : WalletRegistry.resolve(entity);
+    }
+
+    // -------------------------------------------------------------- 伤害分类
+
+    /** 安装本线伤害分类器（仅 NeoForge 1.21.1 / Forge 1.20.1 调用）。 */
+    public static void installDamageCategoryResolver(DamageCategoryResolver resolver) {
+        damageCategoryResolver = Objects.requireNonNull(resolver, "resolver");
+    }
+
+    /** 当前线是否已安装伤害分类器。 */
+    public static boolean isDamageCategorySupported() {
+        return damageCategoryResolver != null;
+    }
+
+    /** 按当前线的分类器判定伤害大类；未安装时抛 {@link IllegalStateException}。 */
+    public static DamageCategory damageCategory(DamageSource source) {
+        DamageCategoryResolver resolver = damageCategoryResolver;
+        if (resolver == null) {
+            throw new IllegalStateException(
+                    "Damage categories are only installed on NeoForge 1.21.1 / Forge 1.20.1.");
+        }
+        return resolver.classify(source);
+    }
+
+    /**
+     * 注册只对某个大类生效的伤害钩子。
+     *
+     * <p>底层仍使用 StarEngine 的 {@link DamageHooks}：类别不匹配时返回 {@link EventResult#PASS}，
+     * 不打断同阶段其它钩子。未安装分类器时立即抛异常，避免注册出永不触发的钩子。
+     */
+    public static HookHandle registerDamageHook(DamageCategory category, DamagePhase phase, int priority,
+                                                DamageHook hook) {
+        Objects.requireNonNull(category, "category");
+        Objects.requireNonNull(phase, "phase");
+        Objects.requireNonNull(hook, "hook");
+        if (damageCategoryResolver == null) {
+            throw new IllegalStateException(
+                    "Damage categories are only installed on NeoForge 1.21.1 / Forge 1.20.1.");
+        }
+        return DamageHooks.register(phase, priority, context -> {
+            if (context == null || category != damageCategory(context.source())) {
+                return EventResult.PASS;
+            }
+            return hook.onDamage(context);
+        });
+    }
+
+    // -------------------------------------------------------------- 骰战属性
+
+    /** 安装本线骰战属性接线（仅 NeoForge 1.21.1 / Forge 1.20.1 调用）。 */
+    public static void installCombatStatSupport() {
+        CombatStatHooks.install();
+    }
+
+    /** 当前线是否已安装骰战属性接线。 */
+    public static boolean isCombatStatSupported() {
+        return CombatStatHooks.isInstalled();
+    }
+
+    /** 注册骰战属性钩子；未接线时抛 {@link IllegalStateException}。 */
+    public static CombatStatHandle registerCombatStatHook(CombatStat stat, CombatStatStage stage, int priority,
+                                                         CombatStatHook hook) {
+        return CombatStatHooks.register(stat, stage, priority, hook);
     }
 
     // ------------------------------------------------------------------ 收口
