@@ -370,6 +370,8 @@ public class AstralDiceMod implements ModInitializer {
             com.merlinkitsune.astral_dice.network.ModNetwork.register();
             // 卡牌类型注册表初始化(战斗牌定义集中管理)
             com.merlinkitsune.astral_dice.combat.CardRegistry.init();
+            // 把内置立牌 / 筹码接进 StarEngine 内容注册表(冻结在服务器启动后)。
+            com.merlinkitsune.astral_dice.content.BuiltinContent.register();
         });
     }
 }

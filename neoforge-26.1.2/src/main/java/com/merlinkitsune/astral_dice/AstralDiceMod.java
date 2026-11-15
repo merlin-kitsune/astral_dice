@@ -177,6 +177,8 @@ public class AstralDiceMod {
             com.merlinkitsune.starengine.combat.PartyRelations.reportBackends();
             // 卡牌类型注册表初始化(战斗牌定义集中管理)
             com.merlinkitsune.astral_dice.combat.CardRegistry.init();
+            // 把内置立牌 / 筹码接进 StarEngine 内容注册表(冻结在服务器启动后)。
+            com.merlinkitsune.astral_dice.content.BuiltinContent.register();
             LOGGER.info("Astral Dice mod loaded.");
             LOGGER.info("May the god of the dice be with you!");
             CuriosApi.registerCurio(ModItems.DICE.get(), (ICurioItem) ModItems.DICE.get());

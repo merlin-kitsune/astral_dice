@@ -4,6 +4,13 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 26.4-SNAPSHOT.75
+
+### This line
+
+- Wired the main mod's built-in signs and chips into the StarEngine content registries. `BuiltinContent` registers 36 signs and 70 chips in common setup on all five lines, before the server-start freeze; `blank_sign` and `blank_chip` are excluded. Sign descriptors use school `generic` and `GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS`; chip descriptors use the shop data's school/category, base price 10 and tier weight 6/3/2 (rare/epic/legendary). The tables are static and must be kept in sync with the item/shop data.
+- Validation: five-line `.75` `build` exit 0 (`BUILD SUCCESSFUL in 12s`, 44 tasks: 32 executed / 12 up-to-date; five `.75` jars in `build/libs`). NeoForge 1.21.1 live (`scripts/test/win/logs/1.21.1-20261115-191546.log`): `Signs.size()=36`, `Chips.size()=70`, both frozen after server start; sample descriptors `parunan_sign/generic/3600` and `atm_chip/STARLIGHT/ECONOMY/10/6`; `blank_sign` and `blank_chip` resolve to null; all 70 chip descriptors are non-null. The freeze log is at `:6421`, mod-loaded at `:4795`. The game was stopped after the probe.
+
 ## 26.4-SNAPSHOT.74
 
 ### This line

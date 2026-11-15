@@ -4,6 +4,13 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
+## 26.4-SNAPSHOT.75
+
+### 本线
+
+- 把主模组内置立牌 / 筹码接入 StarEngine 内容注册表。`BuiltinContent` 在五线 common setup 阶段注册 36 枚立牌与 70 枚筹码，早于服务器启动后的冻结；排除 `blank_sign` 与 `blank_chip`。立牌描述符的学派为 `generic`，冷却取 `GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS`；筹码描述符的学派 / 分类来自商店数据，基础价格为 10，按品阶取权重 6/3/2（稀有 / 史诗 / 传说）。两张表为静态数据，需与物品 / 商店数据同步维护。
+- 验证：五线 `.75` `build` exit 0（`BUILD SUCCESSFUL in 12s`，44 tasks：32 executed / 12 up-to-date；五枚 `.75` jar 在 `build/libs`）。NeoForge 1.21.1 实机（`scripts/test/win/logs/1.21.1-20261115-191546.log`）：`Signs.size()=36`、`Chips.size()=70`，两者在服务器启动后均已冻结；样例描述符 `parunan_sign/generic/3600` 与 `atm_chip/STARLIGHT/ECONOMY/10/6`；`blank_sign` / `blank_chip` 均解析为 null；70 枚筹码描述符全部非 null。冻结日志在 `:6421`，mod loaded 在 `:4795`。探针完成后已停止游戏。
+
 ## 26.4-SNAPSHOT.74
 
 ### 本线
