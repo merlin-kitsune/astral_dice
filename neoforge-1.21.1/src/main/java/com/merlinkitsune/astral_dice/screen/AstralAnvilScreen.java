@@ -23,6 +23,8 @@ public class AstralAnvilScreen extends AbstractContainerScreen<AstralAnvilMenu> 
     private static final ResourceLocation VANILLA_ANVIL_TEXTURE = ResourceLocation.withDefaultNamespace(
             "textures/gui/container/anvil.png");
     private static final Component TOO_EXPENSIVE_TEXT = Component.translatable("container.repair.expensive");
+    private static final Component TITLE = Component.translatableWithFallback(
+            "container.astral_dice.astral_anvil", "星愿铁砧");
 
     private static final int TITLE_COLOR = 0xFFD700;
     private static final int COST_Y = 69;
@@ -47,9 +49,7 @@ public class AstralAnvilScreen extends AbstractContainerScreen<AstralAnvilMenu> 
         super(menu, playerInventory, title);
         this.imageWidth = 176;
         this.imageHeight = 166;
-        // 标题自己画（金色居中），原版左上标签整体移出视野
-        this.titleLabelY = -10000;
-        this.inventoryLabelY = 72;
+
     }
 
     @Override
@@ -113,8 +113,7 @@ public class AstralAnvilScreen extends AbstractContainerScreen<AstralAnvilMenu> 
 
     @Override
     protected void renderLabels(GuiGraphics guiGraphics, int mouseX, int mouseY) {
-        super.renderLabels(guiGraphics, mouseX, mouseY);
-        guiGraphics.drawString(this.font, this.title, (this.imageWidth - this.font.width(this.title)) / 2, 6,
+        guiGraphics.drawString(this.font, TITLE, (this.imageWidth - this.font.width(TITLE)) / 2, 6,
                 TITLE_COLOR, false);
         this.renderCost(guiGraphics);
     }

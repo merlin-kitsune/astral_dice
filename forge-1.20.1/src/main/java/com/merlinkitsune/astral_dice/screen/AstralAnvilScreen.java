@@ -12,7 +12,7 @@ import net.minecraft.world.item.ItemStack;
 /**
  * 星愿铁砧界面（2026-11-15）。
  *
- * <p>布局：标题金色居中（y=6）、物品栏标签 y=72、经验消耗右对齐到 x=166（y=69）；
+ * <p>布局：标题金色居中（y=6）、经验消耗右对齐到 x=166（y=69）；
  * 任一输入有物但结果为空时，在右侧箭头 (103,36) 画原版 28×21 红叉。
  */
 public class AstralAnvilScreen extends AbstractContainerScreen<AstralAnvilMenu> {
@@ -24,7 +24,8 @@ public class AstralAnvilScreen extends AbstractContainerScreen<AstralAnvilMenu> 
 
     private static final int TITLE_Y = 6;
     private static final int TITLE_COLOR = 0xFFD700;
-    private static final int INVENTORY_LABEL_COLOR = 4210752;
+    private static final Component TITLE = Component.translatableWithFallback(
+            "container.astral_dice.astral_anvil", "星愿铁砧");
     private static final int COST_Y = 69;
     private static final int COST_RIGHT = 166;
     private static final int COST_BACKGROUND_TOP = 67;
@@ -53,7 +54,7 @@ public class AstralAnvilScreen extends AbstractContainerScreen<AstralAnvilMenu> 
         super(menu, inventory, title);
         this.imageWidth = 176;
         this.imageHeight = 166;
-        this.inventoryLabelY = 72;
+
     }
 
     @Override
@@ -77,9 +78,7 @@ public class AstralAnvilScreen extends AbstractContainerScreen<AstralAnvilMenu> 
 
     @Override
     protected void renderLabels(GuiGraphics guiGraphics, int mouseX, int mouseY) {
-        guiGraphics.drawString(this.font, this.playerInventoryTitle,
-                this.inventoryLabelX, this.inventoryLabelY, INVENTORY_LABEL_COLOR);
-        guiGraphics.drawCenteredString(this.font, this.title, this.imageWidth / 2, TITLE_Y, TITLE_COLOR);
+        guiGraphics.drawCenteredString(this.font, TITLE, this.imageWidth / 2, TITLE_Y, TITLE_COLOR);
 
         int cost = this.menu.getCost();
         if (cost <= 0) {

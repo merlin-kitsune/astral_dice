@@ -4,6 +4,14 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 26.4-SNAPSHOT.68
+
+### This line
+
+- The Astral Anvil GUI no longer draws the gray `playerInventoryTitle` (“Inventory”) above the player inventory on all five lines. The NeoForge 1.21.1 screen no longer calls `super.renderLabels`; the other four lines drop their explicit inventory-label draw.
+- The anvil title is now rendered from a fixed `container.astral_dice.astral_anvil` component with a Chinese fallback, so the screen no longer depends on the menu-provided title (which could be blank or a raw ID on some loaders).
+- Validation: five-line `:build` exit 0 (`BUILD SUCCESSFUL in 18s`, 44 tasks: 37 executed / 7 up-to-date; log `temp/build-68.log`). Live clients on NeoForge 1.21.1, Forge 1.20.1, NeoForge 26.1.2, Fabric 1.20.1 and Fabric 1.21.1 all opened the Astral Anvil GUI with the title “星愿铁砧” and no gray inventory label: `run/neoforge-1.21.1/screenshots/2026-11-15_14.26.40.png`, `run/forge-1.20.1/screenshots/2026-11-15_14.28.57.png`, `run/neoforge-26.1.2/screenshots/2026-11-15_14.29.25.png`, `fabric-1.20.1/run/client/screenshots/2026-11-15_14.30.00.png`, `fabric-1.21.1/run/client/screenshots/2026-11-15_14.30.28.png`.
+
 ## 26.4-SNAPSHOT.67
 
 ### This line

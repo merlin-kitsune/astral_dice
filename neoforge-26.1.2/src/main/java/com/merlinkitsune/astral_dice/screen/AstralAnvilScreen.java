@@ -27,8 +27,8 @@ public class AstralAnvilScreen extends AbstractContainerScreen<AstralAnvilMenu> 
     private static final int GUI_HEIGHT = 166;
     private static final int TITLE_Y = 6;
     private static final int TITLE_COLOR = 0xFFFFD700;
-    private static final int LABEL_COLOR = 0xFF404040;
-    private static final int INVENTORY_LABEL_Y = 72;
+    private static final Component TITLE = Component.translatableWithFallback(
+            "container.astral_dice.astral_anvil", "星愿铁砧");
 
     private static final int COST_Y = 69;
     private static final int COST_RIGHT = 166;
@@ -54,9 +54,8 @@ public class AstralAnvilScreen extends AbstractContainerScreen<AstralAnvilMenu> 
 
     public AstralAnvilScreen(AstralAnvilMenu menu, Inventory playerInventory, Component title) {
         super(menu, playerInventory, title, GUI_WIDTH, GUI_HEIGHT);
-        this.titleLabelX = (GUI_WIDTH - this.font.width(this.title)) / 2;
+        this.titleLabelX = (GUI_WIDTH - this.font.width(TITLE)) / 2;
         this.titleLabelY = TITLE_Y;
-        this.inventoryLabelY = INVENTORY_LABEL_Y;
     }
 
     @Override
@@ -72,9 +71,7 @@ public class AstralAnvilScreen extends AbstractContainerScreen<AstralAnvilMenu> 
 
     @Override
     protected void extractLabels(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
-        graphics.text(this.font, this.title, this.titleLabelX, this.titleLabelY, TITLE_COLOR, false);
-        graphics.text(this.font, this.playerInventoryTitle, this.inventoryLabelX, this.inventoryLabelY, LABEL_COLOR,
-                false);
+        graphics.text(this.font, TITLE, this.titleLabelX, this.titleLabelY, TITLE_COLOR, false);
         this.extractCostLabel(graphics);
     }
 

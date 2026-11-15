@@ -22,7 +22,8 @@ public class AstralAnvilScreen extends AbstractContainerScreen<AstralAnvilMenu> 
 
     private static final int TITLE_COLOR = 0xFFD700;
     private static final int TITLE_Y = 6;
-    private static final int LABEL_COLOR = 4210752;
+    private static final Component TITLE = Component.translatableWithFallback(
+            "container.astral_dice.astral_anvil", "星愿铁砧");
 
     private static final int COST_Y = 69;
     private static final int COST_RIGHT = 166;
@@ -53,7 +54,7 @@ public class AstralAnvilScreen extends AbstractContainerScreen<AstralAnvilMenu> 
         super(menu, playerInventory, title);
         this.imageWidth = 176;
         this.imageHeight = 166;
-        this.inventoryLabelY = 72;
+
     }
 
     @Override
@@ -75,10 +76,8 @@ public class AstralAnvilScreen extends AbstractContainerScreen<AstralAnvilMenu> 
 
     @Override
     protected void renderLabels(GuiGraphics guiGraphics, int mouseX, int mouseY) {
-        guiGraphics.drawString(this.font, this.title, (this.imageWidth - this.font.width(this.title)) / 2, TITLE_Y,
+        guiGraphics.drawString(this.font, TITLE, (this.imageWidth - this.font.width(TITLE)) / 2, TITLE_Y,
                 TITLE_COLOR, false);
-        guiGraphics.drawString(this.font, this.playerInventoryTitle, this.inventoryLabelX, this.inventoryLabelY,
-                LABEL_COLOR, false);
         this.renderExperienceCost(guiGraphics);
     }
 
