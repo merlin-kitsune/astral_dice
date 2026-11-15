@@ -31,7 +31,7 @@ public final class DiceUpgradeCraftHandler {
         if (player.level().isClientSide()) {
             return;
         }
-        if (!DiceStarUpgrade.experimentalEnabled()) {
+        if (!DiceStarUpgrade.resetCardsOnCraft()) {
             return;
         }
         ItemStack crafted = event.getCrafting();

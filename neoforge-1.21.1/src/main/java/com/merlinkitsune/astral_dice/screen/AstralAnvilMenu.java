@@ -1,11 +1,14 @@
 package com.merlinkitsune.astral_dice.screen;
 
 import com.merlinkitsune.astral_dice.block.ModBlocks;
+import com.merlinkitsune.astral_dice.data.AstralDiceDataStore;
 import com.merlinkitsune.astral_dice.item.DiceStarUpgrade;
-import com.merlinkitsune.astral_dice.item.ModItems;
-import com.merlinkitsune.astral_dice.item.ModTags;
 import com.merlinkitsune.astral_dice.shop.ChipShopState;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.ContainerLevelAccess;
@@ -20,8 +23,9 @@ import net.minecraft.world.level.block.state.BlockState;
  * 星愿铁砧菜单（2026-11-15）。
  *
  * <p>三输入 + 结果：槽 0 = 骰子 (26,38)、槽 1/2 = 材料 (71,38)/(89,38)、槽 3 = 结果 (134,38)。
- * 材料槽统一由 {@link ModTags.Items#ASTRAL_ANVIL_MATERIALS} 控制（数据包可扩充），但本轮的内置升星
- * 只认星币：所有非空材料槽必须全是 {@link ModItems#STAR_COIN}，两槽合计达到该星阶成本才出结果。
+ * 材料槽由数据包控制：{@code materials} 面额表里的物品按面额计，{@code material_tag}
+ * （默认 {@code astral_dice:astral_anvil_materials}）收录但未列面额的物品按 1 计；两槽面额合计达到
+ * 该星阶成本才出结果。默认数据文件只列星币，因此不装数据包时行为与旧版一致。
  *
  * <p><b>不调 {@code AnvilBlock.damage}</b>：星愿铁砧无耐久，取走成品不会裂。
  */
@@ -61,8 +65,33 @@ public class AstralAnvilMenu extends ItemCombinerMenu {
                 .build();
     }
 
+    /**
+     * 材料槽过滤：命中数据包口径（{@code material_tag} 标签）**或** {@code materials} 面额表里的物品。
+     * 默认数据文件两者都是星币，行为与 2026-11-15 之前一致。
+     */
     private static boolean isMaterial(ItemStack stack) {
-        return !stack.isEmpty() && stack.is(ModTags.Items.ASTRAL_ANVIL_MATERIALS);
+        return !stack.isEmpty() && denominationOf(stack) > 0;
+    }
+
+    /**
+     * 单件材料的面额：{@code materials} 表优先；只被 {@code material_tag} 收录、未列入面额表的物品按 1 计；
+     * 其它物品 0（不是材料槽可接受的物品）。
+     */
+    private static int denominationOf(ItemStack stack) {
+        if (stack.isEmpty()) {
+            return 0;
+        }
+        ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(stack.getItem());
+        int fromData = AstralDiceDataStore.anvil().denomination(itemId.toString());
+        if (fromData > 0) {
+            return fromData;
+        }
+        ResourceLocation tagId = ResourceLocation.tryParse(AstralDiceDataStore.anvil().materialTag());
+        if (tagId == null) {
+            return 0;
+        }
+        TagKey<net.minecraft.world.item.Item> materialTag = TagKey.create(Registries.ITEM, tagId);
+        return stack.is(materialTag) ? 1 : 0;
     }
 
     /** 内置升星：骰子 + 全星币 + 两槽合计够成本 ⇒ 产出 {@link DiceStarUpgrade#resultFor}。 */
@@ -73,9 +102,9 @@ public class AstralAnvilMenu extends ItemCombinerMenu {
         ItemStack material2 = this.inputSlots.getItem(MATERIAL_SLOT_2);
         ItemStack output = ItemStack.EMPTY;
         this.materialCost = 0;
-        if (DiceStarUpgrade.isDice(input) && isAllStarCoins(material1, material2)) {
+        if (DiceStarUpgrade.isDice(input) && areValidMaterials(material1, material2)) {
             int required = DiceStarUpgrade.starCoinCost(starLevelOf(input));
-            if (required > 0 && material1.getCount() + material2.getCount() >= required) {
+            if (required > 0 && totalDenomination(material1) + totalDenomination(material2) >= required) {
                 ItemStack candidate = DiceStarUpgrade.resultFor(input);
                 if (!candidate.isEmpty()) {
                     output = candidate;
@@ -89,9 +118,15 @@ public class AstralAnvilMenu extends ItemCombinerMenu {
         this.resultSlots.setItem(0, output);
     }
 
-    private static boolean isAllStarCoins(ItemStack material1, ItemStack material2) {
-        return (material1.isEmpty() || material1.is(ModItems.STAR_COIN.get()))
-                && (material2.isEmpty() || material2.is(ModItems.STAR_COIN.get()));
+    /** 两个材料槽都必须为空或可接受的材料（标签内物品或面额表物品）。 */
+    private static boolean areValidMaterials(ItemStack material1, ItemStack material2) {
+        return (material1.isEmpty() || isMaterial(material1))
+                && (material2.isEmpty() || isMaterial(material2));
+    }
+
+    /** 一槽材料的**总面额**（单件面额 × 数量）——数据包可以定义面额 > 1 的材料，如「星币袋 = 10」。 */
+    private static int totalDenomination(ItemStack stack) {
+        return stack.isEmpty() ? 0 : denominationOf(stack) * stack.getCount();
     }
 
     private static int starLevelOf(ItemStack stack) {
@@ -131,21 +166,26 @@ public class AstralAnvilMenu extends ItemCombinerMenu {
         this.broadcastChanges();
     }
 
-    /** 扣料：先槽 1 后槽 2，按 createResult 算出的总量扣，不按槽平均。 */
-    private void consumeMaterials(int total) {
-        int remaining = total;
+    /**
+     * 扣料：先槽 1 后槽 2，按 createResult 算出的**面额总量**扣，不按槽平均。
+     * 面额 > 1 的材料按整件扣，最后一次可能略超扣（面额不可拆分，超出部分不退，见交付说明）。
+     */
+    private void consumeMaterials(int totalValue) {
+        int remaining = totalValue;
         for (int slotIndex : new int[]{MATERIAL_SLOT_1, MATERIAL_SLOT_2}) {
+            while (remaining > 0) {
+                ItemStack material = this.inputSlots.getItem(slotIndex);
+                if (material.isEmpty()) {
+                    break;
+                }
+                int value = Math.max(1, denominationOf(material));
+                material.shrink(1);
+                this.inputSlots.setItem(slotIndex, material.isEmpty() ? ItemStack.EMPTY : material);
+                remaining -= value;
+            }
             if (remaining <= 0) {
                 return;
             }
-            ItemStack material = this.inputSlots.getItem(slotIndex);
-            if (material.isEmpty()) {
-                continue;
-            }
-            int taken = Math.min(remaining, material.getCount());
-            material.shrink(taken);
-            this.inputSlots.setItem(slotIndex, material.isEmpty() ? ItemStack.EMPTY : material);
-            remaining -= taken;
         }
     }
 
@@ -177,7 +217,7 @@ public class AstralAnvilMenu extends ItemCombinerMenu {
             if (!this.moveItemStackTo(stack, INPUT_SLOT, INPUT_SLOT + 1, false)) {
                 return ItemStack.EMPTY;
             }
-        } else if (stack.is(ModTags.Items.ASTRAL_ANVIL_MATERIALS)) {
+        } else if (isMaterial(stack)) {
             if (!this.moveItemStackTo(stack, MATERIAL_SLOT_1, MATERIAL_SLOT_2 + 1, false)) {
                 return ItemStack.EMPTY;
             }

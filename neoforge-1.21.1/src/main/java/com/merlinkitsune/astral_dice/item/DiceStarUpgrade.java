@@ -3,6 +3,8 @@ package com.merlinkitsune.astral_dice.item;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import com.merlinkitsune.astral_dice.component.WeaponEnhancement;
 import com.merlinkitsune.astral_dice.config.ModCommonConfig;
+import com.merlinkitsune.astral_dice.data.AstralDiceDataStore;
+import com.merlinkitsune.astral_dice.item.dice.DiceTierRegistry;
 import com.merlinkitsune.starengine.component.GameplayConstants;
 import net.minecraft.world.item.ItemStack;
 
@@ -13,10 +15,10 @@ import java.util.List;
  *
  * <p>把原先散落在 {@code event.AnvilUpgradeHandler} 与星愿铁砧菜单里的数值收在一处，四个入口：
  * <ul>
- *   <li>{@link #isDice(ItemStack)}：13 种骰子白名单（升星输入判定）；</li>
+ *   <li>{@link #isDice(ItemStack)}：优先走 {@link DiceTierRegistry}（内置 13 种 + 附属注册），注册表未命中时回退旧白名单；</li>
  *   <li>{@link #starCoinCost(int)}：星币成本 0★→15 / 1★→20 / 2★→25，不可升（≥3★）⇒ -1；</li>
  *   <li>{@link #resultFor(ItemStack)}：固定产出「星级 +1 且卡牌保留」（实验性重置只发生在骰子升阶合成）；</li>
- *   <li>{@link #xpCostFor(ItemStack)}：关闭时固定 10 级；开启时按输入骰子的 dice_t0..dice_t4 分级取 5 / 10 / 15 / 20 / 30，未命中 5。</li>
+ *   <li>{@link #xpCostFor(ItemStack)}：关闭时取数据包 {@code xp_cost_normal}（缺省 10）；开启时按输入骰子的 dice_t0..dice_t4 分级取 {@code xp_costs}（缺省 5 / 10 / 15 / 20 / 30），未命中第 0 项。</li>
  * </ul>
  *
  * <p>⚠️ 预览（铁砧更新事件）、真正授予与星愿铁砧菜单必须**都调本类**，不得在调用方再写第二套数值 ——
@@ -46,9 +48,19 @@ public final class DiceStarUpgrade {
         return ModCommonConfig.EXPERIMENTAL_STAR_UPGRADE.get();
     }
 
-    /** 13 种骰子白名单（基础/黄金/玻璃/下界岩/钻石/绿宝石/黑曜石/诡异/紫晶/下界合金/绯红/末影/下界之星）。 */
+    /**
+     * 升阶合成本次是否归还母体卡牌：数据包 {@code reset_on_craft} 非 null 时以其为准（true/false 都能压过配置项），
+     * 为 null 时回退既有配置语义（{@link #experimentalEnabled()}）。
+     */
+    public static boolean resetCardsOnCraft() {
+        Boolean configured = AstralDiceDataStore.anvil().resetOnCraft();
+        return configured != null ? configured : experimentalEnabled();
+    }
+
+    /** 优先走骰子阶层注册表（内置 13 种 + 附属注册）；注册表未命中时回退旧白名单，避免早期初始化阶段误判。 */
     public static boolean isDice(ItemStack stack) {
         if (stack == null || stack.isEmpty()) return false;
+        if (DiceTierRegistry.isDice(stack)) return true;
         return stack.is(ModItems.DICE.get()) || stack.is(ModItems.GOLDEN_DICE.get()) || stack.is(ModItems.DIAMOND_DICE.get())
                 || stack.is(ModItems.NETHERITE_DICE.get()) || stack.is(ModItems.EMERALD_DICE.get())
                 || stack.is(ModItems.GLASS_DICE.get()) || stack.is(ModItems.NETHERRACK_DICE.get())
@@ -63,8 +75,17 @@ public final class DiceStarUpgrade {
         return enhancementOf(stack).starLevel();
     }
 
-    /** 升星星币成本：0★→15 / 1★→20 / 2★→25；不可升（≥3★ 或非法星阶）⇒ -1。 */
+    /**
+     * 升星材料面额总量：优先读数据包快照（{@code astral_dice/anvil} 的 star_coin_costs / max_star），
+     * 数据包未加载或该星阶未表态时回退旧硬编码（0★→15 / 1★→20 / 2★→25，其余 -1）。
+     */
     public static int starCoinCost(int starLevel) {
+        int fromData = AstralDiceDataStore.anvil().starCoinCostFor(starLevel);
+        return fromData > 0 ? fromData : fallbackStarCoinCost(starLevel);
+    }
+
+    /** 旧硬编码（数据包未表态时的兜底，逐字保留 2026-11-15 之前的数值）。 */
+    private static int fallbackStarCoinCost(int starLevel) {
         return switch (starLevel) {
             case 0 -> 15;
             case 1 -> 20;
@@ -131,14 +152,36 @@ public final class DiceStarUpgrade {
      * 升星消耗的经验等级：关闭实验开关 ⇒ 固定 10；开启 ⇒ 按**输入骰子**的标签分级（与星级无关）。
      */
     public static int xpCostFor(ItemStack input) {
-        if (!experimentalEnabled()) return XP_COST_NORMAL;
-        if (input == null || input.isEmpty()) return XP_COST_UNTIERED;
-        if (input.is(ModTags.Items.DICE_T0)) return XP_COST_T0;
-        if (input.is(ModTags.Items.DICE_T1)) return XP_COST_T1;
-        if (input.is(ModTags.Items.DICE_T2)) return XP_COST_T2;
-        if (input.is(ModTags.Items.DICE_T3)) return XP_COST_T3;
-        if (input.is(ModTags.Items.DICE_T4)) return XP_COST_T4;
-        return XP_COST_UNTIERED;
+        if (!experimentalEnabled()) {
+            int fromData = AstralDiceDataStore.anvil().xpCostNormal();
+            return fromData > 0 ? fromData : XP_COST_NORMAL;
+        }
+        int tier = diceTier(input);
+        int fromData = AstralDiceDataStore.anvil().xpCostForTier(tier);
+        return fromData > 0 ? fromData : fallbackXpCost(tier);
+    }
+
+    /** 骰子分级：dice_t0..dice_t4 ⇒ 0..4；未命中任何分级（含空栈）⇒ -1（按第 0 项兜底，即既有的「未分级 = 5 级」口径）。 */
+    private static int diceTier(ItemStack input) {
+        if (input == null || input.isEmpty()) return -1;
+        if (input.is(ModTags.Items.DICE_T0)) return 0;
+        if (input.is(ModTags.Items.DICE_T1)) return 1;
+        if (input.is(ModTags.Items.DICE_T2)) return 2;
+        if (input.is(ModTags.Items.DICE_T3)) return 3;
+        if (input.is(ModTags.Items.DICE_T4)) return 4;
+        return -1;
+    }
+
+    /** 旧硬编码经验成本（数据包未表态时兜底）。 */
+    private static int fallbackXpCost(int tier) {
+        return switch (tier) {
+            case 0 -> XP_COST_T0;
+            case 1 -> XP_COST_T1;
+            case 2 -> XP_COST_T2;
+            case 3 -> XP_COST_T3;
+            case 4 -> XP_COST_T4;
+            default -> XP_COST_UNTIERED;
+        };
     }
 
     private static WeaponEnhancement enhancementOf(ItemStack stack) {
