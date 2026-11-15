@@ -4,6 +4,15 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 26.4-SNAPSHOT.69
+
+### This line
+
+- The Astral Anvil and loot injection are now data-pack driven on all five lines. `data/<namespace>/astral_dice/anvil/*.json` controls star-coin costs, XP costs, max star, the material tag and per-item denominations; `data/<namespace>/astral_dice/loot/*.json` controls chest and entity injection through native loot tables.
+- Removed the old hardcoded anvil values and the NeoForge GLM / `onLivingDrops` / four-pool paths. The default data lives in `common/src/main/resources`; NeoForge and Forge use deferred reload queues, while Fabric parses the pack from `LootTableEvents.MODIFY` (Fabric 1.21.1 falls back to the packaged default until the server starts).
+- Native tables now cover the common/end-city/buried-treasure chests, star coins and the special star-plate tiers (wither, warden, elder guardian, ghast, wither skeleton, guardian, generic monster). Ordinary mob star-plate odds are unified at 1%; wither 5; ender dragon 100%.
+- Validation: five-line `build` exit 0 (`BUILD SUCCESSFUL in 14s`, 44 tasks: 32 executed / 12 up-to-date; `.69` jars in `build/libs`). No live-client testing in this batch.
+
 ## 26.4-SNAPSHOT.68
 
 ### This line

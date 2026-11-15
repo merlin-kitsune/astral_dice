@@ -4,6 +4,15 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
+## 26.4-SNAPSHOT.69
+
+### 本线
+
+- 五线星愿铁砧与战利品注入改为数据包驱动：`data/<namespace>/astral_dice/anvil/*.json` 控制星币成本、经验成本、最高星阶、材料标签与逐物品面额；`data/<namespace>/astral_dice/loot/*.json` 通过原版战利品表控制箱子与实体注入。
+- 删除旧硬编码铁砧数值与 NeoForge 的 GLM / `onLivingDrops` / 四池通道。默认数据放在 `common/src/main/resources`；NeoForge / Forge 用延迟重载队列，Fabric 从 `LootTableEvents.MODIFY` 解析数据包（Fabric 1.21.1 在服务器启动前回退到内置默认数据）。
+- 原生表覆盖 common / end_city / buried_treasure 箱子、星币与特殊星盘档位（凋灵、监守者、远古守卫者、恶魂、凋灵骷髅、守卫者、通用 Monster）。普通怪星盘统一 1%；凋灵 5；末影龙 100%。
+- 验证：五线 `build` exit 0（`BUILD SUCCESSFUL in 14s`，44 tasks：32 executed / 12 up-to-date；`.69` jar 在 `build/libs`）。本批未做实机客户端测试。
+
 ## 26.4-SNAPSHOT.68
 
 ### 本线
