@@ -13,7 +13,7 @@
 
 项目基线:
 - 主线子项目 `neoforge-1.21.1`:MC 1.21.1 / NeoForge 21.1.235 / Java 21 / ModDevGradle(`net.neoforged.moddev` 2.0.141)
-- 移植子项目 `forge-1.20.1`:MC 1.20.1 / Forge 1.20.1-47.4.10 / Java 17 / ModDevGradle LegacyForge(`net.neoforged.moddev.legacyforge` 2.0.144)
+- 移植子项目 `forge-1.20.1`:MC 1.20.1 / Forge 1.20.1-47.1.47 / Java 17 / ModDevGradle LegacyForge(`net.neoforged.moddev.legacyforge` 2.0.144)
 - P0 线 `neoforge-26.1.2`:MC 26.1.2 / NeoForge 26.1.2.109 / Java 25 / ModDevGradle 2.0.147;由 1.21.1 源码整体迁移,差异见 `docs/compat-26.1.2-neoforge.md`。**2026-09-17 起已并入主线目录**(原独立 worktree `F:\MCProject\astral_dice_multiloader-26.1.2` / 分支 `multi-26.1.2-neoforge` 已合并进 `multi-1.20.1-1.21.1`,现行工作目录即主线根目录,四子项目同树)。
 - P1 线 `fabric-1.20.1`:MC 1.20.1 / Fabric Loader 0.19.5 + Fabric API 0.92.12 / Java 17 / Fabric Loom(`fabric-loom`);由 `forge-1.20.1` 的 1.3.2-hotfix 源码整体移植(**加载器层整体替换**:Curios→Trinkets(+Accessories 软依赖) · Capability→Fabric API 附件 · Forge EventBus→自建 `LoaderBus`+Puzzles Lib/FAPI 回调/mixin · GLM→`LootTableEvents.MODIFY`),裁剪项与平台差异见 `porting/fabric-1.20.1/VERSION_PINS.md`、`KNOWN-ISSUES.md` §9。**2026-10-01 已并入主线目录**(原独立 worktree `F:\MCProject\astral_dice_multiloader_fabric` / 分支 `1.20.1-fabric` 已合并进 `multi-main` 并**已删除本地 worktree 与分支**（⚠️ **远端分支 `origin/1.20.1-fabric` 的删除需 push，尚未执行**，待用户放行；删除本地分支前已取证其 tip `a89487ac` 是 `multi-main` 的祖先、独有提交 0 个），各线同一工作树)。⚠️ **本线 dev 环境有一个必须先做的前置**：Loom 重映射第三方 mod 时会剥离产物的 `fabric.mod.json` 的 `jars` 声明 ⇒ 自带内嵌库的 mod（Puzzles Lib / Accessories / Patchouli / Cloth Config / KubeJS）在 dev 里**全部起不来**（`HARD_DEP_NO_CANDIDATE` / `NoClassDefFoundError`）。跑任何 fabric dev 运行前先执行 `python tools/loom_embedded_jars.py --apply`（把内嵌库按 id 去重投放到 `run/<side>/mods/`，靠 Loom 的 `fabric.remapClasspathFile` 运行时重映射生效）；**换 `-PtestTrinkets` / `-PtestAccessories` 后必须重跑**。详见 `KNOWN-ISSUES.md` §9 **KI-F23**。
 - Base package/group: com.merlinkitsune.astral_dice;各子项目产物名均为 `astral_dice-<版本>.jar`,版本号自带加载器后缀(1.21.1 带 `+neoforge_1.21.1`,1.20.1 带 `+forge_1.20.1`,26.1.2 带 `+neoforge_26.1.2`,fabric 1.20.1 带 `+fabric_1.20.1`,下划线分隔)。
@@ -747,11 +747,11 @@ When extending this workspace:
    - 双方提供的是**不同形态的产物**(如 CF 生产 jar ↔ 官方 maven dev jar)时 → 必须证明 **MDG 重映射后的产物等价**:Architectury API 由 `dev.architectury:architectury-forge:9.2.14` 改为 `curse.maven:architectury-api-419699:5137938` 后,两个来源经 MDG 重映射得到的 jar **482/482 条目逐条 CRC32 相同、382 个 class 名集合零差异**,且 `:forge-1.20.1:compileJava` 保持 `UP-TO-DATE`(编译期 ABI 指纹未变)。
 
 **加载器版本门槛(必须遵守)**:
-- **1.20.1(Forge)**:由 `forge-1.20.1/build.gradle` 从 `gradle.properties` 的 `forge_version`(形如 `1.20.1-47.4.10`)**自动派生两个区间**,分别写入两处:
-  ① `loaderVersion` = **javafml 语言主系列区间** `[<major>,<major+1>)`(当前 `[47,48)`);② `modId="forge"` 强制依赖 = **精确区间** `[<forge_version>,<major+1>)`(当前 `[47.4.10,48)`)。
-  ⚠️ **精确区间不得写进 `loaderVersion`(2026-09-14 实机验证)**:javafml 语言提供者的版本号**就是 Forge 主系列号**(47),与完整版本号不同构;写 `[47.4.10,48)` 会让 FML 以
+- **1.20.1(Forge)**:由 `forge-1.20.1/build.gradle` 从 `gradle.properties` 的 `forge_version`(形如 `1.20.1-47.1.47`)**自动派生两个区间**,分别写入两处:
+  ① `loaderVersion` = **javafml 语言主系列区间** `[<major>,<major+1>)`(当前 `[47,48)`);② `modId="forge"` 强制依赖 = **精确区间** `[<forge_version>,<major+1>)`(当前 `[47.1.47,48)`)。
+  ⚠️ **精确区间不得写进 `loaderVersion`(2026-09-14 实机验证)**:javafml 语言提供者的版本号**就是 Forge 主系列号**(47),与完整版本号不同构;写 `[47.1.47,48)` 会让 FML 以
   `Missing language javafml version [47.4.10,48) wanted by astral_dice-1.2.1+forge_1.20.1.jar, found 47` **直接拒绝加载本模组**(Forge 自身的 `mods.toml` 也只写 `loaderVersion="[24,]"`)。
-  精确下限放在依赖上即达到同一门槛:低于 47.4.10 的环境在 FML 依赖排序阶段报 `Missing or unsupported mandatory dependencies:`。**禁止**再引入 `loader_version_range` 之类的独立属性或硬编码区间。
+  精确下限放在依赖上即达到同一门槛:低于 47.1.47 的环境在 FML 依赖排序阶段报 `Missing or unsupported mandatory dependencies:`。**禁止**再引入 `loader_version_range` 之类的独立属性或硬编码区间。
   曾因 `[47,)` 只卡到 47.0.0,导致 47.0.0~47.4.9 环境照常加载后才在 Mixin 变换阶段报错(2026-09-14 修复)。改动 `forge_version` 时两个区间自动跟随,无需手工同步。
   **同一门槛体系里的「Mixin 运行时」= 二选一**(2026-09-15 固化、**2026-09-29 改为二选一**,详见上方规则 4 的 ③):Forge 1.20.1 的 FML 没有 Mixin 集成,
   缺 Mixin 运行时本模组**不报错、全部 Mixin 静默失效**,故必须拦住。**两个合法供给方**:①独立前置 **Mixin Booster**(`mixinbooster`,`versionRange="[0.1.3,)"`,低于此版本仍是静默失效);②**Sinytra Connector**(`connectormod`,整合包常见,自带同一套 Sponge Mixin + Mojmap→SRG 重映射)。

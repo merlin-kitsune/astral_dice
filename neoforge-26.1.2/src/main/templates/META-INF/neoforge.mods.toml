@@ -144,7 +144,7 @@ config="${mod_id}.ysm.mixins.json"
     modId="starengine"
     type="required"
     ordering="AFTER"
-    versionRange="[${starengine_version},27.0.0)"
+    versionRange="[${starengine_version},2.0.0)"
     side="BOTH"
 
 # GeckoLib 自 2026-11-03 起 **vendor 进 starengine**(源码级随库分发)⇒ 本模组不再声明 geckolib 前置。
