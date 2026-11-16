@@ -1,0 +1,25 @@
+你是一位 Minecraft 模组客户端 HUD 缺陷定位工程师（Triage Engineer）。任务：只做**根因定位**，不写修复代码。
+
+不要使用任何人设 / 角色扮演 / 语气修饰 / 昵称自称，按你的职业身份以中性技术口吻输出。
+动手前先加载 using-superpowers，并按 systematic-debugging 的四阶段走（本任务只到 Phase 1–2：根因 + 差异对比 + 候选修复方案，**不要动代码**）。
+
+仓库 `F:/MCProject/astral_dice_multiloader`（四线同树：neoforge-1.21.1 / forge-1.20.1 / neoforge-26.1.2 / fabric-1.20.1）。
+
+## 现象（用户截图，fabric-1.20.1 实机）
+血条那一行：左侧是原版爱心（10 颗），右侧紧跟着一排**剑图标**（约 10 个，红色小剑），它们**位置不对**——那排剑画在了本该属于饥饿条/右侧区域的位置，与血条同一行且整体偏下/偏右，视觉上像是「贴错锚点」。血条正下方还有一条暗色空条。
+用户原话：「检查攻击力图标为什么位置不对」。
+
+## 你要产出的结论
+1. **这个「攻击力图标」是哪段代码画的**：类名 + `文件:行号`（本仓四线都要查，先看 fabric-1.20.1）。注意它可能叫 attack power / attack damage / attribute HUD / 攻击力 之类；也可能是 `AttributeHudRenderer`、`ClientHudRenderer`、`HudOverlay`、`AttributeLayer`、`ModGui` 一类命名。给出 grep 用的原文片段。
+2. **它的坐标是怎么算的**：把 y（和 x 锚点）的表达式原文抄出来（例如 `screenHeight - 39`、`leftHeight`、`gui.getGuiTicks()`、`bossOverlayHeight`），说明它参照的是原版哪个变量；再对照原版 `net.minecraft.client.gui.Gui.renderPlayerHealth` / `renderArmor` / `renderFood` 的 y 递进顺序（左列从 `screenHeight - 39` 起，每多一条属性条 `-10`），判断本模组是不是**漏算某条已经存在的属性条高度**（例如护甲条/吸收条/氧气条）或**重复占用同一 y**。
+3. **为什么只有这条线错（或是否四线同错）**：四线逐个核对该段代码，列出差异。如果代码一致，则继续查：fabric 线是否有别的东西（模组或 mixin）改了 HUD 基准（例如 `GuiMixin`、附件属性条、Saturation 覆盖、第三方 HUD 模组）；`fabric-1.20.1/src/main/java` 下已知有 `mixin/client/GuiMixin.java`。
+4. **判定分级**：证实 / 修正 / 证伪 / 未核验，每条都要带 `文件:行号` 证据。禁止凭猜测写结论。
+5. **候选修复方案**（至少 2 个，各写代价与风险）：例如改用「左列累加高度链」而不是硬编码、或改为跟随原版 `Gui` 的 `leftHeight`/`rightHeight` 计数（1.20.1 是局部变量，需 mixin 或 `@Redirect` 才拿得到，要说清难度）；不要直接改，等裁决。
+
+## 环境线索（省你时间）
+- 正在跑的是 fabric 1.20.1 dev 客户端（`run/fabric-1.20.1` 或 `fabric-1.20.1/run/client`），日志 `fabric-1.20.1/run/client/logs/latest.log`；AutoJS 通道可用（端点 `http://127.0.0.1:25585/mcp`），若需要可在客户端侧 `eval` 读 `mc.options.guiScale`、`mc.getWindow().getGuiScaledHeight()`、玩家属性值等。
+- **不要**启动新的游戏进程、不要 stop 任何进程、不要改配置；只读代码 + 只读日志。
+- 别碰 `astral_dice_multiloader-next`。
+
+## 输出
+报告写到 `F:/MCProject/astral_dice_multiloader/work/recon/attack-icon-position.md`（中文，含代码原文片段与 `文件:行号`、四线差异表、判定分级、候选方案）。最后一句话给出你认为最可能的单一根因。

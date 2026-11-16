@@ -1,0 +1,2 @@
+tools/curseforge_upload.py  CRLF=0  bareLF=1579  bareCR=0  bytes=78077
+docs/agent/AGENTS-dsh.md  CRLF=316  bareLF=0  bareCR=0  bytes=51078

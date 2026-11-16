@@ -1,0 +1,15 @@
+== 1. 全文快照 ==
+  [OK]   docs/agent/AGENTS-full.md 保序包含拆分前备份（AGENTS.md.bak-a-plan-183829；缺失/乱序 = 0）  缺失行数=0 / 乱序行数=0 / 原地改写行数=45 / 新增行数=758 / 行数 快照 4,244 vs 备份 3,480 / md5 快照=54bbf530a7fb 备份=9065ff9653fc
+  [OK]   快照行数 ≥ 3480  lines=4244
+  [FAIL] AGENTS-dsh.md 生效红线区块与 AGENTS-full.md L2–L120 逐字一致  红线区 14,476 字符
+== 2. AGENTS.md 结构完整（宿主分派 / 共同红线 / 按需索引）==
+  [OK]   宿主分派表含 4 个宿主（Kimi Code / DSH / Codex / 其他宿主）  hosts=['Kimi Code', 'DSH', 'Codex', '其他宿主']
+  [FAIL] 共同安全红线 1–6 条齐全且编号连续  编号=[1, 2, 3, 4, 5, 6, 7] / 命中 6/6 条关键词
+  [OK]   「按需文档索引」节存在且 ≥ 6 行有效引用  rows=10
+== 3. 规则库引用有效 ==
+  [OK]   14 条 docs 引用全部存在
+== 4. 体量与驻留规则 ==
+  [OK]   AGENTS.md 未超 32K 字符  3,876 字符
+  [OK]   AGENTS-dsh.md 保留用户裁决段〈会话启动第一步：加载 using-superpowers〉  AGENTS-dsh.md 28,410 字符
+
+结果：有失败项

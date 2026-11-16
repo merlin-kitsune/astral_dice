@@ -1,0 +1,261 @@
+840    private void renderPlayerHealth(GuiGraphics guiGraphics) {
+841       Player player = this.getCameraPlayer();
+842       if (player != null) {
+843          int i = Mth.ceil(player.getHealth());
+844          boolean flag = this.healthBlinkTime > (long)this.tickCount && (this.healthBlinkTime - (long)this.tickCount) / 3L % 2L == 1L;
+845          long j = Util.getMillis();
+846          if (i < this.lastHealth && player.invulnerableTime > 0) {
+847             this.lastHealthTime = j;
+848             this.healthBlinkTime = (long)(this.tickCount + 20);
+849          } else if (i > this.lastHealth && player.invulnerableTime > 0) {
+850             this.lastHealthTime = j;
+851             this.healthBlinkTime = (long)(this.tickCount + 10);
+852          }
+853 
+854          if (j - this.lastHealthTime > 1000L) {
+855             this.lastHealth = i;
+856             this.displayHealth = i;
+857             this.lastHealthTime = j;
+858          }
+859 
+860          this.lastHealth = i;
+861          int k = this.displayHealth;
+862          this.random.setSeed((long)(this.tickCount * 312871));
+863          FoodData fooddata = player.getFoodData();
+864          int l = fooddata.getFoodLevel();
+865          int i1 = this.screenWidth / 2 - 91;
+866          int j1 = this.screenWidth / 2 + 91;
+867          int k1 = this.screenHeight - 39;
+868          float f = Math.max((float)player.getAttributeValue(Attributes.MAX_HEALTH), (float)Math.max(k, i));
+869          int l1 = Mth.ceil(player.getAbsorptionAmount());
+870          int i2 = Mth.ceil((f + (float)l1) / 2.0F / 10.0F);
+871          int j2 = Math.max(10 - (i2 - 2), 3);
+872          int k2 = k1 - (i2 - 1) * j2 - 10;
+873          int l2 = k1 - 10;
+874          int i3 = player.getArmorValue();
+875          int j3 = -1;
+876          if (player.hasEffect(MobEffects.REGENERATION)) {
+877             j3 = this.tickCount % Mth.ceil(f + 5.0F);
+878          }
+879 
+880          this.minecraft.getProfiler().push("armor");
+881 
+882          for(int k3 = 0; k3 < 10; ++k3) {
+883             if (i3 > 0) {
+884                int l3 = i1 + k3 * 8;
+885                if (k3 * 2 + 1 < i3) {
+886                   guiGraphics.blit(GUI_ICONS_LOCATION, l3, k2, 34, 9, 9, 9);
+887                }
+888 
+889                if (k3 * 2 + 1 == i3) {
+890                   guiGraphics.blit(GUI_ICONS_LOCATION, l3, k2, 25, 9, 9, 9);
+891                }
+892 
+893                if (k3 * 2 + 1 > i3) {
+894                   guiGraphics.blit(GUI_ICONS_LOCATION, l3, k2, 16, 9, 9, 9);
+895                }
+896             }
+897          }
+898 
+899          this.minecraft.getProfiler().popPush("health");
+900          this.renderHearts(guiGraphics, player, i1, k1, j2, j3, f, i, k, l1, flag);
+901          LivingEntity livingentity = this.getPlayerVehicleWithHealth();
+902          int k5 = this.getVehicleMaxHearts(livingentity);
+903          if (k5 == 0) {
+904             this.minecraft.getProfiler().popPush("food");
+905 
+906             for(int i4 = 0; i4 < 10; ++i4) {
+907                int j4 = k1;
+908                int k4 = 16;
+909                int l4 = 0;
+910                if (player.hasEffect(MobEffects.HUNGER)) {
+911                   k4 += 36;
+912                   l4 = 13;
+913                }
+914 
+915                if (player.getFoodData().getSaturationLevel() <= 0.0F && this.tickCount % (l * 3 + 1) == 0) {
+916                   j4 = k1 + (this.random.nextInt(3) - 1);
+917                }
+918 
+919                int i5 = j1 - i4 * 8 - 9;
+920                guiGraphics.blit(GUI_ICONS_LOCATION, i5, j4, 16 + l4 * 9, 27, 9, 9);
+921                if (i4 * 2 + 1 < l) {
+922                   guiGraphics.blit(GUI_ICONS_LOCATION, i5, j4, k4 + 36, 27, 9, 9);
+923                }
+924 
+925                if (i4 * 2 + 1 == l) {
+926                   guiGraphics.blit(GUI_ICONS_LOCATION, i5, j4, k4 + 45, 27, 9, 9);
+927                }
+928             }
+929 
+930             l2 -= 10;
+931          }
+932 
+933          this.minecraft.getProfiler().popPush("air");
+934          int l5 = player.getMaxAirSupply();
+935          int i6 = Math.min(player.getAirSupply(), l5);
+936          if (player.isEyeInFluid(FluidTags.WATER) || i6 < l5) {
+937             int j6 = this.getVisibleVehicleHeartRows(k5) - 1;
+938             l2 -= j6 * 10;
+939             int k6 = Mth.ceil((double)(i6 - 2) * 10.0D / (double)l5);
+940             int l6 = Mth.ceil((double)i6 * 10.0D / (double)l5) - k6;
+941 
+942             for(int j5 = 0; j5 < k6 + l6; ++j5) {
+943                if (j5 < k6) {
+944                   guiGraphics.blit(GUI_ICONS_LOCATION, j1 - j5 * 8 - 9, l2, 16, 18, 9, 9);
+945                } else {
+946                   guiGraphics.blit(GUI_ICONS_LOCATION, j1 - j5 * 8 - 9, l2, 25, 18, 9, 9);
+947                }
+948             }
+949          }
+950 
+951          this.minecraft.getProfiler().pop();
+952       }
+953    }
+954 
+955    /**
+956     * Renders the player's hearts, including health, absorption, and highlight hearts, on the screen.
+957     *
+958     * @param guiGraphics      the graphics object used for rendering.
+959     * @param player           the player entity.
+960     * @param x                the x-coordinate of the hearts' position.
+961     * @param y                the y-coordinate of the hearts' position.
+962     * @param height           the height of each heart.
+963     * @param offsetHeartIndex the index of the offset heart.
+964     * @param maxHealth        the maximum health of the player.
+965     * @param currentHealth    the current health of the player.
+966     * @param displayHealth    the displayed health of the player.
+967     * @param absorptionAmount the absorption amount of the player.
+968     * @param renderHighlight  determines whether to render the highlight hearts.
+969     */
+970    protected void renderHearts(GuiGraphics guiGraphics, Player player, int x, int y, int height, int offsetHeartIndex, float maxHealth, int currentHealth, int displayHealth, int absorptionAmount, boolean renderHighlight) {
+971       Gui.HeartType gui$hearttype = Gui.HeartType.forPlayer(player);
+972       int i = 9 * (player.level().getLevelData().isHardcore() ? 5 : 0);
+973       int j = Mth.ceil((double)maxHealth / 2.0D);
+974       int k = Mth.ceil((double)absorptionAmount / 2.0D);
+975       int l = j * 2;
+976 
+977       for(int i1 = j + k - 1; i1 >= 0; --i1) {
+978          int j1 = i1 / 10;
+979          int k1 = i1 % 10;
+980          int l1 = x + k1 * 8;
+981          int i2 = y - j1 * height;
+982          if (currentHealth + absorptionAmount <= 4) {
+983             i2 += this.random.nextInt(2);
+984          }
+985 
+986          if (i1 < j && i1 == offsetHeartIndex) {
+987             i2 -= 2;
+988          }
+989 
+990          this.renderHeart(guiGraphics, Gui.HeartType.CONTAINER, l1, i2, i, renderHighlight, false);
+991          int j2 = i1 * 2;
+992          boolean flag = i1 >= j;
+993          if (flag) {
+994             int k2 = j2 - l;
+995             if (k2 < absorptionAmount) {
+996                boolean flag1 = k2 + 1 == absorptionAmount;
+997                this.renderHeart(guiGraphics, gui$hearttype == Gui.HeartType.WITHERED ? gui$hearttype : Gui.HeartType.ABSORBING, l1, i2, i, false, flag1);
+998             }
+999          }
+1000 
+1001          if (renderHighlight && j2 < displayHealth) {
+1002             boolean flag2 = j2 + 1 == displayHealth;
+1003             this.renderHeart(guiGraphics, gui$hearttype, l1, i2, i, true, flag2);
+1004          }
+1005 
+1006          if (j2 < currentHealth) {
+1007             boolean flag3 = j2 + 1 == currentHealth;
+1008             this.renderHeart(guiGraphics, gui$hearttype, l1, i2, i, false, flag3);
+1009          }
+1010       }
+1011 
+1012    }
+1013 
+1014    /**
+1015     * Renders a single heart icon on the screen.
+1016     *
+1017     * @param guiGraphics     the graphics object used for rendering.
+1018     * @param heartType       the type of heart icon to render.
+1019     * @param x               the x-coordinate of the heart's position.
+1020     * @param y               the y-coordinate of the heart's position.
+1021     * @param yOffset         the y-offset of the heart.
+1022     * @param renderHighlight determines whether to render the heart as highlighted.
+1023     * @param halfHeart       determines whether to render the heart as a half-heart.
+1024     */
+1025    private void renderHeart(GuiGraphics guiGraphics, Gui.HeartType heartType, int x, int y, int yOffset, boolean renderHighlight, boolean halfHeart) {
+1026       guiGraphics.blit(GUI_ICONS_LOCATION, x, y, heartType.getX(halfHeart, renderHighlight), yOffset, 9, 9);
+1027    }
+1028 
+1029    /**
+1030     * Renders the health of the player's vehicle on the screen.
+1031     *
+1032     * @param guiGraphics the graphics object used for rendering.
+1033     */
+1034    private void renderVehicleHealth(GuiGraphics guiGraphics) {
+1035       LivingEntity livingentity = this.getPlayerVehicleWithHealth();
+1036       if (livingentity != null) {
+1037          int i = this.getVehicleMaxHearts(livingentity);
+1038          if (i != 0) {
+1039             int j = (int)Math.ceil((double)livingentity.getHealth());
+1040             this.minecraft.getProfiler().popPush("mountHealth");
+1041             int k = this.screenHeight - 39;
+1042             int l = this.screenWidth / 2 + 91;
+1043             int i1 = k;
+1044             int j1 = 0;
+1045 
+1046             for(boolean flag = false; i > 0; j1 += 20) {
+1047                int k1 = Math.min(i, 10);
+1048                i -= k1;
+1049 
+1050                for(int l1 = 0; l1 < k1; ++l1) {
+1051                   int i2 = 52;
+1052                   int j2 = 0;
+1053                   int k2 = l - l1 * 8 - 9;
+1054                   guiGraphics.blit(GUI_ICONS_LOCATION, k2, i1, 52 + j2 * 9, 9, 9, 9);
+1055                   if (l1 * 2 + 1 + j1 < j) {
+1056                      guiGraphics.blit(GUI_ICONS_LOCATION, k2, i1, 88, 9, 9, 9);
+1057                   }
+1058 
+1059                   if (l1 * 2 + 1 + j1 == j) {
+1060                      guiGraphics.blit(GUI_ICONS_LOCATION, k2, i1, 97, 9, 9, 9);
+1061                   }
+1062                }
+1063 
+1064                i1 -= 10;
+1065             }
+1066 
+1067          }
+1068       }
+1069    }
+1070 
+1071    /**
+1072     * Renders a texture overlay on the screen with the specified shader location and alpha value.
+1073     *
+1074     * @param guiGraphics    the graphics object used for rendering.
+1075     * @param shaderLocation the location of the shader texture.
+1076     * @param alpha          the alpha value to apply to the overlay.
+1077     */
+1078    protected void renderTextureOverlay(GuiGraphics guiGraphics, ResourceLocation shaderLocation, float alpha) {
+1079       RenderSystem.disableDepthTest();
+1080       RenderSystem.depthMask(false);
+1081       guiGraphics.setColor(1.0F, 1.0F, 1.0F, alpha);
+1082       guiGraphics.blit(shaderLocation, 0, 0, -90, 0.0F, 0.0F, this.screenWidth, this.screenHeight, this.screenWidth, this.screenHeight);
+1083       RenderSystem.depthMask(true);
+1084       RenderSystem.enableDepthTest();
+1085       guiGraphics.setColor(1.0F, 1.0F, 1.0F, 1.0F);
+1086    }
+1087 
+1088    /**
+1089     * Renders the overlay for the spyglass effect.
+1090     *
+1091     * @param guiGraphics the graphics object used for rendering.
+1092     * @param scopeScale  the scale factor for the spyglass scope.
+1093     */
+1094    public void renderSpyglassOverlay(GuiGraphics guiGraphics, float scopeScale) {
+1095       float f = (float)Math.min(this.screenWidth, this.screenHeight);
+1096       float f1 = Math.min((float)this.screenWidth / f, (float)this.screenHeight / f) * scopeScale;
+1097       int i = Mth.floor(f * f1);
+1098       int j = Mth.floor(f * f1);
+1099       int k = (this.screenWidth - i) / 2;
+1100       int l = (this.screenHeight - j) / 2;

@@ -1,0 +1,22 @@
+== 显示名 + 主线判定 ==
+astral_dice-1.5.0+fabric_1.20.1.jar            -> Astral Dice 1.5.0 (Fabric 1.20.1)          mainline=True
+astral_dice-1.5.0+neoforge_1.21.1.jar          -> Astral Dice 1.5.0 (NeoForge 1.21.1)        mainline=True
+astral_dice-1.5.0+forge_1.20.1.jar             -> Astral Dice 1.5.0 (Forge 1.20.1)           mainline=True
+astral_dice-1.5.0+neoforge_26.1.2.jar          -> Astral Dice 1.5.0 (NeoForge 26.1.2)        mainline=True
+astral_dice-1.5.0-hotfix+fabric_1.20.1.jar     -> Astral Dice 1.5.0-hotfix (Fabric 1.20.1)   mainline=False
+astral_dice-1.5.1+forge_1.20.1.jar             -> Astral Dice 1.5.1 (Forge 1.20.1)           mainline=False
+astral_dice-1.6.2+fabric_1.20.1.jar            -> Astral Dice 1.6.2 (Fabric 1.20.1)          mainline=False
+astral_dice-1.3.7-beta.2+neoforge_26.1.2.jar   -> Astral Dice 1.3.7-beta.2 (NeoForge 26.1.2) mainline=False
+
+== 未知加载器回落 ==
+default_display_name('1.5.0','quilt','1.20.1') = Astral Dice 1.5.0 (Quilt 1.20.1)
+
+== 真实将 POST 的 metadata（小版本：不应出现 changelog/changelogType） ==
+astral_dice-1.5.0-hotfix+fabric_1.20.1.jar
+     CHANGELOG: skip (小版本更新不写 CF changelog: ver=1.5.0-hotfix, 用户 2026-11-02 规则)
+     keys = ['displayName', 'gameVersions', 'releaseType']
+     json = {"displayName": "Astral Dice 1.5.0-hotfix (Fabric 1.20.1)", "releaseType": "release", "gameVersions": [9638, 9639]}
+astral_dice-1.5.0+neoforge_1.21.1.jar
+     CHANGELOG: attach release/1.5.0/PLAYER_CHANGELOG.md (主线版本)
+     keys = ['changelog', 'changelogType', 'displayName', 'gameVersions', 'releaseType']
+     json = {"displayName": "Astral Dice 1.5.0 (NeoForge 1.21.1)", "releaseType": "release", "gameVersions": [9638, 9639], "changelogType": "markdown", "changelog": "<56234 字符>"}

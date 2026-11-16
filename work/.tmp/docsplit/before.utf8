@@ -1,0 +1,2 @@
+fail utf-8 'utf-8' codec can't decode byte 0xce in position 8: invalid continuation byte
+decoded with gbk

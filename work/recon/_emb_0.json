@@ -1,0 +1,1657 @@
+{
+ "payload": {
+  "allWorkflowRunsRoute": {
+   "workflowRuns": [
+    {
+     "name": "Build",
+     "runNumber": 147,
+     "id": "41430344936",
+     "workflowFilePath": ".github/workflows/build.yml",
+     "runUrl": "https://github.com/merlin-kitsune/astral_dice/actions/runs/41430344936",
+     "title": "docs(rules): 发布时序硬规则 —— 未详细测试(含实机冒烟)不得作为发布版本，发布动作必须是最后一步",
+     "workflowName": "Build",
+     "state": {
+      "status": "WORKFLOW_RUN_STATUS_COMPLETED",
+      "conclusion": "WORKFLOW_RUN_CONCLUSION_FAILURE"
+     },
+     "createdAt": {
+      "timestamp": "2026-11-02T10:37:48Z",
+      "isToday": true,
+      "isCurrentYear": true
+     },
+     "branch": {
+      "name": "refs/heads/multi-main",
+      "url": "/merlin-kitsune/astral_dice/tree/refs/heads/multi-main",
+      "title": "multi-main"
+     },
+     "timing": {
+      "kind": "WORKFLOW_RUN_TIMING_KIND_DURATION",
+      "text": "2m 0s"
+     },
+     "aliveChannel": "eyJjIjoiY2hlY2tfc3VpdGVzOjExMjI3MjY1NjMyMCIsInQiOjE3OTM2MTcwMjl9--1e3954230af0cb2a08729ba0fa4a7ab745d5cb8375946f15f3f7a54a3e6afb1e",
+     "actions": {
+      "workflowFileUrl": "/merlin-kitsune/astral_dice/actions/runs/41430344936/workflow"
+     },
+     "titleHtml": {
+      "value": "docs(rules): 发布时序硬规则 —— 未详细测试(含实机冒烟)不得作为发布版本，发布动作必须是最后一步"
+     },
+     "description": {
+      "primaryText": "Commit",
+      "linkText": "be6bc10",
+      "linkUrl": "/merlin-kitsune/astral_dice/commit/be6bc10ea3906c0ff307baffd55be43f8b853e0e",
+      "action": "pushed",
+      "showActor": true,
+      "actorName": "merlin-kitsune",
+      "actorUrl": "/merlin-kitsune",
+      "actorType": "WORKFLOW_RUN_ACTOR_TYPE_USER",
+      "actorHovercard": {
+       "type": "WORKFLOW_RUN_HOVERCARD_TYPE_USER",
+       "url": "/users/merlin-kitsune/hovercard"
+      }
+     }
+    },
+    {
+     "name": "Build",
+     "runNumber": 146,
+     "id": "41429965923",
+     "workflowFilePath": ".github/workflows/build.yml",
+     "runUrl": "https://github.com/merlin-kitsune/astral_dice/actions/runs/41429965923",
+     "title": "fix(fabric): gate chip recipes via Fabric resource conditions; releas…",
+     "workflowName": "Build",
+     "state": {
+      "status": "WORKFLOW_RUN_STATUS_COMPLETED",
+      "conclusion": "WORKFLOW_RUN_CONCLUSION_FAILURE"
+     },
+     "createdAt": {
+      "timestamp": "2026-11-02T10:35:03Z",
+      "isToday": true,
+      "isCurrentYear": true
+     },
+     "branch": {
+      "name": "refs/heads/multi-main",
+      "url": "/merlin-kitsune/astral_dice/tree/refs/heads/multi-main",
+      "title": "multi-main"
+     },
+     "timing": {
+      "kind": "WORKFLOW_RUN_TIMING_KIND_DURATION",
+      "text": "2m 50s"
+     },
+     "aliveChannel": "eyJjIjoiY2hlY2tfc3VpdGVzOjExMjI3MTY2MzY5MiIsInQiOjE3OTM2MTcwMjl9--f0995fbb9704cff8d69d760ab23627b0f34499728fc30011cd42fb7cd24f2305",
+     "actions": {
+      "workflowFileUrl": "/merlin-kitsune/astral_dice/actions/runs/41429965923/workflow"
+     },
+     "titleHtml": {
+      "value": "fix(fabric): gate chip recipes via Fabric resource conditions; releas…"
+     },
+     "description": {
+      "primaryText": "Commit",
+      "linkText": "3d7a3d7",
+      "linkUrl": "/merlin-kitsune/astral_dice/commit/3d7a3d7bd5f3a54e35a9e6cba974e1d00965c310",
+      "action": "pushed",
+      "showActor": true,
+      "actorName": "merlin-kitsune",
+      "actorUrl": "/merlin-kitsune",
+      "actorType": "WORKFLOW_RUN_ACTOR_TYPE_USER",
+      "actorHovercard": {
+       "type": "WORKFLOW_RUN_HOVERCARD_TYPE_USER",
+       "url": "/users/merlin-kitsune/hovercard"
+      }
+     }
+    },
+    {
+     "name": "Build",
+     "runNumber": 145,
+     "id": "41392466985",
+     "workflowFilePath": ".github/workflows/build.yml",
+     "runUrl": "https://github.com/merlin-kitsune/astral_dice/actions/runs/41392466985",
+     "title": "docs(changelog): record the fabric sign tooltip fix in 1.5.0 [republi…",
+     "workflowName": "Build",
+     "state": {
+      "status": "WORKFLOW_RUN_STATUS_COMPLETED",
+      "conclusion": "WORKFLOW_RUN_CONCLUSION_SUCCESS"
+     },
+     "createdAt": {
+      "timestamp": "2026-11-02T05:10:32Z",
+      "isToday": true,
+      "isCurrentYear": true
+     },
+     "branch": {
+      "name": "refs/tags/1.5.0",
+      "url": "/merlin-kitsune/astral_dice/tree/refs/tags/1.5.0",
+      "title": "1.5.0"
+     },
+     "timing": {
+      "kind": "WORKFLOW_RUN_TIMING_KIND_DURATION",
+      "text": "2m 18s"
+     },
+     "aliveChannel": "eyJjIjoiY2hlY2tfc3VpdGVzOjExMjE3MjkyOTQ2MSIsInQiOjE3OTM2MTcwMjl9--bd4133a14b273fe5ccafa36a4ec4ef1012247f0b232541b1b81caa3fa6cbd191",
+     "actions": {
+      "workflowFileUrl": "/merlin-kitsune/astral_dice/actions/runs/41392466985/workflow"
+     },
+     "titleHtml": {
+      "value": "docs(changelog): record the fabric sign tooltip fix in 1.5.0 [republi…"
+     },
+     "description": {
+      "primaryText": "Commit",
+      "linkText": "6fe3813",
+      "linkUrl": "/merlin-kitsune/astral_dice/commit/6fe38138efff047e63516391140742fff6b032c3",
+      "action": "pushed",
+      "showActor": true,
+      "actorName": "merlin-kitsune",
+      "actorUrl": "/merlin-kitsune",
+      "actorType": "WORKFLOW_RUN_ACTOR_TYPE_USER",
+      "actorHovercard": {
+       "type": "WORKFLOW_RUN_HOVERCARD_TYPE_USER",
+       "url": "/users/merlin-kitsune/hovercard"
+      }
+     }
+    },
+    {
+     "name": "Build",
+     "runNumber": 144,
+     "id": "41392445400",
+     "workflowFilePath": ".github/workflows/build.yml",
+     "runUrl": "https://github.com/merlin-kitsune/astral_dice/actions/runs/41392445400",
+     "title": "docs(changelog): record the fabric sign tooltip fix in 1.5.0 [republi…",
+     "workflowName": "Build",
+     "state": {
+      "status": "WORKFLOW_RUN_STATUS_COMPLETED",
+      "conclusion": "WORKFLOW_RUN_CONCLUSION_FAILURE"
+     },
+     "createdAt": {
+      "timestamp": "2026-11-02T05:10:20Z",
+      "isToday": true,
+      "isCurrentYear": true
+     },
+     "branch": {
+      "name": "refs/heads/multi-main",
+      "url": "/merlin-kitsune/astral_dice/tree/refs/heads/multi-main",
+      "title": "multi-main"
+     },
+     "timing": {
+      "kind": "WORKFLOW_RUN_TIMING_KIND_DURATION",
+      "text": "2m 43s"
+     },
+     "aliveChannel": "eyJjIjoiY2hlY2tfc3VpdGVzOjExMjE3Mjg3NjgwOCIsInQiOjE3OTM2MTcwMjl9--25907b23d71d929f21cbd61678d9c9a1ec965b4cd74bf2b2306d8ff1edd756c9",
+     "actions": {
+      "workflowFileUrl": "/merlin-kitsune/astral_dice/actions/runs/41392445400/workflow"
+     },
+     "titleHtml": {
+      "value": "docs(changelog): record the fabric sign tooltip fix in 1.5.0 [republi…"
+     },
+     "description": {
+      "primaryText": "Commit",
+      "linkText": "6fe3813",
+      "linkUrl": "/merlin-kitsune/astral_dice/commit/6fe38138efff047e63516391140742fff6b032c3",
+      "action": "pushed",
+      "showActor": true,
+      "actorName": "merlin-kitsune",
+      "actorUrl": "/merlin-kitsune",
+      "actorType": "WORKFLOW_RUN_ACTOR_TYPE_USER",
+      "actorHovercard": {
+       "type": "WORKFLOW_RUN_HOVERCARD_TYPE_USER",
+       "url": "/users/merlin-kitsune/hovercard"
+      }
+     }
+    },
+    {
+     "name": "Build",
+     "runNumber": 143,
+     "id": "41392306502",
+     "workflowFilePath": ".github/workflows/build.yml",
+     "runUrl": "https://github.com/merlin-kitsune/astral_dice/actions/runs/41392306502",
+     "title": "fix(fabric): add tooltip branches for the seven new signs [republish-…",
+     "workflowName": "Build",
+     "state": {
+      "status": "WORKFLOW_RUN_STATUS_COMPLETED",
+      "conclusion": "WORKFLOW_RUN_CONCLUSION_SUCCESS"
+     },
+     "createdAt": {
+      "timestamp": "2026-11-02T05:08:51Z",
+      "isToday": true,
+      "isCurrentYear": true
+     },
+     "branch": {
+      "name": "refs/tags/1.5.0",
+      "url": "/merlin-kitsune/astral_dice/tree/refs/tags/1.5.0",
+      "title": "1.5.0"
+     },
+     "timing": {
+      "kind": "WORKFLOW_RUN_TIMING_KIND_DURATION",
+      "text": "1m 43s"
+     },
+     "aliveChannel": "eyJjIjoiY2hlY2tfc3VpdGVzOjExMjE3MjUyNTQ0OCIsInQiOjE3OTM2MTcwMjl9--307c6130ce599663172d6e268b4921a24d1af07569f547ac36c6da54edd51d87",
+     "actions": {
+      "workflowFileUrl": "/merlin-kitsune/astral_dice/actions/runs/41392306502/workflow"
+     },
+     "titleHtml": {
+      "value": "fix(fabric): add tooltip branches for the seven new signs [republish-…"
+     },
+     "description": {
+      "primaryText": "Commit",
+      "linkText": "72d2048",
+      "linkUrl": "/merlin-kitsune/astral_dice/commit/72d2048a1689cdd790b6e56d2def8d5d78d76e45",
+      "action": "pushed",
+      "showActor": true,
+      "actorName": "merlin-kitsune",
+      "actorUrl": "/merlin-kitsune",
+      "actorType": "WORKFLOW_RUN_ACTOR_TYPE_USER",
+      "actorHovercard": {
+       "type": "WORKFLOW_RUN_HOVERCARD_TYPE_USER",
+       "url": "/users/merlin-kitsune/hovercard"
+      }
+     }
+    },
+    {
+     "name": "Build",
+     "runNumber": 142,
+     "id": "41392300273",
+     "workflowFilePath": ".github/workflows/build.yml",
+     "runUrl": "https://github.com/merlin-kitsune/astral_dice/actions/runs/41392300273",
+     "title": "fix(fabric): add tooltip branches for the seven new signs [republish-…",
+     "workflowName": "Build",
+     "state": {
+      "status": "WORKFLOW_RUN_STATUS_COMPLETED",
+      "conclusion": "WORKFLOW_RUN_CONCLUSION_SUCCESS"
+     },
+     "createdAt": {
+      "timestamp": "2026-11-02T05:08:47Z",
+      "isToday": true,
+      "isCurrentYear": true
+     },
+     "branch": {
+      "name": "refs/heads/multi-main",
+      "url": "/merlin-kitsune/astral_dice/tree/refs/heads/multi-main",
+      "title": "multi-main"
+     },
+     "timing": {
+      "kind": "WORKFLOW_RUN_TIMING_KIND_DURATION",
+      "text": "3m 3s"
+     },
+     "aliveChannel": "eyJjIjoiY2hlY2tfc3VpdGVzOjExMjE3MjUwODQ2MCIsInQiOjE3OTM2MTcwMjl9--24f0dfef4b7766aba97eb803b425111b45a3b394bee3489b757a2ea4f05e1b55",
+     "actions": {
+      "workflowFileUrl": "/merlin-kitsune/astral_dice/actions/runs/41392300273/workflow"
+     },
+     "titleHtml": {
+      "value": "fix(fabric): add tooltip branches for the seven new signs [republish-…"
+     },
+     "description": {
+      "primaryText": "Commit",
+      "linkText": "72d2048",
+      "linkUrl": "/merlin-kitsune/astral_dice/commit/72d2048a1689cdd790b6e56d2def8d5d78d76e45",
+      "action": "pushed",
+      "showActor": true,
+      "actorName": "merlin-kitsune",
+      "actorUrl": "/merlin-kitsune",
+      "actorType": "WORKFLOW_RUN_ACTOR_TYPE_USER",
+      "actorHovercard": {
+       "type": "WORKFLOW_RUN_HOVERCARD_TYPE_USER",
+       "url": "/users/merlin-kitsune/hovercard"
+      }
+     }
+    },
+    {
+     "name": "Build",
+     "runNumber": 141,
+     "id": "41390429350",
+     "workflowFilePath": ".github/workflows/build.yml",
+     "runUrl": "https://github.com/merlin-kitsune/astral_dice/actions/runs/41390429350",
+     "title": "ci(release): allow a one-shot asset republish via commit marker [repu…",
+     "workflowName": "Build",
+     "state": {
+      "status": "WORKFLOW_RUN_STATUS_COMPLETED",
+      "conclusion": "WORKFLOW_RUN_CONCLUSION_SUCCESS"
+     },
+     "createdAt": {
+      "timestamp": "2026-11-02T04:47:50Z",
+      "isToday": true,
+      "isCurrentYear": true
+     },
+     "branch": {
+      "name": "refs/tags/1.5.0",
+      "url": "/merlin-kitsune/astral_dice/tree/refs/tags/1.5.0",
+      "title": "1.5.0"
+     },
+     "timing": {
+      "kind": "WORKFLOW_RUN_TIMING_KIND_DURATION",
+      "text": "2m 0s"
+     },
+     "aliveChannel": "eyJjIjoiY2hlY2tfc3VpdGVzOjExMjE2NzU4NjY2OCIsInQiOjE3OTM2MTcwMjl9--e12d40b51325786f2dda56dd8e2cfb3ef267c22143a42da9280683f1091551c7",
+     "actions": {
+      "workflowFileUrl": "/merlin-kitsune/astral_dice/actions/runs/41390429350/workflow"
+     },
+     "titleHtml": {
+      "value": "ci(release): allow a one-shot asset republish via commit marker [repu…"
+     },
+     "description": {
+      "primaryText": "Commit",
+      "linkText": "276f5c2",
+      "linkUrl": "/merlin-kitsune/astral_dice/commit/276f5c2e6dc7a476c1ae55924293c09f122f5d15",
+      "action": "pushed",
+      "showActor": true,
+      "actorName": "merlin-kitsune",
+      "actorUrl": "/merlin-kitsune",
+      "actorType": "WORKFLOW_RUN_ACTOR_TYPE_USER",
+      "actorHovercard": {
+       "type": "WORKFLOW_RUN_HOVERCARD_TYPE_USER",
+       "url": "/users/merlin-kitsune/hovercard"
+      }
+     }
+    },
+    {
+     "name": "Build",
+     "runNumber": 140,
+     "id": "41389992306",
+     "workflowFilePath": ".github/workflows/build.yml",
+     "runUrl": "https://github.com/merlin-kitsune/astral_dice/actions/runs/41389992306",
+     "title": "ci(release): allow a one-shot asset republish via commit marker [repu…",
+     "workflowName": "Build",
+     "state": {
+      "status": "WORKFLOW_RUN_STATUS_COMPLETED",
+      "conclusion": "WORKFLOW_RUN_CONCLUSION_SUCCESS"
+     },
+     "createdAt": {
+      "timestamp": "2026-11-02T04:42:57Z",
+      "isToday": true,
+      "isCurrentYear": true
+     },
+     "branch": {
+      "name": "refs/heads/multi-main",
+      "url": "/merlin-kitsune/astral_dice/tree/refs/heads/multi-main",
+      "title": "multi-main"
+     },
+     "timing": {
+      "kind": "WORKFLOW_RUN_TIMING_KIND_DURATION",
+      "text": "2m 30s"
+     },
+     "aliveChannel": "eyJjIjoiY2hlY2tfc3VpdGVzOjExMjE2NjQ2MDU4NCIsInQiOjE3OTM2MTcwMjl9--66aa38b0b253d966a843373bb050a42f82a70120c0272349b028857d36e902b0",
+     "actions": {
+      "workflowFileUrl": "/merlin-kitsune/astral_dice/actions/runs/41389992306/workflow"
+     },
+     "titleHtml": {
+      "value": "ci(release): allow a one-shot asset republish via commit marker [repu…"
+     },
+     "description": {
+      "primaryText": "Commit",
+      "linkText": "276f5c2",
+      "linkUrl": "/merlin-kitsune/astral_dice/commit/276f5c2e6dc7a476c1ae55924293c09f122f5d15",
+      "action": "pushed",
+      "showActor": true,
+      "actorName": "merlin-kitsune",
+      "actorUrl": "/merlin-kitsune",
+      "actorType": "WORKFLOW_RUN_ACTOR_TYPE_USER",
+      "actorHovercard": {
+       "type": "WORKFLOW_RUN_HOVERCARD_TYPE_USER",
+       "url": "/users/merlin-kitsune/hovercard"
+      }
+     }
+    },
+    {
+     "name": "Build",
+     "runNumber": 139,
+     "id": "41389556803",
+     "workflowFilePath": ".github/workflows/build.yml",
+     "runUrl": "https://github.com/merlin-kitsune/astral_dice/actions/runs/41389556803",
+     "title": "build(lib): ship StarEngine as an external dependency on all four lines",
+     "workflowName": "Build",
+     "state": {
+      "status": "WORKFLOW_RUN_STATUS_COMPLETED",
+      "conclusion": "WORKFLOW_RUN_CONCLUSION_SUCCESS"
+     },
+     "createdAt": {
+      "timestamp": "2026-11-02T04:38:03Z",
+      "isToday": true,
+      "isCurrentYear": true
+     },
+     "branch": {
+      "name": "refs/tags/1.5.0",
+      "url": "/merlin-kitsune/astral_dice/tree/refs/tags/1.5.0",
+      "title": "1.5.0"
+     },
+     "timing": {
+      "kind": "WORKFLOW_RUN_TIMING_KIND_DURATION",
+      "text": "1m 38s"
+     },
+     "aliveChannel": "eyJjIjoiY2hlY2tfc3VpdGVzOjExMjE2NTMyMjYzNiIsInQiOjE3OTM2MTcwMjl9--d3d49f6779c0aedbfebdb5f84dc7258c2731233a261e8b34ccaffb64ba899a69",
+     "actions": {
+      "workflowFileUrl": "/merlin-kitsune/astral_dice/actions/runs/41389556803/workflow"
+     },
+     "titleHtml": {
+      "value": "build(lib): ship StarEngine as an external dependency on all four lines"
+     },
+     "description": {
+      "primaryText": "Commit",
+      "linkText": "d1ebd5b",
+      "linkUrl": "/merlin-kitsune/astral_dice/commit/d1ebd5baed527530f47718cc6b6e532de496b73a",
+      "action": "pushed",
+      "showActor": true,
+      "actorName": "merlin-kitsune",
+      "actorUrl": "/merlin-kitsune",
+      "actorType": "WORKFLOW_RUN_ACTOR_TYPE_USER",
+      "actorHovercard": {
+       "type": "WORKFLOW_RUN_HOVERCARD_TYPE_USER",
+       "url": "/users/merlin-kitsune/hovercard"
+      }
+     }
+    },
+    {
+     "name": "Build",
+     "runNumber": 138,
+     "id": "41389546755",
+     "workflowFilePath": ".github/workflows/build.yml",
+     "runUrl": "https://github.com/merlin-kitsune/astral_dice/actions/runs/41389546755",
+     "title": "build(lib): ship StarEngine as an external dependency on all four lines",
+     "workflowName": "Build",
+     "state": {
+      "status": "WORKFLOW_RUN_STATUS_COMPLETED",
+      "conclusion": "WORKFLOW_RUN_CONCLUSION_SUCCESS"
+     },
+     "createdAt": {
+      "timestamp": "2026-11-02T04:37:56Z",
+      "isToday": true,
+      "isCurrentYear": true
+     },
+     "branch": {
+      "name": "refs/heads/multi-main",
+      "url": "/merlin-kitsune/astral_dice/tree/refs/heads/multi-main",
+      "title": "multi-main"
+     },
+     "timing": {
+      "kind": "WORKFLOW_RUN_TIMING_KIND_DURATION",
+      "text": "2m 3s"
+     },
+     "aliveChannel": "eyJjIjoiY2hlY2tfc3VpdGVzOjExMjE2NTI5NzkwNyIsInQiOjE3OTM2MTcwMjl9--57087df89bcfd4ca9f4da3992e9e2f45815dcfc1a89b5f8992aa71068063bed1",
+     "actions": {
+      "workflowFileUrl": "/merlin-kitsune/astral_dice/actions/runs/41389546755/workflow"
+     },
+     "titleHtml": {
+      "value": "build(lib): ship StarEngine as an external dependency on all four lines"
+     },
+     "description": {
+      "primaryText": "Commit",
+      "linkText": "d1ebd5b",
+      "linkUrl": "/merlin-kitsune/astral_dice/commit/d1ebd5baed527530f47718cc6b6e532de496b73a",
+      "action": "pushed",
+      "showActor": true,
+      "actorName": "merlin-kitsune",
+      "actorUrl": "/merlin-kitsune",
+      "actorType": "WORKFLOW_RUN_ACTOR_TYPE_USER",
+      "actorHovercard": {
+       "type": "WORKFLOW_RUN_HOVERCARD_TYPE_USER",
+       "url": "/users/merlin-kitsune/hovercard"
+      }
+     }
+    },
+    {
+     "name": "Build",
+     "runNumber": 137,
+     "id": "41386411435",
+     "workflowFilePath": ".github/workflows/build.yml",
+     "runUrl": "https://github.com/merlin-kitsune/astral_dice/actions/runs/41386411435",
+     "title": "test(release150): make the 1.21.1 case probe the reagent slot and tar…",
+     "workflowName": "Build",
+     "state": {
+      "status": "WORKFLOW_RUN_STATUS_COMPLETED",
+      "conclusion": "WORKFLOW_RUN_CONCLUSION_SUCCESS"
+     },
+     "createdAt": {
+      "timestamp": "2026-11-02T04:04:26Z",
+      "isToday": true,
+      "isCurrentYear": true
+     },
+     "branch": {
+      "name": "refs/tags/1.5.0",
+      "url": "/merlin-kitsune/astral_dice/tree/refs/tags/1.5.0",
+      "title": "1.5.0"
+     },
+     "timing": {
+      "kind": "WORKFLOW_RUN_TIMING_KIND_DURATION",
+      "text": "7m 0s"
+     },
+     "aliveChannel": "eyJjIjoiY2hlY2tfc3VpdGVzOjExMjE1NzQyNDIxNSIsInQiOjE3OTM2MTcwMjl9--7bd9fae9dc66dd01f4b3813fa3511bee69097eb721ec22c2f591b43ec3a87b36",
+     "actions": {
+      "workflowFileUrl": "/merlin-kitsune/astral_dice/actions/runs/41386411435/workflow"
+     },
+     "titleHtml": {
+      "value": "test(release150): make the 1.21.1 case probe the reagent slot and tar…"
+     },
+     "description": {
+      "primaryText": "Commit",
+      "linkText": "f38b564",
+      "linkUrl": "/merlin-kitsune/astral_dice/commit/f38b564e815fc20069447d453a6a4cc3e4db9dc8",
+      "action": "pushed",
+      "showActor": true,
+      "actorName": "merlin-kitsune",
+      "actorUrl": "/merlin-kitsune",
+      "actorType": "WORKFLOW_RUN_ACTOR_TYPE_USER",
+      "actorHovercard": {
+       "type": "WORKFLOW_RUN_HOVERCARD_TYPE_USER",
+       "url": "/users/merlin-kitsune/hovercard"
+      }
+     }
+    },
+    {
+     "name": "Build",
+     "runNumber": 136,
+     "id": "41386404183",
+     "workflowFilePath": ".github/workflows/build.yml",
+     "runUrl": "https://github.com/merlin-kitsune/astral_dice/actions/runs/41386404183",
+     "title": "test(release150): make the 1.21.1 case probe the reagent slot and tar…",
+     "workflowName": "Build",
+     "state": {
+      "status": "WORKFLOW_RUN_STATUS_COMPLETED",
+      "conclusion": "WORKFLOW_RUN_CONCLUSION_SUCCESS"
+     },
+     "createdAt": {
+      "timestamp": "2026-11-02T04:04:20Z",
+      "isToday": true,
+      "isCurrentYear": true
+     },
+     "branch": {
+      "name": "refs/heads/multi-main",
+      "url": "/merlin-kitsune/astral_dice/tree/refs/heads/multi-main",
+      "title": "multi-main"
+     },
+     "timing": {
+      "kind": "WORKFLOW_RUN_TIMING_KIND_DURATION",
+      "text": "6m 1s"
+     },
+     "aliveChannel": "eyJjIjoiY2hlY2tfc3VpdGVzOjExMjE1NzQwNDU4OCIsInQiOjE3OTM2MTcwMjl9--458ae6b8be664acf51788c2abca7bebaa16660ed26b3687c1ba87daa6b413c14",
+     "actions": {
+      "workflowFileUrl": "/merlin-kitsune/astral_dice/actions/runs/41386404183/workflow"
+     },
+     "titleHtml": {
+      "value": "test(release150): make the 1.21.1 case probe the reagent slot and tar…"
+     },
+     "description": {
+      "primaryText": "Commit",
+      "linkText": "f38b564",
+      "linkUrl": "/merlin-kitsune/astral_dice/commit/f38b564e815fc20069447d453a6a4cc3e4db9dc8",
+      "action": "pushed",
+      "showActor": true,
+      "actorName": "merlin-kitsune",
+      "actorUrl": "/merlin-kitsune",
+      "actorType": "WORKFLOW_RUN_ACTOR_TYPE_USER",
+      "actorHovercard": {
+       "type": "WORKFLOW_RUN_HOVERCARD_TYPE_USER",
+       "url": "/users/merlin-kitsune/hovercard"
+      }
+     }
+    },
+    {
+     "name": "Build",
+     "runNumber": 135,
+     "id": "40992864170",
+     "workflowFilePath": ".github/workflows/build.yml",
+     "runUrl": "https://github.com/merlin-kitsune/astral_dice/actions/runs/40992864170",
+     "title": "docs(handover): 去掉 rc.6 增量段的游离反引号 + 记入 build/libs 与 TF 暂存清理",
+     "workflowName": "Build",
+     "state": {
+      "status": "WORKFLOW_RUN_STATUS_COMPLETED",
+      "conclusion": "WORKFLOW_RUN_CONCLUSION_SUCCESS"
+     },
+     "createdAt": {
+      "timestamp": "2026-10-30T02:38:29Z",
+      "isCurrentYear": true
+     },
+     "branch": {
+      "name": "refs/heads/multi-main",
+      "url": "/merlin-kitsune/astral_dice/tree/refs/heads/multi-main",
+      "title": "multi-main"
+     },
+     "timing": {
+      "kind": "WORKFLOW_RUN_TIMING_KIND_DURATION",
+      "text": "1m 53s"
+     },
+     "aliveChannel": "eyJjIjoiY2hlY2tfc3VpdGVzOjExMTEyMTA1MzQ4NCIsInQiOjE3OTM2MTcwMjl9--45d49ce8645838d66ed82988bdaf5407653dc41ce40f6b28afebc9a7802757c7",
+     "actions": {
+      "workflowFileUrl": "/merlin-kitsune/astral_dice/actions/runs/40992864170/workflow"
+     },
+     "titleHtml": {
+      "value": "docs(handover): 去掉 rc.6 增量段的游离反引号 + 记入 build/libs 与 TF 暂存清理"
+     },
+     "description": {
+      "primaryText": "Commit",
+      "linkText": "7c44cfb",
+      "linkUrl": "/merlin-kitsune/astral_dice/commit/7c44cfbf0b841f50ef40d8242be3190bb666a829",
+      "action": "pushed",
+      "showActor": true,
+      "actorName": "merlin-kitsune",
+      "actorUrl": "/merlin-kitsune",
+      "actorType": "WORKFLOW_RUN_ACTOR_TYPE_USER",
+      "actorHovercard": {
+       "type": "WORKFLOW_RUN_HOVERCARD_TYPE_USER",
+       "url": "/users/merlin-kitsune/hovercard"
+      }
+     }
+    },
+    {
+     "name": "Build",
+     "runNumber": 134,
+     "id": "40991106768",
+     "workflowFilePath": ".github/workflows/build.yml",
+     "runUrl": "https://github.com/merlin-kitsune/astral_dice/actions/runs/40991106768",
+     "title": "docs(handover): §4.1av 补记 Release 附件已冻结（CI 不再覆盖已发布字节）",
+     "workflowName": "Build",
+     "state": {
+      "status": "WORKFLOW_RUN_STATUS_COMPLETED",
+      "conclusion": "WORKFLOW_RUN_CONCLUSION_SUCCESS"
+     },
+     "createdAt": {
+      "timestamp": "2026-10-30T02:20:28Z",
+      "isCurrentYear": true
+     },
+     "branch": {
+      "name": "refs/heads/multi-main",
+      "url": "/merlin-kitsune/astral_dice/tree/refs/heads/multi-main",
+      "title": "multi-main"
+     },
+     "timing": {
+      "kind": "WORKFLOW_RUN_TIMING_KIND_DURATION",
+      "text": "2m 20s"
+     },
+     "aliveChannel": "eyJjIjoiY2hlY2tfc3VpdGVzOjExMTExNjQ2NDE1OSIsInQiOjE3OTM2MTcwMjl9--1230eef0e3d37552cdb59ba439faf468933bf87c564520dd54d7f2a78264ab9d",
+     "actions": {
+      "workflowFileUrl": "/merlin-kitsune/astral_dice/actions/runs/40991106768/workflow"
+     },
+     "titleHtml": {
+      "value": "docs(handover): §4.1av 补记 Release 附件已冻结（CI 不再覆盖已发布字节）"
+     },
+     "description": {
+      "primaryText": "Commit",
+      "linkText": "0c93cc9",
+      "linkUrl": "/merlin-kitsune/astral_dice/commit/0c93cc93f4956194d9796b910530f606ed773ff5",
+      "action": "pushed",
+      "showActor": true,
+      "actorName": "merlin-kitsune",
+      "actorUrl": "/merlin-kitsune",
+      "actorType": "WORKFLOW_RUN_ACTOR_TYPE_USER",
+      "actorHovercard": {
+       "type": "WORKFLOW_RUN_HOVERCARD_TYPE_USER",
+       "url": "/users/merlin-kitsune/hovercard"
+      }
+     }
+    },
+    {
+     "name": "Build",
+     "runNumber": 133,
+     "id": "40990881077",
+     "workflowFilePath": ".github/workflows/build.yml",
+     "runUrl": "https://github.com/merlin-kitsune/astral_dice/actions/runs/40990881077",
+     "title": "ci(release): Release 附件改为「已存在即跳过」，不再 --clobber 覆盖已发布字节",
+     "workflowName": "Build",
+     "state": {
+      "status": "WORKFLOW_RUN_STATUS_COMPLETED",
+      "conclusion": "WORKFLOW_RUN_CONCLUSION_SUCCESS"
+     },
+     "createdAt": {
+      "timestamp": "2026-10-30T02:18:09Z",
+      "isCurrentYear": true
+     },
+     "branch": {
+      "name": "refs/heads/multi-main",
+      "url": "/merlin-kitsune/astral_dice/tree/refs/heads/multi-main",
+      "title": "multi-main"
+     },
+     "timing": {
+      "kind": "WORKFLOW_RUN_TIMING_KIND_DURATION",
+      "text": "1m 50s"
+     },
+     "aliveChannel": "eyJjIjoiY2hlY2tfc3VpdGVzOjExMTExNTg3OTY2MiIsInQiOjE3OTM2MTcwMjl9--24e3cc473beb4958adc7758e459ec19a6cabf4d1614b1a779c581efa31311944",
+     "actions": {
+      "workflowFileUrl": "/merlin-kitsune/astral_dice/actions/runs/40990881077/workflow"
+     },
+     "titleHtml": {
+      "value": "ci(release): Release 附件改为「已存在即跳过」，不再 --clobber 覆盖已发布字节"
+     },
+     "description": {
+      "primaryText": "Commit",
+      "linkText": "141d16b",
+      "linkUrl": "/merlin-kitsune/astral_dice/commit/141d16b86438665a25723525dadd5841ed8a3a46",
+      "action": "pushed",
+      "showActor": true,
+      "actorName": "merlin-kitsune",
+      "actorUrl": "/merlin-kitsune",
+      "actorType": "WORKFLOW_RUN_ACTOR_TYPE_USER",
+      "actorHovercard": {
+       "type": "WORKFLOW_RUN_HOVERCARD_TYPE_USER",
+       "url": "/users/merlin-kitsune/hovercard"
+      }
+     }
+    },
+    {
+     "name": "Build",
+     "runNumber": 132,
+     "id": "40915238020",
+     "workflowFilePath": ".github/workflows/build.yml",
+     "runUrl": "https://github.com/merlin-kitsune/astral_dice/actions/runs/40915238020",
+     "title": "docs(handover): rc.7 收班快照 + §4.1av 修复批 + 计划文档版本陈述订正",
+     "workflowName": "Build",
+     "state": {
+      "status": "WORKFLOW_RUN_STATUS_COMPLETED",
+      "conclusion": "WORKFLOW_RUN_CONCLUSION_SUCCESS"
+     },
+     "createdAt": {
+      "timestamp": "2026-10-29T16:48:51Z",
+      "isCurrentYear": true
+     },
+     "branch": {
+      "name": "refs/heads/multi-main",
+      "url": "/merlin-kitsune/astral_dice/tree/refs/heads/multi-main",
+      "title": "multi-main"
+     },
+     "timing": {
+      "kind": "WORKFLOW_RUN_TIMING_KIND_DURATION",
+      "text": "1m 41s"
+     },
+     "aliveChannel": "eyJjIjoiY2hlY2tfc3VpdGVzOjExMDkxMDAxMDIyMSIsInQiOjE3OTM2MTcwMjl9--3d9aaab40571ffee7d91ae79921abfe230338319be57c9d3120960c18f672cee",
+     "actions": {
+      "workflowFileUrl": "/merlin-kitsune/astral_dice/actions/runs/40915238020/workflow"
+     },
+     "titleHtml": {
+      "value": "docs(handover): rc.7 收班快照 + §4.1av 修复批 + 计划文档版本陈述订正"
+     },
+     "description": {
+      "primaryText": "Commit",
+      "linkText": "5db24c2",
+      "linkUrl": "/merlin-kitsune/astral_dice/commit/5db24c2247f736a5161039b0f0f4cd1eab3b3e58",
+      "action": "pushed",
+      "showActor": true,
+      "actorName": "merlin-kitsune",
+      "actorUrl": "/merlin-kitsune",
+      "actorType": "WORKFLOW_RUN_ACTOR_TYPE_USER",
+      "actorHovercard": {
+       "type": "WORKFLOW_RUN_HOVERCARD_TYPE_USER",
+       "url": "/users/merlin-kitsune/hovercard"
+      }
+     }
+    },
+    {
+     "name": "Build",
+     "runNumber": 131,
+     "id": "40914192974",
+     "workflowFilePath": ".github/workflows/build.yml",
+     "runUrl": "https://github.com/merlin-kitsune/astral_dice/actions/runs/40914192974",
+     "title": "chore(release): rc.7 玩家侧说明 + 静态守门接入 CI，并修掉 p1 守门 08 的必然红",
+     "workflowName": "Build",
+     "state": {
+      "status": "WORKFLOW_RUN_STATUS_COMPLETED",
+      "conclusion": "WORKFLOW_RUN_CONCLUSION_SUCCESS"
+     },
+     "createdAt": {
+      "timestamp": "2026-10-29T16:42:22Z",
+      "isCurrentYear": true
+     },
+     "branch": {
+      "name": "refs/heads/multi-main",
+      "url": "/merlin-kitsune/astral_dice/tree/refs/heads/multi-main",
+      "title": "multi-main"
+     },
+     "timing": {
+      "kind": "WORKFLOW_RUN_TIMING_KIND_DURATION",
+      "text": "2m 13s"
+     },
+     "aliveChannel": "eyJjIjoiY2hlY2tfc3VpdGVzOjExMDkwNzEwNTQ2MyIsInQiOjE3OTM2MTcwMjl9--add04f93e21ea34f0308723140263fc25c2b10feef5e900e85d02e3fe0d00cc5",
+     "actions": {
+      "workflowFileUrl": "/merlin-kitsune/astral_dice/actions/runs/40914192974/workflow"
+     },
+     "titleHtml": {
+      "value": "chore(release): rc.7 玩家侧说明 + 静态守门接入 CI，并修掉 p1 守门 08 的必然红"
+     },
+     "description": {
+      "primaryText": "Commit",
+      "linkText": "6344e44",
+      "linkUrl": "/merlin-kitsune/astral_dice/commit/6344e44c52e241b06f5e0da5347eab3581487b8f",
+      "action": "pushed",
+      "showActor": true,
+      "actorName": "merlin-kitsune",
+      "actorUrl": "/merlin-kitsune",
+      "actorType": "WORKFLOW_RUN_ACTOR_TYPE_USER",
+      "actorHovercard": {
+       "type": "WORKFLOW_RUN_HOVERCARD_TYPE_USER",
+       "url": "/users/merlin-kitsune/hovercard"
+      }
+     }
+    },
+    {
+     "name": "Build",
+     "runNumber": 130,
+     "id": "40911839607",
+     "workflowFilePath": ".github/workflows/build.yml",
+     "runUrl": "https://github.com/merlin-kitsune/astral_dice/actions/runs/40911839607",
+     "title": "fix(combat): 四线补属性缺席守卫，修复骰战生物近战崩溃（N27）",
+     "workflowName": "Build",
+     "state": {
+      "status": "WORKFLOW_RUN_STATUS_COMPLETED",
+      "conclusion": "WORKFLOW_RUN_CONCLUSION_SUCCESS"
+     },
+     "createdAt": {
+      "timestamp": "2026-10-29T16:28:00Z",
+      "isCurrentYear": true
+     },
+     "branch": {
+      "name": "refs/heads/multi-main",
+      "url": "/merlin-kitsune/astral_dice/tree/refs/heads/multi-main",
+      "title": "multi-main"
+     },
+     "timing": {
+      "kind": "WORKFLOW_RUN_TIMING_KIND_DURATION",
+      "text": "2m 33s"
+     },
+     "aliveChannel": "eyJjIjoiY2hlY2tfc3VpdGVzOjExMDkwMDUxNzUxMSIsInQiOjE3OTM2MTcwMjl9--883a47d6e0495f3322d513d3dfcfa526a71de98ae393ab8edf2ee1230a3a1319",
+     "actions": {
+      "workflowFileUrl": "/merlin-kitsune/astral_dice/actions/runs/40911839607/workflow"
+     },
+     "titleHtml": {
+      "value": "fix(combat): 四线补属性缺席守卫，修复骰战生物近战崩溃（N27）"
+     },
+     "description": {
+      "primaryText": "Commit",
+      "linkText": "58c51fd",
+      "linkUrl": "/merlin-kitsune/astral_dice/commit/58c51fd82b8ced3b69ee49ea1a9febb297d2d9cb",
+      "action": "pushed",
+      "showActor": true,
+      "actorName": "merlin-kitsune",
+      "actorUrl": "/merlin-kitsune",
+      "actorType": "WORKFLOW_RUN_ACTOR_TYPE_USER",
+      "actorHovercard": {
+       "type": "WORKFLOW_RUN_HOVERCARD_TYPE_USER",
+       "url": "/users/merlin-kitsune/hovercard"
+      }
+     }
+    },
+    {
+     "name": "Build",
+     "runNumber": 129,
+     "id": "40856317047",
+     "workflowFilePath": ".github/workflows/build.yml",
+     "runUrl": "https://github.com/merlin-kitsune/astral_dice/actions/runs/40856317047",
+     "title": "docs(handover): 补记 rc.6 发布批（构建 / 发布面文档 / push / CI #128）",
+     "workflowName": "Build",
+     "state": {
+      "status": "WORKFLOW_RUN_STATUS_COMPLETED",
+      "conclusion": "WORKFLOW_RUN_CONCLUSION_SUCCESS"
+     },
+     "createdAt": {
+      "timestamp": "2026-10-29T10:16:58Z",
+      "isCurrentYear": true
+     },
+     "branch": {
+      "name": "refs/heads/multi-main",
+      "url": "/merlin-kitsune/astral_dice/tree/refs/heads/multi-main",
+      "title": "multi-main"
+     },
+     "timing": {
+      "kind": "WORKFLOW_RUN_TIMING_KIND_DURATION",
+      "text": "2m 15s"
+     },
+     "aliveChannel": "eyJjIjoiY2hlY2tfc3VpdGVzOjExMDc0NDk0NDM5MSIsInQiOjE3OTM2MTcwMjl9--41249dc3fb014b8b1df181086635946506c1a01ca5531c3011b7619ceed2133a",
+     "actions": {
+      "workflowFileUrl": "/merlin-kitsune/astral_dice/actions/runs/40856317047/workflow"
+     },
+     "titleHtml": {
+      "value": "docs(handover): 补记 rc.6 发布批（构建 / 发布面文档 / push / CI #128）"
+     },
+     "description": {
+      "primaryText": "Commit",
+      "linkText": "2aaf590",
+      "linkUrl": "/merlin-kitsune/astral_dice/commit/2aaf5903827ac190c4faf0d609e426b8b6df5aa1",
+      "action": "pushed",
+      "showActor": true,
+      "actorName": "merlin-kitsune",
+      "actorUrl": "/merlin-kitsune",
+      "actorType": "WORKFLOW_RUN_ACTOR_TYPE_USER",
+      "actorHovercard": {
+       "type": "WORKFLOW_RUN_HOVERCARD_TYPE_USER",
+       "url": "/users/merlin-kitsune/hovercard"
+      }
+     }
+    },
+    {
+     "name": "Build",
+     "runNumber": 128,
+     "id": "40855563463",
+     "workflowFilePath": ".github/workflows/build.yml",
+     "runUrl": "https://github.com/merlin-kitsune/astral_dice/actions/runs/40855563463",
+     "title": "docs(release): 1.5.0-rc.6 玩家侧更新日志与 CHANGELOG（价格重定 / 1:1 折算 / 事件修复）",
+     "workflowName": "Build",
+     "state": {
+      "status": "WORKFLOW_RUN_STATUS_COMPLETED",
+      "conclusion": "WORKFLOW_RUN_CONCLUSION_SUCCESS"
+     },
+     "createdAt": {
+      "timestamp": "2026-10-29T10:11:25Z",
+      "isCurrentYear": true
+     },
+     "branch": {
+      "name": "refs/heads/multi-main",
+      "url": "/merlin-kitsune/astral_dice/tree/refs/heads/multi-main",
+      "title": "multi-main"
+     },
+     "timing": {
+      "kind": "WORKFLOW_RUN_TIMING_KIND_DURATION",
+      "text": "2m 13s"
+     },
+     "aliveChannel": "eyJjIjoiY2hlY2tfc3VpdGVzOjExMDc0Mjg5MDg1NyIsInQiOjE3OTM2MTcwMjl9--2cec4beb0ff12a66995747804df97e0f2c65d0313909145b27d4ee5676d5582f",
+     "actions": {
+      "workflowFileUrl": "/merlin-kitsune/astral_dice/actions/runs/40855563463/workflow"
+     },
+     "titleHtml": {
+      "value": "docs(release): 1.5.0-rc.6 玩家侧更新日志与 CHANGELOG（价格重定 / 1:1 折算 / 事件修复）"
+     },
+     "description": {
+      "primaryText": "Commit",
+      "linkText": "3e9f1f9",
+      "linkUrl": "/merlin-kitsune/astral_dice/commit/3e9f1f9f2e5037f99db75215f1822bc394a2ec28",
+      "action": "pushed",
+      "showActor": true,
+      "actorName": "merlin-kitsune",
+      "actorUrl": "/merlin-kitsune",
+      "actorType": "WORKFLOW_RUN_ACTOR_TYPE_USER",
+      "actorHovercard": {
+       "type": "WORKFLOW_RUN_HOVERCARD_TYPE_USER",
+       "url": "/users/merlin-kitsune/hovercard"
+      }
+     }
+    },
+    {
+     "name": "Build",
+     "runNumber": 127,
+     "id": "40646546019",
+     "workflowFilePath": ".github/workflows/build.yml",
+     "runUrl": "https://github.com/merlin-kitsune/astral_dice/actions/runs/40646546019",
+     "title": "docs(handover): 补记 docs 提交 push 与 CI run 126 幂等实测",
+     "workflowName": "Build",
+     "state": {
+      "status": "WORKFLOW_RUN_STATUS_COMPLETED",
+      "conclusion": "WORKFLOW_RUN_CONCLUSION_SUCCESS"
+     },
+     "createdAt": {
+      "timestamp": "2026-10-28T06:52:44Z",
+      "isCurrentYear": true
+     },
+     "branch": {
+      "name": "refs/heads/multi-main",
+      "url": "/merlin-kitsune/astral_dice/tree/refs/heads/multi-main",
+      "title": "multi-main"
+     },
+     "timing": {
+      "kind": "WORKFLOW_RUN_TIMING_KIND_DURATION",
+      "text": "2m 22s"
+     },
+     "aliveChannel": "eyJjIjoiY2hlY2tfc3VpdGVzOjExMDE3MDgxNjg0MCIsInQiOjE3OTM2MTcwMjl9--fa7eb63b25b629453d773bd6041a3f63cb8296679346bb071183fe29e33ef4f8",
+     "actions": {
+      "workflowFileUrl": "/merlin-kitsune/astral_dice/actions/runs/40646546019/workflow"
+     },
+     "titleHtml": {
+      "value": "docs(handover): 补记 docs 提交 push 与 CI run 126 幂等实测"
+     },
+     "description": {
+      "primaryText": "Commit",
+      "linkText": "7c83618",
+      "linkUrl": "/merlin-kitsune/astral_dice/commit/7c83618585749eade3ac6f05baff0cbdb04c3f12",
+      "action": "pushed",
+      "showActor": true,
+      "actorName": "merlin-kitsune",
+      "actorUrl": "/merlin-kitsune",
+      "actorType": "WORKFLOW_RUN_ACTOR_TYPE_USER",
+      "actorHovercard": {
+       "type": "WORKFLOW_RUN_HOVERCARD_TYPE_USER",
+       "url": "/users/merlin-kitsune/hovercard"
+      }
+     }
+    },
+    {
+     "name": "Build",
+     "runNumber": 126,
+     "id": "40645654862",
+     "workflowFilePath": ".github/workflows/build.yml",
+     "runUrl": "https://github.com/merlin-kitsune/astral_dice/actions/runs/40645654862",
+     "title": "docs(handover): 收班刷新 1.5.0-rc.5 交接三件套（含 Release 实读确认）",
+     "workflowName": "Build",
+     "state": {
+      "status": "WORKFLOW_RUN_STATUS_COMPLETED",
+      "conclusion": "WORKFLOW_RUN_CONCLUSION_SUCCESS"
+     },
+     "createdAt": {
+      "timestamp": "2026-10-28T06:44:06Z",
+      "isCurrentYear": true
+     },
+     "branch": {
+      "name": "refs/heads/multi-main",
+      "url": "/merlin-kitsune/astral_dice/tree/refs/heads/multi-main",
+      "title": "multi-main"
+     },
+     "timing": {
+      "kind": "WORKFLOW_RUN_TIMING_KIND_DURATION",
+      "text": "2m 14s"
+     },
+     "aliveChannel": "eyJjIjoiY2hlY2tfc3VpdGVzOjExMDE2ODQ0OTcyNiIsInQiOjE3OTM2MTcwMjl9--92ecba548c79df1a1ea7d507016a20fb42849d67b3258cab18c6fe550b0f18a3",
+     "actions": {
+      "workflowFileUrl": "/merlin-kitsune/astral_dice/actions/runs/40645654862/workflow"
+     },
+     "titleHtml": {
+      "value": "docs(handover): 收班刷新 1.5.0-rc.5 交接三件套（含 Release 实读确认）"
+     },
+     "description": {
+      "primaryText": "Commit",
+      "linkText": "c071c4d",
+      "linkUrl": "/merlin-kitsune/astral_dice/commit/c071c4d772ef5f58b28774bfcb6995d10cad7b3e",
+      "action": "pushed",
+      "showActor": true,
+      "actorName": "merlin-kitsune",
+      "actorUrl": "/merlin-kitsune",
+      "actorType": "WORKFLOW_RUN_ACTOR_TYPE_USER",
+      "actorHovercard": {
+       "type": "WORKFLOW_RUN_HOVERCARD_TYPE_USER",
+       "url": "/users/merlin-kitsune/hovercard"
+      }
+     }
+    },
+    {
+     "name": "Build",
+     "runNumber": 125,
+     "id": "40640915263",
+     "workflowFilePath": ".github/workflows/build.yml",
+     "runUrl": "https://github.com/merlin-kitsune/astral_dice/actions/runs/40640915263",
+     "title": "docs(release): 1.5.0-rc.5 玩家发布说明 + CHANGELOG 补充",
+     "workflowName": "Build",
+     "state": {
+      "status": "WORKFLOW_RUN_STATUS_COMPLETED",
+      "conclusion": "WORKFLOW_RUN_CONCLUSION_SUCCESS"
+     },
+     "createdAt": {
+      "timestamp": "2026-10-28T05:56:54Z",
+      "isCurrentYear": true
+     },
+     "branch": {
+      "name": "refs/heads/multi-main",
+      "url": "/merlin-kitsune/astral_dice/tree/refs/heads/multi-main",
+      "title": "multi-main"
+     },
+     "timing": {
+      "kind": "WORKFLOW_RUN_TIMING_KIND_DURATION",
+      "text": "3m 9s"
+     },
+     "aliveChannel": "eyJjIjoiY2hlY2tfc3VpdGVzOjExMDE1NTc2MTQwMyIsInQiOjE3OTM2MTcwMjl9--70694ca0b68316fc01f450cd0b0a5beac5fac172a9372fe8a51146ea2f71ca07",
+     "actions": {
+      "workflowFileUrl": "/merlin-kitsune/astral_dice/actions/runs/40640915263/workflow"
+     },
+     "titleHtml": {
+      "value": "docs(release): 1.5.0-rc.5 玩家发布说明 + CHANGELOG 补充"
+     },
+     "description": {
+      "primaryText": "Commit",
+      "linkText": "79e3b18",
+      "linkUrl": "/merlin-kitsune/astral_dice/commit/79e3b183c9bd09dbffc45fb8124570f223d1eab2",
+      "action": "pushed",
+      "showActor": true,
+      "actorName": "merlin-kitsune",
+      "actorUrl": "/merlin-kitsune",
+      "actorType": "WORKFLOW_RUN_ACTOR_TYPE_USER",
+      "actorHovercard": {
+       "type": "WORKFLOW_RUN_HOVERCARD_TYPE_USER",
+       "url": "/users/merlin-kitsune/hovercard"
+      }
+     }
+    },
+    {
+     "name": "Build",
+     "runNumber": 124,
+     "id": "40355782717",
+     "workflowFilePath": ".github/workflows/build.yml",
+     "runUrl": "https://github.com/merlin-kitsune/astral_dice/actions/runs/40355782717",
+     "title": "chore(dev): fast-forward to multi-main (1.5.0-rc.4 content) + dev ver…",
+     "workflowName": "Build",
+     "state": {
+      "status": "WORKFLOW_RUN_STATUS_COMPLETED",
+      "conclusion": "WORKFLOW_RUN_CONCLUSION_SUCCESS"
+     },
+     "createdAt": {
+      "timestamp": "2026-10-26T16:05:52Z",
+      "isCurrentYear": true
+     },
+     "branch": {
+      "name": "refs/heads/multi-dev-next",
+      "url": "/merlin-kitsune/astral_dice/tree/refs/heads/multi-dev-next",
+      "title": "multi-dev-next"
+     },
+     "timing": {
+      "kind": "WORKFLOW_RUN_TIMING_KIND_DURATION",
+      "text": "1m 48s"
+     },
+     "aliveChannel": "eyJjIjoiY2hlY2tfc3VpdGVzOjEwOTM3NzY2NDcxMSIsInQiOjE3OTM2MTcwMjl9--e2ba594816f5ecad1df769295b1efde70330feed0225e3d7ecb19275fea3dcd1",
+     "actions": {
+      "workflowFileUrl": "/merlin-kitsune/astral_dice/actions/runs/40355782717/workflow"
+     },
+     "titleHtml": {
+      "value": "chore(dev): fast-forward to multi-main (1.5.0-rc.4 content) + dev ver…"
+     },
+     "description": {
+      "primaryText": "Commit",
+      "linkText": "5620892",
+      "linkUrl": "/merlin-kitsune/astral_dice/commit/562089233619fb30eb6f4c0faaf50e8ad5e9d1d0",
+      "action": "pushed",
+      "showActor": true,
+      "actorName": "merlin-kitsune",
+      "actorUrl": "/merlin-kitsune",
+      "actorType": "WORKFLOW_RUN_ACTOR_TYPE_USER",
+      "actorHovercard": {
+       "type": "WORKFLOW_RUN_HOVERCARD_TYPE_USER",
+       "url": "/users/merlin-kitsune/hovercard"
+      }
+     }
+    },
+    {
+     "name": "Build",
+     "runNumber": 123,
+     "id": "40318763183",
+     "workflowFilePath": ".github/workflows/build.yml",
+     "runUrl": "https://github.com/merlin-kitsune/astral_dice/actions/runs/40318763183",
+     "title": "docs(handover): §4.1z 补记 rc.4 订正后复跑（184 PASS / 3 拖拽断言，世界预备路径差异 + Ocul…",
+     "workflowName": "Build",
+     "state": {
+      "status": "WORKFLOW_RUN_STATUS_COMPLETED",
+      "conclusion": "WORKFLOW_RUN_CONCLUSION_SUCCESS"
+     },
+     "createdAt": {
+      "timestamp": "2026-10-26T11:56:23Z",
+      "isCurrentYear": true
+     },
+     "branch": {
+      "name": "refs/heads/multi-main",
+      "url": "/merlin-kitsune/astral_dice/tree/refs/heads/multi-main",
+      "title": "multi-main"
+     },
+     "timing": {
+      "kind": "WORKFLOW_RUN_TIMING_KIND_DURATION",
+      "text": "1m 58s"
+     },
+     "aliveChannel": "eyJjIjoiY2hlY2tfc3VpdGVzOjEwOTI3MjU3MjEzNyIsInQiOjE3OTM2MTcwMjl9--37c21d785659e94469332be499cca349b8d7ad11c130161f78b788155230c931",
+     "actions": {
+      "workflowFileUrl": "/merlin-kitsune/astral_dice/actions/runs/40318763183/workflow"
+     },
+     "titleHtml": {
+      "value": "docs(handover): §4.1z 补记 rc.4 订正后复跑（184 PASS / 3 拖拽断言，世界预备路径差异 + Ocul…"
+     },
+     "description": {
+      "primaryText": "Commit",
+      "linkText": "cce71ef",
+      "linkUrl": "/merlin-kitsune/astral_dice/commit/cce71efbaa1f9ed48182d910fe254c51d2e441ae",
+      "action": "pushed",
+      "showActor": true,
+      "actorName": "merlin-kitsune",
+      "actorUrl": "/merlin-kitsune",
+      "actorType": "WORKFLOW_RUN_ACTOR_TYPE_USER",
+      "actorHovercard": {
+       "type": "WORKFLOW_RUN_HOVERCARD_TYPE_USER",
+       "url": "/users/merlin-kitsune/hovercard"
+      }
+     }
+    }
+   ],
+   "aliveChannel": "eyJjIjoid29ya2Zsb3dfcnVuczoxMzM5NTc3Mjk4IiwidCI6MTc5MzYxNzAyOX0=--811c75e9fd1d4fee2b160d33bb52d9b1219c57c9e549aeff712abd7a6f08fb6f",
+   "header": {
+    "title": "All workflows",
+    "descriptionText": "Showing runs from all workflows"
+   },
+   "title": "All workflows",
+   "totalPages": 6,
+   "totalCount": 147
+  },
+  "workflowsLayoutRoute": {
+   "workflows": [
+    {
+     "id": 337814497,
+     "name": "Build",
+     "path": ".github/workflows/build.yml",
+     "state": "active"
+    }
+   ],
+   "totalCount": 1,
+   "pinnedWorkflowIds": [],
+   "allowPinning": false,
+   "canCreateWorkflow": false,
+   "showOnlyRequiredWorkflows": false,
+   "showDeployments": false,
+   "showAttestations": false,
+   "showRunners": false,
+   "lockfilePath": "/merlin-kitsune/astral_dice/blob/be6bc10ea3906c0ff307baffd55be43f8b853e0e/.github/workflows/actions.lock",
+   "showUsageMetrics": null,
+   "isFork": false,
+   "workflowsPath": null,
+   "showActionsNotEnabledBanner": false,
+   "banners": {
+    "enablePath": "/merlin-kitsune/astral_dice/actions/enable",
+    "actionsSurvey": null,
+    "repositoryRateLimitBanner": null,
+    "runnerCapacityBanner": null,
+    "statelessS2sTokenFormatChangeBanner": null,
+    "billingWarningBanner": null,
+    "billingCriticalBanner": null
+   },
+   "runnersSetupPath": null,
+   "sidebarExpanded": true,
+   "selectedWorkflow": null,
+   "workflowRunsCompactMode": false
+  },
+  "repoLayoutRoute": {
+   "js": {
+    "scanning": {
+     "values": [
+      "https://github.githubassets.com/assets/wp-runtime-6deb172a53175177.js",
+      "https://github.githubassets.com/assets/app-foundation-5ad27e19be4108fc.js",
+      "https://github.githubassets.com/assets/app-runtime-6f6606ef2617a997.js",
+      "https://github.githubassets.com/assets/aria-live-edd851c704c6b3ca.js",
+      "https://github.githubassets.com/assets/selector-observer-7ae05416e4a383ae.js",
+      "https://github.githubassets.com/assets/ser-2defe2918d9c9884.js",
+      "https://github.githubassets.com/assets/scanning-9947b090b3818611.js"
+     ]
+    },
+    "code-menu": {
+     "values": [
+      "https://github.githubassets.com/assets/wp-runtime-6deb172a53175177.js",
+      "https://github.githubassets.com/assets/code-menu-1f2c5412bf098621.js"
+     ]
+    },
+    "codespaces": {
+     "values": [
+      "https://github.githubassets.com/assets/wp-runtime-6deb172a53175177.js",
+      "https://github.githubassets.com/assets/runtime-helpers-26f2970b9e869a17.js",
+      "https://github.githubassets.com/assets/app-foundation-5ad27e19be4108fc.js",
+      "https://github.githubassets.com/assets/app-runtime-6f6606ef2617a997.js",
+      "https://github.githubassets.com/assets/catalyst-5bc36fa5a846f5a0.js",
+      "https://github.githubassets.com/assets/aria-live-edd851c704c6b3ca.js",
+      "https://github.githubassets.com/assets/selector-observer-7ae05416e4a383ae.js",
+      "https://github.githubassets.com/assets/fetch-utilities-27ed50f7568a5f72.js",
+      "https://github.githubassets.com/assets/n9-369bc13c0e8c5584.js",
+      "https://github.githubassets.com/assets/0r-4a2b771052825f69.js",
+      "https://github.githubassets.com/assets/codespaces-22cb9d539ec9e921.js"
+     ]
+    },
+    "pull-requests": {
+     "values": [
+      "https://github.githubassets.com/assets/wp-runtime-6deb172a53175177.js",
+      "https://github.githubassets.com/assets/runtime-helpers-26f2970b9e869a17.js",
+      "https://github.githubassets.com/assets/app-foundation-5ad27e19be4108fc.js",
+      "https://github.githubassets.com/assets/app-runtime-6f6606ef2617a997.js",
+      "https://github.githubassets.com/assets/catalyst-5bc36fa5a846f5a0.js",
+      "https://github.githubassets.com/assets/aria-live-edd851c704c6b3ca.js",
+      "https://github.githubassets.com/assets/hotkey-a82e6cb07443fd1c.js",
+      "https://github.githubassets.com/assets/relative-time-element-a7b7e0f1360ca8f9.js",
+      "https://github.githubassets.com/assets/primer-react-911369ee234690ef.js",
+      "https://github.githubassets.com/assets/react-core-42187993590d61e8.js",
+      "https://github.githubassets.com/assets/fetch-utilities-27ed50f7568a5f72.js",
+      "https://github.githubassets.com/assets/ser-2defe2918d9c9884.js",
+      "https://github.githubassets.com/assets/nc-28ebfc8e58bca42f.js",
+      "https://github.githubassets.com/assets/cc-99eedace671eb2b6.js",
+      "https://github.githubassets.com/assets/by4-04f0d28829dc4df0.js",
+      "https://github.githubassets.com/assets/qmp-308230626a2aedb0.js",
+      "https://github.githubassets.com/assets/to-b501df3e06c1799a.js",
+      "https://github.githubassets.com/assets/t7l-423469c05c948a8b.js",
+      "https://github.githubassets.com/assets/ws-0fab95d133a1d59f.js",
+      "https://github.githubassets.com/assets/4u-bf6e08201764cb0a.js",
+      "https://github.githubassets.com/assets/s07-527b0afa5c76403e.js",
+      "https://github.githubassets.com/assets/d-89b8dd4d6dab92e8.js",
+      "https://github.githubassets.com/assets/kn-6a78f735c033b754.js",
+      "https://github.githubassets.com/assets/fe-f8365f29462c346a.js",
+      "https://github.githubassets.com/assets/guo-cca14272144d7650.js",
+      "https://github.githubassets.com/assets/pir-25ef60338d45f9a5.js",
+      "https://github.githubassets.com/assets/kr-33668768f3c14192.js",
+      "https://github.githubassets.com/assets/5km-d68d420fab207081.js",
+      "https://github.githubassets.com/assets/urv-453c749eec9d7d37.js",
+      "https://github.githubassets.com/assets/934-f0e836a2954a082f.js",
+      "https://github.githubassets.com/assets/03p-c44db005d6a5f0c5.js",
+      "https://github.githubassets.com/assets/9r-dfd1e281a15913ed.js",
+      "https://github.githubassets.com/assets/rv-9212c716d6769f4d.js",
+      "https://github.githubassets.com/assets/nsj-b68fcdbb199cc0f2.js",
+      "https://github.githubassets.com/assets/gda-8dea3b2254f2d1c4.js",
+      "https://github.githubassets.com/assets/zd-61606dd1c14634aa.js",
+      "https://github.githubassets.com/assets/7v5-d77d961bce5db1f3.js",
+      "https://github.githubassets.com/assets/15-627ae2a5640b1bab.js",
+      "https://github.githubassets.com/assets/5w-452c3a937483ff49.js",
+      "https://github.githubassets.com/assets/a6-7f014099d0ccd850.js",
+      "https://github.githubassets.com/assets/sa-9d3fd8dc50445dcd.js",
+      "https://github.githubassets.com/assets/s5-69e33057160df8b5.js",
+      "https://github.githubassets.com/assets/ro-b13445e771ba15b0.js",
+      "https://github.githubassets.com/assets/la-27ea91f01fa7ffcf.js",
+      "https://github.githubassets.com/assets/ph-e1029a2d3a7ffcbd.js",
+      "https://github.githubassets.com/assets/rvz-5ec3884c1a695811.js",
+      "https://github.githubassets.com/assets/du-52649b0dca417dae.js",
+      "https://github.githubassets.com/assets/hev-90bb1a89f551a797.js",
+      "https://github.githubassets.com/assets/it-5cc61807498271db.js",
+      "https://github.githubassets.com/assets/xf-1a59c32b105cac67.js",
+      "https://github.githubassets.com/assets/ns-028229a4dc6d3021.js",
+      "https://github.githubassets.com/assets/kt-fb0ef9c227d9464c.js",
+      "https://github.githubassets.com/assets/hv-6e9629af38e45ead.js",
+      "https://github.githubassets.com/assets/9cj-3c965ebce93cc3c1.js",
+      "https://github.githubassets.com/assets/ugx-886ad2b806523a6e.js",
+      "https://github.githubassets.com/assets/jy-9c5aec72d84be788.js",
+      "https://github.githubassets.com/assets/j-0433d22f9e38b102.js",
+      "https://github.githubassets.com/assets/e7-43fb0967ecd8d1b6.js",
+      "https://github.githubassets.com/assets/frh-5ab8b021829bd89b.js",
+      "https://github.githubassets.com/assets/5n-98da0ddf89c5f086.js",
+      "https://github.githubassets.com/assets/wm-67a9db5dc36d264d.js",
+      "https://github.githubassets.com/assets/g0-73129ffe165d9c38.js",
+      "https://github.githubassets.com/assets/8zl-032e04f83dd8cc45.js",
+      "https://github.githubassets.com/assets/9k-61aac4114bea1502.js",
+      "https://github.githubassets.com/assets/gw-4bf343b417f9ec19.js",
+      "https://github.githubassets.com/assets/g4-05e4d33e43f27775.js",
+      "https://github.githubassets.com/assets/0-f644514d4ac68a90.js",
+      "https://github.githubassets.com/assets/fa-f69bff200a5c40b0.js",
+      "https://github.githubassets.com/assets/8z-85a94c486819b748.js",
+      "https://github.githubassets.com/assets/jn-9c45b198d99a47c8.js",
+      "https://github.githubassets.com/assets/gy-6ecf702ee9fb9eee.js",
+      "https://github.githubassets.com/assets/q6j-256bc816dd682a0f.js",
+      "https://github.githubassets.com/assets/fn-f5980fac3eb94b1e.js",
+      "https://github.githubassets.com/assets/wtk-c4ca37a4743e027b.js",
+      "https://github.githubassets.com/assets/v-6fd38c1d84c355d1.js",
+      "https://github.githubassets.com/assets/fnl-220ecd7bee9df2c2.js",
+      "https://github.githubassets.com/assets/nm-47a3c33580ffecd9.js",
+      "https://github.githubassets.com/assets/xx-65c300099fb6f518.js",
+      "https://github.githubassets.com/assets/jcm-b59b7b793a67be8a.js",
+      "https://github.githubassets.com/assets/i2-5e26ac37ee961d06.js",
+      "https://github.githubassets.com/assets/vf-0a084b506c6215a1.js",
+      "https://github.githubassets.com/assets/b2-35e229a50d0f3d05.js",
+      "https://github.githubassets.com/assets/pg-dc6aa21487f8733b.js",
+      "https://github.githubassets.com/assets/04p-25ba25fc027ede45.js",
+      "https://github.githubassets.com/assets/62o-95b5631bb6a3c672.js",
+      "https://github.githubassets.com/assets/f85-c474c5ad660c36aa.js",
+      "https://github.githubassets.com/assets/rzo-39a9c02e84e60644.js",
+      "https://github.githubassets.com/assets/lrk-ea49e115e48ba34b.js",
+      "https://github.githubassets.com/assets/2zd-fe34c9f4d56edcac.js",
+      "https://github.githubassets.com/assets/xj-cd720728a4798073.js",
+      "https://github.githubassets.com/assets/pba-3e18287237d2e009.js",
+      "https://github.githubassets.com/assets/mlz-fce49bd96df2c99f.js",
+      "https://github.githubassets.com/assets/5l-60d6b21dcbe3c5b7.js",
+      "https://github.githubassets.com/assets/7g-fb9519984b9a5afc.js",
+      "https://github.githubassets.com/assets/kg-63b888872db766e8.js",
+      "https://github.githubassets.com/assets/jx-75c52e58702374c1.js",
+      "https://github.githubassets.com/assets/dx-17fc1b71910ed6ad.js",
+      "https://github.githubassets.com/assets/oh-a803911459bce24c.js",
+      "https://github.githubassets.com/assets/1a-76a60fd58c2fa34b.js",
+      "https://github.githubassets.com/assets/f44-12bb12439e7f8020.js",
+      "https://github.githubassets.com/assets/sm-22346830d5e5a763.js",
+      "https://github.githubassets.com/assets/igs-93ad9009e1249ac8.js",
+      "https://github.githubassets.com/assets/52-0d1b1c7f3cedbe4b.js",
+      "https://github.githubassets.com/assets/l8-0d3fefbb018e6f96.js",
+      "https://github.githubassets.com/assets/ka-7988f55c7052f47a.js",
+      "https://github.githubassets.com/assets/42g-5b1a16162d7b07c6.js",
+      "https://github.githubassets.com/assets/rk7-418a4f74edbc9f0d.js",
+      "https://github.githubassets.com/assets/9ty-c9c39216c8b27b58.js",
+      "https://github.githubassets.com/assets/50-be65d61016121302.js",
+      "https://github.githubassets.com/assets/ur-1e4888e2eeae8a1e.js",
+      "https://github.githubassets.com/assets/mq-4b62c2a04bc14aa7.js",
+      "https://github.githubassets.com/assets/pr-71a543dcaa8f2705.js",
+      "https://github.githubassets.com/assets/jn3-155348e4ac7656c0.js",
+      "https://github.githubassets.com/assets/1lb-c79439f153b2a0d9.js",
+      "https://github.githubassets.com/assets/hy-201a22e6f9781724.js",
+      "https://github.githubassets.com/assets/9o-7b4a7a6adf8c3d18.js",
+      "https://github.githubassets.com/assets/h6-5990fb6d9a1f24d1.js",
+      "https://github.githubassets.com/assets/up-8abc2f9488885fee.js",
+      "https://github.githubassets.com/assets/7p-1cc32d9cf9fa3fd5.js",
+      "https://github.githubassets.com/assets/gd-3848ee2bc9ca8ce4.js",
+      "https://github.githubassets.com/assets/x0-14079d3c95ae0834.js",
+      "https://github.githubassets.com/assets/je-06fd91f233111c71.js",
+      "https://github.githubassets.com/assets/fas-d4629ffd0ebae3fa.js",
+      "https://github.githubassets.com/assets/riq-a4b4a3fdfa6b0227.js",
+      "https://github.githubassets.com/assets/7o-f9ac0c4910dc678a.js",
+      "https://github.githubassets.com/assets/ny-a5280162cc2d7893.js",
+      "https://github.githubassets.com/assets/5z-68e0c873fab16142.js",
+      "https://github.githubassets.com/assets/kqg-4f527cbce850733e.js",
+      "https://github.githubassets.com/assets/el-a24db95833374881.js",
+      "https://github.githubassets.com/assets/rw1-8a4d6fa87a236ee9.js",
+      "https://github.githubassets.com/assets/ip-dc6e8a7225dcb197.js",
+      "https://github.githubassets.com/assets/6it-eddb5f88a178df75.js",
+      "https://github.githubassets.com/assets/r32-148f7580689f6e4c.js",
+      "https://github.githubassets.com/assets/ne-9fc4b71d673f3390.js",
+      "https://github.githubassets.com/assets/imj-9c1c7f79b116f3d3.js",
+      "https://github.githubassets.com/assets/asy-3e744aa12ce79dba.js",
+      "https://github.githubassets.com/assets/dh-49480e1a83e6d094.js",
+      "https://github.githubassets.com/assets/wt-165df88b9659d477.js",
+      "https://github.githubassets.com/assets/s-eceef154df9b0cbf.js",
+      "https://github.githubassets.com/assets/kfu-5f1e66a1c48fc1d3.js",
+      "https://github.githubassets.com/assets/tg-74fa6eba86084921.js",
+      "https://github.githubassets.com/assets/qm-5f29b2850d224fb5.js",
+      "https://github.githubassets.com/assets/ty9-dfb70a251dd1bb23.js",
+      "https://github.githubassets.com/assets/6d-a1ccb95f8af3a8c0.js",
+      "https://github.githubassets.com/assets/w61-f478ae67e69a41c8.js",
+      "https://github.githubassets.com/assets/am-d59be0791364d083.js",
+      "https://github.githubassets.com/assets/md-6ebd684236d3f8fd.js",
+      "https://github.githubassets.com/assets/sgn-defb2f30428a579f.js",
+      "https://github.githubassets.com/assets/48r-4e9ac47862d28a54.js",
+      "https://github.githubassets.com/assets/3l-3d591e7698272e3d.js",
+      "https://github.githubassets.com/assets/10y-d19616f61db93b40.js",
+      "https://github.githubassets.com/assets/4j8-726f3fee0e22c662.js",
+      "https://github.githubassets.com/assets/jw-752ed60e5e778f34.js",
+      "https://github.githubassets.com/assets/d0t-c3518122816f7a45.js",
+      "https://github.githubassets.com/assets/ow-98d10140e8228c74.js",
+      "https://github.githubassets.com/assets/dt-635c9091406ee026.js",
+      "https://github.githubassets.com/assets/gt-f51f5fc298f4ccc6.js",
+      "https://github.githubassets.com/assets/of-3554ef60d91be3bb.js",
+      "https://github.githubassets.com/assets/q49-dd8d71ed0e39bd8b.js",
+      "https://github.githubassets.com/assets/nh-0f6873ed948f5edd.js",
+      "https://github.githubassets.com/assets/1i-4386f4b188f14bbf.js",
+      "https://github.githubassets.com/assets/stw-251935d1795851d3.js",
+      "https://github.githubassets.com/assets/px-319994824c39d66e.js",
+      "https://github.githubassets.com/assets/5y-72b3b7567dd41b45.js",
+      "https://github.githubassets.com/assets/1m-4940ab885d213c09.js",
+      "https://github.githubassets.com/assets/pull-requests-3df22d8644d8b1d6.js"
+     ]
+    },
+    "editor": {
+     "values": [
+      "https://github.githubassets.com/assets/wp-runtime-6deb172a53175177.js",
+      "https://github.githubassets.com/assets/runtime-helpers-26f2970b9e869a17.js",
+      "https://github.githubassets.com/assets/app-foundation-5ad27e19be4108fc.js",
+      "https://github.githubassets.com/assets/app-runtime-6f6606ef2617a997.js",
+      "https://github.githubassets.com/assets/catalyst-5bc36fa5a846f5a0.js",
+      "https://github.githubassets.com/assets/hotkey-a82e6cb07443fd1c.js",
+      "https://github.githubassets.com/assets/selector-observer-7ae05416e4a383ae.js",
+      "https://github.githubassets.com/assets/fetch-utilities-27ed50f7568a5f72.js",
+      "https://github.githubassets.com/assets/us-038358fa7d1a50fa.js",
+      "https://github.githubassets.com/assets/7t-fa5c4fb1090f8637.js",
+      "https://github.githubassets.com/assets/0r-4a2b771052825f69.js",
+      "https://github.githubassets.com/assets/editor-ca3f00449646718c.js"
+     ]
+    },
+    "repositories": {
+     "values": [
+      "https://github.githubassets.com/assets/wp-runtime-6deb172a53175177.js",
+      "https://github.githubassets.com/assets/runtime-helpers-26f2970b9e869a17.js",
+      "https://github.githubassets.com/assets/app-foundation-5ad27e19be4108fc.js",
+      "https://github.githubassets.com/assets/app-runtime-6f6606ef2617a997.js",
+      "https://github.githubassets.com/assets/catalyst-5bc36fa5a846f5a0.js",
+      "https://github.githubassets.com/assets/aria-live-edd851c704c6b3ca.js",
+      "https://github.githubassets.com/assets/hotkey-a82e6cb07443fd1c.js",
+      "https://github.githubassets.com/assets/selector-observer-7ae05416e4a383ae.js",
+      "https://github.githubassets.com/assets/fetch-utilities-27ed50f7568a5f72.js",
+      "https://github.githubassets.com/assets/by4-04f0d28829dc4df0.js",
+      "https://github.githubassets.com/assets/liv-7ba64ac238bca0a9.js",
+      "https://github.githubassets.com/assets/0r-4a2b771052825f69.js",
+      "https://github.githubassets.com/assets/repositories-d9af1d905b16fcff.js"
+     ]
+    },
+    "actions": {
+     "values": [
+      "https://github.githubassets.com/assets/wp-runtime-6deb172a53175177.js",
+      "https://github.githubassets.com/assets/runtime-helpers-26f2970b9e869a17.js",
+      "https://github.githubassets.com/assets/app-foundation-5ad27e19be4108fc.js",
+      "https://github.githubassets.com/assets/catalyst-5bc36fa5a846f5a0.js",
+      "https://github.githubassets.com/assets/actions-5168b79121d6ce95.js"
+     ]
+    },
+    "pull-requests-list": {
+     "values": [
+      "https://github.githubassets.com/assets/wp-runtime-6deb172a53175177.js",
+      "https://github.githubassets.com/assets/app-foundation-5ad27e19be4108fc.js",
+      "https://github.githubassets.com/assets/app-runtime-6f6606ef2617a997.js",
+      "https://github.githubassets.com/assets/aria-live-edd851c704c6b3ca.js",
+      "https://github.githubassets.com/assets/hotkey-a82e6cb07443fd1c.js",
+      "https://github.githubassets.com/assets/selector-observer-7ae05416e4a383ae.js",
+      "https://github.githubassets.com/assets/fetch-utilities-27ed50f7568a5f72.js",
+      "https://github.githubassets.com/assets/ser-2defe2918d9c9884.js",
+      "https://github.githubassets.com/assets/0r-4a2b771052825f69.js",
+      "https://github.githubassets.com/assets/pull-requests-list-0d9b28446b60c329.js"
+     ]
+    },
+    "diffs": {
+     "values": [
+      "https://github.githubassets.com/assets/wp-runtime-6deb172a53175177.js",
+      "https://github.githubassets.com/assets/runtime-helpers-26f2970b9e869a17.js",
+      "https://github.githubassets.com/assets/app-foundation-5ad27e19be4108fc.js",
+      "https://github.githubassets.com/assets/app-runtime-6f6606ef2617a997.js",
+      "https://github.githubassets.com/assets/catalyst-5bc36fa5a846f5a0.js",
+      "https://github.githubassets.com/assets/aria-live-edd851c704c6b3ca.js",
+      "https://github.githubassets.com/assets/selector-observer-7ae05416e4a383ae.js",
+      "https://github.githubassets.com/assets/fetch-utilities-27ed50f7568a5f72.js",
+      "https://github.githubassets.com/assets/4t6-8cce817ba1c78415.js",
+      "https://github.githubassets.com/assets/pb0-3a1794e99794195c.js",
+      "https://github.githubassets.com/assets/0r-4a2b771052825f69.js",
+      "https://github.githubassets.com/assets/mv1-7b21be52cdd60fa5.js",
+      "https://github.githubassets.com/assets/eou-b91079b9ea7074de.js",
+      "https://github.githubassets.com/assets/444-6865f56dd3d58f46.js",
+      "https://github.githubassets.com/assets/diffs-5211a1df5b551dfa.js"
+     ]
+    }
+   },
+   "css": {
+    "scanning": {
+     "values": [
+      "https://github.githubassets.com/assets/app-runtime.0348544a16287601.module.css"
+     ]
+    },
+    "copilot-code-review": {
+     "values": [
+      "https://github.githubassets.com/assets/copilot-code-review-9fc9e123986e7610.css"
+     ]
+    },
+    "codespaces": {
+     "values": [
+      "https://github.githubassets.com/assets/app-runtime.0348544a16287601.module.css"
+     ]
+    },
+    "releases": {
+     "values": [
+      "https://github.githubassets.com/assets/releases-d0f078806d4b2fb2.css"
+     ]
+    },
+    "editor": {
+     "values": [
+      "https://github.githubassets.com/assets/app-runtime.0348544a16287601.module.css"
+     ]
+    },
+    "repositories": {
+     "values": [
+      "https://github.githubassets.com/assets/app-runtime.0348544a16287601.module.css"
+     ]
+    },
+    "actions": {
+     "values": [
+      "https://github.githubassets.com/assets/actions-3daae14443efb4c2.css"
+     ]
+    },
+    "pull-requests-list": {
+     "values": [
+      "https://github.githubassets.com/assets/app-runtime.0348544a16287601.module.css"
+     ]
+    },
+    "code": {
+     "values": [
+      "https://github.githubassets.com/assets/code-b25a4886e30e3e5f.css"
+     ]
+    },
+    "pull-requests": {
+     "values": [
+      "https://github.githubassets.com/assets/app-runtime.0348544a16287601.module.css",
+      "https://github.githubassets.com/assets/primer-react-css.5c285cfb9886ddbc.module.css",
+      "https://github.githubassets.com/assets/react-core.73094089423e6750.module.css",
+      "https://github.githubassets.com/assets/nm.b63f14b1756bf4af.module.css",
+      "https://github.githubassets.com/assets/vf.f97bf74f83f63e3e.module.css",
+      "https://github.githubassets.com/assets/7g.4fcfa65442adc1b3.module.css",
+      "https://github.githubassets.com/assets/f44.cba5fdbff4444854.module.css",
+      "https://github.githubassets.com/assets/igs.e7d7264f580f158d.module.css",
+      "https://github.githubassets.com/assets/h6.0ec1237dcc58fa3e.module.css",
+      "https://github.githubassets.com/assets/6it.686b842389ae73b3.module.css",
+      "https://github.githubassets.com/assets/s.22713c5267150095.module.css",
+      "https://github.githubassets.com/assets/ty9.4a2c593eab2fab2e.module.css",
+      "https://github.githubassets.com/assets/4j8.0e3c76ae732e0f51.module.css",
+      "https://github.githubassets.com/assets/gt.363c2aec10b61cc6.module.css",
+      "https://github.githubassets.com/assets/1i.4f460224506a643b.module.css",
+      "https://github.githubassets.com/assets/5y.4946803721a6432d.module.css",
+      "https://github.githubassets.com/assets/pull-requests.a2e2d179ab9f3e92.module.css",
+      "https://github.githubassets.com/assets/pull-requests-4406857028d32735.css"
+     ]
+    },
+    "diffs": {
+     "values": [
+      "https://github.githubassets.com/assets/app-runtime.0348544a16287601.module.css"
+     ]
+    }
+   }
+  }
+ },
+ "title": "All Workflow Runs",
+ "appPayload": {
+  "enabled_features": {
+   "move_new_comments_ui": false,
+   "cotd_derive_thread_previews": false,
+   "prx_dynamic_split_pref": false,
+   "prx_files": false,
+   "pulls-files-skip-prefer-any-solo-entry": false,
+   "generate_groups_on_files_view": false,
+   "prx_robust_small_screen_support": false,
+   "prs_contextual_comment_controls": true,
+   "pull_request_stacks": true,
+   "pull_request_stacks_show_all_entries_statuses": true,
+   "cotd_ui": true,
+   "ci_analysis_check_runs_ui_enabled": false,
+   "pull_request_merge_status_button_opt_out": false,
+   "authentic_contributions_frontend": false,
+   "react_data_router_pull_request_files": false,
+   "repo_pulls_dashboard_surface": true,
+   "pull_requests_stacks_view_ui": false,
+   "prs_overview_as_index_route": false,
+   "use_pull_request_subscriptions_enabled": false,
+   "pull_request_single_subscription": true,
+   "copilot_natural_language_github_search": false,
+   "private_avatars": false,
+   "reserved_domain": true,
+   "notifyd_issue_watch_activity_notify": false,
+   "notifyd_enable_issue_thread_subscriptions": false,
+   "timeline_best_effort_count_optimization": false,
+   "copilot_auto_assign_metadata": false,
+   "copilot_workspace_cross_repo_selection": false,
+   "copilot_agent_mode": false,
+   "copilot_swe_agent": false,
+   "react_version_mismatch_detection": false,
+   "issue_viewer_activity_tab": false,
+   "issue_create_relationships": false,
+   "milestone_closed_issues_prioritization": true,
+   "notifyd_issue_custom_subscription_events_notify": false,
+   "tasklist_block": false,
+   "issues_create_semantic_similarity_analytics": false,
+   "semantic_similarity_duplicate_issue_detection": true,
+   "issue_cca_visualization": false,
+   "scribe_artifacts_api": true,
+   "issue_pinned_views": true,
+   "issue_pinned_views_team_vs_personal": true,
+   "issue_granular_statuses": false,
+   "repo_issues_board_view": false,
+   "milestone_show_data_router": true,
+   "issues_inline_label_creation": false,
+   "issues_inline_milestone_creation": false,
+   "issues_unread_search_sort": false,
+   "issues_bulk_mark_read": false,
+   "actions_runners_react_view": true,
+   "repo_releases_and_tags_sidebar_layout": false
+  }
+ },
+ "meta": {
+  "title": "All Workflow Runs",
+  "protoRoutes": [
+   "allWorkflowRunsRoute",
+   "repoLayoutRoute"
+  ]
+ }
+}

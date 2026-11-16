@@ -1,0 +1,71 @@
+# :1057-1091  build_jobs（显示名与 changelog 的决策点）
+ 1057  def build_jobs(args, binding, cat, offline):
+ 1058      jobs = []
+ 1059      for raw in args.jar:
+ 1060          jar = pathlib.Path(raw).resolve()
+ 1061          if not jar.is_file():
+ 1062              raise SystemExit(f"[ERR] 找不到 jar：{jar}")
+ 1063          ver, loader, mc = parse_jar(jar)
+ 1064          loader = args.loader or loader
+ 1065          mc = args.mc_version or mc
+ 1066          # 2026-10-25 rule: only P0 lines may be uploaded (P1 blocked by default)
+ 1067          guard_p0_only(loader, mc, jar, getattr(args, 'allow_p1', False))
+ 1068          rtype = args.release_type or infer_release_type(ver)
+ 1069          ids, detail = plan_ids(cat, mc, loader, offline)
+ 1070          line = find_line(binding, key=args.line, loader=loader, mc=mc)
+ 1071          rel = relations_payload(line, disabled=args.no_relations)
+ 1072          # 显示名（2026-11-02 用户规则）：--display-name 优先；否则按
+ 1073          # 「Astral Dice <版本> (<加载器> <MC>)」自动推导。库产物不套用这套口径
+ 1074          # （它推到库项目，命名与模组发布件不同），保留 jar 文件名。
+ 1075          if args.display_name:
+ 1076              display = args.display_name
+ 1077          elif is_lib_jar(jar.name):
+ 1078              display = jar.name
+ 1079          else:
+ 1080              display = default_display_name(ver, loader, mc)
+ 1081          # changelog 策略（2026-11-02 用户规则）：只有主线版本默认附带；小版本不写。
+ 1082          changelog, changelog_line = decide_changelog(
+ 1083              ver, args.changelog, getattr(args, "no_changelog", False))
+ 1084          jobs.append({"jar": jar, "ver": ver, "loader": loader, "mc": mc,
+ 1085                       "releaseType": rtype, "gameVersions": ids, "_detail": detail,
+ 1086                       "_line": (line or {}).get("key"), "_relations": rel,
+ 1087                       "display": display, "_changelog": changelog,
+ 1088                       "_changelog_line": changelog_line})
+ 1089      return jobs
+ 1090  
+ 1091  
+
+# :1092-1106  print_jobs_plan
+ 1092  def print_jobs_plan(jobs):
+ 1093      for j in jobs:
+ 1094          cl = j["_changelog"]
+ 1095          print(f"  {j['jar'].name}")
+ 1096          print(f"    版本 {j['ver']} | {j['loader']} | MC {j['mc']} | 类型 {j['releaseType']}")
+ 1097          # 两条判定各打一行：dry-run 的验收依据（2026-11-02 用户规则）。
+ 1098          print(f"    DISPLAY: {j['display']}")
+ 1099          print(f"    {j['_changelog_line']}")
+ 1100          if cl:
+ 1101              print(f"    更新日志 = {display_path(cl)}（{len(_read_text(cl))} 字符）")
+ 1102          print(f"    gameVersions = {j['gameVersions']}  {j['_detail']}")
+ 1103          print(f"    relations = {describe_relations(j['_relations'])}"
+ 1104                + (f"  [{j['_line']}]" if j.get("_line") else "  [未匹配到该线]"))
+ 1105  
+ 1106  
+
+# :1107-1122  upload_metadata
+ 1107  def upload_metadata(args, job):
+ 1108      metadata = {
+ 1109          # 显示名：--display-name 优先；否则用 build_jobs 里推导好的
+ 1110          # 「Astral Dice <版本> (<加载器> <MC>)」（2026-11-02 用户规则）。
+ 1111          "displayName": args.display_name or job.get("display") or job["jar"].name,
+ 1112          "releaseType": job["releaseType"],
+ 1113          "gameVersions": job["gameVersions"],
+ 1114      }
+ 1115      if job["_changelog"]:
+ 1116          # changelogType 只在**真附带** changelog 时出现：小版本不写 CF changelog
+ 1117          # ⇒ changelog 与 changelogType 两个字段都不发（2026-11-02 用户规则）。
+ 1118          metadata["changelogType"] = args.changelog_type
+ 1119          metadata["changelog"] = _read_text(job["_changelog"])
+ 1120      if job.get("_relations"):
+ 1121          metadata["relations"] = job["_relations"]
+ 1122      if args.manual_release:
