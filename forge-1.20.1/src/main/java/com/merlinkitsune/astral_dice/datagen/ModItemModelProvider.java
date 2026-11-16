@@ -107,7 +107,12 @@ public class ModItemModelProvider extends ItemModelProvider {
         basicItem(ModItems.JILL_SIGN.get());
         basicItem(ModItems.DOROTHY_SIGN.get());
         basicItem(ModItems.ALANA_SIGN.get());
+        basicItem(ModItems.AL_SIGN.get());
         basicItem(ModItems.DEEPSEEK_SIGN.get());
+        basicItem(ModItems.SOURI_SIGN.get());
+        basicItem(ModItems.SYKES_SIGN.get());
+        basicItem(ModItems.INKSHADOW_SIGN.get());
+        basicItem(ModItems.Z3000_SIGN.get());
         basicItem(ModItems.FU_CARD.get());
         basicItem(ModItems.HUO_CARD.get());
         basicItem(ModItems.CHOCOLATE_CAKE.get());
@@ -166,5 +171,8 @@ public class ModItemModelProvider extends ItemModelProvider {
         basicItem(ModItems.ABYSS_REAGENT_CHIP.get());
         basicItem(ModItems.INFINITE_GRID_CHIP.get());
         basicItem(ModItems.SENSOR_CHIP.get());
+        basicItem(ModItems.SWORD_IN_STONE_EPIC_CHIP.get());
+        basicItem(ModItems.SWORD_IN_STONE_LEGENDARY_CHIP.get());
+        basicItem(ModItems.PERFECT_BRANCH_CHIP.get());
     }
 }

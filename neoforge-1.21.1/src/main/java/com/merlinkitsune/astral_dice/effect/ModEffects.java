@@ -63,6 +63,14 @@ public class ModEffects {
     public static final DeferredHolder<MobEffect, MobEffect> DICE_BLESSING =
             EFFECTS.register("dice_blessing", DiceBlessingEffect::new);
 
+    // 石中剑-精良：圣剑守护（攻击力 +2 / 受到伤害 -2）
+    public static final DeferredHolder<MobEffect, MobEffect> HOLY_SWORD_GUARD =
+            EFFECTS.register("holy_sword_guard", com.merlinkitsune.astral_dice.effect.HolySwordGuardEffect::new);
+
+    // 完美树枝：超强精力（amplifier + 1 = 层数，最多 10 层）
+    public static final DeferredHolder<MobEffect, MobEffect> SUPER_ENERGY =
+            EFFECTS.register("super_energy", com.merlinkitsune.astral_dice.effect.SuperEnergyEffect::new);
+
     // 爆发(护法立牌 misaki 主动):持续 60 秒
     public static final DeferredHolder<MobEffect, MobEffect> MISAKI_BURST =
             EFFECTS.register("misaki_burst", MisakiBurstEffect::new);
@@ -217,7 +225,7 @@ public class ModEffects {
     public static final DeferredHolder<MobEffect, MobEffect> REN_SHIELD =
             EFFECTS.register("ren_shield", RenShieldEffect::new);
 
-    /** 「反击」:鼠鼠护盾那 1 层一次性反击的可见载体(层数镜像到 HUD 图标;图标 = images/反击.png) */
+    /** 「反击」:持续 10 秒的反击状态(由 CounterStateManager 管理;图标 = images/反击.png) */
     public static final DeferredHolder<MobEffect, MobEffect> REN_COUNTER =
             EFFECTS.register("ren_counter", RenCounterEffect::new);
 
@@ -401,6 +409,34 @@ public class ModEffects {
      */
     public static final DeferredHolder<MobEffect, MobEffect> LINGLING_SURGE =
             EFFECTS.register("lingling_surge", LinglingSurgeEffect::new);
+
+
+    // ── 魔渊幼体立牌（2026-11-06）──
+    /** 渊蚀印记：负面、最多 20 层、每层使目标受到魔渊幼体 / 魔渊触须的伤害 +1。 */
+    public static final DeferredHolder<MobEffect, MobEffect> ABYSS_MARK =
+            EFFECTS.register("abyss_mark", com.merlinkitsune.astral_dice.effect.AbyssMarkEffect::new);
+
+    // ── 金鲤立牌（souri，2026-11-09）──
+    /** 金鳞：层数镜像效果（真值在附件 SOURI_GOLD_SCALES；最多 4 层）。 */
+    public static final DeferredHolder<MobEffect, MobEffect> SOURI_GOLD_SCALE =
+            EFFECTS.register("souri_gold_scale", com.merlinkitsune.astral_dice.effect.SouriGoldScaleEffect::new);
+
+    /** 金鲤化龙：金鳞满 4 层后的锁存态标记（攻击加成由实时谓词按层数求和）。 */
+    public static final DeferredHolder<MobEffect, MobEffect> SOURI_DRAGON =
+            EFFECTS.register("souri_dragon", com.merlinkitsune.astral_dice.effect.SouriDragonEffect::new);
+
+    /** 葫芦饮：攻击力 +3、1:00（一次只能持有一个）。 */
+    public static final DeferredHolder<MobEffect, MobEffect> GOURD_DRINK =
+            EFFECTS.register("gourd_drink", com.merlinkitsune.astral_dice.effect.GourdDrinkEffect::new);
+
+    /** 仙酿：攻击力 +4、2:00，拾取当刻迅捷 II 2:00 + 回复 6 点生命值（一次只能持有一个）。 */
+    public static final DeferredHolder<MobEffect, MobEffect> IMMORTAL_BREW =
+            EFFECTS.register("immortal_brew", com.merlinkitsune.astral_dice.effect.ImmortalBrewEffect::new);
+
+    // ── 小猎手立牌（inkshadow，2026-11-10 验收改版）──
+    /** 双生之影：被动层数的 HUD 指示器（层数真值在附件，图标 = 立牌贴图）。 */
+    public static final DeferredHolder<MobEffect, MobEffect> INKSHADOW_STACK =
+            EFFECTS.register("inkshadow_stack", com.merlinkitsune.astral_dice.effect.InkShadowStackEffect::new);
 
     public static final Collection<DeferredHolder<MobEffect, ? extends MobEffect>> ALL = EFFECTS.getEntries();
 }

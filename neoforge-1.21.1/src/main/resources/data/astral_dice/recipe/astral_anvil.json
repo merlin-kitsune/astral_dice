@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "minecraft:anvil"
+    },
+    {
+      "item": "astral_dice:star_coin_bag"
+    },
+    {
+      "item": "astral_dice:star_coin_bag"
+    }
+  ],
+  "result": {
+    "id": "astral_dice:astral_anvil",
+    "count": 1
+  }
+}

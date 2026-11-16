@@ -1,0 +1,71 @@
+{
+  "case_id": "CHIP-SHOP-UI-fabric-1.21.1",
+  "title": "筹码商店可打开：菜单 slots=3+36、单价=priceOf(0)=10、刷新 3/5、三格候选均为 astral_dice 筹码且品质码 1..3、deny=-1（证据 shop/ChipShopOpener.java:44-67；shop/ChipShopState.java:68-121；shop/ChipShopCatalog.java:47,81-83,93-94,305-307；shop/ChipShopMenu.java:68-73,146-208,295-333）",
+  "version": "fabric-1.21.1",
+  "channel": "autojs",
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "判据来源：ChipShopOpener.java:44-67 open 前先跑 owned_all / inventory_full / cooldown 三道拒绝（本用例先 store(EMPTY) 把冷却与刷新归零，保证不撞 deny），:60 ensureOffers 后 openMenu；ChipShopMenu.java:68-73 OFFER_SLOTS=3 + PLAYER_SLOT_COUNT=36 ⇒ slots.size()=39；:100 DATA_SLOT_COUNT=7；:295-333 price/remainingRefreshes/totalRefreshes/denyReason/offerStack/offerTier/offersKey；价格公式 ChipShopCatalog.java:305-307 priceOf(0)=PRICE_INITIAL=10；刷新常量 :93-94 REFRESH_INITIAL=3 / REFRESH_MAX=5；:103-115 DENY_NONE=-1。末尾 closeContainer + store(EMPTY) 复原。"
+    },
+    {
+      "op": "mcp_status",
+      "timeout_ms": 20000,
+      "save_as": "mcp"
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "mode": "json",
+      "timeout_ms": 30000,
+      "save_as": "shop",
+      "code": "(function(){\n  function cls(n){ return Java.loadClass(n); }\n  var BR = cls(\"net.minecraft.core.registries.BuiltInRegistries\");\n  var State = cls(\"com.merlinkitsune.astral_dice.shop.ChipShopState\");\n  var Opener = cls(\"com.merlinkitsune.astral_dice.shop.ChipShopOpener\");\n  var player = AutoJS.players()[0];\n  var out = {};\n  player.closeContainer();\n  State.store(player, State.EMPTY);\n  out.denyBeforeOpen = -999;\n  Opener.open(player);\n  var m = player.containerMenu;\n  out.menuClass = String(m);\n  out.menuIsShop = out.menuClass.indexOf(\"ChipShopMenu\") >= 0;\n  if (!out.menuIsShop) { out.abort = true; return out; }\n  out.abort = false;\n  out.price = m.price();\n  out.remainingRefreshes = m.remainingRefreshes();\n  out.totalRefreshes = m.totalRefreshes();\n  out.denyReason = m.denyReason();\n  out.slotsSize = m.slots.size();\n  var ids = [], tiers = [], nonEmpty = 0;\n  for (var i = 0; i < 3; i++) {\n    var st = m.offerStack(i);\n    if (st != null && !st.isEmpty()) {\n      nonEmpty++;\n      ids.push(String(BR.ITEM.getKey(st.getItem())));\n    } else { ids.push(\"\"); }\n    tiers.push(m.offerTier(i));\n  }\n  out.offerIds = ids;\n  out.offerTiers = tiers;\n  out.offersNonEmpty = nonEmpty;\n  var key = String(m.offersKey());\n  out.offersKey = key;\n  out.offersKeyNonEmpty = (key.length > 0 && key !== \"-\");\n  var st = State.get(player);\n  out.stateInitialized = st.initialized();\n  out.statePrice = st.price();\n  out.statePurchased = st.purchasedCount();\n  out.stateRefreshes = st.refreshesLeft();\n  player.closeContainer();\n  State.store(player, State.EMPTY);\n  out.teardownRefreshes = State.get(player).offers().size();\n  return out;\n})()"
+    }
+  ],
+  "asserts": [
+    {
+      "type": "state",
+      "from": "mcp",
+      "expect": {
+        "Ok": true
+      }
+    },
+    {
+      "type": "state",
+      "from": "shop",
+      "expect": {
+        "menuIsShop": true,
+        "abort": false,
+        "price": 10,
+        "remainingRefreshes": 3,
+        "totalRefreshes": 5,
+        "denyReason": -1,
+        "slotsSize": 39,
+        "offersNonEmpty": 3,
+        "offerIds": {
+          "len": 3
+        },
+        "offerTiers": {
+          "len": 3
+        },
+        "offersKeyNonEmpty": true,
+        "stateInitialized": true,
+        "statePrice": 10,
+        "statePurchased": 0,
+        "stateRefreshes": 3,
+        "teardownRefreshes": 0
+      }
+    },
+    {
+      "type": "log",
+      "scope": "case",
+      "pattern": "CHIP_SHOP_OPEN player="
+    },
+    {
+      "type": "absent",
+      "scope": "case",
+      "pattern": "CHIP_SHOP_OPEN_DENIED"
+    }
+  ]
+}

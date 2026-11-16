@@ -60,6 +60,14 @@ public class ModEffects {
     public static final RegistryObject<MobEffect> DICE_BLESSING =
             EFFECTS.register("dice_blessing", DiceBlessingEffect::new);
 
+    // 圣剑守护(石中剑-精良):触发骰神赐福时给队伍 1:00 攻击 +2 / 受伤 -2
+    public static final RegistryObject<MobEffect> HOLY_SWORD_GUARD =
+            EFFECTS.register("holy_sword_guard", HolySwordGuardEffect::new);
+
+    // 超强精力(完美树枝):赐福 +1 层,每层攻击 +2 / 防御 +1,最多 10 层
+    public static final RegistryObject<MobEffect> SUPER_ENERGY =
+            EFFECTS.register("super_energy", SuperEnergyEffect::new);
+
     // 爆发(护法立牌 misaki 主动):持续 60 秒
     public static final RegistryObject<MobEffect> MISAKI_BURST =
             EFFECTS.register("misaki_burst", MisakiBurstEffect::new);
@@ -213,7 +221,7 @@ public class ModEffects {
     public static final RegistryObject<MobEffect> REN_SHIELD =
             EFFECTS.register("ren_shield", RenShieldEffect::new);
 
-    /** 「反击」:鼠鼠护盾那 1 层一次性反击的可见载体(层数镜像到 HUD 图标;图标 = images/反击.png) */
+    /** 「反击」:持续 10 秒的反击状态(由 CounterStateManager 管理;图标 = images/反击.png) */
     public static final RegistryObject<MobEffect> REN_COUNTER =
             EFFECTS.register("ren_counter", RenCounterEffect::new);
 
@@ -405,5 +413,32 @@ public class ModEffects {
      * 不存在「忘记往清单里补一个」的漂移风险;同时**不改变任何既有注册语义**
      * (不新增、不重排、不延迟任何注册调用)。
      */
+    /** 渊蚀印记：负面、最多 20 层，每层使我方魔渊系伤害 +1（见 item/AbyssMarkManager）。 */
+    public static final RegistryObject<MobEffect> ABYSS_MARK =
+            EFFECTS.register("abyss_mark", AbyssMarkEffect::new);
+
+    /** 葫芦饮（金鲤立牌）：攻击力 +3，1:00。 */
+    public static final RegistryObject<MobEffect> GOURD_DRINK =
+            EFFECTS.register("gourd_drink", GourdDrinkEffect::new);
+
+    /** 仙酿（金鲤立牌）：攻击力 +4、移速 II、拾取回血 6，2:00。 */
+    public static final RegistryObject<MobEffect> IMMORTAL_BREW =
+            EFFECTS.register("immortal_brew", ImmortalBrewEffect::new);
+
+    /** 金鳞（金鲤立牌）：0–3 层，每层 +1 防御；【金鲤化龙】后每层再 +1 攻击。 */
+    public static final RegistryObject<MobEffect> SOURI_GOLD_SCALE =
+            EFFECTS.register("souri_gold_scale", SouriGoldScaleEffect::new);
+
+    /** 金鲤化龙（金鲤立牌）：金鳞满 4 层后的变身态，场上未拾取的葫芦饮就地转仙酿。 */
+    public static final RegistryObject<MobEffect> SOURI_DRAGON =
+            EFFECTS.register("souri_dragon", SouriDragonEffect::new);
+
+    /**
+     * 双生之影（小猎手立牌 passive）：HUD 显示载体，amplifier = 层数 - 1，duration = 最晚到期门对的剩余刻。
+     * 真实层数在附件 INKSHADOW_STACKS（见 component/ModAttachments），本效果不参与伤害计算。
+     */
+    public static final RegistryObject<MobEffect> INKSHADOW_STACK =
+            EFFECTS.register("inkshadow_stack", InkShadowStackEffect::new);
+
     public static final Collection<RegistryObject<MobEffect>> ALL = EFFECTS.getEntries();
 }

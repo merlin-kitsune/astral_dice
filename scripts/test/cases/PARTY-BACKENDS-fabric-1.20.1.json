@@ -7,7 +7,7 @@
   "steps": [
     {
       "op": "note",
-      "text": "【迁移说明 2026-11-01】本用例由 scripts/test/fabric/cases/FAB-PARTY-BACKENDS 迁入正式用例目录，改名 PARTY-BACKENDS-fabric-1.20.1：补 version=fabric-1.20.1、保留顶层 side、原 window=whole 改为每条 log/absent 断言的 scope=\"whole\"、inject_command 去掉 channel 字段（bash 运行器只读 command）。文中 ft_*.ps1 命令属 pwsh 遗产层，等价 bash 命令见 scripts/test/fabric/README.md 的资产清单表。\n\n判据依据（2026-10-01 新增）：\n · PartyRelations#reportBackends() 在 common setup 打印 AP_FAB_PARTY 机器行（AstralDiceMod#onCommonSetup）；\n · 行内含 back_ftb / back_opac（反射契约是否解析成功）与 why_ftb / why_opac（失败原因）。\n\n⚠️ 本用例**只断言行的存在与形态**，不断言 back_ftb 的具体取值 —— 该值取决于 run/{server,client}/mods 里\n有没有装 FTB Teams / OPAC，是**环境变量**而非模组属性。硬编码取值会在「测试台装了 FTB」时假 FAIL。\n若确实要断言取值，请另建带前置条件的用例（把第三方 jar 放进 run 目录再跑）。"
+      "text": "【迁移说明 2026-11-01】本用例由 scripts/test/fabric/cases/FAB-PARTY-BACKENDS 迁入正式用例目录，改名 PARTY-BACKENDS-fabric-1.20.1：补 version=fabric-1.20.1、保留顶层 side、原 window=whole 改为每条 log/absent 断言的 scope=\"whole\"、inject_command 去掉 channel 字段（bash 运行器只读 command）。文中旧 fabric 测试台命令已删除，现役等价命令见 scripts/test/fabric/README.md 的资产清单表。\n\n判据依据（2026-10-01 新增）：\n · PartyRelations#reportBackends() 在 common setup 打印 AP_FAB_PARTY 机器行（AstralDiceMod#onCommonSetup）；\n · 行内含 back_ftb / back_opac（反射契约是否解析成功）与 why_ftb / why_opac（失败原因）。\n\n⚠️ 本用例**只断言行的存在与形态**，不断言 back_ftb 的具体取值 —— 该值取决于 run/{server,client}/mods 里\n有没有装 FTB Teams / OPAC，是**环境变量**而非模组属性。硬编码取值会在「测试台装了 FTB」时假 FAIL。\n若确实要断言取值，请另建带前置条件的用例（把第三方 jar 放进 run 目录再跑）。"
     },
     {
       "op": "note",

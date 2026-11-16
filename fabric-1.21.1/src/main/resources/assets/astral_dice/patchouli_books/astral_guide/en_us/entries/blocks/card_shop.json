@@ -1,0 +1,17 @@
+{
+  "name": "astral_dice.guide.entry.card_shop",
+  "category": "astral_dice:blocks",
+  "icon": "astral_dice:card_shop",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:card_shop",
+      "text": "astral_dice.guide.entry.card_shop.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:card_shop"
+    }
+  ],
+  "sortnum": 0
+}

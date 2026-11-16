@@ -157,7 +157,7 @@ public class ModItems {
     //   全力攻击(巅峰 pinnacle)**保持原档**;撕咬 / 龙之咆哮 = 奇特(bizarre,沿用「专属牌 = 奇特」惯例,
     //   同日经用户确认保留 —— 不得随手改成稀有)。
     //   ⚠️ 改这些牌(或任何入池物品)的 rarity,**必须**同步三线赏金池 `astral_rews.json` 的 `"rarity"` 字段
-    //      (守门 `scripts/verify/verify_bountiful_pools.ps1` 按「物品档位 ↔ 数据层 rarity」映射比对,漏改即红)。
+    //      (守门 `scripts/verify/verify_bountiful_pools.py` 按「物品档位 ↔ 数据层 rarity」映射比对,漏改即红)。
     // 新增物品时按此标准选择 rarity,并保持与图标边框颜色一致;若参与赏金,同步维护 astral_objs/astral_rews。
     // ═══════════════════════════════════════════════════════════════════════════
 
@@ -451,6 +451,10 @@ public class ModItems {
     public static final RegistryObject<Item> CHIP_SHOP = registerItem("chip_shop",
             () -> new BlockItem(ModBlocks.CHIP_SHOP.get(), new Item.Properties().stacksTo(1)));
 
+    // 星愿铁砧方块物品(右键方块打开三输入升星台;与商店方块同款不可堆叠)
+    public static final RegistryObject<Item> ASTRAL_ANVIL = registerItem("astral_anvil",
+            () -> new BlockItem(ModBlocks.ASTRAL_ANVIL.get(), new Item.Properties().stacksTo(1)));
+
     /** 奇怪的问号(2026-10-10 事件体系重写):使用后抽一条事件(ITEM_USE),生存消耗 1 张。 */
     public static final RegistryObject<Item> EVENT_TICKET = registerItem("event_ticket",
             () -> new EventDrawItem(new Item.Properties()
@@ -715,14 +719,14 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(AstralRarities.legendary()), SandwichChipItem.HEALTH_HIGH));
 
-    // 肾上腺素-一般:生命值为 50% 或更低时,攻击力/防御力 +3(史诗)
+    // 肾上腺素-一般:生命值为 50% 或更低时,攻击力/防御力 +3;触发加成时被怪物近战攻击有 20% 闪避(史诗)
     public static final RegistryObject<Item> ADRENALINE_LOW = registerItem("adrenaline_low_chip",
             () -> new AdrenalineChipItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(AstralRarities.epic()), AdrenalineChipItem.BONUS_LOW));
 
-    // 肾上腺素-高效:生命值为 50% 或更低时,攻击力/防御力 +8;触发加成时被敌方攻击,
-    // 骰点 4-5 → 50% 闪避、6 → 100% 闪避本次伤害(传奇)
+    // 肾上腺素-高效:生命值为 50% 或更低时,攻击力/防御力 +8;触发加成时被怪物近战攻击有 20% 闪避;
+    // 与一般同时装备时叠加为 40%(传奇)
     public static final RegistryObject<Item> ADRENALINE_HIGH = registerItem("adrenaline_high_chip",
             () -> new AdrenalineChipItem(new Item.Properties()
                     .stacksTo(1)
@@ -930,6 +934,24 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(AstralRarities.epic())));
 
+    // 石中剑-精良(史诗/攻击):赐福触发 → 队伍圣剑守护(攻击 +2 / 受伤 -2) 1:00
+    public static final RegistryObject<Item> SWORD_IN_STONE_EPIC_CHIP = registerItem("sword_in_stone_epic_chip",
+            () -> new com.merlinkitsune.astral_dice.item.chip.HolySwordGuardChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.epic())));
+
+    // 石中剑-传说(传奇/攻击):赐福结束 → 24 格内敌对目标受「自身状态层数 × 2」魔法伤害,最低 4
+    public static final RegistryObject<Item> SWORD_IN_STONE_LEGENDARY_CHIP = registerItem("sword_in_stone_legendary_chip",
+            () -> new com.merlinkitsune.astral_dice.item.chip.SwordInStoneLegendaryChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.legendary())));
+
+    // 完美树枝(传奇/强化):赐福 +1 层超强精力,每层攻击 +2 / 防御 +1,死亡 -1 层
+    public static final RegistryObject<Item> PERFECT_BRANCH_CHIP = registerItem("perfect_branch_chip",
+            () -> new com.merlinkitsune.astral_dice.item.chip.PerfectBranchChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.legendary())));
+
     public static final RegistryObject<Item> PADMAN_SIGN = registerItem("padman_sign",
             () -> new PadmanSignItem(new Item.Properties()
                     .stacksTo(1)
@@ -1131,6 +1153,10 @@ public class ModItems {
                     .rarity(AstralRarities.epic())));
 
     // ── 2026-10-19 新批 4 个立牌 ──
+    // ── 2026-11-08 少主立牌（al，史诗）：主动选玩家→选 1~3 张卡转交 + 星币；被动给牌星光 / 主动后双方筹码折扣+刷新 ──
+    public static final RegistryObject<Item> AL_SIGN = registerItem("al_sign",
+            () -> new com.merlinkitsune.astral_dice.item.sign.AlSignItem(new Item.Properties()
+                    .stacksTo(1).rarity(com.merlinkitsune.starengine.item.AstralRarities.epic())));
     public static final RegistryObject<Item> JILL_SIGN = registerItem("jill_sign",
             () -> new com.merlinkitsune.astral_dice.item.sign.JillSignItem(new Item.Properties()
                     .stacksTo(1).rarity(com.merlinkitsune.starengine.item.AstralRarities.bizarre())));
@@ -1143,6 +1169,33 @@ public class ModItems {
     public static final RegistryObject<Item> DEEPSEEK_SIGN = registerItem("deepseek_sign",
             () -> new com.merlinkitsune.astral_dice.item.sign.DeepseekSignItem(new Item.Properties()
                     .stacksTo(1).rarity(com.merlinkitsune.starengine.item.AstralRarities.bizarre())));
+
+    // 金鲤立牌(souri,传奇,2026-11-09):主动「把酒言欢」放置葫芦饮(化龙后为仙酿),被动「不醉不归」
+    // (成功进入反击状态时叠金鳞、他人拾饮叠可激活反击次数),4 层金鳞触发「金鲤化龙」。
+    public static final RegistryObject<Item> SOURI_SIGN = registerItem("souri_sign",
+            () -> new com.merlinkitsune.astral_dice.item.sign.SouriSignItem(new Item.Properties()
+                    .stacksTo(1).rarity(com.merlinkitsune.starengine.item.AstralRarities.legendary())));
+
+    // 魔渊幼体立牌（本模组原创，传奇）：主动「魔域转化」放置魔渊触须，被动「触须深渊」叠渊蚀印记。
+    public static final RegistryObject<Item> SYKES_SIGN = registerItem("sykes_sign",
+            () -> new com.merlinkitsune.astral_dice.item.sign.SykesSignItem(new Item.Properties()
+                    .stacksTo(1).rarity(com.merlinkitsune.starengine.item.AstralRarities.legendary())));
+
+    // 小猎手立牌(inkshadow,稀有,2026-11-10 用户裁决「史诗→稀有」):主动「暗影之门」30 秒内两处各放一扇
+    // 【传送门】成对(可跨维度,成对后存活 3:00,放置期 +10% 移速且禁攻击/切武器/交互);被动「双生之影」
+    // 每名玩家首次穿越一扇门 ⇒ 门主人 +2 攻击(随门对存活,可叠加),敌对目标靠近门受 2 点魔法伤害。
+    public static final RegistryObject<Item> INKSHADOW_SIGN = registerItem("inkshadow_sign",
+            () -> new com.merlinkitsune.astral_dice.item.sign.InkShadowSignItem(new Item.Properties()
+                    .stacksTo(1).rarity(com.merlinkitsune.starengine.item.AstralRarities.rare())));
+
+    // 垃圾桶立牌(z3000,稀有):主动「过来把你」16 格拖拽 + 5 点技能伤害,被动「回收利用」。
+    // 原型：Z3000 抓钩的管道节 / 吸尘头模型载体；不进创造栏、无配方。
+    public static final RegistryObject<Item> VACUUM_PIECE = registerItem("vacuum_piece",
+            () -> new Item(new Item.Properties()));
+
+    public static final RegistryObject<Item> Z3000_SIGN = registerItem("z3000_sign",
+            () -> new com.merlinkitsune.astral_dice.item.sign.Z3000SignItem(new Item.Properties()
+                    .stacksTo(1).rarity(com.merlinkitsune.starengine.item.AstralRarities.rare())));
 
     // 机械师立牌(命名:megas,传奇):被动「物资补充」(手牌<6 张时每 1:00 自动获得 1 张随机卡牌)
     // + 主动「轨道轰炸」(指定 1 个敌对目标,消耗物品栏全部手牌,对目标及其周围 12 格范围轰炸;

@@ -526,6 +526,11 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
         this.lastMouseX = mouseX;
         this.lastMouseY = mouseY;
+        // 背景暗化（2026-11-06 用户裁决，各线统一；主视图与转账视图共用这一步）：1.20.1 的 Screen#render 只遍历控件、
+        //   AbstractContainerScreen#render 只调 renderBg，两处都不调 renderBackground ⇒ 容器屏默认对世界零处理
+        //   （实测背后世界与游戏内同亮度）。原版容器屏看着暗，是它们的 renderBg 自己调了 renderBackground；
+        //   本类不调 ⇒ 在这里补一次：有世界 = 两层暗化渐变（+ 世界背景事件），无世界 = 泥土背景。
+        this.renderBackground(guiGraphics);
         if (transferView) {
             // 任务Q §3（1.20.1 移植）：转账视图**完全独立** —— 跳过整个容器渲染过程。
             //   原版 AbstractContainerScreen#render 的动作依次是：
@@ -535,8 +540,7 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
             //     → renderLabels（本类覆写为空）
             //     → 悬停槽位 tooltip / 手持拖拽物
             //   1.20.1 的 renderSlot 是 private（1.20.2 起才 protected）⇒ 无法按键跳过槽位，只能整体跳过，
-            //   再把原版第一步 renderBackground 补回来（否则转账页背后不是暗化世界，面板会浮在明亮世界上）。
-            this.renderBackground(guiGraphics);
+            //   原版第一步 renderBackground 已在本方法开头统一补回（两个视图各画一次，不会重复暗化）。
             // 探针语义与 1.21.1 对齐：本帧一个槽位都没画 ⇒ 全部计入 slotSkip
             this.lastSlotSkips = this.menu.slots.size();
         } else {
@@ -686,12 +690,12 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
     }
 
     /**
-     * 路障卡物品的**延迟解析** —— 仅用于 1 张 fabric 线尚未实装的卡牌（同 {@code shop/CardShopCatalog#byItemId} 口径）。
+     * 路障卡物品的**延迟解析** —— 按注册 id 查 {@code effect_card_barricade}（同 {@code shop/CardShopCatalog#byItemId} 口径）。
      *
-     * <p>为什么不用 {@code ModItems.EFFECT_CARD_BARRICADE}：该常量在 fabric 线的 {@code item/ModItems.java} 里
-     * <b>尚不存在</b>（forge / neo 两线都有，属物品批次的缺口）；本类若直接引用会让整条线编译不过。
-     * 改走注册表按 id 查（{@code astral_dice:effect_card_barricade}），语义完全等价（同样是「延迟解析、注册期不取值」），
-     * 且物品批次把该常量实装后<b>本类无需再改</b>——只要注册 id 相同就会自动解析到真物品。
+     * <p>{@code ModItems.EFFECT_CARD_BARRICADE} 已在 fabric 线的 {@code item/ModItems.java} 注册（当前 :1103），
+     * 原先「该常量尚不存在、直接引用会编译不过」的前提已不成立。本方法仍按注册 id 查表
+     * （{@code astral_dice:effect_card_barricade}），语义与直接引用该常量等价（同为「延迟解析、注册期不取值」），
+     * 因此保留原实现。
      * 物品缺失期间退化为 {@code minecraft:air}：下文 {@code stack.is(air)} 恒 false ⇒ {@link #displayStack}
      * 原样返回（与「没有该物品就没有这条视觉替换」等价，不抛异常）。
      */

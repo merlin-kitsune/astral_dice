@@ -122,7 +122,7 @@ datagen:`RecipeOutput` → `Consumer<FinishedRecipe>`(`.save(output::accept)`);`
 - `AbstractContainerScreen.renderSlot` 为私有:卡牌栏"大卡缩放"显示在 1.20.1 退化为常规大小(仅视觉差异);`mouseScrolled` 为 3 参(无水平滚动)。
 - `LivingChangeTargetEvent.getNewTarget()`(1.21 为 getNewAboutToBeSetTarget)。
 - `stack.getCapability(ForgeCapabilities.ITEM_HANDLER)` 返回 `LazyOptional`(取值需 `.orElse(null)`,能力常量无 `.ITEM` 后缀)。
-- 开发测试目录按版本隔离并统一存放于仓库根 `run/`:1.20.1 游戏目录为 `run/1.20.1`,1.21.1 为 `run/1.21.1`(2026-09 起从子项目内 run/ 迁移至仓库根)。
+- 开发测试目录按版本隔离并统一存放于仓库根 `run/`:1.20.1 游戏目录为 `run/forge-1.20.1`,1.21.1 为 `run/neoforge-1.21.1`(2026-09 起从子项目内 run/ 迁移至仓库根)。
 
 ## 九、风险与后续验证(用户手动)
 
@@ -201,7 +201,7 @@ datagen:`RecipeOutput` → `Consumer<FinishedRecipe>`(`.save(output::accept)`);`
 
 1. **本批改动零新平台符号**：轮询/补差额牌/反刷钱/转账页/拖拽/文本收敛全部为纯逻辑与坐标，两线文本逐字相同（独立复核抽查 5 项：沙漏 4 档 `hourglassFrameOf`、`CardShopShelf.ensureLengths`、`CardShopCycleTicker` 10t 补差、`CardShopMenu.topUpShelf/topUpIfNeeded`、转账页 `TP_SCALE=1` + `TP_FACE_Y_OFF=0`）。
 2. **配方 JSON 的 schema 差异（合法）**：1.20.1 用 `result.item`、1.21.1 用 `result.id`；1.20.1 目录是 `data/astral_dice/recipes/`（**复数**）。两线 `card_shop.json` 均为 `TTT/BBB/MMM`（T=`minecraft:smooth_stone_slab`、B=`astral_dice:star_coin`、M=`#minecraft:logs`），且**都没有 datagen provider**（全仓 `*.java` 搜 `smooth_stone_slab|minecraft:logs` = 0 命中）⇒ 手写即唯一来源。**教训**：本批曾漏移植 Forge 配方（残留旧 `PPP/PCP/PPP`），表现为手册在 Forge 端渲染出旧配方 ⇒ 凡改配方必须**两线同批**并核验**产物内** JSON。
-3. **dev 运行取 devlibs**：`run/1.20.1/mods` 的 forge 产物 SHA256 == `forge-1.20.1/build/devlibs/`（未重混淆、Mojmap），≠ `build/libs`（SRG reobf）—— 属既有设计，勿改。
+3. **dev 运行取 devlibs**：`run/forge-1.20.1/mods` 的 forge 产物 SHA256 == `forge-1.20.1/build/devlibs/`（未重混淆、Mojmap），≠ `build/libs`（SRG reobf）—— 属既有设计，勿改。
 4. **转账面板素材加大**：两线 `shop_transfer_bg.png` 均 107×183（旧 92×135），`lang/zh_cn.json` 与 `textures/gui/shop/shop_transfer_bg.png` 两线**逐字节一致**；面板原点由 141×183 包围盒派生（`TP_X=73/TP_Y=2`），**探针/调用点坐标必须同源**（1.21.1 曾因沿用旧原点 81/26 导致 4 处点击失配）。
 5. **1.20.1 侧曾漏拷底图**：Forge 端常量已按新材料更新但贴图未同步 ⇒ 底图被拉伸、金框被裁；镜像素材时必须**两线同时**拷 `textures/gui/shop/**`（本批已修）。
 
@@ -241,5 +241,5 @@ datagen:`RecipeOutput` → `Consumer<FinishedRecipe>`(`.save(output::accept)`);`
 6. **资源目录与 schema**：1.20.1 是复数 `data/astral_dice/recipes/chip_shop.json` + `data/astral_dice/loot_tables/blocks/chip_shop.json`，1.21.1 是单数 `recipe/` + `loot_table/`（schema 差异 `result.item` ↔ `result.id` 同第十五节第 2 条）。两线均**手写、无 datagen provider** ⇒ 改配方必须两线同批，并核验**产物内** JSON。
 7. **三语 lang**：两线键集相同、`chip_shop` 相关 10 键逐字一致，但 `zh_cn.json` 的**键序不同**（本线把 `block.astral_dice.chip_shop` 紧挨 `block.astral_dice.card_shop` 摆放，1.21.1 把 6 个 `msg.astral_dice.chip_shop_*` 成组后置）—— 键序差异不影响加载，**不得**据此判「未同步」。
 8. **零平台差异项（逐字同源，勿无端改动）**：`client/ChipShopClientState.java`（纯客户端渲染态，不碰加载器 API）、`shop/ChipShopRoller.java`（池去重 / 权重抽样 / 星等来源全平台中立）、`shop/ChipShopCatalog.java` 的常量与 61 项池表、`ChipShopScreen` 的布局常量与命中面（`STRIP_X/Y`、`CELL_*`、`CONFIRM_*`、`REFRESH_*`、红闪条件）、`ChipShopMenu` 的 DataSlot 顺序与「扣款 → 关店」次序 —— 除第 2 条的 `ResourceLocation` 构造外逐字相同（守门 G9/G10/G11/G17/G18/G22/G23..G27 按字面校验）。
-9. **本批验收**：1.21.1 侧实机五条用例全 PASS（`scripts/test/cases/CHIP-{LOGIC,REGEN,CLIENT-BUY,CLIENT-REFRESH,CLIENT-DENY}-1.21.1.json`）；forge 线静态判据全绿（`scripts/verify/verify_chip_shop_ui.ps1` 两线 `CHIPUI_TOTAL_FAIL: 0` + `CHIPUI_RESULT: OK`；变异 `scripts/verify/mutate_chip_shop_ui.ps1` 36 条全部判红）。⚠️ **forge 线尚无实机用例**（`CHIP-*` 用例只有 1.21.1 一份、探针的 `c*` 命令也尚未移植）—— 这是本批**登记在案的欠账**，不构成「两线已对等」的结论。
+9. **本批验收**：1.21.1 侧实机五条用例全 PASS（`scripts/test/cases/CHIP-{LOGIC,REGEN,CLIENT-BUY,CLIENT-REFRESH,CLIENT-DENY}-1.21.1.json`）；forge 线静态判据全绿（`scripts/verify/verify_chip_shop_ui.py` 两线 `CHIPUI_TOTAL_FAIL: 0` + `CHIPUI_RESULT: OK`；变异 `scripts/verify/mutate_chip_shop_ui.py` 36 条全部判红）。⚠️ **forge 线尚无实机用例**（`CHIP-*` 用例只有 1.21.1 一份、探针的 `c*` 命令也尚未移植）—— 这是本批**登记在案的欠账**，不构成「两线已对等」的结论。
 

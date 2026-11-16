@@ -9,7 +9,7 @@
       "save_as": "jar"
     }
   ],
-  "assert": [
+  "asserts": [
     {
       "type": "bytecode",
       "pattern": "network/VersionGate\\.class$"

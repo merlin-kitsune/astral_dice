@@ -49,7 +49,22 @@ public final class ChipDamageHandler {
     public static void onLivingDamagePre(LivingDamageEvent.Pre event) {
         LivingEntity entity = event.getEntity();
         if (entity.level().isClientSide()) return;
-        if (!(entity instanceof Player player)) return;
+        if (!(entity instanceof Player player)) {
+            if (com.merlinkitsune.astral_dice.combat.DiceCombatParticipants.isParticipant(entity)
+                    && entity.hasEffect(com.merlinkitsune.astral_dice.effect.ModEffects.HOLY_SWORD_GUARD)) {
+                boolean unreducible = event.getSource().is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.CARD_COST)
+                        || event.getSource().is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.UNREDUCIBLE_DAMAGE)
+                        || event.getSource().is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.SKILL_DAMAGE);
+                if (!unreducible) {
+                    float current = event.getNewDamage();
+                    float capped = Math.max(0.0F, current - 2.0F);
+                    if (capped != current) {
+                        event.setNewDamage(capped);
+                    }
+                }
+            }
+            return;
+        }
 
         float damage = event.getNewDamage();
         if (damage <= 0.0F) return;
@@ -89,11 +104,12 @@ public final class ChipDamageHandler {
         //    红心一点不掉,却被削成 4 ⇒ 连黄心都少吃了)。故先换算成净掉血 damageAfterAbsorption 交给磨刀石,
         //    再把「它省下的那部分」从事件伤害里扣回去(damage - raw + fixed)⇒ **黄心消耗量保持不变**,
         //    只有红心扣血被磨刀石改动,与 1.20.1 逐点一致。
-        // 「不可削减」伤害段（王之力代价 card_cost / 狂暴反噬 unreducible_damage，2026-10-02 用户裁决）：
+        // 「不可削减」伤害段（王之力代价 card_cost / 狂暴反噬 unreducible_damage，2026-10-02 用户裁决；技能伤害 skill_damage，2026-11-14 用户裁决「等值伤害」）：
         // 跳过本模组的**固定点数减伤**（下面磨刀石 -2、怪力侦探立牌 -N）—— 但**保命**机制照常：
         // 安全气囊在上面已处理（致命即 return），磨刀石「不可被一次击倒」在下面仍然生效。
         boolean unreducible = event.getSource().is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.CARD_COST)
-                || event.getSource().is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.UNREDUCIBLE_DAMAGE);
+                || event.getSource().is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.UNREDUCIBLE_DAMAGE)
+                || event.getSource().is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.SKILL_DAMAGE);
 
         float modified = WhetstoneChipItem.modifyIncomingDamage(player, damageAfterAbsorption, !unreducible);
         if (modified != damageAfterAbsorption) {
@@ -117,12 +133,20 @@ public final class ChipDamageHandler {
             }
         }
 
+        // 圣剑守护:石中剑-精良赐福期间,受到的伤害 -2(不可削减伤害类型跳过)
+        if (!unreducible && player.hasEffect(com.merlinkitsune.astral_dice.effect.ModEffects.HOLY_SWORD_GUARD)) {
+            float current = event.getNewDamage();
+            float capped = Math.max(0.0F, current - 2.0F);
+            if (capped != current) {
+                event.setNewDamage(capped);
+            }
+        }
         // 超天酱立牌(kangel)被动「小天使请安」+ 地雷女立牌(ame)备注「一心同体」(2026-10-16):
         // 带「粉丝」(kangel_fan)的目标攻击佩戴者(或与其一心同体的地雷女佩戴者（队内须有超天酱立牌佩戴者）)时,
         // 造成的伤害 -1。⚠️ 判据只认**目标标记** kangel_fan —— 佩戴者自己的计数指示器是另一个 id
         // (kangel_fan_indicator,2026-10-17 拆分),绝不参与本段,否则超天酱互殴会互相误判 -1。
         // 与上面 sherry 的段落**同一口径**:固定点数减法、与磨刀石同阶段(LOWEST = 最终伤害
-        // 阶段)、`Math.max(0, …)` **允许扣到 0**、**不可减免**伤害类型(CARD_COST / UNREDUCIBLE_DAMAGE)
+        // 阶段)、`Math.max(0, …)` **允许扣到 0**、**不可减免**伤害类型(CARD_COST / UNREDUCIBLE_DAMAGE / SKILL_DAMAGE)
         // 一律跳过(「不可削减」段已在上面算好 unreducible);刻意**不**附带"不可致死保护"。
         if (!unreducible && com.merlinkitsune.astral_dice.item.sign.KangelSignItem
                 .fanMitigationActive(player, event.getSource())) {

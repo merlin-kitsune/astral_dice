@@ -2,7 +2,7 @@
 # ============================================================================
 # scripts/test/linux/stop.sh — Astral Dice 测试台 · Linux 侧收停
 #
-# 对标 Windows 侧 mt_stop.ps1 → mt_cleanup.ps1 的语义（唯一收停实现）：
+# 对标 Windows 侧 `scripts/test/win/stop.sh` → `scripts/test/mt_cleanup.py` 的语义（唯一收停实现）：
 #   1) 先按 <run-dir>/linux-run.pid 收停整个进程组（TERM → 等待 → KILL）
 #   2) 再用 /proc/<pid>/cwd + /proc/<pid>/cmdline 扫本 repo 的 Minecraft 客户端
 #      （java 进程；cwd 在 run/<ver>，或 cmdline 含 -Dfml / net.minecraft / runClient）
@@ -13,10 +13,10 @@
 #   scripts/test/linux/stop.sh --version 1.21.1 [--force] [--dry-run] [--purge-saves]
 #   scripts/test/linux/stop.sh --all            # 收停所有线的客户端
 #
-#   --version <ver>  1.21.1 | 1.20.1 | 26.1.2 | fabric-1.20.1
-#   --all            所有线（与 --version 二选一，必填其一，对标 mt_stop.ps1）
+#   --version <ver>  1.21.1 | 1.20.1 | 26.1.2 | fabric-1.20.1 | fabric-1.21.1
+#   --all            所有线（与 --version 二选一，必填其一，对标 `scripts/test/win/stop.sh`）
 #   --force          宽限期 15s → 3s
-#   --purge-saves    收停后删测试世界（对标 mt_cleanup.ps1 --purge-saves）
+#   --purge-saves    收停后删测试世界（对标 `scripts/test/mt_cleanup.py` --purge-saves）
 #   --stop-daemon    额外 `bash ./gradlew --stop`（会停全机 Gradle 守护！默认不做）
 #   --dry-run        只打印将做什么
 #
@@ -27,7 +27,7 @@ set -uo pipefail
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="${MT_STOP_REPO_ROOT:-$(cd "$DIR/../../.." && pwd)}"   # MT_STOP_REPO_ROOT 仅供脚本自测注入假仓库根
-ALL_VERSIONS="1.21.1 1.20.1 26.1.2 fabric-1.20.1"
+ALL_VERSIONS="1.21.1 1.20.1 26.1.2 fabric-1.20.1 fabric-1.21.1"
 
 VERSION=""
 ALL=0
@@ -88,10 +88,10 @@ scan_pids() {
         cmd="$(tr '\0' ' ' < "$p/cmdline" 2>/dev/null || true)"
         matched=0
         if [ "$ALL" = 1 ]; then
-            case "$cwd" in "$REPO_ROOT"/run/*) matched=1 ;; esac
+            case "$cwd" in "$REPO_ROOT"/run/*|"$REPO_ROOT"/fabric-*/run/*) matched=1 ;; esac
         else
-            case "$cwd" in "$REPO_ROOT/run/$VERSION"|"$REPO_ROOT/run/$VERSION"/*) matched=1 ;; esac
-            case "$cmd" in *"$REPO_ROOT/run/$VERSION"*) matched=1 ;; esac
+            case "$cwd" in "$RUN_DIR"|"$RUN_DIR"/*) matched=1 ;; esac
+            case "$cmd" in *"$RUN_DIR"*) matched=1 ;; esac
         fi
         if [ "$matched" = 0 ]; then
             case "$cmd" in
@@ -102,11 +102,26 @@ scan_pids() {
     done
 }
 
+line_project() {
+    case "$1" in
+        1.21.1)  printf %s neoforge-1.21.1 ;;
+        1.20.1)  printf %s forge-1.20.1 ;;
+        26.1.2)  printf %s neoforge-26.1.2 ;;
+        fabric-1.20.1|fabric-1.21.1) printf %s "$1" ;;
+        *) return 1 ;;
+    esac
+}
+
 saw_pid=0
 residual=0
 
 for v in $VERSIONS; do
-    RUN_DIR="$REPO_ROOT/run/$v"
+    # fabric 线的 Loom runDir 是 <proj>/run/client（与 launch.sh 的 RUN_DIR 口径一致）
+    # 其它三线是仓库根 run/<子项目名>（2026-11-12 改名，不再拼裸版本号）
+    case "$v" in
+        fabric-1.20.1|fabric-1.21.1) RUN_DIR="$REPO_ROOT/$v/run/client" ;;
+        *) RUN_DIR="$REPO_ROOT/run/$(line_project "$v")" ;;
+    esac
     PIDFILE="$RUN_DIR/linux-run.pid"
 
     # 1) PID 文件 → 进程组

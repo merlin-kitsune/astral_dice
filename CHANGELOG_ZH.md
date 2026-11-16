@@ -4,17 +4,712 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
-## 1.5.1 (2026-11-08)
+## 1.6.0-pre.1（2026-11-16）
 
-### 已修复BUG
+### 本次发布
 
-- **名刀费用计算空指针崩溃**：名刀牌耐久归零触发费用结算时，若玩家未佩戴「美咲」护法立牌，费用计算会以「无玩家」状态查询饰品栏并抛出 `NullPointerException`，导致存档在 `Ticking player` 处崩溃。现改为全链路透传真实玩家（移除了非玩家版本的费用重载），并为饰品查询补上空玩家守卫；蓄力返还同步改走统一费用口径。
-- **Forge 1.20.1 兼容下限下探到 47.1.47**：把 Forge API 面压回到 47.1.x，重写了两处只在更高版本才有的用法 —— `ResourceLocation.fromNamespaceAndPath(...)` 回退为 `new ResourceLocation(namespace, path)`（11 处），`ModLoadingContext.registerDisplayTest(...)` 改为原生扩展点注册（语义等价）。`mods.toml` 的 Forge 依赖区间随之变为 `[47.1.47,48)`，停在 47.1.x 的整合包无需升级 Forge 即可加载。
-- **卡牌选择器补上背景暗化**：1.20.1 的容器屏不会自动调用 `renderBackground`（`Screen#render` 只遍历控件、`AbstractContainerScreen#render` 只调 `renderBg`），选卡界面背后世界的亮度与游戏内一致、缺少视觉层次。现于 `CardChoiceScreen#render` 补一次背景渲染：有世界时两层暗化渐变，无世界时泥土背景（1.21.1 与 26.1.2 的原版 `Screen#render` / `extractBackground` 已自动处理，无需改动）。
+- 1.6.0 的首个预发布：把 `26.4-SNAPSHOT.1`–`.76` 开发线并入 `multi-main`。四条发布线仍是 NeoForge 1.21.1 / Forge 1.20.1 / NeoForge 26.1.2 / Fabric 1.20.1；Fabric 1.21.1 仍是 P1 脚手架。
+- StarEngine 1.2.0-pre.1 五平台：内容注册表、钱包 API、四阶段伤害钩子、伤害分类、攻击/防御属性钩子、内置 GeckoLib，以及新增的 fabric-1.21.1 库线。主模组五线统一钉 `1.2.0-pre.1`，版本上界改为 `2.0.0`。
+- `AstralDiceApi` 新增内容查询、钱包读写/转账、按分类过滤的伤害钩子，以及 `BASE`/`ADDITIVE`/`MULTIPLICATIVE`/`FINAL` 攻击/防御属性钩子。NeoForge 1.21.1 与 Forge 1.20.1 安装分类器与属性支持；其余三线只编译、不安装。
+- 配套 KubeJS 附属 `0.0.2`（独立仓库）：服务端脚本可注册/查询内容、读写钱包、注册伤害钩子与属性钩子；带仓库根 `logo.png`，并把 `astral_dice` 声明为必需前置 `[1.6.0-pre.1,)`。脚本重载时清空钩子，客户端脚本拒绝调用。
+- 把最新开发素材与文档带入 `multi-main`：`images/`、六个新增 `.bbmodel` 源文件、刷新后的 AGENTS/DSH 规则，以及 1.5.1 的发布修复（名刀减费 NPE、Forge 47.1.47 兼容、四线 CurseForge 上传）。
+- 验证：五线发布构建与附属双线构建通过；NeoForge 1.21.1 与 Forge 1.20.1 的实机 KubeJS 探针（来自 `26.4-SNAPSHOT.76`）覆盖内容计数、冻结状态、伤害分类、钱包与伤害/属性钩子注册。本次发布除版本 pin 与附属元数据外未改动该代码路径。
 
-### 依赖更新
+## 26.4-SNAPSHOT.76
 
-- **前置库 StarEngine 升到 1.1.1**：本次只有 Forge 1.20.1 侧有源码变更（库自身依赖下限 47.4.10 → 47.1.47，`LoaderTags` 的 `ResourceLocation.fromNamespaceAndPath` 换回 `new ResourceLocation`），其余平台与 1.1.0 无差异。本模组四线 `starengine_version` 与 CI 检出提交同步到 `1.1.1`，四线声明的库依赖下界也一并收紧为 `1.1.1`（`mods.toml` `[1.1.1,2.0.0)` / `fabric.mod.json` `>=1.1.1 <2.0.0`）。挂在 Forge 47.1.x 上的整合包必须换成 1.1.1 —— 1.1.0 的库自己声明 `[47.4.10,48)`，会被 FML 在依赖排序阶段拒载。
+### 本线
+
+- 新增公共战斗 API 包 `com.merlinkitsune.astral_dice.api.combat`：`DamageCategory`（`DICE_MELEE`、`RANGED`、`MAGIC`、`GUN`、`SKILL`、`OTHER`）、`DamageCategoryResolver`、`CombatStat`（`ATTACK`、`DEFENSE`）、`CombatStatStage`（`BASE`、`ADDITIVE`、`MULTIPLICATIVE`、`FINAL`）、`CombatStatContext`、`CombatStatHook`、`CombatStatHandle` 与 `CombatStatHooks`。钩子按优先级降序执行，异常被隔离并记录日志；展示态上下文跳过钩子；未安装支持前注册会被拒绝。
+- `AstralDiceApi` 新增 `signs()`、`chips()`、`signIds()`、`chipIds()`、`diceTierIds()`、`isContentFrozen()`；钱包 `walletAvailable`/`walletBalance`/`walletHasBalance`/`walletDeposit`/`walletWithdraw`/`walletTransfer`（尽力转账，失败退款）；伤害分类 `installDamageCategoryResolver`/`damageCategory`/`isDamageCategorySupported`；按分类过滤的 `registerDamageHook`；以及 `installCombatStatSupport`/`isCombatStatSupported`/`registerCombatStatHook`。原有仅按阶段的 `registerDamageHook` 与 `freezeContent` 保留。
+- NeoForge 1.21.1 与 Forge 1.20.1 在 common setup 安装 `SpellDamageRegistry::damageCategory` 与属性钩子支持；其余三线只编译、不安装。已接线的两线按 `SKILL` → `GUN` → `MAGIC` → `RANGED` → `DICE_MELEE` → `OTHER` 分类，复用现有枪械 / 法术证据表。GUN 归类不受 `GameplayConstants.ALLOW_FIREARM_DAMAGE` 影响，该配置只影响法术白名单。
+- 两线 `DiceCombatEvents` 接入属性钩子：攻击 `BASE` 在基础攻击力之后、内置攻击修正之前；攻击 `ADDITIVE`/`MULTIPLICATIVE` 在内置循环之后；攻击 `FINAL` 在 `DiceBattleResolver.resolve` 之前；防御 `BASE` 在公式之后、累加 `defenseBaseDice`/`defenseCardSum` 之前；防御 `ADDITIVE`/`MULTIPLICATIVE`/`FINAL` 在 padman bypass 之后、结算之前。战斗上下文使用 `display=false`；HUD 与 tooltip 数值不包含脚本钩子。
+- 新增独立 KubeJS 附属 `0.0.1`（独立仓库），两线共享反射绑定：内容注册 / 查询、钱包读写、按分类的伤害钩子、攻击 / 防御钩子、仓库根 `logo.png` 图标，元数据要求 `[26.4-SNAPSHOT.76,)`。附属仅限服务器脚本；`/reload` 会清空钩子。
+- 验证：五线 `.76` `build` exit 0（`BUILD SUCCESSFUL in 8s`，44 tasks：32 executed / 12 up-to-date；五枚 `.76` jar），附属两线构建通过。NeoForge 1.21.1 实机（`scripts/test/win/logs/1.21.1-20261115-202859.log`）：`Astral Dice KubeJS 0.0.1 loaded (KubeJS 7, NeoForge 1.21.1)`；探针 `signs=36;chips=70;diceTiers=13;frozen=true;categorySupported=true;statSupported=true;magicCategory=magic;diceCategory=dice_melee;walletBalance=166`；行为探针 `cancelHealth=20->20`、`plainHealth=20->16`，攻击 `BASE` 钩子 `runs=1`，防御 `BASE` 钩子 `runs=1`。Forge 1.20.1 实机（`scripts/test/win/logs/1.20.1-20261115-203634.log`，测试期通过临时 Gradle init 脚本排除了无关的 Carpet 测试依赖）：`Astral Dice KubeJS 0.0.1 loaded (KubeJS 6, Forge 1.20.1)`；探针 `signs=36;chips=70;diceTiers=13;frozen=true;categorySupported=true;statSupported=true`；行为 `cancelSeen=magic/incoming/4/4;cancelHealth=20->20;plainHealth=20->16;statSeen=attack/base/0.20800000056624413;statTargetHealth=0;defenseSeen=defense/base/0;defenseTargetHealth=19`。
+
+## 26.4-SNAPSHOT.75
+
+### 本线
+
+- 把主模组内置立牌 / 筹码接入 StarEngine 内容注册表。`BuiltinContent` 在五线 common setup 阶段注册 36 枚立牌与 70 枚筹码，早于服务器启动后的冻结；排除 `blank_sign` 与 `blank_chip`。立牌描述符的学派为 `generic`，冷却取 `GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS`；筹码描述符的学派 / 分类来自商店数据，基础价格为 10，按品阶取权重 6/3/2（稀有 / 史诗 / 传说）。两张表为静态数据，需与物品 / 商店数据同步维护。
+- 验证：五线 `.75` `build` exit 0（`BUILD SUCCESSFUL in 12s`，44 tasks：32 executed / 12 up-to-date；五枚 `.75` jar 在 `build/libs`）。NeoForge 1.21.1 实机（`scripts/test/win/logs/1.21.1-20261115-191546.log`）：`Signs.size()=36`、`Chips.size()=70`，两者在服务器启动后均已冻结；样例描述符 `parunan_sign/generic/3600` 与 `atm_chip/STARLIGHT/ECONOMY/10/6`；`blank_sign` / `blank_chip` 均解析为 null；70 枚筹码描述符全部非 null。冻结日志在 `:6421`，mod loaded 在 `:4795`。探针完成后已停止游戏。
+
+## 26.4-SNAPSHOT.74
+
+### 本线
+
+- 内容注册表（`DiceTierRegistry`、`DiceTiers`、`Signs`、`Chips`）改为在服务器启动后冻结（NeoForge/Forge 为 `ServerStartedEvent`，Fabric 为 `ServerLifecycleEvents.SERVER_STARTED`），不再在 common setup 阶段冻结。KubeJS 服务器脚本在 common setup 之后才加载，若提前冻结会让脚本侧的 `AstralDice.registerSign/registerChip` 直接被拒；冻结后的迟到注册仍抛 `IllegalStateException`。
+- 在 `DamageBridge` 注释中写明 DEATH 阶段取消语义：取消只阻止平台继续处理死亡（掉落、死亡消息等），不会恢复已扣生命值，也不会让实体回到存活状态；需要目标存活时应在 POST 阶段补回生命值，或在 INCOMING/AFTER_ARMOR 阶段改写伤害使其不致死。
+- 验证：五线 `.74` `build` exit 0（`BUILD SUCCESSFUL in 24s`，44 tasks：37 executed / 7 up-to-date；五枚 `.74` jar 在 `build/libs`）。NeoForge 1.21.1 实机（`scripts/test/win/logs/1.21.1-20261115-185541.log`）：KubeJS 预冻结脚本在 :5964 注册 `kubejs_prefreeze_sign`，:6422 输出冻结日志；探针返回 `sign=true;signCount=1;frozenSign=true;frozenChip=true;frozenTiers=true;frozenRegistry=true;lateSign=...IllegalStateException: content registry sign is frozen`。本批未做客户端视觉检查。
+
+## 26.4-SNAPSHOT.73
+
+### 本线
+
+- 修复共享商店数据中 9 张卡牌的物品 ID 与注册名不一致（`monster_laser_card` → `effect_card_monster_laser`、`chocolate_cake` → `effect_card_chocolate_cake`、`you_have_i_have` → `effect_card_you_have_i_have`、`monster_brick_card` → `effect_card_monster_brick`、`hamburger` → `effect_card_hamburger`、`luxury_feast` → `effect_card_luxury_feast`、`express_delivery` → `effect_card_express_delivery`、`orbital_strike_card` → `effect_card_orbital_strike`、`directional_blast_card` → `effect_card_directional_blast`）。这 9 个 ID 都解析为 `minecraft:air`，导致卡牌交易校验器打印 9 条「命中被排除项：<空气>」，商店池里出现空条目。
+- `CardShopCatalog.applyData` 现在会跳过无法解析或未注册的卡牌物品 ID 并输出错误日志，不再把空气 `PoolEntry` 放进池子；错误的数据包不会再让空卡上架。
+- 验证：五线 `.73` `build` exit 0（`BUILD SUCCESSFUL in 14s`，44 tasks：32 executed / 12 up-to-date；五枚 `.73` jar 在 `build/libs`）。NeoForge 1.21.1 实机（`scripts/test/win/logs/1.21.1-20261115-184222.log`）：23 张商店卡牌全部解析到已注册物品，`CardShopCatalog.entries()` 为 23 条，`CardTradeFilter.validatePool` 异常 0；日志 `:6137`（商店池 23 张、异常 0）与 `:7731`（smoke_reload 23 张、异常 0）。三条 Curios `scroll/feet/spellbook is not a registered slot type!` 错误与本次改动无关。
+
+## 26.4-SNAPSHOT.72
+
+### 本线
+
+- Forge 1.20.1 与两条 Fabric 线补齐 StarEngine 的四个伤害阶段。Forge 仍无原生「扣血之后」事件，POST 改由 `LivingEntity#actuallyHurt` 的生命值差补齐：HEAD 记录进入时生命值，RETURN 仅在生命值真的下降时派发。
+- Fabric 1.20.1 / 1.21.1 通过 `LivingDamageBridgeMixin` 增加 AFTER_ARMOR 与 POST：在 `LivingEntity#actuallyHurt` 内包裹 `setHealth` 调用，先按「护甲/吸收之后」的伤害派发 AFTER_ARMOR（可取消或改写），再按实际生命值损失派发 POST。该路径同时覆盖 Fabric 1.21.1 的 `AFTER_DAMAGE` 在致死伤害时不派发的缺口。
+- 移除 Fabric 1.21.1 的 `AFTER_DAMAGE` 注册，避免 POST 重复并消除致死伤害漏派发；`ALLOW_DAMAGE` 仍只映射 INCOMING 且只能取消。
+- Mixin 注册：Forge 为 `bridge.LivingDamagePostBridgeMixin`，两条 Fabric 线为 `bridge.LivingDamageBridgeMixin`。伤害来源用 ThreadLocal 栈保存，嵌套伤害仍能正确配对。
+- 验证：五线 `build` exit 0（`BUILD SUCCESSFUL in 15s`，44 tasks：27 executed / 17 up-to-date；`.72` jar 在 `build/libs`）。Forge refmap 已映射到 `m_6475_`；Fabric 最终 jar 内已重映射为 `method_6074` / `method_6033`。本批未做实机客户端测试。
+
+## 26.4-SNAPSHOT.71
+
+### 本线
+
+- 把 StarEngine 伤害钩子链接入主伤害事件。NeoForge 1.21.1 / 26.1.2 派发四阶段（INCOMING、AFTER_ARMOR、POST、DEATH）；Forge 1.20.1 派发 INCOMING、AFTER_ARMOR、DEATH（该线没有原生 Post 事件）；Fabric 1.21.1 派发 INCOMING、POST、DEATH；Fabric 1.20.1 派发 INCOMING、DEATH。
+- Fabric 的 `ALLOW_DAMAGE` 只能取消、不能改写进入伤害；桥接层把 amount 改写视为建议值。Forge 缺原生 Post，Fabric 1.20.1 缺 Post/AfterArmor；这些差异已在桥接类注释中写明。
+- 默认不注册任何钩子，因此未注册时事件接线不改变行为。
+- 验证：五线 `build` exit 0（`BUILD SUCCESSFUL in 15s`，44 tasks：32 executed / 12 up-to-date；`.71` jar 在 `build/libs`）。本批未做实机客户端测试。
+
+## 26.4-SNAPSHOT.70
+
+### 本线
+
+- 五线卡牌商店与筹码商店的池改为数据包驱动：`data/<namespace>/astral_dice/shop/*.json` 声明 23 张卡牌池与 70 枚筹码池（id、tier、school、category、weight、combat、星级门槛）；没有有效文件时继续使用内置池。
+- 新增 `ShopData` 与 `AstralDiceDataStore` 的商店快照；五线各注册一个商店 reload listener；重载后 `ChipShopCatalog` / `CardShopCatalog` 直接切换 active pool/index，无需重启服务器。
+- Fabric 1.20.1 / 1.21.1 使用同一份默认数据；路障卡仍通过 Fabric 的 `byItemId` 助手延迟解析，因此 Fabric 池与 Neo / Forge 语义一致。
+- 验证：五线 `build` exit 0（`BUILD SUCCESSFUL in 15s`，44 tasks：32 executed / 12 up-to-date；`.70` jar 在 `build/libs`）。本批未做实机客户端测试。
+
+## 26.4-SNAPSHOT.69
+
+### 本线
+
+- 五线星愿铁砧与战利品注入改为数据包驱动：`data/<namespace>/astral_dice/anvil/*.json` 控制星币成本、经验成本、最高星阶、材料标签与逐物品面额；`data/<namespace>/astral_dice/loot/*.json` 通过原版战利品表控制箱子与实体注入。
+- 删除旧硬编码铁砧数值与 NeoForge 的 GLM / `onLivingDrops` / 四池通道。默认数据放在 `common/src/main/resources`；NeoForge / Forge 用延迟重载队列，Fabric 从 `LootTableEvents.MODIFY` 解析数据包（Fabric 1.21.1 在服务器启动前回退到内置默认数据）。
+- 原生表覆盖 common / end_city / buried_treasure 箱子、星币与特殊星盘档位（凋灵、监守者、远古守卫者、恶魂、凋灵骷髅、守卫者、通用 Monster）。普通怪星盘统一 1%；凋灵 5；末影龙 100%。
+- 验证：五线 `build` exit 0（`BUILD SUCCESSFUL in 14s`，44 tasks：32 executed / 12 up-to-date；`.69` jar 在 `build/libs`）。本批未做实机客户端测试。
+
+## 26.4-SNAPSHOT.68
+
+### 本线
+
+- 五线星愿铁砧界面不再在玩家物品栏上方绘制灰色「物品栏」（`playerInventoryTitle`）。NeoForge 1.21.1 的界面不再调用 `super.renderLabels`；其余四线删除各自显式的物品栏标签绘制。
+- 铁砧标题改为固定使用 `container.astral_dice.astral_anvil` 组件并带中文兜底，不再依赖菜单传入的标题，避免部分加载器传入空标题或原始 ID 时把界面标题显示成 `astral_dice:astral_anvil`。
+- 验证：五线 `:build` exit 0（`BUILD SUCCESSFUL in 18s`，44 tasks：37 executed / 7 up-to-date；日志 `temp/build-68.log`）。NeoForge 1.21.1、Forge 1.20.1、NeoForge 26.1.2、Fabric 1.20.1、Fabric 1.21.1 五线实机打开星愿铁砧界面，标题均为「星愿铁砧」，物品栏上方均无灰色「物品栏」标签：`run/neoforge-1.21.1/screenshots/2026-11-15_14.26.40.png`、`run/forge-1.20.1/screenshots/2026-11-15_14.28.57.png`、`run/neoforge-26.1.2/screenshots/2026-11-15_14.29.25.png`、`fabric-1.20.1/run/client/screenshots/2026-11-15_14.30.00.png`、`fabric-1.21.1/run/client/screenshots/2026-11-15_14.30.28.png`。
+
+## 26.4-SNAPSHOT.67
+
+### 本线
+
+- 星愿铁砧不再在 `experimental_star_upgrade` 开启时重置星级或归还卡牌；星愿铁砧与原版铁砧现在都固定只加 1 星，并保留输入骰子已装配的卡牌。
+- 把重置移到骰子升阶合成（普通→黄金→钻石）：开启实验开关后，合成出的新骰子重置为 0★、清空已装配卡牌、已用攻/防费用归零，卡牌上限回到 0★ 基础值；母体骰子已装配的卡牌退回玩家。合成投入与卡牌费用不退（B 方案）。
+- 五线新增 `DiceUpgradeCraftHandler`（仅服务端、仅实验开关开启时生效）；两条 Fabric 线在 `AstralDiceMod` 显式注册。删除铁砧菜单/事件处理器中的重置分支与 `ANVIL_STAR_RESET_CARDS_RETURNED` 日志。
+- JEI `astral_dice:astral_anvil` 页面不再显示「重置 X★ → 0★」；15 份语言文件已删除 `star_reset` 键，配置注释改为描述升阶合成重置，而不是铁砧重置。
+- 验证：五线 `compileJava` exit 0（`BUILD SUCCESSFUL in 17s`，8 tasks；日志 `temp/compile-b-all-2.log`）。五线 `.67` `:build` exit 0（`BUILD SUCCESSFUL in 21s`，44 tasks；37 executed，7 up-to-date；日志 `temp/build-67.log`）；五枚 `.67` jar 均含 `DiceUpgradeCraftHandler`，并已部署到 `run/<line>/mods`。NeoForge 1.21.1 实机（`experimental_star_upgrade=true`，`scripts/test/win/logs/1.21.1-20261115-134430.log`）：工作台用带 medium 卡的 2★ `astral_dice:dice` + 4 金锭 + 4 星币合成 `golden_dice`，产物为 0★、`appliedStones` 为空、已用攻/防费用 0/0、上限 3/3。取走后退回 1 张 `astral_dice:attack_card_medium`（日志 `:9453`：`CRAFT_STAR_RESET_CARDS_RETURNED player=Dev source=astral_dice:dice star=2->0 cards=1`），金锭与星币均未返还。另一枚带卡 2★ 骰子在星愿铁砧升到 3★、medium 卡保留，消耗 25 星币（64→39），确认铁砧不再重置。点击箭头打开 JEI `astral_dice:astral_anvil` 页面，显示「星阶 0→1 · 15 星币 / 升级花费：5」，没有「重置」文案；截图 `temp/astral-anvil-evidence/neoforge-1.21.1/jei-67-no-reset.png`（sha256 `1f58b4ca2bb801358fd1539dc6873b79661d2d89bdb23d2172d89a0d9c639a92`）。其余四线本批仅构建、未实机。
+
+## 26.4-SNAPSHOT.66
+
+### 本线
+
+- 修复星愿铁砧的 JEI 空槽入口：不放入任何物品时，左键点击箭头也会打开 `astral_dice:astral_anvil` 类别并列出全部 39 条升星配方（13 种骰子 × 0/1/2 星），不再要求输入槽或结果槽有物品；「查看配方」tooltip 同样在空槽时显示。实现上 `AstralAnvilJeiBridge` 允许空栈，插件收到空栈时把完整配方列表交给 `RecipesGui`。
+- 验证：五线 `.66` `:build` exit 0（`BUILD SUCCESSFUL in 15s`，44 tasks；32 executed，12 up-to-date；日志 `temp/build-66.log`）。NeoForge 1.21.1 实机（`scripts/test/win/logs/1.21.1-20261115-132255.log`，加载 `astral_dice-26.4-SNAPSHOT.66+neoforge_1.21.1.jar`，`experimental_star_upgrade=false`）：清空背包、在 `(8,-60,5)` 放星愿铁砧、打开空界面后，左键点击箭头，`mc.screen` 从 `AstralAnvilScreen` 变为 JEI `RecipesGui`，类别内共 39 条配方，页码 `1/14`，全部为升星页（星阶 0→1 / 1→2 / 2→3，升级花费 10）；截图 `run/neoforge-1.21.1/screenshots/2026-11-15_13.23.52.png`。其余四线本批仅构建、未实机。
+
+## 26.4-SNAPSHOT.65
+
+### 本线
+
+- 修复五线星愿铁砧 JEI 页面的整体布局：类别宽度由 180 px 改为 128 px，JEI 会把配方面板居中，不再在右侧留下大片空白。
+- 点击铁砧箭头时，现在会把全部 39 条升星页（13 种骰子 × 0/1/2 星）交给 JEI，并把与输入骰子、当前星阶匹配的那条排到最前。此前只传这一条，所以界面恒为 `1/1`，也只显示普通骰子的费用。
+- 每条页面现在读取自己的骰子与星阶：关闭 `experimental_star_upgrade` 时所有骰子都显示 10 级费用；开启时 `dice_t0`…`dice_t4` 分别显示 5/10/15/20/30，未分阶骰子显示 5；星币成本仍按星阶为 15/20/25。
+- 把 JEI 的费用文案从「附魔花费」改为「升级花费」（英文 `Upgrade Cost`，日文「アップグレード費用」），15 份语言文件均已更新。
+- 验证：五线 `.65` `:build` exit 0（`BUILD SUCCESSFUL in 15s`，44 tasks；32 executed，12 up-to-date；日志 `temp/build-65.log`）；五枚 `.65` jar 均含 `AstralAnvilJeiCategory.recipesStartingWith` 与改名后的 `Upgrade Cost` 文案。NeoForge 1.21.1 普通模式实机（`scripts/test/win/logs/1.21.1-20261115-123420.log`，`experimental_star_upgrade=false`）：`diamond_dice` + 64 星币时 `cost=10`；点击箭头打开 `astral_dice:astral_anvil`，面板居中、页码 `1/14`，39 条（13 种骰子 × 0/1/2 星）全部显示 `升级花费：10`；截图 `temp/astral-anvil-evidence/neoforge-1.21.1/jei-65-normal.png`。实验模式（`scripts/test/win/logs/1.21.1-20261115-123622.log`，开关开启）：`nether_star_dice`（t4）+ 64 星币时 `cost=30`；JEI 页首条为「重置 0★ → 0★」「升级花费：30」，39 条按经验 5/10/15/20/30 的分布为 3/9/15/9/3；截图 `.../jei-65-experimental.png`。其余四线本批已构建、未实机。
+
+## 26.4-SNAPSHOT.64
+
+### 本线
+
+- 五线星愿铁砧界面新增 JEI 配方入口：左键点击材料槽与结果槽之间的金色箭头，现在会打开专属的 `astral_dice:astral_anvil` JEI 类别，列出 13 种骰子 × 0/1/2 星共 39 条升星规则，并以星愿铁砧为催化剂显示星币成本与经验成本。具体页面按输入骰子的物品与当前星阶精确匹配，因此显示的是星愿铁砧升星规则，而不是骰子的工作台合成配方。JEI 可用时悬停箭头显示「查看配方」；界面只依赖不引用 JEI 类型的 `AstralAnvilJeiBridge`，未安装 JEI 时模组仍可正常加载。NeoForge/Forge 通过 `@JeiPlugin` 发现 `AstralAnvilJeiPlugin`，两条 Fabric 线在 `fabric.mod.json` 的 `jei_mod_plugin` 中注册；15 份语言文件均已加入新类别与提示键。
+- 新增 `DiceStarUpgrade.starLevel(ItemStack)`（非骰子返回 -1），让 JEI 类别与箭头在不重复组件读取逻辑的前提下匹配到精确的升星页。
+- 让该 JEI 页随模式切换：`experimental_star_upgrade` 开启时，每条规则显示「重置 X★ → 0★」，并保持与游戏内铁砧一致的 15/20/25 星币与分级经验成本；关闭时仍显示「星阶 X→Y · N 星币」。15 份语言文件均已加入新的重置键。
+- 从玩法中隐藏残留的 `astral_dice:vacuum_piece`「管道原型」：五线创造栏均已移除，NeoForge 1.21.1 的三份语言名称也已删除。物品注册与物品模型保留，因为 `GrapplingHookRenderer` 仍用 `vacuum_piece` 作为 Z3000 抓钩管道的内部模型载体；直接删除会破坏该渲染器。
+- 验证：五线 `.64` `:build` exit 0（`BUILD SUCCESSFUL in 3s`，44 tasks；21 executed，23 up-to-date；日志 `temp/build-64.log`）。五枚 jar 均含 `AstralAnvilJeiCategory.class`，五份 `zh_cn.json` 均含 `重置 %s★ → 0★`。NeoForge 1.21.1 实机（`scripts/test/win/logs/1.21.1-20261115-114726.log`）：打开星愿铁砧界面，把 1 枚 `astral_dice:dice` 与 64 枚 `astral_dice:star_coin` 放入输入槽，左键点击箭头；JEI 打开 `astral_dice:astral_anvil`，页码 `1/1`：铁砧 + 骰子 + 15 星币 → 骰子，显示「重置 0★ → 0★」「附魔花费: 5」（测试实例 `experimental_star_upgrade=true`；该配方自身 `coinCost=15`、`xpCost=5`）。JEI 运行时物品清单共 1928 个物品栈，`vacuum_piece` 命中 0；创造栏也无「管道原型」条目。其余四线本批已构建、未实机。截图证据：`temp/astral-anvil-evidence/neoforge-1.21.1/jei-astral-anvil.png` 与 `...-crop.png`（未提交）。
+
+
+## 26.4-SNAPSHOT.59
+
+### 本线
+
+- 修复五线星愿铁砧的物品栏图标。方块模型缺少 `minecraft:block/block` 父模型，物品状态没有继承标准 GUI 显示变换，图标会变成扁平、过大的一个面，而不是正常方块图标。现改为继承原版方块 GUI 变换（30°/225° 旋转、0.625 缩放），与铁砧物品图标一致；世界内模型、UV、贴图、配方与物品模型均未改动。
+- 验证：五线 `:build` exit 0（BUILD SUCCESSFUL in 10s，44 tasks；32 executed，12 up-to-date）；五枚 `.59` jar 均含带父模型的方块模型；`check_changelog_parity.py` 输出 `CHANGELOG_PARITY: OK sections=81 entries=1080/1080`。本轮未实机：改动只是原版方块 GUI 显示变换，不涉及新渲染代码。
+
+## 26.4-SNAPSHOT.58
+
+### 本线
+
+- 五线新增 **星愿铁砧**（`astral_dice:astral_anvil`）：继承原版铁砧的下落、落地/破坏音效与水平朝向，且没有耐久、不会损坏。界面为 176×166 的铁砧式布局，三个输入槽（一个骰子 + 两个材料）和一个结果槽；材料槽由 `astral_dice:astral_anvil_materials` 物品标签控制，初始只接受 `astral_dice:star_coin`。方块由 `minecraft:anvil` + 2×`astral_dice:star_coin_bag` 无序合成。星愿铁砧**不**加入 `minecraft:anvil` 方块标签，菜单也不会调用 `AnvilBlock.damage`，因此原版铁砧的损坏/移除逻辑不会作用到它。
+- 原版铁砧的骰子升星仍然保留。新增公共配置项 `experimental_star_upgrade`（默认 `false`，配置版本 8），同时控制**两种铁砧**上的实验性行为：开启后，升星成功产出 0★ 骰子，已装备卡牌退回玩家物品栏（生存模式满栏时掉落，创造模式直接丢弃），经验消耗按输入骰子的 `astral_dice:dice_t0`…`dice_t4` 标签分级（5/10/15/20/30，未命中回退 5）。关闭时两种铁砧均保持现有 10 级上限、星阶 +1、卡牌保留和 15/20/25 星币材料成本不变。
+- 补齐五线资源与接线：176×166 GUI 贴图、32×32 方块贴图、方块模型/blockstate/物品模型、无序配方、战利品表、三语名称与提示、镐/铁工具标签、创造栏条目、菜单类型、Screen 注册，以及 26.1.2 的 blockstate/item model datagen 注册。
+- 验证：五线 `:build` exit 0；增量复跑 BUILD SUCCESSFUL in 2s。五枚 `.58` jar 均含星愿铁砧类、GUI/方块贴图、模型、配方、战利品表与材料标签。复核跟进：菜单的经验消耗 `DataSlot` 改为只在逻辑服务端写入，专用服务端与客户端配置不同时不会再被客户端本地值覆盖。五线实机（NeoForge 1.21.1、Forge 1.20.1、NeoForge 26.1.2、Fabric 1.20.1、Fabric 1.21.1）均通过：关闭开关时，带卡 2★ 骰升到 3★ 且卡牌保留、快捷移动不复制；星愿铁砧界面/下落方块/音效正常，原版铁砧方块不被移除。开启开关时，两种铁砧均产出 0★ 骰、卡牌退回玩家、t0..t4 经验 5/10/15/20/30；满栏时生存掉落归还卡牌、创造直接丢弃。每线均截图留证：方块模型、两种 GUI、取走后背包与 t4 经验。
+- 五线修复星愿铁砧方块模型：原 UV 按 32×32 贴图像素空间编写，超出 Minecraft 模型 0–16 的 UV 范围，导致上部结构采样到图集里的相邻贴图、显示成透明彩色框架。现已把全部 UV 归一化到 0–16；方块贴图与模型形状未改。
+- 修复星愿铁砧菜单在快捷移动（Shift 点击）下的卡牌复制：`quickMoveStack` 会先把结果槽搬空再回调 `onTake`，传入的栈因此为空，0★/空卡判定会把输入骰子的卡牌退回，而产物其实仍带着这些卡。现改为在清空输入前从输入栈重算预期产物；NeoForge 1.21.1、Forge 1.20.1、NeoForge 26.1.2、Fabric 1.21.1 四线修复。另把 `cost.set(0)` 改为只在逻辑服务端执行（复核 P3-A）。Fabric 1.20.1 原已有空栈回退，只补了成本守卫。
+- 修复五线原版铁砧 `onAnvilRepair` 的同一空栈问题：修复事件的 `output` 是 `onTake` 传入的栈，快捷移动后该栈为空，原逻辑会同时跳过卡牌归还与筹码商店刷新。现在改用 `DiceStarUpgrade.resultFor(...)` 从左槽输入重算预期产物，再用它做 0★/星阶 +1 判定，随后照常归还卡牌并授予刷新；实验开关关闭时，快捷移动曾静默丢失的刷新也随之恢复。
+
+## 26.4-SNAPSHOT.53
+
+### 本线
+
+- 四个扁平筹码流派标签补齐 Fabric 1.20.1 / Fabric 1.21.1，五线现在全部带有 `astral_dice:school_starlight`（11 枚）、`school_healing`（10 枚）、`school_mark`（9 枚）、`school_charge`（11 枚），共 41 枚。Fabric 标签取值与 P0 三线逐字节一致，按 `ChipShopCatalog.POOL` 顺序，泛用 29 枚与 `blank_chip` 仍排除在外。
+- 两条 Fabric 的 `ModTags.Items` 新增 `SCHOOL_STARLIGHT` / `SCHOOL_HEALING` / `SCHOOL_MARK` / `SCHOOL_CHARGE` 四个 `TagKey<Item>` 常量，沿用各线 `TagKey.create(Registries.ITEM, ...)` 工厂。标签目前仍只作数据用途，没有消费方，留给未来的研究系统。
+- `tools/verify_chip_school_tags.py` 改为五线全部必需：缺文件、部分缺失、`item`/`items` 目录放错、多出 school 文件或常量、值顺序错或重复、GENERIC / `blank_chip` 泄漏、非 `chips.json` 成员，都会在对应线失败；Fabric 不再跳过。
+- 验证：门禁五线 exit 0，均 `total=41 chips=71`；五线 `:build` → BUILD SUCCESSFUL in 9s（44 tasks；32 executed，12 up-to-date），五枚 `.53` jar 均含四个流派标签 JSON，Fabric 两枚也已包含。8 个新 Fabric JSON 与 NeoForge 1.21.1 副本逐字节一致，CRLF、无 BOM、末尾换行。本轮未实机：标签目前仍无游戏内消费方。
+
+## 26.4-SNAPSHOT.52
+
+### 本线
+
+- NeoForge 1.21.1、Forge 1.20.1、NeoForge 26.1.2 三线新增四个扁平筹码流派物品标签：`astral_dice:school_starlight`（11 枚）、`school_healing`（10 枚）、`school_mark`（9 枚）、`school_charge`（11 枚），共 41 枚。取值按 `ChipShopCatalog.POOL` 顺序过滤；泛用 29 枚不打标签，`blank_chip` 不入标签。
+- 三线 `ModTags.Items` 暴露 `SCHOOL_STARLIGHT` / `SCHOOL_HEALING` / `SCHOOL_MARK` / `SCHOOL_CHARGE` 四个 `TagKey<Item>` 常量；目前只作为数据标签，没有消费方，留给未来的研究系统接入。
+- 新增 `tools/verify_chip_school_tags.py`：解析各线 POOL，精确校验标签值/顺序、三线映射一致、41/29 切分、`chips.json` 成员、平台对应的 `item`/`items` 目录、无多余 `school_generic`，以及新标签文件的 CRLF/BOM。Fabric 两线本轮未落标签，脚本在有文件前按跳过处理。
+- 验证：门禁 exit 0，三线均 `total=41 chips=71`，`chips.json` 各 71 条；五线 `:build` → BUILD SUCCESSFUL in 6s（44 tasks；32 executed，12 up-to-date）；三枚 P0 `.52` jar 均含四个标签 JSON，两枚 Fabric jar 均不含。本轮未实机：标签目前无游戏内消费方。
+
+## 26.4-SNAPSHOT.51
+
+### 本线
+
+- 修复三枚新筹码在五线缺失成员标签的问题：`sword_in_stone_epic_chip`、`sword_in_stone_legendary_chip`、`perfect_branch_chip` 原先只在 `astral_dice:exclusive_chips` 中，缺少 `astral_dice:chips` 与 `curios:chip`；现两处均已补入，Curios 槽位校验与筹码逻辑可正常识别。
+- 1.21.1 实机：六枚专属筹码均返回 `astral_dice:chips`、`astral_dice:exclusive_chips`、`curios:chip`；对照 `atm_chip` 仍不在 `exclusive_chips`。
+- FX 实机：12 只高血量尸壳，石中剑-传说落下绿色+金色粒子；两轮各 4 点伤害均在粒子命中后结算（200 → 192）。截图用 4 TPS 慢放便于观察，实际仍为蓄势 4 tick / 下落 3 tick。
+- 验证：五线 `:build` → BUILD SUCCESSFUL in 7s（44 tasks；32 executed，12 up-to-date）；五枚 `.51` jar 均含修复后的 `chips.json` / `chip.json` 与六项 `exclusive_chips.json`。1.21.1 实机使用超平坦测试世界。未 push/tag。
+
+## 26.4-SNAPSHOT.50
+
+### 本线
+
+- 创造栏 / JEI 筹码顺序：诅咒之剑、复仇之戟、贯穿之铳、石中剑-精良、石中剑-传说、完美树枝组成「专属筹码」块，统一排在筹码区最后、卡牌商店条目之前。NeoForge 1.21.1 / Forge 1.20.1 / NeoForge 26.1.2 三线完成重排，并把稀有/史诗/传奇分组计数从 8/12/9 修正为 7/10/6；两条 Fabric 线原本六枚已连续且顺序正确，只补分组注释。JEI 顺序取自创造栏，未改 JEI 代码。
+- 五线新增 `astral_dice:exclusive_chips` 物品标签，并增加 `ModTags.Items.EXCLUSIVE_CHIPS` 常量；标签按同样顺序列出六枚筹码，目前无任何消费方，不改变商店、村民交易、赏金池或玩法。未复用 `is_exclusive`，该标签仍只用于卡牌。
+- 验证：五线 `:build` → BUILD SUCCESSFUL in 6s（44 tasks；32 executed，12 up-to-date）；五枚 `.50` jar 均含 `exclusive_chips.json`（1.21.1 / 26.1.2 / Fabric 1.21.1 为 `tags/item/`，两条 1.20.1 为 `tags/items/`）。本轮未实机。
+
+## 26.4-SNAPSHOT.49
+
+### 本线
+
+- 石中剑-传说：赐福结束的魔法伤害改为绿色+金色粒子落击。24 格内每个敌对目标头上 8 格生成粒子团，蓄势 4 tick 后用 3 tick 落下（约 2.67 格/tick），粒子抵达碰撞箱上沿时才结算 `astral_dice:card_spell` 伤害；多目标按最多 10 tick 错峰。延迟伤害包在内部波及窗口内，粒子复用仓库铁-艾尔登法环粒子库（`NATURE_SPARKLE` / `NATURE_GLOW` / `HOLY_STAR` / `HOLY_SPARK`），不新增贴图。
+- 两条 fabric 线在 `AstralDiceMod#registerListeners` 显式登记 `SwordInStoneRainManager`；Forge / NeoForge 由事件总线注解自动订阅。漏登记会编译通过但 tick 永不触发。
+- 完美树枝 tooltip 与手册条目不再重复「卸下筹码清空层数」这一句；卸下清空是所有筹码/立牌的公共约定。
+- 验证：最终复核修复后五线 `:compileJava` → BUILD SUCCESSFUL in 2s；此前五线 `:build` 也已通过（3s）。本轮未实机，未目视检查粒子观感。
+
+## 26.4-SNAPSHOT.48
+
+### 本线
+
+- 修复 .47 的 datagen 遗漏：补生成三枚筹码的物品模型、三条配方、配方进度；26.1.2 补 `items/` 模型定义与村民交易 JSON。五线 `src/generated` 已重新生成并纳入构建。
+- 补三枚筹码的 tooltip 分支与 `tooltip.astral_dice.chip.*` 三语键（15 份 lang）；新键按「」、半角时长与颜色规则审计，新键无新增违规。
+- 修复完美树枝死亡恢复时序：只在真正恢复后消费暂存层数，Clone 阶段未装备时保留给 Respawn 兜底；仅装备且有层数时暂存；三枚筹码的空值判断前置。
+- 资产门禁：补 `vacuum_piece` 进入创造栏（此前缺口导致 `verify_fabric_assets.py` 失败），五线同步。
+- 验证：五线 `:build` → BUILD SUCCESSFUL in 5s（44 tasks）；jar 内已确认三枚模型/贴图/配方，且 26.1.2 含 `items/` 定义与村民交易；本轮未实机。
+
+## 26.4-SNAPSHOT.47
+
+### 本线
+
+- 新增三枚筹码：`sword_in_stone_epic_chip`（史诗）、`sword_in_stone_legendary_chip`（传奇）、`perfect_branch_chip`（传奇），以及效果 `holy_sword_guard`（圣剑守护）、`super_energy`（超强精力）。
+- 石中剑-精良：触发骰神赐福时，自身、队伍内玩家，以及他们 64 格范围内由自己/队友拥有的、经 API 注册的骰战参与者（如车万女仆）获得「圣剑守护」1:00（攻击力 +2、受到伤害 -2）。-2 为筹码受击处理器中的固定减伤，跳过 `CARD_COST` / `UNREDUCIBLE_DAMAGE` / `SKILL_DAMAGE`；非玩家参与者同样生效。
+- 石中剑-传说：自身骰神赐福结束时，对 24 格内所有敌对目标造成 `max(4, 状态总层数 × 2)` 的魔法伤害。层数按每个生效效果的 `amplifier + 1` 累加（本模组/原版/其他模组/隐藏效果都计入），排除刚刚结束的骰神赐福。
+- 完美树枝：触发骰神赐福时 +1 层「超强精力」（最多 10 层）；死亡扣 1 层；每层攻击力 +2、防御力 +1。防御力通过每 tick 刷新的瞬态护甲修饰器落地，卸下筹码清零。
+- 配方：精良 = 上排 绿宝石/金剑/绿宝石，中排 再生试剂/空白筹码/再生试剂，下排 星盘×3；传说 = 上/下 下界合金锭，左/右 黄金星盘，中心 精良筹码；完美树枝 = 上排 蒲公英/木棍/蒲公英，中排 附魔金苹果/空白筹码/附魔金苹果，下排 黄金星盘×3。三条配方均受现有 `ENABLE_CHIP_RECIPES` 开关控制。
+- 接线：五线全部完成。商店池 67 → 70（稀有 19 / 史诗 30 / 传奇 21）；创造栏按既有稀有度分组追加，JEI 跟随创造栏；物品模型；每线 3 个 Patchouli 筹码条目（英文手册页，zh_cn / ja_jp 手册文本键写入 15 份 lang）；每线 8 张图标（物品 / 商店 / 效果）；15 份语言文件（zh_cn / en_us / ja_jp）。
+- 队伍判定复用 `PartyRelations` 与 `DiceCombatParticipants`：车万女仆等由 API 注册、归属自己或队友的生物会被视为友方，核心模组不硬依赖女仆模组。
+- 验证：五线 `:build` → BUILD SUCCESSFUL in 4s（44 tasks）；`.47` 产物已由 `pushToDevRun` 推入各 `run/<line>/mods`。本轮未实机。
+
+## 26.4-SNAPSHOT.46
+
+### 本线
+
+- 立牌排序：创造栏与 JEI 现在按 Astral Party Wiki 主页当前的角色顺序（https://astralparty.miraheze.org/wiki/Main_Page）排列。36 个既有立牌已按该顺序重排；Wiki 上还有 Luka，但本模组尚未注册该立牌，因此跳过；本模组原创的 DeepSeek 保持在最后。
+- JEI 侧没有独立的物品排序代码：JEI 的物品列表直接取自创造栏（ItemStackListFactory -> buildContents -> getDisplayItems），所以只改五线 ModCreativeTabs.java 的 displayItems 即可同时控制创造栏与 JEI。BLANK_SIGN 仍留在材料区。
+- 验证：五线 :build -> BUILD SUCCESSFUL in 7s（44 tasks）；.46 产物已由 pushToDevRun 推入各 run/<line>/mods。本轮未实机。
+
+## 26.4-SNAPSHOT.45
+
+### 本线
+
+- 葫芦饮：`astral_dice:souri_drink` 的两种变体（`GOURD` / `BREW`）在无人拾取时由 5:00 延长为 10:00（12,000 ticks）后自动销毁；成功拾取时在葫芦位置新增一层 `END_ROD` 光点，并保留原有的 cloud/END_ROD 反馈。实体显式覆写 `kill()` / `kill(ServerLevel)` 为 `discard()`，确保 `/kill` 始终能移除它（26.1.2 的普通伤害会被 `hurtServer` 过滤）。
+- 新增 `/astralparty clearportals`（OP 权限级 2）：清除服务器全部维度里的 `InkShadowPortalEntity`，并复位在线玩家的待放传送门状态；向 `latest.log` 落 `AFTERM|type=inkshadow_portal|killed=N|mode=all|radius=-1|dim=all` 机器行。五线均补 `command.astral_dice.astralparty.clearportals.success`（`zh_cn` / `en_us` / `ja_jp`）。
+- 验证：五线 `:build` → BUILD SUCCESSFUL in 6s（44 tasks）；`.45` 产物已推入各 `run/<line>/mods`。`1.21.1` 快速实机：`GOURD` / `BREW` 均以 `Life:20` 召唤并在等待后自动消失；默认召唤读到 `Life=12000`；`/kill` 移除了剩余实体。`clearportals` 未实机。
+
+## 26.4-SNAPSHOT.44
+
+### 本线
+
+- 恢复：【仙酿】（`astral_dice:souri_drink` 且 `Variant=1`）重新使用 130 骨骼 / 724 方块的 `winegourdbetter` 模型。基岩导出的 180 个负尺寸方块已在离线预处理中归一化为正尺寸 AABB；面键按 x 轴翻转，逐面 UV/旋转按 GeckoLib 4.x `GeoQuad.build` 反解，UV 空间保持 128，贴图保留原始 256×256。归一化资产五线逐字节一致：geo sha256 `8f2b7b3c15db9588cfafba0994294910c2537585cbb8b0cfa8938f015121d510`（1,639,334 B），贴图 sha256 `8227d5b2fecafd985500e5a5976ccb8014ff869cd735662aaefc1a5204d4e498`（9,965 B）。`neoforge-26.1.2` 仍走 `assets/astral_dice/geckolib/models/` 路径。
+- 验证：`.44` 构建产物在 `neoforge-1.21.1` 实机加载 130 骨骼 / 724 方块，四角度近景渲染连贯（`run/neoforge-1.21.1/screenshots/2026-11-14_16.25.15.png` 与 `2026-11-14_16.25.23.png`..`26.png`）；五线 `:build` → BUILD SUCCESSFUL in 3s（44 tasks），`.44` 产物已由 `pushToDevRun` 推入各 `run/<line>/mods`。
+- 已知限制：本次只修复了几何显示；瓶身渐变与纹饰细节仍与 Blockbench 预览不一致，根因未解决。保留归一化资产，仅作为比原破碎导出更好的兜底。
+
+## 26.4-SNAPSHOT.43
+
+### 本线
+
+- 回滚：【仙酿】（`astral_dice:souri_drink` 且 `Variant=1`）退回 `26.4-SNAPSHOT.39` 之前的 64×64 低模 `winegourdbetter` 几何与贴图。基岩风 130 骨骼 / 724 方块的导出在 Java 侧仍无法正确渲染，五线先恢复已知可用的低模资产，不再携带破碎的高模。五线逐字节一致：geo sha256 `0b7c63bead05ad803cc53d2959a3ec1e9292454c66645f2cb41bc52dea38b6f4`（98,906 B），贴图 sha256 `3f2d3b0d81fc9e6cbbacdf55225766a0f70988cbcc090a8854d8b1f1c1066966`（3,450 B）。
+- 验证：五线 `:build` → BUILD SUCCESSFUL in 6s；`.43` 产物已由 `pushToDevRun` 推入各 `run/<line>/mods`。本轮未实机。
+
+## 26.4-SNAPSHOT.42
+
+### 本线
+
+- 修复：`fabric-1.20.1` 与 `neoforge-26.1.2` 的状态栏防御行和 Jade 护甲行仍在画旧的 non-jade `defense_full/half/empty` 贴图。两线现改用 jade 素材（`images/Def_2_jade.png` -> full、`images/Def_1_jade.png` -> half、`images/Def_0_jade.png` -> empty）；其余三线原本就是同一份字节。现在五线 15 个文件逐字节一致：full `8c1f6cccabe0e1740ce091f3011b9b90c9ed419eb5fd3605c8a7ea762957434d`、half `a9bda341395e366bb4dfabd40eddc481c8a2fb3cccf6b3f85c559eed60f7f62f`、empty `64dab94879b17962d1da771d1a366a4a604d9df3a6265a96c48aec337ff5aa63`。
+- 文件：`fabric-1.20.1/src/main/resources/assets/astral_dice/textures/gui/defense_{full,half,empty}.png` 与 `neoforge-26.1.2/src/main/resources/assets/astral_dice/textures/gui/defense_{full,half,empty}.png`（替换 6 张）。不改 Java：`CombatPowerHud.DEFENSE_FULL/HALF` 驱动状态栏防御行，同一组常量加 `DEFENSE_EMPTY` 驱动 `ArmorElementIconMixin` / `DisplayHelperArmorIconMixin` 的 Jade 钩子（`DEFENSE_EMPTY` 仅 Jade 用，状态栏空态保持透明、不画空槽）。
+- 验证：五线 `:build` → BUILD SUCCESSFUL in 7s；`.42` 产物已由 `pushToDevRun` 推入各 `run/<line>/mods`。
+- 实机验证（2026-11-14，fabric-1.20.1 + neoforge-26.1.2，`26.4-SNAPSHOT.42`）：fabric 状态栏防御行 = 2 满 + 1 半（玩家护甲 10 → 防御 5），Jade 护甲行 = 2 满 + 1 半 + 7 空，全部 jade（`fabric-1.20.1/run/client/screenshots/2026-11-14_15.27.40.png`）。26.1.2 状态栏 = 2 满 + 1 半；其 Jade 护甲行由 `ArmorValueProviderMixin`（`CombatFormula.mobDefenseInt`）驱动，防御 2/4/8 的僵尸分别显示 1/2/4 个满 jade 图标，防御 5 的奇数例显示 2 满 + 1 半（`run/neoforge-26.1.2/screenshots/2026-11-14_15.35.31.png`）。状态栏与 Jade 中都不再残留 non-jade 防御图标。
+
+## 26.4-SNAPSHOT.41
+
+### 本线
+
+- 修复：【仙酿】（`astral_dice:souri_drink` 且 `Variant=1`）恢复 bbmodel 的完整渲染。导出器此前把所有方块归一成正尺寸，并按 bbmodel 的 `resolution`=128 写 `texture_width/height`，而实际贴图是 256×256——180 个 outline 方块因此丢掉带符号的面朝向，128 的 UV 比例又采样到透明空洞。五线现改为 Blockbench 原生带符号方块语义（`origin[0]=-(from.x+size.x)`、带符号 `size`、up/down 面 UV 翻转）加 256×256 UV 元数据：130 骨骼 / 724 方块 / 4344 面 / 180 个负尺寸方块。
+- 文件：五份 `winegourdbetter.geo.json`（四线在 `assets/astral_dice/geo/`，26.1.2 在 `assets/astral_dice/geckolib/models/`），逐字节一致，sha256 `a426c6e20a9ec23df98fbcf47e4e07b64958a2d01cfe2e9ee9042427e3f8e465`（1,473,170 B）。
+- 验证：五线 `:build` → BUILD SUCCESSFUL in 15s。产物 sha256：1.21.1 `b0d25fdb7f8fca099285083e9fd977a78e837ff0e3a3ddf329ef6755b9b8ce43`、1.20.1 forge `a06fafbc410b7d4fa9e3db40411482c03a07d515de26665836d3e016d99d0e74`、26.1.2 `fb365552297baa12de9658d06cea61e99178093c2f13bc56405600130d99d9b6`、fabric-1.20.1 `37053486cfa9c4db2fd57635f49044ef9a6cd6af3b71936f0ea8ca2913949233`、fabric-1.21.1 `d21d0ef16969ed66b8c84c08da94d069e3e8a026a671e94ddd8489e6ecb9b1f2`。
+- 实机验证（2026-11-14，neoforge-26.1.2 + neoforge-1.21.1，`26.4-SNAPSHOT.41`）：两线均与 bbmodel 同形——蓝色瓶身、金色下半身、蓝色笼状条带/蝴蝶结、金色瓶盖，不再是此前的扁平蓝瓶或整体反色的金壳。截图：`run/neoforge-26.1.2/screenshots/2026-11-14_15.14.58.png`、`run/neoforge-1.21.1/screenshots/brew1211_sky3.png`；26.1.2 角度拼图 `build/tmp-dsh/signed2612_angles.png`。forge-1.20.1 与两条 fabric 线字节相同但本轮未实机。读数见 `docs/reports/2026-11-14-brew-uv-41.md`。
+
+## 26.4-SNAPSHOT.40
+
+### 本线
+
+- 修复：`astral_dice:skill_damage` 对护甲值/韧性/保护附魔/抗性提升/固定点数减伤改为等值伤害。五线同时把它加入 `bypasses_enchantments` 与 `bypasses_resistance`（护甲/无敌帧原本已 bypass），并让 `ChipDamageHandler` 把 `SKILL_DAMAGE` 判为不可削减——磨刀石 -2、sherry 层数、kangel -1 不再生效。保命机制（安全气囊、磨刀石保留 1 血、RenShield 黄心吸收）不变；吸收黄心与摩西「破绽」闪避仍会先结算。
+- 文档：`ModDamageTypes` javadoc 与攻击/法术伤害链表格改为等值口径；N11a 记录裁决与修前/修后读数。
+- 验证：五线 `:build` → BUILD SUCCESSFUL in 15s。产物 sha256：1.21.1 `88a8767cefe935b79ca7c3ead039827110e387b7ee0ddaf4b37d32eb1f09224d`、1.20.1 `76bbd00e7f73c8cbf0486a20ff54e5614ac10a929e2b32e872aea5ee0b96e21c`、26.1.2 `483565d1dbe21772978184904e5871f9bc411995e3fba6e4c087fd36a2b7b252`、fabric-1.20.1 `8e5ba7055d000d0e8b256364b5860614f78944c99fa59359e87d3f5284b60bf5`、fabric-1.21.1 `1438531703e02c0f2f56e4bf26a7e2f6b4084d8ecb05c72d576c746dc60996e1`。
+- 实机验证（2026-11-14，neoforge-1.21.1 + forge-1.20.1，`26.4-SNAPSHOT.40`）：抗性提升 II + 保护 IV 下，普通 `mob_attack` 10 被削到 3.37 / 3.83，而 `skill_damage` 5 恰好造成 5.0（修前：单独抗性 II 把 5 削到 3.0，单独保护 IV 削到 4.2）；真实 Z3000 四格拖拽同样从带防御的僵尸身上扣掉正好 5.0。读数见 `docs/reports/2026-11-14-skill-damage-equal-40.md`。
+
+## 26.4-SNAPSHOT.39
+
+### 本线
+
+- 素材：【仙酿】（`astral_dice:souri_drink` 且 `Variant=1`）改用新的 `models/winegourdbetter.bbmodel`（130 骨骼 / 724 方块 / 128×128 UV），不再与【葫芦饮】共用同一份几何。
+- 生成脚本 `build/tmp-dsh/gen_winegdbetter.py`：Blockbench bedrock 方块 → GeckoLib `1.12.0` 几何（x 镜像、旋转符号 `(-x, -y, z)`、逐面 UV 规则、底面负高度翻转），并用「把 `winegourd.bbmodel` 重新生成后与仓库内 `winegourd.geo.json` 逐骨骼比对」做自检（完全一致）。
+- 五线同步更新 `geo/winegourdbetter.geo.json`（26.1.2 为 `geckolib/models/winegourdbetter.geo.json`）与 `textures/entity/winegourdbetter.png`（五线字节一致）。
+- 验证：五线 `:build` → BUILD SUCCESSFUL in 10s。实机（2026-11-14，neoforge-1.21.1，`26.4-SNAPSHOT.39`）：`/summon astral_dice:souri_drink` + `Variant=1` 后四个朝向截图判读，蓝色瓶身 / 金色束带与绳结 / 金色瓶盖与底缘与 bbmodel 预览同形，瓶身贴图与 UV 对应正确；日志无缺贴图/模型告警。其余四线为同一份字节（geo sha256 `1c760d12da6b2047`、tex `8227d5b2fecafd98`），仅核对了路径与文件存在，未实机。读数见 `docs/reports/2026-11-14-brew-model-39.md`。
+
+## 26.4-SNAPSHOT.38
+
+### 本线
+
+- 修复：两条 Fabric 线的反击闸门里保留了旧的「有盾 或 金鲤」早退，只装 Z3000（无盾）的玩家永远打不出反击层数。现改为唯一闸门 `counterCarrier`（盾 / 金鲤 / Z3000 任一）；1.20.1 仍按每次触发扣 1 层。
+- 修复：fabric-1.20.1 的 `BonnieSignItem` 击杀分发补上 `DeathTriggerGuard`（`sign_kill`），与 1.21.1 和 P0 三线一致，避免嵌套 hurt 让同一次死亡的 `Z3000SignItem.onKill` 跑两遍。
+- 文档：两条 Fabric 线的 Z3000 指南条目不再声称「10 秒反击状态」（该状态机 `CounterStateManager` 只在 P0 三线存在），改为一次性反击 + 最多 4 层的描述；补丁脚本曾把两个语言键挤在同一物理行，现已拆回两行。
+- 验证：`:fabric-1.20.1:build :fabric-1.21.1:build` → BUILD SUCCESSFUL in 1s。产物：`astral_dice-26.4-SNAPSHOT.38+fabric_1.20.1.jar`（sha256 `1d65817bbf67d827715e3ac7ca2a51412526955c309a7465292a6e5ae92806a7`）与 `astral_dice-26.4-SNAPSHOT.38+fabric_1.21.1.jar`（sha256 `47bfc98f8b95fd9b06465c7e089e869c22d6d79b7ce15b45c20c34b5ab272061`）。
+- 实机验证（2026-11-14，两条 Fabric 线，`26.4-SNAPSHOT.38`）：只装 Z3000、无盾、反击层数 1，被敌对僵尸近战命中 → 层数 1 → 0，僵尸受到反击伤害（1.20.1 1000 → 999.06，玩家 20 → 18.33；1.21.1 僵尸 20 → 19.06）；随后拖拽击杀仍只打一条 `AP_Z3000_DRAG_KILL`，层数 0 → 1。读数见 `docs/reports/2026-11-14-z3000-fabric-37.md`。
+
+## 26.4-SNAPSHOT.37
+
+### 本线
+
+- 移植：垃圾桶立牌（Z3000）落地 fabric-1.20.1 与 fabric-1.21.1，行为与 P0 三线一致。两线各新增 item/sign/Z3000SignItem、entity/GrapplingHookEntity、client/GrapplingHookRenderer，三个玩家附件 z3000_attack_stacks / z3000_healthy_kills / z3000_last_cooldown_reduction，物品与实体注册、创造栏条目，以及以 z3000_status / z3000_passive 为键的 tooltip 分支。
+- 战斗接线：DiceCombatEvents 的「反击」闸门把垃圾桶立牌与金鲤立牌同权（1.20.1 另把层数扣减一并走 counterCarrier 标志；金鳞奖励仍只认金鲤）。RenShieldManager 在 voidShield 与 cleanupStale 两处都保留计数器层数。
+- 数据对齐（五线）：astral_dice:z3000_sign 此前既不在 Curios stand 标签、也不在 astral_dice:signs 标签里，而其他立牌都在。现在每条线的两个标签都登记了它。（stand 槽位本身由代码注册：Forge 线 AstralDiceMod 的 SlotTypeMessage，Fabric 线走 Trinkets 槽类型；标签是成员元数据，不是装备闸门。）
+- 资源与数据：吸尘头/管线模型与贴图、垃圾桶立牌贴图复制到两条 fabric 线；datagen 生成配方（漏斗 / 红石 / 铁锭 / 空白立牌 / 铁粒 / 骰子）与物品模型；两线三语各补 11 个 z3000 语言键（zh_cn / en_us / ja_jp）。
+- 验证：:fabric-1.20.1:compileJava :fabric-1.21.1:compileJava → BUILD SUCCESSFUL in 3s；:fabric-1.20.1:runDatagen :fabric-1.21.1:runDatagen → BUILD SUCCESSFUL in 15s（385 个文件缓存，写入 5 个）；:fabric-1.20.1:build :fabric-1.21.1:build → BUILD SUCCESSFUL in 4s。Fabric 的 Curios shim 位于 com.merlinkitsune.astral_dice.compat.curios，不是 top.theillusivec4.curios.api，复制来的类已按此改导入。
+- 实机验证（2026-11-14，fabric-1.20.1 + fabric-1.21.1，`26.4-SNAPSHOT.37`）：两线均通过 Z3000 矩阵——4.5 格拉取 1000 -> 995、终点 1.5 格且带拖拽 tag；17 格拒绝（`AP_Z3000_REJECT reason=too_far`，冷却不变）；冷却闸门（cdEnd 不变、selecting=false）；拖拽后延迟击杀给 +1 反击并 -33% 冷却；两个 20 血击杀把攻击叠层 0 -> 1（`ATTACK_DAMAGE` 1.0 -> 2.0）。读数与实测坑见 `docs/reports/2026-11-14-z3000-fabric-37.md`。未覆盖：反击层数消耗路径、视觉、1200 tick 节流在连续击杀下的表现。
+
+## 26.4-SNAPSHOT.36
+
+### 本线
+
+- 移植：目标选择器 ActionBar 的「选择一个{类别}目标」文案（六词闭集 敌对 / 友方 / 中立 / 任意 / 玩家 / 女仆，不再拼接技能或效果牌名）移植到 fabric-1.20.1 与 fabric-1.21.1。两线新增 target/TargetPromptCategories（同样的 TargetType 默认映射与附属覆写入口），并清掉同样的 28 个死语言键（每份语言文件的 msg.astral_dice.target_select* 键由 44 个减到 23 个）。
+- 验证：:fabric-1.20.1:compileJava :fabric-1.21.1:compileJava → BUILD SUCCESSFUL in 3s；:fabric-1.20.1:build :fabric-1.21.1:build → BUILD SUCCESSFUL in 6s。产物：astral_dice-26.4-SNAPSHOT.36+fabric_1.20.1.jar（sha256 c334b98b65a81951f8ef2630c1d1dd6b23a43f0e37c60fc43b85f1300b6b1b8b）与 astral_dice-26.4-SNAPSHOT.36+fabric_1.21.1.jar（sha256 9bf15aacf244b4690747c46c1416e6726dc81de98017235cc1ca07ad45885e88）。
+- 实机验证（2026-11-14，fabric-1.20.1 + fabric-1.21.1，`26.4-SNAPSHOT.36`）：按真实持卡右键路径（hotbar.0 + `gameMode.useItem`）分别读到 友方 / 中立 / 玩家 文案与「移出手持即退出选择」后缀；1.20.1 用 `TargetSelectionClient.steadyPrompt()` 反射判读，1.21.1 因 Java 21 限制反射被拒，改用 `fabric-1.21.1/run/client/screenshots/` 截图判读。读数与截图哈希见 `docs/reports/2026-11-14-target-selector-actionbar-36-fabric.md`。拒绝态与「任意」「女仆」词条在 Fabric 两线未覆盖。
+
+## 26.4-SNAPSHOT.35
+
+### 本线
+
+- 变更：目标选择器的 ActionBar 不再拼接技能 / 效果牌名字，常驻提示改为「选择一个<类别>目标」，类别是闭集六选一：`hostile` / `friendly` / `neutral` / `any` / `player` / `maid`（中：敌对 / 友方 / 中立 / 任意 / 玩家 / 女仆）。
+- 接口：P0 三线新增 `target/TargetPromptCategories`。默认类别按会话 `TargetType` 推导（`ENEMY` / `ENEMY_OR_RIVAL` → 敌对；`CREATURE` / `CREATURE_OR_RIVAL` → 中立；`NON_HOSTILE` → 友方；`LIVING` → 任意；`PLAYER` → 玩家）；附属模组可按 actionId 覆写：`registerActionCategory(actionId, category)`。女仆一词留给 TLMDice 附属（注册已登记为 P1 欠账 D13）。
+- 清理（死条目）：九份语言文件删除 20 个 `msg.astral_dice.target_select.skill.`、5 个 `...valid_target.` 与零引用的 `active` / `rejected` / `self_unsupported`；客户端删除 `skillName()` / `validTargetName()`，三线 11 个物品类里的旧「技能名」注释一并清掉。
+- 验证：`:neoforge-1.21.1:compileJava :forge-1.20.1:compileJava :neoforge-26.1.2:compileJava` → `BUILD SUCCESSFUL in 8s`，exit 0。实机验证见下；fabric 两线本轮不改文案（P1）。
+- 实机验证（2026-11-14，P0 三线 `26.4-SNAPSHOT.35`）：1.21.1 覆盖敌对 / 友方 / 中立 / 玩家 / 拒绝态，1.20.1 覆盖敌对 + 友方，26.1.2 覆盖敌对 + 玩家，均为新文案且无技能名；截图与 sha256 前 16 位见 `docs/reports/2026-11-14-target-selector-actionbar-35.md`。「任意」「女仆」当前不可达（无 `TargetType.LIVING` 动作；女仆注册在 TLMDice，P1 欠账 D13）。
+
+## 26.4-SNAPSHOT.34
+
+### 本线
+
+- 变更：版本号升至 `26.4-SNAPSHOT.34`（五线）；产品代码只有三线渲染器各 1 行。
+- 修复：`.33` 漏改的 3 处 0.65 —— 1.21.1 / 1.20.1 的 `render()` 管道起点、26.1.2 的 `shouldRender()` 剔除 AABB，全部改为 `START_HEIGHT_FACTOR`（0.45），管道现在真的从玩家中心下方伸出。字节码复核：`GrapplingHookRenderer.class` 中 `0.45d` 出现 2 次、`0.65d` 0 次。
+- 构建：`:neoforge-1.21.1:build :forge-1.20.1:build :neoforge-26.1.2:build` → `BUILD SUCCESSFUL in 20s`，EXIT=0。产物 SHA-256：1.21.1 `9f70316fa0e0411d6d0440b7f9fe969064d48f55067b3dca1c8655f41d995244`；1.20.1 `03fecaf1e6b7521e69cc3cb75b816d6cfa8f18ac184023445f7351d557fcd349`；26.1.2 `4ca7e6aa6f6eddcf6d9d164f73a829a657cc31e5a6431af99779a02bcd45dc57`。
+- 实机：.34 已在 P0 三线（neoforge-1.21.1 / forge-1.20.1 / neoforge-26.1.2）重跑 Z3000 全矩阵：9 格拖拽 1000 -> 995、终点 1.5 格；17 格拒绝（`target_too_far`，冷却未扣）与 16.00 格施放；拖完 5-6 秒后再击杀仍给 +1 反击并 -33% 冷却；反击封顶 4；每 1200 tick 最多减一次冷却；攻击叠层封顶 12（基础 1 -> 13、基础 100 -> 112）；最大生命 <20 的击杀不计层；冷却门控生效。管道起点/接头视觉已由用户目视确认（2026-11-14，1.21.1 第三人称截图）。报告：`docs/reports/2026-11-14-z3000-devnext-34-acceptance.md`。未 push/tag/CF。
+
+## 26.4-SNAPSHOT.33
+
+
+### 本线
+
+- 变更：版本号升至 `26.4-SNAPSHOT.33`（五线）；产品代码/资源改动在 P0 三线（neoforge-1.21.1 / forge-1.20.1 / neoforge-26.1.2），fabric 两线仅版本同步。
+- 修复（抓钩视觉）：`vacuum_piece` 模型中轴在模型 x=0，而 `vacuum_head` 中心在 (8,8,8)；`ItemRenderer` 会对物品 pose 统一平移 -0.5，导致管道相对头部横偏约半格。渲染器改为在 `rotateToDirection` 之后加 `PIPE_X_CENTER_FIX = 0.5` 平移，使管道接到头部正中心；头部模型本身不动。起点常量 `START_HEIGHT_FACTOR = 0.45` 已定义，但 1.21.1 / 1.20.1 的 `render()` 起点与 26.1.2 的剔除 AABB 仍残留 0.65（替换命中错行），.33 实机管道仍从胸口出线，由 .34 修正。
+- 调整：`GrapplingHookEntity.PULL_STEP` 0.175 → 0.5 格/tick，拖拽速度约提升到 3 倍（1.5 格面前距离与 1.25 格停止距离不变）。
+- 修复（拖拽击杀给反击的语义）：不再要求「本次拖拽的 5 点技能伤害直接击杀」才给层。`attach()` 给目标打上 `astral_dice.z3000_dragged.<owner uuid>` 标记，`Z3000SignItem.onKill` 在击杀者击杀带自己标记的目标时给 +1 层反击，不限击杀时机；删除 `grantCounterOnKill` 字段、五参构造与 `hitTarget()` 里的直接授予，击杀钩子成为唯一加层路径；`DeathTriggerGuard` 保证同一次死亡只分发一次，不会重复加层。
+- 本地化：三线中英日 tooltip 与手册文案改为「被拖拽过的目标被击杀时获得 1 层反击，不限击杀时机」。
+- 兼容：26.1.2 的 `Z3000SignItem` 用 `Entity#entityTags()` 读实体标签，1.20.1 / 1.21.1 仍用 `getTags()`。
+- 验证：`:neoforge-1.21.1:build :forge-1.20.1:build :neoforge-26.1.2:build` → `BUILD SUCCESSFUL in 3s`，exit 0。产物 SHA-256：1.21.1 c76e5b8fcb3fa11403f842add19e964a8a12bb5bb73598bcb099176bd688ffd3；1.20.1 25954b9d92d9ec031f814112fb3e25a0a0fd21e89b8ac1f7295b8af2920f3866；26.1.2 ea86f9827bbc126ac472caa01b7cd30688cc17067e9ec975573ab789af5585b6。
+- 实机：.33 在 1.21.1 跑通 Z3000 功能矩阵（9 格拖拽 1000→995 且停在 1.5 格、17 格拒绝 / 16.00 格可施放、延迟击杀 +1 层、反击封顶 4、-33% 冷却每分钟一次、攻击叠层到 12 后不再涨、<20 血不计、冷却门控）；1.20.1 / 26.1.2 未跑。管道起点问题见 .34。未 commit/push/tag/CF。
+
+## 26.4-SNAPSHOT.32
+
+### 本线
+
+- 修复：26.1.2 的 `GrapplingHookRenderer` 在实体渲染器构造阶段创建 `ItemStack`，此时物品组件尚未绑定，资源重载抛 `Components not bound yet`（`Failed to create model for astral_dice:grappling_hook`），客户端停在标题画面无法进入世界；改为首次 `extractRenderState` 时惰性创建管道/头部物品栈。
+- 构建：P0 三线重新构建并通过；1.21.1 / 1.20.1 / 26.1.2 产物 SHA-256 分别为 c4ff8df0e6348d039e86d83670f3548f59d6a18ea7c11b467fcb111d0c3130ca、9aa7b89dc525ce2b33c58ce411344afcfec469ba04f3271b46ec669e34818cfc、b1646981ca216380104ef0bbc048dcba8996708f3b3fbe49ecc1439380fee28a。
+- 实机：26.1.2 修复后 READY，Z3000 全套 PASS（9 格拖拽 + 5 点伤害、17 格拒绝 / 16.00 格可用、拖拽击杀 +1 反击与 3550→2379 冷却缩减、同分钟第二杀不重复、攻击 12/13 封顶、低血不计、冷却门控）；报告见 `docs/reports/2026-11-14-z3000-acceptance.md`。
+
+## 26.4-SNAPSHOT.31
+
+### 本线
+
+- 新增：垃圾桶立牌 z3000_sign（稀有）落地 P0 三线（neoforge-1.21.1 / forge-1.20.1 / neoforge-26.1.2）；fabric 两线仅版本同步。
+- 主动「过来把你」：16 格内选定敌对目标后生成抓钩，目标被拖到玩家面前 1.5 格并受到 5 点技能伤害；若这次技能伤害直接击杀目标，获得 1 层「反击」。
+- 被动「回收利用」：击杀敌对目标使主动剩余冷却缩短 33%，每分钟最多一次；每击杀 2 个最大生命 ≥20 的敌对目标攻击力 +1，最多 +12。攻击加成通过固定 id 的属性修饰符刷新。
+- 兼容：Z3000 的反击层可在没有鼠鼠护盾或金鲤时触发 10 秒反击状态；护盾清理与反击状态过期不会清掉 Z3000 的层数。
+- 配方：HRH / ISI / TDT（H=漏斗、R=红石、I=铁锭、S=空白立牌、T=铁粒、D=普通骰子），已生成三线 recipe/advancement；verify_crafting_recipe_uniqueness.py 三线 collisions=0。
+- 资源与本地化：三线新增 z3000_sign 物品模型、32×32 贴图、创造栏条目与中英日 tooltip/手册文本；26.1.2 为隐藏物品 vacuum_piece 声明自定义模型，修复 runClientData 的 Missing item model definitions。
+- 验证：:neoforge-1.21.1:build :forge-1.20.1:build :neoforge-26.1.2:build → BUILD SUCCESSFUL in 13s，exit 0。产物 SHA-256：1.21.1 3f3e2781a316b1bcffbadd40f071f5a86683e7a14489a325e2dceff5f7de1ebe；1.20.1 a9dd78593fc5a3cce88bcf6f29bb607d4806e2ab3eab4a6aa4b559d9e9d6dd09；26.1.2 305c19dc45e5850cc5563147cca682575254e50cf14bf353800011180095cff6。
+- 实机（.31 产物）：1.21.1 与 1.20.1 主链路 PASS（9 格拖拽 + 5 点伤害、17 格拒绝 / 16.00 格可用、拖拽击杀 +1 反击、每分钟一次 -33% 冷却、同分钟第二杀不重复缩减、攻击叠层与 +12 封顶、低血不计；1.21.1 的叠层封顶与低血排除仅有链路日志，数值读数未留档）。26.1.2 在 .31 启动时因渲染器构造期 `Components not bound yet` 崩溃，改由 .32 修复后全套 PASS。报告见 `docs/reports/2026-11-14-z3000-acceptance.md`。未 commit/push/tag/CF。
+
+## 26.4-SNAPSHOT.30
+
+### 本线
+
+- 变更：版本号升至 `26.4-SNAPSHOT.30`（五线）；仅 `neoforge-1.21.1` 有产品代码/资源改动，其余四线仅为版本同步。
+- 清理（仅 neoforge-1.21.1 原型）：删除抓钩原型剩余的全部第三方派生内容——6 个 `grappling_hook_{attach,shoot}_*.ogg` 音效、`textures/entity/hook/grappling_hook.png`、声音注册与字幕、第三方声明/许可文件，以及 `GrapplingHookEntity`/`GrapplingHookRenderer` 里的 SPDX/许可头。
+- 重写：`GrapplingHookEntity` 与 `GrapplingHookRenderer` 改为项目自有实现，保留同样的拖拽行为与 `vacuum_piece` 管道 / `vacuum_head` 头部视觉；无物品、无方块钩取、无玩家牵引、无伤害；临时入口仍是 OP 2 的 `/astralhook <target>`。
+- 验证：五线 `:build` PASS（`BUILD SUCCESSFUL in 12s`，exit 0）；`astral_dice-26.4-SNAPSHOT.30+neoforge_1.21.1.jar` SHA-256 `fdea2efe2e62c5588e1f443654d61ef00180ced33980fa19804ab9f63dee6dcf`；本条未实机。未 commit/push/tag/CF。
+
+## 26.4-SNAPSHOT.29
+
+### 本线
+
+- 变更：版本号升至 `26.4-SNAPSHOT.29`（五线）；仅 `neoforge-1.21.1` 有产品代码改动，其余四线仅为版本同步。
+- 修复（仅 neoforge-1.21.1 原型）：`EntityRenderDispatcher` 已把 PoseStack 平移到实体位置，渲染器又叠加了世界坐标，导致管道/头部被画到偏移两倍处而不可见。现将 from/to/head 全部改成相对实体原点坐标。
+- 验证：`:neoforge-1.21.1:build` 通过；1.21.1 在超平坦测试世界实机重跑，可见白色管道从玩家连到目标，目标被拖到正前方 1.5 格，管道随距离缩短；关键帧 `vac29-700/1100/1500/3000.png`，日志以 `AP_GRAPPLE_END reason=arrived age=53` 结束。头部可见，但源模型只有 1.8px 高，侧视仍像一块橙红扁板；是否加厚待用户目视裁决。
+
+## 26.4-SNAPSHOT.28
+
+### 本线
+
+- 变更：版本号升至 `26.4-SNAPSHOT.28`（五线）；仅 `neoforge-1.21.1` 有产品代码改动，其余四线仅为版本同步。
+- 修复（仅 neoforge-1.21.1 原型）：抓钩实体新增同步的 owner 实体 id；客户端 `Projectile#getOwner()` 不会解析 ownerUUID，导致渲染器拿不到玩家、整条管道不显示。渲染器改用 `getRenderOwner()`。
+- 验证：客户端探针确认 owner 同步成功（`getRenderOwner()` 返回 `LocalPlayer Dev`）；实机重跑仍看不到管道/头部，原因是渲染器偏移，已在 `.29` 修复。
+
+## 26.4-SNAPSHOT.27
+
+### 本线
+
+- 变更：版本号升至 `26.4-SNAPSHOT.27`（五线）；仅 `neoforge-1.21.1` 有产品代码改动，其余四线仅为版本同步。
+- 改动（仅 neoforge-1.21.1 原型）：抓钩保留 `.26` 的发射/命中/拖拽动画与音效，把钩头换成我们的 `vacuum_head` 模型、铁链换成白色 `vacuum_piece` 管道逐节渲染；移除原 `GrapplingHookModel` 与锁链方块绘制。
+- 验证：构建通过；1.21.1 实机重跑看不到管道/头部，原因是客户端 owner 为空且渲染器重复叠加实体偏移；两处已在 `.28`/`.29` 修复。
+
+## 26.4-SNAPSHOT.26
+
+### 本线
+
+- 变更：版本号升至 `26.4-SNAPSHOT.26`（五线）；仅 `neoforge-1.21.1` 有产品代码改动，其余四线仅为版本同步。
+- 修复（仅 neoforge-1.21.1 原型）：被拖拽目标进入停止阈值后，直接吸附到玩家正前方 1.5 格，避免 0.175 格步长把目标留在 2~3 格之外。
+- 验证：`:neoforge-1.21.1:build` PASS；2026-11-13 19:06/19:08 实机 1.21.1 确认目标从 9 格拉到玩家正前方 1.5 格（z=-1.00），日志 `AP_GRAPPLE_END age=49`；截图见 `docs/reports/2026-11-13-grappling-hook-live.md`，待用户目视确认。
+
+## 26.4-SNAPSHOT.25
+
+### 本线
+
+- 变更：版本号升至 `26.4-SNAPSHOT.25`（五线）；仅 `neoforge-1.21.1` 有产品代码/资源改动，其余四线仅为版本同步。
+- 改动（仅 neoforge-1.21.1 原型）：抓钩不再作为物品，也不再抓方块把玩家拉过去。现在钩子飞向活体怪物、命中后勾住，并把目标拖到玩家视线前方 1.5 格；目标靠近时锁链同步缩短。临时入口为 OP 2 的 `/astralhook <target>`，只接受 `Mob` 目标且不结算伤害。
+- 范围：仍是 1.21.1 单线视觉/机制原型；钩模型、锁链渲染与音效仍属临时验证素材。
+- 验证：`:neoforge-1.21.1:build` PASS；2026-11-13 18:43 实机 1.21.1 确认锁链从玩家伸向目标、目标被拖动、链长随距离缩短；但目标停在距玩家约 2.7 格处，已由 `.26` 吸附修正。
+
+## 26.4-SNAPSHOT.24
+
+### 本线
+
+- 变更：版本号升至 `26.4-SNAPSHOT.24`（五线）；仅 `neoforge-1.21.1` 有产品代码/资源改动，其余四线仅为版本同步。
+- 新原型（仅 neoforge-1.21.1）：抓钩初版原型，当时为物品形态（右键发射/收回）；后续条目已改为 OP 2 命令并移除物品路径。
+- 验证：`:neoforge-1.21.1:build` 在 `.24` PASS；未实机。
+- 范围：1.21.1 单线效果原型，不是完整垃圾桶立牌，也未向其他四线移植。
+
+## 26.4-SNAPSHOT.23
+
+### 本线
+
+- 变更：版本号升至 `26.4-SNAPSHOT.23`（五线）；仅 `neoforge-1.21.1` 有产品代码/资源改动，其余四线仅为版本同步。
+- 修复（仅 neoforge-1.21.1 原型）：吸尘头模型的 UV 仍是 bbmodel 的 64 单位空间，而 `FaceBakery` 始终按 16 单位换算，导致取样越界、头部显示为白色平板。生成模型时把 UV 统一除以 4 转到 16 单位空间。
+- 范围：仍是垃圾桶立牌原型（隐藏 `vacuum_piece` + OP 2 的 `/astralvacuum`），不是完整立牌。
+- 验证：待构建与实机目视。
+
+## 26.4-SNAPSHOT.22
+
+### 本线
+
+- 变更：版本号升至 `26.4-SNAPSHOT.22`（五线）；仅 `neoforge-1.21.1` 有产品代码改动，其余四线仅为版本同步。
+- 修复（仅 neoforge-1.21.1 原型）：吸尘管道在拖回时真正变短。`DisplayRenderer` 完全不读取 `Entity.isInvisible()`，此前 `setInvisible(true)` 隐藏的旧节仍会被渲染，看起来像一条不会缩短的静态管道。现在隐藏的节还会被 `hideSegment(...)` 挪到 `level.getMinBuildHeight() - 8`。
+- 修复（仅 neoforge-1.21.1 原型）：吸尘头在每次几何更新时显式恢复可见，并改为非等比缩放 `HEAD_SCALE_XZ=3`、`HEAD_SCALE_Y=4`（源模型只有 1.8 像素高），加 `HEAD_HOVER=0.02` 避免与地面 z-fighting。
+- 修复（仅 neoforge-1.21.1 原型）：所有吸尘显示实体带 `astral_vacuum` 标签；`ServerStartedEvent` 清理中断测试遗留的孤儿显示实体，`ServerStoppingEvent` 清理仍在活动的管道。
+- 诊断（仅 neoforge-1.21.1 原型）：每 5 tick 输出 `AP_VACUUM_GEOM age=... len=... visible=... head=... target=...`，报告当前管道长度与可见节数。
+- 范围：仍是垃圾桶立牌原型（隐藏 `vacuum_piece` + OP 2 的 `/astralvacuum`），不是完整立牌。
+- 验证：`./gradlew.bat :neoforge-1.21.1:build :forge-1.20.1:build :neoforge-26.1.2:build :fabric-1.20.1:build :fabric-1.21.1:build --console=plain` 结果为 `BUILD SUCCESSFUL in 10s`（exit 0）；根 `build/libs` 已有五枚 `.22` jar，`run/neoforge-1.21.1/mods` 已换成 `.22` neoforge jar。实机（仅 neoforge-1.21.1，超平坦世界 新的世界）：管道缩短与直线牵引已确认（AP_VACUUM_GEOM len 7.18 → 1.01、visible 10 → 1）；头部实体已选中 astral_dice:item/vacuum_head，但贴图取样仍越界、显示为白色平板，头部视觉未修好。
+
+## 26.4-SNAPSHOT.21
+
+### 本线
+
+- 变更：版本号升至 `26.4-SNAPSHOT.21`（五线）；仅 `neoforge-1.21.1` 有产品代码改动，其余四线仅为版本同步。
+- 修复（仅 neoforge-1.21.1 原型）：吸尘头不再悬空、不再看起来被压扁。`ItemRenderer` 在显示变换之后固定执行 `translate(-0.5)`，导致 scale=2 的模型三轴各偏移 +0.5 格；`baseDisplayTag()` 改为写 `translation = -0.5*(scale-1)`，头部底边落在地面。
+- 变更（仅 neoforge-1.21.1 原型）：管道改为沿固定 `pullDir` 的贴地直线，从起点直达吸尘头；去掉二次贝塞尔侧向 `bow` 与逐节重取地面造成的弯曲。每节按 0.75 格等距排布，未伸到的节先隐藏；吸尘头从施放者面前出发，目标沿同一直线被拖回。
+- 变更（仅 neoforge-1.21.1 原型）：速度降低 50%：`EXTEND_TICKS` 8 → 16、`PULL_STEP` 0.35 → 0.175；`MAX_LIFE_TICKS` 80 → 160，半速下留出余量。`HEAD_FRONT` 从 `4.072/16*2` 更正为实际模型前端 `3.986/16*2`。
+- 范围：仍是垃圾桶立牌原型（隐藏 `vacuum_piece` + OP 2 的 `/astralvacuum`），不是完整立牌。
+- 验证：`./gradlew.bat :neoforge-1.21.1:build :forge-1.20.1:build :neoforge-26.1.2:build :fabric-1.20.1:build :fabric-1.21.1:build --console=plain` 结果为 `BUILD SUCCESSFUL`（最终重跑 3s）；`.21` jar 内 `VacuumPipeManager$Pipe` 已含 `pullDir` 字段与 `pipeStart(ServerLevel, ServerPlayer, Vec3)`（`javap` 复核）。本轮未实机：头部贴地、直线牵引与半速均未目视验证。
+
+## 26.4-SNAPSHOT.20
+
+### 本线
+
+- 变更：版本号升至 `26.4-SNAPSHOT.20`（五线）；仅 `neoforge-1.21.1` 有产品代码改动，其余四线仅为版本同步。
+- 修复（仅 neoforge-1.21.1 原型）：动态吸尘管道的拉到位判定 `ARRIVE_DISTANCE` 从 `1.35` 改为 `1.60` 格。目标被 `FRONT_OFFSET=1.5` 拉到身前 1.5 格后，旧阈值 `1.35` 永远不满足，导致 `AP_VACUUM_DAMAGE` 不触发；现在到 1.5 格即判定到位并结算 5 点技能伤害。
+- 范围：仍是垃圾桶立牌的原型（隐藏 `vacuum_piece` 物品 + OP 2 的 `/astralvacuum`），不是完整立牌。
+- 实机（仅 neoforge-1.21.1）：超平坦世界 `新的世界`，目标为 1000 血的僵尸，玩家前方 8 格施放。生成 13 个 `Display.ItemDisplay`（12 节 + 1 头）；目标距离 8.00 → 7.65 → 4.15 → 1.50；日志出现 `AP_VACUUM_DAMAGE ... damage=5.0` 与 `AP_VACUUM_END reason=arrived age=27`，显示实体全部回收。基础伤害锚点为 5.0；目标实际掉血 28（1000→972），差值疑似来自伤害折叠效果牌加成，尚未隔离确认。
+
+## 26.4-SNAPSHOT.19
+
+### 本线
+
+- 变更：版本号升至 `26.4-SNAPSHOT.19`（五线）；本轮新增垃圾桶立牌「动态吸尘管道」的 `neoforge-1.21.1` 单线原型，尚不是完整立牌。
+- 原型（仅 neoforge-1.21.1）：隐藏物品 `astral_dice:vacuum_piece` 与 OP 2 命令 `/astralvacuum <target>`。管道由一串 `Display.ItemDisplay` 组成：最多 24 节直管（每节 0.75 格）加一个吸尘头。各节沿二次贝塞尔曲线排布并带轻微侧弯，按当地地面高度贴地；每 tick 只改实体位置与朝向，不重写 transformation NBT。
+- 原型模型：`vacuum_head.json` 由 `models/vacuumhead.bbmodel` 转换（18 个元素，128x128 贴图从 data URI 解出）。Blockbench 的 16.38954 与 -26.56505 度不是原版允许的元素旋转角，已夹到 22.5 / -22.5 度；头部整体平移，使 +Z 前端位于显示中心前 0.509 格、底部贴地。`vacuum_piece.json` 是沿 +Z 的 1 格长灰白细管，每节缩放到 0.75。
+- 原型机制：目标必须是 16 格内的 `Enemy`。前 8 tick 伸管，之后每 tick 把目标向施放者面前 1.5 格拉 0.35 格；目标进入 1.35 格时造成 5 点技能伤害；最长 80 tick。日志锚点：`AP_VACUUM_START`、`AP_VACUUM_PULL`、`AP_VACUUM_DAMAGE`、`AP_VACUUM_END`。
+- 验证：两个生成的物品模型均通过 `BlockModel.fromStream` 解析（1 / 18 个元素）；`./gradlew.bat :neoforge-1.21.1:build` 通过；隐藏物品未加入创造栏。本轮未实机：渲染、头部朝向、贴地与牵引均未验证。
+- 未包含：真正的垃圾桶立牌物品、主动/被动、配方、tooltip、手册条目，以及另外四线的移植。
+
+## 26.4-SNAPSHOT.18
+
+### 本线
+
+- 变更：版本号升至 `26.4-SNAPSHOT.18`（五线）；本轮把反击改为 10 秒近战状态（P0 三线；fabric 两线在 P1 前保持旧语义）。
+- 反击状态（26.1.2 / neo21 / forge）：新增 `CounterStateManager`。符合条件的近战命中激活 `ren_counter` 效果，固定 200 tick；状态期间每次符合条件的近战命中都免费反击。后续命中不刷新时长，效果也不再镜像可激活次数。
+- 限制：只有近战命中能激活或触发状态；弹射物、爆炸、魔法与技能 / 卡牌伤害均排除；友方角色（玩家、车万女仆）既不激活也不被反击；其余目标（含中立 / 被动生物）都会被反击。
+- 一致性（26.1.2 / neo21 / forge）：26.1.2 补上另外两线已有的 `DeathTriggerGuard.claimPair` 去重，一次挥击不会反击两次；`CounterStateManager.isMeleeDamage` 同时排除本模组全部自定义伤害（技能、卡牌法术、真实、额外、卡牌费用、不可减免、骰子伤害），技能或卡牌伤害不会激活或重复触发状态。
+- 资源规则：只有成功激活才消耗 1 次可激活次数；「金鳞」也只在成功激活时 +1。游戏大师护盾在佩戴金鲤时上限为 4，不再把已有的 4 层压回 1 层；护盾消失不再移除已经激活的 10 秒状态。
+- 安全气囊：近战致命伤仍会被无效化，并先激活 10 秒状态再反击攻击者；远程 / 魔法致命伤仍无效化，但不激活、不反击。
+- 素材（五线）：`ren_counter` HUD 图标替换为 `images/反击.png`（392 B，SHA-256 `4e1131d856ab07ed3e68593d9fa11761b5eb505479e173d9a3368bde94fdfe3d`）。
+- 构建：五线 `:build` 通过。实机验收（P0 三线，超平坦世界）：`neoforge-1.21.1` 全套 P0 反击用例通过，含车万女仆友方路径；`forge-1.20.1` 与 `neoforge-26.1.2` 核心 P0 用例通过，但两线测试环境未安装车万女仆，女仆友方路径未验证，不写 PASS。详情：`docs/reports/2026-11-12-counter-p0-acceptance.md`。
+
+## 26.4-SNAPSHOT.17
+
+### 本线
+
+- 变更：版本号升至 `26.4-SNAPSHOT.17`（五线）；本轮扩展肾上腺素筹码的闪避。
+- 肾上腺素（五线）：一般与高效在低血加成触发期间都获得 20%% 闪避；两枚同时装备时叠加为 40%%，每次受击只掷一次。
+- 限制（五线）：只有敌对怪物的近战攻击可被闪避；玩家攻击、弹射物/远程攻击与环境伤害均不参与。
+- 文案（五线，中 / 英 / 日）：两枚筹码 tooltip 与手册条目同步写明 20%% 闪避、叠加规则和仅怪物近战限制。
+- 构建：五线 `:build`（仅编译 / 构建验证，本轮未实机）。
+
+## 26.4-SNAPSHOT.16
+
+### 本线
+
+- 变更：版本号升至 `26.4-SNAPSHOT.16`（五线）；本轮新增蛟龙—金鲤联动、重写金鲤主动、更新两张侦探配方、修正若干立牌 tooltip，并清理手册文本。
+- 素材（五线）：仙酿（Immortal Brew）效果图标替换为 `images/仙酿.png`。
+- 金鲤（五线）：主动技能现在只放置饮品并使自身获得 1 层「反击」，不再获得「金鳞」；「金鳞」只能通过反击或蛟龙联动获得。tooltip 与手册文案同步重写。
+- 蛟龙（五线）：主动技能使装备金鲤立牌的玩家获得卡牌时，使对方增加 1 层「金鳞」（每个目标每次主动最多 1 层）；tooltip 备注区新增说明。
+- 配方（五线）：大侦探立牌改为 `RRR / GCG / BTB`（红石粉 / 金锭 / 空白立牌 / 星币 / 黄金骰子）；秘密侦探立牌的两枚望远镜改为标记涂料。
+- Tooltip（五线）：少主立牌移除两处括号；小猎手立牌的放置说明第三行改为「放置期间无法攻击」开头；大当家立牌的「真实伤害」改为「技能伤害」。
+- 手册（五线，中 / 英 / 日）：移除全部 `§` 染色；LF 换行改为制表符；缩短教主立牌主动描述，避免字体异常。
+- 构建：五线 `:build`（仅编译 / 构建验证，本轮未实机）。
+
+## 26.4-SNAPSHOT.15
+
+### 本线
+
+- 变更：版本号升至 `26.4-SNAPSHOT.15`（五线）；本轮把随机发牌收口到 `RandomCardHandler`，并修复 Bonnie 被动的随机池。
+- 修复 / 功能（五线）：`RandomCardHandler.CardCategory.BATTLE` 固定为 8 张公共战斗牌——攻击-中 / 大 / 特大、防御-中 / 大 / 特大、名刀、蓄力；`ALL` 保留其余公共牌（含暗袭），但所有池都会移除专属牌与 `ATTACK_CARD_FULL_POWER`；新增 `HEALING`（汉堡 / 巧克力蛋糕 / 豪华大餐）与 `giveFixedCardTo` 公共入口。
+- 修复（Bonnie，五线）：被动「击杀带标记的敌对目标」不再走私有 3 张攻击池，改为 `RandomCardHandler.giveCardTo(killer, BATTLE)`，防御 / 名刀 / 蓄力现在都能掉落。
+- 重构（五线）：Pandaman 的私有治疗三选一改用 `HEALING`；Satellite 固定轨道炮、EventEffects 固定攻击-特大改走 `giveFixedCardTo`。公共牌已无私有随机池（发专属牌的能力除外）。
+- 构建：五线 `:build`（仅编译 / 构建验证，本轮未实机）。
+
+## 26.4-SNAPSHOT.14
+
+### 本线
+
+- 变更：版本号升至 `26.4-SNAPSHOT.14`（五线）；本轮修复 `ChipShopService.grantRefresh` 的封顶判断。
+- 修复（商店三线 26.1.2 / neo21 / forge）：`grantRefresh` 原本用引用比较 `next == state`，而 `withRefreshGranted()` 即使 `refreshesLeft` 已被夹到 `REFRESH_MAX` 也总会新建记录；现改为比较 `refreshesLeft` 的值，封顶时返回 `false` 且不再写回 store。涉及 `neoforge-26.1.2/.../ChipShopService.java:105`、`neoforge-1.21.1/.../ChipShopService.java:103`、`forge-1.20.1/.../ChipShopService.java:71`。
+- 构建：`:neoforge-26.1.2:build` / `:neoforge-1.21.1:build` / `:forge-1.20.1:build`（仅编译 / 构建验证，本轮未实机）。
+
+## 26.4-SNAPSHOT.13
+
+### 本线
+
+- 变更：版本号升至 `26.4-SNAPSHOT.13`（五线 `neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1` / `fabric-1.21.1`）；本轮为发布审计发现的两处 26.1.2 P0 行为缺口修复，以及三只特殊门禁扩到 P0 三线。
+- 修复（26.1.2 秘密侦探立牌）：主动 `apply` 补回「目标已带 `UNDERCOVER_INVESTIGATION` ⇒ 记录 `AP_UNDERCOVER_REJECT` 并 return」的服务端早退闸门，与 1.21.1 / 1.20.1 对齐，避免重复施加与二次返币。
+- 修复（26.1.2 会员推荐信）：`countHandCards` 原本把 `getNonEquipmentItems()` 统计两遍（主背包重复计数、副手从未计入），现改为主背包一次 + `Inventory.SLOT_OFFHAND` 副手一次；手牌 <5 的发牌门恢复正确口径。
+- 门禁（P0 三线）：`verify_misaki_balance.py` / `verify_bonnie_active_order.py` / `verify_member_recommendation_hand_gate.py` 的 `LINES` 加入 `neoforge-26.1.2`；misaki 兼容 26.1.2 生成配方的字符串 `key` 与 datagen 的 `items` 首参；member 兼容 `getNonEquipmentItems()` / `SLOT_OFFHAND`。26.1.2 无 Bountiful，misaki 的 B1 赏金池检查跳过。三只门禁 exit 0（35 / 18 / 21 项）。
+- 构建：五线 `.13` 一条命令 `:build` PASS（2026-11-12 01:10，21 executed / 23 up-to-date，构建源 `a248f13e`）；根 `build/libs` 五枚产物与 `.sha256` 已更新。本轮只做编译 / 静态门禁验证，未实机。
+
+## 26.4-SNAPSHOT.12
+
+### 本线
+
+- 变更：版本号升至 `26.4-SNAPSHOT.12`（五线 `neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1` / `fabric-1.21.1`）；本轮为 P1 欠账实机收尾 + P0 发布审计补齐。
+- 修复（小猎手传送门回弹，工作树）：传送落地后新增 2.0 格「离开阈值」落地锁 —— 目标门在玩家真正走离门盘中心前不再累计站定，避免 5 秒冷却结束后原地被弹回；跨维度两门互指不再来回传送。五线同构；P0 1.21.1 实机验证同维度与跨维度均不弹回、走远后可再次使用。
+
+- 实机（P1 三线，2026-11-11）：`fabric-1.20.1`、`fabric-1.21.1`、`neoforge-26.1.2` 均完成小猎手传送门同维度传送、跨维度放置/穿越、落地锁（6.5s 不弹回）与走远 >2 格再回门解锁；三线均 PASS。
+
+- 文档 / 规则（2026-11-11 用户裁决重新划级）：P0 改为三线 `forge-1.20.1` / `neoforge-1.21.1` / `neoforge-26.1.2`，P1 改为两线 `fabric-1.20.1` / `fabric-1.21.1`；理由为 forge/neoforge 实现更接近、fabric 差异较大。同步更新 `docs/agent/AGENTS-full.md`、`AGENTS-dsh.md`、`AGENTS-dsh-linux.md`、`PROJECT-REFERENCE.md`、`tools/curseforge_upload.py` 的 P0 白名单，以及立牌 / 卡牌 / 伤害链 / 玩家类目标等当前规格与相关 Java 注释；历史批次记录保留原标签并加日期注记。本条只改文档 / 规则与注释，无产品代码改动，不额外 bump SNAPSHOT。
+
+- 补齐（26.1.2 类玩家商店，P0 发布审计）：新增 `compat/playerlike/PlayerLikeWallet.java`、`PlayerLikeWallets.java` 与 `shop/ChipShopService.java`；`ChipShopState` / `ChipShopRoller` / `ChipShopOpener` 的存取与候选/开门入口由 `Player` 泛化到 `LivingEntity`，非玩家走 `PlayerLikeTargets.giveItem` 交付、失败按钱包 `deposit` 退款。玩家菜单路径不变；`:neoforge-26.1.2:build` PASS（编译/构建验证，未实机）。
+- 补全（赏金池，neo21/forge）：`data/bountiful/bounty_pools/bountiful/astral_rews.json` 补 `al_sign`（EPIC）/ `inkshadow_sign`（RARE）/ `souri_sign`（LEGENDARY）/ `sykes_sign`（LEGENDARY），与 `ModItems` 的实际稀有度对齐；26.1.2 无 Bountiful，不参与。
+- 门禁（2026-11-11 发布审计）：`verify_chip_shop_ui.py` 支持 `Player`/`LivingEntity` 两种签名与 neo21 泛化开门形态；`verify_bountiful_pools.py` 将 26.1.2 移出 Bountiful 版本集；`verify_forge_loader_gate.py` 对齐已提交的 `forge_version=1.20.1-47.1.47` 与 `[47.1.47,48)`；`verify_content_library.py` 移除已删除的 `moses_ready` 效果假阳性。前三项 exit 0；content-library 仍有 9 条 1.2.0 冻结快照漂移，脚本自述为一次性验收项，未计入常规门禁。
+
+## 26.4-SNAPSHOT.11
+
+### 本线
+
+- 变更：版本号升至 `26.4-SNAPSHOT.11`（五线 `neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1` / `fabric-1.21.1`）。前置库引脚与行为均不变（仍为 `26.4-SNAPSHOT.2` / `.2` / `.2` / `.11` / `.9`），本条只记录版本号推进，不含玩法改动。
+- 文档：新增 `docs/features/souri-sign-spec.md`（**金鲤立牌**规格与实现记录：15 项冻结常量含 file:line、主动/被动/金鳞与化龙/饮品/蛟龙联动/卸下与死亡六组语义、跨线覆盖、P0 双线实机取证读数与复跑清单）。金鲤此前在 `docs/` 无任何落点，唯一真源是提交标题。
+- 文档：README 依赖表改为 dev 树实际引脚并按线列出（NeoForge 1.21.1 / Forge 1.20.1 / NeoForge 26.1.2 = `26.4-SNAPSHOT.2`，fabric-1.20.1 = `.11`，fabric-1.21.1 = `.9`），版本区间说明改为「模板展开自同一引脚」；Fabric (1.20.1) 前置表第 6 行同步 `.11`。已发布的 `1.5.0` 产物仍 pin `26.4-SNAPSHOT.1`。
+- 新增：**金鲤立牌**（`souri`）移植到 P1 三线 —— `fabric-1.20.1` / `fabric-1.21.1` / `neoforge-26.1.2`，至此**五线齐**。每线 9 个 Java（立牌物品 / 管理器 / 饮品实体 / 3 个效果 / 模型 + 渲染器）+ 主资源与生成产物（model / recipe / advancement），三语各 23 个 souri 键、27 个功能键与 P0 逐字一致。三线 `:compileJava` 均 BUILD SUCCESSFUL；datagen 与三线串行实机已于同日补跑通过（读数见 `docs/features/souri-sign-spec.md` §7）。语义差异：两条 fabric 线与 26.1.2 无 `activateForEntity`（仅「非玩家持牌生物主动施放」缺失，玩家路径等价）；26.1.2 的 `MamushiSignItem.addAwakening` 由 `private` 放宽为 `public static`，渲染器因 GeckoLib 5 泛型边界改用原始类型（1 条 unchecked）。
+- 修复：`forge-1.20.1` 缺 `assets/astral_dice/animations/souridrink.animation.json` —— 该线 `SouriDrinkModel` 引用它但文件从未入库，饮品动画在 P0 线会静默缺失；已从 `neoforge-1.21.1` 补入同 md5 文件。
+- 新增：**少主立牌**（`al`）移植到 P1 三线 —— `fabric-1.20.1` / `fabric-1.21.1` / `neoforge-26.1.2`，至此**五线齐**。每线 4 个新 Java（立牌物品 / 给牌钩子 / 筹码折扣 / 类玩家目标）+ 贴图、手册条目、三语各 13 键、生成产物（model / recipe / advancement）；并**补齐 P1 三线原本缺失的选卡基建**：`CardChoiceManager` 的 `minSlots` 变长下限重载、`CardChoiceType.titleKey(slotCount, minSlots)` 变长标题键、`CardChoiceMenu` 按 `minSlots` 判定可确认（旧 4 参调用点行为逐字不变）。三线 datagen 跑通（只新增 10 个 al 产物、无删除无漂移），三线串行实机 **PASS**（世界就绪 16.220 / 18.137 / 12.184 s，`LINUX_STOP: OK`，无新增 crash）。语义差异：三线均不覆写 `activateForEntity`（P1 无 `SignEntitySkills`，P0 本身恒 deny）；刷新只发 `ServerPlayer`；fabric-1.20.1 的 `CardChoiceType` 补两参 `titleKey`。
+- 文档：新增 `docs/features/al-sign-spec.md`（**少主立牌**规格与实现记录：12 项冻结常量含 file:line、主动「强者怜悯」/ 被动「双赢」A 面给牌 / 星光属性 / 限时折扣四组语义、P1 选卡基建、13 键文本、五线覆盖与 5 条语义差异、§7 实机取证读数、复跑清单）；`docs/features/sign-roadmap.md` 的 al 行改为「五线已落地」；`tools/sign_display_names.json` 少主 `lines` 补两条 fabric 线（命名门禁 **110,663** 项 PASS）。
+- 文档：新增 `docs/features/sign-roadmap.md`（立牌计划表六项状态 + 三项未实现规格 + 开工必做）；`docs/features/souri-sign-spec.md` 覆盖表改为五线；`tools/sign_display_names.json` 金鲤 `lines` 补两条 fabric 线（命名门禁现 **110,663** 项 PASS）。
+- 重建：五线已按 `26.4-SNAPSHOT.11` 重建（2026-11-10 15:21，源提交 `011a6891`，一条命令跑五个 `:build`，28 executed / 16 up-to-date），README〈Build provenance〉表已换成 `.11` 真值（P0 两行含 `build-info.json` 的 commit/builtAt/classCount，另三线无描述符只有尺寸+哈希）；两枚 P0 jar 的 `<jar>.sha256` 旁证按最终字节重生成（`<line>/build/libs/` 与根 `build/libs/` 各一份）。`run/*/mods` 由各线 `pushToDevRun` 同步为 `.11`；`pushToGame` 因 `multi-dev-next` 不在整合包白名单而跳过。追加重建：P0 两线于 2026-11-11 00:21 按 `60deccc7` 再次重建（`al_sign` 创造栏修复 + 小猎手 forge 同步），neoforge-1.21.1 = 2,827,020 B / `3d4d5534…42e8` / classCount 588，forge-1.20.1 = 2,876,962 B / `6dd1d043…2f36` / classCount 613，两枚 `.sha256` 旁证已重算；`forge-1.20.1` 的 `run/1.20.1/mods` 副本由 `pushToDevRun` 重打包（2,846,569 B / `db656ab5…3bd0`），与 `build/libs` 字节不同，发布以 `build/libs` 为准。再次重建：配方换料（`273dc47a`）后 P0 两线于 2026-11-11 00:35 重建 —— neoforge-1.21.1 = 2,827,030 B / `ed22288b…380e`，forge-1.20.1 = 2,876,972 B / `8629e296…aecd`，旁证已重算（forge 的 `run/1.20.1/mods` 副本 2,846,578 B / `1a9bd4ea…2752`）。
+- 新增：**小猎手立牌**（`inkshadow`，id `astral_dice:inkshadow_sign`，史诗/紫色）首版落到 P0 两线 `neoforge-1.21.1` + `forge-1.20.1`（用户 m02258：先做第一版供验收，显示效果由用户自定）。主动「暗影之门」：按技能键在准星 8 格内放**起始【传送门】**，30 秒内在另一处放**终点【传送门】**即配对；放置期间移速 +10%，且无法攻击、无法切换武器、无法与方块实体交互（服务端逐 tick 复位锁定槽位），放好终点后恢复；起始门在终点门放下前**无效**（半透明、不可穿越）；窗口超时 / 放置期死亡 / 退出 / 卸下立牌 ⇒ 本次作废、起始门消失，冷却照付。被动「双生之影」：每有一名玩家首次穿越一扇门，佩戴者攻击力 +2（2:00、可叠、按「每扇门每人」去重）；敌对目标靠近存活门每 20 tick 受 2 点技能伤害。一对门存活 5 分钟、可**跨维度**、到期直接消失、不可破坏不可攻击（非方块实体：`noPhysics` + `isInvulnerableTo` 恒真 + `hurt` 恒 false）。
+- 变更（实现口径）：小猎手的**第二次按键不经过 `performSkillForCurio`** —— 由网络入口前置钩子（neo21 `SignActivatePayload.handle` / forge `ModNetwork`）先问 `InkShadowSignManager.tryPlaceEndFromKey`，命中即 return。理由：一次主动技能只结算一次，否则会二次触发风扇筹码发牌 / 电流核心 / 技能音效 / `SignActiveTriggeredEvent`。主动冷却按 2026-11-10 用户裁决改为**遵守全局立牌规则**（`GameplayConstants.SIGN_ACTIVE_COOLDOWN_SECONDS`，默认 180 秒，含充能封顶 180→160 秒与「额外电池筹码 ×0.5」减免），不再写死 2400；穿越音效与配方在后来的用户裁决中又改了两轮（见本版下方「音效 / 品质 / 配方」条）。本批**只改 `neoforge-1.21.1`**（用户要求先验收该线），forge 线暂留 2400，验收通过后同步。
+- 新增（资产）：`models/inkshadoweffect.bbmodel` 经 `tools/bbmodel_to_geo.py` 转 `geo/inkshadoweffect.geo.json`（9 骨 59 cube），手写 `animations/inkshadoweffect.animation.json`（idle 2.0 s，四骨 Y 轴自转）；启用门中间单独一层黑色漩涡（`textures/entity/inkshadow_vortex.png`，独立旋转 quad，门模型本身不含）；物品图标、门贴图、漩涡贴图均为首版占位。
+- 修复（小猎手闪烁，用户 m03439 / m03505 / m03548 / m03624 连续反馈）：门模型与黄色眼睛闪烁与光影无关（开关光影都闪）。三处根因一起修：①**降分辨率**——首版把 bbmodel 的 64×64 贴图缩到 32×32 去迁就 geo 的 `texture_width: 32`，本批改回 64×64 并把 geo 的 uv 空间整体 ×2；②**mipmap + cutout**——补 `inkshadoweffect.png.mcmeta`（`blur:false`），关掉 mipmap，避免 alpha 阈值在缩小采样时逐帧裁进裁出；③**z-fighting**——模型全是零厚度薄片：渲染层由 `entityTranslucent` 改 `entityCutoutNoCull`（进不透明通道、写深度），`GROUND_LIFT` 0.10→0.12 让两层地面贴片离开草地，`InkShadow` 骨的两片侧翼从 z=-6.6153 后移到 -6.75，让带黄色眼睛的中间平板永远在前。同时删掉门面渲染里的 `endBatch() + disableDepthTest` 状态 hack（Iris 延迟管线里会打乱通道顺序）。
+- 修复（小猎手 tooltip 缺文本，用户 m03775 反馈）：`neoforge-1.21.1` 的主动/被动正文原本写成**编号键** `tooltip.astral_dice.sign.inkshadow_active.{1..5}` / `_passive.{1,2}`，但 `ModTooltipHandler.addSignLines` 只读**基键**再按 `\n` 拆行、不会遍历编号键 ⇒ 语言文件里的文本一句都没被读到，tooltip 里原样显示 `§7tooltip.astral_dice.sign.inkshadow_active` 这样的键名。三语（zh_cn / en_us / ja_jp）全部把编号键合并回单键多行（子项仍以两个空格开头，由 `addSignLines` 加 `- ` 前缀）。实机复核：tooltip 现输出完整 8 行主动正文（含「站入门内 1.5 秒后传送 / 每门 5 秒 / 放置者需先离开 4 格」）与 2 行被动正文。forge-1.20.1 本来就是单键写法，无此问题。
+- 修复（P0 datagen 欠账）：`sykes_sign` 配方在 P0 两线**都不是 provider 产物**（neoforge 那份是手写进 `src/generated` 的、forge 连 json 都没有，只有 P1 三线有 provider 条目）⇒ 两线 `ModRecipeProvider` 补 `MYM/YCY/GDG`；`forge-1.20.1` 的 `al_sign` 同样只有手写 json、provider 未登记（重跑 datagen 会被当 stale 删掉）⇒ 补 `basicItem` + `BXB/KCK/XDX` 配方。本批 P0 两线 datagen 实跑后：`inkshadow` 与 `sykes` 的 advancement 首次生成，另 25 个既有 JSON 出现键序/去尾换行的纯格式漂移（以 datagen 为真值接受）。两个 P0 datagen 专属坑记入 `docs/agent/AGENTS-dsh-linux.md` §5.1：**跑前必须 park `run/<线>/mods` 里的 `astral_dice-*.jar`**（否则 launch classpath 带上旧 jar，datagen 跑旧代码、新 provider 全不生效）；**`runData` 收尾 JVM 不退出**（`HashCache` 行即产物落盘，随后卡在 Collective 更新检查）。
+- 文档：新增 `docs/features/inkshadow-sign-spec.md`（小猎手规格与实现记录：常量表、主动/被动/门实体/渲染四组语义、落点与 datagen 登记、11 个文本键、边界与取舍、跨线覆盖、复跑清单）；`docs/features/sign-roadmap.md` 的小猎手行改为「P0 双线首版已落地、待验收」并订正 id（`inkshadow_sign`，原建议 `ink_shadow` 作废）；`tools/sign_display_names.json` 追加小猎手条目（命名门禁 **111,290** 项 PASS）；`docs/agent/AGENTS-dsh-linux.md` 按用户裁决订正出网口径（Linux 只有 TUN 直连、不适用 Win 的代理服务器方式，`~/.gradle/gradle.properties` 的 proxy 五行已删除）。
+- 变更（提示口径，用户 m03850 裁决「只用单个 actionbar，优先公用通道，有覆写用覆写」）：小猎手主动技能已压成**单条**提示 —— 起始门那条改由公用事件 `SignActiveTriggeredEvent` 承载：`InkShadowSignEvents.onSignActiveTriggered` 先 `setHandled()` 压掉基类通用文案「<立牌>主动技能已启动!」，再代发 `msg.astral_dice.inkshadow_place_start`；`InkShadowSignManager.placeStartPortal` 自身不再发提示（早期两条叠在一起）。终点门走网络前置钩子、不经该事件，仍由 `placeEndPortal` 单选 `msg.astral_dice.inkshadow_place_end`。另按用户「动画太快，速度减半」把门体 idle 由 2.0 s 拉长到 4.0 s（`animation_length` 与四骨关键帧同步×2，运行时 `getAnimation('animation.inkshadoweffect.idle').length()` = 80 tick）。1.21.1 实机复核：起始门一条「暗影之门：起始之门已放置，30 秒内选择终点之门的位置」、终点门一条「暗影之门：终点之门已放置，配对存在 3:00」，无重叠（截图 `temp/shots/actionbar/{start-single,end-single}.png`）。
+- 变更（站定判定与踩门反馈，用户 m03996）：「踩在门正上方」才算站上 —— 新增 `STAND_RADIUS = 0.55D`，按与门盘中心的**水平距离**判定（旧实现用实体包围箱 `inflate(0.6)`，等效半径约 1.2 格，贴边走过也会被传送），并要求脚底与门同层（`dy ∈ [-0.5, 1.0]`）；同时**踩上去就每 2 tick 播一次 `PORTAL` 粒子**（冷却中 / 门主人保险未解除也播），不再只在传送瞬间出效果。1.21.1 实机：距中心 1.3 格站 3 s 原地不动（旧判定会命中）；踩中心 ⇒ 传送到配对门；门面粒子可见（`temp/shots/actionbar/` 同批截图）。
+- 变更（被动改按存活门对生效，用户 m04094「由持续 2:00 改成有属于自己的传送门存在时，效果就能生效」）：小猎手被动层数**不再按时间过期** —— 只要佩戴者名下还有存活门对（一对 3:00 存活的 ACTIVE 门）就一直生效；门对全部到期后下一拍即清零并撤攻击修饰符。实现上删掉 `STACK_DURATION_TICKS = 2400` 与层数到期刻的读写，新增玩家附件 `INKSHADOW_PAIR_EXPIRIES`（逗号分隔的存活门对到期刻）：`placeEndPortal` 成功时追加一条，`livePairDeadline` 每次读取顺手剪掉已过期项（不依赖门实体回写，登出/重启/跨维度都自洽），`refreshStacks` 以 `deadline > 0 && stacks > 0` 为生效条件；HUD `inkshadow_stack` 的持续时间改为最晚存活门对的剩余时间。1.21.1 实机：放置后 `stacks=2 / atk=5 / HUD dur=3600`；放置后 153 s（越过旧 2:00 计时）仍为 `stacks=2 / atk=5 / dur=540`；门对到期后 `stacks=0 / atk=1 / expiries 空 / HUD none`。本批**只改 `neoforge-1.21.1`**，forge-1.20.1 仍是 2:00 计时。
+- 变更（文本，用户亲自改写）：1.21.1 中文 `tooltip.astral_dice.sign.inkshadow_active` / `_passive` 由用户手动改写并按其版本落盘（主动文案精简为四段、被动改为「场上存在自身放置的传送门时…每名玩家仅能触发一次加成（包括自身），可叠加」）；英日按同义重译，`effect.astral_dice.inkshadow_stack.description` 从「持续 2:00」改为「存在自身放置的传送门期间生效」。实机热重载后客户端 tooltip 输出 14 行，无编号键残留、无「2:00」字样。
+- 变更（音效 / 品质 / 配方，用户 m04202）：小猎手传送门改用**下界传送门音效三件套**并移除旧的末影珍珠音效 —— ①门本身每 90 tick（4.5 s）播 `SoundEvents.PORTAL_AMBIENT`（`SoundSource.BLOCKS`，0.5 音量，起始门与成对门都响）；②玩家本次站定的第一拍播 `PORTAL_TRIGGER`（即原版「走进下界传送门」那一声，0.6）；③传送完成后在落点播 `PORTAL_TRAVEL`（0.8），**跨维度**时起点再补一次同一音效（目标维度的声音传不回来）。粒子不变（起落点各 40 粒 `PORTAL`，踩门期间每 2 tick 6 粒）。**品质由史诗降为稀有**（`AstralRarities.epic()` → `rare()`，实机读到 `ASTRAL_DICE_RARE`），配方随之简化：`BXB/KCK/XDX` 中 `X` 由星币尘改为**星币**、`D` 由钻石骰子改为**普通骰子**（B 墨囊 / K 金块 / C 空白筹码不变）。改的是 datagen provider，跑 `:neoforge-1.21.1:runData` 后 `src/generated/resources/data/astral_dice/recipe/inkshadow_sign.json` 与运行期配方表同时更新。1.21.1 实机复核：物品 `rarity=ASTRAL_DICE_RARE`、`getRecipeManager().byKey(astral_dice:inkshadow_sign).isPresent()=true`、直接造一对 ACTIVE 门后玩家站定 1.5 s 正常传送，日志无 `Unable to play unknown soundEvent` 与新增异常。本批仍**只改 `neoforge-1.21.1`**，forge-1.20.1 待验收后同步。
+- 修复：**少主立牌 `al_sign` 在创造栏与 JEI 中缺失**（用户 m04349）—— 根因是 P0 两线的 `init/ModCreativeTabs.java` 在 `dice_tab` 的 `displayItems` 里都漏了 `output.accept(ModItems.AL_SIGN.get())`（P1 三线都有；物品注册、lang、generated model 与贴图均在位）。两线各补一行后实机复核：1.21.1 创造栏 `getDisplayItems()` 含 `astral_dice:al_sign`，JEI 19.70 的 1,923 项物品列表含 al_sign 与 inkshadow_sign；1.20.1 创造栏 161 项裸名含 `al_sign`。
+- 新增：小猎手立牌**同步到 `forge-1.20.1`**（用户 m04349），该线自此与 1.21.1 终态同形 —— 稀有品质（`ASTRAL_DICE_RARE`）、简化配方（`star_coin` / `dice`）、门对 3:00、门体严格贴地（去掉 +0.25 悬浮）、站定 1.5 s 后传送、同一扇门 5 s 静默冷却、放置者需先离开 4 格、跨维度双向、下界传送门三件套音效、被动按存活门对叠层 + `inkshadow_stack` HUD、门面平铺且仅在成对 ACTIVE 时渲染。资源与 1.21.1 逐字节一致（geo / animation / 实体贴图 / 物品图标同 md5）。datagen 跑 `:forge-1.20.1:runData` 后只有 `recipes/inkshadow_sign.json` 一份变化（X=`astral_dice:star_coin`、D=`astral_dice:dice`，1.20.1 用复数路径）。forge 实机（log `scripts/test/linux/logs/1.20.1-20261110-235422.log`，11,972 行）：物品稀有度与名称、运行期配方、两门 ACTIVE 贴地、站定 3.5 s 从 (315.5,-60,302.5) 传到 (321.5,-60,306.5)、主世界 (340.5,-60,320.5) ⇒ 下界 (0.5,128,3.5)、装备立牌穿新门对后 `INKSHADOW_STACK amp=0 dur=3474` 且 `ATTACK_DAMAGE=3.0`（同一对门再穿不加层）；无 unknown soundEvent、无新增 crash。1.20.1 的 Rhino 取不到 `TooltipFlag$Default` 且没有 `Java.type`，tooltip 运行时文本改静态核对（`ModTooltipHandler` 块 + 三语键在位）。
+- 变更（配方换料，用户 m04704）：小猎手立牌 `BXB/KCK/XDX` 的 `B` 由**墨囊**换成**末影珍珠**、`K` 由**金块**换成**金色染料**（原版无该物品，取色相最接近的 `minecraft:yellow_dye`；如需金粒/金锭等实际物品改 `.define('K', …)` 一行即可）。`X=星币`、`C=空白筹码`、`D=骰子` 不变。两线 `ModRecipeProvider` 与 datagen 产物同步更新（`neoforge-1.21.1` 单数 `recipe/`、`forge-1.20.1` 复数 `recipes/`），park 两线 jar 后 `:neoforge-1.21.1:runData :forge-1.20.1:runData` 各只写 1 个文件、无删除无漂移。
+- 注意：小猎手**已在 P0 双线实机取证**（1.21.1 多轮：第二轮验收、闪烁修复、提示口径与动画时长、音效/品质/配方；forge-1.20.1 于 2026-11-11 00:0x 完成终态同步与实机）；P1 三线未移植（红线：不自动跟进）。
+
+- 新增：**小猎手立牌**（`inkshadow`）移植到 P1 三线 —— `fabric-1.20.1` / `fabric-1.21.1` / `neoforge-26.1.2`，至此**五线齐**。每线 8 个 Java（立牌物品 / 管理器 / 传送门实体 / 模型 / 渲染器 / 效果 / 事件 / 状态效果）+ 集成点（`ModItems` 稀有品质、创造栏、实体注册、`ModEffects`、`ModAttachments`、渲染注册、tooltip、网络入口前置钩子、datagen×2）+ 主资源（ink128 低分辨率 geo/png、idle 动画、门面贴图、物品图标、状态图标、手册中英、`signs`/`stand` 标签、三语各 14 键）+ 生成产物（model / recipe / advancement；配方 `BXB/KCK/XDX` = 末影珍珠 / 星币 / 黄色染料 / 空白筹码 / 骰子）。三线 `:compileJava` 均 BUILD SUCCESSFUL；P1 三线 datagen 跑通（只新增 10 个 inkshadow 产物、无删除无漂移）；三线串行实机 **PASS**（物品 / 创造栏 / 门对 / 站定 1.5 s / 每门 5 s 静默冷却 / 双向传送均成立，`LINUX_STOP: OK`）。平台差异：两条 fabric 线的 `platform.event` 垫片每 tick 触发两次 ⇒ `TickEvent.PlayerTickEvent` 必须判 `Phase.END`（否则站定 30 tick 缩成 15 tick）；`curioTick`→`onCurioTick`、`onUnequip`→`clearSignData`；fabric-1.21.1 走 Trinkets 饰品槽；26.1.2 按新版 API 全改写（`Identifier.parse` / `Optional<Holder>` / `getSelectedSlot` + `createInventoryUpdatePacket` / `sendOverlayMessage` / `ResourceKey.identifier()` / `ValueInput`·`ValueOutput` / `hurtServer` / 8 参 `teleportTo` / GeckoLib 5 `adjustRenderPose`·`postRenderPass`）。
+- 修复（跨维度 / 跨区块放置门对，2026-11-11 用户裁决「先修复区块卸载问题，用方案1，需要实机验证」）：原症状是起点门在 A 维度、玩家带窗口去 B 维度放终点门时回红字「起始之门已消失」（fabric-1.20.1 实机复现）。真因有两层 —— ①`InkShadowSignManager.resolvePendingPortal` 用 pending 维度的 level 直接 `getEntity`，区块已卸载就查不到；②更致命的是门实体在**没有玩家 ticket 的区块里根本没被 tick 过**，因此不会写进区块存档，区块拉回来也找不回（实测：拉回后 `hasChunk=true` 而 `getEntity=null`，而 `/summon` 生成的同类实体能正常落档）。修法 = 方案1（附件 `INKSHADOW_PENDING_POS` 记起点坐标，解析不到时按坐标 `level.getChunk(...)` 再试一次）**加**门实体自钉区块（放置即 `setChunkForced`，实体每 tick `forceOwnChunk()` 兜底、崩溃重开会重新钉住，`remove(RemovalReason)` 时释放）。五线同构，代价是一对门存活期内两块区块常载（最长 3:00）。
+- 实机（`forge-1.20.1`，2026-11-11 13:0x，log `scripts/test/linux/logs/1.20.1-20261111-130421.log`）：跨区块放置（起始门在 (150002,-60,150002)、玩家 tp 到 5000 格外后再放终点门）⇒ `start=true end=true`、两门 `isActive()=true`，站定 4 s 由 (150002,-60,150002) 侧传到 (171002.5,-60,171002.5)；跨维度放置（主世界 ↔ 下界屋顶）⇒ `start=true end=true`，玩家不在下界时门实体仍在且 `forcedChunks=1`；双向穿越 主世界→下界 (300.5,128,300.5) → 落点 5 s 冷却后回主世界 (210002.5,-59.95,210002.5)。`neoforge-1.21.1` 那一轮因 NeoForge early display 无法交接窗口未能实机，其余四线只做到编译通过（后续补证见下条）。
+- 实机（补证，2026-11-11 13:29–13:56，四轮串行、每轮 `stop.sh` 后端口清零）：`neoforge-1.21.1`（log `scripts/test/linux/logs/1.21.1-20261111-132958.log`）跨维度放置与穿越双双成立 —— 主世界 (5002,-60,5002) 放起始门、下界 (302,128,302) 放终点门 ⇒ `end=true pending=false`、两门 ACTIVE，玩家站定 4 s 由下界落到主世界 (5002.5,-60.0,5002.5)；`neoforge-26.1.2`（log `scripts/test/linux/logs/26.1.2-20261111-135118.log`）主世界→下界放置 ⇒ `start=true end=true`，逐维实体扫描 overworld 3 门全 ACTIVE / the_nether 1 门 ACTIVE。**P1 三线视觉取证补齐**（此前因显示器休眠截图全黑）：fabric-1.20.1 / fabric-1.21.1 / 26.1.2 三条线的 ink128 门环 + 黄色眼睛 + 平铺紫色星盘门面均正常、严格贴地（window 8156118636023553 / 1415715373759046 / 6287081372416062）；探针口径差异记入 spec §7.1i（26.1.2 用 `p.level` 属性、`getForcedChunks()` 已改名、`getEntities()` 直接可迭代）。仍未实机：fabric 两线的跨维度放置行为（视觉已取证、逻辑同源）。
+- 文档 / 规则：`docs/features/inkshadow-sign-spec.md` 的 §2.3（区块常载）、§5（跨维度/跨区块放置已修复）、§7.1h（本轮实机读数）、§8（门「消失」的两个常见原因与排查三连）已回填；`docs/agent/AGENTS-dsh-linux.md` 新增「实机期间必须阻止 KDE 锁屏与睡眠」（用户 m05435 裁决：`systemd-inhibit` + `ScreenSaver.Inhibit` 开、`kill` + `UnInhibit` 关，漏关属环境残留）。
+- 修复（tooltip 染色审计，提交 2754d905）：仓库级 `scripts/audit/tooltip_color_audit.py` 原报 302 处违规，覆盖五线 × 三语（41 组 key、15 个 lang 文件；R3 120 / R1 106 / R2 72 / R1b 4）。全部按行级改写清零，保留各文件原有字节布局（不使用 `json.dump`），审计现已 PASS。
+- 修复（立牌命名门禁，提交 545978e6 + b0bc56ed）：五线现在全部跟随 `tools/sign_display_names.json` 的 wiki 角色名（36 条，2026-11-11 更新）。门禁已覆盖 `neoforge-26.1.2`，并新增对未知 `<name> Sign` / `<name>のスタンド` 形式的结构性检查，不再只依赖旧职称黑名单；26.1.2 的 46 处旧职称与五线其余散文指代已改写。`python tools/verify_sign_display_names.py` => GATE: PASS，164,786 项检查。本项取代上方 `souri` / `al` 移植条目里「P1 三线无 activateForEntity」的旧口径。
+- 新增（P1 立牌主动入口，提交 6498dfa6）：`fabric-1.20.1`、`fabric-1.21.1`、`neoforge-26.1.2` 补齐 `SignEntitySkills` / `BaseSignItem.activateForEntity(LivingEntity)` 基建与 35 个立牌覆写，与 P0 契约对齐。Jasmine 与 Misaki 为真实实体级实现；其余返回机器可读的 `AP_SIGN_ACTIVE_ENTITY_DENIED: sign=...:reason=...` 拒绝原因。
+- 修复（P0 InkShadow，提交 d8eb37d6）：P0 两线补齐 `inkshadow` 的 `activateForEntity` 覆写，以 `needs_player_session` 拒绝（暗影之门依赖 `ServerPlayer` 会话）；P0 覆写覆盖现为 36/36。
+- 修复（P1 实体级击杀/受击 + Misaki，工作树）：三条 P1 线的 `BaseSignItem` 新增 `onKillEntity` / `onHurtEntity` 与 `invokeKillHooks(LivingEntity, LivingEntity)` / `invokeHurtHooks(LivingEntity, DamageSource, float)`；受击路径沿用 P0 的敌对闸门（玩家走 `isHostileAttack`，非玩家要求攻击者是存活且非自身的 `LivingEntity`）。三条 P1 线的 `MisakiSignItem` 改为通过 `PlayerLikeTargets.giveItem(owner, ...)` 交付名刀卡，不再掉落实体物品，与 P0 同口径。五线 `:build` 通过。
+- 构建（2026-11-11）：五线 `.11` jar 已按当前树重建；`pushToRootBuild` 更新 `build/libs`，`pushToDevRun` 更新 `run/<line>/mods`。`pushToGame` 因 `multi-dev-next` 不在 `[multi-main]` 白名单继续 skipped；未写整合包。
+
+## 26.4-SNAPSHOT.10
+
+### 本线
+
+- 变更：前置库引脚升到 `26.4-SNAPSHOT.2`（Forge / NeoForge 1.21.1 / 26.1.2）、`26.4-SNAPSHOT.9`（fabric-1.21.1）与 `26.4-SNAPSHOT.11`（fabric-1.20.1），两条 fabric 线的区间下界同步。该版库撤销了旧 modId `starengine_lib` 的钱包兼容，钱包只认 `starengine` 键。
+- 新增：**金鲤立牌**（`souri`，传奇）落到 `neoforge-1.21.1` 与 `forge-1.20.1`。主动「把酒言欢」在指定地块放置【葫芦饮】（已获得【金鲤化龙】时改放【仙酿】），并给自身 1 层【金鳞】与 1 层【反击】。被动「不醉不归」：每次反击获得 1 层【金鳞】；任意角色拾取【葫芦饮】或【仙酿】后，佩戴者获得 1 层【反击】。【金鳞】（每层防御 +1，最多 4 层）满 4 层时转化为【金鲤化龙】，把场上所有未拾取的【葫芦饮】转成【仙酿】，并使每层【金鳞】提供攻击 +1。【葫芦饮】：攻击 +3（1:00）；【仙酿】：攻击 +4、迅捷（2:00），拾取时立即回复 6 点生命；两者一次只能持有一个。佩戴蛟龙立牌者拾取【葫芦饮】/【仙酿】分别获得 1/2 层觉醒。饮品是无碰撞的漂浮 GeckoLib 实体（新模型 `winegourd` / `winegourdbetter`），全亮自发光、像掉落物一样旋转与上下浮动，拾取有白色粒子。化龙后隐藏【金鳞】图标、只显示【金鲤化龙】；层数与化龙状态在死亡后保留。
+
+## 26.4-SNAPSHOT.9
+
+### 本线
+
+- 变更：Magic Coins 与 SG-Economy 在五条线（`neoforge-1.21.1`、`forge-1.20.1`、`neoforge-26.1.2`、`fabric-1.20.1`、`fabric-1.21.1`）上一律**永久不兼容**。黑名单不再携带「仅在星币钱包启用时才拒绝」的标志：把 `enable_star_coin_wallet` 关掉不再恢复兼容。启动提示删去「关掉钱包即可共存」这条出路，只保留唯一处置——移除所列模组。
+
+## 26.4-SNAPSHOT.8
+
+### 本线
+
+- 新增：两线（`neoforge-1.21.1` / `forge-1.20.1`）**全部 34 个立牌类**都覆写了 `activateForEntity(LivingEntity)`。茉莉的横扫与美咲的气爆给出真实现（效果、时长、扣层补卡与玩家路径一致）；其余立牌显式拒绝并给出机器可读原因（`AP_SIGN_ACTIVE_ENTITY_DENIED: sign=…:reason=…`）。完整支持矩阵见 `docs/features/player-like-entities-api.md`。
+- 新增：钱包/商店的失败语义可区分 —— `PlayerLikeWallet#isAvailable(LivingEntity)` 与新的 `WALLET_UNAVAILABLE` 结果把「主人离线/账户冻结」同「无钱包」（`NO_WALLET`）、「余额不足」区分开；`PlayerLikeAbilities#deliverLikePlayer` 成为统一交付入口（背包 → 掉地兜底）。
+- 修复：给牌钩子接受中立发牌方 —— `CardGivenHooks#fire(LivingEntity, LivingEntity)`（允许 null 发牌方，打 `AP_CARD_GIVEN` 锚点），非玩家发牌也能进被动链；旧 `ServerPlayer` 重载保留。neoforge 线补齐了 forge 线已有的该钩子类。
+- 新增：类玩家实体在首次 `curioTick` 且商店状态无候选时自动播种一次（`AP_CHIP_SHOP_AUTOSEED`），下游不必再自己调 `prepareOffers`。播种只发生一次；已购完/冷却中/已拥有全部不重掷。
+- 构建：版本号 `26.4-SNAPSHOT.8`；每个 jar 内嵌 `META-INF/astral_dice/build-info.json`（version / commit / builtAt / classCount）并附 `.sha256`；README 增加「版本 → 提交 → 构建时间 → jar 哈希」表，并给出清理陈旧 `26.4-SNAPSHOT.7` m2 坐标的命令。
+
+## 26.4-SNAPSHOT.7
+
+### 本线
+
+- 修复：名刀·嘎呜切费用计算在未佩戴美咲护法立牌时传入空玩家，导致饰品栏查询空指针崩溃；同时把蓄力返还的费用口径统一到 `effectiveCost`，佩戴立牌时按 3 点结算。
+- 新增：forge 1.20.1 线实装少主立牌（`al_sign`，史诗）——主动「强者怜悯」向选定玩家赠出 1~3 张卡牌，每张换 2 星币；被动「双赢」在给牌时让双方各得 1 层星光，对目标使用主动技能后双方购买筹码 -5 星币（最低 5）并各得 1 次刷新；每 4 层星光 +1 攻击力、+1 防御力。本线选卡器同时支持 1~3 张。
+- 新增：骰战参与者（经 `DiceCombatParticipants` 注册的生物，如车万女仆）在骰战内按玩家口径吃筹码与战斗牌 —— 攻击侧跑骰战攻击修饰器并计入攻击牌点数、每击消耗一次攻击牌耐久，防御侧掷防御牌；玩家专属的账户/背包类加成（星币锤、七咒、狐光快照、治愈点等）对注册生物按不适用跳过，未注册生物路径逐值不变。neoforge 1.21.1 与 forge 1.20.1 两线同批。
+- 新增：骰战参与者管线（G6）同步到 P1 三线 —— `neoforge-26.1.2`、`fabric-1.20.1`、`fabric-1.21.1`。注册生物在攻击侧沿用同一套骰战攻击修饰器与攻击牌点数、防御侧掷防御牌；玩家专属加成按不适用跳过，未注册路径逐值不变。
+- 修复：注册参与者（女仆等）在 Curios 5.x 下拿不到筹码槽 —— 改为参战首击就地补齐筹码槽，使筹码通道在真实玩法可达；未注册生物路径不变。
+- 修复：类玩家生物（经 `PlayerLikeTargets` 注册）在商店与立牌主动上的三处上游缺口 —— ① 商店候选从不播种，导致任何注册生物恒 `NO_OFFER`（新增 `ChipShopOpener#openFor` 与 `ChipShopService#prepareOffers`，候选掷取宿主放宽到 `LivingEntity`）；② 立牌主动对非玩家恒失败（`AlanaSignItem` 现实现 `activateForEntity`，只施「铁处女」免疫，其余立牌仍只对玩家）；③ 卸骰不缩回筹码栏、购买交付失败仍扣款并推进购买计数（现按剩余槽位防御式收缩；失败退款走 `PlayerLikeWallet#deposit` 且不推进购买）。neoforge 1.21.1 与 forge 1.20.1 两线同批。
+
+- **Fabric 前置收敛**：`fabric-1.21.1` 与 `fabric-1.20.1` 均移除 Puzzles Lib 与 Forge Config API Port 依赖；13（1.21.1）/12（1.20.1）条事件桥改由 StarEngine 的 `api/event` 回调提供，只由 `StarengineBridges` 注册；库引脚分别为 `26.4-SNAPSHOT.8` / `26.4-SNAPSHOT.10`。13/12 条链均已在实机验证（1.21.1 全 13、1.20.1 全 12；继承的 `removeAllEffects` 行为按裁决保持原样）。`MODLIST` 不再要求已移除的两个模组。
+
+## 26.4-SNAPSHOT.6
+
+> 开发线吸收主线 `1.5.0` + `1.5.0-hotfix`（共 40 个提交），并把自己的版本号加一，以便与合并前的开发版区分。本线引脚不变：各线均为 `26.4-SNAPSHOT.6+<line>`，StarEngine 仍钉 `26.4-SNAPSHOT.1`。
+
+### 吸收自主线
+
+- **反同步（40 个提交）**：到 tag `1.5.0`（`6fe38138`）为止的 36 个提交，加上到 `9adfd9f3`（`1.5.0-hotfix`）的 4 个后续提交，以 `--no-ff` 合并。四棵树校验 `extra = 0` / `suspicious = 0`；合并后不再携带的 91 个文件全部是主线在各线 `src/generated` 下的合法删除。首轮合并漏掉的两个发布说明文件（`release/1.5.0-hotfix/`）已按字节原样补回。
+- **Fabric 1.20.1 筹码配方门控**：67 条筹码配方与其 67 条进度改由 `fabric:load_conditions` 经 `ChipRecipesEnabledCondition` 门控，注册点放在 `onInitialize`（早于任何数据包装载），因此 `enable_chip_recipes` 开关重启后真实生效。
+- **P1 两线的实体集合**：本线的动画实体 `astral_dice:sykestentacle` 与主线的 `astral_dice:barricade` / `astral_dice:repulsion` 并存。实体类型、属性注册、渲染器与模组入口在 NeoForge 26.1.2 与 Fabric 1.20.1 上人工收口；26.1.2 上重复出现的 `registerEntityRenderers` 方法（真实合并缺陷）已合并为一处。
+- **文档与规则**：主线规则更新随合进入（`docs/agent/AGENTS-dsh.md` 新增发布时序红线），并带入 `release/1.5.0-hotfix/` 玩家更新日志与 1.5.0 发布文档集。
+
+### 本线
+
+- 各线 `mod_version` 由 `26.4-SNAPSHOT.5` 升至 `26.4-SNAPSHOT.6`，使合并后的开发版与既有开发版可区分。
+- 合并过程守住版本纪律：逐线都不接受主线的 `1.5.0` / `1.5.0-hotfix` 号；StarEngine 仍钉 `26.4-SNAPSHOT.1`，声明区间 `[26.4-SNAPSHOT.1,27.0.0)`（Fabric：`>=26.4-SNAPSHOT.1 <27.0.0`）。
+- StarEngine 在各线均为**外部前置**：四个 `build.gradle` 内已无 `jarJar(...)` 与内嵌指令，产物 jar 内也不含 `starengine` 条目与 `META-INF/jarjar` 目录。
+- 合并后守门：`tools/check_lang_sync.py` 各线 `[OK]`，`tools/check_changelog_parity.py` 报 `CHANGELOG_PARITY: OK`，各线均 `BUILD SUCCESSFUL`，产物为 `astral_dice-26.4-SNAPSHOT.6+<line>.jar`。
+- **Fabric 1.21.1 补齐 P0 对等（10 处）**：对 `neoforge-1.21.1` 的审计在 P1 Fabric 线查出 7 处真实缺口，本批全部修复。① 星盘箱表覆盖只有 43 张、P0 是 56 张，差的 13 张全是 `chests/trial_chambers/*`；黄金星盘也失去了不祥宝库掉落 —— 现按 P0 口径注入，把 `astral_dice:chests/golden_star_plate` 子表挂进 `chests/trial_chambers/reward_ominous`（子表自带 1:19 权重，Java 侧不再二次抽样）。② 法伤加成原先以**第二次嵌套真伤**结算，一次命中产生两条伤害实例、两次死亡派发与两套音效分档；现改为与 P0 相同的「并进同一事件 + 护甲预补偿」。③ 邦妮立牌可刷星币：缺「已带隐匿调查」闸门、按施加前层数返币、绕过钱包漏斗，且缺立牌冷却记录与击杀去重。④ 本线从不派发 `MobEffectEvent.Applicable`，HARMFUL 免疫与路障／拒止投药拦截一直静默失效；现从 Puzzles `MobEffectEvents.AFFECTS`（`canBeAffected` HEAD）接线，不新增 mixin。⑤ 露露立牌受击冷却为 20 tick，应为 300。⑥ 魔法箭袋记录的是「本周期的第一张」，应记「本次实际使用的那张」。⑦ 拒止力场的注释自称「本线无立牌系统」，从不随卸牌销毁。⑧ 法伤折叠原先直接在 `LivingDamageEvent` 折叠，而受击侧倍率在更早的 `LivingHurtEvent`（HIGH）就已乘进金额，加成因此漏乘倍率；现按 P0 的真实次序对齐：P0 的倍率挂在 `LivingDamageEvent.Pre`（护甲/魔抗之后、吸收之前），故目标值取「（护甲后本金 + 加成）× 倍率」再反解护甲前的输入值，嵌套 hurt 改写单槽时按（受害者, 伤害源）回落取倍率。⑨ 鼠鼠护盾的钳制发生在折叠之前，折叠抬高金额后会漏红心；现在折叠后再按剩余护盾重钳一次（另一处重钳在骰战结算出口）。⑩ 第三方法术伤害的 directEntity 是玩家时会误入骰战结算，覆盖式写值把折叠加成整段吞掉；骰战入口与 `isDiceBattleSettledDamage` 恢复 P0 同形的法伤排除。守门：`:fabric-1.21.1:compileJava --rerun-tasks` 报 `BUILD SUCCESSFUL`；实机冒烟已跑通：BOOT-READY 与 7 条回归用例全 PASS，并另跑定向断言（效果免疫、56 张箱表、不祥宝库子表产出、拒止力场随卸牌销毁）。
+- 额外电池（`astral_dice:extra_battery_chip`）在两条 Fabric 线上没有 tooltip 描述行：`ExtraBatteryChipItem` 与 `BaseChipItem` 都不覆写 `appendHoverText`，描述行只由 `event/ModTooltipHandler` 注入，而该分支只在 neo/forge 三线存在（lang 键 `tooltip.astral_dice.chip.extra_battery` 一直都在）。本批按 P0 同构把 `fabric-1.21.1` 与 `fabric-1.20.1` 两条线一起补齐，实机各自取到「装备时，主动技能冷却时间 §e-50%§r」一行。
+- 鼠鼠护盾在 `fabric-1.21.1` 上整条失效：1.21.1 的 `setAbsorptionAmount` 被 `generic.max_absorption`（基础值 0）钳制，而本线 `RenShieldEffect` 照抄了 1.20.1 的实现、没有带 `+10.0` 的 `MAX_ABSORPTION` 修饰器（P0 侧有），护盾吸收值恒被钳成 0、施加后下一 tick 即因「吸收 ≤ 基线」被清理。现按 P0 同形补上修饰器（原版 1.21.1 签名 `(Holder<Attribute>, ResourceLocation, double, Operation)`），实机读数：施加后 `max_absorption=10`、吸收 10；带标记的法伤 `5+3` 扣 6.4（8×抗性 0.8），`18+3` 则被重钳在剩余护盾 10 上（折后 8.0，红心零损失）。
+
+- **Fabric 1.21.1 遗留对等项**：对 P1 Fabric 线的复核又收掉 6 处残留漂移。① 目标选择器缺 P0 那条 `undercover` 标签（对已带 `UNDERCOVER_INVESTIGATION` 的目标），现按 P0 同构补上（命中即早退，不发 ActionBar）；② `fabric.mod.json` 建议 `jei >=19.70.0`，而本线实际按 `19.56.0.441` 编译与测试，声明已降到 `>=19.56.0`（与 1.20.1 线同形）；③ 三处入口 javadoc 仍写「Fabric 1.20.1」（与鼠鼠护盾那个缺陷同源的照抄），已逐一订正；④ 三语各自的 3 个 `curios.modifiers.*` 在本线是死键（本线走 Trinkets，前置库 jar 也不读），已删除，三语键集仍一致；⑤ 队伍判定此前分裂成两套——本地 `astral_dice.combat.PartyRelations`（30 处调用，572 行）与前置库同名类（4 处），而 neo/forge 各线全用库版；现全部统一到库版并删除本地副本，起步诊断行随之变为与 P0 相同的 `AP_PARTY:`；⑥ 清理神秘遗物+ 的半截死链路：捕获处理器写入的 `curse_original_amount` 没有任何读取方，而消费者读的 `dice_curse_ratio` 在整条线没有写入点；死附件与处理器已删除，卡片 javadoc 也不再宣称本线不移植的功能（该模组没有 Fabric 构建）。守门：`:fabric-1.21.1:compileJava --rerun-tasks` 报 `BUILD SUCCESSFUL`，`tools/check_lang_sync.py --line fabric-1.21.1` 报 `[OK]`（三语各 1156 键）。
+
+- **新增史诗立牌 `al`（少主立牌）**：主动「强者怜悯」选一名类玩家目标后打开卡牌选择器，可放 **1–3 张**（选择器改造为可变下限，放 1 张即可发送），卡牌直接进入目标物品栏、从佩戴者扣除，放不下的按失败掉在目标处，每送出 1 张得 2 星币；被动「双赢」刻意分成两个触发面：(A) **给牌**——一切走唯一发牌漏斗（`VitaminPillChipItem#giveCard`）的给牌（主动发卡、「你有我有」、附属注册生物收牌都算）双方各 +1 星光，同 tick 同受益人 20 tick 内去重；(B) **对目标使用主动技能**——双方筹码 -5 星币（下限 5，6000 tick）并各得一次商店刷新。每 4 层星光另加 +1 攻击 / +1 防御。附属模组可通过 `target/PlayerLikeTargets` 把生物注册成类玩家目标（原版玩家恒真，未注册生物仍被选择器拒绝）；星光、折扣与待定目标都挂在 `LivingEntity` 上，星币仍只走玩家账户。接线齐全：`ModItems.AL_SIGN`、datagen 配方 `B/X/B`、`K/C/K`、`X/D/X` 与模型/进度、贴图由 `images/少主立牌.png` 逐字节复制、`signs` 与 curios `stand` 标签、三语文案、帕秋莉手册条目，命名表新增 `lines` 字段让门禁只校验实装该立牌的线。守门：`:neoforge-1.21.1:compileJava` 与 `:neoforge-1.21.1:runData` 均 `BUILD SUCCESSFUL`，`check_lang_sync.py --line neoforge-1.21.1` 报 `[OK]`（三语各 1169 键），`verify_sign_display_names.py` 报 `GATE: PASS`（34 条）。
+
+## 26.4-SNAPSHOT.4
+
+> dev 线新增 GeckoLib 硬前置与动画实体 `astral_dice:sykestentacle`，并按 bbmodel 重导几何资源；版本号按「每提交 +1」递增。P1 两线本批**搁置**（见下）。
+
+### 工程口径
+
+- 前置：GeckoLib 升为**硬前置**（各线各自 `build.gradle` + 元数据区间；必须写 Modrinth **version id**，写版本号会解析到别的平台变体）：neo 1.21.1 `Grwn5rUB`（4.9.3）/`[4.9,5)`、forge 1.20.1 `aC5KMoNg`（4.8.4）/`[4.8,5)`、fabric 1.20.1 `SD2lOScS`（4.8.4）/`>=4.8.4`、26.1.2 `xfVfPcoC`（5.5.2）/`[5,6)`；不内嵌 JarJar，由玩家自备。
+- 实体：`astral_dice:sykestentacle`（无刷怪蛋、无自然生成）。`idle` 控制器常驻循环 `animation.tentacleidle`（4.11 s）；`action` 控制器 `triggerableAnim("attack", …thenPlay("animation.tentacleattack"))`（2.46 s），**受伤成功时**（`super.hurt` 返回 true）触发一次，播完回落 `idle`。
+- 几何重导（2026-10-29 用户裁决 A）：从 `models/sykestentacle/sykestentacle.bbmodel` 经 Blockbench MCP 重导 `models/sykestentacle/models/main.geo.json`。与旧文件的**唯一差异** = 新增空父骨 `bone`（`parent: root`、`pivot [0,0,0]`、无 cube，`bone2` 改为挂在它下面），共用 21 根骨逐值 0 处差异；旧 geo 缺这根骨会让新版 `animation.tentacleattack` 里那条 `bone` 轨被 GeckoLib **静默丢弃**（不报错、只是少一段运动）。
+- 动画不重写：重编译结果与 21:02 那份导出逐值比 —— `tentacleidle` 差 0、`tentacleattack` 最大 |Δ| = 1e-5（导出只保留 6 位有效数字），故动画源保持 21:02 版本。
+- 资源：各线 `geo/sykestentacle.geo.json` 51417 B 与 `animations/sykestentacle.animation.json` 93726 B（CRLF、裸 LF = 0、无 BOM），「CRLF→LF 归一化」sha256 与 `models/` 源相同（geo `9c7ceed1b811d089…`、anim `e26c5ec3c5a30811…`）；贴图 5647 B 逐字节同源。新增不变量：`动画骨名 ⊆ 几何骨名`（idle 21 / attack 22 对 geo 22，缺失集合为空）。
+- 验证（P0 两线）：`:neoforge-1.21.1:jar :forge-1.20.1:jar` BUILD SUCCESSFUL（11 tasks）；jar 内 `SykeTentacleEntity` / `SykeTentacleModel` / `SykeTentacleRenderer` 与三份资源齐全、`mods.toml` 含 `modId="geckolib"`；`scripts/verify/verify_resource_integrity.py` 1.21.1 / 1.20.1 均 **PASS**；`tools/check_lang_sync.py` **exit 0**（P0 各 1067 键三语一致）。
+- **P1 两线搁置（2026-10-29 用户裁决）**：本批只完成 P0 两线（`neoforge-1.21.1` + `forge-1.20.1`）；`neoforge-26.1.2` 与 `fabric-1.20.1` 的代码与资源已落盘但**不构建、不验证**，等上游把 1.5.0 完整移植进这两条线并合并 dev 后再跟进（移植映射见 `docs/compat-1.5.0-porting.md`）。**在移植完成前，这两线的缺功能属已知差异，不得当 bug 报。**
+- 欠账：实机未验（红线：默认不启动）；geo/anim 的 X 镜像取向仍只有静态结论（重导证明它不是导出过期，见 `docs/features/sykestentacle-animation-spec.md` §4 / §6.4）；根 `build/libs` 未刷新（本批只跑 `:jar`，未跑 `pushToRootBuild`）。
+- 版本号：各线 `mod_version=26.4-SNAPSHOT.4+<平台>`；`starengine_version` 保持 `26.4-SNAPSHOT.1`（本批无库变更，CI 库 ref 不动）。
+## 26.4-SNAPSHOT.3
+
+> dev 线新增 mob 侧骰战参与者接口与特殊骰能力注册表（2026-10-28），版本号按「每提交 +1」递增。
+
+### 工程口径
+
+- mob 侧骰战只认显式注册：唯一入口 `DiceCombatParticipants.registerExtraAttacker(String owner, Predicate<LivingEntity>)`；没有任何注册者时 `isParticipant` 恒 false，mob 打玩家 / mob 打 mob 的结算与改动前逐值一致（不存在配置文件、数据包、标签、命令、自动发现等旁路入口）。
+- `resolveMobMeleeAttack` 的目标类型由 `Player` 泛化为 `LivingEntity`：已注册参与者攻击任意生物都进入骰战（攻击 = `TargetBattleStats.baseAttack` + 附魔加成 + 自己的骰点；防御 = 玩家仍走原公式，非玩家用 `TargetBattleStats.baseDefense` + 自己的骰点），`opposed` 判据为任一方带骰。
+- 特殊骰可为非玩家持有者注册：`DiceCombatAbilities.register(Predicate<ItemStack>, DiceRollAbility)`，回调拿到 `RollContext`（holder / die / opponent / attackerSide / sides / defaultRoll）；`weird_dice` / `crimson_dice` 权重已内置，能力抛异常或返回值越界（不在 `1..sides`）时退回普通 d6。
+- 攻守双方取骰统一收敛到 `CurioSlotUtil.findFirstCurioMatching(LivingEntity, Predicate<ItemStack>)`；触发骰战的参与者同时在**自己身上**获得骰神赐福（2026-10-28 用户裁决），沿用玩家侧判定条件与参数。
+- 验证：dev 测试台 `1.21.1` —— `TLMDICE-PARTICIPANT-1.21.1` 58/58 PASS、`TLMDICE-ABILITY-1.21.1` 26/26 PASS；各线 `compileJava` 全绿。
+- 版本号：各线 `mod_version=26.4-SNAPSHOT.3+<平台>`；`starengine_version` 保持 `26.4-SNAPSHOT.1`（本批无库变更）。
+
+## 26.4-SNAPSHOT.2
+
+> dev 线承接发布线 `multi-main` 的 `1.5.0-rc.5` 内容（2026-10-28 反向同步，38 个提交），版本号按「每提交 +1」递增。
+
+### 工程口径
+
+- 内容同步：`multi-main` 自 `cce71efb`（rc.4 基线）以来的 38 个提交全部并入 —— 手册筹码条目改「获取途径说明」（取代默认不加载的悬空配方页）、筹码获取途径守门 `stale_page` / `no_note` 升为致命项并接入 CI、近战 / 法伤 / 骰战等历史修复、交接文档与发布说明。
+- 版本号：各线 `mod_version=26.4-SNAPSHOT.2+<平台>`；`starengine_version` 保持 `26.4-SNAPSHOT.1`（库 `next` 未变，仍为 `b78fe10`），fabric 的 `starengine_version_range` 同为 `>=26.4-SNAPSHOT.1`。
+- 冲突 5 处：各线 `gradle.properties` 取 dev 版本号；`docs/agent/AGENTS-dsh.md` 索引行取发布线第 62 条文案并订正为 `L3047–L4244`（合并后 `AGENTS-full.md` 4,244 行）。
+- 零删除：`multi-main` 自 `cce71efb` 以来 0 个文件删除；合并树集合比对 `extra` = 0、`lost` = 1（= 发布线把 `handover-1.5.0-rc.1-main.md` 改名为 `handover-1.5.0-main.md`，属预期）。
+## 26.4-SNAPSHOT.1
+
+> dev 线自本版起版本号规则改为 `<年份>.<季度>-SNAPSHOT.<序号>`（2026-10-26 用户裁决，本次 `26.4-SNAPSHOT.1`）；
+> 本版由发布线 `multi-main`（`1.5.0-rc.4`）整体前移而来，功能内容即该版本的全量内容。
+
+### 工程口径
+
+- 代码基线：本工作树（`multi-dev-next`）前移到 `multi-main` 的 `cce71efb`，四子项目源码/资源/测试资产与发布线一致；迁移前 `multi-main...multi-dev-next` = 150 / 0（dev 线独有提交 0 个，无内容丢失）。
+- 版本号：各线 `mod_version=26.4-SNAPSHOT.1+<平台>`、`starengine_version=26.4-SNAPSHOT.1`（fabric 另有 `starengine_version_range=>=26.4-SNAPSHOT.1`）；前置库 `starengine` 的 `next` 分支同批发布 `lib_version=26.4-SNAPSHOT.1`（库内 Java 源码与 `1.1.0` 完全一致）。
+- 加载器门槛：两条 P0 线 `mods.toml` 的 starengine `versionRange` 上界 `2.0.0` -> `27.0.0`（新规则版本号首位 = 年份，只有破坏性更新才进位）。
+- CI：`.github/workflows/build.yml` 的库 checkout `ref` 钉到库 `next` 提交 `b78fe10`（库 `next` 需先推送，否则该步 checkout 失败）。
 
 ## 1.5.0-hotfix (2026-11-02)
 
@@ -27,7 +722,7 @@
 
 ### 玩家可见变更
 
-- **Fabric 1.20.1 版本号定为 `1.5.0-hotfix`**：仅本线升为热修号，另三条线（NeoForge 1.21.1 / Forge 1.20.1 /
+- **Fabric 1.20.1 版本号定为 `1.5.0-hotfix`**：仅本线升为热修号，另各线（NeoForge 1.21.1 / Forge 1.20.1 /
   NeoForge 26.1.2）仍为 `1.5.0`；互通号仍是 `1.5`，与三条 1.5.0 线照旧可互相联机。
 
 ## 1.5.0 (2026-11-02)
@@ -53,15 +748,15 @@
 #### 平台与兼容性
 
 - **新增 Fabric 1.20.1 版本**：本模组现同时支持 **NeoForge 1.21.1 / Forge 1.20.1 / NeoForge 26.1.2 / Fabric 1.20.1**
-  四条平台线，四条线**功能对等**。Fabric 版需要 **Fabric API** 与 **Puzzles Lib**（后者自带前置
+  四条平台线，各线**功能对等**。Fabric 版需要 **Fabric API** 与 **Puzzles Lib**（后者自带前置
   **Forge Config API Port**）两个前置；饰品栏使用 **Trinkets**（可选兼容 **Accessories**，装了就用、没装照旧）；
-  战斗数值条、伤害数字、立牌 / 筹码 / 卡牌 / 骰子等全部玩法与另三条线一致。
+  战斗数值条、伤害数字、立牌 / 筹码 / 卡牌 / 骰子等全部玩法与另各线一致。
 
 - **Fabric 版补齐「玉」(Jade) 的护甲显示**：装 Jade 后，看向玩家时悬浮框里的**护甲图标与数值**同样改为
-  本模组的**防御力**（图标为本模组**满 / 半 / 空**三态盾形图，与原版外观同形），与另三条线一致；
+  本模组的**防御力**（图标为本模组**满 / 半 / 空**三态盾形图，与原版外观同形），与另各线一致；
   生物仍显示其原版护甲值。**未装 Jade 时一切照旧**（不产生额外前置要求）。
 
-- **不再内置 StarEngine（四条线全部适用）**：四条发布线都已删除内嵌库，发货 jar 内不再含
+- **不再内置 StarEngine（各线全部适用）**：四条发布线都已删除内嵌库，发货 jar 内不再含
   `META-INF/jarjar/`；NeoForge 26.1.2 的 `jarJar` 与 Fabric 1.20.1 的 Loom `include` 亦一并撤除。
   StarEngine（`starengine`，**1.1.0**）改为**独立前置**，必须自行安装到 `mods`，且版本要与本构建编译时
   所用的一致（`starengine-neoforge-1.21.1-1.1.0.jar` / `starengine-forge-1.20.1-1.1.0.jar` /
@@ -72,7 +767,7 @@
 
 - **1.5.0 是四条平台线的同时正式发布**：`neoforge_1.21.1` / `forge_1.20.1` / `neoforge_26.1.2` / `fabric_1.20.1` 四个 jar 挂在同一个 GitHub Release 上，tag 为不带后缀的 `1.5.0`，发布类型为正式版（非 prerelease）。
 
-- **四条线的 StarEngine 一律作为普通外部依赖（构建侧）**：NeoForge 26.1.2 构建移除 `jarJar`、Fabric 1.20.1
+- **各线的 StarEngine 一律作为普通外部依赖（构建侧）**：NeoForge 26.1.2 构建移除 `jarJar`、Fabric 1.20.1
   构建移除 Loom `include`；两边自检反转为「产物仍含 `META-INF/jarjar/`（NeoForge）或 `META-INF/jars/`
   （Fabric）才告警」。`neoforge-26.1.2/build.gradle` 的 `generateModMetadata` `replaceProperties` 新增
   `starengine_version`，使 `neoforge.mods.toml` 能展开出 `versionRange="[1.1.0,2.0.0)"`；Fabric 线把
@@ -83,7 +778,7 @@
 #### 输入与界面
 
 - **筹码类状态效果图标改为无边框筹码素材**：11 个筹码效果的 HUD 图标原先直接复用了带背包格边框的筹码物品图，现统一换成 `images/shop/unbord_chips/` 的无边框 32×32 素材（美工刀-初级 / 美工刀-锋利 / 电流剑 / 电磁炮 / 肾上腺素-一般 / 肾上腺素-高效 / 手电筒-强光 / 磨刀石 / 诅咒之剑 / 魔法秘典 / 复仇之戟；P0 两线）。映射清单 `tools/chip_effect_icon_map.json`，守门 `python tools/gen_chip_effect_icons.py --check`。
-- **筹码商店三色品质外框恢复绘制**（2026-10-22 用户裁决）：筹码格脚下的 28x28 品质描边环（`chipshop_quality_1/2/3` = 稀有蓝 / 史诗紫 / 传奇金）在上一轮「状态图标改无边框」时被一并删掉，现补回：绘制时先读服务端同步的品质码，码未到（0）再按物品稀有度现算，档位为「不画」时跳过；24x24 无边框图标仍内缩 2 px 画在描边环内侧（P0 两线）。守门 `scripts/verify/verify_chip_shop_ui.ps1` 的 G2b 由「禁止绘制」的反向断言改为「必须绘制」的正向断言，变异测试 M38/M39 同步反转。
+- **筹码商店三色品质外框恢复绘制**（2026-10-22 用户裁决）：筹码格脚下的 28x28 品质描边环（`chipshop_quality_1/2/3` = 稀有蓝 / 史诗紫 / 传奇金）在上一轮「状态图标改无边框」时被一并删掉，现补回：绘制时先读服务端同步的品质码，码未到（0）再按物品稀有度现算，档位为「不画」时跳过；24x24 无边框图标仍内缩 2 px 画在描边环内侧（P0 两线）。守门 `scripts/verify/verify_chip_shop_ui.py` 的 G2b 由「禁止绘制」的反向断言改为「必须绘制」的正向断言，变异测试 M38/M39 同步反转。
 - **移除电磁炮的「就位」效果指示器**（2026-10-22 用户裁决）：电磁炮充能 ≥ 6（攻击力 +5 生效）时不再在效果栏挂「就位」图标；该效果整体删除（注册项、三语 `lang` 条目、`railgun_ready.png` 图标、`tools/chip_effect_icon_map.json` 映射一并移除），筹码「生效中」指示器由 6 枚降为 5 枚（P0 两线）。
 - **磨刀石 / 安全气囊新增「冷却中」倒计时指示器**（2026-10-22 用户裁决）：这两个筹码的保命效果（磨刀石 = 单次伤害至多把生命降到 1 点；安全气囊 = 致命伤害无效化）**真的触发后**进入 1:00 冷却，此时效果栏显示**同名**（磨刀石 / 安全气囊）图标，**时长直接等于剩余冷却** —— 玩家不用记时间，数字归零即代表可以再次触发。新效果 = `whetstone_guard_cd` / `airbag_guard_cd`（`ChipReadyEffect`，色值 0xCFD8DC / 0xFFB74D，图标沿用对应筹码的无边框素材）；由 `event/PlayerTickEvents#updateChipCooldownIndicators` 每 tick 按附件里记录的冷却结束刻同步（偏差 > 40 tick 才重新施加，避免每 tick 发包），筹码未佩戴 / 冷却结束 / 死亡重登后自动收尾；与既有的 ∞「加成生效中」指示器**并存**，靠有没有跳动的数字区分（P0 两线）。
 
@@ -266,11 +961,6 @@
 
 
 
-
-
-
-
-
 ### 内容与平衡性调整
 
 - **玩家初始防御力改为 2（1 面盾），原为 4。** 初始攻击力不变，仍取原版攻击伤害属性（空手为 1）。
@@ -332,7 +1022,7 @@
 
 - **手册 / 指南的防御力示例改用真实基数 2**（纯文案，不改游戏行为）：《战斗骰点》条目三语（`en_us` / `zh_cn` / `ja_jp`）
   仍写「玩家 防御 = 4 + …」与「1 防御力 = 2 护甲值」，自基数改为 2、单位改为「1 ÷ 护甲系数」后即失真；现 12 份文件
-  （四线 × 三语）统一为「2 + 护甲×0.30 + 0.85×盔甲韧性」与「1 防御力 = 1÷护甲系数 护甲值（玩家约 3.33、怪物 2.5）」。
+  （各线 × 三语）统一为「2 + 护甲×0.30 + 0.85×盔甲韧性」与「1 防御力 = 1÷护甲系数 护甲值（玩家约 3.33、怪物 2.5）」。
 
 - **生物获得初始攻击力，其近战攻击正式纳入骰战**（2026-09-26 用户需求；数值于 2026-09-26 用户裁决时再校准）：
   **敌对生物初始攻击力 4**、**中立生物 3**、被动 / 友好生物 **0**；生物的攻击力 = **初始攻击力 + 攻击力属性值 +
@@ -356,7 +1046,7 @@
   - **帕秋莉手册《战斗骰点》条目同步改写（三语）**：明确「未装备骰子也按骰战公式结算，但双方骰点一律按 0 计算」，
     并把防御公式更正为**按阵营分别计算**（玩家 `2 + 护甲×0.30 + 0.85×韧性`；怪物 `初始防御 + 护甲×0.40 + 1.0×韧性`，
     向下取整），同时补注伤害下限已由固定 1 点改为「攻击力 × 15%」。
-  - **工程文档同步（不影响游戏行为）**：`AGENTS.md`「骰战闪避与防御规范」段与三线 `DiceCombatEvents` 注释
+  - **工程文档同步（不影响游戏行为）**：`AGENTS.md`「骰战闪避与防御规范」段与各线 `DiceCombatEvents` 注释
     按新口径重写（骰战适用条件、怪物防御骰仅攻击方有骰子时掷、两侧防御公式与「无 20 上限」）；
     `tools/balance_sim/` 仿真器与报告生成器补标「旧模型（重标定前）」过期提示（**未改模型常量**，
     以保留已提交报告的可复现性）。
@@ -463,14 +1153,14 @@
   - **书签** —— 伤害类效果牌伤害加成 **+1 → +2**。
   - （**深渊试剂** / **感测装置** / **安全气囊** 的对应调整已并入本版各自的条目。）
 
-- **筹码「深渊试剂」名称统一**（2026-11-02，四条线）：物品显示名、tooltip、图鉴与手册条目里的引用一律为「深渊试剂」（英 / 日：Abyss Reagent / 深淵試薬），不再沿用旧的组合写法。
+- **筹码「深渊试剂」名称统一**（2026-11-02，各线）：物品显示名、tooltip、图鉴与手册条目里的引用一律为「深渊试剂」（英 / 日：Abyss Reagent / 深淵試薬），不再沿用旧的组合写法。
 
 #### 平台与兼容性
 
 - **前置库 `starengine_lib` 升级到 `2.0.0-SNAPSHOT.3`**：本次新增的「生物四分类」与「攻防换算公式」下沉到前置库的
   `combat` 包（`TargetCategory` 四分类、`TargetBattleStats` 初始攻防查表、`CombatFormula` 纯函数公式、
-  `DiceBattleResolver` 对骰与伤害合成），三条线（1.21.1 / 1.20.1 / 26.1.2）共用同一份实现，避免各线公式各自漂移。
-  库侧改动落在独立的 `next` 分支（发布线主分支当前为 `1.0.5`），本模组三线的 `starengine_lib_version` 同步升到
+  `DiceBattleResolver` 对骰与伤害合成），各线（1.21.1 / 1.20.1 / 26.1.2）共用同一份实现，避免各线公式各自漂移。
+  库侧改动落在独立的 `next` 分支（发布线主分支当前为 `1.0.5`），本模组各线的 `starengine_lib_version` 同步升到
   `2.0.0-SNAPSHOT.3`。库仍按原有方式 **JarJar 内嵌**进产物，整合包里**不应**再单独放库 jar。这是
   **主版本跃迁**（`1.0.4` → `2.0.0`），符合库自身「改变既有语义必须升主版本」的约定 —— 本次把「护甲 20 点上限」
   从公式中移除，属于既有语义变更。`2.0.0-SNAPSHOT.2` 补齐本批其余内容并对数值再校准：**`VanillaMitigation`**
@@ -499,11 +1189,11 @@
 
 ### 已修复BUG
 
-- **1.20.1 Fabric 新立牌提示框空白**：fabric 线的提示框处理只匹配 25 张立牌，其余三线匹配 32 张，因此后加的 alana / ame / deepseek / dorothy / jill / kangel / lingling 七张立牌此前只显示物品名，没有主动技能、被动技能与任何数值。现已全部补齐（含 KAngel 的粉丝计数与 Ame 的爱意层数计数），七张立牌的提示框均已恢复完整显示。
+- **1.20.1 Fabric 新立牌提示框空白**：fabric 线的提示框处理只匹配 25 张立牌，其余各线匹配 32 张，因此后加的 alana / ame / deepseek / dorothy / jill / kangel / lingling 七张立牌此前只显示物品名，没有主动技能、被动技能与任何数值。现已全部补齐（含 KAngel 的粉丝计数与 Ame 的爱意层数计数），七张立牌的提示框均已恢复完整显示。
 
 - **补齐 5 枚筹码的合成配方**：手电筒-爆闪、财运签、深渊试剂、无线输电杆、感测装置在 P0 两线均已有合成表（流派材料沿用既有充能 / 治愈 / 标记 / 星光口径）。
 
-- **法伤加成改为并入同一次伤害结算，不再补一次独立真伤**（2026-10-27 用户裁决「必须改回单次结算」；P0 两线）：此前法伤加成是在伤害结算的 Pre 阶段**再补一次** `true_damage` 伤害，于是一次命中会走两遍「受击」—— 吸收钳制、筹码固定点数减伤（气囊 / 磨刀石 / 侦探 / 超天酱）、弱印记乘算、按次触发的受击被动、跳字与音效各算两次，第三方模组也会把它捕获成两次判定。现在加成并进**同一个伤害实例**、且落在**护甲之前**（1.21.1 挂 `LivingIncomingDamageEvent`、1.20.1 挂 `LivingHurtEvent`，均最高优先级），只结算一次，并与本体走完全相同的管线（护甲 / 抗性 / 保护 / 吸收 / 受击倍率 / 减伤）。**数值口径**：走 `astral_dice:card_spell` 的法伤（P0 全部法伤牌与技能）与改造前逐字相同（该源与旧的 `true_damage` 都不吃护甲），带保护 IV + 抗性 II / 抗性 IV 时仍是 0.216 / 0.072；但加成现在跟随**本次命中的本体源**——若本体源本身要吃护甲（近战 / 箭矢 / 部分第三方模组的法术类型），加成改为按同一护甲减免结算，相对旧实现偏低（护甲 20 / 韧性 8 约 ×0.30），这是「与本体同管道」的预期结果；连击时加成还可能随本体一起被无敌帧吞掉（旧加成源 `bypasses_cooldown`，必落地）；变的只是「不再重复结算」的那些环节。同批删掉随之失效的重入闸门，并新增双线移植基线 `docs/features/neo-to-forge-porting-mapping.md`。
+- **法伤加成改为并入同一次伤害结算，不再补一次独立真伤**（2026-10-27 用户裁决「必须改回单次结算」；P0 两线）：此前法伤加成是在伤害结算的 Pre 阶段**再补一次** `true_damage` 伤害，于是一次命中会走两遍「受击」—— 吸收钳制、筹码固定点数减伤（气囊 / 磨刀石 / 侦探 / 超天酱）、弱印记乘算、按次触发的受击被动、跳字与音效各算两次，第三方模组也会把它捕获成两次判定。现在加成并进**同一个伤害实例**、且落在**护甲之前**（1.21.1 挂 `LivingIncomingDamageEvent`、1.20.1 挂 `LivingHurtEvent`，均最高优先级），只结算一次，并与本体走完全相同的管线（护甲 / 抗性 / 保护 / 吸收 / 受击倍率 / 减伤）。**数值口径**：走 `astral_dice:card_spell` 的法伤（P0 全部法伤牌与技能）与改造前逐字相同（该源与旧的 `true_damage` 都不吃护甲），带保护 IV + 抗性 II / 抗性 IV 时仍是 0.216 / 0.072；但加成现在跟随**本次命中的本体源**——若本体源本身要吃护甲（近战 / 箭矢 / 部分第三方模组的法术类型），加成改为按同一护甲减免结算，相对旧实现偏低（护甲 20 / 韧性 8 约 ×0.30），这是「与本体同管道」的预期结果；连击时加成还可能随本体一起被无敌帧吞掉（旧加成源 `bypasses_cooldown`，必落地）；变的只是「不再重复结算」的那些环节。同批删掉随之失效的重入闸门，并新增双线移植基线 `docs/features/neo-to-forge-porting-mapping.md（已删除 2026-11-05）`。
 - **法伤加成改为「绕过护甲、其余管道共享」+ AOE 命中也算攻击行为**（2026-10-27 用户裁决，P0 两线）：折叠为单次结算后，若本次命中的本体源本身要吃护甲（近战 / 箭矢 / 部分第三方模组的法术类型），加成也会跟着被削 —— 现改为在护甲之前做预补偿（求解使「护甲后总量 = 本体护甲后值 + 加成」的等价金额），加成因此**等效绕过护甲**，而抗性 / 保护 / 吸收 / 受击倍率仍只作用一次，数值与旧的独立真伤段一致；本体源本身绕过护甲时（本模组全部法伤牌与技能）直接相加、零开销。同批按裁决把「白泽赐福 / 降神倒计时启动」与「秘密侦探隐匿解除」提到 AOE 闸门之前 —— **AOE 波及的每个目标都算一次攻击行为**（反击链自算伤害仍整段早退），骰战结算仍只对主目标发生；连击时保持与本体同命（不加独立冷却穿透）。
 
 - **怪力乱神立牌 +5 限定为骰战；所有反击出口按 1 刻去重**（2026-10-27 用户裁决，P0 两线）：立牌的「攻击被「强化拒止」吸附的目标 +5」此前对**任何**伤害生效（法伤、技能、远程、环境都吃），现收窄为**只在骰战结算里加** —— 删掉两线 `event/LinglingSignEvents.java` 里那条独立的 +5 伤害处理器，唯一落点收敛到骰战终值（`combat/DiceCombatEvents.java`），三语 tooltip 与手册同步改成「骰战攻击…」。同批修掉反击的重复结算：熊猫人嘲讽、匠人破绽闪避、鼠鼠护盾、安全气囊四条反击出口本来共用同一个出口，但那里只挡了「反击伤害自我递归」，同一次挥击若派发多段伤害事件（本模组的额外加伤、第三方多段攻击）就会反击多次 —— 现在按「攻击者 + 受害者」1 刻窗口去重（`combat/DeathTriggerGuard.java` 新增 `claimPair`），四条出口共享同一把锁，一次挥击只结算一次正确伤害。
@@ -580,13 +1270,13 @@
   `DamageCardFxScheduler` 被**连续登记了两次**，而该线的事件总线（`LoaderBus#add`）不去重、同一事件每个服务端 tick
   只派发一次 ⇒ 该调度器**每 tick 执行两遍**，四张牌的 FX 时长与伤害落地时点一起减半（延迟 0.5 秒 → 0.25 秒、
   光束持续 1 秒 → 0.5 秒；伤害数值本身不变）。现删除重复的那一行，
-  订阅清单 51 条类名全部唯一（另三条线为注解式注册，从无此重复行）。
+  订阅清单 51 条类名全部唯一（另各线为注解式注册，从无此重复行）。
   判据：该事件总线对本类的监听器数为 1（修复前为 2），且四张牌的 FX 时长在冷启动后回到标称值。
 - **伤害跳字的显示效果重做**（2026-09-26 用户需求）：跳字**不再跟随目标跳动**——位置在本次伤害结算的
   一刻由服务端固定并下发；仍保留向斜上方移出并淡出的效果，并在其上增加 **±30° 的随机扩散偏移**，
   多条跳字同时出现时不再完全重叠。
 
-- **生物属性表缺少 `attack_damage` 时，其近战命中玩家会让服务端整段崩溃**（2026-11-02，四条线，已修复）：读取攻击力前未判该属性是否存在，命中瞬间抛异常（日志表现为 `Ticking entity`）；现在先判存在性，缺失按 0 处理。
+- **生物属性表缺少 `attack_damage` 时，其近战命中玩家会让服务端整段崩溃**（2026-11-02，各线，已修复）：读取攻击力前未判该属性是否存在，命中瞬间抛异常（日志表现为 `Ticking entity`）；现在先判存在性，缺失按 0 处理。
 
 #### 平台与兼容性
 
@@ -615,8 +1305,8 @@
   `Mixin apply for mod` 计数为 0 且无 `InvalidInjectionException`。
 - **补齐 Fabric 版「隐匿」状态效果的 HUD 图标**（2026-10-04）：该效果在 Fabric 版**已注册但缺贴图**
   （`textures/mob_effect/concealment.png` 未随移植带入）⇒ 玩家身上的「隐匿」图标显示为缺失贴图。
-  现按另三条线的同一份贴图**逐字节补齐**（sha1 `d099ddc7e9da`，224 字节）。守门 `tools/verify_effect_icons.py`
-  由此 FAIL → PASS（四线 211 个效果图标 100% 覆盖）。
+  现按另各线的同一份贴图**逐字节补齐**（sha1 `d099ddc7e9da`，224 字节）。守门 `scripts/verify/verify_effect_icons.py`
+  由此 FAIL → PASS（各线 211 个效果图标 100% 覆盖）。
 
 - **修复 26.1.2 线上「目标选择器」HUD 提示文字完全不可见**（2026-10-07，仅 26.1.2 线）：选中目标后，
   准星下方那条居中提示（目标名 · 距离 · 标签）在本线**一个字都不显示**，而且日志里没有任何报错。根因是
@@ -624,14 +1314,14 @@
   `if (ARGB.alpha(color) != 0)` —— **alpha 为 0 时直接跳过、不提交任何文本、也不报错**；而该覆盖层用的
   三个高亮色（友方绿 `0x55FF55` / 敌对红 `0xFF5555` / 中立黄 `0xFFFF55`）都是**无 alpha 的 6 位 RGB**，
   alpha 恒为 `0x00`。1.20.1 与 1.21.1 有 `Font#adjustColor`（`(color & 0xFC000000) == 0 ⇒ color | 0xFF000000`
-  这条「alpha 为 0 视为不透明」的旧口径），本版本已把它移除 ⇒ **另三条线没有这个缺陷**。现改为显式 ARGB
-  （`0xFF55FF55` / `0xFFFF5555` / `0xFFFFFF55`），RGB 视觉完全不变；另三条线**故意不随改**（属「MC 版本 API
+  这条「alpha 为 0 视为不透明」的旧口径），本版本已把它移除 ⇒ **另各线没有这个缺陷**。现改为显式 ARGB
+  （`0xFF55FF55` / `0xFFFF5555` / `0xFFFFFF55`），RGB 视觉完全不变；另各线**故意不随改**（属「MC 版本 API
   语义差异」类平台差异，已登记到 `docs/compat-26.1.2-neoforge.md` §6.4）。同属该功能的框体描边
   （`TargetSelectionHighlighter`）只取 RGB 分量，行为不受影响。
   判据：选择会话激活且准星指向生物时，HUD 截图中该位置能检出符合上述色值的文字像素（修复前同场景为 0 像素）。
 - **对齐 Forge 1.20.1 的 `AP_EVENT_FIRE` 机器行键名**（2026-10-13，仅 1.20.1 线）：该线事件派发日志的末字段写成了 `targets=`，与 1.21.1 蓝本 / NeoForge 线及测试契约的 `targetsFinal=` 不一致 ⇒ 1.20.1 的事件用例取不到该行判据。现改为 `targetsFinal=`，两线机器行逐字一致（玩家可见行为不变）。
 
-- **Fabric 1.20.1 缺 6 张立牌的配方书解锁条目，且 misaki 立牌配方材料有误**（2026-11-02，已修复）：alana / ame / dorothy / jill / kangel / lingling 六张立牌此前在该线没有 `advancements/recipes/misc/*_sign.json`，配方只能在 JEI 与手册里查到、配方书里不出现；misaki 立牌的配方材料由 `golden_star_plate` 更正为 `star_plate`，与另三条线一致。
+- **Fabric 1.20.1 缺 6 张立牌的配方书解锁条目，且 misaki 立牌配方材料有误**（2026-11-02，已修复）：alana / ame / dorothy / jill / kangel / lingling 六张立牌此前在该线没有 `advancements/recipes/misc/*_sign.json`，配方只能在 JEI 与手册里查到、配方书里不出现；misaki 立牌的配方材料由 `golden_star_plate` 更正为 `star_plate`，与另各线一致。
 
 #### 文案与手册
 
@@ -639,7 +1329,7 @@
   ① 伤害数值此前经 `Component.translatable(key, 值)` 传入 ⇒ 数值成为**继承父样式的兄弟组件**，
   行内 `§e` 覆盖不到它、数字显示为灰色；现改走 `tt(...)`（与活体书页同款写法）；
   ② 四张牌的增伤能力移除后，「远程和魔法伤害提升」汇总恒为 0 ⇒ 无加成时整行不再显示。
-- **三张伤害效果牌 tooltip 的时长改用时间色；日文 tooltip 的数值不再重置行底色**（2026-10-06，四线同批）：
+- **三张伤害效果牌 tooltip 的时长改用时间色；日文 tooltip 的数值不再重置行底色**（2026-10-06，各线同批）：
   ① **定向爆破** 的「延迟 0.5 秒后……」此前把时长画成**数值色（黄 §e）** ——
   tooltip 配色规则中黄色专用于数值、**时长用蓝 §9** —— 现三语一律改为蓝色
   （对怪激光 / 轨道炮 的同一处文案已随 2026-10-15 的说明精简整段撤下，见下方「三张伤害效果牌的说明精简」条）；
@@ -668,7 +1358,6 @@
 - **立牌手册条目不再重复配方清单**（2026-10-26，P0 两线 × 三语）：7 个立牌（lingling / nardis / kangel / ame / sherry / hanna / megas）的手册正文此前重复写着「配方：…（xx 档）」，而每个条目本来就有独立的配方页 ⇒ 现已全部清掉（P0 三语 lang 里 `guide.entry.*` 的配方字样计数 = 0）。其中 nardis / sherry / hanna 三个条目的正文**只有这一句配方**，故整页撤下（条目页数 −1、对应 lang 键一并删除，P0 每线 1,062 → 1,059 键）；其余四个条目保留技能与效果描述，只摘除配方句。
 
 
-
 - **tooltip 改为「只写做什么、不写怎么算」（保留黑箱）**（2026-10-26 用户裁决）：tooltip 只交代可执行的事实，不再解释结算次序、叠层口径、计时器与图标、层数上限与算术合计；单条不超过 4 行。首个清理对象 = 调酒师立牌主动「调制人生」的效果牌一行，由「每张使目标立即恢复 2 点生命（按张数叠加、每张各自结算为一次治疗…；三张均为效果牌时不给计时器与图标）」精简为 **「效果牌：目标恢复 2 点生命」**（中英日同步）。
 
 - **手册不再重复写配方清单**（2026-10-26 用户裁决，P0 两线 × 三语）：立牌手册条目正文里的「配方：…」句已删（手册本身已有独立的配方页），本轮共 7 张立牌受此调整影响，技能与效果描述一字未动。
@@ -676,7 +1365,7 @@
 - **修复多萝西立牌「主动技能」提示框中文文案被回退为旧文本**（2026-10-26，P0 两线）：撤回调酒师例外那批改动误改了同文件内的 `tooltip.astral_dice.sign.dorothy_active`，把「获得状态效果【交际花】：攻击力 +1（从获得时开始计算，与主动计时无关；重复获得只刷新时长）」换回了旧版描述 ⇒ 现恢复为正式文本，1.21.1 与 1.20.1 两条线的值逐字相同。
 - **修复调酒师立牌「主动技能」提示框换行被写成字面 `\n`**（2026-10-26）：tooltip 精简改动把换行符二次转义，游戏内会显示成文本 `\n`；1.20.1 的中 / 英 / 日与 1.21.1 的英 / 日受影响（已上架的 1.5.0-rc.3 产物即此状态，见发布说明），现三语两线全部修正。
 
-- **筹码手册条目改为说明「获取途径」**（2026-10-28，P0 两线 × 三语）：筹码条目原有的合成配方页指向默认不加载的配方（`enable_chip_recipes` 默认关闭），手册里因此对 **62 枚筹码**显示配方缺失。这些页改为「获取途径」说明（在筹码商店与筹码商人交易获得；服务器开启 `enable_chip_recipes` 后也可在工作台合成），另有 5 个原本没有配方页的筹码条目补上同一说明。  同批（2026-10-28）把守门 `scripts/verify/verify_chip_acquisition.ps1` 的 **stale_page**（手册仍展示 crafting 页）与 **no_note**（手册未说明获取途径）由告警升为**致命项**，`no_page` 保持告警（本次裁决后属预期）；该守门同时接进 CI，步骤名 `Check chip acquisition gate (P0)`，只覆盖 P0 两线并做双版本对等性校验。
+- **筹码手册条目改为说明「获取途径」**（2026-10-28，P0 两线 × 三语）：筹码条目原有的合成配方页指向默认不加载的配方（`enable_chip_recipes` 默认关闭），手册里因此对 **62 枚筹码**显示配方缺失。这些页改为「获取途径」说明（在筹码商店与筹码商人交易获得；服务器开启 `enable_chip_recipes` 后也可在工作台合成），另有 5 个原本没有配方页的筹码条目补上同一说明。  同批（2026-10-28）把守门 `scripts/verify/verify_chip_acquisition.py` 的 **stale_page**（手册仍展示 crafting 页）与 **no_note**（手册未说明获取途径）由告警升为**致命项**，`no_page` 保持告警（本次裁决后属预期）；该守门同时接进 CI，步骤名 `Check chip acquisition gate (P0)`，只覆盖 P0 两线并做双版本对等性校验。
 
 #### 输入与界面
 
@@ -700,7 +1389,7 @@
 
 ### 平台差异与已知问题
 
-- **NeoForge 26.1.2 上 Waystone（传送石碑）联动改为经 Balm 事件通道注册，已实机验证生效**（2026-11-02 修正本批先前的错误结论）：跃迁引擎与 Waystone 传送共用的跨维度传送标记现在在该平台正常安装，用传送石碑传送会照常按「Waystone 传送」结算 —— 同维度传送照常给跃迁引擎充能与迅捷，跨维度传送照常走 Waystone 路径，与 NeoForge 1.21.1 / Forge 1.20.1 / Fabric 1.20.1 三线一致（1.21.1 与本线实机均打 INFO `[Astral Dice] Waystone teleport integration enabled for 跃迁引擎.`）。
+- **NeoForge 26.1.2 上 Waystone（传送石碑）联动改为经 Balm 事件通道注册，已实机验证生效**（2026-11-02 修正本批先前的错误结论）：跃迁引擎与 Waystone 传送共用的跨维度传送标记现在在该平台正常安装，用传送石碑传送会照常按「Waystone 传送」结算 —— 同维度传送照常给跃迁引擎充能与迅捷，跨维度传送照常走 Waystone 路径，与 NeoForge 1.21.1 / Forge 1.20.1 / Fabric 1.20.1 各线一致（1.21.1 与本线实机均打 INFO `[Astral Dice] Waystone teleport integration enabled for 跃迁引擎.`）。
   为什么不能走 NeoForge 事件总线（实现差异记录，不是缺陷）：Waystones 26.1.2 的传送事件是 Balm 的 bound custom event（`net.blay09.mods.waystones.api.event.WaystoneTeleportEvent$Before/$Prepare/$After/$Complete`、`WaystoneTeleportEntityEvent$Post`，由 `Balmstrap.createBoundCustomEvent` 生成），其抽象父类链以 `java.lang.Object` 为直接父；NeoForge `bus-8.0.5` 的 `EventBus.validateAbstractChain(EventBus.java:301)` 对这种形状直接抛 `IllegalArgumentException: Abstract event class ... has a non-abstract superclass class java.lang.Object.` ⇒ 这些事件在 `NeoForge.EVENT_BUS` 上没有任何可用的注册路径。
   正确通道是这些事件类自带的 `public static final BidirectionalEventMapper<Consumer<X>> EVENT` 字段：`BidirectionalEventMapper` 实现 `net.blay09.mods.balm.platform.event.EventMapper`，其 `register(TCallback)` 才是 Balm 的注册入口。
   本版实现：`neoforge-26.1.2/src/main/java/com/merlinkitsune/astral_dice/event/WaystoneWarpCompat.java` 的 `registerWaystoneTeleportEvent`（`:161`）先经 `findBalmEventMapper`（`:180`，反射读静态 `EVENT` 字段并判定接口名）取到映射器，命中即调 `EventMapper.register(...)`（`:205` / `:223`），未命中才回退 `NeoForge.EVENT_BUS.addListener(...)`（`:169-172`）；`isPlatformUnregistrable`（`:127`）只在平台确实不可注册时把该失败降为 DEBUG。候选类链 `TELEPORT_PRE_EVENT_CANDIDATES`（`:49`）按 `$Pre` → `$Before` → `$Prepare` 探测；1.21.1 的 `$Pre` 没有该 `EVENT` 字段，仍走 `NeoForge.EVENT_BUS`（`WaystoneWarpCompat.java:92-94`），两代共用一份实现。
@@ -716,9 +1405,9 @@
 > 2026-10-23 用户裁决：Java 源代码许可协议由 MIT 改为 **GPL-3.0**，**1.3.7 及以前的版本仍保持 MIT**。
 
 - **源代码改为 GPL-3.0-only**：从 **1.5.0** 起，Java 源码、Gradle 脚本、`tools/` 与 `scripts/` 下的工具、以及 `docs/` 下的文档按 [GNU 通用公共许可证第 3 版](LICENSE)（仅第 3 版）发布；每个已发布 jar 的源码就是本仓库对应 tag 上的那棵树。
-- **1.3.7 及以前的版本仍为 MIT**：截至并包含 **1.3.7** 的全部发布（四线都算，含 `1.3.7-hotfix` 刷新版与 `1.3.7-alpha` / `1.3.7-beta` 预发布）继续按 MIT 许可，该授权不可撤回，MIT 原文见对应发布 tag（如 `1.3.7`）的 `LICENSE`。
+- **1.3.7 及以前的版本仍为 MIT**：截至并包含 **1.3.7** 的全部发布（各线都算，含 `1.3.7-hotfix` 刷新版与 `1.3.7-alpha` / `1.3.7-beta` 预发布）继续按 MIT 许可，该授权不可撤回，MIT 原文见对应发布 tag（如 `1.3.7`）的 `LICENSE`。
 - **游戏内资产仍为 CC BY-NC-SA 4.0**：贴图、模型、动画、粒子、GUI 贴图、字体、音效与手册正文不受 GPL 影响，沿用上一批的 CC BY-NC-SA 4.0 声明；配方 / 战利品 / 标签 / 世界生成 JSON 与 `lang/*.json` 随代码改为 GPL-3.0-only。
-- 四线 `mod_license` 元数据同步改为 `GPL-3.0-only (code) / CC BY-NC-SA 4.0 (assets)`（含 `fabric.mod.json` 的 `license` 字段）。
+- 各线 `mod_license` 元数据同步改为 `GPL-3.0-only (code) / CC BY-NC-SA 4.0 (assets)`（含 `fabric.mod.json` 的 `license` 字段）。
 - **不再单独提供 MIT 原文文件**：同日二次裁决要求删除 `LICENSE-MIT`，工作树里不再保留独立 MIT 文本；1.3.7 及以前的 MIT 授权不受影响，原文见对应发布 tag 的 `LICENSE`。
 - **前置库 StarEngine 同步改为 GPL-3.0-only**：独立项目 [StarEngine](https://github.com/merlin-kitsune/StarEngine) 的源码同样改为 GPL-3.0（仅第 3 版），其 `1.0.0`–`1.0.12` 全部发布与已分发的 `1.1.0-pre.x` 构建仍为 MIT。
 
@@ -750,7 +1439,7 @@
   目标战斗骰点被锁定为 0，**只能对没有「破绽」的目标施加**」；被动改为「被施加「破绽」的目标攻击时会**闪避本次攻击并对其发起反击**」，
   每次触发闪避、反击、主动攻击带「破绽」的目标获得 1 层「弱点识破」（最多 4 层，每层攻击/防御 +1、骰点最低值 +1）。
   **新增联动**：佩戴七咒之戒并拥有「弱点识破」时 —— 修正第三诅咒：**移除护甲降低效果**；修正第六诅咒：**死亡时不再掉落灵魂水晶**。
-  ⚠️ 本线联动的是**神秘遗物**（`enigmaticlegacy`，1.20.1 版），其护甲诅咒修饰器是**固定 UUID**（与另三线不同）；
+  ⚠️ 本线联动的是**神秘遗物**（`enigmaticlegacy`，1.20.1 版），其护甲诅咒修饰器是**固定 UUID**（与另各线不同）；
   **不引用第三方内部类**（灵魂水晶计数走反射），未安装该模组时整段静默跳过。
 
 - **合成配方调整 + 星币 / 星盘新增击杀掉落**：① **黄金星盘现为两条配方并存** ——「星盘×1 + 下界之星×1」（无序）与「星盘×3 + 星币×6」（有序）；
@@ -906,12 +1595,12 @@
 
 ## 1.3.7-hotfix
 
-> 承接 1.3.7 的**补丁发布**（四线同批）。按发布规范，`-hotfix` 打到**同一个 `1.3.7` tag** 并**刷新该 Release**
+> 承接 1.3.7 的**补丁发布**（各线同批）。按发布规范，`-hotfix` 打到**同一个 `1.3.7` tag** 并**刷新该 Release**
 > （不新建 tag/Release）；26.1.2 与 fabric 分别取 `-beta.2` / `-alpha.2`（独立预发布线，不占用正式线裸版本号）。
 
 ### 玩家可见变更
 
-- **主动技能键不再参与「目标选择器」**（2026-10-05 用户裁决，四线）：持有「目标选择」类效果牌、选择会话
+- **主动技能键不再参与「目标选择器」**（2026-10-05 用户裁决，各线）：持有「目标选择」类效果牌、选择会话
   进行中时，按主动技能键（默认 `J`）**照常触发立牌主动技能**，不再被当作「取消选择」（撤销 2026-10-03
   「按键收口」的 J 口径）。选择器的取消 / 收官改由 **右键**（只能对目标释放的牌 = 收起）、**下蹲 + 右键**、
   **ESC 菜单**与**超时**承担；「手持即选择」类会话仍以**移出主手**收官。
@@ -925,18 +1614,18 @@
   ⚠️ **`forge-1.20.1` / `fabric-1.20.1` 行为不变**：原版 1.20.1 无此机制（物品名与 actionbar 均为固定位置）
   ⇒ 属**平台差异**，已就地登记。
 
-- **游戏大师立牌的三处提示括注清理**（2026-10-05 用户裁决，四线 × 三语）：状态指示器说明
+- **游戏大师立牌的三处提示括注清理**（2026-10-05 用户裁决，各线 × 三语）：状态指示器说明
   `effect.astral_dice.ren_shield.description` 删去**自相矛盾**的「（不显示图标）」（该效果在状态栏本就带图标）；
   立牌 tooltip `tooltip.astral_dice.sign.ren_active` 删去「（10 点吸收）」与「（不会影响红心）」两处括注；
   手册条目 `astral_dice.guide.entry.ren_sign.1` 删去句末「（不会影响红心）」（保留「5 黄心 = 10 点吸收」的换算说明）。
   只改文案，效果数值与玩法不变。
 
-- **修正英文版「骇客立牌」tooltip 少写的「×2」**（2026-10-05，四线）：该立牌主动技能的实际效果是
+- **修正英文版「骇客立牌」tooltip 少写的「×2」**（2026-10-05，各线）：该立牌主动技能的实际效果是
   「消耗一张随机战斗牌，按**该牌费用 ×2** 提高攻击力（最低 +2），持续 2:00」（代码 `ACTIVE_BONUS_MULTIPLIER = 2`）
   —— 中文与日文版都写对了，英文版却一直写成「等于该牌费用的攻击力」，**少算了一倍**。现按中文原文补上「×2」。
   只改文案，效果数值与玩法不变。
 ### 工程
-- **扩散伤害的递归防护加固（四线）**：`DiceCombatEvents` 的内部波及窗口由**布尔** `aoeProcessing`
+- **扩散伤害的递归防护加固（各线）**：`DiceCombatEvents` 的内部波及窗口由**布尔** `aoeProcessing`
   升级为**深度计数** `aoeDepth` + `beginAoe()/endAoe()`（闸门 `if (isInternalAoe() || counterDepth > 0) return;`
   不变）。根因：实测存在**嵌套**窗口（活体书页命中开窗 → 该伤害是 `astral_dice:card_spell`、命中法伤白名单
   ⇒ 进法伤链 → `onHit` 再开定向爆破/电击手套的窗），布尔下内层 `endAoe()` 会**提前清零外层守卫**；
@@ -947,17 +1636,17 @@
 
 - **前置库 `starengine_lib` `1.0.11` → `1.0.12`**（四平台同号）：`client/ActionBarManager` 在
   `neoforge-1.21.1` / `neoforge-26.1.2` 改为读 `Gui.leftHeight` / `Gui.rightHeight`（NeoForge 已 patch 为
-  `public`）；`forge-1.20.1` / `fabric-1.20.1` 保持固定 `guiHeight - 68`。消费方四线
+  `public`）；`forge-1.20.1` / `fabric-1.20.1` 保持固定 `guiHeight - 68`。消费方各线
   `starengine_lib_version` / `_version_range` 与 CI 的库 `ref` 同批同步（`4c65323`）。
-- 四线 `client/KeyBindingSetup`：主动技能键分支删除 `TargetSelectionClient.isActive()` 判定与
+- 各线 `client/KeyBindingSetup`：主动技能键分支删除 `TargetSelectionClient.isActive()` 判定与
   `logPrompt("j","cancel")` 调用，改为**无条件**转发；`TargetSelectionClient` / `TargetSelectCancelPayload` /
   `BaseSignItem` 的相关 javadoc 与注释同步改写。
 - lang：`msg.astral_dice.target_select.prompt.hold.{no_target,no_target_self,rejected,valid}` ×
-  **三条线 × 三语**去掉「按 J 收起」措辞，统一为 fabric 线口径（四线三语自此全一致）。
+  **各线 × 三语**去掉「按 J 收起」措辞，统一为 fabric 线口径（各线三语自此全一致）。
 - **移除** DEBUG 行 `key=j action=cancel`（该路径不再存在）。
 
 - **守门 `tools/verify_firearm_detection.py` 判据同步**（发布前核查发现；**非源码问题**）：该守门把近战
-  「显式纳入清单」的两口饕餮之锅写成**四线同构**硬判据，而 2026-10-04 的联动裁决已把
+  「显式纳入清单」的两口饕餮之锅写成**各线同构**硬判据，而 2026-10-04 的联动裁决已把
   `enigmaticlegacy:eldritch_pan` 从 `fabric-1.20.1` 与 `neoforge-26.1.2` 移除（该平台不存在此模组）
   ⇒ 该守门自 10-04 起**恒 FAIL**（判据滞后于裁决，源码本身一直正确）。现改为**平台期望矩阵**
   `PAN_EXPECT`：**缺期望项 = FAIL**、**非期望项出现 = note**（冗余无害项，未装该模组时恒 false）。
@@ -1070,7 +1759,7 @@
   (只改时长,层数 / 环境粒子 / 可见性 / 图标位原样保留 ⇒ 不改任何效果语义)。
   ⚠️ 判据刻意用**「超长阈值」而不是效果清单**:本模组合法的倒计时最大 24000 tick(`RenShieldManager` 的护盾 / 抗性刷新窗口;其余 ≤ 3600),与阈值相差约 4.6 个数量级
   ⇒ 不会误伤任何设计上的倒计时;双态效果(白泽赐福 / 降神 的「已启动」态 2400 tick)同样不受影响。
-  ⚠️ 本批只落地**三线**(1.21.1 / 1.20.1 / 26.1.2),Fabric 线待后续批次同步。
+  ⚠️ 本批只落地**各线**(1.21.1 / 1.20.1 / 26.1.2),Fabric 线待后续批次同步。
 - **装了 Modern UI（`现代化 UI`）并启用「现代提示框」后，本模组的稀有度边框色被整体丢弃 —— 新增客户端兼容层**（2026-10-04 用户实报「彩色边框不生效」）：
   Modern UI **不用 Mixin 改原版绘制**，而是订阅 `RenderTooltipEvent.Pre` —— 高优先级处理器自己画完整个提示框、
   低优先级处理器再把原版渲染取消 ⇒ 本模组写进 `RenderTooltipEvent.Color` 的边框色**永不派发**
@@ -1081,7 +1770,7 @@
   拿不到色环 ⇒ **做不出流动彩虹**）—— **不改动 Modern UI 的任何持久配置**。彩虹档借此得到**整圈流动彩虹**
   （原生路径是两色渐变）。⚠️ **只在本模组档位**的物品上介入，原版 / 其它模组物品一行都不碰；
   **稀有档沿用既有口径（不干预）**。开关：配置项 `modernui_tooltip_frame_compat`（默认开），
-  另有系统属性 `-Dastral_dice.modernUITooltipCompat=false` 可整体停用。⚠️ **四条线均已适配**（1.21.1 / 1.20.1 / fabric 走原生边框色事件；**26.1.2** 的平台只暴露贴图钩子、没有颜色事件，改走对接 Modern UI 自身描边槽的兼容层 ⇒ 该线**装了 Modern UI 时**同样按档位显示边框色）。
+  另有系统属性 `-Dastral_dice.modernUITooltipCompat=false` 可整体停用。⚠️ **各线均已适配**（1.21.1 / 1.20.1 / fabric 走原生边框色事件；**26.1.2** 的平台只暴露贴图钩子、没有颜色事件，改走对接 Modern UI 自身描边槽的兼容层 ⇒ 该线**装了 Modern UI 时**同样按档位显示边框色）。
 - **枪弹判定由「关键词猜测」改为「逐条取证」—— 修复两处军火伤害被误判为远程 / 魔法伤害**
   （2026-10-03 用户实报「枪弹判定在部分模组中仍然失效」）：用于屏蔽军火伤害的判定此前只认
   伤害标识 / 弹丸类名里的 `bullet` / `gun` / `cannon` 等关键词，实测有两处漏判 —— ① 某军火模组的
@@ -1138,7 +1827,7 @@
 
 ## 1.3.6
 
-> 四线同一批次（三条生产线 `1.3.6`、迁移线 `1.3.6-beta.1`、移植线 `1.3.6-alpha.1`）。
+> 各线同一批次（三条生产线 `1.3.6`、迁移线 `1.3.6-beta.1`、移植线 `1.3.6-alpha.1`）。
 
 ### 内容与平衡性调整
 
@@ -1157,10 +1846,10 @@
 
 - **诅咒之剑的累计攻击力加成上限由 16 提升到 32**（2026-10-02 用户裁定）：该上限取自前置库常量
   `GameplayConstants#CURSED_SWORD_BONUS_MAX`（`public static int`，不是配置文件项），故本次**前置库同批升版** ——
-  三条生产线 `1.0.6` → `1.0.7`、移植线 `1.0.6-alpha.1` → `1.0.6-alpha.2`，消费方四线的引脚与运行期区间下界同步收紧
+  三条生产线 `1.0.6` → `1.0.7`、移植线 `1.0.6-alpha.1` → `1.0.6-alpha.2`，消费方各线的引脚与运行期区间下界同步收紧
   （`[1.0.6,2.0)` → `[1.0.7,2.0)`；fabric 线 `>=1.0.6-alpha.1 <2.0` → `>=1.0.6-alpha.2 <2.0`）。
   该字段的名称 / 类型 / 可见性均未变 ⇒ 属 1.x 兼容契约允许的非破坏性修正，消费方无需改代码；
-  筹码提示用的是 `%s` 占位符、随常量自动跟随，**本模组手册里原本写死的 `+16` 已同步为 `+32`**（四线 × 三语）。
+  筹码提示用的是 `%s` 占位符、随常量自动跟随，**本模组手册里原本写死的 `+16` 已同步为 `+32`**（各线 × 三语）。
   ℹ️ **定性**：该上限是**玩家可感的平衡数值**（不只是「修 bug」），按库 1.x 兼容契约的「**不改变契约的行为修正**」
   按补丁位发布 —— 字段的契约语义（「诅咒之剑累计加成的上限」）与类型 / 名称 / 可见性 / 签名均未变、消费方零改代码；
   **沿用库 `1.0.3` 的「玩法口径特例」先例**（2026-09-24 用户裁决），库侧两份 CHANGELOG 已有显式定性记录。
@@ -1182,11 +1871,11 @@
 
 - **史诗物品的提示框边框会显示「上一个悬停物品」的颜色（实测表现为金色 ＝ 传奇档的档位色），现改为史诗也显式写入档位色**（2026-10-01 用户实报 + 截图）：整合包里同时出现两类同一根因的现象 —— ① 本模组的**史诗**物品（「游戏大师立牌」，物品名已是正确的淡紫）边框却是**金色**；② 与本模组无关的物品（`oritech:adamant_block`）边框同样是**纯金 `#FFC24B`**。**根因取证**（三条独立证据）：全整合包 **491 个 jar 递归展开（含 JarJar 内嵌）**扫描色值 `0xFFC24B`，命中的类**只有本模组内嵌的 `Rarity.class`** ⇒ 该颜色只可能来自本模组；而本模组此前对**稀有/史诗**采取「不干预边框」，**凡是没有自己写色的 tooltip 都会被第三方缓存的上一次颜色覆盖** ⇒ 本模组「不写色」的档位一律成为残留的受害者。**修法**：史诗档由「随原版不干预」改为**显式写入档位单色**（＝ 原版 EPIC 配色 `#FF55FF`）—— 只要我们自己写色，该 tooltip 就必然使用本模组的颜色，不再受任何第三方缓存影响。⚠️ **稀有档本次仍保持「随原版不干预」**（用户明确只要求改史诗）；按同一机理它同样可能被残留污染，若要一并改为显式写色（原版 RARE 配色 `#55FFFF`）请另行裁决。⚠️ **26.1.2 线不接**：该线边框是九宫格贴图、平台没有颜色事件（`ClientHooks#onRenderTooltipTexture` 给的是贴图 ID）⇒ 保持原版贴图，属已登记的平台差异。
 
-- **装了并启用 Tooltip Overhaul 时的史诗帧同步改为原版 EPIC 色**：`assets/astral_dice/tooltipoverhaul/custom_frames.json` 的史诗帧由「那家 EPIC 调色板的三段渐变」改为**纯色 `#FF55FF`**（四线同字节），与本模组自绘路径保持一致。⚠️ 该文件**只在装了 Tooltip Overhaul 的环境**被消费（未装/已停用该模组时是惰性数据）；当前整合包「狐の航空学 Voxy Edition」里的 TO 处于 `.disabled` 状态，真正在接管边框的是 **Iceberg**（见下）。
+- **装了并启用 Tooltip Overhaul 时的史诗帧同步改为原版 EPIC 色**：`assets/astral_dice/tooltipoverhaul/custom_frames.json` 的史诗帧由「那家 EPIC 调色板的三段渐变」改为**纯色 `#FF55FF`**（各线同字节），与本模组自绘路径保持一致。⚠️ 该文件**只在装了 Tooltip Overhaul 的环境**被消费（未装/已停用该模组时是惰性数据）；当前整合包「狐の航空学 Voxy Edition」里的 TO 处于 `.disabled` 状态，真正在接管边框的是 **Iceberg**（见下）。
 
-- **「边框残留上一个物品的颜色」的源头（Iceberg）已在本次一并消除 —— 新增针对性缓解措施，并按 Iceberg 的两代实现自适应**（2026-10-01 追加）：报障那一刻真正接管边框的**不是** Tooltip Overhaul（当时该包里的 TO 是 `.jar.disabled`；⚠️ 该状态随时可能被玩家改回来 —— 当天 15:02 的日志里 TO 就又加载了；本缓解对 TO 开/关**都无害**），而是整合包里的 **Iceberg**（`[冰山] Iceberg-1.21.1-neoforge-1.3.2`，由「进度牌匾」带入）。它有一个全进程唯一的静态颜色缓存 `Tooltips.currentColors`：**在 1.3.2 这一代**，该字段只在**绘制过程中**被写（传入色 ≠ 原版默认色 ⇒ 把该色**缓存**；传入色 ＝ 原版默认色 ⇒ **改用缓存色绘制并取消原版绘制**），**没有任何逐 tooltip 复位** ⇒ **任何保持原版边框色的提示框（本模组的稀有档、其它模组的物品、原版物品）都会沿用上一次的自定义颜色**（用户截图里的 `oritech:adamant_block` 金框即此类）。**缓解措施**：新增客户端类 `client/IcebergTooltipCacheGuard`（四线各一份），在**每次 tooltip 渲染的最开头**把 `Tooltips.currentColors` 反射写回 **Iceberg 自己的** `DEFAULT_COLORS`，并在**它已自行管理该 tooltip 颜色时跳过**（新一代 Iceberg —— 26.1.2 测试包里的 1.4.1.1 —— 已经自己在每个 tooltip 开头写这个缓存，且它的 `DEFAULT_COLORS` 是**纯白**；硬复位会把 LegendaryTooltips 这类模组经 `ColorExt` 设好的颜色抹掉 ⇒ 必须跳过）⇒ 既修掉残留，又**不改变任何第三方模组的既有行为**。复位点：三条 NeoForge / Forge 线用 `RenderTooltipEvent.Pre`（它在 `GuiGraphics#renderTooltipInternal` 的**第一条语句**触发，早于颜色事件与真正的绘制），Fabric 线没有该事件的派发源 ⇒ 在 `ClientTooltipBridgeMixin` 的 `renderTooltipInternal` 开头**先复位、再派发颜色**。安全边界：不硬依赖 Iceberg（目标类按字符串名探测，未安装时静默）、**只写这一个字段**（Iceberg 的其它标志只读不写）、任何失败都**永久停用**该缓解并只打一条日志（**绝不抛出** —— 提示框渲染在渲染线程上）；可用 `-Dastral_dice.icebergTooltipGuard=false` 关闭。⚠️ 因此**本模组的稀有档仍然保持「随原版不干预」**，不再需要靠「自己写色」自保。
+- **「边框残留上一个物品的颜色」的源头（Iceberg）已在本次一并消除 —— 新增针对性缓解措施，并按 Iceberg 的两代实现自适应**（2026-10-01 追加）：报障那一刻真正接管边框的**不是** Tooltip Overhaul（当时该包里的 TO 是 `.jar.disabled`；⚠️ 该状态随时可能被玩家改回来 —— 当天 15:02 的日志里 TO 就又加载了；本缓解对 TO 开/关**都无害**），而是整合包里的 **Iceberg**（`[冰山] Iceberg-1.21.1-neoforge-1.3.2`，由「进度牌匾」带入）。它有一个全进程唯一的静态颜色缓存 `Tooltips.currentColors`：**在 1.3.2 这一代**，该字段只在**绘制过程中**被写（传入色 ≠ 原版默认色 ⇒ 把该色**缓存**；传入色 ＝ 原版默认色 ⇒ **改用缓存色绘制并取消原版绘制**），**没有任何逐 tooltip 复位** ⇒ **任何保持原版边框色的提示框（本模组的稀有档、其它模组的物品、原版物品）都会沿用上一次的自定义颜色**（用户截图里的 `oritech:adamant_block` 金框即此类）。**缓解措施**：新增客户端类 `client/IcebergTooltipCacheGuard`（各线各一份），在**每次 tooltip 渲染的最开头**把 `Tooltips.currentColors` 反射写回 **Iceberg 自己的** `DEFAULT_COLORS`，并在**它已自行管理该 tooltip 颜色时跳过**（新一代 Iceberg —— 26.1.2 测试包里的 1.4.1.1 —— 已经自己在每个 tooltip 开头写这个缓存，且它的 `DEFAULT_COLORS` 是**纯白**；硬复位会把 LegendaryTooltips 这类模组经 `ColorExt` 设好的颜色抹掉 ⇒ 必须跳过）⇒ 既修掉残留，又**不改变任何第三方模组的既有行为**。复位点：三条 NeoForge / Forge 线用 `RenderTooltipEvent.Pre`（它在 `GuiGraphics#renderTooltipInternal` 的**第一条语句**触发，早于颜色事件与真正的绘制），Fabric 线没有该事件的派发源 ⇒ 在 `ClientTooltipBridgeMixin` 的 `renderTooltipInternal` 开头**先复位、再派发颜色**。安全边界：不硬依赖 Iceberg（目标类按字符串名探测，未安装时静默）、**只写这一个字段**（Iceberg 的其它标志只读不写）、任何失败都**永久停用**该缓解并只打一条日志（**绝不抛出** —— 提示框渲染在渲染线程上）；可用 `-Dastral_dice.icebergTooltipGuard=false` 关闭。⚠️ 因此**本模组的稀有档仍然保持「随原版不干预」**，不再需要靠「自己写色」自保。
 
-- **看板娘立牌（mimi）被动「每累计 25 张战斗牌送 1 个随机筹码」的筹码池改为运行时派生：此前 20 个后加的筹码一个都拿不到**（2026-10-01 用户实报）：该池原本是三张**手写清单**（蓝 13 / 紫 16 / 金 12，共 41 个），而实际注册的筹码有 **61** 个 ⇒ **缺 20 个**（稀有 6 / 史诗 8 / 传奇 6；按流派 = 充能类 10 / 无流派 7 / 星光（飞星）2 / 治愈 1），其中就包括玩家点名的**充能类**（能量回收器 / 电流剑 / 跃迁引擎 / 电流核心 / 先进外设 / 电流手套 / 安全气囊 / 永动机 / 磁轨炮 / 原初核心）与**飞星**（紫色飞星 / 金色飞星）。**修法**：不再维护手写表，改为**运行时遍历物品注册表派生** —— 取所有「继承 `BaseChipItem` 的物品」，按本模组档位分三桶（蓝 = 稀有 60% / 紫 = 史诗 35% / 金 = 传奇 5%）⇒ **以后新增筹码自动进池，不需要再改这段代码**（旧表已删除，四线同步）。口径与旧清单保持一致：`blank_chip`（空白筹码，不是 `BaseChipItem`）不进池、**进阶筹码照旧进池**、巅峰 / 奇特按既有「不进池」裁决排除（当前无此类筹码；将来若出现会打一条日志，**不静默丢弃**）；三档概率与「累计 25 张」阈值都不变。首次建池时会打一条可断言的读数 `AP_MIMI_CHIP_POOL: blue=… purple=… gold=… total=…`，便于冒烟核验。
+- **看板娘立牌（mimi）被动「每累计 25 张战斗牌送 1 个随机筹码」的筹码池改为运行时派生：此前 20 个后加的筹码一个都拿不到**（2026-10-01 用户实报）：该池原本是三张**手写清单**（蓝 13 / 紫 16 / 金 12，共 41 个），而实际注册的筹码有 **61** 个 ⇒ **缺 20 个**（稀有 6 / 史诗 8 / 传奇 6；按流派 = 充能类 10 / 无流派 7 / 星光（飞星）2 / 治愈 1），其中就包括玩家点名的**充能类**（能量回收器 / 电流剑 / 跃迁引擎 / 电流核心 / 先进外设 / 电流手套 / 安全气囊 / 永动机 / 磁轨炮 / 原初核心）与**飞星**（紫色飞星 / 金色飞星）。**修法**：不再维护手写表，改为**运行时遍历物品注册表派生** —— 取所有「继承 `BaseChipItem` 的物品」，按本模组档位分三桶（蓝 = 稀有 60% / 紫 = 史诗 35% / 金 = 传奇 5%）⇒ **以后新增筹码自动进池，不需要再改这段代码**（旧表已删除，各线同步）。口径与旧清单保持一致：`blank_chip`（空白筹码，不是 `BaseChipItem`）不进池、**进阶筹码照旧进池**、巅峰 / 奇特按既有「不进池」裁决排除（当前无此类筹码；将来若出现会打一条日志，**不静默丢弃**）；三档概率与「累计 25 张」阈值都不变。首次建池时会打一条可断言的读数 `AP_MIMI_CHIP_POOL: blue=… purple=… gold=… total=…`，便于冒烟核验。
 
 - **医疗箱筹码现在会在「装备时」与「重生 / 重登 / 切换维度后」立即触发一次治愈**（2026-10-01 用户实报：「装备后未能立即触发治愈，且重生后也不触发」）：两个医疗箱筹码（紧急 / 完备）此前**只有**「触发骰神赐福时」与「每 1:00 结算时」两条加点路径 —— 1.2.0-rc1 那次平衡调整删掉了它们的装备入口（当时的行为是「装备立即回血」），此后再没有任何装备侧入口，于是**把筹码装进筹码栏不会发生任何事**；重生同理：Curios 在重生 / 重登 / 切维度后会重放装备回调，而筹码根本没实现该回调，重放也就空转。**修法**：补回装备入口，并让这四个时点统一走「**完整触发**」—— 先加点（紧急 +1 / 完备 +3），再按当前治愈层数 ×2 回血，并起/重置 1:00 计时器，与「触发骰神赐福」完全同口径。**防刷（用户裁决）**：装备触发给的层数**按件记账**（`medkit_equip_grant_amounts`，**按实际抬升量** —— 层数已到上限 32 时装备一点没涨 ⇒ 记 0，绝不按名义值回撤），**卸下时按账本回撤并释放闸门**；另用「装备会话闸门」把「Curios 的重放」与「生命周期事件里的显式触发」**二选一**，避免同一时点被触发两次。⚠️ 赐福触发与 1:00 结算给的层数是战局表现奖励，**不随卸下回撤**；已结算过的回血不追回。⚠️ fabric 线的「切换维度」派发源是本次才补上的（`ServerPlayerDimensionTravelBridgeMixin` 的 `@At("RETURN")`）。⚠️ **已知残余（如实披露）**：登录与切维度这两条路径每次都会**先释放闸门再触发**，⇒ **每次重登 / 每次过门都会再完整触发一次**（未满层时 +1/+3；**层数已满 32 时仍会按 32×2 回血**）。这是「这两个时点也要触发」这条裁决的**数学推论**，不是实现缺陷 —— 已登记为 `KNOWN-ISSUES` **KI-G2**，是否节流（加冷却 / 只在死亡后触发 / 撤掉这两个时点）待裁决。
 
@@ -1210,8 +1899,8 @@
   「未佩戴骰子时一切功能一律不生效」的口径直接冲突；本次新增的两枚肾上腺素图标也因此**卸下骰子后不会熄灭**、
   且图标判据与 `DiceCombatModifiers` 里带闸门的同名判据**不同源**（会出现「图标亮着但其实没加成」）。
   修法 = 在该类的查饰品入口补上闸门（与其它筹码 `isEquipped` 首行同一口径），一处修复同时消掉上述三个症状。
-  并新增守门 `tools/verify_effect_icons.py`（每个 `MOB_EFFECT` 注册必须有同名 `mob_effect/*.png`，
-  现四线 100%% 覆盖）——「注册了效果却漏放图标」这类紫黑方块缺陷从此有机器判据。
+  并新增守门 `scripts/verify/verify_effect_icons.py`（每个 `MOB_EFFECT` 注册必须有同名 `mob_effect/*.png`，
+  现各线 100%% 覆盖）——「注册了效果却漏放图标」这类紫黑方块缺陷从此有机器判据。
 
 - **电磁炮的雷击触发收紧为「仅该玩家本人的近战武器攻击（骰战）」**（2026-10-01 用户裁定）：
   此前只要伤害的**直接制造者**是玩家就登记雷击，于是三类攻击都误触发 ——
@@ -1291,7 +1980,7 @@
 
 - **枪匠「弱点识破」与怪力侦探「推理时间」的衰减改为独立的 1 分钟计时器**（2026-09-30 用户裁决）：此前这两条被动都挂在「骰神赐福结束」上 —— 每结束一次赐福扣 1 层，衰减节奏被赐福的起止完全绑死。现改为**各自独立的 1 分钟计时器**：层数的效果时长由「无限」改为 **1 分钟**，效果自然到期即**扣 1 层并重新计时**（层数归零则效果消失、不再保留）。枪匠的「弱点识破」层数真值就在效果本身（每层攻击/防御 +1、骰点最低数 +1，最多 4 层）；怪力侦探的「推理时间」层数真值在玩家数据里（**死亡不清**），两者衰减行为保持一致。⚠️ 界面上随之变化：这两个效果不再是「无倒计时」的常驻图标，改为显示剩余时间。获得新层数会**重置**该计时。
 
-- **立牌 / 筹码合成配方材料调整（2026-09-30 用户指定）**：16 件配方换料（三线一致）。立牌 5 件 ——上班族立牌 凋灵骷髅头×2 → **黑色染色玻璃×2**、忍者立牌 回响碎片 → **紫水晶碎片**、骇客立牌 幽匿块×2 → **青色混凝土×2**、秘密侦探立牌 信标 → **末地水晶**、机械师立牌 信标×2 → **金锭×2**；筹码 11 件 ——魔法箭袋 回响碎片 → **光灵箭**、高级外设 回响碎片 → **红石比较器**、永动机 下界之星 → **下界合金锭**、原初核心 回响碎片×2 → **下界合金锭×2** 且 龙首 → **龙息**、魔法秘典 回响碎片 → **末影之眼**、拳击手套-初级 海绵×3 → **白色羊毛×3**、速度轮滑-初级 蓝冰×2 → **冰×2**、肾上腺素-一般 下界之星 → **末影珍珠** 且 凋零玫瑰×2 → **灵魂沙×2**、会员推荐信 墨囊 → **书**、诅咒之剑 爆裂紫颂果×2 → **灵魂营火×2**、贯穿之铳 回响碎片×2 → **紫水晶碎片×2**。配方网格与材料多重集均保持全局唯一（唯一性守门全绿）；手册中机械师立牌的配方描述已同步（信标×2 → 金锭×2）。
+- **立牌 / 筹码合成配方材料调整（2026-09-30 用户指定）**：16 件配方换料（各线一致）。立牌 5 件 ——上班族立牌 凋灵骷髅头×2 → **黑色染色玻璃×2**、忍者立牌 回响碎片 → **紫水晶碎片**、骇客立牌 幽匿块×2 → **青色混凝土×2**、秘密侦探立牌 信标 → **末地水晶**、机械师立牌 信标×2 → **金锭×2**；筹码 11 件 ——魔法箭袋 回响碎片 → **光灵箭**、高级外设 回响碎片 → **红石比较器**、永动机 下界之星 → **下界合金锭**、原初核心 回响碎片×2 → **下界合金锭×2** 且 龙首 → **龙息**、魔法秘典 回响碎片 → **末影之眼**、拳击手套-初级 海绵×3 → **白色羊毛×3**、速度轮滑-初级 蓝冰×2 → **冰×2**、肾上腺素-一般 下界之星 → **末影珍珠** 且 凋零玫瑰×2 → **灵魂沙×2**、会员推荐信 墨囊 → **书**、诅咒之剑 爆裂紫颂果×2 → **灵魂营火×2**、贯穿之铳 回响碎片×2 → **紫水晶碎片×2**。配方网格与材料多重集均保持全局唯一（唯一性守门全绿）；手册中机械师立牌的配方描述已同步（信标×2 → 金锭×2）。
 
 - **效果牌冷却重做：与「效果本身时长」彻底分离，出牌即开始冷却（2026-09-30 用户裁决）**：此前只有**出牌数打满上限**才进入冷却，未打满的一轮要等**所有已出效果牌的效果全部结束**之后才补上一轮冷却 —— 冷却被效果时长拖着走，节奏不可控。现改为：**只要出牌就开始冷却，且同一轮内每次出牌都会把冷却重置为 45 秒**（原 30 秒），即「最后一次出牌之后 45 秒」本轮结束、出牌数归零；出牌数打满不再单独判定，同样由该次出牌重置冷却。**效果牌的「效果时长」不再锁住出牌**：冷却归零后即便效果仍在生效，也能立即开新一轮（原「效果待定」机制取消，手册对应条目已移除）。配套：拥有「充能」时效果牌冷却的封顶由 **20 秒改为 30 秒**。⚠️ 未打满时的其余规则不变 —— 冷却期间仍可用掉本轮剩余出牌数，出牌数上限的算法与来源（大背包 / 忍术飞镖 / 活体书页 / 符卡-福 / 立牌主动 +1 等）均未改动。⚠️ 连带影响：冷却现在每次出牌都会启动，**忍者立牌主动技能（判据为「效果牌冷却中则拒绝」）的可用窗口会明显变窄**，这是本次口径变化的直接结果。
 
@@ -1306,7 +1995,7 @@
 - **合成配方调整 + 星币 / 星盘新增击杀掉落（2026-09-30 用户指定）**：① **黄金星盘现为两条配方并存** —— 当日先删去「星盘 + 下界之星×2」的无序配方，随后按用户口径新增 **「星盘×1 + 下界之星×1」无序**（数量不同，与已删的 ×2 版**并非同一配方**）：当前为「星盘×1 + 下界之星×1」与「星盘×3 + 星币×6」（有序）两条；② 星币新增获取途径 —— **玩家击杀**下列生物时按概率掉落（每次掉 1 枚）：**僵尸 / 僵尸猪灵 1%**、**末影人 / 猪灵 3%**、**猪灵蛮兵 20%**。⚠️ 仅当击杀者是玩家时判定（箭矢 / 投掷物等间接击杀同样计入）；③ **星盘**扩展为分档击杀掉落：**凋灵 100% 掉 5 个**、**监守者 100% 掉 3-5 个**、**远古守卫者 100% 掉 1-3 个**、**恶魂 100% 掉 1 个**、**凋灵骷髅 / 守卫者 5% 掉 1 个**（原先凋灵 / 监守者均为「必掉 1 个」，数量已按本次口径调整），其余怪物仍为 0.3%。⚠️ 星币与星盘两条通道**独立判定**、互不影响。⚠️ 概率与档位一律写在 `event/LootInjectionHandler`，改这里即可。
 
 ### BUG修复
-- **效果牌冷却改版后忍者立牌主动技能几乎无法释放，现改为「本轮出牌数上限未达 9 张即可释放」**（2026-09-30 用户报告）：上一条冷却改版让**每次出牌都会启动冷却**，而忍者立牌主动「忍术连击」原有三条释放前置的第一条是「效果牌冷却进行中 → 拒绝」—— 该闸门在旧口径下是合理的（只有打满上限才进冷却，冷却中即说明本轮已无空间），但在新口径下**几乎恒为真**，主动技能形同锁死。现删除该闸门：**只要当前出牌轮的可出牌数上限还没到封顶 9 张，就可以释放，直接 +1 次出牌机会**；另两条前置不变（已达 9 张封顶 → 拒绝；本轮已授予过这次 +1 → 拒绝）。随之下线提示文案 `msg.astral_dice.komachi_active_cooldown`（三线三语一并移除）。
+- **效果牌冷却改版后忍者立牌主动技能几乎无法释放，现改为「本轮出牌数上限未达 9 张即可释放」**（2026-09-30 用户报告）：上一条冷却改版让**每次出牌都会启动冷却**，而忍者立牌主动「忍术连击」原有三条释放前置的第一条是「效果牌冷却进行中 → 拒绝」—— 该闸门在旧口径下是合理的（只有打满上限才进冷却，冷却中即说明本轮已无空间），但在新口径下**几乎恒为真**，主动技能形同锁死。现删除该闸门：**只要当前出牌轮的可出牌数上限还没到封顶 9 张，就可以释放，直接 +1 次出牌机会**；另两条前置不变（已达 9 张封顶 → 拒绝；本轮已授予过这次 +1 → 拒绝）。随之下线提示文案 `msg.astral_dice.komachi_active_cooldown`（各线三语一并移除）。
 
 
 - **1.20.1 打开物品栏必然崩溃：效果 tooltip 的 Mixin 注入参数写错**（2026-09-30 自查发现）：1.20.1 那条「状态效果注释」通道用 Mixin 改写原版 `EffectRenderingInventoryScreen#renderEffects`，两处 `@Redirect` 都写了 `require = 2`，而 **Mixin 的 `require` 是「最少匹配数」、不是「容忍失败的次数」** ——该方法内 `MobEffectUtil.formatDuration` 与 `List.of` **各只有 1 处**，注入点永远凑不满 2 ⇒ 该类首次加载（打开物品栏）即抛 `InjectionError`，**物品栏打不开、客户端直接崩**。现改为 `require = 1`（本方法内这两条调用各仅 1 处），并在类头 javadoc 写明「勿把 `require` 当成容忍数」，防止再次改回。⚠️ 该缺陷同时挡住了 1.20.1 的数据生成（datagen 会加载客户端类并应用该 Mixin）—— 修复后数据生成随即恢复正常。
@@ -1315,15 +2004,15 @@
 
   ⚠️ 顺带修掉一个**同源缺陷**：库的「友方目标收集」依赖的 FTB 反射**签名写错**（查的是 `getTeamForPlayer(Player)`，而 FTB Teams 的真实服务器端签名是 `getTeamForPlayer(ServerPlayer)` / `getTeamForPlayerID(UUID)`），两次查找失败都被静默吞掉、恒返回空 ⇒ FTB 玩家被当成「未加入任何队伍」，从而落进「无队伍 ⇒ 全服玩家皆友方」的兜底 —— 大碗炖肉 / 银行卡「用不完」/ 奢华大餐 / 怪力侦探「挚友守护」/ 人偶师「挚友祝福」等**友方效果实际扩散到了全服**（OPAC 分支查的类名 `dev.darkhax.opac.*` 同样不存在，真实为 `xaero.pac.*`）。本次一并改走 `PartyRelations`（按各队伍系统的启用开关判定，口径与库一致）。该缺陷属**库侧**，应在其下一次发版中一并修，本次先在模组侧顶住。
 
-  ⚠️ **实机验证范围（如实说明）**：三个整合包**都未安装 OPAC** ⇒ OPAC 分支属「接口已备、装上即生效」，**未经实机验证**（其 API 已按 `thexaero/open-parties-and-claims` 分支 `1.21` / `1.20` 的源码核对）；三线安装情况本身也不同（1.21.1 有 FTB Teams + Library；**1.20.1 完全没有 FTB**；26.1.2 只有 Library、**没有 Teams**）⇒ 两个第三方后端均走**反射 + 模组存在性守卫**（`Class.forName` 惰性解析），任一解析或调用失败即**永久退回原版计分板口径**，不会因第三方模组改版而崩溃。FTB 分支按其真实源码接入（`TeamManager#arePlayersInSameTeam(UUID,UUID)` 服务端 / `ClientTeamManager#getTeamForPlayer(Player)` 客户端）。
+  ⚠️ **实机验证范围（如实说明）**：三个整合包**都未安装 OPAC** ⇒ OPAC 分支属「接口已备、装上即生效」，**未经实机验证**（其 API 已按 `thexaero/open-parties-and-claims` 分支 `1.21` / `1.20` 的源码核对）；各线安装情况本身也不同（1.21.1 有 FTB Teams + Library；**1.20.1 完全没有 FTB**；26.1.2 只有 Library、**没有 Teams**）⇒ 两个第三方后端均走**反射 + 模组存在性守卫**（`Class.forName` 惰性解析），任一解析或调用失败即**永久退回原版计分板口径**，不会因第三方模组改版而崩溃。FTB 分支按其真实源码接入（`TeamManager#arePlayersInSameTeam(UUID,UUID)` 服务端 / `ClientTeamManager#getTeamForPlayer(Player)` 客户端）。
 
-- **1.20.1 的匠魂 / 灾变等第三方近战武器无法触发骰神赐福，现改为「黑名单」识别**（2026-09-30 用户报告）：原判据是**白名单** —— 只有原版 `SwordItem` / `AxeItem` / `MaceItem` / `TridentItem` 四种才被认作近战武器，而绝大多数模组的近战武器**不继承**这些原版类（匠魂 / 灾变尤其明显）⇒ 拿着它们攻击时骰神赐福整类不触发。现反转为**黑名单**：只排除「空手 / 盾牌 / 工具类（镐 / 锹 / 锄，**斧子保留** —— 斧是近战武器）/ 远程武器（弓 / 弩）/ 方块」，其余一律视为可触发的近战武器。判据只用品原版**物品标签**（`pickaxes` / `shovels` / `hoes`）与接口（`ProjectileWeaponItem` / `BlockItem`），**不再引用 `SwordItem` / `DiggerItem` 之类的类名** —— 26.1.2 已把这三类整体重构掉；三线方法体逐字节一致（已用 sources jar 实证标签三线俱在）。
+- **1.20.1 的匠魂 / 灾变等第三方近战武器无法触发骰神赐福，现改为「黑名单」识别**（2026-09-30 用户报告）：原判据是**白名单** —— 只有原版 `SwordItem` / `AxeItem` / `MaceItem` / `TridentItem` 四种才被认作近战武器，而绝大多数模组的近战武器**不继承**这些原版类（匠魂 / 灾变尤其明显）⇒ 拿着它们攻击时骰神赐福整类不触发。现反转为**黑名单**：只排除「空手 / 盾牌 / 工具类（镐 / 锹 / 锄，**斧子保留** —— 斧是近战武器）/ 远程武器（弓 / 弩）/ 方块」，其余一律视为可触发的近战武器。判据只用品原版**物品标签**（`pickaxes` / `shovels` / `hoes`）与接口（`ProjectileWeaponItem` / `BlockItem`），**不再引用 `SwordItem` / `DiggerItem` 之类的类名** —— 26.1.2 已把这三类整体重构掉；各线方法体逐字节一致（已用 sources jar 实证标签各线俱在）。
 
 - **诡厄巫法的术士等生物反复喝奶自清效果导致服务端卡顿，现允许生物清除自身效果**（2026-09-30 用户报告）：本模组有一条命名空间守卫，会拦下 `astral_dice:*` 效果的一切外部移除（牛奶 / `/effect clear` 等）。而诡厄巫法的术士等 AI 会靠「喝奶自清效果」处理身上的异常状态 —— 移除被拦下 ⇒ 效果永远清不掉 ⇒ AI **反复尝试喝奶**，服务端随之卡顿（原版女巫及其它模组的同类单位同理）。现增加例外：**目标不是玩家时一律放行**（本模组施加给生物的多为减益 —— 标记 / 虚弱印记 / 破绽 / 厄运 / 隐匿调查，允许其自清无害）；玩家侧口径不变。
 
 - **「标记」不再防清理，玩家可以用牛奶清除**（2026-09-30 用户裁决）：标记此前与其余本模组效果一样受命名空间守卫保护，玩家无法自行清除。标记的强度由**层数**承载，且它是施加给**目标**的减益，玩家有正当理由想清掉它 ⇒ 现单独放行 `MARKED` 的外部移除（牛奶 / `/effect clear` 均可）。⚠️ 已知的轻微观感残留：标记伴随的发光仍与标记「同寿命」（标记还在时不可被单独清除），若一次批量清除中发光先于标记被处理，发光会留到自然到期（≤60 秒）。
 
-- **手册两处「原始键名」显示缺陷**（2026-10-01；一处由 fabric 线会话报告、一处由本地全量审计补出）：手册的「特殊效果」条目第 6 页与「教主立牌」条目第 3 页，引用的是**已被删除的语言键** —— 前者的「效果待定」说明随该机制取消（本版效果牌冷却改版）一并删除，后者的「防刷口径」说明随「手册无效注释全面清理」一并删除，但**手册页没有跟着删** ⇒ 游戏内这两页直接显示原始键名 `astral_dice.guide.entry.*`。现已按两次清理的既定意图删去这两个已无内容可展示的页。⚠️ 本类缺陷**此前任何一种守门都查不出**（`check_lang_sync` 只比三语之间的键集，不负责「手册引用 ⊆ lang」）⇒ 同批新增守门 **`tools/audit_patchouli_keys.py`**（遍历三线手册 JSON 的全部翻译键引用、核对同线三语 lang，覆盖 `item.astral_dice.*` 这类物品名键；当前 **1161 处引用 / 悬空 0**）。
+- **手册两处「原始键名」显示缺陷**（2026-10-01；一处由 fabric 线会话报告、一处由本地全量审计补出）：手册的「特殊效果」条目第 6 页与「教主立牌」条目第 3 页，引用的是**已被删除的语言键** —— 前者的「效果待定」说明随该机制取消（本版效果牌冷却改版）一并删除，后者的「防刷口径」说明随「手册无效注释全面清理」一并删除，但**手册页没有跟着删** ⇒ 游戏内这两页直接显示原始键名 `astral_dice.guide.entry.*`。现已按两次清理的既定意图删去这两个已无内容可展示的页。⚠️ 本类缺陷**此前任何一种守门都查不出**（`check_lang_sync` 只比三语之间的键集，不负责「手册引用 ⊆ lang」）⇒ 同批新增守门 **`tools/audit_patchouli_keys.py`**（遍历各线手册 JSON 的全部翻译键引用、核对同线三语 lang，覆盖 `item.astral_dice.*` 这类物品名键；当前 **1161 处引用 / 悬空 0**）。
 
 
 ## 1.3.4
@@ -1338,7 +2027,7 @@
 
 - **全模组「常驻」效果统一改为原版无限时长（∞ 符号）**（2026-09-30 用户报告）：此前只有「精准打击」用原版无限时长，其余 8 个常驻效果（**充能 / 人偶制作 / 人偶完成 / 狐光 / 真龙形态 / 厄运 / 推理时间 / 弱点识破**）以及青之诅咒、隐匿调查两处施加点写的是 `Integer.MAX_VALUE` ⇒ 显示为一个几十万小时的倒计时而不是 ∞。现全部改为 `MobEffectInstance.INFINITE_DURATION`。⚠️ 计时守卫（`EffectTimerGuard`）必须同步放行该值：它按「时长 ≥ 阈值」判定永续，旧实现只认 `Integer.MAX_VALUE` 一档，**若不同步改，`-1` 会被当成「已到期仍残留」而把效果立刻清掉**（本次最隐蔽的一处连带）。判据：上述十类效果在物品栏效果面板上显示 ∞。
 
-- **状态效果的「注释」（描述文本）在游戏里一直看不到**（2026-09-30 用户报告）：语言文件里早已写好 21 条 `effect.astral_dice.<id>.description`（狂暴 / 隐匿 / 赋能 / 推理时间 / 白泽赐福 等），但**没有任何渲染通道** —— 此前只有狂暴、岿然不动、以毒攻毒这**三张效果牌物品**的 tooltip 读过描述键（`event/ModTooltipHandler`），玩家把鼠标悬停在**状态效果本身**上时只能看到「效果名 + 剩余时长」。现按平台各接一条通道：NeoForge 两线用官方事件 `GatherEffectScreenTooltipsEvent`，1.20.1（Forge 无此事件）用 Mixin 改写原版 `EffectRenderingInventoryScreen#renderEffects` 内构造的工具提示列表。三线口径一致：**只在对应语言键确实存在时**追加一行灰色描述，未写描述的效果不加空行。
+- **状态效果的「注释」（描述文本）在游戏里一直看不到**（2026-09-30 用户报告）：语言文件里早已写好 21 条 `effect.astral_dice.<id>.description`（狂暴 / 隐匿 / 赋能 / 推理时间 / 白泽赐福 等），但**没有任何渲染通道** —— 此前只有狂暴、岿然不动、以毒攻毒这**三张效果牌物品**的 tooltip 读过描述键（`event/ModTooltipHandler`），玩家把鼠标悬停在**状态效果本身**上时只能看到「效果名 + 剩余时长」。现按平台各接一条通道：NeoForge 两线用官方事件 `GatherEffectScreenTooltipsEvent`，1.20.1（Forge 无此事件）用 Mixin 改写原版 `EffectRenderingInventoryScreen#renderEffects` 内构造的工具提示列表。各线口径一致：**只在对应语言键确实存在时**追加一行灰色描述，未写描述的效果不加空行。
 
 ## 1.3.3
 
@@ -1369,7 +2058,7 @@
   ③ **配色不统一** —— 按既有裁决「拒绝 / 阻止类必须为红色」，把 11 条此前仍是黄色的拒绝类提示
   （忍者立牌三条「未释放」、绿洲女王临时牌上限 / 空位不足、经商立牌无可兑换星光、怪力侦探地面受阻 / 无目标、
   人偶师末影珍珠被禁、教主降神生效中、蛟龙强制冷却）改为**红色**；「电流核心」由 **AQUA 青色**拆分为
-  拒绝时红（充能不足）/ 成功时黄（冷却立即完成）；三条线的「蛟龙强制冷却」配色此前互不相同
+  拒绝时红（充能不足）/ 成功时黄（冷却立即完成）；各线的「蛟龙强制冷却」配色此前互不相同
   （1.21.1 与 26.1.2 为青、1.20.1 为白），现统一为红。
   ④ **两条并行通道合并** —— 安全气囊触发、钱包存取反馈、卡牌栏「需要佩戴骰子」、客户端「本轮出牌数已用完」
   四处走的是原版覆盖层（**白色**、绘制在 `guiHeight-68`、原版计时），而其余约 60 处走模组自己的动作栏
@@ -1471,7 +2160,7 @@
 
 #### 卡牌
 
-- **战斗牌 / 效果牌品阶重排**（2026-09-28 用户裁决）：**攻击-中 / 大 / 特大**与**防御-中 / 大 / 特大**统一为**蓝色（稀有）**（原为 白 / 蓝 / 紫，防御侧同为 白 / 蓝 / 紫）；**狂暴**、**以毒攻毒**、**你有我有**由**紫（史诗）下调为蓝（稀有）**；**王之力**由**金（传奇）下调为紫（史诗）**。赏金奖励池 `astral_rews` 中这 10 条目的数据层 `rarity` 字段已同步（`RARE` / `EPIC`），`scripts/verify/verify_bountiful_pools.ps1` 三线 **ALL OK**（集合、跨线 md5、价值平衡式全部通过）。⚠️ 其 `unitWorth`（赏金收益）**本轮未改**：按 AGENTS 的「同品质价值带」约定，这 9 张下调档位的卡现值已越带（属**约定层面偏差、非守门失败**，守门不校验档位↔价值），是否按新档位重映射待裁决。
+- **战斗牌 / 效果牌品阶重排**（2026-09-28 用户裁决）：**攻击-中 / 大 / 特大**与**防御-中 / 大 / 特大**统一为**蓝色（稀有）**（原为 白 / 蓝 / 紫，防御侧同为 白 / 蓝 / 紫）；**狂暴**、**以毒攻毒**、**你有我有**由**紫（史诗）下调为蓝（稀有）**；**王之力**由**金（传奇）下调为紫（史诗）**。赏金奖励池 `astral_rews` 中这 10 条目的数据层 `rarity` 字段已同步（`RARE` / `EPIC`），`scripts/verify/verify_bountiful_pools.py` 各线 **ALL OK**（集合、跨线 md5、价值平衡式全部通过）。⚠️ 其 `unitWorth`（赏金收益）**本轮未改**：按 AGENTS 的「同品质价值带」约定，这 9 张下调档位的卡现值已越带（属**约定层面偏差、非守门失败**，守门不校验档位↔价值），是否按新档位重映射待裁决。
 
 #### 筹码与资源
 
@@ -1550,13 +2239,13 @@
 
 - **临时牌新增 tooltip 提示行**（2026-09-24 用户裁决「临时牌缺少 tooltip 提示」）：战斗牌与效果牌**两个根类**的
   tooltip 都会在最前面多出一行黄字提示 —— 文案「临时牌：不可丢弃或转移，放入其它容器即销毁，女王特权结束后消失」
-  （新增 lang 键 `tooltip.astral_dice.temporary_card`，三线 × 中英日，键数 811 → **812**）。
+  （新增 lang 键 `tooltip.astral_dice.temporary_card`，各线 × 中英日，键数 811 → **812**）。
   ⚠️ 提示行**不显示剩余时间**：客户端只同步自己的效果实例（他人身上的效果不同步），显示时间会在看别人容器里的牌时出错。
 
 - **卡牌费用行改用新符号与本地化标题**（2026-09-24 用户裁决）：战斗牌 tooltip 顶部的费用行原先是硬编码的
   `Cost: ⨀⨀⨀`（「Cost」未做本地化，符号是数学运算符 `⨀` U+2A00，部分字体下字形可疑）。现改为
   **本地化标题 +「◆」重复**（每 1 点费用一个 ◆）：中文「费用：◆◆◆」、英文「Cost: ◆◆◆」、
-  日文「コスト：◆◆◆」，新增 lang 键 `tooltip.astral_dice.card_cost`（三线 × 中英日）；
+  日文「コスト：◆◆◆」，新增 lang 键 `tooltip.astral_dice.card_cost`（各线 × 中英日）；
   标题与符号仍**整行黄色**，位置不变。
 
 - **五条立牌主动技能 tooltip 改用统一起手式**（2026-09-25 用户裁决「描述过于冗长复杂」）：
@@ -1570,14 +2259,14 @@
   与开头「向其授予 鼠鼠护盾」重复，去重为「获得 1 张随机卡牌」。
   帕秋莉手册的五条「主动技能」条目**同步同口径**（删去「选择会话持续 30 秒，取消或超时不会进入冷却」），
   并清掉枪匠手册里残留的 Markdown 加粗 `**普通敌对目标**`（lang 值是纯文本，星号会原样显示给玩家）。
-  改动覆盖三线 × 中/英/日（10 个键 × 9 个语言文件 = 90 行），键数与占位符/换行/染色码结构均未变。
+  改动覆盖各线 × 中/英/日（10 个键 × 9 个语言文件 = 90 行），键数与占位符/换行/染色码结构均未变。
 
 #### 伤害与结算
 
 - **黑曜石骰子的减伤效果从「火焰伤害 -70%」改为「爆炸伤害 -50%」**（2026-09-25 用户裁决）：此前佩戴黑曜石骰子
   受到的火焰伤害（原版 `is_fire` 标签）减少 70%，现改为受到的**爆炸伤害**（原版 `is_explosion` 标签，TNT / 苦力怕 /
-  末影水晶 / 火球爆炸等）减少 **50%**，判定在 `ObsidianDiceItem.isExplosionDamage`（三线同步）；tooltip 与手册文案一并
-  由「火焰」改为「爆炸」（键 `tooltip.astral_dice.obsidian_dice_fire` → `obsidian_dice_explosion`，三线三语）。
+  末影水晶 / 火球爆炸等）减少 **50%**，判定在 `ObsidianDiceItem.isExplosionDamage`（各线同步）；tooltip 与手册文案一并
+  由「火焰」改为「爆炸」（键 `tooltip.astral_dice.obsidian_dice_fire` → `obsidian_dice_explosion`，各线三语）。
 
 - **磨刀石「保留 1 血」增加 1:00 冷却，并明确保命优先级「安全气囊 &gt; 磨刀石」**（2026-09-24 用户裁决）：
   磨刀石那条「生命值大于 1 点时，单次所受伤害至多使生命值降至 1 点」此前**没有冷却**，而它的生效条件
@@ -1589,7 +2278,7 @@
   仅在气囊**不可用**（未佩戴 / 冷却中 / 充能不足）时才由磨刀石兜底；气囊接管后本次结算直接返回，
   磨刀石连它的 -2 减伤都不参与。两者同时佩戴时气囊恒为第一顺位。
   文案同步：气囊 tooltip 与手册的「优先于不死图腾与末影骰子」清单补上「磨刀石」，
-  磨刀石 tooltip 与手册标注冷却（三线 × 中英日）。
+  磨刀石 tooltip 与手册标注冷却（各线 × 中英日）。
 
 - **「星光 / 星币 / 治愈点」三项加伤改为独立结算的「额外加伤」（新伤害类型 `astral_dice:extra_damage`）**：手电筒（每 4 星光 +1）、
   星币锤（持有星币的 30%）、美工刀（**仅治愈点数**）此前是并进「攻击力」一起算的 —— 于是会被「攻击力快照」类效果
@@ -1648,8 +2337,8 @@
   「不进池档」由原来三档（传奇 + 巅峰 + 奇特）收窄为**两档（巅峰 + 奇特）**——这两档没有数据层 rarity 对应值，入池即失效。
   传奇档价值带为本次新定（骰子 24000/12000、筹码与立牌 10000），价值平衡式随之变为
   `传奇骰子(objs) 24000 ≥ 传奇骰子(rews) 24000 × 0.9 = 21600` ✓。
-  ⚠️ **顺带修掉一处三线不一致**：26.1.2 的 `astral_rews.json` 此前既残留两张**专属牌**（按用户裁决「专属牌严禁经立牌以外的
-  任何途径获得」不得入池），又缺 4 条另两线已有的非专属条目 ⇒ 本批一并收敛，**三份池文件与悬赏令现三线逐字节相同**。
+  ⚠️ **顺带修掉一处各线不一致**：26.1.2 的 `astral_rews.json` 此前既残留两张**专属牌**（按用户裁决「专属牌严禁经立牌以外的
+  任何途径获得」不得入池），又缺 4 条另两线已有的非专属条目 ⇒ 本批一并收敛，**三份池文件与悬赏令现各线逐字节相同**。
   专属牌（`is_exclusive.json`，当前 6 项）仍一律不进任何池。
 
 
@@ -1675,7 +2364,7 @@
   **本档现有 8 件物品**（2026-09-25 用户裁决「将所有专属牌，以及怪力侦探和人偶师改为奇特」）：6 张**专属牌**
   （`is_exclusive.json` 全表）+ **怪力侦探**（`sherry_sign`）+ **人偶师**（`hanna_sign`）。
   ⚠️ **2026-09-25 修正**：上一批把「人偶师」误认成 `ren_sign`（那其实是**游戏大师**）⇒ 游戏大师被误改奇特、人偶师漏改；
-  本批纠正 —— **游戏大师改回史诗**（按 EPIC/1800 加回赏金池）、**人偶师改奇特**（按「奇特不入池」从三线 `astral_rews` 移除，
+  本批纠正 —— **游戏大师改回史诗**（按 EPIC/1800 加回赏金池）、**人偶师改奇特**（按「奇特不入池」从各线 `astral_rews` 移除，
   守门 `$EXCLUDED_TIERS` 含 `BIZARRE`，池里留着会 fail-loud）。想手工验证任意物品：`/give @s <物品>[minecraft:rarity="astral_dice:bizarre"]`。
 
 - **提示框边框策略修订：同色约定作废，稀有/史诗退回原版，传奇/巅峰/奇特自定义（改回两色渐变，放弃 Mixin 自绘顺时针）**（2026-09-25 用户二次 + 三次裁决）：
@@ -1687,7 +2376,7 @@
   实现面：`client/RarityTooltipFrame`（1.21.1 / 1.20.1，`@EventBusSubscriber(Dist.CLIENT)` + `RenderTooltipEvent.Color`）——
   用 `AstralRarities.tierOf` 反查档位，稀有/史诗/原版/其它模组 **return 不动**，传奇/巅峰 = `frameColor(now)` 单色，
   奇特 = `rainbowBorderStart/End` 两色。**26.1.2 不接**（该线边框是九宫格贴图、无颜色事件 ⇒ 保持原版贴图）。
-  ⚠️ 三次裁决前曾走过一轮「Mixin 自绘顺时针彩虹」（`TooltipBorderMixin` + `RarityBorderRenderer`），因三线都有 lambda 包裹 /
+  ⚠️ 三次裁决前曾走过一轮「Mixin 自绘顺时针彩虹」（`TooltipBorderMixin` + `RarityBorderRenderer`），因各线都有 lambda 包裹 /
   签名陷阱（生产字节码只有 6 参 `renderTooltipBackground`）且实机「动态渐变无效」，**已整条删除**。
   缺陷二保留（**根因在第三方模组，不在本模组**）：整合包 `狐の航空学 Voxy Edition` 装的 **Tooltip Overhaul 2.0.4 自己画整个提示框**，
   完全不调 `TooltipRenderUtil` ⇒ 本模组的事件被忽略；而它对**非原版稀有度**一律用兜底调色板
@@ -1698,7 +2387,7 @@
   ⚠️ 上批「删条目 = 退回原版」是错的 —— TO 用 `==` 比原版枚举，自有枚举永远掉金兜底 ⇒ 删条目反而让稀有/史诗变金框），
   **传奇 / 巅峰 = 档位色**（与文字同色），奇特 = **静态三段彩虹渐变**（`#FF2626` / `#26FF26` / `#2626FF`，取自库 `hsvToRgb` 的相位 0 / 1/3 / 2/3）——
   ⚠️ 该模组**没有逐帧动画能力**（特效与调色板全查过，无 rainbow），故流动渐变只在没有它的环境里成立。
-  文件在三线同字节；未装该模组的线/包不受影响（惰性数据）。
+  文件在各线同字节；未装该模组的线/包不受影响（惰性数据）。
   顺带取得的**实测事实**（写进 AGENTS）：扩展档位**确实进了**原版 `Rarity.CODEC` 与 `BY_ID` ⇒ 数据组件能携带自有档位并跨网络同步到客户端
   （用例 `RARITY-SYNC-1.21.1` 实证）；⚠️ 原版档位序列化名**不带命名空间**（`rare`），自有档位**带**（`astral_dice:rare`）。
 
@@ -1709,7 +2398,7 @@
   - **只对敌对目标生效**：目标判定回到 2026-09-24「中立生物一律计入」那次重写**之前**的判据 —— 中立生物须**已被激怒**（`NeutralMob#isAngry()`）才算敌对，于是**未激怒的狼 / 铁傀儡 / 北极熊 / 蜜蜂不再触发飞星**；敌对生物（含**平静时**的末影人 / 僵尸猪灵 —— 它们同时实现 `Enemy` 与 `NeutralMob`，故判据先看 `Enemy`）与消费方额外声明者（试验假人）照常计入。
     ⚠️ 这是对全局唯一入口 `HostileTargets#isHostile` 的**有意收窄**（不是漏用入口）：重写后的宽口径是为**主动技能**的释放目标判定（秘密侦探 / 枪匠）定的，而飞星是**被动自动触发**（路过即落星），不该凭空砸到平静的中立生物。判据集中在 `ShootingStarManager#isStarTarget`。
   - **拖尾粒子改为自发光**：原先用的是原版 `DustParticleOptions`（可染色，但**没有覆写光照** ⇒ 走世界光照、渲染类型还是不透明混合），暗处只是「发暗的硬边色点」；而「活体书页」的 `END_ROD` 之所以发光，是因为`SimpleAnimatedParticle#getLightColor` 恒返回全亮 `15728880`。原版粒子类里**没有被「可染色 + 全亮」覆盖的那一个**（可染色的 dust / spell 都走世界光照；全亮的 `END_ROD` / `FLASH` / `SCULK_CHARGE` / `GUST` 都不接受颜色参数），故新增本模组粒子 **`astral_dice:glowing_dust`**：选项 `GlowingDustOptions`（继承原版 `DustParticleOptions`，编解码器改写成解出的实例指向自有 `ParticleType`）、客户端 `GlowingDustParticle`（**光照恒为全亮** + **半透明混合**，其余摩擦 / 尺寸 / 寿命 / 配色随机全部继承原版）、贴图清单 `assets/astral_dice/particles/glowing_dust.json`（取原版 dust 的 `generic_0..generic_7`）。⇒ 紫 / 金分色与拖尾形状不变，且与 `END_ROD` 同档自发光。
-  - **删除「不对其发动攻击」条件与对应描述**（2026-09-25 用户裁决「实际上是无效的」）：该条件读的是`target.getLastHurtByMob()`，而原版这是**单一槽位** —— 任意实体（别的怪、环境伤害）造成伤害都会覆盖它，且 `LivingEntity#tick` 会在超过 100 tick 后自动清空，因此「玩家正在打的目标被第三方打到」就会误判为「没攻击过」，实战中形同无效。现已删除 `ShootingStarManager#attackedByPlayerRecently` 与 `ATTACK_GRACE_TICKS`，tooltip 与手册文案同步去掉该短语（三线 × 中英日，4 键 × 9 个语言文件）。飞星现在只要**路过**判定窗口内最近的合格敌对目标就触发。
+  - **删除「不对其发动攻击」条件与对应描述**（2026-09-25 用户裁决「实际上是无效的」）：该条件读的是`target.getLastHurtByMob()`，而原版这是**单一槽位** —— 任意实体（别的怪、环境伤害）造成伤害都会覆盖它，且 `LivingEntity#tick` 会在超过 100 tick 后自动清空，因此「玩家正在打的目标被第三方打到」就会误判为「没攻击过」，实战中形同无效。现已删除 `ShootingStarManager#attackedByPlayerRecently` 与 `ATTACK_GRACE_TICKS`，tooltip 与手册文案同步去掉该短语（各线 × 中英日，4 键 × 9 个语言文件）。飞星现在只要**路过**判定窗口内最近的合格敌对目标就触发。
 
 ### 已修复BUG
 
@@ -1738,7 +2427,7 @@
 #### 立牌与状态
 
 - **怪力侦探立牌（sherry）「侦探出击」把「每攻击一个**新**目标」做成了「每攻击一下」**（2026-09-25 用户实报）：计层钩子只判「命中 ≥ 20 血的敌对目标」而**不记目标身份** ⇒ 对同一只怪连打 4 下就把「推理时间」打满，与被动原文「每攻击一个**新**目标获得 1 层（每个目标只能获得 1 层）」不符。现新增玩家级「**已推理目标**」记录（附件 `sherry_reasoning_targets`，目标 UUID 逗号串，沿用 `flashlight_granted_targets` 的字符串集口径）：首次命中即登记，**已登记的目标不再计层**；上限 **256**、超出**按最旧淘汰**（与手电筒筹码的「满则停发」不同 —— 记录键按目标**实体实例**计，长局里很容易到 256，若也停发会让玩家静默失去整个被动；而层数本身有上限、且每次赐福结束 −1 ⇒ 重复发放不成刷取）；记录**随卸下立牌清空**（与层数同寿命；刻意**不**跨死亡，与手电筒同款）。
-- **「推理时间」上限由 5 层下调为 4 层**（2026-09-25 用户裁决）：常量 `SherrySignItem.MAX_REASONING = 4`（tooltip 的层数计数器、主动「怪力投掷」的满层额外伤害判定都读它，自动跟随）；tooltip 与手册的「最大 5 层」「达到 5 层」同步改为 4 层（三线 × 中英日）。
+- **「推理时间」上限由 5 层下调为 4 层**（2026-09-25 用户裁决）：常量 `SherrySignItem.MAX_REASONING = 4`（tooltip 的层数计数器、主动「怪力投掷」的满层额外伤害判定都读它，自动跟随）；tooltip 与手册的「最大 5 层」「达到 5 层」同步改为 4 层（各线 × 中英日）。
 
 - **「骰神赐福结束 → 立牌减 1 层」被逐拍重放，一次结束就把层数扣光**（2026-09-25 用户实报「怪力侦探的骰神赐福结束变成全扣（直接归0）」）：
   怪力侦探「推理时间」与枪匠「弱点识破」都在 `MobEffectEvent.Expired` 回调里**直接减层** —— 而原版
@@ -1918,7 +2607,7 @@
 
 #### 文案与手册
 - **活体书页的说明文案精简为一句,并修正伤害数值未染色;手册条目同步重写**:卡牌 tooltip 现在只有一句 ——「瞄准敌对目标使用，对目标造成 §e<实时伤害>§7 点法术伤害，并施加一层“标记”。命中已有 §e3§7 层及以上标记的目标时，本出牌周期出牌数 §e+1§7」。原先单列的第一行用法「对敌对目标使用 活体书页」已并入这一句;飞向目标 / 必定命中 / 可穿透方块这些描述从 tooltip 撤下(完整口径仍写在手册条目里)。伤害数值随调查员已用页数**实时更新**,并修好了此前**未染色**(显示为灰色)的问题。手册条目按新的使用方式(手持即选、仅敌对目标、无倒计时)与门槛规则重写。目标选择器里该牌显示的技能名为「活体书页」。另新增该伤害类型的死亡提示文案(「被飞来的书页撕碎」/「被某人的活体书页撕碎」)。
-- **26.1.2 的语言文件与 1.21.1 / 1.20.1 完全对齐，删掉 3 处只写在 26.1.2 上的实现细节注释**：这三处都不是玩家创建内容时给出的主动 / 被动原文，而属实现层说明 —— 能量回收筹码的「（单 tick 位移过大视为传送，不累计）」（手册条目与物品说明各一处），以及枪匠立牌被动多出的首行「装备时，主动技能冷却时间减为 120 秒」（该被动照旧生效，只是不再写进物品说明）。起因是 26.1.2 的语言文件此前按「缺键就补」的方式同步，**已有键的取值从不回改**，于是这三处一直留在该线上。现在三线（1.20.1 / 1.21.1 / 26.1.2）× 三语（中 / 英 / 日）共 **805 键逐键一致**，剩下的差异只有两处**平台性**差异：① 26.1.2 的按键分类键名是 `key.category.astral_dice.main`（由 26.1.2 的 `KeyMapping.Category` 决定的翻译键格式），1.20.1 / 1.21.1 为 `key.categories.astral_dice`；② 1.20.1 的**复仇长戟**清单不含 1.21 才加入的原版效果（蓄风 / 盘丝 / 渗浆 / 寄生 / 袭击之兆 / 试炼之兆）。同时修正 26.1.2 语言文件里 `msg.astral_dice.komachi_active_cooldown` 一行的缩进（8 空格 → 2 空格，与其余各行一致）。
+- **26.1.2 的语言文件与 1.21.1 / 1.20.1 完全对齐，删掉 3 处只写在 26.1.2 上的实现细节注释**：这三处都不是玩家创建内容时给出的主动 / 被动原文，而属实现层说明 —— 能量回收筹码的「（单 tick 位移过大视为传送，不累计）」（手册条目与物品说明各一处），以及枪匠立牌被动多出的首行「装备时，主动技能冷却时间减为 120 秒」（该被动照旧生效，只是不再写进物品说明）。起因是 26.1.2 的语言文件此前按「缺键就补」的方式同步，**已有键的取值从不回改**，于是这三处一直留在该线上。现在各线（1.20.1 / 1.21.1 / 26.1.2）× 三语（中 / 英 / 日）共 **805 键逐键一致**，剩下的差异只有两处**平台性**差异：① 26.1.2 的按键分类键名是 `key.category.astral_dice.main`（由 26.1.2 的 `KeyMapping.Category` 决定的翻译键格式），1.20.1 / 1.21.1 为 `key.categories.astral_dice`；② 1.20.1 的**复仇长戟**清单不含 1.21 才加入的原版效果（蓄风 / 盘丝 / 渗浆 / 寄生 / 袭击之兆 / 试炼之兆）。同时修正 26.1.2 语言文件里 `msg.astral_dice.komachi_active_cooldown` 一行的缩进（8 空格 → 2 空格，与其余各行一致）。
 
 ### 已修复BUG
 
@@ -1964,12 +2653,11 @@
 ## 1.2.1-hotfix
 
 
-
 ## 1.2.1
 
 ### 新内容
 
-- **新增 `/astralparty` 管理员调试命令(4 个子命令 + 2 个别名,仅 OP 权限级 2)**:`cleareffect` 清除**全部 33 个**本模组效果;`clearcardeffect` 只清**效果牌施加的效果**(= `EffectCardPeriod` 的「效果待定」注册表 `EFFECT_PENDING_SOURCES`,共 9 个,即出牌锁第 ③ 条的来源);`resetcardlock` 重置出牌锁的**出牌数**(含全部「每轮一次」标记)与**出牌冷却**,其别名 `resetcardcolddown`(原话拼写)与 `resetcardcooldown`(拼写正确版)与主字面量**共用同一实现**;`dump` 是**只读**子命令:一条命令把关键状态倾倒成 `APDUMP|<组>|<键>=<值>` 行(组固定为 `HEAD`/`LOCKRAW`/`LOCKDERIVED`/`SIGN`/`EFFECTS`/`PENDING`),同时走玩家 chat 与 `latest.log` 两条通道(后者保证自动化能读到),行内不含颜色码(§ 会破坏正则)、数值十进制、tick 用 long、布尔 `true/false`,多玩家按选择器顺序逐段输出且段内行序固定(不依赖任何 `HashMap` 迭代序);输出**原始值优先于派生值**,`LOCKDERIVED` 组与 `is_sign_active_locked` 是**判定入口字段**(行尾标 `assert=forbidden`)、**禁止作为断言落点**;其目的正是替换「纯读探针」代码,让 PowerShell 侧直接对日志做正则断言。`dump` **不改变任何状态**(只经 getter 与 `is*` 判定,不输出原版或其它模组的状态)。四个子命令均 `requires(src -> src.hasPermission(2))`,**只在服务端**注册与执行,**随 jar 发布**、不设 dev/测试专用开关。能力边界严格限定为「重置 / 清除本模组自身状态」:不给予任何资源(物品/卡牌/筹码/星币/星光/治愈/最大生命),不提供「把任意数值设成任意值」的通用写入(没有 `seteffect`/`setcooldown`/`setplaycount` 之类入口),默认只作用于执行者、给了玩家选择器才作用于该玩家(绝不隐式作用于全体),不触碰原版或其它模组的玩家状态(如光谱箭施加的发光)。目标参数可选(`@a`/玩家名),执行者不是玩家且未给参数、或选择器解析不出玩家时返回可读失败文案而不抛异常。实现要点:效果移除统一经内部通道 `ModEffectRemoval`(外部清除拦截器会取消全部 `astral_dice:` 效果的移除,直接 `removeEffect` 会让命令完全无效;走内部通道同时自动遗忘计时器守卫的 `effect_timer_ends` 记录——否则守卫会把效果原样施加回来——并自动清 `undercover_source`),并在移除后清理与所清效果**同生共死**的耦合状态(`fate_active_until`、`weak_mark_source`、`sign_ready_type`/`sign_ready_expire`);`healing_points`/`healing_timer_end`、`investigation_stage`、`cursed_sword_*`、`empower_decay_at` 等资源与进度计数器,以及立牌锁定态 `sign_active_lock_*` 一律**不动**(锁定态由玩家级 tick 自动迁移为冷却)。新增只读入口且两版本同步:`ModEffects.ALL`(由 `DeferredRegister#getEntries` 的活视图派生,新增效果自动纳入)、`EffectCardPeriod.effectPendingEffects()`(由效果待定注册表去重派生)与 `EffectCardPeriod.effectPendingSources()`/`effectPendingSourceIds()`(同一注册表的逐条只读视图 + 稳定来源标识,供 `dump` 输出每个来源自己的 `isActive`);反馈文案走新增的 8 个 lang key(中英 × 双版本)。
+- **新增 `/astralparty` 管理员调试命令(4 个子命令 + 2 个别名,仅 OP 权限级 2)**:`cleareffect` 清除**全部 33 个**本模组效果;`clearcardeffect` 只清**效果牌施加的效果**(= `EffectCardPeriod` 的「效果待定」注册表 `EFFECT_PENDING_SOURCES`,共 9 个,即出牌锁第 ③ 条的来源);`resetcardlock` 重置出牌锁的**出牌数**(含全部「每轮一次」标记)与**出牌冷却**,其别名 `resetcardcolddown`(原话拼写)与 `resetcardcooldown`(拼写正确版)与主字面量**共用同一实现**;`dump` 是**只读**子命令:一条命令把关键状态倾倒成 `APDUMP|<组>|<键>=<值>` 行(组固定为 `HEAD`/`LOCKRAW`/`LOCKDERIVED`/`SIGN`/`EFFECTS`/`PENDING`),同时走玩家 chat 与 `latest.log` 两条通道(后者保证自动化能读到),行内不含颜色码(§ 会破坏正则)、数值十进制、tick 用 long、布尔 `true/false`,多玩家按选择器顺序逐段输出且段内行序固定(不依赖任何 `HashMap` 迭代序);输出**原始值优先于派生值**,`LOCKDERIVED` 组与 `is_sign_active_locked` 是**判定入口字段**(行尾标 `assert=forbidden`)、**禁止作为断言落点**;其目的正是替换「纯读探针」代码,让 原生 shell 侧直接对日志做正则断言。`dump` **不改变任何状态**(只经 getter 与 `is*` 判定,不输出原版或其它模组的状态)。四个子命令均 `requires(src -> src.hasPermission(2))`,**只在服务端**注册与执行,**随 jar 发布**、不设 dev/测试专用开关。能力边界严格限定为「重置 / 清除本模组自身状态」:不给予任何资源(物品/卡牌/筹码/星币/星光/治愈/最大生命),不提供「把任意数值设成任意值」的通用写入(没有 `seteffect`/`setcooldown`/`setplaycount` 之类入口),默认只作用于执行者、给了玩家选择器才作用于该玩家(绝不隐式作用于全体),不触碰原版或其它模组的玩家状态(如光谱箭施加的发光)。目标参数可选(`@a`/玩家名),执行者不是玩家且未给参数、或选择器解析不出玩家时返回可读失败文案而不抛异常。实现要点:效果移除统一经内部通道 `ModEffectRemoval`(外部清除拦截器会取消全部 `astral_dice:` 效果的移除,直接 `removeEffect` 会让命令完全无效;走内部通道同时自动遗忘计时器守卫的 `effect_timer_ends` 记录——否则守卫会把效果原样施加回来——并自动清 `undercover_source`),并在移除后清理与所清效果**同生共死**的耦合状态(`fate_active_until`、`weak_mark_source`、`sign_ready_type`/`sign_ready_expire`);`healing_points`/`healing_timer_end`、`investigation_stage`、`cursed_sword_*`、`empower_decay_at` 等资源与进度计数器,以及立牌锁定态 `sign_active_lock_*` 一律**不动**(锁定态由玩家级 tick 自动迁移为冷却)。新增只读入口且两版本同步:`ModEffects.ALL`(由 `DeferredRegister#getEntries` 的活视图派生,新增效果自动纳入)、`EffectCardPeriod.effectPendingEffects()`(由效果待定注册表去重派生)与 `EffectCardPeriod.effectPendingSources()`/`effectPendingSourceIds()`(同一注册表的逐条只读视图 + 稳定来源标识,供 `dump` 输出每个来源自己的 `isActive`);反馈文案走新增的 8 个 lang key(中英 × 双版本)。
 
 ### 内容与平衡性调整
 
@@ -2022,12 +2710,12 @@
 
 #### 状态、存档与同步
 - 修复 **1.20.1 缺少 Forge 版本门槛**(低于 Forge 47.4.10 的环境也能加载本模组,随后抛 mixin 错误):`mods.toml` 的加载器门槛此前写作 `loader_version_range=[47,)`,只卡到 **47.0.0**;现改为**由 `gradle.properties` 的 `forge_version` 自动派生两个区间**——`loaderVersion` 用 **javafml 主系列区间** `[<major>,<major+1>)`(当前 `[47,48)`),`modId="forge"` 强制依赖用**精确区间** `[<forge_version>,<major+1>)`(当前 `[47.4.10,48)`)。**为什么精确区间不能写进 `loaderVersion`(2026-09-14 实机验证)**:javafml 语言提供者的版本号就是 Forge 主系列号(47),与完整版本号不同构;把 `[47.4.10,48)` 写进 `loaderVersion` 会被 FML 判为 `Missing language javafml version [47.4.10,48) wanted by astral_dice-1.2.1+forge_1.20.1.jar, found 47` 并**直接拒绝加载本模组**(Forge 自身的 `mods.toml` 也只写 `loaderVersion="[24,]"`)。精确下限改放依赖后:低于 47.4.10 的环境仍在 FML 依赖排序阶段被拒(`Missing or unsupported mandatory dependencies: forge`),合规环境正常加载。校验:构建产物 `META-INF/mods.toml` 两处分别为 `loaderVersion="[47,48)"` 与 forge 依赖 `versionRange="[47.4.10,48)"`;离线侧用 FML 依赖排序所用的同一实现 `org.apache.maven.artifact.versioning.VersionRange` 实测——旧区间 `[47,)` 接受 47.0.0/47.3.0/47.4.9(BUG 复现),新区间三者全部拒绝,47.4.10/47.4.23/47.5.0/47.9.9 通过、48.0.0 拒绝;**并实机启动 1.20.1 客户端确认模组正常加载**(上一版写法实机直接加载失败,仅靠离线单测无法发现)。forge 子项目不再保留可与之冲突的 `loader_version_range` 属性。
-- 修复 **1.20.1 的 reobf 生产包启动即 FATAL(Mixin 注解选择器映射缺失),并把 Mixin Booster 明确为硬前置**:1.20.1 生产运行的是 **reobf(SRG 名)jar**,而 mixin 的 `@Inject(method = "…")` / `@Shadow` 是**注解里的字符串选择器**(Mojmap 名),reobf **改不动注解字符串** ⇒ 必须由 **refmap** 在运行时翻译,三件套缺一不可:① 注解处理器(`annotationProcessor` org.spongepowered:mixin 0.8.5 + gson/guava/asm);② `mixin { add sourceSets.main, 'astral_dice.refmap.json' }`;③ `astral_dice.mixins.json` 里的 `"refmap": "astral_dice.refmap.json"`(**缺该字段 Mixin 根本不加载 refmap**)。1.2.0 曾以「Mixin Booster 会自动处理 Mojmap→SRG 重映射」为前提移除了 refmap 与注解处理器,但 Booster 只提供 `MixinModlauncherRemapper` 重映射**字节码引用**、**不翻译注解选择器**,于是生产客户端启动即 `InvalidInjectionException … could not find any targets matching 'startUseItem()V' … No refMap loaded` **FATAL**(dev 永远看不出:dev 类是 Mojmap 名,选择器直接命中、refmap 不参与)⇒ 生产自此必崩。现已恢复三件套;同时把 **Mixin Booster 从「可选依赖」改为硬前置**(`mods.toml` 的 `modId="mixinbooster"` + `mandatory=true` + `versionRange="[0.1.3,)"` + `ordering="AFTER"` + `side="BOTH"`):Forge 1.20.1 的 FML **没有 Mixin 集成**,缺 Booster 时本模组**不报任何错、全部 Mixin 静默失效**,故必须在 FML **依赖排序阶段**拒绝启动,拒绝文案为 FML 原生的 `Missing or unsupported mandatory dependencies:`(Mod ID / Requested by / Expected range / Actual version)。**已排除加载顺序**:ModLauncher 先加载 booster、Mixin 子系统以 booster 为 Source,本模组的配置随后才注册;22 条 mixin 错误全部属于本模组,其它带 refmap 的模组无一报错。**构建后回归判据**:jar 内存在 `astral_dice.refmap.json`、`mixins.json` 声明了它、且配置里每个 mixin 类在 refmap 中都有条目(1.20.1 现 11/11);防回归用例 `scripts/test/mt_loadergate.ps1`(读数 `AP_LG_MB`/`AP_LG_MB_RANGE`)。
+- 修复 **1.20.1 的 reobf 生产包启动即 FATAL(Mixin 注解选择器映射缺失),并把 Mixin Booster 明确为硬前置**:1.20.1 生产运行的是 **reobf(SRG 名)jar**,而 mixin 的 `@Inject(method = "…")` / `@Shadow` 是**注解里的字符串选择器**(Mojmap 名),reobf **改不动注解字符串** ⇒ 必须由 **refmap** 在运行时翻译,三件套缺一不可:① 注解处理器(`annotationProcessor` org.spongepowered:mixin 0.8.5 + gson/guava/asm);② `mixin { add sourceSets.main, 'astral_dice.refmap.json' }`;③ `astral_dice.mixins.json` 里的 `"refmap": "astral_dice.refmap.json"`(**缺该字段 Mixin 根本不加载 refmap**)。1.2.0 曾以「Mixin Booster 会自动处理 Mojmap→SRG 重映射」为前提移除了 refmap 与注解处理器,但 Booster 只提供 `MixinModlauncherRemapper` 重映射**字节码引用**、**不翻译注解选择器**,于是生产客户端启动即 `InvalidInjectionException … could not find any targets matching 'startUseItem()V' … No refMap loaded` **FATAL**(dev 永远看不出:dev 类是 Mojmap 名,选择器直接命中、refmap 不参与)⇒ 生产自此必崩。现已恢复三件套;同时把 **Mixin Booster 从「可选依赖」改为硬前置**(`mods.toml` 的 `modId="mixinbooster"` + `mandatory=true` + `versionRange="[0.1.3,)"` + `ordering="AFTER"` + `side="BOTH"`):Forge 1.20.1 的 FML **没有 Mixin 集成**,缺 Booster 时本模组**不报任何错、全部 Mixin 静默失效**,故必须在 FML **依赖排序阶段**拒绝启动,拒绝文案为 FML 原生的 `Missing or unsupported mandatory dependencies:`(Mod ID / Requested by / Expected range / Actual version)。**已排除加载顺序**:ModLauncher 先加载 booster、Mixin 子系统以 booster 为 Source,本模组的配置随后才注册;22 条 mixin 错误全部属于本模组,其它带 refmap 的模组无一报错。**构建后回归判据**:jar 内存在 `astral_dice.refmap.json`、`mixins.json` 声明了它、且配置里每个 mixin 类在 refmap 中都有条目(1.20.1 现 11/11);防回归用例 `scripts/test/mt_loadergate（旧脚本名）(读数 `AP_LG_MB`/`AP_LG_MB_RANGE`)。
 - 修复 **tooltip 数值恒为客户端默认值 0 的三处附件同步缺陷**(与上一条同源,由独立验证逐条比对 `ModTooltipHandler` 取值点及其读取链发现):① `rin_pages`(调查员立牌「活体书页伤害增加：+N」);② `pandaman_max_health_bonus`(肉弹战车立牌「获得生命值: +N」);③ `nancy_lu_passive_type`(骇客立牌 tooltip 最下方「攻击力/防御力加成」行——它经 `NancyLuSignItem.getAttackBonus/getDefenseBonus` **间接**读取,不是 `ModTooltipHandler` 里的直接调用,故极易漏检)。三者此前均**未同步**,而这些数值全部由客户端渲染 → 恒显示 `0`(骇客被动 +3 同样恒为 0)。现按同一口径补齐:1.21.1 各加 `.sync(ByteBufCodecs.INT)`;1.20.1 各加 `.sync()` 并登记 `SYNCED_KEYS`(25 → 28)。修正后双版本 tooltip 涉及的全部附件(含间接读取链)均为已同步键,无遗漏。
 - 修复**调查员/忍者立牌「效果牌伤害加成」的「死亡保留」从未真正生效**:1.2.0 起更新日志与两版本代码注释均称 `rin_pages`/`komachi_damage_bonus` 死亡保留,但全仓库没有任何附件标记「随死亡复制」(`copyOnDeath`)——NeoForge 附件的默认语义是**死亡不复制**(仅在维度切换与从末地返回时复制),1.20.1 的 `AstralData.onPlayerClone` 也在死亡分支直接 `return`,于是玩家一死,已累计的活体书页数与忍者伤害增益即归零(表现为 live 数值与法伤加成凭空掉回初始值,与文档及玩家可见更新日志不符)。现按记录的本意补齐:1.21.1 给 `rin_pages`/`komachi_damage_bonus` 加 `.copyOnDeath()`;1.20.1 在 `AstralData.onPlayerClone` 的死亡分支**只复制这两个键**,其余键维持「死亡不复制」(两侧保留集合必须一致)。注意死亡清理(`LivingDeathEvent`,在**旧实体**上执行)刻意不清除这两个键——保留逻辑正是从旧数据中取值,改动该清理时必须保留这一约定(双版本一致)。**但仅靠克隆复制不够(独立验证发现的 high 缺陷)**:默认 gamerule(`keepInventory=false`)下死亡会把立牌从饰品槽丢出,Curios 的 tick 轮询随即回调 `onUnequip` → 立牌 `clearSignData` 把这两个键清零,且**早于**克隆复制——于是「死亡保留」只在 `keepInventory=true`(测试世界)或死亡时未佩戴立牌时才成立,真实生存世界仍会归零。现补第二层机制:新增 `component/DeathPreservedBonuses`,在死亡清理时暂存、克隆(`priority=LOWEST`,必须在复制之后)与重生时回写(与 `ChargeManager` 充能死亡保留同一模式),双版本同步。同时明确一条口径(2026-09-15 裁决):**这两项加成只在佩戴对应立牌时生效**——判定入口统一为 `SpellDamageRegistry#effectCardDamageBonus`(忍者)与 `#livingPageBonusPages`(调查员),伤害结算与 tooltip 显示一律走它们,死亡掉落立牌后累计值虽保留但不再加成,直至重新装备。
 - 修复 **1.20.1 客户端附件缓存跨会话残留、tooltip 显示上一局的旧值**:客户端缓存 `ClientAstralData` 是**静态字段**(不随客户端玩家实体重建),而全量同步快照只下发「服务端存在原值」的键——上一世界/上一会话的残留值会一直生效到该键被再次写入。实测路径:世界 A 用过 5 张活体书页 → 换到新世界(服务端 `rin_pages` 已是 0)时客户端 tooltip 仍显示 +5(与上一条「未同步恒为 0」是两类不同的错误:值本身是对的,但显示的是旧世界的值)。现双管齐下:① `ModNetwork.syncSnapshot` 改为对**全部 28 个 synced 键**下发,服务端缺失的键下发**显式默认值**(新增 `AttachedDataKey#defaultRawTag()`),覆盖登录/重生/切维度三种入口(重生时新玩家数据为空,正是此前漏发的情形);② 新增客户端会话清理 `client/ClientSessionEvents`,断线(`ClientPlayerNetworkEvent.LoggingOut`)时清空缓存,兜住「此后不再写该键」的离线残留。仅 1.20.1 需要(1.21.1 用原生附件、客户端数据随加入世界重建)。
 - 修复**末影骰子保命时把不该清的效果也清掉了(两版本统一为只清有害效果)**:1.21.1 此前调 `removeEffectsCuredBy(EffectCures.PROTECTED_BY_TOTEM)`,而 `EffectCures.DEFAULT_CURES` 默认为**全部效果** —— 实际会把增益一并清掉;1.20.1 的 `removeAllEffects()` 同理。现改为遍历当前效果、只移除类别为 `MobEffectCategory.HARMFUL` 的那部分(两版本同步),`setHealth(1.0F)` 在前、清效果在后的既有顺序保持不变。移除统一经 `ModEffectRemoval` 的内部通道,故 `astral_dice:` 命名空间的效果同样会被清除;而**本模组自身效果仍由 `MobEffectEvent.Remove` 守卫保留** —— 该守卫(HIGH)会拦下一切非内部、非强制、非死亡态的外部清除(牛奶/蜂蜜/`/effect clear` 等)。**2026-09-15 补充:移除白名单在 HARMFUL 之外额外显式追加 `GLOWING`**(保持"只清 HARMFUL + 额外的 GLOWING"这一显式白名单,绝不退化为 `removeAllEffects()`) —— 标记 `marked` 由 `MarkManager.apply` 与 `GLOWING` **一同施加、同一寿命**,而 `GLOWING` 属 NEUTRAL、不在 HARMFUL 之列,只清 HARMFUL 会残留发光轮廓,与守卫处「标记仍存在时发光不得被单独清除」的同寿命口径不一致。为免误伤本模组之外的来源(原版光灵箭 `spectral_arrow`、`/effect`、其它模组),该追加**只在玩家确实带着本模组标记时生效**(收集阶段先于任何移除,故标记未清时判定成立):有标记时该效果实例即"标记随身的那份",随标记一同消失。
-- 修复**死亡清理的优先级与清单**:`PlayerLifecycleHandler` 的死亡清理由默认优先级降为 `@SubscribeEvent(priority = EventPriority.LOWEST)` —— 保命方(末影骰子、安全气囊)在 NORMAL/HIGHEST 取消死亡后,不再被按死亡清理(此前同优先级顺序反转时,被救回的玩家仍会走玻璃骰子销毁与计数清空)。同时删除清单里 **23 项"把本来就回默认的附件写 0/false/空串"的无效项**(逐项列表见 `docs/scan2/P4-state-machines-pools.md`;外加 `EffectCardPeriod.clearRoundBonuses` —— 它同样只是写 4 个附件默认值),只保留带附件之外真实副作用的调用(静态暂存表、物品数据组件、移除 MobEffect、阻止效果被重新施加)。并**补齐**写在立牌物品组件上的累计值在死亡时的归零:与护法剑气同款,新增扫地机(`jasmine_atk_bonus`/`jasmine_def_bonus`)与上班族(`padman_atk_bonus`/`padman_def_bonus`/`padman_last_refresh`)的清除 —— 死亡掉落走 Curios `handleDrops`、不回调 `onUnequip`,此前没有任何路径会归零它们。
+- 修复**死亡清理的优先级与清单**:`PlayerLifecycleHandler` 的死亡清理由默认优先级降为 `@SubscribeEvent(priority = EventPriority.LOWEST)` —— 保命方(末影骰子、安全气囊)在 NORMAL/HIGHEST 取消死亡后,不再被按死亡清理(此前同优先级顺序反转时,被救回的玩家仍会走玻璃骰子销毁与计数清空)。同时删除清单里 **23 项"把本来就回默认的附件写 0/false/空串"的无效项**(逐项列表见 `docs/scan2/P4-state-machines-pools.md（已删除 2026-11-05）`;外加 `EffectCardPeriod.clearRoundBonuses` —— 它同样只是写 4 个附件默认值),只保留带附件之外真实副作用的调用(静态暂存表、物品数据组件、移除 MobEffect、阻止效果被重新施加)。并**补齐**写在立牌物品组件上的累计值在死亡时的归零:与护法剑气同款,新增扫地机(`jasmine_atk_bonus`/`jasmine_def_bonus`)与上班族(`padman_atk_bonus`/`padman_def_bonus`/`padman_last_refresh`)的清除 —— 死亡掉落走 Curios `handleDrops`、不回调 `onUnequip`,此前没有任何路径会归零它们。
 - 修复**饰品装卸清理的 Curios 参数绑定错误**:`ICurioItem.onUnequip` 的官方签名是 `onUnequip(SlotContext slotContext, ItemStack newStack, ItemStack stack)` —— 第 2 参 `newStack` 是**将要占用槽位的栈**(玩家真正卸下时为 `EMPTY`),第 3 参 `stack` 才是**被卸下的那件饰品**(已用 `javap` 从两加载器缓存 jar 逐条核对:`ICurioItem.onUnequip` 的三参桥接把 `aload_3` 交给 `ICurio.onUnequip`,`ItemizedCurioCapability.onUnequip(ctx, X)` 转调 `ICurioItem.onUnequip(ctx, X, getStack())`,`CurioStacksHandler.loseStacks` 传 `ItemStack.EMPTY`)。旧实现把第 2 参当成被卸下的物品,后果是①**换装(A→B)时被误判为"仍在槽位"而整段跳过清理**;②真正卸下时 `clearSignData` 的组件归零写到了错误的栈上(部分路径下即 `ItemStack.EMPTY` 这个全局单例)。现改为只按 Curios 传入的两个参数判定(`CurioSlotUtil.isIntentionalUnequip`:第 3 参为空 ⇒ 无可清理对象;第 2 参为空、或与被卸下者不是同一物品 ⇒ 真实移除 ⇒ 清理;同一物品 ⇒ 槽位内组件变更引起的回调 ⇒ 不清理),并把清理对象固定为**被卸下的那个栈**(第 3 参),立牌 `clearSignData`、筹码 `onChipUnequip`、骰子 `tryRemoveChipBonus` 三处同步。已知残留缺口(与改动前一致):玩家主动销毁饰品的路径(`CPacketDestroy`)第 2/3 参为同一栈,按"不清理"处理。
 - 修复**《恋的规则书》在玩家死亡后重登会再发一本**:发放守卫是附件 `guide_book_given`,而它**不在「随死亡复制」集合内**(1.21.1 未标 `.copyOnDeath()`;1.20.1 的 `AstralData#onPlayerClone` 死亡分支只复制 `rin_pages`/`komachi_damage_bonus`),于是玩家死亡后新实体上该键回默认 `false`,而发放挂在 `PlayerLoggedInEvent` ⇒ **再次登录必再发一本**(测试世界 `keepInventory=true` 时书仍在背包,重复尤为明显),与「仅在玩家第一次进入世界发放一次、此后任何情况下都不再自动发放」的口径不符。现按用户裁决把该键纳入死亡保留:1.21.1 给 `GUIDE_BOOK_GIVEN` 加 `.copyOnDeath()`;1.20.1 把 `ModAttachments.GUIDE_BOOK_GIVEN` 加入 `AstralData#onPlayerClone` 的死亡白名单(两侧保留集合仍严格一一对应,现为 `rin_pages`/`komachi_damage_bonus`/`guide_book_given` **三个**)。发放时机(`PlayerLoggedInEvent`)、配置开关(`give_guide_book_on_first_join`,类初始化读一次、改配置须重启生效)与「发放前只查守卫、**不查背包**」的语义均未改动。新增双版本回归用例 `GUIDE-BOOK-FIRST-JOIN-ONLY`(探针命令 `/astralprobe guidebook <tag>` 读 `given`/`count`;该用例需**跑两次**——全流程 = 首次进入世界,单独 `--phase launch` = 死亡后再次登录——两次都必须 `given=1:count=1`,修补前第二次会读到 `given=0` 随后补发第二本)。注意手册物品本身是 `patchouli:guide_book`,`astral_dice:astral_guide` 只是写在数据组件里的书籍 id。
 
@@ -2179,7 +2867,7 @@
 - 测试环境集成 JEI 便于配方查验(forge-1.20.1 15.56.0.205 / neoforge-1.21.1 19.39.0.372);1.20.1 dev 的整合包模组改为 curse maven modImplementation 依赖,修复 dev 环境无法加载生产 mixin 模组的问题。
 - 1.20.1 引入 Mixin Booster 并改为强依赖(`mixinbooster` 0.1.3):运行时以 Sponge Mixin 接管 mixin 执行并自动处理 Mojmap→SRG 重映射,移除 MDG LegacyForge 的 `mixin` 扩展/refmap/注解处理器(村民交易 mixin 不再需要构建期 refmap)。
 - 将 1.21.1 的新增骰子(黑曜石/下界岩/诡异/绯红/紫晶/末影/下界之星)、创造栏排序、tooltip 染色与末影骰子瞬移等改动同步移植到 forge-1.20.1;1.20.1 的下界岩猪灵中立 `PiglinAiMixin` 沿用 Mixin Booster / Sponge Mixin 规范(与 neoforge/fabric 一致),未使用 Forge 原生或其他第三方 Mixin API(1.20.1 同步)。
-- 测试环境集成 ModernFix:1.21.1 从整合包复制 `modernfix-neoforge-5.27.24+mc1.21.1.jar` 到 `run/1.21.1/mods`(`install_test_mods.ps1`);1.20.1 经 build.gradle `modImplementation "maven.modrinth:modernfix:OvpPdk44"` 注入 dev run classpath。两版 launch 验证改为识别 ModernFix 的 `Total time to load game and open world was` 加载完成日志(基础等待 30s,未出现则每 15s 再检测)。
+- 测试环境集成 ModernFix:1.21.1 从整合包复制 `modernfix-neoforge-5.27.24+mc1.21.1.jar` 到 `run/1.21.1/mods`(`install_test_mods`（旧安装脚本）);1.20.1 经 build.gradle `modImplementation "maven.modrinth:modernfix:OvpPdk44"` 注入 dev run classpath。两版 launch 验证改为识别 ModernFix 的 `Total time to load game and open world was` 加载完成日志(基础等待 30s,未出现则每 15s 再检测)。
 - 构建默认自动推送整合包:双版本 `gradlew build` 现在会同时推送 run/mods、根目录 build/libs 与各自整合包 mods 目录(原需 `-PdeployToPack`,现默认触发;该参数保留兼容;pack 根不存在仍自动跳过)。⚠️ **整合包推送改白名单(2026-09-12,同日由黑名单改为白名单):`pushToGame` 由当前 git 分支对 `packPushBranches = ['multi-1.20.1-1.21.1']`(仅发布线)判定** —— 只有发布线放行,其余分支(含 DSH/WorkBuddy 自动创建的 `wt/*` worktree 分支)仅打印一行日志后跳过、不算失败;传 `-PdeployToPack` / `-PpackPush` 可强制恢复(手动出包用)。理由:整合包是需要「成对匹配」的环境 —— 前置库 jar 与本模组 jar 必须版本互配(本模组在编译期锁定库版本,`mods.toml` 又声明了库版本区间),而开发分支上两者各自演进,自动推送会把不匹配的组合灌进测试包,表现为启动期 `NoClassDefFoundError` 或「缺失必需前置」。分支在**执行期**读 `.git/HEAD` 判定(不在配置期求值,故对 configuration-cache 友好、切分支立即生效),并兼容两种形态:普通仓库 `.git` 是目录,worktree 下 `.git` 是**文件**(内容 `gitdir: <path>`)。无法确定分支时(detached HEAD、无 `.git`,如 CI)同样跳过,取安全侧。强制推送时该任务还会读整合包内的 `starengine_lib-*.jar` 与 `starengine_lib_version` 比对,不一致或缺失则告警(仅告警,不阻断构建)。
 - 帕秋莉手册补全:此前新增的 11 个筹码(6 充能/1 治愈/4 泛用)全部补入《恋的规则书》图鉴,并新增「充能类筹码」章节(`chips_charge`,父级「筹码」,排序在标记类与泛用之间,`chips_other` 顺延);补全后 55 个筹码均有手册条目(双版本一致)。
 - 修复 CI 分支过滤器指向已废弃分支名:`.github/workflows/build.yml` 仍监听带斜杠的旧名 `multi-1.20.1/1.21.1`,导致往当前工作分支 `multi-1.20.1-1.21.1` 推送不触发 CI(lang 同步检查与双版本构建守门失效);现改为无斜杠的新分支名。
@@ -2206,7 +2894,7 @@
 - 工程:AGENTS.md 补充本批口径——①「攻击时」一律指触发骰神赐福的规则,效果伤害写「使用远程/魔法伤害」;② 可对他人使用的效果牌操作文案统一句式;③ 移动距离类来源(扫地机 300 米/能量回收器 150 米)按三维位移统计;④ 效果牌冷却 tooltip 必须显示实际值(含充能减免);⑤ 嘲讽只对敌对生物生效;⑥ 死亡清理定案(养精蓄锐清零、骇客无敌死代码删除、其余冷却类维持现状);⑦ `damage_effect_bonus` 死键的「1.21.1 删除、1.20.1 保留」已登记为允许的实现差异;⑧ 物品名以「标记喷罐」为正确写法(「标记喷灌」为错别字)。
 - 测试列表精简:移除 BUG1–BUG5(骰神赐福 HUD / 赋能递减 / 效果角标 Mixin / Oculus 雷击渲染 / 电磁炮延迟与冷却)的全部判定内容——删除 10 个用例文件与运行态判定残留 `cases/.mt_run_state.json`、`cases/.mt_active_run`;TESTING-SPEC 移除 §8 中这五项的用例行与判定说明、把 §7 以 `BUG5-RAILGUN-DELAY-CD` 为模板的示例改写为现存用例(`KOMACHI-EXTRA-PLAY`)、删除已失效的「最近一次全量结果」结论句;并清理 KubeJS 探针中仅服务这五项的 13 条命令(`status`/`setup`/`railtest`/`cdguard`/`charge`/`empower`/`empowerclear`/`blessingclear`/`decayinterval`/`decaydue`/`boltvis`/`watch`/`hud`)及其级联辅助机件(探针双版本各 −465 行)——`attack`(近战命中)因被新用例 `NANCY-LU-CLOAK` 复用而保留。历史报告 `scripts/test/reports/2026*` 保留作证据存档,不再复跑(双版本一致)。
 - 新增「版本互通门槛(Version Gate)」长期规则(见 AGENTS.md):客户端与服务端只有 `mod_version` 的**二号位(major.minor)相同**时才允许互联——`1.2.x` ↔ `1.2.y` 放行,`1.1.x` ↔ `1.2.0` 拒绝;判据**自动从工程版本号派生、禁止硬编码**,升级二号位(1.2→1.3)无需改任何代码。判据链:`gradle.properties` 的 `mod_version` →(构建期 `generateModMetadata` 展开模板 `src/main/templates/astral_dice_version.properties`)→ 资源 `astral_dice_version.properties`(随 jar 发布)→(运行期 `network/VersionGate.majorMinor()`)→ 互通号(`1.2.0+neoforge_1.21.1`/`1.2.0+forge_1.20.1` → `1.2`;`1.1.3` → `1.1`)。实现按各平台原生机制:①`neoforge-1.21.1` 把互通号作为载荷注册器的网络版本号(`RegisterPayloadHandlersEvent#registrar(String)`;NeoForge 在**配置阶段**逐通道用 `String.equals` 比较,不等即下发 `ModdedNetworkSetupFailedPayload` 并断开连接);②`forge-1.20.1` 把互通号作为 `SimpleChannel` 的通道协议版本号(`clientAcceptedVersions`/`serverAcceptedVersions` 均为 `VersionGate::accepts`;FML **登录握手**交换通道版本后两端各自校验,不匹配即断开),并以 `IExtensionPoint.DisplayTest`(`ModLoadingContext#registerDisplayTest`)用同一判据取代 Forge 默认的 `MATCH_VERSION`——后者要求**完整版本号**完全相同,比本规则更严,会把 `1.2.0` ↔ `1.2.1` 这类同二号位组合误标为不兼容。拒绝时的用户可见表现:1.20.1 显示 Forge「模组不匹配」屏幕(模组名 + 「你拥有 / 服务端拥有」两端完整版本号 + 「安装与服务端相同版本的这些模组」提示);1.21.1 显示 NeoForge「连接已丢失」模组版本不匹配屏幕(通道名 + 失配原因,原因中含两端互通号)。单机/开发环境不受影响(内嵌服务端与客户端同一构建,互通号必然相同)(双版本一致)。
-- **新增 NeoForge 21.1.x 上游 BUG 的可选补丁(不会导致启动失败)**:NeoForge 21.1.235 的 `LivingEntity#hurt` 在「伤害事件被取消」的分支直接 `return false` 而**不把 `DamageContainer` 出栈**,每次取消都在 `damageContainers` 上永久残留一层(本模组三处取消点都命中该路径:骇客「网络防火墙」末影珍珠免疫、枪匠破绽闪避、肾上腺素-高效闪避);上游修复(把 `pop` 补进取消分支)至今**未 backport 到任何 21.x**。新增独立 mixin 配置 `astral_dice.neoforge_fixes.mixins.json`(**`required: false` + `injectors.defaultRequire: 0` + 注入器 `require = 0`**),注入 `hurt` 的 HEAD/RETURN **把栈深恢复为进入时的深度**而非盲目 `pop`——将来上游 backport 后本补丁自动退化为 0 次 `pop`,**不会重复弹栈、不会 `EmptyStackException`、不会 `MixinApplyError` 导致启动失败**(三种未来情形均按运行时 Mixin 与 FML 源码逐条核验);补丁首次生效会在 `logs/latest.log` 打印一行 `[astral_dice/neoforge_fixes] …` 存活日志,便于日后确认它是否仍在工作(配置为 `required: false` 的代价是:上游将来重构时补丁会**静默失效**,该日志缺席即是失效信号)。语义由纯 Java 测试覆盖(`tools/run_mixin_stack_sanitizer_test.ps1`,10/10)。⚠️ **已修复(2026-09-13 游戏内实测)**:该补丁最初的辅助类 `NeoForgeFixesLog`/`DamageStackSanitizer` 被放在 mixin 配置声明的包 `...mixin.fixes` 内,而 Mixin 会**拒绝正常加载声明包下的非 mixin 类**(`IllegalClassLoadError: ... is in a defined mixin package`),导致**第一次真实 `hurt` 就崩服务端/客户端**(实测:`Player#attack` → `Zombie#hurt` → `LivingEntity#hurt` → 注入的 `recordDamageContainerDepth` 触发类加载即崩,`crash-reports/crash-*-server.txt`);已把两个辅助类迁到普通包 `com.merlinkitsune.astral_dice.fixes`,mixin 包内只保留真正的 `@Mixin`(`LivingEntityDamageContainerMixin`),纯 Java 测试仍 10/10。**仅 1.21.1 侧**:1.20.1 无 `DamageContainer` 伤害管线(平台差异)。
+- **新增 NeoForge 21.1.x 上游 BUG 的可选补丁(不会导致启动失败)**:NeoForge 21.1.235 的 `LivingEntity#hurt` 在「伤害事件被取消」的分支直接 `return false` 而**不把 `DamageContainer` 出栈**,每次取消都在 `damageContainers` 上永久残留一层(本模组三处取消点都命中该路径:骇客「网络防火墙」末影珍珠免疫、枪匠破绽闪避、肾上腺素-高效闪避);上游修复(把 `pop` 补进取消分支)至今**未 backport 到任何 21.x**。新增独立 mixin 配置 `astral_dice.neoforge_fixes.mixins.json`(**`required: false` + `injectors.defaultRequire: 0` + 注入器 `require = 0`**),注入 `hurt` 的 HEAD/RETURN **把栈深恢复为进入时的深度**而非盲目 `pop`——将来上游 backport 后本补丁自动退化为 0 次 `pop`,**不会重复弹栈、不会 `EmptyStackException`、不会 `MixinApplyError` 导致启动失败**(三种未来情形均按运行时 Mixin 与 FML 源码逐条核验);补丁首次生效会在 `logs/latest.log` 打印一行 `[astral_dice/neoforge_fixes] …` 存活日志,便于日后确认它是否仍在工作(配置为 `required: false` 的代价是:上游将来重构时补丁会**静默失效**,该日志缺席即是失效信号)。语义由纯 Java 测试覆盖(`tools/run_mixin_stack_sanitizer_test.py`,10/10)。⚠️ **已修复(2026-09-13 游戏内实测)**:该补丁最初的辅助类 `NeoForgeFixesLog`/`DamageStackSanitizer` 被放在 mixin 配置声明的包 `...mixin.fixes` 内,而 Mixin 会**拒绝正常加载声明包下的非 mixin 类**(`IllegalClassLoadError: ... is in a defined mixin package`),导致**第一次真实 `hurt` 就崩服务端/客户端**(实测:`Player#attack` → `Zombie#hurt` → `LivingEntity#hurt` → 注入的 `recordDamageContainerDepth` 触发类加载即崩,`crash-reports/crash-*-server.txt`);已把两个辅助类迁到普通包 `com.merlinkitsune.astral_dice.fixes`,mixin 包内只保留真正的 `@Mixin`(`LivingEntityDamageContainerMixin`),纯 Java 测试仍 10/10。**仅 1.21.1 侧**:1.20.1 无 `DamageContainer` 伤害管线(平台差异)。
 
 ## 1.1.3
 
@@ -2241,7 +2929,7 @@
 - 移除写而未读的 PlayerResourceRegistry(PlayerResource/ResourceType 及治愈/星光注册实现)(双版本)。
 - 全量代码审计与清理(1.21.1 为主,1.20.1 同步移植):消除每 tick 重复施加效果同步包(美工刀/复仇之戟/治愈)、每 tick 附魔资源键分配、菜单打开时每 tick 全量重算(20 tick 节流)、法伤修饰器 isActive 双次求值;跳数字发送/效果牌类型映射等重复实现收敛为单一入口;删除 8 个未用数据组件、isChipItem 手写链、骰子冗余构造参数、空覆写、未用方法/导入与死分支。
 - 仓库结构迁移为 multiloader 单仓(1.21.1-main → neoforge-1.21.1/、1.20.1-forge → forge-1.20.1/;跨 MC 大版本不设 common 共享层)。
-- 原仓库 git 排除内容(AGENTS.md、docs/、temp/、scripts/、run/、deploy.ps1 等)迁入;tools/check_lang_sync.py 移至根 tools/。
+- 原仓库 git 排除内容(AGENTS.md、docs/、temp/、scripts/、run/、旧发布脚本（已删除） 等)迁入;tools/check_lang_sync.py 移至根 tools/。
 - CI(build.yml) 双 JDK(17/21) 构建两子项目并对两者执行 lang 同步检查。
 
 ## 1.1.2-rc1

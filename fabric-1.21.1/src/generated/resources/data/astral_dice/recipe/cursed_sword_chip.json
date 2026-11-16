@@ -1,0 +1,35 @@
+{
+  "fabric:load_conditions": [
+    {
+      "condition": "astral_dice:chip_recipes_enabled"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "astral_dice:star_coin"
+    },
+    "C": {
+      "item": "astral_dice:blank_chip"
+    },
+    "J": {
+      "item": "minecraft:golden_sword"
+    },
+    "M": {
+      "item": "minecraft:crying_obsidian"
+    },
+    "Z": {
+      "item": "minecraft:soul_campfire"
+    }
+  },
+  "pattern": [
+    "JMJ",
+    "ZCZ",
+    "BBB"
+  ],
+  "result": {
+    "count": 1,
+    "id": "astral_dice:cursed_sword_chip"
+  }
+}

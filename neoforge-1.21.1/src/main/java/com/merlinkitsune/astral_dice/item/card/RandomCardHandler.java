@@ -20,8 +20,9 @@ import com.merlinkitsune.starengine.combat.PartyRelations;
  * 随机卡牌处理类:随机卡牌的类型筛选、专属牌强制排除与向其他玩家发放的统一逻辑。
  *
  * 设计:
- * - 卡牌类别:{@link CardCategory#ALL}(全部)/ {@link CardCategory#BATTLE}(仅战斗牌:攻击+防御)/
- *   {@link CardCategory#EFFECT}(仅效果牌:功能+伤害)。
+ * - 卡牌类别:{@link CardCategory#ALL}(全部)/ {@link CardCategory#BATTLE}(8 张战斗牌:攻击-中/大/特大 +
+ *   防御-中/大/特大 + 名刀 + 蓄力)/ {@link CardCategory#EFFECT}(仅效果牌:功能+伤害)/
+ *   {@link CardCategory#HEALING}(仅治疗类效果牌)。
  * - 专属牌强制排除:通过 {@link #registerExclusiveCard} 注册的卡牌不会出现在任何随机池中
  *   (当前:活体书页、命运的指引、符卡-福/祸、撕咬、龙之咆哮、强化拒止)。
  * - 发放逻辑:统一走 {@link #giveCards},作用域(范围/团队/发放人数/是否含自己)由
@@ -33,10 +34,12 @@ public final class RandomCardHandler {
     public enum CardCategory {
         /** 全部卡牌(战斗牌 + 效果牌) */
         ALL,
-        /** 仅战斗牌(攻击牌 + 防御牌) */
+        /** 仅战斗牌:8 张(攻击-中/大/特大 + 防御-中/大/特大 + 名刀 + 蓄力;不含暗袭/全力攻击) */
         BATTLE,
         /** 仅效果牌(功能效果牌 + 伤害效果牌) */
-        EFFECT
+        EFFECT,
+        /** 仅治疗类效果牌(汉堡/巧克力蛋糕/豪华大餐) */
+        HEALING
     }
 
     // 发放作用域
@@ -145,6 +148,28 @@ public final class RandomCardHandler {
                 ModItems.DEFENSE_CARD_EPIC.get());
     }
 
+    // 8 张战斗牌(2026-11-12 用户口径):攻击-中/大/特大 + 防御-中/大/特大 + 名刀 + 蓄力。
+    // 不含暗袭(SHADOW_STRIKE,仅进 ALL 公共池)与全力攻击(不在任何随机池)。
+    private static List<Item> battleCards() {
+        return List.of(
+                ModItems.ATTACK_CARD_MEDIUM.get(),
+                ModItems.ATTACK_CARD_LARGE.get(),
+                ModItems.ATTACK_CARD_EPIC.get(),
+                ModItems.DEFENSE_CARD_MEDIUM.get(),
+                ModItems.DEFENSE_CARD_LARGE.get(),
+                ModItems.DEFENSE_CARD_EPIC.get(),
+                ModItems.ATTACK_CARD_MEITO.get(),
+                ModItems.ATTACK_CARD_CHARGE.get());
+    }
+
+    // 治疗类效果牌(潘达曼主动的随机治疗池迁入公共类,保持原 3 选 1 行为)
+    private static List<Item> healingCards() {
+        return List.of(
+                ModItems.HAMBURGER.get(),
+                ModItems.CHOCOLATE_CAKE.get(),
+                ModItems.LUXURY_FEAST.get());
+    }
+
     // 全部效果牌(功能 + 伤害 + 治疗)
     private static List<Item> effectCards() {
         return List.of(
@@ -177,13 +202,9 @@ public final class RandomCardHandler {
                 all.addAll(effectCards());
                 yield all;
             }
-            case BATTLE -> {
-                List<Item> battle = new ArrayList<>();
-                battle.addAll(attackCards());
-                battle.addAll(defenseCards());
-                yield battle;
-            }
+            case BATTLE -> new ArrayList<>(battleCards());
             case EFFECT -> new ArrayList<>(effectCards());
+            case HEALING -> new ArrayList<>(healingCards());
         };
         items.removeIf(item -> {
             for (var ref : EXCLUSIVE_CARDS) {
@@ -191,6 +212,9 @@ public final class RandomCardHandler {
             }
             return false;
         });
+
+        // 全力攻击是「蓄力」的衍生牌,绝不进任何随机池(用户 2026-11-12 口径)。
+        items.removeIf(item -> item == ModItems.ATTACK_CARD_FULL_POWER.get());
         return items.stream().map(ItemStack::new).toList();
     }
 
@@ -214,6 +238,16 @@ public final class RandomCardHandler {
         if (card.isEmpty()) return;
         // 维生素药丸发牌统一入口(治愈联动;看板娘立牌被动不再随奖励/复制/返还触发,仅合成与主动返还显式触发)
         VitaminPillChipItem.giveCard(giver, receiver, card);
+    }
+
+    // 给指定玩家一张固定公共牌(不走随机池;背包满则掉落)
+    public static void giveFixedCardTo(Player receiver, Item card) {
+        giveFixedCardTo(null, receiver, card);
+    }
+
+    // 带发牌者的固定公共牌入口(giver 透传给治愈联动/蛟龙觉醒计数)
+    public static void giveFixedCardTo(Player giver, Player receiver, Item card) {
+        VitaminPillChipItem.giveCard(giver, receiver, new ItemStack(card));
     }
 
     /**

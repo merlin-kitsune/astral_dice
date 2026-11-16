@@ -40,7 +40,7 @@ usage() {
 用法：
   bash scripts/test/win/env.sh [--version <ver>] [--quiet]
 
-  --version <ver>  1.21.1 | 1.20.1 | 26.1.2 | fabric-1.20.1（默认全部四条线）
+  --version <ver>  1.21.1 | 1.20.1 | 26.1.2 | fabric-1.20.1 | fabric-1.21.1（默认全部五条线）
   --quiet, -q      不打印 INFO 行（只留 CHECK 与 ENV_RESULT）
   -h, --help       本用法
 
@@ -74,13 +74,13 @@ printf 'INFO: session — Windows 测试台 env.sh %s（git bash/MSYS2；repo=%s
 # ── 1. 仓库与文件集 ───────────────────────────────────────────────────────
 missing=""
 for f in settings.gradle gradlew.bat gradle/wrapper/gradle-wrapper.jar \
-         scripts/test/mt.ps1 scripts/test/win/env.sh scripts/test/win/lib/common.sh; do
+         scripts/test/win/mt.sh scripts/test/win/env.sh scripts/test/win/lib/common.sh; do
     [ -f "$MT_REPO_ROOT/$f" ] || missing="$missing $f"
 done
 if [ -n "$missing" ]; then
     mt_fail repo "仓库根 $MT_REPO_ROOT 缺失:$missing"
 else
-    mt_ok repo "仓库根正常：$MT_REPO_ROOT（settings.gradle / gradlew.bat / wrapper jar / mt.ps1 齐全）"
+    mt_ok repo "仓库根正常：$MT_REPO_ROOT（settings.gradle / gradlew.bat / wrapper jar / mt.sh 齐全）"
 fi
 
 git_top="$(git -C "$MT_REPO_ROOT" rev-parse --show-toplevel 2>/dev/null | head -n 1 | tr -d '\r')"
@@ -107,7 +107,7 @@ esac
 
 # ── 3. Gradle Wrapper ────────────────────────────────────────────────────
 if [ -f "$MT_REPO_ROOT/gradlew.bat" ]; then
-    mt_ok gradlew "gradlew.bat 在位（Windows 侧入口；git bash 下调用 cmd //c gradlew.bat）"
+    mt_ok gradlew "gradlew.bat 在位（Windows 侧入口；git bash 下调用 mt_cmdwin gradlew.bat）"
     dist_url="$(grep -E '^distributionUrl=' "$MT_REPO_ROOT/gradle/wrapper/gradle-wrapper.properties" 2>/dev/null | cut -d= -f2- | tr -d '\r')"
     mt_info gradle_wrapper "distributionUrl=$dist_url"
 else
@@ -143,7 +143,7 @@ if [ -n "${JAVA_HOME:-}" ]; then
 else
     mt_warn java_home "JAVA_HOME 未设置（launch.sh 会自行发现 daemon JVM ≥21）"
 fi
-where_java="$(cmd //c 'where java' 2>/dev/null | tr -d '\r' | tr '\n' ';' | sed 's/;$//')"
+where_java="$(mt_cmdwin 'where java' 2>/dev/null | tr -d '\r' | tr '\n' ';' | sed 's/;$//')"
 mt_info java_where "where java → ${where_java:-<未找到>}"
 java_major="$(mt_java_major "$(command -v java 2>/dev/null || echo '')" 2>/dev/null || true)"
 if [ -n "$java_major" ]; then
@@ -156,12 +156,13 @@ fi
 for v in $VERSIONS; do
     proj="$(mt_subproject "$v")" || { mt_fail "version_$v" "未知版本"; continue; }
     toolchain_ver="$(mt_toolchain "$v")"
-    run_dir="$MT_REPO_ROOT/run/$v"
-    # fabric-1.20.1 是双 run 目录（<子项目>/run/<client|server>）；其它三线仍是单目录。
+    run_dir="$MT_REPO_ROOT/run/$proj"
+    # fabric 线是双 run 目录（<fabric-子项目>/run/<client|server>）；其它三线是单目录 run/<子项目名>。
     # check_dirs 是「本条线要检查的 run 目录」列表，下面所有检查都按它循环。
     check_dirs="$run_dir"
     if mt_is_fabric "$v"; then
-        check_dirs="$MT_REPO_ROOT/$v/run/client $MT_REPO_ROOT/$v/run/server"
+        mt_fab_set_version "$v" || true
+        check_dirs="$MT_REPO_ROOT/$MT_FAB_SUBPROJECT/run/client $MT_REPO_ROOT/$MT_FAB_SUBPROJECT/run/server"
         run_dir="$(mt_fab_side_dir client)"
         mt_info "run_layout_$v" "fabric 双 run 目录：$(mt_fab_run_label "$v" client) | $(mt_fab_run_label "$v" server)（--side 切换；RCON 127.0.0.1:$(mt_fab_rcon_port)）"
     fi
@@ -202,6 +203,15 @@ for v in $VERSIONS; do
             rh="$(printf '%s' "$stats" | awk '{print $3}')"
             names="$(printf '%s' "$stats" | cut -d' ' -f4-)"
             mt_info "mods_$v" "${rd#$MT_REPO_ROOT/}/mods 共 ${total:-0} 个条目；autojs=${aj:-0}；rhino=${rh:-0}${names:+；aj_jar:${names}}"
+            # 2026-11-09 实机教训：run/<版本>/mods 里的 astral_dice*.jar 会**遮蔽** dev classes
+            # （同 modId 双源），表现为 datagen 不生成新配方、改动"不生效"。这里只告警不阻塞，
+            # 但把话说到位，避免再次整轮排查。
+            shadow="$(find "$rd/mods" -maxdepth 1 -type f -name 'astral_dice*.jar' -printf '%f ' 2>/dev/null)"
+            if [ -n "$shadow" ]; then
+                mt_warn "mod_shadow_$v" "${rd#$MT_REPO_ROOT/}/mods 内有 ${shadow}——与本线 dev classes 同 modId 双源，运行期可能加载旧 jar（datagen/启动静默用旧类）。请先 mv 到 temp/quarantine-run-mods/"
+            else
+                mt_ok "mod_shadow_$v" "mods 内无 astral_dice*.jar（不与 dev classes 争用 modId）"
+            fi
             # 2026-11-01 用户裁决：AutoJS 就绪判据放宽至所有版本 —— 不再按版本白名单，
             # 只看本线 run/<版本>/mods 里 AutoJS jar 是否在位（四线实测都在位）。
             # fabric 例外：它是**条件依赖**（-PautojsTestMod=1 才装），没有 jar 属正常，
@@ -224,11 +234,11 @@ for v in $VERSIONS; do
     elif mt_is_fabric "$v"; then
         mt_info "start_bat_$v" "fabric 线没有 run/start-$v.bat（统一走 win/launch.sh --side）"
     else
-        mt_info "start_bat_$v" "run/start-$v.bat 不存在（launch.sh 直接走 cmd //c gradlew.bat）"
+        mt_info "start_bat_$v" "run/start-$v.bat 不存在（launch.sh 直接走 mt_cmdwin gradlew.bat）"
     fi
 done
 
-# ── 7. AutoJS 端点（是否纳入判据按 run/<版本>/mods 里 AutoJS jar 是否在位判定）
+# ── 7. AutoJS 端点（是否纳入判据按 run/<子项目名>/mods 里 AutoJS jar 是否在位判定）
 endpoint="$(mt_aj_endpoint)"
 base_url="${endpoint%/mcp}"
 port="${base_url##*:}"
@@ -237,7 +247,7 @@ mt_info autojs_endpoint "endpoint=$endpoint base=$base_url port=$port timeout_ms
 
 checked_autojs=0
 for v in $VERSIONS; do
-    aj_n_v="$(mt_autojs_jar_count "$MT_REPO_ROOT/run/$v" 2>/dev/null || true)"
+    aj_n_v="$(mt_autojs_jar_count "$MT_REPO_ROOT/run/$(mt_subproject "$v")" 2>/dev/null || true)"
     [ -n "$aj_n_v" ] || aj_n_v=0
     if [ "$aj_n_v" -gt 0 ]; then
         checked_autojs=1
@@ -266,15 +276,16 @@ if [ "$checked_autojs" = 1 ]; then
         mt_info autojs_port "netstat 不可用，跳过端口探测"
     fi
 else
-    mt_info autojs_health "本次检查的线（$VERSIONS）的 run/<版本>/mods 里都没有 AutoJS jar，跳过 /health"
+    mt_info autojs_health "本次检查的线（$VERSIONS）的 run/<子项目名>/mods 里都没有 AutoJS jar，跳过 /health"
 fi
 
 for v in $VERSIONS; do
     aj_exists=0
     aj_where=""
-    scan_dirs="$MT_REPO_ROOT/run/$v"
+    scan_dirs="$MT_REPO_ROOT/run/$(mt_subproject "$v")"
     if mt_is_fabric "$v"; then
-        scan_dirs="$MT_REPO_ROOT/$v/run/client $MT_REPO_ROOT/$v/run/server"
+        mt_fab_set_version "$v" || true
+        scan_dirs="$MT_REPO_ROOT/$MT_FAB_SUBPROJECT/run/client $MT_REPO_ROOT/$MT_FAB_SUBPROJECT/run/server"
     fi
     for sd in $scan_dirs; do
         n="$(mt_autojs_jar_count "$sd" 2>/dev/null || true)"
@@ -289,17 +300,22 @@ for v in $VERSIONS; do
     elif mt_is_fabric "$v"; then
         mt_info "autojs_line_$v" "fabric 双侧 mods 里都无 AutoJS jar（=0，-PautojsTestMod 未开启属正常），注入与断言改走 RCON 127.0.0.1:$(mt_fab_rcon_port)"
     else
-        mt_info "autojs_line_$v" "run/$v/mods 里无 AutoJS jar（=0），该线改走日志 marker 兜底"
+        mt_info "autojs_line_$v" "run/$(mt_subproject "$v")/mods 里无 AutoJS jar（=0），该线改走日志 marker 兜底"
     fi
 done
 
-# ── 7b. fabric-1.20.1 的 RCON 通道（AutoJS 是条件依赖；未开启时注入/断言全靠它）──
+# ── 7b. fabric 线的 RCON 通道（AutoJS 是条件依赖；未开启时注入/断言全靠它）────
+# 前缀判定：「1.21.1」是「fabric-1.21.1」的子串，故先判 fabric-*；
+# 多条 fabric 线并存时取 $VERSIONS 里的第一条（全流程只探这一条，逐条双探走 mt.sh 单线调用）。
 case " $VERSIONS " in
-    *" fabric-1.20.1 "*)
+    *" fabric-"*)
+        for _mtv in $VERSIONS; do
+            case "$_mtv" in fabric-*) mt_fab_set_version "$_mtv" && break ;; esac
+        done
         fab_srv_dir="$(mt_fab_side_dir server)"
         fab_props="$fab_srv_dir/server.properties"
         if [ ! -d "$fab_srv_dir" ]; then
-            mt_warn fab_run_server "${fab_srv_dir#$MT_REPO_ROOT/} 不存在（首次 :fabric-1.20.1:runServer 后由 Gradle 创建；RCON 配置也落在这个目录）"
+            mt_warn fab_run_server "${fab_srv_dir#$MT_REPO_ROOT/} 不存在（首次 :${MT_FAB_SUBPROJECT}:runServer 后由 Gradle 创建；RCON 配置也落在这个目录）"
         elif [ ! -f "$fab_props" ]; then
             mt_warn fab_server_properties "${fab_props#$MT_REPO_ROOT/} 不存在（先完整启动一次服务端才会生成）"
         else
@@ -315,7 +331,7 @@ case " $VERSIONS " in
                 *)
                     mt_warn fab_rcon "enable-rcon=$rcon_enable（需要 true 才有 RCON 通道）" ;;
             esac
-            mt_info fab_channel "注入通道判定：autojs=$rcon_mode（fabric 的 AutoJS 是条件依赖，见 fabric-1.20.1/build.gradle:182-190，不开 -PautojsTestMod 就只有 RCON）"
+            mt_info fab_channel "注入通道判定：autojs=$rcon_mode（fabric 的 AutoJS 是条件依赖，见 $MT_FAB_SUBPROJECT/build.gradle 的 autojsTestMod 开关，不开 -PautojsTestMod 就只有 RCON）"
             if mt_have netstat; then
                 if mt_rcon_probe "$rcon_port"; then
                     mt_ok fab_rcon_port "TCP 127.0.0.1:$rcon_port 可达（服务端在跑且 RCON 已监听）"
@@ -328,11 +344,11 @@ case " $VERSIONS " in
         fi
         ;;
 esac
-# ── 8. java 进程残留（CIM 判线，绝不按进程名批量处理）────────────────────
-if ! rows="$(mt_cim_java_rows 2>/dev/null)"; then
-    mt_fail residue "CIM 查询 Win32_Process 失败（pwsh -NoProfile Get-CimInstance 不可用）"
+# ── 8. java 进程残留（jps 判线，绝不按进程名批量处理）────────────────────
+if ! rows="$(mt_jps_java_rows 2>/dev/null)"; then
+    mt_fail residue "jps -lvm 不可用（未找到 \$JAVA_HOME/bin/jps 或 PATH 的 jps）—— 无法做进程判线"
 elif [ -z "$rows" ]; then
-    mt_ok residue "无 java 进程残留（CIM Win32_Process 查询为空）"
+    mt_ok residue "无 java 进程残留（jps -lvm 查询为空）"
 else
     found=0
     while IFS=$'\t' read -r pid cmd; do
@@ -343,7 +359,7 @@ else
         done
         if [ -n "$hit" ]; then
             found=1
-            mt_warn residue "PID $pid 属 $hit 线的客户端/构建进程仍在运行 → 先跑 bash scripts/test/win/stop.sh --version $hit"
+            mt_warn residue "PID $pid 属 $hit 线的客户端/构建进程仍在运行 → 先跑 bash scripts/test/win/stop.sh --version $hit 拿 PID，再由 Agent 用 windows MCP 终止"
         fi
     done <<< "$rows"
     if [ "$found" = 0 ]; then
@@ -368,7 +384,10 @@ fi
 
 wt_bad=""
 wt_ok=""
-for d in "$LOG_DIR" "$MT_REPO_ROOT/run/1.21.1"; do
+for d in "$LOG_DIR" $(for v in $VERSIONS; do case "$v" in
+        fabric-*) printf '%s\n' "$MT_REPO_ROOT/$(mt_subproject "$v")" ;;
+        *)        printf '%s\n' "$MT_REPO_ROOT/run/$(mt_subproject "$v")" ;;
+    esac; done); do
     if mt_dir_writable "$d"; then
         wt_ok="$wt_ok $(printf '%s' "$d" | sed "s|$MT_REPO_ROOT/||")"
     else
@@ -376,7 +395,7 @@ for d in "$LOG_DIR" "$MT_REPO_ROOT/run/1.21.1"; do
     fi
 done
 if [ -z "$wt_bad" ]; then
-    mt_ok write_targets "launch 写目标可写：日志目录与 run/<ver>/（pidfile）；OK 项:$wt_ok"
+    mt_ok write_targets "launch 写目标可写：日志目录与 run/<子项目名>/（pidfile）；OK 项:$wt_ok"
 else
     mt_warn write_targets "launch 写目标不可写:$wt_bad（日志/pidfile 会失败；沙箱/ACL 拒绝时属环境问题，正常交互 shell 下应可写）"
 fi
@@ -417,11 +436,11 @@ else
     mt_info locks "锁目录 $lock_dir 不存在（无跨宿主互斥时属正常）"
 fi
 
-# ── 12. Gradle 守护进程数（CIM 命令行含 GradleDaemon）────────────────────
+# ── 12. Gradle 守护进程数（jps 命令行含 GradleDaemon）─────────────────────
 if drows="$(mt_gradle_daemon_rows 2>/dev/null)"; then
     dn=$(printf '%s\n' "$drows" | grep -c . || true)
     wn=$(printf '%s\n' "${rows:-}" | grep -ci 'gradle-wrapper\|gradlew' || true)
-    mt_info gradle "CIM：GradleDaemon=${dn:-0} gradlew-wrapper=${wn:-0}（全队只有一个 Gradle 并发位，启动前确认无别的 agent 在构建）"
+    mt_info gradle "jps：GradleDaemon=${dn:-0} gradlew-wrapper=${wn:-0}（全队只有一个 Gradle 并发位，启动前确认无别的 agent 在构建）"
     if [ "${dn:-0}" -gt 0 ]; then
         while IFS=$'\t' read -r dpid dcmd; do
             [ -n "$dpid" ] || continue
@@ -430,10 +449,10 @@ if drows="$(mt_gradle_daemon_rows 2>/dev/null)"; then
         done <<< "$drows"
     fi
 else
-    mt_warn gradle "CIM 查询 Gradle daemon 失败"
+    mt_warn gradle "jps 查询 Gradle daemon 失败"
 fi
 
-# ── 13. 临时目录口径（/tmp 不可写）与 pwsh ───────────────────────────────
+# ── 13. 临时目录口径（/tmp 不可写）与 jps ─────────────────────────────────
 # 事实：git bash 的 $TEMP 就是 /tmp，而 /tmp 是 C:\Users\<user>\AppData\Local\Temp 的
 # MSYS 挂载点（mount 可见 usertemp 标记）——所以"不用 /tmp"等于"不用 Windows 默认 TEMP"。
 # 本会话 ACL/沙箱拒写该目录；AutoJS 探测已改为纯管道（curl -D -），不再依赖临时文件。
@@ -444,14 +463,15 @@ else
     mt_warn tmp "\$TEMP(=${TEMP:-<空>}，AppData\\Local\\Temp 的挂载点) 与 run/.mt-tmp 均不可写；AutoJS 探测不受影响（纯管道解析），仅影响将来需要落盘临时文件的扩展"
 fi
 
-if pwsh_ver="$(mt_pwsh '$PSVersionTable.PSVersion.ToString()' 2>/dev/null | tr -d '\r' | head -n 1)" && [ -n "$pwsh_ver" ]; then
-    mt_ok pwsh "pwsh $pwsh_ver（$(command -v pwsh)）；CIM 判线依赖它"
+# jps（JDK 自带进程表）：判线与收停的唯一进程来源，不依赖任何外部进程查询工具。
+if jps_exe="$(mt_jps_exe 2>/dev/null)" && [ -n "$jps_exe" ] && "$jps_exe" -lvm >/dev/null 2>&1; then
+    mt_ok jps "jps -lvm 可用（$jps_exe）；进程判线与收停 PID 发现依赖它"
 else
-    mt_fail pwsh "pwsh 不可用（Windows 侧无法做 CIM 进程判线；安装 PowerShell 7 或设 MT_PWSH_EXE）"
+    mt_fail jps "jps -lvm 不可用（未找到 \$JAVA_HOME/bin/jps 或 PATH 的 jps）—— 无法做进程判线；装 JDK 或设 MT_JPS_EXE 指定 jps"
 fi
 
 tool_list=""
-for t in curl taskkill netstat cmd git python3; do
+for t in curl netstat cmd git python3; do
     if mt_have "$t"; then tool_list="$tool_list $t"; else tool_list="$tool_list ${t}(缺)"; fi
 done
 mt_info tools "外部工具：$tool_list"

@@ -37,14 +37,14 @@ import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
  * <h2>语义(逐条)</h2>
  * <ul>
  *   <li><b>护盾</b> = 5 黄心({@link #SHIELD_ABSORPTION} = 10 点吸收)+ 抗性提升 +
- *       1 层一次性反击({@link #MAX_COUNTER_CHARGES});由 {@link com.merlinkitsune.astral_dice.effect.RenShieldEffect}
+ *       1 层可激活次数({@link #MAX_COUNTER_CHARGES};佩戴金鲤时上限 4);由 {@link com.merlinkitsune.astral_dice.effect.RenShieldEffect}
  *       的效果实例作为「是否持有护盾」的唯一真值;</li>
- *   <li><b>授予不叠加</b>:再次获得时把**护盾自己的那份**黄心补满(基线 + 10),不累加;层数上限 1;</li>
+ *   <li><b>授予不叠加</b>:再次获得时把**护盾自己的那份**黄心补满(基线 + 10),不累加;可激活次数上限 1(佩戴金鲤 4);</li>
  *   <li><b>护盾存续期间红心一滴不掉（2026-09-24 用户裁决）</b>：单次超过黄心的伤害同样被**完全吸收**
  *       —— 超出的部分被丢弃，只消耗掉剩余黄心：{@link #onRenShieldAbsorb} 在最终伤害阶段把伤害钳到
  *       {@link #remainingShieldAbsorption} 以内。⚠️ 原版吸收只吃「能吃的部分」，超出部分照常扣红心。</li>
  *   <li><b>黄心被打空即清空</b>:每 tick 轮询 {@code getAbsorptionAmount() <= 基线} ⇒ 最多 1 tick 内清空
- *       护盾效果、我们施加的抗性提升与反击层(以及反击的 HUD 图标 {@code ren_counter})。
+ *       护盾效果与我们施加的抗性提升;10 秒反击状态由 {@code CounterStateManager} 独立维护,不随黄心清空。
  *       用轮询而不是伤害事件是因为
  *       {@code /effect clear}、牛奶、死亡、他模组直改吸收值等路径**都不派发伤害事件**;</li>
  *   <li><b>无时限</b>:{@link #SHIELD_EFFECT_DURATION_TICKS}(20:00)只是刷新窗口,
@@ -56,8 +56,8 @@ import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
  *       {@code level.getGameTime()},该时钟存于 level.dat ⇒ 跨重登继续累加(关服期间不推进);</li>
  *   <li><b>卸下立牌不清盾</b>:护盾也可以来自别人的主动技能,其生命周期只由「被打空」等终结条件决定;</li>
  *   <li><b>HUD 图标口径</b>:护盾效果本身**保留图标**;我们施加的**抗性提升隐藏图标**
- *       ({@code showIcon=false},玩家可见的只有护盾 + 反击两个图标);反击层数由
- *       {@code ren_counter} 效果镜像成图标(层数 0 即移除,图标 = images/反击.png)。</li>
+ *       ({@code showIcon=false},玩家可见的只有护盾与激活中的反击两个图标);可激活次数不显示图标,
+ *       反击状态由 {@code CounterStateManager} 独立施加,图标 = images/反击.png。</li>
  * </ul>
  *
  * <p>驱动:自带 {@code PlayerTickEvent.Post} 订阅(不改动热点文件 {@code event/PlayerTickEvents})。
@@ -92,7 +92,7 @@ public final class RenShieldManager {
     public static final int RESISTANCE_REFRESH_THRESHOLD_TICKS = 20 * 60 * 5;
     /** 被动「鼠鼠救我」:超过 5 分钟没有护盾则自动补一个(仅佩戴者本人) */
     public static final int PASSIVE_INTERVAL_TICKS = 20 * 60 * 5;
-    /** 反击层上限(一次性充能) */
+    /** 可激活次数上限(每次激活消耗 1 层) */
     public static final int MAX_COUNTER_CHARGES = 1;
     /** 被动/刷新类检查的间隔(tick) */
     private static final int SLOW_INTERVAL_TICKS = 20;
@@ -151,10 +151,13 @@ public final class RenShieldManager {
 
         applyOrRefreshResistance(player, true);
 
+        int counterCap = com.merlinkitsune.astral_dice.item.sign.SouriSignItem.isEquipped(player)
+                ? com.merlinkitsune.astral_dice.item.sign.SouriSignManager.COUNTER_MAX
+                : MAX_COUNTER_CHARGES;
+        int currentCharges = ModAttachments.getRenCounterCharges(player);
+        // 不把金鲤已经攒到的 4 层压回 1 层;只限制「继续增长」的上限。
         ModAttachments.setRenCounterCharges(player,
-                Math.min(MAX_COUNTER_CHARGES, ModAttachments.getRenCounterCharges(player) + 1));
-        // 反击层数的可见载体(层数 > 0 才显示图标)
-        syncCounterEffect(player);
+                Math.max(currentCharges, Math.min(counterCap, currentCharges + 1)));
         ModAttachments.setRenShieldLastSeenTick(player, player.level().getGameTime());
 
         if (notify) {
@@ -172,7 +175,7 @@ public final class RenShieldManager {
     }
 
     /**
-     * 清空护盾(唯一清空入口):回收我们那份吸收、移除护盾效果与我们施加的抗性提升、清反击层。
+     * 清空护盾(唯一清空入口):回收我们那份吸收、移除护盾效果与我们施加的抗性提升、清可激活次数。
      *
      * @param reason 仅用于日志(吸收打空 / 效果缺失清理等)
      */
@@ -189,8 +192,11 @@ public final class RenShieldManager {
         // (1.20.1 的 setter 只把负值钳到 0,这一行在两线都是安全空操作)
         player.setAbsorptionAmount(player.getAbsorptionAmount());
         removeOwnResistance(player);
-        ModAttachments.setRenCounterCharges(player, 0);
-        removeCounterEffect(player);
+        // 金鲤立牌(souri):可激活次数可脱离鼠鼠护盾独立存在,护盾清空时保留
+        if (!com.merlinkitsune.astral_dice.item.sign.SouriSignItem.isEquipped(player)
+                && !com.merlinkitsune.astral_dice.item.sign.Z3000SignItem.isEquipped(player)) {
+            ModAttachments.setRenCounterCharges(player, 0);
+        }
         ModAttachments.setRenShieldBaselineAbsorption(player, 0.0F);
         // 护盾清空 ⇒ 广播可见性(重复广播同一状态幂等)
         broadcastShieldStates(player);
@@ -203,14 +209,16 @@ public final class RenShieldManager {
      * 但**要回收我们那份黄心** —— 否则 1.20.1 侧(无吸收上限钳制)会永久留下最多
      * {@link #SHIELD_ABSORPTION} 点「无来源的隐形黄心」;回收量以基线为下界,外部来源不动。
      */
-    private static void cleanupStale(Player player) {
+    private static void cleanupStale(Player player, boolean keepCounter) {
         removeOwnResistance(player);
         float baseline = Math.max(0.0F, ModAttachments.getRenShieldBaselineAbsorption(player));
         float current = player.getAbsorptionAmount();
         if (current > baseline) {
             player.setAbsorptionAmount(Math.max(baseline, current - SHIELD_ABSORPTION));
         }
-        ModAttachments.setRenCounterCharges(player, 0);
+        if (!keepCounter) {
+            ModAttachments.setRenCounterCharges(player, 0);
+        }
         ModAttachments.setRenShieldBaselineAbsorption(player, 0.0F);
         // 效果被外部路径移除(/effect clear、牛奶、死亡等)时**不会**经过 voidShield
         // ⇒ 客户端镜像会残留「他有护盾」,故这里必须补一次广播。
@@ -283,21 +291,18 @@ public final class RenShieldManager {
             // ② 记录「最后一次持有护盾」的时刻(被动计时基准)并刷新效果时长
             ModAttachments.setRenShieldLastSeenTick(player, player.level().getGameTime());
             refreshShieldEffects(player);
-            syncCounterEffect(player);
             return;
         }
 
         // 无护盾:清理残留簿记(效果被移除/离线期间异常等)+ 回收我们那份黄心
+        // 金鲤立牌(souri):可激活次数不依附鼠鼠护盾 —— 佩戴金鲤时保留层数,只回收护盾簿记
+        boolean keepCounter = com.merlinkitsune.astral_dice.item.sign.SouriSignItem.isEquipped(player)
+                || com.merlinkitsune.astral_dice.item.sign.Z3000SignItem.isEquipped(player);
         if (ModAttachments.isRenShieldOwnResistance(player)
                 || ModAttachments.getRenCounterCharges(player) != 0
                 || ModAttachments.getRenShieldBaselineAbsorption(player) != 0.0F) {
-            cleanupStale(player);
+            cleanupStale(player, keepCounter);
         }
-        // 「反击」图标只跟随护盾:护盾不在就不该显示
-        if (player.hasEffect(ModEffects.REN_COUNTER)) {
-            removeCounterEffect(player);
-        }
-
         if (player.tickCount % SLOW_INTERVAL_TICKS != 0) return;
         // ③ 被动「鼠鼠救我」:仅佩戴者本人;首次观察记为起点(装备后 5 分钟首次补盾)
         if (!RenSignItem.isEquipped(player)) return;
@@ -326,39 +331,6 @@ public final class RenShieldManager {
     private static MobEffectInstance shieldInstance() {
         return new MobEffectInstance(ModEffects.REN_SHIELD,
                 SHIELD_EFFECT_DURATION_TICKS, 0, false, false, true);
-    }
-
-    /** 「反击」层数的 HUD 图标实例(时长与护盾同一刷新窗口;反击没有独立时限) */
-    private static MobEffectInstance counterInstance() {
-        return new MobEffectInstance(ModEffects.REN_COUNTER,
-                SHIELD_EFFECT_DURATION_TICKS, 0, false, false, true);
-    }
-
-    /**
-     * 把服务端的反击层数**镜像**到 HUD 图标上(层数是真值,效果只是可见载体):
-     * 层数 > 0 ⇒ 缺图标就补、剩余时长低于阈值就刷新;层数 <= 0 ⇒ 立刻摘掉图标。
-     * 由授予 / 每 20 tick 维护 / 反击消耗三处调用,故任何路径都不会出现「有层无图标」或反之。
-     */
-    public static void refreshCounterEffect(Player player) {
-        if (player == null || player.level().isClientSide()) return;
-        if (ModAttachments.getRenCounterCharges(player) <= 0) {
-            removeCounterEffect(player);
-            return;
-        }
-        MobEffectInstance current = player.getEffect(ModEffects.REN_COUNTER);
-        if (current == null || current.getDuration() <= SHIELD_REFRESH_THRESHOLD_TICKS) {
-            PlayerEffectProtection.apply(player, counterInstance());
-        }
-    }
-
-    private static void syncCounterEffect(Player player) {
-        refreshCounterEffect(player);
-    }
-
-    private static void removeCounterEffect(Player player) {
-        if (player.hasEffect(ModEffects.REN_COUNTER)) {
-            ModEffectRemoval.remove(player, ModEffects.REN_COUNTER);
-        }
     }
 
     /**

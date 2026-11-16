@@ -94,49 +94,46 @@ public class ModCreativeTabs {
                 output.accept(ModItems.ORBITAL_STRIKE_CARD.get());
                 output.accept(ModItems.DIRECTIONAL_BLAST_CARD.get());
                 output.accept(ModItems.LIVING_PAGE.get());
-                // 立牌(按稀有度低→高:稀有→史诗→传奇)
-                // 稀有 RARE
-                output.accept(ModItems.PARUNAN_SIGN.get());
-                output.accept(ModItems.JASMINE_SIGN.get());
+                // 立牌(按 Astral Party Wiki「Characters」页面角色顺序排列;DeepSeek 为本模组原创角色,排末尾)
+                // Wiki 当前顺序还包含 Luka，但本模组尚未实现该立牌，故跳过。
                 output.accept(ModItems.MIMI_SIGN.get());
-                output.accept(ModItems.LULU_SIGN.get());
-                output.accept(ModItems.PADMAN_SIGN.get());
-                output.accept(ModItems.PANDAMAN_SIGN.get());
-                output.accept(ModItems.NARDIS_SIGN.get());
-                // 史诗 EPIC
-                output.accept(ModItems.KOMACHI_SIGN.get());
+                output.accept(ModItems.PARUNAN_SIGN.get());
                 output.accept(ModItems.FANNY_SIGN.get());
-                output.accept(ModItems.HAIQING_SIGN.get());
-                output.accept(ModItems.PAPARA_SIGN.get());
-                output.accept(ModItems.NANCY_LU_SIGN.get());
-                output.accept(ModItems.MOSES_SIGN.get());
-                output.accept(ModItems.REN_SIGN.get());
-                // 传奇 UNCOMMON
-                output.accept(ModItems.MISAKI_SIGN.get());
-                output.accept(ModItems.RIN_SIGN.get());
-                output.accept(ModItems.BONNIE_SIGN.get());
-                output.accept(ModItems.FEN_SIGN.get());
-                output.accept(ModItems.ZHAO_SIGN.get());
-                output.accept(ModItems.TERU_SIGN.get());
-                output.accept(ModItems.MAMUSHI_SIGN.get());
-                output.accept(ModItems.MEGAS_SIGN.get());
-                output.accept(ModItems.SHERRY_SIGN.get());
-                output.accept(ModItems.HANNA_SIGN.get());
-                // ── B4-SIGNS 批次（2026-10-19 新批 4 个 + 3 个早期立牌）：只在既有条目之后追加，
-                //    不重排上方任何既有行。上方 RARE/EPIC/「传奇 UNCOMMON」三个分组标题本身已与物品
-                //    实际品质不符（例 HANNA_SIGN / MEGAS_SIGN 在 forge 蓝本里是奇特），
-                //    见 B4-SIGNS-REPORT「需裁决」。
-                // 稀有 RARE
                 output.accept(ModItems.ALANA_SIGN.get());
-                // 史诗 EPIC
+                output.accept(ModItems.KOMACHI_SIGN.get());
+                output.accept(ModItems.PADMAN_SIGN.get());
+                output.accept(ModItems.PAPARA_SIGN.get());
+                output.accept(ModItems.REN_SIGN.get());
+                output.accept(ModItems.Z3000_SIGN.get());
+                output.accept(ModItems.PANDAMAN_SIGN.get());
+                output.accept(ModItems.LULU_SIGN.get());
+                output.accept(ModItems.FEN_SIGN.get());
+                output.accept(ModItems.HAIQING_SIGN.get());
+                output.accept(ModItems.MISAKI_SIGN.get());
+                output.accept(ModItems.NARDIS_SIGN.get());
+                output.accept(ModItems.JASMINE_SIGN.get());
+                output.accept(ModItems.NANCY_LU_SIGN.get());
+                output.accept(ModItems.MEGAS_SIGN.get());
+                output.accept(ModItems.ZHAO_SIGN.get());
+                output.accept(ModItems.AL_SIGN.get());
+                output.accept(ModItems.RIN_SIGN.get());
+                output.accept(ModItems.TERU_SIGN.get());
+                output.accept(ModItems.MOSES_SIGN.get());
+                output.accept(ModItems.MAMUSHI_SIGN.get());
+                output.accept(ModItems.INKSHADOW_SIGN.get());
+                output.accept(ModItems.BONNIE_SIGN.get());
                 output.accept(ModItems.LINGLING_SIGN.get());
-                // 奇特 BIZARRE
+                output.accept(ModItems.SYKES_SIGN.get());
+                output.accept(ModItems.SOURI_SIGN.get());
                 output.accept(ModItems.KANGEL_SIGN.get());
                 output.accept(ModItems.AME_SIGN.get());
                 output.accept(ModItems.JILL_SIGN.get());
                 output.accept(ModItems.DOROTHY_SIGN.get());
-                // deepseek 为本模组原创角色（未出现在 Wiki「Characters」页），排在立牌末尾
+                output.accept(ModItems.HANNA_SIGN.get());
+                output.accept(ModItems.SHERRY_SIGN.get());
+                // DeepSeek 未在 Wiki「Characters」页面出现(本模组原创),排在末尾
                 output.accept(ModItems.DEEPSEEK_SIGN.get());
+
                 // 筹码
                 // === 星光类 ===
                 output.accept(ModItems.FLASHLIGHT_CHIP.get());
@@ -208,14 +205,19 @@ public class ModCreativeTabs {
                 output.accept(ModItems.WHETSTONE_CHIP.get());
                 output.accept(ModItems.EXTRA_BATTERY_CHIP.get());
                 output.accept(ModItems.SATELLITE_CHIP.get());
+                // -- 专属筹码（6） --
                 output.accept(ModItems.CURSED_SWORD.get());
                 output.accept(ModItems.REVENGE_HALBERD.get());
                 output.accept(ModItems.PIERCING_GUN.get());
+                output.accept(ModItems.SWORD_IN_STONE_EPIC_CHIP.get());
+                output.accept(ModItems.SWORD_IN_STONE_LEGENDARY_CHIP.get());
+                output.accept(ModItems.PERFECT_BRANCH_CHIP.get());
                 // 任务S §4（2026-10-10 用户裁决）：卡牌商店移到本栏**最后**（旧口径「提到最前」已被推翻）。
                 // JEI 物品列表顺序取自创造栏（IngredientSorterComparators.getCreativeMenuComparator），
                 // 因此这里一并决定了 JEI 里卡牌商店的位置。
                 output.accept(ModItems.EVENT_TICKET.get());
                 output.accept(ModItems.EVENT_DRAWER.get());
+                output.accept(ModItems.ASTRAL_ANVIL.get());
                 output.accept(ModItems.CARD_SHOP.get());
                 output.accept(ModItems.CHIP_SHOP.get());
             }).build());

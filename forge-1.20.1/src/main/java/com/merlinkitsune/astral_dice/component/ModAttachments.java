@@ -420,12 +420,12 @@ public class ModAttachments {
         INVESTIGATION_STAGE.set(player, Math.max(1, value));
     }
 
-    public static int getStarlight(net.minecraft.world.entity.player.Player player) {
-        return PLAYER_STARLIGHT.get(player);
+    public static int getStarlight(net.minecraft.world.entity.LivingEntity holder) {
+        return PLAYER_STARLIGHT.get(holder);
     }
 
-    public static void setStarlight(net.minecraft.world.entity.player.Player player, int value) {
-        PLAYER_STARLIGHT.set(player, value);
+    public static void setStarlight(net.minecraft.world.entity.LivingEntity holder, int value) {
+        PLAYER_STARLIGHT.set(holder, value);
     }
 
     public static int getEightSidedAccum(net.minecraft.world.entity.player.Player player) {
@@ -591,6 +591,32 @@ public class ModAttachments {
             register(AttachedDataKey.builder("chip_shop_state", ChipShopState.CODEC, () -> ChipShopState.EMPTY)
                     .sync().build());
 
+    // 筹码商店限时折扣（2026-11-08 少主立牌「双赢」，1.20.1 移植）：对目标使用主动技能后，
+    // 双方各得「单价 -5（下限 5）+ 一次刷新」。刻意不并进 CHIP_SHOP_STATE：
+    // 那是商店运行态（候选/次数/冷却），折扣是短时段 buff，且要能挂在注册生物身上；
+    // 非玩家实体由 AttachedDataKey 的 ForgeData 分支持久化（不 .sync()：客户端只通过菜单 DataSlot 读价格）。
+    public static final AttachedDataKey<Integer> CHIP_DISCOUNT_AMOUNT =
+            register(AttachedDataKey.builder("chip_discount_amount", Codec.INT, () -> 0).build());
+
+    public static final AttachedDataKey<Long> CHIP_DISCOUNT_UNTIL =
+            register(AttachedDataKey.builder("chip_discount_until", Codec.LONG, () -> 0L).build());
+
+    public static int getChipDiscountAmount(net.minecraft.world.entity.LivingEntity holder) {
+        return CHIP_DISCOUNT_AMOUNT.get(holder);
+    }
+
+    public static void setChipDiscountAmount(net.minecraft.world.entity.LivingEntity holder, int value) {
+        CHIP_DISCOUNT_AMOUNT.set(holder, value);
+    }
+
+    public static long getChipDiscountUntil(net.minecraft.world.entity.LivingEntity holder) {
+        return CHIP_DISCOUNT_UNTIL.get(holder);
+    }
+
+    public static void setChipDiscountUntil(net.minecraft.world.entity.LivingEntity holder, long value) {
+        CHIP_DISCOUNT_UNTIL.set(holder, value);
+    }
+
     // 立牌主动技能"本次冷却实际使用的最大冷却 tick"(路线 A:所有减免方一律读它作基准,不再各自重算;
     // 0 表示缺失/无冷却,减免方回退旧行为;仅服务端使用,故不 .sync()、不加入 SYNCED_KEYS)。
     // 写入时机(第二批「立牌主动技能三态化」):① 直接起冷却时与 SIGN_ACTIVE_COOLDOWN_END 成对写入;
@@ -736,6 +762,98 @@ public class ModAttachments {
 
     public static void setWarpEnginePortalCooldownEnd(net.minecraft.world.entity.player.Player player, long value) {
         WARP_ENGINE_PORTAL_COOLDOWN_END.set(player, value);
+    }
+
+    // ==== 小猎手立牌(inkshadow,2026-11-10) ====
+    // 放置窗口状态:全部为原始类型、不 sync、仅服务端读写(客户端渲染只看实体的 state 同步字段)。
+    // 起始门 UUID(空串 = 无待配对起始门)。
+    public static final AttachedDataKey<String> INKSHADOW_PENDING_UUID =
+            register(AttachedDataKey.builder("inkshadow_pending_uuid", Codec.STRING, () -> "").build());
+    // 起始门所在维度 id(如 minecraft:overworld);终点门允许跨维度,仅作记录/诊断。
+    public static final AttachedDataKey<String> INKSHADOW_PENDING_DIM =
+            register(AttachedDataKey.builder("inkshadow_pending_dim", Codec.STRING, () -> "").build());
+    // 放置窗口截止 gameTime(0 = 无窗口)。
+    public static final AttachedDataKey<Long> INKSHADOW_PENDING_DEADLINE =
+            register(AttachedDataKey.builder("inkshadow_pending_deadline", Codec.LONG, () -> 0L).build());
+    // 起始门坐标(BlockPos.asLong;Long.MIN_VALUE = 无)。起点门区块卸载后按此坐标强制加载再解析实体。
+    public static final AttachedDataKey<Long> INKSHADOW_PENDING_POS =
+            register(AttachedDataKey.builder("inkshadow_pending_pos", Codec.LONG, () -> Long.MIN_VALUE).build());
+    // 放置期间被锁定的快捷栏槽位(-1 = 未锁定)。
+    public static final AttachedDataKey<Integer> INKSHADOW_LOCKED_SLOT =
+            register(AttachedDataKey.builder("inkshadow_locked_slot", Codec.INT, () -> -1).build());
+    // 被动「双生之影」当前层数。
+    public static final AttachedDataKey<Integer> INKSHADOW_STACKS =
+            register(AttachedDataKey.builder("inkshadow_stacks", Codec.INT, () -> 0).build());
+    // 被动层数到期时刻(0 = 无到期;刷新不累加,只后移)。
+    public static final AttachedDataKey<Long> INKSHADOW_STACKS_EXPIRE =
+            register(AttachedDataKey.builder("inkshadow_stacks_expire", Codec.LONG, () -> 0L).build());
+
+    public static String getInkShadowPendingUuid(net.minecraft.world.entity.player.Player player) {
+        return INKSHADOW_PENDING_UUID.get(player);
+    }
+
+    public static void setInkShadowPendingUuid(net.minecraft.world.entity.player.Player player, String value) {
+        INKSHADOW_PENDING_UUID.set(player, value == null ? "" : value);
+    }
+
+    public static String getInkShadowPendingDim(net.minecraft.world.entity.player.Player player) {
+        return INKSHADOW_PENDING_DIM.get(player);
+    }
+
+    public static void setInkShadowPendingDim(net.minecraft.world.entity.player.Player player, String value) {
+        INKSHADOW_PENDING_DIM.set(player, value == null ? "" : value);
+    }
+
+    public static long getInkShadowPendingDeadline(net.minecraft.world.entity.player.Player player) {
+        return INKSHADOW_PENDING_DEADLINE.get(player);
+    }
+
+    public static void setInkShadowPendingDeadline(net.minecraft.world.entity.player.Player player, long value) {
+        INKSHADOW_PENDING_DEADLINE.set(player, value);
+    }
+    public static long getInkShadowPendingPos(net.minecraft.world.entity.player.Player player) {
+        return INKSHADOW_PENDING_POS.get(player);
+    }
+
+    public static void setInkShadowPendingPos(net.minecraft.world.entity.player.Player player, long value) {
+        INKSHADOW_PENDING_POS.set(player, value);
+    }
+
+    public static int getInkShadowLockedSlot(net.minecraft.world.entity.player.Player player) {
+        return INKSHADOW_LOCKED_SLOT.get(player);
+    }
+
+    public static void setInkShadowLockedSlot(net.minecraft.world.entity.player.Player player, int value) {
+        INKSHADOW_LOCKED_SLOT.set(player, value);
+    }
+
+    public static int getInkShadowStacks(net.minecraft.world.entity.player.Player player) {
+        return INKSHADOW_STACKS.get(player);
+    }
+
+    public static void setInkShadowStacks(net.minecraft.world.entity.player.Player player, int value) {
+        INKSHADOW_STACKS.set(player, value);
+    }
+
+    public static long getInkShadowStacksExpire(net.minecraft.world.entity.player.Player player) {
+        return INKSHADOW_STACKS_EXPIRE.get(player);
+    }
+
+    public static void setInkShadowStacksExpire(net.minecraft.world.entity.player.Player player, long value) {
+        INKSHADOW_STACKS_EXPIRE.set(player, value);
+    }
+
+    // 被动「双生之影」当前仍存活的门对到期刻列表(逗号分隔的 gameTime;无固定总时限,每对门各自 3600t)。
+    // 由 InkShadowSignManager.registerLivePair 追加、livePairDeadline 剪掉过期项;空串 = 无存活门对。
+    public static final AttachedDataKey<String> INKSHADOW_PAIR_EXPIRIES =
+            register(AttachedDataKey.builder("inkshadow_pair_expiries", Codec.STRING, () -> "").build());
+
+    public static String getInkShadowPairExpiries(net.minecraft.world.entity.player.Player player) {
+        return INKSHADOW_PAIR_EXPIRIES.get(player);
+    }
+
+    public static void setInkShadowPairExpiries(net.minecraft.world.entity.player.Player player, String value) {
+        INKSHADOW_PAIR_EXPIRIES.set(player, value == null ? "" : value);
     }
 
     // @Deprecated 已废弃:立牌主动技能"等待目标释放"机制已被目标选择器(TargetSelectionManager 会话)替代,
@@ -1238,8 +1356,9 @@ public class ModAttachments {
             register(AttachedDataKey.builder("ren_shield_own_resistance", Codec.BOOL, () -> false).build());
 
     /**
-     * 游戏大师立牌(ren):一次性反击层数(0/1)。获得鼠鼠护盾时 +1,被攻击时消耗 1 层并对攻击者
-     * 注入一次现有反击伤害;护盾清空时归零。
+     * 游戏大师立牌(ren)/金鲤立牌(souri):可激活次数(游戏大师 1,佩戴金鲤时上限 4)。
+     * 获得护盾或放置饮品时 +1;首次近战命中消耗 1 次并进入 200 tick 反击状态,状态期间反击免费。
+     * 护盾清空时归零(佩戴金鲤时保留);反击状态本体见 {@code item/CounterStateManager}。
      */
     public static final AttachedDataKey<Integer> REN_COUNTER_CHARGES =
             register(AttachedDataKey.builder("ren_counter_charges", Codec.INT, () -> 0).build());
@@ -1322,6 +1441,43 @@ public class ModAttachments {
 
     public static void setMamushiAwakening(net.minecraft.world.entity.player.Player player, int value) {
         MAMUSHI_AWAKENING.set(player, Math.max(0, value));
+    }
+
+    /**
+     * 金鲤立牌(souri)「觉醒」层数(0..{@code SouriSignManager.AWAKENING_MAX})。
+     *
+     * <p>**同步**:立牌 tooltip 的计数行({@code tooltip.astral_dice.sign.souri_awakening})要读它
+     * ⇒ 与 {@code mamushi_awakening} 同一口径,必须进 {@code SYNCED_KEYS}。
+     * **跨死亡保留** ⇒ 同时进 {@link AstralData#onPlayerClone} 白名单与
+     * {@link DeathPreservedBonuses} 第 9 槽位(两层缺一不可,理由同 {@code rin_pages})。
+     */
+    public static final AttachedDataKey<Integer> SOURI_AWAKENING =
+            register(AttachedDataKey.builder("souri_awakening", Codec.INT, () -> 0).sync().build());
+
+    /**
+     * 金鲤立牌(souri)「金鳞」层数(0..{@code SouriGoldScaleEffect.MAX_STACKS})。
+     *
+     * <p>**同步**:tooltip 计数行({@code tooltip.astral_dice.sign.souri_gold_scale})与
+     * 客户端 HUD 镜像都要读它 ⇒ 必须进 {@code SYNCED_KEYS}。
+     * **跨死亡保留** ⇒ 同 {@code rin_pages},白名单 + 第 10 槽位两层都要。
+     */
+    public static final AttachedDataKey<Integer> SOURI_GOLD_SCALES =
+            register(AttachedDataKey.builder("souri_gold_scales", Codec.INT, () -> 0).sync().build());
+
+    public static int getSouriAwakening(net.minecraft.world.entity.player.Player player) {
+        return SOURI_AWAKENING.get(player);
+    }
+
+    public static void setSouriAwakening(net.minecraft.world.entity.player.Player player, int value) {
+        SOURI_AWAKENING.set(player, Math.max(0, value));
+    }
+
+    public static int getSouriGoldScales(net.minecraft.world.entity.player.Player player) {
+        return SOURI_GOLD_SCALES.get(player);
+    }
+
+    public static void setSouriGoldScales(net.minecraft.world.entity.player.Player player, int value) {
+        SOURI_GOLD_SCALES.set(player, Math.max(0, value));
     }
 
     public static boolean getMamushiBiteBonusActive(net.minecraft.world.entity.player.Player player) {
@@ -1524,6 +1680,9 @@ public class ModAttachments {
             SYNCED_KEYS.add(SHOP_TRANSFER_COOLDOWN_END);
             SYNCED_KEYS.add(CHIP_SHOP_STATE);
             SYNCED_KEYS.add(EVENT_DRAWER_COOLDOWN_UNTIL);
+            // 金鲤立牌(souri,2026-11-09):两个计数器行的真值都要客户端可见(tooltip + HUD 镜像)
+            SYNCED_KEYS.add(SOURI_AWAKENING);
+            SYNCED_KEYS.add(SOURI_GOLD_SCALES);
         }
         return SYNCED_KEYS;
     }
@@ -2034,6 +2193,10 @@ public class ModAttachments {
     public static final AttachedDataKey<String> JILL_PENDING_TARGET =
             register(AttachedDataKey.builder("jill_pending_target", Codec.STRING, () -> "").build());
 
+    /** 少主：主动「强者怜悯」已选定、等待选卡确认的目标 UUID（空串 = 无；确认/取消/失败即清）。 */
+    public static final AttachedDataKey<String> AL_PENDING_TARGET =
+            register(AttachedDataKey.builder("al_pending_target", Codec.STRING, () -> "").build());
+
     /** 调酒师：主动 buff 受惠目标 UUID（空串 = 无；到期/卸下清除）。 */
     public static final AttachedDataKey<String> JILL_BUFF_TARGET =
             register(AttachedDataKey.builder("jill_buff_target", Codec.STRING, () -> "").build());
@@ -2087,8 +2250,16 @@ public class ModAttachments {
         return JILL_PENDING_TARGET.get(player);
     }
 
+    public static String getAlPendingTarget(net.minecraft.world.entity.player.Player player) {
+        return AL_PENDING_TARGET.get(player);
+    }
+
     public static void setJillPendingTarget(net.minecraft.world.entity.player.Player player, String value) {
         JILL_PENDING_TARGET.set(player, value == null ? "" : value);
+    }
+
+    public static void setAlPendingTarget(net.minecraft.world.entity.player.Player player, String value) {
+        AL_PENDING_TARGET.set(player, value == null ? "" : value);
     }
 
     public static String getJillBuffTarget(net.minecraft.world.entity.player.Player player) {
@@ -2213,4 +2384,43 @@ public class ModAttachments {
     public static void setDeepseekIdleSince(net.minecraft.world.entity.player.Player player, long value) {
         DEEPSEEK_IDLE_SINCE.set(player, value);
     }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  垃圾桶立牌(z3000,2026-11-13)
+    //  仅服务端判定；攻击层数同步给客户端 tooltip。
+    // ══════════════════════════════════════════════════════════════════════════
+
+    public static final AttachedDataKey<Integer> Z3000_ATTACK_STACKS =
+            register(AttachedDataKey.builder("z3000_attack_stacks", Codec.INT, () -> 0).sync().build());
+
+    public static final AttachedDataKey<Integer> Z3000_HEALTHY_KILLS =
+            register(AttachedDataKey.builder("z3000_healthy_kills", Codec.INT, () -> 0).build());
+
+    public static final AttachedDataKey<Long> Z3000_LAST_COOLDOWN_REDUCTION =
+            register(AttachedDataKey.builder("z3000_last_cooldown_reduction", Codec.LONG, () -> 0L).build());
+
+    public static int getZ3000AttackStacks(net.minecraft.world.entity.player.Player player) {
+        return Z3000_ATTACK_STACKS.get(player);
+    }
+
+    public static void setZ3000AttackStacks(net.minecraft.world.entity.player.Player player, int value) {
+        Z3000_ATTACK_STACKS.set(player, Math.max(0, value));
+    }
+
+    public static int getZ3000HealthyKills(net.minecraft.world.entity.player.Player player) {
+        return Z3000_HEALTHY_KILLS.get(player);
+    }
+
+    public static void setZ3000HealthyKills(net.minecraft.world.entity.player.Player player, int value) {
+        Z3000_HEALTHY_KILLS.set(player, Math.max(0, value));
+    }
+
+    public static long getZ3000LastCooldownReduction(net.minecraft.world.entity.player.Player player) {
+        return Z3000_LAST_COOLDOWN_REDUCTION.get(player);
+    }
+
+    public static void setZ3000LastCooldownReduction(net.minecraft.world.entity.player.Player player, long value) {
+        Z3000_LAST_COOLDOWN_REDUCTION.set(player, value);
+    }
+
 }

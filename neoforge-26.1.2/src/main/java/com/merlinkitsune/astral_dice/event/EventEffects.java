@@ -11,7 +11,6 @@ import com.merlinkitsune.astral_dice.event.api.AstralEvent;
 import com.merlinkitsune.astral_dice.event.api.AstralEventTrigger;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.card.RandomCardHandler;
-import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -524,7 +523,7 @@ public final class EventEffects {
     public static void battleFrenzy(ServerLevel level, Player triggerer, Player target, AstralEvent event,
                                     AstralEventTrigger source, int tier) {
         for (int i = 0; i < 2; i++) {
-            VitaminPillChipItem.giveCard(target, new ItemStack(ModItems.ATTACK_CARD_EPIC.get()));
+            RandomCardHandler.giveFixedCardTo(target, ModItems.ATTACK_CARD_EPIC.get());
         }
     }
 

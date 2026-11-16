@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.mark_paint",
+  "category": "astral_dice:materials",
+  "icon": "astral_dice:mark_paint",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:mark_paint",
+      "text": "astral_dice.guide.entry.mark_paint.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:mark_paint"
+    }
+  ],
+  "sortnum": 9
+}

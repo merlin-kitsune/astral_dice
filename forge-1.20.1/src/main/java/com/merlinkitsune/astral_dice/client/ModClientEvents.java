@@ -7,6 +7,7 @@ import com.merlinkitsune.astral_dice.screen.CardInventoryScreen;
 import com.merlinkitsune.astral_dice.screen.CardChoiceScreen;
 import com.merlinkitsune.astral_dice.screen.CardShopScreen;
 import com.merlinkitsune.astral_dice.screen.ChipShopScreen;
+import com.merlinkitsune.astral_dice.screen.AstralAnvilScreen;
 import com.merlinkitsune.astral_dice.screen.ModMenuTypes;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -76,6 +77,12 @@ public class ModClientEvents {
     public static void registerEntityRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerEntityRenderer(ModEntityTypes.BARRICADE.get(), BarricadeRenderer::new);
         event.registerEntityRenderer(ModEntityTypes.REPULSION.get(), RepulsionRenderer::new);
+        event.registerEntityRenderer(ModEntityTypes.SYKE_TENTACLE.get(), SykeTentacleRenderer::new);
+        // 金鲤立牌的漂浮饮品(2026-11-09):GeoEntityRenderer，无需注册 LayerDefinition
+        event.registerEntityRenderer(ModEntityTypes.SOURI_DRINK.get(), SouriDrinkRenderer::new);
+        // 小猎手立牌的【传送门】(2026-11-10):GeoEntityRenderer，无需注册 LayerDefinition
+        event.registerEntityRenderer(ModEntityTypes.INKSHADOW_PORTAL.get(), InkShadowPortalRenderer::new);
+        event.registerEntityRenderer(ModEntityTypes.GRAPPLING_HOOK.get(), GrapplingHookRenderer::new);
     }
 
     /** 模型层定义：`astral_dice:barricade#main` ⇒ {@link BarricadeModel#createBodyLayer()}。 */
@@ -96,6 +103,8 @@ public class ModClientEvents {
             // 的模型是 no-op）。若将来模型去掉 render_type，再考虑在此兜底。
             net.minecraft.client.gui.screens.MenuScreens.register(
                     ModMenuTypes.CARD_INVENTORY.get(), CardInventoryScreen::new);
+            net.minecraft.client.gui.screens.MenuScreens.register(
+                    ModMenuTypes.ASTRAL_ANVIL.get(), AstralAnvilScreen::new);
             net.minecraft.client.gui.screens.MenuScreens.register(
                     ModMenuTypes.CARD_SHOP.get(), CardShopScreen::new);
             net.minecraft.client.gui.screens.MenuScreens.register(

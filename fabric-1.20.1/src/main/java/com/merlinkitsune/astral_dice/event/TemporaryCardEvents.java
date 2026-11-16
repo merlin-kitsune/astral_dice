@@ -40,7 +40,7 @@ import org.slf4j.LoggerFactory;
  *
  * <p><b>LIMITATION(fabric 拾取路径)</b>:Forge 的 {@code EntityItemPickupEvent} 可取消;
  * fabric 侧走 Puzzles Lib 的 {@code PlayerEvents.ITEM_PICKUP} 回调,其返回值为 {@code void}
- * (只通知、不可取消,见 {@code platform/PuzzlesBridges#installPlayers})⇒ {@link #onItemPickup}
+ * (只通知、不可取消,见 {@code platform/StarengineBridges#installPlayers})⇒ {@link #onItemPickup}
  * 的 {@code setCanceled(true)} 在本线**没有总线层面的取消语义**,真正的效果来自紧随其后的
  * {@code itemEntity.setItem(ItemStack.EMPTY)} + {@code discard()}(世界里的那张牌被清空并移除)。
  * 若要严格对齐 Forge 的「入包前拦截」,需自写 {@code ItemEntity#playerTouch} 的 mixin。

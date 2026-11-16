@@ -6,6 +6,7 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.SimpleMenuProvider;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.slf4j.Logger;
@@ -18,12 +19,13 @@ import org.slf4j.LoggerFactory;
  * ② 物品栏 36 格（不含副手）**已满**（买了也放不下）；③ **购买冷却中**（需求 4：上次购买后 5:00 内禁止使用）。
  * 三者都只在 actionbar 给红字、**不开店**。
  *
- * <p><b>进店补抽</b>（唯一入口）：仅当 {@link ChipShopState#needsReroll(Player)} 为真
+ * <p><b>进店补抽</b>（唯一入口）：仅当 {@link ChipShopState#needsReroll(net.minecraft.world.entity.LivingEntity)} 为真
  * （从未抽过 / 候选含已拥有 / 候选引用了未知 id）才掷一批并落盘。**免费**、且**与界面开关无关地幂等** ——
  * 因此「未购买退出再进店」候选逐字不变（用户裁决 Q9/R16）。
  *
- * <p><b>与菜单的分工</b>：本类只负责「能不能开 + 要不要补抽 + 开」；
- * 价格 / 扣款 / 关店 / 重抽一律在 {@link ChipShopMenu} 的服务端回调里（服务端权威）。
+ * <p><b>类玩家生物</b>（2026-11-09）：附属注册的生物没有 GUI，走 {@link #openFor(LivingEntity)}：
+ * 同样做三项前置 + 进店补抽，但只把候选准备好并打 {@code CHIP_SHOP_READY} 机器行，
+ * 不打开菜单；购买由 {@link ChipShopService#purchase(LivingEntity, int)} 完成。
  */
 public final class ChipShopOpener {
 
@@ -40,19 +42,9 @@ public final class ChipShopOpener {
         if (player.level().isClientSide() || !(player instanceof ServerPlayer serverPlayer)) {
             return;
         }
-        if (ChipShopRoller.ownsEverything(player)) {
-            deny(player, "owned_all", "msg.astral_dice.chip_shop_owned_all");
+        if (!prepare(player)) {
             return;
         }
-        if (hasNoRoom(player)) {
-            deny(player, "inventory_full", "msg.astral_dice.chip_shop_inventory_full");
-            return;
-        }
-        if (ChipShopState.get(player).inCooldown(player.level().getGameTime())) {
-            deny(player, "cooldown", "msg.astral_dice.chip_shop_cooldown");
-            return;
-        }
-        ensureOffers(player);
         serverPlayer.openMenu(new SimpleMenuProvider(
                 (containerId, inventory, p) -> new ChipShopMenu(containerId, inventory),
                 Component.translatable("gui.astral_dice.chip_shop")));
@@ -62,25 +54,72 @@ public final class ChipShopOpener {
     }
 
     /**
-     * 进店补抽（**免费**，计划表 §3 的入口①）：只在 {@link ChipShopState#needsReroll(Player)} 为真时掷一批。
+     * 类玩家生物的无界面开店：前置校验 + 进店补抽；玩家会一并打开菜单。
      *
-     * <p>包级可见：{@link ChipShopMenu} 不调用它（菜单构造只读），仅供本类与测试 / 探针使用。
+     * @return {@code true} 表示候选已就绪（可直接调 {@link ChipShopService#purchase}）
      */
-    static void ensureOffers(Player player) {
-        ChipShopState state = ChipShopState.get(player);
-        if (!state.needsReroll(player)) {
-            return;
+    public static boolean openFor(LivingEntity holder) {
+        if (holder == null || holder.level().isClientSide()) {
+            return false;
         }
-        ChipShopState next = state.withOffers(ChipShopRoller.roll(player, state.lastCategory().orElse(null)), ChipShopRoller.diceKey(player));
-        ChipShopState.store(player, next);
-        LOGGER.info("[astral_dice] CHIP_SHOP_REROLL_ON_ENTER player={} offers={} purchased={}",
-                player.getName().getString(), next.offersKey(), next.purchasedCount());
+        if (!prepare(holder)) {
+            return false;
+        }
+        if (holder instanceof ServerPlayer serverPlayer) {
+            serverPlayer.openMenu(new SimpleMenuProvider(
+                    (containerId, inventory, p) -> new ChipShopMenu(containerId, inventory),
+                    Component.translatable("gui.astral_dice.chip_shop")));
+            LOGGER.info("[astral_dice] CHIP_SHOP_OPEN player={} offers={} purchased={} refreshes={}",
+                    holder.getName().getString(), ChipShopState.get(holder).offersKey(),
+                    ChipShopState.get(holder).purchasedCount(), ChipShopState.get(holder).refreshesLeft());
+        } else {
+            LOGGER.info("[astral_dice] CHIP_SHOP_READY holder={} offers={} purchased={} refreshes={}",
+                    holder.getName().getString(), ChipShopState.get(holder).offersKey(),
+                    ChipShopState.get(holder).purchasedCount(), ChipShopState.get(holder).refreshesLeft());
+        }
+        return true;
     }
 
-    /** 物品栏 36 格是否已满 —— 开店前预检。筹码一律 {@code stacksTo(1)} ⇒ 落点等价于「第一个空格」；
-     *  全满即拒绝开店：生存模式购买时若无空格会 {@code drop} 成掉落物（见 {@code ChipShopMenu}），
-     *  与其让玩家花钱换一地掉落物，不如直接拒开。 */
-    private static boolean hasNoRoom(Player player) {
+    /** 三项开店前置 + 进店补抽；返回 {@code false} 表示已拒绝（并已发 actionbar / 机器行）。 */
+    private static boolean prepare(LivingEntity holder) {
+        if (ChipShopRoller.ownsEverything(holder)) {
+            deny(holder, "owned_all", "msg.astral_dice.chip_shop_owned_all");
+            return false;
+        }
+        if (hasNoRoom(holder)) {
+            deny(holder, "inventory_full", "msg.astral_dice.chip_shop_inventory_full");
+            return false;
+        }
+        if (ChipShopState.get(holder).inCooldown(holder.level().getGameTime())) {
+            deny(holder, "cooldown", "msg.astral_dice.chip_shop_cooldown");
+            return false;
+        }
+        ensureOffers(holder);
+        return true;
+    }
+
+    /**
+     * 进店补抽（**免费**，计划表 §3 的入口①）：只在 {@link ChipShopState#needsReroll(LivingEntity)} 为真时掷一批。
+     *
+     * <p>公开给服务面（{@link ChipShopService#prepareOffers(LivingEntity)}）与测试 / 探针使用。
+     */
+    public static void ensureOffers(LivingEntity holder) {
+        ChipShopState state = ChipShopState.get(holder);
+        if (!state.needsReroll(holder)) {
+            return;
+        }
+        ChipShopState next = state.withOffers(ChipShopRoller.roll(holder, state.lastCategory().orElse(null)),
+                ChipShopRoller.diceKey(holder));
+        ChipShopState.store(holder, next);
+        LOGGER.info("[astral_dice] CHIP_SHOP_REROLL_ON_ENTER holder={} offers={} purchased={}",
+                holder.getName().getString(), next.offersKey(), next.purchasedCount());
+    }
+
+    /** 玩家物品栏 36 格是否已满 —— 开店前预检。非玩家没有 36 格容器模型，交付时兜底掉地，故不拦。 */
+    private static boolean hasNoRoom(LivingEntity holder) {
+        if (!(holder instanceof Player player)) {
+            return false;
+        }
         for (int i = 0; i < INVENTORY_SLOTS; i++) {
             if (player.getInventory().getItem(i).isEmpty()) {
                 return false;
@@ -89,14 +128,14 @@ public final class ChipShopOpener {
         return true;
     }
 
-    /** 开店拒绝：actionbar 红字 + 机器行（实机取证时一眼可见「为什么没开店」） */
-    private static void deny(Player player, String reasonTag, String key) {
-        if (player instanceof ServerPlayer serverPlayer) {
+    /** 开店拒绝：actionbar 红字（玩家）+ 机器行（实机取证时一眼可见「为什么没开店」） */
+    private static void deny(LivingEntity holder, String reasonTag, String key) {
+        if (holder instanceof ServerPlayer serverPlayer) {
             PacketDistributor.sendToPlayer(serverPlayer, new ActionBarPayload(
                     Component.translatable(key).withStyle(ChatFormatting.RED),
                     GameplayConstants.ACTIONBAR_DURATION_TICKS));
         }
-        LOGGER.info("[astral_dice] CHIP_SHOP_OPEN_DENIED player={} reason={}",
-                player.getName().getString(), reasonTag);
+        LOGGER.info("[astral_dice] CHIP_SHOP_OPEN_DENIED holder={} reason={}",
+                holder.getName().getString(), reasonTag);
     }
 }

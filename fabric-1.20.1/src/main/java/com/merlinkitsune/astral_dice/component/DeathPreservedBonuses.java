@@ -12,10 +12,12 @@ import java.util.concurrent.ConcurrentHashMap;
  * {@code sherry_reasoning_layers}(第 4 槽位)、诅咒之剑 {@code cursed_sword_bonus}(第 5 槽位);
  * 2026-10-16 追加**三个** {@code int} 槽位 —— 超天酱 {@code kangel_fan_count}、地雷女
  * {@code ame_love_layers} 与 {@code ame_love_cap} —— 以及一个字符串槽位 {@code kangel_fan_targets}
- * (已登记目标 UUID 的逗号分隔集,放不进 {@code int[]} ⇒ 用并行 {@code Map<UUID, String>} 暂存)。
+ * (已登记目标 UUID 的逗号分隔集,放不进 {@code int[]} ⇒ 用并行 {@code Map<UUID, String>} 暂存);
+ * 2026-11-10 再追加金鲤立牌 {@code souri_gold_scales}(第 9 槽位)。
  *
  * <p><b>与 forge 线同口径:</b>本类与 forge {@code component/DeathPreservedBonuses.java} 一一对应
- * (8 个 {@code int} 槽位 + 1 个字符串槽位)。差异只在附件 API:fabric 侧这些键定义在
+ * (9 个 {@code int} 槽位 + 1 个字符串槽位;forge 另有第 9 槽 {@code souri_awakening},
+ * 该附件键在本线不存在故不移植)。差异只在附件 API:fabric 侧这些键定义在
  * {@link SignAttachments}(forge 侧在 {@code ModAttachments}),故读写走
  * {@code SignAttachments#getKangelFanCount} 一族。
  *
@@ -75,7 +77,15 @@ public final class DeathPreservedBonuses {
      */
     private static final int AME_LOVE_CAP = 7;
 
-    /** 第 1..8 槽位共用的暂存表(按 UUID 暂存、取走即删)。 */
+    /**
+     * 第 9 槽位:金鲤立牌(souri)「金鳞」层数({@code souri_gold_scales},2026-11-10)。
+     * {@code SouriSignManager#clearAll}(由卸下/死亡掉落导致的 {@code clearSignData} 调用)会把层数清零
+     * ⇒ 同前 8 槽,需本表在死亡瞬间兜底。平台差异:forge 线另有第 9 槽 {@code soouri_awakening},
+     * fabric 线无该附件键(蛟龙觉醒已由第 3 槽覆盖),故本线只加金鳞一槽。
+     */
+    private static final int SOURI_GOLD_SCALES = 8;
+
+    /** 第 1..9 槽位共用的暂存表(按 UUID 暂存、取走即删)。 */
     private static final Map<UUID, int[]> PRESERVED = new ConcurrentHashMap<>();
 
     /**
@@ -102,7 +112,9 @@ public final class DeathPreservedBonuses {
                 // 2026-10-16 超天酱/地雷女:粉丝数 / 爱层数 / 爱层数上限(卸下即清 ⇒ 同需兜底)
                 SignAttachments.getKangelFanCount(player),
                 SignAttachments.getAmeLoveLayers(player),
-                SignAttachments.getAmeLoveCap(player)
+                SignAttachments.getAmeLoveCap(player),
+                // 2026-11-10 金鲤立牌:金鳞层数(卸下即清 ⇒ 同需兜底)
+                ModAttachments.getSouriGoldScales(player)
         });
         // 字符串槽位(超天酱已登记目标集)放不进 int[] ⇒ 并行 Map,同样取走即删
         PRESERVED_TARGETS.put(player.getUUID(), SignAttachments.getKangelFanTargets(player));
@@ -143,6 +155,10 @@ public final class DeathPreservedBonuses {
             }
             if (preserved[AME_LOVE_CAP] > SignAttachments.getAmeLoveCap(player)) {
                 SignAttachments.setAmeLoveCap(player, preserved[AME_LOVE_CAP]);
+            }
+            // 金鲤立牌:金鳞层数只减不增(只有反击/主动放置才涨,卸下立牌归零)⇒ 取较大值幂等
+            if (preserved[SOURI_GOLD_SCALES] > ModAttachments.getSouriGoldScales(player)) {
+                ModAttachments.setSouriGoldScales(player, preserved[SOURI_GOLD_SCALES]);
             }
         }
         // 超天酱立牌:已登记目标集(字符串)只有"当前为空串且暂存非空"才回写 ⇒ 幂等;

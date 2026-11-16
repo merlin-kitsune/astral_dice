@@ -1,0 +1,57 @@
+{
+  "case_id": "RENDER-SIGN-TRANSLUCENT-fabric-1.21.1",
+  "title": "立牌半透明渲染（fabric 线 mixin/client/SignTranslucencyMixin）：mixin 类与 AlphaContext 在产物 jar、mixin 配置已注册、全窗口无 mixin 应用失败；mixin 类本身不可 loadClass（会触发 Mixin transformation failed），故不做运行期直调",
+  "version": "fabric-1.21.1",
+  "channel": "autojs",
+  "side": "client",
+  "on_fail": "stop_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "2026-11-05：本线 Rhino 无反射，AlphaContext.push/current 是包私有方法，脚本无法直调；而 Java.loadClass 一个 mixin 类会抛 RuntimeException: Mixin transformation of ... failed ⇒ 本用例只能做静态取证（jar 条目 + mixin 配置 + 无应用失败）+ 渲染器可在客户端加载。像素级半透明证据要等截图通道恢复（screenshot 原语当前恒 BLOCKED）。"
+    },
+    {
+      "op": "mcp_status",
+      "save_as": "mcp"
+    },
+    {
+      "op": "eval_js",
+      "save_as": "renderer",
+      "code": "(function(){\n  var out = {};\n  try {\n    var LR = Java.loadClass('net.minecraft.client.renderer.entity.LivingEntityRenderer');\n    out.rendererLoaded = LR !== null;\n    var RT = Java.loadClass('net.minecraft.client.renderer.RenderType');\n    out.translucentFactory = true;\n    out.rendererName = String(LR);\n  } catch (e) { out.rendererLoaded = false; out.err = String(e); }\n  try {\n    var mc = Java.loadClass('net.minecraft.client.Minecraft').getInstance();\n    out.clientSide = mc !== null;\n  } catch (e2) { out.clientSide = false; }\n  return out;\n})()"
+    }
+  ],
+  "asserts": [
+    {
+      "type": "state",
+      "name": "mcp_ok",
+      "from": "mcp",
+      "expect": {
+        "Ok": true
+      }
+    },
+    {
+      "type": "state",
+      "name": "renderer_loadable",
+      "from": "renderer",
+      "expect": {
+        "rendererLoaded": true,
+        "clientSide": true
+      }
+    },
+    {
+      "type": "bytecode",
+      "name": "translucency_mixin_in_jar",
+      "pattern": "^com/merlinkitsune/astral_dice/mixin/client/SignTranslucencyMixin(\\$AlphaContext)?\\.class$"
+    },
+    {
+      "type": "bytecode",
+      "name": "translucency_mixin_config",
+      "pattern": "^astral_dice\\.fabric\\.mixins\\.json$|^astral_dice\\.mixins\\.json$"
+    },
+    {
+      "type": "mixin",
+      "name": "no_mixin_apply_failure",
+      "scope": "whole"
+    }
+  ]
+}

@@ -31,7 +31,7 @@ import net.minecraft.world.level.Level;
  */
 public class OrbitalStrikeCardItem extends BaseEffectCardItem {
 
-    /** 目标选择器动作 id（注册表键；也是 actionbar 技能名 {@code msg.astral_dice.target_select.skill.<id>} 的来源）。 */
+    /** 目标选择器动作 id（注册表键）。 */
     public static final String ACTION_ID = "orbital_strike";
 
     /**

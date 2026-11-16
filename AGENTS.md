@@ -1,10 +1,10 @@
 # Agent Instructions
 
-**本仓**：`F:\MCProject\astral_dice_multiloader`（原生 Linux 宿主为同一块 NTFS 盘的原生挂载：`/mnt/f/MCProject/astral_dice_multiloader`；无 hgfs）—— Minecraft 模组「Astral Dice」的多加载器工作树（四条线 `neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1`，同一工作树）。
+**本仓**：`F:\MCProject\astral_dice_multiloader`（原生 Linux 宿主为同一块 NTFS 盘的原生挂载：`/mnt/f/MCProject/astral_dice_multiloader`；无 hgfs）—— Minecraft 模组「Astral Dice」的多加载器工作树（各线 `neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1`，同一工作树）。
 
 **本文件只是公共入口**：先按下面的分派认领自己的规则文件，再读共同红线，最后按需查索引。
 
-**事实源原则**：分支 / HEAD / `mod_version` / 是否有未提交改动，一律以**实读命令**为准；文档里的数字只是当次快照，随时可能落后。旧文档（`docs/agent/AGENTS-full.md` 正文、历史批次条目、`docs/AGENT-HANDOFF.md`、`docs/handover-*.md` 里的旧版本）默认只作**历史 / 待核实参考**，不得据此下现状结论。
+**事实源原则**：分支 / HEAD / `mod_version` / 是否有未提交改动，一律以**实读命令**为准；文档里的数字只是当次快照，随时可能落后。旧文档（`docs/agent/AGENTS-full.md` 正文、历史批次条目、`docs/handover-*.md` 里的旧版本）默认只作**历史 / 待核实参考**，不得据此下现状结论。
 
 ## 一、宿主分派
 
@@ -15,7 +15,7 @@
 | **Codex** | `docs/agent/AGENT-SPLIT.md` | 维持原**只读验证**分工：可读、可 `grep`、可写 `docs/**`；不写源码、不跑构建、不跑实机 |
 | **其他宿主** | 先向用户确认 | **不得**把 `AGENTS-kimi.md` 或 `AGENTS-dsh.md` 当成自己的规则 |
 
-- `docs/agent/AGENTS-dsh.md` = **DSH 的规则正本**（2026-10-24 起从旧根规则文件迁入；同日按用户裁决清掉非 DSH 内容 —— WSL 口径、路径转译、跨宿主的派活工具说明一律删除，只留实际工作流裁决）。目录内另有历史留存：原根规则文件备份 `AGENTS.md.bak-a-plan-183829` 经 `docs/agent/AGENTS-full.md` 逐字留存。当前 `AGENTS-dsh.md` SHA-256 `0aa0fa397472dbe620fa16d30217440b4cf745eba7c91b4a06b2f4dd23119905`（CRLF，307 行 / 49,086 B）。
+- `docs/agent/AGENTS-dsh.md` = **DSH 的规则正本**（2026-10-24 起从旧根规则文件迁入；同日按用户裁决清掉非 DSH 内容 —— WSL 口径、路径转译、跨宿主的派活工具说明一律删除，只留实际工作流裁决）。目录内另有历史留存：原根规则文件备份 `AGENTS.md.bak-a-plan-183829` 经 `docs/agent/AGENTS-full.md` 逐字留存。当前 `AGENTS-dsh.md` SHA-256 `dbabf7e325c3a5af735ba97861ce4ee4078637eb9a25f765768049ad9d0b71a5`（纯 LF，344 行 / 61,628 B；2026-11-15 复核）。
 - `docs/agent/AGENTS-dsh-linux.md` = **DSH 在 Linux 原生宿主的规则正本**（2026-10-31 起；逐条 Linux 化，Windows 口径保留在 `AGENTS-dsh.md` 作历史正本）。Linux 与 Windows 冲突时各读自己的正本；共同红线与索引仍以本文件为准。
 - Kimi 当前接手文档：`docs/handover-2026-10-24-kimi-takeover.md`；Kimi 当前工程参考：`docs/agent/PROJECT-REFERENCE.md`。
 
@@ -28,21 +28,29 @@
 5. **互斥锁**：写文件或启动 Gradle 前检查 `F:/MCProject/.agent-locks/`（Linux：`/mnt/f/MCProject/.agent-locks/`）；Kimi 用 `kimi.lock`、DSH 用 `dsh.lock`；尊重对方的活跃锁，结束只清理自己的锁。
 6. **不代改他人职责**：模组源码 / 资源 / 版本号 / 依赖 / 发布配置的改动，按所属宿主的规则文件走。
 7. **没有详细测试就没有发布版本**：未完成本地详细测试与实机冒烟取证的版本一律不得作为发布版本；生产版本的 push / tag / Release / CurseForge 上传必须是整条流程的最后一步（2026-11-02 用户裁决）。
+8. **早提交、勤提交**：每完成一个可独立验证的改动单元（功能 / 修复 / 文档 / 规则 / 版本号），**立即本地提交**，不得把多轮改动堆在工作树里等批量提交；一个提交只做一个可描述、可回滚的变更，提交信息必须如实写明改动面与验证读数；默认仍**不 push**（见第 3 条）。（2026-11-07 用户裁决）
+9. **单写者 + 实机互斥**：同一时刻**一个文件只能有一个写者**（主 Agent / 子代理 / teammate 不得并发写同一文件；并行时按互斥写作用域切分，重叠即停手重切）；测试台端口（`25585` AutoJS / `25565` 游戏 / `25575` fabric RCON）**同一时刻只允许一条线**，一旦发现**其他实机测试正在进行**，**必须搁置本轮实机测试并立即告知用户**，不等待、不排期、不重试、不抢端口。（2026-11-07 用户裁决）
 
 ## 三、按需文档索引
 
 | 需要什么 | 去哪里 |
 |---|---|
-| 工程拓扑、四条线基线、目录职责、常用命令 | `docs/agent/PROJECT-REFERENCE.md` |
+| 工程拓扑、各线基线、目录职责、常用命令 | `docs/agent/PROJECT-REFERENCE.md` |
 | 当前接手 / 交班 | Kimi：`docs/handover-2026-10-24-kimi-takeover.md`；DSH：`docs/handover-*.md` 中最新一份 + `docs/handover-new-session-context.md` |
 | Linux 真机适配与迁移（2026-10-31） | `docs/handover-2026-10-31-native-linux-migration.md`（原生 Linux 实测、盘符重映射、游戏测试资产接管 + 剩余 checklist）；规则见 `docs/agent/AGENTS-dsh-linux.md` |
 | NTFS 双系统工作树 / Windows 互操作 | `docs/handover-2026-10-31-native-linux-migration.md`（`/mnt/f` 同盘、大小写与换行口径、锁与并发）；旧副本同步脚本 `scripts/dev/rsync-original.sh` 已停用 |
 | 规则全文（逐批历史、领域规格） | `docs/agent/AGENTS-full.md`；标题→行号总表 `docs/agent/AGENTS-TOC.md` |
 | 宿主分工矩阵、互斥、冲突处理 | `docs/agent/AGENT-SPLIT.md` |
-| 立牌 / 物品的英文与日文命名（wiki 角色人名，禁机翻） | `docs/agent/AGENTS-full.md`〈立牌 / 物品英日命名规则〉（L4116 起）；权威表 `tools/sign_display_names.json`；门禁 `python tools/verify_sign_display_names.py` |
+| 立牌 / 物品的英文与日文命名（wiki 角色人名，禁机翻） | `docs/agent/AGENTS-full.md`〈立牌 / 物品英日命名规则〉（L4137 起；行号以 docs/agent/AGENTS-TOC.md 为准）；权威表 `tools/sign_display_names.json`；门禁 `python tools/verify_sign_display_names.py` |
 | DSH 委派 runbook | `docs/agent/delegation-runbook.md` |
 | 规则库自身说明 | `docs/agent/README.md` |
 | Linux 测试台（bash） | `scripts/test/linux/README.md`（`env.sh` / `launch.sh` / `stop.sh`）；Linux 规则正本的〈测试台现状（Linux）〉一节 |
-| 桌面控制 / 游戏内注入通道 | `docs/agent/AGENTS-dsh-linux.md` 的〈桌面控制与实机通道（Wayland）〉与〈AutoJS 运行时通道〉；DSH MCP serverName `computer-use-linux` / `screen-ocr` / `autojs`（2026-10-31 已注册，端点没起时 disconnected 属环境问题） |
+| 桌面控制 / 游戏内注入通道 | Windows 当前 DSH：`mcp__wincu__windows_computer_use_*`（详见 `docs/agent/AGENTS-dsh.md` 第 10 条）；Linux 宿主见 `docs/agent/AGENTS-dsh-linux.md` 的〈桌面控制与实机通道（Wayland）〉与〈AutoJS 运行时通道〉（`computer-use-linux` / `screen-ocr` / `autojs` 仅 Linux 注册） |
 
-> 本文件只放「分派 + 共同红线 + 索引」。宿主专用的工作方式（额度口径、委派细节、角色设定）、逐批历史与完整领域规格**都不放在这里**，一律留在各自的规则文件里，按需读取。
+## 四、工具约定（图片 / 脚本）
+
+- 图片处理一律用 ImageMagick 7：`C:/Program Files/ImageMagick-7.1.2-Q16-HDRI/magick.exe`（PATH 里有 `magick` 也可）；裁剪、拼图、缩放、格式转换都走它，不要改用 Python/PIL 或系统画图工具。
+- **严格禁用 Windows PowerShell**（含 `powershell.exe` / `pwsh` / `Start-Process` / `Get-Process` 等）；命令一律走 bash（MSYS）或 DSH 的专用工具。MSYS 下引用 Windows 路径用 `/f/...`；需要原样传 `/PID` 这类参数时加 `MSYS_NO_PATHCONV=1`。
+- 例：`magick in.png -crop 560x520+600+120 +repage out.png`；`magick montage a.png b.png -tile 2x2 -geometry +4+4 sheet.png`；`magick identify out.png`。
+
+> 本文件只放「分派 + 共同红线 + 索引 + 工具约定」。宿主专用的工作方式（额度口径、委派细节、角色设定）、逐批历史与完整领域规格**都不放在这里**，一律留在各自的规则文件里，按需读取。

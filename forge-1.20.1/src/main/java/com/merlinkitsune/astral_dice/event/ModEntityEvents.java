@@ -45,5 +45,14 @@ public final class ModEntityEvents {
                 LivingEntity.createLivingAttributes()
                         .add(Attributes.MAX_HEALTH, 50.0D)
                         .build());
+
+        // Syke 触手(2026-10-29;2026-10-29 移植到本线):20 点生命 + 满击退抗性。
+        // 击退抗性 1.0 = 100% 抗击退,与「扎根在地上的触手」形态一致,不改变受伤 / 动画逻辑
+        // (动画触发由 entity/SykeTentacleEntity#hurt 自己完成)。
+        event.put(ModEntityTypes.SYKE_TENTACLE.get(),
+                LivingEntity.createLivingAttributes()
+                        .add(Attributes.MAX_HEALTH, 20.0D)
+                        .add(Attributes.KNOCKBACK_RESISTANCE, 1.0D)
+                        .build());
     }
 }

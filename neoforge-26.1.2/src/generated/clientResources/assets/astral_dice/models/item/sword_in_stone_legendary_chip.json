@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "astral_dice:item/sword_in_stone_legendary_chip"
+  }
+}

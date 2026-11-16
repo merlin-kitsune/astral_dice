@@ -8,6 +8,8 @@ import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import com.merlinkitsune.astral_dice.component.WeaponEnhancement;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
+import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
+import com.merlinkitsune.astral_dice.item.CounterStateManager;
 import com.merlinkitsune.astral_dice.item.RenShieldManager;
 import com.merlinkitsune.astral_dice.item.sign.BaseSignItem;
 import com.merlinkitsune.astral_dice.item.sign.MosesSignItem;
@@ -71,6 +73,8 @@ import com.merlinkitsune.astral_dice.combat.DiceCombatContext;
 import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
 import com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem;
 import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
+import com.merlinkitsune.astral_dice.combat.DiceCombatAbilities;
+import com.merlinkitsune.astral_dice.combat.DiceCombatParticipants;
 import com.merlinkitsune.astral_dice.item.card.FateGuidanceCardItem;
 import com.merlinkitsune.starengine.combat.HostileTargets;
 import com.merlinkitsune.starengine.combat.PartyRelations;
@@ -643,11 +647,14 @@ public class DiceCombatEvents {
         if (isInternalAoe()) return;
 
         if (!(directEntity instanceof Player player)) {
-            // 生物近战攻击玩家:走**独立**骰战路径(2026-09-26 新增)。
-            // ⚠️ 该路径不进入下方玩家攻击逻辑(DiceCombatContext 要求 Player 攻击者),
-            //    也**不触发骰神赐福** —— 赐福只能由玩家主动近战攻击触发。
-            if (directEntity instanceof Mob mob && target instanceof Player mobTarget) {
-                resolveMobMeleeAttack(mob, mobTarget, event, source, victimFactor);
+            // 生物近战:①「生物打玩家」照旧走**独立**骰战路径(2026-09-26 新增);
+            //          ②经注册的「骰战参与者」(DiceCombatParticipants)可打任意 LivingEntity(2026-10-28 新增)。
+            // ⚠️ 该路径不进入下方玩家攻击逻辑(DiceCombatContext 要求 Player 攻击者)。
+            //    未注册任何参与者时 isParticipant 恒 false ⇒ 行为与本改动前逐值一致。
+            //    参与者赐福落在本路径**末尾**(加在参与者自己身上,见 resolveMobMeleeAttack 末尾,2026-10-28 用户裁决)。
+            if (directEntity instanceof Mob mob
+                    && (target instanceof Player || DiceCombatParticipants.isParticipant(mob))) {
+                resolveMobMeleeAttack(mob, target, event, source, victimFactor);
             }
             return;
         }
@@ -782,6 +789,10 @@ public class DiceCombatEvents {
             AdvancedPeripheralsChipItem.onBlessingStart(player);
             // 会员推荐信筹码:触发骰神赐福时,获得一张随机卡牌
             com.merlinkitsune.astral_dice.item.chip.MemberRecommendationChipItem.onBlessingStart(player);
+            // 石中剑-精良:赐福触发 → 队伍圣剑守护 1:00
+            com.merlinkitsune.astral_dice.item.chip.HolySwordGuardChipItem.onBlessingStart(player);
+            // 完美树枝:赐福触发 → 超强精力 +1 层
+            com.merlinkitsune.astral_dice.item.chip.PerfectBranchChipItem.onBlessingStart(player);
             // 大当家立牌:触发骰神赐福 → 记录触发时刻;养精蓄锐满层则消耗 2 层并置位本次攻击的溅射
             fenSplashArmed = SignHookDispatcher.fireBlessingTriggered(player);
             // 蛟龙立牌(mamushi)专属战斗牌「撕咬」:触发骰神赐福时,每张**装备中**的撕咬 +1 层觉醒并锁存加成
@@ -795,7 +806,7 @@ public class DiceCombatEvents {
         // === 骰战模型适用闸门(2026-09-26 用户裁决:骰战对玩家常驻,"是否装备骰子"不再是门槛) ===
         // · 装备骰子 —— 沿用旧口径:必须处于骰神赐福生效时(赐福由本次攻击或既有 buff 提供);
         // · 未装备骰子 —— **不再退出骰战**:只要目标属于骰战适用目标(isBlessingTarget)即以
-        //   "双方骰点恒为 0"参与结算 —— 与"生物→玩家"路径的 opposed = hasDice(target) 对称。
+        //   "双方骰点恒为 0"参与结算 —— 与"生物→玩家"路径的 opposed = 任一方有骰 对称。
         //   一方没有骰点,另一方也不得掷:攻击方骰点见下方 baseDice 归零;防御方(生物/玩家)
         //   骰点见 DEFENSE 段的 opposed 判定。
         if (diceStack == null) {
@@ -949,9 +960,21 @@ public class DiceCombatEvents {
         double rawAttackDamage = player.getAttributeValue(Attributes.ATTACK_DAMAGE);
         float attackCooldown = diceBattleAttackStrengthScale(player);
         double attackPower = rawAttackDamage * (0.2 + attackCooldown * attackCooldown * 0.8);
+        // 骰战属性钩子:上下文只构造一次,后续各阶段复用。display=false 才是真实结算。
+        com.merlinkitsune.astral_dice.api.combat.CombatStatContext statContext =
+                new com.merlinkitsune.astral_dice.api.combat.CombatStatContext(player, target, source, false);
+        attackPower = com.merlinkitsune.astral_dice.api.combat.CombatStatHooks.apply(statContext,
+                com.merlinkitsune.astral_dice.api.combat.CombatStat.ATTACK,
+                com.merlinkitsune.astral_dice.api.combat.CombatStatStage.BASE, attackPower);
         for (var modifier : com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.attackModifiers()) {
             attackPower = modifier.apply(ctx, attackPower);
         }
+        attackPower = com.merlinkitsune.astral_dice.api.combat.CombatStatHooks.apply(statContext,
+                com.merlinkitsune.astral_dice.api.combat.CombatStat.ATTACK,
+                com.merlinkitsune.astral_dice.api.combat.CombatStatStage.ADDITIVE, attackPower);
+        attackPower = com.merlinkitsune.astral_dice.api.combat.CombatStatHooks.apply(statContext,
+                com.merlinkitsune.astral_dice.api.combat.CombatStat.ATTACK,
+                com.merlinkitsune.astral_dice.api.combat.CombatStatStage.MULTIPLICATIVE, attackPower);
         int attackCardSum = ctx.attackCardSum;
         boolean hasShadowStrike = ctx.hasShadowStrike;
         boolean hasFullPower = ctx.hasFullPower;
@@ -1092,6 +1115,10 @@ public class DiceCombatEvents {
                                     com.merlinkitsune.starengine.combat.TargetCategory.classify(target),
                                     effectiveArmor, toughness);
                 }
+                // 防御力 BASE 在公式之后、防御骰/防御牌加入之前替换初始值。
+                defensePower = com.merlinkitsune.astral_dice.api.combat.CombatStatHooks.apply(statContext,
+                        com.merlinkitsune.astral_dice.api.combat.CombatStat.DEFENSE,
+                        com.merlinkitsune.astral_dice.api.combat.CombatStatStage.BASE, defensePower);
                 defensePower += defenseBaseDice + ctx.defenseCardSum;
             }
 
@@ -1101,9 +1128,23 @@ public class DiceCombatEvents {
             if (ctx.padmanDefBypass && !skipDefense) {
                 defensePower = defenseBaseDice + ctx.defenseCardSum;
             }
+            // 防御力 ADDITIVE / MULTIPLICATIVE / FINAL:在破防替换之后、骰战解析器之前。
+            defensePower = com.merlinkitsune.astral_dice.api.combat.CombatStatHooks.apply(statContext,
+                    com.merlinkitsune.astral_dice.api.combat.CombatStat.DEFENSE,
+                    com.merlinkitsune.astral_dice.api.combat.CombatStatStage.ADDITIVE, defensePower);
+            defensePower = com.merlinkitsune.astral_dice.api.combat.CombatStatHooks.apply(statContext,
+                    com.merlinkitsune.astral_dice.api.combat.CombatStat.DEFENSE,
+                    com.merlinkitsune.astral_dice.api.combat.CombatStatStage.MULTIPLICATIVE, defensePower);
+            defensePower = com.merlinkitsune.astral_dice.api.combat.CombatStatHooks.apply(statContext,
+                    com.merlinkitsune.astral_dice.api.combat.CombatStat.DEFENSE,
+                    com.merlinkitsune.astral_dice.api.combat.CombatStatStage.FINAL, defensePower);
 
             // 骰战层:库统一口径「max(绝对下限 1 点, 攻击点 ×15%, 攻击点 − 防御点)」
             // (2026-09-26 裁决⑥:相对下限入库 —— 修「高防+低攻档位恒定触底 ⇒ 任何修饰器读数都退化为 0」)
+            // 攻击力 FINAL:进入骰战解析器之前的最后修正。
+            attackPower = com.merlinkitsune.astral_dice.api.combat.CombatStatHooks.apply(statContext,
+                    com.merlinkitsune.astral_dice.api.combat.CombatStat.ATTACK,
+                    com.merlinkitsune.astral_dice.api.combat.CombatStatStage.FINAL, attackPower);
             finalDmg = com.merlinkitsune.starengine.combat.DiceBattleResolver
                     .resolve(attackPower, defensePower);
 
@@ -1301,7 +1342,7 @@ public class DiceCombatEvents {
 
     // 攻击牌耐久消耗(仅在触发骰神赐福的那次攻击执行一次;防御牌/蓄力不消耗)。
     // 普通近战触发与反击伤害注入共用(反击未赐福时作为触发攻击消耗一次耐久)。
-    private static void consumeAttackCardDurabilityOnce(Player player, ItemStack diceStack, WeaponEnhancement enhancement) {
+    private static void consumeAttackCardDurabilityOnce(LivingEntity player, ItemStack diceStack, WeaponEnhancement enhancement) {
         if (diceStack == null || diceStack.isEmpty() || enhancement == null
                 || enhancement.appliedStones().isEmpty()) return;
         List<AppliedStone> newStones = new ArrayList<>();
@@ -1347,7 +1388,13 @@ public class DiceCombatEvents {
     // 防御方未装备骰子 / 无防御牌 ⇒ 无事发生。
     // ⚠️ 触发口径 = **每一次**受骰战攻击(不按赐福周期计数) —— 本方法取代原先
     //    「按装备顺序只扣第一张」的实现,以及更早的「每赐福周期一次、所有牌各扣 1」实现。
-    private static void consumeAllDefenseCardDurability(Player defender) {
+    private static void consumeAllDefenseCardDurability(LivingEntity defenderEntity) {
+        // G6(2026-11-08):经 DiceCombatParticipants 注册的「类玩家」生物可以装骰子与战斗牌,
+        // 与玩家同口径扣防御牌耐久并返还费用;未注册的生物仍然空转(回归红线)。
+        boolean participantDefender = !(defenderEntity instanceof Player)
+                && DiceCombatParticipants.isParticipant(defenderEntity);
+        if (!(defenderEntity instanceof Player) && !participantDefender) return;
+        LivingEntity defender = defenderEntity;
         if (defender.level().isClientSide()) return;
         var curios = CuriosCompat.getCuriosInventory(defender);
         if (curios.isEmpty()) return;
@@ -1387,11 +1434,13 @@ public class DiceCombatEvents {
                 newStones));
     }
 
-    // === 生物近战攻击玩家:独立骰战结算(2026-09-26 新增) ===
+    // === 生物近战攻击:独立骰战结算(2026-09-26 新增;2026-10-28 起含「骰战参与者」) ===
     // 与玩家攻击路径的差异:
     //   · 攻击方是生物 ⇒ 无玩家上下文(DiceCombatContext 要求 Player 攻击者),故不走攻击修饰器链;
-    //   · **不触发骰神赐福**(赐福只能由玩家主动近战攻击触发);
-    //   · 生物无骰子槽位 ⇒ 只要「玩家装备骰子」即视为对骰成立,生物恒掷 1d6,玩家掷防御骰。
+    //   · 赐福:普通生物不触发;**骰战参与者**(经 DiceCombatParticipants 注册)在满足
+    //     「攻击方带骰 && 未持有赐福 && isBlessingTarget」时给**自己**上赐福(见方法末尾,2026-10-28 用户裁决);
+    //   · 对骰成立条件:目标带骰(照旧) ∪ 参与者攻击方带骰;参与者掷自己的骰(非玩家恒 1d6),
+    //     目标带骰则目标掷防御骰。未注册参与者时与改动前逐值一致。
     // 攻击力 = 生物初始攻击力(敌对 4 / 中立 3 / 被动 0 / 友好 0)
     //        + 生物自身 ATTACK_DAMAGE 属性值(经附魔加伤链) + 生物骰点
     // 防御力 = 玩家防御力公式 + 玩家防御骰点 + 战斗牌点数
@@ -1400,31 +1449,60 @@ public class DiceCombatEvents {
     //    1.20.1 的 LivingDamageEvent 在 actuallyHurt 内、护甲 → 抗性 → 保护三步减免**之后**派发 ⇒
     //    该值当加项用等于①护甲被计入两次、②抗性/保护经它泄漏进攻击项 —— 属结构性缺陷,非取舍。
     //    移除后生物攻击点回归「初始 + 属性值(含武器附魔)」的干净口径,抗性/保护改由受击方乘算因子表达。
-    private static void resolveMobMeleeAttack(Mob mob, Player target, LivingDamageEvent event,
+    private static void resolveMobMeleeAttack(Mob mob, LivingEntity target, LivingDamageEvent event,
                                               DamageSource source, double victimFactor) {
         if (mob.level().isClientSide() || target.level().isClientSide()) return;
         // 仅近战:直接伤害实体必须就是生物本身(弓箭/三叉戟/药水等投掷物的 directEntity 不是 Mob,
         // 已在入口分流处被排除;此处再排除「生物发射但 directEntity 仍指向本身」的少数特殊攻击)。
         if (source.getDirectEntity() != mob) return;
 
-        // 对骰成立条件:玩家装备骰子。未装备 ⇒ 双方均不掷,退化为按基础攻防值直接结算。
-        boolean opposed = hasDice(target);
+        // 自伤(参与者以自己为目标)不结算:与玩家路径 isDiceBattleSettledDamage 里 attacker == target 排除同口径。
+        if (target == mob) return;
+
+        // 对骰成立条件:任一方装备骰子(2026-10-28 放宽到「骰战参与者」)。
+        // ⚠️ attackerHasDice **必须**与 isParticipant 短路:未注册的怪即便戴着骰子也不得让 opposed 变 true,
+        //    否则「没有参与者 = 行为逐值不变」这条回归红线会被打破。
+        // 2026-10-28:一次性取出双方骰子栈(骰子能力注册表按物品栈匹配);未注册攻击者不做第二次遍历。
+        ItemStack attackerDie = DiceCombatParticipants.isParticipant(mob)
+                ? CurioSlotUtil.findFirstCurioMatching(mob, DiceCurioItem::isDiceItem)
+                : ItemStack.EMPTY;
+        ItemStack defenderDie = CurioSlotUtil.findFirstCurioMatching(target, DiceCurioItem::isDiceItem);
+        boolean attackerHasDice = !attackerDie.isEmpty();
+        boolean targetHasDice = !defenderDie.isEmpty();
+        boolean opposed = targetHasDice || attackerHasDice;
         int mobRoll = 0;
         int playerRoll = 0;
         int defenseCardSum = 0;
-        if (opposed) {
+        if (attackerHasDice) {
+            // 参与者带骰 ⇒ 掷她自己的骰(非玩家先均匀 1d6,再由 DiceCombatAbilities 应用骰子能力)
+            mobRoll = rollCombatDieFor(mob, attackerDie, target, true);
+        } else if (opposed) {
             mobRoll = rollDice(6);
-            playerRoll = rollCombatDie(target);
-            var targetCurios = CuriosCompat.getCuriosInventory(target);
+        }
+        if (targetHasDice) {
+            // 防守方(任意 LivingEntity)有骰即掷;非玩家同样走能力表
+            playerRoll = rollCombatDieFor(target, defenderDie, mob, false);
+        }
+        if (opposed && target instanceof Player playerDefender) {
+            var targetCurios = CuriosCompat.getCuriosInventory(playerDefender);
             if (targetCurios.isPresent()) {
                 var diceResult = targetCurios.get().findFirstCurio(DiceCurioItem::isDiceItem);
                 if (diceResult.isPresent()) {
                     ItemStack dice = diceResult.get().stack();
                     WeaponEnhancement enh = ModDataComponents.WEAPON_ENHANCEMENT.getOrDefault(dice, null);
                     if (enh != null) {
-                        defenseCardSum = sumEquippedDefenseCardPoints(target, dice, enh);
+                        defenseCardSum = sumEquippedDefenseCardPoints(playerDefender, dice, enh);
                     }
                 }
+            }
+        } else if (opposed && DiceCombatParticipants.isParticipant(target)) {
+            DiceCurioItem.refreshChipSlotCountForEntity(target);
+            // G6(2026-11-08)：注册生物作防御方时同样掷防御牌（骰子与其战斗牌挂在同一个骰子栈上）
+            WeaponEnhancement defenderEnh = defenderDie.isEmpty()
+                    ? null
+                    : ModDataComponents.WEAPON_ENHANCEMENT.getOrDefault(defenderDie, null);
+            if (defenderEnh != null) {
+                defenseCardSum = sumEquippedDefenseCardPoints(target, defenderDie, defenderEnh);
             }
         }
 
@@ -1448,9 +1526,49 @@ public class DiceCombatEvents {
                         + mobAttackAttr.getValue()
                         + enchantDamageBonus(mob, target);
         double mobAttack = attackPoints + mobRoll;
-        double playerDefense = com.merlinkitsune.starengine.combat.CombatFormula.playerDefense(
-                com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.effectiveArmorPoints(target), target.getAttributeValue(Attributes.ARMOR_TOUGHNESS))
-                + playerRoll + defenseCardSum;
+        // === G6(2026-11-08)：注册的骰战参与者按玩家口径吃「骰战攻击修饰器 + 攻击牌」 ===
+        // 只在 DiceCombatParticipants 命中时执行；未注册生物整段跳过 ⇒ 既有行为逐值不变。
+        WeaponEnhancement attackerEnh = attackerDie.isEmpty()
+                ? null
+                : ModDataComponents.WEAPON_ENHANCEMENT.getOrDefault(attackerDie, null);
+        DiceCombatContext g6Ctx = null;
+        if (DiceCombatParticipants.isParticipant(mob)) {
+            // G6(2026-11-09 实机取证)：非玩家拿不到 Curios 的 curioTick(5.x 只给玩家派发)⇒ 参战第一击就地补筹码槽。
+            DiceCurioItem.refreshChipSlotCountForEntity(mob);
+            WeaponEnhancement enhForCtx = attackerEnh != null ? attackerEnh : WeaponEnhancement.EMPTY;
+            DiceCombatContext participantCtx = new DiceCombatContext(
+                    mob, target, null, mobRoll, attackerDie, enhForCtx, false, false,
+                    enhForCtx.starLevel(), 0);
+            double modified = mobAttack;
+            for (var modifier : DiceCombatModifiers.attackModifiers()) {
+                modified = modifier.apply(participantCtx, modified);
+            }
+            mobAttack = modified + participantCtx.attackCardSum;
+            g6Ctx = participantCtx;
+            if (attackerEnh != null) {
+                // ⚠️ attackerDie 来自 CurioSlotUtil.findFirstCurioMatching（返回 .copy()）
+                //     ⇒ 在副本上扣耐久会随副本丢弃；必须对**真实栈**就地写回（2026-11-09 实机取证）。
+                CurioSlotUtil.mutateFirstCurioMatching(mob, DiceCurioItem::isDiceItem, live -> {
+                    WeaponEnhancement liveEnh = ModDataComponents.WEAPON_ENHANCEMENT.getOrDefault(live, null);
+                    if (liveEnh != null) {
+                        consumeAttackCardDurabilityOnce(mob, live, liveEnh);
+                    }
+                });
+            }
+        }
+        double playerDefense;
+        if (target instanceof Player playerDefender) {
+            playerDefense = com.merlinkitsune.starengine.combat.CombatFormula.playerDefense(
+                    com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.effectiveArmorPoints(playerDefender),
+                    playerDefender.getAttributeValue(Attributes.ARMOR_TOUGHNESS))
+                    + playerRoll + defenseCardSum;
+        } else {
+            // 非玩家防守方:库 baseDefense 已按阵营给出基础防御(四阵营常量全 0、不含护甲/韧性),
+            //   这里**不得**再叠加 effectiveArmorPoints,否则护甲被计入两次。
+            // G6(2026-11-08)：注册参与者作防御方时，除基础防御与防守骰外还要计入她掷出的防御牌点数。
+            playerDefense = com.merlinkitsune.starengine.combat.TargetBattleStats.baseDefense(target)
+                    + playerRoll + defenseCardSum;
+        }
 
         float finalDmg = com.merlinkitsune.starengine.combat.DiceBattleResolver
                 .resolve(mobAttack, playerDefense);
@@ -1481,23 +1599,49 @@ public class DiceCombatEvents {
         //   该倍率由 FateGuidanceCardItem 在 LivingHurtEvent 捕获进**目标侧**附件,只有「玩家攻击」路径的
         //   内置外部因子会乘;生物攻击者永远没有「命运的指引」⇒ 按全额 ratio 应用,用后清零(与内置因子同语义,
         //   避免残留到下一击)。
-        //   本方法签名里 target 已是 Player(生物近战只打玩家)⇒ 不做 instanceof 模式匹配。
-        float curseRatio = ModAttachments.getDiceCurseRatio(target);
-        if (curseRatio > 1.0f) {
-            double cursePre = finalDmg;
-            finalDmg *= curseRatio;
-            // AP_CURSE_APPLY(机制证据,2026-10-27):证明捕获到的倍率确实乘进了生物近战骰战终值。
-            LOGGER.info("AP_CURSE_APPLY:channel=mob:player={}:ratio={}:pre={}:post={}",
-                    target.getName().getString(), curseRatio, cursePre, finalDmg);
+        // 2026-10-28:七咒倍率是玩家级附件,非玩家防守方(参与者的目标)无此概念 ⇒ 整段限定 Player。
+        if (target instanceof Player playerTarget) {
+            float curseRatio = ModAttachments.getDiceCurseRatio(playerTarget);
+            if (curseRatio > 1.0f) {
+                double cursePre = finalDmg;
+                finalDmg *= curseRatio;
+                // AP_CURSE_APPLY(机制证据,2026-10-27):证明捕获到的倍率确实乘进了生物近战骰战终值。
+                LOGGER.info("AP_CURSE_APPLY:channel=mob:player={}:ratio={}:pre={}:post={}",
+                        playerTarget.getName().getString(), curseRatio, cursePre, finalDmg);
+            }
+            ModAttachments.setDiceCurseRatio(playerTarget, 1.0f);
         }
-        ModAttachments.setDiceCurseRatio(target, 1.0f);
         // N1 + N2:护盾钳制 + 吸收按终值只扣一次(与玩家攻击路径同一出口)
         settleDiceDamage(target, event, finalDmg);
+        // === G6(2026-11-08):参与者的「额外加伤」通道(星光/星币/治愈点三项) ===
+        // 玩家路径在 onLivingDamagePre 里按 ctx 结算 astral_dice:extra_damage;参与者原先只吃攻击力修饰器,
+        // 连带「手电筒-爆闪」这类走本通道的筹码对注册生物整段失效(2026-11-08 实机发现)。此处按同一口径补结算。
+        if (g6Ctx != null && !target.level().isClientSide()) {
+            int g6ExtraDamage = com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.extraDamageOf(g6Ctx);
+            if (g6ExtraDamage > 0) {
+                int savedInvulnerable = target.invulnerableTime;
+                beginAoe();
+                try {
+                    target.invulnerableTime = 0;
+                    target.hurt(com.merlinkitsune.astral_dice.damage.ModDamageTypes.extraDamage(
+                            target.level(), mob), g6ExtraDamage);
+                } finally {
+                    target.invulnerableTime = savedInvulnerable;
+                    endAoe();
+                }
+            }
+        }
         // 跳数字:与玩家攻击同一出口(登记组别,由 DamageNumberAggregator 在管线终值上取值)
         DamageNumberAggregator.tag(target, source, DamageNumberAggregator.Group.ATTACK);
         // 防御牌耐久:每次受到骰战攻击,防御方装备的所有防御牌各扣 1 点(仅在对骰成立时)
         if (opposed) {
             consumeAllDefenseCardDurability(target);
+        }
+        // 2026-10-28 用户裁决:骰战参与者同样触发骰神赐福,加在参与者**自己**身上;
+        //   触发条件与效果参数沿用玩家侧(带骰 && 未持有 && isBlessingTarget),但不跑玩家专属筹码/立牌/附件标记。
+        if (attackerHasDice && !mob.hasEffect(ModEffects.DICE_BLESSING.get()) && isBlessingTarget(target, mob)) {
+            mob.addEffect(new MobEffectInstance(ModEffects.DICE_BLESSING.get(),
+                    GameplayConstants.DICE_BLESSING_DURATION_TICKS, 0, false, false, true));
         }
     }
 
@@ -1632,19 +1776,12 @@ public class DiceCombatEvents {
                 .getDamageProtection(victim.getArmorSlots(), source);
     }
 
-    /** 玩家是否装备骰子(curios 骰子槽)。 */
-    private static boolean hasDice(Player player) {
-        var curios = CuriosCompat.getCuriosInventory(player);
-        if (curios.isEmpty()) return false;
-        return curios.get().findFirstCurio(DiceCurioItem::isDiceItem).isPresent();
-    }
-
     /**
      * 已装备骰子的战斗牌点数合计(与 {@code DiceCombatModifiers} 的防御卡修饰器同源口径:
      * 遍历全部已装卡逐张走 {@link CardRegistry#roll};玻璃骰子取最大值)。
      * 供生物攻击玩家时计算玩家侧战斗牌防御点数使用。
      */
-    private static int sumEquippedDefenseCardPoints(Player defender, ItemStack dice, WeaponEnhancement enh) {
+    private static int sumEquippedDefenseCardPoints(LivingEntity defender, ItemStack dice, WeaponEnhancement enh) {
         DiceCombatContext ctx = new DiceCombatContext(
                 defender, defender, null, 0, dice, enh, false, false, 0, 0);
         ctx.targetEnhancement = enh;
@@ -1716,6 +1853,8 @@ public class DiceCombatEvents {
         com.merlinkitsune.astral_dice.item.chip.BankCardUnlimitedChipItem.onBlessingEnd(player);
         // 大碗炖肉筹码:赐福结束后,16 格范围内所有友方目标 +1 治愈并恢复 2 点生命值
         com.merlinkitsune.astral_dice.item.chip.BigBowlStewChipItem.onBlessingEnd(player);
+        // 石中剑-传说:赐福结束 → 自身状态层数 × 2 的魔法伤害(24 格内敌对目标,最低 4)
+        com.merlinkitsune.astral_dice.item.chip.SwordInStoneLegendaryChipItem.onBlessingEnd(player);
         // 骇客立牌:赐福结束刷新被动(攻击/防御,覆盖旧类型);
         // 蛟龙立牌(mamushi):赐福结束清除撕咬加成锁存(立牌 tick 另有"无赐福且锁存为真 ⇒ 清"的兜底)。
         // 两者统一走立牌钩子分发(按玩家当前装备的立牌 instanceof 派发,新增立牌无需改本文件)。
@@ -1955,8 +2094,7 @@ public class DiceCombatEvents {
      *  ② 直接伤害实体是玩家:必须近战武器、非**法伤**(法伤走 SpellDamageRegistry 加成链)、
      *     不是自伤;装备骰子 ⇒ 看是否赐福激活(骰战入口同判据),未装备 ⇒ 看目标是否为
      *     「骰神赐福合法目标」(入口的 diceStack == null 分支);<br>
-     *  ③ 直接伤害实体是生物且目标是玩家 ⇒ 生物近战 —— {@link #resolveMobMeleeAttack} 无论是否
-     *     对骰成立都会自算并 setAmount,故整条路径都是骰战终值;<br>
+     *  ③ 直接伤害实体是生物:目标是玩家、或该生物是**骰战参与者**(且非自伤)⇒ 生物近战(守卫目标已装备骰子与否不影响入口)。<br>
      *  ④ 其余(投掷物 / 无直接实体 / 环境伤害)⇒ false。<br>
      *  必须连内部窗口一起判:入口在 {@code isInternalAoe() || counterDepth > 0} 时直接 return,
      *  此时骰战**没有**接管金额 => 本判据也必须返回 false,否则那段伤害会丢掉虚弱印记增益。 */
@@ -1979,7 +2117,14 @@ public class DiceCombatEvents {
             if (attackerHasDiceCurio(attacker)) return attacker.hasEffect(ModEffects.DICE_BLESSING.get());
             return isBlessingTarget(target, attacker);
         }
-        return direct instanceof Mob && target instanceof Player;
+        // 2026-10-28:判据必须与骰战入口同源 —— 入口已放宽到「骰战参与者可打任意 LivingEntity」,
+        //   若此处仍只认「生物→玩家」,参与者打非玩家目标时 weak-mark ×1.10 会在 resolveMobMeleeAttack 内
+        //   与 onWeakMarkDamage 叠加成 ×1.21。自伤(攻击者 == 目标)与玩家分支同口径排除。
+        if (direct instanceof Mob attackerMob) {
+            if (attackerMob == target) return false;
+            return target instanceof Player || DiceCombatParticipants.isParticipant(attackerMob);
+        }
+        return false;
     }
 
     // 玩家是否持有骰子(curio 骰子槽)
@@ -2013,6 +2158,19 @@ public class DiceCombatEvents {
             roll = Math.max(roll, 1 + WeaknessRevealEffect.getStacks(roller));
         }
         return roll;
+    }
+
+    /**
+     * 非玩家战斗骰统一入口：玩家沿用既有偏置链（诡异 / 绯红 / 枪匠立牌）；
+     * 非玩家先掷均匀 1d6，再把结果交给 {@link DiceCombatAbilities} 的骰子能力决定是否改写
+     * （内置诡异 / 绯红能力 + 第三方注册能力）。能力只能改骰点，不改结算。
+     */
+    private static int rollCombatDieFor(LivingEntity roller, ItemStack dieStack, LivingEntity opponent,
+                                        boolean attackerSide) {
+        if (roller instanceof Player player) return rollCombatDie(player);
+        int roll = rollDice(6);
+        return DiceCombatAbilities.applyRoll(
+                new DiceCombatAbilities.RollContext(roller, dieStack, opponent, attackerSide, 6, roll));
     }
 
     // ===== 枪械类武器本体(2026-10-03 用户裁决)=====
@@ -2162,14 +2320,25 @@ public class DiceCombatEvents {
     // ⚠️ 试验假人不再在此单列特例 —— 它已由库的 HostileTargets「额外敌对判定」seam 统一计入敌对目标
     // (注入见本类 static 块),故下一行 HostileTargets.isHostile 即覆盖它,与其它调用点口径一致。
     public static boolean isBlessingTarget(LivingEntity target, Player player) {
+        return isBlessingTarget(target, (LivingEntity) player);
+    }
+
+    /**
+     * 骰神赐福触发目标判定的**通用**重载:攻击者可以是任意 LivingEntity(含非玩家的骰战参与者)。
+     *
+     * <p>与 {@link #isBlessingTarget(LivingEntity, Player)} 的唯一差异:玩家目标一侧改用库的
+     * {@link PartyRelations#isSameTeam(Entity, Entity)}「任意实体」口径 —— 非玩家攻击者只可能命中原版计分板
+     * (第三方队伍系统只覆盖玩家),故「同队」判定对非玩家攻击者天然退回「非同队」,玩家攻击者的行为逐值不变。
+     */
+    public static boolean isBlessingTarget(LivingEntity target, LivingEntity attacker) {
         if (target instanceof Player other) {
-            return !PartyRelations.isSameTeam(player, other);
+            return !PartyRelations.isSameTeam(attacker, other);
         }
         if (HostileTargets.isHostile(target)) return true;
-        if (target instanceof Mob mob) {
-            // Boss 允许触发;其余生物仅在被激怒/正在攻击玩家时允许
+        if (target instanceof Mob targetMob) {
+            // Boss 允许触发;其余生物仅在被激怒/正在攻击攻击者时允许
             if (com.merlinkitsune.starengine.item.BossEntityUtil.isBossEntity(target)) return true;
-            return mob.getTarget() == player || mob.isAggressive();
+            return targetMob.getTarget() == attacker || targetMob.isAggressive();
         }
         // 被动/友好生物不允许触发骰神赐福(中立生物已在上面由 HostileTargets 计入)
         return false;
@@ -2346,10 +2515,9 @@ public class DiceCombatEvents {
         injectCounterDamage(player, attacker);
     }
 
-    // 游戏大师立牌(ren)「鼠鼠护盾」自带的一次性反击:带盾玩家被攻击时消耗 1 层,对攻击者注入一次
-    // 现有反击伤害(沿用同一公式)。1.20.1 的 LivingDamageEvent 派发于吸收结算**之后**,
-    // 但它同样只是「伤害已确认」的钩子,与是否被吸收无关 ⇒ **被黄心完全吃掉的一击同样触发**;
-    // 若这一击正好打空黄心,护盾的清空由 RenShieldManager 的每 tick 轮询在稍后完成(先反击、后破盾)。
+    // 游戏大师立牌(ren)「鼠鼠护盾」与金鲤立牌(souri)共用的 10 秒反击状态(2026-11-12 裁决):
+    // 只对**近战**且非友方(非玩家/非女仆)的攻击者生效;首次命中有可激活次数时进入 200t 状态,
+    // 状态期间每次近战命中都免费反击,不再扣层、不再刷新时长。金鳞只在状态成功激活时 +1。
     @SubscribeEvent(priority = EventPriority.NORMAL)
     public static void onRenShieldCounter(LivingDamageEvent event) {
         LivingEntity victim = event.getEntity();
@@ -2358,18 +2526,20 @@ public class DiceCombatEvents {
         if (isInCounterChain()) return;
         if (!(victim instanceof Player player)) return;
         if (!player.isAlive()) return;
-        if (!player.hasEffect(ModEffects.REN_SHIELD.get())) return;
-        if (ModAttachments.getRenCounterCharges(player) <= 0) return;
         if (!(event.getSource().getEntity() instanceof LivingEntity attacker)) return;
         if (attacker == player) return;
-        // 2026-09-29 收紧(与效果文案「佩戴者被攻击时消耗该层」对齐):只有**敌对目标**的攻击
-        // 才消耗反击层数。视者 = 带盾玩家(player);于是队友 / 已驯服宠物 / 未激怒中立生物的
-        // 攻击不再误消耗层数、也不再把反击打在友军身上(自伤已由上一行排除)。
-        if (!PartyRelations.isHostileTo(player, attacker)) return;
-        // 一次性充能:先消耗层数(并同步摘掉「反击」图标),再注入伤害
-        ModAttachments.setRenCounterCharges(player, 0);
-        RenShieldManager.refreshCounterEffect(player);
+        if (!CounterStateManager.isMeleeDamage(event.getSource())) return;
+        if (CounterStateManager.isFriendlyTarget(attacker)) return;
+        boolean wasActive = CounterStateManager.isActive(player);
+        if (!wasActive) {
+            boolean souri = com.merlinkitsune.astral_dice.item.sign.SouriSignItem.isEquipped(player);
+            boolean z3000 = com.merlinkitsune.astral_dice.item.sign.Z3000SignItem.isEquipped(player);
+            if (!player.hasEffect(ModEffects.REN_SHIELD.get()) && !souri && !z3000) return;
+            if (!CounterStateManager.tryActivateWithCharge(player)) return;
+        }
         injectCounterDamage(player, attacker);
+        LOGGER.info("[Astral Dice][Counter] AP_COUNTER_FIRE player={} attacker={} free={}",
+                player.getName().getString(), attacker.getName().getString(), wasActive);
         if (player instanceof ServerPlayer sp) {
             ModNetwork.sendToPlayer(sp, new ModNetwork.ActionBarMessage(
                     Component.translatable("msg.astral_dice.ren_counter_fired")
@@ -2492,3 +2662,4 @@ public class DiceCombatEvents {
     }
 
 }
+

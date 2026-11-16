@@ -1,0 +1,29 @@
+{
+  "fabric:load_conditions": [
+    {
+      "condition": "astral_dice:chip_recipes_enabled"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "astral_dice:sword_in_stone_epic_chip"
+    },
+    "G": {
+      "item": "astral_dice:golden_star_plate"
+    },
+    "N": {
+      "item": "minecraft:netherite_ingot"
+    }
+  },
+  "pattern": [
+    " N ",
+    "GBG",
+    " N "
+  ],
+  "result": {
+    "item": "astral_dice:sword_in_stone_legendary_chip"
+  },
+  "show_notification": true
+}

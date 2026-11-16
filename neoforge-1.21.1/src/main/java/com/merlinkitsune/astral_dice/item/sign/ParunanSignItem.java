@@ -89,7 +89,12 @@ public class ParunanSignItem extends BaseSignItem {
                 : GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS;
         ticks = (int) ChargeManager.signCooldownTicksBase(player, ticks);
         return ticks;
-    }
-
+    
 }
 
+    // 2026-11-09（A）：类玩家宿主的主动入口 —— 当前语义依赖玩家侧通道，显式拒绝并留锚点。
+    @Override
+    protected boolean activateForEntity(net.minecraft.world.entity.LivingEntity owner) {
+        return com.merlinkitsune.astral_dice.item.sign.SignEntitySkills.deny("parunan", owner, "needs_player_shop_ui");
+    }
+}

@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "star_coin_costs": [
+    15,
+    20,
+    25,
+    30,
+    40
+  ],
+  "xp_costs": [
+    5,
+    10,
+    15,
+    20,
+    30
+  ],
+  "xp_cost_normal": 10,
+  "max_star": 3,
+  "material_tag": "astral_dice:astral_anvil_materials",
+  "materials": {
+    "astral_dice:star_coin": 1
+  },
+  "reset_on_craft": null,
+  "overrides": {}
+}

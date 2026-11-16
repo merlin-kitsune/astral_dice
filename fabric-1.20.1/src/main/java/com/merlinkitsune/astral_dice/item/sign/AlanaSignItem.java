@@ -90,4 +90,20 @@ public class AlanaSignItem extends BaseSignItem {
         }
         super.onUnequip(slotContext, newStack, stack);
     }
+
+    /**
+     * 非玩家 owner 的主动（2026-11-11 P1 补齐）：只实现「铁处女 30s 免疫」这一段。
+     */
+    @Override
+    protected boolean activateForEntity(net.minecraft.world.entity.LivingEntity owner) {
+        if (owner == null || owner.level().isClientSide()) {
+            return false;
+        }
+        owner.addEffect(new net.minecraft.world.effect.MobEffectInstance(
+                com.merlinkitsune.astral_dice.effect.ModEffects.ALANA_IRON_MAIDEN.get(), IRON_MAIDEN_TICKS, 0, false, true, true));
+        org.slf4j.LoggerFactory.getLogger(AlanaSignItem.class).info(
+                "AP_SIGN_ACTIVE_ENTITY: sign=alana:owner={}:duration={}",
+                owner.getName().getString(), IRON_MAIDEN_TICKS);
+        return true;
+    }
 }

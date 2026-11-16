@@ -3,7 +3,7 @@
 
 ## 0. 元信息与判定口径
 
-- **审查对象**：`F:\MCProject\astral_dice_multiloader` 的 P0 两线 `neoforge-1.21.1`（MC 1.21.1 NeoForge）与 `forge-1.20.1`（MC 1.20.1 Forge）。P1 线 `neoforge-26.1.2`、`fabric-1.20.1` **不在本次范围**。
+- **审查对象**：`F:\MCProject\astral_dice_multiloader` 的 P0 基准两线 `neoforge-1.21.1`（MC 1.21.1 NeoForge）与 `forge-1.20.1`（MC 1.20.1 Forge）。原始批次不含 `neoforge-26.1.2`、`fabric-1.20.1`；2026-11-11 划级后 26.1.2 归 P0，本报告未覆盖其骰子特殊功能 ⇒ 该线属 P0 待补验证。
 - **分支事实（与任务描述不一致，须登记）**：任务书称作业分支为 `multi-dev-next`（HEAD 56208923），实读工作树为 **`multi-main`，HEAD `ba1e1e30`（2026-10-27 23:28）**；`git status` 只有 `?? models/astral_anvil.bbmodel` 一条未跟踪项（与任务描述相符，未触碰）。本报告全部结论基于 `ba1e1e30` 工作树。
 - **只读声明**：未修改任何源码/资源，未运行 gradle，未启动 Minecraft，未执行任何 git 写操作；唯一写入文件 = 本报告。
 - **取证方法**：`grep` 定位符号 → `read` 取原文行号 → 共享库 `starengine` 用 `javap -cp <jar>` 反编译实证（源码不在本仓；实物 jar 在 `C:/Users/xmace/.m2/repository/com/merlinkitsune/starengine/starengine-<line>/1.1.0/`，对应 `gradle.properties` 的 `starengine_version=1.1.0`）。

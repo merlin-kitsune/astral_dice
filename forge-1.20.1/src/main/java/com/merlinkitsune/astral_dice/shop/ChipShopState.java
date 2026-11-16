@@ -74,12 +74,12 @@ public record ChipShopState(List<String> offers, Optional<String> lastPickCatego
     /** 玩家存档读取（客户端读到的是一份「服务端同步值」——{@code ModAttachments.CHIP_SHOP_STATE} 是
      *  {@code .sync()} 并进 {@code SYNCED_KEYS} 的同步键；客户端只消费 {@code cooldownUntil}
      *  （Jade 悬浮框倒计时），其余字段无客户端消费方） */
-    public static ChipShopState get(Player player) {
-        return ModAttachments.CHIP_SHOP_STATE.get(player);
+    public static ChipShopState get(net.minecraft.world.entity.LivingEntity holder) {
+        return ModAttachments.CHIP_SHOP_STATE.get(holder);
     }
 
-    public static void store(Player player, ChipShopState state) {
-        ModAttachments.CHIP_SHOP_STATE.set(player, state);
+    public static void store(net.minecraft.world.entity.LivingEntity holder, ChipShopState state) {
+        ModAttachments.CHIP_SHOP_STATE.set(holder, state);
     }
 
     /** 候选（解析成池内条目；未知 id 会被跳过 —— 对应「换过版本 / 条目被移除」的旧存档） */
@@ -128,7 +128,7 @@ public record ChipShopState(List<String> offers, Optional<String> lastPickCatego
      * <p>⚠️ 2026-10-24 用户裁决：**已删除「骰子签名变化即重抽」的比对** —— 换装备 / 换骰子 / 升星
      * 都不得再免费刷新（旧比对让换一次骰子就等于白送一批候选）。{@code rolledDiceKey} 仅作诊断留痕。
      */
-    public boolean needsReroll(Player player) {
+    public boolean needsReroll(net.minecraft.world.entity.LivingEntity player) {
         List<ChipShopCatalog.Entry> list = entries();
         if (list.isEmpty()) {
             return true;

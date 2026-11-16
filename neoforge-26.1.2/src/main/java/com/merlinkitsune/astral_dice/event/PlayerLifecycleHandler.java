@@ -125,6 +125,8 @@ public class PlayerLifecycleHandler {
         // 调查员/忍者立牌累计加成:死亡暂存(默认 gamerule 下立牌会因死亡掉落被 Curios 判定"已卸下",
         // 其 clearSignData 会在克隆之前清零这两个键,故必须在此先存下——见 DeathPreservedBonuses)
         com.merlinkitsune.astral_dice.component.DeathPreservedBonuses.preserveOnDeath(player);
+        // 完美树枝:死亡暂存「当前层数 - 1」,重生时按剩余层数恢复
+        com.merlinkitsune.astral_dice.item.chip.PerfectBranchChipItem.preserveOnDeath(player);
         // 玻璃骰子死亡惩罚:丢失玻璃骰子本体及其已装备的全部卡牌(同时收缩筹码栏)
         DiceCurioItem.removeGlassDiceOnDeath(player);
         HealingManager.clear(player);
@@ -213,6 +215,7 @@ public class PlayerLifecycleHandler {
         if (player.level().isClientSide()) return;
         ChargeManager.restoreAfterDeath(player);
         com.merlinkitsune.astral_dice.component.DeathPreservedBonuses.restoreAfterDeath(player);
+        com.merlinkitsune.astral_dice.item.chip.PerfectBranchChipItem.restoreAfterDeath(player);
     }
 
     // 玩家退出/重新登录:清除骰神赐福效果(防止退出后重进仍保留战斗状态)
@@ -277,6 +280,7 @@ public class PlayerLifecycleHandler {
         ChargeManager.restoreAfterDeath(player);
         // 调查员/忍者立牌累计加成:重生后再兜底恢复(克隆已恢复过则此处空操作)
         com.merlinkitsune.astral_dice.component.DeathPreservedBonuses.restoreAfterDeath(player);
+        com.merlinkitsune.astral_dice.item.chip.PerfectBranchChipItem.restoreAfterDeath(player);
     }
 
     // 切换维度:医疗箱筹码同样算一次「装备触发」。与登录同口径 —— 先释放闸门再触发,

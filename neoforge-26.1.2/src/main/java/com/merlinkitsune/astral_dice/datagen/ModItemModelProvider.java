@@ -38,6 +38,9 @@ public class ModItemModelProvider extends ModelProvider {
 
         itemModels.generateFlatItem(ModItems.DICE.get(), ModelTemplates.FLAT_ITEM);
         itemModels.generateFlatItem(ModItems.GOLDEN_DICE.get(), ModelTemplates.FLAT_ITEM);
+        itemModels.generateFlatItem(ModItems.SYKES_SIGN.get(), ModelTemplates.FLAT_ITEM);
+        itemModels.generateFlatItem(ModItems.Z3000_SIGN.get(), ModelTemplates.FLAT_ITEM);
+        itemModels.declareCustomModelItem(ModItems.VACUUM_PIECE.get());
         itemModels.generateFlatItem(ModItems.GLASS_DICE.get(), ModelTemplates.FLAT_ITEM);
         itemModels.generateFlatItem(ModItems.NETHERRACK_DICE.get(), ModelTemplates.FLAT_ITEM);
         itemModels.generateFlatItem(ModItems.DIAMOND_DICE.get(), ModelTemplates.FLAT_ITEM);
@@ -119,6 +122,9 @@ public class ModItemModelProvider extends ModelProvider {
         itemModels.generateFlatItem(ModItems.TERU_SIGN.get(), ModelTemplates.FLAT_ITEM);
         itemModels.generateFlatItem(ModItems.NARDIS_SIGN.get(), ModelTemplates.FLAT_ITEM);
         itemModels.generateFlatItem(ModItems.MAMUSHI_SIGN.get(), ModelTemplates.FLAT_ITEM);
+        itemModels.generateFlatItem(ModItems.SOURI_SIGN.get(), ModelTemplates.FLAT_ITEM);
+        itemModels.generateFlatItem(ModItems.INKSHADOW_SIGN.get(), ModelTemplates.FLAT_ITEM);
+        itemModels.generateFlatItem(ModItems.AL_SIGN.get(), ModelTemplates.FLAT_ITEM);
         itemModels.generateFlatItem(ModItems.SHERRY_SIGN.get(), ModelTemplates.FLAT_ITEM);
         itemModels.generateFlatItem(ModItems.HANNA_SIGN.get(), ModelTemplates.FLAT_ITEM);
         itemModels.generateFlatItem(ModItems.KANGEL_SIGN.get(), ModelTemplates.FLAT_ITEM);
@@ -190,6 +196,9 @@ public class ModItemModelProvider extends ModelProvider {
         itemModels.generateFlatItem(ModItems.ABYSS_REAGENT_CHIP.get(), ModelTemplates.FLAT_ITEM);
         itemModels.generateFlatItem(ModItems.INFINITE_GRID_CHIP.get(), ModelTemplates.FLAT_ITEM);
         itemModels.generateFlatItem(ModItems.SENSOR_CHIP.get(), ModelTemplates.FLAT_ITEM);
+        itemModels.generateFlatItem(ModItems.SWORD_IN_STONE_EPIC_CHIP.get(), ModelTemplates.FLAT_ITEM);
+        itemModels.generateFlatItem(ModItems.SWORD_IN_STONE_LEGENDARY_CHIP.get(), ModelTemplates.FLAT_ITEM);
+        itemModels.generateFlatItem(ModItems.PERFECT_BRANCH_CHIP.get(), ModelTemplates.FLAT_ITEM);
         itemModels.generateFlatItem(ModItems.EVENT_TICKET.get(), ModelTemplates.FLAT_ITEM);
     }
 
@@ -199,12 +208,15 @@ public class ModItemModelProvider extends ModelProvider {
 
     /**
      * 方块状态：26.1.2 的 ModelProvider 会对注册表里每个方块做「是否生成了 blockstate」校验，
-     * 缺一个就抛 Missing blockstate definitions。这里把 4 个方块指向仓库中手写的自定义模型，
+     * 缺一个就抛 Missing blockstate definitions。这里把 6 个方块指向仓库中手写的自定义模型，
      * 不生成新模型（这些模型是 Blockbench 产出的，不是 trivial cube）。
      */
     private void registerBlockStates(BlockModelGenerators blockModels) {
         blockModels.blockStateOutput.accept(
                 MultiVariantGenerator.dispatch(ModBlocks.CARD_SHOP.get(), BlockModelGenerators.plainVariant(id("block/card_shop")))
+                        .with(BlockModelGenerators.ROTATION_HORIZONTAL_FACING));
+        blockModels.blockStateOutput.accept(
+                MultiVariantGenerator.dispatch(ModBlocks.ASTRAL_ANVIL.get(), BlockModelGenerators.plainVariant(id("block/astral_anvil")))
                         .with(BlockModelGenerators.ROTATION_HORIZONTAL_FACING));
         blockModels.blockStateOutput.accept(
                 MultiVariantGenerator.dispatch(ModBlocks.CHIP_SHOP.get(), BlockModelGenerators.plainVariant(id("block/chip_shop")))
@@ -213,11 +225,14 @@ public class ModItemModelProvider extends ModelProvider {
                 BlockModelGenerators.createSimpleBlock(ModBlocks.EVENT_DRAWER.get(), BlockModelGenerators.plainVariant(id("block/event_drawer"))));
         blockModels.blockStateOutput.accept(
                 BlockModelGenerators.createSimpleBlock(ModBlocks.BARRICADE_COLLISION.get(), BlockModelGenerators.plainVariant(id("block/barricade_collision"))));
+        blockModels.blockStateOutput.accept(
+                BlockModelGenerators.createSimpleBlock(ModBlocks.ABYSS_TENTACLE_COLLISION.get(), BlockModelGenerators.plainVariant(id("block/abyss_tentacle_collision"))));
     }
 
     /** 方块物品的 item 模型：父模型直接指向方块模型（与手写 models/item/*.json 一致）。 */
     private void registerBlockItemModels(BlockModelGenerators blockModels) {
         blockModels.registerSimpleItemModel(ModBlocks.CARD_SHOP.get(), id("block/card_shop"));
+        blockModels.registerSimpleItemModel(ModBlocks.ASTRAL_ANVIL.get(), id("block/astral_anvil"));
         blockModels.registerSimpleItemModel(ModBlocks.CHIP_SHOP.get(), id("block/chip_shop"));
         blockModels.registerSimpleItemModel(ModBlocks.EVENT_DRAWER.get(), id("block/event_drawer"));
     }

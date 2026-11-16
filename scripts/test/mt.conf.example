@@ -5,10 +5,10 @@
 # 书写规则：值一律用双引号包住。
 #   两侧采用同一套逐行解析：`KEY=VALUE` / `KEY="VALUE"` / `KEY='VALUE'`，
 #   剥掉成对引号，忽略注释行与空行。
-#   ⚠️ 缺 mt.conf 时两侧都会**回落到内置默认值**（见 Mt.Paths.psm1 / mt_paths.py），
+#   ⚠️ 缺 mt.conf 时两侧都会**回落到内置默认值**（见 `scripts/test/lib/mt_paths.py`），
 #      所以没有本文件也能跑，只是默认值未必是你的机器。
 #
-# ⚠️ 2026-09-12 起脚本已全面迁移到 pwsh 7：
+# ⚠️ 2026-09-12 起脚本已全面迁移到 旧 shell：
 #    · `MT_PYTHON` 已废弃 —— 它的 27 处消费点随 python 版脚本一并移除；
 #    · `MT_NODE` 已废弃 —— 它从未被任何脚本消费。
 #    两者都不要在新的 mt.conf 里再写。
@@ -16,7 +16,7 @@
 # 整合包 / 用户测试环境的 mods 目录（兼容模组与光影的来源）
 MT_PACK_MODS_NEOFORGE="D:/.minecraft/versions/狐の航空学 Voxy Edition/mods"
 MT_PACK_MODS_FORGE="D:/.minecraft/versions/1.20.1 模组测试/mods"
-# 26.1.2 第三条线（MC 26.1.2 / NeoForge 26.1.2.109）；缺省时由 Mt.Paths.psm1 的内置默认值兜底
+# 26.1.2 第三条线（MC 26.1.2 / NeoForge 26.1.2.109）；缺省时由 `scripts/test/lib/mt_paths.py` 的内置默认值兜底
 # ⚠️ 必须与 `neoforge-26.1.2/build.gradle` 的 `packModsDir` 指向同一个整合包
 #    （2026-09-17 修正：旧值 `26.1.2-NeoForge_26.1.2.109` 在本机并不存在）
 MT_PACK_MODS_NEOFORGE_26_1_2="D:/.minecraft/versions/26.1.2 模组测试/mods"

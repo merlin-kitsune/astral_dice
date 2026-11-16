@@ -61,7 +61,13 @@ import com.merlinkitsune.astral_dice.item.chip.RevengeHalberdChipItem;
  * 再整体放进 {@code Component.literal}，颜色才不会丢。故凡 lang 值内含 {@code %%} 的行必须用
  * {@code tt(...)}，不得直接用 {@code Component.translatable(...)}。
  *
- * <p><b>例外（优先级：例外 &gt; 规则 3 &gt; 规则 2 &gt; 规则 1）</b>：
+ * <p><b>规则 5（标点与留空：专有名「」、时长后缀半角括号 + 前置空格）</b>：角色 / 物品 / 机制 / 状态效果 / 区域
+ * 等专有名一律写直角引号 {@code 「…」}，禁止用方头括号 {@code 【…】}；时长后缀一律半角括号且括号前留一个空格
+ * （{@code 攻击力 §e+2§7 (§92:00§7)}、{@code 缓慢 II (0:30)}），禁止 {@code （§92:00§7）} 与
+ * {@code (§92:00§7)}；自然语言夹注仍用本语言全角括号（{@code （每人一次）}）；罗马数字等级与中日文名之间留
+ * 空格（{@code 缓慢 II} / {@code 移動速度上昇 II}）；续行符号 {@code §7- } 由 {@link #addSignLines} 渲染，
+ * lang 值里不得自带 {@code -} 或 {@code •}，也不要用行首两空格做缩进。
+ * * <p><b>例外（优先级：例外 &gt; 规则 3 &gt; 规则 2 &gt; 规则 1）</b>：
  * <ol>
  *   <li>条目已用 {@code §c} 的保持红色（负面效果条目、负面数值、状态警示行、名称类红色），规则 1/2/3 不再改写；</li>
  *   <li>行级 {@code withStyle(...)} 语义色不作为改写对象，行内数值/时间照常着色；</li>
@@ -72,7 +78,9 @@ import com.merlinkitsune.astral_dice.item.chip.RevengeHalberdChipItem;
  *   <li>连接词性质的 {@code +}（如 {@code §e+3§7 + §9黑暗 (0:03)§7} 中间那个）保持灰色。</li>
  * </ol>
  *
- * <p>审计：{@code pwsh -NoProfile -File scripts/audit/tooltip_color_audit.ps1}（退出码 0 = 无违规）。
+ * <p>自检（全部退出码 0 才算通过）：{@code python tools/check_lang_sync.py}（语言 / 手册一致性）、
+ * {@code python tools/verify_tooltip_format.py}（规则 5 标点与留空）、
+ * {@code python -B scripts/audit/tooltip_color_audit.py --root .}（规则 0–4 染色）。
  */
 public class ModTooltipHandler {
     private static void addSignKeyHint(List<Component> tooltip) {
@@ -185,16 +193,16 @@ public class ModTooltipHandler {
     // UnknownFormatConversionException,而 tooltip 事件链上无人接这个异常 ⇒ **客户端直接崩溃**
     // (2026-09-21 1.21.1 教主立牌 `tooltip.astral_dice.sign.teru_active` 实例,crash-2026-09-21_15.12.05;
     //  1.20.1 同一键同样违规,同批修复)。这里先把所有不构成合法转换的 % 转义成 %%,任何文案笔误或
-    // 第三方资源包改坏 lang 都只会显示成字面 %(与 check_lang_sync.ps1 的“应写 %%”口径一致),不再崩游戏。
+    // 第三方资源包改坏 lang 都只会显示成字面 %(与 tools/check_lang_sync.py 的“应写 %%”口径一致),不再崩游戏。
     private static String translationString(String key, Object... args) {
         String raw = net.minecraft.locale.Language.getInstance().getOrDefault(key, key);
         return String.format(escapeStrayPercents(raw), args);
     }
 
-    // 合法转换 = %[sdbfxoeg] 或 %<数字>$[sdbfxoeg](与 tools/check_lang_sync.ps1 的白名单**逐字一致**)。
+    // 合法转换 = %[sdbfxoeg] 或 %<数字>$[sdbfxoeg](与 tools/check_lang_sync.py 的白名单**逐字一致**)。
     // ⚠️ 这是**刻意收窄**的集合:本仓语料只用 %s(少数 %d),故不支持 Java Formatter 的完整语法 ——
     //    `%-5s` / `%02d` / `%.2f` / `%S` / `%n` / `%tY` 等合法写法会被当成字面 % 转义(渲染成原文而非格式化)。
-    //    要引入这类写法,必须**同时**扩这里的 VALID_PERCENT 与 check_lang_sync.ps1 的扫描口径,
+    //    要引入这类写法,必须**同时**扩这里的 VALID_PERCENT 与 tools/check_lang_sync.py 的扫描口径,
     //    否则闸门会把它判为「未转义字面百分号」。
     private static final java.util.regex.Pattern VALID_PERCENT =
             java.util.regex.Pattern.compile("%(?:%|\\d+\\$[sdbfxoeg]|[sdbfxoeg])");
@@ -1148,6 +1156,22 @@ public class ModTooltipHandler {
             tooltip.add(Component.empty());
             addChipLines(tooltip, "tooltip.astral_dice.chip.whetstone", ChatFormatting.GRAY);
         }
+        if (stack.is(ModItems.EXTRA_BATTERY_CHIP.get())) {
+            tooltip.add(Component.empty());
+            addChipLines(tooltip, "tooltip.astral_dice.chip.extra_battery", ChatFormatting.GRAY);
+        }
+        if (stack.is(ModItems.SWORD_IN_STONE_EPIC_CHIP.get())) {
+            tooltip.add(Component.empty());
+            addChipLines(tooltip, "tooltip.astral_dice.chip.sword_in_stone_epic_chip", ChatFormatting.GRAY);
+        }
+        if (stack.is(ModItems.SWORD_IN_STONE_LEGENDARY_CHIP.get())) {
+            tooltip.add(Component.empty());
+            addChipLines(tooltip, "tooltip.astral_dice.chip.sword_in_stone_legendary_chip", ChatFormatting.GRAY);
+        }
+        if (stack.is(ModItems.PERFECT_BRANCH_CHIP.get())) {
+            tooltip.add(Component.empty());
+            addChipLines(tooltip, "tooltip.astral_dice.chip.perfect_branch_chip", ChatFormatting.GRAY);
+        }
         if (stack.is(ModItems.PADMAN_SIGN.get())) {
             tooltip.add(Component.empty());
             addSignKeyHint(tooltip);
@@ -1497,6 +1521,8 @@ public class ModTooltipHandler {
             addSignLines(tooltip, "tooltip.astral_dice.sign.mamushi_active");
             addSignPassiveTitle(tooltip, "tooltip.astral_dice.sign.mamushi.passive");
             addSignLines(tooltip, "tooltip.astral_dice.sign.mamushi_passive");
+            tooltip.add(Component.empty());
+            addSignNoteLines(tooltip, "tooltip.astral_dice.sign.mamushi_note");
             // 真龙形态标注行(仅锁存态成立时显示;金色,与「觉醒已达 8 层」的语义对应);
             // 「觉醒」计数器在进入真龙形态后**已失效** ⇒ 此时不再显示计数器行,只留该标注。
             if (com.merlinkitsune.astral_dice.item.sign.MamushiSignItem.isDragonForm(player)) {
@@ -1508,6 +1534,75 @@ public class ModTooltipHandler {
                         com.merlinkitsune.astral_dice.item.sign.MamushiSignItem.AWAKEN_MAX);
             }
             addSignCooldownRemaining(tooltip, event.getEntity());
+        }
+        // 金鲤立牌(souri):主动「把酒言欢」放置葫芦饮/仙酿 + 自身金鳞/反击;被动「不醉不归」。
+        if (stack.is(ModItems.SOURI_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "tooltip.astral_dice.sign.souri.active");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.souri_active");
+            addSignPassiveTitle(tooltip, "tooltip.astral_dice.sign.souri.passive");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.souri_passive");
+            Player souriViewer = event.getEntity();
+            // 备注区(浅紫、无标题):金鳞 / 金鲤化龙 / 葫芦饮 / 仙酿 的数值口径
+            tooltip.add(Component.empty());
+            addSignNoteLines(tooltip, "tooltip.astral_dice.sign.souri_note");
+            // 联动「留给你的」:与备注之间留空行(用户 2026-11-10 裁决)
+            tooltip.add(Component.empty());
+            addSignNoteLines(tooltip, "tooltip.astral_dice.sign.souri_link");
+            // 状态行置于最底部、上方留空行:化龙前显示「金鳞」层数,化龙后只显示「金鲤化龙」
+            // (用户 2026-11-10 裁决:觉醒/反击都不显示;觉醒本就属于蛟龙立牌)
+            if (souriViewer != null) {
+                if (com.merlinkitsune.astral_dice.item.sign.SouriSignManager.hasDragon(souriViewer)) {
+                    tooltip.add(Component.empty());
+                    tooltip.add(Component.translatable("tooltip.astral_dice.sign.souri_dragon_form")
+                            .withStyle(ChatFormatting.GOLD));
+                } else {
+                    addSignCounter(tooltip, "tooltip.astral_dice.sign.souri_gold_scale",
+                            com.merlinkitsune.astral_dice.item.sign.SouriSignManager.getGoldScales(souriViewer),
+                            com.merlinkitsune.astral_dice.item.sign.SouriSignManager.GOLD_SCALE_MAX);
+                }
+            }
+            addSignCooldownRemaining(tooltip, souriViewer);
+        }
+        // 少主立牌(al):主动「强者怜悯」(目标选择器选一名类玩家目标 → 选卡界面选 1~3 张) +
+        // 被动「双赢」(给牌双方各 +1 星光;主动技能后双方各一次筹码折扣与刷新;每 4 层星光 +1 攻/+1 防)。
+        if (stack.is(ModItems.AL_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "tooltip.astral_dice.sign.al.active");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.al_active");
+            addSignPassiveTitle(tooltip, "tooltip.astral_dice.sign.al.passive");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.al_passive");
+            addSignCooldownRemaining(tooltip, event.getEntity());
+        }
+        // 小猎手立牌(inkshadow,稀有):主动「暗影之门」两端传送门 / 被动「双生之影」攻击叠加
+        // (与 1.21.1 线同形:说明全部收进 _active/_passive 两个单键多行键,不再有 _note 备注段)
+        if (stack.is(ModItems.INKSHADOW_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "tooltip.astral_dice.sign.inkshadow.active");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.inkshadow_active");
+            addSignPassiveTitle(tooltip, "tooltip.astral_dice.sign.inkshadow.passive");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.inkshadow_passive");
+            addSignCooldownRemaining(tooltip, event.getEntity());
+        }
+        // 垃圾桶立牌(z3000,稀有):主动「过来把你」拖拽 / 被动「回收利用」冷却与攻击成长
+        if (stack.is(ModItems.Z3000_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "tooltip.astral_dice.sign.z3000.active");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.z3000_active");
+            addSignPassiveTitle(tooltip, "tooltip.astral_dice.sign.z3000.passive");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.z3000_passive");
+            Player z3000Viewer = event.getEntity();
+            if (z3000Viewer != null) {
+                addSignCounter(tooltip, "tooltip.astral_dice.sign.z3000_status",
+                        ModAttachments.getZ3000AttackStacks(z3000Viewer),
+                        com.merlinkitsune.astral_dice.item.sign.Z3000SignItem.ATTACK_CAP,
+                        ModAttachments.getZ3000HealthyKills(z3000Viewer) % 2);
+            }
+            addSignCooldownRemaining(tooltip, z3000Viewer);
         }
         // 机械师立牌(megas):主动「轨道轰炸」(选择器类——指定 1 个敌对目标 => 立即消耗物品栏全部手牌⇒
         // 以目标为中心 12 格范围轰炸；次数 = min(消耗卡牌数 / 2, 10)、单次基础 2 伤 + 所消耗战斗牌费用总和 ×2)
@@ -1612,6 +1707,17 @@ public class ModTooltipHandler {
             addSignLines(tooltip, "tooltip.astral_dice.sign.deepseek_active");
             addSignPassiveTitle(tooltip, "tooltip.astral_dice.sign.deepseek.passive");
             addSignLines(tooltip, "tooltip.astral_dice.sign.deepseek_passive");
+            addSignCooldownRemaining(tooltip, event.getEntity());
+        }
+        if (stack.is(ModItems.SYKES_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "tooltip.astral_dice.sign.sykes.active");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.sykes_active");
+            addSignPassiveTitle(tooltip, "tooltip.astral_dice.sign.sykes.passive");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.sykes_passive");
+            tooltip.add(Component.empty());
+            addSignNoteLines(tooltip, "tooltip.astral_dice.sign.sykes_note");
             addSignCooldownRemaining(tooltip, event.getEntity());
         }
         // 蛟龙立牌(mamushi)专属战斗牌:撕咬(费用 2 / 耐久 1 / 定值 +3)与

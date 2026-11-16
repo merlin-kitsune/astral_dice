@@ -1,0 +1,88 @@
+{
+  "case_id": "ATTACHMENT-PERSIST-fabric-1.21.1",
+  "title": "附件数据在 tick 间稳定：ensureRegistered 幂等、INVESTIGATION_STAGE 写读往返、SIGN_ACTIVE_LOCK_* 写入后跨 ≥10 tick 不被改动（证据 component/ModAttachments.java:31-58,352-354,436-440,501-582；item/sign/BaseSignItem.java:560-614 的 tick 迁移条件）",
+  "version": "fabric-1.21.1",
+  "channel": "autojs",
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "判据来源：ModAttachments.java:31-58 register/ensureRegistered（重复注册是安全幂等路径）；:352-354 INVESTIGATION_STAGE(Codec.INT, 默认 1) 与 :436-440 get/set 访问器；:530-534 SIGN_ACTIVE_LOCK_END、:522-526 SIGN_ACTIVE_LOCK_SIGN、:558-562 SIGN_ACTIVE_LOCK_PLAYED。为什么 lockEnd 必须写成未来刻：BaseSignItem.java:560-614 的 per-tick 迁移在 isSignActiveLocked 由 true 转 false 时（lockEnd<=gameTime）会走 endLockAndStartCooldown 把 sign/end/played 全部清掉，探针值会被产品逻辑合法抹掉；写 now+100000 且 sign 用不可解析的 persist_probe（:391-396 解析失败⇒按 lockEnd>0 判锁）可让 tick 只刷新 lastSeen（:576-589），不迁移、不结算。第二步与第三步的 await_state 只等 tickCount 相位，第二段保证已跨 ≥10 tick，第四步用 end-100000 还原 gt0 计算真实经过的 tick 数。末尾把 stage 写回 1 并清空全部锁键。"
+    },
+    {
+      "op": "mcp_status",
+      "timeout_ms": 20000,
+      "save_as": "mcp"
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "mode": "json",
+      "timeout_ms": 30000,
+      "save_as": "att1",
+      "code": "(function(){\n  function cls(n){ try { return Java.loadClass(n); } catch (e) { return java.lang.Class.forName(n); } }\n  var Att = cls(\"com.merlinkitsune.astral_dice.component.ModAttachments\");\n  var player = AutoJS.players()[0];\n  var out = {};\n  Att.ensureRegistered();\n  Att.ensureRegistered();\n  out.uuid = String(player.getUUID());\n  out.stageBefore = Number(Att.getInvestigationStage(player));\n  Att.setInvestigationStage(player, 7);\n  out.stageReadback = Number(Att.getInvestigationStage(player));\n  var now = Number(player.level().getGameTime());\n  out.now0 = now;\n  Att.setSignActiveLockSign(player, \"persist_probe\");\n  Att.setSignActiveLockPlayed(player, true);\n  Att.setSignActiveLockGraceEnd(player, 0);\n  Att.setSignActiveReductionPool(player, 0);\n  Att.setSignActiveLockEnd(player, now + 100000);\n  out.lockEndWritten = Number(Att.getSignActiveLockEnd(player));\n  out.lockEndIsFuture = out.lockEndWritten > now;\n  out.lockSignWritten = Att.getSignActiveLockSign(player);\n  out.playedWritten = Att.getSignActiveLockPlayed(player);\n  out.tickCount0 = Number(player.tickCount);\n  return out;\n})()"
+    },
+    {
+      "op": "await_state",
+      "side": "server",
+      "timeout_ms": 15000,
+      "interval_ms": 100,
+      "code": "(function(){ var p = AutoJS.players()[0]; return p != null && (p.tickCount % 20) === 0; })()"
+    },
+    {
+      "op": "await_state",
+      "side": "server",
+      "timeout_ms": 15000,
+      "interval_ms": 100,
+      "code": "(function(){ var p = AutoJS.players()[0]; return p != null && (p.tickCount % 20) === 10; })()"
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "mode": "json",
+      "timeout_ms": 30000,
+      "save_as": "att2",
+      "code": "(function(){\n  function cls(n){ try { return Java.loadClass(n); } catch (e) { return java.lang.Class.forName(n); } }\n  var Att = cls(\"com.merlinkitsune.astral_dice.component.ModAttachments\");\n  var player = AutoJS.players()[0];\n  var out = {};\n  var endVal = Number(Att.getSignActiveLockEnd(player));\n  var now = Number(player.level().getGameTime());\n  var gt0 = endVal - 100000;\n  out.deltaTicks = now - gt0;\n  out.lockEndUnchanged = endVal;\n  out.lockEndIsFuture = endVal > now;\n  out.stage = Number(Att.getInvestigationStage(player));\n  out.lockSign = Att.getSignActiveLockSign(player);\n  out.played = Att.getSignActiveLockPlayed(player);\n  out.uuid = String(player.getUUID());\n  out.tickCount1 = Number(player.tickCount);\n  Att.setSignActiveLockSign(player, \"\");\n  Att.setSignActiveLockEnd(player, 0);\n  Att.setSignActiveLockGraceEnd(player, 0);\n  Att.setSignActiveLockPlayed(player, false);\n  Att.setSignActiveReductionPool(player, 0);\n  Att.setSignActiveCooldownEnd(player, 0);\n  Att.setSignActiveMaxCooldown(player, 0);\n  Att.setSignActiveLockLastSeen(player, 0);\n  Att.setInvestigationStage(player, 1);\n  out.stageAfterTeardown = Number(Att.getInvestigationStage(player));\n  out.lockSignAfterTeardown = Att.getSignActiveLockSign(player);\n  return out;\n})()"
+    }
+  ],
+  "asserts": [
+    {
+      "type": "state",
+      "from": "mcp",
+      "expect": {
+        "Ok": true
+      }
+    },
+    {
+      "type": "state",
+      "from": "att1",
+      "expect": {
+        "uuid": {
+          "regex": "^[0-9a-fA-F-]{36}$"
+        },
+        "stageReadback": 7,
+        "lockEndIsFuture": true,
+        "lockSignWritten": "persist_probe",
+        "playedWritten": true
+      }
+    },
+    {
+      "type": "state",
+      "from": "att2",
+      "expect": {
+        "deltaTicks": {
+          "min": 10
+        },
+        "lockEndIsFuture": true,
+        "stage": 7,
+        "lockSign": "persist_probe",
+        "played": true,
+        "uuid": {
+          "regex": "^[0-9a-fA-F-]{36}$"
+        },
+        "stageAfterTeardown": 1,
+        "lockSignAfterTeardown": ""
+      }
+    }
+  ]
+}

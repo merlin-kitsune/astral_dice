@@ -26,13 +26,15 @@
     ],
     "jei_mod_plugin": [
       "com.merlinkitsune.astral_dice.compat.jei.CardShopJeiPlugin",
-      "com.merlinkitsune.astral_dice.compat.jei.ChipShopJeiPlugin"
+      "com.merlinkitsune.astral_dice.compat.jei.ChipShopJeiPlugin",
+      "com.merlinkitsune.astral_dice.compat.jei.AstralAnvilJeiPlugin"
     ]
   },
   "accessWidener": "astral_dice.accesswidener",
   "mixins": [
     "astral_dice.mixins.json",
     "astral_dice.jade.mixins.json",
+    "astral_dice.jei.mixins.json",
     "astral_dice.trinkets.mixins.json"
   ],
   "depends": {
@@ -40,13 +42,12 @@
     "minecraft": "${minecraft_version_range}",
     "fabric-api": "*",
     "fabric-data-attachment-api-v1": "*",
-    "puzzleslib": "${puzzleslib_version_range}",
     "starengine": "${lib_version_range}"
   },
   "recommends": {
     "trinkets": ">=${trinkets_version}",
     "accessories": "${accessories_version_range}",
     "patchouli": "*",
-    "jei": ">=15.62.0"
+    "jei": ">=15.74.0"
   }
 }

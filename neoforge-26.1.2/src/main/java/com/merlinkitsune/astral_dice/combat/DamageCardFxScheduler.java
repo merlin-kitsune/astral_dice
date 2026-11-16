@@ -533,7 +533,7 @@ public final class DamageCardFxScheduler {
      * （{@code Transformation.EXTENDED_CODEC}，四个字段都必填）。
      *
      * <p>⚠️ 落点（2026-10-07 用户 m01934 目视反馈「掉落位置明显偏移，没有在头顶」；同日受控实机扫描
-     * sweep7.ps1 / sweep8.ps1 定案）：**物品模型由 {@code ItemRenderer} 居中装配**，与方块模型的
+     * 旧 sweep 脚本（已删除）定案）：**物品模型由 {@code ItemRenderer} 居中装配**，与方块模型的
      * 「角点原点」不同 ⇒ 为 {@code block_display} 准备的「{@code -0.5 × 放大倍数}」角点补偿对
      * {@code item_display} **无必要且有害**（实测给 {@code translation} 加负补偿时红砖完全不渲染、
      * 保持 0 时清晰可见且水平居中于实体位置）⇒ {@code translation} 保持 {@code [0.0F, 0.0F, 0.0F]}。

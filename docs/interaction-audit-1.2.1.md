@@ -3,7 +3,7 @@
 - 审计基线:`d48a529`(分支 `multi-1.20.1-1.21.1`,工作区干净;本轮**只读**,未改任何源码/配置)
 - 范围:`neoforge-1.21.1`(NeoForge 1.21.1)+ `forge-1.20.1`(Forge 1.20.1),61 个事件订阅点 / 12+11 个 Mixin
 - 方法:6 个切片并行取证 + **主代理逐条复核**(每条结论标注「已核验:证实 / 修正 / 证伪 / 未核验」)
-- 产出:`docs/audit-slices/S0-host-verified.md`(主代理独立发现)、`S1-damage-pipeline.md`、`S2-blessing-chain.md`、`S3-kill-event-chain.md`、`S4-resources-counters.md`、`S5-effectcard-state.md`、`S6-sign-active-dice.md`、`_VERIFICATION.md`(复核记录)
+- 产出:`docs/audit-slices/S0-host-verified.md（已删除 2026-11-05）`(主代理独立发现)、`S1-damage-pipeline.md`、`S2-blessing-chain.md`、`S3-kill-event-chain.md`、`S4-resources-counters.md`、`S5-effectcard-state.md`、`S6-sign-active-dice.md`、`_VERIFICATION.md`(复核记录)
 - **六个切片(S1..S6)+ 主代理独立发现(S0)已全部落盘并逐条复核**;S4/S6 的冲突项见第 3 节末尾两小节(S6-C1/C2 由主代理独立复核,结论与切片报告有修正)
 
 ---
@@ -92,7 +92,7 @@
 - 15 个 `cardTypeId` 与复制计数映射**全对齐**。
 - **S1-C1(子代理报的 blocker)经主代理复核为「证伪」**:大当家溅射的受害者集合按 `HostileTargets.isHostile` 过滤(`A:633-635`/`B:630-632`),而玩家既非 `Enemy` 也非 `NeutralMob` ⇒ **戴气囊的玩家永远不可能被溅射选中**,该机制不可达。**但顺带发现一处真实描述/行为差**:注释与 `isMainTarget` 逻辑声称"含主目标",而玩家作主目标时被 `isHostile` 过滤掉 ⇒ **PvP 中溅射不会打到被攻击的玩家**(仅命中周围敌对生物)。
 
-### S4 追加(资源池 / 计数器 / 死亡清理)—— 13 条,E4 报告:`docs/audit-slices/S4-resources-counters.md`
+### S4 追加(资源池 / 计数器 / 死亡清理)—— 13 条,E4 报告:`docs/audit-slices/S4-resources-counters.md（已删除 2026-11-05）`
 
 | ID | 核验 | 现象 | 证据 |
 |---|---|---|---|
@@ -106,7 +106,7 @@
 | S4-C8 / C13 | 未核验 | 电磁炮登记早于近战武器判定;`star_coin_hammer_bonus` 只由赐福 Expired 清,而登录/重连显式移除赐福(`PlayerLifecycleHandler:203`,`ModEffectRemoval` 不派发 Expired)⇒ 旧加成残留,下次赐福星币 ≤20 时白吃 | 见切片文件 |
 | **负结论(避免误改)** | 证实 | 五个资源池的上限钳制方向、三处"先移除旧实例再写低层"的降级实现**均正确**;`HealingManager.spend` 与 `ChargeManager.clearDeathPreserved` **全仓库零调用**(`AGENTS.md` 的"登出兜底"描述与代码不符) | 见切片文件 |
 
-### S6 追加(立牌主动 / 骰子属性 / Curios 参数绑定)—— E6 报告:`docs/audit-slices/S6-sign-active-dice.md`
+### S6 追加(立牌主动 / 骰子属性 / Curios 参数绑定)—— E6 报告:`docs/audit-slices/S6-sign-active-dice.md（已删除 2026-11-05）`
 
 **S6-C1 Curios `onUnequip` 第 2 参数被当成"被卸下的物品"**(切片报 blocker;**主代理复核:证实,且影响面与后果需修正**)
 

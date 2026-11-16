@@ -311,7 +311,7 @@ public record CardShopShelf(List<ResourceLocation> items, List<Integer> prices, 
     }
 
     /** 装备骰子的星级（DiceCurioItem.configStarLevel：下界之星骰子恒 3，否则 clamp 0..3） */
-    static int currentStarLevel(Player player) {
+    static int currentStarLevel(net.minecraft.world.entity.LivingEntity player) {
         var curios = CuriosCompat.getCuriosInventory(player);
         if (curios.isEmpty()) {
             return 0;

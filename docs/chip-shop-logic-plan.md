@@ -1,7 +1,7 @@
 # 筹码商店买卖逻辑 · 设计计划表 v2（已按裁决更新 · 待开工确认）
 
 > **状态：设计已定稿冻结，暂不开工**（2026-10-12 用户原话：「不需要画标题，先纪录，暂时不开工」）。Q1–Q17 已**全部裁决完毕**（逐条见 §11，无残余项）；本表为最终方案，**开工令由用户下达**，届时按 §12 实施。
-> 实现范围 = 两 P0 线 `neoforge-1.21.1` + `forge-1.20.1`（同批同号）；提交时随实现升版（四线同号，两份 CHANGELOG；实现批以其时最新号为准继续递增）。
+> 实现范围 = 两 P0 线 `neoforge-1.21.1` + `forge-1.20.1`（同批同号）；提交时随实现升版（各线同号，两份 CHANGELOG；实现批以其时最新号为准继续递增）。
 > 上游文档：`docs/chip-shop-ui-spec.md`（界面骨架，.86 已落地）；本批的模板来源 = 卡牌商店（`shop/CardShopCatalog.java`、`shop/CardShopShelf.java`、`shop/CardShopMenu.java`、`shop/CardShopCycleTicker.java`、`network/CardShopBuyPayload.java`、`client/CardShopClientState.java`）——**架构照抄，只在「候选抽取 / 价格曲线 / 刷新恢复 / 候选落盘 / 方块入口」上新增**。
 > 界面骨架现状（.86，本批不改）：`screen/ChipShopScreen.java`、`client/ChipShopClientState.java`、`shop/ChipShopMenu.java`；绘制坐标与冻结常量一律不动（`docs/chip-shop-ui-spec.md` §3）。
 
@@ -220,7 +220,7 @@ roll(player, reason):                     # reason = ENTER_FIRST | REFRESH | POS
 
 ## §9 守门与验证
 
-- 扩展 `scripts/verify/verify_chip_shop_ui.ps1`（机器行前缀 `CHIPUI_*`）：
+- 扩展 `scripts/verify/verify_chip_shop_ui.py`（机器行前缀 `CHIPUI_*`）：
   - 既有 G1–G8（.86 界面骨架：素材/常量/交互/文案/注册/槽位/绑定）；
   - **G9** 池 = 66 + 图标映射 66/66（66/66 全覆盖：64 条同名 + 2 条显式别名 `energy_recycler_chip → 能量回收` / `infinite_grid_chip → 无线电网`）；
   - **G10** 类别覆盖 5、每枚恰一类、品质码 ⊆ {1,2,3}；
@@ -238,7 +238,7 @@ roll(player, reason):                     # reason = ENTER_FIRST | REFRESH | POS
     - **G24** 星等来源：`starLevel` 体内必须是 `Math.max(0, Math.min(3, CardShopShelf.currentStarLevel(player)))`；
     - **G25** §6 Q13「无任何折扣路径」与 §8 Q17「标题键保留但不绘制」：`ChipShop*` 源码不得出现 `discount/promotion/MEMBER_RECOMMENDATION`，屏幕不得使用 `gui.astral_dice.chip_shop` 标题键（只能用 `.cost/.refresh_count/.empty`）；
     - **G26/G27** 语义锚定（治「标识符存在即绿」）：`categoryWeight` 方法体内 `slot <= 0 ⇒ CATEGORY_ALPHA` 的分支顺序、抽取器 `roll` 体内三处 `break`（池空 / 无档 / 无候选）与 `picked.add → pool.remove` 顺序、`chipIndexAt` 体内**必须同时**有筹码格与标签框两次 `isHoveringStrip` 且返 `chip`、`handleBuy`/`handleRefresh` 方法体内各恰 1 处 `roll(`、`.closeContainer();` 必须落在 `handleBuy` 方法体内且位于扣款之后、价格公式锚定**含右括号**（防 `* count * 2)` 混过）。
-- **变异测试（必做；2026-10-12 起为 **24 条**（脚本正本 = `scripts/verify/mutate_chip_shop_ui.ps1`，条目名 M1..M24），全部必须判红）**：池去重去掉 / 品质概率表改一位 / 已拥有过滤去掉 / 确认按钮改成双击触发 / 出现第二购买入口（`mouseClicked` 末尾也调确认）/ 隐藏槽 `mayPickup` 改 true / 价格步长改 1 / 价格上限改 50 / 刷新恢复 36000 改 18000 / 刷新上限钳制改 `Math.max` / `hasNoRoom` 的 `isEmpty()` 取反 / `chip >= 0` 改 `> 0` / 确认守卫削成 `chip < 0` / 仅 en_us 多加一个无关键 / Java 悬空键 / 两枚筹码图标互换字节 / **配方撞车回归（`BSB`→`BBB`）** / 关店挪出 `handleBuy` / 标签框命中删掉 / 方块朝向去掉 `getOpposite()` / 拒绝码重复（`DENY_NO_REFRESH` 1→2）/ 星等来源写死 3 / 注入折扣常量 / 概率表行序对调。
+- **变异测试（必做；2026-10-12 起为 **24 条**（脚本正本 = `scripts/verify/mutate_chip_shop_ui.py`，条目名 M1..M24），全部必须判红）**：池去重去掉 / 品质概率表改一位 / 已拥有过滤去掉 / 确认按钮改成双击触发 / 出现第二购买入口（`mouseClicked` 末尾也调确认）/ 隐藏槽 `mayPickup` 改 true / 价格步长改 1 / 价格上限改 50 / 刷新恢复 36000 改 18000 / 刷新上限钳制改 `Math.max` / `hasNoRoom` 的 `isEmpty()` 取反 / `chip >= 0` 改 `> 0` / 确认守卫削成 `chip < 0` / 仅 en_us 多加一个无关键 / Java 悬空键 / 两枚筹码图标互换字节 / **配方撞车回归（`BSB`→`BBB`）** / 关店挪出 `handleBuy` / 标签框命中删掉 / 方块朝向去掉 `getOpposite()` / 拒绝码重复（`DENY_NO_REFRESH` 1→2）/ 星等来源写死 3 / 注入折扣常量 / 概率表行序对调。
 - 用例与规范：`scripts/test/cases/**` 增筹码商店用例；把 §2/§6 的冻结常数写进 `docs/chip-shop-ui-spec.md` 或新建 `docs/chip-shop-logic-spec.md`。
 - **实机**：按 AGENTS「子代理与测试环境硬规则」第 5 条，**需你明确下达**才跑；本批默认只做静态取证 + `:<线>:classes` 编译 + 守门 + `code_review` 复核。
 
@@ -291,10 +291,10 @@ roll(player, reason):                     # reason = ENTER_FIRST | REFRESH | POS
 | T3 | 服务端菜单逻辑：隐藏槽 / DataSlot / `handleBuy`（扣款→入包→`purchasedCount`+类别→重抽落盘→同步→actionbar→**关店**）/ `handleRefresh` | `.../shop/ChipShopMenu.java` | T1, T2 |
 | T4 | 网络三包 + 客户端接线（发包 / 同步 / 30t 红闪） | `.../network/ChipShop*.java`、`.../client/ChipShopClientState.java`、`.../screen/ChipShopScreen.java` | T3 |
 | T5 | 方块入口 `chip_shop`（Block+注册+blockstate+item model+lang+配方+掉落+创造栏+Opener） | `.../block/ChipShopBlock.java`、`.../block/ModBlocks.java`、`.../item/ModItems.java`、`.../shop/ChipShopOpener.java`、`.../resources/assets/**`、`.../resources/data/**` | T1 |
-| T6 | 素材入库（66 张 → `textures/gui/chip_shop/chips/`）、守门 G9–G27 + 变异测试（24 条）、三语文案、用例/规范文档 | `assets/astral_dice/textures/gui/chip_shop/chips/**`、`scripts/verify/verify_chip_shop_ui.ps1`、`resources/**/lang/*.json`、`scripts/test/**`、`docs/**` | T1–T5 |
+| T6 | 素材入库（66 张 → `textures/gui/chip_shop/chips/`）、守门 G9–G27 + 变异测试（24 条）、三语文案、用例/规范文档 | `assets/astral_dice/textures/gui/chip_shop/chips/**`、`scripts/verify/verify_chip_shop_ui.py`、`resources/**/lang/*.json`、`scripts/test/**`、`docs/**` | T1–T5 |
 | T7 | `forge-1.20.1` 同批移植（逐文件，按 §10 差异改写） | `forge-1.20.1/**` 对应路径 | T1–T6 |
 
 - 派发纪律（2026-10-12 新流程）：**T1–T6 由主 Agent 亲自编写**（基准线 `neoforge-1.21.1`）→ `code_review` 一次性独立会话复核 → 修完后**派子代理做独立功能审查**（`:<线>:classes` 编译 / 守门脚本 / 与需求逐字对账）→ **确认无误后**才派子代理做 **T7 `forge-1.20.1` 移植** → 移植线再 `code_review` + **另派一个独立子代理**功能审查。子代理单任务、用完即弃（硬规则第 1 条），优先派 DeepSeek；复核/审查发现的问题交**新**子代理改进（连续 3 次不到位 ⇒ 主 Agent 亲自重写）。
-- 收尾：`:<线>:classes` 编译 + 守门 + `verify_resource_integrity` + 两份 CHANGELOG + 四线版本随批递增 + 本地提交（不 push）；实机按第 5 条等你下达。
+- 收尾：`:<线>:classes` 编译 + 守门 + `verify_resource_integrity` + 两份 CHANGELOG + 各线版本随批递增 + 本地提交（不 push）；实机按第 5 条等你下达。
 
 > 审核方式：Q1–Q17 **已全部裁决并落定在本表；本表冻结待开工令**（用户 2026-10-12：「暂时不开工」）。开工时按 §12：T1–T6 由主 Agent 亲自编写基准线 → `code_review` → 独立子代理功能审查 → 确认无误后派子代理移植 `forge-1.20.1` → 再 `code_review` + 另一个独立子代理功能审查。

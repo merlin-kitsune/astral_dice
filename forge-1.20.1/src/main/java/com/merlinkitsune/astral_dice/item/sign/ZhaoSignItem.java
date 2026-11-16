@@ -103,7 +103,7 @@ import com.merlinkitsune.starengine.combat.PartyRelations;
 public class ZhaoSignItem extends BaseSignItem implements SignHooks.DiceJudgmentRoll {
     private static final Logger LOGGER = LoggerFactory.getLogger(ZhaoSignItem.class);
 
-    /** 主动技能的动作 id(注册表键;也是 actionbar 技能名 {@code msg.astral_dice.target_select.skill.<id>} 的来源) */
+    /** 主动技能的动作 id（注册表键） */
     public static final String ACTION_ID = "zhao_blessing";
 
     /** 立牌的物品注册 id(锁定态/调试读数用) */
@@ -504,5 +504,11 @@ public class ZhaoSignItem extends BaseSignItem implements SignHooks.DiceJudgment
     /** 只读读数辅助(探针/调试用):当前是否满足"组队"这一前置(未组队 ⇒ 心意相连整体不生效) */
     public static boolean teamGateOpen(Player player) {
         return player != null && PartyRelations.hasTeam(player);
+    
+}
+    // 2026-11-09（A）：类玩家宿主的主动入口 —— 当前语义依赖玩家侧通道，显式拒绝并留锚点。
+    @Override
+    protected boolean activateForEntity(net.minecraft.world.entity.LivingEntity owner) {
+        return com.merlinkitsune.astral_dice.item.sign.SignEntitySkills.deny("zhao", owner, "needs_player_session");
     }
 }

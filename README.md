@@ -28,11 +28,21 @@ Astral Dice is a survival expansion built around dice. Equip a dice and every me
 - Bountiful bounty board integration.
 - Jade shows defense instead of armor on all four lines.
 
-## What's new in 1.5.1
+## What's new in 1.6.0-pre.1
 
-This section covers everything in the 1.5.1 and 1.5.0 stable releases, including what the earlier 1.5.0 pre-release and release-candidate builds shipped. Entry-by-entry detail lives in [CHANGELOG.md](CHANGELOG.md).
+This pre-release folds the `26.4-SNAPSHOT.1`–`.76` development line into the release tree.
 
-- **1.5.1 fix**: when a meito card's durability ran out and the player was not wearing the "Misaki" guardian sign, cost settlement crashed because it lacked the player context (the save died at `Ticking player`). This is fixed; 1.5.0 saves and multiplayer remain compatible (interop version is still 1.5).
+- **Public add-on API.** `AstralDiceApi` exposes content queries, wallet read/write/transfer, category-filtered damage hooks and attack/defense stat hooks. StarEngine 1.2.0-pre.1 supplies the shared content, economy, damage and event APIs on five platforms.
+- **KubeJS companion.** The separate `astral_dice_kubejs` addon (`0.0.2`) binds content registration/query, wallet, damage hooks and combat-stat hooks to server scripts. Hooks are cleared on reload; client scripts are rejected.
+- **Damage categories and stat hooks.** Damage is classified as dice/melee, ranged, magic, gun or skill. Script hooks can adjust attack and defense at `BASE`/`ADDITIVE`/`MULTIPLICATIVE`/`FINAL`; NeoForge 1.21.1 and Forge 1.20.1 install them.
+- **Content registration.** The built-in 36 signs and 70 chips are registered into StarEngine's content registries; content freezes after server start so server scripts can register before the freeze.
+- **Five-platform library.** StarEngine adds a Fabric 1.21.1 library line, but the mod's Fabric 1.21.1 line remains unreleased scaffolding.
+
+The 1.5.0 feature list below is retained as the previous stable baseline.
+
+## What's new in 1.5.0 (previous stable)
+
+This section covers everything in the 1.5.0 stable release, including what the earlier 1.5.0 pre-release and release-candidate builds shipped. Entry-by-entry detail lives in [CHANGELOG.md](CHANGELOG.md).
 
 **New content**
 
@@ -73,21 +83,23 @@ The Abyss Reagent chip is named consistently now: display name, tooltip and ever
 
 | Support | Subproject | Minecraft | Loader | Java | Version | Patchouli |
 |---|---|---|---|---|---|---|
-| ✅ | `neoforge-1.21.1` | 1.21.1 | NeoForge 21.1.235 | 21 | 1.5.1 | ✅ |
-| ✅ | `forge-1.20.1` | 1.20.1 | Forge 47.1.47+ | 17 | 1.5.1 | ✅ |
-| ✅ | `neoforge-26.1.2` | 26.1.2 | NeoForge 26.1.2.109 | 25 | 1.5.1 | ✅ |
-| ✅ | `fabric-1.20.1` | 1.20.1 | Fabric Loader 0.19.5 | 17 | 1.5.1 | ✅ |
+| ✅ | `neoforge-1.21.1` | 1.21.1 | NeoForge 21.1.235 | 21 | 1.6.0-pre.1 | ✅ |
+| ✅ | `forge-1.20.1` | 1.20.1 | Forge 47.1.47 | 17 | 1.6.0-pre.1 | ✅ |
+| ✅ | `neoforge-26.1.2` | 26.1.2 | NeoForge 26.1.2.109 | 25 | 1.6.0-pre.1 | ✅ |
+| ✅ | `fabric-1.20.1` | 1.20.1 | Fabric Loader 0.19.5 | 17 | 1.6.0-pre.1 | ✅ |
 
-- **All four lines are release lines.** `neoforge-1.21.1`, `forge-1.20.1`, `neoforge-26.1.2` and `fabric-1.20.1` stay at feature parity; every GitHub Release carries all four jars, tagged with the bare base version (this release: `1.5.1`) and published as a stable release. CI builds every line in one run (`.github/workflows/build.yml`).
+- **All four lines are release lines.** `neoforge-1.21.1`, `forge-1.20.1`, `neoforge-26.1.2` and `fabric-1.20.1` stay at feature parity; every GitHub Release carries all four jars, tagged with the bare base version (this release: `1.5.0`) and published as a stable release. CI builds every line in one run (`.github/workflows/build.yml`).
 - `neoforge-26.1.2` is the 26.1.x migration line. It ships in the same batch as the other three, as an attachment on the same Release, and never gets its own tag. There is no Iron's Spells 'n Spellbooks integration here, since upstream ships no 26.1.x build.
 - `fabric-1.20.1` is the Fabric port line (added 2026-09-29, merged into `multi-main` on 2026-10-01) and has been a stable release line since 1.5.0: same Release and same tag as the other three. It has its own prerequisite set (see [Fabric prerequisites](#fabric-1201-prerequisites)), no Curios, Bountiful or Iron's Spells integration, and the four recipe-mechanism differences listed under "Platform & Compatibility" in [CHANGELOG.md](CHANGELOG.md).
+- `fabric-1.21.1` is a fifth subproject that builds from this worktree but is **not released**. It is the P1 scaffolding line (see [the port feasibility plan](docs/features/fabric-1211-port-feasibility-plan.md)): it stays out of this support matrix, out of every GitHub Release and off CurseForge until its acceptance gates are met. Its jar appears in the provenance table below only so the build output stays traceable.
 
 ## Dependencies
 
 | Dependency | Requirement |
 |---|---|
-| Required, install separately | **StarEngine** (mod id `starengine`, currently **1.1.1**). **None of the four release lines bundles the library any more**; install the jar that matches your loader: `starengine-neoforge-1.21.1-1.1.1.jar` (NeoForge 1.21.1) / `starengine-forge-1.20.1-1.1.1.jar` (Forge 1.20.1) / `starengine-neoforge-26.1.2-1.1.1.jar` (NeoForge 26.1.2) / `starengine-fabric-1.20.1-1.1.1.jar` (Fabric 1.20.1) into `mods` next to this mod, at the same version this build was compiled against; the download source is the StarEngine project on CurseForge (id `1755415`). Version range: the two NeoForge lines declare `versionRange="[1.1.1,2.0.0)"` in `neoforge.mods.toml`, the Fabric line declares `>=1.1.1 <2.0.0` under `depends.starengine` in `fabric.mod.json` (equivalent). A missing or out-of-range library fails startup with "Missing or unsupported mandatory dependencies". |
+| Required, install separately | **StarEngine** (mod id `starengine`). **None of the four release lines bundles the library any more**; install the jar that matches your loader, at the exact version the build was compiled against. This release pins **1.2.0-pre.1** on all five lines: `starengine-neoforge-1.21.1-1.2.0-pre.1.jar`, `starengine-forge-1.20.1-1.2.0-pre.1.jar`, `starengine-neoforge-26.1.2-1.2.0-pre.1.jar`, `starengine-fabric-1.20.1-1.2.0-pre.1.jar`, and `starengine-fabric-1.21.1-1.2.0-pre.1.jar` (non-release line). Download from the StarEngine project on CurseForge (id `1755415`). The declared range is template-expanded from that pin: `versionRange="[${starengine_version},2.0.0)"` in `neoforge.mods.toml` / `mods.toml`, and `>=1.2.0-pre.1 <2.0.0` under `depends.starengine` in `fabric.mod.json`. A missing or out-of-range library fails startup with "Missing or unsupported mandatory dependencies". |
 | Required | Curios API: 5.x on 1.20.1, 9+ on 1.21.1, 15+ on 26.1.2. A missing or too-old Curios is rejected during dependency sorting. This requirement is declared by this mod; StarEngine only uses Curios as a compile-time dependency on the Forge side. |
+| Required | **GeckoLib**: `[4.9,5)` on NeoForge 1.21.1, `[4.8,5)` on Forge 1.20.1, `4.8.4+` on Fabric 1.20.1, `[5,6)` on 26.1.2. This mod ships GeckoLib-animated entities; a missing or out-of-range GeckoLib is rejected during dependency sorting. GeckoLib is never embedded in the jar. |
 | Required, 1.20.1 only | A Mixin runtime: either **Mixin Booster 0.1.3 or newer**, or **Sinytra Connector**. If the pack already ships Connector, nothing else is needed, because Connector bundles the same runtime and Mixin Booster steps aside. When neither is present the mod refuses to start and explains how to install one. An outdated Mixin Booster is rejected. |
 | Required, fabric-1.20.1 only | A different set, listed under [Fabric prerequisites](#fabric-1201-prerequisites). The Curios and Mixin Booster chain does not apply on this line. |
 | Optional | Bountiful, Patchouli. |
@@ -100,13 +112,13 @@ The Abyss Reagent chip is named consistently now: display name, tooltip and ever
 | 1 | Fabric Loader | 0.19.5+ (0.19.x) |
 | 2 | Fabric API | 0.92.12 for 1.20.1 |
 | 3 | Fabric Data Attachment API | shipped with Fabric API | `depends`: `fabric-data-attachment-api-v1` (any version) |
-| 4 | Puzzles Lib (event bridge) | 8.1.33+, installed together with item 5 | `depends`: `puzzleslib >=8.1.33` |
-| 5 | Forge Config API Port | 8.0.3, required by Puzzles Lib 8.x | not declared directly; pulled in by Puzzles Lib 8.x |
-| 6 | StarEngine | 1.1.1 | `depends`: `starengine >=1.1.1 <2.0.0`; **no longer bundled** on this line (the Loom `include` was removed), so `starengine-fabric-1.20.1-1.1.1.jar` must be installed separately (CurseForge project id `1755415`) |
-| 7 | Accessory provider, either one | Trinkets 3.7.2+ or Accessories 1.0.0-beta.48+ | both under `recommends`, checked at startup |
-| 8 | Optional | Patchouli (in-game guide), JEI 15.62.0+ | both under `recommends` |
+| 4 | StarEngine | 1.2.0-pre.1 | `depends`: `starengine >=1.2.0-pre.1 <2.0.0`; **no longer bundled** on this line (the Loom `include` was removed), so `starengine-fabric-1.20.1-1.2.0-pre.1.jar` must be installed separately (CurseForge project id `1755415`) |
+| 5 | GeckoLib (animated entity) | 4.8.4+ | `depends`: `geckolib >=4.8.4` |
+| 6 | Accessory provider, either one | Trinkets 3.7.2+ or Accessories 1.0.0-beta.48+ | both under `recommends`, checked at startup |
+| 7 | Optional | Patchouli (in-game guide), JEI 15.62.0+ | both under `recommends` |
 | n/a | Not applicable on this line | - | Curios API, Mixin Booster, Sinytra Connector, Bountiful, Iron's Spells 'n Spellbooks |
 
+- StarEngine supplies the Fabric event bridges (13 on 1.21.1, 12 on 1.20.1); Puzzles Lib and Forge Config API Port are no longer required.
 - The accessory provider is either-or. Fabric's `depends` block is AND-only, so Trinkets and Accessories are both declared under `recommends`, and the mod checks at startup, refusing to launch only when neither is present.
 - The CurseForge store listing declares Trinkets as required and Accessories as optional. That is a store-page declaration only; `fabric.mod.json` keeps both as recommendations, so an Accessories-only setup still starts.
 
@@ -115,9 +127,61 @@ The Abyss Reagent chip is named consistently now: display name, tooltip and ever
 ## Download
 
 - **GitHub Releases**: [merlin-kitsune/astral_dice/releases](https://github.com/merlin-kitsune/astral_dice/releases). Every Release carries all four jars: one each for `neoforge_1.21.1`, `forge_1.20.1`, `neoforge_26.1.2` and `fabric_1.20.1`.
-- **Tag rule**: the tag is always the bare base version (this release: `1.5.1`) - no `v` prefix, no platform prefix, no loader suffix. All four jars belong to that one Release, published as a stable release (not a pre-release). The Fabric line no longer publishes a separate pre-release and no longer takes its own tag.
-- **CurseForge**: the builds go to the main project (`astral-dice`, project id `1662159`). StarEngine has its own project (`starengine`, id `1755415`); **none of the four lines bundles it any more**, so players must install that separate jar themselves: `starengine-neoforge-1.21.1-1.1.1.jar` / `starengine-forge-1.20.1-1.1.1.jar` / `starengine-neoforge-26.1.2-1.1.1.jar` / `starengine-fabric-1.20.1-1.1.1.jar`. Version numbers keep the `+<loader>_<MC>` suffix (for example `1.5.1+neoforge_1.21.1`), and the release channel follows the version suffix. Modrinth publishing was permanently dropped on 2026-10-23; CurseForge is the only store channel.
-- **Build artefacts**: `astral_dice-1.5.1+neoforge_1.21.1.jar`, `astral_dice-1.5.1+forge_1.20.1.jar`, `astral_dice-1.5.1+neoforge_26.1.2.jar` and `astral_dice-1.5.1+fabric_1.20.1.jar`, each under its subproject's `build/libs/`; the version inside each jar matches the file name (1.5.1).
+- **Tag rule**: the tag is always the bare base version (this release: `1.6.0-pre.1`) - no `v` prefix, no platform prefix, no loader suffix. All four jars belong to that one Release. This 1.6.0-pre.1 release is published as a pre-release; the later stable 1.6.0 line will use the bare version. The Fabric line does not publish a separate pre-release or take its own tag.
+- **CurseForge**: the builds go to the main project (`astral-dice`, project id `1662159`). StarEngine has its own project (`starengine`, id `1755415`); **none of the four lines bundles it any more**, so players must install that separate jar themselves: `starengine-neoforge-1.21.1-1.2.0-pre.1.jar` / `starengine-forge-1.20.1-1.2.0-pre.1.jar` / `starengine-neoforge-26.1.2-1.2.0-pre.1.jar` / `starengine-fabric-1.20.1-1.2.0-pre.1.jar`. Version numbers keep the `+<loader>_<MC>` suffix (for example `1.6.0-pre.1+neoforge_1.21.1`), and the release channel follows the version suffix. Modrinth publishing was permanently dropped on 2026-10-23; CurseForge is the only store channel.
+- **Build artefacts**: `astral_dice-1.6.0-pre.1+neoforge_1.21.1.jar`, `astral_dice-1.6.0-pre.1+forge_1.20.1.jar`, `astral_dice-1.6.0-pre.1+neoforge_26.1.2.jar` and `astral_dice-1.6.0-pre.1+fabric_1.20.1.jar`, each under its subproject's `build/libs/`; the version inside each jar matches the file name (1.6.0-pre.1).
+
+## Build provenance (1.6.0-pre.1)
+
+> All five lines were built from **`2b98a70f`** on 2026-11-16. The two NeoForge/Forge jars were regenerated at
+> 20:35 after the worktree build-info fix; the other three lines are the 20:18 batch from the same commit.
+
+The two NeoForge/Forge release jars carry `META-INF/astral_dice/build-info.json` with `{version, commit, builtAt,
+classCount}`; all five 1.6.0-pre.1 jars ship a sibling `<jar>.sha256`. `build-info.commit` names the **code commit** the
+jar was built from; the README update that records the hash does not change the artifact.
+
+| Line | Version | Built from | Built at | Size (B) | SHA-256 |
+|---|---|---|---|---|---|
+| neoforge-1.21.1 | 1.6.0-pre.1+neoforge_1.21.1 | `2b98a70f`，classCount 643 | 2026-11-16T20:35:05+08:00 | 3,048,607 | `9aed2b61558323467e9b126cc7fb2a2db33f14ada1cbca76786847801e7375e0` |
+| forge-1.20.1 | 1.6.0-pre.1+forge_1.20.1 | `2b98a70f`，classCount 668 | 2026-11-16T20:35:05+08:00 | 3,100,957 | `0bf9a64e6641d331fc2e3a115c7c1d683b6fa13f5e5a334679062169ef9c7252` |
+| neoforge-26.1.2 | 1.6.0-pre.1+neoforge_26.1.2 | 无 build-info，按同一批 `2b98a70f` 构建 | 2026-11-16T20:18 | 3,278,645 | `77f1c5dbbe1681a158352ee84ae3232b395a72d801b374eb67be1eb15daa7db6` |
+| fabric-1.20.1 | 1.6.0-pre.1+fabric_1.20.1 | 无 build-info，按同一批 `2b98a70f` 构建 | 2026-11-16T20:18 | 3,356,772 | `0be7405501ac59d4cc29ee8e76ea169dfb0f9b428e83ef5a8c066237d2d8d8a5` |
+| fabric-1.21.1 | 1.6.0-pre.1+fabric_1.21.1 | 无 build-info，按同一批 `2b98a70f` 构建 | 2026-11-16T20:18 | 3,382,619 | `f3ed89a30cd45c2e9db69b636b24d51d4ccf5374d61e9007147d68911408522b` |
+
+The final `assemble` run was `BUILD SUCCESSFUL in 9s` (28 actionable tasks: 7 executed, 21 up-to-date). Only
+`neoforge-1.21.1` and `forge-1.20.1` embed `build-info.json`; the other three lines are identified by size +
+hash only and are from the same `2b98a70f` commit.
+
+Earlier `26.4-SNAPSHOT` generations are superseded by this release; their history remains in git and in
+`CHANGELOG.md`. The `build/libs` bytes above are the release artefacts; `pushToDevRun` copies under `run/*/mods/`
+are dev-runtime repacks and are not release attachments.
+
+`fabric-1.21.1` is tracked here because it is built from this worktree, but it is **not** a release line yet: it is the P1
+scaffolding line, has no row in the support matrix above, and gets no Release attachment
+(see `docs/features/fabric-1211-port-feasibility-plan.md`).
+
+Live smoke is recorded per release in the release checklist. The historical 2026-11-10 session used the `.10` P0
+jars built from `3a6df49c`; it is kept only as prior evidence and is not a test of the 1.6.0-pre.1 artefacts.
+
+Earlier dev work on the 少主 (`al`) sign and the P1 lines is documented in
+[docs/features/al-sign-spec.md](docs/features/al-sign-spec.md) §7; those readings predate 1.6.0-pre.1 and are not
+release smoke evidence.
+
+Both fabric lines were rebuilt afterwards. The stall was a throughput problem, not a dead end: after an interrupted
+build Loom marked its cache lock `ACQUIRED_PREVIOUS_OWNER_DISOWNED` and re-downloaded `minecraft-server.jar` (47.8 MB)
+through the local HTTPS proxy at ~73 KB/s, so the console looked frozen. Route Mojang CDNs direct
+(`systemProp.http.nonProxyHosts` gain `piston-data.mojang.com`, `piston-meta.mojang.com`, `libraries.minecraft.net`,
+`resources.download.minecraft.net`; keep `maven.fabricmc.net` proxied) and judge a stall by watching `*.part` grow.
+
+`build/libs` keeps only the current version; older `26.4-SNAPSHOT.{6,7}` and `2.0.0-SNAPSHOT.*` jars were moved to
+`temp/quarantine-build-libs/`. Purge stale local m2 coordinates that were overwritten in place before this release:
+
+```bash
+rm -rf ~/.m2/repository/com/merlinkitsune/astral_dice/neoforge-1.21.1/26.4-SNAPSHOT.7+neoforge_1.21.1
+rm -rf ~/.m2/repository/com/merlinkitsune/astral_dice/astral_dice-forge-1.20.1/26.4-SNAPSHOT.7
+```
+
+Then reinstall from the packaged jars (`bash tools/install-astra-maven-local.sh --from <dist dir>` in the consumer repo).
 
 ## Build
 
@@ -129,7 +193,7 @@ The Abyss Reagent chip is named consistently now: display name, tooltip and ever
 ./gradlew :fabric-1.20.1:build       # 1.20.1 Fabric
 ```
 
-- Third-party mods (front-ends included) come only from **Curse Maven** (`curse.maven:`) or **Modrinth Maven** (`maven.modrinth:`). `exclusiveContent` in `build.gradle` enforces this during resolution, and `tools/check_mod_sources.ps1` checks it statically. Details in `AGENTS.md`. Mod jars are never committed.
+- Third-party mods (front-ends included) come only from **Curse Maven** (`curse.maven:`) or **Modrinth Maven** (`maven.modrinth:`). `exclusiveContent` in `build.gradle` enforces this during resolution, and `tools/check_mod_sources.py` checks it statically. Details in `AGENTS.md`. Mod jars are never committed.
 - The library resolves from mavenLocal. Publish it first when working on a new version: `./gradlew :<platform>:publishToMavenLocal` inside the StarEngine repository.
 
 ## License

@@ -1,6 +1,7 @@
 package com.merlinkitsune.astral_dice.shop;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
+import com.merlinkitsune.astral_dice.data.ShopData;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.RandomSource;
@@ -8,6 +9,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -17,8 +19,8 @@ import java.util.Optional;
 /**
  * 筹码商店的**静态池与全部冻结常量**（判据正本 = {@code docs/chip-shop-logic-plan.md} §1 / §2）。
  *
- * <p><b>池 = 67 枚</b>：{@code ModItems} 中除 {@code blank_chip}（合成材料，不入池、也不参与「已拥有」判定）
- * 之外的**全部** {@code *_chip} 物品；品质分布 稀有 19 / 史诗 29 / 传奇 19（已与 {@code ModItems} 的
+ * <p><b>池 = 70 枚</b>：{@code ModItems} 中除 {@code blank_chip}（合成材料，不入池、也不参与「已拥有」判定）
+ * 之外的**全部** {@code *_chip} 物品；品质分布 稀有 19 / 史诗 30 / 传奇 21（已与 {@code ModItems} 的
  * {@code AstralRarities} 逐条交叉核对一致）。品质码 1/2/3 的档位口径（rare/epic/legendary）与 {@code ChipShopClientState#qualityFrameIndexOf}
  * 的返回值一致（两者互不调用：品质码由服务端按候选现算、经 DataSlot 同步），**永不出现普通 / 巅峰 / 奇特**（R20）；
  * 2026-10-22 起屏幕恢复绘制品质外框（{@code chipshop_quality_1/2/3} 回到绘制路径；2026-10-21 的「无边框」只针对图标素材本身）。
@@ -40,10 +42,10 @@ import java.util.Optional;
  * {@code assets/astral_dice/textures/gui/chip_shop/chips/<chip_id>.png}，故本类里**没有任何中文字面量**。
  * <p><b>平台差异（forge-1.20.1）</b>：贴图/物品 id 定位用 {@code new ResourceLocation(MODID, path)} —— 与 1.21.1
  * 蓝本的 {@code ResourceLocation.fromNamespaceAndPath(MODID, path)} 语义等价，取的是**本线既有
- * {@code block/CardShopBlock} 一族的写法**。⚠️ 不得写成「1.20.1 没有 fromNamespaceAndPath」：本线有 11 处真实调用
- * 且全量编译通过，Forge 47.4.10 的 {@code net/minecraft/resources/ResourceLocation.java:316} 就有该方法，
- * 而 {@code :48} 反倒把二参构造注为 {@code @deprecated Forge: Consider using fromNamespaceAndPath(...)}。
- * 其余常量与池表逐字同源（守门按字面校验，见 {@code scripts/verify/verify_chip_shop_ui.ps1} G9/G10/G11/G17/G18）。
+ * {@code block/CardShopBlock} 一族的写法**。⚠️ 不得写成「1.20.1 没有 fromNamespaceAndPath」——这句话只在 47.4.x 上
+ * 成立；自 2026-11-05 用户裁决把本线降到 **Forge 47.1.47**（47.1 线末版）后，该方法在编译期就不可见
+ * （它在 47.4.0 才被回填），全仓已统一退回二参构造，47.1 线也**不得**再写二参构造的 @deprecated 注解说明。
+ * 其余常量与池表逐字同源（守门按字面校验，见 {@code scripts/verify/verify_chip_shop_ui.py} G9/G10/G11/G17/G18）。
  */
 public final class ChipShopCatalog {
 
@@ -52,7 +54,7 @@ public final class ChipShopCatalog {
 
     /**
      * 筹码合成总开关的**权威默认值**(与 {@code config.ModCommonConfig#ENABLE_CHIP_RECIPES} 对应:
-     * 该配置项以此为默认定义 —— 关闭时 67 枚筹码无法通过合成获得)。
+     * 该配置项以此为默认定义 —— 关闭时 70 枚筹码无法通过合成获得)。
      */
     public static final boolean CHIP_RECIPES_DEFAULT = false;
 
@@ -188,8 +190,8 @@ public final class ChipShopCatalog {
         }
     }
 
-    /** 67 枚池（顺序 = 计划表 §1 的顺序；与 ModItems / 手册三方 67/67 吻合） */
-    public static final List<Entry> POOL = List.of(
+    /** 70 枚池（顺序 = 计划表 §1 的顺序；与 ModItems / 手册三方 70/70 吻合） */
+    private static final List<Entry> DEFAULT_POOL = List.of(
             e("atm_chip", TIER_RARE, School.STARLIGHT, Category.ECONOMY),
             e("bank_card_high_chip", TIER_EPIC, School.STARLIGHT, Category.ECONOMY),
             e("bank_card_low_chip", TIER_RARE, School.STARLIGHT, Category.ECONOMY),
@@ -245,6 +247,7 @@ public final class ChipShopCatalog {
             e("moto_helmet_high_chip", TIER_LEGENDARY, School.GENERIC, Category.REINFORCE),
             e("moto_helmet_low_chip", TIER_RARE, School.GENERIC, Category.REINFORCE),
             e("moto_helmet_medium_chip", TIER_EPIC, School.GENERIC, Category.REINFORCE),
+            e("perfect_branch_chip", TIER_LEGENDARY, School.GENERIC, Category.REINFORCE),
             e("piercing_gun_chip", TIER_LEGENDARY, School.GENERIC, Category.ATTACK),
             e("piggy_bank_chip", TIER_RARE, School.GENERIC, Category.ECONOMY),
             e("revenge_halberd_chip", TIER_EPIC, School.GENERIC, Category.ATTACK),
@@ -256,10 +259,13 @@ public final class ChipShopCatalog {
             e("speed_skates_high_chip", TIER_LEGENDARY, School.GENERIC, Category.REINFORCE),
             e("speed_skates_low_chip", TIER_RARE, School.GENERIC, Category.REINFORCE),
             e("speed_skates_medium_chip", TIER_EPIC, School.GENERIC, Category.REINFORCE),
+            e("sword_in_stone_epic_chip", TIER_EPIC, School.GENERIC, Category.ATTACK),
+            e("sword_in_stone_legendary_chip", TIER_LEGENDARY, School.GENERIC, Category.ATTACK),
             e("whetstone_chip", TIER_EPIC, School.GENERIC, Category.ATTACK)
     );
 
-    private static final Map<String, Entry> BY_ID = buildIndex();
+    private static volatile List<Entry> activePool = DEFAULT_POOL;
+    private static volatile Map<String, Entry> activeIndex = buildIndex(DEFAULT_POOL);
 
     private ChipShopCatalog() {
     }
@@ -268,17 +274,39 @@ public final class ChipShopCatalog {
         return new Entry(id, tier, school, category);
     }
 
-    private static Map<String, Entry> buildIndex() {
+    private static Map<String, Entry> buildIndex(List<Entry> pool) {
         Map<String, Entry> map = new LinkedHashMap<>();
-        for (Entry entry : POOL) {
+        for (Entry entry : pool) {
             map.put(entry.id(), entry);
         }
         return Map.copyOf(map);
     }
 
+    /** 应用数据包池；空列表或全部非法时恢复内置 70 枚池。 */
+    public static synchronized void applyData(ShopData data) {
+        List<Entry> next = new ArrayList<>();
+        if (data != null) {
+            for (ShopData.Chip chip : data.chips()) {
+                School school = School.byKey(chip.school()).orElse(null);
+                Category category = Category.byKey(chip.category()).orElse(null);
+                if (school != null && category != null) {
+                    next.add(new Entry(chip.id(), chip.tier(), school, category));
+                }
+            }
+        }
+        if (next.isEmpty()) {
+            activePool = DEFAULT_POOL;
+            activeIndex = buildIndex(DEFAULT_POOL);
+            return;
+        }
+        List<Entry> copy = List.copyOf(next);
+        activePool = copy;
+        activeIndex = buildIndex(copy);
+    }
+
     /** id → 池内条目（未知 id 返回空，不抛异常） */
     public static Optional<Entry> byId(String id) {
-        return id == null ? Optional.empty() : Optional.ofNullable(BY_ID.get(id));
+        return id == null ? Optional.empty() : Optional.ofNullable(activeIndex.get(id));
     }
 
     /** 物品 → 池内条目（非筹码 / air 返回空） */
@@ -332,7 +360,7 @@ public final class ChipShopCatalog {
 
     /** 池只读视图（村民交易表复用同一份池子）。 */
     public static List<Entry> entries() {
-        return POOL;
+        return activePool;
     }
 
     /** 按品质码反查档位（1/2/3；异常返回 -1）。 */

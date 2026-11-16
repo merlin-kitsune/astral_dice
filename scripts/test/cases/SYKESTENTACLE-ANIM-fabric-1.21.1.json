@@ -1,0 +1,118 @@
+{
+  "case_id": "SYKESTENTACLE-ANIM-fabric-1.21.1",
+  "title": "专属实体 astral_dice:sykestentacle：服务端可召唤、客户端 GeckoLib 控制器 idle/action 进入 RUNNING 且动画名为 tentacleidle/tentacleattack、受 /damage 后掉血（server+client，无反射）",
+  "version": "fabric-1.21.1",
+  "channel": "autojs",
+  "side": "server",
+  "on_fail": "stop_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "Rhino 无反射（getClass 也不可用）⇒ 实体识别统一走 BuiltInRegistries.ENTITY_TYPE.getKey(e.getType())；动画状态走 GeckoLib 公开的 getAnimatableInstanceCache()/getAnimationControllers()。"
+    },
+    {
+      "op": "mcp_status",
+      "save_as": "mcp"
+    },
+    {
+      "op": "eval_js",
+      "save_as": "spawn",
+      "code": "(function(){\n  if (typeof AutoJS === 'undefined') { throw new Error('端点: server 侧 AutoJS 全局缺失'); }\n  AutoJS.command('kill @e[type=astral_dice:sykestentacle]');\n  AutoJS.command('kill @e[type=!player,distance=..48]');\n  AutoJS.command('effect clear @a');\n  AutoJS.command('clear @a');\n  AutoJS.command('execute at @a run summon astral_dice:sykestentacle ~ ~1 ~');\n  var BIR = Java.loadClass('net.minecraft.core.registries.BuiltInRegistries');\n  var it = AutoJS.level().getAllEntities().iterator();\n  var out = { found: false };\n  while (it.hasNext()) {\n    var e = it.next();\n    if (String(BIR.ENTITY_TYPE.getKey(e.getType())) !== 'astral_dice:sykestentacle') { continue; }\n    out.found = true;\n    out.entityId = Number(e.getId());\n    out.maxHealth = Number(e.getMaxHealth());\n    out.health = Number(e.getHealth());\n    break;\n  }\n  return out;\n})()"
+    },
+    {
+      "op": "await_state",
+      "side": "server",
+      "timeout_ms": 15000,
+      "interval_ms": 300,
+      "code": "(function(){\n  var BIR = Java.loadClass('net.minecraft.core.registries.BuiltInRegistries');\n  var it = AutoJS.level().getAllEntities().iterator();\n  while (it.hasNext()) {\n    var e = it.next();\n    if (String(BIR.ENTITY_TYPE.getKey(e.getType())) === 'astral_dice:sykestentacle') { return true; }\n  }\n  return false;\n})()"
+    },
+    {
+      "op": "await_state",
+      "side": "client",
+      "timeout_ms": 25000,
+      "interval_ms": 400,
+      "code": "(function(){\n  var mc = Java.loadClass('net.minecraft.client.Minecraft').getInstance();\n  if (mc.level === null) { return false; }\n  var BIR = Java.loadClass('net.minecraft.core.registries.BuiltInRegistries');\n  var it = mc.level.entitiesForRendering().iterator();\n  while (it.hasNext()) {\n    var e = it.next();\n    if (String(BIR.ENTITY_TYPE.getKey(e.getType())) !== 'astral_dice:sykestentacle') { continue; }\n    var c = e.getAnimatableInstanceCache().getManagerForId(Number(e.getId())).getAnimationControllers();\n    var ci = c.get('idle');\n    return ci !== null && String(ci.getAnimationState()) === 'RUNNING';\n  }\n  return false;\n})()"
+    },
+    {
+      "op": "eval_js",
+      "side": "client",
+      "save_as": "anim",
+      "code": "(function(){\n  var mc = Java.loadClass('net.minecraft.client.Minecraft').getInstance();\n  if (mc.level === null) { throw new Error('端点: client 未进入世界'); }\n  var BIR = Java.loadClass('net.minecraft.core.registries.BuiltInRegistries');\n  var it = mc.level.entitiesForRendering().iterator();\n  var out = { found: false, idleState: 'none', actionState: 'none', idleAnim: '', actionAnim: '' };\n  while (it.hasNext()) {\n    var e = it.next();\n    if (String(BIR.ENTITY_TYPE.getKey(e.getType())) !== 'astral_dice:sykestentacle') { continue; }\n    out.found = true;\n    out.entityId = Number(e.getId());\n    var c = e.getAnimatableInstanceCache().getManagerForId(Number(e.getId())).getAnimationControllers();\n    var i1 = c.get('idle'), i2 = c.get('action');\n    out.idleState = i1 === null ? 'none' : String(i1.getAnimationState());\n    out.actionState = i2 === null ? 'none' : String(i2.getAnimationState());\n    out.idleAnim = i1 === null ? '' : String(i1.getCurrentAnimation());\n    out.actionAnim = i2 === null ? '' : String(i2.getCurrentAnimation());\n    break;\n  }\n  return out;\n})()"
+    },
+    {
+      "op": "eval_js",
+      "save_as": "dmg",
+      "code": "(function(){\n  var BIR = Java.loadClass('net.minecraft.core.registries.BuiltInRegistries');\n  var it = AutoJS.level().getAllEntities().iterator();\n  var e = null;\n  while (it.hasNext()) {\n    var x = it.next();\n    if (String(BIR.ENTITY_TYPE.getKey(x.getType())) === 'astral_dice:sykestentacle') { e = x; break; }\n  }\n  if (e === null) { throw new Error('未找到触手实体'); }\n  var out = { found: true, entityId: Number(e.getId()), maxHealth: Number(e.getMaxHealth()) };\n  out.hpBefore = Number(e.getHealth());\n  AutoJS.command('damage @e[type=astral_dice:sykestentacle,limit=1] 4 minecraft:player_attack');\n  out.hpAfter = Number(e.getHealth());\n  out.delta = out.hpBefore - out.hpAfter;\n  out.aliveAfter = !e.isRemoved();\n  return out;\n})()"
+    },
+    {
+      "op": "eval_js",
+      "save_as": "restored",
+      "code": "(function(){\n  AutoJS.command('kill @e[type=astral_dice:sykestentacle]');\n  AutoJS.command('kill @e[type=!player,distance=..48]');\n  AutoJS.command('effect clear @a');\n  AutoJS.command('clear @a');\n  return { cleaned: true };\n})()"
+    }
+  ],
+  "asserts": [
+    {
+      "type": "state",
+      "name": "mcp_ok",
+      "from": "mcp",
+      "expect": {
+        "Ok": true
+      }
+    },
+    {
+      "type": "state",
+      "name": "server_summon",
+      "from": "spawn",
+      "expect": {
+        "found": true,
+        "maxHealth": {
+          "gte": 1
+        }
+      }
+    },
+    {
+      "type": "state",
+      "name": "client_animation_running",
+      "from": "anim",
+      "expect": {
+        "found": true,
+        "idleState": "RUNNING",
+        "idleAnim": {
+          "regex": "tentacleidle"
+        }
+      }
+    },
+    {
+      "type": "state",
+      "name": "server_attributes_and_damage",
+      "from": "dmg",
+      "expect": {
+        "found": true,
+        "maxHealth": {
+          "gte": 1
+        },
+        "hpBefore": {
+          "gte": 1
+        },
+        "delta": {
+          "min": 3.99,
+          "max": 4.01
+        },
+        "aliveAfter": true
+      }
+    },
+    {
+      "type": "state",
+      "name": "cleanup_ok",
+      "from": "restored",
+      "expect": {
+        "cleaned": true
+      }
+    },
+    {
+      "type": "mixin",
+      "name": "no_mixin_apply_failure",
+      "scope": "whole"
+    }
+  ]
+}

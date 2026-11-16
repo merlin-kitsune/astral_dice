@@ -36,7 +36,7 @@ import net.minecraft.world.entity.monster.Enemy;
  * <p><b>fabric-1.20.1 平台差异</b>（相对 forge-1.20.1 基线）：
  * <ul>
  *   <li>无 {@code @Mod.EventBusSubscriber}：改用本线垫片 {@link SubscribeEvent}；
- *       事件类来自 {@code platform.event.entity.living}（由 {@code platform/PuzzlesBridges} 的
+ *       事件类来自 {@code platform.event.entity.living}（由 {@code platform/StarengineBridges} 的
  *       {@code LivingChangeTargetCallback(Mob#setTarget)} 真实派发）；</li>
  *   <li>⚠️ <b>必须在 {@code AstralDiceMod#registerListeners()} 里显式登记本类</b>
  *       （{@code LoaderBus.INSTANCE.register(BarricadeAggroHandler.class)}），

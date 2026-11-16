@@ -1,0 +1,66 @@
+{
+  "case_id": "TRINKET-SLOTS-fabric-1.21.1",
+  "title": "Trinkets 三槽（dice/stand/chip）可装入且 chip 槽随骰子品质长到 0/1/2/3/4（证据 data/trinkets/slots/astral_dice/{dice,stand,chip}.json 的 amount 1/1/0；item/ModItems.java:241-283 的 chipBonus；item/dice/DiceCurioItem.java:180-194,256-275）",
+  "version": "fabric-1.21.1",
+  "channel": "autojs",
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "判据来源：dice.json/stand.json amount=1、chip.json amount=0（运行期由 DiceCurioItem 长）；DiceCurioItem.java:180-187 chipSlotsFor（骰子空=0，mimi 在装 +1）、:189-194 targetChipSlots(starLevel)、:256-275 applySlotCount 用 CHIP_SLOT_MODIFIER 绝对修饰符 + handler.update()；ModItems.java:241-283 的 chipBonus：golden=1+s/8、diamond=2+s/10、netherite=3+s/12、nether_star=4+s/12，fresh ItemStack 星数=0 ⇒ 1/2/3/4。用例写入槽位后显式调 refreshChipSlotCount（不依赖 setStackInSlot 是否派发 onEquip），结束清空三槽并 enforceNoDiceState 收 0。"
+    },
+    {
+      "op": "mcp_status",
+      "timeout_ms": 20000,
+      "save_as": "mcp"
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "mode": "json",
+      "timeout_ms": 40000,
+      "save_as": "slots",
+      "code": "(function(){\n  function cls(n){ try { return Java.loadClass(n); } catch (e) { return java.lang.Class.forName(n); } }\n  var BR = cls(\"net.minecraft.core.registries.BuiltInRegistries\");\n  var RL = cls(\"net.minecraft.resources.ResourceLocation\");\n  var S = cls(\"net.minecraft.world.item.ItemStack\");\n  var CuriosApi = cls(\"com.merlinkitsune.astral_dice.compat.curios.CuriosApi\");\n  var Dice = cls(\"com.merlinkitsune.astral_dice.item.dice.DiceCurioItem\");\n  var player = AutoJS.players()[0];\n  function stack(id){ return new S(BR.ITEM.get(RL.parse(id))); }\n  function idOf(st){ return (st == null || st.isEmpty()) ? \"\" : String(BR.ITEM.getKey(st.getItem())); }\n  var keys = [];\n  var kit = CuriosApi.getCuriosMap(player).keySet().iterator();\n  while (kit.hasNext()) { keys.push(String(kit.next())); }\n  var out = { keys: keys };\n  function has(n){ for (var i=0;i<keys.length;i++){ var k=keys[i]; if (k===n || k.indexOf(\"/\"+n)>=0) return true; } return false; }\n  out.hasDiceSlot = has(\"dice\"); out.hasStandSlot = has(\"stand\"); out.hasChipSlot = has(\"chip\");\n  function h(name){ var o = CuriosApi.getStacksHandler(player, name); return (o != null && o.isPresent()) ? o.get() : null; }\n  var hd = h(\"dice\"), hs = h(\"stand\"), hc = h(\"chip\");\n  out.diceHandler = hd != null; out.standHandler = hs != null; out.chipHandler = hc != null;\n  if (hd == null || hs == null || hc == null) { out.abort = true; return out; }\n  out.abort = false;\n  hd.getStacks().setStackInSlot(0, S.EMPTY);\n  hs.getStacks().setStackInSlot(0, S.EMPTY);\n  Dice.enforceNoDiceState(player);\n  out.diceBase = hd.getSlots();\n  out.standBase = hs.getSlots();\n  out.chipBase = hc.getSlots();\n  function refresh(){ Dice.refreshChipSlotCount(player); return hc.getSlots(); }\n  function equipDice(id){ hd.getStacks().setStackInSlot(0, stack(id)); return refresh(); }\n  out.chipNoDice = refresh();\n  out.chipGolden = equipDice(\"astral_dice:golden_dice\");\n  out.chipDiamond = equipDice(\"astral_dice:diamond_dice\");\n  out.chipNetherite = equipDice(\"astral_dice:netherite_dice\");\n  out.chipNetherStar = equipDice(\"astral_dice:nether_star_dice\");\n  hc.getStacks().setStackInSlot(0, stack(\"astral_dice:flashlight_chip\"));\n  out.chipItemReadback = idOf(hc.getStacks().getStackInSlot(0));\n  hc.getStacks().setStackInSlot(0, S.EMPTY);\n  hs.getStacks().setStackInSlot(0, stack(\"astral_dice:parunan_sign\"));\n  out.standItemReadback = idOf(hs.getStacks().getStackInSlot(0));\n  hs.getStacks().setStackInSlot(0, S.EMPTY);\n  hd.getStacks().setStackInSlot(0, S.EMPTY);\n  Dice.enforceNoDiceState(player);\n  out.chipTeardown = hc.getSlots();\n  out.diceTeardown = idOf(hd.getStacks().getStackInSlot(0));\n  out.standTeardown = idOf(hs.getStacks().getStackInSlot(0));\n  return out;\n})()"
+    }
+  ],
+  "asserts": [
+    {
+      "type": "state",
+      "from": "mcp",
+      "expect": {
+        "Ok": true
+      }
+    },
+    {
+      "type": "state",
+      "from": "slots",
+      "expect": {
+        "abort": false,
+        "hasDiceSlot": true,
+        "hasStandSlot": true,
+        "hasChipSlot": true,
+        "diceHandler": true,
+        "standHandler": true,
+        "chipHandler": true,
+        "diceBase": 1,
+        "standBase": 1,
+        "chipBase": 0,
+        "chipNoDice": 0,
+        "chipGolden": 1,
+        "chipDiamond": 2,
+        "chipNetherite": 3,
+        "chipNetherStar": 4,
+        "chipItemReadback": "astral_dice:flashlight_chip",
+        "standItemReadback": "astral_dice:parunan_sign",
+        "chipTeardown": 0,
+        "diceTeardown": "",
+        "standTeardown": ""
+      }
+    },
+    {
+      "type": "absent",
+      "scope": "case",
+      "pattern": "未找到 chip 槽位处理器"
+    }
+  ]
+}

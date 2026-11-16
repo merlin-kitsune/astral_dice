@@ -5,9 +5,11 @@
 > - 功能（描述文本）：在玩家指定地面上放置一个强化拒止，强化拒止会自动吸附8格范围内的敌对目标，并对其持续施加缓慢和虚弱效果。强化拒止每10秒消耗吸附目标数量的耐久度（单次最大消耗5点）
 > - 功能补充：强化拒止是一个实体，没有碰撞箱。使用该效果牌时遵循原版放置方块规则将强化止实体放置在指定位置，强化拒止拥有100点耐久，会以1秒为频率将半径8格范围敌对目标向强化拒止的位置逐渐缓慢拉扯（但目标无法逃离强化拒止影响范围），强化拒止不会吸引仇恨，但会持续为怪物施加 缓慢 (0:10)和虚弱 (0:10)，强化拒止耐久耗尽会有碎裂粒子效果，主动攻击并不会对齐造成伤害。」
 >
-> 本批范围：**P0 两线 neoforge-1.21.1 + forge-1.20.1**（逐项对等；两线代码剥注释后 0 hunk，仅平台 API 差异）。neoforge-26.1.2 / fabric-1.20.1 属 P1，不在本批。
+> 本批范围：**P0 两线 neoforge-1.21.1 + forge-1.20.1**（逐项对等；两线代码剥注释后 0 hunk，仅平台 API 差异）。neoforge-26.1.2 自 2026-11-11 划级后归 P0，该线 `RepulsionCardItem` / `RepulsionEntity` 已落地（源码实读）；fabric-1.20.1 / fabric-1.21.1 属 P1，不在本批。
+>
+> **2026-11-11 划级变更**：26.1.2 由 P1 归 P0；本文原「26.1.2 / fabric 属 P1」作废（fabric 两线仍 P1）。
 
-> ⚠️ **2026-10-22 用户裁决：品质改为「奇特（bizarre）」** —— 本牌在 `data/astral_dice/tags/item/is_exclusive.json` 里，属专属牌；专属牌一律奇特档。实现 = P0 两线 `item/ModItems.java` 的 `EFFECT_CARD_REPULSION` 用 `.rarity(AstralRarities.bizarre())`（原 `.epic()`）。上面的用户原文按「逐字引用」保留不改。
+> ⚠️ **2026-10-22 用户裁决：品质改为「奇特（bizarre）」** —— 本牌在 `data/astral_dice/tags/item/is_exclusive.json` 里，属专属牌；专属牌一律奇特档。实现 = P0 基准两线（neo21/forge；26.1.2 同源）`item/ModItems.java` 的 `EFFECT_CARD_REPULSION` 用 `.rarity(AstralRarities.bizarre())`（原 `.epic()`）。上面的用户原文按「逐字引用」保留不改。
 
 ## 1. 冻结设计 → 落点（逐条对应）
 
@@ -149,9 +151,9 @@ bbmodel 原文（64×64 分辨率、box_uv、modded_entity）：
 
 | 判据 | 命令 |
 |---|---|
-| 两线编译 | `pwsh -NoProfile -File scripts/test/mt_build.ps1 --version 1.21.1|1.20.1 --timeout 300` ⇒ `MT_BUILD: OK` |
-| 模型 / 贴图链闭合 | `pwsh -NoProfile -File scripts/verify/verify_resource_integrity.ps1` ⇒ `RESULT: PASS` |
-| 三语键集一致 | `pwsh -NoProfile -File tools/check_lang_sync.ps1 -LangDir <线>/src/main/resources/assets/astral_dice/lang`（两线各 1001 键） |
+| 两线编译 | `bash scripts/test/win/mt.sh --phase build --version 1.21.1|1.20.1 --timeout 300` ⇒ `MT_BUILD: OK` |
+| 模型 / 贴图链闭合 | `bash scripts/verify/verify_resource_integrity.py` ⇒ `RESULT: PASS` |
+| 三语键集一致 | `bash tools/check_lang_sync.py -LangDir <线>/src/main/resources/assets/astral_dice/lang`（两线各 1001 键） |
 | 手册无悬空键 | `python tools/audit_patchouli_keys.py` ⇒ 悬空 0 |
 | 档位词与 `.rarity()` 一致 | `python tools/verify_rarity_consistency.py` ⇒ PASS |
 | datagen 产物 | 两线 `src/generated/resources/assets/astral_dice/models/item/effect_card_repulsion.json` 存在（逐字节相同） |
@@ -174,4 +176,4 @@ bbmodel 原文（64×64 分辨率、box_uv、modded_entity）：
 
 - **2026-10-18 晚（按用户追加规则）**：用户原话「吸附怪物增加被激怒的中立，排除没有仇恨目标的敌对（如末影人），增加额外功能，吸附到苦力怕时阻止苦力怕自爆」。落地四项：① **R1 吸附资格**（`RepulsionEntity#isAttachable`：`Enemy` ∪ `NeutralMob`，且 `getTarget() != null` 或中立 `isAngry()`，且非 `TamableAnimal#isTame()`）—— 刻意窄于 `HostileTargets`，缘由与先例见该类 javadoc〈吸附资格〉；② **R2 苦力怕禁止自爆**（每 tick `suppressTrackedCreeperFuses` ＋ 新增 `event/RepulsionCreeperGuard` 取消 `ExplosionEvent.Start`，并新增 `RepulsionEntity#isTracking(UUID)` 作为事件层唯一判据）；③ **R3 文案**（三语 `tooltip.astral_dice.card.repulsion` 与 `guide.entry.effect_card_repulsion.2/.3`，键集不变仍 1001 键）；④ **R4 文档**（本文件 §1 / §3 / §6 / §8 与两份 CHANGELOG 的条目末尾追加一句）。P0 两线 neoforge-1.21.1 + forge-1.20.1 同步，代码逐字对等（仅平台 API 差异）。
 - **2026-10-18 晚（R5，平静即释放）**：`RepulsionEntity#tickTrackedTargets` 的每 tick 剪枝对**仍存在且存活**的 `Mob` 追加同一条 `isAttachable` 判定，顺序固定为「alive / removed → > 32 格 → `isAttachable` → 越界钳制」⇒ **被激怒而吸附的中立生物一旦平静、以及失去仇恨目标的敌对生物，会在下一个 tick 被释放**（不再施加缓慢 / 虚弱、不再被拉扯 / 钳制、不再计入耐久消耗；已施加的缓慢 / 虚弱按原时长自然结束，不主动清除）。`isAttachable` 本身未改动；类 javadoc 的「已知口径缺口」条目改写为「平静即释放」，§8 第 8 条同步改为已解决。P0 两线 neoforge-1.21.1 + forge-1.20.1 同步，代码逐字对等（仅平台 API 差异）。
-- **2026-10-18 晚（R6，tooltip 文案精简）**：用户原话「移除强化拒止tooltip中的括号注释内容；将怪力乱神立牌和强化拒止tooltip中分号改为换行；路障和强化拒止耐久度描述向下移（放在描述最后，在出牌数上面）」。落地（三语 × P0 两线共 6 个 lang 文件、键集不变）：① `tooltip.astral_dice.card.repulsion` 改为 5 行（用法 / 吸附 + 缓慢·虚弱 / 苦力怕不能自爆 / 不吸引仇恨·免疫伤害 / **耐久 + 每 10 秒消耗规则（末行）**），四处括号注释整段移除（`（遵循原版放置规则，放不下不消耗）`、`（无法逃离；…玩家宠物除外）`、`（单次最多 §e5§7 点）`、`（引信被压制、爆炸被取消）`），原分号一律改 `\n` 断行；② `tooltip.astral_dice.card.barricade` 改为 3 行并把耐久行移到最后；③ `tooltip.astral_dice.sign.lingling_*` 的分号改换行、`_note` 删去「充能上限为 §e20§7 层」（充能体系全局规则，见 §4.6，不在本牌 tooltip 重复）。判据：`tools/check_lang_sync.ps1` OK（1001 键 × 两线）、`scripts/audit/tooltip_color_audit.ps1` 64 处违规（与改动前基线同数，无一条命中这三组键）。
+- **2026-10-18 晚（R6，tooltip 文案精简）**：用户原话「移除强化拒止tooltip中的括号注释内容；将怪力乱神立牌和强化拒止tooltip中分号改为换行；路障和强化拒止耐久度描述向下移（放在描述最后，在出牌数上面）」。落地（三语 × P0 两线共 6 个 lang 文件、键集不变）：① `tooltip.astral_dice.card.repulsion` 改为 5 行（用法 / 吸附 + 缓慢·虚弱 / 苦力怕不能自爆 / 不吸引仇恨·免疫伤害 / **耐久 + 每 10 秒消耗规则（末行）**），四处括号注释整段移除（`（遵循原版放置规则，放不下不消耗）`、`（无法逃离；…玩家宠物除外）`、`（单次最多 §e5§7 点）`、`（引信被压制、爆炸被取消）`），原分号一律改 `\n` 断行；② `tooltip.astral_dice.card.barricade` 改为 3 行并把耐久行移到最后；③ `tooltip.astral_dice.sign.lingling_*` 的分号改换行、`_note` 删去「充能上限为 §e20§7 层」（充能体系全局规则，见 §4.6，不在本牌 tooltip 重复）。判据：`tools/check_lang_sync.py` OK（1001 键 × 两线）、`scripts/audit/tooltip_color_audit.py` 64 处违规（与改动前基线同数，无一条命中这三组键）。

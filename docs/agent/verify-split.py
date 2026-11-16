@@ -6,7 +6,7 @@
 在新结构下必然 IndexError / 恒 FAIL ⇒ 换成与结构无关的四项：
   1. 全文快照：AGENTS-full.md 保序包含拆分前备份（不丢行、不乱序）；
      + 红线区的**新落点**（docs/agent/AGENTS-dsh.md 标记块）与快照 L2–L129 仍逐字一致；
-  2. 结构完整：宿主分派表 4 个宿主 / 共同安全红线 1–7 条 / 按需文档索引节；
+  2. 结构完整：宿主分派表 4 个宿主 / 共同安全红线 1–9 条 / 按需文档索引节；
   3. 引用有效：AGENTS.md 里引用的 docs/**.md 必须真实存在（默认只 WARN，--strict 才 FAIL）；
   4. 体量 + 驻留规则：AGENTS.md < 32K 字符；AGENTS-dsh.md 仍含用户裁决的 using-superpowers 段。
 
@@ -65,6 +65,29 @@ def seq_contains(sub_lines, sup_lines):
     rewritten = sum(1 for i in unmatched if i in rewritten_idx)
     return missing, disorder, rewritten, added
 
+# 2026-11-05（用户裁决 B 档）：〈自动化测试流程〉整章按 bash + python 口径重写，旧快照里该章内容
+# 已被用户批准的整章替换取代 ⇒ 快照比对前**两侧都剥掉该章**，其余章节仍按「保序包含」严格判定。
+# 目的不变：防丢其它规则；排除范围最小化并公开打印，不隐藏。
+CHAP_PREFIXES = ('## 自动化测试流程（Automated Testing）',)
+# 终止哨兵用**下一章标题**而不是「任意 ## 」—— 新章内部含有多个 ## 级小节（0. 阅读指引 … 17. 注意事项），
+# 用「任意 ## 」会把同章后半段留进比对，制造假缺失。
+CHAP_ENDS = ('## NeoForge 上游 BUG 补丁（neoforge_fixes）',)
+def strip_chapter(lines):
+    out, skip, dropped = [], False, 0
+    for l in lines:
+        if not skip and any(l.startswith(p) for p in CHAP_PREFIXES):
+            skip, dropped = True, dropped + 1
+            continue
+        if skip:
+            if any(l.startswith(p) for p in CHAP_ENDS):
+                skip = False
+                out.append(l)
+            else:
+                dropped += 1
+            continue
+        out.append(l)
+    return out, dropped
+
 ok = True
 warns = 0
 def check(name, cond, extra=''):
@@ -84,8 +107,13 @@ if bak:
     # 拆分前备份的每一行按序在 AGENTS-full.md 中有交代（缺失 / 乱序 均为 0 才 OK；
     # 原地改写行数只作报告 —— 合规订正会更新行内数字/说明，不构成「丢行」）。
     # ⚠ AGENTS.md.bak-a-plan-* 与 AGENTS.md.bak-slim-* 是回滚工件，字节不许变。
-    n_missing, n_disorder, n_rewritten, n_added = seq_contains(norm(bak[-1]).split('\n'),
-                                                              norm(FULL).split('\n'))
+    _bak_all, _full_all = norm(bak[-1]).split('\n'), norm(FULL).split('\n')
+    _bak, _drop_bak = strip_chapter(_bak_all)
+    _full, _drop_full = strip_chapter(_full_all)
+    if _drop_bak or _drop_full:
+        print(f'  [NOTE] 〈自动化测试流程〉整章已按 2026-11-05 用户裁决改写，快照比对已排除该章'
+              f'（备份 {_drop_bak} 行 / 快照 {_drop_full} 行；其余章节判据未放宽）')
+    n_missing, n_disorder, n_rewritten, n_added = seq_contains(_bak, _full)
     check(f'docs/agent/AGENTS-full.md 保序包含拆分前备份（{os.path.basename(bak[-1])}；缺失/乱序 = 0）',
           n_missing == 0 and n_disorder == 0,
           f'缺失行数={n_missing} / 乱序行数={n_disorder}'
@@ -101,13 +129,15 @@ check('快照行数 ≥ 3480', norm(FULL).count('\n') >= 3480, f'lines={norm(FUL
 # 老脚本第 2 项守的「红线区 == 快照 L2–L120 逐字」不能丢，这里按新落点原样续守。
 # 2026-11-02：dsh 侧红线区内新增整节「## 发布流程硬规则（2026-11-02 用户裁决，强制）」（+9 行）并同步进
 # AGENTS-full.md，故比较区间的下界随之后移 L2–L120 → L2–L129（判据仍是逐字节相等，未放宽）。
+# 2026-11-09：红线区〈命令执行规范〉新增第 9 条（进程/窗口/桌面归 dsh-windows-mcp，+1 行）并同步进
+# AGENTS-full.md ⇒ 下界再后移 L2–L129 → L2–L130（判据不变）。
 _dsh = norm(DSH)
 _dl = _dsh.split('\n')
-_exp = '\n'.join(norm(FULL).split('\n')[1:129]).strip('\n')
+_exp = '\n'.join(norm(FULL).split('\n')[1:130]).strip('\n')
 _s = next((i + 1 for i, l in enumerate(_dl) if l.startswith('## 📍 生效红线区')), None)
 _e = next((i for i, l in enumerate(_dl) if l.startswith('<!-- END 生效红线区')), None)
 _act = '\n'.join(_dl[_s:_e]).strip('\n') if (_s is not None and _e is not None and _e > _s) else None
-check('AGENTS-dsh.md 生效红线区块与 AGENTS-full.md L2–L129 逐字一致', _act == _exp,
+check('AGENTS-dsh.md 生效红线区块与 AGENTS-full.md L2–L130 逐字一致', _act == _exp,
       f'红线区 {len(_act):,} 字符' if _act is not None else '红线区标记缺失（## 📍 生效红线区 / <!-- END 生效红线区）')
 
 print('== 2. AGENTS.md 结构完整（宿主分派 / 共同红线 / 按需索引）==')
@@ -121,10 +151,11 @@ check('宿主分派表含 4 个宿主（' + ' / '.join(want_hosts) + '）',
 bolds = re.findall(r'^(\d+)\.\s+\*\*(.+?)\*\*', ag, re.M)
 nums = [int(n) for n, _ in bolds]
 want_red = ['默认不启动实机', '默认不部署', '默认不 commit', '保护素材与他人改动', '互斥锁', '不代改他人职责',
-            '没有详细测试就没有发布版本']
+            '没有详细测试就没有发布版本', '早提交、勤提交',
+            '单写者 + 实机互斥']
 hit = [w for w in want_red if any(w in t for _, t in bolds)]
 miss_red = [w for w in want_red if w not in hit]
-check('共同安全红线 1–7 条齐全且编号连续', nums == [1, 2, 3, 4, 5, 6, 7] and not miss_red,
+check('共同安全红线 1–9 条齐全且编号连续', nums == [1, 2, 3, 4, 5, 6, 7, 8, 9] and not miss_red,
       f'编号={nums} / 命中 {len(hit)}/{len(want_red)} 条关键词' + (f' / 缺={miss_red}' if miss_red else ''))
 
 HEAD_IDX = '## 三、按需文档索引'

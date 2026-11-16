@@ -34,7 +34,7 @@ public class ModEffectEvents {
         //    ⚠️ 玩家侧口径不变(下方两条与命名空间守卫仍生效)。
         if (!(event.getEntity() instanceof Player)) return;
         // ★ 2026-10-04 修复（Q3）：目标身上**已无该效果** ⇒ 本次是「无效移除」，直接放行、不拦截。
-        //    fabric 侧本事件由 `PuzzlesBridges` 从 Puzzles 的 `MobEffectEvents.REMOVE` 桥接而来，
+        //    fabric 侧本事件由 `StarengineBridges` 从 Puzzles 的 `MobEffectEvents.REMOVE` 桥接而来，
         //    而「阻止移除」的落地方式是 `EventResult.INTERRUPT`；当注入点不可取消时会抛
         //    `CancellationException: The call removeEffect is not cancellable`。
         //    ⚠️ 语义上：**不存在的效果本来就不需要「保留」** ⇒ 这里早退既不改变任何可观察行为，
@@ -96,7 +96,7 @@ public class ModEffectEvents {
     // (ServerPlayer#restoreFrom 不复制效果)、PlayerLifecycleHandler 只清本模组那 11 个效果,
     // 因此若玩家只带「经 apply 施加的原版效果」死亡,快照会残留到 endTick+40 并与补回通道同源造成「陈旧时长复活」。
     // Clone 在重生/换维度时对新实体触发,按 UUID 清场即可(两者 UUID 相同)。
-    // 派发源:platform/PuzzlesBridges(PlayerEvents.Copy → PlayerEvent.Clone)
+    // 派发源:platform/StarengineBridges(PlayerEvents.Copy → PlayerEvent.Clone)
     @SubscribeEvent
     public static void onPlayerClone(PlayerEvent.Clone event) {
         PlayerEffectProtection.clear(event.getEntity());

@@ -21,6 +21,9 @@ import com.merlinkitsune.astral_dice.item.chip.FortuneStickChipItem;
 import com.merlinkitsune.astral_dice.item.chip.AbyssReagentChipItem;
 import com.merlinkitsune.astral_dice.item.chip.InfiniteGridChipItem;
 import com.merlinkitsune.astral_dice.item.chip.SensorChipItem;
+import com.merlinkitsune.astral_dice.item.chip.HolySwordGuardChipItem;
+import com.merlinkitsune.astral_dice.item.chip.SwordInStoneLegendaryChipItem;
+import com.merlinkitsune.astral_dice.item.chip.PerfectBranchChipItem;
 import com.merlinkitsune.astral_dice.item.chip.EagleScopeChipItem;
 import com.merlinkitsune.astral_dice.item.chip.MagicTomeChipItem;
 import com.merlinkitsune.astral_dice.item.chip.BufferShieldChipItem;
@@ -155,7 +158,7 @@ public class ModItems {
     //   全力攻击(巅峰 pinnacle)**保持原档**;撕咬 / 龙之咆哮 = 奇特(bizarre,沿用「专属牌 = 奇特」惯例,
     //   同日经用户确认保留 —— 不得随手改成稀有)。
     //   ⚠️ 改这些牌(或任何入池物品)的 rarity,**必须**同步三线赏金池 `astral_rews.json` 的 `"rarity"` 字段
-    //      (守门 `scripts/verify/verify_bountiful_pools.ps1` 按「物品档位 ↔ 数据层 rarity」映射比对,漏改即红)。
+    //      (守门 `scripts/verify/verify_bountiful_pools.py` 按「物品档位 ↔ 数据层 rarity」映射比对,漏改即红)。
     // 新增物品时按此标准选择 rarity,并保持与图标边框颜色一致;若参与赏金,同步维护 astral_objs/astral_rews。
     // ═══════════════════════════════════════════════════════════════════════════
 
@@ -469,6 +472,10 @@ public class ModItems {
     public static final DeferredItem<BlockItem> EVENT_DRAWER = ITEMS.register("event_drawer",
             () -> new BlockItem(ModBlocks.EVENT_DRAWER.get(), new Item.Properties().stacksTo(1)));
 
+    /** 星愿铁砧(物品形态):放置后右键打开「星愿铁砧」界面(三输入升星,无耐久)。 */
+    public static final DeferredItem<BlockItem> ASTRAL_ANVIL = ITEMS.register("astral_anvil",
+            () -> new BlockItem(ModBlocks.ASTRAL_ANVIL.get(), new Item.Properties().stacksTo(1)));
+
     public static final DeferredItem<Item> JASMINE_SIGN = registerItem("jasmine_sign",
             () -> new JasmineSignItem(new Item.Properties()
                     .stacksTo(1)
@@ -714,14 +721,14 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(AstralRarities.legendary()), SandwichChipItem.HEALTH_HIGH));
 
-    // 肾上腺素-一般:生命值为 50% 或更低时,攻击力/防御力 +3(史诗)
+    // 肾上腺素-一般:生命值为 50% 或更低时,攻击力/防御力 +3;触发加成时被怪物近战攻击有 20% 闪避(史诗)
     public static final DeferredItem<Item> ADRENALINE_LOW = registerItem("adrenaline_low_chip",
             () -> new AdrenalineChipItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(AstralRarities.epic()), AdrenalineChipItem.BONUS_LOW));
 
-    // 肾上腺素-高效:生命值为 50% 或更低时,攻击力/防御力 +8;触发加成时被敌方攻击,
-    // 骰点 4-5 → 50% 闪避、6 → 100% 闪避本次伤害(传奇)
+    // 肾上腺素-高效:生命值为 50% 或更低时,攻击力/防御力 +8;触发加成时被怪物近战攻击有 20% 闪避;
+    // 与一般同时装备时叠加为 40%(传奇)
     public static final DeferredItem<Item> ADRENALINE_HIGH = registerItem("adrenaline_high_chip",
             () -> new AdrenalineChipItem(new Item.Properties()
                     .stacksTo(1)
@@ -928,6 +935,24 @@ public class ModItems {
             () -> new SensorChipItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(AstralRarities.epic())));
+
+    // 石中剑-精良:触发骰神赐福时,自身与队伍角色获得「圣剑守护」1:00(攻击力 +2/受到伤害 -2)
+    public static final DeferredItem<Item> SWORD_IN_STONE_EPIC_CHIP = registerItem("sword_in_stone_epic_chip",
+            () -> new HolySwordGuardChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.epic())));
+
+    // 石中剑-传说:赐福结束后,对 24 格内敌对目标造成「自身全部状态层数 ×2」魔法伤害(最低 4)
+    public static final DeferredItem<Item> SWORD_IN_STONE_LEGENDARY_CHIP = registerItem("sword_in_stone_legendary_chip",
+            () -> new SwordInStoneLegendaryChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.legendary())));
+
+    // 完美树枝:赐福 +1 层超强精力,死亡 -1 层;每层攻击力 +2/防御力 +1,最多 10 层
+    public static final DeferredItem<Item> PERFECT_BRANCH_CHIP = registerItem("perfect_branch_chip",
+            () -> new PerfectBranchChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.legendary())));
 
     public static final DeferredItem<Item> PADMAN_SIGN = registerItem("padman_sign",
             () -> new PadmanSignItem(new Item.Properties()
@@ -1147,6 +1172,25 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(AstralRarities.bizarre())));
 
+    // 少主立牌(al,史诗):被动「双赢」(给牌双方 +1 星光 / 主动后双方筹码 -5 + 刷新 / 每 4 层星光 +1 攻防)
+    //   主动「强者怜悯」:选一名类玩家目标 → 选 1~3 张牌送给对方 → 获得张数 ×2 星币
+    public static final DeferredItem<Item> SOURI_SIGN = registerItem("souri_sign",
+            () -> new com.merlinkitsune.astral_dice.item.sign.SouriSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(com.merlinkitsune.starengine.item.AstralRarities.legendary())));
+
+    public static final DeferredItem<Item> AL_SIGN = registerItem("al_sign",
+            () -> new com.merlinkitsune.astral_dice.item.sign.AlSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.epic())));
+
+    // 小猎手立牌(inkshadow,稀有):主动「暗影之门」两端传送门 / 被动「双生之影」攻击叠加 + 门前法伤
+    // 2026-11-10 用户裁决:品质由史诗降为稀有(ASTRAL_DICE_RARE),配方随之简化
+    public static final DeferredItem<Item> INKSHADOW_SIGN = registerItem("inkshadow_sign",
+            () -> new com.merlinkitsune.astral_dice.item.sign.InkShadowSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.rare())));
+
     // 多萝西立牌(dorothy,奇特):被动「交际花」(温暖层数)/ 主动「真正的我」(传送 + 友方光环)
     public static final DeferredItem<Item> DOROTHY_SIGN = registerItem("dorothy_sign",
             () -> new com.merlinkitsune.astral_dice.item.sign.DorothySignItem(new Item.Properties()
@@ -1164,6 +1208,24 @@ public class ModItems {
             () -> new com.merlinkitsune.astral_dice.item.sign.DeepseekSignItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(AstralRarities.bizarre())));
+
+    // 魔渊幼体立牌(sykes,传奇):主动「魔域转化」放魔渊触须占格 / 被动「触须深渊」渊蚀印记
+    public static final DeferredItem<Item> SYKES_SIGN = registerItem("sykes_sign",
+            () -> new com.merlinkitsune.astral_dice.item.sign.SykesSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.legendary())));
+
+    // 垃圾桶立牌(z3000,稀有):主动「过来把你」16 格拖拽 + 5 点技能伤害,被动「回收利用」。
+    public static final DeferredItem<Item> Z3000_SIGN = registerItem("z3000_sign",
+            () -> new com.merlinkitsune.astral_dice.item.sign.Z3000SignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.rare())));
+
+    // 原型(2026-11-12):垃圾桶立牌「过来把你」动态管道试验用的隐藏物品。
+    // 只作为 Display.ItemDisplay 的模型载体(管道节 / 吸引头),不放进创造栏,
+    // 也不参与配方;正式立牌落地时再决定是否保留。
+    public static final DeferredItem<Item> VACUUM_PIECE = registerItem("vacuum_piece",
+            () -> new Item(new Item.Properties()));
 
     // 符卡-福(专属功能效果牌,风水师立牌专属):出牌数 +1;对玩家(不限队伍)或自身使用 ⇒ 恢复 2 点生命值。
     // 专属绑定:获得即绑定获得者(ModDataComponents.OWNER_UUID),他人无法使用。

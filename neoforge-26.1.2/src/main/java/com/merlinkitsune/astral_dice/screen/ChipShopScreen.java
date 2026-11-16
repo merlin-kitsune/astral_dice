@@ -17,7 +17,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
 
 /**
  * 筹码商店界面（**界面骨架批 + 逻辑批已合流**：图标 blit / 品质外框 / 确认与刷新发包 / 拒绝红闪；判据正本
- * {@code docs/chip-shop-ui-spec.md}，机器判据 {@code scripts/verify/verify_chip_shop_ui.ps1}）。
+ * {@code docs/chip-shop-ui-spec.md}，机器判据 {@code scripts/verify/verify_chip_shop_ui.py}）。
  *
  * <p><b>整屏 284x183</b>，全部坐标为 GUI 内绝对像素；条带内的素材坐标另用「条带内相对坐标」
  * （{@link #stripX}/{@link #stripY} 换算），常量一律照规范 §3 的实测值逐字定义。
@@ -273,6 +273,9 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
 
     @Override
     public void extractBackground(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
+        // 背景暗化（2026-11-06 用户裁决，各线统一）：本类整体覆写了 extractBackground 且不调 super，
+        //   原版容器屏那条「只压透明暗化渐变」的路径不会发生 ⇒ 这里显式补一次；模糊按裁决不做。
+        this.extractTransparentBackground(guiGraphics);
         // ① 背景
         blit(guiGraphics, tex(TEX_BG), 0, 0, GUI_WIDTH, GUI_HEIGHT);
         // ② 条带深底（frame_2）→ ③ 格轮廓（frame_1）
@@ -321,9 +324,16 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
             }
             int iconX = stripX(QUALITY_X[chip] + CHIP_ICON_OFF);
             int iconY = stripY(QUALITY_Y + CHIP_ICON_OFF);
+            // ⚠️ 必须用 12 参重载。
+            //    10 参版本 blit(pipeline, tex, x, y, u, v, w, h, texW, texH) 内部把 srcWidth/srcHeight
+            //    直接取成 w/h（GuiGraphicsExtractor.java:315-319 委派到 12 参重载时传
+            //    width,height,width,height）⇒ 32x32 素材只被采样左上 24x24 一块再拉满 24x24，
+            //    图标被裁掉右边与下边各 1/4 并放大。2026-11-06 实机取证：
+            //    与「左上 24x24 裁剪」假设 MSE 418，与「整图缩到 24x24」假设 MSE 4269。
+            //    这里显式给 srcWidth/srcHeight = 32，才等价于 1.20.1 / 1.21.1 那条 11 参重载的语义。
             guiGraphics.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, entry.iconLocation(),
                     iconX, iconY, 0.0F, 0.0F, CHIP_ICON_SIZE, CHIP_ICON_SIZE,
-                    CHIP_ICON_SRC_SIZE, CHIP_ICON_SRC_SIZE);
+                    CHIP_ICON_SRC_SIZE, CHIP_ICON_SRC_SIZE, CHIP_ICON_SRC_SIZE, CHIP_ICON_SRC_SIZE);
         }
     }
 

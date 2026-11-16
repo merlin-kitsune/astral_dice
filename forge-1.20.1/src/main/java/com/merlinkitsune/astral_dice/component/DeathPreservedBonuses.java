@@ -69,6 +69,18 @@ public final class DeathPreservedBonuses {
      */
     private static final int AME_LOVE_CAP = 7;
 
+    /**
+     * 第 9 槽位:金鲤立牌(souri)「觉醒」层数({@code souri_awakening},2026-11-09)。
+     * {@code SouriSignItem#clearSignData} 在卸下(含死亡掉落导致的卸下)时把它归零 ⇒ 需本表兜底。
+     */
+    private static final int SOURI_AWAKENING = 8;
+
+    /**
+     * 第 10 槽位:金鲤立牌(souri)「金鳞」层数({@code souri_gold_scales},2026-11-09)。
+     * 同上,{@code clearSignData} 卸下即归零;取较大值即可(只增不减,满 4 层转化龙态后仍是 4)。
+     */
+    private static final int SOURI_GOLD_SCALES = 9;
+
     /** 第 1..8 槽位共用的暂存表(按 UUID 暂存、取走即删)。 */
     private static final Map<UUID, int[]> PRESERVED = new ConcurrentHashMap<>();
 
@@ -96,7 +108,10 @@ public final class DeathPreservedBonuses {
                 // 2026-10-16 超天酱/地雷女:粉丝数 / 爱层数 / 爱层数上限(卸下即清 ⇒ 同需兜底)
                 ModAttachments.getKangelFanCount(player),
                 ModAttachments.getAmeLoveLayers(player),
-                ModAttachments.getAmeLoveCap(player)
+                ModAttachments.getAmeLoveCap(player),
+                // 2026-11-09 金鲤立牌(souri):觉醒层数 / 金鳞层数(卸下即清 ⇒ 同需兜底)
+                ModAttachments.getSouriAwakening(player),
+                ModAttachments.getSouriGoldScales(player)
         });
         // 字符串槽位(超天酱已登记目标集)放不进 int[] ⇒ 并行 Map,同样取走即删
         PRESERVED_TARGETS.put(player.getUUID(), ModAttachments.getKangelFanTargets(player));
@@ -137,6 +152,14 @@ public final class DeathPreservedBonuses {
             }
             if (preserved[AME_LOVE_CAP] > ModAttachments.getAmeLoveCap(player)) {
                 ModAttachments.setAmeLoveCap(player, preserved[AME_LOVE_CAP]);
+            }
+            // 金鲤立牌(souri):觉醒层数只增不减(卸下立牌才归零)⇒ 取较大值幂等
+            if (preserved[SOURI_AWAKENING] > ModAttachments.getSouriAwakening(player)) {
+                ModAttachments.setSouriAwakening(player, preserved[SOURI_AWAKENING]);
+            }
+            // 金鳞层数同理(重生后由立牌 tick 的 resync 重挂镜像效果 / 防御加成 / 化龙态)
+            if (preserved[SOURI_GOLD_SCALES] > ModAttachments.getSouriGoldScales(player)) {
+                ModAttachments.setSouriGoldScales(player, preserved[SOURI_GOLD_SCALES]);
             }
         }
         // 超天酱立牌:已登记目标集(字符串)只有"当前为空串且暂存非空"才回写 ⇒ 幂等;

@@ -1,0 +1,10 @@
+{
+  "entities": [
+    "minecraft:player"
+  ],
+  "slots": [
+    "astral_dice/dice",
+    "astral_dice/stand",
+    "astral_dice/chip"
+  ]
+}

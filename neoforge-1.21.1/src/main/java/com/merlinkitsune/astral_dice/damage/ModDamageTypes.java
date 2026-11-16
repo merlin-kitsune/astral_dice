@@ -61,9 +61,13 @@ public class ModDamageTypes {
      * 被忍术飞镖 / 贯穿之铳 / 紫晶骰子 / 标记喷罐 / 魔法箭袋 / 效果牌加成层层放大,并可能
      * 触发电击手套的范围波及。
      *
-     * <p>本类型同样登记于 {@code data/minecraft/tags/damage_type/bypasses_armor.json}
-     * (⇒ 无视护甲值与盔甲韧性,与卡片/技能固定点数口径一致),但**不在**法伤白名单内
-     * ⇒ 只结算自身点数。⚠️ **禁止**把它加进 {@code SpellDamageRegistry} 的
+     * <p>本类型登记于 {@code data/minecraft/tags/damage_type/} 的
+     * {@code bypasses_armor} / {@code bypasses_enchantments} / {@code bypasses_resistance} /
+     * {@code bypasses_cooldown}(⇒ 护甲值、盔甲韧性、保护附魔、抗性提升、受击无敌帧全部跳过),
+     * 且 {@code event/ChipDamageHandler} 把它识别为**不可削减**(磨刀石 -2、怪力侦探立牌 -N、
+     * 超天酱立牌 -1 一律跳过)⇒ 对护甲值/韧性/保护附魔/抗性提升/固定点数减伤**等值**(2026-11-14 用户裁决:技能伤害必须为等值伤害；吸收黄心与闪避类保命仍照常结算)。
+     * **保命**机制照常(安全气囊、不死图腾、末影骰子、磨刀石「不可被一次击倒」、鼠鼠护盾黄心吸收)。
+     * 但**不在**法伤白名单内 ⇒ 只结算自身点数。⚠️ **禁止**把它加进 {@code SpellDamageRegistry} 的
      * {@code MAGIC_DAMAGE_TYPES} 或任何 matcher。
      */
     public static final ResourceKey<DamageType> SKILL_DAMAGE = ResourceKey.create(
@@ -113,7 +117,7 @@ public class ModDamageTypes {
      *
      * <p>登记于 {@code bypasses_armor} + {@code bypasses_enchantments} + {@code bypasses_resistance}
      * + {@code bypasses_cooldown} ⇒ 护甲 / 盔甲韧性 / 保护附魔 / 抗性提升**全部跳过**，且不受受击无敌帧约束。
-     * 另外 {@code event/ChipDamageHandler} 把它（与 {@link #CARD_COST}）识别为**不可削减** ⇒
+     * 另外 {@code event/ChipDamageHandler} 把它（与 {@link #CARD_COST}、{@link #SKILL_DAMAGE}）识别为**不可削减** ⇒
      * 本模组的固定点数减伤（磨刀石 -2、怪力侦探立牌 -N）对它一律跳过；**保命**机制照常
      * （安全气囊、不死图腾、末影骰子、磨刀石「不可被一次击倒」）。
      *
@@ -157,7 +161,8 @@ public class ModDamageTypes {
     /**
      * 技能类伤害源:**直接伤害实体为空、击杀归属 {@code causing}** ——
      * 与 {@link #trueDamage(Level, Entity)} 同形状(不会被当成玩家的直接攻击而重走命中判定,
-     * 同时保留击杀归属),但伤害类型是独立的 {@link #SKILL_DAMAGE} ⇒ **不进入法伤链**。
+     * 同时保留击杀归属),但伤害类型是独立的 {@link #SKILL_DAMAGE} ⇒ **不进入法伤链**；
+     * 伤害类型已登记 bypasses_armor/enchantments/resistance/cooldown 且固定点数减伤跳过 ⇒ 对这些防御与减伤**等值**。
      */
     public static DamageSource skillDamage(Level level, Entity causing) {
         return new DamageSource(holder(level, SKILL_DAMAGE), null, causing);

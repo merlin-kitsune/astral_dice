@@ -1,7 +1,7 @@
 # 1.5.0 移植映射（P0 → P1：`neoforge-26.1.2` / `fabric-1.20.1`）
 
-> **用途**：把 1.5.0 相对上一版新增/变更的 P0 内容固化成「主题 → P0 落点 → 移植注意」映射表，供 P1 两线移植时逐行核对。
-> **状态（2026-10-22 登记）**：下列主题在 P1 两线**均尚未具备**（`grep -rl <符号> neoforge-26.1.2/src/main/java fabric-1.20.1/src/main/java` 全部 0 命中）。
+> **用途**：把 1.5.0 相对上一版新增/变更的 P0 内容固化成「主题 → P0 落点 → 移植注意」映射表，供 P1 各线移植时逐行核对。
+> **状态（2026-10-22 登记）**：下列主题在 P1 的 `neoforge-26.1.2` / `fabric-1.20.1` 两条线**均尚未具备**（2026-11-05 新增的 `fabric-1.21.1` 不在本次核对范围）（`grep -rl <符号> neoforge-26.1.2/src/main/java fabric-1.20.1/src/main/java` 全部 0 命中）。
 > **口径**：本文件只描述映射，**不改任何 P1 代码**；P1 移植任务由用户单独下达。
 
 ## 1. 两线 API 基线差异（移植前先对表，逐项都要落）
@@ -53,6 +53,6 @@ python tools/verify_defense_unit_parity.py
 2. **创造模式扣卡**：P0 两线已对齐（创造不扣、生存扣 1）；`fabric-1.20.1` 的效果卡仍是裸 `shrink(1)`，**待移植时统一**为 `if (!player.isCreative())`。
 3. 26.1.2 的 `ChipShopCategory` 等 JEI 类须按该线 JEI 版本重取 API；Fabric 的 JEI 走 `fabric-api` 变体，不可照搬 Forge 侧注册。
 
-4. **防御力折算 1:1（2026-10-25 P0 已修）**：P0 两线已全部改为「防御力点数 ÷ 库护甲系数」的单一入口；**P1 两线仍是旧的 `× 2.0` 折算（各 5 处）**，`python tools/verify_defense_unit_parity.py` 的 D8 项只统计、不判 FAIL。移植时必须同步落地（否则 P1 的「防御力 +X」仍只兑现 60% / 80%），并连带把该线 12 份指南 lang（四线 × 三语）的「4 + 护甲×0.30」改成「2 + 护甲×0.30」与「1 防御力 = 1÷护甲系数 护甲值」。
+4. **防御力折算 1:1（2026-10-25 P0 已修）**：P0 两线已全部改为「防御力点数 ÷ 库护甲系数」的单一入口；**P1 的 `neoforge-26.1.2` 仍是旧的 `× 2.0` 折算（2026-10-25 登记各 5 处，2026-11-05 实测仅剩 1 处；`fabric-1.20.1` 已 0 处）**，`python tools/verify_defense_unit_parity.py` 的 D8 项只统计、不判 FAIL。移植时必须同步落地（否则 P1 的「防御力 +X」仍只兑现 60% / 80%），并连带把该线 12 份指南 lang（各线 × 三语）的「4 + 护甲×0.30」改成「2 + 护甲×0.30」与「1 防御力 = 1÷护甲系数 护甲值」。
 
 5. **防御力折算 1:1 — fabric-1.20.1 已落地（2026-11-01，审计 D-06/B15）**：fabric 线按 forge 1:1 移植 `armorValueForDefensePoints(double, boolean)` / `armorValueForDefensePoints(double, LivingEntity)` / `defensePointsForArmor(double, boolean)` / `effectiveArmorPoints(LivingEntity)` 与两个 `*_ARMOR_PER_DEFENSE` 常量，删除全部 `× 2.0`（D8 读数 7 → 0）；骰战与 `defensePowerBase` 的护甲改读 `effectiveArmorPoints`（不再用 `Mth.floor` 的 `getArmorValue()`），`defensePowerOf` 补 `+ 1.0E-6D`；三语 lang 的 `astral_dice.guide.entry.battle_dice.2` 复核已是「2 + 护甲×0.30 … 1÷护甲系数（3.33 / 2.5）」，与 forge 逐字一致，**lang 无需改动**。细节见 `porting/fabric-1.20.1/B15-DEFENSE-PARITY-REPORT.md`。

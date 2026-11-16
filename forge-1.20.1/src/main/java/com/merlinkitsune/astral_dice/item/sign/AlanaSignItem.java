@@ -80,6 +80,22 @@ public class AlanaSignItem extends BaseSignItem implements SignHooks.BlessingTri
         return net.minecraft.world.InteractionResultHolder.sidedSuccess(stack, level.isClientSide);
     }
 
+    /**
+     * 非玩家宿主的主动（TLMDice 反馈的上游缺口②）：只实现「铁处女」免疫本身。
+     *
+     * <p>被动加成依赖玩家附件（{@code ModAttachments.getAlanaPassiveBonus}），生物侧不适用，故不在这里恢复。
+     */
+    @Override
+    protected boolean activateForEntity(net.minecraft.world.entity.LivingEntity owner) {
+        if (owner == null || owner.level().isClientSide) return false;
+        owner.addEffect(new MobEffectInstance(ModEffects.ALANA_IRON_MAIDEN.get(), IRON_MAIDEN_TICKS, 0,
+                false, true, true));
+        org.slf4j.LoggerFactory.getLogger(AlanaSignItem.class).info(
+                "AP_SIGN_ACTIVE_ENTITY: sign=alana:owner={}:duration={}",
+                owner.getName().getString(), IRON_MAIDEN_TICKS);
+        return true;
+    }
+
     @Override
     public void onUnequip(top.theillusivec4.curios.api.SlotContext slotContext, ItemStack newStack,
                              ItemStack stack) {

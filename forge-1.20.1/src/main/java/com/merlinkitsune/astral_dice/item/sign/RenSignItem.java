@@ -35,7 +35,7 @@ import com.merlinkitsune.starengine.target.SelectorTargets;
  * {@code target/SelectorTargets} 的 4 参重载 + {@code TargetSelectionManager#confirm} 放行,
  * 不改共享库的 {@code TargetType#matches})。
  *
- * <p><b>鼠鼠护盾</b> = 5 黄心(10 点吸收)+ 抗性提升 + 1 层一次性反击;黄心被打空即立即清空
+ * <p><b>鼠鼠护盾</b> = 5 黄心(10 点吸收)+ 抗性提升 + 1 层可激活反击次数;黄心被打空即立即清空
  * (见 {@link RenShieldManager})。
  *
  * <p>主动为「目标选择器类」技能:按下主动键只开启选择会话(门控),确认目标后才施效并进入玩家级冷却
@@ -48,7 +48,7 @@ import com.merlinkitsune.starengine.target.SelectorTargets;
 public class RenSignItem extends BaseSignItem {
     private static final Logger LOGGER = LoggerFactory.getLogger(RenSignItem.class);
 
-    /** 主动技能的动作 id(注册表键;也是 actionbar 技能名 {@code msg.astral_dice.target_select.skill.<id>} 的来源) */
+    /** 主动技能的动作 id（注册表键） */
     public static final String ACTION_ID = "ren_privilege";
 
     /**
@@ -138,5 +138,11 @@ public class RenSignItem extends BaseSignItem {
     /** 玩家是否佩戴游戏大师立牌(被动「鼠鼠救我」的佩戴判定) */
     public static boolean isEquipped(Player player) {
         return SignEquipCheck.isEquipped(player, ModItems.REN_SIGN.get());
+    
+}
+    // 2026-11-09（A）：类玩家宿主的主动入口 —— 当前语义依赖玩家侧通道，显式拒绝并留锚点。
+    @Override
+    protected boolean activateForEntity(net.minecraft.world.entity.LivingEntity owner) {
+        return com.merlinkitsune.astral_dice.item.sign.SignEntitySkills.deny("ren", owner, "needs_player_session");
     }
 }

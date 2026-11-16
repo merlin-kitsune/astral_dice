@@ -68,7 +68,7 @@ import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
 public class LuluSignItem extends BaseSignItem {
     private static final Logger LOGGER = LoggerFactory.getLogger(LuluSignItem.class);
 
-    /** 主动技能的动作 id(注册表键;也是 actionbar 技能名 {@code msg.astral_dice.target_select.skill.<id>} 的来源) */
+    /** 主动技能的动作 id（注册表键） */
     public static final String ACTION_ID = "lulu_healing_slime";
 
     /** 缓慢时长(60 秒;与旧行为同值,不引入新常量) */
@@ -196,4 +196,9 @@ public class LuluSignItem extends BaseSignItem {
         HealingManager.add(player, 1);
     }
 
+    // 2026-11-11 P1 补齐：与 P0 同口径的机器可读拒绝。
+    @Override
+    protected boolean activateForEntity(net.minecraft.world.entity.LivingEntity owner) {
+        return com.merlinkitsune.astral_dice.item.sign.SignEntitySkills.deny("lulu", owner, "needs_player_session");
+    }
 }

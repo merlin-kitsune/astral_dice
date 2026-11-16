@@ -1,0 +1,35 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "conditions": [
+    {
+      "type": "astral_dice:chip_recipes_enabled"
+    }
+  ],
+  "key": {
+    "A": {
+      "item": "minecraft:enchanted_golden_apple"
+    },
+    "B": {
+      "item": "astral_dice:blank_chip"
+    },
+    "D": {
+      "item": "minecraft:dandelion"
+    },
+    "G": {
+      "item": "astral_dice:golden_star_plate"
+    },
+    "S": {
+      "item": "minecraft:stick"
+    }
+  },
+  "pattern": [
+    "DSD",
+    "ABA",
+    "GGG"
+  ],
+  "result": {
+    "item": "astral_dice:perfect_branch_chip"
+  },
+  "show_notification": true
+}

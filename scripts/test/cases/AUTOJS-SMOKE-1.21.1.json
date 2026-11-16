@@ -11,7 +11,7 @@
   "steps": [
     {
       "op": "note",
-      "text": "AutoJS 主通道样板用例(需求书 docs/features/autojs-test-harness-spec.md §4)。\n\n与 legacy 用例的本质差别:判据不再靠「日志里命中某行」,而是**直接从运行的 JVM 里取状态**。\n- side=server 求值直接读注册表/配方管理器(legacy 只能靠 /astralshop 探针把事实打印进 latest.log)\n- side=client 求值直接读客户端对象(legacy 只能靠 KubeJS client_scripts 写 logs/kubejs/client.log)\n- await_state 轮询直到条件成立,不再靠固定 wait{ms} 睡大觉。\n\n本用例同时是**通道自检**:如果 AutoJS 端点/协议/模块链路有任何一环不通,它会以 BLOCKED 而非 FAIL 报出。\n\n⚠️ code 一律写成 **IIFE 表达式**(function(){...})():AutoJS 只求值「最后一个表达式」,顶层 return 会抛 invalid return;非标量返回值也只有包成表达式才能被通道 JSON.stringify 成结构。"
+      "text": "AutoJS 主通道样板用例(需求书 docs/features/autojs-test-harness-spec.md（已删除 2026-11-05） §4)。\n\n与 legacy 用例的本质差别:判据不再靠「日志里命中某行」,而是**直接从运行的 JVM 里取状态**。\n- side=server 求值直接读注册表/配方管理器(legacy 只能靠 /astralshop 探针把事实打印进 latest.log)\n- side=client 求值直接读客户端对象(legacy 只能靠 KubeJS client_scripts 写 logs/kubejs/client.log)\n- await_state 轮询直到条件成立,不再靠固定 wait{ms} 睡大觉。\n\n本用例同时是**通道自检**:如果 AutoJS 端点/协议/模块链路有任何一环不通,它会以 BLOCKED 而非 FAIL 报出。\n\n⚠️ code 一律写成 **IIFE 表达式**(function(){...})():AutoJS 只求值「最后一个表达式」,顶层 return 会抛 invalid return;非标量返回值也只有包成表达式才能被通道 JSON.stringify 成结构。"
     },
     {
       "op": "mcp_status",

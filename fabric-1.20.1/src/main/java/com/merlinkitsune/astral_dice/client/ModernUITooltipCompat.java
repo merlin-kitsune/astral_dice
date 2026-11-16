@@ -22,7 +22,7 @@ import org.slf4j.LoggerFactory;
  *
  * <h2>根因链（对实物 jar {@code ModernUI-Fabric-1.20.1-3.12.0.1-universal.jar}
  * （Modrinth {@code modern-ui}；sha1 {@code 90b40fcb82e885fcb8f73992dc51473682db29d8}）反汇编，逐条可复现）</h2>
- * <p>⚠️ <b>本线的机制与两条 P0 线不同</b> —— P0（NeoForge / Forge）上 Modern UI 走**平台事件**
+ * <p>⚠️ <b>本线的机制与 P0 基准两线（neo21 / forge）不同</b> —— 那两线上 Modern UI 走**平台事件**
  * （{@code UIManagerForge} 的 {@code @SubscribeEvent} HIGH/LOW 自绘 + 取消）；而 Fabric 无 Forge 事件总线，
  * 它改为**注入原版类**：
  * <ol>
@@ -105,6 +105,14 @@ public final class ModernUITooltipCompat {
 
     /** 目标类（第三方，**不做编译期依赖**）。 */
     private static final String TOOLTIP_RENDERER = "icyllis.modernui.mc.TooltipRenderer";
+
+    /** Modern UI 的边框由**四个角槽**组成，逐帧在相邻两槽之间插值。 */
+    /**
+     * Modern UI 的 {@code MixinGuiGraphics} 注入进 {@code GuiGraphics} 的私有字段名。
+     * 它的 {@code drawTooltip} 只有在「与上一帧的物品栈不是同一个实例」时才重算边框色，
+     * 见 {@code enterTooltipStack} 的说明。
+     */
+    private static final String TOOLTIP_STACK_FIELD = "modernUI_MC$tooltipStack";
 
     /** Modern UI 的边框由**四个角槽**组成，逐帧在相邻两槽之间插值。 */
     private static final int STROKE_SLOTS = 4;
@@ -244,6 +252,110 @@ public final class ModernUITooltipCompat {
     }
 
     /** 本层是否已就绪（探测通过）。 */
+    // =====================================================================================
+    // JEI(fabric)专用：把「当前 tooltip 的物品栈」写进 Modern UI 自己的字段
+    // =====================================================================================
+
+    private static Field tooltipStackField;
+    private static boolean tooltipStackProbed;
+
+    /**
+     * 进入一次「第三方(目前是 JEI)自己发起」的提示框绘制时，把真实物品栈写进
+     * Modern UI 注入到 {@code GuiGraphics} 的 {@code modernUI_MC$tooltipStack} 字段。
+     *
+     * <h2>为什么非写不可（2026-11-07 实测定论）</h2>
+     * <p>Modern UI 的 {@code TooltipRenderer#drawTooltip} 第一段是：
+     * <pre>
+     * if (itemStack != this.mLastSeenItem) {
+     *     this.mLastSeenItem = itemStack;
+     *     this.computeWorkingColor(itemStack);
+     * }</pre>
+     * 即**按「物品栈实例是否变化」缓存工作色**。原版路径由 Modern UI 自己的
+     * {@code MixinContainerScreen} / {@code renderTooltip(Font, ItemStack, …)} 写字段，栈会变，缓存会失效；
+     * 但 JEI(fabric) 走的是 {@code RenderHelper → GuiGraphics#renderTooltipInternal}，**全程不写该字段**
+     * ⇒ 它拿到的一直是 {@code ItemStack.EMPTY} 那个单例 ⇒ 第一次之后恒等于 {@code mLastSeenItem}
+     * ⇒ {@code computeWorkingColor} 再也不跑，于是出现两个症状：
+     * <ol>
+     *   <li>JEI 里的提示框沿用上一次算出来的颜色（本模组物品就是「档位色不生效」）；</li>
+     *   <li>换一个物品后颜色不刷新，观感上就是**颜色滞留**。</li>
+     * </ol>
+     * <p>写字段后 {@code itemStack != mLastSeenItem} 成立 ⇒ 每一类物品都会重算一次；
+     * 配合 {@link #beginRender(ItemStack)} 已把 {@code sStrokeColor} 换成档位色、并临时关掉
+     * {@code sAdaptiveColors}，重算结果就是本模组的档位色；非本模组物品则照常走 Modern UI 自适应。
+     *
+     * <p>失败方向：字段不存在（Modern UI 未装 / 版本改名）就静默跳过，绝不影响绘制。
+     *
+     * @param graphics {@code GuiGraphics} 实例（用 Object 接收，避免本类对客户端类型的直接依赖）
+     * @param stack    本次要绘制的物品栈
+     */
+    public static void enterTooltipStack(Object graphics, ItemStack stack) {
+        if (graphics == null || stack == null || !enabled()) {
+            return;
+        }
+        Field field = tooltipStackFieldOrNull(graphics.getClass());
+        if (field == null) {
+            return;
+        }
+        Object previous = ItemStack.EMPTY;
+        try {
+            Object current = field.get(graphics);
+            if (current != null) {
+                previous = current;
+            }
+            field.set(graphics, stack);
+        } catch (Throwable failure) {
+            disable(failure);
+            return;
+        }
+        STACK_HISTORY.get().push(previous);
+    }
+
+    /** 与 {@link #enterTooltipStack} 成对调用：把 Modern UI 的字段还原成进入前的值。 */
+    public static void exitTooltipStack(Object graphics) {
+        if (graphics == null || !enabled()) {
+            return;
+        }
+        java.util.ArrayDeque<Object> history = STACK_HISTORY.get();
+        if (history.isEmpty()) {
+            return;
+        }
+        Object previous = history.pop();
+        Field field = tooltipStackFieldOrNull(graphics.getClass());
+        if (field == null) {
+            return;
+        }
+        try {
+            field.set(graphics, previous);
+        } catch (Throwable failure) {
+            disable(failure);
+        }
+    }
+
+    private static final ThreadLocal<java.util.ArrayDeque<Object>> STACK_HISTORY =
+            ThreadLocal.withInitial(java.util.ArrayDeque::new);
+
+    private static Field tooltipStackFieldOrNull(Class<?> graphicsType) {
+        if (tooltipStackProbed) {
+            return tooltipStackField;
+        }
+        tooltipStackProbed = true;
+        try {
+            Field candidate = graphicsType.getDeclaredField(TOOLTIP_STACK_FIELD);
+            if (candidate.getType() != ItemStack.class) {
+                LOGGER.debug("[Astral Dice] Modern UI 的 {} 类型不是 ItemStack，跳过物品栈注入。",
+                        TOOLTIP_STACK_FIELD);
+                return null;
+            }
+            candidate.setAccessible(true);
+            tooltipStackField = candidate;
+        } catch (Throwable absent) {
+            LOGGER.debug("[Astral Dice] 未找到 Modern UI 的 {} 字段，跳过物品栈注入。",
+                    TOOLTIP_STACK_FIELD);
+            tooltipStackField = null;
+        }
+        return tooltipStackField;
+    }
+
     private static boolean isUsable() {
         if (!probed) {
             probe();

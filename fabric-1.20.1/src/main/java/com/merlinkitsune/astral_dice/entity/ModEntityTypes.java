@@ -22,6 +22,9 @@ import net.minecraft.world.entity.MobCategory;
  *       属性表来自 {@code DefaultAttributes}，该注册表负责填充它）。</li>
  * </ul>
  *
+ * <p>2026-10-29 新增 GeckoLib 动画实体 {@code sykestentacle}（属性同样由
+ * {@link com.merlinkitsune.astral_dice.event.ModEntityEvents} 登记，本类不写属性代码）。
+ *
  * <p><b>1.20.1 Fabric 平台差异</b>（相对 forge-1.20.1 / neoforge-1.21.1 蓝本）：
  * 注册器用本仓自建 shim {@code com.merlinkitsune.astral_dice.platform.registry.DeferredRegister}
  * 加 {@code net.minecraft.core.registries.Registries.ENTITY_TYPE} 资源键，与 {@code block/ModBlocks} /
@@ -61,6 +64,57 @@ public final class ModEntityTypes {
                     .clientTrackingRange(10)
                     .build("repulsion"));
 
+    /**
+     * {@code astral_dice:sykestentacle} —— GeckoLib 动画实体（纯展示体，无 AI；
+     * 2026-10-29 于本线新增，2026-11-01 随主线合并保留）。
+     *
+     * <p>尺寸 {@code sized(2.6F, 3.0F)} 依据模型实测（底盘约 2.45 格宽、通高约 2.96 格）；
+     * {@code clientTrackingRange(10)} 与 1.21.1 蓝本一致。
+     */
+    public static final RegistryObject<EntityType<SykeTentacleEntity>> SYKE_TENTACLE =
+            ENTITY_TYPES.register("sykestentacle", () -> EntityType.Builder
+                    .of(SykeTentacleEntity::new, MobCategory.MISC)
+                    .sized(2.6F, 3.0F)
+                    .clientTrackingRange(10)
+                    .build("sykestentacle"));
+
+    /**
+     * {@code astral_dice:souri_drink} —— 金鲤立牌(souri)主动放置的饮品实体(GOURD 葫芦饮 / BREW 仙酿;
+     * 纯展示体,无 AI、无重力、无碰撞,GeckoLib 动画)。
+     *
+     * <p>尺寸 {@code sized(0.35F, 0.45F)} 依据模型实测(酒葫芦约 0.3 格宽、0.42 格高);
+     * {@code clientTrackingRange(10)} 与蓝本一致。{@code EntityType.Builder.of} 需显式类型实参
+     * {@code <SouriDrinkEntity>}:该实体有 (EntityType, Level) 与 (Level, UUID, Variant) 两个构造器,
+     * 无实参时 javac 无法推断 {@code EntityFactory} 的目标类型。
+     */
+    public static final RegistryObject<EntityType<SouriDrinkEntity>> SOURI_DRINK =
+            ENTITY_TYPES.register("souri_drink", () -> EntityType.Builder
+                    .<SouriDrinkEntity>of(SouriDrinkEntity::new, MobCategory.MISC)
+                    .sized(0.35F, 0.45F)
+                    .clientTrackingRange(10)
+                    .build("souri_drink"));
+
+    // 小猎手立牌(inkshadow):【传送门】。同样多构造器,必须显式类型实参;
+    // 尺寸 1.2×1.2 覆盖模型可见范围,clientTrackingRange(10) 保证放置后立刻可见。
+    public static final RegistryObject<EntityType<InkShadowPortalEntity>> INKSHADOW_PORTAL =
+            ENTITY_TYPES.register("inkshadow_portal", () -> EntityType.Builder
+                    .<InkShadowPortalEntity>of(InkShadowPortalEntity::new, MobCategory.MISC)
+                    .sized(1.2F, 1.2F)
+                    .clientTrackingRange(10)
+                    .build("inkshadow_portal"));
+
+
+    /**
+     * {@code astral_dice:grappling_hook} —— 垃圾桶立牌(z3000)主动「过来把你」的抓钩。
+     * 纯坐标载具(无 AI、无重力、无碰撞),由 {@code GrapplingHookEntity} 在服务端推进;
+     * 尺寸 0.5×0.5 只影响包围盒,视觉由客户端渲染器按物品模型绘制。
+     */
+    public static final RegistryObject<EntityType<GrapplingHookEntity>> GRAPPLING_HOOK =
+            ENTITY_TYPES.register("grappling_hook", () -> EntityType.Builder
+                    .<GrapplingHookEntity>of(GrapplingHookEntity::new, MobCategory.MISC)
+                    .sized(0.5F, 0.5F)
+                    .clientTrackingRange(10)
+                    .build("grappling_hook"));
     private ModEntityTypes() {
     }
 }

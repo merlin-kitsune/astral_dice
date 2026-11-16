@@ -24,6 +24,10 @@ public class ModMenuTypes {
         public static final Supplier<MenuType<ChipShopMenu>> CHIP_SHOP = MENU_TYPES.register("chip_shop",
                         () -> new MenuType<>(ChipShopMenu::new, FeatureFlags.DEFAULT_FLAGS));
 
+        /** 星愿铁砧（三输入 + 结果）：只有 2 参构造，方块侧经 {@code ContainerLevelAccess} 传入位置。 */
+        public static final Supplier<MenuType<AstralAnvilMenu>> ASTRAL_ANVIL = MENU_TYPES.register("astral_anvil",
+                        () -> new MenuType<>(AstralAnvilMenu::new, FeatureFlags.DEFAULT_FLAGS));
+
         /**
          * 通用「选卡界面」菜单（2026-10-17）：槽位数（1/3）与卡牌类型由**打开参数**决定，
          * 因此必须用 {@link IMenuTypeExtension#create} 走 extra data（token + slotCount + type.ordinal()），

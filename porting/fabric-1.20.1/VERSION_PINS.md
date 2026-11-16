@@ -22,7 +22,7 @@
 | **Trinkets** | **3.7.2**（`trinkets-3.7.2.jar`） | `maven.modrinth:trinkets:3.7.2` / `curse.maven:trinkets-341284:5173501` | **替 Curios**（饰品栏；包 `dev.emi.trinkets.api`） |
 | **Cardinal Components API** | **5.2.3**（**仅编译期，已从运行前置移除**） | ⚠️ **实测坐标 = `dev.onyxstudios.cardinal-components-api:cardinal-components-base:5.2.3`**（groupId **不是** `dev.onyxstudios.cca`；可从 `https://maven.ladysnake.org/releases` 解析）。包名仍为 `dev.onyxstudios.cca.api.v3` | **替 Capability/Attachments**（⚠️ 但 1.20.1 Fabric **另有** `fabric-data-attachment-api-v1`，见 SKILL §勘误） |
 | **Fabric API** | **0.92.12+1.20.1**（`fabric-api-0.92.12+1.20.1.jar`） | `maven.modrinth:fabric-api:0.92.12+1.20.1` | 运行必需（1.20.1 支持止于 0.92 线） |
-| **StarEngine Lib（fabric 变体）** | **1.0.6**（库新增平台后发布） | `com.merlinkitsune.starenginelib:starengine_lib-fabric-1.20.1:1.0.6`（mavenLocal） | 跨仓硬前置；**先行发布**（四线同号 bump） |
+| **StarEngine Lib（fabric 变体）** | **1.0.6**（库新增平台后发布） | `com.merlinkitsune.starenginelib:starengine_lib-fabric-1.20.1:1.0.6`（mavenLocal） | 跨仓硬前置；**先行发布**（各线同号 bump） |
 | Patchouli（手册，**纳入首版**） | **1.20.1-85-FABRIC**（`Patchouli-1.20.1-85-FABRIC.jar`） | `maven.modrinth:patchouli:1.20.1-85-fabric`（待反查确切 versionId） | 手册（Forge 版为 1.20.1-85-forge，同 build 号有 Fabric 变体） |
 | KubeJS（测试探针） | **2001.6.5-build.26+fabric**（`kubejs-fabric-2001.6.5-build.26.jar`） | `curse.maven:kubejs-238086:`（fabric 变体 fileId 待反查） | 与 forge 侧 2001.6.5-build.26 对齐 |
 | Rhino（KubeJS 前置） | **2001.2.3-build.10+fabric**（`rhino-fabric-2001.2.3-build.10.jar`） | `curse.maven:rhino-416294:` | 同上 |
@@ -41,7 +41,7 @@
 | 联动 | 实测 | 处理 |
 |---|---|---|
 | **Iron's Spells 'n Spellbooks** | Modrinth 反查**无 fabric/1.20.1 版** | fabric 线裁剪（事件接线 `IronSpellbooksCompat` 删除） |
-| **Bountiful（赏金板）** | 无 Fabric 版（Forge/NeoForge only） | fabric 线裁剪（`data/bountiful/**` 与守门 `verify_bountiful_pools.ps1` 不进 fabric 线） |
+| **Bountiful（赏金板）** | 无 Fabric 版（Forge/NeoForge only） | fabric 线裁剪（`data/bountiful/**` 与守门 `scripts/verify/verify_bountiful_pools.py` 不进 fabric 线） |
 | **Mixin Booster / MixinRuntimeGate** | Fabric Loader 自带 Mixin | **整条删除**（mods.toml 的 mixinbooster 依赖、`init/MixinRuntimeGate.java`） |
 | Embeddium / Oculus | Forge-only | 用 Sodium/Iris 替（仅运行环境） |
 | neoforge-carpet | NeoForge-only | 用 fabric-carpet 替 |
@@ -58,7 +58,7 @@
 | `ref/yarn` | `1.20.1`（9672e1f） | Yarn 映射（备选对照；**不采用**，仅留作字段名对照参考） |
 | `ref/patchouli` | `1.20.x`（f561109，多平台 Fabric/NeoForge/Xplat 结构） | Patchouli Fabric 版结构 |
 
-> ⚠️ 上表坐标列为「建议坐标」，**逐一以 `tools/check_mod_sources.ps1`（R1/R1b/R2/R3 守门）反查的最终坐标为准**；Modrinth/CF 的 fileId 精确值在执行移植时用 Modrinth API `v2/project/<slug>/version?loaders=["fabric"]&game_versions=["1.20.1"]` 重新反查一次（本表版本号已为当时实测值）。
+> ⚠️ 上表坐标列为「建议坐标」，**逐一以 `tools/check_mod_sources.py`（R1/R1b/R2/R3 守门）反查的最终坐标为准**；Modrinth/CF 的 fileId 精确值在执行移植时用 Modrinth API `v2/project/<slug>/version?loaders=["fabric"]&game_versions=["1.20.1"]` 重新反查一次（本表版本号已为当时实测值）。
 
 
 ---

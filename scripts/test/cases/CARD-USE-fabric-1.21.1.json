@@ -1,0 +1,68 @@
+{
+  "case_id": "CARD-USE-fabric-1.21.1",
+  "title": "战斗牌组件契约：CARD_USES 驱动堆叠/耐久条/颜色，临时牌不可丢弃并带光效（fabric 线 ItemDataKey 形态）",
+  "version": "fabric-1.21.1",
+  "channel": "autojs",
+  "side": "server",
+  "on_fail": "stop_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "fabric 线的 CARD_USES / TEMPORARY_CARD 是 starengine ItemDataKey(ItemStack NBT) 形态（ModDataComponents.java），不是 1.21 的 DataComponentType；读写走 getOrDefault / set / remove。"
+    },
+    {
+      "op": "eval_js",
+      "save_as": "card",
+      "code": "(function(){\n  var P = AutoJS.players()[0];\n  var DC = Java.loadClass('com.merlinkitsune.astral_dice.component.ModDataComponents');\n  var AS = Java.loadClass('com.merlinkitsune.astral_dice.component.AppliedStone');\n  var TCU = Java.loadClass('com.merlinkitsune.astral_dice.item.card.TemporaryCardUtil');\n  AutoJS.command('kill @e[type=!player,distance=..48]');\n  AutoJS.command('clear @a');\n  AutoJS.command('effect clear @a');\n  var stack = AutoJS.stack('astral_dice:attack_card_medium', 1);\n  var item = stack.getItem();\n  var max = AS.defaultUses('medium');\n  var out = {};\n  out.maxUses = max;\n  out.usesFresh = DC.CARD_USES.getOrDefault(stack, max);\n  out.maxStackFresh = item.maxStackSize(stack);\n  out.barVisibleFresh = item.isBarVisible(stack);\n  out.foilFresh = item.isFoil(stack);\n  DC.CARD_USES.set(stack, 9);\n  out.usesUsed = DC.CARD_USES.getOrDefault(stack, max);\n  out.maxStackUsed = item.maxStackSize(stack);\n  out.barVisibleUsed = item.isBarVisible(stack);\n  out.barWidthUsed = item.getBarWidth(stack);\n  out.barColorUsed = item.getBarColor(stack);\n  out.nbtHasCardUses = String(AutoJS.nbt(stack)).indexOf('card_uses') >= 0;\n  var tmp = AutoJS.stack('astral_dice:attack_card_medium', 1);\n  DC.TEMPORARY_CARD.set(tmp, true);\n  out.tempIsTemporary = TCU.isTemporary(tmp);\n  out.tempFoil = tmp.getItem().isFoil(tmp);\n  out.tempCanDrop = tmp.getItem().onDroppedByPlayer(tmp, P);\n  DC.TEMPORARY_CARD.remove(tmp);\n  out.plainIsTemporary = TCU.isTemporary(tmp);\n  out.plainCanDrop = tmp.getItem().onDroppedByPlayer(tmp, P);\n  DC.CARD_USES.set(tmp, 2);\n  out.barWidthLow = tmp.getItem().getBarWidth(tmp);\n  out.barColorLow = tmp.getItem().getBarColor(tmp);\n  P.getInventory().selected = 0;\n  P.getInventory().setItem(0, AutoJS.stack('astral_dice:attack_card_medium', 1));\n  out.useConsumed = AutoJS.use();\n  var heldNow = AutoJS.held(P);\n  out.heldCountAfterUse = heldNow.isEmpty() ? 0 : heldNow.getCount();\n  out.heldIdAfterUse = heldNow.isEmpty() ? 'empty' : String(AutoJS.id(heldNow));\n  return out;\n})()"
+    },
+    {
+      "op": "eval_js",
+      "save_as": "restored",
+      "code": "(function(){\n  AutoJS.command('clear @a');\n  AutoJS.command('effect clear @a');\n  AutoJS.command('kill @e[type=!player,distance=..48]');\n  return { cleaned: true };\n})()"
+    }
+  ],
+  "asserts": [
+    {
+      "type": "state",
+      "name": "card_component_contract",
+      "from": "card",
+      "expect": {
+        "maxUses": 10,
+        "usesFresh": 10,
+        "maxStackFresh": 16,
+        "barVisibleFresh": false,
+        "foilFresh": false,
+        "usesUsed": 9,
+        "maxStackUsed": 1,
+        "barVisibleUsed": true,
+        "barWidthUsed": 12,
+        "barColorUsed": 65280,
+        "nbtHasCardUses": true,
+        "barWidthLow": 3,
+        "barColorLow": 16711680
+      }
+    },
+    {
+      "type": "state",
+      "name": "temporary_card_guards",
+      "from": "card",
+      "expect": {
+        "tempIsTemporary": true,
+        "tempFoil": true,
+        "tempCanDrop": false,
+        "plainIsTemporary": false,
+        "plainCanDrop": true
+      }
+    },
+    {
+      "type": "state",
+      "name": "no_use_on_right_click",
+      "from": "card",
+      "expect": {
+        "useConsumed": false,
+        "heldCountAfterUse": 1,
+        "heldIdAfterUse": "astral_dice:attack_card_medium"
+      }
+    }
+  ]
+}

@@ -208,7 +208,7 @@ public class MamushiSignItem extends BaseSignItem
      * 直接早退,值恒为 {@link #AWAKEN_MAX};形态本身是锁存态(判据 {@code >= }{@link #AWAKEN_MAX}),
      * 故计数器失效不影响形态判定。
      */
-    private static void addAwakening(Player player, int delta) {
+    public static void addAwakening(Player player, int delta) {
         if (player == null || delta <= 0) return;
         // 真龙形态是锁存态:形态成立即表示「觉醒」计数器**已失效** ⇒ 不再累计(值恒为 AWAKEN_MAX)。
         if (isDragonForm(player)) return;
@@ -406,6 +406,10 @@ public class MamushiSignItem extends BaseSignItem
             if (hadNoCards) {
                 RandomCardHandler.giveCardTo(player, target, RandomCardHandler.CardCategory.ALL);
             }
+            // 小心思：目标佩戴金鲤立牌时，本次主动发牌使其 +1 层金鳞
+            if (SouriSignItem.isEquipped(target)) {
+                SouriSignManager.addGoldScale(target);
+            }
         }
         return InteractionResult.SUCCESS;
     }
@@ -498,5 +502,11 @@ public class MamushiSignItem extends BaseSignItem
         setBiteBonusActive(player, false);
         MamushiDragonEffect.remove(player);
         GIVE_BATCH.remove(player.getUUID());
+    }
+
+    // 2026-11-11 P1 补齐：与 P0 同口径的机器可读拒绝。
+    @Override
+    protected boolean activateForEntity(net.minecraft.world.entity.LivingEntity owner) {
+        return com.merlinkitsune.astral_dice.item.sign.SignEntitySkills.deny("mamushi", owner, "needs_player_card_channel");
     }
 }

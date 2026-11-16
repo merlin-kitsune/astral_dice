@@ -4,11 +4,11 @@
 //
 //  ── 为什么用服务端 ──────────────────────────────────────────────────────────
 //   2026-10-02 用户裁决：本次要验的四项**全部是服务端逻辑**（层数、伤害数值、减伤），
-//   而线生产测试台（mt.ps1）走 Win32 PostMessage 注入**客户端聊天**，GLFW 忽略非前台
+//   而线生产测试台（`scripts/test/win/mt.sh`）走 Win32 PostMessage 注入**客户端聊天**，GLFW 忽略非前台
 //   窗口按键 ⇒ 无人值守下不可靠（续 46 §C 实测）。故改为本台已验证的
 //   「dev 服务端 + RCON + Carpet 假玩家 + KubeJS 探针」通道。
 //
-//  ── 命令一览（驱动方 = ft_inject.ps1 --channel rcon）───────────────────────
+//  ── 命令一览（驱动方 = `scripts/test/mt_inject.py` --channel rcon）───────────────────────
 //    /astralgs env                              只读：四个类的目标方法是否可用
 //    /astralgs stack  <player> <target> <n>     连续攻击带破绽目标 n 次 → 每次后的层数 + 剩余时长
 //    /astralgs dodge  <player> <target> <n>     连续闪避/反击 n 次 → 每次后的层数

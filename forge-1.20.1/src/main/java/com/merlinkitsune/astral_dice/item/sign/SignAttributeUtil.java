@@ -3,7 +3,7 @@ package com.merlinkitsune.astral_dice.item.sign;
 import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
-import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.LivingEntity;
 
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
@@ -21,7 +21,7 @@ public final class SignAttributeUtil {
         return UUID.nameUUIDFromBytes(("astral_dice:" + key).getBytes(StandardCharsets.UTF_8));
     }
 
-    public static void apply(Player player, Attribute attribute, String key,
+    public static void apply(LivingEntity player, Attribute attribute, String key,
                              double amount, AttributeModifier.Operation operation) {
         if (player == null || player.level().isClientSide()) return;
         AttributeInstance instance = player.getAttribute(attribute);
@@ -38,7 +38,7 @@ public final class SignAttributeUtil {
         }
     }
 
-    public static void remove(Player player, Attribute attribute, String key) {
+    public static void remove(LivingEntity player, Attribute attribute, String key) {
         if (player == null) return;
         AttributeInstance instance = player.getAttribute(attribute);
         if (instance == null) return;

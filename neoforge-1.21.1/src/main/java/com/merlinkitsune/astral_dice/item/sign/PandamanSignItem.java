@@ -7,8 +7,8 @@ import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.item.HealingManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
+import com.merlinkitsune.astral_dice.item.card.RandomCardHandler;
 import com.merlinkitsune.astral_dice.item.chip.FriendshipBadgeChipItem;
-import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.InteractionResultHolder;
@@ -30,7 +30,6 @@ import top.theillusivec4.curios.api.SlotContext;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.ThreadLocalRandom;
 import com.merlinkitsune.starengine.combat.PartyRelations;
 import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
 
@@ -47,7 +46,7 @@ import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
  * <ul>
  *   <li>获得一张随机治疗类效果牌(汉堡/巧克力蛋糕/奢华大餐);</li>
  *   <li>对 16 格内所有敌对目标施加「嘲讽」(1:00);</li>
- *   <li>被「嘲讽」目标攻击施加者时,触发反击(不消耗反击层数);</li>
+ *   <li>被「嘲讽」目标攻击施加者时,触发反击(不消耗可激活反击次数);</li>
  *   <li>反击时若生命值未满,额外增加缺失生命值等值的伤害(常驻被动)。</li>
  * </ul>
  */
@@ -93,13 +92,8 @@ public class PandamanSignItem extends BaseSignItem {
         if (level.isClientSide) {
             return InteractionResultHolder.success(stack);
         }
-        // 1. 获得随机治疗类效果牌
-        ItemStack randomHealingCard = switch (ThreadLocalRandom.current().nextInt(3)) {
-            case 0 -> new ItemStack(ModItems.HAMBURGER.get());
-            case 1 -> new ItemStack(ModItems.CHOCOLATE_CAKE.get());
-            default -> new ItemStack(ModItems.LUXURY_FEAST.get());
-        };
-        VitaminPillChipItem.giveCard(player, randomHealingCard);
+        // 1. 获得随机治疗类效果牌(公共发牌类 HEALING 池,不再私有随机)
+        RandomCardHandler.giveCardTo(player, RandomCardHandler.CardCategory.HEALING);
 
         // 2. 嘲讽 16 格内所有敌对目标(含 Boss)
         AABB aabb = player.getBoundingBox().inflate(TAUNT_RANGE);
@@ -190,5 +184,11 @@ public class PandamanSignItem extends BaseSignItem {
         SignAttributeUtil.apply(player, Attributes.MAX_HEALTH, MAX_HEALTH_MODIFIER_KEY,
                 ModAttachments.getPandamanMaxHealthBonus(player),
                 AttributeModifier.Operation.ADD_VALUE);
+    
+}
+    // 2026-11-09（A）：类玩家宿主的主动入口 —— 当前语义依赖玩家侧通道，显式拒绝并留锚点。
+    @Override
+    protected boolean activateForEntity(net.minecraft.world.entity.LivingEntity owner) {
+        return com.merlinkitsune.astral_dice.item.sign.SignEntitySkills.deny("pandaman", owner, "needs_player_card_channel");
     }
 }

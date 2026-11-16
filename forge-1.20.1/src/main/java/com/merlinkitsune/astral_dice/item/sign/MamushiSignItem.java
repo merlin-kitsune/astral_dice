@@ -208,6 +208,10 @@ public class MamushiSignItem extends BaseSignItem
             if (hadNoCards) {
                 RandomCardHandler.giveCardTo(player, target, RandomCardHandler.CardCategory.ALL);
             }
+            // 小心思：目标佩戴金鲤立牌时，本次主动发牌使其 +1 层金鳞
+            if (SouriSignItem.isEquipped(target)) {
+                SouriSignManager.addGoldScale(target);
+            }
         }
         return InteractionResultHolder.success(stack);
     }
@@ -571,5 +575,11 @@ public class MamushiSignItem extends BaseSignItem
         setBiteBonusActive(player, false);
         MamushiDragonEffect.remove(player);
         clearBatches(player);
+    
+}
+    // 2026-11-09（A）：类玩家宿主的主动入口 —— 当前语义依赖玩家侧通道，显式拒绝并留锚点。
+    @Override
+    protected boolean activateForEntity(net.minecraft.world.entity.LivingEntity owner) {
+        return com.merlinkitsune.astral_dice.item.sign.SignEntitySkills.deny("mamushi", owner, "needs_player_card_channel");
     }
 }

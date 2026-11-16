@@ -1,0 +1,63 @@
+{
+  "case_id": "DAMAGE-CHAIN-fabric-1.21.1",
+  "title": "伤害链上的可观测修饰：同一发 magic 10 点伤害打到两只僵尸，未中破绽的那只掉 10 点整，中了 astral_dice:weak_mark 的那只在 LivingDamageEvent(LOW) 里被乘以 1.10 => 掉 11 点；倍率只发生在带 weak_mark 的目标身上，证明 onWeakMarkDamage 在无玩家实体来源的伤害上不被骰战终值通道跳过。证据：fabric-1.21.1/src/main/java/com/merlinkitsune/astral_dice/combat/DiceCombatEvents.java:1729-1745（onWeakMarkDamage：target.hasEffect(WEAK_MARK) 且非骰战终值时 amount*=1.10f）、:1767-1783（isDiceBattleSettledDamage 需要 getDirectEntity() instanceof Player，控制台/无实体伤害不跳过）。",
+  "version": "fabric-1.21.1",
+  "channel": "autojs",
+  "on_fail": "continue",
+  "steps": [
+    {
+      "op": "note",
+      "text": "取可确定量的思路：magic 伤害无视护甲与附魔，僵尸没有额外减伤，所以基准伤害就是 10.0（用 getHealth 差直接读出）；weak_mark 的倍率是编译期常量 1.10f（fabric-1.21.1/src/main/java/com/merlinkitsune/astral_dice/combat/DiceCombatEvents.java:1739），且只有在 source.getEntity() 是带 FateGuidanceCardItem 的玩家时才 +0.20（:1740-1743），这里来源没有实体，所以期望正好乘以 1.10。两只僵尸分开打，避免同一实体 invulnerableTime 的 10 tick 无敌帧把第二发吞掉。自恢复：kill 掉自己召的两只僵尸 + clear @a。"
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "mode": "json",
+      "code": "(function(){\n  var P = AutoJS.players()[0];\n  var L = AutoJS.level();\n  var ME = Java.loadClass('com.merlinkitsune.astral_dice.effect.ModEffects');\n  var Eff = Java.loadClass('com.merlinkitsune.astral_dice.platform.util.Effects');\n  var MEI = Java.loadClass('net.minecraft.world.effect.MobEffectInstance');\n  AutoJS.command('kill @e[type=!player,distance=..48]');\n  AutoJS.command('clear @a');\n  AutoJS.command('effect clear @a');\n  var x = P.getX(), y = P.getY(), z = P.getZ();\n  var z1 = AutoJS.summon('minecraft:zombie', x + 3.0, y, z);\n  var z2 = AutoJS.summon('minecraft:zombie', x + 5.0, y, z);\n  z1.setNoAi(true);\n  z2.setNoAi(true);\n  var out = {};\n  out.z1MaxHealth = z1.getMaxHealth();\n  out.z2MaxHealth = z2.getMaxHealth();\n  var h1 = z1.getHealth();\n  z1.hurt(L.damageSources().magic(), 10.0);\n  out.dmgNoMark = h1 - z1.getHealth();\n  z2.addEffect(new MEI(Eff.holder(ME.WEAK_MARK.get()), 600, 0));\n  out.z2HasWeakMark = z2.hasEffect(Eff.holder(ME.WEAK_MARK.get()));\n  var h2 = z2.getHealth();\n  z2.hurt(L.damageSources().magic(), 10.0);\n  out.dmgWithWeakMark = h2 - z2.getHealth();\n  out.z1Health = z1.getHealth();\n  out.z2Health = z2.getHealth();\n  return out;\n})()",
+      "save_as": "damage",
+      "timeout_ms": 60000
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "mode": "json",
+      "code": "(function(){\n  AutoJS.command('kill @e[type=!player,distance=..48]');\n  AutoJS.command('clear @a');\n  AutoJS.command('effect clear @a');\n  return { cleaned: true };\n})()",
+      "save_as": "restored",
+      "timeout_ms": 60000
+    }
+  ],
+  "asserts": [
+    {
+      "type": "state",
+      "from": "damage",
+      "expect": {
+        "z1MaxHealth": 20,
+        "z2MaxHealth": 20,
+        "dmgNoMark": {
+          "min": 9.999,
+          "max": 10.001
+        },
+        "z2HasWeakMark": true,
+        "dmgWithWeakMark": {
+          "min": 10.899,
+          "max": 11.101
+        },
+        "z1Health": {
+          "min": 9.999,
+          "max": 10.001
+        },
+        "z2Health": {
+          "min": 8.899,
+          "max": 9.101
+        }
+      }
+    },
+    {
+      "type": "state",
+      "from": "restored",
+      "expect": {
+        "cleaned": true
+      }
+    }
+  ]
+}

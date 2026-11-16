@@ -3,6 +3,7 @@ package com.merlinkitsune.astral_dice.client;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.entity.ModEntityTypes;
 import com.merlinkitsune.astral_dice.init.ModParticles;
+import com.merlinkitsune.astral_dice.screen.AstralAnvilScreen;
 import com.merlinkitsune.astral_dice.screen.CardInventoryScreen;
 import com.merlinkitsune.astral_dice.screen.CardChoiceScreen;
 import com.merlinkitsune.astral_dice.screen.CardShopScreen;
@@ -42,6 +43,7 @@ public class ModClientEvents {
         event.register(ModMenuTypes.CARD_SHOP.get(), CardShopScreen::new);
         event.register(ModMenuTypes.CHIP_SHOP.get(), ChipShopScreen::new);
         event.register(ModMenuTypes.CARD_CHOICE.get(), CardChoiceScreen::new);
+        event.register(ModMenuTypes.ASTRAL_ANVIL.get(), AstralAnvilScreen::new);
     }
 
     /**
@@ -54,6 +56,14 @@ public class ModClientEvents {
     public static void registerEntityRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerEntityRenderer(ModEntityTypes.BARRICADE.get(), BarricadeRenderer::new);
         event.registerEntityRenderer(ModEntityTypes.REPULSION.get(), RepulsionRenderer::new);
+        // Syke 触手(2026-10-29):GeckoLib 渲染器,**不**走 registerLayerDefinitions ——
+        // 几何来自 assets/astral_dice/geo/sykestentacle.geo.json,没有原版 LayerDefinition 可注册。
+        event.registerEntityRenderer(ModEntityTypes.SOURI_DRINK.get(), SouriDrinkRenderer::new);
+        event.registerEntityRenderer(ModEntityTypes.SYKE_TENTACLE.get(), SykeTentacleRenderer::new);
+        // 小猎手立牌「暗影之门」(2026-11-10):GeckoLib 渲染器 + 激活态漩涡公告板
+        event.registerEntityRenderer(ModEntityTypes.INKSHADOW_PORTAL.get(), InkShadowPortalRenderer::new);
+        // 抓钩（2026-11-13）：吸尘器头 ItemDisplay 模型 + 白色管道逐节渲染
+        event.registerEntityRenderer(ModEntityTypes.GRAPPLING_HOOK.get(), GrapplingHookRenderer::new);
     }
 
     /** 模型层定义：`astral_dice:barricade#main` ⇒ {@link BarricadeModel#createBodyLayer()}。 */

@@ -40,5 +40,13 @@ public final class ModEntityEvents {
                 LivingEntity.createLivingAttributes()
                         .add(Attributes.MAX_HEALTH, 50.0D)
                         .build());
+
+        // Syke 触手(2026-10-29):20 点生命 + 击退抗性 1.0(= 完全免疫击退,触手是长在地上的)。
+        // 它没有 AI / 掉落 / 生成规则,属性仅用于「能被打、会掉血、受伤播攻击动画」这条最小链路。
+        event.put(ModEntityTypes.SYKE_TENTACLE.get(),
+                LivingEntity.createLivingAttributes()
+                        .add(Attributes.MAX_HEALTH, 20.0D)
+                        .add(Attributes.KNOCKBACK_RESISTANCE, 1.0D)
+                        .build());
     }
 }

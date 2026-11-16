@@ -25,9 +25,10 @@ import com.merlinkitsune.starengine.component.GameplayConfigValues;
  * v5 用于「**移除 actionbar 两项配置**(`actionbar_duration_ticks` / `actionbar_fade_ticks`)—— 2026-10-03 用户裁决:
  * 这两项移出配置文件、改为固定常量,以让新值对**所有玩家强制生效**(已装的旧配置不会采纳新默认值)」。
  * v7 用于「新增 `enable_chip_recipes`(筹码合成配方总开关,默认 false;与 forge / neoforge-1.21.1 同号)」。
+ * v8 用于「新增 `experimental_star_upgrade`(实验性升星总开关,默认 false —— 开关影响骰子升阶合成的重置/退卡/费用与铁砧分级经验;铁砧升星始终只 +1,从不重置;关闭时行为与改动前完全一致)」。
  */
 public final class ModCommonConfig {
-    public static final int CONFIG_VERSION = 7;
+    public static final int CONFIG_VERSION = 8;
 
     public static final ForgeConfigSpec SPEC;
 
@@ -50,6 +51,22 @@ public final class ModCommonConfig {
      * <p>⚠️ 本项**不进** {@link #snapshot()}:库 {@code GameplayConfigValues} 无对应字段,不得改动库契约。
      */
     public static final ForgeConfigSpec.BooleanValue ENABLE_CHIP_RECIPES;
+    /** 实验性升星开关的**权威默认值**(与 {@link #EXPERIMENTAL_STAR_UPGRADE} 对应)。 */
+    public static final boolean EXPERIMENTAL_STAR_UPGRADE_DEFAULT = false;
+
+    /**
+     * 实验性升星开关(**服务端玩法项**,默认 false —— 权威默认值见 {@link #EXPERIMENTAL_STAR_UPGRADE_DEFAULT})。
+     *
+     * <p>一个开关同时控制两件事(2026-11-15 用户裁决):
+     * <ol>
+     *   <li>升阶合成重置:开启后骰子升阶合成(普通→黄金→钻石等)的新骰子重置为 **0★**、清空已装配卡牌与已用费用,并归还母体骰子的卡牌(费用不退);铁砧升星始终只 +1,从不重置。</li>
+     *   <li>分级经验:开启后铁砧升星按输入骰子的分级标签(dice_t0..dice_t4)取 5 / 10 / 15 / 20 / 30 级(关闭时固定 10 级)。</li>
+     * </ol>
+     * 判定与数值集中在 {@code item.DiceStarUpgrade}(唯一事实源,勿另复制一套)。
+     *
+     * <p>⚠️ 本项**不进** {@link #snapshot()}:库 {@code GameplayConfigValues} 无对应字段,不得改动库契约。
+     */
+    public static final ForgeConfigSpec.BooleanValue EXPERIMENTAL_STAR_UPGRADE;
     public static final ForgeConfigSpec.BooleanValue EVENT_APPLY_MC_TEAM;
     public static final ForgeConfigSpec.BooleanValue EVENT_APPLY_FTB_TEAM;
     public static final ForgeConfigSpec.BooleanValue EVENT_APPLY_OPAC;
@@ -107,6 +124,12 @@ public final class ModCommonConfig {
         // 筹码合成配方总开关(默认 false;键名 / 注释 / 默认值与 forge 逐字对齐)。
         ENABLE_CHIP_RECIPES = builder.comment("是否启用筹码合成配方(默认：false；关闭时筹码无法通过合成获得)")
                 .define("enable_chip_recipes", false);
+
+        // 实验性升星开关(默认 false;关闭时行为与改动前完全一致:升阶合成继承母体、铁砧固定 10 级、星级 +1 —— 权威默认值见 EXPERIMENTAL_STAR_UPGRADE_DEFAULT)。
+        EXPERIMENTAL_STAR_UPGRADE = builder.comment("实验性升星(默认：false)",
+                        "false = 升阶合成继承母体星阶/卡牌/费用,铁砧升星固定 10 级经验、星级 +1;",
+                        "true = 升阶合成产物重置为 0★、清空卡牌与费用并归还母体卡牌(费用不退),铁砧经验按输入骰子的分级标签取 5 / 10 / 15 / 20 / 30 级")
+                .define("experimental_star_upgrade", false);
 
         builder.push("event_system").comment("=== 事件系统 ===");
         EVENT_APPLY_MC_TEAM = builder.comment("事件是否作用于 Minecraft 同队玩家")

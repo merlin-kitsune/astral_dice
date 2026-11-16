@@ -177,4 +177,21 @@ public class JasmineSignItem extends BaseSignItem {
     public static int getDefenseBonus(ItemStack stack) {
         return ModDataComponents.JASMINE_DEF_BONUS.getOrDefault(stack, 0);
     }
+    // 2026-11-09（A）：类玩家宿主的主动 —— 与玩家路径同效果、同时长（玩家免疫前置在生物侧无意义，直接施加）。
+    @Override
+    protected boolean activateForEntity(net.minecraft.world.entity.LivingEntity owner) {
+        if (owner.level().isClientSide()) {
+            return com.merlinkitsune.astral_dice.item.sign.SignEntitySkills.deny("jasmine", owner, "client_side");
+        }
+        owner.addEffect(new net.minecraft.world.effect.MobEffectInstance(
+                com.merlinkitsune.astral_dice.effect.ModEffects.JASMINE_SWEEP.get(), DURATION_TICKS, 0, false, false, true));
+        if (java.util.concurrent.ThreadLocalRandom.current().nextBoolean()) {
+            owner.addEffect(new net.minecraft.world.effect.MobEffectInstance(
+                    net.minecraft.world.effect.MobEffects.DAMAGE_RESISTANCE, DURATION_TICKS, 0, false, true));
+        } else {
+            owner.addEffect(new net.minecraft.world.effect.MobEffectInstance(
+                    net.minecraft.world.effect.MobEffects.DAMAGE_BOOST, DURATION_TICKS, 0, false, true));
+        }
+        return com.merlinkitsune.astral_dice.item.sign.SignEntitySkills.ok("jasmine", owner, DURATION_TICKS);
+    }
 }

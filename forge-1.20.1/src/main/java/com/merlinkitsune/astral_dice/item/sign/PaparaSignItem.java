@@ -90,6 +90,12 @@ public class PaparaSignItem extends BaseSignItem {
         if (event.getAmount() <= 0.0F) return;
         int heal = Math.max(1, (int) event.getAmount() / 2);
         player.heal(heal);
-    }
+    
+}
 
+    // 2026-11-09（A）：类玩家宿主的主动入口 —— 当前语义依赖玩家侧通道，显式拒绝并留锚点。
+    @Override
+    protected boolean activateForEntity(net.minecraft.world.entity.LivingEntity owner) {
+        return com.merlinkitsune.astral_dice.item.sign.SignEntitySkills.deny("papara", owner, "needs_player_inventory");
+    }
 }

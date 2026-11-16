@@ -47,7 +47,7 @@ public final class SignHookDispatcher {
     }
 
     /** 遍历玩家当前装备的全部立牌（客户端 / null 早退，与既有 invoke*Hooks 同口径）。 */
-    private static void forEachSign(Player player, Consumer<BaseSignItem> action) {
+    private static void forEachSign(LivingEntity player, Consumer<BaseSignItem> action) {
         if (player == null || player.level().isClientSide()) return;
         CuriosCompat.getCuriosInventory(player).ifPresent(handler -> {
             var results = handler.findCurios(s -> s.getItem() instanceof BaseSignItem);
@@ -66,8 +66,13 @@ public final class SignHookDispatcher {
     }
 
     /** 玩家造成击杀时,调用其全部已装备立牌的 {@code onKill} 钩子(实现自 {@code BaseSignItem#invokeKillHooks})。 */
+    public static void fireKillHooks(net.minecraft.world.entity.LivingEntity killer, LivingEntity killed) {
+        forEachSign(killer, sign -> sign.onKillEntity(killer, killed));
+    }
+
+    /** 兼容旧签名（玩家调用方）。 */
     public static void fireKillHooks(Player killer, LivingEntity killed) {
-        forEachSign(killer, sign -> sign.onKill(killer, killed));
+        fireKillHooks((LivingEntity) killer, killed);
     }
 
     /**
@@ -78,10 +83,21 @@ public final class SignHookDispatcher {
      * 于是摔落 / 仙人掌 / 着火等环境伤害、以及本模组「符卡-祸」的无来源真伤都会算数。
      * 闸门保持在**分发处**(先于遍历),与原直调口径一致。
      */
+    public static void fireHurtHooks(net.minecraft.world.entity.LivingEntity holder, DamageSource source, float amount) {
+        if (holder == null || holder.level().isClientSide()) return;
+        if (holder instanceof Player player) {
+            if (!com.merlinkitsune.astral_dice.combat.DiceCombatEvents.isHostileAttack(player, source)) return;
+        } else {
+            // 注册生物没有「玩家被敌对攻击」的既有判据：只要求有施害者且不是自己。
+            net.minecraft.world.entity.Entity attacker = source.getEntity();
+            if (attacker == null || attacker == holder) return;
+        }
+        forEachSign(holder, sign -> sign.onHurtEntity(holder, source, amount));
+    }
+
+    /** 兼容旧签名（玩家调用方）。 */
     public static void fireHurtHooks(Player player, DamageSource source, float amount) {
-        if (player == null || player.level().isClientSide()) return;
-        if (!com.merlinkitsune.astral_dice.combat.DiceCombatEvents.isHostileAttack(player, source)) return;
-        forEachSign(player, sign -> sign.onHurt(player, source, amount));
+        fireHurtHooks((LivingEntity) player, source, amount);
     }
 
     /**

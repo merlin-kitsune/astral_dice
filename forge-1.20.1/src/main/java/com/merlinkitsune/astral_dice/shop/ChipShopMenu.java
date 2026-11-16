@@ -34,7 +34,7 @@ import java.util.List;
  * 「槽内物品图标内缩 1 px」⇒ 本类的槽位坐标 = 格网起点 **+1 px**。原版 {@code Slot} 的 x/y 同时是
  * **物品绘制点**与**命中判定点**，故内缩位移放在槽位坐标里一次做对，屏幕层不再逐格修正。
  *
- * <p><b>为什么 36 条玩家槽构造是逐条字面量</b>：守门脚本 {@code scripts/verify/verify_chip_shop_ui.ps1}
+ * <p><b>为什么 36 条玩家槽构造是逐条字面量</b>：守门脚本 {@code scripts/verify/verify_chip_shop_ui.py}
  * （G6）按字面统计槽位数（应恰为 36），循环写法会让这条判据失去意义 —— 保持逐条可核对。
  *
  * <p><b>反刷取</b>（计划表 §5）：候选槽 {@link OfferSlot#mayPickup} 恒 false ⇒ 候选**永不**进入原版
@@ -201,7 +201,8 @@ public class ChipShopMenu extends AbstractContainerMenu {
         addDataSlot(new DataSlot() {
             @Override
             public int get() {
-                return player.level().isClientSide() ? clientPrice : ChipShopState.get(player).price();
+                return player.level().isClientSide() ? clientPrice
+                        : ChipShopDiscounts.effectivePrice(player, ChipShopState.get(player).price());
             }
 
             @Override
@@ -283,7 +284,8 @@ public class ChipShopMenu extends AbstractContainerMenu {
 
     /** 单价（三格同价） */
     public int price() {
-        return player.level().isClientSide() ? clientPrice : ChipShopState.get(player).price();
+        return player.level().isClientSide() ? clientPrice
+                : ChipShopDiscounts.effectivePrice(player, ChipShopState.get(player).price());
     }
 
     /** 剩余刷新次数 */
@@ -358,7 +360,7 @@ public class ChipShopMenu extends AbstractContainerMenu {
         if (chip.isEmpty() || offerIndex >= state.offers().size()) {
             return; // 该格无候选（越界包 / 重复包 / 已重抽）⇒ 静默拒绝
         }
-        int price = state.price();
+        int price = ChipShopDiscounts.effectivePrice(buyer, state.price());
         if (!StarEngineEconomy.isAvailable() || !StarEngineEconomy.hasBalance(buyer, price)) {
             deny(buyer, DENY_NO_COIN, "msg.astral_dice.chip_shop_no_coin", price);
             return;

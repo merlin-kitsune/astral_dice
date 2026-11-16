@@ -2,13 +2,13 @@
 
 > 起因：用户要求「顺便检查电击手套是否存在伤害递归问题」。
 > 结论：**当前不递归**（证据链见 §2），但审查过程中**查实一个真实 bug —— AOE 波及会把施法者自己算进目标**（§4，已修复）。
-> 不涉及库改动；三线同构。
+> 不涉及库改动；各线同构。
 
 ---
 
 ## 1. 被判定的代码路径
 
-`combat/SpellDamageRegistry.java`（三线同构）电击手套修饰器：
+`combat/SpellDamageRegistry.java`（各线同构）电击手套修饰器：
 
 ```java
 public void onHit(SpellDamageContext ctx, double bonus) {
@@ -114,7 +114,7 @@ if (target instanceof Player other) {
 
 ### 4.3 修复
 
-两处 AOE 的目标过滤均补 `e != ctx.attacker`（电击手套 + 定向爆破），三线同改：
+两处 AOE 的目标过滤均补 `e != ctx.attacker`（电击手套 + 定向爆破），各线同改：
 
 ```java
 e -> DiceCombatEvents.isBlessingTarget(e, ctx.attacker)
@@ -141,7 +141,7 @@ e -> DiceCombatEvents.isBlessingTarget(e, ctx.attacker)
 
 ---
 
-## 6. 本次改动落点（三线）
+## 6. 本次改动落点（各线）
 
 | 文件 | 改动 |
 |---|---|
@@ -187,7 +187,7 @@ e -> DiceCombatEvents.isBlessingTarget(e, ctx.attacker)
 
 ### 8.2 为什么此前「看起来没事」（实证）
 
-原版 `LivingEntity#hurt`（NeoForge 1.21.1 源码 `LivingEntity.java:1190-1206`，四线同形）：
+原版 `LivingEntity#hurt`（NeoForge 1.21.1 源码 `LivingEntity.java:1190-1206`，各线同形）：
 
 ```java
 if ((float)this.invulnerableTime > 10.0F && !source.is(DamageTypeTags.BYPASSES_COOLDOWN)) {
@@ -200,7 +200,7 @@ if ((float)this.invulnerableTime > 10.0F && !source.is(DamageTypeTags.BYPASSES_C
 }
 ```
 
-四线标签实测（`data/minecraft/tags/damage_type/bypasses_cooldown.json`）：
+各线标签实测（`data/minecraft/tags/damage_type/bypasses_cooldown.json`）：
 
 | 伤害类型 | 在 `bypasses_cooldown` 内 | 后果 |
 |---|---|---|
@@ -212,7 +212,7 @@ if ((float)this.invulnerableTime > 10.0F && !source.is(DamageTypeTags.BYPASSES_C
 （例：主目标受减伤而外围目标没有）就会**真的多吃一次差额**；若将来把 `card_spell` 也放进
 `bypasses_cooldown`（或给手套扩散换成不免无敌帧的类型），则**逐字翻倍**。
 
-### 8.3 修复（四线）
+### 8.3 修复（各线）
 
 新增**一次用量**级别的登记窗口，把「先到先得」显式化：
 
@@ -232,7 +232,7 @@ if ((float)this.invulnerableTime > 10.0F && !source.is(DamageTypeTags.BYPASSES_C
 
 ### 8.4 产物级验证
 
-`javap -c` 反汇编 `build/libs/astral_dice-2.0.0-SNAPSHOT.27+*.jar`（四线同形）：
+`javap -c` 反汇编 `build/libs/astral_dice-2.0.0-SNAPSHOT.27+*.jar`（各线同形）：
 
 ```
 // SpellDamageRegistry$10#onHit(扩散循环)

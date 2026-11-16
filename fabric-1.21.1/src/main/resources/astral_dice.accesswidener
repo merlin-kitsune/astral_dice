@@ -1,0 +1,30 @@
+accessWidener v1 named
+
+# ==== fabric-1.21.1 线级 access widener（P4 接入，2026-11-04）====
+# 来源与口径：与 fabric-1.20.1/src/main/resources/astral_dice.accesswidener 同一动机
+# （Forge 侧靠 accesstransformer.cfg 放宽，Fabric 侧没有 AT，只有 aw），但**逐条按 MC 1.21.1 重核**：
+#   - RenderType$CompositeState：**类文件头**是 public，但 javac 判可见性读的是 RenderType 的 InnerClasses
+#     成员标志（protected static final）⇒ 从 com.merlinkitsune.* 这类异包引用必须放宽。实测见下方「勘误」段。
+#   - RenderStateShard$TransparencyStateShard：同理（InnerClasses 标志 protected static）⇒ 必须放宽。
+#   - RenderType$CompositeStateBuilder：无需放宽（InnerClasses 标志已是 public static），代码里也不显式引用该类型。
+#   - AbstractContainerScreen#leftPos/topPos：1.21.1 仍是 protected int ⇒ 非子类（client/gui/StarCoinWalletButtons）要放宽。
+#   - RenderType#create(...)：1.21.1 的 7 参重载是 private、5 参是包私有 ⇒ 三个自建 RenderType 的调用点要放宽。
+# javap 取证 jar：minecraft-merged-1.21.1-loom.mappings.1_21_1.layered+hash.2198-v2.jar
+
+# 自建 RenderType 状态通道：client/BeamFxRenderer#createBeam、client/RenShieldRenderer#createDome、
+# client/TargetSelectionHighlighter#PRISM 三处都走 (String, VertexFormat, Mode, int, boolean, boolean, CompositeState)。
+# 【勘误订正】CompositeState / TransparencyStateShard 的**类文件头**在 1.21.1 确实是 public，
+# 但 javac 判可见性读的是 RenderType / RenderStateShard 的 **InnerClasses 属性成员标志**，那里仍是 protected：
+#   javap -v -p RenderType      | InnerClasses → 'protected static final #18= #13 of #2; // CompositeState=...'
+#   javap -v -p RenderStateShard| InnerClasses → 'protected static #57= #45 of #2; // TransparencyStateShard=...'
+# 对照 CompositeStateBuilder 已是 'public static' → 不需要放宽（1.20.1 那条已废弃）。
+# 【可复跑的硬证据】把 `RenderType.CompositeState` / `RenderStateShard.TRANSLUCENT_TRANSPARENCY` 放进
+# 异包（如 probe.pkg）用 javac -cp <上述 merged jar> 编译，不带 AW 时报两条「在 <owner> 中是 protected 访问控制」；
+# 带本 AW 后编译通过 ⇒ 这两条 accessible class 是**必要**的（不是空操作），勿删。
+accessible class net/minecraft/client/renderer/RenderType$CompositeState
+accessible class net/minecraft/client/renderer/RenderStateShard$TransparencyStateShard
+accessible method net/minecraft/client/renderer/RenderType create (Ljava/lang/String;Lcom/mojang/blaze3d/vertex/VertexFormat;Lcom/mojang/blaze3d/vertex/VertexFormat$Mode;IZZLnet/minecraft/client/renderer/RenderType$CompositeState;)Lnet/minecraft/client/renderer/RenderType$CompositeRenderType;
+
+# 钱包按钮注入：client/gui/StarCoinWalletButtons 读 parent.leftPos/topPos 定位按钮，本类不是 AbstractContainerScreen 子类。
+accessible field net/minecraft/client/gui/screens/inventory/AbstractContainerScreen leftPos I
+accessible field net/minecraft/client/gui/screens/inventory/AbstractContainerScreen topPos I

@@ -1,0 +1,13 @@
+{
+  "name": "item.astral_dice.effect_card_you_have_i_have",
+  "category": "astral_dice:cards_effect",
+  "icon": "astral_dice:effect_card_you_have_i_have",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:effect_card_you_have_i_have",
+      "text": "astral_dice.guide.entry.effect_card_you_have_i_have.1"
+    }
+  ],
+  "sortnum": 7
+}

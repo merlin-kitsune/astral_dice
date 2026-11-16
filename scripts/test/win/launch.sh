@@ -2,9 +2,9 @@
 # ============================================================================
 # scripts/test/win/launch.sh — Astral Dice 测试台 · Windows(git bash) 启动路径
 #
-# 语义 = Linux 蓝本 launch.sh 的 Windows 对应物 + mt.ps1 的最小集：
+# 语义 = Linux 蓝本 launch.sh 的 Windows 对应物 + 旧编排器最小集：
 #   拉起 gradlew.bat :<子项目>:runClient（带 -Pquickplay）→ 轮询就绪 → 打印机器行。
-#   不复刻 mt_launch.ps1 的窗口注入/截图/世界清场/OP 闸门（见 README「分工边界」）。
+#   不复刻旧编排器的窗口注入/截图/世界清场/OP 闸门（见 README「分工边界」）。
 #
 # 用法：
 #   bash scripts/test/win/launch.sh --version <ver> [--timeout 600] [--wait-world 0]
@@ -12,7 +12,7 @@
 #                                   [--kill-on-timeout] [--log-dir DIR]
 #                                   [--launch-mode bg|start] [--dry-run]
 #                                   [--side client|server] [--enable-autojs]
-#   --side / --enable-autojs 只对 fabric-1.20.1 有效（双 run 目录 + 条件 AutoJS）；
+#   --side / --enable-autojs 只对 fabric 线（fabric-<mcver>）有效（双 run 目录 + 条件 AutoJS）；
 #   其它三线传了报错。--enable-autojs 等价 export MT_FAB_AUTOJS=1（带 -PautojsTestMod=1）。
 #
 # 就绪判据（与 Linux 相同顺序）：
@@ -52,7 +52,7 @@ QUICKPLAY="${MT_LAUNCH_QUICKPLAY:-testworld}"
 KILL_ON_TIMEOUT=0
 DRY=0
 LAUNCH_MODE="${MT_WIN_LAUNCH_MODE:-bg}"
-SIDE="${MT_SIDE:-}"        # 仅 fabric-1.20.1：client|server（其它线必须留空）
+SIDE="${MT_SIDE:-}"        # 仅 fabric 线（fabric-*）：client|server（其它线必须留空）
 
 usage() {
     cat <<'USAGE'
@@ -62,7 +62,7 @@ usage() {
                                   [--kill-on-timeout] [--log-dir DIR]
                                   [--launch-mode bg|start] [--dry-run]
 
-  --version <ver>   1.21.1 | 1.20.1 | 26.1.2 | fabric-1.20.1（必填）
+  --version <ver>   1.21.1 | 1.20.1 | 26.1.2 | fabric-1.20.1 | fabric-1.21.1（必填）
   --timeout <sec>   等 AutoJS 客户端侧就绪的上限，默认 600
   --wait-world <秒> READY 后再等世界 marker 的秒数，默认 0=不额外等
   --quickplay <名>  透传 -Pquickplay=<名>（默认 testworld；build.gradle 四线已配置）
@@ -70,10 +70,15 @@ usage() {
   --kill-on-timeout 超时后自动调 stop.sh 收停（默认只提示）
   --log-dir <dir>   日志目录，默认 scripts/test/win/logs
   --launch-mode bg|start
-                    bg（默认）= git bash 后台 + cmd //c gradlew.bat，可拿 PID；
-                    start      = cmd //c start "" /B cmd /c "…"（真正脱离控制台，
+                    bg（默认）= git bash 后台 + mt_cmdwin gradlew.bat，可拿 PID；
+                    start      = mt_cmdwin start "" /B cmd /c "…"（真正脱离控制台，
                                  但拿不到 PID，且本机沙箱下实测 start/b 会阻塞）
   --dry-run         只打印将执行的命令与判定依据，不启动任何进程
+
+环境变量（仅 fabric 线有意义）：
+  MT_TEST_SODIUM=false  透传 -PtestSodium=false（fabric 的 Sodium/Iris 是条件依赖，
+                        版本不匹配会让客户端崩；手工验证时把它关掉，见
+                        docs/handover-1.5.0-main.md §6-7）。未设置 = 不传，行为不变。
 
 就绪：AutoJS health=ok + status(client available=true) → READY；
       日志 marker 命中 → 另打 WORLD_READY；无 AutoJS jar 或 MT_ALLOW_NO_AUTOJS=1 时 marker 可兜底。
@@ -114,6 +119,8 @@ if ! mt_is_version "$VERSION"; then
     echo "用法错误：未知 --version $VERSION（可选 $MT_ALL_VERSIONS）" >&2
     exit 2
 fi
+# fabric 线：把本次版本写进 fabric 库全局（run 目录 / AutoJS 制品名跟着版本走）
+mt_fab_set_version "$VERSION" || true
 case "$TIMEOUT" in ''|*[!0-9]*) echo "用法错误：--timeout 必须是整数秒" >&2; exit 2 ;; esac
 case "$WAIT_WORLD" in ''|*[!0-9]*) echo "用法错误：--wait-world 必须是整数秒（0=不等）" >&2; exit 2 ;; esac
 case "$LAUNCH_MODE" in
@@ -124,8 +131,8 @@ esac
 PROJECT="$(mt_subproject "$VERSION")"
 TOOLCHAIN_VER="$(mt_toolchain "$VERSION")"
 
-# ── fabric-1.20.1：双 run 目录 + 条件 AutoJS（其它三线走原来的单目录）──────
-# 三线：仓库根/run/<版本>，客户端固定 :<子项目>:runClient。
+# ── fabric 线：双 run 目录 + 条件 AutoJS（其它三线走原来的单目录）──────────
+# 三线：仓库根/run/<子项目名>（run/neoforge-1.21.1 等），客户端固定 :<子项目>:runClient。
 # fabric：<子项目>/run/<client|server>，任务按侧选 runClient / runServer；
 #   -PautojsTestMod=1 只在显式 --enable-autojs（或 MT_FAB_AUTOJS=1）时才带。
 FAB_SIDE=""
@@ -140,15 +147,15 @@ if mt_is_fabric "$VERSION"; then
     AJ_ARG="$(mt_fab_gradle_autojs_arg "$FAB_SIDE")"
 else
     if [ -n "$SIDE" ]; then
-        echo "用法错误：--side 只对 fabric-1.20.1 有效（其它三线是单 run 目录 run/<版本>；收到 --version $VERSION）" >&2
+        echo "用法错误：--side 只对 fabric 线（fabric-<mcver>）有效（其它三线是单 run 目录 run/<子项目名>；收到 --version $VERSION）" >&2
         exit 2
     fi
-    RUN_DIR="$MT_REPO_ROOT/run/$VERSION"
+    RUN_DIR="$MT_REPO_ROOT/run/$PROJECT"
     Gradle_TASK="runClient"
     AJ_ARG=""
 fi
 # mods 目录的显示用标签（fabric 是双目录，不能拼成 run/<版本>/mods）
-if [ -n "$FAB_SIDE" ]; then MODS_LABEL="$MT_FAB_SUBPROJECT/run/$FAB_SIDE/mods"; else MODS_LABEL="run/$VERSION/mods"; fi
+if [ -n "$FAB_SIDE" ]; then MODS_LABEL="$MT_FAB_SUBPROJECT/run/$FAB_SIDE/mods"; else MODS_LABEL="run/$PROJECT/mods"; fi
 PIDFILE="$RUN_DIR/win-run.pid"
 ENDPOINT="$(mt_aj_endpoint)"
 BASE_URL="${ENDPOINT%/mcp}"
@@ -199,7 +206,7 @@ allow_no_autojs="${MT_ALLOW_NO_AUTOJS:-0}"
 # 2026-11-01 用户裁决：AutoJS 就绪判据放宽至所有版本 —— 不再按版本白名单（原 mt_line_has_autojs）。
 # 2026-11-02 fabric 例外：fabric 的 AutoJS 是**条件依赖**，由 -PautojsTestMod=1 以 modRuntimeOnly 注入
 #   运行期 classpath，**永远不进 run/<side>/mods**（制品是 intermediary 命名空间，手放进 mods 会
-#   NoSuchMethodError；见 scripts/test/TESTING-RULES-OVERVIEW.md:191 规则 6）。
+#   NoSuchMethodError；见 scripts/test/TESTING-RULES-OVERVIEW.md（已删除 2026-11-05）:191 规则 6）。
 #   ⇒ fabric 侧的就绪判据 = 「mods 里 AutoJS jar 在位」**或**「本次启动已注入（AJ_ARG 非空）」。
 fab_aj_injected=0
 if mt_is_fabric "$VERSION" && [ "${FAB_SIDE:-}" = "client" ] && [ -n "$AJ_ARG" ] && [ "$allow_no_autojs" != "1" ]; then
@@ -212,7 +219,7 @@ if mt_is_fabric "$VERSION" && [ "${aj_n:-0}" -gt 0 ] && [ -n "$AJ_ARG" ]; then
 fi
 if [ "${aj_n:-0}" -gt 0 ] || [ "$fab_aj_injected" = 1 ]; then autojs_deployed=1; else autojs_deployed=0; fi
 if [ "$fab_aj_injected" = 1 ]; then
-    aj_names="${aj_names}（fabric：$AJ_ARG → AutoJS-fabric-1.20.1-1.0.0.jar 走 mavenLocal 运行期 classpath，不在 mods/）"
+    aj_names="${aj_names}（fabric：$AJ_ARG → AutoJS-${MT_FABRIC_VERSION}-1.0.0.jar 走 mavenLocal 运行期 classpath，不在 mods/）"
 fi
 # 有 jar（或 fabric 已注入）→ AutoJS 为主判据；都没有（或 MT_ALLOW_NO_AUTOJS=1）→ 纯 marker。
 # 只在主判据生效时才真的去探 MCP（否则白等 5s 一轮）。
@@ -231,29 +238,89 @@ fi
 marker_fallback=1
 
 residue_note=""
-cim_ok=1
-if rows="$(mt_cim_java_rows 2>/dev/null)"; then
+procs_ok=1
+rows=""
+if ! rows="$(mt_jps_java_rows 2>/dev/null)"; then
+    procs_ok=0
+    rows=""
+fi
+if [ "$procs_ok" = 1 ]; then
+    pid=""
     while IFS=$'\t' read -r pid cmd; do
         [ -n "$pid" ] || continue
         if launch_cmdline_matches "$cmd"; then
             BLOCKERS="$BLOCKERS same_line_running"
-            residue_note="$residue_note PID $pid；"
+            residue_note="$residue_note PID $pid(jps)；"
             break
         fi
     done <<< "$rows"
-else
-    cim_ok=0
+    # pidfile：进程仍活着也算同线残留（jps 只列 JVM，wrapper/端口兜住边界）
+    if [ -f "$PIDFILE" ]; then
+        pf_pid="$(tr -d '\r\n' < "$PIDFILE" 2>/dev/null)"
+        case "$pf_pid" in
+            ''|*[!0-9]*) : ;;
+            *)
+                if mt_pid_alive "$pf_pid"; then
+                    case "$residue_note" in
+                        *"PID $pf_pid"*) : ;;
+                        *) BLOCKERS="$BLOCKERS same_line_running"
+                           residue_note="$residue_note PID $pf_pid(pidfile)；" ;;
+                    esac
+                fi
+                ;;
+        esac
+    fi
+    # 三个测试台端口任一 LISTENING ⇒ 已有实机在跑（同一时刻只允许一条线）
+    for port in $MT_GAME_PORTS; do
+        for p in $(mt_port_pids "$port" 2>/dev/null); do
+            case "$residue_note" in
+                *"PID $p"*) : ;;
+                *) BLOCKERS="$BLOCKERS same_line_running"
+                   residue_note="$residue_note PID $p(port $port)；" ;;
+            esac
+        done
+    done
 fi
 
+# 额外 Gradle 前置参数（MT_GRADLE_PRE_ARGS，形如 -Dorg.gradle.java.installations.paths=...）：
+# 必须落在任务名之前（Gradle 只从命令行前段取 -D）。用于规避本机环境问题——例如
+# 缓存里某个 auto-detect 到的 JDK 带 Low 完整性标签，用它拉起的游戏进程写不了 run/<v>/logs
+# （2026-11-02 实测：1.20.1 报 logs\latest.log 拒绝访问，1.21.1 正常）。
+PRE_ARGS=""
+[ -n "${MT_GRADLE_PRE_ARGS:-}" ] && PRE_ARGS="${MT_GRADLE_PRE_ARGS} "
 CMD_DESC=""
 if [ -n "$QUICKPLAY" ]; then
-    CMD_DESC="gradlew.bat :$PROJECT:$Gradle_TASK --console=plain -Pquickplay=$QUICKPLAY"
+    CMD_DESC="gradlew.bat ${PRE_ARGS}:$PROJECT:$Gradle_TASK --console=plain -Pquickplay=$QUICKPLAY"
 else
-    CMD_DESC="gradlew.bat :$PROJECT:$Gradle_TASK --console=plain"
+    CMD_DESC="gradlew.bat ${PRE_ARGS}:$PROJECT:$Gradle_TASK --console=plain"
 fi
 # fabric 默认**不带** -PautojsTestMod（AutoJS 是条件依赖，默认注入通道是 RCON）；
 # 只有显式 --enable-autojs 时才追加；其它三线 AJ_ARG 恒为空 ⇒ 命令逐字节不变。
 [ -n "$AJ_ARG" ] && CMD_DESC="$CMD_DESC $AJ_ARG"
+# fabric 条件依赖里的 Sodium/Iris：版本不匹配会崩客户端，手工验证时用 MT_TEST_SODIUM=false 关掉。
+# 其它三线传了必报错（那三线没有 testSodium 属性，静默忽略会让人误以为生效）。
+SODIUM_ARG=""
+if [ -n "${MT_TEST_SODIUM:-}" ]; then
+    if ! mt_is_fabric "$VERSION"; then
+        echo "用法错误：MT_TEST_SODIUM 只对 fabric 线（fabric-<mcver>）生效（$VERSION 没有 testSodium 属性）" >&2
+        exit 2
+    fi
+    case "$MT_TEST_SODIUM" in
+        true|false) SODIUM_ARG="-PtestSodium=$MT_TEST_SODIUM"; CMD_DESC="$CMD_DESC $SODIUM_ARG" ;;
+        *) echo "用法错误：MT_TEST_SODIUM 只接受 true | false（收到：$MT_TEST_SODIUM）" >&2; exit 2 ;;
+    esac
+fi
+# fabric 条件依赖里的 Iris（光影）：默认**装**（钉版 iris 1.8.8 + sodium 0.6.13，dev 可跑）。
+# 需要临时排除时才 MT_TEST_IRIS=false（例：排查 sodium 渲染栈、或临时把钉版改回
+# iris 1.8.14-beta.1 —— 那个版本在 dev 必崩，取证见
+# docs/features/fabric-1211-live-test-plan.md §11）。其它四线没有 testIris 属性，传了必报错。
+if mt_is_fabric "$VERSION"; then
+    case "${MT_TEST_IRIS:-true}" in
+        true) : ;;
+        false) IRIS_ARG="-PtestIris=false"; CMD_DESC="$CMD_DESC $IRIS_ARG" ;;
+        *) echo "用法错误：MT_TEST_IRIS 只接受 true | false（收到：$MT_TEST_IRIS）" >&2; exit 2 ;;
+    esac
+fi
 TS="$(date +%Y%m%d-%H%M%S)"
 LOG="$LOG_DIR/$VERSION-$TS.log"
 
@@ -266,16 +333,17 @@ if [ "$DRY" = 1 ]; then
     mt_detail "toolchain    = $TOOLCHAIN_VER（Gradle 自动发现；本机需在位）"
     mt_detail "run_dir      = $RUN_DIR"
     mt_detail "launch_mode  = $LAUNCH_MODE"
-    mt_detail "cmd          = cmd //c \"$CMD_DESC\"（cwd=$MT_REPO_ROOT，JAVA_HOME=$(mt_to_win "${DAEMON_JDK:-<none>}")）"
+    mt_detail "cmd          = mt_cmdwin \"$CMD_DESC\"（cwd=$MT_REPO_ROOT，JAVA_HOME=$(mt_to_win "${DAEMON_JDK:-<none>}")）"
     mt_detail "log          = $LOG"
     mt_detail "pid_file     = $PIDFILE"
     mt_detail "timeout      = ${TIMEOUT}s（等 AutoJS 客户端侧 READY）"
     mt_detail "wait_world   = ${WAIT_WORLD}s（READY 后额外等世界 marker，0=不等）"
     mt_detail "autojs_jar   = ${aj_n} 个${aj_names}"
+    mt_detail "test_sodium  = ${SODIUM_ARG:-<未传>}（fabric 条件依赖 Sodium/Iris 的开关）"
     mt_detail "autojs_line  = autojs_deployed=$autojs_deployed / probe_enabled=$probe_enabled / marker_fallback=$marker_fallback / fabric_injected=$fab_aj_injected（MT_ALLOW_NO_AUTOJS=$allow_no_autojs；判据：$MODS_LABEL 里 AutoJS jar 是否在位$( [ "$fab_aj_injected" = 1 ] && printf '，或 fabric 已由 -PautojsTestMod=1 注入' )）"
     mt_detail "ready_by     = $ready_by"
     mt_detail "world_marker = $(launch_marker_name)"
-    mt_detail "cim_scan     = $( [ "$cim_ok" = 1 ] && printf 'CIM 可用，同线残留=%s' "${residue_note:-无}" || printf 'CIM 查询失败（无法判残留）' )"
+    mt_detail "procs_scan   = $( [ "$procs_ok" = 1 ] && printf 'jps 可用，同线残留=%s' "${residue_note:-无}" || printf 'jps 查询失败（无法判残留）' )"
     if [ -n "$BLOCKERS" ]; then
         mt_detail "blockers     =$BLOCKERS（真启动会 exit 11 BLOCKED）"
     else
@@ -290,20 +358,20 @@ if [ -z "$DAEMON_JDK" ]; then
     exit 11
 fi
 if [ ! -d "$RUN_DIR" ]; then
-    mt_launch_err "BLOCKED — $( [ -n "$FAB_SIDE" ] && printf '%s' "$RUN_DIR" || printf 'run/%s' "$VERSION" ) 不存在（先让 Gradle 解析一次项目：cmd //c gradlew.bat :$PROJECT:build 或直接跑一次 $Gradle_TASK）"
+    mt_launch_err "BLOCKED — $( [ -n "$FAB_SIDE" ] && printf '%s' "$RUN_DIR" || printf 'run/%s' "$VERSION" ) 不存在（先让 Gradle 解析一次项目：mt_cmdwin gradlew.bat :$PROJECT:build 或直接跑一次 $Gradle_TASK）"
     exit 11
 fi
 if [ ! -f "$MT_REPO_ROOT/gradlew.bat" ]; then
     mt_launch_err "BLOCKED — 缺 gradlew.bat（$MT_REPO_ROOT/gradlew.bat）"
     exit 11
 fi
-if [ "$cim_ok" = 0 ]; then
-    mt_launch_err "BLOCKED — CIM 查询失败（pwsh -NoProfile Get-CimInstance 不可用），无法判断同线是否已在运行"
+if [ "$procs_ok" = 0 ]; then
+    mt_launch_err "BLOCKED — jps -lvm 不可用（未找到 \$JAVA_HOME/bin/jps 或 PATH 的 jps），无法判断同线是否已在运行"
     exit 11
 fi
 if [ -n "$residue_note" ]; then
-    mt_launch_err "BLOCKED — 同一线客户端已在运行：$residue_note"
-    mt_launch_err "  先收停：bash scripts/test/win/stop.sh --version $VERSION"
+    mt_launch_err "BLOCKED — 同一线客户端已在运行（jps/pidfile/端口）：$residue_note"
+    mt_launch_err "  先收停：bash scripts/test/win/stop.sh --version $VERSION（只打印 PID；由 Agent 用 windows MCP 终止）"
     exit 11
 fi
 # 其它线在跑只提示（全队只有一个 Gradle 并发位）
@@ -325,19 +393,19 @@ mkdir -p "$LOG_DIR" 2>/dev/null || {
 }
 
 # fabric：把「本次启动是否真的注入了 AutoJS」落到 run/<side>/.mt_autojs_injected。
-# PowerShell 侧通道就绪判定（Mt.Channel.psm1 Test-MtChannelAutoJsDeployed）读它 ——
-# 因为 mods/ 里永远不会有 AutoJS jar。stop.sh 收停时删除，保证与进程同生命周期。
+# 通道就绪判定读它 —— 因为 mods/ 里永远不会有 AutoJS jar。
+# stop.sh 收停时删除，保证与进程同生命周期。
 if mt_is_fabric "$VERSION"; then
     if mt_fab_autojs_state_write "${FAB_SIDE:-client}" >/dev/null 2>&1; then
         mt_detail "autojs_state = $(mt_fab_autojs_state_path "${FAB_SIDE:-client}")"
     else
-        mt_detail "autojs_state = 写入失败（PowerShell 侧判定将退回 marker 兜底）"
+        mt_detail "autojs_state = 写入失败（通道判定将退回 marker 兜底）"
     fi
 fi
 
 mt_launch "starting $VERSION (:$PROJECT) …"
 mt_detail "launch_mode  = $LAUNCH_MODE"
-mt_detail "cmd          = cmd //c \"$CMD_DESC\""
+mt_detail "cmd          = mt_cmdwin \"$CMD_DESC\""
 mt_detail "log          = $LOG"
 mt_detail "daemon_jvm   = $DAEMON_JDK（≥21；toolchain $TOOLCHAIN_VER 由 Gradle 自动发现）"
 
@@ -351,12 +419,12 @@ export MT_WIN_LAUNCH=1
 
 BG_PID=""
 if [ "$LAUNCH_MODE" = "start" ]; then
-    # 真正脱离控制台（拿不到 PID：pidfile 里只能写"未知"，由 CIM 判线兜底）
-    cmd //c "start \"\" /B cmd /c \"$CMD_DESC > \"$LOG\" 2>&1\"" >/dev/null 2>&1 </dev/null &
+    # 真正脱离控制台（拿不到 PID：pidfile 里只能写"未知"，由 jps/端口判线兜底）
+    mt_cmdwin "start \"\" /B cmd /c \"$CMD_DESC > \"$LOG\" 2>&1\"" >/dev/null 2>&1 </dev/null &
     BG_PID=""
     : > "$PIDFILE" 2>/dev/null || true
 else
-    cmd //c "$CMD_DESC" >"$LOG" 2>&1 </dev/null &
+    mt_cmdwin "$CMD_DESC" >"$LOG" 2>&1 </dev/null &
     BG_PID=$!
     winpid="$(cat "/proc/$BG_PID/winpid" 2>/dev/null | tr -d '\r\n')"
     printf '%s\n' "${winpid:-$BG_PID}" > "$PIDFILE" 2>/dev/null || true
@@ -366,7 +434,7 @@ cd "$OLD_PWD" 2>/dev/null || cd "$MT_REPO_ROOT"
 if [ -n "$BG_PID" ]; then
     mt_detail "wrapper_pid  = ${winpid:-$BG_PID}（Windows PID；pidfile $PIDFILE）"
 else
-    mt_detail "wrapper_pid  = 未知（launch_mode=start 不返回 PID；stop.sh 靠 CIM 判线）"
+    mt_detail "wrapper_pid  = 未知（launch_mode=start 不返回 PID；stop.sh 靠 jps/端口判线）"
 fi
 
 # ── 轮询 ─────────────────────────────────────────────────────────────────
@@ -471,13 +539,16 @@ else
 fi
 
 game_pid=""
-if [ -d "$RUN_DIR" ] && rows2="$(mt_cim_java_rows 2>/dev/null)"; then
+if [ -d "$RUN_DIR" ] && rows2="$(mt_jps_java_rows 2>/dev/null)"; then
     while IFS=$'\t' read -r p c; do
         [ -n "$p" ] || continue
         if launch_cmdline_matches "$c"; then game_pid="$p"; break; fi
     done <<< "$rows2"
 fi
-mt_detail "game_pid    = ${game_pid:-未找到（可能仍在启动早期；用 CIM 判线）}"
+if [ -z "$game_pid" ]; then
+    for p in $(mt_port_pids 25565 2>/dev/null); do game_pid="$p"; break; done
+fi
+mt_detail "game_pid    = ${game_pid:-未找到（可能仍在启动早期；用 jps/端口判线）}"
 mt_detail "log         = $LOG"
 mt_detail "pid_file    = $PIDFILE"
 mt_detail "收停        = bash scripts/test/win/stop.sh --version $VERSION"

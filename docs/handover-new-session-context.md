@@ -1,24 +1,29 @@
 # 新会话上下文（原生 Linux 真机期）
+<!-- 历史记录：文中旧 shell 命令已于 2026-11-09 全部废弃，现用 bash 测试台（scripts/test/win/mt.sh）与 windows MCP，仅作溯源。 -->
+
+
+> **口径提示（2026-11-11 更新）**：本文件描述**主线**（`multi-main` / 1.5.0-rc.7），数字是 2026-10-31 快照，**只作历史参考**。
+> **若你工作在 `multi-dev-next` 工作树**（`/mnt/f/MCProject/astral_dice_multiloader-next`，2.0 线 / `26.4-SNAPSHOT.11`）⇒ **当前交接正本是 `docs/handover-2026-11-11-devnext-session.md`**，版本号、库引脚（starengine .2/.2/.2/.11/.9）、产物溯源、欠账验证结果、下一步候选一律以它为准；本文件的 §1/§2 数字不要照抄到 dev 线。
 
 > **重写于 2026-10-31（宿主从 VMware 虚拟机迁到真机之后）**：替换旧的「当前是虚拟机 + hgfs + `~/Project` 四副本」口径。
 > **路径纪律**：仓库内文件一律写**相对仓库根的路径**（如 `docs/agent/AGENTS-dsh-linux.md`、`run/start-1.21.1.sh`）；宿主绝对路径只在迁移/附录章节登记。
 
 ## 0 接手第一步（顺序固定）
 
-1. 读根 `AGENTS.md` 认领宿主规则：本机是**原生 Linux 真机** ⇒ 规则正本 `docs/agent/AGENTS-dsh-linux.md`（361 行）；`docs/agent/AGENTS-dsh.md` 是 **Windows 历史正本**，只作对照，不照抄其 pwsh / `gradlew.bat` / `mt.ps1` 口径。
+1. 读根 `AGENTS.md` 认领宿主规则：本机是**原生 Linux 真机** ⇒ 规则正本 `docs/agent/AGENTS-dsh-linux.md`（361 行）；`docs/agent/AGENTS-dsh.md` 是 **Windows 历史正本**，只作对照，不照抄其 旧 shell / `gradlew.bat` / `scripts/test/win/mt.sh` 口径。
 2. 加载技能 `using-superpowers`（规则正本第 8 行起是硬要求）。
 3. 读 `docs/agent/AGENTS-dsh-linux.md` 全文。
-4. 读**最新交接三件**：`docs/handover-2026-10-31-native-linux-migration.md`（本批：真机迁移实测 + 路径重映射 + 权限坑）、`docs/handover-1.5.0-main.md` 的最后两条 `### 4.1az` / `### 4.1ba` 与 `## 5 遗留与欠账`。
+4. 读**最新交接**：dev 线 ⇒ `docs/handover-2026-11-11-devnext-session.md`（本轮正本，含实读现状 + 欠账验证 + 下一步）；辅以 `docs/handover-1.5.0-main.md` 的 `## 5 遗留与欠账`，以及 `docs/handover-2026-10-31-native-linux-migration.md`（真机迁移实测 + 路径重映射 + 权限坑）。
 5. 动手前跑 `bash scripts/test/linux/env.sh` 与 `git status --short -uall` 核对现状。
 
-## 1 实读现状（2026-10-31 18:1x 快照，以命令为准）
+## 1 实读现状（2026-10-31 18:1x 快照 · **仅 multi-main**；dev 线见 `docs/handover-2026-11-11-devnext-session.md`）
 
 | 项 | 值 |
 |---|---|
 | 分支 / HEAD | `multi-main` / `c31d36f6` |
-| 版本 | 四线 `mod_version = 1.5.0-rc.7+<加载器后缀>` |
+| 版本 | 各线 `mod_version = 1.5.0-rc.7+<加载器后缀>` |
 | Gradle | wrapper **9.2.1**（aliyun 镜像），**daemon JVM 统一 JDK 21**；`~/.gradle` 已由本批重建 |
-| starengine | **1.1.0，四线制品已发布进本机 `~/.m2`**（`publishToMavenLocal` 四条均 `BUILD SUCCESSFUL`） |
+| starengine | **1.1.0，各线制品已发布进本机 `~/.m2`**（`publishToMavenLocal` 四条均 `BUILD SUCCESSFUL`） |
 | 整合包根 | `/mnt/d/.minecraft`（`MC_HOME` 可覆盖；根 `build.gradle` 的 `mcHomePath` 解析：`MC_HOME` > `/mnt/d/.minecraft` > `D:/.minecraft`） |
 | 可构建性 | `:neoforge-1.21.1:classes` 32s / `:forge-1.20.1:classes` 30s（热缓存，**不是冷基线**）均 `BUILD SUCCESSFUL` |
 | 工作树 | 本批已提交：`464e29f8`（规则/文档）、`06fef75a`（投放根）、`d0a084b8`（TUN 直连 + 属主口径）；**未 push** |
@@ -39,15 +44,15 @@
 
 | 线 | 加载器 / MC | Java | runClient 目录 | 状态（宿主迁移后） |
 |---|---|---|---|---|
-| `neoforge-1.21.1` (P0) | NeoForge 21.1.235 / 1.21.1 | 21 | `run/1.21.1` | `:classes` ✅（真机 32s）、实机证据为 VM 期，真机未复跑 |
-| `forge-1.20.1` (P0) | Forge 47.4.10 / 1.20.1 | 17 | `run/1.20.1` | `:classes` ✅（真机 30s）、实机证据为 VM 期 |
-| `neoforge-26.1.2` (P1) | NeoForge 26.1.2.109 / 26.1.2 | 25 | `run/26.1.2` | `:classes` ✅（需 `--no-configuration-cache`）、实机停在 KubeJS 报错屏 |
+| `neoforge-1.21.1` (P0) | NeoForge 21.1.235 / 1.21.1 | 21 | `run/neoforge-1.21.1` | `:classes` ✅（真机 32s）、实机证据为 VM 期，真机未复跑 |
+| `forge-1.20.1` (P0) | Forge 47.4.10 / 1.20.1 | 17 | `run/forge-1.20.1` | `:classes` ✅（真机 30s）、实机证据为 VM 期 |
+| `neoforge-26.1.2` (P1) | NeoForge 26.1.2.109 / 26.1.2 | 25 | `run/neoforge-26.1.2` | `:classes` ✅（需 `--no-configuration-cache`）、实机停在 KubeJS 报错屏 |
 | `fabric-1.20.1` (P1) | Fabric 0.19.5 + FAPI 0.92.12 | 17 | `run/fabric-1.20.1` | `:classes` ✅、**dev 启动失败**（Sodium/LWJGL） |
 
-- 构建依赖 `starengine:1.1.0` 走 `mavenLocal()`；四线制品在 `~/.m2/repository/com/merlinkitsune/starengine/*/1.1.0/`。
+- 构建依赖 `starengine:1.1.0` 走 `mavenLocal()`；各线制品在 `~/.m2/repository/com/merlinkitsune/starengine/*/1.1.0/`。
 - 投放目标：`狐の航空学 Voxy Edition`(1.21.1) / `1.20.1-Forge 模组测试` / `26.1.2-NeoForge 模组测试` / `1.20.1-Fabric 模组测试`，均在 `/mnt/d/.minecraft/versions/<实例>/mods`。
 
-## 4 Linux 测试台（取代 Windows 的 `scripts/test/mt.ps1`）
+## 4 Linux 测试台（取代 Windows 的 scripts/test/win/mt.sh）
 
 ```bash
 bash scripts/test/linux/env.sh                      # 只读检查；机器行 CHECK: key=..., ENV_RESULT: OK|WARN|FAIL
@@ -60,7 +65,7 @@ bash scripts/test/linux/stop.sh  --all
 
 - 当前读数：`ENV_RESULT: WARN — 0 项阻塞，1 项提示`（唯一提示 = AutoJS 未运行，游戏没起时属正常）。
 - 键名变更：`hgfs_writable` → `repo_writable`；新增 `locks_stale`；`conf_windows` 降为 INFO。
-- Windows 的 `mt.ps1`（约 19.4k 行）在 Linux **整台不可移植且不调用**；未复刻：进程防撞锁、世界清场、OP/禁 AI 闸门、`mt_inject`/`mt_ime`/`mt_capture`。替代：游戏内 **AutoJS `eval_js`**，GUI 级 **`computer-use-linux`**。
+- Windows 的 `scripts/test/win/mt.sh`（约 19.4k 行）在 Linux **整台不可移植且不调用**；未复刻：进程防撞锁、世界清场、OP/禁 AI 闸门、`mt_inject`/`mt_ime`/`mt_capture`。替代：游戏内 **AutoJS `eval_js`**，GUI 级 **`computer-use-linux`**。
 
 ## 5 本批改动清单（2026-10-31 18:1x 落地，19:5x 已提交）
 
@@ -90,7 +95,7 @@ export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64        # 所有 gradlew 的 
 ./gradlew :neoforge-1.21.1:classes --console=plain
 ./gradlew :forge-1.20.1:classes    --console=plain
 ./gradlew :neoforge-26.1.2:classes --console=plain --no-configuration-cache
-./gradlew :forge-1.20.1:pushToDevRun --console=plain       # legacyforge dev 加载 run/1.20.1/mods/*.jar
+./gradlew :forge-1.20.1:pushToDevRun --console=plain       # legacyforge dev 加载 run/forge-1.20.1/mods/*.jar
 bash run/start-1.21.1.sh                                   # 直接起客户端（需 DISPLAY=:0）
 python3 -B docs/agent/verify-split.py                      # 规则库守门（期望全 [OK]）
 python3 tools/verify_sign_display_names.py                 # 立牌命名守门（GATE: PASS）
@@ -110,7 +115,7 @@ bash scripts/test/linux/env.sh                             # 环境体检
 2. **真机 AutoJS 未复测**（`[[PENDING:autojs-native]]`）：端点/类加载/端口占用；本机无 `autojs` MCP，只能 `curl` JSON-RPC。
 3. **桌面注入未验证**：`computer-use-linux` 的 screenshot 走 portal（首次可能弹授权）；缺 `xdotool`/`wtype`/`grim`。
 4. **fabric-1.20.1 dev 启动失败**：Sodium 要 LWJGL 3.3.1，Loom dev runtime 给 3.3.2-snapshot（与宿主无关，P1）。
-5. **26.1.2 KubeJS 类加载**：`astral_wallet_vision.js#38` 报 `StarCoinWalletState: Class could not be found`；`run/26.1.2/mods/` 还残留旧 `astral_dice-1.3.7-beta.2` jar（未清）。
+5. **26.1.2 KubeJS 类加载**：`astral_wallet_vision.js#38` 报 `StarCoinWalletState: Class could not be found`；`run/neoforge-26.1.2/mods/` 还残留旧 `astral_dice-1.3.7-beta.2` jar（未清）。
 6. **`starengine/*/build.vmresidue-20261031/`**（约 300 MB）是 Windows 属主残留，删除需 root。
 7. **`.vscode/launch.json` 仍是 `F:\...` 绝对路径**——Windows 侧配置，按红线保留；Linux 用 `run/start-*.sh`。
 8. `scripts/test/mt.conf` 仍是 Windows 历史路径（`env.sh` 只报 INFO，不阻断、不修改）。
@@ -123,10 +128,10 @@ bash scripts/test/linux/env.sh                             # 环境体检
 - **实机必须用户明确下达**；测试结束必须 `stop.sh` 收停，贴 `LINUX_STOP: OK` + 无 java/`net.minecraft` 残留。
 - 禁止裸 `pkill -f`（会杀别的 MC 实例）；脚本一律 `/proc/<pid>/cwd` + cmdline 精确匹配。
 - **脚本运行中不要编辑它**：bash 按字节流重解析，可能把启动脚本再跑一遍。
-- `legacyforge` dev 运行加载 `run/1.20.1/mods/*.jar` ⇒ 改 java/资源后必须 `:forge-1.20.1:pushToDevRun`。
-- 26.1.2 构建必须 `--no-configuration-cache`；四线 gradle daemon 必须 ≥JDK 21。
+- `legacyforge` dev 运行加载 `run/forge-1.20.1/mods/*.jar` ⇒ 改 java/资源后必须 `:forge-1.20.1:pushToDevRun`。
+- 26.1.2 构建必须 `--no-configuration-cache`；各线 gradle daemon 必须 ≥JDK 21。
 - **同一时间只允许一个 gradle**（全队一个并发位）；动工作树或起 gradle 前查 `.agent-locks/`。
-- **不破坏 Windows 侧**：`*.ps1` / `*.bat` / `gradlew.bat` / `mt.conf` / `.vscode` / `run/*.bat` 一律保留原样；不删、不改、不「顺手清理」。
+- **不破坏 Windows 侧**：旧脚本（已删除） / `*.bat` / `gradlew.bat` / `mt.conf` / `.vscode` / `run/*.bat` 一律保留原样；不删、不改、不「顺手清理」。
 - 权限坑：`docs/agent/` 与 `starengine/*/build/` 是 1001 属主目录，**不停留去找 chown**，用文档里的绕法。
 - AutoJS eval：KubeJS 下用 `Java.loadClass('net.minecraft.client.Minecraft')`，**没有裸 `Minecraft` 全局**；`side` 必须明确（server/client）。
 - 默认不 commit / push / tag；默认不部署；保护 `models/` `images/` `sound/`；互斥锁三行 `PID=/TIME=/TASK=`；发现非自己改动立即停手报告。

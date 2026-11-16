@@ -177,17 +177,16 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output::accept);
 
-        // T2 中:大侦探立牌(黄金骰子 + 红石粉 + 金锭×2 + 星币×2 + 星盘×2,有序,空白立牌置中,骰子置中下,红石粉置中上)
+        // T2 中:大侦探立牌(黄金骰子 + 红石粉×3 + 金锭×2 + 星币×2,有序,空白立牌置中,骰子置中下)
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.FANNY_SIGN.get())
-                .pattern("SRS")
+                .pattern("RRR")
                 .pattern("GEG")
-                .pattern("PDP")
+                .pattern("BTB")
                 .define('E', ModItems.BLANK_SIGN.get())
                 .define('R', Items.REDSTONE)
-                .define('S', ModItems.STAR_COIN.get())
+                .define('B', ModItems.STAR_COIN.get())
                 .define('G', Items.GOLD_INGOT)
-                .define('P', ModItems.STAR_PLATE.get())
-                .define('D', ModItems.GOLDEN_DICE.get())
+                .define('T', ModItems.GOLDEN_DICE.get())
                 .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output::accept);
 
@@ -259,7 +258,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output::accept);
 
-        // T4 极强:秘密侦探立牌(下界合金骰子 + 望远镜×2 + 末地水晶 + 黄金星盘×2 + 金苹果×2,有序,空白立牌置中,骰子置中下)
+        // T4 极强:秘密侦探立牌(下界合金骰子 + 标记涂料×2 + 末地水晶 + 黄金星盘×2 + 金苹果×2,有序,空白立牌置中,骰子置中下)
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.BONNIE_SIGN.get())
                 .pattern("PCP")
                 .pattern("TET")
@@ -267,7 +266,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('E', ModItems.BLANK_SIGN.get())
                 .define('P', ModItems.GOLDEN_STAR_PLATE.get())
                 .define('C', Items.END_CRYSTAL)
-                .define('T', Items.SPYGLASS)
+                .define('T', ModItems.MARK_PAINT.get())
                 .define('A', Items.GOLDEN_APPLE)
                 .define('D', ModItems.NETHERITE_DICE.get())
                 .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
@@ -313,7 +312,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
 
         // 金色飞星(传奇/星光流派):**进阶筹码** —— 走紫->金「通用升级」模板 RDR/DTD/GGG
         // (红石粉 / 钻石 / 上一等级 = 紫色飞星 / 黄金星盘),不再复用紫色飞星的基础图案。
-        // ⚠️ 本筹码的进阶关系同时登记在 scripts/verify/ChipCommon.psm1 的 $UPGRADE 表中。
+        // ⚠️ 本筹码的进阶关系同时登记在 scripts/verify/chip_common.py 的 $UPGRADE 表中。
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.GOLDEN_SHOOTING_STAR_CHIP.get())
                 .pattern("RDR")
                 .pattern("DTD")
@@ -798,6 +797,43 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('Z', Items.SOUL_CAMPFIRE)
                 .define('C', ModItems.BLANK_CHIP.get())
                 .define('B', ModItems.STAR_COIN.get())
+                .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
+                .save(chipOutput);
+
+        // 石中剑-精良:绿宝石上排 + 金剑中轴 + 再生试剂两侧 + 空白筹码居中 + 星盘下排
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.SWORD_IN_STONE_EPIC_CHIP.get())
+                .pattern("EXE")
+                .pattern("RBR")
+                .pattern("PPP")
+                .define('E', Items.EMERALD)
+                .define('X', Items.GOLDEN_SWORD)
+                .define('R', ModItems.REGENERATION_REAGENT.get())
+                .define('B', ModItems.BLANK_CHIP.get())
+                .define('P', ModItems.STAR_PLATE.get())
+                .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
+                .save(chipOutput);
+
+        // 石中剑-传说:下界合金锭上下 + 黄金星盘两侧 + 精良筹码居中
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.SWORD_IN_STONE_LEGENDARY_CHIP.get())
+                .pattern(" N ")
+                .pattern("GBG")
+                .pattern(" N ")
+                .define('N', Items.NETHERITE_INGOT)
+                .define('G', ModItems.GOLDEN_STAR_PLATE.get())
+                .define('B', ModItems.SWORD_IN_STONE_EPIC_CHIP.get())
+                .unlockedBy("has_sword_in_stone_epic_chip", has(ModItems.SWORD_IN_STONE_EPIC_CHIP.get()))
+                .save(chipOutput);
+
+        // 完美树枝:蒲公英上排 + 木棍中轴 + 附魔金苹果两侧 + 空白筹码居中 + 黄金星盘下排
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.PERFECT_BRANCH_CHIP.get())
+                .pattern("DSD")
+                .pattern("ABA")
+                .pattern("GGG")
+                .define('D', Items.DANDELION)
+                .define('S', Items.STICK)
+                .define('A', Items.ENCHANTED_GOLDEN_APPLE)
+                .define('B', ModItems.BLANK_CHIP.get())
+                .define('G', ModItems.GOLDEN_STAR_PLATE.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
                 .save(chipOutput);
 
@@ -1363,7 +1399,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
         // 2026-09-25 用户裁决:骰子由钻石骰子改为紫晶骰子(本仓首条以紫晶骰子为材料的配方,
         // 故不再有同档伙伴)。
         // 本配方六个填料的格位与全部其它立牌均不复用,网格全局唯一
-        // (守门:scripts/verify/verify_crafting_recipe_uniqueness.ps1)。
+        // (守门:scripts/verify/verify_crafting_recipe_uniqueness.py)。
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.JILL_SIGN.get())
                 .pattern("PVP").pattern("GEG").pattern("WDW")
                 .define('P', ModItems.GOLDEN_STAR_PLATE.get())
@@ -1408,7 +1444,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
         // (G=黄金星盘×2、Q=白色羊毛、L=皮革、E=空白立牌、T=木棍、D=紫晶骰子;空白立牌置中、骰子固定中下)
         // 2026-09-25 用户裁决:两个线位换黄金星盘、骰子换紫晶骰子(原「黄金骰子(无星盘)」档作废)。
         // 本配方六个填料的格位与全部其它立牌均不复用,材料多重集亦不同 ⇒ 网格全局唯一
-        // (守门:scripts/verify/verify_crafting_recipe_uniqueness.ps1)。
+        // (守门:scripts/verify/verify_crafting_recipe_uniqueness.py)。
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.HANNA_SIGN.get())
                 .pattern("GQG")
                 .pattern("LEL")
@@ -1425,7 +1461,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
         // 机械师立牌(megas,传奇):紫晶骰子 + 黄金星盘档。RPR/MEM/DID
         // (R=红石块、P=黄金星盘、M=铁块、E=空白立牌、D=紫晶骰子、I=发射器;空白立牌置中、骰子固定中下)
         // 工业/机械主题(轨道轰炸 = 从天而降的火力支援)。本配方六个填料的格位与全部其它立牌均不复用,
-        // 材料多重集亦不同 ⇒ 网格全局唯一(守门:scripts/verify/verify_crafting_recipe_uniqueness.ps1)。
+        // 材料多重集亦不同 ⇒ 网格全局唯一(守门:scripts/verify/verify_crafting_recipe_uniqueness.py)。
         // 机械师立牌 megas(2026-09-27 用户指定配方)：
         //   S F S      S = 金锭    F = 发射器
         //   X L X      X = 下界合金块  L = 空白立牌
@@ -1447,7 +1483,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
         // 2026-10-16 冻结规格(用户指定):「GNG/WEW/ADA」—— G=黄金星盘×2、N=音符盒、
         // W=白色羊毛×2、A=红石灯×2、E=空白立牌、D=紫晶骰子。
         // 与 sherry(PBP/AEA/IDI)、hanna(GQG/LEL/TDT)同档(黄金星盘 + 紫晶骰子),填充材料互不相同 ⇒
-        // 网格与材料多重集全局唯一(守门:scripts/verify/verify_crafting_recipe_uniqueness.ps1)。
+        // 网格与材料多重集全局唯一(守门:scripts/verify/verify_crafting_recipe_uniqueness.py)。
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.KANGEL_SIGN.get())
                 .pattern("GNG")
                 .pattern("WEW")
@@ -1483,7 +1519,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
         // 2026-10-18 冻结规格(spec §3,与 1.21.1 侧 data/astral_dice/recipe/lingling_sign.json 逐字对齐):
         // 「PDP/DRD/PTP」。注意这是**刻意例外**于 AGENTS-full.md:1088「立牌配方统一 空白立牌 + 紫晶骰子」
         // 的条目(规格 §3 已声明);材料多重集与其它立牌互不相同 ⇒ 守门
-        // scripts/verify/verify_crafting_recipe_uniqueness.ps1 通过。
+        // scripts/verify/verify_crafting_recipe_uniqueness.py 通过。
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.LINGLING_SIGN.get())
                 .pattern("PDP")
                 .pattern("DRD")
@@ -1493,6 +1529,74 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('R', Items.REDSTONE_BLOCK)
                 .define('T', ModItems.DIAMOND_DICE.get())
                 .unlockedBy("has_conductive_wire", has(ModItems.CONDUCTIVE_WIRE.get()))
+                .save(output::accept);
+        // 少主立牌(al,史诗):黑色染料 + 金块×2 + 星币尘×2 + 空白筹码 + 钻石骰子 → BXB/KCK/XDX
+        // (B=黑色染料、X=星币尘、K=金块、C=空白筹码、D=钻石骰子;2026-11-08 用户给定行序)
+        // 2026-11-10 补:1.20.1 线此前只有手写的 generated json、provider 里没有这条,datagen 会把它当 stale 删掉。
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.AL_SIGN.get())
+                .pattern("BXB")
+                .pattern("KCK")
+                .pattern("XDX")
+                .define('B', Items.BLACK_DYE)
+                .define('X', ModItems.STAR_COIN_DUST.get())
+                .define('K', Items.GOLD_BLOCK)
+                .define('C', ModItems.BLANK_CHIP.get())
+                .define('D', ModItems.DIAMOND_DICE.get())
+                .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
+                .save(output::accept);
+        // 魔渊幼体立牌(sykes,史诗):MYM/YCY/GDG（M=末影之眼、Y=幽匿催发体、C=空白立牌、G=黄金星盘、D=钻石骰子）
+        // 2026-11-10 补:原 P0 两线（neo21/forge）此前都没有这条配方（1.20.1 线连 generated 里都没有），与 fabric 两线 + 1.21.1 不对齐。
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.SYKES_SIGN.get())
+                .pattern("MYM")
+                .pattern("YCY")
+                .pattern("GDG")
+                .define('M', Items.ENDER_EYE)
+                .define('Y', Items.SCULK_CATALYST)
+                .define('C', ModItems.BLANK_SIGN.get())
+                .define('G', ModItems.GOLDEN_STAR_PLATE.get())
+                .define('D', ModItems.DIAMOND_DICE.get())
+                .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
+                .save(output::accept);
+        // 金鲤立牌(souri,传奇)
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.SOURI_SIGN.get())
+                .pattern("BYB")
+                .pattern("ZCZ")
+                .pattern("PDP")
+                .define('B', ModItems.STAR_COIN_DUST.get())
+                .define('Y', Items.TROPICAL_FISH)
+                .define('Z', Items.CLOCK)
+                .define('C', ModItems.BLANK_CHIP.get())
+                .define('P', ModItems.GOLDEN_STAR_PLATE.get())
+                .define('D', ModItems.DIAMOND_DICE.get())
+                .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
+                .save(output::accept);
+        // 垃圾桶立牌(z3000,稀有):HRH/ISI/TDT（H=漏斗、R=红石、I=铁锭、S=空白立牌、T=铁粒、D=骰子）
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.Z3000_SIGN.get())
+                .pattern("HRH")
+                .pattern("ISI")
+                .pattern("TDT")
+                .define('H', Items.HOPPER)
+                .define('R', Items.REDSTONE)
+                .define('I', Items.IRON_INGOT)
+                .define('S', ModItems.BLANK_SIGN.get())
+                .define('T', Items.IRON_NUGGET)
+                .define('D', ModItems.DICE.get())
+                .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
+                .save(output::accept);
+        // 小猎手立牌(inkshadow,稀有):B/X/B + K/C/K + X/D/X
+        // (B=末影珍珠、X=星币、K=黄色染料、C=空白筹码、D=骰子/普通骰子)
+        // 2026-11-10 用户裁决:品质史诗→稀有,配方简化(星币尘→星币、钻石骰子→骰子)
+        // 2026-11-11 用户裁决:墨囊→末影珍珠、金块→金色染料(原版无金色染料,取黄色染料)
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.INKSHADOW_SIGN.get())
+                .pattern("BXB")
+                .pattern("KCK")
+                .pattern("XDX")
+                .define('B', Items.ENDER_PEARL)
+                .define('X', ModItems.STAR_COIN.get())
+                .define('K', Items.YELLOW_DYE)
+                .define('C', ModItems.BLANK_CHIP.get())
+                .define('D', ModItems.DICE.get())
+                .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
                 .save(output::accept);
         // 符卡-福 / 符卡-祸:**无配方**(专属牌,仅由风水师立牌的被动「福祸相倚」与主动「白泽赐福」
         // 及「心意相连」发放,与活体书页/命运的指引等专属牌同一口径:不进随机池、不进合成表)。

@@ -1,0 +1,22 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "astral_dice:chip_recipes_enabled"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": "astral_dice:sword_in_stone_epic_chip",
+    "G": "astral_dice:golden_star_plate",
+    "N": "minecraft:netherite_ingot"
+  },
+  "pattern": [
+    " N ",
+    "GBG",
+    " N "
+  ],
+  "result": {
+    "id": "astral_dice:sword_in_stone_legendary_chip"
+  }
+}

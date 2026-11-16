@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-'''立牌英日命名门禁（三线：neoforge-1.21.1 / forge-1.20.1 / fabric-1.20.1）。
+'''立牌英日命名门禁（五线：neoforge-1.21.1 / forge-1.20.1 / neoforge-26.1.2 / fabric-1.20.1 / fabric-1.21.1）。
 
 规则（2026-10-26 用户裁决，见 docs/agent/AGENTS-full.md〈立牌 / 物品英日命名规则〉）：
   - EN 立牌名 = "<wiki 英文页名> Sign"，JA = "<wiki nameJapanese>のスタンド"；
@@ -15,14 +15,27 @@ import json, os, re, sys
 
 W = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TABLE = os.path.join(W, 'tools', 'sign_display_names.json')
-LINES = ['neoforge-1.21.1', 'forge-1.20.1', 'fabric-1.20.1']
+LINES = ['neoforge-1.21.1', 'forge-1.20.1', 'neoforge-26.1.2', 'fabric-1.20.1', 'fabric-1.21.1']
+
+ALL_LINES = list(LINES)
+
+
+def lines_of(sign):
+    """条目可带 lines 字段限定「已实装该立牌」的线；缺省 = 五线全有。
+
+    用途：某一批立牌只在部分线实装时（例：2026-11-08 少主立牌首发 neoforge-1.21.1），
+    其余线的 lang 不必补占位键，门禁也不会把它们判成「表与 lang 不一致」。
+    """
+    ls = sign.get('lines')
+    return set(ls) if ls else set(ALL_LINES)
 
 # 旧职称（英文）—— 只禁止它们紧接 "sign" 的形态，避免误伤 Boss 敌人 / Ninja Star / Healing Slime / Legendary Merchant 等既有专名
 EN_LEGACY = ['Secret Detective', 'Great Detective', 'Boss', 'Astrologer', 'Sweeper', 'Ninja', 'Slime',
              'Kanban Musume', 'Guardian', 'Gunsmith', 'Vampire', 'Business', 'Merchant', 'Investigator',
-             'Game Master', 'Fengshui Master', 'Cult Leader', 'Oasis Queen', 'Bartender', 'Sister']
+             'Game Master', 'Fengshui Master', 'Cult Leader', 'Oasis Queen', 'Bartender', 'Sister',
+             'Detective', 'Hacker', 'Abyss Larva']
 # 旧职称（日文）—— 残留即 FAIL（这些词在日文文案里只可能指角色）
-JA_LEGACY = ['\u8d85\u5929\u9171', '\u5730\u96f7\u5973', '\u602a\u529b\u4e71\u795e']  # 超天酱 / 地雷女 / 怪力乱神
+JA_LEGACY = ['\u8d85\u5929\u9171', '\u5730\u96f7\u5973', '\u602a\u529b\u4e71\u795e', '\u86df\u9f8d']  # 超天酱 / 地雷女 / 怪力乱神 / 蛟龍
 
 fails, checks = [], 0
 
@@ -32,6 +45,47 @@ def fail(msg):
 def load(path):
     with open(path, 'r', encoding='utf-8') as f:
         return json.load(f)
+
+def scan_structural(line, langs, line_signs):
+    """结构性检查：所有「<Name> Sign」/「<Name>のスタンド」的名字必须是表内人名（或明确的泛指 / 非角色立牌）。
+
+    与 EN_LEGACY / JA_LEGACY 的黑名单互补：这里不列举旧职称，而是要求任何被当作立牌名的
+    名字都能在权威表里找到，机翻职称（Detective / Abyss Larva / 蛟龍 …）自然会被抓住。
+    """
+    global checks
+    en_bare = {s['en'][:-5] for s in line_signs if s['en'].endswith(' Sign')}
+    ja_bare = {s['ja'][:-5] for s in line_signs if s['ja'].endswith('のスタンド')}
+    en_pat = re.compile(r"([A-Za-z0-9'’.\-]+(?:\s+[A-Za-z0-9'’.\-]+){0,4})\s+[Ss]igns?\b")
+    ja_pat = re.compile(r"([^\s、。，…「」（）()；：！？'’]+)のスタンド")
+    en_skip = ('key.', 'command.', 'curios.modifiers.', 'itemGroup.')
+    en_allow = {'Blank Sign', 'Activate Sign'}
+    ja_generic = {'各種', 'この', 'あの', 'その', 'どの'}
+    out = []
+    for key, val in langs['en'].items():
+        if not isinstance(val, str) or key.startswith(en_skip):
+            continue
+        for m in en_pat.finditer(val):
+            words = m.group(1).split()
+            if not words or m.group(0).strip() in en_allow:
+                continue
+            if any(' '.join(words[i:]) in en_bare for i in range(len(words))):
+                continue
+            if words[-1][:1].islower():
+                continue
+            checks += 1
+            out.append('[%s] en %s 出现表外立牌名 %r :: %s' % (line, key, m.group(0), val[:90]))
+    for key, val in langs['ja'].items():
+        if not isinstance(val, str):
+            continue
+        for tok in sorted(set(ja_pat.findall(val))):
+            if tok in ja_generic or tok.endswith('各種'):
+                continue
+            if any(tok.endswith(b) for b in ja_bare):
+                continue
+            checks += 1
+            out.append('[%s] ja %s 出现表外スタンド名 %r :: %s' % (line, key, tok, val[:90]))
+    return out
+
 
 def main():
     global checks
@@ -56,8 +110,9 @@ def main():
         print('-- ' + line + ' -- zh %d keys / en %d keys / ja %d keys'
               % (len(langs['zh']), len(langs['en']), len(langs['ja'])))
 
-        # 1) 立牌显示名必须与权威表逐字一致
-        for s in signs:
+        line_signs = [s for s in signs if line in lines_of(s)]
+        # 1) 立牌显示名必须与权威表逐字一致（只校验本线已实装的条目）
+        for s in line_signs:
             key = 'item.astral_dice.%s_sign' % s['id']
             for lang in ('en', 'ja'):
                 checks += 1
@@ -93,6 +148,9 @@ def main():
                 if w in val:
                     fail('[%s] ja %s 仍含中文职称 %r :: %s' % (line, key, w, val[:90]))
 
+        # 3b) 结构性检查（见 scan_structural）
+        fails.extend(scan_structural(line, langs, line_signs))
+
     # 4) 表内 id 必须与 lang 里的立牌 item key 集合对齐
     for line in LINES:
         p = os.path.join(W, line, 'src', 'main', 'resources', 'assets', 'astral_dice', 'lang', 'en_us.json')
@@ -101,8 +159,9 @@ def main():
         keys = {k[len('item.astral_dice.'):-len('_sign')] for k in load(p)
                 if k.startswith('item.astral_dice.') and k.endswith('_sign')}
         checks += 1
-        missing = sorted(set(ids) - keys)
-        extra = sorted(keys - set(ids))
+        expected = {s['id'] for s in signs if line in lines_of(s)}
+        missing = sorted(expected - keys)
+        extra = sorted(keys - expected)
         if missing or extra:
             fail('[%s] 表与 lang 立牌集合不一致：表缺 %s / lang 多 %s' % (line, missing, extra))
 

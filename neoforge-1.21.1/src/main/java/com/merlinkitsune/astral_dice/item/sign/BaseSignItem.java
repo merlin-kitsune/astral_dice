@@ -518,6 +518,57 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         SignHookDispatcher.fireKillHooks(killer, killed);
     }
 
+    /**
+     * 实体级击杀钩子（佩戴者可能是附属注册的类玩家生物）。
+     * 默认实现：玩家委派 {@link #onKill(Player, LivingEntity)}，非玩家 no-op。
+     */
+    protected void onKillEntity(net.minecraft.world.entity.LivingEntity killer,
+                                net.minecraft.world.entity.LivingEntity killed) {
+        if (killer instanceof Player player) {
+            onKill(player, killed);
+        }
+    }
+
+    /**
+     * 实体级受击钩子（佩戴者可能是附属注册的类玩家生物）。
+     * 默认实现：玩家委派 {@link #onHurt(Player, DamageSource, float)}，非玩家 no-op。
+     */
+    protected void onHurtEntity(net.minecraft.world.entity.LivingEntity entity, DamageSource source, float amount) {
+        if (entity instanceof Player player) {
+            onHurt(player, source, amount);
+        }
+    }
+
+    // 分发:实体造成击杀时调用其全部已装备立牌(玩家与注册生物同一入口)
+    public static void invokeKillHooks(net.minecraft.world.entity.LivingEntity killer,
+                                       net.minecraft.world.entity.LivingEntity killed) {
+        SignHookDispatcher.fireKillHooks(killer, killed);
+    }
+
+    // 分发:实体被敌对目标攻击时调用其全部已装备立牌(玩家与注册生物同一入口)
+    public static void invokeHurtHooks(net.minecraft.world.entity.LivingEntity entity, DamageSource source, float amount) {
+        SignHookDispatcher.fireHurtHooks(entity, source, amount);
+    }
+
+    /**
+     * 供附属模组触发的主动技能入口（非玩家 owner）。
+     *
+     * <p>玩家请走既有的 {@code performSkillForCurio} 管線。非玩家默认下放到
+     * {@link #activateForEntity}，未覆写时只打 WARN 并返回 {@code false} ——
+     * 需要支持类玩家生物主动的立牌应覆写 {@code activateForEntity}。
+     */
+    public boolean activateFor(net.minecraft.world.entity.LivingEntity owner) {
+        if (owner == null) return false;
+        if (owner instanceof Player) return false;
+        return activateForEntity(owner);
+    }
+
+    /** 非玩家 owner 的主动实现（默认不支持）。 */
+    protected boolean activateForEntity(net.minecraft.world.entity.LivingEntity owner) {
+        LOGGER.warn("[Astral Dice][SignSkill] activateForEntity 未被覆写: owner={}", owner.getName().getString());
+        return false;
+    }
+
     // 分发:玩家被**敌对目标攻击**时,调用其全部已装备立牌的 onHurt 钩子
     // 2026-09-29 用户裁决:受击类被动一律只在该条件下触发 —— 此前是「任何来源的伤害」,
     // 于是摔落 / 仙人掌 / 着火等环境伤害、以及本模组「符卡-祸」的无来源真伤都会算数。

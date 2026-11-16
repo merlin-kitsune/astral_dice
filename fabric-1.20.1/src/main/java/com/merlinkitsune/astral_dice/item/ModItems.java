@@ -71,9 +71,12 @@ import com.merlinkitsune.astral_dice.item.sign.ZhaoSignItem;
 import com.merlinkitsune.astral_dice.item.sign.TeruSignItem;
 import com.merlinkitsune.astral_dice.item.sign.NardisSignItem;
 import com.merlinkitsune.astral_dice.item.sign.MamushiSignItem;
+import com.merlinkitsune.astral_dice.item.sign.SouriSignItem;
+import com.merlinkitsune.astral_dice.item.sign.AlSignItem;
 import com.merlinkitsune.astral_dice.item.chip.MotoHelmetChipItem;
 import com.merlinkitsune.astral_dice.item.chip.BoxingGlovesChipItem;
 import com.merlinkitsune.astral_dice.item.sign.BonnieSignItem;
+import com.merlinkitsune.astral_dice.item.sign.InkShadowSignItem;
 import com.merlinkitsune.astral_dice.item.sign.ParunanSignItem;
 import com.merlinkitsune.astral_dice.item.sign.MisakiSignItem;
 import com.merlinkitsune.astral_dice.item.card.MonsterLaserCardItem;
@@ -668,14 +671,14 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(AstralRarities.legendary()), SandwichChipItem.HEALTH_HIGH));
 
-    // 肾上腺素-一般:生命值为 50% 或更低时,攻击力/防御力 +3(史诗)
+    // 肾上腺素-一般:生命值为 50% 或更低时,攻击力/防御力 +3;触发加成时被怪物近战攻击有 20% 闪避(史诗)
     public static final RegistryObject<Item> ADRENALINE_LOW = registerItem("adrenaline_low_chip",
             () -> new AdrenalineChipItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(AstralRarities.epic()), AdrenalineChipItem.BONUS_LOW));
 
-    // 肾上腺素-高效:生命值为 50% 或更低时,攻击力/防御力 +8;触发加成时被敌方攻击,
-    // 骰点 4-5 → 50% 闪避、6 → 100% 闪避本次伤害(传奇)
+    // 肾上腺素-高效:生命值为 50% 或更低时,攻击力/防御力 +8;触发加成时被怪物近战攻击有 20% 闪避;
+    // 与一般同时装备时叠加为 40%(传奇)
     public static final RegistryObject<Item> ADRENALINE_HIGH = registerItem("adrenaline_high_chip",
             () -> new AdrenalineChipItem(new Item.Properties()
                     .stacksTo(1)
@@ -883,6 +886,24 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(AstralRarities.epic())));
 
+    // 石中剑-精良(史诗/攻击):触发骰神赐福时,自身与队伍角色获得「圣剑守护」1:00(攻击力 +2、受到伤害 -2)。
+    public static final RegistryObject<Item> SWORD_IN_STONE_EPIC_CHIP = registerItem("sword_in_stone_epic_chip",
+            () -> new com.merlinkitsune.astral_dice.item.chip.HolySwordGuardChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.epic())));
+
+    // 石中剑-传说(传奇/攻击):自身骰神赐福结束后,对 24 格内敌对目标造成「状态层数×2」魔法伤害,最低 4 点。
+    public static final RegistryObject<Item> SWORD_IN_STONE_LEGENDARY_CHIP = registerItem("sword_in_stone_legendary_chip",
+            () -> new com.merlinkitsune.astral_dice.item.chip.SwordInStoneLegendaryChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.legendary())));
+
+    // 完美树枝(传奇/强化):触发骰神赐福 +1 层「超强精力」,死亡扣 1 层;每层攻击 +2、防御 +1,最多 10 层。
+    public static final RegistryObject<Item> PERFECT_BRANCH_CHIP = registerItem("perfect_branch_chip",
+            () -> new com.merlinkitsune.astral_dice.item.chip.PerfectBranchChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.legendary())));
+
     public static final RegistryObject<Item> PADMAN_SIGN = registerItem("padman_sign",
             () -> new PadmanSignItem(new Item.Properties()
                     .stacksTo(1)
@@ -1025,6 +1046,46 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(AstralRarities.legendary())));
 
+    // 金鲤立牌(souri,传奇):主动「把酒言欢」(在准星指定地块放置「葫芦饮」;已获「金鲤化龙」时改放
+    //   「仙酿」,随后自身 +1 层「金鳞」与 +1 层「反击」;冷却 SouriSignItem.ACTIVE_COOLDOWN_TICKS=1:00)
+    // + 被动「不醉不归」(反击时 +1 层「金鳞」;任意角色拾取葫芦饮/仙酿后佩戴者 +1 层「反击」)。
+    // 传奇品质 = ASTRAL_DICE_LEGENDARY;配方 = 黄金星盘 + 钻石骰子档(BYB/ZCZ/PDP)。
+    public static final RegistryObject<Item> SOURI_SIGN = registerItem("souri_sign",
+            () -> new SouriSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.legendary())));
+    // 垃圾桶立牌(z3000,稀有):主动「过来把你」16 格敌对大目标抓取(5 技能伤害,拖到面前);
+    // 被拖拽过的目标被击杀时(不限击杀时机)+1 层「反击」。
+    // + 被动「回收利用」(敌对击杀缩短主动剩余冷却 33%,每分钟一次;每 2 个最大生命≥20 的
+    //   敌对击杀攻击力 +1,上限 +12)。
+    public static final RegistryObject<Item> Z3000_SIGN = registerItem("z3000_sign",
+            () -> new com.merlinkitsune.astral_dice.item.sign.Z3000SignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.rare())));
+
+    // 抓钩渲染用隐藏原型载体(不进创造栏、无配方):仅 GrapplingHookRenderer 读取其模型。
+    public static final RegistryObject<Item> VACUUM_PIECE = registerItem("vacuum_piece",
+            () -> new Item(new Item.Properties()));
+
+    // 少主立牌(命名:al,史诗):主动「强者怜悯」(目标选择器选一名类玩家目标 → 选卡界面选 1~3 张,
+    //   放 1 张即可确认;逐张交给对方,物品栏满则掉在对方脚下;自身获得「送出张数 × 2」星币)
+    // + 被动「双赢」(佩戴者使其他角色获得卡牌时双方各 +1 层星光;对目标使用主动技能后双方各获
+    //   「筹码单价 -5、下限 5」与一次商店刷新;每 4 层星光 ⇒ 攻击力 +1、防御力 +1)。
+    // 史诗品质 = ASTRAL_DICE_EPIC;配方 = 星币尘 + 金块 + 钻石骰子档(BXB/KCK/XDX)。
+    public static final RegistryObject<Item> AL_SIGN = registerItem("al_sign",
+            () -> new AlSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.epic())));
+
+    // 小猎手立牌(命名:inkshadow,稀有):主动「暗影之门」(首次按键在准星地块放下起始门、30 s 内
+    //   再按一次放终点门;两端各自 5 s 传送冷却、站定 1.5 s 传送,跨维度双向;窗口内锁定快捷栏并禁交互)
+    // + 被动「双生之影」(存活门对每对 +1 层,每层攻击力 +2;打怪时门还会对 2.5 格内敌对生物造成
+    //   2.0 技能伤害)。稀有品质 = ASTRAL_DICE_RARE;配方 = 末影珍珠 + 星币档(BXB/KCK/XDX)。
+    public static final RegistryObject<Item> INKSHADOW_SIGN = registerItem("inkshadow_sign",
+            () -> new InkShadowSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.rare())));
+
     // 怪力侦探立牌(命名:sherry,奇特):主动「怪力投掷」把 12 格内全部敌对目标按抛物线扔到玩家面前 2 格,
     // **落地之后**造成 2 点伤害并施加 1 层「标记」(推理时间满 5 层 ⇒ 额外 5 点);被动「侦探出击」按
     // 「攻击 ≥20 血敌对目标」累积「推理时间」(上限 5,**死亡不清**,骰神赐福结束后 −1 层),
@@ -1086,6 +1147,10 @@ public class ModItems {
     // 筹码商店方块物品(右键方块开店;与卡牌商店同款)
     public static final RegistryObject<Item> CHIP_SHOP = registerItem("chip_shop",
             () -> new BlockItem(ModBlocks.CHIP_SHOP.get(), new Item.Properties().stacksTo(1)));
+
+    // 星愿铁砧方块物品(右键开星愿铁砧界面;与两个商店同款不可堆叠)
+    public static final RegistryObject<Item> ASTRAL_ANVIL = registerItem("astral_anvil",
+            () -> new BlockItem(ModBlocks.ASTRAL_ANVIL.get(), new Item.Properties().stacksTo(1)));
 
     /** 奇怪的问号(2026-10-10 事件体系重写):使用后抽一条事件(ITEM_USE),生存消耗 1 张。 */
     public static final RegistryObject<Item> EVENT_TICKET = registerItem("event_ticket",
@@ -1168,6 +1233,13 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(AstralRarities.bizarre())));
 
+
+    // 魔渊幼体立牌(命名:sykes,传说):主动「深渊召唤」在地面招出魔渊触须(5x5 区域内每 6 秒抽打一次);
+    // 被动「渊蚀印记」命中叠层加伤,佩戴者不被幽匿感测/尖啸察觉、受监守者伤害减半。
+    public static final RegistryObject<Item> SYKES_SIGN = registerItem("sykes_sign",
+            () -> new com.merlinkitsune.astral_dice.item.sign.SykesSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.legendary())));
     public static <T extends Item> RegistryObject<T> registerItem(String name, Supplier<T> itemSupplier) {
         return ITEMS.register(name, itemSupplier);
     }

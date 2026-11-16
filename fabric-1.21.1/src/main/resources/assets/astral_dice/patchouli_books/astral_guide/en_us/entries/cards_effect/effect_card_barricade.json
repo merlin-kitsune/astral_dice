@@ -1,0 +1,21 @@
+{
+  "name": "item.astral_dice.effect_card_barricade",
+  "category": "astral_dice:cards_effect",
+  "icon": "astral_dice:effect_card_barricade",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:effect_card_barricade",
+      "text": "astral_dice.guide.entry.effect_card_barricade.1"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.effect_card_barricade.2"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.effect_card_barricade.3"
+    }
+  ],
+  "sortnum": 17
+}

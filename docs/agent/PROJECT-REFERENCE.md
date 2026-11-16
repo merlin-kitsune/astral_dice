@@ -10,16 +10,17 @@
 - 另一个常驻工作树：`F:\MCProject\astral_dice_multiloader-next`（分支 `multi-dev-next`，2.0.0 开发线）—— **与本树互不镜像**。
 - `F:\MCProject\.agent-locks\`：宿主互斥锁目录（`kimi.lock` / `dsh.lock`，内容为 `PID=` / `TIME=` / `TASK=` 三行）。
 
-## 2. 四条线基线
+## 2. 各线基线
 
 | 子项目 | MC | 加载器 | Java | 构建插件 | 交付优先级 |
 |---|---|---|---|---|---|
 | `neoforge-1.21.1` | 1.21.1 | NeoForge 21.1.235 | 21 | ModDevGradle `net.neoforged.moddev` | **P0** |
 | `forge-1.20.1` | 1.20.1 | Forge 47.4.10 | 17 | `net.neoforged.moddev.legacyforge` | **P0** |
-| `neoforge-26.1.2` | 26.1.2 | NeoForge 26.1.2.109 | 25 | ModDevGradle | P1（`1.5.0` 正式版前不验证、不移植） |
-| `fabric-1.20.1` | 1.20.1 | Fabric Loader 0.19.5 + FAPI 0.92.12 | 17 | Fabric Loom | P1（同上） |
+| `neoforge-26.1.2` | 26.1.2 | NeoForge 26.1.2.109 | 25 | ModDevGradle | **P0** |
+| `fabric-1.20.1` | 1.20.1 | Fabric Loader 0.19.5 + FAPI 0.92.12 | 17 | Fabric Loom | **P1** |
+| `fabric-1.21.1` | 1.21.1 | Fabric Loader + FAPI（见子项目） | 21 | Fabric Loom | **P1**（scaffolding，未发布） |
 
-- 版本：四线 `mod_version = 1.5.0-pre.6+<加载器后缀>`（`neoforge_1.21.1` / `forge_1.20.1` / `neoforge_26.1.2` / `fabric_1.20.1`，下划线分隔）；四线 `starengine_version = 1.1.0-pre.2`（fabric 另有 `starengine_version_range`）。
+- 版本：各线 `mod_version = 1.5.0-pre.6+<加载器后缀>`（`neoforge_1.21.1` / `forge_1.20.1` / `neoforge_26.1.2` / `fabric_1.20.1`，下划线分隔）；各线 `starengine_version = 1.1.0-pre.2`（fabric 另有 `starengine_version_range`）。
 - jar 内硬前置区间 `[1.1.0-pre.2,2.0.0)`，`META-INF/jarjar/` 计数 0（库**不内嵌**，必须成对投放）。
 - 包根：`com.merlinkitsune.astral_dice`；库包根 `com.merlinkitsune.starengine`。
 
@@ -30,16 +31,16 @@
 | `<子项目>/src/main/java` | 产品源码（`item/` 物品与立牌/筹码 · `combat/` 骰战结算 · `event/` 事件订阅 · `effect/` 状态效果 · `shop/` 卡牌与筹码商店 · `target/` 目标选择 · `resource/` 星光/治愈/充能 · `entity/` 自定义实体） |
 | `<子项目>/src/main/resources/assets/astral_dice/lang/` | 三语 `zh_cn.json` / `en_us.json` / `ja_jp.json`（P0 各 1,046 键；UTF-8 无 BOM、CRLF、一行一键、2 空格缩进） |
 | `<子项目>/src/generated/resources` | datagen 产物（`recipe*` / `recipes` 注意 neo 用 `recipe/`、forge 用 `recipes/`） |
-| `scripts/test/` | 测试台（`mt.ps1` 唯一入口 + `cases/*.json` + `resources/kubejs/` 探针 + `TESTING-SPEC.md`） |
+| `scripts/test/` | 测试台（`scripts/test/win/mt.sh` 唯一入口 + `cases/*.json` + `resources/kubejs/` 探针 + `TESTING-SPEC.md`） |
 | `scripts/verify/` · `tools/` | 守门脚本（见 §5） |
 | `docs/` | 交接正本 `handover-*.md`、规则库 `docs/agent/`、批次记录 `docs/features/`、兼容映射 `docs/compat-*.md` |
-| `run/<线>/` | dev 运行目录（`mods/` 由构建任务投放；`--purge-saves` 会删 testworld） |
+| `run/<子项目名>/` | dev 运行目录（`mods/` 由构建任务投放；`--purge-saves` 会删 testworld） |
 | `build/libs/` | 产物（唯一交付来源）；`build/devlibs/` forge 的 **named** jar 供 dev 用 |
 | `models/` `images/` `sound/` | 用户素材目录，**随时更新**，不得擅自 add/commit/改 |
 
 ## 4. 常用命令（Windows 原生）
 
-```powershell
+```bash
 # 状态（收尾应只剩用户素材）
 git -C F:\MCProject\astral_dice_multiloader status --short -uall
 git -C F:\MCProject\astral_dice_multiloader log --oneline -5
@@ -51,25 +52,25 @@ $env:JAVA_HOME='C:\Program Files\Zulu\zulu-21'
 .\gradlew.bat :neoforge-1.21.1:runData          # datagen（改配方/物品后必须）
 
 # 测试台（唯一入口，禁 bash/.sh/PS 5.1）
-pwsh -NoProfile -File F:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1 --version 1.21.1 --phase env
-pwsh -NoProfile -File F:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1 --version 1.20.1 --phase run --case <用例名>
-pwsh -NoProfile -File F:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1 --version 1.20.1 --phase stop --force --purge-saves
+bash F:\MCProject\astral_dice_multiloader\scripts/test/win/mt.sh --version 1.21.1 --phase env
+bash F:\MCProject\astral_dice_multiloader\scripts/test/win/mt.sh --version 1.20.1 --phase run --case <用例名>
+bash F:\MCProject\astral_dice_multiloader\scripts/test/win/mt.sh --version 1.20.1 --phase stop --force --purge-saves
 ```
 
 - forge dev 必须用 `build/devlibs` 的 **named** jar（`AutoJS-forge-1.20.1-1.0.0-dev.jar` 同理），与整合包用的 reobf jar **不可同目录**。
 - `--purge-saves` 会删 `testworld`：下轮实机前先 `--phase env`。
-- 禁用 Windows PowerShell 5.1（不支持三元 / `??` / `-AsHashtable`）。
+- 禁用 Windows 旧的原生 shell 5.1（不支持三元 / `??` / `-AsHashtable`）。
 
-## 5. 守门脚本（P0 两线必跑）
+## 5. 守门脚本（P0 三线必跑）
 
 | 脚本 | 判据 |
 |---|---|
-| `tools/check_lang_sync.ps1` | 四线 key 集一致 + 颜色码/占位符结构一致（WARN 级） |
+| `tools/check_lang_sync.py` | 各线 key 集一致 + 颜色码/占位符结构一致（WARN 级） |
 | `tools/audit_patchouli_keys.py` | 手册引用 1,694 处，悬空必须 0 |
 | `docs/agent/verify-split.py` | 规则文件四项自检（快照保序包含 / AGENTS.md 结构 / docs 引用 / 体量） |
-| `scripts/audit/tooltip_color_audit.ps1` | tooltip 染色规则（R0 回落码 = 行底色 · R1 数值 §e · R2 时间 §9 · R3 效果名+时间整段蓝） |
-| `scripts/verify/verify_chip_shop_ui.ps1` | 筹码商店帧/逻辑（G1..G18h） |
-| `scripts/verify/verify_probe_class_refs.ps1` | 探针 javaclass 引用可解析（既有 1 红点 = 26.1.2 产物陈旧） |
+| `scripts/audit/tooltip_color_audit.py` | tooltip 染色规则（R0 回落码 = 行底色 · R1 数值 §e · R2 时间 §9 · R3 效果名+时间整段蓝） |
+| `scripts/verify/verify_chip_shop_ui.py` | 筹码商店帧/逻辑（G1..G18h） |
+| `scripts/verify/verify_probe_class_refs.py` | 探针 javaclass 引用可解析（既有 1 红点 = 26.1.2 产物陈旧） |
 | `tools/verify_misaki_balance.py` · `verify_bonnie_active_order.py` · `verify_member_recommendation_hand_gate.py` | 2026-10-24 批次的三道专项判据 |
 
 ## 6. 投放目标（成对：mod jar + `starengine-*-1.1.0.jar`）
@@ -79,7 +80,7 @@ pwsh -NoProfile -File F:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1 -
 - forge → `/mnt/d/.minecraft/versions/1.20.1-Forge 模组测试/mods`
 - fabric → `/mnt/d/.minecraft/versions/1.20.1-Fabric 模组测试/mods`
 - 26.1.2 → `/mnt/d/.minecraft/versions/26.1.2-NeoForge 模组测试/mods`
-- dev → `run/1.21.1/mods` / `run/1.20.1/mods`（forge 用 named jar）
+- dev → `run/neoforge-1.21.1/mods` / `run/forge-1.20.1/mods`（forge 用 named jar）
 
 缺库即启动失败 `Missing or unsupported mandatory dependencies`。投放后必须逐份核 sha256。
 
@@ -91,23 +92,23 @@ pwsh -NoProfile -File F:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1 -
 export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64     # 所有 gradlew 的 daemon JVM 必须 ≥21；子项目 toolchain 17/21/25 自动发现
 ./gradlew :neoforge-1.21.1:classes --console=plain      # P0
 ./gradlew :forge-1.20.1:classes   --console=plain       # P0
-./gradlew :neoforge-26.1.2:classes --console=plain --no-configuration-cache   # P1，该线必须关配置缓存
-./gradlew :forge-1.20.1:pushToDevRun --console=plain    # legacyforge dev 运行加载 run/1.20.1/mods/*.jar，改代码后必须重建
+./gradlew :neoforge-26.1.2:classes --console=plain --no-configuration-cache   # P0，该线必须关配置缓存
+./gradlew :forge-1.20.1:pushToDevRun --console=plain    # legacyforge dev 运行加载 run/forge-1.20.1/mods/*.jar，改代码后必须重建
 bash scripts/test/linux/env.sh                          # 只读环境检查（ENV_RESULT: OK|WARN|FAIL）
 bash scripts/test/linux/launch.sh --version 1.21.1      # 就绪 = AutoJS /health 200 + status client available → LAUNCH: READY
 bash scripts/test/linux/stop.sh  --version 1.21.1       # 期望 LINUX_STOP: OK（无 java / net.minecraft 残留）
 python3 -B docs/agent/verify-split.py                   # 规则守门
 ```
 
-- 前置：`starengine:1.1.0` 必须已发布到本机 mavenLocal（在兄弟仓 `starengine` 跑四线 `:publishToMavenLocal`，daemon 21）。
-- Linux 侧**不调用** `scripts/**/*.ps1`（52 个，Windows 测试台/守门脚本）；`scripts/test/mt.ps1`（19,384 行）整台不可移植，替代 = `scripts/test/linux/*.sh` + AutoJS `eval_js` + computer-use MCP。
+- 前置：`starengine:1.1.0` 必须已发布到本机 mavenLocal（在兄弟仓 `starengine` 跑各线 `:publishToMavenLocal`，daemon 21）。
+- Linux 侧**不调用** `scripts/**` 下的 52 个旧件（Windows 历史工具，已删除）；旧编排件（19,384 行）整台不可移植，替代 = `scripts/test/linux/*.sh` + AutoJS `eval_js` + computer-use MCP。
 - 桌面/游戏注入通道：KDE Wayland 下 DSH MCP `computer-use-linux`（bin `~/.local/bin/computer-use-linux-mcp`，AT-SPI + KWin + Portal RemoteDesktop）截图/点击/键盘，`screen-ocr` 做屏幕 OCR；游戏内用 AutoJS HTTP 端点（`http://127.0.0.1:25585/mcp`，本会话未注册 MCP client，直接 curl 或临时注册）。
-- 迁移与现状：`docs/handover-2026-10-31-native-linux-migration.md`（原生 Linux 实测与路径重映射）；规则正本 `docs/agent/AGENTS-dsh-linux.md`；新会话入口 `docs/handover-new-session-context.md`。VM 时代文档（`docs/handover-2026-10-31-linux-vm-adoption.md`、`docs/handover-2026-10-31-local-disk-workspace.md`）只作历史。
-- 上面 §4/§6 的 `D:\...`、`pwsh`、`gradlew.bat` 命令属 **Windows 历史口径**，Linux 宿主不执行。
+- 迁移与现状：`docs/handover-2026-10-31-native-linux-migration.md`（原生 Linux 实测与路径重映射）；规则正本 `docs/agent/AGENTS-dsh-linux.md`；新会话入口 `docs/handover-new-session-context.md`。VM 时代文档（`docs/handover-2026-10-31-linux-vm-adoption.md（已删除 2026-11-05）`、`docs/handover-2026-10-31-local-disk-workspace.md`）只作历史。
+- 上面 §4/§6 的 `D:\...`、`旧 shell`、`gradlew.bat` 命令属 **Windows 历史口径**，Linux 宿主不执行。
 
 ## 7. 交接文件
 
-- DSH 滚动正本：`docs/handover-1.5.0-main.md`（pre.5 及更早：`docs/handover-1.5.0-pre.5-main.md`）。
+- DSH 滚动正本：`docs/handover-1.5.0-main.md`（pre.5 及更早：`docs/handover-1.5.0-pre.5-main.md（已删除 2026-11-05）`）。
 - 新会话寒暄提示词：`docs/handover-new-session-context.md`。
 - Kimi 接手：`docs/handover-<日期>-kimi-<主题>.md`（每批新建）。
 - 逐批历史：`docs/agent/AGENTS-full.md` 末尾「待办交接各批」（只追加不改旧条）。
