@@ -97,7 +97,7 @@ bash scripts/test/win/mt.sh --version fabric-1.21.1 --side server --phase launch
 - 阶段：`env | build | launch | cases | report | stop`（`preflight` 为 P2 迁移项）。
 - 退出码：0=OK · 1=FAIL · 2=用法错误 · 10=PREFLIGHT · 11=BLOCKED · 12=TIMEOUT · 130=中断；机器行 `MT_*`。
 - 批量闸门：无 `--phase` 的全流程 / `cases` 未带 `--case` / `report` / 无 `--version` 的单阶段一律 exit 2，放行需 `--allow-auto`。
-- 用例共 **347** 个（顶层 335 + `scripts/test/cases/blocked-26.1.2/` 12）；本轮接管新增 17 个缺口用例（P0 10 / P1 7），`mt_case validate` → files=347 errors=0 / with_judgment=344。
+- 用例共 **348** 个（顶层 336 + `scripts/test/cases/blocked-26.1.2/` 12）；本轮接管新增 18 个缺口用例（P0 10 / P1 8，末条 `WALLET-CREDIT-fabric-1.20.1` 补齐矩阵最后一格），`mt_case validate` → files=348 errors=0 / with_judgment=345。
 - fabric dev 前置：先 `python tools/loom_embedded_jars.py --apply`（KI-F23：内嵌库被 Loom 剥离 `jars` 声明）。
 - 端口互斥：`25585` AutoJS / `25565` 游戏 / `25575` fabric RCON，同一时刻只允许**一条线**。
 
