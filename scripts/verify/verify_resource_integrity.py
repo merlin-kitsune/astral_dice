@@ -4,9 +4,11 @@
 
 核对「物品注册表 → 模型 → 物品模型定义」三步链是否逐条闭合，逐线（版本线）独立检查：
   1. ModItems.java 里 registerItem("id", …) / registerSimpleBlockItem("id", …) / register("id", …) 的全部 id；
-  2. jar 内 assets/astral_dice/models/item/<id>.json 覆盖全部 id（三线都要求，FATAL）；
+  2. jar 内 assets/astral_dice/models/item/<id>.json 覆盖全部 id
+     （1.21.1 / 1.20.1：FATAL；26.1.2：WARN，见第 3 条 —— 1.21.4+ 客户端只认 items/ 定义，
+      models/item 是 1.21.3 及以前的装载路径，缺失不再产生紫黑格）；
   3. jar 内 assets/astral_dice/items/<id>.json 覆盖全部 id
-     （仅 26.1.2：1.21.4+ 的物品模型定义，缺失同样表现为无模型，FATAL）；
+     （仅 26.1.2：1.21.4+ 的物品模型定义，**这是 26.x 的唯一权威来源**，缺失即无模型，FATAL）；
   4. jar 内 assets/astral_dice/textures/item/<id>.png（方块物品允许 textures/block/<id>.png）
      覆盖全部 id（缺失只报 WARN，不判失败）。
 
@@ -147,8 +149,13 @@ def test_line(root_display, root_base, ver, state):
     ]
     if ver == "26.1.2":
         checks = [
-            {"pref": "assets/%s/models/item/" % MODID, "ext": ".json", "label": "物品模型",
-             "fatal": True, "alts": []},
+            # 2026-11-16：26.1.2 的 models/item 降为 WARN。1.21.4+ 由 items/<id>.json 决定渲染，
+            # models/item 只是旧装载路径；方块物品（如 astral_anvil）在 26.x 的 datagen 走
+            # registerSimpleItemModel 只产出 items/ 定义，指向 block/ 模型，实机不紫黑。
+            # 反假绿：items/ 仍是 FATAL，所以「真无模型」照样拦得住。
+            {"pref": "assets/%s/models/item/" % MODID, "ext": ".json", "label": "物品模型(旧装载路径)",
+             "fatal": False, "alts": [],
+             "note": "1.21.4+ 以 items/ 定义为准；此处仅提示与 1.21.1/1.20.1 的资源布局差异"},
             {"pref": "assets/%s/items/" % MODID, "ext": ".json", "label": "物品模型定义(1.21.4+)",
              "fatal": True, "alts": []},
             {"pref": "assets/%s/textures/item/" % MODID, "ext": ".png", "label": "物品贴图",
@@ -180,8 +187,11 @@ def test_line(root_display, root_base, ver, state):
             w("  %s %-24s 缺 %d/%d：" % (tag, c["label"], len(miss), n))
             for m in miss:
                 w("           - %s" % m)
-            w("           ↑ 新增物品时须同步：datagen 的 ItemModelProvider 登记"
-              "（26.1.2 还需重跑两段式 datagen）")
+            if c.get("note"):
+                w("           ↑ %s" % c["note"])
+            else:
+                w("           ↑ 新增物品时须同步：datagen 的 ItemModelProvider 登记"
+                  "（26.1.2 还需重跑两段式 datagen）")
             if c["fatal"]:
                 state["fatal"] = 1
 
