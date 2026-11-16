@@ -1,6 +1,6 @@
 # Agent Instructions
 
-**本仓**：`F:\MCProject\astral_dice_multiloader`（原生 Linux 宿主为同一块 NTFS 盘的原生挂载：`/mnt/f/MCProject/astral_dice_multiloader`；无 hgfs）—— Minecraft 模组「Astral Dice」的多加载器工作树（各线 `neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1`，同一工作树）。
+**本仓**：`F:\MCProject\astral_dice_multiloader`（**Windows 原生宿主**，命令走 MSYS bash，同一路径写作 `/f/MCProject/astral_dice_multiloader`；Linux 原生挂载口径见 `docs/agent/AGENTS-dsh-linux.md`，本机不适用）—— Minecraft 模组「Astral Dice」的多加载器工作树：主线分支 **`multi-main`**（HEAD／版本一律以实读为准），**五条线同树**（P0 = `neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2`；P1 = `fabric-1.20.1` / `fabric-1.21.1`）。
 
 **本文件只是公共入口**：先按下面的分派认领自己的规则文件，再读共同红线，最后按需查索引。
 
@@ -15,7 +15,7 @@
 | **Codex** | `docs/agent/AGENT-SPLIT.md` | 维持原**只读验证**分工：可读、可 `grep`、可写 `docs/**`；不写源码、不跑构建、不跑实机 |
 | **其他宿主** | 先向用户确认 | **不得**把 `AGENTS-kimi.md` 或 `AGENTS-dsh.md` 当成自己的规则 |
 
-- `docs/agent/AGENTS-dsh.md` = **DSH 的规则正本**（2026-10-24 起从旧根规则文件迁入；同日按用户裁决清掉非 DSH 内容 —— WSL 口径、路径转译、跨宿主的派活工具说明一律删除，只留实际工作流裁决）。目录内另有历史留存：原根规则文件备份 `AGENTS.md.bak-a-plan-183829` 经 `docs/agent/AGENTS-full.md` 逐字留存。当前 `AGENTS-dsh.md` SHA-256 `dbabf7e325c3a5af735ba97861ce4ee4078637eb9a25f765768049ad9d0b71a5`（纯 LF，344 行 / 61,628 B；2026-11-15 复核）。
+- `docs/agent/AGENTS-dsh.md` = **DSH 的规则正本**（2026-10-24 起从旧根规则文件迁入；同日按用户裁决清掉非 DSH 内容 —— WSL 口径、路径转译、跨宿主的派活工具说明一律删除，只留实际工作流裁决）。目录内另有历史留存：原根规则文件备份 `AGENTS.md.bak-a-plan-183829` 经 `docs/agent/AGENTS-full.md` 逐字留存。当前 `AGENTS-dsh.md` SHA-256 `e8dfb2479524f12db04866fa285008540eab7b6cd153067eb824246b66fd8c12`（纯 LF，344 行 / 61,628 B；2026-11-16 实读复核，算法 SHA-256、范围整文件字节 —— 复核命令 `sha256sum docs/agent/AGENTS-dsh.md`）。
 - `docs/agent/AGENTS-dsh-linux.md` = **DSH 在 Linux 原生宿主的规则正本**（2026-10-31 起；逐条 Linux 化，Windows 口径保留在 `AGENTS-dsh.md` 作历史正本）。Linux 与 Windows 冲突时各读自己的正本；共同红线与索引仍以本文件为准。
 - Kimi 当前接手文档：`docs/handover-2026-10-24-kimi-takeover.md`；Kimi 当前工程参考：`docs/agent/PROJECT-REFERENCE.md`。
 
@@ -36,7 +36,7 @@
 | 需要什么 | 去哪里 |
 |---|---|
 | 工程拓扑、各线基线、目录职责、常用命令 | `docs/agent/PROJECT-REFERENCE.md` |
-| 当前接手 / 交班 | Kimi：`docs/handover-2026-10-24-kimi-takeover.md`；DSH：`docs/handover-*.md` 中最新一份 + `docs/handover-new-session-context.md` |
+| 当前接手 / 交班 | **DSH 先读 `docs/handover-new-session-context.md`**（新会话上下文，2026-11-16 重写：分支拓扑 / 五线基线与 P0-P1 / 版本口径 / 构建与测试入口 / 守门红绿 / 欠账）；滚动实机与批次记录在 `docs/handover-1.5.0-main.md`（最新一条为 `## 5 遗留与欠账` 末尾「接管体检（2026-11-16）」）；Kimi：`docs/handover-2026-10-24-kimi-takeover.md` |
 | Linux 真机适配与迁移（2026-10-31） | `docs/handover-2026-10-31-native-linux-migration.md`（原生 Linux 实测、盘符重映射、游戏测试资产接管 + 剩余 checklist）；规则见 `docs/agent/AGENTS-dsh-linux.md` |
 | NTFS 双系统工作树 / Windows 互操作 | `docs/handover-2026-10-31-native-linux-migration.md`（`/mnt/f` 同盘、大小写与换行口径、锁与并发）；旧副本同步脚本 `scripts/dev/rsync-original.sh` 已停用 |
 | 规则全文（逐批历史、领域规格） | `docs/agent/AGENTS-full.md`；标题→行号总表 `docs/agent/AGENTS-TOC.md` |

@@ -8,7 +8,7 @@
 ```
 astral_dice_multiloader/
 ├── settings.gradle / build.gradle / gradle.properties   # 根:聚合入口(不编译)
-├── gradle/wrapper + gradlew(.bat)                        # Gradle 9.2.1(阿里云镜像)
+├── gradle/wrapper + gradlew(.bat)                        # Gradle 9.5.1(阿里云镜像)
 ├── tools/check_lang_sync.py                              # lang 同步检查(对任一子项目 lang 目录运行)
 ├── docs/ 本机部署脚本（已删除，部署改按 git/bash 手写命令执行） scripts/ temp/         # 从原仓库迁移的配套内容
 ├── run/neoforge-1.21.1/                                        # 1.21.1 开发测试环境(仓库根统一 run/,git 排除)
@@ -22,15 +22,19 @@ astral_dice_multiloader/
     └── src/                                              # 原 1.20.1-forge 分支 src 全量(main + generated)
 ```
 
+> **现状补充(2026-11-16 实读)**:上图是 2026-08-29 迁移时的两子项目快照;现行 `settings.gradle` 已 `include`
+> **五条线**——`neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2`(P0)与 `fabric-1.20.1` / `fabric-1.21.1`(P1);
+> `fabric-1.21.1` 的 `src` 已完整但**未发布**。其余目录职责不变。
+
 ## 与模板(Player005/multiloader-mod-template)的差异
 
-模板面向"**同一 MC 版本、多加载器**"(common 共享源码 + fabric/neoforge 薄适配层)。本项目两版本
-跨 MC 大版本(1.21.1 ↔ 1.20.1),API 差异大(数据组件/附件、事件、Curios 注册等,见
+模板面向"**同一 MC 版本、多加载器**"(common 共享源码 + fabric/neoforge 薄适配层)。本项目现为五条线(1.21.1 / 1.20.1 / 26.1.2 / fabric 两线)
+跨 MC 大版本(1.21.1 ↔ 1.20.1 ↔ 26.1.2),API 差异大(数据组件/附件、事件、Curios 注册等,见
 `compat-1.20.1-forge.md`),做 common 共享层需整体重构、风险不可控。因此保留模板的**骨架约定**
 (根 settings/子项目包含/统一 wrapper/根 .gitignore/聚合 build),但:
 
 - **不设 common 源码子项目**;每个"MC 版本+加载器"是自包含子项目;
-- **不引入 fabric 子项目**(无 Fabric 移植计划);
+- ~~不引入 fabric 子项目~~(2026-08 口径,**已过时**:现已有 `fabric-1.20.1` 与 `fabric-1.21.1` 两条 P1 线,后者 `src` 完整、尚未发布);
 - 子项目 build.gradle/gradle.properties **原样沿用各自分支的 Groovy 脚本**(ModDevGradle 2.0.x),
   不改写为模板的 Kotlin DSL,保证构建行为与原分支完全一致;
 - 产物名保持 `astral_dice-<版本>.jar`(不用模板的 `<mod>-<loader>-<mc>` 命名),使原部署清理规则
@@ -40,7 +44,7 @@ astral_dice_multiloader/
 
 | 命令 | 作用 |
 |---|---|
-| `./gradlew build` | 构建全部子项目(两个版本) |
+| `./gradlew build` | 构建全部子项目(五条线) |
 | `./gradlew :neoforge-1.21.1:build` | 仅构建 1.21.1 NeoForge |
 | `./gradlew :forge-1.20.1:build` | 仅构建 1.20.1 Forge |
 | `./gradlew :neoforge-1.21.1:runData` | 1.21.1 数据生成 |
@@ -71,7 +75,7 @@ astral_dice_multiloader/
 
 ## 注意事项
 
-- 两个版本的 `run/` 目录统一存放在**仓库根 `run/`** 下(`run/neoforge-1.21.1` 与 `run/forge-1.20.1`),按版本隔离且互不污染
+- `run/` 按子项目隔离、互不污染:主链统一存放在**仓库根 `run/<子项目名>`**(`run/neoforge-1.21.1` / `run/forge-1.20.1` / `run/neoforge-26.1.2` / `run/fabric-1.20.1`),fabric 两线由 Loom 在子项目内 `run/{client,server}` 运行
   (mods/config/saves 独立);两子项目 build.gradle 的 `gameDirectory`/`pushToDevRun` 均指向
   `rootProject.file('run/<子项目名>')`。
 - `gradle.properties` 的版本号**各子项目独立**;发布流程见 AGENTS.md「新版本发布流程」。

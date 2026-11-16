@@ -1,27 +1,27 @@
 # 工程参考（PROJECT-REFERENCE）
 
 > 面向所有宿主（Kimi Code / DSH / Codex）的**工程拓扑速查**。规则文件与红线不在这里：公共分派见根 `AGENTS.md`，宿主规则见 `docs/agent/AGENTS-kimi.md` / `docs/agent/AGENTS-dsh.md` / `docs/agent/AGENT-SPLIT.md`。
-> 数字均为 2026-10-24 快照，**一律以实读命令为准**。
+> §2 基线与版本口径为 2026-11-16 实读复核；其余数字为 2026-10-24 快照。**一律以实读命令为准**。
 
 ## 1. 仓库与分支
 
-- 工作树：`F:\MCProject\astral_dice_multiloader`（**单工作树四子项目同树**），分支 `multi-main`。
+- 工作树：`F:\MCProject\astral_dice_multiloader`（**单工作树五子项目同树**），分支 `multi-main`（HEAD 以实读为准）。
 - 前置库源码：`F:\MCProject\starengine`（独立仓，分支 `main`，产物发布到 mavenLocal 供本仓消费）。
-- 另一个常驻工作树：`F:\MCProject\astral_dice_multiloader-next`（分支 `multi-dev-next`，2.0.0 开发线）—— **与本树互不镜像**。
+- 另一个常驻工作树：`F:\MCProject\astral_dice_multiloader-next`（分支 `multi-dev-next`，26.4 开发线；尖端 `26.4-SNAPSHOT.76`）—— **与本树互不镜像**。
 - `F:\MCProject\.agent-locks\`：宿主互斥锁目录（`kimi.lock` / `dsh.lock`，内容为 `PID=` / `TIME=` / `TASK=` 三行）。
 
 ## 2. 各线基线
 
 | 子项目 | MC | 加载器 | Java | 构建插件 | 交付优先级 |
 |---|---|---|---|---|---|
-| `neoforge-1.21.1` | 1.21.1 | NeoForge 21.1.235 | 21 | ModDevGradle `net.neoforged.moddev` | **P0** |
-| `forge-1.20.1` | 1.20.1 | Forge 47.4.10 | 17 | `net.neoforged.moddev.legacyforge` | **P0** |
-| `neoforge-26.1.2` | 26.1.2 | NeoForge 26.1.2.109 | 25 | ModDevGradle | **P0** |
+| `neoforge-1.21.1` | 1.21.1 | NeoForge 21.1.265 | 21 | ModDevGradle `net.neoforged.moddev` | **P0** |
+| `forge-1.20.1` | 1.20.1 | Forge 47.1.47 | 17 | `net.neoforged.moddev.legacyforge` | **P0** |
+| `neoforge-26.1.2` | 26.1.2 | NeoForge 26.1.2.126 | 25 | ModDevGradle | **P0** |
 | `fabric-1.20.1` | 1.20.1 | Fabric Loader 0.19.5 + FAPI 0.92.12 | 17 | Fabric Loom | **P1** |
-| `fabric-1.21.1` | 1.21.1 | Fabric Loader + FAPI（见子项目） | 21 | Fabric Loom | **P1**（scaffolding，未发布） |
+| `fabric-1.21.1` | 1.21.1 | Fabric Loader 0.20.1 + FAPI（见子项目） | 21 | Fabric Loom | **P1**（第五条线，`src` 完整、未发布） |
 
-- 版本：各线 `mod_version = 1.5.0-pre.6+<加载器后缀>`（`neoforge_1.21.1` / `forge_1.20.1` / `neoforge_26.1.2` / `fabric_1.20.1`，下划线分隔）；各线 `starengine_version = 1.1.0-pre.2`（fabric 另有 `starengine_version_range`）。
-- jar 内硬前置区间 `[1.1.0-pre.2,2.0.0)`，`META-INF/jarjar/` 计数 0（库**不内嵌**，必须成对投放）。
+- 版本：各线 `mod_version = 1.6.0-pre.1+<加载器后缀>`（`neoforge_1.21.1` / `forge_1.20.1` / `neoforge_26.1.2` / `fabric_1.20.1` / `fabric_1.21.1`，下划线分隔）；各线 `starengine_version = 1.2.0-pre.1`（fabric 两线另有 `starengine_version_range = >=1.2.0-pre.1 <2.0.0`）。
+- jar 内硬前置区间 `[1.2.0-pre.1,2.0.0)`，`META-INF/jarjar/` 计数 0（库**不内嵌**，必须成对投放）。
 - 包根：`com.merlinkitsune.astral_dice`；库包根 `com.merlinkitsune.starengine`。
 
 ## 3. 目录职责
@@ -73,7 +73,7 @@ bash F:\MCProject\astral_dice_multiloader\scripts/test/win/mt.sh --version 1.20.
 | `scripts/verify/verify_probe_class_refs.py` | 探针 javaclass 引用可解析（既有 1 红点 = 26.1.2 产物陈旧） |
 | `tools/verify_misaki_balance.py` · `verify_bonnie_active_order.py` · `verify_member_recommendation_hand_gate.py` | 2026-10-24 批次的三道专项判据 |
 
-## 6. 投放目标（成对：mod jar + `starengine-*-1.1.0.jar`）
+## 6. 投放目标（成对：mod jar + `starengine-*-1.2.0-pre.1.jar`）
 
 - 整合包根 = `/mnt/d/.minecraft`（Windows D: 盘的原生挂载 ntfs3；Windows 宿主同一批文件为 `D:\.minecraft`），由根 `build.gradle` 的 `mcHomePath` 统一解析（环境变量 `MC_HOME` 可覆盖；改后需 `--no-configuration-cache` 才刷新）
 - neo → `/mnt/d/.minecraft/versions/狐の航空学 Voxy Edition/mods`
@@ -100,7 +100,7 @@ bash scripts/test/linux/stop.sh  --version 1.21.1       # 期望 LINUX_STOP: OK�
 python3 -B docs/agent/verify-split.py                   # 规则守门
 ```
 
-- 前置：`starengine:1.1.0` 必须已发布到本机 mavenLocal（在兄弟仓 `starengine` 跑各线 `:publishToMavenLocal`，daemon 21）。
+- 前置：`starengine:1.2.0-pre.1` 必须已发布到本机 mavenLocal（在兄弟仓 `starengine` 跑各线 `:publishToMavenLocal`，daemon 21）。
 - Linux 侧**不调用** `scripts/**` 下的 52 个旧件（Windows 历史工具，已删除）；旧编排件（19,384 行）整台不可移植，替代 = `scripts/test/linux/*.sh` + AutoJS `eval_js` + computer-use MCP。
 - 桌面/游戏注入通道：KDE Wayland 下 DSH MCP `computer-use-linux`（bin `~/.local/bin/computer-use-linux-mcp`，AT-SPI + KWin + Portal RemoteDesktop）截图/点击/键盘，`screen-ocr` 做屏幕 OCR；游戏内用 AutoJS HTTP 端点（`http://127.0.0.1:25585/mcp`，本会话未注册 MCP client，直接 curl 或临时注册）。
 - 迁移与现状：`docs/handover-2026-10-31-native-linux-migration.md`（原生 Linux 实测与路径重映射）；规则正本 `docs/agent/AGENTS-dsh-linux.md`；新会话入口 `docs/handover-new-session-context.md`。VM 时代文档（`docs/handover-2026-10-31-linux-vm-adoption.md（已删除 2026-11-05）`、`docs/handover-2026-10-31-local-disk-workspace.md`）只作历史。
