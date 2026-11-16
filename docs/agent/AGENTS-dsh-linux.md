@@ -269,12 +269,14 @@
 
 - 配置：`run/<线>/config/autojs.json`（1.21.1 / 1.20.1 实读存在）；端口覆盖序 **`-Dautojs.port=` > `AUTOJS_PORT` > 配置文件**（`0` = 系统分配）。
 - **同一时刻只能一条线占用 25585**（否则 `BindException`）；切线前先停旧客户端。
-- **MCP 注册现状（2026-10-31 真机实读）**：`~/.dsh/profiles/web/cordis.patch.yml` 只注册了 `blockbench` / `computer-use-linux` / `screen-ocr`，**没有 `autojs` MCP server**；`~/.dsh/skills/` 目录也不存在（旧 `~/.dsh/skills/autojs/SKILL.md` 不在）。
-  - ⇒ 在 DSH 里调 AutoJS **要么**用 `curl` 直接打 JSON-RPC（`initialize` → `tools/call`），**要么**由用户确认后再把 `autojs` server 注册进 `cordis.patch.yml`（`transport: streamable-http`、`url: http://127.0.0.1:25585/mcp`、`headers.Accept: application/json, text/event-stream`、`failOnStartupError: false`）。**不要**假设 `mcp__autojs__*` 工具存在。
+- **MCP 注册（2026-10-31 21:59 起已注册，用户指令）**：`~/.dsh/profiles/web/cordis.patch.yml` 现有 `blockbench` / `computer-use-linux` / `screen-ocr` / **`autojs`**（行 id `panel-mcp-autojs`，`transport: streamable-http`、`url: http://127.0.0.1:25585/mcp`、`headers.Accept: application/json, text/event-stream`、`failOnStartupError: false`、`reconnect` 同其余三项）。改后**热加载生效**，无需重启 `dsh web`。
+  - 连接前提是 **25585 在听**：游戏/专用服没起时 `list_mcp_resources(autojs)` 报 `server is disconnected`，这是**环境问题不是缺陷**（红线 1 仍适用：不得为验通道而自行起实机）。
+  - 工具名 `mcp__autojs__{status,eval_js,kubejs_log,reload_scripts}`；若启动了游戏但工具没出现，用面板「测试/重载」触发一次，或重启 `dsh web`。`curl` 直打 JSON-RPC 的法子仍有效，作为兜底。
 - 工具四件（HTTP 协议不变）：`status` / `eval_js { code, side: auto|server|client, timeout_ms }` / `kubejs_log { side, kind, limit }` / `reload_scripts { side, timeout_ms }`；返回 `{ ok, side, elapsedMs, type, value, diagnostics }`，**必看 `diagnostics`**。
 - 铁律：`side` 必须明确（读权威数据用 `server`，读 HUD/FPS/输入用 `client`，`auto` 仅在两侧等价时用）；运行时不能新建注册表条目；只求值最后一个表达式；Rhino 不是 JS 反射；返回值必须 `JSON.stringify`。
 - 错误归一：`isError` / `ok=false` 记 **BLOCKED**（环境问题），**不得**判成功能缺陷；端点没起同此。
-- 历史实测（VM 期，1.21.1，协议未变）：client 侧 **KubeJS 里没有裸 `Minecraft` 全局**，必须 `Java.loadClass('net.minecraft.client.Minecraft').getInstance()`；`status.endpoints` = `{"bindAddress":"127.0.0.1","port":25585,"mcpPath":"/mcp"}`。真机复测属迁移后的待办（`[[PENDING:autojs-native]]`）。
+- 历史实测（VM 期，1.21.1，协议未变）：client 侧 **KubeJS 里没有裸 `Minecraft` 全局**，必须 `Java.loadClass('net.minecraft.client.Minecraft').getInstance()`；`status.endpoints` = `{"bindAddress":"127.0.0.1","port":25585,"mcpPath":"/mcp"}`。
+- **真机 server 侧 Rhino 实测坑（2026-10-31，26.1.2 专用服）**：没有全局 `server`，须 `Java.loadClass("net.neoforged.neoforge.server.ServerLifecycleHooks").getCurrentServer()`；**没有 `Java.from`**；`registry.keySet()` 元素**直接是 `Identifier`**（不是 `ResourceKey`），用 `String(x)` 取值；`MappedRegistry#get/containsKey` 因 `Identifier` 与 `ResourceKey` 重载在 Rhino 里报 ambiguous ⇒ 改用 `keySet().toArray()` 遍历；`performPrefixedCommand(cmd)` 有副作用但返回值读不到，命令回显去 `logs/latest.log` 里 grep。
 - 安全边界：`unrestricted=true` 时**只绑 loopback**，禁 `0.0.0.0`。
 
 ## 🧪 测试台现状（Linux）
