@@ -1168,7 +1168,7 @@
   "config.jade.plugin_astral_dice.event_drawer_cost": "抽奖盒费用",
   "msg.astral_dice.event_animating": "事件动画播放中，请稍后再试",
   "item.astral_dice.souri_sign": "金鲤立牌",
-  "item.astral_dice.z3000_sign": "垃圾箱立牌",
+  "item.astral_dice.z3000_sign": "垃圾桶立牌",
   "tooltip.astral_dice.sign.z3000.active": "过来把你",
   "tooltip.astral_dice.sign.z3000_active": "将 16 格内的目标拖到面前，并造成 §e5§7 点技能伤害；被拖拽过的目标被击杀时，获得 §e1§7 层「反击」，不限击杀时机",
   "tooltip.astral_dice.sign.z3000.passive": "回收利用",

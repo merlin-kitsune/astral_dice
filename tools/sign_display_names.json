@@ -298,11 +298,11 @@
     },
     {
       "id": "z3000",
-      "zh": "垃圾箱立牌",
+      "zh": "垃圾桶立牌",
       "en": "Z3000 Sign",
       "ja": "ゼット3000のスタンド",
       "wiki_page": "Z3000",
-      "note": "2026-11-16 新增（用户 m00480 裁决：按吉星派对 wiki 取名）；zh 取游戏内中文职称「垃圾箱」+立牌（wiki.biligame.com/starengine/Z3000，原文「当垃圾箱的攻击力大于6时…」），en 取英文 wiki 页名 Z3000，ja 取 CharPlayable.nameJapanese=ゼット3000（astralparty.miraheze.org API，subtitle Waste-Collecting Robot）"
+      "note": "2026-11-16 新增（用户 m00480 / m00576 裁决）；en 取英文 wiki 页名 Z3000，ja 取 CharPlayable.nameJapanese=ゼット3000（astralparty.miraheze.org API，subtitle Waste-Collecting Robot）；zh 保留社区惯用「垃圾桶立牌」——wiki 职称虽写「垃圾箱」，社区不这么叫（用户 2026-11-16 裁决回退）"
     }
   ]
 }

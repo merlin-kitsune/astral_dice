@@ -14,7 +14,7 @@
 - Companion KubeJS addon `0.0.2` (separate repository): server-script bindings for content, wallet, damage and stat hooks, with the repository-root logo and a required `astral_dice` dependency `[1.6.0-pre.1,)`. Hooks are cleared on script reload and client scripts are rejected.
 - Brought the latest development assets and docs into `multi-main`: `images/`, six new `.bbmodel` sources, refreshed AGENTS/DSH rules, and the 1.5.1 release fixes (meito discount NPE, Forge 47.1.47 compatibility, four-line CurseForge upload).
 - Validation: five-line release build and the addon's two-line build passed; the NeoForge 1.21.1 and Forge 1.20.1 live KubeJS probes from `26.4-SNAPSHOT.76` cover content counts, freeze state, damage categories, wallet and damage/stat hook registration. That code path is unchanged in this release except for the version pins and the companion addon metadata.
-- Sign display names now follow the official wiki: the Z3000 sign reads `Z3000 Sign` / `ゼット3000のスタンド` / `垃圾箱立牌` (Chinese wiki character title “垃圾箱”, replacing the earlier “垃圾桶立牌”), and the `mamushi_note` tooltips now name the Souri sign by its item names (`Amakawa Souri Sign` / `天川蒼鯉のスタンド`). `tools/sign_display_names.json` now lists 37 signs and `verify_sign_display_names` passes.
+- Sign display names now follow the official wiki: the Z3000 sign reads `Z3000 Sign` / `ゼット3000のスタンド` (English wiki page name and `CharPlayable.nameJapanese`), while the Chinese name stays the community's `垃圾桶立牌` rather than the wiki character title, and the `mamushi_note` tooltips now name the Souri sign by its item names (`Amakawa Souri Sign` / `天川蒼鯉のスタンド`). `tools/sign_display_names.json` now lists 37 signs and `verify_sign_display_names` passes.
 
 ## 26.4-SNAPSHOT.76
 

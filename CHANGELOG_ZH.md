@@ -14,7 +14,7 @@
 - 配套 KubeJS 附属 `0.0.2`（独立仓库）：服务端脚本可注册/查询内容、读写钱包、注册伤害钩子与属性钩子；带仓库根 `logo.png`，并把 `astral_dice` 声明为必需前置 `[1.6.0-pre.1,)`。脚本重载时清空钩子，客户端脚本拒绝调用。
 - 把最新开发素材与文档带入 `multi-main`：`images/`、六个新增 `.bbmodel` 源文件、刷新后的 AGENTS/DSH 规则，以及 1.5.1 的发布修复（名刀减费 NPE、Forge 47.1.47 兼容、四线 CurseForge 上传）。
 - 验证：五线发布构建与附属双线构建通过；NeoForge 1.21.1 与 Forge 1.20.1 的实机 KubeJS 探针（来自 `26.4-SNAPSHOT.76`）覆盖内容计数、冻结状态、伤害分类、钱包与伤害/属性钩子注册。本次发布除版本 pin 与附属元数据外未改动该代码路径。
-- 立牌显示名对齐官方 wiki：Z3000 立牌为 `Z3000 Sign` / `ゼット3000のスタンド` / `垃圾箱立牌`（中文 wiki 职称「垃圾箱」，替换此前的「垃圾桶立牌」）；`mamushi_note` 两语文本改按 Souri 立牌物品名（`Amakawa Souri Sign` / `天川蒼鯉のスタンド`）指代。`tools/sign_display_names.json` 增至 37 条，`verify_sign_display_names` 通过。
+- 立牌显示名对齐官方 wiki：Z3000 立牌为 `Z3000 Sign` / `ゼット3000のスタンド`（英文页名与 `CharPlayable.nameJapanese`），中文保留社区惯用「垃圾桶立牌」、不采用 wiki 职称「垃圾箱」；`mamushi_note` 两语文本改按 Souri 立牌物品名（`Amakawa Souri Sign` / `天川蒼鯉のスタンド`）指代。`tools/sign_display_names.json` 增至 37 条，`verify_sign_display_names` 通过。
 
 ## 26.4-SNAPSHOT.76
 

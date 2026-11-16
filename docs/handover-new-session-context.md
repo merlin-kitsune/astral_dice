@@ -109,14 +109,14 @@ bash scripts/test/win/mt.sh --version fabric-1.21.1 --side server --phase launch
 | 规则 TOC 一致性 | `python -B tools/gen_agents_toc.py --check` | **绿**：`TOC: OK headings=272` |
 | lang 同步（key 集 / 颜色码 / 占位符） | `python tools/check_lang_sync.py --lang-dir <线>/src/main/resources/assets/astral_dice/lang` | **绿**（2026-11-16 修：`z3000` 两键的 30 处字面 `%` 已转义为 `%%`，0 处残留） |
 | CHANGELOG 标题 | 见 `docs/agent/PROJECT-REFERENCE.md` §5 清单 | **绿**（`CHANGELOG_ZH.md` 标题全角括号改为半角，parity sections=95 entries=1137/1137） |
-| 立牌 / 物品三语命名表 | `python tools/verify_sign_display_names.py`（表 `tools/sign_display_names.json`） | **绿**（2026-11-16 22:3x 按吉星派对 wiki 定名：`z3000` = zh 垃圾箱立牌 / en Z3000 Sign / ja ゼット3000のスタンド；表增至 37 条；五线 `mamushi_note` 的 Golden Koi 指代统一为 `Amakawa Souri Sign` / `天川蒼鯉のスタンド`；`GATE: PASS`，166,961 项检查） |
+| 立牌 / 物品三语命名表 | `python tools/verify_sign_display_names.py`（表 `tools/sign_display_names.json`） | **绿**（2026-11-16 22:3x 按吉星派对 wiki 定名：`z3000` = zh 垃圾桶立牌（社区惯用名，未采 wiki 职称「垃圾箱」）/ en Z3000 Sign / ja ゼット3000のスタンド；表增至 37 条；五线 `mamushi_note` 的 Golden Koi 指代统一为 `Amakawa Souri Sign` / `天川蒼鯉のスタンド`；`GATE: PASS`，166,961 项检查） |
 | meito 专项门禁 | 见 §5 清单 | **绿**（原 7 红全是工具缺陷：26.x `Identifier` 改写 + Javadoc 误判；已加 `(?:ResourceLocation|Identifier)` 与注释剔除，GATE: PASS） |
 | 其余补充门禁 | 见 `docs/agent/PROJECT-REFERENCE.md` §5 | 43 条复跑 = P0 22 PASS / 18 FAIL / 2 SKIPPED / 1 路径错；本轮只修两条口径红（fabric 创意栏白名单 `vacuum_piece`、资源完整性 26.1.2 旧装载路径降 WARN，均做变异反假绿），其余待分流 |
 
 ## 8 当前欠账（按优先级）
 
 1. **五线无 `1.6.0-pre.1` 实机证据**：红线 7「没有详细测试就没有发布版本」未满足前，`1.6.0-pre.1` 一律不得作为发布版本。
-2. **jar 已重建（2026-11-16 22:33，含命名校正）**：五线 `astral_dice-1.6.0-pre.1+<loader>.jar` 齐（neo/forge 走 `:jar`，fabric 两线须 `:remapJar`）；1.5.0 / 1.5.1 历史 jar 仍并存未清。
+2. **jar 已重建（2026-11-16 22:47，含命名校正）**：五线 `astral_dice-1.6.0-pre.1+<loader>.jar` 齐（neo/forge 走 `:jar`，fabric 两线须 `:remapJar`）；1.5.0 / 1.5.1 历史 jar 仍并存未清。
 3. **补充门禁红点未全分流**：43 条复跑 P0 22 PASS / 18 FAIL，本轮只修两条工具口径红，其余逐条判「真缺陷 / 口径」后再动。
 4. ~~**`z3000` / Golden Koi 三语命名待裁决**~~ → **已裁决（2026-11-16，用户 m00480「从吉星派对 wiki 获取 Z3000 的各语言名称决定实际命名」）**：按 wiki 定名并落地，见 `docs/handover-1.5.0-main.md` 第 29 条。
 5. **版本 bump 待裁决**：本轮仅改门禁工具、文档与 lang 转义，未改 Java 源码、未 bump `mod_version`（仍 `1.6.0-pre.1`）；若要发布投放需先裁决 bump。
