@@ -55,6 +55,55 @@ def read_bytes(p):
         return f.read()
 
 
+def strip_java_comments(text):
+    """把 // 与 /* */ 注释按原位替换为空格，保留换行与字符偏移（D7 逐行扫描用）。"""
+    out = list(text)
+    i, n = 0, len(text)
+    state = "code"
+    while i < n:
+        c = text[i]
+        nxt = text[i + 1] if i + 1 < n else ""
+        if state == "code":
+            if c == "/" and nxt == "/":
+                out[i] = out[i + 1] = " "
+                state, i = "line", i + 2
+                continue
+            if c == "/" and nxt == "*":
+                out[i] = out[i + 1] = " "
+                state, i = "block", i + 2
+                continue
+            if c == '"':
+                state = "str"
+            elif c == "'":
+                state = "char"
+        elif state == "str":
+            if c == "\\":
+                i += 2
+                continue
+            if c == '"':
+                state = "code"
+        elif state == "char":
+            if c == "\\":
+                i += 2
+                continue
+            if c == "'":
+                state = "code"
+        elif state == "line":
+            if c == "\n":
+                state = "code"
+            else:
+                out[i] = " "
+        else:  # block
+            if c == "*" and nxt == "/":
+                out[i] = out[i + 1] = " "
+                state, i = "code", i + 2
+                continue
+            if c != "\n":
+                out[i] = " "
+        i += 1
+    return "".join(out)
+
+
 def png_size(data):
     if data[:8] != b"\x89PNG\r\n\x1a\n":
         return None
@@ -94,13 +143,13 @@ for line in LINES:
         failures.append("D3 %s: CardShopScreen 缺失" % line)
         continue
     src = read(p)
-    m = re.search(r"private ResourceLocation cardFaceTexture\(ItemStack stack\) \{(.*?)\n    \}", src, re.S)
+    m = re.search(r"private (?:ResourceLocation|Identifier) cardFaceTexture\(ItemStack stack\) \{(.*?)\n    \}", src, re.S)
     if not m:
         failures.append("D3 %s: 未定义 cardFaceTexture(ItemStack)" % line)
         body = ""
     else:
         body = m.group(1)
-    if "ResourceLocation face = cardFaceTexture(stack);" not in src:
+    if not re.search(r"(?:ResourceLocation|Identifier) face = cardFaceTexture\(stack\);", src):
         failures.append("D3 %s: drawCardFace 未改用 cardFaceTexture(stack)" % line)
     need = {
         "D4 只对名刀生效": "stack.is(ModItems.ATTACK_CARD_MEITO.get())",
@@ -196,7 +245,7 @@ for line in ALL_LINES:
                 continue
             fp = os.path.join(dirpath, fn)
             try:
-                text = read(fp)
+                text = strip_java_comments(read(fp))
             except UnicodeDecodeError:
                 continue
             d7_files += 1
