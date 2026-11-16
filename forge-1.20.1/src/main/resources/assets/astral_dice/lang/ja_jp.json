@@ -923,7 +923,7 @@
   "effect.astral_dice.dragon_roar_break.description": "防御力 §e-4§7（アーマー §e-8§7）、持続 §91:00§7；再命中は時間の更新のみでスタックしない",
   "tooltip.astral_dice.sign.mamushi_active": "自身は §e1§7 枚の「噛みつき」を獲得し、§e12§7 ブロック以内のすべての味方チームメイトに §e1§7 枚のランダムカードを付与\n  ターゲットが現在カードを所持していない場合、追加で §e1§7 枚のカードを獲得",
   "tooltip.astral_dice.sign.mamushi_passive": "他のキャラクターにカードを付与した時、§e1§7 スタックの「覚醒」を獲得（1 回につき最大 §e3§7 スタック）\n  「覚醒」が §e8§7 スタックに達すると自動的に「真龍形態」に変化\n  「真龍形態」獲得後、攻撃力 §e+5§7、アクティブスキルの範囲制限がなくなる\n  手札および以降のアクティブスキルで得たカードを「ドラゴンロア」に変換",
-  "tooltip.astral_dice.sign.mamushi_note": "小さな思惑：アクティブスキルで「金鯉のスタンド」を装備したプレイヤーにカードを渡した時、相手は「金鱗」を §e1§7 層獲得する",
+  "tooltip.astral_dice.sign.mamushi_note": "小さな思惑：アクティブスキルで「天川蒼鯉のスタンド」を装備したプレイヤーにカードを渡した時、相手は「金鱗」を §e1§7 層獲得する",
   "tooltip.astral_dice.sign.mamushi_awaken": "覚醒：§e%s§7 / §e%s§r",
   "tooltip.astral_dice.sign.mamushi_dragon_form": "真龍形態",
   "msg.astral_dice.mamushi_dragon_form": "真夢梓のスタンド：覚醒が 8 スタックに達し、真龍形態に入りました！",

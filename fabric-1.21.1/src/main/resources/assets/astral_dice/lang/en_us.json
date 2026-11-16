@@ -923,7 +923,7 @@
   "effect.astral_dice.dragon_roar_break.description": "Defense §e-4§7 (armor §e-8§7) for §91:00§7; repeated hits refresh the duration without stacking",
   "tooltip.astral_dice.sign.mamushi_active": "You gain §e1§7 Bite, and every friendly teammate within §e12§7 blocks gains §e1§7 random card\n  if the target currently holds no cards, they gain §e1§7 extra card",
   "tooltip.astral_dice.sign.mamushi_passive": "When other characters gain cards, you gain §e1§7 Awakening stack, at most §e3§7 stacks at a time\n  when Awakening reaches §e8§7 stacks, you automatically turn into the True Dragon Form\n  in the True Dragon Form you gain §e+5§7 attack power and the active skill no longer has a range limit\n  the cards in your hand and the ones gained from later active skills are turned into Dragon's Roar",
-  "tooltip.astral_dice.sign.mamushi_note": "Little Thought: when your active skill makes a player wearing the Golden Koi Sign gain cards, that player gains §e1§7 stack of Golden Scale",
+  "tooltip.astral_dice.sign.mamushi_note": "Little Thought: when your active skill makes a player wearing the Amakawa Souri Sign gain cards, that player gains §e1§7 stack of Golden Scale",
   "tooltip.astral_dice.sign.mamushi_awaken": "Awakening: §e%s§7 / §e%s§r",
   "tooltip.astral_dice.sign.mamushi_dragon_form": "True Dragon Form",
   "msg.astral_dice.mamushi_dragon_form": "Mamushi Sign: Awakening reached 8 stacks - True Dragon Form!",
