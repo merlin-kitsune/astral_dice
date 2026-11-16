@@ -80,6 +80,9 @@ public class CardInventoryScreen extends AbstractContainerScreen<CardInventoryMe
 
     @Override
     public void extractBackground(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
+        // 背景暗化（2026-11-06 用户裁决，各线统一）：本类整体覆写了 extractBackground 且不调 super，
+        //   原版容器屏那条「只压透明暗化渐变」的路径不会发生 ⇒ 这里显式补一次；模糊按裁决不做。
+        this.extractTransparentBackground(guiGraphics);
         int x = this.leftPos;
         int y = this.topPos;
 

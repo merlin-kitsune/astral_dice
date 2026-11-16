@@ -15,7 +15,7 @@ mod jar 内置 Bountiful 数据,随 mod 自动加载(无需配置):
 
 > ⚠️ `astral_currency.json` 是 `currency: true` 的填充货币池。要让它生效,整合包 `config/bountiful/bountiful.json` 的 `bounty.fillerCurrencyPool` 必须设为 `"astral_currency"`(默认 `null` = 无填充货币 ⇒ 高价值材料无法凑齐奖励价值)。这是**整合包级**配置,mod 数据包管不到。
 
-条目数与内容由 `scripts/verify/verify_bountiful_pools.ps1` 守门(0 = 与规则一致):当前 `astral_objs` 13 条 / `astral_rews` 92 条。
+条目数与内容由 `scripts/verify/verify_bountiful_pools.py` 守门(0 = 与规则一致):当前 `astral_objs` 13 条 / `astral_rews` 92 条。
 
 游戏内 `/reload` 后生效。
 

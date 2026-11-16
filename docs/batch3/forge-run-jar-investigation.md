@@ -1,4 +1,5 @@
 # forge-1.20.1：`build/libs` 与 `run/1.20.1/mods` 的 jar 不一致 —— 调查结论
+<!-- 历史记录：文中旧 shell 命令已于 2026-11-09 全部废弃，现用 bash 测试台（scripts/test/win/mt.sh）与 windows MCP，仅作溯源。 -->
 
 - 仓库：`F:\MCProject\astral_dice_multiloader`
 - 分支：`multi-1.20.1-1.21.1`，HEAD `a67caa7`（工作树干净）
@@ -380,7 +381,7 @@ L214 UniqueModListBuilder: Selected file astral_dice-1.2.1+neoforge_1.21.1.jar f
 
 | 用途 | 位置 |
 |---|---|
-| 条目清单差集 | `System.IO.Compression.ZipFile` + PowerShell（见 §2） |
+| 条目清单差集 | `System.IO.Compression.ZipFile` + 旧 shell（见 §2） |
 | SRG token 计数 | Python + `zipfile`（正则 `\b[fm]_\d+_`，Latin-1 读取 class 字节） |
 | SRG→Mojmap 归一化比对 | `temp/jarinv/normalize_diff.py`（映射源 `forge-1.20.1/build/moddev/artifacts/intermediateToNamed.srg`，34980 方法 / 32368 字段） |
 | 归一化反汇编逐指令比对 | `temp/jarinv/javap_compare.py`（`javap -p -c` + `#\d+`→`#` + SRG→Mojmap） |

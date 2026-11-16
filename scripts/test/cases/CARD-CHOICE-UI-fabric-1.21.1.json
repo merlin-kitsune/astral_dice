@@ -1,0 +1,122 @@
+{
+  "case_id": "CARD-CHOICE-UI-fabric-1.21.1",
+  "title": "选卡界面 CardChoiceMenu 只有 1/3 两种槽位、打开后 slots=slotCount+36、隐藏卡槽只收卡且一次 1 张，客户端能真正弹出 CardChoiceScreen（证据 choice/CardChoiceManager.java:125-182；screen/CardChoiceMenu.java:61-120,272-299；screen/CardChoiceScreen.java:50）",
+  "version": "fabric-1.21.1",
+  "channel": "autojs",
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "判据来源：CardChoiceManager.java:137-141 slotCount 只能 1 或 3（写 2 必被拒并打 AP_CARD_CHOICE reject:reason=bad_slot_count）；:154 openMenu + :171-178 回读 containerMenu 校验；CardChoiceMenu.java:108-120 先 slotCount 个 ChoiceCardSlot 再加 36 格玩家背包 ⇒ slots.size()==slotCount+36；:281 mayPlace 用 type.matches（ANY=ModItems.isCardItem，:46-52），:296 getMaxStackSize=1；attack_card_medium 在 data/astral_dice/tags/item/combat_cards.json 里。用产品入口 start(...) 打开真实菜单，不 close，交由客户端步骤确认屏幕真的创建。末尾 abandon + closeContainer 复原。"
+    },
+    {
+      "op": "mcp_status",
+      "timeout_ms": 20000,
+      "save_as": "mcp"
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "mode": "json",
+      "timeout_ms": 30000,
+      "save_as": "cardopen",
+      "code": "(function(){\n  function cls(n){ return Java.loadClass(n); }\n  function consumer(){ return new JavaAdapter(cls(\"java.util.function.Consumer\"), { accept: function(v){} }); }\n  var BR = cls(\"net.minecraft.core.registries.BuiltInRegistries\");\n  var RL = cls(\"net.minecraft.resources.ResourceLocation\");\n  var S = cls(\"net.minecraft.world.item.ItemStack\");\n  var CCM = cls(\"com.merlinkitsune.astral_dice.choice.CardChoiceManager\");\n  var CCT = cls(\"com.merlinkitsune.astral_dice.choice.CardChoiceType\");\n  var player = AutoJS.players()[0];\n  var out = {};\n  player.closeContainer();\n  out.hasOpenBefore = CCM.hasOpenSession(player);\n  var type0 = CCT.valueOf(\"ANY\");\n  out.rejectTwo = Number(CCM.start(player, 2, type0, consumer()));\n  out.hasOpenAfterReject = CCM.hasOpenSession(player);\n  var token = Number(CCM.start(player, 3, type0, consumer()));\n  out.token = token;\n  out.tokenPositive = token > 0;\n  var menu = player.containerMenu;\n  out.menuClass = String(menu);\n  out.menuIsCardChoice = out.menuClass.indexOf(\"CardChoiceMenu\") >= 0;\n  if (!out.menuIsCardChoice) { out.abort = true; return out; }\n  out.abort = false;\n  out.slotCount = Number(menu.slotCount());\n  out.typeName = String(menu.type().name());\n  out.tokenMatches = Number(menu.token()) === token;\n  out.slotsSize = Number(menu.slots.size());\n  out.hiddenMaxStack = Number(menu.getSlot(0).getMaxStackSize());\n  var card = new S(BR.ITEM.get(RL.parse(\"astral_dice:attack_card_medium\")));\n  var stone = new S(BR.ITEM.get(RL.parse(\"minecraft:diamond\")));\n  out.mayPlaceCard = menu.getSlot(0).mayPlace(card);\n  out.mayPlaceDiamond = menu.getSlot(0).mayPlace(stone);\n  for (var i = 0; i < 3; i++) {\n    var st = new S(card.getItem());\n    try { menu.getSlot(i).setByPlayer(st); } catch (e1) { menu.getSlot(i).set(st); }\n  }\n  out.filledOnFill = Number(menu.filledSlots());\n  out.completeOnFill = menu.isComplete();\n  for (var j = 0; j < 3; j++) {\n    try { menu.getSlot(j).setByPlayer(S.EMPTY); } catch (e2) { menu.getSlot(j).set(S.EMPTY); }\n  }\n  out.filledAfterClear = Number(menu.filledSlots());\n  return out;\n})()"
+    },
+    {
+      "op": "await_state",
+      "side": "client",
+      "timeout_ms": 30000,
+      "interval_ms": 200,
+      "code": "(function(){ try { var mc = Java.loadClass(\"net.minecraft.client.Minecraft\").getInstance(); var s = mc.screen; return s != null && String(s).indexOf(\"CardChoiceScreen\") >= 0; } catch (e) { return false; } })()"
+    },
+    {
+      "op": "eval_js",
+      "side": "client",
+      "mode": "json",
+      "timeout_ms": 20000,
+      "save_as": "cardcli",
+      "code": "(function(){\n  function cls(n){ return Java.loadClass(n); }\n  var mc = cls(\"net.minecraft.client.Minecraft\").getInstance();\n  var out = {};\n  var sc = mc.screen;\n  out.screenClass = (sc == null) ? \"\" : String(sc);\n  var menu = (mc.player == null) ? null : mc.player.containerMenu;\n  out.menuClass = (menu == null) ? \"\" : String(menu);\n  if (menu != null) {\n    out.clientSlotCount = Number(menu.slotCount());\n    out.clientSlotsSize = Number(menu.slots.size());\n  } else { out.clientSlotCount = -1; out.clientSlotsSize = -1; }\n  return out;\n})()"
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "mode": "json",
+      "timeout_ms": 20000,
+      "save_as": "cardclose",
+      "code": "(function(){\n  function cls(n){ return Java.loadClass(n); }\n  var CCM = cls(\"com.merlinkitsune.astral_dice.choice.CardChoiceManager\");\n  var player = AutoJS.players()[0];\n  var out = {};\n  var token = 0;\n  var menu = player.containerMenu;\n  if (String(menu).indexOf(\"CardChoiceMenu\") >= 0) { token = Number(menu.token()); }\n  out.closedToken = token;\n  try { CCM.abandon(player, token); } catch (e) { out.abandonErr = String(e); }\n  player.closeContainer();\n  out.hasOpenAfterClose = CCM.hasOpenSession(player);\n  out.menuAfterClass = String(player.containerMenu);\n  return out;\n})()"
+    }
+  ],
+  "asserts": [
+    {
+      "type": "state",
+      "from": "mcp",
+      "expect": {
+        "Ok": true
+      }
+    },
+    {
+      "type": "state",
+      "from": "cardopen",
+      "expect": {
+        "hasOpenBefore": false,
+        "rejectTwo": -1,
+        "hasOpenAfterReject": false,
+        "tokenPositive": true,
+        "menuIsCardChoice": true,
+        "abort": false,
+        "slotCount": 3,
+        "typeName": "ANY",
+        "tokenMatches": true,
+        "slotsSize": 39,
+        "hiddenMaxStack": 1,
+        "mayPlaceCard": true,
+        "mayPlaceDiamond": false,
+        "filledOnFill": 3,
+        "completeOnFill": true,
+        "filledAfterClear": 0
+      }
+    },
+    {
+      "type": "state",
+      "from": "cardcli",
+      "expect": {
+        "screenClass": {
+          "regex": "CardChoiceScreen"
+        },
+        "menuClass": {
+          "regex": "CardChoiceMenu"
+        },
+        "clientSlotCount": 3,
+        "clientSlotsSize": 39
+      }
+    },
+    {
+      "type": "state",
+      "from": "cardclose",
+      "expect": {
+        "closedToken": {
+          "min": 1
+        },
+        "hasOpenAfterClose": false,
+        "menuAfterClass": {
+          "regex": "InventoryMenu"
+        }
+      }
+    },
+    {
+      "type": "absent",
+      "scope": "case",
+      "pattern": "AP_CARD_CHOICE: reject:reason=already_open"
+    },
+    {
+      "type": "absent",
+      "scope": "case",
+      "pattern": "AP_CARD_CHOICE: reject:reason=open_failed"
+    },
+    {
+      "type": "log",
+      "scope": "case",
+      "pattern": "AP_CARD_CHOICE: open:\\d+:player=.*:slots=3:type=ANY"
+    }
+  ]
+}

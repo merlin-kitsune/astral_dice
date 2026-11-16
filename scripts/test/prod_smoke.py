@@ -4,7 +4,7 @@
 
 ## 为什么需要它
 
-`scripts/test/fabric/ft_prod.ps1` 只按「纯 classpath」启动（Fabric 的 main class 就是普通
+`scripts/test/fabric` 下的旧生产冒烟脚本只按「纯 classpath」启动（Fabric 的 main class 就是普通
 `KnotClient`）—— 对 **Forge 1.20.1** 不够：它的 main class 是
 `cpw.mods.bootstraplauncher.BootstrapLauncher`，**必须**带上版本 JSON 里 `arguments.jvm` 的
 `-p <模块路径>` / `--add-modules ALL-MODULE-PATH` / `-DignoreList` / `-DmergeModules` /
@@ -19,7 +19,7 @@ classpath = rules 过滤后的 `libraries` + 实例 jar；JVM/游戏参数 = `ar
   * `--expect <regex>`（可重复）：日志中必须命中的行（如本模组的 `AP_PARTY: ... back_ftb=on`）。
   * `--expect-count <regex>=<n>`：命中次数必须 ≥ n（如 `AP_PARTY: `=1，防「一次都没打」）。
   * 新增崩溃报告 / `--forbid <regex>` 命中 ⇒ FAIL。
-  * 就绪基线：`Sound engine started`（原版到主菜单的标志行，与 ft_prod.ps1 同口径）。
+  * 就绪基线：`Sound engine started`（原版到主菜单的标志行，与旧生产脚本同口径）。
 
 ⚠️ 判定基线 = **本次启动**：启动前删除 `logs/latest.log`，并快照 `crash-reports/` 的既有文件。
 
@@ -293,12 +293,9 @@ def main() -> int:
                 break
             time.sleep(2)
     finally:
-        try:
-            subprocess.run(["taskkill", "/F", "/T", "/PID", str(proc.pid)],
-                           capture_output=True, text=True, timeout=60)
-        except Exception:
-            pass
         out_fh.close()
+    if proc.poll() is None:
+        print("PID       : %d 仍在运行（未终止）；由 Agent 用 mcp__windows__Process(mode:\"kill\") 终止" % proc.pid)
 
     chan = read_parts()
     txt = read_log()

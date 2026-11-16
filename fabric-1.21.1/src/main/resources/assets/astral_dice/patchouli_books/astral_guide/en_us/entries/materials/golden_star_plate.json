@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.golden_star_plate",
+  "category": "astral_dice:materials",
+  "icon": "astral_dice:golden_star_plate",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:golden_star_plate",
+      "text": "astral_dice.guide.entry.golden_star_plate.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:golden_star_plate_from_plates"
+    }
+  ],
+  "sortnum": 3
+}

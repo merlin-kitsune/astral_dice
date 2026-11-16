@@ -1,0 +1,33 @@
+{
+  "name": "item.astral_dice.effect_card_fate_guidance",
+  "category": "astral_dice:cards_effect",
+  "icon": "astral_dice:effect_card_fate_guidance",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:effect_card_fate_guidance",
+      "text": "astral_dice.guide.entry.effect_card_fate_guidance.1"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.effect_card_fate_guidance.2"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.effect_card_fate_guidance.3"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.effect_card_fate_guidance.4"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.effect_card_fate_guidance.5"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.effect_card_fate_guidance.6"
+    }
+  ],
+  "sortnum": 9
+}

@@ -211,6 +211,10 @@ public class MamushiSignItem extends BaseSignItem {
             if (hadNoCards) {
                 RandomCardHandler.giveCardTo(player, target, RandomCardHandler.CardCategory.ALL);
             }
+            // 小心思：目标佩戴金鲤立牌时，本次主动发牌使其 +1 层金鳞
+            if (SouriSignItem.isEquipped(target)) {
+                SouriSignManager.addGoldScale(target);
+            }
         }
         // ③ 释放当刻写强制冷却硬闸门(now + 1:00);**不写** sign_active_cooldown_end ——
         //    那笔由 performSkill 第 ⑧ 步按 forcedActiveCooldownTicks() 入账,避免事后覆盖既有机制。
@@ -566,5 +570,11 @@ public class MamushiSignItem extends BaseSignItem {
         setBiteBonusActive(player, false);
         MamushiDragonEffect.remove(player);
         clearBatches(player);
+    }
+
+    // 2026-11-11 P1 补齐：与 P0 同口径的机器可读拒绝。
+    @Override
+    protected boolean activateForEntity(net.minecraft.world.entity.LivingEntity owner) {
+        return com.merlinkitsune.astral_dice.item.sign.SignEntitySkills.deny("mamushi", owner, "needs_player_card_channel");
     }
 }

@@ -60,6 +60,11 @@ public class ModEffects {
     public static final RegistryObject<MobEffect> DICE_BLESSING =
             EFFECTS.register("dice_blessing", DiceBlessingEffect::new);
 
+    public static final RegistryObject<MobEffect> HOLY_SWORD_GUARD =
+            EFFECTS.register("holy_sword_guard", HolySwordGuardEffect::new);
+    public static final RegistryObject<MobEffect> SUPER_ENERGY =
+            EFFECTS.register("super_energy", SuperEnergyEffect::new);
+
     // 爆发(护法立牌 misaki 主动):持续 60 秒
     public static final RegistryObject<MobEffect> MISAKI_BURST =
             EFFECTS.register("misaki_burst", MisakiBurstEffect::new);
@@ -399,6 +404,66 @@ public class ModEffects {
      */
     public static final RegistryObject<MobEffect> LINGLING_SURGE =
             EFFECTS.register("lingling_surge", com.merlinkitsune.astral_dice.effect.LinglingSurgeEffect::new);
+
+    /**
+     * 「渊蚀印记」(魔渊幼体立牌 sykes 被动):最多叠到 20 层,每层让下一次命中多受 1 点伤害;
+     * 2:00 到期只掉 1 层(施加侧共用一个 10 秒冷却)。
+     * 图标 = {@code textures/mob_effect/abyss_mark.png}(自 1.21.1 侧逐字节复制)。
+     *
+     * <p>⚠️ 1.20.1 是 {@code RegistryObject} ⇒ 全部引用处必须 {@code .get()}(P0 线是 Holder)。
+     */
+    public static final RegistryObject<MobEffect> ABYSS_MARK =
+            EFFECTS.register("abyss_mark", com.merlinkitsune.astral_dice.effect.AbyssMarkEffect::new);
+
+    /**
+     * 「葫芦饮」(金鲤立牌 souri 主动放置的饮品):有限时长 1:00({@code GourdDrinkEffect.DURATION_TICKS}),
+     * 攻击力 +3({@code GourdDrinkEffect.ATTACK_BONUS});一次只能持有一个饮品(拾取判定见
+     * {@code SouriSignManager#isDrinkBlocked})。
+     * 图标 = {@code textures/mob_effect/gourd_drink.png}(自 forge-1.20.1 逐字节复制)。
+     *
+     * <p>⚠️ 1.20.1 是 {@code RegistryObject} ⇒ 全部引用处必须 {@code .get()}。
+     */
+    public static final RegistryObject<MobEffect> GOURD_DRINK =
+            EFFECTS.register("gourd_drink", com.merlinkitsune.astral_dice.effect.GourdDrinkEffect::new);
+
+    /**
+     * 「仙酿」(金鲤立牌 souri 化龙后放置的饮品):有限时长 2:00({@code ImmortalBrewEffect.DURATION_TICKS}),
+     * 攻击力 +4、拾取时立即回复 6 点生命并施加迅捷 I;一次只能持有一个饮品。
+     * 图标 = {@code textures/mob_effect/immortal_brew.png}(自 forge-1.20.1 逐字节复制)。
+     *
+     * <p>⚠️ 1.20.1 是 {@code RegistryObject} ⇒ 全部引用处必须 {@code .get()}。
+     */
+    public static final RegistryObject<MobEffect> IMMORTAL_BREW =
+            EFFECTS.register("immortal_brew", com.merlinkitsune.astral_dice.effect.ImmortalBrewEffect::new);
+
+    /**
+     * 「金鳞」(金鲤立牌 souri 被动):层数真值在附件 {@code ModAttachments#SOURI_GOLD_SCALES}(0..4),
+     * 本效果只是 HUD 可见载体({@code amplifier = 层数 - 1},无限时长);每层防御力 +1,
+     * 满 4 层授予「金鲤化龙」。化龙后本图标被摘掉(层数仍在,仍按层加攻)。
+     * 图标 = {@code textures/mob_effect/souri_gold_scale.png}。
+     *
+     * <p>⚠️ 1.20.1 是 {@code RegistryObject} ⇒ 全部引用处必须 {@code .get()}。
+     */
+    public static final RegistryObject<MobEffect> SOURI_GOLD_SCALE =
+            EFFECTS.register("souri_gold_scale", com.merlinkitsune.astral_dice.effect.SouriGoldScaleEffect::new);
+
+    /**
+     * 「金鲤化龙」(金鲤立牌 souri):锁存态,无限时长({@code -1});获得后每层「金鳞」额外攻击力 +1。
+     * 图标 = {@code textures/mob_effect/souri_dragon.png}。
+     *
+     * <p>⚠️ 1.20.1 是 {@code RegistryObject} ⇒ 全部引用处必须 {@code .get()}。
+     */
+    public static final RegistryObject<MobEffect> SOURI_DRAGON =
+            EFFECTS.register("souri_dragon", com.merlinkitsune.astral_dice.effect.SouriDragonEffect::new);
+
+    /**
+     * 「双生之影」(小猎手立牌 inkshadow):被动层数的 HUD 可见载体(时限 = 存活门对的到期刻;
+     * 层数只加攻击,图标随层数刷新)。图标 = {@code textures/mob_effect/inkshadow_stack.png}。
+     *
+     * <p>⚠️ 1.20.1 是 {@code RegistryObject} ⇒ 全部引用处必须 {@code .get()}。
+     */
+    public static final RegistryObject<MobEffect> INKSHADOW_STACK =
+            EFFECTS.register("inkshadow_stack", com.merlinkitsune.astral_dice.effect.InkShadowStackEffect::new);
 
     /**
      * 本模组已注册的全部效果的**只读**视图(调试命令 {@code /astralparty cleareffect} 用)。

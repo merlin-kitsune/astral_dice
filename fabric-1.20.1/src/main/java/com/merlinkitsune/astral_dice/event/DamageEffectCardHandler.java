@@ -35,7 +35,7 @@ public class DamageEffectCardHandler {
     // fuzs.puzzleslib.mixin.LivingEntityFabricMixin#actuallyHurt(@Inject(at=@At("HEAD"))) 在
     // actuallyHurt 偏移 0 派发,而护甲(偏移 12 getDamageAfterArmorAbsorb)、魔抗(19
     // getDamageAfterMagicAbsorb)、吸收(25-45)全在方法体内、注入点之后 ⇒ 载荷仍是护甲与吸收
-    // **之前**的原始入参。桥接处见 platform/PuzzlesBridges.java:99-110。
+    // **之前**的原始入参。桥接处见 platform/StarengineBridges.java:99-110。
     // 残余(平台固有,已登记 B27 报告):本线基准比 1.21.1 Pre 还早一层(护甲前),
     // 带甲或带吸收(黄心)的目标都会有差;本处只改挂点,不引入换算。
     @SubscribeEvent(priority = EventPriority.NORMAL)

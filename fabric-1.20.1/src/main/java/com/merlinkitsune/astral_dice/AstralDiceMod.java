@@ -50,6 +50,10 @@ public class AstralDiceMod implements ModInitializer {
         //    先做「Trinkets 或 Accessories 二选一」判定,玩家看到的就是完整的中文说明
         //    而不是一个 NoClassDefFoundError 堆栈(2026-09-29 用户裁决)。
         ModCompatibilityCheck.verifyAccessoryProviderOrThrow();
+        // 主项目 common 源码根:平台工厂在加载器兼容性判定之后、任何内容注册之前落位
+        // (仅 set + install,零行为变化),之后 AstralDiceApi 才能取到正确的平台 id。
+        com.merlinkitsune.astral_dice.platform.AstralDicePlatforms.install(
+                new com.merlinkitsune.astral_dice.platform.FabricAstralDicePlatform());
         // ⚠️ 必须在这里(**mod 初始化期**)强制附件键注册 —— 它的静态初始化是惰性的,
         //    若推迟到「第一次读写附件」(= 玩家登录处理器)才跑,则玩家 NBT 反序列化时
         //    注册表里还没有这些 id,Fabric 会逐条 "Unknown attachment type ... skipping"
@@ -63,6 +67,8 @@ public class AstralDiceMod implements ModInitializer {
         FabricBridges.installEarly();
         // 战利品注入(FAPI LootTableEvents.MODIFY):替代 Forge 侧的 GLM + LootTableLoadEvent 两条通道
         com.merlinkitsune.astral_dice.loot.FabricLootInjector.register();
+        com.merlinkitsune.astral_dice.data.FabricDataReloadHandler.register();
+        com.merlinkitsune.astral_dice.combat.FabricDamageBridge.register();
         commitRegistrations();
         // B0 平台注册链(顺序敏感):POI 建 BlockState→PoiType 映射表依赖方块已注册;
         // 职业依赖 POI 的 ResourceKey 存在;交易表依赖职业已 commit(否则 RegistryObject.get() 抛异常)。
@@ -86,6 +92,11 @@ public class AstralDiceMod implements ModInitializer {
         //    都处于「代码在、但没接上」的静默失效状态)。位置 = 监听器注册之后,
         //    这样桥第一次派发时订阅者一定已在总线上。
         FabricBridges.install();
+        // 内容注册表在服务器启动后冻结(KubeJS 服务器脚本此时已加载完成)。
+        net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STARTED.register(server -> {
+            com.merlinkitsune.astral_dice.api.AstralDiceApi.freezeContent();
+            LOGGER.info("[Astral Dice] 内容注册表已在服务器启动后冻结。");
+        });
         // Trinkets 通道(硬→软:2026-09-29 起 Trinkets 与 Accessories **二选一**即可)。
         // ⚠️ 守卫放在**调用点**而不是方法体内 —— TrinketBridge 直接引用
         //    dev.emi.trinkets.api.*(含内部 record Adapter implements Trinket),
@@ -152,9 +163,11 @@ public class AstralDiceMod implements ModInitializer {
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.combat.PlayerHostilityTrackerEvents.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.combat.SherryThrowManager.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.combat.ShootingStarManager.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.combat.SwordInStoneRainManager.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.command.AstralPartyCommand.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.economy.StarCoinPickupHandler.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.event.AnvilUpgradeHandler.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.event.DiceUpgradeCraftHandler.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.event.BarricadeAggroHandler.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.event.ChipDamageHandler.class);
         // B2-8 批次:死亡保底 —— onPlayerDrops(LivingDropsEvent, LOWEST) 决定「死亡不掉落饰品」、
@@ -188,6 +201,7 @@ public class AstralDiceMod implements ModInitializer {
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.event.RepulsionCreeperGuard.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.event.RepulsionTeleportGuard.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.event.TemporaryCardEvents.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.AbyssMarkManager.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.InvestigationEventUtil.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.MarkManager.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.RenShieldManager.class);
@@ -227,8 +241,11 @@ public class AstralDiceMod implements ModInitializer {
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.PandamanSignItem.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.PaparaSignItem.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.SherrySignItem.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.SykesSignItem.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.TeruSignItem.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.ZhaoSignItem.class);
+        // inkshadow 立牌：放置窗口 tick / 交互拦截 / 死亡与掉线清理；LoaderBus 不递归内部类，必须显式登记。
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.event.InkShadowSignEvents.class);
         // 卡牌商店货架周期(B1-CARDSHOP):forge 靠 @Mod.EventBusSubscriber 自动订阅,Fabric 必须显式登记;
         // 漏登记 = 换牌/补差全部静默停摆(不报错,只是货架永不刷新)。
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.shop.CardShopCycleTicker.class);
@@ -355,6 +372,8 @@ public class AstralDiceMod implements ModInitializer {
             com.merlinkitsune.astral_dice.network.ModNetwork.register();
             // 卡牌类型注册表初始化(战斗牌定义集中管理)
             com.merlinkitsune.astral_dice.combat.CardRegistry.init();
+            // 把内置立牌 / 筹码接进 StarEngine 内容注册表(冻结在服务器启动后)。
+            com.merlinkitsune.astral_dice.content.BuiltinContent.register();
         });
     }
 }

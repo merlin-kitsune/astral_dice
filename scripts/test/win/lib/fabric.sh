@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ============================================================================
-# scripts/test/win/lib/fabric.sh — fabric-1.20.1 线的 bash 侧实现
+# scripts/test/win/lib/fabric.sh — fabric 线（fabric-<mcver>）的 bash 侧实现
 #
 # 定位：库文件（不是可执行脚本）。由 lib/common.sh 末尾 source（见 common.sh
 #   的 MT_FABRIC_LIB_LOADED 段），因此 mt.sh / env.sh / launch.sh / stop.sh /
@@ -8,13 +8,13 @@
 #
 # 为什么单独成文件：fabric 线与前三条线有三处结构性差异，集中放一处才不会
 #   污染既有三线的代码路径：
-#     1) run 目录是**双目录**：fabric-1.20.1/run/<client|server>，
+#     1) run 目录是**双目录**：<fabric-子项目>/run/<client|server>，
 #        而 P0 三线是 仓库根/run/<版本>（单目录）；
-#     2) AutoJS 是**条件依赖**：fabric-1.20.1/build.gradle:182-190 只有在
+#     2) AutoJS 是**条件依赖**：各 fabric 线的 build.gradle（autojsTestMod 开关）只有在
 #        -PautojsTestMod=1 时才 modRuntimeOnly 引入 AutoJS，运行目录默认没有它
 #        ⇒ 没有 MCP，注入只能走 RCON（127.0.0.1:25575 / 口令 astralft，
-#        见 scripts/test/fabric/ft_env.ps1:143-150）；
-#     3) 旧 fabric 测试台（scripts/test/fabric/ft_*.ps1）的机器行前缀是
+#        见旧 fabric 测试台的环境段）；
+#     3) 旧 fabric 测试台（已退役）的机器行前缀是
 #        MT_FAB_*，本文件把这类输出归一成主测试台的 MT_*（只读兼容，不改旧脚本）。
 #
 # 依赖约定：本文件**不 source common.sh**（避免循环包含）。它只调用 common.sh
@@ -27,18 +27,39 @@ MT_FABRIC_LIB_LOADED=1
 MT_FABRIC_LIB_VERSION="1.0.0-win"
 
 # ── 常量（版本 / 子项目 / 侧 / RCON）────────────────────────────────────────
-MT_FABRIC_VERSION="fabric-1.20.1"
-MT_FAB_SUBPROJECT="fabric-1.20.1"
+# 当前 fabric 线由 --version 现算（mt_fab_set_version）；这里的默认值只是「未给版本」时的兜底。
+MT_FABRIC_VERSION="${MT_FABRIC_VERSION:-fabric-1.20.1}"
+MT_FAB_SUBPROJECT="${MT_FAB_SUBPROJECT:-$MT_FABRIC_VERSION}"
 MT_FAB_SIDES="client server"
 MT_FAB_DEFAULT_SIDE="client"
 MT_FAB_RCON_PORT="${MT_FAB_RCON_PORT:-25575}"
 MT_FAB_RCON_PASSWORD="${MT_FAB_RCON_PASSWORD:-astralft}"
-# 就绪判据与旧测试台 ft_launch.ps1:131 的 ready pattern 同源
+# 就绪判据与旧 fabric 测试台的 ready pattern 同源
 MT_FAB_READY_SERVER='Done \([0-9.]\+s\)! For help'
 MT_FAB_READY_CLIENT='Sound engine finished|Sound engine started'
 
 # ── 版本 / 子项目 / 侧 ──────────────────────────────────────────────────────
-mt_is_fabric() { [ "${1:-}" = "$MT_FABRIC_VERSION" ]; }
+# 前缀判定：fabric 线全线通用（"1.21.1" 是 "fabric-1.21.1" 的子串，故用前缀而不是子串）。
+mt_is_fabric() {
+    case "${1:-}" in
+        fabric-*) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+# 由 --version 现算当前 fabric 版本；非 fabric 版本返回 1 且不改动全局。
+mt_fab_set_version() {
+    local v="${1:-}"
+    case "$v" in
+        fabric-*) ;;
+        *) return 1 ;;
+    esac
+    MT_FABRIC_VERSION="$v"
+    MT_FAB_SUBPROJECT="$v"
+    # 导出：stop.sh 等子进程脚本只读全局，由父进程带过去（单线调用即可命中本版本的 run 目录）
+    export MT_FABRIC_VERSION MT_FAB_SUBPROJECT
+    return 0
+}
 
 mt_fab_subproject() { printf '%s' "$MT_FAB_SUBPROJECT"; }
 
@@ -87,7 +108,7 @@ mt_fab_jar_dir() {
     printf '%s/%s/build/libs' "$MT_REPO_ROOT" "$MT_FAB_SUBPROJECT"
 }
 
-# 通用 run 根（三线 ⇒ <repo>/run/<version>；fabric ⇒ <repo>/fabric-1.20.1/run/<side>）
+# 通用 run 根（三线 ⇒ <repo>/run/<version>；fabric ⇒ <repo>/<fabric-子项目>/run/<side>）
 mt_fabric_run_root() {
     local v side
     v="${1:-}"
@@ -154,14 +175,14 @@ mt_fab_gradle_autojs_arg() {
 }
 
 mt_fab_autojs_note() {
-    printf 'fabric-1.20.1 AutoJS=%s（开关 -PautojsTestMod=1；未开启时注入/断言回退 RCON 127.0.0.1:%s）' \
-        "$(mt_fab_autojs_mode "${1:-}")" "$MT_FAB_RCON_PORT"
+    printf '%s AutoJS=%s（开关 -PautojsTestMod=1；未开启时注入/断言回退 RCON 127.0.0.1:%s）' \
+        "$MT_FABRIC_VERSION" "$(mt_fab_autojs_mode "${1:-}")" "$MT_FAB_RCON_PORT"
 }
 
-# ── AutoJS 注入状态文件（launch.sh 写 / stop.sh 删 / PowerShell 通道判定读）────
+# ── AutoJS 注入状态文件（launch.sh 写 / stop.sh 删 / 通道判定读）────
 # 存在理由：fabric 的 AutoJS 是**条件依赖**，由 -PautojsTestMod=1 以 modRuntimeOnly 注入运行期
 # classpath，**永远不进 run/<side>/mods**；而「mods 里有没有 AutoJS-*.jar」是既有就绪判据
-# （scripts/test/win/launch.sh:191-210、scripts/test/lib/Mt.Channel.psm1:225-242）。制品是
+# （scripts/test/win/launch.sh:191-210、scripts/test/lib/mt_channel.py:225-242）。制品是
 # intermediary 命名空间，手放进 mods 会 NoSuchMethodError（TESTING-RULES-OVERVIEW.md:191 规则 6），
 # 所以判据只能改成「本次启动是否真的注入了」——落这个文件。
 mt_fab_autojs_state_path() {
@@ -180,8 +201,8 @@ mt_fab_autojs_state_write() {
     {
         if [ -n "$arg" ]; then printf 'autojs=1\n'; else printf 'autojs=0\n'; fi
         printf 'gradle_arg=%s\n' "${arg:-<none>}"
-        printf 'artifact=AutoJS-fabric-1.20.1-1.0.0.jar\n'
-        printf 'source=mavenLocal:cc.sighs.autojs/AutoJS-fabric-1.20.1/1.0.0\n'
+        printf 'artifact=AutoJS-%s-1.0.0.jar\n' "$MT_FABRIC_VERSION"
+        printf 'source=mavenLocal:cc.sighs.autojs/AutoJS-%s/1.0.0\n' "$MT_FABRIC_VERSION"
         printf 'side=%s\n' "$side"
         printf 'stamp=%s\n' "$(date +%Y%m%d-%H%M%S)"
     } > "$path" 2>/dev/null || return 1
@@ -351,7 +372,7 @@ sys.exit(0)
 PY
 }
 
-# ── 旧机器行归一：MT_FAB_* → MT_*（只用于读旧 pwsh 测试台输出）──────────────
+# ── 旧机器行归一：MT_FAB_* → MT_*（只用于读迁移前测试台输出）──────────────
 mt_fab_normalize_stream() {
     sed -u -e 's/^MT_FAB_INFO:[[:space:]]*/MT_INFO: /' \
            -e 's/^MT_FAB_WARN:[[:space:]]*/MT_WARN: /' \
@@ -388,7 +409,7 @@ mt_fab_marker_hit() {
     grep -qE "$pat" "$log" 2>/dev/null
 }
 
-# ── launch：委托 win/launch.sh（bash 原生，不碰 pwsh）───────────────────────
+# ── launch：委托 win/launch.sh（bash 原生，不碰外部脚本）───────────────────
 mt_fab_phase_launch() {
     local v side rc tsk ajarg other
     v="${1:-$MT_FABRIC_VERSION}"
@@ -412,7 +433,7 @@ mt_fab_phase_launch() {
     return "$rc"
 }
 
-# ── cases：bash 原生解析 scripts/test/cases/*-fabric-1.20.1.json ────────────
+# ── cases：bash 原生解析 scripts/test/cases/*-<当前 fabric 版本>.json ───────
 mt_fab_cases_dir() {
     [ -n "${MT_REPO_ROOT:-}" ] || return 1
     printf '%s/scripts/test/cases' "$MT_REPO_ROOT"
@@ -422,7 +443,7 @@ mt_fab_case_files() {
     local dir
     dir="$(mt_fab_cases_dir)" || return 1
     [ -d "$dir" ] || return 1
-    ls "$dir"/*-fabric-1.20.1.json 2>/dev/null
+    ls "$dir"/*-"$MT_FABRIC_VERSION".json 2>/dev/null
 }
 
 mt_fab_state_dir() {
@@ -459,7 +480,7 @@ mt_fab_cases_run() {
     "$py" - "$MT_REPO_ROOT" "$v" "$case_sel" "$side" "$(mt_fab_autojs_mode "$side")" \
         "$(mt_fab_rcon_port)" "$(mt_fab_rcon_password)" "$(mt_fab_report_file "$v")" \
         "$(mt_fab_jar_dir)" <<'PY'
-import glob, json, os, re, socket, struct, sys, time, zipfile
+import glob, json, os, re, socket, struct, subprocess, sys, time, zipfile
 
 repo, version, case_sel, side, autojs, rport, rpw, result_file, jar_dir = sys.argv[1:10]
 rport = int(rport)
@@ -543,7 +564,9 @@ def jar_stats():
         'jar': os.path.basename(p),
         'entries': len(names),
         'models': count('assets/astral_dice/models/item/', '.json'),
-        'recipes': count('data/astral_dice/recipes/', '.json'),
+        # 1.20.1 用 recipes/，1.21+ 用 recipe/ —— 两个都数（与 mt_paths.RECIPES_PREFIXES 同口径；
+        # 只数 recipes/ 会让 fabric-1.21.1 的 JAR-ASSETS 断言 recipes=0 恒 FAIL，2026-11-05 实测）
+        'recipes': count('data/astral_dice/recipes/', '.json') + count('data/astral_dice/recipe/', '.json'),
         'trinkets': count('data/trinkets/', '.json'),
         'bountiful': count('data/bountiful/', '.json'),
         'embed': count('META-INF/jars/', '.jar'),
@@ -551,7 +574,7 @@ def jar_stats():
     }
 
 
-LOG = os.path.join(repo, 'fabric-1.20.1', 'run', side, 'logs', 'latest.log')
+LOG = os.path.join(repo, version, 'run', side, 'logs', 'latest.log')
 
 
 def log_text():
@@ -656,9 +679,9 @@ def eval_assert(a, state):
 if case_sel:
     cases = [case_sel if os.path.isabs(case_sel) else os.path.join(repo, case_sel)]
 else:
-    cases = sorted(glob.glob(os.path.join(repo, 'scripts', 'test', 'cases', '*-fabric-1.20.1.json')))
+    cases = sorted(glob.glob(os.path.join(repo, 'scripts', 'test', 'cases', '*-%s.json' % version)))
 if not cases:
-    err('MT_ERROR: 没有找到 fabric 条目（scripts/test/cases/*-fabric-1.20.1.json）')
+    err('MT_ERROR: 没有找到 fabric 条目（scripts/test/cases/*-%s.json）' % version)
     sys.exit(11)
 
 # 结果文件按“本次运行”重置：否则 report 会把历次运行累加（例如 2 次 × 9 条读成 18 条）。
@@ -697,6 +720,41 @@ for path in cases:
         fail_n += 1
         err('MT_CASE: %s = FAIL — version=%s 与本轮 %s 不符' % (cid, case.get('version'), version))
         records.append({'case_id': cid, 'verdict': 'FAIL', 'why': 'version'})
+        continue
+
+    if str(case.get('channel') or '') == 'autojs':
+        # channel=autojs 的条目（客户端 eval_js / mcp_status / await_state）转主运行器 mt_case.py：
+        # 本内嵌运行器只有 RCON + 日志 + 开包三种能力，没有 AutoJS 客户端通道（2026-11-05 实测：
+        # 直接走本运行器会把 MODLIST 这类条目判成 BLOCKED）。mt_case.py 已支持 fabric 的 run 目录与 jar 统计。
+        runner = os.path.join(repo, 'scripts', 'test', 'lib', 'mt_case.py')
+        case_run_dir = os.path.join(repo, version, 'run', side)
+        try:
+            proc = subprocess.run([sys.executable, runner, 'run', '--case', path,
+                                   '--version', version, '--run-dir', case_run_dir,
+                                   '--case-timeout', '240'],
+                                  stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                  universal_newlines=True, encoding='utf-8', errors='replace')
+        except OSError as exc:
+            blocked_n += 1
+            err('MT_CASE: %s = BLOCKED — 调用 mt_case.py 失败：%s' % (cid, exc))
+            records.append({'case_id': cid, 'verdict': 'BLOCKED', 'why': 'autojs-delegate:%s' % exc})
+            continue
+        text = proc.stdout or ''
+        for ln in text.splitlines():
+            if ln.startswith(('MT_CASE_RESULT', 'MT_CASE_DETAIL', 'MT_CASE_SUMMARY')):
+                out(ln)
+        if proc.returncode == 0:
+            ok_n += 1
+            out('MT_CASE: %s = OK（channel=autojs，mt_case.py 运行器）' % cid)
+            records.append({'case_id': cid, 'verdict': 'OK', 'why': 'autojs(mt_case.py)'})
+        elif proc.returncode == 11:
+            blocked_n += 1
+            err('MT_CASE: %s = BLOCKED — AutoJS 通道不可用（mt_case.py exit 11）' % cid)
+            records.append({'case_id': cid, 'verdict': 'BLOCKED', 'why': 'autojs-delegate:exit11'})
+        else:
+            fail_n += 1
+            err('MT_CASE: %s = FAIL — mt_case.py exit %d' % (cid, proc.returncode))
+            records.append({'case_id': cid, 'verdict': 'FAIL', 'why': 'autojs-delegate:exit%d' % proc.returncode})
         continue
 
     steps = case.get('steps') or []
@@ -742,7 +800,7 @@ for path in cases:
             verdict, why = 'BLOCKED', '%s 需要 AutoJS（当前 AutoJS=%s；fabric 的 AutoJS 是 -PautojsTestMod=1 条件依赖）' % (op, autojs)
             break
         if op in ('screenshot', 'kubejs_reload'):
-            verdict, why = 'BLOCKED', '%s 在 bash 侧未实现（旧通道见 scripts/test/fabric/ft_inject.ps1）' % op
+            verdict, why = 'BLOCKED', '%s 在 bash/python 侧未实现（旧 fabric 注入通道已退役删除；能力缺口登记见 docs/features/devnext-bash-testbed-decisions.md）' % op
             break
         if op == 'assert':
             res, detail = eval_assert(step, state)
@@ -809,7 +867,7 @@ mt_fab_phase_cases() {
     mt_phase_require_repo || return $?
     if [ "${MT_DRY_RUN:-0}" = 1 ]; then
         count="$(mt_fab_case_files 2>/dev/null | wc -l | tr -d ' ')"
-        mt_phase_dry "bash（原生）解析 scripts/test/cases/*-fabric-1.20.1.json —— 条目 ${count} 个" \
+        mt_phase_dry "bash（原生）解析 scripts/test/cases/*-${MT_FABRIC_VERSION}.json —— 条目 ${count} 个" \
             "side=$(mt_fab_side "${MT_SIDE:-}")；$(mt_fab_autojs_note "${MT_SIDE:-}")" \
             "判据：全部 OK → PASS(0)；任一 FAIL → FAIL(1)；无 FAIL 但有 BLOCKED → BLOCKED(11)" \
             "结果落 $(mt_fab_report_file "$v")"
@@ -838,7 +896,7 @@ mt_fab_phase_report() {
     return "$rc"
 }
 
-## mt_fab_report_mark <version> <phase> <result>：与 pwsh 的 report mark 同语义
+## mt_fab_report_mark <version> <phase> <result>：与迁移前的 report mark 同语义
 ##   机器行按主测试台口径单写 MT_INFO:（mt_info 打的是 "INFO: key — detail"，此处不用它）
 mt_fab_report_mark() {
     local v phase result dir
@@ -877,7 +935,7 @@ if os.path.isfile(src):
             except ValueError:
                 pass
 cnt = Counter(r.get('verdict', '?') for r in recs)
-lines = ['# fabric-1.20.1 报告（%s）' % version, '', '条目数：%d' % len(recs), '']
+lines = ['# %s 报告（%s）' % (version, version), '', '条目数：%d' % len(recs), '']
 lines.append('| 结论 | 条数 |')
 lines.append('| --- | --- |')
 for k in ('OK', 'FAIL', 'BLOCKED'):
@@ -900,7 +958,7 @@ PY
     return "$rc"
 }
 
-# ── preflight：fabric 前置检查（bash 原生，不委托 pwsh）──────────────────────
+# ── preflight：fabric 前置检查（bash 原生，不委托外部脚本）──────────────────
 mt_fab_phase_preflight() {
     local v problems side s
     v="${1:-$MT_FABRIC_VERSION}"
@@ -944,7 +1002,7 @@ mt_fab_phase_preflight() {
         mt_warn fabric_rcon "RCON 127.0.0.1:$(mt_fab_rcon_port) 不可达（服务端未启动属预期；注入类条目会判 BLOCKED）"
     fi
     if [ "$problems" -gt 0 ]; then
-        printf 'MT_PREFLIGHT: BLOCKED — fabric-1.20.1 前置欠缺 %s 项\n' "$problems" >&2
+        printf 'MT_PREFLIGHT: BLOCKED — %s 前置欠缺 %s 项\n' "$MT_FAB_SUBPROJECT" "$problems" >&2
         return 11
     fi
     printf 'MT_PREFLIGHT: OK\n'

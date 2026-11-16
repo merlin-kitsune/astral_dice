@@ -69,5 +69,11 @@ public class PadmanSignItem extends BaseSignItem {
 
     public static int getDefenseBonus(ItemStack stack) {
         return stack.getOrDefault(ModDataComponents.PADMAN_DEF_BONUS.get(), 0);
+    
+}
+    // 2026-11-09（A）：类玩家宿主的主动入口 —— 当前语义依赖玩家侧通道，显式拒绝并留锚点。
+    @Override
+    protected boolean activateForEntity(net.minecraft.world.entity.LivingEntity owner) {
+        return com.merlinkitsune.astral_dice.item.sign.SignEntitySkills.deny("padman", owner, "needs_player_target");
     }
 }

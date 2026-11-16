@@ -241,6 +241,22 @@ public final class DiceCombatModifiers {
      * {@code defensePoints} ⇒ 文案「防御力 +X」与实机读数不符(数值口径失真)。现按系数倒数换算:
      * 玩家 +X 防御力落 +X 防御力(≈3.33X 护甲),生物按 0.40 系数(2.5X 护甲)。
      */
+    static {
+        registerAttackModifier((ctx, attackPower) -> {
+            if (ctx.attacker.level().isClientSide()) return attackPower;
+            if (ctx.attacker.hasEffect(com.merlinkitsune.astral_dice.effect.ModEffects.HOLY_SWORD_GUARD.get())) {
+                attackPower += 2.0;
+            }
+            if (ctx.attacker instanceof Player player) {
+                var energy = player.getEffect(com.merlinkitsune.astral_dice.effect.ModEffects.SUPER_ENERGY.get());
+                if (energy != null) {
+                    attackPower += 2.0 * Math.min(10, energy.getAmplifier() + 1);
+                }
+            }
+            return attackPower;
+        });
+    }
+
     public static void setDefenseArmorBonus(Player player, String modifierKey, int defensePoints) {
         if (player == null || player.level().isClientSide()) return;
         AttributeInstance attr = player.getAttribute(Attributes.ARMOR);
@@ -324,7 +340,12 @@ public final class DiceCombatModifiers {
     }
 
     // 玩家是否佩戴指定 Curios 物品
-    private static boolean hasCurio(Player player, net.minecraft.world.item.Item item) {
+    /** G6(2026-11-08)：玩家专属修饰器在注册生物上按「不适用」跳过。 */
+    private static Player playerOrNull(DiceCombatContext ctx) {
+        return ctx != null && ctx.attacker instanceof Player p ? p : null;
+    }
+
+    private static boolean hasCurio(net.minecraft.world.entity.LivingEntity player, net.minecraft.world.item.Item item) {
         if (player == null) return false;
         // 总闸门:未佩戴骰子 ⇒ 立牌/筹码的战斗数值加成一律不生效(数值仍保留在附件/物品上)
         if (!com.merlinkitsune.astral_dice.item.CurioSlotUtil.hasDiceEquipped(player)) return false;
@@ -403,9 +424,10 @@ public final class DiceCombatModifiers {
             return ap;
         });
         registerExtraDamageModifier(ctx -> {
+            Player __g6p = playerOrNull(ctx);
             if (ctx.attacker.level().isClientSide()) return 0;
             if (!CutterChipItem.isActive(ctx.attacker)) return 0;
-            int healing = HealingManager.getPoints(ctx.attacker);
+            int healing = __g6p == null ? 0 : HealingManager.getPoints(__g6p);
             if (healing <= 0) return 0;
             int copies = 0;
             if (hasCurio(ctx.attacker, ModItems.CUTTER_CHIP.get())) copies++;
@@ -475,27 +497,32 @@ public final class DiceCombatModifiers {
         //    FlashlightBurstChipItem#extraDamage 的类内 javadoc 亦已写死「结算见 DiceCombatModifiers 额外加伤修饰器」。
         // 装备判定走 FlashlightBurstChipItem#isEquipped(含 hasDiceEquipped 总闸门,与上方强光同款)。
         registerExtraDamageModifier(ctx -> {
+            Player __g6p = playerOrNull(ctx);
             if (ctx.attacker.level().isClientSide()) return 0;
-            return com.merlinkitsune.astral_dice.item.chip.FlashlightBurstChipItem.extraDamage(ctx.attacker);
+            return __g6p == null ? 0 : com.merlinkitsune.astral_dice.item.chip.FlashlightBurstChipItem.extraDamage(__g6p);
         });
 
         // === 内置:电流剑(每 4 点充能 +1 攻击力) ===
         registerAttackModifier((ctx, ap) -> {
+            Player __g6p = playerOrNull(ctx);
             if (ctx.attacker.level().isClientSide()) return ap;
-            ap += ElectricSwordChipItem.getAttackBonus(ctx.attacker);
+            if (__g6p != null) ap += ElectricSwordChipItem.getAttackBonus(__g6p);
             return ap;
         });
 
         // === 内置:高级外设(充能 ≥ 4 时攻击力 +4) ===
         registerAttackModifier((ctx, ap) -> {
+            Player __g6p = playerOrNull(ctx);
             if (ctx.attacker.level().isClientSide()) return ap;
-            ap += AdvancedPeripheralsChipItem.getAttackBonus(ctx.attacker);
+            if (__g6p != null) ap += AdvancedPeripheralsChipItem.getAttackBonus(__g6p);
             return ap;
         });
 
         // === 内置:夹心饼干-美味(最大生命值超过 20 点的部分,每 4 点 +1 攻击力) ===
         registerAttackModifier((ctx, ap) -> {
-            Player p = ctx.attacker;
+            Player __g6p = playerOrNull(ctx);
+            Player p = __g6p;
+            if (p == null) return ap;
             if (p.level().isClientSide()) return ap;
             if (hasCurio(p, ModItems.SANDWICH_HIGH.get())) {
                 ap += com.merlinkitsune.astral_dice.item.chip.SandwichChipItem.getAttackBonus(p);
@@ -518,7 +545,9 @@ public final class DiceCombatModifiers {
 
         // === 内置:吸血鬼立牌(papara)被动(半血或"汲取"期间攻击力+3) ===
         registerAttackModifier((ctx, ap) -> {
-            Player p = ctx.attacker;
+            Player __g6p = playerOrNull(ctx);
+            Player p = __g6p;
+            if (p == null) return ap;
             if (p.level().isClientSide()) return ap;
             boolean active = p.getHealth() <= p.getMaxHealth() / 2.0f || p.hasEffect(ModEffects.PAPARA_BITE.get());
             if (active && hasCurio(p, ModItems.PAPARA_SIGN.get())) {
@@ -544,23 +573,27 @@ public final class DiceCombatModifiers {
         // === 额外加伤:星币锤(进入骰神赐福消耗星币,按持有总数 30% 加伤,赐福结束清除) ===
         // 2026-09-25 用户裁决:由「攻击力修饰器」改为**额外加伤修饰器**(独立伤害类型)。
         registerExtraDamageModifier(ctx -> {
+            Player __g6p = playerOrNull(ctx);
             if (!hasCurio(ctx.attacker, ModItems.STAR_COIN_HAMMER.get())) return 0;
-            return ModAttachments.getStarCoinHammerBonus(ctx.attacker);
+            return __g6p == null ? 0 : ModAttachments.getStarCoinHammerBonus(__g6p);
         });
 
         // === 内置:诅咒之剑(装备时受青之诅咒;每击杀 1 个不少于 20 血的敌对目标攻击力 +1,上限由配置决定) ===
         registerAttackModifier((ctx, ap) -> {
+            Player __g6p = playerOrNull(ctx);
             if (hasCurio(ctx.attacker, ModItems.CURSED_SWORD.get())) {
-                ap += ModAttachments.getCursedSwordBonus(ctx.attacker);
+                if (__g6p != null) ap += ModAttachments.getCursedSwordBonus(__g6p);
             }
             return ap;
         });
 
         // === 内置:复仇之戟(拥有指定负面/诅咒效果时攻击力 +6,只触发一次不叠加) ===
         registerAttackModifier((ctx, ap) -> {
-            if (ctx.attacker.level().isClientSide()) return ap;
-            if (RevengeHalberdChipItem.isEquipped(ctx.attacker)
-                    && RevengeHalberdChipItem.hasAttackTriggerEffect(ctx.attacker)) {
+            Player __g6p = playerOrNull(ctx);
+            if (__g6p == null) return ap;
+            if (__g6p.level().isClientSide()) return ap;
+            if (RevengeHalberdChipItem.isEquipped(__g6p)
+                    && RevengeHalberdChipItem.hasAttackTriggerEffect(__g6p)) {
                 ap += RevengeHalberdChipItem.BONUS;
             }
             return ap;
@@ -568,9 +601,11 @@ public final class DiceCombatModifiers {
 
         // === 内置:大当家立牌(boss)被动:拥有养精蓄锐时攻击力 +2 ===
         registerAttackModifier((ctx, ap) -> {
-            if (ctx.attacker.level().isClientSide()) return ap;
-            if (FenSignItem.isEquipped(ctx.attacker)
-                    && ModAttachments.getFenRecharge(ctx.attacker) > 0) {
+            Player __g6p = playerOrNull(ctx);
+            if (__g6p == null) return ap;
+            if (__g6p.level().isClientSide()) return ap;
+            if (FenSignItem.isEquipped(__g6p)
+                    && ModAttachments.getFenRecharge(__g6p) > 0) {
                 ap += 2;
             }
             return ap;
@@ -589,16 +624,18 @@ public final class DiceCombatModifiers {
         // 在"赐福结束 / 被移除 / 死亡 / 重登"四处幂等调用),
         // 故效果不存在时附件必为 0(回收彻底、与本表其它来源互不影响)。
         registerAttackModifier((ctx, ap) -> {
+            Player __g6p = playerOrNull(ctx);
             if (ctx.attacker.level().isClientSide()) return ap;
-            ap += ModAttachments.getZhaoOverflowBonus(ctx.attacker);
+            if (__g6p != null) ap += ModAttachments.getZhaoOverflowBonus(__g6p);
             return ap;
         });
 
         // === 内置:骇客立牌(nancy_lu)被动攻击/主动远程侵入攻击力 ===
         registerAttackModifier((ctx, ap) -> {
+            Player __g6p = playerOrNull(ctx);
             if (ctx.attacker.level().isClientSide()) return ap;
-            ap += NancyLuSignItem.getAttackBonus(ctx.attacker);
-            ap += NancyLuSignItem.getActiveAttackBonus(ctx.attacker);
+            if (__g6p != null) ap += NancyLuSignItem.getAttackBonus(__g6p);
+            if (__g6p != null) ap += NancyLuSignItem.getActiveAttackBonus(__g6p);
             return ap;
         });
 
@@ -612,9 +649,11 @@ public final class DiceCombatModifiers {
         });
         // === 内置:枪匠立牌(moses)弱点识破攻击力(每层 +1) ===
         registerAttackModifier((ctx, ap) -> {
-            if (ctx.attacker.level().isClientSide()) return ap;
-            if (MosesSignItem.isEquipped(ctx.attacker)) {
-                ap += WeaknessRevealEffect.getStacks(ctx.attacker);
+            Player __g6p = playerOrNull(ctx);
+            if (__g6p == null) return ap;
+            if (__g6p.level().isClientSide()) return ap;
+            if (MosesSignItem.isEquipped(__g6p)) {
+                if (__g6p != null) ap += WeaknessRevealEffect.getStacks(__g6p);
             }
             return ap;
         });
@@ -648,11 +687,13 @@ public final class DiceCombatModifiers {
         // 走独立伤害类型(不进骰战攻击力),与上方调查阶段的攻击力加成**互不替代**(两者可同时生效)。
         // ⚠️ 闸门沿用 isBlessingTarget:只有"骰战适用目标"才追加(与上方同源)。
         registerExtraDamageModifier(ctx -> {
-            if (ctx.attacker.level().isClientSide()) return 0;
+            Player __g6p = playerOrNull(ctx);
+            if (__g6p == null) return 0;
+            if (__g6p.level().isClientSide()) return 0;
             if (!com.merlinkitsune.astral_dice.combat.DiceCombatEvents
-                    .isBlessingTarget(ctx.target, ctx.attacker)) return 0;
+                    .isBlessingTarget(ctx.target, __g6p)) return 0;
             return com.merlinkitsune.astral_dice.effect.ConcealmentEffect
-                    .revealedMarkDamage(ctx.attacker, ctx.target);
+                    .revealedMarkDamage(__g6p, ctx.target);
         });
 
         // === 内置:上班族立牌(padman)攻击力增益 + 破防标志 ===
@@ -678,17 +719,21 @@ public final class DiceCombatModifiers {
         // (所以不需要第二条链路)。临时牌**同样计入**它只是一张普通战斗牌,只是被打了标记;
         // 被动防御力(+2/防御牌)走真实护甲折算,见 NardisSignItem#onCurioTick。
         registerAttackModifier((ctx, ap) -> {
-            if (ctx.attacker.level().isClientSide()) return ap;
-            if (!NardisSignItem.isEquipped(ctx.attacker)) return ap;
+            Player __g6p = playerOrNull(ctx);
+            if (__g6p == null) return ap;
+            if (__g6p.level().isClientSide()) return ap;
+            if (!NardisSignItem.isEquipped(__g6p)) return ap;
             WeaponEnhancement enh = ctx.enhancement != null
                     ? ctx.enhancement
-                    : NardisSignItem.equippedEnhancement(ctx.attacker);
+                    : NardisSignItem.equippedEnhancement(__g6p);
             return ap + NardisSignItem.BONUS_PER_CARD * NardisSignItem.countStones(enh, false);
         });
 
         // === 内置:肾上腺素-高效筹码(生命值为 50% 或更低时攻击力 +8;汲取期间无条件触发) ===
         registerAttackModifier((ctx, ap) -> {
-            Player p = ctx.attacker;
+            Player __g6p = playerOrNull(ctx);
+            Player p = __g6p;
+            if (p == null) return ap;
             if (p.level().isClientSide()) return ap;
             if (!com.merlinkitsune.astral_dice.item.chip.AdrenalineChipItem.isLowHp(p)) return ap;
             if (hasCurio(p, ModItems.ADRENALINE_LOW.get())) ap += AdrenalineChipItem.BONUS_LOW;
@@ -698,21 +743,27 @@ public final class DiceCombatModifiers {
 
         // === 内置:原初核心筹码(每层"赋能"攻击力 +1;防御力经 tick 折算为真实护甲,不在骰战修饰器内) ===
         registerAttackModifier((ctx, ap) -> {
-            Player p = ctx.attacker;
+            Player __g6p = playerOrNull(ctx);
+            Player p = __g6p;
+            if (p == null) return ap;
             if (p.level().isClientSide()) return ap;
             return ap + com.merlinkitsune.astral_dice.item.chip.PrimordialCoreChipItem.getAttackBonus(p);
         });
 
         // === 内置:电磁炮筹码(充能不少于 6 层时攻击力 +5) ===
         registerAttackModifier((ctx, ap) -> {
-            Player p = ctx.attacker;
+            Player __g6p = playerOrNull(ctx);
+            Player p = __g6p;
+            if (p == null) return ap;
             if (p.level().isClientSide()) return ap;
             return ap + com.merlinkitsune.astral_dice.item.chip.RailgunChipItem.getAttackBonus(p);
         });
 
         // === 内置:磨刀石筹码(生命值为 50% 或更低时攻击力 +4;减伤在受击侧处理) ===
         registerAttackModifier((ctx, ap) -> {
-            Player p = ctx.attacker;
+            Player __g6p = playerOrNull(ctx);
+            Player p = __g6p;
+            if (p == null) return ap;
             if (p.level().isClientSide()) return ap;
             return ap + com.merlinkitsune.astral_dice.item.chip.WhetstoneChipItem.getAttackBonus(p);
         });
@@ -722,8 +773,9 @@ public final class DiceCombatModifiers {
         // (见 item/sign/TeruSignItem#tickCasterSide):目标效果结束/死亡/登出 ⇒ 同 tick 归 0,不留残留。
         // 防御加成同源,但走真实护甲(setDefenseArmorBonus),不在攻击修饰器内。
         registerAttackModifier((ctx, ap) -> {
+            Player __g6p = playerOrNull(ctx);
             if (ctx.attacker.level().isClientSide()) return ap;
-            return ap + ModAttachments.getTeruAtkBonusCache(ctx.attacker);
+            return __g6p == null ? ap : ap + ModAttachments.getTeruAtkBonusCache(__g6p);
         });
 
         // === 额外加伤:教主立牌(teru)「狐光」—— 降神目标攻击敌对目标触发「追击」(2026-09-28 用户裁决) ===
@@ -733,17 +785,21 @@ public final class DiceCombatModifiers {
         // 「新目标」判定与消耗/登记全部收敛在 TeruSignItem#descendChaseDamage
         // (层数已为 0 ⇒ 不消耗、本击不追加;施法者离线 ⇒ 不加成、不消耗)。
         registerExtraDamageModifier(ctx -> {
-            if (ctx.attacker.level().isClientSide()) return 0;
+            Player __g6p = playerOrNull(ctx);
+            if (__g6p == null) return 0;
+            if (__g6p.level().isClientSide()) return 0;
             return com.merlinkitsune.astral_dice.item.sign.TeruSignItem
-                    .descendChaseDamage(ctx.attacker, ctx.target);
+                    .descendChaseDamage(__g6p, ctx.target);
         });
 
         // === 内置:蛟龙立牌(mamushi)「真龙形态」—— 觉醒 ≥ 8 层且佩戴立牌 ⇒ 攻击力 +5 ===
         // 实时谓词:判据 = isEquipped(p) && getAwakening(p) >= AWAKEN_MAX,不落地任何状态
         // (卸下立牌/觉醒归零当刻立即失效)。
         registerAttackModifier((ctx, ap) -> {
-            if (ctx.attacker.level().isClientSide()) return ap;
-            if (!com.merlinkitsune.astral_dice.item.sign.MamushiSignItem.isDragonForm(ctx.attacker)) return ap;
+            Player __g6p = playerOrNull(ctx);
+            if (__g6p == null) return ap;
+            if (__g6p.level().isClientSide()) return ap;
+            if (!com.merlinkitsune.astral_dice.item.sign.MamushiSignItem.isDragonForm(__g6p)) return ap;
             return ap + com.merlinkitsune.astral_dice.item.sign.MamushiSignItem.DRAGON_FORM_ATTACK_BONUS;
         });
 
@@ -751,10 +807,12 @@ public final class DiceCombatModifiers {
         // 锁存口径:触发赐福时有装备撕咬(bite_bonus_active)且此刻仍在骰神赐福内 ⇒ +min(觉醒, 4);
         // 层数变化立即体现、赐福结束即失效(清锁存在 onDiceBlessingExpired / 立牌 tick 兜底)。
         registerAttackModifier((ctx, ap) -> {
-            if (ctx.attacker.level().isClientSide()) return ap;
-            if (!com.merlinkitsune.astral_dice.item.sign.MamushiSignItem.getBiteBonusActive(ctx.attacker)) return ap;
-            if (!ctx.attacker.hasEffect(ModEffects.DICE_BLESSING.get())) return ap;
-            int awakening = com.merlinkitsune.astral_dice.item.sign.MamushiSignItem.getAwakening(ctx.attacker);
+            Player __g6p = playerOrNull(ctx);
+            if (__g6p == null) return ap;
+            if (__g6p.level().isClientSide()) return ap;
+            if (!com.merlinkitsune.astral_dice.item.sign.MamushiSignItem.getBiteBonusActive(__g6p)) return ap;
+            if (!__g6p.hasEffect(ModEffects.DICE_BLESSING.get())) return ap;
+            int awakening = __g6p == null ? 0 : com.merlinkitsune.astral_dice.item.sign.MamushiSignItem.getAwakening(__g6p);
             return ap + Math.min(awakening, com.merlinkitsune.astral_dice.item.sign.MamushiSignItem.BITE_BONUS_CAP);
         });
 
@@ -762,8 +820,31 @@ public final class DiceCombatModifiers {
         // 层数真值在附件(死亡不清),这里以**实时谓词**读取、不落地任何状态 ⇒ 层数变化立即体现,
         // 卸下立牌(clearSignData 归零)后即刻失效。与「弱点识破」同款写法。
         registerAttackModifier((ctx, ap) -> {
+            Player __g6p = playerOrNull(ctx);
             if (ctx.attacker.level().isClientSide()) return ap;
-            return ap + com.merlinkitsune.astral_dice.item.sign.SherrySignItem.getLayers(ctx.attacker);
+            return __g6p == null ? ap : ap + com.merlinkitsune.astral_dice.item.sign.SherrySignItem.getLayers(__g6p);
+        });
+
+        // === 内置:金鲤立牌(souri)「酒意」—— 葫芦饮 +3 / 仙酿 +4 / 化龙后每层金鳞 +1(2026-11-09) ===
+        // 三条都以**实时谓词**读取:饮品效果本身就是"一次只能拾取一个"的独占态
+        // (see GourdDrinkEffect javadoc) ⇒ 两条 if 互斥;金鳞层数在化龙后仍然保留,
+        // 故攻加成为 dragon 态下 getGoldScales × ATTACK_PER_SCALE。
+        // ⚠️ 金鳞的**防御力**(每层 +1)不在这里,走 setDefenseArmorBonus 的既有规范
+        // (见 SouriSignManager#refreshDefense)。
+        registerAttackModifier((ctx, ap) -> {
+            if (ctx.attacker.level().isClientSide()) return ap;
+            if (!(ctx.attacker instanceof Player __sp)) return ap;
+            if (__sp.hasEffect(ModEffects.GOURD_DRINK.get())) {
+                ap += com.merlinkitsune.astral_dice.effect.GourdDrinkEffect.ATTACK_BONUS;
+            }
+            if (__sp.hasEffect(ModEffects.IMMORTAL_BREW.get())) {
+                ap += com.merlinkitsune.astral_dice.effect.ImmortalBrewEffect.ATTACK_BONUS;
+            }
+            if (__sp.hasEffect(ModEffects.SOURI_DRAGON.get())) {
+                ap += com.merlinkitsune.astral_dice.item.sign.SouriSignManager.getGoldScales(__sp)
+                        * com.merlinkitsune.astral_dice.item.sign.SouriSignManager.ATTACK_PER_SCALE;
+            }
+            return ap;
         });
 
         // === 内置:防御卡掷骰(收集结果写入上下文;目标无骰子时 targetEnhancement 为 null,结果 0)。

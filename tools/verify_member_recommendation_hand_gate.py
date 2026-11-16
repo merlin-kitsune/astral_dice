@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""会员推荐信「手牌 <5 才发牌」的静态守门（P0 两线：neoforge-1.21.1 / forge-1.20.1）。
+"""会员推荐信「手牌 <5 才发牌」的静态守门（P0 三线：neoforge-1.21.1 / forge-1.20.1 / neoforge-26.1.2）。
 
 ## 要拦的回归
 用户裁决：会员推荐信只在**玩家物品栏中的手牌数量 < 5 张**时发牌；降价效果不受此限制。
@@ -64,8 +64,8 @@ _astral_heal_stdio()
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# P0 对等两线；P1（neoforge-26.1.2 / fabric-1.20.1）不在本任务范围，明确不查。
-LINES = ("neoforge-1.21.1", "forge-1.20.1")
+# P0 对等三线；P1（fabric-1.20.1 / fabric-1.21.1）不在本任务范围，明确不查。
+LINES = ("neoforge-1.21.1", "forge-1.20.1", "neoforge-26.1.2")
 
 CHIP_REL = os.path.join(
     "src", "main", "java", "com", "merlinkitsune", "astral_dice",
@@ -369,10 +369,14 @@ def check_line(line, verbose, run):
             run(False, "M3 %s: 计数 helper `%s` 方法体未找到" % (line, info["helper"]))
         else:
             problems = []
-            if not re.search(r"getInventory\s*\(\s*\)\s*\.\s*items\b", helper_body):
-                problems.append("未遍历主背包 getInventory().items")
-            if not re.search(r"getInventory\s*\(\s*\)\s*\.\s*offhand\b", helper_body):
-                problems.append("未遍历副手 getInventory().offhand")
+            main_ok = (re.search(r"getInventory\s*\(\s*\)\s*\.\s*items\b", helper_body)
+                       or re.search(r"getNonEquipmentItems\s*\(", helper_body))
+            if not main_ok:
+                problems.append("未遍历主背包 items / getNonEquipmentItems()")
+            off_ok = (re.search(r"getInventory\s*\(\s*\)\s*\.\s*offhand\b", helper_body)
+                      or re.search(r"SLOT_OFFHAND|getOffhandItem\s*\(", helper_body))
+            if not off_ok:
+                problems.append("未遍历副手 offhand / SLOT_OFFHAND")
             if "isCardItem(" not in helper_body:
                 problems.append("未用 ModItems.isCardItem 判定卡牌")
             if not re.search(r"\+=\s*[^;]*getCount\s*\(\s*\)", helper_body):
@@ -441,7 +445,8 @@ def main():
             fails.append(msg)
             print("  FAIL " + msg)
 
-    print("== 会员推荐信手牌门（P0 两线：neoforge-1.21.1 / forge-1.20.1；P1 不查）==")
+    print("== 会员推荐信手牌门（P0 三线：neoforge-1.21.1 / forge-1.20.1 / "
+          "neoforge-26.1.2；P1 fabric 两线不查）==")
     for line in LINES:
         print("[%s]" % line)
         check_line(line, verbose, run)

@@ -185,7 +185,7 @@ public static void applyRoarDebuff(LivingEntity victim);                 // §2.
   `if (ExclusiveCardUtil.isExclusive(stack) && !ExclusiveCardUtil.canUse(player, stack)) return false;`
   （`canUse` 无主时放行并首次绑定，与效果牌同语义。）
 - 两张牌**不加入** `RandomCardHandler.attackCards()`（⇒ 天然不在随机池）；但要 `registerExclusiveCard(...)`（既有静态块 `:98-106`，`:105` 已预留「未来专属战斗牌(撕咬/龙之咆哮等)在此注册」注释）。
-- 两张牌**无配方**；`data/astral_dice/tags/item(s)/is_exclusive.json` **必须加入**（否则 `verify_bountiful_pools.ps1` 会要求它们出现在 `astral_rews.json`）；**不加入** `astral_rews.json` / `astral_objs.json`。
+- 两张牌**无配方**；`data/astral_dice/tags/item(s)/is_exclusive.json` **必须加入**（否则 `verify_bountiful_pools.py` 会要求它们出现在 `astral_rews.json`）；**不加入** `astral_rews.json` / `astral_objs.json`。
 - `data/astral_dice/tags/item(s)/combat_cards.json` 是否加入：**加入**（`attack_card_*` 属战斗牌汇总标签，供按标签检索的联动使用）。
 
 ### 3.6 骰战挂点

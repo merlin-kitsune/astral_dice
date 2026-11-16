@@ -39,7 +39,7 @@ import java.util.concurrent.ConcurrentHashMap;
  *       <b>漏登记即静默失效</b>（编译、启动日志全绿，只是死人不解锁）。
  *       判据工具：{@code LoaderBus#dispatchReport()} 的「未派发」段与 {@code SubscriptionAudit} 的差集。</li>
  *   <li>{@code LivingDeathEvent} 走本线垫片 {@code platform/event/entity/living/LivingDeathEvent}
- *       （派发点 {@code platform/PuzzlesBridges} 的 {@code LivingDeathCallback}），{@code getEntity()} 同为
+ *       （派发点 {@code platform/StarengineBridges} 的 {@code LivingDeathCallback}），{@code getEntity()} 同为
  *       {@code LivingEntity}，故「{@code instanceof ServerPlayer} 才解锁」的判据逐字保留。</li>
  *   <li>{@code PlayerLoggedOutEvent} 走本线垫片 {@code platform/event/entity/player/PlayerEvent}；
  *       1.20.1 的 {@code getEntity()} 返回 {@code Player}（与 forge 同），故同样的 {@code instanceof} 判据成立。</li>

@@ -143,4 +143,10 @@ public class ParunanSignItem extends BaseSignItem {
         if (player.level().isClientSide()) return;
         StarLightManager.add(player, dicePoint * 2);
     }
+
+    // 2026-11-11 P1 补齐：与 P0 同口径的机器可读拒绝。
+    @Override
+    protected boolean activateForEntity(net.minecraft.world.entity.LivingEntity owner) {
+        return com.merlinkitsune.astral_dice.item.sign.SignEntitySkills.deny("parunan", owner, "needs_player_shop_ui");
+    }
 }

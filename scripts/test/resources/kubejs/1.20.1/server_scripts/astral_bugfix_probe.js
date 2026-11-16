@@ -1854,7 +1854,7 @@ function doKomachiCooldown(ctx, tag) {
  *
  * 两件事**都要**,不是二选一(勿简化):
  *  ① 保留下面 tag 唯一的 `READ` / `CLEARED` —— 断言窗口是「自 launch 快照起的 latest.log
- *     增量」、**跨用例共享**(见 mt_assert.ps1 的 `Get-MtSnapFor`),不带 tag 的 APDUMP 行
+ *     增量」、**跨用例共享**(见 scripts/test/lib/mt_assert.py 的 `Get-MtSnapFor`),不带 tag 的 APDUMP 行
  *     无法归属到某一条用例 ⇒ 拿通用 APDUMP 行顶替 tag 唯一的既有断言等于**弱化断言**
  *     (前序 AIRBAG 的 dump 就能把 `effect_card_play_count=0` 之类的行先喂饱)。
  *  ② **追加** `dumpState`:由 dump 的 `LOCKRAW` 组把 `effect_card_bonus_plays` /
@@ -2997,7 +2997,7 @@ function doTrueDmg(ctx, tag) {
     /** 按注册 id 造伤害源 */
     function sourceOf(id) {
         return p.level.damageSources().source(ResourceKey.create(Registries.DAMAGE_TYPE,
-            ResourceLocation.parse(id)));
+            RSRC.ns(id)));
     }
     /** 经 KubeJS 可见的伤害 API 施加(实测 1.21.1 `mob.attack(DamageSource,float)` 可用) */
     function applyDamage(ent, src, amount) {
@@ -3477,7 +3477,7 @@ function airbagApplyKill(entity) {
         var ResourceKey = Java.loadClass("net.minecraft.resources.ResourceKey");
         var Registries = Java.loadClass("net.minecraft.core.registries.Registries");
         var src = entity.level.damageSources().source(ResourceKey.create(Registries.DAMAGE_TYPE,
-            ResourceLocation.parse("minecraft:generic_kill")));
+            RSRC.ns("minecraft:generic_kill")));
         entity.hurt(src, 1000.0);
         return "hurt:generic_kill";
     } catch (e1) { return "ERR:" + exText(e1); }
@@ -4590,7 +4590,7 @@ ServerEvents.tick(event => { try { luluAfterTick(); } catch (e) { /* 忽略 */ }
 
 /** 在 anchor 的相对偏移处生成一只无 AI 生物(纯 API;不用 runCmd,避免「下一 tick 才生效」) */
 function luluSpawnAt(anchor, typeId, dx, dz) {
-    var type = BuiltInRegistries.ENTITY_TYPE.get(ResourceLocation.parse(typeId));
+    var type = BuiltInRegistries.ENTITY_TYPE.get(RSRC.ns(typeId));
     var mob = type.create(anchor.level);
     if (mob == null) return null;
     placeAt(mob, anchor.getX() + dx, anchor.getY(), anchor.getZ() + dz);
@@ -4653,7 +4653,7 @@ function doBarPlace(ctx, tag, dx, dz) {
         var ModBlocksCls = Java.loadClass("com.merlinkitsune.astral_dice.block.ModBlocks");
         var pos = new BlockPosCls(x + 0, y + 0, z + 0);
         if (lvl.setBlockAndUpdate(pos, ModBlocksCls.BARRICADE_COLLISION.get().defaultBlockState())) {
-            var type = BuiltInRegistries.ENTITY_TYPE.get(ResourceLocation.parse("astral_dice:barricade"));
+            var type = BuiltInRegistries.ENTITY_TYPE.get(RSRC.ns("astral_dice:barricade"));
             var ent = type.create(lvl);
             if (ent != null) {
                 placeAt(ent, x + 0.5, y, z + 0.5);
@@ -5075,7 +5075,7 @@ function lpFillBox(p, x1, y1, z1, x2, y2, z2, blockId) {
     var n = 0;
     try {
         var BlockPosClass = Java.loadClass("net.minecraft.core.BlockPos");
-        var state = BuiltInRegistries.BLOCK.get(ResourceLocation.parse(blockId)).defaultBlockState();
+        var state = BuiltInRegistries.BLOCK.get(RSRC.ns(blockId)).defaultBlockState();
         for (var x = x1; x <= x2; x++) {
             for (var y = y1; y <= y2; y++) {
                 for (var z = z1; z <= z2; z++) {
@@ -5686,7 +5686,7 @@ function teruFxOn(p, descId) { return findEffect(p, descId) == null ? 0 : 1; }
  */
 function teruArmorModifier(p, attr) {
     var mod = null;
-    try { mod = attr.getModifier(ResourceLocation.parse("astral_dice:" + TERU_DEF_ARMOR_KEY)); } catch (e1) { mod = null; }
+    try { mod = attr.getModifier(RSRC.ns("astral_dice:" + TERU_DEF_ARMOR_KEY)); } catch (e1) { mod = null; }
     if (mod == null) {
         try {
             var UUIDClass = Java.loadClass("java.util.UUID");
@@ -6133,26 +6133,42 @@ function doTeruCastReal(ctx, tag, nameText) {
         if (tou != null) tou.setBaseValue(0.0);
     } catch (e2) { note = note + "|attr:" + exText(e2); }
 
-    var aT = -1, dT = -1, aC = -1, armorBefore = -1;
+    var aT = -1, dT = -1, aC = -1, armorBefore = -1, armorBeforeRaw = 0;
     try { aT = TeruDiceCombatModifiersClass.attackPowerOf(t); } catch (e3) { aT = -1; }
     try { dT = TeruDiceCombatModifiersClass.defensePowerOf(t); } catch (e4) { dT = -1; }
     try { aC = TeruDiceCombatModifiersClass.attackPowerOf(p); } catch (e5) { aC = -1; }
-    try { armorBefore = p.getArmorValue(); } catch (e6) { armorBefore = -1; }
+    try {
+        armorBeforeRaw = TeruDiceCombatModifiersClass.effectiveArmorPoints(p);
+        armorBefore = Math.floor(armorBeforeRaw);
+    } catch (e6) { armorBefore = -1; armorBeforeRaw = -1; }
 
     var ok = -1;
     try { ok = TeruSignItemClass.castDescent(p, t) ? 1 : 0; }
     catch (e7) { ok = -2; note = note + "|cast:" + exText(e7); }
 
-    var bonusAtk = 0, bonusDef = 0, base = 0, layersAfter = 0, cache = 0, armorAfter = 0, newt = -1;
+    var bonusAtk = 0, bonusDef = 0, base = 0, layersAfter = 0, cache = 0, armorAfter = 0, armorAfterRaw = 0, newt = -1;
     try { bonusAtk = ModAttachments.getTeruDescentAtkBonus(t); } catch (e8) { bonusAtk = -1; }
     try { bonusDef = ModAttachments.getTeruDescentDefBonus(t); } catch (e9) { bonusDef = -1; }
     try { base = ModAttachments.getTeruDescentAttackBase(t); } catch (e10) { base = -1; }
     try { layersAfter = TeruSignItemClass.getLayers(p); } catch (e11) { layersAfter = -1; }
     try { cache = ModAttachments.getTeruAtkBonusCache(p); } catch (e12) { cache = -1; }
-    try { armorAfter = p.getArmorValue(); } catch (e13) { armorAfter = -1; }
+    try {
+        armorAfterRaw = TeruDiceCombatModifiersClass.effectiveArmorPoints(p);
+        armorAfter = Math.floor(armorAfterRaw);
+    } catch (e13) { armorAfter = -1; armorAfterRaw = -1; }
     try { newt = teruSetSize(ModAttachments.getTeruDescentNewTargets(t)); } catch (e14) { newt = -1; }
 
     var expAtk = Math.floor(aT * 0.5), expDef = Math.floor(dT * 0.5);
+    // 2026-11-05 探针修正：防御力→护甲的折算已由旧的「固定 x2.0」改为「defense / 阵营护甲系数」
+    // （DiceCombatModifiers.armorValueForDefensePoints，玩家侧系数 0.30），
+    // 硬编码 expDef * 2 会恒判 armor_ok=0。这里直接调产品同一入口算期望值，
+    // 并用 effectiveArmorPoints 取未截断的 ARMOR 属性值（getArmorValue 是 floor，会少算 1 点）。
+    var expArmor = -1, gotArmor = -1, armorOk = 0;
+    try {
+        expArmor = TeruDiceCombatModifiersClass.armorValueForDefensePoints(expDef, true);
+        gotArmor = armorAfterRaw - armorBeforeRaw;
+        armorOk = Math.abs(gotArmor - expArmor) < 0.05 ? 1 : 0;
+    } catch (eA) { armorOk = -1; }
     var expBase = Math.max(0, aC) + expAtk;
     send(ctx, "AP_" + tag + "_CASTREAL:cast=" + ok + ":target=" + nameText
         + ":A_t=" + aT + ":D_t=" + dT + ":A_c=" + aC
@@ -6164,9 +6180,10 @@ function doTeruCastReal(ctx, tag, nameText) {
         + ":layers=" + layersAfter + ":layers_ok=" + (layersAfter === 3 ? 1 : 0)
         + ":cache=" + cache + ":cache_ok=" + (cache === expAtk ? 1 : 0)
         + ":armor=" + armorBefore + ">" + armorAfter
-        + ":armor_ok=" + ((armorAfter - armorBefore) === (expDef * 2) ? 1 : 0)
+        + ":armor_ok=" + armorOk
         + ":newt=" + newt
-        + (note === "" ? "" : ":note=" + note));
+        + (note === "" ? "" : ":note=" + note)
+        + ":armor_exp=" + (Math.round(expArmor * 100) / 100) + ":armor_got=" + (Math.round(gotArmor * 100) / 100));
     send(ctx, "AP_" + tag + "_CASTREAL_T:" + teruTargetRead(t));
     send(ctx, "AP_" + tag + "_CASTREAL_BOT:" + teruPlayerRead(ctx, t, "" + nameText));
     return 1;
@@ -6381,7 +6398,7 @@ function doTeruGate(ctx, tag, nameText) {
 function teruResolveType(typeText) {
     var raw = ("" + typeText).replace(/["']/g, "").replace(/^\s+|\s+$/g, "");
     var type = null;
-    try { type = BuiltInRegistries.ENTITY_TYPE.get(ResourceLocation.parse(raw)); }
+    try { type = BuiltInRegistries.ENTITY_TYPE.get(RSRC.ns(raw)); }
     catch (e1) { return { ok: false, raw: raw, why: "parse:" + exText(e1) }; }
     if (type == null) return { ok: false, raw: raw, why: "null_type" };
     var key = "?";
@@ -6731,7 +6748,7 @@ function doTeruClear(ctx, tag) {
 //     /astralprobe zhaolink <tag> <read|call>           心意相连:只读候选集 / 调 onAllyActiveSkill
 //     /astralprobe zhaonuclear <tag>                    收尾:清卡/效果/状态/计时器 + 卸立牌 + 清主手
 //
-//   ⚠️ 改探针后必须**冷启动**(mt.ps1 --phase stop → --phase launch):
+//   ⚠️ 改探针后必须**冷启动**(scripts/test/win/mt.sh --phase stop → --phase launch):
 //      /kubejs reload server-scripts 不会重绑已注册的 Brigadier 命令。
 //   ⚠️ 两线(1.21.1 / 1.20.1)本段逐字一致:只允许用两线同名 API(已核对访问器 14:14、常量 6:6、
 //      类路径 11:11 全等;1.20.1 的 FenSignItem#addRecharge 形参名不同但签名相同)。
@@ -10674,7 +10691,7 @@ function doSignExpireGrace(ctx, tag) {
     return 1;
 }
 
-// NARDIS-IMPL-END(插入器用:重跑 build_nardi_block.ps1 时靠这一行定位旧块并整段替换)
+// NARDIS-IMPL-END(插入器用:重跑 插入器脚本（已删除） 时靠这一行定位旧块并整段替换)
 // ════════════════════════════════════════════════════════════════════════════
 //  蛟龙立牌(mamushi)游戏内取证段(2026-09-27;双人/多人用 Carpet `/player` bot)
 //    语义基准 = docs/features/mamushi-sign-spec.md(§1 冻结常量 / §2 技能语义 /
@@ -11203,7 +11220,7 @@ function mamuKill(p) {
  * <p>⚠️ **别指望它自动关掉死亡界面**(2026-09-28 实测推翻旧注释):`ClientPacketListener#handleRespawn`
  * 只在「当前界面已是 `DeathScreen`」时才 `setScreen(null)`(`:1230-1232`),而死亡包更晚到时会**新建**
  * 界面 ⇒ 界面永久驻留、聊天注入全被吞(详见 {@link doMamuDie} 头注的取证与正确口径:
- * 由 `mt_launch.ps1` 的 `gamerule doImmediateRespawn true` 环境不变量保证从不创建该界面)。
+ * 由 `scripts/test/win/mt.sh --phase launch` 的 `gamerule doImmediateRespawn true` 环境不变量保证从不创建该界面)。
  *
  * <p>⚠️⚠️ **签名两线不同**(2026-09-27 反编译源码核对,必须双形态):
  * <ul>
@@ -12931,7 +12948,7 @@ function doMamuGuard(ctx, tag, modeText) {
  * 客户端 `handleRespawn` **只在「当前界面已是 DeathScreen」时**才 `setScreen(null)`
  * (`ClientPacketListener.java:1230-1232`),此刻界面还没创建 ⇒ 不关;随后迟到的死亡包**新建**
  * 死亡界面(`:1715-1716`),而玩家已被重生为满血 ⇒ 界面永久驻留。
- * ⇒ **正确口径由环境不变量提供**:测试启动期 `mt_launch.ps1` 注入 `gamerule doImmediateRespawn true`
+ * ⇒ **正确口径由环境不变量提供**:测试启动期 `scripts/test/win/mt.sh --phase launch` 注入 `gamerule doImmediateRespawn true`
  * (硬闸门 + 游戏内回显自证),客户端因此 `showDeathScreen=false`
  * (`ClientPacketListener:1491`),死亡包改走 `player.respawn()` 分支(`:1717`)⇒
  * **从不创建死亡界面**;客户端自发 `PERFORM_RESPAWN` 被 `ServerGamePacketListenerImpl:1672` 的
@@ -13101,7 +13118,7 @@ function doMamuDie(ctx, tag, keepText) {
     // 全量快照(字段顺序与 ZERO_* 逐字一致;第 5 参 = 直发新玩家)
     return mamuRead(ctx, tag, (np != null) ? np : p, "DIE", np);
 }
-// MAMUSHI-IMPL-END(插入器用:重跑 build_mamushi_block.ps1 时靠这一行定位旧块并整段替换)
+// MAMUSHI-IMPL-END(插入器用:重跑 插入器脚本（已删除） 时靠这一行定位旧块并整段替换)
 
 //  ⚠️ 1.20.1 平台差异(与 1.21.1 段逐条对等):
 //    · ModEffects 常量是 RegistryObject ⇒ hasEffect 传 .get()

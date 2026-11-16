@@ -487,12 +487,36 @@ public class ModAttachments {
         player.setData(INVESTIGATION_STAGE.get(), Math.max(1, value));
     }
 
-    public static int getStarlight(net.minecraft.world.entity.player.Player player) {
-        return player.getData(PLAYER_STARLIGHT.get());
+    /**
+     * 星光读数（2026-11-08 用户裁决：「由附属注册的生物，与玩家一样拥有全部功能（包括可持有星光）」）。
+     *
+     * <p>宿主由 {@code Player} 放宽到 {@link net.minecraft.world.entity.LivingEntity}：
+     * {@code PLAYER_STARLIGHT} 注册时没有宿主谓词，attachment 本身可以挂在任意活体上。
+     */
+    public static int getStarlight(net.minecraft.world.entity.LivingEntity living) {
+        return living.getData(PLAYER_STARLIGHT.get());
     }
 
-    public static void setStarlight(net.minecraft.world.entity.player.Player player, int value) {
-        player.setData(PLAYER_STARLIGHT.get(), value);
+    public static void setStarlight(net.minecraft.world.entity.LivingEntity living, int value) {
+        living.setData(PLAYER_STARLIGHT.get(), value);
+    }
+
+    /** 筹码折扣面额（星币；0 = 无折扣）。 */
+    public static int getChipDiscountAmount(net.minecraft.world.entity.LivingEntity living) {
+        return living.getData(CHIP_DISCOUNT_AMOUNT.get());
+    }
+
+    public static void setChipDiscountAmount(net.minecraft.world.entity.LivingEntity living, int value) {
+        living.setData(CHIP_DISCOUNT_AMOUNT.get(), Math.max(0, value));
+    }
+
+    /** 筹码折扣截止时刻（世界 gameTime；0 = 无折扣）。 */
+    public static long getChipDiscountUntil(net.minecraft.world.entity.LivingEntity living) {
+        return living.getData(CHIP_DISCOUNT_UNTIL.get());
+    }
+
+    public static void setChipDiscountUntil(net.minecraft.world.entity.LivingEntity living, long value) {
+        living.setData(CHIP_DISCOUNT_UNTIL.get(), value);
     }
 
     public static int getEightSidedAccum(net.minecraft.world.entity.player.Player player) {
@@ -646,6 +670,22 @@ public class ModAttachments {
                     .copyOnDeath()
                     .build());
 
+
+    // 筹码商店折扣（2026-11-08 少主立牌「双赢」）：对目标使用主动技能后，双方各得一次
+    // 「筹码单价 -N 星币（下限 5）+ 一次刷新」。
+    // 刻意**不进 ChipShopState**：那是玩家存档里的商店运行态（候选/次数/冷却），折扣是短时段 buff，
+    // 且要能挂在附属注册的类玩家生物身上；LIMIT 语义见 shop/ChipShopDiscounts。
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> CHIP_DISCOUNT_AMOUNT =
+            ATTACHMENTS.register("chip_discount_amount", () -> AttachmentType.builder(() -> 0)
+                    .serialize(Codec.INT)
+                    .sync(ByteBufCodecs.VAR_INT)
+                    .build());
+
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> CHIP_DISCOUNT_UNTIL =
+            ATTACHMENTS.register("chip_discount_until", () -> AttachmentType.builder(() -> 0L)
+                    .serialize(Codec.LONG)
+                    .sync(ByteBufCodecs.VAR_LONG)
+                    .build());
 
     // 立牌主动技能"本次冷却实际使用的最大冷却 tick"(路线 A:所有减免方一律读它作基准,不再各自重算;
     // 0 表示缺失/无冷却,减免方回退旧行为;仅服务端使用,无需同步客户端)。
@@ -811,6 +851,115 @@ public class ModAttachments {
 
     public static void setWarpEnginePortalCooldownEnd(net.minecraft.world.entity.player.Player player, long value) {
         player.setData(WARP_ENGINE_PORTAL_COOLDOWN_END.get(), value);
+    }
+
+    // 小猎手立牌「暗影之门」:起始门放置窗口状态(玩家级,仅服务端,不参与同步)。
+    //   uuid 为空 / deadline 已过 ⇒ 没有进行中的放置窗口。6 个键各自独立持久化,登出重登后仍能还原窗口。
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<String>> INKSHADOW_PENDING_UUID =
+            ATTACHMENTS.register("inkshadow_pending_uuid", () -> AttachmentType.builder(() -> "")
+                    .serialize(Codec.STRING)
+                    .build());
+
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<String>> INKSHADOW_PENDING_DIM =
+            ATTACHMENTS.register("inkshadow_pending_dim", () -> AttachmentType.builder(() -> "")
+                    .serialize(Codec.STRING)
+                    .build());
+
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> INKSHADOW_PENDING_DEADLINE =
+            ATTACHMENTS.register("inkshadow_pending_deadline", () -> AttachmentType.builder(() -> 0L)
+                    .serialize(Codec.LONG)
+                    .build());
+    // 起始门坐标(BlockPos.asLong;Long.MIN_VALUE = 无)。起点门区块卸载后按此坐标强制加载再解析实体。
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> INKSHADOW_PENDING_POS =
+            ATTACHMENTS.register("inkshadow_pending_pos", () -> AttachmentType.builder(() -> Long.MIN_VALUE)
+                    .serialize(Codec.LONG)
+                    .build());
+
+    // 窗口内被强制的快捷栏槽位(-1 = 未锁)
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> INKSHADOW_LOCKED_SLOT =
+            ATTACHMENTS.register("inkshadow_locked_slot", () -> AttachmentType.builder(() -> -1)
+                    .serialize(Codec.INT)
+                    .build());
+
+    // 被动「双生之影」层数。层数到期附件（INKSHADOW_STACKS_EXPIRE）已停用，仅为旧存档兼容保留声明。
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> INKSHADOW_STACKS =
+            ATTACHMENTS.register("inkshadow_stacks", () -> AttachmentType.builder(() -> 0)
+                    .serialize(Codec.INT)
+                    .build());
+
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> INKSHADOW_STACKS_EXPIRE =
+            ATTACHMENTS.register("inkshadow_stacks_expire", () -> AttachmentType.builder(() -> 0L)
+                    .serialize(Codec.LONG)
+                    .build());
+
+    public static String getInkShadowPendingUuid(net.minecraft.world.entity.player.Player player) {
+        return player.getData(INKSHADOW_PENDING_UUID.get());
+    }
+
+    public static void setInkShadowPendingUuid(net.minecraft.world.entity.player.Player player, String value) {
+        player.setData(INKSHADOW_PENDING_UUID.get(), value);
+    }
+
+    public static String getInkShadowPendingDim(net.minecraft.world.entity.player.Player player) {
+        return player.getData(INKSHADOW_PENDING_DIM.get());
+    }
+
+    public static void setInkShadowPendingDim(net.minecraft.world.entity.player.Player player, String value) {
+        player.setData(INKSHADOW_PENDING_DIM.get(), value);
+    }
+
+    public static long getInkShadowPendingDeadline(net.minecraft.world.entity.player.Player player) {
+        return player.getData(INKSHADOW_PENDING_DEADLINE.get());
+    }
+
+    public static void setInkShadowPendingDeadline(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(INKSHADOW_PENDING_DEADLINE.get(), value);
+    }
+    public static long getInkShadowPendingPos(net.minecraft.world.entity.player.Player player) {
+        return player.getData(INKSHADOW_PENDING_POS.get());
+    }
+
+    public static void setInkShadowPendingPos(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(INKSHADOW_PENDING_POS.get(), value);
+    }
+
+    public static int getInkShadowLockedSlot(net.minecraft.world.entity.player.Player player) {
+        return player.getData(INKSHADOW_LOCKED_SLOT.get());
+    }
+
+    public static void setInkShadowLockedSlot(net.minecraft.world.entity.player.Player player, int value) {
+        player.setData(INKSHADOW_LOCKED_SLOT.get(), value);
+    }
+
+    public static int getInkShadowStacks(net.minecraft.world.entity.player.Player player) {
+        return player.getData(INKSHADOW_STACKS.get());
+    }
+
+    public static void setInkShadowStacks(net.minecraft.world.entity.player.Player player, int value) {
+        player.setData(INKSHADOW_STACKS.get(), value);
+    }
+
+    public static long getInkShadowStacksExpire(net.minecraft.world.entity.player.Player player) {
+        return player.getData(INKSHADOW_STACKS_EXPIRE.get());
+    }
+
+    public static void setInkShadowStacksExpire(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(INKSHADOW_STACKS_EXPIRE.get(), value);
+    }
+
+    // 被动「双生之影」：属于佩戴者的存活门对到期刻列表(逗号分隔 tick，由 InkShadowSignManager 维护)。
+    //   门对建立时追加一条、每次刷新被动时剪掉已过期项；列表为空 ⇒ 被动失效并清零层数。
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<String>> INKSHADOW_PAIR_EXPIRIES =
+            ATTACHMENTS.register("inkshadow_pair_expiries", () -> AttachmentType.builder(() -> "")
+                    .serialize(Codec.STRING)
+                    .build());
+
+    public static String getInkShadowPairExpiries(net.minecraft.world.entity.player.Player player) {
+        return player.getData(INKSHADOW_PAIR_EXPIRIES.get());
+    }
+
+    public static void setInkShadowPairExpiries(net.minecraft.world.entity.player.Player player, String value) {
+        player.setData(INKSHADOW_PAIR_EXPIRIES.get(), value);
     }
 
     // @Deprecated 已废弃:立牌主动技能"等待目标释放"机制已被目标选择器(TargetSelectionManager 会话)替代,
@@ -1401,8 +1550,9 @@ public class ModAttachments {
                     .build());
 
     /**
-     * 游戏大师立牌(ren):一次性反击层数(0/1)。获得鼠鼠护盾时 +1,被攻击时消耗 1 层并对攻击者
-     * 注入一次现有反击伤害;护盾清空时归零。
+     * 游戏大师立牌(ren)/金鲤立牌(souri):可激活次数(游戏大师 1,佩戴金鲤时上限 4)。
+     * 获得护盾或放置饮品时 +1;首次近战命中消耗 1 次并进入 200 tick 反击状态,状态期间反击免费。
+     * 护盾清空时归零(佩戴金鲤时保留);反击状态本体见 {@code item/CounterStateManager}。
      */
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> REN_COUNTER_CHARGES =
             ATTACHMENTS.register("ren_counter_charges", () -> AttachmentType.builder(() -> 0)
@@ -2244,6 +2394,19 @@ public class ModAttachments {
             ATTACHMENTS.register("jill_pending_target", () -> AttachmentType.builder(() -> "")
                     .serialize(Codec.STRING).build());
 
+    /** 少主：目标选择确认后暂存的目标 UUID（空串 = 无）。选卡取消即清空。 */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<String>> AL_PENDING_TARGET =
+            ATTACHMENTS.register("al_pending_target", () -> AttachmentType.builder(() -> "")
+                    .serialize(Codec.STRING).build());
+
+    public static String getAlPendingTarget(net.minecraft.world.entity.player.Player player) {
+        return player.getData(AL_PENDING_TARGET.get());
+    }
+
+    public static void setAlPendingTarget(net.minecraft.world.entity.player.Player player, String value) {
+        player.setData(AL_PENDING_TARGET.get(), value == null ? "" : value);
+    }
+
     /** 调酒师：主动 buff 受惠目标 UUID（空串 = 无；到期/卸下清除）。 */
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<String>> JILL_BUFF_TARGET =
             ATTACHMENTS.register("jill_buff_target", () -> AttachmentType.builder(() -> "")
@@ -2427,6 +2590,42 @@ public class ModAttachments {
         player.setData(DEEPSEEK_LAST_TICK.get(), value);
     }
 
+    // ══════════════════════════════════════════════════════════════════════════
+    //  金鲤立牌 souri（2026-11-09）：独立计数器（用户裁决：不复用蛟龙觉醒）
+    // ══════════════════════════════════════════════════════════════════════════
+
+    /** 金鲤觉醒层数（独立计数器；0 起，无形态转换，仅作立牌自身资源） */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> SOURI_AWAKENING =
+            ATTACHMENTS.register("souri_awakening", () -> AttachmentType.builder(() -> 0)
+                    .serialize(Codec.INT)
+                    .sync(ByteBufCodecs.INT)
+                    .copyOnDeath()
+                    .build());
+
+    /** 金鳞层数（0..4；达 4 触发金鲤化龙，并把场上未拾取的葫芦饮转为仙酿） */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> SOURI_GOLD_SCALES =
+            ATTACHMENTS.register("souri_gold_scales", () -> AttachmentType.builder(() -> 0)
+                    .serialize(Codec.INT)
+                    .sync(ByteBufCodecs.INT)
+                    .copyOnDeath()
+                    .build());
+
+    public static int getSouriAwakening(net.minecraft.world.entity.player.Player player) {
+        return player.getData(SOURI_AWAKENING.get());
+    }
+
+    public static void setSouriAwakening(net.minecraft.world.entity.player.Player player, int value) {
+        player.setData(SOURI_AWAKENING.get(), Math.max(0, value));
+    }
+
+    public static int getSouriGoldScales(net.minecraft.world.entity.player.Player player) {
+        return player.getData(SOURI_GOLD_SCALES.get());
+    }
+
+    public static void setSouriGoldScales(net.minecraft.world.entity.player.Player player, int value) {
+        player.setData(SOURI_GOLD_SCALES.get(), Math.max(0, value));
+    }
+
     public static long getDeepseekIdleSince(net.minecraft.world.entity.player.Player player) {
         return player.getData(DEEPSEEK_IDLE_SINCE.get());
     }
@@ -2434,4 +2633,50 @@ public class ModAttachments {
     public static void setDeepseekIdleSince(net.minecraft.world.entity.player.Player player, long value) {
         player.setData(DEEPSEEK_IDLE_SINCE.get(), value);
     }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  垃圾桶立牌(z3000,2026-11-13)
+    //  仅服务端判定：攻击层数同步给客户端 tooltip；击杀进度与冷却触发记录不同步。
+    // ══════════════════════════════════════════════════════════════════════════
+
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> Z3000_ATTACK_STACKS =
+            ATTACHMENTS.register("z3000_attack_stacks", () -> AttachmentType.builder(() -> 0)
+                    .serialize(Codec.INT)
+                    .sync(ByteBufCodecs.INT)
+                    .build());
+
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> Z3000_HEALTHY_KILLS =
+            ATTACHMENTS.register("z3000_healthy_kills", () -> AttachmentType.builder(() -> 0)
+                    .serialize(Codec.INT)
+                    .build());
+
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> Z3000_LAST_COOLDOWN_REDUCTION =
+            ATTACHMENTS.register("z3000_last_cooldown_reduction", () -> AttachmentType.builder(() -> 0L)
+                    .serialize(Codec.LONG)
+                    .build());
+
+    public static int getZ3000AttackStacks(net.minecraft.world.entity.player.Player player) {
+        return player.getData(Z3000_ATTACK_STACKS.get());
+    }
+
+    public static void setZ3000AttackStacks(net.minecraft.world.entity.player.Player player, int value) {
+        player.setData(Z3000_ATTACK_STACKS.get(), Math.max(0, value));
+    }
+
+    public static int getZ3000HealthyKills(net.minecraft.world.entity.player.Player player) {
+        return player.getData(Z3000_HEALTHY_KILLS.get());
+    }
+
+    public static void setZ3000HealthyKills(net.minecraft.world.entity.player.Player player, int value) {
+        player.setData(Z3000_HEALTHY_KILLS.get(), Math.max(0, value));
+    }
+
+    public static long getZ3000LastCooldownReduction(net.minecraft.world.entity.player.Player player) {
+        return player.getData(Z3000_LAST_COOLDOWN_REDUCTION.get());
+    }
+
+    public static void setZ3000LastCooldownReduction(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(Z3000_LAST_COOLDOWN_REDUCTION.get(), value);
+    }
+
 }

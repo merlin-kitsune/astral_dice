@@ -102,9 +102,9 @@ public record AstralEvent(
 ### 4.7 守门与判据
 
 1. 两线 `mt_build` ⇒ `MT_BUILD: OK`（`.60`）。
-2. `tools/check_lang_sync.ps1` ⇒ 三语 key 完全一致。
-3. 新增 `scripts/verify/verify_event_registry.ps1`（静态）：① 16 条 id 唯一；② 每条 nameKey 三语存在；③ 每条 icon 的 png 在 `assets/astral_dice/textures/gui/event/` 存在；④ 除注册表/探针外无事件 id 字面量散落。
-4. 既有 `verify_resource_integrity.ps1` 仍 PASS。
+2. `tools/check_lang_sync.py` ⇒ 三语 key 完全一致。
+3. 新增 `scripts/verify/verify_event_registry.py`（静态）：① 16 条 id 唯一；② 每条 nameKey 三语存在；③ 每条 icon 的 png 在 `assets/astral_dice/textures/gui/event/` 存在；④ 除注册表/探针外无事件 id 字面量散落。
+4. 既有 `verify_resource_integrity.py` 仍 PASS。
 5. 行为不回归：`InvestigationEventUtil` 施加逻辑逐行未改（git diff 证明只换分发入口）；大侦探主动技能**不再产生任何效果**。
 6. 独立复核交子代理（协作规则 30）；实机按用户指令。
 

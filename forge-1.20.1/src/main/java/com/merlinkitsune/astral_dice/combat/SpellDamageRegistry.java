@@ -1,6 +1,7 @@
 package com.merlinkitsune.astral_dice.combat;
 import com.merlinkitsune.astral_dice.network.ModNetwork;
 
+import com.merlinkitsune.astral_dice.api.combat.DamageCategory;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.starengine.component.GameplayConstants;
@@ -513,6 +514,42 @@ public final class SpellDamageRegistry {
             "me.desht.pneumaticcraft.common.entity.projectile.",  // MicromissileEntity(extends ThrowableProjectile)
             "org.confluence.terra_guns.",                         // BaseBulletEntity(extends Projectile)
             "io.redspace.irons_artifice.entity.");                // Bullet(extends Projectile)
+
+    /**
+     * 把一次伤害归入对外暴露的大类。
+     *
+     * <p>判据与 {@link #isSpellDamage(DamageSource, Entity)} 共用同一批证据表：
+     * 技能（固定点数）优先，其次是枪械，再到魔法、远程、近战。枪械归类**不受**
+     * {@code allow_firearm_damage} 影响 —— 该配置只决定它是否继续走法伤白名单。
+     */
+    public static DamageCategory damageCategory(DamageSource source) {
+        if (source == null) {
+            return DamageCategory.OTHER;
+        }
+        if (source.is(ModDamageTypes.SKILL_DAMAGE)) {
+            return DamageCategory.SKILL;
+        }
+        if (isFirearmDamage(source)) {
+            return DamageCategory.GUN;
+        }
+        String msgId = source.getMsgId();
+        if (source.is(ModDamageTypes.CARD_SPELL) || "magic".equals(msgId) || "indirectMagic".equals(msgId)) {
+            return DamageCategory.MAGIC;
+        }
+        for (ResourceKey<DamageType> type : MAGIC_DAMAGE_TYPES) {
+            if (source.is(type)) {
+                return DamageCategory.MAGIC;
+            }
+        }
+        Entity direct = source.getDirectEntity();
+        if (direct instanceof AbstractArrow || direct instanceof ThrowableProjectile) {
+            return DamageCategory.RANGED;
+        }
+        if (direct instanceof LivingEntity) {
+            return DamageCategory.DICE_MELEE;
+        }
+        return DamageCategory.OTHER;
+    }
 
     // 枪械/火炮类远程弹丸判定:
     //   ① 精确伤害类型(上方证据表) → ② 军火弹丸包名 → ③ 关键词兜底(仅覆盖未纳入分析表的其它模组)。

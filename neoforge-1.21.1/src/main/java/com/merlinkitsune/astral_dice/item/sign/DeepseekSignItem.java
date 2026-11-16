@@ -185,5 +185,11 @@ public class DeepseekSignItem extends BaseSignItem {
             ModAttachments.setDeepseekIdleSince(player, 0L);
         }
         super.onUnequip(slotContext, newStack, stack);
+    
+}
+    // 2026-11-09（A）：类玩家宿主的主动入口 —— 当前语义依赖玩家侧通道，显式拒绝并留锚点。
+    @Override
+    protected boolean activateForEntity(net.minecraft.world.entity.LivingEntity owner) {
+        return com.merlinkitsune.astral_dice.item.sign.SignEntitySkills.deny("deepseek", owner, "needs_player_wallet");
     }
 }

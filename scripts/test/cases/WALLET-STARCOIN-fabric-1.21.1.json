@@ -1,0 +1,65 @@
+{
+  "case_id": "WALLET-STARCOIN-fabric-1.21.1",
+  "title": "星币与钱包余额：余额存在 starengine 账本（StarEngineEconomy），1 星币=1、星币袋=9；depositAllFromInventory 把背包里 3 枚星币按面额入账并清空（余额 7->10、携带值 3->0），withdraw(4) 扣账并发放 4 枚（余额 6），withdraw(99) 余额不足时返回 0 且状态零改动。证据：fabric-1.21.1/src/main/java/com/merlinkitsune/astral_dice/economy/StarCoinCurrency.java:38（STAR_COIN_VALUE=1）、:40（STAR_COIN_BAG_VALUE=9）、:92（countCarriedValue）、:115（depositAllFromInventory）、:148（withdraw）；F:/MCProject/starengine_next/common/src/main/java/com/merlinkitsune/starengine/economy/StarEngineEconomy.java:44-47（getBalance）、:55（setBalance）、:70-77（withdraw 余额不足拒绝）。",
+  "version": "fabric-1.21.1",
+  "channel": "autojs",
+  "on_fail": "continue",
+  "steps": [
+    {
+      "op": "note",
+      "text": "余额归属：本模组不自己存余额，StarCoinCurrency 的类注释与调用都指向 starengine 的账本 API（fabric-1.21.1/src/main/java/com/merlinkitsune/astral_dice/economy/StarCoinCurrency.java:16-18 注释 + 直接调用 StarEngineEconomy）；账本语义：getBalance 钳到 >=0（F:/MCProject/starengine_next/common/src/main/java/com/merlinkitsune/starengine/economy/StarEngineEconomy.java:44-47），withdraw 在余额不足时**不改状态**（:70-77），星币袋折算 9（fabric-1.21.1/src/main/java/com/merlinkitsune/astral_dice/economy/StarCoinCurrency.java:40）。depositAllFromInventory 扫描背包把星币按面额入账后清空（:115-135）。注意：本用例用 /give 直接发物品而**不**经过拾取，因此不触碰 StarCoinPickupHandler 的拾取桥（fabric-1.21.1/src/main/java/com/merlinkitsune/astral_dice/economy/StarCoinPickupHandler.java:31-42，其 setCanceled 在 puzzles 通知式桥上是否生效存疑）。自恢复：把余额写回进入用例前的值并清空背包。"
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "mode": "json",
+      "code": "(function(){\n  var P = AutoJS.players()[0];\n  var Econ = Java.loadClass('com.merlinkitsune.starengine.economy.StarEngineEconomy');\n  var SCC = Java.loadClass('com.merlinkitsune.astral_dice.economy.StarCoinCurrency');\n  var MI = Java.loadClass('com.merlinkitsune.astral_dice.item.ModItems');\n  AutoJS.command('kill @e[type=!player,distance=..48]');\n  AutoJS.command('clear @a');\n  AutoJS.command('effect clear @a');\n  var original = Econ.getBalance(P);\n  AutoJS.write('astral_test_wallet.txt', String(original));\n  Econ.setBalance(P, 7);\n  var out = {};\n  out.storageAvailable = Econ.isAvailable();\n  out.walletEnabled = SCC.isWalletEnabled();\n  out.coinValue = SCC.STAR_COIN_VALUE;\n  out.bagValue = SCC.STAR_COIN_BAG_VALUE;\n  out.balanceAfterSet = Econ.getBalance(P);\n  out.carriedBefore = SCC.countCarriedValue(P);\n  AutoJS.give('astral_dice:star_coin', 3);\n  out.carriedWithCoins = SCC.countCarriedValue(P);\n  out.deposited = SCC.depositAllFromInventory(P);\n  out.balanceAfterDeposit = Econ.getBalance(P);\n  out.carriedAfterDeposit = SCC.countCarriedValue(P);\n  var coin = MI.STAR_COIN.get();\n  out.withdrawTaken = SCC.withdraw(P, coin, 4);\n  out.balanceAfterWithdraw = Econ.getBalance(P);\n  out.carriedAfterWithdraw = SCC.countCarriedValue(P);\n  out.withdrawAllTaken = SCC.withdraw(P, coin, 99);\n  out.balanceAfterWithdrawAll = Econ.getBalance(P);\n  out.carriedAfterWithdrawAll = SCC.countCarriedValue(P);\n  out.withdrawRefused = SCC.withdraw(P, coin, 99);\n  out.balanceAfterRefusal = Econ.getBalance(P);\n  out.carriedAfterRefusal = SCC.countCarriedValue(P);\n  return out;\n})()",
+      "save_as": "wallet",
+      "timeout_ms": 60000
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "mode": "json",
+      "code": "(function(){\n  var P = AutoJS.players()[0];\n  var Econ = Java.loadClass('com.merlinkitsune.starengine.economy.StarEngineEconomy');\n  var SCC = Java.loadClass('com.merlinkitsune.astral_dice.economy.StarCoinCurrency');\n  var want = Number(AutoJS.read('astral_test_wallet.txt'));\n  Econ.setBalance(P, want);\n  var out = {};\n  out.balanceRestoredMatches = (Econ.getBalance(P) === want);\n  out.carriedFinal = SCC.countCarriedValue(P);\n  AutoJS.command('clear @a');\n  out.carriedAfterClear = SCC.countCarriedValue(P);\n  return out;\n})()",
+      "save_as": "restored",
+      "timeout_ms": 60000
+    }
+  ],
+  "asserts": [
+    {
+      "type": "state",
+      "from": "wallet",
+      "expect": {
+        "storageAvailable": true,
+        "walletEnabled": true,
+        "coinValue": 1,
+        "bagValue": 9,
+        "balanceAfterSet": 7,
+        "carriedBefore": 0,
+        "carriedWithCoins": 3,
+        "deposited": 3,
+        "balanceAfterDeposit": 10,
+        "carriedAfterDeposit": 0,
+        "withdrawTaken": 4,
+        "balanceAfterWithdraw": 6,
+        "carriedAfterWithdraw": 4,
+        "withdrawRefused": 0,
+        "balanceAfterRefusal": 0,
+        "carriedAfterRefusal": 10,
+        "withdrawAllTaken": 6,
+        "balanceAfterWithdrawAll": 0,
+        "carriedAfterWithdrawAll": 10
+      }
+    },
+    {
+      "type": "state",
+      "from": "restored",
+      "expect": {
+        "balanceRestoredMatches": true,
+        "carriedFinal": 10,
+        "carriedAfterClear": 0
+      }
+    }
+  ]
+}

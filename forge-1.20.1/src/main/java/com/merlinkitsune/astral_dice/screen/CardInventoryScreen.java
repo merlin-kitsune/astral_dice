@@ -98,6 +98,11 @@ public class CardInventoryScreen extends AbstractContainerScreen<CardInventoryMe
 
     @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+        // 背景暗化（2026-11-06 用户裁决，各线统一）：1.20.1 的 Screen#render 只遍历控件、
+        //   AbstractContainerScreen#render 只调 renderBg，两处都不调 renderBackground ⇒ 容器屏默认对世界零处理
+        //   （实测背后世界与游戏内同亮度）。原版容器屏看着暗，是它们的 renderBg 自己调了 renderBackground；
+        //   本类不调 ⇒ 在这里补一次：有世界 = 两层暗化渐变（+ 世界背景事件），无世界 = 泥土背景。
+        this.renderBackground(guiGraphics);
         super.render(guiGraphics, mouseX, mouseY, partialTick);
         this.renderTooltip(guiGraphics, mouseX, mouseY);
         // 骰神赐福期间卡牌栏锁定:顶部显示红色提醒文字

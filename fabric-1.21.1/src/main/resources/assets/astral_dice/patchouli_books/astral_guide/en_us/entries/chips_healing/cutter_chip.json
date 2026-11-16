@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.cutter_chip",
+  "category": "astral_dice:chips_healing",
+  "icon": "astral_dice:cutter_chip",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:cutter_chip",
+      "text": "astral_dice.guide.entry.cutter_chip.1"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.chip_source.note"
+    }
+  ],
+  "sortnum": 3
+}

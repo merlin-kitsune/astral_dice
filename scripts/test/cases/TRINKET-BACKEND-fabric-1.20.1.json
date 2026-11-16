@@ -13,7 +13,7 @@
       "save_as": "jar"
     }
   ],
-  "assert": [
+  "asserts": [
     {
       "type": "bytecode",
       "pattern": "compat/curios/TrinketBridge\\.class$"

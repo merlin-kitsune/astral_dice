@@ -40,7 +40,7 @@ public class ExtraBatteryChipItem extends BaseChipItem {
      * 是否**功能生效**地佩戴了本筹码：{@code chip} 槽装着本筹码，且骰子槽仍有骰子
      * （与 {@code BookmarkChipItem#isEquipped} 同一「未佩戴骰子 ⇒ 本件功能一律不生效」口径）。
      */
-    public static boolean isEquipped(Player player) {
+    public static boolean isEquipped(net.minecraft.world.entity.LivingEntity player) {
         if (player == null) return false;
         if (!CurioSlotUtil.hasDiceEquipped(player)) return false;
         return CurioSlotUtil.hasAnyCurioMatching(player,

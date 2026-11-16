@@ -546,8 +546,36 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
     protected void onHurt(Player player, DamageSource source, float amount) {
     }
 
+    /**
+     * 实体级击杀钩子（2026-11-08 类玩家能力面）：玩家以外的宿主（例：经
+     * {@code target/PlayerLikeTargets} 注册的女仆）走这里。
+     *
+     * <p>默认实现把 {@link Player} 宿主委派回 {@link #onKill}，因此既有子类**零改动**；
+     * 非玩家宿主默认无动作，需要支持的立牌覆写本方法。
+     */
+    protected void onKillEntity(net.minecraft.world.entity.LivingEntity killer, net.minecraft.world.entity.LivingEntity killed) {
+        if (killer instanceof Player player) {
+            onKill(player, killed);
+        }
+    }
+
+    /**
+     * 实体级受击钩子（2026-11-08 类玩家能力面）。默认把 {@link Player} 宿主委派回 {@link #onHurt}；
+     * 非玩家宿主默认无动作。
+     */
+    protected void onHurtEntity(net.minecraft.world.entity.LivingEntity holder, DamageSource source, float amount) {
+        if (holder instanceof Player player) {
+            onHurt(player, source, amount);
+        }
+    }
+
     // 分发:玩家造成击杀时,调用其全部已装备立牌的 onKill 钩子
     public static void invokeKillHooks(Player killer, net.minecraft.world.entity.LivingEntity killed) {
+        SignHookDispatcher.fireKillHooks((net.minecraft.world.entity.LivingEntity) killer, killed);
+    }
+
+    /** 实体级分发（与 {@link #invokeKillHooks(Player, LivingEntity)} 同义，宿主放宽到任意实体）。 */
+    public static void invokeKillHooks(net.minecraft.world.entity.LivingEntity killer, net.minecraft.world.entity.LivingEntity killed) {
         SignHookDispatcher.fireKillHooks(killer, killed);
     }
 
@@ -556,7 +584,48 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
     // 于是摔落 / 仙人掌 / 着火等环境伤害、以及本模组「符卡-祸」的无来源真伤都会算数。
     // 闸门放在**分发处**而非各立牌内部 ⇒ 整族口径一致,将来新增受击被动默认即安全。
     public static void invokeHurtHooks(Player player, DamageSource source, float amount) {
-        SignHookDispatcher.fireHurtHooks(player, source, amount);
+        SignHookDispatcher.fireHurtHooks((net.minecraft.world.entity.LivingEntity) player, source, amount);
+    }
+
+    /** 实体级分发（宿主放宽到任意实体）。 */
+    public static void invokeHurtHooks(net.minecraft.world.entity.LivingEntity holder, DamageSource source, float amount) {
+        SignHookDispatcher.fireHurtHooks(holder, source, amount);
+    }
+
+    /**
+     * 实体级主动技能入口（2026-11-08 类玩家能力面）。
+     *
+     * <p>玩家宿主等价于 {@link #performSkillForCurio(Player)}；非玩家宿主走
+     * {@link #activateForEntity(net.minecraft.world.entity.LivingEntity)}，默认只记 WARN 并返回 false
+     * —— 需要支持的立牌覆写它。
+     */
+    public static boolean activateFor(net.minecraft.world.entity.LivingEntity holder) {
+        if (holder == null || holder.level().isClientSide()) return false;
+        if (holder instanceof Player player) {
+            performSkillForCurio(player);
+            return true;
+        }
+        var curios = CuriosCompat.getCuriosInventory(holder);
+        if (curios.isEmpty()) return false;
+        var handlerOpt = curios.get().getStacksHandler("stand");
+        if (handlerOpt.isEmpty()) return false;
+        var handler = handlerOpt.get();
+        if (handler.getSlots() <= 0) return false;
+        ItemStack stack = handler.getStacks().getStackInSlot(0);
+        if (!(stack.getItem() instanceof BaseSignItem sign)) return false;
+        return sign.activateForEntity(holder);
+    }
+
+    /**
+     * 非玩家宿主的主动技能实现点（默认无动作）。
+     *
+     * <p>选择器型立牌在玩家侧依赖 {@code ServerPlayer} 会话，非玩家宿主需要各自的会话形态；
+     * 因此默认返回 {@code false}，由具体立牌按能力位实现。
+     */
+    protected boolean activateForEntity(net.minecraft.world.entity.LivingEntity holder) {
+        LOGGER.warn("[Astral Dice][SignSkill] activateForEntity 未被覆写: item={} —— 非玩家宿主的主动无效果",
+                this);
+        return false;
     }
 
     /**

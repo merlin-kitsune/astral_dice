@@ -1,10 +1,11 @@
 # 批次 3 调试命令 — 实施进度与决策台账
+<!-- 历史记录：文中旧 shell 命令已于 2026-11-09 全部废弃，现用 bash 测试台（scripts/test/win/mt.sh）与 windows MCP，仅作溯源。 -->
 
 分支 `multi-1.20.1-1.21.1`,HEAD `7b9e711`(起点)。**本批已停在构建前(原因见 §0)。**
 
 ## 0. 构建/提交闸门(先判定,已生效)
 
-侦察:`Get-CimInstance Win32_Process -Filter "Name='java.exe'"`
+侦察：`jps -lvm` 按主类名过滤 `java.exe`
 
 - PID 1624 = `net.caffeinemc.sodium / net.minecraft.client.main.Main /` → **Minecraft 客户端在跑**
 - PID 2076 = `gradlew :neoforge-1.21.1:runClient`(run 任务)
@@ -17,7 +18,7 @@
 - `javac -XDrawDiagnostics -proc:none -nowarn`(空 classpath)**纯语法/解析体检** → 6 个改动文件
   **零 parse/syntax 诊断**(其余诊断全是预期内的 `cant.resolve.location` / `doesnt.exist`;
   `duplicate.class` 只因 N/F 两份源码同名同类被同批编译)。
-- `tools/check_lang_sync.ps1` 双版本 **PASS**(621/621)。
+- `tools/check_lang_sync.py` 双版本 **PASS**(621/621)。
 - 自写脚本核对 4 份 lang:key 集合完全一致、LF、无尾换行、无 BOM、一行一条目。
 
 ## 1. 需求终版(用户两次追加口径后)
@@ -133,7 +134,7 @@
       (N:143-153 / F:142-152)+ `java.util.Collection` import
 - [x] N/F `item/card/EffectCardPeriod.java`:加 `effectPendingEffects()`(N:109-127 / F:118-136)
 - [x] N/F `command/AstralPartyCommand.java`:**新建**(N 300 行 / F 303 行)
-- [x] 4 份 lang 各 +7 key(614 → **621**;`check_lang_sync.ps1` 双版本 PASS)
+- [x] 4 份 lang 各 +7 key(614 → **621**;`check_lang_sync.py` 双版本 PASS)
 - [x] `CHANGELOG_ZH.md` / `CHANGELOG.md`:合并进未发布(1.2.1)的「新内容 / New Content」**各 +1 条**
       ⇒ 该节 **48 / 48**,全文件 **324 / 324**,12 个版本小节逐节相等
 - [x] `AGENTS.md`:新增 `## 管理员调试命令 /astralparty（Admin Debug Commands）— 必须遵守`
@@ -143,7 +144,7 @@
 ## 8. 未决点 / 建议下一步
 
 1. **构建与提交**:等客户端退出后跑
-   `pwsh -NoProfile -File scripts/test/mt_build.ps1 --version 1.21.1 --timeout 60 --retries 3`,
+   `bash scripts/test/win/mt.sh --phase build --version 1.21.1 --timeout 60 --retries 3`,
    再 `--version 1.20.1`;两版日志见 `BUILD SUCCESSFUL` 或产物 jar 时间戳更新后做中文信息本地提交(**不 push**)。
 2. **`weak_mark_source` / `sign_ready_*` 两项清理属"从严"裁决**:若用户认为超出「同生共死」边界,
    删掉对应两个分支即可(不影响其余功能),但会留下 §6 所述的隐性状态。

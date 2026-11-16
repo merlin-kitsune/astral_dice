@@ -3,7 +3,7 @@ package com.merlinkitsune.astral_dice.shop;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.ArrayList;
@@ -68,12 +68,12 @@ public record ChipShopState(List<String> offers, Optional<String> lastPickCatego
     ).apply(instance, ChipShopState::new));
 
     /** 玩家存档读取（客户端读到的是一份「服务端同步值」——本模组不使用附件 sync，客户端不读它） */
-    public static ChipShopState get(Player player) {
-        return player.getData(ModAttachments.CHIP_SHOP_STATE.get());
+    public static ChipShopState get(LivingEntity holder) {
+        return holder.getData(ModAttachments.CHIP_SHOP_STATE.get());
     }
 
-    public static void store(Player player, ChipShopState state) {
-        player.setData(ModAttachments.CHIP_SHOP_STATE.get(), state);
+    public static void store(LivingEntity holder, ChipShopState state) {
+        holder.setData(ModAttachments.CHIP_SHOP_STATE.get(), state);
     }
 
     /** 候选（解析成池内条目；未知 id 会被跳过 —— 对应「换过版本 / 条目被移除」的旧存档） */
@@ -122,7 +122,7 @@ public record ChipShopState(List<String> offers, Optional<String> lastPickCatego
      * <p>⚠️ 2026-10-24 用户裁决：**已删除「骰子签名变化即重抽」的比对** —— 换装备 / 换骰子 / 升星
      * 都不得再免费刷新（旧比对让换一次骰子就等于白送一批候选）。{@code rolledDiceKey} 仅作诊断留痕。
      */
-    public boolean needsReroll(Player player) {
+    public boolean needsReroll(LivingEntity holder) {
         List<ChipShopCatalog.Entry> list = entries();
         if (list.isEmpty()) {
             return true;
@@ -131,7 +131,7 @@ public record ChipShopState(List<String> offers, Optional<String> lastPickCatego
             return true;
         }
         for (ChipShopCatalog.Entry entry : list) {
-            if (ChipShopRoller.isOwned(player, entry)) {
+            if (ChipShopRoller.isOwned(holder, entry)) {
                 return true;
             }
         }

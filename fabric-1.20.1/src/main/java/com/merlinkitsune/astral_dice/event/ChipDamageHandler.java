@@ -50,7 +50,22 @@ public final class ChipDamageHandler {
     public static void onLivingDamage(LivingDamageEvent event) {
         LivingEntity entity = event.getEntity();
         if (entity.level().isClientSide()) return;
-        if (!(entity instanceof Player player)) return;
+        if (!(entity instanceof Player player)) {
+            if (com.merlinkitsune.astral_dice.combat.DiceCombatParticipants.isParticipant(entity)
+                    && entity.hasEffect(com.merlinkitsune.astral_dice.effect.ModEffects.HOLY_SWORD_GUARD.get())) {
+                boolean unreducible = event.getSource().is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.CARD_COST)
+                        || event.getSource().is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.UNREDUCIBLE_DAMAGE)
+                        || event.getSource().is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.SKILL_DAMAGE);
+                if (!unreducible) {
+                    float current = event.getAmount();
+                    float capped = Math.max(0.0F, current - 2.0F);
+                    if (capped != current) {
+                        event.setAmount(capped);
+                    }
+                }
+            }
+            return;
+        }
 
         // N2 收口(批次 D-10):本处理器有 4 个早退点,若把「本击受击快照失效」写在各出口上,
         // 早晚漏一个 ⇒ 统一放进 finally,与 forge-1.20.1 同名文件(:49-67)同形。
@@ -92,7 +107,7 @@ public final class ChipDamageHandler {
         // getDamageAfterArmorAbsorb)、魔抗(19 getDamageAfterMagicAbsorb)、吸收(25-45)全在其后
         // ⇒ 此处与生命值比较的是护甲/吸收**之前**的原始值,本线不做换算。
         // ⚠️ 本线平台注(批次 D-10 取证):本线该事件由 Puzzles 的 LIVING_HURT
-        //    回调桥接(platform/PuzzlesBridges.java:100-112),注入点在 actuallyHurt 的**方法入口**,
+        //    回调桥接(platform/StarengineBridges.java:100-112),注入点在 actuallyHurt 的**方法入口**,
         //    载荷是护甲 / 抗性 / 吸收**之前**的原始入参(字节码:fuzs.puzzleslib.mixin.LivingEntityFabricMixin
         //    的 actuallyHurt 处理器先判 isInvulnerableTo 再派发,偏移 0-54)⇒「致命判定天然按吸收之后」
         //    在本线**并不成立**;此处沿用本线既有口径(与骰战两条写终值路径同一口径),
@@ -103,11 +118,12 @@ public final class ChipDamageHandler {
         }
 
         // 磨刀石:低血量减伤 + 血量 > 1 时不可被一次伤害击倒
-        // 「不可削减」伤害段（王之力代价 card_cost / 狂暴反噬 unreducible_damage，2026-10-02 用户裁决）：
+        // 「不可削减」伤害段（王之力代价 card_cost / 狂暴反噬 unreducible_damage，2026-10-02 用户裁决；技能伤害 skill_damage，2026-11-14 用户裁决「等值伤害」）：
         // 跳过本模组的**固定点数减伤**（下面磨刀石 -2、怪力侦探立牌 -N）—— 但**保命**机制照常：
         // 安全气囊在上面已处理（致命即 return），磨刀石「不可被一次击倒」在下面仍然生效。
         boolean unreducible = event.getSource().is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.CARD_COST)
-                || event.getSource().is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.UNREDUCIBLE_DAMAGE);
+                || event.getSource().is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.UNREDUCIBLE_DAMAGE)
+                || event.getSource().is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.SKILL_DAMAGE);
 
         float modified = WhetstoneChipItem.modifyIncomingDamage(player, damage, !unreducible);
         if (modified != damage) {
@@ -126,6 +142,29 @@ public final class ChipDamageHandler {
         if (!unreducible && totalCut > 0.0F) {
             float current = event.getAmount();
             float capped = Math.max(0.0F, current - totalCut);
+            if (capped != current) {
+                event.setAmount(capped);
+            }
+        }
+        // 圣剑守护:石中剑-精良赐福期间,受到的伤害 -2(不可削减伤害类型跳过)
+        if (!unreducible && player.hasEffect(com.merlinkitsune.astral_dice.effect.ModEffects.HOLY_SWORD_GUARD.get())) {
+            float current = event.getAmount();
+            float capped = Math.max(0.0F, current - 2.0F);
+            if (capped != current) {
+                event.setAmount(capped);
+            }
+        }
+        // 超天酱立牌(kangel)被动「小天使请安」+ 地雷女立牌(ame)备注「一心同体」(2026-10-16):
+        // 带「粉丝」(kangel_fan)的目标攻击佩戴者(或与其一心同体的地雷女佩戴者（队内须有超天酱立牌佩戴者）)时,
+        // 造成的伤害 -1。⚠️ 判据只认**目标标记** kangel_fan —— 佩戴者自己的计数指示器是另一个 id
+        // (kangel_fan_indicator,2026-10-17 拆分),绝不参与本段,否则超天酱互殴会互相误判 -1。
+        // 与上面 sherry 的段落**同一口径**:固定点数减法、与磨刀石同阶段(LOWEST = 最终伤害
+        // 阶段)、`Math.max(0, …)` **允许扣到 0**、**不可减免**伤害类型(CARD_COST / UNREDUCIBLE_DAMAGE / SKILL_DAMAGE)
+        // 一律跳过(「不可削减」段已在上面算好 unreducible);刻意**不**附带"不可致死保护"。
+        if (!unreducible && com.merlinkitsune.astral_dice.item.sign.KangelSignItem
+                .fanMitigationActive(player, event.getSource())) {
+            float current = event.getAmount();
+            float capped = Math.max(0.0F, current - 1.0F);
             if (capped != current) {
                 event.setAmount(capped);
             }

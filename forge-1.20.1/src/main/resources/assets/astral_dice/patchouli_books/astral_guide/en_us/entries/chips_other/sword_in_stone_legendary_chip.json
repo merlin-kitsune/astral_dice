@@ -1,0 +1,21 @@
+{
+  "name": "item.astral_dice.sword_in_stone_legendary_chip",
+  "category": "astral_dice:chips_other",
+  "icon": "astral_dice:sword_in_stone_legendary_chip",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:sword_in_stone_legendary_chip",
+      "text": "astral_dice.guide.entry.sword_in_stone_legendary_chip.1"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.sword_in_stone_legendary_chip.2"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.chip_source.note"
+    }
+  ],
+  "sortnum": 27
+}

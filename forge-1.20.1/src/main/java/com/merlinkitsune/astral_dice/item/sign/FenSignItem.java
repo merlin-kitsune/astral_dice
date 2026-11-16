@@ -245,5 +245,11 @@ public class FenSignItem extends BaseSignItem implements SignHooks.SplashBlessin
         ModAttachments.setFenRecharge(player, ModAttachments.getFenRecharge(player) + 1);
         // 重新计时
         ModAttachments.setFenLastBlessingTick(player, now);
+    
+}
+    // 2026-11-09（A）：类玩家宿主的主动入口 —— 当前语义依赖玩家侧通道，显式拒绝并留锚点。
+    @Override
+    protected boolean activateForEntity(net.minecraft.world.entity.LivingEntity owner) {
+        return com.merlinkitsune.astral_dice.item.sign.SignEntitySkills.deny("fen", owner, "needs_player_card_channel");
     }
 }

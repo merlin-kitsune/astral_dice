@@ -1,0 +1,59 @@
+{
+  "case_id": "CRAFT-CHIP-fabric-1.21.1",
+  "title": "原版工作台配方可合成：astral_dice:chip_shop（GPG/HKH/HHH）在背包凑齐 gold_ingot x2 + star_plate x1 + polished_blackstone_bricks x5 + blank_chip x1 后出现在 AutoJS.craftable 列表，craft 后产出 1 个 chip_shop、四类原料全部归零、且不再可合成。证据：fabric-1.21.1/src/main/resources/data/astral_dice/recipe/chip_shop.json:1-29（pattern 与 key 逐一对应）、:25-28（result astral_dice:chip_shop x1）；配方 id 规则来自 1.21 的 data/<ns>/recipe/<name>.json ⇒ astral_dice:chip_shop。",
+  "version": "fabric-1.21.1",
+  "channel": "autojs",
+  "on_fail": "continue",
+  "steps": [
+    {
+      "op": "note",
+      "text": "选这条配方的理由：fabric-1.21.1 的 data/astral_dice/recipe/ 只有 17 个文件，其中骰子升级用的是自定义类型 astral_dice:dice_upgrade（不能走原版合成），卡牌/筹码没有配方；chip_shop 是标准的 minecraft:crafting_shaped（fabric-1.21.1/src/main/resources/data/astral_dice/recipe/chip_shop.json:2），材料全部是普通物品，可用 /give 精确凑齐。AutoJS.craftable 用真实配方 + 真实背包做可行解算（temp/AutoJS-src/common/src/main/java/com/sighs/autojs/neoforge/script/PlayerOps.java:390-440 plan()），craft 走真实消耗与产出（同文件:500-566），只跳过 UI。注意 AutoJS.findItems 是**注册表搜索**不是背包搜索（AutoJSTools.java:599-601），所以背包计数在本用例里自己遍历 getInventory() 统计。自恢复：clear @a + 清场。"
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "mode": "json",
+      "code": "(function(){\n  var P = AutoJS.players()[0];\n  AutoJS.command('kill @e[type=!player,distance=..48]');\n  AutoJS.command('clear @a');\n  AutoJS.command('effect clear @a');\n  function count(id){\n    var inv = P.getInventory(); var n = 0;\n    for (var i = 0; i < inv.getContainerSize(); i++){\n      var s = inv.getItem(i);\n      if (!s.isEmpty() && String(AutoJS.id(s)) === id) n += s.getCount();\n    }\n    return n;\n  }\n  AutoJS.give('minecraft:gold_ingot', 2);\n  AutoJS.give('astral_dice:star_plate', 1);\n  AutoJS.give('minecraft:polished_blackstone_bricks', 5);\n  AutoJS.give('astral_dice:blank_chip', 1);\n  var out = {};\n  out.goldBefore = count('minecraft:gold_ingot');\n  out.plateBefore = count('astral_dice:star_plate');\n  out.bricksBefore = count('minecraft:polished_blackstone_bricks');\n  out.blankChipBefore = count('astral_dice:blank_chip');\n  var list = JSON.parse(AutoJS.craftable(400));\n  var found = null;\n  for (var i = 0; i < list.length; i++){ if (String(list[i].recipe) === 'astral_dice:chip_shop') found = list[i]; }\n  out.recipeListed = (found !== null);\n  out.listedOutput = (found === null) ? '' : String(found.output);\n  var res = JSON.parse(AutoJS.craft('astral_dice:chip_shop', 1));\n  out.craftRecipe = String(res.recipe);\n  out.crafted = res.crafted;\n  out.craftOutput = String(res.output);\n  out.goldAfter = count('minecraft:gold_ingot');\n  out.plateAfter = count('astral_dice:star_plate');\n  out.bricksAfter = count('minecraft:polished_blackstone_bricks');\n  out.blankChipAfter = count('astral_dice:blank_chip');\n  out.chipShopAfter = count('astral_dice:chip_shop');\n  var list2 = JSON.parse(AutoJS.craftable(400));\n  var still = false;\n  for (var j = 0; j < list2.length; j++){ if (String(list2[j].recipe) === 'astral_dice:chip_shop') still = true; }\n  out.stillCraftableAfter = still;\n  return out;\n})()",
+      "save_as": "craft",
+      "timeout_ms": 60000
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "mode": "json",
+      "code": "(function(){\n  AutoJS.command('clear @a');\n  AutoJS.command('effect clear @a');\n  AutoJS.command('kill @e[type=!player,distance=..48]');\n  return { cleaned: true };\n})()",
+      "save_as": "restored",
+      "timeout_ms": 60000
+    }
+  ],
+  "asserts": [
+    {
+      "type": "state",
+      "from": "craft",
+      "expect": {
+        "goldBefore": 2,
+        "plateBefore": 1,
+        "bricksBefore": 5,
+        "blankChipBefore": 1,
+        "recipeListed": true,
+        "listedOutput": "1x astral_dice:chip_shop",
+        "craftRecipe": "astral_dice:chip_shop",
+        "crafted": 1,
+        "craftOutput": "1x astral_dice:chip_shop",
+        "goldAfter": 0,
+        "plateAfter": 0,
+        "bricksAfter": 0,
+        "blankChipAfter": 0,
+        "chipShopAfter": 1,
+        "stillCraftableAfter": false
+      }
+    },
+    {
+      "type": "state",
+      "from": "restored",
+      "expect": {
+        "cleaned": true
+      }
+    }
+  ]
+}

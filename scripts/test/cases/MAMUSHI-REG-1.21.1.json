@@ -1,6 +1,6 @@
 {
   "case_id": "MAMUSHI-REG-1.21.1",
-  "title": "蛟龙立牌(mamushi) 注册与冻结面游戏内取证：§1 冻结常量/键名（REG_CONST 逐条「产品常量→期望→相等标志」）、物品与效果身份（REG_SRC 的 sign/bite/roar 物品 + 两张效果类 + 电流核心/维生素筹码/ModItems）、typeId↔物品双向（REG_TYPE 的 bite/dragon_roar + 注册费用 + 非防御牌）、**4 个标签成员**（REG_TAG：astral_dice:signs / curios:stand / astral_dice:is_exclusive / astral_dice:combat_cards）、以及两张专属战斗牌「不入随机池」的注册面（MU_GUARD 的 pool_hits=0 + 全池清单 + 装备入口 mayPlace 四态 + canUse 三态（无主 / 绑定本人 / 绑定他人）+ owner 闭集读数）。⚠️ 「两张牌无配方」无任何游戏内读数面（配方不在探针读数里）⇒ 登记为未覆盖，只由静态闸门（verify_bountiful_pools.ps1 / 配方覆盖审计）保证。",
+  "title": "蛟龙立牌(mamushi) 注册与冻结面游戏内取证：§1 冻结常量/键名（REG_CONST 逐条「产品常量→期望→相等标志」）、物品与效果身份（REG_SRC 的 sign/bite/roar 物品 + 两张效果类 + 电流核心/维生素筹码/ModItems）、typeId↔物品双向（REG_TYPE 的 bite/dragon_roar + 注册费用 + 非防御牌）、**4 个标签成员**（REG_TAG：astral_dice:signs / curios:stand / astral_dice:is_exclusive / astral_dice:combat_cards）、以及两张专属战斗牌「不入随机池」的注册面（MU_GUARD 的 pool_hits=0 + 全池清单 + 装备入口 mayPlace 四态 + canUse 三态（无主 / 绑定本人 / 绑定他人）+ owner 闭集读数）。⚠️ 「两张牌无配方」无任何游戏内读数面（配方不在探针读数里）⇒ 登记为未覆盖，只由静态闸门（scripts/verify/verify_bountiful_pools.py / 配方覆盖审计）保证。",
   "version": "1.21.1",
   "target": { "type": "feature", "ref": "mamushi-sign-spec" },
   "on_fail": "keep_game_running",

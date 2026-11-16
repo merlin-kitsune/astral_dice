@@ -105,7 +105,7 @@ import com.merlinkitsune.starengine.combat.PartyRelations;
 public class ZhaoSignItem extends BaseSignItem implements SignHooks.DiceJudgmentRoll {
     private static final Logger LOGGER = LoggerFactory.getLogger(ZhaoSignItem.class);
 
-    /** 主动技能的动作 id(注册表键;也是 actionbar 技能名 {@code msg.astral_dice.target_select.skill.<id>} 的来源) */
+    /** 主动技能的动作 id（注册表键） */
     public static final String ACTION_ID = "zhao_blessing";
 
     /** 立牌的物品注册 id(锁定态/调试读数用) */
@@ -501,5 +501,9 @@ public class ZhaoSignItem extends BaseSignItem implements SignHooks.DiceJudgment
         return onDiceRollResult(player, dice);
     }
 
-
+    // 2026-11-11 P1 补齐：与 P0 同口径的机器可读拒绝。
+    @Override
+    protected boolean activateForEntity(net.minecraft.world.entity.LivingEntity owner) {
+        return com.merlinkitsune.astral_dice.item.sign.SignEntitySkills.deny("zhao", owner, "needs_player_session");
+    }
 }

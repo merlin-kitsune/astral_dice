@@ -1,0 +1,27 @@
+{
+  "case_id": "JAR-ASSETS-fabric-1.21.1",
+  "title": "产物资源完整性（不需要启动游戏）：开包核对 models/item、recipe、data/trinkets、META-INF/jars 内嵌库。阈值取 2026-11-05 本线实测基线（models=158 / recipes=125 / trinkets=8 / entries=2315 / embed=0），按回归闸门口径只设下限与上限，不做等值断言。",
+  "version": "fabric-1.21.1",
+  "side": "server",
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "jar_stats",
+      "save_as": "jar"
+    },
+    {
+      "op": "note",
+      "text": "实测读数（2026-11-05，jar=astral_dice-26.4-SNAPSHOT.6+fabric_1.21.1.jar）：entries=2315 / models=158 / recipes=125 / trinkets=8 / bountiful=4 / embed=0 / signs=32。\n\n字段口径：models 数 assets/astral_dice/models/item/*.json；recipes 同时数 data/astral_dice/recipe/ 与 recipes/（1.21+ 用 recipe/）；trinkets 数 data/trinkets/**/*.json（本线饰品后端只做 Trinkets）；embed 数 META-INF/jars/*.jar，本线是外置前置 starengine ⇒ 必须为 0（与 fabric-1.20.1 的内嵌口径相反：那条线 embed_min 才是预期，本线 0 是硬判据）。\n\nbountiful=4 是自 1.20.1 线一路带过来的死数据（本线测试台不装 Bountiful，数据不生效），本条不对它设判据，只在文档里登记；若将来清理或回填，本条不受影响。\n\n与 JSON 源对照的理由：本项目真实踩过一次 —— 漏抄 sourceSets 的 srcDir(src/generated/resources) 导致 137 个物品模型 + 118 个配方不进产物，编译与启动俱无感。"
+    }
+  ],
+  "asserts": [
+    {
+      "type": "jar",
+      "models_min": 158,
+      "recipes_min": 125,
+      "trinkets_min": 8,
+      "entries_min": 2315,
+      "embed_max": 0
+    }
+  ]
+}

@@ -6,6 +6,7 @@ import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import net.minecraft.ChatFormatting;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -652,6 +653,14 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
     protected void onHurt(Player player, DamageSource source, float amount) {
     }
 
+    protected void onKillEntity(LivingEntity killer, LivingEntity killed) {
+        if (killer instanceof Player player) onKill(player, killed);
+    }
+
+    protected void onHurtEntity(LivingEntity entity, DamageSource source, float amount) {
+        if (entity instanceof Player player) onHurt(player, source, amount);
+    }
+
     // 分发:玩家造成击杀时,调用其全部已装备立牌的 onKill 钩子
     public static void invokeKillHooks(Player killer, net.minecraft.world.entity.LivingEntity killed) {
         if (killer == null || killer.level().isClientSide()) return;
@@ -682,6 +691,36 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         });
     }
 
+    // 分发:实体级击杀(供类玩家宿主/第三方实体复用;默认经 onKillEntity 委派到玩家路径)
+    public static void invokeKillHooks(LivingEntity killer, LivingEntity killed) {
+        if (killer == null || killer.level().isClientSide()) return;
+        CuriosApi.getCuriosInventory(killer).ifPresent(handler -> {
+            var results = handler.findCurios(s -> s.getItem() instanceof BaseSignItem);
+            for (var r : results) {
+                if (r.stack().getItem() instanceof BaseSignItem sign) {
+                    sign.onKillEntity(killer, killed);
+                }
+            }
+        });
+    }
+
+    // 分发:实体级受击;闸门与 P0 一致(玩家走 isHostileAttack,非玩家要求来源实体是存活的其他 LivingEntity)
+    public static void invokeHurtHooks(LivingEntity entity, DamageSource source, float amount) {
+        if (entity == null || entity.level().isClientSide()) return;
+        boolean hostile = entity instanceof Player player
+                ? com.merlinkitsune.astral_dice.combat.DiceCombatEvents.isHostileAttack(player, source)
+                : source.getEntity() instanceof LivingEntity attacker && attacker != entity && attacker.isAlive();
+        if (!hostile) return;
+        CuriosApi.getCuriosInventory(entity).ifPresent(handler -> {
+            var results = handler.findCurios(s -> s.getItem() instanceof BaseSignItem);
+            for (var r : results) {
+                if (r.stack().getItem() instanceof BaseSignItem sign) {
+                    sign.onHurtEntity(entity, source, amount);
+                }
+            }
+        });
+    }
+
     /**
      * 非门控立牌主动技能的实际效果(子类覆写;返回 {@code SUCCESS} 才算触发成功)。
      *
@@ -696,5 +735,24 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         LOGGER.warn("[Astral Dice][SignSkill] handleUse 未被覆写: item={} —— 该立牌主动无效果"
                 + "(目标选择器类立牌走 performSkill 第 2.5 步门控,不会到达这里)", stack);
         return InteractionResult.FAIL;
+    }
+
+    /**
+     * 供附属模组触发的主动技能入口（非玩家 owner）。
+     *
+     * <p>玩家请走既有的 {@code performSkillForCurio} 管線。非玩家默认下放到
+     * {@link #activateForEntity}，未覆写时只打 WARN 并返回 {@code false} ——
+     * 需要支持类玩家生物主动的立牌应覆写 {@code activateForEntity}。
+     */
+    public boolean activateFor(net.minecraft.world.entity.LivingEntity owner) {
+        if (owner == null) return false;
+        if (owner instanceof Player) return false;
+        return activateForEntity(owner);
+    }
+
+    /** 非玩家 owner 的主动实现（默认不支持）。 */
+    protected boolean activateForEntity(net.minecraft.world.entity.LivingEntity owner) {
+        LOGGER.warn("[Astral Dice][SignSkill] activateForEntity 未被覆写: owner={}", owner.getName().getString());
+        return false;
     }
 }

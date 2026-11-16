@@ -1,0 +1,119 @@
+{
+  "case_id": "MENU-SYNC-fabric-1.21.1",
+  "title": "服务端改状态后客户端读到的同步值一致：服务端 handleRefresh 把刷新次数 3→2、单价仍 10，客户端在 ChipShopScreen 里读到同样的刷新/单价/总上限，且客户端 ChipShopState 同步副本的 refreshesLeft 也是 2（证据 shop/ChipShopMenu.java:211-270,285-333,441-459；shop/ChipShopState.java:93-94 的 .sync()；screen/ChipShopScreen.java:66）",
+  "version": "fabric-1.21.1",
+  "channel": "autojs",
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "判据来源：ChipShopMenu.java:211-270 把价格/刷新/上限/品质码注册成 DataSlot（服务端 get() 现读 ChipShopState，客户端读同步镜像）；:441-459 handleRefresh 只减 refreshesLeft 并重抽，不关容器、不改价；ChipShopState.java:93-94 CHIP_SHOP_STATE 带 sync() ⇒ 整条 record 也会同步到客户端，故客户端 State.get(player) 可独立读数，用作与 DataSlot 镜像的第二条独立证据链。服务端步骤写 + 客户端步骤读，全部数值都是源码可推导的确定值（EMPTY 起始 3/5/10）。收尾由服务端步骤 closeContainer + store(EMPTY) 复原。"
+    },
+    {
+      "op": "mcp_status",
+      "timeout_ms": 20000,
+      "save_as": "mcp"
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "mode": "json",
+      "timeout_ms": 30000,
+      "save_as": "syncsrv",
+      "code": "(function(){\n  function cls(n){ return Java.loadClass(n); }\n  var State = cls(\"com.merlinkitsune.astral_dice.shop.ChipShopState\");\n  var Opener = cls(\"com.merlinkitsune.astral_dice.shop.ChipShopOpener\");\n  var player = AutoJS.players()[0];\n  var out = {};\n  player.closeContainer();\n  State.store(player, State.EMPTY);\n  Opener.open(player);\n  var m = player.containerMenu;\n  out.menuIsShop = String(m).indexOf(\"ChipShopMenu\") >= 0;\n  if (!out.menuIsShop) { out.abort = true; return out; }\n  out.abort = false;\n  out.priceBefore = m.price();\n  out.refreshesBefore = m.remainingRefreshes();\n  out.totalRefreshes = m.totalRefreshes();\n  out.keyBefore = String(m.offersKey());\n  out.stateRefreshesBefore = State.get(player).refreshesLeft();\n  m.handleRefresh(player);\n  out.refreshesAfter = m.remainingRefreshes();\n  out.stateRefreshesAfter = State.get(player).refreshesLeft();\n  out.priceAfter = m.price();\n  out.keyChanged = String(State.get(player).offersKey()) !== out.keyBefore;\n  out.menuStillOpen = String(player.containerMenu).indexOf(\"ChipShopMenu\") >= 0;\n  out.serverKey = String(State.get(player).offersKey());\n  return out;\n})()"
+    },
+    {
+      "op": "await_state",
+      "side": "client",
+      "timeout_ms": 30000,
+      "interval_ms": 200,
+      "code": "(function(){ try { var mc = Java.loadClass(\"net.minecraft.client.Minecraft\").getInstance(); var s = mc.screen; return s != null && String(s).indexOf(\"ChipShopScreen\") >= 0; } catch (e) { return false; } })()"
+    },
+    {
+      "op": "await_state",
+      "side": "client",
+      "timeout_ms": 30000,
+      "interval_ms": 400,
+      "code": "(function(){ try { var mc = Java.loadClass(\"net.minecraft.client.Minecraft\").getInstance(); var m = mc.player == null ? null : mc.player.containerMenu; if (m == null) { return false; } if (String(m).indexOf(\"ChipShopMenu\") < 0) { return false; } return Number(m.remainingRefreshes()) === 2; } catch (e) { return false; } })()"
+    },
+    {
+      "op": "eval_js",
+      "side": "client",
+      "mode": "json",
+      "timeout_ms": 20000,
+      "save_as": "synccli",
+      "code": "(function(){\n  function cls(n){ return Java.loadClass(n); }\n  var mc = cls(\"net.minecraft.client.Minecraft\").getInstance();\n  var out = {};\n  var sc = mc.screen;\n  out.screenClass = (sc == null) ? \"\" : String(sc);\n  var menu = (mc.player == null) ? null : mc.player.containerMenu;\n  out.menuClass = (menu == null) ? \"\" : String(menu);\n  if (menu == null) { out.abort = true; return out; }\n  out.abort = false;\n  out.clientPrice = menu.price();\n  out.clientRefreshes = menu.remainingRefreshes();\n  out.clientTotal = menu.totalRefreshes();\n  out.clientKey = String(menu.offersKey());\n  out.clientDeny = menu.denyReason();\n  try {\n    var State = cls(\"com.merlinkitsune.astral_dice.shop.ChipShopState\");\n    out.syncedRefreshes = State.get(mc.player).refreshesLeft();\n    out.syncedPrice = State.get(mc.player).price();\n  } catch (e) { out.syncErr = String(e); }\n  return out;\n})()"
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "mode": "json",
+      "timeout_ms": 20000,
+      "save_as": "syncdone",
+      "code": "(function(){\n  function cls(n){ return Java.loadClass(n); }\n  var State = cls(\"com.merlinkitsune.astral_dice.shop.ChipShopState\");\n  var player = AutoJS.players()[0];\n  var out = {};\n  player.closeContainer();\n  State.store(player, State.EMPTY);\n  out.refreshesAfterTeardown = State.get(player).refreshesLeft();\n  out.menuAfterTeardown = String(player.containerMenu);\n  out.cooldownAfterTeardown = State.get(player).cooldownUntil();\n  return out;\n})()"
+    }
+  ],
+  "asserts": [
+    {
+      "type": "state",
+      "from": "mcp",
+      "expect": {
+        "Ok": true
+      }
+    },
+    {
+      "type": "state",
+      "from": "syncsrv",
+      "expect": {
+        "menuIsShop": true,
+        "abort": false,
+        "priceBefore": 10,
+        "refreshesBefore": 3,
+        "totalRefreshes": 5,
+        "stateRefreshesBefore": 3,
+        "refreshesAfter": 2,
+        "stateRefreshesAfter": 2,
+        "priceAfter": 10,
+        "menuStillOpen": true,
+        "serverKey": {
+          "regex": "^[a-z0-9_]+_chip(\\+[a-z0-9_]+_chip)*$"
+        }
+      }
+    },
+    {
+      "type": "state",
+      "from": "synccli",
+      "expect": {
+        "screenClass": {
+          "regex": "ChipShopScreen"
+        },
+        "menuClass": {
+          "regex": "ChipShopMenu"
+        },
+        "abort": false,
+        "clientPrice": 10,
+        "clientRefreshes": 2,
+        "clientTotal": 5,
+        "clientKey": {
+          "regex": "^[a-z0-9_]+_chip(\\+[a-z0-9_]+_chip)*$"
+        },
+        "clientDeny": -1,
+        "syncedRefreshes": 2,
+        "syncedPrice": 10
+      }
+    },
+    {
+      "type": "state",
+      "from": "syncdone",
+      "expect": {
+        "refreshesAfterTeardown": 3,
+        "cooldownAfterTeardown": 0
+      }
+    },
+    {
+      "type": "log",
+      "scope": "case",
+      "pattern": "CHIP_SHOP_REFRESH player="
+    }
+  ]
+}

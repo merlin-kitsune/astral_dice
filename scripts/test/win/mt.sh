@@ -2,9 +2,11 @@
 # ============================================================================
 # scripts/test/win/mt.sh — Astral Dice 测试台 · bash 编排层（P1 契约层）
 #
-# 对外契约与 scripts/test/mt.ps1 等价：同一套开关 / 同一套阶段 / 同一套退出码 /
-# 同一族机器行。与 pwsh 的差异集中在「过渡期委托」：cases / report / preflight
-# 仍调 pwsh，并在输出打一行 MT_DEPRECATED（见 docs/features/bash-first-test-flow-plan.md）。
+# 全 bash/python 实现，**不依赖任何外部脚本资产**（旧测试台已整体退役删除）。
+#   env/build/launch/stop        → bash（scripts/test/win/*.sh + lib/*.sh）
+#   cases/report/preflight       → python（scripts/test/lib/mt_case.py / mt_report.py / mt_preflight.py）
+# 机器行、退出码、开关面与旧编排器逐字对齐；差异只有「能力缺口记 BLOCKED(11)」这一条：
+#   native 注入通道（窗口定位 / user32 合成输入）随旧资产删除而失效，见 phases.sh 的 launch 阶段。
 #
 # 阶段：env | build | launch | cases | report | stop（另接受 preflight，P2 迁移）
 #
@@ -16,9 +18,11 @@
 #   bash scripts/test/win/mt.sh --version 1.21.1 --phase report
 #   bash scripts/test/win/mt.sh --version 1.21.1 --phase stop --purge-saves
 #   bash scripts/test/win/mt.sh --version 1.21.1 --phase build --dry-run   # 只看将执行什么
-#   bash scripts/test/win/mt.sh --allow-auto    # 全流程（四线顺序 + 1.21.1 门控）
+#   bash scripts/test/win/mt.sh --allow-auto    # 全流程（五线顺序 + 1.21.1 门控）
 #   bash scripts/test/win/mt.sh --version fabric-1.20.1 --side server --phase launch  # fabric 双 run 目录
+#   bash scripts/test/win/mt.sh --version fabric-1.21.1 --side server --phase launch  # 同上（fabric 1.21.1 线）
 #   bash scripts/test/win/mt.sh --version fabric-1.20.1 --enable-autojs --phase launch # 显式开 -PautojsTestMod=1
+#   bash scripts/test/win/mt.sh --version fabric-1.21.1 --enable-autojs --phase launch # 同上（fabric 1.21.1 线）
 #
 # 退出码：0=OK 1=FAIL 2=用法错误/ERROR 10=PREFLIGHT 11=BLOCKED 12=TIMEOUT 130=中断
 # 机器行：MT_ERROR: / MT_INFO: / MT_WARN: / MT_PHASE: / MT_AUTO_DISABLED: / MT_RUN: /
@@ -43,15 +47,15 @@ if [ -z "$MT_REPO_ROOT" ]; then
 fi
 export MT_REPO_ROOT
 
-usage() { sed -n '2,30p' "$0"; }
+usage() { sed -n '2,32p' "$0"; }
 
-# ── 选项默认值（对齐 mt.ps1:558-582 的 $script:Opt 表）─────────────────────
+# ── 选项默认值（对齐迁移前编排器的 $script:Opt 表）─────────────────────
 OPT_VERSION=""
 OPT_PHASE=""
 OPT_CASE=""
 OPT_CHANNEL=""
-OPT_SIDE=""               # 仅 fabric-1.20.1：client|server（其它线传了报错）
-OPT_FAB_AUTOJS=""         # 仅 fabric-1.20.1：1=显式开 -PautojsTestMod=1，0=显式关
+OPT_SIDE=""               # 仅 fabric 线（fabric-*）：client|server（其它线传了报错）
+OPT_FAB_AUTOJS=""         # 仅 fabric 线（fabric-*）：1=显式开 -PautojsTestMod=1，0=显式关
 OPT_ALLOW_AUTO=0
 OPT_FORCE=0
 OPT_KEEP_DAEMON=0
@@ -59,7 +63,7 @@ OPT_PURGE_MODE=""        # "" = 未指定；1 = 清存档；0 = 保留存档
 OPT_DRY_RUN=0
 CHANNEL=""               # 解析后归一（显式 > MT_CHANNEL > autojs）
 
-# 取值类参数：缺值文案与 mt.ps1:599-613 逐字一致
+# 取值类参数：缺值文案与迁移前编排器逐字一致
 need_value() {  # need_value <开关名> <剩余参数个数>
     if [ "${2:-0}" -lt 1 ]; then
         printf 'MT_ERROR: 缺少 --%s 的值\n' "$1" >&2
@@ -110,7 +114,7 @@ fi
 MT_CHANNEL="$CHANNEL"
 export MT_CHANNEL
 
-# 放行开关：--allow-auto 或 MT_ALLOW_AUTO=1（正则 ^(1|true|yes|on)$，pwsh -match 大小写不敏感）
+# 放行开关：--allow-auto 或 MT_ALLOW_AUTO=1（正则 ^(1|true|yes|on)$，大小写不敏感）
 ALLOW_AUTO=0
 [ "$OPT_ALLOW_AUTO" = 1 ] && ALLOW_AUTO=1
 case "$(printf '%s' "${MT_ALLOW_AUTO:-}" | tr 'A-Z' 'a-z')" in
@@ -119,7 +123,7 @@ esac
 MT_ALLOW_AUTO_ACTIVE=$ALLOW_AUTO
 export MT_ALLOW_AUTO_ACTIVE
 
-# 阶段 / 版本合法性（文案与 mt.ps1 的 未知阶段 / Assert-MtVersion 同款）
+# 阶段 / 版本合法性（文案与迁移前编排器的 未知阶段 / 版本校验 同款）
 if [ -n "$OPT_PHASE" ]; then
     if ! mt_phase_is_phase "$OPT_PHASE"; then
         printf 'MT_ERROR: 未知阶段 %s（可选：%s）\n' "$OPT_PHASE" "$MT_PHASES" >&2
@@ -131,15 +135,17 @@ if [ -n "$OPT_VERSION" ]; then
         printf 'MT_ERROR: 未知版本 %s（可选：%s）\n' "$OPT_VERSION" "$MT_ALL_VERSIONS" >&2
         exit 2
     fi
+    # fabric 线：把 --version 的 fabric 子项目写进 fabric 库全局（run 目录 / AutoJS 制品名跟着版本走）
+    mt_fab_set_version "$OPT_VERSION" || true
 fi
 
-# ── fabric-1.20.1 专属开关（--side / --enable-autojs）──────────────────────
+# ── fabric 线专属开关（--side / --enable-autojs；按 fabric-* 前缀判定）──────
 # 语义：只有 fabric 线有「双 run 目录」和「条件 AutoJS」，其它三线传这两个开关一律报错，
 #   避免「以为切了侧 / 以为开了 AutoJS」而实际没生效的静默偏差。
 MT_SIDE=""
 if [ -n "$OPT_SIDE" ]; then
     if ! mt_is_fabric "$OPT_VERSION"; then
-        printf 'MT_ERROR: --side 只对 fabric-1.20.1 有意义（收到 --version %s；其它三线是单 run 目录 run/<版本>）\n' "${OPT_VERSION:-<未指定>}" >&2
+        printf 'MT_ERROR: --side 只对 fabric 线（fabric-<mcver>）有意义（收到 --version %s；其它三线是单 run 目录 run/<版本>）\n' "${OPT_VERSION:-<未指定>}" >&2
         exit 2
     fi
     if ! mt_fab_side_valid "$OPT_SIDE"; then
@@ -150,14 +156,14 @@ if [ -n "$OPT_SIDE" ]; then
 fi
 if [ -n "$OPT_FAB_AUTOJS" ]; then
     if ! mt_is_fabric "$OPT_VERSION"; then
-        printf 'MT_ERROR: --enable-autojs/--disable-autojs 只对 fabric-1.20.1 有意义（收到 --version %s）\n' "${OPT_VERSION:-<未指定>}" >&2
+        printf 'MT_ERROR: --enable-autojs/--disable-autojs 只对 fabric 线（fabric-<mcver>）有意义（收到 --version %s）\n' "${OPT_VERSION:-<未指定>}" >&2
         exit 2
     fi
     MT_FAB_AUTOJS="$OPT_FAB_AUTOJS"
 fi
 export MT_SIDE MT_FAB_AUTOJS
 
-# stop 阶段的开关透传（mt.ps1:783-790）
+# stop 阶段的开关透传（对齐迁移前编排器）
 MT_STOP_FORCE=$OPT_FORCE
 MT_STOP_KEEP_DAEMON=$OPT_KEEP_DAEMON
 MT_STOP_PURGE_SAVES=0
@@ -169,7 +175,7 @@ export MT_DRY_RUN=$OPT_DRY_RUN
 on_interrupt() { printf 'MT_WARN: 收到中断信号，编排层退出（130）；游戏进程不动，收停用 --phase stop\n' >&2; exit 130; }
 trap on_interrupt INT TERM
 
-# ══ 🚫 批量编排闸门（对齐 mt.ps1:738-777，必须放在 stop / 单阶段分支之前）════
+# ══ 🚫 批量编排闸门（对齐迁移前编排器，必须放在 stop / 单阶段分支之前）════
 # 为什么前移：单阶段分支以 exit 收尾，闸门写在后面会被 --phase report 直接绕过（实测踩过）。
 if [ "$ALLOW_AUTO" != 1 ]; then
     auto_blocked=0
@@ -193,8 +199,8 @@ if [ "$ALLOW_AUTO" != 1 ]; then
             printf '  当前规则：「纯手动下达命令」——逐条注入、逐条看读数、逐步决策。\n'
             printf '  放行的阶段：build / env / launch / stop（把客户端弄起来/收停所需的基础设施）\n'
             printf '  单条执行：bash scripts/test/win/mt.sh --version <ver> --phase cases --case scripts/test/cases/<CASE>.json\n'
-            printf '  直接注入：pwsh -File scripts/test/mt_inject.ps1 cmd --command "/astralprobe ..."\n'
-            printf '  手动读数：pwsh -File scripts/test/mt_assert.ps1 log --version <ver> --pattern "<正则>"\n'
+            printf '  直接注入：python scripts/test/mt_inject.py cmd --command "/astralprobe ..."\n'
+            printf '  手动读数：python scripts/test/mt_assert.py log --version <ver> --pattern "<正则>"\n'
             printf '  临时放行：追加 --allow-auto（或设 MT_ALLOW_AUTO=1）\n'
         } >&2
         exit 2

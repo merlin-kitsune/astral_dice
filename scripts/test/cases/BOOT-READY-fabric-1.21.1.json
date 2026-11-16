@@ -1,0 +1,45 @@
+{
+  "case_id": "BOOT-READY-fabric-1.21.1",
+  "title": "fabric-1.21.1 启动就绪：模组自身初始化行 + 游戏就绪行齐全，且没有崩溃/mixin 报错。判据只锚 latest.log 的确定行，不做模糊匹配。相对 fabric-1.20.1 同名列的两处差异：① 本线不装 KubeJS ⇒ 去掉 kubejs 断言（该断言在本线读不到日志会恒真，属假绿）；② 追加 Trinkets-only 饰品后端判据行（2026-11-05 用户裁决：只做 Trinkets，Accessories 与 ACL 进不兼容列表）。 【口径修正】本用例的断言必须写在顶层 asserts（复数）：python 运行器只执行 doc[asserts]，写成 assert（单数）会被静默忽略（存量 17 个用例就踩了这个坑，见同目录 BOOT-READY-fabric-1.20.1.json）。 断言窗口取 scope=whole：启动行发生在 launch 阶段，单独跑用例时运行器没有本轮 launch_offsets（会退化成 case 窗口并从用例起点读，启动行全在前方 ⇒ 恒 FAIL，2026-11-05 实测）。latest.log 每次启动重写，whole 不会读到上一轮。",
+  "version": "fabric-1.21.1",
+  "side": "client",
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "本用例在 launch 阶段之后、flattens 之前跑；side 由 --side 决定（fabric 线的 run 目录是 <sub>/run/client），client 侧等原版 Sound engine 行。"
+    },
+    {
+      "op": "wait",
+      "ms": 1000
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "pattern": "Astral Dice mod loaded\\.",
+      "scope": "whole"
+    },
+    {
+      "type": "log",
+      "pattern": "May the god of the dice be with you!",
+      "scope": "whole"
+    },
+    {
+      "type": "log",
+      "pattern": "Sound engine (started|finished)",
+      "scope": "whole"
+    },
+    {
+      "type": "log",
+      "pattern": "AP_FAB_ACCESSORY_PROVIDER: OK \\(trinkets=true accessories=false acl=false\\)",
+      "scope": "whole"
+    },
+    {
+      "type": "crash"
+    },
+    {
+      "type": "mixin"
+    }
+  ]
+}

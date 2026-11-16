@@ -96,6 +96,7 @@ public class ModItemModelProvider extends ItemModelProvider {
         basicItem(ModItems.ZHAO_SIGN.get());
         basicItem(ModItems.TERU_SIGN.get());
         basicItem(ModItems.NARDIS_SIGN.get());
+        basicItem(ModItems.SOURI_SIGN.get());
         basicItem(ModItems.MAMUSHI_SIGN.get());
         basicItem(ModItems.SHERRY_SIGN.get());
         basicItem(ModItems.HANNA_SIGN.get());
@@ -104,9 +105,13 @@ public class ModItemModelProvider extends ItemModelProvider {
         basicItem(ModItems.MEGAS_SIGN.get());
         basicItem(ModItems.LINGLING_SIGN.get());
         basicItem(ModItems.JILL_SIGN.get());
+        basicItem(ModItems.AL_SIGN.get());
+        basicItem(ModItems.INKSHADOW_SIGN.get());
         basicItem(ModItems.DOROTHY_SIGN.get());
         basicItem(ModItems.ALANA_SIGN.get());
         basicItem(ModItems.DEEPSEEK_SIGN.get());
+        basicItem(ModItems.SYKES_SIGN.get());
+        basicItem(ModItems.Z3000_SIGN.get());
         basicItem(ModItems.FU_CARD.get());
         basicItem(ModItems.HUO_CARD.get());
         // 蛟龙立牌(mamushi)专属战斗牌(2026-09-27)
@@ -168,5 +173,8 @@ public class ModItemModelProvider extends ItemModelProvider {
         basicItem(ModItems.ABYSS_REAGENT_CHIP.get());
         basicItem(ModItems.INFINITE_GRID_CHIP.get());
         basicItem(ModItems.SENSOR_CHIP.get());
+        basicItem(ModItems.SWORD_IN_STONE_EPIC_CHIP.get());
+        basicItem(ModItems.SWORD_IN_STONE_LEGENDARY_CHIP.get());
+        basicItem(ModItems.PERFECT_BRANCH_CHIP.get());
     }
 }

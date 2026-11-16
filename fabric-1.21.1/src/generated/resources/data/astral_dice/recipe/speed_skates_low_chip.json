@@ -1,0 +1,35 @@
+{
+  "fabric:load_conditions": [
+    {
+      "condition": "astral_dice:chip_recipes_enabled"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "astral_dice:blank_chip"
+    },
+    "C": {
+      "item": "astral_dice:star_coin"
+    },
+    "I": {
+      "item": "minecraft:iron_ingot"
+    },
+    "L": {
+      "item": "minecraft:leather_boots"
+    },
+    "U": {
+      "item": "minecraft:ice"
+    }
+  },
+  "pattern": [
+    "ULU",
+    "IBI",
+    "CCC"
+  ],
+  "result": {
+    "count": 1,
+    "id": "astral_dice:speed_skates_low_chip"
+  }
+}

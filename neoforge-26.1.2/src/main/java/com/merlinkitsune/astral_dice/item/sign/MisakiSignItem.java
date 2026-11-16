@@ -67,6 +67,11 @@ public class MisakiSignItem extends BaseSignItem {
     }
 
     // 名刀费用考虑护法立牌后的实际费用
+    /** G6(2026-11-08)：非玩家宿主按基础费用结算（护法立牌折扣只对玩家生效）。 */
+    public static int effectiveCost(net.minecraft.world.entity.LivingEntity holder, String type) {
+        return effectiveCost(holder instanceof Player p ? p : null, type);
+    }
+
     public static int effectiveCost(Player player, String type) {
         if ("meito".equals(type)) {
             return getMeitoCost(player);
@@ -78,5 +83,26 @@ public class MisakiSignItem extends BaseSignItem {
         if (player == null) return false;   // 无玩家上下文 ⇒ 不享受立牌折扣(1.5.1:防 Curios 侧 NPE)
         var curios = CuriosApi.getCuriosInventory(player);
         return curios.isPresent() && curios.get().findFirstCurio(s -> s.is(ModItems.MISAKI_SIGN.get())).isPresent();
+    }
+
+    // 2026-11-11 P1 补齐：爆发 2400t；层数 ≥3 时扣 2 层并补一张名刀（与 P0 同口径：非玩家走 PlayerLikeTargets.giveItem，玩家路径在 handleUse）。
+    @Override
+    protected boolean activateForEntity(net.minecraft.world.entity.LivingEntity owner) {
+        if (owner.level().isClientSide()) {
+            return com.merlinkitsune.astral_dice.item.sign.SignEntitySkills.deny("misaki", owner, "client_side");
+        }
+        owner.addEffect(new net.minecraft.world.effect.MobEffectInstance(
+                com.merlinkitsune.astral_dice.effect.ModEffects.MISAKI_BURST, 2400, 0, false, true, true));
+        com.merlinkitsune.astral_dice.item.CurioSlotUtil.mutateFirstCurioMatching(owner,
+                s -> s.is(com.merlinkitsune.astral_dice.item.ModItems.MISAKI_SIGN.get()), live -> {
+                    int stacks = live.getOrDefault(com.merlinkitsune.astral_dice.component.ModDataComponents.MISAKI_SIGN_STACKS.get(), 0);
+                    if (stacks >= 3) {
+                        live.set(com.merlinkitsune.astral_dice.component.ModDataComponents.MISAKI_SIGN_STACKS.get(), stacks - 2);
+                        net.minecraft.world.item.ItemStack meito = new net.minecraft.world.item.ItemStack(
+                                com.merlinkitsune.astral_dice.item.ModItems.ATTACK_CARD_MEITO.get());
+                        com.merlinkitsune.astral_dice.target.PlayerLikeTargets.giveItem(owner, meito);
+                    }
+                });
+        return com.merlinkitsune.astral_dice.item.sign.SignEntitySkills.ok("misaki", owner, 2400);
     }
 }

@@ -59,7 +59,7 @@ public class FlashlightBurstChipItem extends BaseChipItem {
     }
 
     /** 玩家是否佩戴本筹码(总闸门:未佩戴骰子 ⇒ 本件功能一律不生效,与 {@code FlashlightChipItem} 同款)。 */
-    public static boolean isEquipped(Player player) {
+    public static boolean isEquipped(net.minecraft.world.entity.LivingEntity player) {
         if (player == null) return false;
         // 总闸门(骰子装备和卸除调整):未佩戴骰子 ⇒ 本件功能一律不生效(数值保留)
         if (!CurioSlotUtil.hasDiceEquipped(player)) return false;
@@ -88,7 +88,7 @@ public class FlashlightBurstChipItem extends BaseChipItem {
     }
 
     /** 额外加伤点数:每 {@value #STARLIGHT_PER_DAMAGE} 层星光 +1(结算见 {@code DiceCombatModifiers} 额外加伤修饰器)。 */
-    public static int extraDamage(Player player) {
+    public static int extraDamage(net.minecraft.world.entity.LivingEntity player) {
         if (!isEquipped(player)) return 0;
         return StarLightManager.get(player) / STARLIGHT_PER_DAMAGE;
     }

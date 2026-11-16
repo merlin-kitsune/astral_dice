@@ -16,7 +16,9 @@
     "trade.ServerPlayerMixin",
     "PiglinAiMixin",
     "HealOrHarmMobEffectMixin",
-    "RegenerationMobEffectMixin"
+    "RegenerationMobEffectMixin",
+    "sculk.SculkSensorVibrationUserMixin",
+    "sculk.SculkShriekerVibrationUserMixin"
   ],
   "client": [
     "client.AstralUseItemGuardMixin",

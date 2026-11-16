@@ -1,0 +1,66 @@
+{
+  "case_id": "DODGE-BREAK-fabric-1.21.1",
+  "title": "破绽闪避（摩西立牌路径）：玩家戴骰子 + moses_sign 且攻击者身上有 astral_dice:moses_broken 时，一次 mobAttack 4 点的伤害被 LivingAttackEvent 取消（hurt 返回 false、玩家血量零变动），同时给玩家 +1 层 astral_dice:weakness_reveal 并对攻击者注入一次反击伤害（僵尸掉血）。证据：fabric-1.21.1/src/main/java/com/merlinkitsune/astral_dice/combat/DiceCombatEvents.java:2070-2089（applyDodgeCancel 先 setCanceled(true) 再跑 onDodgeSuccess 等钩子）、:2111-2130（onMosesBrokenDodge 的五个前置条件）、:2192-2209（injectCounterDamage 用 diceDamage 反打）、:2096-2103（isImmuneToDamage：创造模式玩家免疫 => 本用例必须先切成 survival）；fabric-1.21.1/src/main/java/com/merlinkitsune/astral_dice/item/sign/MosesSignItem.java:123-130（isEquipped）、:186-190（onDodgeCounter 给 +1 层）。",
+  "version": "fabric-1.21.1",
+  "channel": "autojs",
+  "on_fail": "continue",
+  "steps": [
+    {
+      "op": "note",
+      "text": "这条路径是 fabric 线上唯一可达的闪避：DiceCombatEvents 里玩家侧骰子闪避的开关是常量 false（fabric-1.21.1/src/main/java/com/merlinkitsune/astral_dice/combat/DiceCombatEvents.java:261 PLAYER_DODGE_ENABLED=false，注释 :256-260 说明玩家闪避已移除），活着的入口只有摩西立牌的 moses_broken 反击路径。另注意 isImmuneToDamage 对能力无敌的玩家直接返回 true（:2096-2103），所以必须先把 gamemode 切成 survival，否则这条事件链根本不会触发（易踩的假红）。层数断言用 WeaknessRevealEffect.getStacks（读 astral_dice:weakness_reveal 的 amplifier+1，见 fabric-1.21.1/src/main/java/com/merlinkitsune/astral_dice/effect/WeaknessRevealEffect.java:38-42），不是 weak_mark（那是另一个效果，ModEffects.java:75 与 :202）。自恢复：还原 gamemode（进用例前先记进 persistentData）、清 stand/dice 槽、清效果、杀自己召的僵尸。"
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "mode": "json",
+      "code": "(function(){\n  var P = AutoJS.players()[0];\n  var L = AutoJS.level();\n  var CSU = Java.loadClass('com.merlinkitsune.astral_dice.item.CurioSlotUtil');\n  var MSI = Java.loadClass('com.merlinkitsune.astral_dice.item.sign.MosesSignItem');\n  var ME = Java.loadClass('com.merlinkitsune.astral_dice.effect.ModEffects');\n  var Eff = Java.loadClass('com.merlinkitsune.astral_dice.platform.util.Effects');\n  var MEI = Java.loadClass('net.minecraft.world.effect.MobEffectInstance');\n  var WRE = Java.loadClass('com.merlinkitsune.astral_dice.effect.WeaknessRevealEffect');\n  var gmm = new RegExp('\"gameMode\":\"([a-z_]+)\"').exec(String(AutoJS.state()));\n  var gmName = gmm === null ? 'creative' : gmm[1];\n  AutoJS.write('astral_test_state.txt', gmName + '|' + P.getX() + '|' + P.getY() + '|' + P.getZ());\n  AutoJS.command('kill @e[type=!player,distance=..48]');\n  AutoJS.command('clear @a');\n  AutoJS.command('effect clear @a');\n  AutoJS.command('gamemode survival @a');\n  var out = {};\n  out.diceEquipped = CSU.tryAutoEquip(P, AutoJS.stack('astral_dice:diamond_dice', 1), 'dice').getResult().consumesAction();\n  out.signEquipped = CSU.tryAutoEquip(P, AutoJS.stack('astral_dice:moses_sign', 1), 'stand').getResult().consumesAction();\n  out.mosesEquipped = MSI.isEquipped(P);\n  P.setHealth(P.getMaxHealth());\n  var zombie = AutoJS.summon('minecraft:zombie', P.getX() + 2.0, P.getY(), P.getZ());\n  zombie.setNoAi(true);\n  zombie.addEffect(new MEI(Eff.holder(ME.MOSES_BROKEN.get()), 600, 0));\n  out.zombieHasBroken = zombie.hasEffect(Eff.holder(ME.MOSES_BROKEN.get()));\n  WRE.removeAll(P);\n  var hpBefore = P.getHealth();\n  var res = P.hurt(L.damageSources().mobAttack(zombie), 4.0);\n  out.hurtResult = res;\n  out.playerHealthDelta = hpBefore - P.getHealth();\n  out.zombieHealthDelta = zombie.getMaxHealth() - zombie.getHealth();\n  out.zombieAlive = zombie.isAlive();\n  out.weaknessStacksAfter = WRE.getStacks(P);\n  out.playerHealthAfter = P.getHealth();\n  return out;\n})()",
+      "save_as": "dodge",
+      "timeout_ms": 60000
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "mode": "json",
+      "code": "(function(){\n  var P = AutoJS.players()[0];\n  var Cur = Java.loadClass('com.merlinkitsune.astral_dice.compat.curios.CuriosApi');\n  var DCI = Java.loadClass('com.merlinkitsune.astral_dice.item.dice.DiceCurioItem');\n  var WRE = Java.loadClass('com.merlinkitsune.astral_dice.effect.WeaknessRevealEffect');\n  var ItemStack = Java.loadClass('net.minecraft.world.item.ItemStack');\n  var stp0 = String(AutoJS.read('astral_test_state.txt')).split('|');\n  var gm = stp0[0];\n  AutoJS.command('kill @e[type=!player,distance=..48]');\n  AutoJS.command('effect clear @a');\n  AutoJS.command('clear @a');\n  WRE.removeAll(P);\n  var inv = Cur.getCuriosInventory(P).get();\n  inv.getStacksHandler('stand').get().getStacks().setStackInSlot(0, ItemStack.EMPTY);\n  inv.getStacksHandler('dice').get().getStacks().setStackInSlot(0, ItemStack.EMPTY);\n  DCI.refreshChipSlotCount(P);\n  AutoJS.command('gamemode ' + gm + ' @a');\n  P.setHealth(P.getMaxHealth());\n  return {\n    gameModeRestored: String(AutoJS.state()).indexOf('\"gameMode\":\"' + gm + '\"') >= 0,\n    diceSlotEmptyAfter: inv.getStacksHandler('dice').get().getStacks().getStackInSlot(0).isEmpty(),\n    standSlotEmptyAfter: inv.getStacksHandler('stand').get().getStacks().getStackInSlot(0).isEmpty(),\n    chipSlotsFinal: inv.getStacksHandler('chip').get().getSlots(),\n    weaknessFinal: WRE.getStacks(P)\n  };\n})()",
+      "save_as": "restored",
+      "timeout_ms": 60000
+    }
+  ],
+  "asserts": [
+    {
+      "type": "state",
+      "from": "dodge",
+      "expect": {
+        "diceEquipped": true,
+        "signEquipped": true,
+        "mosesEquipped": true,
+        "zombieHasBroken": true,
+        "hurtResult": false,
+        "playerHealthDelta": {
+          "min": -0.001,
+          "max": 0.001
+        },
+        "zombieHealthDelta": {
+          "min": 0.5
+        },
+        "zombieAlive": true,
+        "weaknessStacksAfter": 1,
+        "playerHealthAfter": {
+          "min": 19.999,
+          "max": 20.001
+        }
+      }
+    },
+    {
+      "type": "state",
+      "from": "restored",
+      "expect": {
+        "gameModeRestored": true,
+        "diceSlotEmptyAfter": true,
+        "standSlotEmptyAfter": true,
+        "chipSlotsFinal": 0,
+        "weaknessFinal": 0
+      }
+    }
+  ]
+}

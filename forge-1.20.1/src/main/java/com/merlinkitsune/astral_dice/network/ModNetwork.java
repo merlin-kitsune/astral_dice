@@ -315,6 +315,13 @@ public final class ModNetwork {
             ctx.get().enqueueWork(() -> {
                 var player = ctx.get().getSender();
                 if (player != null) {
+                    // 小猎手立牌(inkshadow):第二次按键是「放终点门」而不是再次发动主动技能。
+                    // 起始门放下后 pending 非空 ⇒ isGateEffectActive=true ⇒ 既有锁定机
+                    // (SignActiveLockMachine.isSignActiveLocked) 会让 performSkillForCurio 提前返回,
+                    // 因此这里先走专用钩子;它只在「已装备 inkshadow 且放置窗口未消费」时返回 true。
+                    if (com.merlinkitsune.astral_dice.item.sign.InkShadowSignManager.tryPlaceEndFromKey(player)) {
+                        return;
+                    }
                     com.merlinkitsune.astral_dice.item.sign.BaseSignItem.performSkillForCurio(player);
                 }
             });

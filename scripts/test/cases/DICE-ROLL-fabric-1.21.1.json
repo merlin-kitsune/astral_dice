@@ -1,0 +1,75 @@
+{
+  "case_id": "DICE-ROLL-fabric-1.21.1",
+  "title": "骰子物品契约：非潜行右键 use() 返回 pass（不消耗、无效果）；潜行/自动装备路径把骰子放进 dice 槽并发货筹码栏（diamond_dice => chipSlots=2+starLevel=2，cardSlots=10）。证据：fabric-1.21.1/src/main/java/com/merlinkitsune/astral_dice/item/dice/DiceCurioItem.java:69-78（use 非潜行 pass / 潜行 tryAutoEquip）、:64-67（canEquip 只认 dice）、:127-129（refreshChipSlotCount(Player) 公开对账入口）、:180-198（chipSlotsFor/targetChipSlots）；fabric-1.21.1/src/main/java/com/merlinkitsune/astral_dice/item/ModItems.java:254-255（diamond_dice chipBonus=2+s、cardSlots=10）；fabric-1.21.1/src/main/resources/data/trinkets/slots/astral_dice/chip.json:4（amount=0，筹码槽基数 0）。",
+  "version": "fabric-1.21.1",
+  "channel": "autojs",
+  "side": "server",
+  "on_fail": "continue",
+  "steps": [
+    {
+      "op": "note",
+      "text": "读源码得出的确定性事实（fabric-1.21.1）：(1) DiceCurioItem.use 在 !isShiftKeyDown 时返回 InteractionResultHolder.pass(stack)，即右键不消耗、不产生任何效果（fabric-1.21.1/src/main/java/com/merlinkitsune/astral_dice/item/dice/DiceCurioItem.java:69-78）；(2) 潜行分支走 CurioSlotUtil.tryAutoEquip(player, stack, \"dice\")（同文件 :74-76，实现见 fabric-1.21.1/src/main/java/com/merlinkitsune/astral_dice/item/CurioSlotUtil.java:95-130：把 stack.copy() 写入 dice 槽第一个空位并 stack.shrink(1)）；(3) 脚本直接写 Trinkets 槽位**不会**触发 onEquip —— trinkets-3.10.0 的 TrinketInventory#setItem（javap: method_5447）只有 update() + stacks.set 两条语句，而本模组 Slots.setStackInSlot 就是 inventory.setItem（starengine_next/fabric-1.21.1/src/main/java/com/merlinkitsune/starengine/item/TrinketsCompat.java:226-228）；因此筹码栏数量必须用公开对账入口 DiceCurioItem.refreshChipSlotCount(Player)（:127-129）显式刷新后断言，不能断言 onEquip 的即时副作用。(4) diamond_dice 的筹码加成 = 2+starLevel、cardSlots=10（fabric-1.21.1/src/main/java/com/merlinkitsune/astral_dice/item/ModItems.java:254-255）；chip 槽 json amount=0（fabric-1.21.1/src/main/resources/data/trinkets/slots/astral_dice/chip.json:4），所以槽数 = 修饰符值 = 2。自恢复：清 dice 槽 + refreshChipSlotCount + clear @a + effect clear @a。"
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "mode": "json",
+      "code": "(function(){\n  var P = AutoJS.players()[0];\n  var Cur = Java.loadClass('com.merlinkitsune.astral_dice.compat.curios.CuriosApi');\n  var SC = Java.loadClass('com.merlinkitsune.astral_dice.compat.curios.SlotContext');\n  var DCI = Java.loadClass('com.merlinkitsune.astral_dice.item.dice.DiceCurioItem');\n  var ItemStack = Java.loadClass('net.minecraft.world.item.ItemStack');\n  AutoJS.command('kill @e[type=!player,distance=..48]');\n  AutoJS.command('clear @a');\n  AutoJS.command('effect clear @a');\n  var inv = Cur.getCuriosInventory(P).get();\n  var diceH = inv.getStacksHandler('dice').get();\n  var chipH = inv.getStacksHandler('chip').get();\n  diceH.getStacks().setStackInSlot(0, ItemStack.EMPTY);\n  DCI.refreshChipSlotCount(P);\n  var probe = AutoJS.stack('astral_dice:diamond_dice', 1);\n  var diceItem = probe.getItem();\n  return {\n    diceSlotEmpty: diceH.getStacks().getStackInSlot(0).isEmpty(),\n    chipSlotsBase: chipH.getSlots(),\n    canEquipDice: diceItem.canEquip(new SC(P, 'dice', 0), probe),\n    canEquipStand: diceItem.canEquip(new SC(P, 'stand', 0), probe),\n    cardSlotsDeclared: DCI.getCardSlots(probe)\n  };\n})()",
+      "save_as": "pre",
+      "timeout_ms": 60000
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "mode": "json",
+      "code": "(function(){\n  var P = AutoJS.players()[0];\n  var Cur = Java.loadClass('com.merlinkitsune.astral_dice.compat.curios.CuriosApi');\n  var CSU = Java.loadClass('com.merlinkitsune.astral_dice.item.CurioSlotUtil');\n  var DCI = Java.loadClass('com.merlinkitsune.astral_dice.item.dice.DiceCurioItem');\n  var DC = Java.loadClass('com.merlinkitsune.astral_dice.component.ModDataComponents');\n  var ItemStack = Java.loadClass('net.minecraft.world.item.ItemStack');\n  var inv = Cur.getCuriosInventory(P).get();\n  var diceH = inv.getStacksHandler('dice').get();\n  var chipH = inv.getStacksHandler('chip').get();\n  diceH.getStacks().setStackInSlot(0, ItemStack.EMPTY);\n  DCI.refreshChipSlotCount(P);\n  var chipBefore = chipH.getSlots();\n  P.getInventory().selected = 0;\n  P.getInventory().setItem(0, AutoJS.stack('astral_dice:diamond_dice', 1));\n  var held = AutoJS.held(P);\n  var heldId = AutoJS.id(held);\n  var countBefore = held.getCount();\n  var used = AutoJS.use();\n  var countAfterUse = AutoJS.held(P).getCount();\n  var equipOk = CSU.tryAutoEquip(P, AutoJS.held(P), 'dice').getResult().consumesAction();\n  var inSlot = diceH.getStacks().getStackInSlot(0);\n  DCI.refreshChipSlotCount(P);\n  var out = {\n    chipSlotsBefore: chipBefore,\n    heldId: heldId,\n    heldCountBefore: countBefore,\n    useConsumed: used,\n    heldCountAfterUse: countAfterUse,\n    equipOk: equipOk,\n    diceSlotId: inSlot.isEmpty() ? 'empty' : String(AutoJS.id(inSlot)),\n    diceSlotCount: inSlot.getCount(),\n    chipSlotsAfter: chipH.getSlots(),\n    cardSlots: DCI.getCardSlots(inSlot),\n    enhancementPresent: DC.WEAPON_ENHANCEMENT.has(inSlot)\n  };\n  return out;\n})()",
+      "save_as": "equip",
+      "timeout_ms": 60000
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "mode": "json",
+      "code": "(function(){\n  var P = AutoJS.players()[0];\n  var Cur = Java.loadClass('com.merlinkitsune.astral_dice.compat.curios.CuriosApi');\n  var DCI = Java.loadClass('com.merlinkitsune.astral_dice.item.dice.DiceCurioItem');\n  var ItemStack = Java.loadClass('net.minecraft.world.item.ItemStack');\n  var inv = Cur.getCuriosInventory(P).get();\n  inv.getStacksHandler('dice').get().getStacks().setStackInSlot(0, ItemStack.EMPTY);\n  DCI.refreshChipSlotCount(P);\n  AutoJS.command('clear @a');\n  AutoJS.command('effect clear @a');\n  return {\n    diceSlotEmptyAfter: inv.getStacksHandler('dice').get().getStacks().getStackInSlot(0).isEmpty(),\n    chipSlotsFinal: inv.getStacksHandler('chip').get().getSlots()\n  };\n})()",
+      "save_as": "restored",
+      "timeout_ms": 60000
+    }
+  ],
+  "asserts": [
+    {
+      "type": "state",
+      "from": "pre",
+      "expect": {
+        "diceSlotEmpty": true,
+        "chipSlotsBase": 0,
+        "canEquipDice": true,
+        "canEquipStand": false,
+        "cardSlotsDeclared": 10
+      }
+    },
+    {
+      "type": "state",
+      "from": "equip",
+      "expect": {
+        "chipSlotsBefore": 0,
+        "heldId": "astral_dice:diamond_dice",
+        "heldCountBefore": 1,
+        "useConsumed": false,
+        "heldCountAfterUse": 1,
+        "equipOk": true,
+        "diceSlotId": "astral_dice:diamond_dice",
+        "diceSlotCount": 1,
+        "chipSlotsAfter": 2,
+        "cardSlots": 10
+      }
+    },
+    {
+      "type": "state",
+      "from": "restored",
+      "expect": {
+        "diceSlotEmptyAfter": true,
+        "chipSlotsFinal": 0
+      }
+    }
+  ]
+}

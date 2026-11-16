@@ -2,7 +2,7 @@
 # ============================================================================
 # scripts/test/linux/env.sh — Astral Dice 测试台 · Linux 侧最小环境检查
 #
-# 背景：scripts/test/ 的完整测试台是 PowerShell 7 + Windows-only（user32/taskkill/
+# 背景：scripts/test/ 的完整测试台是 Windows-only 原生 shell 台（user32/强制结束进程/
 #       cmd.exe/IME），Linux 下不可用（结论与证据见 scripts/test/linux/README.md）。
 #       本目录是 Linux 宿主的最小可用测试路径：env.sh / launch.sh / stop.sh。
 #
@@ -29,7 +29,7 @@ QUIET=0
 FAILS=0
 WARNS=0
 OKS=0
-ALL_VERSIONS="1.21.1 1.20.1 26.1.2 fabric-1.20.1"
+ALL_VERSIONS="1.21.1 1.20.1 26.1.2 fabric-1.20.1 fabric-1.21.1"
 
 usage() {
     sed -n '14,20p' "$0" | sed -E 's/^# ?//'
@@ -61,6 +61,7 @@ line_project() {
         1.20.1)        echo "forge-1.20.1" ;;
         26.1.2)        echo "neoforge-26.1.2" ;;
         fabric-1.20.1) echo "fabric-1.20.1" ;;
+        fabric-1.21.1) echo "fabric-1.21.1" ;;
         *) return 1 ;;
     esac
 }
@@ -70,6 +71,7 @@ line_jdkver() {
         1.20.1)        echo 17 ;;
         26.1.2)        echo 25 ;;
         fabric-1.20.1) echo 17 ;;
+        fabric-1.21.1) echo 21 ;;
         *) return 1 ;;
     esac
 }
@@ -98,7 +100,7 @@ conf_get() {
 
 # ── 1. 仓库与挂载 ───────────────────────────────────────────────────────────
 missing=""
-for f in settings.gradle gradlew gradle/wrapper/gradle-wrapper.jar scripts/test/mt.ps1; do
+for f in settings.gradle gradlew gradle/wrapper/gradle-wrapper.jar scripts/test/win/mt.sh; do
     [ -f "$REPO_ROOT/$f" ] || missing="$missing $f"
 done
 if [ -n "$missing" ]; then
@@ -141,7 +143,12 @@ fi
 for v in $VERSIONS; do
     proj="$(line_project "$v")" || { log_fail "version_$v" "未知版本"; continue; }
     toolchain_ver="$(line_jdkver "$v")"
-    run_dir="$REPO_ROOT/run/$v"
+    # fabric 线 Loom runDir 是 <proj>/run/client；其它三线是仓库根 run/<子项目名>
+    # （2026-11-12 起 run 目录改名 run/neoforge-1.21.1 等，不再拼裸版本号）
+    case "$v" in
+        fabric-*) run_dir="$REPO_ROOT/$proj/run/client" ;;
+        *)        run_dir="$REPO_ROOT/run/$proj" ;;
+    esac
 
     jdk_home="$(jdk_home_for "$toolchain_ver" || true)"
     if [ -z "$jdk_home" ]; then
@@ -152,9 +159,9 @@ for v in $VERSIONS; do
     fi
 
     if [ ! -d "$run_dir" ]; then
-        log_warn "run_dir_$v" "run/$v 不存在（首次 runClient 后由 Gradle 创建）"
+        log_warn "run_dir_$v" "run/$proj 不存在（首次 runClient 后由 Gradle 创建）"
     else
-        log_ok "run_dir_$v" "run/$v 存在"
+        log_ok "run_dir_$v" "$run_dir 存在"
         if [ -d "$run_dir/mods" ]; then
             mods_n="$(ls -1 "$run_dir/mods" 2>/dev/null | wc -l | tr -d ' ')"
             # 大小写不敏感匹配 AutoJS/autojs/AutoJs…（实际产物是 AutoJS-<loader>-<ver>-<v>.jar）；
@@ -170,14 +177,18 @@ for v in $VERSIONS; do
                     *[Rr][Hh][Ii][Nn][Oo]*.jar)     rh_n=$((rh_n + 1)) ;;
                 esac
             done
-            log_info "mods_$v" "run/$v/mods 共 $mods_n 个条目；autojs=$aj_n；rhino=$rh_n"
+            log_info "mods_$v" "$run_dir/mods 共 $mods_n 个条目；autojs=$aj_n；rhino=$rh_n"
             if [ "$aj_n" -gt 0 ]; then
                 log_ok "autojs_jar_$v" "AutoJS jar 在位（$aj_n 个）：$aj_names"
+            elif [ "${v#fabric-}" != "$v" ]; then
+                log_info "autojs_jar_$v" "mods 无 AutoJS jar（fabric 线由 -PautojsTestMod=1 注入 dev classpath，属预期；launch.sh 会附加该参数并按 AutoJS 主判据等 READY）"
             else
-                log_warn "autojs_jar_$v" "run/$v/mods 无 AutoJS*.jar（AutoJS 通道会 BLOCKED；1.20.1/fabric 也可由 build.gradle modRuntimeOnly 提供）"
+                log_warn "autojs_jar_$v" "$run_dir/mods 无 AutoJS*.jar（AutoJS 通道会 BLOCKED；1.20.1/fabric 也可由 build.gradle modRuntimeOnly 提供）"
             fi
+        elif [ "${v#fabric-}" != "$v" ]; then
+            log_info "mods_$v" "$run_dir/mods 不存在（fabric 线 mods 由 Loom dev classpath 装配；AutoJS 用 -PautojsTestMod=1 注入）"
         else
-            log_warn "mods_$v" "run/$v/mods 不存在（env 装配尚未执行；Linux 侧暂无自动装配）"
+            log_warn "mods_$v" "run/$proj/mods 不存在（env 装配尚未执行；Linux 侧暂无自动装配）"
         fi
     fi
 done
@@ -218,7 +229,7 @@ scan_clients() {
         [ "$(cat "$p/comm" 2>/dev/null || true)" = "java" ] || continue
         cwd="$(readlink "$p/cwd" 2>/dev/null || true)"
         case "$cwd" in
-            "$REPO_ROOT"/run/*) printf '%s|%s\n' "$pid" "$cwd" ;;
+            "$REPO_ROOT"/run/*|"$REPO_ROOT"/fabric-*/run/*) printf '%s|%s\n' "$pid" "$cwd" ;;
         esac
     done
 }
@@ -250,6 +261,8 @@ fi
 for v in $VERSIONS; do
     if [ -f "$REPO_ROOT/run/start-$v.sh" ]; then
         log_info "start_sh_$v" "run/start-$v.sh 已存在（launch.sh 将优先复用它）"
+    elif [ "${v#fabric-}" != "$v" ]; then
+        log_info "start_sh_$v" "无 run/start-$v.sh（fabric 线预期走 gradlew 回退：bash ./gradlew :$proj:runClient -PautojsTestMod=1）"
     else
         log_info "start_sh_$v" "run/start-$v.sh 不存在（launch.sh 回退到 bash ./gradlew :<线>:runClient）"
     fi

@@ -1,0 +1,22 @@
+{
+  "name": "item.astral_dice.sykes_sign",
+  "category": "astral_dice:signs",
+  "icon": "astral_dice:sykes_sign",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:sykes_sign",
+      "text": "astral_dice.guide.entry.sykes_sign.1"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.sykes_sign.2"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.sykes_sign.3"
+    }
+  ],
+  "sortnum": 45
+}
+

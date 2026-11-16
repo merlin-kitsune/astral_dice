@@ -51,5 +51,14 @@ public final class ModEntityEvents {
                 LivingEntity.createLivingAttributes()
                         .add(Attributes.MAX_HEALTH, 50.0D)
                         .build());
+
+        // Syke 触手(2026-10-29;2026-11-01 随主线合并保留):20 点生命 + 击退抗性 1.0。
+        // 它是 GeckoLib 布景级实体(长在地上的触手,无 AI / 无掉落 / 无生成规则),
+        // **不应被打得位移** ⇒ 击退抗性拉满;属性只支撑「能被打、会掉血、受伤播动画」这条最小链路。
+        FabricDefaultAttributeRegistry.register(ModEntityTypes.SYKE_TENTACLE.get(),
+                LivingEntity.createLivingAttributes()
+                        .add(Attributes.MAX_HEALTH, 20.0D)
+                        .add(Attributes.KNOCKBACK_RESISTANCE, 1.0D)
+                        .build());
     }
 }

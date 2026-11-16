@@ -3,6 +3,7 @@ package com.merlinkitsune.astral_dice.item.chip;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
 import com.merlinkitsune.astral_dice.combat.DiceCombatEvents;
+import com.merlinkitsune.astral_dice.item.CounterStateManager;
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.item.ChargeManager;
@@ -35,7 +36,7 @@ public class AirbagChipItem extends BaseChipItem {
     }
 
     /** 玩家是否佩戴安全气囊 */
-    public static boolean isEquipped(Player player) {
+    public static boolean isEquipped(net.minecraft.world.entity.LivingEntity player) {
         // 总闸门(骰子装备和卸除调整):未佩戴骰子 ⇒ 本件功能一律不生效(数值保留)
         if (!CurioSlotUtil.hasDiceEquipped(player)) return false;
         if (player == null) return false;
@@ -57,6 +58,8 @@ public class AirbagChipItem extends BaseChipItem {
      * 伤害口径与鼠鼠护盾 / 肉弹战车嘲讽 / 摩西破绽闪避的反击完全同源(见
      * {@link DiceCombatEvents#injectCounterDamage});施加者取伤害源的击杀归属实体,
      * 自伤(施加者即本人)与无归属来源(例如 {@code /kill} 的 generic_kill)一律不反击。
+     * <p>2026-11-12 裁决:只对**近战**且非友方(非玩家/非女仆)的攻击者激活 10 秒反击状态
+     * 并反击;远程/魔法/技能致命伤仍会被气囊无效化,但不进入反击状态、也不反击。
      */
     public static boolean tryNegateFatal(Player player, DamageSource source) {
         if (player == null || player.level().isClientSide()) return false;
@@ -89,8 +92,13 @@ public class AirbagChipItem extends BaseChipItem {
         if (source == null) return;
         if (!(source.getEntity() instanceof LivingEntity attacker)) return;
         if (attacker == player) return;
+        if (!CounterStateManager.isMeleeDamage(source)) return;
+        if (CounterStateManager.isFriendlyTarget(attacker)) return;
+        CounterStateManager.activateForced(player);
         DiceCombatEvents.injectCounterDamage(player, attacker);
-    }    /**
+    }
+
+    /**
      * 受击充能(2026-10-15 用户裁决追加能力):**受到伤害时充能 +1**,冷却 15 秒。
      *
      * <p>挂点 = {@code LivingDamageEvent.Pre}(伤害已确认、尚未扣血;任意伤害来源都算,含环境伤害与

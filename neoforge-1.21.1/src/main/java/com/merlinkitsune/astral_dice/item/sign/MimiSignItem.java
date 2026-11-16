@@ -280,11 +280,17 @@ public class MimiSignItem extends BaseSignItem {
         if (tier == Rarity.EPIC) return purpleChipPool;
         if (tier == Rarity.LEGENDARY) return goldChipPool;
         return List.of();
-    }
+    
+}
 
     /** 蓝/紫/金三档的派生池:**模板栈**(惰性构建一次,见 {@link #chipPool};取出必须 copy)。 */
     private static final List<ItemStack> blueChipPool = new ArrayList<>();
     private static final List<ItemStack> purpleChipPool = new ArrayList<>();
     private static final List<ItemStack> goldChipPool = new ArrayList<>();
     private static boolean chipPoolsBuilt;
+    // 2026-11-09（A）：类玩家宿主的主动入口 —— 当前语义依赖玩家侧通道，显式拒绝并留锚点。
+    @Override
+    protected boolean activateForEntity(net.minecraft.world.entity.LivingEntity owner) {
+        return com.merlinkitsune.astral_dice.item.sign.SignEntitySkills.deny("mimi", owner, "needs_player_inventory");
+    }
 }

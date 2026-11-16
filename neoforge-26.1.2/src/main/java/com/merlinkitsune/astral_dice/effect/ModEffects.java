@@ -63,6 +63,11 @@ public class ModEffects {
     public static final DeferredHolder<MobEffect, MobEffect> DICE_BLESSING =
             EFFECTS.register("dice_blessing", DiceBlessingEffect::new);
 
+    public static final DeferredHolder<MobEffect, MobEffect> HOLY_SWORD_GUARD =
+            EFFECTS.register("holy_sword_guard", HolySwordGuardEffect::new);
+    public static final DeferredHolder<MobEffect, MobEffect> SUPER_ENERGY =
+            EFFECTS.register("super_energy", SuperEnergyEffect::new);
+
     // 爆发(护法立牌 misaki 主动):持续 60 秒
     public static final DeferredHolder<MobEffect, MobEffect> MISAKI_BURST =
             EFFECTS.register("misaki_burst", MisakiBurstEffect::new);
@@ -221,7 +226,7 @@ public class ModEffects {
     public static final DeferredHolder<MobEffect, MobEffect> REN_SHIELD =
             EFFECTS.register("ren_shield", RenShieldEffect::new);
 
-    /** 「反击」:鼠鼠护盾那 1 层一次性反击的可见载体(层数镜像到 HUD 图标;图标 = images/反击.png) */
+    /** 「反击」:持续 10 秒的反击状态(由 CounterStateManager 管理;图标 = images/反击.png) */
     public static final DeferredHolder<MobEffect, MobEffect> REN_COUNTER =
             EFFECTS.register("ren_counter", RenCounterEffect::new);
 
@@ -409,5 +414,40 @@ public class ModEffects {
      * 不存在「忘记往清单里补一个」的漂移风险;同时**不改变任何既有注册语义**
      * (不新增、不重排、不延迟任何注册调用)。
      */
+    /** 「渊蚀印记」(sykes 立牌被动)：负面效果，最多 20 层，每层使目标受到魔渊幼体 / 魔渊触须的伤害 +1。 */
+    public static final DeferredHolder<MobEffect, MobEffect> ABYSS_MARK = EFFECTS.register("abyss_mark", AbyssMarkEffect::new);
+
+    // ── 金鲤立牌 souri（2026-11-09）──────────────────────────────────────────────
+    // 四个效果都**不带**属性修饰符：攻击/防御收益由 combat/DiceCombatModifiers 的实时谓词与
+    // SouriSignManager#refreshDefense 提供（效果只做状态标记与 HUD 可见性）。
+
+    /** 「葫芦饮」：金鲤主动放置的两种饮品之一，拾取后 1:00，骰战攻击 +3（谓词实时求和）。 */
+    public static final DeferredHolder<MobEffect, MobEffect> GOURD_DRINK =
+            EFFECTS.register("gourd_drink", GourdDrinkEffect::new);
+
+    /** 「仙酿」：金鲤化龙后放置的饮品，拾取后 2:00，骰战攻击 +4（迅捷 II 与回血在拾取当刻一次性结算）。 */
+    public static final DeferredHolder<MobEffect, MobEffect> IMMORTAL_BREW =
+            EFFECTS.register("immortal_brew", ImmortalBrewEffect::new);
+
+    /** 「金鳞」：层数镜像效果（真值在附件 SOURI_GOLD_SCALES；最多 4 层；化龙后隐藏）。 */
+    public static final DeferredHolder<MobEffect, MobEffect> SOURI_GOLD_SCALE =
+            EFFECTS.register("souri_gold_scale", SouriGoldScaleEffect::new);
+
+    /** 「金鲤化龙」：金鳞满 4 层后的**锁存态**（无限时长，由 SouriSignManager 的 tick 判定驱动）。 */
+    public static final DeferredHolder<MobEffect, MobEffect> SOURI_DRAGON =
+            EFFECTS.register("souri_dragon", SouriDragonEffect::new);
+
+    // ── 小猎手立牌 inkshadow（2026-11-10）────────────────────────────────────────
+
+    /**
+     * 「双生之影」：被动层数**镜像**效果（真值在附件 INKSHADOW_STACKS）。
+     *
+     * <p>不加属性修饰符：攻击加成由 {@code InkShadowSignManager#refreshStacks} 直接挂
+     * ATTACK_DAMAGE 修饰符（与金鳞的防御同口径：附件真值 + 修饰符，效果只做 HUD 图标）。
+     * 时长 = 层数剩余时间，amplifier = 层数 - 1。
+     */
+    public static final DeferredHolder<MobEffect, MobEffect> INKSHADOW_STACK =
+            EFFECTS.register("inkshadow_stack", InkShadowStackEffect::new);
+
     public static final Collection<DeferredHolder<MobEffect, ? extends MobEffect>> ALL = EFFECTS.getEntries();
 }

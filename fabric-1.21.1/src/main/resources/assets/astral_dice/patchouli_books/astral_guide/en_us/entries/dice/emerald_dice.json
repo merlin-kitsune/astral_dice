@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.emerald_dice",
+  "category": "astral_dice:dice",
+  "icon": "astral_dice:emerald_dice",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:emerald_dice",
+      "text": "astral_dice.guide.entry.emerald_dice.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:emerald_dice"
+    }
+  ],
+  "sortnum": 6
+}

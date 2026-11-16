@@ -16,7 +16,7 @@ import net.minecraft.world.item.ItemStack;
 
 /**
  * 筹码商店界面（**界面骨架批 + 逻辑批已合流**：图标 blit / 品质外框 / 确认与刷新发包 / 拒绝红闪；判据正本
- * {@code docs/chip-shop-ui-spec.md}，机器判据 {@code scripts/verify/verify_chip_shop_ui.ps1}）。
+ * {@code docs/chip-shop-ui-spec.md}，机器判据 {@code scripts/verify/verify_chip_shop_ui.py}）。
  *
  * <p><b>整屏 284x183</b>，全部坐标为 GUI 内绝对像素；条带内的素材坐标另用「条带内相对坐标」
  * （{@link #stripX}/{@link #stripY} 换算），常量一律照规范 §3 的实测值逐字定义。
@@ -248,6 +248,11 @@ public class ChipShopScreen extends AbstractContainerScreen<ChipShopMenu> {
      */
     @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+        // 背景暗化（2026-11-06 用户裁决，各线统一）：1.20.1 的 Screen#render 只遍历控件、
+        //   AbstractContainerScreen#render 只调 renderBg，两处都不调 renderBackground ⇒ 容器屏默认对世界零处理
+        //   （实测背后世界与游戏内同亮度）。原版容器屏看着暗，是它们的 renderBg 自己调了 renderBackground；
+        //   本类不调 ⇒ 在这里补一次：有世界 = 两层暗化渐变（+ 世界背景事件），无世界 = 泥土背景。
+        this.renderBackground(guiGraphics);
         super.render(guiGraphics, mouseX, mouseY, partialTick);
         renderChipTooltips(guiGraphics, mouseX, mouseY);
     }

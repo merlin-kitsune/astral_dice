@@ -62,6 +62,64 @@ public final class ModEntityTypes {
                     .clientTrackingRange(10)
                     .build("repulsion"));
 
+    /**
+     * Syke 触手（2026-10-29；2026-10-29 由 neoforge-1.21.1 蓝本移植到本线）：本仓第一个 GeckoLib 动画实体。
+     *
+     * <p>尺寸 {@code sized(2.6F, 3.0F)} 取自模型实测（底盘约 2.45 格宽、通高约 2.96 格）；
+     * {@code clientTrackingRange(10)} 与强化拒止同量级，保证 10 格内的客户端能追踪到该实体
+     * （受伤触发的攻击动画要广播给追踪者，追踪关系由该值决定）。
+     *
+     * <p>{@link MobCategory#MISC} 与路障 / 强化拒止一致：不是怪物、不参与自然生成与刷怪上限。
+     *
+     * <p><b>1.20.1 平台差异</b>：注册器类型是 {@code RegistryObject<EntityType<SykeTentacleEntity>>}
+     * （1.21.1 蓝本是 {@code DeferredHolder<EntityType<?>, EntityType<SykeTentacleEntity>>}）；
+     * {@code EntityType.Builder} 的构建链（{@code of / sized / clientTrackingRange / build}）两线同形。
+     */
+    public static final RegistryObject<EntityType<SykeTentacleEntity>> SYKE_TENTACLE =
+            ENTITY_TYPES.register("sykestentacle", () -> EntityType.Builder
+                    .of(SykeTentacleEntity::new, MobCategory.MISC)
+                    .sized(2.6F, 3.0F)
+                    .clientTrackingRange(10)
+                    .build("sykestentacle"));
+
+    /**
+     * 金鲤立牌的漂浮饮品（【葫芦饮】/【仙酿】，2026-11-09；由 neoforge-1.21.1 蓝本移植）。
+     *
+     * <p>尺寸 {@code sized(0.35F, 0.45F)}：瓶子模型约 0.3 格宽、0.43 格高，碰撞箱贴身即可
+     * （该实体本就不参与碰撞，{@code isPickable/canBeCollidedWith} 均为 false，尺寸只用于
+     * 拾取扫描的 {@code inflate} 起点与渲染包围盒）；{@code clientTrackingRange(10)} 保证
+     * 10 格内的客户端能收到该实体（放置后需要立刻可见）。
+     *
+     * <p><b>1.20.1 平台差异</b>：注册器类型是 {@code RegistryObject<EntityType<SouriDrinkEntity>>}
+     * （1.21.1 蓝本是 {@code DeferredHolder<EntityType<?>, EntityType<SouriDrinkEntity>>}）；
+     * 构建链两线同形。
+     */
+    public static final RegistryObject<EntityType<SouriDrinkEntity>> SOURI_DRINK =
+            ENTITY_TYPES.register("souri_drink", () -> EntityType.Builder
+                    // 显式类型实参:该实体有 (EntityType,Level) 与 (Level,UUID,Variant) 两个构造器,
+                    // `::new` 在多构造器下的目标类型推断会失败(单构造器的 Barricade/Syke 不需要)。
+                    .<SouriDrinkEntity>of(SouriDrinkEntity::new, MobCategory.MISC)
+                    .sized(0.35F, 0.45F)
+                    .clientTrackingRange(10)
+                    .build("souri_drink"));
+
+    // 小猎手立牌(inkshadow):【传送门】。同样多构造器,必须显式类型实参;
+    // 尺寸 1.2×1.2 覆盖模型可见范围,clientTrackingRange(10) 保证放置后立刻可见。
+    public static final RegistryObject<EntityType<InkShadowPortalEntity>> INKSHADOW_PORTAL =
+            ENTITY_TYPES.register("inkshadow_portal", () -> EntityType.Builder
+                    .<InkShadowPortalEntity>of(InkShadowPortalEntity::new, MobCategory.MISC)
+                    .sized(1.2F, 1.2F)
+                    .clientTrackingRange(10)
+                    .build("inkshadow_portal"));
+
+    /** Z3000 立牌主动技能「过来把你」的抓钩实体（2026-11-13）。 */
+    public static final RegistryObject<EntityType<GrapplingHookEntity>> GRAPPLING_HOOK =
+            ENTITY_TYPES.register("grappling_hook", () -> EntityType.Builder
+                    .<GrapplingHookEntity>of(GrapplingHookEntity::new, MobCategory.MISC)
+                    .sized(0.5F, 0.5F)
+                    .clientTrackingRange(10)
+                    .build("grappling_hook"));
+
     private ModEntityTypes() {
     }
 }

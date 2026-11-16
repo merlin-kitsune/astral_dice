@@ -456,6 +456,9 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
 
     @Override
     public void extractBackground(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
+        // 背景暗化（2026-11-06 用户裁决，各线统一）：本类整体覆写了 extractBackground 且不调 super，
+        //   原版容器屏那条「只压透明暗化渐变」的路径不会发生 ⇒ 这里显式补一次；模糊按裁决不做。
+        this.extractTransparentBackground(guiGraphics);
         // 任务Q §1/§3 探针：本帧「转账视图隔离」计数从底图这一步起算（renderBg 恰好跑在容器槽位循环之前）
         this.lastSlotDraws = 0;
         this.lastSlotSkips = 0;

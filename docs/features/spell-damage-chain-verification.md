@@ -105,8 +105,8 @@ diff -r --strip-trailing-cr \
 |---|---|
 | `bypasses_armor` | true_damage, card_spell, skill_damage, extra_damage, card_cost, unreducible_damage（**6**；dice_damage 不在） |
 | `bypasses_cooldown` | 同上 6 种 + **dice_damage**（N6 已落盘，`NEO-RES/.../bypasses_cooldown.json:9`） |
-| `bypasses_enchantments` | **仅** card_cost + unreducible_damage |
-| `bypasses_resistance` | **仅** card_cost + unreducible_damage |
+| `bypasses_enchantments` | card_cost + unreducible_damage + **skill_damage**（2026-11-14 起） |
+| `bypasses_resistance` | card_cost + unreducible_damage + **skill_damage**（2026-11-14 起） |
 
 **本仓未定义**的三个相关标签：`bypasses_shield` / `bypasses_invulnerability` / `bypasses_effects`（原版常量见 `net/minecraft/tags/DamageTypeTags.java:9-16`，neo 另多 `:36 BYPASSES_WOLF_ARMOR`）。⇒ 本仓全部 7 种伤害**都不穿盾牌格挡标签、都不穿创造/重生无敌**。
 
@@ -116,7 +116,7 @@ diff -r --strip-trailing-cr \
 |---|---|---|---|---|---|---|---|---|
 | `card_spell` | 是 | 是 | 否 | 否 | 否（见下注） | 否 | `cardSpell(level, causing)` `:151-153`，**direct=null** | **是**（matcher ④） |
 | `true_damage` | 是 | 是 | 否 | 否 | 否（见下注） | 否 | `trueDamage(level, causing)` `:142-144`，**direct=null** | 否 |
-| `skill_damage` | 是 | 是 | 否 | 否 | 否 | 否 | `skillDamage(level, causing)` `:160-162`，direct=null | **禁止**（`:234-237` 硬注释） |
+| `skill_damage` | 是 | 是 | **是**（2026-11-14 起） | **是**（2026-11-14 起） | 否 | 否 | `skillDamage(level, causing)` `:160-162`，direct=null | **禁止**（`:234-237` 硬注释） |
 | `extra_damage` | 是 | 是 | 否 | 否 | 否 | 否 | `extraDamage(level, causing)` `:169-171`，direct=null | 否 |
 | `card_cost` | 是 | 是 | **是** | **是** | 否 | 否 | `cardCost(level, source)` `:181-183`，direct=causing=source | 否 |
 | `unreducible_damage` | 是 | 是 | **是** | **是** | 否 | 否 | `unreducibleDamage(level, causing)` `:189-191`，direct=null | 否 |

@@ -6,6 +6,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonSyntaxException;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import com.merlinkitsune.astral_dice.component.WeaponEnhancement;
+import com.merlinkitsune.astral_dice.item.DiceStarUpgrade;
 import com.merlinkitsune.astral_dice.item.dice.DiceCurioItem;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.RegistryAccess;
@@ -71,6 +72,9 @@ public class DiceUpgradeShapedRecipe extends ShapedRecipe {
                 ModDataComponents.WEAPON_ENHANCEMENT.set(resultStack, enh);
                 break;
             }
+        }
+        if (DiceStarUpgrade.experimentalEnabled()) {
+            resultStack = DiceStarUpgrade.resetCraftedResult(resultStack);
         }
         return resultStack;
     }

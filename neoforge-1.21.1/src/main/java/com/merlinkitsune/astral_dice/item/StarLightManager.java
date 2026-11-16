@@ -21,8 +21,8 @@ import com.merlinkitsune.astral_dice.item.chip.StarCoinHammerChipItem;
  */
 public final class StarLightManager {
     /** 当前星光点数 */
-    public static int get(Player player) {
-        return ModAttachments.getStarlight(player);
+    public static int get(net.minecraft.world.entity.LivingEntity living) {
+        return ModAttachments.getStarlight(living);
     }
 
     /** 星光点数上限(配置控制) */
@@ -111,23 +111,23 @@ public final class StarLightManager {
         ModAttachments.setStarlight(player, Math.max(0, get(player) - granted));
     }
 
-    public static void set(Player player, int value) {
+    public static void set(net.minecraft.world.entity.LivingEntity living, int value) {
         // 星光只受 0..上限 约束
-        ModAttachments.setStarlight(player, Math.max(0, Math.min(value, getCap())));
+        ModAttachments.setStarlight(living, Math.max(0, Math.min(value, getCap())));
     }
 
     // 增加星光(自动限制在上限内),返回增加后的值
-    public static int add(Player player, int amount) {
-        int next = Math.min(get(player) + amount, getCap());
-        set(player, next);
+    public static int add(net.minecraft.world.entity.LivingEntity living, int amount) {
+        int next = Math.min(get(living) + amount, getCap());
+        set(living, next);
         return next;
     }
 
     // 消耗星光(不可为负),返回实际消耗的量
-    public static int spend(Player player, int amount) {
-        int current = get(player);
+    public static int spend(net.minecraft.world.entity.LivingEntity living, int amount) {
+        int current = get(living);
         int spent = Math.min(current, amount);
-        set(player, current - spent);
+        set(living, current - spent);
         return spent;
     }
 

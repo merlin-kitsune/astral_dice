@@ -156,7 +156,7 @@ public class ModItems {
     //   全力攻击(巅峰 pinnacle)**保持原档**;撕咬 / 龙之咆哮 = 奇特(bizarre,沿用「专属牌 = 奇特」惯例,
     //   同日经用户确认保留 —— 不得随手改成稀有)。
     //   ⚠️ 改这些牌(或任何入池物品)的 rarity,**必须**同步三线赏金池 `astral_rews.json` 的 `"rarity"` 字段
-    //      (守门 `scripts/verify/verify_bountiful_pools.ps1` 按「物品档位 ↔ 数据层 rarity」映射比对,漏改即红)。
+    //      (守门 `scripts/verify/verify_bountiful_pools.py` 按「物品档位 ↔ 数据层 rarity」映射比对,漏改即红)。
     // 新增物品时按此标准选择 rarity,并保持与图标边框颜色一致;若参与赏金,同步维护 astral_objs/astral_rews。
     // ═══════════════════════════════════════════════════════════════════════════
 
@@ -695,14 +695,14 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(AstralRarities.legendary()), SandwichChipItem.HEALTH_HIGH));
 
-    // 肾上腺素-一般:生命值为 50% 或更低时,攻击力/防御力 +3(史诗)
+    // 肾上腺素-一般:生命值为 50% 或更低时,攻击力/防御力 +3;触发加成时被怪物近战攻击有 20% 闪避(史诗)
     public static final DeferredItem<Item> ADRENALINE_LOW = registerItem("adrenaline_low_chip",
             props -> new AdrenalineChipItem(props
                     .stacksTo(1)
                     .rarity(AstralRarities.epic()), AdrenalineChipItem.BONUS_LOW));
 
-    // 肾上腺素-高效:生命值为 50% 或更低时,攻击力/防御力 +8;触发加成时被敌方攻击,
-    // 骰点 4-5 → 50% 闪避、6 → 100% 闪避本次伤害(传奇)
+    // 肾上腺素-高效:生命值为 50% 或更低时,攻击力/防御力 +8;触发加成时被怪物近战攻击有 20% 闪避;
+    // 与一般同时装备时叠加为 40%(传奇)
     public static final DeferredItem<Item> ADRENALINE_HIGH = registerItem("adrenaline_high_chip",
             props -> new AdrenalineChipItem(props
                     .stacksTo(1)
@@ -1024,6 +1024,47 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(AstralRarities.legendary())));
 
+    // 金鲤立牌(命名:souri,传奇;2026-11-09):主动「把酒言欢」(准星 8 格内放 1 个【葫芦饮】;已获【金鲤化龙】
+    //   则改放【仙酿】,随后自身 +1 可激活反击次数,冷却 1:00),被动「不醉不归」(成功进入反击状态时 +1 金鳞;
+    //   任意角色拾取饮品 ⇒ 放置者 +1 反击),金鳞满 4 ⇒ 【金鲤化龙】(锁存态:每层金鳞攻击 +1、防御 +1,
+    //   场上未拾取的葫芦饮全部转仙酿);联动「留给你的」(拾取者佩戴蛟龙立牌 ⇒ 蛟龙觉醒 +1 葫芦饮 / +2 仙酿)。
+    // 传奇品质 = ASTRAL_DICE_LEGENDARY(本模组「金=传奇」映射);配方 = 钻石骰子 + 黄金星盘档。
+    public static final DeferredItem<Item> SOURI_SIGN = registerItem("souri_sign",
+            props -> new com.merlinkitsune.astral_dice.item.sign.SouriSignItem(props
+                    .stacksTo(1)
+                    .rarity(AstralRarities.legendary())));
+
+    // 小猎手立牌(命名:inkshadow,稀有;2026-11-10):主动「暗影之门」(准星 8 格内放起始门;30 秒内再按
+    //   技能键放终点门(可跨维度),两门成对 ⇒ 3:00 内踩上即两端传送、门前 2.5 格敌对生物受 2 点法伤;
+    //   窗口内封锁攻击/右键/交互并锁定 hotbar 槽位),被动「双生之影」(每成功传送一次 +1 层攻击 +2、
+    //   3:00 过期;层数与剩余时间走 HUD 图标)。
+    // 稀有品质 = ASTRAL_DICE_RARE(2026-11-10 用户裁决:史诗 -> 稀有);
+    // 配方 = 末影珍珠×2 + 星币×2 + 黄色染料×2 + 空白筹码 + 骰子(2026-11-11 墨囊->末影珍珠、金块->黄色染料)。
+    public static final DeferredItem<Item> INKSHADOW_SIGN = registerItem("inkshadow_sign",
+            props -> new com.merlinkitsune.astral_dice.item.sign.InkShadowSignItem(props
+                    .stacksTo(1)
+                    .rarity(AstralRarities.rare())));
+
+    // 垃圾桶立牌(z3000,稀有):主动「过来把你」16 格拖拽 + 5 点技能伤害,被动「回收利用」。
+    // 原型：Z3000 抓钩的管道节 / 吸尘头模型载体；不进创造栏、无配方。
+    public static final DeferredItem<Item> VACUUM_PIECE = registerItem("vacuum_piece",
+            props -> new Item(props));
+
+    public static final DeferredItem<Item> Z3000_SIGN = registerItem("z3000_sign",
+            props -> new com.merlinkitsune.astral_dice.item.sign.Z3000SignItem(props
+                    .stacksTo(1)
+                    .rarity(AstralRarities.rare())));
+
+    // 少主立牌(命名:al,传奇;2026-11-08):主动「强者怜悯」(目标选择器选一名类玩家目标 ⇒ 选 1~3 张卡牌
+    //   赠予对方,每张换 2 星币,1 张即可确认、背包无牌直接取消不进冷却),被动「双赢」(A 面:佩戴者使他人
+    //   获得卡牌 ⇒ 双方各 +1 星光;B 面:对目标使用主动技能后双方筹码 -5(下限 5)+ 各一次刷新),
+    //   被动「星光」(每 4 层星光 +1 攻/+1 防,每 tick 重算、卸下移除)。
+    // 史诗品质 = ASTRAL_DICE_EPIC(2026-11-08 用户裁决);配方 = 黑染料 + 金块×2 + 星币尘×2 + 空白筹码 + 钻石骰子。
+    public static final DeferredItem<Item> AL_SIGN = registerItem("al_sign",
+            props -> new com.merlinkitsune.astral_dice.item.sign.AlSignItem(props
+                    .stacksTo(1)
+                    .rarity(AstralRarities.epic())));
+
     // 怪力侦探立牌(命名:sherry,奇特):主动「怪力投掷」把 12 格内全部敌对目标按抛物线扔到玩家面前 2 格,
     // **落地之后**造成 2 点伤害并施加 1 层「标记」(推理时间满 5 层 ⇒ 额外 5 点);被动「侦探出击」按
     // 「攻击 ≥20 血敌对目标」累积「推理时间」(上限 5,**死亡不清**,骰神赐福结束后 −1 层),
@@ -1111,6 +1152,10 @@ public class ModItems {
     public static final DeferredItem<BlockItem> EVENT_DRAWER = registerItem("event_drawer",
             props -> new BlockItem(ModBlocks.EVENT_DRAWER.get(), props.stacksTo(1)));
 
+    // 星愿铁砧方块(物品形态):放置后右键打开「星愿铁砧」界面（不可堆叠）
+    public static final DeferredItem<BlockItem> ASTRAL_ANVIL = registerItem("astral_anvil",
+            props -> new BlockItem(ModBlocks.ASTRAL_ANVIL.get(), props.stacksTo(1)));
+
     // 事件券:抽奖盒消耗品
     public static final DeferredItem<Item> EVENT_TICKET = registerItem("event_ticket",
             props -> new EventDrawItem(props
@@ -1146,6 +1191,24 @@ public class ModItems {
             props -> new com.merlinkitsune.astral_dice.item.chip.SensorChipItem(props
                     .stacksTo(1)
                     .rarity(AstralRarities.epic())));
+
+    // 石中剑-精良(史诗/攻击):触发骰神赐福时,自身与队伍角色获得「圣剑守护」1:00(攻击力 +2、受到伤害 -2)。
+    public static final DeferredItem<Item> SWORD_IN_STONE_EPIC_CHIP = registerItem("sword_in_stone_epic_chip",
+            props -> new com.merlinkitsune.astral_dice.item.chip.HolySwordGuardChipItem(props
+                    .stacksTo(1)
+                    .rarity(AstralRarities.epic())));
+
+    // 石中剑-传说(传奇/攻击):自身骰神赐福结束后,对 24 格内敌对目标造成「状态层数×2」魔法伤害,最低 4 点。
+    public static final DeferredItem<Item> SWORD_IN_STONE_LEGENDARY_CHIP = registerItem("sword_in_stone_legendary_chip",
+            props -> new com.merlinkitsune.astral_dice.item.chip.SwordInStoneLegendaryChipItem(props
+                    .stacksTo(1)
+                    .rarity(AstralRarities.legendary())));
+
+    // 完美树枝(传奇/强化):触发骰神赐福 +1 层「超强精力」,死亡扣 1 层;每层攻击 +2、防御 +1,最多 10 层。
+    public static final DeferredItem<Item> PERFECT_BRANCH_CHIP = registerItem("perfect_branch_chip",
+            props -> new com.merlinkitsune.astral_dice.item.chip.PerfectBranchChipItem(props
+                    .stacksTo(1)
+                    .rarity(AstralRarities.legendary())));
 
     // 超天酱立牌(kangel,奇特):主动「网络天使」+ 被动「小天使请安」+ 备注「一心同体」
     public static final DeferredItem<Item> KANGEL_SIGN = registerItem("kangel_sign",
@@ -1188,6 +1251,12 @@ public class ModItems {
             props -> new com.merlinkitsune.astral_dice.item.sign.DeepseekSignItem(props
                     .stacksTo(1)
                     .rarity(AstralRarities.bizarre())));
+
+    // 魔渊幼体立牌(sykes,传奇):主动「魔域转化」放魔渊触须 / 被动「触须深渊」渊蚀印记
+    public static final DeferredItem<Item> SYKES_SIGN = registerItem("sykes_sign",
+            props -> new com.merlinkitsune.astral_dice.item.sign.SykesSignItem(props
+                    .stacksTo(1)
+                    .rarity(AstralRarities.legendary())));
 
     public static <T extends Item> DeferredItem<T> registerItem(String name,
             java.util.function.Function<Item.Properties, ? extends T> factory) {

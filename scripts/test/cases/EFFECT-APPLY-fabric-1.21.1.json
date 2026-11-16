@@ -1,0 +1,54 @@
+{
+  "case_id": "EFFECT-APPLY-fabric-1.21.1",
+  "title": "自定义效果可从运行期读到：/effect give @a astral_dice:king_power 600 1 之后，遍历 player.getActiveEffects() 用 BuiltInRegistries.MOB_EFFECT.getKey(holder.value()) 取注册名 == astral_dice:king_power、amplifier == 1、duration ∈ [590,600]，且该实例的 MobEffect 就是 ModEffects.KING_POWER 注册对象；AutoJS.state() 的 JSON 里同样出现该 id 与 amplifier。证据：fabric-1.21.1/src/main/java/com/merlinkitsune/astral_dice/effect/ModEffects.java:34（king_power 注册）；F:/MCProject/starengine_next/common/src/main/java/com/merlinkitsune/starengine/effect/KingPowerEffect.java（纯 MobEffect 子类，无 tick/无属性修饰，施加即稳定）。",
+  "version": "fabric-1.21.1",
+  "channel": "autojs",
+  "on_fail": "continue",
+  "steps": [
+    {
+      "op": "note",
+      "text": "取值方式：不用 Holder 查找，直接遍历 getActiveEffects() 再对照注册表键（1.21 的 MobEffectInstance#getEffect() 返回 Holder<MobEffect>，故取 .value() 再喂 BuiltInRegistries.MOB_EFFECT.getKey）。AutoJS.state() 的 effects[].id 来自 McApi.vanilla().effectId，也是同一注册名（temp/AutoJS-src/common/src/main/java/com/sighs/autojs/neoforge/script/PlayerOps.java:118-129），所以两路交叉印证。king_power 是 starengine 里的纯 MobEffect 子类（F:/MCProject/starengine_next/common/src/main/java/com/merlinkitsune/starengine/effect/KingPowerEffect.java 全文仅构造器 super(BENEFICIAL, color)），因此 amplifier/duration 会原样保留、不被 tick 逻辑改写。自恢复：effect clear @a + clear @a。"
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "mode": "json",
+      "code": "(function(){\n  var P = AutoJS.players()[0];\n  var BRL = Java.loadClass('net.minecraft.core.registries.BuiltInRegistries');\n  var ME = Java.loadClass('com.merlinkitsune.astral_dice.effect.ModEffects');\n  AutoJS.command('kill @e[type=!player,distance=..48]');\n  AutoJS.command('effect clear @a');\n  AutoJS.command('clear @a');\n  AutoJS.command('effect give @a astral_dice:king_power 600 1');\n  var arr = P.getActiveEffects().toArray();\n  var out = {};\n  var id = 'none', amp = -1, ticks = -1, sameEntry = false;\n  var wantKey = String(BRL.MOB_EFFECT.getKey(ME.KING_POWER.get()).toString());\n  for (var i = 0; i < arr.length; i++){\n    var inst = arr[i];\n    var holder = inst.getEffect();\n    var k = BRL.MOB_EFFECT.getKey(holder.value());\n    var kid = (k === null) ? 'unknown' : String(k.toString());\n    if (kid === 'astral_dice:king_power'){\n      id = kid; amp = inst.getAmplifier(); ticks = inst.getDuration();\n      sameEntry = (String(BRL.MOB_EFFECT.getKey(holder.value()).toString()) === wantKey);\n    }\n  }\n  out.effectCount = arr.length;\n  out.effectId = id;\n  out.amplifier = amp;\n  out.ticks = ticks;\n  out.registryKeyMatches = wantKey;\n  out.isOurRegistryEntry = sameEntry;\n  var stateText = String(AutoJS.state());\n  out.stateContainsId = stateText.indexOf('astral_dice:king_power') >= 0;\n  out.stateContainsAmplifier = stateText.indexOf('\"amplifier\":1') >= 0;\n  return out;\n})()",
+      "save_as": "effect",
+      "timeout_ms": 60000
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "mode": "json",
+      "code": "(function(){\n  var P = AutoJS.players()[0];\n  AutoJS.command('effect clear @a');\n  AutoJS.command('clear @a');\n  return { effectsAfterClear: P.getActiveEffects().size() };\n})()",
+      "save_as": "restored",
+      "timeout_ms": 60000
+    }
+  ],
+  "asserts": [
+    {
+      "type": "state",
+      "from": "effect",
+      "expect": {
+        "effectId": "astral_dice:king_power",
+        "amplifier": 1,
+        "ticks": {
+          "min": 11990,
+          "max": 12000
+        },
+        "registryKeyMatches": "astral_dice:king_power",
+        "isOurRegistryEntry": true,
+        "stateContainsId": true,
+        "stateContainsAmplifier": true
+      }
+    },
+    {
+      "type": "state",
+      "from": "restored",
+      "expect": {
+        "effectsAfterClear": 0
+      }
+    }
+  ]
+}

@@ -39,6 +39,7 @@
     "astral_dice:chip_trader/level_4/magic_tome_chip",
     "astral_dice:chip_trader/level_4/moto_helmet_high_chip",
     "astral_dice:chip_trader/level_4/moto_helmet_medium_chip",
+    "astral_dice:chip_trader/level_4/perfect_branch_chip",
     "astral_dice:chip_trader/level_4/piercing_gun_chip",
     "astral_dice:chip_trader/level_4/revenge_halberd_chip",
     "astral_dice:chip_trader/level_4/sandwich_high_chip",
@@ -47,6 +48,8 @@
     "astral_dice:chip_trader/level_4/smart_watch_chip",
     "astral_dice:chip_trader/level_4/speed_skates_high_chip",
     "astral_dice:chip_trader/level_4/speed_skates_medium_chip",
+    "astral_dice:chip_trader/level_4/sword_in_stone_epic_chip",
+    "astral_dice:chip_trader/level_4/sword_in_stone_legendary_chip",
     "astral_dice:chip_trader/level_4/whetstone_chip"
   ]
 }

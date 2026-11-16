@@ -51,6 +51,57 @@ public final class ModEntityTypes {
                     .clientTrackingRange(10)
                     .build("repulsion"));
 
+    /**
+     * Syke 触手（2026-10-29）：本仓第一个 GeckoLib 动画实体，同时作为另外三条加载器线的移植参考。
+     *
+     * <p>尺寸 {@code sized(2.6F, 3.0F)} 来自模型实测：底盘（触手最外圈）约 2.45 格宽、通高约 2.96 格，
+     * 向上取整并留少量余量，避免命中框比可见模型窄。{@code clientTrackingRange(10)} 与命中框同量级，
+     * 保证渲染距离内的客户端都收到该实体 —— 动画在客户端播放，追踪范围偏小会直接看不到。
+     *
+     * <p>{@code MobCategory.MISC} 与上面两个实体一致：不参与自然生成，也不进刷怪管控。
+     */
+    public static final DeferredHolder<EntityType<?>, EntityType<SykeTentacleEntity>> SYKE_TENTACLE =
+            ENTITY_TYPES.register("sykestentacle", () -> EntityType.Builder
+                    .of(SykeTentacleEntity::new, MobCategory.MISC)
+                    .sized(2.6F, 3.0F)
+                    .clientTrackingRange(10)
+                    .build("sykestentacle"));
+
+    /**
+     * 金鲤漂浮饮品（2026-11-09）：无碰撞、无重力、不可推动的纯展示实体；
+     * 尺寸按 bbmodel 实测（约 0.9 格高、0.6 格宽），拾取扫描在实体自己的 tick 内完成。
+     */
+    public static final DeferredHolder<EntityType<?>, EntityType<SouriDrinkEntity>> SOURI_DRINK =
+            ENTITY_TYPES.register("souri_drink", () -> EntityType.Builder
+                    .<SouriDrinkEntity>of(SouriDrinkEntity::new, MobCategory.MISC)
+                    .sized(0.35F, 0.45F)
+                    .clientTrackingRange(10)
+                    .build("souri_drink"));
+
+    /**
+     * 小猎手立牌「暗影之门」（2026-11-10）：无碰撞、无重力、不可攻击的传送门实体；
+     * 模型实测约 1.19 × 0.37 × 0.94 格（渲染时整体 ×1.6），碰撞箱取 1.2×1.2 覆盖门面。
+     * 穿门判定在实体自己的 tick 内扫描，故 clientTrackingRange 放到 10 保证隔壁玩家也能看到门。
+     */
+    public static final DeferredHolder<EntityType<?>, EntityType<InkShadowPortalEntity>> INKSHADOW_PORTAL =
+            ENTITY_TYPES.register("inkshadow_portal", () -> EntityType.Builder
+                    .<InkShadowPortalEntity>of(InkShadowPortalEntity::new, MobCategory.MISC)
+                    .sized(1.2F, 1.2F)
+                    .clientTrackingRange(10)
+                    .build("inkshadow_portal"));
+
+    /**
+     * 抓钩（2026-11-13 原型）：只保留拖拽目标的钩头实体。
+     * 实体只做「飞行 / 钩住 / 收回」状态机，尺寸取 0.5×0.5（与原实现一致）；
+     * {@code clientTrackingRange(10)} 覆盖 12.5 格射程，保证链子与钩子在客户端可见。
+     */
+    public static final DeferredHolder<EntityType<?>, EntityType<GrapplingHookEntity>> GRAPPLING_HOOK =
+            ENTITY_TYPES.register("grappling_hook", () -> EntityType.Builder
+                    .<GrapplingHookEntity>of(GrapplingHookEntity::new, MobCategory.MISC)
+                    .sized(0.5F, 0.5F)
+                    .clientTrackingRange(10)
+                    .build("grappling_hook"));
+
     private ModEntityTypes() {
     }
 }

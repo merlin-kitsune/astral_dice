@@ -98,7 +98,8 @@ public class ModCreativeTabs {
                 output.accept(ModItems.ORBITAL_STRIKE_CARD.get());
                 output.accept(ModItems.DIRECTIONAL_BLAST_CARD.get());
                 output.accept(ModItems.LIVING_PAGE.get());
-                // 立牌(按 Astral Party Wiki「Characters」页面角色顺序排列;deepseek 为本模组原创角色,排末尾)
+                // 立牌(按 Astral Party Wiki「Characters」页面角色顺序排列;DeepSeek 为本模组原创角色,排末尾)
+                // Wiki 当前顺序还包含 Luka，但本模组尚未实现该立牌，故跳过。
                 output.accept(ModItems.MIMI_SIGN.get());
                 output.accept(ModItems.PARUNAN_SIGN.get());
                 output.accept(ModItems.FANNY_SIGN.get());
@@ -107,6 +108,7 @@ public class ModCreativeTabs {
                 output.accept(ModItems.PADMAN_SIGN.get());
                 output.accept(ModItems.PAPARA_SIGN.get());
                 output.accept(ModItems.REN_SIGN.get());
+                output.accept(ModItems.Z3000_SIGN.get());
                 output.accept(ModItems.PANDAMAN_SIGN.get());
                 output.accept(ModItems.LULU_SIGN.get());
                 output.accept(ModItems.FEN_SIGN.get());
@@ -117,20 +119,25 @@ public class ModCreativeTabs {
                 output.accept(ModItems.NANCY_LU_SIGN.get());
                 output.accept(ModItems.MEGAS_SIGN.get());
                 output.accept(ModItems.ZHAO_SIGN.get());
+                output.accept(ModItems.AL_SIGN.get());
                 output.accept(ModItems.RIN_SIGN.get());
                 output.accept(ModItems.TERU_SIGN.get());
                 output.accept(ModItems.MOSES_SIGN.get());
                 output.accept(ModItems.MAMUSHI_SIGN.get());
+                output.accept(ModItems.INKSHADOW_SIGN.get());
                 output.accept(ModItems.BONNIE_SIGN.get());
                 output.accept(ModItems.LINGLING_SIGN.get());
+                output.accept(ModItems.SYKES_SIGN.get());
+                output.accept(ModItems.SOURI_SIGN.get());
                 output.accept(ModItems.KANGEL_SIGN.get());
                 output.accept(ModItems.AME_SIGN.get());
                 output.accept(ModItems.JILL_SIGN.get());
                 output.accept(ModItems.DOROTHY_SIGN.get());
                 output.accept(ModItems.HANNA_SIGN.get());
                 output.accept(ModItems.SHERRY_SIGN.get());
-                // deepseek 未在 Wiki「Characters」页面出现(本模组原创),排在末尾
+                // DeepSeek 未在 Wiki「Characters」页面出现(本模组原创),排在末尾
                 output.accept(ModItems.DEEPSEEK_SIGN.get());
+
                 // 筹码
                 // 2026-10-25 用户裁决：先保持既有流派分组顺序（星光 → 治愈 → 标记 → 充能 → 无流派），
                 //   组内再按稀有度升序排列（稀有 → 史诗 → 传奇，同档沿用原有相对顺序）；五档里本类只用到前 3 档。
@@ -192,7 +199,7 @@ public class ModCreativeTabs {
                 output.accept(ModItems.RAILGUN_CHIP.get());
                 output.accept(ModItems.PRIMORDIAL_CORE_CHIP.get());
                 // === 无流派 ===
-                // -- 稀有（RARE） (8) --
+                // -- 稀有（RARE） (7) --
                 output.accept(ModItems.BOXING_GLOVES_LOW.get());
                 output.accept(ModItems.SPEED_SKATES_LOW.get());
                 output.accept(ModItems.MOTO_HELMET_LOW.get());
@@ -200,8 +207,7 @@ public class ModCreativeTabs {
                 output.accept(ModItems.MEMBER_RECOMMENDATION_CHIP.get());
                 output.accept(ModItems.BOOKMARK_CHIP.get());
                 output.accept(ModItems.PIGGY_BANK_CHIP.get());
-                output.accept(ModItems.CURSED_SWORD.get());
-                // -- 史诗（EPIC） (11) --
+                // -- 史诗（EPIC） (10) --
                 output.accept(ModItems.MAGIC_TOME_CHIP.get());
                 output.accept(ModItems.BIG_BACKPACK_CHIP.get());
                 output.accept(ModItems.BOXING_GLOVES_MEDIUM.get());
@@ -212,20 +218,26 @@ public class ModCreativeTabs {
                 output.accept(ModItems.SMART_WATCH_CHIP.get());
                 output.accept(ModItems.WHETSTONE_CHIP.get());
                 output.accept(ModItems.EXTRA_BATTERY_CHIP.get());
-                output.accept(ModItems.REVENGE_HALBERD.get());
-                // -- 传奇（LEGENDARY） (7) --
+                // -- 传奇（LEGENDARY） (6) --
                 output.accept(ModItems.BOXING_GLOVES_HIGH.get());
                 output.accept(ModItems.SPEED_SKATES_HIGH.get());
                 output.accept(ModItems.MOTO_HELMET_HIGH.get());
                 output.accept(ModItems.SANDWICH_HIGH.get());
                 output.accept(ModItems.ADRENALINE_HIGH.get());
                 output.accept(ModItems.SATELLITE_CHIP.get());
+                // -- 专属筹码（6） --
+                output.accept(ModItems.CURSED_SWORD.get());
+                output.accept(ModItems.REVENGE_HALBERD.get());
                 output.accept(ModItems.PIERCING_GUN.get());
+                output.accept(ModItems.SWORD_IN_STONE_EPIC_CHIP.get());
+                output.accept(ModItems.SWORD_IN_STONE_LEGENDARY_CHIP.get());
+                output.accept(ModItems.PERFECT_BRANCH_CHIP.get());
                 // 任务S §4（2026-10-10 用户裁决）：卡牌商店移到本栏**最后**（旧口径「提到最前」已被推翻）。
                 // JEI 物品列表顺序取自创造栏（IngredientSorterComparators.getCreativeMenuComparator），
                 // 因此这里一并决定了 JEI 里卡牌商店的位置。
                 output.accept(ModItems.EVENT_TICKET.get());
 output.accept(ModItems.EVENT_DRAWER.get());
+                output.accept(ModItems.ASTRAL_ANVIL.get());
 output.accept(ModItems.CARD_SHOP.get());
                 output.accept(ModItems.CHIP_SHOP.get());
             }).build());

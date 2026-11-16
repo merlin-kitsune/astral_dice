@@ -1,0 +1,30 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": {
+      "item": "astral_dice:blank_sign"
+    },
+    "D": {
+      "item": "astral_dice:diamond_dice"
+    },
+    "G": {
+      "item": "astral_dice:golden_star_plate"
+    },
+    "M": {
+      "item": "minecraft:ender_eye"
+    },
+    "Y": {
+      "item": "minecraft:sculk_catalyst"
+    }
+  },
+  "pattern": [
+    "MYM",
+    "YCY",
+    "GDG"
+  ],
+  "result": {
+    "item": "astral_dice:sykes_sign"
+  },
+  "show_notification": true
+}

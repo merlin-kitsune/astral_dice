@@ -1,0 +1,270 @@
+{
+  "schema_version": 1,
+  "rules": [
+    {
+      "id": "star_plate_zombie",
+      "priority": 100,
+      "target_kind": "entity",
+      "targets": [
+        "minecraft:entities/zombie"
+      ],
+      "table": "astral_dice:entities/star_plate",
+      "require_player_kill": false
+    },
+    {
+      "id": "star_plate_skeleton",
+      "priority": 100,
+      "target_kind": "entity",
+      "targets": [
+        "minecraft:entities/skeleton"
+      ],
+      "table": "astral_dice:entities/star_plate",
+      "require_player_kill": false
+    },
+    {
+      "id": "star_plate_creeper",
+      "priority": 100,
+      "target_kind": "entity",
+      "targets": [
+        "minecraft:entities/creeper"
+      ],
+      "table": "astral_dice:entities/star_plate",
+      "require_player_kill": false
+    },
+    {
+      "id": "star_plate_spider",
+      "priority": 100,
+      "target_kind": "entity",
+      "targets": [
+        "minecraft:entities/spider"
+      ],
+      "table": "astral_dice:entities/star_plate",
+      "require_player_kill": false
+    },
+    {
+      "id": "star_plate_enderman",
+      "priority": 100,
+      "target_kind": "entity",
+      "targets": [
+        "minecraft:entities/enderman"
+      ],
+      "table": "astral_dice:entities/star_plate",
+      "require_player_kill": false
+    },
+    {
+      "id": "star_plate_witch",
+      "priority": 100,
+      "target_kind": "entity",
+      "targets": [
+        "minecraft:entities/witch"
+      ],
+      "table": "astral_dice:entities/star_plate",
+      "require_player_kill": false
+    },
+    {
+      "id": "star_plate_ravager",
+      "priority": 100,
+      "target_kind": "entity",
+      "targets": [
+        "minecraft:entities/ravager"
+      ],
+      "table": "astral_dice:entities/star_plate",
+      "require_player_kill": false
+    },
+    {
+      "id": "star_plate_evoker",
+      "priority": 100,
+      "target_kind": "entity",
+      "targets": [
+        "minecraft:entities/evoker"
+      ],
+      "table": "astral_dice:entities/star_plate",
+      "require_player_kill": false
+    },
+    {
+      "id": "star_plate_vindicator",
+      "priority": 100,
+      "target_kind": "entity",
+      "targets": [
+        "minecraft:entities/vindicator"
+      ],
+      "table": "astral_dice:entities/star_plate",
+      "require_player_kill": false
+    },
+    {
+      "id": "star_plate_drowned",
+      "priority": 100,
+      "target_kind": "entity",
+      "targets": [
+        "minecraft:entities/drowned"
+      ],
+      "table": "astral_dice:entities/star_plate",
+      "require_player_kill": false
+    },
+    {
+      "id": "star_plate_wither",
+      "priority": 100,
+      "target_kind": "entity",
+      "targets": [
+        "minecraft:entities/wither"
+      ],
+      "table": "astral_dice:entities/star_plate_wither",
+      "require_player_kill": false
+    },
+    {
+      "id": "star_plate_warden",
+      "priority": 100,
+      "target_kind": "entity",
+      "targets": [
+        "minecraft:entities/warden"
+      ],
+      "table": "astral_dice:entities/star_plate_warden",
+      "require_player_kill": false
+    },
+    {
+      "id": "star_plate_elder_guardian",
+      "priority": 100,
+      "target_kind": "entity",
+      "targets": [
+        "minecraft:entities/elder_guardian"
+      ],
+      "table": "astral_dice:entities/star_plate_elder_guardian",
+      "require_player_kill": false
+    },
+    {
+      "id": "star_plate_ghast",
+      "priority": 100,
+      "target_kind": "entity",
+      "targets": [
+        "minecraft:entities/ghast"
+      ],
+      "table": "astral_dice:entities/star_plate_ghast",
+      "require_player_kill": false
+    },
+    {
+      "id": "star_plate_wither_skeleton",
+      "priority": 100,
+      "target_kind": "entity",
+      "targets": [
+        "minecraft:entities/wither_skeleton"
+      ],
+      "table": "astral_dice:entities/star_plate_wither_skeleton",
+      "require_player_kill": false
+    },
+    {
+      "id": "star_plate_guardian",
+      "priority": 100,
+      "target_kind": "entity",
+      "targets": [
+        "minecraft:entities/guardian"
+      ],
+      "table": "astral_dice:entities/star_plate_guardian",
+      "require_player_kill": false
+    },
+    {
+      "id": "star_plate_ender_dragon",
+      "priority": 100,
+      "target_kind": "entity",
+      "targets": [
+        "minecraft:entities/ender_dragon"
+      ],
+      "table": "astral_dice:entities/star_plate_boss",
+      "require_player_kill": false
+    },
+    {
+      "id": "star_plate_monster",
+      "priority": 10,
+      "target_kind": "entity",
+      "targets": [
+        "minecraft:entities/*"
+      ],
+      "table": "astral_dice:entities/star_plate_monster",
+      "require_player_kill": false,
+      "monster_only": true
+    },
+    {
+      "id": "star_coin_zombie",
+      "priority": 100,
+      "target_kind": "monster",
+      "targets": [
+        "minecraft:entities/zombie",
+        "minecraft:entities/husk",
+        "minecraft:entities/drowned",
+        "minecraft:entities/zombie_villager",
+        "minecraft:entities/zombified_piglin"
+      ],
+      "table": "astral_dice:entities/star_coin_zombie",
+      "require_player_kill": true
+    },
+    {
+      "id": "star_coin_enderman",
+      "priority": 100,
+      "target_kind": "monster",
+      "targets": [
+        "minecraft:entities/enderman"
+      ],
+      "table": "astral_dice:entities/star_coin_enderman",
+      "require_player_kill": true
+    },
+    {
+      "id": "star_coin_piglin",
+      "priority": 100,
+      "target_kind": "monster",
+      "targets": [
+        "minecraft:entities/piglin"
+      ],
+      "table": "astral_dice:entities/star_coin_piglin",
+      "require_player_kill": true
+    },
+    {
+      "id": "star_coin_piglin_brute",
+      "priority": 100,
+      "target_kind": "monster",
+      "targets": [
+        "minecraft:entities/piglin_brute"
+      ],
+      "table": "astral_dice:entities/star_coin_piglin_brute",
+      "require_player_kill": true
+    },
+    {
+      "id": "chest_common",
+      "priority": 10,
+      "target_kind": "chest",
+      "targets": [
+        "minecraft:chests/*"
+      ],
+      "table": "astral_dice:chests/common",
+      "require_player_kill": false
+    },
+    {
+      "id": "chest_end_city",
+      "priority": 20,
+      "target_kind": "chest",
+      "targets": [
+        "minecraft:chests/end_city_treasure"
+      ],
+      "table": "astral_dice:chests/end_city",
+      "require_player_kill": false
+    },
+    {
+      "id": "chest_buried_treasure",
+      "priority": 20,
+      "target_kind": "chest",
+      "targets": [
+        "minecraft:chests/buried_treasure"
+      ],
+      "table": "astral_dice:chests/buried_treasure",
+      "require_player_kill": false
+    },
+    {
+      "id": "chest_ominous_vault",
+      "priority": 20,
+      "target_kind": "chest",
+      "targets": [
+        "minecraft:chests/trial_chambers/reward_ominous"
+      ],
+      "table": "astral_dice:chests/golden_star_plate",
+      "require_player_kill": false
+    }
+  ]
+}

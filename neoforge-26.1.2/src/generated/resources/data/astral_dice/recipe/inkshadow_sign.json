@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": "minecraft:ender_pearl",
+    "C": "astral_dice:blank_chip",
+    "D": "astral_dice:dice",
+    "K": "minecraft:yellow_dye",
+    "X": "astral_dice:star_coin"
+  },
+  "pattern": [
+    "BXB",
+    "KCK",
+    "XDX"
+  ],
+  "result": {
+    "id": "astral_dice:inkshadow_sign"
+  }
+}

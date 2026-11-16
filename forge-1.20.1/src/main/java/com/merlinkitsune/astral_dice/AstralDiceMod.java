@@ -49,6 +49,10 @@ public class AstralDiceMod {
                     + "（下载指引占位：<待填写 —— 发布页 / 整合包说明>）");
             throw new IllegalStateException("Missing required dependency: StarEngine (starengine)");
         }
+        // 主项目 common 源码根:平台工厂先落位(StarEngine 缺失断言之后、任何内容注册之前),
+        // 之后 common 里的 AstralDiceApi 才能取到正确的平台 id。仅 set + install,零行为变化。
+        com.merlinkitsune.astral_dice.platform.AstralDicePlatforms.install(
+                new com.merlinkitsune.astral_dice.platform.ForgeAstralDicePlatform());
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
         // ⚠️ 不兼容模组黑名单(Magic Coins / SG-Economy)的检查**不能放在这里**:它是否拒绝取决于
         //    「星币钱包」开关(config/ModCommonConfig 的 enable_star_coin_wallet),而配置要到**本阶段之后**
@@ -83,6 +87,8 @@ public class AstralDiceMod {
         // 否则 data/astral_dice/loot_modifiers/*.json 全部解码失败(详见 loot/AstralLootModifiers)
         com.merlinkitsune.astral_dice.loot.AstralLootModifiers.SERIALIZERS.register(modEventBus);
         modEventBus.register(this);
+        // 内容注册表在服务器启动后冻结(KubeJS 服务器脚本此时已加载完成)
+        MinecraftForge.EVENT_BUS.addListener(AstralDiceMod::onServerStarted);
         // 配置:配置项定义、TOML 读写与配置 GUI 全部留在本模组(见 config/ModCommonConfig)。
         // 旧版本配置文件先备份,再由 Forge 继承旧值写入新配置(仅公共配置;client 配置已移除)。
         backupOldConfigIfNeeded("astral_dice-common.toml", ModCommonConfig.CONFIG_VERSION);
@@ -90,8 +96,9 @@ public class AstralDiceMod {
         // 版本互通门槛(见 AGENTS.md):多人生服列表的「兼容」标记按 mod_version 的 major.minor 判定,
         // 与 SimpleChannel 的握手门槛同一判据。Forge 默认的 MATCH_VERSION 要求完整版本号完全相同,
         // 会把 1.2.0 ↔ 1.2.1 这类同二号位组合误标为不兼容,故显式注册本判据。
-        // ⚠️ Forge 47.1.x 的 ModLoadingContext **没有** registerDisplayTest(...) 便捷重载
-        //    (该重载 47.4.x 才有),故走原生扩展点注册;两者语义相同(装配同一个 DisplayTest 记录)。
+        // ⚠️ 47.1.x 没有 registerDisplayTest(...) 便捷方法(它是 47.3.x 才加的),
+        //    必须走 IExtensionPoint.DisplayTest 扩展点原语:
+        //    形参 = 本地声明的版本号 Supplier<String> + (远端版本号, 是否来自服务端) 谓词。
         net.minecraftforge.fml.ModLoadingContext.get().registerExtensionPoint(
                 net.minecraftforge.fml.IExtensionPoint.DisplayTest.class,
                 () -> new net.minecraftforge.fml.IExtensionPoint.DisplayTest(
@@ -171,8 +178,8 @@ public class AstralDiceMod {
 
     @SubscribeEvent
     public void onCommonSetup(FMLCommonSetupEvent event) {
-        // 不兼容模组黑名单(Magic Coins / SG-Economy):**只有在「星币钱包」启用时才拒绝启动**
-        // (2026-09-22 用户裁决),因此必须等到配置加载完成才能判定 —— 本事件就在 CONFIG_LOAD 之后。
+        // 不兼容模组黑名单(Magic Coins / SG-Economy):**永久不兼容,与「星币钱包」开关无关**
+        // (2026-11-09 用户裁决):命中即拒绝启动,不因关闭钱包而放行。
         // 命中即抛 ModLoadingException ⇒ 游戏停在加载错误界面并显示提示原文(链路见 ModCompatibilityCheck 类头)。
         // 放在 enqueueWork **之前**:同步执行,不与其它 mod 的延迟任务交错,失败得越干净越好。
         ModCompatibilityCheck.verifyOrThrow();
@@ -205,8 +212,26 @@ public class AstralDiceMod {
                             .icon(new net.minecraft.resources.ResourceLocation(AstralDiceMod.MODID, "slot/empty_chip_slot")).build());
             // 卡牌类型注册表初始化(战斗牌定义集中管理)
             com.merlinkitsune.astral_dice.combat.CardRegistry.init();
+            // 把内置立牌 / 筹码接进 StarEngine 内容注册表(冻结在服务器启动后)。
+            com.merlinkitsune.astral_dice.content.BuiltinContent.register();
+            // 对外公开的伤害分类与骰战属性钩子:仅本线安装,其余加载器线编译通过但不接线。
+            com.merlinkitsune.astral_dice.api.AstralDiceApi.installDamageCategoryResolver(
+                    com.merlinkitsune.astral_dice.combat.SpellDamageRegistry::damageCategory);
+            com.merlinkitsune.astral_dice.api.AstralDiceApi.installCombatStatSupport();
             LOGGER.info("Astral Dice mod loaded.");
             LOGGER.info("May the god of the dice be with you!");
         });
+    }
+
+    /**
+     * 服务器启动后冻结内容注册表。
+     *
+     * <p>⚠️ 不能放在 {@link #onCommonSetup}：KubeJS 服务器脚本在 common setup 之后才加载，
+     * 提前冻结会让脚本侧的 {@code AstralDice.registerSign/registerChip} 直接抛
+     * {@link IllegalStateException}。ServerStartedEvent 晚于脚本加载，届时注册已完成。
+     */
+    private static void onServerStarted(net.minecraftforge.event.server.ServerStartedEvent event) {
+        com.merlinkitsune.astral_dice.api.AstralDiceApi.freezeContent();
+        LOGGER.info("[Astral Dice] 内容注册表已在服务器启动后冻结。");
     }
 }

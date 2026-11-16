@@ -25,7 +25,7 @@ public class MemberRecommendationChipItem extends BaseChipItem {
     }
 
     // 玩家是否佩戴本筹码
-    public static boolean isEquipped(Player player) {
+    public static boolean isEquipped(net.minecraft.world.entity.LivingEntity player) {
         // 总闸门(骰子装备和卸除调整):未佩戴骰子 ⇒ 本件功能一律不生效(数值保留)
         if (!CurioSlotUtil.hasDiceEquipped(player)) return false;
         if (player == null) return false;
@@ -49,9 +49,8 @@ public class MemberRecommendationChipItem extends BaseChipItem {
         for (ItemStack stack : player.getInventory().getNonEquipmentItems()) {
             if (ModItems.isCardItem(stack)) total += stack.getCount();
         }
-        for (ItemStack stack : player.getInventory().getNonEquipmentItems()) {
-            if (ModItems.isCardItem(stack)) total += stack.getCount();
-        }
+        ItemStack offhand = player.getInventory().getItem(net.minecraft.world.entity.player.Inventory.SLOT_OFFHAND);
+        if (!offhand.isEmpty() && ModItems.isCardItem(offhand)) total += offhand.getCount();
         return total;
     }
 

@@ -1,0 +1,154 @@
+package com.merlinkitsune.astral_dice.item.sign;
+import com.merlinkitsune.starengine.combat.HostileTargets;
+import com.merlinkitsune.astral_dice.network.ModNetwork;
+
+import com.merlinkitsune.astral_dice.AstralDiceMod;
+import com.merlinkitsune.starengine.component.GameplayConstants;
+import com.merlinkitsune.astral_dice.component.ModAttachments;
+import com.merlinkitsune.astral_dice.effect.ModEffects;
+import com.merlinkitsune.starengine.event.ModEffectRemoval;
+import com.merlinkitsune.astral_dice.item.MarkManager;
+import com.merlinkitsune.astral_dice.item.ModItems;
+import com.merlinkitsune.astral_dice.item.card.RandomCardHandler;
+import com.merlinkitsune.astral_dice.network.ModNetwork;
+import com.merlinkitsune.starengine.target.TargetSelectionAction;
+import com.merlinkitsune.astral_dice.target.TargetSelectionManager;
+import com.merlinkitsune.starengine.target.TargetSelectionRegistry;
+import com.merlinkitsune.starengine.target.TargetType;
+import com.merlinkitsune.astral_dice.event.WeirdDiceHandler;
+import com.merlinkitsune.astral_dice.item.chip.CurrentCoreChipItem;
+
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
+import com.merlinkitsune.astral_dice.platform.event.entity.living.LivingDeathEvent;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Optional;
+import java.util.UUID;
+import com.merlinkitsune.starengine.combat.PartyRelations;
+import com.merlinkitsune.astral_dice.platform.util.Effects;
+
+/**
+ * 秘密侦探立牌(命名:bonnie)。
+ * 被动:
+ * 1. 攻击带有"标记"的目标时攻击力+3;
+ * 2. 击杀带有"标记"的敌对目标后获得一张随机战斗牌;
+ * (击杀"隐匿调查"目标触发调查阶段事件已由 InvestigationEventUtil 全局处理)
+ * 主动:使用目标选择器选择目标并施加"隐匿调查"(永久,直到目标死亡/消失)与 1 层"标记";
+ * 按施加后的标记层数获得 标记层数*2 星币(选择器目标规则:敌对生物或非队友玩家,
+ * 选择者无队伍时对所有玩家生效;不符合规则的目标不可选中)。
+ *
+ * 主动为"目标选择器"类技能:触发后经 {@link TargetSelectionManager} 进入选择模式,
+ * 确认时由 {@link TargetSelectionAction#apply} 施加效果并开始玩家级冷却;取消/超时不冷却。
+ */
+public class BonnieSignItem extends BaseSignItem {
+    private static final Logger LOGGER = LoggerFactory.getLogger(BonnieSignItem.class);
+
+    static {
+        TargetSelectionRegistry.register(new TargetSelectionAction() {
+            @Override
+            public String id() {
+                return "bonnie_undercover";
+            }
+
+            @Override
+            public TargetType targetType() {
+                return TargetType.ENEMY_OR_RIVAL;
+            }
+
+            @Override
+            public void apply(ServerPlayer player, LivingEntity target) {
+                // 用户裁决(2026-10-10):**已带「隐匿调查」标记的目标不可再被任何人施加**。
+                // 服务端唯一权威闸门;按裁决**不发 ActionBar**,提示只出现在目标选择器里(见 TargetSelectionClient#targetTagKey)。
+                if (target.hasEffect(Effects.holder(ModEffects.UNDERCOVER_INVESTIGATION.get()))) {
+                    LOGGER.info("AP_UNDERCOVER_REJECT: already_marked:target={}", target.getDisplayName().getString());
+                    return;
+                }
+                // 施加"隐匿调查"(永久,直到目标死亡/消失),记录施加者(击杀触发调查阶段事件)
+                ModAttachments.setUndercoverSource(target, Optional.of(player.getUUID()));
+                target.addEffect(new MobEffectInstance(Effects.holder(ModEffects.UNDERCOVER_INVESTIGATION.get()) ,
+                        MobEffectInstance.INFINITE_DURATION, 0, false, true));
+                // 用户裁决(2026-10-24):施加隐匿调查的同时追加 1 层"标记";返币按施加后的当前层数结算
+                int markLevel = MarkManager.apply(target);
+                ItemStack coinStack = new ItemStack(ModItems.STAR_COIN.get(), markLevel * 2);
+                // 用户裁决 2026-10-11：发币优先入钱包（中央漏斗），钱包关闭才给物品
+                com.merlinkitsune.astral_dice.resource.ResourceConversion.giveItem(player, coinStack);
+                // 主动成功施加:开始玩家级冷却(统一经 signCooldownTicks:含充能封顶与额外电池筹码减成)
+                ModAttachments.setSignActiveCooldownEnd(player,
+                        player.level().getGameTime() + WeirdDiceHandler.signCooldownTicks(player));
+                // 冷却口径一致(2026-10-22 补):记录本次实际最大冷却,供「瞬时冷却」/减免换算剩余比例
+                ModAttachments.setSignActiveMaxCooldown(player, (long) (WeirdDiceHandler.signCooldownTicks(player)));
+                // 电流核心筹码:主动技能实际生效时充能 +1
+                CurrentCoreChipItem.onActiveSkillUsed(player);
+                ModNetwork.sendToPlayer(player, new ModNetwork.ActionBarMessage(
+                        Component.translatable("msg.astral_dice.bonnie_undercover_applied", target.getDisplayName())
+                                .withStyle(ChatFormatting.YELLOW), GameplayConstants.ACTIONBAR_DURATION_TICKS));
+                LOGGER.debug("[Astral Dice][TargetSelection] bonnie_undercover applied to {}({}) by {} markLevel={}",
+                        target.getId(), target.getName().getString(), player.getName().getString(), markLevel);
+            }
+        });
+    }
+
+    public BonnieSignItem(Properties properties) {
+        super(properties);
+    }
+
+    @Override
+    protected void clearSignData(Player player, ItemStack stack) {
+        super.clearSignData(player, stack);
+        // 卸下立牌:重置调查阶段进度并清除调查增益效果(buff 累积)
+        ModAttachments.setInvestigationStage(player, 1);
+        ModEffectRemoval.remove(player, Effects.holder(ModEffects.INVESTIGATION_BONUS.get()));
+    }
+
+    // 目标选择器前置门控(2026-09-17):本立牌主动为选择器类 —— 按下主动键只开启目标选择会话,
+    // 会话时长取自 GameplayConstants.SKILL_WAIT_SECONDS(秒),此处不写死数字;
+    // 确认合法目标后才继续原流程(风扇筹码发牌 + 立牌主动响应事件;冷却与电流核心充能由
+    // 本类注册的 TargetSelectionAction#apply 在确认时写入)。
+    @Override
+    protected String selectorActionId() {
+        return "bonnie_undercover";
+    }
+
+    // 被动 2(击杀钩子,由 BaseSignItem.invokeKillHooks 分发):
+    // - 击杀带"标记"的敌对目标 → 获得一张随机战斗牌;
+    // 被动 3 已移至 InvestigationEventUtil.onUndercoverInvestigationKill 统一处理,
+    // 使任意玩家击杀"隐匿调查"目标都能触发调查阶段事件(不再要求击杀者佩戴秘密侦探立牌)。
+    @Override
+    protected void onKill(Player killer, net.minecraft.world.entity.LivingEntity killed) {
+        // 被动 2:击杀带"标记"的目标 → 获得一张随机战斗牌
+        if (MarkManager.getLevel(killed) > 0
+                && !(killed instanceof Player)
+                && PartyRelations.isHostileTo(killer, killed)
+                && killed.getMaxHealth() >= 20) {
+            RandomCardHandler.giveCardTo(killer, RandomCardHandler.CardCategory.BATTLE);
+        }
+    }
+
+
+    // 秘密侦探立牌被动:击杀带"标记"目标获得随机战斗牌。
+    // 通过立牌击杀钩子分发(见 BonnieSignItem.onKill);"隐匿调查"击杀事件由下方全局处理器统一触发。
+    @SubscribeEvent
+    public static void onBonnieKill(LivingDeathEvent event) {
+        LivingEntity target = event.getEntity();
+        if (target.level().isClientSide()) return;
+        if (!(event.getSource().getEntity() instanceof Player killer)) return;
+        // 同一次死亡的第二次派发不再重复结算：法伤加成 / 额外加伤都以**嵌套 hurt**结算，致死时
+        // 内层 die() 与外层 die() 会各派发一次 LivingDeathEvent（平台把该事件挂在 !dead 守卫之前）。
+        if (!com.merlinkitsune.astral_dice.combat.DeathTriggerGuard.claim(event.getEntity(), "sign_kill")) return;
+        BaseSignItem.invokeKillHooks(killer, target);
+    }
+
+    // 2026-11-11 P1 补齐：与 P0 同口径的机器可读拒绝。
+    @Override
+    protected boolean activateForEntity(net.minecraft.world.entity.LivingEntity owner) {
+        return com.merlinkitsune.astral_dice.item.sign.SignEntitySkills.deny("bonnie", owner, "needs_player_session");
+    }
+}

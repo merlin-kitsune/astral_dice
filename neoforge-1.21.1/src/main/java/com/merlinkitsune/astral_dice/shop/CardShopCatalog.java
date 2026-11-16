@@ -1,10 +1,13 @@
 package com.merlinkitsune.astral_dice.shop;
 
+import com.merlinkitsune.astral_dice.data.ShopData;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.Item;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -31,6 +34,8 @@ import java.util.function.Supplier;
  * {@code 10%} 概率降为 {@value #DISCOUNT_PRICE} 星币（D2/用户追加口径）。
  */
 public final class CardShopCatalog {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger("astral_dice/shop");
 
     public static final int BASE_SLOTS = 3;
     public static final int PROMOTION_BONUS_SLOTS = 2;
@@ -60,7 +65,7 @@ public final class CardShopCatalog {
      */
     public record PoolEntry(Supplier<? extends Item> item, int weight, boolean combat, int minStarLevel) {}
 
-    private static final List<PoolEntry> POOL = List.of(
+    private static final List<PoolEntry> DEFAULT_POOL = List.of(
             // ── 稀有（rare，权重 6）× 13 ─────────────────────────────────────
             new PoolEntry(ModItems.ATTACK_CARD_MEDIUM::get, WEIGHT_RARE, true, 0),
             new PoolEntry(ModItems.ATTACK_CARD_LARGE::get, WEIGHT_RARE, true, 0),
@@ -89,12 +94,14 @@ public final class CardShopCatalog {
             new PoolEntry(ModItems.DIRECTIONAL_BLAST_CARD::get, WEIGHT_LEGENDARY, false, 0)
     );
 
+    private static volatile List<PoolEntry> activePool = DEFAULT_POOL;
+
     private CardShopCatalog() {}
 
     /** 按星级门槛过滤后的可选池（每次抽池现算，门槛只用开店那一刻的星级） */
     public static List<PoolEntry> availableEntries(int starLevel) {
         List<PoolEntry> available = new ArrayList<>();
-        for (PoolEntry entry : POOL) {
+        for (PoolEntry entry : activePool) {
             if (starLevel >= entry.minStarLevel()) {
                 available.add(entry);
             }
@@ -168,7 +175,28 @@ public final class CardShopCatalog {
 
     /** 卡池只读视图（村民交易表复用同一份池子与权重，不另造第二套分级）。 */
     public static List<PoolEntry> entries() {
-        return POOL;
+        return activePool;
+    }
+
+    /** 应用数据包池；空列表或全部非法时恢复内置 23 张池。 */
+    public static synchronized void applyData(ShopData data) {
+        List<PoolEntry> next = new ArrayList<>();
+        if (data != null) {
+            for (ShopData.Card card : data.cards()) {
+                ResourceLocation itemId = ResourceLocation.tryParse(card.item());
+                if (itemId == null) {
+                    LOGGER.error("[shop] 卡牌 id 非法，已跳过：{}", card.item());
+                    continue;
+                }
+                Item item = BuiltInRegistries.ITEM.getOptional(itemId).orElse(null);
+                if (item == null) {
+                    LOGGER.error("[shop] 卡牌物品未注册，已跳过：{}", card.item());
+                    continue;
+                }
+                next.add(new PoolEntry(() -> item, card.weight(), card.combat(), card.minStarLevel()));
+            }
+        }
+        activePool = next.isEmpty() ? DEFAULT_POOL : List.copyOf(next);
     }
 
     /** 由池内权重反查档位 —— 直接复用商店抽卡的权重口径；权重不是三档常量时返回 null。 */

@@ -1,6 +1,7 @@
 package com.merlinkitsune.astral_dice.client;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
+import com.merlinkitsune.astral_dice.entity.ModEntityTypes;
 import com.merlinkitsune.astral_dice.init.ModParticles;
 import com.merlinkitsune.astral_dice.entity.ModEntityTypes;
 import com.merlinkitsune.astral_dice.client.BarricadeRenderer;
@@ -13,6 +14,7 @@ import com.merlinkitsune.astral_dice.screen.CardInventoryScreen;
 import com.merlinkitsune.astral_dice.screen.CardChoiceScreen;
 import com.merlinkitsune.astral_dice.screen.ChipShopScreen;
 import com.merlinkitsune.astral_dice.screen.CardShopScreen;
+import com.merlinkitsune.astral_dice.screen.AstralAnvilScreen;
 import com.merlinkitsune.astral_dice.screen.ModMenuTypes;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
@@ -24,6 +26,7 @@ import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
@@ -52,11 +55,24 @@ public class ModClientEvents {
     //     NoClassDefFoundError: CardInventoryScreen(除非它是纯服务端 mod,才会被 strip 掉)。
     //     与 forge-1.20.1 侧 ModClientEvents#onClientSetup 的写法保持对等。
 
-    /** 路障 / 强化拒止实体渲染器（1.5.0 新增实体；合并时整块丢失，2026-11-01 补回）。 */
+    /**
+     * 自有实体渲染器注册。
+     *
+     * <p>路障 / 强化拒止（1.5.0 新增实体；合并时整块丢失，2026-11-01 补回），
+     * 以及 GeckoLib 5 的 Syke 触手（26.4 dev 线新增）。
+     */
     @SubscribeEvent
     public static void registerEntityRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerEntityRenderer(ModEntityTypes.BARRICADE.get(), BarricadeRenderer::new);
         event.registerEntityRenderer(ModEntityTypes.REPULSION.get(), RepulsionRenderer::new);
+        // GeckoLib 的几何/贴图/动画来自 assets/astral_dice/{geo,textures/entity,animations}/，渲染器只需把模型实例交给 GeoEntityRenderer；
+        // **不** 走 EntityRenderersEvent.RegisterLayerDefinitions（那是原版模型层的注册口，对本实体无效）。
+        event.registerEntityRenderer(ModEntityTypes.SYKE_TENTACLE.get(), SykeTentacleRenderer::new);
+        // 金鲤漂浮饮品（2026-11-09）：GeckoLib 5 渲染器，变体（葫芦饮/仙酿）由渲染态数据票切换几何与贴图。
+        event.registerEntityRenderer(ModEntityTypes.SOURI_DRINK.get(), SouriDrinkRenderer::new);
+        // 小猎手暗影之门（2026-11-10）：GeckoLib 5 渲染器 + 贴地门面（门面在 postRenderPass 里提交自定义几何）。
+        event.registerEntityRenderer(ModEntityTypes.INKSHADOW_PORTAL.get(), InkShadowPortalRenderer::new);
+        event.registerEntityRenderer(ModEntityTypes.GRAPPLING_HOOK.get(), GrapplingHookRenderer::new);
     }
 
     /** 模型层定义：`astral_dice:barricade#main` / `astral_dice:repulsion#main`。 */
@@ -71,6 +87,7 @@ public class ModClientEvents {
         event.register(ModMenuTypes.CARD_INVENTORY.get(), CardInventoryScreen::new);
         event.register(ModMenuTypes.CARD_SHOP.get(), CardShopScreen::new);
         event.register(ModMenuTypes.CHIP_SHOP.get(), ChipShopScreen::new);
+        event.register(ModMenuTypes.ASTRAL_ANVIL.get(), AstralAnvilScreen::new);
         event.register(ModMenuTypes.CARD_CHOICE.get(), CardChoiceScreen::new);
     }
 

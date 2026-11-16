@@ -2,17 +2,16 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "D": "astral_dice:golden_dice",
+    "B": "astral_dice:star_coin",
     "E": "astral_dice:blank_sign",
     "G": "minecraft:gold_ingot",
-    "P": "astral_dice:star_plate",
     "R": "minecraft:redstone",
-    "S": "astral_dice:star_coin"
+    "T": "astral_dice:golden_dice"
   },
   "pattern": [
-    "SRS",
+    "RRR",
     "GEG",
-    "PDP"
+    "BTB"
   ],
   "result": {
     "id": "astral_dice:fanny_sign"

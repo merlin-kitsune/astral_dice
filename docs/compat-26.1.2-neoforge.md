@@ -1,4 +1,4 @@
-# MC 26.1.2 / NeoForge 26.1.2.109 迁移文档（第三条线）
+# MC 26.1.2 / NeoForge 26.1.2.109 迁移文档（P1 线）
 
 > 适用子项目：`neoforge-26.1.2`（**2026-09-17 起已并入主线**：原本的独立 worktree `F:\MCProject\astral_dice_multiloader-26.1.2` / 分支 `multi-26.1.2-neoforge` 已合并进 `multi-1.20.1-1.21.1`，现行工作目录即主线根目录，第三子项目与之同树）
 > 迁移基线：主线 `multi-1.20.1-1.21.1` 的 `1.2.1`（commit `fda8ca9`）
@@ -232,7 +232,7 @@ src/generated/clientResources/   ← runClientData（assets/…：items 123 + mo
 直接喂给 `text(...)` ⇒ 该覆盖层的文字在本线上**恒不可见**（静默不画、不报错）。
 已改为显式 ARGB：`0xFF55FF55` / `0xFFFF5555` / `0xFFFFFF55`。
 **这是本线专属的平台差异**（1.21.1 的 `Font#adjustColor`「alpha 为 0 视为不透明」兜底已被本版本移除，
-另三线无此缺陷且**不加 alpha**）；判据 = 传给 `text(...)` 的 color 其 `ARGB.alpha(color) != 0`。
+其余各线无此缺陷且**不加 alpha**）；判据 = 传给 `text(...)` 的 color 其 `ARGB.alpha(color) != 0`。
 `client/TargetSelectionHighlighter` 只取 RGB 分量描棱柱，取值与行为均不受影响。
 
 
@@ -241,7 +241,7 @@ src/generated/clientResources/   ← runClientData（assets/…：items 123 + mo
 `tools/verify_targetsel_overlay_color.py`（在 `(640,552,1280,604)` 条带内精确计 `(255,85,85)` 像素）。读数：会话活动 = **720 px**
 （bbox x 834–1083 / y 568–583 = `guiHeight/2+14` 在 guiScale=2 下的 HUD 行）；三常量临时改回无 alpha 后同场景同用例 = **0 px**；
 会话自然到期后 = **0 px**（同构建内负控，条带全清）。⚠️ dev run 加载的是 `<subproject>/build/classes/java/main`（`InDevFolderLocator` +
-`UniqueModListBuilder` 选版本号更高者），**换 `run/26.1.2/mods` 的 jar 对 dev run 无效** —— A/B 必须「改源 → `gradlew :neoforge-26.1.2:classes` → 冷启动」。
+`UniqueModListBuilder` 选版本号更高者），**换 `run/neoforge-26.1.2/mods` 的 jar 对 dev run 无效** —— A/B 必须「改源 → `gradlew :neoforge-26.1.2:classes` → 冷启动」。
 
 ### 6.5 叠加式 GUI 控件的两个陷阱 + 一处迁移遗漏（2026-09-22 实机取证；用户报「切创造模式后钱包栏消失」「存款数不实时」）
 
@@ -263,10 +263,10 @@ src/generated/clientResources/   ← runClientData（assets/…：items 123 + mo
 **C. 迁移遗漏的另一类：「半移植」不只在方法体** —— `StarCoinBalanceSync.tick` 没有进 26.1.2 的
 `PlayerTickEvents`：1.21.1 / 1.20.1 每玩家 tick 都有 `StarCoinBalanceSync.tick(player)`
 （1 秒节流 + 值变化才发包），本线只剩 `PlayerLifecycleHandler` 的 `forceResend`（登录 / 重生一次）
-⇒ **余额条进世界后再不刷新**。已补回；同时三线新增 `StarCoinBalanceSync.notifyChanged(player)`：
+⇒ **余额条进世界后再不刷新**。已补回；同时非 fabric 线新增 `StarCoinBalanceSync.notifyChanged(player)`：
 **本模组自己**的余额写入点（存入 / 取出 / 拾取吸收 / 发币漏斗）执行完**立即**回推，
 1 秒轮询退回为「兜底」（覆盖第三方模组、库的 `/starcoin` 命令、直接写账本）。
-判据：`grep -c "StarCoinBalanceSync.tick" */src/main/java/.../event/PlayerTickEvents.java` 三线均应为 1。
+判据：`grep -c "StarCoinBalanceSync.tick" */src/main/java/.../event/PlayerTickEvents.java` 非 fabric 线均应为 1。
 
 ---
 
@@ -274,18 +274,18 @@ src/generated/clientResources/   ← runClientData（assets/…：items 123 + mo
 
 | 位置 | 内容 |
 |---|---|
-| `lib/Mt.Paths.psm1` | `$VERSIONS` 增加 `'26.1.2'`；LOADER/SUBPROJECT 映射；`DEFAULT_PACK_MODS['26.1.2'] = D:\.minecraft\versions\26.1.2-NeoForge_26.1.2.109\mods`；配置键 `MT_PACK_MODS_NEOFORGE_26_1_2` |
-| `mt_preflight.ps1` | 分支白名单 `@('multi-1.20.1-1.21.1','multi-26.1.2-neoforge')` |
+| `scripts/test/lib/mt_paths.py` | `$VERSIONS` 增加 `'26.1.2'`；LOADER/SUBPROJECT 映射；`DEFAULT_PACK_MODS['26.1.2'] = D:\.minecraft\versions\26.1.2-NeoForge_26.1.2.109\mods`；配置键 `MT_PACK_MODS_NEOFORGE_26_1_2` |
+| `scripts/test/mt_preflight.py` | 分支白名单 `@('multi-1.20.1-1.21.1','multi-26.1.2-neoforge')` |
 | `mt.conf(.example)` | 新增 `MT_PACK_MODS_NEOFORGE_26_1_2` |
-| `lib/Mt.Proc.psm1` | 客户端入口识别新增 **`net.neoforged.fml.startup.Client`**（26.1.2 的客户端主类；用全限定名，`…startup.DataClient` 不会误命中） |
-| `mt_launch.ps1` | ①「全机已存在客户端」防撞预检同步新增该入口（漏检会导致跨版本撞车、读到他人 `latest.log`）；② **就绪判据按版本分支**——26.1.2 已无 `Total time to load game and open world was`，改用 `logged in with entity id` **且** `Loaded <N> advancements`（都取英文原版行，避免本地化文案）；③ 兼容性信号在 26.1.2 改报 `KUBEJS_LOADED` / `RHINO_LOADED`（本版本 dev run 不装渲染模组） |
-| `mt_env.ps1` | 新增 **26.1.2 探针运行时装装**（`Install-MtProbeRuntime`）：从 KubeJS 官方 maven 拉 `kubejs-neoforge-<gradle.properties:kubejs_version>` + `rhino` + `better-advanced-tooltips` 到 `run/26.1.2/mods`，缓存在 `temp/probe_mods/26.1.2/`；dev run **不**装渲染模组 |
-| `mt_case.ps1` | 条目 `version` 白名单改为取 `Get-MtVersions`（原先硬编码 `@('1.21.1','1.20.1')`，26.1.2 条目会被判「version 非法」） |
-| `mt_inject.ps1` | 未找到窗口时的报错文案同步两种入口 |
+| 旧件的进程/终止模块（现由 `jps -lvm` + windows MCP 的 `Process(mode:"kill")` 承担） | 客户端入口识别新增 **`net.neoforged.fml.startup.Client`**（26.1.2 的客户端主类；用全限定名，`…startup.DataClient` 不会误命中） |
+| `scripts/test/win/mt.sh --phase launch` | ①「全机已存在客户端」防撞预检同步新增该入口（漏检会导致跨版本撞车、读到他人 `latest.log`）；② **就绪判据按版本分支**——26.1.2 已无 `Total time to load game and open world was`，改用 `logged in with entity id` **且** `Loaded <N> advancements`（都取英文原版行，避免本地化文案）；③ 兼容性信号在 26.1.2 改报 `KUBEJS_LOADED` / `RHINO_LOADED`（本版本 dev run 不装渲染模组） |
+| `scripts/test/win/mt.sh --phase env` | 新增 **26.1.2 探针运行时装装**（`Install-MtProbeRuntime`）：从 KubeJS 官方 maven 拉 `kubejs-neoforge-<gradle.properties:kubejs_version>` + `rhino` + `better-advanced-tooltips` 到 `run/neoforge-26.1.2/mods`，缓存在 `temp/probe_mods/26.1.2/`；dev run **不**装渲染模组 |
+| `scripts/test/win/mt.sh --phase cases` | 条目 `version` 白名单改为取 `Get-MtVersions`（原先硬编码 `@('1.21.1','1.20.1')`，26.1.2 条目会被判「version 非法」） |
+| `windows MCP 的 Click/Move/Type 输入` | 未找到窗口时的报错文案同步两种入口 |
 | `resources/kubejs/26.1.2/server_scripts/astral_probe.js` | **26.1.2 探针**（迁移期最小集）：`diag` / `itemcount` / `opprobe` / `dumpstate` / `give` / `equipslot` / `readstate` |
 | `cases/MIGRATION-SMOKE-26.1.2.json` | 迁移冒烟条目（24 条断言，见 §9.1） |
 | `.github/workflows/build.yml` | 分支触发 `multi-26.1.2-neoforge`、JDK 25、第三条 lang 校验、第三个 jar 上传；tag/Release 仍只走发布分支 |
-| `deploy.ps1`（本机、gitignore） | `'26.1.2' = 'neoforge-26.1.2'` |
+| `本机部署脚本（已删除，部署改按 git/bash 手写命令执行）`（本机、gitignore） | `'26.1.2' = 'neoforge-26.1.2'` |
 
 ### 7.1 KubeJS 运行时（26.1.2）——两个实测坑
 
@@ -320,7 +320,7 @@ src/generated/clientResources/   ← runClientData（assets/…：items 123 + mo
   = `iconst_1; ireturn`（恒 `true`）；③ 事件接线在位（`RegisterCommandsEvent#getDispatcher` ⇒ `/starcoin`；
   `PlayerEvent$Clone#getOriginal` ⇒ 死亡不掉落）。
   **产物面**：`1.0.11` 四平台 jar 均含该类；消费方 26.1.2 产物内嵌 `starengine_lib-neoforge-26.1.2-1.0.11.jar`
-  （9 个 economy 类、入口含 `install()` 调用）；`run/26.1.2/mods` 与整合包 `mods/` 均**无**独立库 jar（无遮蔽）。
+  （9 个 economy 类、入口含 `install()` 调用）；`run/neoforge-26.1.2/mods` 与整合包 `mods/` 均**无**独立库 jar（无遮蔽）。
   ⇒ **该缺口在代码/产物层已不存在**。运行期读数由用例 `scripts/test/cases/ECON-26.1.2.json`
   （探针 `/astralprobe econ <tag>`）承担 —— **实机已 PASS（2026-10-04）**：12/12 断言通过，
   机器行 `AP_E1_ECON:available=1:before=<n>:set_ok=1:after_set=4321:restore_ok=1:after_restore=<n>`，
@@ -340,8 +340,8 @@ src/generated/clientResources/   ← runClientData（assets/…：items 123 + mo
 1. **26.1.2 回归探针现状（2026-10-07 更正：文件名与规模均已变，勿再引用旧口径）**：本线的完整回归探针是
    `resources/kubejs/26.1.2/server_scripts/astral_bugfix_probe.js`（992,013 B / 16,608 行，提供 `/astralprobe` 子命令；同目录另有 6 个专项探针，
    `client_scripts` 另有 `astral_dnum_diag.js` / `astral_wallet_vision.js`）。早期登记的 `resources/kubejs/26.1.2/server_scripts/astral_probe.js`
-   **在本仓任何 `resources/kubejs/<版本>/` 下都不存在**（`mt_assert.ps1:128` / `:525`、`mt_env.ps1:1030`、`Mt.Paths.psm1:128` 里的 astral_probe 指的是
-   已移除的 `run/<版本>/astral_probe.log` 通道，与该脚本无关）。三线探针规模现为 1.21.1 = 968,242 B / 16,278 行、1.20.1 = 962,454 B / 16,212 行、
+   **在本仓任何 `resources/kubejs/<版本>/` 下都不存在**（`scripts/test/mt_assert.py:128` / `:525`、`scripts/test/win/mt.sh --phase env:1030`、`scripts/test/lib/mt_paths.py:128` 里的 astral_probe 指的是
+   已移除的 `run/<子项目名>/astral_probe.log` 通道，与该脚本无关）。非 fabric 线探针规模现为 1.21.1 = 968,242 B / 16,278 行、1.20.1 = 962,454 B / 16,212 行、
    26.1.2 = 992,013 B / 16,608 行 ⇒ **规模已对齐**。
    忍者/骇客/电磁炮/法伤口径/牌桌锁 等**条目级**覆盖差异仍需逐条核对（规模对齐不等于逐条对等）。
 2. **`opprobe` 的 `level` 读数退化为 `-1`**（`getProfilePermissions(NameAndId)` 在 Rhino 下取不到；
@@ -387,7 +387,7 @@ src/generated/clientResources/   ← runClientData（assets/…：items 123 + mo
 | 三子项目配置 | `settings.gradle` 含 `include 'neoforge-26.1.2'` |
 | 编译/构建 | `:neoforge-26.1.2:compileJava` / `:neoforge-26.1.2:build` **BUILD SUCCESSFUL**；1.21.1 / 1.20.1 回归构建亦通过 |
 | 数据生成 | `runClientData` + `runServerData` 计数 123/123/108/108，`removed stale: 0 / 0` |
-| 产物 | `astral_dice-1.2.1+neoforge_26.1.2.jar` 推送到根 `build/libs` + `run/26.1.2/mods` + 整合包；根 `build/libs` 三版本共存 |
+| 产物 | `astral_dice-1.2.1+neoforge_26.1.2.jar` 推送到根 `build/libs` + `run/neoforge-26.1.2/mods` + 整合包；根 `build/libs` 三版本共存 |
 | 语言闸门 | 三个子项目均 622/622 |
 | 客户端启动 | 主菜单 → quickplay 进测试世界，无 ERROR/FATAL，无崩溃报告 |
 

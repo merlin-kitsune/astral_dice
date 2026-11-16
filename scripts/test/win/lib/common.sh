@@ -6,12 +6,12 @@
 # 蓝本：scripts/test/linux/{env,launch,stop}.sh（只读复用其契约，不修改它们）。
 #
 # 本机约束（2026-11-01 实测，MSYS2 UCRT64 / bash 5.3.15）：
-#   * 可用：pwsh 7.6.9、curl 8.22、python3、taskkill、netstat、cmd.exe
-#   * 不可用：jq / wget / setsid / findmnt / pgrep / wmic；`ps -o` 不支持
+#   * 可用：jps（JDK 自带）、curl 8.22、python3、netstat、cmd.exe
+#   * 不可用：jq / wget / setsid / findmnt / pgrep；`ps -o` / `ps -W` 不支持
 #   * /tmp 写入被沙箱拒绝 → 临时文件只走 Windows 真 TEMP 或仓库内（绝不落 /tmp）
 #   * curl 一律 --noproxy '*'（本机 127.0.0.1 经代理会 000）
-#   * pwsh 一律 -NoProfile -NonInteractive
-#   * 进程识别一律 CIM（Get-CimInstance Win32_Process），不按进程名批量杀 java
+#   * 进程表一律 jps -lvm（JDK 自带；不引入任何外部进程查询工具）
+#   * 脚本不终止任何进程：收停只打印 PID，终止由 Agent 通过 windows MCP 的 Process(kill) 执行
 #
 # 机器行契约（docs/features/windows-channel-decoupling-spec.md §3）：
 #   CHECK: <key>=OK|WARN|FAIL — <detail>
@@ -22,8 +22,8 @@
 
 MT_COMMON_VERSION="1.0.0-win"
 
-# ── 版本表（四线齐全；注意 Mt.Paths.psm1 的 $VERSIONS 至今只有三条线）───────
-MT_ALL_VERSIONS="1.21.1 1.20.1 26.1.2 fabric-1.20.1"
+# ── 版本表（五线齐全；注意旧编排器的 $VERSIONS 至今只有三条线）──────────────
+MT_ALL_VERSIONS="1.21.1 1.20.1 26.1.2 fabric-1.20.1 fabric-1.21.1"
 MT_WORLD_NAME="testworld"
 
 mt_all_versions() { printf '%s' "$MT_ALL_VERSIONS"; }
@@ -39,6 +39,7 @@ mt_subproject() {
         1.20.1)        printf '%s' 'forge-1.20.1' ;;
         26.1.2)        printf '%s' 'neoforge-26.1.2' ;;
         fabric-1.20.1) printf '%s' 'fabric-1.20.1' ;;
+        fabric-1.21.1) printf '%s' 'fabric-1.21.1' ;;
         *) return 1 ;;
     esac
 }
@@ -48,6 +49,7 @@ mt_loader() {
         1.21.1|26.1.2) printf '%s' 'neoforge' ;;
         1.20.1)        printf '%s' 'forge' ;;
         fabric-1.20.1) printf '%s' 'fabric' ;;
+        fabric-1.21.1) printf '%s' 'fabric' ;;
         *) return 1 ;;
     esac
 }
@@ -58,24 +60,25 @@ mt_toolchain() {
         1.20.1)        printf '%s' '17' ;;
         26.1.2)        printf '%s' '25' ;;
         fabric-1.20.1) printf '%s' '17' ;;
+        fabric-1.21.1) printf '%s' '21' ;;
         *) return 1 ;;
     esac
 }
 
 # AutoJS 只投放 1.21.1 与 26.1.2；1.20.1 的 runClient 没有 AutoJS mod。
-# fabric-1.20.1 不同：它是**条件依赖**（fabric-1.20.1/build.gradle:182-190 只在
+# fabric 线不同：它是**条件依赖**（各 fabric 线的 build.gradle 的 autojsTestMod 开关只在
 #   -PautojsTestMod=1 时才 modRuntimeOnly 引入 AutoJS），所以这里不写死 false：
 #   交给 mt_fab_autojs_enabled 实测；未开启时**显式**说明回退 RCON（127.0.0.1:25575），
 #   绝不静默返回 false（静默 false 会让上层把「没装 AutoJS」误判成「永远不可用」）。
 mt_line_has_autojs() {
     case "${1:-}" in
         1.21.1|26.1.2) return 0 ;;
-        fabric-1.20.1)
+        fabric-*)
             if mt_fab_autojs_enabled "${MT_SIDE:-}"; then
                 return 0
             fi
-            printf 'MT_WARN: fabric-1.20.1 无 AutoJS（-PautojsTestMod 未开启，见 fabric-1.20.1/build.gradle:182-190）→ 回退 RCON（127.0.0.1:%s）\n' \
-                "$(mt_fab_rcon_port)" >&2
+            printf 'MT_WARN: %s 无 AutoJS（-PautojsTestMod 未开启，见 %s/build.gradle 的 autojsTestMod 开关）→ 回退 RCON（127.0.0.1:%s）\n' \
+                "$1" "$1" "$(mt_fab_rcon_port)" >&2
             return 1
             ;;
         *) return 1 ;;
@@ -149,6 +152,12 @@ mt_conf_get() {
 mt_ok()   { MT_OKS=$(( ${MT_OKS:-0} + 1 ));         printf 'CHECK: %s=OK — %s\n' "$1" "$2"; }
 mt_warn() { MT_WARNS=$(( ${MT_WARNS:-0} + 1 ));     printf 'CHECK: %s=WARN — %s\n' "$1" "$2"; }
 mt_fail() { MT_FAILS=$(( ${MT_FAILS:-0} + 1 ));     printf 'CHECK: %s=FAIL — %s\n' "$1" "$2" >&2; }
+# cmd.exe launcher: MSYS arg conversion may rewrite /c to a path, or else leave //c unrecognized.
+# Excluding only the /c prefix makes the literal /c reach cmd.exe in both forms (verified 2026-11-06).
+mt_cmdwin() {
+    cmd.exe /c "$@"
+}
+
 mt_info() { [ "${MT_QUIET:-0}" = 1 ] || printf 'INFO: %s — %s\n' "$1" "$2"; }
 
 mt_launch()  { printf 'LAUNCH: %s\n' "$*"; }
@@ -158,20 +167,44 @@ mt_winstop_err() { printf 'WIN_STOP: %s\n' "$*" >&2; }
 mt_purge()   { printf 'PURGE: %s\n' "$*"; }
 mt_detail()  { printf '  %s\n' "$*"; }
 
-# ── pwsh / 外部工具 ───────────────────────────────────────────────────────
-mt_pwsh() {
-    local exe="${MT_PWSH_EXE:-}"
-    if [ -z "$exe" ]; then
-        if command -v pwsh >/dev/null 2>&1; then
-            exe="$(command -v pwsh)"
-        elif [ -x "/c/Program Files/PowerShell/7/pwsh.exe" ]; then
-            exe="/c/Program Files/PowerShell/7/pwsh.exe"
-        else
-            return 127
+# ── jps：java 进程表（JDK 自带，替代一切外部进程查询）──────────────────
+# 输出每行 "<pid>\t<主类与参数>"；jps 不可用 / 执行失败时 stderr 打 JPS_ERROR … 且返回非 0。
+# 查找顺序：MT_JPS_EXE 钉值 → $JAVA_HOME/bin/jps → PATH 的 jps。
+mt_jps_exe() {
+    local exe="${MT_JPS_EXE:-}" jh
+    if [ -n "$exe" ]; then printf '%s' "$exe"; return 0; fi
+    if [ -n "${JAVA_HOME:-}" ]; then
+        jh="$(mt_to_msys "$JAVA_HOME" 2>/dev/null)"
+        jh="${jh%/}"
+        if [ -n "$jh" ] && [ -x "$jh/bin/jps.exe" ]; then exe="$jh/bin/jps.exe"
+        elif [ -n "$jh" ] && [ -x "$jh/bin/jps" ]; then exe="$jh/bin/jps"
         fi
-        MT_PWSH_EXE="$exe"
     fi
-    "$exe" -NoProfile -NonInteractive -Command "$1"
+    if [ -z "$exe" ] && command -v jps >/dev/null 2>&1; then
+        exe="$(command -v jps)"
+    fi
+    [ -n "$exe" ] || return 127
+    MT_JPS_EXE="$exe"
+    printf '%s' "$exe"
+}
+
+mt_jps_java_rows() {
+    local exe raw
+    exe="$(mt_jps_exe 2>/dev/null)" || {
+        printf 'JPS_ERROR jps 不可用（未找到 $JAVA_HOME/bin/jps 或 PATH 的 jps）\n' >&2
+        return 127
+    }
+    if ! raw="$("$exe" -lvm 2>/dev/null)"; then
+        printf 'JPS_ERROR jps -lvm 执行失败：%s\n' "$exe" >&2
+        return 1
+    fi
+    printf '%s\n' "$raw" | tr -d '\r' | awk '
+        NF >= 2 && $1 ~ /^[0-9]+$/ {
+            rest = $2
+            for (i = 3; i <= NF; i++) rest = rest " " $i
+            if (rest ~ /sun\.tools\.jps\.Jps/) next
+            print $1 "\t" rest
+        }'
 }
 
 mt_have() { command -v "${1:-}" >/dev/null 2>&1; }
@@ -181,7 +214,7 @@ mt_win_temp() {
     local t=""
     if [ -n "${MT_WIN_TEMP:-}" ]; then printf '%s' "$MT_WIN_TEMP"; return 0; fi
     if mt_have cmd; then
-        t="$(cmd //c 'echo %TEMP%' 2>/dev/null | tr -d '\r\n')"
+        t="$(mt_cmdwin 'echo %TEMP%' 2>/dev/null | tr -d '\r\n')"
     fi
     case "$t" in
         [A-Za-z]:*) t="$(mt_to_msys "$t")" ;;
@@ -228,26 +261,34 @@ mt_dir_writable() {
     return 1
 }
 
-# ── CIM：java 进程 (pid, CommandLine) ─────────────────────────────────────
-# 输出每行 "<pid>\t<CommandLine>"；CIM 失败时 stderr 打 CIM_ERROR … 且返回非 0。
-mt_cim_java_rows() {
-    local ps
-    ps="$(cat <<'PS'
-$ErrorActionPreference = 'Stop'
-try {
-    $p = @(Get-CimInstance Win32_Process -Filter "Name='java.exe'" -ErrorAction Stop)
-} catch {
-    [Console]::Error.WriteLine('CIM_ERROR ' + $_.Exception.Message)
-    exit 3
-}
-foreach ($x in $p) { "{0}`t{1}" -f [int]$x.ProcessId, ([string]$x.CommandLine) }
-PS
-)"
-    mt_pwsh "$ps"
+# ── 测试台端口（判线与残留核对共用）──────────────────────────────────────
+# 25585 AutoJS / 25565 游戏 / 25575 fabric RCON；同一时刻只允许一条线占用。
+MT_GAME_PORTS="25585 25565 25575"
+
+# netstat -ano 的 LISTENING 行取 PID（$1 = 端口）；输出每个 pid 一行（已去重）。
+mt_port_pids() {
+    local port="${1:-}" re
+    case "$port" in ''|*[!0-9]*) return 2 ;; esac
+    mt_have netstat || return 1
+    re=":${port}$"
+    netstat -ano 2>/dev/null | tr -d '\r' | awk -v re="$re" '
+        NF >= 5 && $(NF-1) == "LISTENING" && $2 ~ re { print $NF }' | sort -u
 }
 
-# 命令行是否属于某线（与 Mt.Paths.psm1:141-156 Get-MtProcessMarkers 同款标记串）：
-#   ":<子项目>:"（gradle 任务选择器）、"run\<ver>"、"run/<ver>"
+# 三个测试台端口上所有 LISTENING 的 PID（输出 "pid<TAB>port"）。
+mt_all_port_rows() {
+    local port p
+    for port in $MT_GAME_PORTS; do
+        for p in $(mt_port_pids "$port" 2>/dev/null); do
+            printf '%s\t%s\n' "$p" "$port"
+        done
+    done
+}
+
+# 命令行是否属于某线（与旧编排器 Get-MtProcessMarkers 同款标记串）：
+#   ":<子项目>:"（gradle 任务选择器）、"run\<子项目名>"、"run/<子项目名>"
+# 2026-11-12：仓库根 run 目录改为带加载器的完整名（= 子项目名），故后两条 needle
+# 改用子项目名；裸版本号目录已不存在，继续拼 run/<ver> 会让判线指空。
 # 刻意不用裸子项目名：那同时是仓库目录名，会误命中 IDE / 索引进程。
 mt_cmdline_matches_version() {
     local v="${1:-}" cmd="${2:-}" sub lc needle
@@ -255,25 +296,28 @@ mt_cmdline_matches_version() {
     lc="$(printf '%s' "$cmd" | tr 'A-Z' 'a-z')"
     needle=":${sub}:"
     case "$lc" in *"$needle"*) return 0 ;; esac
-    case "$lc" in *"run/$v"*) return 0 ;; esac
-    case "$lc" in *"run\\$v"*) return 0 ;; esac
-    # fabric-1.20.1 是双 run 目录 fabric-1.20.1/run/<client|server>，路径里没有版本号，
+    case "$lc" in *"run/$sub"*) return 0 ;; esac
+    case "$lc" in *"run\\$sub"*) return 0 ;; esac
+    # fabric 线是双 run 目录 <fabric-子项目>/run/<client|server>，路径里没有独立版本号，
     # 所以上面的 run/<版本> needle 命中不了；改为「子项目名 + run + client|server」兜底匹配，
-    # 避免在双引号内写反斜杠字面量（\ 在 double-quote 里是转义，曾把行尾引号吃掉导致解析错）。
-    case "$lc" in *"$MT_FAB_SUBPROJECT"*run*client*) return 0 ;; esac
-    case "$lc" in *"$MT_FAB_SUBPROJECT"*run*server*) return 0 ;; esac
-    case "$lc" in
-        *"$MT_FAB_SUBPROJECT"*)
-            case "$lc" in *runclient*|*runserver*) return 0 ;; esac
-            ;;
-    esac
+    # 避免在双引号内写反斜杠字面量（\\ 在 double-quote 里是转义，曾把行尾引号吃掉导致解析错）。
+    # 只在 fabric 线走这段兜底，且用本版本自己的子项目名（避免 fabric-1.21.1 借到 fabric-1.20.1 的路径）。
+    if mt_is_fabric "$v"; then
+        case "$lc" in *"$sub"*run*client*) return 0 ;; esac
+        case "$lc" in *"$sub"*run*server*) return 0 ;; esac
+        case "$lc" in
+            *"$sub"*)
+                case "$lc" in *runclient*|*runserver*) return 0 ;; esac
+                ;;
+        esac
+    fi
 
     return 1
 }
 
 mt_rows_for_version() {
     local v="${1:-}" rows pid cmd
-    rows="$(mt_cim_java_rows 2>/dev/null)" || return 1
+    rows="$(mt_jps_java_rows 2>/dev/null)" || return 1
     [ -n "$rows" ] || return 0
     while IFS=$'\t' read -r pid cmd; do
         [ -n "$pid" ] || continue
@@ -286,7 +330,7 @@ mt_rows_for_version() {
 # 所有线的残留（--all 用）；输出 "<pid>\t<ver>\t<cmdline>"。
 mt_rows_for_any_version() {
     local rows pid cmd v hit
-    rows="$(mt_cim_java_rows 2>/dev/null)" || return 1
+    rows="$(mt_jps_java_rows 2>/dev/null)" || return 1
     [ -n "$rows" ] || return 0
     while IFS=$'\t' read -r pid cmd; do
         [ -n "$pid" ] || continue
@@ -298,31 +342,25 @@ mt_rows_for_any_version() {
     done <<< "$rows"
 }
 
+# pid 是否仍在（口径 = jps 行 ∪ 三个测试台端口的 LISTENING PID；本机没有可用的 ps）。
 mt_pid_alive() {
-    local pid="${1:-}" rows
+    local pid="${1:-}" rows port p
     case "$pid" in ''|*[!0-9]*) return 1 ;; esac
-    rows="$(mt_cim_java_rows 2>/dev/null)" || return 1
-    printf '%s\n' "$rows" | while IFS=$'\t' read -r p _c; do
-        [ "$p" = "$pid" ] && { echo alive; break; }
-    done | grep -q alive
-}
-
-# 强杀进程树。git bash 会把 /PID 当路径，故用 //PID（MSYS 还原成 /PID）。
-# rc 不可靠（无此进程时 taskkill 仍可能 rc=0），调用方必须用 CIM 复核。
-mt_taskkill_tree() {
-    local pid="${1:-}"
-    case "$pid" in ''|*[!0-9]*) return 2 ;; esac
-    if mt_have taskkill; then
-        taskkill //PID "$pid" //T //F >/dev/null 2>&1 || true
-    else
-        cmd //c "taskkill /PID $pid /T /F" >/dev/null 2>&1 || true
+    rows="$(mt_jps_java_rows 2>/dev/null)" || rows=""
+    if printf '%s\n' "$rows" | awk -v p="$pid" '$1 == p { f = 1 } END { exit !f }'; then
+        return 0
     fi
-    return 0
+    for port in $MT_GAME_PORTS; do
+        for p in $(mt_port_pids "$port" 2>/dev/null); do
+            [ "$p" = "$pid" ] && return 0
+        done
+    done
+    return 1
 }
 
 mt_gradle_daemon_rows() {
     local rows pid cmd
-    rows="$(mt_cim_java_rows 2>/dev/null)" || return 1
+    rows="$(mt_jps_java_rows 2>/dev/null)" || return 1
     [ -n "$rows" ] || return 0
     while IFS=$'\t' read -r pid cmd; do
         [ -n "$pid" ] || continue
@@ -560,7 +598,10 @@ mt_aj_probe() {
         2>/dev/null || true)"
     code="$(printf '%s' "$resp" | sed -n 's/.*__MT_CODE__\([0-9][0-9][0-9]\).*/\1/p' | tail -n 1)"
     [ "${code:-000}" = "200" ] || return 1
-    body="$(printf '%s' "$resp" | mt_strip_headers)"
+    # curl 的 -w 尾巴会跟在响应正文后面（"__MT_CODE__200"），mt_strip_headers 只去
+    # HTTP 头不去它 ⇒ 不剥掉的话 json.loads 必定失败，probe 恒 return 1（2026-11-02 实测：
+    # launch 就绪判据永远拿不到 AutoJS，一直等到 600s 超时 exit 12）。
+    body="$(printf '%s' "$resp" | mt_strip_headers | sed '/^__MT_CODE__[0-9][0-9][0-9]\r*$/d')"
     if detail="$(printf '%s' "$body" | mt_aj_parse_status -)"; then
         printf 'health=%s %s\n' "$hb" "$detail"
         return 0
@@ -617,7 +658,7 @@ mt_log_marker_name() {
     esac
 }
 
-# ── fabric-1.20.1 库（双 run 目录 / 条件 AutoJS / RCON）─────────────────────
+# ── fabric 线库（fabric-<mcver>：双 run 目录 / 条件 AutoJS / RCON）─────────
 # 反向包含：fabric.sh 只调用本文件里的函数，自己不 source 本文件，所以不会循环；
 # 由本文件末尾统一 source，mt.sh / env.sh / launch.sh / stop.sh / phases.sh 都能拿到。
 if [ -z "${MT_FABRIC_LIB_LOADED:-}" ]; then

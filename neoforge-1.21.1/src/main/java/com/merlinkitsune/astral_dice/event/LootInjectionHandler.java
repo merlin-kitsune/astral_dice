@@ -1,190 +1,214 @@
 package com.merlinkitsune.astral_dice.event;
 
-import com.merlinkitsune.astral_dice.item.ModItems;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.boss.wither.WitherBoss;
-import net.minecraft.world.entity.monster.ElderGuardian;
-import net.minecraft.world.entity.monster.EnderMan;
-import net.minecraft.world.entity.monster.Ghast;
-import net.minecraft.world.entity.monster.Guardian;
-import net.minecraft.world.entity.monster.Monster;
-import net.minecraft.world.entity.monster.WitherSkeleton;
-import net.minecraft.world.entity.monster.Zombie;
-import net.minecraft.world.entity.monster.piglin.Piglin;
-import net.minecraft.world.entity.monster.piglin.PiglinBrute;
-import net.minecraft.world.entity.monster.warden.Warden;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.ItemStack;
-
+import com.merlinkitsune.astral_dice.data.LootInjectionData;
+import com.merlinkitsune.astral_dice.data.LootRule;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.MobCategory;
+import net.minecraft.world.level.storage.loot.LootPool;
+import net.minecraft.world.level.storage.loot.LootTable;
+import net.minecraft.world.level.storage.loot.entries.NestedLootTable;
+import net.minecraft.world.level.storage.loot.predicates.LootItemKilledByPlayerCondition;
+import net.minecraft.world.level.storage.loot.providers.number.ConstantValue;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.LootTableLoadEvent;
-import net.neoforged.neoforge.event.entity.living.LivingDropsEvent;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
-import net.minecraft.world.level.storage.loot.LootPool;
-import net.minecraft.world.level.storage.loot.LootTable;
-import net.minecraft.world.level.storage.loot.entries.LootItem;
-import net.minecraft.world.level.storage.loot.functions.SetItemCountFunction;
-import net.minecraft.world.level.storage.loot.predicates.LootItemRandomChanceCondition;
-import net.minecraft.world.level.storage.loot.providers.number.ConstantValue;
-import net.minecraft.world.level.storage.loot.providers.number.UniformGenerator;
-
+/**
+ * 战利品注入的**唯一通道**（2026-11-15 收敛）：数据包规则 + 原版 {@link LootTable}。
+ *
+ * <p>旧的三条通道（{@code onLivingDrops} 的星盘/星币代码掉落、{@code onLootTableLoad} 的四池硬编码、
+ * {@code neoforge:add_table} 的 GLM 清单）全部下线，改由
+ * {@code data/<namespace>/astral_dice/loot/*.json} 的规则驱动。
+ *
+ * <p>⚠️ **时序是这里最容易错的地方**：NeoForge 在
+ * {@code ReloadableServerRegistries.reload} 的反序列化过程中派发 {@link LootTableLoadEvent}，
+ * 而 {@code AddReloadListenerEvent} 要等这次战利品注册表重载完成之后才派发。
+ * 因此这里**不能**在 {@link LootTableLoadEvent} 里读数据包（读到的是上一代，首次启动还是空快照），
+ * 只能把表对象排进待处理队列；由 {@link #drainPending()} 在 {@code AddReloadListenerEvent} 时交给
+ * {@code data/LootInjectionReloadListener}，等它的 {@code apply} 解析完 JSON 后再回填 pool。
+ * 表对象在反序列化后仍可变，补 pool 不影响已经完成的校验。
+ *
+ * <p>匹配口径：
+ * <ol>
+ *   <li>只处理 {@code minecraft} 命名空间的原版表；{@code astral_dice} 自己的表**永不注入**（防递归）；</li>
+ *   <li>按表的路径分通道：{@code chests/*} 只吃 {@code target_kind=chest}，
+ *       {@code entities/*} 吃 {@code entity} 与 {@code monster}，其它路径不注入；</li>
+ *   <li>**每个通道**取覆盖当前表、priority 最高的那条规则（星盘 100 与星币 100 因此可以同时落到同一只怪身上）；</li>
+ *   <li>{@code monster_only=true} 的宽泛规则只在实体表对应 {@link MobCategory#MONSTER} 时命中；</li>
+ *   <li>注入形态 = 一个池，池里一个 {@link NestedLootTable#lootTableReference} 指向规则的目标表，
+ *       池名 {@code astral_dice:<rule.id>}，已存在即跳过（同一张表被重复处理时幂等）。</li>
+ * </ol>
+ *
+ * <p>⚠️ 不在装载期校验「目标表是否存在」：{@link LootTableLoadEvent} 发生在 LOOT_TABLE 注册表**反序列化过程中**，
+ * 此时注册表内容可能是上一代（{@code /reload} 新增的表会被误判为缺失）。缺失表在滚动时由原版解析为
+ * {@code LootTable.EMPTY}（等价于不掉落），不会崩。这里只做**结构性**校验（命名空间 + 路径前缀与 target_kind 匹配）。
+ */
 @EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
-public class LootInjectionHandler {
-    @SubscribeEvent
-    public static void onLivingDrops(LivingDropsEvent event) {
-        var entity = event.getEntity();
-        if (entity.level().isClientSide()) return;
+public final class LootInjectionHandler {
 
-        // 星盘掉落(2026-09-30 用户指定:由「凋灵/监守者必掉 1 个 + 其余 Monster 0.3%」扩展为分档口径)
-        // —— 档位、数量与判定顺序见 starPlateDropCount。
-        int starPlates = starPlateDropCount(entity);
-        if (starPlates > 0) {
-            event.getDrops().add(new net.minecraft.world.entity.item.ItemEntity(
-                    entity.level(), entity.getX(), entity.getY(), entity.getZ(),
-                    new ItemStack(ModItems.STAR_PLATE.get(), starPlates)));
-        }
+    private static final Logger LOGGER = LoggerFactory.getLogger(LootInjectionHandler.class);
 
-        rollKillStarCoin(event);
+    /** 只处理原版表；自有命名空间（{@code astral_dice}）的表一律跳过，防递归注入。 */
+    private static final String VANILLA_NAMESPACE = "minecraft";
+
+    private static final List<String> CHEST_KINDS = List.of(LootRule.KIND_CHEST);
+    private static final List<String> ENTITY_KINDS = List.of(LootRule.KIND_ENTITY, LootRule.KIND_MONSTER);
+
+    /** 本次重载中已经反序列化、等待数据包 apply 后回填 pool 的原版表。 */
+    private static final List<PendingTable> PENDING = Collections.synchronizedList(new ArrayList<>());
+
+    /** 结构性问题只警告一次（{@code /reload} 会反复触发同一张表的装载）。 */
+    private static final Set<String> WARNED = ConcurrentHashMap.newKeySet();
+
+    private LootInjectionHandler() {
     }
 
     @SubscribeEvent
     public static void onLootTableLoad(LootTableLoadEvent event) {
-        var name = event.getName();
-        if (!name.getPath().startsWith("chests/")) return;
-
-        // ⚠️ 自有命名空间的表必须早退（2026-09-27 修复「双通道重复注入」）：
-        //    下方判据只按**路径前缀**匹配，而自有表 `astral_dice:chests/star_plate` 的 path 同样是 `chests/star_plate`
-        //    ⇒ 它会被一并注入下面这一整套 astral_dice:* 池。偏偏 GLM `star_plate_all_chests` 又是**无条件**（100%）
-        //    把该表挂到原版箱表上（`neoforge:add_table`），于是「开一个箱子 = 主表 + 附加表各滚一遍」——
-        //    四池被二次注入放大（两次独立判定 ⇒ 1−(1−p)²）：星币 5%→9.75%、空白筹码 3%→5.91%、玻璃骰子 2%→3.96%；星盘特例（本表另含 5% 星盘权重）⇒ 修复前 6.89%、修复后 5.95%。
-        //    自有表由 GLM 自行引用，**不得**再由本 handler 注入。
-        if (name.getNamespace().equals(com.merlinkitsune.astral_dice.AstralDiceMod.MODID)) return;
-
-        LootTable table = event.getTable();
-
-        // Prevent duplicate pool addition on reload
-        if (table.getPool("astral_dice:star_coin") != null) return;
-
-        boolean isBuriedTreasure = name.toString().equals("minecraft:chests/buried_treasure");
-        boolean isEndCity = name.toString().equals("minecraft:chests/end_city_treasure");
-
-        // Star Coin: 5% all chests (1-2), 9% in end city
-        table.addPool(LootPool.lootPool()
-                .setRolls(ConstantValue.exactly(1))
-                .when(LootItemRandomChanceCondition.randomChance(isEndCity ? 0.09f : 0.05f))
-                .add(LootItem.lootTableItem(ModItems.STAR_COIN.get())
-                        .apply(SetItemCountFunction.setCount(UniformGenerator.between(1, 2))))
-                .name("astral_dice:star_coin")
-                .build());
-
-        // Blank Chip: 埋藏的宝藏 100% 必出;其余战利品箱子 1%
-        // (2026-09-27 用户需求:略微提高空白筹码的战利品获取概率 —— 原先其它箱子 0%)
-        if (isBuriedTreasure) {
-            table.addPool(LootPool.lootPool()
-                    .setRolls(ConstantValue.exactly(1))
-                    .add(LootItem.lootTableItem(ModItems.BLANK_CHIP.get()))
-                    .name("astral_dice:blank_chip")
-                    .build());
-        } else {
-            table.addPool(LootPool.lootPool()
-                    .setRolls(ConstantValue.exactly(1))
-                    .when(LootItemRandomChanceCondition.randomChance(0.01f))
-                    .add(LootItem.lootTableItem(ModItems.BLANK_CHIP.get()))
-                    .name("astral_dice:blank_chip")
-                    .build());
-        }
-
-        // Star Plate: 1% all chests, 5% in end city
-        table.addPool(LootPool.lootPool()
-                .setRolls(ConstantValue.exactly(1))
-                .when(LootItemRandomChanceCondition.randomChance(isEndCity ? 0.05f : 0.01f))
-                .add(LootItem.lootTableItem(ModItems.STAR_PLATE.get()))
-                .name("astral_dice:star_plate")
-                .build());
-
-        // Glass Dice: 末地城 5%;其余战利品箱子 2%(数量固定 1)
-        // (2026-09-27 用户需求:战利品箱中增加玻璃骰子,并略微提高其掉落率 —— 原先战利品箱 0%)
-        table.addPool(LootPool.lootPool()
-                .setRolls(ConstantValue.exactly(1))
-                .when(LootItemRandomChanceCondition.randomChance(isEndCity ? 0.05f : 0.02f))
-                .add(LootItem.lootTableItem(ModItems.GLASS_DICE.get()))
-                .name("astral_dice:glass_dice")
-                .build());
-    }
-
-
-    /**
-     * 星盘掉落档位(2026-09-30 用户指定扩展)。返回本次应掉落的星盘数量,{@code 0} = 不掉。
-     *
-     * <p>档位:凋灵 5 个;监守者 3-5 个;远古守卫者 1-3 个;恶魂 1 个;
-     * 凋灵骷髅 / 守卫者 5% 掉 1 个;其余 {@link Monster} 0.3% 掉 1 个。
-     *
-     * <p>⚠️ **判定顺序即优先级,自上而下短路 —— 所有档位互斥**(同一只怪不会被判两次):
-     * ① {@code ElderGuardian} **继承** {@code Guardian}(远古守卫者是守卫者的子类) ⇒ 必须先判远古守卫者,
-     * 否则 100% 档会被后面的 5% 档吞掉;
-     * ② 凋灵({@code WitherBoss})与凋灵骷髅({@code WitherSkeleton})是两个互不相干的类(无继承关系);
-     * ③ 恶魂 / 凋灵骷髅 / 守卫者 / 远古守卫者 / 监守者**都是** {@link Monster} 子类 ⇒ 必须排在末尾的
-     * 0.3% 兜底档**之前**,否则会被重复判定一次(合成概率 1-(1-p)^2,静默放大)。
-     *
-     * <p>⚠️ 本方法**不是**敌对判定入口,只是掉落池口径 —— 不得改调 {@code HostileTargets}
-     * (见 AGENTS.md「敌对目标」纪律的「唯一豁免」条)。
-     */
-    private static int starPlateDropCount(LivingEntity entity) {
-        if (entity instanceof WitherBoss) {
-            return 5;
-        }
-        if (entity instanceof Warden) {
-            return 3 + ThreadLocalRandom.current().nextInt(3);          // 3-5
-        }
-        if (entity instanceof ElderGuardian) {
-            return 1 + ThreadLocalRandom.current().nextInt(3);          // 1-3
-        }
-        if (entity instanceof Ghast) {
-            return 1;
-        }
-        if (entity instanceof WitherSkeleton || entity instanceof Guardian) {
-            return ThreadLocalRandom.current().nextFloat() < 0.05f ? 1 : 0;
-        }
-        if (entity instanceof Monster) {
-            return ThreadLocalRandom.current().nextFloat() < 0.003f ? 1 : 0;
-        }
-        return 0;
-    }
-    /**
-     * 击杀者专属的星币掉落(2026-09-30 用户指定)。
-     *
-     * <p>仅当**击杀者是玩家**时判定(间接击杀如箭矢/投掷物同样算,{@code DamageSource#getEntity}
-     * 返回的是施加者);被击杀生物按类别取概率:僵尸 / 僵尸猪灵 1%、末影人 / 猪灵 3%、猪灵蛮兵 20%,
-     * 每次死亡独立判定一次,掉落 1 枚星币。
-     *
-     * <p>⚠️ 与上面的星盘掉落**互不影响** —— 星盘仍按原规则(凋灵/监守者必掉、其它 Monster 0.3%)
-     * 独立判定,本方法只做叠加。
-     *
-     * <p>⚠️ 类别判定顺序有讲究:{@code PiglinBrute} **不是** {@code Piglin} 的子类(两者都直接继承
-     * {@code AbstractPiglin}),所以必须先判蛮兵,否则会被 3% 档吞掉;
-     * 「僵尸」按 {@link Zombie} 类族判定(含尸壳 / 溺尸 / 僵尸村民,僵尸猪灵也继承自 Zombie,
-     * 三者的用户口径概率一致故可归并)。
-     */
-    private static void rollKillStarCoin(LivingDropsEvent event) {
-        var entity = event.getEntity();
-        if (!(event.getSource().getEntity() instanceof Player)) return;
-        double chance;
-        if (entity instanceof PiglinBrute) {
-            chance = 0.20;
-        } else if (entity instanceof Piglin || entity instanceof EnderMan) {
-            chance = 0.03;
-        } else if (entity instanceof Zombie) {
-            chance = 0.01;
-        } else {
+        ResourceLocation name = event.getName();
+        if (name == null || !VANILLA_NAMESPACE.equals(name.getNamespace())) {
             return;
         }
-        if (ThreadLocalRandom.current().nextDouble() >= chance) return;
-        event.getDrops().add(new net.minecraft.world.entity.item.ItemEntity(
-                entity.level(), entity.getX(), entity.getY(), entity.getZ(),
-                new ItemStack(ModItems.STAR_COIN.get(), 1)));
+        if (kindsFor(name).isEmpty()) {
+            return;
+        }
+        enqueue(name, event.getTable());
     }
 
+    /** 把本次重载已经反序列化的表排进队列；真正的注入在数据包 apply 之后。 */
+    public static void enqueue(ResourceLocation id, LootTable table) {
+        if (id == null || table == null) {
+            return;
+        }
+        PENDING.add(new PendingTable(id, table));
+    }
+
+    /** 取走本次重载排队的所有表（调用后队列清空，避免下一次重载重复处理旧对象）。 */
+    public static List<PendingTable> drainPending() {
+        synchronized (PENDING) {
+            if (PENDING.isEmpty()) {
+                return List.of();
+            }
+            List<PendingTable> drained = new ArrayList<>(PENDING);
+            PENDING.clear();
+            return drained;
+        }
+    }
+
+    /**
+     * 数据包 apply 完成后，对本次重载排队的表逐个注入。
+     *
+     * <p>由 {@code data/LootInjectionReloadListener#apply} 在
+     * {@code AstralDiceDataStore.replaceLoot(...)} 之后调用；不在这里读数据包。
+     */
+    public static void injectPending(List<PendingTable> pending, LootInjectionData data) {
+        if (pending == null || pending.isEmpty() || data == null || data.isEmpty()) {
+            return;
+        }
+        for (PendingTable entry : pending) {
+            try {
+                List<String> kinds = kindsFor(entry.id());
+                if (kinds.isEmpty()) {
+                    continue;
+                }
+                boolean monster = isMonsterTable(entry.id());
+                for (String kind : kinds) {
+                    LootRule rule = data.bestRule(kind, entry.id().toString(), monster);
+                    if (rule != null) {
+                        inject(entry.table(), rule);
+                    }
+                }
+            } catch (RuntimeException ex) {
+                LOGGER.warn("[astral_dice] 战利品注入失败 {}: {}", entry.id(), ex.getMessage());
+            }
+        }
+    }
+
+    /** 表的路径 ⇒ 可用的规则通道；非箱子/实体表返回空（不注入）。 */
+    private static List<String> kindsFor(ResourceLocation tableId) {
+        String path = tableId.getPath();
+        if (path.startsWith("chests/")) {
+            return CHEST_KINDS;
+        }
+        if (path.startsWith("entities/")) {
+            return ENTITY_KINDS;
+        }
+        return List.of();
+    }
+
+    /** 实体表 id（{@code minecraft:entities/zombie}）对应实体是否为 Monster。 */
+    private static boolean isMonsterTable(ResourceLocation tableId) {
+        String path = tableId.getPath();
+        if (!path.startsWith("entities/")) {
+            return false;
+        }
+        ResourceLocation entityId = ResourceLocation.fromNamespaceAndPath(
+                tableId.getNamespace(), path.substring("entities/".length()));
+        return BuiltInRegistries.ENTITY_TYPE.getOptional(entityId)
+                .map(type -> type.getCategory() == MobCategory.MONSTER)
+                .orElse(false);
+    }
+
+    private static void inject(LootTable table, LootRule rule) {
+        String poolName = com.merlinkitsune.astral_dice.AstralDiceMod.MODID + ":" + rule.id();
+        if (table.getPool(poolName) != null) {
+            return;
+        }
+        ResourceLocation target = ResourceLocation.tryParse(rule.table());
+        if (target == null) {
+            warnOnce(rule.id(), "战利品规则 {} 的目标表 id 非法: {}，已跳过", rule.id(), rule.table());
+            return;
+        }
+        String expectedPrefix = LootRule.KIND_CHEST.equals(rule.targetKind()) ? "chests/" : "entities/";
+        if (!target.getPath().startsWith(expectedPrefix)) {
+            warnOnce(rule.id(),
+                    "战利品规则 {} 的目标表 {} 与 target_kind={} 不匹配（路径应以 {} 开头），已跳过",
+                    rule.id(), target, rule.targetKind(), expectedPrefix);
+            return;
+        }
+        LootPool.Builder pool = LootPool.lootPool()
+                .setRolls(ConstantValue.exactly(1))
+                .add(NestedLootTable.lootTableReference(ResourceKey.create(Registries.LOOT_TABLE, target)))
+                .name(poolName);
+        if (rule.requirePlayerKill()) {
+            pool.when(LootItemKilledByPlayerCondition.killedByPlayer());
+        }
+        table.addPool(pool.build());
+    }
+
+    private static void warnOnce(String key, String format, Object... args) {
+        if (WARNED.add(key)) {
+            LOGGER.warn("[astral_dice] " + format, args);
+        }
+    }
+
+    /** 待注入的一张原版表；跨 reload listener 传递，不能再从注册表反查。 */
+    public static final class PendingTable {
+        private final ResourceLocation id;
+        private final LootTable table;
+
+        private PendingTable(ResourceLocation id, LootTable table) {
+            this.id = id;
+            this.table = table;
+        }
+
+        public ResourceLocation id() {
+            return this.id;
+        }
+
+        public LootTable table() {
+            return this.table;
+        }
+    }
 }

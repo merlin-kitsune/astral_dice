@@ -1,4 +1,5 @@
 # D-B1 — 方案 A（「卸下前」清理）可行性与安全性取证
+<!-- 历史记录：文中旧 shell 命令已于 2026-11-09 全部废弃，现用 bash 测试台（scripts/test/win/mt.sh）与 windows MCP，仅作溯源。 -->
 
 > 取证执行者报告。**本文件是本次任务唯一被写入的文件**；未修改任何源码 / lang / CHANGELOG / AGENTS.md，未执行 `git commit`、`git push`、未构建。
 >
@@ -21,7 +22,7 @@
 
 复现命令模板（只读，不修改 jar）：
 
-```powershell
+```bash
 $N = "C:\Users\xmace\.gradle\caches\...\curios-yohfFbgD.jar"
 $F = "C:\Users\xmace\.gradle\caches\...\curios-IPQlZkz1.jar"
 javap -p -c -classpath $N top.theillusivec4.curios.common.inventory.DynamicStackHandler
@@ -550,7 +551,7 @@ F 的 `CurioSlot.m_5852_(ItemStack)` 结构相同（偏移 0/1/27 对应）。
 
 ### 附：本次取证使用的只读命令（可复现）
 
-```powershell
+```bash
 $N = "C:\Users\xmace\.gradle\caches\modules-2\files-2.1\maven.modrinth\curios\yohfFbgD\418fcd42e3a7844c9bdc71c9b6401fdb3894e0c4\curios-yohfFbgD.jar"   # Curios 9.5.1+1.21.1
 $F = "C:\Users\xmace\.gradle\caches\modules-2\files-2.1\maven.modrinth\curios\IPQlZkz1\452175b95ad3db6ff58bb8968f6bf7a9d1e0f480\curios-IPQlZkz1.jar"     # Curios 5.14.1+1.20.1
 javap -p -c -classpath $N top.theillusivec4.curios.common.inventory.DynamicStackHandler

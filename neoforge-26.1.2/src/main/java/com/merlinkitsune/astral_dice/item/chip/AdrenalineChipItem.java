@@ -20,9 +20,9 @@ import com.merlinkitsune.starengine.combat.PartyRelations;
  * 肾上腺素筹码(一般/高效):生命值为 50% 或更低时,攻击力/防御力 +3/+8。
  * - 攻击力经骰战攻击修饰器注册表(DiceCombatModifiers)计入;
  * - 防御力按「1 防御力 = 1÷护甲系数 护甲值」折算为真实护甲(curioTick 维护,见防御力折算规范);
- * - 触发加成时被敌方攻击,有 20% 概率闪避单次攻击伤害。
- * - 一般:仅攻防加成(+3,防御按 1 点 = 2 点护甲折算);
- * - 高效额外:触发加成时被敌方攻击,有 20% 概率闪避单次攻击伤害。
+ * - 触发加成时被怪物近战攻击,每枚 20% 概率闪避单次攻击伤害;两枚叠加 40%。
+ * - 一般:攻防 +3,并获得 20% 闪避;
+ * - 高效:攻防 +8,并获得 20% 闪避;
  */
 @EventBusSubscriber(modid = AstralDiceMod.MODID)
 public class AdrenalineChipItem extends BaseChipItem {
@@ -87,13 +87,16 @@ public class AdrenalineChipItem extends BaseChipItem {
                 player, "adrenaline_def_armor" + bonus, 0);
     }
 
-    // 高效闪避判定:触发加成时,有 20% 概率闪避单次攻击
-    private static boolean tryDodge() {
-        return ThreadLocalRandom.current().nextInt(100) < 20;
+    // 闪避判定:低血触发时,每枚肾上腺素 20%,两枚叠加 40%
+    private static boolean tryDodge(Player player) {
+        int chance = 0;
+        if (hasLowEquipped(player)) chance += 20;
+        if (hasHighEquipped(player)) chance += 20;
+        return chance > 0 && ThreadLocalRandom.current().nextInt(100) < chance;
     }
 
-    // 肾上腺素-高效:触发加成时被敌方攻击 → 20% 概率闪避本次攻击
-    // (触发条件 50% 血量 + 佩戴高效 + 来源为敌对生物、概率 20%、文案均与旧实现完全一致)
+    // 肾上腺素(一般/高效):触发加成时被怪物近战攻击 → 每枚 20% 概率闪避本次攻击,两枚叠加 40%
+    // (触发条件 50% 血量 + 佩戴任一肾上腺素;仅怪物近战;每枚 20%,两枚 40%)
     // 必须在伤害判定最前置处"取消"(LivingIncomingDamageEvent)而不是在伤害阶段把伤害改成 0:
     // 否则攻击方 Mob#doHurtTarget 仍会拿到 hurt()==true,继续施加命中附加效果(如尸壳的饥饿)
     // 并播放红屏/屏幕震动/受伤音效。详见 DiceCombatEvents.applyDodgeCancel 的注释。
@@ -104,11 +107,13 @@ public class AdrenalineChipItem extends BaseChipItem {
         // 反击链中的伤害不参与闪避判定(结构性递归截断,与 DiceCombatEvents 的守卫一致)
         if (com.merlinkitsune.astral_dice.combat.DiceCombatEvents.isInCounterChain()) return;
         if (!isLowHp(player)) return;
-        if (!hasHighEquipped(player)) return;
-        // 敌方攻击(视者 = 受击玩家:敌对生物,或"非同队且曾主动攻击过本玩家"的玩家;排除摔落/火焰等环境伤害)
+        // 仅怪物近战攻击;排除玩家、弹射物/远程与环境伤害
         if (!(event.getSource().getEntity() instanceof net.minecraft.world.entity.LivingEntity attacker)) return;
         if (!PartyRelations.isHostileTo(player, attacker)) return;
-        if (tryDodge()) {
+        // 仅怪物近战攻击：排除玩家、弹射物/远程攻击与环境伤害
+        if (!(attacker instanceof net.minecraft.world.entity.Mob)) return;
+        if (event.getSource().getDirectEntity() != attacker) return;
+        if (tryDodge(player)) {
             com.merlinkitsune.astral_dice.combat.DiceCombatEvents.applyDodgeCancel(event);
             // 枪匠立牌:任意来源的闪避都会尝试获得 1 层弱点识破(2026-10-02 起:每次都给)
             com.merlinkitsune.astral_dice.item.sign.MosesSignItem.onDodgeCounter(player, attacker);

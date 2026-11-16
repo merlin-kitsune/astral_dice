@@ -257,7 +257,9 @@ public final class TargetSelectionManager {
             notifyActionBar(player, "msg.astral_dice.target_select.invalid_target", ChatFormatting.RED);
             return;
         }
-        if (!SelectorTargets.matches(session.targetType, player, target, session.allowSelf)) {
+        // 2026-11-08：目标类型放行 = 前置库原判据 || 「类玩家生物」（附属注册面，见 PlayerLikeTargets）
+        if (!SelectorTargets.matches(session.targetType, player, target, session.allowSelf)
+                && !PlayerLikeTargets.matchesSelection(session.targetType, player, target)) {
             LOGGER.warn("[Astral Dice][TargetSelection] confirm FAIL: target_type_mismatch player={} token={} target={}({})",
                     player.getName().getString(), token, targetId, target.getName().getString());
             notifyActionBar(player, "msg.astral_dice.target_select.invalid_target", ChatFormatting.RED);

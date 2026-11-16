@@ -34,7 +34,7 @@ import top.theillusivec4.curios.api.CuriosApi;
  * 自身目标由 {@link SelfTargetable#allowSelf()} 打开(右键路径,消费方侧实现,不改共享库的
  * {@code TargetType#matches})。
  *
- * <p><b>鼠鼠护盾</b> = 5 黄心(10 点吸收)+ 抗性提升 + 1 层一次性反击;黄心被打空即立即清空
+ * <p><b>鼠鼠护盾</b> = 5 黄心(10 点吸收)+ 抗性提升 + 1 层可激活反击次数;黄心被打空即立即清空
  * (见 {@link RenShieldManager})。
  *
  * <p>主动为「目标选择器类」技能:按下主动键只开启选择会话(门控),确认目标后才施效并进入玩家级冷却
@@ -47,7 +47,7 @@ import top.theillusivec4.curios.api.CuriosApi;
 public class RenSignItem extends BaseSignItem {
     private static final Logger LOGGER = LoggerFactory.getLogger(RenSignItem.class);
 
-    /** 主动技能的动作 id(注册表键;也是 actionbar 技能名 {@code msg.astral_dice.target_select.skill.<id>} 的来源) */
+    /** 主动技能的动作 id（注册表键） */
     public static final String ACTION_ID = "ren_privilege";
 
     /**
@@ -142,5 +142,11 @@ public class RenSignItem extends BaseSignItem {
         var curios = CuriosApi.getCuriosInventory(player);
         return curios.isPresent()
                 && curios.get().findFirstCurio(s -> s.is(ModItems.REN_SIGN.get())).isPresent();
+    }
+
+    // 2026-11-11 P1 补齐：与 P0 同口径的机器可读拒绝。
+    @Override
+    protected boolean activateForEntity(net.minecraft.world.entity.LivingEntity owner) {
+        return com.merlinkitsune.astral_dice.item.sign.SignEntitySkills.deny("ren", owner, "needs_player_session");
     }
 }
