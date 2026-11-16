@@ -159,3 +159,6 @@ config="${mod_id}.jade.mixins.json"
     versionRange="[${starengine_version},2.0.0)"
     ordering="AFTER"
     side="BOTH"
+
+# GeckoLib 自 2026-11-03 起 **vendor 进 starengine**(源码级随库分发)⇒ 本模组不再声明 geckolib 前置。
+# 卸载 geckolib 也能启动;玩家同装真 GeckoLib 时两份实现各走各的通道,互不影响。
