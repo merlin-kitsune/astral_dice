@@ -1,0 +1,40 @@
+{
+  "case_id": "BOOT-READY-1.21.1",
+  "title": "启动就绪（neoforge-1.21.1）：进程起来、本模组完成加载、版本门禁行有值、无 mixin 应用失败。只判启动这一件事，判据全在启动日志上；通道可用性由 AUTJS-CHANNEL-* 负责。",
+  "version": "1.21.1",
+  "channel": "kubejs",
+  "target": {
+    "type": "feature",
+    "ref": "boot-smoke"
+  },
+  "steps": [
+    {
+      "op": "note",
+      "text": "锚点来源：neoforge-1.21.1/src/main/java/com/merlinkitsune/astral_dice/AstralDiceMod.java:187 `LOGGER.info(\"Astral Dice mod loaded.\");`；版本门禁行格式见 neoforge-1.21.1/src/main/java/com/merlinkitsune/astral_dice/network/VersionGate.java:54 `版本互通门槛(Version Gate):mod_version={} → 网络互通号={}`，mod_version 取 gradle.properties:38 `mod_version=1.6.0-pre.1+neoforge_1.21.1`。\n\n不判 `Done (`：1.21.1 的 run 日志实测无该行，拿它当锚点会恒红。scope 用 whole：启动事实发生在用例起点之前。"
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "pattern": "Astral Dice mod loaded\\.",
+      "source": "latest",
+      "scope": "whole"
+    },
+    {
+      "type": "log",
+      "pattern": "版本互通门槛\\(Version Gate\\):mod_version=1\\.6\\.0-pre\\.1\\+neoforge_1\\.21\\.1",
+      "source": "latest",
+      "scope": "whole"
+    },
+    {
+      "type": "absent",
+      "pattern": "Mixin apply failed|MixinApplyError|Mixin transformation of .* failed",
+      "source": "latest",
+      "scope": "whole"
+    },
+    {
+      "type": "crash",
+      "scope": "whole"
+    }
+  ]
+}

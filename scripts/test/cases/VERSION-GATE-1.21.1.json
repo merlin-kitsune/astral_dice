@@ -1,0 +1,38 @@
+{
+  "case_id": "VERSION-GATE-1.21.1",
+  "title": "版本互通门槛（neoforge-1.21.1）：产物内确有 network/VersionGate.class，启动日志打印的 mod_version 为 1.6.0-pre.1+neoforge_1.21.1，且没有出现门槛拒绝行。缺这条时客户端与服务端对不上只会表现为「连不上」，没有可读报错。",
+  "version": "1.21.1",
+  "channel": "kubejs",
+  "steps": [
+    {
+      "op": "jar_stats",
+      "save_as": "jar"
+    },
+    {
+      "op": "note",
+      "text": "五线同构的证据：五条子工程的 network/VersionGate.java 均存在（find 实测），因此 bytecode 断言在 1.21.1 同样成立，不是 fabric 专属。\n\n门禁行字符串证据：run/1.21.1/logs/latest.log 实测含 `[Astral Dice] 版本互通门槛(Version Gate):mod_version=1.5.1+neoforge_1.21.1 → 网络互通号=1.5`；本用例只把版本号钉到 1.6.0-pre.1+neoforge_1.21.1，断言语义与现网日志一致。\n\nabsent 面针对真拒绝：日志里出现「不兼容/拒绝」即 FAIL；单纯没有门禁行已由上面的正向 log 断言覆盖。"
+    }
+  ],
+  "asserts": [
+    {
+      "type": "bytecode",
+      "pattern": "network/VersionGate\\.class$"
+    },
+    {
+      "type": "log",
+      "pattern": "\\[Astral Dice\\] 版本互通门槛\\(Version Gate\\):mod_version=1\\.6\\.0-pre\\.1\\+neoforge_1\\.21\\.1",
+      "source": "latest",
+      "scope": "whole"
+    },
+    {
+      "type": "absent",
+      "pattern": "版本互通门槛.*(不兼容|拒绝)",
+      "source": "latest",
+      "scope": "whole"
+    },
+    {
+      "type": "crash",
+      "scope": "whole"
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "case_id": "BOOT-READY-1.20.1",
+  "title": "启动就绪（forge-1.20.1）：进程起来了、本模组完成加载、版本门禁行有值、无 mixin 应用失败。只判这一件事，不判任何玩法；判据全在启动日志上，channel=kubejs 表示本用例不做任何 AutoJS 求值（通道可用性由 AUTJS-CHANNEL-1.20.1 负责）。",
+  "version": "1.20.1",
+  "channel": "kubejs",
+  "steps": [
+    {
+      "op": "note",
+      "text": "判据锚点取自实测日志：`Astral Dice mod loaded.` 在 1.20.1 与 1.21.1 的 run/<线>/logs/latest.log 中均存在；版本门禁行实测格式为 `[Astral Dice] 版本互通门槛(Version Gate):mod_version=1.5.1+forge_1.20.1 → 网络互通号=1.5`，本用例把 mod_version 钉到当前 1.6.0-pre.1+forge_1.20.1。\n\n不判 `Done (…`：1.20.1 的 run 日志里 `Done (` 出现 0 次（grep 实测），拿它当就绪锚点会恒红。\n\nscope 用 whole：启动事实发生在用例执行之前，必须扫整段启动日志。"
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "pattern": "Astral Dice mod loaded\\.",
+      "source": "latest",
+      "scope": "whole"
+    },
+    {
+      "type": "log",
+      "pattern": "版本互通门槛\\(Version Gate\\):mod_version=1\\.6\\.0-pre\\.1\\+forge_1\\.20\\.1",
+      "source": "latest",
+      "scope": "whole"
+    },
+    {
+      "type": "absent",
+      "pattern": "Mixin apply failed|MixinApplyError|Mixin transformation of .* failed",
+      "source": "latest",
+      "scope": "whole"
+    },
+    {
+      "type": "crash",
+      "scope": "whole"
+    }
+  ]
+}

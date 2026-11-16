@@ -1,0 +1,40 @@
+{
+  "case_id": "BOOT-READY-26.1.2",
+  "title": "启动就绪（neoforge-26.1.2）：进程起来、本模组完成加载、版本门禁行有值、无 mixin 应用失败。26.1.2 此前没有任何启动专用用例，启动红只能从 SIGN-SMOKE 间接推断。",
+  "version": "26.1.2",
+  "channel": "kubejs",
+  "target": {
+    "type": "feature",
+    "ref": "boot-smoke"
+  },
+  "steps": [
+    {
+      "op": "note",
+      "text": "锚点来源：neoforge-26.1.2/src/main/java/com/merlinkitsune/astral_dice/AstralDiceMod.java:182 `LOGGER.info(\"Astral Dice mod loaded.\");`；门禁行见 neoforge-26.1.2/src/main/java/com/merlinkitsune/astral_dice/network/VersionGate.java（同构消息 `版本互通门槛(Version Gate):mod_version={} → 网络互通号={}`）；mod_version 取 neoforge-26.1.2/gradle.properties:55 `mod_version=1.6.0-pre.1+neoforge_26.1.2`。\n\n26.1.2 的第二玩家能力缺失（scripts/test/cases/blocked-26.1.2/README.md），本用例刻意只用单人启动事实，不需要 Bot。"
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "pattern": "Astral Dice mod loaded\\.",
+      "source": "latest",
+      "scope": "whole"
+    },
+    {
+      "type": "log",
+      "pattern": "版本互通门槛\\(Version Gate\\):mod_version=1\\.6\\.0-pre\\.1\\+neoforge_26\\.1\\.2",
+      "source": "latest",
+      "scope": "whole"
+    },
+    {
+      "type": "absent",
+      "pattern": "Mixin apply failed|MixinApplyError|Mixin transformation of .* failed",
+      "source": "latest",
+      "scope": "whole"
+    },
+    {
+      "type": "crash",
+      "scope": "whole"
+    }
+  ]
+}

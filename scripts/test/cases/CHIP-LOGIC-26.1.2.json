@@ -1,0 +1,95 @@
+{
+  "case_id": "CHIP-LOGIC-26.1.2",
+  "title": "筹码店数据与规则（neoforge-26.1.2）：EMPTY→prepareOffers 后候选 3 格、品质码 ∈1..3、单价 10、刷新 3/5、needsReroll=false；价格曲线 priceOf(0/1/18/30)=10/15/100/100；常数 OFFER_COUNT=3、PRICE_STEP=5、PRICE_MAX=100、REFRESH_MAX=5。全程从运行中 JVM 取值，并原样回写玩家原状态。",
+  "version": "26.1.2",
+  "channel": "autojs",
+  "side": "server",
+  "target": {
+    "type": "feature",
+    "ref": "chip-shop"
+  },
+  "steps": [
+    {
+      "op": "note",
+      "text": "为什么建：26.1.2 既无 /astralshop 命令也无 astral_shop_probe.js（探针目录只到 kubejs/{1.20.1,1.21.1,26.1.2} 且 26.1.2 无 shop 探针），筹码店逻辑此前只被 RELEASE150-26.1.2 巨型用例间接覆盖；本用例只判数据与规则，不判界面。\n\n判据依据（源码逐条）：ChipShopCatalog.java:47 OFFER_COUNT=3、:81 PRICE_INITIAL=10、:82 PRICE_STEP=5、:83 PRICE_MAX=100、:93 REFRESH_INITIAL=3、:94 REFRESH_MAX=5；:331-334 priceOf(n)=min(PRICE_MAX, PRICE_INITIAL+PRICE_STEP*max(0,n))；ChipShopState.java:50-56 EMPTY(offers=[], purchased=0, refreshes=REFRESH_INITIAL)、:104-107 offerTier∈1..3、:110-112 initialized = offers 非空、:125-139 needsReroll（EMPTY ⇒ true）；ChipShopService.java:94-98 prepareOffers→ChipShopOpener.ensureOffers，且 ChipShopOpener.java:106 打印 CHIP_SHOP_REROLL_ON_ENTER。\n\n自恢复：原状态在改前取出、读完原样 store 回（同一个 record 实例），不写存档新值。"
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "save_as": "chip",
+      "timeout_ms": 30000,
+      "mode": "json",
+      "code": "(function(){\n  function C(n){ try { return Java.loadClass(n); } catch (e) { return Packages.java.lang.Class.forName(n); } }\n  function B(v){ return String(v) === 'true'; }\n  if (typeof AutoJS === 'undefined') { throw new Error('端点: server 侧 AutoJS 全局缺失（通道未注入）'); }\n  var ps = AutoJS.players();\n  if (ps === null || ps.length < 1) { throw new Error('端点: 世界内没有玩家，无法读筹码店状态'); }\n  var p = ps[0];\n  var St = C('com.merlinkitsune.astral_dice.shop.ChipShopState');\n  var Svc = C('com.merlinkitsune.astral_dice.shop.ChipShopService');\n  var Cat = C('com.merlinkitsune.astral_dice.shop.ChipShopCatalog');\n  var orig = St.get(p);\n  var out = {};\n  out.priceP0 = Number(Cat.priceOf(0));\n  out.priceP1 = Number(Cat.priceOf(1));\n  out.priceP18 = Number(Cat.priceOf(18));\n  out.priceP30 = Number(Cat.priceOf(30));\n  out.offerCountConst = Number(Cat.OFFER_COUNT);\n  out.priceStepConst = Number(Cat.PRICE_STEP);\n  out.priceMaxConst = Number(Cat.PRICE_MAX);\n  out.refreshInitConst = Number(Cat.REFRESH_INITIAL);\n  out.refreshMaxConst = Number(Cat.REFRESH_MAX);\n  out.poolSize = Number(Cat.entries().size());\n  St.store(p, St.EMPTY);\n  out.prepared = B(Svc.prepareOffers(p));\n  var st = St.get(p);\n  out.offerCount = Number(st.offers().size());\n  out.tier0 = Number(st.offerTier(0));\n  out.tier1 = Number(st.offerTier(1));\n  out.tier2 = Number(st.offerTier(2));\n  out.price = Number(st.price());\n  out.refreshes = Number(st.refreshesLeft());\n  out.purchased = Number(st.purchasedCount());\n  out.needsReroll = B(st.needsReroll(p));\n  out.initialized = B(st.initialized());\n  St.store(p, orig);\n  return out;\n})()"
+    }
+  ],
+  "asserts": [
+    {
+      "type": "state",
+      "name": "price_curve",
+      "from": "chip",
+      "expect": {
+        "priceP0": 10,
+        "priceP1": 15,
+        "priceP18": 100,
+        "priceP30": 100
+      }
+    },
+    {
+      "type": "state",
+      "name": "catalog_constants",
+      "from": "chip",
+      "expect": {
+        "offerCountConst": 3,
+        "priceStepConst": 5,
+        "priceMaxConst": 100,
+        "refreshInitConst": 3,
+        "refreshMaxConst": 5,
+        "price": 10
+      }
+    },
+    {
+      "type": "state",
+      "name": "offers_after_prepare",
+      "from": "chip",
+      "expect": {
+        "prepared": true,
+        "offerCount": 3,
+        "tier0": {
+          "gte": 1,
+          "lte": 3
+        },
+        "tier1": {
+          "gte": 1,
+          "lte": 3
+        },
+        "tier2": {
+          "gte": 1,
+          "lte": 3
+        },
+        "refreshes": 3,
+        "purchased": 0,
+        "needsReroll": false,
+        "initialized": true,
+        "poolSize": {
+          "gte": 3
+        }
+      }
+    },
+    {
+      "type": "log",
+      "pattern": "CHIP_SHOP_REROLL_ON_ENTER holder=",
+      "source": "latest",
+      "scope": "case"
+    },
+    {
+      "type": "absent",
+      "pattern": "CHIP_SHOP_OPEN_DENIED|AP_CHIP_SHOP_SERVICE: delivery_failed",
+      "source": "latest",
+      "scope": "case"
+    },
+    {
+      "type": "crash",
+      "scope": "case"
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "case_id": "SHOP-CARD-fabric-1.20.1",
+  "title": "卡牌店开店链路（fabric-1.20.1）：直调 CardShopOpener.open(player) 后，服务端玩家 containerMenu 类名从 InventoryMenu 变为 CardShopMenu。判据取服务端权威菜单，不依赖客户端界面。",
+  "version": "fabric-1.20.1",
+  "channel": "autojs",
+  "side": "server",
+  "target": {
+    "type": "feature",
+    "ref": "card-shop"
+  },
+  "steps": [
+    {
+      "op": "note",
+      "text": "证据：fabric-1.20.1/src/main/java/com/merlinkitsune/astral_dice/shop/CardShopOpener.java:14 `public static void open(Player player)` → :25 open(player,false) → :30-33 `serverPlayer.openMenu(new SimpleMenuProvider(..., CardShopMenu(...), translatable(\"gui.astral_dice.card_shop\")))`；CardShopMenu 类同目录存在（ls 实测）。该类不打日志，因此判据取 containerMenu 类型而不是日志行。\n\n为什么不用客户端 mc.screen：fabric 线 AutoJS 的 client 侧只在有客户端时存在，本用例要能在 server-only 场景独立成立。\n\n收尾：inject_key cancel 关掉菜单（server 侧等价 ClientboundContainerClosePacket + doCloseContainer），避免残留界面污染后续用例。"
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "save_as": "shop",
+      "timeout_ms": 30000,
+      "mode": "json",
+      "code": "(function(){\n  function C(n){ try { return Java.loadClass(n); } catch (e) { return Packages.java.lang.Class.forName(n); } }\n  if (typeof AutoJS === 'undefined') { throw new Error('端点: server 侧 AutoJS 全局缺失（通道未注入）'); }\n  var ps = AutoJS.players();\n  if (ps === null || ps.length < 1) { throw new Error('端点: 世界内没有玩家'); }\n  var p = ps[0];\n  var before = String(p.containerMenu.getClass().getSimpleName());\n  var Op = C('com.merlinkitsune.astral_dice.shop.CardShopOpener');\n  Op.open(p);\n  var after = String(p.containerMenu.getClass().getSimpleName());\n  return { beforeMenu: before, afterMenu: after, opened: after === 'CardShopMenu' };\n})()"
+    },
+    {
+      "op": "inject_key",
+      "key": "cancel"
+    }
+  ],
+  "asserts": [
+    {
+      "type": "state",
+      "name": "menu_switched_to_card_shop",
+      "from": "shop",
+      "expect": {
+        "beforeMenu": "InventoryMenu",
+        "afterMenu": "CardShopMenu",
+        "opened": true
+      }
+    },
+    {
+      "type": "crash",
+      "scope": "case"
+    }
+  ]
+}

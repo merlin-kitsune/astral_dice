@@ -1,0 +1,46 @@
+{
+  "case_id": "VERSION-GATE-1.20.1",
+  "title": "版本互通门槛（forge-1.20.1）：产物内确有 network/VersionGate.class，启动日志的 mod_version 为 1.6.0-pre.1+forge_1.20.1，且无门槛拒绝行。缺这条时客户端/服务端版本不一致只表现为「连不上」。",
+  "version": "1.20.1",
+  "channel": "kubejs",
+  "target": {
+    "type": "feature",
+    "ref": "version-gate"
+  },
+  "steps": [
+    {
+      "op": "jar_stats",
+      "save_as": "jar"
+    },
+    {
+      "op": "note",
+      "text": "五线同构证据：forge-1.20.1/src/main/java/com/merlinkitsune/astral_dice/network/VersionGate.java:61 打印同一门禁行；mod_version 取 forge-1.20.1/gradle.properties:46 `mod_version=1.6.0-pre.1+forge_1.20.1`。\n\nbytecode 断言在编译产物上判 `network/VersionGate.class` 存在，与版本门是否被真实触发互补：bytecode 证明代码在，log 证明运行期算出互通号。"
+    },
+    {
+      "op": "note",
+      "text": "absent 面只针对真拒绝（不兼容/拒绝）。正向证据由上面的 log 断言承担，不用「没有门禁行」充当 FAIL 依据。"
+    }
+  ],
+  "asserts": [
+    {
+      "type": "bytecode",
+      "pattern": "network/VersionGate\\.class$"
+    },
+    {
+      "type": "log",
+      "pattern": "\\[Astral Dice\\] 版本互通门槛\\(Version Gate\\):mod_version=1\\.6\\.0-pre\\.1\\+forge_1\\.20\\.1",
+      "source": "latest",
+      "scope": "whole"
+    },
+    {
+      "type": "absent",
+      "pattern": "版本互通门槛.*(不兼容|拒绝)",
+      "source": "latest",
+      "scope": "whole"
+    },
+    {
+      "type": "crash",
+      "scope": "whole"
+    }
+  ]
+}
