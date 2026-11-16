@@ -1345,10 +1345,12 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md（已删
 28. **接管体检（2026-11-16）：合并完整性 / 五线编译 / 守门红点**（本轮实读，未改产品代码）
     - **合并完整性**：`multi-main` 已含 `release/1.6.0-pre.1` 全量，`COPY-DEVNEXT=0`（无遗漏拷贝）；HEAD `01c52fd3`「merge: bring release/1.6.0-pre.1 into multi-main」。
     - **五线编译**：`neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1` / `fabric-1.21.1` 均 OK。
-    - **守门红点（2026-11-16 22:1x 复核）**：原 4 红已消 3 —— ① lang 百分号占位符 30 处已转义（check_lang_sync 0）/ ② CHANGELOG 标题全半角括号（parity 0）/ ③ meito 门禁为工具缺陷已修（Identifier + 注释剔除，GATE: PASS）；**仅剩 ④ z3000 / Golden Koi 三语命名表 25 处待裁决**。补充门禁里 fabric 创意栏白名单与资源完整性 26.1.2 旧装载路径两条亦属工具口径，已修并做变异反假绿。
-    - **jar 已重建（2026-11-16 22:08）**：五线均有 astral_dice-1.6.0-pre.1+<loader>.jar（neo/forge 由 :jar 产出；fabric 两线须 :remapJar，3,356,134 B / 3,382,619 B）；1.5.0 / 1.5.1 历史 jar 仍并存未清。
+    - **守门红点（2026-11-16 22:1x 复核）**：原 4 红已消 3 —— ① lang 百分号占位符 30 处已转义（check_lang_sync 0）/ ② CHANGELOG 标题全半角括号（parity 0）/ ③ meito 门禁为工具缺陷已修（Identifier + 注释剔除，GATE: PASS）；④ z3000 / Golden Koi 命名亦于 22:3x 按 wiki 裁决落地（第 29 条）⇒ **四红全消**。补充门禁里 fabric 创意栏白名单与资源完整性 26.1.2 旧装载路径两条亦属工具口径，已修并做变异反假绿。
+    - **jar 已重建（2026-11-16 22:33，含命名校正）**：五线均有 astral_dice-1.6.0-pre.1+<loader>.jar（neo/forge 由 :jar 产出；fabric 两线须 :remapJar，3,356,134 B / 3,382,619 B）；1.5.0 / 1.5.1 历史 jar 仍并存未清。
     - **实机证据为空**：五线均无 `1.6.0-pre.1` 实机读数（本轮未开测）。
-    - **待裁决**：① 是否按 17 格矩阵开实机（一次一条线，端口 25585/25565/25575 互斥）② z3000 / Golden Koi 三语命名口径（tools/sign_display_names.json 25 处漂移）③ 是否 bump mod_version 后再重建并投放。
+    - **待裁决**：① 是否按 17 格矩阵开实机（一次一条线，端口 25585/25565/25575 互斥）② ~~z3000 / Golden Koi 三语命名口径~~（已按 wiki 裁决，见第 29 条）③ 是否 bump mod_version 后再重建并投放。
+
+29. **Z3000 立牌三语定名 + Souri 指代统一（2026-11-16 22:3x，用户 m00480 裁决）**：按吉星派对 wiki 取证 —— 中文页 `wiki.biligame.com/starengine/Z3000` 显示角色名 Z3000、职称「垃圾箱」（原文「当垃圾箱的攻击力大于6时…」）；英文/日文用 `astralparty.miraheze.org` API 的 `CharPlayable.nameJapanese=ゼット3000`、页名 `Z3000`。据权威表规则（EN=wiki 英文页名+Sign / JA=nameJapanese+のスタンド / zh 保职称式、禁机翻）落地：`tools/sign_display_names.json` 新增 `z3000`（zh 垃圾箱立牌 / en Z3000 Sign / ja ゼット3000のスタンド / wiki_page Z3000），37 条、updated 2026-11-16；五线 `zh_cn.json` 的 `item.astral_dice.z3000_sign` 由「垃圾桶立牌」改「垃圾箱立牌」（15 文件）；五线 en/ja 的 `tooltip.astral_dice.sign.mamushi_note` 把表外昵称 `Golden Koi Sign` / 「金鯉のスタンド」改成物品名 `Amakawa Souri Sign` / 「天川蒼鯉のスタンド」。读数：`verify_sign_display_names` **GATE: PASS**（37 条 / 166,961 项检查，原 25 处红全消）、`check_lang_sync` 0、`verify_tooltip_format` checked=11220 OK、parity entries=1138/1138；五线 jar 22:33:36–39 重建，jar 内「垃圾箱立牌」命中 1、「垃圾桶立牌」0。commit `70c70805`。
 
 ## 6 坑（本批新增，后续继续追加）
 
