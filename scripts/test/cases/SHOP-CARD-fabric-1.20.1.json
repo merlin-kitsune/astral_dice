@@ -19,7 +19,7 @@
       "save_as": "shop",
       "timeout_ms": 30000,
       "mode": "json",
-      "code": "(function(){\n  function C(n){ try { return Java.loadClass(n); } catch (e) { return Packages.java.lang.Class.forName(n); } }\n  if (typeof AutoJS === 'undefined') { throw new Error('端点: server 侧 AutoJS 全局缺失（通道未注入）'); }\n  var ps = AutoJS.players();\n  if (ps === null || ps.length < 1) { throw new Error('端点: 世界内没有玩家'); }\n  var p = ps[0];\n  var before = String(p.containerMenu.getClass().getSimpleName());\n  var Op = C('com.merlinkitsune.astral_dice.shop.CardShopOpener');\n  Op.open(p);\n  var after = String(p.containerMenu.getClass().getSimpleName());\n  return { beforeMenu: before, afterMenu: after, opened: after === 'CardShopMenu' };\n})()"
+      "code": "(function(){\n  function C(n){ try { return Java.loadClass(n); } catch (e) { return Packages.java.lang.Class.forName(n); } }\n  if (typeof AutoJS === 'undefined') { throw new Error('端点: server 侧 AutoJS 全局缺失（通道未注入）'); }\n  var ps = AutoJS.players();\n  if (ps === null || ps.length < 1) { throw new Error('端点: 世界内没有玩家'); }\n  var p = ps[0];\n  function cls(m){ var t=String(m); var i=t.indexOf('@'); if(i>0){t=t.substring(0,i);} var j=t.lastIndexOf('.'); return j>=0?t.substring(j+1):t; }\n  var before = cls(p.containerMenu);\n  var Op = C('com.merlinkitsune.astral_dice.shop.CardShopOpener');\n  Op.open(p);\n  var after = cls(p.containerMenu);\n  return { beforeMenu: before, afterMenu: after, opened: after === 'CardShopMenu' };\n})()"
     },
     {
       "op": "inject_key",

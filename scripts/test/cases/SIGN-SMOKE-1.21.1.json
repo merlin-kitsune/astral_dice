@@ -239,7 +239,7 @@
     {
       "type": "absent",
       "source": "latest",
-      "pattern": ":err="
+      "pattern": ":err=(?!none|-|:)\\S"
     },
     {
       "type": "absent",

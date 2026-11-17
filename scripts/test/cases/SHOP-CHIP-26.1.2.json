@@ -26,7 +26,7 @@
       "side": "client",
       "timeout_ms": 30000,
       "interval_ms": 500,
-      "code": "(function(){\n  function C(n){ try { return Java.loadClass(n); } catch (e) { return null; } }\n  var mc = C('net.minecraft.client.Minecraft').getInstance();\n  var s = mc.screen;\n  if (s === null) { return false; }\n  return String(s.getClass().getName()).indexOf('Shop') >= 0;\n})()"
+      "code": "(function(){\n  function C(n){ try { return Java.loadClass(n); } catch (e) { return null; } }\n  var mc = C('net.minecraft.client.Minecraft').getInstance();\n  var s = mc.screen;\n  if (s === null) { return false; }\n  return String(s).indexOf('Shop') >= 0;\n})()"
     }
   ],
   "asserts": [
