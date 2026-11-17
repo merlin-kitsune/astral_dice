@@ -16,6 +16,8 @@
 - 验证：五线发布构建与附属双线构建通过；NeoForge 1.21.1 与 Forge 1.20.1 的实机 KubeJS 探针（来自 `26.4-SNAPSHOT.76`）覆盖内容计数、冻结状态、伤害分类、钱包与伤害/属性钩子注册。本次发布除版本 pin 与附属元数据外未改动该代码路径。
 - 立牌显示名对齐官方 wiki：Z3000 立牌为 `Z3000 Sign` / `ゼット3000のスタンド`（英文页名与 `CharPlayable.nameJapanese`），中文保留社区惯用「垃圾桶立牌」、不采用 wiki 职称「垃圾箱」；`mamushi_note` 两语文本改按 Souri 立牌物品名（`Amakawa Souri Sign` / `天川蒼鯉のスタンド`）指代。`tools/sign_display_names.json` 增至 37 条，`verify_sign_display_names` 通过。
 
+- 转账面板布局：选中行粉色箭头右移（TP_SELECT_X 66 -> 78，距滚动条滑块左缘留 2px），玩家名列可显示宽度由 42px 加宽到 52px；五线同步。
+
 ## 26.4-SNAPSHOT.76
 
 ### 本线

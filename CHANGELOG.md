@@ -16,6 +16,8 @@
 - Validation: five-line release build and the addon's two-line build passed; the NeoForge 1.21.1 and Forge 1.20.1 live KubeJS probes from `26.4-SNAPSHOT.76` cover content counts, freeze state, damage categories, wallet and damage/stat hook registration. That code path is unchanged in this release except for the version pins and the companion addon metadata.
 - Sign display names now follow the official wiki: the Z3000 sign reads `Z3000 Sign` / `ゼット3000のスタンド` (English wiki page name and `CharPlayable.nameJapanese`), while the Chinese name stays the community's `垃圾桶立牌` rather than the wiki character title, and the `mamushi_note` tooltips now name the Souri sign by its item names (`Amakawa Souri Sign` / `天川蒼鯉のスタンド`). `tools/sign_display_names.json` now lists 37 signs and `verify_sign_display_names` passes.
 
+- Transfer panel layout: the selected-row arrow moved right (TP_SELECT_X 66 -> 78, keeping 2px clear of the scrollbar thumb) and the player-name column widened from 42px to 52px; synchronized across all five lines.
+
 ## 26.4-SNAPSHOT.76
 
 ### This line
