@@ -281,7 +281,7 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
     private static final int TP_FACE_Y_OFF = 0;
     private static final int TP_FACE_SIZE = 16;
     private static final int TP_NAME_X = 24;
-    private static final int TP_NAME_MAX_W = 42;
+    private static final int TP_NAME_MAX_W = 50;
     private static final int TP_COIN_X = 24;
     /** 星币标 Y 偏移：与余额文本**顶边对齐**（增补二 §2 口径 coinY = balanceTextY + 0） */
     private static final int TP_COIN_Y_OFF = 9;
@@ -293,10 +293,10 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
     private static final int TP_BALANCE_Y_OFF = 9;
     /**
      * 选中指示（粉色箭头）= shop_transfer_select.png **原生 13x12、不缩放**，画在**玩家名那一行**上：
-     * x = 66 固定（紧贴名称列右界 x24..66 ⇒ 永不与名字重叠），y = rowY + 1。
+     * x = 77 固定（名称列右界 x24..74，间距 3px；右缘 90 距滚动条控件 93 留 3px），y = rowY + 1。
      * 2026-10-08 增补二 §1 覆盖旧口径（旧口径：画在金额行、用已删除的 shop_transfer_select_small.png）。
      */
-    private static final int TP_SELECT_X = 66;
+    private static final int TP_SELECT_X = 77;
     private static final int TP_SELECT_Y_OFF = 1;
     private static final int TP_SELECT_W = 13;
     private static final int TP_SELECT_H = 12;
@@ -1284,10 +1284,10 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
     /**
      * 名单单行（设计文档「行内布局」）：
      * 皮肤头像 16x16 @ (+6,+1)（脸 (8,8,8,8) + 帽子层 (40,8,8,8) 合成 — 即原版
-     * {@link PlayerFaceRenderer#draw}）· 玩家名白色 @ (+24,+0)（宽 42px：**禁止缩小字号**，超宽时左右滚动
+     * {@link PlayerFaceRenderer#draw}）· 玩家名白色 @ (+24,+0)（宽 50px：**禁止缩小字号**，超宽时左右滚动
      * marquee，见 {@link #marqueeOffset(int)}）· 星币标 7x7 @ (+24,+9)（{@code star_coin_small.png} 的
      * (3,3) 子区，与余额文本顶边对齐）· 余额金色 @ (+33,+9)（千分位）。
-     * 悬停行画半透明灰底 (2,+0)-(78,+18)；选中行画 {@code shop_transfer_select.png}(13x12) @ (+66,+1)
+     * 悬停行画半透明灰底 (2,+0)-(93,+18)；选中行画 {@code shop_transfer_select.png}(13x12) @ (+77,+1)
      * ——箭头指向**玩家名那一行**（增补二 §1）。
      *
      * @param originalIndex 该行在**完整名单**中的下标
@@ -1302,8 +1302,8 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
         }
         PlayerFaceRenderer.draw(guiGraphics, transferSkin(entry.id()),
                 TP_FACE_X, rowY + TP_FACE_Y_OFF, TP_FACE_SIZE);
-        // 玩家名：**不缩字号、不截断**，超 42px ⇒ 按共享相位左右滚动（marquee，增补 §1）；用 scissor
-        // 裁到名称列（面板内 x 24..66）⇒ 文字不会溢出到箭头/金额列，命中区与点击不受影响
+        // 玩家名：**不缩字号、不截断**，超 50px ⇒ 按共享相位左右滚动（marquee，增补 §1）；用 scissor
+        // 裁到名称列（面板内 x 24..74）⇒ 文字不会溢出到箭头/金额列，命中区与点击不受影响
         Component name = Component.literal(entry.name());
         int nameWidth = this.font.width(name);
         int nameOffset = marqueeOffset(Math.max(0, nameWidth - TP_NAME_MAX_W));
@@ -1318,7 +1318,7 @@ public class CardShopScreen extends AbstractContainerScreen<CardShopMenu> {
         guiGraphics.drawString(this.font, String.format(Locale.ROOT, "%,d", entry.balance()),
                 TP_BALANCE_X, rowY + TP_BALANCE_Y_OFF, COLOR_GOLD, false);
         if (selected) {
-            // 选中指示 = shop_transfer_select.png **原生 13x12** @ (66, rowY+1)：指向玩家名那一行
+            // 选中指示 = shop_transfer_select.png **原生 13x12** @ (77, rowY+1)：指向玩家名那一行
             // （增补二 §1；已删除的 shop_transfer_select_small.png 与旧 16x14 回落逻辑一并作废）
             blitAbs(guiGraphics, tex("shop_transfer_select.png"), TP_SELECT_X, rowY + TP_SELECT_Y_OFF,
                     TP_SELECT_W, TP_SELECT_H);

@@ -4,6 +4,13 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 26.4-SNAPSHOT.77
+
+### This line
+
+- Widened the card-shop transfer player-name column from 42px to 50px (x=24..74) and moved the pink selected-target arrow from x=66 to x=77. The arrow's right edge is x=90, leaving a 3px gap to the scrollbar control at x=93; the row-hover fill doc now matches the actual (2,+0)-(93,+18) range.
+- Validation: five-line `assemble` exit 0 (`BUILD SUCCESSFUL in 28s`, 28 tasks: 23 executed / 5 up-to-date; five `.77` jars). No live-client visual check in this batch.
+
 ## 26.4-SNAPSHOT.76
 
 ### This line
