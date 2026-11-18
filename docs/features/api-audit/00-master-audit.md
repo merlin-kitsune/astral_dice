@@ -81,7 +81,7 @@
 | 批次 | 内容 | 改哪里 | 验收 |
 |---|---|---|---|
 | **B1 数据契约 + 卡牌闭环（P0-1/2/7/8）** | 新增 api/data/DiceLoadout、api/data/InstalledCard；五线新增同签名 item/card/DiceCardLoadout（read/write/equip/unequipAll，语义逐行等价 CardInventoryMenu#saveToDice）；门面 diceLoadout / equipCard / unequipAllCards / useCardOn / diceChipSlots / hasDiceTier；ModTooltipHandler 判据换 hasDiceTier | common + 五线 | 五线 assemble；KubeJS 探针「装卡→读负载→卸卡→卡牌回到背包」逐值对账 |
-| **B2 战斗注册口（P0-3/4/5）** | api/combat 新增 4 个修饰器接口 + 2 个法术接口 + DiceAttackContext/SpellDamageView record；门面 6 个注册方法转发 | 纯 common | 五线 assemble；用一个测试 addon/KubeJS 注册后打一次骰战与法术，读 final 变化 |
+| **B2 战斗注册口（P0-3/4/5）** | api/combat 新增 4 个修饰器接口 + 2 个法术接口 + DiceAttackContext/SpellDamageView record；门面 6 个注册方法转发 | ~~纯 common~~ **五线各一份适配器**（§6.2 修正） | 五线 assemble；用一个测试 addon/KubeJS 注册后打一次骰战与法术，读 final 变化 |
 | **B3 选择器 / 效果 / 事件（P0-6 + P1-1/2/5/12）** | startTargetSelection 等三方法；效果面经 AstralDicePlatform 新 default + 五线实现；registerAstralEvent；registerCombatResolutionListener；startCardChoice | common + 五线（效果） | 五线 assemble；实机目标选择一次 + 效果层数读数 |
 | **B4 经济与配置（P0-9 + P1-7/8）** | isStarCoin / starCoinValue / countCarriedStarCoins / giveItemToPlayer / 配置读取面（平台 default） | common + 五线 | 五线 assemble（重点 fabric 两线：先确认 StarCoinCurrency 是否缺失，再走 default） |
 | **B5 客户端面（P1-9/10/11 + P0-10）** | openCardInventory；registerHudLayer / registerKeyMapping 平台 seam；门面侧别 javadoc + requireServer | common + 五线 | 客户端启动 + 一次界面打开；client 类只被客户端类加载（避免专用服务器炸类） |
@@ -97,6 +97,16 @@
 - **tooltip 判据**：五线 `event/ModTooltipHandler` 的 13 连硬编码 `stack.is(ModItems.*_DICE)` 换成 `AstralDiceApi.hasDiceTier(stack)`（13 件骰子全部登记在 `DiceTierRegistry`，附属骰子从此也有费用 / 星级 / 卡牌行）。
 - **仍未闭环（诚实边界）**：`useCardOn` 对非玩家实体仍落到 `CardUseService.useCardForEntity` 的默认 `false` —— 效果牌尚不支持类玩家宿主，属 P0-2 的另一半，需 B3（或单独一批）把 `BaseEffectCardItem` 的 `applyEffect` 目标放宽；`equipCard` 只改骰子数据、**不扣卡牌栈**（界面里「装了就没了」由调用方扣）；`unequipAllCards` 对非玩家宿主无法还原临时牌标记（标记 API 需 `Player`）。
 - **验收状态**：五线 `assemble --offline` BUILD SUCCESSFUL（.86 五件产物均含新类与七个新门面方法，已用 `javap` 核对）；审计定的「KubeJS 探针 装卡→读负载→卸卡→卡牌回到背包 逐值对账」**尚未跑**，需一次 dev 客户端实机。
+
+### 6.2 B2 落地记录（26.4-SNAPSHOT.87，2026-11-18）
+
+- **新增只读视图**（common）：`api/combat/DiceBattleView`（attacker / target / baseDice / diceStack / starLevel / triggeredBlessing / misakiBurst / misakiStar / misakiStacks，null 骰子折成 `ItemStack.EMPTY`）、`api/combat/SpellDamageView`（attacker / target / source / directEntity）。
+- **新增函数式接口**（common）：`AttackPowerModifier`、`DefensePowerModifier`、`ExtraDamageModifier`、`VictimDamageModifier`、`DiceCombatFactor`、`SpellDamageMatcher`、`SpellDamageModifier`（`isActive` / `apply` / `onHit` 三钩子，前两个有默认实现）。
+- **新增门面**：`registerAttackModifier` / `registerDefenseModifier` / `registerExtraDamageModifier` / `registerVictimDamageModifier` / `registerDiceCombatFactor` / `registerSpellDamageMatcher` / `registerSpellDamageModifier`；非 null 才转发，各打一条 `AP_COMBAT_API: registered=<kind>`，平台未安装时 `requirePlatform` 抛带调用名的 `IllegalStateException`。
+- **计划修正（重要）**：审计把 B2 定为「纯 common」不成立。`DiceCombatContext` / `SpellDamageContext` / `DiceCombatModifiers` / `SpellDamageRegistry` / `DiceCombatEvents` **每线各一份**（挂着各自的 `LivingDamageEvent.Pre` / `LivingIncomingDamageEvent`），common 无法引用。故每线新增等价 `combat/CombatApiAdapters`（视图 ↔ 本线上下文）、`AstralDicePlatform` 加 7 个 default、五线平台实现转发。五份适配器内容一致，只依赖五线同名同签名的内部接口。
+- **语义对齐**：攻击 / 防御修饰器按注册顺序作用于数值；`ExtraDamageModifier` 只算命中后的独立加伤，不并入攻击力（避免污染依赖攻击力快照的效果）；`VictimDamageModifier` 覆盖**任何来源**的伤害且须实时判定；`DiceCombatFactor` 是骰战最终伤害乘算；法术三钩子顺序 isActive → apply（累积加算）→ onHit。
+- **诚实边界**：视图只读，附属不能回写内部上下文的「结果写入区」字段（targetEnhancement / attackCardSum / hasShadowStrike 等）；`DiceCombatFactor` 与法术两接口的 attacker 是 `Player`，类玩家宿主不在通道内；注册须在初始化阶段（内部表是普通 `ArrayList`）；**未做**「让生物发起远程 / 魔法攻击」的发起入口（P0-5 只解决识别与加成），本批未跑实机。
+- **验收状态**：五线 `assemble --offline` BUILD SUCCESSFUL；`javap` 核对产物含 7 个门面方法、7 个平台 default、`CombatApiAdapters` 与 9 个 `api/combat` 类。
 
 **批次顺序理由**：B1 直接解 TLMDice「牌术士自动装牌 / 自动用效果牌」两条 seam；B2 让第三方能改骰战数值（当前只能靠改本仓源码）；B3/B4 是常见扩展需求；B5/B6 是收口与兼容。
 

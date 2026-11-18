@@ -1,5 +1,6 @@
 package com.merlinkitsune.astral_dice.api;
 
+import com.merlinkitsune.astral_dice.api.combat.AttackPowerModifier;
 import com.merlinkitsune.astral_dice.api.combat.CombatStat;
 import com.merlinkitsune.astral_dice.api.combat.CombatStatContext;
 import com.merlinkitsune.astral_dice.api.combat.CombatStatHandle;
@@ -8,6 +9,12 @@ import com.merlinkitsune.astral_dice.api.combat.CombatStatHooks;
 import com.merlinkitsune.astral_dice.api.combat.CombatStatStage;
 import com.merlinkitsune.astral_dice.api.combat.DamageCategory;
 import com.merlinkitsune.astral_dice.api.combat.DamageCategoryResolver;
+import com.merlinkitsune.astral_dice.api.combat.DefensePowerModifier;
+import com.merlinkitsune.astral_dice.api.combat.DiceCombatFactor;
+import com.merlinkitsune.astral_dice.api.combat.ExtraDamageModifier;
+import com.merlinkitsune.astral_dice.api.combat.SpellDamageMatcher;
+import com.merlinkitsune.astral_dice.api.combat.SpellDamageModifier;
+import com.merlinkitsune.astral_dice.api.combat.VictimDamageModifier;
 import com.merlinkitsune.astral_dice.api.data.DiceLoadout;
 import com.merlinkitsune.astral_dice.api.playerlike.PlayerLikeCapability;
 import com.merlinkitsune.astral_dice.api.playerlike.PlayerLikeHandler;
@@ -694,6 +701,106 @@ public final class AstralDiceApi {
                     + " requires the Astral Dice platform to be installed; call it after mod construction.");
         }
         return target;
+    }
+
+    // --------------------------------------------------------------- 战斗注册口（B2）
+
+    /**
+     * 注册骰战攻击力修饰器：按注册顺序依次作用于攻击力。
+     *
+     * <p>请只在初始化阶段调用（内容冻结 / 战斗开始之前）。内部注册表不是线程安全的，
+     * 运行期注册可能被并发遍历而漏算。
+     */
+    public static void registerAttackModifier(AttackPowerModifier modifier) {
+        if (modifier == null) {
+            return;
+        }
+        requirePlatform("registerAttackModifier").registerAttackModifier(modifier);
+        LOGGER.info("AP_COMBAT_API: registered={}", "attack_modifier");
+    }
+
+    /**
+     * 注册骰战防御力修饰器：按注册顺序依次作用于防御力。
+     *
+     * <p>请只在初始化阶段调用（内容冻结 / 战斗开始之前）。内部注册表不是线程安全的，
+     * 运行期注册可能被并发遍历而漏算。
+     */
+    public static void registerDefenseModifier(DefensePowerModifier modifier) {
+        if (modifier == null) {
+            return;
+        }
+        requirePlatform("registerDefenseModifier").registerDefenseModifier(modifier);
+        LOGGER.info("AP_COMBAT_API: registered={}", "defense_modifier");
+    }
+
+    /**
+     * 注册命中后的额外加伤修饰器：点数按独立伤害类型单独结算，不并入攻击力。
+     *
+     * <p>请只在初始化阶段调用（内容冻结 / 战斗开始之前）。内部注册表不是线程安全的，
+     * 运行期注册可能被并发遍历而漏算。
+     */
+    public static void registerExtraDamageModifier(ExtraDamageModifier modifier) {
+        if (modifier == null) {
+            return;
+        }
+        requirePlatform("registerExtraDamageModifier").registerExtraDamageModifier(modifier);
+        LOGGER.info("AP_COMBAT_API: registered={}", "extra_damage_modifier");
+    }
+
+    /**
+     * 注册受击侧伤害倍率修饰器：按受伤方 + 伤害来源实时判定，作用于任何来源的伤害。
+     *
+     * <p>请只在初始化阶段调用（内容冻结 / 战斗开始之前）。内部注册表不是线程安全的，
+     * 运行期注册可能被并发遍历而漏算。
+     */
+    public static void registerVictimDamageModifier(VictimDamageModifier modifier) {
+        if (modifier == null) {
+            return;
+        }
+        requirePlatform("registerVictimDamageModifier").registerVictimDamageModifier(modifier);
+        LOGGER.info("AP_COMBAT_API: registered={}", "victim_damage_modifier");
+    }
+
+    /**
+     * 注册骰战最终伤害因子：按注册顺序依次乘算最终伤害。
+     *
+     * <p>请只在初始化阶段调用（内容冻结 / 战斗开始之前）。内部注册表不是线程安全的，
+     * 运行期注册可能被并发遍历而漏算。
+     */
+    public static void registerDiceCombatFactor(DiceCombatFactor modifier) {
+        if (modifier == null) {
+            return;
+        }
+        requirePlatform("registerDiceCombatFactor").registerDiceCombatFactor(modifier);
+        LOGGER.info("AP_COMBAT_API: registered={}", "dice_combat_factor");
+    }
+
+    /**
+     * 注册法伤作用域判定器：命中的伤害即被当作远程 / 魔法伤害处理。
+     *
+     * <p>请只在初始化阶段调用（内容冻结 / 战斗开始之前）。内部注册表不是线程安全的，
+     * 运行期注册可能被并发遍历而漏算。
+     */
+    public static void registerSpellDamageMatcher(SpellDamageMatcher modifier) {
+        if (modifier == null) {
+            return;
+        }
+        requirePlatform("registerSpellDamageMatcher").registerSpellDamageMatcher(modifier);
+        LOGGER.info("AP_COMBAT_API: registered={}", "spell_damage_matcher");
+    }
+
+    /**
+     * 注册法伤加成修饰器：isActive → apply（累积加算）→ onHit 三钩子。
+     *
+     * <p>请只在初始化阶段调用（内容冻结 / 战斗开始之前）。内部注册表不是线程安全的，
+     * 运行期注册可能被并发遍历而漏算。
+     */
+    public static void registerSpellDamageModifier(SpellDamageModifier modifier) {
+        if (modifier == null) {
+            return;
+        }
+        requirePlatform("registerSpellDamageModifier").registerSpellDamageModifier(modifier);
+        LOGGER.info("AP_COMBAT_API: registered={}", "spell_damage_modifier");
     }
 
     // ------------------------------------------------------------------ 收口

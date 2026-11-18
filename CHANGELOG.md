@@ -4,6 +4,15 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 26.4-SNAPSHOT.87
+
+### This line
+
+- Combat registration facade (B2 of the API-coverage plan): new `api/combat` types — the `DiceBattleView` and `SpellDamageView` read-only records plus `AttackPowerModifier`, `DefensePowerModifier`, `ExtraDamageModifier`, `VictimDamageModifier`, `DiceCombatFactor`, `SpellDamageMatcher` and `SpellDamageModifier`. `AstralDiceApi` gains seven registration methods (`registerAttackModifier`, `registerDefenseModifier`, `registerExtraDamageModifier`, `registerVictimDamageModifier`, `registerDiceCombatFactor`, `registerSpellDamageMatcher`, `registerSpellDamageModifier`), each routed through a new `AstralDicePlatform` default method, so addons can tune dice-battle attack/defense power, flat extra damage, any-source victim multipliers, final dice-battle damage, spell-damage scope and spell bonuses without touching internal classes or the loader event objects those classes carry.
+- The audit had planned B2 as "common only"; that was wrong. `DiceCombatContext`, `SpellDamageContext`, `DiceCombatModifiers`, `SpellDamageRegistry` and `DiceCombatEvents` exist once **per loader line** (each carries its own `LivingDamageEvent.Pre` / `LivingIncomingDamageEvent`), so `common` can only ship the read-only facade views. Every line therefore gets an identical `combat/CombatApiAdapters` translating those views into its own context types; the platform implementation forwards to it. Registration is init-time only — the internal lists are plain `ArrayList`s walked during combat.
+- Honest boundaries: the views are read-only, so addons cannot write the internal context's result fields; `DiceCombatFactor` and the two spell interfaces take a `Player` attacker, so player-like hosts stay outside that channel (same as the internal state today); no entry point that makes a creature *start* a ranged or magic attack exists yet (P0-5 only covers detection and bonuses).
+- Verification: five-line `assemble --offline` BUILD SUCCESSFUL; `javap` confirmed the seven facade methods, the seven platform defaults, `CombatApiAdapters` and the nine `api/combat` classes in the built artifacts.
+
 ## 26.4-SNAPSHOT.86
 
 ### This line

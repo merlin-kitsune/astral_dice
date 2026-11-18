@@ -1,5 +1,12 @@
 package com.merlinkitsune.astral_dice.platform;
 
+import com.merlinkitsune.astral_dice.api.combat.AttackPowerModifier;
+import com.merlinkitsune.astral_dice.api.combat.DefensePowerModifier;
+import com.merlinkitsune.astral_dice.api.combat.DiceCombatFactor;
+import com.merlinkitsune.astral_dice.api.combat.ExtraDamageModifier;
+import com.merlinkitsune.astral_dice.api.combat.SpellDamageMatcher;
+import com.merlinkitsune.astral_dice.api.combat.SpellDamageModifier;
+import com.merlinkitsune.astral_dice.api.combat.VictimDamageModifier;
 import com.merlinkitsune.astral_dice.api.playerlike.PlayerLikeHandler;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
@@ -56,5 +63,35 @@ public interface AstralDicePlatform {
     /** 实体身上是否有"骰子祝福"效果。 */
     default boolean hasDiceBlessing(LivingEntity entity) {
         return false;
+    }
+
+    // ------------------------------------------------------------- B2 战斗注册口
+
+    /** 骰战攻击力修饰器。各线实现负责转调 {@code CombatApiAdapters}（内部上下文类型各线各一份）。 */
+    default void registerAttackModifier(AttackPowerModifier modifier) {
+    }
+
+    /** 骰战防御力修饰器（仅战斗防御牌口径）。各线实现负责转调 {@code CombatApiAdapters}（内部上下文类型各线各一份）。 */
+    default void registerDefenseModifier(DefensePowerModifier modifier) {
+    }
+
+    /** 命中后额外加伤修饰器。各线实现负责转调 {@code CombatApiAdapters}（内部上下文类型各线各一份）。 */
+    default void registerExtraDamageModifier(ExtraDamageModifier modifier) {
+    }
+
+    /** 受击侧伤害倍率修饰器。各线实现负责转调 {@code CombatApiAdapters}（内部上下文类型各线各一份）。 */
+    default void registerVictimDamageModifier(VictimDamageModifier modifier) {
+    }
+
+    /** 骰战最终伤害因子。各线实现负责转调 {@code CombatApiAdapters}（内部上下文类型各线各一份）。 */
+    default void registerDiceCombatFactor(DiceCombatFactor modifier) {
+    }
+
+    /** 法伤作用域判定器。各线实现负责转调 {@code CombatApiAdapters}（内部上下文类型各线各一份）。 */
+    default void registerSpellDamageMatcher(SpellDamageMatcher modifier) {
+    }
+
+    /** 法伤加成修饰器。各线实现负责转调 {@code CombatApiAdapters}（内部上下文类型各线各一份）。 */
+    default void registerSpellDamageModifier(SpellDamageModifier modifier) {
     }
 }

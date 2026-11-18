@@ -4,6 +4,15 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
+## 26.4-SNAPSHOT.87
+
+### 本线
+
+- 战斗注册口门面（API 覆盖计划的 B2 批）：新增 `api/combat` 下的 `DiceBattleView` / `SpellDamageView` 只读记录，以及 `AttackPowerModifier`、`DefensePowerModifier`、`ExtraDamageModifier`、`VictimDamageModifier`、`DiceCombatFactor`、`SpellDamageMatcher`、`SpellDamageModifier` 七个接口。门面新增 `registerAttackModifier`、`registerDefenseModifier`、`registerExtraDamageModifier`、`registerVictimDamageModifier`、`registerDiceCombatFactor`、`registerSpellDamageMatcher`、`registerSpellDamageModifier` 七个注册方法，各经 `AstralDicePlatform` 新 default 转发。附属模组从此可以调骰战的攻击力 / 防御力、额外加伤、任意来源的受击倍率、最终伤害、法伤作用域与法伤加成，不必碰内部类，也不必碰这些内部类挂着的加载器事件对象。
+- 审计把 B2 定成「纯 common」是错的：`DiceCombatContext`、`SpellDamageContext`、`DiceCombatModifiers`、`SpellDamageRegistry`、`DiceCombatEvents` **每个加载器线各有一份**（各自挂着 `LivingDamageEvent.Pre` / `LivingIncomingDamageEvent`），`common` 只能出门面视图。因此五线各新增一份等价的 `combat/CombatApiAdapters`（门面视图 ↔ 本线内部上下文），平台实现转发到它。注册只允许在初始化阶段完成 —— 内部注册表是普通 `ArrayList`，战斗期会被遍历。
+- 诚实边界：视图是**只读**的，附属不能回写内部上下文的「结果写入区」字段；`DiceCombatFactor` 与两个法术接口的 attacker 是 `Player`，类玩家宿主不在该通道（与内部现状一致）；「让一个生物**发起**远程 / 魔法攻击」的入口仍然没有（P0-5 只解决识别与加成）。
+- 验证：五线 `assemble --offline` BUILD SUCCESSFUL；`javap` 核对五份产物含 7 个门面方法、7 个平台 default、`CombatApiAdapters` 与 9 个 `api/combat` 类。
+
 ## 26.4-SNAPSHOT.86
 
 ### 本线
