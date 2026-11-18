@@ -8,12 +8,15 @@ import com.merlinkitsune.astral_dice.api.combat.CombatStatHooks;
 import com.merlinkitsune.astral_dice.api.combat.CombatStatStage;
 import com.merlinkitsune.astral_dice.api.combat.DamageCategory;
 import com.merlinkitsune.astral_dice.api.combat.DamageCategoryResolver;
+import com.merlinkitsune.astral_dice.api.data.DiceLoadout;
 import com.merlinkitsune.astral_dice.api.playerlike.PlayerLikeCapability;
 import com.merlinkitsune.astral_dice.api.playerlike.PlayerLikeHandler;
 import com.merlinkitsune.astral_dice.api.playerlike.PlayerLikeWallet;
 import com.merlinkitsune.astral_dice.combat.DiceCombatParticipants;
 import com.merlinkitsune.astral_dice.item.card.BaseEffectCardItem;
 import com.merlinkitsune.astral_dice.item.card.CardItem;
+import com.merlinkitsune.astral_dice.item.card.CardUseService;
+import com.merlinkitsune.astral_dice.item.card.DiceCardLoadout;
 import com.merlinkitsune.astral_dice.item.dice.DiceCurioItem;
 import com.merlinkitsune.astral_dice.item.dice.DiceTierRegistry;
 import com.merlinkitsune.astral_dice.item.sign.BaseSignItem;
@@ -418,6 +421,81 @@ public final class AstralDiceApi {
     /** 骰子提供的卡牌格数；非骰子返回 0。 */
     public static int diceCardSlots(ItemStack stack) {
         return stack == null ? 0 : DiceCurioItem.getCardSlots(stack);
+    }
+
+    /** 骰子提供的筹码格数（不含立牌加成）；非骰子或未登记骰子返回 0。 */
+    public static int diceChipSlots(ItemStack stack) {
+        return stack == null ? 0 : DiceCurioItem.chipSlots(stack);
+    }
+
+    /**
+     * 该物品是否是**已登记骰阶**的骰子。
+     *
+     * <p>与 {@link #isDiceItem(ItemStack)} 的差别只在语义：本方法走骰阶注册表
+     * （{@code DiceTierRegistry}），附属注册的骰子同样为 {@code true}。
+     * 凡是「按骰子展示 tooltip / 判定骰子专属逻辑」的地方都应该用它，
+     * 不要再硬编码自家骰子物品清单。
+     */
+    public static boolean hasDiceTier(ItemStack stack) {
+        return stack != null && !stack.isEmpty() && DiceTierRegistry.isDice(stack);
+    }
+
+    // ---------------------------------------------------------------- 卡牌栏（骰子负载）
+
+    /**
+     * 读取一件骰子的卡牌栏快照（只读）。
+     *
+     * <p>装配会销毁卡牌物品栈，卡牌栏真值只在骰子的 {@code WeaponEnhancement} 组件里；
+     * 想要物品请调用 {@link #unequipAllCards(ItemStack, LivingEntity)}。
+     * 非骰子 / 空栈返回 {@link DiceLoadout#EMPTY}。
+     */
+    public static DiceLoadout diceLoadout(ItemStack dice) {
+        return DiceCardLoadout.read(dice);
+    }
+
+    /**
+     * 把一张卡牌装进骰子的卡牌栏（服务端；语义与卡牌界面逐行等价）。
+     *
+     * <p>成功时**不**扣卡牌栈 —— 门面只改骰子数据，由调用方自行扣减
+     * （界面里就是「装了就没了」）。失败原因包括：不是骰子、不是战斗牌、
+     * 该侧卡牌位已满、该侧费用超限。
+     *
+     * @param owner 费用折扣判定对象（护法立牌「名刀」等）；{@code null} = 无主宿主，
+     *              按基础费用计算，且不推送教主立牌的装备钩子
+     */
+    public static boolean equipCard(ItemStack dice, ItemStack card, Player owner) {
+        return DiceCardLoadout.equip(dice, card, owner);
+    }
+
+    /** 只判断装得下与否，不写入骰子。 */
+    public static boolean canEquipCard(ItemStack dice, ItemStack card, Player owner) {
+        return DiceCardLoadout.canEquip(dice, card, owner);
+    }
+
+    /**
+     * 卸下骰子卡牌栏里的全部卡牌并还原成物品栈交还宿主（服务端）。
+     *
+     * <p>玩家走原版归还逻辑（进包，满包掉地）；其他类玩家宿主走 {@link #giveItemTo}，
+     * 再退化为原地掉落。非玩家宿主重建的临时牌无法补回临时标记（标记 API 需要
+     * {@link Player}），会还原成普通卡牌。
+     *
+     * @return 实际归还张数
+     */
+    public static int unequipAllCards(ItemStack dice, LivingEntity holder) {
+        return DiceCardLoadout.unequipAll(dice, holder);
+    }
+
+    /**
+     * 让任意实体使用一张卡牌（服务端；玩家与原版 {@code ItemStack#use} 同一管线）。
+     *
+     * <p>非玩家实体走 {@code CardUseService.useCardForEntity}，当前默认返回 {@code false}
+     * 并打 WARN —— 效果牌尚未支持类玩家宿主，这是上游已知缺口，调用方必须处理
+     * {@code false}（别假设「用了就一定生效」）。
+     */
+    public static boolean useCardOn(LivingEntity user, ItemStack card) {
+        if (user == null || card == null || card.isEmpty()) return false;
+        if (user.level().isClientSide()) return false;
+        return CardUseService.useCardFor(user, card);
     }
 
     /** 实体装备变化后刷新筹码格数（类玩家宿主必须由附属在换装时调用）。 */

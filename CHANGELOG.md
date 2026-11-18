@@ -4,6 +4,15 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 26.4-SNAPSHOT.86
+
+### This line
+
+- Card-loadout facade (B1 of the API-coverage plan): new `api/data/InstalledCard` and `api/data/DiceLoadout` read-only records plus a loader-independent `item/card/DiceCardLoadout` service that reproduces the private `CardInventoryMenu#saveToDice` / `#loadFromDice` semantics line by line (half the slots per side, per-side cost accounting, `cardCostForStar(configStarLevel(dice))` cap, persisted star level stays the dice's **actual** star). New facade methods: `diceLoadout`, `canEquipCard`, `equipCard`, `unequipAllCards`. Equipping still **destroys** the card stack (the loadout lives in the dice component) — the facade never deducts it, the caller does; unequipping rebuilds stacks through the original return path (player inventory → drop; player-like hosts go through `giveItemTo` → drop), and temporary-card flags cannot be restored for non-player hosts because the marking API needs a `Player`.
+- `useCardOn(LivingEntity, ItemStack)` exposes `CardUseService.useCardFor`: players run the vanilla `ItemStack#use` pipeline; for non-player entities it still reaches the default `useCardForEntity` that returns `false` and logs a WARN — effect cards on player-like hosts remain the upstream gap, so callers must handle `false`. `CardUseService` was missing on three of five lines (fabric-1.20.1, fabric-1.21.1, neoforge-26.1.2) and now exists on all five with identical content.
+- `diceChipSlots(ItemStack)` (backed by a new public `DiceCurioItem#chipSlots` on all five lines) exposes the dice-derived chip-slot count, and `hasDiceTier(ItemStack)` answers "is this a dice registered in the tier registry". The dice tooltip judge switched from a hard-coded list of the mod's own 13 dice items to `hasDiceTier`, so addon-registered dice finally get the cost/star/card tooltip lines.
+- Verification: five-line `assemble --offline`; facade methods and the loadout service compiled in all five artifacts.
+
 ## 26.4-SNAPSHOT.85
 
 ### This line

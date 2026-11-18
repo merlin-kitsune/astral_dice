@@ -1,5 +1,6 @@
 package com.merlinkitsune.astral_dice.event;
 
+import com.merlinkitsune.astral_dice.api.AstralDiceApi;
 import com.merlinkitsune.astral_dice.platform.fml.ModList;
 
 import com.merlinkitsune.astral_dice.component.AppliedStone;
@@ -343,12 +344,9 @@ public class ModTooltipHandler {
         }
         Player player = event.getEntity();
 
-        if (stack.is(ModItems.DICE.get()) || stack.is(ModItems.GOLDEN_DICE.get()) || stack.is(ModItems.DIAMOND_DICE.get())
-                || stack.is(ModItems.NETHERITE_DICE.get()) || stack.is(ModItems.GLASS_DICE.get())
-                || stack.is(ModItems.EMERALD_DICE.get()) || stack.is(ModItems.OBSIDIAN_DICE.get())
-                || stack.is(ModItems.NETHERRACK_DICE.get()) || stack.is(ModItems.WEIRD_DICE.get())
-                || stack.is(ModItems.CRIMSON_DICE.get()) || stack.is(ModItems.AMETHYST_DICE.get())
-                || stack.is(ModItems.ENDER_DICE.get()) || stack.is(ModItems.NETHER_STAR_DICE.get())) {
+        // 骰子判据走骰阶注册表（DiceTierRegistry）：附属注册的骰子同样显示费用 / 星级 / 卡牌行。
+        // 旧实现硬编码自家 13 件骰子，附属骰子拿不到任何骰子 tooltip，扩展即失效。
+        if (AstralDiceApi.hasDiceTier(stack)) {
             WeaponEnhancement enhancement = ModDataComponents.WEAPON_ENHANCEMENT.getOrDefault(stack, null);
             int starLevel = 0;
             int maxCost = 3;

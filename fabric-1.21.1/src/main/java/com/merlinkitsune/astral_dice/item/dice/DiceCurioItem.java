@@ -215,6 +215,15 @@ public class DiceCurioItem extends Item implements ICurioItem {
         return tier.targetChipSlots(starLevel(stack));
     }
 
+    /**
+     * 由骰子推算筹码栏格数（不含立牌加成；非骰子 / 未登记骰子返回 0）。
+     *
+     * <p>对外只读入口：门面 {@code AstralDiceApi.diceChipSlots} 与附属的换装刷新共用同一口径。
+     */
+    public static int chipSlots(ItemStack stack) {
+        return targetChipSlots(stack);
+    }
+
     private static int starLevel(ItemStack stack) {
         return ModDataComponents.WEAPON_ENHANCEMENT.getOrDefault(stack,  WeaponEnhancement.EMPTY).starLevel();
     }

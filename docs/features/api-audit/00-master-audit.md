@@ -87,6 +87,17 @@
 | **B5 客户端面（P1-9/10/11 + P0-10）** | openCardInventory；registerHudLayer / registerKeyMapping 平台 seam；门面侧别 javadoc + requireServer | common + 五线 | 客户端启动 + 一次界面打开；client 类只被客户端类加载（避免专用服务器炸类） |
 | **B6 类型整理（S2/S3）** | registerDiceTier 返回 DiceTierView（保留旧方法 @Deprecated）；缺线的 CardUseService / ChipEquip / SignHooks 要么补线要么正式声明「仅 neo/forge」 | 纯 common (+ 缺线) | 五线 assemble + 旧签名保留检查 |
 
+### 6.1 B1 落地记录（26.4-SNAPSHOT.86，2026-11-18）
+
+- **新增数据契约**（common）：`api/data/InstalledCard`（type / uses / temporary / owner / defense）、`api/data/DiceLoadout`（starLevel / cardSlots / attackSlots / 攻防两侧已用与上限 / cards，`EMPTY` 常量）。
+- **新增服务**（common，一份）：`item/card/DiceCardLoadout` —— `read` / `canEquip` / `equip` / `unequipAll`，语义逐行对齐 `screen/CardInventoryMenu#saveToDice`（:302）与 `#loadFromDice`（:263）：攻/防各占一半槽位、各自独立计费、上限取 `GameplayConstants.cardCostForStar(DiceCurioItem.configStarLevel(dice))`、持久化写骰子**实际**星级、临时牌标记随 `AppliedStone` 保存。
+- **新增门面**（`AstralDiceApi`）：`diceLoadout` / `canEquipCard` / `equipCard` / `unequipAllCards` / `useCardOn` / `diceChipSlots` / `hasDiceTier`。
+- **五线补齐**：`item/card/CardUseService` 此前只有 neo-1.21.1 与 forge-1.20.1，本批补 fabric-1.20.1 / fabric-1.21.1 / neoforge-26.1.2（26.1.2 的 `ItemStack#use` 返回 `InteractionResult`，该线单独一份实现）；`DiceCurioItem#chipSlots` 五线新增公开只读入口（内部仍走 `targetChipSlots`）。
+- **版本差异垫片**：数据组件 API 与掉落签名在五线不一致（neo-1.21.1 / neoforge-26.1.2 用原版 `DataComponentType`；forge-1.20.1 与两线 fabric 用 starengine `ItemDataKey` NBT shim；26.1.2 的 `spawnAtLocation` 需要 `ServerLevel`）。新增每线一份 `item/dice/DiceLoadoutAccess`（`enhancement` / `setEnhancement` / `cardUses` / `setCardUses` / `drop`），common 侧因此保持单份。
+- **tooltip 判据**：五线 `event/ModTooltipHandler` 的 13 连硬编码 `stack.is(ModItems.*_DICE)` 换成 `AstralDiceApi.hasDiceTier(stack)`（13 件骰子全部登记在 `DiceTierRegistry`，附属骰子从此也有费用 / 星级 / 卡牌行）。
+- **仍未闭环（诚实边界）**：`useCardOn` 对非玩家实体仍落到 `CardUseService.useCardForEntity` 的默认 `false` —— 效果牌尚不支持类玩家宿主，属 P0-2 的另一半，需 B3（或单独一批）把 `BaseEffectCardItem` 的 `applyEffect` 目标放宽；`equipCard` 只改骰子数据、**不扣卡牌栈**（界面里「装了就没了」由调用方扣）；`unequipAllCards` 对非玩家宿主无法还原临时牌标记（标记 API 需 `Player`）。
+- **验收状态**：五线 `assemble --offline` BUILD SUCCESSFUL（.86 五件产物均含新类与七个新门面方法，已用 `javap` 核对）；审计定的「KubeJS 探针 装卡→读负载→卸卡→卡牌回到背包 逐值对账」**尚未跑**，需一次 dev 客户端实机。
+
 **批次顺序理由**：B1 直接解 TLMDice「牌术士自动装牌 / 自动用效果牌」两条 seam；B2 让第三方能改骰战数值（当前只能靠改本仓源码）；B3/B4 是常见扩展需求；B5/B6 是收口与兼容。
 
 ## 7. 需要裁决的决策点

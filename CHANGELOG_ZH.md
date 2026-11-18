@@ -4,6 +4,15 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
+## 26.4-SNAPSHOT.86
+
+### 本线
+
+- 卡牌栏门面（API 覆盖计划的 B1 批）：新增只读记录 `api/data/InstalledCard`、`api/data/DiceLoadout`，以及与加载器无关的服务 `item/card/DiceCardLoadout`，逐行复刻 `CardInventoryMenu#saveToDice` / `#loadFromDice` 的私有语义（攻/防各占一半槽位、各自独立计费、上限取 `cardCostForStar(configStarLevel(dice))`、持久化的是骰子**实际**星级）。门面新增 `diceLoadout`、`canEquipCard`、`equipCard`、`unequipAllCards`。装配依旧会**销毁**卡牌物品栈（卡牌栏真值在骰子组件里）—— 门面不代扣，由调用方扣减；卸下按原归还路径重建物品栈（玩家进包 → 满包掉地；类玩家宿主走 `giveItemTo` → 掉地），非玩家宿主的**临时牌标记无法还原**（标记 API 需要 `Player`）。
+- `useCardOn(LivingEntity, ItemStack)` 暴露 `CardUseService.useCardFor`：玩家走原版 `ItemStack#use` 管线；非玩家实体仍落到默认 `useCardForEntity`（返回 `false` 并打 WARN）—— 类玩家宿主还**用不了效果牌**，这是上游缺口，调用方必须处理 `false`。`CardUseService` 此前只有两条线有（neoforge-1.21.1 / forge-1.20.1），本版补齐 fabric-1.20.1、fabric-1.21.1、neoforge-26.1.2，五线内容一致。
+- 新增 `diceChipSlots(ItemStack)`（背后是五线新增的公开 `DiceCurioItem#chipSlots`）暴露「由骰子推算的筹码格数」，以及 `hasDiceTier(ItemStack)` 判定「是否为骰阶注册表里的骰子」。骰子 tooltip 判据由硬编码自家 13 件骰子改为 `hasDiceTier`，附属注册的骰子从此也能拿到费用 / 星级 / 卡牌行。
+- 验证：五线 `assemble --offline`；五份产物均含新门面方法与卡牌栏服务。
+
 ## 26.4-SNAPSHOT.85
 
 ### 本线
